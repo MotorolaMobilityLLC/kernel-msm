@@ -88,6 +88,8 @@
 #define RCOMP0_PROPERTY			"rcomp0"
 #define TCOMPC0_PROPERTY		"tcompc0"
 #define CELL_CHAR_TBL_PROPERTY		"maxim,cell-char-tbl"
+#define TGAIN_PROPERTY			"tgain"
+#define TOFF_PROPERTY			"toff"
 
 struct max17042_chip {
 	struct i2c_client *client;
@@ -941,6 +943,13 @@ static int max17042_cfg_rqrd_prop(struct device *dev,
 	return max17042_get_cell_char_tbl(dev, np, config_data);
 }
 
+static void max17042_cfg_optnl_prop(struct device_node *np,
+				    struct max17042_config_data *config_data)
+{
+	of_property_read_u16(np, TGAIN_PROPERTY, &config_data->tgain);
+	of_property_read_u16(np, TOFF_PROPERTY, &config_data->toff);
+}
+
 static struct max17042_config_data *
 max17042_get_config_data(struct device *dev)
 {
@@ -963,9 +972,9 @@ max17042_get_config_data(struct device *dev)
 		return NULL;
 	}
 
+	max17042_cfg_optnl_prop(np, config_data);
+
 	config_data->cur_sense_val = 10;
-	config_data->tgain = 0xE71C;
-	config_data->toff = 0x251A;
 	config_data->cgain = 0x4000;
 	config_data->coff = 0x0000;
 	config_data->valrt_thresh = 0xFF97;
