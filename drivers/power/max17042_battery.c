@@ -683,10 +683,10 @@ struct max17042_config_data eg30_lg_config = {
 	.coff = 0x0000,		/* 0x2F */
 
 	/* Alert / Status */
-	.valrt_thresh = 0xFF00,	/* 0x01 */
+	.valrt_thresh = 0xFF97,	/* 0x01 */
 	.talrt_thresh = 0x7F80,	/* 0x02 */
 	.soc_alrt_thresh = 0xFF00,	/* 0x03 */
-	.config = 0x0210,		/* 0x01D */
+	.config = 0x0214,		/* 0x01D */
 	.shdntimer = 0xE000,	/* 0x03F */
 
 	/* App data */
