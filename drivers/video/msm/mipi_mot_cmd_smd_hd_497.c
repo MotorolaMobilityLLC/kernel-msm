@@ -359,6 +359,7 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 	pinfo->bl_min = MIN_BRIGHTNESS_LEVEL;
 	pinfo->fb_num = 2;
 	pinfo->clk_rate = 460000000; /* TODO: Need to optimize */
+	pinfo->col_align = 4;
 	pinfo->physical_width_mm = 62;
 	pinfo->physical_height_mm = 110;
 

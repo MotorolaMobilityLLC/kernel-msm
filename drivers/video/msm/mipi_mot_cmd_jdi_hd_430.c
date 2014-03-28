@@ -346,6 +346,7 @@ static int __init mipi_mot_cmd_jdi_hd_430_init(void)
 
 	pinfo->fb_num = 2;
 	pinfo->clk_rate = 460000000;
+	pinfo->col_align = 2;
 	pinfo->physical_width_mm = 53;
 	pinfo->physical_height_mm = 95;
 

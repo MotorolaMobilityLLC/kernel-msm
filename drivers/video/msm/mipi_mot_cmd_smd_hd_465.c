@@ -410,6 +410,7 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 	pinfo->bl_min = MIN_BRIGHTNESS_LEVEL; /* 0 is dark when use 51h */
 	pinfo->fb_num = 2;
 	pinfo->clk_rate = 420000000;
+	pinfo->col_align = 4;
 	pinfo->physical_width_mm = 58;
 	pinfo->physical_height_mm = 103;
 
