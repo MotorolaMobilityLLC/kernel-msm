@@ -147,7 +147,19 @@ static int fb_event_callback(struct notifier_block *self,
 		int *blank = evdata->data;
 		struct dsi_status_data *pdata = container_of(self,
 				struct dsi_status_data, fb_notifier);
+		struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
 		pdata->mfd = evdata->info->par;
+		ctrl_pdata = container_of(dev_get_platdata(&pdata->mfd->pdev->dev),
+					struct mdss_dsi_ctrl_pdata, panel_data);
+		if (!ctrl_pdata) {
+			pr_err("%s: DSI ctrl not available\n", __func__);
+			return NOTIFY_BAD;
+		}
+		if (ctrl_pdata->check_status_disabled) {
+			pr_debug("%s: status_check disabled\n", __func__);
+			return NOTIFY_DONE;
+		}
 
 		switch (*blank) {
 		case FB_BLANK_UNBLANK:
