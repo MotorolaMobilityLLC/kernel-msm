@@ -490,7 +490,7 @@ struct cntry_locales_custom {
 /* Customized Locale table */
 static struct cntry_locales_custom wifi_translate_custom_table[] = {
 /* Table should be filled out based on custom platform regulatory requirement */
-	{"",   "XV", 16},	/* Universal if Country code is unknown or empty */
+	{"",   "XV", 17},	/* Universal if Country code is unknown or empty */
 	{"IR", "XV", 16},	/* Universal if Country code is IRAN, (ISLAMIC REPUBLIC OF) */
 	{"SD", "XV", 16},	/* Universal if Country code is SUDAN */
 	{"SY", "XV", 16},	/* Universal if Country code is SYRIAN ARAB REPUBLIC */
