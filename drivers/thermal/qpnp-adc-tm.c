@@ -1937,6 +1937,9 @@ static int __devinit qpnp_adc_tm_probe(struct spmi_device *spmi)
 				goto fail;
 			}
 			chip->sensor[sen_idx].timer_select = timer_select;
+			if (timer_select == ADC_MEAS_TIMER_SELECT1)
+				chip->sensor[sen_idx].meas_interval =
+						ADC_MEAS1_INTERVAL_31P3MS;
 			if (timer_select == ADC_MEAS_TIMER_SELECT2)
 				chip->sensor[sen_idx].meas_interval =
 						ADC_MEAS2_INTERVAL_500MS;
