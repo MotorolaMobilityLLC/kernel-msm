@@ -1308,6 +1308,10 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	if (panel_info->physical_width_mm)
 		var->width = panel_info->physical_width_mm;
 
+	/* Set undefined column alignments to single pixel alignment */
+	if (panel_info->col_align == 0)
+		panel_info->col_align = 1;
+
 	switch (mfd->fb_imgType) {
 	case MDP_RGB_565:
 		fix->type = FB_TYPE_PACKED_PIXELS;
