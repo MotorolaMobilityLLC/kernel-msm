@@ -957,6 +957,20 @@ max17042_get_config_data(struct device *dev)
 		return NULL;
 	}
 
+	config_data->cur_sense_val = 10;
+	config_data->tgain = 0xE71C;
+	config_data->toff = 0x251A;
+	config_data->cgain = 0x4000;
+	config_data->coff = 0x0000;
+	config_data->valrt_thresh = 0xFF97;
+	config_data->talrt_thresh = 0x7F80;
+	config_data->soc_alrt_thresh = 0xFF00;
+	config_data->config = 0x0214;
+	config_data->shdntimer = 0xE000;
+	config_data->cell_technology = POWER_SUPPLY_TECHNOLOGY_LION;
+	config_data->vempty = 0x7D5A;
+	config_data->temp_nom = 0x1400;
+
 	return config_data;
 }
 
@@ -993,11 +1007,13 @@ max17042_get_pdata(struct device *dev)
 		of_property_read_bool(np, "maxim,batt_undervoltage_zero_soc");
 
 	pdata->config_data = max17042_get_config_data(dev);
-	if (!pdata->config_data)
+	if (!pdata->config_data) {
 		dev_warn(dev, "config data is missing\n");
 
-	pdata->config_data = &eg30_lg_config;
-	pdata->enable_por_init = true;
+		pdata->config_data = &eg30_lg_config;
+		pdata->enable_por_init = true;
+	}
+
 	return pdata;
 }
 #else
