@@ -70,6 +70,9 @@ void stm401_irq_work_func(struct work_struct *work)
 	dev_dbg(&ps_stm401->client->dev, "stm401_irq_work_func\n");
 	mutex_lock(&ps_stm401->lock);
 
+	if (ps_stm401->is_suspended)
+		goto EXIT;
+
 	/* read interrupt mask register */
 	stm401_cmdbuff[0] = INTERRUPT_STATUS;
 	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
