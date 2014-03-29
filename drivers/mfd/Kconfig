@@ -403,6 +403,18 @@ config PCF50633_GPIO
 	 Say yes here if you want to include support GPIO for pins on
 	 the PCF50633 chip.
 
+config MFD_MAX77836
+	bool "Maxim Semiconductor MAX77836 PMIC Support"
+	depends on I2C=y && GENERIC_HARDIRQS
+	select MFD_CORE
+	select MUIC_MAX77836
+	help
+	 Say yes here to support for Maxim Semiconductor MAX77836.
+	 This is a Power Management IC with Charger, Fuel Gauge,
+	 controls on chip.
+	 This driver provides common support for accessing the device;
+	 additional drivers
+
 config UCB1400_CORE
 	tristate "Philips UCB1400 Core driver"
 	depends on AC97_BUS

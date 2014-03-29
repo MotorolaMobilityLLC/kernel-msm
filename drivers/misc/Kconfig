@@ -531,6 +531,14 @@ config SRAM
 	  the genalloc API. It is supposed to be used for small on-chip SRAM
 	  areas found on many SoCs.
 
+config MUIC_MAX77836
+	tristate "MAX14577 MUIC Support"
+	depends on (MFD_MAX14577 || MFD_MAX77836)
+	help
+	  If you say yes here you get support for the MUIC device of
+	  Maxim MAX14577 PMIC.
+	  The MAX14577 MUIC is a USB port accessory detector and switch.
+
 config TSIF
 	depends on ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_APQ8064
 	tristate "TSIF (Transport Stream InterFace) support"
