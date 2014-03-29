@@ -13,6 +13,7 @@
 
 /dts-v1/;
 
+#include "apq8084-moto-reserve.dtsi"
 #include "apq8084.dtsi"
 #include "apq8084-lexington.dtsi"
 
