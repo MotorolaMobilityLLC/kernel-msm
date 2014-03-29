@@ -10,17 +10,8 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
+/* Reserve for ramoops memory */
+/memreserve/ 0x3eae0000 0x20000;
 
-#include "apq8084-moto-reserve.dtsi"
-#include "apq8084.dtsi"
-#include "apq8084-quark.dtsi"
-
-/ {
-	qcom,msm-id = <178 0x42 0x8000>,
-		  <178 0x44 0x8000>; /* MAXX */
-};
-
-&pcie0 {
-	vreg-0.9-supply = <&pma8084_l4>;
-};
+/* Reserve for bootinfo backup in last_kmsg */
+/memreserve/ 0x3eb00000 0x800;
