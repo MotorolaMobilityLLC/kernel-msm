@@ -79,11 +79,12 @@ obj-$(CONFIG_ARCH_MPQ8092) += board-8092.o board-8092-gpiomux.o
 obj-$(CONFIG_ARCH_MPQ8092) += clock-8092.o clock-vcap-8092.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MPQ8092) += clock-krait-8974.o
 ifdef CONFIG_MACH_MSM8226_SPRAT
-obj-$(CONFIG_ARCH_MSM8226) += sprat/ board-8226-gpiomux.o
+obj-$(CONFIG_ARCH_MSM8226) += sprat/
+obj-$(CONFIG_ARCH_MSM8226) += clock-mdss-8974.o
 else
 obj-$(CONFIG_ARCH_MSM8226) += board-8226.o board-8226-gpiomux.o
-endif
 obj-$(CONFIG_ARCH_MSM8226) += clock-8226.o clock-mdss-8974.o
+endif
 obj-$(CONFIG_ARCH_MSM8610) += board-8610.o board-8610-gpiomux.o
 obj-$(CONFIG_ARCH_MSM8610) += clock-8610.o
 obj-$(CONFIG_ARCH_MSM8610) += clock-dsi-8610.o
@@ -149,3 +150,4 @@ obj-$(CONFIG_MSM_DEVFREQ_CPUBW) += devfreq_cpubw.o
 
 obj-$(CONFIG_ARCH_RANDOM) += early_random.o
 obj-$(CONFIG_PERFMAP) += perfmap.o
+
