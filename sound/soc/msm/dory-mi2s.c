@@ -229,7 +229,7 @@ static struct snd_soc_dai_link dory_dai[] = {
 	/* Backend DAI Links */
 	{
 		.name = LPASS_BE_PRI_MI2S_TX,
-		.stream_name = "Primary I2S Capture",
+		.stream_name = "Primary MI2S Capture",
 		.cpu_dai_name = "msm-dai-q6-mi2s.0",
 		.platform_name = "msm-pcm-routing",
 		.codec_name     = "msm-stub-codec.1",
