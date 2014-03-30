@@ -66,10 +66,6 @@ struct max77836_platform_data {
 	struct max77836_reg_platform_data *regulators;
 	int *opmode_data;
 #endif /* CONFIG_REGULATOR_MAX77836 */
-#if defined(CONFIG_CHARGER_MAX77836)
-	/* charger data */
-	sec_battery_platform_data_t *charger_data;
-#endif
 };
 
 #ifdef CONFIG_REGULATOR_MAX77836

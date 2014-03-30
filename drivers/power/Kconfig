@@ -164,6 +164,14 @@ config BATTERY_BQ27X00_I2C
 	help
 	  Say Y here to enable support for batteries with BQ27x00 (I2C) chips.
 
+config FUELGAUGE_MAX17048
+	tristate "MAX17048 fuel gauge driver"
+	help
+	Say Y to include support
+	for MAXIM MAX17048 fuel gauge driver.
+	This fuel-gauge can be used
+	only in voltage-tracking mode.
+
 config BATTERY_BQ27X00_PLATFORM
 	bool "BQ27000 support"
 	depends on BATTERY_BQ27x00
@@ -269,6 +277,15 @@ config CHARGER_ISP1704
 	help
 	  Say Y to enable support for USB Charger Detection with
 	  ISP1707/ISP1704 USB transceivers.
+
+config CHARGER_MAX77836
+	tristate "MAX77836 battery charge support"
+	depends on I2C
+	help
+	  Say Y to enable support for the MAX77836 charger
+	  The driver supports controlling charger-enable and current-limit
+	  pins based on the status of charger connections with interrupt
+	  handlers.
 
 config CHARGER_MAX8903
 	tristate "MAX8903 Battery DC-DC Charger for USB and Adapter Power"

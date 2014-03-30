@@ -10,6 +10,7 @@
 
 #ifndef _LINUX_ANDROID_BATTERY_H
 #define _LINUX_ANDROID_BATTERY_H
+#include <linux/of.h>
 
 enum {
 	CHARGE_SOURCE_NONE = 0,
@@ -34,6 +35,8 @@ struct android_bat_platform_data {
 	int (*get_voltage_now)(void);
 	int (*get_current_now)(int *);
 
+	char * charger_name;
+	char * fuelgauge_name;
 	int temp_high_threshold;
 	int temp_high_recovery;
 	int temp_low_recovery;

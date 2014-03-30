@@ -31,7 +31,6 @@
 #include <linux/slab.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
-#include <linux/alarmtimer.h>
 #include <linux/timer.h>
 #include <linux/mutex.h>
 #include <linux/debugfs.h>
@@ -66,7 +65,6 @@ struct android_bat_data {
 	struct work_struct	monitor_work;
 	struct work_struct	charger_work;
 
-	struct alarm		monitor_alarm;
 	ktime_t			last_poll;
 
 	struct dentry		*debugfs_entry;
@@ -112,13 +110,32 @@ static int android_bat_get_property(struct power_supply *ps,
 {
 	struct android_bat_data *battery =
 		container_of(ps, struct android_bat_data, psy_bat);
+	struct power_supply *psy;
+	int ret;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = battery->charging_status;
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
-		val->intval = battery->batt_health;
+		psy = power_supply_get_by_name(battery->pdata->charger_name);
+		if (!psy) {
+			dev_err(battery->dev,
+				"%s: Fail to get psy(%s)\n", __func__,
+				battery->pdata->charger_name);
+			return -ENODATA;
+		} else {
+			ret = psy->get_property(psy,
+				POWER_SUPPLY_PROP_HEALTH, val);
+			if (ret < 0) {
+				dev_err(battery->dev,
+					"%s: Fail to get property(%d)\n",
+					__func__, ret);
+				return -ENODATA;
+			} else {
+				battery->batt_health = val->intval;
+			}
+		}
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = 1;
@@ -130,15 +147,44 @@ static int android_bat_get_property(struct power_supply *ps,
 		val->intval = 1;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		android_bat_update_data(battery);
-		val->intval = battery->batt_vcell;
-		if (val->intval == -1)
-			return -EINVAL;
+		psy = power_supply_get_by_name(battery->pdata->fuelgauge_name);
+		if (!psy) {
+			dev_err(battery->dev,
+				"%s: Fail to get psy(%s)\n", __func__,
+				battery->pdata->fuelgauge_name);
+			return -ENODATA;
+		} else {
+			ret = psy->get_property(psy,
+				POWER_SUPPLY_PROP_VOLTAGE_NOW, val);
+			if (ret < 0) {
+				dev_err(battery->dev,
+					"%s: Fail to get property(%d)\n",
+					__func__, ret);
+				return -ENODATA;
+			} else {
+				battery->batt_vcell = val->intval;
+			}
+		}
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = battery->batt_soc;
-		if (val->intval == -1)
-			return -EINVAL;
+		psy = power_supply_get_by_name(battery->pdata->fuelgauge_name);
+		if (!psy) {
+			dev_err(battery->dev,
+				"%s: Fail to get psy(%s)\n", __func__,
+				battery->pdata->fuelgauge_name);
+			return -ENODATA;
+		} else {
+			ret = psy->get_property(psy,
+					POWER_SUPPLY_PROP_CAPACITY, val);
+			if (ret < 0) {
+				dev_err(battery->dev,
+					"%s: Fail to get property(%d)\n",
+					__func__, ret);
+				return -ENODATA;
+			} else {
+				battery->batt_soc = val->intval;
+			}
+		}
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -165,8 +211,8 @@ static void android_bat_get_temp(struct android_bat_data *battery)
 		if (batt_temp >= battery->pdata->temp_high_threshold) {
 			if (health != POWER_SUPPLY_HEALTH_OVERHEAT &&
 				health != POWER_SUPPLY_HEALTH_UNSPEC_FAILURE) {
-				pr_info("battery overheat (%d>=%d), " \
-					"charging unavailable\n",
+				pr_info("battery overheat (%d>=%d),\
+					charging unavailable\n",
 					batt_temp,
 					battery->pdata->temp_high_threshold);
 				battery->batt_health =
@@ -176,8 +222,8 @@ static void android_bat_get_temp(struct android_bat_data *battery)
 			batt_temp >= battery->pdata->temp_low_recovery) {
 			if (health == POWER_SUPPLY_HEALTH_OVERHEAT ||
 				health == POWER_SUPPLY_HEALTH_COLD) {
-				pr_info("battery recovery (%d,%d~%d),"	\
-					"charging available\n",
+				pr_info("battery recovery (%d,%d~%d),\
+					charging available\n",
 					batt_temp,
 					battery->pdata->temp_low_recovery,
 					battery->pdata->temp_high_recovery);
@@ -187,8 +233,8 @@ static void android_bat_get_temp(struct android_bat_data *battery)
 		} else if (batt_temp <= battery->pdata->temp_low_threshold) {
 			if (health != POWER_SUPPLY_HEALTH_COLD &&
 				health != POWER_SUPPLY_HEALTH_UNSPEC_FAILURE) {
-				pr_info("battery cold (%d <= %d),"	\
-					"charging unavailable\n",
+				pr_info("battery cold (%d <= %d),\
+					charging unavailable\n",
 					batt_temp,
 					battery->pdata->temp_low_threshold);
 				battery->batt_health =
@@ -402,14 +448,6 @@ static void android_bat_charger_work(struct work_struct *work)
 	power_supply_changed(&battery->psy_bat);
 }
 
-
-static void android_bat_monitor_set_alarm(struct android_bat_data *battery,
-					  int seconds)
-{
-	alarm_start(&battery->monitor_alarm,
-		    ktime_add(battery->last_poll, ktime_set(seconds, 0)));
-}
-
 static void android_bat_monitor_work(struct work_struct *work)
 {
 	struct android_bat_data *battery =
@@ -483,20 +521,8 @@ static void android_bat_monitor_work(struct work_struct *work)
 	mutex_unlock(&android_bat_state_lock);
 	power_supply_changed(&battery->psy_bat);
 	battery->last_poll = ktime_get_boottime();
-	android_bat_monitor_set_alarm(battery, FAST_POLL);
 	wake_unlock(&battery->monitor_wake_lock);
 	return;
-}
-
-static enum alarmtimer_restart android_bat_monitor_alarm(
-	struct alarm *alarm, ktime_t now)
-{
-	struct android_bat_data *battery =
-		container_of(alarm, struct android_bat_data, monitor_alarm);
-
-	wake_lock(&battery->monitor_wake_lock);
-	queue_work(battery->monitor_wqueue, &battery->monitor_work);
-	return ALARMTIMER_NORESTART;
 }
 
 static int android_power_debug_dump(struct seq_file *s, void *unused)
@@ -507,7 +533,8 @@ static int android_power_debug_dump(struct seq_file *s, void *unused)
 	android_bat_update_data(battery);
 	get_monotonic_boottime(&cur_time);
 	mutex_lock(&android_bat_state_lock);
-	seq_printf(s, "l=%d v=%d c=%d temp=%s%ld.%ld h=%d st=%d%s ct=%lu type=%s\n",
+	seq_printf(s, "l=%d v=%d c=%d temp=%s%ld.%ld\
+			h=%d st=%d%s ct=%lu type=%s\n",
 		   battery->batt_soc, battery->batt_vcell/1000,
 		   battery->batt_current, battery->batt_temp < 0 ? "-" : "",
 		   abs(battery->batt_temp / 10), abs(battery->batt_temp % 10),
@@ -532,9 +559,35 @@ static const struct file_operations android_power_debug_fops = {
 	.release = single_release,
 };
 
+#ifdef CONFIG_OF
+static int android_battery_parse_dt(struct device *dev,
+		struct android_bat_data *battery)
+{
+	struct device_node *np = dev->of_node;
+	int ret;
+
+	if (np == NULL) {
+		pr_err("%s np NULL\n", __func__);
+	} else {
+		ret = of_property_read_string(np,
+				"battery,charger_name",
+				(char const **)&battery->pdata->charger_name);
+		if (ret)
+			pr_info("%s: Charger_name is empty\n", __func__);
+
+		ret = of_property_read_string(np,
+				"battery,fuelgauge_name",
+				(char const **)&battery->pdata->fuelgauge_name);
+		if (ret)
+			pr_info("%s: Fuelgauge_name is Empty\n", __func__);
+	}
+	return 0;
+}
+#endif
+
 static int android_bat_probe(struct platform_device *pdev)
 {
-	struct android_bat_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct android_bat_platform_data *pdata = NULL;
 	struct android_bat_data *battery;
 	int ret = 0;
 
@@ -543,18 +596,32 @@ static int android_bat_probe(struct platform_device *pdev)
 	if (!battery)
 		return -ENOMEM;
 
-	battery->pdata = pdata;
-	if (!battery->pdata) {
-		pr_err("%s : No platform data\n", __func__);
-		ret = -EINVAL;
-		goto err_pdata;
+	if (pdev->dev.of_node) {
+		pdata = devm_kzalloc(&pdev->dev,
+				sizeof(struct android_bat_platform_data),
+				GFP_KERNEL);
+		if (!pdata) {
+			dev_err(&pdev->dev, "Failed to allocate memory\n");
+			ret = -ENOMEM;
+			goto err_pdata;
+		}
+
+		battery->pdata = pdata;
+		if (android_battery_parse_dt(&pdev->dev, battery)) {
+			dev_err(&pdev->dev,
+				"%s: Failed to get fuel_int\n", __func__);
+			goto err_dt;
+		}
+	} else {
+		pdata = dev_get_platdata(&pdev->dev);
+		battery->pdata = pdata;
 	}
 
 	battery->dev = &pdev->dev;
 	platform_set_drvdata(pdev, battery);
 	battery->batt_health = POWER_SUPPLY_HEALTH_GOOD;
 
-	battery->psy_bat.name = "android-battery",
+	battery->psy_bat.name = "battery",
 	battery->psy_bat.type = POWER_SUPPLY_TYPE_BATTERY,
 	battery->psy_bat.properties = android_battery_props,
 	battery->psy_bat.num_properties = ARRAY_SIZE(android_battery_props),
@@ -602,8 +669,6 @@ static int android_bat_probe(struct platform_device *pdev)
 
 	wake_lock(&battery->monitor_wake_lock);
 	battery->last_poll = ktime_get_boottime();
-	alarm_init(&battery->monitor_alarm, ALARM_BOOTTIME,
-		   android_bat_monitor_alarm);
 	queue_work(battery->monitor_wqueue, &battery->monitor_work);
 
 	battery->debugfs_entry =
@@ -612,6 +677,7 @@ static int android_bat_probe(struct platform_device *pdev)
 	if (!battery->debugfs_entry)
 		pr_err("failed to create android-power debugfs entry\n");
 
+	dev_info(&pdev->dev, "Android Battery Driver probe is completed\n");
 	return 0;
 
 err_wq:
@@ -619,6 +685,8 @@ err_wq:
 err_psy_bat_reg:
 	wake_lock_destroy(&battery->monitor_wake_lock);
 	wake_lock_destroy(&battery->charger_wake_lock);
+err_dt:
+	kfree(pdata);
 err_pdata:
 	kfree(battery);
 
@@ -629,36 +697,34 @@ static int android_bat_remove(struct platform_device *pdev)
 {
 	struct android_bat_data *battery = platform_get_drvdata(pdev);
 
-	alarm_cancel(&battery->monitor_alarm);
 	flush_workqueue(battery->monitor_wqueue);
 	destroy_workqueue(battery->monitor_wqueue);
 	power_supply_unregister(&battery->psy_bat);
 	wake_lock_destroy(&battery->monitor_wake_lock);
 	wake_lock_destroy(&battery->charger_wake_lock);
 	debugfs_remove(battery->debugfs_entry);
+	kfree(battery->pdata);
 	kfree(battery);
 	return 0;
 }
 
 static int android_bat_suspend(struct device *dev)
 {
-	struct android_bat_data *battery = dev_get_drvdata(dev);
-
-	cancel_work_sync(&battery->monitor_work);
-	android_bat_monitor_set_alarm(
-		battery,
-		battery->charge_source == CHARGE_SOURCE_NONE ?
-		SLOW_POLL : FAST_POLL);
 	return 0;
 }
 
 static void android_bat_resume(struct device *dev)
 {
-	struct android_bat_data *battery = dev_get_drvdata(dev);
-
-	android_bat_monitor_set_alarm(battery, FAST_POLL);
 	return;
 }
+
+#ifdef CONFIG_OF
+static struct of_device_id android_battery_dt_ids[] = {
+	{ .compatible = "android,battery" },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, sec_battery_dt_ids);
+#endif /* CONFIG_OF */
 
 static const struct dev_pm_ops android_bat_pm_ops = {
 	.prepare = android_bat_suspend,
@@ -670,6 +736,9 @@ static struct platform_driver android_bat_driver = {
 		.name = "android-battery",
 		.owner = THIS_MODULE,
 		.pm = &android_bat_pm_ops,
+#ifdef CONFIG_OF
+		.of_match_table = android_battery_dt_ids,
+#endif
 	},
 	.probe = android_bat_probe,
 	.remove = android_bat_remove,
