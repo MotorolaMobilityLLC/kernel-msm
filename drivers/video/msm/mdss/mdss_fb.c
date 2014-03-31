@@ -1826,7 +1826,7 @@ static int mdss_fb_check_var(struct fb_var_screeninfo *var,
 		break;
 
 	case 32:
-		/* Check user specified color format BGRA/ARGB/RGBA
+		/* Check user specified color format BGRA/ARGB/ABGR/RGBA
 		   and verify the position of the RGB components */
 
 		if (!((var->transp.offset == 24) &&
@@ -1840,7 +1840,11 @@ static int mdss_fb_check_var(struct fb_var_screeninfo *var,
 		    !((var->transp.offset == 0) &&
 			(var->blue.offset == 8) &&
 			(var->green.offset == 16) &&
-			(var->red.offset == 24)))
+			(var->red.offset == 24)) &&
+		    !((var->transp.offset == 24) &&
+			(var->blue.offset == 16) &&
+			(var->green.offset == 8) &&
+			(var->red.offset == 0)))
 				return -EINVAL;
 
 		/* Check the common values for both RGBA and ARGB */
