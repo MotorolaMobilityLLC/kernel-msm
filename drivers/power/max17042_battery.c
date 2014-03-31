@@ -89,6 +89,11 @@
 #define RCOMP0_PROPERTY			"rcomp0"
 #define TCOMPC0_PROPERTY		"tcompc0"
 #define CELL_CHAR_TBL_PROPERTY		"maxim,cell-char-tbl"
+#define TGAIN_PROPERTY			"tgain"
+#define TOFF_PROPERTY			"toff"
+#define TEMP_CONV_NODE			"maxim,temp-conv"
+#define RESULT_PROPERTY			"result"
+#define START_PROPERTY			"start"
 
 struct max17042_chip {
 	struct i2c_client *client;
@@ -120,6 +125,33 @@ static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
 };
+
+/* input and output temperature is in deci-centigrade */
+static int max17042_conv_temp(struct max17042_temp_conv *conv, int t)
+{
+	int i; /* conversion table index */
+	s16 *r = conv->result;
+	int dt;
+
+	/*
+	 * conv->result[0] corresponds to conv->start temp, conv->result[1] to
+	 * conv->start + 1 temp, etc. Find index to the conv->result table for
+	 * t to be between index and index + 1 temperatures.
+	 */
+	i = t / 10 - conv->start; /* t is in 1/10th C, conv->start is in C */
+	if (t < 0)
+		i -= 1;
+
+	/* Interpolate linearly if index and index + 1 are within the table */
+	if (i < 0) {
+		return r[0];
+	} else if (i >= conv->num_result - 1) {
+		return r[conv->num_result - 1];
+	} else {
+		dt = t - (conv->start + i) * 10; /* in 1/10th C */
+		return r[i] + (r[i + 1] - r[i]) * dt / 10;
+	}
+}
 
 static int max17042_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
@@ -237,9 +269,15 @@ static int max17042_get_property(struct power_supply *psy,
 			val->intval = (0x7fff & ~val->intval) + 1;
 			val->intval *= -1;
 		}
+
 		/* The value is converted into deci-centigrade scale */
 		/* Units of LSB = 1 / 256 degree Celsius */
 		val->intval = val->intval * 10 / 256;
+
+		/* Convert IC temp to "real" temp */
+		if (chip->pdata->tcnv)
+			val->intval = max17042_conv_temp(chip->pdata->tcnv,
+							 val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		if (chip->pdata->enable_current_sense) {
@@ -959,6 +997,61 @@ max17042_get_config_data(struct device *dev)
 	return config_data;
 }
 
+static struct max17042_temp_conv *
+max17042_get_conv_table(struct device *dev)
+{
+	struct device_node *np = dev->of_node;
+	struct max17042_temp_conv *temp_conv;
+	const __be16 *property;
+	int i, lenp, num;
+	u16 temp;
+	s16 start;
+
+	if (!np)
+		return NULL;
+
+	np = of_get_child_by_name(np, TEMP_CONV_NODE);
+	if (!np)
+		return NULL;
+
+	property = of_get_property(np, RESULT_PROPERTY, &lenp);
+	if (!property || lenp <= 0) {
+		dev_err(dev, "%s must have %s property\n", TEMP_CONV_NODE,
+			RESULT_PROPERTY);
+		return NULL;
+	}
+
+	if (of_property_read_u16(np, START_PROPERTY, &temp)) {
+		dev_err(dev, "%s must have %s property\n", TEMP_CONV_NODE,
+			START_PROPERTY);
+		return NULL;
+	}
+
+	start = (s16) temp;
+
+	temp_conv = devm_kzalloc(dev, sizeof(*temp_conv), GFP_KERNEL);
+	if (!temp_conv)
+		return NULL;
+
+	num = lenp / sizeof(*property);
+	temp_conv->result = devm_kzalloc(dev, sizeof(s16) * num, GFP_KERNEL);
+	if (!temp_conv->result) {
+		devm_kfree(dev, temp_conv);
+		return NULL;
+	}
+
+	temp_conv->start = start;
+	temp_conv->num_result = num;
+
+	for (i = 0; i < num; i++) {
+		temp = be16_to_cpu(property[i]);
+		temp_conv->result[i] = (s16) temp;
+	}
+
+	return temp_conv;
+}
+
+
 static struct max17042_platform_data *
 max17042_get_pdata(struct device *dev)
 {
@@ -992,6 +1085,8 @@ max17042_get_pdata(struct device *dev)
 
 	pdata->batt_undervoltage_zero_soc =
 		of_property_read_bool(np, "maxim,batt_undervoltage_zero_soc");
+
+	pdata->tcnv = max17042_get_conv_table(dev);
 
 	pdata->config_data = max17042_get_config_data(dev);
 
