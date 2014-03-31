@@ -1,0 +1,9 @@
+#
+# vibrator controlled by PMIC regualtor configuration
+#
+
+config REGULATOR_VIBRATOR
+	tristate "REGULATOR_VIBRATOR"
+	default n
+	help
+	Say Y to enable REGULATOR_VIBRATOR support.

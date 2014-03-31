@@ -186,4 +186,5 @@ source "drivers/phy/Kconfig"
 
 source "drivers/soc/Kconfig"
 
+source "drivers/motor/Kconfig"
 endmenu
