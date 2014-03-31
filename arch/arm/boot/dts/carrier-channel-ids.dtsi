@@ -44,7 +44,7 @@
 		"retla",	/* 27 */
 		"retcl",	/* 28 */
 		"tefla",	/* 29 */
-		"undefined",	/* 30 */
+		"retla1st",	/* 30 */
 		"undefined",	/* 31 */
 		"undefined",	/* 32 */
 		"undefined",	/* 33 */
@@ -157,7 +157,7 @@
 		"tracfone",	/* 140 */
 		"retus",	/* 141 */
 		"???",		/* 142 */
-		"undefined",	/* 143 */
+		"rcica",	/* 143 */
 		"undefined",	/* 144 */
 		"undefined",	/* 145 */
 		"undefined",	/* 146 */
