@@ -198,8 +198,6 @@
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
 			"LDO_H", "MCLK",
-			"SPK_OUT", "MCLK",
-			"SPK_OUT", "EXT_VDD_SPKR",
 			"DMIC1", "MIC BIAS1 External",
 			"MIC BIAS1 External", "Digital Mic1";
 
