@@ -418,6 +418,9 @@ static void mdss_fb_shutdown(struct platform_device *pdev)
 
 	mfd->shutdown_pending = true;
 	lock_fb_info(mfd->fbi);
+	if (lcd_backlight_registered)
+		mdss_fb_set_bl_brightness(&backlight_led, 0);
+
 	mdss_fb_release_all(mfd->fbi, NULL);
 	unlock_fb_info(mfd->fbi);
 }
