@@ -27,6 +27,11 @@ Optional subnodes:
    of the device defined in Maxim appnote. This data is either specific to how
    the host device is used  or battery specific characteristic.
 
+ - maxim,temp-conv : Contains a table to convert a value from Temperature
+   register to a "real" temp value. This conversion table should be used when
+   configuring tgain and toff is not sufficient to get accurate temperature
+   measurements.
+
 Required "maxim,configuration" node properties :
  - config : CONFIG register value (u16) specific to the device application.
  - full_soc_thresh : FullSOCThr register value (u16). The appnote has a
@@ -54,6 +59,12 @@ Required "maxim,configuration" node properties :
  - maxim,regs-init-data : Initialization data for device registers specified as
    register address and value pairs.
 
+Required "maxim,temp-conv" properties :
+ - start : Fuel gauge temperature value (u16) in C for the first element in
+   in the "result" table.
+ - result : Conversion table with temperature values (u16) in 1/10 C.  The
+   result[0] corresponds to start temp, result[1] to (start + 1) temp, etc.
+
 Example:
 
 	battery-charger@36 {
@@ -65,13 +76,10 @@ Example:
 		>;
 		gpios = <&gpio5 12 0x1>;
 		gpio-names = "alert-pin";
-<<<<<<< HEAD
-
 		maxim,batt_undervoltage_zero_soc;
 		maxim,regs-init-data = <
 			0x01 0xffb4 /* VALRT, VMAX = 5.1V and VMIN = 3.6V */
 		>;
-=======
 		maxim,enable_por_init;
 		maxim,batt_undervoltage_zero_soc;
 		maxim,configuration {
@@ -101,5 +109,19 @@ Example:
 				0x0080 0x0080 0x0080 0x0080 0x0080 0x0080
 			>;
 		}
->>>>>>> 215092b... IKDREL3KK-149 max17042_battery: Read device config data from DT
+
+		maxim,temp-conv {
+			start	= /bits/ 16 <(-20)>;	/* in degrees C */
+			result	= /bits/ 16 <		/* in 1/10 degrees C */
+				(-302) (-271) (-246) (-222) (-202) (-180) (-162) (-147) (-129) (-114)
+				(-101) (-86)  (-72)  (-59)  (-48)  (-35)  (-23)  (-12)  (-2)   10
+				22     32     42     51     62     72     82     91     99     110
+				120    129    138    146    156    165    175    184    192    200
+				210    220    230    238    247    256    266    275    285    294
+				303    313    324    333    343    353    364    375    385    395
+				407    419    430    441    453    466    479    492    505    520
+				534    548    565    581    597    616    635    654    676    697
+				721    747    775    800
+			>;
+		};
 	};
