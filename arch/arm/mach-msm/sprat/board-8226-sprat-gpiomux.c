@@ -279,20 +279,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
 		},
 	},
-	{					/*  NFC   */
-		.gpio      = 10,		/* BLSP1 QUP3 I2C_DAT */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{					/*  NFC   */
-		.gpio      = 11,		/* BLSP1 QUP3 I2C_CLK */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
 };
 
 static struct msm_gpiomux_config msm_blsp_spi_cs_config[] __initdata = {
@@ -487,20 +473,6 @@ static struct msm_gpiomux_config msm_skuf_nfc_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE] = &nfc_wake_act_cfg,
 			[GPIOMUX_SUSPENDED] = &nfc_wake_sus_cfg,
-		},
-	},
-	{					/*  NFC   */
-		.gpio      = 10,		/* BLSP1 QUP3 I2C_DAT */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{					/*  NFC   */
-		.gpio      = 11,		/* BLSP1 QUP3 I2C_CLK */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
 		},
 	},
 };
