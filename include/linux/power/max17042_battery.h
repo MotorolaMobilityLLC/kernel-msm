@@ -195,12 +195,25 @@ struct max17042_config_data {
 	u16	cell_char_tbl[MAX17042_CHARACTERIZATION_DATA_SIZE];
 } __packed;
 
+/*
+ * used to convert a value from Temperature register to a "real" temp value.
+ * This conversion table can be used when configuring tgain and toff is not
+ * sufficient to get accurate temperature measurements.
+ * The result[0] corresponds to start temp, result[1] to (start + 1) temp, etc.
+ */
+struct max17042_temp_conv {
+	s16 start;	/* Centigrade */
+	s16 *result;	/* Deci-centigrade */
+	int num_result;	/* Number of entries in result array */
+};
+
 struct max17042_platform_data {
 	struct max17042_reg_data *init_data;
 	struct max17042_config_data *config_data;
 	int num_init_data; /* Number of enties in init_data array */
 	struct gpio *gpio_list;
 	int num_gpio_list; /* Number of entries in gpio_list array */
+	struct max17042_temp_conv *tcnv; /* temp conversion table */
 	bool enable_current_sense;
 	bool enable_por_init; /* Use POR init from Maxim appnote */
 
