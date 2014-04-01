@@ -1439,6 +1439,8 @@ int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		udelay(10);
 		gpio_set_value(s_akm->rstn, 1);
 	}
+	/** Wait for at least 100us before starting I2C talking **/
+	usleep_range(100, 100);
 
 	/***** I2C initialization *****/
 	s_akm->i2c = client;
