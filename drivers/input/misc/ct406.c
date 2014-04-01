@@ -952,7 +952,7 @@ static void ct406_report_als(struct ct406_data *ct)
 	ct406_write_als_thresholds(ct);
 
 
-	if (ct->ink_type == 0) {
+	if ((ct->ink_type == 0) || (ct->ink_type == 2)) {
 		/* calculate lux using piecewise function from TAOS */
 		if (c0data == 0)
 			c0data = 1;
@@ -1019,7 +1019,14 @@ static void ct406_report_als(struct ct406_data *ct)
 	}
 
 	/* input.c filters consecutive LED_MISC values <=1. */
-	lux1 = (lux1 >= 2) ? lux1 : 2;
+	if (ct->ink_type == 2)
+		/* Applicable to solstice device */
+		lux1 = (lux1 >= 2) ? (lux1 * 2) : 2;
+	else
+		lux1 = (lux1 >= 2) ? lux1 : 2;
+
+	if (lux1 > 0xFFFF)
+		lux1 = 0xFFFF;
 
 	input_event(ct->dev, EV_LED, LED_MISC, lux1);
 	input_sync(ct->dev);
