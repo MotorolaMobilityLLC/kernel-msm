@@ -263,10 +263,10 @@ struct msp430_quickpeek_message {
 	u8 message;
 	u8 panel_state;
 	u8 buffer_id;
-	u16 x1;
-	u16 y1;
-	u16 x2;
-	u16 y2;
+	s16 x1;
+	s16 y1;
+	s16 x2;
+	s16 y2;
 	struct list_head list;
 };
 
