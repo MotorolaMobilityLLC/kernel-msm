@@ -378,6 +378,8 @@ struct stm_response {
 #define RESET                           0x7F
 /* STM401 memory map end */
 
+#define READ_CMDBUFF_SIZE 512
+
 #define LIGHTING_TABLE_SIZE 32
 
 #define STM401_AS_DATA_QUEUE_SIZE       0x20
@@ -541,9 +543,10 @@ struct stm401_algo_info_t {
 	unsigned short evt_size;
 };
 
+#define ALGO_RQST_DATA_SIZE 28
 struct stm401_algo_requst_t {
 	char size;
-	char data[28];
+	char data[ALGO_RQST_DATA_SIZE];
 };
 
 irqreturn_t stm401_isr(int irq, void *dev);
