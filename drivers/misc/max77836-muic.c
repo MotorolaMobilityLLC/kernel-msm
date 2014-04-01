@@ -143,7 +143,6 @@ static const struct max77836_muic_vps_data muic_vps_table[] = {
 		.vps_name	= "Jig UART Off + VB",
 		.attached_dev	= ATTACHED_DEV_JIG_UART_OFF_VB_MUIC,
 	},
-#if defined(CONFIG_SEC_FACTORY_MODE)
 	{
 		.adcerr		= 0x00,
 		.adclow		= (0x1 << STATUS1_ADCLOW_SHIFT),
@@ -155,7 +154,6 @@ static const struct max77836_muic_vps_data muic_vps_table[] = {
 		.vps_name	= "Jig UART On",
 		.attached_dev	= ATTACHED_DEV_JIG_UART_ON_MUIC,
 	},
-#endif /* CONFIG_SEC_FACTORY_MODE */
 	{
 		.adcerr		= 0x00,
 		.adclow		= (0x1 << STATUS1_ADCLOW_SHIFT),
@@ -617,8 +615,7 @@ static const struct attribute_group max77836_muic_group = {
 	.attrs = max77836_muic_attributes,
 };
 
-#if defined(CONFIG_SEC_FACTORY_MODE) || \
-	defined(CONFIG_MUIC_SUPPORT_FACTORY_BUTTON)
+#if defined(CONFIG_MUIC_SUPPORT_FACTORY_BUTTON)
 
 static void max77836_muic_attach_callback_dock(struct max77836_muic_data *muic_data,
 						int dock_type)
@@ -788,12 +785,6 @@ static void max77836_muic_force_detach(struct max77836_muic_data *muic_data)
 		max77836_muic_detach_callback_usb(muic_data);
 		break;
 	case ATTACHED_DEV_DESKDOCK_MUIC:
-#if defined(CONFIG_SEC_FACTORY_MODE)
-	case ATTACHED_DEV_JIG_UART_ON_MUIC:
-		muic_data->attached_dev = ATTACHED_DEV_NONE_MUIC;
-		max77836_muic_detach_callback_dock(muic_data);
-		break;
-#endif /* CONFIG_SEC_FACTORY_MODE */
 #if defined(CONFIG_MUIC_SUPPORT_FACTORY_BUTTON)
 	case ATTACHED_DEV_FACTORY_BUTTON:
 		muic_data->attached_dev = ATTACHED_DEV_NONE_MUIC;
@@ -801,6 +792,7 @@ static void max77836_muic_force_detach(struct max77836_muic_data *muic_data)
 		break;
 #endif /* CONFIG_MUIC_SUPPORT_FACTORY_BUTTON */
 	case ATTACHED_DEV_JIG_UART_OFF_MUIC:
+	case ATTACHED_DEV_JIG_UART_ON_MUIC:
 	case ATTACHED_DEV_UNKNOWN_MUIC:
 		muic_data->attached_dev = ATTACHED_DEV_NONE_MUIC;
 	case ATTACHED_DEV_NONE_MUIC:
@@ -826,9 +818,6 @@ static int max77836_muic_logically_detach(struct max77836_muic_data *muic_data,
 	case ATTACHED_DEV_CDP_MUIC:
 	case ATTACHED_DEV_TA_MUIC:
 	case ATTACHED_DEV_JIG_USB_ON_MUIC:
-#if defined(CONFIG_SEC_FACTORY_MODE)
-	case ATTACHED_DEV_JIG_UART_ON_MUIC:
-#endif /* CONFIG_SEC_FACTORY_MODE */
 #if defined(CONFIG_MUIC_SUPPORT_FACTORY_BUTTON)
 	case ATTACHED_DEV_FACTORY_BUTTON:
 #endif /* CONFIG_MUIC_SUPPORT_FACTORY_BUTTON */
@@ -848,7 +837,7 @@ static int max77836_muic_logically_detach(struct max77836_muic_data *muic_data,
 			force_path_open = false;
 		break;
 	case ATTACHED_DEV_UNKNOWN_MUIC:
-		if (new_dev == ATTACHED_DEV_JIG_UART_OFF_MUIC)
+		if ((new_dev == ATTACHED_DEV_JIG_UART_OFF_MUIC) || (new_dev == ATTACHED_DEV_JIG_UART_ON_MUIC))
 			force_path_open = false;
 		break;
 	case ATTACHED_DEV_NONE_MUIC:
@@ -924,6 +913,7 @@ static int max77836_muic_handle_attach(struct max77836_muic_data *muic_data,
 
 	switch (new_dev) {
 	case ATTACHED_DEV_JIG_UART_OFF_MUIC:
+	case ATTACHED_DEV_JIG_UART_ON_MUIC:
 		ret = write_vps_regs(muic_data, new_dev);
 		muic_data->attached_dev = new_dev;
 		max77836_muic_attach_callback_jig(muic_data);
@@ -950,13 +940,6 @@ static int max77836_muic_handle_attach(struct max77836_muic_data *muic_data,
 		max77836_muic_attach_callback_usb(muic_data);
 		max77836_muic_attach_callback_chg(muic_data);
 		break;
-#if defined(CONFIG_SEC_FACTORY_MODE)
-	case ATTACHED_DEV_JIG_UART_ON_MUIC:
-		ret = write_vps_regs(muic_data, new_dev);
-		muic_data->attached_dev = new_dev;
-		max77836_muic_attach_callback_dock(muic_data, MUIC_DOCK_AUDIODOCK);
-		break;
-#endif /* CONFIG_SEC_FACTORY_MODE */
 #if defined(CONFIG_MUIC_SUPPORT_FACTORY_BUTTON)
 	case ATTACHED_DEV_FACTORY_BUTTON:
 		ret = write_vps_regs(muic_data, new_dev);
