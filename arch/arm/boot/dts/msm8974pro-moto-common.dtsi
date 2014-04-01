@@ -316,6 +316,7 @@
 		qcom,gpio-tbl-flags = <1 1>;
 		qcom,gpio-tbl-label = "CCI_I2C_DATA1",
 			"CCI_I2C_CLK1";
+		vddio-supply = <&pm8941_lvs3>;
 	};
 	qcom,msm-efuse {
 		compatible = "qcom,msm-efuse";
