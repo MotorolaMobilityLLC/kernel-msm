@@ -260,6 +260,12 @@ config REGULATOR_MAX77686
 	  via I2C bus. The provided regulator is suitable for
 	  Exynos-4 chips to control VARM and VINT voltages.
 
+config REGULATOR_MAX77836
+    tristate "Maxim 77836 regulator"
+    depends on MFD_MAX77836
+    help
+      This driver controls a Maxim 77836 regulator.
+
 config REGULATOR_ONSEMI_NCP6335D
 	tristate "OnSemi NCP6335D regulator support"
 	depends on I2C
