@@ -99,6 +99,8 @@ int __init ct406_init(struct i2c_board_info *info, struct device_node *child)
 		mp_ct406_pdata.ct406_prox_pulse_count = (u8 )value;
 	if(!of_property_read_u32(child, "ct406_prox_offset", &value))
 		mp_ct406_pdata.ct406_prox_offset = (u8 )value;
+	if (!of_property_read_u32(child, "ams,ink_type", &value))
+		mp_ct406_pdata.ink_type = (u8)value;
 
 	return 0;
 
