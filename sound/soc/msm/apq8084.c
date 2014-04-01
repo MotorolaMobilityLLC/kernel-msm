@@ -2871,8 +2871,8 @@ static struct snd_soc_dai_link apq8084_common_dai_links[] = {
 		.ignore_suspend = 1,
 	},
 	{
-		.name = "APQ8084 Compr",
-		.stream_name = "COMPR",
+		.name = "APQ8084 Compress1",
+		.stream_name = "Compress1",
 		.cpu_dai_name	= "MultiMedia4",
 		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
@@ -3003,25 +3003,8 @@ static struct snd_soc_dai_link apq8084_common_dai_links[] = {
 	},
 	/* Multiple Tunnel instances */
 	{
-		.name = "APQ8084 Compr2",
-		.stream_name = "COMPR2",
-		.cpu_dai_name	= "MultiMedia6",
-		.platform_name  = "msm-compress-dsp",
-		.dynamic = 1,
-		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE
-			| ASYNC_DPCM_SND_SOC_HW_PARAMS,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			 SND_SOC_DPCM_TRIGGER_POST},
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		 /* this dai link has playback support */
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA6,
-	},
-	{
-		.name = "APQ8084 Compr3",
-		.stream_name = "COMPR3",
+		.name = "APQ8084 Compress2",
+		.stream_name = "Compress2",
 		.cpu_dai_name	= "MultiMedia7",
 		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
@@ -3035,6 +3018,23 @@ static struct snd_soc_dai_link apq8084_common_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		 /* this dai link has playback support */
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA7,
+	},
+	{
+		.name = "APQ8084 Compress3",
+		.stream_name = "Compress3",
+		.cpu_dai_name	= "MultiMedia10",
+		.platform_name  = "msm-compress-dsp",
+		.dynamic = 1,
+		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE
+			| ASYNC_DPCM_SND_SOC_HW_PARAMS,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			 SND_SOC_DPCM_TRIGGER_POST},
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		 /* this dai link has playback support */
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA10,
 	},
 	{
 		.name = "APQ8084 Compr8",
