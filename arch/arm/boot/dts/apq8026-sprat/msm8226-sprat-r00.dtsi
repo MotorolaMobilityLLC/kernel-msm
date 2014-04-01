@@ -193,7 +193,7 @@
 			ssp-irq = <&msmgpio 106 0x00>;
 			ssp-irq2 = <&msmgpio 107 0x00>;
 			ssp-ap-int = <&msmgpio 108 0x00>;
-			ssp-reset = <&msmgpio 12 0x00>;
+			ssp-reset = <&msmgpio 92 0x00>;
 
 			ssp-acc-position = <7>;
 			ssp-mag-position = <0>;
