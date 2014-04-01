@@ -673,6 +673,69 @@ static int32_t msm_cci_pinctrl_init(struct cci_device *cci_dev)
 	return 0;
 }
 
+static void msm_cci_ioreg_enable(struct v4l2_subdev *sd)
+{
+	int rc;
+	uint32_t vddio_voltage;
+	struct cci_device *cci_dev = v4l2_get_subdevdata(sd);
+	struct device *dev;
+
+	if (!cci_dev)
+		return;
+
+	dev = &cci_dev->pdev->dev;
+
+	if (!dev->of_node)
+		return;
+
+	if (!cci_dev->ioreg) {
+		cci_dev->ioreg = regulator_get(dev, "vddio");
+		if (IS_ERR(cci_dev->ioreg)) {
+			pr_warn("%s failed to get regulator\n", __func__);
+			goto fail1;
+		}
+
+		/* set voltage if present in dt */
+		rc = of_property_read_u32(dev->of_node, "vddio-voltage",
+				&vddio_voltage);
+		if (rc >= 0) {
+			rc = regulator_set_voltage(cci_dev->ioreg,
+					vddio_voltage, vddio_voltage);
+			if (rc < 0) {
+				pr_debug("%s failed to set voltage (%d)\n",
+						__func__, rc);
+				goto fail2;
+			}
+		}
+
+		rc = regulator_enable(cci_dev->ioreg);
+		if (rc < 0) {
+			pr_warn("%s failed to enable (%d)\n", __func__, rc);
+			goto fail2;
+		}
+	}
+	return;
+
+fail2:
+	regulator_put(cci_dev->ioreg);
+fail1:
+	cci_dev->ioreg = NULL;
+}
+
+static void msm_cci_ioreg_disable(struct v4l2_subdev *sd)
+{
+	struct cci_device *cci_dev = v4l2_get_subdevdata(sd);
+
+	if (!cci_dev)
+		return;
+
+	if (cci_dev->ioreg) {
+		regulator_disable(cci_dev->ioreg);
+		regulator_put(cci_dev->ioreg);
+		cci_dev->ioreg = NULL;
+	}
+}
+
 static int32_t msm_cci_init(struct v4l2_subdev *sd,
 	struct msm_camera_cci_ctrl *c_ctrl)
 {
@@ -724,6 +787,9 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 	} else {
 		cci_dev->cci_pinctrl_status = 1;
 	}
+
+	msm_cci_ioreg_enable(sd);
+
 	rc = msm_camera_request_gpio_table(cci_dev->cci_gpio_tbl,
 		cci_dev->cci_gpio_tbl_size, 1);
 	if (cci_dev->cci_pinctrl_status) {
@@ -808,6 +874,7 @@ clk_enable_failed:
 		cci_dev->reg_ptr = NULL;
 	}
 request_gpio_failed:
+	msm_cci_ioreg_disable(sd);
 	cci_dev->ref_count--;
 	return rc;
 }
@@ -847,6 +914,9 @@ static int32_t msm_cci_release(struct v4l2_subdev *sd)
 		cci_dev->cci_gpio_tbl_size, 0);
 	for (i = 0; i < MASTER_MAX; i++)
 		cci_dev->master_clk_init[i] = 0;
+
+	msm_cci_ioreg_disable(sd);
+
 	cci_dev->cci_state = CCI_STATE_DISABLED;
 
 	return 0;
