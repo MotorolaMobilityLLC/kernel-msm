@@ -22,6 +22,7 @@
 #define TSP_TA_CALLBACK		1
 #define TSP_ENABLE_SW_RESET	0
 #define SHOW_TSP_DEBUG_MSG	1
+#define ALWAYS_ON_TOUCH
 
 #include <linux/delay.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -2746,9 +2747,9 @@ static int melfas_power(struct mms_ts_info *info, int onoff)
 			}
 		} else {
 			dev_err(&info->client->dev,
-				"[TSP] vddo is already enabled\n");
+				"[TSP] vddo is already disabled\n");
 		}
-		if (regulator_is_enabled(vddo_vreg)) {
+		if (regulator_is_enabled(avdd_vreg)) {
 			rc = regulator_disable(avdd_vreg);
 			if (rc) {
 				dev_err(&info->client->dev,
@@ -2757,9 +2758,12 @@ static int melfas_power(struct mms_ts_info *info, int onoff)
 			}
 		} else {
 			dev_err(&info->client->dev,
-				"[TSP] avdd is already enabled\n");
+				"[TSP] avdd is already disabled\n");
 		}
 	}
+	dev_info(&info->client->dev, "[TSP] %s: vddo: %d, avdd: %d\n",
+			__func__, regulator_is_enabled(vddo_vreg),
+			regulator_is_enabled(avdd_vreg));
 	usleep_range(100000, 100100);
 	return 0;
 }
@@ -3047,7 +3051,8 @@ static int mms_ts_remove(struct i2c_client *client)
 	return 0;
 }
 
-#if defined(CONFIG_PM) || defined(CONFIG_HAS_EARLYSUSPEND)
+#if (defined(CONFIG_PM) || defined(CONFIG_HAS_EARLYSUSPEND)) \
+	&& !defined(ALWAYS_ON_TOUCH)
 static int mms_ts_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -3130,7 +3135,8 @@ static void mms_ts_late_resume(struct early_suspend *h)
 }
 #endif
 
-#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) \
+	&& !defined(ALWAYS_ON_TOUCH)
 static const struct dev_pm_ops mms_ts_pm_ops = {
 	.suspend = mms_ts_suspend,
 	.resume = mms_ts_resume,
@@ -3156,7 +3162,8 @@ static struct i2c_driver mms_ts_driver = {
 	.remove = mms_ts_remove,
 	.driver = {
 		.name = MELFAS_TS_NAME,
-#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) \
+	&& !defined(ALWAYS_ON_TOUCH)
 		.pm = &mms_ts_pm_ops,
 #endif
 		.of_match_table = melfas_match_table,
