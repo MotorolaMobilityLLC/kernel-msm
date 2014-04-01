@@ -4880,3 +4880,51 @@ HAL
 V    RW     NP
 HAL
 0    60     60
+
+* BTC Fatal HID sniff block
+*
+WNI_CFG_BTC_FATAL_HID_NSNIFF_BLK_GUIDANCE    I    4    7
+V    RW    NP
+HAL
+0    2    2
+V    RW    NP
+HAL
+0    2    2
+*
+*
+
+* BTC Critical HID sniff block
+*
+WNI_CFG_BTC_CRITICAL_HID_NSNIFF_BLK_GUIDANCE    I    4    7
+V    RW    NP
+HAL
+0    1    1
+V    RW    NP
+HAL
+0    1    1
+*
+*
+
+* BTC DYN A2DP tx Q threshold
+*
+WNI_CFG_BTC_DYN_A2DP_TX_QUEUE_THOLD    I    4    7
+V    RW    NP
+HAL
+0    1    0
+V    RW    NP
+HAL
+0    1    0
+*
+*
+
+* BTC DYN OPP tx Q threshold
+*
+WNI_CFG_BTC_DYN_OPP_TX_QUEUE_THOLD    I    4    7
+V    RW    NP
+HAL
+0    3    1
+V    RW    NP
+HAL
+0    3    1
+*
+*
