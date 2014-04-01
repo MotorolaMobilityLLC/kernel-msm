@@ -3164,7 +3164,6 @@ EXPORT_SYMBOL_GPL(kmsg_dump_get_buffer);
 bool kmsg_dump_get_buffer_panic(struct kmsg_dumper *dumper, bool syslog,
 			  char *buf, size_t size, size_t *len)
 {
-	unsigned long flags;
 	u64 seq;
 	u32 idx;
 	u64 next_seq;
@@ -3176,7 +3175,6 @@ bool kmsg_dump_get_buffer_panic(struct kmsg_dumper *dumper, bool syslog,
 	if (!dumper->active)
 		goto out;
 
-	raw_spin_lock_irqsave(&logbuf_lock, flags);
 	if (dumper->cur_seq < log_first_seq) {
 		/* messages are gone, move to first available one */
 		dumper->cur_seq = log_first_seq;
@@ -3185,7 +3183,6 @@ bool kmsg_dump_get_buffer_panic(struct kmsg_dumper *dumper, bool syslog,
 
 	/* last entry */
 	if (dumper->cur_seq >= dumper->next_seq) {
-		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
 		goto out;
 	}
 
@@ -3229,13 +3226,23 @@ bool kmsg_dump_get_buffer_panic(struct kmsg_dumper *dumper, bool syslog,
 	dumper->next_seq = next_seq;
 	dumper->next_idx = next_idx;
 	ret = true;
-	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
 out:
 	if (len)
 		*len = l;
 	return ret;
 }
 EXPORT_SYMBOL_GPL(kmsg_dump_get_buffer_panic);
+
+int clear_log_buffer(bool clear)
+{
+	if (clear) {
+		clear_seq = log_next_seq;
+		clear_idx = log_next_idx;
+	}
+	return true;
+}
+EXPORT_SYMBOL_GPL(clear_log_buffer);
+
 /**
  * kmsg_dump_rewind_nolock - reset the interator (unlocked version)
  * @dumper: registered kmsg dumper
