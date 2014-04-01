@@ -1417,6 +1417,8 @@ int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			dev_info(&client->dev, "regulator enable fail\n");
 	}
 
+	/** Wait for at least 100us before starting I2C talking **/
+	usleep_range(100, 100);
 	/***** I2C initialization *****/
 	s_akm->i2c = client;
 	/* check connection */
