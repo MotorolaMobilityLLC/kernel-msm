@@ -84,7 +84,7 @@ unsigned char stat_string[ESR_SIZE+1];
 struct stm401_algo_requst_t stm401_g_algo_requst[STM401_NUM_ALGOS];
 
 unsigned char stm401_cmdbuff[512];
-unsigned char stm401_readbuff[512];
+unsigned char stm401_readbuff[READ_CMDBUFF_SIZE];
 
 /* per algo config, request, and event registers */
 const struct stm401_algo_info_t stm401_algo_info[STM401_NUM_ALGOS] = {
