@@ -1,0 +1,5 @@
+menu "Sensor HUB Drivers"
+
+source "drivers/sensorhub/stm/Kconfig"
+
+endmenu

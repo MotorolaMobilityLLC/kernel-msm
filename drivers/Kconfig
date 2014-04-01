@@ -182,6 +182,8 @@ source "drivers/bif/Kconfig"
 
 source "drivers/sensors/Kconfig"
 
+source "drivers/sensorhub/Kconfig"
+
 source "drivers/phy/Kconfig"
 
 source "drivers/soc/Kconfig"

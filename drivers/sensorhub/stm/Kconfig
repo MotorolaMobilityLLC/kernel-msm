@@ -1,0 +1,90 @@
+#
+# sensor drivers configuration
+#
+config SENSORS_SYSFS
+	tristate "Sensors sysfs"
+	help
+	  Support sysfs for sensors.
+          If you say yes here you get sysfs support for
+	  sensor factory test.
+	  To compile this driver as a module, choose M here: the
+	  module will be called sensors_core.
+
+config SENSORS_SSP
+	tristate "Sensors ssp"
+	default n
+	depends on SPI
+	help
+	  ssp driver for sensor hub.
+          If you say yes here you get ssp support for
+	  sensor hub.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+
+config SENSORS_SSP_STM
+	tristate "Sensors ssp stm"
+	default n
+	depends on SPI
+	help
+	  ssp driver for sensor hub.
+          If you say yes here you get ssp support for
+	  sensor hub.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+
+config SENSORS_SSP_MPU6500
+	tristate "Sensors ssp mpu6500"
+	default n
+	depends on SPI
+	help
+	  mpu6500 file for factory test in ssp driver.
+          If you say yes here you get mpu6500 support for
+	  factory test.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+
+config SENSORS_SSP_AK8963C
+	tristate "Sensors ssp AK8963C"
+	default n
+	depends on SPI
+	help
+	  ak8963c file for factory test in ssp driver.
+          If you say yes here you get ak8963c support for
+	  factory test.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+
+config SENSORS_SSP_ADPD142
+	tristate "Sensors ssp adpd142"
+	default n
+	depends on SPI
+	help
+	  adpd142 file for factory test in ssp driver.
+          If you say yes here you get adpd142 support for
+	  factory test.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+
+
+config SENSORS_SSP_STM32F401
+	tristate "Sensors ssp stm32f401"
+	default n
+	depends on SPI
+	help
+	  stm32f401 file for factory test in ssp driver.
+          If you say yes here you get stm32f401 support for
+	  factory test.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+
+config SENSORS_SSP_SENSORHUB
+	tristate "Sensors ssp sensorhub"
+	default n
+	depends on SPI
+	help
+	  ssp sensor hub driver for sensor hub.
+          If you say yes here you get ssp support for
+	  sensor hub.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+

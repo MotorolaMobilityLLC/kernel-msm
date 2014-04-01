@@ -139,6 +139,9 @@ fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
 fw-shipped-$(CONFIG_TOUCHSCREEN_MELFAS_W) += tsp_melfas/w/mms_ts_w.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_MELFAS_W) += tsp_melfas/w/mms_ts_w_config.fw
 
+#for sensorhub
+fw-shipped-$(CONFIG_SENSORS_SSP_STM) += ssp_stm.fw
+
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
 # Directories which we _might_ need to create, so we have a rule for them.
