@@ -523,6 +523,12 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
+		if (byte > ALGO_RQST_DATA_SIZE) {
+			dev_err(&ps_stm401->client->dev,
+				"Set algo req invalid size arg\n");
+			err = -EFAULT;
+			break;
+		}
 		if (copy_from_user(&stm401_cmdbuff[1],
 			argp + 2 * sizeof(unsigned char)
 			+ sizeof(byte), byte)) {
@@ -628,15 +634,24 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			addr = (rw_bytes[0] << 8) | rw_bytes[1];
 			data_size = (rw_bytes[2] << 8) | rw_bytes[3];
 
+			if (data_size > READ_CMDBUFF_SIZE) {
+				dev_err(&ps_stm401->client->dev,
+					"Read Reg error, size too large\n");
+				err = -EFAULT;
+				break;
+			}
+
 			/* setup the address */
 			stm401_cmdbuff[0] = addr;
 			err = stm401_i2c_write_read(ps_stm401,
 				stm401_cmdbuff, 1, data_size);
 
-			if (err < 0)
+			if (err < 0) {
 				dev_err(&stm401_misc_data->client->dev,
 					"Read Reg, unable to read from direct reg %d\n",
 					err);
+				break;
+			}
 
 			if (copy_to_user(argp, stm401_readbuff, data_size)) {
 				dev_err(&ps_stm401->client->dev,
