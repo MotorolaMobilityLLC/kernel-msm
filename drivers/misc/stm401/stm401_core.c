@@ -926,7 +926,7 @@ static int stm401_resume(struct device *dev)
 	/* read interrupt mask register to clear
 		any interrupt during suspend state */
 	stm401_cmdbuff[0] = INTERRUPT_STATUS;
-	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
 
 	if ((ps_stm401->ap_stm401_handoff_enable)
 		&& (ps_stm401->ap_stm401_handoff_ctrl)) {
