@@ -251,7 +251,11 @@
 #define QWLAN_HAL_CFG_VHT_TX_SUPP_MCS                   193
 #define QWLAN_HAL_CFG_RA_FILTER_ENABLE                  194
 #define QWLAN_HAL_CFG_RA_RATE_LIMIT_INTERVAL            195
-#define QWLAN_HAL_CFG_MAX_PARAMS                        196
+#define QWLAN_HAL_CFG_BTC_FATAL_HID_NSNIFF_BLK_GUIDANCE      196
+#define QWLAN_HAL_CFG_BTC_CRITICAL_HID_NSNIFF_BLK_GUIDANCE   197
+#define QWLAN_HAL_CFG_BTC_DYN_A2DP_TX_QUEUE_THOLD            198
+#define QWLAN_HAL_CFG_BTC_DYN_OPP_TX_QUEUE_THOLD             199
+#define QWLAN_HAL_CFG_MAX_PARAMS                        200
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
