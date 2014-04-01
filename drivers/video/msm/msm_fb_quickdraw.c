@@ -29,8 +29,61 @@
 static struct msp430_quickdraw_ops msm_fb_quickdraw_ops;
 static LIST_HEAD(msm_fb_quickdraw_buffer_list_head);
 static DEFINE_MUTEX(list_lock);
+static u32 saved_panel_xres;
+static u32 saved_panel_yres;
+static struct msmfb_quickdraw_buffer *active_buffer;
 
 /* Quickdraw Helper Functions */
+
+static void clip_rect(int panel_xres, int panel_yres, int x, int y,
+		      int w, int h, struct mdp_rect *src_rect,
+		      struct mdp_rect *dst_rect)
+{
+	int clip_x = x;
+	int clip_y = y;
+
+	pr_debug("%s+ [panel: %d,%d] [x:%d|y:%d][w:%d|h:%d]\n", __func__,
+		panel_xres, panel_yres, x, y, w, h);
+
+	if (clip_x < 0) {
+		w += clip_x;
+		clip_x = 0;
+	}
+
+	if (clip_x + w > panel_xres)
+		w = panel_xres - clip_x;
+
+	if (clip_y < 0) {
+		h += clip_y;
+		clip_y = 0;
+	}
+
+	if (clip_y + h > panel_yres)
+		h = panel_yres - clip_y;
+
+	w = w < 0 ? 0 : w;
+	h = h < 0 ? 0 : h;
+
+	if (src_rect) {
+		src_rect->x = clip_x - x;
+		src_rect->y = clip_y - y;
+		src_rect->w = w;
+		src_rect->h = h;
+		pr_debug("%s src[x:%d|y:%d][w:%d|h:%d]\n", __func__,
+			src_rect->x, src_rect->y, src_rect->w, src_rect->h);
+	}
+
+	if (dst_rect) {
+		dst_rect->x = clip_x;
+		dst_rect->y = clip_y;
+		dst_rect->w = w;
+		dst_rect->h = h;
+		pr_debug("%s dst[x:%d|y:%d][w:%d|h:%d]\n", __func__,
+			dst_rect->x, dst_rect->y, dst_rect->w, dst_rect->h);
+	}
+
+	pr_debug("%s-\n", __func__);
+}
 
 static inline int check_alignment(int value, int align)
 {
@@ -83,12 +136,12 @@ static int setup_fd(struct msmfb_quickdraw_buffer *buffer)
 }
 
 static int set_overlay(struct msm_fb_data_type *mfd,
-	struct msmfb_quickdraw_buffer *buffer)
+	struct msmfb_quickdraw_buffer *buffer, int x, int y)
 {
 	int ret;
 	struct mdp_overlay overlay;
 
-	pr_debug("%s+: (buffer: %p)\n", __func__, buffer);
+	pr_debug("%s+: (buffer: %p) [x:%d, y:%d]\n", __func__, buffer, x, y);
 
 	if (!buffer) {
 		pr_err("%s: buffer is NULL\n", __func__);
@@ -100,19 +153,17 @@ static int set_overlay(struct msm_fb_data_type *mfd,
 	overlay.src.width  = buffer->data.w;
 	overlay.src.height = buffer->data.h;
 	overlay.src.format = buffer->data.format;
-	overlay.src_rect.x = 0;
-	overlay.src_rect.y = 0;
-	overlay.src_rect.w = buffer->data.w;
-	overlay.src_rect.h = buffer->data.h;
-	overlay.dst_rect.x = 0;
-	overlay.dst_rect.y = 0;
-	overlay.dst_rect.w = buffer->data.w;
-	overlay.dst_rect.h = buffer->data.h;
 	overlay.z_order = 0;
 	overlay.alpha = 0xff;
 	overlay.flags = 0;
 	overlay.is_fg = 0;
 	overlay.id = buffer->overlay_id;
+
+	clip_rect(saved_panel_xres, saved_panel_yres, x, y, buffer->data.w,
+		buffer->data.h, &overlay.src_rect, &overlay.dst_rect);
+	/* always start draw at [0,0] of resized window */
+	overlay.dst_rect.x = 0;
+	overlay.dst_rect.y = 0;
 
 	ret = mdp4_overlay_set(mfd->fbi, &overlay);
 	if (ret) {
@@ -335,6 +386,18 @@ int msm_fb_quickdraw_create_buffer(struct msmfb_quickdraw_buffer_data *data)
 
 	pr_debug("%s+\n", __func__);
 
+	if (!data) {
+		pr_err("%s: Buffer data null\n", __func__);
+		ret = -EINVAL;
+		goto EXIT;
+	} else if ((data->buffer_id != ERASE_BUFFER_ID) &&
+		   (data->w <= 0 || data->h <= 0)) {
+		pr_err("%s: Buffer width[%d]/height[%d] invalid\n",
+			__func__, data->w, data->h);
+		ret = -EINVAL;
+		goto EXIT;
+	}
+
 	if (check_alignment(data->w, mot_panel->pinfo.col_align)) {
 		pr_err("%s: Buffer [id: %d] width [%d] not aligned [%d]\n",
 			__func__, data->buffer_id, data->w,
@@ -452,10 +515,6 @@ int msm_fb_quickdraw_unlock_buffer(int buffer_id)
 
 /* Quickdraw External Interface */
 
-static u32 saved_panel_xres;
-static u32 saved_panel_yres;
-static struct msmfb_quickdraw_buffer *active_buffer;
-
 static int msm_fb_quickdraw_prepare(void *data, unsigned char panel_state)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)(data);
@@ -485,13 +544,15 @@ static int msm_fb_quickdraw_execute(void *data, int buffer_id, int x, int y)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)(data);
 	struct mdp_display_commit prim_commit;
+	struct mdp_rect window_size;
 	struct mipi_mot_panel *mot_panel = mipi_mot_get_mot_panel();
 	struct msm_fb_panel_data *pdata =
 		(struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
+	int w, h;
 	int ret = 0;
 	struct msmfb_quickdraw_buffer *buffer = NULL;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ buffer [%d] (x:%d, y:%d)\n", __func__, buffer_id, x, y);
 
 	buffer = get_buffer(buffer_id);
 	if (!buffer) {
@@ -506,13 +567,15 @@ static int msm_fb_quickdraw_execute(void *data, int buffer_id, int x, int y)
 		y = buffer->data.y;
 
 	x = correct_alignment(x, mfd->panel_info.col_align);
+	w = buffer->data.w;
+	h = buffer->data.h;
 
-	if (x < 0 || y < 0 ||
-	    (x + buffer->data.w) > saved_panel_xres ||
-	    (y + buffer->data.h) > saved_panel_yres) {
-		pr_err("%s: Invalid coordinates [x:%d y:%d w:%d h:%d]\n",
-			__func__, x, y, buffer->data.w, buffer->data.h);
-		ret = -EINVAL;
+	clip_rect(saved_panel_xres, saved_panel_yres, x, y, w, h, NULL,
+		&window_size);
+
+	if ((window_size.w == 0) || (window_size.h == 0)) {
+		pr_debug("%s: Draw skipped, buffer off-screen [x:%d y:%d w:%d h:%d]\n",
+			__func__, x, y, w, h);
 		put_buffer(buffer);
 		goto EXIT;
 	}
@@ -526,21 +589,22 @@ static int msm_fb_quickdraw_execute(void *data, int buffer_id, int x, int y)
 
 	lock_buffer(buffer);
 
-	mfd->panel_info.xres = buffer->data.w;
-	mfd->fbi->var.xres = buffer->data.w;
-	mfd->panel_info.yres = buffer->data.h;
-	mfd->fbi->var.yres = buffer->data.h;
+	mfd->panel_info.xres = window_size.w;
+	mfd->fbi->var.xres = window_size.w;
+	mfd->panel_info.yres = window_size.h;
+	mfd->fbi->var.yres = window_size.h;
 
 	mdp4_overlay_update_dsi_cmd(mfd);
 
 	mot_panel->set_partial_window(mfd,
-		x, y, buffer->data.w, buffer->data.h);
+		window_size.x, window_size.y,
+		window_size.w, window_size.h);
 
-	pdata->set_mdp_stream_params(mfd->pdev, buffer->data.w,
-		buffer->data.h);
+	pdata->set_mdp_stream_params(mfd->pdev,
+		window_size.w, window_size.h);
 
 	if (buffer->file) {
-		ret = set_overlay(mfd, buffer);
+		ret = set_overlay(mfd, buffer, x, y);
 
 		if (!ret) {
 			ret = setup_fd(buffer);
@@ -589,24 +653,24 @@ static int msm_fb_quickdraw_erase(void *data, int x1, int y1, int x2, int y2)
 	int h = y2 - y1;
 	int ret;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (x1:%d, y1:%d) (x2:%d, y2:%d)\n", __func__,
+		x1, y1, x2, y2);
+
+	if (w <= 0 || h <= 0) {
+		pr_err("%s: Erase width/height invalid (w:%d, h:%d) (x1:%d,y1:%d)(x2:%d,y2:%d)\n",
+		       __func__, w, h, x1, y1, x2, y2);
+		ret = -EINVAL;
+		goto EXIT;
+	}
 
 	if (check_alignment(w, mfd->panel_info.col_align)) {
-		pr_err("%s: Erase width[%d] not aligned [%d]\n", __func__, w,
+		pr_err("%s: Erase width [%d] not aligned [%d]\n", __func__, w,
 		       mfd->panel_info.col_align);
 		ret = -EINVAL;
 		goto EXIT;
 	}
 	x1 = correct_alignment(x1, mfd->panel_info.col_align);
 	x2 = correct_alignment(x2, mfd->panel_info.col_align);
-
-	if (x1 < 0 || y1 < 0 ||
-	    x2 > saved_panel_xres || y2 > saved_panel_yres) {
-		pr_err("%s: Invalid coordinates [x1:%d y1:%d x2:%d y2:%d]\n",
-			__func__, x1, y1, x2, y2);
-		ret = -EINVAL;
-		goto EXIT;
-	}
 
 	buffer = get_buffer(ERASE_BUFFER_ID);
 	if (!buffer) {
