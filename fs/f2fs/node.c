@@ -966,7 +966,7 @@ repeat:
 		goto got_it;
 
 	lock_page(page);
-	if (unlikely(!PageUptodate(page))) {
+	if (unlikely(!PageUptodate(page) || nid != nid_of_node(page))) {
 		f2fs_put_page(page, 1);
 		return ERR_PTR(-EIO);
 	}
@@ -975,13 +975,6 @@ repeat:
 		goto repeat;
 	}
 got_it:
-	if (nid != nid_of_node(page)) {
-		f2fs_msg(sbi->sb, KERN_ERR, "page node id does not match "
-			"request: %lu", nid);
-		f2fs_handle_error(sbi);
-		f2fs_put_page(page, 1);
-		return ERR_PTR(-EIO);
-	}
 	mark_page_accessed(page);
 	return page;
 }
