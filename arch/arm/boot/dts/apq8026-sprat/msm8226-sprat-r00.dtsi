@@ -45,6 +45,26 @@
 		};
 	};
 
+	i2c@19 {
+		cell-index = <19>;
+		compatible = "i2c-gpio";
+		gpios = <&msmgpio 10 0 /* sda */
+				&msmgpio 11 0 /* scl */
+				>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		max17048-fuelgauge@36 {
+			compatible = "maxim,max17048";
+			reg = <0x36>;
+			fuelgauge,rcomp_charging = <0x9C>;
+			fuelgauge,rcomp_discharging = <0x71>;
+			fuelgauge,fg_irq = <&msmgpio 69 0x00>;
+			fuelgauge,fuel_alert_soc = <2>;
+			fuelgauge,rcomp-co-hot = <700>;
+			fuelgauge,rcomp-co-cold = <5225>;
+		};
+	};
+
 	i2c@22 {
 		cell-index = <22>;
 		compatible = "i2c-gpio";
@@ -73,29 +93,20 @@
 		};
 	};
 
-	i2c@19 {
-		compatible = "i2c-gpio";
-		gpios = <&msmgpio 10 0 /* sda */
-				&msmgpio 11 0 /* scl */
-				>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		sec-fuelgauge@36 {
-			compatible = "sec-fuelgauge,i2c";
-			reg = <0x36>;
-			fuelgauge,fuel_int = <&pm8226_gpios 69 0x1>;
-			fuelgauge,capacity_max = <1000>;
-			fuelgauge,capacity_max_margin = <50>;
-			fuelgauge,capacity_min = <0>;
-			fuelgauge,capacity_calculation_type = <0x17>;
-			fuelgauge,fuel_alert_soc = <2>;
+	android-battery {
+		compatible = "android,battery";
+		status = "okay";
+		battery,charger_name = "max77836-charger";
+		battery,fuelgauge_name = "max17048-fuelgauge";
+	};
 
-			fuelgauge,rcomp0 = <0x7E>;
-			fuelgauge,rcomp_charging = <0x95>;
-			fuelgauge,temp_cohot = <0xFFFFF9A7>; /* -1625 */
-			fuelgauge,temp_cocold = <0xFFFFE845>;/* -6075 */
-			fuelgauge,type_str = "SDI";
-		};
+	max77836-charger {
+		status = "okay";
+		/* Charger */
+		charger,chg_float_voltage = <4350>;
+		charger,input_current_limit = <475 475 475 475 475 475 475 475 475 475 475 475 475 >;
+		charger,fast_charging_current = <475 0 475 475 475 475 475 475 0 475 475 475 0 0 475>;
+		charger,full_check_current = <50 0 50 50 50 50 50 50 0 50 50 50 0 0 50>;
 	};
 
 	i2c@f9924000 { /* BLSP1 QUP2 */
@@ -365,6 +376,12 @@
 	};
 
 	mpp@a100 { /* MPP 2 */
+		qcom,pin-num = <2>;
+		qcom,mode = <4>; /* AIN input */
+		qcom,invert = <1>; /* Enable MPP */
+		qcom,ain-route = <1>; /* AMUX 6 */
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */
 	};
 
 	mpp@a200 { /* MPP 3 */
@@ -406,6 +423,17 @@
 		qcom,pre-div-channel-scaling = <0>;
 		qcom,calibration-type = "ratiometric";
 		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@11 {
+		label = "ap_thm";
+		reg = <0x11>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <1>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
