@@ -45,6 +45,7 @@
 #include <linux/poll.h>
 #include <linux/irq_work.h>
 #include <linux/utsname.h>
+#include <linux/apanic_mmc.h>
 
 #include <asm/uaccess.h>
 
@@ -413,6 +414,9 @@ static void log_store(int facility, int level,
 {
 	struct log *msg;
 	u32 size, pad_len;
+	int start_apanic_threads;
+
+	start_apanic_threads = is_apanic_threads_dump();
 
 	/* number of '\0' padding bytes to next message */
 	size = sizeof(struct log) + text_len + dict_len;
@@ -439,6 +443,10 @@ static void log_store(int facility, int level,
 	}
 
 	if (log_next_idx + size + sizeof(struct log) >= log_buf_len) {
+
+		if (unlikely(start_apanic_threads)) {
+			emergency_dump();
+		}
 		/*
 		 * This message + an additional empty header does not fit
 		 * at the end of the buffer. Add an empty header with len == 0
@@ -1982,6 +1990,9 @@ asmlinkage int printk(const char *fmt, ...)
 {
 	va_list args;
 	int r;
+
+	if (is_emergency_dump())
+		return 0;
 
 #ifdef CONFIG_KGDB_KDB
 	if (unlikely(kdb_trap_printk)) {
