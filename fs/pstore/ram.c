@@ -654,6 +654,11 @@ static int ramoops_probe(struct platform_device *pdev)
 	if (err)
 		goto fail_init_mprz;
 
+	 err = ramoops_init_prz(dev, cxt, &cxt->aprz, &paddr,
+				cxt->annotate_size, 0);
+	if (err)
+		goto fail_init_aprz;
+
 	cxt->pstore.data = cxt;
 	/*
 	 * Console can handle any buffer size, so prefer LOG_LINE_MAX. If we
