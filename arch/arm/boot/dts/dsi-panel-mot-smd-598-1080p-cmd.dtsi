@@ -23,7 +23,6 @@
 		/* Disable ESD for now, reading fails while in command mode */
 		qcom,panel-esd-detect-disable;
 		qcom,panel-esd-power-mode-chk = <0x94>;
-		qcom,mdss-dsi-cont-splash-skip-ov-handoff;
 
 		qcom,mdss-dsi-panel-name = "mipi_mot_cmd_smd_598_1080_v0";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
