@@ -1655,6 +1655,21 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	if (pinfo->cont_splash_enabled) {
 		pinfo->panel_power_on = 1;
+
+		/*
+		 * This call intends to call to gpio_request for display's
+		 * reset gpio, because with cont_splash_enabled, there is
+		 * no call to the mdss_dsi_panel_reset(1), but when the first
+		 * suspend call, it will call mdss_dsi_panel_reset(0). This
+		 * will call to gpio_free() for reset spio, and WARN() msg will
+		 * be called because gpio_free() is called without gpio_request
+		 */
+		rc = mdss_dsi_panel_reset(&(ctrl_pdata->panel_data), 1);
+		if (rc) {
+			pr_err("%s: Panel reset on failed\n", __func__);
+			return rc;
+		}
+
 		rc = mdss_dsi_panel_power_on(&(ctrl_pdata->panel_data), 1);
 		if (rc) {
 			pr_err("%s: Panel power on failed\n", __func__);
