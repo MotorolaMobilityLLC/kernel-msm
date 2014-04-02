@@ -171,11 +171,11 @@
 };
 
 &ufsphy1 {
-	status = "ok";
+	status = "disabled";
 };
 
 &ufs1 {
-	status = "ok";
+	status = "disabled";
 };
 
 /* CoreSight */
