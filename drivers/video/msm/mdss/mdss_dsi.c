@@ -1342,15 +1342,7 @@ int mdss_dsi_retrieve_ctrl_resources(struct platform_device *pdev, int mode,
 	ctrl->reg_size = resource_size(mdss_dsi_mres);
 
 	pr_info("%s: dsi base=%x size=%x\n",
-		__func__, (int) (unsigned long) ctrl->ctrl_base,
-		ctrl->reg_size);
-
-	rc = msm_dss_ioremap_byname(pdev, &ctrl->mmss_misc_io,
-		"mmss_misc_phys");
-	if (rc) {
-		pr_err("%s:%d mmss_misc IO remap failed\n", __func__, __LINE__);
-		return rc;
-	}
+		__func__, (int)ctrl->ctrl_base, ctrl->reg_size);
 
 	return 0;
 }
