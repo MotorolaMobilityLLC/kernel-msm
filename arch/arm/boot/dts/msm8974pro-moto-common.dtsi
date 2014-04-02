@@ -1124,6 +1124,7 @@
 
 &pm8941_l17 {
 	regulator-always-on;
+	qcom,init-ldo-mode = <1>;
 };
 
 &pm8941_l22 {
