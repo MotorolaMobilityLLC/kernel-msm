@@ -642,6 +642,7 @@
 
 	qcom,wdt@f9017000 {
 		compatible = "qcom,msm-watchdog";
+		qcom,memblock-reserve = <0x0 0x100000>;
 		reg = <0xf9017000 0x1000>;
 		interrupts = <0 3 0>, <0 4 0>;
 		qcom,bark-time = <22000>;
