@@ -25,7 +25,7 @@
 / {
 	model = "[SPRAT] Rev-00-MTP-v2";
 	compatible = "qcom,apq8026-mtp", "qcom,apq8026", "qcom,mtp";
-	qcom,msm-id = <0xC700FF01 0 0x20000>;
+	qcom,msm-id = <0xC708FF01 0 0x20000>;
 };
 
 /{
