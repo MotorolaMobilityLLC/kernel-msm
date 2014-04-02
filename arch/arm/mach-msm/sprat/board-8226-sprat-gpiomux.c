@@ -93,16 +93,16 @@ static struct gpiomux_setting synaptics_reset_sus_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-static struct gpiomux_setting gpio_keys_active = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting gpio_keys_suspend = {
+static struct gpiomux_setting gpio_sensorhub_active = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_sensorhub_suspend = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 
 static struct gpiomux_setting gpio_spi_act_config = {
@@ -149,26 +149,33 @@ static struct gpiomux_setting gpio_uart_config = {
 };
 
 
-static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
+static struct msm_gpiomux_config msm_sensorhub_configs[] __initdata = {
+	{
+		.gpio = 92,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_sensorhub_active,
+			[GPIOMUX_SUSPENDED] = &gpio_sensorhub_suspend,
+		},
+	},
 	{
 		.gpio = 106,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
+			[GPIOMUX_ACTIVE]    = &gpio_sensorhub_active,
+			[GPIOMUX_SUSPENDED] = &gpio_sensorhub_suspend,
 		},
 	},
 	{
 		.gpio = 107,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
+			[GPIOMUX_ACTIVE]    = &gpio_sensorhub_active,
+			[GPIOMUX_SUSPENDED] = &gpio_sensorhub_suspend,
 		},
 	},
 	{
 		.gpio = 108,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
+			[GPIOMUX_ACTIVE]    = &gpio_sensorhub_active,
+			[GPIOMUX_SUSPENDED] = &gpio_sensorhub_suspend,
 		},
 	},
 };
@@ -215,6 +222,13 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		.gpio      = 1,		/* BLSP1 QUP1 SPI_DATA_MISO */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_spi_act_config,
+			[GPIOMUX_SUSPENDED] = &gpio_spi_susp_config,
+		},
+	},
+	{
+		.gpio      = 2,		/* BLSP1 QUP1 SPI_CS_ETH */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_spi_cs_act_config,
 			[GPIOMUX_SUSPENDED] = &gpio_spi_susp_config,
 		},
 	},
@@ -281,16 +295,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	},
 };
 
-static struct msm_gpiomux_config msm_blsp_spi_cs_config[] __initdata = {
-	{
-		.gpio      = 2,		/* BLSP1 QUP1 SPI_CS1 */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_spi_cs_act_config,
-			[GPIOMUX_SUSPENDED] = &gpio_spi_susp_config,
-		},
-	},
-};
-
 static struct msm_gpiomux_config msm_synaptics_configs[] __initdata = {
 	{
 		.gpio = 16,
@@ -352,18 +356,6 @@ static struct gpiomux_setting goodix_reset_sus_cfg = {
 
 static struct msm_gpiomux_config msm_skuf_blsp_configs[] __initdata = {
 	{
-		.gpio      = 2,		/* NC */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
-		},
-	},
-	{
-		.gpio      = 3,		/* NC */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
-		},
-	},
-	{
 		.gpio      = 4,		/* NC */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
@@ -411,68 +403,6 @@ static struct msm_gpiomux_config msm_skuf_goodix_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-};
-
-static struct gpiomux_setting nfc_ldo_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting nfc_ldo_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting nfc_regc_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting nfc_regc_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_LOW,
-};
-
-static struct gpiomux_setting nfc_wake_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting nfc_wake_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_LOW,
-};
-
-static struct msm_gpiomux_config msm_skuf_nfc_configs[] __initdata = {
-	{					/*  NFC  LDO EN */
-		.gpio      = 0,
-		.settings = {
-			[GPIOMUX_ACTIVE] = &nfc_ldo_act_cfg,
-			[GPIOMUX_SUSPENDED] = &nfc_ldo_sus_cfg,
-		},
-	},
-	{					/*  NFC  REGC*/
-		.gpio      = 1,
-		.settings = {
-			[GPIOMUX_ACTIVE] = &nfc_regc_act_cfg,
-			[GPIOMUX_SUSPENDED] = &nfc_regc_sus_cfg,
-		},
-	},
-	{					/*  NFC   WAKE */
-		.gpio      = 5,
-		.settings = {
-			[GPIOMUX_ACTIVE] = &nfc_wake_act_cfg,
-			[GPIOMUX_SUSPENDED] = &nfc_wake_sus_cfg,
 		},
 	},
 };
@@ -822,8 +752,8 @@ void __init msm8226_init_gpiomux(void)
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	msm_gpiomux_install(msm_eth_configs, ARRAY_SIZE(msm_eth_configs));
 #endif
-	msm_gpiomux_install(msm_keypad_configs,
-			ARRAY_SIZE(msm_keypad_configs));
+	msm_gpiomux_install(msm_sensorhub_configs,
+			ARRAY_SIZE(msm_sensorhub_configs));
 
 	if (of_board_is_skuf())
 		msm_gpiomux_install(msm_skuf_blsp_configs,
@@ -831,9 +761,6 @@ void __init msm8226_init_gpiomux(void)
 	else {
 		msm_gpiomux_install(msm_blsp_configs,
 			ARRAY_SIZE(msm_blsp_configs));
-		if (machine_is_msm8226())
-			msm_gpiomux_install(msm_blsp_spi_cs_config,
-				ARRAY_SIZE(msm_blsp_spi_cs_config));
 	}
 
 	msm_gpiomux_install(wcnss_5wire_interface,
@@ -846,10 +773,6 @@ void __init msm8226_init_gpiomux(void)
 	else
 		msm_gpiomux_install(msm_synaptics_configs,
 				ARRAY_SIZE(msm_synaptics_configs));
-
-	if (of_board_is_skuf())
-		msm_gpiomux_install(msm_skuf_nfc_configs,
-				ARRAY_SIZE(msm_skuf_nfc_configs));
 
 	msm_gpiomux_install_nowrite(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
