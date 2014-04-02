@@ -11,6 +11,28 @@
  * GNU General Public License for more details.
  */
 
+&i2c_6 {
+	status = "ok";
+
+	led_flash1: qcom,lm3642@63{
+		cell-index = <0>;
+		reg = <0x63>;
+		qcom,slave-id = <0x63 0x00 0x00>;
+		compatible = "qcom,lm3642";
+		qcom,flash-name = "lm3642";
+		qcom,flash-type = <1>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 31 0>,
+			<&msmgpio 32 0>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 0>;
+		qcom,gpio-req-tbl-label = "FLASH_TORCH",
+					"FLASH_STROBE";
+		flash-en-support = <0>;
+		flash-now-support = <0>;
+	};
+};
+
 &cci {
 	actuator0: qcom,actuator@79 {
 		cell-index = <1>;
@@ -25,6 +47,7 @@
 		qcom,slave-id = <0x20 0x0002 0x8179>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
+		qcom,led-flash-src = <&led_flash1>;
 		qcom,mount-angle = <90>;
 		qcom,actuator-src = <&actuator0>;
 		qcom,sensor-name = "imx179";
