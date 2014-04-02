@@ -37,6 +37,18 @@ static struct gpiomux_setting gpio_i2c_config = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting gpio_console_uart_tx_cfg = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_console_uart_rx_cfg = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 	{
 		.gpio = 106,
@@ -117,6 +129,20 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config
+		},
+	},
+	{
+		.gpio      = 8,         /* BLSP1 QUP3 UART_TX */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_console_uart_tx_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_console_uart_tx_cfg,
+		},
+	},
+	{
+		.gpio      = 9,         /* BLSP1 QUP3 UART_RX */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_console_uart_rx_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_console_uart_rx_cfg,
 		},
 	},
 	{
