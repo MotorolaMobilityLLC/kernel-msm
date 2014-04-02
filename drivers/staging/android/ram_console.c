@@ -29,11 +29,9 @@
 static struct persistent_ram_zone *ram_console_zone;
 static const char *bootinfo;
 static size_t bootinfo_size;
-static const char *bootinfo_label =
-	"\n\n#############\nCurrent Boot info:\nPOWERUPREASON: 0x%08x\n";
-static size_t bootinfo_label_size;
 static const char *bootreason_label =
 	"\n\nBoot info:\nLast boot reason: %s\n";
+static size_t bootreason_size;
 
 static void
 ram_console_write(struct console *console, const char *s, unsigned int count)
@@ -112,12 +110,8 @@ static int __devinit ram_console_probe(struct platform_device *pdev)
 
 	if (pdata) {
 		bootinfo = kstrdup(pdata->bootinfo, GFP_KERNEL);
-		if (bootinfo) {
-			bootinfo_label_size = snprintf(NULL, 0,
-				bootinfo_label, bi_powerup_reason());
-			bootinfo_size = strlen(bootinfo)
-					 + bootinfo_label_size;
-		}
+		if (bootinfo)
+			bootinfo_size = strlen(bootinfo);
 	}
 
 	ram_console_zone = prz;
@@ -193,32 +187,8 @@ static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 		goto out;
 	}
 
-	/* Boot info passed through pdata */
+	/* bootreason label */
 	pos -= count;
-	count = snprintf(NULL, 0, bootinfo_label, bi_powerup_reason());
-	if (pos < bootinfo_label_size) {
-		str = kmalloc(count, GFP_KERNEL);
-		if (!str)
-			return -ENOMEM;
-		snprintf(str, count + 1, bootinfo_label, bi_powerup_reason());
-		count = min(len, (size_t)(bootinfo_label_size - pos));
-		ret = copy_to_user(buf, str + pos, count);
-		kfree(str);
-		str = NULL;
-		if (ret)
-			return -EFAULT;
-		goto out;
-
-	}
-	pos -= count;
-	if (pos < (bootinfo_size - bootinfo_label_size)) {
-		count = min(len, (size_t)(bootinfo_size -
-					bootinfo_label_size - pos));
-		if (copy_to_user(buf, bootinfo + pos, count))
-			return -EFAULT;
-		goto out;
-	}
-	pos -= bootinfo_size - bootinfo_label_size;
 	count = 1 + snprintf(NULL, 0, bootreason_label, bi_bootreason());
 	if (pos < count) {
 		str = kmalloc(count, GFP_KERNEL);
@@ -229,6 +199,15 @@ static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 		ret = copy_to_user(buf, str + pos, count);
 		kfree(str);
 		if (ret)
+			return -EFAULT;
+		goto out;
+	}
+
+	/* Boot info passed through cmdline */
+	pos -= count;
+	if (pos < (bootinfo_size)) {
+		count = min(len, (size_t)(bootinfo_size  - pos));
+		if (copy_to_user(buf, bootinfo + pos, count))
 			return -EFAULT;
 		goto out;
 	}
@@ -262,11 +241,10 @@ static int __init ram_console_late_init(void)
 	if (!bootinfo) {
 		bootinfo = kstrdup(boot_command_line, GFP_KERNEL);
 		if (bootinfo) {
-			bootinfo_label_size =
-				snprintf(NULL, 0, bootinfo_label,
-						bi_powerup_reason());
-			bootinfo_size = strlen(bootinfo)
-					 + bootinfo_label_size;
+			bootinfo_size = strlen(bootinfo);
+			bootreason_size = 1 +
+				snprintf(NULL, 0, bootreason_label,
+						bi_bootreason());
 		}
 	}
 
@@ -280,7 +258,8 @@ static int __init ram_console_late_init(void)
 	entry->proc_fops = &ram_console_file_ops;
 	entry->size = persistent_ram_old_size(prz) +
 		persistent_ram_ecc_string(prz, NULL, 0) +
-		bootinfo_size;
+		bootinfo_size +
+		bootreason_size;
 
 	return 0;
 }
