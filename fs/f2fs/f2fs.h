@@ -43,6 +43,7 @@
 #define F2FS_MOUNT_ANDROID_EMU		0x00001000
 #define F2FS_MOUNT_ERRORS_PANIC		0x00002000
 #define F2FS_MOUNT_ERRORS_RECOVER	0x00004000
+#define F2FS_MOUNT_FLUSH_MERGE		0x00000200
 
 #define clear_opt(sbi, option)	(sbi->mount_opt.opt &= ~F2FS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->mount_opt.opt |= F2FS_MOUNT_##option)
@@ -321,6 +322,12 @@ enum {
 	NO_CHECK_TYPE
 };
 
+struct flush_cmd {
+	struct flush_cmd *next;
+	struct completion wait;
+	int ret;
+};
+
 struct f2fs_sm_info {
 	struct sit_info *sit_info;		/* whole segment information */
 	struct free_segmap_info *free_info;	/* free segment information */
@@ -349,6 +356,14 @@ struct f2fs_sm_info {
 
 	unsigned int ipu_policy;	/* in-place-update policy */
 	unsigned int min_ipu_util;	/* in-place-update threshold */
+
+	/* for flush command control */
+	struct task_struct *f2fs_issue_flush;	/* flush thread */
+	wait_queue_head_t flush_wait_queue;	/* waiting queue for wake-up */
+	struct flush_cmd *issue_list;		/* list for command issue */
+	struct flush_cmd *dispatch_list;	/* list for command dispatch */
+	spinlock_t issue_lock;			/* for issue list lock */
+	struct flush_cmd *issue_tail;		/* list tail of issue list */
 };
 
 /*
@@ -1215,6 +1230,7 @@ void destroy_node_manager_caches(void);
  */
 void f2fs_balance_fs(struct f2fs_sb_info *);
 void f2fs_balance_fs_bg(struct f2fs_sb_info *);
+int f2fs_issue_flush(struct f2fs_sb_info *);
 void invalidate_blocks(struct f2fs_sb_info *, block_t);
 void refresh_sit_entry(struct f2fs_sb_info *, block_t, block_t);
 void clear_prefree_segments(struct f2fs_sb_info *);
