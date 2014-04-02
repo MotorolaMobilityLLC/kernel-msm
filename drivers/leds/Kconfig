@@ -57,6 +57,17 @@ config LEDS_LM3530
 	  controlled manually or using PWM input or using ambient
 	  light automatically.
 
+config LEDS_LM3642
+	tristate "LM3642 LED driver support"
+	depends on LEDS_CLASS
+	depends on I2C
+	help
+	  This option enables support for the LM3642 controller.
+	  LM3642 is a flash driver, that is used to support camera
+	  Flash, torch modes. This driver is also used for flashlight.
+	  This Driver provides direct control via LED class and
+	  interface for programming the controller.
+
 config LEDS_LOCOMO
 	tristate "LED Support for Locomo device"
 	depends on LEDS_CLASS

@@ -124,9 +124,10 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 	}
 
 	msleep(20);
-	gpio_set_value_cansleep(
-		flashdata->gpio_conf->gpio_num_info->gpio_num[0],
-		GPIO_OUT_HIGH);
+	if (fctrl->flash_en_support)
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->gpio_num[0],
+			GPIO_OUT_HIGH);
 
 	if (fctrl->flash_now_support)
 		gpio_set_value_cansleep(
@@ -275,21 +276,33 @@ static int32_t msm_flash_init_gpio_pin_tbl(struct device_node *of_node,
 		goto ERROR;
 	}
 
-	rc = of_property_read_u32(of_node, "qcom,gpio-flash-en", &val);
+	/* Figure out if our hardware have flash enable pin */
+	rc = of_property_read_u32(of_node, "flash-en-support",
+		&fctrl->flash_en_support);
+	CDBG("%s flash-en-support %d, rc %d\n", __func__,
+		fctrl->flash_en_support, rc);
 	if (rc < 0) {
-		pr_err("%s:%d read qcom,gpio-flash-en failed rc %d\n",
+		pr_err("%s:%d read flash-en-support failed rc %d\n",
 			__func__, __LINE__, rc);
 		goto ERROR;
-	} else if (val >= gpio_array_size) {
-		pr_err("%s:%d qcom,gpio-flash-en invalid %d\n",
-			__func__, __LINE__, val);
-		goto ERROR;
 	}
-	/*index 0 is for qcom,gpio-flash-en */
-	gconf->gpio_num_info->gpio_num[0] =
-		gpio_array[val];
-	CDBG("%s qcom,gpio-flash-en %d\n", __func__,
-		gconf->gpio_num_info->gpio_num[0]);
+	if (fctrl->flash_en_support == 1) {
+		rc = of_property_read_u32(of_node, "qcom,gpio-flash-en", &val);
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-flash-en failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-flash-en invalid %d\n",
+				__func__, __LINE__, val);
+			goto ERROR;
+		}
+		/*index 0 is for qcom,gpio-flash-en */
+		gconf->gpio_num_info->gpio_num[0] =
+			gpio_array[val];
+		CDBG("%s qcom,gpio-flash-en %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[0]);
+	}
 
 	if (fctrl->flash_now_support == 1) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-flash-now", &val);
@@ -491,7 +504,18 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 			pr_err("%s failed %d\n", __func__, __LINE__);
 			goto ERROR9;
 		}
-		fctrl->flashdata->slave_info->sensor_slave_addr = id_info[0];
+		/* Fix me - Currently for I2c framework is looking for
+		7-bit device node entry in dts. But the camera led framework
+		for i2c slaves is looking for 8 bit address.So added a shift.
+		Need to fix this.*/
+		if (fctrl->flash_device_type == MSM_CAMERA_I2C_DEVICE) {
+			fctrl->flashdata->slave_info->sensor_slave_addr =
+			id_info[0] << 1;
+		} else {
+			fctrl->flashdata->slave_info->sensor_slave_addr
+			 = id_info[0];
+		}
+
 		fctrl->flashdata->slave_info->sensor_id_reg_addr = id_info[1];
 		fctrl->flashdata->slave_info->sensor_id = id_info[2];
 
@@ -644,17 +668,17 @@ int msm_flash_probe(struct platform_device *pdev,
 	}
 	fctrl->pdev = pdev;
 
-	rc = msm_led_get_dt_data(pdev->dev.of_node, fctrl);
-	if (rc < 0) {
-		pr_err("%s failed line %d\n", __func__, __LINE__);
-		return rc;
-	}
-
 	/* Assign name for sub device */
 	snprintf(fctrl->msm_sd.sd.name, sizeof(fctrl->msm_sd.sd.name),
 			"%s", fctrl->flashdata->sensor_name);
 	/* Set device type as Platform*/
 	fctrl->flash_device_type = MSM_CAMERA_PLATFORM_DEVICE;
+
+	rc = msm_led_get_dt_data(pdev->dev.of_node, fctrl);
+	if (rc < 0) {
+		pr_err("%s failed line %d\n", __func__, __LINE__);
+		return rc;
+	}
 
 	if (NULL == fctrl->flash_i2c_client) {
 		pr_err("%s flash_i2c_client NULL\n",
