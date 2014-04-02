@@ -823,14 +823,14 @@ void diag_cmp_logging_modes_diagfwd_bridge(int old_mode, int new_mode)
 				diag_hsic[i].hsic_data_requested =
 					driver->real_time_mode ? 1 : 0;
 		diagfwd_connect_bridge(0);
-	} else if ((old_mode == USB_MODE || old_mode == TTY_MODE) &&
+	} else if ((old_mode == USB_MODE) &&
 			new_mode == NO_LOGGING_MODE) {
 		diagfwd_disconnect_bridge(0);
 	} else if (old_mode == NO_LOGGING_MODE &&
-			(new_mode == USB_MODE || new_mode == TTY_MODE)) {
+			(new_mode == USB_MODE)) {
 		diagfwd_connect();
 		diagfwd_connect_bridge(0);
-	} else if ((old_mode == USB_MODE || old_mode == TTY_MODE) &&
+	} else if ((old_mode == USB_MODE) &&
 			new_mode == MEMORY_DEVICE_MODE) {
 		if (driver->real_time_mode)
 			diagfwd_cancel_hsic(REOPEN_HSIC);
@@ -838,7 +838,7 @@ void diag_cmp_logging_modes_diagfwd_bridge(int old_mode, int new_mode)
 			diagfwd_cancel_hsic(DONT_REOPEN_HSIC);
 		diagfwd_connect_bridge(0);
 	} else if (old_mode == MEMORY_DEVICE_MODE &&
-			(new_mode == USB_MODE || new_mode == TTY_MODE)) {
+		(new_mode == USB_MODE)) {
 		diag_clear_hsic_tbl();
 		diagfwd_cancel_hsic(REOPEN_HSIC);
 		diagfwd_connect_bridge(0);
@@ -890,6 +890,10 @@ int diag_switch_logging(int requested_mode)
 {
 	int temp = 0, success = -EINVAL, status = 0;
 
+
+#ifdef CONFIG_DIAG_OVER_TTY
+	int temp_tty = 0;
+#endif
 	switch (requested_mode) {
 	case USB_MODE:
 	case TTY_MODE:
@@ -904,8 +908,12 @@ int diag_switch_logging(int requested_mode)
 			__func__, requested_mode);
 		return -EINVAL;
 	}
-
+#ifdef CONFIG_DIAG_OVER_TTY
+	if ((requested_mode == driver->logging_mode) &&
+			(requested_mode == driver->logging_mode_tty)) {
+#else
 	if (requested_mode == driver->logging_mode) {
+#endif
 		if (requested_mode != MEMORY_DEVICE_MODE ||
 					driver->real_time_mode)
 			pr_info_ratelimited("diag: Already in logging mode change requested, mode: %d\n",
@@ -919,14 +927,44 @@ int diag_switch_logging(int requested_mode)
 					   MODE_REALTIME, ALL_PROC);
 
 	if (!(requested_mode == MEMORY_DEVICE_MODE &&
-			(driver->logging_mode == USB_MODE ||
-			 driver->logging_mode == TTY_MODE)))
+			(driver->logging_mode == USB_MODE)))
 		queue_work(driver->diag_real_time_wq,
 						&driver->diag_real_time_work);
 
 	mutex_lock(&driver->diagchar_mutex);
 	temp = driver->logging_mode;
-	driver->logging_mode = requested_mode;
+
+#ifdef CONFIG_DIAG_OVER_TTY
+	temp_tty = driver->logging_mode_tty;
+	driver->logging_mode_tty = requested_mode;
+
+	if ((requested_mode == TTY_MODE) && (temp_tty == USB_MODE)) {
+		driver->close_olddev = CLOSE_USB;
+		usb_diag_close(driver->legacy_ch);
+		driver->close_olddev = CLOSE_NODEV;
+
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
+		driver->bridge_ch = usb_diag_open(DIAG_MDM,
+					driver, diagfwd_bridge_notifier);
+#endif
+		driver->legacy_ch = usb_diag_open(DIAG_LEGACY,
+					driver, diag_usb_legacy_notifier);
+
+	} else if ((requested_mode == USB_MODE) && (temp_tty == TTY_MODE)) {
+		driver->close_olddev = CLOSE_TTY;
+		usb_diag_close(driver->legacy_ch);
+		driver->close_olddev = CLOSE_NODEV;
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
+		driver->bridge_ch = usb_diag_open(DIAG_MDM,
+				driver, diagfwd_bridge_notifier);
+#endif
+		driver->legacy_ch = usb_diag_open(DIAG_LEGACY,
+				driver, diag_usb_legacy_notifier);
+	}
+
+	if (requested_mode != TTY_MODE)
+#endif
+		driver->logging_mode = requested_mode;
 
 	if (driver->logging_mode == MEMORY_DEVICE_MODE) {
 		diag_clear_hsic_tbl();
@@ -975,18 +1013,17 @@ int diag_switch_logging(int requested_mode)
 						driver->logging_mode);
 		diag_cmp_logging_modes_diagfwd_bridge(temp,
 						driver->logging_mode);
-	} else if ((temp == USB_MODE || temp == TTY_MODE) &&
+	} else if ((temp == USB_MODE) &&
 				driver->logging_mode == NO_LOGGING_MODE) {
 		diagfwd_disconnect();
 		diag_cmp_logging_modes_diagfwd_bridge(temp,
 						driver->logging_mode);
 	} else if (temp == NO_LOGGING_MODE &&
-				(driver->logging_mode == USB_MODE ||
-				 driver->logging_mode == TTY_MODE)) {
+				(driver->logging_mode == USB_MODE)) {
 		diagfwd_connect();
 		diag_cmp_logging_modes_diagfwd_bridge(temp,
 						driver->logging_mode);
-	} else if ((temp == USB_MODE || temp == TTY_MODE) &&
+	} else if ((temp == USB_MODE) &&
 				driver->logging_mode == MEMORY_DEVICE_MODE) {
 		diagfwd_disconnect();
 		diag_reset_smd_data(RESET_AND_QUEUE);
@@ -994,21 +1031,10 @@ int diag_switch_logging(int requested_mode)
 		diag_cmp_logging_modes_diagfwd_bridge(temp,
 						driver->logging_mode);
 	} else if (temp == MEMORY_DEVICE_MODE &&
-			 (driver->logging_mode == USB_MODE ||
-			  driver->logging_mode == TTY_MODE)) {
+			 (driver->logging_mode == USB_MODE)) {
 		diagfwd_connect();
 		diag_cmp_logging_modes_diagfwd_bridge(temp,
 						driver->logging_mode);
-#ifdef CONFIG_DIAG_OVER_TTY
-	} else if (temp == USB_MODE && driver->logging_mode == TTY_MODE) {
-		usb_diag_close(driver->legacy_ch);
-		driver->legacy_ch = tty_diag_channel_open(DIAG_LEGACY,
-					driver, diag_usb_legacy_notifier);
-	} else if (temp == TTY_MODE && driver->logging_mode == USB_MODE) {
-		tty_diag_channel_close(driver->legacy_ch);
-		driver->legacy_ch = usb_diag_open(DIAG_LEGACY,
-					driver, diag_usb_legacy_notifier);
-#endif
 	}
 	success = 1;
 	return success;
@@ -1583,9 +1609,8 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 	if (driver->logging_mode == NO_LOGGING_MODE ||
 	    (!((pkt_type == DCI_DATA_TYPE) ||
 	       ((pkt_type & (DATA_TYPE_DCI_LOG | DATA_TYPE_DCI_EVENT)) == 0))
-		&& ((driver->logging_mode == USB_MODE)
-		|| (driver->logging_mode == TTY_MODE)) &&
-		(!driver->usb_connected))) {
+		&& (driver->logging_mode == USB_MODE)
+		&& (!driver->usb_connected))) {
 		/*Drop the diag payload */
 		return -EIO;
 	}
@@ -2297,20 +2322,28 @@ static const struct file_operations diagcharfops = {
 static ssize_t diag_logging_mode_show(struct device *dev,
 		struct device_attribute *attr, char *buff)
 {
+	ssize_t out_size;
+
+	out_size = 128;
 
 	switch (driver->logging_mode) {
 	case USB_MODE:
-		return snprintf(buff, PAGE_SIZE, "%s", USB_MODE_NAME);
+#ifdef CONFIG_DIAG_OVER_TTY
+		return snprintf(buff, out_size, "%s tty:%d",
+			 USB_MODE_NAME, driver->logging_mode_tty);
+#else
+		return snprintf(buff, out_size, "%s", USB_MODE_NAME);
+#endif
 	case MEMORY_DEVICE_MODE:
-		return snprintf(buff, PAGE_SIZE, "%s", MEMORY_DEVICE_MODE_NAME);
+		return snprintf(buff, out_size, "%s", MEMORY_DEVICE_MODE_NAME);
 	case NO_LOGGING_MODE:
-		return snprintf(buff, PAGE_SIZE, "%s", NO_LOGGING_MODE_NAME);
+		return snprintf(buff, out_size, "%s", NO_LOGGING_MODE_NAME);
 	case UART_MODE:
-		return snprintf(buff, PAGE_SIZE, "%s", UART_MODE_NAME);
+		return snprintf(buff, out_size, "%s", UART_MODE_NAME);
 	case TTY_MODE:
-		return snprintf(buff, PAGE_SIZE, "%s", TTY_MODE_NAME);
+		return snprintf(buff, out_size, "%s\n", TTY_MODE_NAME);
 	default:
-		return snprintf(buff, PAGE_SIZE, "%s", "invalid");
+		return snprintf(buff, out_size, "%s", "invalid");
 	}
 }
 
@@ -2345,40 +2378,6 @@ static ssize_t diag_logging_mode_store(struct device *dev,
 
 	return size;
 }
-
-#ifdef CONFIG_DIAG_OVER_TTY
-static ssize_t diag_dbg_ftm_show(struct device *dev,
-		struct device_attribute *attr, char *buff)
-{
-	/* print current dbg_ftm flag value */
-	return snprintf(buff, PAGE_SIZE, "%d",
-			tty_diag_get_dbg_ftm_flag_value());
-}
-
-static ssize_t diag_dbg_ftm_store(struct device *dev,
-		struct device_attribute *attr, const char *buff, size_t size)
-{
-	char buf[256], *b;
-
-	strlcpy(buf, buff, sizeof(buf));
-	b = strim(buf);
-
-	if (strnlen(b, 1)) {
-		if (!strncmp(b, "0", 1)) {
-			tty_diag_set_dbg_ftm_flag_value(0);
-		} else {
-			/* we consider other non-ZERO value as "1" here */
-			tty_diag_set_dbg_ftm_flag_value(1);
-		}
-	}
-
-	return size;
-}
-
-static DEVICE_ATTR(dbg_ftm, S_IRUGO | S_IWUSR, diag_dbg_ftm_show,
-						diag_dbg_ftm_store);
-#endif
-
 static DEVICE_ATTR(logging_mode, S_IRUGO | S_IWUSR, diag_logging_mode_show,
 						 diag_logging_mode_store);
 
@@ -2417,16 +2416,6 @@ static int diagchar_setup_cdev(dev_t devno)
 		printk(KERN_ERR "Error creating diag sysfs\n");
 		return -EIO;
 	}
-
-#ifdef CONFIG_DIAG_OVER_TTY
-	if (driver->diag_dev)
-		err = device_create_file(driver->diag_dev, &dev_attr_dbg_ftm);
-
-	if (!driver->diag_dev || err) {
-		printk(KERN_ERR "Error creating diag sysfs on dbg_ftm_mode\n");
-		return -ENXIO;
-	}
-#endif
 
 	driver->diag_dev->power.wakeup = wakeup_source_register("DIAG_WS");
 	return 0;
@@ -2537,6 +2526,10 @@ static int __init diagchar_init(void)
 		driver->poolsize_dci = poolsize_dci;
 		driver->num_clients = max_clients;
 		driver->logging_mode = USB_MODE;
+#ifdef CONFIG_DIAG_OVER_TTY
+		driver->logging_mode_tty = USB_MODE;
+		driver->close_olddev = CLOSE_NODEV;
+#endif
 		driver->socket_process = NULL;
 		driver->callback_process = NULL;
 		driver->mask_check = 0;

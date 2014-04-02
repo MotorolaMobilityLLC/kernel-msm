@@ -331,6 +331,10 @@ struct diag_smd_info {
 
 struct diagchar_dev {
 
+#ifdef CONFIG_DIAG_OVER_TTY
+	int logging_mode_tty;
+	int close_olddev;
+#endif
 	/* State for the char driver */
 	unsigned int major;
 	unsigned int minor_start;
@@ -434,6 +438,7 @@ struct diagchar_dev {
 #ifdef CONFIG_DIAG_OVER_USB
 	int usb_connected;
 	struct usb_diag_ch *legacy_ch;
+	struct usb_diag_ch *bridge_ch;
 	int usb_req_allocated;
 	struct work_struct diag_proc_hdlc_work;
 	struct work_struct diag_read_work;
