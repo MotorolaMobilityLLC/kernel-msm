@@ -16,7 +16,6 @@
 /include/ "dsi-panel-mot-dummy-qhd-video.dtsi"
 /include/ "dsi-panel-mot-inx-720p-video.dtsi"
 /include/ "dsi-panel-mot-jdi-720p-video.dtsi"
-/include/ "msm8226-camera-sensor-titan.dtsi"
 
 / {
 	model = "Motorola QC-MSM8226 Titan";
@@ -106,7 +105,18 @@
 
 	};
 
-	i2c@f9928000 {
+	i2c_6: i2c@f9928000 { /* BLSP-1 QUP-6 */
+		cell-index = <6>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9928000 0x1000>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 100 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 22 0>;
+		qcom,scl-gpio = <&msmgpio 23 0>;
+		qcom,master-id = <86>;
 		status = "disabled";
 	};
 
@@ -572,3 +582,5 @@
 
 	};
 };
+
+/include/ "msm8226-camera-sensor-titan.dtsi"
