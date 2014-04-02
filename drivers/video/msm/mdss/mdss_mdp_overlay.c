@@ -2835,8 +2835,10 @@ int mdss_panel_register_done(struct mdss_panel_data *pdata)
 static void mdss_mdp5_dump_ctl(void *data)
 {
 	struct mdss_mdp_ctl *ctl = (struct mdss_mdp_ctl *)data;
-
 	u32 isr, mask;
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
+
 	isr = MDSS_MDP_REG_READ(MDSS_MDP_REG_INTR_STATUS);
 	mask = MDSS_MDP_REG_READ(MDSS_MDP_REG_INTR_EN);
 	MDSS_TIMEOUT_LOG("-------- MDP5 INTERRUPT DATA ---------\n");
@@ -2858,6 +2860,8 @@ static void mdss_mdp5_dump_ctl(void *data)
 			MDSS_TIMEOUT_LOG("------ MDP5 CTX DATA DONE ------\n");
 		}
 	}
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 }
 
 /**
