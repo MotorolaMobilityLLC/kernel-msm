@@ -1086,11 +1086,9 @@
 		reg = <0x5A>;
 		gpios = <&msmgpio 45 0>,        /* EN_GPIO */
 			<&pm8941_mpps 2 0>;    /* Trigger */
-		external_trigger = <1>;
 		default_effect = <17>;          /* Strong Click 100% */
 		rated_voltage = <0x70>;         /* 2.4v */
 		overdrive_voltage = <0x89>;     /* 3.0v */
-		vibrator_vdd-supply = <&pm8941_boost>;
 	};
 
 	synaptics_dsx_i2c@20 {
@@ -1133,6 +1131,10 @@
 };
 
 &pm8941_lvs1 {
+	regulator-always-on;
+};
+
+&pm8941_boost {
 	regulator-always-on;
 };
 
