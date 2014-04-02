@@ -192,19 +192,19 @@ static struct regulator_ops max77836_ldo_ops = {
 	.set_voltage_sel	= max77836_reg_set_voltage_sel,
 };
 
-#define regulator_desc_ldo(num)		{			\
-	.name			= "LDO"#num,				\
-	.id				= MAX77836_LDO##num,		\
+#define regulator_desc_ldo(num) {				\
+	.name			= "max77836_ldo"#num,		\
+	.id			= MAX77836_LDO##num,		\
 	.ops			= &max77836_ldo_ops,		\
 	.type			= REGULATOR_VOLTAGE,		\
-	.owner			= THIS_MODULE,				\
+	.owner			= THIS_MODULE,			\
 	.min_uV			= MAX77836_LDO_MINUV,		\
 	.uV_step		= MAX77836_LDO_UVSTEP,		\
 	.n_voltages		= CNFG1_LDO_TV_L_MASK + 1,	\
 	.vsel_reg		= REG_CNFG1_LDO##num,		\
 	.vsel_mask		= CNFG1_LDO_TV_L_MASK,		\
 	.enable_reg		= REG_CNFG1_LDO##num,		\
-	.enable_mask	= CNFG1_LDO_PWR_MD_L_MASK,	\
+	.enable_mask		= CNFG1_LDO_PWR_MD_L_MASK,	\
 }
 
 static struct regulator_desc regulators[] = {
