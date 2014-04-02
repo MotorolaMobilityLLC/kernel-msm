@@ -968,6 +968,9 @@ void mdp3_dump_dma(void *data)
 	struct mdp3_dma *dma = (struct mdp3_dma *)data;
 	u32 isr, mask;
 
+	mdp3_clk_prepare();
+	mdp3_clk_enable(1, 0);
+
 	isr = MDP3_REG_READ(MDP3_REG_INTR_STATUS);
 	mask = MDP3_REG_READ(MDP3_REG_INTR_ENABLE);
 	MDSS_TIMEOUT_LOG("-------- MDP3 INTERRUPT DATA ---------\n");
@@ -981,6 +984,9 @@ void mdp3_dump_dma(void *data)
 		MDSS_TIMEOUT_LOG("vsync_cnt=%u\n", dma->vsync_cnt);
 		MDSS_TIMEOUT_LOG("------ MDP3 DMA DATA DONE ------\n");
 	}
+
+	mdp3_clk_enable(0, 0);
+	mdp3_clk_unprepare();
 }
 
 int mdp3_dma_init(struct mdp3_dma *dma)
