@@ -33,6 +33,10 @@
 #define USB_DIAG_WRITE_DONE	2
 #define USB_DIAG_READ_DONE	3
 
+#define CLOSE_USB              0
+#define CLOSE_TTY              1
+#define CLOSE_NODEV            2
+
 struct diag_request {
 	char *buf;
 	int length;
@@ -47,6 +51,9 @@ struct usb_diag_ch {
 	void (*notify)(void *priv, unsigned event, struct diag_request *d_req);
 	void *priv;
 	void *priv_usb;
+#ifdef CONFIG_DIAG_OVER_TTY
+	struct diag_request *d_req_ptr;
+#endif
 };
 
 #ifdef CONFIG_USB_G_ANDROID
