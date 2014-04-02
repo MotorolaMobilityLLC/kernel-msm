@@ -660,7 +660,6 @@ void emergency_dump(void)
 	emergency_dump_flag = 0;
 }
 
-extern int do_syslog(int type, char __user *bug, int count);
 static void apanic_mmc_logbuf_dump(struct kmsg_dumper *dumper)
 {
 	struct apanic_data *ctx = &drv_ctx;
@@ -717,6 +716,7 @@ static void apanic_mmc_logbuf_dump(struct kmsg_dumper *dumper)
 		pr_emerg("%s\n", ctx->annotation);
 
 	touch_hw_watchdog();
+	touch_nmi_watchdog();
 	/*
 	 * Write out the console
 	 */
@@ -737,7 +737,7 @@ static void apanic_mmc_logbuf_dump(struct kmsg_dumper *dumper)
 	/*
 	 * Clear ring buffer
 	 */
-	do_syslog(5 /* clear */, NULL, 0);
+	clear_log_buffer(true);
 
 	for (con = console_drivers; con; con = con->next)
 		con->flags &= ~CON_ENABLED;
@@ -756,11 +756,12 @@ static void apanic_mmc_logbuf_dump(struct kmsg_dumper *dumper)
 	app_threads_len = ctx->written - app_threads_offset;
 
 	touch_hw_watchdog();
+	touch_nmi_watchdog();
 
 	/*
 	 * Clear ring buffer
 	 */
-	do_syslog(5 /* clear */, NULL, 0);
+	clear_log_buffer(true);
 
 	threads_offset = ALIGN(ctx->written, 512);
 	ctx->buf_offset = threads_offset;
@@ -773,6 +774,7 @@ static void apanic_mmc_logbuf_dump(struct kmsg_dumper *dumper)
 	threads_len = ctx->written - threads_offset + 512;
 
 	touch_hw_watchdog();
+	touch_nmi_watchdog();
 
 	for (con = console_drivers; con; con = con->next)
 		con->flags |= CON_ENABLED;
@@ -879,6 +881,7 @@ static void apanic_mmc(struct kmsg_dumper *dumper, enum kmsg_dump_reason reason)
 	add_preempt_count(PREEMPT_ACTIVE);
 #endif
 	touch_softlockup_watchdog();
+	touch_nmi_watchdog();
 
 	apanic_mmc_logbuf_dump(dumper);
 
