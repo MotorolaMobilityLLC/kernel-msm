@@ -661,9 +661,24 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
-	mdss_dsi_panel_regulator_on(pdata, 1);
+	if (ctrl->partial_mode_enabled) {
+		/* If we're doing partial display, we need to turn on the
+		   regulators once since we don't enable and disable during
+		   panel on/offs */
+		if (!ctrl->panel_data.panel_info.cont_splash_feature_on) {
+			static int once = 1;
+			if (once) {
+				mdss_dsi_panel_regulator_on(pdata, 1);
+				mdss_dsi_panel_reset(pdata, 1);
+				once = 0;
+			}
+		}
 
-	mdss_dsi_panel_reset(pdata, 1);
+		gpio_set_value(ctrl->mipi_d0_sel, 0);
+	} else {
+		mdss_dsi_panel_regulator_on(pdata, 1);
+		mdss_dsi_panel_reset(pdata, 1);
+	}
 
 	if (ctrl->panel_config.bare_board == true) {
 		mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
@@ -722,8 +737,12 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
 disable_regs:
-	mdss_dsi_panel_reset(pdata, 0);
-	mdss_dsi_panel_regulator_on(pdata, 0);
+	if (ctrl->partial_mode_enabled)
+		gpio_set_value(ctrl->mipi_d0_sel, 1);
+	else {
+		mdss_dsi_panel_reset(pdata, 0);
+		mdss_dsi_panel_regulator_on(pdata, 0);
+	}
 
 	pr_info("%s-:\n", __func__);
 
@@ -1749,6 +1768,11 @@ int mdss_dsi_panel_init(struct device_node *node,
 	/* If it is bare board, disable splash feature. */
 	if (ctrl_pdata->panel_config.bare_board)
 		pinfo->cont_splash_enabled = 0;
+
+	/* Since the cont_splash_enabled flag gets cleared when continuous
+	   splash is done, copy it here for later use so we can know if we
+	   ever did continuous splash */
+	pinfo->cont_splash_feature_on = pinfo->cont_splash_enabled;
 
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;

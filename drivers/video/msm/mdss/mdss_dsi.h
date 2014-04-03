@@ -337,6 +337,8 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_buf rx_buf;
 	struct platform_device *pdev;
 	bool check_status_disabled;
+	int mipi_d0_sel;
+	bool partial_mode_enabled;
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,
