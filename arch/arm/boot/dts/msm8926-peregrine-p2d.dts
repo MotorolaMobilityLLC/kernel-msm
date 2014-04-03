@@ -19,3 +19,9 @@
 / {
 	qcom,msm-id = <145 0x44 0x82d0>;
 };
+
+&i2c_3 {
+	tpa6165xx@40 {
+		ti,tpa6165-jack-detect-config = <0xC0>;
+	};
+};
