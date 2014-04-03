@@ -1230,6 +1230,52 @@ static int mdss_dsi_ctrl_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int mdss_dsi_pm_prepare(struct device *dev)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = dev_get_drvdata(dev);
+	struct mdss_panel_data *pdata;
+
+	if (!ctrl_pdata) {
+		pr_err("%s: no driver data\n", __func__);
+		return -ENODEV;
+	}
+
+	pdata = &ctrl_pdata->panel_data;
+	if (!pdata) {
+		pr_err("%s: no panel data\n", __func__);
+		return -ENODEV;
+	}
+
+	if (pdata->panel_info.always_on && !pdata->panel_info.is_suspending) {
+		pr_debug("%s: set low fps mode on\n", __func__);
+		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 1);
+	}
+
+	return 0;
+}
+
+static void mdss_dsi_pm_complete(struct device *dev)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = dev_get_drvdata(dev);
+	struct mdss_panel_data *pdata;
+
+	if (!ctrl_pdata) {
+		pr_err("%s: no driver data\n", __func__);
+		return;
+	}
+
+	pdata = &ctrl_pdata->panel_data;
+	if (!pdata) {
+		pr_err("%s: no panel data\n", __func__);
+		return;
+	}
+
+	if (pdata->panel_info.always_on && !pdata->panel_info.is_suspending) {
+		pr_debug("%s: set low fps mode off\n", __func__);
+		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 0);
+	}
+}
+
 struct device dsi_dev;
 
 int mdss_dsi_retrieve_ctrl_resources(struct platform_device *pdev, int mode,
@@ -1560,6 +1606,11 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	return 0;
 }
 
+static const struct dev_pm_ops mdss_dsi_pm_ops = {
+	.prepare = mdss_dsi_pm_prepare,
+	.complete = mdss_dsi_pm_complete,
+};
+
 static const struct of_device_id mdss_dsi_ctrl_dt_match[] = {
 	{.compatible = "qcom,mdss-dsi-ctrl"},
 	{}
@@ -1573,6 +1624,7 @@ static struct platform_driver mdss_dsi_ctrl_driver = {
 	.driver = {
 		.name = "mdss_dsi_ctrl",
 		.of_match_table = mdss_dsi_ctrl_dt_match,
+		.pm = &mdss_dsi_pm_ops,
 	},
 };
 
