@@ -979,10 +979,6 @@ static void synaptics_rmi4_release_all(struct synaptics_rmi4_data *rmi4_data)
 				MT_TOOL_FINGER, 0);
 	}
 
-	input_report_key(rmi4_data->input_dev, BTN_TOUCH, 0);
-	input_report_key(rmi4_data->input_dev,
-			BTN_TOOL_FINGER, 0);
-
 	input_sync(rmi4_data->input_dev);
 }
 
@@ -1110,15 +1106,9 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
-	input_report_key(rmi4_data->input_dev, BTN_TOUCH, touch_count > 0);
-	input_report_key(rmi4_data->input_dev,
-			BTN_TOOL_FINGER, touch_count > 0);
-
 #ifndef TYPE_B_PROTOCOL
 	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
-#else
-	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 #endif
 
 	input_sync(rmi4_data->input_dev);
@@ -1268,10 +1258,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					finger_status,
 					x, y, wx, wy);
 
-			input_report_key(rmi4_data->input_dev,
-					BTN_TOUCH, 1);
-			input_report_key(rmi4_data->input_dev,
-					BTN_TOOL_FINGER, 1);
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_X, x);
 			input_report_abs(rmi4_data->input_dev,
@@ -1293,15 +1279,10 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
-	input_report_key(rmi4_data->input_dev,
-			BTN_TOUCH, touch_count > 0);
-	input_report_key(rmi4_data->input_dev,
-			BTN_TOOL_FINGER, touch_count > 0);
 #ifndef TYPE_B_PROTOCOL
 	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
 #endif
-	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 	input_sync(rmi4_data->input_dev);
 
 	return touch_count;
@@ -3162,8 +3143,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	set_bit(EV_SYN, rmi4_data->input_dev->evbit);
 	set_bit(EV_KEY, rmi4_data->input_dev->evbit);
 	set_bit(EV_ABS, rmi4_data->input_dev->evbit);
-	set_bit(BTN_TOUCH, rmi4_data->input_dev->keybit);
-	set_bit(BTN_TOOL_FINGER, rmi4_data->input_dev->keybit);
 
 	if (rmi4_data->board->palm_detect_threshold)
 		set_bit(rmi4_data->board->palm_detect_keycode,
