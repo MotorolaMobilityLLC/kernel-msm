@@ -30,6 +30,7 @@
 #include <soc/qcom/bootinfo.h>
 #include <linux/notifier.h>
 #include <linux/seq_file.h>
+#include <linux/apanic_mmc.h>
 
 
 /*
@@ -298,6 +299,20 @@ void bi_add_bl_build_sig(char *bld_sig)
 }
 EXPORT_SYMBOL(bi_add_bl_build_sig);
 
+static void bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
+{
+	int i;
+	for (i = 0; i < bl_build_sig_count; i++) {
+		bl[i].item[MAX_BLD_SIG_ITEM - 1] = 0;
+		bl[i].value[MAX_BLD_SIG_VALUE - 1] = 0;
+		apanic_mmc_annotate(bl[i].item);
+		apanic_mmc_annotate("=");
+		apanic_mmc_annotate(bl[i].value);
+		apanic_mmc_annotate("\n");
+	}
+}
+
+
 #ifdef CONFIG_OF
 static void of_blsig(void)
 {
@@ -323,7 +338,6 @@ static inline void of_blsig(void) { }
 #endif
 
 #define EMIT_BL_BUILD_SIG() \
-		of_blsig(); \
 		do { \
 			int i; \
 			for (i = 0; i < bl_build_sig_count; i++) { \
@@ -406,9 +420,11 @@ static const struct file_operations bootinfo_proc_fops = {
 
 int __init bootinfo_init_module(void)
 {
+	of_blsig();
 	proc_bootinfo = &proc_root;
 	if (!proc_create_data("bootinfo", 0, NULL, &bootinfo_proc_fops, NULL))
 		printk(KERN_ERR "Failed to create bootinfo entry");
+	bootinfo_apanic_annotate_bl(bl_build_sigs);
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_block);
 	return 0;
 }
