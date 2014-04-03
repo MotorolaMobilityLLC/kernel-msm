@@ -649,6 +649,16 @@
 		qcom,hw-settle-time = <0>;
 		qcom,fast-avg-setup = <0>;
 	};
+	chan@74 {
+		label = "chg_therm";
+		reg = <0x74>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
 	chan@75 {
 		label = "batt_id";
 		reg = <0x75>;
@@ -664,10 +674,37 @@
 		reg = <0x78>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
-		qcom,calibration-type = "absolute";
+		qcom,calibration-type = "ratiometric";
 		qcom,scale-function = <2>;
-		qcom,hw-settle-time = <0xc>;
+		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
+	};
+};
+
+&pma8084_adc_tm {
+	chan@74{
+		label = "chg_therm";
+		reg = <0x74>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x78>;
+		qcom,thermal-node;
+	};
+	chan@78{
+		label = "wchg_therm";
+		reg = <0x78>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x80>;
+		qcom,thermal-node;
 	};
 };
 
