@@ -8,6 +8,20 @@
 
 #define USB_REQUEST_5V		1
 #define USB_REQUEST_9V		2
+
+enum usb_mode_req {
+	USB_REQUEST_MODE_NONE = 0,
+	USB_REQUEST_MODE_5V,
+	USB_REQUEST_MODE_9V,
+	USB_REQUEST_MODE_PENDING = 0xFF,
+};
+
+enum usb_mode_stat {
+	USB_REQUEST_STAT_SUCCESS = 0,
+	USB_REQUEST_STAT_FAIL = 1,
+	USB_REQUEST_STAT_PENDING = 0xFF,
+};
+
 /**
  * struct msm_usb_chg_info - MSM USB charger block details.
  * @chg_block_type: The type of charger block. QSCRATCH/ULPI.
