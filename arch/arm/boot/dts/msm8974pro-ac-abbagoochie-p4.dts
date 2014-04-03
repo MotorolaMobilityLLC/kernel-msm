@@ -20,17 +20,14 @@
 };
 
 &vbat_disp_vreg {
-	/delete-property/ gpio;
 	regulator-boot-on;
 };
 
 &vdd_disp_vreg {
-	/delete-property/ gpio;
 	regulator-boot-on;
 };
 
 &vci_disp_vreg {
-	gpio = <&pm8941_gpios 14 0x0>;
 	regulator-boot-on;
 };
 
@@ -81,6 +78,14 @@
 		sensor1-supply = <&pm8941_lvs1>;
 		sensor2-supply = <&pm8941_l17>;
 	};
+
+	tfa9890@34 {
+		status = "disabled";
+	};
+
+	tfa9890@35 {
+		status = "disabled";
+	};
 };
 
 &i2c_1 {
@@ -111,7 +116,17 @@
 	qcom,i2c-bus-freq = <400000>;
 
 	synaptics_dsx_i2c@20 {
-		status = "disabled";
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <62 0>;
+		gpios = <&msmgpio 62 0>,        /* IRQ */
+			<&msmgpio 57 0>;        /* RESET */
+		touch_vdd-supply = <&pm8941_l23>;
+		synaptics,normal-mode = <1>;
+		synaptics,reset-on-resume;
+		synaptics,hw-reset;
+		synaptics,gpio-config;
 	};
 
 	atmel_mxt_ts@4a {
@@ -200,6 +215,7 @@
 	qcom,system-load = <100000>;
 	qcom,init-ldo-mode = <1>;
 	qcom,always-send-current;
+	regulator-always-on;
 };
 
 &spi_7 {
