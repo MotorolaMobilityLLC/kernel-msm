@@ -23,6 +23,7 @@
 &i2c_1 {
         stm401@39 {
                 sensor2-supply = <&pm8941_l17>;
+		stm401_fw_version = "_p3";
         };
 };
 
