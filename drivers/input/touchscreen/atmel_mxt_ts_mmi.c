@@ -13,7 +13,7 @@
  * option) any later version.
  *
  */
-#define pr_fmt(fmt) "atmel_mxt_ts: %s: " fmt, __func__
+#define pr_fmt(fmt) "atmel_mxt_ts_mmi: %s: " fmt, __func__
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -228,6 +228,7 @@ struct t9_range {
 
 /* Touchscreen absolute values */
 #define MXT_MAX_AREA		0xff
+#define MXT_MAX_PRESSURE	0xff
 
 #define MXT_PIXELS_PER_MM	20
 
@@ -1341,8 +1342,10 @@ static int mxt_process_messages_until_invalid(struct mxt_data *data)
 	/* Read messages until we force an invalid */
 	do {
 		read = mxt_read_and_process_messages(data, count);
-		if (read < count)
+		if (read < count) {
+			dev_dbg(dev, "dumped %d messages\n", read);
 			return 0;
+		}
 	} while (--tries);
 
 	if (data->update_input) {
@@ -2237,7 +2240,6 @@ static int mxt_read_info_block(struct mxt_data *data)
 	int error;
 	size_t size;
 	void *buf;
-	void *rbuf;
 	uint8_t num_objects;
 	u32 calculated_crc;
 	u8 *crc_ptr;
@@ -2266,13 +2268,12 @@ static int mxt_read_info_block(struct mxt_data *data)
 	size += (num_objects * sizeof(struct mxt_object))
 		+ MXT_INFO_CHECKSUM_SIZE;
 
-	rbuf = krealloc(buf, size, GFP_KERNEL);
-	if (!rbuf) {
+	buf = krealloc(buf, size, GFP_KERNEL);
+	if (!buf) {
 		dev_err(&client->dev, "Failed to allocate memory\n");
 		error = -ENOMEM;
 		goto err_free_mem;
 	}
-	buf = rbuf;
 
 	/* Read rest of info block */
 	error = __mxt_read_reg(client, MXT_OBJECT_START,
@@ -2637,7 +2638,7 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 
 	if (data->t100_aux_ampl)
 		input_set_abs_params(input_dev, ABS_MT_PRESSURE,
-				     0, 255, 0, 0);
+				     0, MXT_MAX_PRESSURE, 0, 0);
 
 	if (data->t100_aux_vect)
 		input_set_abs_params(input_dev, ABS_MT_ORIENTATION,
@@ -3843,12 +3844,12 @@ static int mxt_input_open(struct input_dev *dev)
 
 	mxt_irq_enable(data, true);
 
-	if (data->use_regulator)
+	if (data->use_regulator) {
 		mxt_regulator_enable(data);
-	else if (data->sensor_sleep)
+		mxt_acquire_irq(data);
+	} else if (data->sensor_sleep)
 		mxt_sensor_wake(data, true);
 
-	mxt_acquire_irq(data);
 	mutex_unlock(&data->crit_section_lock);
 	dev_dbg(&data->client->dev, "critical section RELEASE\n");
 
@@ -4194,6 +4195,7 @@ err_disable_reg:
 	mxt_regulator_disable(data);
 err_free_irq:
 	free_irq(data->irq, data);
+	mxt_gpio_free(data);
 err_free_pdata:
 	if (!dev_get_platdata(&data->client->dev))
 		kfree(data->pdata);
