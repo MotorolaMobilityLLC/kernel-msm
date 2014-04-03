@@ -33,6 +33,7 @@
 #include <linux/android_alarm.h>
 #include <linux/spinlock.h>
 #include <linux/batterydata-lib.h>
+#include <linux/usb/msm_ext_chg.h>
 
 /* Interrupt offsets */
 #define INT_RT_STS(base)			(base + 0x10)
@@ -219,6 +220,10 @@
 #define CHG_FLAGS_VCP_WA		BIT(0)
 #define BOOST_FLASH_WA			BIT(1)
 #define POWER_STAGE_WA			BIT(2)
+
+/* Die Temperature Alarm Registers */
+#define TEMP_ALARM_SHUTDOWN_CTL1 0x2440
+#define ALM_SD_TEMP_THRESH_CNTRL 0x03
 
 struct qpnp_chg_irq {
 	int		irq;
@@ -1673,6 +1678,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			}
 			qpnp_chg_usb_suspend_enable(chip, 0);
 			qpnp_chg_iusbmax_set(chip, QPNP_CHG_I_MAX_MIN_100);
+			qpnp_chg_vinmin_set(chip, chip->min_voltage_mv);
 			chip->prev_usb_max_ma = -EINVAL;
 			chip->aicl_settled = false;
 			chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
@@ -2590,6 +2596,21 @@ qpnp_batt_external_power_changed(struct power_supply *psy)
 
 	/* Only honour requests while USB is present */
 	if (qpnp_chg_is_usb_chg_plugged_in(chip)) {
+		chip->usb_psy->get_property(chip->usb_psy,
+					    POWER_SUPPLY_PROP_POWER_NOW, &ret);
+		if ((USB_REQUEST_MODE_9V == ret.intval) ||
+			(USB_REQUEST_MODE_PENDING == ret.intval)) {
+			qpnp_chg_vinmin_set(chip, 7000);
+			qpnp_chg_iusbmax_set(chip, 1600);
+			chip->prev_usb_max_ma = 1600;
+			pr_info("HVDCP 9V Detected VINMIN 7.0V\n");
+			goto skip_set_iusb_max;
+		} else {
+			qpnp_chg_vinmin_set(chip, chip->min_voltage_mv);
+		}
+
+		ret.intval = 0;
+
 		chip->usb_psy->get_property(chip->usb_psy,
 			  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
 
@@ -5499,6 +5520,15 @@ qpnp_charger_probe(struct spmi_device *spmi)
 			goto fail_chg_enable;
 		}
 	}
+
+	/* Configure Die Temp Alarms to Max for HVDCP */
+	rc = qpnp_chg_masked_write(chip,
+				   TEMP_ALARM_SHUTDOWN_CTL1,
+				   ALM_SD_TEMP_THRESH_CNTRL,
+				   ALM_SD_TEMP_THRESH_CNTRL, 1);
+	if (rc)
+		pr_debug("failed to set Temp Alarm Thresholds rc=%d\n", rc);
+
 	dev_set_drvdata(&spmi->dev, chip);
 	device_init_wakeup(&spmi->dev, 1);
 
