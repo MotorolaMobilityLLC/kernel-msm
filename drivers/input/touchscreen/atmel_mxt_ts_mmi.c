@@ -1342,8 +1342,10 @@ static int mxt_process_messages_until_invalid(struct mxt_data *data)
 	/* Read messages until we force an invalid */
 	do {
 		read = mxt_read_and_process_messages(data, count);
-		if (read < count)
+		if (read < count) {
+			dev_dbg(dev, "dumped %d messages\n", read);
 			return 0;
+		}
 	} while (--tries);
 
 	if (data->update_input) {
@@ -2482,6 +2484,12 @@ fail:
 	return error;
 }
 
+static void mxt_gpio_free(struct mxt_data *data)
+{
+	gpio_free(data->pdata->gpio_reset);
+	gpio_free(data->pdata->gpio_irq);
+}
+
 static int mxt_power_init(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
@@ -2855,7 +2863,7 @@ static ssize_t mxt_drv_irq_store(struct device *dev,
 
 	err = kstrtoul(buf, 10, &value);
 	if (err < 0) {
-		printk(KERN_ERR "%s: Failed to convert value.\n", __func__);
+		dev_err(dev, "%s: Failed to convert value.\n", __func__);
 		return -EINVAL;
 	}
 
@@ -2869,7 +2877,7 @@ static ssize_t mxt_drv_irq_store(struct device *dev,
 		data->enable_reporting = true;
 		break;
 	default:
-		printk(KERN_ERR "%s: Invalid value\n", __func__);
+		dev_err(dev, "%s: Invalid value\n", __func__);
 		return -EINVAL;
 	}
 	return count;
@@ -2885,7 +2893,7 @@ static ssize_t mxt_hw_irqstat_show(struct device *dev,
 	case 1:
 		return scnprintf(buf, PAGE_SIZE, "High\n");
 	default:
-		printk(KERN_ERR "%s: Failed to get GPIO for irq %d.\n",
+		dev_err(dev, "%s: Failed to get GPIO for irq %d.\n",
 				__func__,
 				data->irq);
 		return scnprintf(buf, PAGE_SIZE, "Unknown\n");
@@ -3836,12 +3844,12 @@ static int mxt_input_open(struct input_dev *dev)
 
 	mxt_irq_enable(data, true);
 
-	if (data->use_regulator)
+	if (data->use_regulator) {
 		mxt_regulator_enable(data);
-	else if (data->sensor_sleep)
+		mxt_acquire_irq(data);
+	} else if (data->sensor_sleep)
 		mxt_sensor_wake(data, true);
 
-	mxt_acquire_irq(data);
 	mutex_unlock(&data->crit_section_lock);
 	dev_dbg(&data->client->dev, "critical section RELEASE\n");
 
@@ -4187,6 +4195,7 @@ err_disable_reg:
 	mxt_regulator_disable(data);
 err_free_irq:
 	free_irq(data->irq, data);
+	mxt_gpio_free(data);
 err_free_pdata:
 	if (!dev_get_platdata(&data->client->dev))
 		kfree(data->pdata);
@@ -4208,8 +4217,7 @@ static int mxt_remove(struct i2c_client *client)
 	regulator_put(data->reg_avdd);
 	if (data->pdata->common_vdd_supply == 0)
 		regulator_put(data->reg_vdd);
-	gpio_free(data->pdata->gpio_irq);
-	gpio_free(data->pdata->gpio_reset);
+	mxt_gpio_free(data);
 	mxt_free_object_table(data);
 	if (!dev_get_platdata(&data->client->dev))
 		kfree(data->pdata);
