@@ -620,6 +620,7 @@ extern unsigned char stm401_g_mag_cal[STM401_MAG_CAL_SIZE];
 extern unsigned short stm401_g_control_reg_restore;
 extern unsigned char stm401_g_ir_config_reg[STM401_IR_CONFIG_REG_SIZE];
 extern bool stm401_g_ir_config_reg_restore;
+extern bool stm401_g_booted;
 
 extern unsigned char stm401_cmdbuff[];
 extern unsigned char stm401_readbuff[];

@@ -90,6 +90,7 @@ int stm401_reset_and_init(void)
 	unsigned int i;
 	int err, ret_err = 0;
 
+	dev_dbg(&stm401_misc_data->client->dev, "stm401_reset_and_init\n");
 	if (stm401_misc_data->is_suspended)
 		return ret_err;
 

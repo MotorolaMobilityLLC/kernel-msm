@@ -302,6 +302,7 @@ int stm401_get_version(struct stm401_data *ps_stm401)
 		err = (int)stm401_readbuff[0];
 		dev_err(&ps_stm401->client->dev, "STM401 version %02x",
 			stm401_readbuff[0]);
+		stm401_g_booted = 1;
 	}
 	return err;
 }
@@ -363,7 +364,10 @@ int switch_stm401_mode(enum stm_mode mode)
 				!(bslen_pin_active_value));
 		dev_dbg(&stm401_misc_data->client->dev,
 			"Switching to normal mode\n");
-		stm401_reset(pdata);
+		if (stm401_g_booted)
+			stm401_reset_and_init();
+		else
+			stm401_reset(pdata);
 	}
 
 	return 0;
