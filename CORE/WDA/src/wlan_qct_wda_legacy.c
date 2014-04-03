@@ -233,8 +233,6 @@ tBssSystemRole wdaGetGlobalSystemRole(tpAniSirGlobal pMac)
       VOS_ASSERT(0);
       return eSYSTEM_UNKNOWN_ROLE;
    }
-   WDALOG1( wdaLog(pMac, LOG1, FL(" returning  %d role"),
-             wdaContext->wdaGlobalSystemRole));
    return  wdaContext->wdaGlobalSystemRole;
 }
 
