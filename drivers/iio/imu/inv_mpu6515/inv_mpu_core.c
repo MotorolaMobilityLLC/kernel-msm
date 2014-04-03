@@ -2448,7 +2448,7 @@ static int inv_setup_vddio(struct inv_mpu_state *st)
  *  inv_check_chip_type() - check and setup chip type.
  */
 static int inv_check_chip_type(struct inv_mpu_state *st,
-		const struct i2c_device_id *id)
+		const struct i2c_device_id *id, bool reset_needed)
 {
 	struct inv_reg_map_s *reg;
 	int result;
@@ -2493,11 +2493,14 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 	st->hw  = &hw_info[st->chip_type];
 	reg = &st->reg;
 	st->setup_reg(reg);
-	/* reset to make sure previous state are not there */
-	result = inv_i2c_single_write(st, reg->pwr_mgmt_1, BIT_H_RESET);
-	if (result)
-		return result;
-	msleep(POWER_UP_TIME);
+
+	if (reset_needed) {
+		/* reset to make sure previous state are not there */
+		result = inv_i2c_single_write(st, reg->pwr_mgmt_1, BIT_H_RESET);
+		if (result)
+			return result;
+		msleep(POWER_UP_TIME);
+	}
 	/* toggle power state */
 	result = st->set_power_state(st, false);
 	if (result)
@@ -2693,6 +2696,14 @@ static int inv_mpu_probe(struct i2c_client *client,
 	struct iio_dev *indio_dev;
 	int result;
 
+	/*
+	 * If we're not coming from a power-off condition, we need to
+	 * reset the chip as we may have gotten here via a watchdog
+	 * reboot, in which case the status of the chip is unknown
+	 * (i.e. chip is not reset by hardware on a watchdog reboot).
+	 */
+	bool reset_needed = true;
+
 #ifdef CONFIG_DTS_INV_MPU_IIO
 	enable_irq_wake(client->irq);
 #endif
@@ -2725,15 +2736,20 @@ static int inv_mpu_probe(struct i2c_client *client,
 					"power_on failed: %d\n", result);
 			return result;
 		}
-	}
+		msleep(POWER_UP_TIME);
 
-msleep(100);
+		/*
+		 * We don't need subsequent reset of chip as it's coming
+		 * from a power-off condition
+		 */
+		reset_needed = false;
+	}
 #else
 	/* power is turned on inside check chip type */
 	st->plat_data =
 	*(struct mpu_platform_data *)dev_get_platdata(&client->dev);
 #endif
-	result = inv_check_chip_type(st, id);
+	result = inv_check_chip_type(st, id, reset_needed);
 	if (result)
 		goto out_free;
 
