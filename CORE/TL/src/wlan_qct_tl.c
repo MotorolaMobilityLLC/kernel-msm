@@ -1481,6 +1481,8 @@ WLANTL_ClearSTAClient
   {
     TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
     "WLAN TL:Station was not previously registered on WLANTL_ClearSTAClient"));
+    /* Clean packets cached for the STA */
+    WLANTL_StartForwarding(ucSTAId,0,0);
     return VOS_STATUS_E_EXISTS;
   }
 
