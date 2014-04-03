@@ -4858,6 +4858,15 @@ qpnp_chg_hwinit(struct qpnp_chg_chip *chip, u8 subtype,
 			CHGR_IBAT_TERM_CHGR,
 			0xFF, 0x08, 1);
 
+		rc = qpnp_chg_masked_write(chip,
+			chip->chgr_base + CHGR_IR_DROP_COMPEN,
+			0xFF,
+			0x83, 1);
+		if (rc) {
+			pr_debug("failed to enable IR drop comp rc=%d\n", rc);
+			return rc;
+		}
+
 		break;
 	case SMBB_BUCK_SUBTYPE:
 	case SMBBP_BUCK_SUBTYPE:
@@ -4869,9 +4878,9 @@ qpnp_chg_hwinit(struct qpnp_chg_chip *chip, u8 subtype,
 		rc = qpnp_chg_masked_write(chip,
 			chip->buck_base + CHGR_BUCK_BCK_VBAT_REG_MODE,
 			BUCK_VBAT_REG_NODE_SEL_BIT,
-			BUCK_VBAT_REG_NODE_SEL_BIT, 1);
+			0x0, 1);
 		if (rc) {
-			pr_debug("failed to enable IR drop comp rc=%d\n", rc);
+			pr_debug("failed to enable IR drop mode rc=%d\n", rc);
 			return rc;
 		}
 
