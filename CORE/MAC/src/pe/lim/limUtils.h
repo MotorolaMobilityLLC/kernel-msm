@@ -497,7 +497,8 @@ void limTdlsDelLinkPeer(tpAniSirGlobal pMac, tSirMacAddr peerMac);
 void limStartTdlsTimer(tpAniSirGlobal pMac, tANI_U8 sessionId, TX_TIMER *timer, tANI_U32 timerId, 
                                       tANI_U16 timerType, tANI_U32 timerMsg);
 #endif
-tANI_U8 limGetShortSlotFromPhyMode(tpAniSirGlobal pMac, tpPESession psessionEntry, tANI_U32 phyMode);
+void limGetShortSlotFromPhyMode(tpAniSirGlobal pMac, tpPESession psessionEntry, tANI_U32 phyMode,
+                                tANI_U8 *pShortSlotEnable);
 
 void limCleanUpDisassocDeauthReq(tpAniSirGlobal pMac, tANI_U8 *staMac, tANI_BOOLEAN cleanRxPath);
 

@@ -523,11 +523,13 @@ v_BOOL_t hdd_del_wowl_ptrn_debugfs(hdd_adapter_t *pAdapter, v_U8_t pattern_idx)
   @return           : FALSE if any errors encountered
                     : TRUE otherwise
   ===========================================================================*/
-v_BOOL_t hdd_enter_wowl (hdd_adapter_t *pAdapter, v_BOOL_t enable_mp, v_BOOL_t enable_pbm) 
+v_BOOL_t hdd_enter_wowl (hdd_adapter_t *pAdapter, v_BOOL_t enable_mp, v_BOOL_t enable_pbm)
 {
   tSirSmeWowlEnterParams wowParams;
   eHalStatus halStatus;
   tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+
+  vos_mem_zero( &wowParams, sizeof( tSirSmeWowlEnterParams ) );
 
   wowParams.ucPatternFilteringEnable = enable_pbm;
   wowParams.ucMagicPktEnable = enable_mp;
@@ -536,6 +538,14 @@ v_BOOL_t hdd_enter_wowl (hdd_adapter_t *pAdapter, v_BOOL_t enable_mp, v_BOOL_t e
     vos_copy_macaddr( (v_MACADDR_t *)&(wowParams.magicPtrn),
                     &(pAdapter->macAddressCurrent) );
   }
+
+#ifdef WLAN_WAKEUP_EVENTS
+  wowParams.ucWoWEAPIDRequestEnable = VOS_TRUE;
+  wowParams.ucWoWEAPOL4WayEnable = VOS_TRUE;
+  wowParams.ucWowNetScanOffloadMatch = VOS_TRUE;
+  wowParams.ucWowGTKRekeyError = VOS_TRUE;
+  wowParams.ucWoWBSSConnLoss = VOS_TRUE;
+#endif // WLAN_WAKEUP_EVENTS
 
   // Request to put Libra into WoWL
   halStatus = sme_EnterWowl( hHal, hdd_wowl_callback, 
