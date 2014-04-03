@@ -1778,7 +1778,29 @@ static int scale_soc_while_chg(struct qpnp_bms_chip *chip, int chg_time_sec,
 static void soc_sanity_check(struct qpnp_bms_chip *chip,
 			    int batt_temp, int soc)
 {
+	struct qpnp_vadc_result v_result;
+	int i = 0;
+	int rc = 0;
+
 	if (wake_lock_active(&chip->low_voltage_wake_lock)) {
+		for (i = 0; i < 10; i++) {
+			rc = qpnp_vadc_read(chip->vadc_dev,
+					    VBAT_SNS, &v_result);
+			if (rc) {
+				pr_err("vadc read failed with rc: %d\n", rc);
+				return;
+			}
+			pr_err("Low Battery vadc result: %d\n",
+			       (int)v_result.physical);
+			if (v_result.physical > chip->low_voltage_threshold) {
+				pr_err("Low Bat recover vadc %d > %d\n",
+				       (int)v_result.physical,
+				       chip->low_voltage_threshold);
+				return;
+			}
+			udelay(10);
+		}
+
 		chip->last_soc = 0;
 		return;
 	}
