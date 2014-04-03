@@ -24,6 +24,7 @@
 #include <mach/iommu_domains.h>
 
 #define ERASE_BUFFER_ID -1
+#define COORD_NO_OVERRIDE -1
 
 static struct msp430_quickdraw_ops msm_fb_quickdraw_ops;
 static LIST_HEAD(msm_fb_quickdraw_buffer_list_head);
@@ -499,10 +500,10 @@ static int msm_fb_quickdraw_execute(void *data, int buffer_id, int x, int y)
 		goto EXIT;
 	}
 
-	if (x < 0 || y < 0) {
+	if (x == COORD_NO_OVERRIDE)
 		x = buffer->data.x;
+	if (y == COORD_NO_OVERRIDE)
 		y = buffer->data.y;
-	}
 
 	x = correct_alignment(x, mfd->panel_info.col_align);
 
@@ -621,7 +622,8 @@ static int msm_fb_quickdraw_erase(void *data, int x1, int y1, int x2, int y2)
 
 	put_buffer(buffer);
 
-	ret = msm_fb_quickdraw_execute(data, ERASE_BUFFER_ID, -1, -1);
+	ret = msm_fb_quickdraw_execute(data, ERASE_BUFFER_ID,
+					COORD_NO_OVERRIDE, COORD_NO_OVERRIDE);
 
 EXIT:
 	pr_debug("%s- (ret: %d)\n", __func__, ret);
