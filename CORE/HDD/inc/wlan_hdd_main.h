@@ -533,6 +533,13 @@ typedef enum
    WLAN_HDD_TM_LEVEL_MAX
 } WLAN_TmLevelEnumType;
 
+typedef enum
+{
+   WLAN_HDD_NO_LOAD_UNLOAD_IN_PROGRESS = 0 ,
+   WLAN_HDD_LOAD_IN_PROGRESS           = 1<<0,
+   WLAN_HDD_UNLOAD_IN_PROGRESS         = 1<<1,
+}load_unload_sequence;
+
 /* Driver Action based on thermal mitigation level structure */
 typedef struct
 {
@@ -1139,7 +1146,7 @@ struct hdd_context_s
 
    struct completion ssr_comp_var;
 
-   v_BOOL_t isLoadUnloadInProgress;
+   v_U8_t isLoadUnloadInProgress;
    
    /**Track whether driver has been suspended.*/
    hdd_ps_state_t hdd_ps_state;
@@ -1268,7 +1275,15 @@ struct hdd_context_s
 };
 
 
+#define WLAN_HDD_IS_LOAD_IN_PROGRESS(pHddCtx)  \
+            (pHddCtx->isLoadUnloadInProgress & WLAN_HDD_LOAD_IN_PROGRESS)
 
+#define WLAN_HDD_IS_UNLOAD_IN_PROGRESS(pHddCtx)  \
+            (pHddCtx->isLoadUnloadInProgress & WLAN_HDD_UNLOAD_IN_PROGRESS)
+
+#define WLAN_HDD_IS_LOAD_UNLOAD_IN_PROGRESS(pHddCtx)  \
+            (pHddCtx->isLoadUnloadInProgress &    \
+              (WLAN_HDD_UNLOAD_IN_PROGRESS | WLAN_HDD_UNLOAD_IN_PROGRESS))
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
   -------------------------------------------------------------------------*/ 
