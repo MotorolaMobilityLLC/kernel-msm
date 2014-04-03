@@ -221,6 +221,7 @@
 struct qpnp_chg_irq {
 	int		irq;
 	unsigned long		disabled;
+	unsigned long		wake_enable;
 };
 
 struct qpnp_chg_regulator {
@@ -537,6 +538,24 @@ qpnp_chg_disable_irq(struct qpnp_chg_irq *irq)
 	if (!__test_and_set_bit(0, &irq->disabled)) {
 		pr_debug("number = %d\n", irq->irq);
 		disable_irq_nosync(irq->irq);
+	}
+}
+
+static void
+qpnp_chg_irq_wake_enable(struct qpnp_chg_irq *irq)
+{
+	if (!__test_and_set_bit(0, &irq->wake_enable)) {
+		pr_debug("number = %d\n", irq->irq);
+		enable_irq_wake(irq->irq);
+	}
+}
+
+static void
+qpnp_chg_irq_wake_disable(struct qpnp_chg_irq *irq)
+{
+	if (__test_and_clear_bit(0, &irq->wake_enable)) {
+		pr_debug("number = %d\n", irq->irq);
+		disable_irq_wake(irq->irq);
 	}
 }
 
@@ -1802,6 +1821,8 @@ static int qpnp_chg_is_fastchg_on(struct qpnp_chg_chip *chip)
 	u8 chgr_sts;
 	int rc;
 
+	qpnp_chg_irq_wake_disable(&chip->chg_fastchg);
+
 	rc = qpnp_chg_read(chip, &chgr_sts, INT_RT_STS(chip->chgr_base), 1);
 	if (rc) {
 		pr_err("failed to read interrupt status %d\n", rc);
@@ -2377,6 +2398,7 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 				&& soc <= chip->soc_resume_limit) {
 			pr_debug("resuming charging at %d%% soc\n", soc);
 			chip->resuming_charging = true;
+			qpnp_chg_irq_wake_enable(&chip->chg_fastchg);
 			qpnp_chg_set_appropriate_vbatdet(chip);
 			qpnp_chg_charge_en(chip, !chip->charging_disabled);
 		}
@@ -4091,10 +4113,10 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 				return rc;
 			}
 
-			enable_irq_wake(chip->chg_trklchg.irq);
-			enable_irq_wake(chip->chg_failed.irq);
+			qpnp_chg_irq_wake_enable(&chip->chg_trklchg);
+			qpnp_chg_irq_wake_enable(&chip->chg_failed);
 			qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
-			enable_irq_wake(chip->chg_vbatdet_lo.irq);
+			qpnp_chg_irq_wake_enable(&chip->chg_vbatdet_lo);
 
 			break;
 		case SMBB_BAT_IF_SUBTYPE:
@@ -4117,7 +4139,7 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 				return rc;
 			}
 
-			enable_irq_wake(chip->batt_pres.irq);
+			qpnp_chg_irq_wake_enable(&chip->batt_pres);
 
 			chip->batt_temp_ok.irq = spmi_get_irq_byname(spmi,
 						spmi_resource, "bat-temp-ok");
@@ -4136,7 +4158,7 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 			}
 			qpnp_chg_bat_if_batt_temp_irq_handler(0, chip);
 
-			enable_irq_wake(chip->batt_temp_ok.irq);
+			qpnp_chg_irq_wake_enable(&chip->batt_temp_ok);
 
 			break;
 		case SMBB_BUCK_SUBTYPE:
@@ -4218,11 +4240,11 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 					return rc;
 				}
 
-				enable_irq_wake(chip->usb_ocp.irq);
+				qpnp_chg_irq_wake_enable(&chip->usb_ocp);
 			}
 
-			enable_irq_wake(chip->usbin_valid.irq);
-			enable_irq_wake(chip->chg_gone.irq);
+			qpnp_chg_irq_wake_enable(&chip->usbin_valid);
+			qpnp_chg_irq_wake_enable(&chip->chg_gone);
 			break;
 		case SMBB_DC_CHGPTH_SUBTYPE:
 			chip->dcin_valid.irq = spmi_get_irq_byname(spmi,
@@ -4241,7 +4263,7 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 				return rc;
 			}
 
-			enable_irq_wake(chip->dcin_valid.irq);
+			qpnp_chg_irq_wake_enable(&chip->dcin_valid);
 			break;
 		}
 	}
