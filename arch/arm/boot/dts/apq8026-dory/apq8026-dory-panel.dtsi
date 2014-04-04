@@ -243,3 +243,7 @@
 		};
 	};
 };
+
+&mdss_fb0 {
+	qcom,memblock-reserve = <0x04200000 0xFA0000>;
+};

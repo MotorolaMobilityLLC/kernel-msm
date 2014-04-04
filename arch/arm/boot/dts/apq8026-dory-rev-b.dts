@@ -12,7 +12,7 @@
  */
 
 /dts-v1/;
-/include/ "apq8026-dory/apq8026-dory-rev-b.dtsi"
+#include "apq8026-dory/apq8026-dory-rev-b.dtsi"
 
 / {
 	model = "LGE APQ 8026v2 DORY rev-b";
