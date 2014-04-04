@@ -22,8 +22,8 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
 		qcom,mdss-dsi-panel-height = <2560>;
-		qcom,mdss-pan-physical-width-dimension = <56>;
-		qcom,mdss-pan-physical-height-dimension = <99>;
+		qcom,mdss-pan-physical-width-dimension = <65>;
+		qcom,mdss-pan-physical-height-dimension = <115>;
 		qcom,mdss-dsi-h-front-porch = <120>;
 		qcom,mdss-dsi-h-back-porch = <44>;
 		qcom,mdss-dsi-h-pulse-width = <16>;
@@ -71,7 +71,7 @@
 			/* disp_ctrl */
 			39 01 00 00 01 00 02 53 20
 			/* brightness_ctrl */
-			15 01 00 00 01 00 02 51 7f
+			15 01 00 00 01 00 02 51 00
 			/* acl_enable_disable_settings */
 			39 01 00 00 01 00 02 55 03
 			/* Unlock level 2 commands */
@@ -115,12 +115,12 @@
 		};
 		qcom,platform-supply-entry3 {
 			qcom,supply-name = "vci_disp";
-			qcom,supply-min-voltage = <3300000>;
-			qcom,supply-max-voltage = <3300000>;
+			qcom,supply-min-voltage = <3100000>;
+			qcom,supply-max-voltage = <3100000>;
 			qcom,supply-enable-load = <330000>;
 			qcom,supply-disable-load = <100>;
 			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <12>;
+			qcom,supply-post-on-sleep = <20>;
 			qcom,supply-pre-off-sleep = <0>;
 			qcom,supply-post-off-sleep = <0>;
 		};
@@ -136,8 +136,8 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
 		qcom,mdss-dsi-panel-height = <2560>;
-		qcom,mdss-pan-physical-width-dimension = <56>;
-		qcom,mdss-pan-physical-height-dimension = <99>;
+		qcom,mdss-pan-physical-width-dimension = <65>;
+		qcom,mdss-pan-physical-height-dimension = <115>;
 		qcom,mdss-dsi-h-front-porch = <120>;
 		qcom,mdss-dsi-h-back-porch = <44>;
 		qcom,mdss-dsi-h-pulse-width = <16>;
