@@ -1707,12 +1707,20 @@ static int florida_trigger(struct snd_compr_stream *stream, int cmd)
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(rtd->codec);
 	int ret = 0;
+	bool pending = false;
 
 	mutex_lock(&florida->compr_info.lock);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		ret = wm_adsp_stream_start(florida->compr_info.adsp);
+
+		/**
+		 * If the stream has already triggered before the stream
+		 * opened better process any outstanding data
+		 */
+		if (florida->compr_info.trig)
+			pending = true;
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		break;
@@ -1722,6 +1730,9 @@ static int florida_trigger(struct snd_compr_stream *stream, int cmd)
 	}
 
 	mutex_unlock(&florida->compr_info.lock);
+
+	if (pending)
+		adsp2_irq(0, florida);
 
 	return ret;
 }
