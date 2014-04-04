@@ -485,7 +485,11 @@ int mdss_mdp_cmd_reconfigure_splash_done(struct mdss_mdp_ctl *ctl, bool handoff)
 	pdata = ctl->panel_data;
 
 	pdata->panel_info.cont_splash_enabled = 0;
-
+	ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_CONT_SPLASH_FINISH,
+				NULL);
+	if (ret)
+		pr_err("%s: fail to send event PANEL_CONT_SPLASH_FINISH. "
+			"ret = %d\n", __func__, ret);
 	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
 
 	return ret;

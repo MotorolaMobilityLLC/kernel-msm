@@ -118,6 +118,9 @@ struct mdss_panel_recovery {
  *				display state from boot loader to panel driver.
  *				The event handler will enable the panel and
  *				vote for the display clocks.
+ * MDSS_EVENT_PANEL_CONT_SPLASH_FINISH: Special event will be sent to panel to
+ *				indicate the transition of display state from
+ *				boot loader to panel driver is finished
  * @MDSS_EVENT_PANEL_UPDATE_FPS: Event to update the frame rate of the panel.
  * @MDSS_EVENT_FB_REGISTERED:	Called after fb dev driver has been registered,
  *				panel driver gets ptr to struct fb_info which
@@ -146,6 +149,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_CHECK_PARAMS,
 	MDSS_EVENT_CONT_SPLASH_BEGIN,
 	MDSS_EVENT_CONT_SPLASH_FINISH,
+	MDSS_EVENT_PANEL_CONT_SPLASH_FINISH,
 	MDSS_EVENT_PANEL_UPDATE_FPS,
 	MDSS_EVENT_FB_REGISTERED,
 	MDSS_EVENT_PANEL_CLK_CTRL,
