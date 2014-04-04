@@ -1174,6 +1174,8 @@
 };
 
 &pm8941_vadc {
+	/delete-node/ chan@4;
+	/delete-node/ chan@39;
 	/delete-node/ chan@b3;
 	/delete-node/ chan@b4;
 	/delete-node/ chan@b7;
@@ -1211,6 +1213,17 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
+
+	chan@b9 {
+		label = "chg_therm";
+		reg = <0xb9>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
 };
 
 &pm8941_adc_tm {
@@ -1228,6 +1241,19 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <3>;
 		qcom,btm-channel-number = <0x88>;
+		qcom,thermal-node;
+	};
+
+	chan@b9 {
+		label = "chg_therm";
+		reg = <0xb9>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x48>;
 		qcom,thermal-node;
 	};
 };
