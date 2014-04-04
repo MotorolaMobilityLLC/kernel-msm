@@ -16,34 +16,34 @@
 #include "dmpKey.h"
 #include "dmpmap.h"
 
-#define CFG_OUT_PRESS               (1823)
-#define CFG_PED_ENABLE              (1936)
-#define CFG_OUT_GYRO                (1755)
-#define CFG_PEDSTEP_DET             (2417)
-#define OUT_GYRO_DAT                (1764)
-#define CFG_FIFO_INT                (1934)
-#define OUT_CPASS_DAT               (1798)
-#define CFG_AUTH                    (1051)
-#define OUT_ACCL_DAT                (1730)
-#define FCFG_1                      (1078)
-#define FCFG_3                      (1103)
-#define FCFG_2                      (1082)
-#define CFG_OUT_CPASS               (1789)
-#define FCFG_7                      (1089)
-#define CFG_OUT_3QUAT               (1617)
-#define OUT_PRESS_DAT               (1832)
-#define OUT_3QUAT_DAT               (1627)
-#define CFG_7                       (1300)
-#define OUT_PQUAT_DAT               (1696)
-#define CFG_OUT_6QUAT               (1652)
-#define CFG_PED_INT                 (2406)
-#define SMD_TP2                     (1265)
-#define SMD_TP1                     (1244)
-#define CFG_MOTION_BIAS             (1302)
-#define CFG_OUT_ACCL                (1721)
-#define CFG_OUT_STEPDET             (1587)
-#define OUT_6QUAT_DAT               (1662)
-#define CFG_OUT_PQUAT               (1687)
+#define CFG_OUT_PRESS       (1872)
+#define CFG_PED_ENABLE      (1985)
+#define CFG_OUT_GYRO        (1804)
+#define CFG_PEDSTEP_DET     (2814)
+#define OUT_GYRO_DAT        (1813)
+#define CFG_FIFO_INT        (1983)
+#define OUT_CPASS_DAT       (1847)
+#define CFG_AUTH            (1099)
+#define OUT_ACCL_DAT        (1779)
+#define FCFG_1              (1127)
+#define FCFG_3              (1152)
+#define FCFG_2              (1131)
+#define CFG_OUT_CPASS       (1838)
+#define FCFG_7              (1138)
+#define CFG_OUT_3QUAT       (1666)
+#define OUT_PRESS_DAT       (1881)
+#define OUT_3QUAT_DAT       (1676)
+#define CFG_7               (1349)
+#define OUT_PQUAT_DAT       (1745)
+#define CFG_OUT_6QUAT       (1701)
+#define CFG_PED_INT         (2803)
+#define SMD_TP2             (1314)
+#define SMD_TP1             (1293)
+#define CFG_MOTION_BIAS     (1351)
+#define CFG_OUT_ACCL        (1770)
+#define CFG_OUT_STEPDET     (1636)
+#define OUT_6QUAT_DAT       (1711)
+#define CFG_OUT_PQUAT       (1736)
 
 #define D_0_22                  (22+512)
 #define D_0_24                  (24+512)
@@ -215,6 +215,8 @@
 #define D_FS_9Q2                (2*16 + 8)
 #define D_FS_9Q3                (2*16 + 12)
 
+#define D_CPASS_STATUS_CHK		(22*16 + 8)
+
 static const struct tKeyLabel dmpTConfig[] = {
 	{KEY_CFG_OUT_ACCL,              CFG_OUT_ACCL},
 	{KEY_CFG_OUT_GYRO,              CFG_OUT_GYRO},
@@ -345,6 +347,7 @@ static const struct tKeyLabel dmpTConfig[] = {
 	{KEY_DMP_9Q1,					D_FS_9Q1},
 	{KEY_DMP_9Q2,					D_FS_9Q2},
 	{KEY_DMP_9Q3,					D_FS_9Q3},
+	{KEY_CPASS_STATUS_CHK,          D_CPASS_STATUS_CHK},
 	{KEY_TEST_01,                   OUT_ACCL_DAT},
 	{KEY_TEST_02,                   OUT_GYRO_DAT},
 	{KEY_TEST_03,                   OUT_CPASS_DAT},

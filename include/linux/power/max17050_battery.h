@@ -63,7 +63,7 @@ enum max17050_register {
 	MAX17050_CONFIG		= 0X1D,
 	MAX17050_ICHGTERM	= 0X1E,
 	MAX17050_AVCAP		= 0X1F,
-
+	MAX17050_CUSTOMVER	= 0X20,
 	MAX17050_VERSION	= 0X21,
 	MAX17050_QRTABLE10	= 0X22,
 	MAX17050_FULLCAPNOM	= 0X23,
@@ -152,6 +152,7 @@ struct max17050_platform_data {
 
 	u16 temperature;
 	u16 dpacc;
+	u16 param_version;
 
 	/* model characterisation data */
 	u16 model[MODEL_SIZE];

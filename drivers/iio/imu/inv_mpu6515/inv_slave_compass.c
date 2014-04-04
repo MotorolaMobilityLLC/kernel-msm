@@ -32,7 +32,7 @@
 #define REG_AKM8963_CNTL1        0x0A
 
 /* AK09911 register definition */
-#define REG_AK09911_DMP_READ    0x10
+#define REG_AK09911_DMP_READ    0x3
 #define REG_AK09911_STATUS1     0x10
 #define REG_AK09911_CNTL2       0x31
 #define REG_AK09911_SENSITIVITY 0x60
@@ -57,8 +57,8 @@
 #define DATA_MLX_SCALE_EMPIRICAL (26214 * (1L << 15))
 
 #define DATA_AKM8963_SCALE_SHIFT      4
-#define DATA_AKM_BYTES_DMP  10
-#define DATA_AKM_BYTES      8
+#define DATA_AKM_99_BYTES_DMP  10
+#define DATA_AKM_89_BYTES_DMP  9
 #define DATA_AKM_MIN_READ_TIME            (9 * NSEC_PER_MSEC)
 
 #define DEF_ST_COMPASS_WAIT_MIN     (10 * 1000)
@@ -187,19 +187,18 @@ static int inv_akm_read_data(struct inv_mpu_state *st, short *o)
 {
 	int result, shift;
 	int i;
-	u8 d[DATA_AKM_BYTES];
+	u8 d[DATA_AKM_99_BYTES_DMP - 1];
 	u8 *sens;
 
 	sens = st->chip_info.compass_sens;
 	result = 0;
-	if (st->chip_config.dmp_on &&
-			(COMPASS_ID_AK09911 != st->plat_data.sec_slave_id)) {
+	if (st->chip_config.dmp_on) {
 		for (i = 0; i < 6; i++)
 			d[1 + i] = st->fifo_data[i];
 	} else {
 		result = inv_i2c_read(st, REG_EXT_SENS_DATA_00,
-						DATA_AKM_BYTES, d);
-		if ((DATA_AKM_DRDY != d[0]) || result)
+					DATA_AKM_99_BYTES_DMP - 1, d);
+		if (((DATA_AKM_DRDY != d[0]) && (!d[7])) || result)
 			result = -EINVAL;
 	}
 	if (COMPASS_ID_AK09911 == st->plat_data.sec_slave_id)
@@ -207,7 +206,7 @@ static int inv_akm_read_data(struct inv_mpu_state *st, short *o)
 	else
 		shift = 8;
 	for (i = 0; i < 3; i++) {
-		o[i] = (short)((d[i * 2 + 2] << 8) | d[i * 2 + 1]);
+		o[i] = (short)((d[i * 2 + 1] << 8) | d[i * 2 + 2]);
 		o[i] = (short)(((int)o[i] * (sens[i] + 128)) >> shift);
 	}
 
@@ -405,27 +404,30 @@ static int inv_resume_akm(struct inv_mpu_state *st)
 	if (COMPASS_ID_AK09911 == st->plat_data.sec_slave_id) {
 		if (st->chip_config.dmp_on) {
 			reg_addr = REG_AK09911_DMP_READ;
-			bytes = DATA_AKM_BYTES_DMP;
+			bytes = DATA_AKM_99_BYTES_DMP;
 		} else {
 			reg_addr = REG_AK09911_STATUS1;
-			bytes = DATA_AKM_BYTES;
+			bytes = DATA_AKM_99_BYTES_DMP - 1;
 		}
 	} else {
 		if (st->chip_config.dmp_on) {
 			reg_addr = REG_AKM_INFO;
-			bytes = DATA_AKM_BYTES_DMP;
+			bytes = DATA_AKM_89_BYTES_DMP;
 		} else {
 			reg_addr = REG_AKM_STATUS;
-			bytes = DATA_AKM_BYTES;
+			bytes = DATA_AKM_89_BYTES_DMP - 1;
 		}
 	}
 	result = inv_i2c_single_write(st, REG_I2C_SLV0_REG, reg_addr);
 	if (result)
 		return result;
 
-	/* slave 0 is enabled, read 10 or 8 bytes from here */
+	/* slave 0 is enabled, read 10 or 8 bytes from here, swap bytes */
 	result = inv_i2c_single_write(st, REG_I2C_SLV0_CTRL,
-						INV_MPU_BIT_SLV_EN | bytes);
+						INV_MPU_BIT_GRP |
+						INV_MPU_BIT_BYTE_SW |
+						INV_MPU_BIT_SLV_EN |
+						bytes);
 	if (result)
 		return result;
 	/* slave 1 is enabled, write byte length is 1 */

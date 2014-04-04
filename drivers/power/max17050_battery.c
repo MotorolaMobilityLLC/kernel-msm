@@ -59,6 +59,7 @@ struct max17050_learned_params {
 	u16 qrtable20;
 	u16 qrtable30;
 	u16 cycles;
+	u16 param_version;
 };
 
 struct max17050_chip {
@@ -74,6 +75,8 @@ struct max17050_chip {
 	bool suspended;
 	bool use_ext_temp;
 	int ext_temp;
+	bool init_done;
+	bool power_on_reset;
 
 	/* values read from chip */
 	u16 status;
@@ -279,9 +282,18 @@ static void max17050_init_chip(struct max17050_chip *chip)
 
 	/* Complete initialisation */
 	chip->status = max17050_read_reg(client, MAX17050_STATUS);
+
 	max17050_write_verify_reg(client, MAX17050_STATUS,
 		chip->status & ~(STATUS_POR_BIT | STATUS_BR_BIT |
 							STATUS_BI_BIT));
+
+	/* Write custom parameter version */
+	max17050_write_verify_reg(client, MAX17050_CUSTOMVER,
+					chip->pdata->param_version);
+
+	/* Set the parameter init status */
+	if (chip->status & (STATUS_POR_BIT | STATUS_BI_BIT))
+		chip->power_on_reset = true;
 }
 
 /* Must call with mutex locked */
@@ -309,6 +321,8 @@ static void max17050_save_learned_params(struct max17050_chip *chip)
 							MAX17050_QRTABLE20);
 	chip->learned.qrtable30 = max17050_read_reg(client,
 							MAX17050_QRTABLE30);
+	chip->learned.param_version = max17050_read_reg(client,
+							MAX17050_CUSTOMVER);
 }
 
 /* Must call with mutex locked */
@@ -316,6 +330,11 @@ static void max17050_restore_learned_params(struct max17050_chip *chip)
 {
 	struct i2c_client *client = chip->client;
 	u16 remcap;
+
+	/* Skip restore when custom param version has changed */
+	if (chip->learned.param_version !=
+			max17050_read_reg(client, MAX17050_CUSTOMVER))
+		return;
 
 	max17050_write_verify_reg(client, MAX17050_RCOMP0,
 						chip->learned.rcomp0);
@@ -408,6 +427,28 @@ static struct bin_attribute max17050_learned_attr = {
 	.read = max17050_learned_read,
 	.write = max17050_learned_write,
 };
+
+static ssize_t max17050_show_init_done(struct device *dev,
+					  struct device_attribute *attr,
+					  char *buf)
+{
+	struct max17050_chip *chip = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", chip->init_done);
+}
+static DEVICE_ATTR(init_done, S_IRUGO,
+			max17050_show_init_done, NULL);
+
+static ssize_t max17050_show_power_on_reset(struct device *dev,
+					  struct device_attribute *attr,
+					  char *buf)
+{
+	struct max17050_chip *chip = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", chip->power_on_reset);
+}
+static DEVICE_ATTR(power_on_reset, S_IRUGO,
+			max17050_show_power_on_reset, NULL);
 
 static void max17050_update_ext_temp(struct work_struct *work)
 {
@@ -573,6 +614,26 @@ static int max17050_get_property(struct power_supply *psy,
 	return 0;
 }
 
+static void max17050_set_soc_thresholds(struct max17050_chip *chip,
+								s16 threshold)
+{
+	s16 soc_now;
+	s16 soc_max;
+	s16 soc_min;
+
+	soc_now = max17050_read_reg(chip->client, MAX17050_REPSOC) >> 8;
+
+	soc_max = soc_now + threshold;
+	if (soc_max > 100)
+		soc_max = 100;
+	soc_min = soc_now - threshold;
+	if (soc_min < 0)
+		soc_min = 0;
+
+	max17050_write_reg(chip->client, MAX17050_SALRT_TH,
+		(u16)soc_min | ((u16)soc_max << 8));
+}
+
 static irqreturn_t max17050_interrupt(int id, void *dev)
 {
 	struct max17050_chip *chip = dev;
@@ -583,11 +644,14 @@ static irqreturn_t max17050_interrupt(int id, void *dev)
 
 	val = max17050_read_reg(client, MAX17050_STATUS);
 
-	/* Signal userspace when the capacity reaches 0 or 100% */
+	/* Signal userspace when the capacity exceeds the limits */
 	if ((val & STATUS_INTR_SOCMIN_BIT) || (val & STATUS_INTR_SOCMAX_BIT)) {
 		/* Clear interrupt status bits */
 		max17050_write_reg(client, MAX17050_STATUS, val &
 			~(STATUS_INTR_SOCMIN_BIT | STATUS_INTR_SOCMAX_BIT));
+
+		/* Reset capacity thresholds */
+		max17050_set_soc_thresholds(chip, 5);
 
 		power_supply_changed(&chip->battery);
 	}
@@ -603,17 +667,20 @@ static void max17050_complete_init(struct max17050_chip *chip)
 	if (sysfs_create_bin_file(&client->dev.kobj, &max17050_learned_attr))
 		dev_err(&client->dev, "sysfs_create_bin_file failed");
 
+	if (device_create_file(&client->dev, &dev_attr_init_done))
+		dev_err(&client->dev, "device_create_file failed");
+
+	if (device_create_file(&client->dev, &dev_attr_power_on_reset))
+		dev_err(&client->dev, "device_create_file failed");
+
 	if (power_supply_register(&client->dev, &chip->battery))
 		dev_err(&client->dev, "failed: power supply register");
 	else
 		chip->power_supply_registered = true;
 
 	if (client->irq) {
-		/*
-		 * Set capacity thresholds to 1 and 99%, which will cause
-		 * interrupts to be generated at <1% and >99%.
-		 */
-		max17050_write_reg(client, MAX17050_SALRT_TH, 0x6301);
+		/* Set capacity thresholds to +/- 5% of current capacity */
+		max17050_set_soc_thresholds(chip, 5);
 
 		/* Enable capacity interrupts */
 		val = max17050_read_reg(client, MAX17050_CONFIG);
@@ -623,6 +690,8 @@ static void max17050_complete_init(struct max17050_chip *chip)
 
 	if (chip->use_ext_temp && chip->pdata->ext_batt_psy)
 		schedule_delayed_work(&chip->ext_batt_work, 0);
+
+	chip->init_done = true;
 }
 
 static void max17050_init_worker(struct work_struct *work)
@@ -714,6 +783,9 @@ max17050_get_pdata(struct device *dev)
 	else
 		pdata->full_soc = 100;
 
+	if (of_property_read_u32(np, "maxim,param-version", &prop) == 0)
+		pdata->param_version = prop;
+
 	model = of_get_property(np, "maxim,model", &len);
 	if (model && ((len / 2) == MODEL_SIZE)) {
 		int i;
@@ -733,6 +805,7 @@ static int max17050_probe(struct i2c_client *client,
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct max17050_chip *chip;
 	int ret = 0;
+	bool new_custom_param = false;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_WORD_DATA))
 		return -EIO;
@@ -796,8 +869,19 @@ static int max17050_probe(struct i2c_client *client,
 	INIT_WORK(&chip->work, max17050_init_worker);
 	mutex_init(&chip->mutex);
 
-	if (max17050_read_reg(client, MAX17050_STATUS) &
-					(STATUS_POR_BIT | STATUS_BI_BIT))
+	/*
+	 * If the version of custom parameters is changed, the init chip
+	 * should be called even if POR doesn't happen.
+	 * For checking parameter change, the reserved register, 0x20,
+	 * is defined as custom version register.
+	 */
+	if (max17050_read_reg(client, MAX17050_CUSTOMVER) !=
+					chip->pdata->param_version)
+		new_custom_param = true;
+
+	if ((max17050_read_reg(client, MAX17050_STATUS) &
+				(STATUS_POR_BIT | STATUS_BI_BIT)) ||
+							new_custom_param)
 		schedule_work(&chip->work);
 	else
 		max17050_complete_init(chip);
@@ -809,6 +893,8 @@ static int max17050_remove(struct i2c_client *client)
 {
 	struct max17050_chip *chip = i2c_get_clientdata(client);
 
+	device_remove_file(&client->dev, &dev_attr_power_on_reset);
+	device_remove_file(&client->dev, &dev_attr_init_done);
 	sysfs_remove_bin_file(&client->dev.kobj, &max17050_learned_attr);
 
 	if (client->irq)

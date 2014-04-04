@@ -20,8 +20,8 @@
 #include <linux/spinlock.h>
 #include <linux/mpu.h>
 
-#include <linux/iio/iio.h>
-#include <linux/iio/buffer.h>
+#include "iio.h"
+#include "buffer.h"
 
 #include "dmpKey.h"
 
@@ -97,6 +97,7 @@
 #define INV_MPU_BIT_SLV_EN      0x80
 #define INV_MPU_BIT_BYTE_SW     0x40
 #define INV_MPU_BIT_REG_DIS     0x20
+#define INV_MPU_BIT_GRP         0x10
 #define INV_MPU_BIT_I2C_READ    0x80
 
 #define REG_INT_PIN_CFG         0x37
@@ -120,6 +121,7 @@
 #define REG_TEMPERATURE         0x41
 #define REG_EXT_SENS_DATA_00    0x49
 #define REG_EXT_SENS_DATA_08    0x51
+#define REG_EXT_SENS_DATA_09    0x52
 
 #define REG_ACCEL_INTEL_STATUS  0x61
 
@@ -181,6 +183,10 @@
 #define DMP_MASK_TAP             0x3f
 #define DMP_MASK_DIS_ORIEN       0xC0
 #define DMP_DIS_ORIEN_SHIFT      6
+/* this is derived from 1000 divided by 50, which is the pedometer
+   running frequency */
+#define MS_PER_PED_TICKS         20
+
 
 #define BYTES_FOR_DMP            8
 #define BYTES_FOR_EVENTS         4
@@ -189,12 +195,12 @@
 #define MPU3050_FOOTER_SIZE      2
 #define FIFO_COUNT_BYTE          2
 #define FIFO_THRESHOLD           800
-#define FIFO_SIZE                800
+#define FIFO_SIZE                992
 #define HARDWARE_FIFO_SIZE       1024
 #define MAX_READ_SIZE            64
 #define POWER_UP_TIME            100
 #define SENSOR_UP_TIME           30
-#define REG_UP_TIME              5
+#define REG_UP_TIME              2
 #define INV_MPU_SAMPLE_RATE_CHANGE_STABLE 50
 #define MPU_MEM_BANK_SIZE        256
 #define SELF_TEST_GYRO_FULL_SCALE 250
@@ -206,6 +212,7 @@
 #define ACCEL_HDR                0x4000
 #define GYRO_HDR                 0x2000
 #define COMPASS_HDR              0x1000
+#define COMPASS_HDR_2            0x1800
 #define LPQUAT_HDR               0x0800
 #define SIXQUAT_HDR              0x0400
 #define PEDQUAT_HDR              0x0200
@@ -275,7 +282,7 @@
 #define CRC_FIRMWARE_SEED        0
 #define SELF_TEST_SUCCESS        1
 #define MS_PER_DMP_TICK          20
-#define DMP_IMAGE_SIZE           2463
+#define DMP_IMAGE_SIZE           2950
 
 /* init parameters */
 #define INIT_FIFO_RATE           50
@@ -301,6 +308,7 @@
 
 #define TIME_STAMP_TOR                        5
 #define MAX_CATCH_UP                          5
+#define DMP_TICK_DUR                          5
 #define DEFAULT_ACCEL_TRIM                    16384
 #define DEFAULT_GYRO_TRIM                     131
 #define MAX_FIFO_RATE                         1000
@@ -678,6 +686,7 @@ struct inv_mpu_slave;
  *  @sl_handle:         Handle to I2C port.
  *  @irq_dur_ns:        duration between each irq.
  *  @ts_counter:        time stamp counter.
+ *  @suspend_state:     state indicator suspend.
  *  @dmp_interval:      dmp interval. nomial value is 5 ms.
  *  @dmp_interval_accum: dmp interval accumlater.
  *  @diff_accumulater:  accumlator for the difference of nominal and actual.
@@ -742,6 +751,7 @@ struct inv_mpu_state {
 	void *sl_handle;
 	u32 irq_dur_ns;
 	u32 ts_counter;
+	bool suspend_state;
 	u32 dmp_interval;
 	s32 dmp_interval_accum;
 	s64 diff_accumulater;
@@ -798,7 +808,7 @@ struct inv_mpu_slave {
 	int (*read_data)(struct inv_mpu_state *, short *out);
 	int (*get_mode)(void);
 	int (*set_lpf)(struct inv_mpu_state *, int rate);
-	int (*set_fs)(struct inv_mpu_state *, int fs);
+	int (*set_fs1)(struct inv_mpu_state *, int fs);
 	u64 prev_ts;
 };
 

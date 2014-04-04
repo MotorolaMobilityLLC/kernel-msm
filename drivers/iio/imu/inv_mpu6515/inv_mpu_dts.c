@@ -10,19 +10,19 @@
 
 int inv_mpu_power_on(struct mpu_platform_data *pdata)
 {
-	int err;
+	int err ;
 
 	err = regulator_enable(pdata->vdd_ana);
 	err = regulator_enable(pdata->vdd_i2c);
 	pr_debug(KERN_INFO "inv_mpu_power_on call");
 
-	return err;
+	return err ;
 
 }
 
 int inv_mpu_power_off(struct mpu_platform_data *pdata)
 {
-	int err;
+	int err ;
 
 	err = regulator_disable(pdata->vdd_ana);
 	err = regulator_disable(pdata->vdd_i2c);
@@ -238,17 +238,7 @@ int inv_parse_aux(struct device *dev, struct mpu_platform_data *pdata)
 int invensense_mpu_parse_dt(struct device *dev, struct mpu_platform_data *pdata)
 {
 	int rc;
-	u32 temp_val;
-	struct device_node *np = dev->of_node;
 	pr_debug("Invensense MPU parse_dt started.\n");
-
-	rc = of_property_read_u32(np, "inven,int_config", &temp_val);
-	if (rc) {
-		dev_err(dev, "Unable to read inven,int_config\n");
-		return rc;
-	} else {
-		pdata->int_config = temp_val;
-	}
 
 	rc = inv_parse_orientation_matrix(dev, pdata->orientation);
 	if (rc)
@@ -269,7 +259,7 @@ int invensense_mpu_parse_dt(struct device *dev, struct mpu_platform_data *pdata)
 	pdata->vdd_i2c = regulator_get(dev, "inven,vcc_i2c");
 	if (IS_ERR(pdata->vdd_i2c)) {
 		rc = PTR_ERR(pdata->vdd_i2c);
-		dev_err(dev, "Regulator get failed vcc_i2c-supply rc=%d\n", rc);
+		dev_err(dev, "Regulator get failed vcc-i2c-supply rc=%d\n", rc);
 		return rc;
 	}
 	pdata->power_on = inv_mpu_power_on;

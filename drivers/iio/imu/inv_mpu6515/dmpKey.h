@@ -216,9 +216,9 @@
 #define KEY_CPASS_MTX_20            (KEY_CPASS_MTX_12 + 1)
 #define KEY_CPASS_MTX_21            (KEY_CPASS_MTX_20 + 1)
 #define KEY_CPASS_MTX_22            (KEY_CPASS_MTX_21 + 1)
-
+#define KEY_CPASS_STATUS_CHK		(KEY_CPASS_MTX_22 + 1)
 /* Tap Keys */
-#define KEY_DMP_TAP_GATE              (KEY_CPASS_MTX_22 + 1)
+#define KEY_DMP_TAP_GATE              (KEY_CPASS_STATUS_CHK + 1)
 #define KEY_DMP_TAPW_MIN              (KEY_DMP_TAP_GATE + 1)
 #define KEY_DMP_TAP_THR_Z             (KEY_DMP_TAPW_MIN + 1)
 #define KEY_DMP_TAP_PREV_JERK_Z       (KEY_DMP_TAP_THR_Z + 1)
@@ -392,7 +392,7 @@
 #define KEY_DMP_9Q3                 (KEY_DMP_9Q2 + 1)
 
 /* Test key */
-#define KEY_TEST_01                 (KEY_9AXIS_ACCURACY + 1)
+#define KEY_TEST_01                 (KEY_DMP_9Q3 + 1)
 #define KEY_TEST_02                 (KEY_TEST_01 + 1)
 #define KEY_TEST_03                 (KEY_TEST_02 + 1)
 #define KEY_TEST_04                 (KEY_TEST_03 + 1)

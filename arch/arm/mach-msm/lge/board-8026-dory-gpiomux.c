@@ -89,7 +89,14 @@ static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 57,
+		.gpio = 57, /* until rev-c */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &backlight_act_cfg,
+			[GPIOMUX_SUSPENDED] = &backlight_sus_cfg,
+		},
+	},
+	{
+		.gpio = 108, /* rev-1.0 or later */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &backlight_act_cfg,
 			[GPIOMUX_SUSPENDED] = &backlight_sus_cfg,
