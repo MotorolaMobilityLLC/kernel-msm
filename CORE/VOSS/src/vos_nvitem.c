@@ -3562,10 +3562,10 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
 #endif
     }
 
-    if ( pHddCtx->isLoadUnloadInProgress )
+    if (WLAN_HDD_IS_UNLOAD_IN_PROGRESS(pHddCtx))
     {
        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                   ("%s Load/Unload is in progress"), __func__ );
+                   ("%s Unload is in progress"), __func__ );
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
        return;
 #else
@@ -3981,7 +3981,7 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
        return 0;
 #endif
     }
-    if(pHddCtx->isLoadUnloadInProgress ||
+    if((WLAN_HDD_IS_UNLOAD_IN_PROGRESS(pHddCtx)) ||
         pHddCtx->isLogpInProgress)
     {
         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
