@@ -357,8 +357,6 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	card->ext_csd.raw_card_type = ext_csd[EXT_CSD_CARD_TYPE];
 	mmc_select_card_type(card);
 
-	card->ext_csd.raw_drive_strength = ext_csd[EXT_CSD_DRIVE_STRENGTH];
-
 	card->ext_csd.raw_s_a_timeout = ext_csd[EXT_CSD_S_A_TIMEOUT];
 	card->ext_csd.raw_erase_timeout_mult =
 		ext_csd[EXT_CSD_ERASE_TIMEOUT_MULT];
@@ -615,6 +613,8 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 			ext_csd[EXT_CSD_MAX_PACKED_WRITES];
 		card->ext_csd.max_packed_reads =
 			ext_csd[EXT_CSD_MAX_PACKED_READS];
+		card->ext_csd.raw_drive_strength =
+			ext_csd[EXT_CSD_DRIVE_STRENGTH];
 	} else {
 		card->ext_csd.data_sector_size = 512;
 	}
@@ -925,7 +925,8 @@ static int mmc_select_hs(struct mmc_card *card, u8 *ext_csd)
 	}
 
 	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				EXT_CSD_HS_TIMING, 1,
+				EXT_CSD_HS_TIMING,
+				EXT_CSD_HS_TIMING_HIGH_SPEED,
 				card->ext_csd.generic_cmd6_time);
 
 	if (err && err != -EBADMSG)
@@ -1019,6 +1020,72 @@ out:
 }
 
 /*
+ * eMMC v4.5 added 4 driver strengths for HS200, matching those for UHS-I in
+ * the SD v3.0 specification.  Functionally, eMMC and SD driver types map as:
+ *
+ *   SD   eMMC   Impedance   Relative Drive
+ *   A    1      33 ohms     x1.5
+ *   B    0      50 ohms     x1    (default)
+ *   C    2      66 ohms     x0.75
+ *   D    3      100 ohms    x0.5
+ *
+ * eMMC v5.0 spec adds one additional type for which there is no corresponding
+ * SD type:
+ *
+ *   Type 4 - 40 ohms, x1.2
+ */
+static int mmc_select_driver_type(struct mmc_card *card)
+{
+	int host_drv_type = MMC_DRIVER_TYPE_0;
+	int card_drv_type = MMC_DRIVER_TYPE_0;
+	int drv_type;
+
+	/*
+	 * We reuse the SD-derived capability bits here.  If the host doesn't
+	 * support any of the Driver Types 1, 2 or 3, or there is no board
+	 * specific handler then default Driver Type 0 is used.
+	 */
+	if (!(card->host->caps & (MMC_CAP_DRIVER_TYPE_A | MMC_CAP_DRIVER_TYPE_C
+	    | MMC_CAP_DRIVER_TYPE_D)) &&
+	    !(card->host->caps2 & MMC_CAP2_DRIVER_TYPE_4))
+		return 0;
+
+	if (!card->host->ops->select_drive_strength)
+		return 0;
+
+	if (card->host->caps & MMC_CAP_DRIVER_TYPE_A)
+		host_drv_type |= MMC_DRIVER_TYPE_1;
+
+	if (card->host->caps & MMC_CAP_DRIVER_TYPE_C)
+		host_drv_type |= MMC_DRIVER_TYPE_2;
+
+	if (card->host->caps & MMC_CAP_DRIVER_TYPE_D)
+		host_drv_type |= MMC_DRIVER_TYPE_3;
+
+	if (card->host->caps2 & MMC_CAP2_DRIVER_TYPE_4)
+		host_drv_type |= MMC_DRIVER_TYPE_4;
+
+	card_drv_type |= card->ext_csd.raw_drive_strength &
+			 (MMC_DRIVER_TYPE_1 | MMC_DRIVER_TYPE_2 |
+			  MMC_DRIVER_TYPE_3 | MMC_DRIVER_TYPE_4);
+
+	/*
+	 * Card drive strength depends on the board design.  Let the host
+	 * driver decide what driver strength is best, based on all of the
+	 * constraints.
+	 */
+	mmc_host_clk_hold(card->host);
+	drv_type = card->host->ops->select_drive_strength(card->host,
+		host_drv_type, card_drv_type);
+	mmc_host_clk_release(card->host);
+
+	/* We send the driver type as part of the HS_TIMING command. */
+	card->ext_csd.drv_type = drv_type;
+
+	return 0;
+}
+
+/*
  * Select the desired buswidth and switch to HS200 mode
  * if bus width set without error
  */
@@ -1069,9 +1136,14 @@ static int mmc_select_hs200(struct mmc_card *card, u8 *ext_csd)
 		goto out;
 	}
 
+	mmc_select_driver_type(card);
+
 	/* switch to HS200 mode if bus width set successfully */
 	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				EXT_CSD_HS_TIMING, 2, 0);
+				EXT_CSD_HS_TIMING,
+				EXT_CSD_HS_TIMING_HS200 |
+				(card->ext_csd.drv_type << 4),
+				0);
 
 	if (err && err != -EBADMSG) {
 		pr_err("%s: HS200 switch failed\n",
@@ -1174,7 +1246,10 @@ static int mmc_select_hs400(struct mmc_card *card, u8 *ext_csd)
 
 	/* Switch to HS400 mode if bus width set successfully */
 	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				 EXT_CSD_HS_TIMING, 3, 0);
+				EXT_CSD_HS_TIMING,
+				EXT_CSD_HS_TIMING_HS400 |
+				(card->ext_csd.drv_type << 4),
+				0);
 	if (err && err != -EBADMSG) {
 		pr_err("%s: Setting HS_TIMING to HS400 failed (err:%d)\n",
 			mmc_hostname(host), err);

@@ -325,6 +325,10 @@ struct _mmc_csd {
 #define EXT_CSD_CARD_TYPE_HS400		(EXT_CSD_CARD_TYPE_HS400_1_8V  \
 					| EXT_CSD_CARD_TYPE_HS400_1_2V)
 
+#define EXT_CSD_HS_TIMING_HIGH_SPEED	1
+#define EXT_CSD_HS_TIMING_HS200		2
+#define EXT_CSD_HS_TIMING_HS400		3
+
 #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */
 #define EXT_CSD_BUS_WIDTH_8	2	/* Card is in 8 bit mode */
