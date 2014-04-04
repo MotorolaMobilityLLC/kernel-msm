@@ -243,6 +243,7 @@ struct _mmc_csd {
 #define EXT_CSD_REV			192	/* RO */
 #define EXT_CSD_STRUCTURE		194	/* RO */
 #define EXT_CSD_CARD_TYPE		196	/* RO */
+#define EXT_CSD_DRIVER_STRENGTH		197	/* RO */
 #define EXT_CSD_OUT_OF_INTERRUPT_TIME	198	/* RO */
 #define EXT_CSD_PART_SWITCH_TIME        199     /* RO */
 #define EXT_CSD_PWR_CL_52_195		200	/* RO */
@@ -320,6 +321,10 @@ struct _mmc_csd {
 							/* DDR mode @1.2V I/O */
 #define EXT_CSD_CARD_TYPE_HS400		(EXT_CSD_CARD_TYPE_HS400_1_8V  \
 					| EXT_CSD_CARD_TYPE_HS400_1_2V)
+
+#define EXT_CSD_HS_TIMING_HIGH_SPEED	1
+#define EXT_CSD_HS_TIMING_HS200		2
+#define EXT_CSD_HS_TIMING_HS400		3
 
 #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */
