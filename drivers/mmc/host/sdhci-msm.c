@@ -307,6 +307,7 @@ struct sdhci_msm_pltfm_data {
 	bool pin_cfg_sts;
 	struct sdhci_msm_pin_data *pin_data;
 	struct sdhci_pinctrl_data *pctrl_data;
+	u8 drv_types;
 	u32 cpu_dma_latency_us;
 	int status_gpio; /* card detection GPIO that is configured as IRQ */
 	struct sdhci_msm_bus_voting_data *voting_data;
@@ -1124,7 +1125,8 @@ retry:
 
 	/* reset drive type to default (50 ohm) if changed */
 	if (drv_type_changed)
-		sdhci_msm_set_mmc_drv_type(host, opcode, 0);
+		sdhci_msm_set_mmc_drv_type(host, opcode,
+					   card->ext_csd.drv_type);
 
 	if (tuned_phase_cnt) {
 		rc = msm_find_most_appropriate_phase(host, tuned_phases,
@@ -1484,6 +1486,7 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 	struct sdhci_msm_pltfm_data *pdata = NULL;
 	struct device_node *np = dev->of_node;
 	u32 bus_width = 0;
+	u32 drv_types = MMC_DRIVER_TYPE_0;
 	u32 cpu_dma_latency;
 	int len, i, mpm_int;
 	int clk_table_len;
@@ -1508,6 +1511,20 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 	else {
 		dev_notice(dev, "invalid bus-width, default to 1-bit mode\n");
 		pdata->mmc_bus_width = 0;
+	}
+
+	if (!of_property_read_u32(np, "qcom,drv-types", &drv_types)) {
+		if (drv_types & MMC_DRIVER_TYPE_1)
+			pdata->caps |= MMC_CAP_DRIVER_TYPE_A;
+		if (drv_types & MMC_DRIVER_TYPE_2)
+			pdata->caps |= MMC_CAP_DRIVER_TYPE_C;
+		if (drv_types & MMC_DRIVER_TYPE_3)
+			pdata->caps |= MMC_CAP_DRIVER_TYPE_D;
+		if (drv_types & MMC_DRIVER_TYPE_4)
+			pdata->caps2 |= MMC_CAP2_DRIVER_TYPE_4;
+
+		/* More caps bits may be set by sdhci, so don't forget. */
+		pdata->drv_types = drv_types;
 	}
 
 	if (!of_property_read_u32(np, "qcom,cpu-dma-latency-us",
@@ -2781,6 +2798,32 @@ static int sdhci_msm_set_uhs_signaling(struct sdhci_host *host,
 	return 0;
 }
 
+static int sdhci_msm_select_drive_strength(struct sdhci_host *host,
+		int host_drv, int card_drv)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+	int drv_type = msm_host->pdata->drv_types & host_drv & card_drv;
+
+	pr_debug("%s: %s plat=0x%02X, host=0x%02X, card=0x%02X\n",
+		       mmc_hostname(host->mmc), __func__,
+		       msm_host->pdata->drv_types, host_drv, card_drv);
+	/* Choose the lowest drive strength that everyone can agree on. */
+	if (drv_type & SD_DRIVER_TYPE_D)
+		return MMC_SET_DRIVER_TYPE_D;	/* 100 ohms */
+	if (drv_type & SD_DRIVER_TYPE_C)
+		return MMC_SET_DRIVER_TYPE_C;	/* 66 ohms */
+	if (drv_type & SD_DRIVER_TYPE_B)
+		return MMC_SET_DRIVER_TYPE_B;	/* 50 ohms */
+	if (drv_type & MMC_DRIVER_TYPE_4)
+		return MMC_SET_DRIVER_TYPE_4;	/* 40 ohms */
+	if (drv_type & SD_DRIVER_TYPE_A)
+		return MMC_SET_DRIVER_TYPE_A;	/* 33 ohms */
+
+	/* No agreement, so return the default (50 ohms). */
+	return MMC_SET_DRIVER_TYPE_B;
+}
+
 /*
  * sdhci_msm_disable_data_xfer - disable undergoing AHB bus data transfer
  *
@@ -2901,6 +2944,7 @@ static struct sdhci_ops sdhci_msm_ops = {
 	.set_clock = sdhci_msm_set_clock,
 	.get_min_clock = sdhci_msm_get_min_clock,
 	.get_max_clock = sdhci_msm_get_max_clock,
+	.select_drive_strength = sdhci_msm_select_drive_strength,
 	.disable_data_xfer = sdhci_msm_disable_data_xfer,
 	.dump_vendor_regs = sdhci_msm_dump_vendor_regs,
 	.config_auto_tuning_cmd = sdhci_msm_config_auto_tuning_cmd,
