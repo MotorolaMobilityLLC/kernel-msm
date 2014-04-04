@@ -1693,3 +1693,11 @@
 		status = "ok";
 	};
 };
+
+&spmi_bus {
+	qcom,pm8226@0 {
+		qcom,pm8226_rtc {
+			qcom,qpnp-rtc-write = <1>;
+		};
+	};
+};
