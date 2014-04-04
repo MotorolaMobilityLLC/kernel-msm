@@ -404,7 +404,7 @@ config PCF50633_GPIO
 
 config MFD_MAX77836
 	bool "Maxim Semiconductor MAX77836 PMIC Support"
-	depends on I2C=y && GENERIC_HARDIRQS
+	depends on I2C=y
 	select MFD_CORE
 	select MUIC_MAX77836
 	help
