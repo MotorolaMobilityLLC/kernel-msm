@@ -668,9 +668,6 @@ int msm_flash_probe(struct platform_device *pdev,
 	}
 	fctrl->pdev = pdev;
 
-	/* Assign name for sub device */
-	snprintf(fctrl->msm_sd.sd.name, sizeof(fctrl->msm_sd.sd.name),
-			"%s", fctrl->flashdata->sensor_name);
 	/* Set device type as Platform*/
 	fctrl->flash_device_type = MSM_CAMERA_PLATFORM_DEVICE;
 
@@ -679,6 +676,9 @@ int msm_flash_probe(struct platform_device *pdev,
 		pr_err("%s failed line %d\n", __func__, __LINE__);
 		return rc;
 	}
+	/* Assign name for sub device */
+	snprintf(fctrl->msm_sd.sd.name, sizeof(fctrl->msm_sd.sd.name),
+			"%s", fctrl->flashdata->sensor_name);
 
 	if (NULL == fctrl->flash_i2c_client) {
 		pr_err("%s flash_i2c_client NULL\n",
