@@ -74,7 +74,7 @@ static void warn_irq_w(struct work_struct *w)
 	if (!warn_line) {
 		pr_info("HW User Reset!\n");
 		pr_info("2 sec to Reset.\n");
-		kernel_restart(NULL);
+		kernel_halt();
 		return;
 	}
 }
