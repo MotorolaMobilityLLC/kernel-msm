@@ -3707,6 +3707,8 @@ VOS_STATUS vos_init_wiphy_from_nv_bin(void)
         wiphy->flags |= WIPHY_FLAG_STRICT_REGULATORY;
     }
 
+    temp_reg_domain = cur_reg_domain = reg_domain;
+
     m = 0;
     for (i = 0; i < IEEE80211_NUM_BANDS; i++)
     {
