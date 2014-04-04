@@ -356,9 +356,9 @@ static int apanic_save_annotation(const char *annotation, unsigned long len)
 	strlcat(buffer, annotation, totalen);
 	if (ctx->apanic_annotate) {
 		proc_set_size(ctx->apanic_annotate, strlen(buffer));
-		ctx->annotation_size = strlen(buffer);
 	}
 	ctx->annotation = buffer;
+	ctx->annotation_size = strlen(buffer);
 
 	return (int)len;
 }
@@ -385,8 +385,8 @@ static int apanic_proc_read_annotation(struct file *file, char __user *buffer,
 		return -EINVAL;
 	if (offset + count > ctx->annotation_size)
 		count = ctx->annotation_size - offset;
-	if (count <= 0)
-		return -EINVAL;
+	if (!count)
+		return 0;
 
 	if (copy_to_user(buffer, ctx->annotation + offset, count))
 		return -EFAULT;
@@ -534,10 +534,8 @@ out:
 				&apanic_anno_fops);
 	if (!ctx->apanic_annotate)
 		pr_err("%s: failed creating procfile\n", __func__);
-	else {
-		proc_set_size(ctx->apanic_annotate, 0);
-		ctx->annotation_size = 0;
-	}
+	else
+		proc_set_size(ctx->apanic_annotate, ctx->annotation_size);
 
 	return;
 }
@@ -976,6 +974,7 @@ int __init apanic_mmc_init(struct raw_mmc_panic_ops *panic_ops)
 	debugfs_create_file("apanic_mmc", 0644, NULL, NULL,
 			    &panic_dbg_fops);
 
+	drv_ctx.annotation_size = 0;
 	drv_ctx.bounce = (void *) __get_free_page(GFP_KERNEL);
 
 	drv_ctx.mmc_panic_ops = panic_ops;
