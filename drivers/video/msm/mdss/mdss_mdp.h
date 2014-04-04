@@ -19,6 +19,7 @@
 #include <linux/msm_mdp.h>
 #include <linux/platform_device.h>
 #include <linux/notifier.h>
+#include <linux/irqreturn.h>
 
 #include "mdss.h"
 #include "mdss_mdp_hwio.h"
@@ -308,6 +309,7 @@ struct mdss_ad_info {
 	uint32_t bl_bright_shift;
 	uint32_t bl_lin[AD_BL_LIN_LEN];
 	uint32_t bl_lin_inv[AD_BL_LIN_LEN];
+	uint32_t bl_att_lut[AD_BL_ATT_LUT_LEN];
 };
 
 struct pp_sts_type {
@@ -573,6 +575,11 @@ int mdss_mdp_ctl_destroy(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff);
 int mdss_mdp_ctl_stop(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_ctl_intf_event(struct mdss_mdp_ctl *ctl, int event, void *arg);
+int mdss_mdp_perf_bw_check(struct mdss_mdp_ctl *ctl,
+		struct mdss_mdp_pipe **left_plist, int left_cnt,
+		struct mdss_mdp_pipe **right_plist, int right_cnt);
+int mdss_mdp_perf_bw_check_pipe(struct mdss_mdp_perf_params *perf,
+		struct mdss_mdp_pipe *pipe);
 int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 	struct mdss_mdp_perf_params *perf, struct mdss_mdp_img_rect *roi,
 	bool apply_fudge);
@@ -673,6 +680,7 @@ int mdss_mdp_mixer_addr_setup(struct mdss_data_type *mdata, u32 *mixer_offsets,
 int mdss_mdp_ctl_addr_setup(struct mdss_data_type *mdata, u32 *ctl_offsets,
 		u32 *wb_offsets, u32 len);
 
+int mdss_mdp_pipe_fetch_halt(struct mdss_mdp_pipe *pipe);
 int mdss_mdp_pipe_destroy(struct mdss_mdp_pipe *pipe);
 int mdss_mdp_pipe_queue_data(struct mdss_mdp_pipe *pipe,
 			     struct mdss_mdp_data *src_data);
@@ -726,6 +734,8 @@ int mdss_mdp_wb_get_format(struct msm_fb_data_type *mfd,
 int mdss_mdp_pipe_program_pixel_extn(struct mdss_mdp_pipe *pipe);
 int mdss_mdp_wb_set_secure(struct msm_fb_data_type *mfd, int enable);
 int mdss_mdp_wb_get_secure(struct msm_fb_data_type *mfd, uint8_t *enable);
+void mdss_mdp_ctl_restore(struct mdss_mdp_ctl *ctl);
+void mdss_mdp_footswitch_ctrl_ulps(int on, struct device *dev);
 
 #define mfd_to_mdp5_data(mfd) (mfd->mdp.private1)
 #define mfd_to_mdata(mfd) (((struct mdss_overlay_private *)\

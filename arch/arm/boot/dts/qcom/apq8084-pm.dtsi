@@ -179,11 +179,11 @@
 
 			qcom,system-mode@0 {
 				qcom,l2 = "l2_cache_gdhs";
-				qcom,latency-us = <20000>;
+				qcom,latency-us = <500>;
 				qcom,ss-power = <163>;
-				qcom,energy-overhead = <1577736>;
-				qcom,time-overhead = <5067>;
-				qcom,min-cpu-mode= "pc";
+				qcom,energy-overhead = <577736>;
+				qcom,time-overhead = <1000>;
+				qcom,min-cpu-mode= "standalone_pc";
 				qcom,sync-mode;
 			};
 
@@ -216,6 +216,9 @@
 			<50 172>, /* usb1_hs_async_wakeup_irq */
 			<53 104>, /* mdss_irq */
 			<62 222>, /* ee0_krait_hlos_spmi_periph_irq */
+			<0xff 18>,  /* APCx_qgicQTmrSecPhysIrptReq */
+			<0xff 19>,  /* APCx_qgicQTmrSecPhysIrptReq */
+			<0xff 25>,  /* APCx_qgicExtFaultIrptReq */
 			<0xff 33>, /* APCC_qgicL2PerfMonIrptReq */
 			<0xff 78>, /* mdss_mmu_cirpt[0] */
 			<0xff 79>, /* mdss_mmu_cirpt[1] */
@@ -245,6 +248,9 @@
 			<0xff 111>, /* csiphy_1_irq */
 			<0xff 112>, /* csiphy_2_irq */
 			<0xff 113>, /* o_ocmem_axi_timeout_nonseq_irq */
+			<0xff 140>,  /* uart_dm_intr */
+			<0xff 157>,  /* sdcc_irq[0] */
+			<0xff 159>,  /* sdcc_irq[0] */
 			<0xff 176>, /* o_vpu_vbif_mmu_cirpt[0] */
 			<0xff 177>, /* o_vpu_vbif_mmu_cirpt[1] */
 			<0xff 178>, /* o_vpu_vbif_mmu_cirpt[2] */
@@ -333,7 +339,6 @@
 		#size-cells = <1>;
 		ranges;
 		reg = <0xfe805664 0x40>;
-		qcom,pc-mode = "tz_l2_int";
 		qcom,use-sync-timer;
 
 		qcom,pm-snoc-client {

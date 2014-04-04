@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,7 +18,7 @@
 #include <linux/platform_device.h>
 #include <linux/export.h>
 #include <linux/iommu.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 
 static DEFINE_MUTEX(iommu_list_lock);
 static LIST_HEAD(iommu_list);
@@ -33,6 +33,14 @@ __asm__ __volatile__ (							\
 
 #define RCP15_MAIR0(reg)   MRC(reg, p15, 0, c10, c2, 0)
 #define RCP15_MAIR1(reg)   MRC(reg, p15, 0, c10, c2, 1)
+
+/* These values come from proc-v7-2level.S */
+#define PRRR_VALUE 0xff0a81a8
+#define NMRR_VALUE 0x40e040e0
+
+/* These values come from proc-v7-3level.S */
+#define MAIR0_VALUE 0xeeaa4400
+#define MAIR1_VALUE 0xff000004
 
 static struct iommu_access_ops *iommu_access_ops;
 
@@ -106,14 +114,7 @@ struct device *msm_iommu_get_ctx(const char *ctx_name)
 }
 EXPORT_SYMBOL(msm_iommu_get_ctx);
 
-/* These values come from proc-v7-2level.S */
-#define PRRR_VALUE 0xff0a81a8
-#define NMRR_VALUE 0x40e040e0
-
-/* These values come from proc-v7-3level.S */
-#define MAIR0_VALUE 0xeeaa4400
-#define MAIR1_VALUE 0xff000004
-
+#ifdef CONFIG_ARM
 #ifdef CONFIG_IOMMU_LPAE
 #ifdef CONFIG_ARM_LPAE
 /*
@@ -190,4 +191,16 @@ u32 msm_iommu_get_nmrr(void)
 	return nmrr;
 }
 #endif
+#endif
+#endif
+#ifdef CONFIG_ARM64
+u32 msm_iommu_get_prrr(void)
+{
+	return PRRR_VALUE;
+}
+
+u32 msm_iommu_get_nmrr(void)
+{
+	return NMRR_VALUE;
+}
 #endif

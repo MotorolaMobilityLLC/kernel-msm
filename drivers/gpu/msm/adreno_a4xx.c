@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -349,6 +349,43 @@ static void a4xx_enable_hwcg(struct kgsl_device *device)
 	kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL2, 0);
 }
 
+/**
+ * a4xx_protect_init() - Initializes register protection on a4xx
+ * @device: Pointer to the device structure
+ * Performs register writes to enable protected access to sensitive
+ * registers
+ */
+static void a4xx_protect_init(struct kgsl_device *device)
+{
+	int index = 0;
+
+	/* enable access protection to privileged registers */
+	kgsl_regwrite(device, A4XX_CP_PROTECT_CTRL, 0x00000007);
+	/* RBBM registers */
+	adreno_set_protected_registers(device, &index, 0x4, 2);
+	adreno_set_protected_registers(device, &index, 0x8, 3);
+	adreno_set_protected_registers(device, &index, 0x10, 4);
+	adreno_set_protected_registers(device, &index, 0x20, 5);
+	adreno_set_protected_registers(device, &index, 0x40, 6);
+	adreno_set_protected_registers(device, &index, 0x80, 4);
+
+	/* CP registers */
+	adreno_set_protected_registers(device, &index, 0x200, 7);
+	adreno_set_protected_registers(device, &index, 0x580, 4);
+
+	/* RB registers */
+	adreno_set_protected_registers(device, &index, 0xCC0, 0);
+
+	/* HLSQ registers */
+	adreno_set_protected_registers(device, &index, 0xE00, 0);
+
+	/* VPC registers */
+	adreno_set_protected_registers(device, &index, 0xE60, 1);
+
+	/* SMMU registers */
+	adreno_set_protected_registers(device, &index, 0x4000, 14);
+}
+
 static void a4xx_start(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = &adreno_dev->dev;
@@ -383,9 +420,9 @@ static void a4xx_start(struct adreno_device *adreno_dev)
 	kgsl_regwrite(device, A4XX_RBBM_INTERFACE_HANG_INT_CTL,
 			(1 << 30) | 0xFFFF);
 
-	/* Set the OCMEM base address for A4XX */
+	/* Set the GMEM/OCMEM base address for A4XX */
 	kgsl_regwrite(device, A4XX_RB_GMEM_BASE_ADDR,
-			(unsigned int)(adreno_dev->ocmem_base >> 14));
+			(unsigned int)(adreno_dev->gmem_base >> 14));
 
 	/* Turn on performance counters */
 	kgsl_regwrite(device, A4XX_RBBM_PERFCTR_CTL, 0x01);
@@ -412,6 +449,8 @@ static void a4xx_start(struct adreno_device *adreno_dev)
 		val |= 2 << A4XX_CGC_HLSQ_TP_EARLY_CYC_SHIFT;
 		kgsl_regwrite(device, A4XX_RBBM_CLOCK_DELAY_HLSQ, val);
 	}
+
+	a4xx_protect_init(device);
 }
 
 int a4xx_perfcounter_enable_vbif(struct kgsl_device *device,
@@ -563,6 +602,8 @@ static unsigned int a4xx_register_offsets[ADRENO_REG_REGISTER_MAX] = {
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_MERCIU_DATA2, A4XX_CP_MERCIU_DATA2),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_MEQ_ADDR, A4XX_CP_MEQ_ADDR),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_MEQ_DATA, A4XX_CP_MEQ_DATA),
+	ADRENO_REG_DEFINE(ADRENO_REG_CP_HW_FAULT, A4XX_CP_HW_FAULT),
+	ADRENO_REG_DEFINE(ADRENO_REG_CP_PROTECT_STATUS, A4XX_CP_PROTECT_STATUS),
 	ADRENO_REG_DEFINE(ADRENO_REG_SCRATCH_ADDR, A4XX_CP_SCRATCH_ADDR),
 	ADRENO_REG_DEFINE(ADRENO_REG_SCRATCH_UMSK, A4XX_CP_SCRATCH_UMASK),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_STATUS, A4XX_RBBM_STATUS),
@@ -581,6 +622,10 @@ static unsigned int a4xx_register_offsets[ADRENO_REG_REGISTER_MAX] = {
 					A4XX_RBBM_AHB_ERROR_STATUS),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_AHB_CMD, A4XX_RBBM_AHB_CMD),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_CLOCK_CTL, A4XX_RBBM_CLOCK_CTL),
+	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_AHB_ME_SPLIT_STATUS,
+			A4XX_RBBM_AHB_ME_SPLIT_STATUS),
+	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_AHB_PFP_SPLIT_STATUS,
+			A4XX_RBBM_AHB_PFP_SPLIT_STATUS),
 	ADRENO_REG_DEFINE(ADRENO_REG_VPC_DEBUG_RAM_SEL,
 					A4XX_VPC_DEBUG_RAM_SEL),
 	ADRENO_REG_DEFINE(ADRENO_REG_VPC_DEBUG_RAM_READ,
@@ -607,6 +652,7 @@ static unsigned int a4xx_register_offsets[ADRENO_REG_REGISTER_MAX] = {
 				A4XX_SP_FS_OBJ_START),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_RBBM_CTL, A4XX_RBBM_RBBM_CTL),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_SW_RESET_CMD, A4XX_RBBM_SW_RESET_CMD),
+	ADRENO_REG_DEFINE(ADRENO_REG_UCHE_INVALIDATE0, A4XX_UCHE_INVALIDATE0),
 };
 
 const struct adreno_reg_offsets a4xx_reg_offsets = {

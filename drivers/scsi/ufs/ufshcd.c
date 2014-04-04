@@ -109,7 +109,7 @@
 /* Query request retries */
 #define QUERY_REQ_RETRIES 10
 /* Query request timeout */
-#define QUERY_REQ_TIMEOUT 30 /* msec */
+#define QUERY_REQ_TIMEOUT 100 /* msec */
 
 /* Task management command timeout */
 #define TM_CMD_TIMEOUT	100 /* msecs */
@@ -219,6 +219,7 @@ static struct ufs_pm_lvl_states ufs_pm_lvl_states[] = {
 	{UFS_ACTIVE_PWR_MODE, UIC_LINK_HIBERN8_STATE},
 	{UFS_SLEEP_PWR_MODE, UIC_LINK_ACTIVE_STATE},
 	{UFS_SLEEP_PWR_MODE, UIC_LINK_HIBERN8_STATE},
+	{UFS_POWERDOWN_PWR_MODE, UIC_LINK_HIBERN8_STATE},
 	{UFS_POWERDOWN_PWR_MODE, UIC_LINK_OFF_STATE},
 };
 
@@ -237,6 +238,7 @@ ufs_get_pm_lvl_to_link_pwr_state(enum ufs_pm_level lvl)
 static void ufshcd_tmc_handler(struct ufs_hba *hba);
 static void ufshcd_async_scan(void *data, async_cookie_t cookie);
 static int ufshcd_reset_and_restore(struct ufs_hba *hba);
+static int ufshcd_eh_host_reset_handler(struct scsi_cmnd *cmd);
 static int ufshcd_clear_tm_cmd(struct ufs_hba *hba, int tag);
 static void ufshcd_hba_exit(struct ufs_hba *hba);
 static int ufshcd_probe_hba(struct ufs_hba *hba);
@@ -250,6 +252,7 @@ static int __ufshcd_setup_clocks(struct ufs_hba *hba, bool on,
 static int ufshcd_setup_clocks(struct ufs_hba *hba, bool on);
 static int ufshcd_uic_hibern8_exit(struct ufs_hba *hba);
 static int ufshcd_uic_hibern8_enter(struct ufs_hba *hba);
+static int ufshcd_host_reset_and_restore(struct ufs_hba *hba);
 
 static inline void ufshcd_enable_irq(struct ufs_hba *hba)
 {
@@ -1914,7 +1917,7 @@ int ufshcd_query_attr_retry(struct ufs_hba *hba, enum query_opcode opcode,
  * received on the response.
  */
 int ufshcd_query_descriptor(struct ufs_hba *hba,
-			enum query_opcode opcode, enum attr_idn idn, u8 index,
+			enum query_opcode opcode, enum desc_idn idn, u8 index,
 			u8 selector, u8 *desc_buf, int *buf_len)
 {
 	struct ufs_query_req *request = NULL;
@@ -2463,12 +2466,24 @@ out:
 static int ufshcd_uic_change_pwr_mode(struct ufs_hba *hba, u8 mode)
 {
 	struct uic_command uic_cmd = {0};
+	int ret;
+
+	if (hba->quirks & UFSHCD_BROKEN_GEAR_CHANGE_INTO_HS) {
+		ret = ufshcd_dme_set(hba,
+				UIC_ARG_MIB_SEL(PA_RXHSUNTERMCAP, 0), 1);
+		if (ret) {
+			dev_err(hba->dev, "%s: failed to enable PA_RXHSUNTERMCAP ret %d\n",
+						__func__, ret);
+			goto out;
+		}
+	}
 
 	uic_cmd.command = UIC_CMD_DME_SET;
 	uic_cmd.argument1 = UIC_ARG_MIB(PA_PWRMODE);
 	uic_cmd.argument3 = mode;
-
-	return ufshcd_uic_pwr_ctrl(hba, &uic_cmd);
+	ret = ufshcd_uic_pwr_ctrl(hba, &uic_cmd);
+out:
+	return ret;
 }
 
 static int ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
@@ -2483,10 +2498,16 @@ static int ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 static int ufshcd_uic_hibern8_exit(struct ufs_hba *hba)
 {
 	struct uic_command uic_cmd = {0};
+	int ret;
 
 	uic_cmd.command = UIC_CMD_DME_HIBER_EXIT;
+	ret = ufshcd_uic_pwr_ctrl(hba, &uic_cmd);
+	if (ret) {
+		ufshcd_set_link_off(hba);
+		ret = ufshcd_host_reset_and_restore(hba);
+	}
 
-	return ufshcd_uic_pwr_ctrl(hba, &uic_cmd);
+	return ret;
 }
 
  /**
@@ -4069,6 +4090,17 @@ static int ufshcd_abort(struct scsi_cmnd *cmd)
 	host = cmd->device->host;
 	hba = shost_priv(host);
 	tag = cmd->request->tag;
+	lrbp = &hba->lrb[tag];
+
+	/*
+	 * Task abort to the device W-LUN is illegal. When this command
+	 * will fail, due to spec violation, scsi err handling next step
+	 * will be to send LU reset which, again, is a spec violation.
+	 * To avoid these unnecessary/illegal step we skip to the last error
+	 * handling stage: reset and restore.
+	 */
+	if (lrbp->lun == UFS_UPIU_UFS_DEVICE_WLUN)
+		return ufshcd_eh_host_reset_handler(cmd);
 
 	ufshcd_hold(hba, false);
 	/* If command is already aborted/completed, return SUCCESS */
@@ -4089,7 +4121,6 @@ static int ufshcd_abort(struct scsi_cmnd *cmd)
 	ufshcd_print_pwr_info(hba);
 	ufshcd_print_trs(hba, 1 << tag, true);
 
-	lrbp = &hba->lrb[tag];
 	for (poll_cnt = 100; poll_cnt; poll_cnt--) {
 		err = ufshcd_issue_tm_cmd(hba, lrbp->lun, lrbp->task_tag,
 				UFS_QUERY_TASK, &resp);
@@ -4547,7 +4578,7 @@ static int ufshcd_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 
 	ioctl_data = kmalloc(sizeof(struct ufs_ioctl_query_data), GFP_KERNEL);
 	if (!ioctl_data) {
-		dev_err(hba->dev, "%s: Failed allocating %d bytes\n", __func__,
+		dev_err(hba->dev, "%s: Failed allocating %zu bytes\n", __func__,
 				sizeof(struct ufs_ioctl_query_data));
 		err = -ENOMEM;
 		goto out;
@@ -5261,7 +5292,7 @@ static void ufshcd_vreg_set_lpm(struct ufs_hba *hba)
 	 * Ignore the error returned by ufshcd_toggle_vreg() as device is anyway
 	 * in low power state which would save some power.
 	 */
-	if (ufshcd_is_ufs_dev_poweroff(hba) &&
+	if (ufshcd_is_ufs_dev_poweroff(hba) && ufshcd_is_link_off(hba) &&
 	    !hba->dev_info.is_lu_power_on_wp) {
 		ufshcd_setup_vreg(hba, false);
 	} else if (!ufshcd_is_ufs_dev_active(hba)) {
@@ -5277,7 +5308,7 @@ static int ufshcd_vreg_set_hpm(struct ufs_hba *hba)
 {
 	int ret = 0;
 
-	if (ufshcd_is_ufs_dev_poweroff(hba) &&
+	if (ufshcd_is_ufs_dev_poweroff(hba) && ufshcd_is_link_off(hba) &&
 	    !hba->dev_info.is_lu_power_on_wp) {
 		ret = ufshcd_setup_vreg(hba, true);
 	} else if (!ufshcd_is_ufs_dev_active(hba)) {
@@ -5358,13 +5389,18 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	}
 
 	if (ufshcd_is_runtime_pm(pm_op)) {
-		/*
-		 * The device is idle with no requests in the queue,
-		 * allow background operations if needed.
-		 */
-		ret = ufshcd_bkops_ctrl(hba, BKOPS_STATUS_NON_CRITICAL);
-		if (ret)
-			goto enable_gating;
+		if (ufshcd_can_autobkops_during_suspend(hba)) {
+			/*
+			 * The device is idle with no requests in the queue,
+			 * allow background operations if needed.
+			 */
+			ret = ufshcd_bkops_ctrl(hba, BKOPS_STATUS_NON_CRITICAL);
+			if (ret)
+				goto enable_gating;
+		} else {
+			/* make sure that auto bkops is disabled */
+			ufshcd_disable_auto_bkops(hba);
+		}
 	}
 
 	if ((req_dev_pwr_mode != hba->curr_dev_pwr_mode) &&
@@ -5573,6 +5609,8 @@ int ufshcd_system_suspend(struct ufs_hba *hba)
 out:
 	trace_ufshcd_system_suspend(dev_name(hba->dev), ret,
 			ktime_to_us(ktime_sub(ktime_get(), start)));
+	if (!ret)
+		hba->is_sys_suspended = true;
 	return ret;
 }
 EXPORT_SYMBOL(ufshcd_system_suspend);
@@ -5713,8 +5751,6 @@ void ufshcd_remove(struct ufs_hba *hba)
 	ufshcd_disable_intr(hba, hba->intr_mask);
 	ufshcd_hba_stop(hba, true);
 
-	scsi_host_put(hba->host);
-
 	ufshcd_exit_clk_gating(hba);
 	if (ufshcd_is_clkscaling_enabled(hba))
 		devfreq_remove_device(hba->devfreq);
@@ -5757,6 +5793,16 @@ out_error:
 	return err;
 }
 EXPORT_SYMBOL(ufshcd_alloc_host);
+
+/**
+ * ufshcd_dealloc_host - deallocate Host Bus Adapter (HBA)
+ * @hba: pointer to Host Bus Adapter (HBA)
+ */
+void ufshcd_dealloc_host(struct ufs_hba *hba)
+{
+	scsi_host_put(hba->host);
+}
+EXPORT_SYMBOL(ufshcd_dealloc_host);
 
 /**
  * ufshcd_set_dma_mask - Set dma mask based on the controller
@@ -6058,7 +6104,6 @@ exit_gating:
 	ufshcd_exit_clk_gating(hba);
 out_disable:
 	hba->is_irq_enabled = false;
-	scsi_host_put(host);
 	UFSDBG_REMOVE_DEBUGFS(hba)
 	ufshcd_hba_exit(hba);
 out_error:

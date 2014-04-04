@@ -26,13 +26,13 @@
 #include <soc/qcom/clock-pll.h>
 #include <soc/qcom/clock-rpm.h>
 #include <soc/qcom/clock-voter.h>
+#include <soc/qcom/clock-krait.h>
 
 #include <soc/qcom/socinfo.h>
-#include <mach/rpm-smd.h>
+#include <soc/qcom/rpm-smd.h>
 
 #include "clock.h"
 #include "clock-mdss-8974.h"
-#include "clock-krait.h"
 
 enum {
 	GCC_BASE,
@@ -4810,17 +4810,6 @@ static struct branch_clk mmss_misc_ahb_clk = {
 	},
 };
 
-static struct branch_clk mmss_mmssnoc_bto_ahb_clk = {
-	.cbcr_reg = MMSS_MMSSNOC_BTO_AHB_CBCR,
-	.has_sibling = 1,
-	.base = &virt_bases[MMSS_BASE],
-	.c = {
-		.dbg_name = "mmss_mmssnoc_bto_ahb_clk",
-		.ops = &clk_ops_branch,
-		CLK_INIT(mmss_mmssnoc_bto_ahb_clk.c),
-	},
-};
-
 static struct branch_clk mmss_mmssnoc_axi_clk = {
 	.cbcr_reg = MMSS_MMSSNOC_AXI_CBCR,
 	.has_sibling = 1,
@@ -5304,6 +5293,8 @@ static DEFINE_CLK_MEASURE(krait1_m_clk);
 static DEFINE_CLK_MEASURE(krait2_m_clk);
 static DEFINE_CLK_MEASURE(krait3_m_clk);
 
+static DEFINE_CLK_MEASURE(gcc_bimc_clk);
+
 #ifdef CONFIG_DEBUG_FS
 
 struct measure_mux_entry {
@@ -5438,10 +5429,10 @@ static struct measure_mux_entry measure_mux[] = {
 	{&cnoc_clk.c,				GCC_BASE, 0x0008},
 	{&pnoc_clk.c,				GCC_BASE, 0x0010},
 	{&snoc_clk.c,				GCC_BASE, 0x0000},
+	{&gcc_bimc_clk,				GCC_BASE, 0x0154},
 	{&bimc_clk.c,				GCC_BASE, 0x0155},
 
 	{&mmssnoc_ahb_clk.c,			MMSS_BASE, 0x0001},
-	{&mmss_mmssnoc_bto_ahb_clk.c,		MMSS_BASE, 0x0002},
 	{&mmss_misc_ahb_clk.c,			MMSS_BASE, 0x0003},
 	{&mmss_mmssnoc_axi_clk.c,		MMSS_BASE, 0x0004},
 	{&mmss_s0_axi_clk.c,			MMSS_BASE, 0x0005},
@@ -5834,6 +5825,7 @@ static struct clk_lookup apq_clocks_8084[] = {
 	CLK_LOOKUP("core_clk", gfx3d_clk_src.c, ""),
 	CLK_LOOKUP("core_clk", gfx3d_a_clk_src.c, ""),
 	CLK_LOOKUP("core_clk", qdss_clk.c, ""),
+	CLK_LOOKUP("",	gcc_bimc_clk, ""),
 
 	/* PLL */
 	CLK_LOOKUP("gpll0", gpll0_clk_src.c, ""),
@@ -5990,6 +5982,12 @@ static struct clk_lookup apq_clocks_8084[] = {
 	CLK_LOOKUP("ce_drv_iface_clk",    gcc_ce2_ahb_clk.c,     "qseecom"),
 	CLK_LOOKUP("ce_drv_bus_clk",      gcc_ce2_axi_clk.c,     "qseecom"),
 	CLK_LOOKUP("ce_drv_core_clk_src", ce2_clk_src.c,         "qseecom"),
+
+	/* GUD Clocks */
+	CLK_LOOKUP("core_clk",     gcc_ce1_clk.c,     "mcd"),
+	CLK_LOOKUP("iface_clk",    gcc_ce1_ahb_clk.c, "mcd"),
+	CLK_LOOKUP("bus_clk",      gcc_ce1_axi_clk.c, "mcd"),
+	CLK_LOOKUP("core_clk_src", ce1_clk_src.c,     "mcd"),
 
 	/* CRYPTO driver clocks */
 	CLK_LOOKUP("core_clk",     gcc_ce2_clk.c,     "fd440000.qcom,qcedev"),
@@ -6484,6 +6482,10 @@ static struct clk_lookup apq_clocks_8084[] = {
 	CLK_LOOKUP("iface_clk", mdss_ahb_clk.c, "fd922e00.qcom,mdss_dsi"),
 	CLK_LOOKUP("bus_clk", mdss_axi_clk.c, "fd922800.qcom,mdss_dsi"),
 	CLK_LOOKUP("bus_clk", mdss_axi_clk.c, "fd922e00.qcom,mdss_dsi"),
+	CLK_LOOKUP("core_mmss_clk", mmss_misc_ahb_clk.c,
+		"fd922800.qcom,mdss_dsi"),
+	CLK_LOOKUP("core_mmss_clk", mmss_misc_ahb_clk.c,
+		"fd922e00.qcom,mdss_dsi"),
 	CLK_LOOKUP("core_clk", mdss_mdp_clk.c, "fd900000.qcom,mdss_mdp"),
 	CLK_LOOKUP("lut_clk", mdss_mdp_lut_clk.c, "fd900000.qcom,mdss_mdp"),
 	CLK_LOOKUP("vsync_clk", mdss_vsync_clk.c, "fd900000.qcom,mdss_mdp"),

@@ -27,14 +27,14 @@
 #include <linux/slab.h>
 #include <linux/ipc_logging.h>
 #include <linux/of.h>
-#include <soc/qcom/subsystem_restart.h>
 
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
 #include <linux/tty_flip.h>
 
-#include <mach/msm_smd.h>
-#include <mach/msm_smsm.h>
+#include <soc/qcom/smd.h>
+#include <soc/qcom/smsm.h>
+#include <soc/qcom/subsystem_restart.h>
 
 #define MODULE_NAME "msm_smdtty"
 #define MAX_SMD_TTYS 37
@@ -445,7 +445,7 @@ static int smd_tty_add_driver(struct smd_tty_info *info)
 
 	mutex_lock(&smd_tty_pfdriver_lock_lha1);
 	list_for_each_entry(item, &smd_tty_pfdriver_list, list) {
-		if (!strcmp(item->driver.driver.name, info->ch_name)) {
+		if (!strcmp(item->driver.driver.name, info->dev_name)) {
 			SMD_TTY_INFO("%s:%s Driver Already reg. cnt:%d\n",
 				__func__, info->ch_name, item->ref_cnt);
 			++item->ref_cnt;
@@ -492,6 +492,7 @@ exit:
 static void smd_tty_remove_driver(struct smd_tty_info *info)
 {
 	struct smd_tty_pfdriver *smd_tty_pfdriverp;
+	bool found_item = false;
 
 	if (!info) {
 		pr_err("%s on a NULL device\n", __func__);
@@ -503,7 +504,8 @@ static void smd_tty_remove_driver(struct smd_tty_info *info)
 	mutex_lock(&smd_tty_pfdriver_lock_lha1);
 	list_for_each_entry(smd_tty_pfdriverp, &smd_tty_pfdriver_list, list) {
 		if (!strcmp(smd_tty_pfdriverp->driver.driver.name,
-					info->ch_name)) {
+					info->dev_name)) {
+			found_item = true;
 			SMD_TTY_INFO("%s:%s Platform driver cnt:%d\n",
 				__func__, info->ch_name,
 				smd_tty_pfdriverp->ref_cnt);
@@ -514,8 +516,11 @@ static void smd_tty_remove_driver(struct smd_tty_info *info)
 			break;
 		}
 	}
+	if (!found_item)
+		SMD_TTY_ERR("%s:%s No item found in list.\n",
+			__func__, info->ch_name);
 
-	if (smd_tty_pfdriverp->ref_cnt == 0) {
+	if (found_item && smd_tty_pfdriverp->ref_cnt == 0) {
 		platform_driver_unregister(&smd_tty_pfdriverp->driver);
 		smd_tty_pfdriverp->driver.probe = NULL;
 		list_del(&smd_tty_pfdriverp->list);
@@ -549,7 +554,7 @@ static int smd_tty_port_activate(struct tty_port *tport,
 	}
 
 	peripheral = smd_edge_to_pil_str(smd_tty[n].edge);
-	if (peripheral) {
+	if (!IS_ERR_OR_NULL(peripheral)) {
 		info->pil = subsystem_get(peripheral);
 		if (IS_ERR(info->pil)) {
 			SMD_TTY_INFO(
@@ -703,7 +708,7 @@ static int smd_tty_open(struct tty_struct *tty, struct file *f)
 
 static void smd_tty_close(struct tty_struct *tty, struct file *f)
 {
-	struct smd_tty_info *info = tty->driver_data;
+	struct smd_tty_info *info = smd_tty + tty->index;
 
 	tty_port_close(&info->port, tty, f);
 }

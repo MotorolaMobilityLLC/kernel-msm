@@ -55,8 +55,9 @@
 #define ENABLE_SEPARATE_CMDRSP	1
 #define DISABLE_SEPARATE_CMDRSP	0
 
-#define ENABLE_STM	1
 #define DISABLE_STM	0
+#define ENABLE_STM	1
+#define STATUS_STM	2
 
 #define UPDATE_PERIPHERAL_STM_STATE	1
 #define CLEAR_PERIPHERAL_STM_STATE	2
@@ -148,7 +149,7 @@ struct diag_ctrl_dci_status {
 	uint8_t count;
 } __packed;
 
-void diagfwd_cntl_init(void);
+int diagfwd_cntl_init(void);
 void diagfwd_cntl_exit(void);
 void diag_read_smd_cntl_work_fn(struct work_struct *);
 void diag_notify_ctrl_update_fn(struct work_struct *work);

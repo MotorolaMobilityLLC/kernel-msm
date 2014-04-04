@@ -90,6 +90,8 @@ void mdss_dsi_ctrl_init(struct mdss_dsi_ctrl_pdata *ctrl)
 		ctrl->ndx = DSI_CTRL_1;
 	}
 
+	ctrl->panel_mode = ctrl->panel_data.panel_info.mipi.mode;
+
 	ctrl_list[ctrl->ndx] = ctrl;	/* keep it */
 
 	if (ctrl->shared_pdata.broadcast_enable)
@@ -250,12 +252,12 @@ void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl)
 	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x0);
 }
 
-void mdss_dsi_host_init(struct mipi_panel_info *pinfo,
-				struct mdss_panel_data *pdata)
+void mdss_dsi_host_init(struct mdss_panel_data *pdata)
 {
 	u32 dsi_ctrl, intr_ctrl;
 	u32 data;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mipi_panel_info *pinfo = NULL;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -265,9 +267,9 @@ void mdss_dsi_host_init(struct mipi_panel_info *pinfo,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	pinfo->rgb_swap = DSI_RGB_SWAP_RGB;
+	pinfo = &pdata->panel_info.mipi;
 
-	ctrl_pdata->panel_mode = pinfo->mode;
+	pinfo->rgb_swap = DSI_RGB_SWAP_RGB;
 
 	if (pinfo->mode == DSI_VIDEO_MODE) {
 		data = 0;
@@ -975,7 +977,8 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 		data_byte = 12;	/* NOT first read */
 		pkt_size += data_byte;
 		pr_debug("%s: rp data=%x len=%d dlen=%d diff=%d\n",
-			__func__, (int)rp->data, rp->len, dlen, diff);
+			 __func__, (int) (unsigned long) rp->data,
+			 rp->len, dlen, diff);
 	}
 
 	rp->data = rp->start;	/* move back to start position */
@@ -1480,7 +1483,9 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 			u32 isr0;
 			isr0 = MIPI_INP(left_ctrl_pdata->ctrl_base
 						+ 0x0110);/* DSI_INTR_CTRL */
-			MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0110, isr0);
+			if (isr0 & DSI_INTR_CMD_DMA_DONE)
+				MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0110,
+					DSI_INTR_CMD_DMA_DONE);
 		}
 
 	pr_debug("%s: ndx=%d isr=%x\n", __func__, ctrl->ndx, isr);

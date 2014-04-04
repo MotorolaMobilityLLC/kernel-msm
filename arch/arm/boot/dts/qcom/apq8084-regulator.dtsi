@@ -173,10 +173,10 @@
 	rpm-regulator-ldoa3 {
 		status = "okay";
 		pma8084_l3: regulator-l3 {
-			regulator-min-microvolt = <1225000>;
-			regulator-max-microvolt = <1225000>;
-			qcom,init-voltage = <1225000>;
-			qcom,init-current = <200000>;
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+			qcom,init-voltage = <1000000>;
+			qcom,init-current = <50>;
 			regulator-boot-on;
 			status = "okay";
 		};
@@ -185,10 +185,10 @@
 	rpm-regulator-ldoa4 {
 		status = "okay";
 		pma8084_l4: regulator-l4 {
-			regulator-min-microvolt = <1000000>;
-			regulator-max-microvolt = <1000000>;
-			qcom,init-voltage = <1000000>;
-			qcom,init-current = <50000>;
+			regulator-min-microvolt = <1225000>;
+			regulator-max-microvolt = <1225000>;
+			qcom,init-voltage = <1225000>;
+			qcom,init-current = <450>;
 			regulator-boot-on;
 			status = "okay";
 		};
@@ -319,7 +319,7 @@
 			regulator-min-microvolt = <2950000>;
 			regulator-max-microvolt = <2950000>;
 			qcom,init-voltage = <2950000>;
-			qcom,init-current = <460000>;
+			qcom,init-current = <460>;
 			regulator-boot-on;
 			status = "okay";
 		};
@@ -331,7 +331,7 @@
 			regulator-min-microvolt = <2950000>;
 			regulator-max-microvolt = <2950000>;
 			qcom,init-voltage = <2950000>;
-			qcom,init-current = <500000>;
+			qcom,init-current = <500>;
 			regulator-boot-on;
 			status = "okay";
 		};
@@ -451,6 +451,9 @@
 		qcom,cores-per-phase = <1>;
 		qcom,valid-phases = <1 2 4>;
 		qcom,phase-coeff-threshold = <1000000 2000000 4000000>;
+		qcom,phase-scaling-factor-bits-pos = <14>;
+		qcom,valid-scaling-factor-versions = <1 0 0 0>;
+		qcom,use-phase-scaling-factor;
 
 		krait0_vreg: regulator@f9088000 {
 			compatible = "qcom,krait-regulator";
@@ -466,6 +469,10 @@
 			qcom,ldo-threshold-voltage = <850000>;
 			qcom,ldo-delta-voltage = <12500>;
 			qcom,cpu-num = <0>;
+			krait0_adj_reg: regulator@0 {
+				regulator-name = "krait-adjustment0";
+				qcom,coeff1-reduction = <75>;
+			};
 		};
 
 		krait1_vreg: regulator@f9098000 {
@@ -482,6 +489,10 @@
 			qcom,ldo-threshold-voltage = <850000>;
 			qcom,ldo-delta-voltage = <12500>;
 			qcom,cpu-num = <1>;
+			krait1_adj_reg: regulator@0 {
+				regulator-name = "krait-adjustment1";
+				qcom,coeff1-reduction = <75>;
+			};
 		};
 
 		krait2_vreg: regulator@f90a8000 {
@@ -498,6 +509,10 @@
 			qcom,ldo-threshold-voltage = <850000>;
 			qcom,ldo-delta-voltage = <12500>;
 			qcom,cpu-num = <2>;
+			krait2_adj_reg: regulator@0 {
+				regulator-name = "krait-adjustment2";
+				qcom,coeff1-reduction = <75>;
+			};
 		};
 
 		krait3_vreg: regulator@f90b8000 {
@@ -514,6 +529,10 @@
 			qcom,ldo-threshold-voltage = <850000>;
 			qcom,ldo-delta-voltage = <12500>;
 			qcom,cpu-num = <3>;
+			krait3_adj_reg: regulator@0 {
+				regulator-name = "krait-adjustment3";
+				qcom,coeff1-reduction = <75>;
+			};
 		};
 	};
 

@@ -11,7 +11,7 @@
  */
 
 #include <linux/module.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/ratelimit.h>
 
 #include "msm_isp44.h"
@@ -951,7 +951,7 @@ static void msm_vfe44_cfg_axi_ub_equal_slicing(
 static void msm_vfe44_cfg_axi_ub(struct vfe_device *vfe_dev)
 {
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
-	axi_data->wm_ub_cfg_policy = MSM_WM_UB_EQUAL_SLICING;
+	axi_data->wm_ub_cfg_policy = MSM_WM_UB_CFG_DEFAULT;
 	if (axi_data->wm_ub_cfg_policy == MSM_WM_UB_EQUAL_SLICING)
 		msm_vfe44_cfg_axi_ub_equal_slicing(vfe_dev);
 	else
@@ -1264,9 +1264,8 @@ static int msm_vfe44_get_platform_data(struct vfe_device *vfe_dev)
 		goto vfe_no_resource;
 	}
 
-	vfe_dev->iommu_ctx[0] = msm_iommu_get_ctx("vfe0");
-	vfe_dev->iommu_ctx[1] = msm_iommu_get_ctx("vfe1");
-	if (!vfe_dev->iommu_ctx[0] || !vfe_dev->iommu_ctx[1]) {
+	vfe_dev->iommu_ctx[0] = msm_iommu_get_ctx("vfe");
+	if (!vfe_dev->iommu_ctx[0]) {
 		pr_err("%s: cannot get iommu_ctx\n", __func__);
 		rc = -ENODEV;
 		goto vfe_no_resource;
@@ -1319,7 +1318,7 @@ static struct v4l2_subdev_internal_ops msm_vfe44_internal_ops = {
 };
 
 struct msm_vfe_hardware_info vfe44_hw_info = {
-	.num_iommu_ctx = 2,
+	.num_iommu_ctx = 1,
 	.vfe_clk_idx = VFE44_CLK_IDX,
 	.vfe_ops = {
 		.irq_ops = {

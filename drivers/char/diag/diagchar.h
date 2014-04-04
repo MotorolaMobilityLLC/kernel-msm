@@ -22,7 +22,7 @@
 #include <linux/workqueue.h>
 #include <linux/sched.h>
 #include <linux/wakelock.h>
-#include <mach/msm_smd.h>
+#include <soc/qcom/smd.h>
 #include <asm/atomic.h>
 
 /* Size of the USB buffers used for read and write*/
@@ -78,9 +78,8 @@
 #define LPASS_DATA		1
 #define WCNSS_DATA		2
 #define APPS_DATA		3
-#define SDIO_DATA		4
-#define HSIC_DATA		5
-#define HSIC_2_DATA		6
+#define HSIC_DATA		4
+#define HSIC_2_DATA		5
 #define SMUX_DATA		10
 #define APPS_PROC		1
 /*
@@ -125,10 +124,12 @@
 #define DIAG_SS_PARAMS		0x32
 
 #define DIAG_DIAG_MAX_PKT_SZ	0x55
-#define DIAG_DIAG_STM		0x20E
+#define DIAG_DIAG_STM		0x214
 #define DIAG_DIAG_POLL		0x03
 #define DIAG_DEL_RSP_WRAP	0x04
 #define DIAG_DEL_RSP_WRAP_CNT	0x05
+
+#define BAD_PARAM_RESPONSE_MESSAGE 20
 
 #define MODE_CMD	41
 #define RESET_ID	2
@@ -403,6 +404,11 @@ struct diagchar_dev {
 	struct diag_ctrl_msg_mask *msg_mask;
 	struct diag_ctrl_feature_mask *feature_mask;
 	struct mutex log_mask_mutex;
+	/* Members for Sending response */
+	unsigned char *encoded_rsp_buf;
+	uint8_t rsp_buf_busy;
+	struct diag_request *rsp_write_ptr;
+	spinlock_t rsp_buf_busy_lock;
 	/* State for diag forwarding */
 	struct diag_smd_info smd_data[NUM_SMD_DATA_CHANNELS];
 	struct diag_smd_info smd_cntl[NUM_SMD_CONTROL_CHANNELS];
@@ -465,20 +471,7 @@ struct diagchar_dev {
 	int logging_process_id;
 	struct task_struct *socket_process;
 	struct task_struct *callback_process;
-#ifdef CONFIG_DIAG_SDIO_PIPE
-	unsigned char *buf_in_sdio;
-	unsigned char *usb_buf_mdm_out;
-	struct sdio_channel *sdio_ch;
-	int read_len_mdm;
-	int in_busy_sdio;
-	struct usb_diag_ch *mdm_ch;
-	struct work_struct diag_read_mdm_work;
-	struct workqueue_struct *diag_sdio_wq;
-	struct work_struct diag_read_sdio_work;
-	struct work_struct diag_close_sdio_work;
-	struct diag_request *usb_read_mdm_ptr;
-	struct diag_request *write_ptr_mdm;
-#endif
+
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 	/* common for all bridges */
 	struct work_struct diag_connect_work;

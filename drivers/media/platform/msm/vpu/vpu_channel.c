@@ -27,7 +27,7 @@
 #include <linux/gfp.h>
 #include <linux/regulator/consumer.h>
 #include <soc/qcom/scm.h>
-#include <mach/rpm-smd.h>
+#include <soc/qcom/rpm-smd.h>
 
 #include <uapi/media/msm_vpu.h>
 #include "vpu_hfi.h"
@@ -38,6 +38,13 @@
 #include "vpu_channel.h"
 #include "vpu_translate.h"
 #include "vpu_debug.h"
+
+#define VPU_SHUTDOWN_DEFAULT_DELAY_MS	1000
+#define VPU_IPC_DEFAULT_TIMEOUT_MS	1000
+#define VPU_LONG_TIMEOUT_MS		10000000
+
+u32 vpu_shutdown_delay = VPU_SHUTDOWN_DEFAULT_DELAY_MS;
+u32 vpu_ipc_timeout = VPU_IPC_DEFAULT_TIMEOUT_MS;
 
 #define MAX_CHANNELS		VPU_CHANNEL_ID_MAX
 #define SYSTEM_SESSION_ID	((u32)-1)
@@ -134,6 +141,8 @@ struct vpu_channel_hal {
 	void *clk_handle;
 	struct regulator *vdd;
 	bool vdd_enabled; /* if VDD is enabled */
+	/* internally cached value for current fw logging level */
+	int fw_log_level;
 };
 
 static struct vpu_channel_hal g_vpu_ch_hal;
@@ -810,13 +819,19 @@ static int ipc_cmd_sync_wait(struct vpu_sync_transact *ptrans, u32 timeout_ms,
 		} else {
 			/* local error */
 			rc = ptrans->status;
+			pr_err("Local IPC err %d\n", rc);
 		}
 	} else if (rc == 0) {
 		/* timeout */
 		char dbg_buf[320];
 		size_t dbg_buf_size = 320;
+
 		pr_err("Timeout for transact 0x%08x\n",
-				ptrans->seq << TRANS_SEQ_SHIFT | ptrans->id);
+			ptrans->seq << TRANS_SEQ_SHIFT | ptrans->id);
+
+		/* service log queue on timeout */
+		vpu_wakeup_fw_logging_wq();
+
 		strlcpy(dbg_buf, "", dbg_buf_size);
 		/* cid represents Tx & Rx queues index) */
 		vpu_hfi_dump_queue_headers(cid, dbg_buf, dbg_buf_size);
@@ -1148,7 +1163,7 @@ int vpu_hw_session_pause(u32 sid)
 	packet.hdr.sid = sid;
 
 	pr_debug("IPC Tx%d: CMD_SESSION_PAUSE\n", cid);
-	rc = ipc_cmd_simple(cid, &packet.hdr, false, vpu_ipc_timeout/2);
+	rc = ipc_cmd_simple(cid, &packet.hdr, false, vpu_ipc_timeout);
 
 	return rc;
 }
@@ -1170,7 +1185,7 @@ int vpu_hw_session_resume(u32 sid)
 	packet.hdr.sid = sid;
 
 	pr_debug("IPC Tx%d: CMD_SESSION_START\n", cid);
-	rc = ipc_cmd_simple(cid, &packet.hdr, false, vpu_ipc_timeout/2);
+	rc = ipc_cmd_simple(cid, &packet.hdr, false, vpu_ipc_timeout);
 
 	return rc;
 }
@@ -1536,7 +1551,7 @@ int vpu_hw_session_empty_buffer(u32 sid, struct vpu_buffer *vb)
 	return rc;
 }
 
-int vpu_hw_session_commit(u32 sid, enum commit_type ct, u32 load)
+int vpu_hw_session_commit(u32 sid, enum commit_type ct, u32 load, u32 pwr_mode)
 {
 	int rc;
 	u32 ipc_ct;
@@ -1559,10 +1574,10 @@ int vpu_hw_session_commit(u32 sid, enum commit_type ct, u32 load)
 	}
 
 	mutex_lock(&hal->pw_lock);
-	rc = vpu_clock_scale(hal->clk_handle, load);
+	rc = vpu_clock_scale(hal->clk_handle, pwr_mode);
 	mutex_unlock(&hal->pw_lock);
 	if (rc)
-		pr_err("clock scale failed\n");
+		pr_err("clock scale failed: %d\n", rc);
 
 	/* send the configuration commit through IPC */
 	rc = ipc_cmd_config_session_commit(sid, ipc_ct);
@@ -1795,19 +1810,6 @@ int vpu_hw_session_cmd_ext(u32 sid, u32 cmd,
 	return rc;
 }
 
-int vpu_hw_dump_csr_regs(char *buf, size_t buf_size)
-{
-	int rc = 0;
-	struct vpu_channel_hal *ch_hal = &g_vpu_ch_hal;
-
-	mutex_lock(&ch_hal->pw_lock);
-	if (VPU_IS_UP(ch_hal->mode))
-		rc = vpu_hfi_dump_csr_regs(buf, buf_size);
-	mutex_unlock(&ch_hal->pw_lock);
-
-	return rc;
-}
-
 static inline void raw_init_channel(struct vpu_channel *ch, u32 cid)
 {
 	mutex_init(&ch->chlock);
@@ -1833,6 +1835,9 @@ int vpu_hw_sys_init(struct vpu_platform_resources *res)
 
 	/* powered off initially */
 	ch_hal->mode = VPU_OFF;
+
+	/* fw logging off initially */
+	ch_hal->fw_log_level = VPU_LOGGING_ERROR;
 
 	/* init each channel (system, sessions, logging) */
 	for (i = 0; i < MAX_CHANNELS; i++)
@@ -2051,6 +2056,12 @@ static void vpu_boot_work_handler(struct work_struct *work)
 		goto powerup_fail;
 	}
 
+	rc = attach_vpu_iommus(ch_hal->res_orig);
+	if (rc) {
+		pr_err("could not attach VPU IOMMUs\n");
+		goto err_iommu_attach;
+	}
+
 	/* boot up VPU and set callback */
 	rc = vpu_hfi_start(chan_handle_msg, chan_handle_event);
 	if (unlikely(rc)) {
@@ -2059,12 +2070,19 @@ static void vpu_boot_work_handler(struct work_struct *work)
 	}
 
 	ch_hal->mode = VPU_ON;
+
+	/* configure firmware logging level on boot up
+	 * in order to avoid missing any logs while starting up.
+	 */
+	vpu_hw_sys_set_log_level(ch_hal->fw_log_level);
+
 	mutex_unlock(&ch_hal->pw_lock);
 	return;
 
 err_hfi_start:
+	detach_vpu_iommus(ch_hal->res_orig);
+err_iommu_attach:
 	vpu_hw_power_off(ch_hal);
-
 powerup_fail:
 	mutex_unlock(&ch_hal->pw_lock);
 
@@ -2142,6 +2160,7 @@ static void vpu_shutdown_work_handler(struct work_struct *work)
 	mutex_lock(&ch_hal->pw_lock);
 
 	vpu_hfi_stop();
+	detach_vpu_iommus(ch_hal->res_orig);
 	vpu_hw_power_off(ch_hal);
 
 	/* disable HFI system and logging channels */
@@ -2398,6 +2417,60 @@ int vpu_hw_sys_g_property_ext(void __user *data, u32 data_size,
 	return rc;
 }
 
+#ifdef CONFIG_DEBUG_FS
+
+void vpu_hw_debug_on(void)
+{
+	/* make the timeout very long */
+	vpu_ipc_timeout = VPU_LONG_TIMEOUT_MS;
+	vpu_hfi_set_pil_timeout(VPU_LONG_TIMEOUT_MS);
+	vpu_hfi_set_watchdog(0);
+}
+
+void vpu_hw_debug_off(void)
+{
+	/* enable timeouts */
+	vpu_ipc_timeout = VPU_IPC_DEFAULT_TIMEOUT_MS;
+	vpu_hfi_set_pil_timeout(VPU_PIL_DEFAULT_TIMEOUT_MS);
+	vpu_hfi_set_watchdog(1);
+}
+
+size_t vpu_hw_print_queues(char *buf, size_t buf_size)
+{
+	return vpu_hfi_print_queues(buf, buf_size);
+}
+
+int vpu_hw_dump_csr_regs(char *buf, size_t buf_size)
+{
+	int rc = 0;
+	struct vpu_channel_hal *ch_hal = &g_vpu_ch_hal;
+
+	mutex_lock(&ch_hal->pw_lock);
+
+	if (VPU_IS_UP(ch_hal->mode))
+		rc = vpu_hfi_dump_csr_regs(buf, buf_size);
+
+	mutex_unlock(&ch_hal->pw_lock);
+
+	return rc;
+}
+
+int vpu_hw_dump_csr_regs_no_lock(char *buf, size_t buf_size)
+{
+	int rc = 0;
+	struct vpu_channel_hal *ch_hal = &g_vpu_ch_hal;
+
+	if (VPU_IS_UP(ch_hal->mode))
+		rc = vpu_hfi_dump_csr_regs(buf, buf_size);
+
+	return rc;
+}
+
+int vpu_hw_dump_smem_line(char *buf, size_t size, u32 offset)
+{
+	return vpu_hfi_dump_smem_line(buf, size, offset);
+}
+
 int vpu_hw_sys_print_log(char __user *user_buf, char *fmt_buf,
 		int buf_size)
 {
@@ -2459,6 +2532,36 @@ int vpu_hw_sys_print_log(char __user *user_buf, char *fmt_buf,
 	return total_size;
 }
 
+int vpu_hw_sys_set_log_level(int log_level)
+{
+	int ret = 0;
+	struct vpu_prop_sys_log_ctrl log_ctrl;
+	struct vpu_channel_hal *ch_hal = &g_vpu_ch_hal;
+
+	if (VPU_IS_UP(ch_hal->mode)) {
+		log_ctrl.component = LOG_COMPONENT_FW;
+		log_ctrl.log_level = log_level;
+		ret = vpu_hw_sys_s_property(VPU_PROP_SYS_LOG_CTRL, &log_ctrl,
+				sizeof(log_ctrl));
+		if (ret) {
+			pr_err("Error setting fw log level (err=%d)\n", ret);
+			return ret;
+		}
+	}
+	/* If firmware not up yet,
+	 * cached value for log level will be sent on boot up.
+	 */
+	ch_hal->fw_log_level = log_level;
+	return ret;
+}
+
+int vpu_hw_sys_get_log_level(void)
+{
+	struct vpu_channel_hal *ch_hal = &g_vpu_ch_hal;
+
+	return ch_hal->fw_log_level;
+}
+
 void vpu_hw_sys_set_power_mode(u32 mode)
 {
 	struct vpu_channel_hal *ch_hal = &g_vpu_ch_hal;
@@ -2482,3 +2585,4 @@ u32 vpu_hw_sys_get_power_mode(void)
 	return mode;
 }
 
+#endif /* CONFIG_DEBUG_FS */

@@ -15,8 +15,8 @@
 #include <linux/interrupt.h>
 #include <asm/page.h>
 #include <linux/pm_runtime.h>
-#include <mach/msm_bus.h>
-#include <mach/msm_bus_board.h>
+#include <linux/msm-bus.h>
+#include <linux/msm-bus-board.h>
 #include <linux/ktime.h>
 #include <linux/delay.h>
 
@@ -151,7 +151,6 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 {
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct kgsl_pwrlevel *pwrlevel;
-	int delta, level;
 
 	/* Adjust the power level to the current constraints */
 	new_level = _adjust_pwrlevel(pwr, new_level);
@@ -159,11 +158,7 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 	if (new_level == pwr->active_pwrlevel)
 		return;
 
-	delta = new_level < pwr->active_pwrlevel ? -1 : 1;
-
 	update_clk_statistics(device, true);
-
-	level = pwr->active_pwrlevel;
 
 	/*
 	 * Set the active powerlevel first in case the clocks are off - if we
@@ -178,20 +173,9 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 	kgsl_pwrctrl_buslevel_update(device, true);
 
 	if (test_bit(KGSL_PWRFLAGS_CLK_ON, &pwr->power_flags) ||
-		(device->state == KGSL_STATE_NAP)) {
-
-		/*
-		 * Don't shift by more than one level at a time to
-		 * avoid glitches.
-		 */
-
-		while (level != new_level) {
-			level += delta;
-
-			clk_set_rate(pwr->grp_clks[0],
-				pwr->pwrlevels[level].gpu_freq);
-		}
-	}
+		(device->state == KGSL_STATE_NAP))
+		clk_set_rate(pwr->grp_clks[0],
+				pwr->pwrlevels[new_level].gpu_freq);
 
 
 	trace_kgsl_pwrlevel(device, pwr->active_pwrlevel, pwrlevel->gpu_freq);
@@ -1015,6 +999,7 @@ EXPORT_SYMBOL(kgsl_pwrctrl_irq);
 int kgsl_pwrctrl_init(struct kgsl_device *device)
 {
 	int i, k, m, n = 0, result = 0;
+	int freq_i;
 	struct clk *clk;
 	struct platform_device *pdev =
 		container_of(device->parentdev, struct platform_device, dev);
@@ -1105,6 +1090,17 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 
 	/* Set if independent bus BW voting is supported */
 	pwr->bus_control = pdata->bus_control;
+
+	/*
+	 * Set the range permitted for BIMC votes per-GPU frequency.
+	 * For the moment assume the BIMC votes are listed in order
+	 * per GPU frequency.  If this is no longer needed in the bus
+	 * table the min/max values can be explicitly set in the dtsi
+	 * file.
+	 */
+	freq_i = pwr->min_pwrlevel;
+	pwr->pwrlevels[freq_i].bus_min = 1;
+
 	/*
 	 * Pull the BW vote out of the bus table.  They will be used to
 	 * calculate the ratio between the votes.
@@ -1116,8 +1112,17 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 		if (vector->dst == MSM_BUS_SLAVE_EBI_CH0 &&
 				vector->ib != 0) {
 			for (k = 0; k < n; k++)
-				if (vector->ib == pwr->bus_ib[k])
+				if (vector->ib == pwr->bus_ib[k]) {
+					static uint64_t last_ib = 0xFFFFFFFF;
+					if (vector->ib <= last_ib) {
+						pwr->pwrlevels[freq_i--].
+							bus_max = i - 1;
+						pwr->pwrlevels[freq_i].
+							bus_min = i;
+					}
+					last_ib = vector->ib;
 					break;
+				}
 			/* if this is a new ib value, save it */
 			if (k == n) {
 				pwr->bus_ib[k] = vector->ib;
@@ -1133,6 +1138,8 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 			}
 		}
 	}
+	pwr->pwrlevels[freq_i].bus_max = i - 1;
+
 	return result;
 
 clk_err:
@@ -1504,12 +1511,16 @@ void kgsl_pwrctrl_enable(struct kgsl_device *device)
 	int level;
 	/* Order pwrrail/clk sequence based upon platform */
 	kgsl_pwrctrl_pwrrail(device, KGSL_PWRFLAGS_ON);
+
 	if (pwr->wakeup_maxpwrlevel) {
 		level = pwr->max_pwrlevel;
 		pwr->wakeup_maxpwrlevel = 0;
 	} else
 		level = pwr->default_pwrlevel;
-	kgsl_pwrctrl_pwrlevel_change(device, level);
+
+	if (pwr->constraint.type == KGSL_CONSTRAINT_NONE)
+		kgsl_pwrctrl_pwrlevel_change(device, level);
+
 	kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_ON, KGSL_STATE_ACTIVE);
 	kgsl_pwrctrl_axi(device, KGSL_PWRFLAGS_ON);
 }

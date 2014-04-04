@@ -3,7 +3,7 @@ mdss-mdp3-objs += mdp3_ppp.o mdp3_ppp_hwio.o mdp3_ppp_data.o
 obj-$(CONFIG_FB_MSM_MDSS_MDP3) += mdss-mdp3.o
 
 mdss-mdp-objs := mdss_mdp.o mdss_mdp_ctl.o mdss_mdp_pipe.o mdss_mdp_util.o
-mdss-mdp-objs += mdss_mdp_pp.o
+mdss-mdp-objs += mdss_mdp_pp.o mdss_mdp_pp_debug.o
 mdss-mdp-objs += mdss_mdp_intf_video.o
 mdss-mdp-objs += mdss_mdp_intf_cmd.o
 mdss-mdp-objs += mdss_mdp_intf_writeback.o
@@ -45,6 +45,7 @@ obj-$(CONFIG_FB_MSM_QPIC) += mdss-qpic.o
 obj-$(CONFIG_FB_MSM_QPIC_ILI_QVGA_PANEL) += qpic_panel_ili_qvga.o
 
 obj-$(CONFIG_FB_MSM_MDSS) += mdss_fb.o
+obj-$(CONFIG_COMPAT) += mdss_compat_utils.o
 
 ifeq ($(CONFIG_FB_MSM_MDSS_MDP3),y)
 obj-$(CONFIG_FB_MSM_MDSS_DSI_CTRL_STATUS) += dsi_status_v2.o

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -61,6 +61,8 @@
 #define A3XX_RBBM_AHB_CTL0 0x020
 #define A3XX_RBBM_AHB_CTL1 0x021
 #define A3XX_RBBM_AHB_CMD 0x022
+#define A3XX_RBBM_AHB_ME_SPLIT_STATUS 0x25
+#define A3XX_RBBM_AHB_PFP_SPLIT_STATUS 0x26
 #define A3XX_RBBM_AHB_ERROR_STATUS 0x027
 #define A3XX_RBBM_GPR0_CTL 0x02E
 /* This the same register as on A2XX, just in a different place */
@@ -541,14 +543,17 @@
 #define A3XX_VBIF_PERF_PWR_CNT2_LO 0x307b
 #define A3XX_VBIF_PERF_PWR_CNT2_HI 0x307c
 
+#define A3XX_VBIF_DDR_OUTPUT_RECOVERABLE_HALT_CTRL0 0x3800
+#define A3XX_VBIF_DDR_OUTPUT_RECOVERABLE_HALT_CTRL1 0x3801
+
 /* Bit flags for RBBM_CTL */
-#define RBBM_RBBM_CTL_RESET_PWR_CTR0  BIT(0)
-#define RBBM_RBBM_CTL_RESET_PWR_CTR1  BIT(1)
-#define RBBM_RBBM_CTL_ENABLE_PWR_CTR0  BIT(16)
-#define RBBM_RBBM_CTL_ENABLE_PWR_CTR1  BIT(17)
+#define RBBM_RBBM_CTL_RESET_PWR_CTR0	0x00000001
+#define RBBM_RBBM_CTL_RESET_PWR_CTR1	0x00000002
+#define RBBM_RBBM_CTL_ENABLE_PWR_CTR0	0x00010000
+#define RBBM_RBBM_CTL_ENABLE_PWR_CTR1	0x00020000
 
 /* Bit flag for RBMM_PERFCTR_CTL */
-#define RBBM_PERFCTR_CTL_ENABLE BIT(0)
+#define RBBM_PERFCTR_CTL_ENABLE		0x00000001
 
 /* Various flags used by the context switch code */
 
@@ -815,6 +820,7 @@
 /* RBBM_CLOCK_CTL default value */
 #define A305_RBBM_CLOCK_CTL_DEFAULT   0xAAAAAAAA
 #define A305C_RBBM_CLOCK_CTL_DEFAULT  0xAAAAAAAA
+#define A306_RBBM_CLOCK_CTL_DEFAULT   0xAAAAAAAA
 #define A310_RBBM_CLOCK_CTL_DEFAULT   0xAAAAAAAA
 #define A320_RBBM_CLOCK_CTL_DEFAULT   0xBFFFFFFF
 #define A330_RBBM_CLOCK_CTL_DEFAULT   0xBFFCFFFF
@@ -835,11 +841,11 @@
 #define TSE_INPUT_PRIM_NUM             0x0
 
 /* VBIF PERFCOUNTER ENA/CLR values */
-#define VBIF_PERF_CNT_0 BIT(0)
-#define VBIF_PERF_CNT_1 BIT(1)
-#define VBIF_PERF_PWR_CNT_0 BIT(2)
-#define VBIF_PERF_PWR_CNT_1 BIT(3)
-#define VBIF_PERF_PWR_CNT_2 BIT(4)
+#define VBIF_PERF_CNT_0		0x00000001
+#define VBIF_PERF_CNT_1		0x00000002
+#define VBIF_PERF_PWR_CNT_0	0x00000004
+#define VBIF_PERF_PWR_CNT_1	0x00000008
+#define VBIF_PERF_PWR_CNT_2	0x00000010
 
 /* VBIF PERFCOUNTER SEL values */
 #define VBIF_PERF_CNT_0_SEL 0
@@ -850,6 +856,9 @@
 /* VBIF countables */
 #define VBIF_AXI_TOTAL_BEATS 85
 #define VBIF_DDR_TOTAL_CYCLES 110
+
+/* VBIF Recoverable HALT bit value */
+#define VBIF_RECOVERABLE_HALT_CTRL 0x1
 
 /*
  * CP DEBUG settings for A3XX core:

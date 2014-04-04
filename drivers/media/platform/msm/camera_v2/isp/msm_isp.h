@@ -22,8 +22,8 @@
 #include <linux/avtimer.h>
 #include <media/v4l2-subdev.h>
 #include <media/msmb_isp.h>
-#include <mach/msm_bus.h>
-#include <mach/msm_bus_board.h>
+#include <linux/msm-bus.h>
+#include <linux/msm-bus-board.h>
 
 #include "msm_buf_mgr.h"
 
@@ -446,6 +446,7 @@ struct vfe_device {
 	uint8_t vt_enable;
 	void __iomem *p_avtimer_msw;
 	void __iomem *p_avtimer_lsw;
+	uint8_t ignore_error;
 };
 
 #endif

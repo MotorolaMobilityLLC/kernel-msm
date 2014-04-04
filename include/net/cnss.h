@@ -30,16 +30,19 @@ struct cnss_fw_files {
 
 struct cnss_wlan_driver {
 	char *name;
-	int  (*probe)(struct pci_dev *, const struct pci_device_id *);
-	void (*remove)(struct pci_dev *);
-	int  (*reinit)(struct pci_dev *, const struct pci_device_id *);
-	void (*shutdown)(struct pci_dev *);
-	int  (*suspend)(struct pci_dev *, pm_message_t state);
-	int  (*resume)(struct pci_dev *);
+	int  (*probe)(struct pci_dev *pdev, const struct pci_device_id *id);
+	void (*remove)(struct pci_dev *pdev);
+	int  (*reinit)(struct pci_dev *pdev, const struct pci_device_id *id);
+	void (*shutdown)(struct pci_dev *pdev);
+	void (*crash_shutdown)(struct pci_dev *pdev);
+	int  (*suspend)(struct pci_dev *pdev, pm_message_t state);
+	int  (*resume)(struct pci_dev *pdev);
+	void (*modem_status)(struct pci_dev *, int state);
 	const struct pci_device_id *id_table;
 };
 
 extern void cnss_device_crashed(void);
+extern void cnss_device_self_recovery(void);
 extern int cnss_get_ramdump_mem(unsigned long *address, unsigned long *size);
 extern int cnss_set_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 ch_count);
 extern int cnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list,

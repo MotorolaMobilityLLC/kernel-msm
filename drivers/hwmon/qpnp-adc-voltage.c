@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -523,6 +523,10 @@ static int32_t qpnp_vadc_version_check(struct qpnp_vadc_chip *dev)
 #define QPNP_VBAT_OFFSET_GF	9441
 #define QPNP_OCV_OFFSET_SMIC	4596
 #define QPNP_OCV_OFFSET_GF	5896
+#define QPNP_VBAT_COEFF_22	6800
+#define QPNP_VBAT_COEFF_23	3500
+#define QPNP_VBAT_COEFF_24	4360
+#define QPNP_VBAT_COEFF_25	8060
 
 static int32_t qpnp_ocv_comp(int64_t *result,
 			struct qpnp_vadc_chip *vadc, int64_t die_temp)
@@ -535,29 +539,22 @@ static int32_t qpnp_ocv_comp(int64_t *result,
 	if (version == -EINVAL)
 		return 0;
 
-	if (version == QPNP_REV_ID_8110_2_0) {
-		if (die_temp < -20000)
-			die_temp = -20000;
-	} else {
-		if (die_temp < 25000)
+	if (version == QPNP_REV_ID_8026_2_2) {
+		if (die_temp > 25000)
 			return 0;
-		if (die_temp > 60000)
-			die_temp = 60000;
 	}
 
 	switch (version) {
 	case QPNP_REV_ID_8941_3_1:
 		switch (vadc->id) {
 		case COMP_ID_TSMC:
-			temp_var = (((die_temp *
-			(-QPNP_VBAT_COEFF_4))
-			+ QPNP_VBAT_COEFF_5));
+			 temp_var = ((die_temp - 25000) *
+			(-QPNP_VBAT_COEFF_4));
 			break;
 		default:
 		case COMP_ID_GF:
-			temp_var = (((die_temp *
-			(-QPNP_VBAT_COEFF_1))
-			+ QPNP_VBAT_COEFF_2));
+			temp_var = ((die_temp - 25000) *
+			(-QPNP_VBAT_COEFF_1));
 			break;
 		}
 		break;
@@ -590,6 +587,20 @@ static int32_t qpnp_ocv_comp(int64_t *result,
 			break;
 		}
 		break;
+	case QPNP_REV_ID_8026_2_2:
+		switch (vadc->id) {
+		case COMP_ID_TSMC:
+			*result -= QPNP_VBAT_COEFF_22;
+			temp_var = (die_temp - 25000) *
+					QPNP_VBAT_COEFF_24;
+			break;
+		default:
+		case COMP_ID_GF:
+			*result -= QPNP_VBAT_COEFF_22;
+			temp_var = (die_temp - 25000) *
+					QPNP_VBAT_COEFF_25;
+			break;
+		}
 	case QPNP_REV_ID_8110_2_0:
 		switch (vadc->id) {
 		case COMP_ID_SMIC:
@@ -600,9 +611,6 @@ static int32_t qpnp_ocv_comp(int64_t *result,
 				temp_var = QPNP_VBAT_COEFF_19;
 			temp_var = (die_temp - 25000) * temp_var;
 			break;
-		case COMP_ID_TSMC:
-			pr_debug("No TSMC Comp Info, exiting\n");
-			return 0;
 		default:
 		case COMP_ID_GF:
 			*result -= QPNP_OCV_OFFSET_GF;
@@ -642,12 +650,7 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 	if (version == -EINVAL)
 		return 0;
 
-	if (version == QPNP_REV_ID_8110_2_0) {
-		if (die_temp < -20000)
-			die_temp = -20000;
-	} else {
-		if (die_temp < 25000)
-			return 0;
+	if (version != QPNP_REV_ID_8941_3_1) {
 		/* min(die_temp_c, 60_degC) */
 		if (die_temp > 60000)
 			die_temp = 60000;
@@ -657,14 +660,16 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 	case QPNP_REV_ID_8941_3_1:
 		switch (vadc->id) {
 		case COMP_ID_TSMC:
-			temp_var = (die_temp *
+			temp_var = ((die_temp - 25000) *
 			(-QPNP_VBAT_COEFF_1));
 			break;
 		default:
 		case COMP_ID_GF:
-			temp_var = (((die_temp *
-			(-QPNP_VBAT_COEFF_6))
-			+ QPNP_VBAT_COEFF_7));
+			/* min(die_temp_c, 60_degC) */
+			if (die_temp > 60000)
+				die_temp = 60000;
+			temp_var = ((die_temp - 25000) *
+			(-QPNP_VBAT_COEFF_1));
 			break;
 		}
 		break;
@@ -697,6 +702,18 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 			break;
 		}
 		break;
+	case QPNP_REV_ID_8026_2_2:
+		switch (vadc->id) {
+		case COMP_ID_TSMC:
+			*result -= QPNP_VBAT_COEFF_23;
+			temp_var = 0;
+			break;
+		default:
+		case COMP_ID_GF:
+			*result -= QPNP_VBAT_COEFF_23;
+			temp_var = 0;
+			break;
+		}
 	case QPNP_REV_ID_8110_2_0:
 		switch (vadc->id) {
 		case COMP_ID_SMIC:
@@ -704,9 +721,6 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 			temp_var = ((die_temp - 25000) *
 			(QPNP_VBAT_COEFF_17));
 			break;
-		case COMP_ID_TSMC:
-			pr_debug("No TSMC Comp Info, exiting\n");
-			return 0;
 		default:
 		case COMP_ID_GF:
 			*result -= QPNP_VBAT_OFFSET_GF;

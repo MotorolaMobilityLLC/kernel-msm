@@ -40,6 +40,7 @@
 #define LPASS_BE_QUAT_MI2S_RX "QUAT_MI2S_RX"
 #define LPASS_BE_QUAT_MI2S_TX "QUAT_MI2S_TX"
 #define LPASS_BE_SEC_MI2S_RX "SEC_MI2S_RX"
+#define LPASS_BE_SEC_MI2S_RX_VIBRA "SEC_MI2S_RX_VIBRA"
 #define LPASS_BE_SEC_MI2S_TX "SEC_MI2S_TX"
 #define LPASS_BE_PRI_MI2S_RX "PRI_MI2S_RX"
 #define LPASS_BE_PRI_MI2S_TX "PRI_MI2S_TX"
@@ -82,10 +83,18 @@ enum {
 	MSM_FRONTEND_DAI_VOICE_STUB,
 	MSM_FRONTEND_DAI_VOLTE,
 	MSM_FRONTEND_DAI_DTMF_RX,
-	MSM_FRONTEND_DAI_LSM1,
 	MSM_FRONTEND_DAI_VOICE2,
 	MSM_FRONTEND_DAI_QCHAT,
 	MSM_FRONTEND_DAI_VOLTE_STUB,
+	MSM_FRONTEND_DAI_LSM1,
+	MSM_FRONTEND_DAI_LSM2,
+	MSM_FRONTEND_DAI_LSM3,
+	MSM_FRONTEND_DAI_LSM4,
+	MSM_FRONTEND_DAI_LSM5,
+	MSM_FRONTEND_DAI_LSM6,
+	MSM_FRONTEND_DAI_LSM7,
+	MSM_FRONTEND_DAI_LSM8,
+	MSM_FRONTEND_DAI_VOICE2_STUB,
 	MSM_FRONTEND_DAI_MAX,
 };
 
@@ -137,6 +146,7 @@ enum {
 	MSM_BACKEND_DAI_SLIMBUS_6_RX,
 	MSM_BACKEND_DAI_SLIMBUS_6_TX,
 	MSM_BACKEND_DAI_SPDIF_RX,
+	MSM_BACKEND_DAI_SECONDARY_MI2S_RX_VIBRA,
 	MSM_BACKEND_DAI_MAX,
 };
 
@@ -144,6 +154,38 @@ enum msm_pcm_routing_event {
 	MSM_PCM_RT_EVT_BUF_RECFG,
 	MSM_PCM_RT_EVT_DEVSWITCH,
 	MSM_PCM_RT_EVT_MAX,
+};
+
+#define INVALID_SESSION -1
+#define SESSION_TYPE_RX 0
+#define SESSION_TYPE_TX 1
+#define INT_RX_VOL_MAX_STEPS 0x2000
+#define INT_RX_VOL_GAIN 0x2000
+
+#define RELEASE_LOCK	0
+#define ACQUIRE_LOCK	1
+struct msm_pcm_routing_evt {
+	void (*event_func)(enum msm_pcm_routing_event, void *);
+	void *priv_data;
+};
+
+struct msm_pcm_routing_bdai_data {
+	u16 port_id; /* AFE port ID */
+	u8 active; /* track if this backend is enabled */
+	unsigned long fe_sessions; /* Front-end sessions */
+	u64 port_sessions; /* track Tx BE ports -> Rx BE
+			    * number of BE should not exceed
+			    * the size of this field
+			    */
+	unsigned int  sample_rate;
+	unsigned int  channel;
+	unsigned int  format;
+};
+
+struct msm_pcm_routing_fdai_data {
+	u16 be_srate; /* track prior backend sample rate for flushing purpose */
+	int strm_id; /* ASM stream ID */
+	struct msm_pcm_routing_evt event_info;
 };
 
 /* dai_id: front-end ID,
@@ -154,11 +196,6 @@ void msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode, int dspst_id,
 	int stream_type);
 void msm_pcm_routing_reg_psthr_stream(int fedai_id, int dspst_id,
 		int stream_type);
-
-struct msm_pcm_routing_evt {
-	void (*event_func)(enum msm_pcm_routing_event, void *);
-	void *priv_data;
-};
 
 void msm_pcm_routing_reg_phy_stream_v2(int fedai_id, bool perf_mode,
 				       int dspst_id, int stream_type,
@@ -173,4 +210,12 @@ int multi_ch_pcm_set_volume(unsigned volume);
 uint32_t get_adm_rx_topology(void);
 
 uint32_t get_adm_tx_topology(void);
+
+void msm_pcm_routing_get_bedai_info(int be_idx,
+				    struct msm_pcm_routing_bdai_data *bedai);
+void msm_pcm_routing_get_fedai_info(int fe_idx, int sess_type,
+				    struct msm_pcm_routing_fdai_data *fe_dai,
+				    int *fe_perf_mode);
+void msm_pcm_routing_acquire_lock(void);
+void msm_pcm_routing_release_lock(void);
 #endif /*_MSM_PCM_H*/

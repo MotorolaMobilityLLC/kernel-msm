@@ -27,7 +27,7 @@
 #include <linux/mutex.h>
 #include <linux/workqueue.h>
 #include <linux/iommu.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_tspp2.h>
@@ -35,13 +35,15 @@
 
 #define TSPP2_MODULUS_OP(val, mod)	((val) & ((mod) - 1))
 
-/* General definitions */
+/* General definitions. Note we're reserving one batch. */
 #define TSPP2_NUM_ALL_INPUTS	(TSPP2_NUM_TSIF_INPUTS + TSPP2_NUM_MEM_INPUTS)
-#define TSPP2_NUM_CONTEXTS	128
-#define TSPP2_NUM_HW_FILTERS	128
-#define TSPP2_NUM_BATCHES	16
-#define TSPP2_FILTERS_PER_BATCH	(TSPP2_NUM_HW_FILTERS / TSPP2_NUM_BATCHES)
-#define TSPP2_NUM_KEYTABLES	32
+#define TSPP2_NUM_CONTEXTS		128
+#define TSPP2_NUM_AVAIL_CONTEXTS	127
+#define TSPP2_NUM_HW_FILTERS		128
+#define TSPP2_NUM_BATCHES		15
+#define TSPP2_FILTERS_PER_BATCH		8
+#define TSPP2_NUM_AVAIL_FILTERS	(TSPP2_NUM_HW_FILTERS - TSPP2_FILTERS_PER_BATCH)
+#define TSPP2_NUM_KEYTABLES		32
 #define TSPP2_TSIF_DEF_TIME_LIMIT   15000 /* Number of tsif-ref-clock ticks */
 
 #define TSPP2_NUM_EVENT_WORK_ELEMENTS	256
@@ -64,9 +66,28 @@
  */
 #define TSPP2_DEFAULT_SRC_CONFIG	0x47801E49
 
+/*
+ * Default memory source configuration:
+ * Use 16 batches,
+ * Attach last batch to each memory source.
+ */
+#define TSPP2_DEFAULT_MEM_SRC_CONFIG	0x80000010
+
 /* Bypass VBIF/IOMMU for debug and bring-up purposes */
 static int tspp2_iommu_bypass;
 module_param(tspp2_iommu_bypass, int, S_IRUGO);
+
+/* Enable Invalid Adaptation Field control bits event */
+static int tspp2_en_invalid_af_ctrl;
+module_param(tspp2_en_invalid_af_ctrl, int, S_IRUGO | S_IWUSR);
+
+/* Enable Invalid Adaptation Field length event */
+static int tspp2_en_invalid_af_length;
+module_param(tspp2_en_invalid_af_length, int, S_IRUGO | S_IWUSR);
+
+/* Enable PES No Sync event */
+static int tspp2_en_pes_no_sync;
+module_param(tspp2_en_pes_no_sync, int, S_IRUGO | S_IWUSR);
 
 /**
  * enum tspp2_operation_opcode - TSPP2 Operation opcode for TSPP2_OPCODE
@@ -244,7 +265,7 @@ enum tspp2_operation_opcode {
 #define TSPP2_VERSION				0x6FFC
 
 /* Bits for TSPP2_GLOBAL_IRQ_CLEAR register */
-#define GLOBAL_IRQ_CLEAR_RESERVED_OFFS		4
+#define GLOBAL_IRQ_CLEAR_RESERVED_OFFS         4
 
 /* Bits for TSPP2_VERSION register */
 #define VERSION_MAJOR_OFFS			28
@@ -838,7 +859,7 @@ struct tspp2_device {
 	struct device *dev;
 	void __iomem *base;
 	u32 tspp2_irq;
-	u32 bam_handle;
+	unsigned long bam_handle;
 	u32 bam_irq;
 	struct sps_bam_props bam_props;
 	struct tspp2_iommu_info iommu_info;
@@ -856,11 +877,11 @@ struct tspp2_device {
 	struct clk *tspp2_klm_ahb_clk;
 	struct clk *tsif_ref_clk;
 	struct tspp2_filter_batch batches[TSPP2_NUM_BATCHES];
-	int contexts[TSPP2_NUM_CONTEXTS];
+	int contexts[TSPP2_NUM_AVAIL_CONTEXTS];
 	struct tspp2_indexing_table indexing_tables[TSPP2_NUM_INDEXING_TABLES];
 	struct tspp2_src tsif_sources[TSPP2_NUM_TSIF_INPUTS];
 	struct tspp2_src mem_sources[TSPP2_NUM_MEM_INPUTS];
-	struct tspp2_filter filters[TSPP2_NUM_HW_FILTERS];
+	struct tspp2_filter filters[TSPP2_NUM_AVAIL_FILTERS];
 	struct tspp2_pipe pipes[TSPP2_NUM_PIPES];
 	u8 num_secured_opened_pipes;
 	u8 num_non_secured_opened_pipes;
@@ -1074,7 +1095,7 @@ static int tspp2_device_debugfs_print(struct seq_file *s, void *p)
 
 	seq_printf(s, "dev_id: %d\n", device->dev_id);
 	seq_puts(s, "Enabled filters:");
-	for (count = 0; count < TSPP2_NUM_HW_FILTERS; count++)
+	for (count = 0; count < TSPP2_NUM_AVAIL_FILTERS; count++)
 		if (device->filters[count].enabled) {
 			seq_printf(s, "\n\tfilter%3d", count);
 			exist_flag = 1;
@@ -1086,7 +1107,7 @@ static int tspp2_device_debugfs_print(struct seq_file *s, void *p)
 
 	exist_flag = 0;
 	seq_puts(s, "Opened filters:");
-	for (count = 0; count < TSPP2_NUM_HW_FILTERS; count++)
+	for (count = 0; count < TSPP2_NUM_AVAIL_FILTERS; count++)
 		if (device->filters[count].opened) {
 			seq_printf(s, "\n\tfilter%3d", count);
 			exist_flag = 1;
@@ -1640,7 +1661,7 @@ static void tspp2_debugfs_init(struct tspp2_device *device)
 
 	dentry = debugfs_create_dir("filters", dir);
 	if (dentry) {
-		for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++) {
+		for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++) {
 			snprintf(name, 20, "filter%03i", i);
 			debugfs_create_file(name, S_IRUGO, dentry,
 				&(device->filters[i]), &dbgfs_filter_fops);
@@ -2030,6 +2051,7 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 {
 	int i, n;
 	unsigned long rate_in_hz = 0;
+	u32 global_irq_en = 0;
 
 	if (!device) {
 		pr_err("%s: NULL device\n", __func__);
@@ -2073,13 +2095,9 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 			device->base + TSPP2_INDEX_TABLE_PARAMS(i));
 	}
 
-	/* Disable memory inputs */
-	for (i = 0; i < TSPP2_NUM_MEM_INPUTS; i++)
-		writel_relaxed(0, device->base + TSPP2_MEM_INPUT_SRC_CONFIG(i));
-
-	/* Disable TSIF inputs */
+	/* Disable TSIF inputs. Set mode of operation to 16 batches */
 	for (i = 0; i < TSPP2_NUM_TSIF_INPUTS; i++)
-		writel_relaxed(0,
+		writel_relaxed((0x1 << TSIF_INPUT_SRC_CONFIG_16_BATCHES_OFFS),
 			device->base + TSPP2_TSIF_INPUT_SRC_CONFIG(i));
 
 	/* Reset source related registers and performance counters */
@@ -2121,6 +2139,21 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 		/* Reset filter context-based counters */
 		tspp2_filter_counters_reset(device, i);
 	}
+
+	/*
+	 * Disable memory inputs. Set mode of operation to 16 batches.
+	 * Configure last batch to be associated with all memory input sources,
+	 * and add a filter to match all PIDs and drop the TS packets in the
+	 * last HW filter entry. Use the last context for this filter.
+	 */
+	for (i = 0; i < TSPP2_NUM_MEM_INPUTS; i++)
+		writel_relaxed(TSPP2_DEFAULT_MEM_SRC_CONFIG,
+			device->base + TSPP2_MEM_INPUT_SRC_CONFIG(i));
+
+	writel_relaxed(((TSPP2_NUM_CONTEXTS - 1) << FILTER_ENTRY1_CONTEXT_OFFS),
+		device->base + TSPP2_FILTER_ENTRY1((TSPP2_NUM_HW_FILTERS - 1)));
+	writel_relaxed((0x1 << FILTER_ENTRY0_EN_OFFS),
+		device->base + TSPP2_FILTER_ENTRY0((TSPP2_NUM_HW_FILTERS - 1)));
 
 	/* Reset pipe registers */
 	for (i = 0; i < TSPP2_NUM_PIPES; i++)
@@ -2165,7 +2198,7 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 	/*
 	 * Global interrupts configuration:
 	 * Flow Control (per memory source):	Disabled
-	 * Read Failue (per memory source):	Enabled
+	 * Read Failure (per memory source):	Enabled
 	 * SC_GO_LOW (aggregate):		Enabled
 	 * SC_GO_HIGH (aggregate):		Enabled
 	 * Wrong Pipe Direction (aggregate):	Enabled
@@ -2173,12 +2206,21 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 	 * Unexpected Reset (aggregate):	Enabled
 	 * Key Not Ready (aggregate):		Disabled
 	 * Op Encrypt Level Error:		Enabled
-	 * PES No Sync:				Enabled
-	 * TSP Invalid Length:			Enabled
-	 * TSP Invalid AF Control:		Enabled
+	 * PES No Sync:				Disabled (module parameter)
+	 * TSP Invalid Length:			Disabled (module parameter)
+	 * TSP Invalid AF Control:		Disabled (module parameter)
 	 */
+	global_irq_en = 0x00FF03E8;
+	if (tspp2_en_invalid_af_ctrl)
+		global_irq_en |=
+			(0x1 << GLOBAL_IRQ_TSP_INVALID_AF_OFFS);
+	if (tspp2_en_invalid_af_length)
+		global_irq_en |= (0x1 << GLOBAL_IRQ_TSP_INVALID_LEN_OFFS);
+	if (tspp2_en_pes_no_sync)
+		global_irq_en |= (0x1 << GLOBAL_IRQ_PES_NO_SYNC_OFFS);
+
 	if (enable_intr)
-		writel_relaxed(0x00FF03EF,
+		writel_relaxed(global_irq_en,
 			device->base + TSPP2_GLOBAL_IRQ_ENABLE);
 	else
 		writel_relaxed(0, device->base + TSPP2_GLOBAL_IRQ_ENABLE);
@@ -2314,7 +2356,7 @@ static int tspp2_device_initialize(struct tspp2_device *device)
 	for (i = 0; i < TSPP2_NUM_MEM_INPUTS; i++)
 		device->mem_sources[i].device = device;
 
-	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++)
+	for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++)
 		device->filters[i].device = device;
 
 	for (i = 0; i < TSPP2_NUM_PIPES; i++)
@@ -3819,7 +3861,11 @@ int tspp2_src_open(u32 dev_id,
 			device->base +
 			TSPP2_TSIF_INPUT_SRC_CONFIG(src->input));
 	} else {
-		writel_relaxed((0x1 << MEM_INPUT_SRC_CONFIG_16_BATCHES_OFFS),
+		/*
+		 * Disable memory inputs. Set mode of operation to 16 batches.
+		 * Configure last batch to be associated with this source.
+		 */
+		writel_relaxed(TSPP2_DEFAULT_MEM_SRC_CONFIG,
 			device->base +
 			TSPP2_MEM_INPUT_SRC_CONFIG(src->hw_index));
 	}
@@ -4726,14 +4772,21 @@ int tspp2_src_pipe_detach(u32 src_handle, u32 pipe_handle)
 				__func__, pipe_handle, src_handle);
 			goto err_inval;
 		}
+
 		writel_relaxed(0xFFFF,	src->input_pipe->device->base +
 			TSPP2_PIPE_THRESH_CONFIG(src->input_pipe->hw_index));
 
-		reg = readl_relaxed(src->device->base +
-			TSPP2_MEM_INPUT_SRC_CONFIG(src->hw_index));
-		reg &= ~(0x1F << MEM_INPUT_SRC_CONFIG_INPUT_PIPE_OFFS);
-		writel_relaxed(reg, src->device->base +
-			TSPP2_MEM_INPUT_SRC_CONFIG(src->hw_index));
+		if (src->enabled) {
+			pr_warn("%s: Detaching input pipe from an active memory source\n",
+				__func__);
+		}
+		/*
+		 * Note: not updating TSPP2_MEM_INPUT_SRC_CONFIG to reflect
+		 * this pipe is detached, since there is no invalid value we
+		 * can write instead. tspp2_src_pipe_attach() already takes
+		 * care of zeroing the relevant bit-field before writing the
+		 * new pipe nummber.
+		 */
 
 		src->input_pipe = NULL;
 	} else {
@@ -5205,10 +5258,10 @@ int tspp2_filter_open(u32 src_handle, u16 pid, u16 mask, u32 *filter_handle)
 	}
 
 	/* Find an available filter object in the device's filters database */
-	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++)
+	for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++)
 		if (!src->device->filters[i].opened)
 			break;
-	if (i == TSPP2_NUM_HW_FILTERS) {
+	if (i == TSPP2_NUM_AVAIL_FILTERS) {
 		pr_err("%s: No available filters\n", __func__);
 		mutex_unlock(&src->device->mutex);
 		pm_runtime_mark_last_busy(src->device->dev);
@@ -5218,10 +5271,10 @@ int tspp2_filter_open(u32 src_handle, u16 pid, u16 mask, u32 *filter_handle)
 	filter = &src->device->filters[i];
 
 	/* Find an available context. Each new filter needs a unique context */
-	for (i = 0; i < TSPP2_NUM_CONTEXTS; i++)
+	for (i = 0; i < TSPP2_NUM_AVAIL_CONTEXTS; i++)
 		if (!src->device->contexts[i])
 			break;
-	if (i == TSPP2_NUM_CONTEXTS) {
+	if (i == TSPP2_NUM_AVAIL_CONTEXTS) {
 		pr_err("%s: No available filters\n", __func__);
 		mutex_unlock(&src->device->mutex);
 		pm_runtime_mark_last_busy(src->device->dev);
@@ -6305,10 +6358,10 @@ static int tspp2_filter_ops_update(struct tspp2_filter *filter,
 	 * Find an available temporary filter object in the device's
 	 * filters database.
 	 */
-	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++)
+	for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++)
 		if (!src->device->filters[i].opened)
 			break;
-	if (i == TSPP2_NUM_HW_FILTERS) {
+	if (i == TSPP2_NUM_AVAIL_FILTERS) {
 		/* Should never happen */
 		pr_err("%s: No available filters\n", __func__);
 		return -ENOMEM;
@@ -7151,6 +7204,7 @@ int tspp2_global_event_notification_register(u32 dev_id,
 {
 	struct tspp2_device *device;
 	unsigned long flags;
+	u32 reg = 0;
 
 	if (dev_id >= TSPP2_NUM_DEVICES) {
 		pr_err("%s: Invalid device ID %d\n", __func__, dev_id);
@@ -7171,6 +7225,44 @@ int tspp2_global_event_notification_register(u32 dev_id,
 		mutex_unlock(&device->mutex);
 		return -EPERM;
 	}
+
+	/*
+	 * Some of the interrupts that are generated when these events occur
+	 * may be disabled due to module parameters. So we make sure to enable
+	 * them here, depending on which event was requested. If some events
+	 * were requested before and now this function is called again with
+	 * other events, though, we want to restore the interrupt configuration
+	 * to the default state according to the module parameters.
+	 */
+	reg = readl_relaxed(device->base + TSPP2_GLOBAL_IRQ_ENABLE);
+	if (global_event_bitmask & TSPP2_GLOBAL_EVENT_INVALID_AF_CTRL) {
+		reg |= (0x1 << GLOBAL_IRQ_TSP_INVALID_AF_OFFS);
+	} else {
+		if (tspp2_en_invalid_af_ctrl)
+			reg |= (0x1 << GLOBAL_IRQ_TSP_INVALID_AF_OFFS);
+		else
+			reg &= ~(0x1 << GLOBAL_IRQ_TSP_INVALID_AF_OFFS);
+	}
+
+	if (global_event_bitmask & TSPP2_GLOBAL_EVENT_INVALID_AF_LENGTH) {
+		reg |= (0x1 << GLOBAL_IRQ_TSP_INVALID_LEN_OFFS);
+	} else {
+		if (tspp2_en_invalid_af_length)
+			reg |= (0x1 << GLOBAL_IRQ_TSP_INVALID_LEN_OFFS);
+		else
+			reg &= ~(0x1 << GLOBAL_IRQ_TSP_INVALID_LEN_OFFS);
+	}
+
+	if (global_event_bitmask & TSPP2_GLOBAL_EVENT_PES_NO_SYNC) {
+		reg |= (0x1 << GLOBAL_IRQ_PES_NO_SYNC_OFFS);
+	} else {
+		if (tspp2_en_pes_no_sync)
+			reg |= (0x1 << GLOBAL_IRQ_PES_NO_SYNC_OFFS);
+		else
+			reg &= ~(0x1 << GLOBAL_IRQ_PES_NO_SYNC_OFFS);
+	}
+
+	writel_relaxed(reg, device->base + TSPP2_GLOBAL_IRQ_ENABLE);
 
 	spin_lock_irqsave(&device->spinlock, flags);
 	device->event_callback = callback;
@@ -8039,7 +8131,7 @@ static irqreturn_t tspp2_isr(int irq, void *dev)
 	}
 
 	/* Invoke user callbacks on filter events */
-	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++) {
+	for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++) {
 		f = &device->filters[i];
 		if (f->event_callback &&
 			(f->event_bitmask & filter_bitmask[f->context]))

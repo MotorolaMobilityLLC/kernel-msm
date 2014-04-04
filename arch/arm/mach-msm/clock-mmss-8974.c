@@ -1913,17 +1913,6 @@ static struct branch_clk mmss_misc_ahb_clk = {
 	},
 };
 
-static struct branch_clk mmss_mmssnoc_bto_ahb_clk = {
-	.cbcr_reg = MMSS_MMSSNOC_BTO_AHB_CBCR,
-	.has_sibling = 1,
-	.base = &virt_bases[MMSS_BASE],
-	.c = {
-		.dbg_name = "mmss_mmssnoc_bto_ahb_clk",
-		.ops = &clk_ops_branch,
-		CLK_INIT(mmss_mmssnoc_bto_ahb_clk.c),
-	},
-};
-
 static struct branch_clk mmss_mmssnoc_axi_clk = {
 	.cbcr_reg = MMSS_MMSSNOC_AXI_CBCR,
 	.has_sibling = 1,
@@ -2311,13 +2300,7 @@ static struct mux_clk mmss_debug_mux = {
 };
 
 static struct clk_lookup msm_camera_clocks_8974pro_only[] = {
-	CLK_LOOKUP_OF("cam_src_clk", mclk0_clk_src, "6e.qcom,camera"),
-	CLK_LOOKUP_OF("cam_src_clk", mclk0_clk_src, "20.qcom,camera"),
-	CLK_LOOKUP_OF("cam_src_clk", mclk2_clk_src, "6c.qcom,camera"),
 	CLK_LOOKUP_OF("cam_src_clk", mclk1_clk_src, "90.qcom,camera"),
-	CLK_LOOKUP_OF("cam_clk", camss_mclk0_clk, "6e.qcom,camera"),
-	CLK_LOOKUP_OF("cam_clk", camss_mclk0_clk, "20.qcom,camera"),
-	CLK_LOOKUP_OF("cam_clk", camss_mclk2_clk, "6c.qcom,camera"),
 	CLK_LOOKUP_OF("cam_clk", camss_mclk1_clk, "90.qcom,camera"),
 	CLK_LOOKUP_OF("cam_src_clk", mclk0_clk_src, "0.qcom,camera"),
 	CLK_LOOKUP_OF("cam_src_clk", mclk1_clk_src, "1.qcom,camera"),
@@ -2328,11 +2311,7 @@ static struct clk_lookup msm_camera_clocks_8974pro_only[] = {
 };
 
 static struct clk_lookup msm_camera_clocks_8974_only[] = {
-	CLK_LOOKUP_OF("cam_src_clk", mmss_gp0_clk_src, "6e.qcom,camera"),
-	CLK_LOOKUP_OF("cam_src_clk", mmss_gp0_clk_src, "20.qcom,camera"),
 	CLK_LOOKUP_OF("cam_src_clk", mmss_gp1_clk_src, "90.qcom,camera"),
-	CLK_LOOKUP_OF("cam_clk", camss_gp0_clk, "6e.qcom,camera"),
-	CLK_LOOKUP_OF("cam_clk", camss_gp0_clk, "20.qcom,camera"),
 	CLK_LOOKUP_OF("cam_clk", camss_gp1_clk, "90.qcom,camera"),
 	CLK_LOOKUP_OF("cam_src_clk", mmss_gp0_clk_src, "0.qcom,camera"),
 	CLK_LOOKUP_OF("cam_src_clk", mmss_gp1_clk_src, "1.qcom,camera"),
@@ -2361,6 +2340,10 @@ static struct clk_lookup msm_clocks_mmss_8974[] = {
 	CLK_LOOKUP_OF("pixel_clk", mdss_pclk1_clk, "fd922e00.qcom,mdss_dsi"),
 	CLK_LOOKUP_OF("mdp_core_clk", mdss_mdp_clk, "fd922800.qcom,mdss_dsi"),
 	CLK_LOOKUP_OF("mdp_core_clk", mdss_mdp_clk, "fd922e00.qcom,mdss_dsi"),
+	CLK_LOOKUP("core_mmss_clk", mmss_misc_ahb_clk.c,
+		"fd922800.qcom,mdss_dsi"),
+	CLK_LOOKUP("core_mmss_clk", mmss_misc_ahb_clk.c,
+		"fd922e00.qcom,mdss_dsi"),
 	CLK_LOOKUP_OF("iface_clk", mdss_ahb_clk, "fd922100.qcom,hdmi_tx"),
 	CLK_LOOKUP_OF("alt_iface_clk", mdss_hdmi_ahb_clk,
 		"fd922100.qcom,hdmi_tx"),
@@ -2842,7 +2825,7 @@ static int msm_mmsscc_8974_probe(struct platform_device *pdev)
 static struct platform_driver msm_clock_mmsscc_driver = {
 	.probe = msm_mmsscc_8974_probe,
 	.driver = {
-		.name = "mmsscc",
+		.name = "qcom,mmsscc-8974",
 		.of_match_table = msm_clock_mmsscc_match_table,
 		.owner = THIS_MODULE,
 	},

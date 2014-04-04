@@ -33,6 +33,7 @@
  */
 
 #define MBIM_BULK_BUFFER_SIZE		4096
+#define MAX_CTRL_PKT_SIZE		4096
 
 
 enum mbim_peripheral_ep_type {
@@ -690,29 +691,6 @@ static int mbim_bam_setup(int no_ports)
 
 	pr_info("Initialized %d ports\n", no_ports);
 	return 0;
-}
-
-int mbim_configure_params(void)
-{
-	struct teth_aggr_params aggr_params;
-	int ret = 0;
-
-	aggr_params.dl.aggr_prot = TETH_AGGR_PROTOCOL_MBIM;
-	aggr_params.dl.max_datagrams = mbim_ntb_parameters.wNtbOutMaxDatagrams;
-	aggr_params.dl.max_transfer_size_byte =
-			mbim_ntb_parameters.dwNtbInMaxSize;
-
-	aggr_params.ul.aggr_prot = TETH_AGGR_PROTOCOL_MBIM;
-	aggr_params.ul.max_datagrams = mbim_ntb_parameters.wNtbOutMaxDatagrams;
-	aggr_params.ul.max_transfer_size_byte =
-			mbim_ntb_parameters.dwNtbOutMaxSize;
-
-	ret = teth_bridge_set_mbim_aggr_params(&aggr_params,
-							IPA_CLIENT_USB_PROD);
-	if (ret)
-		pr_err("%s: teth_bridge_set_aggr_params failed\n", __func__);
-
-	return ret;
 }
 
 static int mbim_bam_connect(struct f_mbim *dev)
@@ -1743,7 +1721,7 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 	struct ctrl_pkt *cpkt = NULL;
 	int ret = 0;
 
-	pr_debug("Enter(%d)\n", count);
+	pr_debug("Enter(%zu)\n", count);
 
 	if (!dev) {
 		pr_err("Received NULL mbim pointer\n");
@@ -1751,7 +1729,7 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 	}
 
 	if (count > MBIM_BULK_BUFFER_SIZE) {
-		pr_err("Buffer size is too big %d, should be at most %d\n",
+		pr_err("Buffer size is too big %zu, should be at most %d\n",
 			count, MBIM_BULK_BUFFER_SIZE);
 		return -EINVAL;
 	}
@@ -1786,7 +1764,7 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 	if (cpkt->len > count) {
 		spin_unlock(&dev->lock);
 		mbim_unlock(&dev->read_excl);
-		pr_err("cpkt size too big:%d > buf size:%d\n",
+		pr_err("cpkt size too big:%d > buf size:%zu\n",
 				cpkt->len, count);
 		return -ENOMEM;
 	}
@@ -1818,7 +1796,7 @@ mbim_write(struct file *fp, const char __user *buf, size_t count, loff_t *pos)
 	struct ctrl_pkt *cpkt = NULL;
 	int ret = 0;
 
-	pr_debug("Enter(%d)", count);
+	pr_debug("Enter(%zu)", count);
 
 	if (!dev) {
 		pr_err("Received NULL mbim pointer\n");
@@ -1831,7 +1809,7 @@ mbim_write(struct file *fp, const char __user *buf, size_t count, loff_t *pos)
 	}
 
 	if (count > MAX_CTRL_PKT_SIZE) {
-		pr_err("given pkt size too big:%d > max_pkt_size:%d\n",
+		pr_err("given pkt size too big:%zu > max_pkt_size:%d\n",
 				count, MAX_CTRL_PKT_SIZE);
 		return -ENOMEM;
 	}
@@ -1866,7 +1844,7 @@ mbim_write(struct file *fp, const char __user *buf, size_t count, loff_t *pos)
 
 	mbim_unlock(&dev->write_excl);
 
-	pr_debug("Exit(%d)", count);
+	pr_debug("Exit(%zu)", count);
 
 	return count;
 

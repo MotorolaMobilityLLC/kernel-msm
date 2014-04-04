@@ -33,44 +33,10 @@
 #include <linux/sched.h>
 #include <linux/of_fdt.h>
 
-/* These cache related routines make the assumption (if outer cache is
- * available) that the associated physical memory is contiguous.
- * They will operate on all (L1 and L2 if present) caches.
- */
-void clean_and_invalidate_caches(unsigned long vstart,
-	unsigned long length, unsigned long pstart)
-{
-	dmac_flush_range((void *)vstart, (void *) (vstart + length));
-	outer_flush_range(pstart, pstart + length);
-}
-
-void clean_caches(unsigned long vstart,
-	unsigned long length, unsigned long pstart)
-{
-	dmac_clean_range((void *)vstart, (void *) (vstart + length));
-	outer_clean_range(pstart, pstart + length);
-}
-
-void invalidate_caches(unsigned long vstart,
-	unsigned long length, unsigned long pstart)
-{
-	dmac_inv_range((void *)vstart, (void *) (vstart + length));
-	outer_inv_range(pstart, pstart + length);
-}
-
 char *memtype_name[] = {
 	"EBI0",
 	"EBI1"
 };
-
-unsigned int msm_ttbr0;
-
-void store_ttbr0(void)
-{
-	/* Store TTBR0 for post-mortem debugging purposes. */
-	asm("mrc p15, 0, %0, c2, c0, 0\n"
-		: "=r" (msm_ttbr0));
-}
 
 static int __init check_for_compat(unsigned long node)
 {

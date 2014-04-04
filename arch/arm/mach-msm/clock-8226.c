@@ -28,7 +28,7 @@
 #include <soc/qcom/clock-voter.h>
 
 #include <soc/qcom/socinfo.h>
-#include <mach/rpm-smd.h>
+#include <soc/qcom/rpm-smd.h>
 
 #include "clock-mdss-8974.h"
 #include "clock.h"
@@ -2521,17 +2521,6 @@ static struct branch_clk mmss_misc_ahb_clk = {
 	},
 };
 
-static struct branch_clk mmss_mmssnoc_bto_ahb_clk = {
-	.cbcr_reg = MMSS_MMSSNOC_BTO_AHB_CBCR,
-	.has_sibling = 1,
-	.base = &virt_bases[MMSS_BASE],
-	.c = {
-		.dbg_name = "mmss_mmssnoc_bto_ahb_clk",
-		.ops = &clk_ops_branch,
-		CLK_INIT(mmss_mmssnoc_bto_ahb_clk.c),
-	},
-};
-
 static struct branch_clk mmss_mmssnoc_axi_clk = {
 	.cbcr_reg = MMSS_MMSSNOC_AXI_CBCR,
 	.has_sibling = 1,
@@ -2633,7 +2622,6 @@ static struct branch_clk venus0_vcodec0_clk = {
 
 #ifdef CONFIG_DEBUG_FS
 static struct measure_mux_entry measure_mux_MMSS[] = {
-	{ &mmss_mmssnoc_bto_ahb_clk.c,  MMSS_BASE, 0x0002 },
 	{ &mmss_misc_ahb_clk.c,  MMSS_BASE, 0x0003 },
 	{ &mmss_mmssnoc_axi_clk.c,  MMSS_BASE, 0x0004 },
 	{ &mmss_s0_axi_clk.c,  MMSS_BASE, 0x0005 },
@@ -2784,6 +2772,8 @@ static struct pll_freq_tbl apcs_pll_freq[] = {
 	F_APCS_PLL(1401600000, 73, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1497600000, 78, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1593600000, 83, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1689600000, 88, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1785600000, 93, 0x0, 0x1, 0x0, 0x0, 0x0),
 	PLL_F_END
 };
 
@@ -3334,6 +3324,8 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("iface_clk", mdss_ahb_clk.c, "fd922800.qcom,mdss_dsi"),
 	CLK_LOOKUP("bus_clk", mdss_axi_clk.c, "fd922800.qcom,mdss_dsi"),
 	CLK_LOOKUP("mdp_core_clk", mdss_mdp_clk.c, "fd922800.qcom,mdss_dsi"),
+	CLK_LOOKUP("core_mmss_clk", mmss_misc_ahb_clk.c,
+		"fd922800.qcom,mdss_dsi"),
 
 	CLK_LOOKUP("core_clk", mdss_mdp_clk.c, "fd900000.qcom,mdss_mdp"),
 	CLK_LOOKUP("lut_clk", mdss_mdp_lut_clk.c, "fd900000.qcom,mdss_mdp"),
@@ -3520,7 +3512,6 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("cam_gp1_clk", camss_gp1_clk.c, ""),
 	CLK_LOOKUP("iface_clk", camss_micro_ahb_clk.c, ""),
 
-	CLK_LOOKUP("", mmss_mmssnoc_bto_ahb_clk.c, ""),
 	CLK_LOOKUP("", mmss_mmssnoc_axi_clk.c, ""),
 	CLK_LOOKUP("", mmss_s0_axi_clk.c, ""),
 

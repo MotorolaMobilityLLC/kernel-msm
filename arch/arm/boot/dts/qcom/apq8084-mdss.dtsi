@@ -36,6 +36,7 @@
 		qcom,mdss-mdp-reg-offset = <0x00000100>;
 		qcom,max-bandwidth-low-kbps = <6000000>;
 		qcom,max-bandwidth-high-kbps = <6000000>;
+		qcom,max-bandwidth-per-pipe-kbps = <1650000>;
 		qcom,max-clk-rate = <320000000>;
 
 		qcom,mdss-pipe-vig-off = <0x00001200 0x00001600
@@ -57,18 +58,18 @@
 						<2 4 5>,
 						<2 6 7>;
 
-		qcom,mdss-pipe-vig-clk-ctrl-offsets = <0x3AC 0 0>,
-						      <0x3B4 0 0>,
-						      <0x3BC 0 0>,
-						      <0x3C4 0 0>;
-		qcom,mdss-pipe-rgb-clk-ctrl-offsets = <0x3AC 4 8>,
-						      <0x3B4 4 8>,
-						      <0x3BC 4 8>,
-						      <0x3C4 4 8>;
-		qcom,mdss-pipe-dma-clk-ctrl-offsets = <0x3AC 8 12>,
-						      <0x3B4 8 12>;
+		qcom,mdss-pipe-vig-clk-ctrl-offsets = <0x2AC 0 0>,
+						      <0x2B4 0 0>,
+						      <0x2BC 0 0>,
+						      <0x2C4 0 0>;
+		qcom,mdss-pipe-rgb-clk-ctrl-offsets = <0x2AC 4 8>,
+						      <0x2B4 4 8>,
+						      <0x2BC 4 8>,
+						      <0x2C4 4 8>;
+		qcom,mdss-pipe-dma-clk-ctrl-offsets = <0x2AC 8 12>,
+						      <0x2B4 8 12>;
 
-		qcom,mdss-pipe-sw-reset-off = <0x0128>;
+		qcom,mdss-pipe-sw-reset-off = <0x0028>;
 		qcom,mdss-pipe-vig-sw-reset-map = <5 6 7 8>;
 		qcom,mdss-pipe-rgb-sw-reset-map = <9 10 11 12>;
 		qcom,mdss-pipe-dma-sw-reset-map = <13 14>;
@@ -150,7 +151,9 @@
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->0";
 		cell-index = <0>;
-		reg = <0xfd922800 0x600>;
+		reg = 	<0xfd922800 0x600>,
+			<0xfd828000 0x108>;
+		reg-names = "dsi_phys", "mmss_misc_phys";
 		vdd-supply = <&pma8084_l22>;
 		vddio-supply = <&pma8084_l12>;
 		vdda-supply = <&pma8084_l2>;
@@ -206,7 +209,9 @@
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->1";
 		cell-index = <1>;
-		reg = <0xfd922e00 0x600>;
+		reg = 	<0xfd922e00 0x600>,
+			<0xfd828000 0x108>;
+		reg-names = "dsi_phys", "mmss_misc_phys";
 		vdd-supply = <&pma8084_l22>;
 		vddio-supply = <&pma8084_l12>;
 		vdda-supply = <&pma8084_l2>;

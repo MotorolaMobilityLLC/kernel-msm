@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -84,6 +84,7 @@ extern struct clk_ops clk_ops_pll_acpu_vote;
 /* Soft voting values */
 #define PLL_SOFT_VOTE_PRIMARY   BIT(0)
 #define PLL_SOFT_VOTE_ACPU      BIT(1)
+#define PLL_SOFT_VOTE_AUX       BIT(2)
 
 static inline struct pll_vote_clk *to_pll_vote_clk(struct clk *c)
 {
@@ -152,6 +153,7 @@ struct pll_config {
 	u32 main_output_mask;
 	u32 aux_output_val;
 	u32 aux_output_mask;
+	u32 cfg_ctl_val;
 	/* SR2 PLL specific fields */
 	u32 add_factor_val;
 	u32 add_factor_mask;
@@ -164,6 +166,7 @@ struct pll_config_regs {
 	void __iomem *n_reg;
 	void __iomem *config_reg;
 	void __iomem *config_alt_reg;
+	void __iomem *config_ctl_reg;
 	void __iomem *mode_reg;
 	void *const __iomem *base;
 };

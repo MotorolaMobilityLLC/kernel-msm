@@ -44,10 +44,7 @@
 #include <linux/usb/msm_hsusb.h>
 #include <linux/of.h>
 
-#include <mach/msm_xo.h>
-#include <mach/msm_iomap.h>
 #include <linux/debugfs.h>
-#include <mach/rpm-regulator.h>
 
 #include "ehci.h"
 
@@ -73,7 +70,6 @@ struct msm_hcd {
 	struct regulator			*hsusb_3p3;
 	struct regulator			*hsusb_1p8;
 	struct regulator			*vbus;
-	struct msm_xo_voter			*xo_handle;
 	bool					vbus_on;
 	atomic_t				in_lpm;
 	int					pmic_gpio_dp_irq;
@@ -90,7 +86,6 @@ struct msm_hcd {
 	int					wakeup_int_cnt;
 	bool					wakeup_irq_enabled;
 	int					wakeup_irq;
-	enum usb_vdd_type			vdd_type;
 	void __iomem				*usb_phy_ctrl_reg;
 };
 
@@ -128,22 +123,7 @@ enum hsusb_vdd_value {
 	VDD_VAL_MAX_OP,
 };
 
-static int hsusb_vdd_val[VDD_TYPE_MAX][VDD_VAL_MAX_OP] = {
-		{   /* VDD_CX CORNER Voting */
-			[VDD_MIN_NONE]	= RPM_VREG_CORNER_NONE,
-			[VDD_MIN_P50]	= RPM_VREG_CORNER_NONE,
-			[VDD_MIN_P75]	= RPM_VREG_CORNER_NONE,
-			[VDD_MIN_OP]	= RPM_VREG_CORNER_NOMINAL,
-			[VDD_MAX_OP]	= RPM_VREG_CORNER_HIGH,
-		},
-		{   /* VDD_CX Voltage Voting */
-			[VDD_MIN_NONE]	= HSUSB_PHY_VDD_DIG_VOL_NONE,
-			[VDD_MIN_P50]	= HSUSB_PHY_SUSP_DIG_VOL_P50,
-			[VDD_MIN_P75]	= HSUSB_PHY_SUSP_DIG_VOL_P75,
-			[VDD_MIN_OP]	= HSUSB_PHY_VDD_DIG_VOL_MIN,
-			[VDD_MAX_OP]	= HSUSB_PHY_VDD_DIG_VOL_MAX,
-		},
-};
+static int hsusb_vdd_val[VDD_VAL_MAX_OP];
 
 static int msm_ehci_init_vddcx(struct msm_hcd *mhcd, int init)
 {
@@ -153,12 +133,11 @@ static int msm_ehci_init_vddcx(struct msm_hcd *mhcd, int init)
 	int len = 0;
 
 	if (!init) {
-		none_vol = hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_NONE];
-		max_vol = hsusb_vdd_val[mhcd->vdd_type][VDD_MAX_OP];
+		none_vol = hsusb_vdd_val[VDD_MIN_NONE];
+		max_vol = hsusb_vdd_val[VDD_MAX_OP];
 		goto disable_reg;
 	}
 
-	mhcd->vdd_type = VDDCX_CORNER;
 	mhcd->hsusb_vddcx = devm_regulator_get(mhcd->dev, "hsusb_vdd_dig");
 	if (IS_ERR(mhcd->hsusb_vddcx)) {
 		mhcd->hsusb_vddcx = devm_regulator_get(mhcd->dev,
@@ -167,30 +146,31 @@ static int msm_ehci_init_vddcx(struct msm_hcd *mhcd, int init)
 			dev_err(mhcd->dev, "unable to get ehci vddcx\n");
 			return PTR_ERR(mhcd->hsusb_vddcx);
 		}
-		mhcd->vdd_type = VDDCX;
 	}
 
-	if (mhcd->dev->of_node) {
-		of_get_property(mhcd->dev->of_node,
-				"qcom,vdd-voltage-level",
-				&len);
+	if (of_get_property(mhcd->dev->of_node,
+			"qcom,vdd-voltage-level",
+			&len)) {
 		if (len == sizeof(tmp)) {
 			of_property_read_u32_array(mhcd->dev->of_node,
-					"qcom,vdd-voltage-level",
-					tmp, len/sizeof(*tmp));
-			hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_NONE] = tmp[0];
-			hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_P50] = tmp[1];
-			hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_P75] = tmp[2];
-			hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_OP] = tmp[3];
-			hsusb_vdd_val[mhcd->vdd_type][VDD_MAX_OP] = tmp[4];
+				"qcom,vdd-voltage-level",
+				tmp, len/sizeof(*tmp));
+			hsusb_vdd_val[VDD_MIN_NONE] = tmp[0];
+			hsusb_vdd_val[VDD_MIN_P50] = tmp[1];
+			hsusb_vdd_val[VDD_MIN_P75] = tmp[2];
+			hsusb_vdd_val[VDD_MIN_OP] = tmp[3];
+			hsusb_vdd_val[VDD_MAX_OP] = tmp[4];
 		} else {
 			dev_dbg(mhcd->dev, "Use default vdd config\n");
+			return -ENODEV;
 		}
+	} else {
+		return -ENODEV;
 	}
 
-	none_vol = hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_NONE];
-	min_vol = hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_OP];
-	max_vol = hsusb_vdd_val[mhcd->vdd_type][VDD_MAX_OP];
+	none_vol = hsusb_vdd_val[VDD_MIN_NONE];
+	min_vol = hsusb_vdd_val[VDD_MIN_OP];
+	max_vol = hsusb_vdd_val[VDD_MAX_OP];
 
 	ret = regulator_set_voltage(mhcd->hsusb_vddcx, min_vol, max_vol);
 	if (ret) {
@@ -273,19 +253,19 @@ put_3p3_lpm:
 static int msm_ehci_config_vddcx(struct msm_hcd *mhcd, int high)
 {
 	struct msm_usb_host_platform_data *pdata;
-	int max_vol = hsusb_vdd_val[mhcd->vdd_type][VDD_MAX_OP];
+	int max_vol = hsusb_vdd_val[VDD_MAX_OP];
 	int min_vol;
 	int ret;
 
 	pdata = mhcd->dev->platform_data;
 
 	if (high)
-		min_vol = hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_OP];
+		min_vol = hsusb_vdd_val[VDD_MIN_OP];
 	else if (pdata && pdata->dock_connect_irq &&
 			!irq_read_line(pdata->dock_connect_irq))
-		min_vol = hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_P75];
+		min_vol = hsusb_vdd_val[VDD_MIN_P75];
 	else
-		min_vol = hsusb_vdd_val[mhcd->vdd_type][VDD_MIN_P50];
+		min_vol = hsusb_vdd_val[VDD_MIN_P50];
 
 	ret = regulator_set_voltage(mhcd->hsusb_vddcx, min_vol, max_vol);
 	if (ret) {
@@ -711,7 +691,6 @@ static int msm_ehci_suspend(struct msm_hcd *mhcd)
 {
 	struct usb_hcd *hcd = mhcd_to_hcd(mhcd);
 	unsigned long timeout;
-	int ret;
 	u32 portsc;
 
 	if (atomic_read(&mhcd->in_lpm)) {
@@ -785,14 +764,8 @@ static int msm_ehci_suspend(struct msm_hcd *mhcd)
 	clk_disable_unprepare(mhcd->core_clk);
 
 	/* usb phy does not require TCXO clock, hence vote for TCXO disable */
-	if (mhcd->xo_clk) {
+	if (mhcd->xo_clk)
 		clk_disable_unprepare(mhcd->xo_clk);
-	} else {
-		ret = msm_xo_mode_vote(mhcd->xo_handle, MSM_XO_MODE_OFF);
-		if (ret)
-			dev_err(mhcd->dev, "%s failed to devote for TCXO %d\n",
-								__func__, ret);
-	}
 	clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
 
 	msm_ehci_config_vddcx(mhcd, 0);
@@ -832,7 +805,6 @@ static int msm_ehci_resume(struct msm_hcd *mhcd)
 	struct usb_hcd *hcd = mhcd_to_hcd(mhcd);
 	unsigned long timeout;
 	unsigned temp;
-	int ret;
 	unsigned long flags;
 
 	if (!atomic_read(&mhcd->in_lpm)) {
@@ -868,14 +840,8 @@ static int msm_ehci_resume(struct msm_hcd *mhcd)
 	pm_stay_awake(mhcd->dev);
 
 	/* Vote for TCXO when waking up the phy */
-	if (mhcd->xo_clk) {
+	if (mhcd->xo_clk)
 		clk_prepare_enable(mhcd->xo_clk);
-	} else {
-		ret = msm_xo_mode_vote(mhcd->xo_handle, MSM_XO_MODE_ON);
-		if (ret)
-			dev_err(mhcd->dev, "%s failed to vote for TCXO D0 %d\n",
-								__func__, ret);
-	}
 
 	clk_prepare_enable(mhcd->core_clk);
 	clk_prepare_enable(mhcd->iface_clk);
@@ -1403,20 +1369,8 @@ static int ehci_msm2_probe(struct platform_device *pdev)
 	}
 
 	snprintf(pdev_name, PDEV_NAME_LEN, "%s.%d", pdev->name, pdev->id);
-	if (mhcd->xo_clk) {
+	if (mhcd->xo_clk)
 		ret = clk_prepare_enable(mhcd->xo_clk);
-	} else {
-		mhcd->xo_handle = msm_xo_get(MSM_XO_TCXO_D0, pdev_name);
-		if (IS_ERR(mhcd->xo_handle)) {
-			dev_err(&pdev->dev, "%s fail to get handle for X0 D0\n",
-								__func__);
-			ret = PTR_ERR(mhcd->xo_handle);
-			mhcd->xo_handle = NULL;
-			goto free_async_irq;
-		} else {
-			ret = msm_xo_mode_vote(mhcd->xo_handle, MSM_XO_MODE_ON);
-		}
-	}
 	if (ret) {
 		dev_err(&pdev->dev, "%s failed to vote for TCXO %d\n",
 								__func__, ret);
@@ -1583,16 +1537,11 @@ deinit_vddcx:
 devote_xo_handle:
 	if (mhcd->xo_clk)
 		clk_disable_unprepare(mhcd->xo_clk);
-	else
-		msm_xo_mode_vote(mhcd->xo_handle, MSM_XO_MODE_OFF);
 free_xo_handle:
 	if (mhcd->xo_clk) {
 		clk_put(mhcd->xo_clk);
 		mhcd->xo_clk = NULL;
-	} else {
-		msm_xo_put(mhcd->xo_handle);
 	}
-free_async_irq:
 	if (mhcd->async_irq)
 		free_irq(mhcd->async_irq, mhcd);
 unmap:
@@ -1638,8 +1587,6 @@ static int ehci_msm2_remove(struct platform_device *pdev)
 	if (mhcd->xo_clk) {
 		clk_disable_unprepare(mhcd->xo_clk);
 		clk_put(mhcd->xo_clk);
-	} else {
-		msm_xo_put(mhcd->xo_handle);
 	}
 	msm_ehci_vbus_power(mhcd, 0);
 	msm_ehci_init_vbus(mhcd, 0);

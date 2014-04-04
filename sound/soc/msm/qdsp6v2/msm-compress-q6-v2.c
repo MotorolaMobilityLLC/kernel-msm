@@ -238,11 +238,13 @@ static int msm_compr_send_buffer(struct msm_compr_audio *prtd)
 		pr_debug("wrap around situation, send partial data %d now", buffer_length);
 	}
 
-	if (buffer_length)
+	if (buffer_length) {
 		param.paddr	= prtd->buffer_paddr + prtd->byte_offset;
+		WARN(prtd->byte_offset % 32 != 0, "offset %x not multiple of 32",
+		prtd->byte_offset);
+	}
 	else
 		param.paddr	= prtd->buffer_paddr;
-	WARN(param.paddr % 32 != 0, "param.paddr %lx not multiple of 32", param.paddr);
 
 	param.len	= buffer_length;
 	param.msw_ts	= 0;
@@ -275,11 +277,12 @@ static void compr_event_handler(uint32_t opcode,
 	uint32_t sample_rate = 0;
 	int bytes_available, stream_id;
 	uint32_t stream_index;
+	unsigned long flags;
 
 	pr_debug("%s opcode =%08x\n", __func__, opcode);
 	switch (opcode) {
 	case ASM_DATA_EVENT_WRITE_DONE_V2:
-		spin_lock(&prtd->lock);
+		spin_lock_irqsave(&prtd->lock, flags);
 
 		if (payload[3]) {
 			pr_err("WRITE FAILED w/ err 0x%x !, paddr 0x%x"
@@ -304,7 +307,7 @@ static void compr_event_handler(uint32_t opcode,
 			/* Writes must be restarted from _copy() */
 			pr_debug("write_done received while not started, treat as xrun");
 			atomic_set(&prtd->xrun, 1);
-			spin_unlock(&prtd->lock);
+			spin_unlock_irqrestore(&prtd->lock, flags);
 			break;
 		}
 
@@ -329,10 +332,10 @@ static void compr_event_handler(uint32_t opcode,
 		} else
 			msm_compr_send_buffer(prtd);
 
-		spin_unlock(&prtd->lock);
+		spin_unlock_irqrestore(&prtd->lock, flags);
 		break;
 	case ASM_DATA_EVENT_RENDERED_EOS:
-		spin_lock(&prtd->lock);
+		spin_lock_irqsave(&prtd->lock, flags);
 		pr_debug("%s: ASM_DATA_CMDRSP_EOS token 0x%x,stream id %d\n",
 			  __func__, token, STREAM_ID_FROM_TOKEN(token));
 		stream_id = STREAM_ID_FROM_TOKEN(token);
@@ -348,7 +351,7 @@ static void compr_event_handler(uint32_t opcode,
 		    stream_index < 0) {
 			pr_err("%s: Invalid stream index %d", __func__,
 				stream_index);
-			spin_unlock(&prtd->lock);
+			spin_unlock_irqrestore(&prtd->lock, flags);
 			break;
 		}
 
@@ -363,7 +366,7 @@ static void compr_event_handler(uint32_t opcode,
 		}
 		if (prtd->gapless_state.gapless_transition)
 			prtd->gapless_state.gapless_transition = 0;
-		spin_unlock(&prtd->lock);
+		spin_unlock_irqrestore(&prtd->lock, flags);
 		break;
 	case ASM_DATA_EVENT_SR_CM_CHANGE_NOTIFY:
 	case ASM_DATA_EVENT_ENC_SR_CM_CHANGE_NOTIFY: {
@@ -383,7 +386,7 @@ static void compr_event_handler(uint32_t opcode,
 			pr_debug("ASM_SESSION_CMD_RUN_V2\n");
 
 			/* FIXME: A state is a better way, dealing with this*/
-			spin_lock(&prtd->lock);
+			spin_lock_irqsave(&prtd->lock, flags);
 			if (!prtd->bytes_sent) {
 				bytes_available = prtd->bytes_received - prtd->copied_total;
 				if (bytes_available < cstream->runtime->fragment_size) {
@@ -392,7 +395,7 @@ static void compr_event_handler(uint32_t opcode,
 				} else
 					msm_compr_send_buffer(prtd);
 			}
-			spin_unlock(&prtd->lock);
+			spin_unlock_irqrestore(&prtd->lock, flags);
 			break;
 		case ASM_STREAM_CMD_FLUSH:
 			pr_debug("%s: ASM_STREAM_CMD_FLUSH:", __func__);
@@ -447,11 +450,11 @@ static void compr_event_handler(uint32_t opcode,
 	case RESET_EVENTS:
 		pr_err("%s: Received reset events CB, move to error state",
 			__func__);
-		spin_lock(&prtd->lock);
+		spin_lock_irqsave(&prtd->lock, flags);
 		snd_compr_fragment_elapsed(cstream);
 		prtd->copied_total = prtd->bytes_received;
 		atomic_set(&prtd->error, 1);
-		spin_unlock(&prtd->lock);
+		spin_unlock_irqrestore(&prtd->lock, flags);
 		break;
 	default:
 		pr_debug("%s: Not Supported Event opcode[0x%x]\n",
@@ -819,6 +822,7 @@ static int msm_compr_free(struct snd_compr_stream *cstream)
 
 	if ((stream_index < MAX_NUMBER_OF_STREAMS && stream_index >= 0) &&
 	    (prtd->gapless_state.stream_opened[stream_index])) {
+		prtd->gapless_state.stream_opened[stream_index] = 0;
 		spin_unlock_irqrestore(&prtd->lock, flags);
 		pr_debug(" close stream %d", NEXT_STREAM_ID(stream_id));
 		q6asm_stream_cmd(ac, CMD_CLOSE, NEXT_STREAM_ID(stream_id));
@@ -828,6 +832,7 @@ static int msm_compr_free(struct snd_compr_stream *cstream)
 	stream_index = STREAM_ARRAY_INDEX(stream_id);
 	if ((stream_index < MAX_NUMBER_OF_STREAMS && stream_index >= 0) &&
 	    (prtd->gapless_state.stream_opened[stream_index])) {
+		prtd->gapless_state.stream_opened[stream_index] = 0;
 		spin_unlock_irqrestore(&prtd->lock, flags);
 		pr_debug("close stream %d", stream_id);
 		q6asm_stream_cmd(ac, CMD_CLOSE, stream_id);
@@ -1493,7 +1498,7 @@ static int msm_compr_ack(struct snd_compr_stream *cstream,
 	WARN(1, "This path is untested");
 	return -EINVAL;
 
-	pr_debug("%s: count = %d\n", __func__, count);
+	pr_debug("%s: count = %zd\n", __func__, count);
 	if (!prtd->buffer) {
 		pr_err("%s: Buffer is not allocated yet ??\n", __func__);
 		return -EINVAL;
@@ -1539,7 +1544,7 @@ static int msm_compr_copy(struct snd_compr_stream *cstream,
 	size_t bytes_available = 0;
 	unsigned long flags;
 
-	pr_debug("%s: count = %d\n", __func__, count);
+	pr_debug("%s: count = %zd\n", __func__, count);
 	if (!prtd->buffer) {
 		pr_err("%s: Buffer is not allocated yet ??", __func__);
 		return 0;
@@ -1575,10 +1580,10 @@ static int msm_compr_copy(struct snd_compr_stream *cstream,
 	prtd->bytes_received += count;
 	if (atomic_read(&prtd->start)) {
 		if (atomic_read(&prtd->xrun)) {
-			pr_debug("%s: in xrun, count = %d\n", __func__, count);
+			pr_debug("%s: in xrun, count = %zd\n", __func__, count);
 			bytes_available = prtd->bytes_received - prtd->copied_total;
 			if (bytes_available >= runtime->fragment_size) {
-				pr_debug("%s: handle xrun, bytes_to_write = %d\n",
+				pr_debug("%s: handle xrun, bytes_to_write = %zd\n",
 					 __func__,
 					 bytes_available);
 				atomic_set(&prtd->xrun, 0);

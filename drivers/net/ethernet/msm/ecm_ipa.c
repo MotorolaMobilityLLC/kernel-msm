@@ -19,7 +19,7 @@
 #include <linux/skbuff.h>
 #include <linux/sched.h>
 #include <linux/atomic.h>
-#include <mach/ecm_ipa.h>
+#include <linux/ecm_ipa.h>
 
 #define DRIVER_NAME "ecm_ipa"
 #define ECM_IPA_IPV4_HDR_NAME "ecm_eth_ipv4"
@@ -194,6 +194,11 @@ const struct file_operations ecm_ipa_debugfs_atomic_ops = {
 	.read = ecm_ipa_debugfs_atomic_read,
 };
 
+static void ecm_ipa_msg_free_cb(void *buff, u32 len, u32 type)
+{
+	kfree(buff);
+}
+
 /**
  * ecm_ipa_init() - create network device and initializes internal
  *  data structures
@@ -239,7 +244,14 @@ int ecm_ipa_init(struct ecm_ipa_params *params)
 	ECM_IPA_DEBUG("network device was successfully allocated\n");
 
 	ecm_ipa_ctx = netdev_priv(net);
+	if (!ecm_ipa_ctx) {
+		ECM_IPA_ERROR("fail to extract netdev priv\n");
+		result = -ENOMEM;
+		goto fail_netdev_priv;
+	}
 	memset(ecm_ipa_ctx, 0, sizeof(*ecm_ipa_ctx));
+	ECM_IPA_DEBUG("ecm_ipa_ctx (private) = %p", ecm_ipa_ctx);
+
 	ecm_ipa_ctx->net = net;
 	ecm_ipa_ctx->tx_enable = true;
 	ecm_ipa_ctx->rx_enable = true;
@@ -317,6 +329,7 @@ fail_rules_cfg:
 fail_create_rm:
 	ecm_ipa_debugfs_destroy(ecm_ipa_ctx);
 fail_debugfs:
+fail_netdev_priv:
 	free_netdev(net);
 fail_alloc_etherdev:
 	return result;
@@ -345,11 +358,20 @@ int ecm_ipa_connect(u32 usb_to_ipa_hdl, u32 ipa_to_usb_hdl,
 {
 	struct ecm_ipa_dev *ecm_ipa_ctx = priv;
 	int next_state;
+	struct ipa_ecm_msg *ecm_msg;
+	struct ipa_msg_meta msg_meta;
+	int retval;
 
 	ECM_IPA_LOG_ENTRY();
 	NULL_CHECK(priv);
 	ECM_IPA_DEBUG("usb_to_ipa_hdl = %d, ipa_to_usb_hdl = %d, priv=0x%p\n",
 					usb_to_ipa_hdl, ipa_to_usb_hdl, priv);
+
+	ecm_msg = kzalloc(sizeof(struct ipa_ecm_msg), GFP_KERNEL);
+	if (!ecm_msg) {
+		ECM_IPA_ERROR("can't alloc msg mem\n");
+		return -ENOMEM;
+	}
 
 	next_state = ecm_ipa_next_state(ecm_ipa_ctx->state, ECM_IPA_CONNECT);
 	if (next_state == ECM_IPA_INVALID) {
@@ -371,13 +393,32 @@ int ecm_ipa_connect(u32 usb_to_ipa_hdl, u32 ipa_to_usb_hdl,
 	}
 	ecm_ipa_ctx->ipa_to_usb_hdl = ipa_to_usb_hdl;
 	ecm_ipa_ctx->usb_to_ipa_hdl = usb_to_ipa_hdl;
-	ecm_ipa_ep_registers_cfg(usb_to_ipa_hdl, ipa_to_usb_hdl);
+	retval = ecm_ipa_ep_registers_cfg(usb_to_ipa_hdl, ipa_to_usb_hdl);
+	if (retval) {
+		ECM_IPA_ERROR("fail on ep cfg\n");
+		goto fail_ep;
+	}
 	ECM_IPA_DEBUG("end-point configured\n");
 
 	netif_carrier_on(ecm_ipa_ctx->net);
+
+	memset(&msg_meta, 0, sizeof(struct ipa_msg_meta));
+	msg_meta.msg_type = ECM_CONNECT;
+	msg_meta.msg_len = sizeof(struct ipa_ecm_msg);
+	strlcpy(ecm_msg->name, ecm_ipa_ctx->net->name,
+		IPA_RESOURCE_NAME_MAX);
+	ecm_msg->ifindex = ecm_ipa_ctx->net->ifindex;
+
+	retval = ipa_send_msg(&msg_meta, ecm_msg, ecm_ipa_msg_free_cb);
+	if (retval) {
+		ECM_IPA_ERROR("fail to send ECM_CONNECT message\n");
+		goto fail_msg;
+	}
+
 	if (!netif_carrier_ok(ecm_ipa_ctx->net)) {
 		ECM_IPA_ERROR("netif_carrier_ok error\n");
-		return -EBUSY;
+		retval = -EBUSY;
+		goto fail_carrier;
 	}
 	ECM_IPA_DEBUG("carrier_on notified, ecm_ipa is operational\n");
 
@@ -389,6 +430,12 @@ int ecm_ipa_connect(u32 usb_to_ipa_hdl, u32 ipa_to_usb_hdl,
 	ECM_IPA_LOG_EXIT();
 
 	return 0;
+
+fail_carrier:
+fail_msg:
+	kfree(ecm_msg);
+fail_ep:
+	return retval;
 }
 EXPORT_SYMBOL(ecm_ipa_connect);
 
@@ -602,10 +649,19 @@ int ecm_ipa_disconnect(void *priv)
 {
 	struct ecm_ipa_dev *ecm_ipa_ctx = priv;
 	int next_state;
+	struct ipa_ecm_msg *ecm_msg;
+	struct ipa_msg_meta msg_meta;
+	int retval;
 
 	ECM_IPA_LOG_ENTRY();
 	NULL_CHECK(ecm_ipa_ctx);
 	ECM_IPA_DEBUG("priv=0x%p\n", priv);
+
+	ecm_msg = kzalloc(sizeof(struct ipa_ecm_msg), GFP_KERNEL);
+	if (!ecm_msg) {
+		ECM_IPA_ERROR("can't alloc msg mem\n");
+		return -ENOMEM;
+	}
 
 	next_state = ecm_ipa_next_state(ecm_ipa_ctx->state, ECM_IPA_DISCONNECT);
 	if (next_state == ECM_IPA_INVALID) {
@@ -617,6 +673,20 @@ int ecm_ipa_disconnect(void *priv)
 
 	netif_carrier_off(ecm_ipa_ctx->net);
 	ECM_IPA_DEBUG("carrier_off notifcation was sent\n");
+
+	memset(&msg_meta, 0, sizeof(struct ipa_msg_meta));
+	msg_meta.msg_type = ECM_DISCONNECT;
+	msg_meta.msg_len = sizeof(struct ipa_ecm_msg);
+	strlcpy(ecm_msg->name, ecm_ipa_ctx->net->name,
+		IPA_RESOURCE_NAME_MAX);
+	ecm_msg->ifindex = ecm_ipa_ctx->net->ifindex;
+
+	retval = ipa_send_msg(&msg_meta, ecm_msg, ecm_ipa_msg_free_cb);
+	if (retval) {
+		ECM_IPA_ERROR("fail to send ECM_DISCONNECT message\n");
+		kfree(ecm_msg);
+		return -EPERM;
+	}
 
 	netif_stop_queue(ecm_ipa_ctx->net);
 	ECM_IPA_DEBUG("queue stopped\n");

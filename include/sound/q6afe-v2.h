@@ -89,6 +89,7 @@ enum {
 	IDX_SPDIF_RX = 47,
 	IDX_GLOBAL_CFG,
 	IDX_AUDIO_PORT_ID_I2S_RX,
+	IDX_AFE_PORT_ID_SECONDARY_MI2S_RX_VIBRA,
 	AFE_MAX_PORTS
 };
 
@@ -96,7 +97,8 @@ enum afe_mad_type {
 	MAD_HW_NONE = 0x00,
 	MAD_HW_AUDIO = 0x01,
 	MAD_HW_BEACON = 0x02,
-	MAD_HW_ULTRASOUND = 0x04
+	MAD_HW_ULTRASOUND = 0x04,
+	MAD_SW_AUDIO = 0x05,
 };
 
 struct afe_audio_buffer {
@@ -153,9 +155,11 @@ int afe_start_pseudo_port(u16 port_id);
 int afe_stop_pseudo_port(u16 port_id);
 uint32_t afe_req_mmap_handle(struct afe_audio_client *ac);
 int afe_unmap_cal_blocks(void);
-int afe_memory_map(u32 dma_addr_p, u32 dma_buf_sz, struct afe_audio_client *ac);
-int afe_cmd_memory_map(u32 dma_addr_p, u32 dma_buf_sz);
-int afe_cmd_memory_map_nowait(int port_id, u32 dma_addr_p, u32 dma_buf_sz);
+int afe_memory_map(phys_addr_t dma_addr_p, u32 dma_buf_sz,
+		struct afe_audio_client *ac);
+int afe_cmd_memory_map(phys_addr_t dma_addr_p, u32 dma_buf_sz);
+int afe_cmd_memory_map_nowait(int port_id, phys_addr_t dma_addr_p,
+			u32 dma_buf_sz);
 int afe_cmd_memory_unmap(u32 dma_addr_p);
 int afe_cmd_memory_unmap_nowait(u32 dma_addr_p);
 void afe_set_dtmf_gen_rx_portid(u16 rx_port_id, int set);
@@ -215,4 +219,6 @@ void afe_clear_config(enum afe_config_type config);
 bool afe_has_config(enum afe_config_type config);
 
 void afe_set_aanc_info(struct aanc_data *aanc_info);
+int afe_port_group_set_param(u16 *port_id, int channel_count);
+int afe_port_group_enable(u16 enable);
 #endif /* __Q6AFE_V2_H__ */

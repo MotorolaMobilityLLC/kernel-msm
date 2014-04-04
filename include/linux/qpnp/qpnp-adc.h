@@ -192,6 +192,8 @@ enum qpnp_adc_calib_type {
  * %CHAN_PATH_SCALING3: ratio of {1, 6}
  * %CHAN_PATH_SCALING4: ratio of {1, 20}
  * %CHAN_PATH_SCALING5: ratio of {1, 8}
+ * %CHAN_PATH_SCALING6: ratio of {10, 81} The actual ratio is (1/8.1).
+ * %CHAN_PATH_SCALING7: ratio of {1, 10}
  * %CHAN_PATH_NONE: Do not use this pre-scaling ratio type.
  *
  * The pre-scaling is applied for signals to be within the voltage range
@@ -204,6 +206,8 @@ enum qpnp_adc_channel_scaling_param {
 	PATH_SCALING3,
 	PATH_SCALING4,
 	PATH_SCALING5,
+	PATH_SCALING6,
+	PATH_SCALING7,
 	PATH_SCALING_NONE,
 };
 
@@ -579,12 +583,10 @@ enum qpnp_adc_meas_timer_3 {
 /**
  * enum qpnp_adc_meas_timer_select - Selects the timer for which
  *	the appropriate polling frequency is set.
- * %ADC_MEAS_TIMER_SELECT1 - Select this timer if the client is USB_ID.
- * %ADC_MEAS_TIMER_SELECT2 - Select this timer if the client is batt_therm.
- * %ADC_MEAS_TIMER_SELECT3 - The timer is added only for completion. It is
- *	not used by kernel space clients and user space clients cannot set
- *	the polling frequency. The driver will set a appropriate polling
- *	frequency to measure the user space clients from qpnp_adc_meas_timer_3.
+ * %ADC_MEAS_TIMER_SELECT1 - Select this timer for measurement polling interval
+ *				for 1 second.
+ * %ADC_MEAS_TIMER_SELECT2 - Select this timer for 500ms measurement interval.
+ * %ADC_MEAS_TIMER_SELECT3 - Select this timer for 5 second interval.
  */
 enum qpnp_adc_meas_timer_select {
 	ADC_MEAS_TIMER_SELECT1 = 0,
@@ -903,7 +905,9 @@ static const struct qpnp_vadc_scaling_ratio qpnp_vadc_amux_scaling_ratio[] = {
 	{1, 4},
 	{1, 6},
 	{1, 20},
-	{1, 8}
+	{1, 8},
+	{10, 81},
+	{1, 10}
 };
 
 /**

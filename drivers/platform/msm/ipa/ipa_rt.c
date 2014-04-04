@@ -88,7 +88,7 @@ static int ipa_generate_rt_hw_rule(enum ipa_ip_type ip,
 		entry->hw_len = buf - start;
 	} else if (entry->hw_len != (buf - start)) {
 			IPAERR(
-			"hw_len differs b/w passes passed=0x%x calc=0x%x\n",
+			"hw_len differs b/w passes passed=0x%x calc=0x%td\n",
 			entry->hw_len,
 			(buf - start));
 			return -EPERM;
@@ -752,7 +752,7 @@ static int __ipa_del_rt_tbl(struct ipa_rt_tbl *entry)
 		return -EINVAL;
 	}
 	id = entry->id;
-	if (ipa_id_find(id)) {
+	if (ipa_id_find(id) == NULL) {
 		IPAERR("lookup failed\n");
 		return -EPERM;
 	}

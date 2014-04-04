@@ -289,7 +289,6 @@ config CHARGER_MAX77836
 
 config CHARGER_MAX8903
 	tristate "MAX8903 Battery DC-DC Charger for USB and Adapter Power"
-	depends on GENERIC_HARDIRQS
 	help
 	  Say Y to enable support for the MAX8903 DC-DC charger and sysfs.
 	  The driver supports controlling charger-enable and current-limit
@@ -411,6 +410,17 @@ config SMB135X_CHARGER
 	  The driver reports the charger status via the power supply framework.
 	  A charger status change triggers an IRQ via the device STAT pin.
 
+config SMB1360_CHARGER_FG
+	tristate "SMB1360 Charger and Fuel Guage"
+	depends on I2C
+	help
+	  Say Y to include support for SMB1360 Charger and Fuel Guage.
+	  SMB1360 is a single path switching mode charger capable of charging
+	  the battery with 1.5Amps of current. It supports a fuel gauge which
+	  uses voltage and coloumb counting for state of charge reporting.
+	  The driver reports the status via the power supply framework.
+	  A status change triggers an IRQ via the device STAT pin.
+
 config BQ27520_TEST_ENABLE
 	bool "Enable BQ27520 Fuel Gauge Chip Test"
 	depends on BATTERY_BQ27520
@@ -478,10 +488,19 @@ config AB8500_BM
 
 config BATTERY_GOLDFISH
 	tristate "Goldfish battery driver"
-	depends on GENERIC_HARDIRQS
 	help
 	  Say Y to enable support for the battery and AC power in the
 	  Goldfish emulator.
+
+config QPNP_VM_BMS
+	tristate "QPNP Voltage-Mode Battery Monitoring System driver"
+	depends on SPMI
+	depends on MSM_QPNP_INT
+	help
+	  Say Y here to enable support for QPNP chip vm-bms device.
+	  The voltage-mode (vm) BMS driver uses periodic VBATT
+	  readings from the battery to calculate the State of
+	  Charge.
 
 config QPNP_BMS
 	tristate "QPNP Battery Monitoring System driver"
@@ -492,8 +511,20 @@ config QPNP_BMS
 	  It registers a fuelgauge bms power supply to report
 	  State of Charge.
 
+config QPNP_LINEAR_CHARGER
+	tristate "QPNP Linear Charger driver"
+	depends on SPMI
+	depends on OF_SPMI
+	depends on MSM_QPNP_INT
+	depends on THERMAL_QPNP_ADC_TM
+	help
+	  Say Y here to enable the Linear battery charger which supports USB
+	  detection and charging. The driver also offers relevant information
+	  to userspace via the power supply framework.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY
 
 source "drivers/power/avs/Kconfig"
+source "drivers/power/qcom/Kconfig"

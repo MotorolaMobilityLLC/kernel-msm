@@ -137,7 +137,8 @@ enum ufs_pm_level {
 	UFS_PM_LVL_1, /* UFS_ACTIVE_PWR_MODE, UIC_LINK_HIBERN8_STATE */
 	UFS_PM_LVL_2, /* UFS_SLEEP_PWR_MODE, UIC_LINK_ACTIVE_STATE */
 	UFS_PM_LVL_3, /* UFS_SLEEP_PWR_MODE, UIC_LINK_HIBERN8_STATE */
-	UFS_PM_LVL_4, /* UFS_POWERDOWN_PWR_MODE, UIC_LINK_OFF_STATE */
+	UFS_PM_LVL_4, /* UFS_POWERDOWN_PWR_MODE, UIC_LINK_HIBERN8_STATE */
+	UFS_PM_LVL_5, /* UFS_POWERDOWN_PWR_MODE, UIC_LINK_OFF_STATE */
 	UFS_PM_LVL_MAX
 };
 
@@ -488,6 +489,13 @@ struct ufs_hba {
 	 */
 	#define UFSHCD_BROKEN_LCC			  (1 << 9)
 
+	/*
+	 * The attribute PA_RXHSUNTERMCAP specifies whether or not the
+	 * inbound Link supports unterminated line in HS mode. Setting this
+	 * attribute to 1 fixes moving to HS gear.
+	 */
+	#define UFSHCD_BROKEN_GEAR_CHANGE_INTO_HS        (1 << 10)
+
 	wait_queue_head_t tm_wq;
 	wait_queue_head_t tm_tag_wq;
 	unsigned long tm_condition;
@@ -534,6 +542,8 @@ struct ufs_hba {
 #define UFSHCD_CAP_HIBERN8_WITH_CLK_GATING (1 << 1)
 	/* Allow dynamic clk scaling */
 #define UFSHCD_CAP_CLK_SCALING	(1 << 2)
+	/* Allow auto bkops to enabled during runtime suspend */
+#define UFSHCD_CAP_AUTO_BKOPS_SUSPEND (1 << 3)
 
 	struct devfreq *devfreq;
 	struct ufs_clk_scaling clk_scaling;
@@ -541,6 +551,7 @@ struct ufs_hba {
 	struct ufs_stats ufs_stats;
 	struct debugfs_files debugfs_files;
 #endif
+	bool is_sys_suspended;
 };
 
 /* Returns true if clocks can be gated. Otherwise false */
@@ -559,6 +570,11 @@ static inline int ufshcd_is_clkscaling_enabled(struct ufs_hba *hba)
 {
 	return hba->caps & UFSHCD_CAP_CLK_SCALING;
 }
+static inline bool ufshcd_can_autobkops_during_suspend(struct ufs_hba *hba)
+{
+	return hba->caps & UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
+}
+
 #define ufshcd_writel(hba, val, reg)	\
 	writel((val), (hba)->mmio_base + (reg))
 #define ufshcd_readl(hba, reg)	\
@@ -582,6 +598,7 @@ static inline void ufshcd_rmwl(struct ufs_hba *hba, u32 mask, u32 val, u32 reg)
 }
 
 int ufshcd_alloc_host(struct device *, struct ufs_hba **);
+void ufshcd_dealloc_host(struct ufs_hba *);
 int ufshcd_init(struct ufs_hba * , void __iomem * , unsigned int);
 void ufshcd_remove(struct ufs_hba *);
 int ufshcd_wait_for_register(struct ufs_hba *hba, u32 reg, u32 mask,
@@ -684,7 +701,7 @@ int ufshcd_query_flag(struct ufs_hba *hba, enum query_opcode opcode,
 int ufshcd_query_attr(struct ufs_hba *hba, enum query_opcode opcode,
 	enum attr_idn idn, u8 index, u8 selector, u32 *attr_val);
 int ufshcd_query_descriptor(struct ufs_hba *hba, enum query_opcode opcode,
-	enum attr_idn idn, u8 index, u8 selector, u8 *desc_buf, int *buf_len);
+	enum desc_idn idn, u8 index, u8 selector, u8 *desc_buf, int *buf_len);
 
 int ufshcd_hold(struct ufs_hba *hba, bool async);
 void ufshcd_release(struct ufs_hba *hba);

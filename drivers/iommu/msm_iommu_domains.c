@@ -23,9 +23,9 @@
 #include <linux/idr.h>
 #include <asm/sizes.h>
 #include <asm/page.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
-#include <mach/msm_iommu_priv.h>
+#include "msm_iommu_priv.h"
 #include <soc/qcom/socinfo.h>
 
 struct msm_iova_data {
@@ -347,6 +347,24 @@ int msm_find_domain_no(const struct iommu_domain *domain)
 	return domain_num;
 }
 EXPORT_SYMBOL(msm_find_domain_no);
+
+struct iommu_domain *msm_iommu_domain_find(const char *name)
+{
+	struct iommu_group *group = iommu_group_find(name);
+	if (!group)
+		return NULL;
+	return iommu_group_get_iommudata(group);
+}
+EXPORT_SYMBOL(msm_iommu_domain_find);
+
+int msm_iommu_domain_no_find(const char *name)
+{
+	struct iommu_domain *domain = msm_iommu_domain_find(name);
+	if (!domain)
+		return -EINVAL;
+	return msm_find_domain_no(domain);
+}
+EXPORT_SYMBOL(msm_iommu_domain_no_find);
 
 static struct msm_iova_data *msm_domain_to_iova_data(struct iommu_domain
 						     const *domain)

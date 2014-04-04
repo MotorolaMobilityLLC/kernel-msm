@@ -26,11 +26,10 @@
 #include <soc/qcom/clock-pll.h>
 #include <soc/qcom/clock-rpm.h>
 #include <soc/qcom/clock-voter.h>
-
-#include <mach/rpm-smd.h>
+#include <soc/qcom/rpm-smd.h>
+#include <soc/qcom/clock-krait.h>
 
 #include "clock.h"
-#include "clock-krait.h"
 #include "clock-mdss-8974.h"
 
 enum {

@@ -117,6 +117,7 @@ static int					ftm_werr_code;
 
 
 unsigned int	disable_ctrl;
+bool		region2_sent;
 
 static void qca199x_init_stat(struct qca199x_dev *qca199x_dev)
 {
@@ -494,6 +495,12 @@ static ssize_t nfc_write(struct file *filp, const char __user *buf,
 	}
 	mutex_unlock(&qca199x_dev->read_mutex);
 
+	/* If we detect a Region2 command prior to power-down */
+	if ((tmp[0] == 0x2F) && (tmp[1] == 0x01) && (tmp[2] == 0x02) &&
+		(tmp[3] == 0x08) && (tmp[4] == 0x00)) {
+		region2_sent = true;
+	}
+
 	return ret;
 }
 
@@ -760,7 +767,7 @@ int nfc_ioctl_nfcc_version(struct file *filp, unsigned int cmd,
 				&raw_chip_rev_id_addr, 1);
 		if (r < 0)
 			goto invalid_wr;
-		usleep(10);
+		usleep(20);
 		r = i2c_master_recv(qca199x_dev->client, &raw_chip_version, 1);
 		/* Restore original NFCC slave I2C address */
 		qca199x_dev->client->addr = curr_addr;
@@ -943,121 +950,117 @@ static int nfcc_initialise(struct i2c_client *client, unsigned short curr_addr)
 	if (r < 0)
 		goto err_init;
 
-	if (0x10 != (0x10 & buf)) {
-		RAW(s73, 0x02);
+	RAW(s73, 0x02);
 
-		r = nfc_i2c_write(client, &raw_s73[0], sizeof(raw_s73));
-		if (r < 0)
-			goto err_init;
-
-		usleep(1000);
-		RAW(1p8_CONTROL_011, XTAL_CLOCK | 0x01);
-
-		r = nfc_i2c_write(client, &raw_1p8_CONTROL_011[0],
-						sizeof(raw_1p8_CONTROL_011));
-		if (r < 0)
-			goto err_init;
-
-		usleep(1000);
-		RAW(1P8_CONTROL_010, (0x8));
-		r = nfc_i2c_write(client, &raw_1P8_CONTROL_010[0],
-						sizeof(raw_1P8_CONTROL_010));
-		if (r < 0)
-			goto err_init;
-
-		usleep(10000);  /* 10ms wait */
-		RAW(1P8_CONTROL_010, (0xC));
-		r = nfc_i2c_write(client, &raw_1P8_CONTROL_010[0],
-					sizeof(raw_1P8_CONTROL_010));
-		if (r < 0)
-			goto err_init;
-
-		usleep(100);  /* 100uS wait */
-		RAW(1P8_X0_0B0, (FREQ_SEL_19));
-		r = nfc_i2c_write(client, &raw_1P8_X0_0B0[0],
-						sizeof(raw_1P8_X0_0B0));
-		if (r < 0)
-			goto err_init;
-
-		usleep(1000);
-
-		/* PWR_EN = 1 */
-		RAW(1P8_CONTROL_010, (0xd));
-		r = nfc_i2c_write(client, &raw_1P8_CONTROL_010[0],
-						sizeof(raw_1P8_CONTROL_010));
-		if (r < 0)
-			goto err_init;
-
-
-		usleep(20000);  /* 20ms wait */
-		/* LS_EN = 1 */
-		RAW(1P8_CONTROL_010, 0xF);
-		r = nfc_i2c_write(client, &raw_1P8_CONTROL_010[0],
-						sizeof(raw_1P8_CONTROL_010));
-		if (r < 0)
-			goto err_init;
-
-		usleep(20000);  /* 20ms wait */
-
-		/* Enable the PMIC clock */
-		RAW(1P8_PAD_CFG_CLK_REQ, (0x1));
-		r = nfc_i2c_write(client, &raw_1P8_PAD_CFG_CLK_REQ[0],
-					  sizeof(raw_1P8_PAD_CFG_CLK_REQ));
-		if (r < 0)
-			goto err_init;
-
-		usleep(1000);
-
-		RAW(1P8_PAD_CFG_PWR_REQ, (0x1));
-		r = nfc_i2c_write(client, &raw_1P8_PAD_CFG_PWR_REQ[0],
-					  sizeof(raw_1P8_PAD_CFG_PWR_REQ));
-		if (r < 0)
-			goto err_init;
-
-		usleep(1000);
-
-		RAW(slave2, 0x10);
-		r = nfc_i2c_write(client, &raw_slave2[0], sizeof(raw_slave2));
-		if (r < 0)
-			goto err_init;
-
-		usleep(1000);
-
-		RAW(slave1, NCI_I2C_SLAVE);
-		r = nfc_i2c_write(client, &raw_slave1[0], sizeof(raw_slave1));
-		if (r < 0)
-			goto err_init;
-
-		usleep(1000);
-
-		/* QCA199x NFCC CPU should now boot... */
-		r = i2c_master_recv(client, &raw_slave1_rd, 1);
-		/* Talk on NCI slave address NCI_I2C_SLAVE 0x2C*/
-		client->addr = NCI_I2C_SLAVE;
-
-		/*
-			Start with small delay and then we will poll until we
-			get a core reset notification - This is time for chip
-			& NFCC controller to come-up.
-		*/
-		usleep(1000); /* 1 ms */
-
-		do {
-			ret = i2c_master_recv(client, rsp, 5);
-			/* Found core reset notification */
-			if (((rsp[0] == CORE_RESET_RSP_GID) &&
-				(rsp[1] == CORE_RESET_OID) &&
-				(rsp[2] == CORE_RST_NTF_LENGTH))
-					|| time_taken == NTF_TIMEOUT) {
-				core_reset_completed = true;
-			}
-			usleep(10);  /* 10us sleep before retry */
-			time_taken++;
-		} while (!core_reset_completed);
-		r = 0;
-	} else {
+	r = nfc_i2c_write(client, &raw_s73[0], sizeof(raw_s73));
+	if (r < 0)
 		goto err_init;
-	}
+
+	usleep(1000);
+	RAW(1p8_CONTROL_011, XTAL_CLOCK | 0x01);
+
+	r = nfc_i2c_write(client, &raw_1p8_CONTROL_011[0],
+					sizeof(raw_1p8_CONTROL_011));
+	if (r < 0)
+		goto err_init;
+
+	usleep(1000);
+	RAW(1P8_CONTROL_010, (0x8));
+	r = nfc_i2c_write(client, &raw_1P8_CONTROL_010[0],
+					sizeof(raw_1P8_CONTROL_010));
+	if (r < 0)
+		goto err_init;
+
+	usleep(10000);  /* 10ms wait */
+	RAW(1P8_CONTROL_010, (0xC));
+	r = nfc_i2c_write(client, &raw_1P8_CONTROL_010[0],
+				sizeof(raw_1P8_CONTROL_010));
+	if (r < 0)
+		goto err_init;
+
+	usleep(100);  /* 100uS wait */
+	RAW(1P8_X0_0B0, (FREQ_SEL_19));
+	r = nfc_i2c_write(client, &raw_1P8_X0_0B0[0],
+					sizeof(raw_1P8_X0_0B0));
+	if (r < 0)
+		goto err_init;
+
+	usleep(1000);
+
+	/* PWR_EN = 1 */
+	RAW(1P8_CONTROL_010, (0xd));
+	r = nfc_i2c_write(client, &raw_1P8_CONTROL_010[0],
+					sizeof(raw_1P8_CONTROL_010));
+	if (r < 0)
+		goto err_init;
+
+
+	usleep(20000);  /* 20ms wait */
+	/* LS_EN = 1 */
+	RAW(1P8_CONTROL_010, 0xF);
+	r = nfc_i2c_write(client, &raw_1P8_CONTROL_010[0],
+					sizeof(raw_1P8_CONTROL_010));
+	if (r < 0)
+		goto err_init;
+
+	usleep(20000);  /* 20ms wait */
+
+	/* Enable the PMIC clock */
+	RAW(1P8_PAD_CFG_CLK_REQ, (0x1));
+	r = nfc_i2c_write(client, &raw_1P8_PAD_CFG_CLK_REQ[0],
+				  sizeof(raw_1P8_PAD_CFG_CLK_REQ));
+	if (r < 0)
+		goto err_init;
+
+	usleep(1000);
+
+	RAW(1P8_PAD_CFG_PWR_REQ, (0x1));
+	r = nfc_i2c_write(client, &raw_1P8_PAD_CFG_PWR_REQ[0],
+				  sizeof(raw_1P8_PAD_CFG_PWR_REQ));
+	if (r < 0)
+		goto err_init;
+
+	usleep(1000);
+
+	RAW(slave2, 0x10);
+	r = nfc_i2c_write(client, &raw_slave2[0], sizeof(raw_slave2));
+	if (r < 0)
+		goto err_init;
+
+	usleep(1000);
+
+	RAW(slave1, NCI_I2C_SLAVE);
+	r = nfc_i2c_write(client, &raw_slave1[0], sizeof(raw_slave1));
+	if (r < 0)
+		goto err_init;
+
+	usleep(1000);
+
+	/* QCA199x NFCC CPU should now boot... */
+	r = i2c_master_recv(client, &raw_slave1_rd, 1);
+	/* Talk on NCI slave address NCI_I2C_SLAVE 0x2C*/
+	client->addr = NCI_I2C_SLAVE;
+
+	/*
+		Start with small delay and then we will poll until we
+		get a core reset notification - This is time for chip
+		& NFCC controller to come-up.
+	*/
+	usleep(1000); /* 1 ms */
+
+	do {
+		ret = i2c_master_recv(client, rsp, 5);
+		/* Found core reset notification */
+		if (((rsp[0] == CORE_RESET_RSP_GID) &&
+			(rsp[1] == CORE_RESET_OID) &&
+			(rsp[2] == CORE_RST_NTF_LENGTH))
+				|| time_taken == NTF_TIMEOUT) {
+			core_reset_completed = true;
+		}
+		usleep(10);  /* 10us sleep before retry */
+		time_taken++;
+	} while (!core_reset_completed);
+	r = 0;
 	return r;
 err_init:
 	r = 1;
@@ -1414,18 +1417,6 @@ static int qca199x_probe(struct i2c_client *client,
 		gpio_set_value(platform_data->dis_gpio, 1);
 		goto err_nfcc_not_present;
 	}
-	regulators.regulator = regulator_get(&client->dev, regulators.name);
-	if (IS_ERR(regulators.regulator)) {
-		r = PTR_ERR(regulators.regulator);
-		pr_err("regulator get of %s failed (%d)\n", regulators.name, r);
-	} else {
-		/* Enable the regulator */
-		r = regulator_enable(regulators.regulator);
-		if (r) {
-			pr_err("vreg %s enable failed (%d)\n",
-				regulators.name, r);
-		}
-	}
 
 	logging_level = 0;
 	/* request irq.  The irq is set whenever the chip has data available
@@ -1468,6 +1459,10 @@ static int qca199x_probe(struct i2c_client *client,
 	}
 	i2c_set_clientdata(client, qca199x_dev);
 	gpio_set_value(platform_data->dis_gpio, 1);
+
+	/* To keep track if region2 command has been sent to controller */
+	region2_sent = false;
+
 	dev_dbg(&client->dev,
 	"nfc-nci probe: %s, probing qca1990 exited successfully\n",
 		 __func__);
@@ -1546,17 +1541,27 @@ static struct i2c_driver qca199x = {
 static int nfcc_reboot(struct notifier_block *notifier, unsigned long val,
 		      void *v)
 {
-	/* Set DISABLE line HIGH. This will put chip into HPD state for
-	   power saving */
-	gpio_set_value(disable_ctrl, 1);
+	/*
+	 * Set DISABLE=1 *ONLY* if the NFC service has been disabled.
+	 * This will put NFCC into HPD(Hard Power Down) state for power
+	 * saving when powering down(Low Batt. or Power off handset)
+	 * If user requires NFC and CE mode when powered down(PD) the
+	 * middleware puts NFCC into region2 prior to PD. In this case
+	 * we DO NOT HPD chip as this will trash Region2 and CE support
+	 * when handset is PD.
+	 */
+	if (region2_sent == false) {
+		/* HPD the NFCC */
+		gpio_set_value(disable_ctrl, 1);
+	}
 	return NOTIFY_OK;
 }
 
 
 static struct notifier_block nfcc_notifier = {
 	.notifier_call	= nfcc_reboot,
-	.next			= NULL,
-	.priority		= 0
+	.next		= NULL,
+	.priority	= 0
 };
 
 /*

@@ -238,6 +238,26 @@ int create_pkt_cmd_sys_debug_config(
 	return 0;
 }
 
+int create_pkt_cmd_sys_coverage_config(
+	struct hfi_cmd_sys_set_property_packet *pkt,
+	u32 mode)
+{
+	if (!pkt) {
+		dprintk(VIDC_ERR, "In %s(), No input packet\n", __func__);
+		return -EINVAL;
+	}
+
+	pkt->size = sizeof(struct hfi_cmd_sys_set_property_packet) +
+		sizeof(u32);
+	pkt->packet_type = HFI_CMD_SYS_SET_PROPERTY;
+	pkt->num_properties = 1;
+	pkt->rg_property_data[0] = HFI_PROPERTY_SYS_CONFIG_COVERAGE;
+	pkt->rg_property_data[1] = mode;
+	dprintk(VIDC_DBG, "Firmware coverage mode %d\n",
+			pkt->rg_property_data[1]);
+	return 0;
+}
+
 int create_pkt_set_cmd_sys_resource(
 		struct hfi_cmd_sys_set_resource_packet *pkt,
 		struct vidc_resource_hdr *resource_hdr,
@@ -1638,7 +1658,7 @@ int create_pkt_cmd_session_set_property(
 		struct hfi_ltrmode *hfi;
 		struct hal_ltrmode *hal = pdata;
 		pkt->rg_property_data[0] =
-			HFI_PROPERTY_PARAM_VENC_H264_LTRMODE;
+			HFI_PROPERTY_PARAM_VENC_LTRMODE;
 		hfi = (struct hfi_ltrmode *) &pkt->rg_property_data[1];
 		hfi->ltrmode = get_hfi_ltr_mode(hal->ltrmode);
 		hfi->ltrcount = hal->ltrcount;
@@ -1651,7 +1671,7 @@ int create_pkt_cmd_session_set_property(
 		struct hfi_ltruse *hfi;
 		struct hal_ltruse *hal = pdata;
 		pkt->rg_property_data[0] =
-			HFI_PROPERTY_CONFIG_VENC_H264_USELTRFRAME;
+			HFI_PROPERTY_CONFIG_VENC_USELTRFRAME;
 		hfi = (struct hfi_ltruse *) &pkt->rg_property_data[1];
 		hfi->frames = hal->frames;
 		hfi->refltr = hal->refltr;
@@ -1664,10 +1684,10 @@ int create_pkt_cmd_session_set_property(
 		struct hfi_ltrmark *hfi;
 		struct hal_ltrmark *hal = pdata;
 		pkt->rg_property_data[0] =
-			HFI_PROPERTY_CONFIG_VENC_H264_MARKLTRFRAME;
+			HFI_PROPERTY_CONFIG_VENC_MARKLTRFRAME;
 		hfi = (struct hfi_ltrmark *) &pkt->rg_property_data[1];
 		hfi->markframe = hal->markframe;
-		pkt->size += sizeof(u32) * 2;
+		pkt->size += sizeof(u32) + sizeof(struct hfi_ltrmark);
 		break;
 	}
 	case HAL_PARAM_VENC_HIER_P_NUM_FRAMES:
@@ -1675,6 +1695,16 @@ int create_pkt_cmd_session_set_property(
 		pkt->rg_property_data[0] =
 			HFI_PROPERTY_PARAM_VENC_HIER_P_NUM_ENH_LAYER;
 		pkt->rg_property_data[1] = *(u32 *)pdata;
+		pkt->size += sizeof(u32) * 2;
+		break;
+	}
+	case HAL_PARAM_VENC_DISABLE_RC_TIMESTAMP:
+	{
+		struct hfi_enable *hfi;
+		pkt->rg_property_data[0] =
+			HFI_PROPERTY_PARAM_VENC_DISABLE_RC_TIMESTAMP;
+		hfi = (struct hfi_enable *)&pkt->rg_property_data[1];
+		hfi->enable = ((struct hfi_enable *)pdata)->enable;
 		pkt->size += sizeof(u32) * 2;
 		break;
 	}

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,16 +17,17 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/clk/msm-clk.h>
-
-#include <mach/camera.h>
 #include <linux/msm_iommu_domains.h>
-#include <mach/msm_bus.h>
-#include <mach/msm_bus_board.h>
+#include <linux/msm-bus.h>
+#include <linux/msm-bus-board.h>
+#include <linux/msm_ion.h>
+#include <linux/iommu.h>
 
 #include "msm_jpeg_platform.h"
 #include "msm_jpeg_sync.h"
 #include "msm_jpeg_common.h"
 #include "msm_jpeg_hw.h"
+#include "msm_camera_io_util.h"
 
 int msm_jpeg_platform_set_clk_rate(struct msm_jpeg_device *pgmn_dev,
 		long clk_rate)

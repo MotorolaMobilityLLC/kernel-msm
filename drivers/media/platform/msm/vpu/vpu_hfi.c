@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,6 +28,8 @@
 #include "vpu_hfi.h"
 #include "vpu_hfi_intf.h"
 #include "vpu_debug.h"
+
+u32 vpu_pil_timeout = VPU_PIL_DEFAULT_TIMEOUT_MS;
 
 /*
  * queue state:
@@ -105,6 +107,7 @@ struct vpu_hfi_device {
 	/* io space, already mapped */
 	void __iomem *reg_base;
 	void __iomem *mem_base;
+	void __iomem *vbif_base;
 
 	/* subsystem */
 	void *vpu_sub_sys;
@@ -135,15 +138,6 @@ struct addr_range {
 
 /* global */
 static struct vpu_hfi_device g_hfi_device;
-
-static struct addr_range csr_skip_addrs[] = {
-	/* start and end offsets of inaccessible address ranges */
-	{ 0x0000, 0x000F },
-	{ 0x0018, 0x001B },
-	{ 0x0020, 0x0037 },
-	{ 0x00C0, 0x00DF },
-	{ 0x01A0, 0x01AF },
-};
 
 /*
  * write a packet into the IPC memory
@@ -321,8 +315,8 @@ static void raw_handle_rx_msgs_q(struct vpu_hfi_rxq_info *rxq)
 	qhdr = (struct hfi_queue_header *) rxq->q_hdr;
 	hdevice = rxq->dev;
 
-	/* for log, wake up user thread */
 	if (rxq->cid == VPU_LOGGING_CHANNEL_ID) {
+		/* for logging wake up user thread */
 		if (qhdr->qhdr_write_idx != qhdr->qhdr_read_idx)
 			vpu_wakeup_fw_logging_wq();
 		goto exit_1;
@@ -474,9 +468,9 @@ static void raw_handle_rx_msgs_poll(struct vpu_hfi_device *hdevice)
 		if (unlikely(rxq->state != HFI_QUEUE_STATE_ACTIVE))
 			continue;
 
-		/* for logging, wake up user thread */
 		qhdr = (struct hfi_queue_header *) rxq->q_hdr;
 		if (rxq->cid == VPU_LOGGING_CHANNEL_ID) {
+			/* for logging wake up user thread */
 			if (qhdr->qhdr_write_idx != qhdr->qhdr_read_idx)
 				vpu_wakeup_fw_logging_wq();
 			continue;
@@ -532,7 +526,7 @@ static int vpu_hfi_boot(struct vpu_hfi_device *hdevice)
 	raw_hfi_int_enable((u32)(hdevice->reg_base));
 
 	/* wait for VPU FW up (poll status register) */
-	timeout = vpu_pil_timeout/20;
+	timeout = vpu_pil_timeout / 20;
 	while (!raw_hfi_fw_ready((u32)hdevice->reg_base)) {
 		if (timeout-- <= 0) {
 			/* FW bootup timed out */
@@ -684,8 +678,22 @@ int vpu_hfi_init(struct vpu_platform_resources *res)
 		goto error_map_fail2;
 	} else {
 		pr_debug("MEM mapped from 0x%08x to 0x%p\n",
-				(u32) res->mem_base_phy,
-				hdevice->mem_base);
+				(u32) res->mem_base_phy, hdevice->mem_base);
+	}
+
+	/* map the VBIF registers */
+	if (res->vbif_size > 0) {
+		hdevice->vbif_base =
+			ioremap_nocache(res->vbif_base_phy, res->vbif_size);
+		if (unlikely(!hdevice->vbif_base)) {
+			pr_err("could not map vbif addr 0x%x of size 0x%x\n",
+				(u32) res->vbif_base_phy, res->vbif_size);
+			rc = -ENODEV;
+			goto error_map_fail3;
+		} else {
+			pr_debug("VBIF mapped from 0x%08x to 0x%p\n",
+				(u32) res->vbif_base_phy, hdevice->vbif_base);
+		}
 	}
 
 	/* init the IPC queues */
@@ -699,6 +707,9 @@ int vpu_hfi_init(struct vpu_platform_resources *res)
 	return 0;
 
 error_hfiq:
+	if (res->vbif_size > 0)
+		iounmap(hdevice->vbif_base);
+error_map_fail3:
 	iounmap(hdevice->mem_base);
 error_map_fail2:
 	iounmap(hdevice->reg_base);
@@ -718,7 +729,33 @@ void vpu_hfi_deinit(void)
 
 	iounmap(hdevice->reg_base);
 	iounmap(hdevice->mem_base);
+	if (hdevice->platform_resouce->vbif_size > 0)
+		iounmap(hdevice->vbif_base);
 	destroy_workqueue(hdevice->main_workq);
+}
+
+static void program_preset_registers(void)
+{
+	struct vpu_hfi_device *hdevice = &g_hfi_device;
+	struct vpu_platform_resources *res = hdevice->platform_resouce;
+	struct reg_value_set *vbif_regs = &res->vbif_reg_set;
+
+	if (res->vbif_size > 0 && vbif_regs->count && vbif_regs->table) {
+		int i;
+		for (i = 0; i < vbif_regs->count; i++) {
+			if (vbif_regs->table[i].reg_offset > res->vbif_size) {
+				pr_warn("Preset reg offset 0x%08x not mapped\n",
+						vbif_regs->table[i].reg_offset);
+			} else {
+				pr_debug("Writing offset 0x%08x value 0x%08x\n",
+					vbif_regs->table[i].reg_offset,
+					vbif_regs->table[i].value);
+				raw_hfi_reg_write((u32)hdevice->vbif_base +
+						vbif_regs->table[i].reg_offset,
+						vbif_regs->table[i].value);
+			}
+		}
+	}
 }
 
 /*
@@ -741,6 +778,8 @@ int vpu_hfi_start(hfi_handle_msg msg_handler,
 	hdevice->irq_no = res->irq;
 
 	hdevice->watchdog_bited = 0;
+
+	program_preset_registers();
 
 	rc = vpu_hfi_boot(hdevice);
 	if (rc)
@@ -1003,63 +1042,6 @@ int vpu_hfi_write_packet_extra_commit(u32 cid, struct vpu_hfi_packet *packet,
 	return rc;
 }
 
-/*
- * return packet size read, or < 0 for error
- */
-int vpu_hfi_read_log_data(u32 cid, char *buf, int buf_size)
-{
-	struct vpu_hfi_device *hdevice = &g_hfi_device;
-	struct vpu_hfi_rxq_info *rxq = &hdevice->rxqs[cid];
-	int more_data;
-	int res = 0;
-	int rc;
-	char *wr_buf = buf;
-	int max_size = buf_size;
-
-	if (unlikely(cid != VPU_LOGGING_CHANNEL_ID)) {
-		pr_err("must only access the logging queue!\n");
-		res = -EACCES;
-		goto vpu_hfi_read_log_data_exit;
-	}
-
-	mutex_lock(&rxq->lock);
-	do {
-		struct hfi_queue_header *qhdr =
-				(struct hfi_queue_header *) rxq->q_hdr;
-
-		more_data = 0;
-		rc = raw_read_packet(rxq, wr_buf, max_size, &more_data);
-
-		/* no data available or error in reading packet */
-		if (rc <= 0)
-			break;
-
-		/* inform firmware that new space available */
-		if ((qhdr->qhdr_tx_req == 1) && (hdevice->vpu_sub_sys))
-			raw_hfi_int_fire((u32)(hdevice->reg_base));
-
-		if (!more_data)
-			qhdr->qhdr_rx_req = 1;
-
-		res += rc;
-		wr_buf += rc;
-		max_size -= rc;
-
-		if (max_size <= 0) {
-			pr_warn("max size reached!\n");
-			break;
-		}
-
-	} while (more_data);
-
-	mutex_unlock(&rxq->lock);
-
-vpu_hfi_read_log_data_exit:
-	pr_debug("return %d\n", res);
-
-	return res;
-}
-
 #define LOG_BUF_SIZE	128
 
 #define add2buf(dest, dest_size, temp, temp_size, __fmt, arg...) \
@@ -1067,33 +1049,6 @@ vpu_hfi_read_log_data_exit:
 		snprintf(temp, temp_size, __fmt, ## arg); \
 		strlcat(dest, temp, dest_size); \
 	} while (0)
-
-/*
- * dump the contents of the IPC queue table header into buf
- * returns the number of valid bytes in buf
- */
-static int dump_qtbl_header(char *buf, size_t buf_size)
-{
-	struct vpu_hfi_device *dev = &g_hfi_device;
-	struct hfi_queue_table_header *qtbl = dev->qtbl;
-	/* temporary buffer */
-	size_t ts = LOG_BUF_SIZE;
-	char t[ts];
-	/* destination buffer */
-	size_t ds = buf_size;
-	char *d = buf;
-
-	strlcat(buf, "\nQueue table header:\n", buf_size);
-
-	add2buf(d, ds, t, ts, "\tversion      %10d\n", qtbl->qtbl_version);
-	add2buf(d, ds, t, ts, "\tsize         %10d\n", qtbl->qtbl_size);
-	add2buf(d, ds, t, ts, "\tqhdr0_offset 0x%08x\n",
-						       qtbl->qtbl_qhdr0_offset);
-	add2buf(d, ds, t, ts, "\tqhdr_size    %10d\n", qtbl->qtbl_qhdr_size);
-	add2buf(d, ds, t, ts, "\tnum_q        %10d\n", qtbl->qtbl_num_q);
-	add2buf(d, ds, t, ts, "\tnum_active_q %10d\n", qtbl->qtbl_num_active_q);
-	return strlcat(d, "\n", ds);
-}
 
 /* 26 bytes per line -> 364 bytes required */
 static void dump_queue_header(struct hfi_queue_header *qhdr,
@@ -1143,6 +1098,95 @@ int vpu_hfi_dump_queue_headers(int idx, char *buf, size_t buf_size)
 	return strlcat(buf, "\n", buf_size);
 }
 
+#ifdef CONFIG_DEBUG_FS
+
+void vpu_hfi_set_pil_timeout(u32 pil_timeout)
+{
+	vpu_pil_timeout = pil_timeout;
+}
+
+/*
+ * return packet size read, or < 0 for error
+ */
+int vpu_hfi_read_log_data(u32 cid, char *buf, int buf_size)
+{
+	struct vpu_hfi_device *hdevice = &g_hfi_device;
+	struct vpu_hfi_rxq_info *rxq = &hdevice->rxqs[cid];
+	int more_data;
+	int res = 0;
+	int rc;
+	char *wr_buf = buf;
+	int max_size = buf_size;
+
+	if (unlikely(cid != VPU_LOGGING_CHANNEL_ID)) {
+		pr_err("must only access the logging queue!\n");
+		res = -EACCES;
+		goto exit;
+	}
+
+	mutex_lock(&rxq->lock);
+
+	do {
+		struct hfi_queue_header *qhdr =
+				(struct hfi_queue_header *) rxq->q_hdr;
+
+		more_data = 0;
+		rc = raw_read_packet(rxq, wr_buf, max_size, &more_data);
+
+		/* no data available or error in reading packet */
+		if (rc <= 0)
+			break;
+
+		/* inform firmware that new space available */
+		if ((qhdr->qhdr_tx_req == 1) && (hdevice->vpu_sub_sys))
+			raw_hfi_int_fire((u32)(hdevice->reg_base));
+
+		if (!more_data)
+			qhdr->qhdr_rx_req = 1;
+
+		res += rc;
+		wr_buf += rc;
+		max_size -= rc;
+
+		if (!max_size)
+			break;
+
+	} while (more_data);
+
+	mutex_unlock(&rxq->lock);
+
+exit:
+	pr_debug("return %d\n", res);
+	return res;
+}
+
+/*
+ * dump the contents of the IPC queue table header into buf
+ * returns the number of valid bytes in buf
+ */
+static int dump_qtbl_header(char *buf, size_t buf_size)
+{
+	struct vpu_hfi_device *dev = &g_hfi_device;
+	struct hfi_queue_table_header *qtbl = dev->qtbl;
+	/* temporary buffer */
+	size_t ts = LOG_BUF_SIZE;
+	char t[ts];
+	/* destination buffer */
+	size_t ds = buf_size;
+	char *d = buf;
+
+	strlcat(buf, "\nQueue table header:\n", buf_size);
+
+	add2buf(d, ds, t, ts, "\tversion      %10d\n", qtbl->qtbl_version);
+	add2buf(d, ds, t, ts, "\tsize         %10d\n", qtbl->qtbl_size);
+	add2buf(d, ds, t, ts, "\tqhdr0_offset 0x%08x\n",
+						       qtbl->qtbl_qhdr0_offset);
+	add2buf(d, ds, t, ts, "\tqhdr_size    %10d\n", qtbl->qtbl_qhdr_size);
+	add2buf(d, ds, t, ts, "\tnum_q        %10d\n", qtbl->qtbl_num_q);
+	add2buf(d, ds, t, ts, "\tnum_active_q %10d\n", qtbl->qtbl_num_active_q);
+	return strlcat(d, "\n", ds);
+}
+
 size_t vpu_hfi_print_queues(char *buf, size_t buf_size)
 {
 	int i;
@@ -1157,6 +1201,15 @@ size_t vpu_hfi_print_queues(char *buf, size_t buf_size)
 
 	return strlcat(buf, "", buf_size);
 }
+
+static struct addr_range csr_skip_addrs[] = {
+	/* start and end offsets of inaccessible address ranges */
+	{ 0x0000, 0x000F },
+	{ 0x0018, 0x001B },
+	{ 0x0020, 0x0037 },
+	{ 0x00C0, 0x00DF },
+	{ 0x01A0, 0x01AF },
+};
 
 int vpu_hfi_dump_csr_regs(char *buf, size_t buf_size)
 {
@@ -1263,3 +1316,5 @@ void vpu_hfi_set_watchdog(u32 enable)
 		disable_irq_nosync(hdevice->irq_wd);
 	}
 }
+
+#endif /* CONFIG_DEBUG_FS */

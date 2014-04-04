@@ -18,23 +18,31 @@
 #include "adreno_ringbuffer.h"
 #include "adreno_profile.h"
 #include "kgsl_iommu.h"
+#include <linux/stat.h>
+
+#ifdef CONFIG_MSM_OCMEM
 #include <mach/ocmem.h>
+#endif
 
 #include "a3xx_reg.h"
+#include "a4xx_reg.h"
 
 #define DEVICE_3D_NAME "kgsl-3d"
 #define DEVICE_3D0_NAME "kgsl-3d0"
 
 #define ADRENO_DEVICE(device) \
-		KGSL_CONTAINER_OF(device, struct adreno_device, dev)
+		container_of(device, struct adreno_device, dev)
 
 #define ADRENO_CONTEXT(device) \
-		KGSL_CONTAINER_OF(device, struct adreno_context, base)
+		container_of(device, struct adreno_context, base)
 
 #define ADRENO_CHIPID_CORE(_id) (((_id) >> 24) & 0xFF)
 #define ADRENO_CHIPID_MAJOR(_id) (((_id) >> 16) & 0xFF)
 #define ADRENO_CHIPID_MINOR(_id) (((_id) >> 8) & 0xFF)
 #define ADRENO_CHIPID_PATCH(_id) ((_id) & 0xFF)
+
+/* Adreno core features */
+#define ADRENO_USES_OCMEM BIT(0)
 
 /* Flags to control command packet settings */
 #define KGSL_CMD_FLAGS_NONE             0
@@ -75,6 +83,7 @@ enum adreno_gpurev {
 	ADRENO_REV_A225 = 225,
 	ADRENO_REV_A305 = 305,
 	ADRENO_REV_A305C = 306,
+	ADRENO_REV_A306 = 307,
 	ADRENO_REV_A310 = 310,
 	ADRENO_REV_A320 = 320,
 	ADRENO_REV_A330 = 330,
@@ -158,6 +167,7 @@ struct adreno_device {
 	unsigned int pm4_fw_version;
 	struct adreno_ringbuffer ringbuffer;
 	struct adreno_gpudev *gpudev;
+	unsigned long features;
 	unsigned int wait_timeout;
 	unsigned int pm4_jt_idx;
 	unsigned int pm4_jt_addr;
@@ -166,19 +176,13 @@ struct adreno_device {
 	unsigned int pfp_jt_addr;
 	unsigned int pfp_bstrp_size;
 	unsigned int pfp_bstrp_ver;
-	unsigned int istore_size;
-	unsigned int pix_shader_start;
-	unsigned int instruction_size;
 	unsigned int ib_check_level;
 	unsigned int fast_hang_detect;
 	unsigned int ft_policy;
 	unsigned int long_ib_detect;
-	unsigned int long_ib;
-	unsigned int long_ib_ts;
 	unsigned int ft_pf_policy;
 	unsigned int gpulist_index;
 	struct ocmem_buf *ocmem_hdl;
-	unsigned int ocmem_base;
 	struct adreno_profile profile;
 	struct adreno_dispatcher dispatcher;
 	struct kgsl_memdesc pwron_fixup;
@@ -320,6 +324,8 @@ enum adreno_regs {
 	ADRENO_REG_CP_MERCIU_DATA2,
 	ADRENO_REG_CP_MEQ_ADDR,
 	ADRENO_REG_CP_MEQ_DATA,
+	ADRENO_REG_CP_HW_FAULT,
+	ADRENO_REG_CP_PROTECT_STATUS,
 	ADRENO_REG_SCRATCH_ADDR,
 	ADRENO_REG_SCRATCH_UMSK,
 	ADRENO_REG_SCRATCH_REG2,
@@ -337,6 +343,8 @@ enum adreno_regs {
 	ADRENO_REG_RBBM_INT_CLEAR_CMD,
 	ADRENO_REG_RBBM_SW_RESET_CMD,
 	ADRENO_REG_RBBM_CLOCK_CTL,
+	ADRENO_REG_RBBM_AHB_ME_SPLIT_STATUS,
+	ADRENO_REG_RBBM_AHB_PFP_SPLIT_STATUS,
 	ADRENO_REG_VPC_DEBUG_RAM_SEL,
 	ADRENO_REG_VPC_DEBUG_RAM_READ,
 	ADRENO_REG_VSC_PIPE_DATA_ADDRESS_0,
@@ -355,6 +363,7 @@ enum adreno_regs {
 	ADRENO_REG_SQ_INST_STORE_MANAGMENT,
 	ADRENO_REG_TP0_CHICKEN,
 	ADRENO_REG_RBBM_RBBM_CTL,
+	ADRENO_REG_UCHE_INVALIDATE0,
 	ADRENO_REG_REGISTER_MAX,
 };
 
@@ -493,8 +502,6 @@ struct adreno_gpudev {
 	 * so define them in the structure and use them as variables.
 	 */
 	const struct adreno_reg_offsets *reg_offsets;
-	/* keeps track of when we need to execute the draw workaround code */
-	int ctx_switches_since_last_draw;
 
 	struct adreno_perfcounters *perfcounters;
 	const struct adreno_invalid_countables
@@ -542,7 +549,9 @@ struct log_field {
 #define  KGSL_FT_SKIPFRAME                3
 #define  KGSL_FT_DISABLE                  4
 #define  KGSL_FT_TEMP_DISABLE             5
-#define  KGSL_FT_DEFAULT_POLICY (BIT(KGSL_FT_REPLAY) + BIT(KGSL_FT_SKIPIB))
+#define  KGSL_FT_THROTTLE                 6
+#define  KGSL_FT_DEFAULT_POLICY (BIT(KGSL_FT_REPLAY) + BIT(KGSL_FT_SKIPIB) \
+				+ BIT(KGSL_FT_THROTTLE))
 
 /* This internal bit is used to skip the PM dump on replayed command batches */
 #define  KGSL_FT_SKIP_PMDUMP              31
@@ -560,7 +569,8 @@ struct log_field {
 	{ BIT(KGSL_FT_SKIPIB), "skipib" }, \
 	{ BIT(KGSL_FT_SKIPFRAME), "skipframe" }, \
 	{ BIT(KGSL_FT_DISABLE), "disable" }, \
-	{ BIT(KGSL_FT_TEMP_DISABLE), "temp" }
+	{ BIT(KGSL_FT_TEMP_DISABLE), "temp" }, \
+	{ BIT(KGSL_FT_THROTTLE), "throttle"}
 
 extern struct adreno_gpudev adreno_a3xx_gpudev;
 extern struct adreno_gpudev adreno_a4xx_gpudev;
@@ -593,6 +603,10 @@ int adreno_perfcounter_query_group(struct adreno_device *adreno_dev,
 
 int adreno_perfcounter_read_group(struct adreno_device *adreno_dev,
 	struct kgsl_perfcounter_read_group __user *reads, unsigned int count);
+
+int adreno_set_constraint(struct kgsl_device *device,
+				struct kgsl_context *context,
+				struct kgsl_device_constraint *constraint);
 
 void adreno_shadermem_regread(struct kgsl_device *device,
 						unsigned int offsetwords,
@@ -662,6 +676,11 @@ static inline int adreno_is_a305b(struct adreno_device *adreno_dev)
 static inline int adreno_is_a305c(struct adreno_device *adreno_dev)
 {
 	return (adreno_dev->gpurev == ADRENO_REV_A305C);
+}
+
+static inline int adreno_is_a306(struct adreno_device *adreno_dev)
+{
+	return (adreno_dev->gpurev == ADRENO_REV_A306);
 }
 
 static inline int adreno_is_a310(struct adreno_device *adreno_dev)
@@ -991,18 +1010,22 @@ static inline void adreno_set_protected_registers(struct kgsl_device *device,
 	unsigned int *index, unsigned int reg, int mask_len)
 {
 	unsigned int val;
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
 	/* There are only 16 registers available */
 	BUG_ON(*index >= 16);
 
-	val = 0x60000000 | ((mask_len & 0x1F) << 24) | ((reg << 2) & 0xFFFF);
+	val = 0x60000000 | ((mask_len & 0x1F) << 24) | ((reg << 2) & 0xFFFFF);
 
 	/*
 	 * Write the protection range to the next available protection
 	 * register
 	 */
 
-	kgsl_regwrite(device, A3XX_CP_PROTECT_REG_0 + *index, val);
+	if (adreno_is_a4xx(adreno_dev))
+		kgsl_regwrite(device, A4XX_CP_PROTECT_REG_0 + *index, val);
+	else if (adreno_is_a3xx(adreno_dev))
+		kgsl_regwrite(device, A3XX_CP_PROTECT_REG_0 + *index, val);
 	*index = *index + 1;
 }
 

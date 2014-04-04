@@ -27,6 +27,7 @@
 #include <linux/uaccess.h>
 #include <linux/io.h>
 
+#include <asm/cacheflush.h>
 #include <asm/checksum.h>
 
 	/* user mem (segment) */
@@ -39,6 +40,7 @@ EXPORT_SYMBOL(clear_page);
 EXPORT_SYMBOL(__copy_from_user);
 EXPORT_SYMBOL(__copy_to_user);
 EXPORT_SYMBOL(__clear_user);
+EXPORT_SYMBOL(__copy_in_user);
 
 	/* physical memory */
 EXPORT_SYMBOL(memstart_addr);
@@ -58,3 +60,8 @@ EXPORT_SYMBOL(clear_bit);
 EXPORT_SYMBOL(test_and_clear_bit);
 EXPORT_SYMBOL(change_bit);
 EXPORT_SYMBOL(test_and_change_bit);
+
+	/* caching functions */
+EXPORT_SYMBOL(__dma_inv_range);
+EXPORT_SYMBOL(__dma_clean_range);
+EXPORT_SYMBOL(__dma_flush_range);

@@ -17,17 +17,15 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/memory.h>
-#include <linux/msm_tsens.h>
-#include <linux/msm_thermal.h>
 #include <linux/clk/msm-clk-provider.h>
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <mach/board.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
-#include <mach/msm_smd.h>
-#include <mach/restart.h>
+#include <soc/qcom/restart.h>
 #include <soc/qcom/socinfo.h>
+#include <soc/qcom/smd.h>
 #include "board-dt.h"
 #include "clock.h"
 #include "platsmp.h"
@@ -67,8 +65,6 @@ void __init fsm9900_add_drivers(void)
 		msm_clock_init(&fsm9900_dummy_clock_init_data);
 	else
 		msm_clock_init(&fsm9900_clock_init_data);
-	tsens_tm_init_driver();
-	msm_thermal_device_init();
 }
 
 static void __init fsm9900_map_io(void)

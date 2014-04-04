@@ -1117,8 +1117,8 @@ static struct rcg_clk pdm2_clk_src = {
 	},
 };
 
-/* This table is for MSM8974Pro AC SDCC1 */
-static struct clk_freq_tbl ftbl_gcc_sdcc1_apps_clk_ac[] = {
+/* For MSM8974Pro SDCC1 */
+static struct clk_freq_tbl ftbl_gcc_sdcc1_apps_clk_pro[] = {
 	F(   144000,    cxo,  16,   3,  25),
 	F(   400000,    cxo,  12,   1,   4),
 	F( 20000000,  gpll0,  15,   1,   2),
@@ -1130,11 +1130,7 @@ static struct clk_freq_tbl ftbl_gcc_sdcc1_apps_clk_ac[] = {
 	F_END
 };
 
-/*
- * This table is for:
- * 1) SDCC[1-4] on MSM8974Pro AB, MSM8974 v2 and before
- * 2) SDCC[2-4] on MSM8974Pro AC
- */
+/* For SDCC1 on MSM8974 v2 and SDCC[2-4] on all MSM8974 */
 static struct clk_freq_tbl ftbl_gcc_sdcc1_4_apps_clk[] = {
 	F(   144000,    cxo,  16,   3,  25),
 	F(   400000,    cxo,  12,   1,   4),
@@ -1222,6 +1218,7 @@ static struct rcg_clk tsif_ref_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_usb30_mock_utmi_clk[] = {
+	F(48000000,  gpll0, 12.5,   0,   0),
 	F(60000000,  gpll0,   10,   0,   0),
 	F_END
 };
@@ -2484,6 +2481,7 @@ static struct clk_lookup msm_clocks_gcc_8974[] = {
 	CLK_LOOKUP_OF("mem_clk", gcc_usb30_master_clk,           "usb_bam"),
 	CLK_LOOKUP_OF("mem_iface_clk", gcc_sys_noc_usb3_axi_clk, "usb_bam"),
 	CLK_LOOKUP_OF("core_clk", gcc_usb30_master_clk,    "msm_dwc3"),
+	CLK_LOOKUP_OF("utmi_clk_src", usb30_mock_utmi_clk_src, "msm_dwc3"),
 	CLK_LOOKUP_OF("utmi_clk", gcc_usb30_mock_utmi_clk, "msm_dwc3"),
 	CLK_LOOKUP_OF("iface_clk", gcc_sys_noc_usb3_axi_clk, "msm_dwc3"),
 	CLK_LOOKUP_OF("iface_clk", gcc_sys_noc_usb3_axi_clk, "msm_usb3"),
@@ -2519,8 +2517,6 @@ static struct clk_lookup msm_clocks_gcc_8974[] = {
 
 static struct clk_lookup msm_clocks_gcc_8974_only[] = {
 	/* Camera Sensor clocks */
-	CLK_LOOKUP_OF("cam_src_clk", gp1_clk_src, "6c.qcom,camera"),
-	CLK_LOOKUP_OF("cam_clk", gcc_gp1_clk, "6c.qcom,camera"),
 	CLK_LOOKUP_OF("cam_src_clk", gp1_clk_src, "2.qcom,camera"),
 	CLK_LOOKUP_OF("cam_clk", gcc_gp1_clk, "2.qcom,camera"),
 };
@@ -2550,7 +2546,7 @@ void msm8974_v2_clock_override(void)
 		qup_i2c_clks[i][0]->parent =  qup_i2c_clks[i][1];
 }
 
-/* v2 to v3 clock changes */
+/* v2 to Pro clock changes */
 void msm8974_pro_clock_override(bool ac)
 {
 	ce1_clk_src.c.fmax[VDD_DIG_LOW] = 75000000;
@@ -2560,11 +2556,9 @@ void msm8974_pro_clock_override(bool ac)
 	ce2_clk_src.c.fmax[VDD_DIG_NOMINAL] = 150000000;
 	ce2_clk_src.freq_tbl = ftbl_gcc_ce2_pro_clk;
 
-	if (ac) {
-		sdcc1_apps_clk_src.c.fmax[VDD_DIG_LOW] = 200000000;
-		sdcc1_apps_clk_src.c.fmax[VDD_DIG_NOMINAL] = 400000000;
-		sdcc1_apps_clk_src.freq_tbl = ftbl_gcc_sdcc1_apps_clk_ac;
-	}
+	sdcc1_apps_clk_src.c.fmax[VDD_DIG_LOW] = 200000000;
+	sdcc1_apps_clk_src.c.fmax[VDD_DIG_NOMINAL] = 400000000;
+	sdcc1_apps_clk_src.freq_tbl = ftbl_gcc_sdcc1_apps_clk_pro;
 }
 
 static struct of_device_id msm_clock_gcc_match_table[] = {
@@ -2633,6 +2627,7 @@ static int msm_gcc_8974_probe(struct platform_device *pdev)
 				GCC_REG_BASE(APCS_CLOCK_BRANCH_ENA_VOTE));
 		writel_relaxed(regval | BIT(26) | BIT(25),
 				GCC_REG_BASE(APCS_CLOCK_BRANCH_ENA_VOTE));
+		gcc_usb30_mock_utmi_clk.max_div = 3;
 		msm8974_v2_clock_override();
 	}
 
@@ -2690,7 +2685,7 @@ static int msm_gcc_8974_probe(struct platform_device *pdev)
 static struct platform_driver msm_clock_gcc_driver = {
 	.probe = msm_gcc_8974_probe,
 	.driver = {
-		.name = "gcc",
+		.name = "qcom,gcc-8974",
 		.of_match_table = msm_clock_gcc_match_table,
 		.owner = THIS_MODULE,
 	},
@@ -2752,7 +2747,7 @@ static int msm_clock_debug_8974_probe(struct platform_device *pdev)
 static struct platform_driver msm_clock_debug_driver = {
 	.probe = msm_clock_debug_8974_probe,
 	.driver = {
-		.name = "cc-debug",
+		.name = "qcom,cc-debug-8974",
 		.of_match_table = msm_clock_debug_match_table,
 		.owner = THIS_MODULE,
 	},

@@ -81,7 +81,7 @@ struct msm_vidc_stream_userdata_payload {
 	unsigned int type;
 	unsigned int data[1];
 };
-struct msm_vidc_frame_qp_payoad {
+struct msm_vidc_frame_qp_payload {
 	unsigned int frame_qp;
 };
 struct msm_vidc_frame_bits_info_payload {
@@ -130,6 +130,7 @@ enum msm_vidc_extradata_type {
 	MSM_VIDC_EXTRADATA_NUM_CONCEALED_MB = 0x7F100001,
 	MSM_VIDC_EXTRADATA_INDEX = 0x7F100002,
 	MSM_VIDC_EXTRADATA_ASPECT_RATIO = 0x7F100003,
+	MSM_VIDC_EXTRADATA_METADATA_LTR = 0x7F100004,
 	MSM_VIDC_EXTRADATA_METADATA_FILLER = 0x7FE00002,
 	MSM_VIDC_EXTRADATA_METADATA_MBI = 0x7F100005,
 };

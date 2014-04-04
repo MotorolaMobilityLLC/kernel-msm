@@ -17,23 +17,24 @@
 #include <linux/platform_device.h>
 #include <linux/errno.h>
 #include <linux/io.h>
+#include <linux/iopoll.h>
 #include <linux/interrupt.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/iommu.h>
+#include <linux/msm-bus.h>
 #include <linux/clk.h>
 #include <linux/scatterlist.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/qcom_iommu.h>
 #include <asm/sizes.h>
 
-#include <mach/iommu_hw-v1.h>
-#include <mach/iommu.h>
-#include <mach/msm_iommu_priv.h>
-#include <mach/iommu_perfmon.h>
-#include <mach/msm_bus.h>
+#include "msm_iommu_hw-v1.h"
+#include "msm_iommu_priv.h"
+#include "msm_iommu_perfmon.h"
 #include "msm_iommu_pagetable.h"
 
 #ifdef CONFIG_IOMMU_LPAE
@@ -49,7 +50,7 @@
 
 
 static DEFINE_MUTEX(msm_iommu_lock);
-struct dump_regs_tbl dump_regs_tbl[MAX_DUMP_REGS];
+struct dump_regs_tbl_entry dump_regs_tbl[MAX_DUMP_REGS];
 
 static int __enable_regulators(struct msm_iommu_drvdata *drvdata)
 {
@@ -174,13 +175,141 @@ struct iommu_access_ops iommu_access_ops_v1 = {
 	.iommu_lock_release = _iommu_lock_release,
 };
 
-void iommu_halt(const struct msm_iommu_drvdata *iommu_drvdata)
+#ifdef CONFIG_MSM_IOMMU_VBIF_CHECK
+
+#define VBIF_XIN_HALT_CTRL0 0x200
+#define VBIF_XIN_HALT_CTRL1 0x204
+#define VBIF_AXI_HALT_CTRL0 0x208
+#define VBIF_AXI_HALT_CTRL1 0x20C
+
+static void __halt_vbif_xin(void __iomem *vbif_base)
+{
+	pr_err("Halting VBIF_XIN\n");
+	writel_relaxed(0xFFFFFFFF, vbif_base + VBIF_XIN_HALT_CTRL0);
+}
+
+static void __dump_vbif_state(void __iomem *base, void __iomem *vbif_base)
+{
+	unsigned int reg_val;
+
+	reg_val = readl_relaxed(base + MICRO_MMU_CTRL);
+	pr_err("Value of SMMU_IMPLDEF_MICRO_MMU_CTRL = 0x%x\n", reg_val);
+
+	reg_val = readl_relaxed(vbif_base + VBIF_XIN_HALT_CTRL0);
+	pr_err("Value of VBIF_XIN_HALT_CTRL0 = 0x%x\n", reg_val);
+	reg_val = readl_relaxed(vbif_base + VBIF_XIN_HALT_CTRL1);
+	pr_err("Value of VBIF_XIN_HALT_CTRL1 = 0x%x\n", reg_val);
+	reg_val = readl_relaxed(vbif_base + VBIF_AXI_HALT_CTRL0);
+	pr_err("Value of VBIF_AXI_HALT_CTRL0 = 0x%x\n", reg_val);
+	reg_val = readl_relaxed(vbif_base + VBIF_AXI_HALT_CTRL1);
+	pr_err("Value of VBIF_AXI_HALT_CTRL1 = 0x%x\n", reg_val);
+}
+
+static int __check_vbif_state(struct msm_iommu_drvdata const *drvdata)
+{
+	phys_addr_t addr = (phys_addr_t) (drvdata->phys_base
+			   - (phys_addr_t) 0x4000);
+	void __iomem *base = ioremap(addr, 0x1000);
+	int ret = 0;
+
+	if (base) {
+		__dump_vbif_state(drvdata->base, base);
+		__halt_vbif_xin(drvdata->base);
+		__dump_vbif_state(drvdata->base, base);
+		iounmap(base);
+	} else {
+		pr_err("%s: Unable to ioremap\n", __func__);
+		ret = -ENOMEM;
+	}
+	return ret;
+}
+
+static void check_halt_state(struct msm_iommu_drvdata const *drvdata)
+{
+	int res;
+	unsigned int val;
+	void __iomem *base = drvdata->base;
+	char const *name = drvdata->name;
+
+	pr_err("Timed out waiting for IOMMU halt to complete for %s\n", name);
+	res = __check_vbif_state(drvdata);
+	if (res)
+		BUG();
+
+	pr_err("Checking if IOMMU halt completed for %s\n", name);
+
+	res = readl_tight_poll_timeout(
+		GLB_REG(MICRO_MMU_CTRL, base), val,
+			(val & MMU_CTRL_IDLE) == MMU_CTRL_IDLE, 5000000);
+
+	if (res) {
+		pr_err("Timed out (again) waiting for IOMMU halt to complete for %s\n",
+			name);
+	} else {
+		pr_err("IOMMU halt completed. VBIF FIFO most likely not getting drained by master\n");
+	}
+	BUG();
+}
+
+static void check_tlb_sync_state(struct msm_iommu_drvdata const *drvdata,
+				int ctx)
+{
+	int res;
+	unsigned int val;
+	void __iomem *base = drvdata->base;
+	char const *name = drvdata->name;
+
+	pr_err("Timed out waiting for TLB SYNC to complete for %s\n", name);
+	res = __check_vbif_state(drvdata);
+	if (res)
+		BUG();
+
+	pr_err("Checking if TLB sync completed for %s\n", name);
+
+	res = readl_tight_poll_timeout(CTX_REG(CB_TLBSTATUS, base, ctx), val,
+				(val & CB_TLBSTATUS_SACTIVE) == 0, 5000000);
+	if (res) {
+		pr_err("Timed out (again) waiting for TLB SYNC to complete for %s\n",
+			name);
+	} else {
+		pr_err("TLB Sync completed. VBIF FIFO most likely not getting drained by master\n");
+	}
+	BUG();
+}
+
+#else
+
+/*
+ * For targets without VBIF or for targets with the VBIF check disabled
+ * we directly just crash to capture the issue
+ */
+static void check_halt_state(struct msm_iommu_drvdata const *drvdata)
+{
+	BUG();
+}
+
+static void check_tlb_sync_state(struct msm_iommu_drvdata const *drvdata,
+				int ctx)
+{
+	BUG();
+}
+
+#endif
+
+void iommu_halt(struct msm_iommu_drvdata const *iommu_drvdata)
 {
 	if (iommu_drvdata->halt_enabled) {
-		SET_MICRO_MMU_CTRL_HALT_REQ(iommu_drvdata->base, 1);
+		unsigned int val;
+		void __iomem *base = iommu_drvdata->base;
+		int res;
 
-		while (GET_MICRO_MMU_CTRL_IDLE(iommu_drvdata->base) == 0)
-			cpu_relax();
+		SET_MICRO_MMU_CTRL_HALT_REQ(base, 1);
+		res = readl_tight_poll_timeout(
+			GLB_REG(MICRO_MMU_CTRL, base), val,
+			     (val & MMU_CTRL_IDLE) == MMU_CTRL_IDLE, 5000000);
+
+		if (res)
+			check_halt_state(iommu_drvdata);
 		/* Ensure device is idle before continuing */
 		mb();
 	}
@@ -204,21 +333,19 @@ void iommu_resume(const struct msm_iommu_drvdata *iommu_drvdata)
 	}
 }
 
-static void __sync_tlb(void __iomem *base, int ctx)
+static void __sync_tlb(struct msm_iommu_drvdata *iommu_drvdata, int ctx)
 {
-	int i;
+	unsigned int val;
+	unsigned int res;
+	void __iomem *base = iommu_drvdata->cb_base;
 
 	SET_TLBSYNC(base, ctx, 0);
-
-	/* No barrier needed due to register proximity */
-	for (i = 0; i < IOMMU_MSEC_TIMEOUT; i += IOMMU_MSEC_STEP)
-		if (GET_CB_TLBSTATUS_SACTIVE(base, ctx) == 0)
-			break;
-		else
-			msleep(IOMMU_MSEC_STEP);
-
-	BUG_ON(i >= IOMMU_MSEC_TIMEOUT);
 	/* No barrier needed due to read dependency */
+
+	res = readl_tight_poll_timeout(CTX_REG(CB_TLBSTATUS, base, ctx), val,
+				(val & CB_TLBSTATUS_SACTIVE) == 0, 5000000);
+	if (res)
+		check_tlb_sync_state(iommu_drvdata, ctx);
 }
 
 static int __flush_iotlb_va(struct iommu_domain *domain, unsigned int va)
@@ -242,7 +369,7 @@ static int __flush_iotlb_va(struct iommu_domain *domain, unsigned int va)
 		SET_TLBIVA(iommu_drvdata->cb_base, ctx_drvdata->num,
 			   ctx_drvdata->asid | (va & CB_TLBIVA_VA));
 		mb();
-		__sync_tlb(iommu_drvdata->cb_base, ctx_drvdata->num);
+		__sync_tlb(iommu_drvdata, ctx_drvdata->num);
 		__disable_clocks(iommu_drvdata);
 	}
 fail:
@@ -269,7 +396,7 @@ static int __flush_iotlb(struct iommu_domain *domain)
 		SET_TLBIASID(iommu_drvdata->cb_base, ctx_drvdata->num,
 			     ctx_drvdata->asid);
 		mb();
-		__sync_tlb(iommu_drvdata->cb_base, ctx_drvdata->num);
+		__sync_tlb(iommu_drvdata, ctx_drvdata->num);
 		__disable_clocks(iommu_drvdata);
 	}
 
@@ -321,24 +448,28 @@ static void __program_iommu_secure(void __iomem *base)
 /*
  * May only be called for non-secure iommus
  */
-static void __program_iommu(void __iomem *base)
+static void __program_iommu(struct msm_iommu_drvdata *drvdata)
 {
-	__reset_iommu(base);
+	__reset_iommu(drvdata->base);
 
 	if (!msm_iommu_get_scm_call_avail())
-		__reset_iommu_secure(base);
+		__reset_iommu_secure(drvdata->base);
 
-	SET_CR0_SMCFCFG(base, 1);
-	SET_CR0_USFCFG(base, 1);
-	SET_CR0_STALLD(base, 1);
-	SET_CR0_GCFGFIE(base, 1);
-	SET_CR0_GCFGFRE(base, 1);
-	SET_CR0_GFIE(base, 1);
-	SET_CR0_GFRE(base, 1);
-	SET_CR0_CLIENTPD(base, 0);
+	SET_CR0_SMCFCFG(drvdata->base, 1);
+	SET_CR0_USFCFG(drvdata->base, 1);
+	SET_CR0_STALLD(drvdata->base, 1);
+	SET_CR0_GCFGFIE(drvdata->base, 1);
+	SET_CR0_GCFGFRE(drvdata->base, 1);
+	SET_CR0_GFIE(drvdata->base, 1);
+	SET_CR0_GFRE(drvdata->base, 1);
+	SET_CR0_CLIENTPD(drvdata->base, 0);
 
 	if (!msm_iommu_get_scm_call_avail())
-		__program_iommu_secure(base);
+		__program_iommu_secure(drvdata->base);
+
+	if (drvdata->smmu_local_base)
+		writel_relaxed(0xFFFFFFFF, drvdata->smmu_local_base +
+							SMMU_INTR_SEL_NS);
 
 	mb(); /* Make sure writes complete before returning */
 }
@@ -689,11 +820,11 @@ static int msm_iommu_attach_dev(struct iommu_domain *domain, struct device *dev)
 	if (!iommu_drvdata->ctx_attach_count) {
 		if (!is_secure) {
 			iommu_halt(iommu_drvdata);
-			__program_iommu(iommu_drvdata->base);
+			__program_iommu(iommu_drvdata);
 			iommu_resume(iommu_drvdata);
 		} else {
 			ret = msm_iommu_sec_program_iommu(
-				iommu_drvdata->sec_id);
+				iommu_drvdata->sec_id, ctx_drvdata->num);
 			if (ret) {
 				__disable_regulators(iommu_drvdata);
 				__disable_clocks(iommu_drvdata);
@@ -1012,6 +1143,7 @@ void print_ctx_regs(struct msm_iommu_context_reg regs[])
 {
 	uint32_t fsr = regs[DUMP_REG_FSR].val;
 	u64 ttbr;
+	enum dump_reg iter;
 
 	pr_err("FAR    = %016llx\n",
 		COMBINE_DUMP_REG(
@@ -1052,7 +1184,14 @@ void print_ctx_regs(struct msm_iommu_context_reg regs[])
 
 	pr_err("SCTLR  = %08x    ACTLR  = %08x\n",
 		 regs[DUMP_REG_SCTLR].val, regs[DUMP_REG_ACTLR].val);
+	pr_err("CBAR  = %08x    CBFRSYNRA  = %08x\n",
+		regs[DUMP_REG_CBAR_N].val, regs[DUMP_REG_CBFRSYNRA_N].val);
 	print_ctx_mem_attr_regs(regs);
+
+	for (iter = DUMP_REG_FIRST; iter < MAX_DUMP_REGS; ++iter)
+		if (!regs[iter].valid)
+			pr_err("NOTE: Value actually unknown for %s\n",
+				dump_regs_tbl[iter].name);
 }
 
 static void __print_ctx_regs(void __iomem *base, int ctx, unsigned int fsr)
@@ -1061,8 +1200,24 @@ static void __print_ctx_regs(void __iomem *base, int ctx, unsigned int fsr)
 	unsigned int i;
 
 	for (i = DUMP_REG_FIRST; i < MAX_DUMP_REGS; ++i) {
-		regs[i].val = GET_CTX_REG(dump_regs_tbl[i].key, base, ctx);
-		regs[i].valid = 1;
+		struct msm_iommu_context_reg *r = &regs[i];
+		unsigned long regaddr = dump_regs_tbl[i].reg_offset;
+		r->valid = 1;
+		switch (dump_regs_tbl[i].dump_reg_type) {
+		case DRT_CTX_REG:
+			r->val = GET_CTX_REG(regaddr, base, ctx);
+			break;
+		case DRT_GLOBAL_REG:
+			r->val = GET_GLOBAL_REG(regaddr, base);
+			break;
+		case DRT_GLOBAL_REG_N:
+			r->val = GET_GLOBAL_REG_N(regaddr, ctx, base);
+			break;
+		default:
+			pr_info("Unknown dump_reg_type...\n");
+			r->valid = 0;
+			break;
+		}
 	}
 	print_ctx_regs(regs);
 }
@@ -1211,30 +1366,33 @@ static phys_addr_t msm_iommu_get_pt_base_addr(struct iommu_domain *domain)
 	return __pa(priv->pt.fl_table);
 }
 
-#define DUMP_REG_INIT(dump_reg, cb_reg, mbp)			\
+#define DUMP_REG_INIT(dump_reg, cb_reg, mbp, drt)		\
 	do {							\
-		dump_regs_tbl[dump_reg].key = cb_reg;		\
+		dump_regs_tbl[dump_reg].reg_offset = cb_reg;	\
 		dump_regs_tbl[dump_reg].name = #cb_reg;		\
 		dump_regs_tbl[dump_reg].must_be_present = mbp;	\
+		dump_regs_tbl[dump_reg].dump_reg_type = drt;	\
 	} while (0)
 
 static void msm_iommu_build_dump_regs_table(void)
 {
-	DUMP_REG_INIT(DUMP_REG_FAR0,	CB_FAR,       1);
-	DUMP_REG_INIT(DUMP_REG_FAR1,	CB_FAR + 4,   1);
-	DUMP_REG_INIT(DUMP_REG_PAR0,	CB_PAR,       1);
-	DUMP_REG_INIT(DUMP_REG_PAR1,	CB_PAR + 4,   1);
-	DUMP_REG_INIT(DUMP_REG_FSR,	CB_FSR,       1);
-	DUMP_REG_INIT(DUMP_REG_FSYNR0,	CB_FSYNR0,    1);
-	DUMP_REG_INIT(DUMP_REG_FSYNR1,	CB_FSYNR1,    1);
-	DUMP_REG_INIT(DUMP_REG_TTBR0_0,	CB_TTBR0,     1);
-	DUMP_REG_INIT(DUMP_REG_TTBR0_1,	CB_TTBR0 + 4, 0);
-	DUMP_REG_INIT(DUMP_REG_TTBR1_0,	CB_TTBR1,     1);
-	DUMP_REG_INIT(DUMP_REG_TTBR1_1,	CB_TTBR1 + 4, 0);
-	DUMP_REG_INIT(DUMP_REG_SCTLR,	CB_SCTLR,     1);
-	DUMP_REG_INIT(DUMP_REG_ACTLR,	CB_ACTLR,     1);
-	DUMP_REG_INIT(DUMP_REG_PRRR,	CB_PRRR,      1);
-	DUMP_REG_INIT(DUMP_REG_NMRR,	CB_NMRR,      1);
+	DUMP_REG_INIT(DUMP_REG_FAR0,	CB_FAR,       1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_FAR1,	CB_FAR + 4,   1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_PAR0,	CB_PAR,       1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_PAR1,	CB_PAR + 4,   1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_FSR,	CB_FSR,       1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_FSYNR0,	CB_FSYNR0,    1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_FSYNR1,	CB_FSYNR1,    1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_TTBR0_0,	CB_TTBR0,     1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_TTBR0_1,	CB_TTBR0 + 4, 0, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_TTBR1_0,	CB_TTBR1,     1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_TTBR1_1,	CB_TTBR1 + 4, 0, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_SCTLR,	CB_SCTLR,     1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_ACTLR,	CB_ACTLR,     1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_PRRR,	CB_PRRR,      1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_NMRR,	CB_NMRR,      1, DRT_CTX_REG);
+	DUMP_REG_INIT(DUMP_REG_CBAR_N,	CBAR,         1, DRT_GLOBAL_REG_N);
+	DUMP_REG_INIT(DUMP_REG_CBFRSYNRA_N, CBFRSYNRA, 1, DRT_GLOBAL_REG_N);
 }
 
 static struct iommu_ops msm_iommu_ops = {

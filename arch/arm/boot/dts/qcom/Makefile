@@ -28,6 +28,15 @@ dtb-$(CONFIG_ARCH_MSM8974) += msm8974-v1-cdp.dtb \
 	msm8974pro-ac-pm8941-liquid.dtb \
 	msm8974pro-ac-pm8941-mtp.dtb \
 	msm8974pro-ac-pma8084-pm8941-mtp.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-sim.dtb \
+	msm8916-rumi.dtb \
+	msm8916-cdp.dtb \
+	msm8916-cdp-smb1360.dtb \
+	msm8916-mtp.dtb \
+	msm8916-mtp-smb1360.dtb \
+	msm8916-qrd.dtb \
+	msm8936-sim.dtb \
+	msm8936-rumi.dtb
 dtb-$(CONFIG_ARCH_MSM8226) += msm8226-sim.dtb \
 	msm8226-fluid.dtb \
 	msm8226-v1-cdp.dtb \
@@ -94,19 +103,34 @@ dtb-$(CONFIG_ARCH_MPQ8092) += mpq8092-sim.dtb \
 	mpq8092-cdp.dtb \
 	mpq8092-dtv.dtb \
 	mpq8092-dma.dtb
-dtb-$(CONFIG_ARCH_APQ8084) += apq8084-sim.dtb \
-	apq8084-interposer-cdp.dtb \
-	apq8084-liquid.dtb \
-	apq8084-smb1357-cdp.dtb \
-	apq8084-smb1357-mtp.dtb \
-	apq8084-smb1359-mdm9x35-alt-mtp.dtb \
-	apq8084-smb349-cdp.dtb \
-	apq8084-smb349-mtp.dtb \
-	apq8084-nocharger-cdp.dtb \
-	apq8084-smb1357-mdm9x35-mtp.dtb \
-	apq8084-smb1357-mdm9x35-cdp.dtb \
-	apq8084-smb1357-mdm9x35-alt-cdp.dtb \
-	apq8084-sbc.dtb
+dtb-$(CONFIG_ARCH_APQ8084) += apq8084-v1.0-old-pwr-grid-liquid.dtb \
+	apq8084-v1.1-old-pwr-grid-liquid.dtb \
+	apq8084-v1.1-liquid.dtb \
+	apq8084-v1.0-old-pwr-grid-smb1357-cdp.dtb \
+	apq8084-v1.1-old-pwr-grid-smb1357-cdp.dtb \
+	apq8084-v1.1-smb1357-cdp.dtb \
+	apq8084-v1.0-old-pwr-grid-smb1357-mtp.dtb \
+	apq8084-v1.1-old-pwr-grid-smb1357-mtp.dtb \
+	apq8084-v1.1-smb1357-mtp.dtb \
+	apq8084-v1.0-old-pwr-grid-smb1359-mdm9x35-alt-mtp.dtb \
+	apq8084-v1.1-old-pwr-grid-smb1359-mdm9x35-alt-mtp.dtb \
+	apq8084-v1.1-smb1359-mdm9x35-alt-mtp.dtb \
+	apq8084-old-pwr-grid-smb349-cdp.dtb \
+	apq8084-old-pwr-grid-smb349-mtp.dtb \
+	apq8084-v1.0-old-pwr-grid-smb1357-mdm9x35-alt-rcm.dtb \
+	apq8084-v1.1-old-pwr-grid-smb1357-mdm9x35-alt-rcm.dtb \
+	apq8084-v1.1-smb1357-mdm9x35-alt-rcm.dtb \
+	apq8084-v1.0-old-pwr-grid-smb1357-mdm9x35-mtp.dtb \
+	apq8084-v1.1-old-pwr-grid-smb1357-mdm9x35-mtp.dtb \
+	apq8084-v1.1-smb1357-mdm9x35-mtp.dtb \
+	apq8084-v1.0-old-pwr-grid-smb1357-mdm9x35-cdp.dtb \
+	apq8084-v1.1-old-pwr-grid-smb1357-mdm9x35-cdp.dtb \
+	apq8084-v1.1-smb1357-mdm9x35-cdp.dtb \
+	apq8084-v1.0-old-pwr-grid-mdm9x35-alt-cdp.dtb \
+	apq8084-v1.1-old-pwr-grid-mdm9x35-alt-cdp.dtb \
+	apq8084-v1.1-mdm9x35-alt-cdp.dtb \
+	apq8084-v1.1-sbc.dtb
+dtb-$(CONFIG_ARCH_MSM) += msmplutonium-sim.dtb
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)
@@ -116,9 +140,10 @@ DTB_LIST := $(dtb-y)
 endif
 
 targets += dtbs
+targets += $(addprefix ../, $(DTB_LIST))
 endif
 
-$(obj)/../%.dtb: $(src)/%.dts
+$(obj)/../%.dtb: $(src)/%.dts FORCE
 	$(call if_changed_dep,dtc)
 
 dtbs: $(addprefix $(obj)/../,$(DTB_LIST))

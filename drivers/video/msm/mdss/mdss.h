@@ -116,6 +116,7 @@ struct mdss_data_type {
 	u32 has_decimation;
 	u32 wfd_mode;
 	u8 has_wb_ad;
+	u8 has_non_scalar_rgb;
 
 	u32 rotator_ot_limit;
 	u32 mdp_irq_mask;
@@ -142,6 +143,7 @@ struct mdss_data_type {
 	struct msm_bus_scale_pdata *bus_scale_table;
 	u32 max_bw_low;
 	u32 max_bw_high;
+	u32 max_bw_per_pipe;
 
 	struct mdss_fudge_factor ab_factor;
 	struct mdss_fudge_factor ib_factor;
@@ -190,6 +192,7 @@ struct mdss_data_type {
 	struct mdss_prefill_data prefill_data;
 
 	int handoff_pending;
+	bool ulps;
 };
 extern struct mdss_data_type *mdss_res;
 
