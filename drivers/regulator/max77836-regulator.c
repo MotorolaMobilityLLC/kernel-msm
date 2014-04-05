@@ -193,7 +193,7 @@ static struct regulator_ops max77836_ldo_ops = {
 };
 
 #define regulator_desc_ldo(num) {				\
-	.name			= "max77836_ldo"#num,		\
+	.name			= "max77836_l"#num,		\
 	.id			= MAX77836_LDO##num,		\
 	.ops			= &max77836_ldo_ops,		\
 	.type			= REGULATOR_VOLTAGE,		\

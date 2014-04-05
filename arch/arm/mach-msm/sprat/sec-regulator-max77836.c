@@ -9,32 +9,17 @@
 
 #include <linux/regulator/max77836-regulator.h>
 
-static struct regulator_consumer_supply ldo1_consumer =
-	REGULATOR_SUPPLY("max77836_ldo1", NULL);
+static struct regulator_consumer_supply ldo1_consumer[] = {
+	REGULATOR_SUPPLY("max77836_ldo1", NULL)
+};
 
-static struct regulator_consumer_supply ldo2_consumer =
-	REGULATOR_SUPPLY("max77836_ldo2", NULL);
+static struct regulator_consumer_supply ldo2_consumer[] = {
+	REGULATOR_SUPPLY("max77836_ldo2", NULL)
+};
 
 static struct regulator_init_data max77836_ldo1_data = {
 	.constraints	= {
-		.name		= "max77836_ldo1",
-		.min_uV		= 1500000,
-		.max_uV		= 2700000,
-		.apply_uV	= 1,
-		.always_on	= 0,
-		.state_mem	= {
-			.enabled	= 0,
-		},
-		.valid_ops_mask =
-			REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS,
-	},
-	.num_consumer_supplies	= 1,
-	.consumer_supplies	= &ldo1_consumer,
-};
-
-static struct regulator_init_data max77836_ldo2_data = {
-	.constraints	= {
-		.name		= "max77836_ldo2",
+		.name		= "max77836_l1",
 		.min_uV		= 800000,
 		.max_uV		= 3950000,
 		.apply_uV	= 1,
@@ -45,8 +30,25 @@ static struct regulator_init_data max77836_ldo2_data = {
 		.valid_ops_mask =
 			REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies	= 1,
-	.consumer_supplies	= &ldo2_consumer,
+	.num_consumer_supplies	= ARRAY_SIZE(ldo1_consumer),
+	.consumer_supplies	= ldo1_consumer,
+};
+
+static struct regulator_init_data max77836_ldo2_data = {
+	.constraints	= {
+		.name		= "max77836_l2",
+		.min_uV		= 800000,
+		.max_uV		= 3950000,
+		.apply_uV	= 1,
+		.always_on	= 0,
+		.state_mem	= {
+			.enabled	= 0,
+		},
+		.valid_ops_mask =
+			REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(ldo2_consumer),
+	.consumer_supplies	= ldo2_consumer,
 };
 
 struct max77836_reg_platform_data max77836_reglator_pdata[] = {
