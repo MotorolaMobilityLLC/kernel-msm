@@ -150,6 +150,46 @@ Bus Scaling Data:
 				bare no logic except for the use-case 0 where ab
 				and ib values needs to be 0.
 
+- qcom,mdss-prefill-outstanding-buffer-bytes: The size of mdp outstanding buffer
+				in bytes. The buffer is filled during prefill
+				time and the buffer size shall be included in
+				prefill bandwidth calculation.
+- qcom,mdss-prefill-y-buffer-bytes: The size of mdp y plane buffer in bytes. The
+				buffer is filled during prefill time when format
+				is YUV and the buffer size shall be included in
+				prefill bandwidth calculation.
+- qcom,mdss-prefill-scaler-buffer-lines-bilinear: The value indicates how many lines
+				of scaler line buffer need to be filled during
+				prefill time. If bilinear scalar is enabled, then this
+				number of lines is used to determine how many bytes
+				of scaler buffer to be included in prefill bandwidth
+				calculation.
+- qcom,mdss-prefill-scaler-buffer-lines-caf: The value indicates how many lines of
+				of scaler line buffer need to be filled during
+				prefill time. If CAF mode filter is enabled, then
+				this number of lines is used to determine how many
+				bytes of scaler buffer to be included in prefill
+				bandwidth calculation.
+- qcom,mdss-prefill-post-scaler-buffer: The size of post scaler buffer in bytes.
+				The buffer is used to smooth the output of the
+				scaler. If the buffer is present in h/w, it is
+				filled during prefill time and the number of bytes
+				shall be included in prefill bandwidth calculation.
+- qcom,mdss-prefill-pingpong-buffer-pixels: The size of pingpong buffer in pixels.
+				The buffer is used to keep pixels flowing to the
+				panel interface. If the vertical start position of a
+				layer is in the beginning of the active area, pingpong
+				buffer must be filled during prefill time to generate
+				starting lines. The number of bytes to be filled is
+				determined by the line width, starting position,
+				byte per pixel and scaling ratio, this number shall be
+				included in prefill bandwidth calculation.
+- qcom,mdss-prefill-fbc-lines:  The value indicates how many lines are required to fill
+				fbc buffer during prefill time if FBC (Frame Buffer
+				Compressor) is enabled. The number of bytes to be filled
+				is determined by the line width, bytes per pixel and
+				scaling ratio, this number shall be included in prefill bandwidth
+				calculation.
 Optional properties:
 - vdd-cx-supply :	Phandle for vdd CX regulator device node.
 - batfet-supply :	Phandle for battery FET regulator device node.
@@ -203,6 +243,27 @@ Optional properties:
 				applied in scenarios where panel interface can
 				be more tolerant to memory latency such as
 				command mode panels.
+
+Fudge Factors:			Fudge factors are used to boost demand for
+				resources like bus bandswidth, clk rate etc. to
+				overcome system inefficiencies and avoid any
+				glitches. These fudge factors are expressed in
+				terms of numerator and denominator. First value
+				is numerator followed by denominator. They all
+				are optional but highly recommended.
+				Ex:
+				x = value to be fudged
+				a = numerator, default value is 1
+				b = denominator, default value is 1
+				FUDGE(x, a, b) = ((x * a) / b)
+- qcom,mdss-ib-factor:		This fudge factor is applied to calculated ib
+				values in default conditions.
+- qcom,mdss-clk-factor:		This fudge factor is applied to calculated mdp
+				clk rate in default conditions.
+- qcom,mdss-highest-bank-bit: Property to indicate tile format as opposed to usual
+				linear format. The value tells the GPU highest memory
+				 bank bit used.
+
 Optional subnodes:
 Child nodes representing the frame buffer virtual devices.
 
@@ -261,6 +322,11 @@ Example:
 			<22 512 0 6400000>, <23 512 0 6400000>,
 			<22 512 0 6400000>, <23 512 0 6400000>;
 
+		/* Fudge factors */
+		qcom,mdss-ab-factor = <2 1>;		/* 2 times    */
+		qcom,mdss-ib-factor = <3 2>;		/* 1.5 times  */
+		qcom,mdss-clk-factor = <5 4>;		/* 1.25 times */
+
 		qcom,max-clk-rate = <320000000>;
 		qcom,vbif-settings = <0x0004 0x00000001>,
 				     <0x00D8 0x00000707>;
@@ -302,6 +368,15 @@ Example:
 				    0x00017100 0x00019100>;
 		qcom,mdss-intf-off = <0x00021100 0x00021300
 					   0x00021500 0x00021700>;
+
+		/* buffer parameters to calculate prefill bandwidth */
+		qcom,mdss-prefill-outstanding-buffer-bytes = <1024>;
+		qcom,mdss-prefill-y-buffer-bytes = <4096>;
+		qcom,mdss-prefill-scaler-buffer-lines-bilinear = <2>;
+		qcom,mdss-prefill-scaler-buffer-lines-caf = <4>;
+		qcom,mdss-prefill-post-scaler-buffer-pixels = <2048>;
+		qcom,mdss-prefill-pingpong-buffer-pixels = <5120>;
+		qcom,mdss-prefill-fbc-lines = <2>;
 
 		mdss_fb0: qcom,mdss_fb_primary {
 			cell-index = <0>;
