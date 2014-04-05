@@ -66,6 +66,8 @@
 #define WLAN_HDD_UI_BAND_AUTO                          0
 #define WLAN_HDD_UI_BAND_5_GHZ                         1
 #define WLAN_HDD_UI_BAND_2_4_GHZ                       2
+/* SETBAND x */
+/* 012345678 */
 #define WLAN_HDD_UI_SET_BAND_VALUE_OFFSET              8
 
 typedef enum
@@ -415,6 +417,9 @@ VOS_STATUS wlan_hdd_get_roam_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
 void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set);
 #endif
 void* wlan_hdd_change_country_code_callback(void *pAdapter);
+
+int hdd_setBand(struct net_device *dev, u8 ui_band);
+int hdd_setBand_helper(struct net_device *dev, const char *command);
 
 #endif // __WEXT_IW_H__
 
