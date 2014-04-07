@@ -65,6 +65,8 @@ struct msm_led_flash_ctrl_t {
 	uint32_t subdev_id;
 	uint32_t flash_now_support;
 	uint32_t flash_en_support;
+	uint32_t torch_gpio_support;
+	uint32_t torch_gpio_num;
 };
 
 int msm_flash_i2c_probe(struct i2c_client *client,
