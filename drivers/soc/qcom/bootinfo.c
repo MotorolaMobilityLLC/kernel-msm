@@ -28,7 +28,6 @@
 #include <asm/setup.h>
 #include <asm/system.h>
 #include <soc/qcom/bootinfo.h>
-#include <linux/notifier.h>
 #include <linux/seq_file.h>
 #include <linux/apanic_mmc.h>
 
@@ -61,6 +60,13 @@
 				seq_printf(m, "%s : %s\n", \
 						strname, strval); \
 			} \
+		} while (0)
+
+#define EMIT_BOOTINFO_APANIC(buf, strname, fmt, name) \
+		do { \
+			snprintf(buf, sizeof(buf), strname " : " fmt "\n", \
+					bi_##name()); \
+			apanic_mmc_annotate(buf); \
 		} while (0)
 
 /*-------------------------------------------------------------------------*/
@@ -186,22 +192,8 @@ void bi_add_bl_build_sig(char *bld_sig)
 }
 EXPORT_SYMBOL(bi_add_bl_build_sig);
 
-static void bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
-{
-	int i;
-	for (i = 0; i < bl_build_sig_count; i++) {
-		bl[i].item[MAX_BLD_SIG_ITEM - 1] = 0;
-		bl[i].value[MAX_BLD_SIG_VALUE - 1] = 0;
-		apanic_mmc_annotate(bl[i].item);
-		apanic_mmc_annotate("=");
-		apanic_mmc_annotate(bl[i].value);
-		apanic_mmc_annotate("\n");
-	}
-}
-
-
 #ifdef CONFIG_OF
-static void of_blsig(void)
+static void __init of_blsig(void)
 {
 	struct property *p;
 	struct device_node *n;
@@ -275,6 +267,24 @@ const char *bi_bootreason(void)
 }
 EXPORT_SYMBOL(bi_bootreason);
 
+static void bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
+{
+	int i;
+	char buf[BOOTREASON_MAX_LEN];
+	for (i = 0; i < bl_build_sig_count; i++) {
+		bl[i].item[MAX_BLD_SIG_ITEM - 1] = 0;
+		bl[i].value[MAX_BLD_SIG_VALUE - 1] = 0;
+		apanic_mmc_annotate(bl[i].item);
+		apanic_mmc_annotate("=");
+		apanic_mmc_annotate(bl[i].value);
+		apanic_mmc_annotate("\n");
+	}
+
+	EMIT_BOOTINFO_APANIC(buf, "POWERUPREASON", "0x%08x", powerup_reason);
+	EMIT_BOOTINFO_APANIC(buf, "MBM_VERSION", "0x%08x", mbm_version);
+	EMIT_BOOTINFO_APANIC(buf, "Last boot reason", "%s", bootreason);
+}
+
 /* get_bootinfo fills in the /proc/bootinfo information.
  * We currently only have the powerup reason, mbm_version, serial
  * and hwrevision.
@@ -293,18 +303,6 @@ static int get_bootinfo(struct seq_file *m, void *v)
 
 	return len;
 }
-
-static int bootinfo_panic(struct notifier_block *this,
-						unsigned long event, void *ptr)
-{
-	printk(KERN_ERR "mbm_version=0x%08x", bi_mbm_version());
-	return NOTIFY_DONE;
-}
-
-static struct notifier_block panic_block = {
-	.notifier_call = bootinfo_panic,
-	.priority = 1,
-};
 
 static struct proc_dir_entry *proc_bootinfo;
 
@@ -326,7 +324,6 @@ int __init bootinfo_init_module(void)
 	if (!proc_create_data("bootinfo", 0, NULL, &bootinfo_proc_fops, NULL))
 		printk(KERN_ERR "Failed to create bootinfo entry");
 	bootinfo_apanic_annotate_bl(bl_build_sigs);
-	atomic_notifier_chain_register(&panic_notifier_list, &panic_block);
 	return 0;
 }
 
