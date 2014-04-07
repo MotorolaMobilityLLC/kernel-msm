@@ -3159,6 +3159,15 @@ static int venus_hfi_alloc_ocmem(void *dev, unsigned long size)
 			dprintk(VIDC_ERR, "Failed to set ocmem: %d\n", rc);
 			goto ocmem_set_failed;
 		}
+
+		rc = venus_hfi_vote_buses(device, device->bus_load,
+				device->res->bus_set.count);
+		if (rc) {
+			dprintk(VIDC_ERR,
+					"Failed to scale buses after setting ocmem: %d\n",
+					rc);
+			goto ocmem_set_failed;
+		}
 	} else
 		dprintk(VIDC_DBG,
 			"OCMEM is enough. reqd: %lu, available: %lu\n",
@@ -3182,9 +3191,21 @@ static int venus_hfi_free_ocmem(void *dev)
 	if (device->resources.ocmem.buf) {
 		rc = ocmem_free(OCMEM_VIDEO, device->resources.ocmem.buf);
 		if (rc)
-			dprintk(VIDC_ERR, "Failed to free ocmem\n");
+			dprintk(VIDC_ERR, "Failed to free ocmem: %d\n", rc);
+
+		/* Even if ocmem_free fails, start unvoting for buses as we
+		 * have already called ocmem_unset at this point */
 		device->resources.ocmem.buf = NULL;
+
+		rc = venus_hfi_vote_buses(device, device->bus_load,
+				device->res->bus_set.count);
+		if (rc) {
+			dprintk(VIDC_ERR,
+					"Failed to scale buses after setting ocmem: %d\n",
+					rc);
+		}
 	}
+
 	return rc;
 }
 
