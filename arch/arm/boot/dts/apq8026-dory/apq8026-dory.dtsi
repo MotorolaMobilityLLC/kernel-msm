@@ -13,7 +13,8 @@
 
 #include "../qcom/msm8226.dtsi"
 #include "../qcom/apq8026-v2.dtsi"
-#include "../qcom/msm8226-memory.dtsi"
+//#include "../qcom/msm8226-memory.dtsi"
+#include "apq8026-dory-memory.dtsi"
 #include "../qcom/msm8226-qseecom.dtsi"
 #include "../qcom/msm8226-v2-pm.dtsi"
 #include "apq8026-dory-panel.dtsi"
@@ -83,6 +84,12 @@
 			status = "disabled";
 		};
 	};
+
+	memory_hole: qcom,msm-mem-hole {
+		compatible = "qcom,msm-mem-hole";
+		qcom,memblock-remove = <0x0d900000 0x01c00000
+				        0x0fa00000 0x00500000>;
+	};
 };
 
 &sdhc_1 {
@@ -133,6 +140,10 @@
 	};
 };
 
+&secure_mem {
+	reg = <0 0x1000>;
+};
+
 &qsecom_mem {
 	reg = <0 0x1000>;
 };
@@ -140,3 +151,13 @@
 &fb_mem {
 	reg = <0 0x200000>;
 };
+
+/*
+&modem_mem {
+	reg = <0x08400000 0x1000>;
+};
+
+&peripheral_mem {
+	ret = <0x0d200000 0x1000>;
+};
+*/
