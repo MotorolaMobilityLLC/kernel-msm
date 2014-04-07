@@ -36,6 +36,28 @@ static void flush_smp_call_function_queue(bool warn_cpu_offline);
 static bool have_boot_cpu_mask;
 static cpumask_var_t boot_cpu_mask;
 
+#ifdef CONFIG_LOCKUP_IPI_CALL_WDT
+/*
+ * csd_lock_waiting_flag : per cpu flag.
+ * it's only used to indicate whether it's in csd_lock_waiting().
+ * Because when csd_lock_waiting() is invoked, 1) preemption will
+ * always be disabled;  2) not in irq context, it's safe to set or
+ * clear the flag directly.
+ */
+DEFINE_PER_CPU(int, csd_lock_waiting_flag);
+static inline void set_csd_lock_waiting_flag(void)
+{
+       __get_cpu_var(csd_lock_waiting_flag) = 1;
+}
+static inline void clear_csd_lock_waiting_flag(void)
+{
+       __get_cpu_var(csd_lock_waiting_flag) = 0;
+}
+#else
+static inline void set_csd_lock_waiting_flag(void) { }
+static inline void clear_csd_lock_waiting_flag(void) { }
+#endif
+
 static int
 hotplug_cfd(struct notifier_block *nfb, unsigned long action, void *hcpu)
 {
@@ -110,8 +132,10 @@ void __init call_function_init(void)
  */
 static void csd_lock_wait(struct call_single_data *csd)
 {
+	set_csd_lock_waiting_flag();
 	while (csd->flags & CSD_FLAG_LOCK)
 		cpu_relax();
+	clear_csd_lock_waiting_flag();
 }
 
 static void csd_lock(struct call_single_data *csd)
