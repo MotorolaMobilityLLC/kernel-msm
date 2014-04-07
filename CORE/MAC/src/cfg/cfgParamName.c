@@ -364,6 +364,10 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"PMF_SA_QUERY_RETRY_INTERVAL",
     (unsigned char *)"RA_FILTER_ENABLE",
     (unsigned char *)"RA_RATE_LIMIT_INTERVAL",
+    (unsigned char *)"BTC_FATAL_HID_NSNIFF_BLK_GUIDANCE",
+    (unsigned char *)"BTC_CRITICAL_HID_NSNIFF_BLK_GUIDANCE",
+    (unsigned char *)"BTC_DYN_A2DP_TX_QUEUE_THOLD",
+    (unsigned char *)"BTC_DYN_OPP_TX_QUEUE_THOLD",
 };
 
 

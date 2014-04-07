@@ -2152,6 +2152,26 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_INITIAL_SCAN_SKIP_DFS_CH_MIN       (0)
 #define CFG_INITIAL_SCAN_SKIP_DFS_CH_MAX       (1)
 
+#define CFG_BTC_FATAL_HID_NSNIFF_BLK_GUIDANCE_NAME           "btcFatalHidnSniffBlkGuidance"
+#define CFG_BTC_FATAL_HID_NSNIFF_BLK_GUIDANCE_MIN            ( 0 )
+#define CFG_BTC_FATAL_HID_NSNIFF_BLK_GUIDANCE_MAX            ( 2 )
+#define CFG_BTC_FATAL_HID_NSNIFF_BLK_GUIDANCE_DEFAULT        ( 2 )
+
+#define CFG_BTC_CRITICAL_HID_NSNIFF_BLK_GUIDANCE_NAME        "btcCriticalHidnSniffBlkGuidance"
+#define CFG_BTC_CRITICAL_HID_NSNIFF_BLK_GUIDANCE_MIN         ( 0 )
+#define CFG_BTC_CRITICAL_HID_NSNIFF_BLK_GUIDANCE_MAX         ( 1 )
+#define CFG_BTC_CRITICAL_HID_NSNIFF_BLK_GUIDANCE_DEFAULT     ( 1 )
+
+#define CFG_BTC_DYN_A2DP_TX_QUEUE_THOLD_NAME                 "btcA2dpTxQueueThold"
+#define CFG_BTC_DYN_A2DP_TX_QUEUE_THOLD_MIN                  ( 0 )
+#define CFG_BTC_DYN_A2DP_TX_QUEUE_THOLD_MAX                  ( 1 )
+#define CFG_BTC_DYN_A2DP_TX_QUEUE_THOLD_DEFAULT              ( 0 )
+
+#define CFG_BTC_DYN_OPP_TX_QUEUE_THOLD_NAME                  "btcOppTxQueueThold"
+#define CFG_BTC_DYN_OPP_TX_QUEUE_THOLD_MIN                   ( 0 )
+#define CFG_BTC_DYN_OPP_TX_QUEUE_THOLD_MAX                   ( 3 )
+#define CFG_BTC_DYN_OPP_TX_QUEUE_THOLD_DEFAULT               ( 1 )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2598,6 +2618,10 @@ typedef struct
 #endif
 
    v_BOOL_t                    initialScanSkipDFSCh;
+   v_U32_t                     cfgBtcFatalHidnSniffBlkGuidance;
+   v_U32_t                     cfgBtcCriticalHidnSniffBlkGuidance;
+   v_U32_t                     cfgBtcA2dpTxQueueThold;
+   v_U32_t                     cfgBtcOppTxQueueThold;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
