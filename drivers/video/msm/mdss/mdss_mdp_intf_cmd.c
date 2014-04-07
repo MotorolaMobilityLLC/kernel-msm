@@ -596,6 +596,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	struct mdss_mdp_vsync_handler *tmp, *handle;
 	int need_wait = 0;
 	int ret = 0;
+	int turn_off_panel = 0;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -638,6 +639,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	if (cancel_delayed_work_sync(&ctx->ulps_work))
 		pr_debug("deleted pending ulps work\n");
 
+	turn_off_panel = ctx->panel_on;
 	ctx->panel_on = 0;
 	mdss_mdp_cmd_clk_off(ctx);
 
@@ -652,13 +654,15 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	memset(ctx, 0, sizeof(*ctx));
 	ctl->priv_data = NULL;
 
-	mutex_lock(&ctl->offlock);
-	ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK, NULL);
-	WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
+	if (turn_off_panel) {
+		mutex_lock(&ctl->offlock);
+		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK, NULL);
+		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
 
-	ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_OFF, NULL);
-	WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
-	mutex_unlock(&ctl->offlock);
+		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_OFF, NULL);
+		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
+		mutex_unlock(&ctl->offlock);
+	}
 
 	ctl->stop_fnc = NULL;
 	ctl->display_fnc = NULL;
