@@ -1045,6 +1045,7 @@ static inline void mdss_mdp_ctl_perf_update_bus(struct mdss_data_type *mdata,
 			bw_vote_mode);
 
 	ATRACE_INT("bus_quota", bus_ib_quota);
+	trace_mdp_perf_update_bus(bus_ab_quota, bus_ib_quota);
 	mdss_bus_scale_set_quota(MDSS_HW_MDP, bus_ab_quota, bus_ib_quota);
 	pr_debug("ab=%llu ib=%llu mode=%d\n", bus_ab_quota, bus_ib_quota,
 		bw_vote_mode);
@@ -1096,6 +1097,7 @@ void mdss_mdp_ctl_perf_release_bw(struct mdss_mdp_ctl *ctl)
 		struct mdss_mdp_ctl *ctl_local =
 			mdss_mdp_get_main_ctl(ctl) ? : ctl;
 
+		trace_mdp_cmd_release_bw(ctl_local->num);
 		ctl_local->cur_perf.bw_ctl = 0;
 		ctl_local->new_perf.bw_ctl = 0;
 		pr_debug("Release BW ctl=%d\n", ctl_local->num);
