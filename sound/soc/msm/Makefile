@@ -60,6 +60,10 @@ obj-$(CONFIG_SND_SOC_APQ8074) += snd-soc-apq8074.o
 snd-soc-msm8226-objs := msm8226.o
 obj-$(CONFIG_SND_SOC_MSM8226) += snd-soc-msm8226.o
 
+# for sprat-mi2s sound card driver
+snd-soc-sprat-mi2s-objs := sprat-mi2s.o
+obj-$(CONFIG_SND_SOC_SPRAT_MI2S) += snd-soc-sprat-mi2s.o
+
 # for MSM 8x10 sound card driver
 obj-$(CONFIG_SND_SOC_MSM_QDSP6V2_INTF) += qdsp6v2/
 snd-soc-msm8x10-objs := msm8x10.o
