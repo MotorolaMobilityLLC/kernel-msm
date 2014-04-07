@@ -7,9 +7,9 @@
  * available at http://www.fsf.org/copyleft/gpl.html
  *
  * @filename bmg160_driver.c
- * @date     2013/11/19 12:59
- * @id       "21cbcb4"
- * @version  1.5.2
+ * @date     2014/03/11 14:20
+ * @id       "7bf4b97"
+ * @version  1.5.6
  *
  * @brief    BMG160 Linux Driver
  */
@@ -63,16 +63,22 @@
 #define BMG_DELAY_MIN (1)
 #define BMG_DELAY_DEFAULT (200)
 
-#define MAG_VALUE_MAX (32767)
-#define MAG_VALUE_MIN (-32768)
+#define BMG_VALUE_MAX (32767)
+#define BMG_VALUE_MIN (-32768)
 
 #define BYTES_PER_LINE (16)
 
 #define BMG_SELF_TEST 0
 
+#define BMG_SOFT_RESET_VALUE                0xB6
+
+
 #ifdef BMG_USE_FIFO
 #define MAX_FIFO_F_LEVEL 100
 #define MAX_FIFO_F_BYTES 8
+#define BMG160_FIFO_DAT_SEL_X                     1
+#define BMG160_FIFO_DAT_SEL_Y                     2
+#define BMG160_FIFO_DAT_SEL_Z                     3
 #endif
 
 /*!
@@ -84,11 +90,6 @@
 #define BMI058_X_AXIS	BMG160_Y_AXIS
 /*! BMI058 Y AXIS definition*/
 #define BMI058_Y_AXIS	BMG160_X_AXIS
-
-#define BMG160_FIFO_DAT_SEL_X                     1
-#define BMG160_FIFO_DAT_SEL_Y                     2
-#define BMI058_FIFO_DAT_SEL_X                       BMG160_FIFO_DAT_SEL_Y
-#define BMI058_FIFO_DAT_SEL_Y                       BMG160_FIFO_DAT_SEL_X
 
 #define C_BMI058_One_U8X	1
 #define C_BMI058_Two_U8X	2
@@ -142,19 +143,6 @@ struct bosch_sensor_data {
 	};
 };
 
-struct op_mode_map {
-	char *op_mode_name;
-	long op_mode;
-};
-
-static const struct op_mode_map op_mode_maps[] = {
-	{"normal", BMG_VAL_NAME(MODE_NORMAL)},
-	{"deepsuspend", BMG_VAL_NAME(MODE_DEEPSUSPEND)},
-	{"suspend", BMG_VAL_NAME(MODE_SUSPEND)},
-	{"fastpowerup", BMG_VAL_NAME(MODE_FASTPOWERUP)},
-	{"advancedpowersav", BMG_VAL_NAME(MODE_ADVANCEDPOWERSAVING)},
-};
-
 struct bmg_client_data {
 	struct bmg160_t device;
 	struct i2c_client *client;
@@ -181,9 +169,9 @@ struct bmg_client_data {
 static struct i2c_client *bmg_client;
 /* i2c operation for API */
 static void bmg_i2c_delay(BMG160_U16 msec);
-static char bmg_i2c_read(struct i2c_client *client, u8 reg_addr,
+static int bmg_i2c_read(struct i2c_client *client, u8 reg_addr,
 		u8 *data, u8 len);
-static char bmg_i2c_write(struct i2c_client *client, u8 reg_addr,
+static int bmg_i2c_write(struct i2c_client *client, u8 reg_addr,
 		u8 *data, u8 len);
 
 static void bmg_dump_reg(struct i2c_client *client);
@@ -314,7 +302,7 @@ static void bmg_dump_reg(struct i2c_client *client)
 }
 
 /*i2c read routine for API*/
-static char bmg_i2c_read(struct i2c_client *client, u8 reg_addr,
+static int bmg_i2c_read(struct i2c_client *client, u8 reg_addr,
 		u8 *data, u8 len)
 {
 #if !defined BMG_USE_BASIC_I2C_FUNC
@@ -379,7 +367,7 @@ static char bmg_i2c_read(struct i2c_client *client, u8 reg_addr,
 }
 
 #ifdef BMG_USE_FIFO
-static char bmg_i2c_burst_read(struct i2c_client *client, u8 reg_addr,
+static int bmg_i2c_burst_read(struct i2c_client *client, u8 reg_addr,
 		u8 *data, u16 len)
 {
 	int retry;
@@ -417,7 +405,7 @@ static char bmg_i2c_burst_read(struct i2c_client *client, u8 reg_addr,
 #endif
 
 /*i2c write routine for */
-static char bmg_i2c_write(struct i2c_client *client, u8 reg_addr,
+static int bmg_i2c_write(struct i2c_client *client, u8 reg_addr,
 		u8 *data, u8 len)
 {
 #if !defined BMG_USE_BASIC_I2C_FUNC
@@ -482,16 +470,16 @@ static char bmg_i2c_write(struct i2c_client *client, u8 reg_addr,
 #endif
 }
 
-static char bmg_i2c_read_wrapper(u8 dev_addr, u8 reg_addr, u8 *data, u8 len)
+static int bmg_i2c_read_wrapper(u8 dev_addr, u8 reg_addr, u8 *data, u8 len)
 {
-	char err;
+	int err;
 	err = bmg_i2c_read(bmg_client, reg_addr, data, len);
 	return err;
 }
 
-static char bmg_i2c_write_wrapper(u8 dev_addr, u8 reg_addr, u8 *data, u8 len)
+static int bmg_i2c_write_wrapper(u8 dev_addr, u8 reg_addr, u8 *data, u8 len)
 {
-	char err;
+	int err;
 	err = bmg_i2c_write(bmg_client, reg_addr, data, len);
 	return err;
 }
@@ -517,6 +505,14 @@ static void bmg_work_func(struct work_struct *work)
 	input_sync(client_data->input);
 
 	schedule_delayed_work(&client_data->work, delay);
+}
+
+static int bmg_set_soft_reset(struct i2c_client *client)
+{
+	int err = 0;
+	unsigned char data = BMG_SOFT_RESET_VALUE;
+	err = bmg_i2c_write(client, BMG160_BGW_SOFTRESET_ADDR, &data, 1);
+	return err;
 }
 
 static ssize_t bmg_show_chip_id(struct device *dev,
@@ -705,7 +701,7 @@ static ssize_t bmg_store_delay(struct device *dev,
 	if (err)
 		return err;
 
-	if (data <= 0) {
+	if (data == 0) {
 		err = -EINVAL;
 		return err;
 	}
@@ -928,98 +924,176 @@ static ssize_t bmg_show_fifo_overrun(struct device *dev,
 	return err;
 }
 
+/*!
+ * brief: bmg single axis data remaping
+ * @param[i] fifo_datasel   fifo axis data select setting
+ * @param[i/o] remap_dir   remapping direction
+ * @param[i] client_data   to transfer sensor place
+ *
+ * @return none
+ */
+static void bmg_single_axis_remaping(unsigned char fifo_datasel,
+		unsigned char *remap_dir, struct bmg_client_data *client_data)
+{
+	if ((NULL == client_data->bst_pd) ||
+			(BOSCH_SENSOR_PLACE_UNKNOWN
+			 == client_data->bst_pd->place))
+		return;
+	else {
+		signed char place = client_data->bst_pd->place;
+		/* sensor with place 0 needs not to be remapped */
+		if ((place <= 0) ||
+			(place >= MAX_AXIS_REMAP_TAB_SZ))
+			return;
+
+		if (fifo_datasel < 1 || fifo_datasel > 3)
+			return;
+		else {
+			switch (fifo_datasel) {
+			/*P2, P3, P4, P5 X axis(andorid) need to reverse*/
+			case BMG160_FIFO_DAT_SEL_X:
+				if (-1 == bst_axis_remap_tab_dft[place].sign_x)
+					*remap_dir = 1;
+				else
+					*remap_dir = 0;
+				break;
+			/*P1, P2, P5, P6 Y axis(andorid) need to reverse*/
+			case BMG160_FIFO_DAT_SEL_Y:
+				if (-1 == bst_axis_remap_tab_dft[place].sign_y)
+					*remap_dir = 1;
+				else
+					*remap_dir = 0;
+				break;
+			case BMG160_FIFO_DAT_SEL_Z:
+			/*P4, P5, P6, P7 Z axis(andorid) need to reverse*/
+				if (-1 == bst_axis_remap_tab_dft[place].sign_z)
+					*remap_dir = 1;
+				else
+					*remap_dir = 0;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	return;
+}
+
 static ssize_t bmg_show_fifo_data_frame(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	int err, i, j, len;
+	int err, i, len;
 	signed char fifo_data_out[MAX_FIFO_F_LEVEL * MAX_FIFO_F_BYTES] = {0};
 	unsigned char f_len = 0;
-
 	struct input_dev *input = to_input_dev(dev);
 	struct bmg_client_data *client_data = input_get_drvdata(input);
+	struct bmg160_data_t gyro_lsb;
+	unsigned char axis_dir_remap = 0;
 	s16 value;
 
-	if (client_data->fifo_count == 0) {
-		return ENOENT;
-	}
+	if (client_data->fifo_count == 0)
+		return -ENOENT;
 
 	if (client_data->fifo_datasel)
+		/*Select one axis data output for every fifo frame*/
 		f_len = 2;
 	else
+		/*Select X Y Z axis data output for every fifo frame*/
 		f_len = 6;
 
 	bmg_i2c_burst_read(client_data->client, BMG160_FIFO_DATA_ADDR,
-						fifo_data_out, client_data->fifo_count * f_len);
+			fifo_data_out, client_data->fifo_count * f_len);
 	err = 0;
 
-/*please give attation for the fifo output data format*/
-#ifdef CONFIG_SENSORS_BMI058
-	if (f_len >= 6) {
-		for (i = 0; i <  client_data->fifo_count; i++) {
-			len = sprintf(buf, "%5d ",
-					fifo_data_out[i * f_len + 2]);
-			buf += len;
-			err += len;
-			len = sprintf(buf, "%5d ",
-					fifo_data_out[i * f_len + 3]);
-			buf += len;
-			err += len;
-			len = sprintf(buf, "%5d ",
-					fifo_data_out[i * f_len + 0]);
-			buf += len;
-			err += len;
-			len = sprintf(buf, "%5d ",
-					fifo_data_out[i * f_len + 1]);
-			buf += len;
-			err += len;
+	if (f_len == 6) {
+		/* Select X Y Z axis data output for every frame */
+		for (i = 0; i < client_data->fifo_count; i++) {
+			gyro_lsb.datax =
+			((unsigned char)fifo_data_out[i * f_len + 1] << 8
+				| (unsigned char)fifo_data_out[i * f_len + 0]);
 
-			for (j = 4; j < f_len; j++) {
-				len = sprintf(buf, "%5d ",
-					fifo_data_out[i * f_len + j]);
-				buf += len;
-				err += len;
-			}
-			len = sprintf(buf, "\n");
+			gyro_lsb.datay =
+			((unsigned char)fifo_data_out[i * f_len + 3] << 8
+				| (unsigned char)fifo_data_out[i * f_len + 2]);
+
+			gyro_lsb.dataz =
+			((unsigned char)fifo_data_out[i * f_len + 5] << 8
+				| (unsigned char)fifo_data_out[i * f_len + 4]);
+
+			bmg160_remap_sensor_data(&gyro_lsb, client_data);
+			len = snprintf(buf, 256, "%d %d %d ",
+				gyro_lsb.datax, gyro_lsb.datay, gyro_lsb.dataz);
 			buf += len;
 			err += len;
 		}
 	} else {
-		for (i = 0; i <  client_data->fifo_count; i++) {
-			for (j = 0; j < f_len; j++) {
-				len = sprintf(buf, "%5d ",
-						fifo_data_out[i * f_len + j]);
-				buf += len;
-				err += len;
-			}
-			len = sprintf(buf, "\n");
+		/* single axis data output for every frame */
+		bmg_single_axis_remaping(client_data->fifo_datasel,
+				&axis_dir_remap, client_data);
+		for (i = 0; i < client_data->fifo_count * f_len / 2; i++) {
+			value = ((unsigned char)fifo_data_out[2 * i + 1] << 8 |
+					(unsigned char)fifo_data_out[2 * i]);
+			if (axis_dir_remap)
+				value = 0 - value;
+			len = snprintf(buf, 256, "%d ", value);
 			buf += len;
 			err += len;
 		}
 	}
-#else
-	for (i = 0; i < client_data->fifo_count * f_len / 2; i++)	{
-		value = (((unsigned char)fifo_data_out[2 * i + 1] << 8)) | ((unsigned char)fifo_data_out[2 * i]);
-		len = sprintf(buf, "%d ", value);
-
-		buf += len;
-		err += len;
-	}
-#endif
 
 	return err;
 }
 
+/*!
+ * @brief show fifo_data_sel axis definition(Android definition, not sensor HW reg).
+ * 0--> x, y, z axis fifo data for every frame
+ * 1--> only x axis fifo data for every frame
+ * 2--> only y axis fifo data for every frame
+ * 3--> only z axis fifo data for every frame
+ */
 static ssize_t bmg_show_fifo_data_sel(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	int err;
 	unsigned char fifo_data_sel;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bmg_client_data *client_data = i2c_get_clientdata(client);
+	signed char place = BOSCH_SENSOR_PLACE_UNKNOWN;
+
 	BMG_CALL_API(get_fifo_data_sel)(&fifo_data_sel);
+
+	/*remapping fifo_dat_sel if define virtual place in BSP files*/
+	if ((NULL != client_data->bst_pd) &&
+		(BOSCH_SENSOR_PLACE_UNKNOWN != client_data->bst_pd->place)) {
+		place = client_data->bst_pd->place;
+		/* sensor with place 0 needs not to be remapped */
+		if ((place > 0) && (place < MAX_AXIS_REMAP_TAB_SZ)) {
+			if (BMG160_FIFO_DAT_SEL_X == fifo_data_sel)
+				/* BMG160_FIFO_DAT_SEL_X: 1, Y:2, Z:3;
+				*bst_axis_remap_tab_dft[i].src_x:0, y:1, z:2
+				*so we need to +1*/
+				fifo_data_sel =
+					bst_axis_remap_tab_dft[place].src_x + 1;
+
+			else if (BMG160_FIFO_DAT_SEL_Y == fifo_data_sel)
+				fifo_data_sel =
+					bst_axis_remap_tab_dft[place].src_y + 1;
+		}
+
+	}
 
 	err = sprintf(buf, "%d\n", fifo_data_sel);
 	return err;
 }
 
+/*!
+ * @brief store fifo_data_sel axis definition(Android definition, not sensor HW reg).
+ * 0--> x, y, z axis fifo data for every frame
+ * 1--> only x axis fifo data for every frame
+ * 2--> only y axis fifo data for every frame
+ * 3--> only z axis fifo data for every frame
+ */
 static ssize_t bmg_store_fifo_data_sel(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
@@ -1030,13 +1104,38 @@ static ssize_t bmg_store_fifo_data_sel(struct device *dev,
 
 	struct input_dev *input = to_input_dev(dev);
 	struct bmg_client_data *client_data = input_get_drvdata(input);
+	signed char place;
 
 	err = kstrtoul(buf, 10, &fifo_data_sel);
 	if (err)
 		return err;
 
-	BMG_CALL_API(set_fifo_data_sel)(fifo_data_sel);
+	/*save fifo_data_sel(android axis definition)*/
 	client_data->fifo_datasel = (unsigned char) fifo_data_sel;
+
+	/*remaping fifo_dat_sel if define virtual place*/
+	if ((NULL != client_data->bst_pd) &&
+		(BOSCH_SENSOR_PLACE_UNKNOWN != client_data->bst_pd->place)) {
+		place = client_data->bst_pd->place;
+		/* sensor with place 0 needs not to be remapped */
+		if ((place > 0) && (place < MAX_AXIS_REMAP_TAB_SZ)) {
+			/*Need X Y axis revesal sensor place: P1, P3, P5, P7 */
+			/* BMG160_FIFO_DAT_SEL_X: 1, Y:2, Z:3;
+			  * but bst_axis_remap_tab_dft[i].src_x:0, y:1, z:2
+			  * so we need to +1*/
+			if (BMG160_FIFO_DAT_SEL_X == fifo_data_sel)
+				fifo_data_sel =
+					bst_axis_remap_tab_dft[place].src_x + 1;
+
+			else if (BMG160_FIFO_DAT_SEL_Y == fifo_data_sel)
+				fifo_data_sel =
+					bst_axis_remap_tab_dft[place].src_y + 1;
+		}
+	}
+
+	if (BMG_CALL_API(set_fifo_data_sel)(fifo_data_sel) < 0)
+		return -EINVAL;
+
 	return count;
 }
 
@@ -1067,46 +1166,46 @@ static ssize_t bmg_store_fifo_tag(struct device *dev,
 
 static DEVICE_ATTR(chip_id, S_IRUGO,
 		bmg_show_chip_id, NULL);
-static DEVICE_ATTR(op_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(op_mode, S_IRUGO|S_IWUSR,
 		bmg_show_op_mode, bmg_store_op_mode);
 static DEVICE_ATTR(value, S_IRUGO,
 		bmg_show_value, NULL);
-static DEVICE_ATTR(range, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(range, S_IRUGO|S_IWUSR,
 		bmg_show_range, bmg_store_range);
-static DEVICE_ATTR(bandwidth, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(bandwidth, S_IRUGO|S_IWUSR,
 		bmg_show_bandwidth, bmg_store_bandwidth);
-static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR,
 		bmg_show_enable, bmg_store_enable);
-static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR,
 		bmg_show_delay, bmg_store_delay);
-static DEVICE_ATTR(fastoffset_en, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fastoffset_en, S_IRUGO|S_IWUSR,
 		NULL, bmg_store_fastoffset_en);
-static DEVICE_ATTR(slowoffset_en, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(slowoffset_en, S_IRUGO|S_IWUSR,
 		NULL, bmg_store_slowoffset_en);
 static DEVICE_ATTR(selftest, S_IRUGO,
 		bmg_show_selftest, NULL);
-static DEVICE_ATTR(sleepdur, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(sleepdur, S_IRUGO|S_IWUSR,
 		bmg_show_sleepdur, bmg_store_sleepdur);
-static DEVICE_ATTR(autosleepdur, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(autosleepdur, S_IRUGO|S_IWUSR,
 		bmg_show_autosleepdur, bmg_store_autosleepdur);
 #ifdef BMG_DEBUG
-static DEVICE_ATTR(softreset, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(softreset, S_IRUGO|S_IWUSR,
 		NULL, bmg_store_softreset);
 static DEVICE_ATTR(regdump, S_IRUGO,
 		bmg_show_dumpreg, NULL);
 #endif
 #ifdef BMG_USE_FIFO
-static DEVICE_ATTR(fifo_mode, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fifo_mode, S_IRUGO|S_IWUSR,
 		bmg_show_fifo_mode, bmg_store_fifo_mode);
-static DEVICE_ATTR(fifo_framecount, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fifo_framecount, S_IRUGO|S_IWUSR,
 		bmg_show_fifo_framecount, bmg_store_fifo_framecount);
-static DEVICE_ATTR(fifo_overrun, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fifo_overrun, S_IRUGO|S_IWUSR,
 		bmg_show_fifo_overrun, NULL);
-static DEVICE_ATTR(fifo_data_frame, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fifo_data_frame, S_IRUGO|S_IWUSR,
 		bmg_show_fifo_data_frame, NULL);
-static DEVICE_ATTR(fifo_data_sel, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fifo_data_sel, S_IRUGO|S_IWUSR,
 		bmg_show_fifo_data_sel, bmg_store_fifo_data_sel);
-static DEVICE_ATTR(fifo_tag, S_IRUGO|S_IWUSR|S_IWGRP,
+static DEVICE_ATTR(fifo_tag, S_IRUGO|S_IWUSR,
 		bmg_show_fifo_tag, bmg_store_fifo_tag);
 #endif
 
@@ -1156,9 +1255,9 @@ static int bmg_input_init(struct bmg_client_data *client_data)
 	dev->id.bustype = BUS_I2C;
 
 	input_set_capability(dev, EV_ABS, ABS_MISC);
-	input_set_abs_params(dev, ABS_X, MAG_VALUE_MIN, MAG_VALUE_MAX, 0, 0);
-	input_set_abs_params(dev, ABS_Y, MAG_VALUE_MIN, MAG_VALUE_MAX, 0, 0);
-	input_set_abs_params(dev, ABS_Z, MAG_VALUE_MIN, MAG_VALUE_MAX, 0, 0);
+	input_set_abs_params(dev, ABS_X, BMG_VALUE_MIN, BMG_VALUE_MAX, 0, 0);
+	input_set_abs_params(dev, ABS_Y, BMG_VALUE_MIN, BMG_VALUE_MAX, 0, 0);
+	input_set_abs_params(dev, ABS_Z, BMG_VALUE_MIN, BMG_VALUE_MAX, 0, 0);
 	input_set_drvdata(dev, client_data);
 
 	err = input_register_device(dev);
@@ -1203,7 +1302,12 @@ static int bmg_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	/* do soft reset */
 	mdelay(5);
-	if (BMG_CALL_API(set_soft_reset)() < 0) {
+
+	err = bmg_set_soft_reset(client);
+
+	if (err < 0) {
+		dev_err(&client->dev,
+			"erro soft reset!\n");
 		err = -EINVAL;
 		goto exit_err_clean;
 	}
@@ -1264,8 +1368,8 @@ static int bmg_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		if (NULL != client_data->bst_pd) {
 			memcpy(client_data->bst_pd, client->dev.platform_data,
 					sizeof(*client_data->bst_pd));
-			dev_notice(&client->dev, "gyro sensor place of bmg in %s: %d",
-					client_data->bst_pd->name,
+			dev_notice(&client->dev, "%s sensor driver set place: p%d",
+					SENSOR_NAME,
 					client_data->bst_pd->place);
 		}
 	}
@@ -1530,7 +1634,7 @@ static void __exit BMG_exit(void)
 }
 
 MODULE_AUTHOR("contact@bosch-sensortec.com>");
-MODULE_DESCRIPTION("driver for " SENSOR_NAME);
+MODULE_DESCRIPTION("BMG GYROSCOPE SENSOR DRIVER");
 MODULE_LICENSE("GPL v2");
 
 module_init(BMG_init);

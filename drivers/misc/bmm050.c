@@ -86,7 +86,7 @@ BMM050_RETURN_FUNCTION_TYPE bmm050_set_presetmode(unsigned char mode)
 }
 
 BMM050_RETURN_FUNCTION_TYPE bmm050_set_functional_state(
-unsigned char functional_state)
+	unsigned char functional_state)
 {
 	BMM050_RETURN_FUNCTION_TYPE comres = BMM050_Zero_U8X;
 	unsigned char v_data1_u8r = BMM050_Zero_U8X;
@@ -167,7 +167,7 @@ unsigned char functional_state)
 }
 
 BMM050_RETURN_FUNCTION_TYPE bmm050_get_functional_state(
-unsigned char *functional_state)
+	unsigned char *functional_state)
 {
 	BMM050_RETURN_FUNCTION_TYPE comres = BMM050_Zero_U8X;
 	unsigned char v_data_u8r = BMM050_Zero_U8X;
@@ -461,7 +461,7 @@ struct bmm050_remapped_mdata_s32 *mdata)
 
 #ifdef ENABLE_FLOAT
 BMM050_RETURN_FUNCTION_TYPE bmm050_read_mdataXYZ_float(
-struct bmm050_mdata_float *mdata)
+	struct bmm050_mdata_float *mdata)
 {
 	BMM050_RETURN_FUNCTION_TYPE comres = BMM050_Zero_U8X;
 
