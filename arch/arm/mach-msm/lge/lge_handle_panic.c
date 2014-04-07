@@ -25,8 +25,12 @@
 #include <mach/msm_iomap.h>
 #include <mach/lge_handle_panic.h>
 #include <soc/qcom/restart.h>
+#include <soc/qcom/scm.h>
 
 #define PANIC_HANDLER_NAME        "panic-handler"
+
+#define SCM_WDOG_DEBUG_BOOT_PART    0x9
+#define BOOT_PART_EN_VAL            0x5D1
 
 #define RESTART_REASON_OFFSET       0x65C
 #define UEFI_RAM_DUMP_MAGIC_OFFSET  0xC
@@ -211,12 +215,31 @@ static int gen_bus_hang(const char *val, struct kernel_param *kp)
 module_param_call(gen_bus_hang, gen_bus_hang, param_get_bool,
 		&dummy_arg, S_IWUSR | S_IRUGO);
 
-extern void msm_disable_wdog_debug(void);
+void lge_msm_enable_wdog_debug(void)
+{
+	int ret;
+
+	ret = scm_call_atomic2(SCM_SVC_BOOT,
+	SCM_WDOG_DEBUG_BOOT_PART, 0, BOOT_PART_EN_VAL);
+	if (ret)
+		pr_err("failed to enable wdog debug: %d\n", ret);
+}
+
+void lge_msm_disable_wdog_debug(void)
+{
+	int ret;
+
+	ret = scm_call_atomic2(SCM_SVC_BOOT,
+	SCM_WDOG_DEBUG_BOOT_PART, 1, 0);
+	if (ret)
+		pr_err("failed to disable wdog debug: %d\n", ret);
+}
+
 static int gen_hw_reset(const char *val, struct kernel_param *kp)
 {
 	static void __iomem *reserved;
 
-	msm_disable_wdog_debug();
+	lge_msm_disable_wdog_debug();
 	reserved = ioremap(0xFF000000 - 0x10, 0x10);
 	__raw_writel(1, reserved);
 
