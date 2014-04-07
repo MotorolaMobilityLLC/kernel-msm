@@ -943,10 +943,10 @@
 	stm401@39 {
 		compatible = "stm,stm401";
 		reg = <0x39>;
-		gpios = <&msmgpio 141 0>,        /* IRQ */
+		gpios = <&msmgpio 122 0>,        /* IRQ */
 			<&msmgpio 136 0>,       /* RESET */
 			<&msmgpio 137 0>,        /* BSLEN */
-			<&msmgpio 139 0>;        /* WakeIRQ */
+			<&msmgpio 141 0>;        /* WakeIRQ */
 		lux_table = <5 50 100 1500 3000 8000>;
 		brightness_table = <9 14 18 46 67 93 140>;
 		bslen_pin_active_value = <1>;
