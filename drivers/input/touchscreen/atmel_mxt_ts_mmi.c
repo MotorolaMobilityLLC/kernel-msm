@@ -204,7 +204,7 @@ struct t9_range {
 #define MXT_BACKUP_TIME		50	/* msec */
 #define MXT_RESET_TIME		200	/* msec */
 #define MXT_RESET_TIMEOUT	3000	/* msec */
-#define MXT_CRC_TIMEOUT		1000	/* msec */
+#define MXT_CRC_TIMEOUT		2000	/* msec */
 #define MXT_FW_RESET_TIME	3500	/* msec */
 #define MXT_FW_CHG_TIMEOUT	300	/* msec */
 #define MXT_WAKEUP_TIME		25	/* msec */
@@ -531,9 +531,11 @@ static int mxt_debug_msg_init(struct mxt_data *data)
 
 static void mxt_debug_msg_remove(struct mxt_data *data)
 {
-	if (data->debug_msg_attr.attr.name)
+	if (data->debug_msg_attr.attr.name) {
 		sysfs_remove_bin_file(&data->client->dev.kobj,
 				      &data->debug_msg_attr);
+		data->debug_msg_attr.attr.name = NULL;
+	}
 }
 
 static int mxt_wait_for_completion(struct mxt_data *data,
@@ -2026,13 +2028,9 @@ static void mxt_set_sensor_state(struct mxt_data *data, int state)
 			break;
 
 	case STATE_INIT:
-		mxt_irq_enable(data, true);
-
+		/* set flag to avoid object specific message handling */
 		if (!data->in_bootloader)
 			data->in_bootloader = true;
-
-		if (!data->use_regulator && data->sensor_sleep)
-			mxt_sensor_wake(data, false);
 			break;
 	}
 
@@ -3648,17 +3646,15 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 		error = mxt_lookup_bootloader_address(data, 0);
 		if (error)
 			goto release_firmware;
+	} else
+		mxt_irq_enable(data, false);
 
-		mxt_irq_enable(data, true);
-	}
+	mxt_set_sensor_state(data, STATE_INIT);
 
 	/* Level triggered IRQ causes WD reset due to soft IRQ lockup, */
 	/* thus change it to edge triggered for the durantion of flash */
-	mxt_irq_enable(data, false);
 	free_irq(data->irq, data);
 	mxt_request_irq(data, IRQF_TRIGGER_FALLING | IRQF_ONESHOT);
-
-	mxt_set_sensor_state(data, STATE_INIT);
 
 	mutex_lock(&data->crit_section_lock);
 	dev_dbg(dev, "critical section LOCK\n");
