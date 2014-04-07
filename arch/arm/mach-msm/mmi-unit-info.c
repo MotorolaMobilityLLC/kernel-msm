@@ -129,6 +129,6 @@ static int __init mmi_unit_info_init(void)
 	return 0;
 }
 
-module_init(mmi_unit_info_init);
+early_initcall(mmi_unit_info_init);
 MODULE_DESCRIPTION("Motorola Mobility LLC. Unit Info");
 MODULE_LICENSE("GPL v2");
