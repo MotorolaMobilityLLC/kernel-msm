@@ -1891,6 +1891,22 @@ config SOFTLOCKUP_WATCHDOG_TEST
 
 	 Say N if you are unsure.
 
+config LOCKUP_IPI_CALL_WDT
+	bool "Trigger Watchdog Reset when Softlockup on IPI Call"
+	depends on LOCKUP_DETECTOR
+	help
+	 Say Y here to enable the kernel to trigger watchdog reset when it
+	 detects softlockup happens during current cpu is waiting for ipi replying
+	 from other CPUs.
+
+	 Original softlockup logs for ipi call hang issue can't provide
+	 the backtrace on other CPUs. Since some machine may provide
+	 ramdump when watchdog happens, we can leverage it to find out the
+	 the other cpus' backtrace by initiating a watchdog reset
+	 when this kind of softlockup occurs.
+
+	 Say N if unsure.
+
 source "samples/Kconfig"
 
 source "lib/Kconfig.kgdb"
