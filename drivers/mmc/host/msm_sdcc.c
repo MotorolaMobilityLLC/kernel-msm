@@ -4291,6 +4291,12 @@ void msmsdcc_hw_reset(struct mmc_host *mmc)
 	pr_debug("%s: host reset (%lu uS)\n", mmc_hostname(host->mmc), delay);
 
 	/*
+	 * Disable pwrsave so that we have a steady clock during init.
+	 */
+	writel_relaxed(readl_relaxed(host->base + MMCICLOCK) &
+		~MCI_CLK_PWRSAVE, host->base + MMCICLOCK);
+
+	/*
 	 * Continuing on failing to disable regulator would lead to a panic
 	 * anyway, since the commands would fail and console would be flooded
 	 * with prints, eventually leading to a watchdog bark
