@@ -358,7 +358,7 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
    hdd_adapter_t* pMonAdapter = NULL;
    struct ieee80211_hdr *hdr;
 
-   if (pAdapter == NULL )
+   if (pAdapter == NULL)
    {
       VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
        FL("pAdapter is NULL"));
@@ -367,7 +367,12 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
    }
 
    pMonAdapter = hdd_get_adapter( pAdapter->pHddCtx, WLAN_HDD_MONITOR );
-
+   if (pMonAdapter == NULL)
+   {
+       hddLog(VOS_TRACE_LEVEL_ERROR,
+              "%s: pMonAdapter is NULL", __func__);
+       return;
+   }
    cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
 
    if( NULL != cfgState->buf )
