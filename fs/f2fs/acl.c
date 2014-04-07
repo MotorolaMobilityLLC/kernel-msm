@@ -182,7 +182,7 @@ struct posix_acl *f2fs_get_acl(struct inode *inode, int type)
 
 	retval = f2fs_getxattr(inode, name_index, "", NULL, 0);
 	if (retval > 0) {
-		value = kmalloc(retval, GFP_KERNEL);
+		value = kmalloc(retval, GFP_F2FS_ZERO);
 		if (!value)
 			return ERR_PTR(-ENOMEM);
 		retval = f2fs_getxattr(inode, name_index, "", value, retval);
@@ -211,6 +211,12 @@ static int f2fs_set_acl(struct inode *inode, int type,
 	void *value = NULL;
 	size_t size = 0;
 	int error;
+
+	if (acl) {
+		error = posix_acl_valid(acl);
+		if (error < 0)
+			return error;
+	}
 
 	if (!test_opt(sbi, POSIX_ACL))
 		return 0;
