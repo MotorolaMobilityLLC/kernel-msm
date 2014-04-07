@@ -12,6 +12,7 @@
  */
 #include <linux/module.h>
 #include <linux/export.h>
+#include <linux/gpio.h>
 #include "msm_led_flash.h"
 
 #define FLASH_NAME "qcom,lm3646"
@@ -25,22 +26,15 @@ static struct msm_camera_i2c_reg_array lm3646_init_array[] = {
 	{0x03, 0x20},
 	{0x04, 0x42},
 	{0x05, 0x5A},
-	{0x06, 0x2F},
-	{0x07, 0x3F},
+	{0x06, 0x2B},
+	{0x07, 0xAF},
 	{0x08, 0x00},
 	{0x09, 0x30},
 };
 
-static struct msm_camera_i2c_reg_array lm3646_off_array[] = {
-	{0x01, 0x00},
-};
-
 static struct msm_camera_i2c_reg_array lm3646_release_array[] = {
-	{0x0f, 0x00},
-};
-
-static struct msm_camera_i2c_reg_array lm3646_low_array[] = {
-	{0x01, 0xE2},
+	{0x01, 0xE0},
+	{0x07, 0x2F},
 };
 
 static struct msm_camera_i2c_reg_array lm3646_high_array[] = {
@@ -111,6 +105,30 @@ static int32_t msm_flash_lm3646_platform_probe(struct platform_device *pdev)
 	return rc;
 }
 
+static int lm3646_led_off(struct msm_led_flash_ctrl_t *fctrl)
+{
+	if (!fctrl->torch_gpio_support) {
+		pr_err("%s requires gpio control\n", __func__);
+		return -EFAULT;
+	}
+
+	gpio_set_value_cansleep(fctrl->torch_gpio_num, GPIO_OUT_LOW);
+
+	return 0;
+}
+
+static int lm3646_led_low(struct msm_led_flash_ctrl_t *fctrl)
+{
+	if (!fctrl->torch_gpio_support) {
+		pr_err("%s requires gpio control\n", __func__);
+		return -EFAULT;
+	}
+
+	gpio_set_value_cansleep(fctrl->torch_gpio_num, GPIO_OUT_HIGH);
+
+	return 0;
+}
+
 static struct msm_camera_i2c_client lm3646_i2c_client = {
 	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
 };
@@ -123,25 +141,9 @@ static struct msm_camera_i2c_reg_setting lm3646_init_setting = {
 	.delay = 0,
 };
 
-static struct msm_camera_i2c_reg_setting lm3646_off_setting = {
-	.reg_setting = lm3646_off_array,
-	.size = ARRAY_SIZE(lm3646_off_array),
-	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
-	.data_type = MSM_CAMERA_I2C_BYTE_DATA,
-	.delay = 0,
-};
-
 static struct msm_camera_i2c_reg_setting lm3646_release_setting = {
 	.reg_setting = lm3646_release_array,
 	.size = ARRAY_SIZE(lm3646_release_array),
-	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
-	.data_type = MSM_CAMERA_I2C_BYTE_DATA,
-	.delay = 0,
-};
-
-static struct msm_camera_i2c_reg_setting lm3646_low_setting = {
-	.reg_setting = lm3646_low_array,
-	.size = ARRAY_SIZE(lm3646_low_array),
 	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
 	.data_type = MSM_CAMERA_I2C_BYTE_DATA,
 	.delay = 0,
@@ -156,21 +158,19 @@ static struct msm_camera_i2c_reg_setting lm3646_high_setting = {
 };
 
 static struct msm_led_flash_reg_t lm3646_regs = {
-	.init_setting = &lm3646_init_setting,
-	.off_setting = &lm3646_off_setting,
-	.low_setting = &lm3646_low_setting,
-	.high_setting = &lm3646_high_setting,
+	.init_setting    = &lm3646_init_setting,
+	.high_setting    = &lm3646_high_setting,
 	.release_setting = &lm3646_release_setting,
 };
 
 static struct msm_flash_fn_t lm3646_func_tbl = {
 	.flash_get_subdev_id = msm_led_i2c_trigger_get_subdev_id,
-	.flash_led_config = msm_led_i2c_trigger_config,
-	.flash_led_init = msm_flash_led_init,
-	.flash_led_release = msm_flash_led_release,
-	.flash_led_off = msm_flash_led_off,
-	.flash_led_low = msm_flash_led_low,
-	.flash_led_high = msm_flash_led_high,
+	.flash_led_config    = msm_led_i2c_trigger_config,
+	.flash_led_init      = msm_flash_led_init,
+	.flash_led_release   = msm_flash_led_release,
+	.flash_led_off       = lm3646_led_off,
+	.flash_led_low       = lm3646_led_low,
+	.flash_led_high      = msm_flash_led_high,
 };
 
 static struct msm_led_flash_ctrl_t fctrl = {

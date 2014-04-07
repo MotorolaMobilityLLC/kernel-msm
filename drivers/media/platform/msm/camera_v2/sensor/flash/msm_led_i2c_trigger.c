@@ -322,6 +322,23 @@ static int32_t msm_flash_init_gpio_pin_tbl(struct device_node *of_node,
 			gconf->gpio_num_info->gpio_num[1]);
 	}
 
+	rc = of_property_read_u32(of_node, "qcom,gpio-torch-idx", &val);
+	CDBG("%s qcom,gpio-torch-idx %d, rc %d\n", __func__, val, rc);
+	if (rc < 0) {
+		fctrl->torch_gpio_support = false;
+		rc = 0;/* not an error, not required */
+	} else {
+		if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-torch-idx invalid %d\n",
+					__func__, __LINE__, val);
+			rc = -EINVAL;
+			goto ERROR;
+		}
+		fctrl->torch_gpio_support = true;
+		fctrl->torch_gpio_num = gpio_array[val];
+		CDBG("%s torch_gpio_num %d\n", __func__, fctrl->torch_gpio_num);
+	}
+
 	return rc;
 
 ERROR:
