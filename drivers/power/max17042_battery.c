@@ -684,13 +684,20 @@ static int max17042_init_chip(struct max17042_chip *chip)
 static void max17042_set_soc_threshold(struct max17042_chip *chip, u16 off)
 {
 	u16 soc, soc_tr;
-
-	/* program interrupt thesholds such that we should
-	 * get interrupt for every 'off' perc change in the soc
+	/*
+	 * Program interrupt thresholds to get interrupt for every 'off'
+	 * percent change in the soc. Since we truncate soc value when
+	 * reporting it, the reported SOC is equal to (min Salrt - 1) when soc
+	 * falls below the min Salrt threshold and equal to max Salrt when soc
+	 * exceeds the max Salrt threshold.
 	 */
+	u16 off_max = off;
+	u16 off_min = off - 1;
+
 	soc = max17042_read_reg(chip->client, MAX17042_RepSOC) >> 8;
-	soc_tr = (soc + off) << 8;
-	soc_tr |= (soc - off);
+	soc_tr = (soc + off_max) << 8;
+	if (soc >= off_min)
+		soc_tr |= (soc - off_min);
 	max17042_write_reg(chip->client, MAX17042_SALRT_Th, soc_tr);
 }
 
