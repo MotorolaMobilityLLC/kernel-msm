@@ -20,8 +20,7 @@
 		qcom,mdss-dsi-te-using-te-pin;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 
-		/* Disable ESD for now, reading fails while in command mode */
-		qcom,panel-esd-detect-disable;
+		qcom,mdss-dsi-hs-cmds-post-init;
 		qcom,panel-esd-power-mode-chk = <0x94>;
 
 		qcom,mdss-dsi-panel-name = "mipi_mot_cmd_smd_1080_v0";
