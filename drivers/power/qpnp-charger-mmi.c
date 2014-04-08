@@ -5277,7 +5277,12 @@ static void __devinit qpnp_charger_mmi_battid(void)
 	pr_err("Reading Battid at powerup!\n");
 	if (np)
 		retval = of_property_read_string(np, "mmi,battid", &battid_buf);
-	pr_err("Battid = %s\n", battid_buf);
+
+	if ((retval == -EINVAL) || !battid_buf)
+		pr_err("Battid unused\n");
+	else
+		pr_err("Battid = %s\n", battid_buf);
+
 	of_node_put(np);
 }
 
