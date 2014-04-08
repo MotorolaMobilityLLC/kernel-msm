@@ -656,6 +656,7 @@ static void panel_full_reinit(struct mdss_panel_data *pdata)
 	msleep(200);
 	mdss_dsi_panel_regulator_on(pdata, 1);
 	mdss_dsi_panel_reset(pdata, 1);
+	pdata->panel_info.panel_dead = false;
 }
 
 static unsigned int detect_panel_state(u8 pwr_mode)
@@ -745,7 +746,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (!mfd->quickdraw_in_progress)
 		mmi_panel_notify(MMI_PANEL_EVENT_PRE_DISPLAY_ON, NULL);
 
-	if (ctrl->partial_mode_enabled) {
+	if (ctrl->partial_mode_enabled
+		&& !pdata->panel_info.panel_dead) {
 		/* If we're doing partial display, we need to turn on the
 		   regulators once since we don't enable and disable during
 		   panel on/offs */
@@ -838,7 +840,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
 disable_regs:
-	if (ctrl->partial_mode_enabled)
+	if (ctrl->partial_mode_enabled && !pdata->panel_info.panel_dead)
 		gpio_set_value(ctrl->mipi_d0_sel, 1);
 	else {
 		mdss_dsi_panel_reset(pdata, 0);
