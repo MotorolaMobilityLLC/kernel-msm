@@ -41,10 +41,6 @@
 
 #include <asm/current.h>
 
-#include <soc/qcom/socinfo.h>
-#include <soc/qcom/subsystem_notif.h>
-#include <soc/qcom/subsystem_restart.h>
-
 #ifdef CONFIG_LGE_HANDLE_PANIC
 #include <mach/lge_handle_panic.h>
 #endif
@@ -797,6 +793,9 @@ static void device_restart_work_hdlr(struct work_struct *work)
 							device_restart_work);
 
 	notify_each_subsys_device(&dev, 1, SUBSYS_SOC_RESET, NULL);
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	lge_set_magic_subsystem(dev->desc->name, LGE_ERR_SUB_RST);
+#endif
 	panic("subsys-restart: Resetting the SoC - %s crashed.",
 							dev->desc->name);
 }
@@ -835,9 +834,6 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		__subsystem_restart_dev(dev);
 		break;
 	case RESET_SOC:
-#ifdef CONFIG_LGE_HANDLE_PANIC
-		lge_set_magic_subsystem(name, LGE_ERR_SUB_RST);
-#endif
 		__pm_stay_awake(&dev->ssr_wlock);
 		schedule_work(&dev->device_restart_work);
 		return 0;
