@@ -353,6 +353,48 @@ static struct kmsg_dumper pstore_dumper = {
 	.dump = pstore_dump,
 };
 
+
+
+/* Export function to save device specific power up
+ * data
+ *
+ */
+
+int  pstore_annotate(const char *buf)
+{
+	unsigned cnt = strlen(buf);
+	const char *end = buf + cnt;
+
+	while (buf < end) {
+		unsigned long flags;
+		int ret;
+		u64 id;
+
+		if (cnt > psinfo->bufsize)
+			cnt = psinfo->bufsize;
+
+		if (oops_in_progress) {
+			if (!spin_trylock_irqsave(&psinfo->buf_lock, flags))
+				break;
+		} else {
+			spin_lock_irqsave(&psinfo->buf_lock, flags);
+		}
+		memcpy(psinfo->buf, buf, cnt);
+		ret = psinfo->write(PSTORE_TYPE_ANNOTATE, 0, &id, 0, 0, 0,
+			cnt, psinfo);
+		spin_unlock_irqrestore(&psinfo->buf_lock, flags);
+
+		pr_debug("ret %d wrote bytes %d\n", ret, cnt);
+		buf += cnt;
+		cnt = end - buf;
+	}
+
+	return 0;
+
+}
+EXPORT_SYMBOL_GPL(pstore_annotate);
+
+
 #ifdef CONFIG_PSTORE_CONSOLE
 static void pstore_console_write(struct console *con, const char *s, unsigned c)
 {
@@ -553,6 +595,7 @@ void pstore_get_records(int quiet)
 			unzipped_len = -1;
 		if (rc && (rc != -EEXIST || !quiet))
 			failed++;
+		pr_info("Found record type %d, psi name %s\n", type, psi->name);
 	}
 	if (psi->close)
 		psi->close(psi);
