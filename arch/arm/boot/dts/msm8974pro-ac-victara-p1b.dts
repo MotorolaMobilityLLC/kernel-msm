@@ -18,3 +18,7 @@
 / {
 	qcom,msm-id = <194 0x4D 0x81B0>;
 };
+
+&sdhc_1 {
+	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
+};
