@@ -8162,7 +8162,22 @@ eHalStatus csrScanSavePreferredNetworkFound(tpAniSirGlobal pMac,
    }
    else
    {
-      pBssDescr->channelId = pParsedFrame->channelNumber;
+      /**
+        * If Probe Responce received in PNO indication does not
+        * contain DSParam IE or HT Info IE then add dummy channel
+        * to the received BSS info so that Scan result received as
+        * a part of PNO is updated to the supplicant. Specially
+        * applicable in case of AP configured in 11A only mode.
+        */
+      if ((pMac->roam.configParam.bandCapability == eCSR_BAND_ALL) ||
+          (pMac->roam.configParam.bandCapability == eCSR_BAND_24))
+      {
+          pBssDescr->channelId = 1;
+      }
+      else if(pMac->roam.configParam.bandCapability == eCSR_BAND_5G)
+      {
+         pBssDescr->channelId = 36;
+      }
    }
 
    if ((pBssDescr->channelId > 0) && (pBssDescr->channelId < 15))
