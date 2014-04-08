@@ -11,7 +11,4 @@
  */
 
 /* Reserve for ramoops memory */
-/memreserve/ 0x3eae0000 0x20000;
-
-/* Reserve for bootinfo backup in last_kmsg */
-/memreserve/ 0x3eb00000 0x800;
+/memreserve/ 0x3eae0000 0x40000;

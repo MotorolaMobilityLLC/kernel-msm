@@ -39,8 +39,9 @@
 		status = "ok";
 
 		android,ramoops-buffer-start = <0x3eae0000>;
-		android,ramoops-buffer-size = <0x20000>;
+		android,ramoops-buffer-size = <0x40000>;
 		android,ramoops-console-size = <0x20000>;
+		android,ramoops-annotate-size = <0x800>;
 	};
 	sound {
 		qcom,model = "apq8084-taiko-tfa9890_codec-snd-card";
