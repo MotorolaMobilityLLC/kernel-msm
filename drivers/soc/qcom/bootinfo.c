@@ -30,6 +30,7 @@
 #include <soc/qcom/bootinfo.h>
 #include <linux/seq_file.h>
 #include <linux/apanic_mmc.h>
+#include <linux/pstore.h>
 
 
 /*
@@ -47,26 +48,33 @@
  */
 #define EMIT_BOOTINFO(strname, fmt, name) \
 		do { \
-			seq_printf(m, strname " : " fmt "\n", \
+			seq_printf(m, strname ": " fmt "\n", \
 					bi_##name()); \
 		} while (0)
 
 #define EMIT_BOOTINFO_STR(strname, strval) \
 		do { \
 			if (strlen(strval) == 0) { \
-				seq_printf(m, "%s : UNKNOWN\n", \
+				seq_printf(m, "%s: UNKNOWN\n", \
 						strname); \
 			} else { \
-				seq_printf(m, "%s : %s\n", \
+				seq_printf(m, "%s: %s\n", \
 						strname, strval); \
 			} \
 		} while (0)
 
 #define EMIT_BOOTINFO_APANIC(buf, strname, fmt, name) \
 		do { \
-			snprintf(buf, sizeof(buf), strname " : " fmt "\n", \
+			snprintf(buf, sizeof(buf), strname ": " fmt "\n", \
 					bi_##name()); \
 			apanic_mmc_annotate(buf); \
+		} while (0)
+
+#define EMIT_BOOTINFO_LASTKMSG(buf, strname, fmt, name) \
+		do { \
+			snprintf(buf, sizeof(buf), strname ": " fmt "\n", \
+					bi_##name()); \
+			pstore_annotate(buf); \
 		} while (0)
 
 /*-------------------------------------------------------------------------*/
@@ -280,9 +288,33 @@ static void bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
 		apanic_mmc_annotate("\n");
 	}
 
+	EMIT_BOOTINFO_APANIC(buf, "SERIAL", "0x%llx", serial);
+	EMIT_BOOTINFO_APANIC(buf, "HW_REV", "0x%04x", hwrev);
 	EMIT_BOOTINFO_APANIC(buf, "POWERUPREASON", "0x%08x", powerup_reason);
 	EMIT_BOOTINFO_APANIC(buf, "MBM_VERSION", "0x%08x", mbm_version);
+	apanic_mmc_annotate("Boot info:\n");
 	EMIT_BOOTINFO_APANIC(buf, "Last boot reason", "%s", bootreason);
+}
+
+static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
+{
+	int i;
+	char buf[BOOTREASON_MAX_LEN];
+	for (i = 0; i < bl_build_sig_count; i++) {
+		bl[i].item[MAX_BLD_SIG_ITEM - 1] = 0;
+		bl[i].value[MAX_BLD_SIG_VALUE - 1] = 0;
+		pstore_annotate(bl[i].item);
+		pstore_annotate("=");
+		pstore_annotate(bl[i].value);
+		pstore_annotate("\n");
+	}
+
+	EMIT_BOOTINFO_LASTKMSG(buf, "SERIAL", "0x%llx", serial);
+	EMIT_BOOTINFO_LASTKMSG(buf, "HW_REV", "0x%04x", hwrev);
+	EMIT_BOOTINFO_LASTKMSG(buf, "POWERUPREASON", "0x%08x", powerup_reason);
+	EMIT_BOOTINFO_LASTKMSG(buf, "MBM_VERSION", "0x%08x", mbm_version);
+	pstore_annotate("Boot info:\n");
+	EMIT_BOOTINFO_LASTKMSG(buf, "Last boot reason", "%s", bootreason);
 }
 
 /* get_bootinfo fills in the /proc/bootinfo information.
@@ -324,6 +356,7 @@ int __init bootinfo_init_module(void)
 	if (!proc_create_data("bootinfo", 0, NULL, &bootinfo_proc_fops, NULL))
 		printk(KERN_ERR "Failed to create bootinfo entry");
 	bootinfo_apanic_annotate_bl(bl_build_sigs);
+	bootinfo_lastkmsg_annotate_bl(bl_build_sigs);
 	return 0;
 }
 
