@@ -1914,17 +1914,9 @@ static bool mxt_t47_stylus_state(struct mxt_data *data)
 	return control ? true : false;
 }
 
-static int mxt_acquire_irq(struct mxt_data *data)
+static inline int mxt_acquire_irq(struct mxt_data *data)
 {
-	int error;
-
-	if (data->use_retrigen_workaround) {
-		error = mxt_process_messages_until_invalid(data);
-		if (error)
-			return error;
-	}
-
-	return 0;
+	return mxt_process_messages_until_invalid(data);
 }
 
 static void mxt_irq_enable(struct mxt_data *data, bool enable)
