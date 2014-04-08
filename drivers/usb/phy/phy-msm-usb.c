@@ -3410,6 +3410,11 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 		work = 1;
 	} else if ((otgsc & OTGSC_BSVIE) && (otgsc & OTGSC_BSVIS)) {
 		writel_relaxed(otgsc, USB_OTGSC);
+//ASUS_BSP+++ "[USB][NA][Fix] Ignore BSVIS when OTG_PMIC_CONTROL"
+		if (motg->pdata->otg_control == OTG_PMIC_CONTROL){
+			return IRQ_HANDLED;
+		}
+//ASUS_BSP--- "[USB][NA][Fix] Ignore BSVIS when OTG_PMIC_CONTROL"
 		/*
 		 * BSV interrupt comes when operating as an A-device
 		 * (VBUS on/off).
