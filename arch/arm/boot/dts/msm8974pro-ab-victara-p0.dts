@@ -41,3 +41,7 @@
 		status = "ok";
 	};
 };
+
+&sdhc_1 {
+	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
+};

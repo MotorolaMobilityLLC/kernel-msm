@@ -219,3 +219,7 @@
 		};
 	};
 };
+
+&sdhc_1 {
+	qcom,bus-speed-mode = "HS400_1p8v", "HS200_1p8v", "DDR_1p8v";
+};
