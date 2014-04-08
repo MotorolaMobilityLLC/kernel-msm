@@ -694,6 +694,18 @@
 	qcom,rsense = <10000000>;
 };
 
+&pm8941_lsid0  {
+	qcom,power-on@800 {
+		qcom,pon_2 {
+			/delete-property/	qcom,support-reset;
+			/delete-property/ 	qcom,s1-timer;
+			/delete-property/ 	qcom,s2-timer;
+			/delete-property/ 	qcom,s3-timer;
+			/delete-property/ 	qcom,use-bark;
+		};
+	};
+};
+
 &pm8941_gpios {
 	gpio@c000 { /* GPIO 1 */
 		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
