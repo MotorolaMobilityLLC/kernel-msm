@@ -442,6 +442,15 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	int other_file;
 	struct zone_avail zall[MAX_NUMNODES][MAX_NR_ZONES];
 
+	rcu_read_lock();
+	tsk = current->group_leader;
+	if ((tsk->flags & PF_EXITING) && test_task_flag(tsk, TIF_MEMDIE)) {
+		set_tsk_thread_flag(current, TIF_MEMDIE);
+		rcu_read_unlock();
+		return 0;
+	}
+	rcu_read_unlock();
+
 	if (mutex_lock_interruptible(&scan_mutex) < 0)
 		return 0;
 
@@ -509,7 +518,11 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 			if (test_task_flag(tsk, TIF_MEMDIE)) {
 				rcu_read_unlock();
 				/* give the system time to free up the memory */
-				msleep_interruptible(20);
+				if (!same_thread_group(current, tsk))
+					msleep_interruptible(20);
+				else
+					set_tsk_thread_flag(current,
+								TIF_MEMDIE);
 				mutex_unlock(&scan_mutex);
 				return 0;
 			}
@@ -527,6 +540,13 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 #else
 			continue;
 #endif
+		}
+		if (fatal_signal_pending(p) ||
+				((p->flags & PF_EXITING) &&
+					test_tsk_thread_flag(p, TIF_MEMDIE))) {
+			lowmem_print(2, "skip slow dying process %d\n", p->pid);
+			task_unlock(p);
+			continue;
 		}
 		tasksize = get_mm_rss(p->mm);
 		task_unlock(p);
