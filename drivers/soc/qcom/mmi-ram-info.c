@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <soc/qcom/smsm.h>
 #include <linux/apanic_mmc.h>
+#include <linux/pstore.h>
 
 static struct {
 	unsigned mr5;
@@ -171,6 +172,7 @@ static int __init init_mmi_ram_info(void)
 			smem_ddr_info->mr5, smem_ddr_info->mr6,
 			smem_ddr_info->mr7, smem_ddr_info->mr8);
 		apanic_mmc_annotate(apanic_annotation);
+		pstore_annotate(apanic_annotation);
 	}
 	else {
 		/* complain, but do not fail if SMEM was not allocated */
