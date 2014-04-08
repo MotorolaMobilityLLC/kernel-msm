@@ -172,6 +172,24 @@ v_BOOL_t hdd_connIsConnected( hdd_station_ctx_t *pHddStaCtx )
    return( hdd_connGetConnectionState( pHddStaCtx, NULL ) );
 }
 
+eCsrBand hdd_connGetConnectedBand( hdd_station_ctx_t *pHddStaCtx )
+{
+   v_U8_t staChannel = 0;
+
+   if ( eConnectionState_Associated == pHddStaCtx->conn_info.connState )
+   {
+       staChannel = pHddStaCtx->conn_info.operationChannel;
+   }
+
+   if ( staChannel > 0 && staChannel < 14 )
+       return eCSR_BAND_24;
+   else if (staChannel >= 36 && staChannel <= 165 )
+      return eCSR_BAND_5G;
+   else  /* If station is not connected return as eCSR_BAND_ALL */
+      return eCSR_BAND_ALL;
+}
+
+
 //TODO - Not used anyhwere. Can be removed.
 #if 0
 //
