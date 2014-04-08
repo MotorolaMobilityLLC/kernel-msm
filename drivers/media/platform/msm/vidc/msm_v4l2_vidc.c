@@ -21,7 +21,7 @@
 #include <linux/version.h>
 #include <linux/slab.h>
 #include <mach/board.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <media/msm_vidc.h>
 #include "msm_vidc_internal.h"
@@ -276,6 +276,9 @@ static const struct v4l2_file_operations msm_v4l2_vidc_fops = {
 	.release = msm_v4l2_close,
 	.ioctl = video_ioctl2,
 	.poll = msm_v4l2_poll,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl32 = v4l2_compat_ioctl32,
+#endif
 };
 
 void msm_vidc_release_video_device(struct video_device *pvdev)

@@ -832,6 +832,10 @@ EXPORT_SYMBOL(msm_vidc_release_buffers);
 int msm_vidc_encoder_cmd(void *instance, struct v4l2_encoder_cmd *enc)
 {
 	struct msm_vidc_inst *inst = instance;
+	if (!inst || !inst->core || !enc) {
+		dprintk(VIDC_ERR, "%s invalid params\n", __func__);
+		return -EINVAL;
+	}
 	if (inst->session_type == MSM_VIDC_ENCODER)
 		return msm_venc_cmd(instance, enc);
 	return -EINVAL;
@@ -841,6 +845,10 @@ EXPORT_SYMBOL(msm_vidc_encoder_cmd);
 int msm_vidc_decoder_cmd(void *instance, struct v4l2_decoder_cmd *dec)
 {
 	struct msm_vidc_inst *inst = instance;
+	if (!inst || !inst->core || !dec) {
+		dprintk(VIDC_ERR, "%s invalid params\n", __func__);
+		return -EINVAL;
+	}
 	if (inst->session_type == MSM_VIDC_DECODER)
 		return msm_vdec_cmd(instance, dec);
 	return -EINVAL;
@@ -983,7 +991,7 @@ int msm_vidc_dqbuf(void *instance, struct v4l2_buffer *b)
 		}
 	}
 
-	if (!buffer_info) {
+	if (!buffer_info && inst->map_output_buffer) {
 		dprintk(VIDC_ERR,
 			"%s: error - no buffer info found in registered list\n",
 			__func__);
@@ -1373,7 +1381,6 @@ static void cleanup_instance(struct msm_vidc_inst *inst)
 			mutex_lock(&inst->lock);
 		}
 		mutex_unlock(&inst->lock);
-		msm_smem_delete_client(inst->mem_client);
 		debugfs_remove_recursive(inst->debugfs_root);
 		WARN_ON(!list_empty(&inst->pending_getpropq));
 	}
@@ -1433,9 +1440,12 @@ int msm_vidc_close(void *instance)
 		dprintk(VIDC_ERR,
 			"Failed to move video instance to uninit state\n");
 
+	msm_smem_delete_client(inst->mem_client);
+
 	pr_info(VIDC_DBG_TAG "Closed video instance: %p\n",
 			VIDC_MSG_PRIO2STRING(VIDC_INFO), inst);
 	kfree(inst);
+
 	return 0;
 }
 EXPORT_SYMBOL(msm_vidc_close);

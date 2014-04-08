@@ -85,6 +85,7 @@ enum {
 enum {
 	AIF1_PB = 0,
 	AIF1_CAP,
+	AIF2_PB,
 	NUM_CODEC_DAIS,
 };
 
@@ -189,6 +190,7 @@ struct msm8x10_wcd_priv {
 	 * end of impedance measurement
 	 */
 	struct list_head reg_save_restore;
+	u32 micb_en_count;
 };
 
 static unsigned short rx_digital_gain_reg[] = {
@@ -1199,6 +1201,13 @@ static const struct snd_kcontrol_new msm8x10_wcd_snd_controls[] = {
 			  MSM8X10_WCD_A_CDC_TX2_VOL_CTL_GAIN,
 			0, -84, 40, digital_gain),
 
+	SOC_SINGLE_TLV("ADC1 Volume", MSM8X10_WCD_A_TX_1_EN, 2,
+					19, 0, analog_gain),
+	SOC_SINGLE_TLV("ADC2 Volume", MSM8X10_WCD_A_TX_2_EN, 2,
+					19, 0, analog_gain),
+	SOC_SINGLE_TLV("ADC3 Volume", MSM8X10_WCD_A_TX_3_EN, 2,
+					19, 0, analog_gain),
+
 	SOC_SINGLE_SX_TLV("IIR1 INP1 Volume",
 			  MSM8X10_WCD_A_CDC_IIR1_GAIN_B1_CTL,
 			 0, -84, 40, digital_gain),
@@ -1694,6 +1703,9 @@ static int msm8x10_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, micb_int_reg, 0x04, 0x04);
 		snd_soc_update_bits(codec, MSM8X10_WCD_A_MICB_1_CTL,
 					0x80, 0x80);
+		msm8x10_wcd->micb_en_count++;
+		pr_debug("%s micb_en_count : %d", __func__,
+				msm8x10_wcd->micb_en_count);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		usleep_range(20000, 20100);
@@ -1701,6 +1713,10 @@ static int msm8x10_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 		wcd9xxx_resmgr_notifier_call(&msm8x10_wcd->resmgr, e_post_on);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		if (msm8x10_wcd->micb_en_count > 0)
+			msm8x10_wcd->micb_en_count--;
+		pr_debug("%s micb_en_count : %d", __func__,
+				msm8x10_wcd->micb_en_count);
 		snd_soc_update_bits(codec, MSM8X10_WCD_A_MICB_1_CTL,
 					0x80, 0x00);
 		/* Let MBHC module know so micbias switch to be off */
@@ -2337,6 +2353,20 @@ static struct snd_soc_dai_driver msm8x10_wcd_i2s_dai[] = {
 		},
 		.ops = &msm8x10_wcd_dai_ops,
 	},
+	{
+		.name = "msm8x10_wcd_i2s_rx2",
+		.id = AIF2_PB,
+		.playback = {
+			.stream_name = "AIF2 Playback",
+			.rates = MSM8X10_WCD_RATES,
+			.formats = MSM8X10_WCD_FORMATS,
+			.rate_max = 192000,
+			.rate_min = 8000,
+			.channels_min = 1,
+			.channels_max = 3,
+		},
+		.ops = &msm8x10_wcd_dai_ops,
+	},
 };
 
 static int msm8x10_wcd_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
@@ -2374,7 +2404,7 @@ static const struct snd_soc_dapm_widget msm8x10_wcd_dapm_widgets[] = {
 
 	SND_SOC_DAPM_AIF_IN("I2S RX2", "AIF1 Playback", 0, SND_SOC_NOPM, 0, 0),
 
-	SND_SOC_DAPM_AIF_IN("I2S RX3", "AIF1 Playback", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_IN("I2S RX3", "AIF2 Playback", 0, SND_SOC_NOPM, 0, 0),
 
 	SND_SOC_DAPM_SUPPLY("INT_LDO_H", SND_SOC_NOPM, 1, 0, NULL, 0),
 
@@ -2799,6 +2829,7 @@ static int msm8x10_wcd_enable_mbhc_micbias(struct snd_soc_codec *codec,
 					   enum wcd9xxx_micbias_num micb_num)
 {
 	int rc;
+	struct msm8x10_wcd_priv *msm8x10_wcd = snd_soc_codec_get_drvdata(codec);
 
 	if (micb_num != MBHC_MICBIAS1) {
 		rc = -EINVAL;
@@ -2808,13 +2839,18 @@ static int msm8x10_wcd_enable_mbhc_micbias(struct snd_soc_codec *codec,
 	if (enable)
 		rc = snd_soc_dapm_force_enable_pin(&codec->dapm,
 			DAPM_MICBIAS_EXTERNAL_STANDALONE);
-	else
+	else {
+		if (msm8x10_wcd->micb_en_count > 0) {
+			msm8x10_wcd->micb_en_count--;
+			pr_debug("%s micb_en_count : %d", __func__,
+					msm8x10_wcd->micb_en_count);
+			return 0;
+		}
 		rc = snd_soc_dapm_disable_pin(&codec->dapm,
 			DAPM_MICBIAS_EXTERNAL_STANDALONE);
+	}
 	snd_soc_dapm_sync(&codec->dapm);
 
-	snd_soc_update_bits(codec, WCD9XXX_A_MICB_1_CTL,
-		0x80, enable ? 0x80 : 0x00);
 err:
 	if (rc)
 		pr_debug("%s: Failed to force %s micbias", __func__,
@@ -3293,6 +3329,8 @@ static int msm8x10_wcd_codec_probe(struct snd_soc_codec *codec)
 				codec->control_data,
 				on_demand_supply_name[ON_DEMAND_MICBIAS]);
 	atomic_set(&msm8x10_wcd_priv->on_demand_list[ON_DEMAND_MICBIAS].ref, 0);
+
+	msm8x10_wcd_priv->micb_en_count = 0;
 
 	ret = wcd9xxx_mbhc_init(&msm8x10_wcd_priv->mbhc,
 				&msm8x10_wcd_priv->resmgr,

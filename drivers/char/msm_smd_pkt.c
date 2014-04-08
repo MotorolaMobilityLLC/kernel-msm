@@ -30,14 +30,14 @@
 #include <linux/completion.h>
 #include <linux/msm_smd_pkt.h>
 #include <linux/poll.h>
-#include <soc/qcom/subsystem_restart.h>
 #include <asm/ioctls.h>
 #include <linux/pm.h>
 #include <linux/of.h>
 #include <linux/ipc_logging.h>
 
-#include <mach/msm_smd.h>
-#include <mach/msm_smsm.h>
+#include <soc/qcom/smd.h>
+#include <soc/qcom/smsm.h>
+#include <soc/qcom/subsystem_restart.h>
 
 #ifdef CONFIG_ARCH_FSM9XXX
 #define DEFAULT_NUM_SMD_PKT_PORTS 4
@@ -1014,6 +1014,7 @@ exit:
 static void smd_pkt_remove_driver(struct smd_pkt_dev *smd_pkt_devp)
 {
 	struct smd_pkt_driver *smd_pkt_driverp;
+	bool found_item = false;
 
 	if (!smd_pkt_devp) {
 		pr_err("%s on a NULL device\n", __func__);
@@ -1026,6 +1027,7 @@ static void smd_pkt_remove_driver(struct smd_pkt_dev *smd_pkt_devp)
 	list_for_each_entry(smd_pkt_driverp, &smd_pkt_driver_list, list) {
 		if (!strcmp(smd_pkt_driverp->pdriver_name,
 					smd_pkt_devp->ch_name)) {
+			found_item = true;
 			D_STATUS("%s:%s Platform driver cnt:%d\n",
 				__func__, smd_pkt_devp->ch_name,
 				smd_pkt_driverp->ref_cnt);
@@ -1036,8 +1038,11 @@ static void smd_pkt_remove_driver(struct smd_pkt_dev *smd_pkt_devp)
 			break;
 		}
 	}
+	if (!found_item)
+		pr_err("%s:%s No item found in list.\n",
+				__func__, smd_pkt_devp->ch_name);
 
-	if (smd_pkt_driverp->ref_cnt == 0) {
+	if (found_item && smd_pkt_driverp->ref_cnt == 0) {
 		platform_driver_unregister(&smd_pkt_driverp->driver);
 		smd_pkt_driverp->driver.probe = NULL;
 		list_del(&smd_pkt_driverp->list);
@@ -1079,7 +1084,7 @@ int smd_pkt_open(struct inode *inode, struct file *file)
 		}
 
 		peripheral = smd_edge_to_pil_str(smd_pkt_devp->edge);
-		if (peripheral) {
+		if (!IS_ERR_OR_NULL(peripheral)) {
 			smd_pkt_devp->pil = subsystem_get(peripheral);
 			if (IS_ERR(smd_pkt_devp->pil)) {
 				r = PTR_ERR(smd_pkt_devp->pil);
@@ -1233,6 +1238,7 @@ static const struct file_operations smd_pkt_fops = {
 	.write = smd_pkt_write,
 	.poll = smd_pkt_poll,
 	.unlocked_ioctl = smd_pkt_ioctl,
+	.compat_ioctl = smd_pkt_ioctl,
 };
 
 static int smd_pkt_init_add_device(struct smd_pkt_dev *smd_pkt_devp, int i)

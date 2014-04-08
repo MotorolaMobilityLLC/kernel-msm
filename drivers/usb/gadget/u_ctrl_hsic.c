@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, 2013 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011, 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,8 +19,9 @@
 #include <linux/debugfs.h>
 #include <linux/bitops.h>
 #include <linux/termios.h>
-#include <mach/usb_bridge.h>
-#include <mach/usb_gadget_xport.h>
+#include <linux/usb/usb_bridge.h>
+
+#include "usb_gadget_xport.h"
 
 /* from cdc-acm.h */
 #define ACM_CTRL_RTS		(1 << 1)	/* unused with full duplex */
@@ -85,7 +86,7 @@ static int ghsic_ctrl_receive(void *dev, void *buf, size_t actual)
 	struct gctrl_port	*port = dev;
 	int retval = 0;
 
-	pr_debug_ratelimited("%s: read complete bytes read: %d\n",
+	pr_debug_ratelimited("%s: read complete bytes read: %zu\n",
 			__func__, actual);
 
 	/* send it to USB here */
@@ -132,7 +133,7 @@ ghsic_send_cpkt_tomodem(u8 portno, void *buf, size_t len)
 		return 0;
 	}
 
-	pr_debug("%s: ctrl_pkt:%d bytes\n", __func__, len);
+	pr_debug("%s: ctrl_pkt:%zu bytes\n", __func__, len);
 
 	ctrl_bridge_write(port->brdg.ch_id, cbuf, len);
 
@@ -183,7 +184,7 @@ static void ghsic_ctrl_connect_w(struct work_struct *w)
 	if (!port || !test_bit(CH_READY, &port->bridge_sts))
 		return;
 
-	pr_debug("%s: port:%p\n", __func__, port);
+	pr_debug("%s: port:%p port type =%u\n", __func__, port, port->gtype);
 
 	retval = ctrl_bridge_open(&port->brdg);
 	if (retval) {

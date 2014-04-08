@@ -45,7 +45,7 @@
 #include <mach/hardware.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <mach/memory.h>
 #include <mach/msm_memtypes.h>
@@ -820,9 +820,11 @@ static int mdss_mdp_irq_clk_setup(struct mdss_data_type *mdata)
 	    mdss_mdp_irq_clk_register(mdata, "core_clk_src",
 				      MDSS_CLK_MDP_SRC) ||
 	    mdss_mdp_irq_clk_register(mdata, "core_clk",
-				      MDSS_CLK_MDP_CORE) ||
-	    mdss_mdp_irq_clk_register(mdata, "lut_clk", MDSS_CLK_MDP_LUT))
+				      MDSS_CLK_MDP_CORE))
 		return -EINVAL;
+
+	/* lut_clk is not present on all MDSS revisions */
+	mdss_mdp_irq_clk_register(mdata, "lut_clk", MDSS_CLK_MDP_LUT);
 
 	/* vsync_clk is optional for non-smart panels */
 	mdss_mdp_irq_clk_register(mdata, "vsync_clk", MDSS_CLK_MDP_VSYNC);
@@ -1294,6 +1296,7 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 	SPRINT("dma_pipes=%d\n", mdata->ndma_pipes);
 	SPRINT("smp_count=%d\n", mdata->smp_mb_cnt);
 	SPRINT("smp_size=%d\n", mdata->smp_mb_size);
+	SPRINT("smp_mb_per_pipe=%d\n", mdata->smp_mb_per_pipe);
 	SPRINT("max_downscale_ratio=%d\n", MAX_DOWNSCALE_RATIO);
 	SPRINT("max_upscale_ratio=%d\n", MAX_UPSCALE_RATIO);
 	if (mdata->max_bw_low)
@@ -1307,6 +1310,8 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 		SPRINT(" decimation");
 	if (mdata->highest_bank_bit)
 		SPRINT(" tile_format");
+	if (mdata->has_non_scalar_rgb)
+		SPRINT(" non_scalar_rgb");
 	SPRINT("\n");
 
 	return cnt;
@@ -1374,9 +1379,9 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 		rc = -ENOMEM;
 		goto probe_done;
 	}
-	pr_info("MDP HW Base phy_Address=0x%x virt=0x%x\n",
-		(int) res->start,
-		(int) mdata->mdss_base);
+	pr_info("MDSS HW Base phy_Address=0x%x virt=0x%x\n",
+		(int) (unsigned long) res->start,
+		(int) (unsigned long) mdata->mdss_base);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vbif_phys");
 	if (!res) {
@@ -1393,8 +1398,8 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 		goto probe_done;
 	}
 	pr_info("MDSS VBIF HW Base phy_Address=0x%x virt=0x%x\n",
-		(int) res->start,
-		(int) mdata->vbif_base);
+		(int) (unsigned long) res->start,
+		(int) (unsigned long) mdata->vbif_base);
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
@@ -1609,13 +1614,13 @@ static void mdss_mdp_parse_dt_pipe_sw_reset(struct platform_device *pdev,
 	size_t len;
 	const u32 *arr;
 
-	arr = of_get_property(pdev->dev.of_node, prop_name, &len);
+	arr = of_get_property(pdev->dev.of_node, prop_name, (int *) &len);
 	if (arr) {
 		int i;
 
 		len /= sizeof(u32);
 		if (len != npipes) {
-			pr_err("%s: invalid sw_reset entries req:%d found:%d\n",
+			pr_err("%s: invalid sw_reset entries req:%zu found:%d\n",
 				prop_name, len, npipes);
 			return;
 		}
@@ -1637,7 +1642,7 @@ static int  mdss_mdp_parse_dt_pipe_clk_ctrl(struct platform_device *pdev,
 	size_t len;
 	const u32 *arr;
 
-	arr = of_get_property(pdev->dev.of_node, prop_name, &len);
+	arr = of_get_property(pdev->dev.of_node, prop_name, (int *) &len);
 	if (arr) {
 		int i, j;
 
@@ -1889,12 +1894,13 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 	if (rc)
 		goto parse_fail;
 
-	rc = mdss_mdp_parse_dt_pipe_clk_ctrl(pdev,
-		"qcom,mdss-pipe-dma-clk-ctrl-offsets", mdata->dma_pipes,
-		mdata->ndma_pipes);
-	if (rc)
-		goto parse_fail;
-
+	if (mdata->ndma_pipes) {
+		rc = mdss_mdp_parse_dt_pipe_clk_ctrl(pdev,
+			"qcom,mdss-pipe-dma-clk-ctrl-offsets", mdata->dma_pipes,
+			mdata->ndma_pipes);
+		if (rc)
+			goto parse_fail;
+	}
 
 	mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-pipe-sw-reset-off",
 		&sw_reset_offset, 1);
@@ -2274,6 +2280,8 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 		"qcom,mdss-rotator-ot-limit", &data);
 	mdata->rotator_ot_limit = (!rc ? data : 0);
 
+	mdata->has_non_scalar_rgb = of_property_read_bool(pdev->dev.of_node,
+		"qcom,mdss-has-non-scalar-rgb");
 	mdata->has_bwc = of_property_read_bool(pdev->dev.of_node,
 					       "qcom,mdss-has-bwc");
 	mdata->has_decimation = of_property_read_bool(pdev->dev.of_node,
@@ -2337,6 +2345,11 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 			"qcom,max-bandwidth-high-kbps", &mdata->max_bw_high);
 	if (rc)
 		pr_debug("max bandwidth (high) property not specified\n");
+
+	rc = of_property_read_u32(pdev->dev.of_node,
+		"qcom,max-bandwidth-per-pipe-kbps", &mdata->max_bw_per_pipe);
+	if (rc)
+		pr_debug("max bandwidth (per pipe) property not specified\n");
 
 	return 0;
 }
@@ -2581,8 +2594,10 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 			ret = regulator_enable(mdata->fs);
 			if (ret)
 				pr_err("Footswitch failed to enable\n");
-			mdss_mdp_batfet_ctrl(mdata, true);
-			mdss_mdp_cx_ctrl(mdata, true);
+			if (!mdata->ulps) {
+				mdss_mdp_cx_ctrl(mdata, true);
+				mdss_mdp_batfet_ctrl(mdata, true);
+			}
 		}
 		mdata->fs_ena = true;
 	} else {
@@ -2590,10 +2605,38 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 		mdss_iommu_dettach(mdata);
 		if (mdata->fs_ena) {
 			regulator_disable(mdata->fs);
-			mdss_mdp_batfet_ctrl(mdata, false);
-			mdss_mdp_cx_ctrl(mdata, false);
+			if (!mdata->ulps) {
+				mdss_mdp_cx_ctrl(mdata, false);
+				mdss_mdp_batfet_ctrl(mdata, false);
+			}
 		}
 		mdata->fs_ena = false;
+	}
+}
+
+/**
+ * mdss_mdp_footswitch_ctrl_ulps() - MDSS GDSC control with ULPS feature
+ * @on: 1 to turn on footswitch, 0 to turn off footswitch
+ * @dev: framebuffer device node
+ *
+ * MDSS GDSC can be voted off during idle-screen usecase for MIPI DSI command
+ * mode displays with Ultra-Low Power State (ULPS) feature enabled. Upon
+ * subsequent frame update, MDSS GDSC needs to turned back on and hw state
+ * needs to be restored.
+ */
+void mdss_mdp_footswitch_ctrl_ulps(int on, struct device *dev)
+{
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
+	pr_debug("called on=%d\n", on);
+	if (on) {
+		pm_runtime_get_sync(dev);
+		mdss_iommu_attach(mdata);
+		mdss_hw_init(mdata);
+		mdata->ulps = false;
+	} else {
+		mdata->ulps = true;
+		pm_runtime_put_sync(dev);
 	}
 }
 

@@ -41,7 +41,7 @@
 #define MAX_ENCRYPTION_BUFFERS 1
 #define MIN_IOS 16
 #define MIN_POOL_PAGES 32
-#define KEY_SIZE_XTS 32
+#define KEY_SIZE_XTS 64
 #define AES_XTS_IV_LEN 16
 
 #define DM_REQ_CRYPT_ERROR -1
@@ -657,7 +657,7 @@ static int req_crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	}
 
 	/* Allocate the crypto alloc blk cipher and keep the handle */
-	tfm = crypto_alloc_ablkcipher("xts(aes)", 0, 0);
+	tfm = crypto_alloc_ablkcipher("qcom-xts(aes)", 0, 0);
 	if (IS_ERR(tfm)) {
 		DMERR("%s ablkcipher tfm allocation failed : error = %lu\n",
 					 __func__, PTR_ERR(tfm));

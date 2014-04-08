@@ -1285,6 +1285,7 @@ static struct branch_clk gcc_mss_q6_bimc_axi_clk = {
 	.cbcr_reg = MSS_Q6_BIMC_AXI_CBCR,
 	.has_sibling = 1,
 	.base = &virt_bases[GCC_BASE],
+	.halt_check = DELAY,
 	.c = {
 		.dbg_name = "gcc_mss_q6_bimc_axi_clk",
 		.ops = &clk_ops_branch,
@@ -1330,6 +1331,7 @@ static struct branch_clk gcc_pcie_pipe_clk = {
 	.bcr_reg = PCIEPHY_PHY_BCR,
 	.has_sibling = 0,
 	.base = &virt_bases[GCC_BASE],
+	.halt_check = DELAY,
 	.c = {
 		.dbg_name = "gcc_pcie_pipe_clk",
 		.parent = &pcie_pipe_clk_src.c,
@@ -1433,7 +1435,7 @@ static struct branch_clk gcc_sdcc3_apps_clk = {
 
 static struct branch_clk gcc_sys_noc_usb3_axi_clk = {
 	.cbcr_reg = SYS_NOC_USB3_AXI_CBCR,
-	.has_sibling = 1,
+	.has_sibling = 0,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
 		.dbg_name = "gcc_sys_noc_usb3_axi_clk",
@@ -1494,6 +1496,7 @@ static struct branch_clk gcc_usb3_pipe_clk = {
 	.bcr_reg = USB3PHY_PHY_BCR,
 	.has_sibling = 0,
 	.base = &virt_bases[GCC_BASE],
+	.halt_check = DELAY,
 	.c = {
 		.dbg_name = "gcc_usb3_pipe_clk",
 		.parent = &usb3_pipe_clk_src.c,
@@ -2160,6 +2163,7 @@ static struct clk_lookup msm_clocks_9630[] = {
 	CLK_LOOKUP("pcie_0_cfg_ahb_clk", gcc_pcie_cfg_ahb_clk.c, "msm_pcie"),
 	CLK_LOOKUP("pcie_0_pipe_clk", gcc_pcie_pipe_clk.c, "msm_pcie"),
 	CLK_LOOKUP("pcie_0_aux_clk", gcc_pcie_sleep_clk.c, "msm_pcie"),
+	CLK_LOOKUP("pcie_0_ref_clk_src", lnbbclk_clk.c, "msm_pcie"),
 	CLK_LOOKUP("iface_clk",	gcc_sys_noc_usb3_axi_clk.c, "f9200000.ssusb"),
 	CLK_LOOKUP("iface_clk",	gcc_sys_noc_usb3_axi_clk.c, "msm_usb3"),
 	CLK_LOOKUP("aux_clk",	gcc_usb3_aux_clk.c,

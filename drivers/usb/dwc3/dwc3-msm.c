@@ -76,6 +76,10 @@ static bool prop_chg_detect;
 module_param(prop_chg_detect, bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(prop_chg_detect, "Enable Proprietary charger detection");
 
+static bool usb_lpm_override;
+module_param(usb_lpm_override, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(usb_lpm_override, "Override no_suspend_resume with USB");
+
 #define USB3_PORTSC		(0x430)
 #define PORT_PE			(0x1 << 1)
 /**
@@ -161,6 +165,7 @@ struct dwc3_msm {
 	struct qpnp_adc_tm_chip *adc_tm_dev;
 	struct delayed_work	init_adc_work;
 	bool			id_adc_detect;
+	struct qpnp_vadc_chip	*vadc_dev;
 	u8			dcd_retries;
 	u32			bus_perf_client;
 	struct msm_bus_scale_pdata	*bus_scale_table;
@@ -568,7 +573,7 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 	 * Override req->complete function, but before doing that,
 	 * store it's original pointer in the req_complete_list.
 	 */
-	req_complete = kzalloc(sizeof(*req_complete), GFP_KERNEL);
+	req_complete = kzalloc(sizeof(*req_complete), gfp_flags);
 	if (!req_complete) {
 		dev_err(mdwc->dev, "%s: not enough memory\n", __func__);
 		return -ENOMEM;
@@ -652,7 +657,7 @@ int msm_ep_config(struct usb_ep *ep)
 	mdwc->original_ep_ops[dep->number] = ep->ops;
 
 	/* Set new usb ops as we like */
-	new_ep_ops = kzalloc(sizeof(struct usb_ep_ops), GFP_KERNEL);
+	new_ep_ops = kzalloc(sizeof(struct usb_ep_ops), GFP_ATOMIC);
 	if (!new_ep_ops) {
 		dev_err(mdwc->dev,
 			"%s: unable to allocate mem for new usb ep ops\n",
@@ -1280,9 +1285,10 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 	bool host_ss_active;
 	bool can_suspend_ssphy;
 
-	dev_dbg(mdwc->dev, "%s: entering lpm\n", __func__);
+	dev_dbg(mdwc->dev, "%s: entering lpm. usb_lpm_override:%d\n",
+					 __func__, usb_lpm_override);
 
-	if (mdwc->suspend_resume_no_support) {
+	if (!usb_lpm_override && mdwc->suspend_resume_no_support) {
 		dev_dbg(mdwc->dev, "%s no support for suspend\n", __func__);
 		return -EPERM;
 	}
@@ -1638,6 +1644,27 @@ static irqreturn_t msm_dwc3_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static int
+get_prop_usbin_voltage_now(struct dwc3_msm *mdwc)
+{
+	int rc = 0;
+	struct qpnp_vadc_result results;
+
+	if (IS_ERR_OR_NULL(mdwc->vadc_dev)) {
+		mdwc->vadc_dev = qpnp_get_vadc(mdwc->dev, "usbin");
+		if (IS_ERR(mdwc->vadc_dev))
+			return PTR_ERR(mdwc->vadc_dev);
+	}
+
+	rc = qpnp_vadc_read(mdwc->vadc_dev, USBIN, &results);
+	if (rc) {
+		pr_err("Unable to read usbin rc=%d\n", rc);
+		return 0;
+	} else {
+		return results.physical;
+	}
+}
+
 static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
@@ -1662,6 +1689,9 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = psy->type;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		val->intval = get_prop_usbin_voltage_now(mdwc);
 		break;
 	default:
 		return -EINVAL;
@@ -1799,6 +1829,7 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_SCOPE,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
 
 static void dwc3_init_adc_work(struct work_struct *w);
@@ -2042,6 +2073,30 @@ dwc3_msm_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			complete(&mdwc->ext_chg_wait);
 			pm_runtime_put(mdwc->dev);
 		}
+		break;
+	case MSM_USB_EXT_CHG_VOLTAGE_INFO:
+		if (get_user(val, (int __user *)arg)) {
+			pr_err("%s: get_user failed\n\n", __func__);
+			ret = -EFAULT;
+			break;
+		}
+
+		if (val == USB_REQUEST_5V)
+			pr_debug("%s:voting 5V voltage request\n", __func__);
+		else if (val == USB_REQUEST_9V)
+			pr_debug("%s:voting 9V voltage request\n", __func__);
+		break;
+	case MSM_USB_EXT_CHG_RESULT:
+		if (get_user(val, (int __user *)arg)) {
+			pr_err("%s: get_user failed\n\n", __func__);
+			ret = -EFAULT;
+			break;
+		}
+
+		if (!val)
+			pr_debug("%s:voltage request successful\n", __func__);
+		else
+			pr_debug("%s:voltage request failed\n", __func__);
 		break;
 	default:
 		ret = -EINVAL;
@@ -2375,8 +2430,12 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			ret = -EPROBE_DEFER;
 			goto disable_ref_clk;
 		}
-		}
+	}
 
+	ret = of_property_read_u32(node, "qcom,restore-sec-cfg-for-scm-dev-id",
+					&mdwc->scm_dev_id);
+	if (ret)
+		dev_dbg(&pdev->dev, "unable to read scm device id (%d)\n", ret);
 
 	if (of_property_read_u32(node, "qcom,dwc-usb3-msm-tx-fifo-size",
 				 &mdwc->tx_fifo_size))
@@ -2529,11 +2588,6 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "Fail to setup dwc3 setup cdev\n");
 	}
 
-	ret = of_property_read_u32(node, "qcom,restore-sec-cfg-for-scm-dev-id",
-					&mdwc->scm_dev_id);
-	if (ret && ret != -ENODATA)
-		dev_dbg(&pdev->dev, "unable to read scm device id\n");
-
 	device_init_wakeup(mdwc->dev, 1);
 	pm_stay_awake(mdwc->dev);
 	dwc3_msm_debugfs_init(mdwc);
@@ -2593,13 +2647,20 @@ disable_dwc3_gdsc:
 	return ret;
 }
 
+static int dwc3_msm_remove_children(struct device *dev, void *data)
+{
+	device_unregister(dev);
+	return 0;
+}
+
 static int dwc3_msm_remove(struct platform_device *pdev)
 {
 	struct dwc3_msm	*mdwc = platform_get_drvdata(pdev);
 
-	platform_device_put(mdwc->dwc3);
+	pm_runtime_disable(mdwc->dev);
+	device_wakeup_disable(mdwc->dev);
 
-	if (!mdwc->ext_chg_device) {
+	if (mdwc->ext_chg_device) {
 		device_destroy(mdwc->ext_chg_class, mdwc->ext_chg_dev);
 		cdev_del(&mdwc->ext_chg_cdev);
 		class_destroy(mdwc->ext_chg_class);
@@ -2614,11 +2675,12 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 		dwc3_start_chg_det(&mdwc->charger, false);
 	if (mdwc->usb_psy.dev)
 		power_supply_unregister(&mdwc->usb_psy);
+
+	platform_device_put(mdwc->dwc3);
+	device_for_each_child(&pdev->dev, NULL, dwc3_msm_remove_children);
+
 	if (!IS_ERR_OR_NULL(mdwc->vbus_otg))
 		regulator_disable(mdwc->vbus_otg);
-
-	pm_runtime_disable(mdwc->dev);
-	device_init_wakeup(mdwc->dev, 0);
 
 	clk_disable_unprepare(mdwc->core_clk);
 	clk_disable_unprepare(mdwc->iface_clk);

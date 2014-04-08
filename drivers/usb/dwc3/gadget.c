@@ -549,8 +549,15 @@ static int dwc3_gadget_set_ep_config(struct dwc3 *dwc, struct dwc3_ep *dep,
 	if (ignore)
 		params.param0 |= DWC3_DEPCFG_IGN_SEQ_NUM;
 
-	params.param1 = DWC3_DEPCFG_XFER_COMPLETE_EN
-		| DWC3_DEPCFG_XFER_NOT_READY_EN;
+	if (!dep->endpoint.endless) {
+		pr_debug("%s(): enable xfer_complete_int for %s\n",
+				__func__, dep->endpoint.name);
+		params.param1 = DWC3_DEPCFG_XFER_COMPLETE_EN
+				| DWC3_DEPCFG_XFER_NOT_READY_EN;
+	} else {
+		pr_debug("%s(): disable xfer_complete_int for %s\n",
+				 __func__, dep->endpoint.name);
+	}
 
 	if (usb_ss_max_streams(comp_desc) && usb_endpoint_xfer_bulk(desc)) {
 		params.param1 |= DWC3_DEPCFG_STREAM_CAPABLE
@@ -2861,9 +2868,11 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 		dev_vdbg(dwc->dev, "Start of Periodic Frame\n");
 		break;
 	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
-		dbg_event(0xFF, "ERROR", 0);
-		dev_vdbg(dwc->dev, "Erratic Error\n");
-		dwc3_dump_reg_info(dwc);
+		if (!dwc->err_evt_seen) {
+			dbg_event(0xFF, "ERROR", 0);
+			dev_vdbg(dwc->dev, "Erratic Error\n");
+			dwc3_dump_reg_info(dwc);
+		}
 		break;
 	case DWC3_DEVICE_EVENT_CMD_CMPL:
 		dev_vdbg(dwc->dev, "Command Complete\n");
@@ -2903,6 +2912,8 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 	default:
 		dev_dbg(dwc->dev, "UNKNOWN IRQ %d\n", event->type);
 	}
+
+	dwc->err_evt_seen = (event->type == DWC3_DEVICE_EVENT_ERRATIC_ERROR);
 }
 
 static void dwc3_process_event_entry(struct dwc3 *dwc,
@@ -2947,6 +2958,14 @@ static irqreturn_t dwc3_thread_interrupt(int irq, void *_dwc)
 			union dwc3_event event;
 
 			event.raw = *(u32 *) (evt->buf + evt->lpos);
+
+			/* Core registers may not be accessible in LPM */
+			if (pm_runtime_suspended(dwc->dev)) {
+				dev_warn(dwc->dev, "%s: event (0x%x, count %d) while suspended\n",
+						__func__, event.raw,
+						evt->count);
+				break;
+			}
 
 			dwc3_process_event_entry(dwc, &event);
 

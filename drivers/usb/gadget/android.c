@@ -2,6 +2,7 @@
  * Gadget Driver for Android
  *
  * Copyright (C) 2008 Google, Inc.
+ *.Copyright (c) 2014, The Linux Foundation. All rights reserved.
  * Author: Mike Lockwood <lockwood@android.com>
  *         Benoit Goby <benoit@android.com>
  *
@@ -31,7 +32,7 @@
 #include <linux/usb/gadget.h>
 #include <linux/usb/android.h>
 
-#include <mach/diag_dload.h>
+#include <linux/qcom/diag_dload.h>
 
 #include "gadget_chips.h"
 
@@ -44,11 +45,8 @@
 #include "f_diag.c"
 #include "f_qdss.c"
 #include "f_rmnet_smd.c"
-#include "f_rmnet_sdio.c"
-#include "f_rmnet_smd_sdio.c"
 #include "f_rmnet.c"
 #include "f_gps.c"
-#include "u_sdio.c"
 #include "u_smd.c"
 #include "u_bam.c"
 #include "u_rmnet_ctrl_smd.c"
@@ -175,6 +173,9 @@ struct android_dev {
 	struct android_usb_function **functions;
 	struct usb_composite_dev *cdev;
 	struct device *dev;
+
+	void (*setup_complete)(struct usb_ep *ep,
+				struct usb_request *req);
 
 	bool enabled;
 	int disable_depth;
@@ -772,53 +773,21 @@ static struct android_usb_function rmnet_smd_function = {
 	.bind_config	= rmnet_smd_function_bind_config,
 };
 
-/* RMNET_SDIO */
-static int rmnet_sdio_function_bind_config(struct android_usb_function *f,
-					  struct usb_configuration *c)
-{
-	return rmnet_sdio_function_add(c);
-}
-
-static struct android_usb_function rmnet_sdio_function = {
-	.name		= "rmnet_sdio",
-	.bind_config	= rmnet_sdio_function_bind_config,
-};
-
-/* RMNET_SMD_SDIO */
-static int rmnet_smd_sdio_function_init(struct android_usb_function *f,
-				 struct usb_composite_dev *cdev)
-{
-	return rmnet_smd_sdio_init();
-}
-
-static void rmnet_smd_sdio_function_cleanup(struct android_usb_function *f)
-{
-	rmnet_smd_sdio_cleanup();
-}
-
-static int rmnet_smd_sdio_bind_config(struct android_usb_function *f,
-					  struct usb_configuration *c)
-{
-	return rmnet_smd_sdio_function_add(c);
-}
-
-static struct device_attribute *rmnet_smd_sdio_attributes[] = {
-					&dev_attr_transport, NULL };
-
-static struct android_usb_function rmnet_smd_sdio_function = {
-	.name		= "rmnet_smd_sdio",
-	.init		= rmnet_smd_sdio_function_init,
-	.cleanup	= rmnet_smd_sdio_function_cleanup,
-	.bind_config	= rmnet_smd_sdio_bind_config,
-	.attributes	= rmnet_smd_sdio_attributes,
-};
-
 /*rmnet transport string format(per port):"ctrl0,data0,ctrl1,data1..." */
 #define MAX_XPORT_STR_LEN 50
 static char rmnet_transports[MAX_XPORT_STR_LEN];
 
 /*rmnet transport name string - "rmnet_hsic[,rmnet_hsusb]" */
 static char rmnet_xport_names[MAX_XPORT_STR_LEN];
+
+/*qdss transport string format(per port):"bam [, hsic]" */
+static char qdss_transports[MAX_XPORT_STR_LEN];
+
+/*qdss transport name string - "qdss_bam [, qdss_hsic]" */
+static char qdss_xport_names[MAX_XPORT_STR_LEN];
+
+/*qdss debug interface setting 0: disable   1:enable */
+static bool qdss_debug_intf;
 
 static void rmnet_function_cleanup(struct android_usb_function *f)
 {
@@ -1388,23 +1357,153 @@ static void qdss_function_cleanup(struct android_usb_function *f)
 	qdss_cleanup();
 }
 
+static int qdss_init_transports(int *portnum)
+{
+	char *ts_port;
+	char *tname = NULL;
+	char buf[MAX_XPORT_STR_LEN], *type;
+	char xport_name_buf[MAX_XPORT_STR_LEN], *tn;
+	int err = 0;
+
+	strlcpy(buf, qdss_transports, sizeof(buf));
+	type = strim(buf);
+
+	strlcpy(xport_name_buf, qdss_xport_names,
+			sizeof(xport_name_buf));
+	tn = strim(xport_name_buf);
+
+	pr_debug("%s: qdss_debug_intf = %d\n",
+		__func__, qdss_debug_intf);
+
+	while (type) {
+		ts_port = strsep(&type, ",");
+		if (ts_port) {
+			if (tn)
+				tname = strsep(&tn, ",");
+
+			err = qdss_init_port(
+				ts_port,
+				tname,
+				qdss_debug_intf);
+
+			if (err) {
+				pr_err("%s: Cannot open transport port:'%s'\n",
+					__func__, ts_port);
+				return err;
+			}
+			(*portnum)++;
+		}
+	}
+	return err;
+}
+
 static int qdss_function_bind_config(struct android_usb_function *f,
 					struct usb_configuration *c)
 {
-	int  err = -1;
+	int i;
+	int err = 0;
+	static int qdss_initialized = 0, portsnum;
 
-	err = qdss_bind_config(c, "qdss");
-	if (err)
-		pr_err("qdss: Cannot open channel qdss");
+	if (!qdss_initialized) {
+		qdss_initialized = 1;
 
+		err = qdss_init_transports(&portsnum);
+		if (err) {
+			pr_err("qdss: Cannot init transports");
+			goto out;
+		}
+
+		err = qdss_gport_setup();
+		if (err) {
+			pr_err("qdss: Cannot setup transports");
+			goto out;
+		}
+	}
+
+	pr_debug("%s: port number is %d\n", __func__, portsnum);
+
+	for (i = 0; i < portsnum; i++) {
+		err = qdss_bind_config(c, i);
+		if (err) {
+			pr_err("Could not bind qdss%u config\n", i);
+			break;
+		}
+	}
+out:
 	return err;
 }
+
+static ssize_t qdss_transports_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%s\n", qdss_transports);
+}
+
+static ssize_t qdss_transports_store(
+		struct device *device, struct device_attribute *attr,
+		const char *buff, size_t size)
+{
+	strlcpy(qdss_transports, buff, sizeof(qdss_transports));
+
+	return size;
+}
+
+static ssize_t qdss_xport_names_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%s\n", qdss_xport_names);
+}
+
+static ssize_t qdss_xport_names_store(
+		struct device *device, struct device_attribute *attr,
+		const char *buff, size_t size)
+{
+	strlcpy(qdss_xport_names, buff, sizeof(qdss_xport_names));
+	return size;
+}
+
+static ssize_t qdss_debug_intf_store(
+		struct device *device, struct device_attribute *attr,
+		const char *buff, size_t size)
+{
+	strtobool(buff, &qdss_debug_intf);
+	return size;
+}
+
+static ssize_t qdss_debug_intf_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", qdss_debug_intf);
+}
+
+static struct device_attribute dev_attr_qdss_transports =
+					__ATTR(transports, S_IRUGO | S_IWUSR,
+						qdss_transports_show,
+						qdss_transports_store);
+
+static struct device_attribute dev_attr_qdss_xport_names =
+				__ATTR(transport_names, S_IRUGO | S_IWUSR,
+				qdss_xport_names_show,
+				qdss_xport_names_store);
+
+/* 1(enable)/0(disable) the qdss debug interface */
+static struct device_attribute dev_attr_qdss_debug_intf =
+				__ATTR(debug_intf, S_IRUGO | S_IWUSR,
+				qdss_debug_intf_show,
+				qdss_debug_intf_store);
+
+static struct device_attribute *qdss_function_attributes[] = {
+					&dev_attr_qdss_transports,
+					&dev_attr_qdss_xport_names,
+					&dev_attr_qdss_debug_intf,
+					NULL };
 
 static struct android_usb_function qdss_function = {
 	.name		= "qdss",
 	.init		= qdss_function_init,
 	.cleanup	= qdss_function_cleanup,
 	.bind_config	= qdss_function_bind_config,
+	.attributes	= qdss_function_attributes,
 };
 
 /* SERIAL */
@@ -1667,6 +1766,7 @@ struct rndis_function_config {
 	u8      ethaddr[ETH_ALEN];
 	u32     vendorID;
 	u8      max_pkt_per_xfer;
+	u8	pkt_alignment_factor;
 	char	manufacturer[256];
 	/* "Wireless" RNDIS; auto-detected by Windows */
 	bool	wceis;
@@ -1791,8 +1891,8 @@ static int rndis_qc_function_bind_config(struct android_usb_function *f,
 	}
 
 	return rndis_qc_bind_config_vendor(c, rndis->ethaddr, rndis->vendorID,
-				    rndis->manufacturer,
-					rndis->max_pkt_per_xfer, trans);
+			rndis->manufacturer, rndis->max_pkt_per_xfer,
+			rndis->pkt_alignment_factor, trans);
 }
 
 static void rndis_function_unbind_config(struct android_usb_function *f,
@@ -1973,6 +2073,34 @@ static ssize_t rndis_rx_trigger_store(struct device *dev,
 static DEVICE_ATTR(rx_trigger, S_IWUSR, NULL,
 					     rndis_rx_trigger_store);
 
+static ssize_t rndis_pkt_alignment_factor_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct rndis_function_config *config = f->config;
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", config->pkt_alignment_factor);
+}
+
+static ssize_t rndis_pkt_alignment_factor_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct rndis_function_config *config = f->config;
+	int value;
+
+	if (sscanf(buf, "%d", &value) == 1) {
+		config->pkt_alignment_factor = value;
+		return size;
+	}
+
+	return -EINVAL;
+}
+
+static DEVICE_ATTR(pkt_alignment_factor, S_IRUGO | S_IWUSR,
+					rndis_pkt_alignment_factor_show,
+					rndis_pkt_alignment_factor_store);
+
 static struct device_attribute *rndis_function_attributes[] = {
 	&dev_attr_manufacturer,
 	&dev_attr_wceis,
@@ -1981,6 +2109,7 @@ static struct device_attribute *rndis_function_attributes[] = {
 	&dev_attr_max_pkt_per_xfer,
 	&dev_attr_rndis_transports,
 	&dev_attr_rx_trigger,
+	&dev_attr_pkt_alignment_factor,
 	NULL
 };
 
@@ -2422,8 +2551,6 @@ static struct android_usb_function *supported_functions[] = {
 	&audio_function,
 #endif
 	&rmnet_smd_function,
-	&rmnet_sdio_function,
-	&rmnet_smd_sdio_function,
 	&rmnet_function,
 	&gps_function,
 	&diag_function,
@@ -3042,6 +3169,9 @@ static int android_bind(struct usb_composite_dev *cdev)
 
 	dev->cdev = cdev;
 
+	/* Save the default handler */
+	dev->setup_complete = cdev->req->complete;
+
 	/*
 	 * Start disconnected. Userspace will connect the gadget once
 	 * it is done configuring the functions.
@@ -3121,6 +3251,7 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 
 	req->zero = 0;
 	req->length = 0;
+	req->complete = dev->setup_complete;
 	gadget->ep0->driver_data = cdev;
 
 	list_for_each_entry(conf, &dev->configs, list_item)

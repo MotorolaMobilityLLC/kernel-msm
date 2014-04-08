@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,7 +20,7 @@
 #include <linux/smux.h>
 #include <linux/completion.h>
 
-#include <mach/usb_gadget_xport.h>
+#include "usb_gadget_xport.h"
 
 #define CH_OPENED 0
 #define CH_READY 1
@@ -140,7 +140,7 @@ static int ghsuart_ctrl_receive(void *dev, void *buf, size_t actual)
 	struct ghsuart_ctrl_port	*port = dev;
 	int retval = 0;
 
-	pr_debug_ratelimited("%s: read complete bytes read: %d\n",
+	pr_debug_ratelimited("%s: read complete bytes read: %zu\n",
 			__func__, actual);
 
 	/* send it to USB here */
@@ -180,7 +180,7 @@ ghsuart_send_cpkt_tomodem(u8 portno, void *buf, size_t len)
 
 	memcpy(cbuf, buf, len);
 
-	pr_debug("%s: ctrl_pkt:%d bytes\n", __func__, len);
+	pr_debug("%s: ctrl_pkt:%zu bytes\n", __func__, len);
 
 	ret = msm_smux_write(port->ch_id, port, (void *)cbuf, len);
 	if (ret < 0) {

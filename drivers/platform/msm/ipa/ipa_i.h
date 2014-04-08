@@ -21,8 +21,8 @@
 #include <linux/mutex.h>
 #include <linux/skbuff.h>
 #include <linux/slab.h>
-#include <mach/ipa.h>
-#include <mach/sps.h>
+#include <linux/ipa.h>
+#include <linux/msm-sps.h>
 #include "ipa_hw_defs.h"
 #include "ipa_ram_mmap.h"
 #include "ipa_reg.h"
@@ -325,6 +325,7 @@ struct ipa_ep_cfg_status {
  * @suspended: valid for B2B pipes, whether IPA EP is suspended
  * @skip_ep_cfg: boolean field that determines if EP should be configured
  *  by IPA driver
+ * @keep_ipa_awake: when true, IPA will not be clock gated
  */
 struct ipa_ep_context {
 	int valid;
@@ -351,6 +352,7 @@ struct ipa_ep_context {
 	u32 dflt_flt4_rule_hdl;
 	u32 dflt_flt6_rule_hdl;
 	bool skip_ep_cfg;
+	bool keep_ipa_awake;
 };
 
 enum ipa_sys_pipe_policy {
@@ -559,14 +561,8 @@ struct ipa_stats {
 	u32 rx_repl_repost;
 	u32 tx_pkts_compl;
 	u32 rx_q_len;
-	u32 msg_w[IPA_EVENT_MAX];
-	u32 msg_r[IPA_EVENT_MAX];
-	u32 a2_power_on_reqs_in;
-	u32 a2_power_on_reqs_out;
-	u32 a2_power_off_reqs_in;
-	u32 a2_power_off_reqs_out;
-	u32 a2_power_modem_acks;
-	u32 a2_power_apps_acks;
+	u32 msg_w[IPA_EVENT_MAX_NUM];
+	u32 msg_r[IPA_EVENT_MAX_NUM];
 	u32 stat_compl;
 	u32 aggr_close;
 	u32 wan_aggr_close;
@@ -583,6 +579,7 @@ struct ipa_wlan_stats {
 	u32 tx_buf_cnt;
 	u32 tx_pkts_freed;
 	u32 tx_pkts_rcvd;
+	u32 tx_pkts_dropped;
 };
 
 
@@ -596,6 +593,8 @@ struct ipa_controller;
  * @cdev: cdev of the device
  * @bam_handle: IPA driver's BAM handle
  * @ep: list of all end points
+ * @skip_ep_cfg_shadow: state to update filter table correctly across
+  power-save
  * @flt_tbl: list of all IPA filter tables
  * @mode: IPA operating mode
  * @mmio: iomem
@@ -634,13 +633,12 @@ struct ipa_controller;
  * @dma_pool: special purpose DMA pool
  * @ipa_hw_type: type of IPA HW type (e.g. IPA 1.0, IPA 1.1 etc')
  * @ipa_hw_mode: mode of IPA HW mode (e.g. Normal, Virtual or over PCIe)
- * @use_ipa_bamdma_a2_bridge: used for indirect communication
- *  between IPA and A2 PER
  * @use_ipa_teth_bridge: use tethering bridge driver
- * @use_a2_service: the A2 service shall be used for A2 MUXing capability
  * @ipa_bus_hdl: msm driver handle for the data path bus
  * @ctrl: holds the core specific operations based on
  *  core version (vtable like)
+ * @enable_clock_scaling: clock scaling is enabled ?
+ * @curr_ipa_clk_rate: ipa_clk current rate
 
  * IPA context - holds all relevant info about IPA driver and its state
  */
@@ -649,8 +647,9 @@ struct ipa_context {
 	dev_t dev_num;
 	struct device *dev;
 	struct cdev cdev;
-	u32 bam_handle;
+	unsigned long bam_handle;
 	struct ipa_ep_context ep[IPA_NUM_PIPES];
+	bool skip_ep_cfg_shadow[IPA_NUM_PIPES];
 	struct ipa_flt_tbl flt_tbl[IPA_NUM_PIPES][IPA_IP_MAX];
 	void __iomem *mmio;
 	u32 ipa_wrapper_base;
@@ -699,9 +698,7 @@ struct ipa_context {
 	wait_queue_head_t msg_waitq;
 	enum ipa_hw_type ipa_hw_type;
 	enum ipa_hw_mode ipa_hw_mode;
-	bool use_ipa_bamdma_a2_bridge;
 	bool use_ipa_teth_bridge;
-	bool use_a2_service;
 	/* featurize if memory footprint becomes a concern */
 	struct ipa_stats stats;
 	void *smem_pipe_mem;
@@ -710,6 +707,8 @@ struct ipa_context {
 	struct idr ipa_idr;
 	struct device *pdev;
 	spinlock_t idr_lock;
+	u32 enable_clock_scaling;
+	u32 curr_ipa_clk_rate;
 
 	/* wlan related member */
 	spinlock_t wlan_spinlock;
@@ -749,62 +748,25 @@ enum ipa_pipe_mem_type {
 	IPA_SYSTEM_MEM   = 2,
 };
 
-/**
- * enum a2_mux_pipe_direction - IPA-A2 pipe direction
- */
-enum a2_mux_pipe_direction {
-	A2_TO_IPA = 0,
-	IPA_TO_A2 = 1
-};
-
-/**
- * struct a2_mux_pipe_connection - A2 MUX pipe connection
- * @src_phy_addr: source physical address
- * @src_pipe_index: source pipe index
- * @dst_phy_addr: destination physical address
- * @dst_pipe_index: destination pipe index
- * @mem_type: pipe memory type
- * @data_fifo_base_offset: data FIFO base offset
- * @data_fifo_size: data FIFO size
- * @desc_fifo_base_offset: descriptors FIFO base offset
- * @desc_fifo_size: descriptors FIFO size
- */
-struct a2_mux_pipe_connection {
-	int			src_phy_addr;
-	int			src_pipe_index;
-	int			dst_phy_addr;
-	int			dst_pipe_index;
-	enum ipa_pipe_mem_type	mem_type;
-	int			data_fifo_base_offset;
-	int			data_fifo_size;
-	int			desc_fifo_base_offset;
-	int			desc_fifo_size;
-};
-
 struct ipa_plat_drv_res {
-	bool use_ipa_bamdma_a2_bridge;
 	bool use_ipa_teth_bridge;
-	bool use_a2_service;
 	u32 ipa_mem_base;
 	u32 ipa_mem_size;
 	u32 bam_mem_base;
 	u32 bam_mem_size;
-	u32 a2_bam_mem_base;
-	u32 a2_bam_mem_size;
 	u32 ipa_irq;
 	u32 bam_irq;
-	u32 a2_bam_irq;
 	u32 ipa_pipe_mem_start_ofst;
 	u32 ipa_pipe_mem_size;
 	enum ipa_hw_type ipa_hw_type;
 	enum ipa_hw_mode ipa_hw_mode;
-	struct a2_mux_pipe_connection a2_to_ipa_pipe;
-	struct a2_mux_pipe_connection ipa_to_a2_pipe;
 	u32 ee;
 };
 
 struct ipa_controller {
-	u32 ipa_clk_rate;
+	u32 ipa_clk_rate_hi;
+	u32 ipa_clk_rate_lo;
+	u32 clock_scaling_bw_threshold;
 	void (*ipa_sram_read_settings)(void);
 	void (*ipa_cfg_ep_hdr)(u32 pipe_number,
 			const struct ipa_ep_cfg_hdr *ipa_ep_hdr_cfg);
@@ -845,12 +807,6 @@ struct ipa_controller {
 
 extern struct ipa_context *ipa_ctx;
 
-int ipa_get_a2_mux_pipe_info(enum a2_mux_pipe_direction pipe_dir,
-				struct a2_mux_pipe_connection *pipe_connect);
-int ipa_get_a2_mux_bam_info(u32 *a2_bam_mem_base, u32 *a2_bam_mem_size,
-			    u32 *a2_bam_irq);
-void teth_bridge_get_client_handles(u32 *producer_handle,
-		u32 *consumer_handle);
 int ipa_send_one(struct ipa_sys_context *sys, struct ipa_desc *desc,
 		bool in_atomic);
 int ipa_send(struct ipa_sys_context *sys, u32 num_desc, struct ipa_desc *desc,
@@ -939,12 +895,9 @@ int ipa_query_intf_tx_props(struct ipa_ioc_query_intf_tx_props *tx);
 int ipa_query_intf_rx_props(struct ipa_ioc_query_intf_rx_props *rx);
 int ipa_query_intf_ext_props(struct ipa_ioc_query_intf_ext_props *ext);
 
-int a2_mux_init(void);
-int a2_mux_exit(void);
-
 void wwan_cleanup(void);
 
-int teth_bridge_driver_init(enum ipa_hw_type ipa_hw_type);
+int teth_bridge_driver_init(void);
 void ipa_lan_rx_cb(void *priv, enum ipa_dp_evt_type evt, unsigned long data);
 
 int __ipa_commit_flt_v1(enum ipa_ip_type ip);
@@ -965,6 +918,9 @@ int ipa_disable_data_path(u32 clnt_hdl);
 int ipa_id_alloc(void *ptr);
 void *ipa_id_find(u32 id);
 void ipa_id_remove(u32 id);
+
+int ipa_set_required_perf_profile(enum ipa_voltage_level floor_voltage,
+				  u32 bandwidth_mbps);
 
 int ipa_cfg_ep_status(u32 clnt_hdl, const struct ipa_ep_cfg_status *ipa_ep_cfg);
 

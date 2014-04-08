@@ -185,6 +185,7 @@ int kgsl_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 {
 	struct kgsl_device *device = dev_get_drvdata(dev);
 	struct kgsl_pwrctrl *pwr;
+	struct kgsl_pwrlevel *pwr_level;
 	int level, i, b;
 	unsigned long cur_freq;
 
@@ -208,6 +209,7 @@ int kgsl_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 	mutex_lock(&device->mutex);
 	cur_freq = kgsl_pwrctrl_active_freq(pwr);
 	level = pwr->active_pwrlevel;
+	pwr_level = &pwr->pwrlevels[level];
 
 	if (*freq != cur_freq) {
 		level = pwr->max_pwrlevel;
@@ -224,23 +226,36 @@ int kgsl_devfreq_target(struct device *dev, unsigned long *freq, u32 flags)
 		 */
 		b = pwr->bus_mod;
 		if ((flags & DEVFREQ_FLAG_FAST_HINT) &&
-			(pwr->bus_mod != FAST_BUS))
-			pwr->bus_mod = (pwr->bus_mod == SLOW_BUS) ?
-					0 : FAST_BUS;
+			((pwr_level->bus_freq + pwr->bus_mod)
+				< pwr_level->bus_max))
+			pwr->bus_mod++;
 		else if ((flags & DEVFREQ_FLAG_SLOW_HINT) &&
-			(pwr->bus_mod != SLOW_BUS))
-			pwr->bus_mod = (pwr->bus_mod == FAST_BUS) ?
-					0 : SLOW_BUS;
+			((pwr_level->bus_freq + pwr->bus_mod)
+				> pwr_level->bus_min))
+			pwr->bus_mod--;
 		if (pwr->bus_mod != b)
 			kgsl_pwrctrl_buslevel_update(device, true);
 	}
 
-	kgsl_pwrctrl_pwrlevel_change(device, level);
+	/*
+	 * The power constraints need an entire interval to do their magic, so
+	 * skip changing the powerlevel if the time hasn't expired yet  and the
+	 * new level is less than the constraint
+	 */
+	if ((pwr->constraint.type != KGSL_CONSTRAINT_NONE) &&
+		(!time_after(jiffies, pwr->constraint.expires)) &&
+		(level >= pwr->constraint.hint.pwrlevel.level))
+			*freq = cur_freq;
+	else {
+		/* Change the power level */
+		kgsl_pwrctrl_pwrlevel_change(device, level);
 
-	/*Invalidate the constraint set */
-	pwr->constraint.type = KGSL_CONSTRAINT_NONE;
+		/*Invalidate the constraint set */
+		pwr->constraint.type = KGSL_CONSTRAINT_NONE;
+		pwr->constraint.expires = 0;
 
-	*freq = kgsl_pwrctrl_active_freq(pwr);
+		*freq = kgsl_pwrctrl_active_freq(pwr);
+	}
 
 	mutex_unlock(&device->mutex);
 	return 0;

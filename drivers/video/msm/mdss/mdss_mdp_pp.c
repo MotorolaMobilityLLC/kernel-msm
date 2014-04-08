@@ -16,6 +16,7 @@
 
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
+#include "mdss_mdp_pp.h"
 #include <linux/uaccess.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
@@ -417,6 +418,7 @@ static void pp_ad_bypass_config(struct mdss_ad_info *ad,
 				struct mdss_mdp_ctl *ctl, u32 num, u32 *opmode);
 static int mdss_mdp_ad_setup(struct msm_fb_data_type *mfd);
 static void pp_ad_cfg_lut(char __iomem *addr, u32 *data);
+static u32 pp_ad_attenuate_bl(u32 bl, struct mdss_ad_info *ad);
 static int pp_num_to_side(struct mdss_mdp_ctl *ctl, u32 num);
 static inline bool pp_sts_is_enabled(u32 sts, int side);
 static inline void pp_sts_set_split_bits(u32 *sts, u32 bits);
@@ -642,19 +644,14 @@ static void pp_update_pa_v2_mem_col(char __iomem *addr,
 static void pp_update_pa_v2_mem_col_regs(char __iomem *addr,
 				struct mdp_pa_mem_col_cfg *cfg)
 {
-	pr_debug("ADDR: 0x%x, P0: 0x%x\n", (u32)addr, cfg->color_adjust_p0);
 	writel_relaxed(cfg->color_adjust_p0, addr);
 	addr += 4;
-	pr_debug("ADDR: 0x%x, P1: 0x%x\n", (u32)addr, cfg->color_adjust_p1);
 	writel_relaxed(cfg->color_adjust_p1, addr);
 	addr += 4;
-	pr_debug("ADDR: 0x%x, HUE REGION: 0x%x\n", (u32)addr, cfg->hue_region);
 	writel_relaxed(cfg->hue_region, addr);
 	addr += 4;
-	pr_debug("ADDR: 0x%x, SAT REGION: 0x%x\n", (u32)addr, cfg->sat_region);
 	writel_relaxed(cfg->sat_region, addr);
 	addr += 4;
-	pr_debug("ADDR: 0x%x, VAL REGION: 0x%x\n", (u32)addr, cfg->val_region);
 	writel_relaxed(cfg->val_region, addr);
 }
 
@@ -822,7 +819,7 @@ static int pp_vig_pipe_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 
 	pr_debug("pnum=%x\n", pipe->num);
 
-	if (!pipe->mixer && !pipe->mixer->ctl && !pipe->mixer->ctl->mfd)
+	if (pipe->mixer && pipe->mixer->ctl && pipe->mixer->ctl->mfd)
 		dcm_state = pipe->mixer->ctl->mfd->dcm_state;
 
 	mdata = mdss_mdp_get_mdata();
@@ -1012,7 +1009,7 @@ static int mdss_mdp_scale_setup(struct mdss_mdp_pipe *pipe)
 			pipe->scale.enable_pxl_ext);
 	mdata = mdss_mdp_get_mdata();
 
-	if (!pipe->mixer && !pipe->mixer->ctl && !pipe->mixer->ctl->mfd)
+	if (pipe->mixer && pipe->mixer->ctl && pipe->mixer->ctl->mfd)
 		dcm_state = pipe->mixer->ctl->mfd->dcm_state;
 
 	if ((mdata->mdp_rev == MDSS_MDP_HW_REV_200) &&
@@ -1264,7 +1261,7 @@ int mdss_mdp_pipe_sspp_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 	if (pipe == NULL)
 		return -EINVAL;
 
-	if (!pipe->mixer && !pipe->mixer->ctl && !pipe->mixer->ctl->mfd)
+	if (pipe->mixer && pipe->mixer->ctl && pipe->mixer->ctl->mfd)
 		dcm_state = pipe->mixer->ctl->mfd->dcm_state;
 
 	/* Read IGC state and update the same if tuning mode is enable */
@@ -1758,7 +1755,7 @@ exit:
  */
 int mdss_mdp_pp_resume(struct mdss_mdp_ctl *ctl, u32 dspp_num)
 {
-	u32 flags = 0, disp_num, bl;
+	u32 flags = 0, disp_num, bl, ret = 0;
 	struct pp_sts_type pp_sts;
 	struct mdss_ad_info *ad;
 	struct mdss_data_type *mdata = ctl->mdata;
@@ -1773,7 +1770,9 @@ int mdss_mdp_pp_resume(struct mdss_mdp_ctl *ctl, u32 dspp_num)
 	disp_num = ctl->mfd->index;
 
 	if (dspp_num < mdata->nad_cfgs) {
-		ad = &mdata->ad_cfgs[dspp_num];
+		ret = mdss_mdp_get_ad(ctl->mfd, &ad);
+		if (ret)
+			return ret;
 
 		if (PP_AD_STATE_CFG & ad->state)
 			pp_ad_cfg_write(&mdata->ad_off[dspp_num], ad);
@@ -1786,6 +1785,7 @@ int mdss_mdp_pp_resume(struct mdss_mdp_ctl *ctl, u32 dspp_num)
 			if (ad->state & PP_AD_STATE_BL_LIN) {
 				bl = ad->bl_lin[bl >> ad->bl_bright_shift];
 				bl = bl << ad->bl_bright_shift;
+				bl = pp_ad_attenuate_bl(bl, ad);
 			}
 			ad->bl_data = bl;
 			pp_ad_input_write(&mdata->ad_off[dspp_num], ad);
@@ -2480,13 +2480,13 @@ int mdss_mdp_igc_lut_config(struct mdp_igc_lut_data *config,
 		local_cfg.c2_data =
 			&mdss_pp_res->igc_lut_c2[disp_num][0];
 		pp_read_igc_lut(&local_cfg, igc_addr, dspp_num);
-		if (copy_to_user(config->c0_c1_data, local_cfg.c2_data,
+		if (copy_to_user(config->c0_c1_data, local_cfg.c0_c1_data,
 			config->len * sizeof(u32))) {
 			ret = -EFAULT;
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 			goto igc_config_exit;
 		}
-		if (copy_to_user(config->c2_data, local_cfg.c0_c1_data,
+		if (copy_to_user(config->c2_data, local_cfg.c2_data,
 			config->len * sizeof(u32))) {
 			ret = -EFAULT;
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
@@ -2662,6 +2662,12 @@ int mdss_mdp_argc_config(struct mdp_pgc_lut_data *config,
 	mutex_lock(&mdss_pp_mutex);
 
 	disp_num = PP_BLOCK(config->block) - MDP_LOGICAL_BLOCK_DISP_0;
+	ret = pp_get_dspp_num(disp_num, &dspp_num);
+	if (ret) {
+		pr_err("%s, no dspp connects to disp %d", __func__, disp_num);
+		goto argc_config_exit;
+	}
+
 	switch (PP_LOCAT(config->block)) {
 	case MDSS_PP_LM_CFG:
 		argc_addr = mdss_mdp_get_mixer_addr_off(dspp_num) +
@@ -2687,12 +2693,6 @@ int mdss_mdp_argc_config(struct mdp_pgc_lut_data *config,
 	tbl_size = GC_LUT_SEGMENTS * sizeof(struct mdp_ar_gc_lut_data);
 
 	if (config->flags & MDP_PP_OPS_READ) {
-		ret = pp_get_dspp_num(disp_num, &dspp_num);
-		if (ret) {
-			pr_err("%s, no dspp connects to disp %d",
-				__func__, disp_num);
-			goto argc_config_exit;
-		}
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 		local_cfg = *config;
 		local_cfg.r_data =
@@ -3044,8 +3044,8 @@ static int pp_hist_enable(struct pp_hist_col_info *hist_info,
 	mutex_lock(&hist_info->hist_mutex);
 	/* check if it is idle */
 	if (hist_info->col_en) {
-		pr_info("%s Hist collection has already been enabled %d",
-			__func__, (u32) hist_info->base);
+		pr_info("%s Hist collection has already been enabled %p",
+			__func__, hist_info->base);
 		ret = -EINVAL;
 		goto exit;
 	}
@@ -3183,8 +3183,7 @@ static int pp_hist_disable(struct pp_hist_col_info *hist_info)
 
 	mutex_lock(&hist_info->hist_mutex);
 	if (hist_info->col_en == false) {
-		pr_debug("Histogram already disabled (%d)",
-							(u32) hist_info->base);
+		pr_debug("Histogram already disabled (%p)", hist_info->base);
 		ret = -EINVAL;
 		goto exit;
 	}
@@ -3895,6 +3894,11 @@ static int mdss_ad_init_checks(struct msm_fb_data_type *mfd)
 		return -ENODEV;
 	}
 
+	if (ad_mfd->panel_info->type == DTV_PANEL) {
+		pr_debug("AD not supported on external display\n");
+		return ret;
+	}
+
 	mixer_num = mdss_mdp_get_ctl_mixers(ad_mfd->index, mixer_id);
 	if (!mixer_num) {
 		pr_debug("no mixers connected, %d", mixer_num);
@@ -3969,7 +3973,7 @@ int mdss_mdp_ad_config(struct msm_fb_data_type *mfd,
 {
 	struct mdss_ad_info *ad;
 	struct msm_fb_data_type *bl_mfd;
-	int lin_ret = -1, inv_ret = -1, ret = 0;
+	int lin_ret = -1, inv_ret = -1, att_ret = -1, ret = 0;
 	u32 ratio_temp, shift = 0, last_ops;
 
 	ret = mdss_mdp_get_ad(mfd, &ad);
@@ -4009,6 +4013,23 @@ int mdss_mdp_ad_config(struct msm_fb_data_type *mfd,
 				shift++;
 			}
 			ad->bl_bright_shift = shift;
+		} else {
+			ret = -EINVAL;
+		}
+		if (ret) {
+			ad->state &= ~PP_AD_STATE_BL_LIN;
+			goto ad_config_exit;
+		} else
+			ad->state |= PP_AD_STATE_BL_LIN;
+
+		if ((init_cfg->params.init.bl_att_len == AD_BL_ATT_LUT_LEN) &&
+			(init_cfg->params.init.bl_att_lut)) {
+			att_ret = copy_from_user(&ad->bl_att_lut,
+				init_cfg->params.init.bl_att_lut,
+				init_cfg->params.init.bl_att_len *
+				sizeof(uint32_t));
+			if (att_ret)
+				ret = -ENOMEM;
 		} else {
 			ret = -EINVAL;
 		}
@@ -4444,6 +4465,7 @@ static int mdss_mdp_ad_setup(struct msm_fb_data_type *mfd)
 			if (ad->state & PP_AD_STATE_BL_LIN) {
 				bl = ad->bl_lin[bl >> ad->bl_bright_shift];
 				bl = bl << ad->bl_bright_shift;
+				bl = pp_ad_attenuate_bl(bl, ad);
 			}
 			ad->bl_data = bl;
 		}
@@ -4518,6 +4540,8 @@ static int mdss_mdp_ad_setup(struct msm_fb_data_type *mfd)
 								AD_BL_LIN_LEN);
 			memset(&ad->bl_lin_inv, 0, sizeof(uint32_t) *
 								AD_BL_LIN_LEN);
+			memset(&ad->bl_att_lut, 0, sizeof(uint32_t) *
+				AD_BL_ATT_LUT_LEN);
 			memset(&ad->init, 0, sizeof(struct mdss_ad_init));
 			memset(&ad->cfg, 0, sizeof(struct mdss_ad_cfg));
 			mutex_lock(&bl_mfd->bl_lock);
@@ -4661,6 +4685,30 @@ static void pp_ad_cfg_lut(char __iomem *addr, u32 *data)
 	}
 	writel_relaxed(data[PP_AD_LUT_LEN - 1] << 16,
 			addr + ((PP_AD_LUT_LEN - 1) * 2));
+}
+
+static u32 pp_ad_attenuate_bl(u32 bl, struct mdss_ad_info *ad)
+{
+	u32 shift = 0, ratio_temp = 0;
+	u32 n, lut_interval, bl_att, out;
+
+	ratio_temp = ad->cfg.backlight_max / (AD_BL_ATT_LUT_LEN - 1);
+	while (ratio_temp > 0) {
+		ratio_temp = ratio_temp >> 1;
+		shift++;
+	}
+	n = bl >> shift;
+	lut_interval = (ad->cfg.backlight_max + 1) / (AD_BL_ATT_LUT_LEN - 1);
+	bl_att = ad->bl_att_lut[n] + (bl - lut_interval * n) *
+			(ad->bl_att_lut[n + 1] - ad->bl_att_lut[n]) /
+			lut_interval;
+	if (ad->init.alpha_base)
+		out = (ad->init.alpha * bl_att +
+			(ad->init.alpha_base - ad->init.alpha) * bl) /
+			ad->init.alpha_base;
+	else
+		out = bl;
+	return out;
 }
 
 int mdss_mdp_ad_addr_setup(struct mdss_data_type *mdata, u32 *ad_offsets)
@@ -4954,7 +5002,7 @@ static int is_valid_calib_addr(void *addr, u32 operation)
 	char __iomem *ctl_base   = mdss_res->ctl_off->base;
 	char __iomem *dspp_base  = mdss_res->mixer_intf->dspp_base;
 
-	if ((unsigned int)addr % 4) {
+	if ((uintptr_t) addr % 4) {
 		ret = 0;
 	} else if (ptr == (mdss_res->mdp_base + MDSS_MDP_REG_HW_VERSION) ||
 	    ptr == (mdss_res->mdp_base + MDSS_MDP_REG_DISP_INTF_SEL)) {
@@ -5006,9 +5054,11 @@ valid_addr:
 int mdss_mdp_calib_config(struct mdp_calib_config_data *cfg, u32 *copyback)
 {
 	int ret = -1;
-	void *ptr = (void *) cfg->addr;
+	void *ptr;
 
-	ptr = (void *)(((unsigned int) ptr) + (mdss_res->mdss_base));
+	/* Calib addrs are always offsets from the MDSS base */
+	ptr = (void *)((unsigned int) cfg->addr) +
+		((uintptr_t) mdss_res->mdp_base);
 	if (is_valid_calib_addr(ptr, cfg->ops))
 		ret = 0;
 	else

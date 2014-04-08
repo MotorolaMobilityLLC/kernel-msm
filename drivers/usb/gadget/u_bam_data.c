@@ -22,14 +22,26 @@
 #include <linux/usb/gadget.h>
 
 #include <soc/qcom/bam_dmux.h>
-
-#include <mach/usb_bam.h>
+#include <linux/usb_bam.h>
 
 #include "u_bam_data.h"
 
 #define BAM2BAM_DATA_N_PORTS	1
 #define BAM_DATA_RX_Q_SIZE	16
 #define BAM_DATA_PENDING_LIMIT	220
+
+#define SYS_BAM_RX_PKT_FLOW_CTRL_SUPPORT	1
+#define SYS_BAM_RX_PKT_FCTRL_EN_TSHOLD		500
+#define SYS_BAM_RX_PKT_FCTRL_DIS_TSHOLD		300
+
+static unsigned int bam_ipa_rx_fctrl_support = SYS_BAM_RX_PKT_FLOW_CTRL_SUPPORT;
+module_param(bam_ipa_rx_fctrl_support, uint, S_IRUGO | S_IWUSR);
+
+static unsigned int bam_ipa_rx_fctrl_en_thld = SYS_BAM_RX_PKT_FCTRL_EN_TSHOLD;
+module_param(bam_ipa_rx_fctrl_en_thld, uint, S_IRUGO | S_IWUSR);
+
+static unsigned int bam_ipa_rx_fctrl_dis_thld = SYS_BAM_RX_PKT_FCTRL_DIS_TSHOLD;
+module_param(bam_ipa_rx_fctrl_dis_thld, uint, S_IRUGO | S_IWUSR);
 
 static struct workqueue_struct *bam_data_wq;
 static int n_bam2bam_data_ports;
@@ -81,6 +93,10 @@ struct bam_data_ch_info {
 	enum usb_bam_pipe_type	src_pipe_type;
 	enum usb_bam_pipe_type	dst_pipe_type;
 	unsigned int		pending_with_bam;
+
+	unsigned int		rx_flow_control_disable;
+	unsigned int		rx_flow_control_enable;
+	unsigned int		rx_flow_control_triggered;
 };
 
 static struct work_struct *rndis_conn_w;
@@ -90,6 +106,7 @@ static bool is_ipa_rndis_net_on;
 struct bam_data_port {
 	bool                            is_connected;
 	unsigned			port_num;
+	spinlock_t			port_lock_ul;
 	unsigned int                    ref_count;
 	struct data_port		*port_usb;
 	struct bam_data_ch_info		data_ch;
@@ -127,7 +144,7 @@ static int bam_data_alloc_requests(struct usb_ep *ep, struct list_head *head,
 	for (i = 0; i < num; i++) {
 		req = usb_ep_alloc_request(ep, flags);
 		if (!req) {
-			pr_debug("%s: req allocated:%d\n", __func__, i);
+			pr_err("%s: req allocated:%d\n", __func__, i);
 			return list_empty(head) ? -ENOMEM : 0;
 		}
 		req->complete = cb;
@@ -141,16 +158,20 @@ static void bam_data_write_done(void *p, struct sk_buff *skb)
 {
 	struct bam_data_port	*port = p;
 	struct bam_data_ch_info	*d = &port->data_ch;
+	unsigned long flags;
 
 	if (!skb)
 		return;
 
 	dev_kfree_skb_any(skb);
 
+	spin_lock_irqsave(&port->port_lock_ul, flags);
 	d->pending_with_bam--;
 
 	pr_debug("%s: port:%p d:%p pbam:%u, pno:%d\n", __func__,
 			port, d, d->pending_with_bam, port->port_num);
+
+	spin_unlock_irqrestore(&port->port_lock_ul, flags);
 
 	queue_work(bam_data_wq, &d->write_tobam_w);
 }
@@ -191,14 +212,23 @@ static void bam_data_start_rx(struct bam_data_port *port)
 	struct usb_ep			*ep;
 	int				ret;
 	struct sk_buff			*skb;
+	unsigned long			flags;
 
-	if (!port->port_usb)
+	spin_lock_irqsave(&port->port_lock_ul, flags);
+	if (!port->port_usb) {
+		spin_unlock_irqrestore(&port->port_lock_ul, flags);
 		return;
+	}
 
 	d = &port->data_ch;
 	ep = port->port_usb->out;
 
 	while (port->port_usb && !list_empty(&d->rx_idle)) {
+
+		if (bam_ipa_rx_fctrl_support &&
+			d->rx_skb_q.qlen >= bam_ipa_rx_fctrl_en_thld)
+			break;
+
 		req = list_first_entry(&d->rx_idle, struct usb_request, list);
 		skb = alloc_skb(bam_mux_rx_req_size + BAM_MUX_HDR, GFP_ATOMIC);
 		if (!skb)
@@ -209,8 +239,9 @@ static void bam_data_start_rx(struct bam_data_port *port)
 		req->buf = skb->data;
 		req->length = bam_mux_rx_req_size;
 		req->context = skb;
-
+		spin_unlock_irqrestore(&port->port_lock_ul, flags);
 		ret = usb_ep_queue(ep, req, GFP_ATOMIC);
+		spin_lock_irqsave(&port->port_lock_ul, flags);
 		if (ret) {
 			dev_kfree_skb_any(skb);
 
@@ -223,6 +254,8 @@ static void bam_data_start_rx(struct bam_data_port *port)
 			break;
 		}
 	}
+
+	spin_unlock_irqrestore(&port->port_lock_ul, flags);
 }
 
 static void bam_data_epout_complete(struct usb_ep *ep, struct usb_request *req)
@@ -252,10 +285,23 @@ static void bam_data_epout_complete(struct usb_ep *ep, struct usb_request *req)
 		break;
 	}
 
+	spin_lock(&port->port_lock_ul);
 	if (queue) {
 		__skb_queue_tail(&d->rx_skb_q, skb);
 		queue_work(bam_data_wq, &d->write_tobam_w);
 	}
+
+	if (bam_mux_rx_fctrl_support &&
+		d->rx_skb_q.qlen >= bam_ipa_rx_fctrl_en_thld) {
+		if (!d->rx_flow_control_triggered) {
+			d->rx_flow_control_triggered = 1;
+			d->rx_flow_control_enable++;
+		}
+		list_add_tail(&req->list, &d->rx_idle);
+		spin_unlock(&port->port_lock_ul);
+		return;
+	}
+	spin_unlock(&port->port_lock_ul);
 
 	skb = alloc_skb(bam_mux_rx_req_size + BAM_MUX_HDR, GFP_ATOMIC);
 	if (!skb) {
@@ -274,7 +320,9 @@ static void bam_data_epout_complete(struct usb_ep *ep, struct usb_request *req)
 
 		pr_err("%s: data rx enqueue err %d\n", __func__, status);
 
+		spin_lock(&port->port_lock_ul);
 		list_add_tail(&req->list, &d->rx_idle);
+		spin_unlock(&port->port_lock_ul);
 	}
 }
 
@@ -314,12 +362,16 @@ static void bam_data_write_toipa(struct work_struct *w)
 	struct sk_buff		*skb;
 	int			ret;
 	int			qlen;
+	unsigned long		flags;
 
 	d = container_of(w, struct bam_data_ch_info, write_tobam_w);
 	port = d->port;
 
-	if (!port->port_usb)
+	spin_lock_irqsave(&port->port_lock_ul, flags);
+	if (!port->port_usb) {
+		spin_unlock_irqrestore(&port->port_lock_ul, flags);
 		return;
+	}
 
 	while (d->pending_with_bam < BAM_PENDING_LIMIT) {
 		skb =  __skb_dequeue(&d->rx_skb_q);
@@ -331,7 +383,9 @@ static void bam_data_write_toipa(struct work_struct *w)
 		pr_debug("%s: port:%p d:%p pbam:%u pno:%d\n", __func__,
 				port, d, d->pending_with_bam, port->port_num);
 
+		spin_unlock_irqrestore(&port->port_lock_ul, flags);
 		ret = ipa_tx_dp(IPA_CLIENT_USB_PROD, skb, NULL);
+		spin_lock_irqsave(&port->port_lock_ul, flags);
 		if (ret) {
 			pr_debug("%s: write error:%d\n", __func__, ret);
 			d->pending_with_bam--;
@@ -342,10 +396,16 @@ static void bam_data_write_toipa(struct work_struct *w)
 
 	qlen = d->rx_skb_q.qlen;
 
-	if (qlen < BAM_MUX_RX_PKT_FCTRL_DIS_TSHOLD)
-		bam_data_start_rx(port);
-}
+	spin_unlock_irqrestore(&port->port_lock_ul, flags);
 
+	if (qlen < bam_ipa_rx_fctrl_dis_thld) {
+		if (d->rx_flow_control_triggered) {
+			d->rx_flow_control_disable++;
+			d->rx_flow_control_triggered = 0;
+		}
+		bam_data_start_rx(port);
+	}
+}
 
 /*------------data_path----------------------------*/
 
@@ -370,13 +430,18 @@ static void bam_data_start_endless_rx(struct bam_data_port *port)
 	struct bam_data_ch_info *d = &port->data_ch;
 	int status;
 
-	if (!port->port_usb)
+	spin_lock(&port->port_lock_ul);
+	if (!port->port_usb) {
+		spin_unlock(&port->port_lock_ul);
 		return;
+	}
 
 	pr_debug("%s: enqueue\n", __func__);
 	status = usb_ep_queue(port->port_usb->out, d->rx_req, GFP_ATOMIC);
 	if (status)
 		pr_err("error enqueuing transfer, %d\n", status);
+
+	spin_unlock(&port->port_lock_ul);
 }
 
 static void bam_data_start_endless_tx(struct bam_data_port *port)
@@ -398,14 +463,18 @@ static void bam_data_stop_endless_rx(struct bam_data_port *port)
 	struct bam_data_ch_info *d = &port->data_ch;
 	int status;
 
-	if (!port->port_usb)
+	spin_lock(&port->port_lock_ul);
+	if (!port->port_usb) {
+		spin_unlock(&port->port_lock_ul);
 		return;
+	}
 
 	pr_debug("%s: dequeue\n", __func__);
 	status = usb_ep_dequeue(port->port_usb->out, d->rx_req);
 	if (status)
 		pr_err("%s: error dequeuing transfer, %d\n", __func__, status);
 
+	spin_unlock(&port->port_lock_ul);
 }
 static void bam_data_stop_endless_tx(struct bam_data_port *port)
 {
@@ -456,6 +525,7 @@ static void bam2bam_data_disconnect_work(struct work_struct *w)
 			container_of(w, struct bam_data_port, disconnect_w);
 	struct bam_data_ch_info *d = &port->data_ch;
 	int ret;
+	void *priv;
 
 	if (!port->is_connected) {
 		pr_info("%s: Already disconnected. Bailing out.\n", __func__);
@@ -463,11 +533,15 @@ static void bam2bam_data_disconnect_work(struct work_struct *w)
 	}
 
 	if (d->trans == USB_GADGET_XPORT_BAM2BAM_IPA) {
-		if (d->func_type == USB_FUNC_ECM)
-			ecm_ipa_disconnect(d->ipa_params.priv);
+		if (d->src_pipe_type == USB_BAM_PIPE_BAM2BAM)
+			priv = d->ipa_params.priv;
+		else
+			priv = d->ul_params.teth_priv;
 
-		if (d->func_type == USB_FUNC_RNDIS) {
-			rndis_ipa_pipe_disconnect_notify(d->ipa_params.priv);
+		if (d->func_type == USB_FUNC_ECM) {
+			ecm_ipa_disconnect(priv);
+		} else if (d->func_type == USB_FUNC_RNDIS) {
+			rndis_ipa_pipe_disconnect_notify(priv);
 			is_ipa_rndis_net_on = false;
 		}
 
@@ -476,10 +550,10 @@ static void bam2bam_data_disconnect_work(struct work_struct *w)
 			pr_err("usb_bam_disconnect_ipa failed: err:%d\n", ret);
 		if (d->func_type == USB_FUNC_MBIM)
 			teth_bridge_disconnect(d->ipa_params.src_client);
-
 	}
 
 	port->is_connected = false;
+	pr_debug("Disconnect workqueue done (port %p)\n", port);
 }
 /*
  * This function configured data fifo based on index passed to get bam2bam
@@ -526,13 +600,7 @@ static void bam2bam_data_connect_work(struct work_struct *w)
 	}
 
 	if (d->trans == USB_GADGET_XPORT_BAM2BAM_IPA) {
-		if (usb_bam_get_pipe_type(d->ipa_params.src_idx,
-				&d->src_pipe_type) ||
-			usb_bam_get_pipe_type(d->ipa_params.dst_idx,
-					&d->dst_pipe_type)) {
-			pr_err("%s:usb_bam_get_pipe_type() failed\n", __func__);
-			return;
-		}
+
 		if (d->dst_pipe_type != USB_BAM_PIPE_BAM2BAM) {
 			pr_err("%s: no software preparation for DL not using bam2bam\n",
 					__func__);
@@ -787,17 +855,20 @@ static void bam2bam_data_connect_work(struct work_struct *w)
 	}
 
 	port->is_connected = true;
-	pr_debug("%s: Connect workqueue done", __func__);
+	pr_debug("Connect workqueue done (port %p)", port);
 }
 
 static void bam2bam_data_port_free(int portno)
 {
-	if (bam2bam_data_ports[portno] == NULL)
+	if (bam2bam_data_ports[portno] == NULL) {
+		pr_debug("port %d already free\n", portno);
 		return;
+	}
 
 	if (--bam2bam_data_ports[portno]->ref_count == 0) {
 		kfree(bam2bam_data_ports[portno]);
 		bam2bam_data_ports[portno] = NULL;
+		pr_debug("freed port %d\n", portno);
 	}
 }
 
@@ -807,18 +878,23 @@ static int bam2bam_data_port_alloc(int portno)
 	struct bam_data_ch_info	*d = NULL;
 
 	if (bam2bam_data_ports[portno] != NULL) {
+		pr_debug("port %d already allocated. incremeting ref_count\n",
+				portno);
 		bam2bam_data_ports[portno]->ref_count++;
 		goto done;
 	}
 
 	port = kzalloc(sizeof(struct bam_data_port), GFP_KERNEL);
-	if (!port)
+	if (!port) {
+		pr_err("no memory to allocate port %d\n", portno);
 		return -ENOMEM;
+	}
 
 	port->port_num  = portno;
 	port->ref_count = 1;
 	port->is_connected = false;
 
+	spin_lock_init(&port->port_lock_ul);
 	INIT_WORK(&port->connect_w, bam2bam_data_connect_work);
 	INIT_WORK(&port->disconnect_w, bam2bam_data_disconnect_work);
 	INIT_WORK(&port->suspend_w, bam2bam_data_suspend_work);
@@ -895,6 +971,21 @@ void bam_data_disconnect(struct data_port *gr, u8 port_num)
 			usb_ep_disable(port->port_usb->out);
 			usb_ep_disable(port->port_usb->in);
 
+			/*
+			 * Set endless flag to false as USB Endpoint
+			 * is already disable.
+			 */
+			if (d->trans == USB_GADGET_XPORT_BAM2BAM ||
+				d->trans == USB_GADGET_XPORT_BAM2BAM_IPA ||
+				d->trans == USB_GADGET_XPORT_BAM) {
+
+				if (d->dst_pipe_type == USB_BAM_PIPE_BAM2BAM)
+					port->port_usb->in->endless = false;
+
+				if (d->src_pipe_type == USB_BAM_PIPE_BAM2BAM)
+					port->port_usb->out->endless = false;
+			}
+
 			port->port_usb->in->driver_data = NULL;
 			port->port_usb->out->driver_data = NULL;
 
@@ -932,24 +1023,9 @@ int bam_data_connect(struct data_port *gr, u8 port_num,
 	}
 
 	port = bam2bam_data_ports[port_num];
-	d = &port->data_ch;
-
-	ret = usb_ep_enable(gr->in);
-	if (ret) {
-		pr_err("usb_ep_enable failed eptype:IN ep:%p", gr->in);
-		goto exit;
-	}
-	gr->in->driver_data = port;
-
-	ret = usb_ep_enable(gr->out);
-	if (ret) {
-		pr_err("usb_ep_enable failed eptype:OUT ep:%p", gr->out);
-		gr->in->driver_data = 0;
-		goto exit;
-	}
-	gr->out->driver_data = port;
 
 	port->port_usb = gr;
+	d = &port->data_ch;
 
 	d->src_connection_idx = src_connection_idx;
 	d->dst_connection_idx = dst_connection_idx;
@@ -962,7 +1038,59 @@ int bam_data_connect(struct data_port *gr, u8 port_num,
 		d->ipa_params.dst_pipe = &(d->dst_pipe_idx);
 		d->ipa_params.src_idx = src_connection_idx;
 		d->ipa_params.dst_idx = dst_connection_idx;
+		d->rx_flow_control_disable = 0;
+		d->rx_flow_control_enable = 0;
+		d->rx_flow_control_triggered = 0;
+
+		/*
+		 * Query pipe type using IPA src/dst index with
+		 * usbbam driver. It is being set either as
+		 * BAM2BAM or SYS2BAM.
+		 */
+		if (usb_bam_get_pipe_type(d->ipa_params.src_idx,
+			&d->src_pipe_type) ||
+			usb_bam_get_pipe_type(d->ipa_params.dst_idx,
+			&d->dst_pipe_type)) {
+			pr_err("usb_bam_get_pipe_type() failed\n");
+			return -EINVAL;
+		}
 	}
+
+	/*
+	 * Check for pipe_type. If it is BAM2BAM, then it is required
+	 * to disable Xfer complete and Xfer not ready interrupts for
+	 * that particular endpoint. Hence it set endless flag based
+	 * it which is considered into UDC driver while enabling
+	 * USB Endpoint.
+	 */
+	if (d->trans == USB_GADGET_XPORT_BAM2BAM ||
+		d->trans == USB_GADGET_XPORT_BAM2BAM_IPA ||
+		d->trans == USB_GADGET_XPORT_BAM) {
+
+		if (d->dst_pipe_type == USB_BAM_PIPE_BAM2BAM)
+			port->port_usb->in->endless = true;
+
+		if (d->src_pipe_type == USB_BAM_PIPE_BAM2BAM)
+			port->port_usb->out->endless = true;
+	}
+
+	ret = usb_ep_enable(gr->in);
+	if (ret) {
+		pr_err("usb_ep_enable failed eptype:IN ep:%p", gr->in);
+		goto exit;
+	}
+
+	gr->in->driver_data = port;
+
+	ret = usb_ep_enable(gr->out);
+	if (ret) {
+		pr_err("usb_ep_enable failed eptype:OUT ep:%p", gr->out);
+		gr->in->driver_data = 0;
+		goto exit;
+	}
+
+	gr->out->driver_data = port;
+
 
 	if (d->trans == USB_GADGET_XPORT_BAM2BAM_IPA && d->func_type ==
 		USB_FUNC_RNDIS) {

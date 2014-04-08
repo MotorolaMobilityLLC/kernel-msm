@@ -23,8 +23,7 @@
 #include <soc/qcom/clock-local2.h>
 #include <soc/qcom/clock-rpm.h>
 #include <soc/qcom/clock-voter.h>
-
-#include <mach/rpm-smd.h>
+#include <soc/qcom/rpm-smd.h>
 
 #include <dt-bindings/clock/msm-clocks-8974.h>
 
@@ -350,7 +349,7 @@ static int msm_rpmcc_8974_probe(struct platform_device *pdev)
 static struct platform_driver msm_clock_rpm_driver = {
 	.probe = msm_rpmcc_8974_probe,
 	.driver = {
-		.name = "rpmcc",
+		.name = "qcom,rpmcc-8974",
 		.of_match_table = msm_clock_rpm_match_table,
 		.owner = THIS_MODULE,
 	},

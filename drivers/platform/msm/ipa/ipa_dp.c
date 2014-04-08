@@ -36,7 +36,8 @@
  * part of the data buffer */
 #define IPA_LAN_RX_BUFF_SZ 7936
 
-#define IPA_WLAN_RX_POOL_SZ 16
+#define IPA_WLAN_RX_POOL_SZ 100
+#define IPA_WLAN_RX_POOL_SZ_LOW_WM 5
 #define IPA_WLAN_RX_BUFF_SZ 2048
 #define IPA_WLAN_COMM_RX_POOL_LOW 100
 #define IPA_WLAN_COMM_RX_POOL_HIGH 900
@@ -61,9 +62,11 @@ static void ipa_wq_write_done_common(struct ipa_sys_context *sys, u32 cnt)
 	struct ipa_tx_pkt_wrapper *tx_pkt_expected;
 	int i;
 
+	spin_lock_bh(&sys->spinlock);
 	for (i = 0; i < cnt; i++) {
 		if (unlikely(list_empty(&sys->head_desc_list))) {
 			WARN_ON(1);
+			spin_unlock_bh(&sys->spinlock);
 			return;
 		}
 		tx_pkt_expected = list_first_entry(&sys->head_desc_list,
@@ -74,9 +77,11 @@ static void ipa_wq_write_done_common(struct ipa_sys_context *sys, u32 cnt)
 		dma_unmap_single(ipa_ctx->pdev, tx_pkt_expected->mem.phys_base,
 				tx_pkt_expected->mem.size,
 				DMA_TO_DEVICE);
+		spin_unlock_bh(&sys->spinlock);
 		if (tx_pkt_expected->callback)
 			tx_pkt_expected->callback(tx_pkt_expected->user1,
 					tx_pkt_expected->user2);
+		spin_lock_bh(&sys->spinlock);
 		if (tx_pkt_expected->cnt > 1 &&
 				tx_pkt_expected->cnt != IPA_LAST_DESC_CNT)
 			dma_pool_free(ipa_ctx->dma_pool,
@@ -84,12 +89,14 @@ static void ipa_wq_write_done_common(struct ipa_sys_context *sys, u32 cnt)
 					tx_pkt_expected->mult.phys_base);
 		kmem_cache_free(ipa_ctx->tx_pkt_wrapper_cache, tx_pkt_expected);
 	}
+	spin_unlock_bh(&sys->spinlock);
 }
 
 static void ipa_wq_write_done_status(int src_pipe)
 {
 	struct ipa_tx_pkt_wrapper *tx_pkt_expected;
 	struct ipa_sys_context *sys;
+	u32 cnt;
 
 	sys = ipa_ctx->ep[src_pipe].sys;
 	if (!sys) {
@@ -107,8 +114,9 @@ static void ipa_wq_write_done_status(int src_pipe)
 	tx_pkt_expected = list_first_entry(&sys->head_desc_list,
 					   struct ipa_tx_pkt_wrapper,
 					   link);
-	ipa_wq_write_done_common(sys, tx_pkt_expected->cnt);
+	cnt = tx_pkt_expected->cnt;
 	spin_unlock_bh(&sys->spinlock);
+	ipa_wq_write_done_common(sys, cnt);
 }
 
 /**
@@ -134,9 +142,7 @@ static void ipa_wq_write_done(struct work_struct *work)
 	cnt = tx_pkt->cnt;
 	sys = tx_pkt->sys;
 
-	spin_lock_bh(&sys->spinlock);
 	ipa_wq_write_done_common(sys, cnt);
-	spin_unlock_bh(&sys->spinlock);
 }
 
 static int ipa_handle_tx_core(struct ipa_sys_context *sys, bool process_all,
@@ -159,9 +165,7 @@ static int ipa_handle_tx_core(struct ipa_sys_context *sys, bool process_all,
 		if (iov.addr == 0)
 			break;
 
-		spin_lock_bh(&sys->spinlock);
 		ipa_wq_write_done_common(sys, 1);
-		spin_unlock_bh(&sys->spinlock);
 		cnt++;
 	};
 
@@ -587,7 +591,7 @@ int ipa_send_cmd(u16 num_desc, struct ipa_desc *descr)
 
 		descr->callback = ipa_sps_irq_cmd_ack;
 		descr->user1 = descr;
-		if (ipa_send_one(sys, descr, false)) {
+		if (ipa_send_one(sys, descr, true)) {
 			IPAERR("fail to send immediate command\n");
 			result = -EFAULT;
 			goto bail;
@@ -602,7 +606,7 @@ int ipa_send_cmd(u16 num_desc, struct ipa_desc *descr)
 
 		desc->callback = ipa_sps_irq_cmd_ack;
 		desc->user1 = desc;
-		if (ipa_send(sys, num_desc, descr, false)) {
+		if (ipa_send(sys, num_desc, descr, true)) {
 			IPAERR("fail to send multiple immediate command set\n");
 			result = -EFAULT;
 			goto bail;
@@ -1062,6 +1066,7 @@ int ipa_setup_sys_pipe(struct ipa_sys_connect_params *sys_in, u32 *clnt_hdl)
 	if (!ep->skip_ep_cfg && IPA_CLIENT_IS_PROD(sys_in->client))
 		ipa_install_dflt_flt_rules(ipa_ep_idx);
 
+	ipa_ctx->skip_ep_cfg_shadow[ipa_ep_idx] = ep->skip_ep_cfg;
 	IPADBG("client %d (ep: %d) connected sys=%p\n", sys_in->client,
 			ipa_ep_idx, ep->sys);
 
@@ -1283,7 +1288,7 @@ static void ipa_replenish_wlan_rx_cache(struct ipa_sys_context *sys)
 
 	IPADBG("\n");
 
-	spin_lock(&ipa_ctx->wlan_spinlock);
+	spin_lock_bh(&ipa_ctx->wlan_spinlock);
 	rx_len_cached = sys->len;
 
 	if (rx_len_cached < sys->rx_pool_sz) {
@@ -1312,12 +1317,12 @@ static void ipa_replenish_wlan_rx_cache(struct ipa_sys_context *sys)
 			rx_len_cached = ++sys->len;
 
 			if (rx_len_cached >= sys->rx_pool_sz) {
-				spin_unlock(&ipa_ctx->wlan_spinlock);
+				spin_unlock_bh(&ipa_ctx->wlan_spinlock);
 				return;
 			}
 		}
 	}
-	spin_unlock(&ipa_ctx->wlan_spinlock);
+	spin_unlock_bh(&ipa_ctx->wlan_spinlock);
 
 	if (rx_len_cached < sys->rx_pool_sz &&
 			ipa_ctx->wlan_comm_cnt < IPA_WLAN_COMM_RX_POOL_HIGH) {
@@ -1329,7 +1334,7 @@ static void ipa_replenish_wlan_rx_cache(struct ipa_sys_context *sys)
 
 fail_sps_transfer:
 	list_del(&rx_pkt->link);
-	spin_unlock(&ipa_ctx->wlan_spinlock);
+	spin_unlock_bh(&ipa_ctx->wlan_spinlock);
 
 	return;
 }
@@ -2009,9 +2014,13 @@ static void ipa_wlan_wq_rx_common(struct ipa_sys_context *sys, u32 size)
 	rx_skb->len = rx_pkt_expected->len;
 	rx_skb->truesize = rx_pkt_expected->len + sizeof(struct sk_buff);
 	ipa_ctx->wstats.tx_pkts_rcvd++;
-
-	sys->ep->client_notify(sys->ep->priv, IPA_RECEIVE,
-		(unsigned long)(&rx_pkt_expected->data));
+	if (sys->len <= IPA_WLAN_RX_POOL_SZ_LOW_WM) {
+		ipa_free_skb(&rx_pkt_expected->data);
+		ipa_ctx->wstats.tx_pkts_dropped++;
+	} else {
+		sys->ep->client_notify(sys->ep->priv, IPA_RECEIVE,
+				(unsigned long)(&rx_pkt_expected->data));
+	}
 	ipa_replenish_wlan_rx_cache(sys);
 }
 
@@ -2268,7 +2277,7 @@ int ipa_tx_dp_mul(enum ipa_client_type src,
 	IPADBG("Received data desc anchor:%p\n", data_desc);
 	ipa_ctx->wstats.rx_hd_rcvd++;
 
-	spin_lock(&ipa_ctx->ipa_tx_mul_spinlock);
+	spin_lock_bh(&ipa_ctx->ipa_tx_mul_spinlock);
 
 	ep_idx = ipa_get_ep_mapping(src);
 	if (unlikely(ep_idx == -1)) {
@@ -2333,11 +2342,11 @@ int ipa_tx_dp_mul(enum ipa_client_type src,
 	}
 
 	ipa_ctx->wstats.rx_hd_processed++;
-	spin_unlock(&ipa_ctx->ipa_tx_mul_spinlock);
+	spin_unlock_bh(&ipa_ctx->ipa_tx_mul_spinlock);
 	return 0;
 
 fail_send:
-	spin_unlock(&ipa_ctx->ipa_tx_mul_spinlock);
+	spin_unlock_bh(&ipa_ctx->ipa_tx_mul_spinlock);
 	return -EFAULT;
 
 }
@@ -2347,7 +2356,7 @@ void ipa_free_skb(struct ipa_rx_data *data)
 {
 	struct ipa_rx_pkt_wrapper *rx_pkt;
 
-	spin_lock(&ipa_ctx->wlan_spinlock);
+	spin_lock_bh(&ipa_ctx->wlan_spinlock);
 
 	ipa_ctx->wstats.tx_pkts_freed++;
 	rx_pkt = container_of(data, struct ipa_rx_pkt_wrapper, data);
@@ -2358,7 +2367,7 @@ void ipa_free_skb(struct ipa_rx_data *data)
 	list_add_tail(&rx_pkt->link, &ipa_ctx->wlan_comm_desc_list);
 	ipa_ctx->wstats.tx_buf_cnt++;
 
-	spin_unlock(&ipa_ctx->wlan_spinlock);
+	spin_unlock_bh(&ipa_ctx->wlan_spinlock);
 }
 EXPORT_SYMBOL(ipa_free_skb);
 

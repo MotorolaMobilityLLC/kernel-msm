@@ -48,11 +48,11 @@
 		qcom,mdss-pipe-rgb-xin-id = <1>;
 		qcom,mdss-pipe-dma-xin-id = <2>;
 
-		qcom,mdss-pipe-vig-clk-ctrl-offsets = <0x3AC 0 0>;
-		qcom,mdss-pipe-rgb-clk-ctrl-offsets = <0x3AC 4 8>;
-		qcom,mdss-pipe-dma-clk-ctrl-offsets = <0x3AC 8 12>;
+		qcom,mdss-pipe-vig-clk-ctrl-offsets = <0x2AC 0 0>;
+		qcom,mdss-pipe-rgb-clk-ctrl-offsets = <0x2AC 4 8>;
+		qcom,mdss-pipe-dma-clk-ctrl-offsets = <0x2AC 8 12>;
 
-		qcom,mdss-pipe-sw-reset-off = <0x01A8>;
+		qcom,mdss-pipe-sw-reset-off = <0x00A8>;
 		qcom,mdss-pipe-vig-sw-reset-map = <0>;
 		qcom,mdss-pipe-rgb-sw-reset-map = <1>;
 		qcom,mdss-pipe-dma-sw-reset-map = <2>;
@@ -104,7 +104,9 @@
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->0";
 		cell-index = <0>;
-		reg = <0xfd922800 0x600>;
+		reg = 	<0xfd922800 0x600>,
+			<0xfd828000 0x108>;
+		reg-names = "dsi_phys", "mmss_misc_phys";
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
 		vdd-supply = <&pm8226_l15>;

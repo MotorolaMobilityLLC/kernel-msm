@@ -28,13 +28,13 @@
 #include <linux/kmemleak.h>
 #include <soc/qcom/scm.h>
 
+#include <asm/cacheflush.h>
 #include <asm/sizes.h>
 
-#include <mach/iommu_perfmon.h>
-#include <mach/iommu_hw-v1.h>
-#include <mach/msm_iommu_priv.h>
-#include <mach/iommu.h>
-#include <mach/memory.h>
+#include "msm_iommu_perfmon.h"
+#include "msm_iommu_hw-v1.h"
+#include "msm_iommu_priv.h"
+#include <linux/qcom_iommu.h>
 
 /* bitmap of the page sizes currently supported */
 #define MSM_IOMMU_PGSIZES	(SZ_4K | SZ_64K | SZ_1M | SZ_16M)
@@ -55,7 +55,7 @@
 #define MAXIMUM_VIRT_SIZE	(300*SZ_1M)
 
 
-#define MAKE_CP_VERSION(major, minor, patch) \
+#define MAKE_VERSION(major, minor, patch) \
 	(((major & 0x3FF) << 22) | ((minor & 0x3FF) << 12) | (patch & 0xFFF))
 
 
@@ -124,7 +124,7 @@ static int msm_iommu_dump_fault_regs(int smmu_id, int cb_num,
 	struct msm_scm_fault_regs_dump_req {
 		uint32_t id;
 		uint32_t cb_num;
-		phys_addr_t buff;
+		uint32_t buff;
 		uint32_t len;
 	} req_info;
 	int resp;
@@ -137,39 +137,69 @@ static int msm_iommu_dump_fault_regs(int smmu_id, int cb_num,
 	ret = scm_call(SCM_SVC_UTIL, IOMMU_DUMP_SMMU_FAULT_REGS,
 		&req_info, sizeof(req_info), &resp, 1);
 
-	invalidate_caches((unsigned long) regs, sizeof(*regs),
-			(unsigned long)virt_to_phys(regs));
+	dmac_inv_range(regs, regs + sizeof(*regs));
 
 	return ret;
 }
 
-#define EXTRACT_DUMP_REG_KEY(addr, ctx) (addr & ((1 << CTX_SHIFT) - 1))
-
 static int msm_iommu_reg_dump_to_regs(
 	struct msm_iommu_context_reg ctx_regs[],
-	struct msm_scm_fault_regs_dump *dump, int cb_num)
+	struct msm_scm_fault_regs_dump *dump, struct msm_iommu_drvdata *drvdata,
+	struct msm_iommu_ctx_drvdata *ctx_drvdata)
 {
 	int i, j, ret = 0;
 	const uint32_t nvals = (dump->dump_size / sizeof(uint32_t));
 	uint32_t *it = (uint32_t *) dump->dump_data;
 	const uint32_t * const end = ((uint32_t *) dump) + nvals;
+	phys_addr_t phys_base = drvdata->phys_base;
+	int ctx = ctx_drvdata->num;
 
 	for (i = 1; it < end; it += 2, i += 2) {
+		unsigned int reg_offset;
 		uint32_t addr	= *it;
 		uint32_t val	= *(it + 1);
 		struct msm_iommu_context_reg *reg = NULL;
+		if (addr < phys_base) {
+			pr_err("Bogus-looking register (0x%x) for Iommu with base at %pa. Skipping.\n",
+				addr, &phys_base);
+			continue;
+		}
+		reg_offset = addr - phys_base;
 
 		for (j = 0; j < MAX_DUMP_REGS; ++j) {
-			if (dump_regs_tbl[j].key ==
-				EXTRACT_DUMP_REG_KEY(addr, cb_num)) {
+			struct dump_regs_tbl_entry dump_reg = dump_regs_tbl[j];
+			void *test_reg;
+			unsigned int test_offset;
+			switch (dump_reg.dump_reg_type) {
+			case DRT_CTX_REG:
+				test_reg = CTX_REG(dump_reg.reg_offset,
+					drvdata->cb_base, ctx);
+				break;
+			case DRT_GLOBAL_REG:
+				test_reg = GLB_REG(
+					dump_reg.reg_offset, drvdata->glb_base);
+				break;
+			case DRT_GLOBAL_REG_N:
+				test_reg = GLB_REG_N(
+					drvdata->glb_base, ctx,
+					dump_reg.reg_offset);
+				break;
+			default:
+				pr_err("Unknown dump_reg_type: 0x%x\n",
+					dump_reg.dump_reg_type);
+				BUG();
+				break;
+			}
+			test_offset = test_reg - drvdata->glb_base;
+			if (test_offset == reg_offset) {
 				reg = &ctx_regs[j];
 				break;
 			}
 		}
 
 		if (reg == NULL) {
-			pr_debug("Unknown register in secure CB dump: %x (%x)\n",
-				addr, EXTRACT_DUMP_REG_KEY(addr, cb_num));
+			pr_debug("Unknown register in secure CB dump: %x\n",
+				addr);
 			continue;
 		}
 
@@ -186,22 +216,23 @@ static int msm_iommu_reg_dump_to_regs(
 	if (i != nvals) {
 		pr_err("Invalid dump! %d != %d\n", i, nvals);
 		ret = 1;
-		goto out;
 	}
 
 	for (i = 0; i < MAX_DUMP_REGS; ++i) {
 		if (!ctx_regs[i].valid) {
 			if (dump_regs_tbl[i].must_be_present) {
-				pr_err("Register missing from dump: %s, %lx\n",
+				pr_err("Register missing from dump: %s, 0x%x (0x%lx)\n",
 					dump_regs_tbl[i].name,
-					dump_regs_tbl[i].key);
+					dump_regs_tbl[i].reg_offset,
+					(unsigned long)
+					(phys_base +
+						dump_regs_tbl[i].reg_offset));
 				ret = 1;
 			}
-			ctx_regs[i].val = 0;
+			ctx_regs[i].val = 0xd00dfeed;
 		}
 	}
 
-out:
 	return ret;
 }
 
@@ -253,9 +284,11 @@ irqreturn_t msm_iommu_secure_fault_handler_v2(int irq, void *dev_id)
 	} else {
 		struct msm_iommu_context_reg ctx_regs[MAX_DUMP_REGS];
 		memset(ctx_regs, 0, sizeof(ctx_regs));
-		tmp = msm_iommu_reg_dump_to_regs(ctx_regs, regs,
-						ctx_drvdata->num);
-		if (!tmp && ctx_regs[DUMP_REG_FSR].val) {
+		tmp = msm_iommu_reg_dump_to_regs(
+			ctx_regs, regs, drvdata, ctx_drvdata);
+		if (ctx_regs[DUMP_REG_FSR].val) {
+			if (tmp)
+				pr_err("Incomplete fault register dump. Printout will be incomplete.\n");
 			if (!ctx_drvdata->attached_domain) {
 				pr_err("Bad domain in interrupt handler\n");
 				tmp = -ENOSYS;
@@ -315,7 +348,7 @@ static int msm_iommu_sec_ptbl_init(void)
 
 	version = scm_get_feat_version(SCM_SVC_MP);
 
-	if (version >= MAKE_CP_VERSION(1, 1, 1)) {
+	if (version >= MAKE_VERSION(1, 1, 1)) {
 		struct msm_cp_pool_size psize;
 		int retval;
 
@@ -376,7 +409,7 @@ fail:
 	return ret;
 }
 
-int msm_iommu_sec_program_iommu(int sec_id)
+int msm_iommu_sec_program_iommu(int sec_id, u32 cb_num)
 {
 	struct msm_scm_sec_cfg {
 		unsigned int id;
@@ -385,6 +418,7 @@ int msm_iommu_sec_program_iommu(int sec_id)
 	int ret, scm_ret = 0;
 
 	cfg.id = sec_id;
+	cfg.spare = cb_num;
 
 	ret = scm_call(SCM_SVC_MP, IOMMU_SECURE_CFG, &cfg, sizeof(cfg),
 			&scm_ret, sizeof(scm_ret));
@@ -419,7 +453,7 @@ static int msm_iommu_sec_ptbl_map(struct msm_iommu_drvdata *iommu_drvdata,
 	/*
 	 * Ensure that the buffer is in RAM by the time it gets to TZ
 	 */
-	clean_caches((unsigned long) flush_va, len, flush_pa);
+	dmac_clean_range(flush_va, flush_va + len);
 
 	if (scm_call(SCM_SVC_MP, IOMMU_SECURE_MAP2, &map, sizeof(map), &ret,
 								sizeof(ret)))
@@ -428,7 +462,7 @@ static int msm_iommu_sec_ptbl_map(struct msm_iommu_drvdata *iommu_drvdata,
 		return -EINVAL;
 
 	/* Invalidate cache since TZ touched this address range */
-	invalidate_caches((unsigned long) flush_va, len, flush_pa);
+	dmac_inv_range(flush_va, flush_va + len);
 
 	return 0;
 }
@@ -506,9 +540,8 @@ static int msm_iommu_sec_ptbl_map_range(struct msm_iommu_drvdata *iommu_drvdata,
 	/*
 	 * Ensure that the buffer is in RAM by the time it gets to TZ
 	 */
-	clean_caches((unsigned long) flush_va,
-		sizeof(unsigned long) * map.plist.list_size,
-		virt_to_phys(flush_va));
+	dmac_clean_range(flush_va,
+		flush_va + sizeof(unsigned long) * map.plist.list_size);
 
 	ret = scm_call(SCM_SVC_MP, IOMMU_SECURE_MAP2, &map, sizeof(map),
 			&scm_ret, sizeof(scm_ret));
@@ -605,9 +638,9 @@ static int msm_iommu_attach_dev(struct iommu_domain *domain, struct device *dev)
 			goto fail;
 		}
 
-		ret = msm_iommu_sec_program_iommu(iommu_drvdata->sec_id);
+		ret = msm_iommu_sec_program_iommu(iommu_drvdata->sec_id,
+						ctx_drvdata->num);
 
-		SET_MICRO_MMU_CTRL_RESERVED(iommu_drvdata->base, 0x3);
 		/* bfb settings are always programmed by HLOS */
 		program_iommu_bfb_settings(iommu_drvdata->base,
 					   iommu_drvdata->bfb_settings);
@@ -797,6 +830,22 @@ int msm_iommu_get_scm_call_avail(void)
 {
 	return is_secure;
 }
+
+/*
+ * VFE SMMU is changing from being non-secure to being secure.
+ * For backwards compatibility we need to check whether the secure environment
+ * has support for this.
+ */
+static s32 secure_camera_enabled = -1;
+int is_vfe_secure(void)
+{
+	if (secure_camera_enabled == -1) {
+		u32 ver = scm_get_feat_version(SCM_SVC_SEC_CAMERA);
+		secure_camera_enabled = ver >= MAKE_VERSION(1, 0, 0);
+	}
+	return secure_camera_enabled;
+}
+
 
 static struct iommu_ops msm_iommu_ops = {
 	.domain_init = msm_iommu_domain_init,

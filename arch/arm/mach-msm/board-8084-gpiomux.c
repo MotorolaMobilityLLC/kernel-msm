@@ -694,6 +694,12 @@ static struct msm_gpiomux_config apq8084_hsic_configs[] = {
 			[GPIOMUX_SUSPENDED] = &hsic_ap2mdm_chlrdy_sus_cfg,
 		}
 	},
+	{
+		.gpio = 108,     /* ap2mdm_wakeup is used as resume gpio */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &ap2mdm_wakeup,
+		}
+	},
 };
 
 static struct gpiomux_setting lcd_en_act_cfg = {
@@ -790,30 +796,6 @@ static struct msm_gpiomux_config msm_wlan_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &wlan_en_cfg,
 			[GPIOMUX_SUSPENDED] = &wlan_en_cfg,
-		},
-	},
-};
-
-static struct gpiomux_setting sd_card_det_active_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_IN,
-};
-
-static struct gpiomux_setting sd_card_det_sleep_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-	.dir = GPIOMUX_IN,
-};
-
-static struct msm_gpiomux_config sd_card_det[] __initdata = {
-	{
-		.gpio = 122,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &sd_card_det_active_config,
-			[GPIOMUX_SUSPENDED] = &sd_card_det_sleep_config,
 		},
 	},
 };
@@ -1246,7 +1228,6 @@ void __init apq8084_init_gpiomux(void)
 	}
 
 	msm_gpiomux_install(msm_wlan_configs, ARRAY_SIZE(msm_wlan_configs));
-	msm_gpiomux_install(sd_card_det, ARRAY_SIZE(sd_card_det));
 	if (of_board_is_cdp() || of_board_is_sbc())
 		msm_gpiomux_install(eth_pwr, ARRAY_SIZE(eth_pwr));
 	if (of_board_is_sbc())
@@ -1256,7 +1237,9 @@ void __init apq8084_init_gpiomux(void)
 		msm_gpiomux_install(msm_sensor_configs,
 				ARRAY_SIZE(msm_sensor_configs));
 	msm_gpiomux_install(msm_pcie_configs, ARRAY_SIZE(msm_pcie_configs));
-	msm_gpiomux_install(msm_epm_configs, ARRAY_SIZE(msm_epm_configs));
+	if (of_board_is_liquid())
+		msm_gpiomux_install(msm_epm_configs,
+						ARRAY_SIZE(msm_epm_configs));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())

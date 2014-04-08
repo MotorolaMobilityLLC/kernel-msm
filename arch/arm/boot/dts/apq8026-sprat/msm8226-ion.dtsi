@@ -26,6 +26,15 @@
 			qcom,ion-heap-type = "SYSTEM_CONTIG";
 		};
 
+		qcom,ion-heap@8 { /* CP_MM HEAP */
+			compatible = "qcom,msm-ion-reserve";
+			reg = <8>;
+			qcom,heap-align = <0x1000>;
+			linux,contiguous-region = <&secure_mem>;
+			qcom,ion-heap-type = "SECURE_DMA";
+			qcom,default-prefetch-size = <0x3c00000>;
+		};
+
 		qcom,ion-heap@22 { /* adsp heap */
 			compatible = "qcom,msm-ion-reserve";
 			reg = <22>;
@@ -52,7 +61,7 @@
 			compatible = "qcom,msm-ion-reserve";
 			reg = <23>;
 			qcom,heap-align = <0x1000>;
-			qcom,memory-fixed = <0x0dc00000 0x1400000>;
+			qcom,memory-fixed = <0x0dc00000 0x1900000>;
 			qcom,ion-heap-type = "CARVEOUT";
 		};
 

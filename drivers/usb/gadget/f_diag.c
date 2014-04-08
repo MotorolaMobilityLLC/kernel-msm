@@ -2,7 +2,7 @@
  * Diag Function Device - Route ARM9 and ARM11 DIAG messages
  * between HOST and DEVICE.
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -20,12 +20,12 @@
 #include <linux/platform_device.h>
 #include <linux/ratelimit.h>
 
-#include <mach/usbdiag.h>
-
+#include <linux/usb/usbdiag.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
+#include <linux/kmemleak.h>
 
 static DEFINE_SPINLOCK(ch_lock);
 static LIST_HEAD(usb_diag_ch_list);
@@ -381,6 +381,7 @@ int usb_diag_alloc_req(struct usb_diag_ch *ch, int n_write, int n_read)
 		req = usb_ep_alloc_request(ctxt->in, GFP_ATOMIC);
 		if (!req)
 			goto fail;
+		kmemleak_not_leak(req);
 		req->complete = diag_write_complete;
 		list_add_tail(&req->list, &ctxt->write_pool);
 	}
@@ -389,6 +390,7 @@ int usb_diag_alloc_req(struct usb_diag_ch *ch, int n_write, int n_read)
 		req = usb_ep_alloc_request(ctxt->out, GFP_ATOMIC);
 		if (!req)
 			goto fail;
+		kmemleak_not_leak(req);
 		req->complete = diag_read_complete;
 		list_add_tail(&req->list, &ctxt->read_pool);
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -41,6 +41,8 @@ struct clk_mux_ops {
 	bool (*is_enabled)(struct mux_clk *clk);
 	int (*enable)(struct mux_clk *clk);
 	void (*disable)(struct mux_clk *clk);
+	void __iomem *(*list_registers)(struct mux_clk *clk, int n,
+				struct clk_register_data **regs, u32 *size);
 };
 
 #define MUX_SRC_LIST(...) \
@@ -89,6 +91,8 @@ struct clk_div_ops {
 	bool (*is_enabled)(struct div_clk *clk);
 	int (*enable)(struct div_clk *clk);
 	void (*disable)(struct div_clk *clk);
+	void __iomem *(*list_registers)(struct div_clk *clk, int n,
+				struct clk_register_data **regs, u32 *size);
 };
 
 struct div_data {
@@ -96,6 +100,12 @@ struct div_data {
 	unsigned int min_div;
 	unsigned int max_div;
 	unsigned long rate_margin;
+	/*
+	 * Indicate whether this divider clock supports half-interger divider.
+	 * If it is, all the min_div and max_div have been doubled. It means
+	 * they are 2*N.
+	 */
+	bool is_half_divider;
 };
 
 struct div_clk {
@@ -126,6 +136,8 @@ struct ext_clk {
 	struct clk c;
 };
 
+long parent_round_rate(struct clk *c, unsigned long rate);
+unsigned long parent_get_rate(struct clk *c);
 extern struct clk_ops clk_ops_ext;
 
 #define DEFINE_FIXED_DIV_CLK(clk_name, _div, _parent) \
@@ -183,6 +195,8 @@ struct mux_div_ops {
 	int (*enable)(struct mux_div_clk *);
 	void (*disable)(struct mux_div_clk *);
 	bool (*is_enabled)(struct mux_div_clk *);
+	void __iomem *(*list_registers)(struct mux_div_clk *md, int n,
+				struct clk_register_data **regs, u32 *size);
 };
 
 /*

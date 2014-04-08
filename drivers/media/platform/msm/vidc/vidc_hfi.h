@@ -86,7 +86,7 @@
 #define HFI_EXTRADATA_MULTISLICE_INFO		0x7F100000
 #define HFI_EXTRADATA_NUM_CONCEALED_MB		0x7F100001
 #define HFI_EXTRADATA_INDEX					0x7F100002
-#define HFI_EXTRADATA_METADATA_LTR			0x7F100003
+#define HFI_EXTRADATA_METADATA_LTR			0x7F100004
 #define HFI_EXTRADATA_METADATA_FILLER		0x7FE00002
 
 #define HFI_INDEX_EXTRADATA_INPUT_CROP		0x0700000E
@@ -385,6 +385,7 @@ struct hfi_uncompressed_plane_actual_constraints_info {
 #define VIDC_IFACEQ_MIN_PKT_SIZE                        8
 #define VIDC_IFACEQ_VAR_SMALL_PKT_SIZE          100
 #define VIDC_IFACEQ_VAR_LARGE_PKT_SIZE          512
+#define VIDC_IFACEQ_VAR_HUGE_PKT_SIZE          (1024*12)
 
 
 struct hfi_cmd_sys_session_abort_packet {

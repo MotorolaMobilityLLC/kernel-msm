@@ -109,7 +109,7 @@
 
 	qcom,msm-mem-hole {
 		compatible = "qcom,msm-mem-hole";
-		qcom,memblock-remove = <0x01000000 0x05D00000>; /* Address and Size of Hole */
+		qcom,memblock-remove = <0x01000000 0x05E00000>; /* Address and Size of Hole */
 	};
 
 	timer@f9020000 {
@@ -243,7 +243,7 @@
 				9 &intc 0 50 0
 				10 &intc 0 51 0
 				11 &intc 0 52 0
-				12 &msmgpio 69 0x2>;
+				12 &msmgpio 65 0x2>;
 		interrupt-names = "int_msi", "int_a", "int_b", "int_c", "int_d",
 				"int_pls_pme", "int_pme_legacy", "int_pls_err",
 				"int_aer_legacy", "int_pls_link_up",
@@ -412,8 +412,9 @@
 		vdd_pll-supply = <&pmd9635_l7>;
 		qcom,vdd_pll = <1800000>;
 
-		qcom,firmware-name = "mba";
+		qcom,firmware-name = "modem";
 		qcom,pil-self-auth;
+		qcom,mba-image-is-not-elf;
 
 		/* GPIO inputs from mss */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_1_in 0 0>;
@@ -511,6 +512,7 @@
 	dbm_1p5: dbm@f92f8000 {
 		compatible = "qcom,usb-dbm-1p5";
 		reg = <0xf92f8000 0x1000>;
+		qcom,reset-ep-after-lpm-resume;
 	};
 
 	qcom,usbbam@f9304000 {
@@ -731,6 +733,19 @@
 		qcom,temp-hysteresis = <10>;
 		qcom,freq-step = <2>;
 		qcom,freq-control-mask = <0x0>;
+		qcom,mx-restriction-temp = <5>;
+		qcom,mx-restriction-temp-hysteresis = <5>;
+		qcom,mx-retention-min = <710000>;
+		vdd-mx-supply = <&pmd9635_s3>;
+		qcom,vdd-restriction-temp = <5>;
+		qcom,vdd-restriction-temp-hysteresis = <10>;
+		vdd-dig-supply = <&pmd9635_l3_corner>;
+
+		qcom,vdd-dig-rstr{
+			qcom,vdd-rstr-reg = "vdd-dig";
+			qcom,levels = <5 7 7>; /* Nominal, Super Turbo, Super Turbo */
+			qcom,min-level = <1>; /* No Request */
+		};
 	};
 
 	qcom,lpass@fe200000 {
@@ -1018,10 +1033,12 @@
 		compatible = "qcom,msm-dai-q6";
 	};
 
-	qcom,cnss {
+	qcom,cnss@6d00000 {
 		compatible = "qcom,cnss";
 		wlan-en-gpio = <&msmgpio 70 0>;
 		vdd-wlan-supply = <&wlan_vreg>;
+		reg = <0x06d00000 0x100000>;
+		reg-names = "ramdump";
 	};
 };
 

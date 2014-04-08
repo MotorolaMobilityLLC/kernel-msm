@@ -230,6 +230,8 @@ Optional properties:
 				then a default value of 128 pixels would be used.
 - qcom,mdss-has-bwc: Boolean property to indicate the presence of bandwidth
 		      compression feature in the rotator.
+- qcom,mdss-has-non-scalar-rgb: Boolean property to indicate the presence of RGB
+				pipes which have no scaling support.
 - qcom,mdss-has-decimation: Boolean property to indicate the presence of
 			    decimation feature in fetch.
 - qcom,mdss-ad-off:		Array of offset addresses for the available
@@ -316,6 +318,9 @@ Fudge Factors:			Fudge factors are used to boost demand for
 				applied in scenarios where panel interface can
 				be more tolerant to memory latency such as
 				command mode panels.
+- qcom,max-bandwidth-per-pipe-kbps: This value indicates the max bandwidth in KB
+				that a single pipe can support without underflow.
+
 Optional subnodes:
 Child nodes representing the frame buffer virtual devices.
 
@@ -409,6 +414,7 @@ Example:
 		qcom,mdss-rotator-ot-limit = <2>;
 		qcom,mdss-smp-mb-per-pipe = <2>;
 		qcom,mdss-pref-prim-intf = "dsi";
+		qcom,mdss-has-non-scalar-rgb;
 		qcom,mdss-has-bwc;
 		qcom,mdss-has-decimation;
 		qcom,mdss-wfd-mode = "intf";

@@ -1,16 +1,18 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License version 2 and
-* only version 2 as published by the Free Software Foundation.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*/
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 
 #ifndef _MSM_DOLBY_DAP_CONFIG_H_
 #define _MSM_DOLBY_DAP_CONFIG_H_
+
+#include <sound/soc.h>
 
 #ifdef CONFIG_DOLBY_DAP
 /* DOLBY DOLBY GUIDS */
@@ -79,6 +81,8 @@
 #define DOLBY_USE_CACHE			0x70000003
 #define DOLBY_AUTO_ENDP			0x70000004
 #define DOLBY_AUTO_ENDDEP_PARAMS		0x70000005
+
+#define DOLBY_ENABLE_CUSTOM_STEREO	0x000108c7
 
 /* DOLBY DAP offsets start */
 #define DOLBY_PARAM_VDHE_LENGTH   1
@@ -249,7 +253,7 @@
 #define DOLBY_AUTO_ENDDEP_IDX			(MAX_DOLBY_PARAMS+4)
 
 #define TOTAL_LENGTH_DOLBY_PARAM		745
-#define NUM_DOLBY_ENDP_DEVICE			23
+#define NUM_DOLBY_ENDP_DEVICE			24
 #define DOLBY_VIS_PARAM_HEADER_SIZE		 25
 
 #define DOLBY_INVALID_PORT_ID			-1
@@ -295,60 +299,25 @@ enum {
 struct dolby_dap_params {
 	uint32_t value[TOTAL_LENGTH_DOLBY_PARAM + MAX_DOLBY_PARAMS];
 } __packed;
-int dolby_dap_init(int port_id, int channels);
-int msm_routing_get_dolby_dap_param_to_set_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol);
-int msm_routing_put_dolby_dap_param_to_set_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol);
-int msm_routing_get_dolby_dap_param_to_get_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol);
-int msm_routing_put_dolby_dap_param_to_get_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol);
-int msm_routing_get_dolby_dap_param_visualizer_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol);
-int msm_routing_put_dolby_dap_param_visualizer_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol);
-int msm_routing_get_dolby_dap_endpoint_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol);
-int msm_routing_put_dolby_dap_endpoint_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol);
-void dolby_dap_deinit(int port_id);
+
+int msm_dolby_dap_init(int port_id, int channels, bool is_custom_stereo_on);
+void msm_dolby_dap_deinit(int port_id);
+void msm_dolby_dap_add_controls(struct snd_soc_platform *platform);
+int dolby_dap_set_custom_stereo_onoff(int port_id,
+				      bool is_custom_stereo_enabled);
 /* Dolby DOLBY end */
 #else
-int dolby_dap_init(int port_id, int channels) { return 0; }
-int msm_routing_get_dolby_dap_param_to_set_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol) { return 0; }
-int msm_routing_put_dolby_dap_param_to_set_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol) { return 0; }
-int msm_routing_get_dolby_dap_param_to_get_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol) { return 0; }
-int msm_routing_put_dolby_dap_param_to_get_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol) { return 0; }
-int msm_routing_get_dolby_dap_param_visualizer_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol) { return 0; }
-int msm_routing_put_dolby_dap_param_visualizer_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol) { return 0; }
-int msm_routing_get_dolby_dap_endpoint_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol) { return 0; }
-int msm_routing_put_dolby_dap_endpoint_control(
-			struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol) { return 0; }
-void dolby_dap_deinit(int port_id) { return; }
+int msm_dolby_dap_init(int port_id, int channels, bool is_custom_stereo_on)
+{
+	return 0;
+}
+void msm_dolby_dap_deinit(int port_id) { }
+void msm_dolby_dap_add_controls(struct snd_soc_platform *platform) { }
+int dolby_dap_set_custom_stereo_onoff(int port_id,
+				      bool is_custom_stereo_enabled)
+{
+	return 0;
+}
 #endif
 
 #endif

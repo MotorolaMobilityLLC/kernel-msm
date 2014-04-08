@@ -62,6 +62,7 @@ enum {
 
 struct msm_dai_q6_dai_data {
 	DECLARE_BITMAP(status_mask, STATUS_MAX);
+	DECLARE_BITMAP(hwfree_status, STATUS_MAX);
 	u32 rate;
 	u32 channels;
 	u32 bitwidth;
@@ -303,7 +304,7 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	struct msm_dai_q6_dai_data *dai_data = &aux_dai_data->bdai_data;
 	struct msm_dai_auxpcm_pdata *auxpcm_pdata = NULL;
 	int rc = 0;
-	unsigned long pcm_clk_rate;
+	u32 pcm_clk_rate;
 	struct afe_clk_cfg *lpass_pcm_src_clk = NULL;
 
 	auxpcm_pdata = dai->dev->platform_data;
@@ -2044,6 +2045,9 @@ static int msm_mi2s_get_port_id(u32 mi2s_id, int stream, u16 *port_id)
 		case MSM_QUAT_MI2S:
 			*port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
 			break;
+		case MSM_SEC_MI2S_VIBRA:
+			*port_id = AFE_PORT_ID_SECONDARY_MI2S_RX_VIBRA;
+			break;
 		break;
 		default:
 			ret = -1;
@@ -2114,6 +2118,11 @@ static int msm_dai_q6_mi2s_prepare(struct snd_pcm_substream *substream,
 			set_bit(STATUS_PORT_STARTED,
 				dai_data->status_mask);
 	}
+	if (!test_bit(STATUS_PORT_STARTED, dai_data->hwfree_status)) {
+		set_bit(STATUS_PORT_STARTED, dai_data->hwfree_status);
+		dev_dbg(dai->dev, "%s: set hwfree_status to started\n",
+				__func__);
+	}
 	return rc;
 }
 
@@ -2128,7 +2137,6 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 		&mi2s_dai_data->rx_dai : &mi2s_dai_data->tx_dai);
 	struct msm_dai_q6_dai_data *dai_data = &mi2s_dai_config->mi2s_dai_data;
 	struct afe_param_id_i2s_cfg *i2s = &dai_data->port_config.i2s;
-
 
 	dai_data->channels = params_channels(params);
 	switch (dai_data->channels) {
@@ -2206,10 +2214,14 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	dai_data->port_config.i2s.i2s_cfg_minor_version =
 			AFE_API_VERSION_I2S_CONFIG;
 	dai_data->port_config.i2s.sample_rate = dai_data->rate;
-	if (test_bit(STATUS_PORT_STARTED,
-	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) ||
+	if ((test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) &&
 	    test_bit(STATUS_PORT_STARTED,
-	    mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask)) {
+	    mi2s_dai_data->rx_dai.mi2s_dai_data.hwfree_status)) ||
+	    (test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask) &&
+	    test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->tx_dai.mi2s_dai_data.hwfree_status))) {
 		if ((mi2s_dai_data->tx_dai.mi2s_dai_data.rate !=
 		    mi2s_dai_data->rx_dai.mi2s_dai_data.rate) ||
 		   (mi2s_dai_data->rx_dai.mi2s_dai_data.bitwidth !=
@@ -2273,6 +2285,23 @@ static int msm_dai_q6_mi2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	return 0;
 }
 
+static int msm_dai_q6_mi2s_hw_free(struct snd_pcm_substream *substream,
+		struct snd_soc_dai *dai)
+{
+	struct msm_dai_q6_mi2s_dai_data *mi2s_dai_data =
+			dev_get_drvdata(dai->dev);
+	struct msm_dai_q6_dai_data *dai_data =
+		(substream->stream == SNDRV_PCM_STREAM_PLAYBACK ?
+		 &mi2s_dai_data->rx_dai.mi2s_dai_data :
+		 &mi2s_dai_data->tx_dai.mi2s_dai_data);
+
+	if (test_bit(STATUS_PORT_STARTED, dai_data->hwfree_status)) {
+		clear_bit(STATUS_PORT_STARTED, dai_data->status_mask);
+		dev_dbg(dai->dev, "%s: clear hwfree_status\n", __func__);
+	}
+	return 0;
+}
+
 static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 				     struct snd_soc_dai *dai)
 {
@@ -2300,12 +2329,15 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 			dev_err(dai->dev, "fail to close AFE port\n");
 		clear_bit(STATUS_PORT_STARTED, dai_data->status_mask);
 	}
+	if (test_bit(STATUS_PORT_STARTED, dai_data->hwfree_status))
+		clear_bit(STATUS_PORT_STARTED, dai_data->hwfree_status);
 }
 
 static struct snd_soc_dai_ops msm_dai_q6_mi2s_ops = {
 	.startup	= msm_dai_q6_mi2s_startup,
 	.prepare	= msm_dai_q6_mi2s_prepare,
 	.hw_params	= msm_dai_q6_mi2s_hw_params,
+	.hw_free	= msm_dai_q6_mi2s_hw_free,
 	.set_fmt	= msm_dai_q6_mi2s_set_fmt,
 	.shutdown	= msm_dai_q6_mi2s_shutdown,
 };
@@ -2360,8 +2392,8 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 	},
 	{
 		.playback = {
-			/*No AIF to connect*/
 			.stream_name = "Tertiary MI2S Playback",
+			.aif_name = "TERT_MI2S_RX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -2369,8 +2401,8 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 			.rate_max =     48000,
 		},
 		.capture = {
-			/*No AIF to connect*/
 			.stream_name = "Tertiary MI2S Capture",
+			.aif_name = "TERT_MI2S_TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -2570,7 +2602,7 @@ static int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "dev name %s dev id %x\n", dev_name(&pdev->dev),
 		mi2s_intf);
 
-	if (mi2s_intf < MSM_PRIM_MI2S || mi2s_intf > MSM_QUAT_MI2S
+	if ((mi2s_intf < MSM_PRIM_MI2S || mi2s_intf > MSM_SEC_MI2S_VIBRA)
 		|| (mi2s_intf >= ARRAY_SIZE(msm_dai_q6_mi2s_dai))) {
 		dev_err(&pdev->dev,
 			"%s: Invalid MI2S ID %u from Device Tree\n",

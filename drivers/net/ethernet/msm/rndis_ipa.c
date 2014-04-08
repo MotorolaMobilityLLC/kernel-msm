@@ -15,6 +15,7 @@
 #include <linux/etherdevice.h>
 #include <linux/debugfs.h>
 #include <linux/in.h>
+#include <linux/stddef.h>
 #include <linux/ip.h>
 #include <linux/fs.h>
 #include <linux/module.h>
@@ -22,8 +23,8 @@
 #include <linux/netdevice.h>
 #include <linux/skbuff.h>
 #include <linux/sched.h>
-#include <mach/ipa.h>
-#include <mach/rndis_ipa.h>
+#include <linux/ipa.h>
+#include <linux/rndis_ipa.h>
 
 #define DRV_NAME "RNDIS_IPA"
 #define DEBUGFS_DIR_NAME "rndis_ipa"
@@ -73,7 +74,7 @@
 		} \
 		while (0)
 
-#define RNDIS_HDR_OFST(field)  ((u32)(&(((struct rndis_pkt_hdr *)0)->field)))
+#define RNDIS_HDR_OFST(field) offsetof(struct rndis_pkt_hdr, field)
 #define RNDIS_IPA_LOG_ENTRY() RNDIS_IPA_DEBUG("begin\n")
 #define RNDIS_IPA_LOG_EXIT()  RNDIS_IPA_DEBUG("end\n")
 
@@ -162,6 +163,7 @@ struct rndis_loopback_pipe {
  * @icmp_filter: allow all ICMP packet to pass through the filters
  * @rm_enable: flag that enable/disable Resource manager request prior to Tx
  * @loopback_enable:  flag that enable/disable USB stub loopback
+ * @deaggregation_enable: enable/disable IPA HW deaggregation logic
  * @usb_to_ipa_loopback_pipe: usb to ipa (Rx) pipe representation for loopback
  * @ipa_to_usb_loopback_pipe: ipa to usb (Tx) pipe representation for loopback
  * @bam_dma_hdl: handle representing bam-dma, used for loopback logic
@@ -190,6 +192,7 @@ struct rndis_ipa_dev {
 	u32 icmp_filter;
 	u32 rm_enable;
 	bool loopback_enable;
+	u32 deaggregation_enable;
 	struct rndis_loopback_pipe usb_to_ipa_loopback_pipe;
 	struct rndis_loopback_pipe ipa_to_usb_loopback_pipe;
 	u32 bam_dma_hdl;
@@ -282,7 +285,8 @@ static int rndis_ipa_debugfs_init(struct rndis_ipa_dev *rndis_ipa_ctx);
 static void rndis_ipa_debugfs_destroy(struct rndis_ipa_dev *rndis_ipa_ctx);
 static int rndis_ipa_ep_registers_cfg(u32 usb_to_ipa_hdl,
 		u32 ipa_to_usb_hdl, u32 max_transfer_size,
-		u32 max_packet_number, u32 mtu);
+		u32 max_packet_number, u32 mtu,
+		bool deaggr_enable);
 static int rndis_ipa_set_device_ethernet_addr(u8 *dev_ethaddr,
 		u8 device_ethaddr[]);
 static enum rndis_ipa_state rndis_ipa_next_state(
@@ -364,7 +368,55 @@ static struct ipa_ep_cfg ipa_to_usb_ep_cfg = {
 	},
 };
 
-static struct ipa_ep_cfg usb_to_ipa_ep_cfg = {
+static struct ipa_ep_cfg usb_to_ipa_ep_cfg_deaggr_dis = {
+	.mode = {
+		.mode = IPA_BASIC,
+		.dst  = IPA_CLIENT_APPS_LAN_CONS,
+	},
+	.hdr = {
+		.hdr_len = ETH_HLEN + sizeof(struct rndis_pkt_hdr),
+		.hdr_ofst_metadata_valid = false,
+		.hdr_ofst_metadata = 0,
+		.hdr_additional_const_len = 0,
+		.hdr_ofst_pkt_size_valid = true,
+		.hdr_ofst_pkt_size = 3*sizeof(u32) +
+			sizeof(struct rndis_pkt_hdr),
+		.hdr_a5_mux = false,
+		.hdr_remove_additional = false,
+		.hdr_metadata_reg_valid = false,
+	},
+	.hdr_ext = {
+		.hdr_pad_to_alignment = 0,
+		.hdr_total_len_or_pad_offset = 1*sizeof(u32),
+		.hdr_payload_len_inc_padding = false,
+		.hdr_total_len_or_pad = IPA_HDR_TOTAL_LEN,
+		.hdr_total_len_or_pad_valid = true,
+		.hdr_little_endian = true,
+	},
+
+	.aggr = {
+		.aggr_en = IPA_BYPASS_AGGR,
+		.aggr = 0,
+		.aggr_byte_limit = 0,
+		.aggr_time_limit = 0,
+		.aggr_pkt_limit  = 0,
+	},
+	.deaggr = {
+		.deaggr_hdr_len = 0,
+		.packet_offset_valid = false,
+		.packet_offset_location = 0,
+		.max_packet_len = 0,
+	},
+
+	.route = {
+		.rt_tbl_hdl = RNDIS_IPA_DFLT_RT_HDL,
+	},
+	.nat = {
+		.nat_en = IPA_BYPASS_NAT,
+	},
+};
+
+static struct ipa_ep_cfg usb_to_ipa_ep_cfg_deaggr_en = {
 	.mode = {
 		.mode = IPA_BASIC,
 		.dst  = IPA_CLIENT_APPS_LAN_CONS,
@@ -408,6 +460,7 @@ static struct ipa_ep_cfg usb_to_ipa_ep_cfg = {
 		.nat_en = IPA_BYPASS_NAT,
 	},
 };
+
 
 /**
  * rndis_template_hdr - RNDIS template structure for RNDIS_IPA SW insertion
@@ -475,7 +528,14 @@ int rndis_ipa_init(struct ipa_usb_init_params *params)
 	RNDIS_IPA_DEBUG("network device was successfully allocated\n");
 
 	rndis_ipa_ctx = netdev_priv(net);
+	if (!rndis_ipa_ctx) {
+		result = -ENOMEM;
+		RNDIS_IPA_ERROR("fail to extract netdev priv\n");
+		goto fail_netdev_priv;
+	}
 	memset(rndis_ipa_ctx, 0, sizeof(*rndis_ipa_ctx));
+	RNDIS_IPA_DEBUG("rndis_ipa_ctx (private) = %p", rndis_ipa_ctx);
+
 	rndis_ipa_ctx->net = net;
 	rndis_ipa_ctx->tx_filter = false;
 	rndis_ipa_ctx->rx_filter = false;
@@ -485,6 +545,7 @@ int rndis_ipa_init(struct ipa_usb_init_params *params)
 	rndis_ipa_ctx->rx_dropped = 0;
 	rndis_ipa_ctx->tx_dump_enable = false;
 	rndis_ipa_ctx->rx_dump_enable = false;
+	rndis_ipa_ctx->deaggregation_enable = false;
 	rndis_ipa_ctx->outstanding_high = DEFAULT_OUTSTANDING_HIGH;
 	rndis_ipa_ctx->outstanding_low = DEFAULT_OUTSTANDING_LOW;
 	atomic_set(&rndis_ipa_ctx->outstanding_pkts, 0);
@@ -575,6 +636,7 @@ fail_hdrs_cfg:
 fail_create_rm:
 	rndis_ipa_debugfs_destroy(rndis_ipa_ctx);
 fail_debugfs:
+fail_netdev_priv:
 	free_netdev(net);
 fail_alloc_etherdev:
 	return result;
@@ -616,6 +678,7 @@ int rndis_ipa_pipe_connect_notify(u32 usb_to_ipa_hdl,
 {
 	struct rndis_ipa_dev *rndis_ipa_ctx = private;
 	int next_state;
+	int result;
 
 	RNDIS_IPA_LOG_ENTRY();
 
@@ -645,23 +708,31 @@ int rndis_ipa_pipe_connect_notify(u32 usb_to_ipa_hdl,
 	}
 	rndis_ipa_ctx->ipa_to_usb_hdl = ipa_to_usb_hdl;
 	rndis_ipa_ctx->usb_to_ipa_hdl = usb_to_ipa_hdl;
-	rndis_ipa_ep_registers_cfg(usb_to_ipa_hdl,
+	result = rndis_ipa_ep_registers_cfg(usb_to_ipa_hdl,
 			ipa_to_usb_hdl,
 			max_transfer_byte_size,
 			max_packet_number,
-			rndis_ipa_ctx->net->mtu);
+			rndis_ipa_ctx->net->mtu,
+			rndis_ipa_ctx->deaggregation_enable);
+	if (result) {
+		RNDIS_IPA_ERROR("fail on ep cfg\n");
+		goto fail;
+	}
 	RNDIS_IPA_DEBUG("end-points configured\n");
 
 	netif_carrier_on(rndis_ipa_ctx->net);
 	if (!netif_carrier_ok(rndis_ipa_ctx->net)) {
 		RNDIS_IPA_ERROR("netif_carrier_ok error\n");
-		return -EBUSY;
+		result = -EBUSY;
+		goto fail;
 	}
 	RNDIS_IPA_DEBUG("carrier_on notified\n");
 
-	if (rndis_ipa_ctx->state == RNDIS_IPA_CONNECTED_AND_UP) {
+	if (next_state == RNDIS_IPA_CONNECTED_AND_UP) {
 		netif_start_queue(rndis_ipa_ctx->net);
 		RNDIS_IPA_DEBUG("queue started, NETDEV is operational\n");
+	}  else {
+		RNDIS_IPA_DEBUG("queue shall be started after open()\n");
 	}
 	pr_info("RNDIS_IPA NetDev pipes were connected");
 
@@ -670,7 +741,8 @@ int rndis_ipa_pipe_connect_notify(u32 usb_to_ipa_hdl,
 
 	RNDIS_IPA_LOG_EXIT();
 
-	return 0;
+fail:
+	return result;
 }
 EXPORT_SYMBOL(rndis_ipa_pipe_connect_notify);
 
@@ -701,7 +773,7 @@ static int rndis_ipa_open(struct net_device *net)
 		return -EPERM;
 	}
 
-	if (rndis_ipa_ctx->state == RNDIS_IPA_CONNECTED_AND_UP) {
+	if (next_state == RNDIS_IPA_CONNECTED_AND_UP) {
 		netif_start_queue(net);
 		RNDIS_IPA_DEBUG("queue started\n");
 	} else {
@@ -756,7 +828,7 @@ static netdev_tx_t rndis_ipa_start_xmit(struct sk_buff *skb,
 
 	net->trans_start = jiffies;
 
-	RNDIS_IPA_DEBUG("packet Tx, len=%d, skb->protocol=%d",
+	RNDIS_IPA_DEBUG("packet Tx, len=%d, skb->protocol=%d\n",
 		skb->len, skb->protocol);
 
 	if (unlikely(netif_queue_stopped(net))) {
@@ -813,6 +885,9 @@ fail_tx_packet:
 out:
 	resource_release(rndis_ipa_ctx);
 resource_busy:
+	RNDIS_IPA_DEBUG("packet Tx done - %s\n",
+		(status == NETDEV_TX_OK) ? "OK" : "FAIL");
+
 	return status;
 }
 
@@ -981,6 +1056,9 @@ static void rndis_ipa_packet_receive_notify(void *private,
 		return;
 	}
 
+	if (!rndis_ipa_ctx->deaggregation_enable)
+		skb_pull(skb, sizeof(struct rndis_pkt_hdr));
+
 	skb->dev = rndis_ipa_ctx->net;
 	skb->protocol = eth_type_trans(skb, rndis_ipa_ctx->net);
 
@@ -1065,14 +1143,16 @@ int rndis_ipa_pipe_disconnect_notify(void *private)
 		RNDIS_IPA_ERROR("can't disconnect before connect\n");
 		return -EPERM;
 	}
-	rndis_ipa_ctx->state = next_state;
-	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
 
 	netif_carrier_off(rndis_ipa_ctx->net);
 	RNDIS_IPA_DEBUG("carrier_off notification was sent\n");
 
 	netif_stop_queue(rndis_ipa_ctx->net);
 	RNDIS_IPA_DEBUG("queue stopped\n");
+
+
+	rndis_ipa_ctx->state = next_state;
+	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
 
 	pr_info("RNDIS_IPA NetDev pipes were disconnected (outstanding=%d)",
 		atomic_read(&rndis_ipa_ctx->outstanding_pkts));
@@ -1670,12 +1750,22 @@ static int rndis_ipa_ep_registers_cfg(u32 usb_to_ipa_hdl,
 		u32 ipa_to_usb_hdl,
 		u32 max_transfer_byte_size,
 		u32 max_packet_number,
-		u32 mtu)
+		u32 mtu,
+		bool deaggr_enable)
 {
 	int result;
+	struct ipa_ep_cfg *usb_to_ipa_ep_cfg;
 
-	usb_to_ipa_ep_cfg.deaggr.max_packet_len = max_transfer_byte_size;
-	result = ipa_cfg_ep(usb_to_ipa_hdl, &usb_to_ipa_ep_cfg);
+	if (deaggr_enable) {
+		usb_to_ipa_ep_cfg = &usb_to_ipa_ep_cfg_deaggr_en;
+		RNDIS_IPA_DEBUG("deaggregation enabled");
+	} else {
+		usb_to_ipa_ep_cfg = &usb_to_ipa_ep_cfg_deaggr_dis;
+		RNDIS_IPA_DEBUG("deaggregation disabled");
+	}
+
+	usb_to_ipa_ep_cfg->deaggr.max_packet_len = max_transfer_byte_size;
+	result = ipa_cfg_ep(usb_to_ipa_hdl, usb_to_ipa_ep_cfg);
 	if (result) {
 		pr_err("failed to configure USB to IPA point\n");
 		return result;
@@ -1989,6 +2079,15 @@ static int rndis_ipa_debugfs_init(struct rndis_ipa_dev *rndis_ipa_ctx)
 		goto fail_file;
 	}
 
+	file = debugfs_create_bool("deaggregation_enable", flags_read_write,
+			rndis_ipa_ctx->directory,
+			&rndis_ipa_ctx->deaggregation_enable);
+	if (!file) {
+		RNDIS_IPA_ERROR("fail to create deaggregation_enable file\n");
+		goto fail_file;
+	}
+	RNDIS_IPA_DEBUG("deaggregation disabled, reconnect to apply");
+
 	RNDIS_IPA_LOG_EXIT();
 
 	return 0;
@@ -2020,7 +2119,7 @@ static ssize_t rndis_ipa_debugfs_aggr_write(struct file *file,
 	struct rndis_ipa_dev *rndis_ipa_ctx = file->private_data;
 	int result;
 
-	result = ipa_cfg_ep(rndis_ipa_ctx->usb_to_ipa_hdl, &usb_to_ipa_ep_cfg);
+	result = ipa_cfg_ep(rndis_ipa_ctx->usb_to_ipa_hdl, &ipa_to_usb_ep_cfg);
 	if (result) {
 		pr_err("failed to re-configure USB to IPA point\n");
 		return result;
@@ -2252,10 +2351,10 @@ static int rndis_ipa_loopback_pipe_create(
 	loopback_pipe->dma_connect.options = SPS_O_AUTO_ENABLE;
 
 	RNDIS_IPA_DEBUG("doing sps_connect() with - ");
-	RNDIS_IPA_DEBUG("src bam_hdl:0x%x, src_pipe#:%d",
+	RNDIS_IPA_DEBUG("src bam_hdl:0x%lx, src_pipe#:%d",
 			loopback_pipe->dma_connect.source,
 			loopback_pipe->dma_connect.src_pipe_index);
-	RNDIS_IPA_DEBUG("dst bam_hdl:0x%x, dst_pipe#:%d",
+	RNDIS_IPA_DEBUG("dst bam_hdl:0x%lx, dst_pipe#:%d",
 			loopback_pipe->dma_connect.destination,
 			loopback_pipe->dma_connect.dest_pipe_index);
 
@@ -2322,7 +2421,8 @@ static int rndis_ipa_create_loopback(struct rndis_ipa_dev *rndis_ipa_ctx)
 		FROM_USB_TO_IPA_BAMDMA;
 	/*DMA EP mode*/
 	rndis_ipa_ctx->usb_to_ipa_loopback_pipe.mode = SPS_MODE_SRC;
-	rndis_ipa_ctx->usb_to_ipa_loopback_pipe.ipa_ep_cfg = &usb_to_ipa_ep_cfg;
+	rndis_ipa_ctx->usb_to_ipa_loopback_pipe.ipa_ep_cfg =
+		&usb_to_ipa_ep_cfg_deaggr_en;
 	rndis_ipa_ctx->usb_to_ipa_loopback_pipe.ipa_callback =
 			rndis_ipa_packet_receive_notify;
 	RNDIS_IPA_DEBUG("setting up IPA<-BAMDAM pipe (RNDIS_IPA RX path)");

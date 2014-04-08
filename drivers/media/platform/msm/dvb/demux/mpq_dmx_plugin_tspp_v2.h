@@ -15,10 +15,12 @@
 
 #include <linux/types.h>
 #include <linux/ion.h>
-#include <mach/sps.h>
+#include <linux/msm-sps.h>
 #include <linux/timer.h>
 #include <mach/msm_tspp2.h>
 #include "mpq_dmx_plugin_common.h"
+
+#define TSPP2_DMX_MAX_CIPHER_OPS		5
 
 /*
  * Allocate source per possible TSIF input, and per demux instance as any
@@ -37,9 +39,15 @@
 #define TSPP2_DMX_PIPE_WORK_POOL_SIZE		500
 
 /* Polling timer interval in milliseconds  */
-#define TSPP2_DMX_POLL_TIMER_INTERVAL_MSEC	50
+#define TSPP2_DMX_POLL_TIMER_INTERVAL_MSEC	10
 
 #define VPES_HEADER_DATA_SIZE			204
+
+/* Polling interval of scrambling bit status in milliseconds */
+#define TSPP2_DMX_SB_MONITOR_INTERVAL		50
+
+/* Number of identical scrambling bit samples considered stable to report */
+#define TSPP2_DMX_SB_MONITOR_THRESHOLD		3
 
 /* Sizes of BAM descriptor */
 #define TSPP2_DMX_SPS_SECTION_DESC_SIZE		188	/* size of TS packet */
@@ -64,6 +72,8 @@
 #define TSPP2_DMX_SECTION_MAX_BUFF_SIZE		\
 	(TSPP2_DMX_SPS_MAX_NUM_OF_DESCRIPTORS *	\
 	TSPP2_DMX_SPS_SECTION_DESC_SIZE)
+#define TSPP2_DMX_SECTION_BUFFER_THRESHOLD	\
+	(((TSPP2_DMX_SECTION_MAX_BUFF_SIZE) * 9) / 10) /* buffer 90% full */
 
 #define TSPP2_DMX_PCR_MAX_BUFF_SIZE		\
 	(TSPP2_DMX_SPS_MAX_NUM_OF_DESCRIPTORS *	\
@@ -260,10 +270,12 @@ struct pipe_work_queue {
  *
  * @op:		TSPP2 driver operation (along with parameters)
  * @next:	Filter operations list
+ * @ref_count:	Number of feeds using this operation
  */
 struct mpq_dmx_tspp2_filter_op {
 	struct tspp2_operation op;
 	struct list_head next;
+	u8 ref_count;
 };
 
 /**
@@ -324,6 +336,7 @@ struct mpq_dmx_tspp2_pipe_buffer {
  * @eos_pending:	Flag specifying whether the pipe handler has an
  *			end of stream notification that should be handled.
  * @work_queue:		pipe_work queue of work pending for this pipe
+ * @overflow:		overflow condition for output pipes
  * @hw_notif_count:	Total number of HW notifications
  * @hw_notif_rate_hz:	Rate of HW notifications in unit of Hz
  * @hw_notif_last_time:	Time at which previous HW notification was received
@@ -347,6 +360,7 @@ struct pipe_info {
 	struct mutex mutex;
 	int eos_pending;
 	struct pipe_work_queue work_queue;
+	int overflow;
 
 	/* debug-fs */
 	u32 hw_notif_count;
@@ -364,12 +378,17 @@ struct pipe_info {
  * @pid:		Filtered PID (mask set for single PID filtering)
  * @operations_list:	Filter operations list
  * @num_ops:		Number of filter operations
- * @num_pes_ops:	Number of operations requiring PES analysis operation
+ * @num_cipher_ops:	Number of cipher operations in filter
  * @indexing_enabled:	Whether the indexing operation exists for this filter
  * @pes_analysis_op:	Singular PES analysis operation (can be required
  *			by >1 operations). Valid only when num_pes_ops is not 0.
  * @index_op:		Singular indexing operation. Valid only when
  *			indexing_enabled is set.
+ * @dwork:		Delayed work object for filter's scrambling bit monitor
+ * @scm_prev_val:	Scrambling bit value of previous sample
+ * @scm_count:		Number of consecutive identical scrambling bit samples
+ * @scm_started:	Flag stating whether monitor is running
+ * @cipher_ops:		Cipher operation objects
  */
 struct mpq_dmx_tspp2_filter {
 	u32 handle;
@@ -377,10 +396,15 @@ struct mpq_dmx_tspp2_filter {
 	u16 pid;
 	struct list_head operations_list;
 	u8 num_ops;
-	u8 num_pes_ops;
+	u8 num_cipher_ops;
 	u8 indexing_enabled;
 	struct mpq_dmx_tspp2_filter_op pes_analysis_op;
 	struct mpq_dmx_tspp2_filter_op index_op;
+	struct delayed_work dwork;
+	u8 scm_prev_val;
+	u8 scm_count;
+	bool scm_started;
+	struct mpq_dmx_tspp2_filter_op cipher_ops[TSPP2_DMX_MAX_CIPHER_OPS];
 };
 
 /**

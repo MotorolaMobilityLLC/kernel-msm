@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,8 +18,12 @@
 
 #include "u_rmnet.h"
 
+#define RMNET_CTRL_QTI_NAME "rmnet_ctrl"
+
 struct rmnet_ctrl_qti_port {
 	struct grmnet	*port_usb;
+	char		name[sizeof(RMNET_CTRL_QTI_NAME) + 2];
+	struct miscdevice rmnet_device;
 
 	bool		is_open;
 	int index;
@@ -96,7 +100,7 @@ static int grmnet_ctrl_qti_send_cpkt_tomodem(u8 portno,
 	struct rmnet_ctrl_pkt *cpkt;
 
 	if (len > MAX_QTI_PKT_SIZE) {
-		pr_err("given pkt size too big:%d > max_pkt_size:%d\n",
+		pr_err("given pkt size too big:%zu > max_pkt_size:%d\n",
 				len, MAX_QTI_PKT_SIZE);
 		return -EINVAL;
 	}
@@ -116,12 +120,13 @@ static int grmnet_ctrl_qti_send_cpkt_tomodem(u8 portno,
 	memcpy(cpkt->buf, buf, len);
 	cpkt->len = len;
 
-	pr_debug("%s: Add to cpkt_req_q packet with len = %d\n", __func__, len);
+	pr_debug("%s: Add to cpkt_req_q packet with len = %zu\n",
+			__func__, len);
 	spin_lock_irqsave(&port->lock, flags);
 
 	/* drop cpkt if port is not open */
 	if (!port->is_open) {
-		pr_err("rmnet file handler %p(index=%d) is not open",
+		pr_debug("rmnet file handler %p(index=%d) is not open",
 		       port, port->index);
 		spin_unlock_irqrestore(&port->lock, flags);
 		free_rmnet_ctrl_pkt(cpkt);
@@ -258,20 +263,17 @@ void gqti_ctrl_update_ipa_pipes(struct grmnet *gr, u8 port_num, u32 ipa_prod,
 static int rmnet_ctrl_open(struct inode *ip, struct file *fp)
 {
 	unsigned long		flags;
-	struct miscdevice *rmnet_device = fp->private_data;
-	struct rmnet_ctrl_qti_port *port;
-
-	port = dev_get_drvdata(rmnet_device->this_device);
+	struct rmnet_ctrl_qti_port *port = container_of(fp->private_data,
+						struct rmnet_ctrl_qti_port,
+						rmnet_device);
 
 	pr_debug("Open rmnet_ctrl_qti device file name=%s(index=%d)\n",
-		rmnet_device->name, port->index);
+		port->name, port->index);
 
 	if (rmnet_ctrl_lock(&port->open_excl)) {
 		pr_err("Already opened\n");
 		return -EBUSY;
 	}
-
-	fp->private_data = port;
 
 	spin_lock_irqsave(&port->lock, flags);
 	port->is_open = true;
@@ -283,7 +285,9 @@ static int rmnet_ctrl_open(struct inode *ip, struct file *fp)
 static int rmnet_ctrl_release(struct inode *ip, struct file *fp)
 {
 	unsigned long		flags;
-	struct rmnet_ctrl_qti_port *port = fp->private_data;
+	struct rmnet_ctrl_qti_port *port = container_of(fp->private_data,
+						struct rmnet_ctrl_qti_port,
+						rmnet_device);
 
 	pr_debug("Close rmnet control file");
 
@@ -299,15 +303,17 @@ static int rmnet_ctrl_release(struct inode *ip, struct file *fp)
 static ssize_t
 rmnet_ctrl_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 {
-	struct rmnet_ctrl_qti_port *port = fp->private_data;
+	struct rmnet_ctrl_qti_port *port = container_of(fp->private_data,
+						struct rmnet_ctrl_qti_port,
+						rmnet_device);
 	struct rmnet_ctrl_pkt *cpkt = NULL;
 	unsigned long flags;
 	int ret = 0;
 
-	pr_debug("%s: Enter(%d)\n", __func__, count);
+	pr_debug("%s: Enter(%zu)\n", __func__, count);
 
 	if (count > MAX_QTI_PKT_SIZE) {
-		pr_err("Buffer size is too big %d, should be at most %d\n",
+		pr_err("Buffer size is too big %zu, should be at most %d\n",
 			count, MAX_QTI_PKT_SIZE);
 		return -EINVAL;
 	}
@@ -340,7 +346,7 @@ rmnet_ctrl_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 	spin_unlock_irqrestore(&port->lock, flags);
 
 	if (cpkt->len > count) {
-		pr_err("cpkt size too big:%d > buf size:%d\n",
+		pr_err("cpkt size too big:%d > buf size:%zu\n",
 				cpkt->len, count);
 		rmnet_ctrl_unlock(&port->read_excl);
 		free_rmnet_ctrl_pkt(cpkt);
@@ -370,12 +376,14 @@ static ssize_t
 rmnet_ctrl_write(struct file *fp, const char __user *buf, size_t count,
 		   loff_t *pos)
 {
-	struct rmnet_ctrl_qti_port *port = fp->private_data;
+	struct rmnet_ctrl_qti_port *port = container_of(fp->private_data,
+						struct rmnet_ctrl_qti_port,
+						rmnet_device);
 	void *kbuf;
 	unsigned long flags;
 	int ret = 0;
 
-	pr_debug("%s: Enter(%d) port_index=%d", __func__, count, port->index);
+	pr_debug("%s: Enter(%zu) port_index=%d", __func__, count, port->index);
 
 	if (!count) {
 		pr_debug("zero length ctrl pkt\n");
@@ -383,7 +391,7 @@ rmnet_ctrl_write(struct file *fp, const char __user *buf, size_t count,
 	}
 
 	if (count > MAX_QTI_PKT_SIZE) {
-		pr_debug("given pkt size too big:%d > max_pkt_size:%d\n",
+		pr_debug("given pkt size too big:%zu > max_pkt_size:%d\n",
 				count, MAX_QTI_PKT_SIZE);
 		return -EINVAL;
 	}
@@ -436,7 +444,7 @@ rmnet_ctrl_write(struct file *fp, const char __user *buf, size_t count,
 	kfree(kbuf);
 	rmnet_ctrl_unlock(&port->write_excl);
 
-	pr_debug("%s: Exit(%d)", __func__, count);
+	pr_debug("%s: Exit(%zu)", __func__, count);
 
 	return count;
 
@@ -444,7 +452,9 @@ rmnet_ctrl_write(struct file *fp, const char __user *buf, size_t count,
 
 static long rmnet_ctrl_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 {
-	struct rmnet_ctrl_qti_port *port = fp->private_data;
+	struct rmnet_ctrl_qti_port *port = container_of(fp->private_data,
+						struct rmnet_ctrl_qti_port,
+						rmnet_device);
 	struct ep_info info;
 	int val, ret = 0;
 
@@ -503,7 +513,9 @@ static long rmnet_ctrl_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 
 static unsigned int rmnet_ctrl_poll(struct file *file, poll_table *wait)
 {
-	struct rmnet_ctrl_qti_port *port = file->private_data;
+	struct rmnet_ctrl_qti_port *port = container_of(file->private_data,
+						struct rmnet_ctrl_qti_port,
+						rmnet_device);
 	unsigned long flags;
 	unsigned int mask = 0;
 
@@ -535,25 +547,10 @@ static const struct file_operations rmnet_ctrl_fops = {
 	.poll = rmnet_ctrl_poll,
 };
 
-static struct miscdevice rmnet_device[NR_QTI_PORTS];
-#define RMNET_CTRL_QTI_NAME "rmnet_ctrl"
-static char name[NR_QTI_PORTS][sizeof(RMNET_CTRL_QTI_NAME) + 2];
-
 static int __init gqti_ctrl_init(void)
 {
 	int ret, i, sz = sizeof(RMNET_CTRL_QTI_NAME)+2;
 	struct rmnet_ctrl_qti_port *port = NULL;
-
-	for (i = 0; i < NR_QTI_PORTS; i++) {
-		if (i == 0)
-			strlcat(name[i], RMNET_CTRL_QTI_NAME, sz);
-		else
-			snprintf(name[i], sz, "%s%d", RMNET_CTRL_QTI_NAME, i);
-
-		rmnet_device[i].name = name[i];
-		rmnet_device[i].fops = &rmnet_ctrl_fops;
-		rmnet_device[i].minor = MISC_DYNAMIC_MINOR;
-	}
 
 	for (i = 0; i < NR_QTI_PORTS; i++) {
 		port = kzalloc(sizeof(struct rmnet_ctrl_qti_port), GFP_KERNEL);
@@ -580,18 +577,28 @@ static int __init gqti_ctrl_init(void)
 		port->ipa_prod_idx = -1;
 		port->ipa_cons_idx = -1;
 
-		ret = misc_register(&rmnet_device[i]);
+		if (i == 0)
+			strlcat(port->name, RMNET_CTRL_QTI_NAME, sz);
+		else
+			snprintf(port->name, sz, "%s%d",
+					RMNET_CTRL_QTI_NAME, i);
+
+		port->rmnet_device.name = port->name;
+		port->rmnet_device.fops = &rmnet_ctrl_fops;
+		port->rmnet_device.minor = MISC_DYNAMIC_MINOR;
+
+		ret = misc_register(&port->rmnet_device);
 		if (ret) {
 			pr_err("rmnet control driver failed to register");
 			goto fail_init;
 		}
-		dev_set_drvdata(rmnet_device[i].this_device, port);
 	}
 
 	return ret;
 
 fail_init:
 	for (i--; i >= 0; i--) {
+		misc_deregister(&ctrl_port[i]->rmnet_device);
 		kfree(ctrl_port[i]);
 		ctrl_port[i] = NULL;
 	}
@@ -604,8 +611,7 @@ static void __exit gqti_ctrl_cleanup(void)
 	int i;
 
 	for (i = 0; i < NR_QTI_PORTS; i++) {
-		misc_deregister(&rmnet_device[i]);
-
+		misc_deregister(&ctrl_port[i]->rmnet_device);
 		kfree(ctrl_port[i]);
 		ctrl_port[i] = NULL;
 	}

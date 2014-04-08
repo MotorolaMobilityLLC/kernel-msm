@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,9 +24,10 @@
 #include <linux/of_device.h>
 #include <linux/dma-mapping.h>
 #include <soc/qcom/scm.h>
+#include <asm/cacheflush.h>
 #include <mach/msm_cache_dump.h>
 #include <mach/msm_iomap.h>
-#include <mach/msm_memory_dump.h>
+#include <soc/qcom/memory_dump.h>
 
 #define L2_DUMP_OFFSET 0x14
 
@@ -100,8 +101,8 @@ static int msm_cache_dump_probe(struct platform_device *pdev)
 
 	memset(msm_cache_dump_vaddr, 0xFF, total_size);
 	/* Clean caches before sending buffer to TZ */
-	clean_caches((unsigned long) msm_cache_dump_vaddr, total_size,
-			msm_cache_dump_addr);
+	dmac_clean_range(msm_cache_dump_vaddr,
+				msm_cache_dump_vaddr + total_size);
 
 	l1_cache_data.buf = msm_cache_dump_addr;
 	l1_cache_data.size = l1_size;

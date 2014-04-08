@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -12,7 +12,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/dma-mapping.h>
 #include <linux/slimbus/slimbus.h>
-#include <mach/sps.h>
+#include <linux/msm-sps.h>
 #include "slim-msm.h"
 
 int msm_slim_rx_enqueue(struct msm_slim_ctrl *dev, u32 *buf, u8 len)
@@ -305,7 +305,7 @@ void msm_dealloc_port(struct slim_controller *ctrl, u8 pn)
 }
 
 enum slim_port_err msm_slim_port_xfer_status(struct slim_controller *ctr,
-				u8 pn, u8 **done_buf, u32 *done_len)
+				u8 pn, phys_addr_t *done_buf, u32 *done_len)
 {
 	struct msm_slim_ctrl *dev = slim_get_ctrldata(ctr);
 	struct sps_iovec sio;
@@ -313,7 +313,7 @@ enum slim_port_err msm_slim_port_xfer_status(struct slim_controller *ctr,
 	if (done_len)
 		*done_len = 0;
 	if (done_buf)
-		*done_buf = NULL;
+		*done_buf = 0;
 	if (!dev->pipes[pn].connected)
 		return SLIM_P_DISCONNECT;
 	ret = sps_get_iovec(dev->pipes[pn].sps, &sio);
@@ -321,7 +321,7 @@ enum slim_port_err msm_slim_port_xfer_status(struct slim_controller *ctr,
 		if (done_len)
 			*done_len = sio.size;
 		if (done_buf)
-			*done_buf = (u8 *)sio.addr;
+			*done_buf = (phys_addr_t)sio.addr;
 	}
 	dev_dbg(dev->dev, "get iovec returned %d\n", ret);
 	return SLIM_P_INPROGRESS;
@@ -346,7 +346,7 @@ static void msm_slim_port_cb(struct sps_event_notify *ev)
 		complete(comp);
 }
 
-int msm_slim_port_xfer(struct slim_controller *ctrl, u8 pn, u8 *iobuf,
+int msm_slim_port_xfer(struct slim_controller *ctrl, u8 pn, phys_addr_t iobuf,
 			u32 len, struct completion *comp)
 {
 	struct sps_register_event sreg;
@@ -366,7 +366,7 @@ int msm_slim_port_xfer(struct slim_controller *ctrl, u8 pn, u8 *iobuf,
 		dev_dbg(dev->dev, "sps register event error:%x\n", ret);
 		return ret;
 	}
-	ret = sps_transfer_one(dev->pipes[pn].sps, (u32)iobuf, len, comp,
+	ret = sps_transfer_one(dev->pipes[pn].sps, iobuf, len, comp,
 				SPS_IOVEC_FLAG_INT);
 	dev_dbg(dev->dev, "sps submit xfer error code:%x\n", ret);
 	if (!ret) {
@@ -745,7 +745,7 @@ int msm_slim_sps_init(struct msm_slim_ctrl *dev, struct resource *bam_mem,
 			u32 pipe_reg, bool remote)
 {
 	int i, ret;
-	u32 bam_handle;
+	unsigned long bam_handle;
 	struct sps_bam_props bam_props = {0};
 
 	static struct sps_bam_sec_config_props sec_props = {
@@ -809,7 +809,7 @@ int msm_slim_sps_init(struct msm_slim_ctrl *dev, struct resource *bam_mem,
 		return ret;
 	}
 	dev->bam.hdl = bam_handle;
-	dev_dbg(dev->dev, "SLIM BAM registered, handle = 0x%x\n", bam_handle);
+	dev_dbg(dev->dev, "SLIM BAM registered, handle = 0x%lx\n", bam_handle);
 
 init_msgq:
 	ret = msm_slim_init_rx_msgq(dev, pipe_reg);

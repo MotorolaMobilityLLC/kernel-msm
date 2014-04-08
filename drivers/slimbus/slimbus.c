@@ -677,9 +677,12 @@ void slim_msg_response(struct slim_controller *ctrl, u8 *reply, u8 tid, u8 len)
 
 	mutex_lock(&ctrl->m_ctrl);
 	txn = ctrl->txnt[tid];
-	if (txn == NULL) {
-		dev_err(&ctrl->dev, "Got response to invalid TID:%d, len:%d",
+	if (txn == NULL || txn->rbuf == NULL) {
+		if (txn == NULL)
+			dev_err(&ctrl->dev, "Got response to invalid TID:%d, len:%d",
 				tid, len);
+		else
+			dev_err(&ctrl->dev, "Invalid client buffer passed\n");
 		mutex_unlock(&ctrl->m_ctrl);
 		return;
 	}
@@ -1092,6 +1095,28 @@ xfer_err:
 EXPORT_SYMBOL_GPL(slim_xfer_msg);
 
 /*
+ * User message:
+ * slim_user_msg: Send user message that is interpreted by destination device
+ * @sb: Client handle sending the message
+ * @la: Destination device for this user message
+ * @mt: Message Type (Soruce-referred, or Destination-referred)
+ * @mc: Message Code
+ * @msg: Message structure (start offset, number of bytes) to be sent
+ * @buf: data buffer to be sent
+ * @len: data buffer size in bytes
+ */
+int slim_user_msg(struct slim_device *sb, u8 la, u8 mt, u8 mc,
+				struct slim_ele_access *msg, u8 *buf, u8 len)
+{
+	if (!sb || !sb->ctrl || !msg || mt == SLIM_MSG_MT_CORE)
+		return -EINVAL;
+	if (!sb->ctrl->xfer_user_msg)
+		return -EPROTONOSUPPORT;
+	return sb->ctrl->xfer_user_msg(sb->ctrl, la, mt, mc, msg, buf, len);
+}
+EXPORT_SYMBOL(slim_user_msg);
+
+/*
  * slim_alloc_mgrports: Allocate port on manager side.
  * @sb: device/client handle.
  * @req: Port request type.
@@ -1447,7 +1472,7 @@ EXPORT_SYMBOL_GPL(slim_disconnect_ports);
  * Client will call slim_port_get_xfer_status to get error and/or number of
  * bytes transferred if used asynchronously.
  */
-int slim_port_xfer(struct slim_device *sb, u32 ph, u8 *iobuf, u32 len,
+int slim_port_xfer(struct slim_device *sb, u32 ph, phys_addr_t iobuf, u32 len,
 				struct completion *comp)
 {
 	struct slim_controller *ctrl = sb->ctrl;
@@ -1477,7 +1502,7 @@ EXPORT_SYMBOL_GPL(slim_port_xfer);
  * processed from the multiple transfers.
  */
 enum slim_port_err slim_port_get_xfer_status(struct slim_device *sb, u32 ph,
-			u8 **done_buf, u32 *done_len)
+			phys_addr_t *done_buf, u32 *done_len)
 {
 	struct slim_controller *ctrl = sb->ctrl;
 	u8 pn = SLIM_HDL_TO_PORT(ph);
@@ -1490,7 +1515,7 @@ enum slim_port_err slim_port_get_xfer_status(struct slim_device *sb, u32 ph,
 	 */
 	if (la != SLIM_LA_MANAGER) {
 		if (done_buf)
-			*done_buf = NULL;
+			*done_buf = 0;
 		if (done_len)
 			*done_len = 0;
 		return SLIM_P_NOT_OWNED;

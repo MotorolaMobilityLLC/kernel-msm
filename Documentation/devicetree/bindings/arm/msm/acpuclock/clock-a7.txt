@@ -6,7 +6,8 @@ a configurable divider. This hw is different than normal rcgs in that it may
 optionally have a register which encodes the maximum rate supported by hw.
 
 Required properties:
-- compatible: "qcom,clock-a7-8226", "qcom,clock-a7-9630"
+- compatible: "qcom,clock-a7-8226", "qcom,clock-a7-9630",
+		"qcom,clock-a53-8916"
 - reg: pairs of physical address and region size
 - reg-names: "rcg-base" is expected
 - clock-names: list of names of clock inputs
@@ -22,6 +23,9 @@ Required properties:
 
 Optional properties:
 - reg-names: "efuse"
+- qcom,safe-freq: Frequency in HZ
+	     When switching rates from A to B, the mux div clock will
+             instead switch from A -> safe_freq -> B.
 
 Example:
 	qcom,acpuclk@f9011050 {

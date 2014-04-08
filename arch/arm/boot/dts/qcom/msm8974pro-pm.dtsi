@@ -174,11 +174,11 @@
 
 			qcom,system-mode@0 {
 				qcom,l2 = "l2_cache_gdhs";
-				qcom,latency-us = <20000>;
+				qcom,latency-us = <500>;
 				qcom,ss-power = <163>;
-				qcom,energy-overhead = <1577736>;
-				qcom,time-overhead = <5067>;
-				qcom,min-cpu-mode= "pc";
+				qcom,energy-overhead = <577736>;
+				qcom,time-overhead = <1000>;
+				qcom,min-cpu-mode= "standalone_pc";
 				qcom,sync-mode;
 			};
 
@@ -233,6 +233,7 @@
 			<0xff 105>, /* iommu_pmon_nonsecure_irq */
 			<0xff 109>,  /* ocmem_dm_nonsec_irq */
 			<0xff 126>,  /* bam_irq[0] */
+			<0xff 146>,  /* uart_dm_intr: blsp2_uart_2_irq */
 			<0xff 155>,  /* sdcc_irq[0] */
 			<0xff 163>,  /* usb30_ee1_irq */
 			<0xff 170>,  /* sdcc_pwr_cmd_irq */
@@ -318,7 +319,6 @@
 		#size-cells = <1>;
 		ranges;
 		reg = <0xfe805664 0x40>;
-		qcom,pc-mode = "tz_l2_int";
 
 		qcom,pm-snoc-client {
 			compatible = "qcom,pm-snoc-client";
@@ -361,5 +361,13 @@
 		compatible = "qcom,rpmrbcpr-stats";
 		reg = <0xfc000000 0x1a0000>;
 		qcom,start-offset = <0x190010>;
+	};
+
+	qcom,rpm-master-stats@fc428150 {
+		compatible = "qcom,rpm-master-stats";
+		reg = <0xfc428150 0x3200>;
+		qcom,masters = "APSS", "MPSS", "LPSS", "PRONTO";
+		qcom,master-stats-version = <2>;
+		qcom,master-offset = <2560>;
 	};
 };

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -53,8 +53,9 @@
 #define QPNP_PON_PS_HOLD_RST_CTL2(base)		(base + 0x5B)
 #define QPNP_PON_WD_RST_S2_CTL(base)		(base + 0x56)
 #define QPNP_PON_WD_RST_S2_CTL2(base)		(base + 0x57)
-#define QPNP_PON_TRIGGER_EN(base)		(base + 0x80)
+#define QPNP_PON_S3_SRC(base)			(base + 0x74)
 #define QPNP_PON_S3_DBC_CTL(base)		(base + 0x75)
+#define QPNP_PON_TRIGGER_EN(base)		(base + 0x80)
 
 #define QPNP_PON_WARM_RESET_TFT			BIT(4)
 
@@ -79,6 +80,12 @@
 #define QPNP_PON_WD_EN			BIT(7)
 #define QPNP_PON_RESET_EN			BIT(7)
 #define QPNP_PON_POWER_OFF_MASK			0xF
+
+#define QPNP_PON_S3_SRC_KPDPWR			0
+#define QPNP_PON_S3_SRC_RESIN			1
+#define QPNP_PON_S3_SRC_KPDPWR_OR_RESIN		2
+#define QPNP_PON_S3_SRC_KPDPWR_AND_RESIN	3
+#define QPNP_PON_S3_SRC_MASK			0x3
 
 /* Ranges */
 #define QPNP_PON_S1_TIMER_MAX			10256
@@ -166,6 +173,14 @@ static const char * const qpnp_poff_reason[] = {
 	[15] = "Triggered from STAGE3 (Stage 3 reset)",
 };
 
+/*
+ * On the kernel command line specify
+ * qpnp-power-on.warm_boot=1 to indicate a warm
+ * boot of the device.
+ */
+static int warm_boot;
+module_param(warm_boot, int, 0);
+
 static int
 qpnp_pon_masked_write(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
 {
@@ -176,7 +191,8 @@ qpnp_pon_masked_write(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
 							addr, &reg, 1);
 	if (rc) {
 		dev_err(&pon->spmi->dev,
-			"Unable to read from addr=%x, rc(%d)\n", addr, rc);
+			"Unable to read from addr=%hx, rc(%d)\n",
+			addr, rc);
 		return rc;
 	}
 
@@ -186,7 +202,7 @@ qpnp_pon_masked_write(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
 							addr, &reg, 1);
 	if (rc)
 		dev_err(&pon->spmi->dev,
-			"Unable to write to addr=%x, rc(%d)\n", addr, rc);
+			"Unable to write to addr=%hx, rc(%d)\n", addr, rc);
 	return rc;
 }
 
@@ -233,13 +249,13 @@ static ssize_t qpnp_pon_dbc_store(struct device *dev,
 				const char *buf, size_t size)
 {
 	struct qpnp_pon *pon = dev_get_drvdata(dev);
-	unsigned long value;
+	u32 value;
 	int rc;
 
 	if (size > QPNP_PON_BUFFER_SIZE)
 		return -EINVAL;
 
-	rc = kstrtoul(buf, 10, &value);
+	rc = kstrtou32(buf, 10, &value);
 	if (rc)
 		return rc;
 
@@ -288,7 +304,8 @@ int qpnp_pon_system_pwr_off(enum pon_power_off_type type)
 	rc = qpnp_pon_masked_write(pon, rst_en_reg, QPNP_PON_RESET_EN, 0);
 	if (rc)
 		dev_err(&pon->spmi->dev,
-			"Unable to write to addr=%x, rc(%d)\n", rst_en_reg, rc);
+			"Unable to write to addr=%hx, rc(%d)\n",
+			rst_en_reg, rc);
 
 	/*
 	 * We need 10 sleep clock cycles here. But since the clock is
@@ -308,7 +325,8 @@ int qpnp_pon_system_pwr_off(enum pon_power_off_type type)
 						    QPNP_PON_RESET_EN);
 	if (rc)
 		dev_err(&pon->spmi->dev,
-			"Unable to write to addr=%x, rc(%d)\n", rst_en_reg, rc);
+			"Unable to write to addr=%hx, rc(%d)\n",
+			rst_en_reg, rc);
 
 	dev_dbg(&pon->spmi->dev, "power off type = 0x%02X\n", type);
 
@@ -473,7 +491,7 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		return -EINVAL;
 	}
 
-	pr_debug("PMIC input: code=%d, sts=0x%x\n",
+	pr_debug("PMIC input: code=%d, sts=0x%hhx\n",
 					cfg->key_code, pon_rt_sts);
 	key_status = pon_rt_sts & pon_rt_bit;
 
@@ -549,9 +567,9 @@ static void print_pon_reg(struct qpnp_pon *pon, u16 offset)
 			addr, &reg, 1);
 	if (rc)
 		dev_emerg(&pon->spmi->dev,
-				"Unable to read reg at 0x%04x\n", addr);
+				"Unable to read reg at 0x%04hx\n", addr);
 	else
-		dev_emerg(&pon->spmi->dev, "reg@0x%04x: %02x\n", addr, reg);
+		dev_emerg(&pon->spmi->dev, "reg@0x%04hx: %02hhx\n", addr, reg);
 }
 
 #define PON_PBL_STATUS			0x7
@@ -1155,7 +1173,17 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 					"Unable to config pon reset\n");
 				goto unreg_input_dev;
 			}
+		} else if (cfg->pon_type != PON_CBLPWR) {
+			/* disable S2 reset */
+			rc = qpnp_pon_masked_write(pon, cfg->s2_cntl2_addr,
+						QPNP_PON_S2_CNTL_EN, 0);
+			if (rc) {
+				dev_err(&pon->spmi->dev,
+					"Unable to disable S2 reset\n");
+				goto unreg_input_dev;
+			}
 		}
+
 		rc = qpnp_pon_request_irqs(pon, cfg);
 		if (rc) {
 			dev_err(&pon->spmi->dev, "Unable to request-irq's\n");
@@ -1185,6 +1213,8 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 	int rc, sys_reset, index;
 	u8 pon_sts = 0, buf[2];
 	u16 poff_sts = 0;
+	const char *s3_src;
+	u8 s3_src_reg;
 
 	pon = devm_kzalloc(&spmi->dev, sizeof(struct qpnp_pon),
 							GFP_KERNEL);
@@ -1291,6 +1321,32 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 			dev_err(&spmi->dev, "Unable to set S3 debounce\n");
 			return rc;
 		}
+	}
+
+	/* program s3 source */
+	s3_src = "kpdpwr-and-resin";
+	rc = of_property_read_string(pon->spmi->dev.of_node,
+				"qcom,s3-src", &s3_src);
+	if (rc && rc != -EINVAL) {
+		dev_err(&pon->spmi->dev, "Unable to read s3 timer\n");
+		return rc;
+	}
+
+	if (!strcmp(s3_src, "kpdpwr"))
+		s3_src_reg = QPNP_PON_S3_SRC_KPDPWR;
+	else if (!strcmp(s3_src, "resin"))
+		s3_src_reg = QPNP_PON_S3_SRC_RESIN;
+	else if (!strcmp(s3_src, "kpdpwr-or-resin"))
+		s3_src_reg = QPNP_PON_S3_SRC_KPDPWR_OR_RESIN;
+	else /* default combination */
+		s3_src_reg = QPNP_PON_S3_SRC_KPDPWR_AND_RESIN;
+
+	rc = qpnp_pon_masked_write(pon, QPNP_PON_S3_SRC(pon->base),
+			QPNP_PON_S3_SRC_MASK, s3_src_reg);
+	if (rc) {
+		dev_err(&spmi->dev,
+			"Unable to program s3 source\n");
+		return rc;
 	}
 
 	dev_set_drvdata(&spmi->dev, pon);

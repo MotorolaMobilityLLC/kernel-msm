@@ -19,16 +19,16 @@
 #include <linux/clk.h>
 #include <linux/iommu.h>
 #include <linux/interrupt.h>
+#include <linux/msm-bus.h>
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 
-#include <mach/iommu_hw-v1.h>
-#include <mach/iommu.h>
-#include <mach/iommu_perfmon.h>
-#include <mach/msm_bus.h>
+#include "msm_iommu_hw-v1.h"
+#include <linux/qcom_iommu.h>
+#include "msm_iommu_perfmon.h"
 
 static struct of_device_id msm_iommu_ctx_match_table[];
 
@@ -138,25 +138,43 @@ static inline void get_secure_id(struct device_node *node,
 }
 
 static inline void get_secure_ctx(struct device_node *node,
+				  struct msm_iommu_drvdata *iommu_drvdata,
 				  struct msm_iommu_ctx_drvdata *ctx_drvdata)
 {
 	ctx_drvdata->secure_context = 0;
 }
 #else
+
+static inline int is_vfe_smmu(char const *iommu_name)
+{
+	return (strcmp(iommu_name, "vfe_iommu") == 0);
+}
+
 static void get_secure_id(struct device_node *node,
 			  struct msm_iommu_drvdata *drvdata)
 {
-	if (msm_iommu_get_scm_call_avail())
-		of_property_read_u32(node, "qcom,iommu-secure-id",
-				     &drvdata->sec_id);
+	if (msm_iommu_get_scm_call_avail()) {
+		if (!is_vfe_smmu(drvdata->name) || is_vfe_secure())
+			of_property_read_u32(node, "qcom,iommu-secure-id",
+					     &drvdata->sec_id);
+		else
+			pr_info("vfe_iommu: Keeping vfe non-secure\n");
+	}
 }
 
 static void get_secure_ctx(struct device_node *node,
+			   struct msm_iommu_drvdata *iommu_drvdata,
 			   struct msm_iommu_ctx_drvdata *ctx_drvdata)
 {
-	if (msm_iommu_get_scm_call_avail())
-		ctx_drvdata->secure_context =
+	u32 secure_ctx = 0;
+
+	if (msm_iommu_get_scm_call_avail()) {
+		if (!is_vfe_smmu(iommu_drvdata->name) || is_vfe_secure()) {
+			secure_ctx =
 			of_property_read_bool(node, "qcom,secure-context");
+		}
+	}
+	ctx_drvdata->secure_context = secure_ctx;
 }
 #endif
 
@@ -309,6 +327,17 @@ static int msm_iommu_probe(struct platform_device *pdev)
 	if (!drvdata->base)
 		return -ENOMEM;
 
+	drvdata->phys_base = r->start;
+
+	r = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+					"smmu_local_base");
+	if (r) {
+		drvdata->smmu_local_base =
+			devm_ioremap(&pdev->dev, r->start, resource_size(r));
+		if (!drvdata->smmu_local_base)
+			return -ENOMEM;
+	}
+
 	drvdata->glb_base = drvdata->base;
 
 	if (of_get_property(pdev->dev.of_node, "vdd-supply", NULL)) {
@@ -345,7 +374,7 @@ static int msm_iommu_probe(struct platform_device *pdev)
 						   "qcom,needs-alt-iface-clk");
 	if (needs_alt_iface_clk) {
 		drvdata->aiclk = devm_clk_get(&pdev->dev, "alt_iface_clk");
-		if (IS_ERR(drvdata->aclk))
+		if (IS_ERR(drvdata->aiclk))
 			return PTR_ERR(drvdata->aiclk);
 	}
 
@@ -462,7 +491,9 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 	u32 nsid;
 	unsigned long cb_offset;
 
-	get_secure_ctx(pdev->dev.of_node, ctx_drvdata);
+	drvdata = dev_get_drvdata(pdev->dev.parent);
+
+	get_secure_ctx(pdev->dev.of_node, drvdata, ctx_drvdata);
 
 	if (ctx_drvdata->secure_context) {
 		irq = platform_get_irq(pdev, 1);
@@ -507,7 +538,6 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 	 * of CBs are <=8. So, assume the offset 0x8000 until mentioned
 	 * explicitely.
 	 */
-	drvdata = dev_get_drvdata(pdev->dev.parent);
 	cb_offset = drvdata->cb_base - drvdata->base;
 	ctx_drvdata->num = ((r->start - rp.start - cb_offset)
 					>> CTX_SHIFT);

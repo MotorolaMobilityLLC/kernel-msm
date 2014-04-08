@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -145,6 +145,7 @@ static void compr_event_handler(uint32_t opcode,
 	struct audio_aio_write_param param;
 	struct audio_aio_read_param read_param;
 	struct audio_buffer *buf = NULL;
+	phys_addr_t temp;
 	struct output_meta_data_st output_meta_data;
 	uint32_t *ptrmem = (uint32_t *)payload;
 	int i = 0;
@@ -190,10 +191,9 @@ static void compr_event_handler(uint32_t opcode,
 		buf = prtd->audio_client->port[IN].buf;
 		pr_debug("%s:writing %d bytes of buffer[%d] to dsp 2\n",
 				__func__, prtd->pcm_count, prtd->out_head);
-		pr_debug("%s:writing buffer[%d] from 0x%08x\n",
-				__func__, prtd->out_head,
-				((unsigned int)buf[0].phys
-				+ (prtd->out_head * prtd->pcm_count)));
+		temp = buf[0].phys + (prtd->out_head * prtd->pcm_count);
+		pr_debug("%s:writing buffer[%d] from 0x%pa\n",
+			__func__, prtd->out_head, &temp);
 
 		if (runtime->tstamp_mode == SNDRV_PCM_TSTAMP_ENABLE)
 			time_stamp_flag = SET_TIMESTAMP;
@@ -214,16 +214,12 @@ static void compr_event_handler(uint32_t opcode,
 			pr_debug("Recieved a zero length buffer-break out");
 			break;
 		}
-		param.paddr = (unsigned long)buf[0].phys
-				+ (prtd->out_head * prtd->pcm_count)
-				+ output_meta_data.meta_data_length;
+		param.paddr = temp + output_meta_data.meta_data_length;
 		param.len = buffer_length;
 		param.msw_ts = output_meta_data.timestamp_msw;
 		param.lsw_ts = output_meta_data.timestamp_lsw;
 		param.flags = time_stamp_flag;
-		param.uid =  (unsigned long)buf[0].phys
-				+ (prtd->out_head * prtd->pcm_count
-				+ output_meta_data.meta_data_length);
+		param.uid = prtd->session_id;
 		for (i = 0; i < sizeof(struct audio_aio_write_param)/4;
 					i++, ++ptrmem)
 			pr_debug("cmd[%d]=0x%08x\n", i, *ptrmem);
@@ -272,10 +268,11 @@ static void compr_event_handler(uint32_t opcode,
 			break;
 		}
 		buf = prtd->audio_client->port[OUT].buf;
-		pr_debug("pcm_irq_pos=%d, buf[0].phys = 0x%X\n",
-				prtd->pcm_irq_pos, (uint32_t)buf[0].phys);
+
+		pr_debug("pcm_irq_pos=%d, buf[0].phys = 0x%pa\n",
+				prtd->pcm_irq_pos, &buf[0].phys);
 		read_param.len = prtd->pcm_count - COMPRE_CAPTURE_HEADER_SIZE;
-		read_param.paddr = (unsigned long)(buf[0].phys) +
+		read_param.paddr = buf[0].phys +
 			prtd->pcm_irq_pos + COMPRE_CAPTURE_HEADER_SIZE;
 		prtd->pcm_irq_pos += prtd->pcm_count;
 
@@ -295,13 +292,12 @@ static void compr_event_handler(uint32_t opcode,
 			}
 			if (!atomic_read(&prtd->pending_buffer))
 				break;
-			pr_debug("%s:writing %d bytes of buffer[%d] to dsp\n",
+			pr_debug("%s: writing %d bytes of buffer[%d] to dsp\n",
 				__func__, prtd->pcm_count, prtd->out_head);
 			buf = prtd->audio_client->port[IN].buf;
-			pr_debug("%s:writing buffer[%d] from 0x%08x\n",
-				__func__, prtd->out_head,
-				((unsigned int)buf[0].phys
-				+ (prtd->out_head * prtd->pcm_count)));
+			pr_debug("%s: writing buffer[%d] from 0x%pa head %d count %d\n",
+				__func__, prtd->out_head, &buf[0].phys,
+				prtd->pcm_count, prtd->out_head);
 			if (runtime->tstamp_mode == SNDRV_PCM_TSTAMP_ENABLE)
 				time_stamp_flag = SET_TIMESTAMP;
 			else
@@ -316,14 +312,13 @@ static void compr_event_handler(uint32_t opcode,
 			pr_debug("timestamp_msw: %d, timestamp_lsw: %d\n",
 				 output_meta_data.timestamp_msw,
 				 output_meta_data.timestamp_lsw);
-			param.paddr = (unsigned long)buf[prtd->out_head].phys
+			param.paddr = buf[prtd->out_head].phys
 					+ output_meta_data.meta_data_length;
 			param.len = buffer_length;
 			param.msw_ts = output_meta_data.timestamp_msw;
 			param.lsw_ts = output_meta_data.timestamp_lsw;
 			param.flags = time_stamp_flag;
-			param.uid =  (unsigned long)buf[prtd->out_head].phys
-					+ output_meta_data.meta_data_length;
+			param.uid = prtd->session_id;
 			param.metadata_len = COMPRE_OUTPUT_METADATA_SIZE;
 			if (q6asm_async_write(prtd->audio_client,
 						&param) < 0)
@@ -494,16 +489,16 @@ static int msm_compr_capture_prepare(struct snd_pcm_substream *substream)
 		case SND_AUDIOCODEC_AMRWB:
 			read_param.len = prtd->pcm_count
 					- COMPRE_CAPTURE_HEADER_SIZE;
-			read_param.paddr = (unsigned long)(buf[i].phys)
+			read_param.paddr = buf[i].phys
 					+ COMPRE_CAPTURE_HEADER_SIZE;
 			pr_debug("Push buffer [%d] to DSP, "\
-					"paddr: %p, vaddr: %p\n",
-					i, (void *) read_param.paddr,
+					"paddr: %pa, vaddr: %p\n",
+					i, &read_param.paddr,
 					buf[i].data);
 			q6asm_async_read(prtd->audio_client, &read_param);
 			break;
 		default:
-			read_param.paddr = (unsigned long)(buf[i].phys);
+			read_param.paddr = buf[i].phys;
 			/*q6asm_async_read_compressed(prtd->audio_client,
 				&read_param);*/
 			pr_debug("%s: To add support for read compressed\n",
@@ -934,7 +929,7 @@ static int msm_compr_hw_params(struct snd_pcm_substream *substream,
 	}
 	runtime->hw.buffer_bytes_max =
 			runtime->hw.period_bytes_min * runtime->hw.periods_max;
-	pr_debug("allocate %d buffers each of size %d\n",
+	pr_debug("allocate %zd buffers each of size %d\n",
 		runtime->hw.period_bytes_min,
 		runtime->hw.periods_max);
 	ret = q6asm_audio_client_buf_alloc_contiguous(dir,
@@ -956,7 +951,7 @@ static int msm_compr_hw_params(struct snd_pcm_substream *substream,
 	dma_buf->bytes = runtime->hw.buffer_bytes_max;
 
 	pr_debug("%s: buf[%p]dma_buf->area[%p]dma_buf->addr[%pa]\n"
-		 "dma_buf->bytes[%d]\n", __func__,
+		 "dma_buf->bytes[%zd]\n", __func__,
 		 (void *)buf, (void *)dma_buf->area,
 		 &dma_buf->addr, dma_buf->bytes);
 	if (!dma_buf->area)
@@ -966,7 +961,7 @@ static int msm_compr_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int msm_compr_ioctl(struct snd_pcm_substream *substream,
+static int msm_compr_ioctl_shared(struct snd_pcm_substream *substream,
 		unsigned int cmd, void *arg)
 {
 	int rc = 0;
@@ -978,10 +973,10 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 
 	switch (cmd) {
 	case SNDRV_COMPRESS_TSTAMP: {
-		struct snd_compr_tstamp tstamp;
+		struct snd_compr_tstamp *tstamp;
 		pr_debug("SNDRV_COMPRESS_TSTAMP\n");
-
-		memset(&tstamp, 0x0, sizeof(struct snd_compr_tstamp));
+		tstamp = arg;
+		memset(tstamp, 0x0, sizeof(*tstamp));
 		rc = q6asm_get_session_time(prtd->audio_client, &timestamp);
 		if (rc < 0) {
 			pr_err("%s: Get Session Time return value =%lld\n",
@@ -991,33 +986,25 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 		temp = (timestamp * 2 * runtime->channels);
 		temp = temp * (runtime->rate/1000);
 		temp = div_u64(temp, 1000);
-		tstamp.sampling_rate = runtime->rate;
-		tstamp.timestamp = timestamp;
+		tstamp->sampling_rate = runtime->rate;
+		tstamp->timestamp = timestamp;
 		pr_debug("%s: bytes_consumed:,timestamp = %lld,\n",
 						__func__,
-			tstamp.timestamp);
-		if (copy_to_user((void *) arg, &tstamp,
-			sizeof(struct snd_compr_tstamp)))
-				return -EFAULT;
+			tstamp->timestamp);
 		return 0;
 	}
-	case SNDRV_COMPRESS_GET_CAPS:
+	case SNDRV_COMPRESS_GET_CAPS: {
+		struct snd_compr_caps *caps;
+		caps = arg;
+		memset(caps, 0, sizeof(*caps));
 		pr_debug("SNDRV_COMPRESS_GET_CAPS\n");
-		if (copy_to_user((void *) arg, &compr->info.compr_cap,
-			sizeof(struct snd_compr_caps))) {
-			rc = -EFAULT;
-			pr_err("%s: ERROR: copy to user\n", __func__);
-			return rc;
-		}
+		memcpy(caps, &compr->info.compr_cap, sizeof(*caps));
 		return 0;
+	}
 	case SNDRV_COMPRESS_SET_PARAMS:
 		pr_debug("SNDRV_COMPRESS_SET_PARAMS:\n");
-		if (copy_from_user(&compr->info.codec_param, (void *) arg,
-			sizeof(struct snd_compr_params))) {
-			rc = -EFAULT;
-			pr_err("%s: ERROR: copy from user\n", __func__);
-			return rc;
-		}
+		memcpy(&compr->info.codec_param, (void *) arg,
+			sizeof(struct snd_compr_params));
 		switch (compr->info.codec_param.codec.id) {
 		case SND_AUDIOCODEC_MP3:
 			/* For MP3 we dont need any other parameter */
@@ -1035,12 +1022,19 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 			int i;
 			struct snd_dec_ddp *ddp =
 				&compr->info.codec_param.codec.options.ddp;
-			uint32_t params_length = ddp->params_length*sizeof(int);
+			uint32_t params_length = 0;
+			/* check integer overflow */
+			if (ddp->params_length > UINT_MAX/sizeof(int)) {
+				pr_err("%s: Integer overflow ddp->params_length %d\n",
+				__func__, ddp->params_length);
+				return -EINVAL;
+			}
+			params_length = ddp->params_length*sizeof(int);
 			if (params_length > MAX_AC3_PARAM_SIZE) {
 				/*MAX is 36*sizeof(int) this should not happen*/
-				pr_err("params_length(%d) is greater than %d",
-				params_length, MAX_AC3_PARAM_SIZE);
-				params_length = MAX_AC3_PARAM_SIZE;
+				pr_err("%s: params_length(%d) is greater than %zd\n",
+				__func__, params_length, MAX_AC3_PARAM_SIZE);
+				return -EINVAL;
 			}
 			pr_debug("SND_AUDIOCODEC_AC3\n");
 			compr->codec = FORMAT_AC3;
@@ -1072,12 +1066,18 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 			int i;
 			struct snd_dec_ddp *ddp =
 				&compr->info.codec_param.codec.options.ddp;
-			uint32_t params_length = ddp->params_length*sizeof(int);
+			uint32_t params_length = 0;
+			/* check integer overflow */
+			if (ddp->params_length > UINT_MAX/sizeof(int)) {
+				pr_err("%s: Integer overflow ddp->params_length %d\n",
+				__func__, ddp->params_length);
+				return -EINVAL;
+			}
 			if (params_length > MAX_AC3_PARAM_SIZE) {
 				/*MAX is 36*sizeof(int) this should not happen*/
-				pr_err("params_length(%d) is greater than %d",
-				params_length, MAX_AC3_PARAM_SIZE);
-				params_length = MAX_AC3_PARAM_SIZE;
+				pr_err("%s: params_length(%d) is greater than %d\n",
+				__func__, params_length, MAX_AC3_PARAM_SIZE);
+				return -EINVAL;
 			}
 			pr_debug("SND_AUDIOCODEC_EAC3\n");
 			compr->codec = FORMAT_EAC3;
@@ -1168,6 +1168,74 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 	return snd_pcm_lib_ioctl(substream, cmd, arg);
 }
 
+static int msm_compr_ioctl(struct snd_pcm_substream *substream,
+		unsigned int cmd, void *arg)
+{
+	int err = 0;
+	if (!substream) {
+		pr_err("%s: Invalid params\n", __func__);
+		return -EINVAL;
+	}
+	pr_debug("%s called with cmd = %d\n", __func__, cmd);
+	switch (cmd) {
+	case SNDRV_COMPRESS_TSTAMP: {
+		struct snd_compr_tstamp tstamp;
+		if (!arg) {
+			pr_err("%s: Invalid params Tstamp\n", __func__);
+			return -EINVAL;
+		}
+		err = msm_compr_ioctl_shared(substream, cmd, &tstamp);
+		if (err)
+			pr_err("%s: COMPRESS_TSTAMP failed rc %d\n",
+			__func__, err);
+		if (!err && copy_to_user(arg, &tstamp, sizeof(tstamp))) {
+			pr_err("%s: copytouser failed COMPRESS_TSTAMP\n",
+			__func__);
+			err = -EFAULT;
+		}
+		break;
+	}
+	case SNDRV_COMPRESS_GET_CAPS: {
+		struct snd_compr_caps cap;
+		if (!arg) {
+			pr_err("%s: Invalid params getcaps\n", __func__);
+			return -EINVAL;
+		}
+		pr_debug("SNDRV_COMPRESS_GET_CAPS\n");
+		err = msm_compr_ioctl_shared(substream, cmd, &cap);
+		if (err)
+			pr_err("%s: GET_CAPS failed rc %d\n",
+			__func__, err);
+		if (!err && copy_to_user(arg, &cap, sizeof(cap))) {
+			pr_err("%s: copytouser failed GET_CAPS\n",
+			__func__);
+			err = -EFAULT;
+		}
+		break;
+	}
+	case SNDRV_COMPRESS_SET_PARAMS: {
+		struct snd_compr_params params;
+		if (!arg) {
+			pr_err("%s: Invalid params setparam\n", __func__);
+			return -EINVAL;
+		}
+		if (copy_from_user(&params, arg,
+			sizeof(struct snd_compr_params))) {
+			pr_err("%s: SET_PARAMS\n", __func__);
+			return -EFAULT;
+		}
+		err = msm_compr_ioctl_shared(substream, cmd, &params);
+		if (err)
+			pr_err("%s: SET_PARAMS failed rc %d\n",
+			__func__, err);
+		break;
+	}
+	default:
+		err = msm_compr_ioctl_shared(substream, cmd, arg);
+	}
+	return err;
+}
+
 static int msm_compr_restart(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -1213,9 +1281,7 @@ static int msm_compr_restart(struct snd_pcm_substream *substream)
 		param.msw_ts = output_meta_data.timestamp_msw;
 		param.lsw_ts = output_meta_data.timestamp_lsw;
 		param.flags = time_stamp_flag;
-		param.uid =  (unsigned long)buf[0].phys
-				+ (prtd->out_head * prtd->pcm_count
-				+ output_meta_data.meta_data_length);
+		param.uid = prtd->session_id;
 		if (q6asm_async_write(prtd->audio_client,
 					&param) < 0)
 			pr_err("%s:q6asm_async_write failed\n",

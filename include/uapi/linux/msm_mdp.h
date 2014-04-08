@@ -147,6 +147,8 @@ enum {
 	MDP_XBGR_8888_TILE,	  /* XBGR 8888 in tile format */
 	MDP_BGRX_8888_TILE,	  /* BGRX 8888 in tile format */
 	MDP_YCBYCR_H2V1,  /* YCbYCr interleave */
+	MDP_RGB_565_TILE,	  /* RGB 565 in tile format */
+	MDP_BGR_565_TILE,	  /* BGR 565 in tile format */
 	MDP_IMGTYPE_LIMIT,
 	MDP_RGB_BORDERFILL,	/* border fill pipe */
 	MDP_FB_FORMAT = MDP_IMGTYPE2_START,    /* framebuffer format */
@@ -824,6 +826,7 @@ enum {
 
 #define MDSS_MAX_BL_BRIGHTNESS 255
 #define AD_BL_LIN_LEN 256
+#define AD_BL_ATT_LUT_LEN 33
 
 #define MDSS_AD_MODE_AUTO_BL	0x0
 #define MDSS_AD_MODE_AUTO_STR	0x1
@@ -852,9 +855,13 @@ struct mdss_ad_init {
 	uint16_t frame_h;
 	uint8_t logo_v;
 	uint8_t logo_h;
+	uint32_t alpha;
+	uint32_t alpha_base;
 	uint32_t bl_lin_len;
+	uint32_t bl_att_len;
 	uint32_t *bl_lin;
 	uint32_t *bl_lin_inv;
+	uint32_t *bl_att_lut;
 };
 
 #define MDSS_AD_BL_CTRL_MODE_EN 1

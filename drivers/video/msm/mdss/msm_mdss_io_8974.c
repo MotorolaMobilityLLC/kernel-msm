@@ -517,6 +517,16 @@ static void mdss_dsi_clk_ctrl_sub(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 
 static DEFINE_MUTEX(dsi_clk_lock); /* per system */
 
+bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	bool enabled;
+	mutex_lock(&dsi_clk_lock);
+	enabled = ctrl->clk_cnt ? true : false;
+	mutex_unlock(&dsi_clk_lock);
+
+	return enabled;
+}
+
 void mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 {
 	int changed = 0;

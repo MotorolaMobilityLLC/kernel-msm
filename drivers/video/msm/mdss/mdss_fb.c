@@ -48,7 +48,7 @@
 
 #include <mach/board.h>
 #include <mach/memory.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <mach/msm_memtypes.h>
 
@@ -276,25 +276,33 @@ static ssize_t mdss_fb_get_type(struct device *dev,
 
 static void mdss_fb_parse_dt(struct msm_fb_data_type *mfd)
 {
-	u32 data[2];
+	u32 data[2] = {0};
+	u32 panel_xres;
 	struct platform_device *pdev = mfd->pdev;
 
 	mfd->splash_logo_enabled = of_property_read_bool(pdev->dev.of_node,
 				"qcom,mdss-fb-splash-logo-enabled");
 
-	if (of_property_read_u32_array(pdev->dev.of_node, "qcom,mdss-fb-split",
-				       data, 2))
-		return;
-	if (data[0] && data[1] &&
-	    (mfd->panel_info->xres == (data[0] + data[1]))) {
-		mfd->split_fb_left = data[0];
-		mfd->split_fb_right = data[1];
-		pr_info("split framebuffer left=%d right=%d\n",
-			mfd->split_fb_left, mfd->split_fb_right);
+	of_property_read_u32_array(pdev->dev.of_node,
+		"qcom,mdss-fb-split", data, 2);
+
+	panel_xres = mfd->panel_info->xres;
+	if (data[0] && data[1]) {
+		if (mfd->split_display)
+			panel_xres *= 2;
+
+		if (panel_xres == data[0] + data[1]) {
+			mfd->split_fb_left = data[0];
+			mfd->split_fb_right = data[1];
+		}
 	} else {
-		mfd->split_fb_left = 0;
-		mfd->split_fb_right = 0;
+		if (mfd->split_display)
+			mfd->split_fb_left = mfd->split_fb_right = panel_xres;
+		else
+			mfd->split_fb_left = mfd->split_fb_right = 0;
 	}
+	pr_info("split framebuffer left=%d right=%d\n",
+		mfd->split_fb_left, mfd->split_fb_right);
 }
 
 static ssize_t mdss_fb_get_split(struct device *dev,
@@ -322,14 +330,75 @@ static ssize_t mdss_mdp_show_blank_event(struct device *dev,
 	return ret;
 }
 
+static void __mdss_fb_idle_notify_work(struct work_struct *work)
+{
+	struct delayed_work *dw = to_delayed_work(work);
+	struct msm_fb_data_type *mfd = container_of(dw, struct msm_fb_data_type,
+		idle_notify_work);
+
+	/* Notify idle-ness here */
+	pr_debug("Idle timeout %dms expired!\n", mfd->idle_time);
+	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "idle_notify");
+}
+
+static ssize_t mdss_fb_get_idle_time(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	int ret;
+
+	ret = scnprintf(buf, PAGE_SIZE, "%d", mfd->idle_time);
+
+	return ret;
+}
+
+static ssize_t mdss_fb_set_idle_time(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	int rc = 0;
+	int idle_time = 0;
+
+	rc = kstrtoint(buf, 10, &idle_time);
+	if (rc) {
+		pr_err("kstrtoint failed. rc=%d\n", rc);
+		return rc;
+	}
+
+	pr_debug("Idle time = %d\n", idle_time);
+	mfd->idle_time = idle_time;
+
+	return count;
+}
+
+static ssize_t mdss_fb_get_idle_notify(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	int ret;
+
+	ret = scnprintf(buf, PAGE_SIZE, "%s",
+		work_busy(&mfd->idle_notify_work.work) ? "no" : "yes");
+
+	return ret;
+}
+
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO, mdss_fb_get_split, NULL);
 static DEVICE_ATTR(show_blank_event, S_IRUGO, mdss_mdp_show_blank_event, NULL);
+static DEVICE_ATTR(idle_time, S_IRUGO | S_IWUSR | S_IWGRP,
+	mdss_fb_get_idle_time, mdss_fb_set_idle_time);
+static DEVICE_ATTR(idle_notify, S_IRUGO, mdss_fb_get_idle_notify, NULL);
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
 	&dev_attr_msm_fb_split.attr,
 	&dev_attr_show_blank_event.attr,
+	&dev_attr_idle_time.attr,
+	&dev_attr_idle_notify.attr,
 	NULL,
 };
 
@@ -483,6 +552,8 @@ static int mdss_fb_probe(struct platform_device *pdev)
 			mfd->splash_thread = NULL;
 		}
 	}
+
+	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
 	return rc;
 }
@@ -798,6 +869,11 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->update.type = NOTIFY_TYPE_UPDATE;
 			mfd->update.is_suspend = 0;
 			mutex_unlock(&mfd->update.lock);
+
+			/* Start the work thread to signal idle time */
+			if (mfd->idle_time)
+				schedule_delayed_work(&mfd->idle_notify_work,
+					msecs_to_jiffies(mfd->idle_time));
 		}
 		break;
 
@@ -923,6 +999,9 @@ static struct fb_ops mdss_fb_ops = {
 	.fb_blank = mdss_fb_blank,	/* blank display */
 	.fb_pan_display = mdss_fb_pan_display,	/* pan display */
 	.fb_ioctl = mdss_fb_ioctl,	/* perform fb specific ioctl */
+#ifdef CONFIG_COMPAT
+	.fb_compat_ioctl = mdss_fb_compat_ioctl,
+#endif
 	.fb_mmap = mdss_fb_mmap,
 };
 
@@ -963,7 +1042,7 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 		of_node_put(fbmem_pnode);
 	}
 
-	pr_info("%s frame buffer reserve_size=0x%x\n", __func__, size);
+	pr_info("%s frame buffer reserve_size=0x%zx\n", __func__, size);
 
 	if (size < PAGE_ALIGN(mfd->fbi->fix.line_length *
 			      mfd->fbi->var.yres_virtual))
@@ -971,7 +1050,7 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 
 	virt = dma_alloc_coherent(&pdev->dev, size, &phys, GFP_KERNEL);
 	if (!virt) {
-		pr_err("unable to alloc fbmem size=%u\n", size);
+		pr_err("unable to alloc fbmem size=%zx\n", size);
 		return -ENOMEM;
 	}
 
@@ -986,8 +1065,8 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 	if (rc)
 		pr_warn("Cannot map fb_mem %pa to IOMMU. rc=%d\n", &phys, rc);
 
-	pr_debug("alloc 0x%xB @ (%pa phys) (0x%x virt) (%pa iova) for fb%d\n",
-		 size, &phys, (unsigned int)virt, &mfd->iova, mfd->index);
+	pr_debug("alloc 0x%zxB @ (%pa phys) (0x%p virt) (%pa iova) for fb%d\n",
+		 size, &phys, virt, &mfd->iova, mfd->index);
 
 	mfd->fbi->screen_base = virt;
 	mfd->fbi->fix.smem_start = phys;
@@ -1242,9 +1321,11 @@ static int mdss_fb_open(struct fb_info *info, int user)
 	struct mdss_fb_proc_info *pinfo = NULL;
 	int result;
 	int pid = current->tgid;
+	struct task_struct *task = current->group_leader;
 
 	if (mfd->shutdown_pending) {
-		pr_err("Shutdown pending. Aborting operation\n");
+		pr_err("Shutdown pending. Aborting operation. Request from pid:%d name=%s\n",
+				pid, task->comm);
 		return -EPERM;
 	}
 
@@ -1548,10 +1629,18 @@ static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 		unsigned long event, void *data)
 {
 	struct msm_sync_pt_data *sync_pt_data;
+	struct msm_fb_data_type *mfd;
 
 	sync_pt_data = container_of(p, struct msm_sync_pt_data, notifier);
+	mfd = container_of(sync_pt_data, struct msm_fb_data_type,
+		mdp_sync_pt_data);
 
 	switch (event) {
+	case MDP_NOTIFY_FRAME_BEGIN:
+		if (mfd->idle_time)
+			mod_delayed_work(system_wq, &mfd->idle_notify_work,
+				msecs_to_jiffies(mfd->idle_time));
+		break;
 	case MDP_NOTIFY_FRAME_READY:
 		if (sync_pt_data->async_wait_fences)
 			mdss_fb_wait_for_fence(sync_pt_data);
@@ -2244,8 +2333,17 @@ static int mdss_fb_display_commit(struct fb_info *info,
 	return ret;
 }
 
-
-static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
+/*
+ * mdss_fb_do_ioctl() - MDSS Framebuffer ioctl function
+ * @info:	pointer to framebuffer info
+ * @cmd:	ioctl command
+ * @arg:	argument to ioctl
+ *
+ * This function provides an architecture agnostic implementation
+ * of the mdss framebuffer ioctl. This function can be called
+ * by compat ioctl or regular ioctl to handle the supported commands.
+ */
+int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg)
 {
 	struct msm_fb_data_type *mfd;
@@ -2260,7 +2358,8 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	mdss_fb_power_setting_idle(mfd);
 	if ((cmd != MSMFB_VSYNC_CTRL) && (cmd != MSMFB_OVERLAY_VSYNC_CTRL) &&
 			(cmd != MSMFB_ASYNC_BLIT) && (cmd != MSMFB_BLIT) &&
-			(cmd != MSMFB_NOTIFY_UPDATE)) {
+			(cmd != MSMFB_NOTIFY_UPDATE) &&
+			(cmd != MSMFB_OVERLAY_PREPARE)) {
 		ret = mdss_fb_pan_idle(mfd);
 		if (ret) {
 			pr_debug("Shutdown pending. Aborting operation %x\n",
@@ -2322,6 +2421,15 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		pr_err("unsupported ioctl (%x)\n", cmd);
 
 	return ret;
+}
+
+static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
+			 unsigned long arg)
+{
+	if (!info || !info->par)
+		return -EINVAL;
+
+	return mdss_fb_do_ioctl(info, cmd, arg);
 }
 
 struct fb_info *msm_fb_get_writeback_fb(void)

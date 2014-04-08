@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -148,7 +148,7 @@ static int q6_hfi_iface_eventq_read(struct q6_hfi_device *device, void *pkt)
 	struct q6_iface_q_info *q_info;
 	unsigned long flags = 0;
 
-	if (!pkt) {
+	if (!device || !pkt) {
 		dprintk(VIDC_ERR, "Invalid Params\n");
 		return -EINVAL;
 	}
@@ -556,6 +556,10 @@ static void *q6_hfi_session_init(void *device, u32 session_id,
 
 	new_session = (struct hal_session *)
 		kzalloc(sizeof(struct hal_session), GFP_KERNEL);
+	if (!new_session) {
+		dprintk(VIDC_ERR, "new session fail: Out of memory\n");
+		return NULL;
+	}
 	new_session->session_id = (u32) session_id;
 	if (session_type == 1)
 		new_session->is_decoder = 0;

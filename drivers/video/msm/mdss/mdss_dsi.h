@@ -17,6 +17,7 @@
 #include <linux/list.h>
 #include <linux/mdss_io_util.h>
 #include <mach/scm-io.h>
+#include <linux/irqreturn.h>
 
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
@@ -245,6 +246,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*registered) (struct mdss_panel_data *data);
 	struct mdss_panel_data panel_data;
 	unsigned char *ctrl_base;
+	struct dss_io_data mmss_misc_io;
 	int reg_size;
 	u32 clk_cnt;
 	int clk_cnt_sub;
@@ -252,6 +254,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct clk *mdp_core_clk;
 	struct clk *ahb_clk;
 	struct clk *axi_clk;
+	struct clk *mmss_misc_ahb_clk;
 	struct clk *byte_clk;
 	struct clk *esc_clk;
 	struct clk *pixel_clk;
@@ -264,11 +267,7 @@ struct mdss_dsi_ctrl_pdata {
 	int disp_te_gpio;
 	int bklt_en_gpio;
 	int mode_gpio;
-	int rst_gpio_requested;
-	int disp_en_gpio_requested;
 	int disp_te_gpio_requested;
-	int mode_gpio_requested;
-	int bklt_en_gpio_requested;
 	int bklt_ctrl;	/* backlight ctrl */
 	int pwm_period;
 	int pwm_pmic_gpio;
@@ -299,6 +298,8 @@ struct mdss_dsi_ctrl_pdata {
 	struct mutex mutex;
 	struct mutex cmd_mutex;
 
+	bool ulps;
+
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
 };
@@ -312,8 +313,7 @@ int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_cmd_desc *cmds, int rlen);
 
-void mdss_dsi_host_init(struct mipi_panel_info *pinfo,
-				struct mdss_panel_data *pdata);
+void mdss_dsi_host_init(struct mdss_panel_data *pdata);
 void mdss_dsi_op_mode_config(int mode,
 				struct mdss_panel_data *pdata);
 void mdss_dsi_cmd_mode_ctrl(int enable);
@@ -360,6 +360,7 @@ void mdss_dsi_wait4video_done(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
+bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl);
 
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
