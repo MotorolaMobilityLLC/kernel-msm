@@ -51,6 +51,23 @@
 
 #include <linux/msm-bus.h>
 
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifdef CONFIG_CHARGER_ASUS
+#include <linux/asus_chg.h>
+#include <linux/asusdebug.h>
+static struct delayed_work asus_chg_work;
+static struct work_struct asus_usb_work;
+static int g_charger_mode = ASUS_CHG_SRC_NONE;
+enum msm_otg_usb_boot_state {
+	MSM_OTG_USB_BOOT_INIT,
+	MSM_OTG_USB_BOOT_IRQ,//check IRQ to make sure USB is ready
+	MSM_OTG_USB_BOOT_DOWN,
+};
+static int g_usb_boot = MSM_OTG_USB_BOOT_INIT;
+#endif
+static bool msm_otg_bsv = 0;
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
+
 #define MSM_USB_BASE	(motg->regs)
 #define DRIVER_NAME	"msm_otg"
 
@@ -1351,7 +1368,7 @@ static void msm_otg_notify_host_mode(struct msm_otg *motg, bool host_mode)
 		power_supply_changed(psy);
 	}
 }
-
+#ifndef CONFIG_BATTERY_ASUS
 static int msm_otg_notify_chg_type(struct msm_otg *motg)
 {
 	static int charger_type;
@@ -1388,7 +1405,8 @@ static int msm_otg_notify_chg_type(struct msm_otg *motg)
 	power_supply_set_supply_type(psy, charger_type);
 	return 0;
 }
-
+#endif
+#ifndef CONFIG_CHARGER_ASUS
 static int msm_otg_notify_power_supply(struct msm_otg *motg, unsigned mA)
 {
 	if (!psy) {
@@ -1424,7 +1442,7 @@ psy_error:
 	dev_dbg(motg->phy.dev, "power supply error when setting property\n");
 	return -ENXIO;
 }
-
+#endif
 static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 {
 	struct usb_gadget *g = motg->phy.otg->gadget;
@@ -1438,15 +1456,16 @@ static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 		motg->chg_type == USB_ACA_C_CHARGER) &&
 			mA > IDEV_ACA_CHG_LIMIT)
 		mA = IDEV_ACA_CHG_LIMIT;
-
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifndef CONFIG_BATTERY_ASUS
 	if (msm_otg_notify_chg_type(motg))
 		dev_err(motg->phy.dev,
 			"Failed notifying %d charger type to PMIC\n",
 							motg->chg_type);
-
+#endif
 	if (motg->cur_power == mA)
 		return;
-
+#ifndef CONFIG_CHARGER_ASUS
 	dev_info(motg->phy.dev, "Avail curr from USB = %u\n", mA);
 
 	/*
@@ -1455,7 +1474,8 @@ static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 	 */
 	if (msm_otg_notify_power_supply(motg, mA))
 		pm8921_charger_vbus_draw(mA);
-
+#endif
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 	motg->cur_power = mA;
 }
 
@@ -2372,6 +2392,40 @@ static const char *chg_to_string(enum usb_chg_type chg_type)
 #define MSM_CHG_DCD_POLL_TIME		(50 * HZ/1000) /* 50 msec */
 #define MSM_CHG_PRIMARY_DET_TIME	(50 * HZ/1000) /* TVDPSRC_ON */
 #define MSM_CHG_SECONDARY_DET_TIME	(50 * HZ/1000) /* TVDMSRC_ON */
+
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifdef CONFIG_CHARGER_ASUS
+static void asus_usb_detect_work(struct work_struct *w)
+{
+	cancel_delayed_work_sync(&asus_chg_work);
+	g_charger_mode = ASUS_CHG_SRC_USB;
+	asus_chg_set_chg_mode(ASUS_CHG_SRC_USB);
+	printk("[USB] set_chg_mode: USB\n");
+}
+static void asus_chg_detect_work(struct work_struct *w)
+{
+	struct msm_otg *motg = the_msm_otg;
+	if(g_usb_boot == MSM_OTG_USB_BOOT_DOWN){
+		if(msm_otg_bsv){
+			g_charger_mode = ASUS_CHG_SRC_UNKNOWN;
+			asus_chg_set_chg_mode(ASUS_CHG_SRC_UNKNOWN);
+			printk("[USB] set_chg_mode: UNKNOWN\n");
+		}
+		else{
+			printk("[USB] asus_chg_detect_work: BSV is not set,need re-check.(%d,%d)\n",msm_otg_bsv,test_bit(B_SESS_VLD, &motg->inputs));
+			queue_work(system_nrt_wq, &motg->sm_work);
+		}
+	}else{
+		printk("[USB] asus_chg_detect_work: g_usb_boot is %d , add more 2 sec\n",g_usb_boot);
+		if(g_usb_boot == MSM_OTG_USB_BOOT_IRQ){
+			g_usb_boot = MSM_OTG_USB_BOOT_DOWN;
+		}
+		schedule_delayed_work(&asus_chg_work, (2000 * HZ/1000));
+	}
+}
+#endif
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
+
 static void msm_chg_detect_work(struct work_struct *w)
 {
 	struct msm_otg *motg = container_of(w, struct msm_otg, chg_work.work);
@@ -2488,7 +2542,9 @@ static void msm_chg_detect_work(struct work_struct *w)
 		 * Notify the charger type to power supply
 		 * owner as soon as we determine the charger.
 		 */
+#ifndef CONFIG_BATTERY_ASUS
 		msm_otg_notify_chg_type(motg);
+#endif
 		msm_chg_block_off(motg);
 		msm_chg_enable_aca_det(motg);
 		/*
@@ -2502,6 +2558,22 @@ static void msm_chg_detect_work(struct work_struct *w)
 		dev_dbg(phy->dev, "chg_type = %s\n",
 			chg_to_string(motg->chg_type));
 		queue_work(system_nrt_wq, &motg->sm_work);
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifdef CONFIG_CHARGER_ASUS
+		if(motg->chg_type != USB_SDP_CHARGER){
+			asus_chg_set_chg_mode(ASUS_CHG_SRC_DC);
+			printk("[USB] set_chg_mode: ASUS AC\n");
+		}
+		else{
+			if(g_usb_boot == MSM_OTG_USB_BOOT_IRQ){
+				g_usb_boot = MSM_OTG_USB_BOOT_DOWN;
+			}
+			//wait 2 sec to check non-asus charger
+			printk("[USB] asus_chg_work: wait 2 sec to check non-asus charger\n");
+			schedule_delayed_work(&asus_chg_work, (2000 * HZ/1000));
+		}
+#endif
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 		return;
 	default:
 		return;
@@ -2682,6 +2754,11 @@ static void msm_otg_sm_work(struct work_struct *w)
 			set_bit(A_BUS_REQ, &motg->inputs);
 			otg->phy->state = OTG_STATE_A_IDLE;
 			work = 1;
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifdef CONFIG_CHARGER_ASUS
+			cancel_delayed_work_sync(&asus_chg_work);
+#endif
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 		} else if (test_bit(B_SESS_VLD, &motg->inputs)) {
 			pr_debug("b_sess_vld\n");
 			switch (motg->chg_state) {
@@ -2763,6 +2840,14 @@ static void msm_otg_sm_work(struct work_struct *w)
 			clear_bit(A_BUS_REQ, &motg->inputs);
 			cancel_delayed_work_sync(&motg->chg_work);
 			dcp = (motg->chg_type == USB_DCP_CHARGER);
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifdef CONFIG_CHARGER_ASUS
+			cancel_delayed_work_sync(&asus_chg_work);
+			g_charger_mode = ASUS_CHG_SRC_NONE;
+			asus_chg_set_chg_mode(ASUS_CHG_SRC_NONE);
+			printk("[USB] set_chg_mode: None\n");
+#endif
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 			motg->chg_state = USB_CHG_STATE_UNDEFINED;
 			motg->chg_type = USB_INVALID_CHARGER;
 			msm_otg_notify_charger(motg, 0);
@@ -2826,6 +2911,11 @@ static void msm_otg_sm_work(struct work_struct *w)
 				test_bit(B_FALSE_SDP, &motg->inputs)) {
 			pr_debug("B_FALSE_SDP\n");
 			msm_otg_start_peripheral(otg, 0);
+#ifdef CONFIG_CHARGER_ASUS
+			cancel_delayed_work_sync(&asus_chg_work);
+			asus_chg_set_chg_mode(ASUS_CHG_SRC_DC);
+			printk("[USB] B_FALSE_SDP set_chg_mode: ASUS AC\n");
+#endif
 			motg->chg_type = USB_DCP_CHARGER;
 			clear_bit(B_FALSE_SDP, &motg->inputs);
 			otg->phy->state = OTG_STATE_B_IDLE;
@@ -3278,6 +3368,18 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 	}
 
 	usbsts = readl(USB_USBSTS);
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifdef CONFIG_CHARGER_ASUS
+	if(usbsts & (1<<6)){//check usb reset
+		if((g_charger_mode!=ASUS_CHG_SRC_USB) && (motg->chg_type != USB_CDP_CHARGER)){
+			schedule_work(&asus_usb_work);
+		}
+	}
+	if(g_usb_boot == MSM_OTG_USB_BOOT_INIT){
+		g_usb_boot = MSM_OTG_USB_BOOT_IRQ;
+	}
+#endif
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 	otgsc = readl(USB_OTGSC);
 
 	if (!(otgsc & OTG_OTGSTS_MASK) && !(usbsts & OTG_USBSTS_MASK))
@@ -3425,11 +3527,22 @@ static void msm_otg_set_vbus_state(int online)
 	struct msm_otg *motg = the_msm_otg;
 	static bool init;
 
+	msm_otg_bsv = online;
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+	if((test_bit(B_SESS_VLD, &motg->inputs) && online) ||
+		(!test_bit(B_SESS_VLD, &motg->inputs) && !online)){
+		if(init){
+			pr_debug("PMIC: BSV already set to %d\n",online);
+		}
+	}
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 	if (online) {
 		pr_debug("PMIC: BSV set\n");
+		printk("[USB] plugin\n");
 		set_bit(B_SESS_VLD, &motg->inputs);
 	} else {
 		pr_debug("PMIC: BSV clear\n");
+		printk("[USB] unplug\n");
 		clear_bit(B_SESS_VLD, &motg->inputs);
 	}
 
@@ -3734,6 +3847,7 @@ static ssize_t msm_otg_bus_write(struct file *file, const char __user *ubuf,
 	return count;
 }
 
+#ifndef CONFIG_CHARGER_ASUS
 static int
 otg_get_prop_usbin_voltage_now(struct msm_otg *motg)
 {
@@ -3861,6 +3975,7 @@ static enum power_supply_property otg_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
+#endif
 
 const struct file_operations msm_otg_bus_fops = {
 	.open = msm_otg_bus_open,
@@ -4065,7 +4180,7 @@ static int msm_otg_setup_devices(struct platform_device *ofdev,
 
 	return retval;
 }
-
+#ifndef CONFIG_CHARGER_ASUS
 static int msm_otg_register_power_supply(struct platform_device *pdev,
 					struct msm_otg *motg)
 {
@@ -4082,7 +4197,7 @@ static int msm_otg_register_power_supply(struct platform_device *pdev,
 	legacy_power_supply = false;
 	return 0;
 }
-
+#endif
 static int msm_otg_ext_chg_open(struct inode *inode, struct file *file)
 {
 	struct msm_otg *motg = the_msm_otg;
@@ -4372,7 +4487,9 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 
 	pdata->rw_during_lpm_workaround = of_property_read_bool(node,
 				"qcom,hsusb-otg-rw-during-lpm-workaround");
-
+#ifdef CONFIG_CHARGER_ASUS
+	pdata->otg_control = OTG_PMIC_CONTROL;
+#endif
 	return pdata;
 }
 
@@ -4698,6 +4815,12 @@ static int msm_otg_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&motg->chg_work, msm_chg_detect_work);
 	INIT_DELAYED_WORK(&motg->pmic_id_status_work, msm_pmic_id_status_w);
 	INIT_DELAYED_WORK(&motg->suspend_work, msm_otg_suspend_work);
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifdef CONFIG_CHARGER_ASUS
+	INIT_WORK(&asus_usb_work, asus_usb_detect_work);
+	INIT_DELAYED_WORK(&asus_chg_work, asus_chg_detect_work);
+#endif
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support
 	setup_timer(&motg->id_timer, msm_otg_id_timer_func,
 				(unsigned long) motg);
 	setup_timer(&motg->chg_check_timer, msm_otg_chg_check_timer_func,
@@ -4812,7 +4935,11 @@ static int msm_otg_probe(struct platform_device *pdev)
 			lpm_disconnect_thresh);
 		pm_runtime_use_autosuspend(&pdev->dev);
 	}
-
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifdef CONFIG_CHARGER_ASUS
+	if (motg->pdata->otg_control == OTG_PMIC_CONTROL)
+		registerChargerInOutNotificaition(&msm_otg_set_vbus_state);
+#else
 	motg->usb_psy.name = "usb";
 	motg->usb_psy.type = POWER_SUPPLY_TYPE_USB;
 	motg->usb_psy.supplied_to = otg_pm_power_supplied_to;
@@ -4836,7 +4963,8 @@ static int msm_otg_probe(struct platform_device *pdev)
 
 	if (legacy_power_supply && pdata->otg_control == OTG_PMIC_CONTROL)
 		pm8921_charger_register_vbus_sn(&msm_otg_set_vbus_state);
-
+#endif
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 	ret = msm_otg_setup_ext_chg_cdev(motg);
 	if (ret)
 		dev_dbg(&pdev->dev, "fail to setup cdev\n");
@@ -4943,7 +5071,11 @@ static int msm_otg_remove(struct platform_device *pdev)
 	cancel_delayed_work_sync(&motg->pmic_id_status_work);
 	cancel_delayed_work_sync(&motg->suspend_work);
 	cancel_work_sync(&motg->sm_work);
-
+//ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
+#ifdef CONFIG_CHARGER_ASUS
+	cancel_delayed_work_sync(&asus_chg_work);
+#endif
+//ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 	pm_runtime_resume(&pdev->dev);
 
 	device_init_wakeup(&pdev->dev, 0);
