@@ -4270,15 +4270,25 @@ exit:
  * Work around of the unavailability of a power_reset functionality in SD cards
  * by turning the OFF & back ON the regulators supplying the SD card.
  */
+#define HW_RESET_DELAY_INCREMENT	5000
+#define HW_RESET_DELAY_RANGE		2000
+#define HW_RESET_DELAY_MAX		100000
 void msmsdcc_hw_reset(struct mmc_host *mmc)
 {
 	struct mmc_card *card = mmc->card;
 	struct msmsdcc_host *host = mmc_priv(mmc);
+	unsigned long delay = HW_RESET_DELAY_INCREMENT * 2;
 	int rc;
 
 	/* Write-protection bits would be lost on a hardware reset in emmc */
 	if (!card || !mmc_card_sd(card))
 		return;
+
+	if (card)
+		delay += card->failures * HW_RESET_DELAY_INCREMENT;
+	if (delay > HW_RESET_DELAY_MAX)
+		delay = HW_RESET_DELAY_MAX;
+	pr_debug("%s: host reset (%lu uS)\n", mmc_hostname(host->mmc), delay);
 
 	/*
 	 * Continuing on failing to disable regulator would lead to a panic
@@ -4292,8 +4302,8 @@ void msmsdcc_hw_reset(struct mmc_host *mmc)
 		BUG_ON(rc);
 	}
 
-	/* 10ms delay for the supply to reach the desired voltage level */
-	usleep_range(10000, 12000);
+	/* Let the rails drain. */
+	usleep_range(delay, delay + HW_RESET_DELAY_RANGE);
 
 	/*
 	 * Continuing on failing to enable regulator would lead to a panic
@@ -4307,8 +4317,8 @@ void msmsdcc_hw_reset(struct mmc_host *mmc)
 		BUG_ON(rc);
 	}
 
-	/* 10ms delay for the supply to reach the desired voltage level */
-	usleep_range(10000, 12000);
+	/* Let the rails settle. */
+	usleep_range(delay, delay + HW_RESET_DELAY_RANGE);
 }
 
 static int msmsdcc_notify_load(struct mmc_host *mmc, enum mmc_load state)
