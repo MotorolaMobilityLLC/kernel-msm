@@ -15,6 +15,7 @@
 #include <linux/proc_fs.h>
 #include <linux/apanic_mmc.h>
 #include <soc/qcom/socinfo.h>
+#include <linux/pstore.h>
 
 struct mmi_msm_bin {
 	int	set;
@@ -32,6 +33,7 @@ static DEFINE_SPINLOCK(mmi_msm_bin_lock);
 static inline void mmi_panic_annotate(const char *str)
 {
 	apanic_mmc_annotate(str);
+	pstore_annotate(str);
 }
 
 static void __init mmi_msm_annotate_socinfo(void)
