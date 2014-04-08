@@ -4051,15 +4051,14 @@ static int synaptics_rmi4_resume(struct device *dev)
 		retval = synaptics_rmi4_check_configuration(rmi4_data);
 		if (retval < 0) {
 			dev_err(dev, "Failed to check configuration\n");
-			return retval;
+			goto err_check_configuration;
 		}
-		goto err_check_configuration;
+		rmi4_data->suspended = false;
 	}
 
 	return 0;
 
 err_check_configuration:
-	rmi4_data->suspended = false;
 	synaptics_rmi4_irq_enable(rmi4_data, false);
 	rmi4_data->touch_stopped = true;
 	synaptics_rmi4_sensor_sleep(rmi4_data);
@@ -4096,16 +4095,6 @@ static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 	.resume  = synaptics_rmi4_resume,
 };
 #else
-static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
-{
-	return;
-};
-
-static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data)
-{
-	return;
-}
-
 static int synaptics_rmi4_suspend(struct device *dev)
 {
 	return 0;
