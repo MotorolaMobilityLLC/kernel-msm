@@ -26,7 +26,7 @@ static int __init androidboot_recovery(char *p)
 		androidboot_is_recovery = 1;
 	return 0;
 }
-early_param("androidboot.recovery", androidboot_recovery);
+early_param("androidboot.boot_recovery", androidboot_recovery);
 
 static int __init androidboot_mode(char *p)
 {
