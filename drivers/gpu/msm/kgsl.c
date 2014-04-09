@@ -2459,7 +2459,7 @@ static int kgsl_setup_phys_file(struct kgsl_mem_entry *entry,
 	entry->memdesc.hostptr = (void *) (virt + offset);
 	/* USE_CPU_MAP is not impemented for PMEM. */
 	entry->memdesc.flags &= ~KGSL_MEMFLAGS_USE_CPU_MAP;
-	entry->memdesc.flags = KGSL_MEMFLAGS_USERMEM_PMEM;
+	entry->memdesc.flags |= KGSL_MEMFLAGS_USERMEM_PMEM;
 
 	ret = memdesc_sg_phys(&entry->memdesc, phys + offset, size);
 	if (ret)
@@ -2601,7 +2601,7 @@ static int kgsl_setup_useraddr(struct kgsl_mem_entry *entry,
 	entry->memdesc.useraddr = param->hostptr;
 	if (kgsl_memdesc_use_cpu_map(&entry->memdesc))
 		entry->memdesc.gpuaddr = entry->memdesc.useraddr;
-	entry->memdesc.flags = KGSL_MEMFLAGS_USERMEM_ADDR;
+	entry->memdesc.flags |= KGSL_MEMFLAGS_USERMEM_ADDR;
 
 	return memdesc_sg_virt(&entry->memdesc, NULL);
 }
@@ -2629,7 +2629,7 @@ static int kgsl_setup_ashmem(struct kgsl_mem_entry *entry,
 	entry->memdesc.useraddr = useraddr;
 	if (kgsl_memdesc_use_cpu_map(&entry->memdesc))
 		entry->memdesc.gpuaddr = entry->memdesc.useraddr;
-	entry->memdesc.flags = KGSL_MEMFLAGS_USERMEM_ASHMEM;
+	entry->memdesc.flags |= KGSL_MEMFLAGS_USERMEM_ASHMEM;
 
 	ret = memdesc_sg_virt(&entry->memdesc, vmfile);
 	if (ret)
@@ -2676,7 +2676,7 @@ static int kgsl_setup_dma_buf(struct kgsl_mem_entry *entry,
 	entry->memdesc.size = 0;
 	/* USE_CPU_MAP is not impemented for ION. */
 	entry->memdesc.flags &= ~KGSL_MEMFLAGS_USE_CPU_MAP;
-	entry->memdesc.flags = KGSL_MEMFLAGS_USERMEM_ION;
+	entry->memdesc.flags |= KGSL_MEMFLAGS_USERMEM_ION;
 
 	sg_table = dma_buf_map_attachment(attach, DMA_TO_DEVICE);
 
@@ -2783,6 +2783,7 @@ long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 	 * determined by type of allocation being mapped.
 	 */
 	param->flags &= KGSL_MEMFLAGS_GPUREADONLY
+			| KGSL_MEMTYPE_MASK
 			| KGSL_MEMALIGN_MASK
 			| KGSL_MEMFLAGS_USE_CPU_MAP;
 
@@ -3607,7 +3608,8 @@ err_put:
 static inline bool
 mmap_range_valid(unsigned long addr, unsigned long len)
 {
-	return ((ULONG_MAX - addr) > len) && ((addr + len) < TASK_SIZE);
+	return ((ULONG_MAX - addr) > len) && ((addr + len) <
+		TASK_SIZE);
 }
 
 /**
@@ -3684,7 +3686,15 @@ static int kgsl_check_gpu_addr_collision(
 			if (flag_top_down) {
 				addr = collision_entry->memdesc.gpuaddr - len;
 				if (addr > collision_entry->memdesc.gpuaddr) {
-					ret = -EOVERFLOW;
+					KGSL_CORE_ERR_ONCE(
+					"Underflow err ent:%x/%zx, addr:%lx/%lx align:%u",
+					collision_entry->memdesc.gpuaddr,
+					kgsl_memdesc_mmapsize(
+						&collision_entry->memdesc),
+					addr, len, align);
+					*gpumap_free_addr =
+						TASK_SIZE;
+					ret = -EAGAIN;
 					break;
 				}
 			} else {
@@ -3692,8 +3702,17 @@ static int kgsl_check_gpu_addr_collision(
 					kgsl_memdesc_mmapsize(
 						&collision_entry->memdesc);
 				/* overflow check */
-				if (addr < collision_entry->memdesc.gpuaddr) {
-					ret = -EOVERFLOW;
+				if (addr < collision_entry->memdesc.gpuaddr ||
+					!mmap_range_valid(addr, len)) {
+					KGSL_CORE_ERR_ONCE(
+					"Overflow err ent:%x/%zx, addr:%lx/%lx align:%u",
+					collision_entry->memdesc.gpuaddr,
+					kgsl_memdesc_mmapsize(
+						&collision_entry->memdesc),
+					addr, len, align);
+					*gpumap_free_addr =
+						TASK_SIZE;
+					ret = -EAGAIN;
 					break;
 				}
 			}

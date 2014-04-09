@@ -1686,18 +1686,18 @@ int mdss_mdp_pp_setup(struct mdss_mdp_ctl *ctl)
 
 	/* TODO: have some sort of reader/writer lock to prevent unclocked
 	 * access while display power is toggled */
-	if (!ctl->mfd->panel_power_on) {
+	mutex_lock(&ctl->lock);
+	if (!ctl->power_on) {
 		ret = -EPERM;
 		goto error;
 	}
-	mutex_lock(&ctl->mfd->lock);
 	ret = mdss_mdp_pp_setup_locked(ctl);
-	mutex_unlock(&ctl->mfd->lock);
 error:
+	mutex_unlock(&ctl->lock);
+
 	return ret;
 }
 
-/* call only when holding and mfd->lock */
 int mdss_mdp_pp_setup_locked(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_data_type *mdata = ctl->mdata;
@@ -3838,12 +3838,24 @@ void mdss_mdp_hist_intr_done(u32 isr)
 			spin_unlock(&hist_info->hist_lock);
 			if (need_complete)
 				complete(&hist_info->comp);
+		} else if (hist_info && (isr_blk & 0x1) &&
+				!(hist_info->col_en)) {
+			/*
+			 * Histogram collection is disabled yet we got an
+			 * interrupt somehow.
+			 */
+			pr_err("Hist[%d] Done interrupt, col_en=false!\n",
+				blk_idx);
 		}
 		/* Histogram Reset Done Interrupt */
 		if (hist_info && (isr_blk & 0x2) && (hist_info->col_en)) {
-				spin_lock(&hist_info->hist_lock);
-				hist_info->col_state = HIST_IDLE;
-				spin_unlock(&hist_info->hist_lock);
+			spin_lock(&hist_info->hist_lock);
+			hist_info->col_state = HIST_IDLE;
+			spin_unlock(&hist_info->hist_lock);
+		} else if (hist_info && (isr_blk & 0x2) &&
+				!(hist_info->col_en)) {
+			pr_err("Hist[%d] Reset Done interrupt, col_en=false!\n",
+				blk_idx);
 		}
 	};
 }
@@ -4700,10 +4712,10 @@ static void pp_ad_calc_worker(struct work_struct *work)
 		ctl->remove_vsync_handler(ctl, &ad->handle);
 	}
 	mutex_unlock(&ad->lock);
-	mutex_lock(&mfd->lock);
 	/* dspp3 doesn't have ad attached to it so following is safe */
+	mutex_lock(&ctl->lock);
 	ctl->flush_bits |= BIT(13 + ad->num);
-	mutex_unlock(&mfd->lock);
+	mutex_unlock(&ctl->lock);
 
 	/* Trigger update notify to wake up those waiting for display updates */
 	mdss_fb_update_notify_update(bl_mfd);
