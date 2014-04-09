@@ -85,25 +85,12 @@ int stm401_reset_and_init(void)
 {
 	struct stm401_platform_data *pdata;
 	struct timespec current_time;
-	int stm401_req_gpio;
-	int stm401_req_value;
 	unsigned int i;
 	int err, ret_err = 0;
-
+	int mutex_locked = 0;
 	dev_dbg(&stm401_misc_data->client->dev, "stm401_reset_and_init\n");
-	if (stm401_misc_data->is_suspended)
-		return ret_err;
 
 	pdata = stm401_misc_data->pdata;
-
-	if (stm401_misc_data->ap_stm401_handoff_ctrl) {
-		stm401_req_gpio = pdata->gpio_mipi_req;
-		stm401_req_value = gpio_get_value(stm401_req_gpio);
-		if (stm401_req_value)
-			gpio_set_value(stm401_req_gpio, 0);
-	} else {
-		stm401_req_value = 0;
-	}
 
 	stm401_reset(pdata);
 	stm401_i2c_retry_delay = 200;
@@ -213,36 +200,21 @@ int stm401_reset_and_init(void)
 	if (err < 0)
 		ret_err = err;
 
-	if (stm401_req_value) {
-		getnstimeofday(&current_time);
-		current_time.tv_sec += stm401_time_delta;
+	getnstimeofday(&current_time);
+	current_time.tv_sec += stm401_time_delta;
 
-		stm401_cmdbuff[0] = AP_POSIX_TIME;
-		stm401_cmdbuff[1] = (unsigned char)(current_time.tv_sec >> 24);
-		stm401_cmdbuff[2] = (unsigned char)((current_time.tv_sec >> 16)
-			& 0xff);
-		stm401_cmdbuff[3] = (unsigned char)((current_time.tv_sec >> 8)
-			& 0xff);
-		stm401_cmdbuff[4] = (unsigned char)((current_time.tv_sec)
-			& 0xff);
-		err = stm401_i2c_write_no_reset(stm401_misc_data,
-						stm401_cmdbuff, 5);
-		if (err < 0)
-			ret_err = err;
-
-		if (stm401_g_control_reg_restore) {
-			stm401_cmdbuff[0] = STM401_CONTROL_REG;
-			memcpy(&stm401_cmdbuff[1], stm401_g_control_reg,
-				STM401_CONTROL_REG_SIZE);
-			err = stm401_i2c_write_no_reset(stm401_misc_data,
-				stm401_cmdbuff,
-				STM401_CONTROL_REG_SIZE);
-			if (err < 0)
-				ret_err = err;
-		}
-
-		gpio_set_value(stm401_req_gpio, 1);
-	}
+	stm401_cmdbuff[0] = AP_POSIX_TIME;
+	stm401_cmdbuff[1] = (unsigned char)(current_time.tv_sec >> 24);
+	stm401_cmdbuff[2] = (unsigned char)((current_time.tv_sec >> 16)
+		& 0xff);
+	stm401_cmdbuff[3] = (unsigned char)((current_time.tv_sec >> 8)
+		& 0xff);
+	stm401_cmdbuff[4] = (unsigned char)((current_time.tv_sec)
+		& 0xff);
+	err = stm401_i2c_write_no_reset(stm401_misc_data,
+					stm401_cmdbuff, 5);
+	if (err < 0)
+		ret_err = err;
 
 	stm401_cmdbuff[0] = MAG_CAL;
 	memcpy(&stm401_cmdbuff[1], stm401_g_mag_cal, STM401_MAG_CAL_SIZE);
@@ -265,6 +237,11 @@ int stm401_reset_and_init(void)
 	/* sending reset to slpc hal */
 	stm401_ms_data_buffer_write(stm401_misc_data, DT_RESET,
 		NULL, 0);
+
+	mutex_locked = mutex_trylock(&stm401_misc_data->lock);
+	stm401_quickpeek_reset_locked(stm401_misc_data);
+	if (mutex_locked)
+		mutex_unlock(&stm401_misc_data->lock);
 
 	return ret_err;
 }
