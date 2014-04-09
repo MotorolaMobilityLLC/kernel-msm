@@ -101,6 +101,13 @@ enum dsi_lane_map_type {
 	DSI_LANE_MAP_3210,
 };
 
+enum mdss_dsi_panel_state {
+	DSI_DISP_OFF_SLEEP_OUT,
+	DSI_DISP_ON_SLEEP_OUT,
+	DSI_DISP_OFF_SLEEP_IN,
+	DSI_DISP_INVALID_STATE
+};
+
 #define CTRL_STATE_UNKNOWN		0x00
 #define CTRL_STATE_PANEL_INIT		BIT(0)
 #define CTRL_STATE_MDP_ACTIVE		BIT(1)
