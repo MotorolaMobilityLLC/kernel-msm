@@ -112,8 +112,10 @@
 		reg-names = "dsi_ctrl", "dsi_phy", "mmss_misc_phys";
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
-		vdd-supply = <&pm8226_l15>;
-		vddio-supply = <&pm8226_l8>;
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Enable 320x320 panel"
+		vdd-supply = <&pm8226_l19>; 
+		vddio-supply = <&pm8226_l6>;
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Enable 320x320 panel"		
 		vdda-supply = <&pm8226_l4>;
 		qcom,platform-reset-gpio = <&msmgpio 25 0>;
 		qcom,platform-te-gpio = <&msmgpio 24 0>;
@@ -126,9 +128,9 @@
 			00 00 00 00 0f 00 00 01 97
 			00 c0 00 00 00 00 00 01 bb];
 		qcom,platform-supply-entry1 {
-			qcom,supply-name = "vdd";
-			qcom,supply-min-voltage = <2800000>;
-			qcom,supply-max-voltage = <2800000>;
+			qcom,supply-name = "vdd"; // VREG_L19_2P85V
+			qcom,supply-min-voltage = <2850000>;
+			qcom,supply-max-voltage = <2850000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
 			qcom,supply-pre-on-sleep = <0>;
@@ -137,7 +139,7 @@
 			qcom,supply-post-off-sleep = <0>;
 		};
 		qcom,platform-supply-entry2 {
-			qcom,supply-name = "vddio";
+			qcom,supply-name = "vddio"; // VREG_L6_1P8V
 			qcom,supply-min-voltage = <1800000>;
 			qcom,supply-max-voltage = <1800000>;
 			qcom,supply-enable-load = <100000>;
@@ -160,12 +162,14 @@
 		};
 	};
 
+/*
 	qcom,mdss_wb_panel {
 		compatible = "qcom,mdss_wb";
 		qcom,mdss_pan_res = <1280 720>;
 		qcom,mdss_pan_bpp = <24>;
 		qcom,mdss-fb-map = <&mdss_fb1>;
 	};
+*/
 };
 
 #include "WI500Q_SR_msm8226-mdss-panels.dtsi"
