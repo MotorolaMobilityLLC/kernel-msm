@@ -416,6 +416,7 @@
 };
 
 &pm8226_vadc {
+	qcom,adc-batt-therm-type = <2>;
 	chan@14 {
 		label = "pa_therm0";
 		reg = <0x14>;
@@ -442,6 +443,7 @@
 
 &pm8226_adc_tm {
 
+	qcom,adc-batt-therm-type = <2>;
 	/delete-node/ chan@17;
 };
 
