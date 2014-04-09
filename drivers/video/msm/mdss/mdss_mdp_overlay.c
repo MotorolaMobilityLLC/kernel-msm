@@ -2872,6 +2872,82 @@ static struct attribute_group factory_te_attrs_group = {
 	.attrs = factory_te_attrs,
 };
 
+static ssize_t hbm_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+
+	if (!ctl) {
+		pr_warning("there is no ctl attached to fb\n");
+		return -ENODEV;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d\n",
+			ctl->panel_data->panel_info.hbm_state);
+}
+
+static ssize_t hbm_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	int enable;
+	int r;
+
+	if (!ctl) {
+		pr_warning("there is no ctl attached to fb\n");
+		r = -ENODEV;
+		goto end;
+	}
+
+	r = kstrtoint(buf, 0, &enable);
+	if ((r) || ((enable != 0) && (enable != 1))) {
+		pr_err("invalid HBM value = %d\n",
+			enable);
+		r = -EINVAL;
+		goto end;
+	}
+
+	mutex_lock(&ctl->offlock);
+	if (mfd->panel_power_state != MDSS_PANEL_POWER_ON) {
+		pr_warning("panel is not powered\n");
+		r = -EPERM;
+		goto unlock;
+	}
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	r = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_ENABLE_HBM,
+				(void *)(unsigned long)enable);
+	if (r) {
+		pr_err("Failed sending HBM command, r = %d\n", r);
+		r = -EFAULT;
+	} else
+		pr_info("HBM state changed by sysfs, state = %d\n", enable);
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+
+unlock:
+	mutex_unlock(&ctl->offlock);
+
+end:
+	return r ? r : count;
+}
+
+static DEVICE_ATTR(hbm, S_IWUSR | S_IWGRP | S_IRUSR | S_IRGRP,
+		hbm_show, hbm_store);
+
+static struct attribute *hbm_attrs[] = {
+	&dev_attr_hbm.attr,
+	NULL,
+};
+
+static struct attribute_group hbm_attrs_group = {
+	.attrs = hbm_attrs,
+};
 
 static ssize_t mdss_mdp_vsync_show_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -5326,6 +5402,15 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 					&factory_te_attrs_group);
 		if (rc) {
 			pr_err("Error factory te sysfs creation ret=%d\n", rc);
+			goto init_fail;
+		}
+	}
+
+	if (mfd->panel_info->hbm_feature_enabled) {
+		rc = sysfs_create_group(&dev->kobj,
+					&hbm_attrs_group);
+		if (rc) {
+			pr_err("Error for HBM sysfs creation ret = %d\n", rc);
 			goto init_fail;
 		}
 	}

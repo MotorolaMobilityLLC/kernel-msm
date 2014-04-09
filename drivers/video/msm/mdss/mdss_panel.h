@@ -198,6 +198,7 @@ struct mdss_intf_recovery {
  * @MDSS_EVENT_PANEL_TIMING_SWITCH: Panel timing switch is requested.
  *				Argument provided is new panel timing.
  * @MDSS_EVENT_ENABLE_TE: Change TE state, used for factory testing only
+ * @MDSS_EVENT_ENABLE_HBM:     Enable "High Brightness Mode" feature on panel
  */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -226,6 +227,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_RESET_WRITE_PTR,
 	MDSS_EVENT_PANEL_TIMING_SWITCH,
 	MDSS_EVENT_ENABLE_TE,
+	MDSS_EVENT_ENABLE_HBM,
 };
 
 struct lcd_panel_info {
@@ -449,6 +451,8 @@ struct mdss_panel_info {
 	struct ion_handle *splash_ihdl;
 	int panel_power_state;
 	int blank_state;
+	bool hbm_feature_enabled;
+	bool hbm_state;
 
 	uint32_t panel_dead;
 	u32 panel_force_dead;
