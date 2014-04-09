@@ -117,12 +117,14 @@ static struct gpiomux_setting gyro_int = {				//LIS3DSH
 };
 //ASUS_BSP --- Maggie_Lee "Sensors Porting"
 
+//ASUS_BSP +++ Cliff_Yu "Touch Porting"
 static struct gpiomux_setting touch_int = {				//IT7260
     .func = GPIOMUX_FUNC_GPIO,
     .drv = GPIOMUX_DRV_2MA,
     .pull = GPIOMUX_PULL_NONE,
     .dir = GPIOMUX_OUT_LOW,
 };
+//ASUS_BSP --- Cliff_Yu "Touch Porting"
 
 // ASUS_BSP BerylHou +++ "BT config"
 static struct gpiomux_setting gpio_uart_config = { // BT uart

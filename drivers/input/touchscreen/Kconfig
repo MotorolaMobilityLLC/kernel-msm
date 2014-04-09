@@ -1011,4 +1011,8 @@ config TOUCHSCREEN_GT9XX
 
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 
+config TOUCHSCREEN_IT7262
+        tristate "IT7262 touchscreen"
+        depends on I2C
+
 endif
