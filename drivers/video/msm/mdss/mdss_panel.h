@@ -164,6 +164,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_ENABLE_PARTIAL_UPDATE,
 	MDSS_EVENT_DSI_ULPS_CTRL,
 	MDSS_EVENT_ENABLE_TE,
+	MDSS_EVENT_ENABLE_HBM,
 };
 
 struct lcd_panel_info {
@@ -330,6 +331,8 @@ struct mdss_panel_info {
 	struct ion_handle *splash_ihdl;
 	u32 panel_power_on;
 	bool hs_cmds_post_init;
+	bool hbm_feature_enabled;
+	bool hbm_state;
 
 	uint32_t panel_dead;
 
