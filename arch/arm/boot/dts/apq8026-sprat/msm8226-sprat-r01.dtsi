@@ -111,48 +111,6 @@
 		charger,full_check_current = <50 0 50 50 50 50 50 50 0 50 50 50 0 0 50>;
 	};
 
-	i2c@f9924000 { /* BLSP1 QUP2 */
-		mpu6500_input@68 {
-			compatible = "invensense,mpu_6500";
-			reg = <0x68>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <64 0>;
-			invensense,i2c-pull-up = <1>;
-			invensense-i2c,reg_vdd = "8226_l6";
-			invensense-i2c,reg_vio = "8226_lvs1";
-			invensense,acc_cal_path = "/efs/calibration_data";
-			invensense,gyro_cal_path = "/efs/gyro_cal_data";
-		};
-		k3dh@19 {
-			compatible = "stm,k3dh";
-			reg = <0x19>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <54 0>;
-			stm,i2c-pull-up = <1>;
-			stm,reg_vdd = "8226_l19";
-			stm,reg_vio = "8226_lvs1";
-		};
-		HSCDTD008@0c {
-			compatible = "magnetic,HSCDTD008";
-			reg = <0x0c>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <66 0>;
-			HSCDTD008-i2c,irq_gpio = <&msmgpio 66 0x1>;
-			HSCDTD008-i2c,reg_vdd = "8226_l19";
-			HSCDTD008-i2c,reg_vio = "8226_lvs1";
-		};
-		gp2a030@39 {
-			compatible = "gp2a,gp2a030";
-			reg = <0x39>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <65 0>;
-			gp2a,vdd_en-gpio = <&msmgpio 49 0>;
-			gp2a,p_out-gpio = <&msmgpio 65 0>;
-			gp2a,prox_cal_path = "/data/prox_cal";
-			gp2a,vdd_2p85 = "8226_l19";
-		};
-	};
-
 	i2c@20 {
 		status="disabled";
 	};
@@ -181,10 +139,6 @@
 		};
 	};
 
-	alps {
-			compatible = "alps-input";
-	};
-
 	spi@f9923000 {
 		STM32F@0 {
 			compatible = "ssp,STM32F";
@@ -197,7 +151,7 @@
 			ssp-ap-int = <&msmgpio 108 0x00>;
 			ssp-reset = <&msmgpio 92 0x00>;
 
-			ssp-acc-position = <7>;
+			ssp-acc-position = <3>;
 			ssp-mag-position = <0>;
 			ssp-ap-rev = <0>;
 
