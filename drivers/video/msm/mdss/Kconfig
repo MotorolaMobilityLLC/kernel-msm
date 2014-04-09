@@ -47,3 +47,10 @@ config MMI_PANEL_NOTIFICATIONS
 	default n
 	---help---
 	MMI panel notifications framework
+
+config MDSS_QUICKDRAW
+	select FB_QUICKDRAW
+	bool "MDSS quickdraw"
+	default n
+	---help---
+	  MDSS support for Framebuffer quickdraw

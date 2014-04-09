@@ -45,3 +45,5 @@ obj-$(CONFIG_FB_MSM_MDSS) += mdss_fb.o
 obj-$(CONFIG_FB_MSM_MDSS_DSI_CTRL_STATUS) += mdss_dsi_status.o
 obj-$(CONFIG_FB_MSM_MDSS_TIMEOUT_DUMP) += mdss_timeout.o
 obj-$(CONFIG_MMI_PANEL_NOTIFICATIONS) += mmi_panel_notifier.o
+
+obj-$(CONFIG_MDSS_QUICKDRAW) += mdss_quickdraw.o

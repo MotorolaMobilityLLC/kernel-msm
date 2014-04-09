@@ -227,6 +227,11 @@ struct msm_fb_data_type {
 
 	u32 dcm_state;
 	struct list_head proc_list;
+
+	int (*quickdraw_fb_cleanup)(struct msm_fb_data_type *mfd);
+	int (*quickdraw_fb_prepare)(struct msm_fb_data_type *mfd);
+	bool quickdraw_in_progress;
+	u32 quickdraw_panel_state;
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
@@ -257,4 +262,7 @@ struct sync_fence *mdss_fb_sync_get_fence(struct sw_sync_timeline *timeline,
 				const char *fence_name, int val);
 int mdss_fb_register_mdp_instance(struct msm_mdp_interface *mdp);
 int mdss_fb_dcm(struct msm_fb_data_type *mfd, int req_state);
+int mdss_fb_pan_display_ex(struct fb_info *info,
+			   struct mdp_display_commit *disp_commit);
+
 #endif /* MDSS_FB_H */
