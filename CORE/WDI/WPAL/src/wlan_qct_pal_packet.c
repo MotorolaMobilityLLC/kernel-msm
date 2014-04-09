@@ -479,7 +479,7 @@ WPT_STATIC WPT_INLINE void* itGetOSPktAddrFromDevice( wpt_packet *pPacket )
    }
    else
    {
-     if(skb->data == skb->tail)
+     if((uintptr_t)skb->data == (uintptr_t)skb->tail)
      {
 #ifdef WLAN_BUG_ON_SKB_ERROR
        wpalDevicePanic();

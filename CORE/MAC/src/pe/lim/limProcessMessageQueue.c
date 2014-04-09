@@ -247,7 +247,7 @@ limDeferMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
     }
     else
     {
-        limLog(pMac, LOGE, FL("Dropped lim message (0x%X)"), pMsg->type);
+        limLog(pMac, LOG1, FL("Dropped lim message (0x%X)"), pMsg->type);
         MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DROPPED));)
     }
 

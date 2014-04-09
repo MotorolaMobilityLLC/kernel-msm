@@ -1707,6 +1707,7 @@ void pmmExitImpsResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus)
     case eHAL_STATUS_SUCCESS:
         {
             resultCode = eSIR_SME_SUCCESS;
+            pMac->pmm.gPmmState = ePMM_STATE_IMPS_WAKEUP;
             PELOG2(pmmLog(pMac, LOG2, 
                           FL("pmmImps: Received WDA_EXIT_IMPS_RSP with Successful response from HAL"));)
         }
@@ -1715,14 +1716,16 @@ void pmmExitImpsResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus)
         default:
             {
                 resultCode = eSIR_SME_IMPS_REQ_FAILED;
+                /* Set the status back to IMPS SLEEP as we failed
+                 * to come out of sleep
+                 */
+                pMac->pmm.gPmmState = ePMM_STATE_IMPS_SLEEP;
                 PELOGW(pmmLog(pMac, LOGW, 
                               FL("pmmImps: Received WDA_EXIT_IMPS_RSP with Failure Status from HAL"));)
             }
             break;
 
     }
-
-    pMac->pmm.gPmmState = ePMM_STATE_IMPS_WAKEUP;
 
     //update power save statistics
     pmmImpsUpdateWakeupStats(pMac);
