@@ -78,6 +78,7 @@ struct tfa9890_priv {
 	int curr_vol_idx;
 	int ic_version;
 	char const *tfa_dev;
+	char const *fw_path;
 };
 
 static DEFINE_MUTEX(lr_lock);
@@ -139,7 +140,6 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 };
 
 /* presets tables per volume step for different modes */
-static char const *fw_path;
 
 static char const *tfa9890_preset_tables[] = {
 	"tfa9890_music_table.preset",
@@ -806,16 +806,18 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	/* check IC version to get correct firmware */
 	tfa9890->ic_version = tfa9890_get_ic_ver(codec);
 	if (tfa9890->ic_version == TFA9890_N1C2) {
-		scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890_n1c2.patch",
-				fw_path);
+		scnprintf(fw_name, FIRMWARE_NAME_SIZE,
+				"%s/%s.tfa9890_n1c2.patch",
+				tfa9890->fw_path, tfa9890->tfa_dev);
 		ret = request_firmware(&fw_patch, fw_name, codec->dev);
 		if (ret) {
 			pr_err("tfa9890: Failed to locate tfa9890_n1c2.patch");
 			goto out;
 		}
 	} else if (tfa9890->ic_version == TFA9890_N1B12) {
-		scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890_n1b12.patch",
-				fw_path);
+		scnprintf(fw_name, FIRMWARE_NAME_SIZE,
+				"%s/%s.tfa9890_n1b12.patch",
+				tfa9890->fw_path, tfa9890->tfa_dev);
 		ret = request_firmware(&fw_patch, fw_name, codec->dev);
 		if (ret) {
 			pr_err("tfa9890: Failed to locate tfa9890_n1b12.patch");
@@ -832,7 +834,8 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 		}
 	}
 
-	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.speaker", fw_path);
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/%s.tfa9890.speaker",
+			tfa9890->fw_path, tfa9890->tfa_dev);
 	ret = request_firmware(&fw_speaker, fw_name, codec->dev);
 	if (ret) {
 		pr_err("tfa9890: Failed to locate speaker model!!");
@@ -847,7 +850,8 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 			fw_speaker->size, TFA9890_DSP_WRITE, 0);
 	if (ret < 0)
 		goto out;
-	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.config", fw_path);
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/%s.tfa9890.config",
+		tfa9890->fw_path, tfa9890->tfa_dev);
 	ret = request_firmware(&fw_config, fw_name, codec->dev);
 	if (ret) {
 		pr_err("tfa9890: Failed to locate dsp config!!");
@@ -867,7 +871,8 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	ret = tfa9890_set_mode(tfa9890);
 	if (ret < 0)
 		goto out;
-	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.eq", fw_path);
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/%s.tfa9890.eq",
+		tfa9890->fw_path, tfa9890->tfa_dev);
 	ret = request_firmware(&fw_coeff, fw_name, codec->dev);
 
 	if (ret) {
@@ -977,8 +982,9 @@ static void tfa9890_load_preset(struct work_struct *work)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(fw_pst_table); i++) {
-		scnprintf(preset_name, FIRMWARE_NAME_SIZE, "%s/%s",
-				fw_path, tfa9890_preset_tables[i]);
+		scnprintf(preset_name, FIRMWARE_NAME_SIZE, "%s/%s.%s",
+				tfa9890->fw_path, tfa9890->tfa_dev,
+				tfa9890_preset_tables[i]);
 		ret = request_firmware(&fw_pst_table[i],
 				preset_name,
 				codec->dev);
@@ -1691,14 +1697,14 @@ tfa9890_of_init(struct i2c_client *client)
 	struct tfa9890_pdata *pdata;
 	struct device_node *np = client->dev.of_node;
 
-	if (of_property_read_string(np, "tfa9890_bin_path", &fw_path))
-		fw_path = ".";
-
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
 		pr_err("%s : pdata allocation failure\n", __func__);
 		return NULL;
 	}
+	if (of_property_read_string(np, "nxp,tfa9890_bin_path",
+				&pdata->fw_path))
+		pdata->fw_path = ".";
 
 	of_property_read_u32(np, "nxp,tfa_max-vol-steps",
 				&pdata->max_vol_steps);
@@ -1754,6 +1760,7 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	tfa9890->vol_idx = pdata->max_vol_steps;
 	tfa9890->curr_vol_idx = pdata->max_vol_steps;
 	tfa9890->tfa_dev = pdata->tfa_dev;
+	tfa9890->fw_path = pdata->fw_path;
 	i2c_set_clientdata(i2c, tfa9890);
 	mutex_init(&tfa9890->dsp_init_lock);
 	mutex_init(&tfa9890->i2c_rw_lock);
