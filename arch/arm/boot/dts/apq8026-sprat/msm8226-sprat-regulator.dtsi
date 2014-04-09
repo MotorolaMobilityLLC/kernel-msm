@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,4 +10,16 @@
  * GNU General Public License for more details.
  */
 
-/include/ "dsi_panel_samsung_oled_320p_cmd.dtsi"
+/* RPM controlled regulators: */
+&rpm_bus {
+	rpm-regulator-ldoa19 {
+		status = "okay";
+		pm8226_l19: regulator-l19 {
+			regulator-name = "8226_l19";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			qcom,init-voltage = <2850000>;
+			status = "okay";
+		};
+	};
+};

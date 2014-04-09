@@ -25,12 +25,6 @@
 	};
 
 	memory {
-		secure_mem: secure_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0x6D00000>;
-			label = "secure_mem";
-		};
-
 		adsp_mem: adsp_region@0 {
 			linux,reserve-contiguous-region;
 			reg = <0 0x2a00000>;
@@ -63,7 +57,7 @@
 /include/ "msm8226-ion.dtsi"
 /include/ "../qcom/msm8226-camera.dtsi"
 /include/ "../qcom/msm-gdsc.dtsi"
-/include/ "msm8226-iommu.dtsi"
+/include/ "../qcom/msm8226-iommu.dtsi"
 /include/ "../qcom/msm8226-smp2p.dtsi"
 /include/ "../qcom/msm8226-gpu.dtsi"
 /include/ "../qcom/msm8226-bus.dtsi"
@@ -263,31 +257,6 @@
 		reg = <0xf991f000 0x1000>;
 		interrupts = <0 109 0>;
 		status = "disabled";
-	};
-
-	uart6: uart@f9922000 { /* BLSP1 UART5 */
-		compatible = "qcom,msm-hsuart-v14";
-		status = "ok";
-		reg = <0xf9922000 0x1000>,
-			<0xf9904000 0x19000>;
-		reg-names = "core_mem", "bam_mem";
-		interrupt-names = "core_irq", "bam_irq";
-		#address-cells = <0>;
-		interrupt-parent = <&uart6>;
-		interrupts = <0 1>;
-		#interrupt-cells = <1>;
-		interrupt-map-mask = <0xffffffff>;
-		interrupt-map = <0 &intc 0 112 0
-						1 &intc 0 238 0>;
-
-		qcom,bam-tx-ep-pipe-index = <10>;
-		qcom,bam-rx-ep-pipe-index = <11>;
-		qcom,msm-bus,name = "uart6";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<86 512 0 0>,
-				<86 512 500 800>;
 	};
 
 	qcom,msm-imem@fe805000 {
@@ -1117,7 +1086,6 @@
 		qcom,i2c-src-freq = <19200000>;
 		qcom,sda-gpio = <&msmgpio 18 0>;
 		qcom,scl-gpio = <&msmgpio 19 0>;
-		qcom,master-id = <86>;
 	};
 
 	qcom,clock-a7@f9011050 {
@@ -1300,12 +1268,6 @@
 					0x0fa00000 0x500000>; /* Address and Size of Hole */
 	};
 
-	/* CONFIG_SEC_DEBUG : CONFIG_ANDROID_RAM_CONSOLE */
-	ram_console {
-		compatible = "ram_console";
-		bootinfo = <0>;
-	};
-
 	tsens: tsens@fc4a8000 {
 		compatible = "qcom,msm8x26-tsens";
 		reg = <0xfc4a8000 0x2000>,
@@ -1362,7 +1324,7 @@
 		qcom,gpio-mosi = <&msmgpio 0 0>;
 		qcom,gpio-miso = <&msmgpio 1 0>;
 		qcom,gpio-clk  = <&msmgpio 3 0>;
-		qcom,gpio-cs0  = <&msmgpio 2 0>;
+		qcom,gpio-cs0  = <&msmgpio 22 0>;
 
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;
@@ -1535,7 +1497,7 @@
 
 /include/ "../qcom/msm-pm8226-rpm-regulator.dtsi"
 /include/ "../qcom/msm-pm8226.dtsi"
-/include/ "msm8226-regulator.dtsi"
+/include/ "../qcom/msm8226-regulator.dtsi"
 
 &pm8226_vadc {
 	chan@0 {
