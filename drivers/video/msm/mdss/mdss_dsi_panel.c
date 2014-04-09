@@ -30,6 +30,7 @@
 #include <mach/mmi_panel_notifier.h>
 
 #include "mdss_dsi.h"
+#include "mdss_fb.h"
 #include "dsi_v2.h"
 
 #define DT_CMD_HDR 6
@@ -644,10 +645,85 @@ static int mdss_dsi_panel_cont_splash_on(struct mdss_panel_data *pdata)
 	return 0;
 }
 
+static void panel_full_reinit(struct mdss_panel_data *pdata)
+{
+	mdss_dsi_panel_reset(pdata, 0);
+	mdss_dsi_panel_regulator_on(pdata, 0);
+	msleep(200);
+	mdss_dsi_panel_regulator_on(pdata, 1);
+	mdss_dsi_panel_reset(pdata, 1);
+}
+
+static unsigned int detect_panel_state(u8 pwr_mode)
+{
+	unsigned int panel_state = DSI_DISP_INVALID_STATE;
+
+	switch (pwr_mode & 0x14) {
+	case 0x14:
+		panel_state = DSI_DISP_ON_SLEEP_OUT;
+		break;
+	case 0x10:
+		panel_state = DSI_DISP_OFF_SLEEP_OUT;
+		break;
+	case 0x00:
+		panel_state = DSI_DISP_OFF_SLEEP_IN;
+		break;
+	}
+
+	return panel_state;
+}
+
+static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct mipi_panel_info *mipi;
+	struct msm_fb_data_type *mfd;
+	u8 pwr_mode = 0;
+	int force_full_enable = 0;
+	unsigned int panel_state = 0;
+	int ret = 0;
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+	mipi  = &pdata->panel_info.mipi;
+
+	mfd = pdata->mfd;
+
+	mdss_dsi_get_pwr_mode(pdata, &pwr_mode);
+
+	panel_state = detect_panel_state(pwr_mode);
+	if (panel_state == DSI_DISP_INVALID_STATE) {
+		pr_warn("%s: detected invalid panel state\n", __func__);
+		force_full_enable = 1;
+	}
+
+	if (!force_full_enable) {
+		if (mfd->quickdraw_panel_state == DSI_DISP_INVALID_STATE) {
+			pr_warn("%s: quickdraw requests full reinitialization\n",
+				__func__);
+			force_full_enable = 1;
+		} else if (mfd->quickdraw_panel_state != panel_state) {
+			pr_warn("%s: panel state is %d while %d expected\n",
+				__func__, panel_state,
+				mfd->quickdraw_panel_state);
+			force_full_enable = 1;
+		} else if (mfd->quickdraw_panel_state == DSI_DISP_OFF_SLEEP_IN)
+			ret = 1;
+	}
+
+	if (force_full_enable) {
+		panel_full_reinit(pdata);
+		ret = -1;
+	}
+
+	return ret;
+}
+
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct msm_fb_data_type *mfd;
 	u8 pwr_mode = 0;
 
 	if (pdata == NULL) {
@@ -659,9 +735,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
+	mfd = pdata->mfd;
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
-	mmi_panel_notify(MMI_PANEL_EVENT_PRE_DISPLAY_ON, NULL);
+	if (!mfd->quickdraw_in_progress)
+		mmi_panel_notify(MMI_PANEL_EVENT_PRE_DISPLAY_ON, NULL);
 
 	if (ctrl->partial_mode_enabled) {
 		/* If we're doing partial display, we need to turn on the
@@ -683,9 +761,18 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	if (ctrl->panel_config.bare_board == true) {
-		mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
+		if (!mfd->quickdraw_in_progress)
+			mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
 		pr_warn("%s: This is bare_board configuration\n", __func__);
 		goto end;
+	}
+
+	if (mfd->quickdraw_in_progress) {
+		if (!mdss_dsi_quickdraw_check_panel_state(pdata)) {
+			pr_debug("%s: in quickdraw, SH configured the panel already\n",
+				__func__);
+			goto end;
+		}
 	}
 
 	if (ctrl->on_cmds.cmd_cnt)
@@ -694,7 +781,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	/* Send display on notification.  This will need to be revisited once
 	   we implement command mode support the way we want, since display
 	   may not be made visible to user until a point later than this */
-	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
+	if (!mfd->quickdraw_in_progress)
+		mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode);
 	/* validate screen is actually on */
@@ -718,6 +806,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 {
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct msm_fb_data_type *mfd;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -727,15 +816,21 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+	mfd = pdata->mfd;
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
-	mmi_panel_notify(MMI_PANEL_EVENT_PRE_DISPLAY_OFF, NULL);
+
+	if (!mfd->quickdraw_in_progress)
+		mmi_panel_notify(MMI_PANEL_EVENT_PRE_DISPLAY_OFF, NULL);
 
 	if (ctrl->panel_config.bare_board == true)
 		goto disable_regs;
 
-	if (ctrl->off_cmds.cmd_cnt)
+	if (mfd->quickdraw_in_progress)
+		pr_debug("%s: in quickdraw, SH wants the panel SLEEP OUT\n",
+			__func__);
+	else if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
 disable_regs:
@@ -746,7 +841,8 @@ disable_regs:
 		mdss_dsi_panel_regulator_on(pdata, 0);
 	}
 
-	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_OFF, NULL);
+	if (!mfd->quickdraw_in_progress)
+		mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_OFF, NULL);
 
 	pr_info("%s-:\n", __func__);
 
@@ -1628,6 +1724,14 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	pinfo->hs_cmds_post_init = of_property_read_bool(np,
 		"qcom,mdss-dsi-hs-cmds-post-init");
+
+	pinfo->quickdraw_enabled = of_property_read_bool(np,
+						"mmi,quickdraw-enabled");
+	if (pinfo->quickdraw_enabled) {
+		pr_info("%s:%d Quickdraw enabled.\n", __func__, __LINE__);
+	} else {
+		pr_info("%s:%d Quickdraw disabled.\n", __func__, __LINE__);
+	}
 
 	return 0;
 

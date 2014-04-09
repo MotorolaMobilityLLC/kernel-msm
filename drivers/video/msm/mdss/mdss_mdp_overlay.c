@@ -34,6 +34,7 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
+#include "mdss_quickdraw.h"
 #include "mdss_timeout.h"
 
 #include "splash.h"
@@ -645,7 +646,7 @@ exit_fail:
 	return ret;
 }
 
-static int mdss_mdp_overlay_set(struct msm_fb_data_type *mfd,
+int mdss_mdp_overlay_set(struct msm_fb_data_type *mfd,
 				struct mdp_overlay *req)
 {
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
@@ -765,7 +766,7 @@ static void __mdss_mdp_overlay_free_list_add(struct msm_fb_data_type *mfd,
 	memset(buf, 0, sizeof(*buf));
 }
 
-static void mdss_mdp_overlay_cleanup(struct msm_fb_data_type *mfd)
+void mdss_mdp_overlay_cleanup(struct msm_fb_data_type *mfd)
 {
 	struct mdss_mdp_pipe *pipe, *tmp;
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
@@ -1153,7 +1154,7 @@ static int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx)
 	return 0;
 }
 
-static int mdss_mdp_overlay_unset(struct msm_fb_data_type *mfd, int ndx)
+int mdss_mdp_overlay_unset(struct msm_fb_data_type *mfd, int ndx)
 {
 	int ret = 0;
 	struct mdss_overlay_private *mdp5_data;
@@ -1343,7 +1344,7 @@ static void mdss_mdp_overlay_force_dma_cleanup(struct mdss_data_type *mdata)
 	}
 }
 
-static int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
+int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
 				 struct msmfb_overlay_data *req)
 {
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
@@ -2743,7 +2744,8 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		(mfd->panel_info->type != DTV_PANEL)) {
 		rc = mdss_mdp_overlay_start(mfd);
 		if (!IS_ERR_VALUE(rc) &&
-			(mfd->panel_info->type != WRITEBACK_PANEL))
+			(mfd->panel_info->type != WRITEBACK_PANEL) &&
+			!mfd->quickdraw_in_progress)
 			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
 	} else {
 		rc = mdss_mdp_ctl_setup(mdp5_data->ctl);
@@ -3231,6 +3233,9 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			rc = 0;
 		}
 	}
+
+	if (mfd->index == 0 && mfd->panel_info->quickdraw_enabled)
+		mdss_quickdraw_register(mfd);
 
 	return rc;
 init_fail:
