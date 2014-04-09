@@ -270,6 +270,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*cont_splash_on) (struct mdss_panel_data *pdata);
 	int (*get_dt_vreg_data) (struct device *dev,
 			struct dss_module_power *mp, struct device_node *node);
+	int (*set_hbm)(struct mdss_dsi_ctrl_pdata *ctrl, int state);
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
 	struct mdss_panel_esd_pdata panel_esd_data;
@@ -339,6 +340,9 @@ struct mdss_dsi_ctrl_pdata {
 	bool check_status_disabled;
 	int mipi_d0_sel;
 	bool partial_mode_enabled;
+
+	struct dsi_panel_cmds hbm_on_cmds;
+	struct dsi_panel_cmds hbm_off_cmds;
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,
