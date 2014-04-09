@@ -671,6 +671,48 @@ ifeq ($(shell $(CONFIG_SHELL) $(srctree)/scripts/gcc-goto.sh $(CC)), y)
 	KBUILD_CFLAGS += -DCC_HAVE_ASM_GOTO
 endif
 
+# ASUS_BSP : miniporting : jackson : add ASUS software version support +++
+ifneq ($(BUILD_NUMBER),)
+        KBUILD_CPPFLAGS += -DASUS_SW_VER=\"$(BUILD_NUMBER)\"
+else
+        KBUILD_CPPFLAGS += -DASUS_SW_VER=\"$(ASUS_BUILD_PROJECT)_ENG\"
+endif
+# ASUS_BSP : miniporting : jackson : add ASUS software version support ---
+
+# ASUS_BSP +++ Jason "support mutliple project build"
+ifneq ($(ASUS_BUILD_PROJECT),)
+        KBUILD_CPPFLAGS += -DASUS_$(ASUS_BUILD_PROJECT)_PROJECT=1
+endif
+# ASUS_BSP --- Jason "support mutliple project build"
+# ASUS_BSP +++ Jason "factory compile option support"
+ifneq ($(ASUS_FACTORY_BUILD),)
+        KBUILD_CPPFLAGS += -DASUS_FACTORY_BUILD=1
+endif
+# ASUS_BSP --- Jason "factory compile option support"
+# ASUS_BSP : for user build
+ifeq ($(TARGET_BUILD_VARIANT), user)
+        KBUILD_CPPFLAGS += -DASUS_SHIP_BUILD=1
+#        KBUILD_CPPFLAGS += -DASUS_DOWNLOAD_MODE_DISABLE=1
+endif
+# ASUS_BSP : for user build
+
+# ASUS_BSP : for userdebug build
+ifeq ($(TARGET_BUILD_VARIANT), userdebug)
+        KBUILD_CPPFLAGS += -DASUS_USERDEBUG_BUILD=1
+#        KBUILD_CPPFLAGS += -DASUS_DOWNLOAD_MODE_DISABLE=1
+endif
+# ASUS_BSP : for userdebug build
+
+# ASUS_BSP : for eng build
+ifeq ($(TARGET_BUILD_VARIANT), eng)
+        KBUILD_CPPFLAGS += -DASUS_ENG_BUILD=1
+endif
+# ASUS_BSP : for eng build
+
+# +++ ASUS_BSP : for passing building android
+KBUILD_CPPFLAGS += -DKERNEL_VERSION_310
+# --- ASUS_BSP : for passing building android
+
 # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments
 KBUILD_CPPFLAGS += $(KCPPFLAGS)
 KBUILD_AFLAGS += $(KAFLAGS)
