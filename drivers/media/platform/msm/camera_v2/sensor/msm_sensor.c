@@ -1826,6 +1826,9 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		cdata->cfg.sensor_otp.hw_rev = s_ctrl->sensor_otp.hw_rev;
 		cdata->cfg.sensor_otp.asic_rev = s_ctrl->sensor_otp.asic_rev;
 		cdata->cfg.sensor_otp.cal_ver = s_ctrl->sensor_otp.cal_ver;
+		cdata->cfg.sensor_otp.otp_read = s_ctrl->sensor_otp.otp_read;
+		cdata->cfg.sensor_otp.otp_crc_pass =
+			s_ctrl->sensor_otp.otp_crc_pass;
 		for (i = 0; i < 4; i++)
 			cdata->cfg.sensor_otp.sn[i] = s_ctrl->sensor_otp.sn[i];
 
