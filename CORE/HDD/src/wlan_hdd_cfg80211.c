@@ -8396,11 +8396,20 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         return -EBUSY;
     }
 
+    if (TRUE == pHddCtx->isPnoEnable)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+                  FL("already PNO is enabled"));
+       return -EBUSY;
+    }
+    pHddCtx->isPnoEnable = TRUE;
+
     pPnoRequest = (tpSirPNOScanReq) vos_mem_malloc(sizeof (tSirPNOScanReq));
     if (NULL == pPnoRequest)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
                   "%s: vos_mem_malloc failed", __func__);
+        pHddCtx->isPnoEnable = FALSE;
         return -ENOMEM;
     }
 
@@ -8570,11 +8579,13 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     }
 
     ret = pAdapter->pno_req_status;
+    return ret;
 
 error:
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
               FL("PNO scanRequest offloaded ret = %d"), ret);
     vos_mem_free(pPnoRequest);
+    pHddCtx->isPnoEnable = FALSE;
     return ret;
 }
 
@@ -8663,6 +8674,7 @@ static int wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
         ret = -EINVAL;
         goto error;
     }
+    pHddCtx->isPnoEnable = FALSE;
 
 error:
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
