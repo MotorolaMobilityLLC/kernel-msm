@@ -194,6 +194,7 @@ struct mdss_intf_recovery {
  *				- MIPI_VIDEO_PANEL: switch to video mode
  *				- MIPI_CMD_PANEL: switch to command mode
  * @MDSS_EVENT_ENABLE_TE: Change TE state, used for factory testing only
+ * @MDSS_EVENT_ENABLE_HBM:     Enable "High Brightness Mode" feature on panel
  */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -220,6 +221,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_DYNAMIC_SWITCH,
 	MDSS_EVENT_DSI_RECONFIG_CMD,
 	MDSS_EVENT_ENABLE_TE,
+	MDSS_EVENT_ENABLE_HBM,
 };
 
 struct lcd_panel_info {
@@ -432,6 +434,8 @@ struct mdss_panel_info {
 	struct ion_handle *splash_ihdl;
 	int panel_power_state;
 	int blank_state;
+	bool hbm_feature_enabled;
+	bool hbm_state;
 
 	uint32_t panel_dead;
 	u32 panel_force_dead;
