@@ -153,23 +153,63 @@ enum msm_pcm_routing_event {
 	MSM_PCM_RT_EVT_MAX,
 };
 
-/* dai_id: front-end ID,
- * dspst_id:  DSP audio stream ID
- * stream_type: playback or capture
- */
-void msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode, int dspst_id,
-	int stream_type);
-void msm_pcm_routing_reg_psthr_stream(int fedai_id, int dspst_id,
-		int stream_type);
+#define INVALID_SESSION -1
+#define SESSION_TYPE_RX 0
+#define SESSION_TYPE_TX 1
+#define INT_RX_VOL_MAX_STEPS 0x2000
+#define INT_RX_VOL_GAIN 0x2000
 
+#define RELEASE_LOCK	0
+#define ACQUIRE_LOCK	1
 struct msm_pcm_routing_evt {
 	void (*event_func)(enum msm_pcm_routing_event, void *);
 	void *priv_data;
 };
 
-void msm_pcm_routing_reg_phy_stream_v2(int fedai_id, bool perf_mode,
-				       int dspst_id, int stream_type,
-				       struct msm_pcm_routing_evt event_info);
+struct msm_pcm_routing_bdai_data {
+	u16 port_id; /* AFE port ID */
+	u8 active; /* track if this backend is enabled */
+	unsigned long fe_sessions; /* Front-end sessions */
+	u64 port_sessions; /* track Tx BE ports -> Rx BE
+			    * number of BE should not exceed
+			    * the size of this field
+			    */
+	unsigned int  sample_rate;
+	unsigned int  channel;
+	unsigned int  format;
+};
+
+struct msm_pcm_routing_fdai_data {
+	u16 be_srate; /* track prior backend sample rate for flushing purpose */
+	int strm_id; /* ASM stream ID */
+	int perf_mode;
+	struct msm_pcm_routing_evt event_info;
+};
+
+#define MAX_APP_TYPES	16
+struct msm_pcm_routing_app_type_data {
+	int app_type;
+	u32 sample_rate;
+	int bit_width;
+};
+
+struct msm_pcm_stream_app_type_cfg {
+	int app_type;
+	int acdb_dev_id;
+};
+
+/* dai_id: front-end ID,
+ * dspst_id:  DSP audio stream ID
+ * stream_type: playback or capture
+ */
+int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode, int dspst_id,
+				   int stream_type);
+void msm_pcm_routing_reg_psthr_stream(int fedai_id, int dspst_id,
+		int stream_type);
+
+int msm_pcm_routing_reg_phy_stream_v2(int fedai_id, bool perf_mode,
+				      int dspst_id, int stream_type,
+				      struct msm_pcm_routing_evt event_info);
 
 void msm_pcm_routing_dereg_phy_stream(int fedai_id, int stream_type);
 
@@ -180,4 +220,14 @@ int multi_ch_pcm_set_volume(unsigned volume);
 uint32_t get_adm_rx_topology(void);
 
 uint32_t get_adm_tx_topology(void);
+
+void msm_pcm_routing_get_bedai_info(int be_idx,
+				    struct msm_pcm_routing_bdai_data *bedai);
+void msm_pcm_routing_get_fedai_info(int fe_idx, int sess_type,
+				    struct msm_pcm_routing_fdai_data *fe_dai);
+void msm_pcm_routing_acquire_lock(void);
+void msm_pcm_routing_release_lock(void);
+
+void msm_pcm_routing_reg_stream_app_type_cfg(int fedai_id, int app_type,
+						int acdb_dev_id);
 #endif /*_MSM_PCM_H*/

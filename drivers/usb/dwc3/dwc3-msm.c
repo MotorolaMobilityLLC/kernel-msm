@@ -1040,13 +1040,19 @@ static void dwc3_block_reset_usb_work(struct work_struct *w)
 			DWC3_DEVTEN_CMDCMPLTEN |
 			DWC3_DEVTEN_ERRTICERREN |
 			DWC3_DEVTEN_WKUPEVTEN |
-			DWC3_DEVTEN_ULSTCNGEN |
 			DWC3_DEVTEN_CONNECTDONEEN |
 			DWC3_DEVTEN_USBRSTEN |
 			DWC3_DEVTEN_DISCONNEVTEN);
+	/*
+	 * Enable SUSPENDEVENT(BIT:6) for version 230A and above
+	 * else enable USB Link change event (BIT:3) for older version
+	 */
+	if (dwc3_msm_read_reg(mdwc->base, DWC3_GSNPSID) < DWC3_REVISION_230A)
+		reg |= DWC3_DEVTEN_ULSTCNGEN;
+	else
+		reg |= DWC3_DEVTEN_SUSPEND;
+
 	dwc3_msm_write_reg(mdwc->base, DWC3_DEVTEN, reg);
-
-
 }
 
 static void dwc3_chg_enable_secondary_det(struct dwc3_msm *mdwc)
@@ -2356,16 +2362,6 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 					dev_err(&pdev->dev, "irqreq IDINT failed\n");
 					goto disable_ref_clk;
 				}
-
-				local_irq_save(flags);
-				/* Update initial ID state */
-				mdwc->id_state =
-					!!irq_read_line(mdwc->pmic_id_irq);
-				if (mdwc->id_state == DWC3_ID_GROUND)
-					queue_work(system_nrt_wq,
-							&mdwc->id_work);
-				local_irq_restore(flags);
-				enable_irq_wake(mdwc->pmic_id_irq);
 			}
 		}
 
@@ -2585,6 +2581,16 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	pm_runtime_set_active(mdwc->dev);
 	pm_runtime_enable(mdwc->dev);
+
+	/* Update initial ID state */
+	if (mdwc->pmic_id_irq) {
+		local_irq_save(flags);
+		mdwc->id_state = !!irq_read_line(mdwc->pmic_id_irq);
+		if (mdwc->id_state == DWC3_ID_GROUND)
+			queue_work(system_nrt_wq, &mdwc->id_work);
+		local_irq_restore(flags);
+		enable_irq_wake(mdwc->pmic_id_irq);
+	}
 
 	if (of_property_read_bool(node, "qcom,reset_hsphy_sleep_clk_on_init")) {
 		ret = clk_reset(mdwc->hsphy_sleep_clk, CLK_RESET_ASSERT);
