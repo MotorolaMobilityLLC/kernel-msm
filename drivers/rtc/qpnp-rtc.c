@@ -42,8 +42,6 @@
 
 #define NUM_8_BIT_RTC_REGS	0x4
 
-#define ANDROID_EPOCH		1227312001
-
 #define TO_SECS(arr)		(arr[0] | (arr[1] << 8) | (arr[2] << 16) | \
 							(arr[3] << 24))
 
@@ -267,8 +265,6 @@ qpnp_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	}
 
 	secs = TO_SECS(value);
-	if (secs < ANDROID_EPOCH)
-		secs = ANDROID_EPOCH;
 
 	rtc_time_to_tm(secs, tm);
 
