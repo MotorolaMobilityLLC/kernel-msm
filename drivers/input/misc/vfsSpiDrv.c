@@ -825,9 +825,9 @@ vfsspi_probe_cs_failed:
 vfsspi_probe_sleep_failed:
 	gpio_free(vfsspi_device->drdy_pin);
 vfsspi_probe_drdy_failed:
-	kfree(vfsspi_device);
 	mutex_destroy(&vfsspi_device->buffer_mutex);
 	mutex_destroy(&vfsspi_device->kernel_lock);
+	kfree(vfsspi_device);
 	pr_err("vfsspi_probe failed!!\n");
 	return status;
 }
