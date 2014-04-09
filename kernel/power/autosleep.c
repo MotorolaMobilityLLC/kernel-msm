@@ -101,6 +101,9 @@ int pm_autosleep_set_state(suspend_state_t state)
 
 	__pm_relax(autosleep_ws);
 
+	/* Print active wakeup sources */
+	wakeup_sources_stats_active();
+
 	if (state > PM_SUSPEND_ON) {
 		pm_wakep_autosleep_enabled(true);
 		queue_up_suspend_work();

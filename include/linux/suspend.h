@@ -463,4 +463,7 @@ static inline void page_key_write(void *address) {}
 
 #endif /* !CONFIG_ARCH_SAVE_PAGE_KEYS */
 
+/* Print wakeup-source list when pms set autosleep*/
+int wakeup_sources_stats_active(void);
+
 #endif /* _LINUX_SUSPEND_H */
