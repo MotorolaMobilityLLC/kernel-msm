@@ -794,6 +794,9 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	if (ctrl->panel_config.bare_board == true)
 		goto end;
 
+	if (ctrl->set_hbm)
+		ctrl->set_hbm(ctrl, 0);
+
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
@@ -1576,6 +1579,63 @@ static void mdss_dsi_parse_dfps_config(struct device_node *pan_node,
 	return;
 }
 
+static int mdss_panel_parse_hbm(struct device_node *np,
+				struct mdss_panel_info *pinfo,
+				struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int rc;
+	const char *data;
+
+	/* Default HBM feature to off */
+	pinfo->hbm_state = 0;
+	pinfo->hbm_feature_enabled = 0;
+
+	data = of_get_property(np, "qcom,mdss-dsi-hbm-on-command", NULL);
+	if (!data)
+		return 0;
+
+	rc = mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->hbm_on_cmds,
+				"qcom,mdss-dsi-hbm-on-command", NULL);
+	if (rc) {
+		pr_err("%s : Failed parsing HBM on commands, rc = %d\n",
+			__func__, rc);
+		return rc;
+	}
+
+	rc = mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->hbm_off_cmds,
+				"qcom,mdss-dsi-hbm-off-command", NULL);
+	if (rc) {
+		pr_err("%s : Failed parsing HBM off commands, rc = %d\n",
+			__func__, rc);
+		return rc;
+	}
+	pinfo->hbm_feature_enabled = 1;
+	return 0;
+}
+
+int mdss_dsi_panel_set_hbm(struct mdss_dsi_ctrl_pdata *ctrl, int state)
+{
+	if (!ctrl->panel_data.panel_info.hbm_feature_enabled) {
+		pr_debug("HBM is disabled, ignore request\n");
+		return 0;
+	}
+
+	if (ctrl->panel_data.panel_info.hbm_state == state) {
+		pr_debug("HBM already in request state %d\n",
+			state);
+		return 0;
+	}
+
+	if (state)
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->hbm_on_cmds);
+	else
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->hbm_off_cmds);
+
+	ctrl->panel_data.panel_info.hbm_state = state;
+
+	return 0;
+}
+
 static int mdss_panel_parse_dt(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -1915,6 +1975,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_dfps_config(np, ctrl_pdata);
 
+	if (mdss_panel_parse_hbm(np, pinfo, ctrl_pdata)) {
+		pr_err("Error parsing HBM\n");
+		goto error;
+	}
+
 	return 0;
 
 error:
@@ -2116,6 +2181,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->low_power_config = mdss_dsi_panel_low_power_config;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
+	ctrl_pdata->set_hbm = mdss_dsi_panel_set_hbm;
 
 	return 0;
 }
