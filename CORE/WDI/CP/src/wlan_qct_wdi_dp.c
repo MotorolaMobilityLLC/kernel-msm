@@ -458,8 +458,17 @@ WDI_FillTxBd
         pBd->dpuRF = BMUWQ_BTQM_TX_MGMT; 
     }
 
-    if(ucTxFlag & WDI_USE_FW_IN_TX_PATH)
+    if (ucTxFlag & WDI_USE_FW_IN_TX_PATH)
+    {
+        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+          "iType: %d SubType %d, MAC S: %08x. MAC D: %08x., Tid=%d",
+                    ucType, ucSubType,
+                    *((wpt_uint32 *) pAddr2),
+                   *((wpt_uint32 *) pDestMacAddr),
+                    ucTid);
+
         pBd->dpuRF = BMUWQ_FW_DPU_TX;
+    }
 
     pBd->tid           = ucTid; 
     // Clear the reserved field as this field is used for defining special 
@@ -917,6 +926,10 @@ WDI_FillTxBd
 #endif
                   (ucTxFlag & WDI_TRIGGER_ENABLED_AC_MASK)) || isEapol)
        {
+          WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,
+          "Sending EAPOL pakcet over WQ5 MAC S: %08x. MAC D: %08x.",
+                    *((wpt_uint32 *) pAddr2),
+                   *((wpt_uint32 *) pDestMacAddr));
            pBd->dpuRF = BMUWQ_FW_DPU_TX;
        }
 #endif

@@ -1353,6 +1353,15 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             {
                 pmcLog(pMac, LOGE, FL("Response message to request to exit "
                    "IMPS indicates failure, status %x"), pMsg->statusCode);
+                if( eHAL_STATUS_SUCCESS ==
+                      pmcSendMessage(pMac, eWNI_PMC_EXIT_IMPS_REQ, NULL, 0) )
+                {
+                    fRemoveCommand = eANI_BOOLEAN_FALSE;
+                    pMac->pmc.pmcState = REQUEST_FULL_POWER;
+                    pmcLog(pMac, LOGE, FL("eWNI_PMC_EXIT_IMPS_REQ sent again"
+                                          " to PE"));
+                    break;
+                }
             }
             pmcEnterFullPowerState(pMac);
         break;

@@ -1324,6 +1324,12 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
      */
     txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
 
+    if (SIR_MAC_MGMT_ACTION == pFc->subType)
+    {
+        limLog( pMac, LOG1, FL("Sending Action Frame over WQ5"));
+        txFlag |= HAL_USE_FW_IN_TX_PATH;
+    }
+
     if ( (SIR_MAC_MGMT_PROBE_RSP == pFc->subType) ||
          (pMbMsg->noack)
         )
