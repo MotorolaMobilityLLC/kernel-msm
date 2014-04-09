@@ -380,10 +380,7 @@ stm401_of_init(struct i2c_client *client)
 	pdata->gpio_reset = of_get_gpio(np, 1);
 	pdata->gpio_bslen = of_get_gpio(np, 2);
 	pdata->gpio_wakeirq = of_get_gpio(np, 3);
-#if 0
-	pdata->gpio_mipi_req = of_get_gpio(np, 4);
-	pdata->gpio_mipi_busy = of_get_gpio(np, 5);
-#endif
+
 	if (of_get_property(np, "lux_table", &len) == NULL) {
 		dev_err(&stm401_misc_data->client->dev,
 			"lux_table len access failure\n");
@@ -545,55 +542,8 @@ static int stm401_gpio_init(struct stm401_platform_data *pdata,
 		pr_warn("%s: gpio wake irq not specified\n", __func__);
 	}
 
-#if 0
-	if (gpio_is_valid(pdata->gpio_mipi_req)) {
-		err = gpio_request(pdata->gpio_mipi_req, "mipi_d0_req");
-		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
-				"mipi_req_gpio gpio_request failed: %d\n", err);
-			goto free_wakeirq;
-		}
-		gpio_direction_output(pdata->gpio_mipi_req, 0);
-		err = gpio_export(pdata->gpio_mipi_req, 0);
-		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
-				"mipi_req_gpio gpio_export failed: %d\n", err);
-			goto free_mipi_req;
-		}
-		stm401_misc_data->ap_stm401_handoff_ctrl = true;
-	} else {
-		stm401_misc_data->ap_stm401_handoff_ctrl = false;
-		pr_warn("%s: gpio mipi req not specified\n", __func__);
-	}
-
-	if (gpio_is_valid(pdata->gpio_mipi_busy)) {
-		err = gpio_request(pdata->gpio_mipi_busy, "mipi_d0_busy");
-		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
-				"mipi_d0_busy gpio_request failed: %d\n", err);
-			goto free_mipi_req;
-		}
-		gpio_direction_input(pdata->gpio_mipi_busy);
-		err = gpio_export(pdata->gpio_mipi_busy, 0);
-		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
-				"mipi_d0_busy gpio_export failed: %d\n", err);
-			goto free_mipi_busy;
-		}
-	} else {
-		stm401_misc_data->ap_stm401_handoff_ctrl = false;
-		pr_warn("%s: gpio mipi busy not specified\n", __func__);
-	}
-#endif
-
 	return 0;
 
-#if 0
-free_mipi_busy:
-	gpio_free(pdata->gpio_mipi_busy);
-free_mipi_req:
-	gpio_free(pdata->gpio_mipi_req);
-#endif
 free_wakeirq:
 	gpio_free(pdata->gpio_wakeirq);
 free_bslen:
@@ -611,22 +561,20 @@ static void stm401_gpio_free(struct stm401_platform_data *pdata)
 	gpio_free(pdata->gpio_reset);
 	gpio_free(pdata->gpio_bslen);
 	gpio_free(pdata->gpio_wakeirq);
-#if 0
-	gpio_free(pdata->gpio_mipi_req);
-	gpio_free(pdata->gpio_mipi_busy);
-#endif
 }
 
 #if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
 static int stm401_pre_display_on(struct device *dev)
 {
 	dev_dbg(dev, "%s\n", __func__);
+
 	return pm_runtime_get_sync(dev);
 }
 
 static int stm401_display_off(struct device *dev)
 {
 	dev_dbg(dev, "%s\n", __func__);
+
 	return pm_runtime_put_sync_suspend(dev);
 }
 #endif
@@ -703,7 +651,7 @@ static int stm401_probe(struct i2c_client *client,
 	mutex_lock(&ps_stm401->lock);
 	wake_lock_init(&ps_stm401->wakelock, WAKE_LOCK_SUSPEND, "stm401");
 
-	ps_stm401->ap_stm401_handoff_enable = false;
+	mutex_init(&ps_stm401->aod_enabled.vote_lock);
 
 	/* Set to passive mode by default */
 	stm401_g_nonwake_sensor_state = 0;
@@ -868,6 +816,23 @@ static int stm401_probe(struct i2c_client *client,
 	}
 #endif
 
+	ps_stm401->quickpeek_work_queue =
+		create_singlethread_workqueue("stm401_quickpeek_wq");
+	if (!ps_stm401->quickpeek_work_queue) {
+		err = -ENOMEM;
+		dev_err(&client->dev, "cannot create work queue: %d\n", err);
+		goto err11;
+	}
+	INIT_WORK(&ps_stm401->quickpeek_work, stm401_quickpeek_work_func);
+	wake_lock_init(&ps_stm401->quickpeek_wakelock, WAKE_LOCK_SUSPEND,
+		"stm401_quickpeek");
+	init_completion(&ps_stm401->quickpeek_done);
+	ps_stm401->quickpeek_state = QP_IDLE;
+	INIT_LIST_HEAD(&ps_stm401->quickpeek_command_list);
+	atomic_set(&ps_stm401->qp_enabled, 0);
+
+	ps_stm401->is_suspended = false;
+
 	switch_stm401_mode(NORMALMODE);
 
 	mutex_unlock(&ps_stm401->lock);
@@ -876,10 +841,12 @@ static int stm401_probe(struct i2c_client *client,
 
 	return 0;
 
+err11:
 #if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	mmi_panel_unregister_notifier(&ps_stm401->panel_nb);
 err10:
-	input_unregister_device(ps_stm401->input_dev);
 #endif
+	input_unregister_device(ps_stm401->input_dev);
 err9:
 	input_free_device(ps_stm401->input_dev);
 err8:
@@ -936,7 +903,36 @@ static int stm401_remove(struct i2c_client *client)
 	regulator_disable(ps_stm401->regulator_1);
 	regulator_put(ps_stm401->regulator_2);
 	regulator_put(ps_stm401->regulator_1);
+
+	destroy_workqueue(ps_stm401->quickpeek_work_queue);
+	wake_unlock(&ps_stm401->quickpeek_wakelock);
+	wake_lock_destroy(&ps_stm401->quickpeek_wakelock);
+	mmi_panel_unregister_notifier(&ps_stm401->panel_nb);
 	kfree(ps_stm401);
+
+	return 0;
+}
+
+static int stm401_resume(struct device *dev)
+{
+	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	dev_dbg(&stm401_misc_data->client->dev, "%s\n", __func__);
+
+	mutex_lock(&ps_stm401->lock);
+	ps_stm401->is_suspended = false;
+	mutex_unlock(&ps_stm401->lock);
+
+	return 0;
+}
+
+static int stm401_suspend(struct device *dev)
+{
+	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	dev_dbg(&stm401_misc_data->client->dev, "%s\n", __func__);
+
+	mutex_lock(&ps_stm401->lock);
+	ps_stm401->is_suspended = true;
+	mutex_unlock(&ps_stm401->lock);
 
 	return 0;
 }
@@ -944,86 +940,42 @@ static int stm401_remove(struct i2c_client *client)
 #ifdef CONFIG_PM_RUNTIME
 static int stm401_runtime_resume(struct device *dev)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(client);
-	int count = 0, level = 0;
-	int stm401_req = ps_stm401->pdata->gpio_mipi_req;
-	int stm401_busy = ps_stm401->pdata->gpio_mipi_busy;
+	int ret;
+	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	dev_dbg(&stm401_misc_data->client->dev, "%s\n", __func__);
 
-	dev_dbg(dev, "%s\n", __func__);
 	mutex_lock(&ps_stm401->lock);
 
-	ps_stm401->is_suspended = false;
-
-	if ((ps_stm401->ap_stm401_handoff_enable)
-		&& (ps_stm401->ap_stm401_handoff_ctrl)) {
-		gpio_set_value(stm401_req, 0);
-		dev_dbg(&ps_stm401->client->dev, "STM401 REQ is set %d\n",
-			 gpio_get_value(stm401_req));
-	}
-
 	/* read interrupt mask register to clear
-		any interrupt during suspend state */
+			any interrupt during suspend state */
 	stm401_cmdbuff[0] = INTERRUPT_STATUS;
 	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
 
-	if ((ps_stm401->ap_stm401_handoff_enable)
-		&& (ps_stm401->ap_stm401_handoff_ctrl)) {
-		do {
-			usleep_range(STM401_BUSY_SLEEP_USEC,
-					 STM401_BUSY_SLEEP_USEC);
-			level = gpio_get_value(stm401_busy);
-			count++;
-		} while ((level) && (count < STM401_BUSY_RESUME_COUNT));
-
-		if (count == STM401_BUSY_RESUME_COUNT)
-			dev_err(&ps_stm401->client->dev,
-				"timedout while waiting for STM401 BUSY LOW\n");
-	}
-	ps_stm401->ap_stm401_handoff_enable = false;
+	stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN, false);
+	ret = stm401_resolve_aod_enabled_locked(ps_stm401);
 
 	mutex_unlock(&ps_stm401->lock);
-	return 0;
+	return ret;
 }
 
 static int stm401_runtime_suspend(struct device *dev)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(client);
-	int count = 0, level = 0;
-	int stm401_req = ps_stm401->pdata->gpio_mipi_req;
-	int stm401_busy = ps_stm401->pdata->gpio_mipi_busy;
+	int ret;
+	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	dev_dbg(&stm401_misc_data->client->dev, "%s\n", __func__);
 
-	dev_dbg(dev, "%s\n", __func__);
 	mutex_lock(&ps_stm401->lock);
 
-	ps_stm401->is_suspended = true;
-
-	if ((ps_stm401->ap_stm401_handoff_enable)
-		 && (ps_stm401->ap_stm401_handoff_ctrl)) {
-
-		gpio_set_value(stm401_req, 1);
-		dev_dbg(&ps_stm401->client->dev, "STM401 REQ is set %d\n",
-			 gpio_get_value(stm401_req));
-
-		do {
-			usleep_range(STM401_BUSY_SLEEP_USEC,
-				STM401_BUSY_SLEEP_USEC);
-			level = gpio_get_value(stm401_busy);
-			count++;
-		} while ((!level) && (count < STM401_BUSY_SUSPEND_COUNT));
-
-		if (count == STM401_BUSY_SUSPEND_COUNT)
-			dev_err(&ps_stm401->client->dev,
-				"timedout while waiting for STM401 BUSY HIGH\n");
-	}
+	stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN, true);
+	ret = stm401_resolve_aod_enabled_locked(ps_stm401);
 
 	mutex_unlock(&ps_stm401->lock);
-	return 0;
+	return ret;
 }
 #endif
 
 static const struct dev_pm_ops stm401_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(stm401_suspend, stm401_resume)
 	SET_RUNTIME_PM_OPS(stm401_runtime_suspend,
 			stm401_runtime_resume,
 			NULL)
