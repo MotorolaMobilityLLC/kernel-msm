@@ -115,6 +115,7 @@
 		tfa_vdd-supply = <&pm8941_s3>;
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "right";
+		nxp,tfa9890_bin_path = "valocia";
 	};
 
 	tfa9890@35 {
@@ -123,6 +124,7 @@
 		tfa_vdd-supply = <&pm8941_s3>;
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "left";
+		nxp,tfa9890_bin_path = "valocia";
 	};
 
 };
