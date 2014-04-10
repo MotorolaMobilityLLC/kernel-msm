@@ -24,8 +24,11 @@
 #include <linux/platform_device.h>
 #include <linux/rbtree.h>
 #include <linux/uaccess.h>
+#include <linux/interrupt.h>
 #include <linux/msm-bus.h>
 #include <linux/msm-bus-board.h>
+#include <linux/netdevice.h>
+#include <linux/delay.h>
 #include "ipa_i.h"
 #include "ipa_rm_i.h"
 
@@ -52,6 +55,7 @@
 #define IPA_AGGR_STR_IN_BYTES(str) \
 	(strnlen((str), IPA_AGGR_MAX_STR_LENGTH - 1) + 1)
 
+#ifdef CONFIG_COMPAT
 #define IPA_IOC_ADD_HDR32 _IOWR(IPA_IOC_MAGIC, \
 					IPA_IOCTL_ADD_HDR, \
 					compat_uptr_t)
@@ -125,6 +129,22 @@
 				IPA_IOCTL_WRITE_QMAPID, \
 				compat_uptr_t)
 
+/**
+ * struct ipa_ioc_nat_alloc_mem32 - nat table memory allocation
+ * properties
+ * @dev_name: input parameter, the name of table
+ * @size: input parameter, size of table in bytes
+ * @offset: output parameter, offset into page in case of system memory
+ */
+struct ipa_ioc_nat_alloc_mem32 {
+	char dev_name[IPA_RESOURCE_NAME_MAX];
+	compat_size_t size;
+	compat_off_t offset;
+};
+#endif
+
+static void ipa_start_tag_process(struct work_struct *work);
+static DECLARE_WORK(ipa_tag_work, ipa_start_tag_process);
 
 static struct ipa_plat_drv_res ipa_res = {0, };
 static struct of_device_id ipa_plat_drv_match[] = {
@@ -1260,6 +1280,10 @@ static void ipa_teardown_apps_pipes(void)
 #ifdef CONFIG_COMPAT
 long compat_ipa_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
+	int retval = 0;
+	struct ipa_ioc_nat_alloc_mem32 nat_mem32;
+	struct ipa_ioc_nat_alloc_mem nat_mem;
+
 	switch (cmd) {
 	case IPA_IOC_ADD_HDR32:
 		cmd = IPA_IOC_ADD_HDR;
@@ -1301,8 +1325,30 @@ long compat_ipa_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		cmd = IPA_IOC_GET_HDR;
 		break;
 	case IPA_IOC_ALLOC_NAT_MEM32:
-		cmd = IPA_IOC_ALLOC_NAT_MEM;
-		break;
+		if (copy_from_user((u8 *)&nat_mem32, (u8 *)arg,
+			sizeof(struct ipa_ioc_nat_alloc_mem32))) {
+			retval = -EFAULT;
+			goto ret;
+		}
+		memcpy(nat_mem.dev_name, nat_mem32.dev_name,
+				IPA_RESOURCE_NAME_MAX);
+		nat_mem.size = (size_t)nat_mem32.size;
+		nat_mem.offset = (off_t)nat_mem32.offset;
+
+		/* null terminate the string */
+		nat_mem.dev_name[IPA_RESOURCE_NAME_MAX - 1] = '\0';
+
+		if (allocate_nat_device(&nat_mem)) {
+			retval = -EFAULT;
+			goto ret;
+		}
+		nat_mem32.offset = (compat_off_t)nat_mem.offset;
+		if (copy_to_user((u8 *)arg, (u8 *)&nat_mem32,
+			sizeof(struct ipa_ioc_nat_alloc_mem32))) {
+			retval = -EFAULT;
+		}
+ret:
+		return retval;
 	case IPA_IOC_V4_INIT_NAT32:
 		cmd = IPA_IOC_V4_INIT_NAT;
 		break;
@@ -1540,6 +1586,36 @@ void ipa_disable_clks(void)
 	if (msm_bus_scale_client_update_request(ipa_ctx->ipa_bus_hdl, 0))
 		WARN_ON(1);
 }
+
+/**
+ * ipa_start_tag_process() - Send TAG packet and wait for it to come back
+ *
+ * This function is called prior to clock gating when active client counter
+ * is 1. TAG process ensures that there are no packets inside IPA HW that
+ * were not submitted to peer's BAM. During TAG process all aggregation frames
+ * are (force) closed.
+ *
+ * Return codes:
+ * None
+ */
+static void ipa_start_tag_process(struct work_struct *work)
+{
+	int res;
+
+	IPADBG("starting TAG process\n");
+	/* close aggregation frames on all pipes */
+	res = ipa_tag_aggr_force_close(-1);
+	if (res) {
+		IPAERR("ipa_tag_aggr_force_close failed %d\n", res);
+		return;
+	}
+
+	ipa_dec_client_disable_clks();
+
+	IPADBG("TAG process done\n");
+	return;
+}
+
 /**
 * ipa_inc_client_enable_clks() - Increase active clients counter, and
 * enable ipa clocks if necessary
@@ -1549,29 +1625,72 @@ void ipa_disable_clks(void)
 */
 void ipa_inc_client_enable_clks(void)
 {
-	mutex_lock(&ipa_ctx->ipa_active_clients_lock);
-	ipa_ctx->ipa_active_clients++;
-	IPADBG("active clients = %d\n", ipa_ctx->ipa_active_clients);
-	if (ipa_ctx->ipa_active_clients == 1)
+	ipa_active_clients_lock();
+	ipa_ctx->ipa_active_clients.cnt++;
+	if (ipa_ctx->ipa_active_clients.cnt == 1)
 		ipa_enable_clks();
-	mutex_unlock(&ipa_ctx->ipa_active_clients_lock);
+	IPADBG("active clients = %d\n", ipa_ctx->ipa_active_clients.cnt);
+	ipa_active_clients_unlock();
 }
 
 /**
-* ipa_dec_client_disable_clks() - Decrease active clients counter, and
-* disable ipa clocks if necessary
+* ipa_inc_client_enable_clks_no_block() - Only increment the number of active
+* clients if no asynchronous actions should be done. Asynchronous actions are
+* locking a mutex and waking up IPA HW.
 *
-* Return codes:
-* None
+* Return codes: 0 for success
+*		-EPERM if an asynchronous action should have been done
 */
+int ipa_inc_client_enable_clks_no_block(void)
+{
+	int res = 0;
+
+	if (ipa_active_clients_trylock() == 0)
+		return -EPERM;
+
+	if (ipa_ctx->ipa_active_clients.cnt == 0) {
+		res = -EPERM;
+		goto bail;
+	}
+
+	ipa_ctx->ipa_active_clients.cnt++;
+	IPADBG("active clients = %d\n", ipa_ctx->ipa_active_clients.cnt);
+bail:
+	ipa_active_clients_unlock();
+
+	return res;
+}
+
+/**
+ * ipa_dec_client_disable_clks() - Decrease active clients counter
+ *
+ * In case that there are no active clients this function also starts
+ * TAG process. When TAG progress ends ipa clocks will be gated.
+ * start_tag_process_again flag is set during this function to signal TAG
+ * process to start again as there was another client that may send data to ipa
+ *
+ * Return codes:
+ * None
+ */
 void ipa_dec_client_disable_clks(void)
 {
-	mutex_lock(&ipa_ctx->ipa_active_clients_lock);
-	ipa_ctx->ipa_active_clients--;
-	IPADBG("active clients = %d\n", ipa_ctx->ipa_active_clients);
-	if (ipa_ctx->ipa_active_clients == 0)
-		ipa_disable_clks();
-	mutex_unlock(&ipa_ctx->ipa_active_clients_lock);
+	ipa_active_clients_lock();
+	ipa_ctx->ipa_active_clients.cnt--;
+	IPADBG("active clients = %d\n", ipa_ctx->ipa_active_clients.cnt);
+	if (ipa_ctx->ipa_active_clients.cnt == 0) {
+		if (ipa_ctx->tag_process_before_gating) {
+			ipa_ctx->tag_process_before_gating = false;
+			/*
+			 * When TAG process ends, active clients will be
+			 * decreased
+			 */
+			ipa_ctx->ipa_active_clients.cnt = 1;
+			queue_work(ipa_ctx->power_mgmt_wq, &ipa_tag_work);
+		} else {
+			ipa_disable_clks();
+		}
+	}
+	ipa_active_clients_unlock();
 }
 
 static int ipa_setup_bam_cfg(const struct ipa_plat_drv_res *res)
@@ -1650,14 +1769,14 @@ int ipa_set_required_perf_profile(enum ipa_voltage_level floor_voltage,
 		return 0;
 	}
 
-	mutex_lock(&ipa_ctx->ipa_active_clients_lock);
+	ipa_active_clients_lock();
 	ipa_ctx->curr_ipa_clk_rate = clk_rate;
 	IPADBG("setting clock rate to %u\n", ipa_ctx->curr_ipa_clk_rate);
-	if (ipa_ctx->ipa_active_clients > 0)
+	if (ipa_ctx->ipa_active_clients.cnt > 0)
 		clk_set_rate(ipa_clk, ipa_ctx->curr_ipa_clk_rate);
 	else
 		IPADBG("clocks are gated, not setting rate\n");
-	mutex_unlock(&ipa_ctx->ipa_active_clients_lock);
+	ipa_active_clients_unlock();
 	IPADBG("Done\n");
 	return 0;
 }
@@ -1733,6 +1852,65 @@ static int ipa_init_flt_block(void)
 	return result;
 }
 
+/**
+* ipa_suspend_handler() - Handles the suspend interrupt:
+* wakes up the suspended peripheral by requesting its consumer
+* @interrupt:		Interrupt type
+* @private_data:	The client's private data
+* @interrupt_data:	Interrupt specific information data
+*/
+void ipa_suspend_handler(enum ipa_irq_type interrupt,
+				void *private_data,
+				void *interrupt_data)
+{
+	enum ipa_rm_resource_name resource;
+	u32 suspend_data =
+		((struct ipa_tx_suspend_irq_data *)interrupt_data)->endpoints;
+	u32 bmsk = 1;
+	u32 i = 0;
+
+	IPADBG("interrupt=%d, interrupt_data=%u\n", interrupt, suspend_data);
+	for (i = 0; i < IPA_NUM_PIPES; i++) {
+		if ((suspend_data & bmsk) && (ipa_ctx->ep[i].valid)) {
+			resource = ipa_get_rm_resource_from_ep(i);
+			ipa_rm_request_resource_with_timer(resource);
+		}
+		bmsk = bmsk << 1;
+	}
+}
+
+static int apps_cons_release_resource(void)
+{
+	return 0;
+}
+
+static int apps_cons_request_resource(void)
+{
+	return 0;
+}
+
+static int ipa_create_apps_resource(void)
+{
+	struct ipa_rm_create_params apps_cons_create_params;
+	struct ipa_rm_perf_profile profile;
+	int result = 0;
+
+	memset(&apps_cons_create_params, 0,
+				sizeof(apps_cons_create_params));
+	apps_cons_create_params.name = IPA_RM_RESOURCE_APPS_CONS;
+	apps_cons_create_params.request_resource = apps_cons_request_resource;
+	apps_cons_create_params.release_resource = apps_cons_release_resource;
+	result = ipa_rm_create_resource(&apps_cons_create_params);
+	if (result) {
+		IPAERR("ipa_rm_create_resource failed\n");
+		return result;
+	}
+
+	profile.max_supported_bandwidth_mbps = IPA_APPS_MAX_BW_IN_MBPS;
+	ipa_rm_set_perf_profile(IPA_RM_RESOURCE_APPS_CONS, &profile);
+
+	return result;
+}
 /**
 * ipa_init() - Initialize the IPA Driver
 * @resource_p:	contain platform specific values from DST file
@@ -2006,8 +2184,9 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 	idr_init(&ipa_ctx->ipa_idr);
 	spin_lock_init(&ipa_ctx->idr_lock);
 
-	mutex_init(&ipa_ctx->ipa_active_clients_lock);
-	ipa_ctx->ipa_active_clients = 0;
+	mutex_init(&ipa_ctx->ipa_active_clients.mutex);
+	spin_lock_init(&ipa_ctx->ipa_active_clients.spinlock);
+	ipa_ctx->ipa_active_clients.cnt = 1;
 
 	/* wlan related member */
 	spin_lock_init(&ipa_ctx->wlan_spinlock);
@@ -2015,9 +2194,6 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 	ipa_ctx->wlan_comm_cnt = 0;
 	INIT_LIST_HEAD(&ipa_ctx->wlan_comm_desc_list);
 	memset(&ipa_ctx->wstats, 0, sizeof(struct ipa_wlan_stats));
-	/* enable IPA clocks until the end of the initialization */
-	ipa_inc_client_enable_clks();
-
 	/*
 	 * setup an empty routing table in system memory, this will be used
 	 * to delete a routing table cleanly and safely
@@ -2090,6 +2266,15 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 			MAJOR(ipa_ctx->dev_num),
 			MINOR(ipa_ctx->dev_num));
 
+	/* Create workqueue for power management */
+	ipa_ctx->power_mgmt_wq =
+		create_singlethread_workqueue("ipa_power_mgmt");
+	if (!ipa_ctx->power_mgmt_wq) {
+		IPAERR("failed to create wq\n");
+		result = -ENOMEM;
+		goto fail_power_mgmt_wq;
+	}
+
 	/* Initialize IPA RM (resource manager) */
 	result = ipa_rm_initialize();
 	if (result) {
@@ -2099,13 +2284,29 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 	}
 	IPADBG("IPA resource manager initialized");
 
+	result = ipa_create_apps_resource();
+	if (result) {
+		IPAERR("Failed to create APPS_CONS resource\n");
+		result = -ENODEV;
+		goto fail_create_apps_resource;
+	}
+
 	/*register IPA IRQ handler*/
-	result = ipa_interrupts_init(resource_p->ipa_irq, resource_p->ee,
+	result = ipa_interrupts_init(resource_p->ipa_irq, 0,
 			ipa_dev);
 	if (result) {
 		IPAERR("ipa interrupts initialization failed\n");
 		result = -ENODEV;
-		goto fail_ipa_rm_init;
+		goto fail_ipa_interrupts_init;
+	}
+
+	/*add handler for suspend interrupt*/
+	result = ipa_add_interrupt_handler(IPA_TX_SUSPEND_IRQ,
+			ipa_suspend_handler, true, NULL);
+	if (result) {
+		IPAERR("register handler for suspend interrupt failed\n");
+		result = -ENODEV;
+		goto fail_add_interrupt_handler;
 	}
 
 	if (ipa_ctx->use_ipa_teth_bridge) {
@@ -2114,20 +2315,27 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 		if (result) {
 			IPAERR(":teth_bridge init failed (%d)\n", -result);
 			result = -ENODEV;
-			goto fail_teth_bridge_init;
+			goto fail_add_interrupt_handler;
 		}
 		IPADBG("teth_bridge initialized");
 	}
 
+	ipa_debugfs_init();
 	ipa_dec_client_disable_clks();
 
 	pr_info("IPA driver initialization was successful.\n");
 
 	return 0;
 
-fail_teth_bridge_init:
+fail_add_interrupt_handler:
+	free_irq(resource_p->ipa_irq, ipa_dev);
+fail_ipa_interrupts_init:
+	ipa_rm_delete_resource(IPA_RM_RESOURCE_APPS_CONS);
+fail_create_apps_resource:
 	ipa_rm_exit();
 fail_ipa_rm_init:
+	destroy_workqueue(ipa_ctx->power_mgmt_wq);
+fail_power_mgmt_wq:
 	cdev_del(&ipa_ctx->cdev);
 fail_cdev_add:
 	device_destroy(ipa_ctx->class, ipa_ctx->dev_num);
@@ -2330,16 +2538,10 @@ struct ipa_context *ipa_get_ctx(void)
 
 static int __init ipa_module_init(void)
 {
-	int result = 0;
-
 	IPADBG("IPA module init\n");
 
 	/* Register as a platform device driver */
-	platform_driver_register(&ipa_plat_drv);
-
-	ipa_debugfs_init();
-
-	return result;
+	return platform_driver_register(&ipa_plat_drv);
 }
 subsys_initcall(ipa_module_init);
 

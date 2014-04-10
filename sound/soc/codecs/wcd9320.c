@@ -2229,9 +2229,9 @@ static int slim_tx_mixer_put(struct snd_kcontrol *kcontrol,
 	pr_debug("%s: name %s sname %s updated value %u shift %d\n", __func__,
 		widget->name, widget->sname, widget->value, widget->shift);
 
+	mutex_unlock(&codec->mutex);
 	snd_soc_dapm_mixer_update_power(widget, kcontrol, enable);
 
-	mutex_unlock(&codec->mutex);
 	return 0;
 }
 
@@ -2319,9 +2319,9 @@ static int slim_rx_mux_put(struct snd_kcontrol *kcontrol,
 		goto err;
 	}
 rtn:
+	mutex_unlock(&codec->mutex);
 	snd_soc_dapm_mux_update_power(widget, kcontrol, widget->value, e);
 
-	mutex_unlock(&codec->mutex);
 	return 0;
 err:
 	mutex_unlock(&codec->mutex);
@@ -4304,6 +4304,10 @@ static int taiko_volatile(struct snd_soc_codec *ssc, unsigned int reg)
 
 	/* HPH status registers */
 	if (reg == TAIKO_A_RX_HPH_L_STATUS || reg == TAIKO_A_RX_HPH_R_STATUS)
+		return 1;
+
+	/* HPH PA Enable */
+	if (reg == TAIKO_A_RX_HPH_CNP_EN)
 		return 1;
 
 	if (reg == TAIKO_A_MBHC_INSERT_DET_STATUS)
@@ -6502,6 +6506,9 @@ static const struct wcd9xxx_reg_mask_val taiko_codec_reg_init_val[] = {
 
 	/* set MAD input MIC to DMIC1 */
 	{TAIKO_A_CDC_CONN_MAD, 0x0F, 0x08},
+
+	/* set DMIC CLK drive strength to 4mA */
+	{TAIKO_A_HDRIVE_OVERRIDE, 0x07, 0x01},
 };
 
 static void taiko_codec_init_reg(struct snd_soc_codec *codec)
@@ -6831,18 +6838,21 @@ static int taiko_post_reset_cb(struct wcd9xxx *wcd9xxx)
 	snd_soc_card_change_online_state(codec->card, 1);
 
 	mutex_lock(&codec->mutex);
-	if (codec->reg_def_copy) {
-		pr_debug("%s: Update ASOC cache", __func__);
-		kfree(codec->reg_cache);
-		codec->reg_cache = kmemdup(codec->reg_def_copy,
-						codec->reg_size, GFP_KERNEL);
-	}
+
+	taiko_update_reg_defaults(codec);
+	if (wcd9xxx->mclk_rate == TAIKO_MCLK_CLK_12P288MHZ)
+		snd_soc_update_bits(codec, TAIKO_A_CHIP_CTL, 0x06, 0x0);
+	else if (wcd9xxx->mclk_rate == TAIKO_MCLK_CLK_9P6MHZ)
+		snd_soc_update_bits(codec, TAIKO_A_CHIP_CTL, 0x06, 0x2);
+	taiko_codec_init_reg(codec);
 
 	if (spkr_drv_wrnd == 1)
 		snd_soc_update_bits(codec, TAIKO_A_SPKR_DRV_EN, 0x80, 0x80);
 
-	taiko_update_reg_defaults(codec);
-	taiko_codec_init_reg(codec);
+	codec->cache_sync = true;
+	snd_soc_cache_sync(codec);
+	codec->cache_sync = false;
+
 	ret = taiko_handle_pdata(taiko);
 	if (IS_ERR_VALUE(ret))
 		pr_err("%s: bad pdata\n", __func__);

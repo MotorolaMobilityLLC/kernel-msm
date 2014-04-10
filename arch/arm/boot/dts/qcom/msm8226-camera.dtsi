@@ -20,44 +20,60 @@
 
 	qcom,csiphy@fda0ac00 {
 		cell-index = <0>;
-		compatible = "qcom,csiphy";
+		compatible = "qcom,csiphy-v3.0", "qcom,csiphy";
 		reg = <0xfda0ac00 0x200>,
 			<0xfda00030 0x4>;
 		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 78 0>;
 		interrupt-names = "csiphy";
+		qcom,clock-names = "camss_top_ahb_clk",
+			"ispif_ahb_clk", "csiphy_timer_src_clk",
+			"csiphy_timer_clk";
+		qcom,clock-rates = <0 0 200000000 0>;
 	};
 
 	qcom,csiphy@fda0b000 {
 		cell-index = <1>;
-		compatible = "qcom,csiphy";
+		compatible = "qcom,csiphy-v3.0", "qcom,csiphy";
 		reg = <0xfda0b000 0x200>,
 			<0xfda00038 0x4>;
 		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 79 0>;
 		interrupt-names = "csiphy";
+		qcom,clock-names = "camss_top_ahb_clk",
+			"ispif_ahb_clk", "csiphy_timer_src_clk",
+			"csiphy_timer_clk";
+		qcom,clock-rates = <0 0 200000000 0>;
 	};
 
 	qcom,csid@fda08000  {
 		cell-index = <0>;
-		compatible = "qcom,csid";
+		compatible = "qcom,csid-v4.0", "qcom,csid";
 		reg = <0xfda08000 0x100>;
 		reg-names = "csid";
 		interrupts = <0 51 0>;
 		interrupt-names = "csid";
 		qcom,csi-vdd-voltage = <1200000>;
 		qcom,mipi-csi-vdd-supply = <&pm8226_l4>;
+		qcom,clock-names = "camss_top_ahb_clk", "ispif_ahb_clk",
+			"csi_ahb_clk", "csi_src_clk", "csi_clk",
+			"csi_phy_clk", "csi_pix_clk", "csi_rdi_clk";
+		qcom,clock-rates = <0 0 0 200000000 0 0 0 0>;
 	};
 
 	qcom,csid@fda08400 {
 		cell-index = <1>;
-		compatible = "qcom,csid";
+		compatible = "qcom,csid-v4.0", "qcom,csid";
 		reg = <0xfda08400 0x100>;
 		reg-names = "csid";
 		interrupts = <0 52 0>;
 		interrupt-names = "csid";
 		qcom,csi-vdd-voltage = <1200000>;
 		qcom,mipi-csi-vdd-supply = <&pm8226_l4>;
+		qcom,clock-names = "camss_top_ahb_clk", "ispif_ahb_clk",
+			"csi_ahb_clk", "csi_src_clk", "csi_clk",
+			"csi_phy_clk", "csi_pix_clk", "csi_rdi_clk";
+		qcom,clock-rates = <0 0 0 200000000 0 0 0 0>;
 	};
 
 	qcom,ispif@fda0a000 {
@@ -68,6 +84,8 @@
 		reg-names = "ispif", "csi_clk_mux";
 		interrupts = <0 55 0>;
 		interrupt-names = "ispif";
+		qcom,clock-names = "ispif_ahb_clk";
+		qcom,clock-rates = <0>;
 	};
 
 	qcom,vfe@fda10000 {
@@ -79,16 +97,24 @@
 		interrupts = <0 57 0>;
 		interrupt-names = "vfe";
 		vdd-supply = <&gdsc_vfe>;
+		qcom,clock-names = "camss_top_ahb_clk" , "vfe_clk_src",
+			"camss_vfe_vfe_clk", "camss_csi_vfe_clk", "iface_clk",
+			"bus_clk";
+		qcom,clock-rates = <0 266670000 0 0 0 0>;
 	};
 
 	qcom,jpeg@fda1c000 {
 		cell-index = <0>;
 		compatible = "qcom,jpeg";
-		reg = <0xfda1c000 0x400>;
+		reg = <0xfda1c000 0x400>,
+			<0xfda60000 0xc30>;
 		reg-names = "jpeg";
 		interrupts = <0 59 0>;
 		interrupt-names = "jpeg";
 		vdd-supply = <&gdsc_jpeg>;
+		qcom,clock-names = "core_clk", "iface_clk", "bus_clk0",
+			"camss_top_ahb_clk";
+		qcom,clock-rates = <266670000 0 0 0>;
 	};
 
 	qcom,irqrouter@fda00000 {

@@ -35,10 +35,8 @@
 #define FSM9900_MAC_FUSE_SIZE	0x10
 
 static struct of_dev_auxdata fsm9900_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
-			"msm_sdcc.1", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, \
-			"msm_sdcc.2", NULL),
+	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, "msm_sdcc.1", NULL),
+	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, "msm_sdcc.2", NULL),
 	{}
 };
 
@@ -185,6 +183,5 @@ DT_MACHINE_START(FSM9900_DT, "Qualcomm FSM 9900 (Flattened Device Tree)")
 	.dt_compat		= fsm9900_dt_match,
 	.reserve		= fsm9900_reserve,
 	.init_very_early	= fsm9900_init_very_early,
-	.restart		= msm_restart,
 	.smp			= &msm8974_smp_ops,
 MACHINE_END

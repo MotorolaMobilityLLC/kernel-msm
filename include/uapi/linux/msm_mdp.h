@@ -95,6 +95,7 @@
 #define MDSS_MDP_HW_REV_103	MDSS_MDP_REV(1, 3, 0) /* 8084 v1.0 */
 #define MDSS_MDP_HW_REV_103_1	MDSS_MDP_REV(1, 3, 1) /* 8084 v1.1 */
 #define MDSS_MDP_HW_REV_200	MDSS_MDP_REV(2, 0, 0) /* 8092 v1.0 */
+#define MDSS_MDP_HW_REV_106	MDSS_MDP_REV(1, 6, 0) /* 8916 v1.0 */
 
 enum {
 	NOTIFY_UPDATE_START,
@@ -586,6 +587,11 @@ struct mdp_scale_data {
  *		4: decimation by 16 (drop 15 lines for each line fetched)
  * @overlay_pp_cfg: Overlay post processing configuration, for more information
  *		see struct mdp_overlay_pp_params.
+ * @priority:	Priority is returned by the driver when overlay is set for the
+ *		first time. It indicates the priority of the underlying pipe
+ *		serving the overlay. This priority can be used by user-space
+ *		in source split when pipes are re-used and shuffled around to
+ *		reduce fallbacks.
  */
 struct mdp_overlay {
 	struct msmfb_img src;
@@ -598,6 +604,7 @@ struct mdp_overlay {
 	uint32_t transp_mask;
 	uint32_t flags;
 	uint32_t id;
+	uint8_t priority;
 	uint32_t user_data[6];
 	uint32_t bg_color;
 	uint8_t horz_deci;

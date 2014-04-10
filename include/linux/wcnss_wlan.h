@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,7 +27,9 @@ enum wcnss_hw_type {
 };
 
 struct wcnss_wlan_config {
-	int		use_48mhz_xo;
+	int	use_48mhz_xo;
+	int	is_pronto_vt;
+	void __iomem	*msm_wcnss_base;
 };
 
 enum {
@@ -77,6 +79,7 @@ void wcnss_resume_notify(void);
 void wcnss_riva_log_debug_regs(void);
 void wcnss_pronto_log_debug_regs(void);
 int wcnss_device_ready(void);
+int wcnss_device_is_shutdown(void);
 void wcnss_riva_dump_pmic_regs(void);
 int wcnss_xo_auto_detect_enabled(void);
 u32 wcnss_get_wlan_rx_buff_count(void);

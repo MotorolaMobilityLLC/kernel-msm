@@ -182,7 +182,7 @@
 #define clk_bimc_msmbus_a_clk			0x71d1a499
 #define clk_qdss_clk				0x1492202a
 #define clk_qdss_a_clk				0xdd121669
-#define clk_xo_gcc				0x6ac2a778
+#define clk_xo_clk_src				0x23f5649f
 #define clk_xo_a_clk_src			0x2fdd2c7c
 #define clk_xo_otg_clk				0x79bca5cc
 #define clk_xo_a2				0xeba5a83d
@@ -206,5 +206,14 @@
 #define clk_gcc_debug_mux			0x8121ac15
 #define clk_rpm_debug_mux			0x25cd1f3a
 #define clk_wcnss_m_clk				0x709f430b
+#define clk_apss_debug_pri_mux			0xc691ff55
+#define clk_apss_debug_sec_mux			0xc0b680f9
+#define clk_apss_debug_ter_mux			0x32041c48
+#define clk_apc0_m_clk				0xce1e9473
+#define clk_apc1_m_clk				0x990fbaf7
+#define clk_apc2_m_clk				0x252cd4ae
+#define clk_apc3_m_clk				0x78c64486
+#define clk_l2_m_clk				0x4bedf4d0
+
 
 #endif

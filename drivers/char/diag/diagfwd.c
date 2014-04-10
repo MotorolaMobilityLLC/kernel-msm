@@ -45,12 +45,9 @@
 #define STM_CMD_DATA_OFFSET	6
 #define STM_CMD_NUM_BYTES	7
 
-#define STM_RSP_VALID_INDEX		7
-#define STM_RSP_SUPPORTED_INDEX		8
-#define STM_RSP_SMD_COMPLY_INDEX	9
-#define STM_RSP_NUM_BYTES		10
-
-#define STM_COMMAND_VALID 1
+#define STM_RSP_SUPPORTED_INDEX		7
+#define STM_RSP_SMD_STATUS_INDEX	8
+#define STM_RSP_NUM_BYTES		9
 
 #define SMD_DRAIN_BUF_SIZE 4096
 
@@ -879,7 +876,8 @@ void encode_rsp_and_send(int buf_length)
 	diag_hdlc_encode(&send, &enc);
 	driver->rsp_write_ptr->buf = rsp_ptr;
 	driver->rsp_write_ptr->length =  (int)(enc.dest - (void *)rsp_ptr);
-	err = diag_write_to_usb(driver->legacy_ch, driver->rsp_write_ptr);
+	/* Set data type as Modem Data as the flow is guaranteed */
+	err = diag_device_write(rsp_ptr, MODEM_DATA, driver->rsp_write_ptr);
 	if (err) {
 		pr_err("diag: In %s, Unable to write to device, err: %d\n",
 			__func__, err);
@@ -1133,15 +1131,6 @@ void diag_update_sleeping_process(int process_id, int data_type)
 	mutex_unlock(&driver->diagchar_mutex);
 }
 
-static int diag_check_mode_reset(unsigned char *buf)
-{
-	int is_mode_reset = 0;
-	if (chk_apps_master() && (int)(*(char *)buf) == MODE_CMD)
-		if ((int)(*(char *)(buf+1)) == RESET_ID)
-			is_mode_reset = 1;
-	return is_mode_reset;
-}
-
 int diag_send_data(struct diag_master_table entry, unsigned char *buf,
 					 int len, int type)
 {
@@ -1167,14 +1156,7 @@ int diag_send_data(struct diag_master_table entry, unsigned char *buf,
 						__func__, entry.client_id);
 					return 0;
 				}
-				/*
-				 * Mode reset should work even if
-				 * modem is down
-				 */
-				if ((index == MODEM_DATA) &&
-					diag_check_mode_reset(buf)) {
-					return 1;
-				}
+
 				smd_info = (driver->separate_cmdrsp[index] &&
 						index < NUM_SMD_CMD_CHANNELS) ?
 						&driver->smd_cmd[index] :
@@ -1201,8 +1183,7 @@ int diag_send_data(struct diag_master_table entry, unsigned char *buf,
 	return success;
 }
 
-void diag_process_stm_mask(uint8_t cmd, uint8_t data_mask, int data_type,
-			  uint8_t *rsp_supported, uint8_t *rsp_smd_comply)
+void diag_process_stm_mask(uint8_t cmd, uint8_t data_mask, int data_type)
 {
 	int status = 0;
 	if (data_type >= MODEM_DATA && data_type <= WCNSS_DATA) {
@@ -1210,19 +1191,10 @@ void diag_process_stm_mask(uint8_t cmd, uint8_t data_mask, int data_type,
 			status = diag_send_stm_state(
 				&driver->smd_cntl[data_type], cmd);
 			if (status == 1)
-				*rsp_smd_comply |= data_mask;
-			*rsp_supported |= data_mask;
-		} else if (driver->smd_cntl[data_type].ch) {
-			*rsp_smd_comply |= data_mask;
+				driver->stm_state[data_type] = cmd;
 		}
-		if ((*rsp_smd_comply & data_mask) &&
-			(*rsp_supported & data_mask))
-			driver->stm_state[data_type] = cmd;
-
 		driver->stm_state_requested[data_type] = cmd;
 	} else if (data_type == APPS_DATA) {
-		*rsp_supported |= data_mask;
-		*rsp_smd_comply |= data_mask;
 		driver->stm_state[data_type] = cmd;
 		driver->stm_state_requested[data_type] = cmd;
 	}
@@ -1232,7 +1204,7 @@ int diag_process_stm_cmd(unsigned char *buf, unsigned char *dest_buf)
 {
 	uint8_t version, mask, cmd;
 	uint8_t rsp_supported = 0;
-	uint8_t rsp_smd_comply = 0;
+	uint8_t rsp_smd_status = 0;
 	int i;
 
 	if (!buf || !dest_buf) {
@@ -1249,47 +1221,44 @@ int diag_process_stm_cmd(unsigned char *buf, unsigned char *dest_buf)
 	 * Check if command is valid. If the command is asking for
 	 * status, then the processor mask field is to be ignored.
 	 */
-	if ((version != 1) || (cmd > STATUS_STM) ||
+	if ((version != 2) || (cmd > STATUS_STM) ||
 		((cmd != STATUS_STM) && ((mask == 0) || (0 != (mask >> 4))))) {
 		/* Command is invalid. Send bad param message response */
 		dest_buf[0] = BAD_PARAM_RESPONSE_MESSAGE;
 		for (i = 0; i < STM_CMD_NUM_BYTES; i++)
 			dest_buf[i+1] = *(buf + i);
 		return STM_CMD_NUM_BYTES+1;
-	} else if (cmd == STATUS_STM) {
-		/*
-		 * Only the status is being queried, so fill in whether diag
-		 * over stm is supported or not
-		 */
-		for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++)
-			if (driver->peripheral_supports_stm[i])
-				rsp_supported |= 1 << i;
-
-		rsp_supported |= DIAG_STM_APPS;
-	} else {
+	} else if (cmd != STATUS_STM) {
 		if (mask & DIAG_STM_MODEM)
-			diag_process_stm_mask(cmd, DIAG_STM_MODEM, MODEM_DATA,
-					&rsp_supported, &rsp_smd_comply);
+			diag_process_stm_mask(cmd, DIAG_STM_MODEM, MODEM_DATA);
 
 		if (mask & DIAG_STM_LPASS)
-			diag_process_stm_mask(cmd, DIAG_STM_LPASS, LPASS_DATA,
-					&rsp_supported, &rsp_smd_comply);
+			diag_process_stm_mask(cmd, DIAG_STM_LPASS, LPASS_DATA);
 
 		if (mask & DIAG_STM_WCNSS)
-			diag_process_stm_mask(cmd, DIAG_STM_WCNSS, WCNSS_DATA,
-					&rsp_supported, &rsp_smd_comply);
+			diag_process_stm_mask(cmd, DIAG_STM_WCNSS, WCNSS_DATA);
 
 		if (mask & DIAG_STM_APPS)
-			diag_process_stm_mask(cmd, DIAG_STM_APPS, APPS_DATA,
-					&rsp_supported, &rsp_smd_comply);
+			diag_process_stm_mask(cmd, DIAG_STM_APPS, APPS_DATA);
 	}
 
 	for (i = 0; i < STM_CMD_NUM_BYTES; i++)
 		dest_buf[i] = *(buf + i);
 
-	dest_buf[STM_RSP_VALID_INDEX] = STM_COMMAND_VALID;
+	/* Set mask denoting which peripherals support STM */
+	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++)
+		if (driver->peripheral_supports_stm[i])
+			rsp_supported |= 1 << i;
+
+	rsp_supported |= DIAG_STM_APPS;
+
+	/* Set mask denoting STM state/status for each peripheral/APSS */
+	for (i = 0; i < NUM_STM_PROCESSORS; i++)
+		if (driver->stm_state[i])
+			rsp_smd_status |= 1 << i;
+
 	dest_buf[STM_RSP_SUPPORTED_INDEX] = rsp_supported;
-	dest_buf[STM_RSP_SMD_COMPLY_INDEX] = rsp_smd_comply;
+	dest_buf[STM_RSP_SMD_STATUS_INDEX] = rsp_smd_status;
 
 	return STM_RSP_NUM_BYTES;
 }
@@ -1369,6 +1338,11 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 						 cmd_code &&
 						 entry.
 						cmd_code_hi >= cmd_code) {
+					if (cmd_code == MODE_CMD &&
+							subsys_id == RESET_ID &&
+							entry.process_id ==
+							NON_APPS_PROC)
+						continue;
 					status = diag_send_data(entry, buf, len,
 								 data_type);
 					if (status)
@@ -1754,8 +1728,17 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 		encode_rsp_and_send(5);
 		return 0;
 	}
-	 /* Check for ID for NO MODEM present */
-	else if (chk_polling_response()) {
+	 /*
+	  * If the apps processor is master and no other
+	  * processor has registered for polling command.
+	  * If modem is not up and we have not received feature
+	  * mask update from modem, in that case APPS should
+	  * respond for 0X7C command
+	  */
+	else if (chk_apps_master() &&
+			!(driver->polling_reg_flag) &&
+			!(driver->smd_data[MODEM_DATA].ch) &&
+			!(driver->rcvd_feature_mask[MODEM_DATA])) {
 		/* respond to 0x0 command */
 		if (*buf == 0x00) {
 			for (i = 0; i < 55; i++)
@@ -2072,6 +2055,7 @@ int diagfwd_write_complete(struct diag_request *diag_write_ptr)
 		found_it = 1;
 		spin_lock_irqsave(&driver->rsp_buf_busy_lock, flags);
 		driver->rsp_buf_busy = 0;
+		driver->rsp_write_ptr->length = 0;
 		spin_unlock_irqrestore(&driver->rsp_buf_busy_lock, flags);
 	}
 
@@ -2246,6 +2230,7 @@ static int diag_smd_probe(struct platform_device *pdev)
 					&driver->smd_data[index],
 					diag_smd_notify);
 		driver->smd_data[index].ch_save = driver->smd_data[index].ch;
+		diag_smd_buffer_init(&driver->smd_data[index]);
 	}
 
 	pm_runtime_set_active(&pdev->dev);
@@ -2278,6 +2263,7 @@ static int diag_smd_cmd_probe(struct platform_device *pdev)
 			diag_smd_notify);
 		driver->smd_cmd[index].ch_save =
 			driver->smd_cmd[index].ch;
+		diag_smd_buffer_init(&driver->smd_cmd[index]);
 	}
 
 	pr_debug("diag: In %s, open SMD CMD port, Id = %d, r = %d\n",
@@ -2361,36 +2347,18 @@ void diag_smd_destructor(struct diag_smd_info *smd_info)
 	kfree(smd_info->buf_in_2_raw);
 }
 
-int diag_smd_constructor(struct diag_smd_info *smd_info, int peripheral,
-			  int type)
+void diag_smd_buffer_init(struct diag_smd_info *smd_info)
 {
-	if (!smd_info)
-		return -EIO;
-
-	smd_info->peripheral = peripheral;
-	smd_info->type = type;
-	smd_info->encode_hdlc = 0;
-	mutex_init(&smd_info->smd_ch_mutex);
-	spin_lock_init(&smd_info->in_busy_lock);
-
-	switch (peripheral) {
-	case MODEM_DATA:
-		smd_info->peripheral_mask = DIAG_CON_MPSS;
-		break;
-	case LPASS_DATA:
-		smd_info->peripheral_mask = DIAG_CON_LPASS;
-		break;
-	case WCNSS_DATA:
-		smd_info->peripheral_mask = DIAG_CON_WCNSS;
-		break;
-	default:
-		pr_err("diag: In %s, unknown peripheral, peripheral: %d\n",
-			__func__, peripheral);
-		goto err;
+	if (!smd_info) {
+		pr_err("diag: Invalid smd_info\n");
+		return;
 	}
 
-	smd_info->ch = 0;
-	smd_info->ch_save = 0;
+	if (smd_info->inited) {
+		pr_debug("diag: smd buffers are already initialized, peripheral: %d, type: %d\n",
+			 smd_info->peripheral, smd_info->type);
+		return;
+	}
 
 	if (smd_info->buf_in_1 == NULL) {
 		smd_info->buf_in_1 = kzalloc(IN_BUF_SIZE, GFP_KERNEL);
@@ -2458,6 +2426,49 @@ int diag_smd_constructor(struct diag_smd_info *smd_info, int peripheral,
 			kmemleak_not_leak(smd_info->buf_in_1_raw);
 		}
 	}
+	smd_info->inited = 1;
+	return;
+err:
+	smd_info->inited = 0;
+	kfree(smd_info->buf_in_1);
+	kfree(smd_info->buf_in_2);
+	kfree(smd_info->write_ptr_1);
+	kfree(smd_info->write_ptr_2);
+	kfree(smd_info->buf_in_1_raw);
+	kfree(smd_info->buf_in_2_raw);
+}
+
+int diag_smd_constructor(struct diag_smd_info *smd_info, int peripheral,
+			  int type)
+{
+	if (!smd_info)
+		return -EIO;
+
+	smd_info->peripheral = peripheral;
+	smd_info->type = type;
+	smd_info->encode_hdlc = 0;
+	smd_info->inited = 0;
+	mutex_init(&smd_info->smd_ch_mutex);
+	spin_lock_init(&smd_info->in_busy_lock);
+
+	switch (peripheral) {
+	case MODEM_DATA:
+		smd_info->peripheral_mask = DIAG_CON_MPSS;
+		break;
+	case LPASS_DATA:
+		smd_info->peripheral_mask = DIAG_CON_LPASS;
+		break;
+	case WCNSS_DATA:
+		smd_info->peripheral_mask = DIAG_CON_WCNSS;
+		break;
+	default:
+		pr_err("diag: In %s, unknown peripheral, peripheral: %d\n",
+			__func__, peripheral);
+		goto err;
+	}
+
+	smd_info->ch = 0;
+	smd_info->ch_save = 0;
 
 	/* The smd data type needs separate work queues for reads */
 	if (type == SMD_DATA_TYPE) {
@@ -2570,12 +2581,6 @@ int diag_smd_constructor(struct diag_smd_info *smd_info, int peripheral,
 
 	return 0;
 err:
-	kfree(smd_info->buf_in_1);
-	kfree(smd_info->buf_in_2);
-	kfree(smd_info->write_ptr_1);
-	kfree(smd_info->write_ptr_2);
-	kfree(smd_info->buf_in_1_raw);
-	kfree(smd_info->buf_in_2_raw);
 	if (smd_info->wq)
 		destroy_workqueue(smd_info->wq);
 

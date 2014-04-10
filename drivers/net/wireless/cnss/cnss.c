@@ -28,6 +28,8 @@
 #include <soc/qcom/subsystem_restart.h>
 #include <soc/qcom/subsystem_notif.h>
 #include <soc/qcom/ramdump.h>
+#include <linux/msm-bus.h>
+#include <linux/msm-bus-board.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_pcie.h>
 #include <net/cnss.h>
@@ -91,6 +93,11 @@ static struct cnss_data {
 	struct cnss_fw_files fw_files;
 	struct pm_qos_request qos_request;
 	void *modem_notify_handler;
+	bool pci_register_again;
+	int modem_current_status;
+	struct msm_bus_scale_pdata *bus_scale_table;
+	uint32_t bus_client;
+	void *subsys_handle;
 } *penv;
 
 static int cnss_wlan_vreg_set(struct cnss_wlan_vreg_info *vreg_info, bool state)
@@ -332,6 +339,12 @@ static int cnss_wlan_pci_probe(struct pci_dev *pdev,
 	penv->pdev = pdev;
 	penv->id = id;
 
+	if (penv->pci_register_again) {
+		pr_debug("%s: PCI re-registration complete\n", __func__);
+		penv->pci_register_again = false;
+		return 0;
+	}
+
 	pci_read_config_word(pdev, QCA6174_REV_ID_OFFSET, &penv->revision_id);
 	cnss_setup_fw_files(penv->revision_id);
 
@@ -444,6 +457,21 @@ int cnss_wlan_register_driver(struct cnss_wlan_driver *driver)
 	cnss_wlan_gpio_set(gpio_info, WLAN_EN_HIGH);
 	usleep(WLAN_ENABLE_DELAY);
 
+	if (!pdev) {
+		pr_debug("%s: invalid pdev. register pci device\n", __func__);
+		ret = pci_register_driver(&cnss_wlan_pci_driver);
+
+		if (ret) {
+			pr_err("%s: pci registration failed\n", __func__);
+			goto err_pcie_link_up;
+		}
+		pdev = penv->pdev;
+		if (!pdev) {
+			pr_err("%s: pdev is still invalid\n", __func__);
+			goto err_pcie_link_up;
+		}
+	}
+
 	if (!penv->pcie_link_state) {
 		ret = msm_pcie_pm_control(MSM_PCIE_RESUME,
 					  cnss_get_pci_dev_bus_number(pdev),
@@ -456,16 +484,21 @@ int cnss_wlan_register_driver(struct cnss_wlan_driver *driver)
 		penv->pcie_link_state = PCIE_LINK_UP;
 	}
 
-	if (pdev && wdrv->probe) {
+	if (wdrv->probe) {
 		if (penv->saved_state)
 			pci_load_and_free_saved_state(pdev, &penv->saved_state);
 
 		pci_restore_state(pdev);
 
 		ret = wdrv->probe(pdev, penv->id);
-		if (ret)
+		if (ret) {
+			pr_err("Failed to probe WLAN\n");
 			goto err_wlan_probe;
+		}
 	}
+
+	if (pdev && wdrv->modem_status)
+		wdrv->modem_status(pdev, penv->modem_current_status);
 
 	return ret;
 
@@ -480,7 +513,12 @@ err_wlan_probe:
 err_pcie_link_up:
 	cnss_wlan_gpio_set(gpio_info, WLAN_EN_LOW);
 	cnss_wlan_vreg_set(vreg_info, VREG_OFF);
-	pci_unregister_driver(&cnss_wlan_pci_driver);
+	if (pdev) {
+		pr_err("%d: Unregistering PCI device\n", __LINE__);
+		pci_unregister_driver(&cnss_wlan_pci_driver);
+		penv->pdev = NULL;
+		penv->pci_register_again = true;
+	}
 
 err_wlan_vreg_on:
 	penv->driver = NULL;
@@ -509,8 +547,13 @@ void cnss_wlan_unregister_driver(struct cnss_wlan_driver *driver)
 		return;
 	}
 
-	if (!pdev)
+	if (penv->bus_client)
+		msm_bus_scale_client_update_request(penv->bus_client, 0);
+
+	if (!pdev) {
+		pr_err("%d: invalid pdev\n", __LINE__);
 		goto cut_power;
+	}
 
 	if (wdrv->remove)
 		wdrv->remove(pdev);
@@ -728,6 +771,11 @@ static int cnss_powerup(const struct subsys_desc *subsys)
 		cnss_wlan_gpio_set(gpio_info, WLAN_EN_HIGH);
 		usleep(WLAN_ENABLE_DELAY);
 
+		if (!pdev) {
+			pr_err("%d: invalid pdev\n", __LINE__);
+			goto err_pcie_link_up;
+		}
+
 		if (!penv->pcie_link_state) {
 			ret = msm_pcie_pm_control(MSM_PCIE_RESUME,
 					  cnss_get_pci_dev_bus_number(pdev),
@@ -741,7 +789,7 @@ static int cnss_powerup(const struct subsys_desc *subsys)
 			penv->pcie_link_state = PCIE_LINK_UP;
 		}
 
-		if (pdev && wdrv && wdrv->reinit) {
+		if (wdrv && wdrv->reinit) {
 			if (penv->saved_state)
 				pci_load_and_free_saved_state(pdev,
 					&penv->saved_state);
@@ -749,10 +797,14 @@ static int cnss_powerup(const struct subsys_desc *subsys)
 			pci_restore_state(pdev);
 
 			ret = wdrv->reinit(pdev, penv->id);
-			if (ret)
+			if (ret) {
+				pr_err("%d: Failed to do reinit\n", __LINE__);
 				goto err_wlan_reinit;
-		} else
+			}
+		} else {
+			pr_err("%d: wdrv->reinit is invalid\n", __LINE__);
 			goto err_pcie_link_up;
+		}
 	}
 
 	return ret;
@@ -768,7 +820,12 @@ err_wlan_reinit:
 err_pcie_link_up:
 	cnss_wlan_gpio_set(gpio_info, WLAN_EN_LOW);
 	cnss_wlan_vreg_set(vreg_info, VREG_OFF);
-	pci_unregister_driver(&cnss_wlan_pci_driver);
+	if (penv->pdev) {
+		pr_err("%d: Unregistering pci device\n", __LINE__);
+		pci_unregister_driver(&cnss_wlan_pci_driver);
+		penv->pdev = NULL;
+		penv->pci_register_again = true;
+	}
 
 err_wlan_vreg_on:
 	return ret;
@@ -831,16 +888,20 @@ static int cnss_modem_notifier_nb(struct notifier_block *this,
 	if (!penv)
 		return NOTIFY_DONE;
 
+	if (SUBSYS_AFTER_POWERUP == code)
+		penv->modem_current_status = 1;
+	else if (SUBSYS_BEFORE_SHUTDOWN == code)
+		penv->modem_current_status = 0;
+	else
+		return NOTIFY_DONE;
+
 	wdrv = penv->driver;
 	pdev = penv->pdev;
 
 	if (!wdrv || !pdev || !wdrv->modem_status)
 		return NOTIFY_DONE;
 
-	if (SUBSYS_AFTER_POWERUP == code)
-		wdrv->modem_status(pdev, 1);
-	else if (SUBSYS_BEFORE_SHUTDOWN == code)
-		wdrv->modem_status(pdev, 0);
+	wdrv->modem_status(pdev, penv->modem_current_status);
 
 	return NOTIFY_OK;
 }
@@ -875,6 +936,7 @@ static int cnss_probe(struct platform_device *pdev)
 		goto err_subsys_reg;
 	}
 
+	penv->modem_current_status = 0;
 	penv->modem_notify_handler =
 		subsys_notif_register_notifier(MODEM_NAME, &mnb);
 	if (IS_ERR(penv->modem_notify_handler)) {
@@ -882,7 +944,7 @@ static int cnss_probe(struct platform_device *pdev)
 		goto err_notif_modem;
 	}
 
-	subsystem_get(penv->subsysdesc.name);
+	penv->subsys_handle = subsystem_get(penv->subsysdesc.name);
 
 	penv->ramdump_dev = create_ramdump_device(penv->subsysdesc.name,
 				penv->subsysdesc.dev);
@@ -898,6 +960,7 @@ static int cnss_probe(struct platform_device *pdev)
 	penv->gpio_info.prop = false;
 	penv->vreg_info.wlan_reg = NULL;
 	penv->vreg_info.state = VREG_OFF;
+	penv->pci_register_again = false;
 
 	ret = cnss_wlan_get_resources(pdev);
 	if (ret)
@@ -908,8 +971,26 @@ static int cnss_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_pci_reg;
 
+	penv->bus_scale_table = 0;
+	penv->bus_scale_table = msm_bus_cl_get_pdata(pdev);
+
+	if (penv->bus_scale_table)  {
+		penv->bus_client =
+			msm_bus_scale_register_client(penv->bus_scale_table);
+
+		if (!penv->bus_client) {
+			pr_err("Failed to register with bus_scale client\n");
+			goto err_bus_reg;
+		}
+	}
+
 	pr_info("cnss: Platform driver probed successfully.\n");
 	return ret;
+
+err_bus_reg:
+	if (penv->bus_scale_table)
+		msm_bus_cl_clear_pdata(penv->bus_scale_table);
+	pci_unregister_driver(&cnss_wlan_pci_driver);
 
 err_pci_reg:
 	cnss_wlan_release_resources();
@@ -918,6 +999,7 @@ err_get_wlan_res:
 	destroy_ramdump_device(penv->ramdump_dev);
 
 err_ramdump_create:
+	subsystem_put(penv->subsys_handle);
 	subsys_notif_unregister_notifier(penv->modem_notify_handler, &mnb);
 
 err_notif_modem:
@@ -933,6 +1015,12 @@ static int cnss_remove(struct platform_device *pdev)
 {
 	struct cnss_wlan_vreg_info *vreg_info = &penv->vreg_info;
 	struct cnss_wlan_gpio_info *gpio_info = &penv->gpio_info;
+
+	if (penv->bus_client)
+		msm_bus_scale_unregister_client(penv->bus_client);
+
+	if (penv->bus_scale_table)
+		msm_bus_cl_clear_pdata(penv->bus_scale_table);
 
 	cnss_wlan_gpio_set(gpio_info, WLAN_EN_LOW);
 	if (cnss_wlan_vreg_set(vreg_info, VREG_OFF))
@@ -984,6 +1072,37 @@ void cnss_remove_pm_qos(void)
 	pm_qos_remove_request(&penv->qos_request);
 }
 EXPORT_SYMBOL(cnss_remove_pm_qos);
+
+int cnss_request_bus_bandwidth(int bandwidth)
+{
+	int ret = 0;
+
+	if (!penv)
+		return -ENODEV;
+
+	if (!penv->bus_client)
+		return -ENOSYS;
+
+	switch (bandwidth) {
+	case CNSS_BUS_WIDTH_NONE:
+	case CNSS_BUS_WIDTH_LOW:
+	case CNSS_BUS_WIDTH_MEDIUM:
+	case CNSS_BUS_WIDTH_HIGH:
+		ret = msm_bus_scale_client_update_request(penv->bus_client,
+				bandwidth);
+		if (ret)
+			pr_err("%s: could not set bus bandwidth %d, ret = %d\n",
+			       __func__, bandwidth, ret);
+		break;
+
+	default:
+		pr_err("%s: Invalid request %d", __func__, bandwidth);
+		ret = -EINVAL;
+
+	}
+	return ret;
+}
+EXPORT_SYMBOL(cnss_request_bus_bandwidth);
 
 module_init(cnss_initialize);
 module_exit(cnss_exit);

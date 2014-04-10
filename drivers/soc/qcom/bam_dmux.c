@@ -1848,7 +1848,7 @@ static void disconnect_to_bam(void)
 		memset(rx_desc_mem_buf.base, 0, rx_desc_mem_buf.size);
 		memset(tx_desc_mem_buf.base, 0, tx_desc_mem_buf.size);
 		BAM_DMUX_LOG("%s: device reset\n", __func__);
-		sps_device_reset(a2_device_handle);
+		bam_ops->sps_device_reset_ptr(a2_device_handle);
 	} else {
 		ssr_skipped_disconnect = 1;
 	}
@@ -2308,6 +2308,8 @@ void msm_bam_dmux_deinit(void)
 {
 	restart_notifier_cb(NULL, SUBSYS_BEFORE_SHUTDOWN, NULL);
 	restart_notifier_cb(NULL, SUBSYS_AFTER_SHUTDOWN, NULL);
+	in_global_reset = 0;
+	in_ssr = 0;
 }
 EXPORT_SYMBOL(msm_bam_dmux_deinit);
 
@@ -2316,14 +2318,13 @@ EXPORT_SYMBOL(msm_bam_dmux_deinit);
  */
 void msm_bam_dmux_reinit(void)
 {
+	bam_mux_initialized = 0;
 	bam_ops->smsm_state_cb_register_ptr(SMSM_MODEM_STATE,
 			SMSM_A2_POWER_CONTROL,
 			bam_dmux_smsm_cb, NULL);
 	bam_ops->smsm_state_cb_register_ptr(SMSM_MODEM_STATE,
 			SMSM_A2_POWER_CONTROL_ACK,
 			bam_dmux_smsm_ack_cb, NULL);
-	bam_mux_initialized = 0;
-	bam_init();
 }
 EXPORT_SYMBOL(msm_bam_dmux_reinit);
 

@@ -124,6 +124,12 @@
 	(((start_ofst) + 127) & ~127)
 #define IPA_RT_FLT_HW_RULE_BUF_SIZE	(128)
 
+#define MAX_RESOURCE_TO_CLIENTS (5)
+struct ipa_client_names {
+	enum ipa_client_type names[MAX_RESOURCE_TO_CLIENTS];
+	int length;
+};
+
 /**
  * struct ipa_mem_buffer - IPA memory buffer
  * @base: base
@@ -322,7 +328,6 @@ struct ipa_ep_cfg_status {
  * @data_fifo_pipe_mem_ofst: data FIFO pipe memory offset
  * @desc_fifo_client_allocated: if descriptors FIFO was allocated by a client
  * @data_fifo_client_allocated: if data FIFO was allocated by a client
- * @suspended: valid for B2B pipes, whether IPA EP is suspended
  * @skip_ep_cfg: boolean field that determines if EP should be configured
  *  by IPA driver
  * @keep_ipa_awake: when true, IPA will not be clock gated
@@ -346,13 +351,13 @@ struct ipa_ep_context {
 	u32 data_fifo_pipe_mem_ofst;
 	bool desc_fifo_client_allocated;
 	bool data_fifo_client_allocated;
-	bool suspended;
 	struct ipa_sys_context *sys;
 	u32 avail_fifo_desc;
 	u32 dflt_flt4_rule_hdl;
 	u32 dflt_flt6_rule_hdl;
 	bool skip_ep_cfg;
 	bool keep_ipa_awake;
+	bool resume_on_connect;
 };
 
 enum ipa_sys_pipe_policy {
@@ -423,6 +428,7 @@ enum ipa_desc_type {
  * >1 and <0xFFFF for first of a "multiple" tranfer,
  * 0xFFFF for last desc, 0 for rest of "multiple' transfer
  * @bounce: va of bounce buffer
+ * @unmap_dma: in case this is true, the buffer will not be dma unmapped
  *
  * This struct can wrap both data packet and immediate command packet.
  */
@@ -438,6 +444,7 @@ struct ipa_tx_pkt_wrapper {
 	struct ipa_mem_buffer mult;
 	u32 cnt;
 	void *bounce;
+	bool no_unmap_dma;
 };
 
 /**
@@ -445,6 +452,8 @@ struct ipa_tx_pkt_wrapper {
  * @type: skb or immediate command or plain old data
  * @pyld: points to skb
  * or kmalloc'ed immediate command parameters/plain old data
+ * @dma_address: dma mapped address of pyld
+ * @dma_address_valid: valid field for dma_address
  * @len: length of the pyld
  * @opcode: for immediate commands
  * @callback: IPA client provided completion callback
@@ -455,6 +464,8 @@ struct ipa_tx_pkt_wrapper {
 struct ipa_desc {
 	enum ipa_desc_type type;
 	void *pyld;
+	dma_addr_t dma_address;
+	bool dma_address_valid;
 	u16 len;
 	u16 opcode;
 	void (*callback)(void *user1, int user2);
@@ -582,6 +593,12 @@ struct ipa_wlan_stats {
 	u32 tx_pkts_dropped;
 };
 
+struct ipa_active_clients {
+	struct mutex mutex;
+	spinlock_t spinlock;
+	bool mutex_locked;
+	int cnt;
+};
 
 struct ipa_controller;
 
@@ -629,8 +646,12 @@ struct ipa_controller;
  * @ip4_flt_tbl_lcl: where ip4 flt tables reside 1-local; 0-system
  * @ip6_flt_tbl_lcl: where ip6 flt tables reside 1-local; 0-system
  * @empty_rt_tbl_mem: empty routing tables memory
+ * @power_mgmt_wq: workqueue for power management
+ * @tag_process_before_gating: indicates whether to start tag process before
+ *  gating IPA clocks
  * @pipe_mem_pool: pipe memory pool
  * @dma_pool: special purpose DMA pool
+ * @ipa_active_clients: structure for reference counting connected IPA clients
  * @ipa_hw_type: type of IPA HW type (e.g. IPA 1.0, IPA 1.1 etc')
  * @ipa_hw_mode: mode of IPA HW mode (e.g. Normal, Virtual or over PCIe)
  * @use_ipa_teth_bridge: use tethering bridge driver
@@ -685,8 +706,9 @@ struct ipa_context {
 	struct ipa_mem_buffer empty_rt_tbl_mem;
 	struct gen_pool *pipe_mem_pool;
 	struct dma_pool *dma_pool;
-	struct mutex ipa_active_clients_lock;
-	int ipa_active_clients;
+	struct ipa_active_clients ipa_active_clients;
+	struct workqueue_struct *power_mgmt_wq;
+	bool tag_process_before_gating;
 	u32 clnt_hdl_cmd;
 	u32 clnt_hdl_data_in;
 	u32 clnt_hdl_data_out;
@@ -812,7 +834,9 @@ int ipa_send_one(struct ipa_sys_context *sys, struct ipa_desc *desc,
 int ipa_send(struct ipa_sys_context *sys, u32 num_desc, struct ipa_desc *desc,
 		bool in_atomic);
 int ipa_get_ep_mapping(enum ipa_client_type client);
-int ipa_get_client_mapping(int pipe_idx);
+enum ipa_client_type ipa_get_client_mapping(int pipe_idx);
+enum ipa_rm_resource_name ipa_get_rm_resource_from_ep(int pipe_idx);
+
 int ipa_generate_hw_rule(enum ipa_ip_type ip,
 			 const struct ipa_rule_attrib *attrib,
 			 u8 **buf,
@@ -848,6 +872,7 @@ struct ipa_context *ipa_get_ctx(void);
 void ipa_enable_clks(void);
 void ipa_disable_clks(void);
 void ipa_inc_client_enable_clks(void);
+int ipa_inc_client_enable_clks_no_block(void);
 void ipa_dec_client_disable_clks(void);
 int ipa_interrupts_init(u32 ipa_irq, u32 ee, struct device *ipa_dev);
 int __ipa_del_rt_rule(u32 rule_hdl);
@@ -924,6 +949,14 @@ int ipa_set_required_perf_profile(enum ipa_voltage_level floor_voltage,
 
 int ipa_cfg_ep_status(u32 clnt_hdl, const struct ipa_ep_cfg_status *ipa_ep_cfg);
 
+int ipa_suspend_resource_no_block(enum ipa_rm_resource_name name);
+int ipa_suspend_resource_sync(enum ipa_rm_resource_name name);
+int ipa_resume_resource(enum ipa_rm_resource_name name);
+bool ipa_should_pipe_be_suspended(enum ipa_client_type client);
+int ipa_tag_aggr_force_close(int pipe_num);
 
+void ipa_active_clients_lock(void);
+int ipa_active_clients_trylock(void);
+void ipa_active_clients_unlock(void);
 
 #endif /* _IPA_I_H_ */

@@ -631,16 +631,18 @@ static int kgsl_iommu_pt_equal(struct kgsl_mmu *mmu,
 				phys_addr_t pt_base)
 {
 	struct kgsl_iommu_pt *iommu_pt = pt ? pt->priv : NULL;
-	phys_addr_t domain_ptbase = iommu_pt ?
-				iommu_get_pt_base_addr(iommu_pt->domain) : 0;
+	phys_addr_t domain_ptbase;
 
-	/* Only compare the valid address bits of the pt_base */
-	domain_ptbase &= KGSL_IOMMU_CTX_TTBR0_ADDR_MASK;
+	if (iommu_pt == NULL)
+		return 0;
+
+	domain_ptbase = iommu_get_pt_base_addr(iommu_pt->domain)
+			& KGSL_IOMMU_CTX_TTBR0_ADDR_MASK;
 
 	pt_base &= KGSL_IOMMU_CTX_TTBR0_ADDR_MASK;
 
-	return domain_ptbase && pt_base &&
-		(domain_ptbase == pt_base);
+	return (domain_ptbase == pt_base);
+
 }
 
 /*
@@ -1214,7 +1216,7 @@ static phys_addr_t kgsl_iommu_get_pt_base_addr(struct kgsl_mmu *mmu,
  * @ctx_id - The context bank whose lsb valus is to be returned
  * Return - returns the ttbr0 value programmed by iommu driver
  */
-static phys_addr_t kgsl_iommu_get_default_ttbr0(struct kgsl_mmu *mmu,
+static uint64_t kgsl_iommu_get_default_ttbr0(struct kgsl_mmu *mmu,
 				unsigned int unit_id,
 				enum kgsl_iommu_context_id ctx_id)
 {
@@ -1391,9 +1393,8 @@ static int kgsl_iommu_init(struct kgsl_mmu *mmu)
 	 * we're better off with extra room.
 	 */
 	if (mmu->pt_per_process) {
-		mmu->pt_base = PAGE_OFFSET;
-		mmu->pt_size = KGSL_IOMMU_GLOBAL_MEM_BASE
-				- kgsl_mmu_get_base_addr(mmu) - SZ_1M;
+		mmu->pt_base = KGSL_PER_PROCESS_PT_BASE;
+		mmu->pt_size = KGSL_PER_PROCESS_PT_SIZE;
 		mmu->use_cpu_map = true;
 	} else {
 		mmu->pt_base = KGSL_PAGETABLE_BASE;
@@ -1905,7 +1906,7 @@ static int kgsl_iommu_default_setstate(struct kgsl_mmu *mmu,
 	int ret = 0;
 	phys_addr_t pt_base = kgsl_iommu_get_pt_base_addr(mmu,
 						mmu->hwpagetable);
-	phys_addr_t pt_val;
+	uint64_t pt_val;
 
 	ret = kgsl_iommu_enable_clk(mmu, KGSL_IOMMU_CONTEXT_USER);
 	if (ret) {

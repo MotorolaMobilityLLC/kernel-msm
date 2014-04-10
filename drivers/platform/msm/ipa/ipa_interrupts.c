@@ -38,7 +38,7 @@ static void deferred_interrupt_work(struct work_struct *work)
 			container_of(work,
 			struct ipa_interrupt_work_wrap,
 			interrupt_work);
-	IPAERR("call handler from workq...\n");
+	IPADBG("call handler from workq...\n");
 	work_data->handler(work_data->interrupt, work_data->private_data,
 			work_data->interrupt_data);
 	kfree(work_data->interrupt_data);
@@ -127,10 +127,12 @@ static irqreturn_t ipa_isr(int irq, void *ctxt)
 	u32 reg;
 	u32 bmsk = 1;
 	u32 i = 0;
+	u32 en;
 
+	en = ipa_read_reg(ipa_ctx->mmio, IPA_IRQ_EN_EE_n_ADDR(ipa_ee));
 	reg = ipa_read_reg(ipa_ctx->mmio, IPA_IRQ_STTS_EE_n_ADDR(ipa_ee));
 	for (i = 0; i < IPA_IRQ_MAX; i++) {
-		if (reg & bmsk)
+		if (en & reg & bmsk)
 			handle_interrupt(i);
 		bmsk = bmsk << 1;
 	}
@@ -138,7 +140,6 @@ static irqreturn_t ipa_isr(int irq, void *ctxt)
 
 	return IRQ_HANDLED;
 }
-
 /**
 * ipa_add_interrupt_handler() - Adds handler to an interrupt type
 * @interrupt:		Interrupt type
@@ -246,18 +247,11 @@ int ipa_interrupts_init(u32 ipa_irq, u32 ee, struct device *ipa_dev)
 	IPADBG("IPA IRQ handler irq=%d registered\n", ipa_irq);
 
 	res = enable_irq_wake(ipa_irq);
-	if (res) {
+	if (res)
 		IPAERR("fail to enable IPA IRQ wakeup irq=%d res=%d\n",
 				ipa_irq, res);
-		res = -ENODEV;
-		goto fail_enable_irq_wake;
-	}
-	IPADBG("IPA IRQ wakeup enabled irq=%d\n", ipa_irq);
+	else
+		IPADBG("IPA IRQ wakeup enabled irq=%d\n", ipa_irq);
 
 	return 0;
-
-fail_enable_irq_wake:
-		free_irq(ipa_irq, ipa_dev);
-
-	return res;
 }

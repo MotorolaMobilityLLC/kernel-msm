@@ -712,7 +712,8 @@ static const struct usb_device_id vidpids[] = {
 	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x904c, 8),
 	.driver_info = (unsigned long)&rmnet_info,
 	},
-	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x9075, 6), /*mux over hsic mdm*/
+	/* mux over hsic mdm */
+	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x9075, 6),
 	.driver_info = (unsigned long)&rmnet_info,
 	},
 	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x908E, 8),
@@ -730,13 +731,20 @@ static const struct usb_device_id vidpids[] = {
 	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x9079, 8),
 	.driver_info = (unsigned long)&rmnet_usb_info,
 	},
-	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x908A, 6), /*mux over hsic mdm*/
+	/* mux over hsic mdm */
+	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x908A, 6),
 	.driver_info = (unsigned long)&rmnet_info,
 	},
-	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x90A0, 6), /*mux over hsic mdm*/
+	/* mux over hsic mdm */
+	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x909F, 6),
 	.driver_info = (unsigned long)&rmnet_info,
 	},
-	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x90A4, 8), /*mux over hsic mdm*/
+	/* mux over hsic mdm */
+	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x90A0, 6),
+	.driver_info = (unsigned long)&rmnet_info,
+	},
+	/* mux over hsic mdm */
+	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6, 0x90A4, 8),
 	.driver_info = (unsigned long)&rmnet_info,
 	},
 
@@ -752,6 +760,7 @@ static struct usb_driver rmnet_usb = {
 	.disconnect = rmnet_usb_disconnect,
 	.suspend    = rmnet_usb_suspend,
 	.resume     = rmnet_usb_resume,
+	.reset_resume     = rmnet_usb_resume,
 	.supports_autosuspend = true,
 };
 

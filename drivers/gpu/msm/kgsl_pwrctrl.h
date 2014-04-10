@@ -90,7 +90,7 @@ struct kgsl_pwrctrl {
 	unsigned long ctrl_flags;
 	struct kgsl_pwrlevel pwrlevels[KGSL_MAX_PWRLEVELS];
 	unsigned int active_pwrlevel;
-	int thermal_pwrlevel;
+	unsigned int thermal_pwrlevel;
 	unsigned int default_pwrlevel;
 	unsigned int init_pwrlevel;
 	unsigned int wakeup_maxpwrlevel;
@@ -106,7 +106,6 @@ struct kgsl_pwrctrl {
 	struct kgsl_clk_stats clk_stats;
 	struct pm_qos_request pm_qos_req_dma;
 	unsigned int pm_qos_latency;
-	unsigned int irq_last;
 	bool bus_control;
 	int bus_mod;
 	unsigned int bus_index[KGSL_MAX_PWRLEVELS];
@@ -158,5 +157,6 @@ void kgsl_active_count_put(struct kgsl_device *device);
 int kgsl_active_count_wait(struct kgsl_device *device, int count);
 void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 				int requested_state);
+int kgsl_pwrctrl_slumber(struct kgsl_device *device);
 
 #endif /* __KGSL_PWRCTRL_H */

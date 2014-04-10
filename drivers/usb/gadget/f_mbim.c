@@ -177,6 +177,9 @@ static inline unsigned mbim_bitrate(struct usb_gadget *g)
 #define MBIM_NTB_OUT_SIZE_IPA		(0x2000)
 
 #define MBIM_FORMATS_SUPPORTED	USB_CDC_NCM_NTB16_SUPPORTED
+static int mbim_ntb_out_size_sys2bam;
+module_param(mbim_ntb_out_size_sys2bam, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(mbim_ntb_out_size_sys2bam, "MBIM OUT SIZE for SYS2BAM Mode");
 
 static struct usb_cdc_ncm_ntb_parameters mbim_ntb_parameters = {
 	.wLength = sizeof mbim_ntb_parameters,
@@ -383,6 +386,80 @@ static struct usb_descriptor_header *mbim_hs_function[] = {
 	(struct usb_descriptor_header *) &mbim_data_intf,
 	(struct usb_descriptor_header *) &hs_mbim_in_desc,
 	(struct usb_descriptor_header *) &hs_mbim_out_desc,
+	NULL,
+};
+
+/* Super Speed Support */
+static struct usb_endpoint_descriptor ss_mbim_notify_desc = {
+	.bLength =		USB_DT_ENDPOINT_SIZE,
+	.bDescriptorType =	USB_DT_ENDPOINT,
+	.bEndpointAddress =	USB_DIR_IN,
+	.bmAttributes =		USB_ENDPOINT_XFER_INT,
+	.wMaxPacketSize =	4*cpu_to_le16(NCM_STATUS_BYTECOUNT),
+	.bInterval =		LOG2_STATUS_INTERVAL_MSEC + 4,
+};
+
+static struct usb_ss_ep_comp_descriptor ss_mbim_notify_comp_desc = {
+	.bLength =		sizeof(ss_mbim_notify_comp_desc),
+	.bDescriptorType =	USB_DT_SS_ENDPOINT_COMP,
+
+	/* the following 3 values can be tweaked if necessary */
+	/* .bMaxBurst =         0, */
+	/* .bmAttributes =      0, */
+	.wBytesPerInterval =	4*cpu_to_le16(NCM_STATUS_BYTECOUNT),
+};
+
+static struct usb_endpoint_descriptor ss_mbim_in_desc = {
+	.bLength =		USB_DT_ENDPOINT_SIZE,
+	.bDescriptorType =	USB_DT_ENDPOINT,
+	.bEndpointAddress =	USB_DIR_IN,
+	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
+	.wMaxPacketSize =	__constant_cpu_to_le16(1024),
+};
+
+static struct usb_ss_ep_comp_descriptor ss_mbim_in_comp_desc = {
+	.bLength =              sizeof(ss_mbim_in_comp_desc),
+	.bDescriptorType =      USB_DT_SS_ENDPOINT_COMP,
+
+	/* the following 2 values can be tweaked if necessary */
+	/* .bMaxBurst =         0, */
+	/* .bmAttributes =      0, */
+};
+
+static struct usb_endpoint_descriptor ss_mbim_out_desc = {
+	.bLength =		USB_DT_ENDPOINT_SIZE,
+	.bDescriptorType =	USB_DT_ENDPOINT,
+	.bEndpointAddress =	USB_DIR_OUT,
+	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
+	.wMaxPacketSize =	__constant_cpu_to_le16(1024),
+};
+
+static struct usb_ss_ep_comp_descriptor ss_mbim_out_comp_desc = {
+	.bLength =		sizeof(ss_mbim_out_comp_desc),
+	.bDescriptorType =	USB_DT_SS_ENDPOINT_COMP,
+
+	/* the following 2 values can be tweaked if necessary */
+	/* .bMaxBurst =         0, */
+	/* .bmAttributes =      0, */
+};
+
+static struct usb_descriptor_header *mbim_ss_function[] = {
+	(struct usb_descriptor_header *) &mbim_iad_desc,
+	/* MBIM control descriptors */
+	(struct usb_descriptor_header *) &mbim_control_intf,
+	(struct usb_descriptor_header *) &mbim_header_desc,
+	(struct usb_descriptor_header *) &mbim_union_desc,
+	(struct usb_descriptor_header *) &mbim_desc,
+	(struct usb_descriptor_header *) &ext_mbb_desc,
+	(struct usb_descriptor_header *) &ss_mbim_notify_desc,
+	(struct usb_descriptor_header *) &ss_mbim_notify_comp_desc,
+	/* data interface, altsettings 0 and 1 */
+	(struct usb_descriptor_header *) &mbim_data_nop_intf,
+	(struct usb_descriptor_header *) &mbim_data_intf,
+	(struct usb_descriptor_header *) &ss_mbim_in_desc,
+	(struct usb_descriptor_header *) &ss_mbim_in_comp_desc,
+	(struct usb_descriptor_header *) &ss_mbim_out_desc,
+	(struct usb_descriptor_header *) &ss_mbim_out_comp_desc,
 	NULL,
 };
 
@@ -1562,6 +1639,20 @@ mbim_bind(struct usb_configuration *c, struct usb_function *f)
 			goto fail;
 	}
 
+	if (gadget_is_superspeed(c->cdev->gadget)) {
+		ss_mbim_in_desc.bEndpointAddress =
+				fs_mbim_in_desc.bEndpointAddress;
+		ss_mbim_out_desc.bEndpointAddress =
+				fs_mbim_out_desc.bEndpointAddress;
+		ss_mbim_notify_desc.bEndpointAddress =
+				fs_mbim_notify_desc.bEndpointAddress;
+
+		/* copy descriptors, and track endpoint copies */
+		f->ss_descriptors = usb_copy_descriptors(mbim_ss_function);
+		if (!f->ss_descriptors)
+			goto fail;
+	}
+
 	/*
 	 * If MBIM is bound in a config other than the first, tell Windows
 	 * about it by returning the num as a string in the OS descriptor's
@@ -1584,6 +1675,10 @@ mbim_bind(struct usb_configuration *c, struct usb_function *f)
 fail:
 	pr_err("%s failed to bind, err %d\n", f->name, status);
 
+	if (f->ss_descriptors)
+		usb_free_descriptors(f->ss_descriptors);
+	if (f->hs_descriptors)
+		usb_free_descriptors(f->hs_descriptors);
 	if (f->fs_descriptors)
 		usb_free_descriptors(f->fs_descriptors);
 
@@ -1610,6 +1705,10 @@ static void mbim_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	pr_debug("unbinding mbim");
 	bam_data_destroy(mbim->port_num);
+
+	if (gadget_is_superspeed(c->cdev->gadget))
+		usb_free_descriptors(f->ss_descriptors);
+
 	if (gadget_is_dualspeed(c->cdev->gadget))
 		usb_free_descriptors(f->hs_descriptors);
 	usb_free_descriptors(f->fs_descriptors);
@@ -1631,6 +1730,7 @@ int mbim_bind_config(struct usb_configuration *c, unsigned portno,
 {
 	struct f_mbim	*mbim = NULL;
 	int status = 0;
+	int mbim_out_max_size;
 
 	pr_info("port number %u", portno);
 
@@ -1697,9 +1797,21 @@ int mbim_bind_config(struct usb_configuration *c, unsigned portno,
 		/* For IPA this is proven to give maximum throughput */
 		mbim_ntb_parameters.dwNtbInMaxSize =
 		cpu_to_le32(NTB_DEFAULT_IN_SIZE_IPA);
+		/*
+		 * If mbim_ntb_out_size_sys2bam is set, use that value
+		 * otherwise use default value.
+		 */
+		if (mbim_ntb_out_size_sys2bam)
+			mbim_out_max_size = mbim_ntb_out_size_sys2bam;
+		else
+			mbim_out_max_size = MBIM_NTB_OUT_SIZE_IPA;
+
 		mbim_ntb_parameters.dwNtbOutMaxSize =
-				cpu_to_le32(MBIM_NTB_OUT_SIZE_IPA);
+				cpu_to_le32(mbim_out_max_size);
+		/* update rx buffer size to be used by usb rx request buffer */
+		mbim->bam_port.rx_buffer_size = mbim_out_max_size;
 		mbim_ntb_parameters.wNdpInDivisor = 1;
+		pr_debug("MBIM: dwNtbOutMaxSize:%d\n", mbim_out_max_size);
 	}
 
 	INIT_LIST_HEAD(&mbim->cpkt_req_q);

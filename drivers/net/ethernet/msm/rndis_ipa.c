@@ -720,24 +720,27 @@ int rndis_ipa_pipe_connect_notify(u32 usb_to_ipa_hdl,
 	}
 	RNDIS_IPA_DEBUG("end-points configured\n");
 
+	netif_stop_queue(rndis_ipa_ctx->net);
+	RNDIS_IPA_DEBUG("netif_stop_queue() was called");
+
 	netif_carrier_on(rndis_ipa_ctx->net);
 	if (!netif_carrier_ok(rndis_ipa_ctx->net)) {
 		RNDIS_IPA_ERROR("netif_carrier_ok error\n");
 		result = -EBUSY;
 		goto fail;
 	}
-	RNDIS_IPA_DEBUG("carrier_on notified\n");
+	RNDIS_IPA_DEBUG("netif_carrier_on() was called\n");
+
+	rndis_ipa_ctx->state = next_state;
+	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
 
 	if (next_state == RNDIS_IPA_CONNECTED_AND_UP) {
 		netif_start_queue(rndis_ipa_ctx->net);
-		RNDIS_IPA_DEBUG("queue started, NETDEV is operational\n");
+		RNDIS_IPA_DEBUG("netif_start_queue() was called\n");
 	}  else {
 		RNDIS_IPA_DEBUG("queue shall be started after open()\n");
 	}
 	pr_info("RNDIS_IPA NetDev pipes were connected");
-
-	rndis_ipa_ctx->state = next_state;
-	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
 
 	RNDIS_IPA_LOG_EXIT();
 
@@ -773,15 +776,15 @@ static int rndis_ipa_open(struct net_device *net)
 		return -EPERM;
 	}
 
+	rndis_ipa_ctx->state = next_state;
+	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
+
 	if (next_state == RNDIS_IPA_CONNECTED_AND_UP) {
 		netif_start_queue(net);
 		RNDIS_IPA_DEBUG("queue started\n");
 	} else {
 		RNDIS_IPA_DEBUG("queue shall be started after connect()\n");
 	}
-
-	rndis_ipa_ctx->state = next_state;
-	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
 
 	pr_info("RNDIS_IPA NetDev was opened");
 
@@ -841,7 +844,7 @@ static netdev_tx_t rndis_ipa_start_xmit(struct sk_buff *skb,
 
 	if (unlikely(rndis_ipa_ctx->state != RNDIS_IPA_CONNECTED_AND_UP)) {
 		RNDIS_IPA_ERROR("Missing pipe connected and/or iface up\n");
-		return -NETDEV_TX_BUSY;
+		return NETDEV_TX_BUSY;
 	}
 
 	if (unlikely(tx_filter(skb))) {
@@ -865,7 +868,7 @@ static netdev_tx_t rndis_ipa_start_xmit(struct sk_buff *skb,
 				rndis_ipa_ctx->outstanding_high);
 		netif_stop_queue(net);
 		RNDIS_IPA_DEBUG("send  queue was stopped");
-		status = -NETDEV_TX_BUSY;
+		status = NETDEV_TX_BUSY;
 		goto out;
 	}
 
@@ -922,6 +925,12 @@ static void rndis_ipa_tx_complete_notify(void *private,
 		return;
 	}
 
+	if (unlikely(rndis_ipa_ctx->state != RNDIS_IPA_CONNECTED_AND_UP)) {
+		RNDIS_IPA_DEBUG("dropping Tx-complete pkt, state=%s",
+			rndis_ipa_state_string(rndis_ipa_ctx->state));
+		goto out;
+	}
+
 	rndis_ipa_ctx->net->stats.tx_packets++;
 	rndis_ipa_ctx->net->stats.tx_bytes += skb->len;
 
@@ -935,6 +944,7 @@ static void rndis_ipa_tx_complete_notify(void *private,
 		RNDIS_IPA_DEBUG("send queue was awaken");
 	}
 
+out:
 	dev_kfree_skb_any(skb);
 
 	return;
@@ -986,8 +996,8 @@ static void rndis_ipa_rm_notify(void *user_data, enum ipa_rm_event event,
 	RNDIS_IPA_DEBUG("Resource Granted\n");
 
 	if (netif_queue_stopped(rndis_ipa_ctx->net)) {
-		RNDIS_IPA_DEBUG("waking queue\n");
-		netif_wake_queue(rndis_ipa_ctx->net);
+		RNDIS_IPA_DEBUG("starting queue\n");
+		netif_start_queue(rndis_ipa_ctx->net);
 	} else {
 		RNDIS_IPA_DEBUG("queue already awake\n");
 	}
@@ -1131,6 +1141,7 @@ int rndis_ipa_pipe_disconnect_notify(void *private)
 {
 	struct rndis_ipa_dev *rndis_ipa_ctx = private;
 	int next_state;
+	int outstanding_dropped_pkts;
 
 	RNDIS_IPA_LOG_ENTRY();
 
@@ -1150,12 +1161,17 @@ int rndis_ipa_pipe_disconnect_notify(void *private)
 	netif_stop_queue(rndis_ipa_ctx->net);
 	RNDIS_IPA_DEBUG("queue stopped\n");
 
+	outstanding_dropped_pkts =
+		atomic_read(&rndis_ipa_ctx->outstanding_pkts);
+
+	rndis_ipa_ctx->net->stats.tx_errors += outstanding_dropped_pkts;
+	atomic_set(&rndis_ipa_ctx->outstanding_pkts, 0);
 
 	rndis_ipa_ctx->state = next_state;
 	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
 
-	pr_info("RNDIS_IPA NetDev pipes were disconnected (outstanding=%d)",
-		atomic_read(&rndis_ipa_ctx->outstanding_pkts));
+	pr_info("RNDIS_IPA NetDev pipes were disconnected (%d outstanding clr)",
+		outstanding_dropped_pkts);
 
 	RNDIS_IPA_LOG_EXIT();
 
@@ -1516,6 +1532,7 @@ static int  rndis_ipa_deregister_properties(char *netdev_name)
 static int rndis_ipa_create_rm_resource(struct rndis_ipa_dev *rndis_ipa_ctx)
 {
 	struct ipa_rm_create_params create_params = {0};
+	struct ipa_rm_perf_profile profile;
 	int result;
 
 	RNDIS_IPA_LOG_ENTRY();
@@ -1530,21 +1547,34 @@ static int rndis_ipa_create_rm_resource(struct rndis_ipa_dev *rndis_ipa_ctx)
 	}
 	RNDIS_IPA_DEBUG("RM client was created");
 
+	profile.max_supported_bandwidth_mbps = IPA_APPS_MAX_BW_IN_MBPS;
+	ipa_rm_set_perf_profile(DRV_RESOURCE_ID, &profile);
+
 	result = ipa_rm_inactivity_timer_init(DRV_RESOURCE_ID,
 			INACTIVITY_MSEC_DELAY);
 	if (result) {
 		RNDIS_IPA_ERROR("Fail on ipa_rm_inactivity_timer_init\n");
 		goto fail_inactivity_timer;
 	}
+
 	RNDIS_IPA_DEBUG("rm_it client was created");
 
 	result = ipa_rm_add_dependency(DRV_RESOURCE_ID,
 				IPA_RM_RESOURCE_USB_CONS);
 
 	if (result)
-		RNDIS_IPA_ERROR("unable to add dependency (%d)\n", result);
+		RNDIS_IPA_ERROR("unable to add RNDIS/USB dependency (%d)\n",
+				result);
 	else
-		RNDIS_IPA_DEBUG("rm dependency was set\n");
+		RNDIS_IPA_DEBUG("RNDIS/USB dependency was set\n");
+
+	result = ipa_rm_add_dependency(IPA_RM_RESOURCE_USB_PROD,
+				IPA_RM_RESOURCE_APPS_CONS);
+	if (result)
+		RNDIS_IPA_ERROR("unable to add USB/APPS dependency (%d)\n",
+				result);
+	else
+		RNDIS_IPA_DEBUG("USB/APPS dependency was set\n");
 
 	RNDIS_IPA_LOG_EXIT();
 
@@ -1574,11 +1604,18 @@ static int rndis_ipa_destory_rm_resource(struct rndis_ipa_dev *rndis_ipa_ctx)
 	result = ipa_rm_delete_dependency(DRV_RESOURCE_ID,
 			IPA_RM_RESOURCE_USB_CONS);
 	if (result) {
-		RNDIS_IPA_ERROR("Fail to delete Apps/USB dependency");
+		RNDIS_IPA_ERROR("Fail to delete RNDIS/USB dependency");
 		goto bail;
 	}
-	RNDIS_IPA_DEBUG("RM dependency was successfully deleted");
+	RNDIS_IPA_DEBUG("RNDIS/USB dependency was successfully deleted");
 
+	result = ipa_rm_delete_dependency(IPA_RM_RESOURCE_USB_PROD,
+					IPA_RM_RESOURCE_APPS_CONS);
+	if (result) {
+		RNDIS_IPA_ERROR("Fail to delete USB/APPS dependency");
+		goto bail;
+	}
+	RNDIS_IPA_DEBUG("USB/APPS dependency was successfully deleted");
 
 	result = ipa_rm_inactivity_timer_destroy(DRV_RESOURCE_ID);
 	if (result) {

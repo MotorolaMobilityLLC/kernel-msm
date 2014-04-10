@@ -13,7 +13,7 @@
 #include <linux/module.h>
 #include <linux/qcom_iommu.h>
 #include <linux/ratelimit.h>
-
+#include <asm/div64.h>
 #include "msm_isp40.h"
 #include "msm_isp_util.h"
 #include "msm_isp_axi_util.h"
@@ -37,8 +37,8 @@
 #define VFE40_8x26V2_VERSION 0x20010014
 #define VFE40_8916_VERSION 0x10030000
 
-#define VFE40_BURST_LEN 3
-#define VFE40_STATS_BURST_LEN 2
+#define VFE40_BURST_LEN 1
+#define VFE40_STATS_BURST_LEN 1
 #define VFE40_UB_SIZE 1536
 #define VFE40_EQUAL_SLICE_UB 190
 #define VFE40_WM_BASE(idx) (0x6C + 0x24 * idx)
@@ -85,14 +85,7 @@ static uint8_t stats_pingpong_offset_map[] = {
 #define VFE40_BUS_BDG_QOS_CFG_7     0x000002E0
 
 #define VFE40_CLK_IDX 1
-static struct msm_cam_clk_info msm_vfe40_clk_info[] = {
-	{"camss_top_ahb_clk", -1},
-	{"vfe_clk_src", 266670000},
-	{"camss_vfe_vfe_clk", -1},
-	{"camss_csi_vfe_clk", -1},
-	{"iface_clk", -1},
-	{"bus_clk", -1},
-};
+static struct msm_cam_clk_info msm_vfe40_clk_info[VFE_CLK_INFO_MAX];
 
 static void msm_vfe40_init_qos_parms(struct vfe_device *vfe_dev)
 {
@@ -255,11 +248,14 @@ static void msm_vfe40_init_vbif_parms(struct vfe_device *vfe_dev)
 	case VFE40_8x26V2_VERSION:
 		msm_vfe40_init_vbif_parms_8x26(vfe_dev);
 		break;
+	case VFE40_8916_VERSION:
+		/*Reset hardware values are correct vbif values.
+		So no need to set*/
+		break;
 	default:
 		BUG();
 		pr_err("%s: VBIF is NOT configured for HW Version %x\n",
 			__func__, vfe_dev->vfe_hw_version);
-		break;
 	}
 
 }
@@ -281,8 +277,15 @@ static int msm_vfe40_init_hardware(struct vfe_device *vfe_dev)
 		}
 	}
 
+	rc = msm_isp_get_clk_info(vfe_dev, vfe_dev->pdev,
+		 &msm_vfe40_clk_info[0]);
+	if (rc < 0) {
+		pr_err("msm_isp_get_clk_info() failed\n");
+		goto fs_failed;
+	}
+
 	rc = msm_cam_clk_enable(&vfe_dev->pdev->dev, msm_vfe40_clk_info,
-		vfe_dev->vfe_clk, ARRAY_SIZE(msm_vfe40_clk_info), 1);
+		vfe_dev->vfe_clk, vfe_dev->num_clk, 1);
 	if (rc < 0)
 		goto clk_enable_failed;
 
@@ -331,7 +334,7 @@ static void msm_vfe40_release_hardware(struct vfe_device *vfe_dev)
 	iounmap(vfe_dev->vfe_vbif_base);
 	iounmap(vfe_dev->vfe_base);
 	msm_cam_clk_enable(&vfe_dev->pdev->dev, msm_vfe40_clk_info,
-		vfe_dev->vfe_clk, ARRAY_SIZE(msm_vfe40_clk_info), 0);
+		vfe_dev->vfe_clk, vfe_dev->num_clk, 0);
 	regulator_disable(vfe_dev->fs_vfe);
 	msm_isp_deinit_bandwidth_mgr(ISP_VFE0 + vfe_dev->pdev->id);
 }
@@ -1068,7 +1071,6 @@ static void msm_vfe40_cfg_axi_ub_equal_default(
 	uint8_t num_used_wms = 0;
 	uint32_t prop_size = 0;
 	uint32_t wm_ub_size;
-	uint32_t delta;
 
 	for (i = 0; i < axi_data->hw_info->num_wm; i++) {
 		if (axi_data->free_wm[i] > 0) {
@@ -1080,9 +1082,11 @@ static void msm_vfe40_cfg_axi_ub_equal_default(
 		axi_data->hw_info->min_wm_ub * num_used_wms;
 	for (i = 0; i < axi_data->hw_info->num_wm; i++) {
 		if (axi_data->free_wm[i]) {
-			delta =
-				(axi_data->wm_image_size[i] *
-					prop_size)/total_image_size;
+			uint64_t delta = 0;
+			uint64_t temp = (uint64_t)axi_data->wm_image_size[i] *
+					(uint64_t)prop_size;
+			do_div(temp, total_image_size);
+			delta = temp;
 			wm_ub_size = axi_data->hw_info->min_wm_ub + delta;
 			msm_camera_io_w(ub_offset << 16 | (wm_ub_size - 1),
 				vfe_dev->vfe_base + VFE40_WM_BASE(i) + 0x10);
@@ -1109,7 +1113,7 @@ static void msm_vfe40_cfg_axi_ub_equal_slicing(
 static void msm_vfe40_cfg_axi_ub(struct vfe_device *vfe_dev)
 {
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
-	axi_data->wm_ub_cfg_policy = MSM_WM_UB_EQUAL_SLICING;
+	axi_data->wm_ub_cfg_policy = MSM_WM_UB_CFG_DEFAULT;
 	if (axi_data->wm_ub_cfg_policy == MSM_WM_UB_EQUAL_SLICING)
 		msm_vfe40_cfg_axi_ub_equal_slicing(vfe_dev);
 	else
@@ -1189,13 +1193,55 @@ static int msm_vfe40_stats_check_streams(
 static void msm_vfe40_stats_cfg_comp_mask(struct vfe_device *vfe_dev,
 	uint32_t stats_mask, uint8_t enable)
 {
-	uint32_t comp_mask;
-	comp_mask = msm_camera_io_r(vfe_dev->vfe_base + 0x44) >> 16;
-	if (enable)
-		comp_mask |= stats_mask;
-	else
-		comp_mask &= ~stats_mask;
-	msm_camera_io_w(comp_mask << 16, vfe_dev->vfe_base + 0x44);
+	uint32_t reg_mask, comp_stats_mask;
+	uint32_t i = 0;
+	atomic_t *stats_comp;
+	struct msm_vfe_stats_shared_data *stats_data = &vfe_dev->stats_data;
+
+	stats_mask = stats_mask & 0xFF;
+
+	if (vfe_dev->hw_info->stats_hw_info->num_stats_comp_mask >
+			MAX_NUM_STATS_COMP_MASK) {
+		pr_err("%s: num of comp masks %d exceed max %d\n",
+			__func__,
+			vfe_dev->hw_info->stats_hw_info->num_stats_comp_mask,
+			MAX_NUM_STATS_COMP_MASK);
+		return;
+	}
+
+	for (i = 0;
+		i < vfe_dev->hw_info->stats_hw_info->num_stats_comp_mask; i++) {
+
+		reg_mask = msm_camera_io_r(vfe_dev->vfe_base + 0x44);
+		comp_stats_mask = reg_mask & (STATS_COMP_BIT_MASK << (i*8));
+		stats_comp = &stats_data->stats_comp_mask[i];
+
+		if (enable) {
+			if (comp_stats_mask)
+				continue;
+
+			reg_mask |= (stats_mask << (16 + i*8));
+			atomic_add(stats_mask, stats_comp);
+		} else {
+			/*
+			 * Check if comp mask in reg is valid
+			 * and contains this stat
+			 */
+			if (!comp_stats_mask ||
+				!((comp_stats_mask >> (16 + i*8)) &
+					stats_mask))
+				continue;
+
+			atomic_sub(stats_mask, stats_comp);
+			reg_mask &= ~(stats_mask << (16 + i*8));
+		}
+		ISP_DBG("%s: comp_mask: %x atomic stats[0]: %x %x\n",
+			__func__, reg_mask,
+			atomic_read(&stats_data->stats_comp_mask[0]),
+			atomic_read(&stats_data->stats_comp_mask[1]));
+		msm_camera_io_w(reg_mask, vfe_dev->vfe_base + 0x44);
+		return;
+	}
 }
 
 static void msm_vfe40_stats_cfg_wm_irq_mask(
@@ -1397,7 +1443,7 @@ static void msm_vfe40_get_error_mask(
 }
 
 static struct msm_vfe_axi_hardware_info msm_vfe40_axi_hw_info = {
-	.num_wm = 6,
+	.num_wm = 7,
 	.num_comp_mask = 3,
 	.num_rdi = 3,
 	.num_rdi_master = 3,

@@ -17,6 +17,11 @@
 	compatible = "qcom,fsm9900";
 	interrupt-parent = <&intc>;
 
+	aliases {
+		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
+		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
+	};
+
 	cpus {
 		#size-cells = <0>;
 		#address-cells = <1>;
@@ -84,6 +89,11 @@
 		ngpio = <142>;
 		interrupts = <0 208 0>;
 		qcom,direct-connect-irqs = <5>;
+	};
+
+	restart@fc4ab000 {
+		compatible = "qcom,pshold";
+		reg = <0xfc4ab000 0x4>;
 	};
 
 	timer {
@@ -296,6 +306,12 @@
 			qcom,smdpkt-port-name = "LOGGING_4";
 			qcom,smdpkt-dev-name = "smd_logging_4";
 		};
+
+		qcom,smdpkt-phy_trace {
+			qcom,smdpkt-remote = "tenx";
+			qcom,smdpkt-port-name = "PHY_TRACE";
+			qcom,smdpkt-dev-name = "smd_phy_trace";
+		};
 	};
 
 	qcom,ipc_router{
@@ -491,30 +507,6 @@
 		qcom,sda-gpio = <&msmgpio 6 0>;
 		qcom,scl-gpio = <&msmgpio 7 0>;
 		qcom,master-id = <86>;
-	};
-
-	sdcc1: qcom,sdcc@f9824000 {
-		cell-index = <1>; /* SDC1 eMMC slot */
-		compatible = "qcom,msm-sdcc";
-		reg = <0xf9824000 0x800>;
-		reg-names = "core_mem";
-		interrupts = <0 123 0>;
-		interrupt-names = "core_irq";
-
-		qcom,bus-width = <8>;
-		status = "disabled";
-	};
-
-	sdcc2: qcom,sdcc@f98a4000 {
-		cell-index = <2>; /* SDC2 SD card slot */
-		compatible = "qcom,msm-sdcc";
-		reg = <0xf98a4000 0x800>;
-		reg-names = "core_mem";
-		interrupts = <0 125 0>;
-		interrupt-names = "core_irq";
-
-		qcom,bus-width = <4>;
-		status = "disabled";
 	};
 
 	sdhc_1: sdhci@f9824900 {

@@ -18,6 +18,8 @@
 #include <linux/types.h>
 #include <linux/msm-sps.h>
 
+#define IPA_APPS_MAX_BW_IN_MBPS 200
+
 /**
  * enum ipa_nat_en_type - NAT setting type in IPA end-point
  */
@@ -403,6 +405,7 @@ typedef void (*ipa_notify_cb)(void *priv, enum ipa_dp_evt_type evt,
  * @data:	data FIFO meta-data when client has allocated it
  * @skip_ep_cfg: boolean field that determines if EP should be configured
  *  by IPA driver
+ * @keep_ipa_awake: when true, IPA will not be clock gated
  */
 struct ipa_connect_params {
 	struct ipa_ep_cfg ipa_ep_cfg;
@@ -417,6 +420,7 @@ struct ipa_connect_params {
 	struct sps_mem_buffer desc;
 	struct sps_mem_buffer data;
 	bool skip_ep_cfg;
+	bool keep_ipa_awake;
 };
 
 /**
@@ -482,6 +486,7 @@ struct ipa_ext_intf {
  *		enum for valid cases.
  * @skip_ep_cfg: boolean field that determines if EP should be configured
  *  by IPA driver
+ * @keep_ipa_awake: when true, IPA will not be clock gated
  */
 struct ipa_sys_connect_params {
 	struct ipa_ep_cfg ipa_ep_cfg;
@@ -490,12 +495,15 @@ struct ipa_sys_connect_params {
 	void *priv;
 	ipa_notify_cb notify;
 	bool skip_ep_cfg;
+	bool keep_ipa_awake;
 };
 
 /**
  * struct ipa_tx_meta - meta-data for the TX packet
  * @mbim_stream_id:	the stream ID used in NDP signature
  * @mbim_stream_id_valid:	 is above field valid?
+ * @dma_address: dma mapped address of TX packet
+ * @dma_address_valid: is above field valid?
  */
 struct ipa_tx_meta {
 	u8 mbim_stream_id;
@@ -503,6 +511,8 @@ struct ipa_tx_meta {
 	u8 pkt_init_dst_ep;
 	bool pkt_init_dst_ep_valid;
 	bool pkt_init_dst_ep_remote;
+	dma_addr_t dma_address;
+	bool dma_address_valid;
 };
 
 /**
@@ -735,9 +745,7 @@ int ipa_disconnect(u32 clnt_hdl);
 /*
  * Resume / Suspend
  */
-int ipa_resume(u32 clnt_hdl);
-
-int ipa_suspend(u32 clnt_hdl);
+int ipa_reset_endpoint(u32 clnt_hdl);
 
 /*
  * Configuration
@@ -945,6 +953,8 @@ int ipa_remove_interrupt_handler(enum ipa_irq_type interrupt);
 
 int ipa_get_ep_mapping(enum ipa_client_type client);
 
+bool ipa_is_ready(void);
+
 #else /* CONFIG_IPA */
 
 /*
@@ -964,12 +974,7 @@ static inline int ipa_disconnect(u32 clnt_hdl)
 /*
  * Resume / Suspend
  */
-static inline int ipa_resume(u32 clnt_hdl)
-{
-	return -EPERM;
-}
-
-static inline int ipa_suspend(u32 clnt_hdl)
+static inline int ipa_reset_endpoint(u32 clnt_hdl)
 {
 	return -EPERM;
 }
@@ -1417,6 +1422,11 @@ static inline int ipa_remove_interrupt_handler(enum ipa_irq_type interrupt)
 static inline int ipa_get_ep_mapping(enum ipa_client_type client)
 {
 	return -EPERM;
+}
+
+static inline bool ipa_is_ready(void)
+{
+	return false;
 }
 #endif /* CONFIG_IPA*/
 

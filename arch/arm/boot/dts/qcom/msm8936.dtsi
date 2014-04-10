@@ -11,14 +11,32 @@
  */
 
 #include "skeleton64.dtsi"
+#include <dt-bindings/clock/msm-clocks-8916.h>
 
 / {
 	model = "Qualcomm MSM8936";
 	compatible = "qcom,msm8936";
 	qcom,msm-id = <233 0>;
 	interrupt-parent = <&intc>;
+	aliases {
+		/* smdtty devices */
+		smd1 = &smdtty_apps_fm;
+		smd2 = &smdtty_apps_riva_bt_acl;
+		smd3 = &smdtty_apps_riva_bt_cmd;
+		smd5 = &smdtty_apps_riva_ant_cmd;
+		smd6 = &smdtty_apps_riva_ant_data;
+		smd7 = &smdtty_data1;
+		smd8 = &smdtty_data4;
+		smd11 = &smdtty_data11;
+		smd21 = &smdtty_data21;
+		smd36 = &smdtty_loopback;
+	};
+
 	soc: soc { };
 };
+
+#include "msm8936-smp2p.dtsi"
+#include "msm8936-ipcrouter.dtsi"
 
 &soc {
 	#address-cells = <1>;
@@ -53,5 +71,355 @@
 			     <1 4 0xf08>,
 			     <1 1 0xf08>;
 		clock-frequency = <19200000>;
+	};
+
+	qcom,sps {
+		compatible = "qcom,msm_sps_4k";
+		qcom,device-type = <3>;
+		qcom,pipe-attr-ee;
+	};
+
+	qcom,ipc-spinlock@1905000 {
+		compatible = "qcom,ipc-spinlock-sfpb";
+		reg = <0x1905000 0x8000>;
+		qcom,num-locks = <8>;
+	};
+
+	qcom,smem@8e200000 {
+		compatible = "qcom,smem";
+		reg = <0x8e200000 0x100000>,
+			<0x0b111008 0x4>,
+			<0x60000 0x8000>,
+			<0x193D000 0x8>;
+		reg-names = "smem", "irq-reg-base", "aux-mem1", "smem_targ_info_reg";
+		qcom,mpu-enabled;
+
+		qcom,smd-modem {
+			compatible = "qcom,smd";
+			qcom,smd-edge = <0>;
+			qcom,smd-irq-offset = <0x0>;
+			qcom,smd-irq-bitmask = <0x1000>;
+			interrupts = <0 25 1>;
+			label = "modem";
+		};
+
+		qcom,smsm-modem {
+			compatible = "qcom,smsm";
+			qcom,smsm-edge = <0>;
+			qcom,smsm-irq-offset = <0x0>;
+			qcom,smsm-irq-bitmask = <0x2000>;
+			interrupts = <0 26 1>;
+		};
+
+		qcom,smd-wcnss {
+			compatible = "qcom,smd";
+			qcom,smd-edge = <6>;
+			qcom,smd-irq-offset = <0x0>;
+			qcom,smd-irq-bitmask = <0x20000>;
+			interrupts = <0 142 1>;
+			label = "wcnss";
+		};
+
+		qcom,smsm-wcnss {
+			compatible = "qcom,smsm";
+			qcom,smsm-edge = <6>;
+			qcom,smsm-irq-offset = <0x0>;
+			qcom,smsm-irq-bitmask = <0x80000>;
+			interrupts = <0 144 1>;
+		};
+
+		qcom,smd-rpm {
+			compatible = "qcom,smd";
+			qcom,smd-edge = <15>;
+			qcom,smd-irq-offset = <0x0>;
+			qcom,smd-irq-bitmask = <0x1>;
+			interrupts = <0 168 1>;
+			label = "rpm";
+			qcom,irq-no-suspend;
+			qcom,not-loadable;
+		};
+	};
+
+	qcom,bam_dmux@4044000 {
+		compatible = "qcom,bam_dmux";
+		reg = <0x4044000 0x19000>;
+		interrupts = <0 29 1>;
+		qcom,rx-ring-size = <32>;
+	};
+
+	qcom,smdtty {
+		compatible = "qcom,smdtty";
+
+		smdtty_apps_fm: qcom,smdtty-apps-fm {
+			qcom,smdtty-remote = "wcnss";
+			qcom,smdtty-port-name = "APPS_FM";
+		};
+
+		smdtty_apps_riva_bt_acl: smdtty-apps-riva-bt-acl {
+			qcom,smdtty-remote = "wcnss";
+			qcom,smdtty-port-name = "APPS_RIVA_BT_ACL";
+		};
+
+		smdtty_apps_riva_bt_cmd: qcom,smdtty-apps-riva-bt-cmd {
+			qcom,smdtty-remote = "wcnss";
+			qcom,smdtty-port-name = "APPS_RIVA_BT_CMD";
+		};
+
+		smdtty_apps_riva_ant_cmd: smdtty-apps-riva-ant-cmd {
+			qcom,smdtty-remote = "wcnss";
+			qcom,smdtty-port-name = "APPS_RIVA_ANT_CMD";
+		};
+
+		smdtty_apps_riva_ant_data: smdtty-apps-riva-ant-data {
+			qcom,smdtty-remote = "wcnss";
+			qcom,smdtty-port-name = "APPS_RIVA_ANT_DATA";
+		};
+
+		smdtty_data1: qcom,smdtty-data1 {
+			qcom,smdtty-remote = "modem";
+			qcom,smdtty-port-name = "DATA1";
+		};
+
+		smdtty_data4: qcom,smdtty-data4 {
+			qcom,smdtty-remote = "modem";
+			qcom,smdtty-port-name = "DATA4";
+		};
+
+		smdtty_data11: qcom,smdtty-data11 {
+			qcom,smdtty-remote = "modem";
+			qcom,smdtty-port-name = "DATA11";
+		};
+
+		smdtty_data21: qcom,smdtty-data21 {
+			qcom,smdtty-remote = "modem";
+			qcom,smdtty-port-name = "DATA21";
+		};
+
+		smdtty_loopback: smdtty-loopback {
+			qcom,smdtty-remote = "modem";
+			qcom,smdtty-port-name = "LOOPBACK";
+			qcom,smdtty-dev-name = "LOOPBACK_TTY";
+		};
+	};
+
+	qcom,smdpkt {
+		compatible = "qcom,smdpkt";
+
+		qcom,smdpkt-data5-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA5_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl0";
+		};
+
+		qcom,smdpkt-data6-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA6_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl1";
+		};
+
+		qcom,smdpkt-data7-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA7_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl2";
+		};
+
+		qcom,smdpkt-data8-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA8_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl3";
+		};
+
+		qcom,smdpkt-data9-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA9_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl4";
+		};
+
+		qcom,smdpkt-data12-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA12_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl5";
+		};
+
+		qcom,smdpkt-data13-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA13_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl6";
+		};
+
+		qcom,smdpkt-data14-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA14_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl7";
+		};
+
+		qcom,smdpkt-data15-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA15_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl9";
+		};
+
+		qcom,smdpkt-data16-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA16_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl10";
+		};
+
+		qcom,smdpkt-data17-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA17_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl11";
+		};
+
+		qcom,smdpkt-data22 {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA22";
+			qcom,smdpkt-dev-name = "smd22";
+		};
+
+		qcom,smdpkt-data23-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA23_CNTL";
+			qcom,smdpkt-dev-name = "smdcnt_rev0";
+		};
+
+		qcom,smdpkt-data24-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA24_CNTL";
+			qcom,smdpkt-dev-name = "smdcnt_rev1";
+		};
+
+		qcom,smdpkt-data25-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA25_CNTL";
+			qcom,smdpkt-dev-name = "smdcnt_rev2";
+		};
+
+		qcom,smdpkt-data26-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA26_CNTL";
+			qcom,smdpkt-dev-name = "smdcnt_rev3";
+		};
+
+		qcom,smdpkt-data27-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA27_CNTL";
+			qcom,smdpkt-dev-name = "smdcnt_rev4";
+		};
+
+		qcom,smdpkt-data28-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA28_CNTL";
+			qcom,smdpkt-dev-name = "smdcnt_rev5";
+		};
+
+		qcom,smdpkt-data29-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA29_CNTL";
+			qcom,smdpkt-dev-name = "smdcnt_rev6";
+		};
+
+		qcom,smdpkt-data30-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA30_CNTL";
+			qcom,smdpkt-dev-name = "smdcnt_rev7";
+		};
+
+		qcom,smdpkt-data31-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA31_CNTL";
+			qcom,smdpkt-dev-name = "smdcnt_rev8";
+		};
+
+		qcom,smdpkt-data40-cntl {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "DATA40_CNTL";
+			qcom,smdpkt-dev-name = "smdcntl8";
+		};
+
+		qcom,smdpkt-apr-apps2 {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "apr_apps2";
+			qcom,smdpkt-dev-name = "apr_apps2";
+		};
+
+		qcom,smdpkt-loopback {
+			qcom,smdpkt-remote = "modem";
+			qcom,smdpkt-port-name = "LOOPBACK";
+			qcom,smdpkt-dev-name = "smd_pkt_loopback";
+		};
+	};
+
+	tsens: tsens@4a8000 {
+		compatible = "qcom,msm8936-tsens";
+		reg = <0x4a8000 0x2000>,
+		      <0x5c000  0x1000>;
+		reg-names = "tsens_physical", "tsens_eeprom_physical";
+		interrupts = <0 184 0>;
+		qcom,sensors = <9>;
+		qcom,slope = <3200 3200 3200 3200 3200 3200 3200 3200 3200>;
+		qcom,sensor-id = <0 1 2 3 5 6 7 8 9>;
+	};
+
+	clock_gcc: qcom,gcc {
+		compatible = "qcom,dummycc";
+		#clock-cells = <1>;
+	};
+
+	clock_rpm: qcom,rpmcc {
+		compatible = "qcom,dummycc";
+		#clock-cells = <1>;
+	};
+
+	usb_otg: usb@78d9000 {
+		compatible = "qcom,hsusb-otg";
+
+		reg = <0x78d9000 0x400>;
+		interrupts = <0 134 0>,<0 140 0>;
+		interrupt-names = "core_irq", "async_irq";
+
+		qcom,hsusb-otg-phy-type = <2>;
+		qcom,hsusb-otg-mode = <1>;
+		qcom,hsusb-otg-otg-control = <1>;
+		qcom,hsusb-otg-disable-reset;
+
+		qcom,msm-bus,name = "usb2";
+		qcom,msm-bus,num-cases = <3>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<87 512 0 0>,
+				<87 512 60000 960000>,
+				<87 512 6000  6000>;
+		clocks = <&clock_gcc clk_gcc_usb_hs_ahb_clk>,
+			 <&clock_gcc clk_gcc_usb_hs_system_clk>,
+			 <&clock_gcc clk_gcc_usb2a_phy_sleep_clk>,
+			 <&clock_rpm clk_xo_otg_clk>;
+		clock-names = "iface_clk", "core_clk", "sleep_clk",
+				"xo";
+	};
+
+	android_usb {
+		compatible = "qcom,android-usb";
+		qcom,android-usb-swfi-latency = <1>;
+	};
+
+	blsp1_uart1: serial@78af000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0x78af000 0x200>;
+		interrupts = <0 107 0>;
+		status = "disabled";
+		clocks = <&clock_gcc clk_gcc_blsp1_uart1_apps_clk>,
+			 <&clock_gcc clk_gcc_blsp1_ahb_clk>;
+		clock-names = "core_clk", "iface_clk";
+	};
+
+	blsp1_uart2: serial@78b0000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0x78b0000 0x200>;
+		interrupts = <0 108 0>;
+		status = "disabled";
+		clocks = <&clock_gcc clk_gcc_blsp1_uart2_apps_clk>,
+			 <&clock_gcc clk_gcc_blsp1_ahb_clk>;
+		clock-names = "core_clk", "iface_clk";
 	};
 };
