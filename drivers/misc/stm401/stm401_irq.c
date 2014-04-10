@@ -68,6 +68,8 @@ void stm401_irq_work_func(struct work_struct *work)
 	dev_dbg(&ps_stm401->client->dev, "stm401_irq_work_func\n");
 	mutex_lock(&ps_stm401->lock);
 
+	stm401_wake(ps_stm401);
+
 	if (ps_stm401->mode == BOOTMODE)
 		goto EXIT;
 
@@ -360,6 +362,7 @@ void stm401_irq_work_func(struct work_struct *work)
 	}
 
 EXIT:
+	stm401_sleep(ps_stm401);
 	/* For now HAE needs events even if the activity is still */
 	mutex_unlock(&ps_stm401->lock);
 }
