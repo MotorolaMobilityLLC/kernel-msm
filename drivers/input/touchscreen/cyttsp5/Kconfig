@@ -1,0 +1,16 @@
+#
+# Cypress cyttsp5 touchscreen driver configuration
+#
+
+config TOUCHSCREEN_CYTTSP5
+	tristate "Cypress TrueTouch Gen5 Touchscreen Driver"
+	depends on I2C
+	default n
+	help
+	  Core driver for Cypress TrueTouch(tm) Standard Product
+	  Geneartion5 touchscreen controllers.
+
+	  Say Y here if you have a Cypress Gen5 touchscreen.
+	  If unsure, say N.
+	  To compile this driver as a module, choose M here.
+
