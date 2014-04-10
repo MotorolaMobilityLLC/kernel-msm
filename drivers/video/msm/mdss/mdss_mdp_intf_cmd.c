@@ -309,6 +309,43 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 	struct mdss_mdp_vsync_handler *tmp;
 	ktime_t vsync_time;
 
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
+{
+	static unsigned long last_time_cb = 0;
+	static unsigned int max_time_used = 0;
+	static unsigned int min_time_used = 99999;
+	static unsigned int total_time_used = 1;
+	static unsigned int total_time_count = 0;
+	if (last_time_cb){
+		unsigned int time_used;
+		time_used = jiffies_to_msecs(jiffies - last_time_cb);
+		if (total_time_used > 1000){
+
+		//if (time_used > 1000/30)
+			printk("MDSS:(%d ~ %d),%d PP Cnt,\n",min_time_used,max_time_used,total_time_count);
+
+			max_time_used = 0;
+			min_time_used = 99999;
+			total_time_used = 1;
+			total_time_count = 0;
+		}else{
+			if (time_used > max_time_used )
+				max_time_used = time_used;
+			if (time_used < min_time_used )
+				min_time_used = time_used;
+			total_time_used += time_used;
+			total_time_count ++;
+		}
+
+//		if (time_used < 1000/30)
+//			mdelay(1000/30 - 1000/30);
+
+	}
+
+
+	last_time_cb = jiffies;
+}
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
 	if (!ctx) {
 		pr_err("%s: invalid ctx\n", __func__);
 		return;

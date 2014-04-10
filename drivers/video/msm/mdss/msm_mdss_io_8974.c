@@ -305,6 +305,15 @@ error:
 
 static void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
+// Tingyi +++ "[ROBIN][MDSS] Error handling for NULL pointer"
+	if (ctrl_pdata == 0)
+	{
+		printk("MDSS:%s:ERR!!! NULL Pointer !!!\n",__func__);
+		dump_stack();
+		return;
+	}
+// Tingyi --- "[ROBIN][MDSS] Error handling for NULL pointer"
+
 	if (ctrl_pdata->mmss_misc_ahb_clk)
 		clk_disable_unprepare(ctrl_pdata->mmss_misc_ahb_clk);
 	clk_disable_unprepare(ctrl_pdata->axi_clk);
