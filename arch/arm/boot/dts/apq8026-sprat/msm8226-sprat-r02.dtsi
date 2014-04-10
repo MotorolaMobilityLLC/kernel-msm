@@ -17,6 +17,17 @@
 	serial@f991f000 {
 		status = "ok";
 	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		qcom,msm-dai-q6-mi2s-tert {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <2>;
+			qcom,msm-mi2s-rx-lines = <2>;
+			qcom,msm-mi2s-tx-lines = <1>;
+		};
+	};
+
 	samsung,vibrator{
 		compatible = "vibrator";
 		samsung,supply-name = "max77836_ldo1";
@@ -162,13 +173,11 @@
 	};
 
 	sound {
-		qcom,audio-routing =
-			"RX_BIAS", "MCLK",
-			"LDO_H", "MCLK",
-			"DMIC1", "MIC BIAS1 External",
-			"MIC BIAS1 External", "Digital Mic1";
-
-		qcom,cdc-mclk-gpios = <&pm8226_gpios 1 0>;
+		compatible = "sprat,sprat-mi2s-audio";
+		sprat,mic-sck-gpio = <&msmgpio 49 0>;
+		sprat,mic-ws-gpio = <&msmgpio 50 0>;
+		sprat,mic-din-gpio = <&msmgpio 51 0>;
+		sprat,mic-en-gpio = <&msmgpio 72 0>;
 	};
 
 	sound-9302 {
@@ -376,14 +385,7 @@
 
 &pm8226_gpios {
 	gpio@c000 { /* GPIO 1 */
-		/* XO_PMIC_CDC_MCLK enable for tapan codec */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;	/* CMOS logic */
-		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO*/
-		qcom,vin-sel = <3>;		/* QPNP_PIN_VIN3 */
-		qcom,out-strength = <3>;/* QPNP_PIN_OUT_STRENGTH_HIGH */
-		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
-		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,master-en = <0>;
 	};
 
 	gpio@c100 { /* GPIO 2 */
@@ -522,9 +524,7 @@
 };
 
 &slim_msm {
-	tapan_codec {
-		qcom,cdc-dmic-sample-rate = <2400000>;
-	};
+	status = "disabled";
 };
 
 &mdss_mdp {
