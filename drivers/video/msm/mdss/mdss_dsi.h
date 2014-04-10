@@ -78,13 +78,6 @@ enum dsi_trigger_type {
 	DSI_CMD_MODE_MDP,
 };
 
-enum dsi_panel_bl_ctrl {
-	BL_PWM,
-	BL_WLED,
-	BL_DCS_CMD,
-	UNKNOWN_CTRL,
-};
-
 enum dsi_ctrl_op_mode {
 	DSI_LP_MODE,
 	DSI_HS_MODE,

@@ -71,6 +71,13 @@ enum {
 	MODE_GPIO_LOW,
 };
 
+enum {
+	BL_PWM,
+	BL_WLED,
+	BL_DCS_CMD,
+	UNKNOWN_CTRL,
+};
+
 #define MDSS_MAX_PANEL_LEN      256
 #define MDSS_INTF_MAX_NAME_LEN 5
 struct mdss_panel_intf {
