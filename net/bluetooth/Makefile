@@ -2,8 +2,8 @@
 # Makefile for the Linux Bluetooth subsystem.
 #
 
-obj-$(CONFIG_BT)	+= bluetooth.o
-obj-$(CONFIG_BT_RFCOMM)	+= rfcomm/
+obj-y	+= bluetooth.o
+obj-y	+= rfcomm/
 obj-$(CONFIG_BT_BNEP)	+= bnep/
 obj-$(CONFIG_BT_CMTP)	+= cmtp/
 obj-$(CONFIG_BT_HIDP)	+= hidp/
