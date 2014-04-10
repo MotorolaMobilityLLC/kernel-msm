@@ -10,8 +10,8 @@
  * GNU General Public License for more details.
  */
 
-#include "skeleton64.dtsi"
-#include <dt-bindings/clock/msm-clocks-8916.h>
+/include/ "skeleton64.dtsi"
+/include/ <dt-bindings/clock/msm-clocks-8916.h>
 
 / {
 	model = "Qualcomm MSM8936";
@@ -35,8 +35,8 @@
 	soc: soc { };
 };
 
-#include "msm8936-smp2p.dtsi"
-#include "msm8936-ipcrouter.dtsi"
+/include/ "msm8936-smp2p.dtsi"
+/include/ "msm8936-ipcrouter.dtsi"
 
 &soc {
 	#address-cells = <1>;

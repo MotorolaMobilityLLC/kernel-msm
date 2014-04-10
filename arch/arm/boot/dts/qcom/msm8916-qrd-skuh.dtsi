@@ -10,9 +10,9 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8916-qrd.dtsi"
-#include "dsi-panel-innolux-720p-video.dtsi"
-#include "msm8916-camera-sensor-qrd.dtsi"
+/include/ "msm8916-qrd.dtsi"
+/include/ "dsi-panel-innolux-720p-video.dtsi"
+/include/ "msm8916-camera-sensor-qrd.dtsi"
 
 &tlmm_pinmux {
 	akm_reset_pin {
@@ -223,7 +223,7 @@
 		qcom,rpull-up-kohm = <68>;
 		qcom,vref-batt-therm = <1800000>;
 
-		#include "batterydata-qrd-skuh-4v35-2000mah.dtsi"
+		/include/ "batterydata-qrd-skuh-4v35-2000mah.dtsi"
 	};
 };
 

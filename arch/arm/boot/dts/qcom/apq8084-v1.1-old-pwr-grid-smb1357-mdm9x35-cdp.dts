@@ -12,9 +12,9 @@
 
 /dts-v1/;
 
-#include "apq8084-v1.1.dtsi"
-#include "apq8084-old-pwr-grid.dtsi"
-#include "apq8084-cdp.dtsi"
+/include/ "apq8084-v1.1.dtsi"
+/include/ "apq8084-old-pwr-grid.dtsi"
+/include/ "apq8084-cdp.dtsi"
 
 / {
 	model = "Qualcomm APQ 8084 v1.1, Old Pwr Grid, SMB1357 MDM9x35 CDP";

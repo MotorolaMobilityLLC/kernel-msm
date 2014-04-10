@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "msm-iommu-v1.dtsi"
+/include/ "msm-iommu-v1.dtsi"
 
 &soc {
 	mdp_iommu_plutonium: qcom,iommu@fd9cc000 {

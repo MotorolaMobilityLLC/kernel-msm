@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "apq8084.dtsi"
+/include/ "apq8084.dtsi"
 
 / {
 	qcom,msm-id = <178 0x10001>;

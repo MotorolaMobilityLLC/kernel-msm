@@ -12,8 +12,8 @@
 
 /dts-v1/;
 
-#include "mdm9630.dtsi"
-#include "mdm9630-mtp.dtsi"
+/include/ "mdm9630.dtsi"
+/include/ "mdm9630-mtp.dtsi"
 
 / {
 	model = "Qualcomm MDM 9630 MTP";

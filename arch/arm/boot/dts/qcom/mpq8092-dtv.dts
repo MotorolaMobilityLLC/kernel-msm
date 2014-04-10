@@ -12,8 +12,8 @@
 
 /dts-v1/;
 
-#include "mpq8092.dtsi"
-#include "mpq8092-dtv.dtsi"
+/include/ "mpq8092.dtsi"
+/include/ "mpq8092-dtv.dtsi"
 
 / {
 	model = "Qualcomm MPQ 8092 DTV";

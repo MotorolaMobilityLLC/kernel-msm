@@ -10,8 +10,8 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8916.dtsi"
-#include "msm8916-pinctrl.dtsi"
+/include/ "msm8916.dtsi"
+/include/ "msm8916-pinctrl.dtsi"
 
 / {
 	aliases {

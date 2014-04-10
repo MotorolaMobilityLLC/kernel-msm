@@ -12,8 +12,8 @@
 
 /dts-v1/;
 
-#include "mpq8092.dtsi"
-#include "mpq8092-dma.dtsi"
+/include/ "mpq8092.dtsi"
+/include/ "mpq8092-dma.dtsi"
 
 / {
 	model = "Qualcomm MPQ 8092 DMA";

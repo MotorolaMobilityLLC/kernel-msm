@@ -171,5 +171,5 @@
 	};
 };
 
-#include "dsi-panel-sim-video.dtsi"
+/include/ "dsi-panel-sim-video.dtsi"
 

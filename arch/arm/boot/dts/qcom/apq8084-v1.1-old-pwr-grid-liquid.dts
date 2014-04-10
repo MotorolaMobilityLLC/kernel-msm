@@ -12,10 +12,10 @@
 
 /dts-v1/;
 
-#include "apq8084-v1.1.dtsi"
-#include "apq8084-old-pwr-grid.dtsi"
-#include "apq8084-liquid.dtsi"
-#include "apq8084-camera-sensor-liquid.dtsi"
+/include/ "apq8084-v1.1.dtsi"
+/include/ "apq8084-old-pwr-grid.dtsi"
+/include/ "apq8084-liquid.dtsi"
+/include/ "apq8084-camera-sensor-liquid.dtsi"
 
 / {
 	model = "Qualcomm APQ 8084 v1.1 Old Pwr Grid LIQUID";

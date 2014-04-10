@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "skeleton.dtsi"
+/include/ "skeleton.dtsi"
 
 / {
 	model = "Qualcomm MDM 9630";
@@ -52,13 +52,13 @@
 	soc: soc { };
 };
 
-#include "mdm9630-smp2p.dtsi"
-#include "mdm9630-coresight.dtsi"
-#include "msm-gdsc.dtsi"
-#include "mdm9630-pm.dtsi"
-#include "mdm9630-bus.dtsi"
-#include "mdm9630-ion.dtsi"
-#include "mdm9630-pinctrl.dtsi"
+/include/ "mdm9630-smp2p.dtsi"
+/include/ "mdm9630-coresight.dtsi"
+/include/ "msm-gdsc.dtsi"
+/include/ "mdm9630-pm.dtsi"
+/include/ "mdm9630-bus.dtsi"
+/include/ "mdm9630-ion.dtsi"
+/include/ "mdm9630-pinctrl.dtsi"
 
 &soc {
 	#address-cells = <1>;
@@ -1081,9 +1081,9 @@
 	reg = <0xfc401b80 0x4>;
 };
 
-#include "msm-pmd9635-rpm-regulator.dtsi"
-#include "msm-pmd9635.dtsi"
-#include "mdm9630-regulator.dtsi"
+/include/ "msm-pmd9635-rpm-regulator.dtsi"
+/include/ "msm-pmd9635.dtsi"
+/include/ "mdm9630-regulator.dtsi"
 
 &pmd9635_vadc {
 	chan@31 {

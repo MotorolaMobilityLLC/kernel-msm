@@ -12,9 +12,9 @@
 
 /dts-v1/;
 
-#include "apq8084-v1.1.dtsi"
-#include "apq8084-sbc.dtsi"
-#include "apq8084-camera-sensor-sbc.dtsi"
+/include/ "apq8084-v1.1.dtsi"
+/include/ "apq8084-sbc.dtsi"
+/include/ "apq8084-camera-sensor-sbc.dtsi"
 
 / {
 	model = "QTI APQ 8084 v1.1 SBC";

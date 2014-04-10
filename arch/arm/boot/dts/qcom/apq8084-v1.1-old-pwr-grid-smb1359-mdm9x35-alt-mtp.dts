@@ -12,10 +12,10 @@
 
 /dts-v1/;
 
-#include "apq8084-v1.1.dtsi"
-#include "apq8084-old-pwr-grid.dtsi"
-#include "apq8084-mtp.dtsi"
-#include "apq8084-taiko-i2s-codec.dtsi"
+/include/ "apq8084-v1.1.dtsi"
+/include/ "apq8084-old-pwr-grid.dtsi"
+/include/ "apq8084-mtp.dtsi"
+/include/ "apq8084-taiko-i2s-codec.dtsi"
 
 / {
 	model = "Qualcomm APQ 8084 v1.1, Old Pwr Grid, SMB1359 MDM9x35 ALT MTP";
