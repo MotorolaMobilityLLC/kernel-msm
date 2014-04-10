@@ -229,6 +229,7 @@ int stm401_quickpeek_status_ack(struct stm401_data *ps_stm401,
 	unsigned int req_bit = atomic_read(&ps_stm401->qp_enabled) & 0x01;
 
 	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
+	stm401_wake(ps_stm401);
 
 	if (qp_message && qp_message->message == AOD_WAKEUP_REASON_QP_DRAW)
 		payload |= (qp_message->buffer_id &
@@ -249,6 +250,7 @@ int stm401_quickpeek_status_ack(struct stm401_data *ps_stm401,
 		qp_message ? qp_message->message : 0, req_bit, ack_return,
 		qp_message ? qp_message->buffer_id : 0, ret);
 
+	stm401_sleep(ps_stm401);
 	return ret;
 }
 
@@ -261,6 +263,7 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
 
 	mutex_lock(&ps_stm401->lock);
+	stm401_wake(ps_stm401);
 
 	while (atomic_read(&ps_stm401->qp_enabled) &&
 	       !list_empty(&ps_stm401->quickpeek_command_list)) {
@@ -392,6 +395,7 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 		ps_stm401->quickpeek_state = QP_IDLE;
 	}
 
+	stm401_sleep(ps_stm401);
 	mutex_unlock(&ps_stm401->lock);
 }
 
@@ -400,6 +404,7 @@ static int stm401_takeback_locked(struct stm401_data *ps_stm401)
 	int count = 0;
 
 	dev_dbg(&stm401_misc_data->client->dev, "%s\n", __func__);
+	stm401_wake(ps_stm401);
 
 	if (ps_stm401->mode == NORMALMODE) {
 		stm401_quickpeek_reset_locked(ps_stm401);
@@ -436,6 +441,7 @@ static int stm401_takeback_locked(struct stm401_data *ps_stm401)
 	}
 
 EXIT:
+	stm401_sleep(ps_stm401);
 	return 0;
 }
 
@@ -444,6 +450,7 @@ static int stm401_handover_locked(struct stm401_data *ps_stm401)
 	int ret = 0;
 
 	dev_dbg(&stm401_misc_data->client->dev, "%s\n", __func__);
+	stm401_wake(ps_stm401);
 
 	if (ps_stm401->mode == NORMALMODE) {
 		/* New I2C Implementation */
@@ -456,6 +463,7 @@ static int stm401_handover_locked(struct stm401_data *ps_stm401)
 		}
 	}
 
+	stm401_sleep(ps_stm401);
 	return ret;
 }
 
@@ -509,12 +517,16 @@ void stm401_vote_aod_enabled(struct stm401_data *ps_stm401, int voter,
 unsigned short stm401_get_interrupt_status(struct stm401_data *ps_stm401,
 	unsigned char reg, int *err)
 {
+	stm401_wake(ps_stm401);
+
 	stm401_cmdbuff[0] = reg;
 	*err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
 	if (*err < 0) {
 		dev_err(&ps_stm401->client->dev, "Reading from STM failed\n");
+		stm401_sleep(ps_stm401);
 		return 0;
 	}
 
+	stm401_sleep(ps_stm401);
 	return (stm401_readbuff[1] << 8) | stm401_readbuff[0];
 }

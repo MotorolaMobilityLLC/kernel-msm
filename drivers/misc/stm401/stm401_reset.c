@@ -79,6 +79,7 @@ void stm401_reset(struct stm401_platform_data *pdata)
 	msleep(stm401_i2c_retry_delay);
 	gpio_set_value(pdata->gpio_reset, 1);
 	msleep(STM401_RESET_DELAY);
+	stm401_detect_lowpower_mode();
 }
 
 int stm401_reset_and_init(void)
@@ -94,6 +95,8 @@ int stm401_reset_and_init(void)
 
 	stm401_reset(pdata);
 	stm401_i2c_retry_delay = 200;
+
+	stm401_wake(stm401_misc_data);
 
 	stm401_cmdbuff[0] = ACCEL_UPDATE_RATE;
 	stm401_cmdbuff[1] = stm401_g_acc_delay;
@@ -255,5 +258,6 @@ int stm401_reset_and_init(void)
 	if (mutex_locked)
 		mutex_unlock(&stm401_misc_data->lock);
 
+	stm401_sleep(stm401_misc_data);
 	return ret_err;
 }

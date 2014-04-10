@@ -120,6 +120,8 @@
 		_IOW(STM401_IOCTL_BASE, 51,  unsigned short)
 #define STM401_IOCTL_SET_IR_RAW_DELAY	\
 		_IOW(STM401_IOCTL_BASE, 52,  unsigned short)
+#define STM401_IOCTL_SET_LOWPOWER_MODE \
+		_IOW(STM401_IOCTL_BASE, 54, char)
 
 #define FW_VERSION_SIZE 12
 #define STM401_CONTROL_REG_SIZE 200
@@ -293,6 +295,7 @@ struct stm_response {
 #define ID                              0x00
 #define REV_ID                          0x01
 #define ERROR_STATUS                    0x02
+#define LOWPOWER_REG                    0x03
 
 #define STM401_PEEKDATA_REG             0x09
 #define STM401_PEEKSTATUS_REG           0x0A
@@ -539,6 +542,8 @@ struct stm401_platform_data {
 	int gpio_bslen;
 	int gpio_wakeirq;
 	int gpio_int;
+	int gpio_sh_wake;
+	int gpio_sh_wake_resp;
 	unsigned int bslen_pin_active_value;
 	u16 lux_table[LIGHTING_TABLE_SIZE];
 	u8 brightness_table[LIGHTING_TABLE_SIZE];
@@ -559,6 +564,10 @@ struct stm401_data {
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
 	struct input_dev *input_dev;
+
+	struct mutex sh_wakeup_lock;
+	int sh_wakeup_count;
+	int sh_lowpower_enabled;
 
 	int hw_initialized;
 
@@ -661,6 +670,10 @@ int stm401_i2c_write_read(struct stm401_data *ps_stm401, u8 *buf,
 int stm401_i2c_read(struct stm401_data *ps_stm401, u8 *buf, int len);
 int stm401_i2c_write(struct stm401_data *ps_stm401, u8 *buf, int len);
 int stm401_enable(struct stm401_data *ps_stm401);
+
+void stm401_wake(struct stm401_data *ps_stm401);
+void stm401_sleep(struct stm401_data *ps_stm401);
+void stm401_detect_lowpower_mode(void);
 
 int stm401_load_brightness_table(struct stm401_data *ps_stm401);
 
