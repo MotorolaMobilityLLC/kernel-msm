@@ -264,5 +264,6 @@ int mdss_fb_register_mdp_instance(struct msm_mdp_interface *mdp);
 int mdss_fb_dcm(struct msm_fb_data_type *mfd, int req_state);
 int mdss_fb_pan_display_ex(struct fb_info *info,
 			   struct mdp_display_commit *disp_commit);
+int mdss_fb_blank_sub(int blank_mode, struct fb_info *info, int op_enable);
 
 #endif /* MDSS_FB_H */
