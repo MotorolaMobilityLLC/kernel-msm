@@ -537,6 +537,13 @@ void sapInterferenceRssiCount(tSapSpectChInfo *pSpectCh)
     tSapSpectChInfo *pExtSpectCh = NULL;
     v_S31_t rssi;
 
+    if (NULL == pSpectCh)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   "%s: pSpectCh is NULL", __func__);
+        return;
+    }
+
     switch(pSpectCh->chNum)
     {
         case CHANNEL_1:
