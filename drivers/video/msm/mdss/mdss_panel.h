@@ -344,6 +344,7 @@ struct mdss_panel_info {
 	struct edp_panel_info edp;
 
 	u32 quickdraw_enabled;
+	u32 col_align;
 };
 
 struct mdss_panel_data {

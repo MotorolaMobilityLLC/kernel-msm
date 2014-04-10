@@ -1111,6 +1111,10 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	var->rotate = 0,	/* angle we rotate counter clockwise */
 	mfd->op_enable = false;
 
+	/* Set undefined column alignments to single pixel alignment */
+	if (panel_info->col_align == 0)
+		panel_info->col_align = 1;
+
 	switch (mfd->fb_imgType) {
 	case MDP_RGB_565:
 		fix->type = FB_TYPE_PACKED_PIXELS;

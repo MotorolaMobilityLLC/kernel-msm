@@ -1729,6 +1729,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-framerate", &tmp);
 	pinfo->mipi.frame_rate = (!rc ? tmp : 60);
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-col-align", &tmp);
+	pinfo->col_align = (!rc ? tmp : 1);
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-clockrate", &tmp);
 	pinfo->clk_rate = (!rc ? tmp : 0);
 	data = of_get_property(np, "qcom,mdss-dsi-panel-timings", &len);
