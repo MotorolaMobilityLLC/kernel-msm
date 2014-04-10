@@ -72,6 +72,13 @@ enum {
 	MODE_GPIO_LOW,
 };
 
+enum {
+	BL_PWM,
+	BL_WLED,
+	BL_DCS_CMD,
+	UNKNOWN_CTRL,
+};
+
 struct mdss_rect {
 	u16 x;
 	u16 y;
