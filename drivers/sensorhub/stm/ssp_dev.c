@@ -283,9 +283,9 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 		pr_err("[SSP] failed to request MCU_RST for SSP\n");
 		goto dt_exit;
 	}
-	if (!gpio_get_value(data->rst))
-		pr_err("[SSP] rst level was LOW at BL !!\n");
-	gpio_direction_output(data->rst, 1);
+
+	gpio_direction_output(data->rst, 0);
+	usleep_range(4900, 5000);
 
 	errorno = of_property_read_string(np, "ssp_accel_vreg-name",
 			&supply_name);
@@ -328,12 +328,14 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 			PTR_ERR(vdd_hub));
 		errorno = -ENXIO;
 	} else {
+		gpio_direction_output(data->rst, 1);
 		errorno = regulator_enable(vdd_hub);
 		if (errorno) {
 			pr_err("[SSP] VDD can't turn on for SSP\n");
 			goto dt_exit;
 		}
 	}
+	msleep(50);
 dt_exit:
 	return errorno;
 }
