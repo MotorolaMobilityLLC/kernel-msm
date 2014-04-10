@@ -111,15 +111,22 @@
 		status = "okay";
 		battery,charger_name = "max77836-charger";
 		battery,fuelgauge_name = "max17048-fuelgauge";
+		battery,temp_high_threshold = <600>;
+		battery,temp_high_recovery = <420>;
+		battery,temp_low_threshold = <(-50)>;
+		battery,temp_low_recovery = <0>;
+		battery,full_charging_time = <21600>;
+		battery,recharging_time = <5400>;
+		battery,recharging_voltage = <4300000>;
 	};
 
 	max77836-charger {
 		status = "okay";
 		/* Charger */
 		charger,chg_float_voltage = <4350>;
-		charger,input_current_limit = <475 475 475 475 475 475 475 475 475 475 475 475 475 >;
-		charger,fast_charging_current = <475 0 475 475 475 475 475 475 0 475 475 475 0 0 475>;
-		charger,full_check_current = <50 0 50 50 50 50 50 50 0 50 50 50 0 0 50>;
+		charger,input_current_limit = <0 475 475>;
+		charger,fast_charging_current = <0 475 475>;
+		charger,full_check_current = <0 50 50>;
 	};
 
 	i2c@20 {
