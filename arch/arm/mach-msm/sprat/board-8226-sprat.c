@@ -53,6 +53,7 @@
 #include <soc/qcom/spm.h>
 #include <soc/qcom/pm.h>
 #include <linux/regulator/spm-regulator.h>
+#include <linux/platform_data/android_battery.h>
 
 struct class *sec_class;
 EXPORT_SYMBOL(sec_class);
@@ -79,6 +80,7 @@ static struct of_dev_auxdata msm_hsic_host_adata[] = {
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
 	{}
 };
+extern struct android_bat_platform_data android_battery_pdata;
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -96,7 +98,8 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
 	OF_DEV_AUXDATA("qcom,hsic-smsc-hub", 0, "msm_smsc_hub",
 			msm_hsic_host_adata),
-
+	OF_DEV_AUXDATA("android,battery", 0, \
+			"android-battery", &android_battery_pdata),
 	{}
 };
 
