@@ -63,6 +63,11 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 	struct msm_vib *vib = container_of(dev, struct msm_vib,
 					 timed_dev);
 
+	if ((value > 0) && (value <10)) {
+		pr_info("[VIB] not effective value %d / %d \n" , value, vib->state);
+		return;
+	}
+
 	mutex_lock(&vib->lock);
 	hrtimer_cancel(&vib->vib_timer);
 
