@@ -928,8 +928,22 @@
 		qcom,pmic-arb-channel = <0>;
 	};
 
-	i2c@f9925000 { /* BLSP-1 QUP-3 */
+	//ASUS_BSP +++ Maggie_Lee "I2C Porting"
+	i2c_2: i2c@f9924000 { /* BLSP-1 QUP-2 Sensors */
 		cell-index = <2>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9924000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 96 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <19200000>;
+	};
+
+	i2c_3: i2c@f9925000 { /* BLSP-1 QUP-3 NFC */
+		cell-index = <3>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9925000 0x1000>;
 		#address-cells = <1>;
@@ -954,7 +968,7 @@
 		qcom,master-id = <86>;
 	};
 
-	i2c@f9927000 { /* BLSP1 QUP5 */
+	i2c_5: i2c@f9927000 { /* BLSP1 QUP5 Touch */
 		cell-index = <5>;
 		compatible = "qcom,i2c-qup";
 		#address-cells = <1>;
@@ -968,6 +982,7 @@
 		qcom,sda-gpio = <&msmgpio 18 0>;
 		qcom,scl-gpio = <&msmgpio 19 0>;
 	};
+	//ASUS_BSP --- Maggie_Lee "I2C Porting"
 
 	qcom,clock-a7@f9011050 {
 		compatible = "qcom,clock-a7-8226";

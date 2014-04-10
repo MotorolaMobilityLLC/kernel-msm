@@ -35,19 +35,12 @@
 		};
 	};
 
-	i2c@f9925000 { /* BLSP1 QUP3 */
-		nfc-nci@0e {
-			compatible = "qcom,nfc-nci";
-			reg = <0x0e>;
-			qcom,irq-gpio = <&msmgpio 21 0x00>;
-			qcom,dis-gpio = <&msmgpio 20 0x00>;
-			qcom,clk-src = "BBCLK2";
-			qcom,clk-en-gpio = <&msmgpio 0 0x00>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <21 0>;
-			qcom,clk-gpio = <&pm8226_gpios 3 0>;
-		};
+	i2c@f9925000 { /* BLSP1 QUP3 NFC */
 	};
+
+	i2c@f9924000 { /* BLSP1 QUP2 Sensors */
+	};
+
 	gpio_keys {
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
