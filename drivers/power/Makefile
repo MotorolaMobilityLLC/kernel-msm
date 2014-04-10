@@ -67,3 +67,14 @@ obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
 obj-$(CONFIG_BATTERY_BCL)	+= battery_current_limit.o
 obj-$(CONFIG_POWER_RESET)	+= reset/
 obj-y				+= qcom/
+
+#ASUS_BSP Lenter +++
+obj-$(CONFIG_BATTERY_ASUS)	+= asus_bat.o
+obj-$(CONFIG_BATTERY_ASUS) += charger/
+obj-$(CONFIG_BATTERY_ASUS) += gauge/
+obj-$(CONFIG_BATTERY_ASUS) += capfilter/
+obj-$(CONFIG_CHARGER_ASUS_FSM) += fsm/
+obj-$(CONFIG_ASUS_POWER_UTIL) += util/
+obj-$(CONFIG_BATTERY_ASUS_SERVICE) += service/
+#ASUS_BSP Lenter ---
+

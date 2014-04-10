@@ -103,6 +103,22 @@ static void __init msm8226_reserve(void)
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 }
 
+
+//ASUS_BSP +++
+#ifdef CONFIG_BATTERY_ASUS
+static struct platform_device robin_asus_bat_device = {
+       .name = "asus_bat",
+       .id = 0,
+};     
+#endif
+
+static struct platform_device *msm_robin_devices[] = {
+	#ifdef CONFIG_BATTERY_ASUS
+	&robin_asus_bat_device,
+	#endif
+};
+//ASUS_BSP ---
+
 /*
  * Used to satisfy dependencies for devices that need to be
  * run early or in a particular order. Most likely your device doesn't fall
@@ -127,6 +143,10 @@ void __init msm8226_add_drivers(void)
 	ncp6335d_regulator_init();
 	fan53555_regulator_init();
 	cpr_regulator_init();
+
+//ASUS_BSP +++
+	platform_add_devices(msm_robin_devices, ARRAY_SIZE(msm_robin_devices));
+//ASUS_BSP ---
 }
 
 void __init msm8226_init(void)

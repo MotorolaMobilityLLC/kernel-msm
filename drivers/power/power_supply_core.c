@@ -239,6 +239,14 @@ void power_supply_changed(struct power_supply *psy)
 
 	dev_dbg(psy->dev, "%s\n", __func__);
 
+//ASUS_BSP +++ Josh_Liao "add asus battery driver"
+#ifdef CONFIG_BATTERY_ASUS_DBG
+	pr_info("[BAT]%s() by %s \r\n ", __func__, psy->name);
+	dump_stack();
+	pr_info("**************************************\r\n");
+#endif /* CONFIG_BATTERY_ASUS_DBG */
+//ASUS_BSP --- Josh_Liao "add asus battery driver"
+
 	spin_lock_irqsave(&psy->changed_lock, flags);
 	psy->changed = true;
 	pm_stay_awake(psy->dev);

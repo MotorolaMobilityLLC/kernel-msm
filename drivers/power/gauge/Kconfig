@@ -1,0 +1,2 @@
+config TI_GAUGE
+        bool "Support TI gauge"
