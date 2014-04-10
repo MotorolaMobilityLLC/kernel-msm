@@ -35,3 +35,9 @@
 	/* cont_splash memory*/
 	qcom,memblock-reserve = <0x04200000 0x64000>;
 };
+
+&soc {
+	qcom,mss@fc880000 {
+		status = "disabled";
+	};
+};
