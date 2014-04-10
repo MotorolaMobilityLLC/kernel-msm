@@ -31,6 +31,7 @@
 
 #include <linux/max77836-muic.h>
 #include <linux/muic.h>
+#include <linux/platform_data/android_battery.h>
 
 /* switch device header */
 #ifdef CONFIG_SWITCH
@@ -114,7 +115,7 @@ EXPORT_SYMBOL(muic_usb_cb);
 int current_cable_type = -1;
 static int muic_charger_cb(enum muic_attached_dev cable_type)
 {
-	struct power_supply *psy = power_supply_get_by_name("max77836-charger");
+	struct power_supply *psy = power_supply_get_by_name("battery");
 	union power_supply_propval value;
 
 	pr_info("%s:%s %d\n", MUIC_DEV_NAME, __func__, cable_type);
@@ -123,7 +124,7 @@ static int muic_charger_cb(enum muic_attached_dev cable_type)
 	case ATTACHED_DEV_NONE_MUIC:
 	case ATTACHED_DEV_OTG_MUIC:
 	case ATTACHED_DEV_JIG_UART_OFF_MUIC:
-		current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
+		current_cable_type = CHARGE_SOURCE_NONE;
 		break;
 	case ATTACHED_DEV_USB_MUIC:
 	case ATTACHED_DEV_CDP_MUIC:
@@ -132,7 +133,7 @@ static int muic_charger_cb(enum muic_attached_dev cable_type)
 #endif /* CONFIG_MUIC_SUPPORT_POGO_USB */
 	case ATTACHED_DEV_JIG_USB_OFF_MUIC:
 	case ATTACHED_DEV_JIG_USB_ON_MUIC:
-		current_cable_type = POWER_SUPPLY_TYPE_USB;
+		current_cable_type = CHARGE_SOURCE_USB;
 		break;
 	case ATTACHED_DEV_TA_MUIC:
 #if defined(CONFIG_MUIC_SUPPORT_POGO_TA)
@@ -145,7 +146,7 @@ static int muic_charger_cb(enum muic_attached_dev cable_type)
 	case ATTACHED_DEV_DESKDOCK_MUIC:
 	case ATTACHED_DEV_CARDOCK_MUIC:
 	case ATTACHED_DEV_JIG_UART_OFF_VB_MUIC:
-		current_cable_type = POWER_SUPPLY_TYPE_MAINS;
+		current_cable_type = CHARGE_SOURCE_AC;
 		break;
 	default:
 		pr_err("%s:%s invalid type:%d\n", MUIC_DEV_NAME, __func__, cable_type);
