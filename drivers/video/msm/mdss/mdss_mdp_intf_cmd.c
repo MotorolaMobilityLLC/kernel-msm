@@ -271,7 +271,8 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 		mdss_mdp_irq_disable_nosync
 			(MDSS_MDP_IRQ_PING_PONG_RD_PTR, ctx->pp_num);
 		complete(&ctx->stop_comp);
-		schedule_work(&ctx->clk_work);
+		//schedule_work(&ctx->clk_work); Tingyi: This turn off MDSS clk, cause
+		// kernel/drivers/clk/qcom/clock-local2.c:402 branch_clk_halt_check+0xe8/0x108()
 	}
 
 	spin_unlock(&ctx->clk_lock);
@@ -535,6 +536,16 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 	if (need_wait) {
 		rc = wait_for_completion_timeout(
 				&ctx->pp_comp, KOFF_TIMEOUT);
+// Tingyi +++
+{
+	int retry = 5;
+	while(rc <= 0 && retry--){
+		printk("MDSS:PP retry %d..\n",retry);
+		rc = wait_for_completion_timeout(
+				&ctx->pp_comp, KOFF_TIMEOUT);
+	}
+}
+// Tingyi ---
 
 		if (rc <= 0) {
 			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
@@ -560,7 +571,7 @@ static int mdss_mdp_cmd_set_partial_roi(struct mdss_mdp_ctl *ctl)
 		ctl->panel_data->panel_info.roi_h = ctl->roi.h;
 
 		rc = mdss_mdp_ctl_intf_event(ctl,
-				MDSS_EVENT_ENABLE_PARTIAL_UPDATE, NULL);
+				MDSS_EVENT_ENABLE_PARTIAL_UPDATE, NULL); // Tingyi: calling mdss_dsi_ctl_partial_update()
 	}
 	return rc;
 }

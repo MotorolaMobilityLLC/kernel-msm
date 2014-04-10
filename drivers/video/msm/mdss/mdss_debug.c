@@ -21,6 +21,11 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 
+// ASUS_BSP +++ Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
+#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
+#include "mdss_asus_debug.h"
+#endif
+// ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
 #include "mdss.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_hwio.h"
@@ -256,6 +261,7 @@ int mdss_debug_register_base(const char *name, void __iomem *base,
 	struct dentry *ent_off, *ent_reg;
 	char dn[80] = "";
 	int prefix_len = 0;
+	printk("MDSS:DEBUG:%s:+++:base=0x%x\n", __func__,(unsigned int)base);
 
 	if (!mdata || !mdata->debug_inf.debug_data)
 		return -ENODEV;
@@ -273,6 +279,12 @@ int mdss_debug_register_base(const char *name, void __iomem *base,
 
 	if (name)
 		prefix_len = snprintf(dn, sizeof(dn), "%s_", name);
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
+#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
+	else
+			create_amdu_debugfs(mdd->root);
+#endif
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
 
 	strlcpy(dn + prefix_len, "off", sizeof(dn) - prefix_len);
 	ent_off = debugfs_create_file(dn, 0644, mdd->root, dbg, &mdss_off_fops);

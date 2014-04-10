@@ -681,7 +681,7 @@ int mdss_dsi_cmdlist_put(struct mdss_dsi_ctrl_pdata *ctrl,
 		if (!ctrl->cmdlist_commit)
 			pr_err("cmdlist_commit not implemented!\n");
 		else
-			ret = ctrl->cmdlist_commit(ctrl, 0);
+			ret = ctrl->cmdlist_commit(ctrl, 0); // Tingyi: mdss_dsi_cmdlist_commit()
 	}
 	return ret;
 }

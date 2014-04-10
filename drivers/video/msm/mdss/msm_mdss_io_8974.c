@@ -22,6 +22,7 @@
 #include "mdss_dsi.h"
 #include "mdss_edp.h"
 
+#define DEBUG
 #define SW_RESET BIT(2)
 #define SW_RESET_PLL BIT(0)
 #define PWRDN_B BIT(7)
@@ -183,7 +184,13 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 				(h_period * v_period * frame_rate * bpp * 8);
 		}
 	}
+	printk("MDSS:DSI:mdss_dsi_clk_div_config():After calculate,panel_info->clk_rate=%d\n",panel_info->clk_rate);
+
+// Tingyi +++
+	//panel_info->clk_rate=	200000000; // 200MHz
+	printk("MDSS:DSI:mdss_dsi_clk_div_config():Force panel_info->clk_rate=%d\n",panel_info->clk_rate);
 	pll_divider_config.clk_rate = panel_info->clk_rate;
+// Tingyi ---
 
 
 	if (pll_divider_config.clk_rate == 0)

@@ -48,3 +48,12 @@ obj-$(CONFIG_FB_MSM_MDSS_DSI_CTRL_STATUS) += dsi_status_v2.o
 else
 obj-$(CONFIG_FB_MSM_MDSS_DSI_CTRL_STATUS) += mdss_dsi_status.o
 endif
+
+# ASUS_BSP +++ Tingyi "[8226][MDSS] Support DSI read command via debugfs"
+obj-$(CONFIG_ASUS_MDSS_DEBUG_UTILITY) += mdss_asus_debug.o
+
+# This enable all pr_debug
+#EXTRA_CFLAGS += -DDEBUG
+EXTRA_CFLAGS += -DDEBUG_KEEP_CLK_ON
+
+# ASUS_BSP --- Tingyi "[8226][MDSS] Support DSI read command via debugfs"

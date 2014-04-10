@@ -528,7 +528,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mdss_fb_create_sysfs(mfd);
 	mdss_fb_send_panel_event(mfd, MDSS_EVENT_FB_REGISTERED, fbi);
 
-	mfd->mdp_sync_pt_data.fence_name = "mdp-fence";
+	mfd->mdp_sync_pt_data.fence_name = "mdp-fence"; // Tingyi: MDP Fence
 	if (mfd->mdp_sync_pt_data.timeline == NULL) {
 		char timeline_name[16];
 		snprintf(timeline_name, sizeof(timeline_name),
@@ -540,7 +540,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 			return -ENOMEM;
 		}
 		mfd->mdp_sync_pt_data.notifier.notifier_call =
-			__mdss_fb_sync_buf_done_callback;
+			__mdss_fb_sync_buf_done_callback; // Tingyi: MDP Fence callback
 	}
 
 	switch (mfd->panel.type) {
@@ -630,7 +630,7 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
-	pr_debug("mdss_fb suspend index=%d\n", mfd->index);
+	printk("MDSS:%s:+++:index=%d\n", __func__,mfd->index);
 
 	mdss_fb_pan_idle(mfd);
 	ret = mdss_fb_send_panel_event(mfd, MDSS_EVENT_SUSPEND, NULL);
@@ -652,6 +652,7 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 		mfd->op_enable = false;
 		fb_set_suspend(mfd->fbi, FBINFO_STATE_SUSPENDED);
 	}
+	printk("MDSS:%s:---:index=%d\n", __func__,mfd->index);
 
 	return 0;
 }
@@ -662,6 +663,7 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
+	printk("MDSS:%s:+++:index=%d\n", __func__,mfd->index);
 
 	INIT_COMPLETION(mfd->power_set_comp);
 	mfd->is_power_setting = true;
@@ -687,6 +689,7 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 	}
 	mfd->is_power_setting = false;
 	complete_all(&mfd->power_set_comp);
+	printk("MDSS:%s:---:index=%d\n", __func__,mfd->index);
 
 	return ret;
 }
@@ -897,6 +900,8 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_NORMAL:
 	case FB_BLANK_POWERDOWN:
 	default:
+		printk("MDSS:%s:+++,blank_mode=%d,mfd->panel_power_on=%d\n",
+				__func__,blank_mode,mfd->panel_power_on);
 		if (mfd->panel_power_on && mfd->mdp.off_fnc) {
 			int curr_pwr_state;
 
@@ -914,7 +919,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->panel_power_on = false;
 			mfd->bl_updated = 0;
 
-			ret = mfd->mdp.off_fnc(mfd);
+			ret = mfd->mdp.off_fnc(mfd); // Tingyi: mdss_mdp_overlay_off()
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
 			else
@@ -922,6 +927,8 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->op_enable = true;
 			complete(&mfd->power_off_comp);
 		}
+		printk("MDSS:%s:---,mfd->panel_power_on=%d,ret=%d\n",
+				__func__,mfd->panel_power_on,ret);
 		break;
 	}
 	/* Notify listeners */
@@ -933,7 +940,9 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+	int ret;
 
+	printk("MDSS:%s:+++\n",__func__);
 	mdss_fb_pan_idle(mfd);
 	if (mfd->op_enable == 0) {
 		if (blank_mode == FB_BLANK_UNBLANK)
@@ -942,7 +951,10 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 			mfd->suspend.panel_power_on = false;
 		return 0;
 	}
-	return mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
+	ret = mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
+
+	printk("MDSS:%s:---;ret = %d\n",__func__,ret);
+	return ret;
 }
 
 /*
@@ -1825,7 +1837,7 @@ static int mdss_fb_pan_display_sub(struct fb_var_screeninfo *var,
 		(var->yoffset / info->fix.ypanstep) * info->fix.ypanstep;
 
 	if (mfd->mdp.dma_fnc)
-		mfd->mdp.dma_fnc(mfd, NULL, 0, NULL);
+		mfd->mdp.dma_fnc(mfd, NULL, 0, NULL); // Tingyi:mdp5_interface->dma_fnc = mdss_mdp_overlay_pan_display;
 	else
 		pr_warn("dma function not set for panel type=%d\n",
 				mfd->panel.type);
@@ -1865,7 +1877,7 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
 	sync_pt_data->flushed = false;
 
 	if (fb_backup->disp_commit.flags & MDP_DISPLAY_COMMIT_OVERLAY) {
-		if (mfd->mdp.kickoff_fnc)
+		if (mfd->mdp.kickoff_fnc) // Tingyi:mdp5_interface->kickoff_fnc = mdss_mdp_overlay_kickoff;
 			ret = mfd->mdp.kickoff_fnc(mfd,
 					&fb_backup->disp_commit);
 		else

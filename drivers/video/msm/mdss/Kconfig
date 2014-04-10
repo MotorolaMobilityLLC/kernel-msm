@@ -43,3 +43,9 @@ config FB_MSM_MDSS_MDP3
 	---help---
 	The MDP3 provides support for an older version display controller
 	included in latest display sub-system, known as MDSS.
+
+config ASUS_MDSS_DEBUG_UTILITY
+	bool 'ASUS MDSS Debug Utilities for MSM MDSS DSI'
+	default y
+	---help---
+		Many Utilities added for debug.

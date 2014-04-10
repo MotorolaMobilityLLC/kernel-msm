@@ -21,7 +21,7 @@
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-destination = "display_1";
-		qcom,mdss-dsi-panel-framerate = <30>;
+		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <320>;
@@ -37,7 +37,7 @@
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <160>; // 
 		qcom,mdss-dsi-v-top-border = <0>;
-		qcom,mdss-dsi-v-bottom-border = <480>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
@@ -107,31 +107,28 @@
 //ASUS_BSP --- Jason Chang "[Robin][display] support ambient mode"
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
-		qcom,mdss-dsi-h-sync-pulse = <0>;
-		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,mdss-dsi-lane-map = "lane_map_3012";		
 		qcom,mdss-dsi-lane-0-state;
 //		qcom,mdss-dsi-lane-1-state;
 		qcom,mdss-dsi-te-pin-select = <1>;
-		qcom,mdss-dsi-te-v-sync-rd-ptr-irq-line = <0x2c>;
-		qcom,mdss-dsi-te-v-sync-continues-lines = <0x3c>;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
 //		qcom,mdss-dsi-panel-timings = [7B 1A 10 00 3C 42 14 1C 15 03 04 00];
-		qcom,mdss-dsi-panel-timings = [5A 12 0A 00 32 34 10 16 0C 03 04 00]; // 285Mbps, panel_info->clk_rate=285517440
+//		qcom,mdss-dsi-panel-timings = [5A 12 0A 00 32 34 10 16 0C 03 04 00]; // 285Mbps, panel_info->clk_rate=285517440
+		qcom,mdss-dsi-panel-timings = [4D 0E 08 00 2C 30 0E 12 0B 03 04 00]; // 230Mbps, panel_info->clk_rate=
 		qcom,mdss-dsi-t-clk-post = <0x04>;
 		qcom,mdss-dsi-t-clk-pre = <0x1b>;
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
-		qcom,mdss-dsi-dma-trigger = <4>;
-		qcom,mdss-dsi-mdp-trigger = <0>;
+		qcom,mdss-dsi-dma-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-		qcom,partial-update-enabled;
 		qcom,mdss-dsi-reset-sequence = <1 20>, <0 1>, <1 20>;
 //		qcom,mdss-dsi-panel-clockrate = <>;
+//		qcom,partial-update-enabled;
 
 	};
 };

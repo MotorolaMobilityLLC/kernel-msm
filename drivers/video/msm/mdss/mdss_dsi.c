@@ -27,6 +27,13 @@
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
 
+#include "mdss_asus_debug.h"
+
+
+// ASUS_BSP +++ Tingyi "[A68M][MDSS] Fix data abort in user build"
+u32 g_dsi_ctrl_base = 0;
+// ASUS_BSP --- Tingyi "[A68M][MDSS] Fix data abort in user build"
+
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -51,6 +58,12 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 {
 	int ret;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	printk("MDSS:%s(enable=%d):+++\n", __func__,enable);
+
+	if (is_ambient_on()){
+		printk("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
+		return 0;
+	}
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -100,6 +113,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 		}
 	}
 error:
+	printk("MDSS:%s(enable=%d):---\n", __func__,enable);
 	return ret;
 }
 
@@ -301,6 +315,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *panel_info = NULL;
 
+	printk("MDSS:DSI:%s: +++ \n", __func__);
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -320,8 +335,10 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	pr_debug("%s+: ctrl=%p ndx=%d\n", __func__,
 				ctrl_pdata, ctrl_pdata->ndx);
 
+#ifndef DEBUG_KEEP_CLK_ON
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+#endif
 
 	/* disable DSI controller */
 	mdss_dsi_controller_cfg(0, pdata);
@@ -343,6 +360,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 		panel_info->mipi.frame_rate = panel_info->new_fps;
 
 	pr_debug("%s-:\n", __func__);
+	printk("MDSS:DSI:%s: --- \n", __func__);
 
 	return ret;
 }
@@ -362,6 +380,8 @@ static void __mdss_dsi_ctrl_setup(struct mdss_panel_data *pdata)
 				panel_data);
 
 	pinfo = &pdata->panel_info;
+
+	printk("MDSS:DSI:%s: xres=%d, yres=%d+++\n", __func__, pinfo->xres, pinfo->yres);
 
 	clk_rate = pdata->panel_info.clk_rate;
 	clk_rate = min(clk_rate, pdata->panel_info.clk_max);
@@ -421,14 +441,15 @@ static void __mdss_dsi_ctrl_setup(struct mdss_panel_data *pdata)
 		ystride = width * bpp + 1;
 
 		/* DSI_COMMAND_MODE_MDP_STREAM_CTRL */
-		data = (ystride << 16) | (mipi->vc << 8) | DTYPE_DCS_LWRITE;
+		data = (ystride << 16) | (mipi->vc << 8) | DTYPE_DCS_LWRITE; // Tingyi
 		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x60, data);
 		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x58, data);
 
 		/* DSI_COMMAND_MODE_MDP_STREAM_TOTAL */
-		data = height << 16 | width;
+		data = height << 16 | width; // Tingyi: 320x320
 		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x64, data);
 		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x5C, data);
+		printk("MDSS:bpp=%d,width=%d,height=%d,ystride=%d\n",bpp,width,height,ystride);
 	}
 }
 
@@ -699,8 +720,10 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		wmb();
 	}
 
+#ifndef DEBUG_KEEP_CLK_ON
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+#endif
 
 	pr_debug("%s-:\n", __func__);
 	return 0;
@@ -806,7 +829,7 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
-	pr_debug("%s+:\n", __func__);
+	printk("MDSS:%s:+++:\n", __func__);
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -839,12 +862,13 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 	if (pdata->panel_info.type == MIPI_CMD_PANEL) {
 		if (mipi->vsync_enable && mipi->hw_vsync_mode
 			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
+			printk("MDSS:%s:calling mdss_dsi_set_tear_off()\n", __func__);
 			mdss_dsi_set_tear_off(ctrl_pdata);
 		}
 	}
 
 	if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
-		ret = ctrl_pdata->off(pdata);
+		ret = ctrl_pdata->off(pdata); // Tingyi: mdss_dsi_panel_off()
 		if (ret) {
 			pr_err("%s: Panel OFF failed\n", __func__);
 			return ret;
@@ -854,7 +878,7 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 	if (mdss_dsi_pinctrl_set_state(ctrl_pdata, false))
 		pr_debug("dsi blank: pinctrl not enabled\n");
 
-	pr_debug("%s-:End\n", __func__);
+	printk("MDSS:%s:---:End\n", __func__);
 	return ret;
 }
 
@@ -1026,6 +1050,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 
 	switch (event) {
 	case MDSS_EVENT_UNBLANK:
+		printk("MDSS:%s:event=%d(MDSS_EVENT_UNBLANK)\n", __func__, event);
 		rc = mdss_dsi_on(pdata);
 		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
 							pdata);
@@ -1033,15 +1058,18 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			rc = mdss_dsi_unblank(pdata);
 		break;
 	case MDSS_EVENT_PANEL_ON:
+		printk("MDSS:%s:event=%d(MDSS_EVENT_PANEL_ON)\n", __func__, event);
 		ctrl_pdata->ctrl_state |= CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->on_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_unblank(pdata);
 		break;
 	case MDSS_EVENT_BLANK:
+		printk("MDSS:%s:event=%d(MDSS_EVENT_BLANK)\n", __func__, event);
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_blank(pdata);
 		break;
 	case MDSS_EVENT_PANEL_OFF:
+		printk("MDSS:%s:event=%d(MDSS_EVENT_PANEL_OFF)\n", __func__, event);
 		ctrl_pdata->ctrl_state &= ~CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->off_cmds.link_state == DSI_LP_MODE)
 			rc = mdss_dsi_blank(pdata);
@@ -1054,13 +1082,19 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		rc = mdss_dsi_cont_splash_on(pdata);
 		break;
 	case MDSS_EVENT_PANEL_CLK_CTRL:
+		//printk("MDSS:%s:event=%d(MDSS_EVENT_PANEL_CLK_CTRL)\n", __func__, event);
+#ifndef DEBUG_KEEP_CLK_ON
 		mdss_dsi_clk_req(ctrl_pdata, (int) (unsigned long) arg);
+#endif
 		break;
 	case MDSS_EVENT_DSI_CMDLIST_KOFF:
+		// This message too many!!
+		//printk("MDSS:%s:event=%d(MDSS_EVENT_DSI_CMDLIST_KOFF)\n", __func__, event);
 		ctrl_pdata->recovery = (struct mdss_panel_recovery *)arg;
 		mdss_dsi_cmdlist_commit(ctrl_pdata, 1);
 		break;
 	case MDSS_EVENT_PANEL_UPDATE_FPS:
+		printk("MDSS:%s:MDSS_EVENT_PANEL_UPDATE_FPS called!\n",__func__);
 		if (arg != NULL) {
 			rc = mdss_dsi_dfps_config(pdata,
 					 (int) (unsigned long) arg);
@@ -1084,7 +1118,8 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
 	}
-	pr_debug("%s-:event=%d, rc=%d\n", __func__, event, rc);
+	if (event != MDSS_EVENT_DSI_CMDLIST_KOFF && event != MDSS_EVENT_PANEL_CLK_CTRL)
+		printk("MDSS:%s:---:event=%d, rc=%d\n", __func__, event, rc);
 	return rc;
 }
 
@@ -1264,6 +1299,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_warn("%s:%d:dsi specific cfg not present\n",
 			__func__, __LINE__);
 
+	printk("MDSS:panel_cfg=%s\n",panel_cfg);
 	/* find panel device node */
 	dsi_pan_node = mdss_dsi_find_panel_of_node(pdev, panel_cfg);
 	if (!dsi_pan_node) {
@@ -1362,6 +1398,11 @@ int mdss_dsi_retrieve_ctrl_resources(struct platform_device *pdev, int mode,
 	}
 
 	ctrl->ctrl_base = ctrl->ctrl_io.base;
+
+// ASUS_BSP +++ Tingyi "[A68M][MDSS] Fix data abort in user build"
+	g_dsi_ctrl_base = (u32)(ctrl->ctrl_base);
+// ASUS_BSP --- Tingyi "[A68M][MDSS] Fix data abort in user build"
+
 	ctrl->reg_size = ctrl->ctrl_io.len;
 
 	rc = msm_dss_ioremap_byname(pdev, &ctrl->phy_io, "dsi_phy");
@@ -1611,7 +1652,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	ctrl_pdata->pclk_rate = mipi->dsi_pclk_rate;
 	ctrl_pdata->byte_clk_rate = pinfo->clk_rate / 8;
-	pr_debug("%s: pclk=%d, bclk=%d\n", __func__,
+	printk("MDSS:DSI:%s: pclk=%d, bclk=%d\n", __func__,
 			ctrl_pdata->pclk_rate, ctrl_pdata->byte_clk_rate);
 
 	ctrl_pdata->ctrl_state = CTRL_STATE_UNKNOWN;

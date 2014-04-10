@@ -36,6 +36,7 @@
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
 
+#include "mdss_asus_debug.h"
 #include "splash.h"
 
 #define VSYNC_PERIOD 16
@@ -3106,7 +3107,14 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 
 	if (need_cleanup) {
 		pr_debug("cleaning up pipes on fb%d\n", mfd->index);
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS]Don't Clean pipe when entering ambient mode."
+// Don't Clean pipe when entering ambient mode.
+		if (is_ambient_on()){
+			printk("MDSS:Skip clean pipes for ambient mode.\n");
+		}else{
 		mdss_mdp_overlay_kickoff(mfd, NULL);
+	}
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS]Don't Clean pipe when entering ambient mode."
 	}
 
 	rc = mdss_mdp_ctl_stop(mdp5_data->ctl);

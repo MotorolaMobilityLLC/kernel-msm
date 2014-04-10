@@ -288,6 +288,9 @@ struct mdss_dsi_ctrl_pdata {
 
 	struct dsi_panel_cmds on_cmds;
 	struct dsi_panel_cmds off_cmds;
+//ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
+	struct dsi_panel_cmds idle_cmds;
+//ASUS_BSP --- Jason Chang "[Robin][display] support ambient mode"
 
 	struct dcs_cmd_list cmdlist;
 	struct completion dma_comp;

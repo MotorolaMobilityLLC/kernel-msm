@@ -492,7 +492,7 @@ int mdss_mdp_put_img(struct mdss_mdp_img_data *data)
 		data->srcp_file = NULL;
 	} else if (!IS_ERR_OR_NULL(data->srcp_ihdl)) {
 		pr_debug("ion hdl=%p buf=0x%pa\n", data->srcp_ihdl,
-							&data->addr);
+							&data->addr); // Tingyi: Go here
 		if (!iclient) {
 			pr_err("invalid ion client\n");
 			return -ENOMEM;
