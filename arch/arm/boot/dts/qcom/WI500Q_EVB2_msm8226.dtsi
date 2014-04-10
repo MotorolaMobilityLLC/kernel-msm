@@ -225,6 +225,25 @@
 		status = "disabled";
 	};
 
+	//ASUS_BSP +++ Maggie_Lee "UART Porting for ECG sensor"
+	uart_5: serial@f9922000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf9922000 0x1000>;
+		interrupts = <0 112 0>;
+		status = "ok";
+
+		qcom,msm-bus,name = "blsp1_uart5";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<86 512 0 0>,
+			<86 512 500 800>;
+	};
+	aliases {
+		serial2 = &uart_5;
+	};
+	//ASUS_BSP --- Maggie_Lee "UART Porting for ECG sensor"
+
 	qcom,msm-imem@fe805000 {
 		compatible = "qcom,msm-imem";
 		reg = <0xfe805000 0x1000>; /* Address and size of IMEM */

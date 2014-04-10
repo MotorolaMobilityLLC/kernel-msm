@@ -29,6 +29,7 @@ enum iio_chan_type {
 	IIO_ALTVOLTAGE,
 	IIO_CCT,
 	IIO_PRESSURE,
+	IIO_QUATERNION,	//ASUS_BSP +++ Maggie_Lee "Sensor Porting"
 };
 
 enum iio_modifier {
@@ -36,6 +37,7 @@ enum iio_modifier {
 	IIO_MOD_X,
 	IIO_MOD_Y,
 	IIO_MOD_Z,
+	IIO_MOD_R,			//ASUS_BSP +++ Maggie_Lee "Sensor Porting"
 	IIO_MOD_X_AND_Y,
 	IIO_MOD_X_AND_Z,
 	IIO_MOD_Y_AND_Z,

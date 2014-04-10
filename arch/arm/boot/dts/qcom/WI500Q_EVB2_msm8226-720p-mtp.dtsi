@@ -17,6 +17,16 @@
 		status = "ok";
 	};
 
+//ASUS_BSP +++ Maggie_Lee "ECG Sensor Porting"
+	serial@f9922000 {
+		status = "ok";
+	};
+	bmd101{
+		compatible = "neurosky, bmd101";
+		status = "ok";
+	};
+//ASUS_BSP --- Maggie_Lee "ECG Sensor Porting"
+
 //ASUS_BSP +++ Cliff_Yu "Touch Porting"
 	i2c@f9927000 { /* BLSP1 QUP5 Touch */ 
             IT7260@46 {
@@ -32,6 +42,39 @@
 	};
 
 	i2c@f9924000 { /* BLSP1 QUP2 Sensors */
+		//ASUS_BSP +++ Maggie_Lee "Sensor Porting"
+		lis3dsh_acc@1e {
+			compatible = "stm,lis3dsh_acc";
+			reg = <0x1e>;
+		};
+		mpu9250@68 {
+			compatible = "invensense,mpu9250";
+			reg = <0x68>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <35 0x2>;
+			vdd_ana-supply = <&pm8226_l19>;
+			vcc_i2c-supply = <&pm8226_lvs1>;
+			mpu9250,irq-gpio = <&msmgpio 35 0x00>;
+			axis_map_x = <0>;
+			negate_x = <0>;
+			axis_map_y = <1>;
+			negate_y = <0>;
+			axis_map_z = <2>;
+			negate_z = <0>;
+			inven,secondary_type = "compass";
+			inven,secondary_name = "ak8963";
+			inven,secondary_reg = <0x0c>;
+			inven,secondary_axis_map_x = <1>;
+			inven,secondary_negate_x = <0>;
+			inven,secondary_axis_map_y = <0>;
+			inven,secondary_negate_y = <1>;
+			inven,secondary_axis_map_z = <2>;
+			inven,secondary_negate_z = <0>;
+			inven,aux_type = "none";
+			inven,vdd_ana = "8226_l19";
+			inven,vcc_i2c = "8226_lvs1";
+		};
+		//ASUS_BSP --- Maggie_Lee "Sensor Porting"
 	};
 
 	gpio_keys {
