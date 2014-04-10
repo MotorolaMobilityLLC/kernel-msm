@@ -2509,7 +2509,7 @@ static int set_reg(void *data, u64 val)
 	u8 temp;
 
 	temp = (u8) val;
-	rc = smb135x_write(chip, chip->peek_poke_address, temp);
+	rc = __smb135x_write_fac(chip, chip->peek_poke_address, temp);
 	if (rc < 0) {
 		dev_err(chip->dev,
 			"Couldn't write 0x%02x to 0x%02x rc= %d\n",
@@ -3639,17 +3639,6 @@ static int smb135x_charger_probe(struct i2c_client *client,
 		return rc;
 	}
 
-	if (chip->factory_mode) {
-		pr_info("Factory Mode I2C Writes Disabled!\n");
-		rc = smb135x_masked_write_fac(chip, CMD_I2C_REG,
-					      ALLOW_VOLATILE_BIT,
-					      ALLOW_VOLATILE_BIT);
-		if (rc < 0)
-			dev_err(chip->dev,
-				"Couldn't configure for volatile rc = %d\n",
-				rc);
-	}
-
 	dump_regs(chip);
 
 	rc = smb135x_regulator_init(chip);
@@ -3671,6 +3660,56 @@ static int smb135x_charger_probe(struct i2c_client *client,
 		dev_err(&client->dev,
 			"Unable to determine init status rc = %d\n", rc);
 		goto free_regulator;
+	}
+
+	if (chip->factory_mode) {
+		pr_info("Factory Mode I2C Writes Disabled!\n");
+		rc = smb135x_masked_write_fac(chip, CMD_I2C_REG,
+					      ALLOW_VOLATILE_BIT,
+					      ALLOW_VOLATILE_BIT);
+		if (rc < 0)
+			dev_err(chip->dev,
+				"Couldn't configure for volatile rc = %d\n",
+				rc);
+		/* interrupt enabling - active low */
+		if (chip->client->irq) {
+			rc = smb135x_masked_write_fac(chip, CFG_17_REG,
+						      CHG_STAT_IRQ_ONLY_BIT |
+						      CHG_STAT_ACTIVE_HIGH_BIT
+						      | CHG_STAT_DISABLE_BIT,
+						      CHG_STAT_IRQ_ONLY_BIT);
+			if (rc < 0) {
+				dev_err(chip->dev,
+					"Couldn't set irq config rc = %d\n",
+					rc);
+				goto free_regulator;
+			}
+
+			/* enabling only interesting interrupts */
+			rc = __smb135x_write_fac(chip, IRQ_CFG_REG,
+						 IRQ_BAT_HOT_COLD_HARD_BIT
+						 | IRQ_BAT_HOT_COLD_SOFT_BIT
+						 | IRQ_INTERNAL_TEMPERATURE_BIT
+						 | IRQ_USBIN_UV_BIT);
+
+			rc |= __smb135x_write_fac(chip, IRQ2_CFG_REG,
+						  IRQ2_SAFETY_TIMER_BIT
+						  | IRQ2_CHG_ERR_BIT
+						  | IRQ2_CHG_PHASE_CHANGE_BIT
+						  | IRQ2_POWER_OK_BIT
+						  | IRQ2_BATT_MISSING_BIT
+						  | IRQ2_VBAT_LOW_BIT);
+
+			rc |= __smb135x_write_fac(chip, IRQ3_CFG_REG,
+						  IRQ3_SRC_DETECT_BIT
+						  | IRQ3_DCIN_UV_BIT);
+			if (rc < 0) {
+				dev_err(chip->dev,
+					"Couldn't set irq enable rc = %d\n",
+				rc);
+				goto free_regulator;
+			}
+		}
 	}
 
 	chip->batt_psy.name		= "battery";
