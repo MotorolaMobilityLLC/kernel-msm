@@ -453,7 +453,7 @@
 };
 
 &pm8226_chg {
-	qcom,charging-disabled;
+//	qcom,charging-disabled;
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
