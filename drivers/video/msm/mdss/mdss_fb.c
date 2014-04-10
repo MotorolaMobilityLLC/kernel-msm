@@ -82,8 +82,6 @@ static int mdss_fb_check_var(struct fb_var_screeninfo *var,
 			     struct fb_info *info);
 static int mdss_fb_set_par(struct fb_info *info);
 static int mdss_fb_blank(int blank_mode, struct fb_info *info);
-static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
-			     int op_enable);
 static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd);
 static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg);
@@ -96,8 +94,6 @@ static int __mdss_fb_display_thread(void *data);
 static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd);
 static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 					int event, void *arg);
-static int mdss_fb_quickdraw_cleanup(struct msm_fb_data_type *mfd);
-static int mdss_fb_quickdraw_prepare(struct msm_fb_data_type *mfd);
 
 void mdss_fb_no_update_notify_timer_cb(unsigned long data)
 {
@@ -551,8 +547,6 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
-	mfd->quickdraw_fb_cleanup = mdss_fb_quickdraw_cleanup;
-	mfd->quickdraw_fb_prepare = mdss_fb_quickdraw_prepare;
 	mfd->quickdraw_in_progress = false;
 
 	return rc;
@@ -728,44 +722,6 @@ static int mdss_fb_pm_resume(struct device *dev)
 }
 #endif
 
-static int mdss_fb_quickdraw_cleanup(struct msm_fb_data_type *mfd)
-{
-	int ret = 0;
-
-	dev_dbg(&mfd->pdev->dev, "%s+\n", __func__);
-
-	if (!mfd) {
-		ret = -ENODEV;
-		goto exit;
-	}
-
-	ret = mdss_fb_blank_sub(FB_BLANK_NORMAL, mfd->fbi, true);
-
-exit:
-	dev_dbg(&mfd->pdev->dev, "%s-\n", __func__);
-
-	return ret;
-}
-
-static int mdss_fb_quickdraw_prepare(struct msm_fb_data_type *mfd)
-{
-	int ret = 0;
-
-	dev_dbg(&mfd->pdev->dev, "%s+\n", __func__);
-
-	if (!mfd) {
-		ret = -ENODEV;
-		goto exit;
-	}
-
-	ret = mdss_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi, true);
-
-exit:
-	dev_dbg(&mfd->pdev->dev, "%s-\n", __func__);
-
-	return ret;
-}
-
 static const struct dev_pm_ops mdss_fb_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(mdss_fb_pm_suspend, mdss_fb_pm_resume)
 };
@@ -883,8 +839,7 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	}
 }
 
-static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
-			     int op_enable)
+int mdss_fb_blank_sub(int blank_mode, struct fb_info *info, int op_enable)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct mdss_panel_data *pdata;

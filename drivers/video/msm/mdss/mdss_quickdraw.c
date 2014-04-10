@@ -224,7 +224,7 @@ static int mdss_quickdraw_prepare(void *data, unsigned char panel_state)
 	mfd->quickdraw_panel_state = panel_state;
 	mfd->quickdraw_in_progress = 1;
 
-	mfd->quickdraw_fb_prepare(mfd);
+	ret = mdss_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi, true);
 
 	ctl = mfd_to_ctl(mfd);
 	memset(&ctl->roi, 0, sizeof(ctl->roi));
@@ -391,7 +391,7 @@ static int mdss_quickdraw_cleanup(void *data)
 
 	mdss_mdp_overlay_cleanup(mfd);
 
-	mfd->quickdraw_fb_cleanup(mfd);
+	ret = mdss_fb_blank_sub(FB_BLANK_NORMAL, mfd->fbi, true);
 
 	mfd->quickdraw_in_progress = 0;
 
