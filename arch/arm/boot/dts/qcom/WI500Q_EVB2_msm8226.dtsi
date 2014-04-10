@@ -218,12 +218,31 @@
 		compatible = "qcom,msm-wfd";
 	};
 
-	serial@f991f000 {
+	uart_2:serial@f991f000 { //ASUS_BSP BerylHou +++
 		compatible = "qcom,msm-lsuart-v14";
 		reg = <0xf991f000 0x1000>;
 		interrupts = <0 109 0>;
 		status = "disabled";
 	};
+	// ASUS_BSP BerylHou +++ "config HSUART for BT"
+	uart_3: serial@f9920000{
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf9920000 0x1000>, <0xf9904000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupts = <0 110 0>, <0 238 0>;
+		interrupt-names = "core_irq","bam_irq";
+		qcom,bam-tx-ep-pipe-index = <6>;
+		qcom,bam-rx-ep-pipe-index = <7>;
+		status = "ok";
+
+		qcom,msm-bus,name = "blsp1_uart3";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<86 512 0 0>,
+				<86 512 500 800>;
+	};
+	// ASUS_BSP BerylHou --- 
 
 	//ASUS_BSP +++ Maggie_Lee "UART Porting for ECG sensor"
 	uart_5: serial@f9922000 {
