@@ -120,9 +120,8 @@ typedef enum
 } tSmeFastRoamTrigger;
 
 /*------------------------------------------------------------------------- 
-  Function declarations and documenation
+  Function declarations and documentation.
   ------------------------------------------------------------------------*/
-
 /*--------------------------------------------------------------------------
   
   \brief sme_Open() - Initialze all SME modules and put them at idle state
@@ -3219,4 +3218,16 @@ eHalStatus sme_AddChAvoidCallback
 );
 #endif /* FEATURE_WLAN_CH_AVOID */
 eHalStatus sme_UpdateConnectDebug(tHalHandle hHal, tANI_U32 set_value);
+/* ---------------------------------------------------------------------------
+    \fn sme_requestTypetoString
+    \brief API to convert requestType enum values
+           to string.
+ ---------------------------------------------------------------------------*/
+const char * sme_requestTypetoString(const v_U8_t requestType);
+/* ---------------------------------------------------------------------------
+    \fn  sme_PmcStatetoString
+    \brief API to convert PmcState enum values
+           to string.
+ ---------------------------------------------------------------------------*/
+const char * sme_PmcStatetoString(const v_U8_t pmcState);
 #endif //#if !defined( __SME_API_H )

@@ -203,7 +203,6 @@ typedef enum eSirScanType
     eSIR_BEACON_TABLE,
 } tSirScanType;
 
-/// Result codes Firmware return to Host SW
 typedef enum eSirResultCodes
 {
     eSIR_SME_SUCCESS,
@@ -368,6 +367,9 @@ typedef enum eStaRateMode {
 #define IERATE_IS_BASICRATE(x)   ((x) & IERATE_BASICRATE_MASK)
 #define ANIENHANCED_TAURUS_RATEMAP_BITOFFSET_START  28
 
+const char * lim_BssTypetoString(const v_U8_t bssType);
+const char * lim_ScanTypetoString(const v_U8_t scanType);
+const char * lim_BackgroundScanModetoString(const v_U8_t mode);
 typedef struct sSirSupportedRates {
     /*
     * For Self STA Entry: this represents Self Mode.
@@ -776,8 +778,6 @@ typedef enum eSirBackgroundScanMode
     eSIR_NORMAL_BACKGROUND_SCAN = 1,
     eSIR_ROAMING_SCAN = 2,
 } tSirBackgroundScanMode;
-
-/// Two types of traffic check
 typedef enum eSirLinkTrafficCheck
 {
     eSIR_DONT_CHECK_LINK_TRAFFIC_BEFORE_SCAN = 0,
