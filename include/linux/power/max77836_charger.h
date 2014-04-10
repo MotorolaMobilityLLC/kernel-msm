@@ -173,20 +173,4 @@ struct max77836_chg_data {
 	int chg_float_voltage;
 };
 
-static inline struct power_supply *get_power_supply_by_name(char *name)
-{
-	if (!name)
-		return (struct power_supply *)NULL;
-	else
-		return power_supply_get_by_name(name);
-}
-
-int max77836_chg_get_property(struct power_supply *psy,
-		enum power_supply_property psp,
-		union power_supply_propval *val);
-
-int max77836_chg_set_property(struct power_supply *psy,
-		enum power_supply_property psp,
-		const union power_supply_propval *val);
-
 #endif /* __MAX77836_CHARGER_H */

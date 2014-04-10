@@ -18,57 +18,7 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/types.h>
-#include <linux/module.h>
-#include <linux/delay.h>
-#include <linux/err.h>
-#include <linux/init.h>
-#include <linux/interrupt.h>
-#include <linux/io.h>
-#include <linux/jiffies.h>
-#include <linux/platform_device.h>
-#include <linux/power_supply.h>
-#include <linux/slab.h>
-#include <linux/wakelock.h>
-#include <linux/workqueue.h>
-#include <linux/timer.h>
-#include <linux/mutex.h>
-#include <linux/debugfs.h>
 #include <linux/platform_data/android_battery.h>
-
-#define FAST_POLL               (1 * 60)
-#define SLOW_POLL               (10 * 60)
-
-struct android_bat_data {
-	struct android_bat_platform_data *pdata;
-	struct android_bat_callbacks callbacks;
-
-	struct device		*dev;
-
-	struct power_supply	psy_bat;
-
-	struct wake_lock	monitor_wake_lock;
-	struct wake_lock	charger_wake_lock;
-
-	int			charge_source;
-
-	int			batt_temp;
-	int			batt_current;
-	unsigned int		batt_health;
-	unsigned int		batt_vcell;
-	unsigned int		batt_soc;
-	unsigned int		charging_status;
-	bool			recharging;
-	unsigned long		charging_start_time;
-
-	struct workqueue_struct *monitor_wqueue;
-	struct work_struct	monitor_work;
-	struct work_struct	charger_work;
-
-	ktime_t			last_poll;
-
-	struct dentry		*debugfs_entry;
-};
 
 static enum power_supply_property android_battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
@@ -80,6 +30,10 @@ static enum power_supply_property android_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
+};
+
+static enum power_supply_property android_power_props[] = {
+	POWER_SUPPLY_PROP_ONLINE,
 };
 
 static DEFINE_MUTEX(android_bat_state_lock);
@@ -102,6 +56,46 @@ static char *charge_source_str(int charge_source)
 	}
 
 	return "?";
+}
+
+static int android_bat_set_property(struct power_supply *ps,
+		enum power_supply_property psp,
+		const union power_supply_propval *val)
+{
+	struct android_bat_data *battery =
+		container_of(ps, struct android_bat_data, psy_bat);
+	switch (psp) {
+	case POWER_SUPPLY_PROP_STATUS:
+		break;
+	case POWER_SUPPLY_PROP_HEALTH:
+		break;
+	case POWER_SUPPLY_PROP_PRESENT:
+		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		break;
+	case POWER_SUPPLY_PROP_ONLINE:
+		wake_lock(&battery->charger_wake_lock);
+		mutex_lock(&android_bat_state_lock);
+		battery->charge_source = val->intval;
+
+		pr_info("%s: charge source type was changed: %s\n",
+			__func__, charge_source_str(battery->charge_source));
+
+		mutex_unlock(&android_bat_state_lock);
+		queue_work(battery->monitor_wqueue, &battery->charger_work);
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY:
+		break;
+	case POWER_SUPPLY_PROP_TECHNOLOGY:
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
 }
 
 static int android_bat_get_property(struct power_supply *ps,
@@ -196,6 +190,60 @@ static int android_bat_get_property(struct power_supply *ps,
 	default:
 		return -EINVAL;
 	}
+	return 0;
+}
+
+static int android_usb_get_property(struct power_supply *psy,
+				enum power_supply_property psp,
+				union power_supply_propval *val)
+{
+	struct android_bat_data *battery =
+		container_of(psy, struct android_bat_data, psy_usb);
+
+	if (psp != POWER_SUPPLY_PROP_ONLINE)
+		return -EINVAL;
+
+	if (battery->batt_health == POWER_SUPPLY_HEALTH_OVERVOLTAGE) {
+		val->intval = 0;
+		return 0;
+	}
+	/* Set enable=1 only if the USB charger is connected */
+	switch (battery->charge_source) {
+	case CHARGE_SOURCE_USB:
+		val->intval = 1;
+		break;
+	default:
+		val->intval = 0;
+		break;
+	}
+
+	return 0;
+}
+
+static int android_ac_get_property(struct power_supply *psy,
+			       enum power_supply_property psp,
+			       union power_supply_propval *val)
+{
+	struct android_bat_data *battery =
+		container_of(psy, struct android_bat_data, psy_ac);
+
+	if (psp != POWER_SUPPLY_PROP_ONLINE)
+		return -EINVAL;
+
+	if (battery->batt_health == POWER_SUPPLY_HEALTH_OVERVOLTAGE) {
+		val->intval = 0;
+		return 0;
+	}
+	/* Set enable=1 only if the AC charger is connected */
+	switch (battery->charge_source) {
+	case CHARGE_SOURCE_AC:
+		val->intval = 1;
+		break;
+	default:
+		val->intval = 0;
+		break;
+	}
+
 	return 0;
 }
 
@@ -315,7 +363,7 @@ static int android_bat_enable_charging(struct android_bat_data *battery,
 		battery->pdata->set_charging_enable(enable);
 
 	android_bat_set_charge_time(battery, enable);
-	pr_info("battery: enable=%d charger: %s\n", enable,
+	pr_info("%s: enable=%d charger: %s\n", __func__, enable,
 		charge_source_str(battery->charge_source));
 	return 0;
 }
@@ -445,6 +493,8 @@ static void android_bat_charger_work(struct work_struct *work)
 
 	mutex_unlock(&android_bat_state_lock);
 	wake_lock_timeout(&battery->charger_wake_lock, HZ * 2);
+	power_supply_changed(&battery->psy_usb);
+	power_supply_changed(&battery->psy_ac);
 	power_supply_changed(&battery->psy_bat);
 }
 
@@ -580,6 +630,41 @@ static int android_battery_parse_dt(struct device *dev,
 				(char const **)&battery->pdata->fuelgauge_name);
 		if (ret)
 			pr_info("%s: Fuelgauge_name is Empty\n", __func__);
+
+		ret = of_property_read_u32(np, "battery,temp_high_threshold",
+				(unsigned int *)&battery->pdata->temp_high_threshold);
+		if (ret)
+			pr_info("%s: temp_high_threshold is Empty\n", __func__);
+
+		ret = of_property_read_u32(np, "battery,temp_high_recovery",
+				(unsigned int *)&battery->pdata->temp_high_recovery);
+		if (ret)
+			pr_info("%s: temp_high_recovery is Empty\n", __func__);
+
+		ret = of_property_read_u32(np, "battery,temp_low_threshold",
+				(unsigned int *)&battery->pdata->temp_low_threshold);
+		if (ret)
+			pr_info("%s: temp_low_threshold is Empty\n", __func__);
+
+		ret = of_property_read_u32(np, "battery,temp_low_recovery",
+				(unsigned int *)&battery->pdata->temp_low_recovery);
+		if (ret)
+			pr_info("%s: temp_low_recovery is Empty\n", __func__);
+
+		ret = of_property_read_u32(np, "battery,full_charging_time",
+				(unsigned int *)&battery->pdata->full_charging_time);
+		if (ret)
+			pr_info("%s: charging_total_time is Empty\n", __func__);
+
+		ret = of_property_read_u32(np, "battery,recharging_time",
+				(unsigned int *)&battery->pdata->recharging_time);
+		if (ret)
+			pr_info("%s: recharging_time is Empty\n", __func__);
+
+		ret = of_property_read_u32(np, "battery,recharging_voltage",
+				(unsigned int *)&battery->pdata->recharging_voltage);
+		if (ret)
+			pr_info("%s: recharging_voltage is Empty\n", __func__);
 	}
 	return 0;
 }
@@ -587,8 +672,9 @@ static int android_battery_parse_dt(struct device *dev,
 
 static int android_bat_probe(struct platform_device *pdev)
 {
-	struct android_bat_platform_data *pdata = NULL;
+	struct android_bat_platform_data *pdata = pdev->dev.platform_data;
 	struct android_bat_data *battery;
+	bool allocation_pdata = false;
 	int ret = 0;
 
 	dev_info(&pdev->dev, "Android Battery Driver\n");
@@ -597,15 +683,17 @@ static int android_bat_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	if (pdev->dev.of_node) {
-		pdata = devm_kzalloc(&pdev->dev,
-				sizeof(struct android_bat_platform_data),
-				GFP_KERNEL);
-		if (!pdata) {
-			dev_err(&pdev->dev, "Failed to allocate memory\n");
-			ret = -ENOMEM;
-			goto err_pdata;
+		if (pdata == NULL) {
+			pdata = devm_kzalloc(&pdev->dev,
+					sizeof(struct android_bat_platform_data),
+					GFP_KERNEL);
+			if (!pdata) {
+				dev_err(&pdev->dev, "Failed to allocate memory\n");
+				ret = -ENOMEM;
+				goto err_pdata;
+			}
+			allocation_pdata = true;
 		}
-
 		battery->pdata = pdata;
 		if (android_battery_parse_dt(&pdev->dev, battery)) {
 			dev_err(&pdev->dev,
@@ -626,7 +714,19 @@ static int android_bat_probe(struct platform_device *pdev)
 	battery->psy_bat.properties = android_battery_props,
 	battery->psy_bat.num_properties = ARRAY_SIZE(android_battery_props),
 	battery->psy_bat.get_property = android_bat_get_property,
+	battery->psy_bat.set_property = android_bat_set_property,
 
+	battery->psy_usb.name = "usb",
+	battery->psy_usb.type = POWER_SUPPLY_TYPE_USB,
+	battery->psy_usb.properties = android_power_props,
+	battery->psy_usb.num_properties = ARRAY_SIZE(android_power_props),
+	battery->psy_usb.get_property = android_usb_get_property,
+
+	battery->psy_ac.name = "ac",
+	battery->psy_ac.type = POWER_SUPPLY_TYPE_MAINS,
+	battery->psy_ac.properties = android_power_props,
+	battery->psy_ac.num_properties = ARRAY_SIZE(android_power_props),
+	battery->psy_ac.get_property = android_ac_get_property;
 	battery->batt_vcell = -1;
 	battery->batt_soc = -1;
 
@@ -635,6 +735,18 @@ static int android_bat_probe(struct platform_device *pdev)
 	wake_lock_init(&battery->charger_wake_lock, WAKE_LOCK_SUSPEND,
 			"android-chargerdetect");
 
+	ret = power_supply_register(&pdev->dev, &battery->psy_usb);
+	if (ret) {
+		dev_err(battery->dev,
+			"%s: Failed to Register psy_usb\n", __func__);
+		goto err_psy_usb_reg;
+	}
+	ret = power_supply_register(&pdev->dev, &battery->psy_ac);
+	if (ret) {
+		dev_err(battery->dev,
+			"%s: Failed to Register psy_ac\n", __func__);
+		goto err_psy_ac_reg;
+	}
 	ret = power_supply_register(&pdev->dev, &battery->psy_bat);
 	if (ret) {
 		dev_err(battery->dev, "%s: failed to register psy_bat\n",
@@ -664,6 +776,9 @@ static int android_bat_probe(struct platform_device *pdev)
 	if (battery->pdata->poll_charge_source)
 		battery->charge_source = battery->pdata->poll_charge_source();
 
+	if (battery->pdata->initial_check)
+		battery->pdata->initial_check();
+
 	wake_lock(&battery->charger_wake_lock);
 	queue_work(battery->monitor_wqueue, &battery->charger_work);
 
@@ -683,10 +798,15 @@ static int android_bat_probe(struct platform_device *pdev)
 err_wq:
 	power_supply_unregister(&battery->psy_bat);
 err_psy_bat_reg:
+	power_supply_unregister(&battery->psy_ac);
+err_psy_ac_reg:
+	power_supply_unregister(&battery->psy_usb);
+err_psy_usb_reg:
 	wake_lock_destroy(&battery->monitor_wake_lock);
 	wake_lock_destroy(&battery->charger_wake_lock);
 err_dt:
-	kfree(pdata);
+	if (allocation_pdata)
+		kfree(pdata);
 err_pdata:
 	kfree(battery);
 
@@ -723,7 +843,6 @@ static struct of_device_id android_battery_dt_ids[] = {
 	{ .compatible = "android,battery" },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, sec_battery_dt_ids);
 #endif /* CONFIG_OF */
 
 static const struct dev_pm_ops android_bat_pm_ops = {

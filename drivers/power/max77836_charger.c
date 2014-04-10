@@ -18,6 +18,7 @@
 #ifdef CONFIG_USB_HOST_NOTIFY
 #include <linux/host_notify.h>
 #endif
+#include <linux/platform_data/android_battery.h>
 
 #define ENABLE 1
 #define DISABLE 0
@@ -26,7 +27,6 @@ static enum power_supply_property max77836_chg_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_HEALTH,
-	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
@@ -152,7 +152,7 @@ static void max77836_chg_set_charging(struct max77836_chg_data *charger)
 {
 	u8 data;
 
-	if (charger->cable_type == POWER_SUPPLY_TYPE_BATTERY) {
+	if (charger->cable_type == CHARGE_SOURCE_NONE) {
 		/* turn off charger */
 		data = 0x00;
 		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL2, data);
@@ -216,7 +216,7 @@ static void max77836_chg_set_charging_current(
 	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL4, data);
 }
 
-int max77836_chg_get_property(struct power_supply *psy,
+static int max77836_chg_get_property(struct power_supply *psy,
 		enum power_supply_property psp,
 		union power_supply_propval *val)
 {
@@ -239,9 +239,6 @@ int max77836_chg_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = max77836_chg_get_charging_health(charger);
-		break;
-	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = charger->cable_type;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:	/* charging current */
 		/* calculated input current limit value */
@@ -267,7 +264,7 @@ int max77836_chg_get_property(struct power_supply *psy,
 	return 0;
 }
 
-int max77836_chg_set_property(struct power_supply *psy,
+static int max77836_chg_set_property(struct power_supply *psy,
 		enum power_supply_property psp,
 		const union power_supply_propval *val)
 {
@@ -283,7 +280,7 @@ int max77836_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_ONLINE:
 		charger->cable_type = val->intval;
-		if (val->intval == POWER_SUPPLY_TYPE_BATTERY)
+		if (val->intval == CHARGE_SOURCE_NONE)
 			charger->is_charging = false;
 		else
 			charger->is_charging = true;
