@@ -331,7 +331,6 @@ static int mipi_ulps_mode(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enter)
 static int mdss_dsi_off(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
-	int i, cnt;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *panel_info = NULL;
 
@@ -367,11 +366,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	/* disable DSI phy */
 	mdss_dsi_phy_disable(ctrl_pdata);
 
-	cnt = ctrl_pdata->clk_cnt;
-
-	/* disable dsi clk */
-	for (i = 0; i < cnt; i++)
-		mdss_dsi_clk_ctrl(ctrl_pdata, 0);
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
 	ret = mdss_dsi_panel_power_on(pdata, 0);
 	if (ret) {
@@ -1466,10 +1461,11 @@ int mdss_dsi_retrieve_ctrl_resources(struct platform_device *pdev, int mode,
 		return rc;
 	}
 
-	ctrl->reg_size = resource_size(mdss_dsi_mres);
+	//goog
+	//ctrl->reg_size = resource_size(mdss_dsi_mres);
 
-	pr_info("%s: dsi base=%x size=%x\n",
-		__func__, (int)ctrl->ctrl_base, ctrl->reg_size);
+	//pr_info("%s: dsi base=%x size=%x\n",
+		//__func__, (int)ctrl->ctrl_base, ctrl->reg_size);
 
 	return 0;
 }
