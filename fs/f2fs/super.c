@@ -567,7 +567,7 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(root->d_sb);
 
-	if (!(root->d_sb->s_flags & MS_RDONLY) && test_opt(sbi, BG_GC))
+	if (!f2fs_readonly(sbi->sb) && test_opt(sbi, BG_GC))
 		seq_printf(seq, ",background_gc=%s", "on");
 	else
 		seq_printf(seq, ",background_gc=%s", "off");
@@ -610,7 +610,7 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 					F2FS_ANDROID_EMU_NOCASE) ?
 						":nocase" : "");
 
-	if (test_opt(sbi, FLUSH_MERGE))
+	if (!f2fs_readonly(sbi->sb) && test_opt(sbi, FLUSH_MERGE))
 		seq_puts(seq, ",flush_merge");
 	seq_printf(seq, ",active_logs=%u", sbi->active_logs);
 
