@@ -2549,7 +2549,7 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 
 //ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
 #ifdef CONFIG_PM_8226_CHARGER
-		printk("[BAT]%s, batS:%d, bmsS:%d, chg_in:%d, cool:%d, warm:%d, resuChg:%d, ChgDis:%d, asus_soc:%d, socRL:%d\n"
+		printk("[BAT]%s, batS:%d, bmsS:%d, chg_in:%d, cool:%d, warm:%d, resuChg:%d, ChgDis:%d, asus_soc:%d, socRL:%d, BMS_soc:%d\n"
 			,__FUNCTION__
 			,battery_status
 			,bms_status
@@ -2559,7 +2559,8 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 			,chip->resuming_charging
 			,chip->charging_disabled
 			,asus_soc
-			,chip->soc_resume_limit);
+			,chip->soc_resume_limit
+			,soc);
 
 		if (battery_status != POWER_SUPPLY_STATUS_CHARGING
 				/*mark below line, because bms_status is the same of asus own status, may show charging but not real charging
