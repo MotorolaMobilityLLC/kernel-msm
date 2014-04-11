@@ -27,10 +27,8 @@
 
 #define DRV_NAME "sprat-mi2s"
 
-struct sprat_data {
-	struct regulator *mic_supply;
-	atomic_t mi2s_rsc_ref;
-};
+struct regulator *mic_supply;
+static atomic_t mi2s_rsc_ref;
 
 static struct gpio mi2s_gpio[] = {
 	{
@@ -48,13 +46,13 @@ static struct gpio mi2s_gpio[] = {
 };
 
 static struct gpio mic_en_gpio = {
-	.flags = GPIOF_OUT_INIT_HIGH,
+	.flags = GPIOF_OUT_INIT_LOW,
 	.label = "sprat,mic-en-gpio",
 };
 
 static struct afe_clk_cfg lpass_mi2s = {
 	AFE_API_VERSION_I2S_CONFIG,
-	Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
 	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
 	Q6AFE_LPASS_CLK_SRC_INTERNAL,
 	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
@@ -83,7 +81,7 @@ static int sprat_request_gpios(struct platform_device *pdev)
 
 	ret = gpio_request_array(mi2s_gpio, ARRAY_SIZE(mi2s_gpio));
 	if (ret) {
-		pr_err("Unable to request gpios");
+		pr_err("%s: Unable to request gpios(%d)\n", __func__, ret);
 		return ret;
 	}
 
@@ -94,7 +92,7 @@ static int sprat_request_gpios(struct platform_device *pdev)
 		ret = gpio_request_one(mic_en_gpio.gpio, mic_en_gpio.flags,
 							mic_en_gpio.label);
 		if (ret) {
-			pr_err("Unable to request mic_en_gpio");
+			pr_err("%s: Unable to request mic_en_gpio(%d)\n", __func__, ret);
 			gpio_free_array(mi2s_gpio, ARRAY_SIZE(mi2s_gpio));
 
 			return ret;
@@ -104,13 +102,13 @@ static int sprat_request_gpios(struct platform_device *pdev)
 	return 0;
 }
 
-static void sprat_regulator_enable(struct sprat_data *machine, bool enable)
+static void sprat_regulator_enable(bool enable)
 {
 	if (enable) {
-		if (regulator_enable(machine->mic_supply))
-			pr_err("enable mic-supply failed");
+		if (regulator_enable(mic_supply))
+			pr_err("%s: enable mic-supply failed\n", __func__);
 	} else {
-		regulator_disable(machine->mic_supply);
+		regulator_disable(mic_supply);
 	}
 }
 
@@ -119,10 +117,14 @@ static int sprat_mi2s_startup(struct snd_pcm_substream *substream)
 	int ret;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	struct sprat_data *machine = snd_soc_card_get_drvdata(rtd->card);
 
-	if (atomic_inc_return(&machine->mi2s_rsc_ref) == 1) {
-		sprat_regulator_enable(machine, true);
+	if (atomic_inc_return(&mi2s_rsc_ref) == 1) {
+		if(gpio_is_valid(mic_en_gpio.gpio))	{
+			gpio_set_value(mic_en_gpio.gpio, 1);
+		}
+		else	{
+			sprat_regulator_enable(true);
+		}
 
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 		if (ret < 0)
@@ -160,22 +162,22 @@ static int sprat_mi2s_hw_params(struct snd_pcm_substream *substream,
 	 */
 	switch (params_rate(params)) {
 	case 8000:
-		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_512_KHZ;
-		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_2_P048_MHZ;
+		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_256_KHZ;
+		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
 		break;
 	case 16000:
-		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ;
-		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_4_P096_MHZ;
+		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_512_KHZ;
+		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
 		break;
 	default:
-		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
 		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
 	}
 
-	ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX,
+	ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_TX,
 							&lpass_mi2s);
 	if (ret < 0) {
-		pr_err("Unable to enable LPASS clock");
+		pr_err("%s: Unable to enable LPASS clock\n", __func__);
 		return ret;
 	}
 
@@ -184,14 +186,16 @@ static int sprat_mi2s_hw_params(struct snd_pcm_substream *substream,
 
 static void sprat_mi2s_shutdown(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct sprat_data *machine = snd_soc_card_get_drvdata(rtd->card);
+	if (atomic_dec_return(&mi2s_rsc_ref) == 0) {
+		if (afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_TX, &lpass_mi2s_disable) < 0)
+			pr_err("%s: Unable to disable LPASS clock\n", __func__);
 
-	if (atomic_dec_return(&machine->mi2s_rsc_ref) == 0) {
-		if (afe_set_lpass_clock(MI2S_RX, &lpass_mi2s_disable) < 0)
-			pr_err("Unable to disable LPASS clock");
-
-		sprat_regulator_enable(machine, false);
+		if (gpio_is_valid(mic_en_gpio.gpio))	{
+			gpio_set_value(mic_en_gpio.gpio, 0);
+	}
+		else	{
+			sprat_regulator_enable(false);
+		}
 	}
 }
 
@@ -221,14 +225,14 @@ static struct snd_soc_dai_link sprat_dai[] = {
 	},
 	/* Backend DAI Links */
 	{
-		.name = LPASS_BE_PRI_MI2S_TX,
-		.stream_name = "Primary MI2S Capture",
-		.cpu_dai_name = "msm-dai-q6-mi2s.0",
+		.name = LPASS_BE_TERT_MI2S_TX,
+		.stream_name = "Tertiary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.2",
 		.platform_name = "msm-pcm-routing",
 		.codec_name     = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-tx",
 		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_PRI_MI2S_TX,
+		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_TX,
 		.be_hw_params_fixup = sprat_mi2s_hw_params_fixup,
 		.ops = &sprat_mi2s_be_ops,
 		.ignore_suspend = 1,
@@ -245,52 +249,39 @@ static int sprat_asoc_machine_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &snd_soc_card_sprat;
 	int ret;
-	struct sprat_data *machine;
 
 	if (!pdev->dev.of_node) {
-		dev_err(&pdev->dev, "No platform supplied from device tree");
+		dev_err(&pdev->dev, "No platform supplied from device tree\n");
 		return -EINVAL;
 	}
 
-	machine = devm_kzalloc(&pdev->dev, sizeof(struct sprat_data),
-								GFP_KERNEL);
-	if (!machine) {
-		dev_err(&pdev->dev, "Can't allocate machine data\n");
-		return -ENOMEM;
-	}
+	mic_supply = regulator_get(&pdev->dev, "sprat,mic");
 
-	machine->mic_supply = regulator_get(&pdev->dev, "sprat,mic");
-
-	if (!machine->mic_supply) {
-		dev_err(&pdev->dev, "unable to get mic-supply regulator");
-		return -EINVAL;
+	if (IS_ERR(mic_supply)) {
+		dev_err(&pdev->dev, "unable to get mic-supply regulator\n");
 	}
 
 	ret = sprat_request_gpios(pdev);
 	if (ret)
-		goto err_request_gpios;
-
-	atomic_set(&machine->mi2s_rsc_ref, 0);
+		goto err;
 
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
-	snd_soc_card_set_drvdata(card, machine);
+	atomic_set(&mi2s_rsc_ref, 0);
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
 			ret);
-		goto err_register_card;
+		goto err;
 	}
 
 	return 0;
 
-err_register_card:
+err:
 	gpio_free_array(mi2s_gpio, ARRAY_SIZE(mi2s_gpio));
 	if (gpio_is_valid(mic_en_gpio.gpio))
 		gpio_free(mic_en_gpio.gpio);
-err_request_gpios:
-	regulator_put(machine->mic_supply);
 
 	return ret;
 }
@@ -298,10 +289,12 @@ err_request_gpios:
 static int sprat_asoc_machine_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	struct sprat_data *machine = snd_soc_card_get_drvdata(card);
 
 	gpio_free_array(mi2s_gpio, ARRAY_SIZE(mi2s_gpio));
-	regulator_put(machine->mic_supply);
+	if (gpio_is_valid(mic_en_gpio.gpio))
+		gpio_free(mic_en_gpio.gpio);
+	else
+		regulator_put(mic_supply);
 	snd_soc_unregister_card(card);
 
 	return 0;
