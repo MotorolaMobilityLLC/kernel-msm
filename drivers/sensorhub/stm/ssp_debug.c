@@ -92,6 +92,7 @@ static void print_sensordata(struct ssp_data *data, unsigned int uSensor)
 	switch (uSensor) {
 	case ACCELEROMETER_SENSOR:
 	case GYROSCOPE_SENSOR:
+	case TILT_TO_WAKE:
 		ssp_dbg("[SSP] %u : %d, %d, %d (%ums)\n", uSensor,
 			data->buf[uSensor].x, data->buf[uSensor].y,
 			data->buf[uSensor].z,

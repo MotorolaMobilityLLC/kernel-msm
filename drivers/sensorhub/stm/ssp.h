@@ -265,7 +265,8 @@ enum {
 	STEP_COUNTER,
 	BIO_HRM_RAW,
 	BIO_HRM_RAW_FAC,
-	BIO_HRM_LIB,
+	BIO_HRM_LIB = 20,
+	TILT_TO_WAKE,
 	SENSOR_MAX,
 };
 
@@ -395,6 +396,7 @@ struct ssp_data {
 	struct input_dev *hrm_raw_input_dev;
 	struct input_dev *hrm_lib_input_dev;
 #endif
+	struct input_dev *tilt_wake_input_dev;
 
 #ifdef CONFIG_SENSORS_SSP_STM
 	struct spi_device *spi;
@@ -569,6 +571,7 @@ void report_hrm_raw_data(struct ssp_data *, struct sensor_value *);
 void report_hrm_raw_fac_data(struct ssp_data *, struct sensor_value *);
 void report_hrm_lib_data(struct ssp_data *, struct sensor_value *);
 #endif
+void report_tilt_wake_data(struct ssp_data *, struct sensor_value *);
 
 unsigned int get_module_rev(struct ssp_data *data);
 void reset_mcu(struct ssp_data *);

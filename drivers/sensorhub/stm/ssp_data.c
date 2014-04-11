@@ -281,6 +281,7 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->get_sensor_data[BIO_HRM_RAW_FAC] = get_hrm_raw_fac_sensordata;
 	data->get_sensor_data[BIO_HRM_LIB] = get_hrm_lib_sensordata;
 #endif
+	data->get_sensor_data[TILT_TO_WAKE] = get_3axis_sensordata;
 
 	data->report_sensor_data[ACCELEROMETER_SENSOR] = report_acc_data;
 	data->report_sensor_data[GYROSCOPE_SENSOR] = report_gyro_data;
@@ -302,4 +303,5 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->report_sensor_data[BIO_HRM_RAW_FAC] = report_hrm_raw_fac_data;
 	data->report_sensor_data[BIO_HRM_LIB] = report_hrm_lib_data;
 #endif
+	data->report_sensor_data[TILT_TO_WAKE] = report_tilt_wake_data;
 }

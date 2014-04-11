@@ -343,6 +343,28 @@ void report_hrm_lib_data(struct ssp_data *data, struct sensor_value *hrmdata)
 }
 #endif
 
+void report_tilt_wake_data(struct ssp_data *data, struct sensor_value *tiltdata)
+{
+	data->buf[TILT_TO_WAKE].x = tiltdata->x;
+	data->buf[TILT_TO_WAKE].y = tiltdata->y;
+	data->buf[TILT_TO_WAKE].z = tiltdata->z;
+
+	input_report_rel(data->tilt_wake_input_dev, REL_X,
+		data->buf[TILT_TO_WAKE].x >= 0?
+		(data->buf[TILT_TO_WAKE].x + 1):
+		data->buf[TILT_TO_WAKE].x);
+	input_report_rel(data->tilt_wake_input_dev, REL_Y,
+		data->buf[TILT_TO_WAKE].y >= 0?
+		(data->buf[TILT_TO_WAKE].y + 1):
+		data->buf[TILT_TO_WAKE].y);
+	input_report_rel(data->tilt_wake_input_dev, REL_Z,
+		data->buf[TILT_TO_WAKE].z >= 0?
+		(data->buf[TILT_TO_WAKE].z + 1):
+		data->buf[TILT_TO_WAKE].z);
+	input_sync(data->tilt_wake_input_dev);
+	wake_lock_timeout(&data->ssp_wake_lock, 3 * HZ);
+}
+
 int initialize_event_symlink(struct ssp_data *data)
 {
 	int iRet = 0;
@@ -380,10 +402,14 @@ int initialize_event_symlink(struct ssp_data *data)
 	if (iRet < 0)
 		goto iRet_hrm_lib_sysfs_create_link;
 #endif
-
+	iRet = sensors_create_symlink(data->tilt_wake_input_dev);
+	if (iRet < 0)
+		goto iRet_tilt_wake_sysfs_create_link;
 	return SUCCESS;
 
+iRet_tilt_wake_sysfs_create_link:
 #ifdef CONFIG_SENSORS_SSP_ADPD142
+	sensors_remove_symlink(data->hrm_lib_input_dev);
 iRet_hrm_lib_sysfs_create_link:
 	sensors_remove_symlink(data->hrm_raw_input_dev);
 iRet_hrm_raw_sysfs_create_link:
@@ -417,6 +443,7 @@ void remove_event_symlink(struct ssp_data *data)
 	sensors_remove_symlink(data->hrm_raw_input_dev);
 	sensors_remove_symlink(data->hrm_lib_input_dev);
 #endif
+	sensors_remove_symlink(data->tilt_wake_input_dev);
 }
 
 static const struct iio_info accel_info = {
@@ -765,9 +792,29 @@ int initialize_input_dev(struct ssp_data *data)
 	input_set_drvdata(data->hrm_lib_input_dev, data);
 #endif
 
+	data->tilt_wake_input_dev = input_allocate_device();
+	if (data->tilt_wake_input_dev == NULL)
+		goto err_initialize_tilt_wake_input_dev;
+
+	data->tilt_wake_input_dev->name = "tilt_wake_sensor";
+	input_set_capability(data->tilt_wake_input_dev, EV_REL, REL_X);
+	input_set_capability(data->tilt_wake_input_dev, EV_REL, REL_Y);
+	input_set_capability(data->tilt_wake_input_dev, EV_REL, REL_Z);
+
+	iRet = input_register_device(data->tilt_wake_input_dev);
+	if (iRet < 0) {
+		input_free_device(data->tilt_wake_input_dev);
+		goto err_initialize_tilt_wake_input_dev;
+	}
+	input_set_drvdata(data->tilt_wake_input_dev, data);
+
 	return SUCCESS;
 
+err_initialize_tilt_wake_input_dev:
+	pr_err("[SSP]: %s - could not allocate tilt wake input device\n",
+		__func__);
 #ifdef CONFIG_SENSORS_SSP_ADPD142
+	input_unregister_device(data->hrm_lib_input_dev);
 err_initialize_hrm_lib_input_dev:
 	pr_err("[SSP]: %s - could not allocate hrm lib input device\n",
 		__func__);
@@ -870,4 +917,5 @@ void remove_input_dev(struct ssp_data *data)
 	input_unregister_device(data->uncalib_gyro_input_dev);
 	input_unregister_device(data->step_cnt_input_dev);
 	input_unregister_device(data->meta_input_dev);
+	input_unregister_device(data->tilt_wake_input_dev);
 }
