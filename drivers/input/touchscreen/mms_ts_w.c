@@ -51,6 +51,7 @@
 #include <mach/cpufreq.h>
 #include <mach/dev.h>
 #endif
+#include <linux/wakelock.h>
 
 #define EVENT_SZ_8_BYTES	8
 #define MAX_FINGERS		10
@@ -376,6 +377,7 @@ struct mms_ts_info {
 	struct early_suspend early_suspend;
 #endif
 	struct mutex lock;
+	struct wake_lock	tsp_wake_lock;
 
 	void (*register_cb)(void *);
 	struct tsp_callbacks callbacks;
@@ -1365,6 +1367,12 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 		     },
 	};
 	finger_event_sz = EVENT_SZ_8_BYTES;
+
+	if (!info->enabled) {
+		dev_err(&client->dev, "%s: touch Wake\n", __func__);
+		wake_lock_timeout(&info->tsp_wake_lock, 5 * HZ);
+		usleep_range(30000, 31000);
+	}
 
 	sz = i2c_smbus_read_byte_data(client, MMS_INPUT_EVENT_PKT_SZ);
 
@@ -2963,6 +2971,9 @@ static int mms_ts_probe(struct i2c_client *client,
 
 	barrier();
 
+	device_init_wakeup(&client->dev, 1);
+	wake_lock_init(&info->tsp_wake_lock, WAKE_LOCK_SUSPEND, "report_touch_wake_lock");
+
 	dev_info(&client->dev,
 			"Melfas MMS-series touch controller initialized\n");
 
@@ -3117,6 +3128,39 @@ static int mms_ts_resume(struct device *dev)
 
 	return 0;
 }
+
+#elif defined(ALWAYS_ON_TOUCH)
+static int mms_ts_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct mms_ts_info *info = i2c_get_clientdata(client);
+
+	dev_info(&info->client->dev, "%s %s\n", __func__,
+		info->enabled ? "ON" : "OFF");
+
+	if (device_may_wakeup(dev)) {
+		enable_irq_wake(client->irq);
+		info->enabled = false;
+	}
+
+	return 0;
+}
+
+static int mms_ts_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct mms_ts_info *info = i2c_get_clientdata(client);
+
+	dev_info(&info->client->dev, "%s %s\n", __func__,
+		info->enabled ? "ON" : "OFF");
+
+	if (device_may_wakeup(dev)) {
+		disable_irq_wake(client->irq);
+		info->enabled = true;
+	}
+
+	return 0;
+}
 #endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -3135,8 +3179,7 @@ static void mms_ts_late_resume(struct early_suspend *h)
 }
 #endif
 
-#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) \
-	&& !defined(ALWAYS_ON_TOUCH)
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
 static const struct dev_pm_ops mms_ts_pm_ops = {
 	.suspend = mms_ts_suspend,
 	.resume = mms_ts_resume,
@@ -3162,8 +3205,7 @@ static struct i2c_driver mms_ts_driver = {
 	.remove = mms_ts_remove,
 	.driver = {
 		.name = MELFAS_TS_NAME,
-#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) \
-	&& !defined(ALWAYS_ON_TOUCH)
+#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
 		.pm = &mms_ts_pm_ops,
 #endif
 		.of_match_table = melfas_match_table,
