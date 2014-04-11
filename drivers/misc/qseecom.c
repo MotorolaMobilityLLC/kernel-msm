@@ -518,6 +518,12 @@ static int qseecom_set_client_mem_param(struct qseecom_dev_handle *data,
 	if (copy_from_user(&req, (void __user *)argp, sizeof(req)))
 		return -EFAULT;
 
+	if ((req.ifd_data_fd <= 0) || (req.virt_sb_base == 0) ||
+					(req.sb_len == 0)) {
+		pr_err("Inavlid input(s)ion_fd(%d), sb_len(%d), vaddr(0x%x)\n",
+			req.ifd_data_fd, req.sb_len, req.virt_sb_base);
+		return -EFAULT;
+	}
 	/* Get the handle of the shared fd */
 	data->client.ihandle = ion_import_dma_buf(qseecom.ion_clnt,
 						req.ifd_data_fd);
@@ -2045,6 +2051,12 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_UNREGISTER_LISTENER_REQ: {
+		if (data->listener.id == 0) {
+			pr_err("unreg lstnr req: invalid handle lid(%d)\n",
+						data->listener.id);
+			ret = -EINVAL;
+			break;
+		}
 		pr_debug("ioctl unregister_listener_req()\n");
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_unregister_listener(data);
@@ -2055,6 +2067,12 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_SEND_CMD_REQ: {
+		if (data->client.app_id == 0) {
+			pr_err("send cmd req: invalid handle app_id(%d)\n",
+					data->client.app_id);
+			ret = -EINVAL;
+			break;
+		}
 		/* Only one client allowed here at a time */
 		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
@@ -2067,6 +2085,12 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_SEND_MODFD_CMD_REQ: {
+		if (data->client.app_id == 0) {
+			pr_err("send mdfd cmd: invalid handle appid(%d)\n",
+					data->client.app_id);
+			ret = -EINVAL;
+			break;
+		}
 		/* Only one client allowed here at a time */
 		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
@@ -2079,6 +2103,12 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_RECEIVE_REQ: {
+		if (data->listener.id == 0) {
+			pr_err("receive req: invalid handle lid(%d)\n",
+					    data->listener.id);
+			ret = -EINVAL;
+			break;
+		}
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_receive_req(data);
 		atomic_dec(&data->ioctl_count);
@@ -2088,6 +2118,12 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_SEND_RESP_REQ: {
+		if (data->listener.id == 0) {
+			pr_err("send resp req: invalid handle lid(%d)\n",
+						data->listener.id);
+			ret = -EINVAL;
+			break;
+		}
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_send_resp();
 		atomic_dec(&data->ioctl_count);
@@ -2114,6 +2150,13 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_UNLOAD_APP_REQ: {
+		if (data->client.app_id == 0) {
+			pr_err("unload app req:invalid handle app_id(%d)\n",
+					data->client.app_id);
+			ret = -EINVAL;
+			break;
+		}
+		pr_debug("UNLOAD_APP: qseecom_addr = 0x%x\n", (u32)data);
 		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_unload_app(data);
