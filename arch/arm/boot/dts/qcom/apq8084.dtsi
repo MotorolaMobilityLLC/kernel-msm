@@ -86,7 +86,7 @@
 		interrupt-controller;
 		#interrupt-cells = <2>;
 		reg = <0xfd510000 0x4000>;
-		ngpio = <146>;
+		ngpio = <147>;
 		interrupts = <0 208 0>;
 		qcom,direct-connect-irqs = <8>;
 		qcom,subsys-id = <3>;
@@ -556,6 +556,7 @@
 
 		qcom,l1ss-supported;
 		qcom,n-fts = <0x50>;
+		qcom,ep-latency = <10>;
 
 		qcom,msi-gicm-addr = <0xf9040040>;
 		qcom,msi-gicm-base = <0x160>;
@@ -2954,15 +2955,21 @@
 		qcom,firmware-name = "venus";
 	};
 
-	qcom,lpass@fe200000 {
-		compatible = "qcom,pil-q6v5-lpass";
-		reg = <0xfe200000 0x00100>,
-		      <0xfd485100 0x00010>,
-		      <0xfc4016c0 0x00004>;
-		reg-names = "qdsp6_base", "halt_base", "restart_reg";
-		vdd_cx-supply = <&pma8084_s2_corner>;
+	pil_lpass: qcom,lpass@fe200000 {
+		compatible = "qcom,pil-tz-generic";
+		reg = <0xfe200000 0x00100>;
 		interrupts = <0 162 1>;
 
+		vdd_cx-supply = <&pma8084_s2_corner>;
+		proxy-reg-names = "vdd_cx";
+		vdd_cx-uV-uA = <7 100000>;
+		clock-names = "bus_clk", "xo";
+		active-clock-names = "bus_clk";
+		proxy-clock-names = "xo";
+
+		qcom,pas-id = <1>;
+		qcom,proxy-timeout-ms = <10000>;
+		qcom,smem-id = <423>;
 		qcom,firmware-name = "adsp";
 
 		/* GPIO inputs from lpass */
@@ -3221,7 +3228,6 @@
 			<783360 465000000>,
 			<489600 266670000>,
 			<244800 133330000>;
-		qcom,bus-ports = <1>;
 		qcom,reg-presets = <0x800B0 0x00101001>,
 			<0x800B0 0x00101001>,
 			<0x800B4 0x00101010>,
@@ -3237,38 +3243,6 @@
 			<0xe0020 0x5555556>,
 			<0xe0024 0x5555556>,
 			<0x80124 0x3>;
-		qcom,enc-ocmem-ab-ib = <0 0>,
-			<138000 1034000>,
-			<414000 1034000>,
-			<940000 1034000>,
-			<1880000 2068000>,
-			<3008000 3309000>,
-			<3760000 4136000>,
-			<4468000 2457000>;
-		qcom,dec-ocmem-ab-ib = <0 0>,
-			<176000 519000>,
-			<456000 519000>,
-			<864000 519000>,
-			<1728000 1038000>,
-			<2766000 1661000>,
-			<3456000 2076000>,
-			<3662000 2198000>;
-		qcom,enc-ddr-ab-ib = <0 0>,
-			<120000 302000>,
-			<364000 302000>,
-			<804000 302000>,
-			<1608000 604000>,
-			<2576000 967000>,
-			<4680000 1404000>,
-			<4988000 1496000>;
-		qcom,dec-ddr-ab-ib = <0 0>,
-			<208000 303000>,
-			<536000 303000>,
-			<1012000 303000>,
-			<2024000 606000>,
-			<3240000 970000>,
-			<4048000 1212000>,
-			<4264000 1279000>;
 		qcom,buffer-type-tz-usage-table = <0x241 0x1>,
 			<0x106 0x2>,
 			<0x480 0x3>;
@@ -3289,6 +3263,103 @@
 			qcom,domain-sec-np {
 				qcom,vidc-domain-phandle = <&venus_domain_sec_non_pixel>;
 				qcom,vidc-partition-buffer-types = <0x480>;
+			};
+		};
+		qcom,msm-bus-clients {
+			qcom,msm-bus-client@0 {
+				qcom,msm-bus,name = "venc-ddr";
+				qcom,msm-bus,num-cases = <8>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<63 512 0 0>,
+					<63 512 120000 302000>,
+					<63 512 364000 302000>,
+					<63 512 804000 302000>,
+					<63 512 1608000 604000>,
+					<63 512 2576000 967000>,
+					<63 512 4680000 1404000>,
+					<63 512 4988000 1496000>;
+				qcom,bus-configs = <0x1000414>;
+			};
+
+			qcom,msm-bus-client@1 {
+				qcom,msm-bus,name = "vdec-core0-ddr";
+				qcom,msm-bus,num-cases = <8>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<63 512 0 0>,
+					<63 512 312000 454500>,
+					<63 512 804000 2400000>,
+					<63 512 1518000 2400000>,
+					<63 512 3036000 2400000>,
+					<63 512 4860000 2400000>,
+					<63 512 6072000 2400000>,
+					<63 512 6396000 2400000>;
+				qcom,bus-configs = <0xc000000>;
+			};
+
+			qcom,msm-bus-client@2 {
+				qcom,msm-bus,name = "vdec-core1-ddr";
+				qcom,msm-bus,num-cases = <8>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<63 512 0 0>,
+					<63 512 228800 333300>,
+					<63 512 589600 1760000>,
+					<63 512 1113200 1760000>,
+					<63 512 2226400 1760000>,
+					<63 512 3564000 1760000>,
+					<63 512 4452800 1760000>,
+					<63 512 4690400 1760000>;
+				qcom,bus-configs = <0x30fcfff>;
+			};
+
+			qcom,msm-bus-client@3 {
+				qcom,msm-bus,name = "venc-ocmem";
+				qcom,msm-bus,num-cases = <8>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<68 604 0 0>,
+					<68 604 138000 1034000>,
+					<68 604 414000 1034000>,
+					<68 604 940000 1034000>,
+					<68 604 1880000 2068000>,
+					<68 604 3008000 3309000>,
+					<68 604 3760000 4136000>,
+					<68 604 4468000 2457000>;
+				qcom,bus-configs = <0x1000414>;
+			};
+
+			qcom,msm-bus-client@4 {
+				qcom,msm-bus,name = "vdec-core0-ocmem";
+				qcom,msm-bus,num-cases = <8>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<68 604 0 0>,
+					<68 604 264000 778500>,
+					<68 604 684000 778500>,
+					<68 604 1296000 943500>,
+					<68 604 2592000 1557000>,
+					<68 604 4149000 2491500>,
+					<68 604 5184000 3114000>,
+					<68 604 5493000 3297000>;
+				qcom,bus-configs = <0xc000000>;
+			};
+
+			qcom,msm-bus-client@5 {
+				qcom,msm-bus,name = "vdec-core1-ocmem";
+				qcom,msm-bus,num-cases = <8>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<68 604 0 0>,
+					<68 604 193600 570900>,
+					<68 604 501600 570900>,
+					<68 604 950400 916850>,
+					<68 604 1900800 1141800>,
+					<68 604 3042600 1827100>,
+					<68 604 3801600 2283600>,
+					<68 604 4028200 2417800>;
+				qcom,bus-configs = <0x30fcfff>;
 			};
 		};
 	};
