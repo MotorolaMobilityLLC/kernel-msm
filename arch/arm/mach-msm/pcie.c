@@ -100,6 +100,8 @@
 #define LINK_UP_TIMEOUT_US_MIN                5000
 #define LINK_UP_TIMEOUT_US_MAX                5100
 #define LINK_UP_CHECK_MAX_COUNT               20
+#define PHY_STABILIZATION_DELAY_US_MIN        995
+#define PHY_STABILIZATION_DELAY_US_MAX        1005
 
 #define PHY_READY_TIMEOUT_COUNT               10
 #define XMLH_LINK_UP                          0x400
@@ -666,6 +668,11 @@ static void msm_pcie_config_controller(struct msm_pcie_dev_t *dev)
 
 static void msm_pcie_config_l1ss(struct msm_pcie_dev_t *dev)
 {
+	u32 offset = 0;
+
+	if (!dev->rc_idx)
+		offset = PCIE20_EP_L1SUB_CTL1_OFFSET;
+
 	/* Enable the AUX Clock and the Core Clk to be synchronous for L1SS*/
 	if (!dev->aux_clk_sync)
 		msm_pcie_write_mask(dev->parf +
@@ -689,7 +696,7 @@ static void msm_pcie_config_l1ss(struct msm_pcie_dev_t *dev)
 	msm_pcie_write_mask(dev->conf + PCIE20_CAP_LINKCTRLSTATUS, 0,
 					BIT(1)|BIT(0));
 	msm_pcie_write_mask(dev->conf + PCIE20_L1SUB_CONTROL1 +
-					PCIE20_EP_L1SUB_CTL1_OFFSET, 0,
+					offset, 0,
 					BIT(3)|BIT(2)|BIT(1)|BIT(0));
 	msm_pcie_write_mask(dev->conf + PCIE20_DEVICE_CONTROL2_STATUS2, 0,
 					BIT(10));
@@ -697,7 +704,7 @@ static void msm_pcie_config_l1ss(struct msm_pcie_dev_t *dev)
 		readl_relaxed(dev->conf + PCIE20_CAP_LINKCTRLSTATUS));
 	PCIE_DBG("EP's L1SUB_CONTROL1:0x%x\n",
 		readl_relaxed(dev->conf + PCIE20_L1SUB_CONTROL1 +
-					PCIE20_EP_L1SUB_CTL1_OFFSET));
+					offset));
 	PCIE_DBG("EP's DEVICE_CONTROL2_STATUS2:0x%x\n",
 		readl_relaxed(dev->conf + PCIE20_DEVICE_CONTROL2_STATUS2));
 }
@@ -999,6 +1006,8 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 	pcie_phy_init(dev);
 
 	if (options & PM_PIPE_CLK) {
+		usleep_range(PHY_STABILIZATION_DELAY_US_MIN,
+					 PHY_STABILIZATION_DELAY_US_MAX);
 		/* Enable the pipe clock */
 		ret = msm_pcie_pipe_clk_init(dev);
 		wmb();

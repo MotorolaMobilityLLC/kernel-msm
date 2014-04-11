@@ -37,6 +37,10 @@
 #define SLIM_USR_MC_CONNECT_SINK	0x2D
 #define SLIM_USR_MC_DISCONNECT_PORT	0x2E
 
+#define SLIM_USR_MC_REPEAT_CHANGE_VALUE	0x0
+#define MSM_SLIM_VE_MAX_MAP_ADDR	0xFFF
+#define SLIM_MAX_VE_SLC_BYTES		16
+
 #define MSM_SLIM_AUTOSUSPEND		MSEC_PER_SEC
 
 /*
@@ -199,6 +203,8 @@ struct msm_slim_endp {
 struct msm_slim_qmi {
 	struct qmi_handle		*handle;
 	struct task_struct		*task;
+	struct task_struct		*slave_thread;
+	struct completion		slave_notify;
 	struct kthread_work		kwork;
 	struct kthread_worker		kworker;
 	struct completion		qmi_comp;
@@ -258,7 +264,6 @@ struct msm_slim_ctrl {
 	struct completion	ctrl_up;
 	int			nsats;
 	u32			ver;
-	struct work_struct	slave_notify;
 	struct msm_slim_qmi	qmi;
 	struct msm_slim_pdata	pdata;
 	struct msm_slim_mdm	mdm;

@@ -36,7 +36,7 @@
 		qcom,mdss-mdp-reg-offset = <0x00000100>;
 		qcom,max-bandwidth-low-kbps = <6000000>;
 		qcom,max-bandwidth-high-kbps = <6000000>;
-		qcom,max-bandwidth-per-pipe-kbps = <1650000>;
+		qcom,max-bandwidth-per-pipe-kbps = <1500000>;
 		qcom,max-clk-rate = <320000000>;
 
 		qcom,mdss-pipe-vig-off = <0x00001200 0x00001600
@@ -95,6 +95,7 @@
 		qcom,mdss-has-bwc;
 		qcom,mdss-has-decimation;
 		qcom,mdss-wfd-mode = "intf";
+		qcom,mdss-has-source-split;
 
 		qcom,vbif-settings = <0x0B0 0x00080808>,
 				     <0x0B4 0x08000808>,
