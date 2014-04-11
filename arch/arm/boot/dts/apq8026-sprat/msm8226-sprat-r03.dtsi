@@ -184,7 +184,7 @@
 		sprat,mic-sck-gpio = <&msmgpio 49 0>;
 		sprat,mic-ws-gpio = <&msmgpio 50 0>;
 		sprat,mic-din-gpio = <&msmgpio 51 0>;
-		sprat,mic-en-gpio = <&msmgpio 72 0>;
+		sprat,mic-supply = <&pm8226_l27>;
 	};
 
 	sound-9302 {
