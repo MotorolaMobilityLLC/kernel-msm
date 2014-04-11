@@ -524,18 +524,6 @@ int fb_quickdraw_cleanup(void)
 	return ret;
 }
 
-void fb_quickdraw_register_ops(struct fb_quickdraw_ops *ops)
-{
-	pr_debug("%s+\n", __func__);
-
-	BUG_ON(fb_quickdraw_ops);
-
-	fb_quickdraw_ops = ops;
-
-	pr_debug("%s-\n", __func__);
-}
-
-
 static const struct file_operations fb_quickdraw_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = fb_quickdraw_ioctl,
@@ -547,9 +535,17 @@ static struct miscdevice fb_quickdraw_misc_device = {
 	.fops = &fb_quickdraw_fops,
 };
 
-static int __init fb_quickdraw_init(void)
+void fb_quickdraw_register_ops(struct fb_quickdraw_ops *ops)
 {
-	return misc_register(&fb_quickdraw_misc_device);
+	pr_debug("%s+\n", __func__);
+
+	BUG_ON(fb_quickdraw_ops);
+
+	fb_quickdraw_ops = ops;
+
+	misc_register(&fb_quickdraw_misc_device);
+
+	pr_debug("%s-\n", __func__);
 }
 
 static void __exit fb_quickdraw_exit(void)
@@ -562,5 +558,4 @@ MODULE_DESCRIPTION("Framebuffer quickdraw driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0");
 
-module_init(fb_quickdraw_init);
 module_exit(fb_quickdraw_exit);
