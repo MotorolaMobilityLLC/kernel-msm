@@ -306,7 +306,7 @@ static ssize_t kgsl_pwrctrl_min_pwrlevel_store(struct device *dev,
 	pwr = &device->pwrctrl;
 
 	ret = kgsl_sysfs_store(buf, &level);
-	if (ret != count)
+	if (ret)
 		return ret;
 
 	mutex_lock(&device->mutex);
@@ -1211,8 +1211,6 @@ void kgsl_idle_check(struct work_struct *work)
 
 	mutex_lock(&device->mutex);
 
-	kgsl_pwrscale_update(device);
-
 	if (device->state == KGSL_STATE_ACTIVE
 		   || device->state ==  KGSL_STATE_NAP) {
 		/*
@@ -1260,6 +1258,7 @@ void kgsl_idle_check(struct work_struct *work)
 		}
 	}
 
+	kgsl_pwrscale_update(device);
 	mutex_unlock(&device->mutex);
 }
 EXPORT_SYMBOL(kgsl_idle_check);

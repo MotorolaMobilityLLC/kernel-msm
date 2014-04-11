@@ -30,14 +30,11 @@ static inline u64 fudge_factor(u64 val, u32 numer, u32 denom)
 	return result;
 }
 
-#define AB_FUDGE_FACTOR(val)		fudge_factor((val),		\
-	(mdss_res->ab_factor.numer), (mdss_res->ab_factor.denom))
-
-#define IB_FUDGE_FACTOR(val)		fudge_factor((val),		\
-	(mdss_res->ib_factor.numer), (mdss_res->ib_factor.denom))
-
-#define CLK_FUDGE_FACTOR(val)		fudge_factor((val),		\
-	(mdss_res->clk_factor.numer), (mdss_res->clk_factor.denom))
+static inline u64 apply_fudge_factor(u64 val,
+	struct mdss_fudge_factor *factor)
+{
+		return fudge_factor(val, factor->numer, factor->denom);
+}
 
 static DEFINE_MUTEX(mdss_mdp_ctl_lock);
 
@@ -58,7 +55,7 @@ static inline u32 mdss_mdp_clk_fudge_factor(struct mdss_mdp_mixer *mixer,
 {
 	struct mdss_panel_info *pinfo = &mixer->ctl->panel_data->panel_info;
 
-	rate = CLK_FUDGE_FACTOR(rate);
+	rate = apply_fudge_factor(rate, &mdss_res->clk_factor);
 
 	/*
 	 * If the panel is video mode and its back porch period is
@@ -67,7 +64,7 @@ static inline u32 mdss_mdp_clk_fudge_factor(struct mdss_mdp_mixer *mixer,
 	 */
 	if (mixer->ctl->is_video_mode && pinfo &&
 		(pinfo->lcdc.v_back_porch < MDP_MIN_VBP))
-		rate = CLK_FUDGE_FACTOR(rate);
+		rate = apply_fudge_factor(rate, &mdss_res->clk_factor);
 
 	return rate;
 }
@@ -333,7 +330,7 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 		v_total = mdss_panel_get_vtotal(pinfo);
 		xres = pinfo->xres;
 		is_fbc = pinfo->fbc.enabled;
-		h_total = mdss_panel_get_htotal(pinfo);
+		h_total = mdss_panel_get_htotal(pinfo, false);
 	} else {
 		v_total = mixer->height;
 		xres = mixer->width;
@@ -422,7 +419,7 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 
 static inline int mdss_mdp_perf_is_overlap(u32 y00, u32 y01, u32 y10, u32 y11)
 {
-	return (y10 < y00 && y11 >= y01) || (y10 >= y00 && y10 <= y01);
+	return (y10 < y00 && y11 >= y01) || (y10 >= y00 && y10 < y01);
 }
 
 static inline int cmpu32(const void *a, const void *b)
@@ -537,7 +534,7 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 		pr_debug("v_region[%d]%d\n", i, v_region[i]);
 		if (v_region[i] == v_region[i-1])
 			continue;
-		y0 = (v_region[i-1]) ? v_region[i-1] + 1 : 0;
+		y0 = v_region[i-1];
 		y1 = v_region[i];
 		for (j = 0; j < num_pipes; j++) {
 			if (!bw_overlap[j])
@@ -660,9 +657,6 @@ static void __mdss_mdp_perf_calc_ctl_helper(struct mdss_mdp_ctl *ctl,
 	}
 
 	perf->bw_ctl = max(perf->bw_prefill, perf->bw_overlap);
-
-	if (ctl->is_video_mode)
-		perf->bw_ctl = IB_FUDGE_FACTOR(perf->bw_ctl);
 }
 
 int mdss_mdp_perf_bw_check(struct mdss_mdp_ctl *ctl,
@@ -738,8 +732,16 @@ static void mdss_mdp_perf_calc_ctl(struct mdss_mdp_ctl *ctl,
 			left_plist, (left_plist ? MAX_PIPES_PER_LM : 0),
 			right_plist, (right_plist ? MAX_PIPES_PER_LM : 0));
 
+	if (ctl->is_video_mode) {
+		if (perf->bw_overlap > perf->bw_prefill)
+			perf->bw_ctl = apply_fudge_factor(perf->bw_ctl,
+				&mdss_res->ib_factor_overlap);
+		else
+			perf->bw_ctl = apply_fudge_factor(perf->bw_ctl,
+				&mdss_res->ib_factor);
+	}
 	pr_debug("ctl=%d clk_rate=%u\n", ctl->num, perf->mdp_clk_rate);
-	pr_debug("bw_overlap=%llu bw_prefill=%llu prefill_byptes=%d\n",
+	pr_debug("bw_overlap=%llu bw_prefill=%llu prefill_bytes=%d\n",
 		 perf->bw_overlap, perf->bw_prefill, perf->prefill_bytes);
 }
 
@@ -863,7 +865,8 @@ static inline void mdss_mdp_ctl_perf_update_bus(struct mdss_mdp_ctl *ctl)
 		}
 	}
 	bus_ib_quota = bw_sum_of_intfs;
-	bus_ab_quota = AB_FUDGE_FACTOR(bw_sum_of_intfs);
+	bus_ab_quota = apply_fudge_factor(bw_sum_of_intfs,
+		&mdss_res->ab_factor);
 	mdss_mdp_bus_scale_set_quota(bus_ab_quota, bus_ib_quota);
 	pr_debug("ab=%llu ib=%llu\n", bus_ab_quota, bus_ib_quota);
 }
@@ -1177,8 +1180,9 @@ struct mdss_mdp_mixer *mdss_mdp_wb_mixer_alloc(int rotator)
 {
 	struct mdss_mdp_ctl *ctl = NULL;
 	struct mdss_mdp_mixer *mixer = NULL;
+	u32 offset = mdss_res->nctl - mdss_res->nmixers_wb;
 
-	ctl = mdss_mdp_ctl_alloc(mdss_res, mdss_res->nmixers_intf);
+	ctl = mdss_mdp_ctl_alloc(mdss_res, offset);
 	if (!ctl) {
 		pr_debug("unable to allocate wb ctl\n");
 		return NULL;
@@ -1305,9 +1309,10 @@ static int mdss_mdp_ctl_fbc_enable(int enable,
 		return -EINVAL;
 	}
 
-	if (mixer->num == MDSS_MDP_INTF_LAYERMIXER0)
+	if (mixer->num == MDSS_MDP_INTF_LAYERMIXER0 ||
+			mixer->num == MDSS_MDP_INTF_LAYERMIXER1) {
 		pr_debug("Mixer supports FBC.\n");
-	else {
+	} else {
 		pr_debug("Mixer doesn't support FBC.\n");
 		return -EINVAL;
 	}
@@ -1323,7 +1328,7 @@ static int mdss_mdp_ctl_fbc_enable(int enable,
 
 		lossy_mode = ((fbc->lossless_mode_thd) << 16) |
 			((fbc->lossy_mode_thd) << 8) |
-			((fbc->lossy_rgb_thd) << 3) | fbc->lossy_mode_idx;
+			((fbc->lossy_rgb_thd) << 4) | fbc->lossy_mode_idx;
 	}
 
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_FBC_MODE, mode);
