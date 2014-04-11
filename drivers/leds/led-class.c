@@ -25,6 +25,12 @@
 
 static struct class *leds_class;
 
+//ASUS_BSP +++ Maggie_Lee "Backlight Porting"
+#ifdef CONFIG_ASUS_BACKLIGHT
+extern void asus_set_bl_brightness(struct led_classdev *, int);
+#endif
+//ASUS_BSP -- Maggie_Lee "Backlight Porting"
+
 static void led_update_brightness(struct led_classdev *led_cdev)
 {
 	if (led_cdev->brightness_get)
@@ -55,7 +61,14 @@ static ssize_t led_brightness_store(struct device *dev,
 
 	if (state == LED_OFF)
 		led_trigger_remove(led_cdev);
+
+	//ASUS_BSP +++ Maggie_Lee "Backlight Porting"
+	#ifdef CONFIG_ASUS_BACKLIGHT
+	asus_set_bl_brightness(led_cdev, state);
+	#else
 	__led_set_brightness(led_cdev, state);
+	#endif
+	//ASUS_BSP --- Maggie_Lee "Backlight Porting"
 
 	return size;
 }

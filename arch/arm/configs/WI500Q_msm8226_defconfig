@@ -511,3 +511,6 @@ CONFIG_BT_HCIUART_H4=y
 CONFIG_RFKILL=y
 CONFIG_SERIAL_MSM_HS=y
 #ASUS_BSP BerylHou ---
+# ASUS_BSP +++ Maggie Lee "Backlight Porting"
+CONFIG_ASUS_BACKLIGHT=y
+# ASUS_BSP --- Maggie Lee

@@ -20,8 +20,13 @@
 static inline void __led_set_brightness(struct led_classdev *led_cdev,
 					enum led_brightness value)
 {
+	//ASUS_BSP +++ Maggie_Lee "Backlight Porting"
+	#ifndef CONFIG_ASUS_BACKLIGHT
 	if (value > led_cdev->max_brightness)
 		value = led_cdev->max_brightness;
+	#endif
+	//ASUS_BSP --- Maggie_Lee "Backlight Porting"
+
 	led_cdev->brightness = value;
 	if (!(led_cdev->flags & LED_SUSPENDED))
 		led_cdev->brightness_set(led_cdev, value);

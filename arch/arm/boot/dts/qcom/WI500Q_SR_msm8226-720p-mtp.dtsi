@@ -116,6 +116,16 @@
 		};
 	};
 
+	//ASUS_BSP +++ Maggie_Lee "Backlight Porting"
+	backlight {
+		compatible = "qcom, asus-backlight";
+		input-name = "backlight";
+		value = <10 255>;								//min max
+		phone-bl-param = <113 255 155 113>;				//min max default ambient
+		status = "okay";
+	};
+	//ASUS_BSP --- Maggie_Lee "Backlight Porting"
+
 	spi@f9923000 {
 		ethernet-switch@3 {
 			compatible = "micrel,ks8851";
