@@ -16,6 +16,7 @@
 
 int androidboot_is_recovery;
 int androidboot_mode_charger;
+extern unsigned int system_rev;
 
 static int __init androidboot_recovery(char *p)
 {
@@ -35,3 +36,14 @@ static int __init androidboot_mode(char *p)
 	return 0;
 }
 early_param("androidboot.mode", androidboot_mode);
+
+static int __init msm_hw_rev_setup(char *p)
+{
+	int tmp;
+	if (get_option(&p, &tmp) == 0)
+		return -EINVAL;
+
+	system_rev = tmp;
+	return 0;
+}
+early_param("samsung.board_rev", msm_hw_rev_setup);
