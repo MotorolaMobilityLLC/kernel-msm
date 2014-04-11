@@ -238,6 +238,8 @@ static int of_batterydata_load_battery_data(struct device_node *node,
 			"max-voltage-uv", node, rc, true);
 	OF_PROP_READ(batt_data->cutoff_uv, "v-cutoff-uv", node, rc, true);
 	OF_PROP_READ(batt_data->iterm_ua, "chg-term-ua", node, rc, true);
+	OF_PROP_READ(batt_data->max_current_ma,
+			"max-current-ma", node, rc, true);
 
 	batt_data->batt_id_kohm = best_id_kohm;
 
