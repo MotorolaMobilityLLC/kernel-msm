@@ -49,7 +49,6 @@ irqreturn_t stm401_isr(int irq, void *dev)
 	struct stm401_data *ps_stm401 = dev;
 
 	if (stm401_irq_disable) {
-		disable_irq_wake(ps_stm401->irq);
 		return IRQ_HANDLED;
 	}
 
