@@ -1,6 +1,6 @@
 # This is the world regulatory domain
 country 00:
-	(2402 - 2472 @ 40), (3, 20)
+	(2402 - 2462 @ 40), (3, 20)
 	# Channel 36 - 48
 	(5170 - 5250 @ 80), (3, 20), PASSIVE-SCAN, NO-IBSS
 	# NB: 5260 MHz - 5700 MHz requies DFS
@@ -900,7 +900,7 @@ country UG:
         (5725 - 5825 @ 80), (6, 20)
 
 country US: DFS-FCC
-	(2402 - 2472 @ 40), (3, 27)
+	(2402 - 2462 @ 40), (3, 27)
 	(5170 - 5250 @ 80), (3, 17)
 	(5250 - 5330 @ 80), (3, 24), DFS
 	(5490 - 5600 @ 80), (3, 24), DFS
