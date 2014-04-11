@@ -4762,6 +4762,7 @@ qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 		batt_data.pc_temp_ocv_lut = chip->pc_temp_ocv_lut;
 		batt_data.max_voltage_uv = -1;
 		batt_data.iterm_ua = -1;
+		batt_data.max_current_ma = -1;
 		rc = of_batterydata_read_data(node,
 				&batt_data, result.physical);
 		if (rc) {
@@ -4789,6 +4790,8 @@ qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 		if (batt_data.cutoff_uv >= 0)
 			chip->cutoff_mv = batt_data.cutoff_uv / 1000;
 		batt_data.pc_temp_ocv_lut = NULL;
+		if (batt_data.max_current_ma >= 0)
+			chip->max_bat_chg_current = batt_data.max_current_ma;
 	}
 
 	return 0;
