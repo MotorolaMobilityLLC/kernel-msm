@@ -522,9 +522,12 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	msd.mfd->resume_state = MIPI_SUSPEND_STATE;
 
 	if (pinfo->alpm_event && pinfo->alpm_event(CHECK_CURRENT_STATUS))
-			pr_info("[ALPM_DEBUG] %s: Skip to send panel off cmds\n",
+		pr_info("[ALPM_DEBUG] %s: Skip to send panel off cmds\n",
 				__func__);
-	else
+	else if (pinfo->is_suspending) {
+		pr_debug("%s: Not sending off commands\n", __func__);
+		mdss_dsi_panel_bl_ctrl(pdata, 10);
+	} else
 		mipi_samsung_disp_send_cmd(PANEL_DISP_OFF, true);
 
 	pr_info("%s:-\n", __func__);

@@ -61,6 +61,11 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 
 	pinfo = &pdata->panel_info;
 
+	if (pinfo->is_suspending) {
+		pr_info("%s: Leaving panel on or off\n", __func__);
+		return 0;
+	}
+
 	if (pinfo->alpm_event) {
 		if (enable && pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
 			return 0;
@@ -656,7 +661,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_host_init(pdata);
 
 	/* LP11 */
-	{
+	if (!pinfo->is_suspending) {
 		u32 tmp;
 		tmp = MIPI_INP((ctrl_pdata->ctrl_base) + 0xac);
 		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, 0x1F << 16);
@@ -664,10 +669,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 		msleep(20);
 
-		/* LP11 */
-
 		ctrl_pdata->panel_reset(pdata, 1);
-
 		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
 	}
 
