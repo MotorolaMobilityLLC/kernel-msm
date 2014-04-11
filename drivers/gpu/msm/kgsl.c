@@ -64,9 +64,6 @@ struct kgsl_dma_buf_meta {
 	struct sg_table *table;
 };
 
-static void kgsl_put_process_private(struct kgsl_device *device,
-			 struct kgsl_process_private *private);
-
 static void kgsl_mem_entry_detach_process(struct kgsl_mem_entry *entry);
 
 static void
