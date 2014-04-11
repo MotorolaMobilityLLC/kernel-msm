@@ -18,6 +18,8 @@
 #include <mach/gpiomux.h>
 #include <soc/qcom/socinfo.h>
 
+extern unsigned int system_rev;
+
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 static struct gpiomux_setting hsic_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -736,6 +738,42 @@ static void msm_gpiomux_sdc3_install(void)
 static void msm_gpiomux_sdc3_install(void) {}
 #endif /* CONFIG_MMC_MSM_SDC3_SUPPORT */
 
+static struct gpiomux_setting  tert_mi2s_act_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting  tert_mi2s_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm8226_tertiary_mi2s_configs[] __initdata = {
+	{
+		.gpio	= 49,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio	= 50,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 51,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+		},
+	},
+};
+
 void __init msm8226_init_gpiomux(void)
 {
 	int rc;
@@ -804,4 +842,9 @@ void __init msm8226_init_gpiomux(void)
 	}
 	msm_gpiomux_install(msm_hsic_configs, ARRAY_SIZE(msm_hsic_configs));
 #endif
+
+	if(system_rev > 0)	{
+		msm_gpiomux_install(msm8226_tertiary_mi2s_configs,
+				ARRAY_SIZE(msm8226_tertiary_mi2s_configs));
+	}
 }
