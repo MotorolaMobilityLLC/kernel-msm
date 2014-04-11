@@ -34,12 +34,8 @@ bool g_padMic_On = false;
 extern int pm8226_getCapacity(void);
 
 //Eason: AICL work around +++
-static struct delayed_work AICLWorker;
 #ifndef ASUS_FACTORY_BUILD
 static bool g_chgTypeBeenSet = false;//Eason : prevent setChgDrawCurrent before get chgType
-static bool g_AICLlimit = false;
-static bool g_AICLSuccess = false;
-static unsigned long AICL_success_jiffies;
 #endif
 #include <linux/jiffies.h>
 AXE_Charger_Type lastTimeCableType = NO_CHARGER_TYPE;
@@ -403,16 +399,8 @@ void setChgDrawCurrent_pm8226(void)
 				printk("[BAT][CHG][LowIllegal]: limit chgCur,  darw 500\n");
 			}
 			else if(HIGH_CURRENT_CHARGER_TYPE==gpCharger->type){
-				//Eason: AICL work around +++
-				if(true==g_AICLlimit){
-					limitPM8226chg900();
-					printk("[BAT][CHG][AICL]: g_AICLlimit = true\n");
-				}
-				//Eason: AICL work around ---
-				else{
-					limitPM8226chg1200();
-					printk("[BAT][CHG][AC]: dont limit chgCur, use default setting\n");
-				}
+				limitPM8226chg1200();
+				printk("[BAT][CHG][AC]: limit charging current 1200mA\n");
 			}
 		}
 	}
@@ -452,32 +440,8 @@ void setChgDrawACTypeCurrent_withCheckAICL_pm8226(void)
 	}
 #endif//#ifndef ASUS_FACTORY_BUILD    
 }
-
-void checkIfAICLSuccess(void)
-{
-#ifndef ASUS_FACTORY_BUILD  
-	if ( 0==getIfonline_pm8226()){
-		limitPM8226chg900();
-		g_AICLlimit = true;
-		g_AICLSuccess = false;
-		printk("[BAT][CHG][AICL]:AICL fail, limit 900mA charge \n");
-	}else{
-		limitPM8226chg1200(); 
-		g_AICLlimit =false;
-		g_AICLSuccess = true;
-		//Eason: AICL work around +++
-		AICL_success_jiffies = jiffies;
-		//Eason: AICL work around ---
-		printk("[BAT][CHG][AICL]:AICL success, use default charge \n");
-	}
-#endif//#ifndef ASUS_FACTORY_BUILD	
-}
-
-static void checkAICL(struct work_struct *dat)
-{
-	checkIfAICLSuccess();
-}
 //Eason: AICL work around ---
+
 //ASUS_BSP +++ frank_tao "suspend for fastboot mode"
 #ifdef CONFIG_FASTBOOT
 #include <linux/fastboot.h>
@@ -642,7 +606,6 @@ static void AXC_PM8226_Charger_SetCharger(AXI_Charger *apCharger , AXE_Charger_T
 	}
 	//Eason: when AC dont set default current. when phone Cap low can always draw 1200mA from boot to kernel---
 #ifndef ASUS_FACTORY_BUILD
-	g_AICLlimit = false;
 	g_chgTypeBeenSet = true;//Eason : prevent setChgDrawCurrent before get chgType
 #endif//#ifndef ASUS_FACTORY_BUILD
 //A68 set smb346 default charging setting---            
@@ -836,10 +799,6 @@ static int __init pm8226_charger_init(void)
 	}
 	
 	isAcUsbPsyRegst = 1;
-
-	//Eason: AICL work around +++
-	INIT_DELAYED_WORK(&AICLWorker,checkAICL); 
-	//Eason: AICL work around ---
 
 	create_pm8226_proc_file();
 	
