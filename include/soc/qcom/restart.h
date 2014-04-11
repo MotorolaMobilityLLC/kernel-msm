@@ -17,6 +17,7 @@
 #define RESTART_NORMAL 0x0
 #define RESTART_DLOAD  0x1
 
+extern void set_dload_mode(int on);
 #if defined(CONFIG_MSM_NATIVE_RESTART)
 void msm_set_restart_mode(int mode);
 void msm_restart(char mode, const char *cmd);

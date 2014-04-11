@@ -646,6 +646,207 @@ config ARM_KPROBES_TEST
 	help
 	  Perform tests of kprobes API and instruction set simulation.
 
+comment "Samsung Debugging Feature"
+menuconfig SEC_DEBUG
+	bool "Samsung TN Ramdump Feature"
+	default n
+	help
+	  Samsung TN Ramdump Feature.
+	  Enables collection of ram dump.
+	  Enables task history, debug level etc.
+	  This feature is enabled in defconfig.
+
+if SEC_DEBUG
+config SEC_DEBUG_SCHED_LOG
+	bool "Samsung Scheduler Logging Feature"
+	default n
+	help
+	  Samsung Scheduler Logging Feature for Debug use.
+	  Enables task scheduling history.
+	  Enables IRQ scheduling history.
+	  This feature is enabled in defconfig.
+
+config SEC_DEBUG_SEMAPHORE_LOG
+	bool "Samsung Semaphore Logging Feature"
+	default n
+	help
+	  Samsung Semaphore Logging Feature for Debug use.
+	  Enables semaphore debugging statistics.
+	  Enables logging.
+	  This feature is enabled in defconfig.
+
+config SEC_FILE_LEAK_DEBUG
+	bool "Samsung File Leak Debugging Feature"
+	default n
+	help
+	  Enable the file fd tracking.
+	  Samsung File Leak Debugging Feature for Debug use.
+	  Enables the forced panic mode when EMFILE Eror occurs.
+	  This feature is enabled in defconfig.
+
+config SEC_LOGGER_BUFFER_EXPANSION
+	bool "Samsung Logger Buffer Expansion Feature"
+	default n
+	help
+	  This is used to expand buffers of logger.
+	  This feature is enabled in defconfig.
+	  expands the log buffer usage.
+	  sec debug feature.
+
+config SEC_LOGGER_BUFFER_EXPANSION_SIZE
+	int "Samsung Logger Buffer Expansion Size(MB)"
+	depends on SEC_LOGGER_BUFFER_EXPANSION
+	default 2
+	help
+	  sec logger feature.
+	  depends on sec debug feature.
+          This is used to expand.
+	  main buffer of logger(MB).
+
+endif
+
+config SEC_FORKHANG_DEBUG
+	bool "Debug Feature for Newly Forked task getting HANg on mmap_sem down_read()"
+	default n
+	help
+	  mmap_sem writer lock logging for ram dump analysis.
+	  Collects kernel debug log.
+	  Log is collected in the no-cache area.
+	  This feature is enabled in defconfig.
+
+config SEC_DEBUG_USER
+	bool "Panic on Userspace fault"
+	default y
+	help
+	  Panic on Userspace fault
+	  This feature enables collection of ram dump,
+	  on user fault.
+	  Enabled native code debugging.
+
+config SEC_DEBUG_IRQ_EXIT_LOG
+	bool "Temporary Logging for IRQ delay"
+	default n
+	help
+	  Verbose Logging for IRQ delay.
+	  Helps indetification of irq enter and exit.
+	  This is to track the current state of IRQ execution.
+	  This is enabled in defconfig file.
+
+config SEC_DEBUG_MSG_LOG
+	bool "Message Log for ram dump debug"
+	default n
+	help
+	  Verbose Logging for ram dump analysis.
+	  Collects kernel debug log.
+	  Log is collected in the no-cache area.
+	  This feature is enabled in defconfig.
+
+config SEC_DEBUG_SUBSYS
+	bool "Debug subsystems"
+	default n
+	help
+	  Subsystems debug feature.
+	  When enabled provides kernel logs, modem logs, RPM registers,
+	  Schedule and IRQ logs at the time of crash along with the
+	  reason for crash, which can be extracted as a html in RAM dump mode.
+
+config SEC_DEBUG_DCVS_LOG
+	bool "Temporary Logging for DCVS"
+	default n
+	help
+	  DCVS Logging Feature for Debug use.
+	  The ACPU clock rate changes will be logged as a part
+	  of secdbg_log structure along with the CPU time stamp.
+	  The previous frequency and the new frequency for both the CPU along
+	  with the CPU time stamp will be logged.
+
+config SEC_DEBUG_FUELGAUGE_LOG
+	bool "Temporary Logging for FuelGauge"
+	default n
+	help
+	 FuelGauge Logging Feature for Debug use.
+	 The FuelGauge values are logged as a part
+	 of secdbg_log structure along with the CPU time stamp.
+	 The voltage and soc values along with the CPU time will be logged.
+
+config SEC_DEBUG_LOW_LOG
+	bool "Kernel Message Logging for Debug Level Low"
+	default n
+	help
+	 Kernel Message Logging Feature for Debug use.
+	 The Kernel Messages are logged using file I/O
+	 when an exception occurs, when the debug level is low.
+	 The file I/O is added in kernel driver level
+	 so that kernel messages are logged on next reboot.
+
+config SEC_DEBUG_MDM_FILE_INFO
+	bool "MDM filename and line number in UPLOAD mode"
+	default n
+	help
+	 This feature enables display of MDM info in upload mode.
+	 This feature enabled SSR in debug level low.
+	 Collects MDM ram dump and then calls panic.
+	 UPLOAD mode has MDM dump info to show it on LCD.
+
+config SEC_DEBUG_DOUBLE_FREE
+	bool "Enable double free detection"
+	default n
+	help
+	 Detect erraneous codes that frees a kmalloced node
+	 twice. When kfree(p) is called, p is not freed right away.
+	 Instead, it is pushed into a circular buffer. What it frees
+	 is the oldest pointer that was pushed into the buffer.
+	 If someone tries to free the same pointer p, *p
+	 is read and checked for a magic code that is written
+	 when it was first freed. If it matches, the whole
+	 circular buffer is searched. Panic is be called when
+	 the match is found.
+
+config SEC_LOG_LAST_KMSG
+	bool "Enable /proc/last_kmsg support: if EMBEDDED"
+	default n
+	help
+	  depends on sec debug.
+	  for getting the last kernel logs.
+	  mostly used while debug is low.
+	  This option enables /proc/last_kmsg support.
+
+config SEC_DEBUG_NOCACHE_LOG_IN_LEVEL_LOW
+	bool "Enable nocache logging in debug level LOW"
+	default n
+	help
+	  Mostly used while debug is low.
+	  effective for cracking market issues.
+          depends on sec debug.
+	  Enable nocache logging in debug level LOW.
+
+config SEC_MONITOR_BATTERY_REMOVAL
+	bool "Enable monitering whether normal power sequence or not"
+	default n
+	help
+	  sec debug.
+          this feature is used for monitoring the battery removal.
+          some sandbox devices doesn't fit battery properly.
+	  Enable monitering Power off & battery removal.
+endmenu
+
+comment "PowerManagement Feature"
+menuconfig SEC_PM
+	bool "Samsung TN PowerManagement Feature"
+	default y
+	help
+	  samsung power managment debug feature.
+	  Samsung TN PowerManagement Feature.
+
+if SEC_PM
+config SEC_PM_DEBUG
+	bool "Samsung TN PowerManagement Debug Feature"
+	default n
+	help
+	  Samsung TN PowerManagement Debug Feature.
+
+endif
+
 config PID_IN_CONTEXTIDR
 	bool "Write the current PID to the CONTEXTIDR register"
 	depends on CPU_COPY_V6
@@ -666,4 +867,11 @@ config DEBUG_SET_MODULE_RONX
 	  against certain classes of kernel exploits.
 	  If in doubt, say "N".
 
-endmenu
+config RESTART_REASON_DDR
+	bool "Save restart reason in DDR reserved area"
+	default n
+	help
+	  Sometimes IMEM doesn't servive the power cycle.
+	  This comes in handy backup in those cases.
+	  ususally not enabled by default.
+	  Do not enabled unless there is strong reason to do so.

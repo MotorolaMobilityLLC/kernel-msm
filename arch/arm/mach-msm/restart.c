@@ -37,6 +37,11 @@
 #include "msm_watchdog.h"
 #include "timer.h"
 #include "wdog_debug.h"
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#include <linux/notifier.h>
+#include <linux/ftrace.h>
+#endif
 
 #define WDT0_RST	0x38
 #define WDT0_EN		0x40
@@ -55,7 +60,14 @@
 #define SCM_IO_DISABLE_PMIC_ARBITER	1
 
 static int restart_mode;
+#ifndef CONFIG_SEC_DEBUG
 void *restart_reason;
+#endif
+
+#ifdef CONFIG_USER_RESET_DEBUG
+#define RESET_CAUSE_LPM_REBOOT 0x95
+void *reboot_cause;
+#endif
 
 int pmic_reset_irq;
 static void __iomem *msm_tmr0_base;
@@ -71,7 +83,11 @@ static void *emergency_dload_mode_addr;
 
 /* Download mode master kill-switch */
 static int dload_set(const char *val, struct kernel_param *kp);
+#ifdef CONFIG_SEC_DEBUG
+static int download_mode;
+#else
 static int download_mode = 1;
+#endif
 module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
 static int panic_prep_restart(struct notifier_block *this,
@@ -85,7 +101,7 @@ static struct notifier_block panic_blk = {
 	.notifier_call	= panic_prep_restart,
 };
 
-static void set_dload_mode(int on)
+void set_dload_mode(int on)
 {
 	if (dload_mode_addr) {
 		__raw_writel(on ? 0xE47B337D : 0, dload_mode_addr);
@@ -94,7 +110,13 @@ static void set_dload_mode(int on)
 		mb();
 		dload_mode_enabled = on;
 	}
+
+#ifdef CONFIG_SEC_DEBUG
+	pr_info("set_dload_mode <%d> ( %x )\n", on,
+			(unsigned int) CALLER_ADDR0);
+#endif
 }
+EXPORT_SYMBOL(set_dload_mode);
 
 static bool get_dload_mode(void)
 {
@@ -202,22 +224,35 @@ static void msm_power_off(void)
 
 static void msm_restart_prepare(const char *cmd)
 {
+#ifndef CONFIG_SEC_DEBUG
 #ifdef CONFIG_MSM_DLOAD_MODE
 
-	/* This looks like a normal reboot at this point. */
+	/* Write download mode flags if we're panic'ing
+	 * Write download mode flags if restart_mode says so
+	 * Kill download mode if master-kill switch is set
+	 */
+
+	set_dload_mode(download_mode &&
+			(in_panic || restart_mode == RESTART_DLOAD));
+#endif
+#endif
+#ifdef CONFIG_SEC_DEBUG_LOW_LOG
+#ifdef CONFIG_MSM_DLOAD_MODE
+#ifdef CONFIG_SEC_DEBUG
+	if (sec_debug_is_enabled()
+	&& ((restart_mode == RESTART_DLOAD) || in_panic))
+		set_dload_mode(1);
+	else
+		set_dload_mode(0);
+#else
 	set_dload_mode(0);
-
-	/* Write download mode flags if we're panic'ing */
 	set_dload_mode(in_panic);
-
-	/* Write download mode flags if restart_mode says so */
 	if (restart_mode == RESTART_DLOAD)
 		set_dload_mode(1);
-
-	/* Kill download mode if master-kill switch is set */
-	if (!download_mode)
-		set_dload_mode(0);
 #endif
+#endif
+#endif
+	pr_info("preparing for restart now\n");
 
 	pm8xxx_reset_pwr_off(1);
 
@@ -238,13 +273,24 @@ static void msm_restart_prepare(const char *cmd)
 			unsigned long code;
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;
 			__raw_writel(0x6f656d00 | code, restart_reason);
+#ifdef CONFIG_SEC_DEBUG
+		} else if (!strncmp(cmd, "sec_debug_hw_reset", 18)) {
+			__raw_writel(0x776655ee, restart_reason);
+#endif
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
+		pr_notice("%s : restart_reason = 0x%x\n",
+				__func__, __raw_readl(restart_reason));
 	}
-
+#ifdef CONFIG_SEC_DEBUG
+	else {
+		pr_notice("%s: clear reset flag\n", __func__);
+		__raw_writel(0x12345678, restart_reason);
+	}
+#endif
 	flush_cache_all();
 	outer_flush_all();
 }
@@ -263,6 +309,19 @@ void msm_restart(char mode, const char *cmd)
 	mdelay(10000);
 	printk(KERN_ERR "Restarting has failed\n");
 }
+EXPORT_SYMBOL(msm_restart);
+#ifdef CONFIG_SEC_DEBUG
+static int dload_mode_normal_reboot_handler(struct notifier_block *nb,
+				unsigned long l, void *p)
+{
+	set_dload_mode(0);
+	return 0;
+}
+
+static struct notifier_block dload_reboot_block = {
+	.notifier_call = dload_mode_normal_reboot_handler
+};
+#endif
 
 static int __init msm_restart_init(void)
 {
@@ -283,6 +342,14 @@ static int __init msm_restart_init(void)
 		ret = -ENOMEM;
 		goto err_dl_mode;
 	}
+#ifdef CONFIG_SEC_DEBUG
+	register_reboot_notifier(&dload_reboot_block);
+#endif
+#ifdef CONFIG_SEC_DEBUG_LOW_LOG
+	if (!sec_debug_is_enabled()) {
+		set_dload_mode(0);
+	} else
+#endif
 
 	np = of_find_compatible_node(NULL, NULL, EDL_MODE_PROP);
 	if (!np) {
@@ -300,6 +367,7 @@ static int __init msm_restart_init(void)
 	set_dload_mode(download_mode);
 #endif
 	msm_tmr0_base = msm_timer_get_timer0_base();
+#ifndef CONFIG_SEC_DEBUG
 	np = of_find_compatible_node(NULL, NULL, "qcom,msm-imem-restart_reason");
 	if (!np) {
 		pr_err("unable to find DT imem restart reason node\n");
@@ -312,6 +380,7 @@ static int __init msm_restart_init(void)
 		ret = -ENOMEM;
 		goto err_restart_reason;
 	}
+#endif
 	pm_power_off = msm_power_off;
 
 	if (scm_is_call_available(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER) > 0)
@@ -319,7 +388,9 @@ static int __init msm_restart_init(void)
 
 	return 0;
 
+#ifndef CONFIG_SEC_DEBUG
 err_restart_reason:
+#endif
 #ifdef CONFIG_MSM_DLOAD_MODE
 	iounmap(emergency_dload_mode_addr);
 err_edl_mode:

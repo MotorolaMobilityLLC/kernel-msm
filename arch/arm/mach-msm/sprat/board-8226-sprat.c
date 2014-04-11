@@ -39,8 +39,11 @@
 #include <mach/msm_bus.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
-#include <soc/qcom/restart.h>
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 #include <mach/msm_memtypes.h>
+#include <soc/qcom/restart.h>
 #include <soc/qcom/socinfo.h>
 #include <mach/board.h>
 #include <soc/qcom/smd.h>
@@ -145,6 +148,9 @@ void __init msm8226_init(void)
 {
 	struct of_dev_auxdata *adata = msm8226_auxdata_lookup;
 
+#ifdef CONFIG_SEC_DEBUG
+	sec_debug_init();
+#endif
 	/*
 	 * populate devices from DT first so smem probe will get called as part
 	 * of msm_smem_init.  socinfo_init needs smem support so call

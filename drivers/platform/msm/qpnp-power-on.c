@@ -23,6 +23,9 @@
 #include <linux/input.h>
 #include <linux/log2.h>
 #include <linux/qpnp/power-on.h>
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 /* Common PNP defines */
 #define QPNP_PON_REVISION2(base)		(base + 0x01)
@@ -130,6 +133,7 @@ struct qpnp_pon {
 	struct input_dev *pon_input;
 	struct qpnp_pon_config *pon_cfg;
 	int num_pon_config;
+	int powerkey_state;
 	u16 base;
 	struct delayed_work bark_work;
 	u32 dbc;
@@ -507,6 +511,17 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	input_sync(pon->pon_input);
 
 	cfg->old_state = !!key_status;
+	pr_info("%s: PWR key is %s\n", __func__, (pon_rt_sts & pon_rt_bit)
+		? "pressed" : "released");
+
+	if ((cfg->key_code == 116) && (pon_rt_sts & pon_rt_bit))
+		pon->powerkey_state = 1;
+	else if ((cfg->key_code == 116) && !(pon_rt_sts & pon_rt_bit))
+		pon->powerkey_state = 0;
+
+#ifdef CONFIG_SEC_DEBUG
+	sec_debug_check_crash_key(cfg->key_code, pon->powerkey_state);
+#endif
 
 	return 0;
 }
@@ -803,6 +818,13 @@ qpnp_pon_request_irqs(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 
 	switch (cfg->pon_type) {
 	case PON_KPDPWR:
+#ifdef CONFIG_SEC_DEBUG
+		if (sec_debug_is_enabled()) {
+			rc = qpnp_pon_input_dispatch(pon, PON_KPDPWR);
+			if (rc)
+				dev_err(&pon->spmi->dev, "Fail to first check to send input event\n");
+		}
+#endif
 		rc = devm_request_irq(&pon->spmi->dev, cfg->state_irq,
 							qpnp_kpdpwr_irq,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
