@@ -253,6 +253,7 @@ repeat:
 			next = cmd->next;
 			complete(&cmd->wait);
 		}
+		bio_put(bio);
 		sm_i->dispatch_list = NULL;
 	}
 
