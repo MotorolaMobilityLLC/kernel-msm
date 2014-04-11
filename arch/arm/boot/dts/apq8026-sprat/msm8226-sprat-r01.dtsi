@@ -50,8 +50,8 @@
 			compatible = "max77836,i2c";
 			reg = <0x25>;
 			interrupt-parent = <&msmgpio>;
-			interrupts = <52 0>;
-			max77836,irq-gpio = <&msmgpio 52 0x00>;
+			interrupts = <37 0>;
+			max77836,irq-gpio = <&msmgpio 37 0x00>;
 			max77836,irq-base = <343>;
 			max77836,wc-irq-gpio = <0>;
 			max77836,wakeup = <1>;
