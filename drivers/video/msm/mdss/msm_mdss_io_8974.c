@@ -26,7 +26,6 @@
 #define SW_RESET_PLL BIT(0)
 #define PWRDN_B BIT(7)
 
-static struct mdss_dsi_ctrl_pdata *left_ctrl;
 static struct dsi_clk_desc dsi_pclk;
 
 int mdss_dsi_clk_init(struct platform_device *pdev,
@@ -102,15 +101,6 @@ int mdss_dsi_clk_init(struct platform_device *pdev,
 		goto mdss_dsi_clk_err;
 	}
 
-	if (ctrl->shared_pdata.broadcast_enable) {
-		if (ctrl->panel_data.panel_info.pdest
-					== DISPLAY_1) {
-			pr_debug("%s: Broadcast mode enabled.\n",
-				 __func__);
-			left_ctrl = ctrl;
-		}
-	}
-
 mdss_dsi_clk_err:
 	if (rc)
 		mdss_dsi_clk_deinit(ctrl);
@@ -173,7 +163,7 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 		break;
 	}
 
-	h_period = mdss_panel_get_htotal(panel_info);
+	h_period = mdss_panel_get_htotal(panel_info, true);
 	v_period = mdss_panel_get_vtotal(panel_info);
 
 	if ((frame_rate !=
@@ -269,7 +259,7 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 	return 0;
 }
 
-int mdss_dsi_bus_clk_start(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+static int mdss_dsi_bus_clk_start(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
 
@@ -313,7 +303,7 @@ error:
 	return rc;
 }
 
-void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+static void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	if (ctrl_pdata->mmss_misc_ahb_clk)
 		clk_disable_unprepare(ctrl_pdata->mmss_misc_ahb_clk);
@@ -418,11 +408,6 @@ static int mdss_dsi_link_clk_enable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 	pr_debug("%s: ndx=%d\n", __func__, ctrl_pdata->ndx);
 
-	if (ctrl_pdata->mdss_dsi_clk_on) {
-		pr_info("%s: mdss_dsi_clks already ON\n", __func__);
-		return 0;
-	}
-
 	rc = clk_enable(ctrl_pdata->esc_clk);
 	if (rc) {
 		pr_err("%s: Failed to enable dsi esc clk\n", __func__);
@@ -440,8 +425,6 @@ static int mdss_dsi_link_clk_enable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		pr_err("%s: Failed to enable dsi pixel clk\n", __func__);
 		goto pixel_clk_err;
 	}
-
-	ctrl_pdata->mdss_dsi_clk_on = 1;
 
 	return rc;
 
@@ -462,19 +445,12 @@ static void mdss_dsi_link_clk_disable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 	pr_debug("%s: ndx=%d\n", __func__, ctrl_pdata->ndx);
 
-	if (ctrl_pdata->mdss_dsi_clk_on == 0) {
-		pr_info("%s: mdss_dsi_clks already OFF\n", __func__);
-		return;
-	}
-
 	clk_disable(ctrl_pdata->esc_clk);
 	clk_disable(ctrl_pdata->pixel_clk);
 	clk_disable(ctrl_pdata->byte_clk);
-
-	ctrl_pdata->mdss_dsi_clk_on = 0;
 }
 
-int mdss_dsi_link_clk_start(struct mdss_dsi_ctrl_pdata *ctrl)
+static int mdss_dsi_link_clk_start(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	int rc = 0;
 
@@ -504,90 +480,191 @@ error:
 	return rc;
 }
 
-void mdss_dsi_link_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl)
+static void mdss_dsi_link_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	mdss_dsi_link_clk_disable(ctrl);
 	mdss_dsi_link_clk_unprepare(ctrl);
 }
 
-static void mdss_dsi_clk_ctrl_sub(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
+static int __mdss_dsi_update_clk_cnt(u32 *clk_cnt, int enable)
 {
 	int changed = 0;
 
 	if (enable) {
-		if (ctrl->clk_cnt_sub == 0)
+		if (*clk_cnt == 0)
 			changed++;
-		ctrl->clk_cnt_sub++;
+		(*clk_cnt)++;
 	} else {
-		if (ctrl->clk_cnt_sub) {
-			ctrl->clk_cnt_sub--;
-			if (ctrl->clk_cnt_sub == 0)
+		if (*clk_cnt != 0) {
+			(*clk_cnt)--;
+			if (*clk_cnt == 0)
 				changed++;
 		} else {
-			pr_debug("%s: Can not be turned off\n", __func__);
+			pr_debug("%s: clk cnt already zero\n", __func__);
 		}
 	}
 
-	pr_debug("%s: ndx=%d clk_cnt_sub=%d changed=%d enable=%d\n",
-		__func__, ctrl->ndx, ctrl->clk_cnt_sub, changed, enable);
-	if (changed) {
-		if (enable) {
-			if (mdss_dsi_bus_clk_start(ctrl) == 0)
-				mdss_dsi_link_clk_start(ctrl);
-		} else {
-			mdss_dsi_link_clk_stop(ctrl);
-			mdss_dsi_bus_clk_stop(ctrl);
+	return changed;
+}
+
+static int mdss_dsi_clk_ctrl_sub(struct mdss_dsi_ctrl_pdata *ctrl,
+	u8 clk_type, int enable)
+{
+	int rc = 0;
+
+	pr_debug("%s: ndx=%d clk_type=%08x enable=%d\n", __func__,
+		ctrl->ndx, clk_type, enable);
+
+	if (enable) {
+		if (clk_type & DSI_BUS_CLKS) {
+			rc = mdss_dsi_bus_clk_start(ctrl);
+			if (rc) {
+				pr_err("Failed to start bus clocks. rc=%d\n",
+					rc);
+				goto error;
+			}
 		}
+		if (clk_type & DSI_LINK_CLKS) {
+			rc = mdss_dsi_link_clk_start(ctrl);
+			if (rc) {
+				pr_err("Failed to start link clocks. rc=%d\n",
+					rc);
+				if (clk_type & DSI_BUS_CLKS)
+					mdss_dsi_bus_clk_stop(ctrl);
+				goto error;
+			}
+		}
+	} else {
+		if (clk_type & DSI_LINK_CLKS)
+			mdss_dsi_link_clk_stop(ctrl);
+		if (clk_type & DSI_BUS_CLKS)
+			mdss_dsi_bus_clk_stop(ctrl);
 	}
+
+error:
+	return rc;
 }
 
 static DEFINE_MUTEX(dsi_clk_lock); /* per system */
 
-bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl)
+bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type)
 {
-	bool enabled;
+	bool bus_enabled = true;
+	bool link_enabled = true;
+
 	mutex_lock(&dsi_clk_lock);
-	enabled = ctrl->clk_cnt ? true : false;
+	if (clk_type & DSI_BUS_CLKS)
+		bus_enabled = ctrl->bus_clk_cnt ? true : false;
+	if (clk_type & DSI_LINK_CLKS)
+		link_enabled = ctrl->link_clk_cnt ? true : false;
 	mutex_unlock(&dsi_clk_lock);
 
-	return enabled;
+	return bus_enabled && link_enabled;
 }
 
-void mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
+int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
+	u8 clk_type, int enable)
 {
-	int changed = 0;
-	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+	int rc = 0;
+	int changed = 0, m_changed = 0;
+	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
+
+	if (!ctrl) {
+		pr_err("%s: Invalid arg\n", __func__);
+		return -EINVAL;
+	}
+
+	/*
+	 * In broadcast mode, we need to enable clocks for the
+	 * master controller as well when enabling clocks for the
+	 * slave controller
+	 */
+	if (mdss_dsi_is_slave_ctrl(ctrl)) {
+		mctrl = mdss_dsi_get_master_ctrl();
+		if (!mctrl)
+			pr_warn("%s: Unable to get master control\n", __func__);
+	}
+
+	pr_debug("%s++: ndx=%d clk_type=%d bus_clk_cnt=%d link_clk_cnt=%d",
+		__func__, ctrl->ndx, clk_type, ctrl->bus_clk_cnt,
+		ctrl->link_clk_cnt);
+	pr_debug("%s++: mctrl=%s m_bus_clk_cnt=%d m_link_clk_cnt=%d\n, enable=%d\n",
+		__func__, mctrl ? "yes" : "no", mctrl ? mctrl->bus_clk_cnt : -1,
+		mctrl ? mctrl->link_clk_cnt : -1, enable);
 
 	mutex_lock(&dsi_clk_lock);
-	if (enable) {
-		if (ctrl->clk_cnt == 0)
-			changed++;
-		ctrl->clk_cnt++;
-	} else {
-		if (ctrl->clk_cnt) {
-			ctrl->clk_cnt--;
-			if (ctrl->clk_cnt == 0)
-				changed++;
-		} else {
-			pr_debug("%s: Can not be turned off\n", __func__);
-		}
+	if (clk_type & DSI_BUS_CLKS) {
+		changed = __mdss_dsi_update_clk_cnt(&ctrl->bus_clk_cnt,
+			enable);
+		if (changed && mctrl)
+			m_changed = __mdss_dsi_update_clk_cnt(
+				&mctrl->bus_clk_cnt, enable);
 	}
 
-	pr_debug("%s: ndx=%d clk_cnt=%d changed=%d enable=%d\n",
-		__func__, ctrl->ndx, ctrl->clk_cnt, changed, enable);
-	if (ctrl->flags & DSI_FLAG_CLOCK_MASTER)
-		sctrl = mdss_dsi_ctrl_slave(ctrl);
+	if (clk_type & DSI_LINK_CLKS) {
+		changed += __mdss_dsi_update_clk_cnt(&ctrl->link_clk_cnt,
+			enable);
+		if (changed && mctrl)
+			m_changed += __mdss_dsi_update_clk_cnt(
+				&mctrl->link_clk_cnt, enable);
+	}
 
 	if (changed) {
-		if (enable && sctrl)
-			mdss_dsi_clk_ctrl_sub(sctrl, enable);
+		if (enable && m_changed) {
+			rc = mdss_dsi_clk_ctrl_sub(mctrl, clk_type, enable);
+			if (rc) {
+				pr_err("Failed to start mctrl clocks. rc=%d\n",
+					rc);
+				goto error_mctrl_start;
+			}
+		}
 
-		mdss_dsi_clk_ctrl_sub(ctrl, enable);
+		rc = mdss_dsi_clk_ctrl_sub(ctrl, clk_type, enable);
+		if (rc) {
+			pr_err("Failed to %s ctrl clocks. rc=%d\n",
+				(enable ? "start" : "stop"), rc);
+			goto error_ctrl;
+		}
 
-		if (!enable && sctrl)
-			mdss_dsi_clk_ctrl_sub(sctrl, enable);
+		if (!enable && m_changed) {
+			rc = mdss_dsi_clk_ctrl_sub(mctrl, clk_type, enable);
+			if (rc) {
+				pr_err("Failed to stop mctrl clocks. rc=%d\n",
+					rc);
+				goto error_mctrl_stop;
+			}
+		}
 	}
+	goto no_error;
+
+error_mctrl_stop:
+	mdss_dsi_clk_ctrl_sub(ctrl, clk_type, enable ? 0 : 1);
+error_ctrl:
+	mdss_dsi_clk_ctrl_sub(mctrl, clk_type, 0);
+error_mctrl_start:
+	if (clk_type & DSI_BUS_CLKS) {
+		if (mctrl)
+			__mdss_dsi_update_clk_cnt(&mctrl->bus_clk_cnt,
+				enable ? 0 : 1);
+		__mdss_dsi_update_clk_cnt(&ctrl->bus_clk_cnt, enable ? 0 : 1);
+	}
+	if (clk_type & DSI_LINK_CLKS) {
+		if (mctrl)
+			__mdss_dsi_update_clk_cnt(&mctrl->link_clk_cnt,
+				enable ? 0 : 1);
+		__mdss_dsi_update_clk_cnt(&ctrl->link_clk_cnt, enable ? 0 : 1);
+	}
+
+no_error:
 	mutex_unlock(&dsi_clk_lock);
+	pr_debug("%s++: ndx=%d clk_type=%d bus_clk_cnt=%d link_clk_cnt=%d changed=%d",
+		__func__, ctrl->ndx, clk_type, ctrl->bus_clk_cnt,
+		ctrl->link_clk_cnt, changed);
+	pr_debug("%s++: mctrl=%s m_bus_clk_cnt=%d m_link_clk_cnt=%d\n, m_changed=%d, enable=%d\n",
+		__func__, mctrl ? "yes" : "no", mctrl ? mctrl->bus_clk_cnt : -1,
+		mctrl ? mctrl->link_clk_cnt : -1, m_changed, enable);
+
+	return rc;
 }
 
 void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base)
@@ -604,21 +681,35 @@ void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base)
 
 void mdss_dsi_phy_disable(struct mdss_dsi_ctrl_pdata *ctrl)
 {
+	struct mdss_dsi_ctrl_pdata *ctrl0 = NULL;
+
 	if (ctrl == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
 
-	if (left_ctrl &&
-			(ctrl->panel_data.panel_info.pdest == DISPLAY_1))
+	/*
+	 * In dual-dsi configuration, the phy should be disabled for the
+	 * first controller only when the second controller is disabled.
+	 * This is true regardless of whether broadcast mode is enabled
+	 * or not.
+	 */
+	if ((ctrl->ndx == DSI_CTRL_0) &&
+		mdss_dsi_get_ctrl_by_index(DSI_CTRL_1)) {
+		pr_debug("%s: Dual dsi detected. skipping config for ctrl%d\n",
+			__func__, ctrl->ndx);
 		return;
+	}
 
-	if (left_ctrl &&
-			(ctrl->panel_data.panel_info.pdest
-			 ==
-			 DISPLAY_2)) {
-		MIPI_OUTP(left_ctrl->phy_io.base + 0x0170, 0x000);
-		MIPI_OUTP(left_ctrl->phy_io.base + 0x0298, 0x000);
+	if (ctrl->ndx == DSI_CTRL_1) {
+		ctrl0 = mdss_dsi_get_ctrl_by_index(DSI_CTRL_0);
+		if (ctrl0) {
+			MIPI_OUTP(ctrl0->phy_io.base + 0x0170, 0x000);
+			MIPI_OUTP(ctrl0->phy_io.base + 0x0298, 0x000);
+		} else {
+			pr_warn("%s: Unable to get control%d\n",
+				__func__, DSI_CTRL_0);
+		}
 	}
 
 	MIPI_OUTP(ctrl->phy_io.base + 0x0170, 0x000);
@@ -643,22 +734,25 @@ void mdss_dsi_phy_init(struct mdss_panel_data *pdata)
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
+	temp_ctrl = ctrl_pdata;
 
 	pd = &(((ctrl_pdata->panel_data).panel_info.mipi).dsi_phy_db);
 
 	/* Strength ctrl 0 */
 	MIPI_OUTP((ctrl_pdata->phy_io.base) + 0x0184, pd->strength[0]);
 
-	/* phy regulator ctrl settings. Both the DSI controller
-	   have one regulator */
-	if ((ctrl_pdata->panel_data).panel_info.pdest == DISPLAY_1)
-		temp_ctrl = ctrl_pdata;
-	else if (left_ctrl && (pdata->panel_info.pdest == DISPLAY_2))
-		temp_ctrl = left_ctrl;
-
-	if (!temp_ctrl) {
-		pr_err("%s: Invalid ctrl data\n", __func__);
-		return;
+	/*
+	 * Phy regulator ctrl settings.
+	 * In dual dsi configuration, the second controller also uses
+	 * the regulators of the first controller, irrespective of whether
+	 * broadcast mode is enabled or not.
+	 */
+	if (ctrl_pdata->ndx == DSI_CTRL_1) {
+		temp_ctrl = mdss_dsi_get_ctrl_by_index(DSI_CTRL_0);
+		if (!temp_ctrl) {
+			pr_err("%s: Unable to get master ctrl\n", __func__);
+			return;
+		}
 	}
 
 	/* Regulator ctrl 0 */

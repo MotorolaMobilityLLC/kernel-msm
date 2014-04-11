@@ -382,12 +382,30 @@ static ssize_t mdss_fb_get_idle_notify(struct device *dev,
 	return ret;
 }
 
+static ssize_t mdss_fb_get_panel_info(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	struct mdss_panel_info *pinfo = mfd->panel_info;
+	int ret;
+
+	ret = scnprintf(buf, PAGE_SIZE,
+			"pu_en=%d\nxalign=%d\nwalign=%d\nystart=%d\nhalign=%d",
+			pinfo->partial_update_enabled, pinfo->xstart_pix_align,
+			pinfo->width_pix_align, pinfo->ystart_pix_align,
+			pinfo->height_pix_align);
+
+	return ret;
+}
+
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO, mdss_fb_get_split, NULL);
 static DEVICE_ATTR(show_blank_event, S_IRUGO, mdss_mdp_show_blank_event, NULL);
 static DEVICE_ATTR(idle_time, S_IRUGO | S_IWUSR | S_IWGRP,
 	mdss_fb_get_idle_time, mdss_fb_set_idle_time);
 static DEVICE_ATTR(idle_notify, S_IRUGO, mdss_fb_get_idle_notify, NULL);
+static DEVICE_ATTR(msm_fb_panel_info, S_IRUGO, mdss_fb_get_panel_info, NULL);
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
@@ -395,6 +413,7 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_show_blank_event.attr,
 	&dev_attr_idle_time.attr,
 	&dev_attr_idle_notify.attr,
+	&dev_attr_msm_fb_panel_info.attr,
 	NULL,
 };
 
@@ -472,7 +491,6 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mfd->mdp = *mdp_instance;
 	INIT_LIST_HEAD(&mfd->proc_list);
 
-	mutex_init(&mfd->lock);
 	mutex_init(&mfd->bl_lock);
 
 	fbi_list[fbi_list_index++] = fbi;
@@ -1283,6 +1301,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	mutex_init(&mfd->mdp_sync_pt_data.sync_mutex);
 	atomic_set(&mfd->mdp_sync_pt_data.commit_cnt, 0);
 	atomic_set(&mfd->commits_pending, 0);
+	atomic_set(&mfd->ioctl_ref_cnt, 0);
 
 	init_timer(&mfd->no_update.timer);
 	mfd->no_update.timer.function = mdss_fb_no_update_notify_timer_cb;
@@ -1293,6 +1312,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	init_completion(&mfd->power_set_comp);
 	init_waitqueue_head(&mfd->commit_wait_q);
 	init_waitqueue_head(&mfd->idle_wait_q);
+	init_waitqueue_head(&mfd->ioctl_q);
 
 	ret = fb_alloc_cmap(&fbi->cmap, 256, 0);
 	if (ret)
@@ -1411,6 +1431,12 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 		return -EINVAL;
 	}
 
+	if (!wait_event_timeout(mfd->ioctl_q,
+		!atomic_read(&mfd->ioctl_ref_cnt) || !release_all,
+		msecs_to_jiffies(1000)))
+		pr_warn("fb%d ioctl could not finish. waited 1 sec.\n",
+			mfd->index);
+
 	mdss_fb_pan_idle(mfd);
 
 	pr_debug("release_all = %s\n", release_all ? "true" : "false");
@@ -1488,6 +1514,7 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 				mfd->index, ret, task->comm, pid);
 			return ret;
 		}
+		atomic_set(&mfd->ioctl_ref_cnt, 0);
 	}
 
 	return ret;
@@ -2349,10 +2376,21 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 	int ret = -ENOSYS;
 	struct mdp_buf_sync buf_sync;
 	struct msm_sync_pt_data *sync_pt_data = NULL;
+
 	if (!info || !info->par)
 		return -EINVAL;
+
 	mfd = (struct msm_fb_data_type *)info->par;
+	if (!mfd)
+		return -EINVAL;
+
+	if (mfd->shutdown_pending)
+		return -EPERM;
+
+	atomic_inc(&mfd->ioctl_ref_cnt);
+
 	mdss_fb_power_setting_idle(mfd);
+
 	if ((cmd != MSMFB_VSYNC_CTRL) && (cmd != MSMFB_OVERLAY_VSYNC_CTRL) &&
 			(cmd != MSMFB_ASYNC_BLIT) && (cmd != MSMFB_BLIT) &&
 			(cmd != MSMFB_NOTIFY_UPDATE)) {
@@ -2360,7 +2398,7 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 		if (ret) {
 			pr_debug("Shutdown pending. Aborting operation %x\n",
 				cmd);
-			return ret;
+			goto exit;
 		}
 	}
 
@@ -2379,15 +2417,19 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = copy_to_user(argp, &fb_page_protection,
 				   sizeof(fb_page_protection));
 		if (ret)
-			return ret;
+			goto exit;
 		break;
 
 	case MSMFB_BUFFER_SYNC:
 		ret = copy_from_user(&buf_sync, argp, sizeof(buf_sync));
 		if (ret)
-			return ret;
-		if ((!mfd->op_enable) || (!mfd->panel_power_on))
-			return -EPERM;
+			goto exit;
+
+		if ((!mfd->op_enable) || (!mfd->panel_power_on)) {
+			ret = -EPERM;
+			goto exit;
+		}
+
 		if (mfd->mdp.get_sync_fnc)
 			sync_pt_data = mfd->mdp.get_sync_fnc(mfd, &buf_sync);
 		if (!sync_pt_data)
@@ -2415,6 +2457,10 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 
 	if (ret == -ENOSYS)
 		pr_err("unsupported ioctl (%x)\n", cmd);
+
+exit:
+	if (!atomic_dec_return(&mfd->ioctl_ref_cnt))
+		wake_up_all(&mfd->ioctl_q);
 
 	return ret;
 }
