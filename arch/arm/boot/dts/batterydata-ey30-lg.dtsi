@@ -6,6 +6,7 @@ mmi,ey30-lg-batterydata {
 	qcom,max-voltage-uv = <4350000>;
 	qcom,v-cutoff-uv = <3000000>;
 	qcom,chg-term-ua = <159000>;
+	qcom,max-current-ma = <2400>;
 	qcom,batt-id-kohm = <130>;
 	qcom,batt-id-range = <1143272 1201721>;
 
