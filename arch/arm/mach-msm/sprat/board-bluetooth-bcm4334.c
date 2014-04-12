@@ -40,32 +40,31 @@
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 
+#include <asm/system_info.h>
+
 #define BT_LPM_ENABLE
-
-#define BT_UART_RTS 48
-#define BT_UART_CTS 47
-#define BT_UART_RXD 46
-#define BT_UART_TXD 45
-
 
 #define BT_HOST_WAKE 48
 #define BT_WAKE 50
+#define BT_WAKE_EMUL 67
+#define BT_WAKE_REV01 36
 #define BT_EN 47
-
-
-#define GPIO_BT_UART_RTS BT_UART_RTS
-#define GPIO_BT_UART_CTS BT_UART_CTS
-#define GPIO_BT_UART_RXD BT_UART_RXD
-#define GPIO_BT_UART_TXD BT_UART_TXD
-#define GPIO_BT_HOST_WAKE 48
 
 static struct rfkill *bt_rfkill;
 static int cnt;
 
-static int gpio_bt_host_wake = GPIO_BT_HOST_WAKE;
+static int gpio_bt_host_wake = BT_HOST_WAKE;
 
 int get_gpio_hwrev(int gpio)
 {
+	if(gpio == BT_WAKE) {
+		if(system_rev == 0)
+			return BT_WAKE;
+		else if(system_rev == 3)
+			return BT_WAKE_EMUL;
+		else
+			return BT_WAKE_REV01;
+	}
 	return gpio;
 }
 
