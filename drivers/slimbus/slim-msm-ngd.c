@@ -91,25 +91,25 @@ static irqreturn_t ngd_slim_interrupt(int irq, void *d)
 	u32 stat = readl_relaxed(ngd + NGD_INT_STAT);
 	u32 pstat;
 
-	if (stat & NGD_INT_TX_MSG_SENT) {
+	if ((stat & NGD_INT_MSG_BUF_CONTE) ||
+		(stat & NGD_INT_MSG_TX_INVAL) || (stat & NGD_INT_DEV_ERR) ||
+		(stat & NGD_INT_TX_NACKED_2)) {
+		writel_relaxed(stat, ngd + NGD_INT_CLR);
+		dev->err = -EIO;
+
+		dev_err(dev->dev, "NGD interrupt error:0x%x, err:%d", stat,
+								dev->err);
+		/* Guarantee that error interrupts are cleared */
+		mb();
+		if (dev->wr_comp)
+			complete(dev->wr_comp);
+
+	} else if (stat & NGD_INT_TX_MSG_SENT) {
 		writel_relaxed(NGD_INT_TX_MSG_SENT, ngd + NGD_INT_CLR);
 		/* Make sure interrupt is cleared */
 		mb();
 		if (dev->wr_comp)
 			complete(dev->wr_comp);
-	} else if ((stat & NGD_INT_MSG_BUF_CONTE) ||
-		(stat & NGD_INT_MSG_TX_INVAL) || (stat & NGD_INT_DEV_ERR) ||
-		(stat & NGD_INT_TX_NACKED_2)) {
-		dev_err(dev->dev, "NGD interrupt error:0x%x", stat);
-		writel_relaxed(stat, ngd + NGD_INT_CLR);
-		/* Guarantee that error interrupts are cleared */
-		mb();
-		if (((stat & NGD_INT_TX_NACKED_2) ||
-			(stat & NGD_INT_MSG_TX_INVAL))) {
-			dev->err = -EIO;
-		if (dev->wr_comp)
-			complete(dev->wr_comp);
-		}
 	}
 	if (stat & NGD_INT_RX_MSG_RCVD) {
 		u32 rx_buf[10];
@@ -196,31 +196,40 @@ static int mdm_ssr_notify_cb(struct notifier_block *n, unsigned long code,
 		dev_err(dev->dev,
 			"SLIM %lu external_modem SSR notify cb", code);
 		/* vote for runtime-pm so that ADSP doesn't go down */
-		pm_runtime_get_sync(dev->dev);
+		msm_slim_get_ctrl(dev);
 		/*
 		 * checking framer here will wake-up ADSP and may avoid framer
 		 * handover later
 		 */
 		msm_slim_qmi_check_framer_request(dev);
 		dev->mdm.state = MSM_CTRL_DOWN;
+		msm_slim_put_ctrl(dev);
 		break;
 	case SUBSYS_AFTER_POWERUP:
 		if (dev->mdm.state != MSM_CTRL_DOWN)
 			return NOTIFY_DONE;
 		dev_err(dev->dev,
 			"SLIM %lu external_modem SSR notify cb", code);
+		/* vote for runtime-pm so that ADSP doesn't go down */
+		msm_slim_get_ctrl(dev);
 		msm_slim_qmi_check_framer_request(dev);
 		/* If NGD enumeration is lost, we will need to power us up */
 		ngd = dev->base + NGD_BASE(dev->ctrl.nr, dev->ver);
 		laddr = readl_relaxed(ngd + NGD_STATUS);
 		if (!(laddr & NGD_LADDR)) {
+			/* runtime-pm state should be consistent with HW */
+			pm_runtime_disable(dev->dev);
+			pm_runtime_set_suspended(dev->dev);
+			dev->state = MSM_CTRL_DOWN;
 			pr_err("SLIM MDM SSR (active framer on MDM) dev-down");
 			list_for_each_entry(sbdev, &ctrl->devs, dev_list)
 				slim_report_absent(sbdev);
+			ngd_slim_power_up(dev, true);
+			pm_runtime_set_active(dev->dev);
+			pm_runtime_enable(dev->dev);
 		}
-		ngd_slim_power_up(dev, true);
-		msm_slim_put_ctrl(dev);
 		dev->mdm.state = MSM_CTRL_AWAKE;
+		msm_slim_put_ctrl(dev);
 		break;
 	default:
 		break;
@@ -1090,11 +1099,7 @@ static int ngd_slim_rx_msgq_thread(void *data)
 
 	while (!kthread_should_stop()) {
 		set_current_state(TASK_INTERRUPTIBLE);
-		ret = wait_for_completion_interruptible(notify);
-		if (ret) {
-			dev_err(dev->dev, "rx thread wait err:%d", ret);
-			continue;
-		}
+		wait_for_completion(notify);
 		/* 1 irq notification per message */
 		if (dev->use_rx_msgqs != MSM_MSGQ_ENABLED) {
 			msm_slim_rx_dequeue(dev, (u8 *)buffer);
