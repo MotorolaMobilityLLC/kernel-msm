@@ -5517,7 +5517,7 @@ VOS_STATUS hdd_init_station_mode( hdd_adapter_t *pAdapter )
    }
    
    //Block on a completion variable. Can't wait forever though.
-   rc = wait_for_completion_interruptible_timeout(
+   rc = wait_for_completion_timeout(
                         &pAdapter->session_open_comp_var,
                         msecs_to_jiffies(WLAN_WAIT_TIME_SESSIONOPENCLOSE));
    if (rc <= 0)
