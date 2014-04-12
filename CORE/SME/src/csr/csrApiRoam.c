@@ -6135,6 +6135,7 @@ eHalStatus csrRoamCopyProfile(tpAniSirGlobal pMac, tCsrRoamProfile *pDstProfile,
         pDstProfile->CBMode = pSrcProfile->CBMode;
         /*Save the WPS info*/
         pDstProfile->bWPSAssociation = pSrcProfile->bWPSAssociation;
+        pDstProfile->bOSENAssociation = pSrcProfile->bOSENAssociation;
         pDstProfile->uapsd_mask = pSrcProfile->uapsd_mask;
         pDstProfile->beaconInterval = pSrcProfile->beaconInterval;
         pDstProfile->privacy           = pSrcProfile->privacy;
@@ -6578,10 +6579,12 @@ eHalStatus csrRoamConnect(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
                 if(NULL != pProfile)
                 {
                     pScanFilter->bWPSAssociation = pProfile->bWPSAssociation;
+                    pScanFilter->bOSENAssociation = pProfile->bOSENAssociation;
                 }
                 else
                 {
                     pScanFilter->bWPSAssociation = 0;
+                    pScanFilter->bOSENAssociation = 0;
                 }
                 do
                 {
@@ -12273,6 +12276,7 @@ eHalStatus csrRoamRemoveConnectedBssFromScanCache(tpAniSirGlobal pMac,
             //Also ignore the following fields
             pScanFilter->uapsd_mask = 0;
             pScanFilter->bWPSAssociation = eANI_BOOLEAN_FALSE;
+            pScanFilter->bOSENAssociation = eANI_BOOLEAN_FALSE;
             pScanFilter->countryCode[0] = 0;
             pScanFilter->phyMode = eCSR_DOT11_MODE_TAURUS;
             csrLLLock(&pMac->scan.scanResultList);

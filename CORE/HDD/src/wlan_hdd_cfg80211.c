@@ -5899,6 +5899,7 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
     /* clear previous assocAddIE */
     pWextState->assocAddIE.length = 0;
     pWextState->roamProfile.bWPSAssociation = VOS_FALSE;
+    pWextState->roamProfile.bOSENAssociation = VOS_FALSE;
 
     while (remLen >= 2)
     {
@@ -6017,7 +6018,30 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
                     pWextState->roamProfile.pAddIEAssoc = pWextState->assocAddIE.addIEdata;
                     pWextState->roamProfile.nAddIEAssocLength = pWextState->assocAddIE.length;
                 }
+                 /* Appending OSEN Information  Element in Assiciation Request */
+                else if ( (0 == memcmp(&genie[0], OSEN_OUI_TYPE,
+                                       OSEN_OUI_TYPE_SIZE)) )
+                {
+                    v_U16_t curAddIELen = pWextState->assocAddIE.length;
+                    hddLog (VOS_TRACE_LEVEL_INFO, "%s Set OSEN IE(len %d)",
+                            __func__, eLen + 2);
 
+                    if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
+                    {
+                        hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accommodate assocAddIE "
+                               "Need bigger buffer space");
+                        VOS_ASSERT(0);
+                        return -ENOMEM;
+                    }
+                    memcpy( pWextState->assocAddIE.addIEdata + curAddIELen, genie - 2, eLen + 2);
+                    pWextState->assocAddIE.length += eLen + 2;
+
+                    pWextState->roamProfile.bOSENAssociation = VOS_TRUE;
+                    pWextState->roamProfile.pAddIEAssoc = pWextState->assocAddIE.addIEdata;
+                    pWextState->roamProfile.nAddIEAssocLength = pWextState->assocAddIE.length;
+                }
+
+                break;
                 if (WLAN_HDD_IBSS == pAdapter->device_mode) {
 
                    /* populating as ADDIE in beacon frames */
