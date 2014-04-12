@@ -6874,6 +6874,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
                       union iwreq_data *wrqu, char *extra, int nOffset)
 {
   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+  hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
   /* pnoRequest is a large struct, so we make it static to avoid stack
      overflow.  This API is only invoked via ioctl, so it is
      serialized by the kernel rtnl_lock and hence does not need to be
@@ -6881,6 +6882,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
   static tSirPNOScanReq pnoRequest;
   char *ptr;
   v_U8_t i,j, ucParams, ucMode;
+  eHalStatus status = eHAL_STATUS_FAILURE;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -6937,11 +6939,27 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
   {
     /*Disable PNO*/
     memset(&pnoRequest, 0, sizeof(pnoRequest));
-    sme_SetPreferredNetworkList(WLAN_HDD_GET_HAL_CTX(pAdapter), &pnoRequest,
+    status = sme_SetPreferredNetworkList(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                &pnoRequest,
                                 pAdapter->sessionId,
                                 found_pref_network_cb, pAdapter);
+    if (eHAL_STATUS_SUCCESS != status)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                  "%s: failed to disable PNO", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+    pHddCtx->isPnoEnable = FALSE;
     return VOS_STATUS_SUCCESS;
   }
+
+  if (TRUE == pHddCtx->isPnoEnable)
+  {
+     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+               FL("already PNO is enabled"));
+     return -EBUSY;
+  }
+  pHddCtx->isPnoEnable = TRUE;
 
   ptr += nOffset;
 
@@ -6949,8 +6967,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
   {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "PNO count input not valid %s",ptr);
-      return VOS_STATUS_E_FAILURE;
-
+      goto error;
   }
 
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -6965,7 +6982,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
       ( pnoRequest.ucNetworksCount > SIR_PNO_MAX_SUPP_NETWORKS ))
   {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Network input is not correct");
-      return VOS_STATUS_E_FAILURE;
+      goto error;
   }
 
   ptr += nOffset;
@@ -6991,7 +7008,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "SSID Len %d is not correct for network %d",
                 pnoRequest.aNetworks[i].ssId.length, i);
-      return VOS_STATUS_E_FAILURE;
+      goto error;
     }
 
     /*Advance to SSID*/
@@ -7011,7 +7028,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
     {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                 "Incorrect cmd %s",ptr);
-      return VOS_STATUS_E_FAILURE;
+      goto error;
     }
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -7063,7 +7080,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "PNO broadcast network type input is not valid %s",ptr);
-        return VOS_STATUS_E_FAILURE;
+        goto error;
     }
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -7080,7 +7097,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "PNO rssi threshold input is not valid %s",ptr);
-        return VOS_STATUS_E_FAILURE;
+        goto error;
     }
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -7109,7 +7126,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
      {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                     "Incorrect cmd - too many scan timers");
-       return VOS_STATUS_E_FAILURE;
+       goto error;
      }
 
      for ( i = 0; i < pnoRequest.scanTimers.ucScanTimersCount; i++ )
@@ -7123,7 +7140,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
         {
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                     "Incorrect cmd - diff params then expected %d", ucParams);
-            return VOS_STATUS_E_FAILURE;
+            goto error;
         }
 
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -7157,11 +7174,20 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
      pnoRequest.modePNO = SIR_PNO_MODE_ON_SUSPEND;
   }
 
-  sme_SetPreferredNetworkList(WLAN_HDD_GET_HAL_CTX(pAdapter), &pnoRequest,
+  status = sme_SetPreferredNetworkList(WLAN_HDD_GET_HAL_CTX(pAdapter), &pnoRequest,
                                 pAdapter->sessionId,
                                 found_pref_network_cb, pAdapter);
-
-  return VOS_STATUS_SUCCESS;
+  if (eHAL_STATUS_SUCCESS == status)
+  {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                  "%s: PNO enabled", __func__);
+      return VOS_STATUS_SUCCESS;
+  }
+error:
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: Failed to enable PNO", __func__);
+    pHddCtx->isPnoEnable = FALSE;
+    return VOS_STATUS_E_FAILURE;
 }/*iw_set_pno*/
 
 VOS_STATUS iw_set_rssi_filter(struct net_device *dev, struct iw_request_info *info,
