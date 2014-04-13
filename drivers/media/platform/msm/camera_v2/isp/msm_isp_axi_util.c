@@ -866,8 +866,9 @@ static enum msm_isp_camif_update_state
 			(cur_stream_cnt - stream_cnt) == 0 &&
 			stream_cfg_cmd->cmd == STOP_STREAM)
 			return DISABLE_CAMIF;
-		else if (cur_pix_stream_cnt &&
+		else if ((cur_pix_stream_cnt || cur_raw_stream_cnt) &&
 			(cur_pix_stream_cnt - pix_stream_cnt) == 0 &&
+                        (cur_raw_stream_cnt - raw_stream_cnt) == 0 &&
 			stream_cfg_cmd->cmd == STOP_IMMEDIATELY)
 			return DISABLE_CAMIF_IMMEDIATELY;
 	}
