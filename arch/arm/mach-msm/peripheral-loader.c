@@ -605,72 +605,6 @@ static void pil_parse_devicetree(struct pil_desc *desc)
 static DECLARE_RWSEM(pil_pm_rwsem);
 
 /**
- * factory_modem_check() - Prevent factory modem on consumer devices
- * Returns false on any error, consumer modem, or factory modem is allowed
- */
-static bool
-factory_modem_check(const char *data, size_t size, struct pil_desc *desc)
-{
-	const char *cert_cn_base_str = "Attestation 625-1-";
-	char cert_id_str[3];
-	int base_size = strlen(cert_cn_base_str);
-	long id = 0;
-	int i, j, ret;
-	int sec_cmd[4] = {18, 0, 0, 0};
-
-	/* The certificate we are looking for will be in first 4k */
-	if (size > 0x1000)
-		size = 0x1000;
-
-	/* avoid underflow in loop */
-	if (size < 2)
-		return false;
-
-	pil_info(desc, "factory modem check\n");
-
-	for (i = 0, j = 0; i < size - 2; i++) {
-		if (data[i] == cert_cn_base_str[j]) {
-
-			j++;
-			if (j == base_size)
-				break;
-		} else
-			j = 0;
-	}
-
-	if (j != base_size) {
-		pil_err(desc, "cert not found!\n");
-		return false;
-	}
-
-	cert_id_str[0] = data[i + 1];
-	cert_id_str[1] = data[i + 2];
-	cert_id_str[2] = 0;
-
-	ret = kstrtol(cert_id_str, 10, &id);
-	pil_info(desc, "found modem cert %ld\n", id);
-
-	/* certificates 73-78 indicate a factory modem */
-	if (id < 73 && id > 78)
-		return false;
-
-	/* trustzone oem service check if factory modem is allowed. */
-	ret = scm_call(254, 1, sec_cmd, sizeof(sec_cmd), NULL, 0);
-
-	/* trustzone state is engineering or in-factory */
-	if (ret == 100 || ret == 101)
-		return false;
-
-	/* trustzone state is out-of-factory */
-	if (ret == 102)
-		return true;
-
-	/* unable to determine state */
-	pil_err(desc, "factory check error %d\n", ret);
-	return false;
-}
-
-/**
  * pil_boot() - Load a peripheral image into memory and boot it
  * @desc: descriptor from pil_desc_init()
  *
@@ -722,15 +656,6 @@ int pil_boot(struct pil_desc *desc)
 		pil_err(desc, "Program headers not within mdt\n");
 		ret = -EIO;
 		goto release_fw;
-	}
-
-	/* Special factory modem check added by Motorola */
-	if (strncmp(desc->name, "modem", 5) == 0) {
-		if (factory_modem_check(fw->data, fw->size, desc)) {
-			pil_err(desc, "factory modem not allowed!\n");
-			ret = -EIO;
-			goto release_fw;
-		}
 	}
 
 	ret = pil_init_mmap(desc, mdt);
