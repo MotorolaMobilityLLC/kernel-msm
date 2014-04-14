@@ -80,7 +80,7 @@
 	gpio_keys {
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
-
+#if 0
 		camera_focus {
 			label = "camera_focus";
 			gpios = <&msmgpio 108 0x1>;
@@ -98,7 +98,18 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+#endif
 
+//ASUS_BSP +++ Shunmin "gpio_keys"
+		pwr_key {
+			label = "pwr_key";
+			gpios = <&msmgpio 1 0x1>;
+			linux,input-type = <1>;
+			linux,code = <116>;
+			gpio-key,wakeup;
+			debounce-interval = <50>;
+		};
+#if 0
 		vol_up {
 			label = "volume_up";
 			gpios = <&msmgpio 106 0x1>;
@@ -107,6 +118,8 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+#endif
+//ASUS_BSP --- Shunmin "gpio_keys"
 	};
 
 	//ASUS_BSP +++ Maggie_Lee "Backlight Porting"

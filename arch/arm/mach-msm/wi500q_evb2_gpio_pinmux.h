@@ -4,15 +4,15 @@
 #include "wi500q_gpio_pinmux_setting.h"
 
 static struct msm_gpiomux_config wi500q_evb2_msm8226_gpio_configs[] __initdata= {
-//ASUS_BSP +++ Josh_Liao "gpio_keys"
+//ASUS_BSP +++ Shunmin "gpio_keys"
 	{
-		.gpio = 1,
+		.gpio = 68,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
 			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
 		},
 	},
-//ASUS_BSP --- Josh_Liao "gpio_keys"
+//ASUS_BSP --- Shunmin "gpio_keys"
 
 // ASUS_BSP +++ Maggie_Lee "I2C"
 	{

@@ -46,7 +46,7 @@
 				qcom,pull-up = <1>;
 				linux,code = <116>;
 			};
-
+#if 0
 			qcom,pon_2 {
 				qcom,pon-type = <1>;
 				qcom,pull-up = <1>;
@@ -62,6 +62,7 @@
 				qcom,s2-type = <7>;
 				qcom,use-bark;
 			};
+#endif
 		};
 
 		pm8226_misc: qcom,misc@900 {

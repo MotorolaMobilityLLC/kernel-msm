@@ -331,6 +331,15 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	unsigned int type = button->type ?: EV_KEY;
 	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
 
+	pr_info("%s:key code=%d  state=%s \n",__func__, button->code,state ? "press" : "release");  //ASUS_BSP +++ Josh_Liao "gpio_keys"
+
+//ASUS_BSP++ Josh_Liao "use gpio for factory version and qpnp for others"
+#ifndef ASUS_FACTORY_BUILD
+	if (KEY_POWER == button->code)
+		return;
+#endif /* ASUS_FACTORY_BUILD */
+//ASUS_BSP-- Josh_Liao "use gpio for factory version and qpnp for others"
+
 	if (type == EV_ABS) {
 		if (state)
 			input_event(input, type, button->code, button->value);
@@ -732,6 +741,8 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	int wakeup = 0;
 	struct pinctrl_state *set_state;
 
+	printk("%s() +++ ",__func__);  //ASUS_BSP +++ Shunmin "gpio_keys"
+
 	if (!pdata) {
 		pdata = gpio_keys_get_devtree_pdata(dev);
 		if (IS_ERR(pdata))
@@ -815,7 +826,7 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	}
 
 	device_init_wakeup(&pdev->dev, wakeup);
-
+	printk("%s() --- ",__func__);  //ASUS_BSP --- Shunmin "gpio_keys"
 	return 0;
 
  fail3:
