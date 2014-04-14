@@ -124,6 +124,9 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 	if (buf == NULL || writelen == 0 || readlen == 0)
 		return -EFAULT;
 
+	if (ps_stm401->mode == BOOTMODE)
+		return -EFAULT;
+
 	tries = 0;
 	do {
 		err = i2c_transfer(ps_stm401->client->adapter, msgs, 2);
@@ -155,6 +158,10 @@ int stm401_i2c_read_no_reset(struct stm401_data *ps_stm401,
 
 	if (buf == NULL || len == 0)
 		return -EFAULT;
+
+	if (ps_stm401->mode == BOOTMODE)
+		return -EFAULT;
+
 	tries = 0;
 	do {
 		err = i2c_master_recv(ps_stm401->client, buf, len);
@@ -182,6 +189,9 @@ int stm401_i2c_write_no_reset(struct stm401_data *ps_stm401,
 {
 	int err = 0;
 	int tries = 0;
+
+	if (ps_stm401->mode == BOOTMODE)
+		return -EFAULT;
 
 	do {
 		err = i2c_master_send(ps_stm401->client, buf, len);
@@ -251,6 +261,9 @@ int stm401_i2c_write_read(struct stm401_data *ps_stm401, u8 *buf,
 {
 	int tries, err = 0;
 
+	if (ps_stm401->mode == BOOTMODE)
+		return -EFAULT;
+
 	if (buf == NULL || writelen == 0 || readlen == 0)
 		return -EFAULT;
 
@@ -278,6 +291,10 @@ int stm401_i2c_read(struct stm401_data *ps_stm401, u8 *buf, int len)
 
 	if (buf == NULL || len == 0)
 		return -EFAULT;
+
+	if (ps_stm401->mode == BOOTMODE)
+		return -EFAULT;
+
 	tries = 0;
 	do {
 		err = stm401_i2c_read_no_reset(ps_stm401, buf, len);
@@ -297,6 +314,9 @@ int stm401_i2c_write(struct stm401_data *ps_stm401, u8 *buf, int len)
 {
 	int err = 0;
 	int tries = 0;
+
+	if (ps_stm401->mode == BOOTMODE)
+		return -EFAULT;
 
 	tries = 0;
 	do {
