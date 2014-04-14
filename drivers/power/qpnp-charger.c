@@ -1951,9 +1951,12 @@ static irqreturn_t
 qpnp_chg_chgr_chg_trklchg_irq_handler(int irq, void *_chip)
 {
 	struct qpnp_chg_chip *chip = _chip;
+	u8 chg_led = 0x1; //ASUS_BSP +
 
 	printk("TRKL IRQ triggered\n");
 
+	qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
+	
 	chip->chg_done = false;
 	if (chip->bat_if_base) {
 		pr_debug("psy changed batt_psy\n");
@@ -2005,11 +2008,22 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 {
 	struct qpnp_chg_chip *chip = _chip;
 	bool fastchg_on = false;
+	u8 chg_led; //ASUS_BSP +
 
 	qpnp_chg_irq_wake_disable(&chip->chg_fastchg);
 	fastchg_on = qpnp_chg_is_fastchg_on(chip);
 
 	printk("FAST_CHG IRQ triggered, fastchg_on: %d\n", fastchg_on);
+
+//ASUS_BSP +++
+	if(fastchg_on){
+		chg_led = 0x0;
+	}
+	else{
+		chg_led = 0x1;
+	}
+	qpnp_chg_write(chip, &chg_led, 0x104D, 1);
+//ASUS_BSP ---
 
 	if (chip->fastchg_on ^ fastchg_on) {
 		chip->fastchg_on = fastchg_on;
