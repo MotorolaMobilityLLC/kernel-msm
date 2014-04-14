@@ -1091,7 +1091,7 @@ static int lis3dsh_acc_enable(struct lis3dsh_acc_data *acc)
 		schedule_delayed_work(&acc->input_work,
 			msecs_to_jiffies(acc->pdata->poll_interval));
 	}
-
+	sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
 	return 0;
 }
 
@@ -1101,7 +1101,7 @@ static int lis3dsh_acc_disable(struct lis3dsh_acc_data *acc)
 		cancel_delayed_work_sync(&acc->input_work);
 		lis3dsh_acc_device_power_off(acc);
 	}
-
+	sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
 	return 0;
 }
 
@@ -1828,17 +1828,24 @@ static int lis3dsh_acc_resume(struct i2c_client *client)
 {
 	struct lis3dsh_acc_data *acc = i2c_get_clientdata(client);
 
+	#if 0
 	if (acc->on_before_suspend)
 		return lis3dsh_acc_enable(acc);
+
 	return 0;
+	#endif
+	return lis3dsh_acc_disable(acc);
 }
 
 static int lis3dsh_acc_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct lis3dsh_acc_data *acc = i2c_get_clientdata(client);
 
+	#if 0
 	acc->on_before_suspend = atomic_read(&acc->enabled);
 	return lis3dsh_acc_disable(acc);
+	#endif
+	return lis3dsh_acc_enable(acc);
 }
 #else
 #define lis3dsh_acc_suspend	NULL
