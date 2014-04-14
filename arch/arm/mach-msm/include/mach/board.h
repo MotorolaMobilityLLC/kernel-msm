@@ -26,9 +26,13 @@
 #include <linux/of_platform.h>
 #include <linux/ssbi.h>
 #include <linux/msm-bus.h>
+#include <linux/kernel.h>
 
-#define GPIO_HOST_WAKE_UP_BT 45
+//ASUS_BSP BerylHou +++
+#define GPIO_HOST_WAKE_UP_BT_SR 61
+#define GPIO_HOST_WAKE_UP_BT_EVB2 45
 #define GPIO_BT_WAKE_UP_HOST 48
+//ASUS_BSP BerylHou ---
 
 #define RF_TYPE_16 0x10
 #define RF_TYPE_17 0x11

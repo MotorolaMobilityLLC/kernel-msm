@@ -4,15 +4,36 @@
 #include "wi500q_gpio_pinmux_setting.h"
 
 static struct msm_gpiomux_config wi500q_sr_msm8226_gpio_configs[] __initdata= {
-//ASUS_BSP +++ Josh_Liao "gpio_keys"
-	{
-		.gpio = 1,
+// ASUS_BSP BerylHou +++ "BT config"
+ 	{
+		.gpio      = 0,	/* BLSP1 BT Uart Tx */
+ 		.settings = {
+                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
+                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
+ 		},
+ 	},
+ 	{
+		.gpio      = 1,	/* BLSP1 BT Uart Rx */
+ 		.settings = {
+                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
+                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
+ 		},
+ 	},
+ 	{
+		.gpio      = 2,	/* BLSP1 BT Uart CTS */
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
+                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
+                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
 		},
 	},
-//ASUS_BSP --- Josh_Liao "gpio_keys"
+	{
+		.gpio      = 3,	/* BLSP1 BT Uart RTS */
+		.settings = {
+                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
+                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
+		},
+	},
+// ASUS_BSP BerylHou ---
 
 // ASUS_BSP +++ Maggie_Lee "I2C"
 	{
@@ -44,36 +65,6 @@ static struct msm_gpiomux_config wi500q_sr_msm8226_gpio_configs[] __initdata= {
                 },
         },
 // ASUS_BSP --- Maggie_Lee "I2C"
-// ASUS_BSP BerylHou +++ "BT config"
- 	{
-		.gpio      = 12,	/* BLSP1 BT Uart Tx */
- 		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
- 		},
- 	},
- 	{
-		.gpio      = 13,	/* BLSP1 BT Uart Rx */
- 		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
- 		},
- 	},
- 	{
-		.gpio      = 14,	/* BLSP1 BT Uart CTS */
-		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
-		},
-	},
-	{
-		.gpio      = 15,	/* BLSP1 BT Uart RTS */
-		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
-		},
-	},
-// ASUS_BSP BerylHou ---
 
 	{
 		.gpio = 17,
@@ -163,13 +154,6 @@ static struct msm_gpiomux_config wi500q_sr_msm8226_gpio_configs[] __initdata= {
 	},
 	//ASUS_BSP --- Maggie_Lee "Sensors Porting"
 //ASUS_BSP BerylHou +++ "BT / host"
- 	{
-		.gpio      = 45,	/* Host wake up BT */
-		.settings = {
-                        [GPIOMUX_ACTIVE] = &host_wakup_bt_act_cfg,
-                        [GPIOMUX_SUSPENDED] = &host_wakup_bt_sus_cfg,
-		},
-	},
 	{
 		.gpio      = 48,	/* BT wake up host */
 		.settings = {
@@ -202,6 +186,15 @@ static struct msm_gpiomux_config wi500q_sr_msm8226_gpio_configs[] __initdata= {
 			[GPIOMUX_ACTIVE] = &pri_mi2s_en,
 		},
 	},
+//ASUS_BSP BerylHou +++ "BT / host"
+ 	{
+		.gpio      = 61,	/* Host wake up BT */
+		.settings = {
+                        [GPIOMUX_ACTIVE] = &host_wakup_bt_act_cfg,
+                        [GPIOMUX_SUSPENDED] = &host_wakup_bt_sus_cfg,
+		},
+	},
+//ASUS_BSP BerylHou ---
 	{
 		.gpio = 63,           /* pri mi2s sck */
 		.settings = {

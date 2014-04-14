@@ -128,12 +128,22 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 static void gpio_bt_init(void)
 {
 	printk("[bt] gpio init");
+	
 	bluesleep_resources[0].start = GPIO_BT_WAKE_UP_HOST;
 	bluesleep_resources[0].end = GPIO_BT_WAKE_UP_HOST;
-	bluesleep_resources[1].start = GPIO_HOST_WAKE_UP_BT;
-	bluesleep_resources[1].end = GPIO_HOST_WAKE_UP_BT;
+
+	if (g_ASUS_hwID == WI500Q_EVB2) {
+		bluesleep_resources[1].start = GPIO_HOST_WAKE_UP_BT_EVB2;
+		bluesleep_resources[1].end = GPIO_HOST_WAKE_UP_BT_EVB2;
+	}
+	if (g_ASUS_hwID == WI500Q_SR) {
+		bluesleep_resources[1].start = GPIO_HOST_WAKE_UP_BT_SR;
+		bluesleep_resources[1].end = GPIO_HOST_WAKE_UP_BT_SR;
+	}
+
 	bluesleep_resources[2].start = gpio_to_irq(GPIO_BT_WAKE_UP_HOST);
 	bluesleep_resources[2].end = gpio_to_irq(GPIO_BT_WAKE_UP_HOST);
+
 }
 
 static void __init board_8226_bluesleep_setup(void)
