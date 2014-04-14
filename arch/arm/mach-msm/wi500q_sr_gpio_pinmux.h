@@ -65,7 +65,7 @@ static struct msm_gpiomux_config wi500q_sr_msm8226_gpio_configs[] __initdata= {
                 },
         },
 // ASUS_BSP --- Maggie_Lee "I2C"
-
+// ASUS_BSP +++ Cliff_Yu "TOUCH"
 	{
 		.gpio = 17,
 		.settings = {
@@ -73,6 +73,7 @@ static struct msm_gpiomux_config wi500q_sr_msm8226_gpio_configs[] __initdata= {
 			[GPIOMUX_SUSPENDED] = &touch_int,
 		},
 	},
+// ASUS_BSP --- Cliff_Yu "TOUCH"
 // ASUS_BSP +++ Maggie_Lee "I2C"
         {
                 .gpio = 18,	/* BLSP1 QUP5: I2C5 Touch, I2C_DAT */
