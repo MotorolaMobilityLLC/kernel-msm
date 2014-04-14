@@ -156,8 +156,8 @@
 		qcom,quat-auxpcm-gpio-dout = <&msmgpio 61 0>;
 		qcom,quat-auxpcm-gpio-din = <&msmgpio 60 0>;
 		qcom,tfa9890-stereo;
-		qcom,tfa9890-left-name = "tfa9890.2-0035";
-		qcom,tfa9890-right-name = "tfa9890.2-0034";
+		qcom,tfa9890-left-name = "tfa9890.2-0034";
+		qcom,tfa9890-right-name = "tfa9890.2-0035";
 		qcom,tfa9890-left-dai-name = "TFA9890 Playback Left";
 		qcom,tfa9890-right-dai-name = "TFA9890 Playback Right";
 		qcom,tfa9890-earpiece-gpio = <&pm8941_gpios 6 0x0>;
