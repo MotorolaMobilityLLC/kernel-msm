@@ -141,14 +141,6 @@
 		qcom,key-codes = <158 139 102 217>;
 	};
 
-	spi_eth_vreg: spi_eth_vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "spi_eth_vreg";
-		startup-delay-us = <60>;
-		enable-active-high;
-		gpio = <&msmgpio 39 0>;
-	};
-
 	gnss_qca1530: qca,qca1530 {
 		compatible = "qca,qca1530";
 		qca,reset-gpio = <&msmgpio 133 0>;
@@ -990,19 +982,6 @@
 		ct406_pulse_count = <0x04>;
 		sensor1-supply = <&pma8084_lvs1>;
 		sensor2-supply = <&pma8084_l18>;
-	};
-};
-
-&spi_0 {
-	ethernet-switch@2 {
-		compatible = "micrel,ks8851";
-		reg = <2>;
-		interrupt-parent = <&msmgpio>;
-		interrupts = <60 0>;
-		spi-max-frequency = <4800000>;
-		rst-gpio = <&msmgpio 59 0>;
-		vdd-io-supply = <&spi_eth_vreg>;
-		vdd-phy-supply = <&spi_eth_vreg>;
 	};
 };
 
