@@ -290,12 +290,11 @@ int stm401_get_version(struct stm401_data *ps_stm401)
 {
 	int err = 0;
 	if (ps_stm401->mode == BOOTMODE) {
-		dev_dbg(&ps_stm401->client->dev,
-			"Switch to normal to get version\n");
-		switch_stm401_mode(NORMALMODE);
-		msleep(stm401_i2c_retry_delay);
+		dev_err(&ps_stm401->client->dev,
+			"Tried to read version in boot mode\n");
+		err = -EIO;
+		goto EXIT;
 	}
-	dev_dbg(&ps_stm401->client->dev, "STM software version: ");
 	stm401_cmdbuff[0] = REV_ID;
 	err = stm401_i2c_write_read_no_reset(ps_stm401, stm401_cmdbuff, 1, 1);
 	if (err >= 0) {
@@ -303,6 +302,7 @@ int stm401_get_version(struct stm401_data *ps_stm401)
 		dev_err(&ps_stm401->client->dev, "STM401 version %02x",
 			stm401_readbuff[0]);
 	}
+EXIT:
 	return err;
 }
 
