@@ -305,17 +305,6 @@ struct sensor_value {
 		};
 #ifdef CONFIG_SENSORS_SSP_ADPD142
 		struct {
-			u32 ch_a;
-			u32 ch_b;
-			u32 frequency;
-			u32 noise_value;
-			u32 dc_value;
-			u32 ac_value;
-			u32 perfusion_rate;
-			u32 snrac;
-			u32 snrdc;
-		};
-		struct {
 			s16 hr;
 			s16 rri;
 			s32 snr;
@@ -393,7 +382,6 @@ struct ssp_data {
 	struct input_dev *step_cnt_input_dev;
 	struct input_dev *meta_input_dev;
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-	struct input_dev *hrm_raw_input_dev;
 	struct input_dev *hrm_lib_input_dev;
 #endif
 	struct input_dev *tilt_wake_input_dev;
@@ -458,10 +446,6 @@ struct ssp_data {
 	int64_t adDelayBuf[SENSOR_MAX];
 	s32 batchLatencyBuf[SENSOR_MAX];
 	s8 batchOptBuf[SENSOR_MAX];
-
-#ifdef CONFIG_SENSORS_SSP_ADPD142
-	atomic_t eol_enable;
-#endif
 
 	void (*get_sensor_data[SENSOR_MAX])(char *, int *,
 		struct sensor_value *);
@@ -567,8 +551,6 @@ void report_sig_motion_data(struct ssp_data *, struct sensor_value *);
 void report_uncalib_gyro_data(struct ssp_data *, struct sensor_value *);
 void report_step_cnt_data(struct ssp_data *, struct sensor_value *);
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-void report_hrm_raw_data(struct ssp_data *, struct sensor_value *);
-void report_hrm_raw_fac_data(struct ssp_data *, struct sensor_value *);
 void report_hrm_lib_data(struct ssp_data *, struct sensor_value *);
 #endif
 void report_tilt_wake_data(struct ssp_data *, struct sensor_value *);

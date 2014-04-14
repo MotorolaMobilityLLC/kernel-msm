@@ -47,20 +47,6 @@ static void get_3axis_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 }
 
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-static void get_hrm_raw_sensordata(char *pchRcvDataFrame, int *iDataIdx,
-	struct sensor_value *sensorsdata)
-{
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 8);
-	*iDataIdx += 8;
-}
-
-static void get_hrm_raw_fac_sensordata(char *pchRcvDataFrame, int *iDataIdx,
-	struct sensor_value *sensorsdata)
-{
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 36);
-	*iDataIdx += 36;
-}
-
 static void get_hrm_lib_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
@@ -277,8 +263,6 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->get_sensor_data[GYRO_UNCALIB_SENSOR] = get_uncalib_sensordata;
 	data->get_sensor_data[STEP_COUNTER] = get_step_cnt_sensordata;
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-	data->get_sensor_data[BIO_HRM_RAW] = get_hrm_raw_sensordata;
-	data->get_sensor_data[BIO_HRM_RAW_FAC] = get_hrm_raw_fac_sensordata;
 	data->get_sensor_data[BIO_HRM_LIB] = get_hrm_lib_sensordata;
 #endif
 	data->get_sensor_data[TILT_TO_WAKE] = get_3axis_sensordata;
@@ -299,8 +283,6 @@ void initialize_function_pointer(struct ssp_data *data)
 		report_uncalib_gyro_data;
 	data->report_sensor_data[STEP_COUNTER] = report_step_cnt_data;
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-	data->report_sensor_data[BIO_HRM_RAW] = report_hrm_raw_data;
-	data->report_sensor_data[BIO_HRM_RAW_FAC] = report_hrm_raw_fac_data;
 	data->report_sensor_data[BIO_HRM_LIB] = report_hrm_lib_data;
 #endif
 	data->report_sensor_data[TILT_TO_WAKE] = report_tilt_wake_data;

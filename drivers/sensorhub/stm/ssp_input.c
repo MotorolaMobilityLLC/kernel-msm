@@ -295,38 +295,6 @@ void report_step_cnt_data(struct ssp_data *data,
 }
 
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-void report_hrm_raw_data(struct ssp_data *data, struct sensor_value *hrmdata)
-{
-	data->buf[BIO_HRM_RAW].ch_a = hrmdata->ch_a;
-	data->buf[BIO_HRM_RAW].ch_b = hrmdata->ch_b;
-	input_report_rel(data->hrm_raw_input_dev, REL_X,
-		data->buf[BIO_HRM_RAW].ch_a + 1);
-	input_report_rel(data->hrm_raw_input_dev, REL_Y,
-		data->buf[BIO_HRM_RAW].ch_b + 1);
-	input_report_rel(data->hrm_raw_input_dev, REL_Z, 1);	/* Dummy code */
-	input_sync(data->hrm_raw_input_dev);
-}
-
-void report_hrm_raw_fac_data(struct ssp_data *data,
-	struct sensor_value *hrmdata)
-{
-	data->buf[BIO_HRM_RAW_FAC].ch_a = hrmdata->ch_a;
-	data->buf[BIO_HRM_RAW_FAC].ch_b = hrmdata->ch_b;
-	data->buf[BIO_HRM_RAW_FAC].frequency = hrmdata->frequency;
-	data->buf[BIO_HRM_RAW_FAC].noise_value = hrmdata->noise_value;
-	data->buf[BIO_HRM_RAW_FAC].dc_value = hrmdata->dc_value;
-	data->buf[BIO_HRM_RAW_FAC].ac_value = hrmdata->ac_value;
-	data->buf[BIO_HRM_RAW_FAC].perfusion_rate = hrmdata->perfusion_rate;
-	data->buf[BIO_HRM_RAW_FAC].snrac = hrmdata->snrac;
-	data->buf[BIO_HRM_RAW_FAC].snrdc = hrmdata->snrdc;
-	input_report_rel(data->hrm_raw_input_dev, REL_X,
-		data->buf[BIO_HRM_RAW_FAC].ch_a + 1);
-	input_report_rel(data->hrm_raw_input_dev, REL_Y,
-		data->buf[BIO_HRM_RAW_FAC].ch_b + 1);
-	input_report_rel(data->hrm_raw_input_dev, REL_Z, 1);	/* Dummy code */
-	input_sync(data->hrm_raw_input_dev);
-}
-
 void report_hrm_lib_data(struct ssp_data *data, struct sensor_value *hrmdata)
 {
 	data->buf[BIO_HRM_LIB].hr = hrmdata->hr;
@@ -394,10 +362,6 @@ int initialize_event_symlink(struct ssp_data *data)
 		goto iRet_meta_sysfs_create_link;
 
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-	iRet = sensors_create_symlink(data->hrm_raw_input_dev);
-	if (iRet < 0)
-		goto iRet_hrm_raw_sysfs_create_link;
-
 	iRet = sensors_create_symlink(data->hrm_lib_input_dev);
 	if (iRet < 0)
 		goto iRet_hrm_lib_sysfs_create_link;
@@ -411,10 +375,8 @@ iRet_tilt_wake_sysfs_create_link:
 #ifdef CONFIG_SENSORS_SSP_ADPD142
 	sensors_remove_symlink(data->hrm_lib_input_dev);
 iRet_hrm_lib_sysfs_create_link:
-	sensors_remove_symlink(data->hrm_raw_input_dev);
-iRet_hrm_raw_sysfs_create_link:
-	sensors_remove_symlink(data->meta_input_dev);
 #endif
+	sensors_remove_symlink(data->meta_input_dev);
 iRet_meta_sysfs_create_link:
 	sensors_remove_symlink(data->step_cnt_input_dev);
 iRet_step_cnt_sysfs_create_link:
@@ -440,7 +402,6 @@ void remove_event_symlink(struct ssp_data *data)
 	sensors_remove_symlink(data->step_cnt_input_dev);
 	sensors_remove_symlink(data->meta_input_dev);
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-	sensors_remove_symlink(data->hrm_raw_input_dev);
 	sensors_remove_symlink(data->hrm_lib_input_dev);
 #endif
 	sensors_remove_symlink(data->tilt_wake_input_dev);
@@ -759,22 +720,6 @@ int initialize_input_dev(struct ssp_data *data)
 	input_set_drvdata(data->meta_input_dev, data);
 
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-	data->hrm_raw_input_dev = input_allocate_device();
-	if (data->hrm_raw_input_dev == NULL)
-		goto err_initialize_hrm_raw_input_dev;
-
-	data->hrm_raw_input_dev->name = "hrm_raw_sensor";
-	input_set_capability(data->hrm_raw_input_dev, EV_REL, REL_X);
-	input_set_capability(data->hrm_raw_input_dev, EV_REL, REL_Y);
-	input_set_capability(data->hrm_raw_input_dev, EV_REL, REL_Z);
-
-	iRet = input_register_device(data->hrm_raw_input_dev);
-	if (iRet < 0) {
-		input_free_device(data->hrm_raw_input_dev);
-		goto err_initialize_hrm_raw_input_dev;
-	}
-	input_set_drvdata(data->hrm_raw_input_dev, data);
-
 	data->hrm_lib_input_dev = input_allocate_device();
 	if (data->hrm_lib_input_dev == NULL)
 		goto err_initialize_hrm_lib_input_dev;
@@ -818,12 +763,8 @@ err_initialize_tilt_wake_input_dev:
 err_initialize_hrm_lib_input_dev:
 	pr_err("[SSP]: %s - could not allocate hrm lib input device\n",
 		__func__);
-	input_unregister_device(data->hrm_raw_input_dev);
-err_initialize_hrm_raw_input_dev:
-	pr_err("[SSP]: %s - could not allocate hrm raw input device\n",
-		__func__);
-	input_unregister_device(data->meta_input_dev);
 #endif
+	input_unregister_device(data->meta_input_dev);
 err_initialize_meta_input_dev:
 	pr_err("[SSP]: %s - could not allocate meta event input device\n",
 		__func__);
@@ -917,5 +858,8 @@ void remove_input_dev(struct ssp_data *data)
 	input_unregister_device(data->uncalib_gyro_input_dev);
 	input_unregister_device(data->step_cnt_input_dev);
 	input_unregister_device(data->meta_input_dev);
+#ifdef CONFIG_SENSORS_SSP_ADPD142
+	input_unregister_device(data->hrm_lib_input_dev);
+#endif
 	input_unregister_device(data->tilt_wake_input_dev);
 }
