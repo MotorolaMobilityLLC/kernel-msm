@@ -86,9 +86,9 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 
 #ifdef CONFIG_FB_MSM_MDSS_MDP3
 	mdp3_session = pdsi_status->mfd->mdp.private1;
-	mutex_lock(&mdp3_session->lock);
+	mutex_lock(&mdp3_session->offlock);
 	ret = ctrl_pdata->check_status(ctrl_pdata);
-	mutex_unlock(&mdp3_session->lock);
+	mutex_unlock(&mdp3_session->offlock);
 #else
 	mdp5_data = mfd_to_mdp5_data(pdsi_status->mfd);
 	ctl = mfd_to_ctl(pdsi_status->mfd);
