@@ -217,7 +217,6 @@
 	status = "ok";
 };
 
-/*
 &sdhc_2 {
 	vdd-supply = <&pm8226_l18>;
 	qcom,vdd-voltage-level = <2950000 2950000>;
@@ -243,7 +242,6 @@
 
 	status = "ok";
 };
-*/
 
 &spmi_bus {
 	qcom,pm8226@0 {
