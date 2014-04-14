@@ -145,6 +145,7 @@ typedef struct
    wpt_log_data_stall_channel_type  dxeChannelInfo[WPT_NUM_TRPT_CHANNEL];
 } wpt_log_data_stall_type;
 
+
 //pPkt is a pointer to wpt_packet
 #define WPAL_PACKET_SET_BD_POINTER(pPkt, pBd)   ( (pPkt)->pBD = (pBd) )
 #define WPAL_PACKET_GET_BD_POINTER(pPkt)  ( (pPkt)->pBD )

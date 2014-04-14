@@ -483,7 +483,7 @@ typedef struct
  * open WDA context
  */ 
 
-VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t pOSContext, 
+VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t devHandle,
                                               tMacOpenParameters *pMacParams ) ;
 
 /*
