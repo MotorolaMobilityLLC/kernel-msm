@@ -813,9 +813,9 @@
 		};
 	};
 
-	mmi_wls_chrg@6d {
+	mmi_wls_chrg@6c {
 		compatible = "mmi,wls-charger-bq51021";
-		reg = <0x6d>;
+		reg = <0x6c>;
 		gpios = <&pma8084_gpios 1 0x1>, /* GPIOF_IN */
 			<&pma8084_mpps 4 0x2>, /* GPIOF_OUT_INIT_HIGH */
 			<&msmgpio 66 0x0>; /* GPIOF_OUT_INIT_LOW */
