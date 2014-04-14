@@ -5873,7 +5873,19 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	create_EocCurBigger_value_proc_file();
 #endif
 	//ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter---
+
+//ASUS_BSP +++
+	{
+		u8 reg_value;
 	
+		reg_value = 0x1;
+		rc = qpnp_chg_write(chip, &reg_value, 0x1055, 1); //set trickle charge phase B to 50mA
+		if (rc) {
+			printk("Unable to write reg 0x1055 rc=%d\n", rc);
+		}
+	}
+//ASUS_BSP ---
+
 	return 0;
 
 unregister_dc_psy:
