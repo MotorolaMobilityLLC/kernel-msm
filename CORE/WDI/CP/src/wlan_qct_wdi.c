@@ -681,6 +681,7 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
    NULL,
 #endif /* FEATURE_WLAN_CH_AVOID */
 
+    WDI_printRegInfo                        /* WDI_PRINT_REG_INFO_IND */
 };
 
 
@@ -23545,7 +23546,8 @@ case WLAN_HAL_DEL_STA_SELF_RSP:
 #endif /* FEATURE_WLAN_CH_AVOID */
   case WLAN_HAL_UPDATE_CHANNEL_LIST_RSP:
     return WDI_UPDATE_CHAN_RESP;
-
+  case WLAN_HAL_PRINT_REG_INFO_IND:
+    return  WDI_PRINT_REG_INFO_IND;
   default:
     return eDRIVER_TYPE_MAX;
   }
@@ -30069,3 +30071,52 @@ WDI_Status WDI_HT40OBSSStopScanInd
     return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
 }
 
+WDI_Status
+WDI_printRegInfo
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+   tHalRegDebugInfo *pRegTable;
+   tHalRegDebugInfoParams *pRegParams;
+   uint32 cnt=0;
+
+   WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+                  "%s: ", __func__);
+    /*-------------------------------------------------------------------------
+     Sanity check
+    -------------------------------------------------------------------------*/
+   if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+       ( NULL == pEventData->pEventData))
+   {
+       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                  "%s: Invalid parameters", __func__);
+       WDI_ASSERT(0);
+       return WDI_STATUS_E_FAILURE;
+   }
+
+   pRegParams  = (tHalRegDebugInfoParams *)pEventData->pEventData;
+
+   WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+          "%s: regCount: %x scenario: %x reasonCode: %x", __func__,
+           pRegParams->regCount, pRegParams->scenario, pRegParams->reasonCode);
+
+   pRegTable = (tHalRegDebugInfo *)(pRegParams+1); //data starts after regParams
+
+   if (pRegParams->regCount <= 0)
+   {
+       WPAL_TRACE (eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                   "%s incorrect parameters passed", __func__);
+       return WDI_STATUS_E_FAILURE;
+   }
+
+   while(pRegParams->regCount--)
+   {
+       WPAL_TRACE (eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                   "%x: %x", pRegTable[cnt].regAddr, pRegTable[cnt].regValue);
+       cnt++;
+   }
+
+   return WDI_STATUS_SUCCESS;
+}

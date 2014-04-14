@@ -812,6 +812,10 @@ typedef enum
   WDI_BATCHSCAN_RESULT_IND           =  WDI_HAL_IND_MIN + 17,
 
   WDI_HAL_CH_AVOID_IND                 = WDI_HAL_IND_MIN + 18,
+
+  /* print register values indication from FW to Host */
+  WDI_PRINT_REG_INFO_IND               = WDI_HAL_IND_MIN + 19,
+
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
 
@@ -5721,6 +5725,22 @@ WDI_ProcessChAvoidInd
   WDI_EventInfoType*     pEventData
 );
 #endif /* FEATURE_WLAN_CH_AVOID */
+
+/**
+ @brief v -
+
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_printRegInfo
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
 
 #endif /*WLAN_QCT_WDI_I_H*/
 
