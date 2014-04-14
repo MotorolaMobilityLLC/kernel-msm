@@ -531,32 +531,6 @@ static ssize_t set_uncalib_gyro_delay(struct device *dev,
 	return size;
 }
 
-#ifdef CONFIG_SENSORS_SSP_ADPD142
-static ssize_t show_hrm_delay(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct ssp_data *data = dev_get_drvdata(dev);
-
-	return snprintf(buf, PAGE_SIZE,
-		"%lld\n", data->adDelayBuf[BIO_HRM_RAW]);
-}
-
-static ssize_t set_hrm_delay(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t size)
-{
-	int64_t dNewDelay;
-	struct ssp_data *data = dev_get_drvdata(dev);
-
-	if (kstrtoll(buf, 10, &dNewDelay) < 0)
-		return -EINVAL;
-
-	change_sensor_delay(data, BIO_HRM_RAW, dNewDelay);
-	change_sensor_delay(data, BIO_HRM_RAW_FAC, dNewDelay);
-
-	return size;
-}
-#endif
-
 static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_sensors_enable, set_sensors_enable);
 static DEVICE_ATTR(enable_irq, S_IRUGO | S_IWUSR | S_IWGRP,
@@ -589,11 +563,6 @@ static struct device_attribute dev_attr_uncalib_gyro_poll_delay
 static struct device_attribute dev_attr_step_cnt_poll_delay
 	= __ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_step_cnt_delay, set_step_cnt_delay);
-#ifdef CONFIG_SENSORS_SSP_ADPD142
-static struct device_attribute dev_attr_hrm_poll_delay
-	= __ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
-	show_hrm_delay, set_hrm_delay);
-#endif
 
 static struct device_attribute *mcu_attrs[] = {
 	&dev_attr_enable,
@@ -736,13 +705,6 @@ int initialize_sysfs(struct ssp_data *data)
 		&dev_attr_step_cnt_poll_delay))
 		goto err_step_cnt_input_dev;
 
-#ifdef CONFIG_SENSORS_SSP_ADPD142
-	if (device_create_file(&data->hrm_raw_input_dev->dev,
-		&dev_attr_hrm_poll_delay))
-		goto err_hrm_input_dev;
-#endif
-
-
 	data->batch_io_device.minor = MISC_DYNAMIC_MINOR;
 	data->batch_io_device.name = "batch_io";
 	data->batch_io_device.fops = &ssp_batch_fops;
@@ -753,11 +715,6 @@ int initialize_sysfs(struct ssp_data *data)
 
 	return SUCCESS;
 err_batch_io_dev:
-#ifdef CONFIG_SENSORS_SSP_ADPD142
-	device_remove_file(&data->hrm_raw_input_dev->dev,
-		&dev_attr_hrm_poll_delay);
-err_hrm_input_dev:
-#endif
 	device_remove_file(&data->step_cnt_input_dev->dev,
 		&dev_attr_step_cnt_poll_delay);
 err_step_cnt_input_dev:
@@ -789,10 +746,7 @@ void remove_sysfs(struct ssp_data *data)
 		&dev_attr_uncalib_gyro_poll_delay);
 	device_remove_file(&data->step_cnt_input_dev->dev,
 		&dev_attr_step_cnt_poll_delay);
-#ifdef CONFIG_SENSORS_SSP_ADPD142
-	device_remove_file(&data->hrm_raw_input_dev->dev,
-		&dev_attr_hrm_poll_delay);
-#endif
+	misc_deregister(&data->batch_io_device);
 
 	remove_mcu_factorytest(data);
 

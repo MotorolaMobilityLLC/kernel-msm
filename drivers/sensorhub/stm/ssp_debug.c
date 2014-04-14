@@ -144,13 +144,6 @@ static void print_sensordata(struct ssp_data *data, unsigned int uSensor)
 			get_msdelay(data->adDelayBuf[uSensor]));
 		break;
 #ifdef CONFIG_SENSORS_SSP_ADPD142
-	case BIO_HRM_RAW:
-	case BIO_HRM_RAW_FAC:
-		ssp_dbg("[SSP] %u : %d, %d (%ums)\n", uSensor,
-			data->buf[uSensor].ch_a, data->buf[uSensor].ch_b,
-			get_msdelay(data->adDelayBuf[uSensor]));
-		break;
-
 	case BIO_HRM_LIB:
 		ssp_dbg("[SSP] %u : %d, %d, %d (%ums)\n", uSensor,
 			data->buf[uSensor].hr, data->buf[uSensor].rri,
