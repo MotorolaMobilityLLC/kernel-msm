@@ -651,6 +651,7 @@ static int mdp3_ctrl_off(struct msm_fb_data_type *mfd)
 
 	panel = mdp3_session->panel;
 	mutex_lock(&mdp3_session->lock);
+	mutex_lock(&mdp3_session->offlock);
 
 	if (!mdp3_session->status) {
 		pr_debug("fb%d is off already", mfd->index);
@@ -710,6 +711,7 @@ off_error:
 		mdp3_session->overlay.id = MSMFB_NEW_REQUEST;
 		mdp3_bufq_deinit(&mdp3_session->bufq_in);
 	}
+	mutex_unlock(&mdp3_session->offlock);
 	mutex_unlock(&mdp3_session->lock);
 	return 0;
 }
@@ -786,6 +788,7 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 	panel = mdp3_session->panel;
 	mdp3_dma = mdp3_session->dma;
 	mutex_lock(&mdp3_session->lock);
+	mutex_lock(&mdp3_session->offlock);
 
 	vsync_client = mdp3_dma->vsync_client;
 
@@ -837,6 +840,7 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 		ctrl_pdata->cont_splash_on(panel);
 
 reset_error:
+	mutex_unlock(&mdp3_session->offlock);
 	mutex_unlock(&mdp3_session->lock);
 	return rc;
 }
@@ -1771,6 +1775,7 @@ int mdp3_ctrl_init(struct msm_fb_data_type *mfd)
 	}
 	memset(mdp3_session, 0, sizeof(struct mdp3_session_data));
 	mutex_init(&mdp3_session->lock);
+	mutex_init(&mdp3_session->offlock);
 	INIT_WORK(&mdp3_session->clk_off_work, mdp3_dispatch_clk_off);
 	INIT_WORK(&mdp3_session->dma_done_work, mdp3_dispatch_dma_done);
 	atomic_set(&mdp3_session->vsync_countdown, 0);
