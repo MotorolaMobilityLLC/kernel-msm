@@ -1,0 +1,23 @@
+GPIO charger
+
+Required properties:
+- compatible:		Must be "gpio-charger".
+- gpio:			GPIO indicating charging status.
+- charger-type:		Type of the charger from enum power_supply_type defined in linux/power_supply.h.
+
+Optional properties:
+- pinctrl-names:	The definition can be found at pinctrl/pinctrl-bindings.txt.
+- pinctrl-0:		The definition can be found at pinctrl/pinctrl-bindings.txt.
+- charger-name:		Name for the chargers power_supply device.
+- gpio_active_low:	Define this property if GPIO is active low.
+- supplied_to:		Strings with battery names to which this charger supplies power.
+
+Example:
+
+	gpio-charger {
+		compatible = "gpio-charger";
+		pinctrl-names = "default";
+		pinctrl-0 = <&charge_pin>;
+		gpio = <&gpio6 16 0>;
+		charger-type = <3>; /* POWER_SUPPLY_TYPE_MAINS */
+	};

@@ -19,6 +19,8 @@
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/slab.h>
@@ -68,13 +70,82 @@ static enum power_supply_property gpio_charger_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 };
 
+
+static struct gpio_charger_platform_data *
+of_get_gpio_charger_pdata(struct device *dev)
+{
+	struct device_node *np = dev->of_node;
+	struct gpio_charger_platform_data *pdata;
+	const char *string;
+	int i, count, size;
+	u32 val;
+
+	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(dev, "Failed to alloc platform data\n");
+		return NULL;
+	}
+
+	of_property_read_string(np, "charger-name", &pdata->name);
+
+	if (of_property_read_u32(np, "charger-type", &val)) {
+		dev_err(dev, "No 'charger-type' property\n");
+		return NULL;
+	}
+	pdata->type = val;
+
+	pdata->gpio = of_get_named_gpio(np, "gpio", 0);
+	if (pdata->gpio < 0) {
+		dev_err(dev, "No invalid 'gpio' property\n");
+		return NULL;
+	}
+
+	pdata->gpio_active_low = of_property_read_bool(np, "gpio_active_low");
+
+	count = of_property_count_strings(np, "supplied_to");
+	if (count > 0) {
+		size = count * sizeof(*pdata->supplied_to);
+		pdata->supplied_to = devm_kzalloc(dev, size, GFP_KERNEL);
+		if (!pdata->supplied_to) {
+			dev_err(dev, "Failed to alloc supplied_to\n");
+			return NULL;
+		}
+
+		/* Make copies of the DT strings for const-correctness */
+		for (i = 0; i < count; i++) {
+			if (of_property_read_string_index(np, "supplied_to", i,
+							  &string)) {
+				dev_err(dev, "Failed to read supplied_to"
+					" supplied_to[%d]\n", i);
+				for (i--; i >= 0; i--)
+					kfree(pdata->supplied_to[i]);
+				return NULL;
+			}
+			pdata->supplied_to[i] = kstrdup(string,  GFP_KERNEL);
+			if (!pdata->supplied_to[i]) {
+				dev_err(dev, "Failed to alloc space for"
+					" supplied_to[%d]\n", i);
+				return NULL;
+			}
+		}
+		pdata->num_supplicants = count;
+	}
+
+	return pdata;
+}
+
 static int gpio_charger_probe(struct platform_device *pdev)
 {
-	const struct gpio_charger_platform_data *pdata = pdev->dev.platform_data;
+	const struct gpio_charger_platform_data *pdata;
 	struct gpio_charger *gpio_charger;
 	struct power_supply *charger;
 	int ret;
 	int irq;
+
+	if (pdev->dev.of_node)
+		pdata = of_get_gpio_charger_pdata(&pdev->dev);
+	else
+		pdata = pdev->dev.platform_data;
 
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform data\n");
@@ -147,6 +218,7 @@ err_free:
 static int gpio_charger_remove(struct platform_device *pdev)
 {
 	struct gpio_charger *gpio_charger = platform_get_drvdata(pdev);
+	int i;
 
 	if (gpio_charger->irq)
 		free_irq(gpio_charger->irq, &gpio_charger->charger);
@@ -154,6 +226,11 @@ static int gpio_charger_remove(struct platform_device *pdev)
 	power_supply_unregister(&gpio_charger->charger);
 
 	gpio_free(gpio_charger->pdata->gpio);
+
+	/* Free memory allocated for the copies of the DT strings */
+	if (pdev->dev.of_node && gpio_charger->pdata->supplied_to)
+		for (i = 0; i < gpio_charger->pdata->num_supplicants; i++)
+			kfree(gpio_charger->pdata->supplied_to[i]);
 
 	platform_set_drvdata(pdev, NULL);
 
@@ -174,6 +251,14 @@ static int gpio_charger_resume(struct device *dev)
 
 static SIMPLE_DEV_PM_OPS(gpio_charger_pm_ops, NULL, gpio_charger_resume);
 
+#if defined(CONFIG_OF)
+static const struct of_device_id gpio_charger_of_match[] = {
+	{ .compatible = "gpio-charger", },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, gpio_charger_of_match);
+#endif
+
 static struct platform_driver gpio_charger_driver = {
 	.probe = gpio_charger_probe,
 	.remove = gpio_charger_remove,
@@ -181,6 +266,7 @@ static struct platform_driver gpio_charger_driver = {
 		.name = "gpio-charger",
 		.owner = THIS_MODULE,
 		.pm = &gpio_charger_pm_ops,
+		.of_match_table = gpio_charger_of_match,
 	},
 };
 
