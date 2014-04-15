@@ -47,6 +47,29 @@
 #include <linux/utsname.h>
 
 #include <asm/uaccess.h>
+//adbg++
+#include <linux/asus_global.h>
+#include <linux/rtc.h>
+
+static int is_rebased = 0;
+int suspend_in_progress = 0;
+static char *g_printk_log_buf;
+
+#if 0
+// added by jack for printk hh:mm:ss.ns
+extern struct timezone sys_tz;
+
+static void myrtc_time_to_tm(unsigned long time, struct rtc_time *tm)
+{
+    tm->tm_hour = time / 3600;
+    time -= tm->tm_hour * 3600;
+    tm->tm_hour %= 24;
+    tm->tm_min = time / 60;
+    tm->tm_sec = time - tm->tm_min * 60;
+}
+#endif
+int boot_after_60sec=0;
+//adbg--
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/printk.h>
@@ -873,6 +896,59 @@ void log_buf_kexec_setup(void)
 /* requested log_buf_len from kernel cmdline */
 static unsigned long __initdata new_log_buf_len;
 
+//adbg++
+struct _asus_global asus_global =
+{
+		.asus_global_magic = ASUS_GLOBAL_MAGIC,
+		.ramdump_enable_magic = ASUS_GLOBAL_RUMDUMP_MAGIC,
+		.kernel_log_addr = __log_buf,
+		.kernel_log_size = __LOG_BUF_LEN,
+//		.kernel_version = ASUS_SW_VER,
+};
+unsigned char debug_mask_setting[ASUS_MSK_GROUP] = DEFAULT_MASK;
+EXPORT_SYMBOL(debug_mask_setting);
+
+
+void printk_buffer_rebase(void)
+{
+	char *new_log_buf;
+	unsigned long flags;
+
+	if(is_rebased){
+		goto out;
+	}
+
+	new_log_buf = g_printk_log_buf = (char *) PRINTK_BUFFER;//__va(PRINTK_BUFFER);  
+	printk("[adbg] printk_buffer_rebase new_log_buf=%p, __LOG_BUF_LEN:0x%x\n", new_log_buf, __LOG_BUF_LEN);
+	if (!new_log_buf) {
+		printk("[adbg] printk_buffer_rebase log_buf_len: allocation failed\n");
+		goto out;
+	}
+    
+	memset(g_printk_log_buf, 0, PRINTK_BUFFER_SLOT_SIZE);
+    
+	raw_spin_lock_irqsave(&logbuf_lock, flags);
+	log_buf_len = PRINTK_BUFFER_SLOT_SIZE;
+	log_buf = new_log_buf;
+	asus_global.kernel_log_addr = log_buf;
+	asus_global.kernel_log_size = log_buf_len;
+	
+	memset( asus_global.kernel_version, 0, sizeof(asus_global.kernel_version));
+	strncpy(asus_global.kernel_version, ASUS_SW_VER, sizeof(asus_global.kernel_version));
+
+	memcpy(log_buf, __log_buf, __LOG_BUF_LEN);
+	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+
+	printk("[adbg] printk_buffer_rebase, log_buf:%p, log_buf_len: 0x%x\n", log_buf, log_buf_len);
+
+	is_rebased = 1;
+out:    
+    return;    
+}
+EXPORT_SYMBOL(printk_buffer_rebase);
+//adbg--
+
+
 /* save requested log_buf_len since it's too early to process it */
 static int __init log_buf_len_setup(char *str)
 {
@@ -1003,6 +1079,8 @@ static bool printk_time;
 #endif
 module_param_named(time, printk_time, bool, S_IRUGO | S_IWUSR);
 
+//adbg++
+#if 0
 static size_t print_time(u64 ts, char *buf)
 {
 	unsigned long rem_nsec;
@@ -1018,6 +1096,24 @@ static size_t print_time(u64 ts, char *buf)
 	return sprintf(buf, "[%5lu.%06lu] ",
 		       (unsigned long)ts, rem_nsec / 1000);
 }
+#endif
+
+static size_t asus_print_time(u64 ts, char *buf)
+{
+	unsigned long rem_nsec;
+
+	if (!printk_time)
+		return 0;
+
+	rem_nsec = do_div(ts, 1000000000);
+
+	if (!buf)
+		return snprintf(NULL, 0, "[%5lu.000000](CPU:%d-pid:%d:%s) ", (unsigned long)ts, smp_processor_id(), current->pid, current->comm);
+
+	return sprintf(buf, "[%5lu.%06lu](CPU:%d-pid:%d:%s) ",
+		       (unsigned long)ts, rem_nsec / 1000, smp_processor_id(), current->pid, current->comm);
+}
+//adbg--
 
 static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 {
@@ -1038,7 +1134,8 @@ static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 		}
 	}
 
-	len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
+	//len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
+	len += asus_print_time(msg->ts_nsec, buf ? buf + len : NULL);
 	return len;
 }
 
@@ -1283,6 +1380,112 @@ int syslog_print(char __user *buf, int size)
 	return len;
 }
 
+/* 
+ * ASUS_BSP ++++ Josh_Hsu: Add for parsing asdf log 
+ *
+ * This function will fill kernel log in buf
+ * If is_rebased is not set, this indicates that 
+ * devices is panic reset. Thus, we need rebase 
+ * temporarily to fetch previous log in PRINTK_BUFFER 
+ * 
+ * Input:
+ * @char* buf	: buffer that need to be fill
+ * @int size	: size of buffer 
+ * Output:
+ * return 		: the size (in byte) of log filled
+ */
+static int asus_syslog_print(char *buf, int size)
+{
+	char *text;
+	struct log *msg;
+	int len = 0;
+
+	int tmp_rebase = 0;
+	unsigned long flags;
+	int origin_log_buf_len;
+	char* origin_log_buf;
+
+	u32 head_idx = 0;
+	u32 head_seq = 0;
+	size_t head_partial = 0;
+	enum log_flags head_prev;
+
+	if(!is_rebased){
+		/* Rebase to PRINTK_BUFFER */
+		tmp_rebase = 1;
+		
+		origin_log_buf_len = log_buf_len;
+		origin_log_buf = log_buf;
+		
+		raw_spin_lock_irqsave(&logbuf_lock, flags);
+		log_buf_len = PRINTK_BUFFER_SLOT_SIZE;
+		log_buf = (char *) PRINTK_BUFFER;
+		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+	}
+
+	text = kmalloc(LOG_LINE_MAX + PREFIX_MAX, GFP_KERNEL);
+	if (!text)
+		return -ENOMEM;
+
+	while (size > 0) {
+		size_t n;
+		size_t skip;
+
+		raw_spin_lock_irq(&logbuf_lock);
+		//if (syslog_seq < log_first_seq) {
+		//	/* messages are gone, move to first one */
+		//	syslog_seq = log_first_seq;
+		//	syslog_idx = log_first_idx;
+		//	syslog_prev = 0;
+		//	syslog_partial = 0;
+		//}
+		//if (syslog_seq == log_next_seq) {
+		//	raw_spin_unlock_irq(&logbuf_lock);
+		//	break;
+		//}
+
+		skip = syslog_partial;
+		msg = log_from_idx(head_idx, true);
+		n = msg_print_text(msg, syslog_prev, true, text,
+				   LOG_LINE_MAX + PREFIX_MAX);
+		if (n - head_partial <= size) {
+			/* message fits into buffer, move forward */
+			head_idx = log_next(head_idx, true);
+			head_seq++;
+			head_prev = msg->flags;
+			n -= head_partial;
+			syslog_partial = 0;
+		} else if (!len){
+			/* partial read(), remember position */
+			n = size;
+			head_partial += n;
+		} else
+			n = 0;
+		raw_spin_unlock_irq(&logbuf_lock);
+
+		if (!n)
+			break;
+		memcpy(buf, text + skip, n);
+
+		len += n;
+		size -= n;
+		buf += n;
+	}
+
+	if(tmp_rebase){	
+		raw_spin_lock_irqsave(&logbuf_lock, flags);
+		log_buf_len = origin_log_buf_len;
+		log_buf = origin_log_buf;
+		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+		tmp_rebase = 0;
+	}
+	
+	kfree(text);
+	return len;
+}
+/* ASUS_BSP ---- Josh_Hsu: Add for parsing */
+
+
 static int syslog_print_all(char __user *buf, int size, bool clear)
 {
 	char *text;
@@ -1427,6 +1630,29 @@ int do_syslog(int type, char __user *buf, int len, bool from_file)
 			goto out;
 		error = syslog_print(buf, len);
 		break;
+	/* ASUS_BSP ++++ Josh_Hsu: Add for support parse asdf log */
+	case SYSLOG_ACTION_READ_KERNEL:
+		error = -EINVAL;
+		if (!buf || len < 0)
+			goto out;
+		error = 0;
+		if (!len)
+			goto out;
+		/* 
+		 * Skip check access user space accessibility 
+		 * because we implement in kernel 		
+		 */
+		//if (!access_ok(VERIFY_WRITE, buf, len)) {
+		//	error = -EFAULT;
+		//	goto out;
+		//}
+		error = wait_event_interruptible(log_wait,
+						 syslog_seq != log_next_seq);
+		if (error)
+			goto out;
+		error = asus_syslog_print(buf, len);
+		break;
+	/* ASUS_BSP ---- Josh_Hsu: Add for support parse asdf log */
 	/* Read/clear last kernel messages */
 	case SYSLOG_ACTION_READ_CLEAR:
 		clear = true;
@@ -1740,7 +1966,10 @@ static size_t cont_print_text(char *text, size_t size)
 	size_t len;
 
 	if (cont.cons == 0 && (console_prev & LOG_NEWLINE)) {
-		textlen += print_time(cont.ts_nsec, text);
+//adbg++
+//		textlen += print_time(cont.ts_nsec, text);
+		textlen += asus_print_time(cont.ts_nsec, text);
+//adbg--
 		size -= textlen;
 	}
 
@@ -2162,6 +2391,10 @@ MODULE_PARM_DESC(console_suspend, "suspend console during suspend"
  */
 void suspend_console(void)
 {
+//adbg++
+	ASUSEvtlog("[UTS] System Suspend");
+	suspend_in_progress = 1;
+//adbg--
 	if (!console_suspend_enabled)
 		return;
 	printk("Suspending console(s) (use no_console_suspend to debug)\n");
@@ -2172,6 +2405,10 @@ void suspend_console(void)
 
 void resume_console(void)
 {
+//adbg++
+	suspend_in_progress = 0;
+	ASUSEvtlog("[UTS] System Resume");
+//adbg--
 	if (!console_suspend_enabled)
 		return;
 	down(&console_sem);
@@ -3209,3 +3446,43 @@ void show_regs_print_info(const char *log_lvl)
 }
 
 #endif
+
+//adbg++
+#if defined(CONFIG_DEBUG_FS)
+#include <linux/debugfs.h>
+static int Asus_ramdump_debug_set(void *data, u64 val)
+{
+	if (val == 1)
+		asus_global.ramdump_enable_magic = ASUS_GLOBAL_RUMDUMP_MAGIC;
+	else
+		asus_global.ramdump_enable_magic = 0;
+		
+	return 0;
+}
+
+static int Asus_ramdump_debug_get(void *data, u64 *val)
+{
+	if (asus_global.ramdump_enable_magic == ASUS_GLOBAL_RUMDUMP_MAGIC)
+	*val = 1;
+	else
+	*val = 0;
+	
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(Asus_ramdump_debug_fops, Asus_ramdump_debug_get, Asus_ramdump_debug_set, "%llu\n");
+static int __init Asus_ramdump_debug_init(void)
+{
+	struct dentry *dent;
+
+	dent = debugfs_create_dir("Asus_ramdump", 0);
+	if (IS_ERR(dent))
+		return PTR_ERR(dent);
+
+	debugfs_create_file("Asus_ramdump_flag", 0644, dent, NULL, &Asus_ramdump_debug_fops);
+
+	return 0;
+}
+
+device_initcall(Asus_ramdump_debug_init);
+#endif
+//adbg--

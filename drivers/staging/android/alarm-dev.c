@@ -210,6 +210,7 @@ static long alarm_do_ioctl(struct file *file, unsigned int cmd,
 	int rv = 0;
 	unsigned long flags;
 	enum android_alarm_type alarm_type = ANDROID_ALARM_IOCTL_TO_TYPE(cmd);
+	static int asus_rtc_set = 0;  //adbg++
 
 	if (alarm_type >= ANDROID_ALARM_TYPE_COUNT)
 		return -EINVAL;
@@ -245,6 +246,23 @@ static long alarm_do_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case ANDROID_ALARM_SET_RTC:
 		rv = alarm_set_rtc(ts);
+//adbg++
+		{ // added to get correct time for last shutdown log by jack
+			unsigned int *last_shutdown_log_addr;
+			extern void get_last_shutdown_log(void);
+
+			last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
+
+			if(!asus_rtc_set)
+			{  
+				asus_rtc_set = 1;
+				get_last_shutdown_log();       
+				printk("[adbg] %s(), rtc: get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n",
+					__func__, (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
+				(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
+			}
+        	}	
+//adbg--
 		break;
 	case ANDROID_ALARM_GET_TIME(0):
 		rv = alarm_get_time(alarm_type, ts);
@@ -267,6 +285,10 @@ static long alarm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case ANDROID_ALARM_SET(0):
 	case ANDROID_ALARM_SET_RTC:
 	case ANDROID_ALARM_CLEAR(0):
+//adbg++
+		if (ANDROID_ALARM_SET_RTC == ANDROID_ALARM_BASE_CMD(cmd))
+			printk("[adbg] %s(),  ANDROID_ALARM_SET_RTC\n", __func__);
+//adbg--
 		if (copy_from_user(&ts, (void __user *)arg, sizeof(ts)))
 			return -EFAULT;
 		break;

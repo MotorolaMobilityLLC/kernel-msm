@@ -2082,6 +2082,12 @@ retry_open:
 	}
 	tty_unlock(tty);
 
+//adbg++
+// Fix can't enter control+C from debug board. Tks for Wenli's help.
+	#define ASUS_DEBUG_HSL "ttyHSL0"
+	if  (!strncmp(tty->name, ASUS_DEBUG_HSL, strlen(ASUS_DEBUG_HSL)))
+		noctty = 0;
+//adbg--
 
 	mutex_lock(&tty_mutex);
 	tty_lock(tty);
