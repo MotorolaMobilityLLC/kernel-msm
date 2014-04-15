@@ -45,3 +45,9 @@
 &sdhc_1 {
 	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
 };
+
+&usb3 {
+        interrupt-map = <0x0 0 &intc 0 133 0>;
+        interrupt-names = "hs_phy_irq";
+        dwc_usb3-adc_tm = <0>;
+};

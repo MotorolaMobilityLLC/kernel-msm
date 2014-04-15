@@ -18,3 +18,10 @@
 / {
 	qcom,msm-id = <217 0x4C 0x8000>;
 };
+
+
+&usb3 {
+        interrupt-map = <0x0 0 &intc 0 133 0>;
+        interrupt-names = "hs_phy_irq";
+        dwc_usb3-adc_tm = <0>;
+};
