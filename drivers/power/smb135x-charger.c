@@ -111,6 +111,10 @@
 #define HOT_SOFT_VFLOAT_COMP_EN_BIT	BIT(3)
 #define COLD_SOFT_VFLOAT_COMP_EN_BIT	BIT(2)
 
+#define CFG_1C_REG			0x1C
+#define BATT_CURR_MASK			SMB135X_MASK(4, 0)
+#define TRICK_CURR_MASK			SMB135X_MASK(7, 5)
+
 #define VFLOAT_REG			0x1E
 
 #define VERSION1_REG			0x2A
@@ -351,6 +355,7 @@ struct smb135x_chg {
 	unsigned int			*thermal_mitigation;
 	struct mutex			current_change_lock;
 	bool				factory_mode;
+	int				batt_current_ma;
 };
 
 static struct smb135x_chg *the_chip;
@@ -1149,6 +1154,61 @@ static int smb135x_set_appropriate_current(struct smb135x_chg *chip,
 				therm_ma, path_current,
 				rc);
 	return rc;
+}
+
+int batt_current_table[] = {
+	300,
+	400,
+	450,
+	475,
+	500,
+	550,
+	600,
+	650,
+	700,
+	900,
+	950,
+	1000,
+	1100,
+	1200,
+	1400,
+	1450,
+	1500,
+	1600,
+	1800,
+	1850,
+	1880,
+	1910,
+	1930,
+	1950,
+	1970,
+	2000,
+	2050,
+	2100,
+	2300,
+	2400,
+	2500
+};
+
+static int smb135x_set_batt_current(struct smb135x_chg *chip,
+				   int current_ma)
+{
+	int i, rc;
+	u8 batt_cur_val;
+
+	for (i = ARRAY_SIZE(batt_current_table) - 1; i >= 0; i--) {
+		if (current_ma >= batt_current_table[i])
+			break;
+	}
+	batt_cur_val = i & BATT_CURR_MASK;
+	rc = smb135x_masked_write(chip, CFG_1C_REG,
+				  BATT_CURR_MASK, batt_cur_val);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set Battery current rc = %d\n",
+			rc);
+		return rc;
+	}
+	return 0;
 }
 
 static int __smb135x_charging(struct smb135x_chg *chip, int enable)
@@ -2753,6 +2813,16 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 		}
 	}
 
+	/* set Battery Current */
+	if (chip->batt_current_ma != -EINVAL) {
+		rc = smb135x_set_batt_current(chip, chip->batt_current_ma);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set Battery Current rc = %d\n", rc);
+			return rc;
+		}
+	}
+
 	/* set iterm */
 	if (chip->iterm_ma != -EINVAL) {
 		if (chip->iterm_disabled) {
@@ -3012,6 +3082,11 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 	if (rc < 0)
 		chip->vfloat_mv = -EINVAL;
 
+	rc = of_property_read_u32(node, "qcom,max-batt-curr-ma",
+				  &chip->batt_current_ma);
+	if (rc < 0)
+		chip->batt_current_ma = -EINVAL;
+
 	rc = of_property_read_u32(node, "qcom,charging-timeout",
 						&chip->safety_time);
 	if (rc < 0)
@@ -3257,39 +3332,6 @@ static DEVICE_ATTR(force_chg_auto_enable, 0664,
 		force_chg_auto_enable_show,
 		force_chg_auto_enable_store);
 
-int batt_current_table[] = {
-	300,
-	400,
-	450,
-	475,
-	500,
-	550,
-	600,
-	650,
-	700,
-	900,
-	950,
-	1000,
-	1100,
-	1200,
-	1400,
-	1450,
-	1500,
-	1600,
-	1800,
-	1850,
-	1880,
-	1910,
-	1930,
-	1950,
-	1970,
-	2000,
-	2050,
-	2100,
-	2300,
-	2400,
-	2500
-};
 #define MAX_IBATT_LEVELS 31
 static ssize_t force_chg_ibatt_store(struct device *dev,
 					struct device_attribute *attr,
@@ -3315,8 +3357,8 @@ static ssize_t force_chg_ibatt_store(struct device *dev,
 			break;
 	}
 
-	r = smb135x_masked_write_fac(the_chip, 0x1C,
-				     SMB135X_MASK(4, 0), i);
+	r = smb135x_masked_write_fac(the_chip, CFG_1C_REG,
+				     BATT_CURR_MASK, i);
 	if (r < 0) {
 		dev_err(the_chip->dev,
 			"Couldn't set Fast Charge Current = %d r = %d\n",
@@ -3459,8 +3501,8 @@ static ssize_t force_chg_itrick_store(struct device *dev,
 
 	i = (i << PRECHG_REG_SHIFT) & SMB135X_MASK(7, 5);
 
-	r = smb135x_masked_write_fac(the_chip, 0x1C,
-				     SMB135X_MASK(7, 5), i);
+	r = smb135x_masked_write_fac(the_chip, CFG_1C_REG,
+				     BATT_CURR_MASK, i);
 	if (r < 0) {
 		dev_err(the_chip->dev,
 			"Couldn't set Pre-Charge Current = %d r = %d\n",
