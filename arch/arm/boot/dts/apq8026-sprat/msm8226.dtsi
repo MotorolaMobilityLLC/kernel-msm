@@ -55,7 +55,6 @@
 };
 
 /include/ "msm8226-ion.dtsi"
-/include/ "../qcom/msm8226-camera.dtsi"
 /include/ "../qcom/msm-gdsc.dtsi"
 /include/ "../qcom/msm8226-iommu.dtsi"
 /include/ "msm8226-smp2p.dtsi"

@@ -67,34 +67,6 @@
 		};
 	};
 
-	i2c@22 {
-		cell-index = <22>;
-		compatible = "i2c-gpio";
-		gpios = <&msmgpio 114 0 /* sda */
-			&msmgpio 111 0 /* scl */
-		>;
-
-		i2c-gpio,delay-us = <2>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		irda_ice40@50 {
-			compatible = "irda_ice40";
-			reg = <0x50>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <46 0>;
-			irda_ice40,fw_ver = <2>;
-			vled_3.3v-supply = <&pm8226_l16>;
-			vpwr_1.2v-supply = <&pm8226_l2>;
-			irda_ice40,irq-gpio = <&msmgpio 46  0x00>;      /* IRDA_IRQ */
-			irda_ice40,cdone    = <&msmgpio 49  0x00>;      /* CDONE */
-			irda_ice40,reset_n  = <&msmgpio 67  0x00>;	/* FPGA_SPI_EN */
-			irda_ice40,scl-gpio = <&msmgpio 38 0x00>;	/* FPGA_SPI_CLK */
-			irda_ice40,cresetb  = <&msmgpio 36 0x00>;	/* CRESETB */
-			irda_ice40,sda-gpio = <&msmgpio 33 0x00>;	/* FPGA_SPI_SI */
-			irda_ice40,i2c-pull-up = <1>;
-		};
-	};
-
 	android-battery {
 		compatible = "android,battery";
 		status = "okay";
