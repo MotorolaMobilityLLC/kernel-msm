@@ -34,9 +34,9 @@
 
 #define RESTART_REASON_OFFSET       0x65C
 #define UEFI_RAM_DUMP_MAGIC_OFFSET  0xC
-#define RAM_CONSOLE_ADDR_OFFSET     0x24
-#define RAM_CONSOLE_SIZE_OFFSET     0x28
-#define FB1_ADDR_OFFSET             0x2C
+#define RAM_CONSOLE_ADDR_OFFSET     0x28
+#define RAM_CONSOLE_SIZE_OFFSET     0x2C
+#define FB1_ADDR_OFFSET             0x30
 
 static void *msm_imem_base;
 static int dummy_arg;
