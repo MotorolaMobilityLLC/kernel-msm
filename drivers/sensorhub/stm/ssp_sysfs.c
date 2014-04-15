@@ -236,7 +236,7 @@ static ssize_t set_sensors_enable(struct device *dev,
 	if ((uNewEnable != atomic_read(&data->aSensorEnable)) &&
 		!(data->uSensorState
 			& (uNewEnable - atomic_read(&data->aSensorEnable)))) {
-		pr_info("[SSP] %s - %u is not connected(sensortate: 0x%x)\n",
+		pr_info("[SSP] %s - %u is not connected(sensorstate: 0x%x)\n",
 			__func__,
 			uNewEnable - atomic_read(&data->aSensorEnable),
 			data->uSensorState);
