@@ -566,13 +566,13 @@ static int change_to_bootmode(struct ssp_data *data)
 	dummy_cmd.timeout = DEF_ACKCMD_NUMBER;
 
 	gpio_set_value(data->rst, 0);
-	usleep_range(39500, 40500);
+	usleep_range(3950, 4050);
 	gpio_set_value(data->rst, 1);
 	usleep_range(45000, 47000);
 
 	for (iCnt = 0; iCnt < 9; iCnt++) {
 		gpio_set_value(data->rst, 0);
-		usleep_range(39500, 40500);
+		usleep_range(3950, 4050);
 		gpio_set_value(data->rst, 1);
 		usleep_range(15000, 15500);
 	}

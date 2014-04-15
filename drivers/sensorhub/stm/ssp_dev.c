@@ -23,7 +23,7 @@
 static void ssp_early_suspend(struct early_suspend *handler);
 static void ssp_late_resume(struct early_suspend *handler);
 #endif
-#define NORMAL_SENSOR_STATE_K	0x3FEFF
+#define NORMAL_SENSOR_STATE	0x3E101F
 
 void ssp_enable(struct ssp_data *data, bool enable)
 {
@@ -76,7 +76,7 @@ static void initialize_variable(struct ssp_data *data)
 
 	atomic_set(&data->aSensorEnable, 0);
 	data->iLibraryLength = 0;
-	data->uSensorState = NORMAL_SENSOR_STATE_K;
+	data->uSensorState = NORMAL_SENSOR_STATE;
 	data->uMagCntlRegData = 1;
 
 	data->uResetCnt = 0;
@@ -335,7 +335,7 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 			goto dt_exit;
 		}
 	}
-	msleep(50);
+	msleep(75);
 dt_exit:
 	return errorno;
 }
