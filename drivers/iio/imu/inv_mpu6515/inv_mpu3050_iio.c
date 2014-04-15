@@ -203,7 +203,7 @@ int inv_init_config_mpu3050(struct iio_dev *indio_dev)
 		result = st->slave_accel->setup(st);
 		if (result)
 			return result;
-		result = st->slave_accel->set_fs1(st, INV_FS_02G);
+		result = st->slave_accel->set_fs(st, INV_FS_02G);
 		if (result)
 			return result;
 		result = st->slave_accel->set_lpf(st, INIT_FIFO_RATE);

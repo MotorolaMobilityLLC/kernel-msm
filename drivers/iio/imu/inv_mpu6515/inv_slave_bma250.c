@@ -303,7 +303,7 @@ static struct inv_mpu_slave slave_bma250 = {
 	.combine_data = combine_data_slave_bma250,
 	.get_mode = get_mode_slave_bma250,
 	.set_lpf = set_lpf_bma250,
-	.set_fs1  = set_fs_bma250
+	.set_fs  = set_fs_bma250
 };
 
 int inv_register_mpu3050_slave(struct inv_mpu_state *st)

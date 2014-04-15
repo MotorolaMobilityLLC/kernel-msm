@@ -808,7 +808,7 @@ struct inv_mpu_slave {
 	int (*read_data)(struct inv_mpu_state *, short *out);
 	int (*get_mode)(void);
 	int (*set_lpf)(struct inv_mpu_state *, int rate);
-	int (*set_fs1)(struct inv_mpu_state *, int fs);
+	int (*set_fs)(struct inv_mpu_state *, int fs);
 	u64 prev_ts;
 };
 
