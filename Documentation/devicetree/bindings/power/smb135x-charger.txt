@@ -51,6 +51,8 @@ Optional Properties:
 - therm-bias-supply			The supply that provides bias voltage to the battery
 					thermistor. This is useful in designs that do not use the SYSON
 					pin to bias the thermistor.
+- qcom,max-batt-curr-ma		The current in mA battery can support.
+				Valid range 300mA to 2500mA.
 
 Example:
 	i2c@f9967000 {
@@ -67,5 +69,6 @@ Example:
 			qcom,recharge-thresh-mv = <100>;
 			regulator-name = "smb1357-otg";
 			qcom,thermal-mitigation = <1500 700 600 325>;
+			qcom,max-batt-curr-ma = <2500>;
 		};
 	};
