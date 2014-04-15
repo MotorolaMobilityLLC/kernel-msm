@@ -222,10 +222,10 @@
 		compatible = "qcom,msm-hsuart-v14";
 		reg = <0xf991d000 0x1000>, <0xf9904000 0x19000>;
 		reg-names = "core_mem", "bam_mem";
-		interrupts = <0 110 0>, <0 238 0>;
+		interrupts = <0 107 0>, <0 238 0>;
 		interrupt-names = "core_irq","bam_irq";
-		qcom,bam-tx-ep-pipe-index = <6>;
-		qcom,bam-rx-ep-pipe-index = <7>;
+		qcom,bam-tx-ep-pipe-index = <0>;
+		qcom,bam-rx-ep-pipe-index = <1>;
 		status = "ok";
 
 		qcom,msm-bus,name = "blsp1_uart0";
@@ -509,6 +509,13 @@
 	qcom,msm-pcm-routing {
 		compatible = "qcom,msm-pcm-routing";
 	};
+
+	//ASUS_BSP BerylHou +++ "Config bt_rfkill"
+	rfkill {
+               compatible = "bcm,bcm-rfkill";
+	       status = "ok";
+	};
+	//ASUS_BSP BerylHou ---
 
 	qcom,msm-pcm-low-latency {
 		compatible = "qcom,msm-pcm-dsp";
