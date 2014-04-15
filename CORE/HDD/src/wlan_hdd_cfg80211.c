@@ -4337,6 +4337,11 @@ static struct cfg80211_bss* wlan_hdd_cfg80211_inform_bss(
 
     chan = __ieee80211_get_channel(wiphy, freq);
 
+    if (!chan) {
+       hddLog(VOS_TRACE_LEVEL_ERROR, "%s chan pointer is NULL", __func__);
+       return NULL;
+    }
+
     bss = cfg80211_get_bss(wiphy, chan, pBssDesc->bssId,
                            &roamProfile->SSID.ssId[0], roamProfile->SSID.length,
                            WLAN_CAPABILITY_ESS, WLAN_CAPABILITY_ESS);
