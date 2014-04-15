@@ -968,8 +968,9 @@
 	};
 
 	mpp@a100 { /* MPP 2 */
-		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
-		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
+		qcom,vin-sel = <3>;       /* LDO6 1.8V */
+		qcom,pull = <1>;          /* QPNP_PIN_MPP_PULL_UP_OPEN */
 		qcom,master-en = <1>;
 	};
 
@@ -1127,12 +1128,10 @@
 	interrupts = <0 1>;
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0x0 0xffffffff>;
-	interrupt-map = <0x0 0 &intc 0 133 0>;
-	interrupt-names = "hs_phy_irq";
+	interrupt-map = <0x0 0 &intc 0 133 0
+                         0x0 1 &spmi_bus 0x0 0x0 0xA1 0x0>;
+	interrupt-names = "hs_phy_irq", "pmic_id_irq";
 	qcom,otg-capability;
-	dwc_usb3-adc_tm = <0>;
-	qcom,misc-ref = <&pm8941_misc>;
-	qcom,usbin-vadc = <&pm8941_vadc>;
 };
 
 &pm8941_l13 {
