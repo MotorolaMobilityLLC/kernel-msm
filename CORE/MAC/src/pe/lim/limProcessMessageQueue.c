@@ -2015,21 +2015,24 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         break;
     case eWNI_SME_HT40_OBSS_SCAN_IND:
         {
-            tpPESession     psessionEntry;
-            tANI_U8 sessionId = (tANI_U8)limMsg->bodyval ;
+            tpPESession     psessionEntry = NULL;
+            tANI_U8         sessionId;
+            tSirSmeHT40OBSSScanInd *ht40ScanInd =
+                                  (tSirSmeHT40OBSSScanInd *)limMsg->bodyptr;
 
-            psessionEntry = &pMac->lim.gpSession[sessionId];
-
-            VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
-            "%s  eWNI_SME_HT40_OBSS_SCAN_IND htSupportedChannelWidthSet %d \n",
-             __func__, psessionEntry->htSupportedChannelWidthSet);
+            psessionEntry = peFindSessionByBssid(pMac, ht40ScanInd->peerMacAddr,
+                                                 &sessionId);
 
             if (psessionEntry != NULL &&
                IS_HT40_OBSS_SCAN_FEATURE_ENABLE &&
                psessionEntry->htSupportedChannelWidthSet ==
                WNI_CFG_CHANNEL_BONDING_MODE_ENABLE )
             {
-                limSendHT40OBSSScanInd(pMac, psessionEntry);
+                 VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
+                   "OBSS Scan Start Req: session id %d htSupportedChannelWidthSet %d",
+                   psessionEntry->peSessionId,
+                   psessionEntry->htSupportedChannelWidthSet);
+                 limSendHT40OBSSScanInd(pMac, psessionEntry);
             }
             else
             {

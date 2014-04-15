@@ -241,6 +241,7 @@ when        who    what, where, why
   ((WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
    (WLANTL_BT_AMP_TYPE_LS_REQ == usType) || (WLANTL_BT_AMP_TYPE_LS_REP == usType))
 
+#define WLANTL_CACHE_TRACE_WATERMARK 100
 /*---------------------------------------------------------------------------
   TL signals for TX thread
 ---------------------------------------------------------------------------*/
@@ -464,6 +465,17 @@ typedef struct
 }WLANTL_UAPSDInfoType;
 
 /*---------------------------------------------------------------------------
+  per-STA cache info
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  v_U16_t               cacheSize;
+  v_TIME_t              cacheInitTime;
+  v_TIME_t              cacheDoneTime;
+  v_TIME_t              cacheClearTime;
+}WLANTL_CacheInfoType;
+
+/*---------------------------------------------------------------------------
   STA Client type
 ---------------------------------------------------------------------------*/
 typedef struct
@@ -584,7 +596,7 @@ typedef struct
   /*Begining of the cached packets chain*/
   vos_pkt_t*                 vosEndCachedFrame;
 
-
+  WLANTL_CacheInfoType       tlCacheInfo;
   /* LWM related fields */
 
   //current station is slow. LWM mode is enabled.

@@ -112,7 +112,7 @@ VOS_STATUS vos_preClose( v_CONTEXT_t *pVosContext );
 VOS_STATUS vos_preStart( v_CONTEXT_t vosContext );
 
 
-VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize );
+VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, void *devHandle );
 
 
 

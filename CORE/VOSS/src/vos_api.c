@@ -226,7 +226,7 @@ VOS_STATUS vos_preClose( v_CONTEXT_t *pVosContext )
        SYS, MAC, SME, WDA and TL.
       
   
-  \param  hddContextSize: Size of the HDD context to allocate.
+  \param  devHandle: pointer to the OS specific device handle
  
   
   \return VOS_STATUS_SUCCESS - Scheduler was successfully initialized and 
@@ -241,7 +241,7 @@ VOS_STATUS vos_preClose( v_CONTEXT_t *pVosContext )
   \sa vos_preOpen()
   
 ---------------------------------------------------------------------------*/
-VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
+VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, void *devHandle )
 
 {
    VOS_STATUS vStatus      = VOS_STATUS_SUCCESS;
@@ -327,7 +327,7 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
    */
    macOpenParms.frameTransRequired = 1;
    macOpenParms.driverType         = eDRIVER_TYPE_PRODUCTION;
-   vStatus = WDA_open( gpVosContext, gpVosContext->pHDDContext, &macOpenParms );
+   vStatus = WDA_open( gpVosContext, devHandle, &macOpenParms );
 
    if (!VOS_IS_STATUS_SUCCESS(vStatus))
    {

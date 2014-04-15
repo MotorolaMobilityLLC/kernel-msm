@@ -4368,7 +4368,7 @@ typedef struct sSirSmeHT40OBSSScanInd
 {
    tANI_U16               messageType;
    tANI_U16               length;
-   tANI_U8                seesionId;
+   tSirMacAddr            peerMacAddr;
 } tSirSmeHT40OBSSScanInd, *tpSirSmeHT40OBSSScanInd;
 
 typedef struct sSirHT40OBSSScanInd

@@ -2963,14 +2963,12 @@ VOS_STATUS csrNeighborRoamMergeChannelLists(
 ---------------------------------------------------------------------------*/
 VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac)
 {
-    tpRrmNeighborReportDesc pNeighborBssDesc;
-    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-    tANI_U8         numChannels = 0, i = 0;
-    tANI_U8         channelList[MAX_BSS_IN_NEIGHBOR_RPT];
-    tANI_U8         mergedOutputNumOfChannels = 0;
-#if 0
-    eHalStatus  status = eHAL_STATUS_SUCCESS;
-#endif
+    tpRrmNeighborReportDesc       pNeighborBssDesc;
+    tpCsrNeighborRoamControlInfo  pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    tANI_U8                       numChannels = 0;
+    tANI_U8                       i = 0;
+    tANI_U8                       channelList[MAX_BSS_IN_NEIGHBOR_RPT];
+    tANI_U8                       mergedOutputNumOfChannels = 0;
 
     /* This should always start from 0 whenever we create a channel list out of neighbor AP list */
     pNeighborRoamInfo->FTRoamInfo.numBssFromNeighborReport = 0;
@@ -2991,15 +2989,12 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac)
         pNeighborRoamInfo->FTRoamInfo.numBssFromNeighborReport++;
 
         /* Saving the channel list non-redundantly */
-        if (numChannels > 0)
+        for (i = 0; (i < numChannels && i < MAX_BSS_IN_NEIGHBOR_RPT); i++)
         {
-            for (i = 0; i < numChannels; i++)
-            {
-                if (pNeighborBssDesc->pNeighborBssDescription->channel == channelList[i])
-                    break;
-            }
-            
+            if (pNeighborBssDesc->pNeighborBssDescription->channel == channelList[i])
+                break;
         }
+
         if (i == numChannels)
         {
             if (pNeighborBssDesc->pNeighborBssDescription->channel)
@@ -3033,18 +3028,6 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac)
 
     if (pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList)
     {
-#if 0
-        // Before we free the existing channel list for a safety net make sure
-        // we have a union of the IAPP and the already existing list. 
-        status = csrNeighborRoamMergeChannelLists( 
-                pMac, 
-                pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList, 
-                pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels, 
-                channelList, 
-                numChannels, 
-                &numChannels );
-#endif
-
         vos_mem_free(pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList);
     }
 

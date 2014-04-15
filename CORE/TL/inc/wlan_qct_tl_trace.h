@@ -39,7 +39,7 @@
 
 #define NO_SESSION 0xFF
 
-enum {
+typedef enum {
     TRACE_CODE_TL_STA_STATE,
     TRACE_CODE_TL_EAPOL_PKT_PENDING,
     TRACE_CODE_TL_GET_FRAMES_EAPOL,
@@ -51,7 +51,11 @@ enum {
     TRACE_CODE_TL_QUEUE_CURRENT,
     TRACE_CODE_TL_REORDER_TIMER_EXP_CB,
     TRACE_CODE_TL_BA_SESSION_DEL,
-};
+    TRACE_CODE_TL_ASSOC_FAILED,
+    TRACE_CODE_TL_FORWARD_CACHED_FRAMES,
+    TRACE_CODE_TL_FLUSH_CACHED_FRAMES,
+    TRACE_CODE_TL_CACHE_FRAME,
+}WLANTL_TraceCode;
 
 void tlTraceDump(void *pMac, tpvosTraceRecord pRecord, tANI_U16 recIndex);
 void tlTraceInit(void);

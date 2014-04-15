@@ -641,11 +641,10 @@ wpt_status wpalReadDeviceMemory
 */
 wpt_status wpalDeviceInit
 (
-   void * deviceCB
+   void * devHandle
 )
 {
-   hdd_context_t *pHddCtx = (hdd_context_t *)deviceCB;
-   struct device *wcnss_device = pHddCtx->parent_dev;
+   struct device *wcnss_device = (struct device *)devHandle;
    struct resource *wcnss_memory;
    int tx_irq;
    int rx_irq;

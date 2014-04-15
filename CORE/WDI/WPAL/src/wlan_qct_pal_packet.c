@@ -48,6 +48,7 @@
 
 #include <linux/skbuff.h>
 #include "dma-mapping.h"
+#include <linux/wcnss_wlan.h>
 
 /*Per spec definition*/
 #define WPAL_ETHERNET_PAKCET_HEADER_SIZE     14
@@ -452,7 +453,9 @@ wpt_status wpalPacketSetRxLength(wpt_packet *pPkt, wpt_uint32 len)
 WPT_STATIC WPT_INLINE void* itGetOSPktAddrForDevice( wpt_packet *pPacket )
 {
    struct sk_buff *skb;
+   struct device *wcnss_device = (struct device *)gContext.devHandle;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
    if ( VOS_STATUS_SUCCESS != 
         vos_pkt_get_os_packet(WPAL_TO_VOS_PKT(pPacket), (void**)&skb, VOS_FALSE ))
    {
@@ -462,16 +465,16 @@ WPT_STATIC WPT_INLINE void* itGetOSPktAddrForDevice( wpt_packet *pPacket )
    {
      /*Map skb data into dma-able memory 
        (changes will be commited from cache) */
-     return (void*)dma_map_single( NULL, skb->data, skb->len, DMA_TO_DEVICE );
+     return (void*)dma_map_single( wcnss_device, skb->data, skb->len, DMA_TO_DEVICE );
    }
 }/*itGetOSPktAddrForDevice*/
 
 WPT_STATIC WPT_INLINE void* itGetOSPktAddrFromDevice( wpt_packet *pPacket )
 {
-
    struct sk_buff *skb;
-
+   struct device *wcnss_device = (struct device *)gContext.devHandle;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
    if ( VOS_STATUS_SUCCESS != 
         vos_pkt_get_os_packet(WPAL_TO_VOS_PKT(pPacket), (void**)&skb, VOS_FALSE ))
    {
@@ -494,7 +497,7 @@ WPT_STATIC WPT_INLINE void* itGetOSPktAddrFromDevice( wpt_packet *pPacket )
      }
      /*Map skb data into dma-able memory 
        (changes will be commited from cache) */
-     return (void*)dma_map_single( NULL, skb->data, skb->len, DMA_FROM_DEVICE );
+     return (void*)dma_map_single( wcnss_device, skb->data, skb->len, DMA_FROM_DEVICE );
    }
 }/*itGetOSPktAddrFromDevice*/
 
@@ -504,14 +507,16 @@ WPT_STATIC WPT_INLINE void* itGetOSPktAddrFromDevice( wpt_packet *pPacket )
 */
 WPT_STATIC WPT_INLINE void itReturnOSPktAddrForDevice( wpt_packet *pPacket,  void* addr, wpt_uint32 size )
 {
- 
-   dma_unmap_single( NULL, (dma_addr_t)addr, size, DMA_TO_DEVICE );
+   struct device *wcnss_device = (struct device *)gContext.devHandle;
+
+   dma_unmap_single( wcnss_device, (dma_addr_t)addr, size, DMA_TO_DEVICE );
 }
 
 WPT_STATIC WPT_INLINE void itReturnOSPktAddrFromDevice( wpt_packet *pPacket, void* addr, wpt_uint32 size  )
 {
+   struct device *wcnss_device = (struct device *)gContext.devHandle;
 
-   dma_unmap_single( NULL, (dma_addr_t)addr, size, DMA_FROM_DEVICE ); 
+   dma_unmap_single( wcnss_device, (dma_addr_t)addr, size, DMA_FROM_DEVICE );
 }
 
 

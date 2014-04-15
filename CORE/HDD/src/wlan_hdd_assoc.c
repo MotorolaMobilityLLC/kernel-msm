@@ -1544,6 +1544,8 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         /*Clear the roam profile*/
         hdd_clearRoamProfileIe( pAdapter );
 
+        WLANTL_AssocFailed(pRoamInfo->staId);
+
         netif_tx_disable(dev);
         netif_carrier_off(dev);
 

@@ -1025,10 +1025,13 @@ void WLANTL_AssocFailed(v_U8_t staId)
   // if the STA exist, the frames will be forwarded
   // and if it doesn't exist, the frames will be flushed
   // in this case we know it won't exist so the DPU index signature values don't matter
+  MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_ASSOC_FAILED,
+                                                staId, 0));
+
   if(!VOS_IS_STATUS_SUCCESS(WLANTL_StartForwarding(staId,0,0)))
   {
     VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-       " %s fails to start forwarding", __func__);
+       " %s fails to start forwarding (staId %d)", __func__, staId);
   }
 }
   
@@ -4732,12 +4735,33 @@ WLANTL_CacheSTAFrame
     {
       /*this is the first frame that we are caching */
       pClientSTA->vosBegCachedFrame = vosTempBuff;
+
+      pClientSTA->tlCacheInfo.cacheInitTime = vos_timer_get_system_time();
+      pClientSTA->tlCacheInfo.cacheDoneTime =
+              pClientSTA->tlCacheInfo.cacheInitTime;
+      pClientSTA->tlCacheInfo.cacheSize = 1;
+
+      MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_CACHE_FRAME,
+                       ucSTAId, pClientSTA->tlCacheInfo.cacheSize));
+
     }
     else
     {
       /*this is a subsequent frame that we are caching: chain to the end */
       vos_pkt_chain_packet(pClientSTA->vosEndCachedFrame,
                            vosTempBuff, VOS_TRUE);
+
+      pClientSTA->tlCacheInfo.cacheDoneTime = vos_timer_get_system_time();
+      pClientSTA->tlCacheInfo.cacheSize ++;
+
+      if (pClientSTA->tlCacheInfo.cacheSize % WLANTL_CACHE_TRACE_WATERMARK == 0)
+      {
+        VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Cache High watermark for staid:%d (%d)",
+                  __func__,ucSTAId, pClientSTA->tlCacheInfo.cacheSize);
+        MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_CACHE_FRAME,
+                         ucSTAId, pClientSTA->tlCacheInfo.cacheSize));
+      }
     }
     pClientSTA->vosEndCachedFrame = vosTempBuff;
   }/*else new packet*/
@@ -4878,6 +4902,8 @@ WLANTL_ForwardSTAFrames
   {
     TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
        "WLAN TL:Station has been deleted for STA %d - flushing cache", ucSTAId));
+    MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_FLUSH_CACHED_FRAMES,
+                     ucSTAId, pClientSTA->tlCacheInfo.cacheSize));
     WLANTL_FlushCachedFrames(pClientSTA->vosBegCachedFrame);
     goto done; 
   }
@@ -4927,6 +4953,8 @@ done:
    -------------------------------------------------------------------------*/
   pClientSTA->vosBegCachedFrame = NULL;
   pClientSTA->vosEndCachedFrame = NULL;
+  pClientSTA->tlCacheInfo.cacheSize = 0;
+  pClientSTA->tlCacheInfo.cacheClearTime = vos_timer_get_system_time();
 
     /*-----------------------------------------------------------------------
     After all the init is complete we can mark the existance flag 
@@ -5988,6 +6016,18 @@ WLANTL_RxCachedFrames
     return VOS_STATUS_E_INVAL;
   }
 
+  pClientSTA = pTLCb->atlSTAClients[ucSTAId];
+
+  if ( NULL == pClientSTA )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+        "WLAN TL:Client Memory was not allocated on %s", __func__));
+    return VOS_STATUS_E_FAILURE;
+  }
+
+  MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_FORWARD_CACHED_FRAMES,
+                   ucSTAId, 1<<16 | pClientSTA->tlCacheInfo.cacheSize));
+
   /*---------------------------------------------------------------------
     Save the initial buffer - this is the first received buffer
    ---------------------------------------------------------------------*/
@@ -6059,7 +6099,6 @@ WLANTL_RxCachedFrames
       newly added station 
     -------------------------------------------------------------------------*/
     pClientSTA = pTLCb->atlSTAClients[ucSTAId];
-
 
     if ( NULL == pClientSTA )
     {

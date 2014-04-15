@@ -66,6 +66,15 @@
  * Preprocessor Definitions and Constants
  * ------------------------------------------------------------------------*/
 #define VOS_SCHED_THREAD_HEART_BEAT    INFINITE
+/* Milli seconds to delay SSR thread when an Entry point is Active */
+#define SSR_WAIT_SLEEP_TIME 100
+/* MAX iteration count to wait for Entry point to exit before
+ * we proceed with SSR in WD Thread
+ */
+#define MAX_SSR_WAIT_ITERATIONS 20
+
+static atomic_t ssr_protect_entry_count;
+
 /*---------------------------------------------------------------------------
  * Type Declarations
  * ------------------------------------------------------------------------*/
@@ -645,6 +654,7 @@ VosWDThread
   pVosWatchdogContext pWdContext = (pVosWatchdogContext)Arg;
   int retWaitStatus              = 0;
   v_BOOL_t shutdown              = VOS_FALSE;
+  int count                      = 0;
   VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
   hdd_context_t *pHddCtx         = NULL;
   v_CONTEXT_t pVosContext        = NULL;
@@ -701,6 +711,33 @@ VosWDThread
     clear_bit(WD_POST_EVENT_MASK, &pWdContext->wdEventFlag);
     while(1)
     {
+      /* Check for any Active Entry Points
+       * If active, delay SSR until no entry point is active or
+       * delay until count is decremented to ZERO
+       */
+      count = MAX_SSR_WAIT_ITERATIONS;
+      while (count)
+      {
+         if (!atomic_read(&ssr_protect_entry_count))
+         {
+             /* no external threads are executing */
+             break;
+         }
+         /* at least one external thread is executing */
+         if (--count)
+         {
+             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                       "%s: Waiting for active entry points to exit", __func__);
+             msleep(SSR_WAIT_SLEEP_TIME);
+         }
+      }
+      /* at least one external thread is executing */
+      if (!count)
+      {
+          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                    "%s: Continuing SSR when %d Entry points are still active",
+                     __func__, atomic_read(&ssr_protect_entry_count));
+      }
       // Check if Watchdog needs to shutdown
       if(test_bit(WD_SHUTDOWN_EVENT_MASK, &pWdContext->wdEventFlag))
       {
@@ -1830,4 +1867,38 @@ VOS_STATUS vos_watchdog_wlan_re_init(void)
     wake_up_interruptible(&gpVosWatchdogContext->wdWaitQueue);
 
     return VOS_STATUS_SUCCESS;
+}
+
+/**
+  @brief vos_ssr_protect()
+
+  This function is called to keep track of active driver entry points
+
+  @param
+         caller_func - Name of calling function.
+  @return
+         void
+*/
+void vos_ssr_protect(const char *caller_func)
+{
+     int count;
+     count = atomic_inc_return(&ssr_protect_entry_count);
+     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+               "%s: ENTRY ACTIVE %d", caller_func, count);
+}
+
+/**
+  @brief vos_ssr_unprotect()
+
+  @param
+         caller_func - Name of calling function.
+  @return
+         void
+*/
+void vos_ssr_unprotect(const char *caller_func)
+{
+   int count;
+   count = atomic_dec_return(&ssr_protect_entry_count);
+   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+               "%s: ENTRY INACTIVE %d", caller_func, count);
 }
