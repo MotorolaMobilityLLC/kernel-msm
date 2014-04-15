@@ -746,6 +746,7 @@
 		qcom,dc-psy-type = "Wireless";
 		qcom,dc-psy-ma = <600>;
 		qcom,bms-psy-name = "max170xx_battery";
+		qcom,max-batt-curr-ma = <2500>;
 	};
 
 	max17050: max17050-battery@36 {
