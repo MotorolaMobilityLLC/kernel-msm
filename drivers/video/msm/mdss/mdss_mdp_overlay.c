@@ -52,6 +52,7 @@
 #define MEM_PROTECT_SD_CTRL 0xF
 
 #define INVALID_PIPE_INDEX 0xFFFF
+#define OVERLAY_MAX 10
 
 struct sd_ctrl_req {
 	unsigned int enable;
@@ -1774,7 +1775,7 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd,
 		return;
 
 	if (!fbi->fix.smem_start || fbi->fix.smem_len == 0 ||
-	     mdp5_data->borderfill_enable) {
+			mdp5_data->borderfill_enable) {
 		mfd->mdp.kickoff_fnc(mfd, NULL);
 		return;
 	}
@@ -2814,11 +2815,17 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 		void __user *argp)
 {
 	struct mdp_overlay_list ovlist;
+	struct mdp_overlay *req_list[OVERLAY_MAX];
 	struct mdp_overlay *overlays;
 	int i, ret;
 
 	if (copy_from_user(&ovlist, argp, sizeof(ovlist)))
 		return -EFAULT;
+
+	if (ovlist.num_overlays >= OVERLAY_MAX) {
+		pr_err("Number of overlays exceeds max\n");
+		return -EINVAL;
+	}
 
 	overlays = kmalloc(ovlist.num_overlays * sizeof(*overlays), GFP_KERNEL);
 	if (!overlays) {
@@ -2826,8 +2833,14 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 		return -ENOMEM;
 	}
 
+	if (copy_from_user(req_list, ovlist.overlay_list,
+				sizeof(struct mdp_overlay*) * ovlist.num_overlays)) {
+		ret = -EFAULT;
+		goto validate_exit;
+	}
+
 	for (i = 0; i < ovlist.num_overlays; i++) {
-		if (copy_from_user(overlays + i, ovlist.overlay_list[i],
+		if (copy_from_user(overlays + i, req_list[i],
 				sizeof(struct mdp_overlay))) {
 			ret = -EFAULT;
 			goto validate_exit;
@@ -2837,7 +2850,7 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 	ret = __handle_overlay_prepare(mfd, &ovlist, overlays);
 	if (!IS_ERR_VALUE(ret)) {
 		for (i = 0; i < ovlist.num_overlays; i++) {
-			if (copy_to_user(ovlist.overlay_list[i], overlays + i,
+			if (copy_to_user(req_list[i], overlays + i,
 					sizeof(struct mdp_overlay))) {
 				ret = -EFAULT;
 				goto validate_exit;
@@ -3296,9 +3309,20 @@ static int mdss_mdp_overlay_splash_image(struct msm_fb_data_type *mfd,
 	struct fb_info *fbi = NULL;
 	int image_len = 0;
 
-	if (!mfd || !mfd->fbi || !mfd->fbi->screen_base || !pipe_ndx) {
+	if (!mfd || !mfd->fbi || !pipe_ndx) {
 		pr_err("Invalid input parameter\n");
 		return -EINVAL;
+	}
+	/*
+	 * Allocate fb memory here for splash screen to display.
+	 * It gets removed once the splash screen thread stops.
+	 */
+	if (!mfd->fbi->screen_base) {
+		rc = mdss_fb_alloc_fb_ion_memory(mfd);
+		if (rc < 0) {
+			pr_err("Invalid input parameter\n");
+			return -EINVAL;
+		}
 	}
 
 	fbi = mfd->fbi;
