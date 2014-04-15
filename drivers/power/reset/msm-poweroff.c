@@ -188,7 +188,9 @@ static void msm_restart_prepare(const char *cmd)
 	 * Kill download mode if master-kill switch is set
 	 */
 
-#ifndef CONFIG_LGE_HANDLE_PANIC
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	set_dload_mode(download_mode && in_panic);
+#else
 	set_dload_mode(download_mode &&
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
