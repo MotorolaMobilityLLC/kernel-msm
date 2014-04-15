@@ -46,10 +46,6 @@
 #include "platsmp.h"
 
 static struct of_dev_auxdata msm8610_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
-			"msm_sdcc.1", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, \
-			"msm_sdcc.2", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, \
 			"msm_sdcc.1", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, \
@@ -112,7 +108,6 @@ DT_MACHINE_START(MSM8610_DT, "Qualcomm MSM 8610 (Flattened Device Tree)")
 	.map_io			= msm_map_msm8610_io,
 	.init_machine		= msm8610_init,
 	.dt_compat		= msm8610_dt_match,
-	.restart		= msm_restart,
 	.reserve		= msm8610_reserve,
 	.init_very_early	= msm8610_early_memory,
 	.smp			= &arm_smp_ops,

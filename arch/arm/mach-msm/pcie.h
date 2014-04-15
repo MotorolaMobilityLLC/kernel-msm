@@ -38,7 +38,7 @@
 
 #define PCIE_DBG(x...) do {              \
 	if (msm_pcie_get_debug_mask())   \
-		pr_info(x);              \
+		pr_alert(x);              \
 	} while (0)
 
 #define PCIE_BUS_PRIV_DATA(pdev) \
@@ -171,6 +171,8 @@ struct msm_pcie_dev_t {
 	struct pci_saved_state	     *saved_state;
 
 	struct wakeup_source	     ws;
+	struct msm_bus_scale_pdata   *bus_scale_table;
+	uint32_t                     bus_client;
 
 	bool                         l1ss_supported;
 	bool                         aux_clk_sync;

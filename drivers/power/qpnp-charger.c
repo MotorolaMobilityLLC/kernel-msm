@@ -1103,7 +1103,8 @@ switch_parallel_ovp_mode(struct qpnp_chg_chip *chip, bool enable)
 		return rc;
 	}
 
-	rc = override_dcin_ilimit(chip, 0);
+	if (enable)
+		rc = override_dcin_ilimit(chip, 0);
 	return rc;
 }
 
@@ -2551,6 +2552,7 @@ static int get_prop_online(struct qpnp_chg_chip *chip)
 	return qpnp_chg_is_batfet_closed(chip);
 }
 
+#define USB_SUSPEND_UA	2000
 static void
 qpnp_batt_external_power_changed(struct power_supply *psy)
 {
@@ -2576,9 +2578,10 @@ qpnp_batt_external_power_changed(struct power_supply *psy)
 
 		chip->prev_usb_max_ma = iusb_max_ma;
 
-		if (iusb_max_ma <= 2 && !chip->use_default_batt_values &&
-						get_prop_batt_present(chip)) {
-			if (iusb_max_ma ==  2)
+		if (ret.intval <= USB_SUSPEND_UA &&
+					!chip->use_default_batt_values &&
+					get_prop_batt_present(chip)) {
+			if (ret.intval == USB_SUSPEND_UA)
 				qpnp_chg_usb_suspend_enable(chip, 1);
 			qpnp_chg_iusbmax_set(chip, QPNP_CHG_I_MAX_MIN_100);
 		} else {
@@ -5251,6 +5254,14 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	qpnp_chg_charge_en(chip, !chip->charging_disabled);
 	qpnp_chg_force_run_on_batt(chip, chip->charging_disabled);
 	qpnp_chg_set_appropriate_vddmax(chip);
+
+	if (chip->parallel_ovp_mode) {
+		rc = override_dcin_ilimit(chip, 1);
+		if (rc) {
+			pr_err("Override DCIN LLIMIT %d\n", rc);
+			goto unregister_dc_psy;
+		}
+	}
 
 	rc = qpnp_chg_request_irqs(chip);
 	if (rc) {

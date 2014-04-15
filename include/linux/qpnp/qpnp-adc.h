@@ -265,6 +265,7 @@ enum qpnp_adc_tm_rscale_fn_type {
 	SCALE_R_USB_ID,
 	SCALE_RPMIC_THERM,
 	SCALE_R_SMB_BATT_THERM,
+	SCALE_R_ABSOLUTE,
 	SCALE_RSCALE_NONE,
 };
 
@@ -1032,6 +1033,9 @@ struct qpnp_adc_amux_properties {
 #define QPNP_REV_ID_8026_2_1	5
 #define QPNP_REV_ID_8110_2_0	6
 #define QPNP_REV_ID_8026_2_2	7
+#define QPNP_REV_ID_8941_3_0	8
+#define QPNP_REV_ID_8941_2_0	9
+
 
 /* Public API */
 #if defined(CONFIG_SENSORS_QPNP_ADC_VOLTAGE)				\
@@ -1382,6 +1386,22 @@ int32_t qpnp_adc_vbatt_rscaler(struct qpnp_vadc_chip *dev,
 		struct qpnp_adc_tm_btm_param *param,
 		uint32_t *low_threshold, uint32_t *high_threshold);
 /**
+ * qpnp_adc_absolute_rthr() - Performs reverse calibration on the low/high
+ *		voltage threshold values passed by the client.
+ *		The function applies absolute calibration on the
+ *		voltage values.
+ * @dev:	Structure device for qpnp vadc
+ * @param:	The input parameters that contain the low/high voltage
+ *		threshold values.
+ * @low_threshold: The low threshold value that needs to be updated with
+ *		the above calibrated voltage value.
+ * @high_threshold: The low threshold value that needs to be updated with
+ *		the above calibrated voltage value.
+ */
+int32_t qpnp_adc_absolute_rthr(struct qpnp_vadc_chip *dev,
+		struct qpnp_adc_tm_btm_param *param,
+		uint32_t *low_threshold, uint32_t *high_threshold);
+/**
  * qpnp_vadc_iadc_sync_request() - Performs Voltage ADC read and
  *		locks the peripheral. When performing simultaneous
  *		voltage and current request the VADC peripheral is
@@ -1503,6 +1523,10 @@ static inline int32_t qpnp_adc_usb_scaler(struct qpnp_vadc_chip *dev,
 		uint32_t *low_threshold, uint32_t *high_threshold)
 { return -ENXIO; }
 static inline int32_t qpnp_adc_vbatt_rscaler(struct qpnp_vadc_chip *dev,
+		struct qpnp_adc_tm_btm_param *param,
+		uint32_t *low_threshold, uint32_t *high_threshold)
+{ return -ENXIO; }
+static inline int32_t qpnp_adc_absolute_rthr(struct qpnp_vadc_chip *dev,
 		struct qpnp_adc_tm_btm_param *param,
 		uint32_t *low_threshold, uint32_t *high_threshold)
 { return -ENXIO; }

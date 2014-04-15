@@ -14,27 +14,31 @@
  * WWAN Transport Network Driver.
  */
 
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/string.h>
+#include <linux/completion.h>
 #include <linux/errno.h>
+#include <linux/if_arp.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/netdevice.h>
+#include <linux/of_device.h>
+#include <linux/string.h>
 #include <linux/skbuff.h>
-#include <linux/if_arp.h>
-#include <net/pkt_sched.h>
 #include <linux/workqueue.h>
-#include <linux/completion.h>
+#include <net/pkt_sched.h>
 #include <ipa_qmi_service.h>
 
 #define WWAN_METADATA_SHFT 24
 #define WWAN_METADATA_MASK 0xFF000000
 #define WWAN_DATA_LEN 2000
+#define IPA_RM_INACTIVITY_TIMER 1000 /* IPA_RM */
 #define HEADROOM_FOR_QMAP   8 /* for mux header */
 #define TAILROOM            0 /* for padding by mux layer */
 #define MAX_NUM_OF_MUX_CHANNEL  10 /* max mux channels */
 #define UL_FILTER_RULE_HANDLE_START 69
+#define DEFAULT_OUTSTANDING_HIGH 64
+#define DEFAULT_OUTSTANDING_LOW 32
 
 #define IPA_WWAN_DEV_NAME "rmnet_ipa%d"
 #define IPA_WWAN_DEVICE_COUNT (1)
@@ -47,6 +51,7 @@ static struct rmnet_mux_val mux_channel[MAX_NUM_OF_MUX_CHANNEL];
 static int num_q6_rule, old_num_q6_rule;
 static int rmnet_index;
 static bool egress_set, a7_ul_flt_set;
+static struct workqueue_struct *ipa_rm_q6_workqueue; /* IPA_RM workqueue*/
 
 u32 apps_to_ipa_hdl, ipa_to_apps_hdl; /* get handler from ipa */
 static int wwan_add_ul_flt_rule_to_ipa(void);
@@ -59,7 +64,11 @@ enum wwan_device_status {
 
 /**
  * struct wwan_private - WWAN private data
+ * @net: network interface struct implemented by this driver
  * @stats: iface statistics
+ * @outstanding_pkts: number of packets sent to IPA without TX complete ACKed
+ * @outstanding_high: number of outstanding packets allowed
+ * @outstanding_low: number of outstanding packets which shall cause
  * @ch_id: channel id
  * @lock: spinlock for mutual exclusion
  * @device_status: holds device status
@@ -67,7 +76,11 @@ enum wwan_device_status {
  * WWAN private - holds all relevant info about WWAN driver
  */
 struct wwan_private {
+	struct net_device *net;
 	struct net_device_stats stats;
+	atomic_t outstanding_pkts;
+	int outstanding_high;
+	int outstanding_low;
 	uint32_t ch_id;
 	spinlock_t lock;
 	struct completion resource_granted_completion;
@@ -671,7 +684,6 @@ static int __ipa_wwan_open(struct net_device *dev)
 	IPAWANDBG("[%s] __wwan_open()\n", dev->name);
 	if (wwan_ptr->device_status != WWAN_DEVICE_ACTIVE)
 		INIT_COMPLETION(wwan_ptr->resource_granted_completion);
-
 	wwan_ptr->device_status = WWAN_DEVICE_ACTIVE;
 	return 0;
 }
@@ -763,12 +775,25 @@ static int ipa_wwan_change_mtu(struct net_device *dev, int new_mtu)
 static int ipa_wwan_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	int ret = 0;
+	struct wwan_private *wwan_ptr = netdev_priv(dev);
 
 	if (netif_queue_stopped(dev)) {
 		IPAWANERR("[%s]fatal: ipa_wwan_xmit stopped\n", dev->name);
 	return 0;
 	}
-
+	/* IPA_RM checking start */
+	ret = ipa_rm_inactivity_timer_request_resource(
+		IPA_RM_RESOURCE_WWAN_0_PROD);
+	if (ret == -EINPROGRESS) {
+		netif_stop_queue(dev);
+		return NETDEV_TX_BUSY;
+	}
+	if (ret) {
+		pr_err("[%s] fatal: ipa rm timer request resource failed %d\n",
+		       dev->name, ret);
+		return -EFAULT;
+	}
+	/* IPA_RM checking end */
 	if (skb->protocol != htons(ETH_P_MAP)) {
 		IPAWANDBG
 		("SW filtering out none QMAP packet received from %s",
@@ -777,32 +802,29 @@ static int ipa_wwan_xmit(struct sk_buff *skb, struct net_device *dev)
 		goto out;
 	}
 
-	ret = ipa_tx_dp(IPA_CLIENT_APPS_LAN_WAN_PROD, skb, NULL);
-	if (ret == -EPERM)
-		ret = NETDEV_TX_BUSY;
-
-	/*
-	* detected SSR a bit early.  shut some things down now, and leave
-	* the rest to the main ssr handling code when that happens later
-	*/
-	if (ret == -EFAULT) {
-		netif_carrier_off(dev);
-		dev_kfree_skb_any(skb);
-		ret = 0;
-	}
-	if (ret == -EAGAIN) {
-		/*
-		* This should not happen
-		* EAGAIN means we attempted to overflow the high watermark
-		* Clearly the queue is not stopped like it should be, so
-		* stop it and return BUSY to the TCP/IP framework.  It will
-		* retry this packet with the queue is restarted which happens
-		* in the write_done callback when the low watermark is hit.
-		*/
+	/* checking High WM hit */
+	if (atomic_read(&wwan_ptr->outstanding_pkts) >=
+					wwan_ptr->outstanding_high) {
+		IPAWANDBG("Outstanding high (%d)- stopping\n",
+				wwan_ptr->outstanding_high);
 		netif_stop_queue(dev);
 		ret = NETDEV_TX_BUSY;
+		goto out;
 	}
+	ret = ipa_tx_dp(IPA_CLIENT_APPS_LAN_WAN_PROD, skb, NULL);
+	if (ret) {
+		ret = NETDEV_TX_BUSY;
+		goto out;
+	}
+
+	atomic_inc(&wwan_ptr->outstanding_pkts);
+	dev->stats.tx_packets++;
+	dev->stats.tx_bytes += skb->len;
+	ret = NETDEV_TX_OK;
+
 out:
+	ipa_rm_inactivity_timer_release_resource(
+		IPA_RM_RESOURCE_WWAN_0_PROD);
 	return ret;
 }
 
@@ -826,11 +848,23 @@ static void apps_ipa_tx_complete_notify(void *priv,
 		unsigned long data)
 {
 	struct sk_buff *skb = (struct sk_buff *)data;
+	struct net_device *dev = (struct net_device *)priv;
+	struct wwan_private *wwan_ptr = netdev_priv(dev);
 	if (evt != IPA_WRITE_DONE) {
 		IPAWANERR("unsupported event on Tx callback\n");
 		return;
 	}
+	atomic_dec(&wwan_ptr->outstanding_pkts);
+	if (netif_queue_stopped(wwan_ptr->net) &&
+		atomic_read(&wwan_ptr->outstanding_pkts) <
+					(wwan_ptr->outstanding_low)) {
+		IPAWANDBG("Outstanding low (%d) - waking up queue\n",
+				wwan_ptr->outstanding_low);
+		netif_wake_queue(wwan_ptr->net);
+	}
 	dev_kfree_skb_any(skb);
+	ipa_rm_inactivity_timer_release_resource(
+		IPA_RM_RESOURCE_WWAN_0_PROD);
 	return;
 }
 
@@ -1099,6 +1133,7 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 				apps_ipa_tx_complete_notify;
 			apps_to_ipa_ep_cfg.desc_fifo_sz =
 			IPA_SYS_TX_DATA_DESC_FIFO_SZ;
+			apps_to_ipa_ep_cfg.priv = dev;
 
 			rc = ipa_setup_sys_pipe(&apps_to_ipa_ep_cfg,
 				&apps_to_ipa_hdl);
@@ -1235,20 +1270,187 @@ static void ipa_wwan_setup(struct net_device *dev)
 	dev->watchdog_timeo = 1000;
 }
 
+/* IPA_RM related functions start*/
+static void q6_prod_rm_request_resource(struct work_struct *work);
+static DECLARE_DELAYED_WORK(q6_con_rm_request, q6_prod_rm_request_resource);
+static void q6_prod_rm_release_resource(struct work_struct *work);
+static DECLARE_DELAYED_WORK(q6_con_rm_release, q6_prod_rm_release_resource);
+
+static void q6_prod_rm_request_resource(struct work_struct *work)
+{
+	int ret = 0;
+
+	ret = ipa_rm_request_resource(IPA_RM_RESOURCE_Q6_PROD);
+	if (ret < 0 && ret != -EINPROGRESS) {
+		IPAERR("%s: ipa_rm_request_resource failed %d\n", __func__,
+		       ret);
+		return;
+	}
+}
+
+static int q6_rm_request_resource(void)
+{
+	queue_delayed_work(ipa_rm_q6_workqueue,
+	   &q6_con_rm_request, 0);
+	return 0;
+}
+
+static void q6_prod_rm_release_resource(struct work_struct *work)
+{
+	int ret = 0;
+	ret = ipa_rm_release_resource(IPA_RM_RESOURCE_Q6_PROD);
+	if (ret < 0 && ret != -EINPROGRESS) {
+		IPAERR("%s: ipa_rm_release_resource failed %d\n", __func__,
+		      ret);
+		return;
+	}
+}
+
+
+static int q6_rm_release_resource(void)
+{
+	queue_delayed_work(ipa_rm_q6_workqueue,
+	   &q6_con_rm_release, 0);
+	return 0;
+}
+
+
+static void q6_rm_notify_cb(void *user_data,
+		enum ipa_rm_event event,
+		unsigned long data)
+{
+	switch (event) {
+	case IPA_RM_RESOURCE_GRANTED:
+		IPADBG("%s: Q6_PROD GRANTED CB\n", __func__);
+		break;
+	case IPA_RM_RESOURCE_RELEASED:
+		IPADBG("%s: Q6_PROD RELEASED CB\n", __func__);
+		break;
+	default:
+		return;
+	}
+}
+static int q6_initialize_rm(void)
+{
+	struct ipa_rm_create_params create_params;
+	struct ipa_rm_perf_profile profile;
+	int result;
+
+	/* Initialize IPA_RM workqueue */
+	ipa_rm_q6_workqueue = create_singlethread_workqueue("clnt_req");
+	if (!ipa_rm_q6_workqueue)
+		return -ENOMEM;
+
+	memset(&create_params, 0, sizeof(create_params));
+	create_params.name = IPA_RM_RESOURCE_Q6_PROD;
+	create_params.reg_params.notify_cb = &q6_rm_notify_cb;
+	result = ipa_rm_create_resource(&create_params);
+	if (result)
+		goto bail;
+	memset(&create_params, 0, sizeof(create_params));
+	create_params.name = IPA_RM_RESOURCE_Q6_CONS;
+	create_params.release_resource = &q6_rm_release_resource;
+	create_params.request_resource = &q6_rm_request_resource;
+	result = ipa_rm_create_resource(&create_params);
+	if (result)
+		goto bail;
+	/* add dependency*/
+	result = ipa_rm_add_dependency(IPA_RM_RESOURCE_Q6_PROD,
+			IPA_RM_RESOURCE_APPS_CONS);
+	if (result)
+		goto bail;
+	/* setup Performance profile */
+	memset(&profile, 0, sizeof(profile));
+	profile.max_supported_bandwidth_mbps = 100;
+	result = ipa_rm_set_perf_profile(IPA_RM_RESOURCE_Q6_PROD,
+			&profile);
+	if (result)
+		goto bail;
+	result = ipa_rm_set_perf_profile(IPA_RM_RESOURCE_Q6_CONS,
+			&profile);
+	if (result)
+		goto bail;
+	return result;
+bail:
+	destroy_workqueue(ipa_rm_q6_workqueue);
+	return result;
+}
+
 /**
- * ipa_wwan_init() - Initialized the module and registers as a
+ * ipa_rm_resource_granted() - Called upon
+ * IPA_RM_RESOURCE_GRANTED event. Wakes up queue is was stopped.
+ *
+ * @work: work object supplied ny workqueue
+ *
+ * Return codes:
+ * None
+ */
+static void ipa_rm_resource_granted(void *dev)
+{
+	IPAWANDBG("Resource Granted - starting queue\n");
+	netif_start_queue(dev);
+}
+
+/**
+ * ipa_rm_notify() - Callback function for RM events. Handles
+ * IPA_RM_RESOURCE_GRANTED and IPA_RM_RESOURCE_RELEASED events.
+ * IPA_RM_RESOURCE_GRANTED is handled in the context of shared
+ * workqueue.
+ *
+ * @dev: network device
+ * @event: IPA RM event
+ * @data: Additional data provided by IPA RM
+ *
+ * Return codes:
+ * None
+ */
+static void ipa_rm_notify(void *dev, enum ipa_rm_event event,
+			  unsigned long data)
+{
+	struct wwan_private *wwan_ptr = netdev_priv(dev);
+
+	pr_debug("%s: event %d\n", __func__, event);
+	switch (event) {
+	case IPA_RM_RESOURCE_GRANTED:
+		if (wwan_ptr->device_status == WWAN_DEVICE_INACTIVE) {
+			complete_all(&wwan_ptr->resource_granted_completion);
+			break;
+		}
+		ipa_rm_resource_granted(dev);
+		break;
+	case IPA_RM_RESOURCE_RELEASED:
+		break;
+	default:
+		pr_err("%s: unknown event %d\n", __func__, event);
+		break;
+	}
+}
+
+/* IPA_RM related functions end*/
+
+
+/**
+ * ipa_wwan_probe() - Initialized the module and registers as a
  * network interface to the network stack
  *
  * Return codes:
  * 0: success
  * -ENOMEM: No memory available
  * -EFAULT: Internal error
+ * -ENODEV: IPA driver not loaded
  */
-static int __init ipa_wwan_init(void)
+static int ipa_wwan_probe(struct platform_device *pdev)
 {
 	int ret, i;
 	struct net_device *dev;
 	struct wwan_private *wwan_ptr;
+	struct ipa_rm_create_params ipa_rm_params;	/* IPA_RM */
+	struct ipa_rm_perf_profile profile;			/* IPA_RM */
+
+	if (!ipa_is_ready()) {
+		IPAWANERR("IPA driver not loaded\n");
+		return -ENODEV;
+	}
 
 	/* start A7 QMI service/client */
 	ret = ipa_qmi_service_init();
@@ -1283,8 +1485,54 @@ static int __init ipa_wwan_init(void)
 	}
 	ipa_netdevs[0] = dev;
 	wwan_ptr = netdev_priv(dev);
+	memset(wwan_ptr, 0, sizeof(*wwan_ptr));
+	IPAWANDBG("wwan_ptr (private) = %p", wwan_ptr);
+	wwan_ptr->net = dev;
+	wwan_ptr->outstanding_high = DEFAULT_OUTSTANDING_HIGH;
+	wwan_ptr->outstanding_low = DEFAULT_OUTSTANDING_LOW;
+	atomic_set(&wwan_ptr->outstanding_pkts, 0);
 	spin_lock_init(&wwan_ptr->lock);
 	init_completion(&wwan_ptr->resource_granted_completion);
+
+	/* IPA_RM configuration starts */
+	ret = q6_initialize_rm();
+	if (ret) {
+		IPAERR("%s: q6_initialize_rm failed, ret: %d\n",
+		       __func__, ret);
+		goto fail;
+	}
+
+	memset(&ipa_rm_params, 0, sizeof(struct ipa_rm_create_params));
+	ipa_rm_params.name = IPA_RM_RESOURCE_WWAN_0_PROD;
+	ipa_rm_params.reg_params.user_data = dev;
+	ipa_rm_params.reg_params.notify_cb = ipa_rm_notify;
+	ret = ipa_rm_create_resource(&ipa_rm_params);
+	if (ret) {
+		pr_err("%s: unable to create resourse %d in IPA RM\n",
+		       __func__, IPA_RM_RESOURCE_WWAN_0_PROD);
+		goto fail;
+	}
+	ret = ipa_rm_inactivity_timer_init(IPA_RM_RESOURCE_WWAN_0_PROD,
+					   IPA_RM_INACTIVITY_TIMER);
+	if (ret) {
+		pr_err("%s: ipa rm timer init failed %d on resourse %d\n",
+		       __func__, ret, IPA_RM_RESOURCE_WWAN_0_PROD);
+		goto fail;
+	}
+	/* add dependency */
+	ret = ipa_rm_add_dependency(IPA_RM_RESOURCE_WWAN_0_PROD,
+			IPA_RM_RESOURCE_Q6_CONS);
+	if (ret)
+		goto fail;
+	/* setup Performance profile */
+	memset(&profile, 0, sizeof(profile));
+	profile.max_supported_bandwidth_mbps = IPA_APPS_MAX_BW_IN_MBPS;
+	ret = ipa_rm_set_perf_profile(IPA_RM_RESOURCE_WWAN_0_PROD,
+			&profile);
+	if (ret)
+		goto fail;
+	/* IPA_RM configuration ends */
+
 	ret = register_netdev(dev);
 	if (ret) {
 		IPAWANERR("unable to register ipa_netdev %d rc=%d\n",
@@ -1303,17 +1551,50 @@ static int __init ipa_wwan_init(void)
 	return 0;
 fail:
 	unregister_netdev(ipa_netdevs[0]);
+	ipa_rm_inactivity_timer_destroy(
+		IPA_RM_RESOURCE_WWAN_0_PROD); /* IPA_RM */
 	free_netdev(ipa_netdevs[0]);
 	return ret;
 }
-late_initcall(ipa_wwan_init);
 
-void ipa_wwan_cleanup(void)
+static int ipa_wwan_remove(struct platform_device *pdev)
 {
 	unregister_netdev(ipa_netdevs[0]);
+	ipa_rm_inactivity_timer_destroy(
+		IPA_RM_RESOURCE_WWAN_0_PROD); /* IPA_RM */
 	free_netdev(ipa_netdevs[0]);
 	ipa_netdevs[0] = NULL;
+	destroy_workqueue(ipa_rm_q6_workqueue);
+	return 0;
 }
 
+static const struct of_device_id rmnet_ipa_dt_match[] = {
+	{.compatible = "qcom,rmnet-ipa"},
+	{},
+};
+MODULE_DEVICE_TABLE(of, rmnet_ipa_dt_match);
+
+static struct platform_driver rmnet_ipa_driver = {
+	.driver = {
+		.name = "rmnet_ipa",
+		.owner = THIS_MODULE,
+		.of_match_table = rmnet_ipa_dt_match,
+	},
+	.probe = ipa_wwan_probe,
+	.remove = ipa_wwan_remove,
+};
+
+static int __init ipa_wwan_init(void)
+{
+	return platform_driver_register(&rmnet_ipa_driver);
+}
+
+static void __exit ipa_wwan_cleanup(void)
+{
+	platform_driver_unregister(&rmnet_ipa_driver);
+}
+
+late_initcall(ipa_wwan_init);
+module_exit(ipa_wwan_cleanup);
 MODULE_DESCRIPTION("WWAN Network Interface");
 MODULE_LICENSE("GPL v2");

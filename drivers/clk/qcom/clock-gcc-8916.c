@@ -233,6 +233,7 @@ static void __iomem *virt_bases[N_BASES];
 
 /* Mux source select values */
 #define xo_source_val			0
+#define xo_a_source_val			0
 #define gpll0_source_val		1
 #define gpll0_aux_source_val		3
 #define gpll1_source_val		1
@@ -362,7 +363,7 @@ static struct pll_clk a53sspll = {
 	},
 	.base = &virt_bases[APCS_PLL_BASE],
 	.c = {
-		.parent = &xo_clk_src.c,
+		.parent = &xo_a_clk_src.c,
 		.dbg_name = "a53sspll",
 		.ops = &clk_ops_sr2_pll,
 		.vdd_class = &vdd_sr2_pll,
@@ -461,7 +462,7 @@ static struct pll_vote_clk gpll2_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_apss_ahb_clk[] = {
-	F(  19200000,	      xo,   1,	  0,	0),
+	F(  19200000,	    xo_a,   1,	  0,	0),
 	F(  50000000,	   gpll0,  16,	  0,	0),
 	F(  100000000,	   gpll0,   8,	  0,	0),
 	F(  133330000,	   gpll0,   6,	  0,	0),
@@ -477,8 +478,6 @@ static struct rcg_clk apss_ahb_clk_src = {
 	.c = {
 		.dbg_name = "apss_ahb_clk_src",
 		.ops = &clk_ops_rcg,
-		VDD_DIG_FMAX_MAP3(LOW, 50000000, NOMINAL, 100000000, HIGH,
-				133330000),
 		CLK_INIT(apss_ahb_clk_src.c),
 	},
 };
@@ -904,6 +903,7 @@ static struct rcg_clk jpeg0_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_camss_mclk0_1_clk[] = {
+	F(  24000000,      gpll0,   1,    2,   67),
 	F(  66670000,	   gpll0,  12,	  0,	0),
 	F_END
 };
@@ -917,7 +917,7 @@ static struct rcg_clk mclk0_clk_src = {
 	.c = {
 		.dbg_name = "mclk0_clk_src",
 		.ops = &clk_ops_rcg_mnd,
-		VDD_DIG_FMAX_MAP1(LOW, 66670000),
+		VDD_DIG_FMAX_MAP2(LOW, 24000000, NOMINAL, 66670000),
 		CLK_INIT(mclk0_clk_src.c),
 	},
 };
@@ -931,7 +931,7 @@ static struct rcg_clk mclk1_clk_src = {
 	.c = {
 		.dbg_name = "mclk1_clk_src",
 		.ops = &clk_ops_rcg_mnd,
-		VDD_DIG_FMAX_MAP1(LOW, 66670000),
+		VDD_DIG_FMAX_MAP2(LOW, 24000000, NOMINAL, 66670000),
 		CLK_INIT(mclk1_clk_src.c),
 	},
 };
@@ -1040,20 +1040,18 @@ static struct rcg_clk gp3_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_mdss_byte0_clk[] = {
-	F_MDSS( 111370000, dsi0_phypll,   1,    0,	 0),
-	F_MDSS( 187500000, dsi0_phypll,   1,    0,	 0),
-	F_END
+	{
+		.div_src_val = BVAL(10, 8, dsi0_phypll_mm_source_val),
+	},
 };
 
 static struct rcg_clk byte0_clk_src = {
 	.cmd_rcgr_reg = BYTE0_CMD_RCGR,
-	.set_rate = set_rate_hid,
-	.freq_tbl = ftbl_gcc_mdss_byte0_clk,
-	.current_freq = &rcg_dummy_freq,
+	.current_freq = ftbl_gcc_mdss_byte0_clk,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
 		.dbg_name = "byte0_clk_src",
-		.ops = &clk_ops_rcg,
+		.ops = &clk_ops_byte,
 		VDD_DIG_FMAX_MAP2(LOW, 112500000, NOMINAL, 187500000),
 		CLK_INIT(byte0_clk_src.c),
 	},
@@ -1106,20 +1104,19 @@ static struct rcg_clk mdp_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_mdss_pclk0_clk[] = {
-	F_MDSS( 148500000, dsi0_phypll,   1,    0,	 0),
-	F_MDSS( 250000000, dsi0_phypll,   1,    0,	 0),
-	F_END
+	{
+		.div_src_val = BVAL(10, 8, dsi0_phypll_mm_source_val)
+					| BVAL(4, 0, 0),
+	},
 };
 
 static struct rcg_clk pclk0_clk_src = {
 	.cmd_rcgr_reg = PCLK0_CMD_RCGR,
-	.set_rate = set_rate_mnd,
-	.freq_tbl = ftbl_gcc_mdss_pclk0_clk,
-	.current_freq = &rcg_dummy_freq,
+	.current_freq = ftbl_gcc_mdss_pclk0_clk,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
 		.dbg_name = "pclk0_clk_src",
-		.ops = &clk_ops_rcg_mnd,
+		.ops = &clk_ops_pixel,
 		VDD_DIG_FMAX_MAP2(LOW, 150000000, NOMINAL, 250000000),
 		CLK_INIT(pclk0_clk_src.c),
 	},
@@ -1437,7 +1434,7 @@ static struct local_vote_clk gcc_boot_rom_ahb_clk = {
 
 static struct branch_clk gcc_camss_cci_ahb_clk = {
 	.cbcr_reg = CAMSS_CCI_AHB_CBCR,
-	.has_sibling = 1,
+	.has_sibling = 0,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
 		.dbg_name = "gcc_camss_cci_ahb_clk",
@@ -1618,7 +1615,7 @@ static struct branch_clk gcc_camss_gp1_clk = {
 
 static struct branch_clk gcc_camss_ispif_ahb_clk = {
 	.cbcr_reg = CAMSS_ISPIF_AHB_CBCR,
-	.has_sibling = 1,
+	.has_sibling = 0,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
 		.dbg_name = "gcc_camss_ispif_ahb_clk",
@@ -1643,7 +1640,7 @@ static struct branch_clk gcc_camss_jpeg0_clk = {
 
 static struct branch_clk gcc_camss_jpeg_ahb_clk = {
 	.cbcr_reg = CAMSS_JPEG_AHB_CBCR,
-	.has_sibling = 1,
+	.has_sibling = 0,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
 		.dbg_name = "gcc_camss_jpeg_ahb_clk",
@@ -2325,6 +2322,99 @@ static struct branch_clk gcc_venus0_vcodec0_clk = {
 static struct mux_clk gcc_debug_mux;
 static struct clk_ops clk_ops_debug_mux;
 
+static void __iomem *meas_base;
+
+static struct measure_clk apc0_m_clk = {
+	.c = {
+		.ops = &clk_ops_empty,
+		.dbg_name = "apc0_m_clk",
+		CLK_INIT(apc0_m_clk.c),
+	},
+};
+
+static struct measure_clk apc1_m_clk = {
+	.c = {
+		.ops = &clk_ops_empty,
+		.dbg_name = "apc1_m_clk",
+		CLK_INIT(apc1_m_clk.c),
+	},
+};
+
+static struct measure_clk apc2_m_clk = {
+	.c = {
+		.ops = &clk_ops_empty,
+		.dbg_name = "apc2_m_clk",
+		CLK_INIT(apc2_m_clk.c),
+	},
+};
+
+static struct measure_clk apc3_m_clk = {
+	.c = {
+		.ops = &clk_ops_empty,
+		.dbg_name = "apc3_m_clk",
+		CLK_INIT(apc3_m_clk.c),
+	},
+};
+
+static struct measure_clk l2_m_clk = {
+	.c = {
+		.ops = &clk_ops_empty,
+		.dbg_name = "l2_m_clk",
+		CLK_INIT(l2_m_clk.c),
+	},
+};
+
+static struct mux_clk apss_debug_ter_mux = {
+	.ops = &mux_reg_ops,
+	.mask = 0x3,
+	.shift = 8,
+	MUX_SRC_LIST(
+		{&apc0_m_clk.c, 0},
+		{&apc1_m_clk.c, 1},
+		{&apc2_m_clk.c, 2},
+		{&apc3_m_clk.c, 3},
+	),
+	.base = &meas_base,
+	.c = {
+		.dbg_name = "apss_debug_ter_mux",
+		.ops = &clk_ops_gen_mux,
+		CLK_INIT(apss_debug_ter_mux.c),
+	},
+};
+
+static struct mux_clk apss_debug_sec_mux = {
+	.ops = &mux_reg_ops,
+	.mask = 0x7,
+	.shift = 12,
+	MUX_SRC_LIST(
+		{&apss_debug_ter_mux.c, 0},
+		{&l2_m_clk.c, 1},
+	),
+	.rec_set_par = 1,
+	.base = &meas_base,
+	.c = {
+		.dbg_name = "apss_debug_sec_mux",
+		.ops = &clk_ops_gen_mux,
+		CLK_INIT(apss_debug_sec_mux.c),
+	},
+};
+
+static struct mux_clk apss_debug_pri_mux = {
+	.ops = &mux_reg_ops,
+	.mask = 0x3,
+	.shift = 16,
+	MUX_SRC_LIST(
+		{&apss_debug_sec_mux.c, 0},
+	),
+	.rec_set_par = 1,
+	.base = &meas_base,
+	.c = {
+		.dbg_name = "apss_debug_pri_mux",
+		.ops = &clk_ops_gen_mux,
+		CLK_INIT(apss_debug_pri_mux.c),
+	},
+};
+
 static struct measure_clk_data debug_mux_priv = {
 	.cxo = &xo_clk_src.c,
 	.plltest_reg = GCC_PLLTEST_PAD_CFG,
@@ -2363,6 +2453,7 @@ static struct mux_clk gcc_debug_mux = {
 	.base = &virt_bases[GCC_BASE],
 	MUX_SRC_LIST(
 		{&rpm_debug_clk.c,			0xFFFF},
+		{&apss_debug_pri_mux.c,			0x016A},
 		{&gcc_gp1_clk.c,			0x0010},
 		{&gcc_gp2_clk.c,			0x0011},
 		{&gcc_gp3_clk.c,			0x0012},
@@ -2519,9 +2610,6 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	/* Voteable Clocks */
 	CLK_LIST(gcc_blsp1_ahb_clk),
 	CLK_LIST(gcc_boot_rom_ahb_clk),
-	CLK_LIST(gcc_crypto_ahb_clk),
-	CLK_LIST(gcc_crypto_axi_clk),
-	CLK_LIST(gcc_crypto_clk),
 	CLK_LIST(gcc_prng_ahb_clk),
 	CLK_LIST(gcc_apss_tcu_clk),
 	CLK_LIST(gcc_gfx_tbu_clk),
@@ -2585,10 +2673,8 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	CLK_LIST(gcc_gp3_clk),
 	CLK_LIST(gcc_mdss_ahb_clk),
 	CLK_LIST(gcc_mdss_axi_clk),
-	CLK_LIST(gcc_mdss_byte0_clk),
 	CLK_LIST(gcc_mdss_esc0_clk),
 	CLK_LIST(gcc_mdss_mdp_clk),
-	CLK_LIST(gcc_mdss_pclk0_clk),
 	CLK_LIST(gcc_mdss_vsync_clk),
 	CLK_LIST(gcc_mss_cfg_ahb_clk),
 	CLK_LIST(gcc_mss_q6_bimc_axi_clk),
@@ -2609,6 +2695,14 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	CLK_LIST(gcc_bimc_gfx_clk),
 	CLK_LIST(gcc_bimc_gpu_clk),
 	CLK_LIST(wcnss_m_clk),
+};
+
+static struct clk_lookup msm_clocks_gcc_8916_crypto[] = {
+	/* Crypto clocks */
+	CLK_LOOKUP_OF("core_clk",     gcc_crypto_clk,      "scm"),
+	CLK_LOOKUP_OF("iface_clk",    gcc_crypto_ahb_clk,  "scm"),
+	CLK_LOOKUP_OF("bus_clk",      gcc_crypto_axi_clk,  "scm"),
+	CLK_LOOKUP_OF("core_clk_src", crypto_clk_src,      "scm"),
 };
 
 static int msm_gcc_probe(struct platform_device *pdev)
@@ -2688,6 +2782,12 @@ static int msm_gcc_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	ret = of_msm_clock_register(pdev->dev.of_node,
+				 msm_clocks_gcc_8916_crypto,
+				 ARRAY_SIZE(msm_clocks_gcc_8916_crypto));
+	if (ret)
+		return ret;
+
 	clk_set_rate(&apss_ahb_clk_src.c, 19200000);
 	clk_prepare_enable(&apss_ahb_clk_src.c);
 
@@ -2725,11 +2825,30 @@ arch_initcall(msm_gcc_init);
 
 static struct clk_lookup msm_clocks_measure[] = {
 	CLK_LOOKUP_OF("measure", gcc_debug_mux, "debug"),
+	CLK_LIST(apss_debug_pri_mux),
+	CLK_LIST(apc0_m_clk),
+	CLK_LIST(apc1_m_clk),
+	CLK_LIST(apc2_m_clk),
+	CLK_LIST(apc3_m_clk),
+	CLK_LIST(l2_m_clk),
 };
 
 static int msm_clock_debug_probe(struct platform_device *pdev)
 {
 	int ret;
+	struct resource *res;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "meas");
+	if (!res) {
+		dev_err(&pdev->dev, "GLB clock diag base not defined.\n");
+		return -EINVAL;
+	}
+
+	meas_base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	if (!meas_base) {
+		dev_err(&pdev->dev, "Unable to map GLB clock diag base.\n");
+		return -ENOMEM;
+	}
 
 	clk_ops_debug_mux = clk_ops_gen_mux;
 	clk_ops_debug_mux.get_rate = measure_get_rate;
@@ -2773,3 +2892,66 @@ static int __init msm_clock_debug_init(void)
 	return platform_driver_register(&msm_clock_debug_driver);
 }
 late_initcall(msm_clock_debug_init);
+
+/* MDSS DSI_PHY_PLL */
+static struct clk_lookup msm_clocks_gcc_mdss[] = {
+	CLK_LIST(gcc_mdss_pclk0_clk),
+	CLK_LIST(gcc_mdss_byte0_clk),
+};
+
+static int msm_gcc_mdss_probe(struct platform_device *pdev)
+{
+	int counter = 0, ret = 0;
+
+	pclk0_clk_src.c.parent = devm_clk_get(&pdev->dev, "pixel_src");
+	if (IS_ERR(pclk0_clk_src.c.parent)) {
+		dev_err(&pdev->dev, "Failed to get pixel source.\n");
+		return PTR_ERR(pclk0_clk_src.c.parent);
+	}
+
+	for (counter = 0; counter < (sizeof(ftbl_gcc_mdss_pclk0_clk)/
+				sizeof(struct clk_freq_tbl)); counter++)
+		ftbl_gcc_mdss_pclk0_clk[counter].src_clk =
+					pclk0_clk_src.c.parent;
+
+	byte0_clk_src.c.parent = devm_clk_get(&pdev->dev, "byte_src");
+	if (IS_ERR(byte0_clk_src.c.parent)) {
+		dev_err(&pdev->dev, "Failed to get byte0 source.\n");
+		devm_clk_put(&pdev->dev, pclk0_clk_src.c.parent);
+		return PTR_ERR(byte0_clk_src.c.parent);
+	}
+
+	for (counter = 0; counter < (sizeof(ftbl_gcc_mdss_byte0_clk)/
+				sizeof(struct clk_freq_tbl)); counter++)
+		ftbl_gcc_mdss_byte0_clk[counter].src_clk =
+					byte0_clk_src.c.parent;
+
+	ret = of_msm_clock_register(pdev->dev.of_node, msm_clocks_gcc_mdss,
+					ARRAY_SIZE(msm_clocks_gcc_mdss));
+	if (ret)
+		return ret;
+
+	dev_info(&pdev->dev, "Registered GCC MDSS clocks.\n");
+
+	return ret;
+}
+
+static struct of_device_id msm_clock_mdss_match_table[] = {
+	{ .compatible = "qcom,gcc-mdss-8916" },
+	{}
+};
+
+static struct platform_driver msm_clock_gcc_mdss_driver = {
+	.probe = msm_gcc_mdss_probe,
+	.driver = {
+		.name = "gcc-mdss-8916",
+		.of_match_table = msm_clock_mdss_match_table,
+		.owner = THIS_MODULE,
+	},
+};
+
+static int __init msm_gcc_mdss_init(void)
+{
+	return platform_driver_register(&msm_clock_gcc_mdss_driver);
+}
+fs_initcall_sync(msm_gcc_mdss_init);

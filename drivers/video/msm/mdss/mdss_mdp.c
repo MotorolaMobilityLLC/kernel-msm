@@ -43,8 +43,8 @@
 
 #include <mach/board.h>
 #include <mach/hardware.h>
-#include <mach/msm_bus.h>
-#include <mach/msm_bus_board.h>
+#include <linux/msm-bus.h>
+#include <linux/msm-bus-board.h>
 #include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <mach/memory.h>
@@ -345,6 +345,7 @@ void mdss_disable_irq_nosync(struct mdss_hw *hw)
 	pr_debug("Disable HW=%d irq ena=%d mask=%x\n", hw->hw_ndx,
 			mdss_res->irq_ena, mdss_res->irq_mask);
 
+	spin_lock(&mdss_lock);
 	if (!(mdss_res->irq_mask & ndx_bit)) {
 		pr_warn("MDSS HW ndx=%d is NOT set, mask=%x, hist mask=%x\n",
 			hw->hw_ndx, mdss_res->mdp_irq_mask,
@@ -356,6 +357,7 @@ void mdss_disable_irq_nosync(struct mdss_hw *hw)
 			disable_irq_nosync(mdss_res->irq);
 		}
 	}
+	spin_unlock(&mdss_lock);
 }
 EXPORT_SYMBOL(mdss_disable_irq_nosync);
 
@@ -559,7 +561,16 @@ void mdss_mdp_hist_irq_disable(u32 irq)
 	spin_unlock_irqrestore(&mdp_lock, irq_flags);
 }
 
-/* called from interrupt context */
+/**
+ * mdss_mdp_irq_disable_nosync() - disable mdp irq
+ * @intr_type:	mdp interface type
+ * @intf_num:	mdp interface num
+ *
+ * This fucntion is called from interrupt context
+ * mdp_lock is already held at up stream (mdss_irq_handler)
+ * therefore spin_lock(&mdp_lock) is not allowed here
+ *
+*/
 void mdss_mdp_irq_disable_nosync(u32 intr_type, u32 intf_num)
 {
 	u32 irq;
@@ -1310,6 +1321,8 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 		SPRINT(" tile_format");
 	if (mdata->has_non_scalar_rgb)
 		SPRINT(" non_scalar_rgb");
+	if (mdata->has_src_split)
+		SPRINT(" src_split");
 	SPRINT("\n");
 
 	return cnt;
@@ -1791,7 +1804,7 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 
 	len = min_t(int, DEFAULT_TOTAL_VIG_PIPES, (int)mdata->nvig_pipes);
 	rc = mdss_mdp_pipe_addr_setup(mdata, mdata->vig_pipes, offsets, ftch_id,
-		xin_id, MDSS_MDP_PIPE_TYPE_VIG, MDSS_MDP_SSPP_VIG0, len);
+		xin_id, MDSS_MDP_PIPE_TYPE_VIG, MDSS_MDP_SSPP_VIG0, len, 0);
 	if (rc)
 		goto parse_fail;
 
@@ -1816,7 +1829,7 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 	rc = mdss_mdp_pipe_addr_setup(mdata, mdata->rgb_pipes,
 		offsets + mdata->nvig_pipes, ftch_id + mdata->nvig_pipes,
 		xin_id + mdata->nvig_pipes, MDSS_MDP_PIPE_TYPE_RGB,
-		MDSS_MDP_SSPP_RGB0, len);
+		MDSS_MDP_SSPP_RGB0, len, mdata->nvig_pipes);
 	if (rc)
 		goto parse_fail;
 
@@ -1845,7 +1858,8 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 		len = mdata->ndma_pipes;
 		rc = mdss_mdp_pipe_addr_setup(mdata, mdata->dma_pipes,
 			offsets + dma_off, ftch_id + dma_off, xin_id + dma_off,
-			MDSS_MDP_PIPE_TYPE_DMA, MDSS_MDP_SSPP_DMA0, len);
+			MDSS_MDP_PIPE_TYPE_DMA, MDSS_MDP_SSPP_DMA0, len,
+			mdata->nvig_pipes + mdata->nrgb_pipes);
 		if (rc)
 			goto parse_fail;
 
@@ -1859,7 +1873,8 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 			ftch_id + DEFAULT_TOTAL_VIG_PIPES,
 			xin_id + DEFAULT_TOTAL_VIG_PIPES,
 			MDSS_MDP_PIPE_TYPE_VIG, setup_cnt,
-			mdata->nvig_pipes - DEFAULT_TOTAL_VIG_PIPES);
+			mdata->nvig_pipes - DEFAULT_TOTAL_VIG_PIPES,
+			DEFAULT_TOTAL_VIG_PIPES);
 		if (rc)
 			goto parse_fail;
 
@@ -1873,7 +1888,8 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 			ftch_id + mdata->nvig_pipes + DEFAULT_TOTAL_RGB_PIPES,
 			xin_id + mdata->nvig_pipes + DEFAULT_TOTAL_RGB_PIPES,
 			MDSS_MDP_PIPE_TYPE_RGB, setup_cnt,
-			mdata->nrgb_pipes - DEFAULT_TOTAL_RGB_PIPES);
+			mdata->nrgb_pipes - DEFAULT_TOTAL_RGB_PIPES,
+			mdata->nvig_pipes + DEFAULT_TOTAL_RGB_PIPES);
 		if (rc)
 			goto parse_fail;
 
@@ -2284,6 +2300,8 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 					       "qcom,mdss-has-bwc");
 	mdata->has_decimation = of_property_read_bool(pdev->dev.of_node,
 		"qcom,mdss-has-decimation");
+	mdata->has_no_lut_read = of_property_read_bool(pdev->dev.of_node,
+		"qcom,mdss-no-lut-read");
 	wfd_data = of_get_property(pdev->dev.of_node,
 					"qcom,mdss-wfd-mode", NULL);
 	if (wfd_data) {
@@ -2303,6 +2321,8 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 		mdata->wfd_mode = MDSS_MDP_WFD_SHARED;
 	}
 
+	mdata->has_src_split = of_property_read_bool(pdev->dev.of_node,
+		 "qcom,mdss-has-source-split");
 	prop = of_find_property(pdev->dev.of_node, "batfet-supply", NULL);
 	mdata->batfet_required = prop ? true : false;
 	rc = of_property_read_u32(pdev->dev.of_node,

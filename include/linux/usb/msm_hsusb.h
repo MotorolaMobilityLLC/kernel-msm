@@ -191,6 +191,16 @@ enum usb_vdd_value {
 };
 
 /**
+ * Supported USB controllers
+ */
+enum usb_ctrl {
+	DWC3_CTRL = 0,	/* DWC3 controller */
+	CI_CTRL,	/* ChipIdea controller */
+	HSIC_CTRL,	/* HSIC controller */
+	NUM_CTRL,
+};
+
+/**
  * struct msm_otg_platform_data - platform device data
  *              for msm_otg driver.
  * @phy_init_seq: PHY configuration sequence. val, reg pairs
@@ -249,7 +259,6 @@ struct msm_otg_platform_data {
 	enum otg_control_type otg_control;
 	enum usb_mode_type default_mode;
 	enum msm_usb_phy_type phy_type;
-	void (*setup_gpio)(enum usb_otg_state state);
 	int pmic_id_irq;
 	unsigned int mpm_otgsessvld_int;
 	unsigned int mpm_dpshv_int;
@@ -478,6 +487,7 @@ struct msm_otg {
 	bool ext_chg_opened;
 	bool ext_chg_active;
 	struct completion ext_chg_wait;
+	struct pinctrl *phy_pinctrl;
 	int ui_enabled;
 	bool pm_done;
 	struct qpnp_vadc_chip	*vadc_dev;
@@ -547,6 +557,7 @@ struct msm_usb_host_platform_data {
 	bool no_selective_suspend;
 	int resume_gpio;
 	int ext_hub_reset_gpio;
+	bool is_uicc;
 };
 
 /**
@@ -580,8 +591,8 @@ struct usb_ext_notification {
 	void *ctxt;
 };
 #ifdef CONFIG_USB_BAM
-bool msm_bam_usb_lpm_ok(void);
-void msm_bam_notify_lpm_resume(void);
+bool msm_bam_usb_lpm_ok(enum usb_ctrl ctrl);
+void msm_bam_notify_lpm_resume(enum usb_ctrl ctrl);
 void msm_bam_set_usb_host_dev(struct device *dev);
 void msm_bam_set_hsic_host_dev(struct device *dev);
 void msm_bam_set_usb_dev(struct device *dev);
@@ -591,8 +602,8 @@ bool msm_bam_hsic_lpm_ok(void);
 void msm_bam_usb_host_notify_on_resume(void);
 void msm_bam_hsic_host_notify_on_resume(void);
 #else
-static inline bool msm_bam_usb_lpm_ok(void) { return true; }
-static inline void msm_bam_notify_lpm_resume(void) {}
+static inline bool msm_bam_usb_lpm_ok(enum usb_ctrl ctrl) { return true; }
+static inline void msm_bam_notify_lpm_resume(enum usb_ctrl ctrl) {}
 static inline void msm_bam_set_usb_host_dev(struct device *dev) {}
 static inline void msm_bam_set_hsic_host_dev(struct device *dev) {}
 static inline void msm_bam_set_usb_dev(struct device *dev) {}
@@ -616,6 +627,8 @@ int msm_ep_unconfig(struct usb_ep *ep);
 void dwc3_tx_fifo_resize_request(struct usb_ep *ep, bool qdss_enable);
 int msm_data_fifo_config(struct usb_ep *ep, phys_addr_t addr, u32 size,
 	u8 dst_pipe_idx);
+bool msm_dwc3_reset_ep_after_lpm(struct usb_gadget *gadget);
+int msm_dwc3_reset_dbm_ep(struct usb_ep *ep);
 
 void msm_dwc3_restart_usb_session(struct usb_gadget *gadget);
 
@@ -653,5 +666,16 @@ static inline int msm_register_usb_ext_notification(
 {
 	return -ENODEV;
 }
+
+static inline bool msm_dwc3_reset_ep_after_lpm(struct usb_gadget *gadget)
+{
+	return false;
+}
+
+static inline int msm_dwc3_reset_dbm_ep(struct usb_ep *ep)
+{
+	return -ENODEV;
+}
+
 #endif
 #endif

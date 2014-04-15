@@ -162,8 +162,9 @@ static inline u32 vpu_hfi_q_size(int q_id)
 #define VPU_CSR_SW_SCRATCH3			0x16c	/* unused */
 #define VPU_CSR_SW_SCRATCH4_IPC_POLLING		0x170	/* IPC polling reg */
 #define VPU_HW_VERSION				0x1A0
+#define VPU_CSR_LAST_REG			VPU_HW_VERSION
 
-static inline void raw_hfi_qtbl_paddr_set(u32 regbase, u32 phyaddr)
+static inline void raw_hfi_qtbl_paddr_set(void __iomem *regbase, u32 phyaddr)
 {
 	/* lower 32 bit of qtable phy address */
 	writel_relaxed(phyaddr, regbase + VPU_CSR_SW_SCRATCH2_QTBL_ADDR);
@@ -173,7 +174,7 @@ static inline void raw_hfi_qtbl_paddr_set(u32 regbase, u32 phyaddr)
 	writel_relaxed(1, regbase + VPU_CSR_SW_SCRATCH1_QTBL_INFO);
 }
 
-static inline void raw_hfi_int_enable(u32 regbase)
+static inline void raw_hfi_int_enable(void __iomem *regbase)
 {
 	/* use edge interrrupt */
 	writel_relaxed(0, regbase + VPU_CSR_FW_SGI_FORCELEVEL);
@@ -183,7 +184,7 @@ static inline void raw_hfi_int_enable(u32 regbase)
 	writel_relaxed(1, regbase + VPU_CSR_FW_SGI_EN_SET);
 }
 
-static inline void raw_hfi_int_disable(u32 regbase)
+static inline void raw_hfi_int_disable(void __iomem *regbase)
 {
 	/* disable sgi interrupt */
 	wmb();
@@ -193,7 +194,7 @@ static inline void raw_hfi_int_disable(u32 regbase)
 	mb();
 }
 
-static inline void raw_hfi_int_ack(u32 regbase)
+static inline void raw_hfi_int_ack(void __iomem *regbase)
 {
 	/* clear sgi interrupt */
 	wmb();
@@ -203,7 +204,7 @@ static inline void raw_hfi_int_ack(u32 regbase)
 	mb();
 }
 
-static inline void raw_hfi_int_fire(u32 regbase)
+static inline void raw_hfi_int_fire(void __iomem *regbase)
 {
 	/* barrier, then trigger interrupt */
 	wmb();
@@ -212,31 +213,35 @@ static inline void raw_hfi_int_fire(u32 regbase)
 	/* no need for barrier after */
 }
 
-static inline void raw_hfi_reg_write(u32 reg, u32 value)
+static inline void raw_hfi_reg_write(void __iomem *addr, u32 val)
 {
-	writel_relaxed(value, reg);
+	writel_relaxed(val, addr);
 	wmb();
 }
 
-static inline u32 raw_hfi_status_read(u32 regbase)
+static inline u32 raw_hfi_reg_read(void __iomem *addr)
 {
 	u32 val;
 
-	/* read vpu boot status */
-	val = readl_relaxed(regbase + VPU_CSR_SW_SCRATCH0_STS);
+	val = readl_relaxed(addr);
 	rmb();
 
 	return val;
 }
 
-static inline bool raw_hfi_fw_ready(u32 regbase)
+static inline u32 raw_hfi_status_read(void __iomem *regbase)
+{
+	return raw_hfi_reg_read(regbase + VPU_CSR_SW_SCRATCH0_STS);
+}
+
+static inline bool raw_hfi_fw_ready(void __iomem *regbase)
 {
 	u32 val = raw_hfi_status_read(regbase);
 
 	return (val & 0x1) ? true : false;
 }
 
-static inline bool raw_hfi_fw_halted(u32 regbase)
+static inline bool raw_hfi_fw_halted(void __iomem *regbase)
 {
 	u32 val = raw_hfi_status_read(regbase);
 

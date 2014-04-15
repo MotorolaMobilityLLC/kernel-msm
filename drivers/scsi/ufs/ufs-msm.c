@@ -21,7 +21,7 @@
 #include <linux/iopoll.h>
 #include <linux/platform_device.h>
 
-#include <mach/msm_bus.h>
+#include <linux/msm-bus.h>
 
 #include "ufshcd.h"
 #include "unipro.h"
@@ -2123,7 +2123,7 @@ msm_ufs_cfg_timers(struct ufs_hba *hba, u32 gear, u32 hs, u32 rate)
 		if (rate == PA_HS_MODE_A) {
 			if (gear > ARRAY_SIZE(hs_fr_table_rA)) {
 				dev_err(hba->dev,
-					"%s: index %d exceeds table size %d\n",
+					"%s: index %d exceeds table size %zu\n",
 					__func__, gear,
 					ARRAY_SIZE(hs_fr_table_rA));
 				goto out_error;
@@ -2132,7 +2132,7 @@ msm_ufs_cfg_timers(struct ufs_hba *hba, u32 gear, u32 hs, u32 rate)
 		} else if (rate == PA_HS_MODE_B) {
 			if (gear > ARRAY_SIZE(hs_fr_table_rB)) {
 				dev_err(hba->dev,
-					"%s: index %d exceeds table size %d\n",
+					"%s: index %d exceeds table size %zu\n",
 					__func__, gear,
 					ARRAY_SIZE(hs_fr_table_rB));
 				goto out_error;
@@ -2148,7 +2148,7 @@ msm_ufs_cfg_timers(struct ufs_hba *hba, u32 gear, u32 hs, u32 rate)
 	case SLOW_MODE:
 		if (gear > ARRAY_SIZE(pwm_fr_table)) {
 			dev_err(hba->dev,
-					"%s: index %d exceeds table size %d\n",
+					"%s: index %d exceeds table size %zu\n",
 					__func__, gear,
 					ARRAY_SIZE(pwm_fr_table));
 			goto out_error;
@@ -2567,12 +2567,13 @@ static void msm_ufs_advertise_quirks(struct ufs_hba *hba)
 			      | UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS
 			      | UFSHCD_QUIRK_BROKEN_2_TX_LANES
 			      | UFSHCD_QUIRK_BROKEN_SUSPEND
-			      | UFSHCD_BROKEN_LCC);
+			      | UFSHCD_BROKEN_LCC_PROCESSING_ON_HOST
+			      | UFSHCD_BROKEN_LCC_PROCESSING_ON_DEVICE);
 	} else if ((major == 0x1) && (minor == 0x001) && (step == 0x0001)) {
 		hba->quirks |= (UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS
 			      | UFSHCD_QUIRK_BROKEN_INTR_AGGR
 			      | UFSHCD_BROKEN_GEAR_CHANGE_INTO_HS
-			      | UFSHCD_BROKEN_LCC);
+			      | UFSHCD_BROKEN_LCC_PROCESSING_ON_HOST);
 
 		phy->quirks = MSM_UFS_PHY_QUIRK_CFG_RESTORE;
 	}
@@ -2875,6 +2876,8 @@ static int msm_ufs_init(struct ufs_hba *hba)
 		hba->spm_lvl = UFS_PM_LVL_3;
 	}
 
+	hba->caps |= UFSHCD_CAP_CLK_GATING | UFSHCD_CAP_CLK_SCALING;
+	hba->caps |= UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
 	msm_ufs_setup_clocks(hba, true);
 	goto out;
 

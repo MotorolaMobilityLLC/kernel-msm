@@ -151,7 +151,7 @@ void soft_restart(unsigned long addr)
 	BUG();
 }
 
-static void null_restart(char mode, const char *cmd)
+static void null_restart(enum reboot_mode reboot_mode, const char *cmd)
 {
 }
 
@@ -161,7 +161,7 @@ static void null_restart(char mode, const char *cmd)
 void (*pm_power_off)(void);
 EXPORT_SYMBOL(pm_power_off);
 
-void (*arm_pm_restart)(char str, const char *cmd) = null_restart;
+void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd) = null_restart;
 EXPORT_SYMBOL_GPL(arm_pm_restart);
 
 /*
@@ -216,14 +216,14 @@ void arch_cpu_idle(void)
 		default_idle();
 }
 
-static char reboot_mode = 'h';
+enum reboot_mode reboot_mode = REBOOT_HARD;
 
-int __init reboot_setup(char *str)
+static int __init reboot_setup(char *str)
 {
-	reboot_mode = str[0];
+	if ('s' == str[0])
+		reboot_mode = REBOOT_SOFT;
 	return 1;
 }
-
 __setup("reboot=", reboot_setup);
 
 /*

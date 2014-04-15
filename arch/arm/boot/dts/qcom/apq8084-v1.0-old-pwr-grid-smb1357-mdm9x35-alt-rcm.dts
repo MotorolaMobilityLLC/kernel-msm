@@ -30,7 +30,7 @@
 		interrupts = <0x0 0xcd 0x0>;	/* PMA8084 GPIO 14 */
 		qcom,float-voltage-mv = <4200>;
 		qcom,charging-timeout = <1536>;
-		qcom,recharge-thresh-mv = <200>;
+		qcom,recharge-thresh-mv = <100>;
 		qcom,iterm-ma = <100>;
 		regulator-name = "smb1357_otg_vreg";
 		qcom,soft-vfloat-comp-disabled;
@@ -50,7 +50,6 @@
 	qcom,ap2mdm-status-gpio   = <&msmgpio 110 0x00>;
 	qcom,ap2mdm-soft-reset-gpio = <&msmgpio 128 0x00>;
 	qcom,mdm2ap-pblrdy-gpio = <&msmgpio 113 0x00>;
-	qcom,ap2mdm-wakeup-gpio = <&msmgpio 108 0x00>;
 	qcom,ap2mdm-vddmin-gpio = <&msmgpio 114 0x00>;
 	qcom,mdm2ap-vddmin-gpio = <&msmgpio 115 0x00>;
 	qcom,mdm-dual-link;
@@ -67,4 +66,9 @@
 
 &ufs1 {
 	status = "disabled";
+};
+
+&cnss {
+	esoc-names = "modem_wlan";
+	esoc-0 = <&mdm1>;
 };

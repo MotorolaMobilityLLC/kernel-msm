@@ -22,7 +22,7 @@
 	list_entry(pos->member.next, typeof(*pos), member)
 #define IPA_LAST_DESC_CNT 0xFFFF
 #define POLLING_INACTIVITY_RX 40
-#define POLLING_MIN_SLEEP_RX 950
+#define POLLING_MIN_SLEEP_RX 1010
 #define POLLING_MAX_SLEEP_RX 1050
 #define POLLING_INACTIVITY_TX 40
 #define POLLING_MIN_SLEEP_TX 400
@@ -31,7 +31,7 @@
 #define IPA_GENERIC_AGGR_BYTE_LIMIT 6
 #define IPA_GENERIC_AGGR_TIME_LIMIT 1
 #define IPA_GENERIC_AGGR_PKT_LIMIT 0
-#define IPA_GENERIC_RX_POOL_SZ 7
+#define IPA_GENERIC_RX_POOL_SZ 32
 /* 8K less the headroom (NET_SKB_PAD) and skb_shared_info which are implicitly
  * part of the data buffer */
 #define IPA_LAN_RX_BUFF_SZ 7936
@@ -62,8 +62,8 @@ static void ipa_wq_write_done_common(struct ipa_sys_context *sys, u32 cnt)
 	struct ipa_tx_pkt_wrapper *tx_pkt_expected;
 	int i;
 
-	spin_lock_bh(&sys->spinlock);
 	for (i = 0; i < cnt; i++) {
+		spin_lock_bh(&sys->spinlock);
 		if (unlikely(list_empty(&sys->head_desc_list))) {
 			WARN_ON(1);
 			spin_unlock_bh(&sys->spinlock);
@@ -74,22 +74,23 @@ static void ipa_wq_write_done_common(struct ipa_sys_context *sys, u32 cnt)
 						   link);
 		list_del(&tx_pkt_expected->link);
 		sys->len--;
-		dma_unmap_single(ipa_ctx->pdev, tx_pkt_expected->mem.phys_base,
-				tx_pkt_expected->mem.size,
-				DMA_TO_DEVICE);
 		spin_unlock_bh(&sys->spinlock);
+		if (!tx_pkt_expected->no_unmap_dma)
+			dma_unmap_single(ipa_ctx->pdev,
+					tx_pkt_expected->mem.phys_base,
+					tx_pkt_expected->mem.size,
+					DMA_TO_DEVICE);
 		if (tx_pkt_expected->callback)
 			tx_pkt_expected->callback(tx_pkt_expected->user1,
 					tx_pkt_expected->user2);
-		spin_lock_bh(&sys->spinlock);
 		if (tx_pkt_expected->cnt > 1 &&
 				tx_pkt_expected->cnt != IPA_LAST_DESC_CNT)
-			dma_pool_free(ipa_ctx->dma_pool,
-					tx_pkt_expected->mult.base,
-					tx_pkt_expected->mult.phys_base);
+			dma_free_coherent(ipa_ctx->pdev,
+				tx_pkt_expected->mult.size,
+				tx_pkt_expected->mult.base,
+				tx_pkt_expected->mult.phys_base);
 		kmem_cache_free(ipa_ctx->tx_pkt_wrapper_cache, tx_pkt_expected);
 	}
-	spin_unlock_bh(&sys->spinlock);
 }
 
 static void ipa_wq_write_done_status(int src_pipe)
@@ -275,28 +276,33 @@ int ipa_send_one(struct ipa_sys_context *sys, struct ipa_desc *desc,
 		goto fail_mem_alloc;
 	}
 
-	if (unlikely(ipa_ctx->ipa_hw_type == IPA_HW_v1_0)) {
-		WARN_ON(desc->len > 512);
+	if (!desc->dma_address_valid) {
+		if (unlikely(ipa_ctx->ipa_hw_type == IPA_HW_v1_0)) {
+			WARN_ON(desc->len > 512);
 
-		/*
-		 * Due to a HW limitation, we need to make sure that the packet
-		 * does not cross a 1KB boundary
-		 */
-		tx_pkt->bounce = dma_pool_alloc(
-					ipa_ctx->dma_pool,
-					mem_flag, &dma_address);
-		if (!tx_pkt->bounce) {
-			dma_address = 0;
+			/*
+			 * Due to a HW limitation, we need to make sure that
+			 * the packet does not cross a 1KB boundary
+			 */
+			tx_pkt->bounce = dma_pool_alloc(
+				ipa_ctx->dma_pool,
+				mem_flag, &dma_address);
+			if (!tx_pkt->bounce) {
+				dma_address = 0;
+			} else {
+				WARN_ON(!ipa_straddle_boundary
+					((u32)dma_address,
+					(u32)dma_address + desc->len - 1,
+					1024));
+				memcpy(tx_pkt->bounce, desc->pyld, desc->len);
+			}
 		} else {
-			WARN_ON(!ipa_straddle_boundary
-		       ((u32)dma_address,
-				(u32)dma_address + desc->len - 1,
-				1024));
-			memcpy(tx_pkt->bounce, desc->pyld, desc->len);
+			dma_address = dma_map_single(ipa_ctx->pdev, desc->pyld,
+				desc->len, DMA_TO_DEVICE);
 		}
 	} else {
-		dma_address = dma_map_single(ipa_ctx->pdev, desc->pyld,
-				desc->len, DMA_TO_DEVICE);
+		dma_address = desc->dma_address;
+		tx_pkt->no_unmap_dma = true;
 	}
 	if (!dma_address) {
 		IPAERR("failed to DMA wrap\n");
@@ -399,7 +405,8 @@ int ipa_send(struct ipa_sys_context *sys, u32 num_desc, struct ipa_desc *desc,
 	if (unlikely(!in_atomic))
 		mem_flag = GFP_KERNEL;
 
-	transfer.iovec = dma_pool_alloc(ipa_ctx->dma_pool, mem_flag, &dma_addr);
+	transfer.iovec = dma_alloc_coherent(ipa_ctx->pdev, size, &dma_addr,
+			mem_flag);
 	transfer.iovec_phys = dma_addr;
 	transfer.iovec_count = num_desc;
 	spin_lock_bh(&sys->spinlock);
@@ -438,33 +445,41 @@ int ipa_send(struct ipa_sys_context *sys, u32 num_desc, struct ipa_desc *desc,
 		tx_pkt->mem.base = desc[i].pyld;
 		tx_pkt->mem.size = desc[i].len;
 
-		if (unlikely(ipa_ctx->ipa_hw_type == IPA_HW_v1_0)) {
-			WARN_ON(tx_pkt->mem.size > 512);
+		if (!desc->dma_address_valid) {
+			if (unlikely(ipa_ctx->ipa_hw_type == IPA_HW_v1_0)) {
+				WARN_ON(tx_pkt->mem.size > 512);
 
-			/*
-			 * Due to a HW limitation, we need to make sure that the
-			 * packet does not cross a 1KB boundary
-			 */
-			tx_pkt->bounce =
-			   dma_pool_alloc(ipa_ctx->dma_pool,
-					   mem_flag,
-					   &tx_pkt->mem.phys_base);
-			if (!tx_pkt->bounce) {
-				tx_pkt->mem.phys_base = 0;
-			} else {
-				WARN_ON(!ipa_straddle_boundary(
+				/*
+				 * Due to a HW limitation, we need to make sure
+				 * that the packet does not cross a
+				 * 1KB boundary
+				 */
+				tx_pkt->bounce =
+				dma_pool_alloc(ipa_ctx->dma_pool,
+					       mem_flag,
+					       &tx_pkt->mem.phys_base);
+				if (!tx_pkt->bounce) {
+					tx_pkt->mem.phys_base = 0;
+				} else {
+					WARN_ON(!ipa_straddle_boundary(
 						(u32)tx_pkt->mem.phys_base,
 						(u32)tx_pkt->mem.phys_base +
 						tx_pkt->mem.size - 1, 1024));
-				memcpy(tx_pkt->bounce, tx_pkt->mem.base,
+					memcpy(tx_pkt->bounce, tx_pkt->mem.base,
 						tx_pkt->mem.size);
+				}
+			} else {
+				tx_pkt->mem.phys_base =
+					dma_map_single(ipa_ctx->pdev,
+					tx_pkt->mem.base,
+					tx_pkt->mem.size,
+					DMA_TO_DEVICE);
 			}
 		} else {
-			tx_pkt->mem.phys_base =
-			   dma_map_single(ipa_ctx->pdev, tx_pkt->mem.base,
-					   tx_pkt->mem.size,
-					   DMA_TO_DEVICE);
+			tx_pkt->mem.phys_base = desc->dma_address;
+			tx_pkt->no_unmap_dma = true;
 		}
+
 		if (!tx_pkt->mem.phys_base) {
 			IPAERR("failed to alloc tx wrapper\n");
 			fail_dma_wrap = 1;
@@ -533,8 +548,8 @@ failure:
 		if (fail_dma_wrap)
 			kmem_cache_free(ipa_ctx->tx_pkt_wrapper_cache, tx_pkt);
 	if (transfer.iovec_phys)
-		dma_pool_free(ipa_ctx->dma_pool, transfer.iovec,
-				  transfer.iovec_phys);
+		dma_free_coherent(ipa_ctx->pdev, size, transfer.iovec,
+				transfer.iovec_phys);
 failure_coherent:
 	spin_unlock_bh(&sys->spinlock);
 	return -EFAULT;
@@ -907,26 +922,33 @@ int ipa_setup_sys_pipe(struct ipa_sys_connect_params *sys_in, u32 *clnt_hdl)
 
 	ep = &ipa_ctx->ep[ipa_ep_idx];
 
+	ipa_inc_client_enable_clks();
+
 	if (ep->valid == 1) {
 		if (sys_in->client != IPA_CLIENT_APPS_LAN_WAN_PROD) {
 			IPAERR("EP already allocated.\n");
-			goto fail_gen;
+			goto fail_and_disable_clocks;
 		} else {
 			if (ipa_cfg_ep_hdr(ipa_ep_idx,
 						&sys_in->ipa_ep_cfg.hdr)) {
 				IPAERR("fail to configure hdr prop of EP.\n");
-				return -EFAULT;
+				result = -EFAULT;
+				goto fail_and_disable_clocks;
 			}
 			if (ipa_cfg_ep_cfg(ipa_ep_idx,
 						&sys_in->ipa_ep_cfg.cfg)) {
 				IPAERR("fail to configure cfg prop of EP.\n");
-				return -EFAULT;
+				result = -EFAULT;
+				goto fail_and_disable_clocks;
 			}
 			IPADBG("client %d (ep: %d) overlay ok sys=%p\n",
 					sys_in->client, ipa_ep_idx, ep->sys);
 			ep->client_notify = sys_in->notify;
 			ep->priv = sys_in->priv;
 			*clnt_hdl = ipa_ep_idx;
+			if (!ep->keep_ipa_awake)
+				ipa_dec_client_disable_clks();
+
 			return 0;
 		}
 	}
@@ -937,7 +959,7 @@ int ipa_setup_sys_pipe(struct ipa_sys_connect_params *sys_in, u32 *clnt_hdl)
 	if (!ep->sys) {
 		IPAERR("failed to sys ctx for client %d\n", sys_in->client);
 		result = -ENOMEM;
-		goto fail_gen;
+		goto fail_and_disable_clocks;
 	}
 
 	snprintf(buff, IPA_RESOURCE_NAME_MAX, "ipawq%d", sys_in->client);
@@ -960,6 +982,7 @@ int ipa_setup_sys_pipe(struct ipa_sys_connect_params *sys_in, u32 *clnt_hdl)
 	ep->client = sys_in->client;
 	ep->client_notify = sys_in->notify;
 	ep->priv = sys_in->priv;
+	ep->keep_ipa_awake = sys_in->keep_ipa_awake;
 	ep->avail_fifo_desc =
 		((sys_in->desc_fifo_sz/sizeof(struct sps_iovec))-1);
 	INIT_LIST_HEAD(&ep->sys->head_desc_list);
@@ -1066,6 +1089,9 @@ int ipa_setup_sys_pipe(struct ipa_sys_connect_params *sys_in, u32 *clnt_hdl)
 	if (!ep->skip_ep_cfg && IPA_CLIENT_IS_PROD(sys_in->client))
 		ipa_install_dflt_flt_rules(ipa_ep_idx);
 
+	if (!ep->keep_ipa_awake)
+		ipa_dec_client_disable_clks();
+
 	ipa_ctx->skip_ep_cfg_shadow[ipa_ep_idx] = ep->skip_ep_cfg;
 	IPADBG("client %d (ep: %d) connected sys=%p\n", sys_in->client,
 			ipa_ep_idx, ep->sys);
@@ -1085,6 +1111,8 @@ fail_gen2:
 fail_wq:
 	kfree(ep->sys);
 	memset(&ipa_ctx->ep[ipa_ep_idx], 0, sizeof(struct ipa_ep_context));
+fail_and_disable_clocks:
+	ipa_dec_client_disable_clks();
 fail_gen:
 	return result;
 }
@@ -1105,6 +1133,8 @@ int ipa_teardown_sys_pipe(u32 clnt_hdl)
 		return -EINVAL;
 	}
 
+	ipa_inc_client_enable_clks();
+
 	ep = &ipa_ctx->ep[clnt_hdl];
 
 	if (IPA_CLIENT_IS_CONS(ep->client))
@@ -1120,6 +1150,8 @@ int ipa_teardown_sys_pipe(u32 clnt_hdl)
 	kfree(ep->sys);
 	ipa_delete_dflt_flt_rules(clnt_hdl);
 	memset(ep, 0, sizeof(struct ipa_ep_context));
+
+	ipa_dec_client_disable_clks();
 
 	IPADBG("client (ep: %d) disconnected\n", clnt_hdl);
 
@@ -1194,6 +1226,8 @@ int ipa_tx_dp(enum ipa_client_type dst, struct sk_buff *skb,
 	struct ipa_sys_context *sys;
 	int src_ep_idx;
 
+	memset(desc, 0, 2 * sizeof(struct ipa_desc));
+
 	/*
 	 * USB_CONS: PKT_INIT ep_idx = dst pipe
 	 * Q6_CONS: PKT_INIT ep_idx = sender pipe
@@ -1242,6 +1276,10 @@ int ipa_tx_dp(enum ipa_client_type dst, struct sk_buff *skb,
 				meta->pkt_init_dst_ep_remote) ?
 				src_ep_idx :
 				dst_ep_idx;
+		if (meta && meta->dma_address_valid) {
+			desc[1].dma_address_valid = true;
+			desc[1].dma_address = meta->dma_address;
+		}
 
 		if (ipa_send(sys, 2, desc, true)) {
 			IPAERR("fail to send immediate command\n");
@@ -1256,6 +1294,11 @@ int ipa_tx_dp(enum ipa_client_type dst, struct sk_buff *skb,
 		desc[0].callback = ipa_tx_comp_usr_notify_release;
 		desc[0].user1 = skb;
 		desc[0].user2 = src_ep_idx;
+
+		if (meta && meta->dma_address_valid) {
+			desc[0].dma_address_valid = true;
+			desc[0].dma_address = meta->dma_address;
+		}
 
 		if (ipa_send_one(sys, &desc[0], true)) {
 			IPAERR("fail to send skb\n");
@@ -1591,7 +1634,10 @@ begin:
 		IPADBG("STATUS opcode=%d src=%d dst=%d len=%d\n",
 				status->status_opcode, status->endp_src_idx,
 				status->endp_dest_idx, status->pkt_len);
-		if (status->status_opcode != IPA_HW_STATUS_OPCODE_PACKET) {
+		if (status->status_opcode !=
+			IPA_HW_STATUS_OPCODE_DROPPED_PACKET &&
+			status->status_opcode !=
+			IPA_HW_STATUS_OPCODE_PACKET) {
 			IPAERR("unsupported opcode\n");
 			skb_pull(skb, IPA_PKT_STATUS_SIZE);
 			continue;
@@ -1604,6 +1650,23 @@ begin:
 			IPAERR("status fields invalid\n");
 			WARN_ON(1);
 			BUG();
+		}
+		if (status->status_mask & IPA_HW_PKT_STATUS_MASK_TAG_VALID) {
+			struct completion *comp;
+			IPADBG("TAG packet arrived\n");
+			if (status->tag_f_2 == IPA_COOKIE) {
+				skb_pull(skb, IPA_PKT_STATUS_SIZE);
+				if (skb->len < sizeof(comp)) {
+					IPAERR("TAG arrived without packet\n");
+					return rc;
+				}
+				memcpy(&comp, skb->data, sizeof(comp));
+				skb_pull(skb, sizeof(comp));
+				complete(comp);
+				continue;
+			} else {
+				IPADBG("ignoring TAG with wrong cookie\n");
+			}
 		}
 		if (status->pkt_len == 0) {
 			IPADBG("Skip aggr close status\n");
@@ -1778,7 +1841,10 @@ static int ipa_wan_rx_pyld_hdlr(struct sk_buff *skb,
 		IPADBG("STATUS opcode=%d src=%d dst=%d len=%d\n",
 				status->status_opcode, status->endp_src_idx,
 				status->endp_dest_idx, status->pkt_len);
-		if (status->status_opcode != IPA_HW_STATUS_OPCODE_PACKET) {
+		if (status->status_opcode !=
+			IPA_HW_STATUS_OPCODE_DROPPED_PACKET &&
+			status->status_opcode !=
+			IPA_HW_STATUS_OPCODE_PACKET) {
 			IPAERR("unsupported opcode\n");
 			skb_pull(skb, IPA_PKT_STATUS_SIZE);
 			continue;
@@ -2044,7 +2110,7 @@ static void ipa_wq_rx_avail(struct work_struct *work)
  *
  * This function defer the work for this event to a workqueue.
  */
-static void ipa_sps_irq_rx_no_aggr_notify(struct sps_event_notify *notify)
+void ipa_sps_irq_rx_no_aggr_notify(struct sps_event_notify *notify)
 {
 	struct ipa_rx_pkt_wrapper *rx_pkt;
 
@@ -2124,13 +2190,18 @@ static int ipa_assign_policy(struct ipa_sys_connect_params *in,
 					ipa_sps_irq_tx_no_aggr_notify;
 			}
 		} else {
-			sys->policy = IPA_POLICY_INTR_MODE;
-			sys->sps_option = (SPS_O_AUTO_ENABLE | SPS_O_EOT);
-			sys->sps_callback = ipa_sps_irq_rx_no_aggr_notify;
 			if (in->client == IPA_CLIENT_APPS_LAN_CONS ||
 			    in->client == IPA_CLIENT_APPS_WAN_CONS) {
+				sys->policy = IPA_POLICY_INTR_POLL_MODE;
+				sys->sps_option = (SPS_O_AUTO_ENABLE | SPS_O_EOT
+						| SPS_O_ACK_TRANSFERS);
+				sys->sps_callback = ipa_sps_irq_rx_notify;
+				INIT_WORK(&sys->work, ipa_wq_handle_rx);
+				INIT_DELAYED_WORK(&sys->switch_to_intr_work,
+					switch_to_intr_rx_work_func);
 				INIT_DELAYED_WORK(&sys->replenish_rx_work,
 						replenish_rx_work_func);
+				atomic_set(&sys->curr_polling_state, 0);
 				sys->rx_buff_sz = IPA_LAN_RX_BUFF_SZ;
 				sys->rx_pool_sz = IPA_GENERIC_RX_POOL_SZ;
 				sys->get_skb = ipa_get_skb_ipa_rx;
@@ -2168,7 +2239,10 @@ static int ipa_assign_policy(struct ipa_sys_connect_params *in,
 					replenish_rx_work_func);
 				atomic_set(&sys->curr_polling_state, 0);
 				sys->rx_buff_sz = IPA_WLAN_RX_BUFF_SZ;
-				sys->rx_pool_sz = IPA_WLAN_RX_POOL_SZ;
+				sys->rx_pool_sz = in->desc_fifo_sz/
+					sizeof(struct sps_iovec) - 1;
+				if (sys->rx_pool_sz > IPA_WLAN_RX_POOL_SZ)
+					sys->rx_pool_sz = IPA_WLAN_RX_POOL_SZ;
 				sys->pyld_hdlr = NULL;
 				sys->get_skb = ipa_get_skb_ipa_rx;
 				sys->free_skb = ipa_free_skb_rx;
@@ -2270,7 +2344,7 @@ int ipa_tx_dp_mul(enum ipa_client_type src,
 #define IPA_WLAN_HDR_QMAP_ID_OFFSET 1
 	struct ipa_tx_data_desc *entry;
 	struct ipa_sys_context *sys;
-	struct ipa_desc desc;
+	struct ipa_desc desc = { 0 };
 	u32 num_desc, cnt;
 	int ep_idx;
 

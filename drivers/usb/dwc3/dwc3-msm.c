@@ -36,17 +36,14 @@
 #include <linux/usb/msm_hsusb.h>
 #include <linux/usb/msm_ext_chg.h>
 #include <linux/regulator/consumer.h>
-#include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/pm_wakeup.h>
 #include <linux/power_supply.h>
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/cdev.h>
 #include <linux/completion.h>
 #include <linux/clk/msm-clk.h>
+#include <linux/msm-bus.h>
 #include <soc/qcom/scm.h>
-
-#include <mach/rpm-regulator.h>
-#include <mach/msm_bus.h>
 
 #include "dwc3_otg.h"
 #include "core.h"
@@ -108,6 +105,7 @@ MODULE_PARM_DESC(usb_lpm_override, "Override no_suspend_resume with USB");
 #define SS_CR_PROTOCOL_WRITE_REG    (QSCRATCH_REG_OFFSET + 0x50)
 #define PWR_EVNT_IRQ_STAT_REG    (QSCRATCH_REG_OFFSET + 0x58)
 #define PWR_EVNT_IRQ_MASK_REG    (QSCRATCH_REG_OFFSET + 0x5C)
+#define HS_PHY_CTRL_COMMON_REG	(QSCRATCH_REG_OFFSET + 0xEC)
 
 /* TZ SCM parameters */
 #define DWC3_MSM_RESTORE_SCM_CFG_CMD 0x2
@@ -405,10 +403,13 @@ static void dwc3_msm_req_complete_func(struct usb_ep *ep,
 
 	/*
 	 * If this is the last endpoint we unconfigured, than reset also
-	 * the event buffers.
+	 * the event buffers; unless unconfiguring the ep due to lpm,
+	 * in which case the event buffer only gets reset during the
+	 * block reset.
 	 */
-	if (0 == dbm_get_num_of_eps_configured(mdwc->dbm))
-		dbm_event_buffer_config(mdwc->dbm, 0, 0, 0);
+	if (0 == dbm_get_num_of_eps_configured(mdwc->dbm) &&
+		!dbm_reset_ep_after_lpm(mdwc->dbm))
+			dbm_event_buffer_config(mdwc->dbm, 0, 0, 0);
 
 	/*
 	 * Call original complete function, notice that dwc->lock is already
@@ -420,6 +421,65 @@ static void dwc3_msm_req_complete_func(struct usb_ep *ep,
 
 	kfree(req_complete);
 }
+
+
+/**
+* Helper function
+*
+* Reset  DBM endpoint.
+*
+* @mdwc - pointer to dwc3_msm instance.
+* @dep - pointer to dwc3_ep instance.
+*
+* @return int - 0 on success, negative on error.
+*/
+static int __dwc3_msm_dbm_ep_reset(struct dwc3_msm *mdwc, struct dwc3_ep *dep)
+{
+	int ret;
+
+	dev_dbg(mdwc->dev, "Resetting dbm endpoint %d\n", dep->number);
+
+	/* Reset the dbm endpoint */
+	ret = dbm_ep_soft_reset(mdwc->dbm, dep->number, true);
+	if (ret) {
+		dev_err(mdwc->dev, "%s: failed to assert dbm ep reset\n",
+				__func__);
+		return ret;
+	}
+
+	/*
+	 * 10 usec delay is required before deasserting DBM endpoint reset
+	 * according to hardware programming guide.
+	 */
+	udelay(10);
+	ret = dbm_ep_soft_reset(mdwc->dbm, dep->number, false);
+	if (ret) {
+		dev_err(mdwc->dev, "%s: failed to deassert dbm ep reset\n",
+				__func__);
+		return ret;
+	}
+
+	return 0;
+}
+
+/**
+* Reset the DBM endpoint which is linked to the given USB endpoint.
+*
+* @usb_ep - pointer to usb_ep instance.
+*
+* @return int - 0 on success, negative on error.
+*/
+
+int msm_dwc3_reset_dbm_ep(struct usb_ep *ep)
+{
+	struct dwc3_ep *dep = to_dwc3_ep(ep);
+	struct dwc3 *dwc = dep->dwc;
+	struct dwc3_msm *mdwc = dev_get_drvdata(dwc->dev->parent);
+
+	return __dwc3_msm_dbm_ep_reset(mdwc, dep);
+}
+EXPORT_SYMBOL(msm_dwc3_reset_dbm_ep);
+
 
 /**
 * Helper function.
@@ -490,6 +550,8 @@ static int __dwc3_msm_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
 		return ret;
 	}
 	dep->flags |= DWC3_EP_BUSY;
+	dep->resource_index = dwc3_gadget_ep_get_transfer_index(dep->dwc,
+		dep->number);
 
 	return ret;
 }
@@ -569,6 +631,12 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 		dep->free_slot = 0;
 	}
 
+	/* HW restriction regarding TRB size (8KB) */
+	if (req->request.length < 0x2000) {
+		dev_err(mdwc->dev, "%s: Min TRB size is 8KB\n", __func__);
+		return -EINVAL;
+	}
+
 	/*
 	 * Override req->complete function, but before doing that,
 	 * store it's original pointer in the req_complete_list.
@@ -603,6 +671,11 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 	dev_vdbg(dwc->dev, "%s: queing request %p to ep %s length %d\n",
 			__func__, request, ep->name, request->length);
 
+	dbm_event_buffer_config(mdwc->dbm,
+		dwc3_msm_read_reg(mdwc->base, DWC3_GEVNTADRLO(0)),
+		dwc3_msm_read_reg(mdwc->base, DWC3_GEVNTADRHI(0)),
+		dwc3_msm_read_reg(mdwc->base, DWC3_GEVNTSIZ(0)));
+
 	/*
 	 * We must obtain the lock of the dwc3 core driver,
 	 * including disabling interrupts, so we will be sure
@@ -624,6 +697,7 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 
 	return 0;
 }
+
 
 /**
  * Configure MSM endpoint.
@@ -666,8 +740,6 @@ int msm_ep_config(struct usb_ep *ep)
 	}
 	(*new_ep_ops) = (*ep->ops);
 	new_ep_ops->queue = dwc3_msm_ep_queue;
-	new_ep_ops->disable = ep->ops->disable;
-
 	ep->ops = new_ep_ops;
 
 	/*
@@ -804,6 +876,20 @@ int msm_register_usb_ext_notification(struct usb_ext_notification *info)
 	return 0;
 }
 EXPORT_SYMBOL(msm_register_usb_ext_notification);
+
+/*
+ * Check whether the DWC3 requires resetting the ep
+ * after going to Low Power Mode (lpm)
+ */
+bool msm_dwc3_reset_ep_after_lpm(struct usb_gadget *gadget)
+{
+	struct dwc3 *dwc = container_of(gadget, struct dwc3, gadget);
+	struct dwc3_msm *mdwc = dev_get_drvdata(dwc->dev->parent);
+
+	return dbm_reset_ep_after_lpm(mdwc->dbm);
+}
+EXPORT_SYMBOL(msm_dwc3_reset_ep_after_lpm);
+
 
 /*
  * Config Global Distributed Switch Controller (GDSC)
@@ -1018,10 +1104,6 @@ static void dwc3_msm_block_reset(struct dwc3_ext_xceiv *xceiv, bool core_reset)
 	/*enable DBM*/
 	dwc3_msm_write_reg_field(mdwc->base, QSCRATCH_GENERAL_CFG,
 		DBM_EN_MASK, 0x1);
-	dbm_event_buffer_config(mdwc->dbm,
-		dwc3_msm_read_reg(mdwc->base, DWC3_GEVNTADRLO(0)),
-		dwc3_msm_read_reg(mdwc->base, DWC3_GEVNTADRHI(0)),
-		dwc3_msm_read_reg(mdwc->base, DWC3_GEVNTSIZ(0)));
 	dbm_enable(mdwc->dbm);
 
 }
@@ -1040,13 +1122,19 @@ static void dwc3_block_reset_usb_work(struct work_struct *w)
 			DWC3_DEVTEN_CMDCMPLTEN |
 			DWC3_DEVTEN_ERRTICERREN |
 			DWC3_DEVTEN_WKUPEVTEN |
-			DWC3_DEVTEN_ULSTCNGEN |
 			DWC3_DEVTEN_CONNECTDONEEN |
 			DWC3_DEVTEN_USBRSTEN |
 			DWC3_DEVTEN_DISCONNEVTEN);
+	/*
+	 * Enable SUSPENDEVENT(BIT:6) for version 230A and above
+	 * else enable USB Link change event (BIT:3) for older version
+	 */
+	if (dwc3_msm_read_reg(mdwc->base, DWC3_GSNPSID) < DWC3_REVISION_230A)
+		reg |= DWC3_DEVTEN_ULSTCNGEN;
+	else
+		reg |= DWC3_DEVTEN_SUSPEND;
+
 	dwc3_msm_write_reg(mdwc->base, DWC3_DEVTEN, reg);
-
-
 }
 
 static void dwc3_chg_enable_secondary_det(struct dwc3_msm *mdwc)
@@ -1279,7 +1367,7 @@ static void dwc3_start_chg_det(struct dwc3_charger *charger, bool start)
 
 static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 {
-	int ret;
+	int ret, i;
 	bool dcp;
 	bool host_bus_suspend;
 	bool host_ss_active;
@@ -1287,6 +1375,7 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 
 	dev_dbg(mdwc->dev, "%s: entering lpm. usb_lpm_override:%d\n",
 					 __func__, usb_lpm_override);
+	dbg_event(0xFF, "Controller Suspend", 0);
 
 	if (!usb_lpm_override && mdwc->suspend_resume_no_support) {
 		dev_dbg(mdwc->dev, "%s no support for suspend\n", __func__);
@@ -1296,6 +1385,21 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 	if (atomic_read(&mdwc->in_lpm)) {
 		dev_dbg(mdwc->dev, "%s: Already suspended\n", __func__);
 		return 0;
+	}
+
+	/* pending device events need to be handled by dwc3_thread_interrupt */
+	if (mdwc->dwc3) {
+		struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+		for (i = 0; i < dwc->num_event_buffers; i++) {
+			struct dwc3_event_buffer *evt = dwc->ev_buffs[i];
+			if ((evt->flags & DWC3_EVENT_PENDING)) {
+				dev_warn(mdwc->dev, "%s: %d device events pending, abort suspend\n",
+					__func__, evt->count / 4);
+				dbg_print_reg("PENDING DEVICE EVENT",
+						*(u32 *)(evt->buf + evt->lpos));
+				return -EBUSY;
+			}
+		}
 	}
 
 	host_ss_active = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC) & PORT_PE;
@@ -1390,6 +1494,7 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	bool resume_from_core_clk_off = false;
 
 	dev_dbg(mdwc->dev, "%s: exiting lpm\n", __func__);
+	dbg_event(0xFF, "Controller Resume", 0);
 
 	if (!atomic_read(&mdwc->in_lpm)) {
 		dev_dbg(mdwc->dev, "%s: Already resumed\n", __func__);
@@ -2365,16 +2470,6 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 					dev_err(&pdev->dev, "irqreq IDINT failed\n");
 					goto disable_ref_clk;
 				}
-
-				local_irq_save(flags);
-				/* Update initial ID state */
-				mdwc->id_state =
-					!!irq_read_line(mdwc->pmic_id_irq);
-				if (mdwc->id_state == DWC3_ID_GROUND)
-					queue_work(system_nrt_wq,
-							&mdwc->id_work);
-				local_irq_restore(flags);
-				enable_irq_wake(mdwc->pmic_id_irq);
 			}
 		}
 
@@ -2595,6 +2690,16 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	pm_runtime_set_active(mdwc->dev);
 	pm_runtime_enable(mdwc->dev);
 
+	/* Update initial ID state */
+	if (mdwc->pmic_id_irq) {
+		local_irq_save(flags);
+		mdwc->id_state = !!irq_read_line(mdwc->pmic_id_irq);
+		if (mdwc->id_state == DWC3_ID_GROUND)
+			queue_work(system_nrt_wq, &mdwc->id_work);
+		local_irq_restore(flags);
+		enable_irq_wake(mdwc->pmic_id_irq);
+	}
+
 	if (of_property_read_bool(node, "qcom,reset_hsphy_sleep_clk_on_init")) {
 		ret = clk_reset(mdwc->hsphy_sleep_clk, CLK_RESET_ASSERT);
 		if (ret) {
@@ -2695,6 +2800,7 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int dwc3_msm_pm_suspend(struct device *dev)
 {
 	int ret = 0;
@@ -2745,7 +2851,9 @@ static int dwc3_msm_pm_resume(struct device *dev)
 
 	return ret;
 }
+#endif
 
+#ifdef CONFIG_PM_RUNTIME
 static int dwc3_msm_runtime_idle(struct device *dev)
 {
 	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
@@ -2789,6 +2897,7 @@ static int dwc3_msm_runtime_resume(struct device *dev)
 
 	return dwc3_msm_resume(mdwc);
 }
+#endif
 
 static const struct dev_pm_ops dwc3_msm_dev_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(dwc3_msm_pm_suspend, dwc3_msm_pm_resume)

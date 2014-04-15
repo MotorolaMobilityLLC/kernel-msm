@@ -32,7 +32,7 @@
 #include <linux/of.h>
 #include <linux/ctype.h>
 #include <linux/msm-sps.h>
-#include <mach/msm_bus.h>
+#include <linux/msm-bus.h>
 #include <soc/qcom/smem.h>
 
 #define PAGE_SIZE_2K 2048
@@ -336,7 +336,9 @@ struct flash_partition_table {
 	struct flash_partition_entry part_entry[FLASH_PTABLE_MAX_PARTS_V4];
 };
 
+#ifdef CONFIG_MSM_SMD
 static struct flash_partition_table ptable;
+#endif
 
 static struct mtd_partition mtd_part[FLASH_PTABLE_MAX_PARTS_V4];
 

@@ -307,8 +307,6 @@ struct hfi_buffer_info {
 	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x018)
 #define HFI_PROPERTY_PARAM_VENC_MULTIREF_P				\
 	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x019)
-#define HFI_PROPERTY_PARAM_VENC_HIER_P_NUM_ENH_LAYER	\
-	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x01A)
 #define HFI_PROPERTY_PARAM_VENC_H264_NAL_SVC_EXT		\
 	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x01B)
 #define HFI_PROPERTY_PARAM_VENC_LTRMODE		\
@@ -325,9 +323,12 @@ struct hfi_buffer_info {
 	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x021)
 #define HFI_PROPERTY_PARAM_VENC_PRESERVE_TEXT_QUALITY \
 	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x023)
+#define HFI_PROPERTY_PARAM_VENC_HIER_P_MAX_NUM_ENH_LAYER	\
+	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x026)
 #define HFI_PROPERTY_PARAM_VENC_DISABLE_RC_TIMESTAMP \
 	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x027)
-
+#define HFI_PROPERTY_PARAM_VENC_INITIAL_QP	\
+	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x028)
 
 #define HFI_PROPERTY_CONFIG_VENC_COMMON_START				\
 	(HFI_DOMAIN_BASE_VENC + HFI_ARCH_COMMON_OFFSET + 0x6000)
@@ -352,6 +353,8 @@ struct hfi_buffer_info {
 	(HFI_PROPERTY_CONFIG_VENC_COMMON_START + 0x009)
 #define  HFI_PROPERTY_CONFIG_VENC_USELTRFRAME			\
 	(HFI_PROPERTY_CONFIG_VENC_COMMON_START + 0x00A)
+#define  HFI_PROPERTY_CONFIG_VENC_HIER_P_ENH_LAYER		\
+	(HFI_PROPERTY_CONFIG_VENC_COMMON_START + 0x00B)
 #define  HFI_PROPERTY_CONFIG_VENC_LTRPERIOD			\
 	(HFI_PROPERTY_CONFIG_VENC_COMMON_START + 0x00C)
 #define HFI_PROPERTY_CONFIG_VPE_COMMON_START				\
@@ -541,6 +544,13 @@ struct hfi_quantization {
 	u32 layer_id;
 };
 
+struct hfi_initial_quantization {
+	u32 qp_i;
+	u32 qp_p;
+	u32 qp_b;
+	u32 init_qp_enable;
+};
+
 struct hfi_quantization_range {
 	u32 min_qp;
 	u32 max_qp;
@@ -656,7 +666,7 @@ struct hfi_operations {
 
 struct hfi_resource_ocmem {
 	u32 size;
-	u8 *mem;
+	u32 mem;
 };
 
 struct hfi_resource_ocmem_requirement {
@@ -878,7 +888,7 @@ struct hfi_cmd_session_get_sequence_header_packet {
 	u32 packet_type;
 	u32 session_id;
 	u32 buffer_len;
-	u8 *packet_buffer;
+	u32 packet_buffer;
 };
 
 struct hfi_msg_event_notify_packet {
@@ -892,8 +902,8 @@ struct hfi_msg_event_notify_packet {
 };
 
 struct hfi_msg_release_buffer_ref_event_packet {
-	u8 *packet_buffer;
-	u8 *exra_data_buffer;
+	u32 packet_buffer;
+	u32 extra_data_buffer;
 	u32 output_tag;
 };
 
@@ -940,7 +950,7 @@ struct hfi_msg_session_get_sequence_header_done_packet {
 	u32 session_id;
 	u32 error_type;
 	u32 header_len;
-	u8 *sequence_header;
+	u32 sequence_header;
 };
 
 struct hfi_msg_sys_debug_packet {

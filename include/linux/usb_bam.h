@@ -16,12 +16,8 @@
 #include <linux/ipa.h>
 #include <linux/usb/msm_hsusb.h>
 
-enum usb_bam {
-	SSUSB_BAM = 0,
-	HSUSB_BAM,
-	HSIC_BAM,
-	MAX_BAMS,
-};
+#define MAX_BAMS	NUM_CTRL	/* Bam per USB controllers */
+
 
 enum usb_bam_mode {
 	USB_BAM_DEVICE = 0,
@@ -66,6 +62,7 @@ struct usb_bam_connect_ipa_params {
 	u8 dst_idx;
 	u32 *src_pipe;
 	u32 *dst_pipe;
+	bool keep_ipa_awake;
 	enum usb_bam_pipe_dir dir;
 	/* Parameters for Port Mapper */
 	u32 ipa_cons_ep_idx;
@@ -83,6 +80,7 @@ struct usb_bam_connect_ipa_params {
 	int (*activity_notify)(void *priv);
 	int (*inactivity_notify)(void *priv);
 	bool skip_ep_cfg;
+	bool reset_pipe_after_lpm;
 };
 
 /**
@@ -136,7 +134,7 @@ struct usb_bam_pipe_connect {
 	u32 pipe_num;
 	enum usb_pipe_mem_type mem_type;
 	enum usb_bam_pipe_dir dir;
-	enum usb_bam bam_type;
+	enum usb_ctrl bam_type;
 	enum usb_bam_mode bam_mode;
 	enum peer_bam peer_bam;
 	enum usb_bam_pipe_type pipe_type;
@@ -162,6 +160,7 @@ struct usb_bam_pipe_connect {
 	void (*start)(void *, enum usb_bam_pipe_dir);
 	void (*stop)(void *, enum usb_bam_pipe_dir);
 	void *start_stop_param;
+	bool reset_pipe_after_lpm;
 };
 
 /**
@@ -320,8 +319,9 @@ int usb_bam_disconnect_pipe(u8 idx);
  * @return pipe index on success, negative value on error.
  */
 int get_bam2bam_connection_info(u8 idx,
-	u32 *usb_bam_handle, u32 *usb_bam_pipe_idx, u32 *peer_pipe_idx,
-	struct sps_mem_buffer *desc_fifo, struct sps_mem_buffer *data_fifo);
+	unsigned long *usb_bam_handle, u32 *usb_bam_pipe_idx,
+	u32 *peer_pipe_idx, struct sps_mem_buffer *desc_fifo,
+	struct sps_mem_buffer *data_fifo);
 
 /**
  * Resets the USB BAM that has A2 pipes
@@ -388,6 +388,14 @@ int usb_bam_get_connection_idx(const char *name, enum peer_bam client,
 * @return 0 on success, negative value on error
 */
 int usb_bam_get_pipe_type(u8 idx, enum usb_bam_pipe_type *type);
+
+/**
+* Indicates whether USB producer is granted to IPA resource manager.
+*
+* @return true when producer granted, false when prodcuer is released.
+*/
+bool usb_bam_get_prod_granted(u8 idx);
+
 #else
 static inline int usb_bam_connect(u8 idx, u32 *bam_pipe_idx)
 {
@@ -445,8 +453,9 @@ static inline int usb_bam_disconnect_pipe(u8 idx)
 }
 
 static inline int get_bam2bam_connection_info(u8 idx,
-	u32 *usb_bam_handle, u32 *usb_bam_pipe_idx, u32 *peer_pipe_idx,
-	struct sps_mem_buffer *desc_fifo, struct sps_mem_buffer *data_fifo)
+	unsigned long *usb_bam_handle, u32 *usb_bam_pipe_idx,
+	u32 *peer_pipe_idx, struct sps_mem_buffer *desc_fifo,
+	struct sps_mem_buffer *data_fifo)
 {
 	return -ENODEV;
 }
@@ -487,5 +496,11 @@ static inline int usb_bam_get_pipe_type(u8 idx, enum usb_bam_pipe_type *type)
 {
 	return -ENODEV;
 }
+
+static inline bool usb_bam_get_prod_granted(u8 idx)
+{
+	return false;
+}
+
 #endif
 #endif				/* _USB_BAM_H_ */

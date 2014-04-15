@@ -36,7 +36,7 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <mach/board.h>
-#include <mach/msm_bus.h>
+#include <linux/msm-bus.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_memtypes.h>
@@ -58,12 +58,6 @@ static struct of_dev_auxdata msm_hsic_host_adata[] = {
 };
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
-			"msm_sdcc.1", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, \
-			"msm_sdcc.2", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9864000, \
-			"msm_sdcc.3", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, \
 			"msm_sdcc.1", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, \
@@ -147,6 +141,5 @@ DT_MACHINE_START(MSM8226_DT, "Qualcomm MSM 8226 (Flattened Device Tree)")
 	.dt_compat		= msm8226_dt_match,
 	.reserve		= msm8226_reserve,
 	.init_very_early	= msm8226_early_memory,
-	.restart		= msm_restart,
 	.smp			= &arm_smp_ops,
 MACHINE_END

@@ -23,7 +23,7 @@
 
 void apr_set_subsys_state(void)
 {
-	apr_set_modem_state(APR_SUBSYS_UP);
+	apr_set_modem_state(APR_SUBSYS_DOWN);
 }
 
 uint16_t apr_get_data_src(struct apr_hdr *hdr)
@@ -42,3 +42,12 @@ void subsys_notif_register(struct notifier_block *mod_notif,
 	subsys_notif_register_notifier("modem", mod_notif);
 }
 
+uint16_t apr_get_reset_domain(uint16_t proc)
+{
+	return APR_DEST_QDSP6;
+}
+
+bool apr_register_voice_svc()
+{
+	return false;
+}

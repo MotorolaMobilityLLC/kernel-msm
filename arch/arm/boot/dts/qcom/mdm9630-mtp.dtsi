@@ -21,7 +21,7 @@
 		interrupts = <24 0x3>;	/* MDM GPIO 24 */
 		qcom,float-voltage-mv = <4200>;
 		qcom,charging-timeout = <1536>;
-		qcom,recharge-thresh-mv = <200>;
+		qcom,recharge-thresh-mv = <100>;
 		qcom,iterm-ma = <100>;
 		regulator-name = "smb1357_otg_supply";
 	};
@@ -92,10 +92,9 @@
 	qcom,vdd-io-voltage-level = <1800000 2850000>;
 	qcom,vdd-io-current-level = <6 22000>;
 
-	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
-	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
 
 	#address-cells = <0>;
 	interrupt-parent = <&sdhc_2>;
@@ -106,6 +105,7 @@
 			1 &intc 0 221 0
 			2 &msmgpio 50 0x3>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+
 	cd-gpios = <&msmgpio 50 0x1>;
 
 	status = "ok";

@@ -27,6 +27,9 @@
 
 #define MAX_DRV_SUP_MMB_BLKS	44
 
+#define MDSS_PINCTRL_STATE_DEFAULT "mdss_default"
+#define MDSS_PINCTRL_STATE_SLEEP  "mdss_sleep"
+
 enum mdss_mdp_clk_type {
 	MDSS_CLK_AHB,
 	MDSS_CLK_AXI,
@@ -115,8 +118,10 @@ struct mdss_data_type {
 	u32 has_bwc;
 	u32 has_decimation;
 	u32 wfd_mode;
+	u32 has_no_lut_read;
 	u8 has_wb_ad;
 	u8 has_non_scalar_rgb;
+	bool has_src_split;
 
 	u32 rotator_ot_limit;
 	u32 mdp_irq_mask;

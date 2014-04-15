@@ -60,6 +60,14 @@
 #define OVERFETCH_DISABLE_LEFT		BIT(2)
 #define OVERFETCH_DISABLE_RIGHT		BIT(3)
 
+#define PERF_STATUS_DONE 0
+#define PERF_STATUS_BUSY 1
+
+enum mdss_mdp_perf_state_type {
+	PERF_SW_COMMIT_STATE = 0,
+	PERF_HW_MDP_STATE,
+};
+
 enum mdss_mdp_block_power_state {
 	MDP_BLOCK_POWER_OFF = 0,
 	MDP_BLOCK_POWER_ON = 1,
@@ -166,7 +174,7 @@ struct mdss_mdp_ctl {
 	int force_screen_state;
 	struct mdss_mdp_perf_params cur_perf;
 	struct mdss_mdp_perf_params new_perf;
-	int perf_status;
+	u32 perf_transaction_status;
 
 	struct mdss_data_type *mdata;
 	struct msm_fb_data_type *mfd;
@@ -218,8 +226,9 @@ struct mdss_mdp_mixer {
 	u16 cursor_hoty;
 	u8 rotator_mode;
 
+	bool is_right_mixer;
 	struct mdss_mdp_ctl *ctl;
-	struct mdss_mdp_pipe *stage_pipe[MDSS_MDP_MAX_STAGE];
+	struct mdss_mdp_pipe *stage_pipe[MAX_PIPES_PER_LM];
 };
 
 struct mdss_mdp_format_params {
@@ -348,6 +357,7 @@ struct mdss_mdp_pipe {
 	u32 num;
 	u32 type;
 	u32 ndx;
+	u8 priority;
 	char __iomem *base;
 	u32 ftch_id;
 	u32 xin_id;
@@ -362,6 +372,8 @@ struct mdss_mdp_pipe {
 
 	u32 flags;
 	u32 bwc_mode;
+	bool src_split_req;
+	bool is_right_blend;
 
 	u16 img_width;
 	u16 img_height;
@@ -383,7 +395,8 @@ struct mdss_mdp_pipe {
 	u32 hscl_en;
 
 	struct msm_fb_data_type *mfd;
-	struct mdss_mdp_mixer *mixer;
+	struct mdss_mdp_mixer *mixer_left;
+	struct mdss_mdp_mixer *mixer_right;
 
 	struct mdp_overlay req_data;
 	u32 params_changed;
@@ -594,17 +607,20 @@ int mdss_mdp_scan_pipes(void);
 int mdss_mdp_mixer_handoff(struct mdss_mdp_ctl *ctl, u32 num,
 	struct mdss_mdp_pipe *pipe);
 
-void mdss_mdp_ctl_perf_taken(struct mdss_mdp_ctl *ctl);
-void mdss_mdp_ctl_perf_done(struct mdss_mdp_ctl *ctl);
+void mdss_mdp_ctl_perf_set_transaction_status(struct mdss_mdp_ctl *ctl,
+	enum mdss_mdp_perf_state_type component, bool new_status);
 void mdss_mdp_ctl_perf_release_bw(struct mdss_mdp_ctl *ctl);
 
 struct mdss_mdp_mixer *mdss_mdp_wb_mixer_alloc(int rotator);
 int mdss_mdp_wb_mixer_destroy(struct mdss_mdp_mixer *mixer);
 struct mdss_mdp_mixer *mdss_mdp_mixer_get(struct mdss_mdp_ctl *ctl, int mux);
-struct mdss_mdp_pipe *mdss_mdp_mixer_stage_pipe(struct mdss_mdp_ctl *ctl,
-						int mux, int stage);
-int mdss_mdp_mixer_pipe_update(struct mdss_mdp_pipe *pipe, int params_changed);
-int mdss_mdp_mixer_pipe_unstage(struct mdss_mdp_pipe *pipe);
+struct mdss_mdp_pipe *mdss_mdp_get_staged_pipe(struct mdss_mdp_ctl *ctl,
+	int mux, int stage, bool is_right_blend);
+int mdss_mdp_mixer_pipe_update(struct mdss_mdp_pipe *pipe,
+	struct mdss_mdp_mixer *mixer, int params_changed);
+int mdss_mdp_mixer_pipe_unstage(struct mdss_mdp_pipe *pipe,
+	struct mdss_mdp_mixer *mixer);
+void mdss_mdp_mixer_unstage_all(struct mdss_mdp_mixer *mixer);
 int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg);
 int mdss_mdp_display_wait4comp(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_display_wait4pingpong(struct mdss_mdp_ctl *ctl);
@@ -659,7 +675,7 @@ int mdss_mdp_calib_mode(struct msm_fb_data_type *mfd,
 int mdss_mdp_pipe_handoff(struct mdss_mdp_pipe *pipe);
 int mdss_mdp_smp_handoff(struct mdss_data_type *mdata);
 struct mdss_mdp_pipe *mdss_mdp_pipe_alloc(struct mdss_mdp_mixer *mixer,
-					  u32 type);
+	u32 type, struct mdss_mdp_pipe *left_blend_pipe);
 struct mdss_mdp_pipe *mdss_mdp_pipe_get(struct mdss_data_type *mdata, u32 ndx);
 struct mdss_mdp_pipe *mdss_mdp_pipe_search(struct mdss_data_type *mdata,
 						  u32 ndx);
@@ -674,7 +690,7 @@ void mdss_mdp_smp_release(struct mdss_mdp_pipe *pipe);
 
 int mdss_mdp_pipe_addr_setup(struct mdss_data_type *mdata,
 	struct mdss_mdp_pipe *head, u32 *offsets, u32 *ftch_y_id, u32 *xin_id,
-	u32 type, u32 num_base, u32 len);
+	u32 type, u32 num_base, u32 len, u8 priority_base);
 int mdss_mdp_mixer_addr_setup(struct mdss_data_type *mdata, u32 *mixer_offsets,
 		u32 *dspp_offsets, u32 *pingpong_offsets, u32 type, u32 len);
 int mdss_mdp_ctl_addr_setup(struct mdss_data_type *mdata, u32 *ctl_offsets,
@@ -712,6 +728,7 @@ int mdss_mdp_wb_kickoff(struct msm_fb_data_type *mfd);
 int mdss_mdp_wb_ioctl_handler(struct msm_fb_data_type *mfd, u32 cmd, void *arg);
 
 int mdss_mdp_get_ctl_mixers(u32 fb_num, u32 *mixer_id);
+u32 mdss_mdp_get_mixercfg(struct mdss_mdp_mixer *mixer);
 u32 mdss_mdp_fb_stride(u32 fb_index, u32 xres, int bpp);
 
 int mdss_panel_register_done(struct mdss_panel_data *pdata);

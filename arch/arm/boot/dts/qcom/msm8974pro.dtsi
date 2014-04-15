@@ -23,6 +23,42 @@
 /include/ "msm8974pro-pm.dtsi"
 /include/ "msm8974pro-ion.dtsi"
 
+/ {
+        memory {
+
+
+		alt_peripheral_mem: peripheral_region@5a00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x5a00000 0x2100000>;
+			label = "peripheral_mem";
+		};
+
+		tz_apps@0x7b00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x7b00000 0x500000>;
+			label = "tz_apps";
+
+		};
+
+		modem_mem: modem_region@0x8000000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x8000000 0x5200000>;
+			label = "modem_mem";
+
+		};
+        };
+};
+
+&peripheral_mem {
+	status = "disabled";
+};
+
 &soc {
 	android_usb@fe8050c8 {
 		compatible = "qcom,android-usb";
@@ -1616,7 +1652,7 @@
 &msm_gpu {
 	/* Updated chip ID */
 	qcom,chipid = <0x03030002>;
-	qcom,msm-bus,num-cases = <15>;
+	qcom,msm-bus,num-cases = <14>;
 	qcom,bus-control;
 	qcom,initial-pwrlevel = <3>;
 
@@ -1624,14 +1660,12 @@
 	qcom,msm-bus,vectors-KBps =
 		/* Off */
 		<26 512 0 0>, <89 604 0 0>,
-		/* Sub-SVS / SVS */
-		<26 512 0 1600000>, <89 604 0 3200000>,
 		/* SVS */
-		<26 512 0 2456000>, <89 604 0 3200000>,
+		<26 512 1200000 2456000>, <89 604 0 3200000>,
 		/* low Nominal / SVS */
 		<26 512 0 3680000>, <89 604 0 3200000>,
 		/* SVS / low Nominal */
-		<26 512 0 2456000>, <89 604 0 5280000>,
+		<26 512 1200000 2456000>, <89 604 0 5280000>,
 		/* low Nominal / low Nominal */
 		<26 512 0 3680000>, <89 604 0 5280000>,
 		/* Nominal / low Nominal */
@@ -1662,35 +1696,35 @@
                qcom,gpu-pwrlevel@0 {
                        reg = <0>;
                        qcom,gpu-freq = <578000000>;
-                       qcom,bus-freq = <14>;
+                       qcom,bus-freq = <13>;
                        qcom,io-fraction = <33>;
                };
 
                qcom,gpu-pwrlevel@1 {
                        reg = <1>;
                        qcom,gpu-freq = <462400000>;
-                       qcom,bus-freq = <11>;
+                       qcom,bus-freq = <10>;
                        qcom,io-fraction = <66>;
                };
 
                qcom,gpu-pwrlevel@2 {
                        reg = <2>;
                        qcom,gpu-freq = <389000000>;
-                       qcom,bus-freq = <8>;
+                       qcom,bus-freq = <7>;
                        qcom,io-fraction = <66>;
                };
 
                qcom,gpu-pwrlevel@3 {
                        reg = <3>;
                        qcom,gpu-freq = <330000000>;
-                       qcom,bus-freq = <5>;
+                       qcom,bus-freq = <4>;
                        qcom,io-fraction = <100>;
                };
 
                qcom,gpu-pwrlevel@4 {
                        reg = <4>;
                        qcom,gpu-freq = <200000000>;
-                       qcom,bus-freq = <2>;
+                       qcom,bus-freq = <1>;
                        qcom,io-fraction = <100>;
                };
 
@@ -1714,6 +1748,7 @@
 	qcom,mdss-has-bwc;
 	qcom,mdss-has-decimation;
 	qcom,mdss-ad-off = <0x0013100 0x00013300>;
+	qcom,max-bandwidth-low-kbps = <2750000>;
 };
 
 &mdss_hdmi_tx {
@@ -1823,11 +1858,6 @@
 			qcom,bus-configs = <0x30fcfff>;
 		};
 	};
-};
-
-&memory_hole {
-	qcom,memblock-remove = <0x05a00000 0x7800000
-				0x0fa00000 0x500000>; /* Address and size of the hole */
 };
 
 &gdsc_venus {

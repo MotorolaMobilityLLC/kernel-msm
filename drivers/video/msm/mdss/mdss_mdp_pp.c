@@ -20,8 +20,8 @@
 #include <linux/uaccess.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
-#include <mach/msm_bus.h>
-#include <mach/msm_bus_board.h>
+#include <linux/msm-bus.h>
+#include <linux/msm-bus-board.h>
 
 struct mdp_csc_cfg mdp_csc_convert[MDSS_MDP_MAX_CSC] = {
 	[MDSS_MDP_CSC_RGB2RGB] = {
@@ -425,6 +425,14 @@ static inline void pp_sts_set_split_bits(u32 *sts, u32 bits);
 
 static u32 last_sts, last_state;
 
+static inline void mdss_mdp_pp_get_dcm_state(struct mdss_mdp_pipe *pipe,
+	u32 *dcm_state)
+{
+	if (pipe && pipe->mixer_left && pipe->mixer_left->ctl &&
+		pipe->mixer_left->ctl->mfd)
+		*dcm_state = pipe->mixer_left->ctl->mfd->dcm_state;
+}
+
 int mdss_mdp_csc_setup_data(u32 block, u32 blk_idx, u32 tbl_idx,
 				   struct mdp_csc_cfg *data)
 {
@@ -536,20 +544,20 @@ static void pp_gamut_config(struct mdp_gamut_cfg_data *gamut_cfg,
 		addr = base + MDSS_MDP_REG_DSPP_GAMUT_BASE;
 		for (i = 0; i < MDP_GAMUT_TABLE_NUM; i++) {
 			for (j = 0; j < gamut_cfg->tbl_size[i]; j++)
-				writel_relaxed((u32)gamut_cfg->r_tbl[i][j],
-						addr);
+				writel_relaxed((u32)gamut_cfg->r_tbl[i][j]
+						& 0x1FFF, addr);
 			addr += 4;
 		}
 		for (i = 0; i < MDP_GAMUT_TABLE_NUM; i++) {
 			for (j = 0; j < gamut_cfg->tbl_size[i]; j++)
-				writel_relaxed((u32)gamut_cfg->g_tbl[i][j],
-						addr);
+				writel_relaxed((u32)gamut_cfg->g_tbl[i][j]
+						& 0x1FFF, addr);
 			addr += 4;
 		}
 		for (i = 0; i < MDP_GAMUT_TABLE_NUM; i++) {
 			for (j = 0; j < gamut_cfg->tbl_size[i]; j++)
-				writel_relaxed((u32)gamut_cfg->b_tbl[i][j],
-						addr);
+				writel_relaxed((u32)gamut_cfg->b_tbl[i][j]
+						& 0x1FFF, addr);
 			addr += 4;
 		}
 		if (gamut_cfg->gamut_first)
@@ -819,8 +827,7 @@ static int pp_vig_pipe_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 
 	pr_debug("pnum=%x\n", pipe->num);
 
-	if (pipe->mixer && pipe->mixer->ctl && pipe->mixer->ctl->mfd)
-		dcm_state = pipe->mixer->ctl->mfd->dcm_state;
+	mdss_mdp_pp_get_dcm_state(pipe, &dcm_state);
 
 	mdata = mdss_mdp_get_mdata();
 	if ((pipe->flags & MDP_OVERLAY_PP_CFG_EN) &&
@@ -863,7 +870,7 @@ static int pp_vig_pipe_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 		return 0;
 	}
 
-	pp_hist_setup(&opmode, MDSS_PP_SSPP_CFG | pipe->num, pipe->mixer);
+	pp_hist_setup(&opmode, MDSS_PP_SSPP_CFG | pipe->num, pipe->mixer_left);
 
 	if (pipe->flags & MDP_OVERLAY_PP_CFG_EN) {
 		if ((pipe->pp_cfg.config_ops & MDP_OVERLAY_PP_PA_CFG) &&
@@ -1009,8 +1016,7 @@ static int mdss_mdp_scale_setup(struct mdss_mdp_pipe *pipe)
 			pipe->scale.enable_pxl_ext);
 	mdata = mdss_mdp_get_mdata();
 
-	if (pipe->mixer && pipe->mixer->ctl && pipe->mixer->ctl->mfd)
-		dcm_state = pipe->mixer->ctl->mfd->dcm_state;
+	mdss_mdp_pp_get_dcm_state(pipe, &dcm_state);
 
 	if ((mdata->mdp_rev == MDSS_MDP_HW_REV_200) &&
 		(pipe->type == MDSS_MDP_PIPE_TYPE_VIG))
@@ -1261,8 +1267,7 @@ int mdss_mdp_pipe_sspp_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 	if (pipe == NULL)
 		return -EINVAL;
 
-	if (pipe->mixer && pipe->mixer->ctl && pipe->mixer->ctl->mfd)
-		dcm_state = pipe->mixer->ctl->mfd->dcm_state;
+	mdss_mdp_pp_get_dcm_state(pipe, &dcm_state);
 
 	/* Read IGC state and update the same if tuning mode is enable */
 	if (dcm_state == DTM_ENTER) {
@@ -1394,7 +1399,7 @@ static int pp_hist_setup(u32 *op, u32 block, struct mdss_mdp_mixer *mix)
 {
 	int ret = -EINVAL;
 	char __iomem *base;
-	u32 op_flags, kick_base, col_state;
+	u32 op_flags, kick_base;
 	struct mdss_mdp_pipe *pipe;
 	struct pp_hist_col_info *hist_info;
 	unsigned long flag;
@@ -1430,20 +1435,19 @@ static int pp_hist_setup(u32 *op, u32 block, struct mdss_mdp_mixer *mix)
 		goto error;
 	}
 
+	mutex_lock(&hist_info->hist_mutex);
+	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	if (hist_info->col_en) {
 		*op |= op_flags;
-		mutex_lock(&hist_info->hist_mutex);
-		spin_lock_irqsave(&hist_info->hist_lock, flag);
-		col_state = hist_info->col_state;
-		if (col_state == HIST_IDLE) {
+		if (hist_info->col_state == HIST_IDLE) {
 			/* Kick off collection */
 			if (is_hist_v1)
 				writel_relaxed(1, base + kick_base);
 			hist_info->col_state = HIST_START;
 		}
-		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
-		mutex_unlock(&hist_info->hist_mutex);
 	}
+	spin_unlock_irqrestore(&hist_info->hist_lock, flag);
+	mutex_unlock(&hist_info->hist_mutex);
 	ret = 0;
 error:
 	return ret;
@@ -1703,6 +1707,7 @@ int mdss_mdp_pp_setup_locked(struct mdss_mdp_ctl *ctl)
 	u32 disp_num;
 	int i;
 	bool valid_mixers = true;
+	bool valid_ad_panel = true;
 	if ((!ctl->mfd) || (!mdss_pp_res) || (!mdata))
 		return -EINVAL;
 
@@ -1723,7 +1728,13 @@ int mdss_mdp_pp_setup_locked(struct mdss_mdp_ctl *ctl)
 		if (mixer_id[i] >= mdata->nad_cfgs)
 			valid_mixers = false;
 	}
-	if (valid_mixers && (mixer_cnt <= mdata->nmax_concurrent_ad_hw)) {
+	valid_ad_panel = (ctl->mfd->panel_info->type != DTV_PANEL) &&
+		(((mdata->mdp_rev < MDSS_MDP_HW_REV_103) &&
+			(ctl->mfd->panel_info->type == WRITEBACK_PANEL)) ||
+		(ctl->mfd->panel_info->type != WRITEBACK_PANEL));
+
+	if (valid_mixers && (mixer_cnt <= mdata->nmax_concurrent_ad_hw) &&
+		valid_ad_panel) {
 		ret = mdss_mdp_ad_setup(ctl->mfd);
 		if (ret < 0)
 			pr_warn("ad_setup(disp%d) returns %d", disp_num, ret);
@@ -1895,7 +1906,15 @@ int mdss_mdp_pp_init(struct device *dev)
 				for (i = 0; i < mdata->nmixers_intf; i++) {
 					mutex_init(&hist[i].hist_mutex);
 					spin_lock_init(&hist[i].hist_lock);
+					hist[i].intr_shift = (i * 4) + 12;
+					hist[i].base =
+						mdss_mdp_get_dspp_addr_off(i) +
+						MDSS_MDP_REG_DSPP_HIST_CTL_BASE;
+					init_completion(&hist[i].comp);
 				}
+				if (mdata->nmixers_intf == 4)
+					hist[3].intr_shift = 22;
+
 				mdss_pp_res->dspp_hist = hist;
 			}
 		}
@@ -1905,6 +1924,10 @@ int mdss_mdp_pp_init(struct device *dev)
 		for (i = 0; i < mdata->nvig_pipes; i++) {
 			mutex_init(&vig[i].pp_res.hist.hist_mutex);
 			spin_lock_init(&vig[i].pp_res.hist.hist_lock);
+			vig[i].pp_res.hist.intr_shift = (vig[i].num * 4);
+			vig[i].pp_res.hist.base = vig[i].base +
+				MDSS_MDP_REG_VIG_HIST_CTL_BASE;
+			init_completion(&vig[i].pp_res.hist.comp);
 		}
 		if (!mdata->pp_bus_hdl) {
 			pp_bus_pdata = &mdp_pp_bus_scale_table;
@@ -2359,14 +2382,34 @@ pcc_config_exit:
 	return ret;
 }
 
+static void pp_read_igc_lut_cached(struct mdp_igc_lut_data *cfg)
+{
+	int i;
+	u32 disp_num;
+
+	disp_num = cfg->block - MDP_LOGICAL_BLOCK_DISP_0;
+	for (i = 0; i < IGC_LUT_ENTRIES; i++) {
+		cfg->c0_c1_data[i] =
+			mdss_pp_res->igc_disp_cfg[disp_num].c0_c1_data[i];
+		cfg->c2_data[i] =
+			mdss_pp_res->igc_disp_cfg[disp_num].c2_data[i];
+	}
+}
+
 static void pp_read_igc_lut(struct mdp_igc_lut_data *cfg,
 				char __iomem *addr, u32 blk_idx)
 {
 	int i;
 	u32 data;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	int32_t mask = 0, n_mixers = mdata->nmixers_intf;
 
+	while (n_mixers > 0) {
+		mask = (mask << 1) + 1;
+		n_mixers--;
+	}
 	/* INDEX_UPDATE & VALUE_UPDATEN */
-	data = (3 << 24) | (((~(1 << blk_idx)) & 0x7) << 28);
+	data = (3 << 24) | (((~(1 << blk_idx)) & mask) << 28);
 	writel_relaxed(data, addr);
 
 	for (i = 0; i < cfg->len; i++)
@@ -2388,8 +2431,16 @@ static void pp_update_igc_lut(struct mdp_igc_lut_data *cfg,
 {
 	int i;
 	u32 data;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	int32_t mask = 0, n_mixers = mdata->nmixers_intf;
+
+	while (n_mixers > 0) {
+		mask = (mask << 1) + 1;
+		n_mixers--;
+	}
+
 	/* INDEX_UPDATE */
-	data = (1 << 25) | (((~(1 << blk_idx)) & 0x7) << 28);
+	data = (1 << 25) | (((~(1 << blk_idx)) & mask) << 28);
 	writel_relaxed((cfg->c0_c1_data[0] & 0xFFF) | data, addr);
 
 	/* disable index update */
@@ -2479,7 +2530,10 @@ int mdss_mdp_igc_lut_config(struct mdp_igc_lut_data *config,
 			&mdss_pp_res->igc_lut_c0c1[disp_num][0];
 		local_cfg.c2_data =
 			&mdss_pp_res->igc_lut_c2[disp_num][0];
-		pp_read_igc_lut(&local_cfg, igc_addr, dspp_num);
+		if (mdata->has_no_lut_read)
+			pp_read_igc_lut_cached(&local_cfg);
+		else
+			pp_read_igc_lut(&local_cfg, igc_addr, dspp_num);
 		if (copy_to_user(config->c0_c1_data, local_cfg.c0_c1_data,
 			config->len * sizeof(u32))) {
 			ret = -EFAULT;
@@ -2626,6 +2680,41 @@ static int pp_read_argc_lut(struct mdp_pgc_lut_data *config, char __iomem *addr)
 	return ret;
 }
 
+static int pp_read_argc_lut_cached(struct mdp_pgc_lut_data *config)
+{
+	int i;
+	u32 disp_num;
+	struct mdp_pgc_lut_data *pgc_ptr;
+
+	disp_num = PP_BLOCK(config->block) - MDP_LOGICAL_BLOCK_DISP_0;
+	switch (PP_LOCAT(config->block)) {
+	case MDSS_PP_LM_CFG:
+		pgc_ptr = &mdss_pp_res->argc_disp_cfg[disp_num];
+		break;
+	case MDSS_PP_DSPP_CFG:
+		pgc_ptr = &mdss_pp_res->pgc_disp_cfg[disp_num];
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	for (i = 0; i < GC_LUT_SEGMENTS; i++) {
+		config->r_data[i].x_start = pgc_ptr->r_data[i].x_start;
+		config->r_data[i].slope   = pgc_ptr->r_data[i].slope;
+		config->r_data[i].offset  = pgc_ptr->r_data[i].offset;
+
+		config->g_data[i].x_start = pgc_ptr->g_data[i].x_start;
+		config->g_data[i].slope   = pgc_ptr->g_data[i].slope;
+		config->g_data[i].offset  = pgc_ptr->g_data[i].offset;
+
+		config->b_data[i].x_start = pgc_ptr->b_data[i].x_start;
+		config->b_data[i].slope   = pgc_ptr->b_data[i].slope;
+		config->b_data[i].offset  = pgc_ptr->b_data[i].offset;
+	}
+
+	return 0;
+}
+
 /* Note: Assumes that its inputs have been checked by calling function */
 static void pp_update_hist_lut(char __iomem *addr,
 				struct mdp_hist_lut_data *cfg)
@@ -2649,6 +2738,7 @@ int mdss_mdp_argc_config(struct mdp_pgc_lut_data *config,
 	struct mdp_pgc_lut_data *pgc_ptr;
 	u32 tbl_size, r_size, g_size, b_size;
 	char __iomem *argc_addr = 0;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	if ((PP_BLOCK(config->block) < MDP_LOGICAL_BLOCK_DISP_0) ||
 		(PP_BLOCK(config->block) >= MDP_BLOCK_MAX))
@@ -2701,7 +2791,10 @@ int mdss_mdp_argc_config(struct mdp_pgc_lut_data *config,
 			&mdss_pp_res->gc_lut_g[disp_num][0];
 		local_cfg.b_data =
 			&mdss_pp_res->gc_lut_b[disp_num][0];
-		pp_read_argc_lut(&local_cfg, argc_addr);
+		if (mdata->has_no_lut_read)
+			pp_read_argc_lut_cached(&local_cfg);
+		else
+			pp_read_argc_lut(&local_cfg, argc_addr);
 		if (copy_to_user(config->r_data,
 			&mdss_pp_res->gc_lut_r[disp_num][0], tbl_size)) {
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
@@ -2879,6 +2972,7 @@ int mdss_mdp_gamut_config(struct mdp_gamut_cfg_data *config,
 	uint16_t *g_tbl[MDP_GAMUT_TABLE_NUM];
 	uint16_t *b_tbl[MDP_GAMUT_TABLE_NUM];
 	char __iomem *addr;
+	u32 data = (3 << 20);
 
 	if ((config->block < MDP_LOGICAL_BLOCK_DISP_0) ||
 		(config->block >= MDP_BLOCK_MAX))
@@ -2914,9 +3008,10 @@ int mdss_mdp_gamut_config(struct mdp_gamut_cfg_data *config,
 				pr_err("%s: alloc failed\n", __func__);
 				goto gamut_config_exit;
 			}
+			/* Reset gamut LUT index to 0 */
+			writel_relaxed(data, addr);
 			for (j = 0; j < config->tbl_size[i]; j++)
-				r_tbl[i][j] =
-					(u16)readl_relaxed(addr);
+				r_tbl[i][j] = readl_relaxed(addr) & 0x1FFF;
 			addr += 4;
 			ret = copy_to_user(config->r_tbl[i], r_tbl[i],
 				     sizeof(uint16_t) * config->tbl_size[i]);
@@ -2935,9 +3030,10 @@ int mdss_mdp_gamut_config(struct mdp_gamut_cfg_data *config,
 				pr_err("%s: alloc failed\n", __func__);
 				goto gamut_config_exit;
 			}
+			/* Reset gamut LUT index to 0 */
+			writel_relaxed(data, addr);
 			for (j = 0; j < config->tbl_size[i]; j++)
-				g_tbl[i][j] =
-					(u16)readl_relaxed(addr);
+				g_tbl[i][j] = readl_relaxed(addr) & 0x1FFF;
 			addr += 4;
 			ret = copy_to_user(config->g_tbl[i], g_tbl[i],
 				     sizeof(uint16_t) * config->tbl_size[i]);
@@ -2956,9 +3052,10 @@ int mdss_mdp_gamut_config(struct mdp_gamut_cfg_data *config,
 				pr_err("%s: alloc failed\n", __func__);
 				goto gamut_config_exit;
 			}
+			/* Reset gamut LUT index to 0 */
+			writel_relaxed(data, addr);
 			for (j = 0; j < config->tbl_size[i]; j++)
-				b_tbl[i][j] =
-					(u16)readl_relaxed(addr);
+				b_tbl[i][j] = readl_relaxed(addr) & 0x1FFF;
 			addr += 4;
 			ret = copy_to_user(config->b_tbl[i], b_tbl[i],
 				     sizeof(uint16_t) * config->tbl_size[i]);
@@ -3043,18 +3140,14 @@ static int pp_hist_enable(struct pp_hist_col_info *hist_info,
 
 	mutex_lock(&hist_info->hist_mutex);
 	/* check if it is idle */
+	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	if (hist_info->col_en) {
+		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 		pr_info("%s Hist collection has already been enabled %p",
 			__func__, hist_info->base);
 		ret = -EINVAL;
 		goto exit;
 	}
-	hist_info->frame_cnt = req->frame_cnt;
-	init_completion(&hist_info->comp);
-	hist_info->hist_cnt_read = 0;
-	hist_info->hist_cnt_sent = 0;
-	hist_info->hist_cnt_time = 0;
-	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	hist_info->read_request = 0;
 	if (is_hist_v2)
 		hist_info->col_state = HIST_IDLE;
@@ -3062,6 +3155,11 @@ static int pp_hist_enable(struct pp_hist_col_info *hist_info,
 		hist_info->col_state = HIST_RESET;
 	hist_info->col_en = true;
 	spin_unlock_irqrestore(&hist_info->hist_lock, flag);
+	hist_info->frame_cnt = req->frame_cnt;
+	INIT_COMPLETION(hist_info->comp);
+	hist_info->hist_cnt_read = 0;
+	hist_info->hist_cnt_sent = 0;
+	hist_info->hist_cnt_time = 0;
 	mdss_mdp_hist_intr_req(&mdata->hist_intr,
 				intr_mask << hist_info->intr_shift, true);
 	if (is_hist_v2) {
@@ -3086,6 +3184,7 @@ int mdss_mdp_hist_start(struct mdp_histogram_start_req *req)
 	u32 mixer_cnt, mixer_id[MDSS_MDP_INTF_MAX_LAYERMIXER];
 	u32 frame_size;
 	struct mdss_mdp_pipe *pipe;
+	struct mdss_mdp_ctl *ctl;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	bool is_hist_v2 = mdata->mdp_rev >= MDSS_MDP_HW_REV_103;
 
@@ -3112,8 +3211,9 @@ int mdss_mdp_hist_start(struct mdp_histogram_start_req *req)
 		goto hist_exit;
 	}
 
-	frame_size = (mdata->ctl_off[mixer_id[0]].width *
-					mdata->ctl_off[mixer_id[0]].height);
+	ctl = mdata->mixer_intf[mixer_id[0]].ctl;
+	frame_size = (ctl->width * ctl->height);
+
 	if (!frame_size ||
 		((MDSS_MAX_HIST_BIN_SIZE / frame_size) < req->frame_cnt)) {
 		pr_err("%s, too many frames for given display size, %d",
@@ -3149,9 +3249,6 @@ int mdss_mdp_hist_start(struct mdp_histogram_start_req *req)
 				goto hist_stop_clk;
 			}
 			hist_info = &pipe->pp_res.hist;
-			hist_info->intr_shift = (pipe->num * 4);
-			hist_info->base = pipe->base +
-				MDSS_MDP_REG_VIG_HIST_CTL_BASE;
 			ret = pp_hist_enable(hist_info, req);
 			mdss_mdp_pipe_unmap(pipe);
 		}
@@ -3159,9 +3256,6 @@ int mdss_mdp_hist_start(struct mdp_histogram_start_req *req)
 		for (i = 0; i < mixer_cnt; i++) {
 			dspp_num = mixer_id[i];
 			hist_info = &mdss_pp_res->dspp_hist[dspp_num];
-			hist_info->intr_shift = (dspp_num * 4) + 12;
-			hist_info->base = mdss_mdp_get_dspp_addr_off(dspp_num) +
-				MDSS_MDP_REG_DSPP_HIST_CTL_BASE;
 			ret = pp_hist_enable(hist_info, req);
 			mdss_pp_res->pp_disp_flags[disp_num] |=
 							PP_FLAGS_DIRTY_HIST_COL;
@@ -3182,18 +3276,19 @@ static int pp_hist_disable(struct pp_hist_col_info *hist_info)
 	u32 intr_mask = is_hist_v2 ? 1 : 3;
 
 	mutex_lock(&hist_info->hist_mutex);
+	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	if (hist_info->col_en == false) {
+		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 		pr_debug("Histogram already disabled (%p)", hist_info->base);
 		ret = -EINVAL;
 		goto exit;
 	}
-	complete_all(&hist_info->comp);
-	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	hist_info->col_en = false;
 	hist_info->col_state = HIST_UNKNOWN;
 	spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 	mdss_mdp_hist_intr_req(&mdata->hist_intr,
 				intr_mask << hist_info->intr_shift, false);
+	complete_all(&hist_info->comp);
 	/* if hist v2, make sure HW is unlocked */
 	if (is_hist_v2)
 		writel_relaxed(0, hist_info->base);
@@ -3387,7 +3482,8 @@ int mdss_mdp_hist_intr_setup(struct mdss_intr *intr, int type)
 		dis = intr->curr;
 		intr->curr = 0;
 		intr->state = MDSS_INTR_STATE_SUSPEND;
-	} else if (intr->state != MDSS_IRQ_SUSPEND) {
+	} else if (intr->state != MDSS_IRQ_SUSPEND &&
+			type == MDSS_IRQ_REQ) {
 		/* Not resuming/suspending or in suspend state */
 		diff = intr->req ^ intr->curr;
 		en = diff & ~intr->curr;
@@ -3437,12 +3533,13 @@ static int pp_hist_collect(struct mdp_histogram_data *hist,
 		return -EPERM;
 
 	mutex_lock(&hist_info->hist_mutex);
+	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	if ((hist_info->col_en == 0) ||
 			(hist_info->col_state == HIST_UNKNOWN)) {
 		ret = -EINVAL;
+		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 		goto hist_collect_exit;
 	}
-	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	/* wait for hist done if cache has no data */
 	if (hist_info->col_state != HIST_READY) {
 		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
@@ -3458,9 +3555,9 @@ static int pp_hist_collect(struct mdp_histogram_data *hist,
 				&(hist_info->comp), timeout);
 
 		mutex_lock(&hist_info->hist_mutex);
+		spin_lock_irqsave(&hist_info->hist_lock, flag);
 		if (wait_ret == 0) {
 			ret = -ETIMEDOUT;
-			spin_lock_irqsave(&hist_info->hist_lock, flag);
 			pr_debug("bin collection timedout, state %d",
 					hist_info->col_state);
 			/*
@@ -3475,26 +3572,23 @@ static int pp_hist_collect(struct mdp_histogram_data *hist,
 			 */
 			hist_info->hist_cnt_time++;
 			hist_info->col_state = HIST_READY;
-			spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 		} else if (wait_ret < 0) {
 			ret = -EINTR;
 			pr_debug("%s: bin collection interrupted",
 					__func__);
+			spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 			goto hist_collect_exit;
 		}
-		if (hist_info->col_state != HIST_READY) {
+		if (hist_info->col_state != HIST_READY &&
+				hist_info->col_state != HIST_UNKNOWN) {
 			ret = -ENODATA;
-			spin_lock_irqsave(&hist_info->hist_lock, flag);
 			hist_info->col_state = HIST_READY;
-			spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 			pr_debug("%s: state is not ready: %d",
 					__func__, hist_info->col_state);
 		}
-	} else {
-		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 	}
-	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	if (hist_info->col_state == HIST_READY) {
+		hist_info->col_state = HIST_IDLE;
 		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 		v_base = ctl_base + 0x1C;
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
@@ -3503,12 +3597,11 @@ static int pp_hist_collect(struct mdp_histogram_data *hist,
 		if (is_hist_v2)
 			writel_relaxed(0, ctl_base);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-		spin_lock_irqsave(&hist_info->hist_lock, flag);
 		if (expect_sum && sum != expect_sum)
 			ret = -ENODATA;
-		hist_info->col_state = HIST_IDLE;
+	} else {
+		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 	}
-	spin_unlock_irqrestore(&hist_info->hist_lock, flag);
 hist_collect_exit:
 	mutex_unlock(&hist_info->hist_mutex);
 	return ret;
@@ -3801,12 +3894,24 @@ void mdss_mdp_hist_intr_done(u32 isr)
 			spin_unlock(&hist_info->hist_lock);
 			if (need_complete)
 				complete(&hist_info->comp);
+		} else if (hist_info && (isr_blk & 0x1) &&
+				!(hist_info->col_en)) {
+			/*
+			 * Histogram collection is disabled yet we got an
+			 * interrupt somehow.
+			 */
+			pr_err("Hist[%d] Done interrupt, col_en=false!\n",
+				blk_idx);
 		}
 		/* Histogram Reset Done Interrupt */
 		if (hist_info && (isr_blk & 0x2) && (hist_info->col_en)) {
-				spin_lock(&hist_info->hist_lock);
-				hist_info->col_state = HIST_IDLE;
-				spin_unlock(&hist_info->hist_lock);
+			spin_lock(&hist_info->hist_lock);
+			hist_info->col_state = HIST_IDLE;
+			spin_unlock(&hist_info->hist_lock);
+		} else if (hist_info && (isr_blk & 0x2) &&
+				!(hist_info->col_en)) {
+			pr_err("Hist[%d] Reset Done interrupt, col_en=false!\n",
+				blk_idx);
 		}
 	};
 }

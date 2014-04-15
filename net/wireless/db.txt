@@ -7,6 +7,8 @@ country 00:
 	(2474 - 2494 @ 20), (3, 20), PASSIVE-SCAN, NO-IBSS, NO-OFDM
 	# Channel 36 - 48
 	(5170 - 5250 @ 80), (3, 20), PASSIVE-SCAN, NO-IBSS
+	(5250 - 5330 @ 80), (3, 20), PASSIVE-SCAN, NO-IBSS
+	(5490 - 5710 @ 80), (3, 20), PASSIVE-SCAN, NO-IBSS
 	# NB: 5260 MHz - 5700 MHz requies DFS
 	# Channel 149 - 165
 	(5735 - 5835 @ 80), (3, 20), PASSIVE-SCAN, NO-IBSS
@@ -266,6 +268,9 @@ country DO:
 
 country DZ:
 	(2402 - 2482 @ 40), (N/A, 20)
+	(5150 - 5250 @ 80), (N/A, 23)
+	(5250 - 5350 @ 80), (N/A,23), DFS
+	(5470 - 5670 @ 80), (N/A, 20), DFS
 
 country EC:
 	(2402 - 2482 @ 40), (N/A, 20)
@@ -912,9 +917,9 @@ country UG:
 country US: DFS-FCC
 	(2402 - 2472 @ 40), (3, 27)
 	(5170 - 5250 @ 80), (3, 17)
-	(5250 - 5330 @ 80), (3, 24), DFS
-	(5490 - 5600 @ 80), (3, 24), DFS
-	(5650 - 5730 @ 40), (3, 24), DFS
+	(5250 - 5330 @ 80), (3, 23), DFS
+	(5490 - 5600 @ 80), (3, 23), DFS
+	(5650 - 5730 @ 40), (3, 23), DFS
 	(5735 - 5835 @ 80), (3, 30)
 	# 60g band
 	# reference: http://cfr.regstoday.com/47cfr15.aspx#47_CFR_15p255

@@ -35,6 +35,8 @@
 #include <mach/gpiomux.h>
 #include <mach/hardware.h>
 #include <mach/msm_iomap.h>
+#include <linux/msm-bus.h>
+#include <linux/msm-bus-board.h>
 
 #include "pcie.h"
 
@@ -480,6 +482,16 @@ static int msm_pcie_clk_init(struct msm_pcie_dev_t *dev)
 		return rc;
 	}
 
+	if (dev->bus_client) {
+		rc = msm_bus_scale_client_update_request(dev->bus_client, 1);
+		if (rc) {
+			pr_err(
+				"PCIe:%s:fail to set bus bandwidth for RC %d:%d\n",
+				__func__, dev->rc_idx, rc);
+			return rc;
+		}
+	}
+
 	for (i = 0; i < MSM_PCIE_MAX_CLK; i++) {
 		info = &dev->clk[i];
 
@@ -520,10 +532,19 @@ static int msm_pcie_clk_init(struct msm_pcie_dev_t *dev)
 static void msm_pcie_clk_deinit(struct msm_pcie_dev_t *dev)
 {
 	int i;
+	int rc;
 
 	for (i = 0; i < MSM_PCIE_MAX_CLK; i++)
 		if (dev->clk[i].hdl)
 			clk_disable_unprepare(dev->clk[i].hdl);
+
+	if (dev->bus_client) {
+		rc = msm_bus_scale_client_update_request(dev->bus_client, 0);
+		if (rc)
+			pr_err(
+				"PCIe:%s:fail to set bus bandwidth for RC %d:%d\n",
+				__func__, dev->rc_idx, rc);
+	}
 
 	regulator_disable(dev->gdsc);
 }
@@ -716,7 +737,7 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			pr_err(
 				"%s: invalid max-clock-frequency-hz property, %d\n",
 				__func__, ret);
-			return ret;
+			goto out;
 		}
 	}
 
@@ -730,14 +751,16 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 		if (PTR_ERR(vreg_info->hdl) == -EPROBE_DEFER) {
 			PCIE_DBG("EPROBE_DEFER for VReg:%s\n",
 				vreg_info->name);
-			return PTR_ERR(vreg_info->hdl);
+			ret = PTR_ERR(vreg_info->hdl);
+			goto out;
 		}
 
 		if (IS_ERR(vreg_info->hdl)) {
 			if (vreg_info->required) {
 				PCIE_DBG("Vreg %s doesn't exist\n",
 					vreg_info->name);
-				return PTR_ERR(vreg_info->hdl);
+				ret = PTR_ERR(vreg_info->hdl);
+				goto out;
 			} else {
 				PCIE_DBG("Optional Vreg %s doesn't exist\n",
 					vreg_info->name);
@@ -770,7 +793,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 		if (PTR_ERR(dev->gdsc) == -EPROBE_DEFER)
 			PCIE_DBG("PCIe: EPROBE_DEFER for %s GDSC\n",
 					dev->pdev->name);
-		return PTR_ERR(dev->gdsc);
+		ret = PTR_ERR(dev->gdsc);
+		goto out;
 	}
 
 	dev->gpio_n = 0;
@@ -785,7 +809,7 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			PCIE_DBG("GPIO num for %s is %d\n", gpio_info->name,
 							gpio_info->num);
 		} else {
-			return ret;
+			goto out;
 		}
 	}
 
@@ -798,7 +822,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			if (clk_info->required) {
 				PCIE_DBG("Clock %s isn't available:%ld\n",
 				clk_info->name, PTR_ERR(clk_info->hdl));
-				return PTR_ERR(clk_info->hdl);
+				ret = PTR_ERR(clk_info->hdl);
+				goto out;
 			} else {
 				PCIE_DBG("Ignoring Clock %s\n", clk_info->name);
 				clk_info->hdl = NULL;
@@ -822,7 +847,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			if (clk_info->required) {
 				PCIE_DBG("Clock %s isn't available:%ld\n",
 				clk_info->name, PTR_ERR(clk_info->hdl));
-				return PTR_ERR(clk_info->hdl);
+				ret = PTR_ERR(clk_info->hdl);
+				goto out;
 			} else {
 				PCIE_DBG("Ignoring Clock %s\n", clk_info->name);
 				clk_info->hdl = NULL;
@@ -836,6 +862,25 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 		}
 	}
 
+
+	dev->bus_scale_table = msm_bus_cl_get_pdata(pdev);
+	if (!dev->bus_scale_table) {
+		PCIE_DBG("PCIe: No bus scale table for RC %d (%s)\n",
+			dev->rc_idx, dev->pdev->name);
+		dev->bus_client = 0;
+	} else {
+		dev->bus_client =
+			msm_bus_scale_register_client(dev->bus_scale_table);
+		if (!dev->bus_client) {
+			pr_err(
+				"PCIe: Failed to register bus client for RC %d (%s)\n",
+				dev->rc_idx, dev->pdev->name);
+			msm_bus_cl_clear_pdata(dev->bus_scale_table);
+			ret = -ENODEV;
+			goto out;
+		}
+	}
+
 	for (i = 0; i < MSM_PCIE_MAX_RES; i++) {
 		res_info = &dev->res[i];
 
@@ -844,7 +889,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 
 		if (!res) {
 			pr_err("pcie:can't get %s resource.\n", res_info->name);
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto out;
 		} else
 			PCIE_DBG("start addr for %s is %pa.\n", res_info->name,
 					&res->start);
@@ -853,7 +899,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 						res->start, resource_size(res));
 		if (!res_info->base) {
 			pr_err("pcie: can't remap %s.\n", res_info->name);
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto out;
 		}
 		res_info->resource = res;
 	}
@@ -873,7 +920,7 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			pr_err("pcie: can't find IRQ # for %s.\n",
 				irq_info->name);
 			ret = -ENODEV;
-			break;
+			goto out;
 		} else {
 			irq_info->num = res->start;
 			PCIE_DBG("IRQ # for %s is %d.\n", irq_info->name,
@@ -895,6 +942,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 	dev->dev_io_res = dev->res[MSM_PCIE_RES_IO].resource;
 	dev->dev_io_res->flags = IORESOURCE_IO;
 
+out:
+	kfree(clkfreq);
 	return ret;
 }
 
@@ -974,9 +1023,9 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 	PCIE_DBG("number of PHY retries: %ld\n", retries);
 
 	if (pcie_phy_is_ready(dev))
-		pr_info("PCIe PHY is ready!\n");
+		pr_info("PCIe RC %d PHY is ready!\n", dev->rc_idx);
 	else {
-		pr_err("PCIe PHY failed to come up!\n");
+		pr_err("PCIe PHY RC %d failed to come up!\n", dev->rc_idx);
 		ret = -ENODEV;
 		goto link_fail;
 	}
@@ -1028,12 +1077,12 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 	PCIE_DBG("number of link training retries: %ld\n", retries);
 
 	if (val & XMLH_LINK_UP) {
-		pr_info("PCIe link initialized\n");
+		pr_info("PCIe RC %d link initialized\n", dev->rc_idx);
 	} else {
 		pr_info("PCIe: Assert the reset of endpoint\n");
 		gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
 			dev->gpio[MSM_PCIE_GPIO_PERST].on);
-		pr_err("PCIe link initialization failed\n");
+		pr_err("PCIe RC %d link initialization failed\n", dev->rc_idx);
 		ret = -1;
 		goto link_fail;
 	}
@@ -1063,7 +1112,7 @@ out:
 
 void msm_pcie_disable(struct msm_pcie_dev_t *dev, u32 options)
 {
-	PCIE_DBG("\n");
+	PCIE_DBG("RC %d\n", dev->rc_idx);
 
 	pr_info("PCIe: Assert the reset of endpoint\n");
 	gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
@@ -1618,6 +1667,8 @@ int msm_pcie_pm_control(enum msm_pcie_pm_opt pm_opt, u32 busnr, void *user,
 	int ret = 0;
 	struct pci_dev *dev;
 	u32 rc_idx = 0;
+
+	PCIE_DBG("pm_opt:%d;busnr:%d;options:%d\n", pm_opt, busnr, options);
 
 	switch (busnr) {
 	case 1:

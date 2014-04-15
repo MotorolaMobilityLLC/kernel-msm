@@ -752,13 +752,18 @@ static void reset_cc(struct qpnp_bms_chip *chip, u8 flags)
 static int get_battery_status(struct qpnp_bms_chip *chip)
 {
 	union power_supply_propval ret = {0,};
+	int rc;
 
 	if (chip->batt_psy == NULL)
 		chip->batt_psy = power_supply_get_by_name("battery");
 	if (chip->batt_psy) {
 		/* if battery has been registered, use the status property */
-		chip->batt_psy->get_property(chip->batt_psy,
+		rc = chip->batt_psy->get_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_STATUS, &ret);
+		if (rc) {
+			pr_debug("Battery does not export status: %d\n", rc);
+			return POWER_SUPPLY_STATUS_UNKNOWN;
+		}
 		return ret.intval;
 	}
 
@@ -769,20 +774,7 @@ static int get_battery_status(struct qpnp_bms_chip *chip)
 
 static bool is_battery_charging(struct qpnp_bms_chip *chip)
 {
-	union power_supply_propval ret = {0,};
-
-	if (chip->batt_psy == NULL)
-		chip->batt_psy = power_supply_get_by_name("battery");
-	if (chip->batt_psy) {
-		/* if battery has been registered, use the status property */
-		chip->batt_psy->get_property(chip->batt_psy,
-					POWER_SUPPLY_PROP_CHARGE_TYPE, &ret);
-		return ret.intval != POWER_SUPPLY_CHARGE_TYPE_NONE;
-	}
-
-	/* Default to false if the battery power supply is not registered. */
-	pr_debug("battery power supply is not registered\n");
-	return false;
+	return get_battery_status(chip) == POWER_SUPPLY_STATUS_CHARGING;
 }
 
 static bool is_battery_full(struct qpnp_bms_chip *chip)
@@ -810,8 +802,12 @@ static bool is_battery_present(struct qpnp_bms_chip *chip)
 		chip->batt_psy = power_supply_get_by_name("battery");
 	if (chip->batt_psy) {
 		/* if battery has been registered, use the present property */
-		chip->batt_psy->get_property(chip->batt_psy,
+		rc = chip->batt_psy->get_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_PRESENT, &ret);
+		if (rc) {
+			pr_debug("battery does not export present: %d\n", rc);
+			return true;
+		}
 		return ret.intval;
 	}
 
@@ -852,13 +848,18 @@ static int get_battery_insertion_ocv_uv(struct qpnp_bms_chip *chip)
 static bool is_batfet_closed(struct qpnp_bms_chip *chip)
 {
 	union power_supply_propval ret = {0,};
+	int rc;
 
 	if (chip->batt_psy == NULL)
 		chip->batt_psy = power_supply_get_by_name("battery");
 	if (chip->batt_psy) {
 		/* if battery has been registered, use the online property */
-		chip->batt_psy->get_property(chip->batt_psy,
+		rc = chip->batt_psy->get_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_ONLINE, &ret);
+		if (rc) {
+			pr_debug("Battery does not export online: %d\n", rc);
+			return true;
+		}
 		return !!ret.intval;
 	}
 
@@ -1809,7 +1810,7 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	last_change_sec = chip->last_soc_change_sec;
 	calculate_delta_time(&last_change_sec, &time_since_last_change_sec);
 
-	charging = is_battery_charging(chip);
+	charging = chip->battery_status == POWER_SUPPLY_STATUS_CHARGING;
 	charging_since_last_report = charging || (chip->last_soc_unbound
 			&& chip->was_charging_at_sleep);
 	/*
@@ -2204,7 +2205,12 @@ static int clamp_soc_based_on_voltage(struct qpnp_bms_chip *chip, int soc)
 		pr_err("adc vbat failed err = %d\n", rc);
 		return soc;
 	}
-	if (soc == 0 && vbat_uv > chip->v_cutoff_uv) {
+
+	/* only clamp when discharging */
+	if (is_battery_charging(chip))
+		return soc;
+
+	if (soc <= 0 && vbat_uv > chip->v_cutoff_uv) {
 		pr_debug("clamping soc to 1, vbat (%d) > cutoff (%d)\n",
 						vbat_uv, chip->v_cutoff_uv);
 		return 1;
