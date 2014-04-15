@@ -5283,8 +5283,15 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     /*Right now scanning all the channels */
     if( request )
     {
+        if (MAX_CHANNEL < request->n_channels)
+        {
+            hddLog(VOS_TRACE_LEVEL_WARN,
+               "No of Scan Channels exceeded limit: %d", request->n_channels);
+            request->n_channels = MAX_CHANNEL;
+        }
         hddLog(VOS_TRACE_LEVEL_INFO,
                                "No of Scan Channels: %d", request->n_channels);
+
         if( request->n_channels )
         {
             char chList [(request->n_channels*5)+1];
