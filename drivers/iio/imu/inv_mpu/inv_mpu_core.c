@@ -2701,6 +2701,13 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 		       sizeof(inv_pressure_attributes));
 		t_ind += ARRAY_SIZE(inv_pressure_attributes);
 	}
+	
+	//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI and calibration"
+	#ifdef ASUS_FACTORY_BUILD
+	memcpy(&inv_attributes[t_ind], inv_factory_attributes, sizeof(inv_factory_attributes));
+	t_ind += ARRAY_SIZE(inv_factory_attributes);
+	#endif
+	//ASUS_BSP --- Maggie_Lee "Support ATD BMMI and calibration"
 
 	inv_attributes[t_ind] = NULL;
 
