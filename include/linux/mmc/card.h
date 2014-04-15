@@ -399,6 +399,8 @@ struct mmc_card {
 	struct notifier_block        reboot_notify;
 	bool issue_long_pon;
 	u8 *cached_ext_csd;
+	char mmc_info[25];		//ASUS_BSP shunmin "emmc info for ATD"
+	char mmc_total_size[10];
 };
 
 /*

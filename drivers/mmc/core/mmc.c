@@ -77,6 +77,69 @@ static const struct mmc_fixup mmc_fixups[] = {
 	END_FIXUP
 };
 
+//ASUS_BSP +++ shunmin "emmc info for ATD"
+static char* asus_get_emmc_status(struct mmc_card *card)
+{
+	BUG_ON(!card);
+
+	return card->mmc_info;
+}
+
+static char* asus_get_emmc_total_size(struct mmc_card *card)
+{
+	u32 ext_csd_sector_count;
+	
+	BUG_ON(!card);
+	
+	ext_csd_sector_count = card->ext_csd.raw_sectors[0] << 0 |card->ext_csd.raw_sectors[1] << 8 | card->ext_csd.raw_sectors[2] << 16 |card->ext_csd.raw_sectors[3] << 24;
+	#if 0
+	/* Hynix 4G */
+	if (ext_csd_sector_count == 0x748000)
+	{
+		sprintf(card->mmc_total_size, "4");
+	}
+	/* Hynix 8G */
+	else if (ext_csd_sector_count == 0xe74000)
+	{
+		sprintf(card->mmc_total_size, "8");
+	}		
+	/* Hynix 16G */
+	else if (ext_csd_sector_count == 0x1d5c000)
+	{
+		sprintf(card->mmc_total_size, "16");
+	}
+	/* Hynix 32G */
+	else if (ext_csd_sector_count == 0x3a40000)
+	{
+		sprintf(card->mmc_total_size, "32");
+	}
+	/* Hynix 64G */
+	else if (ext_csd_sector_count == 0x7480000)
+	{
+		sprintf(card->mmc_total_size, "64");
+	}
+	/* Hynix 8G */
+	else if (ext_csd_sector_count == 0xe90000)
+	{
+		sprintf(card->mmc_total_size, "8");
+	}
+	/* Hynix 16G */
+	else if (ext_csd_sector_count == 0x1d5c000)
+	{
+		sprintf(card->mmc_total_size, "16");
+	}
+	/* Hynix 32G */
+	else if (ext_csd_sector_count == 0x3a40000)
+	{
+		sprintf(card->mmc_total_size, "32");
+	}
+	#endif
+	
+	sprintf(card->mmc_total_size, "4");	//Robin only use 4G emmc chip
+	
+	return card->mmc_total_size;
+}
+//ASUS_BSP --- shunmin "emmc info for ATD"
 /*
  * Given the decoded CSD structure, decode the raw CID to our CID structure.
  */
@@ -686,6 +749,12 @@ MMC_DEV_ATTR(enhanced_area_offset, "%llu\n",
 MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
 MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
 MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
+//ASUS_BSP +++ shunmin "emmc info for ATD"
+MMC_DEV_ATTR(emmc_total_size, "%s\n", asus_get_emmc_total_size(card));
+MMC_DEV_ATTR(emmc_status, "%s\n", asus_get_emmc_status(card));
+MMC_DEV_ATTR(emmc_size, "0x%02x%02x%02x%02x\n", card->ext_csd.raw_sectors[3], card->ext_csd.raw_sectors[2],
+	card->ext_csd.raw_sectors[1], card->ext_csd.raw_sectors[0]);
+//ASUS_BSP --- shunmin "emmc info for ATD"
 
 static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_cid.attr,
@@ -704,6 +773,11 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_enhanced_area_size.attr,
 	&dev_attr_raw_rpmb_size_mult.attr,
 	&dev_attr_rel_sectors.attr,
+//ASUS_BSP +++ shunmin "emmc info for ATD"
+	&dev_attr_emmc_status.attr,
+	&dev_attr_emmc_size.attr,
+	&dev_attr_emmc_total_size.attr,	
+//ASUS_BSP --- shunmin "emmc info for ATD"
 	NULL,
 };
 
@@ -1286,6 +1360,55 @@ out:
 	return err;
 }
 
+//ASUS_BSP +++ shunmin "emmc info for ATD"
+static void mmc_set_info(struct mmc_card *card)
+{
+	int offset = 0;
+	
+	if (card->cid.manfid == 0x90) {
+		#if 0
+		/* Hynix 4G */
+		if ((card->ext_csd.sectors == 0x748000) && !strncmp(card->cid.prod_name, "H4G1d", 5))
+			offset += sprintf(card->mmc_info, "Hynix4G-");
+		/* Hynix 8G */
+		else if ((card->ext_csd.sectors == 0xe74000) && !strncmp(card->cid.prod_name, "H8G2d", 5))
+			offset += sprintf(card->mmc_info, "Hynix8G-");		
+		/* Hynix 16G */
+		else if ((card->ext_csd.sectors == 0x1d5c000) && !strncmp(card->cid.prod_name, "HAG2e", 5))
+			offset += sprintf(card->mmc_info, "Hynix16G-");
+		/* Hynix 32G */
+		else if ((card->ext_csd.sectors == 0x3a40000) && !strncmp(card->cid.prod_name, "HBG4e", 5))
+			offset += sprintf(card->mmc_info, "Hynix32G-");
+		/* Hynix 64G */
+		else if ((card->ext_csd.sectors == 0x7480000) && !strncmp(card->cid.prod_name, "HCG8e", 5))
+			offset += sprintf(card->mmc_info, "Hynix64G-");
+		/* Hynix 8G */
+		else if ((card->ext_csd.sectors == 0xe90000) && !strncmp(card->cid.prod_name, "H8G2d", 5))
+			offset += sprintf(card->mmc_info, "Hynix8G-");
+		/* Hynix 16G */
+		else if ((card->ext_csd.sectors == 0x1d5c000) && !strncmp(card->cid.prod_name, "HAG4d", 5))
+			offset += sprintf(card->mmc_info, "Hynix16G-");
+		/* Hynix 32G */
+		else if ((card->ext_csd.sectors == 0x3a40000) && !strncmp(card->cid.prod_name, "HBG8d", 5))
+			offset += sprintf(card->mmc_info, "Hynix32G-");
+		#endif
+		offset += sprintf(card->mmc_info, "Hynix4G-");
+
+	}
+
+	if (card->ext_csd.rev == 0x6) {
+		offset += sprintf(card->mmc_info + offset, "4.5");
+	} else if (card->ext_csd.rev == 0x5)
+		offset += sprintf(card->mmc_info + offset, "4.41");
+
+	pr_info("%s: manfid:0x%x, sectors:0x%x, prod_name:%s, mmc_info:%s\n",
+		mmc_hostname(card->host), card->cid.manfid, card->ext_csd.sectors, card->cid.prod_name, card->mmc_info);
+
+	return;
+}
+
+//ASUS_BSP --- shunmin "emmc info for ATD"
+
 static int mmc_reboot_notify(struct notifier_block *notify_block,
 		unsigned long event, void *unused)
 {
@@ -1504,6 +1627,13 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			mmc_set_erase_size(card);
 		}
 	}
+
+//ASUS_BSP +++ shunmin "emmc info for ATD"
+	if (!oldcard) {
+		mmc_set_info(card);
+//		pr_info("%s:mmc info: %s\n", mmc_hostname(host), card->mmc_info);
+	}
+//ASUS_BSP --- shunmin "emmc info for ATD"
 
 	/*
 	 * Ensure eMMC user default partition is enabled
