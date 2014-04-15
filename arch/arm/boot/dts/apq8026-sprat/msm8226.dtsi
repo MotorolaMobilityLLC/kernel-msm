@@ -58,7 +58,7 @@
 /include/ "../qcom/msm8226-camera.dtsi"
 /include/ "../qcom/msm-gdsc.dtsi"
 /include/ "../qcom/msm8226-iommu.dtsi"
-/include/ "../qcom/msm8226-smp2p.dtsi"
+/include/ "msm8226-smp2p.dtsi"
 /include/ "../qcom/msm8226-gpu.dtsi"
 /include/ "../qcom/msm8226-bus.dtsi"
 /include/ "msm8226-mdss.dtsi"
@@ -690,28 +690,6 @@
 		qcom,msm-auxpcm-interface = "primary";
 	};
 
-	qcom,wcnss-wlan@fb000000 {
-		compatible = "qcom,wcnss_wlan";
-		reg = <0xfb000000 0x280000>,
-			<0xf9011008 0x04>;
-		reg-names = "wcnss_mmio", "wcnss_fiq";
-		interrupts = <0 145 0 0 146 0>;
-		interrupt-names = "wcnss_wlantx_irq", "wcnss_wlanrx_irq";
-
-		qcom,pronto-vddmx-supply = <&pm8226_l3>;
-		qcom,pronto-vddcx-supply = <&pm8226_s1_corner>;
-		qcom,pronto-vddpx-supply = <&pm8226_l6>;
-		qcom,iris-vddxo-supply = <&pm8226_l10>;
-		qcom,iris-vddrfa-supply = <&pm8226_l24>;
-		qcom,iris-vddpa-supply = <&pm8226_l16>;
-		qcom,iris-vdddig-supply = <&pm8226_l24>;
-
-		gpios = <&msmgpio 40 0>, <&msmgpio 41 0>, <&msmgpio 42 0>, <&msmgpio 43 0>, <&msmgpio 44 0>;
-		qcom,has-pronto-hw;
-		qcom,has-autodetect-xo;
-		qcom,wcnss-adc_tm = <&pm8226_adc_tm>;
-	};
-
 	qcom,msm-ssc-sensors {
 		compatible = "qcom,msm-ssc-sensors";
 	};
@@ -733,23 +711,6 @@
 		reg-names = "smem", "irq-reg-base", "aux-mem1";
 		qcom,mpu-enabled;
 
-		qcom,smd-modem {
-			compatible = "qcom,smd";
-			qcom,smd-edge = <0>;
-			qcom,smd-irq-offset = <0x8>;
-			qcom,smd-irq-bitmask = <0x1000>;
-			qcom,pil-string = "modem";
-			interrupts = <0 25 1>;
-		};
-
-		qcom,smsm-modem {
-			compatible = "qcom,smsm";
-			qcom,smsm-edge = <0>;
-			qcom,smsm-irq-offset = <0x8>;
-			qcom,smsm-irq-bitmask = <0x2000>;
-			interrupts = <0 26 1>;
-		};
-
 		qcom,smd-adsp {
 			compatible = "qcom,smd";
 			qcom,smd-edge = <1>;
@@ -765,23 +726,6 @@
 			qcom,smsm-irq-offset = <0x8>;
 			qcom,smsm-irq-bitmask = <0x200>;
 			interrupts = <0 157 1>;
-		};
-
-		qcom,smd-wcnss {
-			compatible = "qcom,smd";
-			qcom,smd-edge = <6>;
-			qcom,smd-irq-offset = <0x8>;
-			qcom,smd-irq-bitmask = <0x20000>;
-			qcom,pil-string = "wcnss";
-			interrupts = <0 142 1>;
-		};
-
-		qcom,smsm-wcnss {
-			compatible = "qcom,smsm";
-			qcom,smsm-edge = <6>;
-			qcom,smsm-irq-offset = <0x8>;
-			qcom,smsm-irq-bitmask = <0x80000>;
-			interrupts = <0 144 1>;
 		};
 
 		qcom,smd-rpm {
