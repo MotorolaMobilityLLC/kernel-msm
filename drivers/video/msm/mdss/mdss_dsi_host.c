@@ -32,8 +32,9 @@
 #include "mdss_asus_debug.h"
 #endif
 // ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
+//#define VSYNC_PERIOD 17
+#define VSYNC_PERIOD (1000/30)
 
-#define VSYNC_PERIOD 17
 
 struct mdss_dsi_ctrl_pdata *ctrl_list[DSI_CTRL_MAX];
 

@@ -21,7 +21,10 @@
 #define MAX_SESSIONS 2
 
 /* wait for at most 2 vsync for lowest refresh rate (24hz) */
-#define KOFF_TIMEOUT msecs_to_jiffies(84)
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Longer kick off timeout to stable MDSS"
+#undef KOFF_TIMEOUT
+#define KOFF_TIMEOUT msecs_to_jiffies(100*2)
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Longer kick off timeout for 30 fps"
 
 #define STOP_TIMEOUT msecs_to_jiffies(16 * (VSYNC_EXPIRE_TICK + 2))
 #define ULPS_ENTER_TIME msecs_to_jiffies(100)
