@@ -163,6 +163,7 @@
 &slim_msm {
 	taiko_codec {
 		qcom,cdc-reset-gpio = <&msmgpio 23 0>;
+		qcom,cdc-micbias3-ext-cap;
 	};
 };
 
