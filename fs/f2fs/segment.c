@@ -224,7 +224,7 @@ static int __submit_bio_wait(int rw, struct bio *bio)
 	return ret.error;
 }
 
-static int issue_flush_thread(void *data)
+int issue_flush_thread(void *data)
 {
 	struct f2fs_sb_info *sbi = data;
 	struct f2fs_sm_info *sm_i = SM_I(sbi);
