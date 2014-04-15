@@ -46,18 +46,20 @@ static int recover_dentry(struct page *ipage, struct inode *inode)
 	struct inode *dir, *einode;
 	int err = 0;
 
-	dir = check_dirty_dir_inode(F2FS_SB(inode->i_sb), pino);
-	if (!dir) {
-		dir = f2fs_iget(inode->i_sb, pino);
-		if (IS_ERR(dir)) {
-			err = PTR_ERR(dir);
-			f2fs_msg(inode->i_sb, KERN_INFO,
-					"%s: f2fs_iget failed: %d",
-					__func__, err);
-			goto out;
-		}
-		set_inode_flag(F2FS_I(dir), FI_DELAY_IPUT);
+	dir = f2fs_iget(inode->i_sb, pino);
+	if (IS_ERR(dir)) {
+		err = PTR_ERR(dir);
+		f2fs_msg(inode->i_sb, KERN_INFO,
+				"%s: f2fs_iget failed: %d",
+				__func__, err);
+		goto out;
+	}
+
+	if (is_inode_flag_set(F2FS_I(dir), FI_DIRTY_DIR)) {
+		iput(dir);
+	} else {
 		add_dirty_dir_inode(dir);
+		set_inode_flag(F2FS_I(dir), FI_DELAY_IPUT);
 	}
 
 	name.len = le32_to_cpu(raw_inode->i_namelen);
