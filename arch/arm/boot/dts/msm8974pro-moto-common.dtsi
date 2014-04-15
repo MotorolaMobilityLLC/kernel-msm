@@ -107,7 +107,9 @@
 		reg-names = "qup_phys_addr";
 		interrupts = <0 99 0>;
 		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <100000>;
+		qcom,scl-gpio = <&msmgpio 26 0>;
+		qcom,sda-gpio = <&msmgpio 25 0>;
+		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <50000000>;
 		qcom,master-id = <86>;
 	};
