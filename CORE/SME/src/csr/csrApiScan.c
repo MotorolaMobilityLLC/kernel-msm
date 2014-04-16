@@ -2149,6 +2149,10 @@ eHalStatus csrScanGetResult(tpAniSirGlobal pMac, tCsrScanResultFilter *pFilter, 
                                  &pBssDesc->Result.BssDescriptor, pIes, NULL, NULL, NULL );
                     if ((pBssDesc->Result.pvIes == NULL) && pIes)
                         vos_mem_free(pIes);
+                    if ( pFilter->bOSENAssociation )
+                    {
+                        fMatch = TRUE;
+                    }
 
                     if (fMatch)
                         smsLog(pMac, LOG1, FL(" Security Matched"));
