@@ -11837,7 +11837,10 @@ static void csrRoamPrepareBssParams(tpAniSirGlobal pMac, tANI_U32 sessionId, tCs
         {
             if(CSR_IS_CHANNEL_24GHZ(Channel) )
             {
-                cbMode = pMac->roam.configParam.channelBondingMode24GHz;
+                /* TODO- SAP: HT40 Support in SAP 2.4Ghz mode is not enabled.
+                    so channel bonding in 2.4Ghz is configured as 20MHZ
+                    irrespective of the 'channelBondingMode24GHz' Parameter */
+                cbMode = PHY_SINGLE_CHANNEL_CENTERED;
             }
             else
             {
