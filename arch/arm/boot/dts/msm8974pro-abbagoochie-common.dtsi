@@ -12,6 +12,7 @@
 
 /include/ "dsi-panel-mot-smd-720p-cmd.dtsi"
 /include/ "dsi-panel-mot-smd-720p-video.dtsi"
+/include/ "dsi-panel-mot-smd-1080p-cmd.dtsi"
 
 / {
 	model = "Motorola QC-MSM8974 Pro Abbagoochie";
@@ -36,7 +37,15 @@
 	qcom,cont-splash-enabled;
 };
 
+&mot_smd_1080p_cmd_v0 {
+	qcom,cont-splash-enabled;
+	qcom,partial-update-enabled;
+	mmi,quickdraw-enabled;
+	mmi,partial-mode-enabled;
+};
+
 &mdss_dsi0 {
+	mmi,mipi-d0-sel = <&msmgpio 129 0>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vdd_disp-supply = <&vdd_disp_vreg>;
 	vci_disp-supply = <&vci_disp_vreg>;
