@@ -44,6 +44,8 @@
 		qcom,mdss-dsi-on-command = [
 
 
+		// Init code from X163QLN01 V1 032_Initial Code_20140414.pdf
+
 		39 01 00 00 00 00 06 F0 55 AA 52 08 00 // Page0
 		
 		39 01 00 00 00 00 06 BD 01 90 14 14 00
@@ -65,14 +67,14 @@
 		39 01 00 00 00 00 04 B1 05 05 05
 		39 01 00 00 00 00 04 B2 01 01 01
 		39 01 00 00 00 00 04 B4 07 07 07
-		39 01 00 00 00 00 04 B5 05 05 05
+		39 01 00 00 00 00 04 B5 03 03 03
 		39 01 00 00 00 00 04 B6 53 53 53
 		
 		39 01 00 00 00 00 04 B7 33 33 33
 		39 01 00 00 00 00 04 B8 23 23 23
 		39 01 00 00 00 00 04 B9 03 03 03
-		39 01 00 00 00 00 04 BA 13 13 13
-		39 01 00 00 00 00 04 BE 22 30 70
+		39 01 00 00 00 00 04 BA 03 03 03
+		39 01 00 00 00 00 04 BE 32 30 70
 		39 01 00 00 00 00 08 CF FF D4 95 EF 4F 00 04
 		
 		15 01 00 00 00 00 02 35 01
@@ -116,9 +118,11 @@
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
-//		qcom,mdss-dsi-panel-timings = [7B 1A 10 00 3C 42 14 1C 15 03 04 00];
-//		qcom,mdss-dsi-panel-timings = [5A 12 0A 00 32 34 10 16 0C 03 04 00]; // 285Mbps, panel_info->clk_rate=285517440
-		qcom,mdss-dsi-panel-timings = [4D 0E 08 00 2C 30 0E 12 0B 03 04 00]; // 230Mbps, panel_info->clk_rate=
+
+		// By AUO's suggestion: MIPI Clock rate = ~290Mbps.
+		qcom,mdss-dsi-panel-timings = [5D 12 0C 00 32 36 10 16 0F 03 04 00]; // 290Mbps, panel_info->clk_rate=
+
+		
 		qcom,mdss-dsi-t-clk-post = <0x04>;
 		qcom,mdss-dsi-t-clk-pre = <0x1b>;
 		qcom,mdss-dsi-bl-min-level = <1>;

@@ -187,7 +187,7 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 	printk("MDSS:DSI:mdss_dsi_clk_div_config():After calculate,panel_info->clk_rate=%d\n",panel_info->clk_rate);
 
 // Tingyi +++
-	//panel_info->clk_rate=	200000000; // 200MHz
+	panel_info->clk_rate=	290000000; // 290MHz
 	printk("MDSS:DSI:mdss_dsi_clk_div_config():Force panel_info->clk_rate=%d\n",panel_info->clk_rate);
 	pll_divider_config.clk_rate = panel_info->clk_rate;
 // Tingyi ---
