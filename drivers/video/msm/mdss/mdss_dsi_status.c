@@ -100,7 +100,8 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 	mutex_lock(&ctl->offlock);
 	if (ctl->shared_lock)
 		mutex_lock(ctl->shared_lock);
-	mutex_lock(&mdp5_data->ov_lock);
+	if (ctl->wait_pingpong)
+		mutex_lock(&mdp5_data->ov_lock);
 
 	/*
 	 * For the command mode panels, we return pan display
@@ -121,7 +122,8 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 	ret = ctrl_pdata->check_status(ctrl_pdata);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 
-	mutex_unlock(&mdp5_data->ov_lock);
+	if (ctl->wait_pingpong)
+		mutex_unlock(&mdp5_data->ov_lock);
 	if (ctl->shared_lock)
 		mutex_unlock(ctl->shared_lock);
 	mutex_unlock(&ctl->offlock);
