@@ -833,8 +833,7 @@ kgsl_find_process_private(struct kgsl_device_private *cur_dev_priv)
 	mutex_lock(&kgsl_driver.process_mutex);
 	list_for_each_entry(private, &kgsl_driver.process_list, list) {
 		if (private->pid == task_tgid_nr(current)) {
-			if (!kgsl_process_private_get(private))
-				private = NULL;
+			kref_get(&private->refcount);
 			goto done;
 		}
 	}
