@@ -660,6 +660,36 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 				break;
 			}
 			break;
+	case STM401_IOCTL_SET_IR_GESTURE_DELAY:
+		dev_dbg(&ps_stm401->client->dev,
+			"STM401_IOCTL_SET_IR_GESTURE_DELAY");
+		delay = 0;
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			dev_dbg(&ps_stm401->client->dev,
+				"Copy IR gesture delay returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		stm401_cmdbuff[0] = IR_GESTURE_RATE;
+		stm401_cmdbuff[1] = delay;
+		stm401_g_ir_gesture_delay = delay;
+		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 2);
+		break;
+	case STM401_IOCTL_SET_IR_RAW_DELAY:
+		dev_dbg(&ps_stm401->client->dev,
+			"STM401_IOCTL_SET_IR_RAW_DELAY");
+		delay = 0;
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			dev_dbg(&ps_stm401->client->dev,
+				"Copy IR raw delay returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		stm401_cmdbuff[0] = IR_RAW_RATE;
+		stm401_cmdbuff[1] = delay;
+		stm401_g_ir_raw_delay = delay;
+		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 2);
+		break;
 	/* No default here since previous switch could have
 	   handled the command and cannot over write that */
 	}

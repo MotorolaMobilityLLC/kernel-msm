@@ -69,6 +69,8 @@ unsigned short stm401_g_mag_delay;
 unsigned short stm401_g_gyro_delay;
 unsigned short stm401_g_baro_delay;
 unsigned short stm401_g_step_counter_delay;
+unsigned short stm401_g_ir_gesture_delay;
+unsigned short stm401_g_ir_raw_delay;
 unsigned long stm401_g_nonwake_sensor_state;
 unsigned short stm401_g_wake_sensor_state;
 unsigned short stm401_g_algo_state;
