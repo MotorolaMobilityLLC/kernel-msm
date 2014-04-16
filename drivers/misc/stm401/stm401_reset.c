@@ -140,6 +140,18 @@ int stm401_reset_and_init(void)
 	if (err < 0)
 		ret_err = err;
 
+	stm401_cmdbuff[0] = IR_GESTURE_RATE;
+	stm401_cmdbuff[1] = stm401_g_ir_gesture_delay;
+	err = stm401_i2c_write_no_reset(stm401_misc_data, stm401_cmdbuff, 2);
+	if (err < 0)
+		ret_err = err;
+
+	stm401_cmdbuff[0] = IR_RAW_RATE;
+	stm401_cmdbuff[1] = stm401_g_ir_raw_delay;
+	err = stm401_i2c_write_no_reset(stm401_misc_data, stm401_cmdbuff, 2);
+	if (err < 0)
+		ret_err = err;
+
 	stm401_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 	stm401_cmdbuff[1] = stm401_g_nonwake_sensor_state & 0xFF;
 	stm401_cmdbuff[2] = (stm401_g_nonwake_sensor_state >> 8) & 0xFF;
