@@ -615,8 +615,6 @@ void *adreno_snapshot(struct kgsl_device *device, void *snapshot, int *remain,
 void adreno_dispatcher_start(struct kgsl_device *device);
 int adreno_dispatcher_init(struct adreno_device *adreno_dev);
 void adreno_dispatcher_close(struct adreno_device *adreno_dev);
-int adreno_dispatcher_idle(struct adreno_device *adreno_dev,
-		unsigned int timeout);
 void adreno_dispatcher_irq_fault(struct kgsl_device *device);
 void adreno_dispatcher_stop(struct adreno_device *adreno_dev);
 
