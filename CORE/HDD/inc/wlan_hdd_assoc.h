@@ -115,6 +115,7 @@ typedef struct hdd_mon_ctx_s  hdd_mon_ctx_t;
 
 
 extern v_BOOL_t hdd_connIsConnected( hdd_station_ctx_t *pHddStaCtx );
+eCsrBand hdd_connGetConnectedBand( hdd_station_ctx_t *pHddStaCtx );
 extern eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, v_U32_t roamId, 
                                 eRoamCmdStatus roamStatus, eCsrRoamResult roamResult );
 
