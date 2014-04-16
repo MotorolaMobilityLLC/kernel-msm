@@ -189,6 +189,7 @@ struct dwc3_msm {
 	struct completion ext_chg_wait;
 	unsigned int scm_dev_id;
 	bool suspend_resume_no_support;
+	bool enable_suspend_event;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -1049,7 +1050,7 @@ static void dwc3_block_reset_usb_work(struct work_struct *w)
 	 */
 	if (dwc3_msm_read_reg(mdwc->base, DWC3_GSNPSID) < DWC3_REVISION_230A)
 		reg |= DWC3_DEVTEN_ULSTCNGEN;
-	else
+	else if (mdwc->enable_suspend_event)
 		reg |= DWC3_DEVTEN_SUSPEND;
 
 	dwc3_msm_write_reg(mdwc->base, DWC3_DEVTEN, reg);
@@ -2319,6 +2320,10 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	mdwc->suspend_resume_no_support = of_property_read_bool(node,
 				"qcom,no-suspend-resume");
+
+	mdwc->enable_suspend_event = of_property_read_bool(node,
+				"qcom,suspend_event_enable");
+
 	/*
 	 * DWC3 has separate IRQ line for OTG events (ID/BSV) and for
 	 * DP and DM linestate transitions during low power mode.
@@ -2534,7 +2539,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	dwc = platform_get_drvdata(mdwc->dwc3);
 	if (dwc && dwc->dotg)
 		mdwc->otg_xceiv = dwc->dotg->otg.phy;
-
+	if (dwc)
+		dwc->enable_suspend_event = mdwc->enable_suspend_event;
 	/* Register with OTG if present */
 	if (mdwc->otg_xceiv) {
 		/* Skip charger detection for simulator targets */
