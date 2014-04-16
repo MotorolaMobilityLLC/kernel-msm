@@ -292,6 +292,7 @@ static int pil_mss_reset(struct pil_desc *pil)
 			goto err_q6v5_reset;
 	}
 
+	pr_info("pil: MBA boot done\n");
 	drv->is_booted = true;
 
 	return 0;
