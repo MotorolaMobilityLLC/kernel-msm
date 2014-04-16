@@ -2516,8 +2516,9 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 		} else if (pdata->otg_control == OTG_PMIC_CONTROL) {
 			if (pdata->id_gnd_gpio || pdata->pmic_id_irq) {
 				if (msm_otg_read_pmic_id_state(motg) ||
+					(pdata->id_flt_gpio &&
 					!(gpio_get_value(pdata->id_flt_gpio) ^
-					pdata->id_flt_active_high))
+					pdata->id_flt_active_high)))
 					set_bit(ID, &motg->inputs);
 				else
 					clear_bit(ID, &motg->inputs);
@@ -3474,11 +3475,8 @@ static bool  msm_pmic_mmi_factory_mode(void)
 	return factory;
 }
 
-static void msm_pmic_id_status_w(struct work_struct *w)
+static int msm_hff_handle_id_transition(struct msm_otg *motg)
 {
-	struct msm_otg *motg = container_of(w, struct msm_otg,
-						pmic_id_status_work.work);
-	int work = 0;
 	int id_gnd = msm_otg_read_pmic_id_state(motg);
 	int id_flt = gpio_get_value(motg->pdata->id_flt_gpio) ^
 			motg->pdata->id_flt_active_high;
@@ -3501,7 +3499,7 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 			} else {
 				pr_info("2 sec to power off.\n");
 				kernel_power_off();
-				return;
+				return 0;
 			}
 		}
 
@@ -3510,14 +3508,40 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 		if (id_gnd || !id_flt) {
 			if (!test_and_set_bit(ID, &motg->inputs)) {
 				pr_debug("PMIC: ID set\n");
-				work = 1;
+				return 1;
 			}
 		} else {
 			if (test_and_clear_bit(ID, &motg->inputs)) {
 				pr_debug("PMIC: ID clear\n");
 				set_bit(A_BUS_REQ, &motg->inputs);
-				work = 1;
+				return 1;
 			}
+		}
+	}
+
+	return 0;
+}
+
+static void msm_pmic_id_status_w(struct work_struct *w)
+{
+	struct msm_otg *motg = container_of(w, struct msm_otg,
+						pmic_id_status_work.work);
+	int work = 0;
+	bool is_hff = motg->pdata->id_gnd_gpio && motg->pdata->id_flt_gpio;
+
+
+	if (is_hff)
+		work = msm_hff_handle_id_transition(motg);
+	else if (msm_otg_read_pmic_id_state(motg)) {
+		if (!test_and_set_bit(ID, &motg->inputs)) {
+			pr_debug("PMIC: ID set\n");
+			work = 1;
+		}
+	} else {
+		if (test_and_clear_bit(ID, &motg->inputs)) {
+			pr_debug("PMIC: ID clear\n");
+			set_bit(A_BUS_REQ, &motg->inputs);
+			work = 1;
 		}
 	}
 
@@ -4354,10 +4378,9 @@ static void msm_otg_get_id_gpio(struct msm_otg_platform_data *pdata,
 	if (pdata->id_gnd_gpio < 0)
 		pdata->id_gnd_gpio = 0;
 
-	if (pdata->id_gnd_gpio == 0)
-		pdata->id_gnd_gpio = pdata->id_flt_gpio;
-
-	if (!(pdata->id_gnd_gpio && pdata->id_flt_gpio))
+	/* For HFF to work, we need uniquely defined id_gnd and id_flt gpios */
+	if (!pdata->id_gnd_gpio ||  !pdata->id_flt_gpio ||
+			pdata->id_gnd_gpio == pdata->id_flt_gpio)
 		return;
 	pdata->id_flt_active_high = of_property_read_bool(node,
 				"id_flt_active_high");
@@ -4376,30 +4399,25 @@ static void msm_otg_get_id_gpio(struct msm_otg_platform_data *pdata,
 	if (ret)
 		goto free_flt;
 
-	if (pdata->id_gnd_gpio != pdata->id_flt_gpio) {
-		ret = gpio_request_one(pdata->id_gnd_gpio, GPIOF_IN, "id_gnd");
-		if (ret)
-			goto free_flt;
+	ret = gpio_request_one(pdata->id_gnd_gpio, GPIOF_IN, "id_gnd");
+	if (ret)
+		goto free_flt;
 
-		ret = gpio_export(pdata->id_gnd_gpio, 0);
-		if (ret)
-			goto free_gnd;
+	ret = gpio_export(pdata->id_gnd_gpio, 0);
+	if (ret)
+		goto free_gnd;
 
-		ret = gpio_export_link(&pdev->dev, "id_gnd",
-				       pdata->id_gnd_gpio);
-		if (ret)
-			goto free_gnd;
-	}
+	ret = gpio_export_link(&pdev->dev, "id_gnd",
+			       pdata->id_gnd_gpio);
+	if (ret)
+		goto free_gnd;
 
-	if (pdata->id_gnd_gpio)
-		pdata->pmic_id_irq = gpio_to_irq(pdata->id_gnd_gpio);
+	pdata->pmic_id_irq = gpio_to_irq(pdata->id_gnd_gpio);
 	return;
 
 free_gnd:
-	if (pdata->id_gnd_gpio != pdata->id_flt_gpio) {
-		gpio_free(pdata->id_gnd_gpio);
-		pdata->id_gnd_gpio = 0;
-	}
+	gpio_free(pdata->id_gnd_gpio);
+	pdata->id_gnd_gpio = 0;
 free_flt:
 	gpio_free(pdata->id_flt_gpio);
 	pdata->id_flt_gpio = 0;
@@ -4832,20 +4850,23 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 
 
-	if (motg->pdata->pmic_id_irq) {
-		ret = request_irq(motg->pdata->pmic_id_irq,
-				  msm_pmic_id_irq,
-				  IRQF_TRIGGER_RISING |
-				  IRQF_TRIGGER_FALLING,
-				  "msm_otg", motg);
-		if (ret) {
-			dev_err(&pdev->dev, "request irq failed for PMIC ID\n");
+	if (motg->pdata->mode == USB_OTG &&
+		motg->pdata->otg_control == OTG_PMIC_CONTROL) {
+		if (motg->pdata->pmic_id_irq) {
+			ret = request_irq(motg->pdata->pmic_id_irq,
+					  msm_pmic_id_irq,
+					  IRQF_TRIGGER_RISING |
+					  IRQF_TRIGGER_FALLING,
+					  "msm_otg", motg);
+			if (ret) {
+				dev_err(&pdev->dev, "request irq failed for PMIC ID\n");
+				goto remove_phy;
+			}
+		} else {
+			ret = -ENODEV;
+			dev_err(&pdev->dev, "PMIC IRQ for ID notifications doesn't exist\n");
 			goto remove_phy;
 		}
-	} else {
-		ret = -ENODEV;
-		dev_err(&pdev->dev, "PMIC IRQ for ID notifications doesn't exist\n");
-		goto remove_phy;
 	}
 
 	msm_hsusb_mhl_switch_enable(motg, 1);
