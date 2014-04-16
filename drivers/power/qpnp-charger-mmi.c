@@ -1608,6 +1608,9 @@ qpnp_chg_regulator_batfet_set(struct qpnp_chg_chip *chip, bool enable)
 	if (chip->charging_disabled || !chip->bat_if_base)
 		return rc;
 
+	if (!enable)
+		return rc;
+
 	if (chip->type == SMBB)
 		rc = qpnp_chg_masked_write(chip,
 			chip->bat_if_base + CHGR_BAT_IF_SPARE,
@@ -5681,6 +5684,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	schedule_delayed_work(&chip->update_heartbeat_work,
 		msecs_to_jiffies(UPDATE_HEARTBEAT_MS));
 	pm_wakeup_event(chip->dev, 15000);
+	qpnp_chg_regulator_batfet_set(chip, 1);
 	pr_info("success chg_dis = %d, bpd = %d, usb = %d, dc = %d b_health = %d batt_present = %d\n",
 			chip->charging_disabled,
 			chip->bpd_detection,
