@@ -86,6 +86,17 @@ enum device_status {
 	STATUS_UNCONFIGURED = 0x80
 };
 
+enum object_type {
+	OBJECT_TYPE_NO = 0x00,
+	OBJECT_TYPE_FINGER = 0x01,
+	OBJECT_TYPE_STYLUS = 0x02,
+	OBJECT_TYPE_PALM = 0x03,
+	OBJECT_TYPE_UNCLASSIFIED = 0x04,
+	OBJECT_TYPE_GLOVED_FINGER = 0x06,
+	OBJECT_TYPE_NARROW_OBJECT = 0x07,
+	OBJECT_TYPE_HAND_EDGE = 0x08
+};
+
 #define DEVICE_CONFIGURED 0x1
 
 #define RMI4_VTG_MIN_UV		2700000
@@ -1174,7 +1185,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			touch_detected = true;
 			wx = finger_data->wx;
 			wy = finger_data->wy;
-			if (max(wx, wy) > rmi4_data->board->palm_detect_threshold)
+			if (max(wx, wy) > rmi4_data->board->palm_detect_threshold
+					|| finger_data->object_type_and_status == OBJECT_TYPE_PALM)
 				palm_detected = true;
 		}
 
