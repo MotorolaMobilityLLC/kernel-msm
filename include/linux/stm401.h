@@ -117,6 +117,10 @@
 		_IOR(STM401_IOCTL_BASE, 47, char*)
 #define STM401_IOCTL_SET_STEP_COUNTER_DELAY	\
 		_IOW(STM401_IOCTL_BASE, 48,  unsigned short)
+#define STM401_IOCTL_SET_IR_GESTURE_DELAY	\
+		_IOW(STM401_IOCTL_BASE, 51,  unsigned short)
+#define STM401_IOCTL_SET_IR_RAW_DELAY	\
+		_IOW(STM401_IOCTL_BASE, 52,  unsigned short)
 
 #define FW_VERSION_SIZE 12
 #define STM401_CONTROL_REG_SIZE 200
@@ -296,6 +300,9 @@ struct stm_response {
 #define NONWAKESENSOR_CONFIG            0x1A
 #define WAKESENSOR_CONFIG               0x1B
 
+#define IR_STATUS                       0x11
+#define IR_GESTURE_RATE                 0x12
+#define IR_RAW_RATE                     0x13
 #define IR_GESTURE                      0x1C
 #define IR_RAW                          0x1D
 #define IR_CONFIG                       0x1E
@@ -596,6 +603,8 @@ extern unsigned short stm401_g_acc_delay;
 extern unsigned short stm401_g_mag_delay;
 extern unsigned short stm401_g_gyro_delay;
 extern unsigned short stm401_g_baro_delay;
+extern unsigned short stm401_g_ir_gesture_delay;
+extern unsigned short stm401_g_ir_raw_delay;
 extern unsigned short stm401_g_step_counter_delay;
 extern unsigned long stm401_g_nonwake_sensor_state;
 extern unsigned short stm401_g_algo_state;
