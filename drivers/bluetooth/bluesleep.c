@@ -106,8 +106,9 @@ DECLARE_DELAYED_WORK(uart_awake_wq, bluesleep_uart_awake_work);
 #define bluesleep_tx_idle() schedule_delayed_work(&sleep_workqueue, 0)
 #define bluesleep_uart_work() schedule_delayed_work(&uart_awake_wq, 0)
 
-/* 10 second timeout */
-#define TX_TIMER_INTERVAL  10
+/* 0.5 second timeout */
+#define TX_TIMER_INTERVAL	1
+#define TX_TIMER_DIVIDE	2
 
 /* state variable names and bit positions */
 #define BT_PROTO	 0x01
@@ -230,7 +231,7 @@ void bluesleep_sleep_wakeup(void)
 		hsuart_power(1);
 		wake_lock(&bsi->wake_lock);
 		/* Start the timer */
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ / TX_TIMER_DIVIDE));
 		if (bsi->has_ext_wake == 1)
 			gpio_set_value(bsi->ext_wake, 1);
 
@@ -238,7 +239,7 @@ void bluesleep_sleep_wakeup(void)
 		clear_bit(BT_ASLEEP, &flags);
 	} else {
 		BT_DBG("bluesleep_sleep_wakeup : already wake up");
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ / TX_TIMER_DIVIDE));
 	}
 }
 
@@ -249,7 +250,7 @@ static void bluesleep_tx_data_wakeup(void)
 
 		wake_lock(&bsi->wake_lock);
 		/* Start the timer */
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ / TX_TIMER_DIVIDE));
 		if (bsi->has_ext_wake == 1)
 			gpio_set_value(bsi->ext_wake, 1);
 
@@ -257,7 +258,7 @@ static void bluesleep_tx_data_wakeup(void)
 		clear_bit(BT_ASLEEP, &flags);
 	} else {
 		BT_DBG("bluesleep_tx_data_wakeup : already wake up");
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ / TX_TIMER_DIVIDE));
 	}
 }
 
@@ -288,7 +289,7 @@ static void bluesleep_sleep_work(struct work_struct *work)
 				BT_DBG("Wait until timer expires.");
 
 				mod_timer(&tx_timer,
-					jiffies + TX_TIMER_INTERVAL * HZ);
+					jiffies + TX_TIMER_INTERVAL * HZ / TX_TIMER_DIVIDE);
 				mutex_unlock(&bluesleep_mutex);
 				return;
 			}
@@ -312,14 +313,14 @@ static void bluesleep_sleep_work(struct work_struct *work)
 			} else {
 			BT_DBG("host can enter sleep but some tx remained.");
 
-			mod_timer(&tx_timer, jiffies + TX_TIMER_INTERVAL * HZ);
+			mod_timer(&tx_timer, jiffies + TX_TIMER_INTERVAL * HZ / TX_TIMER_DIVIDE);
 			mutex_unlock(&bluesleep_mutex);
 			return;
 		}
 	} else if (!test_bit(BT_EXT_WAKE, &flags)
 			&& !test_bit(BT_ASLEEP, &flags)) {
 		BT_DBG("host_wake high");
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ / TX_TIMER_DIVIDE));
 		if (bsi->has_ext_wake == 1)
 			gpio_set_value(bsi->ext_wake, 1);
 
@@ -388,7 +389,7 @@ static void bluesleep_start(void)
 		return;
 
 	/* start the timer */
-	mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+	mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ / TX_TIMER_DIVIDE));
 
 	/* assert BT_WAKE */
 	if (bsi->has_ext_wake == 1)
@@ -556,7 +557,7 @@ static void bluesleep_tx_timer_expire(unsigned long data)
 		bluesleep_tx_idle();
 	} else {
 		BT_DBG("Tx data during last period");
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL*HZ));
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL*HZ/TX_TIMER_DIVIDE));
 	}
 
 	/* clear the incoming data flag */
