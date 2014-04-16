@@ -1615,24 +1615,26 @@ int dsi_panel_device_register(struct device_node *pan_node,
 							__func__, __LINE__);
 	}
 
-	ctrl_pdata->partial_mode_enabled = false;
-	ctrl_pdata->mipi_d0_sel = of_get_named_gpio_flags(
-		ctrl_pdev->dev.of_node, "mmi,mipi-d0-sel", 0, &flags);
-	if (!gpio_is_valid(ctrl_pdata->mipi_d0_sel)) {
-		pr_info("%s:%d, mipi d0 sel gpio not specified\n",
-						__func__, __LINE__);
-	} else {
-		rc = gpio_request_one(ctrl_pdata->mipi_d0_sel, flags,
-			"mipi_d0_sel");
-		if (rc) {
-			pr_err("request mipi d0 sel gpio failed, rc=%d\n",
-				rc);
-			if (gpio_is_valid(ctrl_pdata->disp_te_gpio))
-				gpio_free(ctrl_pdata->disp_te_gpio);
-			return -ENODEV;
+	if (ctrl_pdata->partial_mode_enabled) {
+		ctrl_pdata->mipi_d0_sel = of_get_named_gpio_flags(
+			ctrl_pdev->dev.of_node, "mmi,mipi-d0-sel", 0, &flags);
+		if (!gpio_is_valid(ctrl_pdata->mipi_d0_sel)) {
+			pr_info("%s:%d, mipi d0 sel gpio not specified\n",
+				__func__, __LINE__);
+			ctrl_pdata->partial_mode_enabled = false;
+		} else {
+			rc = gpio_request_one(ctrl_pdata->mipi_d0_sel, flags,
+					"mipi_d0_sel");
+			if (rc) {
+				pr_err("request mipi d0 sel gpio failed, rc=%d\n",
+					rc);
+				if (gpio_is_valid(ctrl_pdata->disp_te_gpio))
+					gpio_free(ctrl_pdata->disp_te_gpio);
+				ctrl_pdata->partial_mode_enabled = false;
+				return -ENODEV;
+			}
+			gpio_export(ctrl_pdata->mipi_d0_sel, 1);
 		}
-		gpio_export(ctrl_pdata->mipi_d0_sel, 1);
-		ctrl_pdata->partial_mode_enabled = true;
 	}
 
 	if (mdss_dsi_clk_init(ctrl_pdev, ctrl_pdata)) {
