@@ -1161,6 +1161,21 @@ static int max17042_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	for (i = 0; i < chip->pdata->num_gpio_list; i++) {
+		if (chip->pdata->gpio_list[i].flags & GPIOF_EXPORT) {
+			ret = gpio_export_link(&client->dev,
+					       chip->pdata->gpio_list[i].label,
+					       chip->pdata->gpio_list[i].gpio);
+			if (ret) {
+				dev_err(&client->dev,
+					"Failed to link GPIO %s: %d\n",
+					chip->pdata->gpio_list[i].label,
+					chip->pdata->gpio_list[i].gpio);
+				return ret;
+			}
+		}
+	}
+
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,
 					max17042_thread_handler,
