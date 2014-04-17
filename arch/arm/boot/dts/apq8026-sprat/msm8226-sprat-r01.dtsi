@@ -162,8 +162,8 @@
 			ssp-ap-int = <&msmgpio 108 0x00>;
 			ssp-reset = <&msmgpio 92 0x00>;
 
-			ssp-acc-position = <3>;
-			ssp-mag-position = <0>;
+			ssp-acc-position = <7>;
+			ssp-mag-position = <7>;
 			ssp-ap-rev = <0>;
 
 			ssp_vreg-supply = <&pm8226_l6>;
