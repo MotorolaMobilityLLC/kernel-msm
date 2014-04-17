@@ -853,6 +853,27 @@ __limProcessDelTsReq(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession pse
 
 }
 
+static void
+__limProcessQosMapConfigureFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
+                                                     tpPESession psessionEntry)
+{
+     tpSirMacMgmtHdr  pHdr;
+     tANI_U32         frameLen;
+     tANI_U8          *pBody;
+     tSirRetStatus    retval;
+     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
+     frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+     retval = sirConvertQosMapConfigureFrame2Struct(pMac, pBody, frameLen,
+                                                        &pMac->QosMapSet);
+     if (retval != eSIR_SUCCESS)
+     {
+         PELOGW(limLog(pMac, LOGE,
+         FL("QosMapConfigure frame parsing failed (error %d)"), retval);)
+         return;
+     }
+     limSendSmeMgmtFrameInd(pMac, 0, pRxPacketInfo, psessionEntry, 0);
+}
 
 #ifdef ANI_SUPPORT_11H
 /**
@@ -1975,6 +1996,9 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                         __limProcessDelTsReq(pMac, (tANI_U8 *) pRxPacketInfo,psessionEntry);
                         break;
 
+                    case SIR_MAC_QOS_MAP_CONFIGURE:
+                        __limProcessQosMapConfigureFrame(pMac, (tANI_U8 *) pRxPacketInfo,psessionEntry);
+                    break;
                     default:
                         PELOGE(limLog(pMac, LOGE, FL("Qos action %d not handled"), pActionHdr->actionID);)
                         break;
@@ -2046,6 +2070,10 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
 
                 case SIR_MAC_QOS_DEL_TS_REQ:
                     __limProcessDelTsReq(pMac, (tANI_U8 *) pRxPacketInfo,psessionEntry);
+                    break;
+
+                case SIR_MAC_QOS_MAP_CONFIGURE:
+                    __limProcessQosMapConfigureFrame(pMac, (tANI_U8 *) pRxPacketInfo,psessionEntry);
                     break;
 
                 default:

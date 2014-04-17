@@ -797,6 +797,10 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
         pHddCtx->isAmpAllowed = VOS_TRUE;
     }
     hdd_clearRoamProfileIe( pAdapter );
+    if(pAdapter->device_mode == WLAN_HDD_INFRA_STATION)
+    {
+        hdd_wmm_init( pHddCtx, hddWmmDscpToUpMapInfra );
+    }
 
     // indicate 'disconnect' status to wpa_supplicant...
     hdd_SendAssociationEvent(dev,pRoamInfo);
@@ -1561,6 +1565,10 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
         /*Clear the roam profile*/
         hdd_clearRoamProfileIe( pAdapter );
+        if (WLAN_HDD_INFRA_STATION == pAdapter->device_mode)
+        {
+            hdd_wmm_init( pHddCtx, hddWmmDscpToUpMapInfra );
+        }
 
         WLANTL_AssocFailed(pRoamInfo->staId);
 

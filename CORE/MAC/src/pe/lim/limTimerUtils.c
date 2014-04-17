@@ -684,21 +684,6 @@ limCreateTimers(tpAniSirGlobal pMac)
 
     cfgValue = 1000;
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
-    if (tx_timer_create(&pMac->lim.limTimers.gLimRemainOnChannelTimer,
-                                    "FT PREAUTH RSP TIMEOUT",
-                                    limTimerHandler, SIR_LIM_REMAIN_CHN_TIMEOUT,
-                                    cfgValue, 0,
-                                    TX_NO_ACTIVATE) != TX_SUCCESS)
-    {
-        // Could not create Join failure timer.
-        // Log error
-        limLog(pMac, LOGP, FL("could not create Join failure timer"));
-        goto err_timer;
-    }
-
-
-    cfgValue = 1000;
-    cfgValue = SYS_MS_TO_TICKS(cfgValue);
     if (tx_timer_create(&pMac->lim.limTimers.gLimDisassocAckTimer,
                                     "DISASSOC ACK TIMEOUT",
                                     limTimerHandler, SIR_LIM_DISASSOC_ACK_TIMEOUT,
@@ -750,7 +735,6 @@ limCreateTimers(tpAniSirGlobal pMac)
     err_timer:
         tx_timer_delete(&pMac->lim.limTimers.gLimDeauthAckTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimDisassocAckTimer);
-        tx_timer_delete(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
 #if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
         tx_timer_delete(&pMac->lim.limTimers.gLimEseTsmTimer);
 #endif /* FEATURE_WLAN_ESE && !FEATURE_WLAN_ESE_UPLOAD */
@@ -1674,29 +1658,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
              }
              break;
 #endif /* FEATURE_WLAN_ESE && !FEATURE_WLAN_ESE_UPLOAD */
-        case eLIM_REMAIN_CHN_TIMER:
-            if (tx_timer_deactivate(&pMac->lim.limTimers.gLimRemainOnChannelTimer) != TX_SUCCESS)
-            {
-                /**
-                ** Could not deactivate Join Failure
-                ** timer. Log error.
-                **/
-                limLog(pMac, LOGP, FL("Unable to deactivate Remain on Chn timer"));
-                return;
-            }
-            val = 1000;
-            val = SYS_MS_TO_TICKS(val);
-            if (tx_timer_change(&pMac->lim.limTimers.gLimRemainOnChannelTimer,
-                                                val, 0) != TX_SUCCESS)
-            {
-                /**
-                * Could not change Join Failure
-                * timer. Log error.
-                */
-                limLog(pMac, LOGP, FL("Unable to change timer"));
-                return;
-            }
-            break;
 
     case eLIM_CONVERT_ACTIVE_CHANNEL_TO_PASSIVE:
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimActiveToPassiveChannelTimer) != TX_SUCCESS)

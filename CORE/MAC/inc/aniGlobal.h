@@ -233,7 +233,6 @@ typedef struct sLimTimers
 #ifdef FEATURE_WLAN_ESE
     TX_TIMER           gLimEseTsmTimer;
 #endif
-    TX_TIMER           gLimRemainOnChannelTimer;
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
     TX_TIMER           gLimTdlsDisRspWaitTimer;
     TX_TIMER           gLimTdlsLinkSetupRspTimeouTimer;
@@ -1065,6 +1064,7 @@ typedef struct sAniSirGlobal
     tANI_U8 fScanOffload;
     tANI_U8 isCoalesingInIBSSAllowed;
     tANI_U32 fEnableDebugLog;
+    tSirQosMapSet QosMapSet;
 } tAniSirGlobal;
 
 #ifdef FEATURE_WLAN_TDLS

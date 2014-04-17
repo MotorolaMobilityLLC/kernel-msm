@@ -190,6 +190,8 @@
 #define HDD_WAKE_LOCK_DURATION 50 //in msecs
 #endif
 
+#define WLAN_HDD_QOS_ACTION_FRAME 1
+#define WLAN_HDD_QOS_MAP_CONFIGURE 4
 #define HDD_SAP_WAKE_LOCK_DURATION 10000 //in msecs
 
 #define HDD_MOD_EXIT_SSR_MAX_RETRIES 30
@@ -228,7 +230,6 @@ typedef v_U8_t tWlanHddMacAddr[HDD_MAC_ADDR_LEN];
 #define MIN(a, b) (a > b ? b : a)
 
 #endif
-
 /*
  * Generic asynchronous request/response support
  *
@@ -260,6 +261,7 @@ typedef v_U8_t tWlanHddMacAddr[HDD_MAC_ADDR_LEN];
  * API timeout coincides with its callback, the operations of the two
  * threads will be serialized.
  */
+
 struct statsContext
 {
    struct completion completion;
@@ -564,6 +566,12 @@ typedef struct
    struct netdev_queue *blockedQueue;
    v_BOOL_t             qBlocked;
 } hdd_thermal_mitigation_info_t;
+typedef struct action_pkt_buffer
+{
+   tANI_U8* frame_ptr;
+   tANI_U32 frame_length;
+   tANI_U16 freq;
+}action_pkt_buffer_t;
 
 typedef struct hdd_remain_on_chan_ctx
 {
@@ -573,7 +581,9 @@ typedef struct hdd_remain_on_chan_ctx
   unsigned int duration;
   u64 cookie;
   rem_on_channel_request_type_t rem_on_chan_request;
-  v_U32_t p2pRemOnChanTimeStamp;
+  vos_timer_t hdd_remain_on_chan_timer;
+  action_pkt_buffer_t action_pkt_buff;
+  v_U32_t hdd_remain_on_chan_cancel_in_progress;
 }hdd_remain_on_chan_ctx_t;
 
 typedef enum{
@@ -1029,7 +1039,7 @@ struct hdd_adapter_s
    v_U8_t psbChanged;
    /* UAPSD psb value configured through framework */
    v_U8_t configuredPsb;
-   v_BOOL_t internalRoCinProgress;
+   v_BOOL_t is_roc_inprogress;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
