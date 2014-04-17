@@ -210,8 +210,6 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 {
 	struct device_node *np = dev->of_node;
 	int errorno = 0;
-	struct regulator *vdd_hub;
-	struct regulator *acc_sensor;
 	const char *supply_name;
 	int voltage_level;
 
@@ -251,8 +249,8 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 	if (of_property_read_u32(np, "ssp-ap-rev", &data->ap_rev))
 		data->ap_rev = 0;
 
-	pr_info("[SSP] acc-posi[%d] mag-posi[%d]\n",
-		data->accel_position, data->mag_position);
+	pr_info("[SSP] acc-posi[%d] mag-posi[%d] ap_rev[%d]\n",
+		data->accel_position, data->mag_position, data->ap_rev);
 
 	errorno = gpio_request(data->mcu_int1, "mcu_ap_int1");
 	if (errorno) {
@@ -301,36 +299,37 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 		goto dt_exit;
 	}
 
-	acc_sensor = regulator_get(NULL, supply_name);
-	if (IS_ERR(acc_sensor)) {
-		acc_sensor = NULL;
+	data->vdd_acc= regulator_get(NULL, supply_name);
+	if (IS_ERR(data->vdd_acc)) {
+		data->vdd_acc = NULL;
 		pr_err("[SSP] regulator_get Error\n");
 		errorno = -EINVAL;
 		goto dt_exit;
 	}
 
-	errorno = regulator_set_voltage(acc_sensor, voltage_level,
+	errorno = regulator_set_voltage(data->vdd_acc, voltage_level,
 			voltage_level);
 	if (errorno) {
 		pr_err("[SSP] regulator voltage set Error\n");
 		goto dt_exit;
 	} else {
-		errorno = regulator_enable(acc_sensor);
+		errorno = regulator_enable(data->vdd_acc);
 		if (errorno) {
 			pr_err("[SSP] VDD can't turn on for Accel\n");
 			goto dt_exit;
 		}
 	}
 
-	vdd_hub = devm_regulator_get(dev, "ssp_vreg");
-	if (IS_ERR(vdd_hub)) {
+	data->vdd_hub = devm_regulator_get(dev, "ssp_vreg");
+	if (IS_ERR(data->vdd_hub)) {
 		pr_err("[SSP] could not get ssp_vreg, %ld\n",
-			PTR_ERR(vdd_hub));
+			PTR_ERR(data->vdd_hub));
 		errorno = -ENXIO;
 	} else {
 		gpio_direction_output(data->rst, 1);
-		errorno = regulator_enable(vdd_hub);
+		errorno = regulator_enable(data->vdd_hub);
 		if (errorno) {
+			regulator_disable(data->vdd_acc);
 			pr_err("[SSP] VDD can't turn on for SSP\n");
 			goto dt_exit;
 		}
@@ -542,6 +541,9 @@ static void ssp_shutdown(struct spi_device *spi)
 #endif
 	toggle_mcu_reset(data);
 	pr_info("[SSP] %s done\n", __func__);
+
+	regulator_disable(data->vdd_acc);
+	regulator_disable(data->vdd_hub);
 exit:
 	kfree(data);
 }

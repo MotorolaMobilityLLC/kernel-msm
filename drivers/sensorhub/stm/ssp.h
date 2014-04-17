@@ -479,6 +479,8 @@ struct ssp_data {
 	struct list_head pending_list;
 	void (*ssp_big_task[BIG_TYPE_MAX])(struct work_struct *);
 	u64 timestamp;
+	struct regulator *vdd_hub;
+	struct regulator *vdd_acc;
 };
 
 struct ssp_big {
