@@ -493,34 +493,6 @@ exit:
 }
 
 static ssize_t
-total_requests_show(struct device *dev, struct device_attribute *attr,
-		    char *buf)
-{
-	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
-	struct mmc_card *card = md->queue.card;
-	int ret;
-
-	ret = snprintf(buf, PAGE_SIZE, "%llu\n", card->requests);
-
-	mmc_blk_put(md);
-	return ret;
-}
-
-static ssize_t
-total_request_errors_show(struct device *dev, struct device_attribute *attr,
-			  char *buf)
-{
-	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
-	struct mmc_card *card = md->queue.card;
-	int ret;
-
-	ret = snprintf(buf, PAGE_SIZE, "%llu\n", card->request_errors);
-
-	mmc_blk_put(md);
-	return ret;
-}
-
-static ssize_t
 current_health_show(struct device *dev, struct device_attribute *attr,
 		    char *buf)
 {
@@ -1388,7 +1360,7 @@ static int mmc_blk_reset(struct mmc_blk_data *md, struct mmc_host *host,
 			pr_warning("%s: giving up on card (%u/%u, %llu/%llu)\n",
 				   mmc_hostname(host),
 				   card->failures, card->successes,
-				   card->request_errors, card->requests);
+				   host->request_errors, host->requests);
 			host->card_bad = 1;
 			mmc_card_set_removed(card);
 			mmc_detect_change(host, 0);
@@ -1412,7 +1384,7 @@ static int mmc_blk_reset(struct mmc_blk_data *md, struct mmc_host *host,
 		pr_info("%s: recovering card (%d); health: %u/%u, %llu/%llu\n",
 			mmc_hostname(host), status,
 			card->failures, card->successes,
-			card->request_errors, card->requests);
+			host->request_errors, host->requests);
 	}
 
 	md->reset_done |= type;
@@ -1450,7 +1422,7 @@ static inline void mmc_blk_reset_success(struct mmc_blk_data *md,
 			pr_info("%s: forgiving card (%u/%u, %llu/%llu)\n",
 				mmc_hostname(host),
 				card->failures, card->successes,
-				card->request_errors, card->requests);
+				host->request_errors, host->requests);
 			card->failures = 0;
 			card->successes = 0;
 		}
@@ -3226,24 +3198,6 @@ static int mmc_add_disk(struct mmc_blk_data *md)
 	if (ret)
 		goto no_pack_for_random_fails;
 
-	md->total_requests.show = total_requests_show;
-	sysfs_attr_init(&md->total_requests.attr);
-	md->total_requests.attr.name = "total_requests";
-	md->total_requests.attr.mode = S_IRUGO;
-	ret = device_create_file(disk_to_dev(md->disk),
-				 &md->total_requests);
-	if (ret)
-		goto total_requests_fails;
-
-	md->total_request_errors.show = total_request_errors_show;
-	sysfs_attr_init(&md->total_request_errors.attr);
-	md->total_request_errors.attr.name = "total_errors";
-	md->total_request_errors.attr.mode = S_IRUGO;
-	ret = device_create_file(disk_to_dev(md->disk),
-				 &md->total_request_errors);
-	if (ret)
-		goto total_request_errors_fails;
-
 	md->current_health.show = current_health_show;
 	sysfs_attr_init(&md->current_health.attr);
 	md->current_health.attr.name = "current_health";
@@ -3282,12 +3236,6 @@ failure_ratio_fails:
 	device_remove_file(disk_to_dev(md->disk),
 			   &md->current_health);
 current_health_fails:
-	device_remove_file(disk_to_dev(md->disk),
-			   &md->total_request_errors);
-total_request_errors_fails:
-	device_remove_file(disk_to_dev(md->disk),
-			   &md->total_requests);
-total_requests_fails:
 	device_remove_file(disk_to_dev(md->disk),
 			   &md->no_pack_for_random);
 no_pack_for_random_fails:
