@@ -833,6 +833,7 @@ struct dwc3 {
 	bool			nominal_elastic_buffer;
 	bool			core_reset_after_phy_init;
 	bool			err_evt_seen;
+	bool			enable_suspend_event;
 };
 
 /* -------------------------------------------------------------------------- */
