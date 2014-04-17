@@ -2838,7 +2838,7 @@
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
 				<85 512 0 0>,
-			<85 512 40000 160000>;
+			<85 512 40000 400000>;
 
 		status = "disabled";
 	};
