@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -371,6 +371,10 @@ int kgsl_mmu_init(struct kgsl_device *device)
 	status = kgsl_allocate_contiguous(&mmu->setstate_memory, PAGE_SIZE);
 	if (status)
 		return status;
+
+	/* Mark the setstate memory as read only */
+	mmu->setstate_memory.flags |= KGSL_MEMFLAGS_GPUREADONLY;
+
 	kgsl_sharedmem_set(&mmu->setstate_memory, 0, 0,
 				mmu->setstate_memory.size);
 
