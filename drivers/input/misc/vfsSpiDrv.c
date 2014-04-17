@@ -653,8 +653,6 @@ static int vfsspi_probe(struct spi_device *spi)
 	int status = 0;
 	struct vfsspi_device_data *vfsspi_device;
 	struct device *dev;
-	int hw_test_countdown = 10;
-	int drdy_value;
 
 	pr_info("vfsspi_probe\n");
 
