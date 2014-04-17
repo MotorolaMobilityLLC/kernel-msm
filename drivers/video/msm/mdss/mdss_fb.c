@@ -914,8 +914,11 @@ int mdss_fb_blank_sub(int blank_mode, struct fb_info *info, int op_enable)
 		}
 		break;
 	}
-	/* Notify listeners */
-	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
+
+	if (!mfd->quickdraw_in_progress) {
+		/* Notify listeners */
+		sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
+	}
 
 	return ret;
 }
