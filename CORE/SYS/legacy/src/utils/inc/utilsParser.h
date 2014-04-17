@@ -73,6 +73,7 @@ tSirRetStatus ConvertP2POpaque      (tpAniSirGlobal, tSirAddie*,                
 #ifdef WLAN_FEATURE_WFD
 tSirRetStatus ConvertWFDOpaque      (tpAniSirGlobal, tSirAddie*,                 tDot11fIEWFDIEOpaque*);
 #endif
+void          ConvertQosMapsetFrame(tpAniSirGlobal, tSirQosMapSet*,     tDot11fIEQosMapSet*);
 
 
 #endif

@@ -743,6 +743,26 @@ void limLogOperatingMode( tpAniSirGlobal pMac,
 #endif /* DUMP_MGMT_CNTNTS */
 }
 
+void limLogQosMapSet(tpAniSirGlobal pMac, tSirQosMapSet *pQosMapSet)
+{
+    tANI_U8 i;
+    limLog(pMac, LOG1, FL("num of dscp exceptions : %d"),
+                                   pQosMapSet->num_dscp_exceptions);
+    for (i=0; i < pQosMapSet->num_dscp_exceptions; i++)
+    {
+        limLog(pMac, LOG1, FL("dscp value: %d"),
+                                 pQosMapSet->dscp_exceptions[i][0]);
+        limLog(pMac, LOG1, FL("User priority value: %d"),
+                                 pQosMapSet->dscp_exceptions[i][1]);
+    }
+    for (i=0;i<8;i++)
+    {
+        limLog(pMac, LOG1, FL("dscp low for up %d: %d"),i,
+                                      pQosMapSet->dscp_range[i][0]);
+        limLog(pMac, LOG1, FL("dscp high for up %d: %d"),i,
+                                      pQosMapSet->dscp_range[i][1]);
+    }
+}
 
 tSirRetStatus
 PopulateDot11fVHTCaps(tpAniSirGlobal           pMac,
@@ -2451,8 +2471,14 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
        vos_mem_copy( &pAssocRsp->OBSSScanParameters, &ar.OBSSScanParameters,
                       sizeof( tDot11fIEOBSSScanParameters));
     }
+    if ( ar.QosMapSet.present )
+    {
+        pMac->QosMapSet.present = 1;
+        ConvertQosMapsetFrame( pMac, &pMac->QosMapSet, &ar.QosMapSet);
+        limLog( pMac, LOG1, FL("Received Assoc Response with Qos Map Set"));
+        limLogQosMapSet(pMac, &pMac->QosMapSet);
+    }
     return eSIR_SUCCESS;
-
 } // End sirConvertAssocRespFrame2Struct.
 
 tSirRetStatus
@@ -3956,6 +3982,33 @@ sirConvertDeltsReq2Struct(tpAniSirGlobal    pMac,
 
 } // End sirConvertDeltsReq2Struct.
 
+tSirRetStatus
+sirConvertQosMapConfigureFrame2Struct(tpAniSirGlobal    pMac,
+                          tANI_U8               *pFrame,
+                          tANI_U32               nFrame,
+                          tSirQosMapSet      *pQosMapSet)
+{
+    tDot11fQosMapConfigure mapConfigure;
+    tANI_U32 status;
+    status = dot11fUnpackQosMapConfigure(pMac, pFrame, nFrame, &mapConfigure);
+    if ( DOT11F_FAILED( status ) )
+    {
+        dot11fLog(pMac, LOGE, FL("Failed to parse Qos Map Configure frame (0x%08x, %d bytes):\n"),
+                  status, nFrame);
+        PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pFrame, nFrame);)
+        return eSIR_FAILURE;
+    }
+    else if ( DOT11F_WARNED( status ) )
+    {
+      dot11fLog( pMac, LOGW, FL("There were warnings while unpacking Qos Map Configure frame (0x%08x, %d bytes):\n"),
+                 status, nFrame );
+        PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pFrame, nFrame);)
+    }
+    pQosMapSet->present = mapConfigure.QosMapSet.present;
+    ConvertQosMapsetFrame(pMac->hHdd, pQosMapSet, &mapConfigure.QosMapSet);
+    limLogQosMapSet(pMac, &pMac->QosMapSet);
+    return eSIR_SUCCESS;
+}
 
 #ifdef ANI_SUPPORT_11H
 tSirRetStatus

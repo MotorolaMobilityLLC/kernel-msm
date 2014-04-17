@@ -106,6 +106,7 @@ const EID_FT_RIC_DESCRIPTOR          =  75;
 const EID_LINK_IDENTIFIER            = 101;
 const EID_PTI_CONTROL                = 105;
 const EID_PU_BUFFER_STATUS           = 106;
+const EID_QOS_MAP_SET                = 110;
 const EID_ESE_SPECIFIC               = 150;
 const EID_ESE_CCKM_SPECIFIC          = 156;
 const EID_VHT_CAPABILITIES           =  191;
@@ -414,31 +415,6 @@ FF P2POUI (4)
 FF P2POUISubType (1)
 {
     ouiSubtype, 1;
-}
-
-FF RMCOUI (3)
-{
-     oui[3];
-}
-
-FF MagicCode (6)
-{
-     magic[6];
-}
-
-FF RMCVersion (1)
-{
-     version, 1;
-}
-
-FF RMCDialogToken (4)
-{
-     token, 4;
-}
-
-FF Leader (6)
-{
-     mac[6];
 }
 
 FF VhtMembershipStatusArray(8)                    // 8.4.1.51
@@ -2863,6 +2839,11 @@ IE OperatingMode (EID_OPERATING_MODE)
     }
 }
 
+IE QosMapSet (EID_QOS_MAP_SET)
+{
+    dscp_exceptions[0..60];
+}
+
 CONTAINERIE RICDataDesc
 {
   MANDIE RICData;
@@ -3535,6 +3516,7 @@ FRAME AssocRequest                        // 7.2.3.4
     OPTIE  VHTCaps;
     OPTIE  ExtCap;
     OPTIE  OperatingMode;
+    OPTIE  QosMapSet;
 } // End frame AssocRequest.
 
 FRAME AssocResponse                       // 7.2.3.5
@@ -3567,7 +3549,8 @@ FRAME AssocResponse                       // 7.2.3.5
     OPTIE  VHTCaps;
     OPTIE  VHTOperation;
     OPTIE  ExtCap;
-	OPTIE  OBSSScanParameters;
+    OPTIE  OBSSScanParameters;
+    OPTIE  QosMapSet;
 } // End frame AssocResponse.
 
 FRAME ReAssocRequest                      // 7.2.3.6
@@ -3603,6 +3586,7 @@ FRAME ReAssocRequest                      // 7.2.3.6
     OPTIE  VHTCaps;
     OPTIE  ExtCap;
     OPTIE  OperatingMode;
+    OPTIE  QosMapSet;
 } // End frame ReAssocRequest.
 
 FRAME ReAssocResponse                     // 7.2.3.7
@@ -3636,7 +3620,8 @@ FRAME ReAssocResponse                     // 7.2.3.7
     OPTIE  VHTCaps;
     OPTIE  VHTOperation;
     OPTIE  ExtCap;
-	OPTIE  OBSSScanParameters;
+    OPTIE  OBSSScanParameters;
+    OPTIE  QosMapSet;
 } // End frame ReAssocResponse.
 
 FRAME ProbeRequest                        // 7.2.3.8
@@ -4227,15 +4212,11 @@ FRAME SaQueryRsp
     FF     TransactionId;
 }
 
-FRAME RMC
+FRAME QosMapConfigure
 {
     FF     Category;
-    FF     RMCOUI;
-    FF     MagicCode;
-    FF     RMCVersion;
     FF     Action;
-    FF     RMCDialogToken;
-    FF     Leader;
+    MANDIE  QosMapSet;
 }
 
 FRAME VHTGidManagementActionFrame

@@ -420,6 +420,11 @@ sirConvertDeltsReq2Struct(struct sAniSirGlobal *pMac,
                           tANI_U8 *frame,
                           tANI_U32 len,
                           tSirDeltsReqInfo *delTs);
+tSirRetStatus
+sirConvertQosMapConfigureFrame2Struct(tpAniSirGlobal    pMac,
+                          tANI_U8               *pFrame,
+                          tANI_U32               nFrame,
+                          tSirQosMapSet      *pQosMapSet);
 
 #ifdef ANI_SUPPORT_11H
 tSirRetStatus

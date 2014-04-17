@@ -93,8 +93,10 @@
 #define DHCP_SOURCE_PORT 0x4400
 #define DHCP_DESTINATION_PORT 0x4300
 
-static sme_QosWmmUpType hddWmmDscpToUpMap[WLAN_HDD_MAX_DSCP+1];
 #define HDD_WMM_UP_TO_AC_MAP_SIZE 8
+sme_QosWmmUpType hddWmmDscpToUpMapInfra[WLAN_HDD_MAX_DSCP+1];
+sme_QosWmmUpType hddWmmDscpToUpMapP2p[WLAN_HDD_MAX_DSCP+1];
+
 const v_U8_t hddWmmUpToAcMap[] = {
    WLANTL_AC_BE,
    WLANTL_AC_BK,
@@ -1501,7 +1503,7 @@ static void hdd_wmm_do_implicit_qos(struct work_struct *work)
                   : other values if failure
 
   ===========================================================================*/
-VOS_STATUS hdd_wmm_init ( hdd_context_t* pHddCtx )
+VOS_STATUS hdd_wmm_init ( hdd_context_t* pHddCtx, sme_QosWmmUpType* hddWmmDscpToUpMap )
 {
    v_U8_t dscp;
 
@@ -1772,8 +1774,14 @@ v_VOID_t hdd_wmm_classify_pkt ( hdd_adapter_t* pAdapter,
       }
 
       dscp = (tos>>2) & 0x3f;
-      userPri = hddWmmDscpToUpMap[dscp];
-
+      if (WLAN_HDD_INFRA_STATION == pAdapter->device_mode)
+      {
+          userPri = hddWmmDscpToUpMapInfra[dscp];
+      }
+      else
+      {
+          userPri = hddWmmDscpToUpMapP2p[dscp];
+      }
 #ifdef HDD_WMM_DEBUG
       VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
                 "%s: tos is %d, dscp is %d, up is %d",
@@ -2115,6 +2123,7 @@ VOS_STATUS hdd_wmm_assoc( hdd_adapter_t* pAdapter,
 {
    tANI_U8 uapsdMask;
    VOS_STATUS status;
+   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
    // when we associate we need to notify TL if it needs to enable
    // UAPSD for any access categories
@@ -2197,6 +2206,11 @@ VOS_STATUS hdd_wmm_assoc( hdd_adapter_t* pAdapter,
                                         WLANTL_BI_DIR );
 
       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status ));
+   }
+   status = sme_UpdateDSCPtoUPMapping(pHddCtx->hHal, hddWmmDscpToUpMapInfra);
+   if (!VOS_IS_STATUS_SUCCESS( status ))
+   {
+       hdd_wmm_init( pHddCtx, hddWmmDscpToUpMapInfra );
    }
 
    VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO_LOW,

@@ -2161,7 +2161,8 @@ VOS_STATUS hdd_wlan_re_init(void)
    }
 
    /* Initialize the WMM module */
-   vosStatus = hdd_wmm_init(pHddCtx);
+   vosStatus = hdd_wmm_init(pHddCtx, hddWmmDscpToUpMapInfra);
+   vosStatus = hdd_wmm_init(pHddCtx, hddWmmDscpToUpMapP2p);
    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ))
    {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_wmm_init failed", __func__);

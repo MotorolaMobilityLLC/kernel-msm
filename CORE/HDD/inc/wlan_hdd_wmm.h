@@ -203,6 +203,10 @@ extern const v_U8_t hdd_QdiscAcToTlAC[];
 extern const v_U8_t hddWmmUpToAcMap[]; 
 extern const v_U8_t hddLinuxUpToAcMap[];
 
+#define WLAN_HDD_MAX_DSCP 0x3f
+extern sme_QosWmmUpType hddWmmDscpToUpMapInfra[WLAN_HDD_MAX_DSCP+1];
+extern sme_QosWmmUpType hddWmmDscpToUpMapP2p[WLAN_HDD_MAX_DSCP+1];
+
 /**============================================================================
   @brief hdd_wmm_init() - Function which will initialize the WMM configuation
   and status to an initial state.  The configuration can later be overwritten
@@ -214,7 +218,7 @@ extern const v_U8_t hddLinuxUpToAcMap[];
                   : other values if failure
 
   ===========================================================================*/
-VOS_STATUS hdd_wmm_init ( hdd_context_t* pHddCtx );
+VOS_STATUS hdd_wmm_init ( hdd_context_t* pHddCtx, sme_QosWmmUpType* hddWmmDscpToUpMap );
 
 /**============================================================================
   @brief hdd_wmm_adapter_init() - Function which will initialize the WMM configuation
