@@ -72,4 +72,5 @@ obj-$(CONFIG_UID_CPUTIME) 	+= uid_cputime.o
 obj-$(CONFIG_ALSA_TO_H2W) += alsa-to-h2w-headset.o
 obj-$(CONFIG_MOT_UTAG) += utag/
 obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
+obj-$(CONFIG_DROPBOX) += dropbox.o
 
