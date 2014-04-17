@@ -89,8 +89,8 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 					HRTIMER_MODE_REL);
 		}
 	}
-	mutex_unlock(&vib->lock);
 	queue_work(vib->queue, &vib->work);
+	mutex_unlock(&vib->lock);
 }
 
 static void msm_vibrator_update(struct work_struct *work)
@@ -99,8 +99,6 @@ static void msm_vibrator_update(struct work_struct *work)
 					 work);
 
 	if (vib->current_state != vib->state) {
-		pr_info("[VIB] %s change state %d -> %d\n",
-				__func__, vib->current_state, vib->state);
 		vib->current_state = vib->state;
 		set_vibrator(vib->vib_en_ldo, vib->state);
 	} else {
