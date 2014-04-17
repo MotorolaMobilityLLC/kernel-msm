@@ -636,7 +636,13 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	}
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
-	if (need_wait)
+	if (need_wait) {
+		if (ctl->mfd->quickdraw_in_progress) {
+			mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
+				ctx->pp_num);
+			ctx->rdptr_enabled = 0;
+			goto skip_wait;
+		}
 		if (wait_for_completion_timeout(&ctx->stop_comp, STOP_TIMEOUT)
 		    <= 0) {
 			WARN(1, "stop cmd time out\n");
@@ -654,7 +660,8 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 				}
 			}
 		}
-
+	}
+skip_wait:
 	if (cancel_work_sync(&ctx->clk_work))
 		pr_debug("no pending clk work\n");
 
