@@ -407,6 +407,8 @@ typedef struct
 
   /* STA has more packets to send */
   v_BOOL_t  bMorePackets;
+  /* notifying TL if this is an ARP frame or not */
+  v_U8_t    ucIsArp;
 }WLANTL_MetaInfoType;
 
 /*---------------------------------------------------------------------------

@@ -75,6 +75,9 @@
 #define WNM_BSS_ACTION_FRAME "\x0a\x07"
 #define WNM_BSS_ACTION_FRAME_SIZE 2
 
+#define WNM_NOTIFICATION_FRAME "\x0a\x1a"
+#define WNM_NOTIFICATION_FRAME_SIZE 2
+
 #define WPA_OUI_TYPE   "\x00\x50\xf2\x01"
 #define BLACKLIST_OUI_TYPE   "\x00\x50\x00\x00"
 #define WHITELIST_OUI_TYPE   "\x00\x50\x00\x01"
