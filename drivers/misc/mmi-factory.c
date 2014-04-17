@@ -23,7 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/reboot.h>
 #include <linux/slab.h>
-
+#include <linux/qpnp/power-on.h>
 
 enum mmi_factory_device_list {
 	HONEYFUFU = 0,
@@ -34,7 +34,7 @@ enum mmi_factory_device_list {
 #define KP_CABLE_INDEX 1
 #define KP_WARN_INDEX 2
 #define KP_NUM_GPIOS 3
-
+#define PMIO_PON_EXTRA_RESET_KUNPOW_BIT BIT(9)
 struct mmi_factory_info {
 	int num_gpios;
 	struct gpio *list;
@@ -74,6 +74,9 @@ static void warn_irq_w(struct work_struct *w)
 	if (!warn_line) {
 		pr_info("HW User Reset!\n");
 		pr_info("2 sec to Reset.\n");
+		qpnp_pon_store_extra_reset_info(
+			PMIO_PON_EXTRA_RESET_KUNPOW_BIT,
+			0);
 		kernel_halt();
 		return;
 	}
