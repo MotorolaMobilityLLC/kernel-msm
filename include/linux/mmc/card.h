@@ -58,6 +58,15 @@ struct mmc_ext_csd {
 	u8			max_packed_writes;
 	u8			max_packed_reads;
 	u8			packed_event_en;
+	u8			pre_eol_info;
+#define MMC_PRE_EOL_NORMAL	0x01
+#define MMC_PRE_EOL_WARNING	0x02
+#define MMC_PRE_EOL_URGENT	0x03
+	u8			dev_life_time_est_a;
+	u8			dev_life_time_est_b;
+	unsigned int		vendor_health_report[8];
+	unsigned int		firmware_version[2];
+	unsigned int		device_version;
 	unsigned int		part_time;		/* Units: ms */
 	unsigned int		sa_timeout;		/* Units: 100ns */
 	unsigned int		generic_cmd6_time;	/* Units: 10ms */
@@ -112,6 +121,11 @@ struct mmc_ext_csd {
 	u8			raw_sec_feature_support;/* 231 */
 	u8			raw_trim_mult;		/* 232 */
 	u8			raw_bkops_status;	/* 246 */
+	u8			raw_firmware_version[8];/* 254 - 8 bytes */
+	u8			raw_device_version[2];	/* 262 - 2 bytes */
+	u8			raw_optimal_trim_size;	/* 264 */
+	u8			raw_optimal_write_size;	/* 265 */
+	u8			raw_optimal_read_size;	/* 266 */
 	u8			raw_sectors[4];		/* 212 - 4 bytes */
 
 	unsigned int            feature_support;
@@ -133,6 +147,8 @@ struct sd_ssr {
 	unsigned int		au;			/* In sectors */
 	unsigned int		erase_timeout;		/* In milliseconds */
 	unsigned int		erase_offset;		/* In milliseconds */
+	unsigned char		speed_class;
+	unsigned char		uhs_speed_grade;
 };
 
 struct sd_switch_caps {
