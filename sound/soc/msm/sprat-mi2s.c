@@ -52,7 +52,7 @@ static struct gpio mic_en_gpio = {
 
 static struct afe_clk_cfg lpass_mi2s = {
 	AFE_API_VERSION_I2S_CONFIG,
-	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ,
 	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
 	Q6AFE_LPASS_CLK_SRC_INTERNAL,
 	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
@@ -162,15 +162,15 @@ static int sprat_mi2s_hw_params(struct snd_pcm_substream *substream,
 	 */
 	switch (params_rate(params)) {
 	case 8000:
-		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_256_KHZ;
-		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_512_KHZ;
+		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_2_P048_MHZ;
 		break;
 	case 16000:
-		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_512_KHZ;
-		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ;
+		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_4_P096_MHZ;
 		break;
 	default:
-		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
 		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
 	}
 
