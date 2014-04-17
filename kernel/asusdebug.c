@@ -891,6 +891,7 @@ static void deinitKernelEnv(void)
     set_fs(oldfs);
 }
 char messages[256];
+char messages_unparsed[256];
 
 void save_phone_hang_log(void)
 {
@@ -943,11 +944,14 @@ int parse_last_shutdown_log(char* buf){
 void save_last_shutdown_log(char* filename)
 {
     char *last_shutdown_log;
+	char *last_shutdown_log_unparsed;	// ASUS_BSP ++++ Josh_Hsu: Unparsed log pointer
+	
     //unsigned int *last_shutdown_log_addr;
-//ASUS_BSP ++
+// ASUS_BSP ++
     //~ struct rtc_time tm;
     int parse_length;
     int file_handle;
+	int file_handle_unparsed;
     unsigned long long t;
     unsigned long nanosec_rem;
 
@@ -959,21 +963,34 @@ void save_last_shutdown_log(char* filename)
 	last_shutdown_log = kmalloc(PRINTK_BUFFER_SLOT_SIZE, GFP_KERNEL);
 	parse_length = parse_last_shutdown_log(last_shutdown_log);
 // ASUS_BSP ---- Josh_Hsu
-	
-    //last_shutdown_log = (char*)PRINTK_BUFFER;//phys_to_virt(PRINTK_BUFFER);
+    last_shutdown_log_unparsed = (char*)PRINTK_BUFFER;//phys_to_virt(PRINTK_BUFFER);
     //last_shutdown_log_addr = (unsigned int *)((unsigned int)last_shutdown_log + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
     sprintf(messages, "/data/local/LastShutdown_%lu.%06lu.txt", (unsigned long) t, nanosec_rem / 1000);
     printk("[adbg] %s(), messages: %s\n", __func__, messages);
+
+	//Save the unparsed ASDF log path
+	sprintf(messages_unparsed, "/data/local/LastShutdown_%lu.%06lu_unparsed.txt", (unsigned long) t, nanosec_rem / 1000);
+	printk("[adbg] %s(), messages_unparsed: %s\n", __func__, messages_unparsed);
 //ASUS_BSP --
 
     initKernelEnv();
     file_handle = sys_open(messages, O_CREAT|O_RDWR|O_SYNC, 0);
+	file_handle_unparsed = sys_open(messages_unparsed, O_CREAT|O_RDWR|O_SYNC, 0);
+	
     if(!IS_ERR((const void *)file_handle))
     {
         sys_write(file_handle, (unsigned char*)last_shutdown_log, parse_length);
         sys_close(file_handle);
     } else {
         printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle);
+    }
+
+	if(!IS_ERR((const void *)file_handle_unparsed))
+    {
+        sys_write(file_handle_unparsed, (unsigned char*)last_shutdown_log_unparsed, PRINTK_BUFFER_SLOT_SIZE);
+        sys_close(file_handle_unparsed);
+    } else {
+        printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle_unparsed);
     }
 
     deinitKernelEnv();          
