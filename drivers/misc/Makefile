@@ -71,4 +71,5 @@ obj-$(CONFIG_SENSORS_STM401) += stm401/
 obj-$(CONFIG_MOT_UTAG) += utag/
 obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
 obj-$(CONFIG_CYPRESS_CAPSENSE_PROGRAMMING)	+= capsense_prog/
+obj-$(CONFIG_DROPBOX) += dropbox.o
 
