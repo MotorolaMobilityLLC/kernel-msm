@@ -17,7 +17,6 @@
  */
 
 #include <linux/delay.h>
-#include <linux/earlysuspend.h>
 #include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/fs.h>
@@ -149,14 +148,11 @@ struct lis3dh_data {
 	int hw_initialized;
 	atomic_t enabled;
 	int on_before_suspend;
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend lis3dh_early_suspend;
-#endif
-
 	u8 shift_adj;
 	u8 resume_state[5];
 	u8 irq_config[3];
+
+	struct notifier_block pm_notifier;
 };
 
 /*
@@ -796,20 +792,55 @@ static void lis3dh_input_cleanup(struct lis3dh_data *lis)
 	input_free_device(lis->input_dev);
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void lis3dh_resume(struct early_suspend *handler)
+static int lis3dh_resume(struct lis3dh_data *lis)
 {
-	if (lis3dh_misc_data->on_before_suspend)
-		lis3dh_enable(lis3dh_misc_data);
+	int err;
+
+	if (lis->on_before_suspend) {
+		err = lis3dh_enable(lis);
+		if (err < 0)
+			dev_err(&lis->client->dev,
+				"resume failure\n");
+	}
+	return 0;
 }
 
-static void lis3dh_suspend(struct early_suspend *handler)
+static int lis3dh_suspend(struct lis3dh_data *lis)
 {
-	lis3dh_misc_data->on_before_suspend =
-		atomic_read(&lis3dh_misc_data->enabled);
-	lis3dh_disable(lis3dh_misc_data);
+	int err;
+
+	lis->on_before_suspend =
+		atomic_read(&lis->enabled);
+	if (lis->on_before_suspend) {
+		err = lis3dh_disable(lis);
+		if (err < 0)
+			dev_err(&lis->client->dev, "suspend failure\n");
+	}
+
+	return 0;
 }
-#endif /* CONFIG_HAS_EARLYSUSPEND */
+
+static int lis3dh_pm_event(struct notifier_block *this,
+	unsigned long event, void *ptr)
+{
+	struct lis3dh_data *lis = container_of(this,
+		struct lis3dh_data, pm_notifier);
+
+	mutex_lock(&lis->lock);
+
+	switch (event) {
+	case PM_SUSPEND_PREPARE:
+		lis3dh_suspend(lis);
+		break;
+	case PM_POST_SUSPEND:
+		lis3dh_resume(lis);
+		break;
+	}
+
+	mutex_unlock(&lis->lock);
+
+	return NOTIFY_DONE;
+}
 
 #ifdef CONFIG_OF
 static struct lis3dh_platform_data *
@@ -982,11 +1013,12 @@ static int lis3dh_probe(struct i2c_client *client,
 
 	lis3dh_device_power_off(lis);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	lis->lis3dh_early_suspend.suspend = lis3dh_suspend;
-	lis->lis3dh_early_suspend.resume = lis3dh_resume;
-	register_early_suspend(&lis->lis3dh_early_suspend);
-#endif
+	lis->pm_notifier.notifier_call = lis3dh_pm_event;
+	err = register_pm_notifier(&lis->pm_notifier);
+	if (err < 0) {
+		pr_err("%s:Register_pm_notifier failed: %d\n", __func__, err);
+		goto err5;
+	}
 
 	/* As default, do not report information */
 	atomic_set(&lis->enabled, 0);
@@ -997,6 +1029,8 @@ static int lis3dh_probe(struct i2c_client *client,
 
 	return 0;
 
+err5:
+	misc_deregister(&lis3dh_misc_device);
 err4:
 	lis3dh_input_cleanup(lis);
 err3:
@@ -1024,6 +1058,7 @@ static int __devexit lis3dh_remove(struct i2c_client *client)
 		regulator_put(lis->vdd);
 	}
 
+	unregister_pm_notifier(&lis->pm_notifier);
 	misc_deregister(&lis3dh_misc_device);
 	lis3dh_input_cleanup(lis);
 	lis3dh_device_power_off(lis);
