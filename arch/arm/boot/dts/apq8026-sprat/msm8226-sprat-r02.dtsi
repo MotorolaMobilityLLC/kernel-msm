@@ -141,11 +141,12 @@
 			ssp-ap-int = <&msmgpio 108 0x00>;
 			ssp-reset = <&msmgpio 92 0x00>;
 
-			ssp-acc-position = <3>;
-			ssp-mag-position = <0>;
-			ssp-ap-rev = <0>;
+			ssp-acc-position = <5>;
+			ssp-mag-position = <5>;
+			ssp-ap-rev = <1>;
 
 			ssp_vreg-supply = <&pm8226_l6>;
+			ssp_hrm_verg-supply = <&pm8226_l27>;
 			ssp_accel_vreg-name = "max77836_ldo2";
 			ssp_accel_vreg-level = <2850000>;
 		};
