@@ -195,7 +195,7 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 	if (host->card) {
 		mmc_update_clk_scaling(host);
 		if (err || (mrq->data && mrq->data->error))
-			host->card->request_errors++;
+			host->request_errors++;
 	}
 
 	if (err && cmd->retries && mmc_host_is_spi(host)) {
@@ -340,7 +340,7 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 	}
 
 	if (host->card)
-		host->card->requests++;
+		host->requests++;
 
 	host->ops->request(host, mrq);
 }
