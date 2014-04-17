@@ -3532,11 +3532,15 @@ void qpnp_chg_calculate_chrg_fcc(struct qpnp_chg_chip *chip,
 	chrg_ocv_fcc /= chip->fcc_mah;
 	pr_info("Actual chrg_ocv_fcc = %d\n", chrg_ocv_fcc);
 
-	/* Round up */
-	if (chrg_ocv_fcc % 10) {
+	/* Round up, 5 percent Resolution */
+	if ((chrg_ocv_fcc % 10) > 5) {
 		chrg_ocv_fcc /= 10;
 		chrg_ocv_fcc *= 10;
 		chrg_ocv_fcc += 10;
+	} else if (chrg_ocv_fcc % 10) {
+		chrg_ocv_fcc /= 10;
+		chrg_ocv_fcc *= 10;
+		chrg_ocv_fcc += 5;
 	}
 
 	/* Max of 100 */
