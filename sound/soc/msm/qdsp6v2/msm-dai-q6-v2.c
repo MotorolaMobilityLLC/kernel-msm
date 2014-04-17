@@ -1974,7 +1974,7 @@ static int msm_dai_q6_mi2s_bitwidth_get(struct snd_kcontrol *kcontrol,
 }
 
 static const struct snd_kcontrol_new mi2s_bitwidth_control =
-	SOC_ENUM_EXT("PRI MI2S TX bit width", mi2s_bitwidth_enum,
+	SOC_ENUM_EXT("TERT MI2S TX bit width", mi2s_bitwidth_enum,
 		msm_dai_q6_mi2s_bitwidth_get,
 		msm_dai_q6_mi2s_bitwidth_put);
 
@@ -2034,7 +2034,7 @@ static int msm_dai_q6_dai_mi2s_probe(struct snd_soc_dai *dai)
 		}
 	}
 
-	if (!strncmp(dai->name, "msm-dai-q6-mi2s.0", 17)) {
+	if (!strncmp(dai->name, "msm-dai-q6-mi2s.2", 17)) {
 		rc = snd_ctl_add(dai->card->snd_card,
 				snd_ctl_new1(&mi2s_bitwidth_control,
 				&mi2s_dai_data->tx_dai.mi2s_dai_data));
