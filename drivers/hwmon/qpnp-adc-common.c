@@ -1334,8 +1334,8 @@ int32_t qpnp_adc_btm_scaler(struct qpnp_vadc_chip *chip,
 		rc = qpnp_adc_map_voltage_temp(
 				adcmap_btm_threshold_mmi_neg20,
 				ARRAY_SIZE(adcmap_btm_threshold_mmi_neg20),
-				(param->low_temp),
-				&low_output);
+				(param->high_temp),
+				&high_output);
 	} else if (qpnp_adc_tm_get_batt_therm_type() == 1) {
 		rc = qpnp_adc_map_voltage_temp(
 				adcmap_btm_threshold_mmi_neg10,
