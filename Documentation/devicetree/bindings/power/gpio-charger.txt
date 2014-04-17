@@ -11,6 +11,8 @@ Optional properties:
 - charger-name:		Name for the chargers power_supply device.
 - gpio_active_low:	Define this property if GPIO is active low.
 - supplied_to:		Strings with battery names to which this charger supplies power.
+- switch_name:		String with the charger GPIO switch name (sys/class/switch/<switch_name>).
+			Switch requires a valid IRQ for the GPIO indicating charging status.
 
 Example:
 
