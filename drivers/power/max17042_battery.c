@@ -101,6 +101,8 @@
 #define START_PROPERTY			"start"
 #define REVISION			"rev"
 
+#define MAX17042_CHRG_CONV_FCTR         500
+
 struct max17042_chip {
 	struct i2c_client *client;
 	struct regmap *regmap;
@@ -344,11 +346,11 @@ static int max17042_get_property(struct power_supply *psy,
 		val->intval = data * 1000 / 2;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
-		ret = regmap_read(map, MAX17042_QH, &data);
+		ret = max17042_read_charge_counter(chip->client, 1);
 		if (ret < 0)
 			return ret;
 
-		val->intval = data * 1000 / 2;
+		val->intval = ret;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		ret = max17042_read_temp(chip, &val->intval);
