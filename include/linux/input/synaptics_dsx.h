@@ -81,6 +81,8 @@ struct synaptics_rmi4_platform_data {
 	unsigned pon_delay;
 	unsigned palm_detect_threshold;
 	unsigned palm_detect_keycode;
+	unsigned doze_interval_active;
+	unsigned doze_interval_sleep;
 	const char *fw_image_name;
 	int (*gpio_config)(unsigned gpio, bool configure);
 	struct synaptics_rmi4_capacitance_button_map *capacitance_button_map;

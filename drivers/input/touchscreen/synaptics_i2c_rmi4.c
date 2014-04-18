@@ -97,6 +97,11 @@ enum object_type {
 	OBJECT_TYPE_HAND_EDGE = 0x08
 };
 
+enum DOZE_MODE {
+	DOZE_SLEEP = 0,
+	DOZE_ACTIVE = 1
+};
+
 #define DEVICE_CONFIGURED 0x1
 
 #define RMI4_VTG_MIN_UV		2700000
@@ -1672,6 +1677,14 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 		return rc;
 	}
 
+	rc = of_property_read_u32(np, "synaptics,doze-interval-active", &temp_val);
+	if (!rc)
+		rmi4_pdata->doze_interval_active = temp_val;
+
+	rc = of_property_read_u32(np, "synaptics,doze-interval-sleep", &temp_val);
+	if (!rc)
+		rmi4_pdata->doze_interval_sleep = temp_val;
+
 	rc = of_property_read_u32(np, "synaptics,palm-detect-threshold", &temp_val);
 	if (!rc)
 		rmi4_pdata->palm_detect_threshold = temp_val;
@@ -3044,6 +3057,24 @@ static void synaptics_rmi4_init_work(struct work_struct *work)
 	rmi4_data->suspended = false;
 }
 
+static int synaptics_rmi4_set_doze_interval(struct synaptics_rmi4_data
+						*rmi4_data, int active)
+{
+	int retval = 0;
+	unsigned char interval;
+
+	interval = active ? rmi4_data->board->doze_interval_active :
+				rmi4_data->board->doze_interval_sleep;
+
+	if (interval)
+		retval = synaptics_rmi4_i2c_write(rmi4_data,
+					rmi4_data->f01_ctrl_base_addr + 1 +
+					rmi4_data->num_of_intr_regs,
+					&interval, 1);
+
+	return retval;
+}
+
  /**
  * synaptics_rmi4_probe()
  *
@@ -3195,6 +3226,8 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 				__func__);
 		goto err_free_gpios;
 	}
+
+	synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_ACTIVE);
 
 	if (rmi4_data->board->disp_maxx)
 		rmi4_data->disp_maxx = rmi4_data->board->disp_maxx;
@@ -3849,6 +3882,8 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		return 0;
 	}
 
+	synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_SLEEP);
+
 	if (device_may_wakeup(&rmi4_data->i2c_client->dev)) {
 		need_wakeup = 1;
 		rmi4_data->suspended = true;
@@ -3926,6 +3961,8 @@ static int synaptics_rmi4_resume(struct device *dev)
 		dev_info(dev, "Already in awake state\n");
 		return 0;
 	}
+
+	synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_ACTIVE);
 
 	if (device_may_wakeup(&rmi4_data->i2c_client->dev)) {
 		need_wakeup = 0;
