@@ -33,9 +33,6 @@
 		/delete-property/ boost-supply;
 	};
 
-	usb@f9a55000 {
-		otg,id_gnd_gpio = <&msmgpio 76 0x0>;
-	};
 };
 
 &i2c {
