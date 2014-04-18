@@ -495,4 +495,13 @@ config QPNP_BMS
 	  Say Y here to enable support for QPNP chip bms device.
 	  It registers a fuelgauge bms power supply to report
 	  State of Charge.
+
+config MMI_QPNP_BMS
+	tristate "MMI QPNP Battery Monitoring System driver"
+	depends on SPMI
+	depends on MSM_QPNP_INT
+	help
+	  Say Y here to enable support for MMI QPNP chip bms device.
+	  It registers a fuelgauge bms power supply to report
+	  State of Charge.
 endif # POWER_SUPPLY
