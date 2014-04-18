@@ -11,10 +11,45 @@
  *
  */
 #include "msm_sensor.h"
+#include <linux/device.h>
 #define IMX179_SENSOR_NAME "imx179"
 DEFINE_MSM_MUTEX(imx179_mut);
 
 static struct msm_sensor_ctrl_t imx179_s_ctrl;
+
+#define IMX179_OTP_PAGE_SIZE 30
+#define IMX179_OTP_PAGE_ADDR 0x3404
+#define IMX179_OTP_NUM_PAGES 3
+/*#define DEBUG_OTP_RAW_DUMP*/
+
+static int32_t imx179_otp_validate_crc(uint8_t *imx179_otp_data)
+{
+	int32_t crc_match = 0;
+	uint16_t crc = 0x0000;
+	int i, j;
+	uint32_t tmp;
+	uint16_t otp_crc = imx179_otp_data[IMX179_OTP_PAGE_SIZE - 2] << 8 |
+	imx179_otp_data[IMX179_OTP_PAGE_SIZE - 1];
+
+	for (i = 0; i < (IMX179_OTP_PAGE_SIZE - 2); i++) {
+		tmp = imx179_otp_data[i] & 0xff;
+		for (j = 0; j < 8; j++) {
+			if (((crc & 0x8000) >> 8) ^ (tmp & 0x80))
+				crc = (crc << 1) ^ 0x8005;
+			else
+				crc = crc << 1;
+			tmp <<= 1;
+		}
+	}
+	if ((crc == otp_crc) && (otp_crc != 0)) {
+		pr_debug("%s: OTP CRC pass\n", __func__);
+	} else {
+		pr_warn("%s: OTP CRC fail(crc = 0x%x, otp_crc = 0x%x)!\n",
+			__func__, crc, otp_crc);
+		crc_match = -1;
+	}
+	return crc_match;
+}
 
 static struct msm_sensor_power_setting imx179_power_setting[] = {
 	{
@@ -132,6 +167,16 @@ static int32_t imx179_platform_probe(struct platform_device *pdev)
 	int32_t rc = 0;
 	const struct of_device_id *match;
 	match = of_match_device(imx179_dt_match, &pdev->dev);
+
+	imx179_s_ctrl.sensor_otp.otp_info = devm_kzalloc(&pdev->dev,
+		IMX179_OTP_PAGE_SIZE, GFP_KERNEL);
+	if (imx179_s_ctrl.sensor_otp.otp_info == NULL) {
+		pr_err("%s: Unable to allocate memory for OTP!\n",
+			__func__);
+		return -ENOMEM;
+	}
+	imx179_s_ctrl.sensor_otp.size = IMX179_OTP_PAGE_SIZE;
+
 	rc = msm_sensor_platform_probe(pdev, match->data);
 	return rc;
 }
@@ -156,6 +201,109 @@ static void __exit imx179_exit_module(void)
 	return;
 }
 
+#ifdef DEBUG_OTP_RAW_DUMP
+static void imx179_otp_raw_dump(uint8_t *data)
+{
+	int i = 0;
+	/* Print raw OTP Data */
+	for (i = 0; i < IMX179_OTP_PAGE_SIZE; i++) {
+		pr_info("%s: data[%d] = 0x%02x\n",
+			__func__, i, *(data+i));
+	}
+}
+#endif
+
+static int32_t imx179_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	uint8_t otp_page_no = 0;
+	int32_t rc = 0;
+	int8_t *imx179_otp_data;
+
+	/* Set default OTP info */
+	imx179_otp_data = s_ctrl->sensor_otp.otp_info;
+
+	/* read pages in reverse order (page2 to page0) to get correct data */
+	for (otp_page_no = IMX179_OTP_NUM_PAGES-1; otp_page_no >= 0;
+		otp_page_no--) {
+
+		/* Disable Streaming */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x0100, 0x0000,
+			MSM_CAMERA_I2C_WORD_DATA);
+		if (rc < 0) {
+			pr_err("%s: Fail to standby sensor\n", __func__);
+			break;
+		}
+
+		/* Set OTP Read */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x3400, 0x01,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: Fail set OTP page read flag\n", __func__);
+			break;
+		}
+
+		/* Set OTP page */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x3402, otp_page_no,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: Fail to set OTP page number!\n", __func__);
+			break;
+		}
+
+		/* Read and store OTP Data */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read_seq(
+			s_ctrl->sensor_i2c_client,
+			IMX179_OTP_PAGE_ADDR,
+			imx179_otp_data,
+			IMX179_OTP_PAGE_SIZE);
+		if (rc < 0) {
+			pr_err("%s: Fail to read OTP page data\n",
+				__func__);
+			break;
+		}
+
+#ifdef DEBUG_OTP_RAW_DUMP
+		/* Dump OTP */
+		imx179_otp_raw_dump(imx179_otp_data);
+#endif
+		/* Validate OTP CRC */
+		rc = imx179_otp_validate_crc(imx179_otp_data);
+		if (rc < 0) {
+			pr_err(" %s: OTP CRC (page = %d) fail!\n",
+			__func__, otp_page_no);
+			s_ctrl->sensor_otp.otp_crc_pass = 0;
+		} else {
+			pr_debug("%s: OTP CRC (page = %d) pass\n",
+				__func__, otp_page_no);
+			s_ctrl->sensor_otp.otp_crc_pass = 1;
+			break;
+		}
+	}
+	return 0;
+}
+
+static int32_t imx179_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	/* This function isn't really needed at this time, even for
+	 * factory, as we will be populating this in user space.
+	 */
+	return 0;
+}
+
+static struct msm_sensor_fn_t imx179_func_tbl = {
+	.sensor_config = msm_sensor_config,
+	.sensor_power_up = msm_sensor_power_up,
+	.sensor_power_down = msm_sensor_power_down,
+	.sensor_get_module_info = imx179_get_module_info,
+	.sensor_read_otp_info = imx179_read_otp_info,
+};
+
 static struct msm_sensor_ctrl_t imx179_s_ctrl = {
 	.sensor_i2c_client = &imx179_sensor_i2c_client,
 	.power_setting_array.power_setting = imx179_power_setting,
@@ -163,6 +311,7 @@ static struct msm_sensor_ctrl_t imx179_s_ctrl = {
 	.msm_sensor_mutex = &imx179_mut,
 	.sensor_v4l2_subdev_info = imx179_subdev_info,
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(imx179_subdev_info),
+	.func_tbl = &imx179_func_tbl,
 };
 
 module_init(imx179_init_module);
