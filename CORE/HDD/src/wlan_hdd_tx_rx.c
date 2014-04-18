@@ -1046,9 +1046,10 @@ v_BOOL_t hdd_IsEAPOLPacket( vos_pkt_t *pVosPacket )
     
     vosStatus = vos_pkt_peek_data( pVosPacket, (v_SIZE_t)HDD_ETHERTYPE_802_1_X_FRAME_OFFSET,
                           &pBuffer, HDD_ETHERTYPE_802_1_X_SIZE );
-    if (VOS_IS_STATUS_SUCCESS( vosStatus ) )
+    if ( VOS_IS_STATUS_SUCCESS( vosStatus ) )
     {
-       if (pBuffer && vos_be16_to_cpu( *(unsigned short*)pBuffer ) == HDD_ETHERTYPE_802_1_X )
+       if ( pBuffer && *(unsigned short*)pBuffer ==
+                             vos_cpu_to_be16(HDD_ETHERTYPE_802_1_X) )
        {
           fEAPOL = VOS_TRUE;
        }
@@ -1057,6 +1058,35 @@ v_BOOL_t hdd_IsEAPOLPacket( vos_pkt_t *pVosPacket )
    return fEAPOL;
 }
 
+/**============================================================================
+  @brief hdd_IsARP() - Checks the packet is ARP or not.
+
+  @param pVosPacket : [in] pointer to vos packet
+  @return         : VOS_TRUE if the packet is ARP
+                  : VOS_FALSE otherwise
+  ===========================================================================*/
+
+v_BOOL_t hdd_IsARP( vos_pkt_t *pVosPacket )
+{
+    VOS_STATUS vosStatus  = VOS_STATUS_SUCCESS;
+    v_BOOL_t   fIsARP     = VOS_FALSE;
+    void       *pBuffer   = NULL;
+
+
+    vosStatus = vos_pkt_peek_data( pVosPacket,
+                           (v_SIZE_t)HDD_ETHERTYPE_802_1_X_FRAME_OFFSET,
+                          &pBuffer, HDD_ETHERTYPE_802_1_X_SIZE );
+    if ( VOS_IS_STATUS_SUCCESS( vosStatus ) )
+    {
+       if ( pBuffer && *(unsigned short*)pBuffer ==
+                                 vos_cpu_to_be16(HDD_ETHERTYPE_ARP) )
+       {
+          fIsARP = VOS_TRUE;
+       }
+    }
+
+   return fIsARP;
+}
 
 #ifdef FEATURE_WLAN_WAPI // Need to update this function
 /**============================================================================
@@ -1079,7 +1109,8 @@ v_BOOL_t hdd_IsWAIPacket( vos_pkt_t *pVosPacket )
 
     if (VOS_IS_STATUS_SUCCESS( vosStatus ) )
     {
-       if (pBuffer && vos_be16_to_cpu( *((unsigned short*)pBuffer)) == HDD_ETHERTYPE_WAI)
+       if ( pBuffer && *(unsigned short*)pBuffer ==
+                               vos_cpu_to_be16(HDD_ETHERTYPE_WAI) )
        {
           fIsWAI = VOS_TRUE;
        }
@@ -1187,6 +1218,7 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    v_TIME_t timestamp;
    WLANTL_ACEnumType newAc;
    v_SIZE_t size = 0;
+   v_U16_t packet_size;
    tANI_U8   acAdmitted, i;
    v_U8_t proto_type = 0;
 
@@ -1387,6 +1419,10 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
                    "STA TX DHCP");
       }
    }
+
+   vos_pkt_get_packet_length( pVosPacket,&packet_size );
+   if( HDD_ETHERTYPE_ARP_SIZE == packet_size )
+      pPktMetaInfo->ucIsArp = hdd_IsARP( pVosPacket ) ? 1 : 0;
 
 #ifdef FEATURE_WLAN_WAPI
    // Override usIsEapol value when its zero for WAPI case
