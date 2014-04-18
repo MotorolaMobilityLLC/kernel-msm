@@ -19,7 +19,6 @@
 #include <linux/ct406.h>
 
 #include <linux/delay.h>
-#include <linux/earlysuspend.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
@@ -167,6 +166,7 @@ struct ct406_data {
 	unsigned int als_first_report;
 	enum ct406_als_mode als_mode;
 	unsigned int wait_enabled;
+	unsigned int power_on;
 	/* numeric values */
 	unsigned int prox_noise_floor;
 	unsigned int prox_low_threshold;
@@ -180,9 +180,6 @@ struct ct406_data {
 	u8 prox_offset;
 	u16 pdata_max;
 	u8 ink_type;
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend ct406_early_suspend;
-#endif
 };
 
 static struct ct406_data *ct406_misc_data;
@@ -598,6 +595,7 @@ static void ct406_device_power_off(struct ct406_data *ct)
 		}
 	}
 
+	ct->power_on = 0;
 }
 
 static int ct406_device_power_on(struct ct406_data *ct)
@@ -615,6 +613,9 @@ static int ct406_device_power_on(struct ct406_data *ct)
 			return error;
 		}
 	}
+
+	ct->power_on = 1;
+
 	return 0;
 }
 
@@ -1421,42 +1422,60 @@ static void ct406_work_prox_start(struct work_struct *work)
 	mutex_unlock(&ct->mutex);
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void ct406_suspend(struct early_suspend *handler)
+static int ct406_suspend(struct ct406_data *ct)
 {
 	if (ct406_debug & CT406_DBG_SUSPEND_RESUME)
 		pr_info("%s\n", __func__);
 
-	mutex_lock(&ct406_misc_data->mutex);
+	ct406_disable_als(ct);
 
-	ct406_disable_als(ct406_misc_data);
+	if (!ct->prox_requested)
+		ct406_device_power_off(ct);
 
-	if (!ct406_misc_data->prox_requested)
-		ct406_device_power_off(ct406_misc_data);
+	ct->suspended = 1;
 
-	ct406_misc_data->suspended = 1;
-
-	mutex_unlock(&ct406_misc_data->mutex);
+	return 0;
 }
 
-static void ct406_resume(struct early_suspend *handler)
+static int ct406_resume(struct ct406_data *ct)
 {
 	if (ct406_debug & CT406_DBG_SUSPEND_RESUME)
 		pr_info("%s\n", __func__);
 
-	mutex_lock(&ct406_misc_data->mutex);
+	if (ct->power_on == 0) {
+		ct406_device_power_on(ct);
+		ct406_device_init(ct);
+	}
 
-	ct406_device_power_on(ct406_misc_data);
-	ct406_device_init(ct406_misc_data);
+	ct->suspended = 0;
 
-	ct406_misc_data->suspended = 0;
+	if (ct->als_requested)
+		ct406_enable_als(ct);
 
-	if (ct406_misc_data->als_requested)
-		ct406_enable_als(ct406_misc_data);
-
-	mutex_unlock(&ct406_misc_data->mutex);
+	return 0;
 }
-#endif /* CONFIG_HAS_EARLYSUSPEND */
+
+static int ct406_pm_event(struct notifier_block *this,
+	unsigned long event, void *ptr)
+{
+	struct ct406_data *ct = container_of(this,
+		struct ct406_data, pm_notifier);
+
+	mutex_lock(&ct->mutex);
+
+	switch (event) {
+	case PM_SUSPEND_PREPARE:
+		ct406_suspend(ct);
+		break;
+	case PM_POST_SUSPEND:
+		ct406_resume(ct);
+		break;
+	}
+
+	mutex_unlock(&ct->mutex);
+
+	return NOTIFY_DONE;
+}
 
 #ifdef CONFIG_OF
 static struct ct406_platform_data *
@@ -1649,11 +1668,11 @@ static int ct406_probe(struct i2c_client *client,
 		goto error_revision_read_failed;
 	}
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	ct->ct406_early_suspend.suspend = ct406_suspend;
-	ct->ct406_early_suspend.resume = ct406_resume;
-	register_early_suspend(&ct->ct406_early_suspend);
-#endif
+	ct->pm_notifier.notifier_call = ct406_pm_event;
+	error = register_pm_notifier(&ct->pm_notifier);
+	if (error < 0) {
+		pr_err("%s:Register_pm_notifier failed: %d\n", __func__, error);
+	}
 
 	return 0;
 
@@ -1689,6 +1708,8 @@ i2c_check_fail:
 static int ct406_remove(struct i2c_client *client)
 {
 	struct ct406_data *ct = i2c_get_clientdata(client);
+
+	unregister_pm_notifier(&ct->pm_notifier);
 
 	device_remove_file(&client->dev, &dev_attr_registers);
 
