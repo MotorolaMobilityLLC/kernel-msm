@@ -443,7 +443,7 @@ static int inv_write_accel_fs(struct inv_mpu_state *st, int fs)
 	if (fs == st->chip_config.accel_fs)
 		return 0;
 	if (INV_MPU3050 == st->chip_type)
-		result = st->slave_accel->set_fs1(st, fs);
+		result = st->slave_accel->set_fs(st, fs);
 	else
 		result = inv_i2c_single_write(st, reg->accel_config,
 				(fs << ACCEL_CONFIG_FSR_SHIFT));

@@ -328,12 +328,8 @@ static int set_fifo_rate_reg(struct inv_mpu_state *st)
 	if (result)
 		return result;
 	result = inv_set_lpf(st, fifo_rate);
-	if (result)
-		return result;
-	/* wait for the sampling rate change to stabilize */
-	mdelay(INV_MPU_SAMPLE_RATE_CHANGE_STABLE);
 
-	return 0;
+	return result;
 }
 
 /*
@@ -1420,7 +1416,7 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 #if FEATURE_IKR_PANIC
 	if (1024 <= st->fifo_count) {
 		if (1024 < st->fifo_count) {
-			pr_err("fifo_count over spec \n");
+			pr_err("fifo_count over spec\n");
 			return 0;
 		}
 		inv_reset_ts(st, st->last_ts);
@@ -1435,12 +1431,12 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 
 	d = fifo_data;
 	if (st->left_over_size > 0) {
-#if FEATURE_IKR_PANIC		
-		if(st->left_over_size > HEADERED_Q_BYTES) {
-			pr_err("left_over_size overflow 1 \n");
+#if FEATURE_IKR_PANIC
+		if (st->left_over_size > HEADERED_Q_BYTES) {
+			pr_err("left_over_size overflow 1\n");
 			st->left_over_size = HEADERED_Q_BYTES;
 		}
-#endif		
+#endif
 		dptr = d + st->left_over_size;
 		memcpy(d, st->left_over, st->left_over_size);
 	} else {
@@ -1539,14 +1535,14 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 	st->left_over_size = target_bytes - (dptr - d);
 
 	if (st->left_over_size) {
-#if FEATURE_IKR_PANIC		
-		if(st->left_over_size > HEADERED_Q_BYTES) {
-			pr_err("left_over_size overflow 2 \n");
+#if FEATURE_IKR_PANIC
+		if (st->left_over_size > HEADERED_Q_BYTES) {
+			pr_err("left_over_size overflow 2\n");
 			st->left_over_size = HEADERED_Q_BYTES;
-		}		
-#endif		
+		}
+#endif
 		memcpy(st->left_over, dptr, st->left_over_size);
-        }
+	}
 
 	return 0;
 }

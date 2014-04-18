@@ -18,6 +18,7 @@
 #include <mach/gpio.h>
 #include <mach/gpiomux.h>
 #include <soc/qcom/socinfo.h>
+#include <mach/board_lge.h>
 
 static struct gpiomux_setting gpio_keys_active = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -638,13 +639,19 @@ static struct gpiomux_setting vibrator_active_cfg_gpio22 = {
        .pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting vibrator_active_cfg_gpio34 = {
+       .func = GPIOMUX_FUNC_3,
+       .drv = GPIOMUX_DRV_2MA,
+       .pull = GPIOMUX_PULL_NONE,
+};
+
 static struct gpiomux_setting vibrator_active_cfg_gpio62 = {
        .func = GPIOMUX_FUNC_GPIO,
        .drv = GPIOMUX_DRV_2MA,
        .pull = GPIOMUX_PULL_NONE,
 };
 
-static struct msm_gpiomux_config vibrator_configs[] = {
+static struct msm_gpiomux_config vibrator_pwm_config[] = {
 	{
 		.gpio = 22,
 		.settings = {
@@ -652,6 +659,19 @@ static struct msm_gpiomux_config vibrator_configs[] = {
 			[GPIOMUX_SUSPENDED] = &vibrator_suspend_cfg,
 		},
 	},
+};
+
+static struct msm_gpiomux_config vibrator_pwm_config_rev10[] = {
+	{
+		.gpio = 34,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &vibrator_active_cfg_gpio34,
+			[GPIOMUX_SUSPENDED] = &vibrator_suspend_cfg,
+		},
+	},
+};
+
+static struct msm_gpiomux_config vibrator_configs[] = {
 	{
 		.gpio = 62,
 		.settings = {
@@ -661,6 +681,7 @@ static struct msm_gpiomux_config vibrator_configs[] = {
 	},
 };
 #endif
+
 static void bluetooth_msm_gpiomux_install(void)
 {
 	/* UART */
@@ -713,6 +734,13 @@ void __init msm8226_init_gpiomux(void)
 	msm_gpiomux_install(msm_mi2s_configs, ARRAY_SIZE(msm_mi2s_configs));
 #if defined(CONFIG_MSM_PWM_VIBRATOR)
 	msm_gpiomux_install(vibrator_configs, ARRAY_SIZE(vibrator_configs));
+	if (lge_get_board_revno() >= HW_REV_1_0)
+		msm_gpiomux_install(vibrator_pwm_config_rev10,
+				ARRAY_SIZE(vibrator_pwm_config_rev10));
+	else
+		msm_gpiomux_install(vibrator_pwm_config,
+				ARRAY_SIZE(vibrator_pwm_config));
+
 #endif
 	bluetooth_msm_gpiomux_install();
 }
