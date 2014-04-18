@@ -23,3 +23,15 @@
 	 */
 	qcom,msm-id = <147 0x41 0x01018200>;
 };
+
+&soc {
+	factory_support {
+		compatible = "mmi,factory-support-kungpow";
+		gpios = <&msmgpio 77 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&msmgpio 75 0x1>, /* GPIOF_IN */
+			<&msmgpio 76 0x1>; /* GPIOF_IN */
+		gpio-names = "factory_kill_disable",
+			"factory_cable_detect",
+			"factory_warn";
+	};
+};
