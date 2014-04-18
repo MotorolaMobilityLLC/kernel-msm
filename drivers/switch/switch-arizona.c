@@ -1281,6 +1281,8 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 		for (i = 0; i < ARRAY_SIZE(info->hpdet_res); i++)
 			info->hpdet_res[i] = 0;
 		info->mic = false;
+		info->micd_current = 0;
+		info->micd_res_old = 0;
 		info->hpdet_done = false;
 		info->hpdet_retried = false;
 		arizona->hp_impedance = 0;
