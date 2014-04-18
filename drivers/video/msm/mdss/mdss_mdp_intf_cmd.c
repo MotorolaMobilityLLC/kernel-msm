@@ -562,10 +562,6 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
 	}
 
-	spin_lock_irqsave(&ctx->clk_lock, flags);
-	ctx->koff_cnt++;
-	spin_unlock_irqrestore(&ctx->clk_lock, flags);
-
 	mdss_mdp_cmd_clk_on(ctx);
 
 	mdss_mdp_cmd_set_partial_roi(ctl);
