@@ -83,3 +83,9 @@
 		qcom,ext_hs_detect = "tpa6165";
 	};
 };
+
+&i2c_1 {
+	synaptics_dsx_i2c@20 {
+		status = "disabled";
+	};
+};
