@@ -8056,3 +8056,74 @@ limProcessChannelSwitchSuspendLink(tpAniSirGlobal pMac,
             }
     }
 }
+
+/** ---------------------------------------------------------
+\fn  limInitOBSSScanParams
+\brief   This function Initializes the OBSS Scan Parameters
+\param   tpAniSirGlobal  pMac
+\param   tpPESession   pSessionEntry
+\return  None
+ ------------------------------------------------------------*/
+
+void limInitOBSSScanParams(tpAniSirGlobal pMac,
+                                   tpPESession psessionEntry)
+{
+    tANI_U32  cfgValue;
+
+    if (wlan_cfgGetInt(pMac, WNI_CFG_OBSS_HT40_SCAN_ACTIVE_DWELL_TIME,
+                       &cfgValue) !=  eSIR_SUCCESS)
+    {
+       limLog(pMac, LOGE, FL("Fail to retrieve  "
+              "WNI_CFG_OBSS_HT40_SCAN_ACTIVE_DWELL_TIME value"));
+       return ;
+    }
+    psessionEntry->obssHT40ScanParam.OBSSScanActiveDwellTime = cfgValue;
+
+    if (wlan_cfgGetInt(pMac, WNI_CFG_OBSS_HT40_SCAN_PASSIVE_DWELL_TIME,
+                       &cfgValue) != eSIR_SUCCESS)
+    {
+       limLog(pMac, LOGE, FL("Fail to retrieve "
+            "WNI_CFG_OBSS_HT40_SCAN_PASSIVE_DWELL_TIME value"));
+       return ;
+    }
+    psessionEntry->obssHT40ScanParam.OBSSScanPassiveDwellTime = cfgValue;
+
+    if (wlan_cfgGetInt(pMac, WNI_CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL,
+                       &cfgValue) != eSIR_SUCCESS)
+    {
+       limLog(pMac, LOGE, FL("Fail to retrieve "
+             "WNI_CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL value"));
+       return ;
+    }
+    psessionEntry->obssHT40ScanParam.BSSChannelWidthTriggerScanInterval
+                                                              = cfgValue;
+    if (wlan_cfgGetInt(pMac,
+          WNI_CFG_OBSS_HT40_SCAN_ACTIVE_TOTAL_PER_CHANNEL,
+          &cfgValue) != eSIR_SUCCESS)
+    {
+       limLog(pMac, LOGE, FL("Fail to retrieve"
+             "WNI_CFG_OBSS_HT40_SCAN_ACTIVE_TOTAL_PER_CHANNEL value"));
+       return ;
+    }
+    psessionEntry->obssHT40ScanParam.OBSSScanActiveTotalPerChannel =
+                                                          cfgValue;
+    if (wlan_cfgGetInt(pMac,
+         WNI_CFG_OBSS_HT40_SCAN_PASSIVE_TOTAL_PER_CHANNEL, &cfgValue)
+         != eSIR_SUCCESS)
+    {
+       limLog(pMac, LOGE, FL("Fail to retrieve"
+              "WNI_CFG_OBSS_HT40_SCAN_PASSIVE_TOTAL_PER_CHANNEL value"));
+       return ;
+    }
+    psessionEntry->obssHT40ScanParam.OBSSScanPassiveTotalPerChannel =
+                                                             cfgValue;
+    if (wlan_cfgGetInt(pMac, WNI_CFG_OBSS_HT40_SCAN_ACTIVITY_THRESHOLD ,
+                       &cfgValue) != eSIR_SUCCESS)
+    {
+       limLog(pMac, LOGE, FL("Fail to retrieve "
+                "WNI_CFG_OBSS_HT40_SCAN_ACTIVITY_THRESHOLD value"));
+       return ;
+    }
+    psessionEntry->obssHT40ScanParam.OBSSScanActivityThreshold = cfgValue;
+
+}

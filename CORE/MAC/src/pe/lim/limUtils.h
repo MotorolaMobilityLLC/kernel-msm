@@ -186,7 +186,8 @@ tSirRetStatus limStartChannelSwitch(tpAniSirGlobal pMac, tpPESession psessionEnt
 void limUpdateChannelSwitch(tpAniSirGlobal, tpSirProbeRespBeacon, tpPESession psessionEntry);
 void limProcessQuietTimeout(tpAniSirGlobal);
 void limProcessQuietBssTimeout(tpAniSirGlobal);
-
+void limInitOBSSScanParams(tpAniSirGlobal pMac,
+                                   tpPESession psessionEntry);
 #if 0
 void limProcessWPSOverlapTimeout(tpAniSirGlobal pMac);
 #endif
