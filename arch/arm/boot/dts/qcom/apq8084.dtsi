@@ -2838,7 +2838,7 @@
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
 				<85 512 0 0>,
-			<85 512 40000 160000>;
+			<85 512 40000 400000>;
 
 		status = "disabled";
 	};
@@ -3130,6 +3130,10 @@
 			adc-interval-usec = <3900>;
 			uv-to-ua-numerator = <2>;
 			uv-to-ua-denominator = <1>;
+			vph-channel = <0x07>;
+			vph-high-threshold-uv = <3890000>;
+			vph-low-threshold-uv = <3690000>;
+			thermal-handle = <&msm_thermal_freq>;
 		};
 	};
 
@@ -3198,7 +3202,7 @@
 			qcom,min-level = <1>; /* No Request */
 		};
 
-		qcom,vdd-apps-rstr{
+		msm_thermal_freq: qcom,vdd-apps-rstr{
 			qcom,vdd-rstr-reg = "vdd-apps";
 			qcom,levels = <1958400 2150400 2150400>;
 			qcom,freq-req;
@@ -3845,6 +3849,28 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
+
+	chan@15 {
+		label = "mpp6_div1";
+		reg = <0x15>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@7 {
+		label = "vph_pwr";
+		reg = <7>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
 };
 
 &pma8084_adc_tm {
@@ -3895,7 +3921,21 @@
 		qcom,scale-function = <0>;
 		qcom,hw-settle-time = <0>;
 		qcom,fast-avg-setup = <0>;
+		qcom,meas-interval-timer-idx = <0>;
 		qcom,btm-channel-number = <0x78>;
+	};
+
+	chan@7 {
+		label = "vph_pwr";
+		reg = <0x07>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+		qcom,meas-interval-timer-idx = <0>;
+		qcom,btm-channel-number = <0x80>;
 	};
 };
 
