@@ -627,6 +627,15 @@ config APQ8084_DOCKING_STATION
 	  This option enables support for the USB and Ethernet ports found on
 	  the QTI APQ8084 Docking Station.
 
+config SEC_MISC
+	bool "Samsung P series miscellaneous driver"
+	default n
+	---help---
+	  Samsung P series miscellaneous driver
+	  This creates sys fs entries for changing
+	  debug levels. The debug level is stored in
+	  Param partition
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

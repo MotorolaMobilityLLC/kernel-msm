@@ -55,6 +55,10 @@
 #include <linux/regulator/spm-regulator.h>
 #include <linux/platform_data/android_battery.h>
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 struct class *sec_class;
 EXPORT_SYMBOL(sec_class);
 
@@ -145,6 +149,9 @@ void __init msm8226_init(void)
 {
 	struct of_dev_auxdata *adata = msm8226_auxdata_lookup;
 
+#ifdef CONFIG_SEC_DEBUG
+	sec_debug_init();
+#endif
 	/*
 	 * populate devices from DT first so smem probe will get called as part
 	 * of msm_smem_init.  socinfo_init needs smem support so call

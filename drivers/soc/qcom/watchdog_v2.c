@@ -28,6 +28,10 @@
 #include <soc/qcom/scm.h>
 #include <soc/qcom/memory_dump.h>
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
 #define TCSR_WDT_CFG	0x30
@@ -74,6 +78,14 @@ struct msm_watchdog_data {
  */
 static int enable = 1;
 module_param(enable, int, 0);
+
+#ifdef CONFIG_SEC_DEBUG
+static unsigned int regsave_vaddr;
+static unsigned int regsave_paddr;
+static unsigned long long last_pet;
+static void __iomem *wdog_base_addr;
+/*extern void sec_debug_save_last_pet(unsigned long long last_pet);*/
+#endif
 
 /*
  * On the kernel command line specify
@@ -228,6 +240,20 @@ static ssize_t wdog_disable_set(struct device *dev,
 
 static DEVICE_ATTR(disable, S_IWUSR | S_IRUSR, wdog_disable_get,
 							wdog_disable_set);
+#ifdef CONFIG_SEC_DEBUG
+static unsigned long long last_emerg_pet;
+void emerg_pet_watchdog(void)
+{
+	if (wdog_base_addr && enable) {
+		__raw_writel(1, wdog_base_addr + WDT0_EN);
+		__raw_writel(1, wdog_base_addr + WDT0_RST);
+
+		mb();
+		last_emerg_pet = sched_clock();
+	}
+}
+EXPORT_SYMBOL(emerg_pet_watchdog);
+#endif
 
 static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 {
@@ -252,6 +278,11 @@ static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 	if (slack_ns < wdog_dd->min_slack_ns)
 		wdog_dd->min_slack_ns = slack_ns;
 	wdog_dd->last_pet = time_ns;
+#ifdef CONFIG_SEC_DEBUG
+	last_pet = time_ns;
+	sec_debug_save_last_pet(time_ns);
+#endif
+
 }
 
 static void keep_alive_response(void *info)
@@ -356,6 +387,12 @@ static irqreturn_t wdog_ppi_bark(int irq, void *dev_id)
 			*(struct msm_watchdog_data **)(dev_id);
 	return wdog_bark_handler(irq, wdog_dd);
 }
+#ifdef CONFIG_SEC_DEBUG
+unsigned int get_wdog_regsave_paddr(void)
+{
+	return __pa(&regsave_paddr);
+}
+#endif
 
 static void configure_bark_dump(struct msm_watchdog_data *wdog_dd)
 {
@@ -381,6 +418,12 @@ static void configure_bark_dump(struct msm_watchdog_data *wdog_dd)
 				pr_err("Setting register save address failed.\n"
 				       "Registers won't be dumped on a dog "
 				       "bite\n");
+#ifdef CONFIG_SEC_DEBUG
+			regsave_vaddr = (unsigned int) wdog_dd->scm_regsave;
+			regsave_paddr = (unsigned int) cmd_buf.addr;
+			pr_info("WDOG_V2 handled by TZ:dump @0x%08x PA:%08x\n",
+				regsave_vaddr, regsave_paddr);
+#endif
 			cpu_dump_entry.id = MSM_CPU_CTXT;
 			cpu_dump_entry.start_addr =
 					virt_to_phys(wdog_dd->scm_regsave);
@@ -489,6 +532,11 @@ static void init_watchdog_work(struct work_struct *work)
 	__raw_writel(1, wdog_dd->base + WDT0_EN);
 	__raw_writel(1, wdog_dd->base + WDT0_RST);
 	wdog_dd->last_pet = sched_clock();
+#ifdef CONFIG_SEC_DEBUG
+	last_pet = wdog_dd->last_pet;
+	sec_debug_save_last_pet(wdog_dd->last_pet);
+#endif
+
 	error = device_create_file(wdog_dd->dev, &dev_attr_disable);
 	if (error)
 		dev_err(wdog_dd->dev, "cannot create sysfs attribute\n");

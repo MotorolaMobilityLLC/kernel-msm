@@ -19,6 +19,8 @@
 
 void msm_set_restart_mode(int mode);
 extern int pmic_reset_irq;
-
+#ifdef CONFIG_SEC_DEBUG
+extern void set_dload_mode(int on);
+#endif
 #endif
 

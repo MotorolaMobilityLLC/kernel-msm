@@ -65,3 +65,4 @@ obj-$(CONFIG_TI_DRV2667) += ti_drv2667.o
 obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
 obj-$(CONFIG_APQ8084_DOCKING_STATION)	+= apq8084_dock.o
 obj-y				+= qcom/
+obj-$(CONFIG_SEC_MISC)	+= sec_param.o sec_misc.o
