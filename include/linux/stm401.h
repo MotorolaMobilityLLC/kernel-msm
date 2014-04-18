@@ -155,6 +155,7 @@
 #define M_DOCK			0x000001
 #define M_PROXIMITY		0x000002
 #define M_TOUCH			0x000004
+#define M_COVER			0x000008
 #define M_QUICKPEEK		0x000010
 #define M_HUB_RESET		0x000080
 
@@ -223,6 +224,7 @@ enum STM401_data_types {
 	DT_DISP_BRIGHT,
 	DT_DOCK,
 	DT_PROX,
+	DT_COVER,
 	DT_FLAT_UP,
 	DT_FLAT_DOWN,
 	DT_STOWED,
@@ -335,6 +337,8 @@ struct stm_response {
 
 #define DOCK_DATA                       0x3F
 
+#define COVER_DATA                      0x40
+
 #define TEMPERATURE_DATA                0x41
 
 #define GYRO_X                          0x43
@@ -445,6 +449,7 @@ struct stm_response {
 
 #define DOCK_STATE	0
 #define PROX_DISTANCE	0
+#define COVER_STATE	0
 #define TOUCH_REASON	1
 #define FLAT_UP		0
 #define FLAT_DOWN	0
