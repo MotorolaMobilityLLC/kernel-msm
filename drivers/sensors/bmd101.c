@@ -57,44 +57,13 @@ static struct sensors_classdev bmd101_cdev = {
 	.version = 1,
 	.enabled = 0,
 	.sensors_enable = NULL,
+	.status = 0,
 };
 struct bmd101_data {
 	struct sensors_classdev cdev;
 	struct workqueue_struct *bmd101_wq;
-	int status;
 };
 struct bmd101_data *sensor_data;
-
-//ASUS_BSP +++ Maggie_Lee "Support BMMI"
-static ssize_t bmd101_show_status(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", sensor_data->status);
-}
-
-static ssize_t bmd101_store_status(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long val;
-
-	sensor_debug(DEBUG_VERBOSE, "[BMD101] %s: (%s)\n", __func__, buf);
-	
-	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 1))
-		return -EINVAL;
-	
-	sensor_data->status = val;
-
-	return val;
-}
-static DEVICE_ATTR(status, S_IRUGO|S_IWUSR|S_IWGRP, bmd101_show_status, bmd101_store_status);
-//ASUS_BSP +++ Maggie_Lee "Support BMMI"
-
-static struct attribute *bmd101_attributes[] = {
-	&dev_attr_status.attr,
-	NULL
-};
-
-static struct attribute_group bmd101_attribute_group = {
-	.attrs = bmd101_attributes
-};
 
 static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int enable)
 {
@@ -202,19 +171,12 @@ static int bmd101_probe(struct platform_device *pdev)
 		printk(KERN_ERR "%s: failed to allocate bmd101_data\n", __func__);
 		return -ENOMEM;
 	}
-	sensor_data->status = 0;
 	sensor_data->cdev = bmd101_cdev;
 	sensor_data->cdev.sensors_enable = bmd101_enable_set;
 	ret = sensors_classdev_register(&pdev->dev, &sensor_data->cdev);
 	if (ret) {
 		pr_err("[BMD101] class device create failed: %d\n", ret);
 		goto classdev_register_fail;
-	}
-
-	ret = sysfs_create_group(&pdev->dev.kobj, &bmd101_attribute_group);
-	if (ret) {
-		pr_err("[BMD101] sysfs create failed: %d\n", ret);
-		goto create_sysfs_fail;
 	}
 
 	sensor_data->bmd101_wq = create_singlethread_workqueue("bmd101_wq");
@@ -250,8 +212,6 @@ static int bmd101_probe(struct platform_device *pdev)
 	regulator_get_fail:
 	destroy_workqueue(sensor_data->bmd101_wq);
 	create_workqueue_fail:
-	sysfs_remove_group(&pdev->dev.kobj, &bmd101_attribute_group);
-	create_sysfs_fail:
 	sensors_classdev_unregister(&sensor_data->cdev);
 	classdev_register_fail:
 	kfree(sensor_data);

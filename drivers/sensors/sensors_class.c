@@ -105,6 +105,30 @@ static ssize_t sensors_fifo_max_show(struct device *dev,
 			sensors_cdev->fifo_max_event_count);
 }
 
+//ASUS_BSP +++ Maggie_Lee "Add ATD interface"
+static ssize_t sensors_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sensors_classdev *sensors_cdev = dev_get_drvdata(dev);
+	return snprintf(buf, PAGE_SIZE, "%d\n", sensors_cdev->status);
+}
+
+static ssize_t sensors_status_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct sensors_classdev *sensors_cdev = dev_get_drvdata(dev);
+	ssize_t ret = -EINVAL;
+	unsigned long data = 0;
+
+	ret = kstrtoul(buf, 10, &data);
+	if (ret)
+		return ret;
+
+	sensors_cdev->status = data;
+	return size;
+}
+//ASUS_BSP --- Maggie_Lee "Add ATD interface"
+
 static ssize_t sensors_enable_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -191,6 +215,9 @@ static struct device_attribute sensors_class_attrs[] = {
 	__ATTR(fifo_max_event_count, 0444, sensors_fifo_max_show, NULL),
 	__ATTR(enable, 0664, sensors_enable_show, sensors_enable_store),
 	__ATTR(poll_delay, 0664, sensors_delay_show, sensors_delay_store),
+	//ASUS_BSP +++ Maggie_Lee "Add ATD interface"status
+	__ATTR(status, 0664, sensors_status_show, sensors_status_store),
+	//ASUS_BSP --- Maggie_Lee "Add ATD interface"
 	__ATTR_NULL,
 };
 

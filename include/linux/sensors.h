@@ -91,6 +91,7 @@ struct sensors_classdev {
 	int			fifo_max_event_count;
 	unsigned int		enabled;
 	unsigned int		delay_msec;
+	int			status;					//ASUS_BSP +++ Maggie_Lee "Add ATD interface"
 	/* enable and disable the sensor handle*/
 	int	(*sensors_enable)(struct sensors_classdev *sensors_cdev,
 					unsigned int enabled);
