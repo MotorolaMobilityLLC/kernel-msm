@@ -1833,13 +1833,10 @@ static int florida_codec_probe(struct snd_soc_codec *codec)
 	}
 
 	ret = irq_set_irq_wake(arizona->irq, 1);
-	if (ret) {
+	if (ret)
 		dev_err(arizona->dev,
 			"Failed to set DSP IRQ to wake source: %d\n",
 			ret);
-		arizona_free_irq(arizona, ARIZONA_IRQ_DSP_IRQ1, priv);
-		return ret;
-	}
 
 	mutex_lock(&codec->card->dapm_mutex);
 	snd_soc_dapm_enable_pin(&codec->dapm, "DRC2 Signal Activity");
