@@ -309,6 +309,7 @@ static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
 		pstore_annotate("\n");
 	}
 
+	pstore_annotate(linux_banner);
 	EMIT_BOOTINFO_LASTKMSG(buf, "SERIAL", "0x%llx", serial);
 	EMIT_BOOTINFO_LASTKMSG(buf, "HW_REV", "0x%04x", hwrev);
 	EMIT_BOOTINFO_LASTKMSG(buf, "POWERUPREASON", "0x%08x", powerup_reason);
