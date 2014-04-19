@@ -1705,13 +1705,42 @@ VOS_STATUS wlan_hdd_validate_operation_channel(hdd_adapter_t *pAdapter,int chann
             }
          }
 
-        if (indx >= num_ch)
-        {
-            hddLog(VOS_TRACE_LEVEL_ERROR,
-                "%s: Invalid Channel [%d]", __func__, channel);
-            return VOS_STATUS_E_FAILURE;
-        }
+         if (indx >= num_ch)
+         {
+             if (WLAN_HDD_P2P_GO == pAdapter->device_mode)
+             {
+                 eCsrBand band;
+                 unsigned int freq;
+
+                 sme_GetFreqBand(hHal, &band);
+
+                 if (eCSR_BAND_5G == band)
+                 {
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,38))
+                     if (channel <= ARRAY_SIZE(hdd_channels_2_4_GHZ))
+                     {
+                         freq = ieee80211_channel_to_frequency(channel,
+                                                          IEEE80211_BAND_2GHZ);
+                     }
+                     else
+                     {
+                         freq = ieee80211_channel_to_frequency(channel,
+                                                          IEEE80211_BAND_5GHZ);
+                     }
+#else
+                     freq = ieee80211_channel_to_frequency(channel);
+#endif
+                     if(WLAN_HDD_IS_SOCIAL_CHANNEL(freq))
+                         return VOS_STATUS_SUCCESS;
+                 }
+             }
+
+             hddLog(VOS_TRACE_LEVEL_ERROR,
+                    "%s: Invalid Channel [%d]", __func__, channel);
+             return VOS_STATUS_E_FAILURE;
+         }
     }
+
     return VOS_STATUS_SUCCESS;
 
 }
@@ -2200,7 +2229,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     {
         pConfig->SapHw_mode = eSAP_DOT11_MODE_11ac;
 
-        /* Disable VHT support in 2.4 GHz band */
+        /* Disable VHT support in 2.4 GHz and */
         if (pConfig->channel <= 14 &&
             (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->enableVhtFor24GHzBand == FALSE)
         {
