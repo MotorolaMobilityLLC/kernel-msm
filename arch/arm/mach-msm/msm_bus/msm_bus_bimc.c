@@ -17,6 +17,7 @@
 #include <mach/msm_bus_board.h>
 #include "msm_bus_core.h"
 #include "msm_bus_bimc.h"
+#include <mach/trace_msm_bus.h>
 
 enum msm_bus_bimc_slave_block {
 	SLAVE_BLOCK_RESERVED = 0,
@@ -1622,11 +1623,11 @@ static void set_qos_bw_regs(void __iomem *baddr, uint32_t mas_index,
 		(val2 & M_BKE_THL_THRESH_BMSK)), M_BKE_THL_ADDR(baddr,
 		mas_index));
 
-	/* Set BKE enable to the value it was */
+	/* Set BKE enable to the value it was
 	reg_val = readl_relaxed(M_BKE_EN_ADDR(baddr, mas_index)) &
 		M_BKE_EN_RMSK;
 	writel_relaxed(((reg_val & ~(M_BKE_EN_EN_BMSK)) | (bke_reg_val &
-		M_BKE_EN_EN_BMSK)), M_BKE_EN_ADDR(baddr, mas_index));
+		M_BKE_EN_EN_BMSK)), M_BKE_EN_ADDR(baddr, mas_index));*/
 	/* Ensure that all bandwidth register writes have completed
 	 * before returning
 	 */
@@ -1853,18 +1854,15 @@ static void bimc_set_static_qos_bw(struct msm_bus_bimc_info *binfo,
 	/* Grant period in clock cycles
 	 * Grant period from bandwidth structure
 	 * is in nano seconds, QoS freq is in KHz.
-	 * Divide by 1000 to get clock cycles.
-	 */
+	 * Divide by 1000 to get clock cycles */
 	gp = (binfo->qos_freq * qbw->gp) / (1000 * NSEC_PER_USEC);
 
 	/* Grant count = BW in MBps * Grant period
-	 * in micro seconds
-	 */
+	 * in micro seconds */
 	gc = bw_mbps * (qbw->gp / NSEC_PER_USEC);
 
 	/* Medium threshold = -((Medium Threshold percentage *
-	 * Grant count) / 100)
-	 */
+	 * Grant count) / 100) */
 	thm = -((qbw->thmp * gc) / 100);
 	qbw->thm = thm;
 
@@ -1875,6 +1873,7 @@ static void bimc_set_static_qos_bw(struct msm_bus_bimc_info *binfo,
 	MSM_BUS_DBG("%s: BKE parameters: gp %d, gc %d, thm %d thl %d thh %d",
 			__func__, gp, gc, thm, thl, thh);
 
+	trace_bus_bke_params(gc, gp, thl, thm, thl);
 	set_qos_bw_regs(binfo->base, mport, thh, thm, thl, gp, gc);
 }
 
@@ -1994,7 +1993,11 @@ static void msm_bus_bimc_update_bw(struct msm_bus_inode_info *hop,
 			 * If it isn't, then set QOS Bandwidth.
 			 * Also if dual-conf is set, don't program bw regs.
 			 **/
-			if (!info->node_info->dual_conf)
+			if (!info->node_info->dual_conf &&
+				((info->node_info->mode ==
+					BIMC_QOS_MODE_LIMITER) ||
+				(info->node_info->mode ==
+					BIMC_QOS_MODE_REGULATOR)))
 				msm_bus_bimc_set_qos_bw(binfo,
 					info->node_info->qport[i], &qbw);
 		}
@@ -2036,6 +2039,61 @@ static int msm_bus_bimc_commit(struct msm_bus_fabric_registration
 	return 0;
 }
 
+static void msm_bus_bimc_config_limiter(
+	struct msm_bus_fabric_registration *fab_pdata,
+	struct msm_bus_inode_info *info)
+{
+	struct msm_bus_bimc_info *binfo;
+	int mode, i, ports;
+
+	binfo = (struct msm_bus_bimc_info *)fab_pdata->hw_data;
+	ports = info->node_info->num_mports;
+
+	if (!info->node_info->qport) {
+		MSM_BUS_DBG("No QoS Ports to init\n");
+		return;
+	}
+
+	if (info->cur_lim_bw)
+		mode = BIMC_QOS_MODE_LIMITER;
+	else
+		mode = info->node_info->mode;
+
+	switch (mode) {
+	case BIMC_QOS_MODE_BYPASS:
+	case BIMC_QOS_MODE_FIXED:
+		for (i = 0; i < ports; i++)
+			bke_switch(binfo->base, info->node_info->qport[i],
+				BKE_OFF, mode);
+		break;
+	case BIMC_QOS_MODE_REGULATOR:
+	case BIMC_QOS_MODE_LIMITER:
+		if (info->cur_lim_bw != info->cur_prg_bw) {
+			MSM_BUS_DBG("Enabled BKE throttling node %d to %llu\n",
+					info->node_info->id, info->cur_lim_bw);
+			trace_bus_bimc_config_limiter(info->node_info->id,
+					info->cur_lim_bw);
+			for (i = 0; i < ports; i++) {
+				/* If not in fixed mode, update bandwidth */
+				struct msm_bus_bimc_qos_bw qbw;
+
+				qbw.ws = info->node_info->ws;
+				qbw.bw = info->cur_lim_bw;
+				qbw.gp = info->node_info->bimc_gp;
+				qbw.thmp = info->node_info->bimc_thmp;
+				bimc_set_static_qos_bw(binfo,
+					info->node_info->qport[i], &qbw);
+				bke_switch(binfo->base,
+					info->node_info->qport[i],
+					BKE_ON, mode);
+				info->cur_prg_bw = qbw.bw;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+}
 
 static void bimc_init_mas_reg(struct msm_bus_bimc_info *binfo,
 	struct msm_bus_inode_info *info,
@@ -2088,6 +2146,33 @@ static void bimc_init_mas_reg(struct msm_bus_bimc_info *binfo,
 	}
 }
 
+static void init_health_regs(struct msm_bus_bimc_info *binfo,
+					struct msm_bus_inode_info *info,
+					struct msm_bus_bimc_qos_mode *qmode,
+					int mode)
+{
+	int i;
+
+	if (mode == BIMC_QOS_MODE_LIMITER) {
+		qmode->rl.qhealth[0].limit_commands = 1;
+		qmode->rl.qhealth[1].limit_commands = 0;
+		qmode->rl.qhealth[2].limit_commands = 0;
+		qmode->rl.qhealth[3].limit_commands = 0;
+
+		if (!info->node_info->qport) {
+			MSM_BUS_DBG("No QoS Ports to init\n");
+			return;
+		}
+
+		for (i = 0; i < info->node_info->num_mports; i++) {
+			/* If not in bypass mode, update priority */
+			if (mode != BIMC_QOS_MODE_BYPASS)
+				msm_bus_bimc_set_qos_prio(binfo,
+				info->node_info->qport[i], mode, qmode);
+		}
+	}
+}
+
 
 static int msm_bus_bimc_mas_init(struct msm_bus_bimc_info *binfo,
 	struct msm_bus_inode_info *info)
@@ -2107,11 +2192,11 @@ static int msm_bus_bimc_mas_init(struct msm_bus_bimc_info *binfo,
 	 * If the master supports dual configuration,
 	 * configure registers for both modes
 	 */
-	if (info->node_info->dual_conf) {
+	if (info->node_info->dual_conf)
 		bimc_init_mas_reg(binfo, info, qmode,
 			info->node_info->mode_thresh);
-		info->node_info->cur_lim_bw = 0;
-	}
+	else if (info->node_info->nr_lim)
+		init_health_regs(binfo, info, qmode, BIMC_QOS_MODE_LIMITER);
 
 	bimc_init_mas_reg(binfo, info, qmode, info->node_info->mode);
 	return 0;
@@ -2154,6 +2239,7 @@ int msm_bus_bimc_hw_init(struct msm_bus_fabric_registration *pdata,
 	hw_algo->port_halt = msm_bus_bimc_port_halt;
 	hw_algo->port_unhalt = msm_bus_bimc_port_unhalt;
 	hw_algo->config_master = msm_bus_bimc_config_master;
+	hw_algo->config_limiter = msm_bus_bimc_config_limiter;
 	/* BIMC slaves are shared. Slave registers are set through RPM */
 	if (!pdata->ahb)
 		pdata->rpm_enabled = 1;
