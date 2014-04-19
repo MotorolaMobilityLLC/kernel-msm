@@ -177,7 +177,6 @@
 #define CHGWDDOG_IRQ			BIT(2)
 #define VBAT_DET_HI_IRQ			BIT(1)
 #define VBAT_DET_LOW_IRQ		BIT(0)
-#define CHG_BMS_SIGN_BIT		BIT(7)
 
 /* smbb_buck_interrupts */
 #define VDD_LOOP_IRQ			BIT(6)
@@ -4038,9 +4037,7 @@ static void update_heartbeat(struct work_struct *work)
 	struct qpnp_chg_chip *chip = container_of(dwork,
 				struct qpnp_chg_chip, update_heartbeat_work);
 	int temp = 0;
-	int rc = 0;
-	u8 bat_chg_sts;
-	union power_supply_propval ret = {0,};
+	int usb_present, host_mode;
 
 	/*
 	 * In pm8110/pm8226 there is automated BTM which takes care of
@@ -4053,35 +4050,14 @@ static void update_heartbeat(struct work_struct *work)
 		       temp);
 		power_supply_changed(&chip->batt_psy);
 	}
-
-	/* CHG_BMS_SIGN_BIT is BMS_SIGN bit, 0: discharging; 1: charging
-	 * A work around for, charging ICON getting displayed
-	 * even after charger removal, when PMIC fails to trigger irq's
-	 * for some reason.
-	 */
-	if (chip->usb_psy)
-		chip->usb_psy->get_property(chip->usb_psy,
-			POWER_SUPPLY_PROP_ONLINE, &ret);
-
-	rc = qpnp_chg_read(chip, &bat_chg_sts,
-		(chip->chgr_base + CHGR_IBAT_STS), 1);
-	if (rc)
-		pr_err("failed to read CHG sts %d\n", rc);
-	else if (!(bat_chg_sts & CHG_BMS_SIGN_BIT) &&
-			ret.intval) {
-		if (qpnp_chg_is_usb_chg_plugged_in(chip))
-			pr_err("USB valid bit is set 1\n");
-		else {
-			/* USB accessory is not connected and USB PSY is online
-			 * hence trigger USBIN-valid Irq handler to do the
-			 * appropriate changes
-			 */
-			pr_err("USB valid bit is set 0");
-			qpnp_chg_usb_usbin_valid_irq_handler(
-				chip->usbin_valid.irq, chip);
-		}
+	usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
+	host_mode = qpnp_chg_is_otg_en_set(chip);
+	/* Handle Missed Disconnects in the heartbeat */
+	if (chip->usb_present && !usb_present) {
+		pr_err("Missed USB_IN irq, hostmode = %d\n", host_mode);
+		qpnp_chg_usb_usbin_valid_irq_handler(chip->usbin_valid.irq,
+							chip);
 	}
-
 	schedule_delayed_work(&chip->update_heartbeat_work,
 		msecs_to_jiffies(UPDATE_HEARTBEAT_MS));
 }
