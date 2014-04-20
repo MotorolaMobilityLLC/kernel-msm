@@ -635,6 +635,7 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 		return 0;
 
 	pr_debug("mdss_fb suspend index=%d\n", mfd->index);
+	mfd->panel_info->is_suspending = true;
 
 	mdss_fb_pan_idle(mfd);
 	ret = mdss_fb_send_panel_event(mfd, MDSS_EVENT_SUSPEND, NULL);
@@ -691,6 +692,7 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 	}
 	mfd->is_power_setting = false;
 	complete_all(&mfd->power_set_comp);
+	mfd->panel_info->is_suspending = false;
 
 	return ret;
 }
@@ -1040,7 +1042,7 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 		return -ENODEV;
 	}
 
-	if(androidboot_is_recovery || androidboot_mode_charger)
+	if (androidboot_is_recovery || androidboot_mode_charger)
 		fbmem_pnode = of_parse_phandle(pdev->dev.of_node,
 			"linux,contiguous-region", 0);
 	if (!fbmem_pnode) {
