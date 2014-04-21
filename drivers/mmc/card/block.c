@@ -1227,6 +1227,7 @@ static int get_card_status(struct mmc_card *card, u32 *status, int retries)
 	return err;
 }
 
+#define ERR_BUS		4
 #define ERR_NOMEDIUM	3
 #define ERR_RETRY	2
 #define ERR_ABORT	1
@@ -1304,6 +1305,7 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 	struct mmc_blk_request *brq, int *ecc_err, int *gen_err)
 {
 	bool prev_cmd_status_valid = true;
+	bool crc_err = false;
 	u32 status, stop_status = 0;
 	int err, retry;
 
@@ -1321,6 +1323,8 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 			break;
 
 		prev_cmd_status_valid = false;
+		if (err == -EILSEQ)
+			crc_err = true;
 		pr_err("%s: error %d sending status command, %sing\n",
 		       req->rq_disk->disk_name, err, retry ? "retry" : "abort");
 	}
@@ -1330,6 +1334,8 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 		/* Check if the card is removed */
 		if (mmc_detect_card_removed(card->host))
 			return ERR_NOMEDIUM;
+		if (crc_err)
+			return ERR_BUS;
 		return ERR_ABORT;
 	}
 
@@ -1362,9 +1368,10 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 
 		/*
 		 * If the stop cmd also timed out, the card is probably
-		 * not present, so abort.  Other errors are bad news too.
+		 * not present, so abort.  Other errors are bad news too,
+		 * but if we saw a CRC error, don't abort quite yet.
 		 */
-		if (err)
+		if (err && !crc_err)
 			return ERR_ABORT;
 		if (stop_status & R1_CARD_ECC_FAILED)
 			*ecc_err = 1;
@@ -1405,6 +1412,36 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 		brq->stop.error = 0;
 	}
 	return ERR_CONTINUE;
+}
+
+static int mmc_blk_do_reset(struct mmc_blk_data *md, struct mmc_host *host)
+{
+	int err;
+
+	err = mmc_hw_reset(host);
+	if (err && err != -EOPNOTSUPP) {
+		/* We failed to reset so we need to abort the request */
+		pr_err("%s: %s: failed to reset %d\n", mmc_hostname(host),
+				__func__, err);
+		return -ENODEV;
+	}
+	/* Ensure we switch back to the correct partition */
+	if (host->card) {
+		struct mmc_blk_data *main_md = mmc_get_drvdata(host->card);
+		int part_err;
+
+		main_md->part_curr = main_md->part_type;
+		part_err = mmc_blk_part_switch(host->card, md);
+		if (part_err) {
+			/*
+			 * We have failed to get back into the correct
+			 * partition, so we need to abort the whole request.
+			 */
+			return -ENODEV;
+		}
+	}
+
+	return 0;
 }
 
 /*
@@ -1472,28 +1509,9 @@ static int mmc_blk_reset(struct mmc_blk_data *md, struct mmc_host *host,
 	}
 
 	md->reset_done |= type;
-	err = mmc_hw_reset(host);
-	if (err && err != -EOPNOTSUPP) {
-		/* We failed to reset so we need to abort the request */
-		pr_err("%s: %s: failed to reset %d\n", mmc_hostname(host),
-				__func__, err);
-		return -ENODEV;
-	}
-	/* Ensure we switch back to the correct partition */
-	if (host->card) {
-		struct mmc_blk_data *main_md = mmc_get_drvdata(host->card);
-		int part_err;
-
-		main_md->part_curr = main_md->part_type;
-		part_err = mmc_blk_part_switch(host->card, md);
-		if (part_err) {
-			/*
-			 * We have failed to get back into the correct
-			 * partition, so we need to abort the whole request.
-			 */
-			return -ENODEV;
-		}
-	}
+	err = mmc_blk_do_reset(md, host);
+	if (err != -ETIMEDOUT)	/* ignore reset timeouts */
+		result = err;
 
 	return result;
 }
@@ -1529,6 +1547,21 @@ int mmc_access_rpmb(struct mmc_queue *mq)
 		return true;
 
 	return false;
+}
+
+static int mmc_blk_throttle_back(struct mmc_blk_data *md, struct mmc_host *host)
+{
+	int err;
+
+	/* Throttle removable cards only. */
+	if (host->caps & MMC_CAP_NONREMOVABLE)
+		return -EEXIST;
+
+	err = mmc_throttle_back(host);
+	if (!err)
+		err = mmc_blk_do_reset(md, host);
+
+	return err;
 }
 
 static int mmc_blk_issue_discard_rq(struct mmc_queue *mq, struct request *req)
@@ -1741,6 +1774,8 @@ static int mmc_blk_err_check(struct mmc_card *card,
 			return MMC_BLK_ABORT;
 		case ERR_NOMEDIUM:
 			return MMC_BLK_NOMEDIUM;
+		case ERR_BUS:
+			return MMC_BLK_BUS_ERR;
 		case ERR_CONTINUE:
 			break;
 		}
@@ -1825,6 +1860,8 @@ static int mmc_blk_err_check(struct mmc_card *card,
 		if (rq_data_dir(req) == READ) {
 			if (ecc_err)
 				return MMC_BLK_ECC_ERR;
+			if (brq->data.error == -EILSEQ)
+				return MMC_BLK_BUS_ERR;
 			return MMC_BLK_DATA_ERR;
 		} else {
 			return MMC_BLK_CMD_ERR;
@@ -2873,6 +2910,15 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 				break;
 			goto cmd_abort;
 			/* Fall through */
+		case MMC_BLK_BUS_ERR:
+			/*
+			 * If this was a single-block read, try a slower bus
+			 * speed.
+			 */
+			if (card->crc_errors >= MMC_THROTTLE_BACK_THRESHOLD &&
+			    mmc_blk_throttle_back(md, card->host) >= 0)
+				break;
+			/* Fall through */
 		case MMC_BLK_ECC_ERR:
 			if (brq->data.blocks > 1) {
 				/* Redo read one sector at a time */
@@ -2882,6 +2928,13 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 				break;
 			}
 			/*
+			 * Some cards will start throwing constant ECC errors,
+			 * so make sure we track these and reject them.
+			 */
+			if (reset == 0 &&
+			    mmc_blk_reset(md, card->host, type, status) >= 0)
+				break;
+			/*
 			 * After an error, we redo I/O one sector at a
 			 * time, so we only reach here after trying to
 			 * read a single sector.
@@ -2890,9 +2943,6 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 						brq->data.blksz);
 			if (!ret)
 				goto start_new_req;
-			/* Make sure that ECC errors also get a reset */
-			if (mmc_blk_reset(md, card->host, type, status) < 0)
-				goto cmd_abort;
 			break;
 		case MMC_BLK_NOMEDIUM:
 			goto cmd_abort;
