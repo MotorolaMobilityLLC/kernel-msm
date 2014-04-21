@@ -2819,9 +2819,20 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		(mfd->panel_info->type != DTV_PANEL)) {
 		rc = mdss_mdp_overlay_start(mfd);
 		if (!IS_ERR_VALUE(rc) &&
-			(mfd->panel_info->type != WRITEBACK_PANEL) &&
-			!mfd->quickdraw_in_progress)
-			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
+			(mfd->panel_info->type != WRITEBACK_PANEL)) {
+			if (mfd->quickdraw_in_progress) {
+				/* In quickdraw, only turn the panel on, don't
+				   kickoff so that we preserve the panel's
+				   contents */
+				ctl = mfd_to_ctl(mfd);
+				if (ctl->panel_on_locked) {
+					mutex_lock(&ctl->lock);
+					ctl->panel_on_locked(ctl);
+					mutex_unlock(&ctl->lock);
+				}
+			} else
+				rc = mdss_mdp_overlay_kickoff(mfd, NULL);
+		}
 	} else {
 		rc = mdss_mdp_ctl_setup(mdp5_data->ctl);
 		if (rc)

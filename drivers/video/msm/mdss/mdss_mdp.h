@@ -214,6 +214,7 @@ struct mdss_mdp_ctl {
 
 	struct blocking_notifier_head notifier_head;
 	void (*ctx_dump_fnc) (struct mdss_mdp_ctl *ctl);
+	int (*panel_on_locked) (struct mdss_mdp_ctl *ctl);
 
 	void *priv_data;
 	u32 wb_type;

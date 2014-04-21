@@ -549,6 +549,32 @@ static int mdss_mdp_cmd_set_partial_roi(struct mdss_mdp_ctl *ctl)
 	return rc;
 }
 
+int mdss_mdp_cmd_panel_on_locked(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_cmd_ctx *ctx;
+	int rc = 0;
+
+	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
+	if (!ctx) {
+		pr_err("invalid ctx\n");
+		return -ENODEV;
+	}
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
+	if (ctx->panel_on == 0) {
+		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNBLANK, NULL);
+		WARN(rc, "intf %d unblank error (%d)\n", ctl->intf_num, rc);
+
+		ctx->panel_on++;
+
+		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
+		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
+	}
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+
+	return rc;
+}
+
 int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
@@ -561,15 +587,7 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 
-	if (ctx->panel_on == 0) {
-		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNBLANK, NULL);
-		WARN(rc, "intf %d unblank error (%d)\n", ctl->intf_num, rc);
-
-		ctx->panel_on++;
-
-		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
-		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
-	}
+	rc = mdss_mdp_cmd_panel_on_locked(ctl);
 
 	mdss_mdp_cmd_set_partial_roi(ctl);
 
@@ -673,6 +691,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	ctl->wait_pingpong = NULL;
 	ctl->add_vsync_handler = NULL;
 	ctl->remove_vsync_handler = NULL;
+	ctl->panel_on_locked = NULL;
 
 	pr_debug("%s:-\n", __func__);
 
@@ -760,6 +779,8 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
 	ctl->ctx_dump_fnc = mdss_mdp_cmd_dump_ctx;
+	ctl->panel_on_locked = mdss_mdp_cmd_panel_on_locked;
+
 	pr_debug("%s:-\n", __func__);
 
 	return 0;

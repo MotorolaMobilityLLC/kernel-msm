@@ -217,21 +217,22 @@ static int mdss_quickdraw_prepare(void *data, unsigned char panel_state)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)(data);
 	struct mdss_mdp_ctl *ctl = NULL;
-	int ret = 0;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (panel_state: %d)\n", __func__, panel_state);
 
 	mfd->quickdraw_panel_state = panel_state;
 	mfd->quickdraw_in_progress = 1;
+	mfd->quickdraw_esd_recovered = 0;
 
-	ret = mdss_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi, true);
+	mdss_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi, true);
 
 	ctl = mfd_to_ctl(mfd);
 	memset(&ctl->roi, 0, sizeof(ctl->roi));
 
-	pr_debug("%s- (ret: %d)\n", __func__, ret);
+	pr_debug("%s- (quickdraw_esd_recovered: %d)\n", __func__,
+		mfd->quickdraw_esd_recovered);
 
-	return ret;
+	return mfd->quickdraw_esd_recovered;
 }
 
 static int mdss_quickdraw_execute(void *data,
