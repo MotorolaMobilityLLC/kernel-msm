@@ -19,9 +19,6 @@
 		qcom,rst-gpio = <&msmgpio 25 0>;
 		qcom,esd-det-gpio = <&msmgpio 62 0>;
 		qcom,te-gpio = <&msmgpio 24 0>;
-		qcom,disp_sel-gpio = <&msmgpio 46 0>;
-		qcom,mipi_sel-gpio = <&msmgpio 56 0>;
-		qcom,en_on-gpio = <&msmgpio 60 0>;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-v-sync-continue-lines = <0x3c>;
 		qcom,mdss-dsi-te-v-sync-rd-ptr-irq-line = <0x2c>;
