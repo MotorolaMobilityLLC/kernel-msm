@@ -2682,6 +2682,15 @@ int mmc_hw_reset_check(struct mmc_host *host)
 }
 EXPORT_SYMBOL(mmc_hw_reset_check);
 
+int mmc_throttle_back(struct mmc_host *host)
+{
+	if (host->bus_ops->throttle_back)
+		return host->bus_ops->throttle_back(host);
+
+	return -ENOSYS;
+}
+EXPORT_SYMBOL(mmc_throttle_back);
+
 /**
  * mmc_reset_clk_scale_stats() - reset clock scaling statistics
  * @host: pointer to mmc host structure

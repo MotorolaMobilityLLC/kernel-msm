@@ -220,6 +220,7 @@ enum mmc_blk_status {
 	MMC_BLK_URGENT,
 	MMC_BLK_URGENT_DONE,
 	MMC_BLK_NO_REQ_TO_STOP,
+	MMC_BLK_BUS_ERR,
 };
 
 struct mmc_wr_pack_stats {
