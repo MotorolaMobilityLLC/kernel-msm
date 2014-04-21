@@ -716,21 +716,14 @@ static struct gpiomux_setting lcd_en_sus_cfg = {
 
 static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	{
-		.gpio = 96,			/* LCD RESET */
+		.gpio = 96,			/* DISPLAY V1 ENABLE */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
 		},
 	},
 	{
-		.gpio = 86,			/* BKLT ENABLE */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
-			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
-		},
-	},
-	{
-		.gpio = 137,			/* DISPLAY ENABLE */
+		.gpio = 86,			/* DISPLAY  RESET */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
