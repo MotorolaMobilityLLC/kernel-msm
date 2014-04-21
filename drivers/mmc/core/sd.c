@@ -692,6 +692,50 @@ out:
 	return err;
 }
 
+static int mmc_sd_throttle_back(struct mmc_host *host)
+{
+	struct sd_switch_caps *sw_caps;
+	char *speed = NULL;
+
+	if (!host->card)
+		return -ENODEV;
+
+	mmc_claim_host(host);
+
+	sw_caps = &host->card->sw_caps;
+	if (mmc_sd_card_uhs(host->card)) {
+		if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR104) {
+			sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR104;
+			speed = "DDR50";
+		} else if (sw_caps->sd3_bus_mode & SD_MODE_UHS_DDR50) {
+			/* Skip SDR50 if DDR50 fails. */
+			sw_caps->sd3_bus_mode &= ~(SD_MODE_UHS_DDR50 |
+						   SD_MODE_UHS_SDR50);
+			speed = "SDR25";
+		} else if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR25) {
+			sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR25;
+			speed = "SDR12";
+		}
+	} else if (sw_caps->hs_max_dtr > 0) {
+		/* Disable high speed for legacy cards */
+		sw_caps->hs_max_dtr = 0;
+		speed = "legacy";
+	}
+
+	mmc_release_host(host);
+
+	if (speed)
+		pr_warning("%s: throttle back to %s\n",
+				mmc_hostname(host), speed);
+	else {
+		pr_err("%s: unable to throttle back further\n",
+				mmc_hostname(host));
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /*
  * UHS-I specific initialization procedure
  */
@@ -1320,6 +1364,7 @@ static const struct mmc_bus_ops mmc_sd_ops = {
 	.alive = mmc_sd_alive,
 	.change_bus_speed = mmc_sd_change_bus_speed,
 	.shutdown = mmc_sd_suspend,
+	.throttle_back = mmc_sd_throttle_back,
 };
 
 static const struct mmc_bus_ops mmc_sd_ops_unsafe = {
@@ -1331,6 +1376,7 @@ static const struct mmc_bus_ops mmc_sd_ops_unsafe = {
 	.alive = mmc_sd_alive,
 	.change_bus_speed = mmc_sd_change_bus_speed,
 	.shutdown = mmc_sd_suspend,
+	.throttle_back = mmc_sd_throttle_back,
 };
 
 static void mmc_sd_attach_bus_ops(struct mmc_host *host)
