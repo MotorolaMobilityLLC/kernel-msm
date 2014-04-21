@@ -100,20 +100,36 @@ static int mdss_mdp_overlay_sd_ctrl(struct msm_fb_data_type *mfd,
 	return resp;
 }
 
+static struct mdss_mdp_pipe *__overlay_find_pipe(
+		struct msm_fb_data_type *mfd, u32 ndx)
+{
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	struct mdss_mdp_pipe *tmp, *pipe = NULL;
+
+	mutex_lock(&mdp5_data->list_lock);
+	list_for_each_entry(tmp, &mdp5_data->pipes_used, list) {
+		if (tmp->ndx == ndx) {
+			pipe = tmp;
+			break;
+		}
+	}
+	mutex_unlock(&mdp5_data->list_lock);
+
+	return pipe;
+}
+
 static int mdss_mdp_overlay_get(struct msm_fb_data_type *mfd,
 				struct mdp_overlay *req)
 {
 	struct mdss_mdp_pipe *pipe;
-	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
 
-	pipe = mdss_mdp_pipe_get(mdata, req->id);
-	if (IS_ERR_OR_NULL(pipe)) {
+	pipe = __overlay_find_pipe(mfd, req->id);
+	if (!pipe) {
 		pr_err("invalid pipe ndx=%x\n", req->id);
 		return pipe ? PTR_ERR(pipe) : -ENODEV;
 	}
 
 	*req = pipe->req_data;
-	mdss_mdp_pipe_unmap(pipe);
 
 	return 0;
 }
@@ -584,10 +600,17 @@ static int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
 		pipe->pid = current->tgid;
 		pipe->play_cnt = 0;
 	} else {
-		pipe = mdss_mdp_pipe_get(mdp5_data->mdata, req->id);
-		if (IS_ERR_OR_NULL(pipe)) {
+		pipe = __overlay_find_pipe(mfd, req->id);
+		if (!pipe) {
 			pr_err("invalid pipe ndx=%x\n", req->id);
-			return pipe ? PTR_ERR(pipe) : -ENODEV;
+			return -ENODEV;
+		}
+
+		ret = mdss_mdp_pipe_map(pipe);
+		if (IS_ERR_VALUE(ret)) {
+			pr_err("Unable to map used pipe%d ndx=%x\n",
+					pipe->num, pipe->ndx);
+			return ret;
 		}
 
 		if (is_vig_needed && (pipe->type != MDSS_MDP_PIPE_TYPE_VIG)) {
@@ -1533,10 +1556,17 @@ static int mdss_mdp_overlay_queue(struct msm_fb_data_type *mfd,
 	u32 flags;
 	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
 
-	pipe = mdss_mdp_pipe_get(mdata, req->id);
-	if (IS_ERR_OR_NULL(pipe)) {
+	pipe = __overlay_find_pipe(mfd, req->id);
+	if (!pipe) {
 		pr_err("pipe ndx=%x doesn't exist\n", req->id);
-		return pipe ? PTR_ERR(pipe) : -ENODEV;
+		return -ENODEV;
+	}
+
+	ret = mdss_mdp_pipe_map(pipe);
+	if (IS_ERR_VALUE(ret)) {
+		pr_err("Unable to map used pipe%d ndx=%x\n",
+				pipe->num, pipe->ndx);
+		return ret;
 	}
 
 	pr_debug("ov queue pnum=%d\n", pipe->num);
@@ -1594,8 +1624,13 @@ static void mdss_mdp_overlay_force_dma_cleanup(struct mdss_data_type *mdata)
 
 	for (i = 0; i < mdata->ndma_pipes; i++) {
 		pipe = mdata->dma_pipes + i;
-		if (atomic_read(&pipe->ref_cnt) && pipe->mfd)
-			mdss_mdp_overlay_force_cleanup(pipe->mfd);
+
+		if (!mdss_mdp_pipe_map(pipe)) {
+			struct msm_fb_data_type *mfd = pipe->mfd;
+			mdss_mdp_pipe_unmap(pipe);
+			if (mfd)
+				mdss_mdp_overlay_force_cleanup(mfd);
+		}
 	}
 }
 
@@ -1788,6 +1823,7 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd,
 		return;
 	}
 
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 	bpp = fbi->var.bits_per_pixel / 8;
 	offset = fbi->var.xoffset * bpp +
 		 fbi->var.yoffset * fbi->fix.line_length;
@@ -1822,6 +1858,7 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd,
 	if (is_mdss_iommu_attached()) {
 		if (!mfd->iova) {
 			pr_err("mfd iova is zero\n");
+			mdss_mdp_pipe_unmap(pipe);
 			goto attach_err;
 		}
 		buf->p[0].addr = mfd->iova;
@@ -1862,6 +1899,7 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd,
 	    (fbi->var.activate & FB_ACTIVATE_FORCE))
 		mfd->mdp.kickoff_fnc(mfd, NULL);
 
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 	return;
 
 attach_err:
@@ -1869,8 +1907,10 @@ attach_err:
 	mdss_mdp_overlay_unset(mfd, pipe->ndx);
 	if (pipe_ndx)
 		pipe_ndx[0] = INVALID_PIPE_INDEX;
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 	return;
 pan_display_error:
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 	mutex_unlock(&mdp5_data->ov_lock);
 }
 
@@ -3489,12 +3529,11 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 	mdp5_interface->get_sync_fnc = mdss_mdp_rotator_sync_pt_get;
 	mdp5_interface->splash_fnc = mdss_mdp_overlay_splash_image;
 
-	mdp5_data = kmalloc(sizeof(struct mdss_overlay_private), GFP_KERNEL);
+	mdp5_data = kzalloc(sizeof(struct mdss_overlay_private), GFP_KERNEL);
 	if (!mdp5_data) {
 		pr_err("fail to allocate mdp5 private data structure");
 		return -ENOMEM;
 	}
-	memset(mdp5_data, 0, sizeof(struct mdss_overlay_private));
 
 	INIT_LIST_HEAD(&mdp5_data->pipes_used);
 	INIT_LIST_HEAD(&mdp5_data->pipes_cleanup);
