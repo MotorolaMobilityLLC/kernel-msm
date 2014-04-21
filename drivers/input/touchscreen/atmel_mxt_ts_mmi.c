@@ -187,6 +187,7 @@ struct t9_range {
 #define MXT_T100_CTRL		0
 #define MXT_T100_CFG1		1
 #define MXT_T100_TCHAUX		3
+#define MXT_T100_NUMTCH		6
 #define MXT_T100_XRANGE		13
 #define MXT_T100_YRANGE		24
 
@@ -298,6 +299,7 @@ struct mxt_data {
 	struct regulator *reg_avdd;
 	char *fw_name;
 	char *cfg_name;
+	u8 *T100_data;
 
 	/* Cached parameters from object table */
 	u16 T5_address;
@@ -1934,7 +1936,49 @@ static void mxt_irq_enable(struct mxt_data *data, bool enable)
 
 static void mxt_sensor_one_touch(struct mxt_data *data, bool enable)
 {
-	dev_dbg(&data->client->dev, "TBD: config one touch: %d\n", enable);
+	struct mxt_object *object;
+	int error;
+	u8 *t100_data_ptr;
+
+	if (!data->T100_data) {
+		dev_dbg(&data->client->dev, "T100: data not available\n");
+		return;
+	}
+
+	object = mxt_get_object(data, MXT_TOUCH_MULTITOUCHSCREEN_T100);
+	if (!object)
+		return;
+
+	if (enable) {
+		t100_data_ptr = kmalloc(mxt_obj_size(object), GFP_KERNEL);
+		if (!t100_data_ptr) {
+			dev_err(&data->client->dev,
+				"T100: failed to allocate buffer\n");
+			return;
+		}
+
+		memcpy(t100_data_ptr, data->T100_data, mxt_obj_size(object));
+
+		/* make necessary changes here */
+		*(t100_data_ptr + MXT_T100_NUMTCH) = 1;
+		*(t100_data_ptr + MXT_T100_TCHAUX) &= ~(MXT_T100_TCHAUX_VECT |
+				MXT_T100_TCHAUX_AMPL | MXT_T100_TCHAUX_AREA);
+	} else
+		t100_data_ptr = data->T100_data;
+
+	error = __mxt_write_reg(data->client, object->start_address,
+				mxt_obj_size(object), t100_data_ptr);
+	if (error)
+		dev_warn(&data->client->dev,
+			"Failed to %s single-touch config\n",
+			enable ? "enable" : "disable");
+	else
+		dev_dbg(&data->client->dev,
+			"Successfully %s single-touch config\n",
+			enable ? "enabled" : "disabled");
+
+	if (t100_data_ptr != data->T100_data)
+		kfree(t100_data_ptr);
 }
 
 static void mxt_sensor_sleep(struct mxt_data *data)
@@ -2061,6 +2105,8 @@ static void mxt_free_object_table(struct mxt_data *data)
 	data->raw_info_block = NULL;
 	kfree(data->msg_buf);
 	data->msg_buf = NULL;
+	kfree(data->T100_data);
+	data->T100_data = NULL;
 
 	mxt_free_input_device(data);
 
@@ -2590,6 +2636,25 @@ static int mxt_read_t100_config(struct mxt_data *data)
 
 	dev_info(&client->dev,
 		 "T100 Touchscreen size X%uY%u\n", data->max_x, data->max_y);
+
+	/* T100 object size might change, thus free allocated buffer */
+	kfree(data->T100_data);
+
+	/* allocate memory to keep a copy of T100 */
+	data->T100_data = kzalloc(mxt_obj_size(object), GFP_KERNEL);
+	if (!data->T100_data)
+		dev_warn(&client->dev, "Cannot allocate T100 data buffer\n");
+	else {
+		error = __mxt_read_reg(client, object->start_address,
+				mxt_obj_size(object), data->T100_data);
+		if (error) {
+			dev_warn(&client->dev, "T100: failed to store data\n");
+			kfree(data->T100_data);
+			data->T100_data = NULL;
+		} else
+			dev_dbg(&client->dev, "T100: stored %d bytes\n",
+				mxt_obj_size(object));
+	}
 
 	return 0;
 }
@@ -3877,6 +3942,11 @@ static int mxt_parse_dt(struct mxt_data *data)
 					"atmel,suspend-method-lpm");
 	pr_info("using suspend method: %s\n", data->use_regulator ?
 					"reset" : "lpm");
+	data->one_touch_enabled = of_property_read_bool(np,
+					"atmel,one-touch-enabled");
+	if (data->one_touch_enabled)
+		pr_info("using single touch in suspend\n");
+
 	/* reset, irq gpio info */
 	pdata->gpio_irq = of_get_gpio(np, 0);
 	pdata->gpio_reset = of_get_gpio(np, 1);
