@@ -69,6 +69,7 @@ static struct input_dev *input_dev;
 struct IT7260_ts_data *gl_ts;
 static int Calibration__success_flag = 0;
 static int Upgrade__success_flag = 0; 
+struct device *class_dev = NULL;
 
 #ifdef DEBUG
 #define TS_DEBUG(fmt,args...)  printk( KERN_DEBUG "[it7260_i2c]: " fmt, ## args)
@@ -588,6 +589,48 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 			//	ret,pucPoint[0],pucPoint[1],pucPoint[2],
 			//	pucPoint[3],pucPoint[4],pucPoint[5],pucPoint[6],pucPoint[7],pucPoint[8],
 			//	pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
+// ASUS_BSP +++ Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
+// Sample code for magic key detection
+#if 0
+{
+	static unsigned long time_start_check = 0;
+	static unsigned int match_id = 0;
+	//static unsigned char hack_code[] = {0x9,0xb,0xa,0xb,0xa,0xb,0xa,0x0};
+	static unsigned char hack_code[] = {0x9,0x0,0x9,0x0,0x9,0x0,0x9,0x0,0xFF};
+
+	if (time_start_check && jiffies > time_start_check + 5 * HZ){
+		printk("TIMEOUT!!!!\n");
+		time_start_check = 0;
+		match_id = 0;
+	}
+
+
+	if (pucPoint[0] == hack_code[match_id]){
+		match_id ++;
+		if (match_id == 1){
+			time_start_check = jiffies;
+		}
+		if (hack_code[match_id] == 0xFF){
+			printk("MAGIC KEY DETECTED !!!!\n");
+			{
+				kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+			}
+			match_id = 0;
+			return; // We skip this event.
+		}
+	}else if (match_id > 1 && pucPoint[0] == hack_code[match_id-1])
+	{
+		// stay...
+	}else if (pucPoint[0] == 8){
+		// skip.
+	}else{
+		match_id = 0;
+	}
+	//if (match_id > 0)
+		printk("Match %x,%d\n",pucPoint[0],match_id);
+}
+#endif
+// ASUS_BSP --- Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
 			if (ret) {
                 // gesture or button
                 if (pucPoint[0] & 0xF0) {
@@ -742,7 +785,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 
 					pressure_point = pucPoint[9] & 0x0f;
 
-					printk("=Read_Point2 x=%d y=%d p=%d=\n",xraw,yraw,pressure_point);
+					//printk("=Read_Point2 x=%d y=%d p=%d=\n",xraw,yraw,pressure_point);
 					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 1);
 					//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, pressure_point);
 					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 1);
@@ -752,7 +795,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 					x[1] = xraw;
 					y[1] = yraw;
 					finger[1] = 1;
-					printk("input Read_Point2 x=%d y=%d p=%d=\n",xraw,yraw,pressure_point);
+					//printk("input Read_Point2 x=%d y=%d p=%d=\n",xraw,yraw,pressure_point);
 				} else {
 					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
 					//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, pressure_point);
@@ -1267,7 +1310,6 @@ static int __init IT7260_ts_init(void) {
 	dev_t dev = MKDEV(ite7260_major, 0);
 	int alloc_ret = 0;
 	int cdev_err = 0;
-	struct device *class_dev = NULL;
 
 	DBG();
 
