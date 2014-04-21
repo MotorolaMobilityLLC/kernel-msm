@@ -146,7 +146,7 @@
 			ssp-ap-rev = <1>;
 
 			ssp_vreg-supply = <&pm8226_l6>;
-			ssp_hrm_verg-supply = <&pm8226_l27>;
+			ssp_hrm_vreg-supply = <&pm8226_l27>;
 			ssp_accel_vreg-name = "max77836_ldo2";
 			ssp_accel_vreg-level = <2850000>;
 		};
