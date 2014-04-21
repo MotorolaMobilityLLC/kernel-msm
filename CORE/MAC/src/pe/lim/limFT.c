@@ -849,7 +849,11 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
                cbMode && pBeaconStruct->HTCaps.supportedChannelWidthSet;
     pftSessionEntry->htRecommendedTxWidthSet =
                pftSessionEntry->htSupportedChannelWidthSet;
-
+    if ((pftSessionEntry->limRFBand == SIR_BAND_2_4_GHZ)&&
+       (pftSessionEntry->htSupportedChannelWidthSet == 1))
+    {
+       limInitOBSSScanParams(pMac, pftSessionEntry);
+    }
     vos_mem_free(pBeaconStruct);
     return pftSessionEntry;
 }

@@ -1570,7 +1570,10 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
             hdd_wmm_init( pHddCtx, hddWmmDscpToUpMapInfra );
         }
 
-        WLANTL_AssocFailed(pRoamInfo->staId);
+        if (pRoamInfo)
+        {
+            WLANTL_AssocFailed(pRoamInfo->staId);
+        }
 
         netif_tx_disable(dev);
         netif_carrier_off(dev);
