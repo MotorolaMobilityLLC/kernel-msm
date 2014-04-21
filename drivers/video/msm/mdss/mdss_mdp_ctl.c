@@ -957,6 +957,7 @@ static int mdss_mdp_ctl_free(struct mdss_mdp_ctl *ctl)
 	ctl->remove_vsync_handler = NULL;
 	ctl->panel_data = NULL;
 	ctl->config_fps_fnc = NULL;
+	ctl->panel_on_locked = NULL;
 	mutex_unlock(&mdss_mdp_ctl_lock);
 
 	return 0;
@@ -1375,6 +1376,7 @@ struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 	ctl->panel_data = pdata;
 	ctl->is_video_mode = false;
 	ctl->no_solid_fill = false;
+	ctl->panel_on_locked = NULL;
 
 	switch (pdata->panel_info.type) {
 	case EDP_PANEL:
