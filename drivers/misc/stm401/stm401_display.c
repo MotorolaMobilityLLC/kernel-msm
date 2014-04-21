@@ -192,34 +192,33 @@ int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 
 void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401)
 {
+	struct stm401_quickpeek_message *entry, *entry_tmp;
 	int ret = 0;
 
 	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
 
-	if (ps_stm401->quickpeek_state != QP_IDLE) {
-		/* Drain the current list */
-		struct stm401_quickpeek_message *entry, *entry_tmp;
+	if (ps_stm401->quickpeek_state == QP_PREPARED) {
+		/* Cleanup fb driver state */
+		ret = fb_quickdraw_cleanup();
 
-		list_for_each_entry_safe(entry, entry_tmp,
-			&ps_stm401->quickpeek_command_list, list) {
-			list_del(&entry->list);
-			kfree(entry);
-		}
-
-		if (ps_stm401->quickpeek_state == QP_PREPARED) {
-			/* Cleanup fb driver state */
-			ret = fb_quickdraw_cleanup();
-
-			if (ret)
-				dev_err(&ps_stm401->client->dev,
-					"%s: Failed to cleanup (ret: %d)\n",
-					__func__, ret);
-		}
-
-		wake_unlock(&ps_stm401->quickpeek_wakelock);
-		complete(&ps_stm401->quickpeek_done);
-		ps_stm401->quickpeek_state = QP_IDLE;
+		if (ret)
+			dev_err(&ps_stm401->client->dev,
+				"%s: Failed to cleanup (ret: %d)\n",
+				__func__, ret);
 	}
+
+	/* Drain the current list */
+	list_for_each_entry_safe(entry, entry_tmp,
+		&ps_stm401->quickpeek_command_list, list) {
+		list_del(&entry->list);
+		stm401_quickpeek_status_ack(ps_stm401, entry,
+			AOD_QP_ACK_SUCCESS);
+		kfree(entry);
+	}
+
+	ps_stm401->quickpeek_state = QP_IDLE;
+	wake_unlock(&ps_stm401->quickpeek_wakelock);
+	complete(&ps_stm401->quickpeek_done);
 }
 
 int stm401_quickpeek_status_ack(struct stm401_data *ps_stm401,
@@ -403,6 +402,8 @@ static int stm401_takeback_locked(struct stm401_data *ps_stm401)
 	dev_dbg(&stm401_misc_data->client->dev, "%s\n", __func__);
 
 	if (ps_stm401->mode == NORMALMODE) {
+		stm401_quickpeek_reset_locked(ps_stm401);
+
 		/* New I2C Implementation */
 		stm401_cmdbuff[0] = STM401_PEEKSTATUS_REG;
 		stm401_cmdbuff[1] = 0x00;
@@ -435,7 +436,6 @@ static int stm401_takeback_locked(struct stm401_data *ps_stm401)
 	}
 
 EXIT:
-	stm401_quickpeek_reset_locked(ps_stm401);
 	return 0;
 }
 
