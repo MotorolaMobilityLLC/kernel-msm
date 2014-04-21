@@ -26,6 +26,8 @@ DEFINE_MUTEX(pm_mutex);
 
 static BLOCKING_NOTIFIER_HEAD(pm_chain_head);
 
+static suspend_state_t old_state;
+
 int register_pm_notifier(struct notifier_block *nb)
 {
 	return blocking_notifier_chain_register(&pm_chain_head, nb);
@@ -462,11 +464,13 @@ static ssize_t autosleep_store(struct kobject *kobj,
 	suspend_state_t state = decode_state(buf, n);
 	int error;
 
+	printk("[PM]request_suspend_state: (%d->%d)\n", old_state, state);
 	if (state == PM_SUSPEND_ON
 	    && strcmp(buf, "off") && strcmp(buf, "off\n"))
 		return -EINVAL;
 
 	error = pm_autosleep_set_state(state);
+	old_state=state;
 	return error ? error : n;
 }
 
