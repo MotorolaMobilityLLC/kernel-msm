@@ -280,7 +280,10 @@ struct stm_response {
 
 #ifdef __KERNEL__
 #include <linux/fb_quickdraw.h>
-#include <mach/mmi_panel_notifier.h>
+#if defined(CONFIG_FB)
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
 
 /* STM401 memory map */
 #define ID                              0x00
@@ -597,8 +600,8 @@ struct stm401_data {
 	unsigned int stm401_hub_fail;
 
 	bool is_suspended;
-#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
-	struct mmi_notifier panel_nb;
+#if defined(CONFIG_FB)
+	struct notifier_block fb_notif;
 #endif
 };
 
