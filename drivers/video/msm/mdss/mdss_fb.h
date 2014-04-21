@@ -232,6 +232,7 @@ struct msm_fb_data_type {
 	int (*quickdraw_fb_prepare)(struct msm_fb_data_type *mfd);
 	bool quickdraw_in_progress;
 	u32 quickdraw_panel_state;
+	bool quickdraw_esd_recovered;
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)

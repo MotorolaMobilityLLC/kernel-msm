@@ -683,7 +683,7 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mipi_panel_info *mipi;
 	struct msm_fb_data_type *mfd;
-	u8 pwr_mode = 0;
+	u8 pwr_mode = 0xFF;
 	int force_full_enable = 0;
 	unsigned int panel_state = 0;
 	int ret = 0;
@@ -696,10 +696,17 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata)
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode);
 
-	panel_state = detect_panel_state(pwr_mode);
-	if (panel_state == DSI_DISP_INVALID_STATE) {
-		pr_warn("%s: detected invalid panel state\n", __func__);
+	if (pwr_mode == 0xFF) {
+		int gpio_val = gpio_get_value(ctrl->mipi_d0_sel);
+		pr_warn("%s: unable to read power state! [gpio: %d]\n",
+			__func__, gpio_val);
 		force_full_enable = 1;
+	} else {
+		panel_state = detect_panel_state(pwr_mode);
+		if (panel_state == DSI_DISP_INVALID_STATE) {
+			pr_warn("%s: detected invalid panel state\n", __func__);
+			force_full_enable = 1;
+		}
 	}
 
 	if (!force_full_enable) {
@@ -718,6 +725,7 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata)
 
 	if (force_full_enable) {
 		panel_full_reinit(pdata);
+		mfd->quickdraw_esd_recovered = 1;
 		ret = -1;
 	}
 
