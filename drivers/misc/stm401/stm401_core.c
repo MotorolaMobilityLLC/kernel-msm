@@ -33,7 +33,6 @@
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/poll.h>
-#include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/switch.h>
@@ -583,19 +582,48 @@ static void stm401_gpio_free(struct stm401_platform_data *pdata)
 	gpio_free(pdata->gpio_wakeirq);
 }
 
-#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
-static int stm401_pre_display_on(struct device *dev)
+#if defined(CONFIG_FB)
+static int stm401_fb_notifier_callback(struct notifier_block *self,
+	unsigned long event, void *data)
 {
-	dev_dbg(dev, "%s\n", __func__);
+	struct fb_event *evdata = data;
+	struct stm401_data *ps_stm401 = container_of(self, struct stm401_data,
+		fb_notif);
+	int blank;
 
-	return pm_runtime_get_sync(dev);
-}
+	dev_dbg(&ps_stm401->client->dev, "%s+\n", __func__);
 
-static int stm401_display_off(struct device *dev)
-{
-	dev_dbg(dev, "%s\n", __func__);
+	/* If we aren't interested in this event, skip it immediately ... */
+	switch (event) {
+	case FB_EVENT_BLANK:
+	case FB_EARLY_EVENT_BLANK:
+		break;
+	default:
+		goto exit;
+	}
 
-	return pm_runtime_put_sync_suspend(dev);
+	if (!evdata || !evdata->data)
+		goto exit;
+
+	blank = *(int *)evdata->data;
+
+	mutex_lock(&ps_stm401->lock);
+
+	if (event == FB_EARLY_EVENT_BLANK && blank == FB_BLANK_UNBLANK)
+		stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN,
+			false);
+	else if (event == FB_EVENT_BLANK && blank > FB_BLANK_UNBLANK)
+		stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN,
+			true);
+
+	stm401_resolve_aod_enabled_locked(ps_stm401);
+
+	mutex_unlock(&ps_stm401->lock);
+
+exit:
+	dev_dbg(&ps_stm401->client->dev, "%s-\n", __func__);
+
+	return 0;
 }
 #endif
 
@@ -819,20 +847,12 @@ static int stm401_probe(struct i2c_client *client,
 		goto err9;
 	}
 
-	pm_runtime_get_noresume(&client->dev);
-	pm_runtime_set_active(&client->dev);
-	pm_runtime_enable(&client->dev);
-
-#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
-	ps_stm401->panel_nb.display_off = stm401_display_off;
-	ps_stm401->panel_nb.pre_display_on = stm401_pre_display_on;
-	ps_stm401->panel_nb.dev = &client->dev;
-	if (!mmi_panel_register_notifier(&ps_stm401->panel_nb))
-		dev_info(&client->dev, "registered MMI panel notifier\n");
-	else {
+#if defined(CONFIG_FB)
+	ps_stm401->fb_notif.notifier_call = stm401_fb_notifier_callback;
+	err = fb_register_client(&ps_stm401->fb_notif);
+	if (err) {
 		dev_err(&client->dev,
-				"%s: Unable to register MMI notifier\n",
-				__func__);
+			"Error registering fb_notifier: %d\n", err);
 		goto err10;
 	}
 #endif
@@ -863,8 +883,8 @@ static int stm401_probe(struct i2c_client *client,
 	return 0;
 
 err11:
-#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
-	mmi_panel_unregister_notifier(&ps_stm401->panel_nb);
+#if defined(CONFIG_FB)
+	fb_unregister_client(&ps_stm401->fb_notif);
 err10:
 #endif
 	input_unregister_device(ps_stm401->input_dev);
@@ -928,7 +948,9 @@ static int stm401_remove(struct i2c_client *client)
 	destroy_workqueue(ps_stm401->quickpeek_work_queue);
 	wake_unlock(&ps_stm401->quickpeek_wakelock);
 	wake_lock_destroy(&ps_stm401->quickpeek_wakelock);
-	mmi_panel_unregister_notifier(&ps_stm401->panel_nb);
+#if defined(CONFIG_FB)
+	fb_unregister_client(&ps_stm401->fb_notif);
+#endif
 	kfree(ps_stm401);
 
 	return 0;
@@ -941,6 +963,12 @@ static int stm401_resume(struct device *dev)
 
 	mutex_lock(&ps_stm401->lock);
 	ps_stm401->is_suspended = false;
+
+	/* read interrupt mask register to clear
+			any interrupt during suspend state */
+	stm401_cmdbuff[0] = INTERRUPT_STATUS;
+	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
+
 	mutex_unlock(&ps_stm401->lock);
 
 	return 0;
@@ -953,53 +981,14 @@ static int stm401_suspend(struct device *dev)
 
 	mutex_lock(&ps_stm401->lock);
 	ps_stm401->is_suspended = true;
+
 	mutex_unlock(&ps_stm401->lock);
 
 	return 0;
 }
 
-#ifdef CONFIG_PM_RUNTIME
-static int stm401_runtime_resume(struct device *dev)
-{
-	int ret;
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
-	dev_dbg(&stm401_misc_data->client->dev, "%s\n", __func__);
-
-	mutex_lock(&ps_stm401->lock);
-
-	/* read interrupt mask register to clear
-			any interrupt during suspend state */
-	stm401_cmdbuff[0] = INTERRUPT_STATUS;
-	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
-
-	stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN, false);
-	ret = stm401_resolve_aod_enabled_locked(ps_stm401);
-
-	mutex_unlock(&ps_stm401->lock);
-	return ret;
-}
-
-static int stm401_runtime_suspend(struct device *dev)
-{
-	int ret;
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
-	dev_dbg(&stm401_misc_data->client->dev, "%s\n", __func__);
-
-	mutex_lock(&ps_stm401->lock);
-
-	stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN, true);
-	ret = stm401_resolve_aod_enabled_locked(ps_stm401);
-
-	mutex_unlock(&ps_stm401->lock);
-	return ret;
-}
-#endif
-
 static const struct dev_pm_ops stm401_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(stm401_suspend, stm401_resume)
-	SET_RUNTIME_PM_OPS(stm401_runtime_suspend,
-			stm401_runtime_resume,
-			NULL)
 };
 
 static const struct i2c_device_id stm401_id[] = {
