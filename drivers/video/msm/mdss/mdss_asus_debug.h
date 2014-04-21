@@ -33,6 +33,7 @@ int create_amdu_debugfs(struct dentry *parent);
 unsigned int set_amdu_logflag(unsigned int new_flag);
 unsigned int clr_amdu_logflag(unsigned int new_flag);
 unsigned int get_amdu_logflag(void);
+int enable_ambient(int enable);
 
 // integrated AMDU to MDSS
 int notify_amdu_panel_on_cmds_start(struct mdss_dsi_ctrl_pdata *ctrl);

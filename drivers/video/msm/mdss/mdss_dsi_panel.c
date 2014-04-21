@@ -216,10 +216,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 
 	printk("MDSS:%s(enable=%d):+++\n", __func__,enable);
 
-	if (is_ambient_on() && !enable){
-		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
-		return 0;
-	}
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -239,6 +235,11 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		return rc;
 	}
 
+	if (is_ambient_on() && !enable){
+		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
+		gpio_free(ctrl_pdata->rst_gpio);
+		return 0;
+	}
 	pr_debug("%s: enable = %d\n", __func__, enable);
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
@@ -425,6 +426,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	notify_amdu_panel_on_cmds_stop();
 #endif
 // ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
+	if (!is_ambient_on()){
+		enable_ambient(1);
+	}
 	printk("MDSS:%s:---\n", __func__);
 	return 0;
 }

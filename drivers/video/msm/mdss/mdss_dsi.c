@@ -62,7 +62,11 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 
 	if (is_ambient_on()){
 		printk("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
-		return 0;
+		ret = mdss_dsi_panel_reset(pdata, enable);
+		if (ret) {
+				pr_err("%s: Panel reset failed. rc=%d\n",__func__, ret);
+		}
+		goto error; // Not error, just exti
 	}
 
 	if (pdata == NULL) {

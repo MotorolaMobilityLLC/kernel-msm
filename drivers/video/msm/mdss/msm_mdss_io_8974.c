@@ -140,6 +140,7 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 	u8 lanes = 0, bpp;
 	struct dsi_clk_mnd_table const *mnd_entry = mnd_table;
 
+	printk("MDSS:DSI:mdss_dsi_clk_div_config(frame_rate=%d)++\n",frame_rate);
 	if (panel_info->mipi.data_lane3)
 		lanes += 1;
 	if (panel_info->mipi.data_lane2)

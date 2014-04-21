@@ -260,6 +260,13 @@ int create_amdu_debugfs(struct dentry *parent)
 	return 0;
 }
 
+int enable_ambient(int enable)
+{
+	int old = amdu_data.ambient_on;
+	amdu_data.ambient_on = enable;
+	printk("MDSS:DEBUG:%s:amdu_data.ambient_on = %d->%d\n",__func__,old,amdu_data.ambient_on);
+	return old;
+}
 //////////////////////////////////////////////////////////////////////////////////////////////
 // DSI COMMANDS
 // Read Number of Error on DSI
