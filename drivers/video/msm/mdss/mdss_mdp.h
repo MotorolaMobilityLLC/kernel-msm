@@ -20,6 +20,7 @@
 #include <linux/platform_device.h>
 #include <linux/notifier.h>
 #include <linux/irqreturn.h>
+#include <linux/kref.h>
 
 #include "mdss.h"
 #include "mdss_mdp_hwio.h"
@@ -188,6 +189,7 @@ struct mdss_mdp_ctl {
 	struct mdss_mdp_vsync_handler vsync_handler;
 
 	struct mdss_mdp_img_rect roi;
+	struct mdss_mdp_img_rect roi_bkup;
 	u8 roi_changed;
 
 	int (*start_fnc) (struct mdss_mdp_ctl *ctl);
@@ -365,7 +367,8 @@ struct mdss_mdp_pipe {
 	struct mdss_mdp_shared_reg_ctrl clk_status;
 	struct mdss_mdp_shared_reg_ctrl sw_reset;
 
-	atomic_t ref_cnt;
+	struct kref kref;
+
 	u32 play_cnt;
 	int pid;
 	bool is_handed_off;
