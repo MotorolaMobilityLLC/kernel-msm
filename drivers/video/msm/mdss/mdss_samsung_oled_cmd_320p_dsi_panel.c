@@ -171,10 +171,6 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 	}
 
 	if (enable) {
-		int rc = 0;
-		if (gpio_is_valid(msd.mipi_sel_gpio))
-			gpio_set_value(msd.mipi_sel_gpio, 1);
-		msleep(20);
 		if (gpio_is_valid(ctrl_pdata->rst_gpio)) {
 			gpio_set_value((ctrl_pdata->rst_gpio), 1);
 			msleep(20);
@@ -182,16 +178,6 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 			msleep(20);
 			gpio_set_value((ctrl_pdata->rst_gpio), 1);
 			msleep(20);
-		}
-		if (gpio_is_valid(msd.en_on_gpio))
-			gpio_set_value(msd.en_on_gpio, 1);
-
-		if (gpio_is_valid(msd.disp_sel_en)) {
-			rc = gpio_tlmm_config(GPIO_CFG(msd.disp_sel_en, 0,
-				GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA),
-				GPIO_CFG_ENABLE);
-		if (rc)
-			pr_err("request disp_sel_en failed, rc=%d\n", rc);
 		}
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
@@ -749,64 +735,6 @@ static int mdss_panel_dt_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 	return rc;
 }
 
-static int mdss_panel_parse_dt_gpio(struct device_node *np,
-			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	int rc = 0;
-
-	msd.mipi_sel_gpio = of_get_named_gpio(np,
-				     "qcom,mipi_sel-gpio", 0);
-	if (!gpio_is_valid(msd.mipi_sel_gpio)) {
-		pr_err("%s:%d mipi_sel_gpio not specified\n",
-						__func__, __LINE__);
-	} else {
-		rc = gpio_request(msd.mipi_sel_gpio, "mipi_sel");
-		if (rc) {
-			pr_err("request mipi_sel_gpio failed, rc=%d\n", rc);
-			gpio_free(msd.mipi_sel_gpio);
-		} else {
-			rc = gpio_tlmm_config(GPIO_CFG(msd.mipi_sel_gpio, 0,
-			GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
-			GPIO_CFG_ENABLE);
-			if (rc)
-				pr_err("request mipi_sel failed, rc=%d\n", rc);
-		}
-	}
-	msd.en_on_gpio = of_get_named_gpio(np, "qcom,en_on-gpio", 0);
-
-	if (!gpio_is_valid(msd.en_on_gpio)) {
-		pr_err("%s:%d en_on_gpio not specified\n",
-						__func__, __LINE__);
-	} else {
-		rc = gpio_request(msd.en_on_gpio, "backlight_enable");
-		if (rc) {
-			pr_err("request en_on_gpio failed, rc=%d\n", rc);
-			gpio_free(msd.en_on_gpio);
-		} else {
-			rc = gpio_tlmm_config(GPIO_CFG(msd.en_on_gpio, 0,
-			GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
-			GPIO_CFG_ENABLE);
-			if (rc)
-				pr_err("request en_on_gpio failed rc=%d\n", rc);
-		}
-	}
-
-	msd.disp_sel_en = of_get_named_gpio(np,
-				     "qcom,disp_sel-gpio", 0);
-	if (!gpio_is_valid(msd.disp_sel_en)) {
-		pr_err("%s:%d, disp_sel_en gpio not specified\n",
-						__func__, __LINE__);
-	} else {
-	rc = gpio_request(msd.disp_sel_en, "bl_ldi_en");
-	if (rc) {
-		pr_err("request disp_sel_en gpio failed, rc=%d\n",
-			rc);
-		gpio_free(msd.disp_sel_en);
-
-	}
-	}
-	return 0;
-}
 static int mdss_samsung_parse_candella_lux_mapping_table(struct device_node *np,
 	struct candella_lux_map *table, char *keystring)
 {
@@ -1588,11 +1516,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
-		return rc;
-	}
-	rc = mdss_panel_parse_dt_gpio(node, ctrl_pdata);
-	if (rc) {
-		pr_err("%s:panel dt gpio parse failed\n", __func__);
 		return rc;
 	}
 

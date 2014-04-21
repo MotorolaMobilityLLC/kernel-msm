@@ -67,9 +67,6 @@ struct mdss_samsung_driver_data {
 	unsigned int manufacture_id;
 	struct mdss_panel_data *pdata;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
-	int disp_sel_en;
-	int mipi_sel_gpio;
-	int en_on_gpio;
 	int oled_det_gpio;
 	int panel;
 	struct smartdim_conf *sdimconf;
