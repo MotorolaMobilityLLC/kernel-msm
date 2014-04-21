@@ -3017,7 +3017,7 @@ static void sdhci_show_adma_error(struct sdhci_host *host)
 static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 {
 	u32 command;
-	bool pr_msg = false;
+	bool pr_msg = true;
 	BUG_ON(intmask == 0);
 
 	command = SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND));
@@ -3063,9 +3063,10 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 	else if (intmask & SDHCI_INT_DATA_END_BIT)
 		host->data->error = -EILSEQ;
 	else if ((intmask & SDHCI_INT_DATA_CRC) &&
-		(command != MMC_BUS_TEST_R))
+		 (command != MMC_BUS_TEST_R)) {
 		host->data->error = -EILSEQ;
-	else if (intmask & SDHCI_INT_ADMA_ERROR) {
+		pr_msg = false;
+	} else if (intmask & SDHCI_INT_ADMA_ERROR) {
 		pr_err("%s: ADMA error\n", mmc_hostname(host->mmc));
 		sdhci_show_adma_error(host);
 		host->data->error = -EIO;
@@ -3077,12 +3078,10 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 			if ((command != MMC_SEND_TUNING_BLOCK_HS400) &&
 			    (command != MMC_SEND_TUNING_BLOCK_HS200) &&
 			    (command != MMC_SEND_TUNING_BLOCK)) {
-				pr_msg = true;
 				if (intmask & SDHCI_INT_DATA_CRC)
 					host->flags |= SDHCI_NEEDS_RETUNING;
-			}
-		} else {
-			pr_msg = true;
+			} else
+				pr_msg = false;
 		}
 		if (pr_msg && __ratelimit(&host->dbg_dump_rs)) {
 			pr_err("%s: data txfr (0x%08x) error: %d after %lld ms\n",
