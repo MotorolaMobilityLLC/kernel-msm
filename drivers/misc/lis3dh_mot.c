@@ -113,6 +113,7 @@
 #define INT_CFG_XY		0x4f
 #define INT_CFG_XZ		0x73
 #define INT_CFG_YZ		0x7C
+#define INT_CFG_XYZ             0x7F
 #define INT_CFG_INIT_THRESHOLD	0x2D
 #define INT_CFG_THRESHOLD	0x20
 #define INT_CFG_DURATION	0x05
@@ -699,25 +700,21 @@ static void lis3dh_irq_work(struct work_struct *work)
 	switch (irq_data & INT_4D_BITS) {
 	case INT_XL_BIT:
 		flat = TYPE_PORTRAIT;
-		lis3dh_set_threshold(lis, INT_CFG_YZ, lis->irq_config[1]);
 		break;
 	case INT_XH_BIT:
 		flat = TYPE_INV_PORTRAIT;
-		lis3dh_set_threshold(lis, INT_CFG_YZ, lis->irq_config[1]);
 		break;
 	case INT_YL_BIT:
 		flat = TYPE_LANDSCAPE;
-		lis3dh_set_threshold(lis, INT_CFG_XZ, lis->irq_config[1]);
 		break;
 	case INT_YH_BIT:
 		flat = TYPE_INV_LANDSCAPE;
-		lis3dh_set_threshold(lis, INT_CFG_XZ, lis->irq_config[1]);
 		break;
 	default:
-		lis3dh_set_threshold(lis, INT_CFG_XY, lis->irq_config[1]);
 		flat = TYPE_UNKNOWN;
 	}
 
+	lis3dh_set_threshold(lis, INT_CFG_XYZ, lis->irq_config[1]);
 	lis3dh_report_rotate(lis, flat);
 	mutex_unlock(&lis->lock);
 
