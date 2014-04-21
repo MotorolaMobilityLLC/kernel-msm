@@ -63,6 +63,7 @@ extern int poweroff_charging;
 #define SAMSUNG_FACTORY_TEST
 #define SAMSUNG_TSP_INFO
 #define SAMSUNG_TOUCH_MODE
+#define SAMSUNG_PALM_MOTION
 
 #define TTHE_TUNER_SUPPORT
 

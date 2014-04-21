@@ -308,15 +308,17 @@ static void cyttsp5_get_touch(struct cyttsp5_mt_data *md,
 static inline void report_sumsize_palm(struct cyttsp5_mt_data *md,
 	u16 sumsize, bool palm)
 {
-	sumsize *= 2;
-	sumsize /= 3;
-	if (sumsize > 255)
-		sumsize = 255;
-	dev_dbg(md->dev, "%s: sumsize=%d\n", __func__, sumsize);
-	input_report_abs(md->input, ABS_MT_SUMSIZE, sumsize);
+	static bool palm_flag = false;
 
-	dev_dbg(md->dev, "%s: palm=%d\n", __func__, palm);
-	input_report_abs(md->input, ABS_MT_PALM, palm);
+	if (!palm_flag && palm) {
+		dev_info(md->dev, "%s: palm is detected\n", __func__);
+		input_report_key(md->input, KEY_SLEEP, palm);
+		palm_flag = palm;
+	} else if (palm_flag && !palm) {
+		dev_info(md->dev, "%s: palm is removed\n", __func__);
+		input_report_key(md->input, KEY_SLEEP, palm);
+		palm_flag = palm;
+	}
 }
 #endif
 
@@ -736,14 +738,7 @@ static int cyttsp5_setup_input_device(struct device *dev)
 	}
 
 #if defined(SAMSUNG_PALM_MOTION)
-	input_set_abs_params(md->input, signal = ABS_MT_PALM,
-		min = 0, max = 1, 0, 0);
-	dev_dbg(dev, "%s: register signal=%02X min=%d max=%d\n",
-				__func__, signal, min, max);
-	input_set_abs_params(md->input, signal = ABS_MT_SUMSIZE,
-		min = 0, max = 255, 0, 0);
-	dev_dbg(dev, "%s: register signal=%02X min=%d max=%d\n",
-				__func__, signal, min, max);
+	__set_bit(KEY_SLEEP, md->input->keybit);
 #endif
 
 	input_mt_init_slots(md->input,
