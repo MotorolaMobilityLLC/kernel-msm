@@ -231,6 +231,7 @@ enum mmc_blk_status {
 	MMC_BLK_URGENT,
 	MMC_BLK_URGENT_DONE,
 	MMC_BLK_NO_REQ_TO_STOP,
+	MMC_BLK_BUS_ERR,
 };
 
 enum mmc_packed_stop_reasons {
@@ -427,6 +428,8 @@ struct mmc_card {
 #define MMC_ERROR_FORGIVE_RATIO	10		/* forgive cards with enough successes/failures */
 	unsigned int		failures;	/* number of recent request failures */
 	unsigned int		successes;	/* successful requests since 1st recorded failure  */
+#define MMC_THROTTLE_BACK_THRESHOLD 2
+	unsigned int		crc_errors;	/* number of CRC errors seen at this speed */
 };
 
 /*
