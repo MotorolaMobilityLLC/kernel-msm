@@ -9604,9 +9604,17 @@ void wlan_hdd_cfg80211_lphb_ind_handler
 {
    tSirLPHBInd     *lphbInd;
    struct sk_buff  *skb;
+   hdd_context_t  *pHddCtxt;
 
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
              "LPHB indication arrived");
+
+   if (pAdapter == NULL)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: pAdapter is NULL\n",__func__);
+       return;
+   }
 
    if (NULL == indCont)
    {
@@ -9615,9 +9623,10 @@ void wlan_hdd_cfg80211_lphb_ind_handler
       return;
    }
 
+   pHddCtxt  = (hdd_context_t *)pAdapter;
    lphbInd = (tSirLPHBInd *)indCont;
    skb = cfg80211_testmode_alloc_event_skb(
-                  ((hdd_adapter_t *)pAdapter)->wdev.wiphy,
+                  pHddCtxt->wiphy,
                   sizeof(tSirLPHBInd),
                   GFP_ATOMIC);
    if (!skb)
