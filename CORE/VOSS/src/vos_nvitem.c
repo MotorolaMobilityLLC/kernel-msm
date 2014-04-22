@@ -3699,7 +3699,6 @@ VOS_STATUS vos_init_wiphy_from_nv_bin(void)
 	     pnvEFSTable->halnv.tables.defaultCountryTable.regDomain) {
 
         reg_domain = pnvEFSTable->halnv.tables.defaultCountryTable.regDomain;
-        wiphy->flags |= WIPHY_FLAG_CUSTOM_REGULATORY;
     }
     else {
 
