@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-/include/ "apq8026-dory.dtsi"
+#include "apq8026-dory.dtsi"
 
 &soc {
 	sound {

@@ -44,6 +44,7 @@
 #define HAL_BUFFERFLAG_READONLY         0x00000200
 #define HAL_BUFFERFLAG_ENDOFSUBFRAME    0x00000400
 #define HAL_BUFFERFLAG_EOSEQ            0x00200000
+#define HAL_BUFFERFLAG_MBAFF            0x08000000
 #define HAL_BUFFERFLAG_YUV_601_709_CSC_CLAMP   0x10000000
 #define HAL_BUFFERFLAG_DROP_FRAME       0x20000000
 #define HAL_BUFFERFLAG_TS_DISCONTINUITY	0x40000000
@@ -196,8 +197,10 @@ enum hal_property {
 	HAL_CONFIG_VENC_MARKLTRFRAME,
 	HAL_CONFIG_VENC_USELTRFRAME,
 	HAL_CONFIG_VENC_LTRPERIOD,
-	HAL_PARAM_VENC_HIER_P_NUM_FRAMES,
+	HAL_CONFIG_VENC_HIER_P_NUM_FRAMES,
+	HAL_PARAM_VENC_HIER_P_MAX_ENH_LAYERS,
 	HAL_PARAM_VENC_DISABLE_RC_TIMESTAMP,
+	HAL_PARAM_VENC_ENABLE_INITIAL_QP,
 };
 
 enum hal_domain {
@@ -636,6 +639,13 @@ struct hal_quantization {
 	u32 layer_id;
 };
 
+struct hal_initial_quantization {
+	u32 qpi;
+	u32 qpp;
+	u32 qpb;
+	u32 init_qp_enable;
+};
+
 struct hal_quantization_range {
 	u32 min_qp;
 	u32 max_qp;
@@ -859,12 +869,13 @@ struct vidc_buffer_addr_info {
 	enum hal_buffer buffer_type;
 	u32 buffer_size;
 	u32 num_buffers;
-	u32 align_device_addr;
+	ion_phys_addr_t align_device_addr;
+	ion_phys_addr_t extradata_addr;
 	u32 extradata_size;
-	u32 extradata_addr;
 	u32 response_required;
 };
 
+/* Needs to be exactly the same as hfi_buffer_info */
 struct hal_buffer_info {
 	u32 buffer_addr;
 	u32 extra_data_addr;
@@ -886,8 +897,8 @@ struct vidc_uncompressed_frame_config {
 
 struct vidc_frame_data {
 	enum hal_buffer buffer_type;
-	u32 device_addr;
-	u32 extradata_addr;
+	ion_phys_addr_t device_addr;
+	ion_phys_addr_t extradata_addr;
 	int64_t timestamp;
 	u32 flags;
 	u32 offset;
@@ -900,7 +911,7 @@ struct vidc_frame_data {
 };
 
 struct vidc_seq_hdr {
-	u8 *seq_hdr;
+	ion_phys_addr_t seq_hdr;
 	u32 seq_hdr_len;
 };
 
@@ -1057,8 +1068,8 @@ enum command_response {
 
 struct msm_vidc_cb_cmd_done {
 	u32 device_id;
-	u32 session_id;
-	u32 status;
+	void *session_id;
+	enum vidc_status status;
 	u32 size;
 	void *data;
 };
@@ -1066,12 +1077,12 @@ struct msm_vidc_cb_cmd_done {
 struct msm_vidc_cb_event {
 	u32 device_id;
 	u32 session_id;
-	u32 status;
+	enum vidc_status status;
 	u32 height;
 	u32 width;
 	u32 hal_event_type;
-	u8 *packet_buffer;
-	u8 *exra_data_buffer;
+	ion_phys_addr_t packet_buffer;
+	ion_phys_addr_t extra_data_buffer;
 };
 
 /* Data callback structure */
@@ -1080,7 +1091,7 @@ struct vidc_hal_ebd {
 	u32 timestamp_hi;
 	u32 timestamp_lo;
 	u32 flags;
-	u32 status;
+	enum vidc_status status;
 	u32 mark_target;
 	u32 mark_data;
 	u32 stats;
@@ -1088,8 +1099,8 @@ struct vidc_hal_ebd {
 	u32 alloc_len;
 	u32 filled_len;
 	enum hal_picture picture_type;
-	u8 *packet_buffer;
-	u8 *extra_data_buffer;
+	ion_phys_addr_t packet_buffer;
+	ion_phys_addr_t extra_data_buffer;
 };
 
 struct vidc_hal_fbd {
@@ -1111,27 +1122,27 @@ struct vidc_hal_fbd {
 	u32 input_tag;
 	u32 input_tag1;
 	enum hal_picture picture_type;
-	u8 *packet_buffer1;
-	u8 *extra_data_buffer;
+	ion_phys_addr_t packet_buffer1;
+	ion_phys_addr_t extra_data_buffer;
 	u32 flags2;
 	u32 alloc_len2;
 	u32 filled_len2;
 	u32 offset2;
-	u8 *packet_buffer2;
+	ion_phys_addr_t packet_buffer2;
 	u32 flags3;
 	u32 alloc_len3;
 	u32 filled_len3;
 	u32 offset3;
-	u8 *packet_buffer3;
+	ion_phys_addr_t packet_buffer3;
 	enum hal_buffer buffer_type;
 };
 
 struct msm_vidc_cb_data_done {
 	u32 device_id;
-	u32 session_id;
-	u32 status;
+	void *session_id;
+	enum vidc_status status;
 	u32 size;
-	void *clnt_data;
+	u32 clnt_data;
 	union {
 		struct vidc_hal_ebd input_done;
 		struct vidc_hal_fbd output_done;
@@ -1217,7 +1228,7 @@ struct hfi_device {
 	int (*core_pc_prep)(void *device);
 	int (*core_ping)(void *device);
 	int (*core_trigger_ssr)(void *device, enum hal_ssr_trigger_type);
-	void *(*session_init)(void *device, u32 session_id,
+	void *(*session_init)(void *device, void *session_id,
 		enum hal_domain session_type, enum hal_video_codec codec_type);
 	int (*session_end)(void *session);
 	int (*session_abort)(void *session);

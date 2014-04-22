@@ -119,7 +119,7 @@ static struct mux_clk rpm_debug_mux = {
 
 /* Lookup Table */
 static struct clk_lookup msm_clocks_rpm[] = {
-	CLK_LIST(xo_gcc),
+	CLK_LIST(xo_clk_src),
 	CLK_LIST(xo_a_clk_src),
 	CLK_LIST(xo_otg_clk),
 	CLK_LIST(xo_lpm_clk),
@@ -166,7 +166,9 @@ static int msm_rpmcc_8916_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret;
 
-	enable_rpm_scaling();
+	ret = enable_rpm_scaling();
+	if (ret)
+		return ret;
 
 	res =  platform_get_resource_byname(pdev, IORESOURCE_MEM, "cc_base");
 	if (!res) {

@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/include/ "skeleton.dtsi"
+#include "skeleton.dtsi"
 
 / {
 	model = "Qualcomm MSM 8226";
@@ -24,54 +24,20 @@
 		sdhc3 = &sdhc_3; /* SDC3 SDIO slot */
 	};
 
-	memory {
-		secure_mem: secure_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0x6D00000>;
-			label = "secure_mem";
-		};
-
-		adsp_mem: adsp_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0x2a00000>;
-			label = "adsp_mem";
-		};
-
-		qsecom_mem: qsecom_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0xd00000>;
-			label = "qsecom_mem";
-		};
-
-		fb_mem: fb_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0x800000>;
-			label = "fb_mem";
-		};
-
-		audio_mem: audio_region@0 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			reg = <0 0x314000>;
-			label = "audio_mem";
-		};
-	};
-
 	soc: soc { };
 };
 
-/include/ "msm8226-ion.dtsi"
-/include/ "msm8226-camera.dtsi"
-/include/ "msm-gdsc.dtsi"
-/include/ "msm8226-iommu.dtsi"
-/include/ "msm8226-smp2p.dtsi"
-/include/ "msm8226-gpu.dtsi"
-/include/ "msm8226-bus.dtsi"
-/include/ "msm8226-mdss.dtsi"
-/include/ "msm8226-coresight.dtsi"
-/include/ "msm8226-iommu-domains.dtsi"
-/include/ "msm8226-pinctrl.dtsi"
-/include/ "msm-rdbg.dtsi"
+#include "msm8226-camera.dtsi"
+#include "msm-gdsc.dtsi"
+#include "msm8226-iommu.dtsi"
+#include "msm8226-smp2p.dtsi"
+#include "msm8226-gpu.dtsi"
+#include "msm8226-bus.dtsi"
+#include "msm8226-mdss.dtsi"
+#include "msm8226-coresight.dtsi"
+#include "msm8226-iommu-domains.dtsi"
+#include "msm8226-pinctrl.dtsi"
+#include "msm-rdbg.dtsi"
 
 &soc {
 	#address-cells = <1>;
@@ -102,6 +68,11 @@
 		compatible = "qcom,mpm2-sleep-counter";
 		reg = <0xfc4a3000 0x1000>;
 		clock-frequency = <32768>;
+	};
+
+	restart@fc4ab000 {
+		compatible = "qcom,pshold";
+		reg = <0xfc4ab000 0x4>;
 	};
 
 	timer {
@@ -698,8 +669,28 @@
 	qcom,wcnss-wlan@fb000000 {
 		compatible = "qcom,wcnss_wlan";
 		reg = <0xfb000000 0x280000>,
-			<0xf9011008 0x04>;
-		reg-names = "wcnss_mmio", "wcnss_fiq";
+			<0xf9011008 0x04>,
+			<0xfb21b000 0x3000>,
+			<0x03204000 0x00000100>,
+			<0x03200800 0x00000200>,
+			<0xfb100400 0x00000200>,
+			<0xfb205050 0x00000200>,
+			<0xfb219000 0x00000020>,
+			<0xfb080488 0x00000008>,
+			<0xfb080fb0 0x00000008>,
+			<0xfb08040c 0x00000008>,
+			<0xfb0120a8 0x00000008>,
+			<0xfb012448 0x00000008>,
+			<0xfb080c00 0x00000001>;
+
+		reg-names = "wcnss_mmio", "wcnss_fiq",
+			    "pronto_phy_base", "riva_phy_base",
+			    "riva_ccu_base", "pronto_a2xb_base",
+			    "pronto_ccpu_base", "pronto_saw2_base",
+			    "wlan_tx_phy_aborts","wlan_brdg_err_source",
+			    "wlan_tx_status", "alarms_txctl",
+			    "alarms_tactl", "pronto_mcu_base";
+
 		interrupts = <0 145 0 0 146 0>;
 		interrupt-names = "wcnss_wlantx_irq", "wcnss_wlanrx_irq";
 
@@ -734,8 +725,9 @@
 		compatible = "qcom,smem";
 		reg = <0xfa00000 0x100000>,
 			<0xf9011000 0x1000>,
-			<0xfc428000 0x4000>;
-		reg-names = "smem", "irq-reg-base", "aux-mem1";
+			<0xfc428000 0x4000>,
+			<0xfe802ff0 0x8>;
+		reg-names = "smem", "irq-reg-base", "aux-mem1", "smem_targ_info_imem";
 		qcom,mpu-enabled;
 
 		qcom,smd-modem {
@@ -827,36 +819,6 @@
 		reg-names = "rfsa_mdm";
 	};
 
-	sdcc1: qcom,sdcc@f9824000 {
-		cell-index = <1>; /* SDC1 eMMC slot */
-		compatible = "qcom,msm-sdcc";
-
-		reg = <0xf9824000 0x800>,
-			<0xf9824800 0x100>,
-			<0xf9804000 0x7000>;
-		reg-names = "core_mem", "dml_mem", "bam_mem";
-		interrupts = <0 123 0>, <0 137 0>;
-		interrupt-names = "core_irq", "bam_irq";
-
-		qcom,bus-width = <8>;
-
-		qcom,msm-bus,name = "sdcc1";
-		qcom,msm-bus,num-cases = <8>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps = <78 512 0 0>, /* No vote */
-				<78 512 1600 3200>,    /* 400 KB/s*/
-				<78 512 80000 160000>, /* 20 MB/s */
-				<78 512 100000 200000>, /* 25 MB/s */
-				<78 512 200000 400000>, /* 50 MB/s */
-				<78 512 400000 800000>, /* 100 MB/s */
-				<78 512 400000 800000>, /* 200 MB/s */
-				<78 512 2048000 4096000>; /* Max. bandwidth */
-		qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 50000000
-						100000000 200000000 4294967295>;
-
-		status = "disabled";
-	};
-
 	sdhc_1: sdhci@f9824900 {
 		compatible = "qcom,sdhci-msm";
 		reg = <0xf9824900 0x11c>, <0xf9824000 0x800>;
@@ -888,36 +850,6 @@
 		status = "disabled";
 	};
 
-	sdcc2: qcom,sdcc@f98a4000 {
-		cell-index = <2>; /* SDC2 SD card slot */
-		compatible = "qcom,msm-sdcc";
-
-		reg = <0xf98a4000 0x800>,
-			<0xf98a4800 0x100>,
-			<0xf9884000 0x7000>;
-		reg-names = "core_mem", "dml_mem", "bam_mem";
-		interrupts = <0 125 0>, <0 220 0>;
-		interrupt-names = "core_irq", "bam_irq";
-
-		qcom,bus-width = <4>;
-
-		qcom,msm-bus,name = "sdcc2";
-		qcom,msm-bus,num-cases = <8>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps = <81 512 0 0>, /* No vote */
-				<81 512 1600 3200>,    /* 400 KB/s*/
-				<81 512 80000 160000>, /* 20 MB/s */
-				<81 512 100000 200000>, /* 25 MB/s */
-				<81 512 200000 400000>, /* 50 MB/s */
-				<81 512 400000 800000>, /* 100 MB/s */
-				<81 512 400000 800000>, /* 200 MB/s */
-				<81 512 2048000 4096000>; /* Max. bandwidth */
-		qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 50000000
-						100000000 200000000 4294967295>;
-
-		status = "disabled";
-	};
-
 	sdhc_2: sdhci@f98a4900 {
 		compatible = "qcom,sdhci-msm";
 		reg = <0xf98a4900 0x11c>, <0xf98a4000 0x800>;
@@ -945,52 +877,6 @@
 		pinctrl-names = "active", "sleep";
 		pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdhc2_cd_on>;
 		pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdhc2_cd_off>;
-
-		status = "disabled";
-	};
-
-	sdcc3: qcom,sdcc@f9864000 {
-		cell-index = <3>;
-		compatible = "qcom,msm-sdcc";
-		reg = <0xf9864000 0x800>,
-			<0xf9864800 0x100>,
-			<0xf9844000 0x7000>;
-		reg-names = "core_mem", "dml_mem", "bam_mem";
-
-		qcom,bus-width = <4>;
-		gpios = <&msmgpio 44 0>, /* CLK */
-			<&msmgpio 43 0>, /* CMD */
-			<&msmgpio 42 0>, /* DATA0 */
-			<&msmgpio 41 0>, /* DATA1 */
-			<&msmgpio 40 0>, /* DATA2 */
-			<&msmgpio 39 0>; /* DATA3 */
-		qcom,gpio-names = "CLK", "CMD", "DAT0", "DAT1", "DAT2", "DAT3";
-
-		qcom,clk-rates = <400000 20000000 25000000 50000000 100000000>;
-
-		qcom,msm-bus,name = "sdcc3";
-		qcom,msm-bus,num-cases = <8>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps = <79 512 0 0>, /* No vote */
-				<79 512 1600 3200>,    /* 400 KB/s*/
-				<79 512 80000 160000>, /* 20 MB/s */
-				<79 512 100000 200000>, /* 25 MB/s */
-				<79 512 200000 400000>, /* 50 MB/s */
-				<79 512 400000 800000>, /* 100 MB/s */
-				<79 512 400000 800000>, /* 200 MB/s */
-				<79 512 2048000 4096000>; /* Max. bandwidth */
-		qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 50000000
-						100000000 200000000 4294967295>;
-
-		#address-cells = <0>;
-		interrupt-parent = <&sdcc3>;
-		interrupts = <0 1 2>;
-		#interrupt-cells = <1>;
-		interrupt-map-mask = <0xffffffff>;
-		interrupt-map = <0 &intc 0 127 0
-			      1 &intc 0 223 0
-			      2 &msmgpio 41 0x8>;
-		interrupt-names = "core_irq", "bam_irq", "sdiowakeup_irq";
 
 		status = "disabled";
 	};
@@ -1214,14 +1100,20 @@
 	};
 
 	qcom,lpass@fe200000 {
-		compatible = "qcom,pil-q6v5-lpass";
-		reg = <0xfe200000 0x00100>,
-		      <0xfd485100 0x00010>,
-		      <0xfc4016c0 0x00004>;
-		reg-names = "qdsp6_base", "halt_base", "restart_reg";
-		vdd_cx-supply = <&pm8226_s1_corner>;
+		compatible = "qcom,pil-tz-generic";
+		reg = <0xfe200000 0x00100>;
 		interrupts = <0 162 1>;
 
+		vdd_cx-supply = <&pm8226_s1_corner>;
+		proxy-reg-names = "vdd_cx";
+		vdd_cx-uV-uA = <7 100000>;
+		clock-names = "bus_clk", "xo";
+		active-clock-names = "bus_clk";
+		proxy-clock-names = "xo";
+
+		qcom,pas-id = <1>;
+		qcom,proxy-timeout-ms = <10000>;
+		qcom,smem-id = <423>;
 		qcom,firmware-name = "adsp";
 
 		/* GPIO inputs from lpass */
@@ -1263,13 +1155,6 @@
 
 		/* GPIO output to mss */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_1_out 0 0>;
-	};
-
-	memory_hole: qcom,msm-mem-hole {
-		compatible = "qcom,msm-mem-hole";
-		qcom,memblock-remove = <0x08400000 0x4000000
-					0x0d200000 0x2300000
-					0x0fa00000 0x500000>; /* Address and Size of Hole */
 	};
 
 	tsens: tsens@fc4a8000 {
@@ -1406,25 +1291,6 @@
 		qcom,num-locks = <8>;
 	};
 
-	qcom,qseecom@d980000 {
-		compatible = "qcom,qseecom";
-		reg = <0xd980000 0x256000>;
-		reg-names = "secapp-region";
-		qcom,disk-encrypt-pipe-pair = <2>;
-		qcom,hlos-ce-hw-instance = <0>;
-		qcom,qsee-ce-hw-instance = <0>;
-		qcom,msm-bus,name = "qseecom-noc";
-		qcom,msm-bus,num-cases = <4>;
-		qcom,msm-bus,active-only = <0>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,support-bus-scaling;
-		qcom,msm-bus,vectors-KBps =
-				<55 512 0 0>,
-				<55 512 0 0>,
-				<55 512 120000 1200000>,
-				<55 512 393600 3936000>;
-	};
-
 	qcom,qcrypto@fd404000 {
 		compatible = "qcom,qcrypto";
                 reg  =  <0xfd400000 0x20000>,
@@ -1499,9 +1365,9 @@
 	status = "ok";
 };
 
-/include/ "msm-pm8226-rpm-regulator.dtsi"
-/include/ "msm-pm8226.dtsi"
-/include/ "msm8226-regulator.dtsi"
+#include "msm-pm8226-rpm-regulator.dtsi"
+#include "msm-pm8226.dtsi"
+#include "msm8226-regulator.dtsi"
 
 &pm8226_vadc {
 	chan@0 {

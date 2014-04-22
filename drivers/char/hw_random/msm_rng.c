@@ -26,9 +26,6 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/of.h>
-#include <mach/msm_iomap.h>
-#include <soc/qcom/socinfo.h>
-#include <mach/msm_bus.h>
 
 #define DRIVER_NAME "msm_rng"
 

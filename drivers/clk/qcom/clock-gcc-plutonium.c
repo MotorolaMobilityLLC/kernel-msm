@@ -177,6 +177,7 @@ static DEFINE_VDD_REGULATORS(vdd_dig, VDD_DIG_NUM, 1, vdd_corner, NULL);
 #define TSIF_AHB_CBCR                                    (0x0D84)
 #define TSIF_REF_CBCR                                    (0x0D88)
 #define TSIF_REF_CMD_RCGR                                (0x0D90)
+#define BOOT_ROM_AHB_CBCR                                (0x0E04)
 #define GCC_XO_DIV4_CBCR                                 (0x10C8)
 #define LPASS_Q6_AXI_CBCR                                (0x11C0)
 #define APCS_GPLL_ENA_VOTE                               (0x1480)
@@ -246,7 +247,6 @@ static struct pll_vote_clk gpll0 = {
 		CLK_INIT(gpll0.c),
 	},
 };
-DEFINE_EXT_CLK(gpll0_out_main, &gpll0.c);
 
 static struct pll_vote_clk gpll0_ao = {
 	.en_reg = (void __iomem *)APCS_GPLL_ENA_VOTE,
@@ -264,6 +264,8 @@ static struct pll_vote_clk gpll0_ao = {
 		CLK_INIT(gpll0_ao.c),
 	},
 };
+
+DEFINE_EXT_CLK(gpll0_out_main, &gpll0.c);
 
 static struct pll_vote_clk gpll4 = {
 	.en_reg = (void __iomem *)APCS_GPLL_ENA_VOTE,
@@ -1208,6 +1210,19 @@ static struct rcg_clk usb_hs_system_clk_src = {
 	},
 };
 
+static struct gate_clk gpll0_out_mmsscc = {
+	.en_reg = APCS_CLOCK_BRANCH_ENA_VOTE,
+	.en_mask = BIT(26),
+	.delay_us = 1,
+	.base = &virt_base,
+	.c = {
+		.parent = &gpll0_out_main.c,
+		.dbg_name = "gpll0_out_mmsscc",
+		.ops = &clk_ops_gate,
+		CLK_INIT(gpll0_out_mmsscc.c),
+	},
+};
+
 static struct gate_clk pcie_0_phy_ldo = {
 	.en_reg = PCIE_0_PHY_LDO_EN,
 	.en_mask = BIT(0),
@@ -1717,6 +1732,18 @@ static struct branch_clk gcc_blsp2_uart6_apps_clk = {
 		.parent = &blsp2_uart6_apps_clk_src.c,
 		.ops = &clk_ops_branch,
 		CLK_INIT(gcc_blsp2_uart6_apps_clk.c),
+	},
+};
+
+static struct local_vote_clk gcc_boot_rom_ahb_clk = {
+	.cbcr_reg = BOOT_ROM_AHB_CBCR,
+	.vote_reg = APCS_CLOCK_BRANCH_ENA_VOTE,
+	.en_mask = BIT(10),
+	.base = &virt_base,
+	.c = {
+		.dbg_name = "gcc_boot_rom_ahb_clk",
+		.ops = &clk_ops_vote,
+		CLK_INIT(gcc_boot_rom_ahb_clk.c),
 	},
 };
 
@@ -2389,6 +2416,7 @@ static struct mux_clk gcc_debug_mux = {
 		{ &gcc_bam_dma_ahb_clk.c, 0x00e0 },
 		{ &gcc_tsif_ahb_clk.c, 0x00e8 },
 		{ &gcc_tsif_ref_clk.c, 0x00e9 },
+		{ &gcc_boot_rom_ahb_clk.c, 0x00f8 },
 		{ &gcc_lpass_q6_axi_clk.c, 0x0160 },
 		{ &gcc_pcie_0_slv_axi_clk.c, 0x01e8 },
 		{ &gcc_pcie_0_mstr_axi_clk.c, 0x01e9 },
@@ -2423,8 +2451,8 @@ static struct clk_lookup msm_clocks_gcc_plutonium[] = {
 	CLK_LIST(debug_mmss_clk),
 	CLK_LIST(debug_rpm_clk),
 	CLK_LIST(gpll0),
-	CLK_LIST(gpll0_out_main),
 	CLK_LIST(gpll0_ao),
+	CLK_LIST(gpll0_out_main),
 	CLK_LIST(gpll4),
 	CLK_LIST(gpll4_out_main),
 	CLK_LIST(ufs_axi_clk_src),
@@ -2481,6 +2509,7 @@ static struct clk_lookup msm_clocks_gcc_plutonium[] = {
 	CLK_LIST(usb30_mock_utmi_clk_src),
 	CLK_LIST(usb3_phy_aux_clk_src),
 	CLK_LIST(usb_hs_system_clk_src),
+	CLK_LIST(gpll0_out_mmsscc),
 	CLK_LIST(pcie_0_phy_ldo),
 	CLK_LIST(pcie_1_phy_ldo),
 	CLK_LIST(ufs_phy_ldo),
@@ -2524,6 +2553,7 @@ static struct clk_lookup msm_clocks_gcc_plutonium[] = {
 	CLK_LIST(gcc_blsp2_uart4_apps_clk),
 	CLK_LIST(gcc_blsp2_uart5_apps_clk),
 	CLK_LIST(gcc_blsp2_uart6_apps_clk),
+	CLK_LIST(gcc_boot_rom_ahb_clk),
 	CLK_LIST(gcc_gp1_clk),
 	CLK_LIST(gcc_gp2_clk),
 	CLK_LIST(gcc_gp3_clk),
@@ -2579,7 +2609,6 @@ static int msm_gcc_plutonium_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct clk *tmp_clk;
-	u32 regval;
 	int ret;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cc_base");
@@ -2613,11 +2642,6 @@ static int msm_gcc_plutonium_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "Unable to get xo_a_clk clock!");
 		return PTR_ERR(tmp_clk);
 	}
-
-	/* Vote for LPASS and MMSS controller to use GPLL0 */
-	regval = readl_relaxed(GCC_REG_BASE(APCS_CLOCK_BRANCH_ENA_VOTE));
-	writel_relaxed(regval | BIT(26),
-		       GCC_REG_BASE(APCS_CLOCK_BRANCH_ENA_VOTE));
 
 	ret = of_msm_clock_register(pdev->dev.of_node, msm_clocks_gcc_plutonium,
 				    ARRAY_SIZE(msm_clocks_gcc_plutonium));

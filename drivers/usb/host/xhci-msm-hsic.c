@@ -20,11 +20,12 @@
 #include <linux/of_gpio.h>
 #include <linux/irq.h>
 #include <linux/dma-mapping.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/bitops.h>
 #include <linux/workqueue.h>
 #include <linux/clk/msm-clk.h>
 
-#include <mach/msm_bus.h>
+#include <linux/msm-bus.h>
 #include <mach/rpm-regulator.h>
 #include <mach/msm_iomap.h>
 
@@ -78,6 +79,14 @@
 #define PHY_LPM_WAIT_TIMEOUT_MS	5000
 #define ULPI_IO_TIMEOUT_USECS	(10 * 1000)
 
+/*
+ * Higher value allows xhci core to moderate interrupts resulting
+ * in fewer interrupts from xhci core. This may result in better
+ * overall power consumption during peak throughput. Hence set the
+ * default HSIC interrupt moderation to 12000 (or 3ms interval)
+ */
+#define MSM_HSIC_INT_MODERATION 12000
+
 static u64 dma_mask = DMA_BIT_MASK(64);
 
 struct mxhci_hsic_hcd {
@@ -117,6 +126,7 @@ struct mxhci_hsic_hcd {
 
 	uint32_t		wakeup_int_cnt;
 	uint32_t		pwr_evt_irq_inlpm;
+	struct pinctrl		*hsic_pinctrl;
 };
 
 #define SYNOPSIS_DWC3_VENDOR	0x5533
@@ -361,17 +371,30 @@ static int mxhci_msm_config_gdsc(struct mxhci_hsic_hcd *mxhci, int on)
 static int mxhci_hsic_config_gpios(struct mxhci_hsic_hcd *mxhci)
 {
 	int rc = 0;
+	struct pinctrl_state *set_state;
 
-	rc = devm_gpio_request(mxhci->dev, mxhci->strobe, "HSIC_STROBE_GPIO");
-	if (rc < 0) {
-		dev_err(mxhci->dev, "gpio request failed for HSIC STROBE\n");
-		goto out;
-	}
-
-	rc = devm_gpio_request(mxhci->dev, mxhci->data, "HSIC_DATA_GPIO");
-	if (rc < 0) {
-		dev_err(mxhci->dev, "gpio request failed for HSIC DATA\n");
-		goto out;
+	if (mxhci->hsic_pinctrl) {
+		set_state = pinctrl_lookup_state(mxhci->hsic_pinctrl,
+				"hsic_xhci_active");
+		if (IS_ERR(set_state)) {
+			pr_err("cannot get hsic pinctrl active state\n");
+			rc = PTR_ERR(set_state);
+			goto out;
+		}
+		rc = pinctrl_select_state(mxhci->hsic_pinctrl, set_state);
+	} else {
+		rc = devm_gpio_request(mxhci->dev, mxhci->strobe,
+				"HSIC_STROBE_GPIO");
+		if (rc < 0) {
+			dev_err(mxhci->dev, "gpio request failed for HSIC STROBE\n");
+			goto out;
+		}
+		rc = devm_gpio_request(mxhci->dev, mxhci->data,
+				"HSIC_DATA_GPIO");
+		if (rc < 0) {
+			dev_err(mxhci->dev, "gpio request failed for HSIC DATA\n");
+			goto out;
+		}
 	}
 
 	if (mxhci->host_ready) {
@@ -395,7 +418,6 @@ static int mxhci_hsic_config_gpios(struct mxhci_hsic_hcd *mxhci)
 			rc = 0;
 		}
 	}
-
 out:
 	return rc;
 }
@@ -615,6 +637,8 @@ static int mxhci_hsic_bus_suspend(struct usb_hcd *hcd)
 		return -EAGAIN;
 	}
 
+	xhci_dbg_log_event(&dbg_hsic, NULL, "mxhci_hsic_bus_suspend", 0);
+
 	init_completion(&mxhci->phy_in_lpm);
 
 	ret = xhci_bus_suspend(hcd);
@@ -632,7 +656,7 @@ static int mxhci_hsic_bus_suspend(struct usb_hcd *hcd)
 				readl_relaxed(MSM_HSIC_PORTSC));
 		xhci_dbg_log_event(&dbg_hsic, NULL, "PORTLI",
 				readl_relaxed(MSM_HSIC_PORTLI));
-		panic("fail to get IN_L2 power event irq");
+		panic("IN_L2 power event irq timedout");
 	}
 
 	xhci_dbg_log_event(&dbg_hsic, NULL, "Suspend RH",
@@ -980,6 +1004,7 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 	struct xhci_hcd		*xhci;
 	struct resource *res;
 	struct usb_hcd *hcd;
+	struct pinctrl_state *set_state;
 	unsigned int reg;
 	int ret;
 	int irq;
@@ -1031,18 +1056,31 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 	mxhci = hcd_to_hsic(hcd);
 	mxhci->dev = &pdev->dev;
 
-	mxhci->strobe = of_get_named_gpio(node, "hsic,strobe-gpio", 0);
-	if (mxhci->strobe < 0) {
-		ret = -EINVAL;
-		goto put_hcd;
+	/* Get pinctrl if target uses pinctrl */
+	mxhci->hsic_pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR(mxhci->hsic_pinctrl)) {
+		if (of_property_read_bool(pdev->dev.of_node, "pinctrl-names")) {
+			dev_err(&pdev->dev, "Error encountered while getting pinctrl");
+			ret = PTR_ERR(mxhci->hsic_pinctrl);
+			goto put_hcd;
+		}
+		dev_dbg(&pdev->dev, "Target does not use pinctrl\n");
+		mxhci->hsic_pinctrl = NULL;
 	}
 
-	mxhci->data  = of_get_named_gpio(node, "hsic,data-gpio", 0);
-	if (mxhci->data < 0) {
-		ret = -EINVAL;
-		goto put_hcd;
-	}
+	if (IS_ERR_OR_NULL(mxhci->hsic_pinctrl)) {
+		mxhci->strobe = of_get_named_gpio(node, "hsic,strobe-gpio", 0);
+		if (mxhci->strobe < 0) {
+			ret = -EINVAL;
+			goto put_hcd;
+		}
 
+		mxhci->data  = of_get_named_gpio(node, "hsic,data-gpio", 0);
+		if (mxhci->data < 0) {
+			ret = -EINVAL;
+			goto put_hcd;
+		}
+	}
 	mxhci->host_ready = of_get_named_gpio(node,
 					"qcom,host-ready-gpio", 0);
 	if (mxhci->host_ready < 0)
@@ -1134,13 +1172,13 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 		if (ret) {
 			dev_err(&pdev->dev,
 					"request irq failed (wakeup irq)\n");
-			goto deinit_vddcx;
+			goto pinctrl_sleep;
 		}
 	}
 
 	ret = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (ret)
-		goto deinit_vddcx;
+		goto pinctrl_sleep;
 
 	hcd = dev_get_drvdata(&pdev->dev);
 	xhci = hcd_to_xhci(hcd);
@@ -1214,7 +1252,7 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 
 	temp = xhci_readl(xhci, &xhci->ir_set->irq_control);
 	temp &= ~ER_IRQ_INTERVAL_MASK;
-	temp |= (u32) 4000;
+	temp |= (u32) MSM_HSIC_INT_MODERATION;
 	xhci_writel(xhci, temp, &xhci->ir_set->irq_control);
 
 	ret = device_create_file(&pdev->dev, &dev_attr_config_imod);
@@ -1224,6 +1262,8 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 
 	/* Enable HSIC PHY */
 	mxhci_hsic_ulpi_write(mxhci, 0x01, MSM_HSIC_CFG_SET);
+
+	init_completion(&mxhci->phy_in_lpm);
 
 	device_init_wakeup(&pdev->dev, 1);
 	pm_stay_awake(mxhci->dev);
@@ -1249,6 +1289,15 @@ remove_usb2_hcd:
 	usb_remove_hcd(hcd);
 deinit_vddcx:
 	mxhci_hsic_init_vddcx(mxhci, 0);
+pinctrl_sleep:
+	if (mxhci->hsic_pinctrl) {
+		set_state = pinctrl_lookup_state(mxhci->hsic_pinctrl,
+				"hsic_xhci_sleep");
+		if (IS_ERR(set_state))
+			pr_err("cannot get hsic pinctrl sleep state\n");
+		else
+			pinctrl_select_state(mxhci->hsic_pinctrl, set_state);
+	}
 deinit_clocks:
 	mxhci_hsic_init_clocks(mxhci, 0);
 put_hcd:
@@ -1262,7 +1311,12 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 	struct usb_hcd	*hcd = platform_get_drvdata(pdev);
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
 	struct mxhci_hsic_hcd *mxhci = hcd_to_hsic(hcd);
+	struct pinctrl_state *set_state;
 	u32 reg;
+
+	xhci_dbg_log_event(&dbg_hsic, NULL,  "mxhci_hsic_remove", 0);
+
+	complete(&mxhci->phy_in_lpm);
 
 	/* disable STROBE_PAD_CTL */
 	reg = readl_relaxed(TLMM_GPIO_HSIC_STROBE_PAD_CTL);
@@ -1298,6 +1352,15 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 		msm_bus_scale_unregister_client(mxhci->bus_perf_client);
 
 	destroy_workqueue(mxhci->wq);
+
+	if (mxhci->hsic_pinctrl) {
+		set_state = pinctrl_lookup_state(mxhci->hsic_pinctrl,
+				"hsic_xhci_sleep");
+		if (IS_ERR(set_state))
+			pr_err("cannot get hsic pinctrl sleep state\n");
+		else
+			pinctrl_select_state(mxhci->hsic_pinctrl, set_state);
+	}
 
 	device_wakeup_disable(&pdev->dev);
 	mxhci_hsic_init_vddcx(mxhci, 0);

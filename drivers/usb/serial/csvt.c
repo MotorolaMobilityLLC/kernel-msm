@@ -54,6 +54,7 @@ static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6 , 0x909C, 4)},
 	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6 , 0x909D, 4)},
 	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6 , 0x909E, 6)},
+	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6 , 0x909F, 4)},
 	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6 , 0x90A0, 4)},
 	{ USB_DEVICE_INTERFACE_NUMBER(0x05c6 , 0x90A4, 6)},
 
@@ -402,6 +403,7 @@ static struct usb_serial_driver csvt_device = {
 	.set_termios		= csvt_ctrl_set_termios,
 	.read_int_callback	= csvt_ctrl_int_cb,
 	.attach			= csvt_ctrl_attach,
+	.reset_resume		= usb_serial_generic_resume,
 	.release		= csvt_ctrl_release,
 };
 

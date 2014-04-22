@@ -14,6 +14,7 @@
 #include <linux/delay.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/msm-bus.h>
 #include <linux/platform_device.h>
 #include <linux/errno.h>
 #include <linux/io.h>
@@ -824,7 +825,7 @@ static int msm_iommu_attach_dev(struct iommu_domain *domain, struct device *dev)
 			iommu_resume(iommu_drvdata);
 		} else {
 			ret = msm_iommu_sec_program_iommu(
-				iommu_drvdata->sec_id, ctx_drvdata->num);
+				iommu_drvdata, ctx_drvdata);
 			if (ret) {
 				__disable_regulators(iommu_drvdata);
 				__disable_clocks(iommu_drvdata);

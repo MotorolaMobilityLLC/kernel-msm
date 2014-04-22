@@ -56,16 +56,28 @@ static struct platform_device lge_ramoops_dev = {
 static void __init lge_add_persist_ram_devices(void)
 {
 	int ret;
-	struct membank *bank;
+	phys_addr_t base;
+	phys_addr_t size;
 
-	if (meminfo.nr_banks < 2) {
-		pr_err("%s: not enough membank\n", __func__);
-		return;
+	size = lge_ramoops_data.mem_size;
+
+	/* find a 1M section from highmem */
+	base = memblock_find_in_range(memblock.current_limit,
+			MEMBLOCK_ALLOC_ANYWHERE, size, SECTION_SIZE);
+	if (!base) {
+		/* find a 1M section from lowmem */
+		base = memblock_find_in_range(0,
+				MEMBLOCK_ALLOC_ACCESSIBLE,
+				size, SECTION_SIZE);
+		if (!base) {
+			pr_err("%s: not enough membank\n", __func__);
+			return;
+		}
 	}
 
-	bank = &meminfo.bank[1];
-	/* first 1MB is used by bootloader */
-	lge_ramoops_data.mem_address = bank->start + SZ_1M;
+	pr_info("ramoops: reserved 1 MiB at 0x%08x\n", (int)base);
+
+	lge_ramoops_data.mem_address = base;
 	ret = memblock_reserve(lge_ramoops_data.mem_address,
 			lge_ramoops_data.mem_size);
 
@@ -82,9 +94,15 @@ void __init lge_reserve(void)
 void __init lge_add_persistent_device(void)
 {
 	int ret;
+
+	if (!lge_ramoops_data.mem_address) {
+		pr_err("%s: not allocated memory for ramoops\n", __func__);
+		return;
+	}
+
 	ret = platform_device_register(&lge_ramoops_dev);
 	if (ret){
-		printk(KERN_ERR "unable to register platform device\n");
+		pr_err("unable to register platform device\n");
 		return;
 	}
 #ifdef CONFIG_LGE_HANDLE_PANIC

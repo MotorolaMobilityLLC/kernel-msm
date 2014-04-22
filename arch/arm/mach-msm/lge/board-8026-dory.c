@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014, LGE inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,12 +31,12 @@
 #include <linux/regulator/qpnp-regulator.h>
 #include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/regulator/spm-regulator.h>
-#include <linux/msm_tsens.h>
+#include <linux/clk/msm-clk-provider.h>
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <mach/board.h>
-#include <mach/msm_bus.h>
+#include <linux/msm-bus.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_memtypes.h>
@@ -45,9 +46,7 @@
 #include <soc/qcom/rpm-smd.h>
 #include <soc/qcom/spm.h>
 #include <soc/qcom/pm.h>
-#include <soc/qcom/restart.h>
 #include <soc/qcom/socinfo.h>
-#include <linux/msm_thermal.h>
 #include "../board-dt.h"
 #include "../clock.h"
 #include "../platsmp.h"
@@ -149,8 +148,6 @@ void __init msm8226_add_drivers(void)
 	msm_bus_fabric_init_driver();
 	qup_i2c_init_driver();
 	cpr_regulator_init();
-	tsens_tm_init_driver();
-	msm_thermal_device_init();
 #ifdef CONFIG_PSTORE_RAM
 	lge_add_persistent_device();
 #endif
@@ -160,13 +157,20 @@ void __init msm8226_init(void)
 {
 	struct of_dev_auxdata *adata = msm8226_auxdata_lookup;
 
-	msm8226_init_gpiomux();
+	/*
+	 * populate devices from DT first so smem probe will get called as part
+	 * of msm_smem_init.  socinfo_init needs smem support so call
+	 * msm_smem_init before it.  msm8226_init_gpiomux needs socinfo so
+	 * call socinfo_init before it.
+	 */
 	board_dt_populate(adata);
+
 	msm_smem_init();
 
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
+	msm8226_init_gpiomux();
 	msm8226_add_drivers();
 }
 
@@ -183,6 +187,5 @@ DT_MACHINE_START(MSM8226_DT, "Qualcomm MSM 8226 DORY (Flattened Device Tree)")
 	.dt_compat = msm8226_dt_match,
 	.reserve = msm8226_reserve,
 	.init_very_early = msm8226_early_memory,
-	.restart = msm_restart,
 	.smp = &arm_smp_ops,
 MACHINE_END

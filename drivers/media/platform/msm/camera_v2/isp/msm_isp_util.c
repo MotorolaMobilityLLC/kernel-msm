@@ -13,6 +13,7 @@
 #include <linux/io.h>
 #include <media/v4l2-subdev.h>
 #include <linux/ratelimit.h>
+#include <asm/div64.h>
 
 #include "msm.h"
 #include "msm_isp_util.h"
@@ -24,11 +25,10 @@
 static DEFINE_MUTEX(bandwidth_mgr_mutex);
 static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
 
-#define MSM_ISP_MIN_AB 300000000
-#define MSM_ISP_MIN_IB 450000000
+#define MSM_ISP_MIN_AB 450000000
+#define MSM_ISP_MIN_IB 900000000
 
 #define VFE40_8974V2_VERSION 0x1001001A
-
 static struct msm_bus_vectors msm_isp_init_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_VFE,
@@ -220,6 +220,53 @@ uint32_t msm_isp_get_framedrop_period(
 	return 1;
 }
 
+int msm_isp_get_clk_info(struct vfe_device *vfe_dev,
+	struct platform_device *pdev, struct msm_cam_clk_info *vfe_clk_info)
+{
+	uint32_t count;
+	int i, rc;
+	uint32_t rates[VFE_CLK_INFO_MAX];
+
+	struct device_node *of_node;
+	of_node = pdev->dev.of_node;
+
+	count = of_property_count_strings(of_node, "qcom,clock-names");
+
+	ISP_DBG("count = %d\n", count);
+	if (count == 0) {
+		pr_err("no clocks found in device tree, count=%d", count);
+		return 0;
+	}
+
+	if (count > VFE_CLK_INFO_MAX) {
+		pr_err("invalid count=%d, max is %d\n", count,
+			VFE_CLK_INFO_MAX);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < count; i++) {
+		rc = of_property_read_string_index(of_node, "qcom,clock-names",
+				i, &(vfe_clk_info[i].clk_name));
+		ISP_DBG("clock-names[%d] = %s\n", i, vfe_clk_info[i].clk_name);
+		if (rc < 0) {
+			pr_err("%s failed %d\n", __func__, __LINE__);
+			return rc;
+		}
+	}
+	rc = of_property_read_u32_array(of_node, "qcom,clock-rates",
+		rates, count);
+	if (rc < 0) {
+		pr_err("%s failed %d\n", __func__, __LINE__);
+		return rc;
+	}
+	for (i = 0; i < count; i++) {
+		vfe_clk_info[i].clk_rate = (rates[i] == 0) ? -1 : rates[i];
+		ISP_DBG("clk_rate[%d] = %ld\n", i, vfe_clk_info[i].clk_rate);
+	}
+	vfe_dev->num_clk = count;
+	return 0;
+}
+
 static inline void msm_isp_get_timestamp(struct msm_isp_timestamp *time_stamp)
 {
 	struct timespec ts;
@@ -234,7 +281,8 @@ static inline void msm_isp_get_vt_tstamp(struct vfe_device *vfe_dev,
 {
 	uint32_t avtimer_msw_1st = 0, avtimer_lsw = 0;
 	uint32_t avtimer_msw_2nd = 0;
-	uint8_t iter = 0;
+	uint64_t av_timer_tick = 0;
+
 	if (!vfe_dev->p_avtimer_msw || !vfe_dev->p_avtimer_lsw) {
 		pr_err("%s: ioremap failed\n", __func__);
 		return;
@@ -243,13 +291,10 @@ static inline void msm_isp_get_vt_tstamp(struct vfe_device *vfe_dev,
 		avtimer_msw_1st = msm_camera_io_r(vfe_dev->p_avtimer_msw);
 		avtimer_lsw = msm_camera_io_r(vfe_dev->p_avtimer_lsw);
 		avtimer_msw_2nd = msm_camera_io_r(vfe_dev->p_avtimer_msw);
-	} while ((avtimer_msw_1st != avtimer_msw_2nd)
-		&& (iter++ < AVTIMER_ITERATION_CTR));
-	if (iter >= AVTIMER_ITERATION_CTR) {
-		pr_err("%s: AVTimer MSW TS did not converge !!!\n", __func__);
-		return;
-	}
-	time_stamp->vt_time.tv_sec = avtimer_msw_1st;
+	} while (avtimer_msw_1st != avtimer_msw_2nd);
+	av_timer_tick = ((uint64_t)avtimer_msw_1st << 32) | avtimer_lsw;
+	avtimer_lsw = do_div(av_timer_tick, USEC_PER_SEC);
+	time_stamp->vt_time.tv_sec = (uint32_t)(av_timer_tick);
 	time_stamp->vt_time.tv_usec = avtimer_lsw;
 }
 
@@ -752,6 +797,19 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 		}
 		break;
 	}
+	case GET_ISP_ID: {
+		uint32_t *isp_id = NULL;
+
+		if (cmd_len < sizeof(uint32_t)) {
+			pr_err("%s:%d failed: invalid cmd len %u exp %u\n",
+				__func__, __LINE__, cmd_len,
+				sizeof(uint32_t));
+			return -EINVAL;
+		}
+
+		isp_id = (uint32_t *)cfg_data;
+		*isp_id = vfe_dev->pdev->id;
+	}
 	}
 	return 0;
 }
@@ -923,6 +981,12 @@ int msm_isp_cal_word_per_line(uint32_t output_format,
 	case V4L2_PIX_FMT_NV61:
 		val = CAL_WORD(pixel_per_line, 1, 8);
 		break;
+	case V4L2_PIX_FMT_YUYV:
+	case V4L2_PIX_FMT_YVYU:
+	case V4L2_PIX_FMT_UYVY:
+	case V4L2_PIX_FMT_VYUY:
+		val = CAL_WORD(pixel_per_line, 2, 8);
+	break;
 		/*TD: Add more image format*/
 	default:
 		msm_isp_print_fourcc_error(__func__, output_format);

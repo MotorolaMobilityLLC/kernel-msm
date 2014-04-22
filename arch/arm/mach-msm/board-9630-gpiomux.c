@@ -229,29 +229,81 @@ static struct msm_gpiomux_config mdm9630_cdc_reset_config[] __initdata = {
 	}
 };
 
-static struct gpiomux_setting sd_card_det_active_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
+#ifdef CONFIG_FB_MSM_QPIC
+static struct gpiomux_setting qpic_lcdc_a_d = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_10MA,
 	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_IN,
 };
 
-static struct gpiomux_setting sd_card_det_sleep_config = {
+static struct gpiomux_setting qpic_lcdc_cs = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_10MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting qpic_lcdc_rs = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_10MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting qpic_lcdc_te = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_10MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting qpic_lcdc_bl = {
 	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-	.dir = GPIOMUX_IN,
+	.drv = GPIOMUX_DRV_10MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
 };
 
-static struct msm_gpiomux_config sd_card_det[] __initdata = {
+static struct msm_gpiomux_config msm9630_qpic_lcdc_configs[] __initdata = {
 	{
-		.gpio = 50,
+		.gpio      = 20,	/* a_d */
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &sd_card_det_active_config,
-			[GPIOMUX_SUSPENDED] = &sd_card_det_sleep_config,
+			[GPIOMUX_SUSPENDED] = &qpic_lcdc_a_d,
+		},
+	},
+	{
+		.gpio      = 21,	/* cs */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &qpic_lcdc_cs,
+		},
+	},
+	{
+		.gpio      = 22,	/* te */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &qpic_lcdc_te,
+		},
+	},
+	{
+		.gpio      = 23,	/* rs */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &qpic_lcdc_rs,
+		},
+	},
+	{
+		.gpio      = 84,	/* bl */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &qpic_lcdc_bl,
 		},
 	},
 };
+
+static void msm9630_disp_init_gpiomux(void)
+{
+	msm_gpiomux_install(msm9630_qpic_lcdc_configs,
+			ARRAY_SIZE(msm9630_qpic_lcdc_configs));
+}
+#else
+static void msm9630_disp_init_gpiomux(void)
+{
+}
+#endif /* CONFIG_FB_MSM_QPIC */
 
 void __init mdm9630_init_gpiomux(void)
 {
@@ -274,5 +326,5 @@ void __init mdm9630_init_gpiomux(void)
 	msm_gpiomux_install(msm_eth_config, ARRAY_SIZE(msm_eth_config));
 #endif
 	msm_gpiomux_install(msm_wlan_configs, ARRAY_SIZE(msm_wlan_configs));
-	msm_gpiomux_install(sd_card_det, ARRAY_SIZE(sd_card_det));
+	msm9630_disp_init_gpiomux();
 }

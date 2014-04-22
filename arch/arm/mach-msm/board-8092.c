@@ -64,8 +64,6 @@ static void __init mpq8092_map_io(void)
 }
 
 static struct of_dev_auxdata mpq8092_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, "msm_sdcc.1", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, "msm_sdcc.2", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, "msm_sdcc.1", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, "msm_sdcc.2", NULL),
 	OF_DEV_AUXDATA("qcom,msm_pcie", 0xFC520000, "msm_pcie", NULL),
@@ -190,6 +188,5 @@ DT_MACHINE_START(MSM8092_DT, "Qualcomm MSM 8092 (Flattened Device Tree)")
 	.dt_compat		= mpq8092_dt_match,
 	.reserve		= mpq8092_dt_reserve,
 	.init_very_early	= mpq8092_early_memory,
-	.restart		= msm_restart,
 	.smp			= &msm8974_smp_ops,
 MACHINE_END

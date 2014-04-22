@@ -1051,6 +1051,47 @@ int32_t qpnp_adc_vbatt_rscaler(struct qpnp_vadc_chip *chip,
 }
 EXPORT_SYMBOL(qpnp_adc_vbatt_rscaler);
 
+int32_t qpnp_adc_absolute_rthr(struct qpnp_vadc_chip *chip,
+		struct qpnp_adc_tm_btm_param *param,
+		uint32_t *low_threshold, uint32_t *high_threshold)
+{
+	struct qpnp_vadc_linear_graph vbatt_param;
+	int rc = 0, sign = 0;
+	int64_t low_thr = 0, high_thr = 0;
+
+	rc = qpnp_get_vadc_gain_and_offset(chip, &vbatt_param, CALIB_ABSOLUTE);
+	if (rc < 0)
+		return rc;
+
+	low_thr = (((param->low_thr) - QPNP_ADC_625_UV) * vbatt_param.dy);
+	if (low_thr < 0) {
+		sign = 1;
+		low_thr = -low_thr;
+	}
+	do_div(low_thr, QPNP_ADC_625_UV);
+	if (sign)
+		low_thr = -low_thr;
+	*low_threshold = low_thr + vbatt_param.adc_gnd;
+
+	sign = 0;
+	high_thr = (((param->high_thr) - QPNP_ADC_625_UV) * vbatt_param.dy);
+	if (high_thr < 0) {
+		sign = 1;
+		high_thr = -high_thr;
+	}
+	do_div(high_thr, QPNP_ADC_625_UV);
+	if (sign)
+		high_thr = -high_thr;
+	*high_threshold = high_thr + vbatt_param.adc_gnd;
+
+	pr_debug("high_volt:%d, low_volt:%d\n", param->high_thr,
+				param->low_thr);
+	pr_debug("adc_code_high:%x, adc_code_low:%x\n", *high_threshold,
+				*low_threshold);
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_adc_absolute_rthr);
+
 int32_t qpnp_adc_btm_scaler(struct qpnp_vadc_chip *chip,
 		struct qpnp_adc_tm_btm_param *param,
 		uint32_t *low_threshold, uint32_t *high_threshold)
@@ -1140,6 +1181,20 @@ int qpnp_adc_get_revid_version(struct device *dev)
 		(revid_data->pmic_type == PM8941_V3P1_TYPE) &&
 		(revid_data->pmic_subtype == PM8941_V3P1_SUBTYPE))
 			return QPNP_REV_ID_8941_3_1;
+	else if ((revid_data->rev1 == PM8941_V3P0_REV1) &&
+		(revid_data->rev2 == PM8941_V3P0_REV2) &&
+		(revid_data->rev3 == PM8941_V3P0_REV3) &&
+		(revid_data->rev4 == PM8941_V3P0_REV4) &&
+		(revid_data->pmic_type == PM8941_V3P0_TYPE) &&
+		(revid_data->pmic_subtype == PM8941_V3P0_SUBTYPE))
+			return QPNP_REV_ID_8941_3_0;
+	else if ((revid_data->rev1 == PM8941_V2P0_REV1) &&
+		(revid_data->rev2 == PM8941_V2P0_REV2) &&
+		(revid_data->rev3 == PM8941_V2P0_REV3) &&
+		(revid_data->rev4 == PM8941_V2P0_REV4) &&
+		(revid_data->pmic_type == PM8941_V2P0_TYPE) &&
+		(revid_data->pmic_subtype == PM8941_V2P0_SUBTYPE))
+			return QPNP_REV_ID_8941_2_0;
 	else if ((revid_data->rev1 == PM8226_V2P2_REV1) &&
 		(revid_data->rev2 == PM8226_V2P2_REV2) &&
 		(revid_data->rev3 == PM8226_V2P2_REV3) &&

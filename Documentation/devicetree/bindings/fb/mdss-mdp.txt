@@ -158,7 +158,7 @@ Bus Scaling Data:
 				of (src, dst, ab, ib) which is defined at
 				Documentation/devicetree/bindings/arm/msm/msm_bus.txt
 				* Current values of src & dst are defined at
-				arch/arm/mach-msm/msm_bus_board.h
+				include/linux/msm-bus-board.h
 				src values allowed for MDSS are:
 					22 = MSM_BUS_MASTER_MDP_PORT0
 					23 = MSM_BUS_MASTER_MDP_PORT1
@@ -234,6 +234,8 @@ Optional properties:
 				pipes which have no scaling support.
 - qcom,mdss-has-decimation: Boolean property to indicate the presence of
 			    decimation feature in fetch.
+- qcom,mdss-has-source-split: Boolean property to indicate if source split
+			      feature is available or not.
 - qcom,mdss-ad-off:		Array of offset addresses for the available
 				Assertive Display (AD) blocks. These offsets
 				are calculated from the register "mdp_phys"
@@ -247,6 +249,8 @@ Optional properties:
 				AD offset).
 - qcom,mdss-has-wb-ad: Boolean property to indicate assertive display feature
 				support on write back framebuffer.
+- qcom,mdss-no-lut-read: 	Boolean property to indicate reading of LUT is
+				not supported.
 - qcom,mdss-mdp-wfd-mode:	A string that specifies what is the mode of
 				   writeback wfd block.
 				"intf" = Writeback wfd block is
@@ -417,7 +421,9 @@ Example:
 		qcom,mdss-has-non-scalar-rgb;
 		qcom,mdss-has-bwc;
 		qcom,mdss-has-decimation;
+		qcom,mdss-has-source-split;
 		qcom,mdss-wfd-mode = "intf";
+		qcom,mdss-no-lut-read;
 
 		qcom,mdss-pipe-vig-xin-id = <0 4 8>;
 		qcom,mdss-pipe-rgb-xin-id = <1 5 9>;

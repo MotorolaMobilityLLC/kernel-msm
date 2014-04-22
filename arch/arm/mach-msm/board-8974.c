@@ -79,14 +79,6 @@ static struct of_dev_auxdata msm8974_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,usb-bam-msm", 0xF9304000, "usb_bam", NULL),
 	OF_DEV_AUXDATA("qcom,spi-qup-v2", 0xF9924000, \
 			"spi_qsd.1", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
-			"msm_sdcc.1", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, \
-			"msm_sdcc.2", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9864000, \
-			"msm_sdcc.3", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98E4000, \
-			"msm_sdcc.4", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, \
 			"msm_sdcc.1", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, \
@@ -157,6 +149,5 @@ DT_MACHINE_START(MSM8974_DT, "Qualcomm MSM 8974 (Flattened Device Tree)")
 	.dt_compat		= msm8974_dt_match,
 	.reserve		= msm_8974_reserve,
 	.init_very_early	= msm8974_init_very_early,
-	.restart		= msm_restart,
 	.smp			= &msm8974_smp_ops,
 MACHINE_END

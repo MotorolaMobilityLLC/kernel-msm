@@ -93,9 +93,10 @@ static void rmnet_vnd_add_qos_header(struct sk_buff *skb,
 		qmi8h = (struct qmi_qos_hdr8_s *)
 			skb_push(skb, sizeof(struct qmi_qos_hdr8_s));
 		/* Flags are 0 always */
-		qmi8h->version_flags =  0;
+		qmi8h->hdr.version = 0;
+		qmi8h->hdr.flags = 0;
 		memset(qmi8h->reserved, 0, sizeof(qmi8h->reserved));
-		qmi8h->flow_id = skb->mark;
+		qmi8h->hdr.flow_id = skb->mark;
 	} else {
 		LOGD("%s(): Bad QoS version configured\n", __func__);
 	}
@@ -479,8 +480,6 @@ static void rmnet_vnd_setup(struct net_device *dev)
 	dev_conf = (struct rmnet_vnd_private_s *) netdev_priv(dev);
 	memset(dev_conf, 0, sizeof(struct rmnet_vnd_private_s));
 
-	/* keep the default flags, just add NOARP */
-	dev->flags |= IFF_NOARP;
 	dev->netdev_ops = &rmnet_data_vnd_ops;
 	dev->mtu = RMNET_DATA_DFLT_PACKET_SIZE;
 	dev->needed_headroom = RMNET_DATA_NEEDED_HEADROOM;

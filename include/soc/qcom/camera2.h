@@ -49,6 +49,12 @@ struct msm_cam_clk_info {
 	uint32_t delay;
 };
 
+struct msm_pinctrl_info {
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *gpio_state_active;
+	struct pinctrl_state *gpio_state_suspend;
+};
+
 struct msm_cam_clk_setting {
 	struct msm_cam_clk_info *clk_info;
 	uint16_t num_clk_info;
@@ -73,6 +79,8 @@ struct msm_camera_power_ctrl_t {
 	int num_vreg;
 	struct msm_camera_i2c_conf *i2c_conf;
 	struct msm_cam_clk_info *clk_info;
+	struct msm_pinctrl_info pinctrl_info;
+	uint8_t cam_pinctrl_status;
 	uint16_t clk_info_size;
 };
 
@@ -138,10 +146,18 @@ struct msm_eeprom_memory_block_t {
 	uint32_t num_data;	/* size of total mapdata */
 };
 
+struct msm_eeprom_cmm_t {
+	uint32_t cmm_support;
+	uint32_t cmm_compression;
+	uint32_t cmm_offset;
+	uint32_t cmm_size;
+};
+
 struct msm_eeprom_board_info {
 	const char *eeprom_name;
 	uint16_t i2c_slaveaddr;
 	struct msm_camera_power_ctrl_t power_info;
+	struct msm_eeprom_cmm_t cmm_data;
 };
 
 #endif
