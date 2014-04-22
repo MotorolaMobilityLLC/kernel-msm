@@ -36,6 +36,7 @@ enum mipi_samsung_cmd_list {
 	PANEL_HBM_READ,
 	PANEL_ALPM_ON,
 	PANEL_ALPM_OFF,
+	PANEL_BACKLIGHT_CMD,
 };
 enum {
 	MIPI_RESUME_STATE,

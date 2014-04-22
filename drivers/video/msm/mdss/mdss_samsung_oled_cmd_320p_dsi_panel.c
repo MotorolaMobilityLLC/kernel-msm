@@ -47,6 +47,7 @@ static struct dsi_cmd manufacture_id_cmds;
 static struct dsi_cmd mtp_id_cmds;
 static struct dsi_cmd mtp_enable_cmds;
 static struct dsi_cmd gamma_cmds_list;
+static struct dsi_cmd backlight_cmds;
 
 static struct candella_lux_map candela_map_table;
 DEFINE_LED_TRIGGER(bl_led_trigger);
@@ -246,6 +247,10 @@ static int mipi_samsung_disp_send_cmd(
 	case PANEL_MTP_ENABLE:
 		cmd_desc = mtp_enable_cmds.cmd_desc;
 		cmd_size = mtp_enable_cmds.num_of_cmds;
+		break;
+	case PANEL_BACKLIGHT_CMD:
+		cmd_desc = backlight_cmds.cmd_desc;
+		cmd_size = backlight_cmds.num_of_cmds;
 		break;
 #if defined(ALPM_MODE)
 	case PANEL_ALPM_ON:
@@ -455,7 +460,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		msd.manufacture_id = mipi_samsung_manufacture_id(pdata);
 
 	mdss_dsi_panel_dimming_init(pdata);
-	pr_info("%s\n", __func__);
+
+	if (pinfo->is_suspending)
+		display_on_seq.cmd_desc[11].payload[1] = 0x26;
+	else
+		display_on_seq.cmd_desc[11].payload[1] = 0xff;
 
 	/* Normaly the else is working for PANEL_DISP_ON_SEQ */
 	if (pinfo->alpm_event) {
@@ -1095,6 +1104,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			"samsung,panel-mtp-enable-cmds");
 	mdss_samsung_parse_panel_cmd(np, &gamma_cmds_list,
 			"samsung,panel-gamma-cmds-list");
+	mdss_samsung_parse_panel_cmd(np, &backlight_cmds,
+			"samsung,panel-backlight-cmds");
 
 	mdss_samsung_parse_candella_lux_mapping_table(np,
 			&candela_map_table,
@@ -1271,6 +1282,39 @@ static int samsung_dsi_panel_event_handler(int event)
 	return 0;
 }
 
+static ssize_t mipi_samsung_ambient_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	static struct mdss_panel_info *pinfo;
+
+	if (msd.pdata && unlikely(!pinfo))
+		pinfo = &msd.pdata->panel_info;
+
+	pr_info("[ALPM_DEBUG] %s: current status : %d\n",
+					 __func__, pinfo->is_suspending);
+
+	return 0;
+}
+
+static ssize_t mipi_samsung_ambient_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int ambient_mode = 0;
+	sscanf(buf, "%d" , &ambient_mode);
+
+	pr_info("[ambient_DEBUG] %s: mode : %d\n", __func__, ambient_mode);
+
+	if (ambient_mode)
+		backlight_cmds.cmd_desc[0].payload[1] = 0xff;
+	else
+		backlight_cmds.cmd_desc[0].payload[1] = 0x26;
+
+	mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
+	return 0;
+}
+static DEVICE_ATTR(ambient, S_IRUGO | S_IWUSR | S_IWGRP,
+			mipi_samsung_ambient_show,
+			mipi_samsung_ambient_store);
 #if defined(ALPM_MODE)
 static ssize_t mipi_samsung_alpm_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -1435,6 +1479,7 @@ static struct attribute *panel_sysfs_attributes[] = {
 #if defined(ESD_DEBUG)
 	&dev_attr_esd_check.attr,
 #endif
+	&dev_attr_ambient.attr,
 	NULL
 };
 static const struct attribute_group panel_sysfs_group = {
