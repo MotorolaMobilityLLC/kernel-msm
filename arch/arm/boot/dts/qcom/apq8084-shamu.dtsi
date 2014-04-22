@@ -1,0 +1,82 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014 Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "apq8084-moto-common.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-mot-smd-QHD-cmd.dtsi"
+
+/ {
+	model = "Motorola APQ 8084 Shamu";
+	compatible = "qcom,apq8084-shamu",
+		   "qcom,apq8084-moto",
+		   "qcom,apq8084";
+};
+
+&pma8084_l22 {
+	regulator-always-on;
+};
+
+&pma8084_l17 {
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+	/delete-property/ regulator-always-on;
+};
+
+&pma8084_lvs3 {
+	/delete-property/ regulator-always-on;
+};
+
+&mdss_fb0 {
+	qcom,mdss-fb-split = <720 720>;
+	qcom,mdss-fb-rot-180;
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&vbat_disp_vreg {
+	regulator-boot-on;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_0_cmd_v0>;
+	qcom,platform-reset-gpio = <&msmgpio 86 0>;
+	qcom,platform-te-gpio = <&msmgpio 12 0>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&pma8084_lvs3>;
+	vci_disp-supply = <&pma8084_l17>;
+	/delete-property/ vdd-supply;
+	/delete-node/ qcom,platform-supply-entry1;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_1_cmd_v0>;
+	/delete-property/ vdd-supply;
+	/delete-node/ qcom,platform-supply-entry1;
+};
+
+&mot_smd_QHD_0_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&i2c_1 {
+	synaptics_dsx_i2c@20 {
+	status = "disabled";
+	};
+};
