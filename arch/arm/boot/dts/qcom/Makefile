@@ -127,6 +127,7 @@ dtb-$(CONFIG_ARCH_APQ8084) += apq8084-v1.0-old-pwr-grid-liquid.dtb \
 	apq8084-v1.1-sbc.dtb
 dtb-$(CONFIG_ARCH_MSM) += msmplutonium-sim.dtb
 endif
+dtb-$(CONFIG_ARCH_APQ8084) += apq8084-shamu-p1.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
