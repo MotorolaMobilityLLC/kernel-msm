@@ -364,23 +364,15 @@ void *a4xx_snapshot(struct adreno_device *adreno_dev, void *snapshot,
 			a4xx_sp_tp_registers_count, 0);
 
 	/* Turn on MMU clocks since we read MMU registers */
-	if (kgsl_mmu_enable_clk(&device->mmu, KGSL_IOMMU_CONTEXT_USER)) {
-		KGSL_CORE_ERR("Failed to turn on iommu user context clocks\n");
-		goto skip_regs;
-	}
-	if (kgsl_mmu_enable_clk(&device->mmu, KGSL_IOMMU_CONTEXT_PRIV)) {
-		kgsl_mmu_disable_clk(&device->mmu, KGSL_IOMMU_CONTEXT_USER);
-		KGSL_CORE_ERR("Failed to turn on iommu priv context clocks\n");
-		goto skip_regs;
-	}
+	kgsl_mmu_enable_clk(&device->mmu, KGSL_IOMMU_MAX_UNITS);
+
 	/* Master set of (non debug) registers */
 	snapshot = kgsl_snapshot_add_section(device,
 		KGSL_SNAPSHOT_SECTION_REGS, snapshot, remain,
 		kgsl_snapshot_dump_regs, &list);
 
-	kgsl_mmu_disable_clk(&device->mmu, KGSL_IOMMU_CONTEXT_USER);
-	kgsl_mmu_disable_clk(&device->mmu, KGSL_IOMMU_CONTEXT_PRIV);
-skip_regs:
+	kgsl_mmu_disable_clk(&device->mmu, KGSL_IOMMU_MAX_UNITS);
+
 	snapshot = kgsl_snapshot_indexed_registers(device, snapshot,
 		remain,
 		A4XX_CP_STATE_DEBUG_INDEX, A4XX_CP_STATE_DEBUG_DATA,
