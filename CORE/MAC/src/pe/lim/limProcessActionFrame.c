@@ -1889,7 +1889,6 @@ static void __limProcessSAQueryRequestActionFrame(tpAniSirGlobal pMac, tANI_U8 *
 static void __limProcessSAQueryResponseActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession psessionEntry)
 {
     tpSirMacMgmtHdr     pHdr;
-    tANI_U32            frameLen;
     tANI_U8             *pBody;
     tpDphHashNode       pSta;
     tANI_U16            aid;
@@ -1897,10 +1896,17 @@ static void __limProcessSAQueryResponseActionFrame(tpAniSirGlobal pMac, tANI_U8 
     tANI_U8             retryNum;
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
-    frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
     VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
                          ("SA Query Response received...")) ;
+
+    /* When a station, supplicant handles SA Query Response.
+       Forward to SME to HDD to wpa_supplicant. */
+    if (eLIM_STA_ROLE == psessionEntry->limSystemRole)
+    {
+        limSendSmeMgmtFrameInd(pMac, 0, pRxPacketInfo, psessionEntry, 0);
+        return;
+    }
 
     /* If this is an unprotected SA Query Response, then ignore it. */
     if (pHdr->fc.wep == 0)

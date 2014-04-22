@@ -976,7 +976,6 @@ void wlan_hdd_cfg80211_post_voss_start(hdd_adapter_t* pAdapter)
                          (v_U8_t*)WNM_NOTIFICATION_FRAME,
                                   WNM_NOTIFICATION_FRAME_SIZE );
 
-
 #ifdef WLAN_FEATURE_11W
     /* SA Query Response Action Frame */
     sme_RegisterMgmtFrame(hHal, pAdapter->sessionId, type,
@@ -1026,7 +1025,6 @@ void wlan_hdd_cfg80211_pre_voss_stop(hdd_adapter_t* pAdapter)
     sme_DeregisterMgmtFrame(hHal, pAdapter->sessionId, type,
                          (v_U8_t*)WNM_NOTIFICATION_FRAME,
                                   WNM_NOTIFICATION_FRAME_SIZE );
-
 
 #ifdef WLAN_FEATURE_11W
     /* SA Query Response Action Frame */
