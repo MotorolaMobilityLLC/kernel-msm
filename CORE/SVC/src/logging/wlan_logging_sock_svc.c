@@ -30,6 +30,7 @@
  *
  ******************************************************************************/
 #ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
+#include <vmalloc.h>
 #include <wlan_nlink_srv.h>
 #include <vos_status.h>
 #include <vos_trace.h>
@@ -490,7 +491,7 @@ int wlan_logging_sock_activate_svc(int log_fe_to_console, int num_buf)
 
 	gapp_pid = INVALID_PID;
 
-	gplog_msg = (struct log_msg *) vos_mem_malloc(
+	gplog_msg = (struct log_msg *) vmalloc(
 			num_buf * sizeof(struct log_msg));
 	if (!gplog_msg) {
 		pr_err("%s: Could not allocate memory\n", __func__);
@@ -548,7 +549,7 @@ int wlan_logging_sock_deactivate_svc(void)
 	wake_up_interruptible(&gwlan_logging.wait_queue);
 	wait_for_completion_interruptible(&gwlan_logging.shutdown_comp);
 
-	vos_mem_free(gplog_msg);
+	vfree(gplog_msg);
 
 	pr_info("%s: Deactivate wlan_logging svc\n", __func__);
 

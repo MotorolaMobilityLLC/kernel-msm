@@ -134,6 +134,13 @@ void vos_log_submit(v_VOID_t *plog_hdr_ptr)
      /*Get the Hdd Context */
     pHddCtx = ((VosContextType*)(pVosContext))->pHDDContext;
 
+    if (WLAN_HDD_IS_LOAD_UNLOAD_IN_PROGRESS(pHddCtx))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                  "%s: Unloading/Loading in Progress. Ignore!!!", __func__);
+        return;
+    }
+
 #ifdef WLAN_KD_READY_NOTIFIER
     /* NL is not ready yet, WLAN KO started first */
     if ((pHddCtx->kd_nl_init) && (!pHddCtx->ptt_pid))

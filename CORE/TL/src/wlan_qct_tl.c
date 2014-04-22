@@ -5792,15 +5792,14 @@ WLANTL_RxFrames
 #endif
 
       if ((( 0 == pClientSTA->ucExists ) ||
-          ( (0 != pClientSTA->ucRxBlocked)
-            ///@@@: xg: no checking in SOFTAP for now, will revisit later
-            && (WLAN_STA_SOFTAP != pClientSTA->wSTADesc.wSTAType)
-          ) ||
-          ( WLANTL_STA_DISCONNECTED == pClientSTA->tlState)) &&
+           (0 != pClientSTA->ucRxBlocked) ||
+           ( WLANTL_STA_DISCONNECTED == pClientSTA->tlState)) &&
             /*Dont buffer Broadcast/Multicast frames. If AP transmits bursts of Broadcast/Multicast data frames, 
              * libra buffers all Broadcast/Multicast packets after authentication with AP, 
              * So it will lead to low resource condition in Rx Data Path.*/
-          ((WDA_IS_RX_BCAST(pvBDHeader) == 0)))
+          (WDA_IS_RX_BCAST(pvBDHeader) == 0) &&
+           /* Dont cache frames for SOFTAP */
+          (WLAN_STA_SOFTAP != pClientSTA->wSTADesc.wSTAType))
       {
         uDPUSig = WDA_GET_RX_DPUSIG( pvBDHeader );
           //Station has not yet been registered with TL - cache the frame
