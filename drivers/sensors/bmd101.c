@@ -25,6 +25,13 @@
 #include <linux/workqueue.h>
 #include <linux/input.h>
 #include <linux/sensors.h>
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+#include <linux/earlysuspend.h>
+#elif defined(CONFIG_FB)
+#include <linux/notifier.h>
+#include <linux/fb.h>
+struct notifier_block bmd101_fb_notif;
+#endif
 
 #define bmd101_dev			"/dev/ttyHSL1"
 #define bmd101_regulator		"8226_l28"
@@ -61,7 +68,6 @@ static struct sensors_classdev bmd101_cdev = {
 };
 struct bmd101_data {
 	struct sensors_classdev cdev;
-	struct workqueue_struct *bmd101_wq;
 };
 struct bmd101_data *sensor_data;
 
@@ -69,7 +75,7 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 {
 	int rc;
 
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: regulator %s, sensor currently %s\n", __func__, enable ? "enable":"disable", bmd101_enable ? "enabled":"disabled");
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor currently %s, turning sensor %s\n", __func__, bmd101_enable ? "on":"off", enable ? "on":"off");
 
 	if (enable && !bmd101_enable) {
 		rc = gpio_request(BMD101_RST_GPIO, "BMD101_RST");
@@ -133,31 +139,65 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 	return rc;
 }
 
-static void sensor_enable_wq(struct work_struct *work)
-{
-	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 1);
-	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s ---\n", __func__);
-}
-static DECLARE_WORK(sensor_enable_work, sensor_enable_wq);
-
-static int bmd101_resume(struct platform_device *pdev)
-{
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 1);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
-
-	return 0;
-}
-
-static int bmd101_suspend(struct platform_device *pdev, pm_message_t state)
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+static void bmd101_early_suspend(struct early_suspend *h)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
 	bmd101_enable_set(&sensor_data->cdev, 0);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
+}
+
+static void bmd101_late_resume(struct early_suspend *h)
+{
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
+	bmd101_enable_set(&sensor_data->cdev, 1);
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
+}
+
+struct early_suspend bmd101_early_suspend_handler = {
+    .level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN, 
+    .suspend = bmd101_early_suspend,
+    .resume = bmd101_late_resume,
+};
+#elif defined(CONFIG_FB)
+static void bmd101_early_suspend(void)
+{
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
+	bmd101_enable_set(&sensor_data->cdev, 0);
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
+}
+
+static void bmd101_late_resume(void)
+{
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
+	bmd101_enable_set(&sensor_data->cdev, 1);
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
+}
+
+static int bmd101_fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	static int blank_old = 0;
+	int *blank;
+
+	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
+		blank = evdata->data;
+		if (*blank == FB_BLANK_UNBLANK) {
+			if (blank_old == FB_BLANK_POWERDOWN) {
+				blank_old = FB_BLANK_UNBLANK;
+				bmd101_late_resume();
+			}
+		} else if (*blank == FB_BLANK_POWERDOWN) {
+			if (blank_old == 0 || blank_old == FB_BLANK_UNBLANK) {
+				blank_old = FB_BLANK_POWERDOWN;
+				bmd101_early_suspend();
+			}
+		}
+	}
 
 	return 0;
 }
+#endif
 
 static int bmd101_probe(struct platform_device *pdev)
 {
@@ -178,13 +218,15 @@ static int bmd101_probe(struct platform_device *pdev)
 		pr_err("[BMD101] class device create failed: %d\n", ret);
 		goto classdev_register_fail;
 	}
-
-	sensor_data->bmd101_wq = create_singlethread_workqueue("bmd101_wq");
-	if (!sensor_data->bmd101_wq) {
-		pr_err("[BMD101][error]%s: can't create workqueue\n", __func__);
-		ret = -ENOMEM;
-		goto create_workqueue_fail;
-	}
+	
+	#if defined(CONFIG_HAS_EARLYSUSPEND)
+	register_early_suspend(&bmd101_early_suspend_handler);
+	#elif defined(CONFIG_FB)
+	bmd101_fb_notif.notifier_call = bmd101_fb_notifier_callback;
+	ret= fb_register_client(&bmd101_fb_notif);
+	if (ret)
+		dev_err(&pdev->dev, "Unable to register fb_notifier: %d\n", ret);
+	#endif
 
 	pm8921_l28 = regulator_get(&pdev->dev, bmd101_regulator);
 	if (IS_ERR(pm8921_l28)) {
@@ -200,18 +242,15 @@ static int bmd101_probe(struct platform_device *pdev)
     	}
 
 	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: enable sensor +++\n", __func__);
-	queue_work(sensor_data->bmd101_wq, &sensor_enable_work);
+	bmd101_enable_set(&sensor_data->cdev, 1);
 	
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 
 	return 0;
 
-
 	reg_put_LDO28:
 	regulator_put(pm8921_l28);
 	regulator_get_fail:
-	destroy_workqueue(sensor_data->bmd101_wq);
-	create_workqueue_fail:
 	sensors_classdev_unregister(&sensor_data->cdev);
 	classdev_register_fail:
 	kfree(sensor_data);
@@ -223,8 +262,6 @@ static int bmd101_probe(struct platform_device *pdev)
 static int bmd101_remove(struct platform_device *pdev)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	destroy_workqueue(sensor_data->bmd101_wq);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 	return 0;
 }
 
@@ -236,8 +273,6 @@ static struct of_device_id bmd101_match_table[] = {
 static struct platform_driver bmd101_platform_driver = {
 	.probe = bmd101_probe,
 	.remove = bmd101_remove,
-	.suspend = bmd101_suspend,
-	.resume = bmd101_resume,
 	.driver = {
 		.name = "bmd101",
 		.owner = THIS_MODULE,
