@@ -901,10 +901,7 @@ static int adreno_iommu_setstate(struct kgsl_device *device,
 	}
 	adreno_ctx = ADRENO_CONTEXT(context);
 
-	result = kgsl_mmu_enable_clk(&device->mmu,
-				KGSL_IOMMU_CONTEXT_USER);
-	if (result)
-		goto done;
+	kgsl_mmu_enable_clk(&device->mmu, KGSL_IOMMU_MAX_UNITS);
 
 	pt_val = kgsl_mmu_get_pt_base_addr(&device->mmu,
 				device->mmu.hwpagetable);
@@ -939,21 +936,19 @@ static int adreno_iommu_setstate(struct kgsl_device *device,
 	 * This returns the per context timestamp but we need to
 	 * use the global timestamp for iommu clock disablement
 	 */
-	adreno_ringbuffer_issuecmds(device, adreno_ctx, KGSL_CMD_FLAGS_PMODE,
-			&link[0], sizedwords);
+	result = adreno_ringbuffer_issuecmds(device, adreno_ctx,
+			KGSL_CMD_FLAGS_PMODE, &link[0], sizedwords);
 
 	/*
 	 * On error disable the IOMMU clock right away otherwise turn it off
 	 * after the command has been retired
 	 */
 	if (result)
-		kgsl_mmu_disable_clk(&device->mmu,
-						KGSL_IOMMU_CONTEXT_USER);
+		kgsl_mmu_disable_clk(&device->mmu, KGSL_IOMMU_MAX_UNITS);
 	else
 		kgsl_mmu_disable_clk_on_ts(&device->mmu, rb->global_ts,
-						KGSL_IOMMU_CONTEXT_USER);
+						KGSL_IOMMU_MAX_UNITS);
 
-done:
 	kgsl_context_put(context);
 	return result;
 }
