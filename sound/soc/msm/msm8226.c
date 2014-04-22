@@ -318,19 +318,21 @@ static void msm8226_ext_spk_power_amp_on(u32 spk)
 				msm8226_ext_spk_power_amp_enable(
 					ext_top_spk_amp_gpio, 1);
 			}
+			/* SPK_RCV_SEL is a switch. Always set a value */
+			if (ext_spk_rcv_sel_gpio >= 0) {
+				pr_debug("%s  switch to mode: %s", __func__,
+					(spk & SPK_RCV_SWITCH) == 0 ? "speaker"
+					: "ear");
+				msm8226_ext_spk_power_amp_enable(
+					ext_spk_rcv_sel_gpio,
+					(spk & SPK_RCV_SWITCH) == 0 ? 0 : 1);
+			}
 		}
 		if (spk & LO_2_SPK_AMP) {
 			if (ext_bot_spk_amp_gpio >= 0) {
 				pr_debug("%s  enable power-BOT amp", __func__);
 				msm8226_ext_spk_power_amp_enable(
 					ext_bot_spk_amp_gpio, 1);
-			}
-		}
-		if (spk & SPK_RCV_SWITCH) {
-			if (ext_spk_rcv_sel_gpio >= 0) {
-				pr_debug("%s  switch to Ear mode", __func__);
-				msm8226_ext_spk_power_amp_enable(
-					ext_spk_rcv_sel_gpio, 1);
 			}
 		}
 	}
@@ -366,20 +368,19 @@ static void msm8226_ext_spk_power_amp_off(u32 spk)
 				msm8226_ext_spk_power_amp_enable(
 					ext_top_spk_amp_gpio, 0);
 			}
+			/* SPK_RCV_SEL is a switch. default to speaker */
+			if (ext_spk_rcv_sel_gpio >= 0) {
+				pr_debug("%s  switch back to speaker mode",
+					__func__);
+				msm8226_ext_spk_power_amp_enable(
+					ext_spk_rcv_sel_gpio, 0);
+			}
 		}
 		if (spk & LO_2_SPK_AMP) {
 			if (ext_bot_spk_amp_gpio >= 0) {
 				pr_debug("%s disable power-BOT amp", __func__);
 				msm8226_ext_spk_power_amp_enable(
 					ext_bot_spk_amp_gpio, 0);
-			}
-		}
-		if (spk & SPK_RCV_SWITCH) {
-			if (ext_spk_rcv_sel_gpio >= 0) {
-				pr_debug("%s  switch back to speaker mode",
-					__func__);
-				msm8226_ext_spk_power_amp_enable(
-					ext_spk_rcv_sel_gpio, 0);
 			}
 		}
 	}
