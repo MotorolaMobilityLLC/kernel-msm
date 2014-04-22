@@ -100,6 +100,10 @@
 		samsung,panel-mtp-enable-cmds =[ 39 01 00 00 00 00 03 F1 5A 5A ];
 		samsung,panel-manufacture-id-read-cmds = [ 06 01 00 00 00 00 01 A1 03 00 ];
 		samsung,panel-mtp-id-read-cmds = [ 06 01 00 00 00 00 01 D4 1B 00 ];
+		samsung,panel-backlight-cmds = [
+					39 01 00 00 01 00 02 51 FF
+					39 01 00 00 05 00 02 53 20
+					];
 
 	   /*
 		* ************************************************************************************************************************
