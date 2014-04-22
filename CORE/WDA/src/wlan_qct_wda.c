@@ -8699,10 +8699,19 @@ VOS_STATUS WDA_ProcessConfigureRxpFilterReq(tWDA_CbContext *pWDA,
 {
    VOS_STATUS status = VOS_STATUS_SUCCESS;
    WDI_Status wstatus;
-   WDI_ConfigureRxpFilterReqParamsType *wdiRxpFilterParams = 
-      (WDI_ConfigureRxpFilterReqParamsType *)vos_mem_malloc(
-         sizeof(WDI_ConfigureRxpFilterReqParamsType)) ;
+   WDI_ConfigureRxpFilterReqParamsType *wdiRxpFilterParams;
    tWDA_ReqParams *pWdaParams ;
+   /* Sanity Check
+    * This is very unlikely and add assert to collect more info next time */
+   if(NULL == pWlanSuspendParam)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: pWlanSuspendParam received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return VOS_STATUS_E_FAULT;
+   }
+   wdiRxpFilterParams = (WDI_ConfigureRxpFilterReqParamsType *)vos_mem_malloc(
+         sizeof(WDI_ConfigureRxpFilterReqParamsType)) ;
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> %s " ,__func__);
    if(NULL == wdiRxpFilterParams) 
