@@ -205,6 +205,25 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 				"Report pwrkey toggle, touch event wake\n");
 		}
 	}
+	if (irq_status & M_COVER) {
+		int state;
+		stm401_cmdbuff[0] = COVER_DATA;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev,
+				"Reading Cover state failed\n");
+			goto EXIT;
+		}
+
+		state = stm401_readbuff[COVER_STATE];
+		if (state > 0)
+			state = 1;
+
+		input_report_switch(ps_stm401->input_dev, SW_LID, state);
+		input_sync(ps_stm401->input_dev);
+
+		dev_dbg(&ps_stm401->client->dev, "Cover status: %d\n", state);
+	}
 	if (irq_status & M_FLATUP) {
 		stm401_cmdbuff[0] = FLAT_DATA;
 		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
