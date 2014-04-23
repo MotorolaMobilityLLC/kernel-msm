@@ -15,8 +15,8 @@
 
 /memreserve/ 0x06000000 0x00001000;
 
-#include "msmplutonium.dtsi"
-#include "msmplutonium-pinctrl.dtsi"
+/include/ "msmplutonium.dtsi"
+/include/ "msmplutonium-pinctrl.dtsi"
 / {
 	model = "Qualcomm MSM plutonium SIM";
 	compatible = "qcom,msmplutonium-sim", "qcom,msmplutonium", "qcom,sim";
@@ -68,5 +68,13 @@
 };
 
 &usb_otg {
+	status = "ok";
+};
+
+&ufsphy1 {
+	status = "ok";
+};
+
+&ufs1 {
 	status = "ok";
 };

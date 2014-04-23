@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8926.dtsi"
+/include/ "msm8926.dtsi"
 
 / {
 	qcom,msm-id = <200 0x20000>,

@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8926-v2.dtsi"
+/include/ "msm8926-v2.dtsi"
 
 &i2c_0 {
 	qcom,sda-gpio = <&msmgpio 14 0>;

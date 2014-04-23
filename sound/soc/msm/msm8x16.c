@@ -36,9 +36,13 @@
 #define BTSCO_RATE_16KHZ 16000
 #define MAX_SND_CARDS 1
 
+#define LPASS_CSR_GP_IO_MUX_MIC_CTL 0x07702000
+#define LPASS_CSR_GP_IO_MUX_SPKR_CTL 0x07702004
 
 static int msm_btsco_rate = BTSCO_RATE_8KHZ;
 static int msm_btsco_ch = 1;
+
+static int msm_ter_mi2s_tx_ch = 1;
 
 static int msm_proxy_rx_ch = 2;
 static int msm8x16_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
@@ -71,6 +75,10 @@ static struct afe_clk_cfg mi2s_tx_clk = {
 	0,
 };
 
+struct msm8916_asoc_mach_data {
+	int codec_type;
+};
+
 static struct afe_digital_clk_cfg digital_cdc_clk = {
 	AFE_API_VERSION_I2S_CONFIG,
 	9600000,
@@ -88,7 +96,30 @@ static struct cdc_pdm_pinctrl_info pinctrl_info;
 
 static atomic_t mclk_rsc_ref;
 static struct mutex cdc_mclk_mutex;
+static int mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
+static inline int param_is_mask(int p)
+{
+	return ((p >= SNDRV_PCM_HW_PARAM_FIRST_MASK) &&
+			(p <= SNDRV_PCM_HW_PARAM_LAST_MASK));
+}
+
+static inline struct snd_mask *param_to_mask(struct snd_pcm_hw_params *p, int n)
+{
+	return &(p->masks[n - SNDRV_PCM_HW_PARAM_FIRST_MASK]);
+}
+
+static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
+{
+	if (bit >= SNDRV_MASK_MAX)
+		return;
+	if (param_is_mask(n)) {
+		struct snd_mask *m = param_to_mask(p, n);
+		m->bits[0] = 0;
+		m->bits[1] = 0;
+		m->bits[bit >> 5] |= (1 << (bit & 31));
+	}
+}
 static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event);
 
@@ -102,14 +133,8 @@ static const struct snd_soc_dapm_widget msm8x16_dapm_widgets[] = {
 
 };
 
-static int msm_config_mclk(u16 port_id, struct afe_digital_clk_cfg *cfg)
-{
-	iowrite32(0x1, ioremap(MSM8X16_TOMBAK_LPASS_DIGCODEC_CBCR, 4));
-	/* Set the update bit to make the settings go through */
-	iowrite32(0x1, ioremap(MSM8X16_TOMBAK_LPASS_DIGCODEC_CMD_RCGR, 4));
-
-	return 0;
-}
+static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE"};
+static const char *const ter_mi2s_tx_ch_text[] = {"One", "Two"};
 
 static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
@@ -127,6 +152,42 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static int mi2s_rx_bit_format_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+
+	switch (mi2s_rx_bit_format) {
+	case SNDRV_PCM_FORMAT_S24_LE:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+
+	case SNDRV_PCM_FORMAT_S16_LE:
+	default:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	}
+
+	pr_debug("%s: mi2s_rx_bit_format = %d, ucontrol value = %ld\n",
+			__func__, mi2s_rx_bit_format,
+			ucontrol->value.integer.value[0]);
+
+	return 0;
+}
+
+static int mi2s_rx_bit_format_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 1:
+		mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S24_LE;
+		break;
+	case 0:
+	default:
+		mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	}
+	return 0;
+}
 static int msm_btsco_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -170,11 +231,45 @@ static int msm_proxy_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_RATE);
+	struct snd_interval *channels = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	pr_debug("%s(), channel:%d\n", __func__, msm_ter_mi2s_tx_ch);
+	rate->min = rate->max = 48000;
+	channels->min = channels->max = msm_ter_mi2s_tx_ch;
+
+	return 0;
+}
+
+static int msm_ter_mi2s_tx_ch_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_ter_mi2s_tx_ch  = %d\n", __func__,
+		 msm_ter_mi2s_tx_ch);
+	ucontrol->value.integer.value[0] = msm_ter_mi2s_tx_ch - 1;
+	return 0;
+}
+
+static int msm_ter_mi2s_tx_ch_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	msm_ter_mi2s_tx_ch = ucontrol->value.integer.value[0] + 1;
+
+	pr_debug("%s: msm_ter_mi2s_tx_ch = %d\n", __func__, msm_ter_mi2s_tx_ch);
+	return 1;
+}
+
 static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params)
 {
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT, mi2s_rx_bit_format);
 	return 0;
 }
 
@@ -182,7 +277,6 @@ static int mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
 {
 	int ret = 0;
 	if (enable) {
-		digital_cdc_clk.clk_val = 9600000;
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			mi2s_rx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
 			ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX,
@@ -198,7 +292,6 @@ static int mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
 			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
 
 	} else {
-		digital_cdc_clk.clk_val = 0;
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			mi2s_rx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
 			ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX,
@@ -230,7 +323,8 @@ static int msm8x16_enable_codec_ext_clk(struct snd_soc_codec *codec,
 	if (enable) {
 		if (atomic_inc_return(&mclk_rsc_ref) == 1) {
 			digital_cdc_clk.clk_val = 9600000;
-			msm_config_mclk(AFE_PORT_ID_SECONDARY_MI2S_RX,
+			afe_set_digital_codec_core_clock(
+					AFE_PORT_ID_PRIMARY_MI2S_RX,
 					&digital_cdc_clk);
 			msm8x16_wcd_mclk_enable(codec, 1, dapm);
 		}
@@ -238,13 +332,27 @@ static int msm8x16_enable_codec_ext_clk(struct snd_soc_codec *codec,
 		if (atomic_dec_return(&mclk_rsc_ref) == 0) {
 			digital_cdc_clk.clk_val = 0;
 			msm8x16_wcd_mclk_enable(codec, 0, dapm);
-			msm_config_mclk(AFE_PORT_ID_SECONDARY_MI2S_RX,
+			afe_set_digital_codec_core_clock(
+					AFE_PORT_ID_PRIMARY_MI2S_RX,
 					&digital_cdc_clk);
 		}
 	}
 	mutex_unlock(&cdc_mclk_mutex);
 	return ret;
 }
+
+static const struct soc_enum msm_snd_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, rx_bit_format_text),
+	SOC_ENUM_SINGLE_EXT(2, ter_mi2s_tx_ch_text),
+};
+
+static const struct snd_kcontrol_new msm_snd_controls[] = {
+	SOC_ENUM_EXT("MI2S_RX Format", msm_snd_enum[0],
+			mi2s_rx_bit_format_get, mi2s_rx_bit_format_put),
+	SOC_ENUM_EXT("MI2S_TX Channels", msm_snd_enum[1],
+			msm_ter_mi2s_tx_ch_get, msm_ter_mi2s_tx_ch_put),
+
+};
 
 static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event)
@@ -277,11 +385,27 @@ static void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	int ret = 0;
+	int val = 0;
 
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
+
+	if (!pdata->codec_type) {
+		/* configure the Primary, Sec and Tert mux for Mi2S interface
+		 * slave select to invalid state, for machine mode this
+		 * should move to HW, I do not like to do it here
+		 */
+		val = ioread32(ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL , 4));
+		val = val | 0x00030300;
+		iowrite32(val, ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL , 4));
+		val = ioread32(ioremap(LPASS_CSR_GP_IO_MUX_MIC_CTL , 4));
+		val = val | 0x00200000;
+		iowrite32(val, ioremap(LPASS_CSR_GP_IO_MUX_MIC_CTL , 4));
+	}
 
 	ret = pinctrl_select_state(pinctrl_info.pinctrl,
 					pinctrl_info.cdc_pdm_act);
@@ -306,6 +430,10 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	int ret = 0;
 
 	pr_debug("%s(),dev_name%s\n", __func__, dev_name(cpu_dai->dev));
+
+	snd_soc_add_codec_controls(codec, msm_snd_controls,
+				ARRAY_SIZE(msm_snd_controls));
+
 	snd_soc_dapm_new_controls(dapm, msm8x16_dapm_widgets,
 				ARRAY_SIZE(msm8x16_dapm_widgets));
 
@@ -403,9 +531,9 @@ static struct snd_soc_dai_link msm8x16_dai[] = {
 	},
 	/* Hostless PCM purpose */
 	{/* hw:x,5 */
-		.name = "Secondary MI2S RX Hostless",
-		.stream_name = "Secondary MI2S_RX Hostless Playback",
-		.cpu_dai_name = "SEC_MI2S_RX_HOSTLESS",
+		.name = "Primary MI2S_RX Hostless",
+		.stream_name = "Primary MI2S_RX Hostless",
+		.cpu_dai_name = "PRI_MI2S_RX_HOSTLESS",
 		.platform_name	= "msm-pcm-hostless",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -483,9 +611,9 @@ static struct snd_soc_dai_link msm8x16_dai[] = {
 		.codec_name = "snd-soc-dummy",
 	},
 	{/* hw:x,11 */
-		.name = "Primary MI2S TX Hostless",
-		.stream_name = "Primary MI2S_TX Hostless Capture",
-		.cpu_dai_name = "PRI_MI2S_TX_HOSTLESS",
+		.name = "Tertiary MI2S_TX Hostless",
+		.stream_name = "Tertiary MI2S_TX Hostless",
+		.cpu_dai_name = "TERT_MI2S_TX_HOSTLESS",
 		.platform_name  = "msm-pcm-hostless",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -542,6 +670,22 @@ static struct snd_soc_dai_link msm8x16_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA9,
 	},
+	{ /* hw:x,15 */
+		.name = "VoLTE",
+		.stream_name = "VoLTE",
+		.cpu_dai_name   = "VoLTE",
+		.platform_name  = "msm-pcm-voice",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		/* this dainlink has playback support */
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.be_id = MSM_FRONTEND_DAI_VOLTE,
+	},
 	/* Backend I2S DAI Links */
 	{
 		.name = LPASS_BE_PRI_MI2S_RX,
@@ -580,7 +724,7 @@ static struct snd_soc_dai_link msm8x16_dai[] = {
 		.codec_dai_name = "msm8x16_wcd_i2s_tx1",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_TX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.be_hw_params_fixup = msm_tx_be_hw_params_fixup,
 		.ops = &msm8x16_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
@@ -760,14 +904,25 @@ static int cdc_pdm_get_pinctrl(struct platform_device *pdev)
 static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card;
+	struct msm8916_asoc_mach_data *pdata = NULL;
 	const char *card_dev_id = "qcom,msm-snd-card-id";
+	const char *codec_type = "qcom,msm-codec-type";
+	const char *ptr = NULL;
 	int ret, id;
+
+	pdata = devm_kzalloc(&pdev->dev,
+			sizeof(struct msm8916_asoc_mach_data), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&pdev->dev, "Can't allocate msm8226_asoc_mach_data\n");
+		ret = -ENOMEM;
+		goto err;
+	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, card_dev_id, &id);
 	if (ret) {
 		dev_err(&pdev->dev,
 			"%s: missing %s in dt node\n", __func__, card_dev_id);
-		return ret;
+		goto err;
 	}
 
 	pdev->id = id;
@@ -779,22 +934,38 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s-card:%d\n", __func__, pdev->id);
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, "No platform supplied from device tree\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
+	ret = of_property_read_string(pdev->dev.of_node, codec_type, &ptr);
+	if (ret) {
+		dev_err(&pdev->dev,
+			"%s: missing %s in dt node\n", __func__, codec_type);
+		goto err;
+	}
+	if (!strcmp(ptr, "external")) {
+		dev_info(&pdev->dev, "external codec is configured\n");
+		pdata->codec_type = 1;
+	} else {
+		dev_info(&pdev->dev, "default codec configured\n");
+		pdata->codec_type = 0;
+	}
+
 	ret = cdc_pdm_get_pinctrl(pdev);
 	if (ret < 0) {
 		pr_err("failed to get the pdm gpios\n");
-		return ret;
+		goto err;
 	}
 	if (pdev->id >= MAX_SND_CARDS) {
 		dev_err(&pdev->dev, "Sound Card parsed is wrong\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 	card = &bear_cards[pdev->id];
 
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
-
+	snd_soc_card_set_drvdata(card, pdata);
 	ret = snd_soc_of_parse_card_name(card, "qcom,model");
 	if (ret)
 		goto err;
@@ -814,6 +985,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	atomic_set(&mclk_rsc_ref, 0);
 	return 0;
 err:
+	devm_kfree(&pdev->dev, pdata);
 	return ret;
 }
 

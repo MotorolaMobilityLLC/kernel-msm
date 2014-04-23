@@ -624,7 +624,6 @@ static ssize_t ipa_read_flt(struct file *file, char __user *ubuf, size_t count,
 {
 	int i;
 	int j;
-	int k;
 	struct ipa_flt_tbl *tbl;
 	struct ipa_flt_entry *entry;
 	enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
@@ -681,7 +680,6 @@ static ssize_t ipa_read_flt(struct file *file, char __user *ubuf, size_t count,
 				bitmap = entry->rule.attrib.attrib_mask;
 				eq = false;
 			}
-			k = ipa_get_client_mapping(j);
 			pr_info(
 				"ep_idx:%d rule_idx:%d act:%d rt_tbl_idx:%d "
 				"attrib_mask:%08x to_uc:%d, retain_hdr:%d eq:%d ",
@@ -722,6 +720,7 @@ static ssize_t ipa_read_stats(struct file *file, char __user *ubuf,
 			"stat_compl=%u\n"
 			"lan_aggr_close=%u\n"
 			"wan_aggr_close=%u\n"
+			"act_clnt=%u\n"
 			"con_clnt_bmap=0x%x\n",
 			ipa_ctx->stats.tx_sw_pkts,
 			ipa_ctx->stats.tx_hw_pkts,
@@ -730,6 +729,7 @@ static ssize_t ipa_read_stats(struct file *file, char __user *ubuf,
 			ipa_ctx->stats.stat_compl,
 			ipa_ctx->stats.aggr_close,
 			ipa_ctx->stats.wan_aggr_close,
+			ipa_ctx->ipa_active_clients.cnt,
 			connect);
 		cnt += nbytes;
 
@@ -755,7 +755,7 @@ static ssize_t ipa_read_stats(struct file *file, char __user *ubuf,
 			ipa_ctx->stats.rx_pkts,
 			ipa_ctx->stats.rx_repl_repost,
 			ipa_ctx->stats.rx_q_len,
-			ipa_ctx->ipa_active_clients,
+			ipa_ctx->ipa_active_clients.cnt,
 			connect);
 	cnt += nbytes;
 

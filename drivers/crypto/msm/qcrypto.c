@@ -43,7 +43,7 @@
 #include <crypto/internal/aead.h>
 
 #include <linux/platform_data/qcom_crypto_device.h>
-#include <mach/msm_bus.h>
+#include <linux/msm-bus.h>
 #include <mach/qcrypto.h>
 #include "qce.h"
 
@@ -109,6 +109,7 @@ struct crypto_engine {
 	u32 total_req;
 	u32 err_req;
 	u32 unit;
+	u32 ce_device;
 	int res; /* execution result */
 	unsigned int signature;
 	uint32_t high_bw_req_count;
@@ -171,6 +172,29 @@ static int qcrypto_scm_cmd(int resource, int cmd, int *response)
 #else
 	return 0;
 #endif
+}
+
+static struct crypto_engine *_qrypto_find_pengine_device(struct crypto_priv *cp,
+			 unsigned int device)
+{
+	struct crypto_engine *entry = NULL;
+	unsigned long flags;
+
+	spin_lock_irqsave(&cp->lock, flags);
+	list_for_each_entry(entry, &cp->engine_list, elist) {
+		if (entry->ce_device == device)
+			break;
+	}
+	spin_unlock_irqrestore(&cp->lock, flags);
+
+	if (((entry != NULL) && (entry->ce_device != device)) ||
+		(entry == NULL)) {
+		pr_err("Device node for CE device %d NOT FOUND!!\n",
+				device);
+		return NULL;
+	}
+
+	return entry;
 }
 
 static void qcrypto_unlock_ce(struct work_struct *work)
@@ -3339,12 +3363,58 @@ static int _sha256_hmac_digest(struct ahash_request *req)
 static int _qcrypto_prefix_alg_cra_name(char cra_name[], unsigned int size)
 {
 	char new_cra_name[CRYPTO_MAX_ALG_NAME] = "qcom-";
-	if (CRYPTO_MAX_ALG_NAME < size + 5)
+	if (size >= CRYPTO_MAX_ALG_NAME - strlen("qcom-"))
 		return -EINVAL;
 	strlcat(new_cra_name, cra_name, CRYPTO_MAX_ALG_NAME);
 	strlcpy(cra_name, new_cra_name, CRYPTO_MAX_ALG_NAME);
 	return 0;
 }
+
+
+int qcrypto_cipher_set_device(struct ablkcipher_request *req, unsigned int dev)
+{
+	struct qcrypto_cipher_ctx *ctx = crypto_tfm_ctx(req->base.tfm);
+	struct crypto_priv *cp = ctx->cp;
+	struct crypto_engine *pengine = NULL;
+
+	pengine = _qrypto_find_pengine_device(cp, dev);
+	if (pengine == NULL)
+		return -ENODEV;
+	ctx->pengine = pengine;
+
+	return 0;
+};
+EXPORT_SYMBOL(qcrypto_cipher_set_device);
+
+int qcrypto_aead_set_device(struct aead_request *req, unsigned int dev)
+{
+	struct qcrypto_cipher_ctx *ctx = crypto_tfm_ctx(req->base.tfm);
+	struct crypto_priv *cp = ctx->cp;
+	struct crypto_engine *pengine = NULL;
+
+	pengine = _qrypto_find_pengine_device(cp, dev);
+	if (pengine == NULL)
+		return -ENODEV;
+	ctx->pengine = pengine;
+
+	return 0;
+};
+EXPORT_SYMBOL(qcrypto_aead_set_device);
+
+int qcrypto_ahash_set_device(struct ahash_request *req, unsigned int dev)
+{
+	struct qcrypto_sha_ctx *ctx = crypto_tfm_ctx(req->base.tfm);
+	struct crypto_priv *cp = ctx->cp;
+	struct crypto_engine *pengine = NULL;
+
+	pengine = _qrypto_find_pengine_device(cp, dev);
+	if (pengine == NULL)
+		return -ENODEV;
+	ctx->pengine = pengine;
+
+	return 0;
+};
+EXPORT_SYMBOL(qcrypto_ahash_set_device);
 
 int qcrypto_cipher_set_flag(struct ablkcipher_request *req, unsigned int flags)
 {
@@ -3961,6 +4031,9 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 					msm_bus_cl_get_pdata(pdev);
 		if (!cp->platform_support.bus_scale_table)
 			pr_warn("bus_scale_table is NULL\n");
+
+		pengine->ce_device = cp->ce_support.ce_device;
+
 	} else {
 		platform_support =
 			(struct msm_ce_hw_support *)pdev->dev.platform_data;

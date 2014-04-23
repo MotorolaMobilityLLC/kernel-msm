@@ -449,6 +449,8 @@ static const struct usb_device_id ksb_usb_ids[] = {
 	.driver_info = (unsigned long)&ksb_efs_hsic_dev, },
 	{ USB_DEVICE_INTERFACE_NUMBER(0x5c6, 0x909E, 3),
 	.driver_info = (unsigned long)&ksb_efs_hsic_dev, },
+	{ USB_DEVICE_INTERFACE_NUMBER(0x5c6, 0x909F, 2),
+	.driver_info = (unsigned long)&ksb_efs_hsic_dev, },
 	{ USB_DEVICE_INTERFACE_NUMBER(0x5c6, 0x90A0, 2),
 	.driver_info = (unsigned long)&ksb_efs_hsic_dev, },
 	{ USB_DEVICE_INTERFACE_NUMBER(0x5c6, 0x90A4, 3),
@@ -536,6 +538,8 @@ static void ksb_rx_cb(struct urb *urb)
 		ksb_free_data_pkt(pkt);
 		goto done;
 	}
+
+	usb_mark_last_busy(ksb->udev);
 
 	if (urb->actual_length == 0) {
 		submit_one_urb(ksb, GFP_ATOMIC, pkt);
@@ -664,6 +668,7 @@ ksb_usb_probe(struct usb_interface *ifc, const struct usb_device_id *id)
 	case 0x909C:
 	case 0x909D:
 	case 0x909E:
+	case 0x909F:
 	case 0x90A4:
 		ksb = __ksb[EFS_HSIC_BRIDGE_INDEX];
 		break;
@@ -796,6 +801,11 @@ static int ksb_usb_suspend(struct usb_interface *ifc, pm_message_t message)
 
 	dbg_log_event(ksb, "SUSPEND", 0, 0);
 
+	if (pm_runtime_autosuspend_expiration(&ksb->udev->dev)) {
+		dbg_log_event(ksb, "SUSP ABORT-TimeCheck", 0, 0);
+		return -EBUSY;
+	}
+
 	usb_kill_anchored_urbs(&ksb->submitted);
 
 	spin_lock_irqsave(&ksb->lock, flags);
@@ -882,6 +892,7 @@ static struct usb_driver ksb_usb_driver = {
 	.disconnect =	ksb_usb_disconnect,
 	.suspend =	ksb_usb_suspend,
 	.resume =	ksb_usb_resume,
+	.reset_resume =	ksb_usb_resume,
 	.id_table =	ksb_usb_ids,
 	.supports_autosuspend = 1,
 };

@@ -12,7 +12,7 @@
 
 /dts-v1/;
 
-#include "msm8916-cdp.dtsi"
+/include/ "msm8916-cdp.dtsi"
 
 / {
 	model = "Qualcomm MSM 8916 CDP";
@@ -38,4 +38,14 @@
 
 &qcom_seecom {
 	status = "okay";
+};
+
+&spmi_bus {
+	qcom,pm8916@1 {
+		qcom,vibrator@c000 {
+			status = "okay";
+			qcom,vib-timeout-ms = <15000>;
+			qcom,vib-vtg-level-mV = <3100>;
+		};
+	};
 };

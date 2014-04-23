@@ -87,6 +87,14 @@ Optional properties :
 	configured for detection of dp line transition during VDD minimization.
 - qcom,hsusb-otg-mpm-dmsehv-int: If present, indicates mpm interrupt to be
 	configured for detection of dm line transition during VDD minimization.
+- pinctrl-names : This should be defined if a target uses gpio and pinctrl framework.
+  See "pinctrl" in Documentation/devicetree/bindings/pinctrl/msm-pinctrl.txt.
+  It should specify the names of the configs that pinctrl can install in driver
+	Following are the pinctrl config that can be installed
+	"hsusb_active" : Active configuration of pins, this should specify active
+	config of vddmin gpio (if used) defined in their pin groups.
+	"hsusb_sleep" : Disabled configuration of pins, this should specify sleep
+	config of vddmin gpio (if used) defined in their pin groups.
 - qcom,hsusb-otg-vddmin-gpio = If present, indicates a gpio that will be used
 	to supply voltage to the D+ line during VDD minimization and peripheral
 	bus suspend. If not exists, then VDD minimization will not be allowed
@@ -136,6 +144,9 @@ Example HSUSB OTG controller device node :
 		qcom,msm-bus,vectors =
 				<87 512 0 0>,
 				<87 512 60000000 960000000>;
+		pinctrl-names = "hsusb_active","hsusb_sleep";
+		pinctrl-0 = <&vddmin_act>;
+		pinctrl-0 = <&vddmin_sus>;
 		qcom,hsusb-otg-vddmin-gpio = <&pm8019_mpps 6 0>;
 		qcom,hsusb-otg-rw-during-lpm-workaround = <1>;
 		qcom,disable-retention-with-vdd-min;
@@ -166,12 +177,23 @@ Required properties :
 
 Optional properties :
 - qcom,usb2-enable-hsphy2: If present, select second PHY for USB operation.
+- pinctrl-names : This should be defined if a target uses pinctrl framework.
+  See "pinctrl" in Documentation/devicetree/bindings/pinctrl/msm-pinctrl.txt.
+  It should specify the names of the configs that pinctrl can install in driver
+  Following are the pinctrl configs that can be installed
+	"ehci_active" : Active configuration of pins, this should specify active
+	config defined in pin groups of used gpio's from resume and
+	ext-hub-reset.
+	"ehci_sleep" : Disabled configuration of pins, this should specify sleep
+	config defined in pin groups of used gpio's from resume and
+	ext-hub-reset.
 - qcom,resume-gpio: if present then peripheral connected to usb controller
   cannot wakeup from XO shutdown using in-band usb bus resume. Use resume
   gpio to wakeup peripheral.
 - qcom,ext-hub-reset-gpio: If present then an external HUB is connected to
   the USB host controller and its RESET_N signal is connected to this
   ext-hub-reset-gpio GPIO. It should be driven LOW to RESET the HUB.
+- qcom,usb2-enable-uicc: If present, usb2 port will be used for uicc card connection.
 
 Example MSM HSUSB EHCI controller device node :
 	ehci: qcom,ehci-host@f9a55000 {
@@ -179,12 +201,19 @@ Example MSM HSUSB EHCI controller device node :
 		reg = <0xf9a55000 0x400>;
 		interrupts = <0 134 0>, <0 140 0>;
 		interrupt-names = "core_irq", "async_irq";
+		/* If pinctrl is used and ext-hub-reset and resume gpio's are present*/
+		pinctrl-names = "ehci_active","ehci_sleep";
+		pinctrl-0 = <&ehci_reset_act &resume_act>;
+		pinctrl-1 = <&ehci_reset_sus &resume_sus>;
+		qcom,resume-gpio = <&msm_gpio 80 0>;
+		qcom,ext-hub-reset-gpio = <&msm_gpio 0 0>;
 		hsusb_vdd_dig-supply = <&pm8841_s2_corner>;
 		HSUSB_1p8-supply = <&pm8941_l6>;
 		HSUSB_3p3-supply = <&pm8941_l24>;
 		qcom,usb2-enable-hsphy2;
 		qcom,usb2-power-budget = <500>;
 		qcom,vdd-voltage-level = <1 2 3 5 7>;
+		qcom,usb2-enable-uicc;
 	};
 
 ANDROID USB:

@@ -25,6 +25,13 @@
 
 #define IPA_V2_0_BW_THRESHOLD_MBPS (800)
 
+/* Max pipes + ICs for TAG process */
+#define IPA_TAG_MAX_DESC (IPA_NUM_PIPES + 6)
+
+#define IPA_TAG_SLEEP_MIN_USEC (1000)
+#define IPA_TAG_SLEEP_MAX_USEC (2000)
+#define IPA_TAG_TIMEOUT (10 * HZ)
+
 static const int ipa_ofst_meq32[] = { IPA_OFFSET_MEQ32_0,
 					IPA_OFFSET_MEQ32_1, -1 };
 static const int ipa_ofst_meq128[] = { IPA_OFFSET_MEQ128_0,
@@ -222,6 +229,281 @@ static struct msm_bus_scale_pdata ipa_bus_client_pdata_v2_0 = {
 	ARRAY_SIZE(ipa_usecases_v2_0),
 	.name = "ipa",
 };
+
+void ipa_active_clients_lock(void)
+{
+	mutex_lock(&ipa_ctx->ipa_active_clients.mutex);
+	spin_lock(&ipa_ctx->ipa_active_clients.spinlock);
+	ipa_ctx->ipa_active_clients.mutex_locked = true;
+	spin_unlock(&ipa_ctx->ipa_active_clients.spinlock);
+}
+
+int ipa_active_clients_trylock(void)
+{
+	spin_lock(&ipa_ctx->ipa_active_clients.spinlock);
+	if (ipa_ctx->ipa_active_clients.mutex_locked) {
+		spin_unlock(&ipa_ctx->ipa_active_clients.spinlock);
+		return 0;
+	}
+
+	return 1;
+}
+
+void ipa_active_clients_unlock(void)
+{
+	if (ipa_ctx->ipa_active_clients.mutex_locked) {
+		spin_lock(&ipa_ctx->ipa_active_clients.spinlock);
+		ipa_ctx->ipa_active_clients.mutex_locked = false;
+		spin_unlock(&ipa_ctx->ipa_active_clients.spinlock);
+		mutex_unlock(&ipa_ctx->ipa_active_clients.mutex);
+		return;
+	}
+	spin_unlock(&ipa_ctx->ipa_active_clients.spinlock);
+}
+
+/**
+ * ipa_get_clients_from_rm_resource() - get IPA clients which are related to an
+ * IPA_RM resource
+ *
+ * @resource: [IN] IPA Resource Manager resource
+ * @clients: [OUT] Empty array which will contain the list of clients. The
+ *         caller must initialize this array.
+ *
+ * Return codes: 0 on success, negative on failure.
+ */
+int ipa_get_clients_from_rm_resource(
+	enum ipa_rm_resource_name resource,
+	struct ipa_client_names *clients)
+{
+	int i = 0;
+
+	if (resource < 0 ||
+	    resource >= IPA_RM_RESOURCE_MAX ||
+	    !clients) {
+		IPAERR("Bad parameters\n");
+		return -EINVAL;
+	}
+
+	switch (resource) {
+	case IPA_RM_RESOURCE_USB_CONS:
+		clients->names[i++] = IPA_CLIENT_USB_CONS;
+		clients->names[i++] = IPA_CLIENT_USB2_CONS;
+		clients->names[i++] = IPA_CLIENT_USB3_CONS;
+		clients->names[i++] = IPA_CLIENT_USB4_CONS;
+		clients->length = i;
+		break;
+	case IPA_RM_RESOURCE_WLAN_CONS:
+		clients->names[i++] = IPA_CLIENT_WLAN1_CONS;
+		clients->names[i++] = IPA_CLIENT_WLAN2_CONS;
+		clients->names[i++] = IPA_CLIENT_WLAN3_CONS;
+		clients->names[i++] = IPA_CLIENT_WLAN4_CONS;
+		clients->length = i;
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+/**
+ * ipa_should_pipe_be_suspended() - returns true when the client's pipe should
+ * be suspended during a power save scenario. False otherwise.
+ *
+ * @client: [IN] IPA client
+ */
+bool ipa_should_pipe_be_suspended(enum ipa_client_type client)
+{
+	struct ipa_ep_context *ep;
+	int ipa_ep_idx;
+
+	ipa_ep_idx = ipa_get_ep_mapping(client);
+	if (ipa_ep_idx == -1) {
+		IPAERR("Invalid client.\n");
+		WARN_ON(1);
+		return false;
+	}
+
+	ep = &ipa_ctx->ep[ipa_ep_idx];
+
+	if (ep->keep_ipa_awake)
+		return false;
+
+	if (client == IPA_CLIENT_USB_CONS   ||
+	    client == IPA_CLIENT_USB2_CONS  ||
+	    client == IPA_CLIENT_USB3_CONS  ||
+	    client == IPA_CLIENT_USB4_CONS  ||
+	    client == IPA_CLIENT_WLAN1_CONS ||
+	    client == IPA_CLIENT_WLAN2_CONS ||
+	    client == IPA_CLIENT_WLAN3_CONS ||
+	    client == IPA_CLIENT_WLAN4_CONS)
+		return true;
+
+	return false;
+}
+
+/**
+ * ipa_suspend_resource_sync() - suspend client endpoints related to the IPA_RM
+ * resource and decrement active clients counter, which may result in clock
+ * gating of IPA clocks.
+ *
+ * @resource: [IN] IPA Resource Manager resource
+ *
+ * Return codes: 0 on success, negative on failure.
+ */
+int ipa_suspend_resource_sync(enum ipa_rm_resource_name resource)
+{
+	struct ipa_client_names clients;
+	int res;
+	int index;
+	struct ipa_ep_cfg_ctrl suspend;
+	enum ipa_client_type client;
+	int ipa_ep_idx;
+	bool pipe_suspended = false;
+
+	memset(&clients, 0, sizeof(clients));
+	res = ipa_get_clients_from_rm_resource(resource, &clients);
+	if (res) {
+		IPAERR("Bad params.\n");
+		return res;
+	}
+
+	for (index = 0; index < clients.length; index++) {
+		client = clients.names[index];
+		ipa_ep_idx = ipa_get_ep_mapping(client);
+		if (ipa_ep_idx == -1) {
+			IPAERR("Invalid client.\n");
+			res = -EINVAL;
+			continue;
+		}
+		if (ipa_should_pipe_be_suspended(client) &&
+		    ipa_ctx->ep[ipa_ep_idx].valid) {
+			/* suspend endpoint */
+			memset(&suspend, 0, sizeof(suspend));
+			suspend.ipa_ep_suspend = true;
+			ipa_cfg_ep_ctrl(ipa_ep_idx, &suspend);
+			pipe_suspended = true;
+		}
+	}
+	/* Sleep ~1 msec */
+	if (pipe_suspended)
+		usleep_range(1000, 2000);
+
+	/* before gating IPA clocks do TAG process */
+	ipa_ctx->tag_process_before_gating = true;
+	ipa_dec_client_disable_clks();
+
+	return 0;
+}
+
+/**
+ * ipa_suspend_resource_no_block() - suspend client endpoints related to the
+ * IPA_RM resource and decrement active clients counter. This function is
+ * guaranteed to avoid sleeping.
+ *
+ * @resource: [IN] IPA Resource Manager resource
+ *
+ * Return codes: 0 on success, negative on failure.
+ */
+int ipa_suspend_resource_no_block(enum ipa_rm_resource_name resource)
+{
+	int res;
+	struct ipa_client_names clients;
+	int index;
+	enum ipa_client_type client;
+	struct ipa_ep_cfg_ctrl suspend;
+	int ipa_ep_idx;
+
+	if (ipa_active_clients_trylock() == 0)
+		return -EPERM;
+	if (ipa_ctx->ipa_active_clients.cnt == 1) {
+		res = -EPERM;
+		goto bail;
+	}
+
+	memset(&clients, 0, sizeof(clients));
+	res = ipa_get_clients_from_rm_resource(resource, &clients);
+	if (res) {
+		IPAERR("ipa_get_clients_from_rm_resource() failed, name = %d.\n"
+		       , resource);
+		goto bail;
+	}
+
+	for (index = 0; index < clients.length; index++) {
+		client = clients.names[index];
+		ipa_ep_idx = ipa_get_ep_mapping(client);
+		if (ipa_ep_idx == -1) {
+			IPAERR("Invalid client.\n");
+			res = -EINVAL;
+			continue;
+		}
+		if (ipa_should_pipe_be_suspended(client) &&
+		    ipa_ctx->ep[ipa_ep_idx].valid) {
+			/* suspend endpoint */
+			memset(&suspend, 0, sizeof(suspend));
+			suspend.ipa_ep_suspend = true;
+			ipa_cfg_ep_ctrl(ipa_ep_idx, &suspend);
+		}
+	}
+
+	if (res == 0) {
+		ipa_ctx->ipa_active_clients.cnt--;
+		IPADBG("active clients = %d\n",
+		       ipa_ctx->ipa_active_clients.cnt);
+	}
+bail:
+	ipa_active_clients_unlock();
+
+	return res;
+}
+
+/**
+ * ipa_resume_resource() - resume client endpoints related to the IPA_RM
+ * resource.
+ *
+ * @resource: [IN] IPA Resource Manager resource
+ *
+ * Return codes: 0 on success, negative on failure.
+ */
+int ipa_resume_resource(enum ipa_rm_resource_name resource)
+{
+
+	struct ipa_client_names clients;
+	int res;
+	int index;
+	struct ipa_ep_cfg_ctrl suspend;
+	enum ipa_client_type client;
+	int ipa_ep_idx;
+
+	memset(&clients, 0, sizeof(clients));
+	res = ipa_get_clients_from_rm_resource(resource, &clients);
+	if (res) {
+		IPAERR("ipa_get_clients_from_rm_resource() failed.\n");
+		return res;
+	}
+
+	for (index = 0; index < clients.length; index++) {
+		client = clients.names[index];
+		ipa_ep_idx = ipa_get_ep_mapping(client);
+		if (ipa_ep_idx == -1) {
+			IPAERR("Invalid client.\n");
+			res = -EINVAL;
+			continue;
+		}
+		if (ipa_should_pipe_be_suspended(client)) {
+			if (ipa_ctx->ep[ipa_ep_idx].valid) {
+				memset(&suspend, 0, sizeof(suspend));
+				suspend.ipa_ep_suspend = false;
+				ipa_cfg_ep_ctrl(ipa_ep_idx, &suspend);
+			} else {
+				ipa_ctx->ep[ipa_ep_idx].resume_on_connect =
+					true;
+			}
+		}
+	}
+
+	return res;
+}
 
 /* read how much SRAM is available for SW use
  * In case of IPAv2.0 this will also supply an offset from
@@ -430,7 +712,7 @@ int ipa_get_ep_mapping(enum ipa_client_type client)
 	u8 hw_type_index = IPA_1_1;
 
 	if (client >= IPA_CLIENT_MAX || client < 0) {
-		IPAERR("Bad client number!\n");
+		IPAERR("Bad client number! client =%d\n", client);
 		return -EINVAL;
 	}
 
@@ -442,28 +724,62 @@ int ipa_get_ep_mapping(enum ipa_client_type client)
 EXPORT_SYMBOL(ipa_get_ep_mapping);
 
 /**
- * ipa_get_client_mapping() - provide client mapping
- * @pipe_idx: IPA end-point number
+ * ipa_get_rm_resource_from_ep() - get the IPA_RM resource which is related to
+ * the supplied pipe index.
  *
- * Return value: client mapping
+ * @pipe_idx:
+ *
+ * Return value: IPA_RM resource related to the pipe, -1 if a resource was not
+ * found.
  */
-int ipa_get_client_mapping(int pipe_idx)
+enum ipa_rm_resource_name ipa_get_rm_resource_from_ep(int pipe_idx)
 {
 	int i;
-	u8 hw_type_index = IPA_1_1;
+	int j;
+	enum ipa_client_type client;
+	struct ipa_client_names clients;
+	bool found = false;
 
 	if (pipe_idx >= IPA_CLIENT_MAX || pipe_idx < 0) {
 		IPAERR("Bad pipe index!\n");
 		return -EINVAL;
 	}
 
-	if (ipa_ctx->ipa_hw_type == IPA_HW_v2_0)
-		hw_type_index = IPA_2_0;
+	client = ipa_ctx->ep[pipe_idx].client;
 
-	for (i = 0; i < IPA_CLIENT_MAX; i++)
-		if (ep_mapping[hw_type_index][i] == pipe_idx)
+	for (i = 0; i < IPA_RM_RESOURCE_MAX; i++) {
+		memset(&clients, 0, sizeof(clients));
+		ipa_get_clients_from_rm_resource(i, &clients);
+		for (j = 0; j < clients.length; j++) {
+			if (clients.names[j] == client) {
+				found = true;
+				break;
+			}
+		}
+		if (found)
 			break;
+	}
+
+	if (!found)
+		return -EFAULT;
+
 	return i;
+}
+
+/**
+ * ipa_get_client_mapping() - provide client mapping
+ * @pipe_idx: IPA end-point number
+ *
+ * Return value: client mapping
+ */
+enum ipa_client_type ipa_get_client_mapping(int pipe_idx)
+{
+	if (pipe_idx >= IPA_CLIENT_MAX || pipe_idx < 0) {
+		IPAERR("Bad pipe index!\n");
+		return -EINVAL;
+	}
+
+	return ipa_ctx->ep[pipe_idx].client;
 }
 
 /**
@@ -3082,3 +3398,257 @@ void ipa_id_remove(u32 id)
 	idr_remove(&ipa_ctx->ipa_idr, id);
 	spin_unlock(&ipa_ctx->idr_lock);
 }
+
+static void ipa_tag_free_buf(void *user1, int user2)
+{
+	kfree(user1);
+}
+
+static void ipa_tag_free_skb(void *user1, int user2)
+{
+	dev_kfree_skb_any((struct sk_buff *)user1);
+}
+
+/**
+ * ipa_tag_generate_force_close_desc() - generate descriptors for force close
+ *					 immediate command
+ *
+ * @desc: descriptors for IC
+ * @desc_size: desc array size
+ * @start_pipe: first pipe to close aggregation
+ * @end_pipe: last (non-inclusive) pipe to close aggregation
+ *
+ * Return: number of descriptors written or negative in case of failure
+ */
+static int ipa_tag_generate_force_close_desc(struct ipa_desc desc[],
+	int desc_size, int start_pipe, int end_pipe)
+{
+	int i;
+	u32 aggr_init;
+	int desc_idx = 0;
+	int res;
+	struct ipa_register_write *reg_write_agg_close;
+
+	for (i = start_pipe; i < end_pipe; i++) {
+		aggr_init = ipa_read_reg(ipa_ctx->mmio,
+			IPA_ENDP_INIT_AGGR_N_OFST_v2_0(i));
+		if (((aggr_init & IPA_ENDP_INIT_AGGR_N_AGGR_EN_BMSK) >>
+			IPA_ENDP_INIT_AGGR_N_AGGR_EN_SHFT) != IPA_ENABLE_AGGR)
+			continue;
+		IPADBG("Force close ep: %d\n", i);
+		if (desc_idx + 1 >= desc_size) {
+			IPAERR("Internal error - no descriptors\n");
+			res = -EFAULT;
+			goto fail_no_desc;
+		}
+
+		reg_write_agg_close = kzalloc(sizeof(*reg_write_agg_close),
+			GFP_KERNEL);
+		if (!reg_write_agg_close) {
+			IPAERR("no mem\n");
+			res = -ENOMEM;
+			goto fail_alloc_reg_write_agg_close;
+		}
+
+		reg_write_agg_close->skip_pipeline_clear = 0;
+		reg_write_agg_close->offset = IPA_ENDP_INIT_AGGR_N_OFST_v2_0(i);
+		reg_write_agg_close->value =
+			(1 & IPA_ENDP_INIT_AGGR_n_AGGR_FORCE_CLOSE_BMSK) <<
+			IPA_ENDP_INIT_AGGR_n_AGGR_FORCE_CLOSE_SHFT;
+		reg_write_agg_close->value_mask =
+			IPA_ENDP_INIT_AGGR_n_AGGR_FORCE_CLOSE_BMSK <<
+			IPA_ENDP_INIT_AGGR_n_AGGR_FORCE_CLOSE_SHFT;
+
+		desc[desc_idx].opcode = IPA_REGISTER_WRITE;
+		desc[desc_idx].pyld = reg_write_agg_close;
+		desc[desc_idx].len = sizeof(*reg_write_agg_close);
+		desc[desc_idx].type = IPA_IMM_CMD_DESC;
+		desc[desc_idx].callback = ipa_tag_free_buf;
+		desc[desc_idx].user1 = reg_write_agg_close;
+		desc_idx++;
+	}
+
+	return desc_idx;
+
+fail_alloc_reg_write_agg_close:
+	for (i = 0; i < desc_idx; i++)
+		kfree(desc[desc_idx].user1);
+fail_no_desc:
+	return res;
+}
+
+/**
+ * ipa_tag_aggr_force_close() - Force close aggregation
+ *
+ * @pipe_num: pipe number or -1 for all pipes
+ */
+int ipa_tag_aggr_force_close(int pipe_num)
+{
+	struct ipa_sys_context *sys;
+	struct ipa_desc *desc;
+	int desc_idx = 0;
+	struct ipa_ip_packet_init *pkt_init;
+	struct ipa_register_write *reg_write_nop;
+	struct ipa_ip_packet_tag_status *status;
+	int i;
+	struct sk_buff *dummy_skb;
+	int res;
+	int start_pipe;
+	int end_pipe;
+	DECLARE_COMPLETION_ONSTACK(comp);
+	void *comp_ptr = &comp;
+
+	if (pipe_num < -1 || pipe_num >= IPA_NUM_PIPES) {
+		IPAERR("Invalid pipe number %d\n", pipe_num);
+		return -EINVAL;
+	}
+
+	if (pipe_num == -1) {
+		start_pipe = 0;
+		end_pipe = IPA_NUM_PIPES;
+	} else {
+		start_pipe = pipe_num;
+		end_pipe = pipe_num + 1;
+	}
+
+	sys = ipa_ctx->ep[ipa_get_ep_mapping(IPA_CLIENT_APPS_CMD_PROD)].sys;
+
+	desc = kzalloc(sizeof(*desc) * IPA_TAG_MAX_DESC, GFP_KERNEL);
+	if (!desc) {
+		IPAERR("no mem\n");
+		res = -ENOMEM;
+		goto fail_alloc_desc;
+	}
+
+	/* IP_PACKET_INIT IC for tag status to be sent to apps */
+	pkt_init = kzalloc(sizeof(*pkt_init), GFP_KERNEL);
+	if (!pkt_init) {
+		IPAERR("no mem\n");
+		res = -ENOMEM;
+		goto fail_alloc_pkt_init;
+	}
+
+	pkt_init->destination_pipe_index =
+		ipa_get_ep_mapping(IPA_CLIENT_APPS_LAN_CONS);
+
+	desc[desc_idx].opcode = IPA_IP_PACKET_INIT;
+	desc[desc_idx].pyld = pkt_init;
+	desc[desc_idx].len = sizeof(*pkt_init);
+	desc[desc_idx].type = IPA_IMM_CMD_DESC;
+	desc[desc_idx].callback = ipa_tag_free_buf;
+	desc[desc_idx].user1 = pkt_init;
+	desc_idx++;
+
+	/* NO-OP IC for ensuring that IPA pipeline is empty */
+	reg_write_nop = kzalloc(sizeof(*reg_write_nop), GFP_KERNEL);
+	if (!reg_write_nop) {
+		IPAERR("no mem\n");
+		res = -ENOMEM;
+		goto fail_free_desc;
+	}
+
+	reg_write_nop->skip_pipeline_clear = 0;
+	reg_write_nop->value_mask = 0x0;
+
+	desc[desc_idx].opcode = IPA_REGISTER_WRITE;
+	desc[desc_idx].pyld = reg_write_nop;
+	desc[desc_idx].len = sizeof(*reg_write_nop);
+	desc[desc_idx].type = IPA_IMM_CMD_DESC;
+	desc[desc_idx].callback = ipa_tag_free_buf;
+	desc[desc_idx].user1 = reg_write_nop;
+	desc_idx++;
+
+	/* status IC */
+	status = kzalloc(sizeof(*status), GFP_KERNEL);
+	if (!status) {
+		IPAERR("no mem\n");
+		res = -ENOMEM;
+		goto fail_free_desc;
+	}
+
+	status->tag_f_2 = IPA_COOKIE;
+
+	desc[desc_idx].opcode = IPA_IP_PACKET_TAG_STATUS;
+	desc[desc_idx].pyld = status;
+	desc[desc_idx].len = sizeof(*status);
+	desc[desc_idx].type = IPA_IMM_CMD_DESC;
+	desc[desc_idx].callback = ipa_tag_free_buf;
+	desc[desc_idx].user1 = status;
+	desc_idx++;
+
+	/* Force close aggregation on all valid pipes with aggregation */
+	res = ipa_tag_generate_force_close_desc(&desc[desc_idx],
+		IPA_TAG_MAX_DESC - desc_idx,
+		start_pipe, end_pipe);
+	if (res < 0) {
+		IPAERR("ipa_tag_generate_force_close_desc failed %d\n", res);
+		goto fail_free_desc;
+	}
+	desc_idx += res;
+
+	/* dummy packet to send to IPA. packet payload is a completion object */
+	dummy_skb = alloc_skb(sizeof(comp), GFP_KERNEL);
+	if (!dummy_skb) {
+		IPAERR("no mem\n");
+		res = -ENOMEM;
+		goto fail_free_desc;
+	}
+
+	memcpy(skb_put(dummy_skb, sizeof(comp_ptr)), &comp_ptr,
+		sizeof(comp_ptr));
+
+	desc[desc_idx].pyld = dummy_skb->data;
+	desc[desc_idx].len = dummy_skb->len;
+	desc[desc_idx].type = IPA_DATA_DESC_SKB;
+	desc[desc_idx].callback = ipa_tag_free_skb;
+	desc[desc_idx].user1 = dummy_skb;
+	desc_idx++;
+
+	/* send all descriptors to IPA with single EOT */
+	res = ipa_send(sys, desc_idx, desc, true);
+	if (res) {
+		IPAERR("fail to send TAG packets %d\n", res);
+		res = -ENOMEM;
+		goto fail_send;
+	}
+	kfree(desc);
+	desc = NULL;
+
+	IPADBG("waiting for TAG response\n");
+	res = wait_for_completion_timeout(&comp, IPA_TAG_TIMEOUT);
+	if (res == 0) {
+		IPAERR("timeout for waiting for TAG response\n");
+		WARN_ON(1);
+		return -ETIME;
+	}
+
+	IPADBG("TAG response arrived!\n");
+
+	/* sleep for short period to ensure IPA wrote all packets to BAM */
+	usleep_range(IPA_TAG_SLEEP_MIN_USEC, IPA_TAG_SLEEP_MAX_USEC);
+
+	return 0;
+
+fail_send:
+	dev_kfree_skb_any(dummy_skb);
+	desc_idx--;
+fail_free_desc:
+	for (i = 0; i < desc_idx; i++)
+		kfree(desc[desc_idx].user1);
+fail_alloc_pkt_init:
+	kfree(desc);
+fail_alloc_desc:
+	return res;
+}
+
+/**
+ * ipa_is_ready() - check if IPA module was initialized
+ * successfully
+ *
+ * Return value: true for yes; false for no
+ */
+bool ipa_is_ready(void)
+{
+	return (ipa_ctx != NULL) ? true : false;
+}
+EXPORT_SYMBOL(ipa_is_ready);

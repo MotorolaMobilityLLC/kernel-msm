@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "msm-iommu-v2.dtsi"
+/include/ "msm-iommu-v2.dtsi"
 
 &gfx_iommu {
 	status = "ok";

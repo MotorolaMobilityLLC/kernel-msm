@@ -1116,7 +1116,7 @@ static void sec_debug_set_upload_magic(unsigned magic)
 	pr_emerg("(%s) %x\n", __func__, magic);
 
 	if (magic)
-		sec_debug_set_qc_dload_magic(1);
+		sec_debug_set_qc_dload_magic(enable);
 
 	__raw_writel(magic, restart_reason);
 
@@ -1174,7 +1174,7 @@ void sec_debug_hw_reset(void)
 	pr_emerg("(%s) rebooting...\n", __func__);
 	flush_cache_all();
 	outer_flush_all();
-	msm_restart(0, "sec_debug_hw_reset");
+	do_msm_restart(0, "sec_debug_hw_reset");
 
 	while (1)
 		;
@@ -1190,7 +1190,7 @@ void sec_peripheral_secure_check_fail(void)
 	pr_emerg("(%s) rebooting...\n", __func__);
 	flush_cache_all();
 	outer_flush_all();
-	msm_restart(0, "peripheral_hw_reset");
+	do_msm_restart(0, "peripheral_hw_reset");
 
 	while (1)
 		;
@@ -1290,7 +1290,7 @@ void sec_debug_check_crash_key(unsigned int code, int value)
 #ifdef CONFIG_TOUCHSCREEN_MMS252
 	static enum { NO, T1, T2, T3} state_tsp = NO;
 #endif
-	unsigned long timeout = 0;
+	static unsigned long timeout;
 	pr_err("%s code %d value %d state %d enable %d\n", __func__, code,
 		value, state, enable);
 
@@ -1344,8 +1344,7 @@ void sec_debug_check_crash_key(unsigned int code, int value)
 			   set the timeout value as 1.5 seconds*/
 			timeout = jiffies + 3*(HZ/2);
 			state = STEP1;
-		} else
-			state = NONE;
+		}
 		break;
 	case STEP1:
 		if (code == KEY_POWER && !value)

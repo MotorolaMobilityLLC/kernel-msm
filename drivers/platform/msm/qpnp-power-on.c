@@ -520,7 +520,8 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		pon->powerkey_state = 0;
 
 #ifdef CONFIG_SEC_DEBUG
-	sec_debug_check_crash_key(cfg->key_code, pon->powerkey_state);
+	if (cfg->key_code == 116)
+		sec_debug_check_crash_key(cfg->key_code, pon->powerkey_state);
 #endif
 
 	return 0;

@@ -36,7 +36,7 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <mach/board.h>
-#include <mach/msm_bus.h>
+#include <linux/msm-bus.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #ifdef CONFIG_SEC_DEBUG
@@ -57,6 +57,10 @@
 #include <soc/qcom/pm.h>
 #include <linux/regulator/spm-regulator.h>
 #include <linux/platform_data/android_battery.h>
+
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 struct class *sec_class;
 EXPORT_SYMBOL(sec_class);
@@ -183,6 +187,5 @@ DT_MACHINE_START(MSM8226_DT, "Qualcomm MSM 8226 (Flattened Device Tree)")
 	.dt_compat		= msm8226_dt_match,
 	.reserve		= msm8226_reserve,
 	.init_very_early	= msm8226_early_memory,
-	.restart		= msm_restart,
 	.smp			= &arm_smp_ops,
 MACHINE_END

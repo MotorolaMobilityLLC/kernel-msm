@@ -12,9 +12,9 @@
 
 /dts-v1/;
 
-#include "apq8084.dtsi"
-#include "apq8084-old-pwr-grid.dtsi"
-#include "apq8084-cdp.dtsi"
+/include/ "apq8084.dtsi"
+/include/ "apq8084-old-pwr-grid.dtsi"
+/include/ "apq8084-cdp.dtsi"
 
 / {
 	model = "Qualcomm APQ 8084, Old Pwr Grid, SMB349 CDP";
@@ -58,4 +58,9 @@
 
 &xhci_hsic_host {
 	hsic,resume-gpio = <&msmgpio 108 0x00>;
+};
+
+&cnss {
+	esoc-names = "modem_wlan";
+	esoc-0 = <&mdm0>;
 };

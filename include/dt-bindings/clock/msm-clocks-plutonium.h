@@ -43,9 +43,7 @@
 #define clk_cnoc_msmbus_a_clk 0x67442955
 #define clk_cxo_clk_src_ao 0x64eb6004
 #define clk_cxo_dwc3_clk 0xf79c19f6
-#define clk_cxo_gcc 0xdcd75806
 #define clk_cxo_lpm_clk 0x94adbf3d
-#define clk_cxo_mmss 0xe716f06d
 #define clk_cxo_otg_clk 0x4eec0bb9
 #define clk_cxo_pil_lpass_clk 0xe17f0ff6
 #define clk_div_clk1 0xaa1157a6
@@ -99,8 +97,8 @@
 #define clk_debug_mmss_clk 0x977c99b6
 #define clk_debug_rpm_clk 0x8e2b07ca
 #define clk_gpll0 0x1ebe3bc4
-#define clk_gpll0_out_main 0xe9374de7
 #define clk_gpll0_ao 0xa1368304
+#define clk_gpll0_out_main 0xe9374de7
 #define clk_gpll4 0xb3b5d85b
 #define clk_gpll4_out_main 0xa9a0ab9d
 #define clk_ufs_axi_clk_src 0x297ca380
@@ -157,6 +155,7 @@
 #define clk_usb30_mock_utmi_clk_src 0xa024a976
 #define clk_usb3_phy_aux_clk_src 0x15eec63c
 #define clk_usb_hs_system_clk_src 0x28385546
+#define clk_gpll0_out_mmsscc 0x0ded70aa
 #define clk_pcie_0_phy_ldo 0x1d30d092
 #define clk_pcie_1_phy_ldo 0x63474b42
 #define clk_ufs_phy_ldo 0x98111fee
@@ -200,6 +199,7 @@
 #define clk_gcc_blsp2_uart4_apps_clk 0x87a44b42
 #define clk_gcc_blsp2_uart5_apps_clk 0x5cd30649
 #define clk_gcc_blsp2_uart6_apps_clk 0x8feee5ab
+#define clk_gcc_boot_rom_ahb_clk 0xde2adeb1
 #define clk_gcc_gp1_clk 0x057f7b69
 #define clk_gcc_gp2_clk 0x9bf83ffd
 #define clk_gcc_gp3_clk 0xec6539ee

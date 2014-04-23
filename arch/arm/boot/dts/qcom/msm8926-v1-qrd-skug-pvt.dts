@@ -11,8 +11,8 @@
  */
 
 /dts-v1/;
-#include "msm8926-v1.dtsi"
-#include "msm8926-qrd-skug.dtsi"
+/include/ "msm8926-v1.dtsi"
+/include/ "msm8926-qrd-skug.dtsi"
 
 / {
 	model = "Qti MSM 8926 QRD SKUG PVT";

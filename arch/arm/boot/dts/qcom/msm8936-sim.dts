@@ -12,7 +12,7 @@
 
 /dts-v1/;
 
-#include "msm8936.dtsi"
+/include/ "msm8936.dtsi"
 
 / {
 	model = "Qualcomm MSM8936 Simulator";
@@ -20,3 +20,11 @@
 	qcom,board-id= <16 0>;
 };
 
+&usb_otg {
+	interrupts = <0 134 0>;
+	interrupt-names = "core_irq";
+};
+
+&blsp1_uart2 {
+	status = "ok";
+};
