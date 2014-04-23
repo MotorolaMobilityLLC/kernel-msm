@@ -948,7 +948,8 @@ void msm_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	if (req->cb)
 		req->cb(len);
 }
-int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
+int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp,
+			struct dcs_cmd_req *cmdreq)
 {
 	struct dcs_cmd_req *req;
 	int dsi_on;
@@ -963,7 +964,10 @@ int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	}
 
 	mutex_lock(&ctrl->cmd_mutex);
-	req = mdss_dsi_cmdlist_get(ctrl);
+	if (cmdreq)
+		req = cmdreq;
+	else
+		req = mdss_dsi_cmdlist_get(ctrl);
 
 	if (!req) {
 		mutex_unlock(&ctrl->cmd_mutex);
