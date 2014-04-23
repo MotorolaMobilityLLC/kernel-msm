@@ -254,7 +254,7 @@ static int f2fs_set_acl(struct inode *inode, int type,
 		}
 	}
 
-	error = f2fs_setxattr(inode, name_index, "", value, size, ipage);
+	error = f2fs_setxattr(inode, name_index, "", value, size, ipage, 0);
 
 	kfree(value);
 	if (!error)
