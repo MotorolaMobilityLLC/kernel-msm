@@ -51,6 +51,115 @@ struct gpio_keys_drvdata {
 	struct gpio_button_data data[0];
 };
 
+//jack for debug slow
+//#include "../../../sound/soc/codecs/wcd9310.h"
+//const int vol_up_gpio = 1;
+//const int vol_down_gpio = 1;
+
+//static  struct work_struct __wait_for_two_keys_work;
+static  struct work_struct __wait_for_slowlog_work;
+extern int boot_after_60sec;
+//extern int g_ASUS_hwID;
+int pwr_gpio;
+
+void wait_for_slowlog_work(struct work_struct *work)
+{
+    static int one_slowlog_instance_running = 0;
+    int i, power_key;
+    const int trigger_count = 30;
+	
+    power_key = pwr_gpio;
+    printk("%s()++\n", __func__);
+	
+    if(!one_slowlog_instance_running)
+    { 
+        if(gpio_get_value_cansleep(power_key) != 0)
+        {
+			printk("%s: POWER KEY DID NOT PRESSED\n ", __func__);
+            return;
+        }
+        one_slowlog_instance_running = 1;
+
+        for(i = 0; i < trigger_count; i++)
+        {
+            if( gpio_get_value_cansleep(power_key) == 0)   
+            {
+                msleep(100);
+            }         
+            else
+                break;
+        }
+        if(i == trigger_count)
+        {
+            printk("start to gi chk in %s()!!!!!\n", __func__);
+            save_all_thread_info();
+				
+            msleep(1 * 1000);
+				
+            printk("start to gi delta in %s()!!!!!\n", __func__);
+            delta_all_thread_info();
+            save_phone_hang_log();
+            //Dump_wcd9310_reg();     //Bruno++    
+            //printk_lcd("slow log captured\n");
+        }			
+        one_slowlog_instance_running = 0;
+    }       
+}
+#if 0
+void wait_for_two_keys_work(struct work_struct *work)
+{
+    static int one_instance_running = 0;
+    int i, volume_up_key, volume_down_key, power_key;
+
+    volume_up_key = vol_up_gpio;
+    volume_down_key = vol_down_gpio;
+    power_key = pwr_gpio;
+
+    pr_debug("%s()++\n", __func__);
+    if(!one_instance_running)
+    { 
+        if(gpio_get_value_cansleep(power_key) != 0 || gpio_get_value_cansleep(volume_up_key) != 0 || gpio_get_value_cansleep(volume_down_key) != 0)
+        {
+            pr_debug("wait_for_two_keys_work one of the keys is not pressed wait_for_two_keys_work--\n");
+            return;
+        }
+        one_instance_running = 1;
+        
+        for(i = 0; i < 20; i++)
+        {
+            if(gpio_get_value_cansleep(volume_up_key) == 0 && gpio_get_value_cansleep(volume_down_key) == 0 && gpio_get_value_cansleep(power_key) == 0 )   
+            {
+                msleep(100);
+            }         
+            else
+                break;
+        }
+        if(i == 20)
+        {
+            printk("start to gi chk in %s()\n", __func__);
+            save_all_thread_info();
+            
+            msleep(5 * 1000);
+            
+            printk("start to gi delta in %s()\n", __func__);
+            delta_all_thread_info();
+            save_phone_hang_log();
+            //Dump_wcd9310_reg();     //Bruno++    
+            //printk_lcd("slow log captured\n");
+        }
+        else
+        {
+            pr_info("wait_for_two_keys_work one of the keys is not pressed\n");
+        }
+        one_instance_running = 0;
+    }
+    //else
+    //    printk("wait_for_two_keys_work already running\n");
+    //printk("wait_for_two_keys_work--\n");
+            
+    
+}
+#endif
 /*
  * SYSFS interface for enabling/disabling keys and switches:
  *
@@ -330,15 +439,15 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	struct input_dev *input = bdata->input;
 	unsigned int type = button->type ?: EV_KEY;
 	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
+	
+	pr_info("%s:key code=%d  state=%s \n",__func__, button->code,state ? "press" : "release");  //ASUS_BSP +++ Shunmin "gpio_keys"
 
-	pr_info("%s:key code=%d  state=%s \n",__func__, button->code,state ? "press" : "release");  //ASUS_BSP +++ Josh_Liao "gpio_keys"
-
-//ASUS_BSP++ Josh_Liao "use gpio for factory version and qpnp for others"
+//ASUS_BSP++ Shunmin "use gpio for factory version and qpnp for others"
 #ifndef ASUS_FACTORY_BUILD
 	if (KEY_POWER == button->code)
 		return;
 #endif /* ASUS_FACTORY_BUILD */
-//ASUS_BSP-- Josh_Liao "use gpio for factory version and qpnp for others"
+//ASUS_BSP-- Shunmin "use gpio for factory version and qpnp for others"
 
 	if (type == EV_ABS) {
 		if (state)
@@ -353,7 +462,10 @@ static void gpio_keys_gpio_work_func(struct work_struct *work)
 {
 	struct gpio_button_data *bdata =
 		container_of(work, struct gpio_button_data, work);
-
+    //added by jack for slow log
+    //schedule_work(&__wait_for_two_keys_work);
+    //if (boot_after_60sec)
+	schedule_work(&__wait_for_slowlog_work);
 	gpio_keys_gpio_report_event(bdata);
 
 	if (bdata->button->wakeup)
@@ -740,6 +852,9 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	int i = 0, error;
 	int wakeup = 0;
 	struct pinctrl_state *set_state;
+    //jack for debug slow
+    //INIT_WORK(&__wait_for_two_keys_work, wait_for_two_keys_work);
+    INIT_WORK(&__wait_for_slowlog_work, wait_for_slowlog_work);
 
 	printk("%s() +++ ",__func__);  //ASUS_BSP +++ Shunmin "gpio_keys"
 
@@ -962,6 +1077,10 @@ static struct platform_driver gpio_keys_device_driver = {
 
 static int __init gpio_keys_init(void)
 {
+	if (g_ASUS_hwID >= WI500Q_SR)
+		pwr_gpio = 68;
+	else 
+		pwr_gpio = 1;
 	return platform_driver_register(&gpio_keys_device_driver);
 }
 
