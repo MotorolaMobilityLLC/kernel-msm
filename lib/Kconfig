@@ -394,4 +394,12 @@ config QMI_ENCDEC_DEBUG
 	  library. This will log the information regarding the element
 	  and message being encoded & decoded.
 
+config MOT_PATCH_KERNEL
+	bool "Provide capability to patch the kernel after decompression"
+	help
+	  Provide ability to quickly patch initialization variables and simple
+	  logic defects after the zImage has been decompressed. The patch data
+	  can be passed in via the ATAG pointer which will be re-adjusted if
+	  patch data is found.
+
 endmenu
