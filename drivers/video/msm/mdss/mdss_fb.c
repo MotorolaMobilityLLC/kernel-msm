@@ -96,6 +96,11 @@ static int __mdss_fb_display_thread(void *data);
 static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd);
 static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 					int event, void *arg);
+
+// ASUSB_BSP +++ Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
+void set_amdu_fbinfo(struct fb_info *fb0_info);
+// ASUSB_BSP --- Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
+
 void mdss_fb_no_update_notify_timer_cb(unsigned long data)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)data;
@@ -1339,6 +1344,12 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	pr_info("FrameBuffer[%d] %dx%d size=%d registered successfully!\n",
 		     mfd->index, fbi->var.xres, fbi->var.yres,
 		     fbi->fix.smem_len);
+
+// ASUS_BSP +++ Tingyi
+	if (mfd->index == 0)
+		set_amdu_fbinfo(mfd->fbi);
+// ASUS_BSP --- Tingyi
+
 
 	return 0;
 }

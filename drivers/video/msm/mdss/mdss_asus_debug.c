@@ -22,6 +22,7 @@ struct amdu_global_data
 	unsigned int debug_log_flag;
 	struct mdss_dsi_ctrl_pdata *ctrl;
 	bool	ambient_on;
+	struct fb_info *fb0_info;
 };
 
 static struct amdu_global_data amdu_data;
@@ -34,6 +35,7 @@ static struct amdu_global_data amdu_data;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // DEBUGFS
+
 
 static int check_panel_status(void);
 
@@ -196,7 +198,12 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 		amdu_data.ambient_on = (val != 0);
 		printk("MDSS:[mdss_debug.c]:%s:amdu_data.ambient_on = 0x%x\n", __func__,amdu_data.ambient_on);
 	}
-
+// ASUSB_BSP +++ Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
+	else if (!strncmp("panelmsg=",cmd_buf,strlen("panelmsg="))){
+		show_panel_message(cmd_buf+strlen("panelmsg="));
+		printk("MDSS:[mdss_debug.c]:%s:panelmsg=%s\n", __func__,cmd_buf+strlen("panelmsg="));
+	}
+// ASUSB_BSP --- Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
 
 	printk("MDSS:[mdss_debug.c]:%s:---\n", __func__);
 
@@ -420,4 +427,26 @@ int notify_amdu_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	return 0;
 }
 
+// ASUSB_BSP +++ Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
+void set_amdu_fbinfo(struct fb_info *fb0_info)
+{
+	amdu_data.fb0_info = fb0_info;
+	return;
+}
 
+
+void show_panel_message(char* msg)
+{
+	static char panel_msg[128];
+	char *envp[2] = {panel_msg, NULL};
+	sprintf(panel_msg,"PANEL_MSG=%s",msg);
+	if (amdu_data.fb0_info){
+		kobject_uevent_env(
+			&amdu_data.fb0_info->dev->kobj,KOBJ_CHANGE, envp);
+		printk("MDSS:DEBUG:%s: msg=%s\n",__func__,msg);
+	}else{
+		printk("MDSS:DEBUG:%s: ERR! amdu_data.fb0_info = 0\n\n",__func__);
+	}
+	return;
+}
+// ASUSB_BSP --- Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"

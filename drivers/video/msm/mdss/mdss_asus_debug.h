@@ -41,3 +41,4 @@ int notify_amdu_panel_on_cmds_stop(void);
 int notify_amdu_dsi_cmd_dma_tx(struct dsi_buf *tp);
 
 int is_ambient_on(void);
+void show_panel_message(char* msg);
