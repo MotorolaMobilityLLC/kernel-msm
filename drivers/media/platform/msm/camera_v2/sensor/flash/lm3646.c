@@ -21,7 +21,7 @@ static struct msm_led_flash_ctrl_t fctrl;
 static struct i2c_driver lm3646_i2c_driver;
 
 static struct msm_camera_i2c_reg_array lm3646_init_array[] = {
-	{0x01, 0xE0},
+	{0x01, 0xE8},
 	{0x02, 0xA4},
 	{0x03, 0x20},
 	{0x04, 0x42},
@@ -33,12 +33,12 @@ static struct msm_camera_i2c_reg_array lm3646_init_array[] = {
 };
 
 static struct msm_camera_i2c_reg_array lm3646_release_array[] = {
-	{0x01, 0xE0},
+	{0x01, 0xE8},
 	{0x07, 0x2F},
 };
 
 static struct msm_camera_i2c_reg_array lm3646_high_array[] = {
-	{0x01, 0xE3},
+	{0x01, 0xEB},
 };
 
 static void __exit msm_flash_lm3646_i2c_remove(void)
