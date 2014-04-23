@@ -3956,8 +3956,9 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
 #endif
 
    hdd_config_t *pConfig = pHddCtx->cfg_ini;
-   tSirMacHTCapabilityInfo htCapInfo;
-
+   tSirMacHTCapabilityInfo *htCapInfo;
+   tANI_U32 temp32;
+   tANI_U16 temp16;
 
    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_SHORT_GI_20MHZ,
       pConfig->ShortGI20MhzEnable, NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
@@ -4461,11 +4462,14 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
          hddLog(LOGE, "Could not pass on WNI_CFG_HT_RX_STBC to CCM");
      }
 
-     ccmCfgGetInt(pHddCtx->hHal, WNI_CFG_HT_CAP_INFO, (tANI_U32 *)&htCapInfo);
-     htCapInfo.rxSTBC = pConfig->enableRxSTBC;
+     ccmCfgGetInt(pHddCtx->hHal, WNI_CFG_HT_CAP_INFO, &temp32);
+     temp16 = temp32 & 0xffff;
+     htCapInfo = (tSirMacHTCapabilityInfo *)&temp16;
+     htCapInfo->rxSTBC = pConfig->enableRxSTBC;
+     temp32 = temp16;
 
      if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_HT_CAP_INFO,
-                     *(tANI_U32 *)&htCapInfo, NULL, eANI_BOOLEAN_FALSE)
+                     temp32, NULL, eANI_BOOLEAN_FALSE)
          ==eHAL_STATUS_FAILURE)
      {
          fStatus = FALSE;
