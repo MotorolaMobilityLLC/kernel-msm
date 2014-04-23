@@ -2979,7 +2979,6 @@ static int inv_mpu_suspend(struct device *dev)
 	}
 	/* add code according to different request End */
 	st->suspend_state = true;
-	msleep(100);
 	mutex_lock(&st->suspend_resume_lock);
 
 	return 0;
