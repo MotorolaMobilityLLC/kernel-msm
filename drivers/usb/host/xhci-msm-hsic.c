@@ -408,65 +408,6 @@ out:
 	return ret;
 }
 
-static int mxhci_hsic_enable_clocks(struct mxhci_hsic_hcd *mxhci)
-{
-	int ret = 0;
-
-	ret = clk_prepare_enable(mxhci->system_clk);
-	if (ret) {
-		dev_err(mxhci->dev, "failed to enable system_clk\n");
-		goto out;
-	}
-
-	/* enable force-on mode for periph_on */
-	clk_set_flags(mxhci->system_clk, CLKFLAG_RETAIN_PERIPH);
-
-	ret = clk_prepare_enable(mxhci->core_clk);
-	if (ret) {
-		dev_err(mxhci->dev, "failed to enable core_clk\n");
-		goto err_core_clk;
-	}
-
-	ret = clk_prepare_enable(mxhci->hsic_clk);
-	if (ret) {
-		dev_err(mxhci->dev, "failed to enable hsic_clk\n");
-		goto err_hsic_clk;
-	}
-
-	ret = clk_prepare_enable(mxhci->utmi_clk);
-	if (ret) {
-		dev_err(mxhci->dev, "failed to enable utmi_clk\n");
-		goto err_utmi_clk;
-	}
-
-	ret = clk_prepare_enable(mxhci->cal_clk);
-	if (ret) {
-		dev_err(mxhci->dev, "failed to enable cal_clk\n");
-		goto err_cal_clk;
-	}
-
-	ret = clk_prepare_enable(mxhci->phy_sleep_clk);
-	if (ret) {
-		dev_err(mxhci->dev, "failed to enable phy_sleep_clk\n");
-		goto err_phy_sleep_clk;
-	}
-
-	return 0;
-
-err_phy_sleep_clk:
-	clk_disable_unprepare(mxhci->cal_clk);
-err_cal_clk:
-	clk_disable_unprepare(mxhci->utmi_clk);
-err_utmi_clk:
-	clk_disable_unprepare(mxhci->hsic_clk);
-err_hsic_clk:
-	clk_disable_unprepare(mxhci->core_clk);
-err_core_clk:
-	clk_disable_unprepare(mxhci->system_clk);
-out:
-	return ret;
-}
-
 static int mxhci_hsic_init_vddcx(struct mxhci_hsic_hcd *mxhci, int init)
 {
 	int ret = 0;
@@ -1481,21 +1422,22 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 	device_remove_file(&pdev->dev, &dev_attr_host_ready);
 	mxhci_hsic_debugfs_cleanup();
 
+	mxhci->xhci_remove_flag = true;
+	wake_up(&mxhci->phy_in_lpm_wq);
+
+	pm_runtime_get_sync(mxhci->dev);
 	/* If the device was removed no need to call pm_runtime_disable */
 	if (pdev->dev.power.power_state.event != PM_EVENT_INVALID)
 		pm_runtime_disable(&pdev->dev);
 
 	pm_runtime_set_suspended(&pdev->dev);
 
-	mxhci->xhci_remove_flag = true;
-	wake_up(&mxhci->phy_in_lpm_wq);
-
-	mxhci_hsic_enable_clocks(mxhci);
-
 	usb_remove_hcd(xhci->shared_hcd);
 	usb_put_hcd(xhci->shared_hcd);
 
 	usb_remove_hcd(hcd);
+
+	pm_runtime_put_noidle(mxhci->dev);
 
 	if (mxhci->wakeup_irq_enabled)
 		disable_irq_wake(mxhci->wakeup_irq);
@@ -1510,8 +1452,6 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 
 	device_wakeup_disable(&pdev->dev);
 	mxhci_hsic_init_vddcx(mxhci, 0);
-	/*this disable is for mxhci_hsic_enable_clocks*/
-	mxhci_hsic_init_clocks(mxhci, 0);
 	mxhci_hsic_init_clocks(mxhci, 0);
 	mxhci_msm_config_gdsc(mxhci, 0);
 	kfree(xhci);
