@@ -63,7 +63,7 @@ static struct miscdevice sec_misc_device = {
 static ssize_t emmc_checksum_done_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, sizeof(buf), "%d\n", emmc_checksum_done);
+	return snprintf(buf, PAGE_SIZE, "%d\n", emmc_checksum_done);
 }
 
 static ssize_t emmc_checksum_done_store(struct device *dev,
@@ -84,7 +84,7 @@ static DEVICE_ATTR(emmc_checksum_done, S_IRUGO | S_IWUSR ,
 static ssize_t emmc_checksum_pass_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, sizeof(buf), "%d\n", emmc_checksum_pass);
+	return snprintf(buf, PAGE_SIZE, "%d\n", emmc_checksum_pass);
 }
 
 static ssize_t emmc_checksum_pass_store(struct device *dev,
@@ -112,7 +112,7 @@ static ssize_t rory_control_show(struct device *dev,
 
 	sec_get_param(param_rory_control, &rory_control);
 
-	return snprintf(buf, sizeof(buf), "%d\n", rory_control);
+	return snprintf(buf, PAGE_SIZE, "%d\n", rory_control);
 }
 
 static ssize_t rory_control_store(struct device *dev,
@@ -172,7 +172,7 @@ static ssize_t debug_level_show(struct device *dev,
 	char buffer[7];
 	convert_debug_level_int(kernel_sec_get_debug_level(), buffer);
 
-	return snprintf(buf, sizeof(buffer)+1, "%s\n", buffer);
+	return snprintf(buf, PAGE_SIZE, "%s\n", buffer);
 
 }
 
@@ -224,7 +224,7 @@ static ssize_t dump_level_show(struct device *dev,
 	char buffer[7];
 	convert_dump_level_int(kernel_sec_get_dump_level(), buffer);
 
-	return snprintf(buf, sizeof(buffer)+1, "%s\n", buffer);
+	return snprintf(buf, PAGE_SIZE, "%s\n", buffer);
 
 }
 
@@ -254,7 +254,7 @@ static ssize_t slideCount_show
 
 	sec_get_param(param_slideCount, &slideCount);
 
-	return snprintf(buf, sizeof(buf), "%d\n", slideCount);
+	return snprintf(buf, PAGE_SIZE, "%d\n", slideCount);
 }
 
 static ssize_t slideCount_store
@@ -288,7 +288,7 @@ static ssize_t drop_caches_show
 	(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int ret = 0;
-	return snprintf(buf, sizeof(buf), "%d\n", ret);
+	return snprintf(buf, PAGE_SIZE, "%d\n", ret);
 }
 
 static ssize_t drop_caches_store
@@ -339,7 +339,7 @@ static ssize_t update_cp_bin_show
 
 	sec_get_param(param_update_cp_bin, (void *)&update);
 
-	return snprintf(buf, sizeof(buf), "%d\n", update);
+	return snprintf(buf, PAGE_SIZE, "%d\n", update);
 }
 
 static ssize_t update_cp_bin_store
