@@ -64,8 +64,8 @@
 #include <asm/irq.h>
 
 #include <linux/msm-sps.h>
-#include <mach/msm_serial_hs.h>
-#include <mach/msm_bus.h>
+#include <linux/platform_data/msm_serial_hs.h>
+#include <linux/msm-bus.h>
 
 #include "msm_serial_hs_hwreg.h"
 #define UART_SPS_CONS_PERIPHERAL 0
