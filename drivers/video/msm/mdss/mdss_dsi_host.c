@@ -1280,13 +1280,17 @@ int mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	return ret;
 }
 
-int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
+int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp,
+					struct dcs_cmd_req *cmdreq)
 {
 	struct dcs_cmd_req *req;
 	int ret = -EINVAL;
 
 	mutex_lock(&ctrl->cmd_mutex);
-	req = mdss_dsi_cmdlist_get(ctrl);
+	if (cmdreq)
+		req = cmdreq;
+	else
+		req = mdss_dsi_cmdlist_get(ctrl);
 
 	/* make sure dsi_cmd_mdp is idle */
 	mdss_dsi_cmd_mdp_busy(ctrl);
