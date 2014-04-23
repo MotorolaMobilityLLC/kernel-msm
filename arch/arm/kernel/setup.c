@@ -28,6 +28,7 @@
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
 #include <linux/memblock.h>
+#include <linux/mot_patch.h>
 #include <linux/bug.h>
 #include <linux/compiler.h>
 #include <linux/sort.h>
@@ -944,6 +945,7 @@ void __init setup_arch(char **cmdline_p)
 	struct machine_desc *mdesc;
 
 	setup_processor();
+	mot_patch_kernel(__atags_pointer);
 	mdesc = setup_machine_fdt(__atags_pointer);
 	if (!mdesc)
 		mdesc = setup_machine_tags(machine_arch_type);
