@@ -37,6 +37,13 @@
 	qcom,cont-splash-enabled;
 };
 
+&mot_smd_1080p_cmd_v1 {
+	qcom,cont-splash-enabled;
+	qcom,partial-update-enabled;
+	mmi,quickdraw-enabled;
+	mmi,partial-mode-enabled;
+};
+
 &mot_smd_1080p_cmd_v0 {
 	qcom,cont-splash-enabled;
 	qcom,partial-update-enabled;
