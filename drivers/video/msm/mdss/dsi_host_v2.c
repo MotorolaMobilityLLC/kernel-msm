@@ -1235,6 +1235,8 @@ static int msm_dsi_cont_on(struct mdss_panel_data *pdata)
 		return ret;
 	}
 
+	pinfo->cont_splash_enabled = false;
+
 	msm_dsi_ahb_ctrl(1);
 	msm_dsi_prepare_clocks();
 	msm_dsi_clk_enable();
