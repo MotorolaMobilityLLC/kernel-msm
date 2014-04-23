@@ -16,6 +16,7 @@
 #include <linux/sched.h>
 #include <linux/jiffies.h>
 #include <linux/err.h>
+#include <linux/dropbox.h>
 
 #include "kgsl.h"
 #include "kgsl_cffdump.h"
@@ -971,10 +972,22 @@ static inline const char *_kgsl_context_comm(struct kgsl_context *context)
 	return _pidname;
 }
 
+#define GPU_FT_REPORT_LEN 256
+static char gpu_ft_report[GPU_FT_REPORT_LEN];
+static int gpu_ft_report_pos;
+#define pr_gpu_ft_report(fmt, args...) \
+		do { \
+			gpu_ft_report_pos += scnprintf( \
+			&gpu_ft_report[gpu_ft_report_pos], \
+			GPU_FT_REPORT_LEN - gpu_ft_report_pos, \
+			fmt, ##args); \
+		} while (0)
+
 #define pr_fault(_d, _c, fmt, args...) \
 		dev_err((_d)->dev, "%s[%d]: " fmt, \
 		_kgsl_context_comm((_c)->context), \
-		(_c)->context->proc_priv->pid, ##args)
+		(_c)->context->proc_priv->pid, ##args); \
+		pr_gpu_ft_report(fmt, ##args)
 
 
 static void adreno_fault_header(struct kgsl_device *device,
@@ -1075,6 +1088,11 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 
 	trace_adreno_cmdbatch_fault(cmdbatch, fault);
 
+	gpu_ft_report_pos = 0;
+	pr_gpu_ft_report("GPU FT: fault = %d\n%s[%d]\n", fault,
+		_kgsl_context_comm(cmdbatch->context),
+		cmdbatch->context->proc_priv->pid);
+
 	/*
 	 * If the fault was due to a timeout then stop the CP to ensure we don't
 	 * get activity while we are trying to dump the state of the system
@@ -1096,8 +1114,17 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 	 */
 
 	if (!test_bit(KGSL_FT_SKIP_PMDUMP, &cmdbatch->fault_policy)) {
+		char *path;
+		char sys_path[256];
+
 		adreno_fault_header(device, cmdbatch);
 		kgsl_device_snapshot(device, 1);
+
+		path = kobject_get_path(&device->snapshot_kobj, GFP_KERNEL);
+		snprintf(sys_path, sizeof(sys_path), "/sys%s/dump", path);
+		kfree(path);
+
+		dropbox_queue_event_binaryfile("gpu_snapshot", sys_path);
 	}
 
 	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
@@ -1298,6 +1325,9 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 	/* Invalidate the context */
 	adreno_drawctxt_invalidate(device, cmdbatch->context);
 
+	/* Log GPU FT report for failed recovery */
+	dropbox_queue_event_text("gpu_ft_report", gpu_ft_report,
+		gpu_ft_report_pos);
 
 replay:
 	/* Reset the dispatcher queue */
@@ -1459,6 +1489,10 @@ static void adreno_dispatcher_work(struct work_struct *work)
 				set_bit(ADRENO_CONTEXT_FAULT, &drawctxt->priv);
 
 				_print_recovery(device, cmdbatch);
+
+				/* Log GPU FT report for successful recovery */
+				dropbox_queue_event_text("gpu_ft_report",
+					gpu_ft_report, gpu_ft_report_pos);
 			}
 
 			trace_adreno_cmdbatch_retired(cmdbatch,
