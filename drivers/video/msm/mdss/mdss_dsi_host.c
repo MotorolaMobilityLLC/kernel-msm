@@ -26,6 +26,7 @@
 #include "mdss.h"
 #include "mdss_dsi.h"
 #include "mdss_panel.h"
+#include "mdss_mdp.h"
 
 #define VSYNC_PERIOD 17
 
@@ -1366,7 +1367,9 @@ static int dsi_event_thread(void *data)
 			spin_unlock(&ctrl->mdp_lock);
 
 			/* enable dsi error interrupt */
+			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 			mdss_dsi_err_intr_ctrl(ctrl, DSI_INTR_ERROR_MASK, 1);
+			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 		}
 
 	}
