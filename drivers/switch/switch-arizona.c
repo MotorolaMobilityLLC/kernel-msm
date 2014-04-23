@@ -602,12 +602,8 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 		}
 	}
 
-	arizona->hp_impedance = val;
-
-	if (arizona->pdata.hpdet_cb)
-		arizona->pdata.hpdet_cb(arizona->hp_impedance);
-
 	dev_dbg(arizona->dev, "HP impedance %d ohms\n", val);
+
 	return val;
 }
 
@@ -831,6 +827,11 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 		goto done;
 	}
 	reading = ret;
+
+	arizona->hp_impedance = reading;
+
+	if (arizona->pdata.hpdet_cb)
+		arizona->pdata.hpdet_cb(arizona->hp_impedance);
 
 	/* Reset back to starting range */
 	regmap_update_bits(arizona->regmap,
