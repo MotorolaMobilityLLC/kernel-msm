@@ -1168,6 +1168,8 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
     int group, value, ret;
     int file_handle;
 
+	unsigned int *last_shutdown_log_addr;
+
 // +++ ASUS_BSP : add for user build
 #ifdef ASUS_SHIP_BUILD
 	if (count > 256)
@@ -1218,8 +1220,6 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 			extern int g_saving_rtb_log;
 #endif
 #endif
-			unsigned int *last_shutdown_log_addr;
-
             last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
             printk(KERN_WARNING "[ASDF] last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 
@@ -1231,7 +1231,7 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
                 printk(KERN_WARNING "[ASDF] get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 #ifdef CONFIG_MSM_RTB
                 if ( (*last_shutdown_log_addr)==(unsigned int)PRINTK_BUFFER_MAGIC )
-					save_rtb_log();
+					//save_rtb_log();
 #endif
 
 				(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
@@ -1350,8 +1350,6 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 			extern int g_saving_rtb_log;
 #endif
 #endif
-			unsigned int *last_shutdown_log_addr;
-
             last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
             printk("[ASDF] last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 
@@ -1364,7 +1362,7 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 #if 0
 #ifdef CONFIG_MSM_RTB
                 if ( (*last_shutdown_log_addr)==(unsigned int)PRINTK_BUFFER_MAGIC )
-					save_rtb_log();
+					//save_rtb_log();
 #endif
 #endif
 
@@ -1768,7 +1766,7 @@ static int __init proc_asusdebug_init(void)
 
 //adbg++
 	INIT_DELAYED_WORK(&asusdbg_worker, asusdbg_work);
-	queue_delayed_work(ASUSEvtlog_workQueue, &asusdbg_worker, msecs_to_jiffies(18000));
+	queue_delayed_work(ASUSEvtlog_workQueue, &asusdbg_worker, msecs_to_jiffies(19000));
 //--
     return 0;
 }
