@@ -1000,13 +1000,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 27, /* OIS_SYNC */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[0],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
 		.gpio = 120, /* WEBCAM1_STANDBY */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
