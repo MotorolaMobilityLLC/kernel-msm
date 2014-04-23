@@ -125,6 +125,8 @@ obj-$(CONFIG_CLZ_TAB) += clz_tab.o
 
 obj-$(CONFIG_QMI_ENCDEC) += qmi_encdec.o
 
+obj-$(CONFIG_MOT_PATCH_KERNEL) += mot_patch_kernel.o
+
 hostprogs-y	:= gen_crc32table
 clean-files	:= crc32table.h
 
