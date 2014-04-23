@@ -90,7 +90,8 @@
 		mdss_fb0: qcom,mdss_fb_primary {
 			cell-index = <0>;
 			compatible = "qcom,mdss-fb";
-			qcom,memblock-reserve = <0x03200000 0xFA0000>;
+			/* @ 0x04200000 for 0x64000 (320 x 320 x 4) */
+			qcom,memblock-reserve = <0x04200000 0x64000>;
 			linux,contiguous-region = <&fb_mem>;
 		};
 
