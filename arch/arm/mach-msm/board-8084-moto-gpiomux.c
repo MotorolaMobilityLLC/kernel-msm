@@ -1388,6 +1388,15 @@ static struct msm_gpiomux_config battwarn_config[] __initdata = {
 	},
 };
 
+static struct msm_gpiomux_config max17050_configs[] __initdata = {
+	{
+		.gpio = 123, /* CC_ALERT */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_mux_input_pull_none,
+		},
+	},
+};
+
 void __init apq8084_moto_init_gpiomux(void)
 {
 	int rc;
@@ -1466,6 +1475,7 @@ void __init apq8084_moto_init_gpiomux(void)
 			ARRAY_SIZE(cycapsence_issp_gpio_configs));
 
 	msm_gpiomux_install(battwarn_config, ARRAY_SIZE(battwarn_config));
+	msm_gpiomux_install(max17050_configs, ARRAY_SIZE(battwarn_config));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())
