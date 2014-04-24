@@ -267,8 +267,6 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 		return;
 	}
 
-	mdss_mdp_ctl_perf_taken(ctl);
-
 	vsync_time = ktime_get();
 	ctl->vsync_cnt++;
 
@@ -330,7 +328,8 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 		return;
 	}
 
-	mdss_mdp_ctl_perf_done(ctl);
+	mdss_mdp_ctl_perf_set_transaction_status(ctl,
+		PERF_HW_MDP_STATE, PERF_STATUS_DONE);
 
 	spin_lock(&ctx->clk_lock);
 	list_for_each_entry(tmp, &ctx->vsync_handlers, list) {
@@ -587,6 +586,9 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 
+	mdss_mdp_ctl_perf_set_transaction_status(ctl,
+		PERF_HW_MDP_STATE, PERF_STATUS_BUSY);
+
 	rc = mdss_mdp_cmd_panel_on_locked(ctl);
 
 	mdss_mdp_cmd_set_partial_roi(ctl);
@@ -605,6 +607,10 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 	spin_lock_irqsave(&ctx->clk_lock, flags);
 	ctx->koff_cnt++;
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
+
+	mdss_mdp_ctl_perf_set_transaction_status(ctl,
+		PERF_SW_COMMIT_STATE, PERF_STATUS_DONE);
+
 	mb();
 
 	return 0;
