@@ -15,6 +15,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/kernel.h>
+#include <linux/workqueue.h>
 #include <soc/qcom/subsystem_restart.h>
 #include <asm/div64.h>
 #include "msm_vidc_common.h"
@@ -888,95 +889,132 @@ static void handle_session_error(enum command_response cmd, void *data)
 
 	msm_vidc_queue_v4l2_event(inst, V4L2_EVENT_MSM_VIDC_SYS_ERROR);
 }
+
+struct sys_err_helper_data {
+	struct msm_vidc_core *core;
+	struct delayed_work work;
+};
+
+
+void hw_sys_error_helper(struct work_struct *work)
+{
+	struct msm_vidc_core *core = NULL;
+	struct hfi_device *hdev = NULL;
+	struct sys_err_helper_data *data = NULL;
+	int rc = 0;
+
+	data = container_of(work, struct sys_err_helper_data, work.work);
+	if (!data || !data->core || !data->core->device) {
+		dprintk(VIDC_ERR, "%s - invalid work or core handle\n",
+				__func__);
+		goto exit;
+	}
+
+	core = data->core;
+	hdev = core->device;
+
+	mutex_lock(&core->sync_lock);
+	/*
+	* Restart the firmware to bring out of bad state.
+	*/
+	if ((core->state == VIDC_CORE_INVALID) &&
+		hdev->resurrect_fw) {
+		mutex_lock(&core->lock);
+		rc = call_hfi_op(hdev, resurrect_fw,
+				hdev->hfi_device_data);
+		if (rc) {
+			dprintk(VIDC_ERR,
+				"%s - resurrect_fw failed: %d\n",
+				__func__, rc);
+		}
+		core->state = VIDC_CORE_LOADED;
+		mutex_unlock(&core->lock);
+	} else {
+		dprintk(VIDC_DBG,
+			"fw unloaded after sys error, no need to resurrect\n");
+	}
+	mutex_unlock(&core->sync_lock);
+
+exit:
+	/* free sys error data, allocated in handle_sys_err */
+	kfree(data);
+}
+
 static void handle_sys_error(enum command_response cmd, void *data)
 {
 	struct msm_vidc_cb_cmd_done *response = data;
-	struct msm_vidc_inst *inst = NULL ;
 	struct msm_vidc_core *core = NULL;
+	struct sys_err_helper_data *handler = NULL;
 	struct hfi_device *hdev = NULL;
+	struct msm_vidc_inst *inst = NULL;
 	int rc = 0;
 
 	subsystem_crashed("venus");
-	if (response) {
-		core = get_vidc_core(response->device_id);
-		dprintk(VIDC_WARN, "SYS_ERROR received for core %p\n", core);
-		if (core) {
-			mutex_lock(&core->lock);
-			core->state = VIDC_CORE_INVALID;
-			mutex_unlock(&core->lock);
-			mutex_lock(&core->sync_lock);
-			list_for_each_entry(inst, &core->instances,
-					list) {
-				mutex_lock(&inst->lock);
-				inst->state = MSM_VIDC_CORE_INVALID;
-				if (inst->core)
-					hdev = inst->core->device;
-				if (hdev && inst->session) {
-					dprintk(VIDC_DBG,
-					"cleaning up inst: 0x%p\n", inst);
-					rc = call_hfi_op(hdev, session_clean,
-						(void *) inst->session);
-					if (rc)
-						dprintk(VIDC_ERR,
-							"Sess clean failed :%p\n",
-							inst);
-				}
-				inst->session = NULL;
-				mutex_unlock(&inst->lock);
-				msm_vidc_queue_v4l2_event(inst,
-						V4L2_EVENT_MSM_VIDC_SYS_ERROR);
-			}
-			mutex_unlock(&core->sync_lock);
-		} else {
-			dprintk(VIDC_ERR,
-				"Got SYS_ERR but unable to identify core\n");
-		}
-	} else {
+	if (!response) {
 		dprintk(VIDC_ERR,
 			"Failed to get valid response for sys error\n");
-	}
-}
-
-static void handle_sys_watchdog_timeout(enum command_response cmd, void *data)
-{
-	struct msm_vidc_cb_cmd_done *response = data;
-	struct msm_vidc_inst *inst;
-	struct msm_vidc_core *core = NULL;
-	struct hfi_device *hdev = NULL;
-	int rc = 0;
-	dprintk(VIDC_ERR, "Venus Subsystem crashed\n");
-	core = get_vidc_core(response->device_id);
-	if (!core) {
-		dprintk(VIDC_ERR, "Wrong device_id received\n");
 		return;
 	}
-	subsystem_crashed("venus");
+
+	core = get_vidc_core(response->device_id);
+	if (!core) {
+		dprintk(VIDC_ERR,
+				"Got SYS_ERR but unable to identify core\n");
+		return;
+	}
+
+	dprintk(VIDC_WARN, "SYS_ERROR %d received for core %p\n", cmd, core);
 	mutex_lock(&core->lock);
 	core->state = VIDC_CORE_INVALID;
 	mutex_unlock(&core->lock);
-	mutex_lock(&core->sync_lock);
-	list_for_each_entry(inst, &core->instances, list) {
-		if (inst) {
-			msm_vidc_queue_v4l2_event(inst,
-					V4L2_EVENT_MSM_VIDC_SYS_ERROR);
-			mutex_lock(&inst->lock);
-			inst->state = MSM_VIDC_CORE_INVALID;
-			if (inst->core)
-				hdev = inst->core->device;
-			if (hdev && inst->session) {
-				rc = call_hfi_op(hdev, session_clean,
-						(void *) inst->session);
-				if (rc)
-					dprintk(VIDC_ERR,
-						"Sess clean failed :%p\n",
-						inst);
 
-			}
-			inst->session = NULL;
-			mutex_unlock(&inst->lock);
+
+	/*
+	* 1. Delete each instance session from hfi list
+	* 2. Notify all clients about hardware error.
+	*/
+	mutex_lock(&core->sync_lock);
+	list_for_each_entry(inst, &core->instances,
+			list) {
+		mutex_lock(&inst->lock);
+		inst->state = MSM_VIDC_CORE_INVALID;
+		if (inst->core)
+			hdev = inst->core->device;
+		if (hdev && inst->session) {
+			dprintk(VIDC_DBG,
+			"cleaning up inst: 0x%p\n", inst);
+			rc = call_hfi_op(hdev, session_clean,
+				(void *) inst->session);
+			if (rc)
+				dprintk(VIDC_ERR,
+					"Sess clean failed :%p\n",
+					inst);
 		}
+		inst->session = NULL;
+		mutex_unlock(&inst->lock);
+		msm_vidc_queue_v4l2_event(inst,
+				V4L2_EVENT_MSM_VIDC_SYS_ERROR);
 	}
 	mutex_unlock(&core->sync_lock);
+
+
+	handler = kzalloc(sizeof(*handler), GFP_KERNEL);
+	if (!handler) {
+		dprintk(VIDC_ERR,
+				"%s - failed to allocate sys error handler\n",
+				__func__);
+		return;
+	}
+	handler->core = core;
+	INIT_DELAYED_WORK(&handler->work, hw_sys_error_helper);
+
+	/*
+	* Sleep for 5 sec to ensure venus has completed any
+	* pending cache operations. Without this sleep, we see
+	* device reset when firmware is unloaded after a sys
+	* error.
+	*/
+	schedule_delayed_work(&handler->work, msecs_to_jiffies(5000));
 }
 
 static void handle_session_close(enum command_response cmd, void *data)
@@ -1464,7 +1502,7 @@ void handle_cmd_response(enum command_response cmd, void *data)
 		handle_seq_hdr_done(cmd, data);
 		break;
 	case SYS_WATCHDOG_TIMEOUT:
-		handle_sys_watchdog_timeout(cmd, data);
+		handle_sys_error(cmd, data);
 		break;
 	case SYS_ERROR:
 		handle_sys_error(cmd, data);
@@ -1627,11 +1665,14 @@ static int msm_comm_init_core(struct msm_vidc_inst *inst)
 		goto fail_vote_bus;
 	}
 
-	rc = call_hfi_op(hdev, load_fw, hdev->hfi_device_data);
-	if (rc) {
-		dprintk(VIDC_ERR, "Failed to load video firmware\n");
-		goto fail_load_fw;
+	if (core->state < VIDC_CORE_LOADED) {
+		rc = call_hfi_op(hdev, load_fw, hdev->hfi_device_data);
+		if (rc) {
+			dprintk(VIDC_ERR, "Failed to load video firmware\n");
+			goto fail_load_fw;
+		}
 	}
+
 	rc = msm_comm_scale_clocks(core);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to scale clocks: %d\n", rc);
@@ -1680,19 +1721,25 @@ static int msm_vidc_deinit_core(struct msm_vidc_inst *inst)
 				core->id, core->state);
 		goto core_already_uninited;
 	}
+
 	msm_comm_scale_clocks_and_bus(inst);
 	if (list_empty(&core->instances)) {
-		if (core->resources.has_ocmem) {
-			if (inst->state != MSM_VIDC_CORE_INVALID)
-				msm_comm_unset_ocmem(core);
-			call_hfi_op(hdev, free_ocmem, hdev->hfi_device_data);
-		}
-		dprintk(VIDC_DBG, "Calling vidc_hal_core_release\n");
-		rc = call_hfi_op(hdev, core_release, hdev->hfi_device_data);
-		if (rc) {
-			dprintk(VIDC_ERR, "Failed to release core, id = %d\n",
-							core->id);
-			goto exit;
+		if (core->state > VIDC_CORE_INIT) {
+			if (core->resources.ocmem_size) {
+				if (inst->state != MSM_VIDC_CORE_INVALID)
+					msm_comm_unset_ocmem(core);
+				call_hfi_op(hdev, free_ocmem,
+						hdev->hfi_device_data);
+			}
+			dprintk(VIDC_DBG, "Calling vidc_hal_core_release\n");
+			rc = call_hfi_op(hdev, core_release,
+					hdev->hfi_device_data);
+			if (rc) {
+				dprintk(VIDC_ERR,
+					"Failed to release core, id = %d\n",
+					core->id);
+				goto exit;
+			}
 		}
 		mutex_lock(&core->lock);
 		core->state = VIDC_CORE_UNINIT;
@@ -1700,6 +1747,7 @@ static int msm_vidc_deinit_core(struct msm_vidc_inst *inst)
 		call_hfi_op(hdev, unload_fw, hdev->hfi_device_data);
 		msm_comm_unvote_buses(core);
 	}
+
 core_already_uninited:
 	change_inst_state(inst, MSM_VIDC_CORE_UNINIT);
 exit:
@@ -1832,7 +1880,7 @@ static int msm_vidc_load_resources(int flipped_state,
 						inst, inst->state);
 		goto exit;
 	}
-	if (core->resources.has_ocmem) {
+	if (core->resources.ocmem_size) {
 		mutex_lock(&core->sync_lock);
 		height = max(inst->prop.height[CAPTURE_PORT],
 			inst->prop.height[OUTPUT_PORT]);
@@ -1844,7 +1892,7 @@ static int msm_vidc_load_resources(int flipped_state,
 			mutex_lock(&core->sync_lock);
 			rc = call_hfi_op(hdev, alloc_ocmem,
 					hdev->hfi_device_data,
-					core->resources.has_ocmem);
+					core->resources.ocmem_size);
 			mutex_unlock(&core->sync_lock);
 			if (rc) {
 				dprintk(VIDC_WARN,
@@ -3492,33 +3540,78 @@ int msm_vidc_check_session_supported(struct msm_vidc_inst *inst)
 	return rc;
 }
 
-static void msm_comm_generate_session_error(struct msm_vidc_inst *inst)
+struct generate_error_data {
+	struct msm_vidc_inst *inst;
+	enum command_response error_type;
+	struct work_struct work;
+};
+
+static void generate_error_helper(struct work_struct *work)
 {
-	enum command_response cmd = SESSION_ERROR;
 	struct msm_vidc_cb_cmd_done response = {0};
+	void (*error_handler)(enum command_response, void *) = NULL;
+	struct generate_error_data *data =
+		container_of(work, struct generate_error_data, work);
+
+	if (!data || !data->inst) {
+		dprintk(VIDC_ERR, "%s: invalid data\n", __func__);
+		goto exit;
+	}
+
+	switch (data->error_type) {
+	case SESSION_ERROR:
+		error_handler = handle_session_error;
+		break;
+	case SYS_ERROR:
+		error_handler = handle_sys_error;
+		break;
+	default:
+		dprintk(VIDC_ERR, "%d isn't a type of error.\n",
+				data->error_type);
+		goto exit;
+	}
+
+	response.session_id = (u32)data->inst;
+	error_handler(data->error_type, (void *)&response);
+exit:
+	kfree(data);
+}
+
+static int msm_comm_generate_error(struct msm_vidc_inst *inst,
+		enum command_response error_type)
+{
+	struct generate_error_data *error_data;
 
 	if (!inst || !inst->core) {
 		dprintk(VIDC_ERR, "%s: invalid input parameters\n", __func__);
-		return;
+		return -EINVAL;
 	}
 
-	response.session_id = (u32)inst;
-	handle_session_error(cmd, (void *)&response);
+
+	/* All the error handlers are meant to be called asynchronously. As
+	 * a result the locking mechanism is set up in a way that calling it
+	 * synchronously in the forward path will result in deadlocks. So,
+	 * call the error handler async via a wq */
+	error_data = kzalloc(sizeof(*error_data), GFP_KERNEL);
+	if (!error_data)
+		return -ENOMEM;
+
+	error_data->inst = inst;
+	error_data->error_type = error_type;
+	INIT_WORK(&error_data->work, generate_error_helper);
+	schedule_work(&error_data->work);
+
+	return 0;
+}
+
+static void msm_comm_generate_session_error(struct msm_vidc_inst *inst)
+{
+	msm_comm_generate_error(inst, SESSION_ERROR);
 }
 
 static void msm_comm_generate_sys_error(struct msm_vidc_inst *inst)
 {
-	struct msm_vidc_core *core;
-	enum command_response cmd = SYS_ERROR;
-	struct msm_vidc_cb_cmd_done response  = {0};
-	if (!inst || !inst->core) {
-		dprintk(VIDC_ERR, "%s: invalid input parameters\n", __func__);
-		return;
-	}
-	core = inst->core;
-	response.device_id = (u32) core->id;
-	handle_sys_error(cmd, (void *) &response);
-
+	msm_comm_generate_error(inst, SYS_ERROR);
 }
 
 int msm_comm_kill_session(struct msm_vidc_inst *inst)
@@ -3538,7 +3631,7 @@ int msm_comm_kill_session(struct msm_vidc_inst *inst)
 	 * the session send session_abort to firmware to clean up and release
 	 * the session, else just kill the session inside the driver.
 	 */
-	if (inst->state >= MSM_VIDC_OPEN_DONE ||
+	if (inst->state >= MSM_VIDC_OPEN_DONE &&
 			inst->state < MSM_VIDC_CLOSE_DONE) {
 		struct hfi_device *hdev = inst->core->device;
 		int abort_completion = SESSION_MSG_INDEX(SESSION_ABORT_DONE);
