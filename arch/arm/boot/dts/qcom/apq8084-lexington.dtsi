@@ -44,6 +44,12 @@
 	status = "disabled";
 };
 
+&max17050 {
+	interrupt-parent = <&spmi_bus>;
+	interrupts = <0x0 0xa1 0x0>;    /* PMA8084 MPP 2 */
+	gpios = <&pma8084_mpps 2 0x1>;  /* GPIOF_DIR_IN */
+};
+
 &soc {
 	factory_support {
 		gpios = <&pma8084_gpios 17 0x0>, /* GPIOF_OUT_INIT_LOW */
