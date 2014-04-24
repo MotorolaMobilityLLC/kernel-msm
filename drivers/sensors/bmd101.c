@@ -33,7 +33,7 @@
 struct notifier_block bmd101_fb_notif;
 #endif
 
-#define bmd101_dev			"/dev/ttyHSL1"
+#define bmd101_uart			"/dev/ttyHSL1"
 #define bmd101_regulator		"8226_l28"
 //Debug Masks +++
 #define NO_DEBUG       0
@@ -68,8 +68,19 @@ static struct sensors_classdev bmd101_cdev = {
 };
 struct bmd101_data {
 	struct sensors_classdev cdev;
+	struct input_dev		*input_dev;			/* Pointer to input device */
 };
 struct bmd101_data *sensor_data;
+
+static int bmd101_data_report(struct sensors_classdev *sensors_cdev, unsigned int data)
+{
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) \n", __func__, data);
+	input_report_abs(sensor_data->input_dev, ABS_MISC, (int)data);
+	input_event(sensor_data->input_dev, EV_SYN, SYN_REPORT, 1);
+	input_sync(sensor_data->input_dev);
+
+	return 0;
+}
 
 static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int enable)
 {
@@ -143,14 +154,16 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 static void bmd101_early_suspend(struct early_suspend *h)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 0);
+	if(sensor_data->cdev.enabled)
+		bmd101_enable_set(&sensor_data->cdev, 0);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
 
 static void bmd101_late_resume(struct early_suspend *h)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 1);
+	if(sensor_data->cdev.enabled)
+		bmd101_enable_set(&sensor_data->cdev, 1);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
 
@@ -163,14 +176,16 @@ struct early_suspend bmd101_early_suspend_handler = {
 static void bmd101_early_suspend(void)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 0);
+	if(sensor_data->cdev.enabled)
+		bmd101_enable_set(&sensor_data->cdev, 0);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
 
 static void bmd101_late_resume(void)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 1);
+	if(sensor_data->cdev.enabled)
+		bmd101_enable_set(&sensor_data->cdev, 1);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
 
@@ -199,6 +214,34 @@ static int bmd101_fb_notifier_callback(struct notifier_block *self, unsigned lon
 }
 #endif
 
+static int bmd101_input_init(void)
+{
+	int ret = 0;
+	struct input_dev *bmd101_dev = NULL;
+
+	bmd101_dev = input_allocate_device();
+	if (!bmd101_dev) {
+		printk("[bmd101]: Failed to allocate input_data device\n");
+		return -ENOMEM;
+	}
+
+	bmd101_dev->name = "ASUS ECG";
+	bmd101_dev->id.bustype = BUS_HOST;
+	input_set_capability(bmd101_dev, EV_ABS, ABS_MISC);
+	__set_bit(EV_ABS, bmd101_dev->evbit);
+	__set_bit(ABS_MISC, bmd101_dev->absbit);
+	input_set_abs_params(bmd101_dev, ABS_MISC, 0, 1048576, 0, 0);
+	input_set_drvdata(bmd101_dev, sensor_data);
+	ret = input_register_device(bmd101_dev);
+	if (ret < 0) {
+		input_free_device(bmd101_dev);
+		return ret;
+	}
+	sensor_data->input_dev = bmd101_dev;
+
+	return 0;
+}
+
 static int bmd101_probe(struct platform_device *pdev)
 {
 	int ret = -EINVAL;
@@ -213,10 +256,17 @@ static int bmd101_probe(struct platform_device *pdev)
 	}
 	sensor_data->cdev = bmd101_cdev;
 	sensor_data->cdev.sensors_enable = bmd101_enable_set;
+	sensor_data->cdev.sensors_data = bmd101_data_report;
 	ret = sensors_classdev_register(&pdev->dev, &sensor_data->cdev);
 	if (ret) {
 		pr_err("[BMD101] class device create failed: %d\n", ret);
 		goto classdev_register_fail;
+	}
+
+	ret = bmd101_input_init();
+	if (ret < 0) {
+		pr_err("[BMD101] init input device failed: %d\n", ret);
+		goto input_init_fail;
 	}
 	
 	#if defined(CONFIG_HAS_EARLYSUSPEND)
@@ -242,7 +292,7 @@ static int bmd101_probe(struct platform_device *pdev)
     	}
 
 	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: enable sensor +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 1);
+	//bmd101_enable_set(&sensor_data->cdev, 1);
 	
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 
@@ -252,6 +302,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	regulator_put(pm8921_l28);
 	regulator_get_fail:
 	sensors_classdev_unregister(&sensor_data->cdev);
+	input_init_fail:
 	classdev_register_fail:
 	kfree(sensor_data);
 
