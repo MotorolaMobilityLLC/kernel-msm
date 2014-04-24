@@ -215,7 +215,7 @@ static void imx179_otp_raw_dump(uint8_t *data)
 
 static int32_t imx179_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	uint8_t otp_page_no = 0;
+	int8_t otp_page_no = 0;
 	int32_t rc = 0;
 	int8_t *imx179_otp_data;
 
