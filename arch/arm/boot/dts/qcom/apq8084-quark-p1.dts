@@ -22,3 +22,9 @@
 
 	/delete-node/ cycapsense_prog;
 };
+
+&i2c_12 {
+	stm401@39 {
+		stm401_fw_version = "_p1";
+	};
+};
