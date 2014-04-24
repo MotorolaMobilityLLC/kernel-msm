@@ -11646,13 +11646,13 @@ static void csrRoamGetBssStartParmsFromBssDesc( tpAniSirGlobal pMac, tSirBssDesc
             if (pIes->ExtSuppRates.present)
             {
                 pParam->extendedRateSet.numRates = pIes->ExtSuppRates.num_rates;
-                if(pIes->ExtSuppRates.num_rates > SIR_MAC_EXTENDED_RATE_EID_MAX)
+                if(pIes->ExtSuppRates.num_rates > SIR_MAC_RATESET_EID_MAX)
                 {
                    smsLog(pMac, LOGE, FL("num_rates :%d is more than \
                                          SIR_MAC_RATESET_EID_MAX, resetting to \
                                          SIR_MAC_RATESET_EID_MAX"),
                                          pIes->ExtSuppRates.num_rates);
-                   pIes->ExtSuppRates.num_rates = SIR_MAC_EXTENDED_RATE_EID_MAX;
+                   pIes->ExtSuppRates.num_rates = SIR_MAC_RATESET_EID_MAX;
                 }
                 vos_mem_copy(pParam->extendedRateSet.rate,
                               pIes->ExtSuppRates.rates,
@@ -16090,8 +16090,15 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
 #endif
     for (i = 0, j = 0;j < (sizeof(ChannelCacheStr)/sizeof(ChannelCacheStr[0])) && i < pRequestBuf->ConnectedNetwork.ChannelCount; i++)
     {
+        if (j < sizeof(ChannelCacheStr))
+        {
             j += snprintf(ChannelCacheStr + j, sizeof(ChannelCacheStr) - j," %d",
                           pRequestBuf->ConnectedNetwork.ChannelCache[i]);
+        }
+        else
+        {
+            break;
+        }
     }
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
               "ChnlCacheType:%d, No of Chnls:%d,Channels: %s",
