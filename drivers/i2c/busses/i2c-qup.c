@@ -990,8 +990,13 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 		mutex_unlock(&dev->mlock);
 		return -EIO;
 	}
+	if (!pm_runtime_enabled(dev->dev)) {
+		dev_dbg(dev->dev, "Runtime PM FEATURE is disabled\n");
+		i2c_qup_pm_resume(dev);
+	} else {
+		pm_runtime_get_sync(dev->dev);
+	}
 
-	pm_runtime_get_sync(dev->dev);
 
 	if (dev->pdata->clk_ctl_xfer)
 		i2c_qup_pm_resume_clk(dev);
@@ -1792,6 +1797,12 @@ static int i2c_qup_pm_suspend_sys(struct device *device)
 	if (!pm_runtime_enabled(device) || !pm_runtime_suspended(device)) {
 		dev_dbg(device, "system suspend\n");
 		i2c_qup_pm_suspend(dev);
+		/*
+		 * set the device's runtime PM status to 'suspended'
+		 */
+		pm_runtime_disable(device);
+		pm_runtime_set_suspended(device);
+		pm_runtime_enable(device);
 	}
 	dev->pwr_state = MSM_I2C_SYS_SUSPENDED;
 	return 0;
@@ -1801,21 +1812,13 @@ static int i2c_qup_pm_resume_sys(struct device *device)
 {
 	struct platform_device *pdev = to_platform_device(device);
 	struct qup_i2c_dev *dev = platform_get_drvdata(pdev);
-
-	if (!pm_runtime_enabled(device) || !pm_runtime_suspended(device)) {
-
-		i2c_qup_pm_resume(dev);
-		pm_runtime_mark_last_busy(device);
-		pm_request_autosuspend(device);
-
-	} else {
-
-		dev->pwr_state = MSM_I2C_PM_SUSPENDED;
-
-	}
-
+	/*
+	 * Rely on runtime-PM to call resume in case it is enabled
+	 * Even if it's not enabled, rely on 1st client transaction to do
+	 * clock ON and gpio configuration
+	 */
 	dev_dbg(device, "system resume\n");
-
+	dev->pwr_state = MSM_I2C_PM_SUSPENDED;
 	return 0;
 }
 #endif /* CONFIG_PM */
