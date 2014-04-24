@@ -1986,6 +1986,14 @@ static void mxt_sensor_one_touch(struct mxt_data *data, bool enable)
 		*(t100_data_ptr + MXT_T100_NUMTCH) = 1;
 		*(t100_data_ptr + MXT_T100_TCHAUX) &= ~(MXT_T100_TCHAUX_VECT |
 				MXT_T100_TCHAUX_AMPL | MXT_T100_TCHAUX_AREA);
+
+		/* if defined, reset panel resolution */
+		if (data->pdata->res.x_max && data->pdata->res.y_max) {
+			*((u16 *)(t100_data_ptr + MXT_T100_XRANGE)) =
+					cpu_to_le16(data->pdata->res.x_max - 1);
+			*((u16 *)(t100_data_ptr + MXT_T100_YRANGE)) =
+					cpu_to_le16(data->pdata->res.y_max - 1);
+		}
 	} else
 		t100_data_ptr = data->T100_data;
 
@@ -3948,7 +3956,7 @@ static void mxt_input_close(struct input_dev *dev)
 #ifdef CONFIG_OF
 static int mxt_parse_dt(struct mxt_data *data)
 {
-	unsigned key_codes[MXT_MAX_BUTTONS];
+	unsigned resolution[2], key_codes[MXT_MAX_BUTTONS];
 	struct device *dev = &data->client->dev;
 	struct mxt_platform_data *pdata = data->pdata;
 	int error = 0;
@@ -3967,6 +3975,15 @@ static int mxt_parse_dt(struct mxt_data *data)
 		pr_info("using single touch in suspend\n");
 
 	data->rot = of_property_read_bool(np, "atmel,touch-rotate");
+
+	error = of_property_read_u32_array(np, "atmel,panel-resolution",
+					resolution, 2);
+	if (!error) {
+		pdata->res.x_max = resolution[0];
+		pdata->res.y_max = resolution[1];
+		pr_debug("panel resolution X%d,Y%d\n",
+					pdata->res.x_max, pdata->res.y_max);
+	}
 
 	/* reset, irq gpio info */
 	pdata->gpio_irq = of_get_gpio(np, 0);
