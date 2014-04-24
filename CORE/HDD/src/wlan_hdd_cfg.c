@@ -3015,6 +3015,22 @@ REG_VARIABLE( CFG_TDLS_EXTERNAL_CONTROL, WLAN_PARAM_Integer,
                 CFG_BTC_DYN_OPP_TX_QUEUE_THOLD_DEFAULT,
                 CFG_BTC_DYN_OPP_TX_QUEUE_THOLD_MIN,
                 CFG_BTC_DYN_OPP_TX_QUEUE_THOLD_MAX ),
+
+#ifdef WLAN_FEATURE_11W
+   REG_VARIABLE(CFG_PMF_SA_QUERY_MAX_RETRIES_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, pmfSaQueryMaxRetries,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_PMF_SA_QUERY_MAX_RETRIES_DEFAULT,
+                CFG_PMF_SA_QUERY_MAX_RETRIES_MIN,
+                CFG_PMF_SA_QUERY_MAX_RETRIES_MAX ),
+
+   REG_VARIABLE(CFG_PMF_SA_QUERY_RETRY_INTERVAL_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, pmfSaQueryRetryInterval,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_PMF_SA_QUERY_RETRY_INTERVAL_DEFAULT,
+                CFG_PMF_SA_QUERY_RETRY_INTERVAL_MIN,
+                CFG_PMF_SA_QUERY_RETRY_INTERVAL_MAX ),
+#endif
 };
 
 /*
@@ -4767,6 +4783,24 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
        hddLog(LOGE, "Could not pass on"
                     "WNI_CFG_BTC_DYN_OPP_TX_QUEUE_THOLD to CCM");
    }
+
+#ifdef WLAN_FEATURE_11W
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_PMF_SA_QUERY_MAX_RETRIES,
+                    pConfig->pmfSaQueryMaxRetries, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_SA_QUERY_MAX_RETRIES to CCM");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_PMF_SA_QUERY_RETRY_INTERVAL,
+                    pConfig->pmfSaQueryRetryInterval, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_SA_QUERY_RETRY_INTERVAL to CCM");
+   }
+#endif
 
    return fStatus;
 }

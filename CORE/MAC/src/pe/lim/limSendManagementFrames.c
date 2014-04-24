@@ -1508,24 +1508,22 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
         }
 #endif
 
-
 #ifdef WLAN_FEATURE_11W
         if( eSIR_MAC_TRY_AGAIN_LATER == statusCode )
         {
-                if ( wlan_cfgGetInt(pMac, WNI_CFG_PMF_SA_QUERY_MAX_RETRIES,
-                                        &maxRetries ) != eSIR_SUCCESS )
-                        limLog( pMac, LOGE, FL("Could not retrieve PMF SA "
-                                                "Query maximum retries value") );
+            if ( wlan_cfgGetInt(pMac, WNI_CFG_PMF_SA_QUERY_MAX_RETRIES,
+                                &maxRetries ) != eSIR_SUCCESS )
+                limLog( pMac, LOGE,
+                        FL("Could not retrieve PMF SA Query maximum retries value") );
+            else
+                if ( wlan_cfgGetInt(pMac, WNI_CFG_PMF_SA_QUERY_RETRY_INTERVAL,
+                                    &retryInterval ) != eSIR_SUCCESS)
+                    limLog( pMac, LOGE,
+                            FL("Could not retrieve PMF SA Query timer interval value") );
                 else
-                        if ( wlan_cfgGetInt(pMac, WNI_CFG_PMF_SA_QUERY_RETRY_INTERVAL,
-                                                &retryInterval ) != eSIR_SUCCESS)
-                                limLog( pMac, LOGE, FL("Could not retrieve PMF SA "
-                                                        "Query timer interval value") );
-                        else
-                                PopulateDot11fTimeoutInterval(
-                                                pMac, &frm.TimeoutInterval,
-                                                SIR_MAC_TI_TYPE_ASSOC_COMEBACK,
-                            (maxRetries - pSta->pmfSaQueryRetryCount) * retryInterval );
+                    PopulateDot11fTimeoutInterval(
+                        pMac, &frm.TimeoutInterval, SIR_MAC_TI_TYPE_ASSOC_COMEBACK,
+                        (maxRetries - pSta->pmfSaQueryRetryCount) * retryInterval );
         }
 #endif
     } // End if on non-NULL 'pSta'.
