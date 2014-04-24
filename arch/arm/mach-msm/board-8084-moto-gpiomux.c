@@ -19,6 +19,13 @@
 #include <mach/gpiomux.h>
 #include <soc/qcom/socinfo.h>
 
+
+static struct gpiomux_setting gpio_mux_input_pull_none = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
 static struct gpiomux_setting ap2mdm_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -1372,6 +1379,15 @@ static struct msm_gpiomux_config cycapsence_issp_gpio_configs[] = {
 	},
 };
 
+static struct msm_gpiomux_config battwarn_config[] __initdata = {
+	{
+		.gpio = 34, /* BATT_DISCON_WARN_N */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_mux_input_pull_none,
+		},
+	},
+};
+
 void __init apq8084_moto_init_gpiomux(void)
 {
 	int rc;
@@ -1448,6 +1464,8 @@ void __init apq8084_moto_init_gpiomux(void)
 	msm_gpiomux_install(tmp108_configs, ARRAY_SIZE(tmp108_configs));
 	msm_gpiomux_install(cycapsence_issp_gpio_configs,
 			ARRAY_SIZE(cycapsence_issp_gpio_configs));
+
+	msm_gpiomux_install(battwarn_config, ARRAY_SIZE(battwarn_config));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())
