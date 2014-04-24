@@ -23,6 +23,12 @@
 	/delete-node/ cycapsense_prog;
 };
 
+&i2c_12 {
+	stm401@39 {
+		stm401_fw_version = "_p1";
+	};
+};
+
 &pcie0 {
 	vreg-0.9-supply = <&pma8084_l4>;
 };
