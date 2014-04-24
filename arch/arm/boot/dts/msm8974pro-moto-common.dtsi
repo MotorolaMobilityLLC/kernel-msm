@@ -1118,6 +1118,9 @@
                          0x0 1 &spmi_bus 0x0 0x0 0xA1 0x0>;
 	interrupt-names = "hs_phy_irq", "pmic_id_irq";
 	qcom,otg-capability;
+	dwc3@f9200000 {
+		maximum-speed = "high-speed";
+	};
 };
 
 &pm8941_l13 {
