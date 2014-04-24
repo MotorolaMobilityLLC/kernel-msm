@@ -44,7 +44,7 @@
 			reg = <0 0x314000>;
 			label = "audio_mem";
 		};
-
+#if 0 //+++ASUS_BSP: free modem reserve memory
 		modem_mem: modem_region@8400000 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
@@ -52,7 +52,7 @@
 			reg = <0x08400000 0x4000000>;
 			label = "modem_mem";
 		};
-
+#endif
 		peripheral_mem: peripheral_region@d200000 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
