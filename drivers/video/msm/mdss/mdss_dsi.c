@@ -800,6 +800,7 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 		}
 	}
 
+	ctrl_pdata->blanked = false;
 	pr_debug("%s-:\n", __func__);
 
 	return ret;
@@ -864,6 +865,7 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 	if (mdss_dsi_pinctrl_set_state(ctrl_pdata, false))
 		pr_debug("dsi blank: pinctrl not enabled\n");
 
+	ctrl_pdata->blanked = true;
 	pr_debug("%s-:End\n", __func__);
 	return ret;
 }
@@ -1372,7 +1374,7 @@ static int mdss_dsi_pm_prepare(struct device *dev)
 		return -ENODEV;
 	}
 
-	if (pdata->panel_info.always_on && !pdata->panel_info.is_suspending) {
+	if (pdata->panel_info.always_on && !ctrl_pdata->blanked) {
 		pr_debug("%s: set low fps mode on\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 1);
 	}
@@ -1396,7 +1398,7 @@ static void mdss_dsi_pm_complete(struct device *dev)
 		return;
 	}
 
-	if (pdata->panel_info.always_on && !pdata->panel_info.is_suspending) {
+	if (pdata->panel_info.always_on && !ctrl_pdata->blanked) {
 		pr_debug("%s: set low fps mode off\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 0);
 	}
