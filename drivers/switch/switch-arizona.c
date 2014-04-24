@@ -30,6 +30,7 @@
 #include <linux/device.h>
 #include <linux/delay.h>
 #include <linux/regmap.h>
+#include <linux/switch-arizona.h>
 
 #include <sound/soc.h>
 
@@ -57,19 +58,6 @@
 
 #define HP_NORMAL_IMPEDANCE     0
 #define HP_LOW_IMPEDANCE        1
-
-enum {
-	MICD_LVL_1_TO_7 = ARIZONA_MICD_LVL_1 | ARIZONA_MICD_LVL_2 |
-			  ARIZONA_MICD_LVL_3 | ARIZONA_MICD_LVL_4 |
-			  ARIZONA_MICD_LVL_5 | ARIZONA_MICD_LVL_6 |
-			  ARIZONA_MICD_LVL_7,
-
-	MICD_LVL_0_TO_7 = ARIZONA_MICD_LVL_0 | MICD_LVL_1_TO_7,
-
-	MICD_LVL_0_TO_8 = MICD_LVL_0_TO_7 | ARIZONA_MICD_LVL_8,
-};
-
-struct arizona_jd_state;
 
 struct arizona_extcon_info {
 	struct device *dev;
@@ -150,21 +138,6 @@ static ssize_t arizona_extcon_show(struct device *dev,
 				   char *buf);
 DEVICE_ATTR(hp_impedance, S_IRUGO, arizona_extcon_show, NULL);
 
-struct arizona_jd_state {
-	int mode;
-
-	int (*start)(struct arizona_extcon_info *);
-	void (*restart)(struct arizona_extcon_info *);
-	int (*reading)(struct arizona_extcon_info *, int);
-	void (*stop)(struct arizona_extcon_info *);
-
-	int (*timeout_ms)(struct arizona_extcon_info *);
-	void (*timeout)(struct arizona_extcon_info *);
-};
-
-static const struct arizona_jd_state arizona_hpdet_left;
-static const struct arizona_jd_state arizona_micd_button;
-static const struct arizona_jd_state arizona_micd_microphone;
 static const struct arizona_jd_state arizona_hpdet_acc_id;
 
 static int arizona_jds_get_mode(struct arizona_extcon_info *info)
@@ -177,8 +150,8 @@ static int arizona_jds_get_mode(struct arizona_extcon_info *info)
 	return mode;
 }
 
-static int arizona_jds_set_state(struct arizona_extcon_info *info,
-				 const struct arizona_jd_state *new_state)
+int arizona_jds_set_state(struct arizona_extcon_info *info,
+			  const struct arizona_jd_state *new_state)
 {
 	int ret = 0;
 
@@ -197,6 +170,7 @@ static int arizona_jds_set_state(struct arizona_extcon_info *info,
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(arizona_jds_set_state);
 
 static void arizona_jds_reading(struct arizona_extcon_info *info, int val)
 {
@@ -723,7 +697,7 @@ int arizona_wm5110_tune_headphone(struct arizona_extcon_info *info,
 	return 0;
 }
 
-static int arizona_hpdet_start(struct arizona_extcon_info *info)
+int arizona_hpdet_start(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
 	int ret;
@@ -780,8 +754,9 @@ err:
 skip:
 	return ret;
 }
+EXPORT_SYMBOL_GPL(arizona_hpdet_start);
 
-static void arizona_hpdet_restart(struct arizona_extcon_info *info)
+void arizona_hpdet_restart(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
 
@@ -795,8 +770,9 @@ static void arizona_hpdet_restart(struct arizona_extcon_info *info)
 			   ARIZONA_HEADPHONE_DETECT_1,
 			   ARIZONA_HP_POLL, ARIZONA_HP_POLL);
 }
+EXPORT_SYMBOL_GPL(arizona_hpdet_restart);
 
-static void arizona_hpdet_stop(struct arizona_extcon_info *info)
+void arizona_hpdet_stop(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
 
@@ -810,8 +786,9 @@ static void arizona_hpdet_stop(struct arizona_extcon_info *info)
 
 	pm_runtime_put_autosuspend(info->dev);
 }
+EXPORT_SYMBOL_GPL(arizona_hpdet_stop);
 
-static int arizona_hpdet_reading(struct arizona_extcon_info *info, int val)
+int arizona_hpdet_reading(struct arizona_extcon_info *info, int val)
 {
 	struct arizona *arizona = info->arizona;
 
@@ -838,8 +815,9 @@ static int arizona_hpdet_reading(struct arizona_extcon_info *info, int val)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(arizona_hpdet_reading);
 
-static int arizona_micd_start(struct arizona_extcon_info *info)
+int arizona_micd_start(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
 	unsigned int mode;
@@ -874,8 +852,9 @@ static int arizona_micd_start(struct arizona_extcon_info *info)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(arizona_micd_start);
 
-static void arizona_micd_stop(struct arizona_extcon_info *info)
+void arizona_micd_stop(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
 	const char *widget = arizona_extcon_get_micbias(info);
@@ -908,9 +887,10 @@ static void arizona_micd_stop(struct arizona_extcon_info *info)
 	pm_runtime_mark_last_busy(info->dev);
 	pm_runtime_put_autosuspend(info->dev);
 }
+EXPORT_SYMBOL_GPL(arizona_micd_stop);
 
-static int arizona_micd_button_reading(struct arizona_extcon_info *info,
-				       int val)
+int arizona_micd_button_reading(struct arizona_extcon_info *info,
+				int val)
 {
 	struct arizona *arizona = info->arizona;
 	int lvl, i, key;
@@ -944,8 +924,9 @@ static int arizona_micd_button_reading(struct arizona_extcon_info *info,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(arizona_micd_button_reading);
 
-static int arizona_micd_mic_start(struct arizona_extcon_info *info)
+int arizona_micd_mic_start(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
 	int ret;
@@ -961,8 +942,9 @@ static int arizona_micd_mic_start(struct arizona_extcon_info *info)
 
 	return arizona_micd_start(info);
 }
+EXPORT_SYMBOL_GPL(arizona_micd_mic_start);
 
-static void arizona_micd_mic_stop(struct arizona_extcon_info *info)
+void arizona_micd_mic_stop(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
 	int ret;
@@ -977,8 +959,9 @@ static void arizona_micd_mic_stop(struct arizona_extcon_info *info)
 
 	info->detecting = false;
 }
+EXPORT_SYMBOL_GPL(arizona_micd_mic_stop);
 
-static int arizona_micd_mic_reading(struct arizona_extcon_info *info, int val)
+int arizona_micd_mic_reading(struct arizona_extcon_info *info, int val)
 {
 	struct arizona *arizona = info->arizona;
 	int ret;
@@ -1038,16 +1021,18 @@ done:
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(arizona_micd_mic_reading);
 
-static int arizona_micd_mic_timeout_ms(struct arizona_extcon_info *info)
+int arizona_micd_mic_timeout_ms(struct arizona_extcon_info *info)
 {
 	if (info->arizona->pdata.micd_timeout)
 		return info->arizona->pdata.micd_timeout;
 	else
 		return DEFAULT_MICD_TIMEOUT;
 }
+EXPORT_SYMBOL_GPL(arizona_micd_mic_timeout_ms);
 
-static void arizona_micd_mic_timeout(struct arizona_extcon_info *info)
+void arizona_micd_mic_timeout(struct arizona_extcon_info *info)
 {
 	int ret;
 
@@ -1057,6 +1042,7 @@ static void arizona_micd_mic_timeout(struct arizona_extcon_info *info)
 	if (ret < 0)
 		switch_set_state(&info->edev, BIT_HEADSET_NO_MIC);
 }
+EXPORT_SYMBOL_GPL(arizona_micd_mic_timeout);
 
 static int arizona_hpdet_acc_id_reading(struct arizona_extcon_info *info,
 					int reading)
@@ -1324,21 +1310,23 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static const struct arizona_jd_state arizona_hpdet_left = {
+const struct arizona_jd_state arizona_hpdet_left = {
 	.mode = ARIZONA_ACCDET_MODE_HPL,
 	.start = arizona_hpdet_start,
 	.reading = arizona_hpdet_reading,
 	.stop = arizona_hpdet_stop,
 };
+EXPORT_SYMBOL_GPL(arizona_hpdet_left);
 
-static const struct arizona_jd_state arizona_micd_button = {
+const struct arizona_jd_state arizona_micd_button = {
 	.mode = ARIZONA_ACCDET_MODE_MIC,
 	.start = arizona_micd_start,
 	.reading = arizona_micd_button_reading,
 	.stop = arizona_micd_stop,
 };
+EXPORT_SYMBOL_GPL(arizona_micd_button);
 
-static const struct arizona_jd_state arizona_micd_microphone = {
+const struct arizona_jd_state arizona_micd_microphone = {
 	.mode = ARIZONA_ACCDET_MODE_MIC,
 	.start = arizona_micd_mic_start,
 	.reading = arizona_micd_mic_reading,
@@ -1347,6 +1335,7 @@ static const struct arizona_jd_state arizona_micd_microphone = {
 	.timeout_ms = arizona_micd_mic_timeout_ms,
 	.timeout = arizona_micd_mic_timeout,
 };
+EXPORT_SYMBOL_GPL(arizona_micd_microphone);
 
 static const struct arizona_jd_state arizona_hpdet_acc_id = {
 	.mode = ARIZONA_ACCDET_MODE_HPL,
