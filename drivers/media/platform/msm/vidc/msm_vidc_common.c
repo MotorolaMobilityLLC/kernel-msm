@@ -1682,7 +1682,7 @@ static int msm_vidc_deinit_core(struct msm_vidc_inst *inst)
 	}
 	msm_comm_scale_clocks_and_bus(inst);
 	if (list_empty(&core->instances)) {
-		if (core->resources.has_ocmem) {
+		if (core->resources.ocmem_size) {
 			if (inst->state != MSM_VIDC_CORE_INVALID)
 				msm_comm_unset_ocmem(core);
 			call_hfi_op(hdev, free_ocmem, hdev->hfi_device_data);
@@ -1832,7 +1832,7 @@ static int msm_vidc_load_resources(int flipped_state,
 						inst, inst->state);
 		goto exit;
 	}
-	if (core->resources.has_ocmem) {
+	if (core->resources.ocmem_size) {
 		mutex_lock(&core->sync_lock);
 		height = max(inst->prop.height[CAPTURE_PORT],
 			inst->prop.height[OUTPUT_PORT]);
@@ -1844,7 +1844,7 @@ static int msm_vidc_load_resources(int flipped_state,
 			mutex_lock(&core->sync_lock);
 			rc = call_hfi_op(hdev, alloc_ocmem,
 					hdev->hfi_device_data,
-					core->resources.has_ocmem);
+					core->resources.ocmem_size);
 			mutex_unlock(&core->sync_lock);
 			if (rc) {
 				dprintk(VIDC_WARN,
