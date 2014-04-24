@@ -42,24 +42,18 @@
 
 #include <asm/system_info.h>
 
-#define BT_UART_CFG
 #define BT_LPM_ENABLE
 
+#define BT_HOST_WAKE 48
 #define BT_WAKE 50
 #define BT_WAKE_EMUL 67
 #define BT_WAKE_REV01 36
 #define BT_EN 47
 
-#define GPIO_BT_UART_RTS 23
-#define GPIO_BT_UART_CTS 22
-#define GPIO_BT_UART_RXD 21
-#define GPIO_BT_UART_TXD 20
-#define GPIO_BT_HOST_WAKE 48
-
 static struct rfkill *bt_rfkill;
-static int cnt = 0;
+static int cnt;
 
-static int gpio_bt_host_wake = GPIO_BT_HOST_WAKE;
+static int gpio_bt_host_wake = BT_HOST_WAKE;
 
 int get_gpio_hwrev(int gpio)
 {
@@ -73,30 +67,6 @@ int get_gpio_hwrev(int gpio)
 	}
 	return gpio;
 }
-
-#ifdef BT_UART_CFG
-static unsigned bt_uart_on_table[] = {
-    GPIO_CFG(GPIO_BT_UART_RTS, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-        GPIO_CFG_8MA),
-    GPIO_CFG(GPIO_BT_UART_CTS, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
-        GPIO_CFG_8MA),
-    GPIO_CFG(GPIO_BT_UART_RXD, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
-        GPIO_CFG_8MA),
-    GPIO_CFG(GPIO_BT_UART_TXD, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-        GPIO_CFG_8MA),
-};
-
-static unsigned bt_uart_off_table[] = {
-    GPIO_CFG(GPIO_BT_UART_RTS, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-        GPIO_CFG_8MA),
-    GPIO_CFG(GPIO_BT_UART_CTS, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-        GPIO_CFG_8MA),
-    GPIO_CFG(GPIO_BT_UART_RXD, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-        GPIO_CFG_8MA),
-    GPIO_CFG(GPIO_BT_UART_TXD, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-        GPIO_CFG_8MA),
-};
-#endif
 
 #ifdef BT_LPM_ENABLE
 static struct resource bluesleep_resources[] = {
@@ -144,9 +114,6 @@ static void gpio_rev_init(void)
 
 static int bcm4334_bt_rfkill_set_power(void *data, bool blocked)
 {
-#ifdef BT_UART_CFG
-	int pin, rc = 0;
-#endif
 	int ret = -1;
 
 	if (cnt < 1) {
@@ -179,29 +146,10 @@ static int bcm4334_bt_rfkill_set_power(void *data, bool blocked)
 		if (gpio_get_value(get_gpio_hwrev(gpio_bt_host_wake)) == 0)
 			pr_err("[BT] BT_HOST_WAKE is low.\n");
 
-#ifdef BT_UART_CFG
-		for (pin = 0; pin < ARRAY_SIZE(bt_uart_on_table); pin++) {
-			rc = gpio_tlmm_config(bt_uart_on_table[pin],
-				GPIO_CFG_ENABLE);
-			if (rc < 0)
-				pr_err("[BT] %s: gpio_tlmm_config(%#x)=%d\n",
-					__func__, bt_uart_on_table[pin], rc);
-		}
-#endif
-
 		ret = gpio_direction_output(BT_EN, 1);
 		if (ret)
 			pr_err("[BT] failed to set BT_EN.\n");
 	} else {
-#ifdef BT_UART_CFG
-		for (pin = 0; pin < ARRAY_SIZE(bt_uart_off_table); pin++) {
-			rc = gpio_tlmm_config(bt_uart_off_table[pin],
-				GPIO_CFG_ENABLE);
-			if (rc < 0)
-				pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
-					__func__, bt_uart_off_table[pin], rc);
-		}
-#endif
 		pr_err("[BT] Bluetooth Power Off.\n");
 
 		ret = gpio_direction_output(BT_EN, 0);
@@ -230,27 +178,8 @@ static int bcm4334_bluetooth_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 
-#ifdef BT_UART_CFG
-	int pin = 0;
-#endif
+	cnt = 0;
 
-	/* temporailiy set HOST_WAKE OUT direction until FPGA work finishs */
-	/* if setting HOST_WAKE to NO PULL, BT would not be turned on. */
-	/* By guideline of BRCM, it is needed to determine pull status */
-#ifndef BT_LPM_ENABLE
-	gpio_tlmm_config(GPIO_CFG(get_gpio_hwrev(gpio_bt_host_wake), 0, GPIO_CFG_OUTPUT,
-		GPIO_CFG_PULL_UP, GPIO_CFG_8MA), GPIO_CFG_ENABLE);
-	gpio_set_value(get_gpio_hwrev(gpio_bt_host_wake), 1);
-#endif
-
-#ifdef BT_UART_CFG
-	for (pin = 0; pin < ARRAY_SIZE(bt_uart_off_table); pin++) {
-		rc = gpio_tlmm_config(bt_uart_off_table[pin], GPIO_CFG_ENABLE);
-		if (rc < 0)
-			pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, bt_uart_off_table[pin], rc);
-	}
-#endif
 	bt_rfkill = rfkill_alloc("bcm4334 Bluetooth", &pdev->dev,
 						RFKILL_TYPE_BLUETOOTH,
 						&bcm4334_bt_rfkill_ops,
