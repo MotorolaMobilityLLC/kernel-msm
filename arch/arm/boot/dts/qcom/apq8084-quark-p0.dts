@@ -32,3 +32,11 @@
 &pcie0 {
 	vreg-0.9-supply = <&pma8084_l4>;
 };
+
+&soc {
+	factory_support {
+		gpios = <&pma8084_gpios 17 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&pma8084_mpps 7 0x1>, /* GPIOF_IN */
+			<&pma8084_mpps 6 0x1>; /* GPIOF_IN */
+	};
+};

@@ -28,3 +28,11 @@
 		stm401_fw_version = "_p1";
 	};
 };
+
+&soc {
+	factory_support {
+		gpios = <&pma8084_gpios 17 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&pma8084_mpps 7 0x1>, /* GPIOF_IN */
+			<&pma8084_mpps 6 0x1>; /* GPIOF_IN */
+	};
+};
