@@ -754,9 +754,8 @@
 		reg = <0x36>;
 		maxim,rsns-microohm = <10000>;
 
-		interrupt-parent = <&spmi_bus>;
-		interrupts = <0x0 0xa1 0x0>;	/* PMA8084 MPP 2 */
-		gpios = <&pma8084_mpps 2 0x11>;	/* GPIOF_DIR_IN|GPIOF_EXPORT */
+		interrupts = <&msmgpio 123 0x0>;
+		gpios = <&msmgpio 123 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
 		gpio-names = "cc-alert";
 		maxim,regs-init-data = <
 			0x01 0xff97 /* VALRT, VMAX = 5.1 V and VMIN = 3.02 V */
