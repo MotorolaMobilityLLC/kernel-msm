@@ -15809,6 +15809,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
     vos_mem_zero(pRequestBuf, sizeof(tSirRoamOffloadScanReq));
     /* If command is STOP, then pass down ScanOffloadEnabled as Zero.This will handle the case of
      * host driver reloads, but Riva still up and running*/
+    pRequestBuf->Command = command;
     if(command == ROAM_SCAN_OFFLOAD_STOP)
     {
        pRequestBuf->RoamScanOffloadEnabled = 0;
@@ -15976,7 +15977,6 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
                 pRequestBuf->LookupThreshold);
     pRequestBuf->RoamRssiDiff =
             pMac->roam.configParam.RoamRssiDiff;
-    pRequestBuf->Command = command;
     pRequestBuf->StartScanReason = reason;
     pRequestBuf->NeighborScanTimerPeriod =
             pNeighborRoamInfo->cfgParams.neighborScanPeriod;
