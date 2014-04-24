@@ -1,0 +1,10 @@
+#
+# Sec configuration
+#
+
+menu "Motorola secuirty driver"
+
+config SEC_DRIVER
+	tristate "Motorola security driver"
+
+endmenu
