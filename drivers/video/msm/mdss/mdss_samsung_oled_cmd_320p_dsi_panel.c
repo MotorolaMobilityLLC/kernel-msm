@@ -1309,7 +1309,13 @@ static ssize_t mipi_samsung_ambient_store(struct device *dev,
 	else
 		backlight_cmds.cmd_desc[0].payload[1] = 0x26;
 
-	mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
+
+	if (msd.dstat.on)
+		mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
+	else
+		pr_info("[ambient_DEBUG] %s: The LCD already turned off\n"
+					, __func__);
+
 	return 0;
 }
 static DEVICE_ATTR(ambient, S_IRUGO | S_IWUSR | S_IWGRP,
