@@ -1049,6 +1049,9 @@
 
 &usb3 {
 	vbus_dwc3-supply = <&smb1357_otg_vreg>;
+	dwc3@f9200000 {
+		maximum-speed = "high-speed";
+	};
 };
 
 &soc {
