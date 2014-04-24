@@ -88,6 +88,31 @@
 		compatible = "qcom,msm-mem-hole";
 		qcom,memblock-remove = <0x02f00000 0x00d00000>;
 	};
+
+	qcom,vidc@fdc00000 {
+		status = "disabled";
+	};
+	qcom,vidc {
+		status = "disabled";
+	};
+	qcom,wfd {
+		status = "disabled";
+	};
+	qcom,wcnss-wlan {
+		status = "disabled";
+	};
+	qcom,wcnss-wlan@fb000000 {
+		status = "disabled";
+	};
+	qcom,venus@fdce0000 {
+		status = "disabled";
+	};
+	qcom,pronto@fb21b000 {
+		status = "disabled";
+	};
+	qcom,mss@fc880000 {
+		status = "disabled";
+	};
 };
 
 &sdhc_1 {
@@ -144,4 +169,8 @@
 
 &fb_mem {
 	reg = <0 0x200000>;
+};
+
+&cci {
+	status = "disabled";
 };
