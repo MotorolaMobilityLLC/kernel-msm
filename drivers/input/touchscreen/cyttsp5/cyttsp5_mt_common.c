@@ -521,11 +521,16 @@ static void cyttsp5_mt_send_dummy_event(struct cyttsp5_mt_data *md)
 {
 	unsigned long ids = 0;
 
+	dev_dbg(md->dev, "%s: touch_wake\n", __func__);
+
 	/* for easy wakeup */
 	cyttsp5_input_report(md->input, ABS_MT_TRACKING_ID,
 			0, CY_OBJ_STANDARD_FINGER);
+	input_report_key(md->input, KEY_WAKEUP, 1);
 	cyttsp5_final_sync(md->input, 0, 1, &ids);
+
 	cyttsp5_report_slot_liftoff(md, 1);
+	input_report_key(md->input, KEY_WAKEUP, 0);
 	cyttsp5_final_sync(md->input, 1, 1, &ids);
 }
 
@@ -739,6 +744,7 @@ static int cyttsp5_setup_input_device(struct device *dev)
 
 #if defined(SAMSUNG_PALM_MOTION)
 	__set_bit(KEY_SLEEP, md->input->keybit);
+	__set_bit(KEY_WAKEUP, md->input->keybit);
 #endif
 
 	input_mt_init_slots(md->input,

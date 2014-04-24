@@ -4056,6 +4056,14 @@ static int cyttsp5_parse_input(struct cyttsp5_core_data *cd)
 		return 0;
 	}
 
+	if (cd->touch_wake) {
+		dev_dbg(cd->dev, "%s: touch_wake\n", __func__);
+		/* attention WAKE */
+		call_atten_cb(cd, CY_ATTEN_WAKE, 0);
+		cd->touch_wake = false;
+		return 0;
+	}
+
 	/* update watchdog expire time */
 	mod_timer_pending(&cd->watchdog_timer, jiffies +
 			msecs_to_jiffies(CY_WATCHDOG_TIMEOUT));
@@ -4098,8 +4106,10 @@ static irqreturn_t cyttsp5_irq(int irq, void *handle)
 
 	if (cd->irq_wake) {
 		dev_err(cd->dev, "%s: touch wake!!\n", __func__);
-		wake_lock_timeout(&cd->report_touch_wake_lock, 5 * HZ);
+		wake_lock_timeout(&cd->report_touch_wake_lock, 3 * HZ);
 		usleep_range(20000, 21000);
+
+		cd->touch_wake = true;
 	}
 
 	rc = cyttsp5_read_input(cd);

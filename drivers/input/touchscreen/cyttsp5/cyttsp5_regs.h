@@ -873,6 +873,7 @@ struct cyttsp5_core_data {
 	int irq;
 	bool irq_enabled;
 	bool irq_wake;
+	bool touch_wake;
 	struct wake_lock report_touch_wake_lock;
 	bool irq_disabled;
 	u8 easy_wakeup_gesture;
