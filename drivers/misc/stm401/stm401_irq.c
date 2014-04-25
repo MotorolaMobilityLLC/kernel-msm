@@ -105,6 +105,10 @@ void stm401_irq_work_func(struct work_struct *work)
 			STM16_TO_HOST(ACCEL_RD_Z));
 	}
 	if (irq_status & M_LIN_ACCEL) {
+		dev_err(&ps_stm401->client->dev,
+			"Invalid M_LIN_ACCEL bit set. irq_status = 0x%06x\n",
+			irq_status);
+
 		/* read linear accelerometer values from STM401 */
 		stm401_cmdbuff[0] = LIN_ACCEL_X;
 		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 6);
@@ -266,6 +270,10 @@ void stm401_irq_work_func(struct work_struct *work)
 			"Sending temp(x)value:%d\n", STM16_TO_HOST(TEMP_VALUE));
 	}
 	if (irq_status & M_PRESSURE) {
+		dev_err(&ps_stm401->client->dev,
+			"Invalid M_PRESSURE bit set. irq_status = 0x%06x\n",
+			irq_status);
+
 		/*Read pressure value */
 		stm401_cmdbuff[0] = CURRENT_PRESSURE;
 		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 4);
@@ -281,6 +289,10 @@ void stm401_irq_work_func(struct work_struct *work)
 			STM32_TO_HOST(PRESSURE_VALUE));
 	}
 	if (irq_status & M_GRAVITY) {
+		dev_err(&ps_stm401->client->dev,
+			"Invalid M_GRAVITY bit set. irq_status = 0x%06x\n",
+			irq_status);
+
 		/* read gravity values from STM401 */
 		stm401_cmdbuff[0] = GRAVITY_X;
 		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 6);
