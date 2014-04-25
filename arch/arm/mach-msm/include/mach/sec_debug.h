@@ -383,7 +383,8 @@ extern void do_msm_restart(enum reboot_mode reboot_mode, const char *cmd);
 
 /* #define CONFIG_SEC_DEBUG_SUBSYS */
 #ifdef CONFIG_SEC_DEBUG_SUBSYS
-
+extern void *smem_ram_base;
+extern phys_addr_t smem_ram_phys;
 extern void sec_debug_subsys_fill_fbinfo(int idx, void *fb, u32 xres,
 				u32 yres, u32 bpp, u32 color_mode);
 

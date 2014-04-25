@@ -856,7 +856,7 @@ EXPORT_SYMBOL(kernel_sec_get_debug_level);
 #if defined(CONFIG_MACH_MSM8226_SPRAT)
 static int __init setup_rdx_mode(char *val)
 {
-	rdx_dload_mode = strncmp(val, "1", 1) ?
+	rdx_dload_mode = strncmp(val, "0", 1) ?
 			KERNEL_SEC_DUMP_MODE_RDX : KERNEL_SEC_DUMP_MODE_QPST;
 	pr_info("%s, rdx_dload_mode:%d\n", __func__, rdx_dload_mode);
 	return 1;
@@ -1116,7 +1116,7 @@ static void sec_debug_set_upload_magic(unsigned magic)
 	pr_emerg("(%s) %x\n", __func__, magic);
 
 	if (magic)
-		sec_debug_set_qc_dload_magic(enable);
+		sec_debug_set_qc_dload_magic(1);
 
 	__raw_writel(magic, restart_reason);
 
@@ -1135,7 +1135,7 @@ static void sec_debug_set_upload_cause(enum sec_debug_upload_cause_t type)
 {
 	void *upload_cause = restart_reason + 0x10;
 #if defined(CONFIG_MACH_MSM8226_SPRAT)
-	if (rdx_dload_mode == KERNEL_SEC_DUMP_MODE_QPST) {
+	if (rdx_dload_mode == KERNEL_SEC_DUMP_MODE_QPST && enable) {
 		per_cpu(sec_debug_upload_cause,
 			smp_processor_id()) = QPST_DLOAD;
 			__raw_writel(QPST_DLOAD, upload_cause);
@@ -1236,9 +1236,7 @@ static int sec_debug_panic_handler(struct notifier_block *nb,
 		sec_debug_set_upload_cause(UPLOAD_CAUSE_KERNEL_PANIC);
 
 	if (!enable) {
-#ifdef CONFIG_SEC_DEBUG_LOW_LOG
 		sec_debug_hw_reset();
-#endif
 		return -EPERM;
 	}
 
@@ -1291,8 +1289,6 @@ void sec_debug_check_crash_key(unsigned int code, int value)
 	static enum { NO, T1, T2, T3} state_tsp = NO;
 #endif
 	static unsigned long timeout;
-	pr_err("%s code %d value %d state %d enable %d\n", __func__, code,
-		value, state, enable);
 
 	if (code == KEY_POWER) {
 		if (value)
@@ -1300,7 +1296,11 @@ void sec_debug_check_crash_key(unsigned int code, int value)
 				UPLOAD_CAUSE_POWER_LONG_PRESS);
 		else
 			sec_debug_set_upload_cause(UPLOAD_CAUSE_INIT);
-	}
+	} else if (code !=KEY_VOLUMEUP)
+		return;
+
+	pr_err("%s code %d value %d state %d enable %d\n", __func__, code,
+		value, state, enable);
 #ifdef CONFIG_TOUCHSCREEN_MMS252
 	if (code == KEY_VOLUMEUP && !value)
 		state_tsp = NO;
@@ -1333,99 +1333,34 @@ void sec_debug_check_crash_key(unsigned int code, int value)
 #endif
 
 	if (!enable) {
-		pr_err("Debug level is low\n");
+		pr_info("Debug level is low\n");
 		return;
 	}
 #if defined(CONFIG_MACH_MSM8226_SPRAT)
-	switch (state) {
-	case NONE:
-		if (code == KEY_POWER && value) {
-			/* Get the time stamp &
-			   set the timeout value as 1.5 seconds*/
-			timeout = jiffies + 3*(HZ/2);
-			state = STEP1;
+	if (code == KEY_POWER && ((state % 2 && value) ||
+				(!(state % 2) && !value)))
+		state++;
+	else {
+		state = NONE;
+		timeout = 0;
+	}
+
+	if (state == STEP1)
+		timeout = jiffies + 3*(HZ/2);
+	else if (state == STEP12) {
+		if (time_before(jiffies, timeout)) {
+			emerg_pet_watchdog();
+			/*dump_all_task_info();
+			dump_cpu_stat();*/
+			panic("Crash Key");
+		} else {
+			timeout = 0;
+			state = NONE;
 		}
-		break;
-	case STEP1:
-		if (code == KEY_POWER && !value)
-			state = STEP2;
-		else
-			state = NONE;
-		break;
-	case STEP2:
-		if (code == KEY_POWER && value)
-			state = STEP3;
-		else
-			state = NONE;
-		break;
-	case STEP3:
-		if (code == KEY_POWER && !value)
-			state = STEP4;
-		else
-			state = NONE;
-		break;
-	case STEP4:
-		if (code == KEY_POWER && value)
-			state = STEP5;
-		else
-			state = NONE;
-		break;
-	case STEP5:
-		if (code == KEY_POWER && !value)
-			state = STEP6;
-		else
-			state = NONE;
-		break;
-	case STEP6:
-		if (code == KEY_POWER && value)
-			state = STEP7;
-		else
-			state = NONE;
-		break;
-	case STEP7:
-		if (code == KEY_POWER && !value)
-			state = STEP8;
-		else
-			state = NONE;
-		break;
-	case STEP8:
-		if (code == KEY_POWER && value)
-			state = STEP9;
-		else
-			state = NONE;
-		break;
-	case STEP9:
-		if (code == KEY_POWER && !value)
-			state = STEP10;
-		else
-			state = NONE;
-		break;
-	case STEP10:
-		if (code == KEY_POWER && value)
-			state = STEP11;
-		else
-			state = NONE;
-		break;
-	case STEP11:
-		if (code == KEY_POWER && !value)
-			state = STEP12;
-		else
-			state = NONE;
-		break;
-	case STEP12:
-		if (code == KEY_POWER && value) {
-			if (time_before(jiffies, timeout)) {
-				emerg_pet_watchdog();
-				/*dump_all_task_info();
-				dump_cpu_stat();*/
-				panic("Crash Key");
-			} else {
-				timeout = 0;
-				state = NONE;
-			}
-		} else
-			state = NONE;
-		break;
+	} else if (time_after(jiffies, timeout)) {
+		/* Since the 1.5 seconds timed out reset the sequence */
+		timeout = 0;
+		state = NONE;
 	}
 #else
 	switch (state) {
@@ -1664,8 +1599,8 @@ int sec_debug_subsys_init(void)
 	last_pet_paddr = 0;
 	last_ns_paddr = 0;
 
-	pr_info("%s: msm_shared_ram_phys=%x SMEM_ID_VENDOR2=%d size=%d\n",
-		__func__, msm_shared_ram_phys,  SMEM_ID_VENDOR2,
+	pr_info("%s: smem_shared_ram_phys=%x SMEM_ID_VENDOR2=%d size=%d\n",
+		__func__, smem_shared_ram_phys,  SMEM_ID_VENDOR2,
 		sizeof(struct sec_debug_subsys));
 
 	secdbg_subsys = (struct sec_debug_subsys *)smem_alloc(
@@ -1684,16 +1619,16 @@ int sec_debug_subsys_init(void)
 
 	secdbg_subsys->krait = (struct sec_debug_subsys_data_krait *)(
 		(unsigned int)&secdbg_subsys->priv.krait -
-		(unsigned int)MSM_SHARED_RAM_BASE + msm_shared_ram_phys);
+		(unsigned int)smem_ram_base + smem_ram_phys);
 	secdbg_subsys->rpm = (struct sec_debug_subsys_data *)(
 		(unsigned int)&secdbg_subsys->priv.rpm -
-		(unsigned int)MSM_SHARED_RAM_BASE + msm_shared_ram_phys);
+		(unsigned int)smem_ram_base + smem_ram_phys);
 	secdbg_subsys->modem = (struct sec_debug_subsys_data_modem *)(
 		(unsigned int)&secdbg_subsys->priv.modem -
-		(unsigned int)MSM_SHARED_RAM_BASE + msm_shared_ram_phys);
+		(unsigned int)smem_ram_base + smem_ram_phys);
 	secdbg_subsys->dsps = (struct sec_debug_subsys_data *)(
 		(unsigned int)&secdbg_subsys->priv.dsps -
-		(unsigned int)MSM_SHARED_RAM_BASE + msm_shared_ram_phys);
+		(unsigned int)smem_ram_base + smem_ram_phys);
 
 	pr_info("%s: krait(%x) rpm(%x) modem(%x) dsps(%x)\n", __func__,
 		(unsigned int)secdbg_subsys->krait,
@@ -1707,7 +1642,7 @@ int sec_debug_subsys_init(void)
 
 	sec_debug_subsys_set_kloginfo(&secdbg_krait->log.idx_paddr,
 		&secdbg_krait->log.log_paddr, &secdbg_krait->log.size);
-	sec_debug_subsys_set_logger_info(&secdbg_krait->logger_log);
+	/*sec_debug_subsys_set_logger_info(&secdbg_krait->logger_log);*/
 
 	secdbg_krait->tz_core_dump =
 		(struct tzbsp_dump_buf_s **)get_wdog_regsave_paddr();

@@ -793,7 +793,15 @@ qpnp_config_reset(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 		dev_err(&pon->spmi->dev, "Unable to configure S2 timer\n");
 		return rc;
 	}
-
+#ifdef CONFIG_SEC_DEBUG
+	if (sec_debug_is_enabled()) {
+		/* Debug MID / HIGH : WARM reset */
+		cfg->s2_type = 1;
+	} else {
+		/* Debug LOW : HARD reset */
+		cfg->s2_type = 7;
+	}
+#endif
 	rc = qpnp_pon_masked_write(pon, cfg->s2_cntl_addr,
 				QPNP_PON_S2_CNTL_TYPE_MASK, (u8)cfg->s2_type);
 	if (rc) {
