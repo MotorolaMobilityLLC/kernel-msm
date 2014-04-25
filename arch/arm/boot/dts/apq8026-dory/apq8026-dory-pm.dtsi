@@ -384,14 +384,14 @@
 			maxim,full-soc = <100>;
 			maxim,empty-soc = <0>;
 
-			maxim,model = [A0 00 AE 30 B6 E0 B7 90
-					B9 30 BB 10 BC 50 BD 60
-					BE 70 C0 40 C2 90 C5 30
-					C7 D0 CC D0 D2 90 D8 90
-					00 70 03 70 0D E0 10 00
-					0E 30 10 70 19 00 19 00
-					10 50 0D C0 08 F0 08 90
-					08 A0 06 F0 06 F0 06 F0
+			maxim,model = [A0 50 AA C0 AD 80 B4 10
+					B5 00 B7 B0 B8 20 B8 90
+					BC 30 BC 80 C3 40 C3 90
+					CB 40 CC 80 D6 D0 D7 90
+					00 C0 01 70 01 D0 04 40
+					08 E0 2D B0 09 20 0C 20
+					0C C0 11 20 0C C0 08 50
+					06 60 06 90 0A A0 0A A0
 					01 00 01 00 01 00 01 00
 					01 00 01 00 01 00 01 00
 					01 00 01 00 01 00 01 00
@@ -403,22 +403,22 @@
 			maxim,learncfg = <0x2606>;
 			maxim,misccfg = <0x0870>;
 			maxim,fullsocthr = <0x5F00>;
-			maxim,rcomp0 = <0x004E>;
-			maxim,tempco = <0x2C3C>;
+			maxim,rcomp0 = <0x004F>;
+			maxim,tempco = <0x2F35>;
 			maxim,tempnom = <0x1400>;
 			maxim,tgain = <0xE932>;
 			maxim,toff = <0x2381>;
 			maxim,ichgterm = <0x00C0>;
-			maxim,vempty = <0xA2DA>;
-			maxim,qrtable00 = <0x2004>;
-			maxim,qrtable10 = <0x1084>;
-			maxim,qrtable20 = <0x0508>;
-			maxim,qrtable30 = <0x0508>;
-			maxim,capacity = <0x0316>;
-			maxim,vf_fullcap = <0x0316>;
+			maxim,vempty = <0x964C>;
+			maxim,qrtable00 = <0x0D84>;
+			maxim,qrtable10 = <0x0A08>;
+			maxim,qrtable20 = <0x0884>;
+			maxim,qrtable30 = <0x0584>;
+			maxim,capacity = <0x0320>;
+			maxim,vf_fullcap = <0x0320>;
 			maxim,temperature = <0x1400>;
 			maxim,dpacc = <0x0C80>;
-			maxim,param-version = <0x1>;
+			maxim,param-version = <0x2>;
 		};
 	};
 
