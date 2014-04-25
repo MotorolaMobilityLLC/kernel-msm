@@ -23,6 +23,7 @@ struct amdu_global_data
 	struct mdss_dsi_ctrl_pdata *ctrl;
 	bool	ambient_on;
 	struct fb_info *fb0_info;
+	char	debug_str[128];
 };
 
 static struct amdu_global_data amdu_data;
@@ -329,6 +330,7 @@ static int check_panel_status(void)
 #endif
 
 	printk("amdu_data.ambient_on = %d\n",amdu_data.ambient_on);
+	printk("amdu_data.debug_str = %s\n",amdu_data.debug_str);
 
 	return 0;
 }
@@ -450,3 +452,8 @@ void show_panel_message(char* msg)
 	return;
 }
 // ASUSB_BSP --- Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
+
+void set_debug_str(char* debug_str)
+{
+	strcpy(amdu_data.debug_str,debug_str);
+}
