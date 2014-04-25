@@ -110,22 +110,43 @@
 		qcom,scl-gpio = <&msmgpio 19 0>;
 		qcom,sda-gpio = <&msmgpio 18 0>;
 
-		mms128s@48 {
-			compatible = "melfas,mms128s";
-			reg = <0x48>;
+		cyt_tsp@24 {
+			compatible = "cy,cyttsp5_i2c_adapter";
+			reg = <0x24>; /*slave address*/
 			interrupt-parent = <&msmgpio>;
 			interrupts = <17 0>;
 			vddo-supply = <&pm8226_lvs1>;
 			avdd-supply = <&pm8226_l19>;
 
-			melfas,max_x = <320>;
-			melfas,max_y = <320>;
-			melfas,gpio_int = <&msmgpio 17 0>;
-			melfas,tsp_vendor = "MELFAS";
-			melfas,tsp_ic = "MMS128S";
-			melfas,tsp_tx = <7>;
-			melfas,tsp_rx = <7>;
-			melfas,config_fw_version = "V700_ME_0910";
+			cy,adapter_id = "cyttsp5_i2c_adapter";
+			cy,core {
+				cy,name = "cyttsp5_core";
+				cy,irq_gpio = <17>;
+				cy,hid_desc_register = <1>;
+				cy,mt {
+					cy,name = "cyttsp5_mt";
+					cy,inp_dev_name = "sec_touchscreen";
+					cy,abs =
+						/* ABS_MT_POSITION_X, CY_ABS_MIN_X, CY_ABS_MAX_X, 0, 0 */
+						<0x35 0 320 0 0
+						/* ABS_MT_POSITION_Y, CY_ABS_MIN_Y, CY_ABS_MAX_Y, 0, 0 */
+						0x36 0 320 0 0
+						/* ABS_MT_PRESSURE, CY_ABS_MIN_P, CY_ABS_MAX_P, 0, 0 */
+						0x3a 0 255 0 0
+						/* CY_IGNORE_VALUE, CY_ABS_MIN_W, CY_ABS_MAX_W, 0, 0 */
+						0xffff 0 255 0 0
+						/* ABS_MT_TRACKING_ID, CY_ABS_MIN_T, CY_ABS_MAX_T, 0, 0 */
+						0x39 0 15 0 0
+						/* ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0 */
+						0x30 0 255 0 0
+						/* ABS_MT_TOUCH_MINOR, 0, 255, 0, 0 */
+						0x31 0 255 0 0
+						/* ABS_MT_ORIENTATION, -128, 127, 0, 0 */
+						0x34 0xfffffed7 127 0 0
+						/* ABS_MT_TOOL_TYPE, 0, MT_TOOL_MAX, 0, 0 */
+						0x37 0 1 0 0>;
+				};
+			};
 		};
 	};
 
