@@ -12,7 +12,7 @@
  */
 
 #include <linux/module.h>
-#include <mach/msm_smsm.h>
+#include <soc/qcom/smsm.h>
 
 static struct {
 	unsigned mr5;
