@@ -5345,11 +5345,6 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                     //Set the subestate to WaitForKey in case authentiation is needed
                     csrRoamSubstateChange( pMac, eCSR_ROAM_SUBSTATE_WAIT_FOR_KEY, sessionId );
 
-                    /* Set remainInPowerActiveTillDHCP to make sure we wait for
-                     * until keys are set before going into BMPS.
-                     */
-                     pMac->pmc.remainInPowerActiveTillDHCP = TRUE;
-
                     if(pProfile->bWPSAssociation)
                     {
                         key_timeout_interval = CSR_WAIT_FOR_WPS_KEY_TIMEOUT_PERIOD;
@@ -5492,6 +5487,17 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
             //enough to let security and DHCP handshake succeed before entry into BMPS
             if (pmcShouldBmpsTimerRun(pMac))
             {
+                /* Set remainInPowerActiveTillDHCP to make sure we wait for
+                 * until keys are set before going into BMPS.
+                 */
+                if(eANI_BOOLEAN_TRUE == roamInfo.fAuthRequired)
+                {
+                     pMac->pmc.remainInPowerActiveTillDHCP = TRUE;
+                     smsLog(pMac, LOG1, FL("Set remainInPowerActiveTillDHCP "
+                            "to make sure we wait until keys are set before"
+                            " going to BMPS"));
+                }
+
                 if (pmcStartTrafficTimer(pMac, BMPS_TRAFFIC_TIMER_ALLOW_SECURITY_DHCP)
                     != eHAL_STATUS_SUCCESS)
                 {
