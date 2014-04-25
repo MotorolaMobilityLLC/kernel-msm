@@ -263,14 +263,7 @@ static struct msm_gpiomux_config msm_mhl_configs[] __initdata = {
 	},
 };
 
-static struct gpiomux_setting stm401_boot_gpio_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_LOW,
-};
-
-static struct gpiomux_setting stm401_reset_gpio_cfg = {
+static struct gpiomux_setting stm401_gpio_output_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
@@ -281,13 +274,18 @@ static struct msm_gpiomux_config stm401_configs[] __initdata = {
 	{
 		.gpio = 33,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &stm401_boot_gpio_cfg,
-			[GPIOMUX_SUSPENDED] = &stm401_boot_gpio_cfg,
+			[GPIOMUX_ACTIVE]    = &stm401_gpio_output_cfg,
+			[GPIOMUX_SUSPENDED] = &stm401_gpio_output_cfg,
 		},
 		.gpio = 145,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &stm401_reset_gpio_cfg,
-			[GPIOMUX_SUSPENDED] = &stm401_reset_gpio_cfg,
+			[GPIOMUX_ACTIVE]    = &stm401_gpio_output_cfg,
+			[GPIOMUX_SUSPENDED] = &stm401_gpio_output_cfg,
+		},
+		.gpio = 0,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &stm401_gpio_output_cfg,
+			[GPIOMUX_SUSPENDED] = &stm401_gpio_output_cfg,
 		},
 	},
 };
