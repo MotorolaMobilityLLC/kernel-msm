@@ -16,6 +16,7 @@
 #include "apq8084-moto-reserve.dtsi"
 #include "apq8084.dtsi"
 #include "apq8084-shamu.dtsi"
+#include "apq8084-moto-old-pwr-grid.dtsi"
 
 / {
 	qcom,msm-id = <178 0x47 0x8100>;
