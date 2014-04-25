@@ -84,3 +84,10 @@
 		qcom,master-en = <1>;
 	};
 };
+
+&sdhc_1 {
+	qcom,pad-pull-on = <0x0 0x3 0x3 0x0>; /* no-pull, pull-up, pull-up, no-pull */
+	qcom,pad-pull-off = <0x0 0x3 0x3 0x0>; /* no-pull, pull-up, pull-up, no-pull */
+	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
+};
