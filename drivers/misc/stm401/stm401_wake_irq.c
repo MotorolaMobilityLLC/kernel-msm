@@ -150,6 +150,11 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	/* Check all other status bits */
 	if (irq_status & M_DOCK) {
 		int state;
+
+		dev_err(&ps_stm401->client->dev,
+			"Invalid M_DOCK bit set. irq_status = 0x%06x\n",
+			irq_status);
+
 		stm401_cmdbuff[0] = DOCK_DATA;
 		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
 		if (err < 0) {
@@ -429,6 +434,11 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 	}
 	if (irq3_status & M_GENERIC_INTRPT) {
+
+		dev_err(&ps_stm401->client->dev,
+			"Invalid M_GENERIC_INTRPT bit set. irq_status = 0x%06x\n",
+			irq_status);
+
 		/* x (data1) : irq3_status */
 		stm401_ms_data_buffer_write(ps_stm401, DT_GENERIC_INT,
 			&irq3_status, 1);
