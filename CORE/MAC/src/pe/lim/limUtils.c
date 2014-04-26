@@ -7971,8 +7971,6 @@ void limPmfSaQueryTimerHandler(void *pMacGlobal, tANI_U32 param)
     if (pSta->pmfSaQueryRetryCount >= maxRetries)
     {
         limLog(pMac, LOG1, FL("SA Query timed out"));
-        /* remove before submission */
-        limLog(pMac, LOGE, FL("SA Query timed out"));
         pSta->pmfSaQueryState = DPH_SA_QUERY_TIMED_OUT;
         return;
     }
@@ -7981,8 +7979,6 @@ void limPmfSaQueryTimerHandler(void *pMacGlobal, tANI_U32 param)
     limSendSaQueryRequestFrame(pMac, (tANI_U8 *)&(pSta->pmfSaQueryCurrentTransId),
                                pSta->staAddr, psessionEntry);
     pSta->pmfSaQueryCurrentTransId++;
-    /* remove before submission */
-    limLog(pMac, LOGE, FL("Starting SA Query retry %d"), pSta->pmfSaQueryRetryCount);
     if (tx_timer_activate(&pSta->pmfSaQueryTimer) != TX_SUCCESS)
     {
         limLog(pMac, LOGE, FL("PMF SA Query timer activation failed!"));
