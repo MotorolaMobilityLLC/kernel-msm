@@ -279,8 +279,8 @@
 	};
 	factory_support {
 		compatible = "mmi,factory-support-kungpow";
-		gpios = <&pma8084_gpios 17 0x0>, /* GPIOF_OUT_INIT_LOW */
-			<&pma8084_mpps 7 0x1>, /* GPIOF_IN */
+		gpios = <&msmgpio 126 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&msmgpio 146 0x1>, /* GPIOF_IN */
 			<&msmgpio 34 0x1>; /* GPIOF_IN */
 		gpio-names = "factory_kill_disable",
 				"factory_cable_detect",
