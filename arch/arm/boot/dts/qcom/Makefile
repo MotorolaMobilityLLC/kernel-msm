@@ -218,6 +218,9 @@ dtb-$(CONFIG_ARCH_MSM8994) += msm8994-v1-sim.dtb \
 dtb-$(CONFIG_ARCH_MSM8992) += msm8992-sim.dtb \
 	msm8992-rumi.dtb
 
+# Motorola 8916 Devices
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-styx-p0.dtb
+
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
 # to be runtime added by the bootloader (i.e. /chosen properties)
