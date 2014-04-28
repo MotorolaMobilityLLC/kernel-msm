@@ -93,6 +93,13 @@
 # define SET_TSC_CTL(a)		(-EINVAL)
 #endif
 
+//ASUS_BSP porting charger mode +++
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+extern int g_chg_present;
+extern char g_CHG_mode;
+#endif
+//ASUS_BSP porting charger mode ---
+
 /*
  * this is where the system-wide overflow UID and GID are defined, for
  * architectures that now have 32-bit UID/GID but didn't in the past
@@ -514,8 +521,21 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 		panic("cannot halt");
 
 	case LINUX_REBOOT_CMD_POWER_OFF:
+//ASUS_BSP porting charger mode +++
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+		if (g_chg_present && !g_CHG_mode){ //if charger present, we should reboot to kernel charging mode instead of turning off
+			printk("[BAT] Power off Change To reboot oem-01 ---\n ");
+			kernel_restart("oem-01");
+		}
+		else{
+			kernel_power_off();
+			do_exit(0);
+		}
+#else
 		kernel_power_off();
 		do_exit(0);
+#endif
+//ASUS_BSP porting charger mode ---
 		break;
 
 	case LINUX_REBOOT_CMD_RESTART2:

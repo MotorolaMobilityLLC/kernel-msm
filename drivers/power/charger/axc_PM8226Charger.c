@@ -65,12 +65,11 @@ static void (*notify_charger_in_out_func_ptr)(int) = NULL;
 AXC_PM8226Charger *gpCharger = NULL;
 
 static bool isAcUsbPsyRegst = 0;
-//Jorney_dong +++
+//ASUS_BSP porting charger mode +++
 #if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
 extern int g_chg_present;
-extern char g_CHG_mode;
 #endif
-//Jorney_dong---
+//ASUS_BSP porting charger mode ---
 
 //Eason: schedule work to check cable status later+++
 static struct delayed_work DetectChgWorker;
@@ -473,12 +472,12 @@ static void charger_in_out_debounce_time_expired(unsigned long _data)
 #endif //#ifdef CONFIG_FASTBOOT
 	//ASUS_BSP --- Frank_tao "suspend for fastboot mode"
 
-	   //+++ Jorney_dong add support charging mode
+//ASUS_BSP porting charger mode +++
 #if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
     g_chg_present = online;
     printk("PM8226charger [BAT][CHG]%s,g_chg_present %d\n",__FUNCTION__,online);
 #endif
-	//--- Jorney_dong add support charging mode
+//ASUS_BSP porting charger mode ---
 	
 	if(NULL != notify_charger_in_out_func_ptr){
 		(*notify_charger_in_out_func_ptr) (online);

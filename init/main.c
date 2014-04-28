@@ -196,6 +196,26 @@ static int set_cpu_id(char *str)
 __setup("CPU_RV=", set_cpu_id);
 // better_ding@asus.com get cpu id from aboot ---
 
+//ASUS_BSP porting charger mode +++
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+int g_CHG_mode=0;
+static int set_chg_mode(char *str)
+{
+       if ( strcmp("charger", str) == 0 )
+       {
+               g_CHG_mode = 1;
+       }
+       else
+       {
+               g_CHG_mode = 0;
+       }
+       printk("JB charger mode = %d\n", g_CHG_mode);
+       return 0;
+}
+__setup("androidboot.mode=", set_chg_mode);
+#endif
+//ASUS_BSP porting charger mode ---
+
 //+++ ASUS_BSP : miniporting : Add for audio dbg mode
 int g_user_dbg_mode = 1;
 EXPORT_SYMBOL(g_user_dbg_mode);

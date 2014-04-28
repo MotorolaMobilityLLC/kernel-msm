@@ -713,6 +713,10 @@ endif
 KBUILD_CPPFLAGS += -DKERNEL_VERSION_310
 # --- ASUS_BSP : for passing building android
 
+#ASUS_BSP +++
+#KBUILD_CPPFLAGS += -DASUS_CHARGING_MODE=1
+#ASUS_BSP ---
+
 # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments
 KBUILD_CPPFLAGS += $(KCPPFLAGS)
 KBUILD_AFLAGS += $(KAFLAGS)

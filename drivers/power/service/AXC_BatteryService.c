@@ -87,6 +87,12 @@ static struct AXC_BatteryService *balance_this=NULL;
 #include <linux/wakelock.h>
 #include <linux/gpio.h> //Eason:get cable In/Out at first time ask Cap
 
+//ASUS_BSP porting charger mode +++
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+int g_chg_present;
+#endif
+//ASUS_BSP porting charger mode ---
+
 //Eason: charger_limit_enable is used to decide if Do_Factory5060Mode+++
 #ifdef ASUS_FACTORY_BUILD
 static bool charger_limit_enable = false;//only do 5060 mode in factory branch, let bsp version can normal charging
