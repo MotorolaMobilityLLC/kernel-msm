@@ -70,6 +70,7 @@ struct IT7260_ts_data *gl_ts;
 static int Calibration__success_flag = 0;
 static int Upgrade__success_flag = 0; 
 struct device *class_dev = NULL;
+static int it7260_status = 0; //ASUS_BSP Cliff +++ add for ATD check
 
 #ifdef DEBUG
 #define TS_DEBUG(fmt,args...)  printk( KERN_DEBUG "[it7260_i2c]: " fmt, ## args)
@@ -357,6 +358,14 @@ static bool fnWriteAndCompareFlash(unsigned int nLength, char pnBuffer[], unsign
 			i2cReadFromIt7260(gl_ts->client, 0xA0, bufRead, nReadLength);
 #endif
 			// Compare
+			/*
+			if (nStartOffset == 0){
+				printk("Cliff:fw_ver : %x,%x,%x,%x\n",bufRead[8], bufRead[9], bufRead[10], bufRead[11]);
+			}
+			else{
+				printk("Cliff:cfg_ver : %x,%x,%x,%x\n",bufRead[nReadLength-8], bufRead[nReadLength-7], bufRead[nReadLength-6], bufRead[nReadLength-5]);
+			}
+			* */
 			for (i = 0; i < 128; i++) {
 				if (bufRead[i] != bufWrite[i]) {
 					break;
@@ -423,7 +432,7 @@ static int Upgrade_FW_CFG(void)
 
 	fs = get_fs();
 	set_fs(get_ds());
-
+	
 	fw_fd = filp_open("/data/it7260.fw", O_RDONLY, 0);
 	if (fw_fd < 0)
 		printk("open /data/it7260.fw failed\n");
@@ -472,6 +481,34 @@ ssize_t IT7260_calibration_store_temp(const char *buf)
 		return -1;
 	}
 }
+
+//ASUS_BSP Cliff +++ add for ATD check
+static ssize_t IT7260_status_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	
+	if (it7260_status) {
+		return sprintf(buf, "1\n");
+	} else {
+		return sprintf(buf, "0\n");
+	}
+}
+
+static ssize_t IT7260_status_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	return count;
+}
+
+static DEVICE_ATTR(status, 0666, IT7260_status_show, IT7260_status_store);
+
+static struct attribute *it7260_attrstatus[] = {
+	&dev_attr_status.attr,
+	NULL
+};
+
+static const struct attribute_group it7260_attrstatus_group = {
+	.attrs = it7260_attrstatus,
+};
+//ASUS_BSP Cliff --- add for ATD check
 
 static ssize_t IT7260_calibration_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -1032,7 +1069,12 @@ static int IT7260_ts_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, ts);
 	pdata = client->dev.platform_data;
-
+//ASUS_BSP Cliff +++ add for ATD check
+	ret = sysfs_create_group(&(client->dev.kobj), &it7260_attrstatus_group); 
+	if(ret){
+		dev_err(&client->dev, "failed to register sysfs\n");
+	}
+//ASUS_BSP Cliff --- add for ATD check
 	ret=IdentifyCapSensor(ts);
 	if(ret<0){
 		printk ("CLIFF:IdentifyCapSensor FAIL");
@@ -1112,6 +1154,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 	}
 
 	gl_ts = ts;
+	it7260_status = 1;
 	pr_info("=end IT7260_ts_probe=\n");
 
 	//To reset point queue.
@@ -1135,6 +1178,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 static int IT7260_ts_remove(struct i2c_client *client) {
 	   destroy_workqueue(IT7260_wq);
 		input_free_device(input_dev);
+		it7260_status = 0;
 	return 0;
 }
 
@@ -1412,7 +1456,6 @@ static int __init IT7260_ts_init(void) {
 	TS_DEBUG("register IT7260 cdev, major: %d, minor: %d \n", ite7260_major, ite7260_minor);
 	TS_DEBUG("=========================================\n");
 
-	printk ("CLIFF:TOUCH");
 	return i2c_add_driver(&IT7260_ts_driver);
 
 	error:
