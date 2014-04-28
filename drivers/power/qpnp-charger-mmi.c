@@ -427,6 +427,7 @@ struct qpnp_chg_chip {
 	int				chrg_ocv_cc_ef_uah;
 	int				chrg_ocv_bv_mv;
 	bool				maint_chrg;
+	unsigned int			ir_drop_comp;
 };
 
 static void
@@ -4845,9 +4846,8 @@ qpnp_chg_hwinit(struct qpnp_chg_chip *chip, u8 subtype,
 			0xFF, 0x08, 1);
 
 		rc = qpnp_chg_masked_write(chip,
-			chip->chgr_base + CHGR_IR_DROP_COMPEN,
-			0xFF,
-			0x83, 1);
+			chip->chgr_base + CHGR_IR_DROP_COMPEN, 0xFF,
+			chip->ir_drop_comp ? 0x83 : 0x00, 1);
 		if (rc) {
 			pr_debug("failed to enable IR drop comp rc=%d\n", rc);
 			return rc;
@@ -4864,9 +4864,11 @@ qpnp_chg_hwinit(struct qpnp_chg_chip *chip, u8 subtype,
 		rc = qpnp_chg_masked_write(chip,
 			chip->buck_base + CHGR_BUCK_BCK_VBAT_REG_MODE,
 			BUCK_VBAT_REG_NODE_SEL_BIT,
-			0x0, 1);
+			chip->ir_drop_comp ? 0x0 : BUCK_VBAT_REG_NODE_SEL_BIT,
+			1);
 		if (rc) {
-			pr_debug("failed to enable IR drop mode rc=%d\n", rc);
+			pr_debug("failed to enable IR drop %s rc=%d\n",
+				 chip->ir_drop_comp ? "mode" : "comp", rc);
 			return rc;
 		}
 
@@ -5132,6 +5134,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	OF_PROP_READ(chip, step_charge_mv, "step-charge-voltage", rc, 1);
 	OF_PROP_READ(chip, step_charge_soc, "step-charge-soc", rc, 1);
 	OF_PROP_READ(chip, step_charge_ma, "step-charge-current", rc, 1);
+	OF_PROP_READ(chip, ir_drop_comp, "ir-comp", rc, 1);
 
 	if (rc)
 		return rc;
