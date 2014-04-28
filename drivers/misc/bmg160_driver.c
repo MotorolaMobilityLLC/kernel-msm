@@ -499,9 +499,9 @@ static void bmg_work_func(struct work_struct *work)
 	/*remapping for BMG160 sensor*/
 	bmg160_remap_sensor_data(&gyro_data, client_data);
 
-	input_report_abs(client_data->input, ABS_X, gyro_data.datax);
-	input_report_abs(client_data->input, ABS_Y, gyro_data.datay);
-	input_report_abs(client_data->input, ABS_Z, gyro_data.dataz);
+	input_report_rel(client_data->input, REL_RX, gyro_data.datax);
+	input_report_rel(client_data->input, REL_RY, gyro_data.datay);
+	input_report_rel(client_data->input, REL_RZ, gyro_data.dataz);
 	input_sync(client_data->input);
 
 	schedule_delayed_work(&client_data->work, delay);
@@ -1254,10 +1254,9 @@ static int bmg_input_init(struct bmg_client_data *client_data)
 	dev->name = SENSOR_NAME;
 	dev->id.bustype = BUS_I2C;
 
-	input_set_capability(dev, EV_ABS, ABS_MISC);
-	input_set_abs_params(dev, ABS_X, BMG_VALUE_MIN, BMG_VALUE_MAX, 0, 0);
-	input_set_abs_params(dev, ABS_Y, BMG_VALUE_MIN, BMG_VALUE_MAX, 0, 0);
-	input_set_abs_params(dev, ABS_Z, BMG_VALUE_MIN, BMG_VALUE_MAX, 0, 0);
+	input_set_capability(dev, EV_REL, REL_RX);
+	input_set_capability(dev, EV_REL, REL_RY);
+	input_set_capability(dev, EV_REL, REL_RZ);
 	input_set_drvdata(dev, client_data);
 
 	err = input_register_device(dev);
