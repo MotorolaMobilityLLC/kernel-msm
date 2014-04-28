@@ -100,11 +100,14 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
     tANI_U8 qosEnabled =    false;
     tANI_U8 wmeEnabled =    false;
 
-    if (psessionEntry)
+    if (!psessionEntry)
     {
-        limLog(pMac,LOG1,"SessionId:%d ProbeRes Frame is received",
-        psessionEntry->peSessionId);
+        limLog(pMac, LOGE, FL("psessionEntry is NULL") );
+        return;
     }
+    limLog(pMac,LOG1,"SessionId:%d ProbeRsp Frame is received",
+                psessionEntry->peSessionId);
+
 
     pProbeRsp = vos_mem_malloc(sizeof(tSirProbeRespBeacon));
     if ( NULL == pProbeRsp )

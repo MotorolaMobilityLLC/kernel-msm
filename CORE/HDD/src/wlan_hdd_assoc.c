@@ -1810,6 +1810,73 @@ static eHalStatus roamIbssConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo 
 }
 /**============================================================================
  *
+  @brief hdd_ReConfigSuspendDataClearedDuringRoaming() - Reconfigure the
+  suspend related data which was cleared during roaming in FWR.
+
+  ===========================================================================*/
+static void hdd_ReConfigSuspendDataClearedDuringRoaming(hdd_context_t *pHddCtx)
+{
+    VOS_STATUS vstatus = VOS_STATUS_E_FAILURE;
+    hdd_adapter_t *pAdapter;
+    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
+    ENTER();
+
+    spin_lock(&pHddCtx->filter_lock);
+    if (VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid)
+    {
+        pHddCtx->sus_res_mcastbcast_filter =
+            pHddCtx->configuredMcastBcastFilter;
+        pHddCtx->sus_res_mcastbcast_filter_valid = VOS_TRUE;
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("offload: callback to associated"));
+        hddLog(VOS_TRACE_LEVEL_INFO,
+            FL("saving configuredMcastBcastFilter = %d"),
+            pHddCtx->configuredMcastBcastFilter);
+        hddLog(VOS_TRACE_LEVEL_INFO,
+            FL("offload: calling hdd_conf_mcastbcast_filter"));
+    }
+    spin_unlock(&pHddCtx->filter_lock);
+
+    hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
+    if(pHddCtx->hdd_mcastbcast_filter_set != TRUE)
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("Not able to set mcast/bcast filter "));
+
+    vstatus = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
+    //No need to configure GTK Offload from here because it might possible
+    //cfg80211_set_rekey_data might not yet came, anyway GTK offload will
+    //be handled as part of cfg80211_set_rekey_data processing.
+    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == vstatus )
+    {
+        pAdapter = pAdapterNode->pAdapter;
+        if( pAdapter &&
+        (( pAdapter->device_mode == WLAN_HDD_INFRA_STATION)  ||
+          (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)))
+        {
+            if (pHddCtx->cfg_ini->fhostArpOffload)
+            {
+                //Configure ARPOFFLOAD
+                vstatus = hdd_conf_arp_offload(pAdapter, TRUE);
+                if (!VOS_IS_STATUS_SUCCESS(vstatus))
+                {
+                    hddLog(VOS_TRACE_LEVEL_ERROR,
+                        FL("Failed to disable ARPOffload Feature %d"), vstatus);
+                }
+            }
+#ifdef WLAN_NS_OFFLOAD
+            //Configure NSOFFLOAD
+            if (pHddCtx->cfg_ini->fhostNSOffload)
+            {
+                hdd_conf_ns_offload(pAdapter, TRUE);
+            }
+#endif
+        }
+        vstatus = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+        pAdapterNode = pNext;
+    }
+    EXIT();
+}
+
+/**============================================================================
+ *
   @brief hdd_RoamSetKeyCompleteHandler() - Update the security parameters.
 
   ===========================================================================*/
@@ -1889,6 +1956,19 @@ static eHalStatus hdd_RoamSetKeyCompleteHandler( hdd_adapter_t *pAdapter, tCsrRo
                                                WLANTL_STA_AUTHENTICATED );
 
             pHddStaCtx->conn_info.uIsAuthenticated = VOS_TRUE;
+            //Need to call offload because when roaming happen at that time fwr
+            //clean offload info as part of the DelBss
+            // No need to configure offload if host was not suspended
+            spin_lock(&pHddCtx->filter_lock);
+            if(pHddCtx->hdd_wlan_suspended)
+            {
+                spin_unlock(&pHddCtx->filter_lock);
+                hdd_ReConfigSuspendDataClearedDuringRoaming(pHddCtx);
+            }
+            else
+            {
+                spin_unlock(&pHddCtx->filter_lock);
+            }
          }
          else
          {

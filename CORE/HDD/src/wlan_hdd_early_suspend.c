@@ -1495,9 +1495,6 @@ static void hdd_PowerStateChangedCB
 )
 {
    hdd_context_t *pHddCtx = callbackContext;
-   VOS_STATUS vstatus = VOS_STATUS_E_FAILURE;
-   hdd_adapter_t *pAdapter;
-   hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
 
    /* if the driver was not in BMPS during early suspend,
     * the dynamic DTIM is now updated at Riva */
@@ -1528,35 +1525,6 @@ static void hdd_PowerStateChangedCB
       hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
       if(pHddCtx->hdd_mcastbcast_filter_set != TRUE)
          hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Not able to set mcast/bcast filter ", __func__);
-
-      vstatus = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
-      while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == vstatus )
-      {
-        pAdapter = pAdapterNode->pAdapter;
-        if( pAdapter &&
-           (( pAdapter->device_mode == WLAN_HDD_INFRA_STATION)  || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)))
-        {
-            if (pHddCtx->cfg_ini->fhostArpOffload)
-            {
-                //Configure ARPOFFLOAD
-                vstatus = hdd_conf_arp_offload(pAdapter, 1);
-                if (!VOS_IS_STATUS_SUCCESS(vstatus))
-                {
-                    hddLog(VOS_TRACE_LEVEL_ERROR,
-                            "Failed to disable ARPOffload Feature %d", vstatus);
-                }
-            }
-#ifdef WLAN_NS_OFFLOAD
-            //Enable NSOFFLOAD
-            if (pHddCtx->cfg_ini->fhostNSOffload)
-            {
-                hdd_conf_ns_offload(pAdapter, 1);
-            }
-#endif
-        }
-        vstatus = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
-        pAdapterNode = pNext;
-      }
     }
    else
    {
