@@ -326,6 +326,7 @@
 			qcom,ibatmax-cool-ma = <2000>;
 			qcom,batt-hot-percentage = <25>;
 			qcom,batt-cold-percentage = <80>;
+			qcom,ir-comp = <1>;
 
 			qcom,chgr@1000 {
 				status = "ok";
