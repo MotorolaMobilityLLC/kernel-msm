@@ -1221,6 +1221,7 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 		msm_pcie_config_l1ss(dev);
 
 	dev->link_status = MSM_PCIE_LINK_ENABLED;
+	dev->power_on = true;
 	goto out;
 
 link_fail:
@@ -1243,7 +1244,17 @@ void msm_pcie_disable(struct msm_pcie_dev_t *dev, u32 options)
 
 	if ((dev->link_status == MSM_PCIE_LINK_DISABLED)
 		&& !(options & PM_EXPT)) {
-		pr_err("PCIe:%s: the link is already enabled\n", __func__);
+		pr_err(
+			"PCIe:%s: the link of RC%d is already disabled\n",
+			__func__, dev->rc_idx);
+		mutex_unlock(&dev->setup_lock);
+		return;
+	}
+
+	if (!dev->power_on) {
+		PCIE_DBG(
+			"PCIe:%s: the link of RC%d is already power down.\n",
+			__func__, dev->rc_idx);
 		mutex_unlock(&dev->setup_lock);
 		return;
 	}
@@ -1267,6 +1278,7 @@ void msm_pcie_disable(struct msm_pcie_dev_t *dev, u32 options)
 		msm_pcie_pipe_clk_deinit(dev);
 
 	dev->link_status = MSM_PCIE_LINK_DISABLED;
+	dev->power_on = false;
 
 	mutex_unlock(&dev->setup_lock);
 }
@@ -1511,6 +1523,7 @@ static int msm_pcie_probe(struct platform_device *pdev)
 	msm_pcie_dev[rc_idx].recovery_pending = false;
 	msm_pcie_dev[rc_idx].linkdown_counter = 0;
 	msm_pcie_dev[rc_idx].wake_counter = 0;
+	msm_pcie_dev[rc_idx].power_on = false;
 	memcpy(msm_pcie_dev[rc_idx].vreg, msm_pcie_vreg_info,
 				sizeof(msm_pcie_vreg_info));
 	memcpy(msm_pcie_dev[rc_idx].gpio, msm_pcie_gpio_info,
