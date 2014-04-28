@@ -206,9 +206,16 @@ static void msm_restart_prepare(const char *cmd)
 		} else if (!strcmp(cmd, "rtc")) {
 			__raw_writel(0x77665503, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
+			int ret;
 			unsigned long code;
-			code = kstrtoul(cmd + 4, 16, NULL) & 0xff;
-			__raw_writel(0x6f656d00 | code, restart_reason);
+			ret = kstrtoul(cmd + 4, 16, &code);
+			if (!ret) {
+				code &= 0xff;
+				__raw_writel(0x6f656d00 | code, restart_reason);
+			} else {
+				pr_warn("Invalid value: force to do normal reboot\n");
+				__raw_writel(0x77665501, restart_reason);
+			}
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
 #ifdef CONFIG_LGE_HANDLE_PANIC
