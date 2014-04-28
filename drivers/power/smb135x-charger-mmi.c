@@ -68,6 +68,10 @@
 #define DCIN_AICL_BIT			BIT(2)
 
 #define CFG_C_REG			0x0C
+#define USBIN_VOLT_MODE_5V		0x00
+#define USBIN_VOLT_MODE_9V		0x60
+#define USBIN_VOLT_MODE_5V_TO_9V	0x20
+#define USBIN_VOLT_MODE_MASK		SMB135X_MASK(7, 5)
 #define USBIN_INPUT_MASK		SMB135X_MASK(4, 0)
 
 #define CFG_D_REG			0x0D
@@ -78,6 +82,7 @@
 
 #define CFG_11_REG			0x11
 #define PRIORITY_BIT			BIT(7)
+#define AUTO_SRC_DET_BIT		BIT(0)
 
 #define USBIN_DCIN_CFG_REG		0x12
 #define USBIN_SUSPEND_VIA_COMMAND_BIT	BIT(6)
@@ -349,6 +354,7 @@ struct smb135x_chg {
 	struct mutex			irq_complete;
 	struct regulator		*therm_bias_vreg;
 	struct delayed_work		wireless_insertion_work;
+	struct delayed_work		usb_insertion_work;
 
 	unsigned int			thermal_levels;
 	unsigned int			therm_lvl_sel;
@@ -356,6 +362,7 @@ struct smb135x_chg {
 	struct mutex			current_change_lock;
 	bool				factory_mode;
 	int				batt_current_ma;
+	int				apsd_rerun_cnt;
 };
 
 static struct smb135x_chg *the_chip;
@@ -618,6 +625,63 @@ static enum power_supply_property smb135x_battery_properties[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
 };
+
+static int smb135x_force_apsd(struct smb135x_chg *chip)
+{
+	int rc;
+
+	dev_info(chip->dev, "Start APSD Rerun!\n");
+	rc = smb135x_masked_write_fac(chip, CFG_C_REG,
+				      USBIN_VOLT_MODE_MASK,
+				      USBIN_VOLT_MODE_5V);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set cfg C rc = %d\n", rc);
+		goto force_apsd_err;
+	}
+
+	rc = smb135x_masked_write_fac(chip, CFG_C_REG,
+				      USBIN_VOLT_MODE_MASK,
+				      USBIN_VOLT_MODE_9V);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set cfg C rc = %d\n", rc);
+		goto force_apsd_err;
+	}
+
+	rc = smb135x_masked_write_fac(chip, CFG_11_REG,
+				      AUTO_SRC_DET_BIT,
+				      0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set cfg 11 rc = %d\n", rc);
+		goto force_apsd_err;
+	}
+
+	rc = smb135x_masked_write_fac(chip, CFG_11_REG,
+				      AUTO_SRC_DET_BIT,
+				      AUTO_SRC_DET_BIT);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set cfg 11 rc = %d\n", rc);
+		goto force_apsd_err;
+	}
+
+	rc = smb135x_masked_write_fac(chip, CFG_C_REG,
+				      USBIN_VOLT_MODE_MASK,
+				      USBIN_VOLT_MODE_5V);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set cfg C rc = %d\n", rc);
+		goto force_apsd_err;
+	}
+
+	/* RESET to Default 5V to 9V */
+	rc = smb135x_masked_write_fac(chip, CFG_C_REG,
+				      USBIN_VOLT_MODE_MASK,
+				      USBIN_VOLT_MODE_5V_TO_9V);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't set cfg C rc = %d\n", rc);
+
+force_apsd_err:
+
+	return rc;
+}
 
 static int smb135x_get_prop_batt_status(struct smb135x_chg *chip)
 {
@@ -1863,6 +1927,19 @@ static void wireless_insertion_work(struct work_struct *work)
 	smb135x_path_suspend(chip, DC, CURRENT, false);
 }
 
+static void usb_insertion_work(struct work_struct *work)
+{
+	struct smb135x_chg *chip =
+		container_of(work, struct smb135x_chg,
+				usb_insertion_work.work);
+	int rc;
+
+	rc = smb135x_force_apsd(chip);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't rerun apsd rc = %d\n", rc);
+	}
+}
+
 static int hot_hard_handler(struct smb135x_chg *chip, u8 rt_stat)
 {
 	pr_debug("rt_stat = 0x%02x\n", rt_stat);
@@ -2030,6 +2107,9 @@ static int dcin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 
 static int handle_usb_removal(struct smb135x_chg *chip)
 {
+	cancel_delayed_work(&chip->usb_insertion_work);
+	chip->apsd_rerun_cnt = 0;
+
 	if (chip->usb_psy) {
 		pr_debug("setting usb psy type = %d\n",
 				POWER_SUPPLY_TYPE_UNKNOWN);
@@ -2054,6 +2134,21 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 		dev_err(chip->dev, "Couldn't read status 5 rc = %d\n", rc);
 		return rc;
 	}
+
+	cancel_delayed_work(&chip->usb_insertion_work);
+
+	/* Rerun APSD 1 sec later */
+	if ((reg & SDP_BIT) && !chip->apsd_rerun_cnt) {
+		dev_info(chip->dev, "HW Detected SDP!\n");
+		chip->apsd_rerun_cnt++;
+		chip->usb_present = 0;
+		schedule_delayed_work(&chip->usb_insertion_work,
+				      msecs_to_jiffies(1000));
+		return 0;
+	}
+
+	chip->apsd_rerun_cnt = 0;
+
 	/*
 	 * Report the charger type as UNKNOWN if the
 	 * apsd-fail flag is set. This nofifies the USB driver
@@ -3655,6 +3750,8 @@ static int smb135x_charger_probe(struct i2c_client *client,
 
 	INIT_DELAYED_WORK(&chip->wireless_insertion_work,
 					wireless_insertion_work);
+	INIT_DELAYED_WORK(&chip->usb_insertion_work,
+					usb_insertion_work);
 
 	mutex_init(&chip->path_suspend_lock);
 	mutex_init(&chip->current_change_lock);
