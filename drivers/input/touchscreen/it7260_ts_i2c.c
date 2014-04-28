@@ -591,32 +591,96 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 			//	pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
 // ASUS_BSP +++ Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
 // Sample code for magic key detection
-#if 0
-{
+#if 1
+{	
 	static unsigned long time_start_check = 0;
-	static unsigned int match_id = 0;
-	//static unsigned char hack_code[] = {0x9,0xb,0xa,0xb,0xa,0xb,0xa,0x0};
-	static unsigned char hack_code[] = {0x9,0x0,0x9,0x0,0x9,0x0,0x9,0x0,0xFF};
+	static unsigned int match_offset = 0;
+	static unsigned int match_step = 0;
+	//static unsigned char hack_code[] = {0x9,0x0,0x9,0x0,0x9,0x0,0x9,0x0,0xFF};
+
 
 	if (time_start_check && jiffies > time_start_check + 5 * HZ){
-		printk("TIMEOUT!!!!\n");
+		//printk("Magic:TIMEOUT!!!!\n");
 		time_start_check = 0;
-		match_id = 0;
+		match_offset = 0;
+		match_step = 0;
 	}
 
+	xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
+	yraw = ((pucPoint[3] & 0xF0) << 4) + pucPoint[4];
+	
+	//printk("Magic:x=%d, y=%d, %x, %x, %x, %x, %x, %x\n\n\n\n\n\n\n", xraw, yraw,
+	//pucPoint[0], pucPoint[1], pucPoint[2], pucPoint[3], pucPoint[4], pucPoint[5]);
 
+	if (pucPoint[0])
+	{
+		if (xraw < 80 && match_step == 0)
+		{
+			if ((yraw < (80 + match_offset*50)) && (yraw > (match_offset*50)))
+			{
+				match_offset++;
+				if (match_offset == 1){
+					time_start_check = jiffies;
+				}
+				if (match_offset > 5){
+					//step1
+					match_step++;
+				}
+			}
+		}
+		if (match_step == 2)
+		{
+			if (xraw < 120 && yraw < 80)
+			{
+				//printk("Magic:match_offset = 1\n");
+				match_offset = 1;
+			}
+			else if (match_offset == 1)
+			{
+				if (xraw > 190){
+					//printk("Magic:match_offset = 2\n");
+					match_offset = 2;
+				}
+			}
+			else if (match_offset == 2)
+			{
+				if (xraw < 120 && yraw > 260){
+					printk("Touch:MAGIC KEY DETECTED !! OPEN DEBUG TOOL\n");
+					time_start_check = 0;
+					match_offset = 0;
+					match_step = 0;
+				}
+			}
+		}
+	}
+	else
+	{
+		if (match_step == 1){
+			//step2
+			match_offset = 0;
+			match_step++;
+		}
+		else{
+			//reset
+			time_start_check = 0;
+			match_offset = 0;
+			match_step = 0;
+		}
+	}
+
+/*
 	if (pucPoint[0] == hack_code[match_id]){
 		match_id ++;
 		if (match_id == 1){
 			time_start_check = jiffies;
 		}
 		if (hack_code[match_id] == 0xFF){
-			printk("MAGIC KEY DETECTED !!!!\n");
+			printk("Magic:MAGIC KEY DETECTED !!!!\n");
 			{
-				kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+				//kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 			}
 			match_id = 0;
-			return; // We skip this event.
+			//return; // We skip this event.
 		}
 	}else if (match_id > 1 && pucPoint[0] == hack_code[match_id-1])
 	{
@@ -627,7 +691,8 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 		match_id = 0;
 	}
 	//if (match_id > 0)
-		printk("Match %x,%d\n",pucPoint[0],match_id);
+		//printk("Magic:Match %x,%d\n",pucPoint[0],match_id);
+*/
 }
 #endif
 // ASUS_BSP --- Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
