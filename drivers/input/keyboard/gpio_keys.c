@@ -69,13 +69,13 @@ void wait_for_slowlog_work(struct work_struct *work)
     const int trigger_count = 30;
 	
     power_key = pwr_gpio;
-    printk("%s()++\n", __func__);
+    //printk("%s()++\n", __func__);
 	
     if(!one_slowlog_instance_running)
     { 
         if(gpio_get_value_cansleep(power_key) != 0)
         {
-			printk("%s: POWER KEY DID NOT PRESSED\n ", __func__);
+			//printk("%s: POWER KEY DID NOT PRESSED\n ", __func__);
             return;
         }
         one_slowlog_instance_running = 1;
@@ -99,8 +99,6 @@ void wait_for_slowlog_work(struct work_struct *work)
             printk("start to gi delta in %s()!!!!!\n", __func__);
             delta_all_thread_info();
             save_phone_hang_log();
-            //Dump_wcd9310_reg();     //Bruno++    
-            //printk_lcd("slow log captured\n");
         }			
         one_slowlog_instance_running = 0;
     }       
