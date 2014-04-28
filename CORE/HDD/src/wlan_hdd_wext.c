@@ -3079,11 +3079,15 @@ static int iw_set_priv(struct net_device *dev,
     }
     else if (strcasecmp(cmd, "scan-active") == 0)
     {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                   FL("making default scan to active"));
         pHddCtx->scan_info.scan_mode = eSIR_ACTIVE_SCAN;
         ret = snprintf(cmd, cmd_len, "OK");
     }
     else if (strcasecmp(cmd, "scan-passive") == 0)
     {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                   FL("making default scan to passive"));
         pHddCtx->scan_info.scan_mode = eSIR_PASSIVE_SCAN;
         ret = snprintf(cmd, cmd_len, "OK");
     }
