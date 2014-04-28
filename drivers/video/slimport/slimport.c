@@ -645,6 +645,7 @@ static void anx7808_work_func(struct work_struct *work)
 static int anx7808_enable_irq(const char *val, const struct kernel_param *kp)
 {
 	int ret;
+	int old_val = irq_enabled;
 
 	if (!the_chip)
 		return -ENODEV;
@@ -656,6 +657,11 @@ static int anx7808_enable_irq(const char *val, const struct kernel_param *kp)
 	}
 
 	if (irq_enabled) {
+		if (old_val) {
+			disable_irq(the_chip->client->irq);
+			sp_tx_power_down_and_init();
+			anx7808_unvote_usb_clk(the_chip);
+		}
 		anx7808_cbl_det_isr(the_chip->client->irq, the_chip);
 		enable_irq(the_chip->client->irq);
 	}
