@@ -136,8 +136,6 @@ static int cyttsp5_hw_power(struct device *dev, int onoff)
 	dev_info(dev, "[TSP] %s: vddo: %d, avdd: %d\n",
 			__func__, regulator_is_enabled(vddo_vreg),
 			regulator_is_enabled(avdd_vreg));
-
-	usleep_range(100000, 100100);
 	return 0;
 }
 
@@ -174,8 +172,6 @@ static int cyttsp5_init(struct cyttsp5_core_platform_data *pdata,
 	if (on) {
 		gpio_request(irq_gpio, "TSP_INT");
 		gpio_direction_input(irq_gpio);
-
-		cyttsp5_hw_power(dev, 1);
 	} else {
 		cyttsp5_hw_power(dev, 0);
 		gpio_free(irq_gpio);
@@ -773,6 +769,7 @@ static int cyttsp5_i2c_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	const struct of_device_id *match;
 
+	dev_info(&client->dev, "%s\n", __func__);
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(dev, "I2C functionality not Supported\n");
 		return -EIO;
@@ -792,6 +789,8 @@ static int cyttsp5_i2c_remove(struct i2c_client *client)
 	const struct of_device_id *match;
 	struct cyttsp5_core_data *cd = i2c_get_clientdata(client);
 
+	dev_info(&client->dev, "%s\n", __func__);
+
 	cyttsp5_release(cd);
 
 	match = of_match_device(of_match_ptr(cyttsp5_i2c_of_match), dev);
@@ -806,6 +805,8 @@ static void cyttsp5_i2c_shutdown(struct i2c_client *client)
 	struct device *dev = &client->dev;
 	const struct of_device_id *match;
 	struct cyttsp5_core_data *cd = i2c_get_clientdata(client);
+
+	dev_info(&client->dev, "%s\n", __func__);
 
 	cyttsp5_release(cd);
 

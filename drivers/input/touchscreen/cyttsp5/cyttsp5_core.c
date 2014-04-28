@@ -2994,6 +2994,8 @@ static int cyttsp5_get_hid_descriptor_(struct cyttsp5_core_data *cd,
 	int t;
 	u8 cmd[2];
 
+	dev_dbg(cd->dev, "%s\n", __func__);
+
 	/* Read HID descriptor length and version */
 	mutex_lock(&cd->system_lock);
 	cd->hid_cmd_state = 1;
@@ -3105,9 +3107,7 @@ static int cyttsp5_hw_reset(struct cyttsp5_core_data *cd)
 {
 	int rc;
 
-	mutex_lock(&cd->system_lock);
 	rc = cyttsp5_hw_hard_reset(cd);
-	mutex_unlock(&cd->system_lock);
 	if (rc == -ENOSYS)
 		rc = cyttsp5_hw_soft_reset(cd);
 	return rc;
@@ -4101,9 +4101,6 @@ static irqreturn_t cyttsp5_irq(int irq, void *handle)
 	struct cyttsp5_core_data *cd = handle;
 	int rc;
 
-	if (!cd->irq_enabled)
-		return IRQ_HANDLED;
-
 	if (cd->irq_wake) {
 		dev_err(cd->dev, "%s: touch wake!!\n", __func__);
 		wake_lock_timeout(&cd->report_touch_wake_lock, 3 * HZ);
@@ -4219,9 +4216,14 @@ static int cyttsp5_reset_and_wait(struct cyttsp5_core_data *cd)
 	cd->hid_reset_cmd_state = 1;
 	mutex_unlock(&cd->system_lock);
 
-	rc = cyttsp5_reset(cd);
-	if (rc < 0)
-		goto error;
+	if (cd->sysinfo.ready) {
+		rc = cyttsp5_reset(cd);
+		if (rc < 0)
+			goto error;
+	} else {
+		dev_dbg(cd->dev, "%s: hw power on now\n", __func__);
+		rc = cd->cpdata->power(cd->cpdata, 1, cd->dev, 0);
+	}
 
 	t = wait_event_timeout(cd->wait_q, (cd->hid_reset_cmd_state == 0),
 			msecs_to_jiffies(CY_HID_RESET_TIMEOUT));
@@ -4503,17 +4505,18 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 
 	cyttsp5_stop_wd_timer(cd);
 
-	rc = cyttsp4_check_and_deassert_int(cd);
-	if (rc < 0)
-		dev_err(cd->dev, "%s: check_and_deassert_int r=%d\n",
-				__func__, rc);
+	if (cd->sysinfo.ready) {
+		rc = cyttsp4_check_and_deassert_int(cd);
+		if (rc < 0)
+			dev_err(cd->dev, "%s: check_and_deassert_int r=%d\n",
+					__func__, rc);
+	}
 
 	/* reset hardware */
 	rc = cyttsp5_reset_and_wait(cd);
 	if (rc < 0)
 		dev_err(cd->dev, "%s: Error on h/w reset r=%d\n",
 				__func__, rc);
-	msleep(200);
 
 	rc = cyttsp5_get_hid_descriptor_(cd, &cd->hid_desc);
 	if (rc < 0) {
@@ -5519,23 +5522,21 @@ int cyttsp5_release(struct cyttsp5_core_data *cd)
 {
 	struct device *dev = cd->dev;
 
-	cyttsp5_device_access_release(dev);
-	cyttsp5_samsung_factory_release(dev);
-	cyttsp5_mt_release(dev);
-	cyttsp5_loader_release(dev);
+	device_init_wakeup(dev, 0);
+	disable_irq(cd->irq);
 
 	/*
 	 * Suspend the device before freeing the startup_work and stopping
 	 * the watchdog since sleep function restarts watchdog on failure
 	 */
-	/*pm_runtime_suspend(dev);
-	pm_runtime_disable(dev);*/
-
+	cyttsp5_core_suspend(dev);
 	cancel_work_sync(&cd->startup_work);
-
 	cyttsp5_stop_wd_timer(cd);
 
-	device_init_wakeup(dev, 0);
+	cyttsp5_device_access_release(dev);
+	cyttsp5_samsung_factory_release(dev);
+	cyttsp5_mt_release(dev);
+	cyttsp5_loader_release(dev);
 
 #ifdef TTHE_TUNER_SUPPORT
 	mutex_lock(&cd->tthe_lock);
