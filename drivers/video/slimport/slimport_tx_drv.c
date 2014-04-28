@@ -104,7 +104,6 @@ void sp_tx_variable_init(void)
 	sp_tx_hw_hdcp_en = 0;
 	sp_tx_hdcp_capable_chk = 0;
 	sp_tx_hdcp_auth_done = 0;
-	sp_tx_pd_mode = 1;
 	sp_tx_rx_type = RX_NULL;
 	sp_tx_rx_type_backup = RX_NULL;
 	sp_tx_hw_lt_done = 0;
@@ -280,7 +279,6 @@ void sp_tx_power_down_and_init(void)
 	sp_tx_power_down(SP_TX_PWR_TOTAL);
 	sp_tx_hardware_powerdown();
 	sp_tx_clean_hdcp();
-	sp_tx_pd_mode = 1;
 	sp_tx_link_config_done = 0;
 	sp_tx_hw_lt_enable = 0;
 	sp_tx_hw_lt_done = 0;

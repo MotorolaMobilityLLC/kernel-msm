@@ -280,6 +280,8 @@ void sp_tx_hardware_poweron(void)
 	msleep(5);
 	gpio_set_value(the_chip->gpio_reset, 1);
 
+	sp_tx_pd_mode = 0;
+
 	pr_info("anx7808 power on\n");
 }
 
@@ -289,6 +291,8 @@ void sp_tx_hardware_powerdown(void)
 
 	if (!the_chip)
 		return;
+
+	sp_tx_pd_mode = 1;
 
 	gpio_set_value(the_chip->gpio_reset, 0);
 	msleep(1);
@@ -323,7 +327,6 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 					if (status)
 						pr_err("failed to turn on hpd\n");
 				}
-				sp_tx_pd_mode = 0;
 				sp_tx_hardware_poweron();
 				sp_tx_power_on(SP_TX_PWR_REG);
 				sp_tx_power_on(SP_TX_PWR_TOTAL);
