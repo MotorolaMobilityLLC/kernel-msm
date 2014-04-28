@@ -41,3 +41,35 @@
 			<&pma8084_mpps 6 0x1>; /* GPIOF_IN */
 	};
 };
+
+&i2c_0 {
+	mmi_wls_chrg@6c {
+		gpios = <&pma8084_gpios 1 0x1>, /* GPIOF_IN */
+			<&pma8084_mpps 4 0x2>, /* GPIOF_OUT_INIT_HIGH */
+			<&msmgpio 66 0x0>; /* GPIOF_OUT_INIT_LOW */
+	};
+};
+
+&pma8084_gpios {
+	gpio@d000 { /* GPIO 17 */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,invert = <0>;		/* Output low initially */
+		qcom,vin-sel = <2>;		/* VIN 2 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,out-strength = <2>;	/* Medium */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+};
+
+&pma8084_mpps {
+	mpp@a300 { /* MPP 4 */
+		/* Wireless Charge Complete N */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <1>;		/* Open Drain NMOS logic */
+		qcom,vin-sel = <2>;		/* VIN 2 */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+};
