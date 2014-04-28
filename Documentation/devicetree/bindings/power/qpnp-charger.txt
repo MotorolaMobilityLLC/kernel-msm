@@ -114,8 +114,10 @@ Parent node optional properties:
                                         charge at a reduced rate.  USAGE HAS BEEN DEPRECATED STARTING MSM8974
 - qcom,step-charge-soc                  SOC threshold for High Voltage batteries to
                                         charge at a reduced rate.
-- qcom,step-charge-current             Reduced charge rate for High Voltage batteries
+- qcom,step-charge-current              Reduced charge rate for High Voltage batteries
                                         which are above a certain Voltage threshold
+- qcom,ir-comp                          Indicates support for Fast charge / Turbo feature where
+                                        IR compensaton is needed.
 
 Sub node required structure:
 - A qcom,chg node must be a child of an SPMI node that has specified
