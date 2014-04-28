@@ -5545,7 +5545,7 @@ tANI_BOOLEAN csrMatchBSS( tHalHandle hHal, tSirBssDescription *pBssDesc, tCsrSca
         }
 #endif
         if ( !csrIsPhyModeMatch( pMac, pFilter->phyMode, pBssDesc, NULL, NULL, pIes ) ) break;
-        if ( (!pFilter->bWPSAssociation) &&
+        if ( (!pFilter->bWPSAssociation) && (!pFilter->bOSENAssociation) &&
              !csrIsSecurityMatch( pMac, &pFilter->authType, &pFilter->EncryptionType, &pFilter->mcEncryptionType,
                                  pBssDesc, pIes, pNegAuth, pNegUc, pNegMc ) ) break;
         if ( !csrIsCapabilitiesMatch( pMac, pFilter->BSSType, pBssDesc ) ) break;

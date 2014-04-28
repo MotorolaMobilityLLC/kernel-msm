@@ -8907,6 +8907,7 @@ eHalStatus csrRoamPrepareFilterFromProfile(tpAniSirGlobal pMac, tCsrRoamProfile 
 #endif /* FEATURE_WLAN_WAPI */
         /*Save the WPS info*/
         pScanFilter->bWPSAssociation = pProfile->bWPSAssociation;
+        pScanFilter->bOSENAssociation = pProfile->bOSENAssociation;
         if( pProfile->countryCode[0] )
         {
             //This causes the matching function to use countryCode as one of the criteria.

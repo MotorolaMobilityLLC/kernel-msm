@@ -5855,6 +5855,14 @@ static int wlan_hdd_set_akm_suite( hdd_adapter_t *pAdapter,
             pWextState->authKeyMgmt |= IW_AUTH_KEY_MGMT_CCKM;
             break;
 #endif
+#ifndef WLAN_AKM_SUITE_OSEN
+#define WLAN_AKM_SUITE_OSEN         0x506f9a01 /* Should be in ieee802_11_defs.h */
+        case WLAN_AKM_SUITE_OSEN:
+            hddLog(VOS_TRACE_LEVEL_INFO, "%s: setting key mgmt type to OSEN",
+                            __func__);
+            pWextState->authKeyMgmt |= IW_AUTH_KEY_MGMT_802_1X;
+            break;
+#endif
 
         default:
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Unsupported key mgmt type %d",
