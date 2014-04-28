@@ -306,6 +306,10 @@
 	};
 };
 
+&pma8084_lvs2 {
+	regulator-always-on;
+};
+
 &pma8084_lvs3 {
 	regulator-always-on;
 };
