@@ -249,7 +249,8 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 		mdss_mdp_ctl_intf_event
 			(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-		if (ctx->panel_on)
+		if (ctx->panel_on &&
+			ctx->ctl->panel_data->panel_info.ulps_feature_enabled)
 			schedule_delayed_work(&ctx->ulps_work, ULPS_ENTER_TIME);
 	}
 	mutex_unlock(&ctx->clk_mtx);
