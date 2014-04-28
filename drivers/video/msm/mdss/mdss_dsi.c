@@ -24,6 +24,7 @@
 #include <linux/regulator/consumer.h>
 
 #include "mdss.h"
+#include "mdss_mdp.h"
 #include "mdss_panel.h"
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
@@ -300,11 +301,15 @@ static int mdss_dsi_get_panel_cfg(char *panel_cfg)
 	return rc;
 }
 
+static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+				int enable, int partial);
+
 static int mdss_dsi_off(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *panel_info = NULL;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -325,21 +330,27 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__,
 				ctrl_pdata, ctrl_pdata->ndx);
 
-	if (pdata->panel_info.type == MIPI_CMD_PANEL)
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+	if (ctrl_pdata->partial_mode_enabled
+		&& !pdata->panel_info.panel_dead) {
+		mdss_dsi_ulps_config_sub(ctrl_pdata, 1, 1);
+		mdata->ulps = true;
+	} else {
+		if (pdata->panel_info.type == MIPI_CMD_PANEL)
+			mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
-	/* disable DSI controller */
-	mdss_dsi_controller_cfg(0, pdata);
+		/* disable DSI controller */
+		mdss_dsi_controller_cfg(0, pdata);
 
-	/* disable DSI phy */
-	mdss_dsi_phy_disable(ctrl_pdata);
+		/* disable DSI phy */
+		mdss_dsi_phy_disable(ctrl_pdata);
 
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
-	ret = mdss_dsi_panel_power_on(pdata, 0);
-	if (ret) {
-		pr_err("%s: Panel power off failed\n", __func__);
-		return ret;
+		ret = mdss_dsi_panel_power_on(pdata, 0);
+		if (ret) {
+			pr_err("%s: Panel power off failed\n", __func__);
+			return ret;
+		}
 	}
 
 	if (panel_info->dynamic_fps
@@ -444,7 +455,7 @@ static inline bool __mdss_dsi_ulps_feature_enabled(
 }
 
 static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
-	int enable)
+				int enable, int partial)
 {
 	int ret = 0;
 	struct mdss_panel_data *pdata = NULL;
@@ -464,7 +475,7 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	}
 	pinfo = &pdata->panel_info.mipi;
 
-	if (!__mdss_dsi_ulps_feature_enabled(pdata)) {
+	if (!partial && !__mdss_dsi_ulps_feature_enabled(pdata)) {
 		pr_debug("%s: ULPS feature not supported. enable=%d\n",
 			__func__, enable);
 		return -ENOTSUPP;
@@ -472,12 +483,13 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 
 	if (enable && !ctrl_pdata->ulps) {
 		/* No need to configure ULPS mode when entering suspend state */
-		if (!pdata->panel_info.panel_power_on) {
+		if (!partial && !pdata->panel_info.panel_power_on) {
 			pr_err("%s: panel off. returning\n", __func__);
 			goto error;
 		}
 
-		if (__mdss_dsi_clk_enabled(ctrl_pdata, DSI_LINK_CLKS)) {
+		if (!partial &&
+			__mdss_dsi_clk_enabled(ctrl_pdata, DSI_LINK_CLKS)) {
 			pr_err("%s: cannot enter ulps mode if dsi clocks are on\n",
 				__func__);
 			ret = -EPERM;
@@ -618,14 +630,14 @@ static int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl,
 	if (mctrl) {
 		pr_debug("%s: configuring ulps (%s) for master ctrl%d\n",
 			__func__, (enable ? "on" : "off"), ctrl->ndx);
-		rc = mdss_dsi_ulps_config_sub(mctrl, enable);
+		rc = mdss_dsi_ulps_config_sub(mctrl, enable, 0);
 		if (rc)
 			return rc;
 	}
 
 	pr_debug("%s: configuring ulps (%s) for ctrl%d\n",
 		__func__, (enable ? "on" : "off"), ctrl->ndx);
-	return mdss_dsi_ulps_config_sub(ctrl, enable);
+	return mdss_dsi_ulps_config_sub(ctrl, enable, 0);
 }
 
 int mdss_dsi_on(struct mdss_panel_data *pdata)
@@ -634,6 +646,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	struct mdss_panel_info *pinfo;
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -654,36 +667,43 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	mipi = &pdata->panel_info.mipi;
 
-	ret = mdss_dsi_panel_power_on(pdata, 1);
-	if (ret) {
-		pr_err("%s:Panel power on failed. rc=%d\n", __func__, ret);
-		return ret;
-	}
-
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
-	if (ret) {
-		pr_err("%s: failed to enable bus clocks. rc=%d\n", __func__,
-			ret);
-		ret = mdss_dsi_panel_power_on(pdata, 0);
+	if (ctrl_pdata->partial_mode_enabled
+		&& !pdata->panel_info.panel_dead) {
+		mdss_dsi_ulps_config_sub(ctrl_pdata, 0, 1);
+		mdata->ulps = false;
+		pdata->panel_info.panel_power_on = 1;
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+	} else {
+		ret = mdss_dsi_panel_power_on(pdata, 1);
 		if (ret) {
-			pr_err("%s: Panel reset failed. rc=%d\n",
-					__func__, ret);
+			pr_err("%s:Panel power on failed. rc=%d\n", __func__, ret);
 			return ret;
 		}
-		pdata->panel_info.panel_power_on = 0;
-		return ret;
+
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
+		if (ret) {
+			pr_err("%s: failed to enable bus clocks. rc=%d\n", __func__,
+				ret);
+			ret = mdss_dsi_panel_power_on(pdata, 0);
+			if (ret) {
+				pr_err("%s: Panel reset failed. rc=%d\n",
+					__func__, ret);
+				return ret;
+			}
+			pdata->panel_info.panel_power_on = 0;
+			return ret;
+		}
+		pdata->panel_info.panel_power_on = 1;
+
+		mdss_dsi_phy_sw_reset((ctrl_pdata->ctrl_base));
+		mdss_dsi_phy_init(pdata);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+
+		__mdss_dsi_ctrl_setup(pdata);
+		mdss_dsi_sw_reset(pdata);
+		mdss_dsi_host_init(pdata);
 	}
-	pdata->panel_info.panel_power_on = 1;
-
-	mdss_dsi_phy_sw_reset((ctrl_pdata->ctrl_base));
-	mdss_dsi_phy_init(pdata);
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
-
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-
-	__mdss_dsi_ctrl_setup(pdata);
-	mdss_dsi_sw_reset(pdata);
-	mdss_dsi_host_init(pdata);
 
 	/*
 	 * Issue hardware reset line after enabling the DSI clocks and data
