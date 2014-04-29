@@ -50,4 +50,10 @@ int fb_quickdraw_put_buffer(struct fb_quickdraw_buffer *buffer);
 int fb_quickdraw_lock_buffer(struct fb_quickdraw_buffer *buffer);
 int fb_quickdraw_unlock_buffer(struct fb_quickdraw_buffer *buffer);
 
+static inline int fb_quickdraw_check_alignment(int value, int align)
+{
+	return value % align;
+}
+int fb_quickdraw_correct_alignment(int coord, int align);
+
 #endif /* _FB_QUICKDRAW_OPS_H_ */
