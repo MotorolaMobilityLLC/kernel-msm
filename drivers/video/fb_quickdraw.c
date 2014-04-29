@@ -236,6 +236,27 @@ exit:
 	return ret;
 }
 
+int fb_quickdraw_correct_alignment(int coord, int align)
+{
+	int ret = coord;
+
+	pr_debug("%s+ (coord: %d, align: %d)\n", __func__, ret, align);
+
+	if (align > 1) {
+		int temp_coord;
+		align = coord < 0 ? -align : align;
+		temp_coord = coord + (int)(align / 2);
+		ret = temp_coord - temp_coord % align;
+	}
+
+	if (ret != coord)
+		pr_warn("%s: coord[%d] corrected to: %d", __func__, coord, ret);
+
+	pr_debug("%s- (coord: %d, align: %d)\n", __func__, ret, align);
+
+	return ret;
+}
+
 /* Quickdraw Userspace Interface */
 
 static int fb_quickdraw_add_buffer(struct fb_quickdraw_buffer_data *data)
