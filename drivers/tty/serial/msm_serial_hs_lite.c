@@ -1499,13 +1499,14 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 		}
 		return;
 	}else{
-		gpio_set_value(32,0);
 		if (blocked_buf_cur){
 			int cnt = blocked_buf_cur;
 			blocked_buf_cur = 0;
 			msm_hsl_console_write(co, blocked_buf,cnt);
 		}
 	}
+
+	gpio_set_value(32,0);
 
 // ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
 
@@ -1528,8 +1529,14 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 		spin_unlock(&port->lock);
 
 // ASUS_BSP +++ Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
-	while (	! (msm_hsl_read(port, regmap[vid][UARTDM_SR]) & UARTDM_SR_TXEMT_BMSK) )
-		mdelay(1);
+{
+	int wait_retry = 100;
+	while (wait_retry && ! (msm_hsl_read(port, regmap[vid][UARTDM_SR]) & UARTDM_SR_TXEMT_BMSK) )
+	{
+		udelay(100);
+		wait_retry --;
+	}
+}
 
 	gpio_set_value(32,1); 
 // ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
