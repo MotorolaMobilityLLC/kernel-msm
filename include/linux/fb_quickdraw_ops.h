@@ -57,5 +57,8 @@ static inline int fb_quickdraw_check_alignment(int value, int align)
 	return value % align;
 }
 int fb_quickdraw_correct_alignment(int coord, int align);
+void fb_quickdraw_clip_rect(int panel_xres, int panel_yres, int x, int y,
+			    int w, int h, struct fb_quickdraw_rect *src_rect,
+			    struct fb_quickdraw_rect *dst_rect);
 
 #endif /* _FB_QUICKDRAW_OPS_H_ */
