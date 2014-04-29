@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-#include "external-mdm9x25.dtsi"
+#include "../qcom/external-mdm9x25.dtsi"
 #include "apq8084-mot-camera-sensor.dtsi"
 
 / {
