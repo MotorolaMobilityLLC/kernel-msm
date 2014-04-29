@@ -618,10 +618,9 @@
 	};
 
 	mpp@a300 { /* MPP 4 */
-		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <1>;	  /* No pull */
-		qcom,vin-sel = <2>;
-		qcom,master-en = <0>;		/* Disable GPIO */
+		qcom,mode = <4>;          /* QPNP_PIN_MODE_AIN */
+		qcom,ain-route = <3>;	/* QPNP_PIN_AIN_AMUX_CH8 */
+		qcom,master-en = <1>;		/* Enable */
 	};
 
 	mpp@a400 { /* MPP 5 */
@@ -635,9 +634,8 @@
 	};
 
 	mpp@a600 { /* MPP 7 */
-		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <1>;	/* No pull */
-		qcom,vin-sel = <2>;
+		qcom,mode = <4>;          /* QPNP_PIN_MODE_AIN */
+		qcom,ain-route = <2>;	/* QPNP_PIN_AIN_AMUX_CH7 */
 		qcom,master-en = <1>;
 	};
 
@@ -650,6 +648,26 @@
 	chan@7 {
 		label = "vph_pwr";
 		reg = <0x7>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+	chan@23 {
+		label = "bphi";
+		reg = <0x23>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+	chan@26 {
+		label = "rf_bphi";
+		reg = <0x26>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <1>;
 		qcom,calibration-type = "absolute";
