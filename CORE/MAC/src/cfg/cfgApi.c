@@ -979,7 +979,7 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
     }
 
     // Spectrum Management bit
-    if((eLIM_STA_IN_IBSS_ROLE != systemRole) &&
+    if((eLIM_STA_IN_IBSS_ROLE != systemRole) && (eLIM_AP_ROLE != systemRole) &&
             sessionEntry->lim11hEnable )
     {
       if (wlan_cfgGetInt(pMac, WNI_CFG_11H_ENABLED, &val) != eSIR_SUCCESS)
