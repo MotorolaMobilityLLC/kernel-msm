@@ -1529,7 +1529,8 @@ int wlan_hdd_ftm_close(hdd_context_t *pHddCtx)
 
 static VOS_STATUS wlan_ftm_send_response(hdd_context_t *pHddCtx){
 
-   if( ptt_sock_send_msg_to_app(&pHddCtx->ftm.wnl->wmsg, 0, ANI_NL_MSG_PUMAC, pHddCtx->ftm.wnl->nlh.nlmsg_pid) < 0) {
+   if( ptt_sock_send_msg_to_app(&pHddCtx->ftm.wnl->wmsg, 0,
+                   ANI_NL_MSG_PUMAC, pHddCtx->ftm.wnl->nlh.nlmsg_pid, 0) < 0) {
 
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, ("Ptt Socket error sending message to the app!!"));
        return VOS_STATUS_E_FAILURE;
@@ -5131,7 +5132,8 @@ VOS_STATUS wlan_write_to_efs (v_U8_t *pData, v_U16_t data_len)
     memcpy(pBuf, pData,data_len);
 
    if(pHddCtx->ftm.cmd_iwpriv == TRUE) {
-       if( ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, pHddCtx->ptt_pid) < 0) {
+       if( ptt_sock_send_msg_to_app(wmsg, 0,
+                      ANI_NL_MSG_PUMAC, pHddCtx->ptt_pid, 0) < 0) {
 
            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, ("Ptt Socket error sending message to the app!!"));
            vos_mem_free((v_VOID_t*)wmsg);
@@ -5139,7 +5141,8 @@ VOS_STATUS wlan_write_to_efs (v_U8_t *pData, v_U16_t data_len)
        }
    }
    else {
-    if( ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, pHddCtx->ftm.wnl->nlh.nlmsg_pid) < 0) {
+    if( ptt_sock_send_msg_to_app(wmsg, 0,
+                    ANI_NL_MSG_PUMAC, pHddCtx->ftm.wnl->nlh.nlmsg_pid, 0) < 0) {
 
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, ("Ptt Socket error sending message to the app!!"));
         vos_mem_free((v_VOID_t*)wmsg);
