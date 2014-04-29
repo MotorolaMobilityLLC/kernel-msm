@@ -16991,6 +16991,7 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
 #if defined(FEATURE_WLAN_LFR) || defined(FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_ESE_UPLOAD)
     tCsrRoamInfo roamInfo;
 #endif
+    eCsrAuthType conn_Auth_type;
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
     status = csrNeighborRoamPreauthRspHandler(pMac, pFTPreAuthRsp->status);
@@ -17055,10 +17056,44 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
 
 #endif
 
+    // If its an Open Auth, FT IEs are not provided by supplicant
+    // Hence populate them here
+    conn_Auth_type = pMac->roam.roamSession[pMac->ft.ftSmeContext.smeSessionId].connectedProfile.AuthType;
+    pMac->ft.ftSmeContext.addMDIE = FALSE;
+    if( csrRoamIs11rAssoc(pMac) &&
+        (conn_Auth_type == eCSR_AUTH_TYPE_OPEN_SYSTEM))
+    {
+        tANI_U16 ft_ies_length;
+        ft_ies_length = pFTPreAuthRsp->ric_ies_length;
+
+        if ( (pMac->ft.ftSmeContext.reassoc_ft_ies) &&
+             (pMac->ft.ftSmeContext.reassoc_ft_ies_length))
+        {
+            vos_mem_free(pMac->ft.ftSmeContext.reassoc_ft_ies);
+            pMac->ft.ftSmeContext.reassoc_ft_ies_length = 0;
+        }
+
+        pMac->ft.ftSmeContext.reassoc_ft_ies = vos_mem_malloc(ft_ies_length);
+        if ( NULL == pMac->ft.ftSmeContext.reassoc_ft_ies )
+        {
+            smsLog( pMac, LOGE, FL("Memory allocation failed for ft_ies"));
+        }
+        else
+        {
+            // Copy the RIC IEs to reassoc IEs
+            vos_mem_copy(((tANI_U8 *)pMac->ft.ftSmeContext.reassoc_ft_ies),
+                           (tANI_U8 *)pFTPreAuthRsp->ric_ies,
+                            pFTPreAuthRsp->ric_ies_length);
+            pMac->ft.ftSmeContext.reassoc_ft_ies_length = ft_ies_length;
+            pMac->ft.ftSmeContext.addMDIE = TRUE;
+        }
+    }
+
     // Done with it, init it.
     pMac->ft.ftSmeContext.psavedFTPreAuthRsp = NULL;
 }
 #endif
+
 #ifdef FEATURE_WLAN_BTAMP_UT_RF
 void csrRoamJoinRetryTimerHandler(void *pv)
 {
