@@ -241,6 +241,11 @@ int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf)
 	if (!the_chip)
 		return -EINVAL;
 
+	if (sp_tx_pd_mode) {
+		pr_debug("tried to access the sp reg after power down\n");
+		return -EIO;
+	}
+
 	the_chip->client->addr = (slave_addr >> 1);
 	ret = i2c_smbus_read_byte_data(the_chip->client, offset);
 	if (ret < 0) {
@@ -258,6 +263,11 @@ int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value)
 
 	if (!the_chip)
 		return -EINVAL;
+
+	if (sp_tx_pd_mode) {
+		pr_debug("tried to access the sp reg after power down\n");
+		return -EIO;
+	}
 
 	the_chip->client->addr = (slave_addr >> 1);
 	ret = i2c_smbus_write_byte_data(the_chip->client, offset, value);
