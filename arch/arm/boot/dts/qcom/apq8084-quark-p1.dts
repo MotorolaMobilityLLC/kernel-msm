@@ -73,4 +73,10 @@
 		qcom,out-strength = <1>;	/* Low */
 		qcom,master-en = <1>;		/* Enable GPIO */
 	};
+	mpp@a600 { /* MPP 7 */
+		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <1>;	/* No pull */
+		qcom,vin-sel = <2>;
+		qcom,master-en = <1>;
+	};
 };
