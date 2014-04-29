@@ -1365,9 +1365,27 @@ static struct msm_gpiomux_config cycapsence_issp_gpio_configs[] = {
 	},
 };
 
-static struct msm_gpiomux_config battwarn_config[] __initdata = {
+static struct gpiomux_setting fact_kill_dis = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+static struct msm_gpiomux_config fact_support_config[] __initdata = {
 	{
 		.gpio = 34, /* BATT_DISCON_WARN_N */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_mux_input_pull_none,
+		},
+	},
+	{
+		.gpio = 126, /* FACT_KILL_DISABLE */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &fact_kill_dis,
+		},
+	},
+	{
+		.gpio = 146, /* FACT_CBL_DET */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_mux_input_pull_none,
 		},
@@ -1460,8 +1478,8 @@ void __init apq8084_moto_init_gpiomux(void)
 	msm_gpiomux_install(cycapsence_issp_gpio_configs,
 			ARRAY_SIZE(cycapsence_issp_gpio_configs));
 
-	msm_gpiomux_install(battwarn_config, ARRAY_SIZE(battwarn_config));
-	msm_gpiomux_install(max17050_configs, ARRAY_SIZE(battwarn_config));
+	msm_gpiomux_install(fact_support_config, ARRAY_SIZE(fact_support_config));
+	msm_gpiomux_install(max17050_configs, ARRAY_SIZE(max17050_configs));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())
