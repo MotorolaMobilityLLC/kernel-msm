@@ -56,6 +56,10 @@ int g_BatFil_InPhoneCall_PastTime = 0;
  */
 
 
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+extern char g_CHG_mode;
+#endif
+
 //Eason:fix Cap drop too slowly in unattended mode+++
  /*
  *- interval           
@@ -529,6 +533,18 @@ int AXC_Cap_Filter_A66_FilterCapacity(struct AXI_Cap_Filter *apCapFilter, int no
 		pr_info("[BAT][Fil]%s(), bat low and cap <= 3, shutdown!! \n", __func__);
 		return BAT_LIFE_TO_SHUTDOWN;
 	}
+	
+#ifndef ASUS_FACTORY_BUILD
+	if ((nowCap <= 0) && (lastCap <= 3)
+#ifdef ASUS_CHARGING_MODE
+	 && (g_CHG_mode != 1)
+#endif
+	 ) {
+		pr_info("[BAT][Fil]%s(), bat low and cap <= 3, shutdown!! \n", __func__);
+		return BAT_LIFE_TO_SHUTDOWN;
+	}
+#endif
+	
 	//Eason: if BatLow keep 15 min, shutdown devices+++
 	if (isBatLow && g_batLowLongTimeShut && (nowCap <= BATLOW_LONGTIME_SHUT_CAP) && (lastCap <= BATLOW_LONGTIME_SHUT_CAP)){
 //		ASUSEvtlog("[BAT][Fil][BatLow]Long tme => shutdown\n");
