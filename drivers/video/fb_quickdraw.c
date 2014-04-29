@@ -236,6 +236,56 @@ exit:
 	return ret;
 }
 
+void fb_quickdraw_clip_rect(int panel_xres, int panel_yres, int x, int y,
+			    int w, int h, struct fb_quickdraw_rect *src_rect,
+			    struct fb_quickdraw_rect *dst_rect)
+{
+	int clip_x = x;
+	int clip_y = y;
+
+	pr_debug("%s+ [panel: %d,%d] [x:%d|y:%d][w:%d|h:%d]\n", __func__,
+		panel_xres, panel_yres, x, y, w, h);
+
+	if (clip_x < 0) {
+		w += clip_x;
+		clip_x = 0;
+	}
+
+	if (clip_x + w > panel_xres)
+		w = panel_xres - clip_x;
+
+	if (clip_y < 0) {
+		h += clip_y;
+		clip_y = 0;
+	}
+
+	if (clip_y + h > panel_yres)
+		h = panel_yres - clip_y;
+
+	w = w < 0 ? 0 : w;
+	h = h < 0 ? 0 : h;
+
+	if (src_rect) {
+		src_rect->x = clip_x - x;
+		src_rect->y = clip_y - y;
+		src_rect->w = w;
+		src_rect->h = h;
+		pr_debug("%s src[x:%d|y:%d][w:%d|h:%d]\n", __func__,
+			src_rect->x, src_rect->y, src_rect->w, src_rect->h);
+	}
+
+	if (dst_rect) {
+		dst_rect->x = clip_x;
+		dst_rect->y = clip_y;
+		dst_rect->w = w;
+		dst_rect->h = h;
+		pr_debug("%s dst[x:%d|y:%d][w:%d|h:%d]\n", __func__,
+			dst_rect->x, dst_rect->y, dst_rect->w, dst_rect->h);
+	}
+
+	pr_debug("%s-\n", __func__);
+}
+
 int fb_quickdraw_correct_alignment(int coord, int align)
 {
 	int ret = coord;
