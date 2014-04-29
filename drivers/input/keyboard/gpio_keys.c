@@ -50,7 +50,7 @@ struct gpio_keys_drvdata {
 	struct mutex disable_lock;
 	struct gpio_button_data data[0];
 };
-
+struct gpio_keys_drvdata *g_ddata;				//ASUS_BSP +++ Maggie_Lee "temporary solution for tilt-to-wake"
 //jack for debug slow
 //#include "../../../sound/soc/codecs/wcd9310.h"
 //const int vol_up_gpio = 1;
@@ -448,6 +448,20 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	}
 	input_sync(input);
 }
+
+//ASUS_BSP +++ Maggie_Lee "temporary solution for tilt-to-wake"
+void public_gpio_keys_gpio_report_event(void)
+{
+	struct input_dev *input = g_ddata->input;
+	unsigned int type = EV_KEY;
+	
+	pr_info("%s:key code=116  state=presss \n",__func__); 
+	input_event(input, type, 116, 1);
+	pr_info("%s:key code=116  state=release \n",__func__); 
+	input_event(input, type, 116, 0);
+	input_sync(input);
+}
+//ASUS_BSP --- Maggie_Lee "temporary solution for tilt-to-wake"
 
 static void gpio_keys_gpio_work_func(struct work_struct *work)
 {
@@ -858,6 +872,7 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	ddata = kzalloc(sizeof(struct gpio_keys_drvdata) +
 			pdata->nbuttons * sizeof(struct gpio_button_data),
 			GFP_KERNEL);
+	g_ddata = ddata;					//ASUS_BSP +++ Maggie_Lee "temporary solution for tilt-to-wake"
 	input = input_allocate_device();
 	if (!ddata || !input) {
 		dev_err(dev, "failed to allocate state\n");
