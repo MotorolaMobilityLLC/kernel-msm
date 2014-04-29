@@ -652,7 +652,7 @@ factory_modem_check(const char *data, size_t size, struct pil_desc *desc)
 	pil_info(desc, "found modem cert %ld\n", id);
 
 	/* certificates 73-78 indicate a factory modem */
-	if (id < 73 && id > 78)
+	if (id < 73 || id > 78)
 		return false;
 
 	/* trustzone oem service check if factory modem is allowed. */
