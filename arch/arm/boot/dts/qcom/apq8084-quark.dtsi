@@ -82,6 +82,10 @@
 	sound {
 		qcom,ext_hs_detect = "tpa6165";
 	};
+
+	qcom,hdmi_tx@fd922100 {
+		status = "disabled";
+	};
 };
 
 &i2c_1 {
