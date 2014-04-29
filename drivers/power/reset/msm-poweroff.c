@@ -195,7 +195,6 @@ static void halt_spmi_pmic_arbiter(void)
 		scm_call_atomic1(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER, 0);
 	}
 }
-
 static void msm_restart_prepare(const char *cmd)
 {
 #ifndef CONFIG_SEC_DEBUG
@@ -228,7 +227,8 @@ static void msm_restart_prepare(const char *cmd)
 #endif
 	pr_info("preparing for restart now\n");
 	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
+	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0')
+		 || is_lpm_mode())
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
