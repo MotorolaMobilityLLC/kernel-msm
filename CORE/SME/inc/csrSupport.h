@@ -40,6 +40,7 @@
 #include "vos_nvitem.h"
 
 #ifdef FEATURE_WLAN_WAPI
+#define CSR_WAPI_OUI_ROW_SIZE          ( 3 )
 #define CSR_WAPI_OUI_SIZE              ( 4 )
 #define CSR_WAPI_VERSION_SUPPORTED     ( 1 )
 #define CSR_WAPI_MAX_AUTH_SUITES       ( 2 )
