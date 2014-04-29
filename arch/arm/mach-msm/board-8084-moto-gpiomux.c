@@ -26,6 +26,12 @@ static struct gpiomux_setting gpio_mux_input_pull_none = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting gpio_mux_input_pull_down = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 static struct gpiomux_setting ap2mdm_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -1330,6 +1336,16 @@ static struct msm_gpiomux_config tmp108_configs[] __initdata = {
 	}
 };
 
+static struct msm_gpiomux_config display_gpio_configs[] __initdata = {
+	{
+		.gpio = 32, /* DISP_BL_RST_N */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_mux_input_pull_down,
+		},
+	},
+};
+
+
 static struct gpiomux_setting cycapsense_reset = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -1477,6 +1493,8 @@ void __init apq8084_moto_init_gpiomux(void)
 	msm_gpiomux_install(tmp108_configs, ARRAY_SIZE(tmp108_configs));
 	msm_gpiomux_install(cycapsence_issp_gpio_configs,
 			ARRAY_SIZE(cycapsence_issp_gpio_configs));
+	msm_gpiomux_install(display_gpio_configs,
+			ARRAY_SIZE(display_gpio_configs));
 
 	msm_gpiomux_install(fact_support_config, ARRAY_SIZE(fact_support_config));
 	msm_gpiomux_install(max17050_configs, ARRAY_SIZE(max17050_configs));
