@@ -112,7 +112,7 @@ extern void hdd_resume_wlan(struct early_suspend *wlan_suspend);
 #endif
 
 #define HDD_FINISH_ULA_TIME_OUT    800
-
+#define COUNTRY_CODE_LEN   2
 
 extern int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand);
 
@@ -4967,7 +4967,9 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             VOS_STATUS status;
             v_U8_t i, len;
             char* buf ;
-
+            tANI_U8 pBuf[COUNTRY_CODE_LEN];
+            tANI_U8 uBufLen = COUNTRY_CODE_LEN;
+            hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
             tChannelListInfo channel_list;
 
             memset(&channel_list, 0, sizeof(channel_list));
@@ -4993,6 +4995,15 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             }
             len = scnprintf(buf, WE_MAX_STR_LEN, "%u ",
                     channel_list.num_channels);
+            if( eHAL_STATUS_SUCCESS ==  sme_GetCountryCode(pHddCtx->hHal, pBuf, &uBufLen))
+            {
+              //Printing Country code in getChannelList
+               for(i= 0; i < COUNTRY_CODE_LEN; i++)
+               {
+                   len += scnprintf(buf + len, WE_MAX_STR_LEN - len,
+                                   "%c ", pBuf[i]);
+               }
+            }
             for(i = 0 ; i < channel_list.num_channels; i++)
             {
                 len += scnprintf(buf + len, WE_MAX_STR_LEN - len,
