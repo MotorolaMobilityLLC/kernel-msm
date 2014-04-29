@@ -74,8 +74,8 @@ extern int g_chg_present;
 //Eason: schedule work to check cable status later+++
 static struct delayed_work DetectChgWorker;
 //Eason: schedule work to check cable status later---
-#if 0
-static ssize_t pm8226charger_read_proc(char *page, char **start, off_t off, int count, int *eof, void *data)
+
+static int pm8226chg_proc_show(struct seq_file *seq, void *v)
 {
 	int status;
 	
@@ -84,19 +84,55 @@ static ssize_t pm8226charger_read_proc(char *page, char **start, off_t off, int 
 	//defined in power_supply.h: unknown = 0, charging = 1, discharging = 2, not_charging = 3, full = 4
 	//defined by ATD:            unknown = 1, charging = 2, discharging = 3, not_charging = 4, full = 5
 	status++;
-	return sprintf(page, "%d\n", status);
+	return seq_printf(seq, "%d\n", status);
 }
-#endif
-static const struct file_operations pm8226_proc_fops = {
+
+static void *pm8226chg_proc_start(struct seq_file *seq, loff_t *pos)
+{
+	static unsigned long counter = 0;
+	
+	if(*pos == 0){
+		return &counter;
+	}
+	else{
+		*pos = 0;
+		return NULL;
+	}
+}
+
+static void *pm8226chg_proc_next(struct seq_file *seq, void *v, loff_t *pos)
+{
+	return NULL;
+}
+
+static void pm8226chg_proc_stop(struct seq_file *seq, void *v)
+{
+	
+}
+
+static const struct seq_operations pm8226chg_proc_seq = {
+	.start		= pm8226chg_proc_start,
+	.show		= pm8226chg_proc_show,
+	.next		= pm8226chg_proc_next,
+	.stop		= pm8226chg_proc_stop,
+};
+
+static int pm8226chg_proc_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &pm8226chg_proc_seq);
+}
+
+static const struct file_operations pm8226chg_proc_fops = {
 	.owner		= THIS_MODULE,
-//	.read		= pm8226charger_read_proc,
+	.open		= pm8226chg_proc_open,
+	.read		= seq_read,
 };
 
 void static create_pm8226_proc_file(void)
 {
-	struct proc_dir_entry *pm8226_proc_file = proc_create("driver/pm8226chg", 0644, NULL, &pm8226_proc_fops);
+	struct proc_dir_entry *pm8226chg_proc_file = proc_create("driver/pm8226chg", 0644, NULL, &pm8226chg_proc_fops);
 
-	if (!pm8226_proc_file) {
+	if (!pm8226chg_proc_file) {
 		printk("[BAT][Bal]proc file create failed!\n");
     }
 

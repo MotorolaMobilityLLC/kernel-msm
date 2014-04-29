@@ -444,17 +444,24 @@ static void enterRomMode_proc_stop(struct seq_file *seq, void *v)
 	
 }
 
-static const struct file_operations enterRomMode_proc_fops = {
-	.owner		= THIS_MODULE,
-	.open		= enterRomMode_proc_open,
-	.read		= seq_read,
-	.write		= enterRomMode_write_proc,
+static const struct seq_operations enterRomMode_proc_seq = {
+	.start		= enterRomMode_proc_start,
+	.show		= enterRomMode_proc_show,
+	.next		= enterRomMode_proc_next,
+	.stop		= enterRomMode_proc_stop,
 };
 
 static int enterRomMode_proc_open(struct inode *inode, struct file *file)
 {
 	return seq_open(file, &enterRomMode_proc_seq);
 }
+
+static const struct file_operations enterRomMode_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= enterRomMode_proc_open,
+	.read		= seq_read,
+	.write		= enterRomMode_write_proc,
+};
 
 void static create_enterRomMode_proc_file(void)
 {
