@@ -144,10 +144,11 @@
 
 /*
  * ************************************************************************************************************************
- *   APLPM
+ *   ALPM
  * ************************************************************************************************************************
  */
 		samsung,panel-alpm-on-seq = [
+
 				05 01 00 00 14 00 02 28 00			/* display off wait 20ms */
 
 				/* image write for APLM mode */
@@ -168,6 +169,8 @@
 				39 01 00 00 00 00 02 38 00			/* idel Mode off */
 				39 01 00 00 00 00 02 13 00			/* normal mode on */
 
+				39 01 00 00 01 00 02 51 FF		/* Set Max Brightness */
+
 				39 01 00 00 00 00 02 29 00		/* display on */
 			];
 	};
@@ -177,7 +180,7 @@
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->0";
 		cell-index = <0>;
-		reg = 	<0xfd922800 0x1f8>,
+		reg =   <0xfd922800 0x1f8>,
 			<0xfd922b00 0x2b0>,
 			<0xfd828000 0x108>;
 		reg-names = "dsi_ctrl", "dsi_phy", "mmss_misc_phys";
