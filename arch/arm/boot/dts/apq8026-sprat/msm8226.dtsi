@@ -145,89 +145,16 @@
 	};
 
 	qcom,vidc@fdc00000 {
-		compatible = "qcom,msm-vidc";
-		reg = <0xfdc00000 0xff000>;
-		interrupts = <0 44 0>;
-		venus-supply = <&gdsc_venus>;
-		qcom,clock-names = "core_clk", "iface_clk", "bus_clk";
-		qcom,clock-configs = <0x3 0x0 0x0>;
-		qcom,load-freq-tbl = <352800 160000000>,
-			<244800 133330000>,
-			<108000  66700000>;
-		qcom,hfi = "venus";
-		qcom,bus-ports = <1>;
-		qcom,reg-presets = <0xE0024 0x0>,
-			<0x80124 0x3>,
-			<0xE0020 0x5555556>,
-			<0x800B0 0x10101001>,
-			<0x800B4 0x00101010>,
-			<0x800C0 0x1010100f>,
-			<0x800C4 0x00101010>,
-			<0x800D0 0x00000010>,
-			<0x800D4 0x00000010>,
-			<0x800D8 0x00000707>;
-		qcom,enc-ddr-ab-ib = <0 0>,
-			<129000 142000>,
-			<384000 422000>,
-			<866000 953000>;
-		qcom,dec-ddr-ab-ib = <0 0>,
-			<103000 134000>,
-			<268000 348000>,
-			<505000 657000>;
-		qcom,buffer-type-tz-usage-table = <0x1 0x1>,
-			<0x6 0x2>,
-			<0x7C0 0x3>;
-		qcom,max-hw-load = <352800>; /* 720p @ 30 + 1080p @ 30 */
-		qcom,vidc-iommu-domains {
-			qcom,domain-ns {
-				qcom,vidc-domain-phandle = <&venus_domain_ns>;
-				qcom,vidc-partition-buffer-types = <0x7ff>,
-							<0x800>;
-			};
-
-			qcom,domain-cp {
-				qcom,vidc-domain-phandle = <&venus_domain_cp>;
-				qcom,vidc-partition-buffer-types = <0x6>,
-							<0x7c1>;
-			};
-		};
-		qcom,msm-bus-clients {
-			qcom,msm-bus-client@0 {
-				qcom,msm-bus,name = "venc-ddr";
-				qcom,msm-bus,num-cases = <4>;
-				qcom,msm-bus,active-only = <0>;
-				qcom,msm-bus,num-paths = <1>;
-				qcom,msm-bus,vectors-KBps =
-					<63 512 0 0>,
-					<63 512 129000 142000>,
-					<63 512 384000 422000>,
-					<63 512 866000 953000>;
-				qcom,bus-configs = <0x1000414>;
-			};
-
-			qcom,msm-bus-client@1 {
-				qcom,msm-bus,name = "vdec-ddr";
-				qcom,msm-bus,num-cases = <4>;
-				qcom,msm-bus,active-only = <0>;
-				qcom,msm-bus,num-paths = <1>;
-				qcom,msm-bus,vectors-KBps =
-					<63 512 0 0>,
-					<63 512 103000 134000>,
-					<63 512 268000 348000>,
-					<63 512 505000 657000>;
-				qcom,bus-configs = <0x30fcfff>;
-			};
-		};
+		status = "disabled";
 	};
 
 	qcom,vidc {
-		compatible = "qcom,msm-vidc";
-		qcom,hfi = "q6";
-		qcom,max-hw-load = <108000>; /* 720p @ 30 * 1  */
+		status = "disabled";
 	};
 
 	qcom,wfd {
 		compatible = "qcom,msm-wfd";
+		status = "disabled";
 	};
 
 	serial@f991f000 {
@@ -994,32 +921,12 @@
 		qcom,pas-id = <9>;
 		qcom,proxy-timeout-ms = <5000>;
 		qcom,firmware-name = "venus";
+
+		status = "disabled";
 	};
 
 	qcom,pronto@fb21b000 {
-		compatible = "qcom,pil-tz-generic";
-		reg = <0xfb21b000 0x3000>;
-		interrupts = <0 149 1>;
-
-		vdd_pronto_pll-supply = <&pm8226_l8>;
-		proxy-reg-names = "vdd_pronto_pll";
-		vdd_pronto_pll-uV-uA = <1800000 18000>;
-		clock-names = "xo";
-		proxy-clock-names = "xo";
-
-		qcom,pas-id = <6>;
-		qcom,proxy-timeout-ms = <10000>;
-		qcom,smem-id = <422>;
-		qcom,firmware-name = "wcnss";
-
-		/* GPIO inputs from wcnss */
-		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_4_in 0 0>;
-		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_4_in 1 0>;
-		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_4_in 2 0>;
-		qcom,gpio-stop-ack = <&smp2pgpio_ssr_smp2p_4_in 3 0>;
-
-		/* GPIO output to wcnss */
-		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_4_out 0 0>;
+		status = "disabled";
 	};
 
 	qcom,iris-fm {
@@ -1054,34 +961,7 @@
 	};
 
 	qcom,mss@fc880000 {
-		compatible = "qcom,pil-q6v5-mss";
-		reg = <0xfc880000 0x100>,
-		      <0xfd485000 0x400>,
-		      <0xfc820000 0x020>,
-		      <0xfc401680 0x004>,
-		      <0xfd485194 0x4>;
-		reg-names = "qdsp6_base", "halt_base", "rmb_base",
-			    "restart_reg", "cxrail_bhs_reg";
-
-		interrupts = <0 24 1>;
-		vdd_cx-supply = <&pm8226_s1_corner>;
-		vdd_mx-supply = <&pm8226_l3>;
-		vdd_mx-uV = <1050000>;
-		vdd_pll-supply = <&pm8226_l8>;
-		qcom,vdd_pll = <1800000>;
-
-		qcom,firmware-name = "modem";
-		qcom,pil-self-auth;
-		qcom,mba-image-is-not-elf;
-
-		/* GPIO inputs from mss */
-		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_1_in 0 0>;
-		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_1_in 1 0>;
-		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_1_in 2 0>;
-		qcom,gpio-stop-ack = <&smp2pgpio_ssr_smp2p_1_in 3 0>;
-
-		/* GPIO output to mss */
-		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_1_out 0 0>;
+		status = "disabled";
 	};
 
 	/*
