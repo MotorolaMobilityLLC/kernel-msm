@@ -12,7 +12,10 @@
  */
 
 #include "apq8084-moto-common.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-mot-smd-QHD-cmd.dtsi"
 #include "dsi-panel-mot-smd-720p-cmd.dtsi"
+#include "dsi-panel-mot-smd-598-1080p-cmd.dtsi"
 
 / {
 	model = "Motorola APQ 8084 Lexington";
@@ -25,12 +28,31 @@
 	regulator-always-on;
 };
 
+&pma8084_l17 {
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+};
+
+&fb_mem {
+	reg = <0 0 0 0x1d00000>;
+};
+
+&mdss_fb0 {
+	qcom,mdss-fb-split = <720 720>;
+	qcom,mdss-fb-rot-180;
+};
+
+&vbat_disp_vreg {
+        regulator-boot-on;
+};
+
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_smd_720p_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_0_cmd_v0>;
 	qcom,platform-reset-gpio = <&msmgpio 86 0>;
 	qcom,platform-te-gpio = <&msmgpio 12 0>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
@@ -41,7 +63,22 @@
 };
 
 &mdss_dsi1 {
-	status = "disabled";
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_1_cmd_v0>;
+	/delete-property/ vdd-supply;
+	/delete-node/ qcom,platform-supply-entry1;
+};
+
+&mot_smd_598_1080p_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+
+&mot_smd_QHD_0_cmd_v0 {
+        qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v0 {
+        qcom,cont-splash-enabled;
 };
 
 &max17050 {
