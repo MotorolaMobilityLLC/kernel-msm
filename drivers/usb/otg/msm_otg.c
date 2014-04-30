@@ -2514,7 +2514,10 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			else
 				clear_bit(B_SESS_VLD, &motg->inputs);
 		} else if (pdata->otg_control == OTG_PMIC_CONTROL) {
-			if (pdata->id_gnd_gpio || pdata->pmic_id_irq) {
+			/* Set ID if SESS_VLD is set */
+			if (test_bit(B_SESS_VLD, &motg->inputs))
+				set_bit(ID, &motg->inputs);
+			else if (pdata->id_gnd_gpio || pdata->pmic_id_irq) {
 				if (msm_otg_read_pmic_id_state(motg) ||
 					(pdata->id_flt_gpio &&
 					!(gpio_get_value(pdata->id_flt_gpio) ^
@@ -2522,7 +2525,9 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 					set_bit(ID, &motg->inputs);
 				else
 					clear_bit(ID, &motg->inputs);
-			}
+			} else
+				/* Fallback */
+				set_bit(ID, &motg->inputs);
 			/*
 			 * VBUS initial state is reported after PMIC
 			 * driver initialization. Wait for it.
@@ -3530,6 +3535,11 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 	bool is_hff = motg->pdata->id_gnd_gpio && motg->pdata->id_flt_gpio;
 
 
+	if (test_bit(B_SESS_VLD, &motg->inputs) && !factory_mode) {
+		pr_err("PMIC: Id interrupt ignored in B_SESS_VLD\n");
+		return;
+	}
+
 	if (is_hff)
 		work = msm_hff_handle_id_transition(motg);
 	else if (msm_otg_read_pmic_id_state(motg)) {
@@ -3554,19 +3564,24 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 
 }
 
-#define MSM_PMIC_ID_STATUS_DELAY	5 /* 5msec */
+#define MSM_PMIC_ID_STATUS_DELAY	150 /* 150 msec */
 static irqreturn_t msm_pmic_id_irq(int irq, void *data)
 {
 	struct msm_otg *motg = data;
 
 	if (test_bit(MHL, &motg->inputs) ||
 			mhl_det_in_progress) {
-		pr_debug("PMIC: Id interrupt ignored in MHL\n");
+		pr_err("PMIC: Id interrupt ignored in MHL\n");
+		return IRQ_HANDLED;
+	}
+
+	if (test_bit(B_SESS_VLD, &motg->inputs) && !factory_mode) {
+		pr_debug("PMIC: Id interrupt ignored in B_SESS_VLD\n");
 		return IRQ_HANDLED;
 	}
 
 	if (!aca_id_turned_on)
-		/*schedule delayed work for 5msec for ID line state to settle*/
+		/*schedule delayed work for ID line state to settle*/
 		queue_delayed_work(system_nrt_wq, &motg->pmic_id_status_work,
 				msecs_to_jiffies(MSM_PMIC_ID_STATUS_DELAY));
 
