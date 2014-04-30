@@ -980,11 +980,12 @@
 		qcom,msm-bus,num-cases = <4>;
 		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,num-paths = <1>;
+		qcom,support-bus-scaling;
 		qcom,msm-bus,vectors-KBps =
 				<55 512 0 0>,
-				<55 512 3936000 393600>,
-				<55 512 3936000 393600>,
-				<55 512 3936000 393600>;
+				<55 512 0 0>,
+				<55 512 120000 1200000>,
+				<55 512 393600 3936000>;
 	};
 
         qcom,msm-rng@f9bff000 {
@@ -1051,6 +1052,7 @@
 		interrupts = <0 207 0>;
 		qcom,bam-pipe-pair = <2>;
 		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
 		qcom,ce-hw-shared;
 		qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
@@ -1069,6 +1071,7 @@
 		interrupts = <0 207 0>;
 		qcom,bam-pipe-pair = <1>;
 		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
 		qcom,ce-hw-shared;
 		qcom,msm-bus,name = "qcedev-noc";
 		qcom,msm-bus,num-cases = <2>;
