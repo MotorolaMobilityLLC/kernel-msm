@@ -1153,20 +1153,21 @@ static s64 cc_uv_to_pvh(s64 cc_uv)
 }
 
 /**
- * calculate_cc() - converts a hardware coulomb counter reading into uah
+ * calculate_cc_raw() - converts a hardware coulomb counter reading into uah
  * @chip:		the bms chip pointer
  * @cc:			the cc reading from bms h/w
  * @cc_type:		calcualte cc from regular or shadow coulomb counter
  * @clear_cc:		whether this function should clear the hardware counter
  *			after reading
+ * @pmsafe:		whether this function and any callee should use wakelock
  *
  * Converts the 64 bit hardware coulomb counter into microamp-hour by taking
  * into account hardware resolution and adc errors.
  *
  * Return: the coulomb counter based charge in uAh (micro-amp hour)
  */
-static int calculate_cc(struct qpnp_bms_chip *chip, int64_t cc,
-					int cc_type, int clear_cc)
+static int calculate_cc_raw(struct qpnp_bms_chip *chip, int64_t cc,
+					int cc_type, int clear_cc, int pmsafe)
 {
 	struct qpnp_iadc_calib calibration;
 	struct qpnp_vadc_result result;
@@ -1175,13 +1176,20 @@ static int calculate_cc(struct qpnp_bms_chip *chip, int64_t cc,
 
 	software_counter = cc_type == SHDW_CC ?
 			&chip->software_shdw_cc_uah : &chip->software_cc_uah;
-	rc = qpnp_vadc_read(chip->vadc_dev, DIE_TEMP, &result);
+	if (!pmsafe)
+		rc = qpnp_vadc_read(chip->vadc_dev, DIE_TEMP, &result);
+	else
+		rc = qpnp_vadc_read_pmsafe(chip->vadc_dev, DIE_TEMP, &result);
 	if (rc) {
 		pr_err("could not read pmic die temperature: %d\n", rc);
 		return *software_counter;
 	}
 
-	qpnp_iadc_get_gain_and_offset(chip->iadc_dev, &calibration);
+	if (!pmsafe)
+		qpnp_iadc_get_gain_and_offset(chip->iadc_dev, &calibration);
+	else
+		qpnp_iadc_get_gain_and_offset_pmsafe(chip->iadc_dev,
+							&calibration);
 	pr_debug("%scc = %lld, die_temp = %lld\n",
 			cc_type == SHDW_CC ? "shdw_" : "",
 			cc, result.physical);
@@ -1208,6 +1216,12 @@ static int calculate_cc(struct qpnp_bms_chip *chip, int64_t cc,
 				*software_counter + cc_uah);
 		return *software_counter + cc_uah;
 	}
+}
+
+static int calculate_cc(struct qpnp_bms_chip *chip, int64_t cc,
+				int cc_type, int clear_cc)
+{
+	return calculate_cc_raw(chip, cc, cc_type, clear_cc, 0);
 }
 
 static int get_rbatt(struct qpnp_bms_chip *chip,
@@ -1519,6 +1533,20 @@ static int get_prop_bms_charge_counter_shadow(struct qpnp_bms_chip *chip)
 	mutex_unlock(&chip->bms_output_lock);
 
 	return calculate_cc(chip, cc_raw, SHDW_CC, NORESET);
+}
+
+/* Reads and returns coulomb counter in uAh, without calling pm_stay_awake() */
+static int get_bms_charge_counter_pmsafe(struct qpnp_bms_chip *chip)
+{
+	int64_t cc_raw;
+
+	mutex_lock(&chip->bms_output_lock);
+	lock_output_data(chip);
+	read_cc_raw(chip, &cc_raw, true);
+	unlock_output_data(chip);
+	mutex_unlock(&chip->bms_output_lock);
+
+	return calculate_cc_raw(chip, cc_raw, CC, NORESET, 1);
 }
 
 /* Returns full charge design in uAh */
@@ -3473,6 +3501,9 @@ static int qpnp_bms_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER_SHADOW:
 		val->intval = get_prop_bms_charge_counter_shadow(chip);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_COUNTER_PMSAFE:
+		val->intval = get_bms_charge_counter_pmsafe(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		val->intval = get_prop_bms_charge_full_design(chip);
