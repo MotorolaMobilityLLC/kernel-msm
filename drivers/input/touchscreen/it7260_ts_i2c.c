@@ -57,6 +57,11 @@ struct IT7260_ts_data {
 	uint8_t debug_log_level;
 };
 
+
+// ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
+char magic_key[16];
+// ASUS_BSP --- Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
+
 static struct timer_list tp_timer;
 static void tp_irq_handler_reg(unsigned long arg);
 
@@ -682,7 +687,12 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 			else if (match_offset == 2)
 			{
 				if (xraw < 120 && yraw > 260){
-					printk("Touch:MAGIC KEY DETECTED !! OPEN DEBUG TOOL\n");
+// ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
+					printk("MagicTouch:DEBUG KEY DETECTED !!!!\n");
+					strcpy(magic_key,"DEBUG");
+					kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+// ASUS_BSP --- Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
+
 					time_start_check = 0;
 					match_offset = 0;
 					match_step = 0;
@@ -704,32 +714,22 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 			match_step = 0;
 		}
 	}
-
-/*
-	if (pucPoint[0] == hack_code[match_id]){
-		match_id ++;
-		if (match_id == 1){
-			time_start_check = jiffies;
-		}
-		if (hack_code[match_id] == 0xFF){
-			printk("Magic:MAGIC KEY DETECTED !!!!\n");
-			{
-				//kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
-			}
-			match_id = 0;
-			//return; // We skip this event.
-		}
-	}else if (match_id > 1 && pucPoint[0] == hack_code[match_id-1])
-	{
-		// stay...
-	}else if (pucPoint[0] == 8){
-		// skip.
+}
+#endif
+// ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
+#if 1
+{
+	static unsigned long last_time_detect_home = 0;
+	static int home_match_flag = 0;
+	if (!home_match_flag && pucPoint[0] == 0xB && (jiffies > last_time_detect_home + 3 * HZ)){
+		home_match_flag = 1;
+		printk("MagicTouch:HOME KEY DETECTED !!!!\n");
+		strcpy(magic_key,"HOME");
+		kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+		last_time_detect_home = jiffies;
 	}else{
-		match_id = 0;
+		home_match_flag = 0;
 	}
-	//if (match_id > 0)
-		//printk("Magic:Match %x,%d\n",pucPoint[0],match_id);
-*/
 }
 #endif
 // ASUS_BSP --- Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
@@ -1415,6 +1415,21 @@ struct file_operations ite7260_fops = {
 	.unlocked_ioctl = ite7260_ioctl, // Qualcomm
 };
 
+
+// ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
+static ssize_t show_magic_key(struct device *device,
+			 struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = snprintf(buf, PAGE_SIZE, "%s\n", magic_key);
+	magic_key[0] = 0;
+	return ret;
+}
+static struct device_attribute device_attrs[] = {
+	__ATTR(magic_key, S_IRUGO, show_magic_key, NULL),
+};
+// ASUS_BSP --- Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
+
+
 static int __init IT7260_ts_init(void) {
 	dev_t dev = MKDEV(ite7260_major, 0);
 	int alloc_ret = 0;
@@ -1452,6 +1467,13 @@ static int __init IT7260_ts_init(void) {
 		TS_DEBUG("Err: failed in creating device.\n");
 		goto error;
 	}
+
+// ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
+	magic_key[0] = 0;
+	device_create_file(class_dev, &device_attrs[0]);
+// ASUS_BSP --- Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
+
+
 	TS_DEBUG("=========================================\n");
 	TS_DEBUG("register IT7260 cdev, major: %d, minor: %d \n", ite7260_major, ite7260_minor);
 	TS_DEBUG("=========================================\n");
