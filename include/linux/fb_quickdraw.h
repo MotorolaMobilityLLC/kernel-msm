@@ -21,14 +21,18 @@
 #define FB_QUICKDRAW_LOCK_BUFFER	_IOW(FB_QUICKDRAW_IOCTL_MAGIC, 4, int)
 #define FB_QUICKDRAW_UNLOCK_BUFFER	_IOW(FB_QUICKDRAW_IOCTL_MAGIC, 5, int)
 
-struct fb_quickdraw_buffer_data {
-	int buffer_id;
-	int user_fd;
-	int format;
+struct fb_quickdraw_rect {
 	int x;
 	int y;
 	int w;
 	int h;
+};
+
+struct fb_quickdraw_buffer_data {
+	int buffer_id;
+	int user_fd;
+	int format;
+	struct fb_quickdraw_rect rect;
 };
 
 #ifdef __KERNEL__
