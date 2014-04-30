@@ -738,6 +738,11 @@ bool pm_get_wakeup_count(unsigned int *count, bool block)
 			split_counters(&cnt, &inpr);
 			if (inpr == 0 || signal_pending(current))
 				break;
+			//ASUS_Allen1: Debug blocking wake_locks.
+			if (inpr != 0) {
+				print_active_wakeup_sources();
+				printk("%s: inpr(blocking wakelock count) = %d\n",__func__,inpr);
+			}
 
 			schedule();
 		}
