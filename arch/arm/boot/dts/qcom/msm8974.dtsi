@@ -2107,12 +2107,15 @@
 		reg = <0x7b00000 0x500000>;
 		reg-names = "secapp-region";
 		qcom,disk-encrypt-pipe-pair = <2>;
+		qcom,file-encrypt-pipe-pair = <0>;
 		qcom,hlos-ce-hw-instance = <1>;
 		qcom,qsee-ce-hw-instance = <0>;
 		qcom,msm-bus,name = "qseecom-noc";
 		qcom,msm-bus,num-cases = <4>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,support-bus-scaling;
+		qcom,support-fde;
+		qcom,support-pfe;
 		qcom,msm-bus,vectors-KBps =
 				<55 512 0 0>,
 				<55 512 0 0>,
@@ -2222,11 +2225,12 @@
         qcom,qcedev@fd440000 {
 		compatible = "qcom,qcedev";
 		reg = <0xfd440000 0x20000>,
-		      <0xfd444000 0x8000>;
+		      <0xfd444000 0x1b000>;
 		reg-names = "crypto-base","crypto-bam-base";
 		interrupts = <0 236 0>;
 		qcom,bam-pipe-pair = <1>;
 		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
                 qcom,msm-bus,name = "qcedev-noc";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
@@ -2235,14 +2239,35 @@
 				<56 512 3936000 393600>;
 	};
 
-        qcom,qcrypto@fd444000 {
+        qcom,qcrypto@fd440000 {
 		compatible = "qcom,qcrypto";
 		reg = <0xfd440000 0x20000>,
-		      <0xfd444000 0x8000>;
+		      <0xfd444000 0x1b000>;
 		reg-names = "crypto-base","crypto-bam-base";
 		interrupts = <0 236 0>;
 		qcom,bam-pipe-pair = <2>;
 		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
+		qcom,clk-mgmt-sus-res;
+                qcom,msm-bus,name = "qcrypto-noc";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,use-sw-aes-cbc-ecb-ctr-algo;
+		qcom,use-sw-aes-xts-algo;
+		qcom,use-sw-ahash-algo;
+		qcom,msm-bus,vectors-KBps =
+				<56 512 0 0>,
+				<56 512 3936000 393600>;
+	};
+        qcom,qcrypto1@fd440000 {
+		compatible = "qcom,qcrypto";
+		reg = <0xfd440000 0x20000>,
+		      <0xfd444000 0x1b000>;
+		reg-names = "crypto-base","crypto-bam-base";
+		interrupts = <0 236 0>;
+		qcom,bam-pipe-pair = <0>;
+		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <1>;
 		qcom,clk-mgmt-sus-res;
                 qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
