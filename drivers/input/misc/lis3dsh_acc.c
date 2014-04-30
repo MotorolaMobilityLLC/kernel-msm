@@ -113,8 +113,8 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 #define LIS3DSH_SM2INT_PIN_MASK		(0x08)
 #define LIS3DSH_SM2INT_PININT2		(0x08)
 #define LIS3DSH_SM2INT_PININT1		(0x00)
-#define LIS3DSH_SM2_EN_MASK		(0x01)
-#define LIS3DSH_SM2_EN_ON		(0x01)
+#define LIS3DSH_SM2_EN_MASK		(0x09)
+#define LIS3DSH_SM2_EN_ON		(0x09)
 #define LIS3DSH_SM2_EN_OFF		(0x00)
 /* */
 
@@ -314,7 +314,7 @@ static struct lis3dsh_acc_platform_data default_lis3dsh_acc_pdata = {
 	.negate_x = 0,
 	.negate_y = 0,
 	.negate_z = 0,
-	.poll_interval = 40,
+	.poll_interval = 3,
 	.min_interval = LIS3DSH_ACC_MIN_POLL_PERIOD_MS,
 	.gpio_int1 = LIS3DSH_ACC_DEFAULT_INT1_GPIO,
 	.gpio_int2 = LIS3DSH_ACC_DEFAULT_INT2_GPIO,
@@ -387,8 +387,7 @@ static void lis3dsh_acc_set_init_register_values(struct lis3dsh_acc_data *acc)
 				acc->resume_state[RES_LIS3DSH_CTRL_REG3] | \
 					LIS3DSH_INT2_EN_ON;
 
-	acc->resume_state[RES_LIS3DSH_CTRL_REG4] = (LIS3DSH_BDU_EN |
-							LIS3DSH_ALL_AXES | LIS3DSH_ODR100);
+	acc->resume_state[RES_LIS3DSH_CTRL_REG4] = (LIS3DSH_ALL_AXES | LIS3DSH_ODR400);
 	acc->resume_state[RES_LIS3DSH_CTRL_REG5] = 0xC0;
 	acc->resume_state[RES_LIS3DSH_CTRL_REG6] = 0x10;
 
@@ -538,8 +537,8 @@ static void lis3dsh_acc_set_init_statepr2_param(struct lis3dsh_acc_data *acc)
 	acc->resume_state[RES_LIS3DSH_TIM2_2_H] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x86;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x01;
-	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x01;
+	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x03;
+	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x03;
 	acc->resume_state[RES_LIS3DSH_DES_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_SA_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_MA_2] = 0x03;
@@ -677,6 +676,15 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 	buf[1] = acc->resume_state[RES_LIS3DSH_LC_L];
 	buf[2] = acc->resume_state[RES_LIS3DSH_LC_H];
 	err = lis3dsh_acc_i2c_write(acc, buf, 2);
+	if (err < 0)
+		goto err_resume_state;
+
+	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_VFC_1);
+	buf[1] = acc->resume_state[LIS3DSH_VFC_1];
+	buf[2] = acc->resume_state[LIS3DSH_VFC_2];
+	buf[1] = acc->resume_state[LIS3DSH_VFC_3];
+	buf[2] = acc->resume_state[LIS3DSH_VFC_4];
+	err = lis3dsh_acc_i2c_write(acc, buf, 4);
 	if (err < 0)
 		goto err_resume_state;
 
@@ -888,10 +896,7 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_2;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] & 0x02) != 0)
-			printk("***********************report event SM2\n");
 	}
-	sensor_debug(DEBUG_VERBOSE, "[lis3dsh] %s: IRQ1 served\n", __func__);
 	enable_irq(acc->irq1);
 	sensor_debug(DEBUG_VERBOSE, "[lis3dsh] %s: IRQ1 re-enabled\n", __func__);
 }
@@ -913,20 +918,15 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_1;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] & 0x20) != 0)
-			printk("***********************report event SM1\n");
-		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: OUTS_1: 0x%02x\n", __func__, rbuf[0]);
 	}
 	if(status & LIS3DSH_STAT_INTSM2_BIT) {
 		rbuf[0] = LIS3DSH_OUTS_2;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] & 0x02) != 0)
+		if((rbuf[0] & 0x01) != 0)
 			printk("***********************report event SM2\n");
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: OUTS_2: 0x%02x\n", __func__, rbuf[0]);
 	}
-	
-	sensor_debug(DEBUG_VERBOSE, "[lis3dsh] %s: IRQ2 served\n", __func__);
 	enable_irq(acc->irq2);
 	sensor_debug(DEBUG_VERBOSE, "[lis3dsh] %s: IRQ2 re-enabled\n", __func__);
 }
@@ -1125,7 +1125,6 @@ static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc,
 static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
 					int *xyz)
 {
-	sensor_debug(DEBUG_RAW, "[lis3dsh] %s : xyz[0]=%d, xyz[1]=%d, xyz[2]=%d\n", __func__, xyz[0], xyz[1], xyz[2]);
 	input_report_abs(acc->input_dev, ABS_X, xyz[0]);
 	input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
 	input_report_abs(acc->input_dev, ABS_Z, xyz[2]);
@@ -1311,16 +1310,41 @@ static ssize_t attr_get_acc_data(struct device *dev,
 	return err;
 }
 
-//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 #ifdef ASUS_FACTORY_BUILD
+//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 static ssize_t attr_get_chip_status(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	printk("[lis3dsh] read_accel_status = %d",chip_status);
 	return sprintf(buf, "%d\n", chip_status);
 }
-#endif
 //ASUS_BSP --- Maggie_Lee "Support ATD BMMI"
+
+static ssize_t attr_reg_dump(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
+	int rc;
+	u8 dbuf[0];
+	int i;
+
+	for(i=15;i<128; i++) {
+		if (i==38) i++;
+		if (i==48) i+=32;
+		dbuf[0] = (u8)i;
+		printk("Reg = 0x%02x\t", dbuf[0]);
+		rc = lis3dsh_acc_i2c_read(acc, dbuf, 1);
+		if (rc < 0)
+			goto error;
+		printk("Value = 0x%02x\n", dbuf[0]);
+	}
+
+	return sprintf(buf, "0x%02x\n", dbuf[0]);
+
+	error:
+		dev_err(&acc->client->dev, "Error reading ECG register\n");
+		return sprintf(buf, "0x%02x\n", dbuf[0]);
+}
+#endif
 
 static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc, u8 settings)
 {
@@ -1406,9 +1430,6 @@ static ssize_t attr_get_enable_state_prog(struct device *dev,
 	return sprintf(buf, "0x%02x\n", val);
 }
 
-
-
-
 #ifdef DEBUG
 /* PAY ATTENTION: These DEBUG funtions don't manage resume_state */
 static ssize_t attr_reg_set(struct device *dev, struct device_attribute *attr,
@@ -1476,6 +1497,7 @@ static struct device_attribute attributes[] = {
 #endif
 #ifdef ASUS_FACTORY_BUILD
 	__ATTR(chip_status, 0444, attr_get_chip_status, NULL),			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
+	__ATTR(dump, 0444, attr_reg_dump, NULL),
 #endif
 };
 
