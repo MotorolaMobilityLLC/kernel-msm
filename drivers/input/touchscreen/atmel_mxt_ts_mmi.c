@@ -3957,7 +3957,7 @@ static int mxt_input_open(struct input_dev *dev)
 		mxt_regulator_enable(data);
 		mxt_acquire_irq(data);
 	} else if (data->sensor_sleep)
-		mxt_sensor_wake(data, true);
+		mxt_sensor_wake(data, false);
 
 	mutex_unlock(&data->crit_section_lock);
 	dev_dbg(&data->client->dev, "critical section RELEASE\n");
@@ -4390,7 +4390,7 @@ static int mxt_resume(struct device *dev)
 			mxt_regulator_enable(data);
 			mxt_acquire_irq(data);
 		} else if (data->sensor_sleep)
-			mxt_sensor_wake(data, true);
+			mxt_sensor_wake(data, false);
 
 		mutex_unlock(&data->crit_section_lock);
 		dev_dbg(&data->client->dev, "critical section RELEASE\n");
