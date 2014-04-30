@@ -296,43 +296,6 @@ static int mdss_dsi_get_panel_cfg(char *panel_cfg)
 	return rc;
 }
 
-#define ULPS_REQUEST_BITS 0x001f
-#define ULPS_EXIT_BITS	 0x1f00
-#define ULPS_LANE_STATUS_BITS 0x1f00
-#define CTRL_OFFSET 0xAC
-#define STATUS_OFFSET 0xA8
-static int mipi_ulps_mode(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enter)
-{
-	uint32_t dsi0LaneCtrlReg = MIPI_INP(ctrl_pdata->ctrl_base
-					+ CTRL_OFFSET);
-	uint32_t dsi0LaneStatusReg = MIPI_INP(ctrl_pdata->ctrl_base
-					+ STATUS_OFFSET);
-
-	pr_debug("[ALPM_DEBUG] mipi_ulps_mode++: dsi0LaneStatusReg 0x%x\n",
-			 dsi0LaneStatusReg);
-
-	if (enter) { /*enter into the mode*/
-		MIPI_OUTP(ctrl_pdata->ctrl_base + CTRL_OFFSET, dsi0LaneCtrlReg
-					| ULPS_REQUEST_BITS);
-		usleep(1000);
-		pr_debug("[ALPM_DEBUG] entering into the ulps mode\n");
-	} else { /*exit from the mode*/
-		MIPI_OUTP(ctrl_pdata->ctrl_base + CTRL_OFFSET, dsi0LaneCtrlReg
-					| ULPS_EXIT_BITS);
-
-		pr_debug("[ALPM_DEBUG] exiting from the ulps mode\n");
-		usleep(2000);
-
-		/*Exit request bits clear (requirement)*/
-		dsi0LaneCtrlReg = MIPI_INP(ctrl_pdata->ctrl_base + CTRL_OFFSET);
-		dsi0LaneCtrlReg &= ~ULPS_REQUEST_BITS;
-		MIPI_OUTP(ctrl_pdata->ctrl_base + CTRL_OFFSET, dsi0LaneCtrlReg);
-		dsi0LaneCtrlReg &= ~ULPS_EXIT_BITS;
-		MIPI_OUTP(ctrl_pdata->ctrl_base + CTRL_OFFSET, dsi0LaneCtrlReg);
-	}
-	return true;
-}
-
 static int mdss_dsi_off(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -360,10 +323,6 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-
-	if (panel_info->alpm_event &&
-			panel_info->alpm_event(CHECK_CURRENT_STATUS))
-		mipi_ulps_mode(ctrl_pdata, 1);
 
 	/* disable DSI controller */
 	mdss_dsi_controller_cfg(0, pdata);
@@ -717,9 +676,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-
-	if (pinfo->alpm_event && pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
-		mipi_ulps_mode(ctrl_pdata, 0);
 
 	__mdss_dsi_ctrl_setup(pdata);
 	mdss_dsi_sw_reset(pdata);

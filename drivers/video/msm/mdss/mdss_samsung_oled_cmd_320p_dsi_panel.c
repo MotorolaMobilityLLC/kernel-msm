@@ -530,17 +530,59 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	msd.dstat.on = 0;
 	msd.mfd->resume_state = MIPI_SUSPEND_STATE;
 
-	if (pinfo->alpm_event && pinfo->alpm_event(CHECK_CURRENT_STATUS))
+	if (pinfo->alpm_event &&
+		pinfo->alpm_event(CHECK_CURRENT_STATUS) &&
+		!pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
 		pr_info("[ALPM_DEBUG] %s: Skip to send panel off cmds\n",
 				__func__);
-	else if (pinfo->is_suspending) {
-		pr_debug("%s: Not sending off commands\n", __func__);
-		mdss_dsi_panel_bl_ctrl(pdata, 10);
-	} else
+		mipi_samsung_disp_send_cmd(PANEL_ALPM_ON, true);
+		pinfo->alpm_event(STORE_CURRENT_STATUS);
+	} else if (pinfo->is_suspending)
+		pr_debug("[ALPM_DEBUG] %s: Skip to send panel off cmds\n",
+				__func__);
+	else
 		mipi_samsung_disp_send_cmd(PANEL_DISP_OFF, true);
 
 	pr_info("%s:-\n", __func__);
 	return 0;
+}
+
+static void alpm_enable(int enable)
+{
+	struct mdss_panel_info *pinfo = &msd.pdata->panel_info;
+	struct display_status *dstat = &msd.dstat;
+
+	pr_info("[ALPM_DEBUG] %s: enable: %d\n", __func__, enable);
+
+	/*
+	 * Possible mode status for Blank(0) or Unblank(1)
+	 *	* Blank *
+	 *		1) ALPM_MODE_ON
+	 *		2) MODE_OFF
+	 *
+	 *		The mode(1, 2) will change when unblank
+	 *	* Unblank *
+	 *		1) ALPM_MODE_ON
+	 *			-> The mode will change when blank
+	 *		2) MODE_OFF
+	 *			-> The mode will change immediately
+	 */
+
+	alpm_store(enable);
+	if (enable == MODE_OFF) {
+		if (pinfo->alpm_event(CHECK_PREVIOUS_STATUS)
+					 == ALPM_MODE_ON) {
+			if (dstat->on) {
+				mipi_samsung_disp_send_cmd(
+					PANEL_ALPM_OFF, true);
+				/* wait 1 frame(more than 16ms) */
+				msleep(20);
+				pinfo->alpm_event(CLEAR_MODE_STATUS);
+			}
+			pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n",
+						__func__);
+		}
+	}
 }
 
 static int mdss_samsung_parse_panel_cmd(struct device_node *np,
@@ -1302,19 +1344,20 @@ static ssize_t mipi_samsung_ambient_store(struct device *dev,
 	int ambient_mode = 0;
 	sscanf(buf, "%d" , &ambient_mode);
 
-	pr_info("[ambient_DEBUG] %s: mode : %d\n", __func__, ambient_mode);
+	pr_info("[ALPM_DEBUG] %s: mode : %d\n", __func__, ambient_mode);
 
 	if (ambient_mode)
-		backlight_cmds.cmd_desc[0].payload[1] = 0xff;
+		backlight_cmds.cmd_desc[0].payload[1] = 0xFF;
 	else
 		backlight_cmds.cmd_desc[0].payload[1] = 0x26;
-
 
 	if (msd.dstat.on)
 		mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
 	else
-		pr_info("[ambient_DEBUG] %s: The LCD already turned off\n"
+		pr_info("[ALPM_DEBUG] %s: The LCD already turned off\n"
 					, __func__);
+
+	alpm_enable(ambient_mode ? MODE_OFF : ALPM_MODE_ON);
 
 	return 0;
 }
