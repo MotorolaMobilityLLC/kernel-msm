@@ -1,0 +1,27 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013,2014, LGE Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+#include "apq8026-dory/apq8026-dory-rev-10.dtsi"
+
+/ {
+	model = "LGE APQ 8026v2 DORY rev-11";
+	compatible = "qcom,apq8026", "qcom,msm8926", "qcom,mtp";
+	qcom,board-id = <131 0x0b>;
+	qcom,msm-id = <199 0x20000>,
+		      <219 0x20000>,
+		      <200 0>,
+		      <224 0>,
+		      <200 0x10001>,
+		      <224 0x10001>;
+};
