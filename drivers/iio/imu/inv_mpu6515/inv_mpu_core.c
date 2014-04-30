@@ -2918,6 +2918,7 @@ static int inv_mpu_resume(struct device *dev)
 	/* add code according to different request Start */
 	pr_debug("%s inv_mpu_resume\n", st->hw->name);
 	mutex_lock(&indio_dev->mlock);
+	st->suspend_state = false;
 
 	result = 0;
 	if (st->chip_config.dmp_on && st->chip_config.enable) {
