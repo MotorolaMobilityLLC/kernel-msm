@@ -1663,6 +1663,8 @@ static void lis3dsh_early_suspend(struct early_suspend *h)
 static void lis3dsh_late_resume(struct early_suspend *h)
 {
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++\n", __func__);
+	disable_irq_wake(g_acc->irq1);
+	disable_irq_wake(g_acc->irq2);
 	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: ---\n", __func__);
 }
@@ -1685,6 +1687,8 @@ static void lis3dsh_fb_early_suspend(void)
 static void lis3dsh_fb_late_resume(void)
 {
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++\n", __func__);
+	disable_irq_wake(g_acc->irq1);
+	disable_irq_wake(g_acc->irq2);
 	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_DIS);
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: ---\n", __func__);
 }
