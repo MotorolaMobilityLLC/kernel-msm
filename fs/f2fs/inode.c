@@ -292,4 +292,5 @@ void f2fs_evict_inode(struct inode *inode)
 
 no_delete:
 	end_writeback(inode);
+	invalidate_mapping_pages(NODE_MAPPING(sbi), inode->i_ino, inode->i_ino);
 }
