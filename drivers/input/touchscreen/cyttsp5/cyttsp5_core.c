@@ -4495,6 +4495,35 @@ static int cyttsp4_check_and_deassert_int(struct cyttsp5_core_data *cd)
 	return -EINVAL;
 }
 
+static int cyttsp5_check_silicon_id(struct cyttsp5_core_data *cd)
+{
+	int rc;
+	u8 return_data[8];
+
+	rc = _cyttsp5_request_hid_output_bl_get_information(cd->dev, 0,
+								return_data);
+	if (rc < 0)
+		return rc;
+
+	cd->silicon_id = get_unaligned_le16(&return_data[2]);
+
+	if ((cd->silicon_id) == CSP_SILICON_ID) {
+		cd->fw_path = CY_CSP_FW_FILE_NAME;
+	} else if ((cd->silicon_id) == QFN_SILICON_ID) {
+		cd->fw_path = CY_QFN_FW_FILE_NAME;
+	} else {
+		dev_err(cd->dev, "%s: Failed to set fw_path [%04x]\n",
+				__func__, cd->silicon_id);
+		cd->fw_path = NULL;
+		rc = -1;
+		return rc;
+	}
+
+	dev_info(cd->dev, "%s: Set fw_path: %s[%04x]\n",
+			__func__, cd->fw_path, cd->silicon_id);
+	return 0;
+}
+
 static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 {
 	int rc;
@@ -4528,6 +4557,7 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 
 	if (cd->mode == CY_MODE_BOOTLOADER) {
 		dev_info(cd->dev, "%s: Bootloader mode\n", __func__);
+		cyttsp5_check_silicon_id(cd);
 		rc = cyttsp5_hid_output_bl_launch_app_(cd);
 		if (rc < 0) {
 			dev_err(cd->dev, "%s: Error on launch app r=%d\n",

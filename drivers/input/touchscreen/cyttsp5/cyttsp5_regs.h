@@ -67,7 +67,11 @@ extern int poweroff_charging;
 
 #define TTHE_TUNER_SUPPORT
 
-#define CY_FW_FILE_NAME "tsp_cypress/cyttsp5.fw"
+#define CSP_SILICON_ID		0x0266
+#define QFN_SILICON_ID		0x0254
+
+#define CY_CSP_FW_FILE_NAME "tsp_cypress/cyttsp5_csp.fw"
+#define CY_QFN_FW_FILE_NAME "tsp_cypress/cyttsp5_qfn.fw"
 #define CY_FW_FILE_PATH "/data/tmp/cyttsp5_fw.bin"
 
 #ifdef TTHE_TUNER_SUPPORT
@@ -860,6 +864,8 @@ struct cyttsp5_core_data {
 	enum cyttsp5_mode mode;
 	spinlock_t spinlock;
 	struct cyttsp5_mt_data md;
+	u16		silicon_id;
+	const char	*fw_path;
 #ifdef SAMSUNG_FACTORY_TEST
 	struct cyttsp5_samsung_factory_data sfd;
 #endif

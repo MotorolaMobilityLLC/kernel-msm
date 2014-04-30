@@ -47,7 +47,8 @@ static const u8 cyttsp5_security_key[] = {
 };
 
 #define CY_HW_VERSION 0x01
-#define CY_FW_VERSION 0x0400
+#define CY_CSP_FW_VERSION 0x0500
+#define CY_FW_VERSION 0x1000
 
 #ifdef CYTTSP5_PLATFORM_FW_UPGRADE
 #include "cyttsp5_firmware.h"
@@ -680,11 +681,17 @@ cyttsp5_firmware_cont_exit:
 static int cyttsp5_check_firmware_version_binary(struct device *dev,
 		const struct firmware *fw)
 {
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	struct cyttsp5_loader_data *ld = cyttsp5_get_loader_data(dev);
 	struct cyttsp5_samsung_tsp_info_dev *sti =
 		cyttsp5_get_samsung_tsp_info(dev);
 	u32 hw_ver_new = CY_HW_VERSION;
 	u32 fw_ver_new = CY_FW_VERSION;
+
+	if (cd->silicon_id == CSP_SILICON_ID) {
+		fw_ver_new = CY_CSP_FW_VERSION;
+		cyttsp5_firmware.fw_version = CY_CSP_FW_VERSION;
+	}
 
 	if (!ld->si) {
 		dev_info(dev, "%s: No firmware infomation found, device FW may be corrupted\n",
@@ -790,6 +797,7 @@ _cyttsp5_firmware_cont_binary_exit:
 static int upgrade_firmware_from_binary(struct device *dev,
 							bool forcedUpgrade)
 {
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	struct cyttsp5_loader_data *ld = cyttsp5_get_loader_data(dev);
 	int retval;
 
@@ -797,12 +805,18 @@ static int upgrade_firmware_from_binary(struct device *dev,
 		__func__);
 
 	ld->is_force_upgrade = forcedUpgrade;
-	retval = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
-			CY_FW_FILE_NAME, dev, GFP_KERNEL, dev,
-			_cyttsp5_firmware_cont_binary);
+
+	dev_info(dev, "%s: Request firmware %s\n", __func__, cd->fw_path);
+	if (cd->fw_path != NULL)
+		retval = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
+				cd->fw_path, dev, GFP_KERNEL, dev,
+				_cyttsp5_firmware_cont_binary);
+	else
+		retval = -1;
+
 	if (retval < 0) {
 		dev_err(dev, "%s: Fail request firmware class file load: %s\n",
-			__func__, CY_FW_FILE_NAME);
+			__func__, cd->fw_path);
 		return retval;
 	}
 
