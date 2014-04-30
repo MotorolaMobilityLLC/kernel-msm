@@ -347,6 +347,7 @@ struct mdss_panel_info {
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
+	u32 alpm_ldo_offset;
 	u8 (*alpm_event) (u8 flag);
 };
 

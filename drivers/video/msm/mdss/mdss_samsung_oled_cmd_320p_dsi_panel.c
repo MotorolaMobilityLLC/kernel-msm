@@ -930,11 +930,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	if (!rc)
 		pinfo->lcdc.yres_pad += tmp;
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-bpp", &tmp);
-	if (rc) {
+	if (rc)
 		pr_err("%s:%d, bpp not specified\n", __func__, __LINE__);
-		return -EINVAL;
-	}
 	pinfo->bpp = (!rc ? tmp : 24);
+	rc = of_property_read_u32(np, "qcom,alpm-ldo-offset", &tmp);
+	pinfo->alpm_ldo_offset = (!rc ? tmp : 0);
+	pr_info("[ALPM_DEBUG] ldo-offset : %d\n", pinfo->alpm_ldo_offset);
 	pinfo->mipi.mode = DSI_VIDEO_MODE;
 	data = of_get_property(np, "qcom,mdss-dsi-panel-type", NULL);
 	if (data && !strncmp(data, "dsi_cmd_mode", 12))

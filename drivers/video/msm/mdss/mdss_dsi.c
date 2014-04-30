@@ -52,6 +52,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 	int ret;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *pinfo = NULL;
+	u8 ldo_offset = 0;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -61,16 +62,11 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 
 	pinfo = &pdata->panel_info;
 
-	if (pinfo->is_suspending) {
-		pr_info("%s: Leaving panel on or off\n", __func__);
-		return 0;
-	}
-
 	if (pinfo->alpm_event) {
 		if (enable && pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
-			return 0;
+			ldo_offset = pinfo->alpm_ldo_offset;
 		else if (!enable && pinfo->alpm_event(CHECK_CURRENT_STATUS))
-			return 0;
+			ldo_offset = pinfo->alpm_ldo_offset;
 
 		pr_debug("[ALPM_DEBUG]%s, LDO control, enable : %d\n",
 					__func__, enable);
@@ -82,8 +78,8 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 
 	if (enable) {
 		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data.vreg_config,
-			ctrl_pdata->power_data.num_vreg, 1);
+			ctrl_pdata->power_data.vreg_config + ldo_offset,
+			ctrl_pdata->power_data.num_vreg - ldo_offset, 1);
 		if (ret) {
 			pr_err("%s:Failed to enable vregs.rc=%d\n",
 				__func__, ret);
@@ -93,8 +89,8 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 		ctrl_pdata->panel_reset(pdata, 0);
 
 		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data.vreg_config,
-			ctrl_pdata->power_data.num_vreg, 0);
+			ctrl_pdata->power_data.vreg_config + ldo_offset,
+			ctrl_pdata->power_data.num_vreg - ldo_offset, 0);
 		if (ret) {
 			pr_err("%s: Failed to disable vregs.rc=%d\n",
 				__func__, ret);
