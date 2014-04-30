@@ -167,6 +167,40 @@ static void mdss_dsi_cmd_mdp_busy_wait(struct msm_fb_data_type *mfd)
 
 /* Quickdraw External Interface */
 
+static int mdss_quickdraw_validate_buffer(void *data,
+	struct fb_quickdraw_buffer_data *buffer_data)
+{
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)(data);
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
+	int ret = 0;
+
+	pr_debug("%s+ (id: %d)\n", __func__, buffer_data->buffer_id);
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("%s: Panel data not available\n", __func__);
+		ret = -EINVAL;
+		goto exit;
+	}
+	pinfo = &pdata->panel_info;
+
+	if (fb_quickdraw_check_alignment(buffer_data->w, pinfo->col_align)) {
+		pr_err("%s Buffer [id: %d] width [%d] not aligned [%d]\n",
+			__func__, buffer_data->buffer_id, buffer_data->w,
+			pinfo->col_align);
+		ret = -ERANGE;
+		goto exit;
+	}
+
+	buffer_data->x = fb_quickdraw_correct_alignment(buffer_data->x,
+							pinfo->col_align);
+exit:
+	pr_debug("%s- (ret: %d)", __func__, ret);
+
+	return ret;
+}
+
 static struct fb_quickdraw_buffer *mdss_quickdraw_alloc_buffer(void *data,
 	struct fb_quickdraw_buffer_data *buffer_data)
 {
@@ -239,12 +273,22 @@ static int mdss_quickdraw_execute(void *data,
 	struct fb_quickdraw_buffer *buffer, int x, int y)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)(data);
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
 	struct mdp_display_commit prim_commit;
 	struct mdss_quickdraw_buffer *mdss_buffer;
 	int w, h;
 	int ret = 0;
 
 	pr_debug("%s+\n", __func__);
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("%s: Panel data not available\n", __func__);
+		ret = -EINVAL;
+		goto exit;
+	}
+	pinfo = &pdata->panel_info;
 
 	ret = fb_quickdraw_get_buffer(buffer);
 	if (ret != 0) {
@@ -262,6 +306,7 @@ static int mdss_quickdraw_execute(void *data,
 	if (y == COORD_NO_OVERRIDE)
 		y = buffer->data.y;
 
+	x = fb_quickdraw_correct_alignment(x, pinfo->col_align);
 	w = buffer->data.w;
 	h = buffer->data.h;
 
@@ -328,6 +373,8 @@ exit:
 static int mdss_quickdraw_erase(void *data, int x1, int y1, int x2, int y2)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)(data);
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
 	struct fb_quickdraw_buffer_data buffer_data;
 	struct fb_quickdraw_buffer *buffer = NULL;
 	int w = x2 - x1;
@@ -335,6 +382,23 @@ static int mdss_quickdraw_erase(void *data, int x1, int y1, int x2, int y2)
 	int ret;
 
 	pr_debug("%s+\n", __func__);
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("%s: Panel data not available\n", __func__);
+		ret = -EINVAL;
+		goto exit;
+	}
+	pinfo = &pdata->panel_info;
+
+	if (fb_quickdraw_check_alignment(w, pinfo->col_align)) {
+		pr_err("%s: Erase width[%d] not aligned [%d]\n", __func__, w,
+			pinfo->col_align);
+		ret = -EINVAL;
+		goto exit;
+	}
+	x1 = fb_quickdraw_correct_alignment(x1, pinfo->col_align);
+	x2 = fb_quickdraw_correct_alignment(x2, pinfo->col_align);
 
 	if (x1 < 0 || y1 < 0 || w <= 0 || h <= 0 ||
 		(x1 + w) > mfd->panel_info->xres ||
@@ -406,6 +470,7 @@ static struct fb_quickdraw_ops mdss_quickdraw_ops = {
 	.execute = mdss_quickdraw_execute,
 	.erase   = mdss_quickdraw_erase,
 	.cleanup = mdss_quickdraw_cleanup,
+	.validate_buffer = mdss_quickdraw_validate_buffer,
 	.alloc_buffer = mdss_quickdraw_alloc_buffer,
 	.delete_buffer = mdss_quickdraw_delete_buffer,
 };
