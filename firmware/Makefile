@@ -139,7 +139,8 @@ fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
 fw-shipped-$(CONFIG_TOUCHSCREEN_MELFAS_W) += tsp_melfas/w/mms_ts_w.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_MELFAS_W) += tsp_melfas/w/mms_ts_w_config.fw
 
-fw-shipped-$(CONFIG_TOUCHSCREEN_CYTTSP5) += tsp_cypress/cyttsp5.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_CYTTSP5) += tsp_cypress/cyttsp5_csp.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_CYTTSP5) += tsp_cypress/cyttsp5_qfn.fw
 
 #for sensorhub
 fw-shipped-$(CONFIG_SENSORS_SSP_STM) += ssp_stm.fw
