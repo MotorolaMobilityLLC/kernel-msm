@@ -133,7 +133,6 @@ static char *static_command_line;
 
 static char *execute_command;
 static char *ramdisk_execute_command;
-static int boot_mode_lpm;
 
 /*
  * If set, this is an indication to the drivers that reset the underlying
@@ -392,10 +391,7 @@ static noinline void __init_refok rest_init(void)
 	/* Call into cpu_idle with preempt disabled */
 	cpu_startup_entry(CPUHP_ONLINE);
 }
-int is_lpm_mode(void)
-{
-	return boot_mode_lpm;
-}
+
 /* Check for early params. */
 static int __init do_early_param(char *param, char *val, const char *unused)
 {
@@ -409,11 +405,6 @@ static int __init do_early_param(char *param, char *val, const char *unused)
 			if (p->setup_func(val) != 0)
 				pr_warn("Malformed early option '%s'\n", param);
 		}
-	}
-	/* Check LPM(Power Off Charging) Mode */
-	if ((strncmp(param, "androidboot.mode", 17) == 0)) {
-		if (strncmp(val, "charger", 7) == 0)
-			boot_mode_lpm = 1;
 	}
 	/* We accept everything at this stage. */
 	return 0;
