@@ -76,11 +76,18 @@ struct blkif_x86_32_request_discard {
 	uint64_t       nr_sectors;
 } __attribute__((__packed__));
 
+struct blkif_x86_32_request_other {
+	uint8_t        _pad1;
+	blkif_vdev_t   _pad2;
+	uint64_t       id;           /* private guest value, echoed in resp  */
+} __attribute__((__packed__));
+
 struct blkif_x86_32_request {
 	uint8_t        operation;    /* BLKIF_OP_???                         */
 	union {
 		struct blkif_x86_32_request_rw rw;
 		struct blkif_x86_32_request_discard discard;
+		struct blkif_x86_32_request_other other;
 	} u;
 } __attribute__((__packed__));
 
@@ -112,11 +119,19 @@ struct blkif_x86_64_request_discard {
 	uint64_t       nr_sectors;
 } __attribute__((__packed__));
 
+struct blkif_x86_64_request_other {
+	uint8_t        _pad1;
+	blkif_vdev_t   _pad2;
+	uint32_t       _pad3;        /* offsetof(blkif_..,u.discard.id)==8   */
+	uint64_t       id;           /* private guest value, echoed in resp  */
+} __attribute__((__packed__));
+
 struct blkif_x86_64_request {
 	uint8_t        operation;    /* BLKIF_OP_???                         */
 	union {
 		struct blkif_x86_64_request_rw rw;
 		struct blkif_x86_64_request_discard discard;
+		struct blkif_x86_64_request_other other;
 	} u;
 } __attribute__((__packed__));
 
@@ -257,10 +272,16 @@ static inline void blkif_get_x86_32_req(struct blkif_request *dst,
 		break;
 	case BLKIF_OP_DISCARD:
 		dst->u.discard.flag = src->u.discard.flag;
+		dst->u.discard.id = src->u.discard.id;
 		dst->u.discard.sector_number = src->u.discard.sector_number;
 		dst->u.discard.nr_sectors = src->u.discard.nr_sectors;
 		break;
 	default:
+		/*
+		 * Don't know how to translate this op. Only get the
+		 * ID so failure can be reported to the frontend.
+		 */
+		dst->u.other.id = src->u.other.id;
 		break;
 	}
 }
@@ -287,10 +308,16 @@ static inline void blkif_get_x86_64_req(struct blkif_request *dst,
 		break;
 	case BLKIF_OP_DISCARD:
 		dst->u.discard.flag = src->u.discard.flag;
+		dst->u.discard.id = src->u.discard.id;
 		dst->u.discard.sector_number = src->u.discard.sector_number;
 		dst->u.discard.nr_sectors = src->u.discard.nr_sectors;
 		break;
 	default:
+		/*
+		 * Don't know how to translate this op. Only get the
+		 * ID so failure can be reported to the frontend.
+		 */
+		dst->u.other.id = src->u.other.id;
 		break;
 	}
 }

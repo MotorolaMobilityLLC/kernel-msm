@@ -254,6 +254,7 @@ extern int sysctl_tcp_max_ssthresh;
 extern int sysctl_tcp_cookie_size;
 extern int sysctl_tcp_thin_linear_timeouts;
 extern int sysctl_tcp_thin_dupack;
+extern int sysctl_tcp_challenge_ack_limit;
 
 /* sysctl variables for controlling various tcp parameters */
 extern int sysctl_tcp_delack_seg;
