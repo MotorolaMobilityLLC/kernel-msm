@@ -149,7 +149,7 @@
  */
 		samsung,panel-alpm-on-seq = [
 
-				05 01 00 00 14 00 02 28 00			/* display off wait 20ms */
+				/*05 01 00 00 14 00 02 28 00*/			/* display off wait 20ms */
 
 				/* image write for APLM mode */
 
@@ -158,11 +158,11 @@
 				39 01 00 00 00 00 02 12 00			/* partial mode on */
 				39 01 00 00 14 00 02 39 00			/* idel mode on wait 20ms */
 
-				39 01 00 00 00 00 02 29 00		/* display on */
+				/*39 01 00 00 00 00 02 29 00*/		/* display on */
 			];
 
 		samsung,panel-alpm-off-seq = [
-				05 01 00 00 14 00 02 28 00			/* display off wait 20ms */
+				/*05 01 00 00 14 00 02 28 00*/			/* display off wait 20ms */
 
 				/* image write for normal mode */
 
@@ -171,7 +171,7 @@
 
 				39 01 00 00 01 00 02 51 FF		/* Set Max Brightness */
 
-				39 01 00 00 00 00 02 29 00		/* display on */
+				/*39 01 00 00 00 00 02 29 00*/		/* display on */
 			];
 	};
 };
