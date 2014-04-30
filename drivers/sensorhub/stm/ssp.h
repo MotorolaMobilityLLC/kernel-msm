@@ -481,6 +481,7 @@ struct ssp_data {
 	u64 timestamp;
 	struct regulator *vdd_hub;
 	struct regulator *vdd_acc;
+	struct regulator *vdd_hrm;
 };
 
 struct ssp_big {

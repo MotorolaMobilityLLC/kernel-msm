@@ -299,7 +299,7 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 		goto dt_exit;
 	}
 
-	data->vdd_acc= regulator_get(NULL, supply_name);
+	data->vdd_acc = regulator_get(NULL, supply_name);
 	if (IS_ERR(data->vdd_acc)) {
 		data->vdd_acc = NULL;
 		pr_err("[SSP] regulator_get Error\n");
@@ -320,6 +320,22 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 		}
 	}
 
+	if (data->ap_rev >= 1) {
+		data->vdd_hrm = devm_regulator_get(dev, "ssp_hrm_verg");
+		if (IS_ERR(data->vdd_hrm)) {
+			pr_err("[SSP] could not get ssp_hrm_verg, %ld\n",
+				PTR_ERR(data->vdd_hrm));
+			errorno = -ENXIO;
+		} else {
+			errorno = regulator_enable(data->vdd_hrm);
+			if (errorno) {
+				regulator_disable(data->vdd_acc);
+				pr_err("[SSP] VDD can't turn on for SSP\n");
+				goto dt_exit;
+			}
+		}
+	}
+
 	data->vdd_hub = devm_regulator_get(dev, "ssp_vreg");
 	if (IS_ERR(data->vdd_hub)) {
 		pr_err("[SSP] could not get ssp_vreg, %ld\n",
@@ -330,6 +346,8 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 		errorno = regulator_enable(data->vdd_hub);
 		if (errorno) {
 			regulator_disable(data->vdd_acc);
+			if (data->ap_rev >= 1)
+				regulator_disable(data->vdd_hrm);
 			pr_err("[SSP] VDD can't turn on for SSP\n");
 			goto dt_exit;
 		}
@@ -544,6 +562,8 @@ static void ssp_shutdown(struct spi_device *spi)
 
 	regulator_disable(data->vdd_acc);
 	regulator_disable(data->vdd_hub);
+	if (data->ap_rev >= 1)
+		regulator_disable(data->vdd_hrm);
 exit:
 	kfree(data);
 }
