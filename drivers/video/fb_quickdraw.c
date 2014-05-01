@@ -266,6 +266,20 @@ static int fb_quickdraw_add_buffer(struct fb_quickdraw_buffer_data *data)
 
 	pr_debug("%s+\n", __func__);
 
+	if (!data) {
+		pr_err("%s: Buffer data null\n", __func__);
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	if (fb_quickdraw_ops->validate_buffer &&
+	    fb_quickdraw_ops->validate_buffer(fb_quickdraw_ops->data, data)) {
+		pr_err("%s: Invalid buffer[%d] data\n", __func__,
+			data->buffer_id);
+		ret = -EINVAL;
+		goto exit;
+	}
+
 	mutex_lock(&list_lock);
 
 	list_for_each_entry(cur, &fb_quickdraw_buffer_list_head, list) {
@@ -273,7 +287,7 @@ static int fb_quickdraw_add_buffer(struct fb_quickdraw_buffer_data *data)
 			pr_err("%s: Duplicate buffer_id: %d\n", __func__,
 				data->buffer_id);
 			ret = -EEXIST;
-			goto exit;
+			goto exit_mutex;
 		}
 	}
 
@@ -282,7 +296,7 @@ static int fb_quickdraw_add_buffer(struct fb_quickdraw_buffer_data *data)
 		pr_err("%s: fb_quickdraw_ops->alloc_buffer failed!\n",
 			__func__);
 		ret = -ENOMEM;
-		goto exit;
+		goto exit_mutex;
 	}
 
 	if (buffer->data.user_fd >= 0) {
@@ -292,15 +306,16 @@ static int fb_quickdraw_add_buffer(struct fb_quickdraw_buffer_data *data)
 				__func__);
 			fb_quickdraw_put_buffer(buffer);
 			ret = -EBADF;
-			goto exit;
+			goto exit_mutex;
 		}
 	}
 
 	list_add_tail(&buffer->list, &fb_quickdraw_buffer_list_head);
 
-exit:
+exit_mutex:
 	mutex_unlock(&list_lock);
 
+exit:
 	pr_debug("%s- (ret: %d)\n", __func__, ret);
 
 	return ret;
