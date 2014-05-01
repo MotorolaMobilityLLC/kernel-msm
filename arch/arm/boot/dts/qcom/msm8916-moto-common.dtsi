@@ -110,9 +110,9 @@
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 125 0
 			1 &intc 0 221 0
-			2 &msm_gpio 38 0>;
+			2 &msm_gpio 25 0>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
-	cd-gpios = <&msm_gpio 38 0x1>;
+	cd-gpios = <&msm_gpio 25 0x1>;
 
 	status = "ok";
 };
@@ -261,6 +261,10 @@
 	status = "okay";
 };
 &tlmm_pinmux {
+	sdhc2_cd_pin {
+		qcom,pins = <&gp 25>;
+	};
+
 	apds9930_int_pin {
 		qcom,pins = <&gp 113>;
 		qcom,pin-func = <0>;
