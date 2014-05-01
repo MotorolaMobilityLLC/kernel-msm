@@ -220,7 +220,7 @@ static struct fb_quickdraw_buffer *mdss_quickdraw_alloc_buffer(void *data,
 {
 	struct fb_quickdraw_buffer *buffer;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (id: %d)\n", __func__, buffer_data->buffer_id);
 
 	buffer = fb_quickdraw_alloc_buffer(buffer_data,
 		sizeof(struct mdss_quickdraw_buffer));
@@ -295,7 +295,8 @@ static int mdss_quickdraw_execute(void *data,
 	int w, h;
 	int ret = 0;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (id: %d) (x:%d, y:%d)\n", __func__,
+		buffer->data.buffer_id, x, y);
 
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 	if (!pdata) {
@@ -377,6 +378,9 @@ static int mdss_quickdraw_execute(void *data,
 	prim_commit.roi.w = rect.w;
 	prim_commit.roi.h = rect.h;
 
+	pr_debug("%s roi(%d, %d) (w:%d,h:%d)\n", __func__, prim_commit.roi.x,
+		prim_commit.roi.y, prim_commit.roi.w, prim_commit.roi.h);
+
 	mdss_fb_pan_display_ex(mfd->fbi, &prim_commit);
 
 exit:
@@ -396,7 +400,8 @@ static int mdss_quickdraw_erase(void *data, int x1, int y1, int x2, int y2)
 	int h = y2 - y1;
 	int ret;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (x1:%d, y1:%d) (x2:%d, y2:%d)\n", __func__,
+		x1, y1, x2, y2);
 
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 	if (!pdata) {
