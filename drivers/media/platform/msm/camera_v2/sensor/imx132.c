@@ -15,6 +15,11 @@
 #define IMX132_SENSOR_NAME "imx132"
 DEFINE_MSM_MUTEX(imx132_mut);
 
+#define IMX132_OTP_SIZE 3
+#define IMX132_OTP_ADDR1 0x3517
+#define IMX132_OTP_ADDR2 0x351E
+/* #define DEBUG_OTP_RAW_DUMP */
+
 static struct msm_sensor_ctrl_t imx132_s_ctrl;
 
 static struct msm_sensor_power_setting imx132_power_setting[] = {
@@ -106,6 +111,82 @@ static struct msm_camera_i2c_client imx132_sensor_i2c_client = {
 	.addr_type = MSM_CAMERA_I2C_WORD_ADDR,
 };
 
+#ifdef DEBUG_OTP_RAW_DUMP
+static void imx132_otp_raw_dump(uint8_t *data)
+{
+	int i = 0;
+	/* Print raw OTP Data */
+	for (i = 0; i < IMX132_OTP_SIZE; i++) {
+		pr_info("%s: data[%d] = 0x%02x\n",
+			__func__, i, *(data+i));
+	}
+}
+#endif
+
+static int32_t imx132_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	uint8_t *imx132_otp_data;
+	uint16_t data;
+	/* Set default OTP info */
+
+	if (s_ctrl->sensor_otp.otp_read)
+		return rc;
+
+	imx132_otp_data = s_ctrl->sensor_otp.otp_info;
+
+	/* Read OTP Data */
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+		s_ctrl->sensor_i2c_client,
+		IMX132_OTP_ADDR1,
+		&data, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: Fail to read OTP register data\n",
+			__func__);
+		return rc;
+	}
+	/* store 0x3517 data */
+	*imx132_otp_data = (uint8_t)data;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+		s_ctrl->sensor_i2c_client,
+		IMX132_OTP_ADDR2,
+		&data, MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Fail to read OTP register data\n",
+			__func__);
+		return rc;
+	}
+	/* store 0x351E data */
+	*(imx132_otp_data+1) = (uint8_t)(data >> 8);
+	/* store 0x351F data */
+	*(imx132_otp_data+2) = (uint8_t)(data & 0xFF);
+
+#ifdef DEBUG_OTP_RAW_DUMP
+	/* Dump OTP */
+	imx132_otp_raw_dump(imx132_otp_data);
+#endif
+	s_ctrl->sensor_otp.otp_read = 1;
+	return rc;
+}
+
+static int32_t imx132_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	/* This function isn't really needed at this time, even for
+	 * factory, as we will be populating this in user space.
+	 */
+	return 0;
+}
+
+
+static struct msm_sensor_fn_t imx132_func_tbl = {
+	.sensor_config = msm_sensor_config,
+	.sensor_power_up = msm_sensor_power_up,
+	.sensor_power_down = msm_sensor_power_down,
+	.sensor_read_otp_info = imx132_read_otp_info,
+	.sensor_get_module_info = imx132_get_module_info,
+};
+
 static struct msm_sensor_ctrl_t imx132_s_ctrl = {
 	.sensor_i2c_client = &imx132_sensor_i2c_client,
 	.power_setting_array.power_setting = imx132_power_setting,
@@ -113,6 +194,7 @@ static struct msm_sensor_ctrl_t imx132_s_ctrl = {
 	.msm_sensor_mutex = &imx132_mut,
 	.sensor_v4l2_subdev_info = imx132_subdev_info,
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(imx132_subdev_info),
+	.func_tbl = &imx132_func_tbl,
 };
 
 static const struct of_device_id imx132_dt_match[] = {
@@ -136,6 +218,16 @@ static int32_t imx132_platform_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 
 	match = of_match_device(imx132_dt_match, &pdev->dev);
+
+	imx132_s_ctrl.sensor_otp.otp_info = devm_kzalloc(&pdev->dev,
+		IMX132_OTP_SIZE, GFP_KERNEL);
+	if (imx132_s_ctrl.sensor_otp.otp_info == NULL) {
+		pr_err("%s: Unable to allocate memory for OTP!\n",
+			__func__);
+		return -ENOMEM;
+	}
+	imx132_s_ctrl.sensor_otp.size = IMX132_OTP_SIZE;
+
 	rc = msm_sensor_platform_probe(pdev, match->data);
 	return rc;
 }
