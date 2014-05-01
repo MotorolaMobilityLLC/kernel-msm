@@ -58,12 +58,13 @@
 		max17048-fuelgauge@36 {
 			compatible = "maxim,max17048";
 			reg = <0x36>;
-			fuelgauge,rcomp_charging = <0x9C>;
-			fuelgauge,rcomp_discharging = <0x71>;
+			fuelgauge,rcomp_charging = <71>;
+			fuelgauge,rcomp_discharging = <71>;
 			fuelgauge,fg_irq = <&msmgpio 69 0x00>;
 			fuelgauge,fuel_alert_soc = <2>;
-			fuelgauge,rcomp-co-hot = <700>;
-			fuelgauge,rcomp-co-cold = <5225>;
+			fuelgauge,temp_cohot = <(-1600)>;
+			fuelgauge,temp_cocold = <(-9200)>;
+			fuelgauge,is_using_model_data;
 		};
 	};
 
@@ -72,22 +73,26 @@
 		status = "okay";
 		battery,charger_name = "max77836-charger";
 		battery,fuelgauge_name = "max17048-fuelgauge";
-		battery,temp_high_threshold = <600>;
-		battery,temp_high_recovery = <420>;
-		battery,temp_low_threshold = <(-50)>;
+		battery,temp_high_threshold = <640>;
+		battery,temp_high_recovery = <460>;
+		battery,temp_low_threshold = <(-20)>;
 		battery,temp_low_recovery = <0>;
+		battery,temp_high_threshold_lpm = <550>;
+		battery,temp_high_recovery_lpm = <460>;
+		battery,temp_low_threshold_lpm = <(-20)>;
+		battery,temp_low_recovery_lpm = <0>;
 		battery,full_charging_time = <21600>;
 		battery,recharging_time = <5400>;
 		battery,recharging_voltage = <4300000>;
+		qcom,android-battery-vadc = <&pm8226_vadc>;
 	};
 
 	max77836-charger {
 		status = "okay";
 		/* Charger */
-		charger,chg_float_voltage = <4350>;
-		charger,input_current_limit = <0 475 475>;
-		charger,fast_charging_current = <0 475 475>;
-		charger,full_check_current = <0 50 50>;
+		charger,chg_float_voltage = <4350000>;
+		charger,fast_charging_current = <0 150000 150000>;
+		charger,full_check_current = <0 30000 30000>;
 	};
 
 	i2c@20 {
