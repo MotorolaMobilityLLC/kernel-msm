@@ -364,6 +364,12 @@ static int ssp_probe(struct spi_device *spi)
 
 	pr_info("[SSP] %s, is called\n", __func__);
 
+	if (androidboot_mode_charger == 1) {
+		pr_err("[SSP] probe exit : lpm %d\n",
+			androidboot_mode_charger);
+		return -ENODEV;
+	}
+
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (data == NULL) {
 		pr_err("[SSP] %s, failed to allocate memory for data\n",

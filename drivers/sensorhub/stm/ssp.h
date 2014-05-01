@@ -319,6 +319,7 @@ struct sensor_value {
 } __attribute__((__packed__));
 
 extern struct class *sensors_event_class;
+extern int androidboot_mode_charger;
 
 struct calibraion_data {
 	s16 x;
