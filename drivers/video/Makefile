@@ -178,3 +178,6 @@ obj-$(CONFIG_VIDEOMODE_HELPERS) += display_timing.o videomode.o
 ifeq ($(CONFIG_OF),y)
 obj-$(CONFIG_VIDEOMODE_HELPERS) += of_display_timing.o of_videomode.o
 endif
+
+#framebuffer quickdraw driver
+obj-$(CONFIG_FB_QUICKDRAW) += fb_quickdraw.o

@@ -2452,6 +2452,13 @@ config FB_SIMPLE
 	  through device tree, or potentially plain old platform data in the
 	  future.
 
+config FB_QUICKDRAW
+	bool "Framebuffer quickdraw"
+	default n
+	---help---
+	  Allow userspace to register offscreen buffers with the
+	  fb quickdraw driver to be drawn to the panel on demand
+
 source "drivers/video/msm/Kconfig"
 source "drivers/video/omap/Kconfig"
 source "drivers/video/omap2/Kconfig"
