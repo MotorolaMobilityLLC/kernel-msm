@@ -1089,13 +1089,17 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             limSetHtCaps( pMac, psessionEntry, (tANI_U8*)pMbMsg->data + PROBE_RSP_IE_OFFSET,
                            nBytes - PROBE_RSP_IE_OFFSET);
         }
-        if(pMac->lim.gpLimRemainOnChanReq == NULL)
+        if ((SIR_MAC_MGMT_ACTION == pFc->subType) &&
+                (0 != pMbMsg->wait))
         {
-            limLog( pMac, LOGE,
-                    FL("Failed to Send Action frame \n"));
-            limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
-                          eHAL_STATUS_FAILURE, pMbMsg->sessionId, 0);
-            return;
+            if (pMac->lim.gpLimRemainOnChanReq == NULL)
+            {
+                limLog( pMac, LOGE,
+                        FL("Failed to Send Action frame \n"));
+                limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
+                              eHAL_STATUS_FAILURE, pMbMsg->sessionId, 0);
+                return;
+            }
         }
     }
 
