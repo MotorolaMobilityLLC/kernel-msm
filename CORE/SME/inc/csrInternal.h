@@ -81,6 +81,7 @@
      NULL \
 )
 
+#define CSR_MAX_NUM_COUNTRY_CODE  100
 #define CSR_IS_SELECT_5GHZ_MARGIN( pMac ) \
 ( \
    (((pMac)->roam.configParam.nSelect5GHzMargin)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
@@ -691,6 +692,11 @@ typedef struct tagCsrOsChannelMask
     tANI_U8 channelList[WNI_CFG_VALID_CHANNEL_LIST_LEN];
 }tCsrOsChannelMask;
 
+typedef struct tagCsrVotes11d
+{
+    tANI_U8 votes;
+    tANI_U8 countryCode[WNI_CFG_COUNTRY_CODE_LEN];
+}tCsrVotes11d;
 
 typedef struct tagCsrScanStruct
 {
@@ -737,6 +743,13 @@ typedef struct tagCsrScanStruct
     tANI_S8 currentCountryRSSI;     // RSSI for current country code
     tANI_BOOLEAN f11dInfoApplied;
     tANI_BOOLEAN fCancelIdleScan;
+    tANI_U8 countryCodeCount;
+    tCsrVotes11d votes11d[CSR_MAX_NUM_COUNTRY_CODE]; //counts for various advertized country codes
+    //in 11d IE from probe rsp or beacons of neighboring APs;
+    //will use the most popular one (max count)
+    tANI_U8 countryCodeElected[WNI_CFG_COUNTRY_CODE_LEN];
+
+
 #ifdef FEATURE_WLAN_WAPI
 //    tANI_U16 NumBkidCandidate;
 //    tBkidCandidateInfo BkidCandidateInfo[CSR_MAX_BKID_ALLOWED]; /* Move this as part of SessionEntry */
