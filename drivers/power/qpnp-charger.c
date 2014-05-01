@@ -3045,8 +3045,7 @@ qpnp_batt_system_temp_level_set(struct qpnp_chg_chip *chip, int lvl_sel)
 {
 	if (lvl_sel >= 0 && lvl_sel < chip->thermal_levels) {
 		chip->therm_lvl_sel = lvl_sel;
-		if ((lvl_sel == (chip->thermal_levels - 1)) &&
-		    (chip->thermal_mitigation[lvl_sel] == 0)) {
+		if (lvl_sel == (chip->thermal_levels - 1)) {
 			/* disable charging if highest value selected */
 			qpnp_chg_buck_control(chip, 0);
 		} else {
