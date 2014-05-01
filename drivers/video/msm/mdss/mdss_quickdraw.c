@@ -48,17 +48,17 @@ static int set_overlay(struct msm_fb_data_type *mfd,
 	buffer = &mdss_buffer->buffer;
 
 	memset(&overlay, 0, sizeof(struct mdp_overlay));
-	overlay.src.width  = buffer->data.w;
-	overlay.src.height = buffer->data.h;
+	overlay.src.width  = buffer->data.rect.w;
+	overlay.src.height = buffer->data.rect.h;
 	overlay.src.format = buffer->data.format;
 	overlay.src_rect.x = 0;
 	overlay.src_rect.y = 0;
-	overlay.src_rect.w = buffer->data.w;
-	overlay.src_rect.h = buffer->data.h;
+	overlay.src_rect.w = buffer->data.rect.w;
+	overlay.src_rect.h = buffer->data.rect.h;
 	overlay.dst_rect.x = x;
 	overlay.dst_rect.y = y;
-	overlay.dst_rect.w = buffer->data.w;
-	overlay.dst_rect.h = buffer->data.h;
+	overlay.dst_rect.w = buffer->data.rect.w;
+	overlay.dst_rect.h = buffer->data.rect.h;
 	overlay.z_order = 0;
 	overlay.alpha = 0xff;
 	overlay.flags = 0;
@@ -185,16 +185,17 @@ static int mdss_quickdraw_validate_buffer(void *data,
 	}
 	pinfo = &pdata->panel_info;
 
-	if (fb_quickdraw_check_alignment(buffer_data->w, pinfo->col_align)) {
+	if (fb_quickdraw_check_alignment(buffer_data->rect.w,
+					 pinfo->col_align)) {
 		pr_err("%s Buffer [id: %d] width [%d] not aligned [%d]\n",
-			__func__, buffer_data->buffer_id, buffer_data->w,
+			__func__, buffer_data->buffer_id, buffer_data->rect.w,
 			pinfo->col_align);
 		ret = -ERANGE;
 		goto exit;
 	}
 
-	buffer_data->x = fb_quickdraw_correct_alignment(buffer_data->x,
-							pinfo->col_align);
+	buffer_data->rect.x = fb_quickdraw_correct_alignment(
+		buffer_data->rect.x, pinfo->col_align);
 exit:
 	pr_debug("%s- (ret: %d)", __func__, ret);
 
@@ -302,13 +303,13 @@ static int mdss_quickdraw_execute(void *data,
 		buffer);
 
 	if (x == COORD_NO_OVERRIDE)
-		x = buffer->data.x;
+		x = buffer->data.rect.x;
 	if (y == COORD_NO_OVERRIDE)
-		y = buffer->data.y;
+		y = buffer->data.rect.y;
 
 	x = fb_quickdraw_correct_alignment(x, pinfo->col_align);
-	w = buffer->data.w;
-	h = buffer->data.h;
+	w = buffer->data.rect.w;
+	h = buffer->data.rect.h;
 
 	if (x < 0 || y < 0 || w <= 0 || h <= 0 ||
 	    (x + w) > mfd->panel_info->xres ||
@@ -418,10 +419,10 @@ static int mdss_quickdraw_erase(void *data, int x1, int y1, int x2, int y2)
 		goto exit;
 	}
 
-	buffer->data.x = x1;
-	buffer->data.y = y1;
-	buffer->data.w = w;
-	buffer->data.h = h;
+	buffer->data.rect.x = x1;
+	buffer->data.rect.y = y1;
+	buffer->data.rect.w = w;
+	buffer->data.rect.h = h;
 
 	ret = mdss_quickdraw_execute(data, buffer, COORD_NO_OVERRIDE,
 		COORD_NO_OVERRIDE);
