@@ -36,6 +36,8 @@ struct fb_quickdraw_ops {
 		int x, int y);
 	int (*erase)(void *data, int x1, int y1, int x2, int y2);
 	int (*cleanup)(void *data);
+	int (*validate_buffer)(void *data,
+		struct fb_quickdraw_buffer_data *buffer_data);
 	struct fb_quickdraw_buffer *(*alloc_buffer)(void *data,
 		struct fb_quickdraw_buffer_data *buffer_data);
 	int (*delete_buffer)(void *data, struct fb_quickdraw_buffer *buffer);
