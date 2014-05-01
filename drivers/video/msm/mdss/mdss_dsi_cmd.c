@@ -608,23 +608,6 @@ void mdss_dsi_set_tear_on(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	struct dcs_cmd_req cmdreq;
 
-	/*
-	 * TODO: This is a workaround for DSI1 IRQ storming in charge-only-mode.
-	 * Some how, when kernel starts in the COM mode, and cont_splash_enabled
-	 * is enable, the DSI configuration will be by-passed, and this is a
-	 * first DSI command will be sent. Even though, we don't need to send
-	 * this command because it is a part of the display init seq. When
-	 * sending this command only DSI0 clock will be enable, DSI0 IRQ will
-	 * be enabled, but somehow, the DSI1 IRQ also enable (don't know why)
-	 * then the DSI1 IRQ will be reported and because the DSI1 clock is not
-	 * enable therefore DSI1 IRQ will storm the IRQ handler.
-	 * - Until the first update sends, it will enable the DSI clocks
-	 * for both DSI1 and DSI0 then this DSI1 IRQ will be cleared, and DSI
-	 * will be cleaned after this.
-	 * - There is another cloned CR for the real fix and revert this WR
-	 */
-	return;
-
 	cmdreq.cmds = &dsi_tear_on_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_COMMIT;
