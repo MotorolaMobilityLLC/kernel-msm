@@ -684,23 +684,24 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 2);
 		break;
 
-		case STM401_IOCTL_ENABLE_BREATHING:
-			if (copy_from_user(&byte, argp, sizeof(byte))) {
-				dev_err(&ps_stm401->client->dev,
-					"Enable Breathing, copy byte returned error\n");
-				err = -EFAULT;
-				break;
-			}
+	case STM401_IOCTL_ENABLE_BREATHING:
+		if (copy_from_user(&byte, argp, sizeof(byte))) {
+			dev_err(&ps_stm401->client->dev,
+				"Enable Breathing, copy byte returned error\n");
+			err = -EFAULT;
+			break;
+		}
 
-			if (byte)
-				stm401_vote_aod_enabled(ps_stm401,
-					AOD_QP_ENABLED_VOTE_USER, true);
-			else
-				stm401_vote_aod_enabled(ps_stm401,
-					AOD_QP_ENABLED_VOTE_USER, false);
-			stm401_resolve_aod_enabled_locked(ps_stm401);
-			/* the user's vote can not fail */
-			err = 0;
+		if (byte)
+			stm401_vote_aod_enabled(ps_stm401,
+				AOD_QP_ENABLED_VOTE_USER, true);
+		else
+			stm401_vote_aod_enabled(ps_stm401,
+				AOD_QP_ENABLED_VOTE_USER, false);
+		stm401_resolve_aod_enabled_locked(ps_stm401);
+		/* the user's vote can not fail */
+		err = 0;
+		break;
 	case STM401_IOCTL_SET_LOWPOWER_MODE:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_LOWPOWER_MODE");
 		if (copy_from_user(&stm401_cmdbuff[0], argp, 1)) {
