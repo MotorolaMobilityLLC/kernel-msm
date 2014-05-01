@@ -57,13 +57,70 @@
 #include <soc/qcom/pm.h>
 #include <linux/regulator/spm-regulator.h>
 #include <linux/platform_data/android_battery.h>
-
+#include <asm/setup.h>
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
-
+#if defined (CONFIG_PSTORE_CONSOLE) && (CONFIG_PSTORE_RAM)
+#include <linux/pstore_ram.h>
+#include <linux/memblock.h>
+#endif
 struct class *sec_class;
 EXPORT_SYMBOL(sec_class);
+
+#if defined (CONFIG_PSTORE_CONSOLE) && (CONFIG_PSTORE_RAM)
+
+static struct ramoops_platform_data ramoops_data = {
+	.console_size		= 512 * SZ_1K,
+	.mem_size		= SZ_1M,
+};
+
+static struct platform_device ramoops_device = {
+	.name = "ramoops",
+	.dev = {
+		.platform_data = &ramoops_data,
+	},
+};
+
+static void __init sprat_reserve_persist_ram_area(void)
+{
+        struct membank *bank;
+        if (meminfo.nr_banks < 2) {
+                pr_err("%s: Highmem is not present.\n",
+                        __func__);
+                return;
+        }
+
+        bank = &meminfo.bank[1];
+        ramoops_data.mem_address = bank->start;
+
+	if (memblock_reserve(ramoops_data.mem_address, ramoops_data.mem_size)) {
+		pr_err("Failed to reserve persistent memory from %08lx-%08lx\n",
+			(long)ramoops_data.mem_address,
+			(long)(ramoops_data.mem_address +
+				ramoops_data.mem_size - 1));
+		return;
+	}
+	pr_info("ramoops: reserved %d bytes at 0x%08x\n",
+		(int)ramoops_data.mem_size, (int)(ramoops_data.mem_address));
+}
+#else
+static void __init sprat_reserve_persist_ram_area(void)
+{
+	return;
+}
+
+#endif
+
+void __init add_persistent_device(void)
+{
+#if defined (CONFIG_PSTORE_CONSOLE) && (CONFIG_PSTORE_RAM)
+	int ret = platform_device_register(&ramoops_device);
+	if (ret) {
+		pr_err("Unable to register ramoops device (%d)\n", ret);
+	}
+#endif
+}
 
 static void samsung_sys_class_init(void)
 {
@@ -118,6 +175,7 @@ static void __init msm8226_early_memory(void)
 static void __init msm8226_reserve(void)
 {
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
+	sprat_reserve_persist_ram_area();
 }
 
 /*
@@ -146,6 +204,7 @@ void __init msm8226_add_drivers(void)
 	cpr_regulator_init();
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
+	add_persistent_device();
 }
 
 void __init msm8226_init(void)
