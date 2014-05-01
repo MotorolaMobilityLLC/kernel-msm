@@ -410,7 +410,7 @@ static int fb_quickdraw_user_lock_buffer(int buffer_id)
 	int ret = -EINVAL;
 	struct fb_quickdraw_buffer *buffer;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (id: %d)\n", __func__, buffer_id);
 
 	buffer = fb_quickdraw_lookup_and_get_buffer(buffer_id);
 	if (!buffer)
@@ -431,7 +431,7 @@ static int fb_quickdraw_user_unlock_buffer(int buffer_id)
 	int ret = 0;
 	struct fb_quickdraw_buffer *buffer;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (id: %d)\n", __func__, buffer_id);
 
 	buffer = fb_quickdraw_lookup_and_get_buffer(buffer_id);
 	if (!buffer) {
