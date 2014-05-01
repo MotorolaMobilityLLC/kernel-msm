@@ -152,6 +152,7 @@ static struct kparam_string fwpath = {
 static char *country_code;
 static int   enable_11d = -1;
 static int   enable_dfs_chan_scan = -1;
+static int   gbcnMissRate = -1;
 
 #ifndef MODULE
 static int wlan_hdd_inited;
@@ -197,6 +198,9 @@ static VOS_STATUS hdd_parse_ese_beacon_req(tANI_U8 *pValue,
  */
 #define WLAN_HDD_DRIVER_MIRACAST_CFG_MIN_VAL 0
 #define WLAN_HDD_DRIVER_MIRACAST_CFG_MAX_VAL 2
+
+//wait time for beacon miss rate.
+#define BCN_MISS_RATE_TIME 500
 
 #ifdef WLAN_OPEN_SOURCE
 static struct wake_lock wlan_wake_lock;
@@ -1915,6 +1919,36 @@ exit:
 
 
 #endif/*End of FEATURE_WLAN_BATCH_SCAN*/
+
+static void getBcnMissRateCB(VOS_STATUS status, int bcnMissRate, void *data)
+{
+    bcnMissRateContext_t *pCBCtx = (bcnMissRateContext_t *)data;
+
+   /* there is a race condition that exists between this callback
+      function and the caller since the caller could time out either
+      before or while this code is executing.  we use a spinlock to
+      serialize these actions */
+    spin_lock(&hdd_context_lock);
+
+    gbcnMissRate = -1;
+
+    if(pCBCtx->magic != BCN_MISS_RATE_CONTEXT_MAGIC || NULL == data)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               FL("invalid context magic: %08x data: %p"), pCBCtx->magic, data );
+        spin_unlock(&hdd_context_lock);
+        return ;
+    }
+
+    if (VOS_STATUS_SUCCESS == status)
+    {
+       gbcnMissRate = bcnMissRate;
+    }
+    complete(&(pCBCtx->completion));
+    spin_unlock(&hdd_context_lock);
+
+    return;
+}
 
 static int hdd_driver_command(hdd_adapter_t *pAdapter,
                               hdd_priv_data_t *ppriv_data)
@@ -3805,6 +3839,66 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            }
        }
 #endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
+       else if (strncmp(command, "GETBCNMISSRATE", 14) == 0)
+       {
+           eHalStatus status;
+           char buf[32], len;
+           long waitRet;
+           bcnMissRateContext_t getBcnMissRateCtx;
+
+           hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+           if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
+           {
+               hddLog(VOS_TRACE_LEVEL_WARN,
+                    FL("GETBCNMISSRATE: STA is not in connected state"));
+               ret = -1;
+               goto exit;
+           }
+
+           init_completion(&(getBcnMissRateCtx.completion));
+           getBcnMissRateCtx.magic = BCN_MISS_RATE_CONTEXT_MAGIC;
+
+           status = sme_getBcnMissRate((tHalHandle)(pHddCtx->hHal),
+                                       pAdapter->sessionId,
+                                       (void *)getBcnMissRateCB,
+                                       (void *)(&getBcnMissRateCtx));
+           if( eHAL_STATUS_SUCCESS != status)
+           {
+               hddLog(VOS_TRACE_LEVEL_INFO,
+                    FL("GETBCNMISSRATE: fail to post WDA cmd"));
+                ret = -EINVAL;
+                goto exit;
+           }
+
+           waitRet = wait_for_completion_interruptible_timeout
+                           (&getBcnMissRateCtx.completion, BCN_MISS_RATE_TIME);
+           if(waitRet <= 0)
+           {
+               hddLog(VOS_TRACE_LEVEL_ERROR,
+                         FL("failed to wait on bcnMissRateComp %d"), ret);
+
+               //Make magic number to zero so that callback is not called.
+               spin_lock(&hdd_context_lock);
+               getBcnMissRateCtx.magic = 0x0;
+               spin_unlock(&hdd_context_lock);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           hddLog(VOS_TRACE_LEVEL_INFO,
+                  FL("GETBCNMISSRATE: bcnMissRate: %d"), gbcnMissRate);
+
+           len = snprintf(buf, sizeof(buf), "GETBCNMISSRATE %d", gbcnMissRate);
+           if (copy_to_user(priv_data.buf, &buf, len + 1))
+           {
+               hddLog(VOS_TRACE_LEVEL_ERROR,
+                     "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+           ret = len;
+       }
        else {
            MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                             TRACE_CODE_HDD_UNSUPPORTED_IOCTL,

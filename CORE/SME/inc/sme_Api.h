@@ -3230,4 +3230,7 @@ const char * sme_requestTypetoString(const v_U8_t requestType);
            to string.
  ---------------------------------------------------------------------------*/
 const char * sme_PmcStatetoString(const v_U8_t pmcState);
+
+eHalStatus sme_getBcnMissRate(tHalHandle, tANI_U8, void *, void *);
+
 #endif //#if !defined( __SME_API_H )

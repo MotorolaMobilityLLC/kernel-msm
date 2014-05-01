@@ -443,6 +443,8 @@ typedef enum
 
   WDI_UPDATE_CHAN_REQ                           = 88,
 
+  WDI_GET_BCN_MISS_RATE_REQ                     = 89,
+
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -749,6 +751,7 @@ typedef enum
   /* channel switch resp v1*/
   WDI_CH_SWITCH_RESP_V1                         = 88,
 
+  WDI_GET_BCN_MISS_RATE_RSP                     = 89,
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
@@ -5685,6 +5688,20 @@ WDI_ProcessRateUpdateInd
  @return Result of the function call
 */
 WDI_Status WDI_ProcessSetBatchScanRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+WDI_Status
+WDI_ProcessGetBcnMissRateReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+WDI_Status
+WDI_ProcessGetBcnMissRateRsp
 (
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
