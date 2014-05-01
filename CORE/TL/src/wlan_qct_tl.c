@@ -7818,7 +7818,7 @@ WLANTL_FwdPktToHDD
    WLANTL_STAClientType*    pClientSTA = NULL;
    vos_pkt_t*               vosDataBuff ;
    VOS_STATUS               vosStatus = VOS_STATUS_SUCCESS;
-   v_U32_t                  STAMetaInfo;
+   v_U32_t*                 STAMetaInfoPtr;
    vos_pkt_t*               vosNextDataBuff ;
    v_U8_t                   ucDesSTAId;
    WLANTL_RxMetaInfoType    wRxMetaInfo;
@@ -7870,9 +7870,9 @@ WLANTL_FwdPktToHDD
    {
       vos_pkt_walk_packet_chain( vosDataBuff, &vosNextDataBuff, 1/*true*/ );
       vos_pkt_get_user_data_ptr( vosDataBuff, VOS_PKT_USER_DATA_ID_TL,
-                                 (v_PVOID_t *)&STAMetaInfo );
-      wRxMetaInfo.ucUP = (v_U8_t)(STAMetaInfo & WLANTL_AC_MASK);
-      ucDesSTAId = (v_U8_t)((STAMetaInfo) >> WLANTL_STAID_OFFSET); 
+                                 (v_PVOID_t *)&STAMetaInfoPtr );
+      wRxMetaInfo.ucUP = (v_U8_t)((uintptr_t)STAMetaInfoPtr & WLANTL_AC_MASK);
+      ucDesSTAId = (v_U8_t)(((uintptr_t)STAMetaInfoPtr) >> WLANTL_STAID_OFFSET);
        
       vosStatus = vos_pkt_extract_data( vosDataBuff, 0, (v_VOID_t *)pDestMacAddress, &usMacAddSize);
       if ( VOS_STATUS_SUCCESS != vosStatus )
@@ -7915,7 +7915,7 @@ WLANTL_FwdPktToHDD
          //loopback unicast station comes here
       }
 
-      wRxMetaInfo.ucUP = (v_U8_t)(STAMetaInfo & WLANTL_AC_MASK);
+      wRxMetaInfo.ucUP = (v_U8_t)((uintptr_t)STAMetaInfoPtr & WLANTL_AC_MASK);
       wRxMetaInfo.ucDesSTAId = ucDesSTAId;
      
       vosStatus = pClientSTA->pfnSTARx( pvosGCtx, vosDataBuff, ucDesSTAId,
@@ -7988,7 +7988,7 @@ WLANTL_STARxAuth
    VOS_STATUS               vosStatus;
    WLANTL_RxMetaInfoType    wRxMetaInfo;
    static v_U8_t            ucPMPDUHLen;
-   v_U32_t*                  STAMetaInfoPtr;
+   v_U32_t*                 STAMetaInfoPtr;
    v_U8_t                   ucEsf=0; /* first subframe of AMSDU flag */
    v_U64_t                  ullcurrentReplayCounter=0; /*current replay counter*/
    v_U64_t                  ullpreviousReplayCounter=0; /*previous replay counter*/
