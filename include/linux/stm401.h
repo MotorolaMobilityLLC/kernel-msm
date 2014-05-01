@@ -507,6 +507,7 @@ struct stm401_data {
 	struct mutex lock;
 	struct work_struct irq_work;
 	struct work_struct irq_wake_work;
+	struct work_struct clear_interrupt_status_work;
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
 	struct input_dev *input_dev;
