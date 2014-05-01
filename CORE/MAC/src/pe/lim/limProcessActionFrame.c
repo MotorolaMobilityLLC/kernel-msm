@@ -1986,7 +1986,8 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                 break;
             }
 #endif
-            if (psessionEntry->limQosEnabled)
+            if ( (psessionEntry->limQosEnabled) ||
+                  (pActionHdr->actionID == SIR_MAC_QOS_MAP_CONFIGURE) )
             {
                 switch (pActionHdr->actionID)
                 {
