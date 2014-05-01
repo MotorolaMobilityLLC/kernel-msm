@@ -36,6 +36,8 @@ static int set_overlay(struct msm_fb_data_type *mfd,
 	int ret;
 	struct mdp_overlay overlay;
 	struct fb_quickdraw_buffer *buffer;
+	struct fb_quickdraw_rect src_rect;
+	struct fb_quickdraw_rect dst_rect;
 
 	pr_debug("%s+: (mdss_buffer: %p)\n", __func__, mdss_buffer);
 
@@ -51,19 +53,23 @@ static int set_overlay(struct msm_fb_data_type *mfd,
 	overlay.src.width  = buffer->data.rect.w;
 	overlay.src.height = buffer->data.rect.h;
 	overlay.src.format = buffer->data.format;
-	overlay.src_rect.x = 0;
-	overlay.src_rect.y = 0;
-	overlay.src_rect.w = buffer->data.rect.w;
-	overlay.src_rect.h = buffer->data.rect.h;
-	overlay.dst_rect.x = x;
-	overlay.dst_rect.y = y;
-	overlay.dst_rect.w = buffer->data.rect.w;
-	overlay.dst_rect.h = buffer->data.rect.h;
 	overlay.z_order = 0;
 	overlay.alpha = 0xff;
 	overlay.flags = 0;
 	overlay.is_fg = 0;
 	overlay.id = mdss_buffer->overlay_id;
+
+	fb_quickdraw_clip_rect(mfd->panel_info->xres, mfd->panel_info->yres,
+		x, y, buffer->data.rect.w, buffer->data.rect.h,
+		&src_rect, &dst_rect);
+	overlay.src_rect.x = src_rect.x;
+	overlay.src_rect.y = src_rect.y;
+	overlay.src_rect.w = src_rect.w;
+	overlay.src_rect.h = src_rect.h;
+	overlay.dst_rect.x = dst_rect.x;
+	overlay.dst_rect.y = dst_rect.y;
+	overlay.dst_rect.w = dst_rect.w;
+	overlay.dst_rect.h = dst_rect.h;
 
 	ret = mdss_mdp_overlay_set(mfd, &overlay);
 	if (ret) {
@@ -185,6 +191,13 @@ static int mdss_quickdraw_validate_buffer(void *data,
 	}
 	pinfo = &pdata->panel_info;
 
+	if (buffer_data->rect.w <= 0 || buffer_data->rect.h <= 0) {
+		pr_err("%s: Buffer width[%d]/height[%d] invalid\n",
+			__func__, buffer_data->rect.w, buffer_data->rect.h);
+		ret = -EINVAL;
+		goto exit;
+	}
+
 	if (fb_quickdraw_check_alignment(buffer_data->rect.w,
 					 pinfo->col_align)) {
 		pr_err("%s Buffer [id: %d] width [%d] not aligned [%d]\n",
@@ -278,6 +291,7 @@ static int mdss_quickdraw_execute(void *data,
 	struct mdss_panel_info *pinfo;
 	struct mdp_display_commit prim_commit;
 	struct mdss_quickdraw_buffer *mdss_buffer;
+	struct fb_quickdraw_rect rect;
 	int w, h;
 	int ret = 0;
 
@@ -311,12 +325,12 @@ static int mdss_quickdraw_execute(void *data,
 	w = buffer->data.rect.w;
 	h = buffer->data.rect.h;
 
-	if (x < 0 || y < 0 || w <= 0 || h <= 0 ||
-	    (x + w) > mfd->panel_info->xres ||
-	    (y + h) > mfd->panel_info->yres) {
-		pr_err("%s: Invalid coordinates [x:%d y:%d w:%d h:%d]\n",
+	fb_quickdraw_clip_rect(mfd->panel_info->xres, mfd->panel_info->yres,
+		x, y, w, h, NULL, &rect);
+
+	if (rect.w == 0 || rect.h == 0) {
+		pr_debug("%s: Draw skipped, buffer off-screen [x:%d y:%d w:%d h:%d]\n",
 			__func__, x, y, w, h);
-		ret = -EINVAL;
 		fb_quickdraw_put_buffer(buffer);
 		goto exit;
 	}
@@ -358,10 +372,10 @@ static int mdss_quickdraw_execute(void *data,
 	memset(&prim_commit, 0, sizeof(struct mdp_display_commit));
 	prim_commit.flags = MDP_DISPLAY_COMMIT_OVERLAY;
 	prim_commit.wait_for_finish = 1;
-	prim_commit.roi.x = x;
-	prim_commit.roi.y = y;
-	prim_commit.roi.w = w;
-	prim_commit.roi.h = h;
+	prim_commit.roi.x = rect.x;
+	prim_commit.roi.y = rect.y;
+	prim_commit.roi.w = rect.w;
+	prim_commit.roi.h = rect.h;
 
 	mdss_fb_pan_display_ex(mfd->fbi, &prim_commit);
 
@@ -392,6 +406,13 @@ static int mdss_quickdraw_erase(void *data, int x1, int y1, int x2, int y2)
 	}
 	pinfo = &pdata->panel_info;
 
+	if (w <= 0 || h <= 0) {
+		pr_err("%s: Erase width/height invalid (w:%d, h:%d) (x1:%d,y1:%d)(x2:%d,y2:%d)\n",
+		       __func__, w, h, x1, y1, x2, y2);
+		ret = -EINVAL;
+		goto exit;
+	}
+
 	if (fb_quickdraw_check_alignment(w, pinfo->col_align)) {
 		pr_err("%s: Erase width[%d] not aligned [%d]\n", __func__, w,
 			pinfo->col_align);
@@ -400,15 +421,6 @@ static int mdss_quickdraw_erase(void *data, int x1, int y1, int x2, int y2)
 	}
 	x1 = fb_quickdraw_correct_alignment(x1, pinfo->col_align);
 	x2 = fb_quickdraw_correct_alignment(x2, pinfo->col_align);
-
-	if (x1 < 0 || y1 < 0 || w <= 0 || h <= 0 ||
-		(x1 + w) > mfd->panel_info->xres ||
-		(y1 + h) > mfd->panel_info->yres) {
-		pr_err("%s: Invalid coordinates [x1:%d y1:%d x2:%d y2:%d]\n",
-			__func__, x1, y1, x2, y2);
-		ret = -EINVAL;
-		goto exit;
-	}
 
 	/* Allocate the special erase buffer */
 	memset(&buffer_data, 0, sizeof(struct fb_quickdraw_buffer_data));
