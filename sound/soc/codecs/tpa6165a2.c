@@ -33,6 +33,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
+#include <linux/suspend.h>
 #include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
@@ -86,6 +87,7 @@ struct tpa6165_data {
 	int force_hstype;
 	int jack_detect_config;
 	atomic_t is_suspending;
+	struct notifier_block pm_notifier;
 	struct mutex lock;
 	struct wake_lock wake_lock;
 	struct work_struct work;
@@ -1315,37 +1317,46 @@ int tpa6165_hs_detect(struct snd_soc_codec *codec)
 }
 EXPORT_SYMBOL_GPL(tpa6165_hs_detect);
 
-#ifdef CONFIG_PM
-static int tpa6165_suspend(struct i2c_client *client, pm_message_t mesg)
+static int tpa6165_suspend(struct tpa6165_data *tpa6165)
 {
-	struct tpa6165_data *tpa6165 =
-					i2c_get_clientdata(tpa6165_client);
-
-	mutex_lock(&tpa6165->lock);
 	pr_debug("tpa6165: suspending ..\n");
 	if (wake_lock_active(&tpa6165->wake_lock)) {
 		pr_debug("tpa6165: detection thread ON fail suspend\n");
-		mutex_unlock(&tpa6165->lock);
-		return -EBUSY;
+		return NOTIFY_STOP;
 	}
 	atomic_set(&tpa6165->is_suspending, 1);
-	mutex_unlock(&tpa6165->lock);
-	return 0;
+	return NOTIFY_DONE;
 }
 
-static int tpa6165_resume(struct i2c_client *client)
+static int tpa6165_resume(struct tpa6165_data *tpa6165)
 {
-	struct tpa6165_data *tpa6165 =
-					i2c_get_clientdata(tpa6165_client);
-
 	pr_debug("tpa6165: resuming ..\n");
 	atomic_set(&tpa6165->is_suspending, 0);
-	return 0;
+	return NOTIFY_DONE;
 }
-#else
-#define tpa6165_suspend		NULL
-#define tpa6165_resume		NULL
-#endif /* CONFIG_PM */
+
+static int tpa6165_pm_event(struct notifier_block *this,
+	unsigned long event, void *ptr)
+{
+	struct tpa6165_data *tpa6165 = container_of(this,
+		struct tpa6165_data, pm_notifier);
+	int err = NOTIFY_DONE;
+
+	mutex_lock(&tpa6165->lock);
+
+	switch (event) {
+	case PM_SUSPEND_PREPARE:
+		err = tpa6165_suspend(tpa6165);
+		break;
+	case PM_POST_SUSPEND:
+		err = tpa6165_resume(tpa6165);
+		break;
+	}
+
+	mutex_unlock(&tpa6165->lock);
+
+	return err;
+}
 
 static irqreturn_t tpa6165_irq_handler(int irq, void *data)
 {
@@ -1543,6 +1554,11 @@ static int tpa6165_probe(struct i2c_client *client,
 	/* setup debug fs interfaces */
 	tpa6165_setup_debugfs(tpa6165);
 
+	tpa6165->pm_notifier.notifier_call = tpa6165_pm_event;
+	err = register_pm_notifier(&tpa6165->pm_notifier);
+	if (err < 0)
+		pr_err("%s:Register_pm_notifier failed: %d\n", __func__, err);
+
 	pr_info("tpa6165a2 probed successfully\n");
 
 	return 0;
@@ -1603,8 +1619,6 @@ static struct i2c_driver tpa6165_driver = {
 			.owner = THIS_MODULE,
 			.of_match_table = of_match_ptr(tpa6165_match_tbl),
 	},
-	.suspend = tpa6165_suspend,
-	.resume = tpa6165_resume,
 	.probe = tpa6165_probe,
 	.remove = tpa6165_remove,
 	.id_table = tpa6165_id,
