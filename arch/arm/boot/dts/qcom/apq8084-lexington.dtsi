@@ -56,6 +56,10 @@
 			<&pma8084_mpps 7 0x1>, /* GPIOF_IN */
 			<&pma8084_mpps 6 0x1>; /* GPIOF_IN */
 	};
+
+	sound-9330 {
+		status = "disabled";
+	};
 };
 
 &i2c_0 {
