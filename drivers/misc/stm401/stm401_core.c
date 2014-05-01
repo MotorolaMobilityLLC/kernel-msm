@@ -822,6 +822,32 @@ exit:
 }
 #endif
 
+void clear_interrupt_status_work_func(struct work_struct *work)
+{
+	struct stm401_data *ps_stm401 = container_of(work,
+			struct stm401_data, clear_interrupt_status_work);
+
+	dev_dbg(&ps_stm401->client->dev, "clear_interrupt_status_work_func\n");
+	mutex_lock(&ps_stm401->lock);
+
+	if (ps_stm401->mode == BOOTMODE)
+		goto EXIT;
+
+	if (ps_stm401->is_suspended)
+		goto EXIT;
+
+	stm401_wake(ps_stm401);
+
+	/* read interrupt mask register to clear
+			any interrupt during suspend state */
+	stm401_cmdbuff[0] = INTERRUPT_STATUS;
+	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
+
+	stm401_sleep(ps_stm401);
+EXIT:
+	mutex_unlock(&ps_stm401->lock);
+}
+
 static int stm401_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
@@ -906,6 +932,8 @@ static int stm401_probe(struct i2c_client *client,
 
 	INIT_WORK(&ps_stm401->irq_work, stm401_irq_work_func);
 	INIT_WORK(&ps_stm401->irq_wake_work, stm401_irq_wake_work_func);
+	INIT_WORK(&ps_stm401->clear_interrupt_status_work,
+		clear_interrupt_status_work_func);
 
 	ps_stm401->irq_work_queue = create_singlethread_workqueue("stm401_wq");
 	if (!ps_stm401->irq_work_queue) {
@@ -1160,14 +1188,11 @@ static int stm401_resume(struct device *dev)
 
 	mutex_lock(&ps_stm401->lock);
 	ps_stm401->is_suspended = false;
-	stm401_wake(ps_stm401);
 
-	/* read interrupt mask register to clear
-			any interrupt during suspend state */
-	stm401_cmdbuff[0] = INTERRUPT_STATUS;
-	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
+	if (stm401_irq_disable == 0)
+		queue_work(ps_stm401->irq_work_queue,
+			&ps_stm401->clear_interrupt_status_work);
 
-	stm401_sleep(ps_stm401);
 	mutex_unlock(&ps_stm401->lock);
 
 	return 0;
