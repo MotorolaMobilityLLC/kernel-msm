@@ -7729,7 +7729,7 @@ WLANTL_STARxConn
 
         if ( VOS_STATUS_SUCCESS != vosStatus ) 
         {
-          TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+          TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
             "WLAN TL:Failed to translate from 802.11 to 802.3 - dropping"));
           /* Drop packet */
           vos_pkt_return_packet(vosDataBuff);
@@ -8190,7 +8190,7 @@ WLANTL_STARxAuth
 
       if ( VOS_STATUS_SUCCESS != vosStatus )
       {
-        TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+        TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
                "WLAN TL:Failed to translate from 802.11 to 802.3 - dropping"));
         /* Drop packet */
         vos_pkt_return_packet(vosDataBuff);
@@ -9646,7 +9646,7 @@ WLANTL_Translate80211To8023Header
 
     if ( VOS_STATUS_SUCCESS != vosStatus )
     {
-       TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+       TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
                   "WLAN TL: Failed to pop LLC header from packet %d",
                   vosStatus));
 
