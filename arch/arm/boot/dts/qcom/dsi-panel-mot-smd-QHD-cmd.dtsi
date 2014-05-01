@@ -93,6 +93,8 @@
 			39 01 00 00 01 00 02 B0 08
 			/* Turn on memory retention */
 			39 01 00 00 01 00 02 F4 03
+			/* viewable region */
+			39 01 00 00 00 00 05 30 00 00 09 ff
 			/* display on */
 			29 01 00 00 00 00 02 29 00];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
@@ -237,6 +239,8 @@
 			39 01 00 00 01 00 02 B0 08
 			/* Turn on memory retention */
 			39 01 00 00 01 00 02 F4 03
+			/* viewable region */
+			39 01 00 00 00 00 05 30 00 00 09 ff
 			/* display on */
 			29 01 00 00 00 00 02 29 00];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
