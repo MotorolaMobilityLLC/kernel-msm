@@ -516,6 +516,9 @@ failure:
     // Change the state back to original state
     pMac->pmm.gPmmState =origState;
     limSendSmeRsp(pMac, eWNI_PMC_ENTER_BMPS_RSP, respStatus, 0, 0);
+
+    // update the BMPS pwr save Error Stats
+    pmmBmpsUpdateSleepReqFailureCnt(pMac);
     return;
 }
 
@@ -836,7 +839,7 @@ void pmmExitBmpsResponseHandler(tpAniSirGlobal pMac,  tpSirMsgQ limMsg)
     tANI_U8 PowersavesessionId;
     tpPESession psessionEntry;
     tSirResultCodes retStatus = eSIR_SME_SUCCESS;
-    
+
     /* Copy the power save sessionId to the local variable */
     PowersavesessionId = pMac->pmm.sessionId;
 
@@ -852,10 +855,6 @@ void pmmExitBmpsResponseHandler(tpAniSirGlobal pMac,  tpSirMsgQ limMsg)
         return;
     }
 
-    
-
-    /* Update wakeup statistics */
-    pmmUpdateWakeupStats(pMac);
 
     if (NULL == limMsg->bodyptr)
     {
@@ -886,6 +885,8 @@ void pmmExitBmpsResponseHandler(tpAniSirGlobal pMac,  tpSirMsgQ limMsg)
     {
         case eHAL_STATUS_SUCCESS:
             retStatus = eSIR_SME_SUCCESS;
+            /* Update wakeup statistics */
+            pmmUpdateWakeupStats(pMac);
             break;
 
         default:
@@ -895,13 +896,13 @@ void pmmExitBmpsResponseHandler(tpAniSirGlobal pMac,  tpSirMsgQ limMsg)
                  * But, PMC will be informed about the error.
                  */
                 retStatus = eSIR_SME_BMPS_REQ_FAILED;
+                pmmBmpsUpdateWakeupReqFailureCnt(pMac);
             }
             break;
 
     }
 
     pMac->pmm.gPmmState = ePMM_STATE_BMPS_WAKEUP;
-    pmmUpdateWakeupStats(pMac);
 
     // turn on background scan
     pMac->sys.gSysEnableScanMode = true;
@@ -909,7 +910,7 @@ void pmmExitBmpsResponseHandler(tpAniSirGlobal pMac,  tpSirMsgQ limMsg)
     // send response to PMC
    if(IS_FEATURE_SUPPORTED_BY_FW(SLM_SESSIONIZATION) )
    {
-       limSendSmeRsp(pMac, eWNI_PMC_EXIT_BMPS_RSP, retStatus, 
+       limSendSmeRsp(pMac, eWNI_PMC_EXIT_BMPS_RSP, retStatus,
                   psessionEntry->smeSessionId, psessionEntry->transactionId);
    }
    else
@@ -1375,9 +1376,9 @@ void pmmUpdatePwrSaveStats(tpAniSirGlobal pMac)
 
     pMac->pmm.BmpsavgTimeAwake = ( ( (pMac->pmm.BmpsavgTimeAwake * pMac->pmm.BmpscntSleep) + TimeAwake ) / (pMac->pmm.BmpscntSleep + 1) );
 
+*/
     pMac->pmm.BmpscntSleep++;
     return;
-*/
 }
 
 
@@ -1419,9 +1420,9 @@ void pmmUpdateWakeupStats(tpAniSirGlobal pMac)
 
         pMac->pmm.BmpsavgSleepTime = ( ( (pMac->pmm.BmpsavgSleepTime * pMac->pmm.BmpscntAwake) + SleepTime ) / (pMac->pmm.BmpscntAwake + 1) );
 
+*/
         pMac->pmm.BmpscntAwake++;
         return;
-*/
 }
 
 // --------------------------------------------------------------------
@@ -1586,6 +1587,8 @@ failure:
            rspStatus,
            pMac->pmm.gPmmState);)
 
+    pmmImpsUpdateSleepErrStats(pMac, rspStatus);
+
     pMac->pmm.gPmmState = nextState;
 
     limSendSmeRsp(pMac,
@@ -1708,8 +1711,10 @@ void pmmExitImpsResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus)
         {
             resultCode = eSIR_SME_SUCCESS;
             pMac->pmm.gPmmState = ePMM_STATE_IMPS_WAKEUP;
-            PELOG2(pmmLog(pMac, LOG2, 
+            PELOG2(pmmLog(pMac, LOG2,
                           FL("pmmImps: Received WDA_EXIT_IMPS_RSP with Successful response from HAL"));)
+            //update power save statistics
+            pmmImpsUpdateWakeupStats(pMac);
         }
         break;
 
@@ -1722,13 +1727,14 @@ void pmmExitImpsResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus)
                 pMac->pmm.gPmmState = ePMM_STATE_IMPS_SLEEP;
                 PELOGW(pmmLog(pMac, LOGW, 
                               FL("pmmImps: Received WDA_EXIT_IMPS_RSP with Failure Status from HAL"));)
+                // update th power save error stats
+                pmmImpsUpdateWakeupErrStats(pMac, rspStatus);
             }
             break;
 
     }
 
-    //update power save statistics
-    pmmImpsUpdateWakeupStats(pMac);
+
 
     limSendSmeRsp(pMac,
                   eWNI_PMC_EXIT_IMPS_RSP,
@@ -2762,10 +2768,10 @@ void pmmImpsUpdatePwrSaveStats(tpAniSirGlobal pMac)
 
     pMac->pmm.ImpsAvgTimeAwake = ((pMac->pmm.ImpsAvgTimeAwake * pMac->pmm.ImpsCntSleep) + TimeAwake) / (pMac->pmm.ImpsCntSleep + 1);
 
+*/
     (pMac->pmm.ImpsCntSleep)++;
 
     return;
-*/
 }
 
 
@@ -2809,10 +2815,10 @@ void pmmImpsUpdateWakeupStats (tpAniSirGlobal pMac)
 
     pMac->pmm.ImpsAvgSleepTime = ( ( (pMac->pmm.ImpsAvgSleepTime * pMac->pmm.ImpsCntAwake) + SleepTime) / (pMac->pmm.ImpsCntAwake + 1));
 
+*/
     (pMac->pmm.ImpsCntAwake)++;
 
     return;
-*/
 }
 
 // Collects number of times error occurred while going to sleep mode
