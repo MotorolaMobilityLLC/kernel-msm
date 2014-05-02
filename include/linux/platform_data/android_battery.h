@@ -34,6 +34,7 @@ enum {
 	CHARGE_SOURCE_USB,
 };
 
+struct android_bat_data;
 struct android_bat_callbacks {
 	void (*charge_source_changed)
 		(struct android_bat_callbacks *, int);
@@ -45,12 +46,14 @@ struct android_bat_platform_data {
 	void (*unregister_callbacks)(void);
 	void (*set_charging_current) (int);
 	void (*set_charging_enable) (int);
-	int (*poll_charge_source) (void);
+	int (*poll_charge_source) (struct android_bat_data *);
 	int (*get_capacity) (void);
-	int (*get_temperature) (int *);
+	int (*get_temperature) (struct android_bat_data *, int *);
 	int (*get_voltage_now)(void);
 	int (*get_current_now)(int *);
 	void (*initial_check)(void);
+	void (*init_adc)(struct android_bat_data *);
+	int (*is_poweroff_charging)(void);
 
 	char * charger_name;
 	char * fuelgauge_name;
@@ -80,6 +83,7 @@ struct android_bat_data {
 	int			charge_source;
 
 	int			batt_temp;
+	int			temp_adc;
 	int			batt_current;
 	unsigned int		batt_health;
 	unsigned int		batt_vcell;

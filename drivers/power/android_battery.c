@@ -253,7 +253,7 @@ static void android_bat_get_temp(struct android_bat_data *battery)
 	int health = battery->batt_health;
 
 	if (battery->pdata->get_temperature)
-		battery->pdata->get_temperature(&batt_temp);
+		battery->pdata->get_temperature(battery, &batt_temp);
 
 	if (battery->charge_source != CHARGE_SOURCE_NONE) {
 		if (batt_temp >= battery->pdata->temp_high_threshold) {
@@ -307,7 +307,7 @@ static void android_bat_update_data(struct android_bat_data *battery)
 	int v;
 
 	if (battery->pdata->poll_charge_source)
-		battery->charge_source = battery->pdata->poll_charge_source();
+		battery->charge_source = battery->pdata->poll_charge_source(battery);
 
 	if (battery->pdata->get_voltage_now) {
 		ret = battery->pdata->get_voltage_now();
@@ -631,25 +631,76 @@ static int android_battery_parse_dt(struct device *dev,
 		if (ret)
 			pr_info("%s: Fuelgauge_name is Empty\n", __func__);
 
-		ret = of_property_read_u32(np, "battery,temp_high_threshold",
-				(unsigned int *)&battery->pdata->temp_high_threshold);
-		if (ret)
-			pr_info("%s: temp_high_threshold is Empty\n", __func__);
 
-		ret = of_property_read_u32(np, "battery,temp_high_recovery",
-				(unsigned int *)&battery->pdata->temp_high_recovery);
-		if (ret)
-			pr_info("%s: temp_high_recovery is Empty\n", __func__);
+		if(battery->pdata->is_poweroff_charging) {
+			if(battery->pdata->is_poweroff_charging()) {
+				ret = of_property_read_u32(np, "battery,temp_high_threshold_lpm",
+						(unsigned int *)&battery->pdata->temp_high_threshold);
+				if (ret)
+					pr_info("%s: temp_high_threshold_lpm is Empty\n", __func__);
 
-		ret = of_property_read_u32(np, "battery,temp_low_threshold",
-				(unsigned int *)&battery->pdata->temp_low_threshold);
-		if (ret)
-			pr_info("%s: temp_low_threshold is Empty\n", __func__);
+				ret = of_property_read_u32(np, "battery,temp_high_recovery_lpm",
+						(unsigned int *)&battery->pdata->temp_high_recovery);
+				if (ret)
+					pr_info("%s: temp_high_recovery_lpm is Empty\n", __func__);
 
-		ret = of_property_read_u32(np, "battery,temp_low_recovery",
-				(unsigned int *)&battery->pdata->temp_low_recovery);
-		if (ret)
-			pr_info("%s: temp_low_recovery is Empty\n", __func__);
+				ret = of_property_read_u32(np, "battery,temp_low_threshold_lpm",
+						(unsigned int *)&battery->pdata->temp_low_threshold);
+				if (ret)
+					pr_info("%s: temp_low_threshold_lpm is Empty\n", __func__);
+
+				ret = of_property_read_u32(np, "battery,temp_low_recovery_lpm",
+						(unsigned int *)&battery->pdata->temp_low_recovery);
+				if (ret)
+					pr_info("%s: temp_low_recovery_lpm is Empty\n", __func__);
+			} else {
+				ret = of_property_read_u32(np, "battery,temp_high_threshold",
+						(unsigned int *)&battery->pdata->temp_high_threshold);
+				if (ret)
+					pr_info("%s: temp_high_threshold is Empty\n", __func__);
+
+				ret = of_property_read_u32(np, "battery,temp_high_recovery",
+						(unsigned int *)&battery->pdata->temp_high_recovery);
+				if (ret)
+					pr_info("%s: temp_high_recovery is Empty\n", __func__);
+
+				ret = of_property_read_u32(np, "battery,temp_low_threshold",
+						(unsigned int *)&battery->pdata->temp_low_threshold);
+				if (ret)
+					pr_info("%s: temp_low_threshold is Empty\n", __func__);
+
+				ret = of_property_read_u32(np, "battery,temp_low_recovery",
+						(unsigned int *)&battery->pdata->temp_low_recovery);
+
+				if (ret)
+					pr_info("%s: temp_low_recovery is Empty\n", __func__);
+			}
+		} else {
+			ret = of_property_read_u32(np, "battery,temp_high_threshold",
+					(unsigned int *)&battery->pdata->temp_high_threshold);
+			if (ret)
+				pr_info("%s: temp_high_threshold is Empty\n", __func__);
+
+			ret = of_property_read_u32(np, "battery,temp_high_recovery",
+					(unsigned int *)&battery->pdata->temp_high_recovery);
+			if (ret)
+				pr_info("%s: temp_high_recovery is Empty\n", __func__);
+
+			ret = of_property_read_u32(np, "battery,temp_low_threshold",
+					(unsigned int *)&battery->pdata->temp_low_threshold);
+			if (ret)
+				pr_info("%s: temp_low_threshold is Empty\n", __func__);
+
+			ret = of_property_read_u32(np, "battery,temp_low_recovery",
+					(unsigned int *)&battery->pdata->temp_low_recovery);
+
+			if (ret)
+				pr_info("%s: temp_low_recovery is Empty\n", __func__);
+		}
+
+		pr_info("%s: HT(%d), HR(%d), LT(%d), HR(%d)\n", __func__,
+				battery->pdata->temp_high_threshold, battery->pdata->temp_high_recovery,
+				battery->pdata->temp_low_threshold, battery->pdata->temp_low_recovery);
 
 		ret = of_property_read_u32(np, "battery,full_charging_time",
 				(unsigned int *)&battery->pdata->full_charging_time);
@@ -774,11 +825,13 @@ static int android_bat_probe(struct platform_device *pdev)
 
 	/* get initial charger status */
 	if (battery->pdata->poll_charge_source)
-		battery->charge_source = battery->pdata->poll_charge_source();
+		battery->charge_source = battery->pdata->poll_charge_source(battery);
 
 	if (battery->pdata->initial_check)
 		battery->pdata->initial_check();
 
+	if (battery->pdata->init_adc)
+		battery->pdata->init_adc(battery);
 	wake_lock(&battery->charger_wake_lock);
 	queue_work(battery->monitor_wqueue, &battery->charger_work);
 
