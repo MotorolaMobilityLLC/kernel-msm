@@ -22,12 +22,12 @@
 
 #define ENABLE 1
 #define DISABLE 0
+#define BIT_MBCICHWRCL	BIT (4)
 
 static enum power_supply_property max77836_chg_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_HEALTH,
-	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
@@ -88,64 +88,86 @@ static int max77836_chg_get_charging_health(struct max77836_chg_data *charger)
 }
 
 static u8 max77836_chg_get_float_voltage_data(
-		int float_voltage)
+		int uV)
 {
 	u8 data;
-	data = 0;
 
-	if (float_voltage < 4000)
-		float_voltage = 4000;
-
-	if (float_voltage > 4350)
-		float_voltage = 4350;
-
-	if (float_voltage >= 4000 && float_voltage < 4200)
-		data = (float_voltage - 4000) / 20 + 0x1;
-	else if (float_voltage == 4200)
-		data = 0x0;	/* 4200mV */
-	else if (float_voltage > 4200 && float_voltage <= 4280)
-		data = (float_voltage - 4220) / 20 + 0xb;
-	else
-		data = 0xf;	/* 4350mV */
+	data = uV < 4000000 ? 1 :
+		uV < 4200000 ? (uV - 4000000)/20000 + 1 :
+		uV < 4220000 ? 0 :
+		uV < 4280000 ? (uV - 4220000)/20000 + 11 :
+		uV < 4350000 ? 14 :
+		uV == 4350000 ? 15 : 0;
 
 	return data;
 }
 
-static u8 max77836_chg_get_term_current_data(
-		int termination_current)
+static void max77836_chg_set_float_voltage(
+		struct max77836_chg_data *charger, int uV)
+{
+	u8 data = 0;
+	data = max77836_chg_get_float_voltage_data(uV);
+	dev_info(&charger->client->dev, "%s : float voltage (%dmV), data(0x%x)\n",
+			__func__, uV / 1000, data);
+	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL3, data);
+}
+
+static u8 max77836_chg_get_eoc_current_value(
+		int uA)
 {
 	u8 data;
-	data = 0;
 
-	/* [3:0]=0000 -> 7.5mA */
-	if (termination_current > 100)
-		termination_current = 100;
+	data = ((uA < 7500) ? 1 :
+			(uA < 10000) ? 0 :
+			(uA < 60000) ? ((uA - 10000)/5000 + 2) :
+			(uA < 100000) ? ((uA - 60000)/10000 + 11) : 15);
 
-	if (termination_current <= 50)
-		data = termination_current / 5;
-	else
-		data = termination_current / 10;
 	return data;
 }
 
-static u8 max77836_chg_get_fast_charging_current_data(
-		int fast_charging_current)
+static void max77836_chg_set_eoc_current(
+		struct max77836_chg_data *charger, int uA)
 {
-	u8 data;
-	data = 0;
+	int data = 0;
 
-	if (fast_charging_current >= 100)
-		data |= 0x10;	/* enable fast charge current set */
-	else
-		goto set_low_bit;	/* 90mA */
+	data = max77836_chg_get_eoc_current_value(uA);
+	dev_info(&charger->client->dev,
+			"%s : EOC (%dmA), data(0x%x)\n", __func__,
+			uA / 1000, data);
 
-	if (fast_charging_current > 475)
-		fast_charging_current = 475;
+	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL5, data);
+}
 
-	data |= (fast_charging_current - 100) / 25;
+static u8 max77836_chg_get_charging_current_value(
+		int uA)
+{
+	u8 data = 0;
 
-set_low_bit:
+	data = ((uA < 100000) ? 0 :
+			(uA < 225000) ? ((uA - 100000)/25000) :
+			(uA < 250000) ? 9 :
+			(uA < 325000) ? ((uA - 250000)/25000 + 6) :
+			(uA < 350000) ? 5 :
+			(uA < 475000) ? ((uA - 350000)/25000 + 10) : 15);
+
 	return data;
+}
+
+static void max77836_chg_set_charging_current(
+		struct max77836_chg_data *charger, int uA)
+{
+	u8 data = 0;
+
+	/* Fast Battery Charge Current */
+	if (uA >= 100000)
+		data = max77836_chg_get_charging_current_value(uA) | BIT_MBCICHWRCL;
+	else
+		data = 0;
+
+	dev_info(&charger->client->dev, "%s : charging current (%dmA), data(0x%x)\n",
+			__func__, uA / 1000, data);
+
+	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL4, data);
 }
 
 static void max77836_chg_set_charging(struct max77836_chg_data *charger)
@@ -162,41 +184,21 @@ static void max77836_chg_set_charging(struct max77836_chg_data *charger)
 		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL1, data);
 
 		/* Battery-Charger Constant Voltage(CV) Mode, float voltage */
-		data = 0;
-		data |= max77836_chg_get_float_voltage_data(
-				charger->pdata->chg_float_voltage);
-		dev_info(&charger->client->dev, "%s : float voltage (%dmV)\n",
-				__func__, charger->pdata->chg_float_voltage);
-		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL3, data);
+		max77836_chg_set_float_voltage(charger, charger->pdata->chg_float_voltage);
 
 		/* Fast Battery Charge Current */
-		data = 0;
-		data |= max77836_chg_get_fast_charging_current_data(
-				charger->charging_current);
-		dev_info(&charger->client->dev, "%s : charging current (%dmA)\n",
-				__func__, charger->charging_current);
-		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL4, data);
+		max77836_chg_set_charging_current(charger, charger->charging_current);
 
 		/* End-of-Charge Current Setting */
-		data = 0;
-		data |= max77836_chg_get_term_current_data(
-				charger->pdata->charging_current[
-				charger->cable_type].
-				full_check_current);
-		dev_info(&charger->client->dev,
-				"%s : term current (%dmA)\n", __func__,
-				charger->pdata->charging_current[
-				charger->cable_type].
-				full_check_current);
-
-		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL5, data);
+		max77836_chg_set_eoc_current(charger, charger->pdata->
+				charging_current[charger->cable_type].full_check_current);
 
 		/* Auto Charging Stop disabled [5] = 0 */
 		data = 0;
 		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL6, data);
 
 		/* Overvoltage-Protection Threshold 6.5V [1:0] = 0b10 */
-		data = 0x02;
+		data = 0x01;
 		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL7, data);
 
 		/* turn on charger */
@@ -205,15 +207,22 @@ static void max77836_chg_set_charging(struct max77836_chg_data *charger)
 	}
 }
 
-static void max77836_chg_set_charging_current(
-		struct max77836_chg_data *charger, int charging_current)
+static int max77836_chg_get_charging_current_now(
+		struct max77836_chg_data *charger)
 {
 	u8 data;
+	int uA;
+
+	max77836_read_reg(charger->client,
+			MAX77836_CHG_REG_CHG_CTRL4, &data);
 
 	/* Fast Battery Charge Current */
-	data = 0;
-	data |= max77836_chg_get_fast_charging_current_data(charging_current);
-	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL4, data);
+	if (data & 0x10)
+		uA = ((data & 0x0f) * 25 + 100) * 1000;
+	else
+		uA = 0;
+
+	return uA;
 }
 
 static int max77836_chg_get_property(struct power_supply *psy,
@@ -222,12 +231,8 @@ static int max77836_chg_get_property(struct power_supply *psy,
 {
 	struct max77836_chg_data *charger =
 		container_of(psy, struct max77836_chg_data, psy_chg);
-	u8 data;
 
 	switch (psp) {
-	case POWER_SUPPLY_PROP_CURRENT_MAX:	/* input current limit set */
-		val->intval = charger->charging_current_max;
-		break;
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = max77836_chg_get_charging_status(charger);
 		break;
@@ -241,20 +246,18 @@ static int max77836_chg_get_property(struct power_supply *psy,
 		val->intval = max77836_chg_get_charging_health(charger);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:	/* charging current */
-		/* calculated input current limit value */
+		/* calculated charging current limit value */
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		if (charger->charging_current) {
-			max77836_read_reg(charger->client,
-					MAX77836_CHG_REG_CHG_CTRL4, &data);
-			if (data & 0x10) /* enable fast charge current set */
-				val->intval = (data & 0x0f) * 25 + 100;
-			else
-				val->intval = 90;
+			val->intval =
+				max77836_chg_get_charging_current_now(charger);
 		} else
 			val->intval = 0;
-			dev_info(&charger->client->dev,
-				"%s : set-current(%dmA), current now(%dmA)\n",
-				__func__, charger->charging_current, val->intval);
+
+		dev_info(&charger->client->dev,
+			"%s : set-current(%dmA), current now(%dmA)\n",
+			__func__, charger->charging_current/1000,
+			val->intval/1000);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		break;
@@ -285,11 +288,6 @@ static int max77836_chg_set_property(struct power_supply *psy,
 		else
 			charger->is_charging = true;
 
-		/* current setting */
-		charger->charging_current_max =
-			charger->pdata->charging_current[
-			val->intval].input_current_limit;
-
 		charger->charging_current =
 			charger->pdata->charging_current[
 			val->intval].fast_charging_current;
@@ -297,13 +295,10 @@ static int max77836_chg_set_property(struct power_supply *psy,
 		max77836_chg_set_charging(charger);
 		break;
 
-		/* val->intval : input current limit set */
-	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		charger->charging_current_max = val->intval;
-		/* to control charging current,
-		 * use input current limit and set charging current as much as possible
-		 * so we only control input current limit to control charge current
-		 */
+	/* to control charging current,
+	 * use input current limit and set charging current as much as possible
+	 * so we only control input current limit to control charge current
+	 */
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		charger->charging_current = val->intval;
 		break;
@@ -348,31 +343,32 @@ static int max77836_chg_parse_dt(struct max77836_chg_data *charger)
 {
 	struct device_node *np = of_find_node_by_name(NULL, "max77836-charger");
 	int ret = 0;
-	int i, len;
-	const u32 *p;
+	int len;
 
 	if (np == NULL) {
 		pr_err("%s np NULL\n", __func__);
 	} else {
+		int i;
 		ret = of_property_read_u32(np, "charger,chg_float_voltage",
 				&charger->pdata->chg_float_voltage);
 		pr_info("%s: charger,chg_float_voltage:%d\n", __func__, charger->pdata->chg_float_voltage);
 
-		p = of_get_property(np, "charger,input_current_limit", &len);
+		of_get_property(np, "charger,fast_charging_current", &len);
 		len = len / sizeof(u32);
 		charger->pdata->charging_current = kzalloc(sizeof(max77836_chg_charging_current_t) * len,
 				GFP_KERNEL);
 
 		for (i = 0; i < len; i++) {
 			ret = max77836_chg_read_u32_index_dt(np,
-					"charger,input_current_limit", i,
-					&charger->pdata->charging_current[i].input_current_limit);
-			ret = max77836_chg_read_u32_index_dt(np,
 					"charger,fast_charging_current", i,
 					&charger->pdata->charging_current[i].fast_charging_current);
+			if (ret)
+				pr_info("%s: charger,fast_charging_current is empty\n", __func__);
 			ret = max77836_chg_read_u32_index_dt(np,
 					"charger,full_check_current", i,
 					&charger->pdata->charging_current[i].full_check_current);
+			if (ret)
+				pr_info("%s: charger,full_check_current is empty\n", __func__);
 		}
 	}
 	return ret;

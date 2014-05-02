@@ -163,13 +163,13 @@ struct max77836_chg_data {
 
 	/* charging current : + charging, - OTG */
 	int charging_current;
-	unsigned charging_current_max;
 
 	/* register programming */
 	int reg_addr;
 	int reg_data;
 	int irq_base;
 
+	int irq_eoc;
 	int chg_float_voltage;
 };
 
