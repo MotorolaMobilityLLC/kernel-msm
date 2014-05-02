@@ -891,8 +891,8 @@ static int32_t qpnp_convert_raw_offset_voltage(struct qpnp_iadc_chip *iadc)
 }
 
 #define IADC_IDEAL_RAW_GAIN	3291
-static int32_t qpnp_iadc_calibrate_for_trim_base(struct qpnp_iadc_chip *iadc,
-						bool batfet_closed, int pmsafe)
+int32_t qpnp_iadc_calibrate_for_trim(struct qpnp_iadc_chip *iadc,
+							bool batfet_closed)
 {
 	uint8_t rslt_lsb, rslt_msb;
 	int32_t rc = 0, version = 0;
@@ -905,7 +905,7 @@ static int32_t qpnp_iadc_calibrate_for_trim_base(struct qpnp_iadc_chip *iadc,
 
 	mutex_lock(&iadc->adc->adc_lock);
 
-	if (iadc->iadc_poll_eoc && !pmsafe) {
+	if (iadc->iadc_poll_eoc) {
 		pr_debug("acquiring iadc eoc wakelock\n");
 		pm_stay_awake(iadc->dev);
 	}
@@ -1008,27 +1008,14 @@ static int32_t qpnp_iadc_calibrate_for_trim_base(struct qpnp_iadc_chip *iadc,
 		goto fail;
 	}
 fail:
-	if (iadc->iadc_poll_eoc && !pmsafe) {
+	if (iadc->iadc_poll_eoc) {
 		pr_debug("releasing iadc eoc wakelock\n");
 		pm_relax(iadc->dev);
 	}
 	mutex_unlock(&iadc->adc->adc_lock);
 	return rc;
 }
-
-int32_t qpnp_iadc_calibrate_for_trim(struct qpnp_iadc_chip *iadc,
-							bool batfet_closed)
-{
-	return qpnp_iadc_calibrate_for_trim_base(iadc, batfet_closed, 0);
-}
 EXPORT_SYMBOL(qpnp_iadc_calibrate_for_trim);
-
-int32_t qpnp_iadc_calibrate_for_trim_pmsafe(struct qpnp_iadc_chip *iadc,
-							bool batfet_closed)
-{
-	return qpnp_iadc_calibrate_for_trim_base(iadc, batfet_closed, 1);
-}
-EXPORT_SYMBOL(qpnp_iadc_calibrate_for_trim_pmsafe);
 
 static void qpnp_iadc_work(struct work_struct *work)
 {
@@ -1130,15 +1117,13 @@ int32_t qpnp_iadc_get_rsense(struct qpnp_iadc_chip *iadc, int32_t *rsense)
 }
 EXPORT_SYMBOL(qpnp_iadc_get_rsense);
 
-static int32_t qpnp_check_pmic_temp_base(struct qpnp_iadc_chip *iadc,
-						int pmsafe)
+static int32_t qpnp_check_pmic_temp(struct qpnp_iadc_chip *iadc)
 {
 	struct qpnp_vadc_result result_pmic_therm;
 	int64_t die_temp_offset;
 	int rc = 0;
 
-	rc = qpnp_vadc_read_base(iadc->vadc_dev, DIE_TEMP, &result_pmic_therm,
-					pmsafe);
+	rc = qpnp_vadc_read(iadc->vadc_dev, DIE_TEMP, &result_pmic_therm);
 	if (rc < 0)
 		return rc;
 
@@ -1150,19 +1135,13 @@ static int32_t qpnp_check_pmic_temp_base(struct qpnp_iadc_chip *iadc,
 	if (die_temp_offset > QPNP_IADC_DIE_TEMP_CALIB_OFFSET) {
 		iadc->die_temp = result_pmic_therm.physical;
 		if (!iadc->skip_auto_calibrations) {
-			rc = qpnp_iadc_calibrate_for_trim_base(iadc, true,
-								pmsafe);
+			rc = qpnp_iadc_calibrate_for_trim(iadc, true);
 			if (rc)
 				pr_err("IADC calibration failed rc = %d\n", rc);
 		}
 	}
 
 	return rc;
-}
-
-static int32_t qpnp_check_pmic_temp(struct qpnp_iadc_chip *iadc)
-{
-	return qpnp_check_pmic_temp_base(iadc, 0);
 }
 
 int32_t qpnp_iadc_read(struct qpnp_iadc_chip *iadc,
@@ -1241,16 +1220,15 @@ fail:
 }
 EXPORT_SYMBOL(qpnp_iadc_read);
 
-static int32_t qpnp_iadc_get_gain_and_offset_base(struct qpnp_iadc_chip *iadc,
-						struct qpnp_iadc_calib *result,
-						int pmsafe)
+int32_t qpnp_iadc_get_gain_and_offset(struct qpnp_iadc_chip *iadc,
+					struct qpnp_iadc_calib *result)
 {
 	int rc;
 
 	if (qpnp_iadc_is_valid(iadc) < 0)
 		return -EPROBE_DEFER;
 
-	rc = qpnp_check_pmic_temp_base(iadc, pmsafe);
+	rc = qpnp_check_pmic_temp(iadc);
 	if (rc) {
 		pr_err("Error checking pmic therm temp\n");
 		return rc;
@@ -1272,20 +1250,7 @@ static int32_t qpnp_iadc_get_gain_and_offset_base(struct qpnp_iadc_chip *iadc,
 
 	return 0;
 }
-
-int32_t qpnp_iadc_get_gain_and_offset(struct qpnp_iadc_chip *iadc,
-					struct qpnp_iadc_calib *result)
-{
-	return qpnp_iadc_get_gain_and_offset_base(iadc, result, 0);
-}
 EXPORT_SYMBOL(qpnp_iadc_get_gain_and_offset);
-
-int32_t qpnp_iadc_get_gain_and_offset_pmsafe(struct qpnp_iadc_chip *iadc,
-					struct qpnp_iadc_calib *result)
-{
-	return qpnp_iadc_get_gain_and_offset_base(iadc, result, 1);
-}
-EXPORT_SYMBOL(qpnp_iadc_get_gain_and_offset_pmsafe);
 
 int qpnp_iadc_skip_calibration(struct qpnp_iadc_chip *iadc)
 {

@@ -1032,11 +1032,10 @@ struct qpnp_vadc_chip *qpnp_get_vadc(struct device *dev, const char *name)
 }
 EXPORT_SYMBOL(qpnp_get_vadc);
 
-static int32_t qpnp_vadc_conv_seq_request_base(struct qpnp_vadc_chip *vadc,
-					enum qpnp_vadc_trigger trigger_channel,
+int32_t qpnp_vadc_conv_seq_request(struct qpnp_vadc_chip *vadc,
+				enum qpnp_vadc_trigger trigger_channel,
 					enum qpnp_vadc_channels channel,
-					struct qpnp_vadc_result *result,
-					int pmsafe)
+					struct qpnp_vadc_result *result)
 {
 	int rc = 0, scale_type, amux_prescaling, dt_index = 0;
 	uint32_t ref_channel, count = 0;
@@ -1047,7 +1046,7 @@ static int32_t qpnp_vadc_conv_seq_request_base(struct qpnp_vadc_chip *vadc,
 
 	mutex_lock(&vadc->adc->adc_lock);
 
-	if (vadc->vadc_poll_eoc && !pmsafe) {
+	if (vadc->vadc_poll_eoc) {
 		pr_debug("requesting vadc eoc stay awake\n");
 		pm_stay_awake(vadc->dev);
 	}
@@ -1185,7 +1184,7 @@ static int32_t qpnp_vadc_conv_seq_request_base(struct qpnp_vadc_chip *vadc,
 		vadc->adc->adc_prop, vadc->adc->amux_prop->chan_prop, result);
 
 fail_unlock:
-	if (vadc->vadc_poll_eoc && !pmsafe) {
+	if (vadc->vadc_poll_eoc) {
 		pr_debug("requesting vadc eoc stay awake\n");
 		pm_relax(vadc->dev);
 	}
@@ -1194,46 +1193,25 @@ fail_unlock:
 
 	return rc;
 }
-
-int32_t qpnp_vadc_conv_seq_request(struct qpnp_vadc_chip *vadc,
-				enum qpnp_vadc_trigger trigger_channel,
-					enum qpnp_vadc_channels channel,
-					struct qpnp_vadc_result *result)
-{
-	return qpnp_vadc_conv_seq_request_base(vadc, trigger_channel, channel,
-					result, 0);
-}
 EXPORT_SYMBOL(qpnp_vadc_conv_seq_request);
 
-int32_t qpnp_vadc_conv_seq_request_pmsafe(struct qpnp_vadc_chip *vadc,
-					enum qpnp_vadc_trigger trigger_channel,
-					enum qpnp_vadc_channels channel,
-					struct qpnp_vadc_result *result)
-{
-	return qpnp_vadc_conv_seq_request_base(vadc, trigger_channel, channel,
-					result, 1);
-}
-EXPORT_SYMBOL(qpnp_vadc_conv_seq_request_pmsafe);
-
-int32_t qpnp_vadc_read_base(struct qpnp_vadc_chip *vadc,
+int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 				enum qpnp_vadc_channels channel,
-				struct qpnp_vadc_result *result,
-				int pmsafe)
+				struct qpnp_vadc_result *result)
 {
 	struct qpnp_vadc_result die_temp_result;
 	int rc = 0;
 
 	if (channel == VBAT_SNS) {
-		rc = qpnp_vadc_conv_seq_request_base(vadc, ADC_SEQ_NONE,
-						channel, result, pmsafe);
+		rc = qpnp_vadc_conv_seq_request(vadc, ADC_SEQ_NONE,
+				channel, result);
 		if (rc < 0) {
 			pr_err("Error reading vbatt\n");
 			return rc;
 		}
 
-		rc = qpnp_vadc_conv_seq_request_base(vadc, ADC_SEQ_NONE,
-						DIE_TEMP, &die_temp_result,
-						pmsafe);
+		rc = qpnp_vadc_conv_seq_request(vadc, ADC_SEQ_NONE,
+				DIE_TEMP, &die_temp_result);
 		if (rc < 0) {
 			pr_err("Error reading die_temp\n");
 			return rc;
@@ -1246,25 +1224,10 @@ int32_t qpnp_vadc_read_base(struct qpnp_vadc_chip *vadc,
 
 		return 0;
 	} else
-		return qpnp_vadc_conv_seq_request_base(vadc, ADC_SEQ_NONE,
-						channel, result, pmsafe);
-}
-
-int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
-				enum qpnp_vadc_channels channel,
-				struct qpnp_vadc_result *result)
-{
-	return qpnp_vadc_read_base(vadc, channel, result, 0);
+		return qpnp_vadc_conv_seq_request(vadc, ADC_SEQ_NONE,
+				channel, result);
 }
 EXPORT_SYMBOL(qpnp_vadc_read);
-
-int32_t qpnp_vadc_read_pmsafe(struct qpnp_vadc_chip *vadc,
-				enum qpnp_vadc_channels channel,
-				struct qpnp_vadc_result *result)
-{
-	return qpnp_vadc_read_base(vadc, channel, result, 1);
-}
-EXPORT_SYMBOL(qpnp_vadc_read_pmsafe);
 
 static void qpnp_vadc_lock(struct qpnp_vadc_chip *vadc)
 {
