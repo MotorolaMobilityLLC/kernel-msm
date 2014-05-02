@@ -160,17 +160,21 @@ static void max17048_fuelgauge_rcomp_update(struct i2c_client *client, int temp)
 	int new_rcomp = 0;
 	int rcomp_current = 0;
 	struct power_supply *psy;
-	int ret;
 
 	rcomp_current = max17048_fuelgauge_get_rcomp(client);
 
 	psy = power_supply_get_by_name("battery");
-	ret = psy->get_property(psy, POWER_SUPPLY_PROP_STATUS, &value);
-	if (ret < 0) {
-		dev_err(&client->dev,
-				"%s: Fail to get property(%d)\n", __func__, ret);
+	if (!psy) {
+		pr_err("%s: Fail to battery psy \n", __func__);
+		return;
 	} else {
-		value.intval = POWER_SUPPLY_STATUS_DISCHARGING;
+		int ret;
+		ret = psy->get_property(psy, POWER_SUPPLY_PROP_STATUS, &value);
+		if (ret < 0) {
+			dev_err(&client->dev,
+					"%s: Fail to get property(%d)\n", __func__, ret);
+			return;
+		}
 	}
 
 	if (value.intval == POWER_SUPPLY_STATUS_CHARGING) /* in the charging */
@@ -377,6 +381,18 @@ static int max17048_fuelgauge_parse_dt(struct device *dev,
 	if (np == NULL) {
 		pr_err("%s np NULL\n", __func__);
 	} else {
+		ret = of_property_read_u32(np, "fuelgauge,rcomp_charging",
+				&pdata->rcomp_charging);
+		if (ret < 0)
+			pr_err("%s error reading pdata->rcomp_charging %d\n",
+					__func__, ret);
+
+		ret = of_property_read_u32(np, "fuelgauge,rcomp_discharging",
+				&pdata->rcomp_discharging);
+		if (ret < 0)
+			pr_err("%s error reading pdata->rcomp_discharging %d\n",
+					__func__, ret);
+
 		ret = of_get_named_gpio(np, "fuelgauge,fg_irq", 0);
 		if (ret > 0) {
 			pdata->fg_irq = ret;
@@ -388,13 +404,27 @@ static int max17048_fuelgauge_parse_dt(struct device *dev,
 		if (ret < 0)
 			pr_err("%s error reading pdata->fuel_alert_soc %d\n",
 					__func__, ret);
-		pdata->repeated_fuelalert = of_property_read_bool(np,
-				"fuelgauge,repeated_fuelalert");
+		pdata->repeated_fuelalert = of_property_read_bool(np, "fuelgauge,repeated_fuelalert");
 
-		pr_info("%s: fg_irq: %d, "
+		ret = of_property_read_u32(np, "fuelgauge,temp_cohot",
+				&pdata->temp_cohot);
+		if (ret < 0)
+			pr_err("%s error reading pdata->temp_cohot %d\n",
+					__func__, ret);
+
+		ret = of_property_read_u32(np, "fuelgauge,temp_cocold",
+				&pdata->temp_cocold);
+		if (ret < 0)
+			pr_err("%s error reading pdata->temp_cocold %d\n",
+					__func__, ret);
+
+		pdata->is_using_model_data = of_property_read_bool(np, "fuelgauge,is_using_model_data");
+
+		pr_info("%s: rcomp_charging : %d, rcomp_discharging: %d, fg_irq: %d, "
 				"fuel_alert_soc: %d,\n"
-				"repeated_fuelalert: %d\n", __func__, pdata->fg_irq,
-				pdata->fuel_alert_soc, pdata->repeated_fuelalert
+				"is_using_model_data: %d\n",
+				__func__, pdata->rcomp_charging , pdata->rcomp_discharging, pdata->fg_irq,
+				pdata->fuel_alert_soc, pdata->is_using_model_data
 				);
 	}
 	return 0;
