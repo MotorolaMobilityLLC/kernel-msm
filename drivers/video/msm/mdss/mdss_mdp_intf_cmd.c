@@ -189,6 +189,8 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 {
 	unsigned long flags;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	struct mdss_panel_info pinfo =
+			ctx->ctl->panel_data->panel_info;
 
 	if (!ctx->panel_on)
 		return;
@@ -196,7 +198,8 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 	mutex_lock(&ctx->clk_mtx);
 	if (!ctx->clk_enabled) {
 		ctx->clk_enabled = 1;
-		if (cancel_delayed_work_sync(&ctx->ulps_work))
+		if (pinfo.ulps_feature_enabled &&
+			cancel_delayed_work_sync(&ctx->ulps_work))
 			pr_debug("deleted pending ulps work\n");
 
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
@@ -227,6 +230,8 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 	unsigned long flags;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	int set_clk_off = 0;
+	struct mdss_panel_info pinfo =
+			ctx->ctl->panel_data->panel_info;
 
 	mutex_lock(&ctx->clk_mtx);
 	spin_lock_irqsave(&ctx->clk_lock, flags);
@@ -240,7 +245,8 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 		mdss_mdp_ctl_intf_event
 			(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-		if (ctx->panel_on)
+		if (pinfo.ulps_feature_enabled &&
+				ctx->panel_on)
 			schedule_delayed_work(&ctx->ulps_work, ULPS_ENTER_TIME);
 	}
 	mutex_unlock(&ctx->clk_mtx);
@@ -643,7 +649,8 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	if (cancel_work_sync(&ctx->clk_work))
 		pr_debug("no pending clk work\n");
 
-	if (cancel_delayed_work_sync(&ctx->ulps_work))
+	if (pinfo->ulps_feature_enabled &&
+		cancel_delayed_work_sync(&ctx->ulps_work))
 		pr_debug("deleted pending ulps work\n");
 
 	ctx->panel_on = 0;
@@ -684,6 +691,8 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	struct mdss_mdp_cmd_ctx *ctx;
 	struct mdss_mdp_mixer *mixer;
 	int i, ret;
+	struct mdss_panel_info pinfo =
+			ctl->panel_data->panel_info;
 
 	pr_debug("%s:+\n", __func__);
 
@@ -718,7 +727,8 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	spin_lock_init(&ctx->clk_lock);
 	mutex_init(&ctx->clk_mtx);
 	INIT_WORK(&ctx->clk_work, clk_ctrl_work);
-	INIT_DELAYED_WORK(&ctx->ulps_work, __mdss_mdp_cmd_ulps_work);
+	if (pinfo.ulps_feature_enabled)
+		INIT_DELAYED_WORK(&ctx->ulps_work, __mdss_mdp_cmd_ulps_work);
 	INIT_WORK(&ctx->pp_done_work, pingpong_done_work);
 	atomic_set(&ctx->pp_done_cnt, 0);
 	INIT_LIST_HEAD(&ctx->vsync_handlers);
