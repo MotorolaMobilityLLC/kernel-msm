@@ -124,8 +124,12 @@
 	};
 
 	mpp@a100 { /* MPP 2 */
-		/* HR LED */
-		status = "disabled";
+		/* CCP_RESOUT_N */
+		status = "ok";
+		qcom,mode = <0>;      /* Digital Input */
+		qcom,vin-sel = <2>;   /* VIN 2 (1.8V) */
+		qcom,src-sel = <0>;   /* GPIO */
+		qcom,master-en = <1>; /* Enable MPP */
 	};
 
 	mpp@a200 { /* MPP 3 */
@@ -134,12 +138,8 @@
 	};
 
 	mpp@a300 { /* MPP 4 */
-		/* Backlight PWM */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,invert = <8>;		/* DTEST1 */
-		qcom,src-sel = <0>;		/* Constant */
-		qcom,vin-sel = <0>;		/* VPH_PWR */
-		qcom,master-en = <1>;		/* Enable MPP */
+		/* Unconnected */
+		status = "disabled";
 	};
 };
 
@@ -159,12 +159,12 @@
 	};
 
 	gpio@c200 { /* GPIO 3 */
-		/* External regulator control for WTR */
+		/* Not connected */
 		status = "disabled";
 	};
 
 	gpio@c300 { /* GPIO 4 */
-		/* External regulator control for APC */
+		/* Not connected */
 		status = "disabled";
 	};
 };
