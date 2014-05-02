@@ -30,9 +30,6 @@ static int pmdbg_gpio_irq_index;
 static int pmdbg_gic_irq_index;
 static int pmdbg_pmic_irq_index;
 
-static int suspend_uah_is_valid;
-static int pmdbg_suspend_uah;
-static int pmdbg_resume_uah;
 static uint64_t pmdbg_suspend_time;
 static uint64_t pmdbg_resume_time;
 
@@ -228,78 +225,56 @@ static uint64_t pmdbg_gettimeofday_ms(void)
 
 int pmdbg_suspend(struct device *dev)
 {
-	union power_supply_propval val;
-	struct power_supply *psy = power_supply_get_by_name("bms");
-
 	pmdbg_suspend_time = pmdbg_gettimeofday_ms();
-	if (psy && !psy->get_property(psy,
-					POWER_SUPPLY_PROP_CHARGE_COUNTER_PMSAFE,
-					&val)) {
-		suspend_uah_is_valid = 1;
-		pmdbg_suspend_uah = val.intval;
-		pr_info("pm_debug: suspend uah=%d\n", pmdbg_suspend_uah);
-	} else
-		suspend_uah_is_valid = 0;
 	return 0;
 }
 
 int pmdbg_resume(struct device *dev)
 {
-	char *envp[8];
-	char buf[7][PMDBG_UEVENT_ENV_BUFF];
-	int env_index = 0, i;
-	struct power_supply *psy;
-	union power_supply_propval val;
+	char *envp[6];
+	char buf[5][PMDBG_UEVENT_ENV_BUFF];
+	int env_index = 0;
 
-	snprintf(buf[env_index++], PMDBG_UEVENT_ENV_BUFF,
-		"suspend_time=%lld", pmdbg_suspend_time);
+	if (pmdbg_suspend_time == 0)
+		return 0;
 
 	pmdbg_resume_time = pmdbg_gettimeofday_ms();
-	snprintf(buf[env_index++], PMDBG_UEVENT_ENV_BUFF,
-		"resume_time=%lld", pmdbg_resume_time);
 
-	if (suspend_uah_is_valid) {
-		snprintf(buf[env_index++], PMDBG_UEVENT_ENV_BUFF,
-			"suspend_uah=%d", pmdbg_suspend_uah);
-		suspend_uah_is_valid = 0;
-	}
-
-	psy = power_supply_get_by_name("bms");
-	if (psy && !psy->get_property(psy,
-					POWER_SUPPLY_PROP_CHARGE_COUNTER_PMSAFE,
-					&val)) {
-		pmdbg_resume_uah = val.intval;
-		snprintf(buf[env_index++], PMDBG_UEVENT_ENV_BUFF,
-			"resume_uah=%d", pmdbg_resume_uah);
-		pr_info("pm_debug: resume uah=%d\n", pmdbg_resume_uah);
-	}
+	snprintf(buf[0], 33, "suspend_time=%019lld", pmdbg_suspend_time);
+	snprintf(buf[1], 32, "resume_time=%019lld", pmdbg_resume_time);
+	envp[0] = buf[0];
+	envp[1] = buf[1];
+	env_index = 2;
 
 	if (pmdbg_gic_irq_index > 0) {
-		wakeup_source_uevent_env(buf[env_index++], "GIC",
+		wakeup_source_uevent_env(buf[env_index], "GIC",
 					pmdbg_gic_irq,
 					pmdbg_gic_irq_index);
 		pmdbg_gic_irq_index = 0;
+		envp[env_index] = buf[env_index];
+		env_index++;
 	}
 
 	if (pmdbg_gpio_irq_index > 0) {
-		wakeup_source_uevent_env(buf[env_index++], "GPIO",
+		wakeup_source_uevent_env(buf[env_index], "GPIO",
 					pmdbg_gpio_irq,
 					pmdbg_gpio_irq_index);
 		pmdbg_gpio_irq_index = 0;
+		envp[env_index] = buf[env_index];
+		env_index++;
 	}
 
 	if (pmdbg_pmic_irq_index > 0) {
-		wakeup_source_uevent_env(buf[env_index++], "PMIC",
+		wakeup_source_uevent_env(buf[env_index], "PMIC",
 					pmdbg_pmic_irq,
 					pmdbg_pmic_irq_index);
 		pmdbg_pmic_irq_index = 0;
+		envp[env_index] = buf[env_index];
+		env_index++;
 	}
 
-	for (i = 0; i < env_index; i++)
-		envp[i] = buf[i];
-	envp[i] = NULL;
+	envp[env_index] = NULL;
 	kobject_uevent_env(&dev->kobj, KOBJ_ONLINE, envp);
-
 	return 0;
 }
 
