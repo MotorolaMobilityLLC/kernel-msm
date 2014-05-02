@@ -449,41 +449,84 @@ static struct msm_gpiomux_config msm_max77836_configs[] __initdata = {
 	},
 };
 
-static struct gpiomux_setting gpio_suspend_config[] = {
+static struct gpiomux_setting gpio_hwchk_config = {
+	.func = GPIOMUX_FUNC_GPIO,  /* IN-NP */
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config sprat_rev01_hwchk_configs[] __initdata = {
 	{
-		.func = GPIOMUX_FUNC_GPIO,  /* IN-NP */
-		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_NONE,
+		.gpio = 14,	/* HW_CHK_BIT1 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_hwchk_config,
+			[GPIOMUX_ACTIVE] = &gpio_hwchk_config,
+		},
 	},
 	{
-		.func = GPIOMUX_FUNC_GPIO,  /* OUT-NP */
-		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_NONE,
-		.dir = GPIOMUX_OUT_LOW,
+		.gpio = 15,	/* HW_CHK_BIT0 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_hwchk_config,
+			[GPIOMUX_ACTIVE] = &gpio_hwchk_config,
+		},
 	},
 	{
-		.func = GPIOMUX_FUNC_GPIO,  /* IN-PD */
-		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_DOWN,
+		.gpio = 91,	/* HW_CHK_BIT2 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_hwchk_config,
+			[GPIOMUX_ACTIVE] = &gpio_hwchk_config,
+		},
+	},
+};
+
+static struct msm_gpiomux_config sprat_rev02_hwchk_configs[] __initdata = {
+	{
+		.gpio = 14,	/* HW_CHK_BIT1 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_hwchk_config,
+			[GPIOMUX_ACTIVE] = &gpio_hwchk_config,
+		},
 	},
 	{
-		.func = GPIOMUX_FUNC_GPIO,  /* OUT-PD */
-		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_DOWN,
-		.dir = GPIOMUX_OUT_LOW,
+		.gpio = 15,	/* HW_CHK_BIT0 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_hwchk_config,
+			[GPIOMUX_ACTIVE] = &gpio_hwchk_config,
+		},
 	},
+	{
+		.gpio = 80,	/* HW_CHK_BIT3 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_hwchk_config,
+			[GPIOMUX_ACTIVE] = &gpio_hwchk_config,
+		},
+	},
+	{
+		.gpio = 91,	/* HW_CHK_BIT2 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_hwchk_config,
+			[GPIOMUX_ACTIVE] = &gpio_hwchk_config,
+		},
+	},
+};
+
+
+static struct gpiomux_setting gpio_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO,  /* IN-PD */
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 
 #define GPIOMUX_SET_NC(n) \
 	{ \
 		.gpio	   = n, \
 		.settings = { \
-			[GPIOMUX_ACTIVE] = &gpio_suspend_config[2], \
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[2], \
+			[GPIOMUX_ACTIVE] = &gpio_suspend_config, \
+			[GPIOMUX_SUSPENDED] = &gpio_suspend_config, \
 		}, \
 	}
 
-static struct msm_gpiomux_config gpio_rev01_nc_configs[] __initdata = {
+static struct msm_gpiomux_config sprat_rev01_nc_configs[] __initdata = {
 	GPIOMUX_SET_NC(6),
 	GPIOMUX_SET_NC(7),
 	GPIOMUX_SET_NC(12),
@@ -552,6 +595,75 @@ static struct msm_gpiomux_config gpio_rev01_nc_configs[] __initdata = {
 	GPIOMUX_SET_NC(116),
 };
 
+static struct msm_gpiomux_config sprat_rev02_nc_configs[] __initdata = {
+	GPIOMUX_SET_NC(6),
+	GPIOMUX_SET_NC(7),
+	GPIOMUX_SET_NC(12),
+	GPIOMUX_SET_NC(13),
+	GPIOMUX_SET_NC(16),
+	GPIOMUX_SET_NC(26),
+	GPIOMUX_SET_NC(27),
+	GPIOMUX_SET_NC(28),
+	GPIOMUX_SET_NC(29),
+	GPIOMUX_SET_NC(30),
+	GPIOMUX_SET_NC(33),
+	GPIOMUX_SET_NC(34),
+	GPIOMUX_SET_NC(35),
+	GPIOMUX_SET_NC(38),
+	GPIOMUX_SET_NC(45),
+	GPIOMUX_SET_NC(46),
+	GPIOMUX_SET_NC(52),
+	GPIOMUX_SET_NC(53),
+	GPIOMUX_SET_NC(54),
+	GPIOMUX_SET_NC(55),
+	GPIOMUX_SET_NC(56),
+	GPIOMUX_SET_NC(57),
+	GPIOMUX_SET_NC(58),
+	GPIOMUX_SET_NC(59),
+	GPIOMUX_SET_NC(60),
+	GPIOMUX_SET_NC(62),
+	GPIOMUX_SET_NC(67),
+	GPIOMUX_SET_NC(68),
+	GPIOMUX_SET_NC(70),
+	GPIOMUX_SET_NC(71),
+	GPIOMUX_SET_NC(73),
+	GPIOMUX_SET_NC(75),
+	GPIOMUX_SET_NC(76),
+	GPIOMUX_SET_NC(77),
+	GPIOMUX_SET_NC(78),
+	GPIOMUX_SET_NC(79),
+	GPIOMUX_SET_NC(81),
+	GPIOMUX_SET_NC(82),
+	GPIOMUX_SET_NC(83),
+	GPIOMUX_SET_NC(84),
+	GPIOMUX_SET_NC(85),
+	GPIOMUX_SET_NC(86),
+	GPIOMUX_SET_NC(87),
+	GPIOMUX_SET_NC(88),
+	GPIOMUX_SET_NC(89),
+	GPIOMUX_SET_NC(90),
+	GPIOMUX_SET_NC(93),
+	GPIOMUX_SET_NC(94),
+	GPIOMUX_SET_NC(95),
+	GPIOMUX_SET_NC(96),
+	GPIOMUX_SET_NC(97),
+	GPIOMUX_SET_NC(98),
+	GPIOMUX_SET_NC(99),
+	GPIOMUX_SET_NC(100),
+	GPIOMUX_SET_NC(101),
+	GPIOMUX_SET_NC(102),
+	GPIOMUX_SET_NC(103),
+	GPIOMUX_SET_NC(104),
+	GPIOMUX_SET_NC(105),
+	GPIOMUX_SET_NC(110),
+	GPIOMUX_SET_NC(111),
+	GPIOMUX_SET_NC(112),
+	GPIOMUX_SET_NC(114),
+	GPIOMUX_SET_NC(115),
+	GPIOMUX_SET_NC(116),
+};
+
+
 void __init msm8226_init_gpiomux(void)
 {
 	int rc;
@@ -590,8 +702,16 @@ void __init msm8226_init_gpiomux(void)
 
 	switch (system_rev) {
 	case 1:
-		msm_gpiomux_install(gpio_rev01_nc_configs,
-				ARRAY_SIZE(gpio_rev01_nc_configs));
+		msm_gpiomux_install(sprat_rev01_nc_configs,
+				ARRAY_SIZE(sprat_rev01_nc_configs));
+		msm_gpiomux_install(sprat_rev01_hwchk_configs,
+				ARRAY_SIZE(sprat_rev01_hwchk_configs));
+		break;
+	case 2:
+		msm_gpiomux_install(sprat_rev02_nc_configs,
+				ARRAY_SIZE(sprat_rev01_nc_configs));
+		msm_gpiomux_install(sprat_rev02_hwchk_configs,
+				ARRAY_SIZE(sprat_rev02_hwchk_configs));
 		break;
 	default:
 		break;
