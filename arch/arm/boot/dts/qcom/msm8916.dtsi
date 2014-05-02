@@ -45,7 +45,7 @@
 		smd36 = &smdtty_loopback;
 
 		spi0 = &spi_0; /* SPI0 controller device */
-		i2c0 = &i2c_0; /* I2C0 controller device */
+		i2c2 = &i2c_2; /* I2C2 controller device */
 		i2c5 = &i2c_5; /* I2C5 controller device */
 		i2c6 = &i2c_6; /* I2C6 NFC qup6 device */
 		i2c4 = &i2c_4; /* I2C4 controller device */
@@ -1386,7 +1386,7 @@
 		};
         };
 
-	i2c_0: i2c@78b6000 { /* BLSP1 QUP2 */
+	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
 		compatible = "qcom,i2c-msm-v2";
 		#address-cells = <1>;
 		#size-cells = <0>;
