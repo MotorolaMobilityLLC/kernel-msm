@@ -362,6 +362,32 @@ static void mxt_regulator_disable(struct mxt_data *data);
 static void mxt_regulator_enable(struct mxt_data *data);
 static void mxt_reset_slots(struct mxt_data *data);
 
+struct debug_section {
+	unsigned long j;
+	unsigned int count;
+};
+
+static struct debug_section mxt_proc_t100_dbg;
+static struct debug_section mxt_dump_message_dbg;
+
+/* Function: throttle_dbgout
+ *  Print no more than n messages in msec interval
+ *  Return
+ *  - false if printing is allowed
+ *  - true if printing is NOT allowed
+ */
+bool throttle_dbgout(struct debug_section *dbg, int n, unsigned int msec)
+{
+	if (printk_timed_ratelimit(&dbg->j, msec))
+		dbg->count = 0;
+
+	if (dbg->count < n) {
+		++dbg->count;
+		return false;
+	} else
+		return true;
+}
+
 static inline size_t mxt_obj_size(const struct mxt_object *obj)
 {
 	return obj->size_minus_one + 1;
@@ -409,9 +435,10 @@ static bool mxt_object_readable(unsigned int type)
 
 static void mxt_dump_message(struct mxt_data *data, u8 *message)
 {
-	print_hex_dump(KERN_DEBUG, "atmel_mxt_ts_mmi: MXT MSG:",
-		       DUMP_PREFIX_NONE, 16, 1,
-		       message, data->T5_msg_size, false);
+	if (!throttle_dbgout(&mxt_dump_message_dbg, 20, 300000))
+		print_hex_dump(KERN_DEBUG, "atmel_mxt_ts_mmi: MXT MSG:",
+			DUMP_PREFIX_NONE, 16, 1,
+			message, data->T5_msg_size, false);
 }
 
 static void mxt_debug_msg_enable(struct mxt_data *data)
@@ -1050,7 +1077,8 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 	x = (message[3] << 8) | message[2];
 	y = (message[5] << 8) | message[4];
 
-	dev_dbg(&data->client->dev,
+	if (!throttle_dbgout(&mxt_proc_t100_dbg, 20, 60000))
+		dev_dbg(&data->client->dev,
 		"[%u] status:%02X x:%u y:%u area:%02X amp:%02X vec:%02X\n",
 		id,
 		status,
