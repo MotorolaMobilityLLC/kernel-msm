@@ -107,6 +107,14 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		else
 			err = 0;
 		break;
+	case STM401_IOCTL_GET_BOOTED:
+		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_BOOTED");
+		byte = stm401_g_booted;
+		if (copy_to_user(argp, &byte, 1))
+			err = -EFAULT;
+		else
+			err = 0;
+		break;
 	default:
 		if (ps_stm401->mode == BOOTMODE) {
 			dev_err(&ps_stm401->client->dev,
