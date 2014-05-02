@@ -151,6 +151,7 @@ static int __init mmi_unit_info_init(void)
 	strlcpy(mui->carrier, carrier, CARRIER_MAX_LEN);
 	strlcpy(mui->device, androidboot_device, DEVICE_MAX_LEN);
 	mui->radio = androidboot_radio;
+	mui->powerup_reason = bi_powerup_reason();
 
 	pr_info("mmi_unit_info (SMEM) for modem: version = 0x%02x,"
 		" device = '%s', radio = %d, system_rev = 0x%04x,"
