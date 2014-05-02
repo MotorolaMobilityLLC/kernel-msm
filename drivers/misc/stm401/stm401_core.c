@@ -730,6 +730,8 @@ static int stm401_probe(struct i2c_client *client,
 	mutex_init(&ps_stm401->lock);
 	mutex_lock(&ps_stm401->lock);
 	wake_lock_init(&ps_stm401->wakelock, WAKE_LOCK_SUSPEND, "stm401");
+	wake_lock_init(&ps_stm401->reset_wakelock, WAKE_LOCK_SUSPEND,
+		"stm401_reset");
 
 	ps_stm401->ap_stm401_handoff_enable = false;
 
@@ -909,6 +911,8 @@ err1:
 	mutex_destroy(&ps_stm401->lock);
 	wake_unlock(&ps_stm401->wakelock);
 	wake_lock_destroy(&ps_stm401->wakelock);
+	wake_unlock(&ps_stm401->reset_wakelock);
+	wake_lock_destroy(&ps_stm401->reset_wakelock);
 	stm401_gpio_free(pdata);
 err_gpio_init:
 	regulator_disable(ps_stm401->regulator_2);
@@ -941,6 +945,8 @@ static int stm401_remove(struct i2c_client *client)
 	mutex_destroy(&ps_stm401->lock);
 	wake_unlock(&ps_stm401->wakelock);
 	wake_lock_destroy(&ps_stm401->wakelock);
+	wake_unlock(&ps_stm401->reset_wakelock);
+	wake_lock_destroy(&ps_stm401->reset_wakelock);
 	disable_irq_wake(ps_stm401->irq);
 
 	regulator_disable(ps_stm401->regulator_2);
