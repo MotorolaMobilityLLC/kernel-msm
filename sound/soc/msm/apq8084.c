@@ -2203,13 +2203,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		tomtom_register_ext_clk_cb(msm_snd_enable_codec_ext_clk,
 					   msm_snd_get_ext_clk_cnt,
 					   rtd->codec);
-		err = tomtom_enable_cpe(rtd->codec);
-		if (IS_ERR_VALUE(err)) {
-			pr_err("%s: Failed to enable cpe, err = 0x%x\n",
-				__func__, err);
-			/* Don't fail card registraion if CPE failed */
-			err = 0;
-		}
+		pr_err("%s: CPE not supported on codec\n", __func__);
 	} else
 		taiko_event_register(apq8084_codec_event_cb, rtd->codec);
 
