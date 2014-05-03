@@ -260,15 +260,15 @@
 			qcom,pin-num = <50>;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(50)        */
-				qcom,pull = <3>;  /* pullup                 */
+				qcom,pull = <1>;  /* down                 */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <1>;   /* output high        */
+				qcom,dir = <2>;   /* output low        */
 			};
 			qcom,suspend@1 {
 				qcom,func = <0>;  /* gpio_in_out(50)        */
 				qcom,pull = <1>;  /* down                   */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
+				qcom,dir = <2>;   /* output low             */
 			};
 		};
 
@@ -277,15 +277,15 @@
 			qcom,pin-num = <51>;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(51)        */
-				qcom,pull = <3>;  /* pullup                 */
+				qcom,pull = <1>;  /* down                 */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <1>;   /* output high        */
+				qcom,dir = <2>;   /* output low        */
 			};
 			qcom,suspend@1 {
 				qcom,func = <0>;  /* gpio_in_out(51)        */
 				qcom,pull = <1>;  /* down                   */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
+				qcom,dir = <2>;   /* output low             */
 			};
 		};
 
@@ -294,15 +294,15 @@
 			qcom,pin-num = <52>;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(52)        */
-				qcom,pull = <3>;  /* pullup                 */
+				qcom,pull = <0>;  /* no_pull                */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <1>;   /* output high   TODO     */
+				qcom,dir = <2>;   /* output low     */
 			};
 			qcom,suspend@1 {
 				qcom,func = <0>;  /* gpio_in_out(52)        */
-				qcom,pull = <1>;  /* down                   */
+				qcom,pull = <0>;  /* down                   */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
+				qcom,dir = <2>;   /* output low             */
 			};
 		};
 
