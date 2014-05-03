@@ -402,6 +402,12 @@ static int ramoops_init_prz(struct device *dev, struct ramoops_context *cxt,
 	return 0;
 }
 
+void notrace ramoops_console_write_buf(const char *buf, size_t size)
+{
+	struct ramoops_context *cxt = &oops_cxt;
+	persistent_ram_write(cxt->cprz, buf, size);
+}
+
 #ifdef CONFIG_OF
 static struct of_device_id ramoops_of_match[] = {
 	{ .compatible = "ramoops", },
@@ -453,6 +459,7 @@ static inline void ramoops_of_init(struct platform_device *pdev)
 	return;
 }
 #endif
+
 static int ramoops_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
