@@ -83,11 +83,18 @@ static void get_geomagnetic_caldata(char *pchRcvDataFrame, int *iDataIdx,
 	*iDataIdx += 7;
 }
 
-static void get_rot_sensordata(char *pchRcvDataFrame, int *iDataIdx,
+static void get_game_rot_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 17);
 	*iDataIdx += 17;
+}
+
+static void get_rot_sensordata(char *pchRcvDataFrame, int *iDataIdx,
+	struct sensor_value *sensorsdata)
+{
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 23);
+	*iDataIdx += 23;
 }
 
 static void get_step_det_sensordata(char *pchRcvDataFrame, int *iDataIdx,
@@ -257,7 +264,7 @@ void initialize_function_pointer(struct ssp_data *data)
 		get_geomagnetic_caldata;
 
 	data->get_sensor_data[ROTATION_VECTOR] = get_rot_sensordata;
-	data->get_sensor_data[GAME_ROTATION_VECTOR] = get_rot_sensordata;
+	data->get_sensor_data[GAME_ROTATION_VECTOR] = get_game_rot_sensordata;
 	data->get_sensor_data[STEP_DETECTOR] = get_step_det_sensordata;
 	data->get_sensor_data[SIG_MOTION_SENSOR] = get_sig_motion_sensordata;
 	data->get_sensor_data[GYRO_UNCALIB_SENSOR] = get_uncalib_sensordata;

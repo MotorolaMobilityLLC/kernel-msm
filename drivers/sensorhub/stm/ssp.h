@@ -301,6 +301,9 @@ struct sensor_value {
 			s32 quat_b;
 			s32 quat_c;
 			s32 quat_d;
+			s16 acc_x;
+			s16 acc_y;
+			s16 acc_z;
 			u8 acc_rot;
 		};
 #ifdef CONFIG_SENSORS_SSP_ADPD142

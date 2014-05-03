@@ -27,8 +27,29 @@
 #define IIO_BUFFER_6_BYTES         14
 #define IIO_BUFFER_1_BYTES			9
 #define IIO_BUFFER_17_BYTES			25
+#define IIO_BUFFER_23_BYTES			31
 
 /* data header defines */
+static int ssp_push_23bytes_buffer(struct iio_dev *indio_dev,
+	u64 t, int *q)
+{
+	u8 buf[IIO_BUFFER_23_BYTES];
+	int i;
+
+	for (i = 0; i < 4; i++)
+		memcpy(buf + 4 * i, &q[i], sizeof(q[i]));
+	buf[16] = (u8)q[4];
+	for (i = 0; i < 3; i++)
+		memcpy(buf + 17 + i * 2, &q[i + 5], sizeof(s16));
+	memcpy(buf + 23, &t, sizeof(t));
+
+	mutex_lock(&indio_dev->mlock);
+	iio_push_to_buffers(indio_dev, buf);
+	mutex_unlock(&indio_dev->mlock);
+
+	return 0;
+}
+
 static int ssp_push_17bytes_buffer(struct iio_dev *indio_dev,
 							u64 t, int *q)
 {
@@ -235,12 +256,16 @@ void report_sig_motion_data(struct ssp_data *data,
 
 void report_rot_data(struct ssp_data *data, struct sensor_value *rotdata)
 {
-	int rot_buf[5];
+	int rot_buf[8];
 
 	data->buf[ROTATION_VECTOR].quat_a = rotdata->quat_a;
 	data->buf[ROTATION_VECTOR].quat_b = rotdata->quat_b;
 	data->buf[ROTATION_VECTOR].quat_c = rotdata->quat_c;
 	data->buf[ROTATION_VECTOR].quat_d = rotdata->quat_d;
+
+	data->buf[ROTATION_VECTOR].acc_x = rotdata->acc_x;
+	data->buf[ROTATION_VECTOR].acc_y = rotdata->acc_y;
+	data->buf[ROTATION_VECTOR].acc_z = rotdata->acc_z;
 
 	data->buf[ROTATION_VECTOR].acc_rot = rotdata->acc_rot;
 	rot_buf[0] = rotdata->quat_a;
@@ -248,8 +273,11 @@ void report_rot_data(struct ssp_data *data, struct sensor_value *rotdata)
 	rot_buf[2] = rotdata->quat_c;
 	rot_buf[3] = rotdata->quat_d;
 	rot_buf[4] = rotdata->acc_rot;
+	rot_buf[5] = rotdata->acc_x;
+	rot_buf[6] = rotdata->acc_y;
+	rot_buf[7] = rotdata->acc_z;
 
-	ssp_push_17bytes_buffer(data->rot_indio_dev, rotdata->timestamp,
+	ssp_push_23bytes_buffer(data->rot_indio_dev, rotdata->timestamp,
 		rot_buf);
 }
 
@@ -318,16 +346,16 @@ void report_tilt_wake_data(struct ssp_data *data, struct sensor_value *tiltdata)
 	data->buf[TILT_TO_WAKE].z = tiltdata->z;
 
 	input_report_rel(data->tilt_wake_input_dev, REL_X,
-		data->buf[TILT_TO_WAKE].x >= 0?
-		(data->buf[TILT_TO_WAKE].x + 1):
+		data->buf[TILT_TO_WAKE].x >= 0 ?
+		(data->buf[TILT_TO_WAKE].x + 1) :
 		data->buf[TILT_TO_WAKE].x);
 	input_report_rel(data->tilt_wake_input_dev, REL_Y,
-		data->buf[TILT_TO_WAKE].y >= 0?
-		(data->buf[TILT_TO_WAKE].y + 1):
+		data->buf[TILT_TO_WAKE].y >= 0 ?
+		(data->buf[TILT_TO_WAKE].y + 1) :
 		data->buf[TILT_TO_WAKE].y);
 	input_report_rel(data->tilt_wake_input_dev, REL_Z,
-		data->buf[TILT_TO_WAKE].z >= 0?
-		(data->buf[TILT_TO_WAKE].z + 1):
+		data->buf[TILT_TO_WAKE].z >= 0 ?
+		(data->buf[TILT_TO_WAKE].z + 1) :
 		data->buf[TILT_TO_WAKE].z);
 	input_sync(data->tilt_wake_input_dev);
 	wake_lock_timeout(&data->ssp_wake_lock, 3 * HZ);
@@ -458,8 +486,8 @@ static const struct iio_chan_spec rot_channels[] = {
 		.type = IIO_TIMESTAMP,
 		.channel = -1,
 		.scan_index = 3,
-		.scan_type = IIO_ST('s', IIO_BUFFER_17_BYTES*8,
-				IIO_BUFFER_17_BYTES*8, 0)
+		.scan_type = IIO_ST('s', IIO_BUFFER_23_BYTES*8,
+				IIO_BUFFER_23_BYTES*8, 0)
 	}
 };
 
