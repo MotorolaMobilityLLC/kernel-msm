@@ -235,6 +235,22 @@ VOS_STATUS hdd_parse_get_cckm_ie(tANI_U8 *pValue, tANI_U8 **pCckmIe, tANI_U8 *pC
 #endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
 
 static VOS_STATUS wlan_hdd_init_channels(hdd_context_t *pHddCtx);
+const char * hdd_device_modetoString(v_U8_t device_mode)
+{
+   switch(device_mode)
+   {
+       CASE_RETURN_STRING( WLAN_HDD_INFRA_STATION );
+       CASE_RETURN_STRING( WLAN_HDD_SOFTAP );
+       CASE_RETURN_STRING( WLAN_HDD_P2P_CLIENT );
+       CASE_RETURN_STRING( WLAN_HDD_P2P_GO );
+       CASE_RETURN_STRING( WLAN_HDD_MONITOR);
+       CASE_RETURN_STRING( WLAN_HDD_FTM );
+       CASE_RETURN_STRING( WLAN_HDD_IBSS );
+       CASE_RETURN_STRING( WLAN_HDD_P2P_DEVICE );
+       default:
+           return "device_mode Unknown";
+   }
+}
 
 static int hdd_netdev_notifier_call(struct notifier_block * nb,
                                          unsigned long state,
@@ -1734,9 +1750,10 @@ int hdd_handle_batch_scan_ioctl
              (WLAN_HDD_P2P_DEVICE != pAdapter->device_mode))
          {
              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "Received WLS_BATCHING SET command in invalid mode %d "
+                "Received WLS_BATCHING SET command in invalid mode %s (%d) "
                 "WLS_BATCHING_SET is only allowed in infra STA/P2P client mode",
-                pAdapter->device_mode);
+                 hdd_device_modetoString(pAdapter->device_mode),
+                 pAdapter->device_mode);
              ret = -EINVAL;
              goto exit;
          }
