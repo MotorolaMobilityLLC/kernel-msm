@@ -1297,7 +1297,8 @@ struct hdd_context_s
               (WLAN_HDD_LOAD_IN_PROGRESS | WLAN_HDD_UNLOAD_IN_PROGRESS))
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
-  -------------------------------------------------------------------------*/ 
+  -------------------------------------------------------------------------*/
+const char * hdd_device_modetoString(v_U8_t device_mode);
 VOS_STATUS hdd_get_front_adapter( hdd_context_t *pHddCtx,
                                   hdd_adapter_list_node_t** ppAdapterNode);
 

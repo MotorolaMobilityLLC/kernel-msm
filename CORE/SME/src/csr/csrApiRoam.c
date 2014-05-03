@@ -11243,7 +11243,7 @@ tANI_BOOLEAN csrRoamIsValid40MhzChannel(tpAniSirGlobal pMac, tANI_U8 channel)
                 if((PHY_SINGLE_CHANNEL_CENTERED != eRet) && !csrRoamIsValid40MhzChannel(pMac, centerChn))
                 {
                     smsLog(pMac, LOGE, "  Invalid center channel (%d), disable 40MHz mode", centerChn);
-                    //eRet = PHY_SINGLE_CHANNEL_CENTERED;
+                    eRet = PHY_SINGLE_CHANNEL_CENTERED;
                 }
             }
         }
