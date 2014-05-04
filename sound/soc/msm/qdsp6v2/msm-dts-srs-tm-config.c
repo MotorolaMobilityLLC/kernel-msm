@@ -23,8 +23,10 @@
 
 static int srs_port_id = -1;
 static int srs_alsa_ctrl_ever_called;
+#define SRS_TRUMEDIA_INDEX 2
 static union srs_trumedia_params_u msm_srs_trumedia_params[2];
 
+static union srs_trumedia_params_u msm_srs_trumedia_params[SRS_TRUMEDIA_INDEX];
 void msm_dts_srs_tm_set_port_id(int port_id)
 {
 	srs_port_id = port_id;
@@ -97,7 +99,7 @@ static int msm_dts_srs_trumedia_control_set_(struct snd_kcontrol *kcontrol,
 			SRS_PARAM_OFFSET_MASK) >> 16);
 	value = (unsigned short)(ucontrol->value.integer.value[0] &
 			SRS_PARAM_VALUE_MASK);
-	if (offset < max) {
+	if ((offset < max) && (index < SRS_TRUMEDIA_INDEX)) {
 		msm_srs_trumedia_params[index].raw_params[offset] = value;
 		pr_debug("SRS %s: index set... (max %d, requested %d, val %d, paramblockidx %d)",
 			__func__, max, offset, value, index);
