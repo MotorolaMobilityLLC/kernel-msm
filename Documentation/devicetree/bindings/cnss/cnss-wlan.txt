@@ -17,6 +17,9 @@ Required properties:
   - wlan-en-gpio: WLAN_EN GPIO signal specified by QCA6174 specifications
   - vdd-wlan-supply: phandle to the regulator device tree node
 
+Optional properties:
+  - wlan-soc-swreg-supply: phandle to the external 1.15V regulator for QCA6174
+
 Example:
 
     qcom,cnss@0d400000 {
@@ -25,4 +28,5 @@ Example:
         reg-names = "ramdump";
         wlan-en-gpio = <&msmgpio 82 0>;
         vdd-wlan-supply = <&wlan_vreg>;
+        wlan-soc-swreg-supply = <&pma8084_l27>;
     };
