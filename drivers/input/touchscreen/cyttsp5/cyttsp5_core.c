@@ -4766,6 +4766,8 @@ int cyttsp5_core_suspend(struct device *dev)
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 
 	dev_info(dev, "%s\n", __func__);
+	cancel_work_sync(&cd->startup_work);
+	cyttsp5_stop_wd_timer(cd);
 
 	if (cd->irq_wake) {
 		dev_err(dev, "%s: already irq_wake enabled\n", __func__);
@@ -4794,6 +4796,7 @@ int cyttsp5_core_resume(struct device *dev)
 		cd->irq_wake = false;
 	}
 
+	cyttsp5_start_wd_timer(cd);
 	return 0;
 }
 
@@ -5553,15 +5556,8 @@ int cyttsp5_release(struct cyttsp5_core_data *cd)
 	struct device *dev = cd->dev;
 
 	device_init_wakeup(dev, 0);
-	disable_irq(cd->irq);
-
-	/*
-	 * Suspend the device before freeing the startup_work and stopping
-	 * the watchdog since sleep function restarts watchdog on failure
-	 */
 	cyttsp5_core_suspend(dev);
-	cancel_work_sync(&cd->startup_work);
-	cyttsp5_stop_wd_timer(cd);
+	disable_irq(cd->irq);
 
 	cyttsp5_device_access_release(dev);
 	cyttsp5_samsung_factory_release(dev);
