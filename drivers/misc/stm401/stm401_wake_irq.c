@@ -417,7 +417,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	if (irq3_status & M_GENERIC_INTRPT) {
 		/* x (data1) : irq3_status */
 		stm401_ms_data_buffer_write(ps_stm401, DT_GENERIC_INT,
-			stm401_readbuff, 1);
+			&irq3_status, 1);
 		dev_dbg(&ps_stm401->client->dev,
 			"Sending generic interrupt event:%d\n", irq3_status);
 	}
