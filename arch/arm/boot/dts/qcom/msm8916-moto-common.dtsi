@@ -16,7 +16,7 @@
 
 / {
 	aliases {
-		serial0 = &blsp1_uart2;
+		serial0 = &blsp1_uart1;
 	};
 };
 
@@ -45,7 +45,7 @@
 	};
 };
 
-&blsp1_uart2 {
+&blsp1_uart1 {
 	status = "ok";
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart_console_sleep>;
@@ -207,6 +207,10 @@
 &tlmm_pinmux {
 	sdhc2_cd_pin {
 		qcom,pins = <&gp 25>;
+	};
+
+	pmx-uartconsole {
+		qcom,pins = <&gp 0>, <&gp 1>;
 	};
 
 	touch_reset_n {
