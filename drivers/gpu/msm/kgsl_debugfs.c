@@ -247,7 +247,7 @@ static char get_cacheflag(const struct kgsl_memdesc *m)
 
 static void print_mem_entry(struct seq_file *s, struct kgsl_mem_entry *entry)
 {
-	char flags[6];
+	char flags[7];
 	char usage[16];
 	struct kgsl_memdesc *m = &entry->memdesc;
 
@@ -256,13 +256,16 @@ static void print_mem_entry(struct seq_file *s, struct kgsl_mem_entry *entry)
 	flags[2] = get_alignflag(m);
 	flags[3] = get_cacheflag(m);
 	flags[4] = kgsl_memdesc_use_cpu_map(m) ? 'p' : '-';
-	flags[5] = '\0';
+	flags[5] = (m->useraddr) ? 'Y' : 'N';
+	flags[6] = '\0';
 
 	kgsl_get_memory_usage(usage, sizeof(usage), m->flags);
 
-	seq_printf(s, "%08x %08lx %8d %5d %5s %10s %16s %5d\n",
-			m->gpuaddr, m->useraddr, m->size, entry->id, flags,
-			memtype_str(entry->memtype), usage, m->sglen);
+	seq_printf(s, "%pK %pK %8zd %5d %6s %10s %16s %5d\n",
+			   (unsigned long *)(uintptr_t) m->gpuaddr,
+			   (unsigned long *) m->useraddr,
+				m->size, entry->id, flags,
+				memtype_str(entry->memtype), usage, m->sglen);
 }
 
 static int process_mem_print(struct seq_file *s, void *unused)
@@ -272,7 +275,7 @@ static int process_mem_print(struct seq_file *s, void *unused)
 	struct kgsl_process_private *private = s->private;
 	int next = 0;
 
-	seq_printf(s, "%8s %8s %8s %5s %5s %10s %16s %5s\n",
+	seq_printf(s, "%8s %8s %8s %5s %6s %10s %16s %5s\n",
 		   "gpuaddr", "useraddr", "size", "id", "flags", "type",
 		   "usage", "sglen");
 
@@ -372,7 +375,7 @@ kgsl_process_init_debugfs(struct kgsl_process_private *private)
 	 * So if debugfs is disabled in kernel, return as
 	 * success.
 	 */
-	dentry = debugfs_create_file("mem", 0400, private->debug_root, private,
+	dentry = debugfs_create_file("mem", 0444, private->debug_root, private,
 			    &process_mem_fops);
 
 	if (IS_ERR(dentry)) {
