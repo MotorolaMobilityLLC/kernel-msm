@@ -17,6 +17,7 @@
 / {
 	aliases {
 		serial0 = &blsp1_uart1;
+		spi5 = &spi_5; /* SPI0 controller device */
 		i2c1 = &i2c_1;
 	};
 };
@@ -256,6 +257,57 @@
 			bias-disable;	      /* No PULL */
 		};
 	};
+
+	spi5_active {
+		/* MOSI, MISO, CLK */
+		qcom,pins = <&gp 16>, <&gp 17>, <&gp 19>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <1>;
+		label = "spi5-active";
+		/* active state */
+		spi5_default: spi5_default {
+			drive-strength = <12>; /* 12 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
+	spi5_suspend {
+		/* MOSI, MISO, CLK */
+		qcom,pins = <&gp 16>, <&gp 17>, <&gp 19>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <0>;
+		label = "spi5-suspend";
+		/* suspended state */
+		spi5_sleep: spi5_sleep {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
+	spi5_cs0_active {
+		/* CS */
+		qcom,pins = <&gp 18>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "spi5-cs0-active";
+		spi5_cs0_active: cs0_active {
+			drive-strength = <2>;
+			bias-disable = <0>;
+		};
+	};
+
+
+	spi5_cs0_suspend {
+		/* CS */
+		qcom,pins = <&gp 18>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "spi5-cs0-suspend";
+		spi5_cs0_sleep: cs0_sleep {
+			drive-strength = <2>;
+			bias-disable = <0>;
+		};
+	};
 };
 
 &spmi_bus {
@@ -292,6 +344,33 @@
 		qcom,bam-pipe-idx-prod = <5>;
 		qcom,master-id = <86>;
 	};
+
+	spi_5: spi@78b9000 { /* BLSP1 QUP5 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x78b9000 0x600>,
+		      <0x7884000 0x23000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 99 0>, <0 238 0>;
+		spi-max-frequency = <19200000>;
+		pinctrl-names = "default", "sleep", "cs0_active", "cs0_sleep";
+		pinctrl-0 = <&spi5_default>;
+		pinctrl-1 = <&spi5_sleep>;
+		pinctrl-2 = <&spi5_cs0_active>;
+		pinctrl-3 = <&spi5_cs0_sleep>;
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup5_spi_apps_clk>;
+		clock-names = "iface_clk", "core_clk";
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,use-pinctrl;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
+		qcom,master-id = <86>;
+	};
 };
 
 &i2c_2 {
@@ -307,6 +386,10 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&touch_reset_default &touch_int_default>;
 	};
+};
+
+&i2c_5 {
+	status = "disabled";
 };
 
 &spi_0 {
