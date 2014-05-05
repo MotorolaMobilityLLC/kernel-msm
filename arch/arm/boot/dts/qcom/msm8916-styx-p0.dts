@@ -36,4 +36,19 @@
 	pmx-uartconsole {
 		qcom,pins = <&gp 4>, <&gp 5>;
 	};
+
+	touch_reset_n {
+		qcom,pins = <&gp 38>;
+	};
+
+	touch_int_n {
+		qcom,pins = <&gp 37>;
+	};
+};
+
+&i2c_2 {
+	synaptics_dsx_i2c@20 {
+		gpios = <&msm_gpio 37 0>, /* IRQ */
+			<&msm_gpio 38 0>; /* RESET - Dummy value, unused */
+	};
 };
