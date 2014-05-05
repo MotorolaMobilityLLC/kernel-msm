@@ -90,6 +90,8 @@ int stm401_reset_and_init(void)
 	unsigned int i;
 	int err, ret_err = 0;
 
+	dev_dbg(&stm401_misc_data->client->dev, "stm401_reset_and_init\n");
+
 	wake_lock(&stm401_misc_data->reset_wakelock);
 
 	if (stm401_misc_data->is_suspended)
