@@ -321,9 +321,10 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 	}
 
 	if (data->ap_rev >= 1) {
-		data->vdd_hrm = devm_regulator_get(dev, "ssp_hrm_verg");
+		data->vdd_hrm = devm_regulator_get(dev, "ssp_hrm_vreg");
 		if (IS_ERR(data->vdd_hrm)) {
-			pr_err("[SSP] could not get ssp_hrm_verg, %ld\n",
+			data->vdd_hrm = NULL;
+			pr_err("[SSP] could not get ssp_hrm_vreg, %ld\n",
 				PTR_ERR(data->vdd_hrm));
 			errorno = -ENXIO;
 		} else {
@@ -338,6 +339,7 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 
 	data->vdd_hub = devm_regulator_get(dev, "ssp_vreg");
 	if (IS_ERR(data->vdd_hub)) {
+		data->vdd_hub = NULL;
 		pr_err("[SSP] could not get ssp_vreg, %ld\n",
 			PTR_ERR(data->vdd_hub));
 		errorno = -ENXIO;
@@ -346,7 +348,7 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 		errorno = regulator_enable(data->vdd_hub);
 		if (errorno) {
 			regulator_disable(data->vdd_acc);
-			if (data->ap_rev >= 1)
+			if (data->vdd_hrm != NULL)
 				regulator_disable(data->vdd_hrm);
 			pr_err("[SSP] VDD can't turn on for SSP\n");
 			goto dt_exit;
@@ -564,12 +566,16 @@ static void ssp_shutdown(struct spi_device *spi)
 	mutex_destroy(&data->pending_mutex);
 #endif
 	toggle_mcu_reset(data);
+
+	if (data->vdd_hrm != NULL)
+		regulator_disable(data->vdd_hrm);
+	if (data->vdd_acc != NULL)
+		regulator_disable(data->vdd_acc);
+	if (data->vdd_hub != NULL)
+		regulator_disable(data->vdd_hub);
+
 	pr_info("[SSP] %s done\n", __func__);
 
-	regulator_disable(data->vdd_acc);
-	regulator_disable(data->vdd_hub);
-	if (data->ap_rev >= 1)
-		regulator_disable(data->vdd_hrm);
 exit:
 	kfree(data);
 }
