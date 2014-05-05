@@ -6583,6 +6583,7 @@ static struct clk_lookup apq_clocks_8084[] = {
 						"fda04000.qcom,cpp"),
 	/* Camera Sensor Clocks */
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "20.qcom,eeprom"),
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "20.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "90.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "0.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk",	mclk1_clk_src.c, "1.qcom,camera"),
@@ -6590,6 +6591,7 @@ static struct clk_lookup apq_clocks_8084[] = {
 	CLK_LOOKUP("cam_src_clk",	mclk2_clk_src.c, "6c.qcom,camera"),
 	CLK_LOOKUP("",	mclk3_clk_src.c,	""),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "20.qcom,eeprom"),
+	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "20.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk1_clk.c, "90.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "0.qcom,camera"),
 	CLK_LOOKUP("cam_clk",	camss_mclk1_clk.c, "1.qcom,camera"),
