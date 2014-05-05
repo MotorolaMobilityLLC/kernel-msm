@@ -17213,6 +17213,12 @@ eHalStatus csrHT40StopOBSSScan(tpAniSirGlobal pMac, v_U8_t sessionId)
    if(IS_HT40_OBSS_SCAN_FEATURE_ENABLE)
    {
        pMsg = vos_mem_malloc(sizeof(tSirSmeHT40OBSSStopScanInd));
+
+       if( NULL == pMsg )
+       {
+          smsLog(pMac, LOGE, FL("PMsg is NULL "));
+          return eHAL_STATUS_FAILURE;
+       }
        vos_mem_zero((void *)pMsg, sizeof(tSirSmeHT40OBSSStopScanInd));
        pMsg->messageType     = eWNI_SME_HT40_STOP_OBSS_SCAN_IND;
        pMsg->length          = sizeof(tANI_U8);
