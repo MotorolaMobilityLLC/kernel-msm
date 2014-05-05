@@ -442,7 +442,7 @@ struct stm_response {
 
 #define ESR_SIZE			128
 
-#define STM401_RESET_DELAY		400
+#define STM401_RESET_DELAY		50
 
 #define I2C_RESPONSE_LENGTH		8
 
