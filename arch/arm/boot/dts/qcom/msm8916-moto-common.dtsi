@@ -208,6 +208,31 @@
 	sdhc2_cd_pin {
 		qcom,pins = <&gp 25>;
 	};
+
+	touch_reset_n {
+		qcom,pins = <&gp 4>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "touch-reset";
+
+		touch_reset_default: touch-reset {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			output-low;
+		};
+	};
+
+	touch_int_n {
+		qcom,pins = <&gp 5>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "touch-int";
+
+		touch_int_default: touch-int {
+			drive-strength = <2>;
+			bias-pull-up; /* pull-up */
+		};
+	};
 };
 
 &spmi_bus {
@@ -217,5 +242,20 @@
 			qcom,vib-timeout-ms = <15000>;
 			qcom,vib-vtg-level-mV = <3100>;
 		};
+	};
+};
+
+&i2c_2 {
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupts = <&msm_gpio 5 0>;
+		gpios = <&msm_gpio 5 0>, /* IRQ */
+			<&msm_gpio 4 0>; /* RESET */
+		touch_vdd-supply = <&pm8916_l16>;
+		synaptics,normal-mode = <1>;
+		synaptics,gpio-config;
+		pinctrl-names = "default";
+		pinctrl-0 = <&touch_reset_default &touch_int_default>;
 	};
 };
