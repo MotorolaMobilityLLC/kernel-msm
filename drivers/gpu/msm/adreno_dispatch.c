@@ -965,6 +965,8 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 		/* Skip the PM dump for a timeout because it confuses people */
 		set_bit(KGSL_FT_SKIP_PMDUMP, &cmdbatch->fault_policy);
 	}
+	/* Set pagefault if it occurred */
+	kgsl_mmu_set_pagefault(&device->mmu);
 
 	adreno_readreg(adreno_dev, ADRENO_REG_CP_IB1_BASE, &base);
 
