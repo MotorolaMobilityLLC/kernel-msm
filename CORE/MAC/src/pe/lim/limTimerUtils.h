@@ -100,7 +100,6 @@ void limDeactivateAndChangeTimer(tpAniSirGlobal, tANI_U32);
 void limHeartBeatDeactivateAndChangeTimer(tpAniSirGlobal, tpPESession);
 void limReactivateHeartBeatTimer(tpAniSirGlobal, tpPESession);
 void limDummyPktExpTimerHandler(void *, tANI_U32);
-void limSendDisassocFrameThresholdHandler(void *, tANI_U32);
 void limCnfWaitTmerHandler(void *, tANI_U32);
 void limKeepaliveTmerHandler(void *, tANI_U32);
 void limDeactivateAndChangePerStaIdTimer(tpAniSirGlobal, tANI_U32, tANI_U16);
