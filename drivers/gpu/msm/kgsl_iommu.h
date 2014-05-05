@@ -70,6 +70,7 @@ enum kgsl_iommu_reg_map {
 	KGSL_IOMMU_CTX_TTBR0,
 	KGSL_IOMMU_CTX_TTBR1,
 	KGSL_IOMMU_CTX_FSR,
+	KGSL_IOMMU_CTX_FAR,
 	KGSL_IOMMU_CTX_TLBIALL,
 	KGSL_IOMMU_CTX_RESUME,
 	KGSL_IOMMU_CTX_TLBLKCR,
@@ -111,7 +112,7 @@ enum kgsl_iommu_units {
 		iommu->ctx_offset)
 
 #define KGSL_IOMMU_GET_CTX_REG_LL(iommu, iommu_unit, ctx, REG)		\
-		readl_relaxed(						\
+		readll_relaxed(						\
 		iommu_unit->reg_map.hostptr +				\
 		iommu->iommu_reg_list[KGSL_IOMMU_CTX_##REG].reg_offset +\
 		(ctx << KGSL_IOMMU_CTX_SHIFT) +				\
