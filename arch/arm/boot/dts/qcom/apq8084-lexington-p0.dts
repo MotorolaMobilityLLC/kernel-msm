@@ -11,22 +11,15 @@
  * GNU General Public License for more details.
  */
 
-#include "apq8084-moto-common.dtsi"
-#include "dsi-panel-mot-smd-720p-video.dtsi"
+/dts-v1/;
 
-&mdss_mdp {
-	qcom,mdss-pref-prim-intf = "dsi";
-};
+#include "apq8084.dtsi"
+#include "apq8084-lexington.dtsi"
 
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_smd_720p_vid>;
-	qcom,platform-reset-gpio = <&msmgpio 86 0>;
-	vbat_disp-supply = <&vbat_disp_vreg>;
-	vdd_disp-supply = <&vdd_disp_vreg>;
-	vci_disp-supply = <&vci_disp_vreg>;
-
-};
-
-&mdss_dsi1 {
-	status = "disabled";
+/ {
+	model = "Motorola APQ 8084 Lexington";
+	compatible = "qcom,apq8084-lexington",
+		   "qcom,apq8084-moto",
+		   "qcom,apq8084";
+	qcom,board-id = <23 0>;
 };
