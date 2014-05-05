@@ -308,3 +308,7 @@
 		pinctrl-0 = <&touch_reset_default &touch_int_default>;
 	};
 };
+
+&spi_0 {
+	/delete-node/ lattice,spi-usb@0;
+};
