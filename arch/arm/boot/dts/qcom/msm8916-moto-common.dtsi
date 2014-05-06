@@ -320,6 +320,30 @@
 			bias-pull-up; /* pull up */
 		};
 	};
+
+	nmi326_enable_reset {
+		qcom,pins = <&gp 97>, <&gp 98>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <0>;
+		label = "nmi326-outputs";
+
+		nmi326_output_default: nmi326-outputs {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			output-low;
+		};
+	};
+
+	nmi326_irq {
+		qcom,pins = <&gp 111>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "nmi326-irq";
+
+		nmi326_input_default: nmi326-irq {
+			bias-pull-up; /* pull up */
+		};
+	};
 };
 
 &spmi_bus {
@@ -402,6 +426,18 @@
 		qcom,bam-consumer-pipe-index = <12>;
 		qcom,bam-producer-pipe-index = <13>;
 		qcom,master-id = <86>;
+
+		nmi326@0 {
+			compatible = "nmi,nmi326";
+			reg = <0>;
+			spi-max-frequency = <9600000>;
+			irq-gpio = <&msm_gpio 111 0>;
+			reset-gpio = <&msm_gpio 98 0>;
+			enable-gpio = <&msm_gpio 97 0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&nmi326_output_default &nmi326_input_default>;
+		};
+
 	};
 };
 
