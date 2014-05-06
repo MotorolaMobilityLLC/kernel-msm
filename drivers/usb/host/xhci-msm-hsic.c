@@ -23,6 +23,7 @@
 #include <linux/bitops.h>
 #include <linux/workqueue.h>
 #include <linux/clk/msm-clk.h>
+#include <linux/reboot.h>
 
 #include <mach/msm_bus.h>
 #include <mach/rpm-regulator.h>
@@ -131,7 +132,9 @@ struct mxhci_hsic_hcd {
 
 	uint32_t		wakeup_int_cnt;
 	uint32_t		pwr_evt_irq_inlpm;
+	struct notifier_block   hsic_reboot;
 };
+
 
 #define SYNOPSIS_DWC3_VENDOR	0x5533
 
@@ -288,6 +291,33 @@ static void mxhci_hsic_bus_vote_w(struct work_struct *w)
 	if (ret)
 		dev_err(mxhci->dev, "%s: Failed to vote for bus bandwidth %d\n",
 				__func__, ret);
+}
+
+static int mxhci_hsic_reboot(struct notifier_block *nb,
+			unsigned long event, void *unused)
+{
+	struct mxhci_hsic_hcd *mxhci =
+			container_of(nb, struct mxhci_hsic_hcd, hsic_reboot);
+	struct usb_hcd *hcd = hsic_to_hcd(mxhci);
+	u32 reg;
+
+	dev_dbg(mxhci->dev, "Disabling HSIC\n");
+	disable_irq(hcd->irq);
+	if (mxhci->wakeup_irq_enabled) {
+		disable_irq_wake(mxhci->wakeup_irq);
+		disable_irq_nosync(mxhci->wakeup_irq);
+		mxhci->wakeup_irq_enabled = 0;
+	}
+	/* disable STROBE_PAD_CTL */
+	reg = readl_relaxed(TLMM_GPIO_HSIC_STROBE_PAD_CTL);
+	writel_relaxed(reg & 0xfdffffff, TLMM_GPIO_HSIC_STROBE_PAD_CTL);
+
+	/* disable DATA_PAD_CTL */
+	reg = readl_relaxed(TLMM_GPIO_HSIC_DATA_PAD_CTL);
+	writel_relaxed(reg & 0xfdffffff, TLMM_GPIO_HSIC_DATA_PAD_CTL);
+
+	mb();
+	return NOTIFY_DONE;
 }
 
 static int mxhci_hsic_init_clocks(struct mxhci_hsic_hcd *mxhci, u32 init)
@@ -1490,6 +1520,14 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 	if (ret)
 		pr_err("err creating sysfs node\n");
 
+	mxhci->hsic_reboot.notifier_call = mxhci_hsic_reboot;
+	mxhci->hsic_reboot.next = NULL;
+	mxhci->hsic_reboot.priority = 0;
+	ret = register_reboot_notifier(&mxhci->hsic_reboot);
+	if (ret)
+		dev_err(&pdev->dev, "%s: register for reboot failed\n",
+					__func__);
+
 	dev_dbg(&pdev->dev, "%s: Probe complete\n", __func__);
 
 	ret = mxhci_hsic_debugfs_init();
@@ -1573,6 +1611,7 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 	kfree(xhci);
 	usb_put_hcd(hcd);
 
+	unregister_reboot_notifier(&mxhci->hsic_reboot);
 	return 0;
 }
 
