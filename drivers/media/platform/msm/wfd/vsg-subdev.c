@@ -24,6 +24,7 @@
 #define DEFAULT_MODE ((enum vsg_modes)VSG_MODE_CFR)
 #define MAX_BUFS_BUSY_WITH_ENC 5
 #define TICKS_PER_TIMEOUT 2
+#define LATENCY_PADDING (3*NSEC_PER_MSEC)
 
 
 static int vsg_release_input_buffer(struct vsg_context *context,
@@ -254,12 +255,12 @@ static enum hrtimer_restart vsg_threshold_timeout_func(struct hrtimer *timer)
 	max_frame_interval = context->max_frame_interval;
 	if (list_empty(&context->free_queue.node) && !context->vsync_wait) {
 		context->vsync_wait = true;
-		max_frame_interval = context->max_frame_interval /
-					TICKS_PER_TIMEOUT;
+		max_frame_interval = (context->max_frame_interval /
+			TICKS_PER_TIMEOUT) + LATENCY_PADDING;
 		goto restart_timer;
 	} else if (context->vsync_wait) {
-			max_frame_interval = context->max_frame_interval /
-						TICKS_PER_TIMEOUT;
+		max_frame_interval = (context->max_frame_interval /
+			TICKS_PER_TIMEOUT) + LATENCY_PADDING;
 		context->vsync_wait = false;
 	}
 
