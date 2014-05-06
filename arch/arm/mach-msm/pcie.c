@@ -1156,6 +1156,9 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 		goto link_fail;
 	}
 
+	if (dev->ep_latency)
+		msleep(dev->ep_latency);
+
 	/* de-assert PCIe reset link to bring EP out of reset */
 
 	pr_info("PCIe: Release the reset of endpoint of RC%d.\n", dev->rc_idx);
@@ -1482,6 +1485,16 @@ static int msm_pcie_probe(struct platform_device *pdev)
 	else
 		PCIE_DBG("n-fts: 0x%x.\n",
 				msm_pcie_dev[rc_idx].n_fts);
+
+	msm_pcie_dev[rc_idx].ep_latency = 0;
+	ret = of_property_read_u32((&pdev->dev)->of_node,
+				"qcom,ep-latency",
+				&msm_pcie_dev[rc_idx].ep_latency);
+	if (ret)
+		PCIE_DBG("ep-latency does not exist.\n");
+	else
+		PCIE_DBG("ep-latency: 0x%x.\n",
+				msm_pcie_dev[rc_idx].ep_latency);
 
 	msm_pcie_dev[rc_idx].msi_gicm_addr = 0;
 	msm_pcie_dev[rc_idx].msi_gicm_base = 0;
