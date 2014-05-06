@@ -308,6 +308,7 @@
 		qcom,vref-batt-therm-uv = <1800000>;
 		qcom,default-kohm = <130>;
 
+		/include/ "batterydata-ey30-lg-fix.dtsi"
 		/include/ "batterydata-ey30-lg.dtsi"
 	};
 
