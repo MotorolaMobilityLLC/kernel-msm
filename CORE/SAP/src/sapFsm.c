@@ -504,7 +504,12 @@ sapSignalHDDevent
     /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
     /* Format the Start BSS Complete event to return... */
-    VOS_ASSERT(sapContext->pfnSapEventCallback);
+    if (NULL == sapContext->pfnSapEventCallback)
+    {
+         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "%s: HDD Event"
+                " callaback invalid", __func__);
+        return VOS_STATUS_E_INVAL;
+    }
 
     switch (sapHddevent)
     {

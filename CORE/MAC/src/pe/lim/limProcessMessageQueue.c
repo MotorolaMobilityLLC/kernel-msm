@@ -1727,16 +1727,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             limTriggerBackgroundScan(pMac);
             break;
 
-
-        case SIR_LIM_HASH_MISS_THRES_TIMEOUT:
-
-            /*
-            ** clear the credit to the send disassociate frame bucket
-            **/
-
-            pMac->lim.gLimDisassocFrameCredit = 0;
-            break;
-
         case SIR_LIM_CNF_WAIT_TIMEOUT:
 
             /*
