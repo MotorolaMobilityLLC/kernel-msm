@@ -6511,8 +6511,12 @@ eHalStatus csrRoamConnect(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
         smsLog(pMac, LOGP, FL("No profile specified"));
         return eHAL_STATUS_FAILURE;
     }
-    smsLog(pMac, LOG1, FL("called  BSSType = %d authtype = %d  encryType = %d"),
-                pProfile->BSSType, pProfile->AuthType.authType[0], pProfile->EncryptionType.encryptionType[0]);
+    smsLog(pMac, LOG1, FL("called  BSSType = %s (%d) authtype = %d "
+                                                    "encryType = %d"),
+                lim_BssTypetoString(pProfile->BSSType),
+                pProfile->BSSType,
+                pProfile->AuthType.authType[0],
+                pProfile->EncryptionType.encryptionType[0]);
     if( CSR_IS_WDS( pProfile ) && 
         !HAL_STATUS_SUCCESS( status = csrIsBTAMPAllowed( pMac, pProfile->operationChannel ) ) )
     {
@@ -6692,7 +6696,12 @@ eHalStatus csrRoamReassoc(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
       smsLog(pMac, LOGP, FL("No profile specified"));
       return eHAL_STATUS_FAILURE;
    }
-   smsLog(pMac, LOG1, FL("called  BSSType = %d authtype = %d  encryType = %d"), pProfile->BSSType, pProfile->AuthType.authType[0], pProfile->EncryptionType.encryptionType[0]);
+   smsLog(pMac, LOG1, FL("called  BSSType = %s (%d) authtype = %d "
+                                                  "encryType = %d"),
+            lim_BssTypetoString(pProfile->BSSType),
+            pProfile->BSSType,
+            pProfile->AuthType.authType[0],
+            pProfile->EncryptionType.encryptionType[0]);
    csrRoamCancelRoaming(pMac, sessionId);
    csrScanRemoveFreshScanCommand(pMac, sessionId);
    csrScanCancelIdleScan(pMac);
@@ -16707,7 +16716,9 @@ eHalStatus csrIsFullPowerNeeded( tpAniSirGlobal pMac, tSmeCmd *pCommand,
     case STANDBY:
     case LOW_POWER:
         //We are not supposed to do anything
-        smsLog( pMac, LOGE, FL( "  cannot process because PMC is in stopped/standby state %d" ), pmcState );
+        smsLog( pMac, LOGE, FL( "cannot process because PMC is in"
+                                " stopped/standby state %s (%d)" ),
+                sme_PmcStatetoString(pmcState), pmcState );
         status = eHAL_STATUS_FAILURE;
         break;
     case FULL_POWER:

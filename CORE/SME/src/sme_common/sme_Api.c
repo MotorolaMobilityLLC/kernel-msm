@@ -1803,6 +1803,66 @@ eHalStatus sme_SetEseBeaconRequest(tHalHandle hHal, const tANI_U8 sessionId,
 #endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
 
 
+/* ---------------------------------------------------------------------------
+    \fn sme_getBcnMissRate
+    \brief function sends 'WDA_GET_BCN_MISS_RATE_REQ' to WDA layer,
+    \param  hHal - HAL handle for device.
+    \param  sessionId - session ID.
+    \- return Success or Failure.
+    -------------------------------------------------------------------------*/
+
+eHalStatus sme_getBcnMissRate(tHalHandle hHal, tANI_U8 sessionId, void *callback, void *data)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
+    vos_msg_t vosMessage;
+    tSirBcnMissRateReq *pMsg;
+    tCsrRoamSession *pSession;
+
+    if ( eHAL_STATUS_SUCCESS ==  sme_AcquireGlobalLock( &pMac->sme  ) )
+    {
+        pSession = CSR_GET_SESSION( pMac, sessionId );
+
+        if (!pSession)
+        {
+            smsLog(pMac, LOGE, FL("session %d not found"), sessionId);
+            sme_ReleaseGlobalLock( &pMac->sme );
+            return eHAL_STATUS_FAILURE;
+        }
+
+        pMsg = (tSirBcnMissRateReq *) vos_mem_malloc(sizeof(tSirTxPerTrackingParam));
+        if (NULL == pMsg)
+        {
+            smsLog(pMac, LOGE, FL("failed to allocated memory"));
+            sme_ReleaseGlobalLock( &pMac->sme );
+            return eHAL_STATUS_FAILURE;
+        }
+
+        vos_mem_copy(pMsg->bssid, pSession->connectedProfile.bssid,
+                 sizeof(tSirMacAddr));
+
+        pMsg->msgLen   = sizeof(tSirBcnMissRateReq);
+        pMsg->callback = callback;
+        pMsg->data     = data;
+
+        vosMessage.type = WDA_GET_BCN_MISS_RATE_REQ;
+        vosMessage.bodyptr = pMsg;
+        vosMessage.reserved = 0;
+        vosStatus = vos_mq_post_message( VOS_MQ_ID_WDA, &vosMessage );
+        if ( !VOS_IS_STATUS_SUCCESS(vosStatus) )
+        {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Post Set TM Level MSG fail", __func__);
+           vos_mem_free(pMsg);
+           sme_ReleaseGlobalLock( &pMac->sme );
+           return eHAL_STATUS_FAILURE;
+        }
+        sme_ReleaseGlobalLock( &pMac->sme);
+        return eHAL_STATUS_SUCCESS;
+    }
+    return eHAL_STATUS_FAILURE;
+}
+
 /*--------------------------------------------------------------------------
 
   \brief sme_ProcessMsg() - The main message processor for SME.

@@ -2381,7 +2381,7 @@ VOS_STATUS vos_pkt_pop_head( vos_pkt_t *pPacket,
    // Make sure there is enough data to pop
    if (unlikely(skb->len < dataSize))
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "VPKT [%d]: pop exceeds packet size, len[%d], req[%d]",
                 __LINE__, skb->len, dataSize);
       return VOS_STATUS_E_INVAL;
@@ -2679,7 +2679,7 @@ VOS_STATUS vos_pkt_pop_tail( vos_pkt_t *pPacket,
    // Make sure there is enough data to pop
    if (unlikely(skb->len < dataSize))
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "VPKT [%d]: pop exceeds packet size, len[%d], req[%d]",
                 __LINE__, skb->len, dataSize);
       return VOS_STATUS_E_INVAL;
@@ -2756,7 +2756,7 @@ VOS_STATUS vos_pkt_trim_tail( vos_pkt_t *pPacket,
    // Make sure there is enough data to pop
    if (unlikely(skb->len < dataSize))
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "VPKT [%d]: pop exceeds packet size, len[%d], req[%d]",
                 __LINE__, skb->len, dataSize);
       return VOS_STATUS_E_INVAL;
