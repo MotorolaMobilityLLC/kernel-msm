@@ -193,6 +193,8 @@ struct t9_range {
 #define MXT_T100_NUMTCH		6
 #define MXT_T100_XRANGE		13
 #define MXT_T100_YRANGE		24
+#define MXT_T100_MOVHYSTI	47
+#define MXT_T100_MOVHYSTN	49
 
 #define MXT_T100_CFG_SWITCHXY	(1 << 5)
 
@@ -2043,6 +2045,8 @@ static void mxt_sensor_one_touch(struct mxt_data *data, bool enable)
 		*(t100_data_ptr + MXT_T100_NUMTCH) = 1;
 		*(t100_data_ptr + MXT_T100_TCHAUX) &= ~(MXT_T100_TCHAUX_VECT |
 				MXT_T100_TCHAUX_AMPL | MXT_T100_TCHAUX_AREA);
+		*(t100_data_ptr + MXT_T100_MOVHYSTI) = 0x32;
+		*(t100_data_ptr + MXT_T100_MOVHYSTN) = 0x32;
 
 		/* if defined, reset panel resolution */
 		if (data->pdata->res.x_max && data->pdata->res.y_max) {
