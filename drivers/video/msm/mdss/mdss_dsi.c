@@ -1118,6 +1118,15 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_DSI_ULPS_CTRL:
 		rc = mdss_dsi_ulps_config(ctrl_pdata, (int)arg);
 		break;
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+	case MDSS_EVENT_AMBIENT_MODE_ON:
+		rc = mdss_dsi_panel_ambient_enable(pdata, 1);
+		break;
+	case MDSS_EVENT_AMBIENT_MODE_OFF:
+		rc = mdss_dsi_panel_ambient_enable(pdata, 0);
+		break;
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;

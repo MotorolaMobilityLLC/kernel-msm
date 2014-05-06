@@ -312,7 +312,12 @@ enum {
 	FB_BLANK_HSYNC_SUSPEND = VESA_HSYNC_SUSPEND + 1,
 
 	/* screen: blanked,   hsync: off, vsync: off */
-	FB_BLANK_POWERDOWN     = VESA_POWERDOWN + 1
+	FB_BLANK_POWERDOWN     = VESA_POWERDOWN + 1,
+
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+	FB_BLANK_LOWPOWERMODE_OFF	= 0x10,
+	FB_BLANK_LOWPOWERMODE_ON	= 0x11
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
 };
 
 #define FB_VBLANK_VBLANKING	0x001	/* currently in a vertical blank */

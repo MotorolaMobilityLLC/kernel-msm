@@ -289,7 +289,8 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds on_cmds;
 	struct dsi_panel_cmds off_cmds;
 //ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
-	struct dsi_panel_cmds idle_cmds;
+	struct dsi_panel_cmds idle_on_cmds;
+	struct dsi_panel_cmds idle_off_cmds;
 //ASUS_BSP --- Jason Chang "[Robin][display] support ambient mode"
 
 	struct dcs_cmd_list cmdlist;
@@ -362,6 +363,10 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
 bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
+
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on);
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
 
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,

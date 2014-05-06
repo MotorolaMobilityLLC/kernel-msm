@@ -101,8 +101,11 @@
 
 					];
 //ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
-		qcom,mdss-dsi-idle-command = [
+		qcom,mdss-dsi-idle-on-command = [
 					05 01 00 00 00 00 02 39 00
+					];
+		qcom,mdss-dsi-idle-off-command = [
+					05 01 00 00 00 00 02 38 00
 					];
 
 		qcom,mdss-dsi-idle-command-state = "dsi_lp_mode";

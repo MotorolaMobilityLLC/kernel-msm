@@ -426,9 +426,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	notify_amdu_panel_on_cmds_stop();
 #endif
 // ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
-	if (!is_ambient_on()){
-		enable_ambient(1);
-	}
+//	if (!is_ambient_on()){
+//		enable_ambient(1);
+//	}
 	printk("MDSS:%s:---\n", __func__);
 	return 0;
 }
@@ -450,8 +450,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	if (is_ambient_on()){
 		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
 
-		if (ctrl->idle_cmds.cmd_cnt){
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_cmds);
+		if (ctrl->idle_on_cmds.cmd_cnt){
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
 		}else{
 			printk("MDSS:DSI: idle command is not set!\n");
 		}
@@ -469,6 +469,41 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	printk("MDSS:%s:---\n", __func__);
 	return 0;
 }
+
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+	printk("MDSS:%s:+++,on=%d\n", __func__,on);
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+if (on){
+	if (ctrl->idle_on_cmds.cmd_cnt){
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+	}else{
+		printk("MDSS:DSI: idle ON command is not set!\n");
+	}
+}else{
+	if (ctrl->idle_off_cmds.cmd_cnt){
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+	}else{
+		printk("MDSS:DSI: idle OFF command is not set!\n");
+	}
+}
+
+	printk("MDSS:%s:---\n", __func__);
+	return 0;
+}
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+
+
 
 static void mdss_dsi_parse_lane_swap(struct device_node *np, char *dlane_swap)
 {
@@ -1127,8 +1162,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->off_cmds,
 		"qcom,mdss-dsi-off-command", "qcom,mdss-dsi-off-command-state");
 //ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
-	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_cmds,
-		"qcom,mdss-dsi-idle-command", "qcom,mdss-dsi-idle-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_on_cmds,
+		"qcom,mdss-dsi-idle-on-command", "qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_off_cmds,
+		"qcom,mdss-dsi-idle-off-command", "qcom,mdss-dsi-off-command-state");
+
 //ASUS_BSP --- Jason Chang "[Robin][display] support ambient mode"
 
 	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);

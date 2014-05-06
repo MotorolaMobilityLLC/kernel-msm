@@ -429,7 +429,7 @@ int notify_amdu_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	return 0;
 }
 
-// ASUSB_BSP +++ Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
+// ASUS_BSP +++ Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
 void set_amdu_fbinfo(struct fb_info *fb0_info)
 {
 	amdu_data.fb0_info = fb0_info;
@@ -451,7 +451,25 @@ void show_panel_message(char* msg)
 	}
 	return;
 }
-// ASUSB_BSP --- Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
+
+// ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+void notify_panel_lowpowermode(int low)
+{
+	static char panel_msg[32];
+	char *envp[2] = {panel_msg, NULL};
+	sprintf(panel_msg,"PANEL_LOWPOWER=%s",(low?"1":"0"));
+	if (amdu_data.fb0_info){
+		kobject_uevent_env(
+			&amdu_data.fb0_info->dev->kobj,KOBJ_CHANGE, envp);
+		printk("MDSS:DEBUG:%s: msg=%s\n",__func__,panel_msg);
+	}else{
+		printk("MDSS:DEBUG:%s: ERR! amdu_data.fb0_info = 0\n\n",__func__);
+	}
+	return;
+}
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+
 
 void set_debug_str(char* debug_str)
 {

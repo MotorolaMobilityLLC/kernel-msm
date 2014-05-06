@@ -1049,8 +1049,11 @@ fb_blank(struct fb_info *info, int blank)
 	struct fb_event event;
 	int ret = -EINVAL, early_ret;
 
- 	if (blank > FB_BLANK_POWERDOWN)
- 		blank = FB_BLANK_POWERDOWN;
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+// why??
+// 	if (blank > FB_BLANK_POWERDOWN)
+// 		blank = FB_BLANK_POWERDOWN;
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
 
 	event.info = info;
 	event.data = &blank;

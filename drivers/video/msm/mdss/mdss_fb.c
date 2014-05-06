@@ -868,6 +868,7 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	}
 }
 
+extern void notify_panel_lowpowermode(int low);
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
@@ -904,7 +905,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_HSYNC_SUSPEND:
 	case FB_BLANK_NORMAL:
 	case FB_BLANK_POWERDOWN:
-	default:
 		printk("MDSS:%s:+++,blank_mode=%d,mfd->panel_power_on=%d\n",
 				__func__,blank_mode,mfd->panel_power_on);
 		if (mfd->panel_power_on && mfd->mdp.off_fnc) {
@@ -935,6 +935,29 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		printk("MDSS:%s:---,mfd->panel_power_on=%d,ret=%d\n",
 				__func__,mfd->panel_power_on,ret);
 		break;
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+	case FB_BLANK_LOWPOWERMODE_ON:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_ON,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		if (mfd->panel_power_on) {
+			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
+		}
+		notify_panel_lowpowermode(1);
+		//enable_ambient(1);
+		return 0;
+		break;
+	case FB_BLANK_LOWPOWERMODE_OFF:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		if (mfd->panel_power_on) {
+			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
+		}
+		notify_panel_lowpowermode(0);
+		return 0;
+		break;
+	default:
+		printk("MDSS:%s:+++,Unknown blank_mode=%d,mfd->panel_power_on=%d\n",__func__,blank_mode,mfd->panel_power_on);
+		break;
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+
 	}
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");

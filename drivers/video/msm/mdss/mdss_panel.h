@@ -151,6 +151,10 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_CMDLIST_KOFF,
 	MDSS_EVENT_ENABLE_PARTIAL_UPDATE,
 	MDSS_EVENT_DSI_ULPS_CTRL,
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+	MDSS_EVENT_AMBIENT_MODE_ON,
+	MDSS_EVENT_AMBIENT_MODE_OFF
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
 };
 
 struct lcd_panel_info {
