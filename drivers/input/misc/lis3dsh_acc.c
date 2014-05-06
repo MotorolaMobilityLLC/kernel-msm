@@ -367,8 +367,6 @@ struct lis3dsh_acc_data {
 
 static int chip_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
-struct lis3dsh_acc_data *g_acc;
-
 /* sets default init values to be written in registers at probe stage */
 static void lis3dsh_acc_set_init_register_values(struct lis3dsh_acc_data *acc)
 {
@@ -886,7 +884,7 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_1;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] == 0x20)) {
+		if((rbuf[0] == 0x20) ||(rbuf[0] == 0x80)) {
 			printk("***********************Tilt to wake event\n");
 			lis3dsh_acc_state_progrs_enable_control(acc, LIS3DSH_SM1_DIS_SM2_EN);
 			public_gpio_keys_gpio_report_event();
