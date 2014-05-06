@@ -1374,11 +1374,12 @@ static int mdss_dsi_pm_prepare(struct device *dev)
 		return -ENODEV;
 	}
 
+	mutex_lock(&ctrl_pdata->suspend_mutex);
 	if (pdata->panel_info.always_on && !ctrl_pdata->blanked) {
 		pr_debug("%s: set low fps mode on\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 1);
 	}
-
+	mutex_unlock(&ctrl_pdata->suspend_mutex);
 	return 0;
 }
 
@@ -1398,10 +1399,12 @@ static void mdss_dsi_pm_complete(struct device *dev)
 		return;
 	}
 
+	mutex_lock(&ctrl_pdata->suspend_mutex);
 	if (pdata->panel_info.always_on && !ctrl_pdata->blanked) {
 		pr_debug("%s: set low fps mode off\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 0);
 	}
+	mutex_unlock(&ctrl_pdata->suspend_mutex);
 }
 
 struct device dsi_dev;

@@ -419,9 +419,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
+	mutex_lock(&ctrl->suspend_mutex);
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
+	mutex_unlock(&ctrl->suspend_mutex);
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
@@ -443,9 +445,10 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	mipi  = &pdata->panel_info.mipi;
 
+	mutex_lock(&ctrl->suspend_mutex);
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
-
+	mutex_unlock(&ctrl->suspend_mutex);
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
