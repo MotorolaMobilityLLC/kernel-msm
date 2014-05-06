@@ -183,6 +183,7 @@ union reg_cp_rb_cntl {
 #define SQ_INT_CNTL__VS_WATCHDOG_MASK                      0x00000002L
 
 #define RBBM_INT_CNTL__RDERR_INT_MASK                      0x00000001L
+#define RBBM_INT_CNTL__PROTECT_INT_MASK                    0x00100000L
 #define RBBM_INT_CNTL__DISPLAY_UPDATE_INT_MASK             0x00000002L
 #define RBBM_INT_CNTL__GUI_IDLE_INT_MASK                   0x00080000L
 
@@ -335,6 +336,24 @@ union reg_cp_rb_cntl {
 #define REG_RBBM_READ_ERROR              0x03B3
 #define REG_RBBM_SOFT_RESET              0x003C
 #define REG_RBBM_STATUS                  0x05D0
+
+/*A2XX Protection */
+#define REG_RBBM_PROTECT_0	         0x0140
+#define REG_RBBM_PROTECT_1	         0x0141
+#define REG_RBBM_PROTECT_2	         0x0142
+#define REG_RBBM_PROTECT_3	         0x0143
+#define REG_RBBM_PROTECT_4	         0x0144
+#define REG_RBBM_PROTECT_5	         0x0145
+#define REG_RBBM_PROTECT_6	         0x0146
+#define REG_RBBM_PROTECT_7	         0x0147
+#define REG_RBBM_PROTECT_8	         0x0148
+#define REG_RBBM_PROTECT_9	         0x0149
+#define REG_RBBM_PROTECT_A	         0x014A
+#define REG_RBBM_PROTECT_B	         0x014B
+#define REG_RBBM_PROTECT_C	         0x014C
+#define REG_RBBM_PROTECT_D	         0x014D
+#define REG_RBBM_PROTECT_E	         0x014E
+#define REG_RBBM_PROTECT_F	         0x014F
 
 #define REG_RB_COLORCONTROL              0x2202
 #define REG_RB_COLOR_DEST_MASK           0x2326
