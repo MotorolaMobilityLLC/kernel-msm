@@ -242,7 +242,10 @@
 			<0xff 78>, /* mdss_mmu_cirpt[0] */
 			<0xff 79>, /* mdss_mmu_cirpt[1] */
 			<0xff 80>, /* mdss_mmu_cirpt[2] */
+			<0xff 94>, /* msm_iommu_pmon_nonsecure_irq[2] */
+			<0xff 96>, /* msm_iommu_secure_irq */
 			<0xff 97>, /* camss_vfe_mmu_cirpt[1] */
+			<0xff 99>, /* msm_iommu_pmon_nonsecure_irq[3] */
 			<0xff 102>, /* camss_jpeg_mmu_cirpt[1] */
 			<0xff 105>, /* mdss_mmu_pmirpt */
 			<0xff 108>, /* ocmem_nonsec_irq */
@@ -271,6 +274,7 @@
 			<0xff 182>, /* rbif_irq[0] */
 			<0xff 183>, /* rbif_irq[1] */
 			<0xff 184>, /* rbif_irq[2] */
+			<0xff 185>, /* msm_iommu_pmon_nonsecure_irq[6] */
 			<0xff 186>, /* mnoc_obs_mainFault */
 			<0xff 188>, /* lpass_irq_out_apcs(0) */
 			<0xff 189>, /* lpass_irq_out_apcs(1) */
@@ -310,6 +314,7 @@
 			<0xff 298>, /* lpass_irq_out_apcs[22] */
 			<0xff 299>, /* lpass_irq_out_apcs[17] */
 			<0xff 300>, /* lpass_irq_out_apcs[18] */
+			<0xff 302>, /* coresight-tmc-etr */
 			<0xff 303>, /* pcie20_int_msi */
 			<0xff 313>, /* pcie20_int_pls_link_down */
 			<0xff 352>, /* pcie/mhi irq */
@@ -400,7 +405,8 @@
 			<37 123>,
 			<38 131>,
 			<40 139>,
-			<41 141>;
+			<41 141>,
+			<42 143>;
 	};
 
 	qcom,pm@fe805664 {
