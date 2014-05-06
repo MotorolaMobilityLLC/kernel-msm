@@ -52,6 +52,8 @@ Optional Properties:
     is changed from L0s to L0.
   - qcom,msi-gicm-addr: MSI address for GICv2m.
   - qcom,msi-gicm-base: MSI IRQ base for GICv2m.
+  - qcom,ep-latency: The time (unit: ms) to wait for the PCIe endpoint to become
+    stable after power on, before de-assert the PERST to the endpoint.
 
 Example:
 
@@ -114,4 +116,5 @@ Example:
 		qcom,n-fts = <0x50>;
 		qcom,msi-gicm-addr = <0xf9040040>;
 		qcom,msi-gicm-base = <0x160>;
+		qcom,ep-latency = <100>;
 	};
