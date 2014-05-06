@@ -526,7 +526,8 @@ static inline void adreno_debugfs_init(struct kgsl_device *device) { }
  * @device: pointer to the KGSL device
  * @index: Pointer to the index of the protect mode register to write to
  * @reg: Starting dword register to write
- * @mask_len: Size of the mask to protect (# of registers = 2 ** mask_len)
+ * @mask: Size of the mask to protect (A3xx# of registers = 2 ** mask,
+ * A2xx# Contains the address mask used to mask the protect base address)
  *
  * Add the range of registers to the list of protected mode registers that will
  * cause an exception if the GPU accesses them.  There are 16 available
@@ -536,25 +537,32 @@ static inline void adreno_debugfs_init(struct kgsl_device *device) { }
  * incremental fashion
  */
 static inline void adreno_set_protected_registers(struct kgsl_device *device,
-	unsigned int *index, unsigned int reg, int mask_len)
+	unsigned int *index, unsigned int reg, int mask)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	unsigned int val;
-
-	/* This function is only for adreno A3XX and beyond */
-	BUG_ON(adreno_is_a2xx(adreno_dev));
+	unsigned int protect_reg_offset;
 
 	/* There are only 16 registers available */
 	BUG_ON(*index >= 16);
 
-	val = 0x60000000 | ((mask_len & 0x1F) << 24) | ((reg << 2) & 0x1FFFF);
+	if (adreno_is_a3xx(adreno_dev)) {
+		val = 0x60000000 | ((mask & 0x1F) << 24) |
+			((reg << 2) & 0x1FFFF);
+		protect_reg_offset = A3XX_CP_PROTECT_REG_0;
+	} else  if (adreno_is_a2xx(adreno_dev)) {
+		val = 0xc0000000 | ((reg << 2) << 16) | (mask & 0xffff);
+		protect_reg_offset = REG_RBBM_PROTECT_0;
+	} else {
+		return;
+	}
 
 	/*
 	 * Write the protection range to the next available protection
 	 * register
 	 */
 
-	kgsl_regwrite(device, A3XX_CP_PROTECT_REG_0 + *index, val);
+	kgsl_regwrite(device, protect_reg_offset + *index, val);
 	*index = *index + 1;
 }
 #endif /*__ADRENO_H */
