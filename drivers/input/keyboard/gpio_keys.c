@@ -457,6 +457,8 @@ void public_gpio_keys_gpio_report_event(void)
 	
 	pr_info("%s:key code=116  state=presss \n",__func__); 
 	input_event(input, type, 116, 1);
+	input_sync(input);
+	msleep(5);
 	pr_info("%s:key code=116  state=release \n",__func__); 
 	input_event(input, type, 116, 0);
 	input_sync(input);

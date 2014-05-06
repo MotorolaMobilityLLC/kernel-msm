@@ -886,7 +886,7 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x20) ||(rbuf[0] == 0x80)) {
 			printk("***********************Tilt to wake event\n");
-			lis3dsh_acc_state_progrs_enable_control(acc, LIS3DSH_SM1_DIS_SM2_EN);
+			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
 			public_gpio_keys_gpio_report_event();
 		}
 	}
@@ -910,7 +910,6 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 	/*  */
 	rbuf[0] = LIS3DSH_INTERR_STAT;
 	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: INTERR_STAT_REG: 0x%02x\n", __func__, rbuf[0]);
 	status = rbuf[0];
 	if(status & LIS3DSH_STAT_INTSM1_BIT) {
 		rbuf[0] = LIS3DSH_OUTS_1;
@@ -921,8 +920,10 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_2;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] & 0x01) != 0)
+		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02)) {
 			printk("***********************report event SM2\n");
+			public_gpio_keys_gpio_report_event();
+		}
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: OUTS_2: 0x%02x\n", __func__, rbuf[0]);
 	}
 	enable_irq(acc->irq2);
@@ -1678,7 +1679,7 @@ static void lis3dsh_fb_early_suspend(void)
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++\n", __func__);
 	enable_irq_wake(g_acc->irq1);
 	enable_irq_wake(g_acc->irq2);
-	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_DIS);
+	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_EN);
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: ---\n", __func__);
 }
 
@@ -1687,7 +1688,7 @@ static void lis3dsh_fb_late_resume(void)
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++\n", __func__);
 	disable_irq_wake(g_acc->irq1);
 	disable_irq_wake(g_acc->irq2);
-	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_DIS);
+	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: ---\n", __func__);
 }
 
