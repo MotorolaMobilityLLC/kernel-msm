@@ -425,7 +425,7 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <2950000>;
 			qcom,init-voltage = <2950000>;
-			status = "okay";
+			status = "disabled";
 		};
 	};
 
