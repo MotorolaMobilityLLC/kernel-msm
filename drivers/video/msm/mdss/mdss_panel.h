@@ -26,6 +26,14 @@ struct panel_id {
 #define DEFAULT_FRAME_RATE	60
 #define MDSS_DSI_RST_SEQ_LEN	10
 
+enum cabc_mode {
+	CABC_UI_MODE = 0,
+	CABC_ST_MODE,
+	CABC_MV_MODE,
+	CABC_OFF_MODE,
+	CABC_MODE_MAX_NUM
+};
+
 /* panel type list */
 #define NO_PANEL		0xffff	/* No Panel */
 #define MDDI_PANEL		1	/* MDDI */
@@ -143,6 +151,7 @@ struct mdss_panel_recovery {
  *				- 0: Disable ULPS mode
  *				- 1: Enable ULPS mode
  * @MDSS_EVENT_ENABLE_TE: Change TE state, used for factory testing only
+ * @MDSS_EVENT_SET_CABC: Set CABC mode, for Motorola "Dynamic CABC" feature.
  */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -165,6 +174,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_ULPS_CTRL,
 	MDSS_EVENT_ENABLE_TE,
 	MDSS_EVENT_ENABLE_HBM,
+	MDSS_EVENT_SET_CABC,
 };
 
 struct lcd_panel_info {
@@ -333,6 +343,8 @@ struct mdss_panel_info {
 	bool hs_cmds_post_init;
 	bool hbm_feature_enabled;
 	bool hbm_state;
+	bool dynamic_cabc_enabled;
+	enum cabc_mode cabc_mode;
 
 	uint32_t panel_dead;
 
@@ -492,4 +504,19 @@ int mdss_panel_get_boot_cfg(void);
  * returns true if mdss is ready, else returns false.
  */
 bool mdss_is_ready(void);
+
+/**
+ * mdss_panel_map_cabc_name() - get panel CABC mode name
+ *
+ * returns name if mapping succeeds, else returns NULL.
+ */
+static const char *cabc_mode_names[CABC_MODE_MAX_NUM] = {
+	"UI", "ST", "MV", "OFF"
+};
+static inline const char *mdss_panel_map_cabc_name(int mode)
+{
+	if (mode >= CABC_UI_MODE && mode < CABC_MODE_MAX_NUM)
+		return cabc_mode_names[mode];
+	return NULL;
+}
 #endif /* MDSS_PANEL_H */

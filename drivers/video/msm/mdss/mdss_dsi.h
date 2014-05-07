@@ -271,6 +271,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*get_dt_vreg_data) (struct device *dev,
 			struct dss_module_power *mp, struct device_node *node);
 	int (*set_hbm)(struct mdss_dsi_ctrl_pdata *ctrl, int state);
+	int (*set_cabc)(struct mdss_dsi_ctrl_pdata *ctrl, int mode);
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
 	struct mdss_panel_esd_pdata panel_esd_data;
@@ -320,6 +321,8 @@ struct mdss_dsi_ctrl_pdata {
 
 	struct dsi_panel_cmds on_cmds;
 	struct dsi_panel_cmds off_cmds;
+	struct dsi_panel_cmds cabc_ui_cmds;
+	struct dsi_panel_cmds cabc_mv_cmds;
 
 	struct dcs_cmd_list cmdlist;
 	struct completion dma_comp;
