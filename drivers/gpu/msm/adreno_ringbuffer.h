@@ -75,8 +75,6 @@ int adreno_ringbuffer_warm_start(struct adreno_ringbuffer *rb);
 
 int adreno_ringbuffer_cold_start(struct adreno_ringbuffer *rb);
 
-void adreno_ringbuffer_stop(struct adreno_ringbuffer *rb);
-
 void adreno_ringbuffer_close(struct adreno_ringbuffer *rb);
 
 unsigned int adreno_ringbuffer_issuecmds(struct kgsl_device *device,
