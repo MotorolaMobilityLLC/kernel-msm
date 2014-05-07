@@ -93,6 +93,8 @@
 
 		synaptics_dsx_i2c@20 {
 			touch_vdd-supply = <&vdd_touch_vreg>;
+			synaptics,reset-on-resume;
+			synaptics,hw-reset;
 		};
 
 		cyttsp3_i2c@3b {
