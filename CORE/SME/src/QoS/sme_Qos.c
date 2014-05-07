@@ -7346,16 +7346,16 @@ void sme_QosPmcDeviceStateUpdateInd(void *callbackContext, tPmcState pmcState)
    default:
       status = eHAL_STATUS_SUCCESS;
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                "%s: %d: nothing to process in PMC state %d",
+                "%s: %d: nothing to process in PMC state %s (%d)",
                 __func__, __LINE__,
-                pmcState);
+                sme_PmcStatetoString(pmcState), pmcState);
    }
    if(!HAL_STATUS_SUCCESS(status))
    {
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH, 
-                "%s: %d: ignoring Device(PMC) state change to %d",
+                "%s: %d: ignoring Device(PMC) state change to %s (%d)",
                 __func__, __LINE__,
-                pmcState);
+                sme_PmcStatetoString(pmcState), pmcState);
    }
 
 }

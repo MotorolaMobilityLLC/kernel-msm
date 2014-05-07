@@ -469,6 +469,9 @@ typedef enum
    /* print register values */
    WLAN_HAL_PRINT_REG_INFO_IND              = 259,
 
+   WLAN_HAL_GET_BCN_MISS_RATE_REQ           = 260,
+   WLAN_HAL_GET_BCN_MISS_RATE_RSP           = 261,
+
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -7307,7 +7310,7 @@ typedef PACKED_PRE struct PACKED_POST
 #else
 #endif
 
- /*---------------------------------------------------------------------------
+/*---------------------------------------------------------------------------
  * WLAN_HAL_PRINT_REG_INFO_IND
  *--------------------------------------------------------------------------*/
 
@@ -7329,6 +7332,24 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader header;
    tHalRegDebugInfoParams regParams;
 } tHalRegDebugInfoMsg, *tpRegDebugInfoMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_GET_BCN_MISS_RATE_REQ
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+   /* Valid STA Idx for per STA stats request */
+   tANI_U8    bssIdx;
+}tHalBcnMissRateReqParams, *tpHalBcnMissRateReqParams;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_GET_BCN_MISS_RATE_RSP
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U32           status;
+   tANI_U32           bcnMissCnt;
+}tHalBcnMissRateRspParams, *tpHalBcnMissRateRspParams;
 
 #endif /* _WLAN_HAL_MSG_H_ */
 

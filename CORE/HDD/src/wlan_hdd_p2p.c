@@ -1746,7 +1746,7 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
     tActionFrmType actionFrmType;
     hdd_cfg80211_state_t *cfgState = NULL;
     hdd_scaninfo_t *pScanInfo = NULL;
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_context_t *pHddCtx = NULL;
     VOS_STATUS status;
     hdd_remain_on_chan_ctx_t* pRemainChanCtx = NULL;
 

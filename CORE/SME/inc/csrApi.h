@@ -39,7 +39,6 @@
 #include "sirApi.h"
 #include "sirMacProtDef.h"
 #include "csrLinkList.h"
-
 typedef enum
 {
     eCSR_AUTH_TYPE_NONE,    //never used
@@ -174,7 +173,6 @@ typedef enum {
     eCSR_SCAN_SOFTAP_CHANNEL_RANGE,
     eCSR_SCAN_P2P_FIND_PEER,
 }eCsrRequestType;
-
 typedef enum {
     eCSR_SCAN_RESULT_GET = 0,
     eCSR_SCAN_RESULT_FLUSH = 1,     //to delete all cached scan results
@@ -1503,7 +1501,6 @@ typedef eHalStatus (*csrRoamSessionCloseCallback)(void *pContext);
 
 
 ///////////////////////////////////////////Common Roam ends
-
 
 
 /* ---------------------------------------------------------------------------

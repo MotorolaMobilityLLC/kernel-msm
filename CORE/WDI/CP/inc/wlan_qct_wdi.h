@@ -7461,6 +7461,8 @@ typedef void (*WDI_SetBatchScanCb)(void *pData, WDI_SetBatchScanRspType *pRsp);
 
 #endif
 
+typedef void (*WDI_GetBcnMissRateCb)(wpt_uint8 status, wpt_uint32 bcnMissRate,
+                                     void* pUserData);
 
 /*========================================================================
  *     Function Declarations and Documentation
@@ -10592,6 +10594,12 @@ WDI_Status WDI_HT40OBSSScanInd(WDI_HT40ObssScanParamsType *pWdiReq);
 */
 
 WDI_Status WDI_HT40OBSSStopScanInd(wpt_uint8  bssIdx);
+
+
+WDI_Status WDI_GetBcnMissRate( void *pUserData,
+                                WDI_GetBcnMissRateCb wdiGetBcnMissRateCb,
+                                wpt_uint8   *bssid
+                             );
 
 #ifdef __cplusplus
  }

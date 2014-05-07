@@ -734,8 +734,10 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
        else
           scanRequest.maxChnTime = pSmeRrmContext->duration[0];
 
-       smsLog( pMac, LOG1, "Scan Type(%d) Max Dwell Time(%d)", scanRequest.scanType,
-                  scanRequest.maxChnTime );
+       smsLog( pMac, LOG1, "Scan Type(%s (%d)) Max Dwell Time(%d)",
+               lim_ScanTypetoString(scanRequest.scanType),
+               scanRequest.scanType,
+               scanRequest.maxChnTime );
 
 #if defined WLAN_VOWIFI_DEBUG
        smsLog( pMac, LOGE, "For Duration %d ", scanRequest.maxChnTime );
@@ -783,7 +785,8 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
    }
    else
    {
-       smsLog( pMac, LOGE, "Unknown beacon report request mode(%d)", scanType);
+       smsLog( pMac, LOGE, "Unknown beacon report request mode(%s (%d))",
+               lim_ScanTypetoString(scanType), scanType);
                 /* Indicate measurement completion to PE */
                 /* If this is not done, pCurrentReq pointer will not be freed and
                    PE will not handle subsequent Beacon requests */
