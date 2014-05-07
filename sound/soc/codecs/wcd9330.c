@@ -7061,8 +7061,6 @@ static int tomtom_codec_fll_enable(struct snd_soc_codec *codec,
 			      0xC2);
 		snd_soc_write(codec, TOMTOM_A_FLL_LOCK_DET_COUNT,
 			      0x40);
-		snd_soc_update_bits(codec, TOMTOM_A_FLL_KDCO_TUNE,
-				    0x80, 0x80);
 		snd_soc_update_bits(codec, TOMTOM_A_FLL_TEST_ENABLE,
 				    0x06, 0x06);
 	} else {
@@ -7328,6 +7326,11 @@ static int tomtom_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tomtom_priv *tomtom = platform_get_drvdata(pdev);
+
+	if (!tomtom) {
+		dev_err(dev, "%s: tomtom private data is NULL\n", __func__);
+		return -EINVAL;
+	}
 	dev_dbg(dev, "%s: system resume\n", __func__);
 	/* Notify */
 	wcd9xxx_resmgr_notifier_call(&tomtom->resmgr,
