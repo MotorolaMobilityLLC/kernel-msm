@@ -771,13 +771,16 @@ static inline int rdev_set_rekey_data(struct cfg80211_registered_device *rdev,
 static inline int rdev_tdls_mgmt(struct cfg80211_registered_device *rdev,
 				 struct net_device *dev, u8 *peer,
 				 u8 action_code, u8 dialog_token,
-				 u16 status_code, const u8 *buf, size_t len)
+				 u16 status_code, u32 peer_capability,
+				 const u8 *buf, size_t len)
 {
 	int ret;
 	trace_rdev_tdls_mgmt(&rdev->wiphy, dev, peer, action_code,
-			     dialog_token, status_code, buf, len);
+			     dialog_token, status_code, peer_capability,
+			     buf, len);
 	ret = rdev->ops->tdls_mgmt(&rdev->wiphy, dev, peer, action_code,
-				   dialog_token, status_code, buf, len);
+				   dialog_token, status_code, peer_capability,
+				   buf, len);
 	trace_rdev_return_int(&rdev->wiphy, ret);
 	return ret;
 }
@@ -920,6 +923,21 @@ static inline void rdev_crit_proto_stop(struct cfg80211_registered_device *rdev,
 	trace_rdev_crit_proto_stop(&rdev->wiphy, wdev);
 	rdev->ops->crit_proto_stop(&rdev->wiphy, wdev);
 	trace_rdev_return_void(&rdev->wiphy);
+}
+
+static inline int rdev_set_qos_map(struct cfg80211_registered_device *rdev,
+				   struct net_device *dev,
+				   struct cfg80211_qos_map *qos_map)
+{
+	int ret = -EOPNOTSUPP;
+
+	if (rdev->ops->set_qos_map) {
+		trace_rdev_set_qos_map(&rdev->wiphy, dev, qos_map);
+		ret = rdev->ops->set_qos_map(&rdev->wiphy, dev, qos_map);
+		trace_rdev_return_int(&rdev->wiphy, ret);
+	}
+
+	return ret;
 }
 
 #endif /* __CFG80211_RDEV_OPS */
