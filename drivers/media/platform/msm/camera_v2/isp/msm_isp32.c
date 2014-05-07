@@ -366,7 +366,8 @@ static void msm_vfe32_reg_update(
 	msm_camera_io_w_mb(0xF, vfe_dev->vfe_base + 0x260);
 }
 
-static long msm_vfe32_reset_hardware(struct vfe_device *vfe_dev)
+static long msm_vfe32_reset_hardware(struct vfe_device *vfe_dev,
+	uint32_t first_start, uint32_t blocking)
 {
 	init_completion(&vfe_dev->reset_complete);
 	msm_camera_io_w_mb(0x3FF, vfe_dev->vfe_base + 0x4);
@@ -633,9 +634,6 @@ static void msm_vfe32_update_camif_state(
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 0;
 	} else if (update_state == DISABLE_CAMIF_IMMEDIATELY) {
 		msm_camera_io_w_mb(0x6, vfe_dev->vfe_base + 0x1E0);
-		vfe_dev->hw_info->vfe_ops.axi_ops.halt(vfe_dev);
-		vfe_dev->hw_info->vfe_ops.core_ops.reset_hw(vfe_dev);
-		vfe_dev->hw_info->vfe_ops.core_ops.init_hw_reg(vfe_dev);
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 0;
 	}
 }
@@ -814,7 +812,7 @@ static void msm_vfe32_update_ping_pong_addr(struct vfe_device *vfe_dev,
 		VFE32_PING_PONG_BASE(wm_idx, pingpong_status));
 }
 
-static long msm_vfe32_axi_halt(struct vfe_device *vfe_dev)
+static int msm_vfe32_axi_halt(struct vfe_device *vfe_dev, uint32_t blocking)
 {
 	uint32_t halt_mask;
 	uint32_t axi_busy_flag = true;
