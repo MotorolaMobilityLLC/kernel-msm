@@ -838,10 +838,8 @@ static void msm_vfe40_axi_cfg_wm_reg(
 		msm_camera_io_w(val, vfe_dev->vfe_base + wm_base + 0x14);
 
 		/*WR_BUFFER_CFG*/
-		val =
-			msm_isp_cal_word_per_line(stream_info->output_format,
-			stream_info->plane_cfg[
-				plane_idx].output_stride) << 16 |
+		val = (stream_info->plane_cfg[
+				plane_idx].output_stride/8) << 16 |
 			(stream_info->plane_cfg[
 				plane_idx].output_height - 1) << 4 |
 			VFE40_BURST_LEN;
