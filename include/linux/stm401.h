@@ -120,8 +120,6 @@
 		_IOW(STM401_IOCTL_BASE, 51,  unsigned short)
 #define STM401_IOCTL_SET_IR_RAW_DELAY	\
 		_IOW(STM401_IOCTL_BASE, 52,  unsigned short)
-#define STM401_IOCTL_GET_BOOTED \
-		_IOR(STM401_IOCTL_BASE, 53, unsigned char)
 #define STM401_IOCTL_SET_LOWPOWER_MODE \
 		_IOW(STM401_IOCTL_BASE, 54, char)
 
