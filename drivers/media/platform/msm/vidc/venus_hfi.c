@@ -746,6 +746,7 @@ static int venus_hfi_vote_buses(void *dev, struct vidc_bus_vote_data *data,
 	int rc = 0, i = 0, num_bus = 0;
 	struct venus_hfi_device *device = dev;
 	struct bus_info *bus = NULL;
+	struct vidc_bus_vote_data *cached_vote_data = NULL;
 
 	if (!dev) {
 		dprintk(VIDC_ERR, "Invalid device\n");
@@ -758,7 +759,17 @@ static int venus_hfi_vote_buses(void *dev, struct vidc_bus_vote_data *data,
 		return -EINVAL;
 	}
 
-	/* alloc & init the load table */
+	/* (Re-)alloc memory to store the new votes (in case we internally
+	 * re-vote after power collapse, which is transparent to client) */
+	cached_vote_data = krealloc(device->bus_load.vote_data, num_data *
+			sizeof(*cached_vote_data), GFP_KERNEL);
+	if (!cached_vote_data) {
+		dprintk(VIDC_ERR, "Can't alloc memory to cache bus votes\n");
+		rc = -ENOMEM;
+		goto err_no_mem;
+	}
+
+	/* Alloc & init the load table */
 	num_bus = device->res->bus_set.count;
 	aggregate_load_table = kzalloc(sizeof(*aggregate_load_table) * num_bus,
 			GFP_TEMPORARY);
@@ -774,7 +785,7 @@ static int venus_hfi_vote_buses(void *dev, struct vidc_bus_vote_data *data,
 
 	});
 
-	/* aggregate the loads for each bus */
+	/* Aggregate the loads for each bus */
 	for (i = 0; i < num_data; ++i) {
 		int j = 0;
 
@@ -826,10 +837,14 @@ static int venus_hfi_vote_buses(void *dev, struct vidc_bus_vote_data *data,
 					"Voting bus %s to vector %d with load %d\n",
 					bus->pdata->name, bus_vector, load);
 		}
-
-		device->bus_load[i].session = bus->sessions_supported;
-		device->bus_load[i].load = load;
 	}
+
+	/* Cache the votes */
+	for (i = 0; i < num_data; ++i)
+		cached_vote_data[i] = data[i];
+
+	device->bus_load.vote_data = cached_vote_data;
+	device->bus_load.vote_data_count = num_data;
 
 	kfree(aggregate_load_table);
 err_no_mem:
@@ -1095,8 +1110,9 @@ static inline int venus_hfi_power_on(struct venus_hfi_device *device)
 		return -EINVAL;
 	}
 
-	rc = venus_hfi_vote_buses(device, device->bus_load,
-			device->res->bus_set.count);
+	dprintk(VIDC_DBG, "Resuming from power collapse\n");
+	rc = venus_hfi_vote_buses(device, device->bus_load.vote_data,
+			device->bus_load.vote_data_count);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to scale buses\n");
 		goto err_vote_buses;
@@ -3038,8 +3054,9 @@ static void venus_hfi_deinit_bus(struct venus_hfi_device *device)
 		}
 	});
 
-	kfree(device->bus_load);
-	device->bus_load = NULL;
+	kfree(device->bus_load.vote_data);
+	device->bus_load.vote_data = NULL;
+	device->bus_load.vote_data_count = 0;
 }
 
 static int venus_hfi_init_bus(struct venus_hfi_device *device)
@@ -3073,13 +3090,8 @@ static int venus_hfi_init_bus(struct venus_hfi_device *device)
 		dprintk(VIDC_DBG, "Registered bus client %s\n", name);
 	});
 
-	device->bus_load = kzalloc(sizeof(*device->bus_load) *
-			device->res->bus_set.count, GFP_KERNEL);
-	if (!device->bus_load) {
-		dprintk(VIDC_ERR, "Failed to allocate memory\n");
-		rc = -ENOMEM;
-		goto err_init_bus;
-	}
+	device->bus_load.vote_data = NULL;
+	device->bus_load.vote_data_count = 0;
 
 	return rc;
 err_init_bus:
@@ -3211,8 +3223,8 @@ static int venus_hfi_alloc_ocmem(void *dev, unsigned long size)
 			goto ocmem_set_failed;
 		}
 
-		rc = venus_hfi_vote_buses(device, device->bus_load,
-				device->res->bus_set.count);
+		rc = venus_hfi_vote_buses(device, device->bus_load.vote_data,
+				device->bus_load.vote_data_count);
 		if (rc) {
 			dprintk(VIDC_ERR,
 					"Failed to scale buses after setting ocmem: %d\n",
@@ -3248,8 +3260,8 @@ static int venus_hfi_free_ocmem(void *dev)
 		 * have already called ocmem_unset at this point */
 		device->resources.ocmem.buf = NULL;
 
-		rc = venus_hfi_vote_buses(device, device->bus_load,
-				device->res->bus_set.count);
+		rc = venus_hfi_vote_buses(device, device->bus_load.vote_data,
+				device->bus_load.vote_data_count);
 		if (rc) {
 			dprintk(VIDC_ERR,
 					"Failed to scale buses after setting ocmem: %d\n",
@@ -3670,8 +3682,8 @@ static int venus_hfi_resurrect_fw(void *dev)
 	venus_hfi_unload_fw(device);
 
 
-	rc = venus_hfi_vote_buses(device, device->bus_load,
-			device->res->bus_set.count);
+	rc = venus_hfi_vote_buses(device, device->bus_load.vote_data,
+			device->bus_load.vote_data_count);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to scale buses\n");
 		goto exit;
