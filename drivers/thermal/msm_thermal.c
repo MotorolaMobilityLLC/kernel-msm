@@ -1951,7 +1951,7 @@ static void vdd_restriction_notify(struct therm_threshold *trig_thresh)
 	}
 
 unlock_and_exit:
-	mutex_lock(&vdd_rstr_mutex);
+	mutex_unlock(&vdd_rstr_mutex);
 set_and_exit:
 	set_threshold(trig_thresh->sensor_id, trig_thresh->threshold);
 	return;
