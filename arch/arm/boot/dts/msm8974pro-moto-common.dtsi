@@ -659,6 +659,7 @@
 	qcom,step-charge-voltage = <4200>;
 	qcom,step-charge-soc = <50>;
 	qcom,step-charge-current = <1500>;
+	qcom,float-charge-timer = <1800>;
 	qcom,ir-comp = <1>;
 
 	qcom,chgr@1000 {
