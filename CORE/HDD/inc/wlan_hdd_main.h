@@ -1041,6 +1041,7 @@ struct hdd_adapter_s
    /* UAPSD psb value configured through framework */
    v_U8_t configuredPsb;
    v_BOOL_t is_roc_inprogress;
+   v_U32_t maxRateFlags;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
