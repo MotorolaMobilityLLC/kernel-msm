@@ -229,7 +229,9 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_CSA_DONE_IND		122
 #define WLC_E_CSA_FAILURE_IND		123
 #define WLC_E_CCA_CHAN_QUAL		124	/* CCA based channel quality report */
-#define WLC_E_LAST			125	/* highest val + 1 for range checking */
+#define WLC_E_PFN_GSCAN_FULL_RESULT   134 /* Full probe/beacon (IEs etc) results */
+#define WLC_E_PFN_SWC 135 /* Significant change in rssi of bssids being tracked */
+#define WLC_E_LAST			136	/* highest val + 1 for range checking */
 
 
 /* Table of event name strings for UIs and debugging dumps */

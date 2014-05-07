@@ -229,6 +229,15 @@ typedef struct wl_bss_info {
 	/* variable length Information Elements */
 } wl_bss_info_t;
 
+#define	WL_GSCAN_BSS_INFO_VERSION	1	/* current version of wl_gscan_bss_info struct */
+#define WL_GSCAN_INFO_FIXED_FIELD_SIZE   (sizeof(wl_gscan_bss_info_t) - sizeof(wl_bss_info_t))
+
+typedef struct wl_gscan_bss_info {
+	uint32      timestamp[2];
+	wl_bss_info_t info;
+	/* variable length Information Elements */
+} wl_gscan_bss_info_t;
+
 /* bss_info_cap_t flags */
 #define WL_BSS_FLAGS_FROM_BEACON	0x01	/* bss_info derived from beacon */
 #define WL_BSS_FLAGS_FROM_CACHE		0x02	/* bss_info collected from cache */
@@ -470,6 +479,14 @@ typedef struct wl_escan_result {
 } wl_escan_result_t;
 
 #define WL_ESCAN_RESULTS_FIXED_SIZE (sizeof(wl_escan_result_t) - sizeof(wl_bss_info_t))
+
+typedef struct wl_gscan_result {
+	uint32 buflen;
+	uint32 version;
+	wl_gscan_bss_info_t bss_info[1];
+} wl_gscan_result_t;
+
+#define WL_GSCAN_RESULTS_FIXED_SIZE (sizeof(wl_gscan_result_t) - sizeof(wl_gscan_bss_info_t))
 
 /* incremental scan results struct */
 typedef struct wl_iscan_results {
@@ -2959,8 +2976,8 @@ typedef struct wl_txchain_pwr_offsets {
 #define WL_WDS_WPA_ROLE_SUP	1	/* supplicant */
 #define WL_WDS_WPA_ROLE_AUTO	255	/* auto, based on mac addr value */
 
-/* number of bytes needed to define a 128-bit mask for MAC event reporting */
-#define WL_EVENTING_MASK_LEN	16
+/* number of bytes needed to define a mask for MAC event reporting */
+#define WL_EVENTING_MASK_LEN	((WLC_E_LAST + 7) / 8)
 
 /*
  * Join preference iovar value is an array of tuples. Each tuple has a one-byte type,
@@ -3902,6 +3919,9 @@ enum {
 #define PFN_PARTIAL_SCAN_BIT		0
 #define PFN_PARTIAL_SCAN_MASK		1
 
+#define PFN_SWC_RSSI_WINDOW_MAX   8
+#define PFN_SWC_MAX_NUM_APS       16
+
 /* PFN network info structure */
 typedef struct wl_pfn_subnet_info {
 	struct ether_addr BSSID;
@@ -3939,6 +3959,20 @@ typedef struct wl_pfn_scanresults {
 	wl_pfn_net_info_t netinfo[1];
 } wl_pfn_scanresults_t;
 
+typedef struct wl_pfn_significant_net {
+	uint16 flags;
+	uint16 channel;
+	struct ether_addr BSSID;
+	int8 rssi[PFN_SWC_RSSI_WINDOW_MAX];
+} wl_pfn_significant_net_t;
+
+typedef struct wl_pfn_swc_results {
+	uint32 version;
+	uint32 pkt_count;
+	uint32 total_count;
+	wl_pfn_significant_net_t list[1];
+} wl_pfn_swc_results_t;
+
 /* PFN data structure */
 typedef struct wl_pfn_param {
 	int32 version;			/* PNO parameters version */
@@ -3967,6 +4001,13 @@ typedef struct wl_pfn_bssid {
 	/* Bit4: suppress_lost, Bit3: suppress_found */
 	uint16			flags;
 } wl_pfn_bssid_t;
+
+typedef struct wl_pfn_significant_bssid {
+	struct ether_addr	macaddr;
+	int8    rssi_low_threshold;
+	int8    rssi_high_threshold;
+} wl_pfn_significant_bssid_t;
+
 #define WL_PFN_SUPPRESSFOUND_MASK	0x08
 #define WL_PFN_SUPPRESSLOST_MASK	0x10
 #define WL_PFN_RSSI_MASK		0xff00
@@ -3978,6 +4019,34 @@ typedef struct wl_pfn_cfg {
 	uint16	channel_list[WL_NUMCHANNELS];
 	uint32	flags;
 } wl_pfn_cfg_t;
+
+typedef struct wl_pfn_gscan_channel_bucket {
+	uint16 bucket_end_index;
+	uint16 bucket_freq_multiple;
+} wl_pfn_gscan_channel_bucket_t;
+
+#define GSCAN_SEND_ALL_RESULTS_MASK    (1 << 0)
+#define GSCAN_CFG_FLAGS_ONLY_MASK      (1 << 7)
+
+typedef struct wl_pfn_gscan_cfg {
+	/* BIT0 1 = send probes/beacons to HOST
+	 * Add any future flags here
+	 * BIT7 1 = no other useful cfg sent
+	 */
+	uint8 flags;
+	/* Buffer filled threshold in % to generate an event */
+	uint8   buffer_threshold;
+	/* No. of BSSIDs with "change" to generate an evt
+	 * change - crosses rssi threshold/lost
+	 */
+	uint8   swc_nbssid_threshold;
+	/* Max=8 (for now) Size of rssi cache buffer */
+	uint8  swc_rssi_window_size;
+	uint16  count_of_channel_buckets;
+	uint16  lost_ap_window;
+	wl_pfn_gscan_channel_bucket_t channel_bucket[1];
+} wl_pfn_gscan_cfg_t;
+
 #define WL_PFN_REPORT_ALLNET    0
 #define WL_PFN_REPORT_SSIDNET   1
 #define WL_PFN_REPORT_BSSIDNET  2
@@ -5615,5 +5684,28 @@ typedef struct wl_el_tag_params_s {
 	uint8 set;
 	uint8 flags;
 } wl_el_tag_params_t;
+
+typedef enum event_msgs_ext_command {
+	EVENTMSGS_NONE		=	0,
+	EVENTMSGS_SET_BIT	=	1,
+	EVENTMSGS_RESET_BIT	=	2,
+	EVENTMSGS_SET_MASK	=	3
+} event_msgs_ext_command_t;
+
+#define EVENTMSGS_VER 1
+#define EVENTMSGS_EXT_STRUCT_SIZE	OFFSETOF(eventmsgs_ext_t, mask[0])
+
+/* len-	for SET it would be mask size from the application to the firmware */
+/*		for GET it would be actual firmware mask size */
+/* maxgetsize -	is only used for GET. indicate max mask size that the */
+/*				application can read from the firmware */
+typedef struct eventmsgs_ext
+{
+	uint8	ver;
+	uint8	command;
+	uint8	len;
+	uint8	maxgetsize;
+	uint8	mask[1];
+} eventmsgs_ext_t;
 
 #endif /* _wlioctl_h_ */

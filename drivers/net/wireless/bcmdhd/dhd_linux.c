@@ -69,7 +69,9 @@
 #ifdef PNO_SUPPORT
 #include <dhd_pno.h>
 #endif
-
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 13, 0)) || defined(WL_VENDOR_EXT_SUPPORT)
+#include <wl_cfgvendor.h>
+#endif /* KERNEL > 3.13 || WL_VENDOR_EXT_SUPPORT */
 #ifdef WLMEDIA_HTSF
 #include <linux/time.h>
 #include <htsf.h>
@@ -3702,6 +3704,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	char eventmask[WL_EVENTING_MASK_LEN];
 	char iovbuf[WL_EVENTING_MASK_LEN + 12];	/*  Room for "event_msgs" + '\0' + bitvec  */
 	uint32 buf_key_b4_m4 = 1;
+	uint8 msglen;
+	eventmsgs_ext_t *eventmask_msg;
+	char iov_buf[WLC_IOCTL_SMLEN];
 #ifdef CUSTOM_AMPDU_BA_WSIZE
 	uint32 ampdu_ba_wsize = CUSTOM_AMPDU_BA_WSIZE;
 #endif /* CUSTOM_AMPDU_BA_WSIZE */
@@ -4111,6 +4116,54 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		DHD_ERROR(("%s Set Event mask failed %d\n", __FUNCTION__, ret));
 		goto done;
 	}
+
+	/* make up event mask ext message iovar for event larger than 128 */
+	msglen = ROUNDUP(WLC_E_LAST, NBBY)/NBBY + EVENTMSGS_EXT_STRUCT_SIZE;
+	eventmask_msg = (eventmsgs_ext_t*)kmalloc(msglen, GFP_KERNEL);
+	if (eventmask_msg == NULL) {
+		DHD_ERROR(("failed to allocate %d bytes for event_msg_ext\n", msglen));
+		return BCME_NOMEM;
+	}
+
+	bzero(eventmask_msg, msglen);
+	eventmask_msg->ver = EVENTMSGS_VER;
+	eventmask_msg->len = ROUNDUP(WLC_E_LAST, NBBY)/NBBY;
+
+	/* Read event_msgs_ext mask */
+
+	bcm_mkiovar("event_msgs_ext", (char *)eventmask_msg, msglen, iov_buf, sizeof(iov_buf));
+	ret  = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, iov_buf, sizeof(iov_buf), FALSE, 0);
+	if (ret >= 0) { /* event_msgs_ext must be supported */
+		bcopy(iov_buf, eventmask_msg, msglen);
+#ifdef GSCAN_SUPPORT
+		setbit(eventmask_msg->mask, WLC_E_PFN_GSCAN_FULL_RESULT);
+		setbit(eventmask_msg->mask, WLC_E_PFN_SWC);
+#endif /* GSCAN_SUPPORT */
+#ifdef BCMCCX_S69
+		setbit(eventmask_msg->mask, WLC_E_CCX_S69_RESP_RX);
+#endif
+		/* Write updated Event mask */
+		eventmask_msg->ver = EVENTMSGS_VER;
+		eventmask_msg->command = EVENTMSGS_SET_MASK;
+		eventmask_msg->len = ROUNDUP(WLC_E_LAST, NBBY)/NBBY;
+		bcm_mkiovar("event_msgs_ext", (char *)eventmask_msg,
+		   msglen, iov_buf, sizeof(iov_buf));
+
+		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR,
+		    iov_buf, sizeof(iov_buf), TRUE, 0)) < 0) {
+			DHD_ERROR(("%s write event mask ext failed %d\n", __FUNCTION__, ret));
+			kfree(eventmask_msg);
+			goto done;
+
+		}
+		kfree(eventmask_msg);
+
+	} else if (ret < 0 && ret != BCME_UNSUPPORTED) {
+
+		DHD_ERROR(("%s read event mask ext failed %d\n", __FUNCTION__, ret));
+		kfree(eventmask_msg);
+		goto done;
+	} /* unsupported is ok */
 
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_SCAN_CHANNEL_TIME, (char *)&scan_assoc_time,
 		sizeof(scan_assoc_time), TRUE, 0);
@@ -5596,6 +5649,111 @@ dhd_dev_pno_get_for_batch(struct net_device *dev, char *buf, int bufsize)
 	return (dhd_pno_get_for_batch(&dhd->pub, buf, bufsize, PNO_STATUS_NORMAL));
 }
 #endif /* PNO_SUPPORT */
+
+#ifdef GSCAN_SUPPORT
+/* Linux wrapper to call common dhd_pno_set_cfg_gscan */
+int
+dhd_dev_pno_set_cfg_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type,
+ void *buf, uint8 flush)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_pno_set_cfg_gscan(&dhd->pub, type, buf, flush));
+}
+
+/* Linux wrapper to call common dhd_pno_get_gscan */
+void *
+dhd_dev_pno_get_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type, uint32 *len)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_pno_get_gscan(&dhd->pub, type, len));
+}
+
+/* Linux wrapper to call common dhd_pno_lock_batch_results */
+void
+dhd_dev_pno_lock_access_batch_results(struct net_device *dev)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_pno_lock_batch_results(&dhd->pub));
+}
+/* Linux wrapper to call common dhd_pno_unlock_batch_results */
+void
+dhd_dev_pno_unlock_access_batch_results(struct net_device *dev)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_pno_unlock_batch_results(&dhd->pub));
+}
+
+/* Linux wrapper to call common dhd_pno_initiate_gscan_request */
+int dhd_dev_pno_run_gscan(struct net_device *dev, bool run, bool flush)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_pno_initiate_gscan_request(&dhd->pub, run, flush));
+}
+
+/* Linux wrapper to call common dhd_pno_enable_full_scan_result */
+int dhd_dev_pno_enable_full_scan_result(struct net_device *dev, bool real_time_flag)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_pno_enable_full_scan_result(&dhd->pub, real_time_flag));
+}
+
+/* Linux wrapper to call common dhd_handle_swc_evt */
+void * dhd_dev_swc_scan_event(struct net_device *dev, const void  *data, int *send_evt_bytes)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_handle_swc_evt(&dhd->pub, data, send_evt_bytes));
+}
+
+/* Linux wrapper to call common dhd_handle_hotlist_scan_found_evt */
+void * dhd_dev_hotlist_scan_found_event(struct net_device *dev,
+const void  *data, int *send_evt_bytes)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_handle_hotlist_scan_evt(&dhd->pub, data, send_evt_bytes));
+}
+
+/* Linux wrapper to call common dhd_process_full_gscan_result */
+void * dhd_dev_process_full_gscan_result(struct net_device *dev,
+const void  *data, int *send_evt_bytes)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_process_full_gscan_result(&dhd->pub, data, send_evt_bytes));
+}
+
+void dhd_dev_gscan_hotlist_cache_cleanup(struct net_device *dev)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	dhd_gscan_hotlist_cache_cleanup(&dhd->pub);
+
+	return;
+}
+
+int dhd_dev_gscan_batch_cache_cleanup(struct net_device *dev)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_gscan_batch_cache_cleanup(&dhd->pub));
+}
+
+/* Linux wrapper to call common dhd_retreive_batch_scan_results */
+int dhd_dev_retrieve_batch_scan(struct net_device *dev)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_retreive_batch_scan_results(&dhd->pub));
+}
+
+#endif /* GSCAN_SUPPORT */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (1)
 static void dhd_hang_process(struct work_struct *work)
