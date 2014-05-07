@@ -47,3 +47,9 @@ static int __init msm_hw_rev_setup(char *p)
 	return 0;
 }
 early_param("samsung.board_rev", msm_hw_rev_setup);
+static int __init bootreason(char *p)
+{
+	pr_info("Last boot reason: %s", p);
+	return 0;
+}
+early_param("bootreason", bootreason);
