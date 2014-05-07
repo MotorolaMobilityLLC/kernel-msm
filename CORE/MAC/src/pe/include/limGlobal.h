@@ -67,10 +67,6 @@
 
 #define LIM_TX_WQ_EMPTY_SLEEP_NS                100000
 
-// Sending Disassociate frames threshold
-#define LIM_SEND_DISASSOC_FRAME_THRESHOLD       2
-#define LIM_HASH_MISS_TIMER_MS                  10000
-
 // Deferred Message Queue Length
 #define MAX_DEFERRED_QUEUE_LEN                  20
 

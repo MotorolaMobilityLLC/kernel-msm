@@ -71,6 +71,7 @@ typedef struct sFTSMEContext
     vos_timer_t       preAuthReassocIntvlTimer;
     tCsrRoamSetKey    *pCsrFTKeyInfo;
 
+    v_BOOL_t          addMDIE;
 } tftSMEContext, *tpftSMEContext;
 
 /*--------------------------------------------------------------------------

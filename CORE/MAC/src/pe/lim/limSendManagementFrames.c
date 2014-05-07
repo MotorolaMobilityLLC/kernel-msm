@@ -2845,7 +2845,8 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     }
 
 #if defined WLAN_FEATURE_VOWIFI_11R
-    if ( psessionEntry->pLimReAssocReq->bssDescription.mdiePresent && (0 == pMac->ft.ftSmeContext.reassoc_ft_ies_length)
+    if ( psessionEntry->pLimReAssocReq->bssDescription.mdiePresent &&
+         (pMac->ft.ftSmeContext.addMDIE == TRUE)
 #if defined FEATURE_WLAN_ESE
            && !psessionEntry->isESEconnection
 #endif

@@ -578,8 +578,10 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                     &assocId, &psessionEntry->dph.dphHashTable);
             if (pStaDs)
             {
-                tLimMlmDisassocReq       *pMlmDisassocReq = NULL;
+                tLimMlmDisassocReq      *pMlmDisassocReq = NULL;
                 tLimMlmDeauthReq        *pMlmDeauthReq = NULL;
+                tAniBool                 isConnected = eSIR_TRUE;
+
                 pMlmDisassocReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq;
                 if (pMlmDisassocReq &&
                         (vos_mem_compare((tANI_U8 *) pHdr->sa,
@@ -591,6 +593,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                                 MAC_ADDRESS_STR),
                                 MAC_ADDR_ARRAY(pMlmDisassocReq->peerMacAddr));)
                     limProcessDisassocAckTimeout(pMac);
+                    isConnected = eSIR_FALSE;
                 }
                 pMlmDeauthReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDeauthReq;
                 if (pMlmDeauthReq &&
@@ -603,6 +606,25 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                                 MAC_ADDRESS_STR),
                                 MAC_ADDR_ARRAY(pMlmDeauthReq->peerMacAddr));)
                     limProcessDeauthAckTimeout(pMac);
+                    isConnected = eSIR_FALSE;
+                }
+
+                /* pStaDS != NULL and isConnected = 1 means the STA is already
+                 * connected, But SAP received the Auth from that station.
+                 * So dont accept this auth frame and send Deauth frame.
+                 * STA will retry to connect back.
+                 */
+                if (isConnected)
+                {
+                    limLog(pMac, LOGE,
+                            FL("STA is already connected but received auth frame"
+                                "Send the Deauth and lim Delete Station Context"
+                                "(staId: %d, assocId: %d) "),
+                            pStaDs->staIndex, assocId);
+                    limSendDeauthMgmtFrame(pMac, eSIR_MAC_UNSPEC_FAILURE_REASON,
+                            (tANI_U8 *) pHdr->sa, psessionEntry, FALSE);
+                    limTriggerSTAdeletion(pMac, pStaDs, psessionEntry);
+                    return;
                 }
             }
 
