@@ -1,4 +1,4 @@
-mmi,ey30-lg-batterydata {
+mmi,ey30-lg-fix-batterydata {
 	qcom,fcc-mah = <2281>;
 	qcom,default-rbatt-mohm = <188>;
 	qcom,rbatt-capacitive-mohm = <0>;
