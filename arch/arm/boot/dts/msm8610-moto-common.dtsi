@@ -646,6 +646,7 @@
 	qcom,batt-cold-percentage = <80>;
 	qcom,step-charge-voltage = <4200>;
 	qcom,step-charge-current = <1250>;
+	qcom,float-charge-timer = <1800>;
 
 	qcom,chgr@1000 {
 		status = "ok";
