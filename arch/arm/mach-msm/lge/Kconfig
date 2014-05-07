@@ -10,6 +10,13 @@ config MACH_DORY
 	help
 	  Support for the LGE APQ8026 DORY.
 
+config MACH_LENOK
+	depends on ARCH_MSM8226
+	select MACH_LGE
+	bool "APQ8026 LENOK"
+	help
+	  Support for the LGE APQ8026 LENOK.
+
 config LGE_BLUETOOTH
 	bool "Support LGE Bluetooth"
 	depends on BT
