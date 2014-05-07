@@ -793,8 +793,9 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL) {
 		if (mipi->vsync_enable && mipi->hw_vsync_mode
-			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
-				mdss_dsi_set_tear_on(ctrl_pdata);
+			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)
+			&& pdata->panel_info.panel_power_on) {
+			mdss_dsi_set_tear_on(ctrl_pdata);
 		}
 	}
 
@@ -841,7 +842,8 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL) {
 		if (mipi->vsync_enable && mipi->hw_vsync_mode
-			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
+			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)
+			&& pdata->panel_info.panel_power_on) {
 			mdss_dsi_set_tear_off(ctrl_pdata);
 		}
 	}
