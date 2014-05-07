@@ -5217,12 +5217,14 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
             {
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                            " pAdapter is NULL ");
+                return -EINVAL;
             }
             pMac = WLAN_HDD_GET_HAL_CTX(pAdapter);
             if (pMac == NULL)
             {
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                            " pMac is NULL ");
+                return -EINVAL;
             }
             sme_HT40StopOBSSScan(pMac, pAdapter->sessionId);
         }

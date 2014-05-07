@@ -2920,8 +2920,18 @@ VOS_STATUS csrNeighborRoamMergeChannelLists(
              __func__, inputNumOfChannels);
          return VOS_STATUS_E_INVAL;
     }
-    // Add the "new" channels in the input list to the end of the output list.
-    for (i = 0; i < inputNumOfChannels; i++)
+    if (outputNumOfChannels > WNI_CFG_VALID_CHANNEL_LIST_LEN)
+    {
+         VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+             "%s: Wrong Number of Output Channels %d",
+             __func__, inputNumOfChannels);
+         return VOS_STATUS_E_INVAL;
+    }
+
+    /* Add the "new" channels in the input list to the end of the output list.
+       Check added in for loop to make sure outputlist doesn't exceeds valid
+       channel list length. */
+    for (i = 0; (i < inputNumOfChannels) && (numChannels < WNI_CFG_VALID_CHANNEL_LIST_LEN); i++)
     {
         for (j = 0; j < outputNumOfChannels; j++)
         {
