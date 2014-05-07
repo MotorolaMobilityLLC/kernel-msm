@@ -760,6 +760,23 @@ static int android_bat_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, battery);
 	battery->batt_health = POWER_SUPPLY_HEALTH_GOOD;
 
+	wake_lock_init(&battery->monitor_wake_lock, WAKE_LOCK_SUSPEND,
+			"android-battery-monitor");
+	wake_lock_init(&battery->charger_wake_lock, WAKE_LOCK_SUSPEND,
+			"android-chargerdetect");
+
+	battery->monitor_wqueue =
+		alloc_workqueue(dev_name(&pdev->dev), WQ_FREEZABLE, 1);
+	if (!battery->monitor_wqueue) {
+		dev_err(battery->dev, "%s: fail to create workqueue\n",
+				__func__);
+		goto err_wq;
+	}
+
+	INIT_WORK(&battery->monitor_work, android_bat_monitor_work);
+	INIT_WORK(&battery->charger_work, android_bat_charger_work);
+
+
 	battery->psy_bat.name = "battery",
 	battery->psy_bat.type = POWER_SUPPLY_TYPE_BATTERY,
 	battery->psy_bat.properties = android_battery_props,
@@ -781,11 +798,6 @@ static int android_bat_probe(struct platform_device *pdev)
 	battery->batt_vcell = -1;
 	battery->batt_soc = -1;
 
-	wake_lock_init(&battery->monitor_wake_lock, WAKE_LOCK_SUSPEND,
-			"android-battery-monitor");
-	wake_lock_init(&battery->charger_wake_lock, WAKE_LOCK_SUSPEND,
-			"android-chargerdetect");
-
 	ret = power_supply_register(&pdev->dev, &battery->psy_usb);
 	if (ret) {
 		dev_err(battery->dev,
@@ -805,17 +817,6 @@ static int android_bat_probe(struct platform_device *pdev)
 		goto err_psy_bat_reg;
 	}
 
-	battery->monitor_wqueue =
-		alloc_workqueue(dev_name(&pdev->dev), WQ_FREEZABLE, 1);
-	if (!battery->monitor_wqueue) {
-		dev_err(battery->dev, "%s: fail to create workqueue\n",
-				__func__);
-		goto err_wq;
-	}
-
-	INIT_WORK(&battery->monitor_work, android_bat_monitor_work);
-	INIT_WORK(&battery->charger_work, android_bat_charger_work);
-
 	battery->callbacks.charge_source_changed =
 		android_bat_charge_source_changed;
 	battery->callbacks.battery_set_full =
@@ -832,8 +833,6 @@ static int android_bat_probe(struct platform_device *pdev)
 
 	if (battery->pdata->init_adc)
 		battery->pdata->init_adc(battery);
-	wake_lock(&battery->charger_wake_lock);
-	queue_work(battery->monitor_wqueue, &battery->charger_work);
 
 	wake_lock(&battery->monitor_wake_lock);
 	battery->last_poll = ktime_get_boottime();
@@ -846,15 +845,15 @@ static int android_bat_probe(struct platform_device *pdev)
 		pr_err("failed to create android-power debugfs entry\n");
 
 	dev_info(&pdev->dev, "Android Battery Driver probe is completed\n");
-	return 0;
 
-err_wq:
-	power_supply_unregister(&battery->psy_bat);
+	goto success;
+
 err_psy_bat_reg:
 	power_supply_unregister(&battery->psy_ac);
 err_psy_ac_reg:
 	power_supply_unregister(&battery->psy_usb);
 err_psy_usb_reg:
+err_wq:
 	wake_lock_destroy(&battery->monitor_wake_lock);
 	wake_lock_destroy(&battery->charger_wake_lock);
 err_dt:
@@ -862,7 +861,7 @@ err_dt:
 		kfree(pdata);
 err_pdata:
 	kfree(battery);
-
+success:
 	return ret;
 }
 
@@ -872,6 +871,8 @@ static int android_bat_remove(struct platform_device *pdev)
 
 	flush_workqueue(battery->monitor_wqueue);
 	destroy_workqueue(battery->monitor_wqueue);
+	power_supply_unregister(&battery->psy_usb);
+	power_supply_unregister(&battery->psy_ac);
 	power_supply_unregister(&battery->psy_bat);
 	wake_lock_destroy(&battery->monitor_wake_lock);
 	wake_lock_destroy(&battery->charger_wake_lock);
