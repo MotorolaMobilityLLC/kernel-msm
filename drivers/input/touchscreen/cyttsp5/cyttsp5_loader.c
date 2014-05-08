@@ -48,7 +48,7 @@ static const u8 cyttsp5_security_key[] = {
 
 #define CY_HW_VERSION 0x01
 #define CY_CSP_FW_VERSION 0x0500
-#define CY_FW_VERSION 0x1000
+#define CY_FW_VERSION 0x1100
 
 #ifdef CYTTSP5_PLATFORM_FW_UPGRADE
 #include "cyttsp5_firmware.h"

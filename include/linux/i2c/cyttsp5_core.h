@@ -56,6 +56,14 @@ enum cyttsp5_core_platform_flags {
 	CY_CORE_FLAG_WAKE_ON_GESTURE,
 };
 
+enum cyttsp5_core_platform_easy_wakeup_gesture {
+	CY_CORE_EWG_NONE = 0x00,
+	CY_CORE_EWG_TAP_TAP = 0x01,
+	CY_CORE_EWG_TWO_FINGER_SLIDE = 0x02,
+	CY_CORE_EWG_RESERVED = 0x03,
+	CY_CORE_EWG_WAKE_ON_INT_FROM_HOST = 0xFF,
+};
+
 enum cyttsp5_loader_platform_flags {
 	CY_LOADER_FLAG_NONE,
 	CY_LOADER_FLAG_CALIBRATE_AFTER_FW_UPGRADE,

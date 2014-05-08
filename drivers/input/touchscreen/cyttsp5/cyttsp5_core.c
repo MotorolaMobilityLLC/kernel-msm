@@ -23,8 +23,6 @@
 
 #include "cyttsp5_regs.h"
 
-#define CYTTSP5_USE_SLEEP 0
-
 MODULE_FIRMWARE(CY_FW_FILE_NAME);
 
 static const char *cy_driver_core_name = CYTTSP5_CORE_NAME;
@@ -3768,17 +3766,26 @@ static void cyttsp5_watchdog_timer(unsigned long handle)
 	if (!work_pending(&cd->watchdog_work))
 		schedule_work(&cd->watchdog_work);
 }
-#if CYTTSP5_USE_SLEEP
+
 static int cyttsp5_put_device_into_easy_wakeup_(struct cyttsp5_core_data *cd)
 {
 	int rc;
 	u8 status = 0;
 
+	dev_dbg(cd->dev, "%s\n", __func__);
+
+	mutex_lock(&cd->system_lock);
+	cd->wait_until_wake = 0;
+	mutex_unlock(&cd->system_lock);
+
 	rc = cyttsp5_hid_output_enter_easywake_state_(cd,
 			cd->easy_wakeup_gesture, &status);
-	if (rc || status == 0)
+	if (rc || status == 0) {
+		dev_err(cd->dev, "%s: error on enter_easywake_state, rc=%d, status=%d\n",
+			__func__, rc, status);
 		return -EBUSY;
-
+	}
+	dev_dbg(cd->dev, "%s: status=%d\n", __func__, status);
 	return rc;
 }
 
@@ -3801,32 +3808,27 @@ static int cyttsp5_put_device_into_sleep_(struct cyttsp5_core_data *cd)
 
 	return rc;
 }
-#endif
-static int cyttsp5_core_poweroff_device_(struct cyttsp5_core_data *cd)
-{
-	int rc;
-
-	/* No need for cd->pdata->power check since we did it in probe */
-	rc = cd->cpdata->power(cd->cpdata, 0, cd->dev, 0);
-	if (rc < 0)
-		dev_err(cd->dev, "%s: HW Power down fails r=%d\n",
-				__func__, rc);
-	return rc;
-}
 
 static int cyttsp5_core_sleep_(struct cyttsp5_core_data *cd)
 {
 	int rc;
+
+	mutex_lock(&cd->system_lock);
+	if (cd->sleep_state == SS_SLEEP_OFF) {
+		cd->sleep_state = SS_SLEEPING;
+	} else {
+		mutex_unlock(&cd->system_lock);
+		return 1;
+	}
+	mutex_unlock(&cd->system_lock);
+
 	cyttsp5_stop_wd_timer(cd);
 
-#if CYTTSP5_USE_SLEEP
-	if (cd->cpdata->flags & CY_FLAG_CORE_POWEROFF_ON_SLEEP)
-		rc = cyttsp5_core_poweroff_device_(cd);
-	else
-		rc = cyttsp5_put_device_into_sleep_(cd);
-#else
-	rc = cyttsp5_core_poweroff_device_(cd);
-#endif
+	rc = cyttsp5_put_device_into_sleep_(cd);
+	if (rc < 0)
+		dev_err(cd->dev, "%s: error on put_device_into_sleep\n",
+			__func__);
+
 	mutex_lock(&cd->system_lock);
 	cd->sleep_state = SS_SLEEP_ON;
 	mutex_unlock(&cd->system_lock);
@@ -3862,8 +3864,10 @@ static int cyttsp5_wakeup_host(struct cyttsp5_core_data *cd)
 	int size = get_unaligned_le16(&cd->input_buf[0]);
 
 	/* Validate report */
-	if (size != 4 || cd->input_buf[2] != 4)
+	if (size != 4 || cd->input_buf[2] != 4) {
+		dev_err(cd->dev, "%s: invalid report\n", __func__);
 		rc = -EINVAL;
+	}
 
 	cd->wake_initiated_by_device = 1;
 	event_id = cd->input_buf[3];
@@ -4027,6 +4031,7 @@ static int cyttsp5_parse_input(struct cyttsp5_core_data *cd)
 	/* check reset */
 	if (size == 0) {
 		dev_dbg(cd->dev, "%s: Reset complete\n", __func__);
+		memcpy(cd->response_buf, cd->input_buf, 2);
 		mutex_lock(&cd->system_lock);
 		if (!cd->hid_reset_cmd_state && !cd->hid_cmd_state) {
 			mutex_unlock(&cd->system_lock);
@@ -4086,10 +4091,31 @@ static int cyttsp5_read_input(struct cyttsp5_core_data *cd)
 {
 	struct device *dev = cd->dev;
 	int rc;
+	int t;
 
+	/* added as workaround to CDT170960: easywake failure */
+	/* Interrupt for easywake, wait for bus controller to wake */
+	mutex_lock(&cd->system_lock);
+	if (!IS_DEEP_SLEEP_CONFIGURED(cd->easy_wakeup_gesture)) {
+		if (cd->sleep_state == SS_SLEEP_ON) {
+			mutex_unlock(&cd->system_lock);
+			if (!dev->power.is_suspended)
+				goto read;
+			t = wait_event_timeout(cd->wait_q,
+					(cd->wait_until_wake == 1),
+					msecs_to_jiffies(2000));
+			if (IS_TMO(t))
+				cyttsp5_queue_startup(cd);
+			goto read;
+		}
+	}
+	mutex_unlock(&cd->system_lock);
+
+read:
 	rc = cyttsp5_adap_read_default_nosize(cd, cd->input_buf, CY_MAX_INPUT);
 	if (rc) {
-		dev_err(dev, "%s: Error getting report, r=%d\n", __func__, rc);
+		dev_err(dev, "%s: Error getting report, r=%d\n",
+				__func__, rc);
 		return rc;
 	}
 	dev_vdbg(dev, "%s: Read input successfully\n", __func__);
@@ -4104,9 +4130,11 @@ static irqreturn_t cyttsp5_irq(int irq, void *handle)
 	if (cd->irq_wake) {
 		dev_err(cd->dev, "%s: touch wake!!\n", __func__);
 		wake_lock_timeout(&cd->report_touch_wake_lock, 3 * HZ);
-		usleep_range(20000, 21000);
 
-		cd->touch_wake = true;
+		if ((cd->silicon_id) == CSP_SILICON_ID) {
+			usleep_range(20000, 21000);
+			cd->touch_wake = true;
+		}
 	}
 
 	rc = cyttsp5_read_input(cd);
@@ -4319,29 +4347,50 @@ static int _cyttsp5_request_stop_wd(struct device *dev)
 	cyttsp5_stop_wd_timer(cd);
 	return 0;
 }
-#if CYTTSP5_USE_SLEEP
+
 static int cyttsp5_core_wake_device_from_deep_sleep_(
 		struct cyttsp5_core_data *cd)
 {
 	int rc;
+
+	dev_dbg(cd->dev, "%s\n", __func__);
 	rc = cyttsp5_hid_cmd_set_power_(cd, HID_POWER_ON);
-	if (rc)
+	if (rc) {
+		dev_err(cd->dev, "%s: hid_cmd_set_power error rc=%d\n",
+			__func__, rc);
 		rc =  -EAGAIN;
+	}
+
+	/* Prevent failure on sequential wake/sleep requests from OS */
+	msleep(20);
+
 	return rc;
 }
 
 static int cyttsp5_core_wake_device_(struct cyttsp5_core_data *cd)
 {
-	if (cd->wake_initiated_by_device) {
-		cd->wake_initiated_by_device = 0;
-		/* To prevent sequential wake/sleep caused by ttsp modules */
+	dev_dbg(cd->dev, "%s\n", __func__);
+
+	if (!IS_DEEP_SLEEP_CONFIGURED(cd->easy_wakeup_gesture)) {
+		mutex_lock(&cd->system_lock);
+		cd->wait_until_wake = 1;
+		mutex_unlock(&cd->system_lock);
+
+		wake_up(&cd->wait_q);
 		msleep(20);
-		return 0;
+
+		if (cd->wake_initiated_by_device) {
+			cd->wake_initiated_by_device = 0;
+			dev_dbg(cd->dev, "%s: wake_initiated_by_device\n",
+					__func__);
+			return 0;
+		}
 	}
 
 	return cyttsp5_core_wake_device_from_deep_sleep_(cd);
 }
-#endif
+
+#if !defined(ALWAYS_ON_TOUCH)
 static int cyttsp5_core_poweron_device_(struct cyttsp5_core_data *cd)
 {
 	struct device *dev = cd->dev;
@@ -4357,18 +4406,23 @@ static int cyttsp5_core_poweron_device_(struct cyttsp5_core_data *cd)
 exit:
 	return rc;
 }
+#endif
 
 static int cyttsp5_core_wake_(struct cyttsp5_core_data *cd)
 {
 	int rc;
-#if CYTTSP5_USE_SLEEP
-	if (cd->cpdata->flags & CY_FLAG_CORE_POWEROFF_ON_SLEEP)
-		rc = cyttsp5_core_poweron_device_(cd);
-	else
-		rc = cyttsp5_core_wake_device_(cd);
-#else
-	rc = cyttsp5_core_poweron_device_(cd);
-#endif
+
+	mutex_lock(&cd->system_lock);
+	if (cd->sleep_state == SS_SLEEP_ON) {
+		cd->sleep_state = SS_WAKING;
+	} else {
+		mutex_unlock(&cd->system_lock);
+		return 1;
+	}
+	mutex_unlock(&cd->system_lock);
+
+	rc = cyttsp5_core_wake_device_(cd);
+
 	mutex_lock(&cd->system_lock);
 	cd->sleep_state = SS_SLEEP_OFF;
 	mutex_unlock(&cd->system_lock);
@@ -4456,6 +4510,9 @@ static int cyttsp5_si_get_samsung_tsp_info_(struct cyttsp5_core_data *cd)
 	memcpy(sti, &read_buf[SAMSUNG_TSP_INFO_OFFSET],
 		sizeof(struct cyttsp5_samsung_tsp_info_dev));
 
+	dev_info(cd->dev, "%s: tsp hw ver=0x%02x, fw ver=0x%04x\n",
+			__func__, sti->hw_version,
+			get_unaligned_be16(&sti->fw_versionh));
 exit:
 	rc = cyttsp5_hid_output_resume_scanning_(cd);
 error:
@@ -4764,18 +4821,31 @@ exit:
 int cyttsp5_core_suspend(struct device *dev)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+	int rc;
 
 	dev_info(dev, "%s\n", __func__);
-	cancel_work_sync(&cd->startup_work);
-	cyttsp5_stop_wd_timer(cd);
 
 	if (cd->irq_wake) {
 		dev_err(dev, "%s: already irq_wake enabled\n", __func__);
 		return 0;
 	}
+
+	if ((cd->silicon_id) == QFN_SILICON_ID) {
+		cyttsp5_core_sleep(cd);
+	} else {
+		cancel_work_sync(&cd->startup_work);
+		cyttsp5_stop_wd_timer(cd);
+	}
+	cyttsp5_mt_lift_all(&cd->md);
+
 	if (device_may_wakeup(dev)) {
-		enable_irq_wake(cd->irq);
-		cd->irq_wake = true;
+		dev_dbg(dev, "%s Device MAY wakeup\n", __func__);
+		rc = enable_irq_wake(cd->irq);
+		if (rc == 0)
+			cd->irq_wake = true;
+		else
+			dev_err(dev, "%s: failed to enable_irq_wake rc=%d\n",
+				__func__, rc);
 	}
 
 	return 0;
@@ -4791,12 +4861,18 @@ int cyttsp5_core_resume(struct device *dev)
 		dev_err(dev, "%s: already irq_wake disabled\n", __func__);
 		return 0;
 	}
+
 	if (device_may_wakeup(dev)) {
+		dev_dbg(dev, "%s Device MAY wakeup\n", __func__);
 		disable_irq_wake(cd->irq);
 		cd->irq_wake = false;
 	}
 
-	cyttsp5_start_wd_timer(cd);
+	if ((cd->silicon_id) == QFN_SILICON_ID)
+		cyttsp5_core_wake(cd);
+	else
+		cyttsp5_start_wd_timer(cd);
+
 	return 0;
 }
 
@@ -4985,6 +5061,26 @@ static ssize_t cyttsp5_drv_debug_store(struct device *dev,
 	}
 
 	switch (value) {
+	case 2:
+		dev_info(dev, "%s: SUSPEND (cd=%p)\n", __func__, cd);
+		rc = cyttsp5_core_suspend(cd->dev);
+		if (rc)
+			dev_err(dev, "%s: Suspend failed rc=%d\n",
+				__func__, rc);
+		else
+			dev_info(dev, "%s: Suspend succeeded\n", __func__);
+		break;
+
+	case 3:
+		dev_info(dev, "%s: RESUME (cd=%p)\n", __func__, cd);
+		rc = cyttsp5_core_resume(cd->dev);
+		if (rc)
+			dev_err(dev, "%s: Resume failed rc=%d\n",
+				__func__, rc);
+		else
+			dev_info(dev, "%s: Resume succeeded\n", __func__);
+		break;
+
 	case CY_DBG_SUSPEND:
 		dev_info(dev, "%s: SUSPEND (cd=%p)\n", __func__, cd);
 		rc = cyttsp5_core_sleep(cd);
@@ -5467,6 +5563,9 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 	device_init_wakeup(dev, 1);
 	wake_lock_init(&cd->report_touch_wake_lock,
 		WAKE_LOCK_SUSPEND, "report_touch_wake_lock");
+
+	cd->easy_wakeup_gesture = CY_CORE_EWG_TAP_TAP
+		| CY_CORE_EWG_TWO_FINGER_SLIDE;
 
 	/*
 	 * call startup directly to ensure that the device

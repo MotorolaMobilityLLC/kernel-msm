@@ -161,6 +161,24 @@ static void cyttsp5_input_report(struct input_dev *input, int sig,
 		input_mt_report_slot_state(input, MT_TOOL_PEN, true);
 }
 
+#ifdef SAMSUNG_PALM_MOTION
+static inline void report_sumsize_palm(struct cyttsp5_mt_data *md,
+	u16 sumsize, bool palm)
+{
+	static bool palm_flag = false;
+
+	if (!palm_flag && palm) {
+		dev_info(md->dev, "%s: palm is detected\n", __func__);
+		input_report_key(md->input, KEY_SLEEP, palm);
+		palm_flag = palm;
+	} else if (palm_flag && !palm) {
+		dev_info(md->dev, "%s: palm is removed\n", __func__);
+		input_report_key(md->input, KEY_SLEEP, palm);
+		palm_flag = palm;
+	}
+}
+#endif
+
 static void cyttsp5_report_slot_liftoff(struct cyttsp5_mt_data *md,
 		int max_slots)
 {
@@ -176,10 +194,13 @@ static void cyttsp5_report_slot_liftoff(struct cyttsp5_mt_data *md,
 	}
 }
 
-static void cyttsp5_mt_lift_all(struct cyttsp5_mt_data *md)
+void cyttsp5_mt_lift_all(struct cyttsp5_mt_data *md)
 {
 	int max = md->si->tch_abs[CY_TCH_T].max;
 
+#ifdef SAMSUNG_PALM_MOTION
+	report_sumsize_palm(md, 0, 0);
+#endif
 	if (md->num_prv_tch != 0) {
 		cyttsp5_report_slot_liftoff(md, max);
 		input_sync(md->input);
@@ -303,24 +324,6 @@ static void cyttsp5_get_touch(struct cyttsp5_mt_data *md,
 
 #define ABS_PARAM(_abs, _param) \
 	(md->pdata->frmwrk->abs[((_abs) * CY_NUM_ABS_SET) + (_param)])
-
-#ifdef SAMSUNG_PALM_MOTION
-static inline void report_sumsize_palm(struct cyttsp5_mt_data *md,
-	u16 sumsize, bool palm)
-{
-	static bool palm_flag = false;
-
-	if (!palm_flag && palm) {
-		dev_info(md->dev, "%s: palm is detected\n", __func__);
-		input_report_key(md->input, KEY_SLEEP, palm);
-		palm_flag = palm;
-	} else if (palm_flag && !palm) {
-		dev_info(md->dev, "%s: palm is removed\n", __func__);
-		input_report_key(md->input, KEY_SLEEP, palm);
-		palm_flag = palm;
-	}
-}
-#endif
 
 static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 		struct cyttsp5_touch *tch, int num_cur_tch)
@@ -521,7 +524,7 @@ static void cyttsp5_mt_send_dummy_event(struct cyttsp5_mt_data *md)
 {
 	unsigned long ids = 0;
 
-	dev_dbg(md->dev, "%s: touch_wake\n", __func__);
+	dev_info(md->dev, "%s: touch_wake\n", __func__);
 
 	/* for easy wakeup */
 	cyttsp5_input_report(md->input, ABS_MT_TRACKING_ID,

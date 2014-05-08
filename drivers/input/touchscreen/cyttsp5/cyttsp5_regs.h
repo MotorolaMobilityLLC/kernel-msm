@@ -884,6 +884,7 @@ struct cyttsp5_core_data {
 	bool irq_disabled;
 	u8 easy_wakeup_gesture;
 	bool wake_initiated_by_device;
+	bool wait_until_wake;
 	struct work_struct startup_work;
 	struct cyttsp5_sysinfo sysinfo;
 #ifdef SAMSUNG_TSP_INFO
@@ -1038,6 +1039,7 @@ void cyttsp5_set_upgrade_firmware_from_builtin(struct device *dev,
 int upgrade_firmware_from_sdcard(struct device *dev,
 	const u8 *fw_data, int fw_size);
 
+void cyttsp5_mt_lift_all(struct cyttsp5_mt_data *md);
 int cyttsp5_mt_release(struct device *dev);
 int cyttsp5_mt_probe(struct device *dev);
 
