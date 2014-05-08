@@ -13,6 +13,7 @@
 #include "msm8916.dtsi"
 #include "msm8916-pinctrl.dtsi"
 #include "msm8916-camera-sensor-mtp.dtsi"
+#include "dsi-panel-mot-boe-450-qHD-video.dtsi"
 
 / {
 	aliases {
@@ -169,6 +170,36 @@
 		/* Not connected */
 		status = "disabled";
 	};
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_boe_450_qhd_vid_v0>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
+	vci_disp-supply = <&pm8916_l17>;
+	vddio_disp-supply = <&pm8916_l6>;
+};
+
+&pmx_mdss {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 78>;
+};
+
+&pm8916_l17 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&pm8916_l6 {
+	regulator-always-on;
+	regulator-boot-on;
 };
 
 &pm8916_chg {
