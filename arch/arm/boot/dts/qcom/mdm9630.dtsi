@@ -1027,6 +1027,7 @@
 		compatible = "qcom,cnss";
 		wlan-en-gpio = <&msmgpio 70 0>;
 		vdd-wlan-supply = <&wlan_vreg>;
+		qcom,notify-modem-status;
 	};
 };
 
