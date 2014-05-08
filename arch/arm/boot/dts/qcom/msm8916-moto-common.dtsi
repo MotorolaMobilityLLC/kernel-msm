@@ -454,6 +454,10 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&touch_reset_default &touch_int_default>;
 	};
+
+	tapan_codec {
+		status = "disable";
+	};
 };
 
 &i2c_4 {
