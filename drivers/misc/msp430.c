@@ -235,16 +235,18 @@ unsigned char stat_string[ESR_SIZE+1];
 /* Store crc value */
 unsigned short datacrc;
 
+#define ALGO_RQST_DATA_SIZE 28
 struct algo_requst_t {
 	char size;
-	char data[28];
+	char data[ALGO_RQST_DATA_SIZE];
 };
 static struct algo_requst_t g_algo_requst[MSP_NUM_ALGOS];
 
 static unsigned char msp_cmdbuff[MSP430_HEADER_LENGTH + MSP430_CMDLENGTH_BYTES +
 			MSP430_CORECOMMAND_LENGTH + MSP430_CRC_LENGTH];
 
-static unsigned char read_cmdbuff[512];
+#define READ_CMDBUFF_SIZE 512
+static unsigned char read_cmdbuff[READ_CMDBUFF_SIZE];
 
 enum msp_mode {
 	UNINITIALIZED,
@@ -2838,7 +2840,13 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 				"Register: 0x%x", msp_cmdbuff[0]);
 		} else {
 			dev_err(&ps_msp430->client->dev,
-				"Set algo req invalid arg\n");
+				"Set algo req invalid address arg\n");
+			err = -EFAULT;
+			break;
+		}
+		if (byte > ALGO_RQST_DATA_SIZE) {
+			dev_err(&ps_msp430->client->dev,
+				"Set algo req invalid size arg\n");
 			err = -EFAULT;
 			break;
 		}
@@ -2960,15 +2968,24 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		addr = (rw_bytes[0] << 8) | rw_bytes[1];
 		data_size = (rw_bytes[2] << 8) | rw_bytes[3];
 
+		if (data_size > READ_CMDBUFF_SIZE) {
+			dev_err(&ps_msp430->client->dev,
+				"Read Reg error, size too large\n");
+			err = -EFAULT;
+			break;
+		}
+
 		/* setup the address */
 		msp_cmdbuff[0] = addr;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1,
 			data_size);
 
-		if (err < 0)
+		if (err < 0) {
 			dev_err(&msp430_misc_data->client->dev,
 				"Read Reg, unable to read from direct reg %d\n",
 				err);
+			break;
+		}
 
 		if (copy_to_user(argp, read_cmdbuff, data_size)) {
 			dev_err(&ps_msp430->client->dev,
