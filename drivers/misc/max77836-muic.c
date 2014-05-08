@@ -1128,7 +1128,7 @@ static void max77836_muic_usb_detect(struct work_struct *work)
 	struct max77836_muic_data *muic_data = container_of(work,
 			struct max77836_muic_data, usb_work.work);
 
-	pr_info("%s:%s\n", MUIC_DEV_NAME, __func__);
+	pr_info("%s: attached_dev : 0x%x %s\n", MUIC_DEV_NAME,muic_data->attached_dev,__func__);
 
 	mutex_lock(&muic_data->muic_mutex);
 	muic_data->is_usb_ready = true;
@@ -1139,6 +1139,8 @@ static void max77836_muic_usb_detect(struct work_struct *work)
 	case ATTACHED_DEV_POGO_USB_MUIC:
 #endif /* CONFIG_MUIC_SUPPORT_POGO_USB */
 	case ATTACHED_DEV_JIG_USB_ON_MUIC:
+	case ATTACHED_DEV_JIG_USB_OFF_MUIC:
+	case ATTACHED_DEV_CDP_MUIC:
 		max77836_muic_attach_callback_usb(muic_data);
 		break;
 	default:
