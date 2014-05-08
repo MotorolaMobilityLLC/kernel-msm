@@ -51,4 +51,17 @@
 		gpios = <&msm_gpio 37 0>, /* IRQ */
 			<&msm_gpio 38 0>; /* RESET - Dummy value, unused */
 	};
+
+	lm3697@36 {
+		compatible = "ti,lm3697";
+		reg = <0x36>;
+		ti,enable-gpio = <&msm_gpio 36 0>;
+		backlight {
+			compatible = "ti,lmu-backlight", "ti,lm3697-backlight";
+			lcd {
+				hvled1-used;
+				max-current-milliamp = /bits/ 8 <20>;
+			};
+		};
+	};
 };
