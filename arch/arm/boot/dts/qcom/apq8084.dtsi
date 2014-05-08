@@ -913,7 +913,7 @@
 		interrupts = <0 97 0>;
 		qcom,noise-rjct-scl = <1>;
 		qcom,noise-rjct-sda = <1>;
-		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <50000000>;
 		qcom,sda-gpio = <&msmgpio 10 0>;
 		qcom,scl-gpio = <&msmgpio 11 0>;
@@ -5358,6 +5358,7 @@
 		reg-names = "ramdump";
 		wlan-en-gpio = <&msmgpio 82 0>;
 		vdd-wlan-supply = <&wlan_vreg>;
+		qcom,notify-modem-status;
 
 		qcom,msm-bus,name = "msm-cnss";
 		qcom,msm-bus,num-cases = <4>;
