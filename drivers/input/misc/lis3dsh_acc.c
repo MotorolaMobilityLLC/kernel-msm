@@ -922,6 +922,7 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02)) {
 			printk("***********************report event SM2\n");
+			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_DIS);
 			public_gpio_keys_gpio_report_event();
 		}
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: OUTS_2: 0x%02x\n", __func__, rbuf[0]);
@@ -1664,7 +1665,7 @@ static void lis3dsh_late_resume(struct early_suspend *h)
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++\n", __func__);
 	disable_irq_wake(g_acc->irq1);
 	disable_irq_wake(g_acc->irq2);
-	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
+	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_DIS);
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: ---\n", __func__);
 }
 
@@ -1688,7 +1689,7 @@ static void lis3dsh_fb_late_resume(void)
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++\n", __func__);
 	disable_irq_wake(g_acc->irq1);
 	disable_irq_wake(g_acc->irq2);
-	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
+	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_DIS);
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: ---\n", __func__);
 }
 
