@@ -573,8 +573,8 @@
                 stk,irq-gpio = <&msmgpio 65 0x0>;
                 stk,transmittance = <500>;
                 stk,state-reg = <0x00>;
-                stk,psctrl-reg = <0x71>;
-                stk,alsctrl-reg = <0x39>;
+                stk,psctrl-reg = <0x31>;  /* ps_persistance=1, ps_gain=64X, PS_IT=0.391ms */
+                stk,alsctrl-reg = <0x6B>;  /* als_persistance=4, als_gain=16X, ALS_IT=380ms */
                 stk,ledctrl-reg = <0xFF>;
                 stk,wait-reg = <0x07>;
 		stk,als_thresh_pct = <5>;
