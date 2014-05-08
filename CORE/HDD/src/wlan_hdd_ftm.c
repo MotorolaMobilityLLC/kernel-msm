@@ -602,7 +602,7 @@ static v_U32_t wlan_ftm_postmsg(v_U8_t *cmd_ptr, v_U16_t cmd_len)
        MAC.
 
 
-  \param  hddContextSize: Size of the HDD context to allocate.
+  \param  devHandle: pointer to the OS specific device handle.
 
 
   \return VOS_STATUS_SUCCESS - Scheduler was successfully initialized and
@@ -617,7 +617,7 @@ static v_U32_t wlan_ftm_postmsg(v_U8_t *cmd_ptr, v_U16_t cmd_len)
   \sa wlan_ftm_vos_open()
 
 ---------------------------------------------------------------------------*/
-static VOS_STATUS wlan_ftm_vos_open( v_CONTEXT_t pVosContext, v_SIZE_t hddContextSize )
+static VOS_STATUS wlan_ftm_vos_open( v_CONTEXT_t pVosContext, v_PVOID_t devHandle )
 {
    VOS_STATUS vStatus      = VOS_STATUS_SUCCESS;
    int iter                = 0;
@@ -702,7 +702,7 @@ static VOS_STATUS wlan_ftm_vos_open( v_CONTEXT_t pVosContext, v_SIZE_t hddContex
    /*Open the WDA module */
    vos_mem_set(&macOpenParms, sizeof(macOpenParms), 0);
    macOpenParms.driverType = eDRIVER_TYPE_MFG;
-   vStatus = WDA_open(gpVosContext, gpVosContext->pHDDContext, &macOpenParms);
+   vStatus = WDA_open(gpVosContext, devHandle, &macOpenParms);
    if (!VOS_IS_STATUS_SUCCESS(vStatus))
    {
       /* Critical Error ...  Cannot proceed further */
@@ -1304,7 +1304,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
     }
 
    // Open VOSS
-   vStatus = wlan_ftm_vos_open( pVosContext, 0);
+   vStatus = wlan_ftm_vos_open( pVosContext, pHddCtx->parent_dev);
 
    if ( !VOS_IS_STATUS_SUCCESS( vStatus ))
    {
