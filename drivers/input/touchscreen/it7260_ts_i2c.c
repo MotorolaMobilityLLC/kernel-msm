@@ -611,7 +611,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 	static int x[2] = { (int) -1, (int) -1 };
 	static int y[2] = { (int) -1, (int) -1 };
 	static bool finger[2] = { 0, 0 };
-	static bool flag = 0;
+	static int home_match_flag = 0;
 
 	i2cReadFromIt7260(ts->client, 0x80, &ucQuery, 1);
 	if (ucQuery < 0) {
@@ -717,7 +717,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 }
 #endif
 // ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
-#if 1
+#if 0
 {
 	static unsigned long last_time_detect_home = 0;
 	static int home_match_flag = 0;
@@ -734,114 +734,35 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 #endif
 // ASUS_BSP --- Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
 			if (ret) {
-                // gesture or button
-                if (pucPoint[0] & 0xF0) {
-                    if ((pucPoint[0] & 0x40) && (pucPoint[0] & 0x01)) {
-                        if (pucPoint[2]) {//Button down
-                            switch (pucPoint[1]) {
-                                case 1:
-                                    {
-                                        input_report_key(ts->input_dev, KEY_BACK, 1);
-                                        input_sync(ts->input_dev);
-                                        input_report_key(ts->input_dev, KEY_BACK, 0);
-                                        input_sync(ts->input_dev);
-                                    }
-                                    //"Back" button is down
-                                    break;
-                                case 2:
-                                    {
-                                        input_report_key(ts->input_dev, KEY_MENU, 1);
-                                        input_sync(ts->input_dev);
-                                        input_report_key(ts->input_dev, KEY_MENU, 0);
-                                        input_sync(ts->input_dev);
-                                    }
-                                    //"Menu" button is down
-                                    break;
-                                case 3:
-                                    { 
-                                        input_report_key(ts->input_dev, KEY_HOME, 1);
-                                        input_sync(ts->input_dev);
-                                        input_report_key(ts->input_dev, KEY_HOME, 0);
-                                        input_sync(ts->input_dev);
-                                    }
-                                    //"Home" button is down
-                                    break;
-                                case 4:
-                                    {
-                                        input_report_key(ts->input_dev, KEY_SEARCH, 1);
-                                        input_sync(ts->input_dev);
-                                        input_report_key(ts->input_dev, KEY_SEARCH, 0);
-                                        input_sync(ts->input_dev);
-                                    }
-                                    //"Search" button is down
-                                    break;
-                            }
-                        } else {//Button up
-                            switch (pucPoint[1]) {
-                                case 1:
-                                    //"Back" button is up
-                                    break;
-                                case 2:
-                                    //"Search" button is up
-                                    break;
-                                case 3:
-                                    //"Menu" button is up
-                                    break;
-                                case 4:
-                                    //"Home" button is up
-                                    break;
-                            }
-                        }
-                    }
-                    if (ts->use_irq)
-                        enable_irq(ts->client->irq);
-                    //pr_info("(pucPoint[0] & 0xF0) is true, it's a gesture\n") ;
-                    //pr_info("pucPoint[0]=%x\n", pucPoint[0]);
-                    return;
-                }
+
 				// palm
 				if (pucPoint[1] & 0x01) {
+					if (!home_match_flag){
+						home_match_flag = 1;
+						printk("MagicTouch:HOME KEY DETECTED !!!!\n");
+						strcpy(magic_key,"HOME");
+						kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+					}
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
 					//pr_info("pucPoint 1 is 0x01, it's a palm\n") ;
 					return;
 				}
+				else {
+					home_match_flag = 0;
+				}
+				
 				// no more data
 				if (!(pucPoint[0] & 0x08)) {
 					if (finger[0]) {
-						//input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
-						//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, pressure_point);
-						//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0);
-						//input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x[0]);
-						//input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y[0]);
-						input_mt_sync(ts->input_dev);
-						finger[0] = 0;
-						flag = 1;
-					}
-					if (finger[1]) {
-						//input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
-						//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, pressure_point);
-						//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0);
-						//input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x[1]);
-						//input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y[1]);
-						input_mt_sync(ts->input_dev);
-						finger[1] = 0;
-						flag = 1;
-					}
-					if (flag) {
+						input_report_key(ts->input_dev, BTN_TOUCH,0);
 						input_sync(ts->input_dev);
-						flag = 0;
+						finger[0] = 0;
 					}
+		
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
 					//pr_info("(pucPoint[0] & 0x08) is false, means no more data\n") ;
-					return;
-				}
-				// 3 fingers
-				if (pucPoint[0] & 0x04) {
-					if (ts->use_irq)
-						enable_irq(ts->client->irq);
-					//pr_info("(pucPoint[0] & 0x04) is true, we don't support three fingers\n") ;
 					return;
 				}
 
@@ -853,61 +774,16 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 
 					pressure_point = pucPoint[5] & 0x0f;
 					//printk("=Read_Point1 x=%d y=%d p=%d=\n",xraw,yraw,pressure_point);
-					{
-						static int cnt = 0;
-						cnt ++;
-						if (cnt % 20 == 1)
-							printk("[%d]%d,%d\n",cnt,xraw,yraw);
-					}
 
-					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 1);
-					//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, pressure_point);
-					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 1);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, xraw);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, yraw);
-					input_mt_sync(ts->input_dev);
+					input_report_abs(ts->input_dev, ABS_X, xraw);
+					input_report_abs(ts->input_dev, ABS_Y, yraw);
+					input_report_key(ts->input_dev, BTN_TOUCH,1);
+					input_sync(ts->input_dev);
 					x[0] = xraw;
 					y[0] = yraw;
 					finger[0] = 1;
 					//printk("=input Read_Point1 x=%d y=%d p=%d=\n",xraw,yraw,pressure_point);
-				} else {
-					//input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
-					//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, pressure_point);
-					//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0);
-					//input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x[0]);
-					//input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y[0]);
-					input_mt_sync(ts->input_dev);
-					finger[0] = 0;
-				}
-
-				if (pucPoint[0] & 0x02) {
-					char pressure_point;
-					xraw = ((pucPoint[7] & 0x0F) << 8) + pucPoint[6];
-					yraw = ((pucPoint[7] & 0xF0) << 4) + pucPoint[8];
-
-					pressure_point = pucPoint[9] & 0x0f;
-
-					//printk("=Read_Point2 x=%d y=%d p=%d=\n",xraw,yraw,pressure_point);
-					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 1);
-					//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, pressure_point);
-					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 1);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, xraw);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, yraw);
-					input_mt_sync(ts->input_dev);
-					x[1] = xraw;
-					y[1] = yraw;
-					finger[1] = 1;
-					//printk("input Read_Point2 x=%d y=%d p=%d=\n",xraw,yraw,pressure_point);
-				} else {
-					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
-					//input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, pressure_point);
-					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x[1]);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y[1]);
-					input_mt_sync(ts->input_dev);
-					finger[1] = 0;
-				}
-				input_sync(ts->input_dev);
+				} 
 			}
 		}
 	}
@@ -1107,16 +983,11 @@ static int IT7260_ts_probe(struct i2c_client *client,
     set_bit(KEY_SEARCH,input_dev->keybit);
     set_bit(KEY_MENU,input_dev->keybit);
     set_bit(INPUT_PROP_DIRECT,input_dev->propbit);
-	//set_bit(BTN_TOUCH, input_dev->keybit);
+	set_bit(BTN_TOUCH, input_dev->keybit);
 	//set_bit(BTN_2, input_dev->keybit);
 
-	input_set_abs_params(input_dev, ABS_MT_POSITION_X, 0, SCREEN_X_RESOLUTION, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, 2, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_WIDTH_MAJOR, 0, 15, 0, 0);
 	input_set_abs_params(input_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
 	input_set_abs_params(input_dev, ABS_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
-	input_set_abs_params(input_dev, ABS_PRESSURE, 0, 1, 0, 0);
 	input_err = input_register_device(input_dev);
 	if (input_err) goto input_error;
 
