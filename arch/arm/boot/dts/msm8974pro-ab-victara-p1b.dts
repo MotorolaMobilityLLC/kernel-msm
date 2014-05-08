@@ -28,3 +28,9 @@
         interrupt-names = "hs_phy_irq";
         dwc_usb3-adc_tm = <0>;
 };
+
+&i2c_0 {
+	stm401@39 {
+		stm401_fw_version = "_p0";
+	};
+};

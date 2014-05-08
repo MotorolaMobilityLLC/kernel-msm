@@ -18,3 +18,9 @@
 / {
 	qcom,msm-id = <217 0x4D 0x82A0>;
 };
+
+&i2c_0 {
+	stm401@39 {
+		stm401_fw_version = "_p0";
+	};
+};
