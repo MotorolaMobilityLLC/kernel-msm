@@ -16,9 +16,7 @@ static enum power_supply_property max17048_fuelgauge_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
-	POWER_SUPPLY_PROP_VOLTAGE_AVG,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
-	POWER_SUPPLY_PROP_CURRENT_AVG,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_ENERGY_NOW,
 	POWER_SUPPLY_PROP_CAPACITY,
@@ -220,13 +218,11 @@ static int max17048_fuelgauge_get_property(struct power_supply *psy,
 	switch (psp) {
 		/* Cell voltage (VCELL, mV) */
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-	case POWER_SUPPLY_PROP_VOLTAGE_AVG:
 		val->intval = max17048_fuelgauge_get_vcell(fuelgauge->client);
 		break;
 		/* Current (mA) */
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		/* Average Current (mA) */
-	case POWER_SUPPLY_PROP_CURRENT_AVG:
 		val->intval = max17048_fuelgauge_get_current(fuelgauge->client);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:

@@ -48,7 +48,7 @@ struct android_bat_platform_data {
 	void (*set_charging_enable) (int);
 	int (*poll_charge_source) (struct android_bat_data *);
 	int (*get_capacity) (void);
-	int (*get_temperature) (struct android_bat_data *, int *);
+	void (*get_temperature) (struct android_bat_data *, int *);
 	int (*get_voltage_now)(void);
 	int (*get_current_now)(int *);
 	void (*initial_check)(void);

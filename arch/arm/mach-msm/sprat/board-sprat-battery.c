@@ -21,6 +21,8 @@ struct android_bat_platform_data android_battery_pdata;
 static struct qpnp_vadc_chip *adc_client;
 static struct android_bat_callbacks *bat_callbacks;
 extern int current_cable_type;
+static struct power_supply *charger_power_supply = NULL;
+static struct power_supply *fuelgauge_power_supply = NULL;
 #define ADC_CHECK_COUNT 6
 
 struct sprat_bat_adc_table_data {
@@ -129,15 +131,74 @@ err:
 	return adc_data;
 }
 
-int sprat_bat_get_current_now(int * uA)
+static int sprat_bat_get_charger_power_supply(void)
+{
+	if (!charger_power_supply)
+		charger_power_supply =
+			power_supply_get_by_name(android_battery_pdata.charger_name);
+
+	if (!charger_power_supply) {
+		pr_err_once("%s: failed to get %s\n",
+				__func__, android_battery_pdata.charger_name);
+		return -ENODEV;
+	}
+	return 0;
+}
+
+static int sprat_bat_get_fuelgauge_power_supply(void)
+{
+	if (!fuelgauge_power_supply)
+		fuelgauge_power_supply =
+			power_supply_get_by_name(android_battery_pdata.fuelgauge_name);
+
+	if (!fuelgauge_power_supply) {
+		pr_err_once("%s: failed to get %s\n",
+				__func__, android_battery_pdata.fuelgauge_name);
+		return -ENODEV;
+	}
+	return 0;
+}
+
+static int sprat_bat_get_capacity(void)
+{
+	union power_supply_propval soc;
+	int ret = -ENXIO;
+
+	if (sprat_bat_get_fuelgauge_power_supply())
+		return ret;
+	ret = fuelgauge_power_supply->get_property(
+			fuelgauge_power_supply, POWER_SUPPLY_PROP_CAPACITY, &soc);
+	if (ret >= 0)
+		ret = soc.intval;
+	return ret;
+}
+
+static int sprat_bat_get_voltage_now(void)
+{
+	union power_supply_propval vcell;
+	int ret = -ENXIO;
+
+	if (sprat_bat_get_fuelgauge_power_supply())
+		return ret;
+	ret = fuelgauge_power_supply->get_property(
+			fuelgauge_power_supply, POWER_SUPPLY_PROP_VOLTAGE_NOW, &vcell);
+	if (ret >= 0)
+		ret = vcell.intval;
+	return ret;
+}
+
+static int sprat_bat_get_current_now(int * uA)
 {
 	union power_supply_propval value;
+	int ret = -ENXIO;
 
-	psy_do_property(android_battery_pdata.charger_name, get,
-			POWER_SUPPLY_PROP_CURRENT_NOW, value);
-
-	*uA = value.intval/1000;
-	return 0;
+	if (sprat_bat_get_charger_power_supply())
+		return ret;
+	ret = charger_power_supply->get_property(
+			charger_power_supply, POWER_SUPPLY_PROP_CURRENT_NOW, &value);
+	if(ret >= 0)
+		*uA = value.intval/1000;
+	return ret;
 }
 
 static int sprat_bat_get_temperature_data(struct android_bat_data * battery, int *value)
@@ -153,7 +214,7 @@ static int sprat_bat_get_temperature_data(struct android_bat_data * battery, int
 	temp_table_size = sizeof(temp_table) / sizeof(struct sprat_bat_adc_table_data);
 
 	if (temp_adc < 0)
-		return 1;
+		return -ENXIO;
 
 	battery->temp_adc = temp_adc;
 
@@ -190,18 +251,22 @@ temp_by_adc_goto:
 	pr_debug("%s: Temp(%d), Temp-ADC(%d)\n",
 		__func__, temp, temp_adc);
 
-	return 1;
+	return 0;
 }
 
-static int sprat_bat_get_temperature(struct android_bat_data * battery, int *temp)
+static void sprat_bat_get_temperature(struct android_bat_data * battery, int *temp)
 {
 	union power_supply_propval value;
-	sprat_bat_get_temperature_data(battery, temp);
-	/* Rcomp update */
-	value.intval = *temp;
-	psy_do_property(battery->pdata->fuelgauge_name, set,
-			POWER_SUPPLY_PROP_TEMP, value);
-	return 0;
+	int ret;
+	ret = sprat_bat_get_temperature_data(battery, temp);
+
+	/* If ret is -ENXIO, it couldn't get the temperature ADC*/
+	if(ret >= 0) {
+		/* Rcomp update */
+		value.intval = *temp;
+		psy_do_property(battery->pdata->fuelgauge_name, set,
+				POWER_SUPPLY_PROP_TEMP, value);
+	}
 }
 
 static void sprat_bat_set_charging_enable(int cable_type) {
@@ -270,21 +335,15 @@ static void sprat_bat_unregister_callbacks(void)
 struct android_bat_platform_data android_battery_pdata = {
 	.register_callbacks = sprat_bat_register_callbacks,
 	.unregister_callbacks = sprat_bat_unregister_callbacks,
-
 	.poll_charge_source = sprat_bat_poll_charge_source,
-
-	.initial_check
-		= sprat_bat_initial_check,
-	.set_charging_enable
-		= sprat_bat_set_charging_enable,
-	.get_temperature
-		= sprat_bat_get_temperature,
-	.get_current_now
-		= sprat_bat_get_current_now,
-	.init_adc
-		= sprat_bat_init_adc,
-	.is_poweroff_charging
-		= sprat_bat_is_poweroff_charging,
+	.initial_check = sprat_bat_initial_check,
+	.set_charging_enable = sprat_bat_set_charging_enable,
+	.get_temperature = sprat_bat_get_temperature,
+	.get_capacity = sprat_bat_get_capacity,
+	.get_voltage_now = sprat_bat_get_voltage_now,
+	.get_current_now = sprat_bat_get_current_now,
+	.init_adc = sprat_bat_init_adc,
+	.is_poweroff_charging = sprat_bat_is_poweroff_charging,
 };
 
 MODULE_DESCRIPTION("Sprat board battery file");

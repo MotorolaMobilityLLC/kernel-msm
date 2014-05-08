@@ -42,6 +42,8 @@ static void android_bat_update_data(struct android_bat_data *battery);
 static int android_bat_enable_charging(struct android_bat_data *battery,
 					bool enable);
 
+static void android_bat_charging_timer(struct android_bat_data *battery);
+
 static char *charge_source_str(int charge_source)
 {
 	switch (charge_source) {
@@ -141,44 +143,14 @@ static int android_bat_get_property(struct power_supply *ps,
 		val->intval = 1;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		psy = power_supply_get_by_name(battery->pdata->fuelgauge_name);
-		if (!psy) {
-			dev_err(battery->dev,
-				"%s: Fail to get psy(%s)\n", __func__,
-				battery->pdata->fuelgauge_name);
-			return -ENODATA;
-		} else {
-			ret = psy->get_property(psy,
-				POWER_SUPPLY_PROP_VOLTAGE_NOW, val);
-			if (ret < 0) {
-				dev_err(battery->dev,
-					"%s: Fail to get property(%d)\n",
-					__func__, ret);
-				return -ENODATA;
-			} else {
-				battery->batt_vcell = val->intval;
-			}
-		}
+		val->intval = battery->batt_vcell;
+		if (val->intval == -1)
+			return -EINVAL;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		psy = power_supply_get_by_name(battery->pdata->fuelgauge_name);
-		if (!psy) {
-			dev_err(battery->dev,
-				"%s: Fail to get psy(%s)\n", __func__,
-				battery->pdata->fuelgauge_name);
-			return -ENODATA;
-		} else {
-			ret = psy->get_property(psy,
-					POWER_SUPPLY_PROP_CAPACITY, val);
-			if (ret < 0) {
-				dev_err(battery->dev,
-					"%s: Fail to get property(%d)\n",
-					__func__, ret);
-				return -ENODATA;
-			} else {
-				battery->batt_soc = val->intval;
-			}
-		}
+		val->intval = battery->batt_soc;
+		if (val->intval == -1)
+			return -EINVAL;
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -294,6 +266,74 @@ static void android_bat_get_temp(struct android_bat_data *battery)
 	battery->batt_temp = batt_temp;
 }
 
+static void android_bat_check_charging_status(struct android_bat_data *battery)
+{
+	struct timespec cur_time;
+	mutex_lock(&android_bat_state_lock);
+
+	switch (battery->charging_status) {
+	case POWER_SUPPLY_STATUS_FULL:
+		if (battery->batt_vcell < battery->pdata->recharging_voltage &&
+		    !battery->recharging) {
+			battery->recharging = true;
+			android_bat_enable_charging(battery, true);
+			pr_info("battery: start recharging, v=%d\n",
+				battery->batt_vcell/1000);
+		}
+		break;
+	case POWER_SUPPLY_STATUS_DISCHARGING:
+		break;
+	case POWER_SUPPLY_STATUS_CHARGING:
+		switch (battery->batt_health) {
+		case POWER_SUPPLY_HEALTH_OVERHEAT:
+		case POWER_SUPPLY_HEALTH_COLD:
+		case POWER_SUPPLY_HEALTH_OVERVOLTAGE:
+		case POWER_SUPPLY_HEALTH_DEAD:
+		case POWER_SUPPLY_HEALTH_UNSPEC_FAILURE:
+			battery->charging_status =
+				POWER_SUPPLY_STATUS_NOT_CHARGING;
+			android_bat_enable_charging(battery, false);
+
+			pr_info("battery: Not charging, health=%d\n",
+				battery->batt_health);
+			break;
+		default:
+			break;
+		}
+		break;
+	case POWER_SUPPLY_STATUS_NOT_CHARGING:
+		if (battery->batt_health == POWER_SUPPLY_HEALTH_GOOD) {
+			pr_info("battery: battery health recovered\n");
+			if (battery->charge_source != CHARGE_SOURCE_NONE) {
+				android_bat_enable_charging(battery, true);
+				battery->charging_status
+					= POWER_SUPPLY_STATUS_CHARGING;
+			} else {
+				battery->charging_status
+					= POWER_SUPPLY_STATUS_DISCHARGING;
+			}
+		}
+		break;
+	default:
+		pr_err("%s: Undefined battery status: %d\n", __func__,
+		       battery->charging_status);
+		break;
+	}
+
+	android_bat_charging_timer(battery);
+	get_monotonic_boottime(&cur_time);
+	pr_info("battery: l=%d v=%d c=%d temp=%s%ld.%ld h=%d st=%d%s ct=%lu type=%s\n",
+		battery->batt_soc, battery->batt_vcell/1000,
+		battery->batt_current, battery->batt_temp < 0 ? "-" : "",
+		abs(battery->batt_temp / 10), abs(battery->batt_temp % 10),
+		battery->batt_health, battery->charging_status,
+		   battery->recharging ? "r" : "",
+		   battery->charging_start_time ?
+		   cur_time.tv_sec - battery->charging_start_time : 0,
+		charge_source_str(battery->charge_source));
+	mutex_unlock(&android_bat_state_lock);
+}
+
 /*
  * android_bat_state_lock not held, may call back into
  * android_bat_charge_source_changed.  Gathering data here can be
@@ -306,6 +346,7 @@ static void android_bat_update_data(struct android_bat_data *battery)
 	int ret;
 	int v;
 
+	wake_lock(&battery->monitor_wake_lock);
 	if (battery->pdata->poll_charge_source)
 		battery->charge_source = battery->pdata->poll_charge_source(battery);
 
@@ -327,6 +368,9 @@ static void android_bat_update_data(struct android_bat_data *battery)
 	}
 
 	android_bat_get_temp(battery);
+
+	android_bat_check_charging_status(battery);
+	wake_unlock(&battery->monitor_wake_lock);
 }
 
 static void android_bat_set_charge_time(struct android_bat_data *battery,
@@ -493,8 +537,17 @@ static void android_bat_charger_work(struct work_struct *work)
 
 	mutex_unlock(&android_bat_state_lock);
 	wake_lock_timeout(&battery->charger_wake_lock, HZ * 2);
-	power_supply_changed(&battery->psy_usb);
-	power_supply_changed(&battery->psy_ac);
+
+	switch (battery->charge_source) {
+	case CHARGE_SOURCE_USB:
+		power_supply_changed(&battery->psy_usb);
+		break;
+	case CHARGE_SOURCE_AC:
+		power_supply_changed(&battery->psy_ac);
+		break;
+	default:
+		break;
+	}
 	power_supply_changed(&battery->psy_bat);
 }
 
@@ -502,76 +555,9 @@ static void android_bat_monitor_work(struct work_struct *work)
 {
 	struct android_bat_data *battery =
 		container_of(work, struct android_bat_data, monitor_work);
-	struct timespec cur_time;
 
-	wake_lock(&battery->monitor_wake_lock);
 	android_bat_update_data(battery);
-	mutex_lock(&android_bat_state_lock);
-
-	switch (battery->charging_status) {
-	case POWER_SUPPLY_STATUS_FULL:
-		if (battery->batt_vcell < battery->pdata->recharging_voltage &&
-		    !battery->recharging) {
-			battery->recharging = true;
-			android_bat_enable_charging(battery, true);
-			pr_info("battery: start recharging, v=%d\n",
-				battery->batt_vcell/1000);
-		}
-		break;
-	case POWER_SUPPLY_STATUS_DISCHARGING:
-		break;
-	case POWER_SUPPLY_STATUS_CHARGING:
-		switch (battery->batt_health) {
-		case POWER_SUPPLY_HEALTH_OVERHEAT:
-		case POWER_SUPPLY_HEALTH_COLD:
-		case POWER_SUPPLY_HEALTH_OVERVOLTAGE:
-		case POWER_SUPPLY_HEALTH_DEAD:
-		case POWER_SUPPLY_HEALTH_UNSPEC_FAILURE:
-			battery->charging_status =
-				POWER_SUPPLY_STATUS_NOT_CHARGING;
-			android_bat_enable_charging(battery, false);
-
-			pr_info("battery: Not charging, health=%d\n",
-				battery->batt_health);
-			break;
-		default:
-			break;
-		}
-		break;
-	case POWER_SUPPLY_STATUS_NOT_CHARGING:
-		if (battery->batt_health == POWER_SUPPLY_HEALTH_GOOD) {
-			pr_info("battery: battery health recovered\n");
-			if (battery->charge_source != CHARGE_SOURCE_NONE) {
-				android_bat_enable_charging(battery, true);
-				battery->charging_status
-					= POWER_SUPPLY_STATUS_CHARGING;
-			} else {
-				battery->charging_status
-					= POWER_SUPPLY_STATUS_DISCHARGING;
-			}
-		}
-		break;
-	default:
-		pr_err("%s: Undefined battery status: %d\n", __func__,
-		       battery->charging_status);
-		break;
-	}
-
-	android_bat_charging_timer(battery);
-	get_monotonic_boottime(&cur_time);
-	pr_info("battery: l=%d v=%d c=%d temp=%s%ld.%ld h=%d st=%d%s ct=%lu type=%s\n",
-		battery->batt_soc, battery->batt_vcell/1000,
-		battery->batt_current, battery->batt_temp < 0 ? "-" : "",
-		abs(battery->batt_temp / 10), abs(battery->batt_temp % 10),
-		battery->batt_health, battery->charging_status,
-		   battery->recharging ? "r" : "",
-		   battery->charging_start_time ?
-		   cur_time.tv_sec - battery->charging_start_time : 0,
-		charge_source_str(battery->charge_source));
-	mutex_unlock(&android_bat_state_lock);
 	power_supply_changed(&battery->psy_bat);
-	battery->last_poll = ktime_get_boottime();
-	wake_unlock(&battery->monitor_wake_lock);
 	return;
 }
 
@@ -835,7 +821,6 @@ static int android_bat_probe(struct platform_device *pdev)
 		battery->pdata->init_adc(battery);
 
 	wake_lock(&battery->monitor_wake_lock);
-	battery->last_poll = ktime_get_boottime();
 	queue_work(battery->monitor_wqueue, &battery->monitor_work);
 
 	battery->debugfs_entry =
