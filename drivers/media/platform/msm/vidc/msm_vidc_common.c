@@ -52,10 +52,10 @@ static bool is_turbo_requested(struct msm_vidc_core *core,
 		enum session_type type)
 {
 	struct msm_vidc_inst *inst = NULL;
-	bool wants_turbo = false;
 
-	mutex_lock(&core->sync_lock);
 	list_for_each_entry(inst, &core->instances, list) {
+		bool wants_turbo = false;
+
 		mutex_lock(&inst->lock);
 		if (inst->session_type == type &&
 			inst->state >= MSM_VIDC_OPEN_DONE &&
@@ -65,11 +65,10 @@ static bool is_turbo_requested(struct msm_vidc_core *core,
 		mutex_unlock(&inst->lock);
 
 		if (wants_turbo)
-			goto ret;
+			return true;
 	}
-ret:
-	mutex_unlock(&core->sync_lock);
-	return wants_turbo;
+
+	return false;
 }
 
 static bool is_thumbnail_session(struct msm_vidc_inst *inst)
@@ -95,7 +94,6 @@ static int msm_comm_get_load(struct msm_vidc_core *core,
 		dprintk(VIDC_ERR, "Invalid args: %p\n", core);
 		return -EINVAL;
 	}
-	mutex_lock(&core->sync_lock);
 	list_for_each_entry(inst, &core->instances, list) {
 		mutex_lock(&inst->lock);
 		if (inst->session_type == type &&
@@ -108,7 +106,6 @@ static int msm_comm_get_load(struct msm_vidc_core *core,
 		}
 		mutex_unlock(&inst->lock);
 	}
-	mutex_unlock(&core->sync_lock);
 	return num_mbs_per_sec;
 }
 
@@ -436,7 +433,6 @@ static void handle_session_init_done(enum command_response cmd, void *data)
 			inst->capability.height = session_init_done->height;
 			inst->capability.frame_rate =
 				session_init_done->frame_rate;
-			inst->capability.hier_p = session_init_done->hier_p;
 			inst->capability.capability_set = true;
 
 			inst->output_alloc_mode_supported =
@@ -697,8 +693,6 @@ static void handle_sys_error(enum command_response cmd, void *data)
 			mutex_lock(&core->lock);
 			core->state = VIDC_CORE_INVALID;
 			mutex_unlock(&core->lock);
-
-			mutex_lock(&core->sync_lock);
 			list_for_each_entry(inst, &core->instances,
 					list) {
 				mutex_lock(&inst->lock);
@@ -720,7 +714,6 @@ static void handle_sys_error(enum command_response cmd, void *data)
 				msm_vidc_queue_v4l2_event(inst,
 						V4L2_EVENT_MSM_VIDC_SYS_ERROR);
 			}
-			mutex_unlock(&core->sync_lock);
 		} else {
 			dprintk(VIDC_ERR,
 				"Got SYS_ERR but unable to identify core");
@@ -748,8 +741,6 @@ static void handle_sys_watchdog_timeout(enum command_response cmd, void *data)
 	mutex_lock(&core->lock);
 	core->state = VIDC_CORE_INVALID;
 	mutex_unlock(&core->lock);
-
-	mutex_lock(&core->sync_lock);
 	list_for_each_entry(inst, &core->instances, list) {
 		if (inst) {
 			msm_vidc_queue_v4l2_event(inst,
@@ -771,7 +762,6 @@ static void handle_sys_watchdog_timeout(enum command_response cmd, void *data)
 			mutex_unlock(&inst->lock);
 		}
 	}
-	mutex_unlock(&core->sync_lock);
 }
 
 static void handle_session_close(enum command_response cmd, void *data)
@@ -859,6 +849,7 @@ static void handle_ebd(enum command_response cmd, void *data)
 		if ((u8 *)vb->v4l2_planes[0].m.userptr !=
 			response->input_done.packet_buffer)
 			dprintk(VIDC_INFO, "Unexpected buffer address\n");
+		vb->v4l2_buf.flags = 0;
 		empty_buf_done = (struct vidc_hal_ebd *)&response->input_done;
 		if (empty_buf_done) {
 			if (empty_buf_done->status == VIDC_ERR_NOT_SUPPORTED) {
@@ -1031,7 +1022,7 @@ static void handle_fbd(enum command_response cmd, void *data)
 		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_READONLY)
 			vb->v4l2_buf.flags |= V4L2_QCOM_BUF_FLAG_READONLY;
 		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_EOS)
-			vb->v4l2_buf.flags |= V4L2_QCOM_BUF_FLAG_EOS;
+			vb->v4l2_buf.flags |= V4L2_BUF_FLAG_EOS;
 		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_CODECCONFIG)
 			vb->v4l2_buf.flags &= ~V4L2_QCOM_BUF_FLAG_CODECCONFIG;
 		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_SYNCFRAME)
@@ -1044,8 +1035,6 @@ static void handle_fbd(enum command_response cmd, void *data)
 			vb->v4l2_buf.flags |= V4L2_QCOM_BUF_DATA_CORRUPT;
 		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_DROP_FRAME)
 			vb->v4l2_buf.flags |= V4L2_QCOM_BUF_DROP_FRAME;
-		if (fill_buf_done->flags1 & HAL_BUFFERFLAG_MBAFF)
-			vb->v4l2_buf.flags |= V4L2_MSM_BUF_FLAG_MBAFF;
 		switch (fill_buf_done->picture_type) {
 		case HAL_PICTURE_IDR:
 			vb->v4l2_buf.flags |= V4L2_QCOM_BUF_FLAG_IDRFRAME;
@@ -1103,7 +1092,7 @@ static void handle_fbd(enum command_response cmd, void *data)
 					struct vb2_buffer, queued_entry);
 				vb->v4l2_planes[0].bytesused = 0;
 				vb->v4l2_planes[0].data_offset = 0;
-				vb->v4l2_buf.flags |= V4L2_QCOM_BUF_FLAG_EOS;
+				vb->v4l2_buf.flags |= V4L2_BUF_FLAG_EOS;
 				mutex_lock(&q->lock);
 				vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
 				mutex_unlock(&q->lock);
@@ -1361,7 +1350,7 @@ static int msm_comm_init_core(struct msm_vidc_inst *inst)
 		return -EINVAL;
 	hdev = core->device;
 
-	mutex_lock(&core->lock);
+	mutex_lock(&core->sync_lock);
 	if (core->state >= VIDC_CORE_INIT) {
 		dprintk(VIDC_INFO, "Video core: %d is already in state: %d\n",
 				core->id, core->state);
@@ -1391,18 +1380,19 @@ static int msm_comm_init_core(struct msm_vidc_inst *inst)
 		dprintk(VIDC_ERR, "Failed to init core, id = %d\n", core->id);
 		goto fail_core_init;
 	}
+	mutex_lock(&core->lock);
 	core->state = VIDC_CORE_INIT;
-
+	mutex_unlock(&core->lock);
 core_already_inited:
 	change_inst_state(inst, MSM_VIDC_CORE_INIT);
-	mutex_unlock(&core->lock);
+	mutex_unlock(&core->sync_lock);
 	return rc;
 fail_core_init:
 	call_hfi_op(hdev, unload_fw, hdev->hfi_device_data);
 fail_load_fw:
 	msm_comm_unvote_buses(core, DDR_MEM);
 fail_scale_bus:
-	mutex_unlock(&core->lock);
+	mutex_unlock(&core->sync_lock);
 	return rc;
 }
 
@@ -1420,15 +1410,13 @@ static int msm_vidc_deinit_core(struct msm_vidc_inst *inst)
 	core = inst->core;
 	hdev = core->device;
 
-	mutex_lock(&core->lock);
+	mutex_lock(&core->sync_lock);
 	if (core->state == VIDC_CORE_UNINIT) {
 		dprintk(VIDC_INFO, "Video core: %d is already in state: %d\n",
 				core->id, core->state);
 		goto core_already_uninited;
 	}
-
 	msm_comm_scale_clocks_and_bus(inst);
-
 	if (list_empty(&core->instances)) {
 		if (core->resources.has_ocmem) {
 			if (inst->state != MSM_VIDC_CORE_INVALID)
@@ -1442,7 +1430,9 @@ static int msm_vidc_deinit_core(struct msm_vidc_inst *inst)
 							core->id);
 			goto exit;
 		}
+		mutex_lock(&core->lock);
 		core->state = VIDC_CORE_UNINIT;
+		mutex_unlock(&core->lock);
 		call_hfi_op(hdev, unload_fw, hdev->hfi_device_data);
 		if (core->resources.has_ocmem)
 			msm_comm_unvote_buses(core, DDR_MEM|OCMEM_MEM);
@@ -1452,7 +1442,7 @@ static int msm_vidc_deinit_core(struct msm_vidc_inst *inst)
 core_already_uninited:
 	change_inst_state(inst, MSM_VIDC_CORE_UNINIT);
 exit:
-	mutex_unlock(&core->lock);
+	mutex_unlock(&core->sync_lock);
 	return rc;
 }
 
@@ -1579,8 +1569,6 @@ static void msm_vidc_print_running_insts(struct msm_vidc_core *core)
 	struct msm_vidc_inst *temp;
 	dprintk(VIDC_ERR, "Running instances:\n");
 	dprintk(VIDC_ERR, "%4s|%4s|%4s|%4s\n", "type", "w", "h", "fps");
-
-	mutex_lock(&core->sync_lock);
 	list_for_each_entry(temp, &core->instances, list) {
 		mutex_lock(&temp->lock);
 		if (temp->state >= MSM_VIDC_OPEN_DONE &&
@@ -1593,7 +1581,6 @@ static void msm_vidc_print_running_insts(struct msm_vidc_core *core)
 		}
 		mutex_unlock(&temp->lock);
 	}
-	mutex_unlock(&core->sync_lock);
 }
 
 static int msm_vidc_load_resources(int flipped_state,
@@ -2176,7 +2163,7 @@ int msm_comm_qbuf(struct vb2_buffer *vb)
 		}
 		if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 			frame_data.buffer_type = HAL_BUFFER_INPUT;
-			if (vb->v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_EOS) {
+			if (vb->v4l2_buf.flags & V4L2_BUF_FLAG_EOS) {
 				frame_data.flags |= HAL_BUFFERFLAG_EOS;
 				dprintk(VIDC_DBG,
 					"Received EOS on output capability\n");
@@ -2786,14 +2773,11 @@ enum hal_extradata_id msm_comm_get_hal_extradata_index(
 	case V4L2_MPEG_VIDC_EXTRADATA_METADATA_FILLER:
 		ret = HAL_EXTRADATA_METADATA_FILLER;
 		break;
-	case V4L2_MPEG_VIDC_EXTRADATA_ASPECT_RATIO:
+	case V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO:
 		ret = HAL_EXTRADATA_ASPECT_RATIO;
 		break;
 	case V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP:
 		ret = HAL_EXTRADATA_MPEG2_SEQDISP;
-		break;
-	case V4L2_MPEG_VIDC_EXTRADATA_LTR:
-		ret = HAL_EXTRADATA_LTR_INFO;
 		break;
 	default:
 		dprintk(VIDC_WARN, "Extradata not found: %d\n", index);

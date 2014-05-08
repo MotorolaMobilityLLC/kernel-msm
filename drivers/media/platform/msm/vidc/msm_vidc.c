@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -183,15 +183,6 @@ int msm_vidc_g_ctrl(void *instance, struct v4l2_control *control)
 		return msm_vdec_g_ctrl(instance, control);
 	if (inst->session_type == MSM_VIDC_ENCODER)
 		return msm_venc_g_ctrl(instance, control);
-	return -EINVAL;
-}
-int msm_vidc_s_ext_ctrl(void *instance, struct v4l2_ext_controls *control)
-{
-	struct msm_vidc_inst *inst = instance;
-	if (!inst || !control)
-		return -EINVAL;
-	if (inst->session_type == MSM_VIDC_ENCODER)
-		return msm_venc_s_ext_ctrl(instance, control);
 	return -EINVAL;
 }
 int msm_vidc_reqbufs(void *instance, struct v4l2_requestbuffers *b)
@@ -1041,6 +1032,8 @@ static int setup_event_queue(void *inst,
 {
 	int rc = 0;
 	struct msm_vidc_inst *vidc_inst = (struct msm_vidc_inst *)inst;
+	spin_lock_init(&pvdev->fh_lock);
+	INIT_LIST_HEAD(&pvdev->fh_list);
 
 	v4l2_fh_init(&vidc_inst->event_handler, pvdev);
 	v4l2_fh_add(&vidc_inst->event_handler);
@@ -1121,6 +1114,7 @@ void *msm_vidc_open(int core_id, int session_type)
 	INIT_LIST_HEAD(&inst->pendingq);
 	INIT_LIST_HEAD(&inst->internalbufs);
 	INIT_LIST_HEAD(&inst->persistbufs);
+	INIT_LIST_HEAD(&inst->ctrl_clusters);
 	INIT_LIST_HEAD(&inst->registered_bufs);
 	init_waitqueue_head(&inst->kernel_event_queue);
 	inst->state = MSM_VIDC_CORE_UNINIT_DONE;
@@ -1170,9 +1164,9 @@ void *msm_vidc_open(int core_id, int session_type)
 
 	setup_event_queue(inst, &core->vdev[core_id].vdev);
 
-	mutex_lock(&core->sync_lock);
+	mutex_lock(&core->lock);
 	list_add_tail(&inst->list, &core->instances);
-	mutex_unlock(&core->sync_lock);
+	mutex_unlock(&core->lock);
 	return inst;
 fail_init:
 	vb2_queue_release(&inst->bufq[OUTPUT_PORT].vb2_bufq);
@@ -1252,7 +1246,7 @@ int msm_vidc_close(void *instance)
 	if (!inst)
 		return -EINVAL;
 
-	v4l2_fh_del(&inst->event_handler);
+
 	list_for_each_safe(ptr, next, &inst->registered_bufs) {
 		bi = list_entry(ptr, struct buffer_info, list);
 		if (bi->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
