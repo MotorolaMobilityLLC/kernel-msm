@@ -1754,10 +1754,14 @@ static struct clk_freq_tbl ftbl_mdss_mdp_clk[] = {
 	F_MMSS(  60000000,      gpll0,  10,    0,    0),
 	F_MMSS(  75000000,      gpll0,   8,    0,    0),
 	F_MMSS(  92310000,      gpll0, 6.5,    0,    0),
+//ASUS_BSP +++ Jason Chang "[WI500Q][mdp]restrict the max clock rate of mdp"
+#ifndef ASUS_PERFORMANCE_RESTRICTION
 	F_MMSS( 100000000,      gpll0,   6,    0,    0),
 	F_MMSS( 133330000, mmpll0_pll,   6,    0,    0),
 	F_MMSS( 177780000, mmpll0_pll, 4.5,    0,    0),
 	F_MMSS( 200000000, mmpll0_pll,   4,    0,    0),
+#endif
+//ASUS_BSP --- Jason Chang "[WI500Q][mdp]restrict the max clock rate of mdp"
 	F_END
 };
 

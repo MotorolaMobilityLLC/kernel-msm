@@ -709,6 +709,13 @@ ifeq ($(TARGET_BUILD_VARIANT), eng)
 endif
 # ASUS_BSP : for eng build
 
+# ASUS_BSP : for pdk build
+ifeq ($(TARGET_PRODUCT), anthias)
+	KBUILD_CPPFLAGS += -DASUS_PDK_BUILD=1
+	KBUILD_CPPFLAGS += -DASUS_PERFORMANCE_RESTRICTION=1
+endif
+# ASUS_BSP : for pdk build
+
 # +++ ASUS_BSP : for passing building android
 KBUILD_CPPFLAGS += -DKERNEL_VERSION_310
 # --- ASUS_BSP : for passing building android
