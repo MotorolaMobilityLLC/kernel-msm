@@ -65,9 +65,6 @@ static bool dload_mode_enabled;
 static void *emergency_dload_mode_addr;
 static bool scm_dload_supported;
 
-extern int androidboot_is_recovery;
-extern int androidboot_mode_charger;
-
 static int dload_set(const char *val, struct kernel_param *kp);
 static int download_mode = 1;
 module_param_call(download_mode, dload_set, param_get_int,
@@ -108,10 +105,6 @@ void set_dload_mode(int on)
 #endif
 }
 EXPORT_SYMBOL(set_dload_mode);
-static bool get_dload_mode(void)
-{
-	return dload_mode_enabled;
-}
 
 static void enable_emergency_dload_mode(void)
 {
@@ -226,12 +219,9 @@ static void msm_restart_prepare(const char *cmd)
 #endif
 #endif
 	pr_info("preparing for restart now\n");
-	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0')
-	   || androidboot_is_recovery || androidboot_mode_charger)
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
-	else
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+
+	/* Memory contents must be maintained, so use warm reset only. */
+	qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
