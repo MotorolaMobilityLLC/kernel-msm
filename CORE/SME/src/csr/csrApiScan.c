@@ -431,7 +431,10 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
             }
             pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = numChn;
         }
-
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                 "%s: Total Number of channels to scan : %d "
+                 "Splitted in group of %d ", __func__, numChn,
+                  nNumChanCombinedConc);
         //Whenever we get a scan request with multiple channels we break it up into 2 requests
         //First request  for first channel to scan and second request to scan remaining channels
         if ( numChn > nNumChanCombinedConc)
