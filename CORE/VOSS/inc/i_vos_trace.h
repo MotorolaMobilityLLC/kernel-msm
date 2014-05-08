@@ -150,4 +150,6 @@ void __printf(3,4) vos_snprintf(char *strBuffer, unsigned  int size,
 
 #endif
 
+#define VOS_RETURN_ADDRESS  __builtin_return_address(0)
+
 #endif
