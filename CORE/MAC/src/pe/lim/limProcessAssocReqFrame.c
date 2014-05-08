@@ -1070,7 +1070,6 @@ sendIndToSme:
             pStaDs->propCapability &= pAssocReq->propIEinfo.capability;
     }
 
-    pStaDs->mlmStaContext.mlmState = eLIM_MLM_WT_ASSOC_CNF_STATE;
     pStaDs->valid                  = 0;
     pStaDs->mlmStaContext.authType = authType;
     pStaDs->staType = STA_ENTRY_PEER;

@@ -287,10 +287,14 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
          * Requesting STA is in some 'transient' state?
          * Log error.
          */
+        if (pStaDs->mlmStaContext.mlmState == eLIM_MLM_WT_ASSOC_CNF_STATE)
+            pStaDs->mlmStaContext.updateContext = 1;
+
         PELOGE(limLog(pMac, LOGE,
                FL("received Disassoc frame from peer that is in state %X, addr "
                MAC_ADDRESS_STR),
                pStaDs->mlmStaContext.mlmState, MAC_ADDR_ARRAY(pHdr->sa));)
+
     } // if (pStaDs->mlmStaContext.mlmState != eLIM_MLM_LINK_ESTABLISHED_STATE)
 
     pStaDs->mlmStaContext.cleanupTrigger = eLIM_PEER_ENTITY_DISASSOC;
