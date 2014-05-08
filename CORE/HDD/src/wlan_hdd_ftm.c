@@ -1545,13 +1545,6 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
         hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Failed to configure 19.2 MHz Clock", __func__);
         goto err_nl_srv_init;
     }
-#ifdef HDD_SESSIONIZE
-    //Turn off carrier state
-    netif_carrier_off(pAdapter->dev);
-
-    //Stop the Interface TX queue. Just being safe
-    netif_tx_disable(pAdapter->dev);
-#endif
 
    pHddCtx->ftm.processingNVTable    = NV_MAX_TABLE;
    pHddCtx->ftm.targetNVTableSize    = 0;
