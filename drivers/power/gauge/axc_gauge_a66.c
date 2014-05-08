@@ -229,15 +229,28 @@ int64_t read_battery_id(void)
 	return g_BatteryID_value;
 }
 //Hank read BatteryID---
+extern int g_ibat_500;
+extern void pm8226_chg_ibatmax_set(int chg_current);
 static int init_resistor_cali(AXC_Gauge_A66 *this)
 {
 	struct file *fd;
+	struct file *fd_ibat;
 	mm_segment_t mmseg_fs;
 	int FileLength = 0;
 	mytemp lnResistorCalibrationData;
 
 	mmseg_fs = get_fs();
 	set_fs(KERNEL_DS);
+
+	fd_ibat = filp_open( "/data/ibat_500", O_RDONLY,0);
+	if (IS_ERR(fd_ibat)){
+		printk("can not open /data/ibat_500\n");
+	}
+	else{
+		printk("set ibat_max to 500mA\n");
+		g_ibat_500 = 1;
+		pm8226_chg_ibatmax_set(500);
+	}
 
 	fd = filp_open( BATTERY_RESISTOR_CALIBRATION_FILE_PATH, O_RDONLY,0);
 	if (IS_ERR(fd))

@@ -3019,11 +3019,16 @@ qpnp_chg_ibatterm_set(struct qpnp_chg_chip *chip, int term_current)
 
 #define QPNP_CHG_IBATMAX_MIN	50
 #define QPNP_CHG_IBATMAX_MAX	3250
+int g_ibat_500 = 0;
 static int
 qpnp_chg_ibatmax_set(struct qpnp_chg_chip *chip, int chg_current)
 {
 	u8 temp;
 
+	if(g_ibat_500){
+		chg_current = 500;
+	}
+	
 	if (chg_current < QPNP_CHG_IBATMAX_MIN
 			|| chg_current > QPNP_CHG_IBATMAX_MAX) {
 		pr_err("bad mA=%d asked to set\n", chg_current);
@@ -3032,6 +3037,11 @@ qpnp_chg_ibatmax_set(struct qpnp_chg_chip *chip, int chg_current)
 	temp = chg_current / QPNP_CHG_I_STEP_MA;
 	return qpnp_chg_masked_write(chip, chip->chgr_base + CHGR_IBAT_MAX,
 			QPNP_CHG_I_MASK, temp, 1);
+}
+
+void pm8226_chg_ibatmax_set(int chg_current)
+{
+	qpnp_chg_ibatmax_set(g_qpnp_chg_chip, chg_current);
 }
 
 static int
