@@ -24,6 +24,7 @@
 
 #define DWC3_IDEV_CHG_MAX 1500
 #define DWC3_HVDCP_CHG_MAX 1800
+#define DWC3_IDEV_CHG_MIN 500
 
 /*
  * Module param to override current drawn for DCP charger
