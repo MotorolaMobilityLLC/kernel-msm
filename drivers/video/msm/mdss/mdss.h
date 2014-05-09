@@ -154,6 +154,9 @@ struct mdss_data_type {
 	struct mdss_fudge_factor ib_factor;
 	struct mdss_fudge_factor clk_factor;
 
+	u32 *clock_levels;
+	u32 nclk_lvl;
+
 	struct mdss_hw_settings *hw_settings;
 
 	struct mdss_mdp_pipe *vig_pipes;
