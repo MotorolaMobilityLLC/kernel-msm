@@ -438,17 +438,17 @@ static int Upgrade_FW_CFG(void)
 	fs = get_fs();
 	set_fs(get_ds());
 	
-	fw_fd = filp_open("/data/it7260.fw", O_RDONLY, 0);
+	fw_fd = filp_open("/system/etc/firmware/it7260.fw", O_RDONLY, 0);
 	if (fw_fd < 0)
-		printk("open /data/it7260.fw failed\n");
+		printk("open /system/etc/firmware/it7260.fw failed\n");
 	else
 		fw_size = fw_fd->f_op->read(fw_fd, fw_buf, 0x8000, &fw_fd->f_pos);
 	printk("fw_ver : %x,%x,%x,%x\n",fw_buf[8], fw_buf[9], fw_buf[10], fw_buf[11]);
 	printk("--------------------- fw_size = %x\n", fw_size);
 
-	config_fd = filp_open("/data/it7260.cfg", O_RDONLY, 0);
+	config_fd = filp_open("/system/etc/firmware/it7260.cfg", O_RDONLY, 0);
 	if (config_fd < 0)
-		printk("open /data/it7260.cfg failed\n");
+		printk("open /system/etc/firmware/it7260.cfg failed\n");
 	else
 		config_size = config_fd->f_op->read(config_fd, config_buf, 0x500, &config_fd->f_pos);
 	printk("cfg_ver : %x,%x,%x,%x\n",config_buf[config_size-8], config_buf[config_size-7], config_buf[config_size-6], config_buf[config_size-5]);
