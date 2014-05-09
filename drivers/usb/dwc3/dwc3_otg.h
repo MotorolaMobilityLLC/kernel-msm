@@ -23,6 +23,7 @@
 #include "power.h"
 
 #define DWC3_IDEV_CHG_MAX 1500
+#define DWC3_IDEV_CHG_MIN 500
 
 struct dwc3_charger;
 
