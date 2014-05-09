@@ -11,3 +11,14 @@
  */
 
 #include "apq8026-lenok.dtsi"
+
+&soc {
+	i2c@f9923000 {
+		max17050@36 {
+			status = "okay";
+		};
+		bq27421@55 {
+			status = "disabled";
+		};
+	};
+};

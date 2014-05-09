@@ -11,3 +11,32 @@
  */
 
 #include "apq8026-lenok.dtsi"
+
+&soc {
+	i2c@f9923000 {
+		status = "disabled";
+	};
+
+	i2c@0 {
+		compatible = "i2c-gpio";
+		gpios = <&msmgpio 3 0 /* sda */
+			 &msmgpio 2 0 /* scl */
+			>;
+		i2c-gpio,sda-open-drain;
+		i2c-gpio,scl-open-drain;
+		i2c-gpio,delay-us = <2>;        /* ~100 kHz */
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+
+		bq27421@55 {
+			compatible = "ti,bq27421";
+			reg = <0x55>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <31 2>;
+			bq27421,ext_batt_psy;
+			bq27421,full_design = <600>;
+			status = "okay";
+		};
+	};
+};

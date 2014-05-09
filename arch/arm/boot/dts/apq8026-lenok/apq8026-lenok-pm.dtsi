@@ -373,6 +373,16 @@
 			maxim,temperature = <0x1400>;
 			maxim,dpacc = <0x0C80>;
 			maxim,param-version = <0x1>;
+			status = "disabled";
+		};
+		bq27421@55 {
+			compatible = "ti,bq27421";
+			reg = <0x55>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <31 2>;
+			bq27421,ext_batt_psy;
+			bq27421,full_design = <600>;
+			status = "okay";
 		};
 	};
 
