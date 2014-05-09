@@ -43,8 +43,11 @@ static int inv_push_marker_to_buffer(struct inv_mpu_state *st, u16 hdr)
 	u8 buf[IIO_BUFFER_BYTES];
 
 	memcpy(buf, &hdr, sizeof(hdr));
+#ifdef CONFIG_INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
-
+#else
+	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+#endif
 	return 0;
 }
 
@@ -58,10 +61,17 @@ static int inv_push_8bytes_buffer(struct inv_mpu_state *st, u16 hdr,
 	memcpy(buf, &hdr, sizeof(hdr));
 	for (i = 0; i < 3; i++)
 		memcpy(&buf[2 + i * 2], &d[i], sizeof(d[i]));
+#ifdef CONFIG_INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
+#else
+	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+#endif
 	memcpy(buf, &t, sizeof(t));
+#ifdef CONFIG_INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
-
+#else
+	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+#endif
 	return 0;
 }
 
@@ -74,12 +84,24 @@ static int inv_push_16bytes_buffer(struct inv_mpu_state *st, u16 hdr, u64 t,
 
 	memcpy(buf, &hdr, sizeof(hdr));
 	memcpy(buf + 4, &q[0], sizeof(q[0]));
+#ifdef CONFIG_INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
+#else
+	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+#endif
 	for (i = 0; i < 2; i++)
 		memcpy(buf + 4 * i, &q[i + 1], sizeof(q[i]));
+#ifdef CONFIG_INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
+#else
+	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+#endif
 	memcpy(buf, &t, sizeof(t));
+#ifdef CONFIG_INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
+#else
+	iio_push_to_buffer(indio_dev->buffer, buf, 0);
+#endif
 
 	return 0;
 }

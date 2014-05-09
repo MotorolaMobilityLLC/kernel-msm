@@ -30,3 +30,11 @@ config DTS_INV_MPU_IIO
 	  This enables Invensense MPU devices to use Device Tree Structure.
 	  DTS must be enabled in the system.
 
+config INV_KERNEL_3_10
+	bool  "Invensense MPU driver support for 3.10 kernel"
+	depends on INV_MPU_IIO
+	default n
+	help
+	  This enables Invensense MPU devices for 3.10 kernel
+
+

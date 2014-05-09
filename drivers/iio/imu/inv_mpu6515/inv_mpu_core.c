@@ -2713,7 +2713,11 @@ static int inv_mpu_probe(struct i2c_client *client,
 		pr_err("I2c function error\n");
 		goto out_no_free;
 	}
+#ifdef CONFIG_INV_KERNEL_3_10
 	indio_dev = iio_device_alloc(sizeof(*st));
+#else
+	indio_dev = iio_allocate_device(sizeof(*st));
+#endif
 	if (indio_dev == NULL) {
 		pr_err("memory allocation failed\n");
 		result =  -ENOMEM;
@@ -2832,7 +2836,11 @@ out_remove_ring:
 out_unreg_ring:
 	inv_mpu_unconfigure_ring(indio_dev);
 out_free:
+#ifdef CONFIG_INV_KERNEL_3_10
 	iio_device_free(indio_dev);
+#else
+	iio_free_device(indio_dev);
+#endif
 out_no_free:
 	dev_err(&client->adapter->dev, "%s failed %d\n", __func__, result);
 	return -EIO;
@@ -2877,8 +2885,11 @@ static int inv_mpu_remove(struct i2c_client *client)
 		inv_mpu_remove_trigger(indio_dev);
 	iio_buffer_unregister(indio_dev);
 	inv_mpu_unconfigure_ring(indio_dev);
+#ifdef CONFIG_INV_KERNEL_3_10
 	iio_device_free(indio_dev);
-
+#else
+	iio_free_device(indio_dev);
+#endif
 	dev_info(&client->adapter->dev, "inv-mpu-iio module removed.\n");
 
 	return 0;
@@ -2888,6 +2899,7 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 {
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 	int result;
+	int counter;
 
 	if (st->chip_config.dmp_on &&
 		st->chip_config.enable &&
@@ -2895,6 +2907,13 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 		(!st->chip_config.dmp_event_int_on)) {
 		/* turn off data interrupt in suspend mode;turn on resume */
 		result = inv_set_interrupt_on_gesture_event(st, suspend);
+		if (result)
+			return result;
+		if (suspend)
+			counter = INT_MAX;
+		else
+			counter = st->batch.counter;
+		result = write_be32_key_to_mem(st, counter, KEY_BM_BATCH_THLD);
 		if (result)
 			return result;
 	}
@@ -2918,7 +2937,6 @@ static int inv_mpu_resume(struct device *dev)
 	/* add code according to different request Start */
 	pr_debug("%s inv_mpu_resume\n", st->hw->name);
 	mutex_lock(&indio_dev->mlock);
-	st->suspend_state = false;
 
 	result = 0;
 	if (st->chip_config.dmp_on && st->chip_config.enable) {
@@ -2978,15 +2996,25 @@ static int inv_mpu_suspend(struct device *dev)
 		/* in non DMP case, just turn off the power */
 		result |= st->set_power_state(st, false);
 	}
-	/* add code according to different request End */
 	st->suspend_state = true;
-	mutex_lock(&st->suspend_resume_lock);
+	/* add code according to different request End */
 
 	return 0;
 }
 
+static int inv_mpu_suspend_noirq(struct device *dev)
+{
+	struct iio_dev *indio_dev = i2c_get_clientdata(to_i2c_client(dev));
+	struct inv_mpu_state *st = iio_priv(indio_dev);
+
+	mutex_lock(&st->suspend_resume_lock);
+	st->suspend_state = false;
+
+	return 0;
+}
 static const struct dev_pm_ops inv_mpu_pmops = {
 	.suspend       = inv_mpu_suspend,
+	.suspend_noirq = inv_mpu_suspend_noirq,
 	.resume        = inv_mpu_resume,
 };
 #define INV_MPU_PMOPS (&inv_mpu_pmops)
