@@ -139,7 +139,7 @@ static irqreturn_t handle_wake_irq(int irq, void *data)
 		dev->rc_idx);
 
 	if (!dev->enumerated) {
-		PCIE_DBG(dev, "Start enumeating RC%d\n", dev->rc_idx);
+		PCIE_DBG(dev, "IRQ enumerating RC%d\n", dev->rc_idx);
 		schedule_work(&dev->handle_wake_work);
 	} else {
 		PCIE_DBG(dev, "Wake up RC%d\n", dev->rc_idx);
@@ -529,33 +529,13 @@ int32_t msm_pcie_irq_init(struct msm_pcie_dev_t *dev)
 		return rc;
 	}
 
-	/* register handler for PCIE_WAKE_N interrupt line */
-	rc = devm_request_irq(pdev,
-			dev->wake_n, handle_wake_irq, IRQF_TRIGGER_FALLING,
-			 "msm_pcie_wake", dev);
-	if (rc) {
-		PCIE_ERR(dev, "PCIe: RC%d: Unable to request wake interrupt\n",
-			dev->rc_idx);
-		return rc;
-	}
-
-	INIT_WORK(&dev->handle_wake_work, handle_wake_func);
-
-	rc = enable_irq_wake(dev->wake_n);
-	if (rc) {
-		PCIE_ERR(dev, "PCIe: RC%d: Unable to enable wake interrupt\n",
-			dev->rc_idx);
-		return rc;
-	}
-
 	/* Create a virtual domain of interrupts */
 	if (!dev->msi_gicm_addr) {
 		dev->irq_domain = irq_domain_add_linear(dev->pdev->dev.of_node,
 			PCIE_MSI_NR_IRQS, &msm_pcie_msi_ops, dev);
 
 		if (!dev->irq_domain) {
-			PCIE_ERR(dev,
-				"PCIe: RC%d: Unable to initialize irq domain\n",
+			PCIE_ERR(dev, "PCIe: RC%d: Unable to initialize irq domain\n",
 				dev->rc_idx);
 			disable_irq(dev->wake_n);
 			return PTR_ERR(dev->irq_domain);
@@ -566,6 +546,36 @@ int32_t msm_pcie_irq_init(struct msm_pcie_dev_t *dev)
 
 	return 0;
 }
+
+int32_t msm_pcie_wake_irq_init(struct msm_pcie_dev_t *dev)
+{
+	int rc;
+	struct device *pdev = &dev->pdev->dev;
+
+	PCIE_DBG(dev, "RC%d\n", dev->rc_idx);
+
+	INIT_WORK(&dev->handle_wake_work, handle_wake_func);
+
+	/* register handler for PCIE_WAKE_N interrupt line */
+	rc = devm_request_irq(pdev,
+			dev->wake_n, handle_wake_irq, IRQF_TRIGGER_FALLING,
+			 "msm_pcie_wake", dev);
+	if (rc) {
+		PCIE_ERR(dev, "PCIe: RC%d: Unable to request wake interrupt\n",
+			dev->rc_idx);
+		return rc;
+	}
+
+	rc = enable_irq_wake(dev->wake_n);
+	if (rc) {
+		PCIE_ERR(dev, "PCIe: RC%d: Unable to enable wake interrupt\n",
+			dev->rc_idx);
+		return rc;
+	}
+
+	return 0;
+}
+
 
 void msm_pcie_irq_deinit(struct msm_pcie_dev_t *dev)
 {
