@@ -8549,8 +8549,9 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         ( pPnoRequest->ucNetworksCount > SIR_PNO_MAX_SUPP_NETWORKS ))
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: Network input is not correct %d",
-                             __func__, pPnoRequest->ucNetworksCount);
+                  "%s: Network input is not correct %d Max Network supported is %d",
+                   __func__, pPnoRequest->ucNetworksCount,
+                   SIR_PNO_MAX_SUPP_NETWORKS);
         ret = -EINVAL;
         goto error;
     }
@@ -8615,6 +8616,9 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         memcpy(pPnoRequest->aNetworks[i].ssId.ssId,
                request->match_sets[i].ssid.ssid,
                request->match_sets[i].ssid.ssid_len);
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                  "%s: SSID of network %d is %s ",  __func__,
+                   i, pPnoRequest->aNetworks[i].ssId.ssId);
         pPnoRequest->aNetworks[i].authentication = 0; /*eAUTH_TYPE_ANY*/
         pPnoRequest->aNetworks[i].encryption     = 0; /*eED_ANY*/
         pPnoRequest->aNetworks[i].bcastNetwType  = 0; /*eBCAST_UNKNOWN*/
