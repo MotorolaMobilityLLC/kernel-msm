@@ -105,7 +105,11 @@
 
 ENTRY(__copy_from_user)
 
+#ifdef CONFIG_ARCH_MSM8974
+#include "copy_template_8974.S"
+#else
 #include "copy_template.S"
+#endif
 
 ENDPROC(__copy_from_user)
 

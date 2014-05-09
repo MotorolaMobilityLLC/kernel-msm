@@ -109,7 +109,11 @@
 ENTRY(__copy_to_user_std)
 WEAK(__copy_to_user)
 
+#ifdef CONFIG_ARCH_MSM8974
+#include "copy_template_8974.S"
+#else
 #include "copy_template.S"
+#endif
 
 ENDPROC(__copy_to_user)
 ENDPROC(__copy_to_user_std)
