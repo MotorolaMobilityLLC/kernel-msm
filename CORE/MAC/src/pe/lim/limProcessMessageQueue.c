@@ -2008,27 +2008,35 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             tpPESession     psessionEntry = NULL;
             tANI_U8         sessionId;
             tSirSmeHT40OBSSScanInd *ht40ScanInd =
-                                  (tSirSmeHT40OBSSScanInd *)limMsg->bodyptr;
+                (tSirSmeHT40OBSSScanInd *)limMsg->bodyptr;
 
             psessionEntry = peFindSessionByBssid(pMac, ht40ScanInd->peerMacAddr,
-                                                 &sessionId);
+                    &sessionId);
 
-            if (psessionEntry != NULL &&
-               IS_HT40_OBSS_SCAN_FEATURE_ENABLE &&
-               psessionEntry->htSupportedChannelWidthSet ==
-               WNI_CFG_CHANNEL_BONDING_MODE_ENABLE )
+            if (psessionEntry != NULL)
             {
-                 VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
-                   "OBSS Scan Start Req: session id %d htSupportedChannelWidthSet %d",
-                   psessionEntry->peSessionId,
-                   psessionEntry->htSupportedChannelWidthSet);
-                 limSendHT40OBSSScanInd(pMac, psessionEntry);
+                if( IS_HT40_OBSS_SCAN_FEATURE_ENABLE &&
+                        psessionEntry->htSupportedChannelWidthSet ==
+                        WNI_CFG_CHANNEL_BONDING_MODE_ENABLE )
+                {
+                    VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
+                            "OBSS Scan Start Req: session id %d"
+                            "htSupportedChannelWidthSet %d", psessionEntry->peSessionId,
+                            psessionEntry->htSupportedChannelWidthSet);
+                    limSendHT40OBSSScanInd(pMac, psessionEntry);
+                }
+                else
+                {
+                    VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
+                            "OBSS Scan not started: htSupportedChannelWidthSet- %d"
+                            " session id %d", psessionEntry->htSupportedChannelWidthSet,
+                            psessionEntry->peSessionId);
+                }
             }
             else
             {
                 VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
-                   "OBSS Scan not started: htSupportedChannelWidthSet- %d ",
-                   psessionEntry->htSupportedChannelWidthSet );
+                        "OBSS Scan not started: session id is NULL");
             }
             vos_mem_free(limMsg->bodyptr);
             limMsg->bodyptr = NULL;
