@@ -866,6 +866,7 @@ struct dwc3 {
 	bool			err_evt_seen;
 	bool			enable_suspend_event;
 	struct dwc3_gadget_events	dbg_gadget_events;
+	int                     charge_enabled; /* unconditional charging */
 };
 
 /* -------------------------------------------------------------------------- */
