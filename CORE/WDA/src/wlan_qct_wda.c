@@ -3930,7 +3930,7 @@ void WDA_ProcessAddStaSelfRsp(WDI_AddSTASelfRspParamsType* pwdiAddSTASelfRsp, vo
 {
    tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData; 
    tWDA_CbContext *pWDA; 
-   tAddStaSelfParams *pAddStaSelfRsp = NULL; 
+   tAddStaSelfParams *pAddStaSelfRsp = NULL;
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
    if(NULL == pWdaParams)
@@ -3948,9 +3948,17 @@ void WDA_ProcessAddStaSelfRsp(WDI_AddSTASelfRspParamsType* pwdiAddSTASelfRsp, vo
    vos_mem_copy(pAddStaSelfRsp->selfMacAddr, 
                 pwdiAddSTASelfRsp->macSelfSta, 
                 sizeof(pAddStaSelfRsp->selfMacAddr));
+   pWDA->wdaAddSelfStaParams.ucSTASelfIdx = pwdiAddSTASelfRsp->ucSTASelfIdx;
+   pWDA->wdaAddSelfStaParams.wdiAddStaSelfStaRspCounter++;
+   if (pAddStaSelfRsp->status == eSIR_FAILURE)
+   {
+       pWDA->wdaAddSelfStaParams.wdaAddSelfStaFailReason = WDA_ADDSTA_RSP_WDI_FAIL;
+       pWDA->wdaAddSelfStaParams.wdiAddStaSelfStaFailCounter++;
+   }
    WDA_SendMsg( pWDA, WDA_ADD_STA_SELF_RSP, (void *)pAddStaSelfRsp, 0) ;
    return ;
 }
+
 /*
  * FUNCTION: WDA_ProcessAddStaSelfReq
  * 
@@ -3965,11 +3973,14 @@ VOS_STATUS WDA_ProcessAddStaSelfReq( tWDA_CbContext *pWDA, tpAddStaSelfParams pA
    tWDA_ReqParams *pWdaParams; 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> %s " ,__func__);
+   pWDA->wdaAddSelfStaParams.wdiAddStaSelfStaReqCounter++;
    if( NULL == wdiAddStaSelfReq )
    {
       VOS_ASSERT( 0 );
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                                           "%s: Unable to allocate memory " ,__func__);
+      pWDA->wdaAddSelfStaParams.wdaAddSelfStaFailReason = WDA_ADDSTA_REQ_NO_MEM;
+      pWDA->wdaAddSelfStaParams.wdiAddStaSelfStaFailCounter++;
       return( VOS_STATUS_E_NOMEM );
    }
    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
@@ -3978,6 +3989,8 @@ VOS_STATUS WDA_ProcessAddStaSelfReq( tWDA_CbContext *pWDA, tpAddStaSelfParams pA
       VOS_ASSERT( 0 );
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                                           "%s: Unable to allocate memory " ,__func__);
+      pWDA->wdaAddSelfStaParams.wdaAddSelfStaFailReason = WDA_ADDSTA_REQ_NO_MEM;
+      pWDA->wdaAddSelfStaParams.wdiAddStaSelfStaFailCounter++;
       vos_mem_free(wdiAddStaSelfReq) ;
       return( VOS_STATUS_E_NOMEM );
    }
@@ -3999,6 +4012,8 @@ VOS_STATUS WDA_ProcessAddStaSelfReq( tWDA_CbContext *pWDA, tpAddStaSelfParams pA
       status = CONVERT_WDI2VOS_STATUS(wstatus);
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
       vos_mem_free(pWdaParams) ;
+      pWDA->wdaAddSelfStaParams.wdaAddSelfStaFailReason = WDA_ADDSTA_REQ_WDI_FAIL;
+      pWDA->wdaAddSelfStaParams.wdiAddStaSelfStaFailCounter++;
       pAddStaSelfReq->status = eSIR_FAILURE ;
       WDA_SendMsg( pWDA, WDA_ADD_STA_SELF_RSP, (void *)pAddStaSelfReq, 0) ;
    }
