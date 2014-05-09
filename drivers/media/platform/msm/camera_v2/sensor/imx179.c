@@ -44,7 +44,7 @@ static int32_t imx179_otp_validate_crc(uint8_t *imx179_otp_data)
 	if ((crc == otp_crc) && (otp_crc != 0)) {
 		pr_debug("%s: OTP CRC pass\n", __func__);
 	} else {
-		pr_warn("%s: OTP CRC fail(crc = 0x%x, otp_crc = 0x%x)!\n",
+		pr_debug("%s: OTP CRC fail(crc = 0x%x, otp_crc = 0x%x)!\n",
 			__func__, crc, otp_crc);
 		crc_match = -1;
 	}
@@ -236,6 +236,16 @@ static int32_t imx179_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
 			break;
 		}
 
+		/* Set ECC OFF */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x3380, 0x08,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: Fail to OFF ECC\n", __func__);
+			break;
+		}
+
 		/* Set OTP Read */
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 			s_ctrl->sensor_i2c_client,
@@ -275,8 +285,9 @@ static int32_t imx179_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
 		/* Validate OTP CRC */
 		rc = imx179_otp_validate_crc(imx179_otp_data);
 		if (rc < 0) {
-			pr_err(" %s: OTP CRC (page = %d) fail!\n",
-			__func__, otp_page_no);
+			if (otp_page_no == 0)
+				pr_err(" %s: OTP CRC (page = %d) fail!\n",
+					__func__, otp_page_no);
 			s_ctrl->sensor_otp.otp_crc_pass = 0;
 		} else {
 			pr_debug("%s: OTP CRC (page = %d) pass\n",
