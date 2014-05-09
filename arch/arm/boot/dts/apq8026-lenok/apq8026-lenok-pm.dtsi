@@ -435,11 +435,27 @@
 			status = "okay";
 		};
 	};
+	rpm-regulator-ldoa15 {
+		status = "okay";
+		pm8226_l15: regulator-l15 {
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			status = "okay";
+		};
+	};
 	rpm-regulator-ldoa19 {
 		status = "okay";
 		pm8226_l19: regulator-l19 {
 			regulator-min-microvolt = <3000000>;
 			regulator-max-microvolt = <3000000>;
+			status = "okay";
+		};
+	};
+	rpm-regulator-ldoa22 {
+		status = "okay";
+		pm8226_l22: regulator-l22 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
 			status = "okay";
 		};
 	};
