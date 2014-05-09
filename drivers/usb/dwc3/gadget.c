@@ -2242,6 +2242,27 @@ static int dwc3_gadget_stop(struct usb_gadget *g,
 	return 0;
 }
 
+static int dwc3_gadget_vbus_enable_charge(struct usb_gadget *g, int is_on)
+{
+	struct dwc3		*dwc = gadget_to_dwc(g);
+	unsigned long flags;
+
+	spin_lock_irqsave(&dwc->lock, flags);
+	dwc->charge_enabled = !!is_on;
+	if (dwc->vbus_active && dwc->charge_enabled)
+		dwc3_gadget_vbus_draw(g, DWC3_IDEV_CHG_MIN);
+	spin_unlock_irqrestore(&dwc->lock, flags);
+
+	return 0;
+}
+
+static int dwc3_gadget_vbus_is_charge_enabled(struct usb_gadget *g)
+{
+	struct dwc3		*dwc = gadget_to_dwc(g);
+
+	return !!dwc->charge_enabled;
+}
+
 static const struct usb_gadget_ops dwc3_gadget_ops = {
 	.get_frame		= dwc3_gadget_get_frame,
 	.wakeup			= dwc3_gadget_wakeup,
@@ -2252,6 +2273,8 @@ static const struct usb_gadget_ops dwc3_gadget_ops = {
 	.pullup			= dwc3_gadget_pullup,
 	.udc_start		= dwc3_gadget_start,
 	.udc_stop		= dwc3_gadget_stop,
+	.vbus_set_charge_enabled = dwc3_gadget_vbus_enable_charge,
+	.vbus_get_charge_enabled = dwc3_gadget_vbus_is_charge_enabled,
 };
 
 /* -------------------------------------------------------------------------- */
