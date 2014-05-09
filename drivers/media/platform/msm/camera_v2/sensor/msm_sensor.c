@@ -1035,6 +1035,46 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		}
 		break;
 	}
+
+	case CFG_GET_MODULE_INFO: {
+
+		struct msm_camera_sensor_slave_info *sensor_slave_info;
+
+		struct otp_info_t *user_otp;
+		struct otp_info_t *sensor_otp;
+
+		uint32_t otp_size;
+
+		if (!s_ctrl->sensordata->cam_slave_info) {
+			pr_err("%s: camera slave info is not defined",
+				__func__);
+
+			rc = -EFAULT;
+			break;
+		}
+
+		sensor_slave_info = s_ctrl->sensordata->cam_slave_info;
+
+		user_otp = &cdata->cfg.sensor_init_params.sensor_otp;
+		sensor_otp = &sensor_slave_info->sensor_init_params.sensor_otp;
+
+		otp_size = sensor_otp->page_size*sensor_otp->num_of_pages;
+
+		pr_devel("%s: CFG_GET_MODULE_INFO (%d bytes)", __func__,
+			sensor_otp->page_size*sensor_otp->num_of_pages);
+
+		if (copy_to_user((void *) user_otp->otp_info,
+				sensor_otp->otp_info,
+				otp_size)) {
+
+			pr_err("%s: error copying otp buffer to user\n",
+				    __func__);
+			rc = -EFAULT;
+		}
+
+		break;
+	}
+
 	default:
 		rc = -EFAULT;
 		break;
