@@ -81,9 +81,9 @@
 			#size-cells = <1>;
 			status = "disabled";
 
-			qcom,vddmax-mv = <4200>;
-			qcom,vddsafe-mv = <4230>;
-			qcom,vinmin-mv = <4300>;
+			qcom,vddmax-mv = <4350>;
+			qcom,vddsafe-mv = <4380>;
+			qcom,vinmin-mv = <4350>;
 			qcom,vbatdet-delta-mv = <100>;
 			qcom,ibatmax-ma = <50>;
 			qcom,ibatterm-ma = <100>;
