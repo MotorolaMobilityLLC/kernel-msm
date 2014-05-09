@@ -24,6 +24,7 @@ static int bl_set;
 #define DEFAULT_BRIGHTNESS 0x7f
 
 static struct mipi_mot_panel *mot_panel;
+static int is_auo_panel(struct msm_fb_data_type *);
 static int is_bl_supported(struct msm_fb_data_type *);
 static int is_pre_es2_evt0(struct msm_fb_data_type *);
 static int is_evt0_sample(struct msm_fb_data_type *);
@@ -243,6 +244,12 @@ static void panel_set_backlight(struct msm_fb_data_type *mfd)
 	return;
 }
 
+static int is_auo_panel(struct msm_fb_data_type *mfd)
+{
+	int m_id = mipi_mot_get_manufacture_id(mfd);
+	return ((m_id != INVALID_VALUE) && (m_id & 0x80)) ? 1 : 0;
+}
+
 static int is_bl_supported(struct msm_fb_data_type *mfd)
 {
 	static int is_bl_supported = -1;
@@ -250,7 +257,7 @@ static int is_bl_supported(struct msm_fb_data_type *mfd)
 	u8 rdata;
 
 	if (is_bl_supported == -1) {
-		if (!is_evt0_sample(mfd))
+		if (is_auo_panel(mfd) || !is_evt0_sample(mfd))
 			is_bl_supported = 1;
 		else {
 			/* To determine if BL is supported, need to read MTP
@@ -277,21 +284,33 @@ static int is_bl_supported(struct msm_fb_data_type *mfd)
 
 static int is_pre_es2_evt0(struct msm_fb_data_type *mfd)
 {
-	return (mipi_mot_get_controller_ver(mfd) < 2) ? 1 : 0;
+	int ret = 0;
+
+	if (!is_auo_panel(mfd))
+		ret = (mipi_mot_get_controller_ver(mfd) < 2) ? 1 : 0;
+
+	return ret;
 }
 
 static int is_aid_workaround_needed(struct msm_fb_data_type *mfd)
 {
-	return is_pre_es2_evt0(mfd) && is_bl_supported(mfd);
+	int ret = 0;
+
+	if (!is_auo_panel(mfd))
+		ret = is_pre_es2_evt0(mfd) && is_bl_supported(mfd);
+
+	return ret;
 }
 
 static int is_evt0_sample(struct msm_fb_data_type *mfd)
 {
-	if ((mipi_mot_get_controller_ver(mfd) < 5) &&
-		(mipi_mot_get_controller_drv_ver(mfd) == 1))
-		return 1;
+	int ret = 0;
 
-	return 0;
+	if (!is_auo_panel(mfd) && (mipi_mot_get_controller_ver(mfd) < 5) &&
+		(mipi_mot_get_controller_drv_ver(mfd) == 1))
+		ret = 1;
+
+	return ret;
 }
 
 static int is_correct_shift_for_aod_needed(struct msm_fb_data_type *mfd)
