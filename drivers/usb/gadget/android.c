@@ -3501,9 +3501,11 @@ static ssize_t secure_store(struct device *pdev, struct device_attribute *attr,
 			    const char *buff, size_t size)
 {
 	struct android_dev *dev = dev_get_drvdata(pdev);
+	struct usb_composite_dev *cdev = dev->cdev;
 	int secured = 0;
 
-
+	if (!cdev)
+		return -ENODEV;
 	mutex_lock(&dev->mutex);
 
 	sscanf(buff, "%d", &secured);
@@ -3511,11 +3513,13 @@ static ssize_t secure_store(struct device *pdev, struct device_attribute *attr,
 		if (dev->enabled)
 			android_disable(dev);
 		dev->secured = true;
+		usb_gadget_set_charge_enabled(cdev->gadget, 1);
 		pr_info("android_usb: secured\n");
 	} else if (!secured && dev->secured) {
 		if (dev->enabled)
 			android_enable(dev);
 		dev->secured = false;
+		usb_gadget_set_charge_enabled(cdev->gadget, 0);
 		pr_info("android_usb: unsecured\n");
 	} else {
 		pr_err("android_usb: already %s\n",
