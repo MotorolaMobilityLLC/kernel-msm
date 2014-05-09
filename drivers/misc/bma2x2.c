@@ -1420,6 +1420,8 @@ struct bma2x2_data {
 	struct class *g_sensor_class_screenrot;
 	struct device *g_sensor_dev_screenrot;
 	atomic_t en_disp_rotation;
+	unsigned char orient_value;
+	unsigned char flip_value;
 #endif
 	unsigned char calib_status;
 };
@@ -6375,6 +6377,37 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 	}
 #endif
 
+#ifdef ENABLE_SCREEN_ROT
+	if (status & 0x40) {
+		bma2x2_get_orient_status(bma2x2->bma2x2_client,
+				    &first_value);
+		bma2x2->orient_value = first_value;
+		if (bma2x2->flip_value == 0) {
+			input_event(bma2x2->dev_for_interrupt,
+					EV_MSC, MSC_RAW, first_value);
+			input_sync(bma2x2->dev_for_interrupt);
+		}
+		if (first_value & 0x02)
+			bma2x2_set_orient_mode(bma2x2->bma2x2_client, 2);
+		else
+			bma2x2_set_orient_mode(bma2x2->bma2x2_client, 1);
+	}
+	if (status & 0x80) {
+		bma2x2_get_orient_flat_status(bma2x2->bma2x2_client,
+				    &sign_value);
+		if (sign_value == 1) {
+			input_event(bma2x2->dev_for_interrupt,
+					EV_MSC, MSC_RAW, 0 - sign_value);
+			input_sync(bma2x2->dev_for_interrupt);
+			bma2x2->flip_value = 1;
+		} else {
+			bma2x2->flip_value = 0;
+			input_event(bma2x2->dev_for_interrupt,
+				EV_MSC, MSC_RAW, bma2x2->orient_value);
+			input_sync(bma2x2->dev_for_interrupt);
+		}
+	}
+#endif
 
 	switch (status) {
 
@@ -6543,19 +6576,11 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 #endif
 
 	case 0x40:
+#ifndef ENABLE_SCREEN_ROT
 		bma2x2_get_orient_status(bma2x2->bma2x2_client,
 				    &first_value);
 		printk(KERN_INFO "orient interrupt happened,%s\n",
 				orient[first_value]);
-#ifdef ENABLE_SCREEN_ROT
-		input_event(bma2x2->dev_for_interrupt,
-				EV_MSC, MSC_RAW, first_value);
-		input_sync(bma2x2->dev_for_interrupt);
-		if (first_value & 0x02)
-			bma2x2_set_orient_mode(bma2x2->bma2x2_client, 2);
-		else
-			bma2x2_set_orient_mode(bma2x2->bma2x2_client, 1);
-#else
 		if (first_value == 0)
 			input_report_abs(bma2x2->dev_for_interrupt,
 			ORIENT_INTERRUPT,
@@ -6591,17 +6616,11 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 #endif
 		break;
 	case 0x80:
+#ifndef ENABLE_SCREEN_ROT
 		bma2x2_get_orient_flat_status(bma2x2->bma2x2_client,
 				    &sign_value);
 		printk(KERN_INFO "flat interrupt happened,flat status is %d\n",
 				    sign_value);
-#ifdef ENABLE_SCREEN_ROT
-		if (sign_value == 1) {
-			input_event(bma2x2->dev_for_interrupt,
-					EV_MSC, MSC_RAW, 0 - sign_value);
-			input_sync(bma2x2->dev_for_interrupt);
-		}
-#else
 		if (sign_value == 1) {
 			input_report_abs(bma2x2->dev_for_interrupt,
 				FLAT_INTERRUPT,
@@ -6729,6 +6748,9 @@ static int bma2x2_probe(struct i2c_client *client,
 	bma2x2_set_bandwidth(client, BMA2X2_BW_SET);
 	bma2x2_set_range(client, BMA2X2_RANGE_SET);
 #ifdef ENABLE_SCREEN_ROT
+	bma2x2_set_theta_blocking(client, 31);
+	bma2x2_set_theta_flat(client, 31);
+	bma2x2_set_orient_blocking(client, 3);
 	bma2x2_set_orient_mode(client, 2);
 #endif
 
