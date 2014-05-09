@@ -201,8 +201,8 @@
 			00 c0 00 00 00 00 00 01 bb];
 		qcom,platform-supply-entry1 {
 			qcom,supply-name = "vdd";
-			qcom,supply-min-voltage = <2800000>;
-			qcom,supply-max-voltage = <2800000>;
+			qcom,supply-min-voltage = <3300000>;
+			qcom,supply-max-voltage = <3300000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
 			qcom,supply-pre-on-sleep = <0>;
