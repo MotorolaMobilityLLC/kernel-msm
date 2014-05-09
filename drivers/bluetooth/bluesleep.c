@@ -166,9 +166,11 @@ static void bluesleep_uart_awake_work(struct work_struct *work)
 
 	clk_state = bluesleep_get_uart_state();
 	if (clk_state == MSM_HS_CLK_OFF) {
-		BT_DBG("bluesleep_uart_awake_work : hsuart_power on");
-		msm_hs_request_clock_on(bsi->uport);
-		msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+		if(bt_enabled) {
+			BT_DBG("bluesleep_uart_awake_work : hsuart_power on");
+			msm_hs_request_clock_on(bsi->uport);
+			msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+		}
 	} else if (clk_state == MSM_HS_CLK_REQUEST_OFF) {
 		bluesleep_uart_work();
 	}
@@ -495,8 +497,8 @@ static ssize_t bluesleep_write_proc_lpm
 	if (b == '0') {
 		BT_ERR("(bluesleep_write_proc_lpm) Unreg HCI notifier.");
 		/* HCI_DEV_UNREG */
-		bluesleep_stop();
 		bt_enabled = false;
+		bluesleep_stop();
 	} else if (b == '1') {
 		BT_ERR("(bluesleep_write_proc_lpm) Reg HCI notifier.");
 		/* HCI_DEV_REG */
