@@ -1685,6 +1685,7 @@ static int msm_pcie_probe(struct platform_device *pdev)
 		PCIE_ERR(&msm_pcie_dev[rc_idx], "RC%d is enabled in bootup\n",
 			rc_idx);
 
+	msm_pcie_wake_irq_init(&msm_pcie_dev[rc_idx]);
 	PCIE_DBG(&msm_pcie_dev[rc_idx], "PCIE probed %s\n",
 		dev_name(&(pdev->dev)));
 	mutex_unlock(&pcie_drv.drv_lock);
