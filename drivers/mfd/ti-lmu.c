@@ -302,10 +302,12 @@ static int ti_lmu_enable_hw(struct ti_lmu *lmu)
 {
 	int ret;
 
-	ret = devm_gpio_request_one(lmu->dev, lmu->pdata->en_gpio,
+	if (gpio_is_valid(lmu->pdata->en_gpio)) {
+		ret = devm_gpio_request_one(lmu->dev, lmu->pdata->en_gpio,
 				    GPIOF_OUT_INIT_HIGH, "lmu_hwen");
-	if (ret)
-		return ret;
+		if (ret)
+			return ret;
+	}
 
 	/*
 	 * LM3631 Powerup Sequence
@@ -328,7 +330,8 @@ static int ti_lmu_enable_hw(struct ti_lmu *lmu)
 
 static void ti_lmu_disable_hw(struct ti_lmu *lmu)
 {
-	gpio_set_value(lmu->pdata->en_gpio, 0);
+	if (gpio_is_valid(lmu->pdata->en_gpio))
+		gpio_set_value(lmu->pdata->en_gpio, 0);
 }
 
 static struct regmap_config lmu_regmap_config = {
@@ -350,7 +353,7 @@ static int ti_lmu_parse_dt(struct device *dev, struct ti_lmu *lmu)
 
 	pdata->en_gpio = of_get_named_gpio(node, "ti,enable-gpio", 0);
 	if (pdata->en_gpio < 0)
-		return pdata->en_gpio;
+		dev_warn(dev, "%s: No enable gpio provided\n", __func__);
 
 	lmu->pdata = pdata;
 
