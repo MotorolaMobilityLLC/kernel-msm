@@ -29,6 +29,7 @@
 #define TX_BUF_SIZE	50
 #define RX_BUF_SIZE	500
 #define TIMEOUT_MS	5000
+#define MAX_SSR_REASON_LEN  81U
 
 enum transports {
 	TRANSPORT_SMD,
@@ -74,6 +75,10 @@ static struct enum_name_map map[SYSMON_NUM_SS] = {
 	{SYSMON_SS_EXT_MODEM, "external_modem"},
 	{SYSMON_SS_DSPS, "dsps"},
 };
+
+static char sysm_ssr_reason[MAX_SSR_REASON_LEN];
+static char *ssr_reason = sysm_ssr_reason;
+module_param(ssr_reason, charp, S_IRUGO);
 
 static int sysmon_send_smd(struct sysmon_subsys *ss, const char *tx_buf,
 			   size_t len)
@@ -261,6 +266,9 @@ int sysmon_get_reason(enum subsys_id dest_ss, char *buf, size_t len)
 		goto out;
 	}
 	strlcpy(buf, ss->rx_buf + prefix_len, len);
+	strlcpy(sysm_ssr_reason, buf, min(strlen(buf),
+					sizeof(sysm_ssr_reason)));
+
 out:
 	mutex_unlock(&ss->lock);
 	return ret;
