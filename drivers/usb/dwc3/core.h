@@ -929,6 +929,7 @@ struct dwc3 {
 	unsigned                irq_event_count[MAX_INTR_STATS];
 	unsigned                irq_dbg_index;
 	wait_queue_head_t	wait_linkstate;
+	int                     charge_enabled; /* unconditional charging */
 };
 
 /* -------------------------------------------------------------------------- */
