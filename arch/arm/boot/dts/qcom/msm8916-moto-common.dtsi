@@ -458,6 +458,18 @@
 	tapan_codec {
 		status = "disable";
 	};
+
+	wcd9xxx_codec@55 {
+		status = "disabled";
+	};
+
+	wcd9xxx_codec@66 {
+		status = "disabled";
+	};
+
+	wcd9xxx_codec@77 {
+		status = "disabled";
+	};
 };
 
 &i2c_4 {
