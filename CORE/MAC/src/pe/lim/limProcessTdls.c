@@ -1274,22 +1274,30 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
     /* Populate extended supported rates */
     PopulateDot11fTdlsExtCapability( pMac, &tdlsSetupReq.ExtCap );
 
-   /*
-     * TODO: we need to see if we have to support conditions where we have
-     * EDCA parameter info element is needed a) if we need different QOS
-     * parameters for off channel operations or QOS is not supported on
-     * AP link and we wanted to QOS on direct link.
-     */
-    /* Populate QOS info, needed for Peer U-APSD session */
-    /* TODO: Now hardcoded, because PopulateDot11fQOSCapsStation() depends on AP's capability, and
-    TDLS doesn't want to depend on AP's capability */
-    tdlsSetupReq.QOSCapsStation.present = 1;
-    tdlsSetupReq.QOSCapsStation.max_sp_length = 0;
-    tdlsSetupReq.QOSCapsStation.qack = 0;
-    tdlsSetupReq.QOSCapsStation.acbe_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x08) >> 3) ;
-    tdlsSetupReq.QOSCapsStation.acbk_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x04)>> 2);
-    tdlsSetupReq.QOSCapsStation.acvi_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x02)>> 1);
-    tdlsSetupReq.QOSCapsStation.acvo_uapsd = (pMac->lim.gLimTDLSUapsdMask & 0x01);
+    if ( 1 == pMac->lim.gLimTDLSWmmMode )
+    {
+        /* include WMM IE */
+        PopulateDot11fWMMInfoStation( pMac, &tdlsSetupReq.WMMInfoStation );
+    }
+    else
+    {
+        /*
+         * TODO: we need to see if we have to support conditions where we have
+         * EDCA parameter info element is needed a) if we need different QOS
+         * parameters for off channel operations or QOS is not supported on
+         * AP link and we wanted to QOS on direct link.
+         */
+        /* Populate QOS info, needed for Peer U-APSD session */
+        /* TODO: Now hardcoded, because PopulateDot11fQOSCapsStation() depends on AP's capability, and
+         TDLS doesn't want to depend on AP's capability */
+        tdlsSetupReq.QOSCapsStation.present = 1;
+        tdlsSetupReq.QOSCapsStation.max_sp_length = 0;
+        tdlsSetupReq.QOSCapsStation.qack = 0;
+        tdlsSetupReq.QOSCapsStation.acbe_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x08) >> 3);
+        tdlsSetupReq.QOSCapsStation.acbk_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x04) >> 2);
+        tdlsSetupReq.QOSCapsStation.acvi_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x02) >> 1);
+        tdlsSetupReq.QOSCapsStation.acvo_uapsd = (pMac->lim.gLimTDLSUapsdMask & 0x01);
+    }
 
     /*
      * we will always try to init TDLS link with 11n capabilities
@@ -1691,22 +1699,30 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
     /* Populate extended supported rates */
     PopulateDot11fTdlsExtCapability( pMac, &tdlsSetupRsp.ExtCap );
 
-    /* 
-     * TODO: we need to see if we have to support conditions where we have
-     * EDCA parameter info element is needed a) if we need different QOS
-     * parameters for off channel operations or QOS is not supported on 
-     * AP link and we wanted to QOS on direct link.
-     */
-    /* Populate QOS info, needed for Peer U-APSD session */
-    /* TODO: Now hardcoded, because PopulateDot11fQOSCapsStation() depends on AP's capability, and
-    TDLS doesn't want to depend on AP's capability */
-    tdlsSetupRsp.QOSCapsStation.present = 1;
-    tdlsSetupRsp.QOSCapsStation.max_sp_length = 0;
-    tdlsSetupRsp.QOSCapsStation.qack = 0;
-    tdlsSetupRsp.QOSCapsStation.acbe_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x08) >> 3);
-    tdlsSetupRsp.QOSCapsStation.acbk_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x04) >> 2);
-    tdlsSetupRsp.QOSCapsStation.acvi_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x02) >> 1);
-    tdlsSetupRsp.QOSCapsStation.acvo_uapsd = (pMac->lim.gLimTDLSUapsdMask & 0x01);
+    if ( 1 == pMac->lim.gLimTDLSWmmMode )
+    {
+        /* include WMM IE */
+        PopulateDot11fWMMInfoStation( pMac, &tdlsSetupRsp.WMMInfoStation );
+    }
+    else
+    {
+        /*
+         * TODO: we need to see if we have to support conditions where we have
+         * EDCA parameter info element is needed a) if we need different QOS
+         * parameters for off channel operations or QOS is not supported on
+         * AP link and we wanted to QOS on direct link.
+         */
+        /* Populate QOS info, needed for Peer U-APSD session */
+        /* TODO: Now hardcoded, because PopulateDot11fQOSCapsStation() depends on AP's capability, and
+         TDLS doesn't want to depend on AP's capability */
+        tdlsSetupRsp.QOSCapsStation.present = 1;
+        tdlsSetupRsp.QOSCapsStation.max_sp_length = 0;
+        tdlsSetupRsp.QOSCapsStation.qack = 0;
+        tdlsSetupRsp.QOSCapsStation.acbe_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x08) >> 3);
+        tdlsSetupRsp.QOSCapsStation.acbk_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x04) >> 2);
+        tdlsSetupRsp.QOSCapsStation.acvi_uapsd = ((pMac->lim.gLimTDLSUapsdMask & 0x02) >> 1);
+        tdlsSetupRsp.QOSCapsStation.acvo_uapsd = (pMac->lim.gLimTDLSUapsdMask & 0x01);
+    }
 
     wlan_cfgGetInt(pMac,WNI_CFG_DOT11_MODE,&selfDot11Mode);
 
@@ -1893,6 +1909,12 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
      * parameters for off channel operations or QOS is not supported on 
      * AP link and we wanted to QOS on direct link.
      */
+
+    /* Check self and peer WMM capable */
+    if ((1 == pMac->lim.gLimTDLSWmmMode) && (CHECK_BIT(peerCapability, TDLS_PEER_WMM_CAP)))
+    {
+       PopulateDot11fWMMParams(pMac, &tdlsSetupCnf.WMMParams, psessionEntry);
+    }
 
      /* Check peer is VHT capable*/
     if (CHECK_BIT(peerCapability, TDLS_PEER_VHT_CAP))
