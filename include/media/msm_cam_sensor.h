@@ -145,6 +145,39 @@ enum sensor_sub_module_t {
 	SUB_MODULE_MAX,
 };
 
+
+struct otp_info_t {
+	uint8_t enable;
+
+	uint16_t page_size;
+	uint16_t num_of_pages;
+	uint16_t page_reg_addr;
+	uint16_t page_reg_base_addr;
+
+	uint16_t ctrl_reg_addr;
+	uint16_t ctrl_reg_read_mode;
+
+	uint16_t status_reg_addr;
+	uint16_t status_reg_read_complete_bit;
+
+	uint16_t reset_reg_addr;
+	uint16_t reset_reg_stream_on;
+	uint16_t reset_reg_stream_off;
+
+	uint16_t data_seg_addr;
+
+	enum msm_camera_i2c_data_type data_size;
+
+	uint8_t big_endian;
+
+	uint8_t poll_times;
+	uint16_t poll_usleep;
+
+	/* Initialized by the sensor driver */
+	uint8_t *otp_info;
+	uint8_t otp_read;
+};
+
 enum {
 	MSM_CAMERA_EFFECT_MODE_OFF,
 	MSM_CAMERA_EFFECT_MODE_MONO,
@@ -385,6 +418,8 @@ struct msm_sensor_init_params {
 	enum camb_position_t position;
 	/* sensor mount angle */
 	uint32_t            sensor_mount_angle;
+	/* sensor OTP params */
+	struct otp_info_t   sensor_otp;
 };
 
 struct msm_camera_sensor_slave_info {
@@ -477,6 +512,7 @@ enum msm_sensor_cfg_type_t {
 	CFG_POWER_DOWN,
 	CFG_SET_STOP_STREAM_SETTING,
 	CFG_GET_SENSOR_INFO,
+	CFG_GET_MODULE_INFO,
 	CFG_GET_SENSOR_INIT_PARAMS,
 	CFG_SET_INIT_SETTING,
 	CFG_SET_RESOLUTION,
