@@ -3508,6 +3508,66 @@ qpnp_chg_adjust_vddmax(struct qpnp_chg_chip *chip, int vbat_mv)
 	qpnp_chg_set_appropriate_vddmax(chip);
 }
 
+static void qpnp_chg_compensate_ibat_error(struct qpnp_chg_chip *chip)
+{
+	int ibat_ma, ibat_max_ma, ibat_diff_ma, trim, rc;
+	u8 ibat_trim;
+
+	ibat_ma = get_prop_current_now(chip) / 1000;
+	if (ibat_ma >= 0)
+		return;
+
+	rc = qpnp_chg_ibatmax_get(chip, &ibat_max_ma);
+	if (rc) {
+		pr_debug("failed to get ibatmax rc=%d\n", rc);
+		return;
+	}
+
+	ibat_diff_ma = -1 * ibat_ma - ibat_max_ma;
+
+	if (abs(ibat_diff_ma) > QPNP_CHG_I_STEP_MA * 2) {
+		pr_err("ibat diff is out of range\n");
+		return;
+	}
+
+	if (ibat_diff_ma > 0)
+		trim = DIV_ROUND_UP(ibat_diff_ma, IBAT_TRIM_LOW_LIM);
+	else
+		trim = ibat_diff_ma / IBAT_TRIM_LOW_LIM;
+
+	if (trim) {
+		rc = qpnp_chg_read(chip, &ibat_trim,
+				chip->buck_base + BUCK_CTRL_TRIM3, 1);
+		if (rc) {
+			pr_err("failed to read BUCK_CTRL_TRIM3 rc=%d\n", rc);
+			return;
+		}
+
+		ibat_trim += trim;
+		ibat_trim &= IBAT_TRIM_OFFSET_MASK;
+		if (!is_within_range(ibat_trim, IBAT_TRIM_LOW_LIM,
+					IBAT_TRIM_HIGH_LIM))
+			return;
+
+		rc = qpnp_chg_masked_write(chip,
+				chip->buck_base + SEC_ACCESS, 0xFF, 0xA5, 1);
+		if (rc) {
+			pr_err("failed to write SEC_ACCESS rc=%d\n", rc);
+			return;
+		}
+
+		ibat_trim |= IBAT_TRIM_GOOD_BIT;
+		rc = qpnp_chg_write(chip, &ibat_trim,
+				chip->buck_base + BUCK_CTRL_TRIM3, 1);
+		if (rc) {
+			pr_err("failed to set IBAT_TRIM rc=%d\n", rc);
+			return;
+		}
+
+		pr_debug("ibat trim: %dmA\n", trim * IBAT_TRIM_LOW_LIM);
+	}
+}
+
 #define CONSECUTIVE_COUNT	3
 #define VBATDET_MAX_ERR_MV	50
 static void
@@ -3560,6 +3620,9 @@ qpnp_eoc_work(struct work_struct *work)
 		pr_debug("ibat_ma = %d vbat_mv = %d term_current_ma = %d\n",
 				ibat_ma, vbat_mv, chip->term_current);
 
+		if (buck_sts & IBAT_LOOP_IRQ)
+			qpnp_chg_compensate_ibat_error(chip);
+
 		vbat_lower_than_vbatdet = !(chg_sts & VBAT_DET_LOW_IRQ);
 		if (vbat_lower_than_vbatdet && vbat_mv <
 				(chip->max_voltage_mv - chip->resume_delta_mv
@@ -3570,7 +3633,8 @@ qpnp_eoc_work(struct work_struct *work)
 					chip->resume_delta_mv,
 					chip->vbatdet_max_err_mv,
 					vbat_low_count);
-			if (vbat_low_count >= CONSECUTIVE_COUNT) {
+			if ((vbat_low_count >= CONSECUTIVE_COUNT) &&
+						(buck_sts & IBAT_LOOP_IRQ)) {
 				pr_debug("woke up too early stopping\n");
 
 				qpnp_chg_enable_irq(chip, &chip->chg_vbatdet_lo);
