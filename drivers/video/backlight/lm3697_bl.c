@@ -40,6 +40,14 @@
 
 static int lm3697_bl_init(struct ti_lmu_bl_chip *chip)
 {
+	int ret;
+
+	/* Set OVP to 32V by default */
+	ret = ti_lmu_update_bits(chip->lmu, LM3697_REG_BOOST_CFG,
+		LM3697_BOOST_OVP_MASK, LM3697_BOOST_OVP_32V);
+	if (ret)
+		return ret;
+
 	/* Configure ramp selection for each bank */
 	return ti_lmu_update_bits(chip->lmu, LM3697_REG_RAMP_CONF,
 				  LM3697_RAMP_MASK, LM3697_RAMP_EACH);
