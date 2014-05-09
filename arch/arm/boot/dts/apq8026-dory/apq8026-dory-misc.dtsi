@@ -11,14 +11,16 @@
  */
 
 &soc {
-	vibrator {
+	vibrator@fd8C3450 {
 		status = "ok";
 		compatible = "msm,pwm_vibrator";
+		reg = <0xfd8C3450 0x400>;
 		haptic-pwr-gpio = <&msmgpio 62 0x00>;
 		motor-pwm-gpio = <&msmgpio 22 0x00>;
 		motor-pwm-func = <6>;
 		motor-amp = <63>;
 		n-value = <127>;
+		clk-name = "cam_gp1_clk";
 		vibe-warmup-delay = <0>;
 		vibe-braking-gain = <100>;
 		vibe-braking-ms = <0>;

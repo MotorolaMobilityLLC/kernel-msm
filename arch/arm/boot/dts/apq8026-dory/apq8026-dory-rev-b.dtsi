@@ -39,7 +39,7 @@
 			status = "ok";
 		};
 	};
-	vibrator {
+	vibrator@fd8C3450 {
 		status = "disabled";
 	};
 };
