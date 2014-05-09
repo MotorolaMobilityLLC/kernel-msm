@@ -1361,6 +1361,12 @@ VOS_STATUS vos_nv_open(void)
                if (!vos_mem_compare(pHddCtx->cfg_ini->overrideCountryCode,
                      CFG_OVERRIDE_COUNTRY_CODE_DEFAULT, 3))
                {
+                   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                             ("Overriding NV Country(%c%c) from INI (%c%c)"),
+                              pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0],
+                              pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[1],
+                              pHddCtx->cfg_ini->overrideCountryCode[0],
+                              pHddCtx->cfg_ini->overrideCountryCode[1]);
                    vos_mem_copy(pnvEFSTable->halnv.tables.defaultCountryTable.countryCode,
                        pHddCtx->cfg_ini->overrideCountryCode,
                        3);
@@ -3609,6 +3615,9 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
 #endif
     }
 
+    VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+               ("%s: Req initiator %d CC=%c%c"), __func__,
+               request->initiator, request->alpha2[0], request->alpha2[1]);
 
     sme_GetFreqBand(pHddCtx->hHal, &nBandCapability);
     /* first check if this callback is in response to the driver callback */
