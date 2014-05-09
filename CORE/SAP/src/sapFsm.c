@@ -1132,6 +1132,14 @@ sapSortMacList(v_MACADDR_t *macList, v_U8_t size)
     v_MACADDR_t temp;
     v_SINT_t nRes = -1;
 
+    if ((NULL == macList) || (size >= MAX_ACL_MAC_ADDRESS))
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                      "In %s, either buffer is NULL or size = %d is more."
+                      ,__func__, size);
+        return;
+    }
+
     for(outer = 0; outer < size; outer++)
     {
         for(inner = 0; inner < size - 1; inner++)
@@ -1236,7 +1244,15 @@ void sapPrintACL(v_MACADDR_t *macList, v_U8_t size)
     int i;
     v_BYTE_t *macArray;
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,"print acl entered");
-    if (size==0) return;
+
+    if ((NULL == macList) || (size == 0) || (size >= MAX_ACL_MAC_ADDRESS))
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                    "In %s, either buffer is NULL or size %d is incorrect."
+                    , __func__, size);
+        return;
+    }
+
     for (i=0; i<size; i++)
     {
         macArray = (macList+i)->bytes;
