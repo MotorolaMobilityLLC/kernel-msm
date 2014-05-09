@@ -23,6 +23,14 @@
 #include <linux/seq_file.h>
 #include <linux/of.h>
 #include <asm/bootinfo.h>
+#include <linux/pstore.h>
+
+#define EMIT_BOOTINFO_LASTKMSG(buf, strname, fmt, name) \
+		do { \
+			snprintf(buf, sizeof(buf), strname ": " fmt "\n", \
+					bi_##name()); \
+			pstore_annotate(buf); \
+		} while (0)
 
 /*
  * powerup_reason contains the powerup reason provided by the ATAGs when
@@ -125,17 +133,40 @@ static u64 bi_serial(void)
 	return ((u64)serial_high << 32) | (u64)serial_low;
 }
 
+#define BOOTREASON_MAX_LEN 64
+static char bootreason[BOOTREASON_MAX_LEN + 1];
+int __init board_bootreason_init(char *s)
+{
+	strncpy(bootreason, s, BOOTREASON_MAX_LEN);
+	bootreason[BOOTREASON_MAX_LEN] = '\0';
+	return 1;
+}
+__setup("bootreason=", board_bootreason_init);
+
+const char *bi_bootreason(void)
+{
+	return bootreason;
+}
+EXPORT_SYMBOL(bi_bootreason);
+
+static void bootinfo_annotate_lastkmsg(void)
+{
+	char buf[BOOTREASON_MAX_LEN];
+	pstore_annotate("Boot info:\n");
+	EMIT_BOOTINFO_LASTKMSG(buf, "Last boot reason", "%s", bootreason);
+}
+
 /* get_bootinfo fills in the /proc/bootinfo information.
  * We currently only have the powerup reason, mbm_version, serial
  * and hwrevision.
  */
-
 static int get_bootinfo(struct seq_file *m, void *v)
 {
 	seq_printf(m, "SERIAL : 0x%llx\n", bi_serial());
 	seq_printf(m, "HW_REV : 0x%04x\n", bi_hwrev());
 	seq_printf(m, "POWERUPREASON : 0x%08x\n", bi_powerup_reason());
 	seq_printf(m, "MBM_VERSION : 0x%08x\n", bi_mbm_version());
+	seq_printf(m, "Last boot reason : %s \n", bootreason);
 	return 0;
 }
 static int  bootinfo_open(struct inode *inode, struct  file *file)
@@ -157,6 +188,7 @@ static int __init bootinfo_init_module(void)
 {
 	proc_bootinfo = &proc_root;
 	proc_create("bootinfo", 0, NULL, &bootinfo_fops);
+	bootinfo_annotate_lastkmsg();
 	return 0;
 }
 
