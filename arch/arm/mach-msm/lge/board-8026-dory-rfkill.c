@@ -1,7 +1,7 @@
 /*
  * This software is used for bluetooth HW enable/disable control.
  *
- * Copyright (C) 2013 LGE Inc.
+ * Copyright (C) 2013,2014 LGE Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -52,16 +52,20 @@ static int bluetooth_set_power(void *data, bool blocked)
 
 	if (!blocked) {
 		gpio_set_value(bdev->gpio_bt_reset, 0);
-		gpio_set_value(bdev->gpio_bt_on, 0);
+		if (gpio_is_valid(bdev->gpio_bt_on))
+			gpio_set_value(bdev->gpio_bt_on, 0);
 		msleep(30);
-		gpio_set_value(bdev->gpio_bt_on, 1);
-		usleep(10*1000);
+		if (gpio_is_valid(bdev->gpio_bt_on)) {
+			gpio_set_value(bdev->gpio_bt_on, 1);
+			usleep(10*1000);
+		}
 		gpio_set_value(bdev->gpio_bt_reset, 1);
 		usleep(10*1000);
 		BTRFKILLDBG("Bluetooth ON!!");
 	} else {
 		gpio_set_value(bdev->gpio_bt_reset, 0);
-		gpio_set_value(bdev->gpio_bt_on, 0);
+		if (gpio_is_valid(bdev->gpio_bt_on))
+			gpio_set_value(bdev->gpio_bt_on, 0);
 		BTRFKILLDBG("Bluetooth OFF!!");
 	}
 	return 0;
@@ -81,10 +85,6 @@ static int bluetooth_rfkill_parse_dt(struct device *dev,
 
 	pdata->gpio_on = of_get_named_gpio_flags(np,
 			"gpio-bt-on", 0, NULL);
-	if (pdata->gpio_on < 0) {
-		pr_err("%s: failed to get gpio-bt-on\n", __func__);
-		return pdata->gpio_on;
-	}
 
 	return 0;
 }
@@ -135,11 +135,14 @@ static int bluetooth_rfkill_probe(struct platform_device *pdev)
 	bdev->gpio_bt_reset = pdata->gpio_reset;
 	platform_set_drvdata(pdev, bdev);
 
-	rc = gpio_request_one(bdev->gpio_bt_on, GPIOF_OUT_INIT_LOW, "bt_on");
-	if (rc) {
-		pr_err("%s: failed to request gpio(%d)\n", __func__,
-				bdev->gpio_bt_on);
-		goto err_gpio_on;
+	if (gpio_is_valid(bdev->gpio_bt_on)) {
+		rc = gpio_request_one(bdev->gpio_bt_on, GPIOF_OUT_INIT_LOW,
+				"bt_on");
+		if (rc) {
+			pr_err("%s: failed to request gpio(%d)\n", __func__,
+					bdev->gpio_bt_on);
+			goto err_gpio_on;
+		}
 	}
 
 	rc = gpio_request_one(bdev->gpio_bt_reset, GPIOF_OUT_INIT_LOW,
@@ -178,7 +181,8 @@ err_rfkill_reg:
 err_rfkill_alloc:
 	gpio_free(bdev->gpio_bt_reset);
 err_gpio_reset:
-	gpio_free(bdev->gpio_bt_on);
+	if (gpio_is_valid(bdev->gpio_bt_on))
+		gpio_free(bdev->gpio_bt_on);
 err_gpio_on:
 	kfree(bdev);
 	return rc;
