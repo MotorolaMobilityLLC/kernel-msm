@@ -1100,6 +1100,13 @@ proxy_ndp - INTEGER
 		2 NDP packets are sent to userspace, where a userspace proxy
                   can be implemented
 
+fwmark_reflect - BOOLEAN
+	Controls the fwmark of kernel-generated IPv4 reply packets that are not
+	associated with a socket for example, TCP RSTs or ICMP echo replies).
+	If unset, these packets have a fwmark of zero. If set, they have the
+	fwmark of the packet they are replying to.
+	Default: 0
+
 conf/interface/*:
 	Change special settings per interface.
 
