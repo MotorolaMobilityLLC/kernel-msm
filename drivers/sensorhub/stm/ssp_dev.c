@@ -23,7 +23,7 @@
 static void ssp_early_suspend(struct early_suspend *handler);
 static void ssp_late_resume(struct early_suspend *handler);
 #endif
-#define NORMAL_SENSOR_STATE	0x3E101F
+#define NORMAL_SENSOR_STATE	0x3FB01F
 
 void ssp_enable(struct ssp_data *data, bool enable)
 {
@@ -109,7 +109,6 @@ static void initialize_variable(struct ssp_data *data)
 	data->hrm_device = NULL;
 #endif
 
-	data->bMcuDumpMode = ssp_check_sec_dump_mode();
 	INIT_LIST_HEAD(&data->pending_list);
 
 	data->step_count_total = 0;
@@ -157,8 +156,6 @@ int initialize_mcu(struct ssp_data *data)
 	data->uCurFirmRev = get_firmware_rev(data);
 	pr_info("[SSP] MCU Firm Rev : New = %8u\n",
 		data->uCurFirmRev);
-
-	iRet = ssp_send_cmd(data, MSG2SSP_AP_MCU_DUMP_CHECK, 0);
 out:
 	return iRet;
 }
@@ -556,8 +553,6 @@ static void ssp_shutdown(struct spi_device *spi)
 	ssp_sensorhub_remove(data);
 #endif
 
-	del_timer_sync(&data->debug_timer);
-	cancel_work_sync(&data->work_debug);
 	cancel_delayed_work_sync(&data->work_refresh);
 	destroy_workqueue(data->debug_wq);
 	wake_lock_destroy(&data->ssp_wake_lock);

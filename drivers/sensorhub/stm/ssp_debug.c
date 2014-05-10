@@ -78,13 +78,6 @@ void sync_sensor_state(struct ssp_data *data)
 			udelay(10);
 		}
 	}
-
-	data->bMcuDumpMode = ssp_check_sec_dump_mode();
-	iRet = ssp_send_cmd(data, MSG2SSP_AP_MCU_SET_DUMPMODE,
-				data->bMcuDumpMode);
-	if (iRet < 0)
-		pr_err("[SSP]: %s - MSG2SSP_AP_MCU_SET_DUMPMODE failed\n",
-				__func__);
 }
 
 static void print_sensordata(struct ssp_data *data, unsigned int uSensor)
@@ -226,10 +219,4 @@ int initialize_debug_timer(struct ssp_data *data)
 
 	INIT_WORK(&data->work_debug, debug_work_func);
 	return SUCCESS;
-}
-
-/* if returns true dump mode on */
-unsigned int  ssp_check_sec_dump_mode()
-{
-		return 0;
 }

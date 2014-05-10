@@ -417,7 +417,6 @@ struct ssp_data {
 	bool bSspShutdown;
 	bool bAccelAlert;
 	bool bGeomagneticRawEnabled;
-	bool bMcuDumpMode;
 	bool bBinaryChashed;
 	bool bProbeIsDone;
 	bool bDumping;
@@ -577,7 +576,6 @@ ssize_t mcu_update_kernel_bin_show(struct device *,
 	struct device_attribute *, char *);
 ssize_t mcu_update_kernel_crashed_bin_show(struct device *,
 	struct device_attribute *, char *);
-unsigned int ssp_check_sec_dump_mode(void);
 
 #ifdef CONFIG_SENSORS_SSP_STM
 void ssp_dump_task(struct work_struct *work);
