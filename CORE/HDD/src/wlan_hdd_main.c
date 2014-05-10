@@ -7739,7 +7739,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 #endif /* WLAN_KD_READY_NOTIFIER */
 
 #ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
-   if(pHddCtx->cfg_ini->wlanLoggingEnable)
+   if (pHddCtx->cfg_ini->wlanLoggingEnable)
    {
        wlan_logging_sock_deactivate_svc();
    }
@@ -9043,6 +9043,10 @@ static int hdd_driver_init( void)
    vos_wconn_trace_init();
 #endif
 
+#ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
+   wlan_logging_sock_init_svc();
+#endif
+
    ENTER();
 
 #ifdef WLAN_OPEN_SOURCE
@@ -9062,6 +9066,11 @@ static int hdd_driver_init( void)
 #ifdef WLAN_OPEN_SOURCE
       wake_lock_destroy(&wlan_wake_lock);
 #endif
+
+#ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
+      wlan_logging_sock_deinit_svc();
+#endif
+
       return -EIO;
    }
 
@@ -9083,6 +9092,11 @@ static int hdd_driver_init( void)
 #ifdef WLAN_OPEN_SOURCE
       wake_lock_destroy(&wlan_wake_lock);
 #endif
+
+#ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
+      wlan_logging_sock_deinit_svc();
+#endif
+
       return -ENODEV;
    }
 #endif
@@ -9160,6 +9174,11 @@ static int hdd_driver_init( void)
 #ifdef WLAN_OPEN_SOURCE
       wake_lock_destroy(&wlan_wake_lock);
 #endif
+
+#ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
+      wlan_logging_sock_deinit_svc();
+#endif
+
       pr_err("%s: driver load failure\n", WLAN_MODULE_NAME);
    }
    else
@@ -9274,10 +9293,15 @@ static void hdd_driver_exit(void)
    vos_wconn_trace_exit();
 #endif
 
+#ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
+   wlan_logging_sock_deinit_svc();
+#endif
+
 done:
 #ifdef WLAN_OPEN_SOURCE
    wake_lock_destroy(&wlan_wake_lock);
 #endif
+
    pr_info("%s: driver unloaded\n", WLAN_MODULE_NAME);
 }
 
