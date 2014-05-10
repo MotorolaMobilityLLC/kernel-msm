@@ -1812,6 +1812,13 @@ limHeartBeatDeactivateAndChangeTimer(tpAniSirGlobal pMac, tpPESession psessionEn
 void
 limReactivateHeartBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
 {
+    if (NULL == psessionEntry)
+    {
+        limLog(pMac, LOGE, FL("%s: received session id NULL."
+                   " Heartbeat timer config failed"), __func__);
+        return;
+    }
+
     PELOG3(limLog(pMac, LOG3, FL("Rxed Heartbeat. Count=%d"), psessionEntry->LimRxedBeaconCntDuringHB);)
 
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
