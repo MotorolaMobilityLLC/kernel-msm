@@ -3528,6 +3528,7 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("cam_gp0_clk", camss_gp0_clk.c, ""),
 	CLK_LOOKUP("cam_gp1_clk", camss_gp1_clk.c, ""),
 #if defined(CONFIG_MSM_PWM_VIBRATOR)
+	CLK_LOOKUP("cam_gp0_clk", camss_gp0_clk.c, "vibrator"),
 	CLK_LOOKUP("cam_gp1_clk", camss_gp1_clk.c, "vibrator"),
 #endif
 	CLK_LOOKUP("iface_clk", camss_micro_ahb_clk.c, ""),
