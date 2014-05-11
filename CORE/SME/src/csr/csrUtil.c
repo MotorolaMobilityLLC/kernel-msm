@@ -2749,11 +2749,8 @@ csrIsconcurrentsessionValid(tpAniSirGlobal pMac,tANI_U32 cursessionId,
             switch (currBssPersona)
             {
                 case VOS_STA_MODE:
-                    if(pMac->roam.roamSession[sessionId].pCurRoamProfile &&
-                      (pMac->roam.roamSession[sessionId].pCurRoamProfile->csrPersona
-                                      == VOS_STA_MODE)) //check for P2P client mode
                     {
-                        smsLog(pMac, LOGE, FL(" ****STA mode already exists ****"));
+                        smsLog(pMac, LOG4, FL(" Second session for persona %d"), currBssPersona);
                         return eHAL_STATUS_FAILURE;
                     }
                     break;
@@ -2975,8 +2972,8 @@ eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                         if (pMac->roam.roamSession[sessionId].bssParams.operationChn 
                                                         != channelId )
                         {
-                            smsLog(pMac, LOGE, FL("***MCC is not enabled for SAP +STA****"));
-                            return eHAL_STATUS_FAILURE;
+                            smsLog(pMac, LOGE, FL("*** MCC with SAP+STA sessions ****"));
+                            return eHAL_STATUS_SUCCESS;
                         }
                     }
                     else if (pMac->roam.roamSession[sessionId].bssParams.bssPersona

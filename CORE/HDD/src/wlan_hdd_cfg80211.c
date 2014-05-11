@@ -1908,6 +1908,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
     struct qc_mac_acl_entry *acl_entry = NULL;
+    hdd_config_t *iniConfig;
     v_SINT_t i;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
     v_BOOL_t MFPCapable;
@@ -1916,6 +1917,8 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
             (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->sapDot11Mode;
 
     ENTER();
+
+    iniConfig = pHddCtx->cfg_ini;
 
     pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(pHostapdAdapter);
 
@@ -2216,9 +2219,18 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     {
         pConfig->SapHw_mode = eSAP_DOT11_MODE_11ac;
 
-        /* Disable VHT support in 2.4 GHz and */
-        if (pConfig->channel <= 14 &&
-            (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->enableVhtFor24GHzBand == FALSE)
+        /* If ACS disable and selected channel <= 14
+         *  OR
+         *  ACS enabled and ACS operating band is choosen as 2.4
+         *  AND
+         *  VHT in 2.4G Disabled
+         *  THEN
+         *  Fallback to 11N mode
+         */
+        if (((AUTO_CHANNEL_SELECT != pConfig->channel && pConfig->channel <= SIR_11B_CHANNEL_END)
+                    || (AUTO_CHANNEL_SELECT == pConfig->channel &&
+            iniConfig->apOperatingBand == RF_SUBBAND_2_4_GHZ)) &&
+                iniConfig->enableVhtFor24GHzBand == FALSE)
         {
             pConfig->SapHw_mode = eSAP_DOT11_MODE_11n;
         }
@@ -8549,8 +8561,9 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         ( pPnoRequest->ucNetworksCount > SIR_PNO_MAX_SUPP_NETWORKS ))
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: Network input is not correct %d",
-                             __func__, pPnoRequest->ucNetworksCount);
+                  "%s: Network input is not correct %d Max Network supported is %d",
+                   __func__, pPnoRequest->ucNetworksCount,
+                   SIR_PNO_MAX_SUPP_NETWORKS);
         ret = -EINVAL;
         goto error;
     }
@@ -8615,6 +8628,9 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         memcpy(pPnoRequest->aNetworks[i].ssId.ssId,
                request->match_sets[i].ssid.ssid,
                request->match_sets[i].ssid.ssid_len);
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                  "%s: SSID of network %d is %s ",  __func__,
+                   i, pPnoRequest->aNetworks[i].ssId.ssId);
         pPnoRequest->aNetworks[i].authentication = 0; /*eAUTH_TYPE_ANY*/
         pPnoRequest->aNetworks[i].encryption     = 0; /*eED_ANY*/
         pPnoRequest->aNetworks[i].bcastNetwType  = 0; /*eBCAST_UNKNOWN*/
