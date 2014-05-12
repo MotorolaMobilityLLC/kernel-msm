@@ -27,8 +27,8 @@ rpm-regulator-ldoa15 {
 		status = "okay";
 		pm8226_l19: regulator-l19 {
 			regulator-name = "8226_l19";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
+			regulator-min-microvolt = <2850000>;
+			regulator-max-microvolt = <2850000>;
 			qcom,init-voltage = <2850000>;
 			status = "okay";
 		};
