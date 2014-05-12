@@ -3923,15 +3923,18 @@ static void mxt_reset_slots(struct mxt_data *data)
 	unsigned int num_mt_slots;
 	int id;
 
+	if (data->buttons_enabled)
+		data->t15_keystatus = 0;
+
+	if (!input_dev)
+		return;
+
 	num_mt_slots = data->num_touchids + data->num_stylusids;
 
 	for (id = 0; id < num_mt_slots; id++) {
 		input_mt_slot(input_dev, id);
 		input_mt_report_slot_state(input_dev, MT_TOOL_FINGER, 0);
 	}
-
-	if (data->buttons_enabled)
-		data->t15_keystatus = 0;
 
 	mxt_input_sync(input_dev);
 }
