@@ -32,5 +32,11 @@ struct mmi_unit_info {
 	char baseband[BASEBAND_MAX_LEN];
 	char device[DEVICE_MAX_LEN];
 	uint32_t radio;
+	uint32_t pureason;
 };
+
+/* Function that sets the modem reset value in the SMEM location
+ * where mmi_unit_info is stored.
+ */
+void mmi_set_pureason(uint32_t val);
 #endif
