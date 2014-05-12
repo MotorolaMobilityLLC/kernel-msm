@@ -399,6 +399,18 @@
 			pinctrl-0 = <&fsa8500_hs_det_default>;
 		};
 
+		lm3697@36 {
+			compatible = "ti,lm3697";
+			reg = <0x36>;
+			ti,enable-gpio = <&msm_gpio 36 0>;
+			backlight {
+				compatible = "ti,lmu-backlight", "ti,lm3697-backlight";
+				lcd {
+					hvled1-used;
+					max-current-milliamp = /bits/ 8 <20>;
+				};
+			};
+		};
 	};
 
 	spi_5: spi@78b9000 { /* BLSP1 QUP5 */
