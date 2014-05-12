@@ -1975,16 +1975,17 @@ static iw_softap_ap_stats(struct net_device *dev,
     WLANSAP_GetStatistics((WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext,
                            &statBuffer, (v_BOOL_t)wrqu->data.flags);
 
-    pstatbuf = kmalloc(wrqu->data.length, GFP_KERNEL);
+    pstatbuf = kzalloc(QCSAP_MAX_WSC_IE, GFP_KERNEL);
     if(NULL == pstatbuf) {
         hddLog(LOG1, "unable to allocate memory");
         return -ENOMEM;
     }
-    len = scnprintf(pstatbuf, wrqu->data.length,
+
+    len = scnprintf(pstatbuf, QCSAP_MAX_WSC_IE,
                     "RUF=%d RMF=%d RBF=%d "
                     "RUB=%d RMB=%d RBB=%d "
                     "TUF=%d TMF=%d TBF=%d "
-                    "TUB=%d TMB=%d TBB=%d",
+                    "TUB=%d TMB=%d TBB=%d ",
                     (int)statBuffer.rxUCFcnt, (int)statBuffer.rxMCFcnt,
                     (int)statBuffer.rxBCFcnt, (int)statBuffer.rxUCBcnt,
                     (int)statBuffer.rxMCBcnt, (int)statBuffer.rxBCBcnt,
@@ -1992,14 +1993,14 @@ static iw_softap_ap_stats(struct net_device *dev,
                     (int)statBuffer.txBCFcnt, (int)statBuffer.txUCBcnt,
                     (int)statBuffer.txMCBcnt, (int)statBuffer.txBCBcnt);
 
-    if (len > wrqu->data.length ||
-        copy_to_user((void *)wrqu->data.pointer, (void *)pstatbuf, len))
-    {
+    if (len >= QCSAP_MAX_WSC_IE) {
         hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
         kfree(pstatbuf);
         return -EFAULT;
     }
-    wrqu->data.length -= len;
+
+    strlcpy(extra, pstatbuf, len);
+    wrqu->data.length = len;
     kfree(pstatbuf);
     return 0;
 }
