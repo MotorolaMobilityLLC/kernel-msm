@@ -105,6 +105,7 @@ struct max17042_chip {
 #ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
 	struct dentry *debugfs_root;
 	u8 debugfs_addr;
+	u8 debugfs_capacity;
 #endif
 };
 
@@ -251,6 +252,12 @@ static int max17042_get_property(struct power_supply *psy,
 		val->intval = ret * 625 / 8;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
+#ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
+		if (chip->debugfs_capacity != 0xFF) {
+			val->intval = chip->debugfs_capacity;
+			break;
+		}
+#endif
 		if (chip->pdata->batt_undervoltage_zero_soc &&
 		    chip->batt_undervoltage) {
 			val->intval = 0;
@@ -1087,6 +1094,11 @@ static int max17042_debugfs_create(struct max17042_chip *chip)
 
 	if (!debugfs_create_file("data", S_IRUGO | S_IWUSR, chip->debugfs_root,
 				 chip, &data_fops))
+		goto err_debugfs;
+
+	chip->debugfs_capacity = 0xFF;
+	if (!debugfs_create_u8("capacity", S_IRUGO | S_IWUSR,
+			       chip->debugfs_root, &chip->debugfs_capacity))
 		goto err_debugfs;
 
 	return 0;
