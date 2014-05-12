@@ -426,9 +426,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	notify_amdu_panel_on_cmds_stop();
 #endif
 // ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
-	if (!is_ambient_on()){
-		enable_ambient(1);
-	}
+// Need to find a better place to enable lowpower mode
+//	if (!is_ambient_on()){ 
+//		enable_ambient(1);
+//	}
 	printk("MDSS:%s:---\n", __func__);
 	return 0;
 }

@@ -52,6 +52,8 @@
 #include <linux/msm_iommu_domains.h>
 #include <mach/msm_memtypes.h>
 
+#include "mdss_asus_debug.h"
+
 #include "mdss_fb.h"
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
@@ -942,7 +944,11 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
 		}
 		notify_panel_lowpowermode(1);
-		//enable_ambient(1);
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Enable kernel ambient later to avoid 'cmd kickoff timed out' for 1003"
+		if (!is_ambient_on()){
+			enable_ambient(1);
+		}
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Enable kernel ambient later to avoid 'cmd kickoff timed out' for 1003"
 		return 0;
 		break;
 	case FB_BLANK_LOWPOWERMODE_OFF:
