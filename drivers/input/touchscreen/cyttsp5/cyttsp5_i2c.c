@@ -82,7 +82,7 @@ static int cyttsp5_hw_power(struct device *dev, int onoff)
 			dev_err(dev, "[TSP] failed to get avdd regulator\n");
 			return -ENODEV;
 		}
-		ret = regulator_set_voltage(avdd_vreg, 3300000, 3300000);
+		ret = regulator_set_voltage(avdd_vreg, 2850000, 2850000);
 		if (ret) {
 			dev_err(dev, "[TSP] unable to set voltage for avdd_vreg, %d\n",
 				ret);
