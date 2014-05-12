@@ -46,6 +46,12 @@
 	};
 };
 
+&i2c_1 {
+	lm3697@36 {
+		status = "disabled";
+	};
+};
+
 &i2c_2 {
 	synaptics_dsx_i2c@20 {
 		gpios = <&msm_gpio 37 0>, /* IRQ */
