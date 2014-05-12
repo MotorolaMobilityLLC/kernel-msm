@@ -1091,6 +1091,7 @@
 		gpios = <&msmgpio 45 0>,        /* EN_GPIO */
 			<&pm8941_mpps 2 0>;    /* Trigger */
 		default_effect = <17>;          /* Strong Click 100% */
+		external_trigger = <1>;
 		rated_voltage = <0x72>;         /* 2.4v */
 		overdrive_voltage = <0x89>;     /* 3.0v */
 	};
