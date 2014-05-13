@@ -614,7 +614,10 @@ void mdss_dsi_set_tear_on(struct mdss_dsi_ctrl_pdata *ctrl)
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Don't turn off TE for panel debug on ambient mode"
+if (0)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Don't turn off TE for panel debug on ambient mode"
 }
 
 void mdss_dsi_set_tear_off(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -627,7 +630,10 @@ void mdss_dsi_set_tear_off(struct mdss_dsi_ctrl_pdata *ctrl)
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Don't turn off TE for panel debug on ambient mode"
+if (0)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Don't turn off TE for panel debug on ambient mode"
 }
 
 /*
