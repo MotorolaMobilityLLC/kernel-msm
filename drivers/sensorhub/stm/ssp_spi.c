@@ -43,7 +43,7 @@ static int do_transfer(struct ssp_data *data, struct ssp_msg *msg,
 	while (gpio_get_value_cansleep(data->mcu_int2)) {
 		usleep_range(2950, 3050);
 		ssp_down = data->bSspShutdown;
-		if (ssp_down || iDelaycnt++ > 300) {
+		if (ssp_down || iDelaycnt++ > 500) {
 			pr_err("[SSP]: %s exit1 - Time out!!\n", __func__);
 			gpio_set_value_cansleep(data->ap_int, 1);
 			status = -1;
@@ -71,7 +71,7 @@ static int do_transfer(struct ssp_data *data, struct ssp_msg *msg,
 	while (!gpio_get_value_cansleep(data->mcu_int2)) {
 		usleep_range(2950, 3050);
 		ssp_down = data->bSspShutdown;
-		if (ssp_down || iDelaycnt++ > 300) {
+		if (ssp_down || iDelaycnt++ > 500) {
 			pr_err("[SSP]: %s exit2 - Time out!!\n", __func__);
 			status = -2;
 			goto exit;
