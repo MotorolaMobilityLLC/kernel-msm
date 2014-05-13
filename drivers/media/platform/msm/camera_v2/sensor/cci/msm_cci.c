@@ -756,8 +756,8 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 
 	msm_cci_ioreg_enable(sd);
 
-	rc = msm_camera_request_gpio_table(cci_dev->cci_gpio_tbl,
-		cci_dev->cci_gpio_tbl_size, 1);
+	rc = msm_camera_request_mux_gpio_table(&cci_dev->pdev->dev,
+		cci_dev->cci_gpio_tbl, cci_dev->cci_gpio_tbl_size, 1);
 	if (rc < 0) {
 		CDBG("%s: request gpio failed\n", __func__);
 		goto request_gpio_failed;
@@ -806,8 +806,8 @@ reset_complete_failed:
 	msm_cam_clk_enable(&cci_dev->pdev->dev, cci_clk_info,
 		cci_dev->cci_clk, cci_dev->num_clk, 0);
 clk_enable_failed:
-	msm_camera_request_gpio_table(cci_dev->cci_gpio_tbl,
-		cci_dev->cci_gpio_tbl_size, 0);
+	msm_camera_request_mux_gpio_table(&cci_dev->pdev->dev,
+		cci_dev->cci_gpio_tbl, cci_dev->cci_gpio_tbl_size, 0);
 request_gpio_failed:
 	msm_cci_ioreg_disable(sd);
 	cci_dev->ref_count--;
@@ -836,8 +836,8 @@ static int32_t msm_cci_release(struct v4l2_subdev *sd)
 	msm_cam_clk_enable(&cci_dev->pdev->dev, cci_clk_info,
 		cci_dev->cci_clk, cci_dev->num_clk, 0);
 
-	msm_camera_request_gpio_table(cci_dev->cci_gpio_tbl,
-		cci_dev->cci_gpio_tbl_size, 0);
+	msm_camera_request_mux_gpio_table(&cci_dev->pdev->dev,
+		cci_dev->cci_gpio_tbl, cci_dev->cci_gpio_tbl_size, 0);
 
 	for (i = 0; i < MASTER_MAX; i++)
 		cci_dev->master_clk_init[i] = 0;
