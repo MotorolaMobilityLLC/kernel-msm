@@ -295,6 +295,9 @@ int stm401_get_version(struct stm401_data *ps_stm401)
 		err = -EIO;
 		goto EXIT;
 	}
+
+	stm401_wake(ps_stm401);
+
 	stm401_cmdbuff[0] = REV_ID;
 	err = stm401_i2c_write_read_no_reset(ps_stm401, stm401_cmdbuff, 1, 1);
 	if (err >= 0) {
@@ -303,6 +306,8 @@ int stm401_get_version(struct stm401_data *ps_stm401)
 			stm401_readbuff[0]);
 		stm401_g_booted = 1;
 	}
+	stm401_sleep(ps_stm401);
+
 EXIT:
 	return err;
 }
@@ -323,7 +328,11 @@ int switch_stm401_mode(enum stm_mode mode)
 				(bslen_pin_active_value));
 		dev_dbg(&stm401_misc_data->client->dev,
 			"Switching to boot mode\n");
-		stm401_reset(pdata);
+		msleep(stm401_i2c_retry_delay);
+		gpio_set_value(pdata->gpio_reset, 0);
+		msleep(stm401_i2c_retry_delay);
+		gpio_set_value(pdata->gpio_reset, 1);
+		msleep(STM401_RESET_DELAY);
 
 		ret = stm401_boot_cmd_write(stm401_misc_data, GET_ID);
 		if (ret < 0)
@@ -658,9 +667,15 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 				"Copy from user returned error\n");
 			err = -EINVAL;
 		}
+
+		stm401_wake(stm401_misc_data);
+
 		if (err == 0)
 			err = stm401_i2c_write_no_reset(stm401_misc_data,
 				stm401_cmdbuff, count);
+
+		stm401_sleep(stm401_misc_data);
+
 		if (err == 0)
 			err = count;
 	}
