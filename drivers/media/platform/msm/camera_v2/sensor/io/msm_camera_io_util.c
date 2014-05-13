@@ -20,6 +20,7 @@
 #include <mach/gpiomux.h>
 #include <mach/msm_bus.h>
 #include "msm_camera_io_util.h"
+#include <linux/pinctrl/consumer.h>
 
 #define BUFF_SIZE_128 128
 
@@ -578,5 +579,58 @@ int msm_camera_request_gpio_table(struct gpio *gpio_tbl, uint8_t size,
 	} else {
 		gpio_free_array(gpio_tbl, size);
 	}
+	return rc;
+}
+
+int msm_camera_request_mux_gpio_table(struct device *dev, struct gpio *gpio_tbl,
+	uint8_t size, int gpio_en)
+{
+	int rc = 0, i = 0, err = 0;
+	struct pinctrl *pinctrl;
+
+	if (!gpio_tbl || !size) {
+		pr_err("%s:%d invalid gpio_tbl %p / size %d\n", __func__,
+			__LINE__, gpio_tbl, size);
+		return -EINVAL;
+	}
+
+	dev_info(dev, "%s state %s\n", __func__,
+		gpio_en ? "active" : "default");
+
+	for (i = 0; i < size; i++) {
+		CDBG("%s:%d i %d, gpio %d dir %ld\n", __func__, __LINE__, i,
+			gpio_tbl[i].gpio, gpio_tbl[i].flags);
+	}
+
+	if (gpio_en) {
+		pinctrl = devm_pinctrl_get_select(dev, "active");
+		if (IS_ERR(pinctrl)) {
+			rc = PTR_ERR(pinctrl);
+			dev_err(dev, "pinctrl failed err %d\n", rc);
+			return rc;
+		}
+		for (i = 0; i < size; i++) {
+			err = gpio_request_one(gpio_tbl[i].gpio,
+				gpio_tbl[i].flags, gpio_tbl[i].label);
+			if (err) {
+				/*
+				* After GPIO request fails, contine to
+				* apply new gpios, outout a error message
+				* for driver bringup debug
+				*/
+				pr_err("%s:%d gpio %d:%s request fails\n",
+					__func__, __LINE__,
+					gpio_tbl[i].gpio, gpio_tbl[i].label);
+			}
+		}
+	} else {
+		gpio_free_array(gpio_tbl, size);
+		pinctrl = devm_pinctrl_get_select(dev, "default");
+		if (IS_ERR(pinctrl)) {
+			rc = PTR_ERR(pinctrl);
+			dev_err(dev, "pinctrl failed err %d\n", rc);
+		}
+	}
+
 	return rc;
 }
