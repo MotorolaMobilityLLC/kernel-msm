@@ -398,11 +398,31 @@ typedef struct
    /* Traffic Stats timer */
    TX_TIMER trafficStatsTimer ;
 }tWdaTimers ;
+
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
 #define WDA_MAX_STA    (41)
 #else
 #define WDA_MAX_STA    (16)
 #endif
+typedef enum
+{
+   WDA_ADDSTA_REQ_NO_MEM = 0,
+   WDA_ADDSTA_REQ_WDI_FAIL = 1,
+   WDA_ADDSTA_RSP_NO_MEM = 2,
+   WDA_ADDSTA_RSP_WDI_FAIL = 3,
+   WDA_ADDSTA_MAX
+} WDA_AddSelfStaFailReasonDebug;
+
+/*AddSelfSta Request and Response Debug*/
+typedef struct
+{
+   wpt_uint8            wdiAddStaSelfStaReqCounter;
+   wpt_uint8            wdiAddStaSelfStaRspCounter;
+   wpt_uint8            wdiAddStaSelfStaFailCounter;
+   wpt_uint8            ucSTASelfIdx; /* received SelfStaIdx*/
+   wpt_uint8            wdaAddSelfStaFailReason;
+} tWDA_AddSelfStaDebugParams;
+
 typedef struct
 {
    v_PVOID_t            pVosContext;             /* global VOSS context*/
@@ -469,6 +489,9 @@ typedef struct
 
    /* Event to wait for WDA stop on FTM mode */
    vos_event_t          ftmStopDoneEvent;
+
+   tWDA_AddSelfStaDebugParams wdaAddSelfStaParams;
+
 } tWDA_CbContext ; 
 
 typedef struct

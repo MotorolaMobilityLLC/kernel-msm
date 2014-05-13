@@ -1161,6 +1161,9 @@ typedef struct
 
   /*timestamp when we get response timer event*/
   wpt_uint64                  uArchTimeStampRspTmrExp;
+
+  /* reason for WDI_DetectedDeviceError */
+  void *                        DeviceErrorReason;
 }WDI_ControlBlockType; 
 
 
