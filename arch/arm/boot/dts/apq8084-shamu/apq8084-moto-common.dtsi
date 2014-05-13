@@ -349,6 +349,11 @@
 
 &xhci_hsic_host {
 	status = "ok";
+	pinctrl-names = "default", "active";
+	pinctrl-0 = <&hsic_resume_default &hsic_wake_default
+			&hsic_rdy_default &hsic_data_default>;
+	pinctrl-1 = <&hsic_resume_active &hsic_wake_active
+			&hsic_rdy_active &hsic_data_active>;
 };
 
 &mdm0 {

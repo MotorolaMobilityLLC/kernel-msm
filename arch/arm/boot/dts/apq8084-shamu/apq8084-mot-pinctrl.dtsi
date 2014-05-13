@@ -382,6 +382,87 @@
 			};
 		};
 
+		/* high speed interface qcom,xhci-msm-hsic */
+		/* MDM2AP_WAKEUP		           */
+		hsic_wake  {
+			qcom,pins = <&gp 107>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "hsic_wake";
+			hsic_wake_default: default {
+				bias-pull-down;
+				drive-strength = <2>;
+			};
+			hsic_wake_active: active {
+				bias-pull-down;
+				drive-strength = <8>;
+			};
+		};
+
+		/* high speed interface qcom,xhci-msm-hsic */
+		/* AP2MDM_WAKEUP		           */
+		hsic_resume  {
+			qcom,pins = <&gp 108>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "hsic_resume";
+			hsic_resume_default: default {
+				bias-disable;
+				drive-strength = <2>;
+			};
+			hsic_resume_active: active {
+				bias-pull-down;
+				output-low;
+				drive-strength = <8>;
+			};
+		};
+
+		/* high speed interface qcom,xhci-msm-hsic */
+		/* AP2MDM_CHNL_RDY		           */
+		hsic_rdy  {
+			qcom,pins = <&gp 106>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "hsic_rdy";
+			hsic_rdy_default: default {
+				bias-pull-down;
+				output-low;
+				drive-strength = <2>;
+			};
+			hsic_rdy_active: active {
+				bias-disable;
+				output-low;
+				drive-strength = <8>;
+			};
+		};
+
+		/* high speed interface qcom,xhci-msm-hsic */
+		/* HSIC_STROBE and HSIC_DATA active config */
+		hsic_data_active  {
+			qcom,pins = <&gp 134 &gp 135>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <1>;
+			label = "hsic_data_active";
+			hsic_data_active: active {
+				bias-disable;
+				drive-strength = <8>;
+			};
+		};
+
+		/* high speed interface qcom,xhci-msm-hsic */
+		/* HSIC_STROBE and HSIC_DATA default config */
+		hsic_data_default  {
+			qcom,pins = <&gp 134 &gp 135>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "hsic_data_default";
+			hsic_data_default: default {
+				bias-pull-down;
+				output-low;
+				drive-strength = <2>;
+			};
+		};
+
 		/* camera pinmux settings		*/
 		/* CAM_MCLK1 unused now			*/
 		/* leaving them with default state only	*/
