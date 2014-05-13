@@ -265,6 +265,7 @@ static int mdss_quickdraw_prepare(void *data, unsigned char panel_state)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)(data);
 	struct mdss_mdp_ctl *ctl = NULL;
+	int ret = 0;
 
 	pr_debug("%s+ (panel_state: %d)\n", __func__, panel_state);
 
@@ -280,7 +281,10 @@ static int mdss_quickdraw_prepare(void *data, unsigned char panel_state)
 	pr_debug("%s- (quickdraw_esd_recovered: %d)\n", __func__,
 		mfd->quickdraw_esd_recovered);
 
-	return mfd->quickdraw_esd_recovered;
+	if (mfd->quickdraw_esd_recovered)
+		ret = QUICKDRAW_ESD_RECOVERED;
+
+	return ret;
 }
 
 static int mdss_quickdraw_execute(void *data,
