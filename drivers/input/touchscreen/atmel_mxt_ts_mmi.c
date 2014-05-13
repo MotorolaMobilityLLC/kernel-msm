@@ -293,6 +293,7 @@ struct mxt_data {
 	bool input_registered;
 	bool buttons_enabled;
 	bool one_touch_enabled;
+	bool rot;
 	bool sensor_sleep;
 	bool irq_enabled;
 	struct regulator *reg_vdd;
@@ -1002,6 +1003,10 @@ static void mxt_proc_t9_message(struct mxt_data *data, u8 *message)
 
 		/* Touch active */
 		input_mt_report_slot_state(input_dev, tool, 1);
+		if(data->rot) {
+			x = data->max_x - x;
+			y = data->max_y - y;
+		}
 		input_report_abs(input_dev, ABS_MT_POSITION_X, x);
 		input_report_abs(input_dev, ABS_MT_POSITION_Y, y);
 		input_report_abs(input_dev, ABS_MT_PRESSURE, amplitude);
@@ -1059,6 +1064,10 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 
 		/* Touch active */
 		input_mt_report_slot_state(input_dev, tool, 1);
+		if(data->rot) {
+			x = data->max_x - x;
+			y = data->max_y - y;
+		}
 		input_report_abs(input_dev, ABS_MT_POSITION_X, x);
 		input_report_abs(input_dev, ABS_MT_POSITION_Y, y);
 
@@ -1195,6 +1204,10 @@ static void mxt_proc_t63_messages(struct mxt_data *data, u8 *msg)
 
 	if (msg[2] & MXT_T63_STYLUS_DETECT) {
 		input_mt_report_slot_state(input_dev, MT_TOOL_PEN, 1);
+		if(data->rot) {
+			x = data->max_x - x;
+			y = data->max_y - y;
+		}
 		input_report_abs(input_dev, ABS_MT_POSITION_X, x);
 		input_report_abs(input_dev, ABS_MT_POSITION_Y, y);
 		input_report_abs(input_dev, ABS_MT_PRESSURE, pressure);
@@ -3952,6 +3965,8 @@ static int mxt_parse_dt(struct mxt_data *data)
 					"atmel,one-touch-enabled");
 	if (data->one_touch_enabled)
 		pr_info("using single touch in suspend\n");
+
+	data->rot = of_property_read_bool(np, "atmel,touch-rotate");
 
 	/* reset, irq gpio info */
 	pdata->gpio_irq = of_get_gpio(np, 0);
