@@ -19,7 +19,7 @@
 /* Necessary includes for device drivers */
 #include <linux/init.h>
 #include <linux/module.h>
-#include <linux/kernel.h>	/* printk() */
+#include <linux/kernel.h>
 #include <linux/slab.h>		/* kmalloc() */
 #include <linux/fs.h>
 #include <linux/errno.h>	/* error codes */
@@ -31,28 +31,30 @@
 #include <linux/miscdevice.h>
 #include <linux/io.h>
 #include <linux/sec_export.h>
-#include <mach/scm.h>
-#include <linux/memory_alloc.h>
+#include <soc/qcom/scm.h>
 #include <linux/platform_device.h>
+#include <linux/mm.h>
 #include "sec_core.h"
 
 #define EFUSE_COMPAT_STR	"qcom,msm-efuse"
 
+static int sec_init(void);
+static void sec_exit(void);
 static ssize_t sec_read(struct file *filp, char *buf,
 		size_t count, loff_t *f_pos);
 static int sec_open(struct inode *inode, struct file *filp);
 static int sec_release(struct inode *inode, struct file *filp);
 static long sec_ioctl(struct file *file, unsigned int ioctl_num,
 		unsigned long ioctl_param);
-static bool sec_buf_prepare(void);
+
+static bool sec_alloc_buffer(void);
 static bool sec_buf_updated(void);
 
 #define TZBSP_SVC_OEM 254
 #define SEC_BUF_SIZE 32
-#define SEC_NO_BUFFER 0x00dead00
 
 static u8 *sec_shared_mem;
-static u32 sec_phy_mem = SEC_NO_BUFFER;
+static u32 sec_phy_mem;
 static int sec_failures;
 
 /* Structure that declares the usual file */
@@ -83,6 +85,30 @@ static DEFINE_MUTEX(sec_core_lock);
 /*   KERNEL DRIVER APIs, ONLY IOCTL RESPONDS BACK TO USER SPACE REQUESTS    */
 /****************************************************************************/
 
+int sec_init(void)
+{
+	int result;
+
+	result = misc_register(&sec_dev);
+
+	if (result) {
+		pr_err("sec: cannot obtain major number\n");
+		return result;
+	}
+
+	return 0;
+}
+
+void sec_exit(void)
+{
+	/* Freeing the major number */
+	misc_deregister(&sec_dev);
+}
+
+/* Mapping of the module init and exit functions */
+module_init(sec_init);
+module_exit(sec_exit);
+
 int sec_open(struct inode *inode, struct file *filp)
 {
 	/* Not supported, return Success */
@@ -103,24 +129,19 @@ ssize_t sec_read(struct file *filp, char *buf,
 	return 0;
 }
 
-static bool sec_buf_prepare()
+static bool sec_alloc_buffer()
 {
-	/* Prepare shared memory buffer */
-	if (sec_phy_mem == SEC_NO_BUFFER) {
+	sec_shared_mem = kzalloc(PAGE_ALIGN(SEC_BUF_SIZE), GFP_KERNEL);
+	sec_phy_mem = (u32)virt_to_phys(sec_shared_mem);
 
-		sec_phy_mem = allocate_contiguous_ebi_nomap
-			(SEC_BUF_SIZE, SEC_BUF_SIZE);
-		sec_shared_mem = ioremap_nocache
-			(sec_phy_mem, SEC_BUF_SIZE);
-
-		if (!sec_shared_mem || !sec_phy_mem) {
-			free_contiguous_memory_by_paddr(sec_phy_mem);
-			sec_phy_mem = SEC_NO_BUFFER;
-			return false;
-		}
+	if (!sec_shared_mem || !sec_phy_mem) {
+		kfree(sec_shared_mem);
+		pr_err("sec: mem alloc fail!");
+		return false;
 	}
 
 	memset(sec_shared_mem, 0xff, SEC_BUF_SIZE);
+	scm_inv_range((u32)sec_shared_mem, (u32)sec_shared_mem + SEC_BUF_SIZE);
 
 	return true;
 }
@@ -128,10 +149,13 @@ static bool sec_buf_prepare()
 static bool sec_buf_updated()
 {
 	int i;
+	scm_inv_range((u32)sec_shared_mem, (u32)sec_shared_mem + SEC_BUF_SIZE);
+
 	for (i = 0; i < SEC_BUF_SIZE; i++)
 		if (sec_shared_mem[i] != 0xff)
 			return true;
 
+	pr_err("sec: buffer not updated!");
 	return false;
 }
 
@@ -143,8 +167,10 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 	long ret_val = SEC_KM_FAIL;
 	u32 ctr;
 
+	if (sec_alloc_buffer() == false)
+		return SEC_KM_FAIL;
+
 	mutex_lock(&sec_core_lock);
-	memset(sec_shared_mem, 0xff, SEC_BUF_SIZE);
 
 	switch (ioctl_num) {
 
@@ -157,24 +183,23 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 			my_cmd.parm2 = SEC_PROC_ID_SIZE;
 
 			if (scm_call(TZBSP_SVC_OEM, 1, &my_cmd,
-				sizeof(my_cmd), NULL, 0) == 0) {
+				sizeof(my_cmd), NULL, 0) != 0) {
 
-				if (copy_to_user((void __user *)ioctl_param,
-					(const void *) sec_shared_mem,
-					SEC_PROC_ID_SIZE) == 0) {
+				pr_err("sec: scm call failed!\n");
+				continue;
+			}
 
-					/* check data was actually updated */
-					if (sec_buf_updated())
-						ret_val = SEC_KM_SUCCESS;
-					else
-						pr_err("sec: not updated\n");
+			/* check data was actually updated */
+			if (sec_buf_updated() == false)
+				continue;
 
-					ret_val = SEC_KM_SUCCESS;
-				}
-			} else
-				 pr_err("sec: scm call failed!\n");
+			if (copy_to_user((void __user *)ioctl_param,
+				(const void *) sec_shared_mem,
+				SEC_PROC_ID_SIZE) == 0) {
+
+				ret_val = SEC_KM_SUCCESS;
+			}
 		}
-
 
 		break;
 
@@ -200,9 +225,8 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 
 	case SEC_IOCTL_READ_FUSE:
 
-		if (copy_from_user(&efuse_data,
-					(void *)ioctl_param,
-					sizeof(efuse_data)) != 0) {
+		if (copy_from_user(&efuse_data, (void *)ioctl_param,
+			sizeof(efuse_data)) != 0) {
 
 			break;
 		}
@@ -214,21 +238,23 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 			my_cmd.parm2 = sec_phy_mem;
 
 			if (scm_call(TZBSP_SVC_OEM, 1, &my_cmd,
-						sizeof(my_cmd), NULL, 0) == 0) {
+				sizeof(my_cmd), NULL, 0) != 0) {
 
-				efuse_data.efuse_value = *(u32 *)sec_shared_mem;
-
-				if (copy_to_user((void *)ioctl_param,
-					&efuse_data, sizeof(efuse_data)) == 0) {
-
-					/* check data was actually updated */
-					if (sec_buf_updated())
-						ret_val = SEC_KM_SUCCESS;
-					else
-						pr_err("sec: not updated!\n");
-				}
-			} else
 				pr_err("sec: scm call failed!\n");
+				continue;
+			}
+
+			/* check data was actually updated */
+			if (sec_buf_updated() == false)
+				continue;
+
+			efuse_data.efuse_value = *(u32 *)sec_shared_mem;
+
+			if (copy_to_user((void *)ioctl_param,
+				&efuse_data, sizeof(efuse_data)) == 0) {
+
+				ret_val = SEC_KM_SUCCESS;
+			}
 		}
 
 		break;
@@ -250,7 +276,6 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 
 		break;
 
-
 	case SEC_IOCTL_GET_TZ_CODES:
 
 		pr_err("sec: fail counter = %d\n", sec_failures);
@@ -258,7 +283,7 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 		break;
 
 	default:
-		 pr_err("sec: error\n");
+		pr_err("sec: invalid ioctl number\n");
 		break;
 	}
 
@@ -267,6 +292,8 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 
 	mutex_unlock(&sec_core_lock);
 
+	kfree(sec_shared_mem);
+
 	return ret_val;
 }
 
@@ -274,21 +301,25 @@ void print_hab_fail_codes(void)
 {
 	struct sec_cmd my_cmd;
 
+	if (sec_alloc_buffer() == false)
+		return;
+
 	mutex_lock(&sec_core_lock);
 
-	if (sec_buf_prepare()) {
-		my_cmd.mot_cmd = 9;
-		my_cmd.parm1 = 16;
-		my_cmd.parm2 = sec_phy_mem;
+	my_cmd.mot_cmd = 9;
+	my_cmd.parm1 = 16;
+	my_cmd.parm2 = sec_phy_mem;
 
-		scm_call(254, 1, &my_cmd, sizeof(my_cmd), NULL, 0);
+	scm_call(254, 1, &my_cmd, sizeof(my_cmd), NULL, 0);
+	sec_buf_updated();
 
-		pr_err("HAB fail codes: 0x%x 0x%x 0x%x 0x%x\n",
-		sec_shared_mem[0], sec_shared_mem[1],
-		sec_shared_mem[2], sec_shared_mem[3]);
-	}
+	pr_err("HAB fail codes: 0x%x 0x%x 0x%x 0x%x\n",
+	sec_shared_mem[0], sec_shared_mem[1],
+	sec_shared_mem[2], sec_shared_mem[3]);
 
 	mutex_unlock(&sec_core_lock);
+
+	kfree(sec_shared_mem);
 }
 EXPORT_SYMBOL(print_hab_fail_codes);
 
@@ -303,12 +334,7 @@ static int msm_efuse_probe(struct platform_device *pdev)
 		return result;
 	}
 
-	if (sec_buf_prepare() == false) {
-		pr_err("sec: cannot get memory for fuse operation\n");
-		return  -ENOMEM;
-	}
 	return 0;
-
 }
 
 static struct of_device_id msm_match_table[] = {
@@ -316,6 +342,13 @@ static struct of_device_id msm_match_table[] = {
 	{},
 };
 EXPORT_COMPAT(EFUSE_COMPAT_STR);
+
+static int msm_efuse_remove(struct platform_device *pdev)
+{
+	/* Freeing the major number */
+	misc_deregister(&sec_dev);
+	return 0;
+}
 
 static struct platform_driver msm_efuse_driver = {
 	.probe = msm_efuse_probe,
