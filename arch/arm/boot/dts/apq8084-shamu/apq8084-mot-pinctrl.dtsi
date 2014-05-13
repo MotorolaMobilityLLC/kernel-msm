@@ -97,6 +97,37 @@
 			};
 		};
 
+		touch_irq {
+			qcom,pins = <&gp 84>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "touch_irq";
+			touch_irq_default: default {
+				bias-pull-down;
+				drive-strength = <6>;
+			};
+			touch_irq_active: active {
+				bias-pull-up;
+				drive-strength = <6>;
+			};
+		};
+
+		touch_reset {
+			qcom,pins = <&gp 97>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "touch_reset";
+			touch_reset_default: default {
+				bias-disable;
+				output-low;
+				drive-strength = <6>;
+			};
+			touch_reset_active: active {
+				bias-pull-up;
+				drive-strength = <6>;
+			};
+		};
+
 		tmp108_irq {
 			qcom,pins = <&gp 60>;
 			qcom,num-grp-pins = <1>;
