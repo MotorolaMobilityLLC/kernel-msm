@@ -62,6 +62,8 @@ extern u32 scm_get_version(void);
 extern int scm_is_call_available(u32 svc_id, u32 cmd_id);
 extern int scm_get_feat_version(u32 feat);
 
+extern void scm_inv_range(unsigned long start, unsigned long end);
+
 #define SCM_HDCP_MAX_REG 5
 
 struct scm_hdcp_req {
@@ -124,6 +126,11 @@ static inline int scm_is_call_available(u32 svc_id, u32 cmd_id)
 static inline int scm_get_feat_version(u32 feat)
 {
 	return 0;
+}
+
+static inline void scm_inv_range(unsigned long start, unsigned long end)
+{
+	return;
 }
 
 #endif
