@@ -1500,7 +1500,8 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
                return status;
             }
             /* Flow aggregation */
-            if(SME_QOS_TSPEC_MASK_BIT_1_2_SET != pACInfo->tspec_mask_status)
+            if(((pACInfo->tspec_mask_status > 0) &&
+                (pACInfo->tspec_mask_status <= SME_QOS_TSPEC_INDEX_MAX)))
             {
               /* Either of upstream, downstream or bidirectional flows are present */
               /* If either of new stream or current stream is for bidirecional, aggregate 
@@ -1529,7 +1530,7 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
                 pACInfo->tspec_mask_status = SME_QOS_TSPEC_MASK_BIT_1_2_SET;
               }
             }
-            else
+            else if(SME_QOS_TSPEC_MASK_BIT_1_2_SET == pACInfo->tspec_mask_status)
             {
               /* Both uplink and downlink streams are present. */
               /* If new stream is bidirectional, aggregate new stream with all existing
@@ -1553,6 +1554,12 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
                 // Aggregate with 1st tspec index
                 tmask = SME_QOS_TSPEC_MASK_BIT_1_SET;
               }
+            }
+            else
+            {
+              VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_MED,
+                "%s: %d: wrong tmask = %d", __func__, __LINE__,
+                pACInfo->tspec_mask_status );
             }
          }
          else
@@ -3657,15 +3664,18 @@ eHalStatus sme_QosProcessFTReassocRspEv(tpAniSirGlobal pMac, v_U8_t sessionId, v
     tDot11fIERICDataDesc *pRicDataDesc = NULL;
     eHalStatus            status = eHAL_STATUS_SUCCESS;
     tCsrRoamSession *pCsrSession = CSR_GET_SESSION( pMac, sessionId );
-    tCsrRoamConnectedInfo *pCsrConnectedInfo = &pCsrSession->connectedInfo;
+    tCsrRoamConnectedInfo *pCsrConnectedInfo = NULL;
     tANI_U32    ricRspLen;
-    /* To silence the KW tool NULL check is added */ 
-    if(pCsrConnectedInfo == NULL)
+
+    if(NULL == pCsrSession)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                FL("The connected info pointer is NULL"));
+                FL("The Session pointer is NULL"));
         return eHAL_STATUS_FAILURE;
     }
+
+    pCsrConnectedInfo = &pCsrSession->connectedInfo;
+
     ricRspLen = pCsrConnectedInfo->nRICRspLength;
 
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
