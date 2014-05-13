@@ -76,8 +76,11 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	if (ps_stm401->mode == BOOTMODE)
 		goto EXIT;
 
-	if (ps_stm401->is_suspended)
+	if (ps_stm401->is_suspended) {
+		dev_dbg(&ps_stm401->client->dev, "setting pending_wake_work [true]\n");
+		ps_stm401->pending_wake_work = true;
 		goto EXIT;
+	}
 
 	/* read interrupt mask register */
 	stm401_cmdbuff[0] = WAKESENSOR_STATUS;
