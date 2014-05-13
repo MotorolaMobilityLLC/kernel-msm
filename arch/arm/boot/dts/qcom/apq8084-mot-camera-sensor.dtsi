@@ -12,6 +12,9 @@
  */
 
 &cci {
+	pinctrl-names = "default", "active";
+	pinctrl-0 = <&cam_i2c_default>;
+	pinctrl-1 = <&cam_i2c_active>;
 
 	rohm_bu64296gwx: qcom,actuator@18 {
 		cell-index = <1>;
@@ -36,6 +39,9 @@
 		qcom,gpio-req-tbl-label = "FLASH_EN";
 		qcom,cci-master = <0>;
 		flash-now-support = <0>;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&cam_flash_default>;
+		pinctrl-1 = <&cam_flash_active>;
 	};
 
 	qcom,camera@20 {
@@ -78,6 +84,9 @@
 		qcom,sensor-type = <0>;
 		qcom,cci-master = <0>;
 		status = "ok";
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&cam_mclk0_default &cam1_ctrl_default>;
+		pinctrl-1 = <&cam_mclk0_active &cam1_ctrl_active>;
 	};
 
 	qcom,camera@1 {
@@ -117,6 +126,9 @@
 		qcom,sensor-type = <0>;
 		qcom,cci-master = <0>;
 		status = "ok";
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&cam_mclk2_default &cam2_ctrl_default>;
+		pinctrl-1 = <&cam_mclk2_active &cam2_ctrl_active>;
 	};
 
 };
