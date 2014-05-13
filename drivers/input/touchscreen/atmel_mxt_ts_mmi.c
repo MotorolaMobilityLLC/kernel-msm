@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
+#include <linux/pinctrl/consumer.h>
 
 #define ATMEL_MXT_STATES { \
 	MXT_DEF(UNKNOWN), \
@@ -2514,6 +2515,14 @@ static int mxt_gpio_configure(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
 	int error = -EINVAL;
+	struct pinctrl *pinctrl;
+
+	pinctrl = devm_pinctrl_get_select(dev, "active");
+	if (IS_ERR(pinctrl)) {
+		error = PTR_ERR(pinctrl);
+		dev_err(dev, "pinctrl failed err %d\n", error);
+		return error;
+	}
 
 	/* According to maXTouch power sequencing specification, RESET line
 	 * must be kept low until some time after regulators come up to
@@ -2569,8 +2578,15 @@ fail:
 
 static void mxt_gpio_free(struct mxt_data *data)
 {
+	struct device *dev = &data->client->dev;
+	struct pinctrl *pinctrl;
+
 	gpio_free(data->pdata->gpio_reset);
 	gpio_free(data->pdata->gpio_irq);
+
+	pinctrl = devm_pinctrl_get_select_default(dev);
+	if (IS_ERR(pinctrl))
+		dev_err(dev, "pinctrl failed err %ld\n", PTR_ERR(pinctrl));
 }
 
 static int mxt_power_init(struct mxt_data *data)
