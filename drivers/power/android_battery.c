@@ -20,6 +20,13 @@
 
 #include <linux/platform_data/android_battery.h>
 
+enum {
+	BOOTDONE,
+};
+static struct device_attribute android_battery_attrs[] = {
+	BATTERY_ATTR(bootdone),
+};
+
 static enum power_supply_property android_battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_HEALTH,
@@ -58,6 +65,80 @@ static char *charge_source_str(int charge_source)
 	}
 
 	return "?";
+}
+
+ssize_t android_bat_show_attrs(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct power_supply *psy = dev_get_drvdata(dev);
+	struct android_bat_data *battery =
+		container_of(psy, struct android_bat_data, psy_bat);
+	const ptrdiff_t offset = attr - android_battery_attrs;
+	int i = 0;
+
+	switch (offset) {
+	case BOOTDONE:
+		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
+				battery->pdata->bootdone);
+		break;
+	default:
+		i = -EINVAL;
+	}
+
+	return i;
+}
+
+ssize_t android_bat_store_attrs(
+					struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	struct power_supply *psy = dev_get_drvdata(dev);
+	union power_supply_propval value;
+	struct android_bat_data *battery =
+		container_of(psy, struct android_bat_data, psy_bat);
+	const ptrdiff_t offset = attr - android_battery_attrs;
+	int ret = -EINVAL;
+	int x = 0;
+
+	switch (offset) {
+	case BOOTDONE:
+		if (sscanf(buf, "%d\n", &x) == 1) {
+			/* update battery info */
+			pr_info("%s: BOOTDONE\n",
+					__func__);
+			battery->pdata->bootdone = 1;
+			value.intval = battery->pdata->bootdone;
+			psy_do_property(battery->pdata->charger_name, set,
+					POWER_SUPPLY_PROP_POWER_NOW, value);
+			value.intval = battery->charge_source;
+			psy_do_property(battery->pdata->charger_name, set,
+					POWER_SUPPLY_PROP_ONLINE, value);
+		}
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+static int android_bat_create_attrs(struct device *dev)
+{
+	int i, rc;
+
+	for (i = 0; i < ARRAY_SIZE(android_battery_attrs); i++) {
+		rc = device_create_file(dev, &android_battery_attrs[i]);
+		if (rc)
+			goto create_attrs_failed;
+	}
+	goto create_attrs_succeed;
+
+create_attrs_failed:
+	while (i--)
+		device_remove_file(dev, &android_battery_attrs[i]);
+create_attrs_succeed:
+	return rc;
 }
 
 static int android_bat_set_property(struct power_supply *ps,
@@ -820,6 +901,13 @@ static int android_bat_probe(struct platform_device *pdev)
 	if (battery->pdata->init_adc)
 		battery->pdata->init_adc(battery);
 
+	ret = android_bat_create_attrs(battery->psy_bat.dev);
+	if (ret) {
+		dev_err(battery->dev,
+			"%s : Failed to create_attrs\n", __func__);
+		goto err_create_attrs;
+	}
+
 	wake_lock(&battery->monitor_wake_lock);
 	queue_work(battery->monitor_wqueue, &battery->monitor_work);
 
@@ -833,6 +921,8 @@ static int android_bat_probe(struct platform_device *pdev)
 
 	goto success;
 
+err_create_attrs:
+	power_supply_unregister(&battery->psy_bat);
 err_psy_bat_reg:
 	power_supply_unregister(&battery->psy_ac);
 err_psy_ac_reg:

@@ -171,6 +171,8 @@ struct max77836_chg_data {
 
 	int irq_eoc;
 	int chg_float_voltage;
+
+	int bootdone;
 };
 
 #endif /* __MAX77836_CHARGER_H */

@@ -24,6 +24,8 @@
 #define DISABLE 0
 #define BIT_MBCICHWRCL	BIT (4)
 
+#define CHARGING_CURRENT_MAX 475000
+
 static enum power_supply_property max77836_chg_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
@@ -267,6 +269,7 @@ static int max77836_chg_get_property(struct power_supply *psy,
 	return 0;
 }
 
+extern int androidboot_mode_charger;
 static int max77836_chg_set_property(struct power_supply *psy,
 		enum power_supply_property psp,
 		const union power_supply_propval *val)
@@ -278,6 +281,9 @@ static int max77836_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_STATUS:
 		charger->status = val->intval;
 		break;
+	case POWER_SUPPLY_PROP_POWER_NOW:
+		charger->bootdone = 1;
+		break;
 
 	/* val->intval : type */
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
@@ -288,9 +294,16 @@ static int max77836_chg_set_property(struct power_supply *psy,
 		else
 			charger->is_charging = true;
 
-		charger->charging_current =
-			charger->pdata->charging_current[
-			val->intval].fast_charging_current;
+		pr_info("%s: bootdone(%d), poweroff_charging(%d)\n",
+				__func__, charger->bootdone, androidboot_mode_charger);
+		if (!charger->bootdone && !androidboot_mode_charger) {
+			charger->charging_current =
+				CHARGING_CURRENT_MAX;
+		} else {
+			charger->charging_current =
+				charger->pdata->charging_current[
+				val->intval].fast_charging_current;
+		}
 
 		max77836_chg_set_charging(charger);
 		break;

@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
+#include <linux/alarmtimer.h>
 #include <linux/timer.h>
 #include <linux/mutex.h>
 #include <linux/debugfs.h>
@@ -65,6 +66,8 @@ struct android_bat_platform_data {
 	unsigned long full_charging_time;
 	unsigned long recharging_time;
 	unsigned int recharging_voltage;
+
+	int bootdone;
 };
 
 struct android_bat_data {
@@ -129,4 +132,19 @@ static inline struct power_supply *get_power_supply_by_name(char *name)
 		}	\
 	}	\
 }
+
+ssize_t android_bat_show_attrs(struct device *dev,
+				  struct device_attribute *attr, char *buf);
+ssize_t android_bat_store_attrs(
+					struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count);
+
+#define BATTERY_ATTR(_name)                                         \
+{                                                                       \
+        .attr = {.name = #_name, .mode = 0664}, \
+        .show = android_bat_show_attrs,                                     \
+        .store = android_bat_store_attrs,                                   \
+}
+
 #endif
