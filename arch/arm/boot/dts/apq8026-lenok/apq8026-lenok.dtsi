@@ -127,6 +127,20 @@
 	status = "ok";
 };
 
+&sdhc_3 {
+	/delete-property/ vdd-supply;
+	vdd-io-supply = <&pm8226_l6>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <250 154000>;
+
+	qcom,sup-voltages = <1800 2950>;
+
+	qcom,bus-width = <4>;
+	qcom,nonremovable;
+	status = "ok";
+};
+
 &rpm_bus {
 	rpm-regulator-ldoa18 {
 		status = "okay";
