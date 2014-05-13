@@ -490,6 +490,40 @@
 		};
 
 		/* camera pinmux settings		*/
+		/* CAM_MCLK0				*/
+		cam_mclk0 {
+			qcom,pins = <&gp 15>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "cam_mclk0";
+			cam_mclk0_default: default {
+				bias-pull-down;
+				drive-strength = <2>;
+			};
+			cam_mclk0_active: active {
+				bias-disable;
+				drive-strength = <2>;
+			};
+		};
+
+		/* camera pinmux settings		*/
+		/* CAM_MCLK2				*/
+		cam_mclk2 {
+			qcom,pins = <&gp 17>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "cam_mclk2";
+			cam_mclk2_default: default {
+				bias-pull-down;
+				drive-strength = <2>;
+			};
+			cam_mclk2_active: active {
+				bias-disable;
+				drive-strength = <2>;
+			};
+		};
+
+		/* camera pinmux settings		*/
 		/* CAM_MCLK1 unused now			*/
 		/* leaving them with default state only	*/
 		cam_mclk1 {
@@ -520,6 +554,68 @@
 				drive-strength = <2>;
 			};
 			cam_mclk3_active: active {
+				bias-disable;
+				drive-strength = <2>;
+			};
+		};
+
+		/* camera pinmux settings		*/
+		/* I2C bus active configuration		*/
+		cam_i2c_act {
+			qcom,pins = <&gp 19 &gp 20 &gp 21 &gp 22>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <1>;
+			label = "cam_i2c_act";
+			cam_i2c_active: active {
+				bias-disable;
+				drive-strength = <2>;
+			};
+		};
+
+		/* camera pinmux settings		*/
+		/* I2C bus off configuration		*/
+		cam_i2c_off {
+			qcom,pins = <&gp 19 &gp 20 &gp 21 &gp 22>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <0>;
+			label = "cam_i2c_off";
+			cam_i2c_default: default {
+				bias-disable;
+				drive-strength = <2>;
+			};
+		};
+
+		/* camera pinmux settings		*/
+		/* camera 1 reset and stand-by pins	*/
+		cam1_ctrl {
+			qcom,pins = <&gp 36 &gp 120>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "cam1_ctrl";
+			cam1_ctrl_default: default {
+				bias-disable;
+				output-low;
+				drive-strength = <2>;
+			};
+			cam1_ctrl_active: active {
+				bias-disable;
+				drive-strength = <2>;
+			};
+		};
+
+		/* camera pinmux settings		*/
+		/* camera 2 reset and stand-by pins	*/
+		cam2_ctrl {
+			qcom,pins = <&gp 38 &gp 37>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "cam2_ctrl";
+			cam2_ctrl_default: default {
+				bias-disable;
+				output-low;
+				drive-strength = <2>;
+			};
+			cam2_ctrl_active: active {
 				bias-disable;
 				drive-strength = <2>;
 			};
