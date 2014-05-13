@@ -107,7 +107,7 @@ void __init apq8084_init(void)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
 	if (platform_is_apq8084_moto())
-		apq8084_moto_init_gpiomux();
+		msm_gpiomux_init_dt();
 	else
 		apq8084_init_gpiomux();
 	apq8084_add_drivers();
