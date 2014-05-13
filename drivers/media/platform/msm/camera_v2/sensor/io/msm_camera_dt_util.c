@@ -976,7 +976,7 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 			ctrl->gpio_conf->cam_gpiomux_conf_tbl_size);
 	}
 
-	rc = msm_camera_request_gpio_table(
+	rc = msm_camera_request_mux_gpio_table(ctrl->dev,
 		ctrl->gpio_conf->cam_gpio_req_tbl,
 		ctrl->gpio_conf->cam_gpio_req_tbl_size, 1);
 	if (rc < 0)
@@ -1119,9 +1119,11 @@ power_up_failed:
 				(power_setting->delay * 1000) + 1000);
 		}
 	}
-	msm_camera_request_gpio_table(
+
+	msm_camera_request_mux_gpio_table(ctrl->dev,
 		ctrl->gpio_conf->cam_gpio_req_tbl,
 		ctrl->gpio_conf->cam_gpio_req_tbl_size, 0);
+
 	return rc;
 }
 
@@ -1239,7 +1241,8 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 				(pd->delay * 1000) + 1000);
 		}
 	}
-	msm_camera_request_gpio_table(
+
+	msm_camera_request_mux_gpio_table(ctrl->dev,
 		ctrl->gpio_conf->cam_gpio_req_tbl,
 		ctrl->gpio_conf->cam_gpio_req_tbl_size, 0);
 	CDBG("%s exit\n", __func__);
