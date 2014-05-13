@@ -30,6 +30,7 @@
 #include <mach/msm_iomap.h>
 #include <linux/debugfs.h>
 #include <asm/unaligned.h>
+#include <linux/pinctrl/consumer.h>
 
 #include "xhci.h"
 
@@ -513,6 +514,14 @@ static int mxhci_msm_config_gdsc(struct mxhci_hsic_hcd *mxhci, int on)
 static int mxhci_hsic_config_gpios(struct mxhci_hsic_hcd *mxhci)
 {
 	int rc = 0;
+	struct pinctrl *pinctrl;
+
+	pinctrl = devm_pinctrl_get_select(mxhci->dev, "active");
+	if (IS_ERR(pinctrl)) {
+		rc = PTR_ERR(pinctrl);
+		dev_err(mxhci->dev, "pinctrl failed err %d\n", rc);
+		return rc;
+	}
 
 	rc = devm_gpio_request(mxhci->dev, mxhci->strobe, "HSIC_STROBE_GPIO");
 	if (rc < 0) {
@@ -1612,6 +1621,11 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 	usb_put_hcd(hcd);
 
 	unregister_reboot_notifier(&mxhci->hsic_reboot);
+
+	/* only need this if we want to set default state on exit */
+	if (IS_ERR(devm_pinctrl_get_select_default(&pdev->dev)))
+		dev_err(&pdev->dev, "pinctrl set default failed\n");
+
 	return 0;
 }
 
