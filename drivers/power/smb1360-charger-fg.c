@@ -1961,7 +1961,7 @@ static int smb1360_battery_get_property(struct power_supply *psy,
 		val->intval = smb1360_get_prop_charge_type(chip);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = smb1360_get_prop_batt_capacity(chip);
+		val->intval = 50; /*smb1360_get_prop_batt_capacity(chip);*/
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		val->intval = smb1360_get_prop_chg_full_design(chip);
