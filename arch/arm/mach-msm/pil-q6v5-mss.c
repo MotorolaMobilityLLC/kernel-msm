@@ -33,12 +33,12 @@
 #include <mach/ramdump.h>
 #include <mach/msm_smem.h>
 #include <asm/bootinfo.h>
-#include "smem_private.h"
 
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
 #include "pil-msa.h"
 #include "sysmon.h"
+#include "mmi-unit-info.h"
 
 #define MAX_VDD_MSS_UV		1150000
 #define PROXY_TIMEOUT_MS	10000
@@ -59,35 +59,16 @@ struct modem_data {
 
 #define subsys_to_drv(d) container_of(d, struct modem_data, subsys_desc)
 
-static int *modem_restarts_smem;
 static char pil_ssr_reason[MAX_SSR_REASON_LEN];
 static char *ssr_reason = pil_ssr_reason;
 module_param(ssr_reason, charp, S_IRUGO);
-
-static int smem_module_init_notifier(struct notifier_block *this,
-					unsigned long code,
-					void *_cmd)
-{
-	modem_restarts_smem = smem_alloc2(SMEM_ID_VENDOR2, 8);
-	if (modem_restarts_smem) {
-		*modem_restarts_smem = 0;
-		if (bi_powerup_reason() == PU_REASON_AP_KERNEL_PANIC)
-			*modem_restarts_smem = 1;
-	}
-	return 0;
-}
-
-static struct notifier_block nb = {
-	.notifier_call = smem_module_init_notifier,
-};
 
 static void log_modem_sfr(void)
 {
 	u32 size;
 	char *smem_reason;
 
-	if (modem_restarts_smem)
-		*modem_restarts_smem = 1;
+	mmi_set_pureason(PU_REASON_MODEM_RESET);
 
 	smem_reason = smem_get_entry_no_rlock(SMEM_SSR_REASON_MSS0, &size);
 	if (!smem_reason || !size) {
@@ -308,7 +289,6 @@ static int __devinit pil_subsys_init(struct modem_data *drv,
 			__func__, ret);
 		goto err_irq;
 	}
-	smem_module_init_notifier_register(&nb);
 
 	return 0;
 
