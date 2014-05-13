@@ -13,7 +13,7 @@
 
 &cci {
 
-	ROHM_BU64295GWZ: qcom,actuator@18 {
+	rohm_bu64296gwx: qcom,actuator@18 {
 		cell-index = <1>;
 		reg = <0x18>;
 		compatible = "qcom,actuator";
@@ -45,7 +45,7 @@
 		qcom,slave-id = <0x20 0x0016 0x0220>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
-		qcom,actuator-src = <&ROHM_BU64295GWZ>;
+		qcom,actuator-src = <&rohm_bu64296gwx>;
 		qcom,led-flash-src = <&lm3646_led_flash>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "imx220";

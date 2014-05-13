@@ -18,8 +18,8 @@
 #include "dsi-panel-mot-smd-598-1080p-cmd.dtsi"
 
 / {
-	model = "Motorola APQ 8084 Shamu";
-	compatible = "qcom,apq8084-shamu",
+	model = "Motorola APQ 8084 Lexington";
+	compatible = "qcom,apq8084-lexington",
 		   "qcom,apq8084-moto",
 		   "qcom,apq8084";
 };

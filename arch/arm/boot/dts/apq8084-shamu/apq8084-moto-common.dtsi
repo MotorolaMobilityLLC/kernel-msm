@@ -65,14 +65,18 @@
 		/delete-property/ qcom,sec-auxpcm-gpio-din;
 		/delete-property/ qcom,sec-auxpcm-gpio-dout;
 
-		qcom,quat-auxpcm-gpio-sclk = <&msmgpio 92 0>;
-		qcom,quat-auxpcm-gpio-ws =  <&msmgpio 93 0>;
-		qcom,quat-auxpcm-gpio-dout = <&msmgpio 94 0>;
-		qcom,quat-auxpcm-gpio-din = <&msmgpio 95 0>;
+		/delete-property/ qcom,quat-auxpcm-gpio-sclk;
+		/delete-property/ qcom,quat-auxpcm-gpio-ws;
+		/delete-property/ qcom,quat-auxpcm-gpio-dout;
+		/delete-property/ qcom,quat-auxpcm-gpio-din;
 		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 77 0>;
 		qcom,prim-auxpcm-gpio-sync = <&msmgpio 78 0>;
 		qcom,prim-auxpcm-gpio-din  = <&msmgpio 79 0>;
 		qcom,prim-auxpcm-gpio-dout = <&msmgpio 80 0>;
+		pinctrl-names = "pmx-quad-mi2s-sleep",
+				"pmx-quad-mi2s-active";
+		pinctrl-0 = <&quad_mi2s_sleep>;
+		pinctrl-1 = <&quad_mi2s_active>;
 		qcom,tfa9890-left-name = "tfa9890.8-0034";
 
 		qcom,audio-routing =
@@ -275,9 +279,9 @@
 	};
 	factory_support {
 		compatible = "mmi,factory-support-kungpow";
-		gpios = <&pma8084_gpios 17 0x0>, /* GPIOF_OUT_INIT_LOW */
-			<&pma8084_mpps 7 0x1>, /* GPIOF_IN */
-			<&pma8084_mpps 6 0x1>; /* GPIOF_IN */
+		gpios = <&msmgpio 126 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&msmgpio 146 0x1>, /* GPIOF_IN */
+			<&msmgpio 34 0x1>; /* GPIOF_IN */
 		gpio-names = "factory_kill_disable",
 				"factory_cable_detect",
 				"factory_warn";
@@ -300,6 +304,10 @@
 	qcom,wdt@f9017000 {
 		qcom,bark-time = <22000>;
 	};
+};
+
+&pma8084_lvs2 {
+	regulator-always-on;
 };
 
 &pma8084_lvs3 {
@@ -415,12 +423,13 @@
 
 	qcom,pad-pull-on = <0x0 0x3 0x3 0x1>; /* no-pull, pull-up, pull-up, pull-down */
 	qcom,pad-pull-off = <0x0 0x3 0x3 0x1>; /* no-pull, pull-up, pull-up, pull-down */
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
 
+	qcom,drv-types = <0x01>; /* 50 ohms */
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 192000000 384000000>;
 	qcom,nonremovable;
-	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
+	qcom,bus-speed-mode = "HS400_1p8v", "HS200_1p8v", "DDR_1p8v";
 	status = "ok";
 };
 
@@ -543,12 +552,12 @@
 	};
 
 	gpio@d000 { /* GPIO 17 */
+		/* Wireless Charge Complete N */
 		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;		/* CMOS logic */
-		qcom,invert = <0>;		/* Output low initially */
+		qcom,output-type = <0>;		/* CMOS */
 		qcom,vin-sel = <2>;		/* VIN 2 */
-		qcom,src-sel = <0>;		/* GPIO */
-		qcom,out-strength = <2>;	/* Medium */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,out-strength = <1>;	/* Low */
 		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
@@ -610,13 +619,9 @@
 	};
 
 	mpp@a300 { /* MPP 4 */
-		/* Wireless Charge Complete N */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <1>;		/* Open Drain NMOS logic */
-		qcom,vin-sel = <2>;		/* VIN 2 */
-		qcom,src-sel = <0>;		/* Constant */
-		qcom,out-strength = <1>;	/* Low */
-		qcom,master-en = <1>;		/* Enable GPIO */
+		qcom,mode = <4>;          /* QPNP_PIN_MODE_AIN */
+		qcom,ain-route = <3>;	/* QPNP_PIN_AIN_AMUX_CH8 */
+		qcom,master-en = <1>;		/* Enable */
 	};
 
 	mpp@a400 { /* MPP 5 */
@@ -630,9 +635,8 @@
 	};
 
 	mpp@a600 { /* MPP 7 */
-		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <1>;	/* No pull */
-		qcom,vin-sel = <2>;
+		qcom,mode = <4>;          /* QPNP_PIN_MODE_AIN */
+		qcom,ain-route = <2>;	/* QPNP_PIN_AIN_AMUX_CH7 */
 		qcom,master-en = <1>;
 	};
 
@@ -645,6 +649,26 @@
 	chan@7 {
 		label = "vph_pwr";
 		reg = <0x7>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+	chan@23 {
+		label = "bphi";
+		reg = <0x23>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+	chan@26 {
+		label = "rf_bphi";
+		reg = <0x26>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <1>;
 		qcom,calibration-type = "absolute";
@@ -750,9 +774,8 @@
 		reg = <0x36>;
 		maxim,rsns-microohm = <10000>;
 
-		interrupt-parent = <&spmi_bus>;
-		interrupts = <0x0 0xa1 0x0>;	/* PMA8084 MPP 2 */
-		gpios = <&pma8084_mpps 2 0x11>;	/* GPIOF_DIR_IN|GPIOF_EXPORT */
+		interrupts = <&msmgpio 123 0x0>;
+		gpios = <&msmgpio 123 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
 		gpio-names = "cc-alert";
 		maxim,regs-init-data = <
 			0x01 0xff97 /* VALRT, VMAX = 5.1 V and VMIN = 3.02 V */
@@ -814,7 +837,7 @@
 		compatible = "mmi,wls-charger-bq51021";
 		reg = <0x6c>;
 		gpios = <&pma8084_gpios 1 0x1>, /* GPIOF_IN */
-			<&pma8084_mpps 4 0x2>, /* GPIOF_OUT_INIT_HIGH */
+			<&pma8084_gpios 17 0x2>, /* GPIOF_OUT_INIT_HIGH */
 			<&msmgpio 66 0x0>; /* GPIOF_OUT_INIT_LOW */
 		gpio-names = "pad_detect_n",
 				"charge_complete_n",
@@ -962,6 +985,26 @@
 	};
 };
 
+&i2c_12 {
+	stm401@39 {
+		compatible = "stm,stm401";
+		reg = <0x39>;
+		gpios = <&msmgpio 122 0>,        /* IRQ */
+			<&msmgpio 136 0>,       /* RESET */
+			<&msmgpio 137 0>,        /* BSLEN */
+			<&msmgpio 141 0>;        /* WakeIRQ */
+		lux_table = <5 50 100 1500 3000 8000>;
+		brightness_table = <9 14 18 46 67 93 140>;
+		bslen_pin_active_value = <1>;
+		ct406_detect_threshold = <0x006E>;
+		ct406_undetect_threshold = <0x0050>;
+		ct406_recalibrate_threshold = <0x0064>;
+		ct406_pulse_count = <0x04>;
+		sensor1-supply = <&pma8084_lvs1>;
+		sensor2-supply = <&pma8084_l18>;
+	};
+};
+
 &spmi_bus {
 	qcom,pma8084@0 {
 		qcom,leds@a700 {
@@ -1007,6 +1050,9 @@
 
 &usb3 {
 	vbus_dwc3-supply = <&smb1357_otg_vreg>;
+	dwc3@f9200000 {
+		maximum-speed = "high-speed";
+	};
 };
 
 &soc {
