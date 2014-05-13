@@ -57,7 +57,10 @@
   ------------------------------------------------------------------------*/
 #define VOS_DIGEST_SHA1_SIZE    20
 #define VOS_DIGEST_MD5_SIZE     16
+#define VOS_BAND_2GHZ          1
+#define VOS_BAND_5GHZ          2
 
+#define VOS_24_GHZ_CHANNEL_14  14
 /*-------------------------------------------------------------------------- 
   Type declarations
   ------------------------------------------------------------------------*/
@@ -159,5 +162,5 @@ VOS_STATUS vos_decrypt_AES(v_U32_t cryptHandle, /* Handle */
                            v_U8_t *pText, /* pointer to data stream */
                            v_U8_t *pDecrypted,
                            v_U8_t *pKey); /* pointer to authentication key */
-
+v_U8_t vos_chan_to_band(v_U32_t chan);
 #endif // #if !defined __VOSS_UTILS_H
