@@ -88,10 +88,14 @@
 
 	i2c_0: i2c@f9967000 {   /* Unused on BLSP11 (BLSP2 QUP4) */
 		status = "disabled";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <50000000>;
 	};
 
 	i2c_1: i2c@f9923000 {   /* "I2C4" on BLSP1 (BLSP1 UART0) */
 		status = "disabled";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <50000000>;
 	};
 
 	i2c_2: i2c@f9924000 {   /* "I2C5" on BLSP2 (BLSP1 QUP1) */
