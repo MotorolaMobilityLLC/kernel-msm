@@ -106,6 +106,131 @@ const struct stm401_algo_info_t stm401_algo_info[STM401_NUM_ALGOS] = {
 
 struct stm401_data *stm401_misc_data;
 
+void stm401_wake(struct stm401_data *ps_stm401)
+{
+	if (ps_stm401 != NULL && ps_stm401->pdata != NULL) {
+		if (!(ps_stm401->sh_lowpower_enabled))
+			return;
+
+		mutex_lock(&ps_stm401->sh_wakeup_lock);
+
+		if (ps_stm401->sh_wakeup_count == 0) {
+			int timeout = 5000;
+
+			/* wake up the sensorhub and wait up to 5ms
+			 * for it to respond */
+			gpio_set_value(ps_stm401->pdata->gpio_sh_wake, 1);
+			while (!gpio_get_value
+			       (ps_stm401->pdata->gpio_sh_wake_resp)
+			       && timeout--) {
+				udelay(1);
+			}
+
+			if (timeout <= 0)
+				dev_err(&ps_stm401->client->dev,
+					"sensorhub wakeup timeout\n");
+		}
+
+		ps_stm401->sh_wakeup_count++;
+
+		mutex_unlock(&ps_stm401->sh_wakeup_lock);
+	}
+}
+
+void stm401_sleep(struct stm401_data *ps_stm401)
+{
+	if (ps_stm401 != NULL && ps_stm401->pdata != NULL) {
+		if (!(ps_stm401->sh_lowpower_enabled))
+			return;
+
+		mutex_lock(&ps_stm401->sh_wakeup_lock);
+
+		if (ps_stm401->sh_wakeup_count > 0) {
+			ps_stm401->sh_wakeup_count--;
+			if (ps_stm401->sh_wakeup_count == 0) {
+				gpio_set_value(ps_stm401->pdata->gpio_sh_wake,
+					       0);
+				udelay(1);
+			}
+		} else {
+			dev_err(&ps_stm401->client->dev,
+				"stm401_sleep called too many times: %d",
+				ps_stm401->sh_wakeup_count);
+		}
+
+		mutex_unlock(&ps_stm401->sh_wakeup_lock);
+	}
+}
+
+void stm401_detect_lowpower_mode(void)
+{
+	int err;
+
+	if ((stm401_misc_data->pdata->gpio_sh_wake >= 0)
+	    && (stm401_misc_data->pdata->gpio_sh_wake_resp >= 0)) {
+		/* wait up to 5ms for the sensorhub to respond/power up */
+		int timeout = 5000;
+		mutex_lock(&stm401_misc_data->sh_wakeup_lock);
+
+		/* hold sensorhub awake, it might try to sleep
+		 * after we tell it the kernel supports low power */
+		gpio_set_value(stm401_misc_data->pdata->gpio_sh_wake, 1);
+		while (!gpio_get_value
+		       (stm401_misc_data->pdata->gpio_sh_wake_resp)
+		       && timeout--) {
+			udelay(1);
+		}
+
+		/* detect whether lowpower mode is supported */
+		dev_dbg(&stm401_misc_data->client->dev,
+			"lowpower supported: ");
+
+		stm401_cmdbuff[0] = LOWPOWER_REG;
+		err =
+		    stm401_i2c_write_read_no_reset(stm401_misc_data,
+						   stm401_cmdbuff, 1, 2);
+		if (err >= 0) {
+			if ((int)stm401_readbuff[1] == 1)
+				stm401_misc_data->sh_lowpower_enabled = 1;
+			else
+				stm401_misc_data->sh_lowpower_enabled = 0;
+
+			dev_dbg(&stm401_misc_data->client->dev,
+				"lowpower supported: %d",
+				stm401_misc_data->sh_lowpower_enabled);
+
+			if (stm401_misc_data->sh_lowpower_enabled) {
+				/* send back to the hub the kernel
+				 * supports low power mode */
+				stm401_cmdbuff[1] =
+				    stm401_misc_data->sh_lowpower_enabled;
+				err =
+				    stm401_i2c_write_no_reset(stm401_misc_data,
+							      stm401_cmdbuff,
+							      2);
+
+				if (err < 0) {
+					/* if we failed to let the sensorhub
+					 * know we support lowpower mode
+					 * disable it */
+					stm401_misc_data->sh_lowpower_enabled =
+					    0;
+				}
+			}
+		} else {
+			dev_err(&stm401_misc_data->client->dev,
+				"error reading lowpower supported %d",
+				err);
+				/* if we failed to read the sensorhub
+				 * disable lowpower mode */
+				stm401_misc_data->sh_lowpower_enabled =
+				    0;
+		}
+
+		mutex_unlock(&stm401_misc_data->sh_wakeup_lock);
+	}
+}
+
 int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 			u8 *buf, int writelen, int readlen)
 {
@@ -400,10 +525,17 @@ stm401_of_init(struct i2c_client *client)
 	pdata->gpio_reset = of_get_gpio(np, 1);
 	pdata->gpio_bslen = of_get_gpio(np, 2);
 	pdata->gpio_wakeirq = of_get_gpio(np, 3);
-#if 0
-	pdata->gpio_mipi_req = of_get_gpio(np, 4);
-	pdata->gpio_mipi_busy = of_get_gpio(np, 5);
-#endif
+	if (of_gpio_count(np) >= 6) {
+		pdata->gpio_sh_wake = of_get_gpio(np, 4);
+		pdata->gpio_sh_wake_resp = of_get_gpio(np, 5);
+		stm401_misc_data->sh_lowpower_enabled = 1;
+	} else {
+		pdata->gpio_sh_wake = -1;
+		pdata->gpio_sh_wake_resp = -1;
+		stm401_misc_data->sh_lowpower_enabled = 0;
+	}
+	stm401_misc_data->sh_wakeup_count = 0;
+
 	if (of_get_property(np, "lux_table", &len) == NULL) {
 		dev_err(&stm401_misc_data->client->dev,
 			"lux_table len access failure\n");
@@ -539,12 +671,60 @@ static int stm401_gpio_init(struct stm401_platform_data *pdata,
 		goto free_bslen;
 	}
 
+	if ((pdata->gpio_sh_wake >= 0) && (pdata->gpio_sh_wake_resp >= 0)) {
+		/* pin to pull the stm chip out of lowpower mode */
+		err = gpio_request(pdata->gpio_sh_wake, "stm401 sh_wake");
+		if (err) {
+			dev_err(&stm401_misc_data->client->dev,
+				"sh_wake gpio_request failed: %d\n", err);
+			goto free_bslen;
+		}
+		gpio_direction_output(pdata->gpio_sh_wake, 0);
+		gpio_set_value(pdata->gpio_sh_wake, 1);
+		err = gpio_export(pdata->gpio_sh_wake, 0);
+		if (err) {
+			dev_err(&stm401_misc_data->client->dev,
+				"sh_wake gpio_export failed: %d\n", err);
+			goto free_wake_sh;
+		}
+
+		/* pin for the response from stm that it is awake */
+		err =
+		    gpio_request(pdata->gpio_sh_wake_resp,
+				 "stm401 sh_wake_resp");
+		if (err) {
+			dev_err(&stm401_misc_data->client->dev,
+				"sh_wake_resp gpio_request failed: %d\n", err);
+			goto free_wake_sh;
+		}
+		gpio_direction_input(pdata->gpio_sh_wake_resp);
+		err = gpio_export(pdata->gpio_sh_wake_resp, 0);
+		if (err) {
+			dev_err(&stm401_misc_data->client->dev,
+				"sh_wake_resp gpio_export failed: %d\n", err);
+			goto free_sh_wake_resp;
+		}
+		err =
+		    gpio_export_link(&pdev->dev, "gpio_sh_wake_resp",
+				     pdata->gpio_sh_wake_resp);
+		if (err) {
+			dev_err(&stm401_misc_data->client->dev,
+				"gpio_sh_wake_resp gpio_export_link failed: %d\n",
+				err);
+			goto free_sh_wake_resp;
+		}
+	} else {
+		dev_err(&stm401_misc_data->client->dev,
+			"%s: pins for stm lowpower mode not specified\n",
+			__func__);
+	}
+
 	if (gpio_is_valid(pdata->gpio_wakeirq)) {
 		err = gpio_request(pdata->gpio_wakeirq, "stm401 wakeirq");
 		if (err) {
 			dev_err(&stm401_misc_data->client->dev,
 				"wakeirq gpio_request failed: %d\n", err);
-			goto free_bslen;
+			goto free_sh_wake_resp;
 		}
 		gpio_direction_input(pdata->gpio_wakeirq);
 		err = gpio_export(pdata->gpio_wakeirq, 0);
@@ -616,6 +796,12 @@ free_mipi_req:
 #endif
 free_wakeirq:
 	gpio_free(pdata->gpio_wakeirq);
+free_sh_wake_resp:
+	if (pdata->gpio_sh_wake_resp >= 0)
+		gpio_free(pdata->gpio_sh_wake_resp);
+free_wake_sh:
+	if (pdata->gpio_sh_wake >= 0)
+		gpio_free(pdata->gpio_sh_wake);
 free_bslen:
 	gpio_free(pdata->gpio_bslen);
 free_reset:
@@ -631,10 +817,10 @@ static void stm401_gpio_free(struct stm401_platform_data *pdata)
 	gpio_free(pdata->gpio_reset);
 	gpio_free(pdata->gpio_bslen);
 	gpio_free(pdata->gpio_wakeirq);
-#if 0
-	gpio_free(pdata->gpio_mipi_req);
-	gpio_free(pdata->gpio_mipi_busy);
-#endif
+	if (pdata->gpio_sh_wake >= 0)
+		gpio_free(pdata->gpio_sh_wake);
+	if (pdata->gpio_sh_wake_resp >= 0)
+		gpio_free(pdata->gpio_sh_wake_resp);
 }
 
 void clear_interrupt_status_work_func(struct work_struct *work)
@@ -651,11 +837,14 @@ void clear_interrupt_status_work_func(struct work_struct *work)
 	if (ps_stm401->is_suspended)
 		goto EXIT;
 
+	stm401_wake(ps_stm401);
+
 	/* read interrupt mask register to clear
 			any interrupt during suspend state */
 	stm401_cmdbuff[0] = INTERRUPT_STATUS;
 	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
 
+	stm401_sleep(ps_stm401);
 EXIT:
 	mutex_unlock(&ps_stm401->lock);
 }
@@ -729,6 +918,8 @@ static int stm401_probe(struct i2c_client *client,
 	}
 
 	mutex_init(&ps_stm401->lock);
+	mutex_init(&ps_stm401->sh_wakeup_lock);
+
 	mutex_lock(&ps_stm401->lock);
 	wake_lock_init(&ps_stm401->wakelock, WAKE_LOCK_SUSPEND, "stm401");
 	wake_lock_init(&ps_stm401->reset_wakelock, WAKE_LOCK_SUSPEND,

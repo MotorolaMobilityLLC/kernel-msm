@@ -71,6 +71,8 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	dev_dbg(&ps_stm401->client->dev, "stm401_irq_wake_work_func\n");
 	mutex_lock(&ps_stm401->lock);
 
+	stm401_wake(ps_stm401);
+
 	if (ps_stm401->mode == BOOTMODE)
 		goto EXIT;
 
@@ -428,5 +430,6 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			"Sending generic interrupt event:%d\n", irq3_status);
 	}
 EXIT:
+	stm401_sleep(ps_stm401);
 	mutex_unlock(&ps_stm401->lock);
 }
