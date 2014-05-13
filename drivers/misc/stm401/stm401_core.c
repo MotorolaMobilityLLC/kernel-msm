@@ -971,6 +971,12 @@ static int stm401_resume(struct device *dev)
 
 	ps_stm401->is_suspended = false;
 
+	if (ps_stm401->pending_wake_work) {
+		queue_work(ps_stm401->irq_work_queue,
+			&ps_stm401->irq_wake_work);
+		ps_stm401->pending_wake_work = false;
+	}
+
 	if ((ps_stm401->ap_stm401_handoff_enable)
 		&& (ps_stm401->ap_stm401_handoff_ctrl)) {
 		gpio_set_value(stm401_req, 0);
