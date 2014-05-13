@@ -49,6 +49,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 {
 	void __user *argp = (void __user *)arg;
 	static int brightness_table_loaded;
+	static int lowpower_mode = 1;
 	int err = -ENOTTY;
 	unsigned int addr = 0;
 	unsigned int data_size = 0;
@@ -61,6 +62,9 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	struct timespec current_time;
 
 	mutex_lock(&ps_stm401->lock);
+
+	stm401_wake(ps_stm401);
+
 	switch (cmd) {
 	case STM401_IOCTL_BOOTLOADERMODE:
 		dev_dbg(&ps_stm401->client->dev,
@@ -119,10 +123,12 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		if (ps_stm401->mode == BOOTMODE) {
 			dev_err(&ps_stm401->client->dev,
 				"Attempted normal mode ioctl in boot\n");
+			stm401_sleep(ps_stm401);
 			mutex_unlock(&ps_stm401->lock);
 			return -EPERM;
 		}
 		if (ps_stm401->stm401_hub_fail) {
+			stm401_sleep(ps_stm401);
 			mutex_unlock(&ps_stm401->lock);
 			return -EPERM;
 		}
@@ -698,10 +704,32 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		stm401_g_ir_raw_delay = delay;
 		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 2);
 		break;
+	case STM401_IOCTL_SET_LOWPOWER_MODE:
+		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_LOWPOWER_MODE");
+		if (copy_from_user(&stm401_cmdbuff[0], argp, 1)) {
+			dev_err(&ps_stm401->client->dev,
+				"Copy size from user returned error\n");
+			err = -EFAULT;
+			break;
+		}
+
+		err = 0;
+		if (stm401_cmdbuff[0] != 0 && lowpower_mode == 0) {
+			/* allow sensorhub to sleep */
+			stm401_sleep(ps_stm401);
+			lowpower_mode = stm401_cmdbuff[0];
+		} else if (stm401_cmdbuff[0] == 0 && lowpower_mode == 1) {
+			/* keep sensorhub awake */
+			stm401_wake(ps_stm401);
+			lowpower_mode = stm401_cmdbuff[0];
+		}
+		break;
+
 	/* No default here since previous switch could have
 	   handled the command and cannot over write that */
 	}
 
+	stm401_sleep(ps_stm401);
 	mutex_unlock(&ps_stm401->lock);
 	return err;
 }
