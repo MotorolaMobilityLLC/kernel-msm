@@ -627,6 +627,7 @@ struct stm401_data {
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
 #endif
+	bool pending_wake_work;
 };
 
 /* per algo config, request, and event registers */

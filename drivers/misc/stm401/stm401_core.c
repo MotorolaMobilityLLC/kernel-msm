@@ -1213,6 +1213,12 @@ static int stm401_resume(struct device *dev)
 	mutex_lock(&ps_stm401->lock);
 	ps_stm401->is_suspended = false;
 
+	if (ps_stm401->pending_wake_work) {
+		queue_work(ps_stm401->irq_work_queue,
+			&ps_stm401->irq_wake_work);
+		ps_stm401->pending_wake_work = false;
+	}
+
 	if (stm401_irq_disable == 0)
 		queue_work(ps_stm401->irq_work_queue,
 			&ps_stm401->clear_interrupt_status_work);
