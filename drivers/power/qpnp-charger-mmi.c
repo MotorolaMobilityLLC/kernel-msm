@@ -286,6 +286,7 @@ struct qpnp_chg_regulator {
  * @batt_psy:			power supply to export information to userspace
  * @flags:			flags to activate specific workarounds
  *				throughout the driver
+ * @use_max_vdd:		Flag to indicate Max Vdd can be set
  * @step_charge_mv:		Voltage threshold for High Voltage batteries to
  *                              charge at a reduced rate
  * @step_charge_soc:		SOC threshold for High Voltage batteries to
@@ -408,6 +409,7 @@ struct qpnp_chg_chip {
 	bool				power_stage_workaround_enable;
 	char				shutdown_needed;
 	bool                            use_step_charge;
+	bool                            use_max_vdd;
 	unsigned int			step_charge_mv;
 	unsigned int			step_charge_soc;
 	unsigned int			step_charge_ma;
@@ -1502,6 +1504,9 @@ qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip)
 	else if (chip->bat_is_warm && !chip->out_of_temp && !chip->ext_hi_temp)
 		qpnp_chg_vddmax_and_trim_set(chip, chip->warm_bat_mv,
 				chip->delta_vddmax_mv);
+	else if (!chip->use_max_vdd)
+		qpnp_chg_vddmax_and_trim_set(chip, chip->step_charge_mv,
+				chip->delta_vddmax_mv);
 	else
 		qpnp_chg_vddmax_and_trim_set(chip, chip->max_voltage_mv,
 				chip->delta_vddmax_mv);
@@ -1653,6 +1658,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 	if (chip->usb_present ^ usb_present) {
 		chip->usb_present = usb_present;
 		if (!usb_present) {
+			chip->use_max_vdd = true;
 			/* when a valid charger inserted, and increase the
 			 *  charger voltage to OVP threshold, then
 			 *  usb_in_valid falling edge interrupt triggers.
@@ -1825,6 +1831,7 @@ qpnp_chg_dc_dcin_valid_irq_handler(int irq, void *_chip)
 		if (qpnp_chg_is_otg_en_set(chip))
 			qpnp_chg_force_run_on_batt(chip, !dc_present ? 1 : 0);
 		if (!dc_present && !qpnp_chg_is_usb_chg_plugged_in(chip)) {
+			chip->use_max_vdd = true;
 			chip->delta_vddmax_mv = 0;
 			qpnp_chg_set_appropriate_vddmax(chip);
 			chip->chg_done = false;
@@ -3661,11 +3668,13 @@ qpnp_eoc_work(struct work_struct *work)
 #ifdef QCOM_WA
 	bool vbat_lower_than_vbatdet;
 #endif
+	static int count_taper;
 
 	pm_stay_awake(chip->dev);
 
 	if ((chip->step_charge_mv < chip->max_voltage_mv) &&
-		(chip->step_charge_mv > chip->cutoff_mv)) {
+	    (chip->step_charge_mv > chip->cutoff_mv) &&
+	    (chip->step_charge_soc == 0)) {
 		if ((get_prop_battery_voltage_now(chip)/1000) >=
 			chip->step_charge_mv) {
 			pr_debug("Step Rate used Batt V = %d\n",
@@ -3683,6 +3692,8 @@ qpnp_eoc_work(struct work_struct *work)
 			pr_debug("Step Rate used SOC = %d\n",
 				 get_prop_capacity(chip));
 			chip->use_step_charge = true;
+			chip->use_max_vdd = true;
+			count_taper = 0;
 		} else {
 			pr_debug("Step Rate NOT used SOC = %d\n",
 				get_prop_capacity(chip));
@@ -3768,6 +3779,41 @@ qpnp_eoc_work(struct work_struct *work)
 			vbat_low_count = 0;
 		}
 #endif
+		if (chip->bat_is_cool || chip->bat_is_warm) {
+			chip->use_max_vdd = true;
+			count_taper = 0;
+		} else if (!chip->use_step_charge &&
+			   (count_taper < CONSECUTIVE_COUNT) &&
+			   (chip->step_charge_mv < chip->max_voltage_mv) &&
+			   (chip->step_charge_mv > chip->cutoff_mv) &&
+			   (chip->step_charge_soc < 100) &&
+			   (chip->step_charge_soc > 0)) {
+			if (!(buck_sts & VDD_LOOP_IRQ) ||
+			    (vbat_mv < (chip->step_charge_mv - CV_DELTA))) {
+				pr_debug("Step Taper Not in CV\n");
+				count_taper = 0;
+				chip->use_max_vdd = false;
+			} else if ((ibat_ma * -1) > chip->step_charge_ma) {
+				pr_debug("Not at Step Taper!\n");
+				count_taper = 0;
+				chip->use_max_vdd = false;
+			} else if (ibat_ma > 0) {
+				pr_debug("system demand increased\n");
+				count_taper = 0;
+				chip->use_max_vdd = false;
+			} else {
+				if (count_taper >= CONSECUTIVE_COUNT) {
+					chip->use_max_vdd = true;
+				} else {
+					count_taper += 1;
+					chip->use_max_vdd = false;
+					pr_debug("Step Taper count = %d\n",
+						 count_taper);
+				}
+			}
+		}
+		qpnp_chg_set_appropriate_vddmax(chip);
+
 		if ((buck_sts & VDD_LOOP_IRQ) &&
 		    (vbat_mv >= (chip->max_voltage_mv - CV_DELTA)))
 			qpnp_chg_adjust_vddmax(chip, vbat_mv);
@@ -3827,6 +3873,7 @@ check_again_later:
 stop_eoc:
 	vbat_low_count = 0;
 	count = 0;
+	count_taper = 0;
 	pm_relax(chip->dev);
 }
 
@@ -5633,7 +5680,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 		pr_err("failed to configure btc %d\n", rc);
 		goto unregister_dc_psy;
 	}
-
+	chip->use_max_vdd = true;
 	qpnp_chg_charge_en(chip, !chip->charging_disabled);
 	qpnp_chg_force_run_on_batt(chip, chip->charging_disabled);
 	qpnp_chg_set_appropriate_vddmax(chip);
