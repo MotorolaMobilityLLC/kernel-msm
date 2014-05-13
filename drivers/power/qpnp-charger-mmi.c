@@ -285,6 +285,8 @@ struct qpnp_chg_regulator {
  * @usb_psy			power supply to export information to userspace
  * @bms_psy			power supply to export information to userspace
  * @batt_psy:			power supply to export information to userspace
+ * @ float_charge_timer         Predetermined length of time to do Float charge
+ * @ float_charge_start_time    Timestamp when it reaches Taper point
  * @flags:			flags to activate specific workarounds
  *				throughout the driver
  * @use_max_vdd:		Flag to indicate Max Vdd can be set
@@ -296,6 +298,7 @@ struct qpnp_chg_regulator {
  *                              which are above a certain Voltage threshold
  * @cutoff_mv:                  cutoff voltage where the battery is considered
  *                              dead
+ * @ float_timer_start          Indicates float timer has started.
  *
  */
 struct qpnp_chg_chip {
@@ -434,6 +437,9 @@ struct qpnp_chg_chip {
 	int				chrg_ocv_bv_mv;
 	bool				maint_chrg;
 	unsigned int			ir_drop_comp;
+	unsigned int			float_charge_timer;
+	unsigned long			float_charge_start_time;
+	bool				float_timer_start;
 };
 
 static struct of_device_id qpnp_charger_match_table[] = {
@@ -1308,6 +1314,7 @@ qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 
 	pr_debug("chg_done chg_sts: 0x%x triggered\n", chg_sts);
 	if (!chip->charging_disabled && (chg_sts & FAST_CHG_ON_IRQ)) {
+		chip->float_timer_start = false;
 		schedule_delayed_work(&chip->eoc_work,
 			msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 		pm_stay_awake(chip->dev);
@@ -1685,6 +1692,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 				qpnp_chg_set_appropriate_vddmax(chip);
 				chip->chg_done = false;
 				chip->maint_chrg = false;
+				chip->float_timer_start = false;
 			}
 			qpnp_chg_usb_suspend_enable(chip, 0);
 			qpnp_chg_iusbmax_set(chip, QPNP_CHG_I_MAX_MIN_100);
@@ -1692,6 +1700,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			chip->prev_usb_max_ma = -EINVAL;
 			chip->aicl_settled = false;
 			chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
+			chip->float_charge_start_time = 0;
 			power_supply_set_online(chip->usb_psy, 0);
 		} else {
 			/* when OVP clamped usbin, and then decrease
@@ -1733,6 +1742,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			pm_stay_awake(chip->dev);
 			schedule_delayed_work(&chip->chrg_ocv_work,
 				msecs_to_jiffies(0));
+			chip->float_timer_start = false;
 			schedule_delayed_work(&chip->eoc_work,
 				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 			schedule_work(&chip->soc_check_work);
@@ -1829,6 +1839,7 @@ qpnp_chg_dc_dcin_valid_irq_handler(int irq, void *_chip)
 
 	if (chip->dc_present ^ dc_present) {
 		chip->dc_present = dc_present;
+		chip->float_timer_start = false;
 		if (qpnp_chg_is_otg_en_set(chip))
 			qpnp_chg_force_run_on_batt(chip, !dc_present ? 1 : 0);
 		if (!dc_present && !qpnp_chg_is_usb_chg_plugged_in(chip)) {
@@ -1894,6 +1905,7 @@ qpnp_chg_chgr_chg_trklchg_irq_handler(int irq, void *_chip)
 	pr_debug("TRKL IRQ triggered\n");
 
 	chip->chg_done = false;
+	chip->float_timer_start = false;
 	if (chip->bat_if_base) {
 		pr_debug("psy changed batt_psy\n");
 		power_supply_changed(&chip->batt_psy);
@@ -1943,6 +1955,7 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 
 		if (fastchg_on) {
 			chip->chg_done = false;
+			chip->float_timer_start = false;
 
 			if (!chip->charging_disabled) {
 				schedule_delayed_work(&chip->eoc_work,
@@ -3689,12 +3702,17 @@ qpnp_eoc_work(struct work_struct *work)
 	static int count;
 	static int vbat_low_count;
 	int ibat_ma, vbat_mv, rc = 0;
+	struct timespec bootup_time;
+	unsigned long float_timestamp;
 	u8 batt_sts = 0, buck_sts = 0, chg_sts = 0;
+
 #ifdef QCOM_WA
 	bool vbat_lower_than_vbatdet;
 #endif
 	static int count_taper;
 
+	get_monotonic_boottime(&bootup_time);
+	float_timestamp = bootup_time.tv_sec;
 	pm_stay_awake(chip->dev);
 
 	if ((chip->step_charge_mv < chip->max_voltage_mv) &&
@@ -3851,29 +3869,35 @@ qpnp_eoc_work(struct work_struct *work)
 		    (vbat_mv < (chip->max_voltage_mv - CV_DELTA))) {
 			pr_debug("Not in CV\n");
 			count = 0;
-		} else if ((ibat_ma * -1) > chip->term_current) {
+			chip->float_timer_start = false;
+		} else if (((ibat_ma * -1) > chip->term_current) &&
+			   (!chip->float_timer_start)) {
 			pr_debug("Not at EOC, battery current too high\n");
 			count = 0;
+			chip->float_timer_start = false;
 		} else if (ibat_ma > 0) {
 			pr_debug("Charging but system demand increased\n");
 			count = 0;
-		} else {
+			chip->float_timer_start = false;
+		} else if (!chip->float_timer_start) {
 			if (count == CONSECUTIVE_COUNT) {
 				if (!chip->bat_is_cool && !chip->bat_is_warm) {
-					pr_info("End of Charging\n");
+					pr_info("Start of Float Charging\n");
 					chip->chg_done = true;
+					chip->float_charge_start_time =
+						float_timestamp;
+					chip->float_timer_start = true;
 				} else {
 					pr_info("stop charging: battery is %s, vddmax = %d reached\n",
 						chip->bat_is_cool
-							? "cool" : "warm",
+						? "cool" : "warm",
 						qpnp_chg_vddmax_get(chip));
 				}
 				chip->delta_vddmax_mv = 0;
 				qpnp_chg_set_appropriate_vddmax(chip);
 				chip->maint_chrg = true;
 				chip->chrg_ocv_cc_ef_uah =
-					get_prop_charge_counter(chip);
-				qpnp_chg_charge_en(chip, 0);
+				get_prop_charge_counter(chip);
 #ifdef QCOM_WA
 				/* sleep for a second before enabling */
 				msleep(2000);
@@ -3882,11 +3906,22 @@ qpnp_eoc_work(struct work_struct *work)
 #endif
 				pr_debug("psy changed batt_psy\n");
 				power_supply_changed(&chip->batt_psy);
-				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
-				goto stop_eoc;
+				if (!chip->float_timer_start)
+					goto stop_eoc;
+				else
+					goto check_again_later;
 			} else {
 				count += 1;
 				pr_debug("EOC count = %d\n", count);
+			}
+		} else {
+			if (((float_timestamp - chip->float_charge_start_time)
+			     >= chip->float_charge_timer)) {
+				pr_info("End of Charging\n");
+				chip->float_timer_start = false;
+				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
+				qpnp_chg_charge_en(chip, 0);
+				goto stop_eoc;
 			}
 		}
 	} else {
@@ -3903,6 +3938,8 @@ stop_eoc:
 	vbat_low_count = 0;
 	count = 0;
 	count_taper = 0;
+	chip->float_charge_start_time = 0;
+	chip->float_timer_start = false;
 	pm_relax(chip->dev);
 }
 
@@ -5175,6 +5212,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	OF_PROP_READ(chip, step_charge_soc, "step-charge-soc", rc, 1);
 	OF_PROP_READ(chip, step_charge_ma, "step-charge-current", rc, 1);
 	OF_PROP_READ(chip, ir_drop_comp, "ir-comp", rc, 1);
+	OF_PROP_READ(chip, float_charge_timer, "float-charge-timer", rc, 1);
 
 	if (rc)
 		return rc;
@@ -5359,6 +5397,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	chip->chrg_ocv_cc_ef_uah = 0;
 	chip->chrg_ocv_bv_mv = 0;
 	chip->maint_chrg = false;
+	chip->float_timer_start = false;
 	qpnp_charger_mmi_battid();
 	chip->usb_psy = power_supply_get_by_name("usb");
 	if (!chip->usb_psy) {
