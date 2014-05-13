@@ -557,6 +557,7 @@ struct stm401_data {
 	unsigned int stm401_hub_fail;
 
 	bool is_suspended;
+	bool pending_wake_work;
 };
 
 /* per algo config, request, and event registers */
