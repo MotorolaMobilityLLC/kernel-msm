@@ -9039,10 +9039,6 @@ static int hdd_driver_init( void)
    int max_retries = 0;
 #endif
 
-#ifdef WCONN_TRACE_KMSG_LOG_BUFF
-   vos_wconn_trace_init();
-#endif
-
 #ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
    wlan_logging_sock_init_svc();
 #endif
@@ -9287,10 +9283,6 @@ static void hdd_driver_exit(void)
 #endif
 #ifdef MEMORY_DEBUG
    vos_mem_exit();
-#endif
-
-#ifdef WCONN_TRACE_KMSG_LOG_BUFF
-   vos_wconn_trace_exit();
 #endif
 
 #ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
