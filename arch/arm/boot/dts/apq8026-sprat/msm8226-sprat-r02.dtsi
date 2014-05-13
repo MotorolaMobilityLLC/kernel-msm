@@ -478,4 +478,5 @@
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_oled_320p_cmd>;
+	vddio-supply = <&pm8226_l6>;
 };

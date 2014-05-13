@@ -189,7 +189,6 @@
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
 		vdd-supply = <&pm8226_l15>;
-		vddio-supply = <&pm8226_l6>;
 		vddldo8-supply = <&pm8226_l8>;
 		vdda-supply = <&pm8226_l4>;
 		qcom,platform-bist-ctrl = [00 00 b1 ff 00 00];
