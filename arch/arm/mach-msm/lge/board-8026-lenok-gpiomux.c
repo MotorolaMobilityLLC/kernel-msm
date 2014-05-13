@@ -227,16 +227,21 @@ static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 	},
 };
 
-#ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
 static struct gpiomux_setting sdc3_clk_actv_cfg = {
 	.func = GPIOMUX_FUNC_2,
-	.drv = GPIOMUX_DRV_8MA,
+	.drv = GPIOMUX_DRV_10MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting sdc3_cmd_data_0_3_actv_cfg = {
+static struct gpiomux_setting sdc3_cmd_actv_cfg = {
 	.func = GPIOMUX_FUNC_2,
-	.drv = GPIOMUX_DRV_8MA,
+	.drv = GPIOMUX_DRV_10MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting sdc3_data_0_3_actv_cfg = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_4MA,
 	.pull = GPIOMUX_PULL_UP,
 };
 
@@ -257,7 +262,7 @@ static struct msm_gpiomux_config msm8226_sdc3_configs[] __initdata = {
 		/* DAT3 */
 		.gpio      = 39,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &sdc3_cmd_data_0_3_actv_cfg,
+			[GPIOMUX_ACTIVE]    = &sdc3_data_0_3_actv_cfg,
 			[GPIOMUX_SUSPENDED] = &sdc3_suspend_cfg,
 		},
 	},
@@ -265,7 +270,7 @@ static struct msm_gpiomux_config msm8226_sdc3_configs[] __initdata = {
 		/* DAT2 */
 		.gpio      = 40,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &sdc3_cmd_data_0_3_actv_cfg,
+			[GPIOMUX_ACTIVE]    = &sdc3_data_0_3_actv_cfg,
 			[GPIOMUX_SUSPENDED] = &sdc3_suspend_cfg,
 		},
 	},
@@ -273,7 +278,7 @@ static struct msm_gpiomux_config msm8226_sdc3_configs[] __initdata = {
 		/* DAT1 */
 		.gpio      = 41,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &sdc3_cmd_data_0_3_actv_cfg,
+			[GPIOMUX_ACTIVE]    = &sdc3_data_0_3_actv_cfg,
 			[GPIOMUX_SUSPENDED] = &sdc3_data_1_suspend_cfg,
 		},
 	},
@@ -281,7 +286,7 @@ static struct msm_gpiomux_config msm8226_sdc3_configs[] __initdata = {
 		/* DAT0 */
 		.gpio      = 42,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &sdc3_cmd_data_0_3_actv_cfg,
+			[GPIOMUX_ACTIVE]    = &sdc3_data_0_3_actv_cfg,
 			[GPIOMUX_SUSPENDED] = &sdc3_suspend_cfg,
 		},
 	},
@@ -289,7 +294,7 @@ static struct msm_gpiomux_config msm8226_sdc3_configs[] __initdata = {
 		/* CMD */
 		.gpio      = 43,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &sdc3_cmd_data_0_3_actv_cfg,
+			[GPIOMUX_ACTIVE]    = &sdc3_cmd_actv_cfg,
 			[GPIOMUX_SUSPENDED] = &sdc3_suspend_cfg,
 		},
 	},
@@ -308,9 +313,6 @@ static void msm_gpiomux_sdc3_install(void)
 	msm_gpiomux_install(msm8226_sdc3_configs,
 			    ARRAY_SIZE(msm8226_sdc3_configs));
 }
-#else
-static void msm_gpiomux_sdc3_install(void) {}
-#endif /* CONFIG_MMC_MSM_SDC3_SUPPORT */
 
 static struct gpiomux_setting fuel_gauge_i2c_sda_config = {
 	.func = GPIOMUX_FUNC_3,
