@@ -53,7 +53,8 @@
 };
 
 &i2c_2 {
-	synaptics_dsx_i2c@20 {
+	synaptics_dsx_i2c@22 {
+		interrupts = <&msm_gpio 37 0>;
 		gpios = <&msm_gpio 37 0>, /* IRQ */
 			<&msm_gpio 38 0>; /* RESET - Dummy value, unused */
 	};

@@ -485,9 +485,9 @@
 };
 
 &i2c_2 {
-	synaptics_dsx_i2c@20 {
+	synaptics_dsx_i2c@22 {
 		compatible = "synaptics,synaptics_dsx_i2c";
-		reg = <0x20>;
+		reg = <0x22>;
 		interrupts = <&msm_gpio 5 0>;
 		gpios = <&msm_gpio 5 0>, /* IRQ */
 			<&msm_gpio 4 0>; /* RESET */
@@ -540,4 +540,8 @@
 
 &spi_0 {
 	/delete-node/ lattice,spi-usb@0;
+};
+
+&pm8916_l16 {
+	qcom,init-voltage = <3100000>;
 };
