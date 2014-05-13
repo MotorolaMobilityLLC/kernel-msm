@@ -75,9 +75,15 @@
 		qcom,prim-auxpcm-gpio-din  = <&msmgpio 79 0>;
 		qcom,prim-auxpcm-gpio-dout = <&msmgpio 80 0>;
 		pinctrl-names = "pmx-quad-mi2s-sleep",
-				"pmx-quad-mi2s-active";
+				"pmx-quad-mi2s-active",
+				"pmx-pri-mi2s-sleep",
+				"pmx-pri-mi2s-active",
+				"default";
 		pinctrl-0 = <&quad_mi2s_sleep>;
 		pinctrl-1 = <&quad_mi2s_active>;
+		pinctrl-2 = <&pri_auxpcm_c55_default>;
+		pinctrl-3 = <&pri_auxpcm_c55_active>;
+		pinctrl-4 = <&pri_auxpcm_c55_default>;
 		qcom,tfa9890-left-name = "tfa9890.8-0034";
 
 		qcom,audio-routing =

@@ -284,6 +284,32 @@
 			};
 		};
 
+		/*  used by qcom,apq8084-audio-taiko	*/
+		/* do we really have to switch func	*/
+		pri_auxpcm_c55_default {
+			qcom,pins = <&gp 77 &gp 78 &gp 79 &gp 80>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <0>;
+			label = "pri_auxpcm_c55_default";
+			pri_auxpcm_c55_default: default {
+				bias-pull-up;
+				drive-strength = <2>;
+			};
+		};
+
+		/*  used by qcom,apq8084-audio-taiko	*/
+		pri_auxpcm_c55_active {
+			qcom,pins = <&gp 77 &gp 78 &gp 79 &gp 80>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <1>;
+			label = "pri_auxpcm_c55_active";
+			pri_auxpcm_c55_active: active {
+				bias-disable;
+				drive-strength = <8>;
+			};
+		};
+
+
 		/* finger print sensor spi_sck and spi_mosi */
 		fps_mosi  {
 			qcom,pins = <&gp 27 &gp 30>;
