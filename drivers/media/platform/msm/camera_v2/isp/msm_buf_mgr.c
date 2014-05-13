@@ -187,7 +187,7 @@ static void msm_isp_unprepare_v4l2_buf(
 	for (i = 0; i < buf_info->num_planes; i++) {
 		mapped_info = &buf_info->mapped_info[i];
 		ion_unmap_iommu(buf_mgr->client, mapped_info->handle,
-			buf_mgr->iommu_domain_num, 0);
+			domain_num, 0);
 		if (buf_mgr->secure_enable == SECURE_MODE) {
 			pr_debug("%s: Unsecuring the ION buffers\n",
 				__func__);
