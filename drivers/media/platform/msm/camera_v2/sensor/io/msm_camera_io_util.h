@@ -55,4 +55,7 @@ int msm_camera_config_single_vreg(struct device *dev,
 int msm_camera_request_gpio_table(struct gpio *gpio_tbl, uint8_t size,
 	int gpio_en);
 
+int msm_camera_request_mux_gpio_table(struct device *dev,
+	struct gpio *gpio_tbl, uint8_t size, int gpio_en);
+
 #endif
