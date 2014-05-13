@@ -12,6 +12,7 @@
  */
 
 #include "external-mdm9x25.dtsi"
+#include "apq8084-mot-pinctrl.dtsi"
 #include "apq8084-mot-camera-sensor.dtsi"
 
 / {
