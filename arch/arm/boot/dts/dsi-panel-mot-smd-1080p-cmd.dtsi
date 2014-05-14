@@ -64,6 +64,7 @@
 				39 01 00 00 00 00 05 2a 00 00 04 37 /* normal col */
 				39 01 00 00 00 00 05 2b 00 00 07 7f /* normal row */
 				39 01 00 00 00 00 05 30 00 00 07 7f /* viewable region */
+				05 01 00 00 00 00 01 13		/* normal mode */
 				05 01 00 00 00 00 01 29];	/* display on */
 
 		qcom,mdss-dsi-off-command = [
@@ -190,6 +191,7 @@
 				39 01 00 00 00 00 05 2a 00 00 04 37 /* normal col */
 				39 01 00 00 00 00 05 2b 00 00 07 7f /* normal row */
 				39 01 00 00 00 00 05 30 00 00 07 7f /* viewable region */
+				05 01 00 00 00 00 01 13		/* normal mode */
 				05 01 00 00 00 00 01 29];	/* display on */
 
 		qcom,mdss-dsi-off-command = [
