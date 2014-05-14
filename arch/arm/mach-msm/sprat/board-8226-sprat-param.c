@@ -52,4 +52,4 @@ static int __init bootreason(char *p)
 	pr_info("Last boot reason: %s", p);
 	return 0;
 }
-early_param("bootreason", bootreason);
+early_param("androidboot.bootreason", bootreason);
