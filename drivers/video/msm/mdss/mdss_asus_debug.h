@@ -28,6 +28,11 @@
 #endif
 // ASUS_BSP --- Tingyi "[A11][MDSS] MIPI switch support for DDS"
 
+#define DSI_CMD_SLPIN "sleepin"
+#define DSI_CMD_SLPOUT "sleepout"
+#define DSI_CMD_DISPOFF "dispoff"
+#define DSI_CMD_DISPON "dispon"
+
 // exported functions
 int create_amdu_debugfs(struct dentry *parent);
 unsigned int set_amdu_logflag(unsigned int new_flag);
@@ -36,6 +41,9 @@ unsigned int get_amdu_logflag(void);
 int enable_ambient(int enable);
 
 // integrated AMDU to MDSS
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Be able to send debug MIPI cmd to MDSS"
+void amdu_register_ctrl_pdata(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Be able to send debug MIPI cmd to MDSS"
 int notify_amdu_panel_on_cmds_start(struct mdss_dsi_ctrl_pdata *ctrl);
 int notify_amdu_panel_on_cmds_stop(void);
 int notify_amdu_dsi_cmd_dma_tx(struct dsi_buf *tp);

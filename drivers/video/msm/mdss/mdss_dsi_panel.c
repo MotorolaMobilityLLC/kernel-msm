@@ -1226,5 +1226,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Be able to send debug MIPI cmd to MDSS"
+	amdu_register_ctrl_pdata(ctrl_pdata);
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Be able to send debug MIPI cmd to MDSS"
+
 	return 0;
 }

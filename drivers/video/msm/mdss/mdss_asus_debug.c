@@ -78,18 +78,42 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 	cmd_buf[count] = 0;	/* end of string */
 
 	// Build Commands
-	if (!strcmp(DSI_CMD_NORON,cmd_buf)){
+	if (!strncmp(DSI_CMD_NORON,cmd_buf,strlen(DSI_CMD_NORON))){
 
 		// 13 Normal Display mode on
 		printk("echo > 'write:05 01 00 00 00 00 01 13' > /d/mdp/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 13");
 
 	}
-	else if (!strcmp(DSI_CMD_ALLPON,cmd_buf)){
+	else if (!strncmp(DSI_CMD_ALLPON,cmd_buf,strlen(DSI_CMD_ALLPON))){
 
 		// 23 all pixel on
 		printk("echo 'write:05 01 00 00 00 00 01 23' > /d/mdp/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 23");
+	}
+	else if (!strncmp(DSI_CMD_SLPIN,cmd_buf,strlen(DSI_CMD_SLPIN))){
+
+		// 10 sleep in
+		printk("echo 'write:05 01 00 00 00 00 01 10' > /d/mdp/amdu_cmd\n");
+		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 10");
+	}
+	else if (!strncmp(DSI_CMD_SLPOUT,cmd_buf,strlen(DSI_CMD_SLPOUT))){
+
+		// 11 sleep out
+		printk("echo 'write:05 01 00 00 00 00 01 11' > /d/mdp/amdu_cmd\n");
+		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 11");
+	}
+	else if (!strncmp(DSI_CMD_DISPOFF,cmd_buf,strlen(DSI_CMD_DISPOFF))){
+
+		// 28 display off
+		printk("echo 'write:05 01 00 00 00 00 01 28' > /d/mdp/amdu_cmd\n");
+		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 28");
+	}
+	else if (!strncmp(DSI_CMD_DISPON,cmd_buf,strlen(DSI_CMD_DISPON))){
+
+		// 29 display on
+		printk("echo 'write:05 01 00 00 00 00 01 29' > /d/mdp/amdu_cmd\n");
+		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 29");
 	}
 
 	// Write/Read DSI
@@ -214,36 +238,59 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 static ssize_t mdss_debug_base_cmd_read(struct file *file,
 			char __user *buff, size_t count, loff_t *ppos)
 {
-	int len = 0;
-	char buf[24];
+	int len, tot;
+	char buf[512];
 
 	if (*ppos)
 		return 0;	/* the end */
 
-	len = snprintf(buf, sizeof(buf), "please cat/proc/kmsg&");
-	if (len < 0)
-		return 0;
+	len = sizeof(buf);
 
+	tot = scnprintf(buf, len, "\nAMDU STATUS:\n");
+
+	printk("You may say:\n");
+	tot += scnprintf(buf + tot, len - tot, "You may say:\n");
+
+	printk("=======================================\n");
+	tot += scnprintf(buf + tot, len - tot, "=======================================\n");
+	printk("MIPI CMDS:\n");	
+	tot += scnprintf(buf + tot, len - tot, "MIPI CMDS:\n");
+	printk("	%s\n",DSI_CMD_NORON);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_CMD_NORON);
+	printk("	%s\n",DSI_CMD_ALLPON);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_CMD_ALLPON);
+	printk("	%s\n",DSI_CMD_SLPIN);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_CMD_SLPIN);
+	printk("	%s\n",DSI_CMD_SLPOUT);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_CMD_SLPOUT);
+	printk("	%s\n",DSI_CMD_DISPOFF);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_CMD_DISPOFF);
+	printk("	%s\n",DSI_CMD_DISPON);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_CMD_DISPON);
+	printk("---------------------------------------\n");
+	tot += scnprintf(buf + tot, len - tot, "---------------------------------------\n");
+	printk("DEBUG CMDS:\n");
+	tot += scnprintf(buf + tot, len - tot, "DEBUG CMDS:\n");
+	printk("	%s0x??\n",SET_LOGFLAG);
+	tot += scnprintf(buf + tot, len - tot, "	%s0x??\n",SET_LOGFLAG);
+	printk("	%s0x??\n",CLR_LOGFLAG);
+	tot += scnprintf(buf + tot, len - tot, "	%s0x??\n",CLR_LOGFLAG);
+	printk("	%s\n",DSICHECKSTATUS);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSICHECKSTATUS);
+	printk("	%s\n",DSI_WRITE_CMD);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_WRITE_CMD);
+	printk("	%s\n",DSI_READ_CMD);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_READ_CMD);
+	printk("=======================================\n");
+	tot += scnprintf(buf + tot, len - tot, "=======================================\n");
+
+	tot += scnprintf(buf + tot, len - tot, "\n");
 	if (copy_to_user(buff, buf, len))
 		return -EFAULT;
 
-	*ppos += len;	/* increase offset */
+	*ppos += tot;
 
-	printk("You may say:\n");
-	printk("=======================================\n");
-	printk("MIPI CMDS:\n");	
-	printk("	%s\n",DSI_CMD_NORON);
-	printk("	%s\n",DSI_CMD_ALLPON);
-	printk("---------------------------------------\n");
-	printk("DEBUG CMDS:\n");
-	printk("	%s0x??\n",SET_LOGFLAG);
-	printk("	%s0x??\n",CLR_LOGFLAG);
-	printk("	%s\n",DSICHECKSTATUS);
-	printk("	%s\n",DSI_WRITE_CMD);
-	printk("	%s\n",DSI_READ_CMD);
-	printk("=======================================\n");
-
-	return len;
+	return tot;
 }
 
 static const struct file_operations mdss_cmd_fops = {
@@ -384,6 +431,12 @@ unsigned int get_amdu_logflag()
 
 // Log DSI commands for LK porting"
 static int cmd_counter = -1;
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Be able to send debug MIPI cmd to MDSS"
+void amdu_register_ctrl_pdata(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	amdu_data.ctrl = ctrl_pdata;
+}
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Be able to send debug MIPI cmd to MDSS"
 int notify_amdu_panel_on_cmds_start(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	// keep the DSI control
