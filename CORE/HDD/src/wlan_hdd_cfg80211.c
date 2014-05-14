@@ -5136,7 +5136,12 @@ static int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device
         return -ENODEV;
     }
     pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_SET_CHANNEL, pAdapter->sessionId,
                      channel_type ));
@@ -5733,11 +5738,16 @@ static int wlan_hdd_cfg80211_add_beacon(struct wiphy *wiphy,
                                         struct beacon_parameters *params)
 {
     hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
-    hdd_context_t  *pHddCtx;
+    hdd_context_t  *pHddCtx = NULL;
     int status;
 
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_ADD_BEACON,
                      pAdapter->sessionId, params->interval));
@@ -5794,19 +5804,19 @@ static int wlan_hdd_cfg80211_set_beacon(struct wiphy *wiphy,
                                         struct beacon_parameters *params)
 {
     hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
-    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-    hdd_context_t  *pHddCtx;
+    hdd_station_ctx_t *pHddStaCtx = NULL;
+    hdd_context_t  *pHddCtx = NULL;
     int status;
 
     ENTER();
-    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
-                     TRACE_CODE_HDD_CFG80211_SET_BEACON,
-                     pAdapter->sessionId, pHddStaCtx->conn_info.authType));
-    hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %s (%d)",
-           __func__, hdd_device_modetoString(pAdapter->device_mode),
-                                             pAdapter->device_mode);
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)
@@ -5815,7 +5825,12 @@ static int wlan_hdd_cfg80211_set_beacon(struct wiphy *wiphy,
                    "%s: HDD context is not valid", __func__);
         return status;
     }
-
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                     TRACE_CODE_HDD_CFG80211_SET_BEACON,
+                     pAdapter->sessionId, pHddStaCtx->conn_info.authType));
+    hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %s (%d)",
+           __func__, hdd_device_modetoString(pAdapter->device_mode),
+                                             pAdapter->device_mode);
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
      || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
        )
@@ -5870,7 +5885,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
 
     if (NULL == pAdapter)
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: HDD adapter context is Null", __func__);
         return -ENODEV;
     }
@@ -6104,11 +6119,16 @@ static int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
                                         struct cfg80211_beacon_data *params)
 {
     hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
-    hdd_context_t *pHddCtx;
+    hdd_context_t *pHddCtx = NULL;
     int status;
 
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_CHANGE_BEACON,
                      pAdapter->sessionId, pAdapter->device_mode));
@@ -6168,7 +6188,12 @@ static int __wlan_hdd_cfg80211_change_bss (struct wiphy *wiphy,
     hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
 
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_CHANGE_BSS,
                      pAdapter->sessionId, params->ap_isolate));
@@ -6871,7 +6896,7 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
 
     if ((NULL == pAdapter))
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "invalid adapter ");
         return -EINVAL;
     }
@@ -7056,7 +7081,12 @@ static int __wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
     hdd_context_t *pHddCtx;
 
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_ADD_KEY,
                       pAdapter->sessionId, params->key_len));
@@ -7446,16 +7476,23 @@ static int __wlan_hdd_cfg80211_get_key(
 #endif
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev );
-    hdd_wext_state_t *pWextState= WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-    tCsrRoamProfile *pRoamProfile = &(pWextState->roamProfile);
+    hdd_wext_state_t *pWextState= NULL;
+    tCsrRoamProfile *pRoamProfile = NULL;
     struct key_params params;
 
     ENTER();
 
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %s (%d)",
             __func__, hdd_device_modetoString(pAdapter->device_mode),
                                               pAdapter->device_mode);
-
+    pWextState= WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    pRoamProfile = &(pWextState->roamProfile);
     memset(&params, 0, sizeof(params));
 
     if (CSR_MAX_NUM_KEY <= key_index)
@@ -7492,11 +7529,9 @@ static int __wlan_hdd_cfg80211_get_key(
             params.cipher = IW_AUTH_CIPHER_NONE;
             break;
     }
-
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_GET_KEY,
                      pAdapter->sessionId, params.cipher));
-
     params.key_len = pRoamProfile->Keys.KeyLength[key_index];
     params.seq_len = 0;
     params.seq = NULL;
@@ -7671,7 +7706,7 @@ static int __wlan_hdd_cfg80211_set_default_key( struct wiphy *wiphy,
 
     if ((NULL == pAdapter))
     {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
           "invalid adapter");
        return -EINVAL;
     }
@@ -8113,7 +8148,7 @@ static int wlan_hdd_cfg80211_update_bss( struct wiphy *wiphy,
                                          hdd_adapter_t *pAdapter
                                         )
 {
-    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    tHalHandle hHal = NULL;
     tCsrScanResultInfo *pScanResult;
     eHalStatus status = 0;
     tScanResultHandle pResult;
@@ -8121,7 +8156,13 @@ static int wlan_hdd_cfg80211_update_bss( struct wiphy *wiphy,
     hdd_context_t *pHddCtx;
 
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
+    hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_UPDATE_BSS,
                        NO_SESSION, pAdapter->sessionId));
@@ -8646,11 +8687,9 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 
     ENTER();
 
-
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %s (%d)",
            __func__, hdd_device_modetoString(pAdapter->device_mode),
                                              pAdapter->device_mode);
-
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)
@@ -10078,10 +10117,15 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
     int status;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev );
     VOS_STATUS exitbmpsStatus = VOS_STATUS_E_INVAL;
-    hdd_context_t *pHddCtx;
+    hdd_context_t *pHddCtx = NULL;
 
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_CONNECT,
                       pAdapter->sessionId, pAdapter->device_mode));
@@ -10260,17 +10304,21 @@ static int __wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                                          )
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
-    tCsrRoamProfile  *pRoamProfile =
-                    &(WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter))->roamProfile;
+    tCsrRoamProfile  *pRoamProfile = NULL;
     int status;
-    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_station_ctx_t *pHddStaCtx = NULL;
+    hdd_context_t *pHddCtx = NULL;
 #ifdef FEATURE_WLAN_TDLS
     tANI_U8 staIdx;
 #endif
 
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_DISCONNECT,
                      pAdapter->sessionId, reason));
@@ -10281,6 +10329,9 @@ static int __wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: Disconnect called with reason code %d",
             __func__, reason);
 
+    pRoamProfile = &(WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter))->roamProfile;
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)
@@ -10488,11 +10539,16 @@ static int wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
     tCsrRoamProfile          *pRoamProfile;
     int status;
     bool alloc_bssid = VOS_FALSE;
-    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_station_ctx_t *pHddStaCtx = NULL;
+    hdd_context_t *pHddCtx = NULL;
 
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_JOIN_IBSS,
                      pAdapter->sessionId, pAdapter->device_mode));
@@ -10501,6 +10557,8 @@ static int wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
            hdd_device_modetoString(pAdapter->device_mode),
                                    pAdapter->device_mode);
 
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)
@@ -10657,16 +10715,23 @@ static int wlan_hdd_cfg80211_leave_ibss( struct wiphy *wiphy,
                                          )
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
-    hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-    tCsrRoamProfile *pRoamProfile;
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_wext_state_t *pWextState = NULL;
+    tCsrRoamProfile *pRoamProfile = NULL;
+    hdd_context_t *pHddCtx = NULL;
     int status;
 
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_LEAVE_IBSS,
                       pAdapter->sessionId, eCSR_DISCONNECT_REASON_IBSS_LEAVE));
+    pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)
@@ -11631,7 +11696,12 @@ static int wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
 #ifdef FEATURE_WLAN_TDLS
     u32 mask, set;
     ENTER();
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_ADD_STA,
                      pAdapter->sessionId, params->listen_interval));
@@ -12121,7 +12191,7 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
 
     if (NULL == pAdapter)
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: HDD adapter is Null", __func__);
         return -ENODEV;
     }
@@ -12390,7 +12460,7 @@ static int __wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
 
     if (NULL == pAdapter)
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: HDD adapter is Null", __func__);
         return -ENODEV;
     }
@@ -12509,7 +12579,12 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     u32 peer_capability = 0;
 #endif
     tANI_U16 numCurrTdlsPeers;
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_TDLS_MGMT,
                      pAdapter->sessionId, action_code));
@@ -12726,7 +12801,12 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     int status;
     hddTdlsPeer_t *pTdlsPeer;
-
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter context is Null", __func__);
+        return -ENODEV;
+    }
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_TDLS_OPER,
                      pAdapter->sessionId, oper));
@@ -13082,7 +13162,7 @@ int wlan_hdd_cfg80211_set_rekey_data(struct wiphy *wiphy, struct net_device *dev
 
     if (NULL == pAdapter)
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: HDD adapter is Null", __func__);
         return -ENODEV;
     }

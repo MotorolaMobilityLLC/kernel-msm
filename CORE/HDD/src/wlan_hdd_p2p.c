@@ -597,6 +597,11 @@ int wlan_hdd_cfg80211_remain_on_channel( struct wiphy *wiphy,
     struct net_device *dev = wdev->netdev;
 #endif
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
+    if (NULL == pAdapter)
+    {
+       hddLog(LOGE, FL("pAdapter is NULL"));
+       return -ENODEV;
+    }
 
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_REMAIN_ON_CHANNEL,
@@ -866,9 +871,9 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
     struct net_device *dev = wdev->netdev;
 #endif
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
-    hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
-    hdd_remain_on_chan_ctx_t *pRemainChanCtx = cfgState->remain_on_chan_ctx;
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+    hdd_cfg80211_state_t *cfgState = NULL;
+    hdd_remain_on_chan_ctx_t *pRemainChanCtx = NULL;
+    hdd_context_t *pHddCtx = NULL;
     tANI_U8 type = WLAN_HDD_GET_TYPE_FRM_FC(buf[0]);
     tANI_U8 subType = WLAN_HDD_GET_SUBTYPE_FRM_FC(buf[0]);
     tActionFrmType actionFrmType;
@@ -881,10 +886,24 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
     hdd_adapter_t *goAdapter;
 #endif
-
-     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+    if (NULL == pAdapter)
+    {
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD adapter context is Null", __func__);
+       return -ENODEV;
+    }
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                       TRACE_CODE_HDD_ACTION, pAdapter->sessionId,
                       pAdapter->device_mode ));
+    cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
+    if (NULL == cfgState)
+    {
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    "%s: cfg state is Null", __func__);
+       return -ENODEV;
+    }
+    pRemainChanCtx = cfgState->remain_on_chan_ctx;
+    pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)
