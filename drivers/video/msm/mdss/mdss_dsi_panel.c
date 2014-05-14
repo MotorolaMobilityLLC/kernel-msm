@@ -678,15 +678,17 @@ static unsigned int detect_panel_state(u8 pwr_mode)
 	return panel_state;
 }
 
-static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata)
+static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
+						u8 *pwr_mode)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mipi_panel_info *mipi;
 	struct msm_fb_data_type *mfd;
-	u8 pwr_mode = 0xFF;
 	int force_full_enable = 0;
 	unsigned int panel_state = 0;
 	int ret = 0;
+
+	*pwr_mode = 0xFF;
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -694,15 +696,15 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata)
 
 	mfd = pdata->mfd;
 
-	mdss_dsi_get_pwr_mode(pdata, &pwr_mode);
+	mdss_dsi_get_pwr_mode(pdata, pwr_mode);
 
-	if (pwr_mode == 0xFF) {
+	if (*pwr_mode == 0xFF) {
 		int gpio_val = gpio_get_value(ctrl->mipi_d0_sel);
 		pr_warn("%s: unable to read power state! [gpio: %d]\n",
 			__func__, gpio_val);
 		force_full_enable = 1;
 	} else {
-		panel_state = detect_panel_state(pwr_mode);
+		panel_state = detect_panel_state(*pwr_mode);
 		if (panel_state == DSI_DISP_INVALID_STATE) {
 			pr_warn("%s: detected invalid panel state\n", __func__);
 			force_full_enable = 1;
@@ -782,7 +784,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	if (mfd->quickdraw_in_progress) {
-		if (!mdss_dsi_quickdraw_check_panel_state(pdata)) {
+		if (!mdss_dsi_quickdraw_check_panel_state(pdata, &pwr_mode)) {
 			pr_debug("%s: in quickdraw, SH configured the panel already\n",
 				__func__);
 			goto end;
