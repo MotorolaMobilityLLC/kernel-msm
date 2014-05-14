@@ -1994,29 +1994,6 @@ qpnp_batt_property_is_writeable(struct power_supply *psy,
 }
 
 static int
-qpnp_chg_buck_control(struct qpnp_chg_chip *chip, int enable)
-{
-	int rc;
-
-	if (chip->charging_disabled && enable) {
-		pr_debug("Charging disabled\n");
-		return 0;
-	}
-
-	rc = qpnp_chg_charge_en(chip, enable);
-	if (rc) {
-		pr_err("Failed to control charging %d\n", rc);
-		return rc;
-	}
-
-	rc = qpnp_chg_force_run_on_batt(chip, !enable);
-	if (rc)
-		pr_err("Failed to control charging %d\n", rc);
-
-	return rc;
-}
-
-static int
 switch_usb_to_charge_mode(struct qpnp_chg_chip *chip)
 {
 	int rc;
@@ -3129,14 +3106,7 @@ qpnp_batt_system_temp_level_set(struct qpnp_chg_chip *chip, int lvl_sel)
 {
 	if (lvl_sel >= 0 && lvl_sel < chip->thermal_levels) {
 		chip->therm_lvl_sel = lvl_sel;
-		if ((lvl_sel == (chip->thermal_levels - 1)) &&
-		    (chip->thermal_mitigation[lvl_sel] == 0)) {
-			/* disable charging if highest value selected */
-			qpnp_chg_buck_control(chip, 0);
-		} else {
-			qpnp_chg_buck_control(chip, 1);
-			qpnp_chg_set_appropriate_battery_current(chip);
-		}
+		qpnp_chg_set_appropriate_battery_current(chip);
 	} else {
 		pr_err("Unsupported level selected %d\n", lvl_sel);
 	}
