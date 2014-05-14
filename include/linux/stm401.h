@@ -650,7 +650,7 @@ int stm401_process_ir_gesture(struct stm401_data *ps_stm401);
 long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg);
 
-void stm401_reset(struct stm401_platform_data *pdata);
+void stm401_reset(struct stm401_platform_data *pdata, unsigned char *cmdbuff);
 int stm401_reset_and_init(void);
 
 int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
@@ -677,9 +677,10 @@ int stm401_enable(struct stm401_data *ps_stm401);
 
 void stm401_wake(struct stm401_data *ps_stm401);
 void stm401_sleep(struct stm401_data *ps_stm401);
-void stm401_detect_lowpower_mode(void);
+void stm401_detect_lowpower_mode(unsigned char *cmdbuff);
 
-int stm401_load_brightness_table(struct stm401_data *ps_stm401);
+int stm401_load_brightness_table(struct stm401_data *ps_stm401,
+	unsigned char *cmdbuff);
 
 int stm401_irq_wake_work_func_display_locked(struct stm401_data *ps_stm401,
 	unsigned short irq_status);
