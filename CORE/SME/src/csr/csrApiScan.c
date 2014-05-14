@@ -49,6 +49,7 @@
 
 #include "vos_nvitem.h"
 #include "wlan_qct_wda.h"
+#include "vos_utils.h"
 
 #define MIN_CHN_TIME_TO_FIND_GO 100
 #define MAX_CHN_TIME_TO_FIND_GO 100
@@ -4642,7 +4643,7 @@ tANI_BOOLEAN csrIsDuplicateBssDescription( tpAniSirGlobal pMac, tSirBssDescripti
     {
         if (pCap1->ess && 
                 csrIsMacAddressEqual( pMac, (tCsrBssid *)pSirBssDesc1->bssId, (tCsrBssid *)pSirBssDesc2->bssId)&&
-            (fForced || (pSirBssDesc1->channelId == pSirBssDesc2->channelId)))
+            (fForced || (vos_chan_to_band(pSirBssDesc1->channelId) == vos_chan_to_band((pSirBssDesc2->channelId)))))
         {
             fMatch = TRUE;
             // Check for SSID match, if exists
