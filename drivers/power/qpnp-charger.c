@@ -1391,6 +1391,7 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 	struct qpnp_chg_chip *chip = _chip;
 	u8 usb_sts;
 	int rc;
+	u8 chg_led = 0x0; //ASUS_BSP +
 
 	rc = qpnp_chg_read(chip, &usb_sts,
 			INT_RT_STS(chip->usb_chgpth_base), 1);
@@ -1398,6 +1399,9 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 		pr_err("failed to read usb_chgpth_sts rc=%d\n", rc);
 
 	printk("chg_gone triggered\n");
+	
+	qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
+	
 	if ((qpnp_chg_is_usb_chg_plugged_in(chip)
 			|| qpnp_chg_is_dc_chg_plugged_in(chip))
 			&& (usb_sts & CHG_GONE_IRQ)) {
@@ -1687,7 +1691,8 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 	struct qpnp_chg_chip *chip = _chip;
 	int usb_present, host_mode, usbin_health;
 	u8 psy_health_sts;
-
+	u8 chg_led = 0x0; //ASUS_BSP +
+	
 	usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
 	host_mode = qpnp_chg_is_otg_en_set(chip);
 	printk("usbin-valid triggered: %d host_mode: %d\n",
@@ -1700,6 +1705,8 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 	if (chip->usb_present ^ usb_present) {
 		chip->usb_present = usb_present;
 		if (!usb_present) {
+			qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
+			
 			/* when a valid charger inserted, and increase the
 			 *  charger voltage to OVP threshold, then
 			 *  usb_in_valid falling edge interrupt triggers.
@@ -1924,8 +1931,11 @@ qpnp_chg_chgr_chg_failed_irq_handler(int irq, void *_chip)
 {
 	struct qpnp_chg_chip *chip = _chip;
 	int rc;
+	u8 chg_led = 0; //ASUS_BSP +
 
 	printk("chg_failed triggered\n");
+
+	qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
 
 	rc = qpnp_chg_masked_write(chip,
 		chip->chgr_base + CHGR_CHG_FAILED,
@@ -2008,22 +2018,14 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 {
 	struct qpnp_chg_chip *chip = _chip;
 	bool fastchg_on = false;
-	u8 chg_led; //ASUS_BSP +
+	u8 chg_led = 0; //ASUS_BSP +
 
 	qpnp_chg_irq_wake_disable(&chip->chg_fastchg);
 	fastchg_on = qpnp_chg_is_fastchg_on(chip);
 
 	printk("FAST_CHG IRQ triggered, fastchg_on: %d\n", fastchg_on);
 
-//ASUS_BSP +++
-	if(fastchg_on){
-		chg_led = 0x0;
-	}
-	else{
-		chg_led = 0x1;
-	}
-	qpnp_chg_write(chip, &chg_led, 0x104D, 1);
-//ASUS_BSP ---
+	qpnp_chg_write(chip, &chg_led, 0x104D, 1); //ASUS_BSP +
 
 	if (chip->fastchg_on ^ fastchg_on) {
 		chip->fastchg_on = fastchg_on;
