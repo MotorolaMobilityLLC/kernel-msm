@@ -282,38 +282,54 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 	gpio_direction_output(data->rst, 0);
 	usleep_range(4900, 5000);
 
-	errorno = of_property_read_string(np, "ssp_accel_vreg-name",
-			&supply_name);
-	if (errorno < 0) {
-		pr_err("[SSP] supply-name Error\n");
-		goto dt_exit;
-	}
-
-	errorno = of_property_read_u32(np, "ssp_accel_vreg-level",
-			&voltage_level);
-	if (errorno < 0) {
-		pr_err("[SSP] voltage-level Error\n");
-		goto dt_exit;
-	}
-
-	data->vdd_acc = regulator_get(NULL, supply_name);
-	if (IS_ERR(data->vdd_acc)) {
-		data->vdd_acc = NULL;
-		pr_err("[SSP] regulator_get Error\n");
-		errorno = -EINVAL;
-		goto dt_exit;
-	}
-
-	errorno = regulator_set_voltage(data->vdd_acc, voltage_level,
-			voltage_level);
-	if (errorno) {
-		pr_err("[SSP] regulator voltage set Error\n");
-		goto dt_exit;
-	} else {
-		errorno = regulator_enable(data->vdd_acc);
-		if (errorno) {
-			pr_err("[SSP] VDD can't turn on for Accel\n");
+	if (data->ap_rev < 2) {
+		errorno = of_property_read_string(np, "ssp_accel_vreg-name",
+				&supply_name);
+		if (errorno < 0) {
+			pr_err("[SSP] supply-name Error\n");
 			goto dt_exit;
+		}
+
+		errorno = of_property_read_u32(np, "ssp_accel_vreg-level",
+				&voltage_level);
+		if (errorno < 0) {
+			pr_err("[SSP] voltage-level Error\n");
+			goto dt_exit;
+		}
+
+		data->vdd_acc = regulator_get(NULL, supply_name);
+		if (IS_ERR(data->vdd_acc)) {
+			data->vdd_acc = NULL;
+			pr_err("[SSP] regulator_get Error\n");
+			errorno = -EINVAL;
+			goto dt_exit;
+		}
+
+		errorno = regulator_set_voltage(data->vdd_acc, voltage_level,
+				voltage_level);
+		if (errorno) {
+			pr_err("[SSP] regulator voltage set Error\n");
+			goto dt_exit;
+		} else {
+			errorno = regulator_enable(data->vdd_acc);
+			if (errorno) {
+				pr_err("[SSP] VDD can't turn on for Accel\n");
+				goto dt_exit;
+			}
+		}
+	}else {
+		data->vdd_acc = devm_regulator_get(dev, "ssp_acc_vreg");
+		if (IS_ERR(data->vdd_acc)) {
+			data->vdd_hrm = NULL;
+			pr_err("[SSP] could not get ssp_acc_vreg, %ld\n",
+				PTR_ERR(data->vdd_acc));
+			errorno = -ENXIO;
+		} else {
+			errorno = regulator_enable(data->vdd_acc);
+			if (errorno) {
+				pr_err("[SSP] VDD can't turn on for Accel\n");
+				goto dt_exit;
+			}
 		}
 	}
 
