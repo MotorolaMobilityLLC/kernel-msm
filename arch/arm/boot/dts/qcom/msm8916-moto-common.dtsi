@@ -545,3 +545,19 @@
 &pm8916_l16 {
 	qcom,init-voltage = <3100000>;
 };
+
+&rpm_bus {
+	rpm_regulator-ldoa5 {
+		status = "okay";
+		regulator-l5 {
+			status = "okay";
+		};
+	};
+
+	rpm_regulator-ldoa13 {
+		status = "okay";
+		regulator-l13 {
+			status = "okay";
+		};
+	};
+};
