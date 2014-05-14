@@ -3690,6 +3690,10 @@ qpnp_eoc_work(struct work_struct *work)
 			chip->ext_hi_temp = false;
 			qpnp_chg_set_appropriate_vddmax(chip);
 			qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
+			qpnp_chg_charge_en(chip, (!chip->charging_disabled &&
+						  !chip->out_of_temp &&
+						  !chip->ext_hi_temp &&
+						  (chip->chrg_ocv_state != CHRG_OCV_OCV_WAIT)));
 			goto stop_eoc;
 		}
 
