@@ -1650,7 +1650,7 @@ static void lis3dsh_acc_input_cleanup(struct lis3dsh_acc_data *acc)
 	input_free_device(acc->input_dev);
 }
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
+#if 0//defined(CONFIG_HAS_EARLYSUSPEND)
 static void lis3dsh_early_suspend(struct early_suspend *h)
 {
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++\n", __func__);
@@ -1674,7 +1674,7 @@ struct early_suspend lis3dsh_early_suspend_handler = {
     .suspend = lis3dsh_early_suspend,
     .resume = lis3dsh_late_resume,
 };
-#elif defined(CONFIG_FB)
+//#elif defined(CONFIG_FB)
 static void lis3dsh_fb_early_suspend(void)
 {
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++\n", __func__);
@@ -1717,6 +1717,22 @@ static int lis3dsh_fb_notifier_callback(struct notifier_block *self, unsigned lo
 	return 0;
 }
 #endif
+
+void notify_st_sensor_lowpowermode(int low)
+{
+	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++: (%s)\n", __func__, low?"enter":"exit");
+	if(low) {
+		enable_irq_wake(g_acc->irq1);
+		enable_irq_wake(g_acc->irq2);
+		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_EN);
+	}
+	else {
+		disable_irq_wake(g_acc->irq1);
+		disable_irq_wake(g_acc->irq2);
+		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_DIS);
+	}
+	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
+}
 
 static int lis3dsh_acc_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
@@ -1797,9 +1813,9 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 		}
 	}
 
-	#if defined(CONFIG_HAS_EARLYSUSPEND)
+	#if 0//defined(CONFIG_HAS_EARLYSUSPEND)
 	register_early_suspend(&lis3dsh_early_suspend_handler);
-	#elif defined(CONFIG_FB)
+	//#elif defined(CONFIG_FB)
 	lis3dsh_fb_notif.notifier_call = lis3dsh_fb_notifier_callback;
 	err= fb_register_client(&lis3dsh_fb_notif);
 	if (err)
