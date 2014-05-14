@@ -159,6 +159,12 @@ static int set_hardware_id(char *str)
 		g_ASUS_hwID = WI500Q_SR;
 		printk("Kernel HW ID = WI500Q_SR\n");
 	}
+	else if ( strcmp("WI500Q_SR2", str) == 0 )
+	{
+		g_ASUS_hwID = WI500Q_SR2;
+		printk("Kernel HW ID = WI500Q_SR2\n");
+	}
+
 #endif
 
 	printk("g_ASUS_hwID = %d\n", g_ASUS_hwID);

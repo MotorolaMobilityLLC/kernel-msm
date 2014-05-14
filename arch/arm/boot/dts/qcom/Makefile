@@ -40,6 +40,7 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-sim.dtb \
 #+++ASUS_BSP: only for WI500Q
 dtb-$(CONFIG_ARCH_MSM8226) += WI500Q_EVB2_apq8026-v1-mtp.dtb
 dtb-$(CONFIG_ARCH_MSM8226) += WI500Q_SR_apq8026-v1-mtp.dtb
+dtb-$(CONFIG_ARCH_MSM8226) += WI500Q_SR2_apq8026-v1-mtp.dtb
 #---ASUS_BSP: only for WI500Q
 dtb-$(CONFIG_ARCH_MSM8610) += msm8610-rumi.dtb \
 	msm8610-v1-cdp.dtb \
