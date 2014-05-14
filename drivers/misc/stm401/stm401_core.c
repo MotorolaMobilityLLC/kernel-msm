@@ -165,6 +165,23 @@ void stm401_sleep(struct stm401_data *ps_stm401)
 void stm401_detect_lowpower_mode(void)
 {
 	int err;
+	bool factory;
+	struct device_node *np = of_find_node_by_path("/chosen");
+
+	if (np) {
+		/* detect factory cable and disable lowpower mode
+		 * because TCMDs will talk directly to the stm401
+		 * over i2c */
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+		if (factory) {
+			/* lowpower mode disabled for factory testing */
+			dev_dbg(&stm401_misc_data->client->dev,
+				"factory cable...lowpower disabled");
+			stm401_misc_data->sh_lowpower_enabled = 0;
+			return;
+		}
+	}
 
 	if ((stm401_misc_data->pdata->gpio_sh_wake >= 0)
 	    && (stm401_misc_data->pdata->gpio_sh_wake_resp >= 0)) {
