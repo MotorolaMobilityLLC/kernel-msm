@@ -14073,6 +14073,9 @@ eHalStatus csrProcessAddStaSessionRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
          {
             pRsp = (tSirSmeAddStaSelfRsp*)pMsg;
             smsLog( pMac, LOG1, "Add Sta rsp status = %d", pRsp->status );
+            if (pRsp->status == eSIR_FAILURE) {
+                VOS_ASSERT( 0 );
+            }
             //Nothing to be done. May be indicate the self sta addition success by calling session callback (TODO).
             csrRoamSessionOpened(pMac, pCommand->sessionId);
             //Remove this command out of the active list

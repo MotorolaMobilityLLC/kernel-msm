@@ -3529,6 +3529,8 @@ __limHandleSmeStopBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     tpPESession        psessionEntry;
     tANI_U8            smesessionId;
     tANI_U16           smetransactionId;
+    tANI_U8 i = 0;
+    tpDphHashNode pStaDs = NULL;
     
     limGetSessionInfo(pMac,(tANI_U8 *)pMsgBuf,&smesessionId,&smetransactionId);
         
@@ -3602,6 +3604,23 @@ __limHandleSmeStopBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     //limDelBss is also called as part of coalescing, when we send DEL BSS followed by Add Bss msg.
     pMac->lim.gLimIbssCoalescingHappened = false;
     
+    for(i = 1 ; i < pMac->lim.gLimAssocStaLimit ; i++)
+    {
+        pStaDs = dphGetHashEntry(pMac, i, &psessionEntry->dph.dphHashTable);
+        if (NULL == pStaDs)
+            continue;
+        status = limDelSta(pMac, pStaDs, false, psessionEntry) ;
+        if(eSIR_SUCCESS == status)
+        {
+            limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId, psessionEntry) ;
+            limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry) ;
+        }
+        else
+        {
+            limLog(pMac, LOGE, FL("limDelSta failed with Status : %d"), status);
+            VOS_ASSERT(0) ;
+        }
+    }
     /* send a delBss to HAL and wait for a response */
     status = limDelBss(pMac, NULL,psessionEntry->bssIdx,psessionEntry);
     
