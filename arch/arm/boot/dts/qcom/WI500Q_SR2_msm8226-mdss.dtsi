@@ -117,7 +117,7 @@
 		qcom,mdss-mdp = <&mdss_mdp>;
 // ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Enable 320x320 panel"
 		vdd-supply = <&pm8226_l19>; 
-		vddio-supply = <&pm8226_l6>;
+		vddio-supply = <&pm8226_l8>;
 // ASUS_BSP --- Tingyi "[ROBIN][MDSS] Enable 320x320 panel"		
 		vdda-supply = <&pm8226_l4>;
 		qcom,platform-reset-gpio = <&msmgpio 25 0>;
