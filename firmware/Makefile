@@ -143,7 +143,7 @@ fw-shipped-$(CONFIG_TOUCHSCREEN_CYTTSP5) += tsp_cypress/cyttsp5_csp.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_CYTTSP5) += tsp_cypress/cyttsp5_qfn.fw
 
 #for sensorhub
-fw-shipped-$(CONFIG_SENSORS_SSP_STM) += ssp_stm.fw
+fw-shipped-$(CONFIG_SENSORS_SSP_STM) += ssp_stm.fw ssp_stm_rev02.fw
 
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 

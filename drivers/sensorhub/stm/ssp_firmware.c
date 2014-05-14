@@ -14,13 +14,14 @@
  */
 #include "ssp.h"
 
-#define SSP_FIRMWARE_REVISION_STM	14051000
+#define SSP_FIRMWARE_REVISION_STM	14051400
 
 #define BOOT_SPI_HZ	1000000
 #define NORM_SPI_HZ	5000000
 
 /* Bootload mode cmd */
 #define BL_FW_NAME				"ssp_stm.fw"
+#define BL_FW_NAME_REV02		"ssp_stm_rev02.fw"
 #define BL_UMS_FW_NAME			"ssp_stm.bin"
 #define BL_CRASHED_FW_NAME		"ssp_crashed.fw"
 
@@ -627,7 +628,10 @@ static int update_mcu_bin(struct ssp_data *data, int iBinType)
 
 	switch (iBinType) {
 	case KERNEL_BINARY:
-		iRet = load_kernel_fw_bootmode(data->spi, BL_FW_NAME);
+		if (data->ap_rev < 2)
+			iRet = load_kernel_fw_bootmode(data->spi, BL_FW_NAME);
+		else
+			iRet = load_kernel_fw_bootmode(data->spi, BL_FW_NAME_REV02);
 		break;
 	case KERNEL_CRASHED_BINARY:
 		iRet = load_kernel_fw_bootmode(data->spi,
