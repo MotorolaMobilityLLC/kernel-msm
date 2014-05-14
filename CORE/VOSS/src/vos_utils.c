@@ -713,3 +713,12 @@ err_tfm:
 
     return VOS_STATUS_SUCCESS;
 }
+
+
+v_U8_t vos_chan_to_band(v_U32_t chan)
+{
+    if (chan <= VOS_24_GHZ_CHANNEL_14)
+        return VOS_BAND_2GHZ;
+
+    return VOS_BAND_5GHZ;
+}

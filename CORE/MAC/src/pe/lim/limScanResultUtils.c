@@ -43,8 +43,7 @@
 #if defined WLAN_FEATURE_VOWIFI
 #include "rrmApi.h"
 #endif
-
-
+#include "vos_utils.h"
 
 /**
  * limDeactiveMinChannelTimerDuringScan()
@@ -725,8 +724,9 @@ limLookupNaddHashEntry(tpAniSirGlobal pMac,
             (vos_mem_compare( (tANI_U8 *) pBssDescr->bssDescription.bssId,
                       (tANI_U8 *) ptemp->bssDescription.bssId,
                       sizeof(tSirMacAddr))) &&   //matching BSSID
-            (pBssDescr->bssDescription.channelId ==
-                                      ptemp->bssDescription.channelId) &&
+             // matching band to update new channel info
+            (vos_chan_to_band(pBssDescr->bssDescription.channelId) ==
+                      vos_chan_to_band(ptemp->bssDescription.channelId)) &&
             vos_mem_compare( ((tANI_U8 *) &pBssDescr->bssDescription.ieFields + 1),
                            ((tANI_U8 *) &ptemp->bssDescription.ieFields + 1),
                            (tANI_U8) (ssidLen + 1)) &&
