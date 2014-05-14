@@ -200,18 +200,25 @@ static rateStr2rateIndex_t rateName_rateIndex_tbl[] =
    { HAL_PHY_RATE_MCS_1NSS_52_MBPS,    "MCS_52_MBPS"},
    { HAL_PHY_RATE_MCS_1NSS_58_5_MBPS,  "MCS_58_5_MBPS"},
    { HAL_PHY_RATE_MCS_1NSS_65_MBPS,    "MCS_65_MBPS"},
-   { HAL_PHY_RATE_MCS_1NSS_MM_SG_72_2_MBPS, "MCS_72_2_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_MM_SG_7_2_MBPS,   "MCS_SG_7_2_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_MM_SG_14_4_MBPS,  "MCS_SG_14_4_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_MM_SG_21_7_MBPS,  "MCS_SG_21_7_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_MM_SG_28_9_MBPS,  "MCS_SG_28_9_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_MM_SG_43_3_MBPS,  "MCS_SG_43_3_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_MM_SG_57_8_MBPS,  "MCS_SG_57_8_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_MM_SG_65_MBPS,    "MCS_SG_65_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_MM_SG_72_2_MBPS,  "MCS_SG_72_2_MBPS"},
 
 //MCS Index #8-15 (40MHz)
 
-   { HAL_PHY_RATE_MCS_1NSS_CB_13_5_MBPS,      "MCS_CB_13_B_MBPS" },
-   { HAL_PHY_RATE_MCS_1NSS_CB_27_MBPS,        "MCS_CB_27_MBPS" },
-   { HAL_PHY_RATE_MCS_1NSS_CB_40_5_MBPS,      "MCS_CB_40_5_MBPS" },
-   { HAL_PHY_RATE_MCS_1NSS_CB_54_MBPS,        "MCS_CB_54_MBPS"},
-   { HAL_PHY_RATE_MCS_1NSS_CB_81_MBPS,        "MCS_CB_81_MBPS"},
-   { HAL_PHY_RATE_MCS_1NSS_CB_108_MBPS,       "MCS_CB_108_MBPS"},
-   { HAL_PHY_RATE_MCS_1NSS_CB_121_5_MBPS,     "MCS_CB_121_5_MBPS"},
-   { HAL_PHY_RATE_MCS_1NSS_CB_135_MBPS,       "MCS_CB_135_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_CB_13_5_MBPS, "MCS_CB_13_5_MBPS" },
+   { HAL_PHY_RATE_MCS_1NSS_CB_27_MBPS,   "MCS_CB_27_MBPS" },
+   { HAL_PHY_RATE_MCS_1NSS_CB_40_5_MBPS, "MCS_CB_40_5_MBPS" },
+   { HAL_PHY_RATE_MCS_1NSS_CB_54_MBPS, "MCS_CB_54_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_CB_81_MBPS, "MCS_CB_81_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_CB_108_MBPS, "MCS_CB_108_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_CB_121_5_MBPS, "MCS_CB_121_5_MBPS"},
+   { HAL_PHY_RATE_MCS_1NSS_CB_135_MBPS,   "MCS_CB_135_MBPS"},
    { HAL_PHY_RATE_MCS_1NSS_MM_SG_CB_15_MBPS,  "MCS_CB_15_MBPS"},
    { HAL_PHY_RATE_MCS_1NSS_MM_SG_CB_30_MBPS,  "MCS_CB_30_MBPS"},
    { HAL_PHY_RATE_MCS_1NSS_MM_SG_CB_45_MBPS,  "MCS_CB_45_MBPS"},
@@ -505,9 +512,10 @@ static unsigned int valid_channel_cb80[] = { 7, 42, 46, 50, 54, 58, 106, 110,
 typedef struct
 {
     tANI_BOOLEAN frameGenEnabled;
+    tANI_BOOLEAN wfRfGenEnabled;
     tANI_BOOLEAN wfmEnabled;
     sPttFrameGenParams frameParams;
-    v_U16_t txpower;
+    v_U16_t powerCtlMode;
     v_U16_t rxmode;
     v_U16_t chainSelect;
     ePhyChanBondState cbmode;
@@ -526,11 +534,12 @@ static void _ftm_status_init(void)
 
     ftm_status.wfmEnabled = eANI_BOOLEAN_FALSE;
     ftm_status.frameGenEnabled = eANI_BOOLEAN_FALSE;
+    ftm_status.wfRfGenEnabled = eANI_BOOLEAN_FALSE;
     ftm_status.frameParams.numTestPackets = 0;   //Continuous
-    ftm_status.frameParams.interFrameSpace = 10;
+    ftm_status.frameParams.interFrameSpace = 200;
     ftm_status.frameParams.rate = HAL_PHY_RATE_11A_6_MBPS;
     ftm_status.frameParams.payloadContents = TEST_PAYLOAD_RANDOM;
-    ftm_status.frameParams.payloadLength = 2000;
+    ftm_status.frameParams.payloadLength = 1000;
     ftm_status.frameParams.payloadFillByte = 0xA5;
     ftm_status.frameParams.pktAutoSeqNum = eANI_BOOLEAN_FALSE;
     ftm_status.frameParams.tx_mode = 0;
@@ -539,7 +548,7 @@ static void _ftm_status_init(void)
     memcpy(&ftm_status.frameParams.addr1[0], addr1, ANI_MAC_ADDR_SIZE);
     memcpy(&ftm_status.frameParams.addr2[0], addr2, ANI_MAC_ADDR_SIZE);
     memcpy(&ftm_status.frameParams.addr3[0], addr3, ANI_MAC_ADDR_SIZE);
-    ftm_status.txpower = 2 ;
+    ftm_status.powerCtlMode= 2 ; //CLPC mode
     ftm_status.rxmode = RXMODE_ENABLE_ALL; /* macStart() enables all receive pkt types */
     ftm_status.chainSelect = FTM_CHAIN_SEL_R0_T0_ON;
     ftm_status.cbmode = 0 ; //none channel bonding
@@ -991,6 +1000,180 @@ static VOS_STATUS wlan_ftm_priv_set_txpktlen(hdd_adapter_t *pAdapter,v_U32_t len
 }
 
 
+static VOS_STATUS wlan_ftm_priv_start_stop_tx_pktgen(hdd_adapter_t *pAdapter,v_U16_t startStop);
+/**---------------------------------------------------------------------------
+<FTM_Command>set_tx_wf_gain
+<argument> is <n>
+Designates the number of amplitude gain (31 to 255).
+Description
+This command can be set only when Tx CW generation is stopped.
+--------------------------------------------------------------------------*/
+static VOS_STATUS wlan_ftm_priv_set_wfgain(hdd_adapter_t *pAdapter,v_S15_t dGain,v_U16_t rfGain)
+{
+    uPttMsgs *pMsgBody;
+    hdd_context_t *pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
+    printk(KERN_EMERG "dGain: %02x rfGain: %02x", dGain,rfGain);
+    if (pHddCtx->ftm.ftm_state != WLAN_FTM_STARTED) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:Ftm has not started. Please start the ftm.", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    if (ftm_status.wfRfGenEnabled) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:cannot set gain when cwgen is enabled.", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    if (dGain > 24 || dGain <-39) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:digital gain value is invalid", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    if (rfGain > 31 || rfGain <0) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:rf gain value is invalid", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    if (pMsgBuf == NULL) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:pMsgBuf is NULL", __func__);
+        return VOS_STATUS_E_NOMEM;
+    }
+
+    wlan_ftm_priv_start_stop_tx_pktgen(pAdapter,0);
+    wlan_ftm_priv_start_stop_tx_pktgen(pAdapter,0);
+
+    vos_mem_set(pMsgBuf, sizeof(tPttMsgbuffer), 0);
+    init_completion(&pHddCtx->ftm.ftm_comp_var);
+    pMsgBuf->msgId = PTT_MSG_SET_TX_WAVEFORM_GAIN_PRIMA_V1;
+    pMsgBuf->msgBodyLength = sizeof(tMsgPttSetTxWaveformGain_PRIMA_V1) + PTT_HEADER_LENGTH;
+    pMsgBody = &pMsgBuf->msgBody;
+    pMsgBody->SetTxWaveformGain_PRIMA_V1.txChain = PHY_TX_CHAIN_0;
+    pMsgBody->SetTxWaveformGain_PRIMA_V1.gain = (rfGain << 16 | (dGain & 0xffff));
+    if (wlan_ftm_postmsg((v_U8_t*)pMsgBuf,pMsgBuf->msgBodyLength) !=
+           VOS_STATUS_SUCCESS) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:wlan_ftm_postmsg failed",__func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    wait_for_completion_interruptible_timeout(&pHddCtx->ftm.ftm_comp_var,
+                                msecs_to_jiffies(WLAN_FTM_COMMAND_TIME_OUT));
+    if (pMsgBuf->msgResponse != PTT_STATUS_SUCCESS) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:Ptt response status failed",__func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+    return VOS_STATUS_SUCCESS;
+}
+
+
+/**---------------------------------------------------------------------------
+  <FTM_Command> wlan_ftm_priv_cw_rf_gen
+  <argument> is < 1 | 0 >
+  1 : Start Tx CW rf generation
+  0 : Stop Tx CW rf generation
+  Description
+    This command starts/stops Tx CW rf generation.
+--------------------------------------------------------------------------*/
+static VOS_STATUS wlan_ftm_priv_cw_rf_gen(hdd_adapter_t *pAdapter,v_U16_t startStop)
+{
+    uPttMsgs *pMsgBody;
+    VOS_STATUS status;
+    hdd_context_t *pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
+
+    printk(KERN_EMERG "startStop: %02x ", startStop);
+
+    if (pHddCtx->ftm.ftm_state != WLAN_FTM_STARTED)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:Ftm has not started. Please start the ftm. ", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    if (startStop != 1 && startStop != 0)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:Tx value is invalid ", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    if ((ftm_status.wfRfGenEnabled && startStop == 1) ||
+        (!ftm_status.wfRfGenEnabled && startStop == 0))
+    {
+        return VOS_STATUS_SUCCESS;
+    }
+
+    if (pMsgBuf == NULL)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:pMsgBuf is NULL", __func__);
+        return VOS_STATUS_E_NOMEM;
+    }
+    vos_mem_set(pMsgBuf, sizeof(tPttMsgbuffer), 0);
+    if (startStop == 1) {
+        tANI_U16 numSamples = 1;
+        tANI_BOOLEAN clk80 = TRUE;
+        v_BYTE_t msgT[4] = {0xff,0x00,0x00,0x00};
+
+        init_completion(&pHddCtx->ftm.ftm_comp_var);
+        pMsgBuf->msgId = PTT_MSG_SET_WAVEFORM;
+        pMsgBuf->msgBodyLength = sizeof(tMsgPttSetWaveformRF) + PTT_HEADER_LENGTH;
+        pMsgBody = &pMsgBuf->msgBody;
+
+        memcpy((v_BYTE_t*)pMsgBody->SetWaveformRF.waveform,msgT,4);
+        pMsgBody->SetWaveformRF.numSamples = numSamples;
+        pMsgBody->SetWaveformRF.clk80 = clk80;
+        status = wlan_ftm_postmsg((v_U8_t*)pMsgBuf,pMsgBuf->msgBodyLength);
+        if (status != VOS_STATUS_SUCCESS) {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                       "%s:posting PTT_MSG_CONFIG_TX_PACKET_GEN failed",
+                       __func__);
+            status = VOS_STATUS_E_FAILURE;
+            goto done;
+        }
+        wait_for_completion_interruptible_timeout(&pHddCtx->ftm.ftm_comp_var,
+                                  msecs_to_jiffies(WLAN_FTM_COMMAND_TIME_OUT));
+        if (pMsgBuf->msgResponse != PTT_STATUS_SUCCESS) {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                       "%s: PTT_MSG_CONFIG_TX_PACKET_GEN failed", __func__);
+            status = VOS_STATUS_E_FAILURE;
+            goto done;
+        }
+    } else {
+        init_completion(&pHddCtx->ftm.ftm_comp_var);
+        pMsgBuf->msgId = PTT_MSG_STOP_WAVEFORM;
+        pMsgBuf->msgBodyLength = PTT_HEADER_LENGTH;
+        status = wlan_ftm_postmsg((v_U8_t*)pMsgBuf,pMsgBuf->msgBodyLength);
+        if(status != VOS_STATUS_SUCCESS) {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                       "%s:wlan_ftm_postmsg failed", __func__);
+            status = VOS_STATUS_E_FAILURE;
+            goto done;
+        }
+
+        wait_for_completion_interruptible_timeout(&pHddCtx->ftm.ftm_comp_var,
+                                  msecs_to_jiffies(WLAN_FTM_COMMAND_TIME_OUT));
+        if(pMsgBuf->msgResponse != PTT_STATUS_SUCCESS) {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                       "%s:Ptt response status failed", __func__);
+            status = VOS_STATUS_E_FAILURE;
+        }
+    }
+done:
+    if (status == VOS_STATUS_SUCCESS) {
+        if (startStop == 1)
+            ftm_status.wfRfGenEnabled = eANI_BOOLEAN_TRUE;
+        else
+            ftm_status.wfRfGenEnabled = eANI_BOOLEAN_FALSE;
+    }
+    return status;
+}
+
+
 static VOS_STATUS wlan_ftm_priv_enable_chain(hdd_adapter_t *pAdapter,v_U16_t chainSelect)
 {
     uPttMsgs *pMsgBody;
@@ -1144,8 +1327,8 @@ static VOS_STATUS wlan_ftm_priv_get_status(hdd_adapter_t *pAdapter,char *buf)
     buf += lenRes;
     lenBuf -= lenRes;
 
-    lenRes = snprintf(buf, lenBuf, "\n  txpower: %d\n  txpktcnt: %d\n  "
-                                   "txpktlen: %d\n", ftm_status.txpower,
+    lenRes = snprintf(buf, lenBuf, "\n  power ctl mode: %d\n  txpktcnt: %d\n  "
+                                   "txpktlen: %d\n", ftm_status.powerCtlMode,
                       ftm_status.frameParams.numTestPackets,
                       ftm_status.frameParams.payloadLength);
 
@@ -3628,7 +3811,6 @@ static VOS_STATUS wlan_ftm_priv_set_txpower(hdd_adapter_t *pAdapter,
         goto done;
     }
 
-    ftm_status.txpower = txpower ;
  done:
 
     return status;
@@ -3716,6 +3898,64 @@ static VOS_STATUS wlan_ftm_priv_set_txrate(hdd_adapter_t *pAdapter,char *txrate)
     return VOS_STATUS_SUCCESS;
 }
 
+
+
+static VOS_STATUS wlan_ftm_priv_set_power_index(hdd_adapter_t *pAdapter,
+                                         ePowerTempIndexSource pwr_source)
+{
+    uPttMsgs *pMsgBody;
+    VOS_STATUS status;
+    hdd_context_t *pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
+
+    if (pHddCtx->ftm.ftm_state != WLAN_FTM_STARTED)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:Ftm has not started. Please start the ftm. ", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    if (pwr_source > 3)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:invalid power index source. valid mode is 0 , 1, 2. ",
+                   __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    vos_mem_set(pMsgBuf, sizeof(tPttMsgbuffer), 0);
+
+    init_completion(&pHddCtx->ftm.ftm_comp_var);
+    pMsgBody = &pMsgBuf->msgBody;
+    pMsgBuf->msgId = PTT_MSG_SET_PWR_INDEX_SOURCE;
+    pMsgBuf->msgBodyLength = sizeof(tMsgPttSetPwrIndexSource) + PTT_HEADER_LENGTH;
+
+    pMsgBody->SetPwrIndexSource.indexSource = pwr_source;
+    status = wlan_ftm_postmsg((v_U8_t*)pMsgBuf,pMsgBuf->msgBodyLength);
+
+    if (status != VOS_STATUS_SUCCESS)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:wlan_ftm_postmsg failed", __func__);
+        status = VOS_STATUS_E_FAILURE;
+        goto done;
+    }
+    wait_for_completion_interruptible_timeout(&pHddCtx->ftm.ftm_comp_var,
+                              msecs_to_jiffies(WLAN_FTM_COMMAND_TIME_OUT));
+
+    if (pMsgBuf->msgResponse != PTT_STATUS_SUCCESS)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:Ptt response status failed", __func__);
+        status = VOS_STATUS_E_FAILURE;
+        goto done;
+    }
+
+done:
+
+   return status;
+}
+
+
 /**---------------------------------------------------------------------------
 
   \brief wlan_ftm_priv_start_stop_tx_pktgen() -
@@ -3788,6 +4028,15 @@ static VOS_STATUS wlan_ftm_priv_start_stop_tx_pktgen(hdd_adapter_t *pAdapter,v_U
                        "%s: PTT_MSG_CONFIG_TX_PACKET_GEN failed", __func__);
             status = VOS_STATUS_E_FAILURE;
             goto done;
+        }
+
+        if (ftm_status.powerCtlMode == 2) //only for CLPC mode
+        {
+           status = wlan_ftm_priv_set_power_index(pAdapter, FIXED_POWER_DBM) != VOS_STATUS_SUCCESS; //power index source set to Fixed
+           if(status != VOS_STATUS_SUCCESS)
+           {
+              goto done;
+           }
         }
     }
 
@@ -4003,7 +4252,7 @@ static VOS_STATUS wlan_ftm_priv_rx_pkt_clear(hdd_adapter_t *pAdapter,v_U16_t rx_
     vos_mem_set(pMsgBuf, sizeof(tPttMsgbuffer), 0);
     init_completion(&pHddCtx->ftm.ftm_comp_var);
     pMsgBuf->msgId = PTT_MSG_RESET_RX_PACKET_STATISTICS;
-    pMsgBuf->msgBodyLength = sizeof(tMsgPttResetRxPacketStatistics) + PTT_HEADER_LENGTH;
+    pMsgBuf->msgBodyLength = /*sizeof(tMsgPttResetRxPacketStatistics) + */PTT_HEADER_LENGTH;
 
     status = wlan_ftm_postmsg((v_U8_t*)pMsgBuf,pMsgBuf->msgBodyLength);
 
@@ -4860,6 +5109,16 @@ static int iw_ftm_setint_getnone(struct net_device *dev, struct iw_request_info 
             }
             break;
 
+        case WE_TX_CW_RF_GEN:
+            status = wlan_ftm_priv_cw_rf_gen(pAdapter,set_value);
+
+            if(status != VOS_STATUS_SUCCESS)
+            {
+                hddLog(VOS_TRACE_LEVEL_FATAL,"wlan_ftm_priv_cw_gen Failed =%d\n",status);
+                ret = -EINVAL;
+            }
+            break;
+
         case WE_SET_CHANNEL:
         {
             status  = wlan_ftm_priv_set_channel(pAdapter,set_value);
@@ -5197,6 +5456,50 @@ static int iw_ftm_setnone_getnone(struct net_device *dev, struct iw_request_info
     return ret;
 }
 
+static int iw_ftm_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info,
+        union iwreq_data *wrqu, char *extra)
+{
+    hdd_adapter_t *pAdapter = (netdev_priv(dev));
+    int sub_cmd = wrqu->data.flags;
+    int *value = (int*)wrqu->data.pointer;
+
+    if(wrqu->data.length != 2)
+    {
+        hddLog(LOGE, "Invalid number of Arguments  %d  \n",  wrqu->data.length);
+        return -EINVAL;
+    }
+    switch (sub_cmd)
+    {
+        case WE_SET_TX_WF_GAIN:
+        {
+            v_S15_t dGain = 0;
+            v_U16_t rfGain = 0;
+            VOS_STATUS status;
+
+            dGain = *(v_S15_t*) value++;
+            rfGain = *(v_U16_t*) value;
+            status = wlan_ftm_priv_set_wfgain(pAdapter,dGain,rfGain);
+
+            if(status != VOS_STATUS_SUCCESS)
+            {
+                hddLog(VOS_TRACE_LEVEL_FATAL,
+                        "wlan_ftm_priv_set_wfgain Failed =%d\n", status);
+                return -EINVAL;
+            }
+        }
+        break;
+
+        default:
+        {
+            hddLog(LOGE, "Invalid IOCTL command %d  \n", sub_cmd );
+            break;
+        }
+    }
+
+    return 0;
+}
+
+
 static const iw_handler we_ftm_private[] = {
 
    [WLAN_FTM_PRIV_SET_INT_GET_NONE      - SIOCIWFIRSTPRIV]   = iw_ftm_setint_getnone,  //set priv ioctl
@@ -5204,6 +5507,7 @@ static const iw_handler we_ftm_private[] = {
    [WLAN_FTM_PRIV_SET_CHAR_GET_NONE     - SIOCIWFIRSTPRIV]   = iw_ftm_setchar_getnone, //get priv ioctl
    [WLAN_FTM_PRIV_GET_CHAR_SET_NONE     - SIOCIWFIRSTPRIV]   = iw_ftm_get_char_setnone,
    [WLAN_FTM_PRIV_SET_NONE_GET_NONE     - SIOCIWFIRSTPRIV]   = iw_ftm_setnone_getnone, //action priv ioctl
+   [WLAN_FTM_PRIV_SET_VAR_INT_GET_NONE  - SIOCIWFIRSTPRIV]   = iw_ftm_set_var_ints_getnone,
 };
 
 /*Maximum command length can be only 15 */
@@ -5240,6 +5544,15 @@ static const struct iw_priv_args we_ftm_private_args[] = {
         0,
         "set_txpktlen" },
 
+    {   WE_SET_TX_WF_GAIN,
+        IW_PRIV_TYPE_INT | MAX_FTM_VAR_ARGS,
+        0,
+        "set_tx_wf_gain" },
+
+    {   WE_TX_CW_RF_GEN,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "tx_cw_rf_gen" },
     {   WE_SET_CHANNEL,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         0,
@@ -5348,6 +5661,10 @@ static const struct iw_priv_args we_ftm_private_args[] = {
         IW_PRIV_TYPE_CHAR| WE_FTM_MAX_STR_LEN,
         "get_rx_rssi" },
 
+    {   WLAN_FTM_PRIV_SET_VAR_INT_GET_NONE,
+        IW_PRIV_TYPE_INT | MAX_FTM_VAR_ARGS,
+        0,
+        "" },
     /* handlers for main ioctl */
     {   WLAN_FTM_PRIV_SET_NONE_GET_NONE,
         0,
