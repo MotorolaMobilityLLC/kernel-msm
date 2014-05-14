@@ -26,8 +26,8 @@
 
 #include <linux/stringify.h>
 
-#define CYTTSP5_I2C_NAME	"cyttsp5_i2c_adapter"
-#define CYTTSP5_SPI_NAME	"cyttsp5_spi_adapter"
+#define CYTTSP5_I2C_NAME	"cyttsp5_i2c"
+#define CYTTSP5_SPI_NAME	"cyttsp5_spi"
 
 #define CYTTSP5_CORE_NAME	"cyttsp5_core"
 #define CYTTSP5_MT_NAME		"cyttsp5_mt"

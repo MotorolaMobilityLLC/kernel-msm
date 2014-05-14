@@ -734,7 +734,7 @@ struct cyttsp5_mt_data {
 	bool palm;
 #endif
 	bool prevent_touch;
-
+	u8 fw_ver_ic;
 };
 
 typedef int (*cyttsp5_upgrade_firmware_from_builtin) (struct device *, bool);

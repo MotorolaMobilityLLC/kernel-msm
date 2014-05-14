@@ -773,8 +773,6 @@ static void _cyttsp5_firmware_cont_binary(const struct firmware *fw,
 		goto _cyttsp5_firmware_cont_binary_exit;
 	}
 
-	dev_info(dev, "%s: Found firmware\n", __func__);
-
 	upgrade = cyttsp5_check_firmware_version_binary(dev, fw);
 	if (ld->is_force_upgrade)
 		dev_info(dev, "%s: forced upgrade\n", __func__);
@@ -806,7 +804,7 @@ static int upgrade_firmware_from_binary(struct device *dev,
 
 	ld->is_force_upgrade = forcedUpgrade;
 
-	dev_info(dev, "%s: Request firmware %s\n", __func__, cd->fw_path);
+	dev_info(dev, "Request firmware %s\n", cd->fw_path);
 	if (cd->fw_path != NULL)
 		retval = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
 				cd->fw_path, dev, GFP_KERNEL, dev,
@@ -932,7 +930,7 @@ int cyttsp5_loader_probe(struct device *dev)
 #endif
 	cyttsp5_fw_and_config_upgrade(ld);
 
-	dev_info(dev, "%s: Successful probe %s\n", __func__, dev_name(dev));
+	dev_dbg(dev, "%s: Successful probe %s\n", __func__, dev_name(dev));
 	return 0;
 
 	kfree(ld);

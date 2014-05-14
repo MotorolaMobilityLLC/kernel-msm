@@ -168,11 +168,11 @@ static inline void report_sumsize_palm(struct cyttsp5_mt_data *md,
 	static bool palm_flag = false;
 
 	if (!palm_flag && palm) {
-		dev_info(md->dev, "%s: palm is detected\n", __func__);
+		dev_info(md->dev, "palm is detected\n");
 		input_report_key(md->input, KEY_SLEEP, palm);
 		palm_flag = palm;
 	} else if (palm_flag && !palm) {
-		dev_info(md->dev, "%s: palm is removed\n", __func__);
+		dev_info(md->dev, "palm is removed\n");
 		input_report_key(md->input, KEY_SLEEP, palm);
 		palm_flag = palm;
 	}
@@ -334,6 +334,7 @@ static void cyttsp5_get_mt_touches(struct cyttsp5_mt_data *md,
 	int i, j, t = 0;
 	DECLARE_BITMAP(ids, MAX_TOUCH_NUMBER);
 	int mt_sync_count = 0;
+	static int mt_count[MAX_TOUCH_NUMBER] = {0, };
 #ifdef SAMSUNG_PALM_MOTION
 	u16 sumsize = 0;
 	u16 sum_maj_mnr;
@@ -455,19 +456,22 @@ cyttsp5_get_mt_touches_pr_tch:
 #ifdef TSP_BOOSTER
 			set_dvfs_lock(md, 1);
 #endif
-			dev_info(dev, "P [%d] x=%d y=%d z=%d M=%d m=%d\n",
+			dev_info(dev, "P[%d] x=%d y=%d z=%d M=%d m=%d\n",
 				t, tch->abs[CY_TCH_X],
 				tch->abs[CY_TCH_Y],
 				tch->abs[CY_TCH_P],
 				tch->abs[CY_TCH_MAJ],
 				tch->abs[CY_TCH_MIN]);
-		} else if (tch->abs[CY_TCH_E] == CY_EV_LIFTOFF)
-			dev_info(dev, "R [%d] x=%d y=%d z=%d M=%d m=%d\n",
+		} else if (tch->abs[CY_TCH_E] == CY_EV_LIFTOFF) {
+			dev_info(dev, "R[%d] x=%d y=%d C=%d V=%02x\n",
 				t, tch->abs[CY_TCH_X],
 				tch->abs[CY_TCH_Y],
-				tch->abs[CY_TCH_P],
-				tch->abs[CY_TCH_MAJ],
-				tch->abs[CY_TCH_MIN]);
+				mt_count[t],
+				md->fw_ver_ic);
+			mt_count[t] = 0;
+		} else if (tch->abs[CY_TCH_E] == CY_EV_MOVE) {
+			mt_count[t]++;
+		}
 #endif /* CYTTSP5_TOUCHLOG_ENABLE */
 	}
 

@@ -4513,6 +4513,7 @@ static int cyttsp5_si_get_samsung_tsp_info_(struct cyttsp5_core_data *cd)
 	dev_info(cd->dev, "%s: tsp hw ver=0x%02x, fw ver=0x%04x\n",
 			__func__, sti->hw_version,
 			get_unaligned_be16(&sti->fw_versionh));
+	cd->md.fw_ver_ic = sti->fw_versionh;
 exit:
 	rc = cyttsp5_hid_output_resume_scanning_(cd);
 error:
@@ -4823,12 +4824,11 @@ int cyttsp5_core_suspend(struct device *dev)
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	int rc;
 
-	dev_info(dev, "%s\n", __func__);
-
 	if (cd->irq_wake) {
 		dev_err(dev, "%s: already irq_wake enabled\n", __func__);
 		return 0;
 	}
+	dev_info(dev, "%s\n", __func__);
 
 	if ((cd->silicon_id) == QFN_SILICON_ID) {
 		cyttsp5_core_sleep(cd);
@@ -4855,12 +4855,11 @@ int cyttsp5_core_resume(struct device *dev)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 
-	dev_info(dev, "%s\n", __func__);
-
 	if (!cd->irq_wake) {
 		dev_err(dev, "%s: already irq_wake disabled\n", __func__);
 		return 0;
 	}
+	dev_info(dev, "%s\n", __func__);
 
 	if (device_may_wakeup(dev)) {
 		dev_dbg(dev, "%s Device MAY wakeup\n", __func__);
@@ -5529,7 +5528,7 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 		dev_err(cd->dev, "%s: HW Init fail r=%d\n", __func__, rc);
 
 
-	dev_info(dev, "%s: initialize threaded irq=%d\n", __func__, cd->irq);
+	dev_info(dev, "%s: initialize irq=%d\n", __func__, cd->irq);
 	if (cd->cpdata->level_irq_udelay > 0)
 		/* use level triggered interrupts */
 		irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;

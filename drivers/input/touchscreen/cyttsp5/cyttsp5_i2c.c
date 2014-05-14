@@ -65,12 +65,11 @@ static int cyttsp5_hw_power(struct device *dev, int onoff)
 	static struct regulator *vddo_vreg;
 	static struct regulator *avdd_vreg;
 
-	dev_info(dev, "[TSP] %s called with ON= %d\n", __func__, onoff);
 	if (!vddo_vreg) {
 		vddo_vreg = regulator_get(dev, "vddo");
 		if (IS_ERR(vddo_vreg)) {
 			vddo_vreg = NULL;
-			dev_err(dev, "[TSP] failed to get vddo regulator\n");
+			dev_err(dev, "failed to get vddo regulator\n");
 			return -ENODEV;
 		}
 	}
@@ -79,12 +78,12 @@ static int cyttsp5_hw_power(struct device *dev, int onoff)
 		avdd_vreg = regulator_get(dev, "avdd");
 		if (IS_ERR(avdd_vreg)) {
 			avdd_vreg = NULL;
-			dev_err(dev, "[TSP] failed to get avdd regulator\n");
+			dev_err(dev, "failed to get avdd regulator\n");
 			return -ENODEV;
 		}
 		ret = regulator_set_voltage(avdd_vreg, 2850000, 2850000);
 		if (ret) {
-			dev_err(dev, "[TSP] unable to set voltage for avdd_vreg, %d\n",
+			dev_err(dev, "unable to set voltage for avdd_vreg, %d\n",
 				ret);
 			return ret;
 		}
@@ -92,21 +91,21 @@ static int cyttsp5_hw_power(struct device *dev, int onoff)
 
 	if (onoff) {
 		if (regulator_is_enabled(vddo_vreg)) {
-			dev_err(dev, "[TSP] vddo is already enabled\n");
+			dev_err(dev, "vddo is already enabled\n");
 		} else {
 			ret = regulator_enable(vddo_vreg);
 			if (ret) {
-				dev_err(dev, "[TSP] unable to enable vddo, %d\n",
+				dev_err(dev, "unable to enable vddo, %d\n",
 					ret);
 				return ret;
 			}
 		}
 		if (regulator_is_enabled(avdd_vreg)) {
-			dev_err(dev, "[TSP] avdd is already enabled\n");
+			dev_err(dev, "avdd is already enabled\n");
 		} else {
 			ret = regulator_enable(avdd_vreg);
 			if (ret) {
-				dev_err(dev, "[TSP] unable to enable avdd, %d\n",
+				dev_err(dev, "unable to enable avdd, %d\n",
 					ret);
 				return ret;
 			}
@@ -115,25 +114,25 @@ static int cyttsp5_hw_power(struct device *dev, int onoff)
 		if (regulator_is_enabled(vddo_vreg)) {
 			ret = regulator_disable(vddo_vreg);
 			if (ret) {
-				dev_err(dev, "[TSP] unable to disable vddo, %d\n",
+				dev_err(dev, "unable to disable vddo, %d\n",
 					ret);
 				return ret;
 			}
 		} else {
-			dev_err(dev, "[TSP] vddo is already disabled\n");
+			dev_err(dev, "vddo is already disabled\n");
 		}
 		if (regulator_is_enabled(avdd_vreg)) {
 			ret = regulator_disable(avdd_vreg);
 			if (ret) {
-				dev_err(dev, "[TSP] unable to disable avdd, %d\n",
+				dev_err(dev, "unable to disable avdd, %d\n",
 					ret);
 				return ret;
 			}
 		} else {
-			dev_err(dev, "[TSP] avdd is already disabled\n");
+			dev_err(dev, "avdd is already disabled\n");
 		}
 	}
-	dev_info(dev, "[TSP] %s: vddo: %d, avdd: %d\n",
+	dev_info(dev, "%s: vddo: %d, avdd: %d\n",
 			__func__, regulator_is_enabled(vddo_vreg),
 			regulator_is_enabled(avdd_vreg));
 	return 0;
@@ -167,7 +166,6 @@ static int cyttsp5_init(struct cyttsp5_core_platform_data *pdata,
 		int on, struct device *dev)
 {
 	int irq_gpio = pdata->irq_gpio;
-	int rc = 0;
 
 	if (on) {
 		gpio_request(irq_gpio, "TSP_INT");
@@ -178,9 +176,9 @@ static int cyttsp5_init(struct cyttsp5_core_platform_data *pdata,
 	}
 
 	dev_info(dev,
-		"%s: INIT CYTTSP IRQ gpio=%d onoff=%d r=%d\n",
-		__func__, irq_gpio, on, rc);
-	return rc;
+		"%s: irq_gpio=%d onoff=%d\n",
+		__func__, irq_gpio, on);
+	return 0;
 }
 
 static int cyttsp5_power(struct cyttsp5_core_platform_data *pdata,
@@ -845,8 +843,7 @@ static int __init cyttsp5_i2c_init(void)
 #endif
 	rc = i2c_add_driver(&cyttsp5_i2c_driver);
 
-	pr_info("%s: Cypress TTSP v5 I2C Driver (Built %s) rc=%d\n",
-		 __func__, CY_DRIVER_DATE, rc);
+	pr_info("%s: rc=%d\n", __func__, rc);
 	return rc;
 }
 module_init(cyttsp5_i2c_init);

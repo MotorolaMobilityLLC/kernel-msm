@@ -1184,9 +1184,9 @@ int cyttsp5_samsung_factory_probe(struct device *dev)
 		goto error_return;
 	}
 
-	dev_info(dev, "%s: electrodes_x=%d\n", __func__,
+	dev_dbg(dev, "%s: electrodes_x=%d\n", __func__,
 		sfd->si->sensing_conf_data.electrodes_x);
-	dev_info(dev, "%s: electrodes_y=%d\n", __func__,
+	dev_dbg(dev, "%s: electrodes_y=%d\n", __func__,
 		sfd->si->sensing_conf_data.electrodes_y);
 
 	sfd->num_all_nodes = sfd->si->sensing_conf_data.electrodes_x *
