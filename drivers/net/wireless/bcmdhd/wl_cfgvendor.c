@@ -679,6 +679,12 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	ptr->ac[WIFI_AC_BE].retries = wl_cnt->txretry;
 	ptr->beacon_rx = wl_cnt->rxbeaconmbss;
 
+	err = wldev_get_rssi(wl_to_prmry_ndev(cfg), &ptr->rssi_mgmt);
+	if (unlikely(err)) {
+		WL_ERR(("get_rssi error (%d)\n", err));
+		return err;
+	}
+
 	err =  wl_cfgvendor_send_cmd_reply(wiphy, wl_to_prmry_ndev(cfg),
 	                   cfg->ioctl_buf, sizeof(wifi_iface_stat));
 	if (unlikely(err))
