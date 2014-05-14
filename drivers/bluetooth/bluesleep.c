@@ -143,6 +143,9 @@ struct mutex bluesleep_mutex;
 
 struct proc_dir_entry *bluetooth_dir, *sleep_dir;
 
+/* extern variable and functions */
+extern int androidboot_mode_charger;
+
 /*
  * Local functions
  */
@@ -945,6 +948,10 @@ static int __init bluesleep_init(void)
 	struct proc_dir_entry *ent;
 
 
+	if (androidboot_mode_charger == 1) {
+		BT_ERR("bluesleep exit : lpm %d\n", androidboot_mode_charger);
+		return -ENODEV;
+	}
 
 	BT_INFO("BlueSleep Mode Driver Ver %s", VERSION);
 
