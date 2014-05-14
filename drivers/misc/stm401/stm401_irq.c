@@ -365,6 +365,18 @@ void stm401_irq_work_func(struct work_struct *work)
 			stm401_readbuff, STM401_IR_SZ_RAW, 0);
 		dev_dbg(&ps_stm401->client->dev, "Sending raw IR data\n");
 	}
+	if (irq_status & M_IR_OBJECT) {
+		stm401_cmdbuff[0] = IR_STATE;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev, "Reading IR object state failed\n");
+			goto EXIT;
+		}
+		stm401_as_data_buffer_write(ps_stm401, DT_IR_OBJECT,
+			stm401_readbuff, 1, 0);
+		dev_dbg(&ps_stm401->client->dev, "Sending IR object state: 0x%x\n",
+			stm401_readbuff[IR_STATE_STATE]);
+	}
 
 EXIT:
 	stm401_sleep(ps_stm401);
