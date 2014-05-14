@@ -72,3 +72,6 @@
 		};
 	};
 };
+&pm8916_l16 {
+	regulator-always-on;
+};
