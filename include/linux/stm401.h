@@ -159,6 +159,7 @@
 
 #define M_UNCALIB_GYRO		0x008000
 #define M_UNCALIB_MAG		0x010000
+#define M_IR_OBJECT		0x020000
 
 /* wake sensor status */
 #define M_DOCK			0x0001
@@ -242,13 +243,14 @@ enum STM401_data_types {
 	DT_ACCUM_MVMT,
 	DT_IR_GESTURE,
 	DT_IR_RAW,
+	DT_IR_OBJECT,
 	DT_SIM,
 	DT_RESET,
 	DT_GENERIC_INT,
 	DT_STEP_COUNTER,
 	DT_STEP_DETECTOR,
 	DT_UNCALIB_GYRO,
-	DT_UNCALIB_MAG
+	DT_UNCALIB_MAG,
 };
 
 enum {
@@ -313,6 +315,7 @@ struct stm_response {
 #define IR_GESTURE                      0x1C
 #define IR_RAW                          0x1D
 #define IR_CONFIG                       0x1E
+#define IR_STATE                        0x1F
 
 #define MOTION_DUR                      0x20
 #define ZRMOTION_DUR                    0x22
@@ -467,6 +470,7 @@ struct stm_response {
 #define CAMERA_VALUE	0
 #define IR_GESTURE_EVENT    0
 #define IR_GESTURE_ID       1
+#define IR_STATE_STATE  0
 #define STEP8_DATA	0
 #define STEP16_DATA	2
 #define STEP32_DATA	4
