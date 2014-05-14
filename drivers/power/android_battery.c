@@ -113,7 +113,7 @@ ssize_t android_bat_store_attrs(
 					POWER_SUPPLY_PROP_POWER_NOW, value);
 			value.intval = battery->charge_source;
 			psy_do_property(battery->pdata->charger_name, set,
-					POWER_SUPPLY_PROP_ONLINE, value);
+					POWER_SUPPLY_PROP_CHARGING_ENABLED, value);
 		}
 		break;
 	default:

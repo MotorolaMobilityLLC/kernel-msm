@@ -269,11 +269,14 @@ static void sprat_bat_get_temperature(struct android_bat_data * battery, int *te
 	}
 }
 
-static void sprat_bat_set_charging_enable(int cable_type) {
+static void sprat_bat_set_charging_enable(int enable) {
 	union power_supply_propval value;
 
-	value.intval = cable_type;
+	value.intval = current_cable_type;
+	psy_do_property(android_battery_pdata.charger_name, set,
+			POWER_SUPPLY_PROP_CHARGING_ENABLED, value);
 
+	value.intval = enable;
 	psy_do_property(android_battery_pdata.charger_name, set,
 			POWER_SUPPLY_PROP_ONLINE, value);
 }

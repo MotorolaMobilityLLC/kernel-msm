@@ -172,39 +172,44 @@ static void max77836_chg_set_charging_current(
 	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL4, data);
 }
 
-static void max77836_chg_set_charging(struct max77836_chg_data *charger)
+static void max77836_chg_set_configuration(struct max77836_chg_data *charger)
 {
 	u8 data;
 
-	if (charger->cable_type == CHARGE_SOURCE_NONE) {
-		/* turn off charger */
-		data = 0x00;
-		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL2, data);
-	} else {
-		/* Battery Fast-Charge Timer disabled [6:4] = 0b111 */
-		data = 0x70;
-		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL1, data);
+	/* Battery Fast-Charge Timer disabled [6:4] = 0b111 */
+	data = 0x70;
+	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL1, data);
 
-		/* Battery-Charger Constant Voltage(CV) Mode, float voltage */
-		max77836_chg_set_float_voltage(charger, charger->pdata->chg_float_voltage);
+	/* Battery-Charger Constant Voltage(CV) Mode, float voltage */
+	max77836_chg_set_float_voltage(charger, charger->pdata->chg_float_voltage);
 
-		/* Fast Battery Charge Current */
-		max77836_chg_set_charging_current(charger, charger->charging_current);
+	/* Fast Battery Charge Current */
+	max77836_chg_set_charging_current(charger, charger->charging_current);
 
-		/* End-of-Charge Current Setting */
-		max77836_chg_set_eoc_current(charger, charger->pdata->
-				charging_current[charger->cable_type].full_check_current);
+	/* End-of-Charge Current Setting */
+	max77836_chg_set_eoc_current(charger, charger->pdata->
+			charging_current[charger->cable_type].full_check_current);
 
-		/* Auto Charging Stop disabled [5] = 0 */
-		data = 0;
-		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL6, data);
+	/* Auto Charging Stop disabled [5] = 0 */
+	data = 0;
+	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL6, data);
 
-		/* Overvoltage-Protection Threshold 6.5V [1:0] = 0b10 */
-		data = 0x01;
-		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL7, data);
+	/* Overvoltage-Protection Threshold 6.5V [1:0] = 0b10 */
+	data = 0x01;
+	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL7, data);
+}
 
+static void max77836_chg_set_enable(struct max77836_chg_data *charger)
+{
+	u8 data;
+
+	if(charger->is_charging) {
 		/* turn on charger */
 		data = 0xc0;
+		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL2, data);
+	} else {
+		/* turn off charger */
+		data = 0x00;
 		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL2, data);
 	}
 }
@@ -287,25 +292,27 @@ static int max77836_chg_set_property(struct power_supply *psy,
 
 	/* val->intval : type */
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-	case POWER_SUPPLY_PROP_ONLINE:
 		charger->cable_type = val->intval;
-		if (val->intval == CHARGE_SOURCE_NONE)
-			charger->is_charging = false;
-		else
-			charger->is_charging = true;
-
 		pr_info("%s: bootdone(%d), poweroff_charging(%d)\n",
 				__func__, charger->bootdone, androidboot_mode_charger);
 		if (!charger->bootdone && !androidboot_mode_charger) {
 			charger->charging_current =
 				CHARGING_CURRENT_MAX;
+		} else if (androidboot_mode_charger) {
+			charger->charging_current =
+				charger->pdata->charging_current[
+				CHARGE_SOURCE_AC].fast_charging_current;
 		} else {
 			charger->charging_current =
 				charger->pdata->charging_current[
 				val->intval].fast_charging_current;
 		}
+		max77836_chg_set_configuration(charger);
 
-		max77836_chg_set_charging(charger);
+		break;
+	case POWER_SUPPLY_PROP_ONLINE:
+		charger->is_charging = val->intval;
+		max77836_chg_set_enable(charger);
 		break;
 
 	/* to control charging current,
