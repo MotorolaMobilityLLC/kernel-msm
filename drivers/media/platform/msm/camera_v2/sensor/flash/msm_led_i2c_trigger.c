@@ -132,15 +132,20 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 	}
 
 	msleep(20);
-	gpio_set_value_cansleep(
-		power_info->gpio_conf->gpio_num_info->
-		gpio_num[SENSOR_GPIO_FL_EN],
-		GPIO_OUT_HIGH);
+	if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_FL_EN]) {
+		gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->
+			gpio_num[SENSOR_GPIO_FL_EN],
+			GPIO_OUT_HIGH);
+	}
 
+	/* Don't need to set FL_NOW gpio high during init */
+#if 0
 	gpio_set_value_cansleep(
 		power_info->gpio_conf->gpio_num_info->
 		gpio_num[SENSOR_GPIO_FL_NOW],
 		GPIO_OUT_HIGH);
+#endif
 
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
@@ -165,14 +170,18 @@ int msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
 	flashdata = fctrl->flashdata;
 	power_info = &flashdata->power_info;
 	CDBG("%s:%d called\n", __func__, __LINE__);
-	gpio_set_value_cansleep(
-		power_info->gpio_conf->gpio_num_info->
-		gpio_num[SENSOR_GPIO_FL_EN],
-		GPIO_OUT_LOW);
-	gpio_set_value_cansleep(
-		power_info->gpio_conf->gpio_num_info->
-		gpio_num[SENSOR_GPIO_FL_NOW],
-		GPIO_OUT_LOW);
+	if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_FL_EN]) {
+		gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->
+			gpio_num[SENSOR_GPIO_FL_EN],
+			GPIO_OUT_LOW);
+	}
+	if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_FL_NOW]) {
+		gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->
+			gpio_num[SENSOR_GPIO_FL_NOW],
+			GPIO_OUT_LOW);
+	}
 	rc = msm_camera_request_gpio_table(
 		power_info->gpio_conf->cam_gpio_req_tbl,
 		power_info->gpio_conf->cam_gpio_req_tbl_size, 0);
@@ -204,17 +213,26 @@ int msm_flash_led_off(struct msm_led_flash_ctrl_t *fctrl)
 	flashdata = fctrl->flashdata;
 	power_info = &flashdata->power_info;
 	CDBG("%s:%d called\n", __func__, __LINE__);
-	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
+	if (fctrl->flash_i2c_client && fctrl->reg_setting &&
+		fctrl->reg_setting->off_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
 			fctrl->reg_setting->off_setting);
 		if (rc < 0)
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 	}
-	gpio_set_value_cansleep(
-		power_info->gpio_conf->gpio_num_info->
-		gpio_num[SENSOR_GPIO_FL_NOW],
-		GPIO_OUT_LOW);
+	if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_FL_NOW]) {
+		gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->
+			gpio_num[SENSOR_GPIO_FL_NOW],
+			GPIO_OUT_LOW);
+	}
+	if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_TOR_EN]) {
+		gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->
+			gpio_num[SENSOR_GPIO_TOR_EN],
+			GPIO_OUT_LOW);
+	}
 
 	return rc;
 }
@@ -228,18 +246,30 @@ int msm_flash_led_low(struct msm_led_flash_ctrl_t *fctrl)
 
 	flashdata = fctrl->flashdata;
 	power_info = &flashdata->power_info;
-	gpio_set_value_cansleep(
-		power_info->gpio_conf->gpio_num_info->
-		gpio_num[SENSOR_GPIO_FL_EN],
-		GPIO_OUT_HIGH);
+	if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_FL_EN]) {
+		gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->
+			gpio_num[SENSOR_GPIO_FL_EN],
+			GPIO_OUT_HIGH);
+	}
 
-	gpio_set_value_cansleep(
-		power_info->gpio_conf->gpio_num_info->
-		gpio_num[SENSOR_GPIO_FL_NOW],
-		GPIO_OUT_HIGH);
+	if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_TOR_EN]) {
+		gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->
+			gpio_num[SENSOR_GPIO_TOR_EN],
+			GPIO_OUT_HIGH);
+	} else {
+		if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_FL_NOW]) {
+			gpio_set_value_cansleep(
+				power_info->gpio_conf->gpio_num_info->
+				gpio_num[SENSOR_GPIO_FL_NOW],
+				GPIO_OUT_HIGH);
+		}
+	}
 
 
-	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
+	if (fctrl->flash_i2c_client && fctrl->reg_setting &&
+		fctrl->reg_setting->low_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
 			fctrl->reg_setting->low_setting);
@@ -259,17 +289,21 @@ int msm_flash_led_high(struct msm_led_flash_ctrl_t *fctrl)
 
 	flashdata = fctrl->flashdata;
 	power_info = &flashdata->power_info;
-	gpio_set_value_cansleep(
-		power_info->gpio_conf->gpio_num_info->
-		gpio_num[SENSOR_GPIO_FL_EN],
-		GPIO_OUT_HIGH);
+	if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_FL_EN]) {
+		gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->
+			gpio_num[SENSOR_GPIO_FL_EN],
+			GPIO_OUT_HIGH);
+	}
+	if (power_info->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_FL_NOW]) {
+		gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->
+			gpio_num[SENSOR_GPIO_FL_NOW],
+			GPIO_OUT_HIGH);
+	}
 
-	gpio_set_value_cansleep(
-		power_info->gpio_conf->gpio_num_info->
-		gpio_num[SENSOR_GPIO_FL_NOW],
-		GPIO_OUT_HIGH);
-
-	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
+	if (fctrl->flash_i2c_client && fctrl->reg_setting &&
+		fctrl->reg_setting->high_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
 			fctrl->reg_setting->high_setting);
