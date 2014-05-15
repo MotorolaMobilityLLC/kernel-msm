@@ -33,6 +33,11 @@
 		gpios = <&msmgpio 6 0>,         /* gpio_reset */
 			<&msmgpio 61 2>;        /* gpio_c55_int */
 	};
+
+	qcom,wcnss-wlan@fb000000 {
+		qcom,iris-vddpa-supply = <&pm8941_l19>;
+		qcom,cnss-pm = <11 19 1200 1 1>;
+	};
 };
 
 &i2c_0 {
