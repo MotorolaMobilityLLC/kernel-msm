@@ -48,6 +48,12 @@ static int lm3697_bl_init(struct ti_lmu_bl_chip *chip)
 	if (ret)
 		return ret;
 
+	/* Set linear scale for brightness */
+	ret = ti_lmu_update_bits(chip->lmu, LM3697_REG_BRT_CFG,
+		LM3697_BRT_MODE_MASK, LM3697_BRT_MODE_LINEAR);
+	if (ret)
+		return ret;
+
 	/* Configure ramp selection for each bank */
 	return ti_lmu_update_bits(chip->lmu, LM3697_REG_RAMP_CONF,
 				  LM3697_RAMP_MASK, LM3697_RAMP_EACH);
