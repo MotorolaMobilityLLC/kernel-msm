@@ -2751,7 +2751,7 @@ csrIsconcurrentsessionValid(tpAniSirGlobal pMac,tANI_U32 cursessionId,
                 case VOS_STA_MODE:
                     {
                         smsLog(pMac, LOG4, FL(" Second session for persona %d"), currBssPersona);
-                        return eHAL_STATUS_FAILURE;
+                        return eHAL_STATUS_SUCCESS;
                     }
                     break;
 
