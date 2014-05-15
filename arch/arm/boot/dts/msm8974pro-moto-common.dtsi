@@ -334,6 +334,11 @@
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
 	};
+
+	qcom,wcnss-wlan@fb000000 {
+		qcom,iris-vddpa-supply = <&pm8941_l21>;
+		qcom,cnss-pm = <11 21 1200 1 1>;
+	};
 };
 
 &mdss_mdp {
@@ -1137,6 +1142,12 @@
 &pm8941_l17 {
 	regulator-always-on;
 	qcom,init-ldo-mode = <1>;
+};
+
+&pm8941_l21 {
+	regulator-min-microvolt = <2900000>;
+	regulator-max-microvolt = <3350000>;
+	qcom,init-voltage = <2900000>;
 };
 
 &pm8941_l22 {
