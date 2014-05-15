@@ -561,3 +561,12 @@
 		};
 	};
 };
+
+&pm8916_chg {
+	status = "disabled";
+};
+
+&pm8916_bms {
+	status = "ok";
+	qcom,disable-bms;
+};
