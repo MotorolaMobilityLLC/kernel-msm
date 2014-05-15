@@ -583,4 +583,7 @@ config SND_SOC_MSM_HDMI_CODEC_RX
         supports hdmi panel.
 
 config SND_SOC_FSA8500
-	tristate
+	bool "Headset detection chip"
+	depends on I2C
+	help
+	FSA8500 headset detection IC chip
