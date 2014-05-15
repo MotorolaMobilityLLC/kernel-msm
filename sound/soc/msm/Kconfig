@@ -265,6 +265,7 @@ config SND_SOC_MSM8X16
 	select MSM_QDSP6V2_CODECS
 	select SND_SOC_CPE
 	select SND_HWDEP
+	select SND_SOC_FSA8500
 	help
 	 To add support for SoC audio on MSM8X16.
 	 This will enable sound soc drivers which
