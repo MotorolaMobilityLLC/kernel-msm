@@ -178,18 +178,6 @@ static struct gpiomux_setting gpio_spi_config = {
 
 static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	{
-		.gpio      = 0,		/* BLSP1 QUP1 SPI_DATA_MOSI */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
-		},
-	},
-	{
-		.gpio      = 1,		/* BLSP1 QUP1 SPI_DATA_MISO */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
-		},
-	},
-	{
 		.gpio      = 3,		/* BLSP1 QUP1 SPI_CLK */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
@@ -477,8 +465,15 @@ static struct gpiomux_setting stm401_gpio_output_cfg = {
 	.dir = GPIOMUX_OUT_LOW,
 };
 
+static struct gpiomux_setting stm401_gpio_input_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
 static struct msm_gpiomux_config stm401_configs[] __initdata = {
 	{
+		/* output configurations */
 		.gpio = 137,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &stm401_gpio_output_cfg,
@@ -490,6 +485,20 @@ static struct msm_gpiomux_config stm401_configs[] __initdata = {
 		.gpio = 0,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &stm401_gpio_output_cfg,
+		},
+
+		/* input configurations */
+		.gpio = 1,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &stm401_gpio_input_cfg,
+		},
+		.gpio = 122,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &stm401_gpio_input_cfg,
+		},
+		.gpio = 141,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &stm401_gpio_input_cfg,
 		},
 	},
 };
@@ -1167,12 +1176,6 @@ static struct gpiomux_setting gpio_pcie_clkreq_config = {
 static struct msm_gpiomux_config msm_pcie_configs[] __initdata = {
 	{
 		.gpio = 68,    /* PCIE0_CLKREQ_N */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_pcie_clkreq_config,
-		},
-	},
-	{
-		.gpio = 141,    /* PCIE1_CLKREQ_N */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_pcie_clkreq_config,
 		},
