@@ -593,8 +593,10 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 		return -ENODEV;
 	}
 
-	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list)
+	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list) {
+		list_add(&handle->saved_list, &ctl->saved_vsync_handlers);
 		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
+	}
 
 	spin_lock_irqsave(&ctx->clk_lock, flags);
 	if (ctx->rdptr_enabled) {
@@ -665,6 +667,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
 	struct mdss_mdp_mixer *mixer;
+	struct mdss_mdp_vsync_handler *tmp, *handle;
 	int i, ret;
 
 	pr_debug("%s:+\n", __func__);
@@ -704,6 +707,10 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	INIT_WORK(&ctx->pp_done_work, pingpong_done_work);
 	atomic_set(&ctx->pp_done_cnt, 0);
 	INIT_LIST_HEAD(&ctx->vsync_handlers);
+	list_for_each_entry_safe(handle, tmp, &ctl->saved_vsync_handlers, saved_list) {
+		mdss_mdp_cmd_add_vsync_handler(ctl, handle);
+		list_del_init(&handle->saved_list);
+	}
 
 	ctx->recovery.fxn = mdss_mdp_cmd_underflow_recovery;
 	ctx->recovery.data = ctx;
