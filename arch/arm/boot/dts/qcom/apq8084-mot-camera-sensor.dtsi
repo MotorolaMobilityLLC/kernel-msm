@@ -32,13 +32,18 @@
 		label = "lm3646";
 		qcom,flash-type = <1>;
 		qcom,gpio-no-mux = <0>;
-		gpios = <&msmgpio 144 0>;
+		gpios = <&msmgpio 144 0>,
+			<&msmgpio 23 0>,
+			<&msmgpio 24 0>;
 		qcom,gpio-flash-en = <0>;
-		qcom,gpio-req-tbl-num = <0>;
-		qcom,gpio-req-tbl-flags = <0>;
-		qcom,gpio-req-tbl-label = "FLASH_EN";
+		qcom,gpio-torch-en = <1>;
+		qcom,gpio-flash-now = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <0 0 0>;
+		qcom,gpio-req-tbl-label = "FLASH_EN",
+				"TORCH_EN",
+				"FLASH_LED_NOW";
 		qcom,cci-master = <0>;
-		flash-now-support = <0>;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&cam_flash_default>;
 		pinctrl-1 = <&cam_flash_active>;
