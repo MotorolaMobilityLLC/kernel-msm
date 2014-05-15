@@ -342,6 +342,43 @@ struct synaptics_rmi4_f12_ctrl_23 {
 	};
 };
 
+struct synaptics_rmi4_f12_ctrl_24 {
+	union {
+		struct {
+			unsigned char threed_touch_features;
+			unsigned char threed_touch_features_reserved;
+			unsigned char finger_hover_tx_axis_threshold_lsb;
+			unsigned char finger_hover_tx_axis_threshold_msb;
+			unsigned char finger_hover_tx_axis_jitter_filter_coeff_lsb;
+			unsigned char finger_hover_tx_axis_jitter_filter_coeff_msb;
+			unsigned char finger_hover_tx_axis_peak_threshold_lsb;
+			unsigned char finger_hover_tx_axis_peak_threshold_msb;
+			unsigned char finger_hover_rx_axis_threshold_lsb;
+			unsigned char finger_hover_rx_axis_threshold_msb;
+			unsigned char finger_hover_rx_axis_jitter_filter_coeff_lsm;
+			unsigned char finger_hover_rx_axis_jitter_filter_coeff_msb;
+			unsigned char finger_hover_rx_axis_peak_threshold_lsb;
+			unsigned char finger_hover_rx_axis_peak_threshold_msb;
+			unsigned char finger_hover_threshold_hysteresis_lsb;
+			unsigned char finger_hover_threshold_hysteresis_msb;
+			unsigned char finger_hover_z_scaling_lsb;
+			unsigned char finger_hover_z_scaling_msb;
+			unsigned char finger_hover_maximum_average_count;
+			unsigned char finger_hover_velocity_jitter_filter_coefficient;
+			unsigned char finger_hover_noise_metric_window_length;
+			unsigned char finger_hover_snr_ratio;
+			unsigned char finger_hover_tx_axis_slow_relaxation_rate;
+			unsigned char finger_hover_tx_axis_relaxation_sensitivity;
+			unsigned char finger_hover_rx_axis_slow_relaxation_rate;
+			unsigned char finger_hover_rx_axis_relaxation_sensitivity;
+			unsigned char finger_hover_fast_relaxation_rate;
+			unsigned char finger_hover_lift_window_length;
+			unsigned char finger_hover_lift_state_window_length;
+		};
+		unsigned char data[29];
+	};
+};
+
 struct synaptics_rmi4_f12_finger_data {
 	unsigned char object_type_and_status;
 	unsigned char x_lsb;
@@ -1917,6 +1954,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	unsigned char size_of_query8;
 	unsigned char ctrl_8_offset;
 	unsigned char ctrl_23_offset;
+	unsigned char ctrl_24_offset;
 	unsigned char ctrl_28_offset;
 	unsigned char num_of_fingers;
 	struct synaptics_rmi4_f12_extra_data *extra_data;
@@ -1924,6 +1962,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_f12_query_8 query_8;
 	struct synaptics_rmi4_f12_ctrl_8 ctrl_8;
 	struct synaptics_rmi4_f12_ctrl_23 ctrl_23;
+	struct synaptics_rmi4_f12_ctrl_24 ctrl_24;
 
 	fhandler->fn_number = fd->fn_number;
 	fhandler->num_of_data_sources = fd->intr_src_count;
@@ -1964,8 +2003,10 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 			query_5.ctrl21_is_present +
 			query_5.ctrl22_is_present;
 
-	ctrl_28_offset = ctrl_23_offset +
-			query_5.ctrl23_is_present +
+	ctrl_24_offset = ctrl_23_offset +
+			query_5.ctrl23_is_present;
+
+	ctrl_28_offset = ctrl_24_offset +
 			query_5.ctrl24_is_present +
 			query_5.ctrl25_is_present +
 			query_5.ctrl26_is_present +
@@ -1977,6 +2018,33 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 			sizeof(ctrl_23.data));
 	if (retval < 0)
 		return retval;
+
+	/* disable hover feature */
+	if (query_5.ctrl24_is_present) {
+		retval = synaptics_rmi4_i2c_read(rmi4_data,
+				fhandler->full_addr.ctrl_base + ctrl_24_offset,
+				ctrl_24.data,
+				sizeof(ctrl_24.data));
+		if (retval < 0) {
+			dev_err(&rmi4_data->i2c_client->dev,
+					"%s: Failed to read hover register, error = %d\n",
+					__func__, retval);
+			return retval;
+		}
+
+		ctrl_24.threed_touch_features = 0x01;
+
+		retval = synaptics_rmi4_i2c_write(rmi4_data,
+				fhandler->full_addr.ctrl_base + ctrl_24_offset,
+				ctrl_24.data,
+				sizeof(ctrl_24.data));
+		if (retval < 0) {
+			dev_err(&rmi4_data->i2c_client->dev,
+					"%s: Failed to write hover register, error = %d\n",
+					__func__, retval);
+			return retval;
+		}
+	}
 
 	/* Maximum number of fingers supported */
 	fhandler->num_of_data_points = min(ctrl_23.max_reported_objects,
