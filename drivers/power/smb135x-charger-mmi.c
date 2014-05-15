@@ -293,6 +293,11 @@ struct smb135x_regulator {
 	struct regulator_dev	*rdev;
 };
 
+struct smb_wakeup_source {
+	struct wakeup_source    source;
+	unsigned long           disabled;
+};
+
 struct smb135x_chg {
 	struct i2c_client		*client;
 	struct device			*dev;
@@ -363,9 +368,26 @@ struct smb135x_chg {
 	bool				factory_mode;
 	int				batt_current_ma;
 	int				apsd_rerun_cnt;
+	struct smb_wakeup_source        smb_wake_source;
 };
 
 static struct smb135x_chg *the_chip;
+
+static void smb_stay_awake(struct smb_wakeup_source *source)
+{
+	if (__test_and_clear_bit(0, &source->disabled)) {
+		__pm_stay_awake(&source->source);
+		pr_debug("enabled source %s\n", source->source.name);
+	}
+}
+
+static void smb_relax(struct smb_wakeup_source *source)
+{
+	if (!__test_and_set_bit(0, &source->disabled)) {
+		__pm_relax(&source->source);
+		pr_debug("disabled source %s\n", source->source.name);
+	}
+}
 
 static int __smb135x_read(struct smb135x_chg *chip, int reg,
 				u8 *val)
@@ -1938,6 +1960,8 @@ static void usb_insertion_work(struct work_struct *work)
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't rerun apsd rc = %d\n", rc);
 	}
+
+	smb_relax(&chip->smb_wake_source);
 }
 
 static int hot_hard_handler(struct smb135x_chg *chip, u8 rt_stat)
@@ -2118,6 +2142,8 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 		pr_debug("setting usb psy present = %d\n", chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 	}
+
+	smb_relax(&chip->smb_wake_source);
 	return 0;
 }
 
@@ -2140,6 +2166,7 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 	/* Rerun APSD 1 sec later */
 	if ((reg & SDP_BIT) && !chip->apsd_rerun_cnt) {
 		dev_info(chip->dev, "HW Detected SDP!\n");
+		smb_stay_awake(&chip->smb_wake_source);
 		chip->apsd_rerun_cnt++;
 		chip->usb_present = 0;
 		schedule_delayed_work(&chip->usb_insertion_work,
@@ -3748,6 +3775,7 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->usb_psy = usb_psy;
 	chip->fake_battery_soc = -EINVAL;
 
+	wakeup_source_init(&chip->smb_wake_source.source, "smb135x_wake");
 	INIT_DELAYED_WORK(&chip->wireless_insertion_work,
 					wireless_insertion_work);
 	INIT_DELAYED_WORK(&chip->usb_insertion_work,
@@ -4077,6 +4105,7 @@ unregister_batt_psy:
 	power_supply_unregister(&chip->batt_psy);
 free_regulator:
 	smb135x_regulator_deinit(chip);
+	wakeup_source_trash(&chip->smb_wake_source.source);
 	return rc;
 }
 
@@ -4117,6 +4146,7 @@ static int smb135x_charger_remove(struct i2c_client *client)
 	}
 
 	smb135x_regulator_deinit(chip);
+	wakeup_source_trash(&chip->smb_wake_source.source);
 
 	return 0;
 }
