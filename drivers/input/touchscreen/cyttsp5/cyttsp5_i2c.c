@@ -835,12 +835,11 @@ static struct i2c_driver cyttsp5_i2c_driver = {
 static int __init cyttsp5_i2c_init(void)
 {
 	int rc = 0;
-#ifdef CONFIG_SAMSUNG_LPM_MODE
-	if (poweroff_charging) {
+
+	if (androidboot_mode_charger == 1) {
 		pr_notice("%s : LPM Charging Mode!!\n", __func__);
-		return rc;
+		return -ENODEV;
 	}
-#endif
 	rc = i2c_add_driver(&cyttsp5_i2c_driver);
 
 	pr_info("%s: rc=%d\n", __func__, rc);

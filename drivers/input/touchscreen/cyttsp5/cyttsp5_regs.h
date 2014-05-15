@@ -52,9 +52,7 @@
 #include <linux/wakelock.h>
 #include <linux/i2c/cyttsp5_core.h>
 
-#ifdef CONFIG_SAMSUNG_LPM_MODE
-extern int poweroff_charging;
-#endif
+extern int androidboot_mode_charger;
 
 #define ALWAYS_ON_TOUCH
 #define CYTTSP5_DEVICE_ACCESS
