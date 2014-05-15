@@ -89,6 +89,7 @@ static void initialize_variable(struct ssp_data *data)
 	data->bAccelAlert = false;
 	data->bTimeSyncing = true;
 	data->bHandlingIrq = false;
+	data->bDebugmsg = false;
 
 	data->accelcal.x = 0;
 	data->accelcal.y = 0;

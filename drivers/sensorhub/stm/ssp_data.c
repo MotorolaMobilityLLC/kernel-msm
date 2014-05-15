@@ -208,7 +208,7 @@ int parse_dataframe(struct ssp_data *data, char *pchRcvDataFrame, int iLength)
 						&sensorsdata);
 			break;
 		case MSG2AP_INST_DEBUG_DATA:
-			iSensorData = print_mcu_debug(pchRcvDataFrame,
+			iSensorData = print_mcu_debug(data, pchRcvDataFrame,
 					&iDataIdx, iLength);
 			if (iSensorData) {
 				pr_err("[SSP]: %s - Mcu data frame3 error %d\n",

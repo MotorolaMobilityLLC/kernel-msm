@@ -531,6 +531,32 @@ static ssize_t set_uncalib_gyro_delay(struct device *dev,
 	return size;
 }
 
+static ssize_t show_debug(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct ssp_data *data = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE,
+		"%d\n", data->bDebugmsg ? 1 : 0);
+}
+
+static ssize_t set_debug(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	int64_t dNewDebugState;
+	struct ssp_data *data = dev_get_drvdata(dev);
+
+	if (kstrtoll(buf, 10, &dNewDebugState) < 0)
+		return -EINVAL;
+
+	if (dNewDebugState > 0)
+		data->bDebugmsg = true;
+	else
+		data->bDebugmsg = false;
+
+	return size;
+}
+
 static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_sensors_enable, set_sensors_enable);
 static DEVICE_ATTR(enable_irq, S_IRUGO | S_IWUSR | S_IWGRP,
@@ -563,6 +589,9 @@ static struct device_attribute dev_attr_uncalib_gyro_poll_delay
 static struct device_attribute dev_attr_step_cnt_poll_delay
 	= __ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_step_cnt_delay, set_step_cnt_delay);
+static struct device_attribute dev_attr_debug
+	= __ATTR(debug, S_IRUGO | S_IWUSR | S_IWGRP,
+	show_debug, set_debug);
 
 static struct device_attribute *mcu_attrs[] = {
 	&dev_attr_enable,
@@ -573,6 +602,7 @@ static struct device_attribute *mcu_attrs[] = {
 	&dev_attr_game_rot_poll_delay,
 	&dev_attr_step_det_poll_delay,
 	&dev_attr_ssp_flush,
+	&dev_attr_debug,
 	NULL,
 };
 

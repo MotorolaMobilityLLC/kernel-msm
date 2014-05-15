@@ -15,7 +15,7 @@
 #include "ssp.h"
 #include <linux/fs.h>
 
-#define SSP_DEBUG_TIMER_SEC		(10 * HZ)
+#define SSP_DEBUG_TIMER_SEC		(120 * HZ)
 
 #define LIMIT_RESET_CNT		20
 #define LIMIT_TIMEOUT_CNT		3
@@ -25,7 +25,7 @@
 /* SSP Debug timer function                                              */
 /*************************************************************************/
 
-int print_mcu_debug(char *pchRcvDataFrame, int *pDataIdx,
+int print_mcu_debug(struct ssp_data *data, char *pchRcvDataFrame, int *pDataIdx,
 		int iRcvDataFrameLength)
 {
 	int iLength = pchRcvDataFrame[(*pDataIdx)++];
@@ -37,7 +37,9 @@ int print_mcu_debug(char *pchRcvDataFrame, int *pDataIdx,
 		return iLength ? iLength : ERROR;
 	}
 
-	ssp_dbg("[SSP]: MSG From MCU - %s\n", &pchRcvDataFrame[*pDataIdx]);
+	if (data->bDebugmsg)
+		ssp_dbg("[SSP]: MSG From MCU - %s\n", &pchRcvDataFrame[*pDataIdx]);
+
 	*pDataIdx += iLength;
 	return 0;
 }

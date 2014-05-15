@@ -422,6 +422,7 @@ struct ssp_data {
 	bool bDumping;
 	bool bTimeSyncing;
 	bool bHandlingIrq;
+	bool bDebugmsg;
 
 	unsigned int uIr_Current;
 	unsigned char uFuseRomData[3];
@@ -540,7 +541,7 @@ unsigned int get_sensor_scanning_info(struct ssp_data *);
 unsigned int get_firmware_rev(struct ssp_data *);
 int forced_to_download_binary(struct ssp_data *, int);
 int parse_dataframe(struct ssp_data *, char *, int);
-int print_mcu_debug(char *, int *, int);
+int print_mcu_debug(struct ssp_data *, char *, int *, int);
 void enable_debug_timer(struct ssp_data *);
 void disable_debug_timer(struct ssp_data *);
 int initialize_debug_timer(struct ssp_data *);
