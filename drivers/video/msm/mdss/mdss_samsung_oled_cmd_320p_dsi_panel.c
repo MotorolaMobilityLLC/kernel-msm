@@ -293,6 +293,9 @@ static int mdss_dsi_panel_registered(struct mdss_panel_data *pdata)
 	msd.mfd = (struct msm_fb_data_type *)registered_fb[0]->par;
 	msd.pdata = pdata;
 	msd.ctrl_pdata = ctrl_pdata;
+	if (ctrl_pdata->panel_data.panel_info.cont_splash_enabled == 1)
+		msd.dstat.on = 1;
+
 	pr_info("%s:%d, panel registered succesfully\n", __func__, __LINE__);
 	return 0;
 }
