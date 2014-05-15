@@ -69,13 +69,16 @@ static struct sensors_classdev bmd101_cdev = {
 struct bmd101_data {
 	struct sensors_classdev cdev;
 	struct input_dev		*input_dev;			/* Pointer to input device */
+	unsigned int  bpm;
+	int esd;
+	int status;
 };
 struct bmd101_data *sensor_data;
 
-static int bmd101_data_report(struct sensors_classdev *sensors_cdev, unsigned int data)
+static int bmd101_data_report(int data)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) \n", __func__, data);
-	input_report_abs(sensor_data->input_dev, ABS_MISC, (int)data);
+	input_report_abs(sensor_data->input_dev, ABS_MISC, data);
 	input_event(sensor_data->input_dev, EV_SYN, SYN_REPORT, 1);
 	input_sync(sensor_data->input_dev);
 
@@ -150,11 +153,86 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 	return rc;
 }
 
+//ASUS_BSP +++ Maggie_Lee "Add ATD interface"
+static ssize_t sensors_status_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", sensor_data->status);
+}
+
+static ssize_t sensors_status_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 1))
+		return -EINVAL;
+
+	sensor_data->status = val;
+
+	return size;
+}
+static DEVICE_ATTR(status, S_IWUSR | S_IRUGO, sensors_status_show, sensors_status_store);
+//ASUS_BSP --- Maggie_Lee "Add ATD interface"
+
+//ASUS_BSP +++ Maggie_Lee "Add ESD interface"
+static ssize_t bmd101_show_esd(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] ESD = %d\n",sensor_data->esd);
+	return sprintf(buf, "%d\n", sensor_data->esd);
+}
+
+static ssize_t bmd101_store_esd(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 1))
+		return -EINVAL;
+
+	sensor_debug(DEBUG_VERBOSE, "[als_P01] %s (%d)\n", __func__, (int)val);
+	sensor_data->esd = val;
+
+	return size;
+}
+static DEVICE_ATTR(esd, S_IWUSR | S_IRUGO, bmd101_show_esd, bmd101_store_esd);
+//ASUS_BSP --- Maggie_Lee "Add ESD interface"
+
+static int bmd101_show_bpm (struct device *dev, struct device_attribute *attr, char *buf)
+{
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] Heart_Beat = %d\n",sensor_data->bpm);
+	return sprintf(buf, "%d\n", sensor_data->bpm);
+}
+
+static ssize_t bmd101_store_bpm(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if ((strict_strtoul(buf, 10, &val) < 0))
+		return -EINVAL;
+
+	sensor_debug(DEBUG_INFO, "[bmd101] %s (%d)\n", __func__, (int)val);
+
+	bmd101_data_report((int)val);
+	sensor_data->bpm = val;
+
+	return size;
+}
+static DEVICE_ATTR(bpm, S_IWUSR | S_IRUGO, bmd101_show_bpm, bmd101_store_bpm);
+
+static struct attribute *bmd101_attributes[] = {
+	&dev_attr_status.attr,			//atd interface
+	&dev_attr_esd.attr,				//esd interface
+	&dev_attr_bpm.attr,
+	NULL
+};
+
+static const struct attribute_group bmd101_attr_group = {
+	.attrs = bmd101_attributes,
+};
+
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 static void bmd101_early_suspend(struct early_suspend *h)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	if(sensor_data->cdev.enabled)
+	if(sensor_data->cdev.enabled && !sensor_data->esd)
 		bmd101_enable_set(&sensor_data->cdev, 0);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
@@ -162,7 +240,7 @@ static void bmd101_early_suspend(struct early_suspend *h)
 static void bmd101_late_resume(struct early_suspend *h)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	if(sensor_data->cdev.enabled)
+	if(sensor_data->cdev.enabled && !sensor_data->esd)
 		bmd101_enable_set(&sensor_data->cdev, 1);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
@@ -176,7 +254,7 @@ struct early_suspend bmd101_early_suspend_handler = {
 static void bmd101_early_suspend(void)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	if(sensor_data->cdev.enabled)
+	if(sensor_data->cdev.enabled && !sensor_data->esd)
 		bmd101_enable_set(&sensor_data->cdev, 0);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
@@ -184,7 +262,7 @@ static void bmd101_early_suspend(void)
 static void bmd101_late_resume(void)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	if(sensor_data->cdev.enabled)
+	if(sensor_data->cdev.enabled && !sensor_data->esd)
 		bmd101_enable_set(&sensor_data->cdev, 1);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
@@ -254,14 +332,20 @@ static int bmd101_probe(struct platform_device *pdev)
 		printk(KERN_ERR "%s: failed to allocate bmd101_data\n", __func__);
 		return -ENOMEM;
 	}
+	sensor_data->esd = 0;
+	sensor_data->bpm = 0;
 	sensor_data->cdev = bmd101_cdev;
 	sensor_data->cdev.sensors_enable = bmd101_enable_set;
-	sensor_data->cdev.sensors_data = bmd101_data_report;
+	
 	ret = sensors_classdev_register(&pdev->dev, &sensor_data->cdev);
 	if (ret) {
 		pr_err("[BMD101] class device create failed: %d\n", ret);
 		goto classdev_register_fail;
 	}
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &bmd101_attr_group);
+	if (ret)
+		goto classdev_register_fail;
 
 	ret = bmd101_input_init();
 	if (ret < 0) {
