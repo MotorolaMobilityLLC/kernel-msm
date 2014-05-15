@@ -277,9 +277,6 @@ static void max17050_init_chip(struct max17050_chip *chip)
 	max17050_write_verify_reg(client, MAX17050_FULLCAPNOM,
 						chip->pdata->vf_fullcap);
 
-	/* Update SOC register with new SOC */
-	max17050_write_reg(client, MAX17050_REPSOC, vfsoc);
-
 	/* Complete initialisation */
 	chip->status = max17050_read_reg(client, MAX17050_STATUS);
 
