@@ -761,6 +761,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 		gpio_set_value(ctrl->mipi_d0_sel, 0);
 	} else {
+		if (ctrl->partial_mode_enabled && pdata->panel_info.panel_dead)
+			pr_warn("%s: Panel is dead, turn on panel regulators\n",
+				__func__);
+
 		mdss_dsi_panel_regulator_on(pdata, 1);
 		mdss_dsi_panel_reset(pdata, 1);
 	}
@@ -850,6 +854,10 @@ disable_regs:
 	if (ctrl->partial_mode_enabled && !pdata->panel_info.panel_dead)
 		gpio_set_value(ctrl->mipi_d0_sel, 1);
 	else {
+		if (ctrl->partial_mode_enabled && pdata->panel_info.panel_dead)
+			pr_warn("%s: Panel is dead, turn off panel regulators\n",
+				__func__);
+
 		mdss_dsi_panel_reset(pdata, 0);
 		mdss_dsi_panel_regulator_on(pdata, 0);
 	}
