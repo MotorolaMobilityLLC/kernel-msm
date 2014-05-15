@@ -82,6 +82,11 @@ pstore_cannot_block_path(enum kmsg_dump_reason reason)
 {
 	return false;
 }
+static inline int
+pstore_annotate(const char *buf)
+{
+	return -ENODEV;
+}
 #endif
 
 #endif /*_LINUX_PSTORE_H*/
