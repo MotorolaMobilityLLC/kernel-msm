@@ -335,6 +335,10 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 		mdss_dsi_ulps_config_sub(ctrl_pdata, 1, 1);
 		mdata->ulps = true;
 	} else {
+		if (ctrl_pdata->partial_mode_enabled
+			&& pdata->panel_info.panel_dead)
+			pr_warn("%s: Panel is dead, shut down DSI\n", __func__);
+
 		if (pdata->panel_info.type == MIPI_CMD_PANEL)
 			mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
@@ -674,6 +678,10 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		pdata->panel_info.panel_power_on = 1;
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 	} else {
+		if (ctrl_pdata->partial_mode_enabled
+			&& pdata->panel_info.panel_dead)
+			pr_warn("%s: Panel is dead, bring up DSI\n", __func__);
+
 		ret = mdss_dsi_panel_power_on(pdata, 1);
 		if (ret) {
 			pr_err("%s:Panel power on failed. rc=%d\n", __func__, ret);
