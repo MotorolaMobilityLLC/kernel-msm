@@ -247,6 +247,8 @@ struct qpnp_chg_regulator {
  * @freq_base:			freq peripheral base address
  * @bat_is_cool:		indicates that battery is cool
  * @bat_is_warm:		indicates that battery is warm
+ * @bat_therm_is_warm:          indicates that battery is warm due to batt_therm
+ * @bat_hotspot_is_warm:        indicates that batt is warm due to hot spot
  * @ext_hi_temp:		indicates Extended Temp Range High Threshold
  * @out_of_temp:		indicates battery is Out of Temperature Range
  * @chg_done:			indicates that charging is completed
@@ -320,8 +322,11 @@ struct qpnp_chg_chip {
 	struct qpnp_chg_irq		coarse_det_usb;
 	bool				bat_is_cool;
 	bool				bat_is_warm;
+	bool                            bat_therm_is_warm;
+	bool                            bat_hotspot_is_warm;
 	bool				ext_hi_temp;
 	bool				out_of_temp;
+	struct mutex                    update_ext_hi_state_lock;
 	bool				chg_done;
 	bool				charger_monitor_checked;
 	bool				usb_present;
@@ -3112,6 +3117,90 @@ qpnp_batt_system_temp_level_set(struct qpnp_chg_chip *chip, int lvl_sel)
 	}
 }
 
+static int batt_hotspot_threshold = 50000;
+module_param(batt_hotspot_threshold, int, 0644);
+
+static void
+qpnp_update_ext_hi_state(struct qpnp_chg_chip *chip)
+{
+	int batt_mv;
+
+	mutex_lock(&chip->update_ext_hi_state_lock);
+	chip->bat_is_warm =
+		chip->bat_therm_is_warm || chip->bat_hotspot_is_warm;
+
+	batt_mv = get_prop_battery_voltage_now(chip) / 1000;
+
+	if (((chip->bat_is_cool && (batt_mv > chip->cool_bat_mv)) ||
+	     (chip->bat_is_warm && (batt_mv > chip->warm_bat_mv))) &&
+	    !chip->out_of_temp)
+		chip->ext_hi_temp = true;
+	else
+		chip->ext_hi_temp = false;
+
+	if ((chip->bat_is_cool || chip->bat_is_warm) && chip->ext_hi_temp)
+		chip->resuming_charging = false;
+
+	qpnp_chg_set_appropriate_vddmax(chip);
+	qpnp_chg_set_appropriate_battery_current(chip);
+	qpnp_chg_set_appropriate_vbatdet(chip);
+
+	mutex_unlock(&chip->update_ext_hi_state_lock);
+}
+
+static int batt_hotspot_temperature;
+static int batt_hotspot_set(const char *val, const struct kernel_param *kp)
+{
+	int rc;
+	bool is_hotspot = false;
+	int temp;
+	struct power_supply *batt_psy = power_supply_get_by_name("battery");
+	struct qpnp_chg_chip *chip = container_of(batt_psy,
+					struct qpnp_chg_chip, batt_psy);
+
+	if (chip->use_default_batt_values || !get_prop_batt_present(chip)) {
+		pr_err("hotspot disabled\n");
+		return -ENODEV;
+	}
+
+	rc = param_set_int(val, kp);
+	if (rc) {
+		batt_hotspot_temperature = 0;
+		pr_err("Unable to set batt_hotspot_temperature: %d\n", rc);
+		return rc;
+	}
+
+	temp = get_prop_batt_temp(chip);
+	temp *= 100;
+
+	if ((temp > chip->cool_bat_decidegc) &&
+	    (batt_hotspot_temperature > temp) &&
+	    (batt_hotspot_temperature >= batt_hotspot_threshold)) {
+		pr_debug("hotspot detected:%d, threshold=%d\n",
+			 batt_hotspot_temperature, batt_hotspot_threshold);
+		is_hotspot = true;
+	} else {
+		pr_debug("hotspot cleared:%d, threshold=%d\n",
+		       batt_hotspot_temperature, batt_hotspot_threshold);
+		is_hotspot = false;
+	}
+
+
+	if (chip->bat_hotspot_is_warm ^ is_hotspot) {
+		chip->bat_hotspot_is_warm = is_hotspot;
+		qpnp_update_ext_hi_state(chip);
+	}
+
+	return 0;
+}
+
+static struct kernel_param_ops batt_hotspot_ops = {
+	.set = batt_hotspot_set,
+	.get = param_get_int,
+};
+module_param_cb(batt_hotspot_temperature, &batt_hotspot_ops,
+		&batt_hotspot_temperature, 0644);
+
 /* OTG regulator operations */
 static int
 qpnp_chg_regulator_otg_enable(struct regulator_dev *rdev)
@@ -3959,36 +4048,18 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 		}
 	}
 
-	if (((bat_cool && (batt_volt_mv > chip->cool_bat_mv)) ||
-	    (bat_warm && (batt_volt_mv > chip->warm_bat_mv))) &&
-	    !out_temp)
-		chip->ext_hi_temp = true;
-	else
-		chip->ext_hi_temp = false;
-
-	if (chip->bat_is_cool ^ bat_cool || chip->bat_is_warm ^ bat_warm ||
+	if (chip->bat_is_cool ^ bat_cool ||
+	    chip->bat_therm_is_warm ^ bat_warm ||
 	    chip->out_of_temp ^ out_temp) {
 		chip->bat_is_cool = bat_cool;
-		chip->bat_is_warm = bat_warm;
+		chip->bat_therm_is_warm = bat_warm;
 		chip->out_of_temp = out_temp;
 
-		if ((bat_cool || bat_warm) && chip->ext_hi_temp)
-			chip->resuming_charging = false;
-
-		/**
-		 * set appropriate voltages and currents.
-		 *
-		 * Note that when the battery is hot or cold, the charger
-		 * driver will not resume with SoC. Only vbatdet is used to
-		 * determine resume of charging.
-		 */
-		qpnp_chg_set_appropriate_vddmax(chip);
-		qpnp_chg_set_appropriate_battery_current(chip);
-		qpnp_chg_set_appropriate_vbatdet(chip);
+		qpnp_update_ext_hi_state(chip);
 	}
 
 	pr_debug("warm %d, cool %d, low = %d deciDegC, high = %d deciDegC\n",
-			chip->bat_is_warm, chip->bat_is_cool,
+			chip->bat_therm_is_warm, chip->bat_is_cool,
 			chip->adc_param.low_temp, chip->adc_param.high_temp);
 
 	if (qpnp_adc_tm_channel_measure(chip->adc_tm_dev, &chip->adc_param))
@@ -4060,7 +4131,7 @@ qpnp_chg_configure_jeita(struct qpnp_chg_chip *chip,
 		if (chip->bat_is_cool)
 			chip->adc_param.high_temp =
 				temp_degc + HYSTERISIS_DECIDEGC;
-		else if (!chip->bat_is_warm)
+		else if (!chip->bat_therm_is_warm)
 			chip->adc_param.low_temp = temp_degc;
 
 		chip->cool_bat_decidegc = temp_degc;
@@ -4074,7 +4145,7 @@ qpnp_chg_configure_jeita(struct qpnp_chg_chip *chip,
 			rc = -EINVAL;
 			goto mutex_unlock;
 		}
-		if (chip->bat_is_warm)
+		if (chip->bat_therm_is_warm)
 			chip->adc_param.low_temp =
 				temp_degc - HYSTERISIS_DECIDEGC;
 		else if (!chip->bat_is_cool)
@@ -5187,6 +5258,10 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 			of_property_read_bool(chip->spmi->dev.of_node,
 					"qcom,parallel-ovp-mode");
 
+	of_property_read_u32(chip->spmi->dev.of_node,
+			     "qcom,hotspot-thresh",
+			     &batt_hotspot_threshold);
+
 	of_get_property(chip->spmi->dev.of_node, "qcom,thermal-mitigation",
 		&(chip->thermal_levels));
 
@@ -5209,6 +5284,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 			return rc;
 		}
 	}
+
 	num_thermal_levels = chip->thermal_levels;
 
 	return rc;
@@ -5304,6 +5380,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 			qpnp_chg_batfet_lcl_work);
 	INIT_WORK(&chip->insertion_ocv_work,
 			qpnp_chg_insertion_ocv_work);
+	mutex_init(&chip->update_ext_hi_state_lock);
 
 	/* Get all device tree properties */
 	rc = qpnp_charger_read_dt_props(chip);
@@ -5684,6 +5761,7 @@ qpnp_charger_remove(struct spmi_device *spmi)
 
 	mutex_destroy(&chip->batfet_vreg_lock);
 	mutex_destroy(&chip->jeita_configure_lock);
+	mutex_destroy(&chip->update_ext_hi_state_lock);
 
 	cancel_delayed_work_sync(&chip->chrg_ocv_work);
 	cancel_delayed_work_sync(&chip->update_heartbeat_work);
