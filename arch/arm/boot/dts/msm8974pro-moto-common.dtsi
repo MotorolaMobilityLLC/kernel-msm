@@ -651,6 +651,7 @@
 	qcom,ibatmax-cool-ma = <2000>;
 	qcom,batt-hot-percentage = <25>;
 	qcom,batt-cold-percentage = <80>;
+	qcom,step-charge-voltage = <4200>;
 	qcom,step-charge-soc = <50>;
 	qcom,step-charge-current = <1500>;
 	qcom,ir-comp = <1>;
