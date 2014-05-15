@@ -1439,10 +1439,12 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 		goto out;
 	}
 
+	/* Some devices might not use the vdd. So move vdd to optional property
+	 * and just keep going
+	 */
 	if (sdhci_msm_dt_parse_vreg_info(dev, &pdata->vreg_data->vdd_data,
 					 "vdd")) {
-		dev_err(dev, "failed parsing vdd data\n");
-		goto out;
+		dev_warn(dev, "failed parsing vdd data\n");
 	}
 	if (sdhci_msm_dt_parse_vreg_info(dev,
 					 &pdata->vreg_data->vdd_io_data,
