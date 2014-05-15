@@ -18,6 +18,7 @@ Required properties:
     qcom,gpio-req-tbl-num property (in the same order)
 - qcom,gpio-flash-en : should contain index to gpio used by flash's "flash enable" pin.
 - qcom,gpio-flash-now : should contain index to gpio used by flash's "flash now" pin.
+- qcom,gpio-torch-en : should contain index to gpio used by flash's "torch enable" pin.
 - label : should contain unique flash name to differentiate from other flash
     - "adp1660"
 - qcom,flash-type : Should contain type flash device

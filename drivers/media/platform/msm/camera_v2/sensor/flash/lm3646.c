@@ -25,31 +25,29 @@ static struct msm_led_flash_ctrl_t fctrl;
 static struct i2c_driver lm3646_i2c_driver;
 
 static struct msm_camera_i2c_reg_array lm3646_init_array[] = {
-	{0x01, 0xE0},
-	{0x02, 0xA4},
+	{0x01, 0xA8},
+	{0x02, 0x24},
 	{0x03, 0x20},
 	{0x04, 0x42},
-	{0x05, 0x5A},
-	{0x06, 0x2F},
-	{0x07, 0x3F},
+	{0x05, 0x5F},
+	{0x06, 0x3F}, /*TODO: Change when pin controlled strobe is enabled*/
+	{0x07, 0xAF},
 	{0x08, 0x00},
 	{0x09, 0x30},
 };
 
-static struct msm_camera_i2c_reg_array lm3646_off_array[] = {
-	{0x01, 0x00},
-};
-
 static struct msm_camera_i2c_reg_array lm3646_release_array[] = {
-	{0x0f, 0x00},
+	{0x01, 0xA8},
+	{0x06, 0x3F},
+	{0x07, 0x2F},
 };
 
-static struct msm_camera_i2c_reg_array lm3646_low_array[] = {
-	{0x01, 0xE2},
-};
-
+/* TODO: can remove when pin controlled strobe is enabled.
+ * will also need to update 0x01 reg in init since strobe pin
+ * requires 0x03 to be set.
+ */
 static struct msm_camera_i2c_reg_array lm3646_high_array[] = {
-	{0x01, 0xE3},
+	{0x01, 0xAB},
 };
 
 static void __exit msm_flash_lm3646_i2c_remove(void)
@@ -128,25 +126,9 @@ static struct msm_camera_i2c_reg_setting lm3646_init_setting = {
 	.delay = 0,
 };
 
-static struct msm_camera_i2c_reg_setting lm3646_off_setting = {
-	.reg_setting = lm3646_off_array,
-	.size = ARRAY_SIZE(lm3646_off_array),
-	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
-	.data_type = MSM_CAMERA_I2C_BYTE_DATA,
-	.delay = 0,
-};
-
 static struct msm_camera_i2c_reg_setting lm3646_release_setting = {
 	.reg_setting = lm3646_release_array,
 	.size = ARRAY_SIZE(lm3646_release_array),
-	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
-	.data_type = MSM_CAMERA_I2C_BYTE_DATA,
-	.delay = 0,
-};
-
-static struct msm_camera_i2c_reg_setting lm3646_low_setting = {
-	.reg_setting = lm3646_low_array,
-	.size = ARRAY_SIZE(lm3646_low_array),
 	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
 	.data_type = MSM_CAMERA_I2C_BYTE_DATA,
 	.delay = 0,
@@ -162,8 +144,6 @@ static struct msm_camera_i2c_reg_setting lm3646_high_setting = {
 
 static struct msm_led_flash_reg_t lm3646_regs = {
 	.init_setting = &lm3646_init_setting,
-	.off_setting = &lm3646_off_setting,
-	.low_setting = &lm3646_low_setting,
 	.high_setting = &lm3646_high_setting,
 	.release_setting = &lm3646_release_setting,
 };
