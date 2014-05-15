@@ -973,6 +973,11 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			 */
 			pr_debug("%s: reset intf_stopped flag.\n", __func__);
 			ctx->intf_stopped = 0;
+			list_for_each_entry_safe(handle, tmp,
+				&ctl->saved_vsync_handlers, saved_list) {
+				mdss_mdp_cmd_add_vsync_handler(ctl, handle);
+				list_del_init(&handle->saved_list);
+			}
 			goto end;
 		}
 	}
@@ -981,8 +986,10 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		goto panel_events;
 
 	pr_debug("%s: turn off interface clocks\n", __func__);
-	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list)
+	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list) {
+		list_add(&handle->saved_list, &ctl->saved_vsync_handlers);
 		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
+	}
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 				ctx->rdptr_enabled, XLOG_FUNC_ENTRY);
 
@@ -1038,6 +1045,7 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 	struct mdss_mdp_mixer *mixer;
 	struct mdss_mdp_vsync_handler *tmp, *handle;
 	int ret;
+	struct mdss_mdp_vsync_handler *tmp, *handle;
 
 	if (session >= MAX_SESSIONS)
 		return 0;
@@ -1065,7 +1073,8 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 			mdss_mdp_cmd_restore(ctl);
 
 			/* Turn on panel so that it can exit low power mode */
-			return mdss_mdp_cmd_panel_on(ctl, sctl);
+			ret = mdss_mdp_cmd_panel_on(ctl, sctl);
+			goto restore_vsync_handlers;
 		} else {
 			pr_err("Intf %d already in use\n", session);
 			return -EBUSY;
@@ -1125,7 +1134,14 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 		return ret;
 	}
 
-	return 0;
+restore_vsync_handlers:
+	list_for_each_entry_safe(handle, tmp, &ctl->saved_vsync_handlers,
+			saved_list) {
+		mdss_mdp_cmd_add_vsync_handler(ctl, handle);
+		list_del_init(&handle->saved_list);
+	}
+
+	return ret;
 }
 int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 {
