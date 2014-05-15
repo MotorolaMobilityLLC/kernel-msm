@@ -162,7 +162,7 @@ void stm401_sleep(struct stm401_data *ps_stm401)
 	}
 }
 
-void stm401_detect_lowpower_mode(void)
+void stm401_detect_lowpower_mode(unsigned char *cmdbuff)
 {
 	int err;
 	bool factory;
@@ -202,10 +202,10 @@ void stm401_detect_lowpower_mode(void)
 		dev_dbg(&stm401_misc_data->client->dev,
 			"lowpower supported: ");
 
-		stm401_cmdbuff[0] = LOWPOWER_REG;
+		cmdbuff[0] = LOWPOWER_REG;
 		err =
 		    stm401_i2c_write_read_no_reset(stm401_misc_data,
-						   stm401_cmdbuff, 1, 2);
+						   cmdbuff, 1, 2);
 		if (err >= 0) {
 			if ((int)stm401_readbuff[1] == 1)
 				stm401_misc_data->sh_lowpower_enabled = 1;
@@ -219,11 +219,11 @@ void stm401_detect_lowpower_mode(void)
 			if (stm401_misc_data->sh_lowpower_enabled) {
 				/* send back to the hub the kernel
 				 * supports low power mode */
-				stm401_cmdbuff[1] =
+				cmdbuff[1] =
 				    stm401_misc_data->sh_lowpower_enabled;
 				err =
 				    stm401_i2c_write_no_reset(stm401_misc_data,
-							      stm401_cmdbuff,
+							      cmdbuff,
 							      2);
 
 				if (err < 0) {
@@ -345,7 +345,8 @@ int stm401_i2c_write_no_reset(struct stm401_data *ps_stm401,
 	} while ((err < 0) && (++tries < I2C_RETRIES));
 
 	if (err < 0) {
-		dev_err(&ps_stm401->client->dev, "i2c write error\n");
+		dev_err(&ps_stm401->client->dev,
+			"i2c write error - 0x%x - 0x%x\n", buf[0], -err);
 		err = -EIO;
 		ps_stm401->stm401_i2c_fail_count++;
 		if (ps_stm401->stm401_i2c_fail_count > STM401_I2C_FAIL_LIMIT)
