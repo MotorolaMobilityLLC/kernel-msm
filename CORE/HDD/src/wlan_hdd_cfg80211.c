@@ -5289,80 +5289,64 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 
     vos_mem_zero( &scanRequest, sizeof(scanRequest));
 
-    if (NULL != request)
+    hddLog(VOS_TRACE_LEVEL_INFO, "scan request for ssid = %d",
+           (int)request->n_ssids);
+
+    /* Even though supplicant doesn't provide any SSIDs, n_ssids is set to 1.
+     * Becasue of this, driver is assuming that this is not wildcard scan and so
+     * is not aging out the scan results.
+     */
+    if (request->ssids && '\0' == request->ssids->ssid[0])
     {
-        MTRACE(vos_trace(VOS_MODULE_ID_HDD,
-                    TRACE_CODE_HDD_CFG80211_SCAN,
-                    pAdapter->sessionId, request->n_channels));
-        hddLog(VOS_TRACE_LEVEL_INFO, "scan request for ssid = %d",
-               (int)request->n_ssids);
-
-        /* Even though supplicant doesn't provide any SSIDs, n_ssids is set to 1.
-         * Becasue of this, driver is assuming that this is not wildcard scan and so
-         * is not aging out the scan results.
-         */
-        if (request->ssids && '\0' == request->ssids->ssid[0])
-        {
-            request->n_ssids = 0;
-        }
-
-        if ((request->ssids) && (0 < request->n_ssids))
-        {
-            tCsrSSIDInfo *SsidInfo;
-            int j;
-            scanRequest.SSIDs.numOfSSIDs = request->n_ssids;
-            /* Allocate num_ssid tCsrSSIDInfo structure */
-            SsidInfo = scanRequest.SSIDs.SSIDList =
-                      ( tCsrSSIDInfo *)vos_mem_malloc(
-                              request->n_ssids*sizeof(tCsrSSIDInfo));
-
-            if(NULL == scanRequest.SSIDs.SSIDList)
-            {
-                hddLog(VOS_TRACE_LEVEL_ERROR,
-                          "%s: memory alloc failed SSIDInfo buffer", __func__);
-                return -ENOMEM;
-            }
-
-            /* copy all the ssid's and their length */
-            for(j = 0; j < request->n_ssids; j++, SsidInfo++)
-            {
-                /* get the ssid length */
-                SsidInfo->SSID.length = request->ssids[j].ssid_len;
-                vos_mem_copy(SsidInfo->SSID.ssId, &request->ssids[j].ssid[0],
-                             SsidInfo->SSID.length);
-                SsidInfo->SSID.ssId[SsidInfo->SSID.length] = '\0';
-                hddLog(VOS_TRACE_LEVEL_INFO, "SSID number %d:  %s",
-                                                   j, SsidInfo->SSID.ssId);
-            }
-            /* set the scan type to active */
-            scanRequest.scanType = eSIR_ACTIVE_SCAN;
-        }
-        else if(WLAN_HDD_P2P_GO == pAdapter->device_mode)
-        {
-            /* set the scan type to active */
-            scanRequest.scanType = eSIR_ACTIVE_SCAN;
-        }
-        else
-        {
-            /*Set the scan type to default type, in this case it is ACTIVE*/
-            scanRequest.scanType = pScanInfo->scan_mode;
-        }
-        scanRequest.minChnTime = cfg_param->nActiveMinChnTime;
-        scanRequest.maxChnTime = cfg_param->nActiveMaxChnTime;
+        request->n_ssids = 0;
     }
-    else
+
+    if ((request->ssids) && (0 < request->n_ssids))
+    {
+        tCsrSSIDInfo *SsidInfo;
+        int j;
+        scanRequest.SSIDs.numOfSSIDs = request->n_ssids;
+        /* Allocate num_ssid tCsrSSIDInfo structure */
+        SsidInfo = scanRequest.SSIDs.SSIDList =
+                  ( tCsrSSIDInfo *)vos_mem_malloc(
+                          request->n_ssids*sizeof(tCsrSSIDInfo));
+
+        if(NULL == scanRequest.SSIDs.SSIDList)
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                      "%s: memory alloc failed SSIDInfo buffer", __func__);
+            return -ENOMEM;
+        }
+
+        /* copy all the ssid's and their length */
+        for(j = 0; j < request->n_ssids; j++, SsidInfo++)
+        {
+            /* get the ssid length */
+            SsidInfo->SSID.length = request->ssids[j].ssid_len;
+            vos_mem_copy(SsidInfo->SSID.ssId, &request->ssids[j].ssid[0],
+                         SsidInfo->SSID.length);
+            SsidInfo->SSID.ssId[SsidInfo->SSID.length] = '\0';
+            hddLog(VOS_TRACE_LEVEL_INFO, "SSID number %d:  %s",
+                                                   j, SsidInfo->SSID.ssId);
+        }
+        /* set the scan type to active */
+        scanRequest.scanType = eSIR_ACTIVE_SCAN;
+    }
+    else if(WLAN_HDD_P2P_GO == pAdapter->device_mode)
     {
         MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                     TRACE_CODE_HDD_CFG80211_SCAN,
                     pAdapter->sessionId, 0));
         /* set the scan type to active */
         scanRequest.scanType = eSIR_ACTIVE_SCAN;
-        vos_mem_set( scanRequest.bssid, sizeof( tCsrBssid ), 0xff );
-
-        /* set min and max channel time to zero */
-        scanRequest.minChnTime = 0;
-        scanRequest.maxChnTime = 0;
     }
+    else
+    {
+        /*Set the scan type to default type, in this case it is ACTIVE*/
+        scanRequest.scanType = pScanInfo->scan_mode;
+    }
+    scanRequest.minChnTime = cfg_param->nActiveMinChnTime;
+    scanRequest.maxChnTime = cfg_param->nActiveMaxChnTime;
 
     /* set BSSType to default type */
     scanRequest.BSSType = eCSR_BSS_TYPE_ANY;
@@ -5370,149 +5354,148 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     /*TODO: scan the requested channels only*/
 
     /*Right now scanning all the channels */
-    if( request )
+    if (MAX_CHANNEL < request->n_channels)
     {
-        if (MAX_CHANNEL < request->n_channels)
+        hddLog(VOS_TRACE_LEVEL_WARN,
+           "No of Scan Channels exceeded limit: %d", request->n_channels);
+        request->n_channels = MAX_CHANNEL;
+    }
+
+    hddLog(VOS_TRACE_LEVEL_INFO,
+                           "No of Scan Channels: %d", request->n_channels);
+
+
+    if( request->n_channels )
+    {
+        char chList [(request->n_channels*5)+1];
+        int len;
+        channelList = vos_mem_malloc( request->n_channels );
+        if( NULL == channelList )
         {
-            hddLog(VOS_TRACE_LEVEL_WARN,
-               "No of Scan Channels exceeded limit: %d", request->n_channels);
-            request->n_channels = MAX_CHANNEL;
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                           "%s: memory alloc failed channelList", __func__);
+            status = -ENOMEM;
+            goto free_mem;
         }
+
+        for( i = 0, len = 0; i < request->n_channels ; i++ )
+        {
+            channelList[i] = request->channels[i]->hw_value;
+            len += snprintf(chList+len, 5, "%d ", channelList[i]);
+        }
+
         hddLog(VOS_TRACE_LEVEL_INFO,
-                               "No of Scan Channels: %d", request->n_channels);
+                           "Channel-List:  %s ", chList);
+    }
 
-        if( request->n_channels )
+    scanRequest.ChannelInfo.numOfChannels = request->n_channels;
+    scanRequest.ChannelInfo.ChannelList = channelList;
+
+    /* set requestType to full scan */
+    scanRequest.requestType = eCSR_SCAN_REQUEST_FULL_SCAN;
+
+    /* Flush the scan results(only p2p beacons) for STA scan and P2P
+     * search (Flush on both full  scan and social scan but not on single
+     * channel scan).P2P  search happens on 3 social channels (1, 6, 11)
+     */
+
+    /* Supplicant does single channel scan after 8-way handshake
+     * and in that case driver shoudnt flush scan results. If
+     * driver flushes the scan results here and unfortunately if
+     * the AP doesnt respond to our probe req then association
+     * fails which is not desired
+     */
+
+    if( request->n_channels != WLAN_HDD_P2P_SINGLE_CHANNEL_SCAN )
+    {
+        hddLog(VOS_TRACE_LEVEL_DEBUG, "Flushing P2P Results");
+        sme_ScanFlushP2PResult( WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                            pAdapter->sessionId );
+    }
+
+    if( request->ie_len )
+    {
+        /* save this for future association (join requires this) */
+        /*TODO: Array needs to be converted to dynamic allocation,
+         * as multiple ie.s can be sent in cfg80211_scan_request structure
+         * CR 597966
+         */
+        memset( &pScanInfo->scanAddIE, 0, sizeof(pScanInfo->scanAddIE) );
+        memcpy( pScanInfo->scanAddIE.addIEdata, request->ie, request->ie_len);
+        pScanInfo->scanAddIE.length = request->ie_len;
+
+        if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+            (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) ||
+            (WLAN_HDD_P2P_DEVICE == pAdapter->device_mode))
         {
-            char chList [(request->n_channels*5)+1];
-            int len;
-            channelList = vos_mem_malloc( request->n_channels );
-            if( NULL == channelList )
+            if ( request->ie_len <= SIR_MAC_MAX_IE_LENGTH)
             {
-                hddLog(VOS_TRACE_LEVEL_ERROR,
-                              "%s: memory alloc failed channelList", __func__);
-                status = -ENOMEM;
-                goto free_mem;
+                pwextBuf->roamProfile.nAddIEScanLength = request->ie_len;
+                memcpy( pwextBuf->roamProfile.addIEScan,
+                                 request->ie, request->ie_len);
+            }
+            else
+            {
+                hddLog(VOS_TRACE_LEVEL_ERROR, "Scan Ie length is invalid:"
+                         "%zu", request->ie_len);
             }
 
-            for( i = 0, len = 0; i < request->n_channels ; i++ )
+        }
+        scanRequest.uIEFieldLen = pScanInfo->scanAddIE.length;
+        scanRequest.pIEField = pScanInfo->scanAddIE.addIEdata;
+
+        pP2pIe = wlan_hdd_get_p2p_ie_ptr((v_U8_t*)request->ie,
+                                                   request->ie_len);
+        if (pP2pIe != NULL)
+        {
+#ifdef WLAN_FEATURE_P2P_DEBUG
+            if (((globalP2PConnectionStatus == P2P_GO_NEG_COMPLETED) ||
+                (globalP2PConnectionStatus == P2P_GO_NEG_PROCESS)) &&
+                (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
             {
-                channelList[i] = request->channels[i]->hw_value;
-                len += snprintf(chList+len, 5, "%d ", channelList[i]);
+                globalP2PConnectionStatus = P2P_CLIENT_CONNECTING_STATE_1;
+                hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] Changing state from "
+                                "Go nego completed to Connection is started");
+                hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P]P2P Scanning is started "
+                               "for 8way Handshake");
             }
-
-            hddLog(VOS_TRACE_LEVEL_INFO,
-                               "Channel-List:  %s ", chList);
-        }
-
-        scanRequest.ChannelInfo.numOfChannels = request->n_channels;
-        scanRequest.ChannelInfo.ChannelList = channelList;
-
-        /* set requestType to full scan */
-        scanRequest.requestType = eCSR_SCAN_REQUEST_FULL_SCAN;
-
-        /* Flush the scan results(only p2p beacons) for STA scan and P2P
-         * search (Flush on both full  scan and social scan but not on single
-         * channel scan).P2P  search happens on 3 social channels (1, 6, 11)
-         */
-
-        /* Supplicant does single channel scan after 8-way handshake
-         * and in that case driver shoudnt flush scan results. If
-         * driver flushes the scan results here and unfortunately if
-         * the AP doesnt respond to our probe req then association
-         * fails which is not desired
-         */
-
-        if( request->n_channels != WLAN_HDD_P2P_SINGLE_CHANNEL_SCAN )
-        {
-            hddLog(VOS_TRACE_LEVEL_DEBUG, "Flushing P2P Results");
-            sme_ScanFlushP2PResult( WLAN_HDD_GET_HAL_CTX(pAdapter),
-                                                pAdapter->sessionId );
-        }
-
-        if( request->ie_len )
-        {
-            /* save this for future association (join requires this) */
-            /*TODO: Array needs to be converted to dynamic allocation,
-             * as multiple ie.s can be sent in cfg80211_scan_request structure
-             * CR 597966
-             */
-            memset( &pScanInfo->scanAddIE, 0, sizeof(pScanInfo->scanAddIE) );
-            memcpy( pScanInfo->scanAddIE.addIEdata, request->ie, request->ie_len);
-            pScanInfo->scanAddIE.length = request->ie_len;
-
-            if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
-                (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) ||
-                (WLAN_HDD_P2P_DEVICE == pAdapter->device_mode))
+            else if((globalP2PConnectionStatus == P2P_CLIENT_DISCONNECTED_STATE) &&
+                    (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
             {
-                if ( request->ie_len <= SIR_MAC_MAX_IE_LENGTH)
+                globalP2PConnectionStatus = P2P_CLIENT_CONNECTING_STATE_2;
+                hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] Changing state from "
+                                "Disconnected state to Connection is started");
+                hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P]P2P Scanning is started "
+                                                    "for 4way Handshake");
+            }
+#endif
+
+            /* no_cck will be set during p2p find to disable 11b rates */
+            if(TRUE == request->no_cck)
+            {
+                hddLog(VOS_TRACE_LEVEL_INFO,
+                       "%s: This is a P2P Search", __func__);
+                scanRequest.p2pSearch = 1;
+
+                if( request->n_channels == WLAN_HDD_P2P_SOCIAL_CHANNELS )
                 {
-                    pwextBuf->roamProfile.nAddIEScanLength = request->ie_len;
-                    memcpy( pwextBuf->roamProfile.addIEScan,
-                                     request->ie, request->ie_len);
+                     /* set requestType to P2P Discovery */
+                     scanRequest.requestType = eCSR_SCAN_P2P_DISCOVERY;
+                }
+
+                /*
+                   Skip Dfs Channel in case of P2P Search
+                   if it is set in ini file
+                */
+                if(cfg_param->skipDfsChnlInP2pSearch)
+                {
+                   scanRequest.skipDfsChnlInP2pSearch = 1;
                 }
                 else
                 {
-                    hddLog(VOS_TRACE_LEVEL_ERROR, "Scan Ie length is invalid:"
-                             "%zu", request->ie_len);
+                   scanRequest.skipDfsChnlInP2pSearch = 0;
                 }
 
-            }
-            scanRequest.uIEFieldLen = pScanInfo->scanAddIE.length;
-            scanRequest.pIEField = pScanInfo->scanAddIE.addIEdata;
-
-            pP2pIe = wlan_hdd_get_p2p_ie_ptr((v_U8_t*)request->ie,
-                                                       request->ie_len);
-            if (pP2pIe != NULL)
-            {
-#ifdef WLAN_FEATURE_P2P_DEBUG
-                if (((globalP2PConnectionStatus == P2P_GO_NEG_COMPLETED) ||
-                    (globalP2PConnectionStatus == P2P_GO_NEG_PROCESS)) &&
-                    (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
-                {
-                    globalP2PConnectionStatus = P2P_CLIENT_CONNECTING_STATE_1;
-                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] Changing state from "
-                                    "Go nego completed to Connection is started");
-                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P]P2P Scanning is started "
-                                   "for 8way Handshake");
-                }
-                else if((globalP2PConnectionStatus == P2P_CLIENT_DISCONNECTED_STATE) &&
-                        (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
-                {
-                    globalP2PConnectionStatus = P2P_CLIENT_CONNECTING_STATE_2;
-                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] Changing state from "
-                                    "Disconnected state to Connection is started");
-                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P]P2P Scanning is started "
-                                                        "for 4way Handshake");
-                }
-#endif
-
-                /* no_cck will be set during p2p find to disable 11b rates */
-                if(TRUE == request->no_cck)
-                {
-                    hddLog(VOS_TRACE_LEVEL_INFO,
-                           "%s: This is a P2P Search", __func__);
-                    scanRequest.p2pSearch = 1;
-
-                    if( request->n_channels == WLAN_HDD_P2P_SOCIAL_CHANNELS )
-                    {
-                         /* set requestType to P2P Discovery */
-                         scanRequest.requestType = eCSR_SCAN_P2P_DISCOVERY;
-                    }
-
-                    /*
-                       Skip Dfs Channel in case of P2P Search
-                       if it is set in ini file
-                    */
-                    if(cfg_param->skipDfsChnlInP2pSearch)
-                    {
-                       scanRequest.skipDfsChnlInP2pSearch = 1;
-                    }
-                    else
-                    {
-                       scanRequest.skipDfsChnlInP2pSearch = 0;
-                    }
-
-                }
             }
         }
     }
