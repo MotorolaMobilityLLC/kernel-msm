@@ -28,7 +28,6 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/pm.h>
-#include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/memory_alloc.h>
 #include <linux/module.h>
@@ -122,7 +121,8 @@ struct mdss_hw mdss_mdp_hw = {
 static DEFINE_SPINLOCK(mdss_lock);
 struct mdss_hw *mdss_irq_handlers[MDSS_MAX_HW_BLK];
 
-static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on);
+static void mdss_mdp_footswitch_ctrl_locked(struct mdss_data_type *mdata,
+	int on);
 static int mdss_mdp_parse_dt(struct platform_device *pdev);
 static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev);
 static int mdss_mdp_parse_dt_mixer(struct platform_device *pdev);
@@ -643,9 +643,9 @@ void mdss_bus_bandwidth_ctrl(int enable)
 			msm_bus_scale_client_update_request(
 				mdata->bus_hdl, 0);
 			mdss_iommu_dettach(mdata);
-			pm_runtime_put(&mdata->pdev->dev);
+			mdss_mdp_footswitch_ctrl(mdata, false);
 		} else {
-			pm_runtime_get_sync(&mdata->pdev->dev);
+			mdss_mdp_footswitch_ctrl(mdata, true);
 			msm_bus_scale_client_update_request(
 				mdata->bus_hdl, mdata->curr_bw_uc_idx);
 			if (!mdata->handoff_pending)
@@ -682,9 +682,8 @@ void mdss_mdp_clk_ctrl(int enable, int isr)
 			__func__, mdp_clk_cnt, changed, enable);
 
 	if (changed) {
-		mdata->clk_ena = enable;
 		if (enable)
-			pm_runtime_get_sync(&mdata->pdev->dev);
+			mdss_mdp_footswitch_ctrl(mdata, true);
 
 		mdss_mdp_clk_update(MDSS_CLK_AHB, enable);
 		mdss_mdp_clk_update(MDSS_CLK_AXI, enable);
@@ -696,7 +695,7 @@ void mdss_mdp_clk_ctrl(int enable, int isr)
 		mdss_bus_bandwidth_ctrl(enable);
 
 		if (!enable)
-			pm_runtime_put(&mdata->pdev->dev);
+			mdss_mdp_footswitch_ctrl(mdata, false);
 	}
 
 	mutex_unlock(&mdp_clk_lock);
@@ -1019,7 +1018,6 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 	}
 
 	mdata->res_init = true;
-	mdata->clk_ena = false;
 	mdata->irq_mask = MDSS_MDP_DEFAULT_INTR_MASK;
 	mdata->irq_ena = false;
 
@@ -1155,6 +1153,7 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, mdata);
 	mdss_res = mdata;
 	mutex_init(&mdata->reg_lock);
+	mutex_init(&mdata->fs_ena_lock);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mdp_phys");
 	if (!res) {
@@ -1231,11 +1230,6 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 		goto probe_done;
 	}
 
-	pm_runtime_set_suspended(&pdev->dev);
-	pm_runtime_enable(&pdev->dev);
-	if (!pm_runtime_enabled(&pdev->dev))
-		mdss_mdp_footswitch_ctrl(mdata, true);
-
 	rc = mdss_mdp_register_sysfs(mdata);
 	if (rc)
 		pr_err("unable to register mdp sysfs nodes\n");
@@ -1253,6 +1247,7 @@ probe_done:
 		mdss_mdp_hw.ptr = NULL;
 		mdss_mdp_pp_term(&pdev->dev);
 		mutex_destroy(&mdata->reg_lock);
+		mutex_destroy(&mdata->fs_ena_lock);
 		mdss_res = NULL;
 	}
 
@@ -2394,13 +2389,20 @@ void mdss_mdp_batfet_ctrl(struct mdss_data_type *mdata, int enable)
 		regulator_disable(mdata->batfet);
 }
 
-static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
+void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
+{
+	mutex_lock(&mdata->fs_ena_lock);
+	mdss_mdp_footswitch_ctrl_locked(mdata, on);
+	mutex_unlock(&mdata->fs_ena_lock);
+}
+
+static void mdss_mdp_footswitch_ctrl_locked(struct mdss_data_type *mdata,
+	int on)
 {
 	if (!mdata->fs)
 		return;
 
 	if (on) {
-		pr_debug("Enable MDP FS\n");
 		if (!mdata->fs_ena) {
 			regulator_enable(mdata->fs);
 			if (!mdata->ulps) {
@@ -2408,18 +2410,23 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 				mdss_mdp_batfet_ctrl(mdata, true);
 			}
 		}
-		mdata->fs_ena = true;
+		mdata->fs_ena++;
+		pr_debug("Enable MDP FS [%d]\n", mdata->fs_ena);
 	} else {
-		pr_debug("Disable MDP FS\n");
-		mdss_iommu_dettach(mdata);
-		if (mdata->fs_ena) {
+		if (!mdata->fs_ena) {
+			pr_warn("MDP FS unbalanced disable\n");
+			return;
+		}
+		mdata->fs_ena--;
+		pr_debug("Disable MDP FS [%d]\n", mdata->fs_ena);
+		if (!mdata->fs_ena) {
+			mdss_iommu_dettach(mdata);
 			regulator_disable(mdata->fs);
 			if (!mdata->ulps) {
 				mdss_mdp_cx_ctrl(mdata, false);
 				mdss_mdp_batfet_ctrl(mdata, false);
 			}
 		}
-		mdata->fs_ena = false;
 	}
 }
 
@@ -2451,20 +2458,37 @@ void mdss_mdp_footswitch_ctrl_ulps(int on, struct device *dev)
 
 static inline int mdss_mdp_suspend_sub(struct mdss_data_type *mdata)
 {
-	mdata->suspend_fs_ena = mdata->fs_ena;
-	mdss_mdp_footswitch_ctrl(mdata, false);
+	mutex_lock(&mdata->fs_ena_lock);
 
-	pr_debug("suspend done fs=%d\n", mdata->suspend_fs_ena);
+	mdata->suspend_fs_ena = mdata->fs_ena;
+	if (mdata->suspend_fs_ena)
+		pr_warn("%s: Forcing MDP footswitch off for suspend (suspend_fs_ena=%d)!\n",
+			__func__, mdata->suspend_fs_ena);
+
+	while (mdata->fs_ena)
+		mdss_mdp_footswitch_ctrl_locked(mdata, false);
+
+	pr_debug("suspend done suspend_fs_ena=%d\n", mdata->suspend_fs_ena);
+
+	mutex_unlock(&mdata->fs_ena_lock);
 
 	return 0;
 }
 
 static inline int mdss_mdp_resume_sub(struct mdss_data_type *mdata)
 {
-	if (mdata->suspend_fs_ena)
-		mdss_mdp_footswitch_ctrl(mdata, true);
+	mutex_lock(&mdata->fs_ena_lock);
 
-	pr_debug("resume done fs=%d\n", mdata->suspend_fs_ena);
+	if (mdata->suspend_fs_ena)
+		pr_warn("%s: Forcing MDP footswitch back on for resume (suspend_fs_ena=%d)!\n",
+			__func__, mdata->suspend_fs_ena);
+
+	while (mdata->suspend_fs_ena--)
+		mdss_mdp_footswitch_ctrl_locked(mdata, true);
+
+	pr_debug("resume done fs_ena=%d\n", mdata->fs_ena);
+
+	mutex_unlock(&mdata->fs_ena_lock);
 
 	return 0;
 }
@@ -2526,53 +2550,8 @@ static int mdss_mdp_resume(struct platform_device *pdev)
 #define mdss_mdp_resume NULL
 #endif
 
-#ifdef CONFIG_PM_RUNTIME
-static int mdss_mdp_runtime_resume(struct device *dev)
-{
-	struct mdss_data_type *mdata = dev_get_drvdata(dev);
-	if (!mdata)
-		return -ENODEV;
-
-	dev_dbg(dev, "pm_runtime: resuming...\n");
-
-	mdss_mdp_footswitch_ctrl(mdata, true);
-
-	return 0;
-}
-
-static int mdss_mdp_runtime_idle(struct device *dev)
-{
-	struct mdss_data_type *mdata = dev_get_drvdata(dev);
-	if (!mdata)
-		return -ENODEV;
-
-	dev_dbg(dev, "pm_runtime: idling...\n");
-
-	return 0;
-}
-
-static int mdss_mdp_runtime_suspend(struct device *dev)
-{
-	struct mdss_data_type *mdata = dev_get_drvdata(dev);
-	if (!mdata)
-		return -ENODEV;
-	dev_dbg(dev, "pm_runtime: suspending...\n");
-
-	if (mdata->clk_ena) {
-		pr_err("MDP suspend failed\n");
-		return -EBUSY;
-	}
-	mdss_mdp_footswitch_ctrl(mdata, false);
-
-	return 0;
-}
-#endif
-
 static const struct dev_pm_ops mdss_mdp_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(mdss_mdp_pm_suspend, mdss_mdp_pm_resume)
-	SET_RUNTIME_PM_OPS(mdss_mdp_runtime_suspend,
-			mdss_mdp_runtime_resume,
-			mdss_mdp_runtime_idle)
 };
 
 static int mdss_mdp_remove(struct platform_device *pdev)
@@ -2580,7 +2559,6 @@ static int mdss_mdp_remove(struct platform_device *pdev)
 	struct mdss_data_type *mdata = platform_get_drvdata(pdev);
 	if (!mdata)
 		return -ENODEV;
-	pm_runtime_disable(&pdev->dev);
 	mdss_mdp_pp_term(&pdev->dev);
 	mdss_mdp_bus_scale_unregister(mdata);
 	mdss_debugfs_remove(mdata);

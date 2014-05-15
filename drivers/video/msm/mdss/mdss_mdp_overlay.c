@@ -18,7 +18,6 @@
 #include <linux/kernel.h>
 #include <linux/major.h>
 #include <linux/module.h>
-#include <linux/pm_runtime.h>
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 #include <linux/msm_mdp.h>
@@ -841,6 +840,7 @@ static int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 {
 	int rc;
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
 	struct mdss_mdp_ctl *ctl = mdp5_data->ctl;
 
 	if (ctl->power_on) {
@@ -858,11 +858,7 @@ static int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 
 	pr_debug("starting fb%d overlay\n", mfd->index);
 
-	rc = pm_runtime_get_sync(&mfd->pdev->dev);
-	if (IS_ERR_VALUE(rc)) {
-		pr_err("unable to resume with pm_runtime_get_sync rc=%d\n", rc);
-		return rc;
-	}
+	mdss_mdp_footswitch_ctrl(mdata, true);
 
 	/*
 	 * We need to do hw init before any hw programming.
@@ -944,7 +940,7 @@ error:
 	if (rc) {
 		mdss_mdp_ctl_destroy(ctl);
 		mdp5_data->ctl = NULL;
-		pm_runtime_put(&mfd->pdev->dev);
+		mdss_mdp_footswitch_ctrl(mdata, false);
 	}
 
 	return rc;
@@ -2930,6 +2926,7 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	int rc;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_mixer *mixer;
+	struct mdss_data_type *mdata;
 	int need_cleanup;
 
 	if (!mfd)
@@ -2939,6 +2936,7 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 		return -EINVAL;
 
 	mdp5_data = mfd_to_mdp5_data(mfd);
+	mdata = mfd_to_mdata(mfd);
 
 	if (!mdp5_data || !mdp5_data->ctl) {
 		pr_err("ctl not initialized\n");
@@ -2982,9 +2980,7 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 		if (atomic_dec_return(&ov_active_panels) == 0)
 			mdss_mdp_rotator_release_all();
 
-		rc = pm_runtime_put(&mfd->pdev->dev);
-		if (rc)
-			pr_err("unable to suspend w/pm_runtime_put (%d)\n", rc);
+		mdss_mdp_footswitch_ctrl(mdata, false);
 	}
 
 	return rc;
@@ -3387,9 +3383,6 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			&mdp5_data->mdata->pdev->dev.kobj, "mdp");
 	if (rc)
 		pr_warn("problem creating link to mdp sysfs\n");
-
-	pm_runtime_set_suspended(&mfd->pdev->dev);
-	pm_runtime_enable(&mfd->pdev->dev);
 
 	kobject_uevent(&dev->kobj, KOBJ_ADD);
 	pr_debug("vsync kobject_uevent(KOBJ_ADD)\n");
