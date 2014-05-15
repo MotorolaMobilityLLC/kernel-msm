@@ -223,7 +223,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 
 		if ((brightness_table_loaded == 0)
 				&& (bytes[1] & (M_DISP_BRIGHTNESS >> 8))) {
-			err = stm401_load_brightness_table(ps_stm401);
+			err = stm401_load_brightness_table(ps_stm401,
+					stm401_cmdbuff);
 			if (err) {
 				dev_err(&ps_stm401->client->dev,
 					"Loading brightness failed\n");
@@ -433,7 +434,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		dev_dbg(&ps_stm401->client->dev,
 			"STM401_IOCTL_SET_CONTROL_REG");
 		if (brightness_table_loaded == 0) {
-			err = stm401_load_brightness_table(ps_stm401);
+			err = stm401_load_brightness_table(ps_stm401,
+					stm401_cmdbuff);
 			if (err) {
 				dev_err(&ps_stm401->client->dev,
 					"Loading brightness failed\n");

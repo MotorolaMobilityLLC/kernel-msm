@@ -378,7 +378,7 @@ int switch_stm401_mode(enum stm_mode mode)
 		if (stm401_g_booted && !stm401_irq_disable)
 			stm401_reset_and_init();
 		else
-			stm401_reset(pdata);
+			stm401_reset(pdata, stm401_cmdbuff);
 	}
 
 	return 0;
