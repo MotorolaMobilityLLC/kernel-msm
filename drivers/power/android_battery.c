@@ -619,16 +619,8 @@ static void android_bat_charger_work(struct work_struct *work)
 	mutex_unlock(&android_bat_state_lock);
 	wake_lock_timeout(&battery->charger_wake_lock, HZ * 2);
 
-	switch (battery->charge_source) {
-	case CHARGE_SOURCE_USB:
-		power_supply_changed(&battery->psy_usb);
-		break;
-	case CHARGE_SOURCE_AC:
-		power_supply_changed(&battery->psy_ac);
-		break;
-	default:
-		break;
-	}
+	power_supply_changed(&battery->psy_usb);
+	power_supply_changed(&battery->psy_ac);
 	power_supply_changed(&battery->psy_bat);
 }
 
