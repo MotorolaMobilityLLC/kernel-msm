@@ -275,7 +275,7 @@ static char *
 dump_pmc_exit_wowl( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
 {
     (void) arg1; (void) arg2; (void) arg3; (void) arg4;
-    (void)sme_ExitWowl(pMac);
+    (void)sme_ExitWowl(pMac, eWOWL_EXIT_USER);
     return p;
 }
 
@@ -369,7 +369,7 @@ dump_pmc_test_Wowl( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 
     pmcMessageProcessor(pMac, &smeRsp);
 
     //Exit Wowl
-    sme_ExitWowl(pMac);
+    sme_ExitWowl(pMac, eWOWL_EXIT_USER);
     smeRsp.messageType = eWNI_PMC_EXIT_WOWL_RSP;
     pmcMessageProcessor(pMac, &smeRsp);
     return p;

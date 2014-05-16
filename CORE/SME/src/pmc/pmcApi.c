@@ -210,6 +210,7 @@ eHalStatus pmcStart (tHalHandle hHal)
     pMac->pmc.requestFullPowerPending = FALSE;
     pMac->pmc.uapsdSessionRequired = FALSE;
     pMac->pmc.wowlModeRequired = FALSE;
+    pMac->pmc.wowlExitSrc = eWOWL_EXIT_USER;
     pMac->pmc.bmpsRequestedByHdd = FALSE;
     pMac->pmc.remainInPowerActiveTillDHCP = FALSE;
     pMac->pmc.remainInPowerActiveThreshold = 0;
@@ -1760,7 +1761,16 @@ eHalStatus pmcRequestBmps (
    status = pmcEnterBmpsCheck( pMac );
    if(HAL_STATUS_SUCCESS( status ))
    {
+      /* If DUT exits from WoWL because of wake-up indication then it enters
+       * into WoWL again. Disable WoWL only when user explicitly disables.
+       */
+      if(pMac->pmc.wowlModeRequired == FALSE && pMac->pmc.wowlExitSrc == eWOWL_EXIT_WAKEIND)
+      {
+          pMac->pmc.wowlModeRequired = TRUE;
+      }
+
       status = pmcEnterRequestBmpsState(hHal);
+
       /* Enter Request BMPS State. */
       if ( HAL_STATUS_SUCCESS( status ) )
       {
@@ -2472,6 +2482,11 @@ eHalStatus pmcEnterWowl (
 
    pMac->pmc.wowlModeRequired = TRUE;
 
+   /* By default set wowlExitSrc to eWOWL_EXIT_WAKEIND, so that device will
+    * come out of WoWL only when user explicity disables WoWL.
+    */
+   pMac->pmc.wowlExitSrc = eWOWL_EXIT_WAKEIND;
+
    return eHAL_STATUS_PMC_PENDING;
 }
 
@@ -2481,11 +2496,13 @@ eHalStatus pmcEnterWowl (
             SME will initiate exit from WoWLAN mode and device will be put in BMPS 
             mode.
     \param  hHal - The handle returned by macOpen.
+            wowlExitSrc - is wowl exiting because of wakeup pkt or user
+                          explicitly disabling WoWL
     \return eHalStatus
             eHAL_STATUS_FAILURE  Device cannot exit WoWLAN mode.
             eHAL_STATUS_SUCCESS  Request accepted to exit WoWLAN mode. 
   ---------------------------------------------------------------------------*/
-eHalStatus pmcExitWowl (tHalHandle hHal)
+eHalStatus pmcExitWowl (tHalHandle hHal, tWowlExitSource wowlExitSrc)
 {
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
@@ -2503,13 +2520,24 @@ eHalStatus pmcExitWowl (tHalHandle hHal)
    /* Clear any buffered command for entering WOWL */
    pMac->pmc.wowlModeRequired = FALSE;
 
+   /* are we exiting from WoW because of wake indication
+      or user disabling this feature */
+   pMac->pmc.wowlExitSrc = wowlExitSrc;
+
    /* Enter REQUEST_EXIT_WOWL State*/
    if (pmcRequestExitWowlState(hHal) != eHAL_STATUS_SUCCESS)
       return eHAL_STATUS_FAILURE;
 
-   /* Clear the callback routines */
-   pMac->pmc.enterWowlCallbackRoutine = NULL;
-   pMac->pmc.enterWowlCallbackContext = NULL;
+   if (eWOWL_EXIT_USER == wowlExitSrc)
+   {
+       /* Clear the callback routines */
+       pMac->pmc.enterWowlCallbackRoutine = NULL;
+       pMac->pmc.enterWowlCallbackContext = NULL;
+#ifdef WLAN_WAKEUP_EVENTS
+       pMac->pmc.wakeReasonIndCB = NULL;
+       pMac->pmc.wakeReasonIndCBContext = NULL;
+#endif
+   }
 
    return eHAL_STATUS_SUCCESS;
 }

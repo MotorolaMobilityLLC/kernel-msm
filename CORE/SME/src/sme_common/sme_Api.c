@@ -4484,7 +4484,7 @@ eHalStatus sme_EnterWowl (
             eHAL_STATUS_FAILURE  Device cannot exit WoWLAN mode.
             eHAL_STATUS_SUCCESS  Request accepted to exit WoWLAN mode.
   ---------------------------------------------------------------------------*/
-eHalStatus sme_ExitWowl (tHalHandle hHal)
+eHalStatus sme_ExitWowl (tHalHandle hHal, tWowlExitSource wowlExitSrc)
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -4493,7 +4493,7 @@ eHalStatus sme_ExitWowl (tHalHandle hHal)
     status = sme_AcquireGlobalLock( &pMac->sme );
     if ( HAL_STATUS_SUCCESS( status ) )
     {
-       status = pmcExitWowl (hHal);
+       status = pmcExitWowl (hHal, wowlExitSrc);
        sme_ReleaseGlobalLock( &pMac->sme );
     }
 
@@ -8243,9 +8243,6 @@ eHalStatus sme_WakeReasonIndCallback (tHalHandle hHal, void* pMsg)
       /* Call Wake Reason Indication callback routine. */
       if (pMac->pmc.wakeReasonIndCB != NULL)
           pMac->pmc.wakeReasonIndCB(pMac->pmc.wakeReasonIndCBContext, pWakeReasonInd);
-
-      pMac->pmc.wakeReasonIndCB = NULL;
-      pMac->pmc.wakeReasonIndCBContext = NULL;
 
       smsLog(pMac, LOG1, "Wake Reason Indication in %s(), reason=%d", __func__, pWakeReasonInd->ulReason);
    }

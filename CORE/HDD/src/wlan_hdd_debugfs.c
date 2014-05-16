@@ -86,7 +86,7 @@ static ssize_t wcnss_wowenable_write(struct file *file,
 
     /* Disable wow */
     if (!wow_enable) {
-        if (!hdd_exit_wowl(pAdapter))
+        if (!hdd_exit_wowl(pAdapter, eWOWL_EXIT_USER))
         {
           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                     "%s: hdd_exit_wowl failed!", __func__);

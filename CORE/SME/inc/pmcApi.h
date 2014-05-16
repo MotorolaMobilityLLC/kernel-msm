@@ -214,8 +214,11 @@ typedef enum ePmcSmpsMode
 
 } tPmcSmpsMode;
 
-
-
+typedef enum
+{
+    eWOWL_EXIT_USER,
+    eWOWL_EXIT_WAKEIND
+}tWowlExitSource;
 
 /* Configuration parameters for Idle Mode Power Save (IMPS). */
 
@@ -418,7 +421,7 @@ extern eHalStatus pmcEnterWowl (
 #endif // WLAN_WAKEUP_EVENTS
     tpSirSmeWowlEnterParams wowlEnterParams, tANI_U8 sessionId);
 
-extern eHalStatus pmcExitWowl (tHalHandle hHal);
+extern eHalStatus pmcExitWowl (tHalHandle hHal, tWowlExitSource wowlExitSrc);
 
 
 extern eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
