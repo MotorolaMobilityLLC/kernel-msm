@@ -10,6 +10,7 @@
 * GNU General Public License for more details.
 */
 
+#include "msm8916-moto-reserve.dtsi"
 #include "msm8916-moto-common.dtsi"
 
 / {
