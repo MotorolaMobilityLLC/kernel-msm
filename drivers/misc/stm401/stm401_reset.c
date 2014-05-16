@@ -157,16 +157,6 @@ int stm401_reset_and_init(void)
 			goto EXIT;
 	}
 
-	rst_cmdbuff[0] = STEP_COUNTER_UPDATE_RATE;
-	rst_cmdbuff[1] = (stm401_g_step_counter_delay>>8);
-	rst_cmdbuff[2] = stm401_g_step_counter_delay;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 3);
-	if (err < 0) {
-		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
-
 	rst_cmdbuff[0] = IR_GESTURE_RATE;
 	rst_cmdbuff[1] = stm401_g_ir_gesture_delay;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
