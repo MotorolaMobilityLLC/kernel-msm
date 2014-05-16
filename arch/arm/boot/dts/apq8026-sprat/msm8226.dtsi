@@ -1387,5 +1387,10 @@
 		qcom,pm8226_rtc {
 			qcom,qpnp-rtc-write = <1>;
 		};
+		qcom,power-on@800 {
+			qcom,pon_2 {
+				linux,code = <0>;
+			};
+		};
 	};
 };
