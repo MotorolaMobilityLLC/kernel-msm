@@ -89,6 +89,13 @@ static struct notifier_block msm_rtb_panic_blk = {
 	.notifier_call  = msm_rtb_panic_notifier,
 };
 
+void msm_rtb_disable(void)
+{
+	msm_rtb.enabled = 0;
+	return;
+}
+EXPORT_SYMBOL(msm_rtb_disable);
+
 int notrace msm_rtb_event_should_log(enum logk_event_type log_type)
 {
 	return msm_rtb.initialized && msm_rtb.enabled &&
