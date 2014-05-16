@@ -304,6 +304,10 @@
 	qcom,wdt@f9017000 {
 		qcom,bark-time = <22000>;
 	};
+
+	cci: qcom,cci@fda0C000 {
+		vddio-supply = <&pma8084_lvs4>;
+	};
 };
 
 &pma8084_lvs2 {
