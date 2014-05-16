@@ -36,6 +36,14 @@
 			debounce-interval = <15>;
 		};
 
+		lid-sw {
+			label = "lid-switch";
+			gpios = <&msmgpio 109 0x1>;
+			linux,input-type = <5>;
+			linux,code = <0>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
 	};
 
 	i2c@f9923000 {
