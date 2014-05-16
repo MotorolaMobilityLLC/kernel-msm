@@ -45,6 +45,11 @@ int uncached_logk_pc(enum logk_event_type log_type, void *caller,
  */
 int uncached_logk(enum logk_event_type log_type, void *data);
 
+/*
+ * Disable rtb log
+ */
+void msm_rtb_disable(void);
+
 #define ETB_WAYPOINT  do { \
 				BRANCH_TO_NEXT_ISTR; \
 				nop(); \
@@ -69,6 +74,8 @@ static inline int uncached_logk_pc(enum logk_event_type log_type,
 
 static inline int uncached_logk(enum logk_event_type log_type,
 					void *data) { return 0; }
+
+static inline void msm_rtb_disable(void) { return; }
 
 #define ETB_WAYPOINT
 #define BRANCH_TO_NEXT_ISTR
