@@ -507,4 +507,9 @@ config ASUS_BACKLIGHT
         help
          According to PMIC trigger backlight driver.
 
+config ASUS_BACKLIGHT_DEBUG
+		default N
+        tristate "Enable backlight debug mode"
+        help
+         Enable backlight debug mode
 endif # NEW_LEDS
