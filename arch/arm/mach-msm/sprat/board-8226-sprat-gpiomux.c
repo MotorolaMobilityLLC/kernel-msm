@@ -708,6 +708,7 @@ void __init msm8226_init_gpiomux(void)
 				ARRAY_SIZE(sprat_rev01_hwchk_configs));
 		break;
 	case 2:
+	case 4:
 		msm_gpiomux_install(sprat_rev02_nc_configs,
 				ARRAY_SIZE(sprat_rev01_nc_configs));
 		msm_gpiomux_install(sprat_rev02_hwchk_configs,
