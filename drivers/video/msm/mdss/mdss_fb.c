@@ -548,7 +548,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
 	mfd->quickdraw_in_progress = false;
-	mfd->quickdraw_esd_recovered = false;
+	mfd->quickdraw_reset_panel = false;
 
 	return rc;
 }
