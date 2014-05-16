@@ -3782,6 +3782,10 @@ int sdhci_add_host(struct sdhci_host *host)
 				   SDHCI_MAX_CURRENT_MULTIPLIER;
 	}
 
+	/* override the ocr_avail if mmc->ocr_avail != 0 */
+	if (mmc->ocr_avail)
+		ocr_avail = mmc->ocr_avail;
+
 	mmc->ocr_avail = ocr_avail;
 	mmc->ocr_avail_sdio = ocr_avail;
 	if (host->ocr_avail_sdio)
