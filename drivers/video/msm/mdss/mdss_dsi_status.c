@@ -96,6 +96,7 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 		mutex_lock(ctl->shared_lock);
 
 	if (pdsi_status->mfd->shutdown_pending) {
+		mutex_unlock(&ctl->offlock);
 		if (ctl->shared_lock)
 			mutex_unlock(ctl->shared_lock);
 		pr_err("%s: DSI turning off, avoiding BTA status check\n",
