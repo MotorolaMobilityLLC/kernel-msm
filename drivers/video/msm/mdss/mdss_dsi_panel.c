@@ -649,16 +649,6 @@ static int mdss_dsi_panel_cont_splash_on(struct mdss_panel_data *pdata)
 	return 0;
 }
 
-static void panel_full_reinit(struct mdss_panel_data *pdata)
-{
-	mdss_dsi_panel_reset(pdata, 0);
-	mdss_dsi_panel_regulator_on(pdata, 0);
-	msleep(200);
-	mdss_dsi_panel_regulator_on(pdata, 1);
-	mdss_dsi_panel_reset(pdata, 1);
-	pdata->panel_info.panel_dead = false;
-}
-
 static unsigned int detect_panel_state(u8 pwr_mode)
 {
 	unsigned int panel_state = DSI_DISP_INVALID_STATE;
@@ -684,7 +674,7 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mipi_panel_info *mipi;
 	struct msm_fb_data_type *mfd;
-	int force_full_enable = 0;
+	int panel_dead = 0;
 	unsigned int panel_state = 0;
 	int ret = 0;
 
@@ -702,33 +692,32 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 		int gpio_val = gpio_get_value(ctrl->mipi_d0_sel);
 		pr_warn("%s: unable to read power state! [gpio: %d]\n",
 			__func__, gpio_val);
-		force_full_enable = 1;
+		panel_dead = 1;
 	} else {
 		panel_state = detect_panel_state(*pwr_mode);
 		if (panel_state == DSI_DISP_INVALID_STATE) {
 			pr_warn("%s: detected invalid panel state\n", __func__);
-			force_full_enable = 1;
+			panel_dead = 1;
 		}
 	}
 
-	if (!force_full_enable) {
+	if (!panel_dead) {
 		if (mfd->quickdraw_panel_state == DSI_DISP_INVALID_STATE) {
 			pr_warn("%s: quickdraw requests full reinitialization\n",
 				__func__);
-			force_full_enable = 1;
+			panel_dead = 1;
 		} else if (mfd->quickdraw_panel_state != panel_state) {
 			pr_warn("%s: panel state is %d while %d expected\n",
 				__func__, panel_state,
 				mfd->quickdraw_panel_state);
-			force_full_enable = 1;
+			panel_dead = 1;
 		} else if (mfd->quickdraw_panel_state == DSI_DISP_OFF_SLEEP_IN)
 			ret = 1;
 	}
 
-	if (force_full_enable) {
-		panel_full_reinit(pdata);
-		mfd->quickdraw_esd_recovered = 1;
-		ret = -1;
+	if (panel_dead) {
+		pr_err("%s: triggering ESD recovery\n", __func__);
+		mfd->quickdraw_reset_panel = true;
 	}
 
 	return ret;
@@ -784,9 +773,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	if (mfd->quickdraw_in_progress) {
-		if (!mdss_dsi_quickdraw_check_panel_state(pdata, &pwr_mode)) {
-			pr_debug("%s: in quickdraw, SH configured the panel already\n",
-				__func__);
+		int do_init = mdss_dsi_quickdraw_check_panel_state(pdata,
+			&pwr_mode);
+		if (!do_init || mfd->quickdraw_reset_panel) {
+			pr_info("%s: skip panel init cmds\n", __func__);
 			goto end;
 		}
 	}

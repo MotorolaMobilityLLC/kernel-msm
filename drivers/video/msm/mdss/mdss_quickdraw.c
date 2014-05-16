@@ -264,25 +264,39 @@ exit:
 static int mdss_quickdraw_prepare(void *data, unsigned char panel_state)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)(data);
+	struct mdss_panel_data *pdata = NULL;
 	struct mdss_mdp_ctl *ctl = NULL;
 	int ret = 0;
 
 	pr_debug("%s+ (panel_state: %d)\n", __func__, panel_state);
 
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("%s: Panel data not available\n", __func__);
+		ret = -EINVAL;
+		goto exit;
+	}
+
 	mfd->quickdraw_panel_state = panel_state;
 	mfd->quickdraw_in_progress = 1;
-	mfd->quickdraw_esd_recovered = 0;
+	mfd->quickdraw_reset_panel = false;
 
 	mdss_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi, true);
 
 	ctl = mfd_to_ctl(mfd);
 	memset(&ctl->roi, 0, sizeof(ctl->roi));
 
-	pr_debug("%s- (quickdraw_esd_recovered: %d)\n", __func__,
-		mfd->quickdraw_esd_recovered);
-
-	if (mfd->quickdraw_esd_recovered)
+	if (mfd->quickdraw_reset_panel) {
+		pdata->panel_info.panel_dead = true;
+		mfd->quickdraw_in_progress = 0;
+		mdss_fb_blank_sub(FB_BLANK_NORMAL, mfd->fbi, true);
+		mdss_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi, true);
+		mfd->quickdraw_in_progress = 1;
 		ret = QUICKDRAW_ESD_RECOVERED;
+	}
+exit:
+	pr_debug("%s- (quickdraw_reset_panel: %d)\n", __func__,
+		mfd->quickdraw_reset_panel);
 
 	return ret;
 }
