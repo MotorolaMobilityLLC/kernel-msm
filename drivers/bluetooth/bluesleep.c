@@ -350,6 +350,11 @@ static void bluesleep_hostwake_task(unsigned long data)
  */
 static void bluesleep_outgoing_data(void)
 {
+	if (!bt_enabled) {
+		BT_ERR("bluesleep_outgoing_data(), BT is not enabled");
+		return;
+	}
+
 	if (mutex_is_locked(&bluesleep_mutex))
 		BT_DBG("Wait for mutex unlock in bluesleep_outgoing_data");
 
