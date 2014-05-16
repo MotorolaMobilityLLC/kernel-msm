@@ -2217,7 +2217,9 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
          (sme_IsFeatureSupportedByDriver(DOT11AC)) &&
           (sme_IsFeatureSupportedByFW(DOT11AC)) )
     {
+        v_U32_t operatingBand = 0;
         pConfig->SapHw_mode = eSAP_DOT11_MODE_11ac;
+        ccmCfgGetInt(hHal, WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND, &operatingBand);
 
         /* If ACS disable and selected channel <= 14
          *  OR
@@ -2229,9 +2231,11 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
          */
         if (((AUTO_CHANNEL_SELECT != pConfig->channel && pConfig->channel <= SIR_11B_CHANNEL_END)
                     || (AUTO_CHANNEL_SELECT == pConfig->channel &&
-            iniConfig->apOperatingBand == RF_SUBBAND_2_4_GHZ)) &&
+            operatingBand == RF_SUBBAND_2_4_GHZ)) &&
                 iniConfig->enableVhtFor24GHzBand == FALSE)
         {
+            hddLog(LOGW, FL("Setting hwmode to 11n, operatingBand = %d, Channel = %d"),
+                    operatingBand, pConfig->channel);
             pConfig->SapHw_mode = eSAP_DOT11_MODE_11n;
         }
     }

@@ -2785,7 +2785,7 @@ void dxeRXEventHandler
    WLANDXE_ChannelCBType    *channelCb  = NULL;
    wpt_uint32                chHighStat = 0;
    wpt_uint32                chLowStat  = 0;
-   wpt_uint32                regValue;
+   wpt_uint32                regValue, chanMask;
 
    dxeCtxt = (WLANDXE_CtrlBlkType *)(msgContent->pContext);
 
@@ -2994,7 +2994,8 @@ void dxeRXEventHandler
          wpalWlanReload();
          dxeStartSSRTimer(dxeCtxt);
       }
-      else if(WLANDXE_CH_STAT_INT_ED_MASK & chLowStat)
+      else if((WLANDXE_CH_STAT_INT_ED_MASK & chLowStat) ||
+               (WLANDXE_CH_STAT_INT_DONE_MASK & chLowStat))
       {
          /* Handle RX Ready for low priority channel */
          status = dxeRXFrameReady(dxeCtxt,
@@ -3027,8 +3028,19 @@ void dxeRXEventHandler
    {
       HDXE_ASSERT(0);
    }
+
+   if (dxeCtxt->rxPalPacketUnavailable &&
+       (WLANDXE_CH_STAT_INT_DONE_MASK & chHighStat))
+   {
+     chanMask = dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI].extraConfig.chan_mask &
+                (~WLANDXE_CH_CTRL_INE_DONE_MASK);
+   }
+   else
+   {
+     chanMask = dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI].extraConfig.chan_mask;
+   }
    wpalWriteRegister(dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI].channelRegister.chDXECtrlRegAddr,
-                     dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI].extraConfig.chan_mask);
+                     chanMask);
 
    /* Prepare Control Register EN Channel */
    if(!(dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].extraConfig.chan_mask & WLANDXE_CH_CTRL_EN_MASK))
@@ -3036,8 +3048,19 @@ void dxeRXEventHandler
       HDXE_ASSERT(0);
    }
 
+   if (dxeCtxt->rxPalPacketUnavailable &&
+       (WLANDXE_CH_STAT_INT_DONE_MASK & chLowStat))
+   {
+     chanMask = dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].extraConfig.chan_mask &
+                (~WLANDXE_CH_CTRL_INE_DONE_MASK);
+   }
+   else
+   {
+     chanMask = dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].extraConfig.chan_mask;
+   }
    wpalWriteRegister(dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].channelRegister.chDXECtrlRegAddr,
-                     dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].extraConfig.chan_mask);
+                     chanMask);
+
 
    /* Clear Interrupt handle processing bit
     * RIVA may power down */
