@@ -24,6 +24,16 @@
 };
 
 &soc {
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		android,ramoops-buffer-start = <0xaf000000>;
+		android,ramoops-buffer-size = <0x40000>;
+		android,ramoops-console-size = <0x20000>;
+		android,ramoops-annotate-size = <0x800>;
+	};
+
 	sound {
 		compatible = "qcom,msm8x16-audio-codec";
 		qcom,model = "msm8x16-snd-card";
