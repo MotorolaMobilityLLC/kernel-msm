@@ -5151,12 +5151,9 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 #endif
                             struct cfg80211_scan_request *request)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
-   struct net_device *dev = request->wdev->netdev;
-#endif
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
-    hdd_wext_state_t *pwextBuf = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    hdd_adapter_t *pAdapter = NULL;
+    hdd_context_t *pHddCtx = NULL;
+    hdd_wext_state_t *pwextBuf = NULL;
     hdd_config_t *cfg_param = NULL;
     tCsrScanRequest scanRequest;
     tANI_U8 *channelList = NULL, i;
@@ -5165,11 +5162,23 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     hdd_scaninfo_t *pScanInfo = NULL;
     v_U8_t* pP2pIe = NULL;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+    struct net_device *dev = NULL;
+    if (NULL == request)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: scan req param null", __func__);
+        return -EINVAL;
+    }
+    dev = request->wdev->netdev;
+#endif
+
+    pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
+    pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+    pwextBuf = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+
     ENTER();
 
-    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
-                     TRACE_CODE_HDD_CFG80211_SCAN,
-                     pAdapter->sessionId, request->n_channels));
 
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %s (%d)",
            __func__, hdd_device_modetoString(pAdapter->device_mode),
@@ -5184,6 +5193,12 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
         return status;
     }
 
+    if (NULL == pwextBuf)
+    {
+        hddLog (VOS_TRACE_LEVEL_ERROR, "%s ERROR: invalid WEXT state\n",
+                __func__);
+        return -EIO;
+    }
     cfg_param = pHddCtx->cfg_ini;
     pScanInfo = &pHddCtx->scan_info;
 
@@ -5275,6 +5290,9 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 
     if (NULL != request)
     {
+        MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                    TRACE_CODE_HDD_CFG80211_SCAN,
+                    pAdapter->sessionId, request->n_channels));
         hddLog(VOS_TRACE_LEVEL_INFO, "scan request for ssid = %d",
                (int)request->n_ssids);
 
@@ -5333,6 +5351,9 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     }
     else
     {
+        MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                    TRACE_CODE_HDD_CFG80211_SCAN,
+                    pAdapter->sessionId, 0));
         /* set the scan type to active */
         scanRequest.scanType = eSIR_ACTIVE_SCAN;
         vos_mem_set( scanRequest.bssid, sizeof( tCsrBssid ), 0xff );
