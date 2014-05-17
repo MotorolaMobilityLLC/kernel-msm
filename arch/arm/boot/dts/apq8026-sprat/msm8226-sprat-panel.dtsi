@@ -20,7 +20,6 @@
 		qcom,esd-det-gpio = <&msmgpio 62 0>;
 		qcom,te-gpio = <&msmgpio 24 0>;
 		qcom,alpm-ldo-offset = <2>;
-		qcom,cont-splash-enabled;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-v-sync-continue-lines = <0x3c>;
 		qcom,mdss-dsi-te-v-sync-rd-ptr-irq-line = <0x2c>;
@@ -112,36 +111,11 @@
 
 		samsung,panel-candella-mapping-table-300 = <
 		/*	<idx> <from>  <till> <candella> */
-			0	2	10	10
-			1	11	15	20
-			2	16	23	30
-			3	24	32	40
-			4	33	38	50
-			5	39	46	60
-			6	47	56	70
-			7	57	63	80
-			8	64	71	90
-			9	72	76	100
-			11	77	86	110
-			12	87	91	120
-			13	92	97	130
-			14	98	110	140
-			15	111	118	150
-			16	119	125	160
-			17	126	133	170
-			18	134	142	180
-			19	143	150	190
-			20	151	155	200
-			21	156	160	210
-			22	161	170	220
-			23	171	181	230
-			24	182	193	240
-			25	194	205	250
-			26	206	218	260
-			27	219	230	270
-			28	231	242	280
-			29	243	254	290
-			30	255	255	300
+			0	2	38	20
+			1	39	86	60
+			2	87	150	120
+			3	151	254	200
+			4	255	255	300
 			>;
 
 /*
