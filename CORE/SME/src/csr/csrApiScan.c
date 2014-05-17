@@ -8146,11 +8146,11 @@ eHalStatus csrScanSavePreferredNetworkFound(tpAniSirGlobal pMac,
    vos_mem_copy((tANI_U8 *) &pBssDescr->bssId, (tANI_U8 *) macHeader->bssId, sizeof(tSirMacAddr));
    pBssDescr->nReceivedTime = (tANI_TIMESTAMP)palGetTickCount(pMac->hHdd);
 
-   smsLog( pMac, LOG2, "(%s):Bssid= "MAC_ADDRESS_STR
-                       " chan= %d, rssi = %d", __func__,
+   smsLog( pMac, LOG1, FL("Bssid= "MAC_ADDRESS_STR
+                       " chan= %d, rssi = %d "),
                        MAC_ADDR_ARRAY(pBssDescr->bssId),
                        pBssDescr->channelId,
-                       pBssDescr->rssi );
+                       pBssDescr->rssi);
 
    //IEs
    if (uLen)
