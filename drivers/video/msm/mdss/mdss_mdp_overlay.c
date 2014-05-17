@@ -2857,6 +2857,7 @@ static struct mdss_mdp_ctl *__mdss_mdp_overlay_ctl_init(
 		}
 	}
 
+	mdss_timeout_init(mdss_mdp5_dump_ctl, ctl);
 error:
 	if (rc)
 		return ERR_PTR(rc);
@@ -2885,8 +2886,6 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		if (IS_ERR_OR_NULL(ctl))
 			return PTR_ERR(ctl);
 		mdp5_data->ctl = ctl;
-
-		mdss_timeout_init(mdss_mdp5_dump_ctl, mdp5_data->ctl);
 	}
 
 	if (!mfd->panel_info->cont_splash_enabled &&
