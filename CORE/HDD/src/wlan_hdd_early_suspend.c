@@ -742,8 +742,8 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
     struct inet6_ifaddr *ifp;
     struct list_head *p;
     int slot_index = NS_DEFAULT_SLOT_INDEX;
-    tANI_U8 **selfIPv6Addr;
-    tANI_U8 *selfIPv6AddrValid;
+    tANI_U8 **selfIPv6Addr = NULL;
+    tANI_U8 *selfIPv6AddrValid = NULL;
     tSirHostOffloadReq offLoadRequest;
     hdd_context_t *pHddCtx;
     tHalHandle halHandle;
