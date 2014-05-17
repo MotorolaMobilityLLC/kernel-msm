@@ -63,6 +63,7 @@ static struct dsi_cmd alpm_off_seq;
  */
 static void alpm_store(u8 mode);
 #endif
+static int mdss_dsi_panel_dimming_init(struct mdss_panel_data *pdata);
 static struct panel_rev panel_supp_cdp[] = {
 	{"SDC_AMS163AX01", PANEL_320_OCTA_S6E63J},
 	{NULL}
@@ -303,12 +304,19 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	static int stored_bl_level = 255;
 
+	pr_info("%s : bl_level %d, stored_bl %d\n",
+			__func__, bl_level, stored_bl_level);
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
-	pr_info("%s : bl_level %d\n", __func__, bl_level);
+
+	if (bl_level == -1)
+		bl_level = stored_bl_level;
+
+	mdss_dsi_panel_dimming_init(pdata);
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	/*
@@ -332,6 +340,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			__func__);
 		break;
 	}
+	stored_bl_level = bl_level;
 }
 u32 mdss_dsi_cmd_receive(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct dsi_cmd_desc *cmd, int rlen)
@@ -483,6 +492,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				&& pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
 			/* Turn Off ALPM Mode */
 			mipi_samsung_disp_send_cmd(PANEL_ALPM_OFF, true);
+			mdss_dsi_panel_bl_ctrl(pdata, -1);
 			pinfo->alpm_event(CLEAR_MODE_STATUS);
 			pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n",
 						 __func__);
@@ -1283,11 +1293,14 @@ static ssize_t mipi_samsung_ambient_store(struct device *dev,
 	else
 		backlight_cmds.cmd_desc[0].payload[1] = 0x26;
 
-	if (msd.dstat.on)
+	if (msd.dstat.on) {
 		mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
-	else
+		if (ambient_mode)
+			mdss_dsi_panel_bl_ctrl(msd.pdata, -1);
+	} else
 		pr_info("[ALPM_DEBUG] %s: The LCD already turned off\n"
 					, __func__);
+
 
 	alpm_enable(ambient_mode ? MODE_OFF : ALPM_MODE_ON);
 
