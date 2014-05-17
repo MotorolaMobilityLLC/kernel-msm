@@ -4405,8 +4405,22 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
         {
             //Need to assign these value because they are used in csrIsSameProfile
             pScanResult = GET_BASE_ADDR(pCommand->u.roamCmd.pRoamBssEntry, tCsrScanResult, Link);
-            pCommand->u.roamCmd.roamProfile.negotiatedUCEncryptionType = pScanResult->ucEncryptionType; //Negotiated while building scan result.
-            pCommand->u.roamCmd.roamProfile.negotiatedMCEncryptionType = pScanResult->mcEncryptionType;
+           /* The OSEN IE doesn't provide the cipher suite.
+            * Therefore set to constant value of AES */
+            if(pCommand->u.roamCmd.roamProfile.bOSENAssociation)
+            {
+                pCommand->u.roamCmd.roamProfile.negotiatedUCEncryptionType =
+                                                         eCSR_ENCRYPT_TYPE_AES;
+                pCommand->u.roamCmd.roamProfile.negotiatedMCEncryptionType =
+                                                         eCSR_ENCRYPT_TYPE_AES;
+            }
+            else
+            {
+                pCommand->u.roamCmd.roamProfile.negotiatedUCEncryptionType =
+                                                   pScanResult->ucEncryptionType; //Negotiated while building scan result.
+                pCommand->u.roamCmd.roamProfile.negotiatedMCEncryptionType =
+                                                   pScanResult->mcEncryptionType;
+            }
             pCommand->u.roamCmd.roamProfile.negotiatedAuthType = pScanResult->authType;
             if ( CSR_IS_START_IBSS(&pCommand->u.roamCmd.roamProfile) )
             {
