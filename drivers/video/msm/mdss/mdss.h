@@ -123,6 +123,7 @@ struct mdss_data_type {
 	u8 has_wb_ad;
 	u8 has_non_scalar_rgb;
 	bool has_src_split;
+	bool idle_pc_enabled;
 
 	u32 rotator_ot_limit;
 	u32 mdp_irq_mask;
@@ -198,7 +199,7 @@ struct mdss_data_type {
 	struct mdss_prefill_data prefill_data;
 
 	int handoff_pending;
-	bool ulps;
+	bool idle_pc;
 	struct mdss_perf_tune perf_tune;
 };
 extern struct mdss_data_type *mdss_res;
