@@ -40,6 +40,28 @@
 	};
 };
 
+&pm8941_boost {
+	status = "disabled";
+};
+
+&vph_pwr_vreg {
+	status = "ok";
+};
+
+&pm8941_lsid1 {
+	qcom,leds@d300 {
+		torch-boost-supply = <&vph_pwr_vreg>;
+	};
+};
+
+&pm8941_mvs2 {
+	parent-supply = <&vph_pwr_vreg>;
+};
+
+&pm8941_chg {
+	otg-parent-supply = <&vph_pwr_vreg>;
+};
+
 &soc {
 	qcom,ion {
 		qcom,ion-heap@23 { /* OTHER PIL HEAP */
@@ -255,7 +277,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "vbat_disp";
 		gpio = <&pm8941_gpios 14 0x0>;
-		parent-supply = <&pm8941_boost>;
+		parent-supply = <&vph_pwr_vreg>;
 		startup-delay-us = <300>;
 		enable-active-high;
 	};
@@ -1046,8 +1068,8 @@
 		DBVDD2-supply = <&pm8941_s3>;
 		DBVDD3-supply = <&pm8941_s3>;
 		CPVDD-supply = <&pm8941_s3>;
-		SPKVDDL-supply = <&pm8941_boost>;
-		SPKVDDR-supply = <&pm8941_boost>;
+		SPKVDDL-supply = <&vph_pwr_vreg>;
+		SPKVDDR-supply = <&vph_pwr_vreg>;
 
 		gpio-controller;
 		#gpio-cells = <2>;
@@ -1158,10 +1180,6 @@
 };
 
 &pm8941_lvs1 {
-	regulator-always-on;
-};
-
-&pm8941_boost {
 	regulator-always-on;
 };
 
