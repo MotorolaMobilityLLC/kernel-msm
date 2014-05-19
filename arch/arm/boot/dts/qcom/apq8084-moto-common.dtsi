@@ -801,31 +801,31 @@
 
 		maxim,configuration {
 			/* Required properties */
-			/* Temp Table from Maxim for 3900 mAhr Battery */
+			/* Table from Maxim for EQ40 3883 mAhr Battery */
 			config		= /bits/ 16 <0x0214>;
 			full_soc_thresh	= /bits/ 16 <0x5A00>;	/* app note constant */
-			design_cap	= /bits/ 16 <7800>;	/* mAh */
-			ichgt_term	= /bits/ 16 <0x0066>;	/* battery attribute */
+			design_cap	= /bits/ 16 <7766>;	/* mAh times 2 */
+			ichgt_term	= /bits/ 16 <0x04E0>;	/* battery attribute */
 			learn_cfg	= /bits/ 16 <0x2606>;	/* app note constant */
 			filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
 			relax_cfg	= /bits/ 16 <0x203B>;
-			fullcap		= /bits/ 16 <7800>;	/* mAh */
-			fullcapnom	= /bits/ 16 <7800>;	/* mAh */
-			qrtbl00		= /bits/ 16 <0x1804>;	/* battery attribute */
-			qrtbl10		= /bits/ 16 <0x0B00>;	/* battery attribute */
-			qrtbl20		= /bits/ 16 <0x0700>;	/* battery attribute */
-			qrtbl30		= /bits/ 16 <0x0600>;	/* battery attribute */
-			rcomp0 		= /bits/ 16 <0x0051>;	/* battery attribute */
-			tcompc0		= /bits/ 16 <0x242E>;	/* battery attribute */
+			fullcap		= /bits/ 16 <7766>;	/* mAh times 2 */
+			fullcapnom	= /bits/ 16 <7766>;	/* mAh times 2 */
+			qrtbl00		= /bits/ 16 <0x1B83>;	/* battery attribute */
+			qrtbl10		= /bits/ 16 <0x0D82>;	/* battery attribute */
+			qrtbl20		= /bits/ 16 <0x0682>;	/* battery attribute */
+			qrtbl30		= /bits/ 16 <0x0584>;	/* battery attribute */
+			rcomp0 		= /bits/ 16 <0x009C>;	/* battery attribute */
+			tcompc0		= /bits/ 16 <0x0750>;	/* battery attribute */
 			maxim,cell-char-tbl = /bits/ 16 <	/* battery attribute */
-				0x9FB0 0xB5E0 0xB800 0xBA00 0xBB10 0xBC30
-				0xBC90 0xBD00 0xBDA0 0xBE40 0xBFA0 0xC250
-				0xC4C0 0xC7B0 0xCB70 0xCDD0 0x0100 0x0F10
-				0x1000 0x1300 0x1200 0x3CE0 0x3470 0x1BF0
-				0x1B90 0x1800 0x0C60 0x0DE0 0x0C80 0x0BF0
-				0x0450 0x0450 0x0080 0x0080 0x0080 0x0080
-				0x0080 0x0080 0x0080 0x0080 0x0080 0x0080
-				0x0080 0x0080 0x0080 0x0080 0x0080 0x0080
+				0x9230 0x9c90 0xa380 0xa760 0xaf20 0xb030
+				0xb310 0xb690 0xbb90 0xbc10 0xc010 0xc070
+				0xc840 0xc8c0 0xcf40 0xd710 0x0060 0x0090
+				0x0100 0x0100 0x0080 0x00b0 0x01b0 0x0b00
+				0x07f0 0x1ef0 0x0aa0 0x0a30 0x07f0 0x0790
+				0x06a0 0x06a0 0x0100 0x0100 0x0100 0x0100
+				0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+				0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
 			>;
 			/* Optional properties */
 			tgain		= /bits/ 16 <0xE71C>;	/* thermistor attribute */
