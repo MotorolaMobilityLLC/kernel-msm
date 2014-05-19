@@ -253,10 +253,6 @@ static int gBMS_Cap=50;
 //Eason show BMS cap to user+++
 static int g_SWgauge_lastCapacity = 50;
 //Eason show BMS cap to user---
-//Eason: remember last BMS Cap to filter+++
-//static int last_BMS_Cap=0;
-int gDiff_BMS=0;
-//Eason: remember last BMS Cap to filter---
 //Eason:fix Cap drop too slowly in unattended mode+++
 int filRealSusT;   //filter Real Suspend Time
 //Eason:fix Cap drop too slowly in unattended mode---
@@ -288,18 +284,6 @@ bool IsInCpuThrottle = false;
 extern void setSmb346PreventOverFCC(void);
 extern bool get_FC_flage_from_TIgauge(void);
 //Eason: check FC flag to disable charge, prevent Battery over charge, let gauge FCC abnormal---
-
-//Hank: set higher hot temperature limit when CPU on+++
-extern void setSmb346HigherHotTempLimit(void);
-//Hank: set higher hot temperature limit when CPU on---
-//Hank: set default hot temperature limit when CPU off+++
-//#ifdef ASUS_A91_PROJECT
-extern void setSmb346DefaultHotTempLimit(void);
-//#endif
-#ifdef ASUS_ME771KL_PROJECT
-extern void setSmb345DefaultHotTempLimit(void);
-#endif
-//Hank: set default hot temperature limit when CPU off---
 
 //Eason A91 porting+++
 extern int getIfonline(void);
@@ -3742,10 +3726,6 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 	}
 //Eason boot up in BatLow situation, take off cable can shutdown---    
 
-	//Eason: remember last BMS Cap to filter+++
-	gDiff_BMS = lastCapacity - gBMS_Cap ;//for discharge drop
-	//Eason: remember last BMS Cap to filter---
-
 	g_current_now = get_current_for_ASUSswgauge();
 
 	A66_capacity = _this->gpCapFilterA66->filterCapacity
@@ -3785,7 +3765,7 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 	//ASUS_BSP Eason read PM8226 register value---		
 	pmicTemp = pm8226_get_prop_batt_temp();
 #if 0
-	ASUSEvtlog("[BAT][Ser]report Capacity:%d,%d,%d,%d,%d,%d,%d,%d,%ld==>%d  ,BMS:%d, diffBMS:%d, Cur:%d, Temp:%d, 0x105B:0x%x, 0x1040:0x%x, 0x1054:0x%x, 0x1049:0x%x, 0x1344:0x%x, 0x1010:0x%x, 0x1210:0x%x, 0x1044:0x%x, 0x105D:0x%x\n",
+	ASUSEvtlog("[BAT][Ser]report Capacity:%d,%d,%d,%d,%d,%d,%d,%d,%ld==>%d  ,BMS:%d, Cur:%d, Temp:%d, 0x105B:0x%x, 0x1040:0x%x, 0x1054:0x%x, 0x1049:0x%x, 0x1344:0x%x, 0x1010:0x%x, 0x1210:0x%x, 0x1044:0x%x, 0x105D:0x%x\n",
                                     refcapacity,
                                     lastCapacity,
                                       hasCable,
@@ -3797,7 +3777,6 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
                                       intervalSinceLastUpdate,
                                       A66_capacity,
                                       gBMS_Cap,
-                                      gDiff_BMS,
                                       g_current_now,
                                       pmicTemp,
                                       pm8226_0x105B_value,

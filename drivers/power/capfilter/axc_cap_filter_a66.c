@@ -36,11 +36,6 @@ static int g_do_fasterLeverage_count = 0;
 extern int g_CapType;
 //Eason: choose Capacity type SWGauge/BMS ---
 //Hank: A86 bo use+++
-#if 0 // CONFIG_BMS_ASUS
-//Eason: remember last BMS Cap to filter+++
-extern int gDiff_BMS;
-//Eason: remember last BMS Cap to filter---
-#endif
 static int gDiff_BMS;
 //Hank: A86 bo use---
 //Hank:A86 slowly drop+++

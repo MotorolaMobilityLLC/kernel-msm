@@ -1,5 +1,5 @@
 /*                                                                                                                                                       
-        PM8921 Charge IC include file
+        PM8226 Charge IC include file
 
 */
 #ifndef __AXC_PM8226CHARGER_H__
@@ -24,11 +24,6 @@ typedef struct AXC_PM8226Charger {
 	AXI_Charger msParentCharger;
 
 	struct delayed_work asus_chg_work;    
-	//frank_tao: set Chg Limit In Pad When Charger Reset +++
-	#ifdef ASUS_A11_PROJECT
-	struct delayed_work setChgLimitInPadWhenChgResetWorker;
-	#endif
-	//frank_tao: set Chg Limit In Pad When Charger Reset ---
 	struct wake_lock cable_in_out_wakelock;
 	struct timer_list charger_in_out_timer;
 	//struct delayed_work msNotifierWorker;
@@ -39,4 +34,4 @@ typedef struct AXC_PM8226Charger {
 }AXC_PM8226Charger;
 
 extern void AXC_PM8226Charger_Binding(AXI_Charger *apCharger,int anType);
-#endif //__AXC_PM8921CHARGER_H__
+#endif //__AXC_PM8226CHARGER_H__
