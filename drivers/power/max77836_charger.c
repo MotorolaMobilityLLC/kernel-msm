@@ -191,8 +191,9 @@ static void max77836_chg_set_configuration(struct max77836_chg_data *charger)
 			charging_current[charger->cable_type].full_check_current);
 
 	/* Auto Charging Stop disabled [5] = 0 */
-	data = 0;
-	max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL6, data);
+	data = 1 << MAX77836_CHG_CTRL6_AUTOSTOP_SHIFT;
+	max77836_update_reg(charger->client, MAX77836_CHG_REG_CHG_CTRL6,
+			data, MAX77836_CHG_CTRL6_AUTOSTOP_MASK);
 
 	/* Overvoltage-Protection Threshold 6.5V [1:0] = 0b10 */
 	data = 0x01;

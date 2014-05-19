@@ -135,6 +135,11 @@
 #define MAX77836_BAT_DTLS                       0x70
 #define MAX77836_BAT_DTLS_SHIFT                 4
 
+/* MAX77836_CHG_CTRL_06 */
+#define MAX77836_CHG_CTRL6_AUTOSTOP_SHIFT	5
+#define MAX77836_CHG_CTRL6_AUTOSTOP_MASK        (0x1 << MAX77836_CHG_CTRL6_AUTOSTOP_SHIFT)
+
+
 struct max77836_chg_charging_current {
 	int input_current_limit;
 	int fast_charging_current;
