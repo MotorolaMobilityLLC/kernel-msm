@@ -148,6 +148,8 @@ extern bool reportRtcReady(void);
 //Eason:cap queue  interval plugs a small value, prevent less than target interval
 #define DEFAULT_CAP_QUEUE_INTERVAL_PLUGGED 2
 
+#define USE_SW_GAUGE 1
+
 //Hank enterRomMode_test++++
 #ifdef CONFIG_TI_GAUGE
 int enterRomMode_test = 0;//0:gauge active mode, 1:gauge Rom mode
@@ -2762,6 +2764,9 @@ static int  AXC_BatteryService_getCapacity(struct AXI_BatteryServiceFacade * bat
 	else
 #endif
 	{
+#if USE_SW_GAUGE //report capacity by SW gauge
+		return _this->A66_capacity;
+#else //report capacity by BMS
 		if(gBMS_Cap <= 1){
 			if(true==g_BootUp_IsBatLow ){
 				if(1==getIfonline()){
@@ -2808,6 +2813,7 @@ static int  AXC_BatteryService_getCapacity(struct AXI_BatteryServiceFacade * bat
 		}
 		else
 			return gBMS_Cap;
+#endif
 	}	
 	//Eason show BMS cap to user---
 }
@@ -3832,7 +3838,11 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 		else
 #endif
 		{
+#if USE_SW_GAUGE
+			_this->A66_capacity = A66_capacity;
+#else
 			_this->A66_capacity = gBMS_Cap;
+#endif
 			g_SWgauge_lastCapacity = A66_capacity;
 		}
 		//Eason show BMS cap to user---

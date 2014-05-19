@@ -2573,8 +2573,7 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 
 //ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
 #ifdef CONFIG_PM_8226_CHARGER
-		printk("[BAT]%s, batS:%d, bmsS:%d, chg_in:%d, cool:%d, warm:%d, resuChg:%d, ChgDis:%d, asus_soc:%d, socRL:%d, BMS_soc:%d\n"
-			,__FUNCTION__
+		printk("[BAT] batS:%d, bmsS:%d, chg_in:%d, cool:%d, warm:%d, resuChg:%d, ChgDis:%d, asus_soc:%d, socRL:%d, BMS_soc:%d\n"
 			,battery_status
 			,bms_status
 			,charger_in
