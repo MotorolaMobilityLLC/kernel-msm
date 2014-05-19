@@ -1237,7 +1237,7 @@ max17042_get_config_data(struct device *dev)
 	config_data->config = 0x0214;
 	config_data->shdntimer = 0xE000;
 	config_data->cell_technology = POWER_SUPPLY_TECHNOLOGY_LION;
-	config_data->vempty = 0x7D5A;
+	config_data->vempty = 0x964C;
 	config_data->temp_nom = 0x1400;
 
 	return config_data;
