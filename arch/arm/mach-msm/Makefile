@@ -82,7 +82,6 @@ obj-$(CONFIG_MSM_PM) += msm-pm.o pm-data.o lpm_levels.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 
-obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
 obj-$(CONFIG_MSM_LPM_TEST) += test-lpm.o
 obj-$(CONFIG_MSM_RPM_SMD) += rpm-smd.o
 ifdef CONFIG_DEBUG_FS
