@@ -10,22 +10,22 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * Only 8026-specific property overrides should be placed inside this
+ * file. Device definitions should be placed inside the msm8226.dtsi
+ * file.
+ */
 
-/dts-v1/;
-#include "WI500Q_EVB2_apq8026-v1.dtsi"
-#include "msm8226-memory.dtsi"
-#include "msm8226-qseecom.dtsi"
-#include "WI500Q_EVB2_msm8226-720p-mtp.dtsi"
+/*+++ASUS_BSP: rename #include "msm8226-v2.dtsi"*/
+#include "WI500Q_SR2_msm8226-v2.dtsi"
 
 / {
-	model = "Qualcomm APQ 8026 MTP";
-	compatible = "qcom,apq8026-mtp", "qcom,apq8026", "qcom,mtp";
-	qcom,board-id = <8 31>;
+	model = "Qualcomm APQ 8026";
+	compatible = "qcom,apq8026";
+	qcom,msm-id = <199 0x20000>; /*+++ASUS_BPS: remove:,  <219 0x20000>;*/
 };
 
-&cci {
-	/* Rotate rear camera to 180 degrees */
-	qcom,camera@6f {
-	qcom,mount-angle = <180>;
-	};
+&tsens {
+	qcom,sensors = <6>;
+	qcom,slope = <2901 2846 3038 2955 2901 2846>;
 };

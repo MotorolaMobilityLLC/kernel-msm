@@ -16,20 +16,16 @@
  * file.
  */
 
-#include "WI500Q_SR_msm8226-v1.dtsi"
+/*+++ASUS_BSP: rename #include "msm8226-v2.dtsi"*/
+#include "WI500Q_SR_msm8226-v2.dtsi"
 
 / {
 	model = "Qualcomm APQ 8026";
 	compatible = "qcom,apq8026";
-/*
-ASUS_BSP: Note: below qcom,msm-id can replace qcom,msm-id in WI500Q_SR_msm8226-v1.dtsi, 
-we can add <158 0>, to do test
-*/
-	qcom,msm-id = <199 0>,
-		      <219 0x20000>;
+	qcom,msm-id = <199 0x20000>; /*+++ASUS_BPS: remove:,  <219 0x20000>;*/
 };
 
 &tsens {
-	qcom,sensors = <4>;
-	qcom,slope = <2901 2846 3038 2955>;
+	qcom,sensors = <6>;
+	qcom,slope = <2901 2846 3038 2955 2901 2846>;
 };
