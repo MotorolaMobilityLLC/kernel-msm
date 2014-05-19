@@ -656,6 +656,8 @@ typedef struct sAniSirLim
     tANI_U8 gLimTDLSBufStaEnabled;
     tANI_U8 gLimTDLSUapsdMask;
     tANI_U8 gLimTDLSOffChannelEnabled;
+    // TDLS WMM Mode
+    tANI_U8 gLimTDLSWmmMode;
 #endif
 
 

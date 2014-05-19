@@ -368,6 +368,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"BTC_CRITICAL_HID_NSNIFF_BLK_GUIDANCE",
     (unsigned char *)"BTC_DYN_A2DP_TX_QUEUE_THOLD",
     (unsigned char *)"BTC_DYN_OPP_TX_QUEUE_THOLD",
+    (unsigned char *)"TDLS_WMM_MODE_ENABLED",
 };
 
 
