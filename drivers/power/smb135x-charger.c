@@ -3769,6 +3769,8 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	}
 
 	chip->factory_mode = smb135x_charger_mmi_factory();
+	if (chip->factory_mode)
+		chip->apsd_rerun_cnt = 1;
 
 	chip->client = client;
 	chip->dev = &client->dev;
