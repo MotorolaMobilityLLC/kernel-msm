@@ -2524,6 +2524,13 @@ REG_VARIABLE( CFG_TDLS_EXTERNAL_CONTROL, WLAN_PARAM_Integer,
               CFG_TDLS_EXTERNAL_CONTROL_DEFAULT,
               CFG_TDLS_EXTERNAL_CONTROL_MIN,
               CFG_TDLS_EXTERNAL_CONTROL_MAX ),
+
+REG_VARIABLE( CFG_TDLS_WMM_MODE_ENABLE, WLAN_PARAM_Integer,
+              hdd_config_t, fEnableTDLSWmmMode,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_TDLS_WMM_MODE_ENABLE_DEFAULT,
+              CFG_TDLS_WMM_MODE_ENABLE_MIN,
+              CFG_TDLS_WMM_MODE_ENABLE_MAX ),
 #endif
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
@@ -4604,6 +4611,14 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
    {
       fStatus = FALSE;
       hddLog(LOGE, "Could not pass on WNI_CFG_TDLS_BUF_STA_ENABLED to CCM\n");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_TDLS_WMM_MODE_ENABLED,
+                    pConfig->fEnableTDLSWmmMode, NULL,
+                    eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_TDLS_WMM_MODE_ENABLED to CCM\n");
    }
 
 #endif

@@ -507,6 +507,8 @@ void hdd_ipv6_notifier_work_queue(struct work_struct *work)
     {
         pHddCtx->sus_res_mcastbcast_filter =
             pHddCtx->configuredMcastBcastFilter;
+        hddLog(LOG1, FL("saving configuredMcastBcastFilter = %d"),
+                        pHddCtx->sus_res_mcastbcast_filter);
         pHddCtx->sus_res_mcastbcast_filter_valid = VOS_TRUE;
     }
 
@@ -914,11 +916,11 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
                          (WDA_IS_MCAST_FLT_ENABLE_IN_FW &&
                           !(pHddCtx->cfg_ini->fEnableMCAddrList))))
                     {
-                        hddLog (VOS_TRACE_LEVEL_INFO,
-                                FL("Set offLoadRequest with "
-                                   "SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE"));
                         offLoadRequest.enableOrDisable =
                             SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE;
+                        hddLog (VOS_TRACE_LEVEL_INFO,
+                                FL("Set offLoadRequest with %d"),
+                                   offLoadRequest.enableOrDisable);
                     }
 
                     vos_mem_copy(&offLoadRequest.params.hostIpv6Addr,
@@ -1008,6 +1010,8 @@ void hdd_ipv4_notifier_work_queue(struct work_struct *work)
     {
         pHddCtx->sus_res_mcastbcast_filter =
             pHddCtx->configuredMcastBcastFilter;
+        hddLog(LOG1, FL("saving configuredMcastBcastFilter = %d"),
+                        pHddCtx->sus_res_mcastbcast_filter);
         pHddCtx->sus_res_mcastbcast_filter_valid = VOS_TRUE;
     }
 
@@ -1306,7 +1310,9 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
         //Configure supported OffLoads
         hdd_conf_hostoffload(pAdapter, TRUE);
         wlanSuspendParam->configuredMcstBcstFilterSetting = pHddCtx->configuredMcastBcastFilter;
-
+        hddLog(VOS_TRACE_LEVEL_INFO,
+              FL("saving configuredMcastBcastFilterSetting = %d"),
+              wlanSuspendParam->configuredMcstBcstFilterSetting);
 #ifdef WLAN_FEATURE_PACKET_FILTERING
         /* During suspend, configure MC Addr list filter to the firmware
          * function takes care of checking necessary conditions before

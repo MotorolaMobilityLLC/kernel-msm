@@ -2577,6 +2577,7 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                     (WLAN_HDD_GET_CTX(pAdapter))->hdd_mcastbcast_filter_set = FALSE;
             }
             pHddStaCtx->ft_carrier_on = FALSE;
+            pHddStaCtx->hdd_ReassocScenario = FALSE;
             break;
 
         case eCSR_ROAM_FT_START:
@@ -2766,6 +2767,7 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                     }
                 }
                 halStatus = hdd_RoamSetKeyCompleteHandler( pAdapter, pRoamInfo, roamId, roamStatus, roamResult );
+                pHddStaCtx->hdd_ReassocScenario = FALSE;
             }
             break;
 #ifdef WLAN_FEATURE_VOWIFI_11R
