@@ -429,7 +429,7 @@ struct stm_response {
 #define STM401_IR_GESTURE_CNT      8
 #define STM401_IR_SZ_GESTURE       4
 #define STM401_IR_SZ_RAW           20
-#define STM401_IR_CONFIG_REG_SIZE  100
+#define STM401_IR_CONFIG_REG_SIZE  255
 
 /* stm401_readbuff offsets. */
 #define IRQ_WAKE_LO  0
