@@ -16,7 +16,41 @@
 
 
 / {
-	qcom,msm-id = <217 0x4D 0x8000>;
+	qcom,msm-id = <217 0x4D 0x8000>, <217 0x4D 0x8100>;
+};
+
+&pm8941_boost {
+	status = "okay";
+	regulator-always-on;
+};
+
+&vbat_disp_vreg {
+	parent-supply = <&pm8941_boost>;
+};
+
+&spi_7 {
+	wm5110@0 {
+		SPKVDDL-supply = <&pm8941_boost>;
+		SPKVDDR-supply = <&pm8941_boost>;
+	};
+};
+
+&vph_pwr_vreg {
+	status = "disabled";
+};
+
+&pm8941_lsid1 {
+	qcom,leds@d300 {
+		torch-boost-supply = <&pm8941_boost>;
+	};
+};
+
+&pm8941_mvs2 {
+	parent-supply = <&pm8941_boost>;
+};
+
+&pm8941_chg {
+	otg-parent-supply = <&pm8941_boost>;
 };
 
 &i2c_2 {
