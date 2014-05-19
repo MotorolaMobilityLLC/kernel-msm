@@ -192,7 +192,7 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 {
 	unsigned long flags;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
-	int irq_en;
+	int irq_en, rc;
 
 	if (!ctx->panel_on)
 		return;
@@ -209,12 +209,24 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 			mdss_mdp_footswitch_ctrl_idle_pc(1,
 				&ctx->ctl->mfd->pdev->dev);
 			mdss_mdp_ctl_restore(ctx->ctl);
+			rc = mdss_iommu_ctrl(1);
+			if (IS_ERR_VALUE(rc)) {
+				pr_err("IOMMU attach failed\n");
+				mutex_unlock(&ctx->clk_mtx);
+				return;
+			}
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 
 			if (mdss_mdp_cmd_tearcheck_setup(ctx->ctl, true))
 				pr_warn("tearcheck setup failed\n");
 			ctx->idle_pc = false;
 		} else {
+			rc = mdss_iommu_ctrl(1);
+			if (IS_ERR_VALUE(rc)) {
+				pr_err("IOMMU attach failed\n");
+				mutex_unlock(&ctx->clk_mtx);
+				return;
+			}
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 		}
 
@@ -253,6 +265,7 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 		mdss_mdp_hist_intr_setup(&mdata->hist_intr, MDSS_IRQ_SUSPEND);
 		mdss_mdp_ctl_intf_event
 			(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
+		mdss_iommu_ctrl(0);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 		if ((ctx->panel_on) && (mdata->idle_pc_enabled))
 			schedule_delayed_work(&ctx->pc_work,
