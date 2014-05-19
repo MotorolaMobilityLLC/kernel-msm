@@ -211,6 +211,14 @@ disp_en_gpio_err:
 	return rc;
 }
 
+void mdss_dsi_panel_low_fps_mode(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
+{
+	if (enable)
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->low_fps_mode_on_cmds);
+	else
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->low_fps_mode_off_cmds);
+}
+
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -1117,6 +1125,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		pr_err("%s: failed to parse panel features\n", __func__);
 		goto error;
 	}
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->low_fps_mode_on_cmds,
+		"qcom,mdss-dsi-low-fps-mode-on-command", "qcom,mdss-dsi-low-fps-mode-on-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->low_fps_mode_off_cmds,
+		"qcom,mdss-dsi-low-fps-mode-off-command", "qcom,mdss-dsi-low-fps-mocd-off-command-state");
 
 	return 0;
 
