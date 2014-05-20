@@ -1250,6 +1250,17 @@ static int inv_verify_firmware(struct inv_mpu_state *st,
 	return 0;
 }
 
+static int inv_set_step_buffer_time(struct inv_mpu_state *st)
+{
+	/* Pedometer executes at 50Hz so 1.5 seconds is 20ms * 75 */
+	return inv_write_2bytes(st, KEY_D_PEDSTD_SB_TIME, 75);
+}
+
+static int inv_set_step_threshold(struct inv_mpu_state *st)
+{
+	return inv_write_2bytes(st, KEY_D_PEDSTD_SB, st->ped.step_thresh);
+}
+
 int inv_enable_pedometer_interrupt(struct inv_mpu_state *st, bool en)
 {
 	u8 reg[3];
@@ -1297,11 +1308,13 @@ int inv_enable_pedometer(struct inv_mpu_state *st, bool en)
 {
 	u8 d[1];
 
-	if (en)
+	if (en) {
+		inv_set_step_buffer_time(st);
+		inv_set_step_threshold(st);
 		d[0] = 0xf1;
-	else
+	} else {
 		d[0] = 0xff;
-
+	}
 	return mem_w_key(KEY_CFG_PED_ENABLE, ARRAY_SIZE(d), d);
 }
 
