@@ -3095,7 +3095,7 @@ static int apq8084_mi2s_pri_snd_startup(struct snd_pcm_substream *substream)
 		pr_debug("%s: acquire mi2s resources\n", __func__);
 
 		pinctrl = devm_pinctrl_get_select(card->dev,
-				"pmw-pri-mi2s-active");
+				"pmx-pri-mi2s-active");
 		if (IS_ERR(pinctrl)) {
 			ret = PTR_ERR(pinctrl);
 			dev_err(card->dev, "%s pinctrl failed err %d\n",
@@ -3133,7 +3133,7 @@ pri_fmt_fail:
 pri_clk_fail:
 	msm_aux_pcm_free_gpios(auxpcm_ctrl);
 	pinctrl = devm_pinctrl_get_select(card->dev,
-			"pmw-pri-mi2s-sleep");
+			"pmx-pri-mi2s-sleep");
 	if (IS_ERR(pinctrl))
 		dev_err(card->dev, "%s pinctrl failed err %ld\n",
 			__func__, PTR_ERR(pinctrl));
