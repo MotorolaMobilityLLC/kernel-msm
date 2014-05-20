@@ -187,32 +187,13 @@ static int android_bat_get_property(struct power_supply *ps,
 {
 	struct android_bat_data *battery =
 		container_of(ps, struct android_bat_data, psy_bat);
-	struct power_supply *psy;
-	int ret;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = battery->charging_status;
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
-		psy = power_supply_get_by_name(battery->pdata->charger_name);
-		if (!psy) {
-			dev_err(battery->dev,
-				"%s: Fail to get psy(%s)\n", __func__,
-				battery->pdata->charger_name);
-			return -ENODATA;
-		} else {
-			ret = psy->get_property(psy,
-				POWER_SUPPLY_PROP_HEALTH, val);
-			if (ret < 0) {
-				dev_err(battery->dev,
-					"%s: Fail to get property(%d)\n",
-					__func__, ret);
-				return -ENODATA;
-			} else {
-				battery->batt_health = val->intval;
-			}
-		}
+		val->intval = battery->batt_health;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = 1;
