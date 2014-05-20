@@ -280,10 +280,10 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 		goto dt_exit;
 	}
 
-	gpio_direction_output(data->rst, 0);
-	usleep_range(4900, 5000);
-
 	if (data->ap_rev < 2) {
+		gpio_direction_output(data->rst, 0);
+		usleep_range(4900, 5000);
+
 		errorno = of_property_read_string(np, "ssp_accel_vreg-name",
 				&supply_name);
 		if (errorno < 0) {
@@ -318,10 +318,11 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 				goto dt_exit;
 			}
 		}
-	}else {
+	} else {
+		gpio_direction_output(data->rst, 1);
 		data->vdd_acc = devm_regulator_get(dev, "ssp_acc_vreg");
 		if (IS_ERR(data->vdd_acc)) {
-			data->vdd_hrm = NULL;
+			data->vdd_acc = NULL;
 			pr_err("[SSP] could not get ssp_acc_vreg, %ld\n",
 				PTR_ERR(data->vdd_acc));
 			errorno = -ENXIO;
@@ -358,17 +359,21 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 			PTR_ERR(data->vdd_hub));
 		errorno = -ENXIO;
 	} else {
-		gpio_direction_output(data->rst, 1);
 		errorno = regulator_enable(data->vdd_hub);
 		if (errorno) {
-			regulator_disable(data->vdd_acc);
+			if (data->vdd_acc != NULL)
+				regulator_disable(data->vdd_acc);
 			if (data->vdd_hrm != NULL)
 				regulator_disable(data->vdd_hrm);
 			pr_err("[SSP] VDD can't turn on for SSP\n");
 			goto dt_exit;
 		}
 	}
-	msleep(75);
+
+	if (data->ap_rev < 2) {
+		gpio_direction_output(data->rst, 1);
+		msleep(75);
+	}
 dt_exit:
 	return errorno;
 }
