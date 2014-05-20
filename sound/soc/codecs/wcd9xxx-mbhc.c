@@ -795,6 +795,7 @@ static void wcd9xxx_insert_detect_setup(struct wcd9xxx_mbhc *mbhc, bool ins)
 static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 				enum snd_jack_types jack_type)
 {
+	struct snd_soc_codec *codec = mbhc->codec;
 	WCD9XXX_BCL_ASSERT_LOCKED(mbhc->resmgr);
 
 	pr_debug("%s: enter insertion %d hph_status %x\n",
@@ -880,6 +881,20 @@ static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 
 		if (mbhc->impedance_detect && impedance_detect_en)
 			wcd9xxx_detect_impedance(mbhc, &mbhc->zl, &mbhc->zr);
+
+		/*
+		 * Check if we recieve PA TURN ON event from DAPM
+		 * check PA status and turn it ON.
+		*/
+		pr_debug(" mbhc->event_state = %ld\n", mbhc->event_state);
+		if (test_bit(MBHC_EVENT_PA_HPHL, &mbhc->event_state)) {
+			pr_debug(" check if PA is ON\n");
+			if (!wcd9xxx_is_hph_pa_on(codec)) {
+				pr_debug(" PA is OFF, so turn on PA\n");
+				snd_soc_update_bits(codec,
+					WCD9XXX_A_RX_HPH_CNP_EN, 0x30, 0x30);
+			}
+		}
 
 		pr_debug("%s: Reporting insertion %d(%x)\n", __func__,
 			 jack_type, mbhc->hph_status);

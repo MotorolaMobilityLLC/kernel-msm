@@ -3257,6 +3257,10 @@ static int tapan_volatile(struct snd_soc_codec *ssc, unsigned int reg)
 	if (reg == TAPAN_A_RX_HPH_L_STATUS || reg == TAPAN_A_RX_HPH_R_STATUS)
 		return 1;
 
+	/* HPH PA Enable */
+	if (reg == TAPAN_A_RX_HPH_CNP_EN)
+		return 1;
+
 	if (reg == TAPAN_A_MBHC_INSERT_DET_STATUS)
 		return 1;
 
