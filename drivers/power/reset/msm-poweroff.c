@@ -227,14 +227,6 @@ static void msm_restart_prepare(const char *cmd)
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			__raw_writel(0x77665500, restart_reason);
-			/* set reboot_bl flag in PMIC for cold reset */
-			qpnp_pon_store_extra_reset_info(RESET_EXTRA_REBOOT_BL_REASON,
-				RESET_EXTRA_REBOOT_BL_REASON);
-			/*
-			 * force cold reboot here to avoid impaction from
-			 * modem double reboot workaround solution.
-			 */
-			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 		} else if (!strncmp(cmd, "recovery", 8)) {
 			__raw_writel(0x77665502, restart_reason);
 		} else if (!strcmp(cmd, "rtc")) {
