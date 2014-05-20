@@ -796,6 +796,16 @@ sme_process_cmd:
                     // Insert the command onto the ActiveList...
                     csrLLInsertHead( &pMac->sme.smeCmdActiveList, &pCommand->Link, LL_ACCESS_NOLOCK );
 
+                    if( pMac->deferImps )
+                    {
+                        /* IMPS timer is already running so stop it and
+                         * it will get restarted when no command is pending
+                         */
+                        csrScanStopIdleScanTimer( pMac );
+                        pMac->scan.fRestartIdleScan = eANI_BOOLEAN_TRUE;
+                        pMac->deferImps = eANI_BOOLEAN_FALSE;
+                    }
+
                     // .... and process the command.
 
                     MTRACE(vos_trace(VOS_MODULE_ID_SME,
@@ -1411,6 +1421,8 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
    pMac->isCoalesingInIBSSAllowed =
          pSmeConfigParams->csrConfig.isCoalesingInIBSSAllowed;
    pMac->fEnableDebugLog = pSmeConfigParams->fEnableDebugLog;
+   pMac->fDeferIMPSTime = pSmeConfigParams->fDeferIMPSTime;
+
    return status;
 }
 
