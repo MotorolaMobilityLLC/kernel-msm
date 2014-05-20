@@ -3703,7 +3703,8 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
        (request->initiator == NL80211_REGDOM_SET_BY_CORE)||
        (request->initiator == NL80211_REGDOM_SET_BY_USER))
     {
-       if (wiphy->bands[IEEE80211_BAND_5GHZ])
+       if ( pHddCtx->cfg_ini->gEnableStrictRegulatoryForFCC &&
+            wiphy->bands[IEEE80211_BAND_5GHZ])
        {
           for (j=0; j<wiphy->bands[IEEE80211_BAND_5GHZ]->n_channels; j++)
           {
