@@ -366,6 +366,15 @@ struct lis3dsh_acc_data {
 };
 
 static int chip_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
+static bool is_suspend=false;
+// ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
+static struct class *lis3dsh_class = NULL;
+static int lis3dsh_major = 0;
+static int lis3dsh_minor = 0;
+static dev_t lis3dsh_dev;
+struct device *lis3dsh_class_dev = NULL;
+static char double_tap[16];
+// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
 
 /* sets default init values to be written in registers at probe stage */
 static void lis3dsh_acc_set_init_register_values(struct lis3dsh_acc_data *acc)
@@ -650,7 +659,7 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 	int err = -1;
 	u8 buf[17];
 
-	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: hw init start\n", __func__);
+	sensor_debug(DEBUG_VERBOSE, "[lis3dsh] %s: +++\n", __func__);
 
 	buf[0] = LIS3DSH_WHO_AM_I;
 	err = lis3dsh_acc_i2c_read(acc, buf, 1);
@@ -766,7 +775,7 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 		goto err_resume_state;
 
 	acc->hw_initialized = 1;
-	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: hw init done\n", __func__);
+	sensor_debug(DEBUG_VERBOSE, "[lis3dsh] %s: ---\n", __func__);
 	return 0;
 
 err_firstread:
@@ -832,14 +841,10 @@ static int lis3dsh_acc_device_power_on(struct lis3dsh_acc_data *acc)
 	}
 
 	if (acc->hw_initialized) {
-		if(acc->pdata->gpio_int1 >= 0) {
-			printk("enable irq 1\n");
+		if(acc->pdata->gpio_int1 >= 0)
 			enable_irq(acc->irq1);
-		}
-		if(acc->pdata->gpio_int2 >= 0) {
-			printk("enable irq 1\n");
+		if(acc->pdata->gpio_int2 >= 0)
 			enable_irq(acc->irq2);
-		}
 	}
 	return 0;
 }
@@ -922,8 +927,13 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02)) {
 			printk("***********************report event SM2\n");
-			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_DIS);
-			public_gpio_keys_gpio_report_event();
+			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
+			if(is_suspend)
+				public_gpio_keys_gpio_report_event();
+// ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
+			strcpy(double_tap,"TAP");
+			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
+// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
 		}
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: OUTS_2: 0x%02x\n", __func__, rbuf[0]);
 	}
@@ -1142,10 +1152,9 @@ static int lis3dsh_acc_enable(struct lis3dsh_acc_data *acc)
 			atomic_set(&acc->enabled, 0);
 			return err;
 		}
-		schedule_delayed_work(&acc->input_work,
-			msecs_to_jiffies(acc->pdata->poll_interval));
+		schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
+		sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
 	}
-	sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
 	return 0;
 }
 
@@ -1722,14 +1731,16 @@ void notify_st_sensor_lowpowermode(int low)
 {
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low) {
+		is_suspend=true;
 		enable_irq_wake(g_acc->irq1);
 		enable_irq_wake(g_acc->irq2);
 		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_EN);
 	}
 	else {
+		is_suspend=false;
 		disable_irq_wake(g_acc->irq1);
 		disable_irq_wake(g_acc->irq2);
-		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_DIS);
+		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
 	}
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
@@ -1812,6 +1823,9 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 			goto err_pdata_init;
 		}
 	}
+
+	//lis3dsh_class = class_create(THIS_MODULE, LIS3DSH_ACC_DEV_NAME);
+	//err = kobject_set_name(&client->dev->kobj, "%s", &client->dev->name);
 
 	#if 0//defined(CONFIG_HAS_EARLYSUSPEND)
 	register_early_suspend(&lis3dsh_early_suspend_handler);
@@ -1902,7 +1916,6 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 			dev_err(&client->dev, "[lis3dsh] request irq1 failed: %d\n", err);
 			goto err_destoyworkqueue1;
 		}
-		printk("[lis3dsh] request irq 1 OK\n");
 		disable_irq_nosync(acc->irq1);
 	}
 
@@ -1922,7 +1935,6 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 			dev_err(&client->dev, "[lis3dsh] request irq2 failed: %d\n", err);
 			goto err_destoyworkqueue2;
 		}
-		printk("[lis3dsh] request irq 2 OK\n");
 		disable_irq_nosync(acc->irq2);
 	}
 
@@ -2052,24 +2064,62 @@ static struct i2c_driver lis3dsh_acc_driver = {
 	.id_table = lis3dsh_acc_id,
 };
 
-module_i2c_driver(lis3dsh_acc_driver);
-#if 0
+// ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
+static ssize_t show_double_tap(struct device *device, struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = snprintf(buf, PAGE_SIZE, "%s\n", double_tap);
+	double_tap[0] = 0;
+	return ret;
+}
+
+static struct device_attribute lis3dsh_attrs[] = {
+	__ATTR(double_tap, S_IRUGO, show_double_tap, NULL),
+};
+// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
+
 static int __init lis3dsh_acc_init(void)
 {
+	dev_t dev = MKDEV(lis3dsh_major, 0);
+
 	sensor_debug(DEBUG_INFO, "%s accelerometer driver: init\n", LIS3DSH_ACC_DEV_NAME);
+
+	lis3dsh_major = MAJOR(dev);
+
+	lis3dsh_class = class_create(THIS_MODULE, LIS3DSH_ACC_DEV_NAME);
+	if(IS_ERR(lis3dsh_class)) {
+		sensor_debug(DEBUG_INFO, "Err: failed in creating class.\n");
+		goto error;
+	}
+
+	lis3dsh_dev = MKDEV(lis3dsh_major, lis3dsh_minor);
+	lis3dsh_class_dev = device_create(lis3dsh_class, NULL, lis3dsh_dev, NULL, LIS3DSH_ACC_DEV_NAME);
+	if(lis3dsh_class_dev == NULL)
+	{
+		sensor_debug(DEBUG_INFO, "Err: failed in creating device.\n");
+		goto error;
+	}
+	double_tap[0] = 0;
+	device_create_file(lis3dsh_class_dev, &lis3dsh_attrs[0]);
+
 	return i2c_add_driver(&lis3dsh_acc_driver);
+
+	error:
+	return -1;
 }
 
 static void __exit lis3dsh_acc_exit(void)
 {
-	sensor_debug(DEBUG_INFO, "%s accelerometer driver: exit\n", LIS3DSH_ACC_DEV_NAME);
+	sensor_debug(DEBUG_INFO, "[maggie] %s accelerometer driver: exit\n", LIS3DSH_ACC_DEV_NAME);
+
+	// unregister class
+	device_destroy(lis3dsh_class, lis3dsh_dev);
+	class_destroy(lis3dsh_class);
 	i2c_del_driver(&lis3dsh_acc_driver);
 	return;
 }
 
 module_init(lis3dsh_acc_init);
 module_exit(lis3dsh_acc_exit);
-#endif
 
 MODULE_DESCRIPTION("lis3dsh accelerometer driver");
 MODULE_AUTHOR("ASUS");
