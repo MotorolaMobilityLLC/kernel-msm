@@ -797,9 +797,6 @@ qpnp_config_reset(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 	if (sec_debug_is_enabled()) {
 		/* Debug MID / HIGH : WARM reset */
 		cfg->s2_type = 1;
-	} else {
-		/* Debug LOW : HARD reset */
-		cfg->s2_type = 7;
 	}
 #endif
 	rc = qpnp_pon_masked_write(pon, cfg->s2_cntl_addr,
