@@ -1037,6 +1037,8 @@ void cyttsp5_set_upgrade_firmware_from_builtin(struct device *dev,
 int upgrade_firmware_from_sdcard(struct device *dev,
 	const u8 *fw_data, int fw_size);
 
+void report_sumsize_palm(struct cyttsp5_mt_data *md,
+	u16 sumsize, bool palm);
 void cyttsp5_mt_lift_all(struct cyttsp5_mt_data *md);
 int cyttsp5_mt_release(struct device *dev);
 int cyttsp5_mt_probe(struct device *dev);

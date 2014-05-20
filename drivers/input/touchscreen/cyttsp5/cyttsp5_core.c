@@ -4836,6 +4836,9 @@ int cyttsp5_core_suspend(struct device *dev)
 		cancel_work_sync(&cd->startup_work);
 		cyttsp5_stop_wd_timer(cd);
 	}
+#ifdef SAMSUNG_PALM_MOTION
+	report_sumsize_palm(&cd->md, 0, 0);
+#endif
 	cyttsp5_mt_lift_all(&cd->md);
 
 	if (device_may_wakeup(dev)) {

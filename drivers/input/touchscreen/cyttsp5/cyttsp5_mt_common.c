@@ -162,7 +162,7 @@ static void cyttsp5_input_report(struct input_dev *input, int sig,
 }
 
 #ifdef SAMSUNG_PALM_MOTION
-static inline void report_sumsize_palm(struct cyttsp5_mt_data *md,
+void report_sumsize_palm(struct cyttsp5_mt_data *md,
 	u16 sumsize, bool palm)
 {
 	static bool palm_flag = false;
@@ -198,9 +198,6 @@ void cyttsp5_mt_lift_all(struct cyttsp5_mt_data *md)
 {
 	int max = md->si->tch_abs[CY_TCH_T].max;
 
-#ifdef SAMSUNG_PALM_MOTION
-	report_sumsize_palm(md, 0, 0);
-#endif
 	if (md->num_prv_tch != 0) {
 		cyttsp5_report_slot_liftoff(md, max);
 		input_sync(md->input);
