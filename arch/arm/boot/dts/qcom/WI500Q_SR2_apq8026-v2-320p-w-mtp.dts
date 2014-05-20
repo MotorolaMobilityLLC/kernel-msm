@@ -23,7 +23,7 @@
 / {
 	model = "Qualcomm APQ 8026v2W MTP";
 	compatible = "qcom,apq8026-mtp", "qcom,apq8026", "qcom,mtp";
-	qcom,board-id = <8 42>; /*chage from 4 to 42*/
+	qcom,board-id = <8 43>; /*chage from 4 to 42*/
 };
 /*+++ ASUS_BSP: mask
 &mdss_dsi0 {
