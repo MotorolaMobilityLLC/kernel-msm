@@ -1794,6 +1794,7 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 	mfd->msm_fb_backup.disp_commit = *disp_commit;
 
 // ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
+#if 0
 {
 	static unsigned long last_time_cb = 0;
 	static unsigned int max_time_used = 0;
@@ -1832,6 +1833,7 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 
 	last_time_cb = jiffies;
 }
+#endif
 // ASUS_BSP --- Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
 	atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
 	atomic_inc(&mfd->commits_pending);

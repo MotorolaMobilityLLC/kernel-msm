@@ -314,6 +314,7 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 	ktime_t vsync_time;
 
 // ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
+#if 0
 {
 	static unsigned long last_time_cb = 0;
 	static unsigned int max_time_used = 0;
@@ -349,6 +350,7 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 
 	last_time_cb = jiffies;
 }
+#endif
 // ASUS_BSP --- Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
 	if (!ctx) {
 		pr_err("%s: invalid ctx\n", __func__);
