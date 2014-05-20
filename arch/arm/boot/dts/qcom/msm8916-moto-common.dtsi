@@ -566,6 +566,14 @@
 		};
 	};
 
+	rpm-regulator-ldoa10 {
+		pm8916_l10: regulator-l10 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage = <1800000>;
+		};
+	};
+
 	rpm_regulator-ldoa13 {
 		status = "okay";
 		regulator-l13 {
