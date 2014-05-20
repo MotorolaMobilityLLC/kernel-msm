@@ -39,7 +39,7 @@
 s64 get_time_ns(void)
 {
 	struct timespec ts;
-	ktime_get_ts(&ts);
+	ts = CURRENT_TIME;
 	return timespec_to_ns(&ts);
 }
 
