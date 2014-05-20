@@ -32,7 +32,6 @@ struct msm_vib {
 	struct workqueue_struct *queue;
 
 	int state;
-	int current_state;
 	int timeout;
 	struct mutex lock;
 	const char *supply_name;
@@ -43,17 +42,31 @@ struct msm_vib {
 static void set_vibrator(struct regulator *vib_en_ldo, int on)
 {
 	int rc;
+	static int previous_state = 0;
 
 	pr_info("[VIB] %s, on=%d\n", __func__, on);
 
+	if ( previous_state == on) {
+		pr_info("[VIB] %s,keep current state %d\n", __func__, previous_state);
+		return;
+	}
+
 	if (on) {
 		rc = regulator_enable(vib_en_ldo);
-		if (rc)
-			pr_err("[VIB] unable to enable vib ldo\n");
+		if (rc) {
+			pr_err("[VIB] unable to enable vib ldo %d\n", rc);
+			previous_state = rc;
+		}
+		else
+			previous_state = on;
 	} else {
 		rc = regulator_disable(vib_en_ldo);
-		if (rc)
-			pr_err("[VIB] unable to disable vib ldo\n");
+		if (rc) {
+			pr_err("[VIB] unable to disable vib ldo %d\n", rc);
+			previous_state = rc;
+		}
+		else
+			previous_state = on;
 
 	}
 }
@@ -98,13 +111,7 @@ static void msm_vibrator_update(struct work_struct *work)
 	struct msm_vib *vib = container_of(work, struct msm_vib,
 					 work);
 
-	if (vib->current_state != vib->state) {
-		vib->current_state = vib->state;
 		set_vibrator(vib->vib_en_ldo, vib->state);
-	} else {
-		pr_info("[VIB] %s keep current state %d\n",
-				__func__, vib->current_state);
-	}
 }
 
 static int vibrator_get_time(struct timed_output_dev *dev)
@@ -187,7 +194,6 @@ static int msm_vibrator_probe(struct platform_device *pdev)
 	}
 
 	vib->timeout = VIB_DEFAULT_TIMEOUT;
-	vib->current_state = 0;
 
 	INIT_WORK(&vib->work, msm_vibrator_update);
 	mutex_init(&vib->lock);
