@@ -2199,6 +2199,13 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_DEFER_IMPS_FOR_TIME_MAX                          (500)
 #define CFG_DEFER_IMPS_FOR_TIME_DEFAULT                      (200)
 
+/* If last disconnection was due to HB failure and we reconnect
+ * to same AP next time, send Deauth before starting connection
+ */
+#define CFG_ENABLE_DEAUTH_BEFORE_CONNECTION                  "gSendDeauthBeforeCon"
+#define CFG_ENABLE_DEAUTH_BEFORE_CONNECTION_MIN              (0)
+#define CFG_ENABLE_DEAUTH_BEFORE_CONNECTION_MAX              (1)
+#define CFG_ENABLE_DEAUTH_BEFORE_CONNECTION_DEFAULT          (0)
 
 /*--------------------------------------------------------------------------- 
   Type declarations
@@ -2658,6 +2665,7 @@ typedef struct
    v_U32_t                     pmfSaQueryRetryInterval;
 #endif
    v_U32_t                     deferImpsTime;
+   v_BOOL_t                    sendDeauthBeforeCon;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
