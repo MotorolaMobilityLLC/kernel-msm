@@ -29,7 +29,7 @@ static struct gpiomux_setting gpio_sensorhub_active = {
 static struct gpiomux_setting gpio_sensorhub_suspend = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.pull = GPIOMUX_PULL_NONE,
 };
 
 static struct gpiomux_setting gpio_spi_act_config = {
