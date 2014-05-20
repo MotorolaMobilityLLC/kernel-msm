@@ -106,7 +106,7 @@
 #define CFG_COUNTRY_CODE_PRIORITY_NAME         "gCountryCodePriority"
 #define CFG_COUNTRY_CODE_PRIORITY_MIN          ( 0 )
 #define CFG_COUNTRY_CODE_PRIORITY_MAX          ( 1 )
-#define CFG_COUNTRY_CODE_PRIORITY_DEFAULT      ( 0 )
+#define CFG_COUNTRY_CODE_PRIORITY_DEFAULT      ( 1 )
 
 #define CFG_ENFORCE_COUNTRY_CODE_MATCH_NAME    "gEnforceCountryCodeMatch"
 #define CFG_ENFORCE_COUNTRY_CODE_MATCH_MIN     ( 0 )
