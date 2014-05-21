@@ -3,7 +3,7 @@
  * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2013 Stony Brook University
  * Copyright (c) 2003-2013 The Research Foundation of SUNY
- * Copyright (C) 2013 Motorola Mobility, LLC
+ * Copyright (C) 2013-2014 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -64,8 +64,9 @@ static int esdfs_unlink(struct inode *dir, struct dentry *dentry)
 	struct inode *lower_dir_inode = esdfs_lower_inode(dir);
 	struct dentry *lower_dir_dentry;
 	struct path lower_path;
-	const struct cred *creds =
-			esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
+	const struct cred *creds;
+
+	creds = esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
 	if (!creds)
 		return -ENOMEM;
 
@@ -140,6 +141,9 @@ static int esdfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 	fsstack_copy_inode_size(dir, lower_parent_dentry->d_inode);
 	/* update number of links on parent directory */
 	set_nlink(dir, esdfs_lower_inode(dir)->i_nlink);
+
+	if (ESDFS_DERIVE_PERMS(ESDFS_SB(dir->i_sb)))
+		err = esdfs_derive_mkdir_contents(dentry);
 
 out:
 	mnt_drop_write(lower_path.mnt);
@@ -243,7 +247,7 @@ static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	fsstack_copy_inode_size(new_dir, lower_new_dir_dentry->d_inode);
 	if (new_dir != old_dir) {
 		esdfs_copy_attr(old_dir,
-				lower_old_dir_dentry->d_inode);
+				      lower_old_dir_dentry->d_inode);
 		fsstack_copy_inode_size(old_dir,
 					lower_old_dir_dentry->d_inode);
 	}
@@ -267,8 +271,15 @@ static int esdfs_permission(struct inode *inode, int mask)
 	struct inode *lower_inode;
 	int err;
 	int oldmask;
-	const struct cred *creds =
-			esdfs_override_creds(ESDFS_SB(inode->i_sb), &oldmask);
+	const struct cred *creds;
+
+	/* First, check the upper permissions */
+	err = generic_permission(inode, mask);
+	if (err)
+		return err;
+
+	/* Now masquerade and check the lower permissions */
+	creds = esdfs_override_creds(ESDFS_SB(inode->i_sb), &oldmask);
 	if (!creds)
 		return -ENOMEM;
 
@@ -276,6 +287,11 @@ static int esdfs_permission(struct inode *inode, int mask)
 	err = inode_permission(lower_inode, mask);
 
 	esdfs_revert_creds(creds, &oldmask);
+
+	/* Finally, check the derived permissions */
+	if (!err && ESDFS_DERIVE_PERMS(ESDFS_SB(inode->i_sb)))
+		err = esdfs_check_derived_permission(inode, mask);
+
 	return err;
 }
 

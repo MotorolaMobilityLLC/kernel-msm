@@ -3,7 +3,7 @@
  * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2013 Stony Brook University
  * Copyright (c) 2003-2013 The Research Foundation of SUNY
- * Copyright (C) 2013 Motorola Mobility, LLC
+ * Copyright (C) 2013-2014 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -38,6 +38,14 @@ static int esdfs_d_revalidate(struct dentry *dentry, struct nameidata *nd)
 	}
 	spin_unlock(&dentry->d_lock);
 
+	/*
+	 * If we are going to have to update the inode, don't do it in
+	 * RCU-walk mode.
+	 */
+	if (nd && (nd->flags & LOOKUP_RCU) &&
+	    ESDFS_INODE_IS_STALE(ESDFS_I(nd->inode)))
+		return -ECHILD;
+
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
 	lower_parent_dentry = dget_parent(lower_dentry);
@@ -67,6 +75,8 @@ static int esdfs_d_revalidate(struct dentry *dentry, struct nameidata *nd)
 
 	spin_unlock(&dentry->d_lock);
 	spin_unlock(&lower_dentry->d_lock);
+
+	esdfs_revalidate_perms(dentry);
 
 	goto out;
 
