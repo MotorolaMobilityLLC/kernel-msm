@@ -20,13 +20,41 @@
 enum {
 	Opt_lower_perms,
 	Opt_upper_perms,
+	Opt_derive_none,
+	Opt_derive_legacy,
+	Opt_derive_unified,
+	Opt_split,
+	Opt_nosplit,
 	Opt_err
 };
 
 static match_table_t esdfs_tokens = {
 	{Opt_lower_perms, "lower=%s"},
 	{Opt_upper_perms, "upper=%s"},
+	{Opt_derive_none, "derive=none"},
+	{Opt_derive_legacy, "derive=legacy"},
+	{Opt_derive_unified, "derive=unified"},
+	{Opt_split, "split"},
+	{Opt_nosplit, "nosplit"},
 	{Opt_err, NULL},
+};
+
+struct esdfs_perms esdfs_perms_table[ESDFS_PERMS_TABLE_SIZE] = {
+	/* ESDFS_PERMS_LOWER_DEFAULT */
+	{ .uid   = AID_MEDIA_RW,
+	  .gid   = AID_MEDIA_RW,
+	  .fmask = 0664,
+	  .dmask = 0775 },
+	/* ESDFS_PERMS_UPPER_LEGACY */
+	{ .uid   = AID_ROOT,
+	  .gid   = AID_SDCARD_RW,
+	  .fmask = 0664,
+	  .dmask = 0775 },
+	/* ESDFS_PERMS_UPPER_DERIVED */
+	{ .uid   = AID_ROOT,
+	  .gid   = AID_SDCARD_R,
+	  .fmask = 0660,
+	  .dmask = 0771 },
 };
 
 static int parse_perms(struct esdfs_perms *perms, char *args)
@@ -114,8 +142,26 @@ static int parse_options(struct super_block *sb, char *options)
 			} else
 				return -EINVAL;
 			break;
+		case Opt_derive_none:
+			clear_opt(sbi, DERIVE_LEGACY);
+			clear_opt(sbi, DERIVE_UNIFIED);
+			break;
+		case Opt_derive_legacy:
+			set_opt(sbi, DERIVE_LEGACY);
+			clear_opt(sbi, DERIVE_UNIFIED);
+			break;
+		case Opt_derive_unified:
+			clear_opt(sbi, DERIVE_LEGACY);
+			set_opt(sbi, DERIVE_UNIFIED);
+			break;
+		case Opt_split:
+			set_opt(sbi, DERIVE_SPLIT);
+			break;
+		case Opt_nosplit:
+			clear_opt(sbi, DERIVE_SPLIT);
+			break;
 		default:
-			printk(KERN_ERR	"Unrecognized mount option \"%s\" or missing value",
+			esdfs_msg(sb, KERN_ERR, "unrecognized mount option \"%s\" or missing value\n",
 				p);
 			return -EINVAL;
 		}
@@ -133,11 +179,11 @@ static int esdfs_read_super(struct super_block *sb, const char *dev_name,
 	int err = 0;
 	struct super_block *lower_sb;
 	struct path lower_path;
+	struct esdfs_sb_info *sbi;
 	struct inode *inode;
 
 	if (!dev_name) {
-		printk(KERN_ERR
-		       "esdfs: read_super: missing dev_name argument\n");
+		esdfs_msg(sb, KERN_ERR, "missing dev_name argument\n");
 		err = -EINVAL;
 		goto out;
 	}
@@ -146,28 +192,27 @@ static int esdfs_read_super(struct super_block *sb, const char *dev_name,
 	err = kern_path(dev_name, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,
 			&lower_path);
 	if (err) {
-		printk(KERN_ERR	"esdfs: error accessing "
-		       "lower directory '%s'\n", dev_name);
+		esdfs_msg(sb, KERN_ERR, "error accessing lower directory '%s'\n",
+			dev_name);
 		goto out;
 	}
 
 	/* allocate superblock private data */
 	sb->s_fs_info = kzalloc(sizeof(struct esdfs_sb_info), GFP_KERNEL);
-	if (!ESDFS_SB(sb)) {
-		printk(KERN_CRIT "esdfs: read_super: out of memory\n");
+	sbi = ESDFS_SB(sb);
+	if (!sbi) {
+		esdfs_msg(sb, KERN_CRIT, "read_super: out of memory\n");
 		err = -ENOMEM;
 		goto out_pput;
 	}
 
 	/* set defaults and then parse the mount options */
-	ESDFS_SB(sb)->lower_perms.uid = ESDFS_DEFAULT_LOWER_UID;
-	ESDFS_SB(sb)->lower_perms.gid = ESDFS_DEFAULT_LOWER_GID;
-	ESDFS_SB(sb)->lower_perms.fmask = ESDFS_DEFAULT_LOWER_FMASK;
-	ESDFS_SB(sb)->lower_perms.dmask = ESDFS_DEFAULT_LOWER_DMASK;
-	ESDFS_SB(sb)->upper_perms.uid = ESDFS_DEFAULT_UPPER_UID;
-	ESDFS_SB(sb)->upper_perms.gid = ESDFS_DEFAULT_UPPER_GID;
-	ESDFS_SB(sb)->upper_perms.fmask = ESDFS_DEFAULT_UPPER_FMASK;
-	ESDFS_SB(sb)->upper_perms.dmask = ESDFS_DEFAULT_UPPER_DMASK;
+	memcpy(&sbi->lower_perms,
+	       &esdfs_perms_table[ESDFS_PERMS_LOWER_DEFAULT],
+	       sizeof(struct esdfs_perms));
+	memcpy(&sbi->upper_perms,
+	       &esdfs_perms_table[ESDFS_PERMS_UPPER_LEGACY],
+	       sizeof(struct esdfs_perms));
 	err = parse_options(sb, (char *)raw_data);
 	if (err)
 		goto out_free;
@@ -219,12 +264,56 @@ static int esdfs_read_super(struct super_block *sb, const char *dev_name,
 	 */
 	d_rehash(sb->s_root);
 	if (!silent)
-		printk(KERN_INFO
-		       "esdfs: mounted on top of %s type %s\n",
-		       dev_name, lower_sb->s_type->name);
-	goto out; /* all is well */
+		esdfs_msg(sb, KERN_INFO, "mounted on top of %s type %s\n",
+			dev_name, lower_sb->s_type->name);
 
-	/* no longer needed: free_dentry_private_data(sb->s_root); */
+	if (!ESDFS_DERIVE_PERMS(sbi))
+		goto out;
+
+	/* let user know that we ignore this option in derived mode */
+	if (memcmp(&sbi->upper_perms,
+		   &esdfs_perms_table[ESDFS_PERMS_UPPER_LEGACY],
+		   sizeof(struct esdfs_perms)))
+		esdfs_msg(sb, KERN_WARNING, "'upper' mount option ignored in derived mode\n");
+
+	/* all derived modes start with the same, basic root */
+	memcpy(&sbi->upper_perms,
+	       &esdfs_perms_table[ESDFS_PERMS_UPPER_DERIVED],
+	       sizeof(struct esdfs_perms));
+
+	/*
+	 * In Android 3.0 all user conent in the emulated storage tree was
+	 * stored in /data/media.  Android 4.2 introduced multi-user support,
+	 * which required that the primary user's content be migrated from
+	 * /data/media to /data/media/0.  The framework then uses bind mounts
+	 * to create per-process namespaces to isolate each user's tree at
+	 * /data/media/N.  This approach of having each user in a common root
+	 * is now considered "legacy" by the sdcard service.
+	 */
+	if (test_opt(sbi, DERIVE_LEGACY))
+		ESDFS_I(inode)->tree = ESDFS_TREE_ROOT_LEGACY;
+	/*
+	 * Android 4.4 reorganized this sturcture yet again, so that the
+	 * primary user's content was again at the root.  Secondary users'
+	 * content is found in Android/user/N.  Emulated internal storage still
+	 * seems to use the legacy tree, but secondary external storage uses
+	 * this method.
+	 */
+	else if (test_opt(sbi, DERIVE_UNIFIED))
+		ESDFS_I(inode)->tree = ESDFS_TREE_ROOT;
+	/*
+	 * Later versions of Android organize user content using quantum
+	 * entanglement, which has a low probability of being supported by
+	 * this driver.
+	 */
+	else
+		esdfs_msg(sb, KERN_WARNING, "unsupported derived permissions mode\n");
+
+	/* initialize root inode */
+	esdfs_derive_perms(sb->s_root);
+
+	goto out;
+
 out_freeroot:
 	dput(sb->s_root);
 out_iput:
@@ -281,6 +370,8 @@ static int __init init_esdfs_fs(void)
 
 	pr_info("Registering esdfs " ESDFS_VERSION "\n");
 
+	esdfs_init_package_list();
+
 	err = esdfs_init_inode_cache();
 	if (err)
 		goto out;
@@ -292,6 +383,7 @@ out:
 	if (err) {
 		esdfs_destroy_inode_cache();
 		esdfs_destroy_dentry_cache();
+		esdfs_destroy_package_list();
 	}
 	return err;
 }
@@ -300,13 +392,14 @@ static void __exit exit_esdfs_fs(void)
 {
 	esdfs_destroy_inode_cache();
 	esdfs_destroy_dentry_cache();
+	esdfs_destroy_package_list();
 	unregister_filesystem(&esdfs_fs_type);
 	pr_info("Completed esdfs module unload\n");
 }
 
 MODULE_AUTHOR("Erez Zadok, Filesystems and Storage Lab, Stony Brook University"
-	      " (http://www.fsl.cs.sunysb.edu/), Motorola Mobility, LLC");
-MODULE_DESCRIPTION("Emulated 'SD card' Filesystem");
+	      " (http://www.fsl.cs.sunysb.edu/)");
+MODULE_DESCRIPTION("esdfs " ESDFS_VERSION);
 MODULE_LICENSE("GPL");
 
 module_init(init_esdfs_fs);
