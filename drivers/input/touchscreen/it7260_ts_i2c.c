@@ -428,12 +428,30 @@ static int Upgrade_FW_CFG(void)
 	unsigned int config_size = 0;
 	struct file *fw_fd = NULL;
 	struct file *config_fd = NULL;
+	
+	unsigned char bufRead[10] = {0};
+	unsigned char bufRead2[10] = {0};
+	
+	u8 cmdbuf[] = { 0x01, 0x00 }; //Read FW
+	u8 cmdbuf2[] = { 0x01, 0x06 }; //Read CFG
+	
 	mm_segment_t fs;
 	u8 *fw_buf = kzalloc(0x8000, GFP_KERNEL);
 	u8 *config_buf = kzalloc(0x500, GFP_KERNEL);
 	if ( fw_buf  == NULL || config_buf == NULL  ){
 		printk("kzalloc failed\n");
 	}
+
+	i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, bufRead, 10);
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf2, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, bufRead2, 10);
+	
+	printk("IT7260_NOW:fw_ver : %x,%x,%x,%x\n\n",bufRead[5], bufRead[6], bufRead[7], bufRead[8]);
+	printk("IT7260_NOW:cfg_ver : %x,%x,%x,%x\n\n",bufRead2[1], bufRead2[2], bufRead2[3], bufRead2[4]);
 
 	fs = get_fs();
 	set_fs(get_ds());
@@ -443,7 +461,7 @@ static int Upgrade_FW_CFG(void)
 		printk("open /system/etc/firmware/it7260.fw failed\n");
 	else
 		fw_size = fw_fd->f_op->read(fw_fd, fw_buf, 0x8000, &fw_fd->f_pos);
-	printk("fw_ver : %x,%x,%x,%x\n",fw_buf[8], fw_buf[9], fw_buf[10], fw_buf[11]);
+	printk("IT7260_UPDATE:fw_ver : %x,%x,%x,%x\n",fw_buf[8], fw_buf[9], fw_buf[10], fw_buf[11]);
 	printk("--------------------- fw_size = %x\n", fw_size);
 
 	config_fd = filp_open("/system/etc/firmware/it7260.cfg", O_RDONLY, 0);
@@ -451,12 +469,17 @@ static int Upgrade_FW_CFG(void)
 		printk("open /system/etc/firmware/it7260.cfg failed\n");
 	else
 		config_size = config_fd->f_op->read(config_fd, config_buf, 0x500, &config_fd->f_pos);
-	printk("cfg_ver : %x,%x,%x,%x\n",config_buf[config_size-8], config_buf[config_size-7], config_buf[config_size-6], config_buf[config_size-5]);
+	printk("IT7260_UPDATE:cfg_ver : %x,%x,%x,%x\n",config_buf[config_size-8], config_buf[config_size-7], config_buf[config_size-6], config_buf[config_size-5]);
 	printk("--------------------- config_size = %x\n", config_size);
 
 	set_fs(fs);
 	filp_close(fw_fd,NULL);
 	filp_close(config_fd,NULL);
+	
+	if ((bufRead[5] == fw_buf[8] && bufRead[6] == fw_buf[9] && bufRead[7] == fw_buf[10] && bufRead[8] < fw_buf[11]) || 
+	(bufRead2[1] == config_buf[config_size-8] && bufRead2[2] == config_buf[config_size-7] && bufRead2[3] == config_buf[config_size-6] && bufRead2[4] < config_buf[config_size-5])){
+
+	//START UPDATE
 	disable_irq(gl_ts->client->irq);
 	if (fnFirmwareDownload(fw_size, fw_buf, config_size, config_buf) == false){
 		//fail
@@ -466,7 +489,14 @@ static int Upgrade_FW_CFG(void)
 		//success
 		enable_irq(gl_ts->client->irq);
 		return 0;
-  }
+	}
+	}
+	else
+	{
+		//stop
+		printk("You Don't Need Update FW/CFG!! \n\n");
+		return 2;
+	}
 }
 
 ssize_t IT7260_calibration_show_temp(char *buf)
@@ -498,11 +528,35 @@ static ssize_t IT7260_status_show(struct device *dev, struct device_attribute *a
 	}
 }
 
-static ssize_t IT7260_status_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+ssize_t IT7260_status_store_temp(int ret)
 {
-	return count;
+	u8 cmdbuf[] = { 0x01, 0x00 };
+	u8 cmdbuf2[] = { 0x01, 0x06 };
+	unsigned char bufRead[10] = {0};
+	unsigned char bufRead2[10] = {0};
+
+	i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, bufRead, 10);
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf2, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, bufRead2, 10);
+	
+	printk("IT7260_NOW:fw_ver : %x,%x,%x,%x\n\n",bufRead[5], bufRead[6], bufRead[7], bufRead[8]);
+	printk("IT7260_NOW:cfg_ver : %x,%x,%x,%x\n\n",bufRead2[1], bufRead2[2], bufRead2[3], bufRead2[4]);
+
+	return 1;
 }
 
+static ssize_t IT7260_status_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	printk(KERN_DEBUG "%s():\n", __func__);
+	sscanf(buf, "%d", &ret);
+	IT7260_status_store_temp(ret);
+	return count;
+}
 static DEVICE_ATTR(status, 0666, IT7260_status_show, IT7260_status_store);
 
 static struct attribute *it7260_attrstatus[] = {
@@ -540,11 +594,18 @@ ssize_t IT7260_upgrade_show_temp(char *buf)
 
 ssize_t IT7260_upgrade_store_temp(void)
 {
-	if(!Upgrade_FW_CFG()) {
+	int ret = Upgrade_FW_CFG();
+	if(ret == 0) {
 		printk("IT7260_upgrade_OK\n\n");
 		Upgrade__success_flag = 1;
 		return 0;
-	} else {
+	} 
+	else if (ret == 2)
+	{
+		printk("IT7260_upgrade_STOP\n\n");
+		return 0;
+	}
+	else {
 		printk("IT7260_upgrade_failed\n");
 		Upgrade__success_flag = -1;
 		return -1;
@@ -627,10 +688,10 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 #else //HAS_8_BYTES_LIMIT
 			ret = i2cReadFromIt7260(ts->client, 0xE0, pucPoint, 14);
 #endif //HAS_8_BYTES_LIMIT
-			//pr_info("=Read_Point read ret[%d]--point[%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]=\n",
-			//	ret,pucPoint[0],pucPoint[1],pucPoint[2],
-			//	pucPoint[3],pucPoint[4],pucPoint[5],pucPoint[6],pucPoint[7],pucPoint[8],
-			//	pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
+			//printk("=Read_Point read ret[%d]--point[%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]=\n",
+				//ret,pucPoint[0],pucPoint[1],pucPoint[2],
+				//pucPoint[3],pucPoint[4],pucPoint[5],pucPoint[6],pucPoint[7],pucPoint[8],
+				//pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
 // ASUS_BSP +++ Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
 // Sample code for magic key detection
 #if 1
@@ -789,7 +850,6 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 	}
 	if (ts->use_irq)
 		enable_irq(ts->client->irq);
-	//pr_info("=end Read_Point=\n");
 
 	//IdentifyCapSensor(gl_ts);
 }
@@ -798,8 +858,8 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 
 static void IT7260_ts_work_func(struct work_struct *work) {
 
-	//printk(KERN_INFO "=IT7260_ts_work_func=\n"); 
 	struct IT7260_ts_data *ts = container_of(work, struct IT7260_ts_data, work);
+	//printk(KERN_INFO "=IT7260_ts_work_func=\n"); 
 	gl_ts = ts;
 	Read_Point(ts);
 }
@@ -918,10 +978,10 @@ static int IT7260_ts_probe(struct i2c_client *client,
 	struct IT7260_ts_data *ts;
 	int ret = 0;
 	struct IT7260_i2c_platform_data *pdata;
-	unsigned long irqflags;
-//	unsigned char ucQuery = 0;
+	//unsigned long irqflags;
 	int input_err = 0;
 	
+
 	u8 cmdbuf[2] = { 0x07, 0 };
 	
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -930,7 +990,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 		goto err_check_functionality_failed;
 	}
 
-	irqflags = IRQF_TRIGGER_HIGH;
+	//irqflags = IRQF_TRIGGER_HIGH;
 	pr_info("=entry IT7260_ts_probe=\n");
 
 	ts = kzalloc(sizeof(*ts), GFP_KERNEL);
@@ -951,6 +1011,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 		dev_err(&client->dev, "failed to register sysfs\n");
 	}
 //ASUS_BSP Cliff --- add for ATD check
+
 	ret=IdentifyCapSensor(ts);
 	if(ret<0){
 		printk ("CLIFF:IdentifyCapSensor FAIL");
@@ -1026,6 +1087,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 
 	gl_ts = ts;
 	it7260_status = 1;
+	
 	pr_info("=end IT7260_ts_probe=\n");
 
 	//To reset point queue.
