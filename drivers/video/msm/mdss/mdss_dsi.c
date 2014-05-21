@@ -843,8 +843,7 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 		}
 	}
 
-	if ((ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) &&
-					!pdata->panel_info.always_on) {
+	if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
 		ret = ctrl_pdata->off(pdata);
 		if (ret) {
 			pr_err("%s: Panel OFF failed\n", __func__);
