@@ -1659,6 +1659,50 @@ static void lis3dsh_acc_input_cleanup(struct lis3dsh_acc_data *acc)
 	input_free_device(acc->input_dev);
 }
 
+#ifdef CONFIG_I2C_STRESS_TEST
+#include <linux/i2c_testcase.h>
+#define I2C_TEST_ST_SENSOR_FAIL (-1)
+
+static int TestLIS3DSHSensorI2C (struct i2c_client *apClient)
+{
+	u8 buf[17];
+	int err = 0;
+
+	i2c_log_in_test_case("%s ++\n", __func__);
+
+	err = lis3dsh_acc_enable(g_acc);
+	if (err < 0) {
+		i2c_log_in_test_case("Fail to turn on sensor\n");
+		goto error;
+	}
+
+	buf[0] = LIS3DSH_WHO_AM_I;
+	err = lis3dsh_acc_i2c_read(g_acc, buf, 1);
+	if (err < 0) {
+		i2c_log_in_test_case("Fail to read sensor ID\n");
+		goto error;
+	}
+
+	err = lis3dsh_acc_disable(g_acc);
+	if (err < 0) {
+		i2c_log_in_test_case("Fail to turn off sensor\n");
+		goto error;
+	}
+	
+	i2c_log_in_test_case("%s --\n", __func__);
+
+	return I2C_TEST_PASS;
+
+error:
+	return I2C_TEST_ST_SENSOR_FAIL;
+}
+
+static struct i2c_test_case_info gLIS3DSHTestCaseInfo[] =
+{
+     __I2C_STRESS_TEST_CASE_ATTR(TestLIS3DSHSensorI2C),
+};
+#endif
+
 #if 0//defined(CONFIG_HAS_EARLYSUSPEND)
 static void lis3dsh_early_suspend(struct early_suspend *h)
 {
@@ -1944,6 +1988,10 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 
 	lis3dsh_acc_enable(acc);			//default on
 	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);			//SM1: tilt-to-wake SM2: double tap
+
+	#ifdef CONFIG_I2C_STRESS_TEST
+	i2c_add_test_case(client, "STSensorTest", ARRAY_AND_SIZE(gLIS3DSHTestCaseInfo));
+	#endif
 
 	dev_info(&client->dev, "[lis3dsh] %s ---\n", __func__);
 

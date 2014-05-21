@@ -973,6 +973,40 @@ static int IdentifyCapSensor(struct IT7260_ts_data *ts) {
 }
 #endif
 
+//ASUS_BSP +++ Maggie_Lee "Implement I2C stress test for I2C devices"
+#ifdef CONFIG_I2C_STRESS_TEST
+#include <linux/i2c_testcase.h>
+#define I2C_TEST_TOUCH_SENSOR_FAIL (-1)
+
+static int TestTouchSensorI2C (struct i2c_client *apClient)
+{
+	int err = 0;
+
+	i2c_log_in_test_case("%s ++\n", __func__);
+	
+	err=IdentifyCapSensor(gl_ts);
+	if(err<0){
+		i2c_log_in_test_case("Fail to read sensor ID\n");
+		goto error;
+	}
+
+	msleep(5);
+	
+	i2c_log_in_test_case("%s --\n", __func__);
+
+	return I2C_TEST_PASS;
+
+error:
+	return I2C_TEST_TOUCH_SENSOR_FAIL;
+}
+
+static struct i2c_test_case_info gTouchTestCaseInfo[] =
+{
+     __I2C_STRESS_TEST_CASE_ATTR(TestTouchSensorI2C),
+};
+#endif
+//ASUS_BSP --- Maggie_Lee "Implement I2C stress test for I2C devices"
+
 static int IT7260_ts_probe(struct i2c_client *client,
 		const struct i2c_device_id *id) {
 	struct IT7260_ts_data *ts;
@@ -1084,6 +1118,12 @@ static int IT7260_ts_probe(struct i2c_client *client,
 	if(ret){
 		dev_err(&client->dev, "failed to register sysfs\n");
 	}
+
+	//ASUS_BSP +++ Maggie_Lee "Implement I2C stress test for I2C devices"
+	#ifdef CONFIG_I2C_STRESS_TEST
+	i2c_add_test_case(client, "TouchSensorTest", ARRAY_AND_SIZE(gTouchTestCaseInfo));
+	#endif
+	//ASUS_BSP --- Maggie_Lee "Implement I2C stress test for I2C devices"
 
 	gl_ts = ts;
 	it7260_status = 1;

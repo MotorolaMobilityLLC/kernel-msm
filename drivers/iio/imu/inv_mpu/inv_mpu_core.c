@@ -36,6 +36,7 @@
 #include "inv_mpu_dts.h"
 #endif
 
+struct inv_mpu_state *g_st;
 static int mpu_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
 //ASUS_BSP +++ Maggie_Lee "fill platform data"
@@ -2749,6 +2750,49 @@ static int inv_create_dmp_sysfs(struct iio_dev *ind)
 	return result;
 }
 
+#ifdef CONFIG_I2C_STRESS_TEST
+#include <linux/i2c_testcase.h>
+#define I2C_TEST_MPU_SENSOR_FAIL (-1)
+
+static int TestMPU9250SensorI2C (struct i2c_client *apClient)
+{	
+	u8 d;
+	int err = 0;
+
+	i2c_log_in_test_case("%s ++\n", __func__);
+
+	err = g_st->set_power_state(g_st, true);
+	if (err) {
+		i2c_log_in_test_case("Fail to turn on sensor\n");
+		goto error;
+	}
+
+	err = inv_i2c_read(g_st, REG_WHOAMI, 1, &d);
+	if (err) {
+		i2c_log_in_test_case("Fail to read sensor ID\n");
+		goto error;
+	}
+
+	err = g_st->set_power_state(g_st, false);
+	if (err) {
+		i2c_log_in_test_case("Fail to turn off sensor\n");
+		goto error;
+	}
+	
+	i2c_log_in_test_case("%s --\n", __func__);
+
+	return I2C_TEST_PASS;
+
+error:
+	return I2C_TEST_MPU_SENSOR_FAIL;
+}
+
+static struct i2c_test_case_info gMPU9250TestCaseInfo[] =
+{
+     __I2C_STRESS_TEST_CASE_ATTR(TestMPU9250SensorI2C),
+};
+#endif
+
 /*
  *  inv_mpu_probe() - probe function.
  */
@@ -2866,6 +2910,13 @@ msleep(100);
 		goto out_unreg_iio;
 	}
 	inv_init_sensor_struct(st);
+
+	g_st = st;
+
+	#ifdef CONFIG_I2C_STRESS_TEST
+	i2c_add_test_case(client, "MPUSensorTest", ARRAY_AND_SIZE(gMPU9250TestCaseInfo));
+	#endif
+
 	mpu_status = 1;					//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 	dev_info(&client->dev, "%s is ready to go!\n", indio_dev->name);
 
