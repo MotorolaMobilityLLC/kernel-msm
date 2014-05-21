@@ -43,3 +43,10 @@ config FB_MSM_MDSS_MDP3
 	---help---
 	The MDP3 provides support for an older version display controller
 	included in latest display sub-system, known as MDSS.
+
+config FB_MSM_MDSS_PANEL_ALWAYS_ON
+	depends on FB_MSM_MDSS
+	bool "Keep display panel always on"
+	default n
+	---help---
+	Keep the display panel always on even when device goes to suspend.

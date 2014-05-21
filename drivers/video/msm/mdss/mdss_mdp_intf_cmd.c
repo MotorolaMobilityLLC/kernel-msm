@@ -46,6 +46,7 @@ struct mdss_mdp_cmd_ctx {
 	atomic_t pp_done_cnt;
 	struct mdss_panel_recovery recovery;
 	bool ulps;
+	bool off_pan_on;
 };
 
 struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
@@ -187,6 +188,7 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 	mutex_lock(&ctx->clk_mtx);
 	if (!ctx->clk_enabled) {
 		ctx->clk_enabled = 1;
+		ctx->off_pan_on = false;
 		if (cancel_delayed_work_sync(&ctx->ulps_work))
 			pr_debug("deleted pending ulps work\n");
 
@@ -236,7 +238,7 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 		mdss_mdp_ctl_intf_event
 			(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-		if (ctx->panel_on)
+		if (ctx->panel_on && !ctx->off_pan_on)
 			schedule_delayed_work(&ctx->ulps_work, ULPS_ENTER_TIME);
 	}
 	mutex_unlock(&ctx->clk_mtx);
@@ -575,6 +577,43 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 	return 0;
 }
 
+int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_cmd_ctx *ctx;
+
+	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
+	if (!ctx) {
+		pr_err("invalid ctx\n");
+		return -ENODEV;
+	}
+
+	pr_debug("%s: clk_enabled=%d\n", __func__, ctx->clk_enabled);
+
+	ctx->off_pan_on = true;
+	if (cancel_work_sync(&ctx->clk_work))
+		pr_debug("no pending clk work\n");
+
+	if (cancel_delayed_work_sync(&ctx->ulps_work))
+		pr_debug("deleted pending ulps work\n");
+
+	ctx->rdptr_enabled = 0;
+	mdss_mdp_cmd_clk_off(ctx);
+
+	if (!ctx->ulps) {
+		pr_debug("%s: forcing ulps with panel always on feature\n",
+			__func__);
+		if (!mdss_mdp_ctl_intf_event(ctx->ctl,
+			MDSS_EVENT_DSI_ULPS_CTRL, (void *)1)) {
+			ctx->ulps = true;
+			ctx->ctl->play_cnt = 0;
+			mdss_mdp_footswitch_ctrl_ulps(0,
+				&ctx->ctl->mfd->pdev->dev);
+		}
+	}
+
+	return 0;
+}
+
 int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
@@ -734,6 +773,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->add_vsync_handler = mdss_mdp_cmd_add_vsync_handler;
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
+	ctl->off_pan_on = mdss_mdp_cmd_off_pan_on;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;
