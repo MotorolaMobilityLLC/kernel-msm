@@ -1364,7 +1364,7 @@ static int mdss_dsi_pm_prepare(struct device *dev)
 	}
 
 	mutex_lock(&ctrl_pdata->suspend_mutex);
-	if (pdata->panel_info.always_on && !ctrl_pdata->blanked) {
+	if (!ctrl_pdata->blanked) {
 		pr_debug("%s: set low fps mode on\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 1);
 	}
@@ -1389,7 +1389,7 @@ static void mdss_dsi_pm_complete(struct device *dev)
 	}
 
 	mutex_lock(&ctrl_pdata->suspend_mutex);
-	if (pdata->panel_info.always_on && !ctrl_pdata->blanked) {
+	if (!ctrl_pdata->blanked) {
 		pr_debug("%s: set low fps mode off\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 0);
 	}
