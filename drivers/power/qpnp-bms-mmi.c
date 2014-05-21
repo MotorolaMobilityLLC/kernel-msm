@@ -202,6 +202,8 @@ struct qpnp_bms_chip {
 	bool				shutdown_soc_invalid;
 	int				shutdown_soc;
 	int				shutdown_iavg_ma;
+	int				shutdown_voltage;
+	bool				shutdown_voltage_tripped;
 
 	struct wake_lock		low_voltage_wake_lock;
 	int				low_voltage_threshold;
@@ -1782,7 +1784,11 @@ static void soc_sanity_check(struct qpnp_bms_chip *chip,
 	int i = 0;
 	int rc = 0;
 
-	if (wake_lock_active(&chip->low_voltage_wake_lock)) {
+	if (chip->shutdown_voltage_tripped) {
+		pr_err("setting last_soc = 0\n");
+		chip->last_soc = 0;
+		return;
+	} else if (wake_lock_active(&chip->low_voltage_wake_lock)) {
 		for (i = 0; i < 10; i++) {
 			rc = qpnp_vadc_read(chip->vadc_dev,
 					    VBAT_SNS, &v_result);
@@ -2086,8 +2092,9 @@ static void very_low_voltage_check(struct qpnp_bms_chip *chip, int vbat_uv)
 	 * if battery is very low (v_cutoff voltage + 20mv) hold
 	 * a wakelock untill soc = 0%
 	 */
-	if (vbat_uv <= chip->low_voltage_threshold
-			&& !wake_lock_active(&chip->low_voltage_wake_lock)) {
+	if (((vbat_uv <= chip->low_voltage_threshold) ||
+	     (chip->shutdown_voltage_tripped))
+	    && !wake_lock_active(&chip->low_voltage_wake_lock)) {
 		pr_info("voltage = %d low holding wakelock\n", vbat_uv);
 		wake_lock(&chip->low_voltage_wake_lock);
 	} else if (vbat_uv > chip->low_voltage_threshold
@@ -2287,7 +2294,11 @@ static int clamp_soc_based_on_voltage(struct qpnp_bms_chip *chip, int soc)
 		pr_err("adc vbat failed err = %d\n", rc);
 		return soc;
 	}
-	if (soc == 0 && vbat_uv > chip->v_cutoff_uv) {
+
+	if (chip->shutdown_voltage_tripped) {
+		pr_err("shutdown voltage tripped, clamping soc to 0\n");
+		return 0;
+	} else if (soc == 0 && vbat_uv > chip->v_cutoff_uv) {
 		pr_debug("clamping soc to 1, vbat (%d) > cutoff (%d)\n",
 						vbat_uv, chip->v_cutoff_uv);
 		return 1;
@@ -2721,12 +2732,20 @@ static void configure_vbat_monitor_low(struct qpnp_bms_chip *chip)
 		}
 		chip->vbat_monitor_params.state_request =
 					ADC_TM_HIGH_THR_ENABLE;
-		chip->vbat_monitor_params.high_thr =
-			(chip->low_voltage_threshold + VBATT_ERROR_MARGIN);
+		if (chip->shutdown_voltage)
+			chip->vbat_monitor_params.high_thr =
+				(chip->shutdown_voltage +
+				 VBATT_ERROR_MARGIN);
+		else
+			chip->vbat_monitor_params.high_thr =
+				(chip->low_voltage_threshold +
+				 VBATT_ERROR_MARGIN);
 		pr_debug("set low thr to %d and high to %d\n",
 				chip->vbat_monitor_params.low_thr,
 				chip->vbat_monitor_params.high_thr);
 		chip->vbat_monitor_params.low_thr = 0;
+		if (chip->shutdown_voltage)
+			chip->shutdown_voltage_tripped = true;
 	} else if (chip->vbat_monitor_params.state_request
 			== ADC_TM_LOW_THR_ENABLE) {
 		/*
@@ -2742,7 +2761,11 @@ static void configure_vbat_monitor_low(struct qpnp_bms_chip *chip)
 					ADC_TM_HIGH_LOW_THR_ENABLE;
 		chip->vbat_monitor_params.high_thr = chip->max_voltage_uv
 				- VBATT_ERROR_MARGIN;
-		chip->vbat_monitor_params.low_thr =
+		if (chip->shutdown_voltage)
+			chip->vbat_monitor_params.low_thr =
+				chip->shutdown_voltage;
+		else
+			chip->vbat_monitor_params.low_thr =
 				chip->low_voltage_threshold;
 		pr_debug("set low thr to %d and high to %d\n",
 				chip->vbat_monitor_params.low_thr,
@@ -2791,7 +2814,11 @@ static void configure_vbat_monitor_high(struct qpnp_bms_chip *chip)
 					ADC_TM_HIGH_LOW_THR_ENABLE;
 		chip->vbat_monitor_params.high_thr =
 			chip->max_voltage_uv - VBATT_ERROR_MARGIN;
-		chip->vbat_monitor_params.low_thr =
+		if (chip->shutdown_voltage)
+			chip->vbat_monitor_params.low_thr =
+				chip->shutdown_voltage;
+		else
+			chip->vbat_monitor_params.low_thr =
 				chip->low_voltage_threshold;
 		pr_debug("set low thr to %d and high to %d\n",
 				chip->vbat_monitor_params.low_thr,
@@ -2827,8 +2854,9 @@ static void btm_notify_vbat(enum qpnp_tm_state state, void *ctx)
 
 	if (state == ADC_TM_LOW_STATE) {
 		pr_debug("low voltage btm notification triggered\n");
-		if (vbat_uv - VBATT_ERROR_MARGIN
-				< chip->vbat_monitor_params.low_thr) {
+		if ((vbat_uv - VBATT_ERROR_MARGIN
+		     < chip->vbat_monitor_params.low_thr) ||
+		    (chip->shutdown_voltage)) {
 			configure_vbat_monitor_low(chip);
 		} else {
 			pr_debug("faulty btm trigger, discarding\n");
@@ -2879,7 +2907,10 @@ static int setup_vbat_monitoring(struct qpnp_bms_chip *chip)
 {
 	int rc;
 
-	chip->vbat_monitor_params.low_thr = chip->low_voltage_threshold;
+	if (chip->shutdown_voltage)
+		chip->vbat_monitor_params.low_thr = chip->shutdown_voltage;
+	else
+		chip->vbat_monitor_params.low_thr = chip->low_voltage_threshold;
 	chip->vbat_monitor_params.high_thr = chip->max_voltage_uv
 							- VBATT_ERROR_MARGIN;
 	chip->vbat_monitor_params.state_request = ADC_TM_HIGH_LOW_THR_ENABLE;
@@ -3924,6 +3955,9 @@ static inline int bms_read_properties(struct qpnp_bms_chip *chip)
 		pr_err("Missing required properties.\n");
 		return rc;
 	}
+
+	/* Shutdown voltage is not a mandatory setting. */
+	SPMI_PROP_READ(shutdown_voltage, "shutdown-voltage-uv", rc);
 
 	pr_debug("dts data: r_sense_uohm:%d, v_cutoff_uv:%d, max_v:%d\n",
 			chip->r_sense_uohm, chip->v_cutoff_uv,
