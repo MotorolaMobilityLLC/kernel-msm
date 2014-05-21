@@ -23,11 +23,18 @@
 #include <linux/err.h>
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
+#include <linux/dropbox.h>
 
 #include "mdss_dsi.h"
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 
+#define DROPBOX_DISPLAY_ISSUE "display_issue"
+#define ESD_SENSORHUB_DROPBOX_MSG "ESD sensorhub detected"
+#define PWR_MODE_BLACK_DROPBOX_MSG "PWR_MODE black screen detected"
+#define PWR_MODE_FAIL_DROPBOX_MSG "PWR_MODE read failure"
+#define PWR_MODE_INVALID_DROPBOX_MSG "PWR_MODE invalid mode detected"
+#define PWR_MODE_MISMATCH_DROPBOX_MSG "PWR_MODE mis-match sensorhub reported"
 #define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
 #define MDSS_PANEL_UNKNOWN_NAME "unknown"
 #define DT_CMD_HDR 6
@@ -676,7 +683,7 @@ static unsigned int detect_panel_state(u8 pwr_mode)
 }
 
 static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
-						u8 *pwr_mode)
+					u8 *pwr_mode, char **dropbox_issue)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mipi_panel_info *mipi;
@@ -700,11 +707,13 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 		pr_warn("%s: unable to read power state! [gpio: %d]\n",
 			__func__, gpio_val);
 		panel_dead = 1;
+		*dropbox_issue = PWR_MODE_FAIL_DROPBOX_MSG;
 	} else {
 		panel_state = detect_panel_state(*pwr_mode);
 		if (panel_state == DSI_DISP_INVALID_STATE) {
 			pr_warn("%s: detected invalid panel state\n", __func__);
 			panel_dead = 1;
+			*dropbox_issue = PWR_MODE_INVALID_DROPBOX_MSG;
 		}
 	}
 
@@ -713,11 +722,13 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 			pr_warn("%s: quickdraw requests full reinitialization\n",
 				__func__);
 			panel_dead = 1;
+			*dropbox_issue = ESD_SENSORHUB_DROPBOX_MSG;
 		} else if (mfd->quickdraw_panel_state != panel_state) {
 			pr_warn("%s: panel state is %d while %d expected\n",
 				__func__, panel_state,
 				mfd->quickdraw_panel_state);
 			panel_dead = 1;
+			*dropbox_issue = PWR_MODE_MISMATCH_DROPBOX_MSG;
 		} else if (mfd->quickdraw_panel_state == DSI_DISP_OFF_SLEEP_IN)
 			ret = 1;
 	}
@@ -737,6 +748,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	struct mdss_panel_info *pinfo;
 	struct msm_fb_data_type *mfd;
 	u8 pwr_mode = 0;
+	char *dropbox_issue = NULL;
+	static int dropbox_count;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -765,7 +778,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	if (!ctrl->ndx && mfd->quickdraw_in_progress) {
 		int do_init = mdss_dsi_quickdraw_check_panel_state(pdata,
-			&pwr_mode);
+			&pwr_mode, &dropbox_issue);
 		if (!do_init || mfd->quickdraw_reset_panel) {
 			pr_info("%s: skip panel init cmds\n", __func__);
 			goto end;
@@ -776,10 +789,26 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, DSI_MODE_BIT_LP);
 	/* validate screen is actually on from the master control only */
-	if ((pwr_mode & 0x04) != 0x04)
+	if ((pwr_mode & 0x04) != 0x04) {
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
+		dropbox_issue = PWR_MODE_BLACK_DROPBOX_MSG;
+	}
+
 end:
+	if (dropbox_issue != NULL) {
+		char dropbox_entry[256];
+
+		snprintf(dropbox_entry, sizeof(dropbox_entry), "%s\ncount: %d",
+			dropbox_issue, ++dropbox_count);
+
+		pr_err("%s: display issue detected[count: %d][%s], reporting dropbox\n",
+			__func__, dropbox_count, dropbox_issue);
+		dropbox_queue_event_text(DROPBOX_DISPLAY_ISSUE,
+			dropbox_entry, strlen(dropbox_entry));
+	} else
+		dropbox_count = 0;
+
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
 	return 0;
