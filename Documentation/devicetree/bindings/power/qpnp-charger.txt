@@ -59,6 +59,8 @@ Parent node optional properties:
 - qcom,ibatmax-cool-ma:			Maximum cool battery charge current.
 - qcom,ibatmax-warm-ma:			Maximum warm battery charge current.
 - qcom,warm-bat-mv:			Warm temperature battery target voltage.
+- qcom,warm-bat-soc:			Warm temperature battery target soc.
+- qcom,resume_delta_soc			Battery charging resume delta after Warm temperature is reached.
 - qcom,cool-bat-mv:			Cool temperature battery target voltage.
 - qcom,tchg-mins:			Maximum total software initialized charge time.
 - qcom,bpd-detection:			Select a battery presence detection scheme by
