@@ -34,8 +34,14 @@
 #include "dsi_v2.h"
 
 #define DT_CMD_HDR 6
+#define DROPBOX_DISPLAY_ISSUE "display_issue"
 #define ESD_DROPBOX_MSG "ESD event detected"
 #define ESD_TE_DROPBOX_MSG "ESD TE event detected"
+#define ESD_SENSORHUB_DROPBOX_MSG "ESD sensorhub detected"
+#define PWR_MODE_BLACK_DROPBOX_MSG "PWR_MODE black screen detected"
+#define PWR_MODE_FAIL_DROPBOX_MSG "PWR_MODE read failure"
+#define PWR_MODE_INVALID_DROPBOX_MSG "PWR_MODE invalid mode detected"
+#define PWR_MODE_MISMATCH_DROPBOX_MSG "PWR_MODE mis-match sensorhub reported"
 
 /*
  * MDSS_PANEL_ESD_SELF_TRIGGER is triggered ESD recovery depending how many
@@ -591,7 +597,7 @@ int mdss_panel_check_status(struct mdss_dsi_ctrl_pdata *ctrl)
 		pr_warn("%s: Detected pwr_mode = 0x%x expected mask = 0x%x\n",
 			__func__, pwr_mode, esd_data->esd_pwr_mode_chk);
 		if (!dropbox_sent) {
-			dropbox_queue_event_text("display_issue",
+			dropbox_queue_event_text(DROPBOX_DISPLAY_ISSUE,
 				ESD_DROPBOX_MSG, strlen(ESD_DROPBOX_MSG));
 			dropbox_sent = true;
 		}
@@ -618,7 +624,7 @@ int mdss_panel_check_status(struct mdss_dsi_ctrl_pdata *ctrl)
 			pr_warn("%s: No TE sig for %d usec.\n",  __func__,
 							TE_MONITOR_TO);
 			if (!dropbox_sent) {
-				dropbox_queue_event_text("display_issue",
+				dropbox_queue_event_text(DROPBOX_DISPLAY_ISSUE,
 					ESD_TE_DROPBOX_MSG,
 					strlen(ESD_TE_DROPBOX_MSG));
 				dropbox_sent = true;
@@ -669,7 +675,7 @@ static unsigned int detect_panel_state(u8 pwr_mode)
 }
 
 static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
-						u8 *pwr_mode)
+					u8 *pwr_mode, char **dropbox_issue)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mipi_panel_info *mipi;
@@ -693,11 +699,13 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 		pr_warn("%s: unable to read power state! [gpio: %d]\n",
 			__func__, gpio_val);
 		panel_dead = 1;
+		*dropbox_issue = PWR_MODE_FAIL_DROPBOX_MSG;
 	} else {
 		panel_state = detect_panel_state(*pwr_mode);
 		if (panel_state == DSI_DISP_INVALID_STATE) {
 			pr_warn("%s: detected invalid panel state\n", __func__);
 			panel_dead = 1;
+			*dropbox_issue = PWR_MODE_INVALID_DROPBOX_MSG;
 		}
 	}
 
@@ -706,11 +714,13 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 			pr_warn("%s: quickdraw requests full reinitialization\n",
 				__func__);
 			panel_dead = 1;
+			*dropbox_issue = ESD_SENSORHUB_DROPBOX_MSG;
 		} else if (mfd->quickdraw_panel_state != panel_state) {
 			pr_warn("%s: panel state is %d while %d expected\n",
 				__func__, panel_state,
 				mfd->quickdraw_panel_state);
 			panel_dead = 1;
+			*dropbox_issue = PWR_MODE_MISMATCH_DROPBOX_MSG;
 		} else if (mfd->quickdraw_panel_state == DSI_DISP_OFF_SLEEP_IN)
 			ret = 1;
 	}
@@ -729,6 +739,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct msm_fb_data_type *mfd;
 	u8 pwr_mode = 0;
+	char *dropbox_issue = NULL;
+	static int dropbox_count;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -778,7 +790,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	if (mfd->quickdraw_in_progress) {
 		int do_init = mdss_dsi_quickdraw_check_panel_state(pdata,
-			&pwr_mode);
+			&pwr_mode, &dropbox_issue);
 		if (!do_init || mfd->quickdraw_reset_panel) {
 			pr_info("%s: skip panel init cmds\n", __func__);
 			goto end;
@@ -799,7 +811,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if ((pwr_mode & 0x04) != 0x04) {
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 			__func__);
-		dropbox_queue_event_empty("display_issue");
+		dropbox_issue = PWR_MODE_BLACK_DROPBOX_MSG;
 	}
 
 #ifndef CONFIG_FB_MSM_MDSS_MDP3
@@ -811,6 +823,19 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		pdata->panel_info.cabc_mode = CABC_UI_MODE;
 
 end:
+	if (dropbox_issue != NULL) {
+		char dropbox_entry[256];
+
+		snprintf(dropbox_entry, sizeof(dropbox_entry), "%s\ncount: %d",
+			dropbox_issue, ++dropbox_count);
+
+		pr_err("%s: display issue detected[count: %d][%s], reporting dropbox\n",
+			__func__, dropbox_count, dropbox_issue);
+		dropbox_queue_event_text(DROPBOX_DISPLAY_ISSUE,
+			dropbox_entry, strlen(dropbox_entry));
+	} else
+		dropbox_count = 0;
+
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
 	return 0;
