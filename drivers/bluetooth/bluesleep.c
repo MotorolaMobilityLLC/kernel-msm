@@ -55,13 +55,7 @@
 #include "hci_uart.h"
 
 
-#define BT_SLEEP_DBG
-#ifndef BT_SLEEP_DBG
-#define BT_DBG(fmt, arg...)
-#endif
-#undef  BT_DBG
 #undef BT_ERR
-#define BT_DBG(fmt, arg...) pr_err(fmt " [BT]\n", ##arg)
 #define BT_ERR(fmt, arg...) pr_err(fmt " [BT]\n", ##arg)
 
 /*
