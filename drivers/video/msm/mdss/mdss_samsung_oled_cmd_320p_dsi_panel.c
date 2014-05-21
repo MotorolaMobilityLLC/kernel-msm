@@ -174,11 +174,11 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 	if (enable) {
 		if (gpio_is_valid(ctrl_pdata->rst_gpio)) {
 			gpio_set_value((ctrl_pdata->rst_gpio), 1);
-			msleep(20);
+			usleep_range(5000, 5000);
 			gpio_set_value((ctrl_pdata->rst_gpio), 0);
-			msleep(20);
+			usleep_range(5000, 5000);
 			gpio_set_value((ctrl_pdata->rst_gpio), 1);
-			msleep(20);
+			usleep_range(5000, 5000);
 		}
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
@@ -1253,9 +1253,9 @@ static int samsung_dsi_panel_event_handler(int event)
 	switch (event) {
 	case MDSS_EVENT_FRAME_UPDATE:
 		if (msd.dstat.wait_disp_on) {
-			pr_info("DISPLAY_ON\n");
 			mipi_samsung_disp_send_cmd(PANEL_DISPLAY_ON, true);
 			msd.dstat.wait_disp_on = 0;
+			pr_info("DISPLAY_ON\n");
 		}
 		break;
 	default:
