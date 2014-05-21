@@ -496,5 +496,7 @@
 };
 
 &dsi_rm69032_320x320_cmd {
-//	qcom,cont-splash-enabled;
+//ASUS_BSP +++ Jason Chang "[WI500Q][Display]enable splash mode on PDK"
+	qcom,cont-splash-enabled = <1>;
+//ASUS_BSP --- Jason Chang "[WI500Q][Display]enable splash mode on PDK"
 };

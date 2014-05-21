@@ -864,6 +864,13 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	pinfo->cont_splash_enabled = of_property_read_bool(np,
 		"qcom,cont-splash-enabled");
 
+//ASUS_BSP +++ Jason Chang "[WI500Q][Display]enable splash mode on PDK"
+//only enable splash on pdk build, KK still disable splash
+#ifndef ASUS_PDK_BUILD
+	pinfo->cont_splash_enabled = 0;
+#endif
+//ASUS_BSP --- Jason Chang "[WI500Q][Display]enable splash mode on PDK"
+
 	pinfo->partial_update_enabled = of_property_read_bool(np,
 		"qcom,partial-update-enabled");
 	pr_info("%s:%d Partial update %s\n", __func__, __LINE__,
