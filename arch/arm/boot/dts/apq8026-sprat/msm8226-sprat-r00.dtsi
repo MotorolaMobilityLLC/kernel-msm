@@ -73,13 +73,13 @@
 		status = "okay";
 		battery,charger_name = "max77836-charger";
 		battery,fuelgauge_name = "max17048-fuelgauge";
-		battery,temp_high_threshold = <640>;
+		battery,temp_high_threshold = <520>;
 		battery,temp_high_recovery = <460>;
-		battery,temp_low_threshold = <(-20)>;
+		battery,temp_low_threshold = <(-40)>;
 		battery,temp_low_recovery = <0>;
-		battery,temp_high_threshold_lpm = <550>;
+		battery,temp_high_threshold_lpm = <520>;
 		battery,temp_high_recovery_lpm = <460>;
-		battery,temp_low_threshold_lpm = <(-20)>;
+		battery,temp_low_threshold_lpm = <(-40)>;
 		battery,temp_low_recovery_lpm = <0>;
 		battery,full_charging_time = <21600>;
 		battery,recharging_time = <5400>;
