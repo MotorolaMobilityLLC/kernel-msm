@@ -277,6 +277,9 @@ extern spinlock_t hdd_context_lock;
 #define SNR_CONTEXT_MAGIC   0x534E5200   //SNR
 #define BCN_MISS_RATE_CONTEXT_MAGIC 0x513F5753
 
+/* Max PMKSAIDS available in cache */
+#define MAX_PMKSAIDS_IN_CACHE 8
+
 typedef struct hdd_tx_rx_stats_s
 {
    // start_xmit stats
@@ -654,6 +657,10 @@ struct hdd_station_ctx
    tCsrRoamSetKey ibss_enc_key;
 
    v_BOOL_t hdd_ReassocScenario;
+
+   /* PMKID Cache */
+   tPmkidCacheInfo PMKIDCache[MAX_PMKSAIDS_IN_CACHE];
+   tANI_U32 PMKIDCacheIndex;
 };
 
 #define BSS_STOP    0 
@@ -846,6 +853,7 @@ typedef enum
 
 
 #define WLAN_HDD_ADAPTER_MAGIC 0x574c414e //ASCII "WLAN"
+
 struct hdd_adapter_s
 {
    void *pHddCtx;
