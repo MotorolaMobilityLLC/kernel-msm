@@ -1483,7 +1483,6 @@ static int msm_prim_auxpcm_startup(struct snd_pcm_substream *substream)
 	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	struct msm_auxpcm_ctrl *auxpcm_ctrl = NULL;
 	int ret = 0;
-	struct pinctrl *pinctrl;
 
 	pr_debug("%s(): substream = %s, prim_auxpcm_rsc_ref counter = %d\n",
 		__func__, substream->name, atomic_read(&prim_auxpcm_rsc_ref));
@@ -1500,14 +1499,6 @@ static int msm_prim_auxpcm_startup(struct snd_pcm_substream *substream)
 		else
 			pr_err("%s lpaif_pri_muxsel_virt_addr is NULL\n",
 				 __func__);
-		pinctrl = devm_pinctrl_get_select(card->dev,
-				"pmx-pri-mi2s-active");
-		if (IS_ERR(pinctrl)) {
-			ret = PTR_ERR(pinctrl);
-			dev_err(card->dev, "%s pinctrl failed err %d\n",
-				__func__, ret);
-			return -EINVAL;
-		}
 		ret = msm_aux_pcm_get_gpios(auxpcm_ctrl);
 	}
 	if (ret < 0) {
@@ -1524,18 +1515,12 @@ static void msm_prim_auxpcm_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_card *card = rtd->card;
 	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	struct msm_auxpcm_ctrl *auxpcm_ctrl = NULL;
-	struct pinctrl *pinctrl;
 
 	pr_debug("%s(): substream = %s, prim_auxpcm_rsc_ref counter = %d\n",
 		__func__, substream->name, atomic_read(&prim_auxpcm_rsc_ref));
 	auxpcm_ctrl = pdata->pri_auxpcm_ctrl;
 	if (atomic_dec_return(&prim_auxpcm_rsc_ref) == 0) {
 		msm_aux_pcm_free_gpios(auxpcm_ctrl);
-		pinctrl = devm_pinctrl_get_select(card->dev,
-				"pmx-pri-mi2s-sleep");
-		if (IS_ERR(pinctrl))
-			dev_err(card->dev, "%s pinctrl failed err %ld\n",
-			__func__, PTR_ERR(pinctrl));
 	}
 }
 
@@ -3057,7 +3042,6 @@ static void  apq8084_mi2s_pri_snd_shudown(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *card = rtd->card;
 	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
-	struct pinctrl *pinctrl;
 	auxpcm_ctrl = pdata->pri_auxpcm_ctrl;
 
 	pr_debug("%s(): substream = %s, pri_mi2s_rsc_ref counter = %d\n",
@@ -3065,11 +3049,6 @@ static void  apq8084_mi2s_pri_snd_shudown(struct snd_pcm_substream *substream)
 
 	if (atomic_dec_return(&pri_mi2s_rsc_ref) == 0) {
 		msm_aux_pcm_free_gpios(auxpcm_ctrl);
-		pinctrl = devm_pinctrl_get_select(card->dev,
-				"pmx-pri-mi2s-sleep");
-		if (IS_ERR(pinctrl))
-			dev_err(card->dev, "%s pinctrl failed err %ld\n",
-			__func__, PTR_ERR(pinctrl));
 
 		ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX,
 			&lpass_pri_i2s_disable);
@@ -3086,7 +3065,6 @@ static int apq8084_mi2s_pri_snd_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_card *card = rtd->card;
 	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	struct msm_auxpcm_ctrl *auxpcm_ctrl = NULL;
-	struct pinctrl *pinctrl;
 	auxpcm_ctrl = pdata->pri_auxpcm_ctrl;
 
 	pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
@@ -3094,15 +3072,6 @@ static int apq8084_mi2s_pri_snd_startup(struct snd_pcm_substream *substream)
 	if (atomic_inc_return(&pri_mi2s_rsc_ref) == 1) {
 		pr_debug("%s: acquire mi2s resources\n", __func__);
 
-		pinctrl = devm_pinctrl_get_select(card->dev,
-				"pmx-pri-mi2s-active");
-		if (IS_ERR(pinctrl)) {
-			ret = PTR_ERR(pinctrl);
-			dev_err(card->dev, "%s pinctrl failed err %d\n",
-				__func__, ret);
-			atomic_dec_return(&pri_mi2s_rsc_ref);
-			return -EINVAL;
-		}
 		ret = msm_aux_pcm_get_gpios(auxpcm_ctrl);
 		if (ret < 0) {
 			pr_err("%s: PRI MI2S GPIO request failed\n", __func__);
@@ -3132,11 +3101,6 @@ pri_fmt_fail:
 			&lpass_pri_i2s_disable);
 pri_clk_fail:
 	msm_aux_pcm_free_gpios(auxpcm_ctrl);
-	pinctrl = devm_pinctrl_get_select(card->dev,
-			"pmx-pri-mi2s-sleep");
-	if (IS_ERR(pinctrl))
-		dev_err(card->dev, "%s pinctrl failed err %ld\n",
-			__func__, PTR_ERR(pinctrl));
 	atomic_dec_return(&pri_mi2s_rsc_ref);
 	return ret;
 }
