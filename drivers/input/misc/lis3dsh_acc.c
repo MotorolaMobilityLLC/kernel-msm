@@ -24,6 +24,7 @@
 #include	<linux/input.h>
 #include	<linux/uaccess.h>
 #include	<linux/workqueue.h>
+#include	<linux/regulator/consumer.h>
 #include	<linux/irq.h>
 #include	<linux/gpio.h>
 #include	<linux/interrupt.h>
@@ -1789,6 +1790,52 @@ void notify_st_sensor_lowpowermode(int low)
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
 
+static int lis3dsh_pwr_ctrl(struct device *dev, int en)
+{
+	int ret;
+	static  bool pwr_ready = false;
+	static struct regulator *pm8921_l15;
+
+	sensor_debug(DEBUG_INFO, "[lis3dsh] %s +++\n", __func__);
+
+	if(!pwr_ready) {
+		pm8921_l15 = regulator_get(dev, "8226_l15");
+		if (IS_ERR(pm8921_l15)) {
+			pr_err("[lis3dsh] %s: regulator get of pm8921_l15 failed (%ld)\n", __func__, PTR_ERR(pm8921_l15));
+			ret = PTR_ERR(pm8921_l15);
+			goto regulator_get_fail;
+		}
+
+		ret = regulator_set_voltage(pm8921_l15, 2800000, 2800000);
+		if (ret) {
+			pr_err("[lis3dsh] %s: regulator_set_voltage of pm8921_l15 failed(%d)\n", __func__, ret);
+			goto reg_put_LDO15;
+		}
+		pwr_ready = true;
+	}
+
+	if(en) {
+		ret = regulator_enable(pm8921_l15);
+		if (ret) {
+			pr_err("[lis3dsh] %s: regulator_enable of pm8921_l15 failed(%d)\n", __func__, ret);
+			goto reg_put_LDO15;
+    		}
+	} else {
+		ret = regulator_disable(pm8921_l15);
+		if (ret) {
+			pr_err("[lis3dsh] %s: regulator_disable of pm8921_l15 failed(%d)\n", __func__, ret);
+			goto reg_put_LDO15;
+    		}
+	}
+
+	return 0;
+
+	reg_put_LDO15:
+		regulator_put(pm8921_l15);
+	regulator_get_fail:
+		return -ret;
+}
+
 static int lis3dsh_acc_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -1800,6 +1847,10 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	int err = -1;
 
 	dev_info(&client->dev, "probe start.\n");
+
+	err = lis3dsh_pwr_ctrl(&client->dev, 1);
+	if(err)
+		goto exit_check_functionality_failed;
 
 	acc = kzalloc(sizeof(struct lis3dsh_acc_data), GFP_KERNEL);
 	if (acc == NULL) {
