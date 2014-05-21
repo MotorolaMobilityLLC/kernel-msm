@@ -2678,7 +2678,7 @@ static inline int mdss_mdp_resume_sub(struct mdss_data_type *mdata)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
+#if defined(CONFIG_PM_SLEEP)
 static int mdss_mdp_pm_suspend(struct device *dev)
 {
 	struct mdss_data_type *mdata;
@@ -2688,6 +2688,10 @@ static int mdss_mdp_pm_suspend(struct device *dev)
 		return -ENODEV;
 
 	dev_dbg(dev, "display pm suspend\n");
+
+#if !defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
+	mdata->ulps = false;
+#endif
 
 	return mdss_mdp_suspend_sub(mdata);
 }

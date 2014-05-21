@@ -639,6 +639,10 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 
 	pr_debug("mdss_fb suspend index=%d\n", mfd->index);
 
+#if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
+	if (mfd->index == 0)
+		return mfd->mdp.off_pan_on_fnc(mfd);
+#endif
 	mdss_fb_pan_idle(mfd);
 	ret = mdss_fb_send_panel_event(mfd, MDSS_EVENT_SUSPEND, NULL);
 	if (ret) {
@@ -670,6 +674,10 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
+#if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
+	if (mfd->index == 0)
+		return 0;
+#endif
 	INIT_COMPLETION(mfd->power_set_comp);
 	mfd->is_power_setting = true;
 	pr_debug("mdss_fb resume index=%d\n", mfd->index);
