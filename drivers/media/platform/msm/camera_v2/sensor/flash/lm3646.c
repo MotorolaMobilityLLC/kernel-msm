@@ -30,7 +30,7 @@ static struct msm_camera_i2c_reg_array lm3646_init_array[] = {
 	{0x03, 0x20},
 	{0x04, 0x42},
 	{0x05, 0x5F},
-	{0x06, 0x3F}, /*TODO: Change when pin controlled strobe is enabled*/
+	{0x06, 0xBF},
 	{0x07, 0xAF},
 	{0x08, 0x00},
 	{0x09, 0x30},
@@ -42,10 +42,6 @@ static struct msm_camera_i2c_reg_array lm3646_release_array[] = {
 	{0x07, 0x2F},
 };
 
-/* TODO: can remove when pin controlled strobe is enabled.
- * will also need to update 0x01 reg in init since strobe pin
- * requires 0x03 to be set.
- */
 static struct msm_camera_i2c_reg_array lm3646_high_array[] = {
 	{0x01, 0xAB},
 };
