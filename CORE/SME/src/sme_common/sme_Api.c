@@ -106,6 +106,8 @@ eCsrPhyMode sme_GetPhyMode(tHalHandle hHal);
 
 eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf);
 
+void sme_DisconnectConnectedSessions(tpAniSirGlobal pMac);
+
 eHalStatus sme_HandleGenericChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf);
 
 eHalStatus sme_HandlePreChannelSwitchInd(tHalHandle hHal);
@@ -7569,7 +7571,7 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
     csrScanFilterResults(pMac);
     // Do active scans after the country is set by User hints or Country IE
     pMac->scan.curScanType = eSIR_ACTIVE_SCAN;
-
+    sme_DisconnectConnectedSessions(pMac);
     smsLog(pMac, LOG1, FL(" returned"));
     return eHAL_STATUS_SUCCESS;
 }
@@ -7635,6 +7637,63 @@ eHalStatus sme_HandleChangeCountryCodeByCore(tpAniSirGlobal pMac, tAniGenericCha
     return eHAL_STATUS_SUCCESS;
 }
 
+/* ---------------------------------------------------------------------------
+
+    \fn sme_DisconnectConnectedSessions
+
+    \brief Disconnect STA and P2P client session if channel is not supported
+
+    If new country code does not support the channel on which STA/P2P client
+    is connetced, it sends the disconnect to the AP/P2P GO
+
+    \param pMac - The handle returned by macOpen
+
+    \return eHalStatus
+
+   -------------------------------------------------------------------------------*/
+
+void sme_DisconnectConnectedSessions(tpAniSirGlobal pMac)
+{
+    v_U8_t i, sessionId, isChanFound = false;
+    tANI_U8 currChannel;
+
+    for (sessionId=0; sessionId < CSR_ROAM_SESSION_MAX; sessionId++)
+    {
+        if (csrIsSessionClientAndConnected(pMac, sessionId))
+        {
+            isChanFound = false;
+            //Session is connected.Check the channel
+            currChannel = csrGetInfraOperationChannel(pMac, sessionId);
+            smsLog(pMac, LOGW, "Current Operating channel : %d, session :%d",
+                                                     currChannel, sessionId);
+            for (i=0; i < pMac->scan.base20MHzChannels.numChannels; i++)
+            {
+                if (pMac->scan.base20MHzChannels.channelList[i] == currChannel)
+                {
+                    isChanFound = true;
+                    break;
+                }
+            }
+
+            if (!isChanFound)
+            {
+                for (i=0; i < pMac->scan.base40MHzChannels.numChannels; i++)
+                {
+                    if (pMac->scan.base40MHzChannels.channelList[i] == currChannel)
+                    {
+                        isChanFound = true;
+                        break;
+                    }
+                }
+            }
+            if (!isChanFound)
+            {
+                smsLog(pMac, LOGW, "%s : Disconnect Session :%d", __func__, sessionId);
+                csrRoamDisconnect(pMac, sessionId, eCSR_DISCONNECT_REASON_UNSPECIFIED);
+            }
+        }
+    }
+}
 /* ---------------------------------------------------------------------------
 
     \fn sme_HandleGenericChangeCountryCode
