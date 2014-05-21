@@ -78,6 +78,7 @@
 
 &mot_smd_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
+	mmi,partial-mode-enabled;
 };
 
 &soc {
