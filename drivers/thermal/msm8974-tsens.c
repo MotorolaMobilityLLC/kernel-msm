@@ -28,6 +28,9 @@
 
 #include <mach/msm_iomap.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/trace_thermal.h>
+
 #define TSENS_DRIVER_NAME		"msm-tsens"
 /* TSENS register info */
 #define TSENS_UPPER_LOWER_INTERRUPT_CTRL(n)		((n) + 0x1000)
@@ -501,6 +504,7 @@ static void msm_tsens_get_temp(int sensor_hw_num, unsigned long *temp)
 
 	*temp = tsens_tz_code_to_degc((code & TSENS_SN_STATUS_TEMP_MASK),
 								sensor_sw_id);
+	trace_tsens_read(*temp, sensor_hw_num);
 }
 
 static int tsens_tz_get_temp(struct thermal_zone_device *thermal,
@@ -806,6 +810,19 @@ static void tsens_scheduler_fn(struct work_struct *work)
 				tsens_tz_code_to_degc((status &
 				TSENS_SN_STATUS_TEMP_MASK),
 				sensor_sw_id));
+			if (upper_thr)
+				trace_tsens_threshold_hit(
+					tsens_tz_code_to_degc((threshold &
+					TSENS_UPPER_THRESHOLD_MASK) >>
+					TSENS_UPPER_THRESHOLD_SHIFT,
+					sensor_sw_id),
+					tm->sensor[i].sensor_hw_num);
+			else
+				trace_tsens_threshold_clear(
+					tsens_tz_code_to_degc((threshold &
+					TSENS_LOWER_THRESHOLD_MASK),
+					sensor_sw_id),
+					tm->sensor[i].sensor_hw_num);
 		}
 	}
 	mb();
