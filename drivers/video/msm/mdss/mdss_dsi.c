@@ -58,11 +58,6 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 		goto error;
 	}
 
-	if (pdata->panel_info.always_on && pdata->panel_info.is_suspending) {
-		pr_debug("%s: Leaving panel on or off\n", __func__);
-		return 0;
-	}
-
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	pr_debug("%s: enable=%d\n", __func__, enable);
@@ -848,12 +843,8 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 		}
 	}
 
-	if (pdata->panel_info.always_on && pdata->panel_info.is_suspending) {
-		pr_debug("%s: Not sending off commands\n", __func__);
-		return ret;
-	}
-
-	if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
+	if ((ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) &&
+					!pdata->panel_info.always_on) {
 		ret = ctrl_pdata->off(pdata);
 		if (ret) {
 			pr_err("%s: Panel OFF failed\n", __func__);

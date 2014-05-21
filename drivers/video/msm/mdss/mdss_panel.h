@@ -321,7 +321,6 @@ struct mdss_panel_info {
 	int new_fps;
 	u32 mode_gpio_state;
 	bool always_on;
-	bool is_suspending;
 	u32 xstart_pix_align;
 	u32 width_pix_align;
 	u32 ystart_pix_align;

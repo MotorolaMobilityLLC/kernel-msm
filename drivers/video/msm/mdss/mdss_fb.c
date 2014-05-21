@@ -639,8 +639,6 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 
 	pr_debug("mdss_fb suspend index=%d\n", mfd->index);
 
-	mfd->panel_info->is_suspending = true;
-
 	mdss_fb_pan_idle(mfd);
 	ret = mdss_fb_send_panel_event(mfd, MDSS_EVENT_SUSPEND, NULL);
 	if (ret) {
@@ -696,8 +694,6 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 	}
 	mfd->is_power_setting = false;
 	complete_all(&mfd->power_set_comp);
-
-	mfd->panel_info->is_suspending = false;
 
 	return ret;
 }
