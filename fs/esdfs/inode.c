@@ -56,8 +56,9 @@ static int esdfs_unlink(struct inode *dir, struct dentry *dentry)
 	struct inode *lower_dir_inode = esdfs_lower_inode(dir);
 	struct dentry *lower_dir_dentry;
 	struct path lower_path;
-	const struct cred *creds =
-			esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
+	const struct cred *creds;
+
+	creds = esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
 	if (!creds)
 		return -ENOMEM;
 
@@ -125,6 +126,9 @@ static int esdfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 	/* update number of links on parent directory */
 	set_nlink(dir, esdfs_lower_inode(dir)->i_nlink);
 
+	if (ESDFS_DERIVE_PERMS(ESDFS_SB(dir->i_sb)))
+		err = esdfs_derive_mkdir_contents(dentry);
+
 out:
 	unlock_dir(lower_parent_dentry);
 	esdfs_put_lower_path(dentry, &lower_path);
@@ -189,8 +193,10 @@ static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	esdfs_get_lower_path(new_dentry, &lower_new_path);
 	lower_old_dentry = lower_old_path.dentry;
 	lower_new_dentry = lower_new_path.dentry;
-	lower_old_dir_dentry = dget_parent(lower_old_dentry);
-	lower_new_dir_dentry = dget_parent(lower_new_dentry);
+	esdfs_get_lower_parent(old_dentry, lower_old_dentry,
+			       &lower_old_dir_dentry);
+	esdfs_get_lower_parent(new_dentry, lower_new_dentry,
+			       &lower_new_dir_dentry);
 
 	trap = lock_rename(lower_old_dir_dentry, lower_new_dir_dentry);
 	/* source should not be ancestor of target */
@@ -214,15 +220,15 @@ static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	fsstack_copy_inode_size(new_dir, lower_new_dir_dentry->d_inode);
 	if (new_dir != old_dir) {
 		esdfs_copy_attr(old_dir,
-				lower_old_dir_dentry->d_inode);
+				      lower_old_dir_dentry->d_inode);
 		fsstack_copy_inode_size(old_dir,
 					lower_old_dir_dentry->d_inode);
 	}
 
 out:
 	unlock_rename(lower_old_dir_dentry, lower_new_dir_dentry);
-	dput(lower_old_dir_dentry);
-	dput(lower_new_dir_dentry);
+	esdfs_put_lower_parent(old_dentry, &lower_old_dir_dentry);
+	esdfs_put_lower_parent(new_dentry, &lower_new_dir_dentry);
 	esdfs_put_lower_path(old_dentry, &lower_old_path);
 	esdfs_put_lower_path(new_dentry, &lower_new_path);
 	esdfs_revert_creds(creds, &mask);
@@ -231,18 +237,28 @@ out:
 
 static int esdfs_permission(struct inode *inode, int mask)
 {
+	struct esdfs_sb_info *sbi = ESDFS_SB(inode->i_sb);
 	struct inode *lower_inode;
 	int err;
-	int oldmask;
-	const struct cred *creds =
-			esdfs_override_creds(ESDFS_SB(inode->i_sb), &oldmask);
-	if (!creds)
-		return -ENOMEM;
 
+	/* First, check the upper permissions */
+	err = generic_permission(inode, mask);
+
+	/* Basic checking of the lower inode (can't override creds here) */
 	lower_inode = esdfs_lower_inode(inode);
-	err = inode_permission(lower_inode, mask);
+	if (i_uid_read(lower_inode) != sbi->lower_perms.uid ||
+	    i_gid_read(lower_inode) != sbi->lower_perms.gid ||
+	    S_ISSOCK(lower_inode->i_mode) ||
+	    S_ISLNK(lower_inode->i_mode) ||
+	    S_ISBLK(lower_inode->i_mode) ||
+	    S_ISCHR(lower_inode->i_mode) ||
+	    S_ISFIFO(lower_inode->i_mode))
+		err = -EACCES;
 
-	esdfs_revert_creds(creds, &oldmask);
+	/* Finally, check the derived permissions */
+	if (!err && ESDFS_DERIVE_PERMS(ESDFS_SB(inode->i_sb)))
+		err = esdfs_check_derived_permission(inode, mask);
+
 	return err;
 }
 

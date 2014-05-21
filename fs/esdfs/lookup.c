@@ -97,6 +97,9 @@ struct inode *esdfs_iget(struct super_block *sb, struct inode *lower_inode)
 
 	/* initialize new inode */
 	info = ESDFS_I(inode);
+	info->tree = ESDFS_TREE_NONE;
+	info->userid = 0;
+	info->appid = 0;
 
 	inode->i_ino = lower_inode->i_ino;
 	if (!igrab(lower_inode)) {
@@ -137,7 +140,7 @@ struct inode *esdfs_iget(struct super_block *sb, struct inode *lower_inode)
 				   lower_inode->i_rdev);
 
 	/* all well, copy inode attributes */
-	esdfs_copy_attr(inode, lower_inode);
+	esdfs_copy_lower_attr(inode, lower_inode);
 	fsstack_copy_inode_size(inode, lower_inode);
 
 	unlock_new_inode(inode);
@@ -183,6 +186,9 @@ int esdfs_interpose(struct dentry *dentry, struct super_block *sb,
 
 	d_add(dentry, inode);
 
+	if (ESDFS_DERIVE_PERMS(ESDFS_SB(sb)))
+		esdfs_derive_perms(dentry);
+	esdfs_set_perms(inode);
 out:
 	return err;
 }
@@ -273,14 +279,22 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 			    unsigned int flags)
 {
 	int err;
-	struct dentry *ret, *parent;
-	struct path lower_parent_path;
+	struct dentry *ret, *old_parent, *parent;
+	struct path lower_parent_path, old_lower_parent_path;
 	const struct cred *creds =
 			esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
 	if (!creds)
 		return NULL;
 
-	parent = dget_parent(dentry);
+	parent = old_parent = dget_parent(dentry);
+
+	if (ESDFS_DERIVE_PERMS(ESDFS_SB(dir->i_sb))) {
+		err = esdfs_derived_lookup(dentry, &parent);
+		if (err) {
+			ret = ERR_PTR(err);
+			goto out;
+		}
+	}
 
 	esdfs_get_lower_path(parent, &lower_parent_path);
 
@@ -288,11 +302,11 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 	err = new_dentry_private_data(dentry);
 	if (err) {
 		ret = ERR_PTR(err);
-		goto out;
+		goto out_put;
 	}
 	ret = __esdfs_lookup(dentry, flags, &lower_parent_path);
 	if (IS_ERR(ret))
-		goto out;
+		goto out_put;
 	if (ret)
 		dentry = ret;
 	if (dentry->d_inode)
@@ -302,9 +316,20 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 	fsstack_copy_attr_atime(parent->d_inode,
 				esdfs_lower_inode(parent->d_inode));
 
-out:
+	/* More pseudo-hard-link artifacts */
+	if (parent != old_parent) {
+		esdfs_get_lower_path(old_parent, &old_lower_parent_path);
+		esdfs_set_lower_parent(dentry, old_lower_parent_path.dentry);
+		esdfs_put_lower_path(old_parent, &old_lower_parent_path);
+		esdfs_derive_mkdir_contents(dentry);
+	}
+out_put:
 	esdfs_put_lower_path(parent, &lower_parent_path);
+out:
 	dput(parent);
+	if (parent != old_parent)
+		dput(old_parent);
+
 	esdfs_revert_creds(creds, NULL);
 	return ret;
 }
