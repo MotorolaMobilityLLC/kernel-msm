@@ -30,7 +30,7 @@ struct sprat_bat_adc_table_data {
 	int data;
 };
 
-static struct sprat_bat_adc_table_data temp_table[] = {
+static struct sprat_bat_adc_table_data ap_thm_temp_table[] = {
 	{25534, 900},
 	{25779, 850},
 	{26041, 800},
@@ -66,12 +66,49 @@ static struct sprat_bat_adc_table_data temp_table[] = {
 	{42005, -300},
 };
 
+static struct sprat_bat_adc_table_data bat_thm_temp_table[] = {
+	{25959, 900},
+	{26195, 850},
+	{26464, 800},
+	{26760, 750},
+	{27078, 700},
+	{27381, 650},
+	{27824, 600},
+	{28324, 550},
+	{28942, 500},
+	{29618, 450},
+	{30424, 400},
+	{31314, 350},
+	{32288, 300},
+	{33543, 250},
+	{34600, 200},
+	{35809, 150},
+	{36904, 100},
+	{38095, 50},
+	{38253, 40},
+	{38467, 30},
+	{38609, 20},
+	{38812, 10},
+	{38985, 0},
+	{39139, -10},
+	{39332, -20},
+	{39556, -30},
+	{39684, -40},
+	{39887, -50},
+	{40602, -100},
+	{41321, -150},
+	{41804, -200},
+	{42215, -250},
+	{42558, -300},
+};
+static struct sprat_bat_adc_table_data * temp_table;
 extern int androidboot_mode_charger;
 static int sprat_bat_is_poweroff_charging(void)
 {
 	return androidboot_mode_charger;
 }
 
+extern int system_rev;
 static int sprat_bat_read_adc(enum power_supply_property psp) {
 	struct qpnp_vadc_result results;
 	int rc = -1;
@@ -80,7 +117,11 @@ static int sprat_bat_read_adc(enum power_supply_property psp) {
 	switch (psp)
 	{
 	case POWER_SUPPLY_PROP_TEMP:
-		rc = qpnp_vadc_read(adc_client, P_MUX2_1_1, &results);
+		if(system_rev >= 3)
+			rc = qpnp_vadc_read(adc_client, P_MUX5_1_1, &results);
+		else
+			rc = qpnp_vadc_read(adc_client, P_MUX2_1_1, &results);
+
 		if (rc) {
 			pr_err("%s: Unable to read batt temperature rc=%d\n",
 					__func__, rc);
@@ -211,7 +252,10 @@ static int sprat_bat_get_temperature_data(struct android_bat_data * battery, int
 	unsigned int temp_table_size;
 
 	temp_adc = sprat_bat_get_adc_data(POWER_SUPPLY_PROP_TEMP, ADC_CHECK_COUNT);
-	temp_table_size = sizeof(temp_table) / sizeof(struct sprat_bat_adc_table_data);
+	if(system_rev >= 3)
+		temp_table_size = sizeof(bat_thm_temp_table) / sizeof(struct sprat_bat_adc_table_data);
+	else
+		temp_table_size = sizeof(ap_thm_temp_table) / sizeof(struct sprat_bat_adc_table_data);
 
 	if (temp_adc < 0)
 		return -ENXIO;
@@ -290,6 +334,11 @@ void sprat_bat_initial_check(void) {
 		psy_do_property("battery", set,
 				POWER_SUPPLY_PROP_ONLINE, value);
 	}
+
+	if(system_rev >= 3)
+		temp_table = bat_thm_temp_table;
+	else
+		temp_table = ap_thm_temp_table;
 }
 
 void sprat_bat_init_adc(struct android_bat_data * battery) {
