@@ -162,7 +162,7 @@ static void cyttsp5_input_report(struct input_dev *input, int sig,
 }
 
 #ifdef SAMSUNG_PALM_MOTION
-void report_sumsize_palm(struct cyttsp5_mt_data *md,
+static void report_sumsize_palm(struct cyttsp5_mt_data *md,
 	u16 sumsize, bool palm)
 {
 	static bool palm_flag = false;
@@ -198,6 +198,9 @@ void cyttsp5_mt_lift_all(struct cyttsp5_mt_data *md)
 {
 	int max = md->si->tch_abs[CY_TCH_T].max;
 
+#ifdef SAMSUNG_PALM_MOTION
+	report_sumsize_palm(md, 0, 0);
+#endif
 	if (md->num_prv_tch != 0) {
 		cyttsp5_report_slot_liftoff(md, max);
 		input_sync(md->input);
@@ -491,6 +494,7 @@ static int cyttsp5_xy_worker(struct cyttsp5_mt_data *md)
 	struct cyttsp5_sysinfo *si = md->si;
 	struct cyttsp5_touch tch;
 	u8 num_cur_tch;
+	unsigned long ids = 0;
 
 	cyttsp5_get_touch_hdr(md, &tch, si->xy_mode + 3);
 
@@ -515,8 +519,14 @@ static int cyttsp5_xy_worker(struct cyttsp5_mt_data *md)
 		num_cur_tch);
 	if (num_cur_tch)
 		cyttsp5_get_mt_touches(md, &tch, num_cur_tch);
-	else
-		cyttsp5_mt_lift_all(md);
+	else {
+		if (md->palm) {
+			report_sumsize_palm(md, 0, md->palm);
+			cyttsp5_final_sync(md->input, 0, 1, &ids);
+		} else {
+			cyttsp5_mt_lift_all(md);
+		}
+	}
 
 	return 0;
 }

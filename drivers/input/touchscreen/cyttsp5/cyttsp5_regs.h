@@ -53,6 +53,7 @@
 #include <linux/i2c/cyttsp5_core.h>
 
 extern int androidboot_mode_charger;
+extern unsigned int system_rev;
 
 #define ALWAYS_ON_TOUCH
 #define CYTTSP5_DEVICE_ACCESS
@@ -70,6 +71,7 @@ extern int androidboot_mode_charger;
 
 #define CY_CSP_FW_FILE_NAME "tsp_cypress/cyttsp5_csp.fw"
 #define CY_QFN_FW_FILE_NAME "tsp_cypress/cyttsp5_qfn.fw"
+#define CY_QFN_03_FW_FILE_NAME "tsp_cypress/cyttsp5_qfn_03.fw"
 #define CY_FW_FILE_PATH "/data/tmp/cyttsp5_fw.bin"
 
 #ifdef TTHE_TUNER_SUPPORT
@@ -1037,8 +1039,6 @@ void cyttsp5_set_upgrade_firmware_from_builtin(struct device *dev,
 int upgrade_firmware_from_sdcard(struct device *dev,
 	const u8 *fw_data, int fw_size);
 
-void report_sumsize_palm(struct cyttsp5_mt_data *md,
-	u16 sumsize, bool palm);
 void cyttsp5_mt_lift_all(struct cyttsp5_mt_data *md);
 int cyttsp5_mt_release(struct device *dev);
 int cyttsp5_mt_probe(struct device *dev);

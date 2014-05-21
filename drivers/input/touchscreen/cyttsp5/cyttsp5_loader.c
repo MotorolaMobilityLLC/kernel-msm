@@ -48,7 +48,8 @@ static const u8 cyttsp5_security_key[] = {
 
 #define CY_HW_VERSION 0x01
 #define CY_CSP_FW_VERSION 0x0600
-#define CY_FW_VERSION 0x1300
+#define CY_QFN_FW_VERSION 0x1400
+#define CY_FW_VERSION 0x2100
 
 #ifdef CYTTSP5_PLATFORM_FW_UPGRADE
 #include "cyttsp5_firmware.h"
@@ -691,6 +692,11 @@ static int cyttsp5_check_firmware_version_binary(struct device *dev,
 	if (cd->silicon_id == CSP_SILICON_ID) {
 		fw_ver_new = CY_CSP_FW_VERSION;
 		cyttsp5_firmware.fw_version = CY_CSP_FW_VERSION;
+	} else {
+		if (system_rev < 4) {
+			fw_ver_new = CY_QFN_FW_VERSION;
+			cyttsp5_firmware.fw_version = CY_QFN_FW_VERSION;
+		}
 	}
 
 	if (!ld->si) {

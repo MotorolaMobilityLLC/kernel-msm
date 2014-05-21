@@ -4568,7 +4568,10 @@ static int cyttsp5_check_silicon_id(struct cyttsp5_core_data *cd)
 	if ((cd->silicon_id) == CSP_SILICON_ID) {
 		cd->fw_path = CY_CSP_FW_FILE_NAME;
 	} else if ((cd->silicon_id) == QFN_SILICON_ID) {
-		cd->fw_path = CY_QFN_FW_FILE_NAME;
+		if (system_rev < 4)
+			cd->fw_path = CY_QFN_FW_FILE_NAME;
+		else
+			cd->fw_path = CY_QFN_03_FW_FILE_NAME;
 	} else {
 		dev_err(cd->dev, "%s: Failed to set fw_path [%04x]\n",
 				__func__, cd->silicon_id);
@@ -4836,9 +4839,6 @@ int cyttsp5_core_suspend(struct device *dev)
 		cancel_work_sync(&cd->startup_work);
 		cyttsp5_stop_wd_timer(cd);
 	}
-#ifdef SAMSUNG_PALM_MOTION
-	report_sumsize_palm(&cd->md, 0, 0);
-#endif
 	cyttsp5_mt_lift_all(&cd->md);
 
 	if (device_may_wakeup(dev)) {
