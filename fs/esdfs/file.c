@@ -130,8 +130,8 @@ static int esdfs_mmap(struct file *file, struct vm_area_struct *vma)
 	lower_file = esdfs_lower_file(file);
 	if (willwrite && !lower_file->f_mapping->a_ops->writepage) {
 		err = -EINVAL;
-		printk(KERN_ERR "esdfs: lower file system does not "
-		       "support writeable mmap\n");
+		esdfs_msg(file->f_mapping->host->i_sb, KERN_INFO,
+			"lower file system does not support writeable mmap\n");
 		goto out;
 	}
 
@@ -143,7 +143,8 @@ static int esdfs_mmap(struct file *file, struct vm_area_struct *vma)
 	if (!ESDFS_F(file)->lower_vm_ops) {
 		err = lower_file->f_op->mmap(lower_file, vma);
 		if (err) {
-			printk(KERN_ERR "esdfs: lower mmap failed %d\n", err);
+			esdfs_msg(file->f_mapping->host->i_sb, KERN_ERR,
+				"lower mmap failed %d\n", err);
 			goto out;
 		}
 		saved_vm_ops = vma->vm_ops; /* save: came from lower ->mmap */
