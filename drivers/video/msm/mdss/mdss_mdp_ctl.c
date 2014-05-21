@@ -1733,6 +1733,16 @@ int mdss_mdp_ctl_intf_event(struct mdss_mdp_ctl *ctl, int event, void *arg)
 	return rc;
 }
 
+int mdss_mdp_ctl_off_pan_on(struct mdss_mdp_ctl *ctl)
+{
+	if (ctl->off_pan_on)
+		return ctl->off_pan_on(ctl);
+	else
+		pr_debug("ctl off with panel on func not defined\n");
+
+	return 0;
+}
+
 /*
  * mdss_mdp_ctl_restore() - restore mdp ctl path
  * @ctl: mdp controller.
