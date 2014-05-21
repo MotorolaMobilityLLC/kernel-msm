@@ -18,6 +18,18 @@
  */
 static struct kmem_cache *esdfs_inode_cachep;
 
+void esdfs_msg(struct super_block *sb, const char *level, const char *fmt, ...)
+{
+	struct va_format vaf;
+	va_list args;
+
+	va_start(args, fmt);
+	vaf.fmt = fmt;
+	vaf.va = &args;
+	printk("%sESDFS-fs (%s): %pV", level, sb->s_id, &vaf);
+	va_end(args);
+}
+
 /* final actions when unmounting a file system */
 static void esdfs_put_super(struct super_block *sb)
 {
@@ -66,8 +78,8 @@ static int esdfs_remount_fs(struct super_block *sb, int *flags, char *options)
 	 * SILENT, but anything else left over is an error.
 	 */
 	if ((*flags & ~(MS_RDONLY | MS_MANDLOCK | MS_SILENT)) != 0) {
-		printk(KERN_ERR
-		       "esdfs: remount flags 0x%x unsupported\n", *flags);
+		esdfs_msg(sb, KERN_ERR, "remount flags 0x%x unsupported\n",
+			*flags);
 		err = -EINVAL;
 	}
 
@@ -160,25 +172,35 @@ static int esdfs_show_options(struct seq_file *seq, struct dentry *root)
 {
 	struct esdfs_sb_info *sbi = ESDFS_SB(root->d_sb);
 
-	if (sbi->lower_perms.uid != ESDFS_DEFAULT_LOWER_UID ||
-	    sbi->lower_perms.gid != ESDFS_DEFAULT_LOWER_GID ||
-	    sbi->lower_perms.fmask != ESDFS_DEFAULT_LOWER_FMASK ||
-	    sbi->lower_perms.dmask != ESDFS_DEFAULT_LOWER_DMASK)
+	if (memcmp(&sbi->lower_perms,
+		   &esdfs_perms_table[ESDFS_PERMS_LOWER_DEFAULT],
+		   sizeof(struct esdfs_perms)))
 		seq_printf(seq, ",lower=%u:%u:%ho:%ho",
 				sbi->lower_perms.uid,
 				sbi->lower_perms.gid,
 				sbi->lower_perms.fmask,
 				sbi->lower_perms.dmask);
 
-	if (sbi->upper_perms.uid != ESDFS_DEFAULT_UPPER_UID ||
-	    sbi->upper_perms.gid != ESDFS_DEFAULT_UPPER_GID ||
-	    sbi->upper_perms.fmask != ESDFS_DEFAULT_UPPER_FMASK ||
-	    sbi->upper_perms.dmask != ESDFS_DEFAULT_UPPER_DMASK)
+	if (memcmp(&sbi->upper_perms,
+		   &esdfs_perms_table[ESDFS_PERMS_UPPER_LEGACY],
+		   sizeof(struct esdfs_perms)))
 		seq_printf(seq, ",upper=%u:%u:%ho:%ho",
 				sbi->upper_perms.uid,
 				sbi->upper_perms.gid,
 				sbi->upper_perms.fmask,
 				sbi->upper_perms.dmask);
+
+	if (test_opt(sbi, DERIVE_LEGACY))
+		seq_puts(seq, ",derive=legacy");
+	else if (test_opt(sbi, DERIVE_UNIFIED))
+		seq_puts(seq, ",derive=unified");
+	else
+		seq_puts(seq, ",derive=none");
+
+	if (test_opt(sbi, DERIVE_SPLIT))
+		seq_puts(seq, ",split");
+	else
+		seq_puts(seq, ",nosplit");
 
 	return 0;
 }
