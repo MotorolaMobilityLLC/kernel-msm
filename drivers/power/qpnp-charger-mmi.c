@@ -265,6 +265,8 @@ struct qpnp_chg_regulator {
  * @warm_bat_chg_ma:	warm battery maximum charge current in mA
  * @cool_bat_chg_ma:	cool battery maximum charge current in mA
  * @warm_bat_mv:		warm temperature battery target voltage
+ * @warm_bat_soc:		warm temperature battery target soc
+ * @resume_delta_soc:           soc delta at which battery resumes charging
  * @cool_bat_mv:		cool temperature battery target voltage
  * @resume_delta_mv:		voltage delta at which battery resumes charging
  * @term_current:		the charging based term current
@@ -362,6 +364,8 @@ struct qpnp_chg_chip {
 	int				delta_vddmax_mv;
 	u8				trim_center;
 	unsigned int			warm_bat_mv;
+	unsigned int			warm_bat_soc;
+	unsigned int			resume_delta_soc;
 	unsigned int			cool_bat_mv;
 	unsigned int			resume_delta_mv;
 	int				insertion_ocv_uv;
@@ -1509,7 +1513,8 @@ qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip)
 	if (chip->bat_is_cool && !chip->out_of_temp && !chip->ext_hi_temp)
 		qpnp_chg_vddmax_and_trim_set(chip, chip->cool_bat_mv,
 				chip->delta_vddmax_mv);
-	else if (chip->bat_is_warm && !chip->out_of_temp && !chip->ext_hi_temp)
+	else if (chip->bat_is_warm && !chip->out_of_temp && !chip->ext_hi_temp
+		 && !chip->warm_bat_soc)
 		qpnp_chg_vddmax_and_trim_set(chip, chip->warm_bat_mv,
 				chip->delta_vddmax_mv);
 	else if (!chip->use_max_vdd)
@@ -3133,32 +3138,78 @@ qpnp_batt_system_temp_level_set(struct qpnp_chg_chip *chip, int lvl_sel)
 static int batt_hotspot_threshold = 50000;
 module_param(batt_hotspot_threshold, int, 0644);
 
-static void
+static bool
 qpnp_update_ext_hi_state(struct qpnp_chg_chip *chip)
 {
 	int batt_mv;
+	int batt_soc;
+	bool ext_hi_temp = false;
+	bool resuming = false;
+	unsigned int cool_resume_mv;
+	unsigned int warm_resume_mv;
+
+	cool_resume_mv = chip->cool_bat_mv - chip->resume_delta_mv;
+	warm_resume_mv = chip->warm_bat_mv - chip->resume_delta_mv;
 
 	mutex_lock(&chip->update_ext_hi_state_lock);
 	chip->bat_is_warm =
 		chip->bat_therm_is_warm || chip->bat_hotspot_is_warm;
 
 	batt_mv = get_prop_battery_voltage_now(chip) / 1000;
+	batt_soc = get_prop_capacity(chip);
 
-	if (((chip->bat_is_cool && (batt_mv > chip->cool_bat_mv)) ||
-	     (chip->bat_is_warm && (batt_mv > chip->warm_bat_mv))) &&
-	    !chip->out_of_temp)
-		chip->ext_hi_temp = true;
-	else
-		chip->ext_hi_temp = false;
+	if (chip->bat_is_cool) {
+		if (chip->ext_hi_temp) {
+			if (batt_mv <= cool_resume_mv) {
+				ext_hi_temp = false;
+				resuming = true;
+			} else
+				ext_hi_temp = true;
+		} else if ((batt_mv > chip->cool_bat_mv))
+			ext_hi_temp = true;
+	} else if (chip->bat_is_warm) {
+		if (chip->warm_bat_soc) {
+			if (chip->ext_hi_temp) {
+				if (batt_soc <= (chip->warm_bat_soc
+					- chip->resume_delta_soc)) {
+					ext_hi_temp = false;
+					resuming = true;
+				} else
+					ext_hi_temp = true;
+			} else if (batt_soc > chip->warm_bat_soc)
+				ext_hi_temp = true;
+		} else {
+			if (chip->ext_hi_temp) {
+				if (batt_mv <= warm_resume_mv) {
+					ext_hi_temp = false;
+					resuming = true;
+				} else
+					ext_hi_temp = true;
+			} else if ((batt_mv > chip->warm_bat_mv))
+				ext_hi_temp = true;
+		}
+	}
 
-	if ((chip->bat_is_cool || chip->bat_is_warm) && chip->ext_hi_temp)
+	if (resuming) {
+		chip->resuming_charging = true;
+		qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
+	} else
 		chip->resuming_charging = false;
 
+	chip->ext_hi_temp = ext_hi_temp;
 	qpnp_chg_set_appropriate_vddmax(chip);
 	qpnp_chg_set_appropriate_battery_current(chip);
 	qpnp_chg_set_appropriate_vbatdet(chip);
+	chip->resuming_charging = false;
+	qpnp_chg_charge_en(chip, (!chip->charging_disabled &&
+				  !chip->out_of_temp &&
+				  !chip->ext_hi_temp &&
+				  (chip->chrg_ocv_state !=
+				   CHRG_OCV_OCV_WAIT)));
 
 	mutex_unlock(&chip->update_ext_hi_state_lock);
+
+	return resuming;
 }
 
 static int batt_hotspot_temperature;
@@ -3789,21 +3840,6 @@ qpnp_eoc_work(struct work_struct *work)
 		pr_debug("ibat_ma = %d vbat_mv = %d term_current_ma = %d\n",
 				ibat_ma, vbat_mv, chip->term_current);
 
-		if (chip->ext_hi_temp &&
-		    ((vbat_mv <=
-		      (chip->cool_bat_mv - chip->resume_delta_mv)) ||
-		     (vbat_mv <=
-		      (chip->warm_bat_mv - chip->resume_delta_mv)))) {
-			chip->ext_hi_temp = false;
-			qpnp_chg_set_appropriate_vddmax(chip);
-			qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
-			qpnp_chg_charge_en(chip, (!chip->charging_disabled &&
-						  !chip->out_of_temp &&
-						  !chip->ext_hi_temp &&
-						  (chip->chrg_ocv_state != CHRG_OCV_OCV_WAIT)));
-			goto stop_eoc;
-		}
-
 #ifdef QCOM_WA
 		vbat_lower_than_vbatdet = !(chg_sts & VBAT_DET_LOW_IRQ);
 		if (vbat_lower_than_vbatdet && vbat_mv <
@@ -3826,9 +3862,11 @@ qpnp_eoc_work(struct work_struct *work)
 			vbat_low_count = 0;
 		}
 #endif
-		if (chip->bat_is_cool || chip->bat_is_warm) {
+		if (chip->bat_is_cool) {
 			chip->use_max_vdd = true;
 			count_taper = 0;
+			if (qpnp_update_ext_hi_state(chip))
+				goto stop_eoc;
 		} else if (!chip->use_step_charge &&
 			   (count_taper < CONSECUTIVE_COUNT) &&
 			   (chip->step_charge_mv < chip->max_voltage_mv) &&
@@ -3860,6 +3898,10 @@ qpnp_eoc_work(struct work_struct *work)
 			}
 		}
 		qpnp_chg_set_appropriate_vddmax(chip);
+
+		if (chip->bat_is_warm)
+			if (qpnp_update_ext_hi_state(chip))
+				goto stop_eoc;
 
 		if ((buck_sts & VDD_LOOP_IRQ) &&
 		    (vbat_mv >= (chip->max_voltage_mv - CV_DELTA)))
@@ -5247,6 +5289,8 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 		OF_PROP_READ(chip, warm_bat_chg_ma, "ibatmax-warm-ma", rc, 1);
 		OF_PROP_READ(chip, cool_bat_chg_ma, "ibatmax-cool-ma", rc, 1);
 		OF_PROP_READ(chip, warm_bat_mv, "warm-bat-mv", rc, 1);
+		OF_PROP_READ(chip, warm_bat_soc, "warm-bat-soc", rc, 1);
+		OF_PROP_READ(chip, resume_delta_soc, "resume-delta-soc", rc, 1);
 		OF_PROP_READ(chip, cool_bat_mv, "cool-bat-mv", rc, 1);
 		if (rc)
 			return rc;
