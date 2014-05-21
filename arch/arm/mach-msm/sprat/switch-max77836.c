@@ -112,7 +112,7 @@ static void muic_usb_cb(u8 usb_mode)
 }
 EXPORT_SYMBOL(muic_usb_cb);
 
-int current_cable_type = -1;
+int current_cable_type = CHARGE_SOURCE_NONE;
 static int muic_charger_cb(enum muic_attached_dev cable_type)
 {
 	struct power_supply *psy = power_supply_get_by_name("battery");

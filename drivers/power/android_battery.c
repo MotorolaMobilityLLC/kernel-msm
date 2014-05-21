@@ -881,7 +881,6 @@ static int android_bat_probe(struct platform_device *pdev)
 		goto err_create_attrs;
 	}
 
-	wake_lock(&battery->monitor_wake_lock);
 	queue_work(battery->monitor_wqueue, &battery->monitor_work);
 
 	battery->debugfs_entry =
@@ -937,6 +936,9 @@ static int android_bat_suspend(struct device *dev)
 
 static void android_bat_resume(struct device *dev)
 {
+	struct android_bat_data *battery = dev_get_drvdata(dev);
+	power_supply_changed(&battery->psy_bat);
+
 	return;
 }
 

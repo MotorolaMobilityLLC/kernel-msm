@@ -329,11 +329,10 @@ void sprat_bat_initial_check(void) {
 	union power_supply_propval value;
 
 	pr_info("%s : current_cable_type : (%d)\n", __func__, current_cable_type);
-	if (CHARGE_SOURCE_NONE != current_cable_type) {
-		value.intval = current_cable_type;
-		psy_do_property("battery", set,
-				POWER_SUPPLY_PROP_ONLINE, value);
-	}
+
+	value.intval = current_cable_type;
+	psy_do_property("battery", set,
+			POWER_SUPPLY_PROP_ONLINE, value);
 
 	if(system_rev >= 3)
 		temp_table = bat_thm_temp_table;
