@@ -123,4 +123,12 @@ config I2C_DEBUG_BUS
 	  a problem with I2C support and want to see more of what is going
 	  on.
 
+config I2C_STRESS_TEST
+	boolean "I2C Stress Test"
+	default y
+	help
+		I2C Stress Test.
+		If you say yes here, you support for it.
+		This driver can not be built as a module.
+
 endif # I2C

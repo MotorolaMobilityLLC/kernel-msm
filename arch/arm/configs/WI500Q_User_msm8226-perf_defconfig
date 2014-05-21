@@ -488,4 +488,7 @@ CONFIG_NET_CLS_ACT=y
 CONFIG_IFB=y
 CONFIG_NETFILTER_XT_TARGET_TPROXY=y
 # ASUS_BSP --- Gary "[ROBIN][PROXY] Enable google proxy support in user build"
+# ASUS_BSP +++ Maggie Lee "I2C Stress Test Porting"
+CONFIG_I2C_STRESS_TEST=n
+# ASUS_BSP --- Maggie Lee
 

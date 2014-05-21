@@ -46,6 +46,49 @@
 
 #include "i2c-core.h"
 
+//ASUS_BSP +++ Maggie_Lee "I2C Debug"
+/* Debug levels */
+#define NO_DEBUG       0
+#define DEBUG_ERROR       0
+#define DEBUG_POWER     1
+#define DEBUG_INFO  2
+#define DEBUG_VERBOSE 5
+#define DEBUG_RAW      8
+#define DEBUG_TRACE   10
+
+static int debug = NO_DEBUG;
+
+module_param(debug, int, 0644);
+
+MODULE_PARM_DESC(debug, "Activate i2c debug output");
+
+
+#define i2c_debug(level, nr, fmt, ...) \
+	if (debug >= (level)) { \
+		switch (nr) { \
+			case 2: \
+				printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__); \
+				break; \
+			case 3: \
+				printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__); \
+				break; \
+			case 4: \
+				printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__); \
+				break; \
+			case 6: \
+				printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__); \
+				break; \
+			case 10: \
+				printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__); \
+				break; \
+			case 11: \
+				printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__); \
+				break; \
+			default: \
+				break; \
+			} \
+	}
+//ASUS_BSP --- Maggie_Lee "I2C Debug"
 
 /* core_lock protects i2c_adapter_idr, and guarantees
    that device detection, deletion of detected devices, and attach_adapter
@@ -409,10 +452,56 @@ show_modalias(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
 static DEVICE_ATTR(modalias, S_IRUGO, show_modalias, NULL);
 
+//ASUS_BSP +++ Maggie_Lee "I2C Stress Test"
+#ifdef CONFIG_I2C_STRESS_TEST
+#include <linux/ctype.h>
+#include <linux/i2c-stresstest-external-command.h>
+
+static ssize_t show_test(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	//struct i2c_adapter *adap = to_i2c_adapter(dev);
+	return i2c_stresstest_print_status(buf);
+}
+
+static ssize_t store_test(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	return i2c_stresstest_command_parser(buf, count);
+}
+static DEVICE_ATTR(test, 0755 , show_test, store_test);
+#endif
+
+static int show_debug(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", debug);
+}
+
+static int store_debug(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned long val;
+	
+	if ( (strict_strtoul(buf, 10, &val) < 0) )
+		return -EINVAL;
+
+	debug = (int)val;
+
+	if ( debug > DEBUG_TRACE )
+		debug = DEBUG_TRACE; 
+	
+	return debug; 
+}
+static DEVICE_ATTR(debug, 0755 , show_debug, store_debug);
+//ASUS_BSP --- Maggie_Lee "I2C Stress Test"
+
 static struct attribute *i2c_dev_attrs[] = {
 	&dev_attr_name.attr,
 	/* modalias helps coldplug:  modprobe $(cat .../modalias) */
 	&dev_attr_modalias.attr,
+//ASUS_BSP +++ Maggie_Lee "I2C Stress Test"
+	&dev_attr_debug.attr,
+#ifdef CONFIG_I2C_STRESS_TEST
+	&dev_attr_test.attr,
+#endif 
+//ASUS_BSP --- Maggie_Lee "I2C Stress Test"
 	NULL
 };
 
@@ -1520,6 +1609,7 @@ EXPORT_SYMBOL(__i2c_transfer);
 int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 {
 	int ret;
+	int try;		//ASUS_BSP +++ Maggie_Lee "I2C Debug"
 
 	/* REVISIT the fault reporting model here is weak:
 	 *
@@ -1547,18 +1637,68 @@ int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 				(msgs[ret].flags & I2C_M_RECV_LEN) ? "+" : "");
 		}
 #endif
+//ASUS_BSP +++ Maggie_Lee "I2C Debug"
+		if ( debug > 0 )	{
+			for (ret = 0; ret < num; ret++) {
+				i2c_debug(DEBUG_INFO, adap->nr, 
+				"[I2C transfer][bus=%d] +++I2C : R/W=%c, addr=0x%02x, reg=0x%02x, len=%d\n",
+				adap->nr, (msgs[ret].flags & I2C_M_RD) ? 'R' : 'W', msgs[ret].addr, 
+				(msgs[ret].buf) ? msgs[ret].buf[0] : 0, msgs[ret].len );
+			}
+			if ( msgs[0].flags == 0 && msgs[0].len > 1 )	{
+				i2c_debug(DEBUG_INFO, adap->nr, 
+				"[I2C transfer][bus=%d] Write data : ",adap->nr );
+				for (ret = 1; ret < msgs[0].len; ret++) {
+					i2c_debug(DEBUG_INFO, adap->nr, 
+					"0x%02x, ", msgs[0].buf[ret] );
+				}
+			}
+			i2c_debug(DEBUG_INFO, adap->nr, "**********************************\n");
+		}
+//ASUS_BSP --- Maggie_Lee "I2C Debug"
 
 		if (in_atomic() || irqs_disabled()) {
 			ret = i2c_trylock_adapter(adap);
-			if (!ret)
+			if (!ret) {
+//ASUS_BSP +++ Maggie_Lee "I2C Debug"
+				i2c_debug(DEBUG_RAW , adap->nr, 
+				"[I2C transfer][bus=%d] mutex error  in_atomic()=%d, irqs_disabled()=%d, mutex_trylock()=%d\n",
+							adap->nr, in_atomic(), irqs_disabled(), ret );
+
+				for (ret = 0; ret < num; ret++) {
+					i2c_debug(DEBUG_ERROR , adap->nr,
+					"[I2C transfer][bus=%d] I2C mutex error %c, addr=0x%02x, reg=0x%02x, len=%d\n",
+						adap->nr, (msgs[ret].flags & I2C_M_RD) ? 'R' : 'W', msgs[ret].addr,
+						(msgs[ret].buf) ? msgs[ret].buf[0] : 0, msgs[ret].len );
+				}
+//ASUS_BSP --- Maggie_Lee "I2C Debug"
 				/* I2C activity is ongoing. */
 				return -EAGAIN;
+			}
 		} else {
 			i2c_lock_adapter(adap);
 		}
 
 		ret = __i2c_transfer(adap, msgs, num);
 		i2c_unlock_adapter(adap);
+
+//ASUS_BSP +++ Maggie_Lee "I2C Debug"
+		if (ret < 0)	{
+			i2c_debug(DEBUG_ERROR , adap->nr, 
+			"[I2C transfer][bus=%d] [i2c Error] ret=%d\n",adap->nr, ret);
+			
+			for (try = 0; try < num; try++) {
+				i2c_debug(DEBUG_ERROR , adap->nr, 
+				"[I2C transfer][bus=%d] [i2c Error] i2c_transfer (%c) addr=0x%02x, reg=0x%02x, len=%d\n", 
+				adap->nr, (msgs[try].flags & I2C_M_RD) ? 'R' : 'W', msgs[try].addr,
+				(msgs[try].buf) ? msgs[try].buf[0] : 0, msgs[try].len);
+			}
+		}		else	{
+			i2c_debug(DEBUG_TRACE , adap->nr, 
+			"[I2C transfer][bus=%d] ---I2C : R/W=%c I2C mutex_unlock addr=0x%02x, ret=%d\n",
+				adap->nr, (msgs[0].flags & I2C_M_RD) ? 'R' : 'W', msgs[0].addr, ret);
+		}
+//ASUS_BSP --- Maggie_Lee "I2C Debug"
 
 		return ret;
 	} else {
@@ -2294,10 +2434,22 @@ s32 i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr, unsigned short flags,
 	int try;
 	s32 res;
 
+//ASUS_BSP +++ Maggie_Lee "I2C Debug"
+	i2c_debug(DEBUG_INFO, adapter->nr, 
+		"[I2C smbus_xfer][bus=%d] I2C SMbus : addr=0x%02x, reg=0x%02x, len=%d\n",
+			adapter->nr, addr, command, data->block[0] );
+//ASUS_BSP --- Maggie_Lee "I2C Debug"
+
 	flags &= I2C_M_TEN | I2C_CLIENT_PEC | I2C_CLIENT_SCCB;
 
 	if (adapter->algo->smbus_xfer) {
 		i2c_lock_adapter(adapter);
+
+//ASUS_BSP +++ Maggie_Lee "I2C Debug"
+		i2c_debug(DEBUG_TRACE , adapter->nr,
+		"[I2C smbus_xfer][bus=%d] SMbus : R/W=%c, addr=0x%02x, reg=0x%02x, len=%d\n",
+			adapter->nr, read_write, addr, command, data->block[0] );
+//ASUS_BSP --- Maggie_Lee "I2C Debug"
 
 		/* Retry automatically on arbitration loss */
 		orig_jiffies = jiffies;
