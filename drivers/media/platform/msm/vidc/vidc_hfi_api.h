@@ -56,6 +56,11 @@
 #define HAL_DEBUG_MSG_HIGH				0x00000004
 #define HAL_DEBUG_MSG_ERROR				0x00000008
 #define HAL_DEBUG_MSG_FATAL				0x00000010
+#define MAX_PROFILE_COUNT	16
+
+#define HAL_MAX_MATRIX_COEFFS 9
+#define HAL_MAX_BIAS_COEFFS 3
+#define HAL_MAX_LIMIT_COEFFS 6
 
 enum vidc_status {
 	VIDC_ERR_NONE = 0x0,
@@ -197,6 +202,7 @@ enum hal_property {
 	HAL_CONFIG_VENC_USELTRFRAME,
 	HAL_CONFIG_VENC_LTRPERIOD,
 	HAL_PARAM_VENC_HIER_P_NUM_FRAMES,
+	HAL_PARAM_VPE_COLOR_SPACE_CONVERSION,
 };
 
 enum hal_domain {
@@ -573,7 +579,7 @@ struct hal_profile_level {
 
 struct hal_profile_level_supported {
 	u32 profile_count;
-	struct hal_profile_level profile_level[1];
+	struct hal_profile_level profile_level[MAX_PROFILE_COUNT];
 };
 
 enum hal_h264_entropy {
@@ -841,6 +847,12 @@ struct hal_h264_vui_bitstream_restrc {
 
 struct hal_preserve_text_quality {
 	u32 enable;
+};
+
+struct hal_vpe_color_space_conversion {
+	u32 csc_matrix[HAL_MAX_MATRIX_COEFFS];
+	u32 csc_bias[HAL_MAX_BIAS_COEFFS];
+	u32 csc_limit[HAL_MAX_LIMIT_COEFFS];
 };
 
 enum vidc_resource_id {
