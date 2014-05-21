@@ -74,7 +74,7 @@ static struct msm_cam_clk_info csid_clk_src_info[] = {
 };
 
 static struct camera_vreg_t csid_vreg_info[] = {
-	{"qcom,mipi-csi-vdd", REG_LDO, 0, 0, 12000},
+	{"qcom,mipi-csi-vdd", 0, 0, 12000},
 };
 
 #endif
