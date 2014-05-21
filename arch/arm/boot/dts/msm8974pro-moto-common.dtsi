@@ -652,6 +652,8 @@
 	qcom,warm-bat-decidegc = <450>;
 	qcom,cool-bat-decidegc = <0>;
 	qcom,warm-bat-mv = <4000>;
+	qcom,warm-bat-soc = <65>;
+	qcom,resume-delta-soc = <2>;
 	qcom,cool-bat-mv = <4000>;
 	qcom,ibatmax-warm-ma = <2000>;
 	qcom,ibatmax-cool-ma = <2000>;
