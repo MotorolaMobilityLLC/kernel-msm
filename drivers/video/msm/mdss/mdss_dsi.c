@@ -596,8 +596,7 @@ error:
 	return ret;
 }
 
-static int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl,
-	int enable)
+int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 {
 	int rc;
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
