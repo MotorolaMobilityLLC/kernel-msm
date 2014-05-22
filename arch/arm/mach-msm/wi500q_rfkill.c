@@ -56,7 +56,7 @@ static struct rfkill_ops bcm_rfkill_ops = {
 static int bcm_rfkill_probe(struct platform_device *pdev)
 {
 	int rc = 0;
-	bool default_state = true;  /* off */
+	bool default_state = false;  /* off */
 
 	printk("bcm_rfkill_probe\n");
 
