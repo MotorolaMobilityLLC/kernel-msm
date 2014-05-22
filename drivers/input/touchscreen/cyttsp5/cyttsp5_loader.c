@@ -48,9 +48,7 @@ static const u8 cyttsp5_security_key[] = {
 
 #define CY_HW_VERSION 0x01
 #define CY_CSP_FW_VERSION 0x0600
-/* HACK: revert bad 0x1300 firmware back to 0x1200 b/15133155 */
-#define CY_FW_VERSION 0x1200
-/* HACK END */
+#define CY_FW_VERSION 0x1300
 
 #ifdef CYTTSP5_PLATFORM_FW_UPGRADE
 #include "cyttsp5_firmware.h"
@@ -718,13 +716,6 @@ static int cyttsp5_check_firmware_version_binary(struct device *dev,
 		__func__, hw_ver_new, sti->hw_version);
 	dev_info(dev, "%s: phone fw ver=0x%04x, tsp fw ver=0x%04x\n",
 		__func__, fw_ver_new, get_unaligned_be16(&sti->fw_versionh));
-
-	/* HACK: revert bad 0x1300 firmware back to 0x1200 b/15133155 */
-	if (get_unaligned_be16(&sti->fw_versionh) == 0x1300) {
-		dev_info(dev, "%s: force downgrade to 0x%04x\n", __func__, fw_ver_new);
-		return 1;
-	}
-	/* HACK END */
 
 	if (hw_ver_new != sti->hw_version)
 		return 1;
