@@ -21,6 +21,15 @@
 	compatible = "qcom,apq8084-shamu",
 		   "qcom,apq8084-moto",
 		   "qcom,apq8084";
+
+	wifi_bcm4356 {
+		compatible = "bcm,bcm4356";
+		wl_reg_on = <&msmgpio 82 0>;
+	};
+};
+
+&soc {
+	/delete-node/ qcom,cnss@0d400000;
 };
 
 &pma8084_l22 {
