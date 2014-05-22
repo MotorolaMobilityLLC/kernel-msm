@@ -240,7 +240,7 @@ static const struct regulator_desc arizona_micsupp = {
 	.bypass_reg = ARIZONA_MIC_CHARGE_PUMP_1,
 	.bypass_mask = ARIZONA_CPMIC_BYPASS,
 
-	.enable_time = 3000,
+	.enable_time = 6000,
 
 	.owner = THIS_MODULE,
 };
