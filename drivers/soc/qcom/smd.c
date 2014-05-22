@@ -662,9 +662,7 @@ struct smd_shared_word_access {
  * Maps edge type to local and remote processor ID's.
  */
 static struct edge_to_pid edge_to_pids[] = {
-#ifndef CONFIG_MACH_DORY
 	[SMD_APPS_MODEM] = {SMD_APPS, SMD_MODEM, "modem"},
-#endif
 	[SMD_APPS_QDSP] = {SMD_APPS, SMD_Q6, "adsp"},
 	[SMD_MODEM_QDSP] = {SMD_MODEM, SMD_Q6},
 	[SMD_APPS_DSPS] = {SMD_APPS, SMD_DSPS, "dsps"},
