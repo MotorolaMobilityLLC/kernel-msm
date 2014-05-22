@@ -1832,6 +1832,11 @@ static __inline tANI_U32 defHddRateToDefCfgRate( tANI_U32 defRateIndex )
 #define CFG_TDLS_WMM_MODE_ENABLE_MIN                 (0)
 #define CFG_TDLS_WMM_MODE_ENABLE_MAX                 (1)
 #define CFG_TDLS_WMM_MODE_ENABLE_DEFAULT             (0)
+
+#define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE            "gEnableTDLSScanCoexistence"
+#define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MIN        (0)
+#define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MAX        (1)
+#define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_DEFAULT    (0)
 #endif
 
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
@@ -2559,6 +2564,7 @@ typedef struct
    v_BOOL_t                    fTDLSExternalControl;
    v_U32_t                     fEnableTDLSOffChannel;
    v_U32_t                     fEnableTDLSWmmMode;
+   v_BOOL_t                    fEnableTDLSScanCoexSupport;
 #endif
    v_U32_t                     enableLpwrImgTransition;
 #ifdef WLAN_SOFTAP_VSTA_FEATURE

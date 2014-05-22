@@ -1916,7 +1916,11 @@ void hdd_tx_rx_pkt_cnt_stat_timer_handler( void *phddctx)
         pAdapterNode = pNext;
     }
 
-    if (pHddCtx->issplitscan_enabled)
+    /* If TDLSScanCoexistence is enabled, then the TDLS module shall take care
+     * of disabling the split scan and thus do not disable the same when the
+     * low TXRX condition is met.
+     */
+    if ((pHddCtx->isTdlsScanCoexistence == FALSE) && (pHddCtx->issplitscan_enabled))
     {
        VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
                         "%s: Disable split scan", __func__);

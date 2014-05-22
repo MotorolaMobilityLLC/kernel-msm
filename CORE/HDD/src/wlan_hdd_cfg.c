@@ -2531,6 +2531,13 @@ REG_VARIABLE( CFG_TDLS_WMM_MODE_ENABLE, WLAN_PARAM_Integer,
               CFG_TDLS_WMM_MODE_ENABLE_DEFAULT,
               CFG_TDLS_WMM_MODE_ENABLE_MIN,
               CFG_TDLS_WMM_MODE_ENABLE_MAX ),
+
+REG_VARIABLE( CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE, WLAN_PARAM_Integer,
+              hdd_config_t, fEnableTDLSScanCoexSupport,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_DEFAULT,
+              CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MIN,
+              CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MAX ),
 #endif
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
@@ -4590,6 +4597,16 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
    {
       fStatus = FALSE;
       hddLog(LOGE, "Could not pass on WNI_CFG_TDLS_QOS_WMM_UAPSD_MASK to CCM");
+   }
+
+   if (TRUE == pConfig->fEnableTDLSScanCoexSupport)
+   {
+      /* TDLSScanCoexistance feature is supported when the DUT acts as only
+       * the Sleep STA and hence explicitly disable the BufferSta capability
+       * on the DUT. DUT's Buffer STA capability is explicitly disabled to
+       * ensure that the TDLS peer shall not go to TDLS power save mode.
+       */
+      pConfig->fEnableTDLSBufferSta = FALSE;
    }
    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_TDLS_BUF_STA_ENABLED,
                     pConfig->fEnableTDLSBufferSta, NULL,
