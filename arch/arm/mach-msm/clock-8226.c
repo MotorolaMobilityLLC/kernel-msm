@@ -3249,6 +3249,8 @@ static struct clk_lookup msm_clocks_8226[] = {
 	//ASUS_BSP BerylHou ---
 
 	//ASUS_BSP +++ Maggie_Lee "ECG Sensor porting"
+	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9921000.serial"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart5_apps_clk.c, "f9921000.serial"),		//UART for ECG sensor
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9922000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart6_apps_clk.c, "f9922000.serial"),		//UART for ECG sensor
 	//ASUS_BSP --- Maggie_Lee "ECG Sensor porting"
