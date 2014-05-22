@@ -7522,7 +7522,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 
          if (pAdapter != NULL)
          {
-            wlan_hdd_cfg80211_pre_voss_stop(pAdapter);
+            wlan_hdd_cfg80211_deregister_frames(pAdapter);
             hdd_UnregisterWext(pAdapter->dev);
          }
       }
@@ -8898,7 +8898,7 @@ int hdd_wlan_startup(struct device *dev )
       /* Action frame registered in one adapter which will
        * applicable to all interfaces 
        */
-      wlan_hdd_cfg80211_post_voss_start(pAdapter);
+      wlan_hdd_cfg80211_register_frames(pAdapter);
    }
 
    mutex_init(&pHddCtx->sap_lock);

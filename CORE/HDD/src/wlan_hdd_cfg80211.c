@@ -925,11 +925,8 @@ void wlan_hdd_cfg80211_update_reg_info(struct wiphy *wiphy)
     }
 }
 
-/* In this function we will do all post VOS start initialization.
-   In this function we will register for all frame in which supplicant
-   is interested.
-*/
-void wlan_hdd_cfg80211_post_voss_start(hdd_adapter_t* pAdapter)
+/* This function registers for all frame which supplicant is interested in */
+void wlan_hdd_cfg80211_register_frames(hdd_adapter_t* pAdapter)
 {
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
     /* Register for all P2P action, public action etc frames */
@@ -977,7 +974,7 @@ void wlan_hdd_cfg80211_post_voss_start(hdd_adapter_t* pAdapter)
                                   WNM_NOTIFICATION_FRAME_SIZE );
 }
 
-void wlan_hdd_cfg80211_pre_voss_stop(hdd_adapter_t* pAdapter)
+void wlan_hdd_cfg80211_deregister_frames(hdd_adapter_t* pAdapter)
 {
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
     /* Register for all P2P action, public action etc frames */
