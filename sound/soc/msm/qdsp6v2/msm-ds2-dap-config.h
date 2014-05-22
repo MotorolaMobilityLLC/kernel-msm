@@ -52,6 +52,7 @@ enum {
 #define MAX_DS2_CTRL_PARAMS			4
 #define ALL_DS2_PARAMS				(MAX_DS2_PARAMS + \
 							MAX_DS2_CTRL_PARAMS)
+#define TOTAL_LENGTH_DS2_PARAM (TOTAL_LENGTH_DOLBY_PARAM + 1)
 
 int msm_ds2_dap_update_port_parameters(struct snd_hwdep *hw,  struct file *file,
 				       bool open);
