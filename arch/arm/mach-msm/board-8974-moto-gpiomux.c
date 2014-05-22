@@ -656,13 +656,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
 		},
 	},
-	{
-		.gpio = 92, /* CAM2_RST_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
 };
 
 static struct gpiomux_setting c55_i2s_act_cfg = {
@@ -1129,6 +1122,23 @@ static struct msm_gpiomux_config tmp108_configs[] __initdata = {
 	}
 };
 
+static struct msm_gpiomux_config hw_id_configs[] __initdata = {
+	{
+		.gpio = 92, /* HW_ID_1 */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_suspend_config[0],
+			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
+		},
+	},
+	{
+		.gpio = 94, /* HW_ID_2 */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_suspend_config[0],
+			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
+		},
+	},
+};
+
 void __init msm_8974_moto_init_gpiomux(void)
 {
 	int rc;
@@ -1191,4 +1201,6 @@ void __init msm_8974_moto_init_gpiomux(void)
 			ARRAY_SIZE(cycapsence_issp_gpio_configs));
 	msm_gpiomux_install(wm5110_spi_configs,
 			ARRAY_SIZE(wm5110_spi_configs));
-}
+	msm_gpiomux_install(hw_id_configs,
+			ARRAY_SIZE(hw_id_configs));
+	}
