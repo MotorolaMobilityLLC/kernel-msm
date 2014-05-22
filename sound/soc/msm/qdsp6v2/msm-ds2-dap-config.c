@@ -72,7 +72,7 @@ static uint32_t	ds2_dap_params_offset[MAX_DS2_PARAMS] = {
 	DOLBY_PARAM_VMON_OFFSET, DOLBY_PARAM_VMB_OFFSET,
 	DOLBY_PARAM_VCNB_OFFSET, DOLBY_PARAM_VCBF_OFFSET,
 	DOLBY_PARAM_PREG_OFFSET, DOLBY_PARAM_VEN_OFFSET,
-	DOLBY_PARAM_PSTG_OFFSET, DOLBY_PARAM_INT_ENDP_LENGTH,
+	DOLBY_PARAM_PSTG_OFFSET, DOLBY_PARAM_INT_ENDP_OFFSET,
 };
 /* param_length */
 static uint32_t	ds2_dap_params_length[MAX_DS2_PARAMS] = {
@@ -103,7 +103,7 @@ static uint32_t	ds2_dap_params_length[MAX_DS2_PARAMS] = {
 };
 
 struct ds2_dap_params_s {
-	int32_t params_val[TOTAL_LENGTH_DOLBY_PARAM];
+	int32_t params_val[TOTAL_LENGTH_DS2_PARAM];
 	int32_t dap_params_modified[MAX_DS2_PARAMS];
 };
 
@@ -351,9 +351,12 @@ static int msm_ds2_dap_send_end_point(int dev_map_idx, int endp_idx)
 	*update_params_value++ = DOLBY_PARAM_INT_ENDP_LENGTH * sizeof(uint32_t);
 	*update_params_value++ = ds2_ap_params_obj->params_val[
 					ds2_dap_params_offset[endp_idx]];
+	pr_debug("%s: off %d, length %d\n", __func__,
+		 ds2_dap_params_offset[endp_idx],
+		 ds2_dap_params_length[endp_idx]);
 	pr_debug("%s: param 0x%x, param val %d\n", __func__,
-		ds2_dap_params_id[endp_idx],
-		ds2_ap_params_obj->params_val[ds2_dap_params_offset[endp_idx]]);
+		 ds2_dap_params_id[endp_idx], ds2_ap_params_obj->
+		 params_val[ds2_dap_params_offset[endp_idx]]);
 	rc = adm_dolby_dap_send_params(dev_map[dev_map_idx].port_id,
 				       params_value, params_length);
 	if (rc) {
@@ -439,9 +442,10 @@ static int msm_ds2_dap_send_cached_params(int dev_map_idx,
 		for (j = 0; j < ds2_dap_params_length[i]; j++) {
 			*update_params_value++ =
 					ds2_ap_params_obj->params_val[idx+j];
+			pr_debug("%s: id 0x%x,val %d\n", __func__,
+				 ds2_dap_params_id[i],
+				 ds2_ap_params_obj->params_val[idx+j]);
 		}
-		pr_debug("%s: id 0x%x,val %d\n", __func__, ds2_dap_params_id[i],
-			 ds2_ap_params_obj->params_val[idx+j]);
 		params_length += (DOLBY_PARAM_PAYLOAD_SIZE +
 				ds2_dap_params_length[i]) * sizeof(uint32_t);
 	}
@@ -621,8 +625,6 @@ static int msm_ds2_dap_set_param(u32 cmd, void *arg)
 	for (i = 0; i < num_device; i++) {
 		port_id = msm_ds2_dap_get_port_id(dev_arr[i],
 						  dolby_data.be_id);
-		pr_debug("%s: port_id %d, be id %d, devi_id 0x%x\n", __func__,
-			 port_id, dolby_data.be_id, dev_arr[i]);
 		if (port_id != DOLBY_INVALID_PORT_ID)
 			msm_update_dev_map_port_id(dev_arr[i], port_id);
 
@@ -633,9 +635,9 @@ static int msm_ds2_dap_set_param(u32 cmd, void *arg)
 			rc = -EINVAL;
 			goto end;
 		}
-		pr_debug("%s:port:%d,be:%d,dev:0x%x,cdev:%d,param_id:0x%x\n",
-			 __func__, port_id, dolby_data.be_id, dev_arr[i],
-			 cdev, dolby_data.param_id);
+		pr_debug("%s:port:%d,be:%d,dev:0x%x,cdev:%d,param:0x%x,len:%d\n"
+			 , __func__, port_id, dolby_data.be_id, dev_arr[i],
+			 cdev, dolby_data.param_id, dolby_data.length);
 		for (idx = 0; idx < MAX_DS2_PARAMS; idx++) {
 			/*paramid from user space*/
 			if (dolby_data.param_id == ds2_dap_params_id[idx])
@@ -654,8 +656,10 @@ static int msm_ds2_dap_set_param(u32 cmd, void *arg)
 			off = ds2_dap_params_offset[idx];
 			ds2_dap_params[cdev].params_val[off + j] =
 							dolby_data.data[j];
-			pr_debug("%s:cdev %d,value[%d]:%d\n",
-				 __func__, cdev, j, dolby_data.data[j]);
+				pr_debug("%s:off %d,val[i/p:o/p]-[%d / %d]\n",
+					 __func__, off, dolby_data.data[j],
+					 ds2_dap_params[cdev].
+					 params_val[off + j]);
 		}
 	}
 end:
