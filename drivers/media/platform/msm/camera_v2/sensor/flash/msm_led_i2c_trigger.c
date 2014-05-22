@@ -156,14 +156,6 @@ int msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
 		pr_err("%s:%d fctrl NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
-
-	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
-		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
-			fctrl->flash_i2c_client,
-			fctrl->reg_setting->release_setting);
-		if (rc < 0)
-			pr_err("%s:%d failed\n", __func__, __LINE__);
-	}
 	gpio_set_value_cansleep(
 		flashdata->gpio_conf->gpio_num_info->gpio_num[0],
 		GPIO_OUT_LOW);
