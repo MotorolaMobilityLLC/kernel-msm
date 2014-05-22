@@ -813,7 +813,7 @@ typedef struct
     /*Channel*/
     tANI_U8  ch;
     /*RSSI or Level*/
-    tANI_U8  rssi;
+    tANI_S8  rssi;
     /*Age*/
     tANI_U32 age;
 }tHDDbatchScanRspApInfo;
