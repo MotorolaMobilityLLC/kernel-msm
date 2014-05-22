@@ -151,6 +151,14 @@
 	};
 };
 
+&mot_smd_QHD_0_cmd_v1 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v1 {
+	qcom,cont-splash-enabled;
+};
+
 &i2c_1 {
 	/delete-node/ drv2605@5a;
 
