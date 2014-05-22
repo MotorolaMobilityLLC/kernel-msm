@@ -81,6 +81,17 @@
 	mmi,partial-mode-enabled;
 };
 
+&mot_smd_QHD_0_cmd_v1 {
+	qcom,cont-splash-enabled;
+	mmi,partial-mode-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v1 {
+	qcom,cont-splash-enabled;
+	mmi,partial-mode-enabled;
+};
+
+
 &soc {
 	sound {
 		qcom,ext_hs_detect = "tpa6165";
