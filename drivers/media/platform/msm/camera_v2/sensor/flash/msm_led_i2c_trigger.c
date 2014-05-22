@@ -162,6 +162,10 @@ int msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
 	gpio_set_value_cansleep(
 		flashdata->gpio_conf->gpio_num_info->gpio_num[1],
 		GPIO_OUT_LOW);
+	if (fctrl->flash_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
+		fctrl->flash_i2c_client->i2c_func_tbl->i2c_util(
+				fctrl->flash_i2c_client, MSM_CCI_RELEASE);
+	}
 	rc = msm_camera_request_gpio_table(
 		flashdata->gpio_conf->cam_gpio_req_tbl,
 		flashdata->gpio_conf->cam_gpio_req_tbl_size, 0);
