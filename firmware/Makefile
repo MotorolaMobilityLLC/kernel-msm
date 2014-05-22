@@ -141,6 +141,7 @@ fw-shipped-$(CONFIG_TOUCHSCREEN_MELFAS_W) += tsp_melfas/w/mms_ts_w_config.fw
 
 fw-shipped-$(CONFIG_TOUCHSCREEN_CYTTSP5) += tsp_cypress/cyttsp5_csp.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_CYTTSP5) += tsp_cypress/cyttsp5_qfn.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_CYTTSP5) += tsp_cypress/cyttsp5_qfn_03.fw
 
 #for sensorhub
 fw-shipped-$(CONFIG_SENSORS_SSP_STM) += ssp_stm.fw ssp_stm_rev02.fw
