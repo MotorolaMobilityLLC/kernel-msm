@@ -594,7 +594,7 @@ int mdss_panel_check_status(struct mdss_dsi_ctrl_pdata *ctrl)
 #endif
 	if ((pwr_mode & esd_data->esd_pwr_mode_chk) !=
 					esd_data->esd_pwr_mode_chk) {
-		pr_warn("%s: Detected pwr_mode = 0x%x expected mask = 0x%x\n",
+		pr_warn("%s: ESD detected pwr_mode =0x%x expected = 0x%x\n",
 			__func__, pwr_mode, esd_data->esd_pwr_mode_chk);
 		if (!dropbox_sent) {
 			dropbox_queue_event_text(DROPBOX_DISPLAY_ISSUE,
