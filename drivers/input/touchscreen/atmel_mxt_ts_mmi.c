@@ -390,6 +390,119 @@ bool throttle_dbgout(struct debug_section *dbg, int n, unsigned int msec)
 		return true;
 }
 
+#define TOUCH_QUERY_STRING_SIZE 512
+static char touch_setup_string[TOUCH_QUERY_STRING_SIZE];
+
+struct obj_patch {
+	u8 number;
+	u8 offset;
+	u8 value;
+	struct list_head link;
+};
+
+static struct {
+	int	cfg_num;
+	struct list_head cfg_head;
+}	mxt_cfg_data;
+
+static __init int mxt_setup_query(char *str)
+{
+	if (strlen(str) >= TOUCH_QUERY_STRING_SIZE) {
+		pr_warn("Atmel touch T100 boot param string too large\n");
+		return 0;
+	}
+	strlcpy(touch_setup_string, str, TOUCH_QUERY_STRING_SIZE);
+	INIT_LIST_HEAD(&mxt_cfg_data.cfg_head);
+	return 1;
+}
+
+__setup("touch_cfg=", mxt_setup_query);
+
+static int mxt_add_obj_patch(char *query)
+{
+	int error;
+	char *offset_p, *value_p;
+	long number_v, offset_v, value_v;
+	struct obj_patch *patch;
+
+	offset_p = strpbrk(query, "@");
+	value_p = strpbrk(query, ",");
+
+	/* primitive syntax validation */
+	if ((*query++ != 'T') || !offset_p || !value_p)
+		return -EINVAL;
+
+	error = kstrtol(query, 10, &number_v);
+	if (error)
+		return error;
+
+	*offset_p = '\0';
+	error = kstrtol(++offset_p, 10, &offset_v);
+	if (error)
+		return error;
+
+	*value_p = '\0';
+	error = kstrtol(++value_p, 16, &value_v);
+	if (error)
+		return error;
+
+	/* primitive data validation */
+	if (number_v < 0 || number_v > 255 || offset_v < 0 || value_v > 255)
+		return -EINVAL;
+
+	patch = kzalloc(sizeof(*patch), GFP_KERNEL);
+	if (!patch) {
+		pr_err("failed to alloc mem\n");
+		return -ENOMEM;
+	}
+
+	patch->number = (u8)number_v;
+	patch->offset = (u8)offset_v;
+	patch->value = (u8)value_v;
+
+	pr_debug("T%d, offset %d, value 0x%02x\n",
+				patch->number, patch->offset, patch->value);
+	mxt_cfg_data.cfg_num++;
+	list_add_tail(&patch->link, &mxt_cfg_data.cfg_head);
+
+	return 0;
+}
+
+/*
+ * Special settings can be passed to the driver via kernel cmd line
+ * Example: touch_cfg="T100@0,1f;T100@47,b2;"
+ *   Where: T100 - decimal object number
+ *          @0   - decimal offset within the object
+ *          1f   - new value in hex
+ */
+static void mxt_scan_setup_string(struct mxt_data *data)
+{
+	char *split, *patch = touch_setup_string;
+	int i, error;
+
+	for (i = 0; patch; patch = split) {
+		split = strpbrk(patch, ";\n");
+		if (split)
+			*split++ = '\0';
+
+		patch = skip_spaces(patch);
+		if (!patch || !*patch || *patch == '#')
+			continue;
+
+		dev_dbg(&data->client->dev, "patch %d: \"%s\"\n", i, patch);
+
+		error = mxt_add_obj_patch(patch);
+		if (error < 0) {
+			dev_err(&data->client->dev, "invalid patch\n");
+			continue;
+		}
+
+		i++;
+	}
+
+	dev_info(&data->client->dev, "processed %d patches\n", i);
+}
+
 static inline size_t mxt_obj_size(const struct mxt_object *obj)
 {
 	return obj->size_minus_one + 1;
@@ -2007,6 +2120,31 @@ static void mxt_irq_enable(struct mxt_data *data, bool enable)
 	}
 }
 
+static void mxt_apply_patches(struct mxt_data *data)
+{
+	struct obj_patch *patch;
+	struct mxt_object *object;
+	int error;
+
+	list_for_each_entry(patch, &mxt_cfg_data.cfg_head, link) {
+		dev_dbg(&data->client->dev, "patching T%d@%d,0x%x\n",
+				patch->number, patch->offset, patch->value);
+
+		object = mxt_get_object(data, patch->number);
+		if (!object)
+			continue;
+
+		if (patch->offset >= object->size_minus_one)
+			continue;
+
+		error = __mxt_write_reg(data->client,
+				      object->start_address + patch->offset,
+				      1, &patch->value);
+		if (error)
+			dev_warn(&data->client->dev, "patch failed\n");
+	}
+}
+
 static void mxt_sensor_one_touch(struct mxt_data *data, bool enable)
 {
 	struct mxt_object *object;
@@ -2153,6 +2291,9 @@ static void mxt_set_sensor_state(struct mxt_data *data, int state)
 
 		if (data->one_touch_enabled)
 			mxt_sensor_one_touch(data, false);
+
+		if (mxt_cfg_data.cfg_num)
+			mxt_apply_patches(data);
 
 		mxt_irq_enable(data, true);
 		data->enable_reporting = true;
@@ -4316,6 +4457,9 @@ static int mxt_probe(struct i2c_client *client,
 		goto err_free_irq;
 
 	mxt_regulator_enable(data);
+
+	/* check if runtime patches defined */
+	mxt_scan_setup_string(data);
 
 	error = mxt_initialize(data);
 	if (error)
