@@ -1578,6 +1578,8 @@ int dhd_pno_set_cfg_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
 					}
 					if (ptr->channel_bucket[i].bucket_freq_multiple < min)
 						min = ptr->channel_bucket[i].bucket_freq_multiple;
+					DHD_PNO(("band %d report_flag %d\n", ch_bucket[i].band,
+					          ch_bucket[i].report_flag));
 				}
 				if (!valid) {
 					ptr->scan_fr = min;
@@ -1748,6 +1750,8 @@ dhd_pno_set_for_gscan(dhd_pub_t *dhd, struct dhd_pno_gscan_params *gscan_params)
 			           ch_bucket[i].bucket_end_index;
 			pfn_gscan_cfg_t->channel_bucket[k].bucket_freq_multiple =
 			           ch_bucket[i].bucket_freq_multiple;
+			pfn_gscan_cfg_t->channel_bucket[k].report_flag =
+			           ch_bucket[i].report_flag;
 			k++;
 		}
 	}
@@ -1900,6 +1904,7 @@ dhd_pno_merge_gscan_pno_channels(dhd_pno_status_info_t *pno_state,
 	dhd_pno_params_t *_params1 = &pno_state->pno_params_arr[INDEX_OF_LEGACY_PARAMS];
 	uint16 *legacy_chan_list = _params1->params_legacy.chan_list;
 	bool is_legacy_scan_freq_higher;
+	uint8 report_flag = CH_BUCKET_REPORT_REGULAR;
 
 	is_legacy_scan_freq_higher =
 	     _params->params_gscan.scan_fr < _params1->params_legacy.scan_fr;
@@ -1963,6 +1968,12 @@ dhd_pno_merge_gscan_pno_channels(dhd_pno_status_info_t *pno_state,
 					num_channels++;
 				} else {
 					ch_scratch_pad[chan_buf[ch_bucket_idx]] = 4;
+					/* If Gscan channel is merged off to legacy bucket and
+					 * if the gscan channel bucket has a report flag > 0
+					 * use the same for legacy
+					 */
+					if (report_flag < ch_bucket[i].report_flag)
+						report_flag = ch_bucket[i].report_flag;
 				}
 			}
 
@@ -1977,6 +1988,7 @@ dhd_pno_merge_gscan_pno_channels(dhd_pno_status_info_t *pno_state,
 	}
 
 	num_channels = 0;
+	ch_bucket[_params->params_gscan.nchannel_buckets].report_flag = report_flag;
 	/* Now add channels to the legacy scan bucket
 	 * ch_scratch_pad = 0 to 4 at this point, for legacy -> 2,3,4. 2 means exclusively
 	 * Legacy so add to bucket. 4 means it is a reject of gscan bucket and must
@@ -2043,7 +2055,7 @@ dhd_pno_gscan_create_channel_list(dhd_pub_t *dhd,
 		} else {
 			/* get a valid channel list based on band B or A */
 			err = _dhd_pno_get_channels(dhd, ptr,
-			        &nchan, gscan_buckets[i].band,
+			        &nchan, (gscan_buckets[i].band & GSCAN_BAND_MASK),
 			        !(gscan_buckets[i].band & GSCAN_DFS_BAND_MASK));
 
 			if (err < 0) {
@@ -2061,6 +2073,7 @@ dhd_pno_gscan_create_channel_list(dhd_pub_t *dhd,
 
 		ch_bucket[i].bucket_end_index = num_channels - 1;
 		ch_bucket[i].bucket_freq_multiple = gscan_buckets[i].bucket_freq_multiple;
+		ch_bucket[i].report_flag = gscan_buckets[i].report_flag;
 		nchan = WL_NUMCHANNELS - num_channels;
 		DHD_PNO(("end_idx  %d freq_mult - %d\n",
 		ch_bucket[i].bucket_end_index, ch_bucket[i].bucket_freq_multiple));
@@ -2137,15 +2150,17 @@ static int  dhd_pno_stop_for_gscan(dhd_pub_t *dhd)
 		DHD_ERROR(("%s : GSCAN is not enabled\n", __FUNCTION__));
 		goto exit;
 	}
-
+	mutex_lock(&_pno_state->pno_mutex);
 	mode = _pno_state->pno_mode & ~DHD_PNO_GSCAN_MODE;
 	err = dhd_pno_clean(dhd);
 	if (err < 0) {
 		DHD_ERROR(("%s : failed to call dhd_pno_clean (err: %d)\n",
 			__FUNCTION__, err));
-		goto exit;
+		mutex_unlock(&_pno_state->pno_mutex);
+		return err;
 	}
 	_pno_state->pno_mode = mode;
+	mutex_unlock(&_pno_state->pno_mutex);
 
 	/* Reprogram Legacy PNO if it was running */
 	if (_pno_state->pno_mode & DHD_PNO_LEGACY_MODE) {
@@ -2249,7 +2264,7 @@ int dhd_pno_enable_full_scan_result(dhd_pub_t *dhd, bool real_time_flag)
 			            sizeof(wl_pfn_gscan_cfg_t))) < 0) {
 				DHD_ERROR(("%s : pno_gscan_cfg failed (err %d) in firmware\n",
 					__FUNCTION__, err));
-				goto exit;
+				goto exit_mutex_unlock;
 			}
 		} else {
 			DHD_PNO(("No change in flag - %d\n", old_flag));
@@ -2257,9 +2272,9 @@ int dhd_pno_enable_full_scan_result(dhd_pub_t *dhd, bool real_time_flag)
 	} else {
 		DHD_PNO(("Gscan not started\n"));
 	}
+exit_mutex_unlock:
+	mutex_unlock(&_pno_state->pno_mutex);
 exit:
-	if (mutex_is_locked(&_pno_state->pno_mutex))
-		mutex_unlock(&_pno_state->pno_mutex);
 	return err;
 }
 
@@ -2338,6 +2353,12 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 		iter = iter->next;
 	}
 	dhd_gscan_batch_cache_cleanup(dhd);
+
+	if (!(_pno_state->pno_mode & DHD_PNO_GSCAN_MODE)) {
+		DHD_ERROR(("%s : GSCAN is not enabled\n", __FUNCTION__));
+		goto exit_mutex_unlock;
+	}
+
 	timediff = gscan_params->scan_fr * 1000;
 	timediff = timediff >> 1;
 
@@ -2356,7 +2377,7 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 			} else {
 				DHD_ERROR(("%s : failed to execute pfnlbest (err :%d)\n",
 					__FUNCTION__, err));
-				goto exit;
+				goto exit_mutex_unlock;
 			}
 		}
 		DHD_PNO(("ver %d, status : %d, count %d\n", plbestnet->version,
@@ -2365,7 +2386,7 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 			err = BCME_VERSION;
 			DHD_ERROR(("bestnet version(%d) is mismatch with Driver version(%d)\n",
 				plbestnet->version, PFN_SCANRESULT_VERSION));
-			goto exit;
+			goto exit_mutex_unlock;
 		}
 
 		num_scans_in_cur_iter = 0;
@@ -2403,7 +2424,7 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 				DHD_ERROR(("%s :Out of memory!! Cant malloc %d bytes\n",
 				 __FUNCTION__, gscan_params->mscan));
 				err = BCME_NOMEM;
-				goto exit;
+				goto exit_mutex_unlock;
 			}
 			/* Need this check because the new set of results from FW
 			 * maybe a continuation of previous sets' scan results
@@ -2469,9 +2490,9 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 			}
 		}
 	}
+exit_mutex_unlock:
+	mutex_unlock(&_pno_state->pno_mutex);
 exit:
-	if (mutex_is_locked(&_pno_state->pno_mutex))
-		mutex_unlock(&_pno_state->pno_mutex);
 	if (nAPs_per_scan)
 		MFREE(dhd->osh, nAPs_per_scan, gscan_params->mscan * sizeof(uint8));
 	if (plbestnet)
@@ -2481,7 +2502,6 @@ exit:
 	params->params_gscan.get_batch_flag = GSCAN_BATCH_RETREIVAL_COMPLETE;
 	DHD_PNO(("Batch retrieval done!\n"));
 	return err;
-
 }
 #endif /* GSCAN_SUPPORT */
 
@@ -2842,9 +2862,7 @@ dhd_pno_stop_for_batch(dhd_pub_t *dhd)
 
 #ifdef GSCAN_SUPPORT
 	if (_pno_state->pno_mode & DHD_PNO_GSCAN_MODE) {
-		_params = &_pno_state->pno_params_arr[INDEX_OF_GSCAN_PARAMS];
-		_params->params_gscan.reason = 0;
-		err = dhd_pno_initiate_gscan_request(dhd, 0, 1);
+		DHD_PNO(("Gscan is ongoing, nothing to stop here\n"));
 		return err;
 	}
 #endif

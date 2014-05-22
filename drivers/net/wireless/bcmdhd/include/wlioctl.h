@@ -4020,9 +4020,13 @@ typedef struct wl_pfn_cfg {
 	uint32	flags;
 } wl_pfn_cfg_t;
 
+#define CH_BUCKET_REPORT_REGULAR            0
+#define CH_BUCKET_REPORT_FULL_RESULT        2
+
 typedef struct wl_pfn_gscan_channel_bucket {
 	uint16 bucket_end_index;
-	uint16 bucket_freq_multiple;
+	uint8 bucket_freq_multiple;
+	uint8 report_flag;
 } wl_pfn_gscan_channel_bucket_t;
 
 #define GSCAN_SEND_ALL_RESULTS_MASK    (1 << 0)
@@ -4030,6 +4034,8 @@ typedef struct wl_pfn_gscan_channel_bucket {
 
 typedef struct wl_pfn_gscan_cfg {
 	/* BIT0 1 = send probes/beacons to HOST
+	 * BIT1 Reserved
+	 * BIT2 Reserved
 	 * Add any future flags here
 	 * BIT7 1 = no other useful cfg sent
 	 */
