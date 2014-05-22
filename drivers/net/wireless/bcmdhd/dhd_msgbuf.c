@@ -1499,7 +1499,7 @@ static int BCMFASTPATH
 dhd_process_msgtype(dhd_pub_t *dhd, msgbuf_ring_t *ring, uint8* buf, uint16 len)
 {
 	uint16 pktlen = len;
-	uint16 msglen;
+	uint16 msglen, pktcnt;
 	uint8 msgtype;
 	cmn_msg_hdr_t *msg = NULL;
 	int ret = BCME_OK;
@@ -1512,31 +1512,46 @@ dhd_process_msgtype(dhd_pub_t *dhd, msgbuf_ring_t *ring, uint8* buf, uint16 len)
 		return BCME_ERROR;
 	}
 
-	while (pktlen > 0) {
-		msg = (cmn_msg_hdr_t *)buf;
-		msgtype = msg->msg_type;
+	if (ring->idx == BCMPCIE_D2H_MSGRING_TX_COMPLETE) {
+		ASSERT(!(pktlen%msglen));
+		pktcnt = pktlen/msglen;
+		while (pktcnt > 0) {
+			msg = (cmn_msg_hdr_t *)(buf + msglen * (pktcnt - 1));
+			ASSERT(msg->msg_type == MSG_TYPE_TX_STATUS);
 
-		/* Prefetch data to populate the cache */
-		OSL_PREFETCH(buf+msglen);
-
-		DHD_INFO(("msgtype %d, msglen is %d, pktlen is %d \n", msgtype, msglen, pktlen));
-		if (msgtype == MSG_TYPE_LOOPBACK) {
-			bcm_print_bytes("LPBK RESP: ", (uint8 *)msg, msglen);
-			DHD_ERROR((" MSG_TYPE_LOOPBACK, len %d\n", msglen));
+			/* Prefetch data to populate the cache */
+			OSL_PREFETCH(msg - msglen);
+			dhd_prot_txstatus_process(dhd, msg, msglen);
+			pktcnt--;
 		}
+	} else {
+		while (pktlen > 0) {
+			msg = (cmn_msg_hdr_t *)buf;
+			msgtype = msg->msg_type;
 
-		DHD_INFO(("MSG TYPE: 0x%x\n", msgtype));
-		ASSERT(msgtype < DHD_PROT_FUNCS);
-		if (table_lookup[msgtype]) {
-			table_lookup[msgtype](dhd, buf, msglen);
-		}
+			/* Prefetch data to populate the cache */
+			OSL_PREFETCH(buf+msglen);
 
-		if (pktlen < msglen) {
-			ret = BCME_ERROR;
-			goto done;
+			DHD_INFO(("msgtype %d, msglen is %d, pktlen is %d \n",
+				msgtype, msglen, pktlen));
+			if (msgtype == MSG_TYPE_LOOPBACK) {
+				bcm_print_bytes("LPBK RESP: ", (uint8 *)msg, msglen);
+				DHD_ERROR((" MSG_TYPE_LOOPBACK, len %d\n", msglen));
+			}
+
+			DHD_INFO(("MSG TYPE: 0x%x\n", msgtype));
+			ASSERT(msgtype < DHD_PROT_FUNCS);
+			if (table_lookup[msgtype]) {
+				table_lookup[msgtype](dhd, buf, msglen);
+			}
+
+			if (pktlen < msglen) {
+				ret = BCME_ERROR;
+				goto done;
+			}
+			pktlen = pktlen - msglen;
+			buf = buf + msglen;
 		}
-		pktlen = pktlen - msglen;
-		buf = buf + msglen;
 	}
 done:
 
