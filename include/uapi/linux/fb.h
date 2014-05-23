@@ -316,8 +316,12 @@ enum {
 
 // ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
 	FB_BLANK_LOWPOWERMODE_OFF	= 0x10,
-	FB_BLANK_LOWPOWERMODE_ON	= 0x11
+	FB_BLANK_LOWPOWERMODE_ON	= 0x11,
 // ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+
+	FB_BLANK_AMBIENT_OFF		= 0x12,
+	FB_BLANK_AMBIENT_ON			= 0x13
+
 };
 
 #define FB_VBLANK_VBLANKING	0x001	/* currently in a vertical blank */

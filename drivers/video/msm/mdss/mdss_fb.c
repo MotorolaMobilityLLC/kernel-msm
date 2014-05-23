@@ -870,7 +870,7 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 
 extern void notify_panel_lowpowermode(int low);
 extern void notify_st_sensor_lowpowermode(int low);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
-
+extern int enable_ambient(int enable);
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
@@ -939,7 +939,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		break;
 // ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
 	case FB_BLANK_LOWPOWERMODE_ON:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_ON,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		printk("MDSS:%s:+++,blank_mode=LOWPOWERMODE_ON,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
 		if (mfd->panel_power_on) {
 			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
 		}
@@ -949,12 +949,23 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		return 0;
 		break;
 	case FB_BLANK_LOWPOWERMODE_OFF:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		printk("MDSS:%s:+++,blank_mode=LOWPOWERMODE_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
 		if (mfd->panel_power_on) {
 			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
 		}
 		notify_panel_lowpowermode(0);
 		notify_st_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+		return 0;
+		break;
+
+	case FB_BLANK_AMBIENT_OFF:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		enable_ambient(0);
+		return 0;
+		break;
+	case FB_BLANK_AMBIENT_ON:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_ON,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		enable_ambient(1);
 		return 0;
 		break;
 	default:
