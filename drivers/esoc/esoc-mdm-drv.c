@@ -47,10 +47,9 @@ static int esoc_msm_restart_handler(struct notifier_block *nb,
 					esoc_restart);
 	struct esoc_clink *esoc_clink = mdm_drv->esoc_clink;
 	const struct esoc_clink_ops const *clink_ops = esoc_clink->clink_ops;
-	if (action == SYS_RESTART) {
-		dev_dbg(&esoc_clink->dev, "Notifying esoc of cold reboot\n");
-		clink_ops->notify(ESOC_PRIMARY_REBOOT, esoc_clink);
-	}
+
+	dev_dbg(&esoc_clink->dev, "Notifying esoc of cold reboot\n");
+	clink_ops->notify(ESOC_PRIMARY_REBOOT, esoc_clink);
 	return NOTIFY_OK;
 }
 static void mdm_handle_clink_evt(enum esoc_evt evt,
