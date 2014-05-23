@@ -513,6 +513,8 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 			goto error;
 		}
 
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 0);
+
 		/* Enable MMSS DSI Clamps */
 		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x3FF);
 		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x83FF);
@@ -523,7 +525,7 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		/* disable DSI controller */
 		mdss_dsi_controller_cfg(0, pdata);
 
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
 		ctrl_pdata->ulps = true;
 	} else if (ctrl_pdata->ulps) {
 		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
