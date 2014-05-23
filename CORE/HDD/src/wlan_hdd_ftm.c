@@ -1690,12 +1690,7 @@ int wlan_hdd_ftm_close(hdd_context_t *pHddCtx)
     }
     vos_mem_free(pHddCtx->ftm.tempNVTableBuffer);
 
-    //Free up dynamically allocated members inside HDD Adapter
-    kfree(pHddCtx->cfg_ini);
-    pHddCtx->cfg_ini= NULL;
-
     return 0;
-
 }
 
 /**---------------------------------------------------------------------------

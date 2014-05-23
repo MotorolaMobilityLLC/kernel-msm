@@ -58,7 +58,6 @@
 #include "vos_trace.h"
 //Ms to Micro Sec
 #define MS_TO_MUS(x)   ((x)*1000);
-
 tANI_U8* hdd_getActionString( tANI_U16 MsgType )
 {
     switch (MsgType)
@@ -501,13 +500,6 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
         status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
         pAdapterNode = pNext;
     }
-    /* For GO mode , set the duration to a larger value so that host can extend
-     * ROC if back to back action frames are received. Firmware will start SNOA
-     * with this duration value
-    */
-    if (VOS_TRUE == isGoPresent && OFF_CHANNEL_ACTION_TX == request_type)
-         duration = 3 * duration;
-
     hdd_prevent_suspend();
     INIT_COMPLETION(pAdapter->rem_on_chan_ready_event);
 
@@ -1009,6 +1001,25 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
             if ( VOS_TIMER_STATE_RUNNING == vos_timer_getCurrentState(
                       &cfgState->remain_on_chan_ctx->hdd_remain_on_chan_timer) )
             {
+               /* Some times FW is taking almost 500 msec for
+                * full 15 retries, which leads to ROC expiration
+                * by the time peer gets response from other peer.
+                * Therefore as part of temporary fix , in host
+                * ROC time is extended. For frames where we are
+                * expecting response from peer , its extended by
+                * 500 msec to make ROC wait time as 1 sec and
+                * in other cases its extended by 300 msec to make
+                * total ROC wait as 500 msec.
+                * TODO: FW needs to fix as why 15 retry is taking
+                *       such long time.
+                */
+                if ( actionFrmType == WLAN_HDD_INVITATION_REQ ||
+                     actionFrmType == WLAN_HDD_GO_NEG_REQ ||
+                     actionFrmType == WLAN_HDD_GO_NEG_RESP )
+                   wait = wait + ACTION_FRAME_RSP_WAIT;
+                else if ( actionFrmType == WLAN_HDD_GO_NEG_CNF ||
+                          actionFrmType == WLAN_HDD_INVITATION_RESP )
+                   wait = wait + ACTION_FRAME_ACK_WAIT;
                 vos_timer_stop(
                       &cfgState->remain_on_chan_ctx->hdd_remain_on_chan_timer);
                 status = vos_timer_start(
