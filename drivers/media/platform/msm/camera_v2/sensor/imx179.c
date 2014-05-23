@@ -219,6 +219,9 @@ static int32_t imx179_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
 	int32_t rc = 0;
 	int8_t *imx179_otp_data;
 
+	if (s_ctrl->sensor_otp.otp_read)
+		return 0;
+
 	/* Set default OTP info */
 	imx179_otp_data = s_ctrl->sensor_otp.otp_info;
 
@@ -293,6 +296,7 @@ static int32_t imx179_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
 			pr_debug("%s: OTP CRC (page = %d) pass\n",
 				__func__, otp_page_no);
 			s_ctrl->sensor_otp.otp_crc_pass = 1;
+			s_ctrl->sensor_otp.otp_read = 1;
 			break;
 		}
 	}
