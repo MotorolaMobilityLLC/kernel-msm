@@ -1387,8 +1387,10 @@ static int mxt_process_messages_until_invalid(struct mxt_data *data)
 		dev_dbg(dev, "processed %d messages\n", processed);
 
 	error = gpio_get_value(data->pdata->gpio_irq);
-	if (!error)
+	if (!error) {
 		dev_err(dev, "CHG pin still asserted\n");
+		BUG();
+	}
 
 	return 0;
 }
@@ -3044,6 +3046,16 @@ static ssize_t mxt_hw_irqstat_show(struct device *dev,
 	}
 }
 
+static void mxt_hw_reset(struct mxt_data *data)
+{
+	gpio_set_value(data->pdata->gpio_reset, 0);
+	udelay(1500);
+	gpio_set_value(data->pdata->gpio_reset, 1);
+
+	mxt_wait_for_idle(data);
+	mxt_acquire_irq(data);
+}
+
 static ssize_t mxt_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -3060,12 +3072,7 @@ static ssize_t mxt_reset_store(struct device *dev,
 		mxt_resume(&data->client->dev);
 	else {
 		data->enable_reporting = false;
-
-		gpio_set_value(data->pdata->gpio_reset, 0);
-		msleep(MXT_REGULATOR_DELAY);
-		gpio_set_value(data->pdata->gpio_reset, 1);
-
-		mxt_acquire_irq(data);
+		mxt_hw_reset(data);
 		data->enable_reporting = true;
 	}
 
@@ -3974,8 +3981,10 @@ static int mxt_input_open(struct input_dev *dev)
 	if (data->use_regulator) {
 		mxt_regulator_enable(data);
 		mxt_acquire_irq(data);
-	} else if (data->sensor_sleep)
+	} else if (data->sensor_sleep) {
 		mxt_sensor_wake(data, true);
+		mxt_hw_reset(hw);
+	}
 
 	mutex_unlock(&data->crit_section_lock);
 	dev_dbg(&data->client->dev, "critical section RELEASE\n");
@@ -4403,18 +4412,11 @@ static int mxt_resume(struct device *dev)
 
 	if (data->suspended) {
 		if (data->use_regulator) {
-			mxt_irq_enable(data, true);
 			mxt_regulator_enable(data);
 			mxt_acquire_irq(data);
 		} else if (data->sensor_sleep) {
 			mxt_sensor_wake(data, false);
-			/* hard reset touch */
-			gpio_set_value(data->pdata->gpio_reset, 0);
-			udelay(1500);
-			gpio_set_value(data->pdata->gpio_reset, 1);
-			mxt_wait_for_idle(data);
-			/* now it's safe to enable interrupts */
-			mxt_irq_enable(data, true);
+			mxt_hw_reset(data);
 		}
 
 		mutex_unlock(&data->crit_section_lock);
