@@ -8525,10 +8525,10 @@ void hdd_cfg80211_sched_scan_start_status_cb(void *callbackContext, VOS_STATUS s
 }
 
 /*
- * FUNCTION: wlan_hdd_cfg80211_sched_scan_start
- * NL interface to enable PNO
+ * FUNCTION: __wlan_hdd_cfg80211_sched_scan_start
+ * Function to enable PNO
  */
-static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
           struct net_device *dev, struct cfg80211_sched_scan_request *request)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
@@ -8780,10 +8780,26 @@ error:
 }
 
 /*
- * FUNCTION: wlan_hdd_cfg80211_sched_scan_stop
- * NL interface to disable PNO
+ * FUNCTION: wlan_hdd_cfg80211_sched_scan_start
+ * NL interface to enable PNO
  */
-static int wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
+static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
+          struct net_device *dev, struct cfg80211_sched_scan_request *request)
+{
+     int ret;
+
+     vos_ssr_protect(__func__);
+     ret = __wlan_hdd_cfg80211_sched_scan_start(wiphy, dev, request);
+     vos_ssr_unprotect(__func__);
+
+     return ret;
+}
+
+/*
+ * FUNCTION: __wlan_hdd_cfg80211_sched_scan_stop
+ * Function to disable PNO
+ */
+static int __wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
           struct net_device *dev)
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
@@ -8875,6 +8891,21 @@ error:
     return ret;
 }
 
+/*
+ * FUNCTION: wlan_hdd_cfg80211_sched_scan_stop
+ * NL interface to disable PNO
+ */
+static int wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
+          struct net_device *dev)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __wlan_hdd_cfg80211_sched_scan_stop(wiphy, dev);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
 #endif /*FEATURE_WLAN_SCAN_PNO*/
 
 
