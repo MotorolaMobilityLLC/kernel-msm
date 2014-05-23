@@ -256,7 +256,6 @@ struct stk3x1x_data {
 	uint16_t noise_floor;
 	uint16_t max_noise_floor;
 	enum prox_state prox_mode;
-	bool dynamic_alsctrl;
 };
 
 static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data,
@@ -425,12 +424,6 @@ static int32_t stk3x1x_init_all_reg(struct stk3x1x_data *ps_data,
 		return ret;
 	}
 	ps_data->alsctrl_reg = plat_data->alsctrl_reg;
-	if ((ps_data->alsctrl_reg & 0x30) != 0x30 &&
-	    (ps_data->alsctrl_reg & 0x0E) != 0) {
-		ps_data->dynamic_alsctrl = true;
-	} else {
-		ps_data->dynamic_alsctrl = false;
-	}
 	ret = stk3x1x_i2c_smbus_write_byte_data(ps_data->client,
 		STK_ALSCTRL_REG, ps_data->alsctrl_reg);
 	if (ret < 0) {
@@ -722,20 +715,6 @@ static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data, uint8_t enable)
 		w_state_reg |= STK_STATE_EN_PS_MASK;
 		if(!(ps_data->als_enabled))
 			w_state_reg |= STK_STATE_EN_WAIT_MASK;
-		if (ps_data->dynamic_alsctrl)
-			ps_data->alsctrl_reg = (ps_data->alsctrl_reg & 0xC0)
-			    | (((ps_data->alsctrl_reg & 0x3F) + 0x0E) & 0x3F);
-	} else {
-		if (ps_data->dynamic_alsctrl)
-			ps_data->alsctrl_reg = (ps_data->alsctrl_reg & 0xC0)
-			    | (((ps_data->alsctrl_reg & 0x3F) - 0x0E) & 0x3F);
-	}
-	ret = stk3x1x_i2c_smbus_write_byte_data(ps_data->client,
-		STK_ALSCTRL_REG, ps_data->alsctrl_reg);
-	if (ret < 0) {
-		dev_err(&ps_data->client->dev, "%s: write I2C error\n",
-			__func__);
-		return ret;
 	}
 	ret = stk3x1x_i2c_smbus_write_byte_data(ps_data->client, STK_STATE_REG,
 		w_state_reg);
