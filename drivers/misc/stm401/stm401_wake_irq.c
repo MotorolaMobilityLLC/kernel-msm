@@ -71,16 +71,16 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	dev_dbg(&ps_stm401->client->dev, "stm401_irq_wake_work_func\n");
 	mutex_lock(&ps_stm401->lock);
 
-	stm401_wake(ps_stm401);
-
 	if (ps_stm401->mode == BOOTMODE)
-		goto EXIT;
+		goto EXIT_NO_WAKE;
 
 	if (ps_stm401->is_suspended) {
 		dev_dbg(&ps_stm401->client->dev, "setting pending_wake_work [true]\n");
 		ps_stm401->pending_wake_work = true;
-		goto EXIT;
+		goto EXIT_NO_WAKE;
 	}
+
+	stm401_wake(ps_stm401);
 
 	/* read interrupt mask register */
 	stm401_cmdbuff[0] = WAKESENSOR_STATUS;
@@ -431,5 +431,6 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	}
 EXIT:
 	stm401_sleep(ps_stm401);
+EXIT_NO_WAKE:
 	mutex_unlock(&ps_stm401->lock);
 }
