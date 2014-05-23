@@ -225,6 +225,22 @@ void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl)
 	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x0);
 }
 
+void mdss_dsi_cmd_dma_trigger_sel(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+			int enable)
+{
+	int temp;
+	int mask = 0x02;
+
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+	temp = MIPI_INP((ctrl_pdata->ctrl_base) + 0x0084);
+	if (enable)
+		temp |= mask;
+	else
+		temp &= ~mask;
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0084, temp);
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+}
+
 void mdss_dsi_host_init(struct mdss_panel_data *pdata)
 {
 	u32 dsi_ctrl, intr_ctrl;

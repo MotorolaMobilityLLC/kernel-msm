@@ -546,6 +546,8 @@ static int mdss_mdp_cmd_set_partial_roi(struct mdss_mdp_ctl *ctl)
 int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
+	struct mdss_panel_info *pinfo;
+	struct mdss_panel_data *pdata;
 	unsigned long flags;
 	int rc;
 
@@ -554,6 +556,9 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		pr_err("invalid ctx\n");
 		return -ENODEV;
 	}
+
+	pdata = ctl->panel_data;
+	pinfo = &pdata->panel_info;
 
 	mdss_mdp_ctl_perf_set_transaction_status(ctl,
 		PERF_HW_MDP_STATE, PERF_STATUS_BUSY);
@@ -588,6 +593,14 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		PERF_SW_COMMIT_STATE, PERF_STATUS_DONE);
 
 	mb();
+
+	if (pinfo->alpm_event &&
+		!pinfo->alpm_event(CHECK_CURRENT_STATUS) &&
+		pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
+		mdss_dsi_panel_bl_dim(pdata, PANEL_BACKLIGHT_RESTORE);
+		pinfo->alpm_event(CLEAR_MODE_STATUS);
+		pr_info("[ALPM_DEBUG] %s: Clear mode status\n", __func__);
+	}
 
 	return 0;
 }

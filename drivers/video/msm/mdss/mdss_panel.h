@@ -363,6 +363,11 @@ enum {
 	CLEAR_MODE_STATUS,		/* Clear Status Flag as 0 */
 };
 
+enum {
+	PANEL_BACKLIGHT_DIM	= -2,
+	PANEL_BACKLIGHT_RESTORE,
+};
+
 struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
@@ -489,4 +494,5 @@ int mdss_panel_get_boot_cfg(void);
  * returns true if mdss is ready, else returns false.
  */
 bool mdss_is_ready(void);
+void mdss_dsi_panel_bl_dim(struct mdss_panel_data *pdata, int flag);
 #endif /* MDSS_PANEL_H */

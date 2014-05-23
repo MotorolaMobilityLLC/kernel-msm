@@ -71,7 +71,7 @@ static struct panel_rev panel_supp_cdp[] = {
 
 static char brightness[28] = {0xD4, };
 static struct dsi_cmd_desc brightness_cmd = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(brightness)},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(brightness)},
 	brightness
 };
 
@@ -114,10 +114,14 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 {
 	struct dcs_cmd_req cmdreq;
 	int cd_idx = 0, cd_level = 0;
+	static int stored_cd_level;
 
 	/*gamma*/
 	cd_idx = get_cmd_idx(bl_level);
 	cd_level = get_candela_value(bl_level);
+
+	if (stored_cd_level == cd_level)
+		return;
 
 	/* gamma control */
 	get_gamma_control_set(cd_level);
@@ -130,7 +134,10 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
+	mdss_dsi_cmd_dma_trigger_sel(ctrl, 1);
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	mdss_dsi_cmd_dma_trigger_sel(ctrl, 0);
+	stored_cd_level = cd_level;
 }
 
 void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
@@ -305,6 +312,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	static int stored_bl_level = 255;
+	int request_bl_dim = 0;
 
 	pr_info("%s : bl_level %d, stored_bl %d\n",
 			__func__, bl_level, stored_bl_level);
@@ -313,8 +321,12 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		return;
 	}
 
-	if (bl_level == -1)
+	if (bl_level == PANEL_BACKLIGHT_RESTORE)
 		bl_level = stored_bl_level;
+	else if (bl_level == PANEL_BACKLIGHT_DIM) {
+		request_bl_dim = 1;
+		bl_level = 30;
+	}
 
 	mdss_dsi_panel_dimming_init(pdata);
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -340,8 +352,20 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			__func__);
 		break;
 	}
+	if (request_bl_dim)
+		bl_level = stored_bl_level;
 	stored_bl_level = bl_level;
 }
+
+void mdss_dsi_panel_bl_dim(struct mdss_panel_data *pdata, int flag)
+{
+	if (likely(msd.dstat.on)) {
+			mdss_dsi_panel_bl_ctrl(pdata, flag);
+	} else
+		pr_info("[ALPM_DEBUG] %s: The LCD already turned off\n"
+					, __func__);
+}
+
 u32 mdss_dsi_cmd_receive(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct dsi_cmd_desc *cmd, int rlen)
 {
@@ -459,11 +483,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	mdss_dsi_panel_dimming_init(pdata);
 
-	if (pinfo->is_suspending)
-		display_on_seq.cmd_desc[11].payload[1] = 0x26;
-	else
-		display_on_seq.cmd_desc[11].payload[1] = 0xff;
-
 	/* Normaly the else is working for PANEL_DISP_ON_SEQ */
 	if (pinfo->alpm_event) {
 		if (!pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
@@ -484,6 +503,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		if (!pinfo->alpm_event(CHECK_PREVIOUS_STATUS)
 				&& pinfo->alpm_event(CHECK_CURRENT_STATUS)) {
 			/* Turn On ALPM Mode */
+
+			mdss_dsi_panel_bl_dim(pdata, PANEL_BACKLIGHT_DIM);
 			mipi_samsung_disp_send_cmd(PANEL_ALPM_ON, true);
 			pinfo->alpm_event(STORE_CURRENT_STATUS);
 			pr_info("[ALPM_DEBUG] %s: Send ALPM mode on cmds\n",
@@ -492,8 +513,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				&& pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
 			/* Turn Off ALPM Mode */
 			mipi_samsung_disp_send_cmd(PANEL_ALPM_OFF, true);
-			mdss_dsi_panel_bl_ctrl(pdata, -1);
+			/*
+			mdss_dsi_panel_bl_dim(msd.pdata,
+					PANEL_BACKLIGHT_RESTORE);
 			pinfo->alpm_event(CLEAR_MODE_STATUS);
+			*/
 			pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n",
 						 __func__);
 		}
@@ -534,6 +558,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		!pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
 		pr_info("[ALPM_DEBUG] %s: Skip to send panel off cmds\n",
 				__func__);
+		mdss_dsi_panel_bl_dim(pdata, PANEL_BACKLIGHT_DIM);
 		mipi_samsung_disp_send_cmd(PANEL_ALPM_ON, true);
 		pinfo->alpm_event(STORE_CURRENT_STATUS);
 	} else if (pinfo->is_suspending)
@@ -577,9 +602,9 @@ static void alpm_enable(int enable)
 				/* wait 1 frame(more than 16ms) */
 				msleep(20);
 				pinfo->alpm_event(CLEAR_MODE_STATUS);
+				pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n",
+							__func__);
 			}
-			pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n",
-						__func__);
 		}
 	}
 }
@@ -1288,19 +1313,15 @@ static ssize_t mipi_samsung_ambient_store(struct device *dev,
 
 	pr_info("[ALPM_DEBUG] %s: mode : %d\n", __func__, ambient_mode);
 
-	if (ambient_mode)
-		backlight_cmds.cmd_desc[0].payload[1] = 0xFF;
-	else
-		backlight_cmds.cmd_desc[0].payload[1] = 0x26;
-
 	if (msd.dstat.on) {
-		mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
 		if (ambient_mode)
-			mdss_dsi_panel_bl_ctrl(msd.pdata, -1);
+			mdss_dsi_panel_bl_dim(msd.pdata,
+					PANEL_BACKLIGHT_RESTORE);
+		else
+			mdss_dsi_panel_bl_dim(msd.pdata, PANEL_BACKLIGHT_DIM);
 	} else
 		pr_info("[ALPM_DEBUG] %s: The LCD already turned off\n"
 					, __func__);
-
 
 	alpm_enable(ambient_mode ? MODE_OFF : ALPM_MODE_ON);
 
