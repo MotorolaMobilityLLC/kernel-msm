@@ -239,7 +239,7 @@ tANI_U32 limGetMaxRateFlags(tpDphHashNode pStaDs, tpPESession psessionEntry)
             if (pStaDs->htShortGI20Mhz || pStaDs->htShortGI40Mhz )
                 rate_flags |= eHAL_TX_RATE_SGI;
 
-            if (pStaDs->htDsssCckRate40MHzSupport)
+            if (pStaDs->htSupportedChannelWidthSet)
                 rate_flags |=eHAL_TX_RATE_HT40;
             else
                 rate_flags |=eHAL_TX_RATE_HT20;
