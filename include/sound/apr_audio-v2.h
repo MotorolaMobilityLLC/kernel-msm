@@ -891,6 +891,7 @@ struct afe_sidetone_iir_filter_config_params {
  */
 } __packed;
 
+#define AFE_MODULE_ECREF_16k		0x1000E0A2
 #define AFE_MODULE_LOOPBACK	0x00010205
 #define AFE_PARAM_ID_LOOPBACK_GAIN_PER_PATH	0x00010206
 
@@ -1002,7 +1003,7 @@ enum afe_loopback_routing_mode {
 	/* Sidetone feed from Tx source to Rx destination port */
 	LB_MODE_EC_REF_VOICE_AUDIO,
 	/* Echo canceller reference, voice + audio + DTMF */
-	LB_MODE_EC_REF_VOICE
+	LB_MODE_EC_REF_VOICE,
 	/* Echo canceller reference, voice alone */
 } __packed;
 
@@ -7155,6 +7156,13 @@ struct afe_port_cmd_set_aanc_param {
 		struct afe_param_aanc_port_cfg aanc_port_cfg;
 		struct afe_mod_enable_param    mod_enable;
 	} __packed data;
+} __packed;
+
+struct afe_port_cmd_set_ecref_16k_param {
+	struct apr_hdr hdr;
+	struct afe_port_cmd_set_param_v2 param;
+	struct afe_port_param_data_v2 pdata;
+	struct afe_mod_enable_param    mod_enable;
 } __packed;
 
 struct afe_port_cmd_set_aanc_acdb_table {

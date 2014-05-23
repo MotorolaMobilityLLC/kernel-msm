@@ -2512,12 +2512,13 @@ static int msm8974_mi2s_quat_startup(struct snd_pcm_substream *substream)
 			dev_err(cpu_dai->dev, "set format for CPU dai failed\n");
 			goto quat_startup_fail;
 		}
-
-		ret = snd_soc_dai_set_fmt(codec_dai,
-			SND_SOC_DAIFMT_CBS_CFS|SND_SOC_DAIFMT_I2S);
-		if (ret < 0) {
-			dev_err(codec_dai->dev, "set format for codec dai failed\n");
-			goto quat_startup_fail;
+		if (strncmp(codec_dai->name, "msm-stub-tx", 11)) {
+			ret = snd_soc_dai_set_fmt(codec_dai,
+				SND_SOC_DAIFMT_CBS_CFS|SND_SOC_DAIFMT_I2S);
+			if (ret < 0) {
+				dev_err(codec_dai->dev, "set format for codec dai failed\n");
+				goto quat_startup_fail;
+			}
 		}
 	}
 	return ret;
@@ -3488,6 +3489,34 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.be_hw_params_fixup = msm_be_pri_mi2s_hw_params_fixup,
 		.ops = &msm8974_mi2s_pri_be_ops,
 		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_PRI_MI2S_RX,
+		.stream_name = "Primary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.0",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_PRI_MI2S_RX,
+		.be_hw_params_fixup = msm_be_pri_mi2s_hw_params_fixup,
+		.ops = &msm8974_mi2s_pri_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = "EC16k Hostless",
+		.stream_name = "EC16k Hostless",
+		.cpu_dai_name	= "PRI_RX_MI2S_TX_HOSTLESS",
+		.platform_name  = "msm-pcm-hostless",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		/* this dainlink has playback support */
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
 	},
 };
 
