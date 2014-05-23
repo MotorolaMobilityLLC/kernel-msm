@@ -9578,7 +9578,7 @@ v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx)
           || (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) )
         {
             if (((pConfig->fIsImpsEnabled || pConfig->fIsBmpsEnabled)
-                 && (pmcState != IMPS && pmcState != BMPS
+                 && (pmcState != IMPS && pmcState != BMPS && pmcState != UAPSD
                   &&  pmcState != STOPPED && pmcState != STANDBY)) ||
                  (eANI_BOOLEAN_TRUE == scanRspPending) ||
                  (eANI_BOOLEAN_TRUE == inMiddleOfRoaming))
