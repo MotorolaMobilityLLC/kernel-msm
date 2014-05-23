@@ -125,7 +125,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 				"Attempted normal mode ioctl in boot\n");
 			stm401_sleep(ps_stm401);
 			mutex_unlock(&ps_stm401->lock);
-			return -EPERM;
+			return -EBUSY;
 		}
 	}
 
