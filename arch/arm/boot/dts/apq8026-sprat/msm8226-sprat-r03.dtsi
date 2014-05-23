@@ -103,7 +103,7 @@
 		/* Charger */
 		charger,chg_float_voltage = <4350000>;
 		charger,fast_charging_current = <150000 150000 200000>;
-		charger,full_check_current = <30000 30000 30000>;
+		charger,full_check_current = <30000 30000 70000>;
 	};
 
 	i2c@20 {
