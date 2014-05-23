@@ -2974,6 +2974,61 @@ fail_cmd:
 	return ret;
 }
 
+int afe_set_lpass_port_ec_ref_16k(u16 port_id, u16 enable)
+{
+	struct afe_port_cmd_set_ecref_16k_param cfg;
+	int ret = 0;
+	int index = 0;
+
+	pr_debug("%s: rx_port %d\n",
+		__func__, port_id);
+
+	ret = afe_q6_interface_prepare();
+	if (ret != 0)
+		return -EINVAL;
+
+	index = q6audio_get_port_index(port_id);
+	if (q6audio_validate_port(port_id) < 0) {
+		pr_err("%s: port id: %#x\n", __func__, port_id);
+		return -EINVAL;
+	}
+
+	cfg.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+			APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+	cfg.hdr.pkt_size = sizeof(cfg);
+	cfg.hdr.src_port = 0;
+	cfg.hdr.dest_port = 0;
+	cfg.hdr.token = index;
+	cfg.hdr.opcode = AFE_PORT_CMD_SET_PARAM_V2;
+
+	cfg.param.port_id = port_id;
+	cfg.param.payload_size        = sizeof(struct afe_port_param_data_v2) +
+					sizeof(struct afe_mod_enable_param);
+	cfg.param.payload_address_lsw     = 0;
+	cfg.param.payload_address_lsw     = 0;
+	cfg.param.mem_map_handle          = 0;
+
+	cfg.pdata.module_id = AFE_MODULE_ECREF_16k;
+	cfg.pdata.param_id    = AFE_PARAM_ID_ENABLE;
+	cfg.pdata.param_size = sizeof(struct afe_mod_enable_param);
+	cfg.pdata.reserved    = 0;
+
+	cfg.mod_enable.enable = enable;
+	cfg.mod_enable.reserved = 0;
+
+	ret = afe_apr_send_pkt((uint32_t *) &cfg, &this_afe.wait[index]);
+	if (ret) {
+		pr_err("%s: AFE EC REF 16k enable failed for port id %d\n",
+			__func__, port_id);
+	} else if (atomic_read(&this_afe.status) != 0) {
+		pr_err("%s: config cmd failed\n", __func__);
+		ret = -EINVAL;
+	}
+	pr_debug("%s: leave %d\n", __func__, ret);
+	return ret;
+
+}
+
 int afe_set_lpass_clock(u16 port_id, struct afe_clk_cfg *cfg)
 {
 	struct afe_lpass_clk_config_command clk_cfg;
