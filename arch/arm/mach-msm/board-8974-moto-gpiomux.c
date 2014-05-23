@@ -702,6 +702,13 @@ static struct msm_gpiomux_config c55_i2s_configs[] __initdata = {
 			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
 		},
 	},
+	{
+		.gpio = 68,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &c55_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
+		},
+	},
 };
 
 static struct gpiomux_setting auxpcm_act_cfg = {
