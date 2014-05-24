@@ -52,7 +52,8 @@
 #define WLAN_HDD_80211_FRM_DA_OFFSET             4
 #define P2P_WILDCARD_SSID_LEN                    7
 #define P2P_WILDCARD_SSID                        "DIRECT-"
-
+#define ACTION_FRAME_RSP_WAIT 500
+#define ACTION_FRAME_ACK_WAIT 300
 #ifdef WLAN_FEATURE_11W
 #define WLAN_HDD_SET_WEP_FRM_FC(__fc__)     ( (__fc__) = ((__fc__) | 0x40))
 #endif //WLAN_FEATURE_11W

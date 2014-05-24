@@ -690,6 +690,8 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
         return;
     }
 
+    vos_mem_set(( tANI_U8* )&extractedExtCap, sizeof( tDot11fIEExtCap ), 0);
+
     // Fill out 'frm', after which we'll just hand the struct off to
     // 'dot11fPackProbeResponse'.
     vos_mem_set(( tANI_U8* )pFrm, sizeof( tDot11fProbeResponse ), 0);
@@ -920,8 +922,6 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
             return;
         }
 
-       vos_mem_set(( tANI_U8* )&extractedExtCap,
-            sizeof( tDot11fIEExtCap ), 0);
        nSirStatus = limStripOffExtCapIEAndUpdateStruct(pMac,
                                   addIE,
                                   &totalAddnIeLen,

@@ -1911,8 +1911,8 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     hdd_config_t *iniConfig;
     v_SINT_t i;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
-    v_BOOL_t MFPCapable;
-    v_BOOL_t MFPRequired;
+    v_BOOL_t MFPCapable = VOS_FALSE;
+    v_BOOL_t MFPRequired = VOS_FALSE;
     eHddDot11Mode sapDot11Mode =
             (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->sapDot11Mode;
 
@@ -4035,9 +4035,6 @@ static int wlan_hdd_cfg80211_get_key(
 
     ENTER();
 
-    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
-                     TRACE_CODE_HDD_CFG80211_GET_KEY,
-                     pAdapter->sessionId, params.cipher));
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %s (%d)",
             __func__, hdd_device_modetoString(pAdapter->device_mode),
                                               pAdapter->device_mode);
@@ -4078,6 +4075,10 @@ static int wlan_hdd_cfg80211_get_key(
             params.cipher = IW_AUTH_CIPHER_NONE;
             break;
     }
+
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                     TRACE_CODE_HDD_CFG80211_GET_KEY,
+                     pAdapter->sessionId, params.cipher));
 
     params.key_len = pRoamProfile->Keys.KeyLength[key_index];
     params.seq_len = 0;
@@ -6856,10 +6857,10 @@ static int __wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
 
                 case WLAN_REASON_PREV_AUTH_NOT_VALID:
                 case WLAN_REASON_CLASS2_FRAME_FROM_NONAUTH_STA:
+                case WLAN_REASON_DEAUTH_LEAVING:
                     reasonCode = eCSR_DISCONNECT_REASON_DEAUTH;
                     break;
 
-                case WLAN_REASON_DEAUTH_LEAVING:
                 default:
                     reasonCode = eCSR_DISCONNECT_REASON_UNSPECIFIED;
                     break;

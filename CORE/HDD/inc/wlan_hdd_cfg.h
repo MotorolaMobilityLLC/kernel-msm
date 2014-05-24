@@ -2189,6 +2189,12 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_PMF_SA_QUERY_RETRY_INTERVAL_MAX                  ( 2000 )
 #endif
 
+#define CFG_DEFER_IMPS_FOR_TIME_NAME                         "gDeferIMPStime"
+#define CFG_DEFER_IMPS_FOR_TIME_MIN                          (0)
+#define CFG_DEFER_IMPS_FOR_TIME_MAX                          (500)
+#define CFG_DEFER_IMPS_FOR_TIME_DEFAULT                      (200)
+
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2645,6 +2651,7 @@ typedef struct
    v_U32_t                     pmfSaQueryMaxRetries;
    v_U32_t                     pmfSaQueryRetryInterval;
 #endif
+   v_U32_t                     deferImpsTime;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
