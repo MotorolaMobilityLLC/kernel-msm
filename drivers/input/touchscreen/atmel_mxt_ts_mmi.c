@@ -1374,7 +1374,8 @@ end:
 static int mxt_process_messages_until_invalid(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
-	int error, num_handled, processed = 0;
+	int num_handled, processed = 0;
+	bool pin_high;
 
 	do {
 		/* It appears host has to read "beyond" the message */
@@ -1386,11 +1387,9 @@ static int mxt_process_messages_until_invalid(struct mxt_data *data)
 	if (processed)
 		dev_dbg(dev, "processed %d messages\n", processed);
 
-	error = gpio_get_value(data->pdata->gpio_irq);
-	if (!error) {
+	pin_high = gpio_get_value(data->pdata->gpio_irq) == 1;
+	if (!pin_high)
 		dev_err(dev, "CHG pin still asserted\n");
-		BUG();
-	}
 
 	return 0;
 }
