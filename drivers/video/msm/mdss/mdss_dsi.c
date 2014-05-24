@@ -1066,6 +1066,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_DSI_ULPS_CTRL:
 		rc = mdss_dsi_ulps_config(ctrl_pdata, (int)arg);
+		break;
 	case MDSS_EVENT_SET_CABC:
 		if (ctrl_pdata->set_cabc)
 			rc = ctrl_pdata->set_cabc(ctrl_pdata, (int)arg);
