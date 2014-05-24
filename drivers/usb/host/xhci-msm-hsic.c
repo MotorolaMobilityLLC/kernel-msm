@@ -1285,6 +1285,7 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 		}
 	}
 
+	irq_set_status_flags(irq, IRQ_NOAUTOEN);
 	ret = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (ret)
 		goto deinit_vddcx;
@@ -1369,6 +1370,7 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "%s: unable to create imod sysfs entry\n",
 					__func__);
 
+	enable_irq(irq);
 	/* Enable HSIC PHY */
 	mxhci_hsic_ulpi_write(mxhci, 0x01, MSM_HSIC_CFG_SET);
 
