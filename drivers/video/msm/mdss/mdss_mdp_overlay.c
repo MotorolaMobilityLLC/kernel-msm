@@ -3100,8 +3100,10 @@ static int mdss_mdp_overlay_off_pan_on(struct msm_fb_data_type *mfd)
 		return 0;
 
 	rc = mdss_mdp_ctl_off_pan_on(mdp5_data->ctl);
-	if (!rc)
+	if (!rc) {
 		pm_runtime_set_suspended(&mfd->pdev->dev);
+		rc = mdss_mdp_cx_ctrl(mdp5_data->mdata, 0);
+	}
 
 	return rc;
 }
