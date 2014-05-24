@@ -1871,6 +1871,13 @@ static void hdd_ReConfigSuspendDataClearedDuringRoaming(hdd_context_t *pHddCtx)
                 hdd_conf_ns_offload(pAdapter, TRUE);
             }
 #endif
+#ifdef WLAN_FEATURE_PACKET_FILTERING
+            /* During suspend, configure MC Addr list filter to the firmware
+             * function takes care of checking necessary conditions before
+             * configuring.
+             */
+            wlan_hdd_set_mc_addr_list(pAdapter, TRUE);
+#endif
         }
         vstatus = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
         pAdapterNode = pNext;
