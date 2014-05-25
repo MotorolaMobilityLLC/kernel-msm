@@ -1758,9 +1758,8 @@ limDetectChangeInApCapabilities(tpAniSirGlobal pMac,
     newChannel = (tANI_U8) pBeacon->channelNumber;
 
     if ( ( false == psessionEntry->limSentCapsChangeNtf ) &&
-        ( ( ( limIsNullSsid(&pBeacon->ssId) ) ||
-          ( ( !limIsNullSsid(&pBeacon->ssId) ) &&
-             ( false == limCmpSSid(pMac, &pBeacon->ssId, psessionEntry) ) ) ) ||
+        ( ( ( !limIsNullSsid(&pBeacon->ssId) ) &&
+             ( false == limCmpSSid(pMac, &pBeacon->ssId, psessionEntry) ) ) ||
           ( (SIR_MAC_GET_ESS(apNewCaps.capabilityInfo) !=
              SIR_MAC_GET_ESS(psessionEntry->limCurrentBssCaps) ) ||
           ( SIR_MAC_GET_PRIVACY(apNewCaps.capabilityInfo) !=
