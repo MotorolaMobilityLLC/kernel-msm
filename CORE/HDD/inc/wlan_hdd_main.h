@@ -1051,6 +1051,9 @@ struct hdd_adapter_s
    v_U8_t configuredPsb;
    v_BOOL_t is_roc_inprogress;
    v_U32_t maxRateFlags;
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+   v_BOOL_t isLinkLayerStatsSet;
+#endif
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
