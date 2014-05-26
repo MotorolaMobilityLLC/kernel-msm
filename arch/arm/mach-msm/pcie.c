@@ -1227,6 +1227,7 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 
 	dev->link_status = MSM_PCIE_LINK_ENABLED;
 	dev->power_on = true;
+	dev->suspending = false;
 	goto out;
 
 link_fail:
