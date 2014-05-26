@@ -803,6 +803,7 @@
 		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <19200000>;
 	};
+
 	i2c_0: i2c@f9926000 { /* BLSP-1 QUP-4 */
 		cell-index = <0>;
 		compatible = "qcom,i2c-qup";
@@ -830,6 +831,7 @@
 		qcom,i2c-src-freq = <19200000>;
 		qcom,sda-gpio = <&msmgpio 18 0>;
 		qcom,scl-gpio = <&msmgpio 19 0>;
+		qcom,clk-ctl-xfer = <1>;
 	};
 
 	qcom,clock-a7@f9011050 {
