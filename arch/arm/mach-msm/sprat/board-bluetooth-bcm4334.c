@@ -208,6 +208,9 @@ static int bcm4334_bt_rfkill_set_power(void *data, bool blocked)
 		if (ret)
 			pr_err("[BT] failed to set BT_EN.\n");
 
+		gpio_tlmm_config(GPIO_CFG(BT_EN, 0, GPIO_CFG_INPUT,
+					GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+
 		gpio_set_value(get_gpio_hwrev(BT_WAKE), 0);
 	}
 	return 0;

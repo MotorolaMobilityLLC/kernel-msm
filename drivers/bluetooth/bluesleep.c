@@ -888,7 +888,7 @@ static int bluesleep_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	if (!bt_enabled) {
 		gpio_tlmm_config(GPIO_CFG(bsi->host_wake, 0, GPIO_CFG_INPUT,
-					GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA),
+					GPIO_CFG_NO_PULL, GPIO_CFG_16MA),
 					GPIO_CFG_ENABLE);
 	}
 	set_bit(BT_SUSPEND, &flags);
