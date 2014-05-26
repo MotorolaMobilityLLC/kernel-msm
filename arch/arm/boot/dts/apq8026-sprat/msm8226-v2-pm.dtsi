@@ -214,8 +214,10 @@
 			<0xff 97>,  /* camss_vfe_mmu_cirpt[1] */
 			<0xff 102>, /* camss_jpeg_mmu_cirpt[1] */
 			<0xff 109>, /* ocmem_dm_nonsec_irq */
+			<0xff 127>, /* blsp1_qup_1_irq */
 			<0xff 131>, /* blsp1_qup_5_irq */
 			<0xff 141>, /* blsp1_uart_3_irq */
+			<0xff 144>, /* msm_hs_uart */
 			<0xff 155>, /* sdc1_irq(0) */
 			<0xff 157>, /* sdc2_irq(0) */
 			<0xff 161>, /* lpass_irq_out_spare[4] */
@@ -251,6 +253,7 @@
 			<0xff 207>, /* rpm_ipc(27) */
 			<0xff 234>, /* lpass_irq_out_spare[6]*/
 			<0xff 235>, /* lpass_irq_out_spare[7]*/
+			<0xff 239>, /* sps irq */
 			<0xff 240>, /* summary_irq_kpss */
 			<0xff 253>, /* sdc2_pwr_cmd_irq */
 			<0xff 258>, /* rpm_ipc(28) */
