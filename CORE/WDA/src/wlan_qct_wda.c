@@ -222,6 +222,17 @@ VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA,
 VOS_STATUS WDA_ProcessLPHBConfReq(tWDA_CbContext *pWDA,
                                   tSirLPHBReq *pData);
 #endif /* FEATURE_WLAN_LPHB */
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+VOS_STATUS WDA_ProcessLLStatsSetReq(tWDA_CbContext *pWDA,
+                                      tSirLLStatsSetReq *wdaRequest);
+
+VOS_STATUS WDA_ProcessLLStatsGetReq(tWDA_CbContext *pWDA,
+                                      tSirLLStatsGetReq *wdaRequest);
+
+VOS_STATUS WDA_ProcessLLStatsClearReq(tWDA_CbContext *pWDA,
+                                      tSirLLStatsClearReq *wdaRequest);
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 /*
  * FUNCTION: WDA_open
  * Allocate the WDA context 
@@ -12531,6 +12542,23 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          WDA_ProcessBtAmpEventReq(pWDA, (tSmeBtAmpEvent *)pMsg->bodyptr);
          break;
       }
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+      case WDA_LINK_LAYER_STATS_SET_REQ:
+      {
+         WDA_ProcessLLStatsSetReq(pWDA, (tSirLLStatsSetReq *)pMsg->bodyptr);
+         break;
+      }
+      case WDA_LINK_LAYER_STATS_GET_REQ:
+      {
+         WDA_ProcessLLStatsGetReq(pWDA, (tSirLLStatsGetReq *)pMsg->bodyptr);
+         break;
+      }
+      case WDA_LINK_LAYER_STATS_CLEAR_REQ:
+      {
+         WDA_ProcessLLStatsClearReq(pWDA, (tSirLLStatsClearReq *)pMsg->bodyptr);
+         break;
+      }
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 #ifdef WDA_UT
       case WDA_WDI_EVENT_MSG:
       {
@@ -13383,7 +13411,7 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
                    "Received WDI_BATCHSCAN_RESULT_IND from FW");
 
          /*sanity check*/
-         if(NULL == pWDA)
+         if (NULL == pWDA)
          {
             VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
               "%s:pWDA is NULL", __func__);
@@ -13466,6 +13494,62 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
          break;
       }
 #endif /* FEATURE_WLAN_CH_AVOID */
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+     case  WDI_LL_STATS_RESULTS_IND:
+     {
+         void *pLinkLayerStatsInd;
+         void *pCallbackContext;
+         tpAniSirGlobal pMac;
+
+         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                   "Received WDI_LL_STATS_RESULTS_IND from FW");
+
+         /*sanity check*/
+         if (NULL == pWDA)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s:pWDA is NULL", __func__);
+            VOS_ASSERT(0);
+            return;
+         }
+
+         pLinkLayerStatsInd =
+            (void *)wdiLowLevelInd->wdiIndicationData.pLinkLayerStatsResults;
+         if (NULL == pLinkLayerStatsInd)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s:Link Layer Statistics from FW is null can't invoke HDD callback",
+              __func__);
+            VOS_ASSERT(0);
+            return;
+         }
+
+         pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
+         if (NULL == pMac)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s:pMac is NULL", __func__);
+            VOS_ASSERT(0);
+            return;
+         }
+
+         pCallbackContext = pMac->sme.pLinkLayerStatsCallbackContext;
+         /*call hdd callback with Link Layer Statistics*/
+         if (pMac->sme.pLinkLayerStatsIndCallback)
+         {
+            pMac->sme.pLinkLayerStatsIndCallback(pCallbackContext,
+                WDA_LINK_LAYER_STATS_RESULTS_RSP,
+               pLinkLayerStatsInd);
+         }
+         else
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "%s:HDD callback is null", __func__);
+         }
+         break;
+     }
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
       default:
       {
@@ -15958,3 +16042,252 @@ v_VOID_t WDA_ProcessGetBcnMissRateReq(tWDA_CbContext *pWDA,
    }
    vos_mem_free(pData);
 }
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+
+/*==========================================================================
+  FUNCTION WDA_LLStatsSetRspCallback
+
+  DESCRIPTION
+    API to process set link layer statistics response from FW
+
+  PARAMETERS
+    pRsp: Pointer to set link layer statistics response
+    pUserData: Pointer to user data
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+void WDA_LLStatsSetRspCallback(void *pEventData, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+
+
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+
+   /* Do not need to send notification to upper layer
+    * Just free allocated resources */
+   if (pWdaParams->wdaWdiApiMsgParam != NULL)
+   {
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   }
+   if (pWdaParams->wdaMsgParam != NULL)
+   {
+      vos_mem_free(pWdaParams->wdaMsgParam);
+   }
+   vos_mem_free(pWdaParams) ;
+
+   return;
+}
+
+/*==========================================================================
+  FUNCTION   WDA_ProcessLLStatsSetReq
+
+  DESCRIPTION
+    API to send Set Link Layer Stats request to WDI
+
+  PARAMETERS
+    pWDA: Pointer to WDA context
+    wdaRequest: Pointer to set Link Layer Stats req parameters
+===========================================================================*/
+VOS_STATUS WDA_ProcessLLStatsSetReq(tWDA_CbContext *pWDA,
+                                    tSirLLStatsSetReq *wdaRequest)
+{
+    WDI_Status status = WDI_STATUS_SUCCESS;
+    tWDA_ReqParams *pWdaParams;
+
+    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams));
+    if (NULL == pWdaParams)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "%s: VOS MEM Alloc Failure", __func__);
+        VOS_ASSERT(0);
+        return VOS_STATUS_E_NOMEM;
+    }
+    pWdaParams->pWdaContext = pWDA;
+    pWdaParams->wdaMsgParam = wdaRequest;
+    pWdaParams->wdaWdiApiMsgParam = NULL;
+
+    status = WDI_LLStatsSetReq((void *)wdaRequest,
+                               (WDI_LLStatsSetRspCb)WDA_LLStatsSetRspCallback,
+                               (void *)pWdaParams);
+    if (IS_WDI_STATUS_FAILURE(status))
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "Failure to request.  Free all the memory " );
+        vos_mem_free(pWdaParams->wdaMsgParam);
+        vos_mem_free(pWdaParams);
+    }
+    return CONVERT_WDI2VOS_STATUS(status);
+}
+
+/*==========================================================================
+  FUNCTION WDA_LLStatsGetRspCallback
+
+  DESCRIPTION
+    API to process get link layer statistics response from FW
+
+  PARAMETERS
+    pRsp: Pointer to get link layer statistics response
+    pUserData: Pointer to user data
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+void WDA_LLStatsGetRspCallback(void *pEventData, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+
+   /* Do not need to send notification to upper layer
+    * Just free allocated resources */
+   if (pWdaParams->wdaWdiApiMsgParam != NULL)
+   {
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   }
+   if (pWdaParams->wdaMsgParam != NULL)
+   {
+      vos_mem_free(pWdaParams->wdaMsgParam);
+   }
+   vos_mem_free(pWdaParams) ;
+
+   return;
+}
+
+/*==========================================================================
+  FUNCTION   WDA_ProcessLLStatsGetReq
+
+  DESCRIPTION
+    API to send Get Link Layer Stats request to WDI
+
+  PARAMETERS
+    pWDA: Pointer to WDA context
+    wdaRequest: Pointer to get Link Layer Stats req parameters
+===========================================================================*/
+VOS_STATUS WDA_ProcessLLStatsGetReq(tWDA_CbContext *pWDA,
+                                    tSirLLStatsGetReq *wdaRequest)
+{
+    WDI_Status status = WDI_STATUS_SUCCESS;
+    tWDA_ReqParams *pWdaParams;
+
+    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams));
+    if (NULL == pWdaParams)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "%s: VOS MEM Alloc Failure", __func__);
+        VOS_ASSERT(0);
+        return VOS_STATUS_E_NOMEM;
+    }
+    pWdaParams->pWdaContext = pWDA;
+    pWdaParams->wdaMsgParam = wdaRequest;
+    pWdaParams->wdaWdiApiMsgParam = NULL;
+
+    status = WDI_LLStatsGetReq((void *) wdaRequest,
+                               (WDI_LLStatsGetRspCb)WDA_LLStatsGetRspCallback,
+                               (void *)pWdaParams);
+    if (IS_WDI_STATUS_FAILURE(status))
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "Failure to request.  Free all the memory " );
+        vos_mem_free(pWdaParams->wdaMsgParam);
+        vos_mem_free(pWdaParams);
+    }
+    return CONVERT_WDI2VOS_STATUS(status);
+}
+
+/*==========================================================================
+  FUNCTION WDA_LLStatsClearRspCallback
+
+  DESCRIPTION
+    API to process clear link layer statistics response from FW
+
+  PARAMETERS
+    pRsp: Pointer to clear link layer statistics response
+    pUserData: Pointer to user data
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+void WDA_LLStatsClearRspCallback(void *pEventData, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+
+
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+   /* Do not need to send notification to upper layer
+    * Just free allocated resources */
+   if (pWdaParams->wdaWdiApiMsgParam != NULL)
+   {
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   }
+   if (pWdaParams->wdaMsgParam != NULL)
+   {
+      vos_mem_free(pWdaParams->wdaMsgParam);
+   }
+   vos_mem_free(pWdaParams) ;
+   return;
+}
+
+/*==========================================================================
+  FUNCTION   WDA_ProcessLLStatsClearReq
+
+  DESCRIPTION
+    API to send Clear Link Layer Stats request to WDI
+
+  PARAMETERS
+    pWDA: Pointer to WDA context
+    wdaRequest: Pointer to earLink Layer Stats req
+===========================================================================*/
+VOS_STATUS WDA_ProcessLLStatsClearReq(tWDA_CbContext *pWDA,
+                                      tSirLLStatsClearReq *wdaRequest)
+{
+    WDI_Status status = WDI_STATUS_SUCCESS;
+    tWDA_ReqParams *pWdaParams;
+
+    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams));
+    if (NULL == pWdaParams)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "%s: VOS MEM Alloc Failure", __func__);
+        VOS_ASSERT(0);
+        return VOS_STATUS_E_NOMEM;
+    }
+    pWdaParams->pWdaContext = pWDA;
+    pWdaParams->wdaMsgParam = wdaRequest;
+    pWdaParams->wdaWdiApiMsgParam = NULL;
+
+    status = WDI_LLStatsClearReq((void *)  wdaRequest,
+                           (WDI_LLStatsClearRspCb)WDA_LLStatsClearRspCallback,
+                           (void *)pWdaParams);
+    if (IS_WDI_STATUS_FAILURE(status))
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "Failure to request.  Free all the memory " );
+        vos_mem_free(pWdaParams->wdaMsgParam);
+        vos_mem_free(pWdaParams);
+    }
+    return CONVERT_WDI2VOS_STATUS(status);
+}
+
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */

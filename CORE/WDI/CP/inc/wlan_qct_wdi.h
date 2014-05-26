@@ -402,6 +402,9 @@ typedef enum
 #ifdef FEATURE_WLAN_CH_AVOID
   WDI_CH_AVOID_IND,
 #endif /* FEATURE_WLAN_CH_AVOID */
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+  WDI_LL_STATS_RESULTS_IND,
+#endif
 
   WDI_MAX_IND
 }WDI_LowLevelIndEnumType;
@@ -881,6 +884,11 @@ typedef struct
 #ifdef FEATURE_WLAN_CH_AVOID
     WDI_ChAvoidIndType          wdiChAvoidInd;
 #endif /* FEATURE_WLAN_CH_AVOID */
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+    /*Link Layer Statistics from FW*/
+    void *pLinkLayerStatsResults;
+#endif
   }  wdiIndicationData;
 }WDI_LowLevelIndType;
 
@@ -5606,6 +5614,32 @@ typedef struct
   void*             pUserData;
 } WDI_DelPeriodicTxPtrnParamsType;
 
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+typedef struct
+{
+   wpt_uint32  reqId;
+   wpt_uint8   staId;
+   wpt_uint32  mpduSizeThreshold;
+   wpt_uint32  aggressiveStatisticsGathering;
+}WDI_LLStatsSetReqType;
+
+typedef struct
+{
+   wpt_uint32  reqId;
+   wpt_uint8   staId;
+   wpt_uint32  paramIdMask;
+}WDI_LLStatsGetReqType;
+
+typedef struct
+{
+   wpt_uint32  reqId;
+   wpt_uint8   staId;
+   wpt_uint32  statsClearReqMask;
+   wpt_uint8   stopReq;
+}WDI_LLStatsClearReqType;
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
+
 /*----------------------------------------------------------------------------
  *   WDI callback types
  *--------------------------------------------------------------------------*/
@@ -7464,6 +7498,15 @@ typedef void (*WDI_SetBatchScanCb)(void *pData, WDI_SetBatchScanRspType *pRsp);
 typedef void (*WDI_GetBcnMissRateCb)(wpt_uint8 status, wpt_uint32 bcnMissRate,
                                      void* pUserData);
 
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+typedef void  (*WDI_LLStatsSetRspCb)(void *pEventData,
+                                       void *pUserData);
+typedef void  (*WDI_LLStatsGetRspCb)(void *pEventData,
+                                       void *pUserData);
+typedef void  (*WDI_LLStatsClearRspCb)(void *pEventData,
+                                       void *pUserData);
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 /*========================================================================
  *     Function Declarations and Documentation
  ==========================================================================*/
@@ -10526,6 +10569,59 @@ WDI_Status WDI_LPHBConfReq
    WDI_LphbCfgCb lphbCfgCb
 );
 #endif /* FEATURE_WLAN_LPHB */
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+/**
+ @brief WDI_LLStatsSetReq
+    This API is called to send set link layer stats request to FW
+
+ @param pwdiLLStatsSetReqParams : pointer to  set link layer stats params
+        wdiLLStatsSetRspCb     : set link layer stats response callback
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_LLStatsSetReq
+(
+   WDI_LLStatsSetReqType* pwdiLLStatsSetReqParams,
+   WDI_LLStatsSetRspCb          wdiLLStatsSetRspCb,
+   void*                   pUserData
+);
+
+/**
+ @brief WDI_LLStatsGetReq
+    This API is called to send get link layer stats request in FW
+
+ @param pwdiLLStatsGetParams  : pointer to get link layer stats params
+        wdiLLStatsGetRspCb    : get link layer stats response callback
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_LLStatsGetReq
+(
+   WDI_LLStatsGetReqType* pwdiLLStatsGetReqParams,
+   WDI_LLStatsGetRspCb          wdiLLStatsGetRspCb,
+   void*                   pUserData
+);
+
+/**
+ @brief WDI_LLStatsClearReq
+    This API is called to set clear link layer stats request in FW
+
+ @param pwdiLLStatsClearReqParams : pointer to  clear link layer stats params
+        iwdiLLStatsClearRspCb     : clear link layer stats response callback
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_LLStatsClearReq
+(
+   WDI_LLStatsClearReqType* pwdiLLStatsClearReqParams,
+   WDI_LLStatsClearRspCb    wdiLLStatsClearRspCb,
+   void*                    pUserData
+);
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
 #ifdef FEATURE_WLAN_BATCH_SCAN
 /**
