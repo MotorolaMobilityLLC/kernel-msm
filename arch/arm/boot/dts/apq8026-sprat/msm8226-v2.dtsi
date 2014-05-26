@@ -17,7 +17,7 @@
  */
 
 /include/ "msm8226.dtsi"
-/include/ "../qcom/msm8226-v2-pm.dtsi"
+/include/ "msm8226-v2-pm.dtsi"
 
 / {
 	qcom,msm-id = <145 0x20000>,
