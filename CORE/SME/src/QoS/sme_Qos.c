@@ -1617,13 +1617,16 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
          }
          else
          {
-            tmask = new_tmask;
-            if(tmask)
-               pACInfo->requested_QoSInfo[tmask-1] = Tspec_Info;
-            else
-               VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            if (!(new_tmask > 0 && new_tmask <= SME_QOS_TSPEC_INDEX_MAX))
+            {
+                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                          "%s: %d: ArrayIndexOutOfBoundsException",
                          __func__, __LINE__);
+
+                 return SME_QOS_STATUS_SETUP_FAILURE_RSP;
+            }
+            tmask = new_tmask;
+            pACInfo->requested_QoSInfo[tmask-1] = Tspec_Info;
          }
       }
       else
