@@ -2479,6 +2479,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
     hdd_scaninfo_t *pScanInfo  = NULL;
     hdd_adapter_t  *staAdapter = NULL;
     VOS_STATUS status;
+    long ret;
 
     ENTER();
 
@@ -2520,32 +2521,22 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
            __func__, hdd_device_modetoString(pAdapter->device_mode),
                                              pAdapter->device_mode);
 
-    if ((pScanInfo != NULL) && pScanInfo->mScanPending && staAdapter)
+    ret = wlan_hdd_scan_abort(pAdapter);
+
+    if (ret <= 0)
     {
-        long ret;
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   FL("Timeout occurred while waiting for abortscan %ld"), ret);
 
-        INIT_COMPLETION(pScanInfo->abortscan_event_var);
-        hdd_abort_mac_scan(staAdapter->pHddCtx, pAdapter->sessionId,
-                           eCSR_SCAN_ABORT_DEFAULT);
-        ret = wait_for_completion_interruptible_timeout(
-                           &pScanInfo->abortscan_event_var,
-                           msecs_to_jiffies(WLAN_WAIT_TIME_ABORTSCAN));
-        if (ret <= 0)
+        if (pHddCtx->isLogpInProgress)
         {
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                         FL("Timeout occurred while waiting for abortscan %ld"),
-                             ret);
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: LOGP in Progress. Ignore!!!", __func__);
 
-            if (pHddCtx->isLogpInProgress)
-            {
-                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                          "%s: LOGP in Progress. Ignore!!!", __func__);
-
-                VOS_ASSERT(pScanInfo->mScanPending);
-                return -EAGAIN;
-            }
             VOS_ASSERT(pScanInfo->mScanPending);
+            return -EAGAIN;
         }
+        VOS_ASSERT(pScanInfo->mScanPending);
     }
 
     hdd_hostapd_stop(dev);
@@ -8577,6 +8568,14 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: HAL context  is Null!!!", __func__);
         return -EINVAL;
+    }
+
+    ret = wlan_hdd_scan_abort(pAdapter);
+    if (ret <= 0)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: aborting the existing scan is unsuccessfull", __func__);
+        return -EBUSY;
     }
 
     if (eHAL_STATUS_SUCCESS != wlan_hdd_is_pno_allowed(pAdapter))
