@@ -438,7 +438,9 @@ static int stm401_takeback_locked(struct stm401_data *ps_stm401)
 		if (count == STM401_BUSY_RESUME_COUNT)
 			dev_err(&ps_stm401->client->dev,
 				"timedout while waiting for STMBUSY LOW\n");
-	}
+	} else
+		dev_warn(&ps_stm401->client->dev,
+			"takeback in invalid mode[%d]\n", ps_stm401->mode);
 
 EXIT:
 	stm401_sleep(ps_stm401);
@@ -461,7 +463,9 @@ static int stm401_handover_locked(struct stm401_data *ps_stm401)
 				"Write peek status reg failed\n");
 			ret = -EIO;
 		}
-	}
+	} else
+		dev_warn(&ps_stm401->client->dev,
+			"handover in invalid mode[%d]\n", ps_stm401->mode);
 
 	stm401_sleep(ps_stm401);
 	return ret;
