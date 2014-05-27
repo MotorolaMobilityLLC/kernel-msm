@@ -256,6 +256,8 @@ struct stk3x1x_data {
 	uint16_t noise_floor;
 	uint16_t max_noise_floor;
 	enum prox_state prox_mode;
+	bool suspended;
+	bool delayed_work;
 };
 
 static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data,
@@ -1739,7 +1741,10 @@ static irqreturn_t stk_oss_irq_handler(int irq, void *data)
 {
 	struct stk3x1x_data *pData = data;
 	disable_irq_nosync(irq);
-	queue_work(pData->stk_wq,&pData->stk_work);
+	if (pData->suspended)
+		pData->delayed_work = true;
+	else
+		queue_work(pData->stk_wq, &pData->stk_work);
 	return IRQ_HANDLED;
 }
 
@@ -1763,6 +1768,8 @@ static int32_t stk3x1x_init_all_setting(struct i2c_client *client,
 	ret = stk3x1x_init_all_reg(ps_data, plat_data);
 	if(ret < 0)
 		return ret;	
+	ps_data->suspended = false;
+	ps_data->delayed_work = false;
 	ps_data->re_enable_als = false;
 	ps_data->ir_code = 0;
 	ps_data->als_correct_factor = 1000;
@@ -1832,13 +1839,12 @@ static int stk3x1x_suspend(struct device *dev)
 
 	dev_dbg(&ps_data->client->dev,
 		"%s: suspend\n", __func__);
-#ifndef SPREADTRUM_PLATFORM	
 	mutex_lock(&ps_data->io_lock);  		
+	ps_data->suspended = true;
 	if (ps_data->als_enabled) {
 		stk3x1x_enable_als(ps_data, 0);		
 		ps_data->re_enable_als = true;
 	}  	
-#endif	
 	if (ps_data->ps_enabled) {
 		if (device_may_wakeup(&client->dev)) {
 			err = enable_irq_wake(ps_data->irq);	
@@ -1852,9 +1858,7 @@ static int stk3x1x_suspend(struct device *dev)
 				"%s: not support wakeup source", __func__);
 		}		
 	}
-#ifndef SPREADTRUM_PLATFORM		
 	mutex_unlock(&ps_data->io_lock);		
-#endif	
 	return 0;	
 }
 
@@ -1866,13 +1870,11 @@ static int stk3x1x_resume(struct device *dev)
 	
 	dev_dbg(&ps_data->client->dev,
 		"%s: resume\n", __func__);
-#ifndef SPREADTRUM_PLATFORM		
 	mutex_lock(&ps_data->io_lock); 		
 	if (ps_data->re_enable_als) {
 		stk3x1x_enable_als(ps_data, 1);		
 		ps_data->re_enable_als = false;		
 	}
-#endif
 	if (ps_data->ps_enabled) {
 		if (device_may_wakeup(&client->dev)) {
 			err = disable_irq_wake(ps_data->irq);	
@@ -1883,9 +1885,12 @@ static int stk3x1x_resume(struct device *dev)
 					__func__, ps_data->irq, err);
 		}		
 	}
-#ifndef SPREADTRUM_PLATFORM			
+	if (ps_data->delayed_work == true) {
+		queue_work(ps_data->stk_wq, &ps_data->stk_work);
+		ps_data->delayed_work = false;
+	}
+	ps_data->suspended = false;
 	mutex_unlock(&ps_data->io_lock);
-#endif	
 	return 0;	
 }
 
