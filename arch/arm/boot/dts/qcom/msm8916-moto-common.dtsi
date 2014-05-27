@@ -487,8 +487,10 @@
 			irq-gpio = <&msm_gpio 111 0>;
 			reset-gpio = <&msm_gpio 98 0>;
 			enable-gpio = <&msm_gpio 97 0>;
+			enable-active-high;
 			pinctrl-names = "default";
 			pinctrl-0 = <&nmi326_output_default &nmi326_input_default>;
+			isdbt_vdd-supply = <&pm8916_l2>;
 		};
 
 	};
