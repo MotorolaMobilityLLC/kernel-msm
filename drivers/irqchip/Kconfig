@@ -33,7 +33,7 @@ config ARM_VIC_NR
 config MSM_SHOW_RESUME_IRQ
 	bool "Enable logging of interrupts that could have caused resume"
 	depends on ARM_GIC
-	default n
+	default y
 	help
 	  This option logs wake up interrupts that have triggered just before
 	  the resume loop unrolls. It helps to debug to know any unnecessary
