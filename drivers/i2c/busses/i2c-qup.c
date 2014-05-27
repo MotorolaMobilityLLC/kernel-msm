@@ -229,7 +229,7 @@ qup_i2c_interrupt(int irq, void *devid)
 	uint32_t op_flgs = 0;
 	int err = 0;
 
-	if (pm_runtime_suspended(dev->dev))
+	if (dev->pwr_state != MSM_I2C_PM_ACTIVE)
 		return IRQ_NONE;
 
 	status = readl_relaxed(dev->base + QUP_I2C_STATUS);
