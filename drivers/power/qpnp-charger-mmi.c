@@ -4158,6 +4158,7 @@ static void update_heartbeat(struct work_struct *work)
 				struct qpnp_chg_chip, update_heartbeat_work);
 	int temp = 0;
 	int usb_present, host_mode;
+	union power_supply_propval ret = {1,};
 
 	/*
 	 * In pm8110/pm8226 there is automated BTM which takes care of
@@ -4172,12 +4173,25 @@ static void update_heartbeat(struct work_struct *work)
 	}
 	usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
 	host_mode = qpnp_chg_is_otg_en_set(chip);
+	if (chip->usb_psy)
+		chip->usb_psy->get_property(chip->usb_psy,
+			POWER_SUPPLY_PROP_LOW_POWER, &ret);
+
 	/* Handle Missed Disconnects in the heartbeat */
 	if (chip->usb_present && !usb_present) {
 		pr_err("Missed USB_IN irq, hostmode = %d\n", host_mode);
 		qpnp_chg_usb_usbin_valid_irq_handler(chip->usbin_valid.irq,
 							chip);
+	} else if (!usb_present && !host_mode && !ret.intval) {
+		pr_err("USB PSY not in low power without being connected\n");
+		if (chip->usb_psy->set_property) {
+			ret.intval = 1;
+			chip->usb_psy->set_property(chip->usb_psy,
+						POWER_SUPPLY_PROP_LOW_POWER,
+						&ret);
+		}
 	}
+
 	schedule_delayed_work(&chip->update_heartbeat_work,
 		msecs_to_jiffies(UPDATE_HEARTBEAT_MS));
 }
