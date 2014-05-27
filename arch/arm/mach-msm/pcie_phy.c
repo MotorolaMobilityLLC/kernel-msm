@@ -29,7 +29,8 @@ static inline void write_phy(void *base, u32 offset, u32 value)
 void pcie_phy_init(struct msm_pcie_dev_t *dev)
 {
 
-	PCIE_DBG("Initializing 28nm QMP phy - 19.2MHz\n");
+	PCIE_DBG(dev, "RC%d: Initializing 20nm QMP phy - 19.2MHz\n",
+		dev->rc_idx);
 
 	write_phy(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL, 0x03);
 
@@ -85,7 +86,8 @@ void pcie_phy_init(struct msm_pcie_dev_t *dev)
 #elif defined(CONFIG_ARCH_FSM9900)
 void pcie_phy_init(struct msm_pcie_dev_t *dev)
 {
-	PCIE_DBG("Initializing 28nm ATE phy - 100MHz\n");
+	PCIE_DBG(dev, "RC%d: Initializing 28nm ATE phy - 100MHz\n",
+		dev->rc_idx);
 
 	/*  1 */
 	write_phy(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL, 0x01);
@@ -120,7 +122,8 @@ void pcie_phy_init(struct msm_pcie_dev_t *dev)
 void pcie_phy_init(struct msm_pcie_dev_t *dev)
 {
 
-	PCIE_DBG("Initializing 28nm QMP phy - 19.2MHz\n");
+	PCIE_DBG(dev, "RC%d: Initializing 28nm QMP phy - 19.2MHz\n",
+		dev->rc_idx);
 
 	write_phy(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL,		0x03);
 	write_phy(dev->phy, QSERDES_COM_SYSCLK_EN_SEL,		0x08);
