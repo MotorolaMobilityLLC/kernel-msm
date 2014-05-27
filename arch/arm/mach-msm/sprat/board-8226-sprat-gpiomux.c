@@ -69,6 +69,13 @@ static struct gpiomux_setting gpio_uart_config = {
 	.dir = GPIOMUX_OUT_HIGH,
 };
 
+static struct gpiomux_setting rx_gpio_uart_config = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
 static struct msm_gpiomux_config msm_sensorhub_configs[] __initdata = {
 	{
 		.gpio = 92,
@@ -171,6 +178,18 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_gpio_i2c_config,
 			[GPIOMUX_SUSPENDED] = &gpio_gpio_i2c_config,
+		},
+	},
+	{
+		.gpio	   = 8, 	/* UART TX */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+		},
+	},
+	{
+		.gpio	   = 9, 	/* UART RX */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &rx_gpio_uart_config,
 		},
 	},
 	{
