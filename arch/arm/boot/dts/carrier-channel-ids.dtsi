@@ -45,7 +45,7 @@
 		"retcl",	/* 28 */
 		"tefla",	/* 29 */
 		"retla1st",	/* 30 */
-		"undefined",	/* 31 */
+		"tefunl",	/* 31 */
 		"undefined",	/* 32 */
 		"undefined",	/* 33 */
 		"undefined",	/* 34 */
