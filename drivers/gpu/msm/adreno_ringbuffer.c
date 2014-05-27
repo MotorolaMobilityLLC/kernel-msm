@@ -428,7 +428,7 @@ static int _ringbuffer_start_common(struct adreno_ringbuffer *rb)
 		return status;
 
 	/* idle device to validate ME INIT */
-	status = adreno_idle(device);
+	status = adreno_spin_idle(device);
 
 	if (status == 0)
 		rb->flags |= KGSL_FLAGS_STARTED;
@@ -724,7 +724,7 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 
 	/* Add any IB required for profiling if it is enabled */
 	if (profile_ready)
-		adreno_profile_preib_processing(rb->device, context_id,
+		adreno_profile_preib_processing(rb->device, drawctxt,
 				&flags, &ringcmds, &rcmd_gpu);
 
 	/* start-of-pipeline timestamp */

@@ -35,7 +35,7 @@
  *        : 2 - Post IB register hi/lo value
  * [per counter end]
  */
-#define SIZE_DATA(cnt) (3 + (cnt) * 5)
+#define SIZE_DATA(cnt) (6 + (cnt) * 5)
 
 /*
  * Pre-IB command size (in dwords):
@@ -50,7 +50,7 @@
  * [loop end]
  *        : 2 - NOP end identifier
  */
-#define SIZE_PREIB(cnt) (13 + (cnt) * 9)
+#define SIZE_PREIB(cnt) (22 + (cnt) * 9)
 
 /*
  * Post-IB command size (in dwords):
@@ -72,7 +72,7 @@
  * [count iterations]: "%.8s:%u %llu %llu%c"
  */
 #define SIZE_PIPE_ENTRY(cnt) (50 + (cnt) * 62)
-#define SIZE_LOG_ENTRY(cnt) (5 + (cnt) * 5)
+#define SIZE_LOG_ENTRY(cnt) (6 + (cnt) * 5)
 
 static struct adreno_context_type ctxt_type_table[] = {ADRENO_DRAWCTXT_TYPES};
 
@@ -113,7 +113,7 @@ static inline void _create_ib_ref(struct kgsl_memdesc *memdesc,
 
 static void _build_pre_ib_cmds(struct adreno_profile *profile,
 		unsigned int *rbcmds, unsigned int head,
-		unsigned int timestamp, unsigned int ctxt_id)
+		unsigned int timestamp, struct adreno_context *drawctxt)
 {
 	struct adreno_profile_assigns_list *entry;
 	unsigned int *start, *ibcmds;
@@ -128,17 +128,22 @@ static void _build_pre_ib_cmds(struct adreno_profile *profile,
 	/* start of profile identifier */
 	IB_START(ibcmds);
 
-	/* timestamp */
+	/*
+	 * Write ringbuffer commands to save the following to memory:
+	 * timestamp, count, context_id, pid, tid, context type
+	 */
 	IB_CMD(ibcmds, CP_MEM_WRITE, gpuaddr + data_offset,
 			timestamp, data_offset);
-
-	/* count:  number of perf counters pairs GPU will write */
 	IB_CMD(ibcmds, CP_MEM_WRITE, gpuaddr + data_offset,
 			profile->assignment_count, data_offset);
-
-	/* context id */
 	IB_CMD(ibcmds, CP_MEM_WRITE, gpuaddr + data_offset,
-			ctxt_id, data_offset);
+			drawctxt->base.id, data_offset);
+	IB_CMD(ibcmds, CP_MEM_WRITE, gpuaddr + data_offset,
+			drawctxt->base.proc_priv->pid, data_offset);
+	IB_CMD(ibcmds, CP_MEM_WRITE, gpuaddr + data_offset,
+			drawctxt->base.tid, data_offset);
+	IB_CMD(ibcmds, CP_MEM_WRITE, gpuaddr + data_offset,
+			drawctxt->type, data_offset);
 
 	/* loop for each countable assigned */
 	list_for_each_entry(entry, &profile->assignments_list, list) {
@@ -172,11 +177,11 @@ static void _build_post_ib_cmds(struct adreno_profile *profile,
 
 	ibcmds = ib_offset + ((unsigned int *) profile->shared_buffer.hostptr);
 	start = ibcmds;
-	/* end of profile identifier */
-	IB_END(ibcmds);
+	/* start of profile identifier */
+	IB_START(ibcmds);
 
 	/* skip over pre_ib preamble */
-	data_offset += sizeof(unsigned int) * 3;
+	data_offset += sizeof(unsigned int) * 6;
 
 	/* loop for each countable assigned */
 	list_for_each_entry(entry, &profile->assignments_list, list) {
@@ -320,11 +325,9 @@ static void check_close_profile(struct adreno_profile *profile)
 }
 
 static bool results_available(struct kgsl_device *device,
-		unsigned int *shared_buf_tail)
+		struct adreno_profile *profile, unsigned int *shared_buf_tail)
 {
 	unsigned int global_eop;
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	struct adreno_profile *profile = &adreno_dev->profile;
 	unsigned int off = profile->shared_tail;
 	unsigned int *shared_ptr = (unsigned int *)
 		profile->shared_buffer.hostptr;
@@ -362,15 +365,12 @@ static bool results_available(struct kgsl_device *device,
 	return true;
 }
 
-static void transfer_results(struct kgsl_device *device,
+static void transfer_results(struct adreno_profile *profile,
 		unsigned int shared_buf_tail)
 {
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	struct adreno_profile *profile = &adreno_dev->profile;
 	unsigned int buf_off;
 	unsigned int ts, cnt, ctxt_id, pid, tid, client_type;
 	unsigned int *ptr = (unsigned int *) profile->shared_buffer.hostptr;
-	struct kgsl_context *k_ctxt;
 	unsigned int *log_ptr, *log_base;
 	struct adreno_profile_assigns_list *assigns_list;
 	int i;
@@ -392,9 +392,13 @@ static void transfer_results(struct kgsl_device *device,
 		 * format: timestamp, count, context_id
 		 * count entries: pc_off, pc_start, pc_end
 		 */
-		ts = *(ptr + buf_off);
-		cnt = *(ptr + buf_off + 1);
-		ctxt_id = *(ptr + buf_off + 2);
+		ts = *(ptr + buf_off++);
+		cnt = *(ptr + buf_off++);
+		ctxt_id = *(ptr + buf_off++);
+		pid = *(ptr + buf_off++);
+		tid = *(ptr + buf_off++);
+		client_type = *(ptr + buf_off++);
+
 		/*
 		 * if entry overwrites the tail of log_buffer then adjust tail
 		 * ptr to make room for the new entry, discarding old entry
@@ -411,23 +415,9 @@ static void transfer_results(struct kgsl_device *device,
 			profile->log_tail = log_base + boff;
 		}
 
-		/* find Adreno ctxt struct */
-		k_ctxt = idr_find(&device->context_idr, ctxt_id);
-		if (k_ctxt == NULL) {
-			shared_buf_inc(profile->shared_size,
-					&profile->shared_tail,
-					SIZE_SHARED_ENTRY(cnt));
-			continue;
-		} else {
-			struct adreno_context *adreno_ctxt =
-				ADRENO_CONTEXT(k_ctxt);
-			pid = k_ctxt->proc_priv->pid;  /* pid */
-			tid = k_ctxt->tid; /* tid creator */
-			client_type =  adreno_ctxt->type << 16;
-		}
-
-		buf_off += 3;
-		*log_ptr = client_type | cnt;
+		*log_ptr = cnt;
+		log_buf_wrapinc(log_base, &log_ptr);
+		*log_ptr = client_type;
 		log_buf_wrapinc(log_base, &log_ptr);
 		*log_ptr = pid;
 		log_buf_wrapinc(log_base, &log_ptr);
@@ -481,9 +471,9 @@ static int profile_enable_get(void *data, u64 *val)
 	struct kgsl_device *device = data;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
-	mutex_lock(&device->mutex);
+	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 	*val = adreno_profile_enabled(&adreno_dev->profile);
-	mutex_unlock(&device->mutex);
+	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 
 	return 0;
 }
@@ -494,13 +484,13 @@ static int profile_enable_set(void *data, u64 val)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_profile *profile = &adreno_dev->profile;
 
-	mutex_lock(&device->mutex);
+	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
 	profile->enabled = val;
 
 	check_close_profile(profile);
 
-	mutex_unlock(&device->mutex);
+	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 
 	return 0;
 }
@@ -516,11 +506,11 @@ static ssize_t profile_assignments_read(struct file *filep,
 	char *buf, *pos;
 	ssize_t size = 0;
 
-	mutex_lock(&device->mutex);
+	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
 	buf = kmalloc(max_size, GFP_KERNEL);
 	if (!buf) {
-		mutex_unlock(&device->mutex);
+		kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 		return -ENOMEM;
 	}
 
@@ -540,7 +530,7 @@ static ssize_t profile_assignments_read(struct file *filep,
 
 	kfree(buf);
 
-	mutex_unlock(&device->mutex);
+	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 	return size;
 }
 
@@ -670,7 +660,7 @@ static ssize_t profile_assignments_write(struct file *filep,
 	if (len >= PAGE_SIZE || len == 0)
 		return -EINVAL;
 
-	mutex_lock(&device->mutex);
+	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
 	if (adreno_profile_enabled(profile)) {
 		size = -EINVAL;
@@ -736,7 +726,7 @@ error_free:
 error_put:
 	kgsl_active_count_put(device);
 error_unlock:
-	mutex_unlock(&device->mutex);
+	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 	return size;
 }
 
@@ -771,7 +761,8 @@ static int _pipe_print_results(struct adreno_device *adreno_dev,
 	log_ptr = profile->log_tail;
 
 	do {
-		cnt = *log_ptr & 0xffff;
+		cnt = *log_ptr;
+		log_buf_wrapinc(profile->log_buffer, &log_ptr);
 		if (SIZE_PIPE_ENTRY(cnt) > max) {
 			status = 0;
 			goto err;
@@ -779,7 +770,7 @@ static int _pipe_print_results(struct adreno_device *adreno_dev,
 		if ((max - (usr_buf - ubuf)) < SIZE_PIPE_ENTRY(cnt))
 			break;
 
-		api_type = *log_ptr >> 16;
+		api_type = *log_ptr;
 		api_str = get_api_type_str(api_type);
 		log_buf_wrapinc(profile->log_buffer, &log_ptr);
 		pid = *log_ptr;
@@ -871,7 +862,7 @@ static ssize_t profile_pipe_print(struct file *filep, char __user *ubuf,
 	 * for each perf counter <cntr_reg_off> <start hi & lo> <end hi & low>
 	 */
 
-	mutex_lock(&device->mutex);
+	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
 	while (1) {
 		/* process any results that are available into the log_buffer */
@@ -893,10 +884,10 @@ static ssize_t profile_pipe_print(struct file *filep, char __user *ubuf,
 			}
 		}
 
-		mutex_unlock(&device->mutex);
+		kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 		set_current_state(TASK_INTERRUPTIBLE);
 		schedule_timeout(HZ / 10);
-		mutex_lock(&device->mutex);
+		kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
 		if (signal_pending(current)) {
 			status = 0;
@@ -905,7 +896,7 @@ static ssize_t profile_pipe_print(struct file *filep, char __user *ubuf,
 	}
 
 	check_close_profile(profile);
-	mutex_unlock(&device->mutex);
+	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 
 	return status;
 }
@@ -918,7 +909,7 @@ static int profile_groups_print(struct seq_file *s, void *unused)
 	struct adreno_perfcount_group *group;
 	int i, j, used;
 
-	mutex_lock(&device->mutex);
+	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
 	for (i = 0; i < counters->group_count; ++i) {
 		group = &(counters->groups[i]);
@@ -934,7 +925,7 @@ static int profile_groups_print(struct seq_file *s, void *unused)
 			group->reg_count, used);
 	}
 
-	mutex_unlock(&device->mutex);
+	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 
 	return 0;
 }
@@ -1038,7 +1029,7 @@ int adreno_profile_process_results(struct kgsl_device *device)
 	struct adreno_profile *profile = &adreno_dev->profile;
 	unsigned int shared_buf_tail = profile->shared_tail;
 
-	if (!results_available(device, &shared_buf_tail)) {
+	if (!results_available(device, profile, &shared_buf_tail)) {
 		check_close_profile(profile);
 		return 0;
 	}
@@ -1056,13 +1047,13 @@ int adreno_profile_process_results(struct kgsl_device *device)
 	 * transfer retired results to log_buffer
 	 * update shared_buffer tail ptr
 	 */
-	transfer_results(device, shared_buf_tail);
+	transfer_results(profile, shared_buf_tail);
 
 	return 1;
 }
 
 void adreno_profile_preib_processing(struct kgsl_device *device,
-		unsigned int context_id, unsigned int *cmd_flags,
+		struct adreno_context *drawctxt, unsigned int *cmd_flags,
 		unsigned int **rbptr, unsigned int *cmds_gpu)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
@@ -1111,7 +1102,7 @@ void adreno_profile_preib_processing(struct kgsl_device *device,
 
 	/* create the shared ibdesc */
 	_build_pre_ib_cmds(profile, rbcmds, entry_head,
-			rb->global_ts + 1, context_id);
+			rb->global_ts + 1, drawctxt);
 
 	/* set flag to sync with post ib commands */
 	*cmd_flags |= KGSL_CMD_FLAGS_PROFILE;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -42,8 +42,9 @@ struct pil_desc {
 #define PIL_SKIP_ENTRY_CHECK	BIT(0)
 	struct pil_priv *priv;
 	unsigned int proxy_unvote_irq;
-	void * (*map_fw_mem)(phys_addr_t phys, size_t size);
-	void (*unmap_fw_mem)(void *virt);
+	void * (*map_fw_mem)(phys_addr_t phys, size_t size, void *data);
+	void (*unmap_fw_mem)(void *virt, void *data);
+	void *map_data;
 };
 
 /**
@@ -55,6 +56,7 @@ struct pil_desc {
  * @proxy_vote: make proxy votes before auth_and_reset (optional)
  * @auth_and_reset: boot the processor
  * @proxy_unvote: remove any proxy votes (optional)
+ * @deinit_image: restore actions performed in init_image if necessary
  * @shutdown: shutdown the processor
  */
 struct pil_reset_ops {
@@ -66,6 +68,7 @@ struct pil_reset_ops {
 	int (*proxy_vote)(struct pil_desc *pil);
 	int (*auth_and_reset)(struct pil_desc *pil);
 	void (*proxy_unvote)(struct pil_desc *pil);
+	int (*deinit_image)(struct pil_desc *pil);
 	int (*shutdown)(struct pil_desc *pil);
 };
 
