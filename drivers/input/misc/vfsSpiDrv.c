@@ -653,8 +653,6 @@ static int vfsspi_probe(struct spi_device *spi)
 	int status = 0;
 	struct vfsspi_device_data *vfsspi_device;
 	struct device *dev;
-	int hw_test_countdown = 10;
-	int drdy_value;
 
 	pr_info("vfsspi_probe\n");
 
@@ -723,15 +721,8 @@ static int vfsspi_probe(struct spi_device *spi)
 
 	/* Check for sensor. */
 	vfsspi_hard_reset(vfsspi_device);
-	drdy_value = gpio_get_value(vfsspi_device->drdy_pin);
-	while (hw_test_countdown) {
-		if (drdy_value == DRDY_ACTIVE_STATUS)
-			break;
-		usleep(5000);
-		drdy_value = gpio_get_value(vfsspi_device->drdy_pin);
-		hw_test_countdown--;
-	}
-	if (drdy_value != DRDY_ACTIVE_STATUS) {
+	usleep(50000);
+	if (gpio_get_value(vfsspi_device->drdy_pin) != DRDY_ACTIVE_STATUS) {
 		pr_err("FPS not found\n");
 		status = -EBUSY;
 		goto vfsspi_probe_gpio_init_failed;
