@@ -122,107 +122,74 @@ int stm401_reset_and_init(void)
 	rst_cmdbuff[0] = ACCEL_UPDATE_RATE;
 	rst_cmdbuff[1] = stm401_g_acc_delay;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	stm401_i2c_retry_delay = 10;
 
 	rst_cmdbuff[0] = MAG_UPDATE_RATE;
 	rst_cmdbuff[1] = stm401_g_mag_delay;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	rst_cmdbuff[0] = GYRO_UPDATE_RATE;
 	rst_cmdbuff[1] = stm401_g_gyro_delay;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	rst_cmdbuff[0] = PRESSURE_UPDATE_RATE;
 	rst_cmdbuff[1] = stm401_g_baro_delay;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	rst_cmdbuff[0] = IR_GESTURE_RATE;
 	rst_cmdbuff[1] = stm401_g_ir_gesture_delay;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	rst_cmdbuff[0] = IR_RAW_RATE;
 	rst_cmdbuff[1] = stm401_g_ir_raw_delay;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	rst_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 	rst_cmdbuff[1] = stm401_g_nonwake_sensor_state & 0xFF;
 	rst_cmdbuff[2] = (stm401_g_nonwake_sensor_state >> 8) & 0xFF;
 	rst_cmdbuff[3] = stm401_g_nonwake_sensor_state >> 16;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 4);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	rst_cmdbuff[0] = WAKESENSOR_CONFIG;
 	rst_cmdbuff[1] = stm401_g_wake_sensor_state & 0xFF;
 	rst_cmdbuff[2] = stm401_g_wake_sensor_state >> 8;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 3);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	rst_cmdbuff[0] = ALGO_CONFIG;
 	rst_cmdbuff[1] = stm401_g_algo_state & 0xFF;
 	rst_cmdbuff[2] = stm401_g_algo_state >> 8;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 3);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	rst_cmdbuff[0] = MOTION_DUR;
 	rst_cmdbuff[1] = stm401_g_motion_dur;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	rst_cmdbuff[0] = ZRMOTION_DUR;
 	rst_cmdbuff[1] = stm401_g_zmotion_dur;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	for (i = 0; i < STM401_NUM_ALGOS; i++) {
 		if (stm401_g_algo_requst[i].size > 0) {
@@ -233,11 +200,8 @@ int stm401_reset_and_init(void)
 			err = stm401_i2c_write_no_reset(stm401_misc_data,
 				rst_cmdbuff,
 				stm401_g_algo_requst[i].size + 1);
-			if (err < 0) {
+			if (err < 0)
 				ret_err = err;
-				if (stm401_misc_data->stm401_hub_fail)
-					goto EXIT;
-			}
 		}
 	}
 	rst_cmdbuff[0] = INTERRUPT_STATUS;
@@ -261,16 +225,11 @@ int stm401_reset_and_init(void)
 		dev_err(&stm401_misc_data->client->dev,
 			"unable to write proximity settings %d\n", err);
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
 	}
 
 	err = stm401_load_brightness_table(stm401_misc_data, rst_cmdbuff);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	if (stm401_req_value) {
 		getnstimeofday(&current_time);
@@ -286,11 +245,8 @@ int stm401_reset_and_init(void)
 			& 0xff);
 		err = stm401_i2c_write_no_reset(stm401_misc_data,
 						rst_cmdbuff, 5);
-		if (err < 0) {
+		if (err < 0)
 			ret_err = err;
-			if (stm401_misc_data->stm401_hub_fail)
-				goto EXIT;
-		}
 
 		if (stm401_g_control_reg_restore) {
 			rst_cmdbuff[0] = STM401_CONTROL_REG;
@@ -299,11 +255,8 @@ int stm401_reset_and_init(void)
 			err = stm401_i2c_write_no_reset(stm401_misc_data,
 				rst_cmdbuff,
 				STM401_CONTROL_REG_SIZE);
-			if (err < 0) {
+			if (err < 0)
 				ret_err = err;
-				if (stm401_misc_data->stm401_hub_fail)
-					goto EXIT;
-			}
 		}
 
 		gpio_set_value(stm401_req_gpio, 1);
@@ -313,11 +266,8 @@ int stm401_reset_and_init(void)
 	memcpy(&rst_cmdbuff[1], stm401_g_mag_cal, STM401_MAG_CAL_SIZE);
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff,
 		STM401_MAG_CAL_SIZE);
-	if (err < 0) {
+	if (err < 0)
 		ret_err = err;
-		if (stm401_misc_data->stm401_hub_fail)
-			goto EXIT;
-	}
 
 	/* sending reset to slpc hal */
 	stm401_ms_data_buffer_write(stm401_misc_data, DT_RESET,
