@@ -1639,13 +1639,15 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
          pSession->readyForPowerSave = VOS_TRUE;
          return status;
       }
-      //although aggregating, make sure to request on the correct UP,TID and
-      //direction
+      //although aggregating, make sure to request on the correct UP,TID,PSB
+      //and direction
       pACInfo->requested_QoSInfo[tmask - 1].ts_info.up = Tspec_Info.ts_info.up;
       pACInfo->requested_QoSInfo[tmask - 1].ts_info.tid =
                                             Tspec_Info.ts_info.tid;
       pACInfo->requested_QoSInfo[tmask - 1].ts_info.direction =
                                             Tspec_Info.ts_info.direction;
+      pACInfo->requested_QoSInfo[tmask - 1].ts_info.psb =
+                                            Tspec_Info.ts_info.psb;
       status = sme_QosSetup(pMac, sessionId,
                             &pACInfo->requested_QoSInfo[tmask - 1], ac);
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH, 
