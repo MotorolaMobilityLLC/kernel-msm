@@ -45,6 +45,8 @@
 #include <linux/platform_data/qcom_crypto_device.h>
 #include <mach/msm_bus.h>
 #include <mach/qcrypto.h>
+#include <linux/fips_status.h>
+#include "qcryptoi.h"
 #include "qce.h"
 
 
@@ -57,6 +59,9 @@
 #define MAX_ALIGN_SIZE  0x40
 
 #define QCRYPTO_HIGH_BANDWIDTH_TIMEOUT 1000
+
+/* are FIPS self tests done ?? */
+static bool is_fips_qcrypto_tests_done;
 
 enum qcrypto_bus_state {
 	BUS_NO_BANDWIDTH = 0,
@@ -683,6 +688,12 @@ static int _qcrypto_cipher_cra_init(struct crypto_tfm *tfm)
 	struct qcrypto_alg *q_alg;
 	struct qcrypto_cipher_ctx *ctx = crypto_tfm_ctx(tfm);
 
+	/* IF FIPS tests not passed, return error */
+	if (((g_fips140_status == FIPS140_STATUS_FAIL) ||
+		(g_fips140_status == FIPS140_STATUS_PASS_CRYPTO)) &&
+		is_fips_qcrypto_tests_done)
+		return -ENXIO;
+
 	q_alg = container_of(alg, struct qcrypto_alg, cipher_alg);
 	ctx->flags = 0;
 
@@ -709,6 +720,12 @@ static int _qcrypto_ahash_cra_init(struct crypto_tfm *tfm)
 						struct ahash_alg, halg);
 	struct qcrypto_alg *q_alg = container_of(alg, struct qcrypto_alg,
 								sha_alg);
+
+	/* IF FIPS tests not passed, return error */
+	if (((g_fips140_status == FIPS140_STATUS_FAIL) ||
+		(g_fips140_status == FIPS140_STATUS_PASS_CRYPTO)) &&
+		is_fips_qcrypto_tests_done)
+		return -ENXIO;
 
 	crypto_ahash_set_reqsize(ahash, sizeof(struct qcrypto_sha_req_ctx));
 	/* update context with ptr to cp */
@@ -959,7 +976,7 @@ static void _qcrypto_remove_engine(struct crypto_engine *pengine)
 		if (q_alg->alg_type == QCRYPTO_ALG_SHA)
 			crypto_unregister_ahash(&q_alg->sha_alg);
 		list_del(&q_alg->entry);
-		kfree(q_alg);
+		kzfree(q_alg);
 	}
 }
 
@@ -978,7 +995,7 @@ static int _qcrypto_remove(struct platform_device *pdev)
 	mutex_unlock(&cp->engine_lock);
 	if (pengine->qce)
 		qce_close(pengine->qce);
-	kfree(pengine);
+	kzfree(pengine);
 	return 0;
 }
 
@@ -1230,7 +1247,7 @@ static void _qce_ahash_complete(void *cookie, unsigned char *digest,
 	}
 	if (cp->ce_support.aligned_only)  {
 		areq->src = rctx->orig_src;
-		kfree(rctx->data);
+		kzfree(rctx->data);
 	}
 
 	if (cp->platform_support.ce_shared)
@@ -1282,7 +1299,7 @@ static void _qce_ablk_cipher_complete(void *cookie, unsigned char *icb,
 		if (bytes != areq->nbytes)
 			pr_warn("bytes copied=0x%x bytes to copy= 0x%x", bytes,
 								areq->nbytes);
-		kfree(rctx->data);
+		kzfree(rctx->data);
 	}
 
 	if (cp->platform_support.ce_shared)
@@ -1329,7 +1346,7 @@ static void _qce_aead_complete(void *cookie, unsigned char *icv,
 			if (bytes != nbytes)
 				pr_warn("bytes copied=0x%x bytes to copy= 0x%x",
 						bytes, nbytes);
-			kfree(rctx->data);
+			kzfree(rctx->data);
 		}
 		kzfree(rctx->assoc);
 		areq->assoc = rctx->assoc_sg;
@@ -1363,7 +1380,7 @@ static void _qce_aead_complete(void *cookie, unsigned char *icv,
 			if (bytes != nbytes)
 				pr_warn("bytes copied=0x%x bytes to copy= 0x%x",
 						bytes, nbytes);
-			kfree(rctx->data);
+			kzfree(rctx->data);
 		}
 
 		if (ret == 0) {
@@ -3163,7 +3180,7 @@ static int _sha_update(struct ahash_request  *req, uint32_t sha_block_size)
 						rctx->trailing_buf_len);
 			memcpy((rctx->data2 + rctx->trailing_buf_len),
 					rctx->data, req->src->length);
-			kfree(rctx->data);
+			kzfree(rctx->data);
 			rctx->data = rctx->data2;
 			sg_set_buf(&rctx->sg[0], rctx->data,
 					(rctx->trailing_buf_len +
@@ -3351,7 +3368,7 @@ static int _sha_hmac_setkey(struct crypto_ahash *tfm, const u8 *key,
 		INIT_COMPLETION(sha_ctx->ahash_req_complete);
 	}
 
-	kfree(in_buf);
+	kzfree(in_buf);
 	ahash_request_free(ahash_req);
 
 	return ret;
@@ -3628,6 +3645,23 @@ static int _qcrypto_prefix_alg_cra_name(char cra_name[], unsigned int size)
 	return 0;
 }
 
+/*
+ * Fill up fips_selftest_data structure
+ */
+
+static void _qcrypto_fips_selftest_d(struct fips_selftest_data *selftest_d,
+					struct ce_hw_support *ce_support,
+					char *prefix)
+{
+	strlcpy(selftest_d->algo_prefix, prefix, CRYPTO_MAX_ALG_NAME);
+	selftest_d->prefix_ahash_algo = ce_support->use_sw_ahash_algo;
+	selftest_d->prefix_hmac_algo = ce_support->use_sw_hmac_algo;
+	selftest_d->prefix_aes_xts_algo = ce_support->use_sw_aes_xts_algo;
+	selftest_d->prefix_aes_cbc_ecb_ctr_algo =
+		ce_support->use_sw_aes_cbc_ecb_ctr_algo;
+	selftest_d->prefix_aead_algo = ce_support->use_sw_aead_algo;
+	selftest_d->ce_device = ce_support->ce_device;
+}
 
 int qcrypto_cipher_set_device(struct ablkcipher_request *req, unsigned int dev)
 {
@@ -4235,6 +4269,10 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 	struct crypto_engine *pengine;
 	unsigned long flags;
 
+	/* For FIPS140-2 Power on self tests */
+	struct fips_selftest_data selftest_d;
+	char prefix[10] = "";
+
 	pengine = kzalloc(sizeof(*pengine), GFP_KERNEL);
 	if (!pengine) {
 		pr_err("qcrypto Memory allocation of q_alg FAIL, error %ld\n",
@@ -4245,7 +4283,7 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 	/* open qce */
 	handle = qce_open(pdev, &rc);
 	if (handle == NULL) {
-		kfree(pengine);
+		kzfree(pengine);
 		platform_set_drvdata(pdev, NULL);
 		return rc;
 	}
@@ -4328,7 +4366,7 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 
 	if (cp->total_units != 1) {
 		mutex_unlock(&cp->engine_lock);
-		return 0;
+		goto fips_selftest;
 	}
 
 	/* register crypto cipher algorithms the device supports */
@@ -4357,7 +4395,7 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 		if (rc) {
 			dev_err(&pdev->dev, "%s alg registration failed\n",
 					q_alg->cipher_alg.cra_driver_name);
-			kfree(q_alg);
+			kzfree(q_alg);
 		} else {
 			list_add_tail(&q_alg->entry, &cp->alg_list);
 			dev_info(&pdev->dev, "%s\n",
@@ -4391,7 +4429,7 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 		if (rc) {
 			dev_err(&pdev->dev, "%s alg registration failed\n",
 					q_alg->cipher_alg.cra_driver_name);
-			kfree(q_alg);
+			kzfree(q_alg);
 		} else {
 			list_add_tail(&q_alg->entry, &cp->alg_list);
 			dev_info(&pdev->dev, "%s\n",
@@ -4428,7 +4466,7 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 		if (rc) {
 			dev_err(&pdev->dev, "%s alg registration failed\n",
 				q_alg->sha_alg.halg.base.cra_driver_name);
-			kfree(q_alg);
+			kzfree(q_alg);
 		} else {
 			list_add_tail(&q_alg->entry, &cp->alg_list);
 			dev_info(&pdev->dev, "%s\n",
@@ -4466,7 +4504,7 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 				dev_err(&pdev->dev,
 					"%s alg registration failed\n",
 					q_alg->cipher_alg.cra_driver_name);
-				kfree(q_alg);
+				kzfree(q_alg);
 			} else {
 				list_add_tail(&q_alg->entry, &cp->alg_list);
 				dev_info(&pdev->dev, "%s\n",
@@ -4505,7 +4543,7 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 				dev_err(&pdev->dev,
 				"%s alg registration failed\n",
 				q_alg->sha_alg.halg.base.cra_driver_name);
-				kfree(q_alg);
+				kzfree(q_alg);
 			} else {
 				list_add_tail(&q_alg->entry, &cp->alg_list);
 				dev_info(&pdev->dev, "%s\n",
@@ -4541,7 +4579,7 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 		if (rc) {
 			dev_err(&pdev->dev, "%s alg registration failed\n",
 					q_alg->cipher_alg.cra_driver_name);
-			kfree(q_alg);
+			kzfree(q_alg);
 		} else {
 			list_add_tail(&q_alg->entry, &cp->alg_list);
 			dev_info(&pdev->dev, "%s\n",
@@ -4580,13 +4618,42 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 	}
 
 	mutex_unlock(&cp->engine_lock);
+
+fips_selftest:
+	/*
+	* FIPS140-2 Known Answer Tests :
+	* IN case of any failure, do not Init the module
+	*/
+	is_fips_qcrypto_tests_done = false;
+
+	if (g_fips140_status != FIPS140_STATUS_NA) {
+
+		_qcrypto_prefix_alg_cra_name(prefix, 0);
+		_qcrypto_fips_selftest_d(&selftest_d, &cp->ce_support, prefix);
+		if (_fips_qcrypto_sha_selftest(&selftest_d) ||
+			_fips_qcrypto_cipher_selftest(&selftest_d) ||
+			_fips_qcrypto_aead_selftest(&selftest_d)) {
+			pr_err("qcrypto: FIPS140-2 Known Answer Tests : Failed\n");
+			panic("SYSTEM CAN NOT BOOT!!!");
+			rc = -1;
+			goto err;
+		} else
+			pr_info("qcrypto: FIPS140-2 Known Answer Tests: Successful\n");
+		if (g_fips140_status != FIPS140_STATUS_PASS)
+			g_fips140_status = FIPS140_STATUS_PASS_CRYPTO;
+
+	} else
+		pr_info("qcrypto: FIPS140-2 Known Answer Tests: Skipped\n");
+
+	is_fips_qcrypto_tests_done = true;
+
 	return 0;
 err:
 	_qcrypto_remove_engine(pengine);
 	mutex_unlock(&cp->engine_lock);
 	if (pengine->qce)
 		qce_close(pengine->qce);
-	kfree(pengine);
+	kzfree(pengine);
 	return rc;
 };
 
