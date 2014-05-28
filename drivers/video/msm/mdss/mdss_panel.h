@@ -334,6 +334,7 @@ struct mdss_panel_info {
 	u32 min_height;
 
 	u32 cont_splash_enabled;
+	bool cont_splash_esd_rdy;
 	u32 partial_update_enabled;
 	u32 partial_update_dcs_cmd_by_left;
 	u32 partial_update_roi_merge;
