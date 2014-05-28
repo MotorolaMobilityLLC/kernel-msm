@@ -113,6 +113,8 @@ static struct cnss_data {
 	bool notify_modem_status;
 	struct msm_pcie_register_event event_reg;
 	bool recovery_in_progress;
+	struct wakeup_source ws;
+	uint32_t recovery_count;
 } *penv;
 
 
@@ -1069,15 +1071,21 @@ static void cnss_crash_shutdown(const struct subsys_desc *subsys)
 
 void cnss_device_self_recovery(void)
 {
+	if (!penv)
+		return;
+
 	if (penv->recovery_in_progress) {
 		pr_err("cnss: Recovery already in progress\n");
 		return;
 	}
 
+	penv->recovery_count++;
 	penv->recovery_in_progress = true;
+	cnss_pm_wake_lock(&penv->ws);
 	cnss_shutdown(NULL, false);
 	usleep(WLAN_RECOVERY_DELAY);
 	cnss_powerup(NULL);
+	cnss_pm_wake_lock_release(&penv->ws);
 	penv->recovery_in_progress = false;
 }
 EXPORT_SYMBOL(cnss_device_self_recovery);
@@ -1218,6 +1226,8 @@ static int cnss_probe(struct platform_device *pdev)
 	if (!penv->bus_client)
 		goto err_bus_reg;
 
+	cnss_pm_wake_lock_init(&penv->ws, "cnss_wlock");
+
 #ifdef CONFIG_CNSS_MAC_BUG
 	/* 0-4K memory is reserved for QCA6174 to address a MAC HW bug.
 	 * MAC would do an invalid pointer fetch based on the data
@@ -1265,6 +1275,8 @@ static int cnss_remove(struct platform_device *pdev)
 {
 	struct cnss_wlan_vreg_info *vreg_info = &penv->vreg_info;
 	struct cnss_wlan_gpio_info *gpio_info = &penv->gpio_info;
+
+	cnss_pm_wake_lock_destroy(&penv->ws);
 
 	cnss_wlan_gpio_set(gpio_info, WLAN_EN_LOW);
 	if (cnss_wlan_vreg_set(vreg_info, VREG_OFF))
