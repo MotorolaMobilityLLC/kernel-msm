@@ -235,7 +235,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		return rc;
 	}
 
-	if (is_ambient_on() && !enable){
+	if (is_ambient_on() /*&& !enable*/){
 		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
 		gpio_free(ctrl_pdata->rst_gpio);
 		return 0;
