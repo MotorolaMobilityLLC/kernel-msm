@@ -58,8 +58,8 @@
 		max17048-fuelgauge@36 {
 			compatible = "maxim,max17048";
 			reg = <0x36>;
-			fuelgauge,rcomp_charging = <71>;
-			fuelgauge,rcomp_discharging = <71>;
+			fuelgauge,rcomp_charging = <0x66>;
+			fuelgauge,rcomp_discharging = <0x44>;
 			fuelgauge,fg_irq = <&msmgpio 69 0x00>;
 			fuelgauge,fuel_alert_soc = <2>;
 			fuelgauge,temp_cohot = <(-1600)>;
