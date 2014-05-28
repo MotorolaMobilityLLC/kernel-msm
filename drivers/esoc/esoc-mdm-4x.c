@@ -167,10 +167,12 @@ static void mdm_enable_irqs(struct mdm_ctrl *mdm)
 		return;
 	if (mdm->irq_mask & IRQ_ERRFATAL) {
 		enable_irq(mdm->errfatal_irq);
+		irq_set_irq_wake(mdm->errfatal_irq, 1);
 		mdm->irq_mask &= ~IRQ_ERRFATAL;
 	}
 	if (mdm->irq_mask & IRQ_STATUS) {
 		enable_irq(mdm->status_irq);
+		irq_set_irq_wake(mdm->status_irq, 1);
 		mdm->irq_mask &= ~IRQ_STATUS;
 	}
 	if (mdm->irq_mask & IRQ_PBLRDY) {
