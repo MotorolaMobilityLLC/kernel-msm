@@ -620,9 +620,6 @@ struct stm401_data {
 	unsigned short qw_irq_status;
 	struct stm401_aod_enabled_vote aod_enabled;
 
-	unsigned int stm401_i2c_fail_count;
-	unsigned int stm401_hub_fail;
-
 	bool is_suspended;
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
