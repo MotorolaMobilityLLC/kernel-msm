@@ -444,10 +444,9 @@
 		pm8226_l23: regulator-l23 {
 			regulator-name = "8226_l23";
 			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <3300000>;	//ASUS_BSP +++ Ken_Cheng "DMIC Porting"
-			qcom,init-voltage = <3300000>;		//ASUS_BSP +++ Ken_Cheng "DMIC Porting"
+			regulator-max-microvolt = <1800000>;	//ASUS_BSP +++ Ken_Cheng "DMIC Porting"
+			qcom,init-voltage = <1800000>;		//ASUS_BSP +++ Ken_Cheng "DMIC Porting"
 			status = "okay";
-			regulator-always-on;			//ASUS_BSP +++ Ken_Cheng "DMIC Porting"
 		};
 	};
 
