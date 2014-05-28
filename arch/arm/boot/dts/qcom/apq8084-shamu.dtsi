@@ -26,12 +26,66 @@
 		compatible = "bcm,bcm4356";
 		wl_reg_on = <&msmgpio 82 0>;
 	};
+
+	cycapsense_prog {
+			gpios = <&msmgpio 119 0>, /* RESET */
+				<&msmgpio 74 0>, /* programming SCLK */
+				<&msmgpio 73 0>; /* programming SDAT */
+	};
+
+	/delete-node/ bt_qca6174;
 };
 
 &soc {
+	sound {
+		qcom,ext_hs_detect = "tpa6165";
+	};
+
+	factory_support {
+		gpios = <&pma8084_gpios 17 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&pma8084_mpps 7 0x1>, /* GPIOF_IN */
+			<&pma8084_mpps 6 0x1>; /* GPIOF_IN */
+	};
+
 	/delete-node/ qcom,cnss@0d400000;
+	/delete-node/ qca,qca1530;
 };
 
+&max17050 {
+	interrupt-parent = <&spmi_bus>;
+	interrupts = <0x0 0xa1 0x0>;    /* PMA8084 MPP 2 */
+	gpios = <&pma8084_mpps 2 0x11>;  /* GPIOF_DIR_IN|GPIOF_EXPORT */
+};
+
+&pma8084_gpios {
+	gpio@d000 { /* GPIO 17 */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,invert = <0>;		/* Output low initially */
+		qcom,vin-sel = <2>;		/* VIN 2 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,out-strength = <2>;	/* Medium */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+};
+
+&pma8084_mpps {
+	mpp@a300 { /* MPP 4 */
+		/* Wireless Charge Complete N */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <1>;		/* Open Drain NMOS logic */
+		qcom,vin-sel = <2>;		/* VIN 2 */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+	mpp@a600 { /* MPP 7 */
+		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <1>;	/* No pull */
+		qcom,vin-sel = <2>;
+		qcom,master-en = <1>;
+	};
+};
 &pma8084_l22 {
 	regulator-always-on;
 };
@@ -89,8 +143,74 @@
 	qcom,cont-splash-enabled;
 };
 
+&i2c_0 {
+	mmi_wls_chrg@6c {
+		gpios = <&pma8084_gpios 1 0x1>, /* GPIOF_IN */
+			<&pma8084_mpps 4 0x2>, /* GPIOF_OUT_INIT_HIGH */
+			<&msmgpio 66 0x0>; /* GPIOF_OUT_INIT_LOW */
+	};
+};
+
 &i2c_1 {
 	synaptics_dsx_i2c@20 {
+		status = "disabled";
+	};
+};
+
+&i2c_12 {
+	/delete-node/ stm401@39;
+};
+
+&spi_0 {
 	status = "disabled";
+};
+
+&blsp2_uart3 {
+	interrupt-map = <0 &intc 0 115 0
+			1 &intc 0 239 0
+			2 &msmgpio 6 0>;
+};
+
+&tlmm_pinmux {
+	pinctrl-0 =	 <
+			&ap2mdm_default
+			&mdm2ap_default
+			&mdm2ap_pbl_default
+			&headset_det_default
+			&tmp108_irq_default
+			&cycapsense_default
+			&cycapsense_data_default
+			&wlan_enable_default
+			&nfc_irq_default
+			&nfc_ven_default
+			&msm_pcie_default
+			&blsp1_uart6_default
+			&c55_ap_int_default
+			&c55_c55_int_default
+			&fps_miso_default
+			&fps_mosi_default
+			&fps_sleep_default
+			&fps_drdy_default
+			&blsp_i2c_default
+			&blsp_uart_default
+			&blsp_uart_weak_default
+			&blsp_spi_default
+			&cam_mclk1_default
+			&cam_mclk3_default
+			&cam2_pwdn_default
+			&max17050_default
+			&factory_default
+			&factory_kill_default
+			&unused_default
+			&disp_v1_en_default
+			&ter_auxpcm_default
+		>;
+
+	cycapsense {
+		qcom,pins = <&gp 119 &gp 74>;
+	};
+
+	blsp_uart  {
+		qcom,pins = <&gp 4 &gp 5 &gp 6 &gp 7>;
 	};
 };
