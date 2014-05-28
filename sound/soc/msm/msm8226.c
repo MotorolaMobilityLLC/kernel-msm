@@ -182,7 +182,7 @@ struct request_gpio {
         unsigned gpio_no;
         char *gpio_name;
 };
-
+static struct regulator *dmic_1p8; //ASUS BSP Jessy : config DMIC 1p8
 static struct request_gpio pri_mi2s_gpio[] = {
 
         {
@@ -1336,7 +1336,9 @@ static int msm226_pri_mi2s_free_gpios(void)
 static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream)
 {
         int ret =0;
-
+//ASUS BSP Jessy +++ : config DMIC 1p8
+        regulator_disable(dmic_1p8);
+//ASUS BSP Jessy --- : config DMIC 1p8
         if (atomic_dec_return(&pri_mi2s_clk.mi2s_rsc_ref) == 0) {
                 pr_info("%s: free mi2s resources\n", __func__);
 
@@ -1383,6 +1385,14 @@ static int msm8226_mi2s_startup(struct snd_pcm_substream *substream)
         struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 
         pr_info("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+
+//ASUS BSP Jessy +++ : config DMIC 1p8
+        ret = regulator_enable(dmic_1p8);
+        if (ret) {
+            printk("unable to enable the dmic 1p8\n");
+            return ret;
+        }
+//ASUS BSP Jessy --- : config DMIC 1p8
 
 	if (atomic_inc_return(&pri_mi2s_clk.mi2s_rsc_ref) == 1) {
                 pr_info("%s: acquire mi2s resources\n", __func__);
@@ -2560,6 +2570,18 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 #if defined(ASUS_WI500Q_PROJECT)
         spdev = pdev;
         msm8226_dtparse_mi2s();
+//ASUS BSP Jessy +++ : config DMIC 1p8
+        dmic_1p8 = devm_regulator_get(&pdev->dev, "DMIC");
+        if (IS_ERR(dmic_1p8)) {
+            dev_err(&pdev->dev, "unable to get dmic 1p8\n");
+        }
+
+        ret = regulator_set_voltage(dmic_1p8, 1800000,1800000);
+        if (ret) {
+            dev_err(&pdev->dev, "unable to set voltage level for dmic 1p8\n");
+        }
+
+//ASUS BSP Jessy --- : config DMIC 1p8
 #endif
 //ASUS_BSP Ken_Cheng ---
 
