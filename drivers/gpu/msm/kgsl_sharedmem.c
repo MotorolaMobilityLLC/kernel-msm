@@ -391,12 +391,14 @@ static int kgsl_page_alloc_vmfault(struct kgsl_memdesc *memdesc,
 
 static int kgsl_page_alloc_vmflags(struct kgsl_memdesc *memdesc)
 {
-	return VM_IO | VM_DONTEXPAND;
+
+	return VM_DONTDUMP | VM_DONTEXPAND;
 }
 
 static int kgsl_contiguous_vmflags(struct kgsl_memdesc *memdesc)
 {
-	return VM_IO | VM_PFNMAP | VM_DONTEXPAND;
+
+	return VM_DONTDUMP | VM_PFNMAP | VM_DONTEXPAND;
 }
 
 /*
