@@ -118,6 +118,14 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 		return;
 	}
 
+	if (!pdata->panel_info.cont_splash_esd_rdy) {
+		pr_warn("%s: Splash not complete, reschedule check status\n",
+			__func__);
+		schedule_delayed_work(&pstatus_data->check_status,
+				msecs_to_jiffies(interval));
+		return;
+	}
+
 	mdp5_data = mfd_to_mdp5_data(pstatus_data->mfd);
 	ctl = mfd_to_ctl(pstatus_data->mfd);
 
