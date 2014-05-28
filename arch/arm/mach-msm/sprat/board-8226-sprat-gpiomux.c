@@ -281,20 +281,19 @@ static struct gpiomux_setting gpio_bcm4334w_config[] = {
 		.dir = GPIOMUX_OUT_HIGH,
 	},
 	{
-	  .func = GPIOMUX_FUNC_2,
-	  .drv = GPIOMUX_DRV_8MA,
-	  .pull = GPIOMUX_PULL_DOWN,
+		.func = GPIOMUX_FUNC_2,
+		.drv = GPIOMUX_DRV_8MA,
+		.pull = GPIOMUX_PULL_DOWN,
 	},
 	{
-	  .func = GPIOMUX_FUNC_GPIO,
-	  .drv = GPIOMUX_DRV_8MA,
-	  .pull = GPIOMUX_PULL_DOWN,
+		.func = GPIOMUX_FUNC_GPIO,
+		.drv = GPIOMUX_DRV_8MA,
+		.pull = GPIOMUX_PULL_DOWN,
 	},
 	{
-	  .func = GPIOMUX_FUNC_GPIO,
-	  .drv = GPIOMUX_DRV_2MA,
-	  .pull = GPIOMUX_PULL_DOWN,
-	  .dir = GPIOMUX_IN,
+		.func = GPIOMUX_FUNC_GPIO,
+		.drv = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_DOWN,
 	},
 
 };
@@ -303,43 +302,43 @@ static struct msm_gpiomux_config msm_bcm4334w_config[] __initdata = {
 	{
 		.gpio = 32,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[5],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[4],
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[0],
+			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[0],
 		},
 	},
 	{
 		.gpio = 39,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[5],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[3],
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
+			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
 		},
 	},
 	{
 		.gpio = 40,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[5],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[3],
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
+			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
 		},
 	},
 	{
 		.gpio = 41,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[5],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[3],
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
+			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
 		},
 	},
 	{
 		.gpio = 42,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[5],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[3],
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
+			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
 		},
 	},
 	{
 		.gpio = 43,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[5],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[3],
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
+			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
 		},
 	},
 	{
