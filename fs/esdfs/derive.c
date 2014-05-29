@@ -253,7 +253,7 @@ int esdfs_init_package_list(void)
 		esdfs_proc_root = proc_mkdir("fs/esdfs", NULL);
 	if (esdfs_proc_root && !esdfs_proc_packages)
 		esdfs_proc_packages =
-			create_proc_entry("packages", S_IWUGO, esdfs_proc_root);
+			create_proc_entry("packages", S_IWUSR, esdfs_proc_root);
 	if (esdfs_proc_packages)
 		esdfs_proc_packages->write_proc = proc_packages_write;
 
@@ -499,8 +499,9 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 	struct esdfs_inode_info *inode_i = ESDFS_I(dir_dentry->d_inode);
 	struct qstr nomedia;
 	struct dentry *lower_dentry;
-	struct path lower_dir_path;
+	struct path lower_path;
 	struct nameidata nd;
+	umode_t mode;
 	int err = 0;
 
 	if (inode_i->tree != ESDFS_TREE_ANDROID_DATA &&
@@ -511,17 +512,17 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 	nomedia.len = strlen(nomedia.name);
 	nomedia.hash = full_name_hash(nomedia.name, nomedia.len);
 
-	esdfs_get_lower_path(dir_dentry, &lower_dir_path);
+	esdfs_get_lower_path(dir_dentry, &lower_path);
 
 	/* If it's in the cache already, there is no reason to create it. */
-	lower_dentry = d_lookup(lower_dir_path.dentry, &nomedia);
+	lower_dentry = d_lookup(lower_path.dentry, &nomedia);
 	if (lower_dentry) {
 		dput(lower_dentry);
 		goto out;
 	}
 
 	/* Create a negative, lower dentry. */
-	lower_dentry = d_alloc(lower_dir_path.dentry, &nomedia);
+	lower_dentry = d_alloc(lower_path.dentry, &nomedia);
 	if (!lower_dentry) {
 		err = -ENOMEM;
 		goto out;
@@ -530,11 +531,12 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 
 	/* Create the lower file. */
 	nd.path.dentry = lower_dentry;
-	err = vfs_create(lower_dir_path.dentry->d_inode, lower_dentry,
-			 O_WRONLY | O_CREAT, &nd);
+	mode = S_IFREG;
+	esdfs_set_lower_mode(ESDFS_SB(dir_dentry->d_sb), &mode);
+	err = vfs_create(lower_path.dentry->d_inode, lower_dentry, mode, &nd);
 
 out:
-	esdfs_put_lower_path(dir_dentry, &lower_dir_path);
+	esdfs_put_lower_path(dir_dentry, &lower_path);
 
 	return err;
 }
