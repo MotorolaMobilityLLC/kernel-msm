@@ -364,6 +364,8 @@ struct inode_operations {
 	ssize_t (*listxattr) (struct dentry *, char *, size_t);
 	int (*removexattr) (struct dentry *, const char *);
 	void (*truncate_range)(struct inode *, loff_t, loff_t);
+	struct file *(*open) (struct dentry *, struct file *,
+			      const struct cred *);
 };
 
 Again, all methods are called without any locks being held, unless
@@ -474,6 +476,12 @@ otherwise noted.
 
   truncate_range: a method provided by the underlying filesystem to truncate a
   	range of blocks , i.e. punch a hole somewhere in a file.
+
+  open: this is an alternative to f_op->open(), the difference is that this
+	method may return any open file, not necessarily originating from the
+	same filesystem as the one i_op->open() was called on.  It may be useful
+	for stacking filesystems which want to allow native I/O directly on
+	underlying files.
 
 
 The Address Space Object

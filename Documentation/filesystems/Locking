@@ -62,6 +62,7 @@ ata *);
 	int (*removexattr) (struct dentry *, const char *);
 	void (*truncate_range)(struct inode *, loff_t, loff_t);
 	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start, u64 len);
+	struct file *(*open)(struct dentry *,struct file *,const struct cred *);
 
 locking rules:
 	all may block
@@ -89,6 +90,7 @@ listxattr:	no
 removexattr:	yes
 truncate_range:	yes
 fiemap:		no
+open:		no
 	Additionally, ->rmdir(), ->unlink() and ->rename() have ->i_mutex on
 victim.
 	cross-directory ->rename() has (per-superblock) ->s_vfs_rename_sem.
