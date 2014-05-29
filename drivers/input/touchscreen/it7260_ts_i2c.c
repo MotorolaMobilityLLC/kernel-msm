@@ -77,6 +77,7 @@ static int Upgrade__success_flag = 0;
 struct device *class_dev = NULL;
 static int it7260_status = 0; //ASUS_BSP Cliff +++ add for ATD check
 
+
 #ifdef DEBUG
 #define TS_DEBUG(fmt,args...)  printk( KERN_DEBUG "[it7260_i2c]: " fmt, ## args)
 #define DBG() printk("[%s]:%d => \n",__FUNCTION__,__LINE__)
@@ -528,6 +529,24 @@ static ssize_t IT7260_status_show(struct device *dev, struct device_attribute *a
 	}
 }
 
+static ssize_t IT7260_version_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	u8 cmdbuf[] = { 0x01, 0x00 };
+	u8 cmdbuf2[] = { 0x01, 0x06 };
+	unsigned char bufRead[10] = {0};
+	unsigned char bufRead2[10] = {0};
+	
+	i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, bufRead, 10);
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf2, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, bufRead2, 10);
+	
+	return sprintf(buf, "%x,%x,%x,%x\n%x,%x,%x,%x\n",bufRead[5], bufRead[6], bufRead[7], bufRead[8],bufRead2[1], bufRead2[2], bufRead2[3], bufRead2[4]);
+}
+
 ssize_t IT7260_status_store_temp(int ret)
 {
 	u8 cmdbuf[] = { 0x01, 0x00 };
@@ -557,10 +576,19 @@ static ssize_t IT7260_status_store(struct device *dev, struct device_attribute *
 	IT7260_status_store_temp(ret);
 	return count;
 }
+
+static ssize_t IT7260_version_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	printk(KERN_DEBUG "%s():\n", __func__);
+	return count;
+}
+
 static DEVICE_ATTR(status, 0666, IT7260_status_show, IT7260_status_store);
+static DEVICE_ATTR(version, 0666, IT7260_version_show, IT7260_version_store);
 
 static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_status.attr,
+	&dev_attr_version.attr,
 	NULL
 };
 
@@ -868,13 +896,14 @@ int delayCount = 1;
 static irqreturn_t IT7260_ts_irq_handler(int irq, void *dev_id) {
 	struct IT7260_ts_data *ts = dev_id;
 
-    if (delayCount == 1)
-    {
-       pr_info("=IT7260_ts_irq_handler=\n");
-       printk ("=IT7260_ts_irq_handler=\n");
-    }
-    disable_irq_nosync(ts->client->irq);
+	if (delayCount == 1)
+	{
+		pr_info("=IT7260_ts_irq_handler=\n");
+		printk ("=IT7260_ts_irq_handler=\n");
+	}
+	disable_irq_nosync(ts->client->irq);
 	queue_work(IT7260_wq, &ts->work);
+	
 	return IRQ_HANDLED;
 }
 
@@ -1155,6 +1184,7 @@ static int IT7260_ts_remove(struct i2c_client *client) {
 	return 0;
 }
 
+
 static int IT7260_ts_suspend(struct i2c_client *client, pm_message_t mesg) {
 	char ret;
 	u8 cmdbuf[] = { 0x04, 0x00, 0x02 };
@@ -1175,6 +1205,7 @@ static int IT7260_ts_resume(struct i2c_client *client) {
 	i2cReadFromIt7260(client, 0x80, &ucQuery, 1);
 	return 0;
 }
+
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void IT7260_ts_early_suspend(struct early_suspend *h)
