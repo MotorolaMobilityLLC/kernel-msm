@@ -5649,6 +5649,8 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
       pAdapter->wdev.netdev =  pWlanDev;
       /* set pWlanDev's parent to underlying device */
       SET_NETDEV_DEV(pWlanDev, pHddCtx->parent_dev);
+
+      hdd_wmm_init( pAdapter );
    }
 
    return pAdapter;
@@ -6954,6 +6956,8 @@ VOS_STATUS hdd_start_all_adapters( hdd_context_t *pHddCtx )
    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
    {
       pAdapter = pAdapterNode->pAdapter;
+
+      hdd_wmm_init( pAdapter );
 
       switch(pAdapter->device_mode)
       {
@@ -8611,15 +8615,6 @@ int hdd_wlan_startup(struct device *dev )
    if ( VOS_STATUS_SUCCESS != status )
    {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Failed hdd_set_sme_config", __func__);
-      goto err_vosclose;
-   }
-
-   //Initialize the WMM module
-   status = hdd_wmm_init(pHddCtx, hddWmmDscpToUpMapInfra);
-   status = hdd_wmm_init(pHddCtx, hddWmmDscpToUpMapP2p);
-   if (!VOS_IS_STATUS_SUCCESS(status))
-   {
-      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_wmm_init failed", __func__);
       goto err_vosclose;
    }
 

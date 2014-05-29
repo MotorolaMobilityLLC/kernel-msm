@@ -2079,7 +2079,8 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
         if((pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_QOS_ACTION_FRAME)&&
              (pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1] == WLAN_HDD_QOS_MAP_CONFIGURE) )
         {
-           sme_UpdateDSCPtoUPMapping(pHddCtx->hHal, hddWmmDscpToUpMapInfra);
+            sme_UpdateDSCPtoUPMapping(pHddCtx->hHal,
+                pAdapter->hddWmmDscpToUpMap, pAdapter->sessionId);
         }
     }
 

@@ -10787,15 +10787,47 @@ eHalStatus sme_UpdateConnectDebug(tHalHandle hHal, tANI_U32 set_value)
 }
 
 VOS_STATUS sme_UpdateDSCPtoUPMapping( tHalHandle hHal,
-                                      sme_QosWmmUpType  *dscpmapping)
+                                      sme_QosWmmUpType  *dscpmapping,
+                                      v_U8_t sessionId )
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    eHalStatus status    = eHAL_STATUS_SUCCESS;
-    v_U8_t i, j;
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    v_U8_t i, j, peSessionId;
+    tCsrRoamSession *pCsrSession = NULL;
+    tpPESession pSession = NULL;
+
     status = sme_AcquireGlobalLock( &pMac->sme );
     if ( HAL_STATUS_SUCCESS( status ) )
     {
-        if ( !pMac->QosMapSet.present )
+        if (!CSR_IS_SESSION_VALID( pMac, sessionId ))
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Invalid session Id %u", __func__, sessionId);
+            sme_ReleaseGlobalLock( &pMac->sme);
+            return eHAL_STATUS_FAILURE;
+        }
+        pCsrSession = CSR_GET_SESSION( pMac, sessionId );
+
+        if (pCsrSession == NULL)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: CSR Session lookup fails %u", __func__, sessionId);
+            sme_ReleaseGlobalLock( &pMac->sme);
+            return eHAL_STATUS_FAILURE;
+        }
+
+        pSession = peFindSessionByBssid( pMac,
+            pCsrSession->connectedProfile.bssid, &peSessionId );
+
+        if (pSession == NULL)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Session lookup fails for BSSID", __func__);
+            sme_ReleaseGlobalLock( &pMac->sme);
+            return eHAL_STATUS_FAILURE;
+        }
+
+        if ( !pSession->QosMapSet.present )
         {
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                      "%s: QOS Mapping IE not present", __func__);
@@ -10804,13 +10836,13 @@ VOS_STATUS sme_UpdateDSCPtoUPMapping( tHalHandle hHal,
         }
         else
         {
-            for (i=0; i < 8; i++)
+            for (i = 0; i < SME_QOS_WMM_UP_MAX; i++)
             {
-                for (j = pMac->QosMapSet.dscp_range[i][0];
-                               j <= pMac->QosMapSet.dscp_range[i][1]; j++)
+                for (j = pSession->QosMapSet.dscp_range[i][0];
+                               j <= pSession->QosMapSet.dscp_range[i][1]; j++)
                 {
-                   if ((pMac->QosMapSet.dscp_range[i][0] == 255) &&
-                                (pMac->QosMapSet.dscp_range[i][1] == 255))
+                   if ((pSession->QosMapSet.dscp_range[i][0] == 255) &&
+                                (pSession->QosMapSet.dscp_range[i][1] == 255))
                    {
                        dscpmapping[j]= 0;
                        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
@@ -10824,12 +10856,12 @@ VOS_STATUS sme_UpdateDSCPtoUPMapping( tHalHandle hHal,
                    }
                 }
             }
-            for (i=0; i< pMac->QosMapSet.num_dscp_exceptions; i++)
+            for (i = 0; i< pSession->QosMapSet.num_dscp_exceptions; i++)
             {
-                if (pMac->QosMapSet.dscp_exceptions[i][0] != 255)
+                if (pSession->QosMapSet.dscp_exceptions[i][0] != 255)
                 {
-                    dscpmapping[pMac->QosMapSet.dscp_exceptions[i][0] ] =
-                                         pMac->QosMapSet.dscp_exceptions[i][1];
+                    dscpmapping[pSession->QosMapSet.dscp_exceptions[i][0] ] =
+                                         pSession->QosMapSet.dscp_exceptions[i][1];
                 }
             }
         }

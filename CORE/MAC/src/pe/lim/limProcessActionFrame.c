@@ -865,7 +865,7 @@ __limProcessQosMapConfigureFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
      pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
      frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
      retval = sirConvertQosMapConfigureFrame2Struct(pMac, pBody, frameLen,
-                                                        &pMac->QosMapSet);
+                                                        &psessionEntry->QosMapSet);
      if (retval != eSIR_SUCCESS)
      {
          PELOGW(limLog(pMac, LOGE,
