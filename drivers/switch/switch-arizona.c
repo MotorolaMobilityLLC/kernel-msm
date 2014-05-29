@@ -1054,7 +1054,7 @@ int arizona_micd_mic_reading(struct arizona_extcon_info *info, int val)
 done:
 	pm_runtime_mark_last_busy(info->dev);
 
-	if (arizona->pdata.hpdet_moisture_imp)
+	if (arizona->pdata.hpdet_channel)
 		ret = arizona_jds_set_state(info, &arizona_hpdet_right);
 	else
 		ret = arizona_jds_set_state(info, &arizona_hpdet_left);
@@ -1085,7 +1085,7 @@ void arizona_micd_mic_timeout(struct arizona_extcon_info *info)
 
 	dev_dbg(info->arizona->dev, "MICD timed out, reporting HP\n");
 
-	if (arizona->pdata.hpdet_moisture_imp)
+	if (arizona->pdata.hpdet_channel)
 		ret = arizona_jds_set_state(info, &arizona_hpdet_right);
 	else
 		ret = arizona_jds_set_state(info, &arizona_hpdet_left);
@@ -1633,6 +1633,9 @@ static int arizona_extcon_get_pdata(struct arizona *arizona)
 
 	arizona_of_read_u32(arizona, "wlf,hpdet-moisture-imp", false,
 			    &pdata->hpdet_moisture_imp);
+
+	arizona_of_read_u32(arizona, "wlf,hpdet-channel", false,
+			    &pdata->hpdet_channel);
 
 	return 0;
 }
