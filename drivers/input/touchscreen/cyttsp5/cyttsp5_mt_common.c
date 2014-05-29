@@ -162,15 +162,29 @@ static void cyttsp5_input_report(struct input_dev *input, int sig,
 }
 
 #ifdef SAMSUNG_PALM_MOTION
+static void work_palm_ignore_off(struct work_struct *work)
+{
+	struct cyttsp5_core_data *cd = container_of(work,
+				struct cyttsp5_core_data, work_palm.work);
+	cd->palm_ignore = false;
+}
+
 static void report_sumsize_palm(struct cyttsp5_mt_data *md,
 	u16 sumsize, bool palm)
 {
+	struct cyttsp5_core_data *cd = dev_get_drvdata(md->dev);
 	static bool palm_flag = false;
+
+	if (cd->palm_ignore && palm)
+		return;
 
 	if (!palm_flag && palm) {
 		dev_info(md->dev, "palm is detected\n");
 		input_report_key(md->input, KEY_SLEEP, palm);
 		palm_flag = palm;
+		cd->palm_ignore = true;
+		schedule_delayed_work(&cd->work_palm,
+			msecs_to_jiffies(1000));
 	} else if (palm_flag && !palm) {
 		dev_info(md->dev, "palm is removed\n");
 		input_report_key(md->input, KEY_SLEEP, palm);
@@ -511,6 +525,11 @@ static int cyttsp5_xy_worker(struct cyttsp5_mt_data *md)
 			num_cur_tch = 0;
 	}
 #ifdef SAMSUNG_PALM_MOTION
+	/* Workaround for Rev01 & Rev02
+	 * when palm is detected, don't report touch event */
+	if ((md->palm || tch.hdr[CY_TCH_LO]) && system_rev < 4)
+		num_cur_tch = 0;
+
 	md->palm = tch.hdr[CY_TCH_LO] ? true : false;
 #endif
 
@@ -759,6 +778,7 @@ static int cyttsp5_setup_input_device(struct device *dev)
 #if defined(SAMSUNG_PALM_MOTION)
 	__set_bit(KEY_SLEEP, md->input->keybit);
 	__set_bit(KEY_WAKEUP, md->input->keybit);
+	INIT_DELAYED_WORK(&cd->work_palm, work_palm_ignore_off);
 #endif
 
 	input_mt_init_slots(md->input,

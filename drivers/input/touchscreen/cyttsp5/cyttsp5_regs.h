@@ -880,6 +880,8 @@ struct cyttsp5_core_data {
 	bool irq_enabled;
 	bool irq_wake;
 	bool touch_wake;
+	bool palm_ignore;
+	bool stay_awake;
 	struct wake_lock report_touch_wake_lock;
 	bool irq_disabled;
 	u8 easy_wakeup_gesture;
@@ -887,6 +889,9 @@ struct cyttsp5_core_data {
 	bool wait_until_wake;
 	struct work_struct startup_work;
 	struct cyttsp5_sysinfo sysinfo;
+#ifdef SAMSUNG_PALM_MOTION
+	struct delayed_work work_palm;
+#endif
 #ifdef SAMSUNG_TSP_INFO
 	struct cyttsp5_samsung_tsp_info_dev samsung_tsp_info;
 #endif
@@ -1085,6 +1090,8 @@ struct cyttsp5_sysinfo *_cyttsp5_request_sysinfo(struct device *dev);
 
 extern const struct dev_pm_ops cyttsp5_pm_ops;
 
+int cyttsp5_core_ambient_on(struct device *dev);
+int cyttsp5_core_ambient_off(struct device *dev);
 int cyttsp5_core_suspend(struct device *dev);
 int cyttsp5_core_resume(struct device *dev);
 

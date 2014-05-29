@@ -1142,14 +1142,35 @@ static ssize_t show_cmd_result(struct device *dev, struct device_attribute
 	return snprintf(buf, PAGE_SIZE, "%s\n", sfd->factory_cmd_result);
 }
 
+static ssize_t store_ambient(struct device *dev, struct device_attribute
+		*devattr, const char *buf, size_t count)
+{
+	struct cyttsp5_samsung_factory_data *sfd = dev_get_drvdata(dev);
+	int ambient_mode = -1;
+	sscanf(buf, "%d", &ambient_mode);
+
+	if (ambient_mode == 1) {
+		cyttsp5_core_ambient_off(sfd->dev);
+	} else if (ambient_mode == 0) {
+		cyttsp5_core_ambient_on(sfd->dev);
+	} else {
+		dev_err(sfd->dev, "%s: NOT supported parameter: %d\n",
+			__func__, ambient_mode);
+	}
+
+	return count;
+}
+
 static DEVICE_ATTR(cmd, S_IWUSR | S_IWGRP, NULL, store_cmd);
 static DEVICE_ATTR(cmd_status, S_IRUGO, show_cmd_status, NULL);
 static DEVICE_ATTR(cmd_result, S_IRUGO, show_cmd_result, NULL);
+static DEVICE_ATTR(ambient, S_IWUSR | S_IWGRP, NULL, store_ambient);
 
 static struct attribute *sec_touch_factory_attributes[] = {
 	&dev_attr_cmd.attr,
 	&dev_attr_cmd_status.attr,
 	&dev_attr_cmd_result.attr,
+	&dev_attr_ambient.attr,
 	NULL,
 };
 

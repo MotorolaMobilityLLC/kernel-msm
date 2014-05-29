@@ -488,10 +488,12 @@ static int cyttsp5_fw_calibration_attention(struct device *dev)
 static int cyttsp5_upgrade_firmware(struct device *dev, const u8 *fw_img,
 		int fw_size)
 {
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	/*struct cyttsp5_loader_data *ld = cyttsp5_get_loader_data(dev);*/
 	int retry = CYTTSP5_LOADER_FW_UPGRADE_RETRY_COUNT;
 	int rc;
 
+	cd->stay_awake = true;
 	/*pm_runtime_get_sync(dev);*/
 	dev_dbg(dev, "%s: cmd->request_exclusive = %p\n",
 					__func__, cmd->request_exclusive);
@@ -536,6 +538,7 @@ static int cyttsp5_upgrade_firmware(struct device *dev, const u8 *fw_img,
 
 	cmd->request_restart(dev);
 exit:
+	cd->stay_awake = false;
 	return rc;
 }
 

@@ -4130,17 +4130,17 @@ static irqreturn_t cyttsp5_irq(int irq, void *handle)
 	if (cd->irq_wake) {
 		dev_err(cd->dev, "%s: touch wake!!\n", __func__);
 		wake_lock_timeout(&cd->report_touch_wake_lock, 3 * HZ);
+		cd->touch_wake = true;
 
-		if ((cd->silicon_id) == CSP_SILICON_ID) {
+		if ((cd->silicon_id) == CSP_SILICON_ID)
 			usleep_range(20000, 21000);
-			cd->touch_wake = true;
-		}
 	}
 
 	rc = cyttsp5_read_input(cd);
 	if (!rc)
 		cyttsp5_parse_input(cd);
 
+	cd->touch_wake = false;
 	return IRQ_HANDLED;
 }
 
@@ -4822,15 +4822,18 @@ exit:
 	return 0;
 }
 #elif defined(ALWAYS_ON_TOUCH)
-int cyttsp5_core_suspend(struct device *dev)
+int cyttsp5_core_ambient_on(struct device *dev)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	int rc;
 
-	if (cd->irq_wake) {
-		dev_err(dev, "%s: already irq_wake enabled\n", __func__);
+	if (cd->stay_awake) {
+		dev_err(dev, "%s: doing firmware update\n", __func__);
 		return 0;
 	}
+	if (cd->irq_wake)
+		return 0;
+
 	dev_info(dev, "%s\n", __func__);
 
 	if ((cd->silicon_id) == QFN_SILICON_ID) {
@@ -4839,6 +4842,10 @@ int cyttsp5_core_suspend(struct device *dev)
 		cancel_work_sync(&cd->startup_work);
 		cyttsp5_stop_wd_timer(cd);
 	}
+#ifdef SAMSUNG_PALM_MOTION
+	cancel_delayed_work(&cd->work_palm);
+	schedule_work(&cd->work_palm.work);
+#endif
 	cyttsp5_mt_lift_all(&cd->md);
 
 	if (device_may_wakeup(dev)) {
@@ -4854,14 +4861,17 @@ int cyttsp5_core_suspend(struct device *dev)
 	return 0;
 }
 
-int cyttsp5_core_resume(struct device *dev)
+int cyttsp5_core_ambient_off(struct device *dev)
 {
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 
-	if (!cd->irq_wake) {
-		dev_err(dev, "%s: already irq_wake disabled\n", __func__);
+	if (cd->stay_awake) {
+		dev_err(dev, "%s: doing firmware update\n", __func__);
 		return 0;
 	}
+	if (!cd->irq_wake)
+		return 0;
+
 	dev_info(dev, "%s\n", __func__);
 
 	if (device_may_wakeup(dev)) {
@@ -4874,6 +4884,34 @@ int cyttsp5_core_resume(struct device *dev)
 		cyttsp5_core_wake(cd);
 	else
 		cyttsp5_start_wd_timer(cd);
+
+	return 0;
+}
+
+int cyttsp5_core_suspend(struct device *dev)
+{
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+
+	if (cd->irq_wake)
+		return 0;
+
+	dev_info(dev, "%s\n", __func__);
+	cyttsp5_core_ambient_on(dev);
+
+	return 0;
+}
+
+int cyttsp5_core_resume(struct device *dev)
+{
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+
+	if (!cd->irq_wake)
+		return 0;
+	if (!cd->touch_wake)
+		return 0;
+
+	dev_info(dev, "%s\n", __func__);
+	cyttsp5_core_ambient_off(dev);
 
 	return 0;
 }
