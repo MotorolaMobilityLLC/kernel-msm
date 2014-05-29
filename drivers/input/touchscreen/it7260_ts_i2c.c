@@ -51,7 +51,8 @@ struct IT7260_ts_data {
 	struct input_dev *input_dev;
 	int use_irq;
 	struct work_struct work;
-	#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct work_struct resume_work;
+	#if 0 //def CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 	#endif
 	uint8_t debug_log_level;
@@ -74,9 +75,11 @@ static struct input_dev *input_dev;
 struct IT7260_ts_data *gl_ts;
 static int Calibration__success_flag = 0;
 static int Upgrade__success_flag = 0; 
+static int Suspend_flag = 0;
 struct device *class_dev = NULL;
 static int it7260_status = 0; //ASUS_BSP Cliff +++ add for ATD check
 
+extern void public_gpio_keys_gpio_report_event(void);	//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
 
 #ifdef DEBUG
 #define TS_DEBUG(fmt,args...)  printk( KERN_DEBUG "[it7260_i2c]: " fmt, ## args)
@@ -88,7 +91,7 @@ static int it7260_status = 0; //ASUS_BSP Cliff +++ add for ATD check
 
 static struct workqueue_struct *IT7260_wq;
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#if 0 //def CONFIG_HAS_EARLYSUSPEND
 static void IT7260_ts_early_suspend(struct early_suspend *h);
 static void IT7260_ts_late_resume(struct early_suspend *h);
 #endif
@@ -892,17 +895,35 @@ static void IT7260_ts_work_func(struct work_struct *work) {
 	Read_Point(ts);
 }
 
+//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
+static void IT7260_ts_work_resume_func(struct work_struct *work) {
+	if (Suspend_flag == 1){
+		public_gpio_keys_gpio_report_event();
+	}
+	Suspend_flag++;
+	enable_irq(gl_ts->client->irq);
+}
+
 int delayCount = 1;
 static irqreturn_t IT7260_ts_irq_handler(int irq, void *dev_id) {
 	struct IT7260_ts_data *ts = dev_id;
 
-	if (delayCount == 1)
+	if (Suspend_flag)
 	{
-		pr_info("=IT7260_ts_irq_handler=\n");
-		printk ("=IT7260_ts_irq_handler=\n");
+		disable_irq_nosync(gl_ts->client->irq);
+		queue_work(IT7260_wq, &ts->resume_work);			
 	}
-	disable_irq_nosync(ts->client->irq);
-	queue_work(IT7260_wq, &ts->work);
+	else 
+	{
+		if (delayCount == 1)
+		{
+			pr_info("=IT7260_ts_irq_handler=\n");
+			printk ("=IT7260_ts_irq_handler=\n");
+		}
+		disable_irq_nosync(ts->client->irq);
+		queue_work(IT7260_wq, &ts->work);
+
+	}
 	
 	return IRQ_HANDLED;
 }
@@ -1036,6 +1057,29 @@ static struct i2c_test_case_info gTouchTestCaseInfo[] =
 #endif
 //ASUS_BSP --- Maggie_Lee "Implement I2C stress test for I2C devices"
 
+//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
+void notify_it7260_ts_lowpowermode(int low)
+{
+	unsigned char ucQuery;
+	u8 cmdbuf[] = { 0x04, 0x00, 0x01 };
+	
+	printk("[IT7260] %s: +++: (%s)\n", __func__, low?"enter":"exit");
+	if(low) {
+		Suspend_flag = 1;
+		enable_irq_wake(gl_ts->client->irq);
+		//disable_irq(gl_ts->client->irq);
+		i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf, 3);
+	}
+	else {
+		Suspend_flag = 0;
+		disable_irq_wake(gl_ts->client->irq);
+		i2cReadFromIt7260(gl_ts->client, 0x80, &ucQuery, 1);
+		//enable_irq(gl_ts->client->irq);
+	}
+	printk("[IT7260] %s: ---: (%s)\n", __func__, low?"enter":"exit");
+}
+//ASUS_BSP --- Cliff "Touch change status to idle in Ambient mode"
+
 static int IT7260_ts_probe(struct i2c_client *client,
 		const struct i2c_device_id *id) {
 	struct IT7260_ts_data *ts;
@@ -1081,7 +1125,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 		goto err_power_failed;
 	}
 	
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#if 0 //def CONFIG_HAS_EARLYSUSPEND
 	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING - 1;
 	ts->early_suspend.suspend = IT7260_ts_early_suspend;
 	ts->early_suspend.resume = IT7260_ts_late_resume;
@@ -1120,6 +1164,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 	if (!IT7260_wq)
 		goto err_check_functionality_failed;
 	INIT_WORK(&ts->work, IT7260_ts_work_func);
+	INIT_WORK(&ts->resume_work, IT7260_ts_work_resume_func);
 
     // >>> 
     init_timer(&tp_timer) ;
@@ -1184,7 +1229,7 @@ static int IT7260_ts_remove(struct i2c_client *client) {
 	return 0;
 }
 
-
+#if 0
 static int IT7260_ts_suspend(struct i2c_client *client, pm_message_t mesg) {
 	char ret;
 	u8 cmdbuf[] = { 0x04, 0x00, 0x02 };
@@ -1205,9 +1250,9 @@ static int IT7260_ts_resume(struct i2c_client *client) {
 	i2cReadFromIt7260(client, 0x80, &ucQuery, 1);
 	return 0;
 }
+#endif
 
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#if 0 //def CONFIG_HAS_EARLYSUSPEND
 static void IT7260_ts_early_suspend(struct early_suspend *h)
 {
 	struct IT7260_ts_data *ts;
@@ -1241,7 +1286,7 @@ static struct i2c_driver IT7260_ts_driver = {
 		  },
 		.probe = IT7260_ts_probe,
 		.remove = IT7260_ts_remove,
-#ifndef CONFIG_HAS_EARLYSUSPEND
+#if 0 //ndef CONFIG_HAS_EARLYSUSPEND
 		.suspend = IT7260_ts_suspend, 
 		.resume = IT7260_ts_resume,
 #endif
