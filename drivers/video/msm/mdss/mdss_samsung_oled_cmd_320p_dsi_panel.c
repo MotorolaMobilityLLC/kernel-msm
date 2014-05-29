@@ -150,6 +150,9 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 		return;
 	}
 
+	if (msd.dstat.on)
+		return;
+
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
@@ -292,16 +295,21 @@ unknown_command:
 static int mdss_dsi_panel_registered(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mdss_panel_info *pinfo = NULL;
+
 	if (pdata == NULL) {
 		pr_err("%s : Invalid input data\n", __func__);
 		return -EINVAL;
 	}
+
+	pinfo = &pdata->panel_info;
 	ctrl_pdata = container_of(pdata,
 		struct mdss_dsi_ctrl_pdata, panel_data);
 	msd.mfd = (struct msm_fb_data_type *)registered_fb[0]->par;
 	msd.pdata = pdata;
 	msd.ctrl_pdata = ctrl_pdata;
-	if (ctrl_pdata->panel_data.panel_info.cont_splash_enabled == 1)
+
+	if (pinfo->mipi.mode == DSI_CMD_MODE)
 		msd.dstat.on = 1;
 
 	pr_info("%s:%d, panel registered succesfully\n", __func__, __LINE__);
@@ -423,10 +431,11 @@ static unsigned int mdss_sasmung_mtp_id(char *destbuffer)
 static int mdss_dsi_panel_dimming_init(struct mdss_panel_data *pdata)
 {
 	/* If the ID is not read yet, then read it*/
-	pr_info(" %s ++\n", __func__);
 	if (!msd.manufacture_id)
 		msd.manufacture_id = mipi_samsung_manufacture_id(pdata);
+
 	if (!msd.dstat.is_smart_dim_loaded) {
+		pr_info(" %s ++\n", __func__);
 		switch (msd.panel) {
 		case PANEL_320_OCTA_S6E63J:
 			pr_info("%s : S6E63J\n", __func__);
@@ -457,8 +466,8 @@ static int mdss_dsi_panel_dimming_init(struct mdss_panel_data *pdata)
 		 * and can accept backlight commands.
 		 */
 		msd.mfd->resume_state = MIPI_RESUME_STATE;
+		pr_info(" %s --\n", __func__);
 	}
-	pr_info(" %s --\n", __func__);
 	return 0;
 }
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
