@@ -279,7 +279,7 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 		mdss_mdp_irq_disable_nosync
 			(MDSS_MDP_IRQ_PING_PONG_RD_PTR, ctx->pp_num);
 		complete(&ctx->stop_comp);
-		//schedule_work(&ctx->clk_work); Tingyi: This turn off MDSS clk, cause
+		schedule_work(&ctx->clk_work); // Tingyi: This turn off MDSS clk, cause
 		// kernel/drivers/clk/qcom/clock-local2.c:402 branch_clk_halt_check+0xe8/0x108()
 	}
 
@@ -539,6 +539,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 		rc = wait_for_completion_timeout(
 				&ctx->pp_comp, KOFF_TIMEOUT);
 // Tingyi +++
+#if 0
 {
 	int retry = 5;
 	while(rc <= 0 && retry--){
@@ -547,6 +548,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 				&ctx->pp_comp, KOFF_TIMEOUT);
 	}
 }
+#endif
 // Tingyi ---
 
 		if (rc <= 0) {
