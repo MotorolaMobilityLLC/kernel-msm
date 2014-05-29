@@ -1861,6 +1861,56 @@ sirConvertProbeReqFrame2Struct(tpAniSirGlobal  pMac,
 
 } // End sirConvertProbeReqFrame2Struct.
 
+/* function sirValidateProbeResponseFrame checks for the malformed frame.
+ * The Probe Response has fixed IEs of 12 bytes follwed by Variable IEs
+ * (Tagged elements).
+ * Every Tagged IE has tag number, tag length and data. Tag length indicates
+ * the size of data in bytes.
+ * This function checks for size of Frame recived with the sum of all IEs.
+ * If Frame doesn't have RSN Capability value, consider it as 0x00, 0x00.
+*/
+tSirRetStatus sirValidateProbeResponseFrame(tpAniSirGlobal pMac,
+                                            tANI_U8 *pMgmtFrame,
+                                            tANI_U32 *nFrameBytes)
+{
+    tANI_U32 length = SIZE_OF_FIXED_PARAM;
+    tANI_U8 *refFrame;
+
+    // Frame contains atleast one IE
+    if (*nFrameBytes > (SIZE_OF_FIXED_PARAM + 2))
+    {
+        while (length < *nFrameBytes)
+        {
+            /*refFrame points to next IE */
+            refFrame = pMgmtFrame + length;
+            length += (tANI_U32)(SIZE_OF_TAG_PARAM_NUM + SIZE_OF_TAG_PARAM_LEN
+                                 + (*(refFrame + SIZE_OF_TAG_PARAM_NUM)));
+        }
+        if (length != *nFrameBytes)
+        {
+            /* Workaround : Some APs may not include RSN Capability but
+             * the length of which is included in RSN IE length.
+             * this may cause in updating RSN Capability with junk value.
+             * To avoid this, add RSN Capability value with default value.
+             */
+            if ((*refFrame == RSNIEID) && (length == (*nFrameBytes + 2)))
+            {
+                //Assume RSN Capability as 00
+                vos_mem_set( ( tANI_U8* ) (pMgmtFrame + (*nFrameBytes)),
+                             RSNIE_CAPABILITY_LEN, DEFAULT_RSNIE_CAP_VAL );
+                *nFrameBytes += 2;
+                limLog(pMac, LOG1,
+                       FL("Added RSN Capability to the RSNIE as 0x00 0x00\n"));
+
+                return eHAL_STATUS_SUCCESS;
+            }
+            return eSIR_FAILURE;
+        }
+    }
+
+    return eHAL_STATUS_SUCCESS;
+}
+
 tSirRetStatus sirConvertProbeFrame2Struct(tpAniSirGlobal       pMac,
                                           tANI_U8             *pFrame,
                                           tANI_U32             nFrame,
@@ -1871,6 +1921,17 @@ tSirRetStatus sirConvertProbeFrame2Struct(tpAniSirGlobal       pMac,
 
     // Ok, zero-init our [out] parameter,
     vos_mem_set( ( tANI_U8* )pProbeResp, sizeof(tSirProbeRespBeacon), 0 );
+
+    /* Validate a Probe response frame for malformed frame.
+     * If the frame is malformed then do not consider as it
+     * may cause problem fetching wrong IE values
+     */
+    status = sirValidateProbeResponseFrame(pMac, pFrame, &nFrame);
+    if (!HAL_STATUS_SUCCESS(status))
+    {
+        limLog(pMac, LOGE, FL("Probe Response is malformed. Drop it\n") );
+        return eSIR_FAILURE;
+    }
 
     pr = vos_mem_malloc(sizeof(tDot11fProbeResponse));
     if ( NULL == pr )
