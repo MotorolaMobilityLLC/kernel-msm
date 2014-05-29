@@ -27,7 +27,7 @@ static int esdfs_d_revalidate(struct dentry *dentry, struct nameidata *nd)
 	struct dentry *lower_parent_dentry = NULL;
 	int err = 1;
 
-	if (nd && nd->flags & LOOKUP_RCU)
+	if (nd && (nd->flags & LOOKUP_RCU))
 		return -ECHILD;
 
 	/* short-circuit if it's root */
@@ -37,14 +37,6 @@ static int esdfs_d_revalidate(struct dentry *dentry, struct nameidata *nd)
 		return 1;
 	}
 	spin_unlock(&dentry->d_lock);
-
-	/*
-	 * If we are going to have to update the inode, don't do it in
-	 * RCU-walk mode.
-	 */
-	if (nd && (nd->flags & LOOKUP_RCU) &&
-	    ESDFS_INODE_IS_STALE(ESDFS_I(nd->inode)))
-		return -ECHILD;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
