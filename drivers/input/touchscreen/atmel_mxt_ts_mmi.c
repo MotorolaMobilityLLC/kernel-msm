@@ -418,66 +418,78 @@ static __init int mxt_setup_query(char *str)
 
 __setup("touch_cfg=", mxt_setup_query);
 
-static int mxt_add_obj_patch(char *query)
+static int mxt_add_obj_patch(int object, char *query)
 {
-	int error;
-	char *offset_p, *value_p;
-	long number_v, offset_v, value_v;
+	int i, error;
+	char *split, *value_p, *pair = query;
+	long offset_v, value_v;
 	struct obj_patch *patch;
 
-	offset_p = strpbrk(query, "@");
-	value_p = strpbrk(query, ",");
+	for (i = 0; pair; pair = split) {
+		split = strpbrk(pair, ",");
+		if (split)
+			*split++ = '\0';
 
-	/* primitive syntax validation */
-	if ((*query++ != 'T') || !offset_p || !value_p)
-		return -EINVAL;
+		pair = skip_spaces(pair);
+		if (!pair || !*pair)
+			continue;
 
-	error = kstrtol(query, 10, &number_v);
-	if (error)
-		return error;
+		value_p = strpbrk(pair, "=");
+		if (!value_p) {
+			pr_err("invalid syntax; should be offset=value\n");
+			continue;
+		}
 
-	*offset_p = '\0';
-	error = kstrtol(++offset_p, 10, &offset_v);
-	if (error)
-		return error;
+		/* make sure string is null terminated */
+		*value_p = '\0';
 
-	*value_p = '\0';
-	error = kstrtol(++value_p, 16, &value_v);
-	if (error)
-		return error;
+		error = kstrtol(pair, 10, &offset_v);
+		if (error)
+			return error;
 
-	/* primitive data validation */
-	if (number_v < 0 || number_v > 255 || offset_v < 0 || value_v > 255)
-		return -EINVAL;
+		error = kstrtol(++value_p, 16, &value_v);
+		if (error)
+			return error;
 
-	patch = kzalloc(sizeof(*patch), GFP_KERNEL);
-	if (!patch) {
-		pr_err("failed to alloc mem\n");
-		return -ENOMEM;
+		/* primitive data validation */
+		if (object <= 0 || object > 255 ||
+		    offset_v < 0 || value_v > 255)
+			return -EINVAL;
+
+		patch = kzalloc(sizeof(*patch), GFP_KERNEL);
+		if (!patch) {
+			pr_err("failed to alloc mem\n");
+			return -ENOMEM;
+		}
+
+		patch->number = (u8)object;
+		patch->offset = (u8)offset_v;
+		patch->value = (u8)value_v;
+
+		pr_debug("T%d, offset %d, value 0x%02x\n",
+				patch->number, patch->offset, patch->value);
+		mxt_cfg_data.cfg_num++;
+		list_add_tail(&patch->link, &mxt_cfg_data.cfg_head);
+
+		i++;
 	}
 
-	patch->number = (u8)number_v;
-	patch->offset = (u8)offset_v;
-	patch->value = (u8)value_v;
+	pr_debug("changed %d bytes in T%d\n", i, object);
 
-	pr_debug("T%d, offset %d, value 0x%02x\n",
-				patch->number, patch->offset, patch->value);
-	mxt_cfg_data.cfg_num++;
-	list_add_tail(&patch->link, &mxt_cfg_data.cfg_head);
-
-	return 0;
+	return i ? 0 : -EINVAL;
 }
 
 /*
  * Special settings can be passed to the driver via kernel cmd line
- * Example: touch_cfg="T100@0,1f;T100@47,b2;"
+ * Example: touch_cfg="T100@0=1f,1=a0;T72@47=b2;"
  *   Where: T100 - decimal object number
  *          @0   - decimal offset within the object
  *          1f   - new value in hex
  */
 static void mxt_scan_setup_string(struct mxt_data *data)
 {
-	char *split, *patch = touch_setup_string;
+	long number_v;
+	char *split, *config_p, *patch = touch_setup_string;
 	int i, error;
 
 	for (i = 0; patch; patch = split) {
@@ -491,16 +503,35 @@ static void mxt_scan_setup_string(struct mxt_data *data)
 
 		dev_dbg(&data->client->dev, "patch %d: \"%s\"\n", i, patch);
 
-		error = mxt_add_obj_patch(patch);
+		config_p = strpbrk(patch, "@");
+
+		if ((*patch != 'T' && *patch != 't') || !config_p) {
+			dev_err(&data->client->dev,
+				"invalid syntax '%s'\n", patch);
+			continue;
+		}
+
+		/* strip non digits */
+		*config_p++ = '\0';
+
+		error = kstrtol(++patch, 10, &number_v);
+		if (error) {
+			dev_err(&data->client->dev,
+				"conversion error %d\n", error);
+			continue;
+		}
+
+		error = mxt_add_obj_patch((int)number_v, config_p);
 		if (error < 0) {
-			dev_err(&data->client->dev, "invalid patch\n");
+			dev_err(&data->client->dev,
+				"invalid patch; parse error %d\n", error);
 			continue;
 		}
 
 		i++;
 	}
 
-	dev_info(&data->client->dev, "processed %d patches\n", i);
+	dev_info(&data->client->dev, "processed patches for %d objects\n", i);
 }
 
 static inline size_t mxt_obj_size(const struct mxt_object *obj)
