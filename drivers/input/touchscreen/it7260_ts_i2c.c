@@ -544,7 +544,7 @@ static ssize_t IT7260_version_show(struct device *dev, struct device_attribute *
 	waitCommandDone();
 	i2cReadFromIt7260(gl_ts->client, 0xA0, bufRead2, 10);
 	
-	return sprintf(buf, "%x,%x,%x,%x\n%x,%x,%x,%x\n",bufRead[5], bufRead[6], bufRead[7], bufRead[8],bufRead2[1], bufRead2[2], bufRead2[3], bufRead2[4]);
+	return sprintf(buf, "%x,%x,%x,%x # %x,%x,%x,%x\n",bufRead[5], bufRead[6], bufRead[7], bufRead[8],bufRead2[1], bufRead2[2], bufRead2[3], bufRead2[4]);
 }
 
 ssize_t IT7260_status_store_temp(int ret)
