@@ -2331,7 +2331,7 @@ void console_unlock(void)
 	bool wake_klogd = false;
 	bool retry;
 
-	if (console_suspended) {
+	if (console_suspended && !oops_in_progress) {
 		up(&console_sem);
 		return;
 	}
