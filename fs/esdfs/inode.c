@@ -268,25 +268,23 @@ out:
 
 static int esdfs_permission(struct inode *inode, int mask)
 {
+	struct esdfs_sb_info *sbi = ESDFS_SB(inode->i_sb);
 	struct inode *lower_inode;
 	int err;
-	int oldmask;
-	const struct cred *creds;
 
 	/* First, check the upper permissions */
 	err = generic_permission(inode, mask);
-	if (err)
-		return err;
 
-	/* Now masquerade and check the lower permissions */
-	creds = esdfs_override_creds(ESDFS_SB(inode->i_sb), &oldmask);
-	if (!creds)
-		return -ENOMEM;
-
+	/* Basic checking of the lower inode (can't override creds here) */
 	lower_inode = esdfs_lower_inode(inode);
-	err = inode_permission(lower_inode, mask);
-
-	esdfs_revert_creds(creds, &oldmask);
+	if (lower_inode->i_uid != sbi->lower_perms.uid ||
+	    lower_inode->i_gid != sbi->lower_perms.gid ||
+	    S_ISSOCK(lower_inode->i_mode) ||
+	    S_ISLNK(lower_inode->i_mode) ||
+	    S_ISBLK(lower_inode->i_mode) ||
+	    S_ISCHR(lower_inode->i_mode) ||
+	    S_ISFIFO(lower_inode->i_mode))
+		err = -EACCES;
 
 	/* Finally, check the derived permissions */
 	if (!err && ESDFS_DERIVE_PERMS(ESDFS_SB(inode->i_sb)))
