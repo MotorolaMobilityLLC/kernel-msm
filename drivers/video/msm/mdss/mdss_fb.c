@@ -1470,8 +1470,10 @@ static int mdss_fb_release_all(struct fb_info *info, struct file *file)
 			return ret;
 		}
 
-		if (mfd->panel_info->bklt_ctrl == BL_DCS_CMD)
+		mutex_lock(&mfd->bl_lock);
+		if (!mfd->unset_bl_level)
 			mfd->unset_bl_level = mfd->bl_level_old;
+		mutex_unlock(&mfd->bl_lock);
 	}
 
 	return ret;
