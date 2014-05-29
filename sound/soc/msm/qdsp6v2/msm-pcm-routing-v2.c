@@ -2745,8 +2745,8 @@ static int msm_routing_put_stereo_to_custom_stereo_control(
 					struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
-	int flag = 0, i = 0;
-	int be_index = 0, port_id;
+	int flag = 0, i = 0, rc = 0;
+	int be_index = 0, port_id, topo_id;
 	unsigned int session_id = 0;
 	uint16_t op_FL_ip_FL_weight;
 	uint16_t op_FL_ip_FR_weight;
@@ -2755,52 +2755,64 @@ static int msm_routing_put_stereo_to_custom_stereo_control(
 	flag = ucontrol->value.integer.value[0];
 	pr_debug("%s E flag %d\n", __func__, flag);
 
-	if ((is_custom_stereo_on && flag) || (!is_custom_stereo_on && !flag))
+	if ((is_custom_stereo_on && flag) || (!is_custom_stereo_on && !flag)) {
+		pr_err("%s: is_custom_stereo_on %d, flag %d\n",
+			__func__, is_custom_stereo_on, flag);
 		return 0;
+	}
 	is_custom_stereo_on = flag ? true : false;
+	pr_debug("%s:is_custom_stereo_on %d\n", __func__, is_custom_stereo_on);
 	for (be_index = 0; be_index < MSM_BACKEND_DAI_MAX; be_index++) {
 		port_id = msm_bedais[be_index].port_id;
-		if (((port_id == SLIMBUS_0_RX) ||
-		     (port_id == RT_PROXY_PORT_001_RX)) &&
-		    msm_bedais[be_index].active) {
-			for_each_set_bit(i,
-				&msm_bedais[be_index].fe_sessions,
+		if (((port_id != SLIMBUS_0_RX) &&
+		     (port_id != RT_PROXY_PORT_001_RX)) ||
+		    (!msm_bedais[be_index].active)) {
+			continue;
+		}
+		for_each_set_bit(i, &msm_bedais[be_index].fe_sessions,
 				MSM_FRONTEND_DAI_MM_SIZE) {
-				if (fe_dai_perf_mode[i][SESSION_TYPE_RX] !=
-				    LEGACY_PCM_MODE)
-					goto skip_send_custom_stereo;
-				session_id =
-					fe_dai_map[i][SESSION_TYPE_RX].strm_id;
-				if (is_custom_stereo_on) {
-					op_FL_ip_FL_weight =
-						Q14_GAIN_ZERO_POINT_FIVE;
-					op_FL_ip_FR_weight =
-						Q14_GAIN_ZERO_POINT_FIVE;
-					op_FR_ip_FL_weight =
-						Q14_GAIN_ZERO_POINT_FIVE;
-					op_FR_ip_FR_weight =
-						Q14_GAIN_ZERO_POINT_FIVE;
-				} else {
-					op_FL_ip_FL_weight = Q14_GAIN_UNITY;
-					op_FL_ip_FR_weight = 0;
-					op_FR_ip_FL_weight = 0;
-					op_FR_ip_FR_weight = Q14_GAIN_UNITY;
-				}
-				if (msm_qti_pp_send_stereo_to_custom_stereo_cmd(
-						msm_bedais[be_index].port_id,
-						session_id,
-						op_FL_ip_FL_weight,
-						op_FL_ip_FR_weight,
-						op_FR_ip_FL_weight,
-						op_FR_ip_FR_weight) ||
-				    dolby_dap_set_custom_stereo_onoff(
-						msm_bedais[be_index].port_id,
-						is_custom_stereo_on)) {
-skip_send_custom_stereo:
-					pr_err("%s: err setting custom stereo\n",
-						__func__);
-				}
+			if (fe_dai_perf_mode[i][SESSION_TYPE_RX] !=
+				LEGACY_PCM_MODE)
+				goto skip_send_custom_stereo;
+			session_id = fe_dai_map[i][SESSION_TYPE_RX].strm_id;
+			if (is_custom_stereo_on) {
+				op_FL_ip_FL_weight = Q14_GAIN_ZERO_POINT_FIVE;
+				op_FL_ip_FR_weight = Q14_GAIN_ZERO_POINT_FIVE;
+				op_FR_ip_FL_weight = Q14_GAIN_ZERO_POINT_FIVE;
+				op_FR_ip_FR_weight = Q14_GAIN_ZERO_POINT_FIVE;
+			} else {
+				op_FL_ip_FL_weight = Q14_GAIN_UNITY;
+				op_FL_ip_FR_weight = 0;
+				op_FR_ip_FL_weight = 0;
+				op_FR_ip_FR_weight = Q14_GAIN_UNITY;
 			}
+
+			topo_id = adm_get_topology_id(
+					msm_bedais[be_index].port_id);
+			if (topo_id < 0)
+				pr_debug("%s:Err:custom stereo topo %d\n",
+					 __func__, topo_id);
+			if (topo_id == DS2_ADM_COPP_TOPOLOGY_ID)
+				rc = msm_ds2_dap_set_custom_stereo_onoff(
+					msm_bedais[be_index].port_id,
+					is_custom_stereo_on);
+			else if (topo_id == DOLBY_ADM_COPP_TOPOLOGY_ID)
+				rc = dolby_dap_set_custom_stereo_onoff(
+					msm_bedais[be_index].port_id,
+					is_custom_stereo_on);
+			else
+				rc =
+				msm_qti_pp_send_stereo_to_custom_stereo_cmd(
+					msm_bedais[be_index].port_id,
+					session_id,
+					op_FL_ip_FL_weight,
+					op_FL_ip_FR_weight,
+					op_FR_ip_FL_weight,
+					op_FR_ip_FR_weight);
+				if (rc < 0)
+skip_send_custom_stereo:
+					pr_err("%s:err 0x%x, port %d\n",
+						__func__, rc , port_id);
 		}
 	}
 	return 0;
