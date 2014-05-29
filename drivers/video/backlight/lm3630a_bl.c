@@ -490,18 +490,16 @@ static void lm3630a_led_set_func(struct work_struct *work)
 	struct lm3630a_chip *pchip;
 	struct lm3630a_platform_data *pdata;
 	int ret = 0, brt;
-	static bool is_sleep;
 
 	pchip = container_of(work, struct lm3630a_chip, ledwork);
 	pdata = pchip->pdata;
 
 	dev_dbg(pchip->dev, "led value = %d\n", pchip->ledval);
-	if (is_sleep) {
+	if (lm3630a_read(pchip, REG_CTRL) & LM3630A_SLEEP_STATUS) {
+		dev_info(pchip->dev, "wake up and re-init chip\n");
 		ret = lm3630a_chip_config(pchip);
 		if (ret < 0)
 			goto out;
-		else
-			is_sleep = false;
 	}
 
 	if (pdata->leda_ctrl != LM3630A_LEDA_DISABLE) {
@@ -549,12 +547,9 @@ static void lm3630a_led_set_func(struct work_struct *work)
 		}
 	}
 
-	if (!pchip->ledval) {
+	if (!pchip->ledval)
 		ret = lm3630a_update(pchip, REG_CTRL, LM3630A_SLEEP_ENABLE,
 				LM3630A_SLEEP_ENABLE);
-		if (ret >= 0)
-			is_sleep = true;
-	}
 out:
 	if (ret < 0)
 		dev_err(pchip->dev, "fail to set brightness\n");
