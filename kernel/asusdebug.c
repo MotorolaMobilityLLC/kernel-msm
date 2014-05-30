@@ -965,11 +965,11 @@ void save_last_shutdown_log(char* filename)
 // ASUS_BSP ---- Josh_Hsu
     last_shutdown_log_unparsed = (char*)PRINTK_BUFFER;//phys_to_virt(PRINTK_BUFFER);
     //last_shutdown_log_addr = (unsigned int *)((unsigned int)last_shutdown_log + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
-    sprintf(messages, "/data/local/LastShutdown_%lu.%06lu.txt", (unsigned long) t, nanosec_rem / 1000);
+    sprintf(messages, "/asdf/LastShutdown_%lu.%06lu.txt", (unsigned long) t, nanosec_rem / 1000);
     printk("[adbg] %s(), messages: %s\n", __func__, messages);
 
 	//Save the unparsed ASDF log path
-	sprintf(messages_unparsed, "/data/local/LastShutdown_%lu.%06lu_unparsed.txt", (unsigned long) t, nanosec_rem / 1000);
+	sprintf(messages_unparsed, "/asdf/LastShutdown_%lu.%06lu_unparsed.txt", (unsigned long) t, nanosec_rem / 1000);
 	printk("[adbg] %s(), messages_unparsed: %s\n", __func__, messages_unparsed);
 //ASUS_BSP --
 
