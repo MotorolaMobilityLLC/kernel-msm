@@ -73,6 +73,9 @@
 #define MAX17042_IC_VERSION	0x0092
 #define MAX17047_IC_VERSION	0x00AC	/* same for max17050 */
 
+#define MAX17050_CFG_REV_REG	MAX17042_ManName
+#define MAX17050_CFG_REV_MASK	0x0007
+
 #define INIT_DATA_PROPERTY		"maxim,regs-init-data"
 #define CONFIG_NODE			"maxim,configuration"
 #define CONFIG_PROPERTY			"config"
@@ -96,6 +99,7 @@
 #define TEMP_CONV_NODE			"maxim,temp-conv"
 #define RESULT_PROPERTY			"result"
 #define START_PROPERTY			"start"
+#define REVISION			"rev"
 
 struct max17042_chip {
 	struct i2c_client *client;
@@ -683,6 +687,7 @@ static int max17042_init_chip(struct max17042_chip *chip)
 	struct regmap *map = chip->regmap;
 	int ret;
 	int val;
+	struct max17042_config_data *config = chip->pdata->config_data;
 
 	max17042_override_por_values(chip);
 	/* After Power up, the MAX17042 requires 500mS in order
@@ -723,6 +728,12 @@ static int max17042_init_chip(struct max17042_chip *chip)
 
 	/* load new capacity params */
 	max17042_load_new_capacity_params(chip);
+
+	/* Set Config Revision bits */
+	val = max17042_read_reg(chip->client, MAX17050_CFG_REV_REG);
+	val &= (~MAX17050_CFG_REV_MASK);
+	val |= config->revision;
+	max17042_write_reg(chip->client, MAX17050_CFG_REV_REG, val);
 
 	/* Init complete, Clear the POR bit */
 	regmap_read(map, MAX17042_STATUS, &val);
@@ -1187,6 +1198,8 @@ static void max17042_cfg_optnl_prop(struct device_node *np,
 {
 	of_property_read_u16(np, TGAIN_PROPERTY, &config_data->tgain);
 	of_property_read_u16(np, TOFF_PROPERTY, &config_data->toff);
+	of_property_read_u16(np, REVISION, &config_data->revision);
+	config_data->revision &= MAX17050_CFG_REV_MASK;
 }
 
 static struct max17042_config_data *
@@ -1212,6 +1225,8 @@ max17042_get_config_data(struct device *dev)
 	}
 
 	max17042_cfg_optnl_prop(np, config_data);
+
+	dev_warn(dev, "Config Revision = %d", config_data->revision);
 
 	config_data->cur_sense_val = 10;
 	config_data->cgain = 0x4000;
@@ -1429,7 +1444,7 @@ static int max17042_probe(struct i2c_client *client,
 	struct max17042_chip *chip;
 	int ret;
 	int i;
-	u32 val;
+	u32 val, val2;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_WORD_DATA))
 		return -EIO;
@@ -1544,7 +1559,14 @@ static int max17042_probe(struct i2c_client *client,
 	}
 
 	regmap_read(chip->regmap, MAX17042_STATUS, &val);
+	regmap_read(chip->regmap, MAX17050_CFG_REV_REG, &val2);
+	val2 &= MAX17050_CFG_REV_MASK;
 	if (val & STATUS_POR_BIT) {
+		dev_warn(&client->dev, "POR Detected, Loading Config\n");
+		INIT_WORK(&chip->work, max17042_init_worker);
+		schedule_work(&chip->work);
+	} else if (val2 != chip->pdata->config_data->revision) {
+		dev_warn(&client->dev, "Revision Change, Loading Config\n");
 		INIT_WORK(&chip->work, max17042_init_worker);
 		schedule_work(&chip->work);
 	} else {
