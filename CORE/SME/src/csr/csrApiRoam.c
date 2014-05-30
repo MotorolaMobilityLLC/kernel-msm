@@ -3736,7 +3736,6 @@ void csrRoamCcmCfgSetCallback(tHalHandle hHal, tANI_S32 result)
     tListElem *pEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK);
     tANI_U32 sessionId;
     tSmeCmd *pCommand = NULL;
-
     if(NULL == pEntry)
     {
         smsLog(pMac, LOGW, "   CFG_CNF with active list empty");
@@ -3744,7 +3743,10 @@ void csrRoamCcmCfgSetCallback(tHalHandle hHal, tANI_S32 result)
     }
     pCommand = GET_BASE_ADDR(pEntry, tSmeCmd, Link);
     sessionId = pCommand->sessionId;
-
+    smsLog(pMac, LOG1, FL("CCM CFG return value is %d, "
+                          " current state : %d sub state : %d "),
+                          result, pMac->roam.curState[sessionId],
+                                  pMac->roam.curSubState[sessionId]);
     if(CSR_IS_ROAM_JOINING(pMac, sessionId) && CSR_IS_ROAM_SUBSTATE_CONFIG(pMac, sessionId))
     {
         csrRoamingStateConfigCnfProcessor(pMac, (tANI_U32)result);
@@ -7661,7 +7663,10 @@ static void csrRoamingStateConfigCnfProcessor( tpAniSirGlobal pMac, tANI_U32 res
         smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
         return;
     }
-    
+    smsLog(pMac, LOG1, FL("CFG return value is %d "
+                          " current state is : %d substate is : %d "),
+                           result, pMac->roam.curState[sessionId],
+                                   pMac->roam.curSubState[sessionId]);
     if(CSR_IS_ROAMING(pSession) && pSession->fCancelRoaming)
     {
         //the roaming is cancelled. Simply complete the command
@@ -7681,7 +7686,7 @@ static void csrRoamingStateConfigCnfProcessor( tpAniSirGlobal pMac, tANI_U32 res
     {
         if ( CCM_IS_RESULT_SUCCESS(result) )
         {
-            smsLog(pMac, LOG2, "Cfg sequence complete");
+            smsLog(pMac, LOG1, "Cfg sequence complete");
             // Successfully set the configuration parameters for the new Bss.  Attempt to
             // join the roaming Bss.
             if(pCommand->u.roamCmd.pRoamBssEntry)
@@ -7717,11 +7722,13 @@ static void csrRoamingStateConfigCnfProcessor( tpAniSirGlobal pMac, tANI_U32 res
                 if ( csrIsInfraBssDesc( pBssDesc ) )
                 {
                     tDot11fBeaconIEs *pIesLocal = (tDot11fBeaconIEs *)pScanResult->Result.pvIes;
+                    smsLog(pMac, LOG1, " Roaming in a Infra BSS");
                     if(pIesLocal || (HAL_STATUS_SUCCESS(csrGetParsedBssDescriptionIEs(pMac, pBssDesc, &pIesLocal))) )
                     {
                     // ..and currently in an Infrastructure connection....
                     if( csrIsConnStateConnectedInfra( pMac, sessionId ) )
                     {
+                        smsLog(pMac, LOG1, " Connected to infra BSS");
                         // ...and the SSIDs are equal, then we Reassoc.
                         if (  csrIsSsidEqual( pMac, pSession->pConnectBssDesc, pBssDesc, 
                                                     pIesLocal ) )
@@ -7758,6 +7765,7 @@ static void csrRoamingStateConfigCnfProcessor( tpAniSirGlobal pMac, tANI_U32 res
                         if (csrRoamIsHandoffInProgress(pMac) && 
                                                 csrRoamIs11rAssoc(pMac))
                         {
+                            smsLog(pMac, LOG1, " HandoffInProgress with 11r enabled");
                             status = csrRoamIssueReassociate(pMac, sessionId, pBssDesc, 
                                     (tDot11fBeaconIEs *)( pScanResult->Result.pvIes ), &pCommand->u.roamCmd.roamProfile);
                         }
@@ -7767,6 +7775,7 @@ static void csrRoamingStateConfigCnfProcessor( tpAniSirGlobal pMac, tANI_U32 res
                         if (csrRoamIsHandoffInProgress(pMac) && 
                                                 csrRoamIsESEAssoc(pMac))
                         {
+                            smsLog(pMac, LOG1, " HandoffInProgress with ESE enabled");
                             // Now serialize the reassoc command.
                             status = csrRoamIssueReassociateCmd(pMac, sessionId);
                         }
@@ -7776,6 +7785,7 @@ static void csrRoamingStateConfigCnfProcessor( tpAniSirGlobal pMac, tANI_U32 res
                         if (csrRoamIsHandoffInProgress(pMac) && 
                                                 csrRoamIsFastRoamEnabled(pMac, sessionId))
                         {
+                            smsLog(pMac, LOG1, " HandoffInProgress with LFR  enabled");
                             // Now serialize the reassoc command.
                             status = csrRoamIssueReassociateCmd(pMac, sessionId);
                         }
@@ -7784,6 +7794,7 @@ static void csrRoamingStateConfigCnfProcessor( tpAniSirGlobal pMac, tANI_U32 res
                         // else we are not connected and attempting to Join.  Issue the
                         // Join request.
                         {
+                            smsLog(pMac, LOG1, " Not connected, Attempting to Join");
                             status = csrRoamIssueJoin( pMac, sessionId, pBssDesc, 
                                                 (tDot11fBeaconIEs *)( pScanResult->Result.pvIes ),
                                                 &pCommand->u.roamCmd.roamProfile, pCommand->u.roamCmd.roamId );
