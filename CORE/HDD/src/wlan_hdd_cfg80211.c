@@ -8846,16 +8846,15 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
     wlan_hdd_get_rssi(pAdapter, &sinfo->signal);
     sinfo->filled |= STATION_INFO_SIGNAL;
 
+    wlan_hdd_get_station_stats(pAdapter);
+    rate_flags = pAdapter->hdd_stats.ClassA_stat.tx_rate_flags;
+
+    /*overwrite rate_flags if MAX link-speed need to be reported*/
     if ((eHDD_LINK_SPEED_REPORT_MAX == pCfg->reportMaxLinkSpeed) ||
         (eHDD_LINK_SPEED_REPORT_MAX_SCALED == pCfg->reportMaxLinkSpeed &&
          sinfo->signal >= pCfg->linkSpeedRssiHigh))
     {
         rate_flags = pAdapter->maxRateFlags;
-    }
-    else
-    {
-        wlan_hdd_get_station_stats(pAdapter);
-        rate_flags = pAdapter->hdd_stats.ClassA_stat.tx_rate_flags;
     }
 
     //convert to the UI units of 100kbps
