@@ -273,6 +273,8 @@ static int32_t stk3x1x_set_als_thd_l(struct stk3x1x_data *ps_data,
 static int32_t stk3x1x_set_als_thd_h(struct stk3x1x_data *ps_data,
 	uint16_t thd_h);
 static int32_t stk3x1x_get_ir_reading(struct stk3x1x_data *ps_data);
+static void stk3x1x_set_wait_reg(struct stk3x1x_data *ps_data,
+	uint8_t wait_reg);
 
 
 static int stk3x1x_i2c_read_data(struct i2c_client *client,
@@ -693,6 +695,18 @@ static int32_t stk3x1x_get_flag(struct stk3x1x_data *ps_data)
 	return stk3x1x_i2c_smbus_read_byte_data(ps_data->client, STK_FLAG_REG);
 }
 
+static void stk3x1x_set_wait_reg(struct stk3x1x_data *ps_data, uint8_t wait_reg)
+{
+	int32_t ret;
+
+	ret = stk3x1x_i2c_smbus_write_byte_data(ps_data->client,
+		STK_WAIT_REG, wait_reg);
+	if (ret < 0) {
+		dev_err(&ps_data->client->dev,
+			"%s: write I2C error\n", __func__);
+	}
+}
+
 static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data, uint8_t enable)
 {
 	int32_t ret;
@@ -715,8 +729,15 @@ static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data, uint8_t enable)
 		| STK_STATE_EN_AK_MASK);
 	if (enable) {
 		w_state_reg |= STK_STATE_EN_PS_MASK;
-		if(!(ps_data->als_enabled))
+		if (!(ps_data->als_enabled)) {
 			w_state_reg |= STK_STATE_EN_WAIT_MASK;
+			stk3x1x_set_wait_reg(ps_data, ps_data->wait_reg & 0x0F);
+		}
+	} else {
+		if (ps_data->als_enabled) {
+			w_state_reg |= STK_STATE_EN_WAIT_MASK;
+			stk3x1x_set_wait_reg(ps_data, ps_data->wait_reg);
+		}
 	}
 	ret = stk3x1x_i2c_smbus_write_byte_data(ps_data->client, STK_STATE_REG,
 		w_state_reg);
@@ -787,12 +808,19 @@ static int32_t stk3x1x_enable_als(struct stk3x1x_data *ps_data, uint8_t enable)
 	}
 	w_state_reg = (uint8_t)(ret & (~(STK_STATE_EN_ALS_MASK
 		| STK_STATE_EN_WAIT_MASK)));
-	if(enable)	
-		w_state_reg |= STK_STATE_EN_ALS_MASK;	
-	else if (ps_data->ps_enabled)		
-		w_state_reg |= STK_STATE_EN_WAIT_MASK;	
+	if (enable) {
+		w_state_reg |= STK_STATE_EN_ALS_MASK;
+		if (!(ps_data->ps_enabled)) {
+			w_state_reg |= STK_STATE_EN_WAIT_MASK;
+			stk3x1x_set_wait_reg(ps_data, ps_data->wait_reg);
+		}
+	} else {
+		if (ps_data->ps_enabled) {
+			w_state_reg |= STK_STATE_EN_WAIT_MASK;
+			stk3x1x_set_wait_reg(ps_data, ps_data->wait_reg & 0x0F);
+		}
+	}
 
-	
 	ret = stk3x1x_i2c_smbus_write_byte_data(ps_data->client, STK_STATE_REG,
 		w_state_reg);
 	if (ret < 0) {
