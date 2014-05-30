@@ -909,7 +909,7 @@ void save_phone_hang_log(void)
         printk("[adbg] save_phone_hang_log-1\n");
         initKernelEnv();
         memset(messages, 0, sizeof(messages));
-        strcpy(messages, "/data/local/");  // Should be changed to asdf
+        strcpy(messages, "/asdf/");
         strncat(messages, g_phonehang_log, 29);
         file_handle = sys_open(messages, O_CREAT|O_WRONLY|O_SYNC, 0);
         printk("[adbg] save_phone_hang_log-2 file_handle %d, name=%s\n", file_handle, messages);
@@ -1103,8 +1103,7 @@ void save_last_watchdog_reg(void)
     last_watchdog_reg = (tzbsp_dump_buf_t*)PHONE_HANG_LOG_BUFFER - PRINTK_BUFFER_SLOT_SIZE / 2;//phys_to_virt((PHONE_HANG_LOG_BUFFER - PRINTK_BUFFER_SLOT_SIZE / 2));
     if(*((int*)last_watchdog_reg) != PRINTK_BUFFER_MAGIC)
     {
-        // Should be changed to asdf
-        sprintf(messages, "/data/local/%s_%04d%02d%02d-%02d%02d%02d.txt", "WatchdogReg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        sprintf(messages, "/asdf/%s_%04d%02d%02d-%02d%02d%02d.txt", "WatchdogReg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     
         initKernelEnv();
         file_handle = sys_open(messages, O_CREAT|O_RDWR|O_SYNC, 0);
