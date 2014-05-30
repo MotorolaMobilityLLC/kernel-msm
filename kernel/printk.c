@@ -1627,7 +1627,7 @@ static int console_trylock_for_printk(unsigned int cpu)
 {
 	int retval = 0, wake = 0;
 
-	if (console_trylock()) {
+	if (console_trylock() || oops_in_progress) {
 		retval = 1;
 
 		/*
