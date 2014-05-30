@@ -826,6 +826,7 @@
 			/* Optional properties */
 			tgain		= /bits/ 16 <0xE71C>;	/* thermistor attribute */
 			toff		= /bits/ 16 <0x251A>;	/* thermistor attribute */
+			rev		= /bits/ 16 <0x0001>;
 		};
 
 		maxim,temp-conv {
