@@ -24,6 +24,7 @@
 #include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <soc/qcom/scm.h>
 
 #define HOB_RAM_MISC_DEV_NAME "mmi,hob_ram"
 
@@ -107,6 +108,55 @@ const struct file_operations hob_shared_ram_fops = {
 	.release = hob_shared_ram_release,
 };
 
+#define TZBSP_MEM_MPU_USAGE_MSS_AP_DYNAMIC_REGION	0x6
+
+#define SCM_MP_LOCK_CMD_ID      0x1
+#define SCM_MP_PROTECT          0x1
+
+struct secure_memprot_cmd {
+	u32	start;
+	u32	size;
+	u32	tag_id;
+	u8	lock;
+} __attribute__ ((__packed__));
+
+static int hob_ram_do_scm_protect(phys_addr_t phy_base, unsigned long size)
+{
+	struct secure_memprot_cmd cmd;
+
+	cmd.start = phy_base;
+	cmd.size = size;
+	cmd.tag_id = TZBSP_MEM_MPU_USAGE_MSS_AP_DYNAMIC_REGION;
+	cmd.lock = SCM_MP_PROTECT;
+
+	return scm_call(SCM_SVC_MP, SCM_MP_LOCK_CMD_ID, &cmd,
+			sizeof(cmd), NULL, 0);
+}
+
+static int hob_ram_protect(struct hob_ram_misc_dev *hob_dev)
+{
+	int ret;
+	if (!hob_dev->dhob || !hob_dev->shob) {
+		pr_err("%s(): Invalid HOB resource: DHOB %p SHOB %p\n",
+			__func__, hob_dev->dhob, hob_dev->shob);
+		return -EINVAL;
+	}
+	if ((hob_dev->dhob->end + 1 == hob_dev->shob->start) ||
+			(hob_dev->shob->end + 1 == hob_dev->dhob->start)) {
+		ret = hob_ram_do_scm_protect(
+			min(hob_dev->dhob->start, hob_dev->shob->start),
+			hob_dev->dhob->end - hob_dev->dhob->start + 1 +
+			hob_dev->shob->end - hob_dev->shob->start + 1);
+	} else {
+		ret = hob_ram_do_scm_protect(hob_dev->dhob->start,
+			hob_dev->dhob->end - hob_dev->dhob->start + 1);
+		if (!ret)
+			ret = hob_ram_do_scm_protect(hob_dev->shob->start,
+				hob_dev->shob->end - hob_dev->shob->start + 1);
+	}
+	return ret;
+}
+
 static int __devinit hob_ram_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -133,6 +183,9 @@ static int __devinit hob_ram_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "couldn't get SHOB memory range\n");
 		return -EINVAL;
 	}
+
+	if (hob_ram_protect(hob_dev))
+		dev_err(&pdev->dev, "couldn't protect DHOB/SHOB memory range\n");
 
 	hob_dev->mdev.name = "mot_hob_ram";
 	hob_dev->mdev.minor = MISC_DYNAMIC_MINOR;
@@ -181,13 +234,7 @@ static int __init hob_shared_ram_init(void)
 	return platform_driver_register(&hob_driver);
 }
 
-static void __exit hob_shared_ram_exit(void)
-{
-	platform_driver_unregister(&hob_driver);
-}
-
-module_init(hob_shared_ram_init);
-module_exit(hob_shared_ram_exit);
+fs_initcall(hob_shared_ram_init);
 
 MODULE_DESCRIPTION(HOB_RAM_MISC_DEV_NAME);
 MODULE_LICENSE("GPL v2");
