@@ -2917,8 +2917,10 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 					ctl->panel_on_locked(ctl);
 					mutex_unlock(&ctl->lock);
 				}
-			} else
+			} else {
+				atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
 				rc = mdss_mdp_overlay_kickoff(mfd, NULL);
+			}
 		}
 	} else {
 		rc = mdss_mdp_ctl_setup(mdp5_data->ctl);
