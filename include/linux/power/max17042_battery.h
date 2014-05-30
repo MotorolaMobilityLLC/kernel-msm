@@ -139,6 +139,9 @@ struct max17042_reg_data {
 };
 
 struct max17042_config_data {
+	/* Revision of this Data*/
+	u16	revision;
+
 	/* External current sense resistor value in milli-ohms */
 	u32	cur_sense_val;
 
