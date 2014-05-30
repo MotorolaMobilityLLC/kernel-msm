@@ -322,11 +322,6 @@ static int msm_ds2_dap_send_end_point(int dev_map_idx, int endp_idx)
 		goto end;
 	}
 
-	if (ds2_dap_params_states.dap_bypass == true) {
-		pr_debug("%s: use bypass cache\n", __func__);
-		cache_device =  dev_map[0].cache_dev;
-	}
-
 	ds2_ap_params_obj = &ds2_dap_params[cache_device];
 	pr_debug("%s: cache dev %d, dev_map_idx %d\n", __func__,
 		 cache_device, dev_map_idx);
