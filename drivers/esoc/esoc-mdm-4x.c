@@ -167,10 +167,12 @@ static void mdm_enable_irqs(struct mdm_ctrl *mdm)
 		return;
 	if (mdm->irq_mask & IRQ_ERRFATAL) {
 		enable_irq(mdm->errfatal_irq);
+		irq_set_irq_wake(mdm->errfatal_irq, 1);
 		mdm->irq_mask &= ~IRQ_ERRFATAL;
 	}
 	if (mdm->irq_mask & IRQ_STATUS) {
 		enable_irq(mdm->status_irq);
+		irq_set_irq_wake(mdm->status_irq, 1);
 		mdm->irq_mask &= ~IRQ_STATUS;
 	}
 	if (mdm->irq_mask & IRQ_PBLRDY) {
@@ -296,11 +298,11 @@ static void mdm_power_down(struct mdm_ctrl *mdm)
 						soft_reset_direction);
 	/*
 	* Currently, there is a debounce timer on the charm PMIC. It is
-	* necessary to hold the PMIC RESET low for ~3.5 seconds
+	* necessary to hold the PMIC RESET low for 400ms
 	* for the reset to fully take place. Sleep here to ensure the
 	* reset has occured before the function exits.
 	*/
-	msleep(4000);
+	msleep(400);
 }
 
 static int mdm_cmd_exe(enum esoc_cmd cmd, struct esoc_clink *esoc)
