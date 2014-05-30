@@ -1850,7 +1850,7 @@ static __inline tANI_U32 defHddRateToDefCfgRate( tANI_U32 defRateIndex )
 #define CFG_ENABLE_LPWR_IMG_TRANSITION_NAME        "gEnableLpwrImgTransition"
 #define CFG_ENABLE_LPWR_IMG_TRANSITION_MIN         ( 0 )
 #define CFG_ENABLE_LPWR_IMG_TRANSITION_MAX         ( 1 )
-#define CFG_ENABLE_LPWR_IMG_TRANSITION_DEFAULT     ( 0 )
+#define CFG_ENABLE_LPWR_IMG_TRANSITION_DEFAULT     ( 1 )
 
 
 /*
