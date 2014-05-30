@@ -52,13 +52,9 @@ static int mdss_debug_cmd_release(struct inode *inode, struct file *file)
 
 
 
-extern int mdss_panel_send_cmd(struct dsi_cmd_desc* test_cmd,int dir);
-/*extern*/ u32 mdss_dsi_dcs_read(struct mdss_dsi_ctrl_pdata *ctrl,
-			char cmd0, char cmd1)
-{
-	printk("TODO...\n");
-	return 0;
-}
+int _send_mipi_write_cmd(struct dsi_cmd_desc* test_cmd);
+int send_mipi_write_cmd(char cmd0, char cmd1);
+int send_mipi_read_cmd(char cmd0, char cmd1);
 
 #define CMD_BUF_SIZE 256
 static char cmd_buf[CMD_BUF_SIZE];
@@ -154,7 +150,7 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 			printk("MDSS:dsi_cmd cmd_data[%d]=0x%x\n",i,cmd_data[i]);
 		}
 
-		mdss_panel_send_cmd(dsi_cmd,1/*DSI_WRITE*/);
+		_send_mipi_write_cmd(dsi_cmd);
 
 		if (dsi_cmd) kzfree(dsi_cmd);
 	}
@@ -190,18 +186,17 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 			printk("MDSS:dsi_cmd cmd_data[%d]=0x%x\n",i,cmd_data[i]);
 		}
 
-		mdss_panel_send_cmd(dsi_cmd,0/*DSI_READ*/);
+		_send_mipi_read_cmd(dsi_cmd);
 
 		if (dsi_cmd) kzfree(dsi_cmd);
 #else
 		unsigned int cmd0,cmd1;
 		int offset=0;
-		struct mdss_dsi_ctrl_pdata *ctrl = amdu_data.ctrl;
 		offset=strlen(DSI_READ_CMD);
 		sscanf(cmd_buf+offset, "%x %x", &cmd0,&cmd1);
 		printk("MDSS:[mdss_debug.c]:%s:read >>>> cmd0=0x%x,cmd1=0x%x\n", __func__,cmd0,cmd1);
 
-		mdss_dsi_dcs_read(ctrl,cmd0,cmd1);
+		send_mipi_read_cmd(cmd0,cmd1);
 #endif
 	}
 	else if (!strncmp(SET_LOGFLAG,cmd_buf,strlen(SET_LOGFLAG))){
@@ -330,7 +325,6 @@ int enable_ambient(int enable)
 
 static int check_panel_status(void)
 {
-	struct mdss_dsi_ctrl_pdata *ctrl = amdu_data.ctrl;
 	volatile unsigned char val = 0;
 
 	if (!amdu_data.ctrl){
@@ -344,7 +338,7 @@ static int check_panel_status(void)
 
 
 	// Read Display Image Mode (RDDIM)
-	val = mdss_dsi_dcs_read(ctrl,0x0D,0);
+	val = send_mipi_read_cmd(0x0D,0);
 	printk("MDSS:[mdss_dsi_panel.c]:%s:RDDIM=0x%x!!\n",__func__,val);
 	printk("	RDDIM:D5=%d:INV ON\n", val & (1<<5) ? 1 : 0);
 	printk("	RDDIM:D4=%d:ALLPX ON\n", val & (1<<4) ? 1 : 0);
@@ -352,21 +346,21 @@ static int check_panel_status(void)
 	printk("	RDDIM:D2~D0=%d:GCS\n", val & 0x07);
 
 	// Read Display Power Mode (RDDPM)
-	val = mdss_dsi_dcs_read(ctrl, 0x0A,0);
+	val = send_mipi_read_cmd(0x0A,0);
 	printk("MDSS:[mdss_dsi_panel.c]:%s:RDDPM=0x%x!!\n",__func__,val);
 	printk("	RDDPM:D7=%d:BST ON\n", val & (1<<7) ? 1 : 0);
 	printk("	RDDPM:D4=%d:SLP OUT\n", val & (1<<4) ? 1 : 0);
 	printk("	RDDPM:D2=%d:DIS ON\n", val & (1<<2) ? 1 : 0);
-#if 0
+
 	// Read Display Signal Mode (RDDSM)
-	val = mdss_dsi_dcs_read(ctrl, 0x0E,0);
+	val = send_mipi_read_cmd(0x0E,0);
 	printk("MDSS:[mdss_dsi_panel.c]:%s:RDDSM=0x%x!!\n",__func__,val);
 	printk("	RDDSM:D7=%d:TEON, Tearing Effect Line On/Off\n", val & (1<<7) ? 1 : 0);
 	printk("	RDDSM:D6=%d:TELOM, Tearing effect line mode\n", val & (1<<6) ? 1 : 0);
 
-
+#if 0
 	// Read Display Self-Diagnostic Result (RDDSDR)
-	val = mdss_dsi_dcs_read(ctrl, 0x0F,0);
+	val = send_mipi_read_cmd(0x0F,0);
 	printk("MDSS:[mdss_dsi_panel.c]:%s:RDDSDR=0x%x!!\n",__func__,val);
 	printk("	RDDSDR:D7=%d:RELD, Register Loading Detection\n", val & (1<<7) ? 1 : 0);
 	printk("	RDDSDR:D6=%d:FUND, Functionality Detection\n", val & (1<<6) ? 1 : 0);
@@ -387,14 +381,60 @@ int is_ambient_on(){
 }
 
 
-int mdss_panel_send_cmd(struct dsi_cmd_desc* test_cmd,int dir)
+//==================================================================================================
+// MIPI Commands
+int send_mipi_write_cmd(char cmd0,char cmd1)
+{
+// Todo: Need porting. A convenient way to try mipi command.
+#if 0
+	char cmd_data[10];
+	unsigned int tmp1,tmp2;
+	int i;
+	int offset=0;
+	struct dsi_cmd_desc* dsi_cmd = (struct dsi_cmd_desc*)
+		kzalloc(sizeof(struct dsi_cmd_desc),GFP_KERNEL);
+
+	// echo write:cmd val1 val2 val3...
+
+	offset=strlen(DSI_WRITE_CMD);
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.dtype = tmp1;offset+= 3;
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.last = tmp1;offset+= 3;
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.vc = tmp1;offset+= 3;
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.ack = tmp1;offset+= 3;
+	sscanf(cmd_buf+offset, "%x %x", &tmp1,&tmp2); offset+= 6;
+	dsi_cmd->dchdr.wait = tmp1 + (tmp2 << 8);
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.dlen = tmp1,offset+= 3;
+	dsi_cmd->payload = cmd_data;
+
+	printk("MDSS:[mdss_debug.c]:%s:write >>>> \n", __func__);
+	printk("MDSS:MIPI cmd dtype=0x%x,last=0x%x,vc=0x%x,ack=0x%x,wait=0x%x(%d),dlen=0x%x(%d)\n",
+			dsi_cmd->dchdr.dtype,dsi_cmd->dchdr.last,dsi_cmd->dchdr.vc,dsi_cmd->dchdr.ack,dsi_cmd->dchdr.wait,dsi_cmd->dchdr.wait,
+			dsi_cmd->dchdr.dlen,dsi_cmd->dchdr.dlen);
+
+	for (i=0;i<dsi_cmd->dchdr.dlen;i++){
+		unsigned int value;
+		sscanf(cmd_buf+offset, "%x", &value); offset+= 3;
+		cmd_data[i] = (unsigned char)value;
+		printk("MDSS:dsi_cmd cmd_data[%d]=0x%x\n",i,cmd_data[i]);
+	}
+
+	_send_mipi_write_cmd(dsi_cmd);
+
+	if (dsi_cmd) kzfree(dsi_cmd);
+#else
+	return 0;
+#endif
+}
+
+
+int _send_mipi_write_cmd(struct dsi_cmd_desc* test_cmd)
 {
 
 	struct mdss_dsi_ctrl_pdata *ctrl = amdu_data.ctrl;
 	struct dcs_cmd_req cmdreq;	
 
 	if (!amdu_data.ctrl){
-		printk("MDSS:[mdss_dsi_panel.c]:%s: ERR!! amdu_data.ctrl = 0 !!\n",__func__);
+		printk("MDSS:[mdss_asus_debug.c]:%s: ERR!! amdu_data.ctrl = 0 !!\n",__func__);
 		return -ENODEV;
 	}
 
@@ -408,6 +448,53 @@ int mdss_panel_send_cmd(struct dsi_cmd_desc* test_cmd,int dir)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 	return 0;
 }
+
+
+static char dcs_cmd[2] = {0x54, 0x00}; /* DTYPE_DCS_READ */
+static struct dsi_cmd_desc dcs_read_cmd = {
+	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(dcs_cmd)},
+	dcs_cmd
+};
+
+static u32 send_mipi_read_cmd_len;
+static void send_mipi_read_cmd_cb(int len)
+{
+	send_mipi_read_cmd_len = len;
+}
+static char send_mipi_read_cmd_data[16];
+
+int send_mipi_read_cmd(	char cmd0, char cmd1)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = amdu_data.ctrl;
+	struct dcs_cmd_req cmdreq;
+	int i;
+
+	if (!amdu_data.ctrl){
+		printk("MDSS:[mdss_asus_debug.c]:%s: ERR!! amdu_data.ctrl = 0 !!\n",__func__);
+		return -ENODEV;
+	}
+
+	dcs_cmd[0] = cmd0;
+	dcs_cmd[1] = cmd1;
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &dcs_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	cmdreq.rlen = 16;
+	cmdreq.rbuf = send_mipi_read_cmd_data;
+	cmdreq.cb = send_mipi_read_cmd_cb; /* call back */
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	/*
+	 * blocked here, until call back called
+	 */
+
+	for(i=0;i<send_mipi_read_cmd_len;i++){
+		printk("MDSS:[mdss_asus_debug.c]:%s: MIPI Read data[%d] = %d(0x%x)\n",__func__,i,send_mipi_read_cmd_data[i],send_mipi_read_cmd_data[i]);
+	}
+
+	return send_mipi_read_cmd_data[0];
+}
+
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
