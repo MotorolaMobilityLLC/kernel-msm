@@ -56,6 +56,11 @@
 		android,ramoops-console-size = <0x20000>;
 		android,ramoops-annotate-size = <0x800>;
 	};
+
+	sound-9330 {
+		status = "disabled";
+	};
+
 	sound {
 		qcom,model = "apq8084-taiko-tfa9890_codec-snd-card";
 		qcom,cdc-micbias2-headset-only;
