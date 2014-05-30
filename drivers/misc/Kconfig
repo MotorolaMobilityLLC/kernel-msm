@@ -687,6 +687,15 @@ config DROPBOX
 	  in dropbox manager service.  This enables fast and simple logging of
 	  various critical events from kernel drivers.
 
+config HOB_SHARED_RAM
+	tristate "HOB RAM MMAP Client"
+	depends on ARCH_MSM
+	help
+	  Provide mechanism to access hob storage shared memory on apps
+	  processor. HOB - or the Hand Over Block - is the staging area for
+	  phasing data.
+	default n
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
