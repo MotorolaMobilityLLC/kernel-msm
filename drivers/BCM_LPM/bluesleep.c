@@ -142,7 +142,7 @@ static DEFINE_TIMER(tx_timer, bluesleep_tx_timer_expire, 0, 0);
 /** Lock for state transitions */
 static spinlock_t rw_lock;
 
-bool uart_clock_off = false;
+// bool uart_clock_off = false;
 
 /** Notifier block for HCI events */
 struct notifier_block hci_event_nblock = {
@@ -200,12 +200,13 @@ void bluesleep_sleep_wakeup(void)
 		clear_bit(BT_ASLEEP, &flags);
 	}
 
-	if (uart_clock_off == true) { // uart clock on after host_wake & bt_wake up
+/*	if (uart_clock_off == true) { // uart clock on after host_wake & bt_wake up
 		printk("Incoming data, HS uart port not clock on, request clock on \n");
 		msm_hs_request_clock_on(bsi->uport);
 		wake_lock_timeout(&bsi->wake_lock, HZ);
 		uart_clock_off = false;
 	}
+*/
 }
 
 /**
@@ -562,13 +563,13 @@ static void bluesleep_stop(void)
 	if(DBG) printk("host_wake %d\n", gpio_get_value(bsi->host_wake));
 	if(DBG) printk("gpio_host_wake_up_bt %d\n", gpio_get_value(gpio_host_wake_up_bt));
 	if(DBG) printk("gpio_bt_wake_up_host %d\n", gpio_get_value(gpio_bt_wake_up_host));
-
+/*
 	if (test_bit(BT_SUSPEND, &flags)) {
 		clear_bit(BT_SUSPEND, &flags);
 		msm_hs_request_clock_on(bsi->uport);
 		wake_lock_timeout(&bsi->wake_lock, HZ);
 	}
-
+*/
 	atomic_inc(&open_count);
 	spin_unlock_irqrestore(&rw_lock, irq_flags);
 
@@ -881,13 +882,14 @@ static int bluesleep_resume(struct platform_device *pdev)
 	if (test_bit(BT_SUSPEND, &flags)) {
 		printk("bluesleep resuming...\n");
 
-		if (bsi->uport != NULL && 
+/*		if (bsi->uport != NULL && 
 			(gpio_get_value(bsi->host_wake) == bsi->irq_polarity)) { // incoming data request , request uart clock on
 			msm_hs_request_clock_on(bsi->uport);
 			printk("Incoming data, request HS uart port clock on \n");
 			wake_lock_timeout(&bsi->wake_lock, HZ);
 			uart_clock_off = false;
 		}
+*/
 		clear_bit(BT_SUSPEND, &flags); 
 	}
 	return 0;
@@ -899,9 +901,10 @@ static int bluesleep_suspend(struct platform_device *pdev, pm_message_t state)
 	if (test_bit(BT_ASLEEP, &flags)) { //allow going to suspend only when BT chip is in asleep state
 		set_bit(BT_SUSPEND, &flags);
 		if(DBG) printk("bt chip is asleep , set_bit : BT_SUSPEND\n");
-		if(DBG) printk("Request HS uart port clock off \n");
+/*		if(DBG) printk("Request HS uart port clock off \n");
 		msm_hs_request_clock_off(bsi->uport);
 		uart_clock_off = true;
+*/
 	} 
 
 	return 0;
@@ -1086,12 +1089,12 @@ static void __exit bluesleep_exit(void)
 			if(DBG) printk("Couldn't disable hostwake IRQ wakeup mode\n");
 		free_irq(bsi->host_wake_irq, NULL);
 		del_timer(&tx_timer);
-
+/*
 		if (test_bit(BT_ASLEEP, &flags)) {
 			msm_hs_request_clock_on(bsi->uport);
 			wake_lock_timeout(&bsi->wake_lock, HZ);
-
 		}
+*/
 	}
 
 	hci_unregister_notifier(&hci_event_nblock);

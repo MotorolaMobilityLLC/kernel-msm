@@ -364,6 +364,7 @@ static struct msm_hs_port *msm_hs_get_hs_port(int port_index);
 	container_of((uart_port), struct msm_hs_port, uport)
 
 extern void bluesleep_setup_uart_port(struct uart_port *uport); //ASUS_BSP BerylHou +++
+bool wakeunlock = false;
 
 static int msm_hs_ioctl(struct uart_port *uport, unsigned int cmd,
 						unsigned long arg)
@@ -1363,8 +1364,11 @@ unsigned int msm_hs_tx_empty(struct uart_port *uport)
 
 	if (data & UARTDM_SR_TXEMT_BMSK) { // unlock dma wake lock if no data is in transmitting
 		ret = TIOCSER_TEMT;
-		wake_unlock(&msm_uport->dma_wake_lock);
-		printk("Beryl, wake_unlock(&msm_uport->dma_wake_lock)\n");
+		if (wakeunlock != true) { // only unlock dma_wake_lock onece after uart start up
+			wake_unlock(&msm_uport->dma_wake_lock);
+			printk("msm_hs_tx_empty, wake_unlock(&msm_uport->dma_wake_lock)\n");
+			wakeunlock = true;
+		}
 	}
 	if(DBG) printk("ret %d\n", ret);
 
@@ -2735,13 +2739,13 @@ static int msm_hs_startup(struct uart_port *uport)
 	tx->dma_base = dma_map_single(uport->dev, tx_buf->buf, UART_XMIT_SIZE,
 				      DMA_TO_DEVICE);
 
-	printk("2. Beryl, msm_hs_startup, wake_lock(&msm_uport->dma_wake_lock)\n");
+	printk("msm_hs_startup, wake_lock(&msm_uport->dma_wake_lock)\n");
 	wake_lock(&msm_uport->dma_wake_lock);
 	/* turn on uart clk */
 	ret = msm_hs_init_clk(uport);
 	if (unlikely(ret)) {
 		MSM_HS_ERR("Turning ON uartclk error\n");
-		printk("2. Beryl, msm_hs_startup fail, wake_unlock(&msm_uport->dma_wake_lock)\n");
+		printk("msm_hs_startup fail, wake_unlock(&msm_uport->dma_wake_lock)\n");
 		wake_unlock(&msm_uport->dma_wake_lock);
 		return ret;
 	}
@@ -2908,9 +2912,9 @@ unconfig_uart_gpios:
 	if (is_blsp_uart(msm_uport))
 		msm_hs_unconfig_uart_gpios(uport);
 deinit_uart_clk:
-	printk("Beryl, deinit_uart_clk\n");
+	printk("deinit_uart_clk\n");
 	msm_hs_clock_unvote(msm_uport);
-	printk("Beryl, deinit_uart_clk ,wake_unlock(&msm_uport->dma_wake_lock) \n");
+	printk("deinit_uart_clk ,wake_unlock(&msm_uport->dma_wake_lock) \n");
 	wake_unlock(&msm_uport->dma_wake_lock);
 
 	return ret;
@@ -3738,7 +3742,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 				pdev->dev.platform_data;
 	struct msm_hs_tx *tx = &msm_uport->tx;
 	struct sps_pipe *sps_pipe_handle = tx->cons.pipe_handle;
-	printk(" Beryl, msm_hs_shutdown\n");
+	printk("msm_hs_shutdown\n");
 
 	msm_hs_clock_vote(msm_uport);
 	if (msm_uport->tx.dma_in_flight) {
@@ -3797,7 +3801,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	if (msm_uport->clk_state != MSM_HS_CLK_OFF) {
 		/* to balance clk_state */
 		msm_hs_clock_unvote(msm_uport);
-		printk("Beryl, msm_hs_shutdown, wake_unlock(&msm_uport->dma_wake_lock)\n");
+		printk("msm_hs_shutdown, wake_unlock(&msm_uport->dma_wake_lock)\n");
 		wake_unlock(&msm_uport->dma_wake_lock);
 	}
 
@@ -3837,7 +3841,7 @@ static int msm_hs_runtime_idle(struct device *dev)
 	 * returning success from idle results in runtime suspend to be
 	 * called
 	 */
-	printk(" Beryl, msm_hs_runtime_idle\n");
+	printk("msm_hs_runtime_idle\n");
 
 	return 0;
 }
@@ -3847,7 +3851,7 @@ static int msm_hs_runtime_resume(struct device *dev)
 	struct platform_device *pdev = container_of(dev, struct
 						    platform_device, dev);
 	struct msm_hs_port *msm_uport = get_matching_hs_port(pdev);
-	printk(" Beryl, msm_hs_runtime_resume\n");
+	printk("sm_hs_runtime_resume\n");
 
 	/* This check should not fail
 	 * During probe, we set uport->line to either pdev->id or userid */
@@ -3863,7 +3867,7 @@ static int msm_hs_runtime_suspend(struct device *dev)
 						    platform_device, dev);
 	struct msm_hs_port *msm_uport = get_matching_hs_port(pdev);
 
-	printk(" Beryl, msm_hs_runtime_suspend\n");
+	printk("msm_hs_runtime_suspend\n");
 
 	/* This check should not fail
 	 * During probe, we set uport->line to either pdev->id or userid */
