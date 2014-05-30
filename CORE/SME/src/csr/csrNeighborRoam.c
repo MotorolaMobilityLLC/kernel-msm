@@ -2096,29 +2096,41 @@ static eHalStatus csrNeighborRoamProcessScanComplete (tpAniSirGlobal pMac)
             }
  
         }
-
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-if (csrRoamIsRoamOffloadScanEnabled(pMac))
-   {
-    if (!tempVal || !roamNow)
-    {
-       if (pNeighborRoamInfo->uOsRequestedHandoff)
-       {
-          csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
-          pNeighborRoamInfo->uOsRequestedHandoff = 0;
-       }
-       else
-       {
-         /* There is no candidate or We are not roaming Now.
-          * Inform the FW to restart Roam Offload Scan  */
-          csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
-       }
-       CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CONNECTED);
-    }
-   }
+        if (csrRoamIsRoamOffloadScanEnabled(pMac))
+        {
+            if (!tempVal || !roamNow)
+            {
+                if((eSME_ROAM_TRIGGER_SCAN == pNeighborRoamInfo->cfgRoamEn) ||
+                   (eSME_ROAM_TRIGGER_FAST_ROAM == pNeighborRoamInfo->cfgRoamEn))
+                {
+                    //This is ioctl based roaming if we did not find any roamable
+                    //candidate then just log it.
+                    VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                            "tempVal = %u, roamNow = %d uOsRequestedHandoff = %d",
+                            tempVal, roamNow, pNeighborRoamInfo->uOsRequestedHandoff);
+                }
+                else
+                {
+                    if (pNeighborRoamInfo->uOsRequestedHandoff)
+                    {
+                        csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START,
+                            REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
+                        pNeighborRoamInfo->uOsRequestedHandoff = 0;
+                    }
+                    else
+                    {
+                        /* There is no candidate or We are not roaming Now.
+                         * Inform the FW to restart Roam Offload Scan  */
+                        csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART,
+                            REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
+                    }
+                }
+                CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CONNECTED);
+            }
+        }
 #endif
     return eHAL_STATUS_SUCCESS;
-
 }
 
 
