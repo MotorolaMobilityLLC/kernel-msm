@@ -157,7 +157,7 @@ static int hob_ram_protect(struct hob_ram_misc_dev *hob_dev)
 	return ret;
 }
 
-static int __devinit hob_ram_probe(struct platform_device *pdev)
+static int hob_ram_probe(struct platform_device *pdev)
 {
 	int ret;
 
@@ -204,7 +204,7 @@ static int __devinit hob_ram_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int __devexit hob_ram_remove(struct platform_device *dev)
+static int hob_ram_remove(struct platform_device *dev)
 {
 	misc_deregister(&hob_dev->mdev);
 	mutex_destroy(&hob_dev->lock);
@@ -221,7 +221,7 @@ EXPORT_COMPAT(HOB_RAM_MISC_DEV_NAME);
 
 static struct platform_driver hob_driver = {
 	.probe = hob_ram_probe,
-	.remove = __devexit_p(hob_ram_remove),
+	.remove = hob_ram_remove,
 	.driver = {
 		.name = HOB_RAM_MISC_DEV_NAME,
 		.owner = THIS_MODULE,
