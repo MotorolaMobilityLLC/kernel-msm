@@ -6712,7 +6712,10 @@ eHalStatus csrScanTriggerIdleScan(tpAniSirGlobal pMac, tANI_U32 *pTimeInterval)
     {
         smsLog( pMac, LOG1, FL("Defer IMPS for %dms as command processed"),
                 pMac->fDeferIMPSTime);
-        *pTimeInterval = pMac->fDeferIMPSTime * 1000; //usec
+        if(pTimeInterval)
+        {
+            *pTimeInterval = pMac->fDeferIMPSTime * 1000; //usec
+        }
         pMac->deferImps = eANI_BOOLEAN_TRUE;
         return status;
     }
