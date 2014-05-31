@@ -306,6 +306,13 @@ struct sensor_value {
 			s16 acc_z;
 			u8 acc_rot;
 		};
+		struct {		/* game rotation vector */
+			s32 quat_grv_a;
+			s32 quat_grv_b;
+			s32 quat_grv_c;
+			s32 quat_grv_d;
+			u8 acc_grv_rot;
+		};
 #ifdef CONFIG_SENSORS_SSP_ADPD142
 		struct {
 			s16 hr;

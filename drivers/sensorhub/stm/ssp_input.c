@@ -286,17 +286,17 @@ void report_game_rot_data(struct ssp_data *data,
 {
 	int grot_buf[5];
 
-	data->buf[GAME_ROTATION_VECTOR].quat_a = grvec_data->quat_a;
-	data->buf[GAME_ROTATION_VECTOR].quat_b = grvec_data->quat_b;
-	data->buf[GAME_ROTATION_VECTOR].quat_c = grvec_data->quat_c;
-	data->buf[GAME_ROTATION_VECTOR].quat_d = grvec_data->quat_d;
-	data->buf[GAME_ROTATION_VECTOR].acc_rot = grvec_data->acc_rot;
+	data->buf[GAME_ROTATION_VECTOR].quat_grv_a = grvec_data->quat_grv_a;
+	data->buf[GAME_ROTATION_VECTOR].quat_grv_b = grvec_data->quat_grv_b;
+	data->buf[GAME_ROTATION_VECTOR].quat_grv_c = grvec_data->quat_grv_c;
+	data->buf[GAME_ROTATION_VECTOR].quat_grv_d = grvec_data->quat_grv_d;
+	data->buf[GAME_ROTATION_VECTOR].acc_grv_rot = grvec_data->acc_grv_rot;
 
-	grot_buf[0] = grvec_data->quat_a;
-	grot_buf[1] = grvec_data->quat_b;
-	grot_buf[2] = grvec_data->quat_c;
-	grot_buf[3] = grvec_data->quat_d;
-	grot_buf[4] = grvec_data->acc_rot;
+	grot_buf[0] = grvec_data->quat_grv_a;
+	grot_buf[1] = grvec_data->quat_grv_b;
+	grot_buf[2] = grvec_data->quat_grv_c;
+	grot_buf[3] = grvec_data->quat_grv_d;
+	grot_buf[4] = grvec_data->acc_grv_rot;
 
 	ssp_push_17bytes_buffer(data->game_rot_indio_dev, grvec_data->timestamp,
 		grot_buf);
