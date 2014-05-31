@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -113,4 +113,14 @@ int wcd9xxx_rx_vport_validation(u32 port_id,
 				struct list_head *codec_dai_list);
 int wcd9xxx_tx_vport_validation(u32 vtable, u32 port_id,
 				struct wcd9xxx_codec_dai_data *codec_dai);
+int wcd9xxx_slim_ch_master_open(struct wcd9xxx *wcd9xxx,
+		u16 rate, u16 bit_sz, void **handle, u16 slim_channel);
+int wcd9xxx_slim_ch_master_close(struct wcd9xxx *wcd9xxx, void **handle);
+int wcd9xxx_slim_ch_master_status(struct wcd9xxx *wcd9xxx, void *handle,
+				  phys_addr_t phys, u32 *len);
+int wcd9xxx_slim_ch_master_enable_read(struct wcd9xxx *wcd9xxx, void *handle);
+int wcd9xxx_slim_ch_master_read(struct wcd9xxx *wcd9xxx, void *handle,
+				 phys_addr_t phys, u8 *mem, u32 read_len);
+
+
 #endif /* __WCD9310_SLIMSLAVE_H_ */
