@@ -549,6 +549,10 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	mfd->quickdraw_in_progress = false;
 	mfd->quickdraw_reset_panel = false;
+	if (mfd->panel_info->cont_splash_feature_on) {
+		mfd->bl_level_old = mfd->panel_info->bl_max;
+		mfd->bl_updated = true;
+	}
 
 	return rc;
 }
@@ -1393,6 +1397,7 @@ static int mdss_fb_release_all(struct fb_info *info, struct file *file)
 	struct mdss_fb_proc_info *release_pinfo = NULL;
 	int pid_ref_cnt = 0;
 	int ret = 0;
+	struct mdss_panel_data *pdata;
 
 	if (!mfd->ref_cnt) {
 		pr_info("try to close unopened fb %d!\n", mfd->index);
@@ -1460,6 +1465,19 @@ static int mdss_fb_release_all(struct fb_info *info, struct file *file)
 		if (mfd->disp_thread) {
 			kthread_stop(mfd->disp_thread);
 			mfd->disp_thread = NULL;
+		}
+
+		/*
+		 * Turn off back light of video panel to make possible artifacts
+		 * caused by blank/unblank invisible.
+		 */
+		pdata = dev_get_platdata(&mfd->pdev->dev);
+		if (pdata && pdata->set_backlight &&
+			mfd->panel_info->type == MIPI_VIDEO_PANEL) {
+			mutex_lock(&mfd->bl_lock);
+			if (mfd->bl_level_old != 0)
+				pdata->set_backlight(pdata, 0);
+			mutex_unlock(&mfd->bl_lock);
 		}
 
 		ret = mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info,
