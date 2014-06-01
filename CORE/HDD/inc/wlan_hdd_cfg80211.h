@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -183,10 +183,9 @@ int wlan_hdd_cfg80211_init(struct device *dev,
                                          );
 
 int wlan_hdd_cfg80211_register( struct wiphy *wiphy);
-void wlan_hdd_cfg80211_post_voss_start(hdd_adapter_t* pAdapter);
+void wlan_hdd_cfg80211_register_frames(hdd_adapter_t* pAdapter);
 
-void wlan_hdd_cfg80211_pre_voss_stop(hdd_adapter_t* pAdapter);
-
+void wlan_hdd_cfg80211_deregister_frames(hdd_adapter_t* pAdapter);
 #ifdef CONFIG_ENABLE_LINUX_REG
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
 void wlan_hdd_linux_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);

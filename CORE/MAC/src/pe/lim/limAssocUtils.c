@@ -907,7 +907,8 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
 
         //if it is a reassoc failure to join new AP
         if((mlmStaContext.resultCode == eSIR_SME_FT_REASSOC_TIMEOUT_FAILURE) ||
-           (mlmStaContext.resultCode == eSIR_SME_FT_REASSOC_FAILURE))
+           (mlmStaContext.resultCode == eSIR_SME_FT_REASSOC_FAILURE) ||
+           (mlmStaContext.resultCode == eSIR_SME_REASSOC_TIMEOUT_RESULT_CODE))
         {
             if(mlmStaContext.resultCode != eSIR_SME_SUCCESS )
             {
