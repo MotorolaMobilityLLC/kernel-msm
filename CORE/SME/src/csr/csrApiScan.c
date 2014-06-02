@@ -4059,6 +4059,7 @@ void csrConstructCurrentValidChannelList( tpAniSirGlobal pMac, tDblLinkList *pCh
 */
 tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tANI_BOOLEAN fForce)
 {
+    eHalStatus status;
     tANI_BOOLEAN fRet = eANI_BOOLEAN_FALSE;
     v_REGDOMAIN_t domainId;
 
@@ -4069,11 +4070,7 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tANI_BOOLEAN fForc
     {
         // check if .11d support is enabled
         if( !csrIs11dSupported( pMac ) ) break;
-#ifdef CONFIG_ENABLE_LINUX_REG
-            csrGetRegulatoryDomainForCountry(pMac, pMac->scan.countryCodeElected,
-                                             &domainId, COUNTRY_IE);
-#endif
-#ifndef CONFIG_ENABLE_LINUX_REG
+
         status = csrGetRegulatoryDomainForCountry(pMac,
                        pMac->scan.countryCodeElected, &domainId, COUNTRY_IE);
         if ( status != eHAL_STATUS_SUCCESS )
@@ -4082,6 +4079,7 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tANI_BOOLEAN fForc
             fRet = eANI_BOOLEAN_FALSE;
             break;
         }
+#ifndef CONFIG_ENABLE_LINUX_REG
         // Checking for Domain Id change
         if ( domainId != pMac->scan.domainIdCurrent )
         {
@@ -6712,7 +6710,10 @@ eHalStatus csrScanTriggerIdleScan(tpAniSirGlobal pMac, tANI_U32 *pTimeInterval)
     {
         smsLog( pMac, LOG1, FL("Defer IMPS for %dms as command processed"),
                 pMac->fDeferIMPSTime);
-        *pTimeInterval = pMac->fDeferIMPSTime * 1000; //usec
+        if(pTimeInterval)
+        {
+            *pTimeInterval = pMac->fDeferIMPSTime * 1000; //usec
+        }
         pMac->deferImps = eANI_BOOLEAN_TRUE;
         return status;
     }

@@ -24787,6 +24787,32 @@ WDI_IsHwFrameTxTranslationCapable
   return gWDICb.bFrameTransEnabled;
 }/*WDI_IsHwFrameTxTranslationCapable*/
 
+
+/**
+ @brief WDI_IsSelfSTA - check if staid is self sta index
+
+
+ @param  pWDICtx:   pointer to the WLAN DAL context
+         ucSTAIdx:  station index
+
+ @return Result of the function call
+*/
+wpt_boolean WDI_IsSelfSTA(  void*  pWDICtx, wpt_uint8 ucSTAIdx )
+{
+   wpt_uint8              ucSTAType;
+
+   if( WDI_STATableGetStaType( (WDI_ControlBlockType*)pWDICtx,
+                                ucSTAIdx,&ucSTAType) == WDI_STATUS_SUCCESS)
+   {
+        if( ucSTAType == WDI_STA_ENTRY_SELF )
+           return eWLAN_PAL_TRUE;
+   }
+
+  return eWLAN_PAL_FALSE;
+}
+
+
+
 #ifdef FEATURE_WLAN_SCAN_PNO
 /**
  @brief WDI_SetPreferredNetworkList
