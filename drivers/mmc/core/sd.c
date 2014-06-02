@@ -434,9 +434,9 @@ static int sd_select_driver_type(struct mmc_card *card, u8 *status)
 	 * return what is possible given the options
 	 */
 	mmc_host_clk_hold(card->host);
-	drive_strength = card->host->ops->select_drive_strength(
-		card->sw_caps.uhs_max_dtr,
-		host_drv_type, card_drv_type);
+	drive_strength = card->host->ops->select_drive_strength(card->host,
+								host_drv_type,
+								 card_drv_type);
 	mmc_host_clk_release(card->host);
 
 	err = mmc_sd_switch(card, 1, 2, drive_strength, status);
