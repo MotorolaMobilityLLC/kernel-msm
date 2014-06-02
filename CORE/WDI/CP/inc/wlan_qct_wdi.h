@@ -9748,6 +9748,24 @@ wpt_boolean WDI_IsHwFrameTxTranslationCapable
   wpt_uint8 uSTAIdx
 );
 
+
+/**
+ @brief WDI_IsSelfSTA - check if staid is self sta index
+
+ @param  pWDICtx:   pointer to the WLAN DAL context
+         ucSTAIdx:  station index
+
+ @return Result of the function call
+*/
+
+wpt_boolean
+WDI_IsSelfSTA
+(
+   void*  pWDICtx,
+   wpt_uint8 ucSTAIdx
+);
+
+
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /**
  @brief WDI_AggrAddTSReq will be called when the upper MAC to inform

@@ -1248,6 +1248,8 @@ eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
 v_BOOL_t WDA_IsHwFrameTxTranslationCapable(v_PVOID_t pVosGCtx, 
                                                       tANI_U8 staIdx);
 
+v_BOOL_t WDA_IsSelfSTA(v_PVOID_t pVosGCtx,tANI_U8 staIdx);
+
 #  define WDA_EnableUapsdAcParams(vosGCtx, staId, uapsdInfo) \
          WDA_SetUapsdAcParamsReq(vosGCtx, staId, uapsdInfo)
 
