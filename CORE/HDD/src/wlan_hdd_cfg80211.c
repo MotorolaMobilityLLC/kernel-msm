@@ -11299,11 +11299,11 @@ static int wlan_hdd_cfg80211_dump_survey(struct wiphy *wiphy,
 }
 
 /*
- * FUNCTION: wlan_hdd_cfg80211_resume_wlan
+ * FUNCTION: __wlan_hdd_cfg80211_resume_wlan
  * this is called when cfg80211 driver resume
  * driver updates  latest sched_scan scan result(if any) to cfg80211 database
  */
-int wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
+int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
 {
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     hdd_adapter_t *pAdapter;
@@ -11386,11 +11386,22 @@ int wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
     return 0;
 }
 
+int wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __wlan_hdd_cfg80211_resume_wlan(wiphy);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
+
 /*
- * FUNCTION: wlan_hdd_cfg80211_suspend_wlan
+ * FUNCTION: __wlan_hdd_cfg80211_suspend_wlan
  * this is called when cfg80211 driver suspends
  */
-int wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
+int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
                                    struct cfg80211_wowlan *wow)
 {
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
@@ -11410,6 +11421,17 @@ int wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
     return 0;
 }
 
+int wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
+                                   struct cfg80211_wowlan *wow)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __wlan_hdd_cfg80211_suspend_wlan(wiphy, wow);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
 /* cfg80211_ops */
 static struct cfg80211_ops wlan_hdd_cfg80211_ops =
 {
