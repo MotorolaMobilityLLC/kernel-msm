@@ -91,3 +91,8 @@
 	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
 	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
 };
+
+&usb3 {
+	interrupt-map = <0x0 0 &intc 0 133 0>;
+	interrupt-names = "hs_phy_irq";
+};
