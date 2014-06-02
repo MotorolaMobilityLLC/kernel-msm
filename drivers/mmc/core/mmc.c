@@ -1141,7 +1141,7 @@ static int mmc_select_driver_type(struct mmc_card *card)
 		host_drv_type, card_drv_type);
 	mmc_host_clk_release(card->host);
 
-	pr_info("%s: %s: %d\n", mmc_hostname(card->host), __func__, drv_type);
+	pr_debug("%s: %s: %d\n", mmc_hostname(card->host), __func__, drv_type);
 	/* We send the driver type as part of the HS_TIMING command. */
 	card->ext_csd.drv_type = drv_type;
 

@@ -233,6 +233,20 @@ static int disable_slots;
 /* root can write, others read */
 module_param(disable_slots, int, S_IRUGO|S_IWUSR);
 
+#if defined(CONFIG_MMC_SDHCI_MSM_DEBUG)
+static struct dentry *debugfs_dir;
+
+static u8 debug_drv_types;
+int __init setup_sdhci_msm_drv_types(char *s)
+{
+	if (kstrtou8(s, 16, &debug_drv_types) < 0)
+		return 0;
+
+	return 1;
+}
+__setup("msmsdcc_drvtypes=", setup_sdhci_msm_drv_types);
+#endif
+
 /* This structure keeps information per regulator */
 struct sdhci_msm_reg_data {
 	/* voltage regulator handle */
@@ -364,6 +378,12 @@ struct sdhci_msm_host {
 	bool is_sdiowakeup_enabled;
 	atomic_t controller_clock;
 	bool use_cdclp533;
+#if defined(CONFIG_MMC_SDHCI_MSM_DEBUG)
+	struct dentry *debugfs_host_dir;
+	struct dentry **debugfs_pad_pull;
+	struct dentry **debugfs_pad_drv;
+	struct dentry *debugfs_drv_types;
+#endif
 };
 
 enum vdd_io_level {
@@ -1674,7 +1694,7 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	struct sdhci_msm_pltfm_data *pdata = NULL;
 	struct device_node *np = dev->of_node;
 	u32 bus_width = 0;
-	u32 drv_types = MMC_DRIVER_TYPE_0;
+	u32 drv_types = 0;
 	int len, i, mpm_int;
 	int clk_table_len;
 	u32 *clk_table = NULL;
@@ -1702,7 +1722,12 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	if (sdhci_msm_populate_qos(dev, pdata, host))
 		goto out;
 
-	if (!of_property_read_u32(np, "qcom,drv-types", &drv_types)) {
+	of_property_read_u32(np, "qcom,drv-types", &drv_types);
+#if defined(CONFIG_MMC_SDHCI_MSM_DEBUG)
+	if (debug_drv_types)
+		drv_types = debug_drv_types;
+#endif
+	if (drv_types) {
 		if (drv_types & MMC_DRIVER_TYPE_1)
 			pdata->caps |= MMC_CAP_DRIVER_TYPE_A;
 		if (drv_types & MMC_DRIVER_TYPE_2)
@@ -3207,6 +3232,159 @@ void sdhci_msm_reset_workaround(struct sdhci_host *host, u32 enable)
 	}
 }
 
+#if defined(CONFIG_MMC_SDHCI_MSM_DEBUG)
+static char *debugfs_pull[] = {
+	"pad_pull_clk", "pad_pull_cmd", "pad_pull_dat", "pad_pull_rclk", NULL };
+
+static int sdhci_msm_debugfs_pad_pull_get(void *data, u64 *val)
+{
+	struct sdhci_msm_pad_pull *pad_pull = data;
+
+	*val = pad_pull->val;
+
+	return 0;
+}
+
+static int sdhci_msm_debugfs_pad_pull_set(void *data, u64 val)
+{
+	struct sdhci_msm_pad_pull *pad_pull = data;
+
+	pad_pull->val = (u32)val;
+	msm_tlmm_set_pull(pad_pull->no, pad_pull->val);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(sdhci_msm_debugfs_pad_pull_ops,
+			sdhci_msm_debugfs_pad_pull_get,
+			sdhci_msm_debugfs_pad_pull_set,
+			"%llu\n");
+
+static char *debugfs_drv[] = {
+	"pad_drv_clk", "pad_drv_cmd", "pad_drv_dat", NULL };
+
+static int sdhci_msm_debugfs_pad_drv_get(void *data, u64 *val)
+{
+	struct sdhci_msm_pad_drv *pad_drv = data;
+
+	*val = pad_drv->val;
+
+	return 0;
+}
+
+static int sdhci_msm_debugfs_pad_drv_set(void *data, u64 val)
+{
+	struct sdhci_msm_pad_drv *pad_drv = data;
+
+	pad_drv->val = (u32)val;
+	msm_tlmm_set_hdrive(pad_drv->no, pad_drv->val);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(sdhci_msm_debugfs_pad_drv_ops,
+			sdhci_msm_debugfs_pad_drv_get,
+			sdhci_msm_debugfs_pad_drv_set,
+			"%llu\n");
+
+static int sdhci_msm_debugfs_drv_types_get(void *data, u64 *val)
+{
+	struct sdhci_msm_pltfm_data *pdata = data;
+
+	*val = pdata->drv_types;
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(sdhci_msm_debugfs_drv_types_ops,
+			sdhci_msm_debugfs_drv_types_get,
+			NULL,
+			"0x%llX\n");
+
+static void sdhci_msm_debugfs_init(struct sdhci_msm_host *msm_host)
+{
+	struct sdhci_msm_pad_data *pad_data =
+			msm_host->pdata->pin_data->pad_data;
+	int i;
+
+	if (!debugfs_dir)
+		debugfs_dir = debugfs_create_dir("sdhci_msm", 0);
+
+	if (IS_ERR(debugfs_dir)) {
+		dev_err(&msm_host->pdev->dev, "failed to create debugfs root\n");
+		return;
+	}
+
+	msm_host->debugfs_host_dir = debugfs_create_dir(
+			mmc_hostname(msm_host->mmc), debugfs_dir);
+	if (IS_ERR(msm_host->debugfs_host_dir)) {
+		dev_err(&msm_host->pdev->dev,
+			"failed to create debugfs host dir (%ld)\n",
+			PTR_ERR(msm_host->debugfs_host_dir));
+		msm_host->debugfs_host_dir = NULL;
+		return;
+	}
+
+	msm_host->debugfs_pad_pull = devm_kzalloc(&msm_host->pdev->dev,
+		pad_data->pull->size * sizeof(struct dentry *), GFP_KERNEL);
+	if (!msm_host->debugfs_pad_pull) {
+		dev_err(&msm_host->pdev->dev, "out of memory for debugfs pull entries\n");
+		return;
+	}
+	for (i = 0; i < pad_data->pull->size && debugfs_pull[i]; i++) {
+		msm_host->debugfs_pad_pull[i] = debugfs_create_file(
+				debugfs_pull[i], S_IRUSR | S_IWUSR,
+				msm_host->debugfs_host_dir,
+				&pad_data->pull->on[i],
+				&sdhci_msm_debugfs_pad_pull_ops);
+		if (IS_ERR(msm_host->debugfs_pad_pull[i])) {
+			dev_err(&msm_host->pdev->dev,
+				"failed to create a debugfs pad_pull entry (%ld)\n",
+				PTR_ERR(msm_host->debugfs_pad_pull[i]));
+			msm_host->debugfs_pad_pull[i] = NULL;
+		}
+	}
+
+	msm_host->debugfs_pad_drv = devm_kzalloc(&msm_host->pdev->dev,
+		pad_data->drv->size * sizeof(struct dentry *), GFP_KERNEL);
+	if (!msm_host->debugfs_pad_pull) {
+		dev_err(&msm_host->pdev->dev, "out of memory for debugfs pull entries\n");
+		return;
+	}
+	for (i = 0; i < pad_data->pull->size && debugfs_drv[i]; i++) {
+		msm_host->debugfs_pad_drv[i] = debugfs_create_file(
+				debugfs_drv[i], S_IRUSR | S_IWUSR,
+				msm_host->debugfs_host_dir,
+				&pad_data->drv->on[i],
+				&sdhci_msm_debugfs_pad_drv_ops);
+		if (IS_ERR(msm_host->debugfs_pad_drv[i])) {
+			dev_err(&msm_host->pdev->dev,
+				"failed to create a debugfs pad_drv entry (%ld)\n",
+				PTR_ERR(msm_host->debugfs_pad_drv[i]));
+			msm_host->debugfs_pad_drv[i] = NULL;
+		}
+	}
+
+	msm_host->debugfs_drv_types = debugfs_create_file("drv_types",
+			S_IRUSR, msm_host->debugfs_host_dir,
+			msm_host->pdata, &sdhci_msm_debugfs_drv_types_ops);
+	if (IS_ERR(msm_host->debugfs_drv_types)) {
+			dev_err(&msm_host->pdev->dev,
+				"failed to create a debugfs drv_types entry (%ld)\n",
+				PTR_ERR(msm_host->debugfs_drv_types));
+			msm_host->debugfs_drv_types = NULL;
+		}
+}
+
+static void sdhci_msm_debugfs_remove(struct sdhci_msm_host *msm_host)
+{
+	debugfs_remove_recursive(msm_host->debugfs_host_dir);
+	msm_host->debugfs_host_dir = NULL;
+}
+#else
+static void sdhci_msm_debugfs_init(struct sdhci_msm_host *msm_host) {}
+static void sdhci_msm_debugfs_remove(struct sdhci_msm_host *msm_host) {}
+#endif
+
 static struct sdhci_ops sdhci_msm_ops = {
 	.set_uhs_signaling = sdhci_msm_set_uhs_signaling,
 	.check_power_status = sdhci_msm_check_power_status,
@@ -3717,6 +3895,9 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	}
 
 	device_enable_async_suspend(&pdev->dev);
+
+	sdhci_msm_debugfs_init(msm_host);
+
 	/* Successful initialization */
 	goto out;
 
@@ -3766,6 +3947,8 @@ static int sdhci_msm_remove(struct platform_device *pdev)
 	struct sdhci_msm_pltfm_data *pdata = msm_host->pdata;
 	int dead = (readl_relaxed(host->ioaddr + SDHCI_INT_STATUS) ==
 			0xffffffff);
+
+	sdhci_msm_debugfs_remove(msm_host);
 
 	pr_debug("%s: %s\n", dev_name(&pdev->dev), __func__);
 	if (!gpio_is_valid(msm_host->pdata->status_gpio))
