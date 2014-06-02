@@ -313,6 +313,8 @@ struct sdhci_ops {
 	void	(*crypto_cfg_reset)(struct sdhci_host *host, unsigned int slot);
 	void	(*set_uhs_signaling)(struct sdhci_host *host, unsigned int uhs);
 	void	(*hw_reset)(struct sdhci_host *host);
+	int	(*select_drive_strength)(struct sdhci_host *host,
+					int host_drv, int card_drv);
 	void    (*adma_workaround)(struct sdhci_host *host, u32 intmask);
 	unsigned int	(*get_max_segments)(void);
 	void	(*platform_init)(struct sdhci_host *host);

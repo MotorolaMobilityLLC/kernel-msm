@@ -380,6 +380,13 @@ config MMC_SDHCI_MSM
 
 	  If unsure, say N.
 
+config MMC_SDHCI_MSM_DEBUG
+	tristate "Qualcomm SDHCI Controller Debugging"
+	depends on ARCH_MSM
+	depends on MMC_SDHCI_PLTFM
+	depends on DEBUG_FS
+	default n
+
 config MMC_SDHCI_MSM_ICE
 	bool "Qualcomm Technologies, Inc Inline Crypto Engine for SDHCI core"
 	depends on MMC_SDHCI_MSM && CRYPTO_DEV_QCOM_ICE
