@@ -10546,7 +10546,6 @@ eHalStatus sme_AddChAvoidCallback
 }
 #endif /* FEATURE_WLAN_CH_AVOID */
 
-
 void activeListCmdTimeoutHandle(void *userData)
 {
     if (NULL == userData)
@@ -10556,6 +10555,182 @@ void activeListCmdTimeoutHandle(void *userData)
     csrLLCount(&((tpAniSirGlobal) userData)->sme.smeCmdActiveList) );
     smeGetCommandQStatus((tHalHandle) userData);
 }
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+
+/* ---------------------------------------------------------------------------
+    \fn sme_LLStatsSetReq
+    \brief  API to set link layer stats request to FW
+    \param  hHal - The handle returned by macOpen.
+
+    \Param  pStatsReq - a pointer to a caller allocated object of
+     typedef struct tSirLLStatsSetReq, signifying the parameters to link layer
+     stats set.
+
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_LLStatsSetReq(tHalHandle hHal,
+                                tSirLLStatsSetReq *pLinkLayerStatsSetReq)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    vos_msg_t msg;
+    eHalStatus status = eHAL_STATUS_FAILURE;
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+      "%s:  pLinkLayerStatsSetReq.mpdu_size = %u", __func__,
+        pLinkLayerStatsSetReq->mpduSizeThreshold);
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+      " pLinkLayerStatsSetReq->mpdu_size = %u",
+      pLinkLayerStatsSetReq->mpduSizeThreshold);
+
+    if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
+    {
+        msg.type = WDA_LINK_LAYER_STATS_SET_REQ;
+        msg.reserved = 0;
+        msg.bodyptr = pLinkLayerStatsSetReq;
+
+        if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
+                    "Not able to post SIR_HAL_LL_STATS_SET message to HAL", __func__);
+            status = eHAL_STATUS_FAILURE;
+        }
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+    else
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
+                "sme_AcquireGlobalLock error", __func__);
+    }
+    return status;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_LLStatsGetReq
+    \brief  API to get link layer stats request to FW
+    \param  hHal - The handle returned by macOpen.
+
+    \Param  pStatsReq - a pointer to a caller allocated object of
+     typedef struct tSirLLStatsGetReq, signifying the parameters to link layer
+     stats get.
+
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_LLStatsGetReq(tHalHandle hHal,
+                                tSirLLStatsGetReq *pLinkLayerStatsGetReq)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    vos_msg_t msg;
+    eHalStatus status = eHAL_STATUS_FAILURE;
+
+
+    if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
+    {
+        msg.type = WDA_LINK_LAYER_STATS_GET_REQ;
+        msg.reserved = 0;
+        msg.bodyptr = pLinkLayerStatsGetReq;
+        if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
+                    "Not able to post SIR_HAL_LL_STATS_GET message to HAL", __func__);
+            status = eHAL_STATUS_FAILURE;
+        }
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+    else
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
+                "sme_AcquireGlobalLock error", __func__);
+    }
+    return status;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_LLStatsClearReq
+    \brief  API to clear link layer stats request to FW
+    \param  hHal - The handle returned by macOpen.
+
+    \Param  pStatsReq - a pointer to a caller allocated object of
+     typedef struct tSirLLStatsClearReq, signifying the parameters to link layer
+     stats clear.
+
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_LLStatsClearReq(tHalHandle hHal,
+                                tSirLLStatsClearReq *pLinkLayerStatsClear)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    vos_msg_t msg;
+    eHalStatus status = eHAL_STATUS_FAILURE;
+
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                  "reqId = %u", pLinkLayerStatsClear->reqId);
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+              "staId = %u", pLinkLayerStatsClear->staId);
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+              "statsClearReqMask = 0x%X",
+              pLinkLayerStatsClear->statsClearReqMask);
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+              "stopReq = %u", pLinkLayerStatsClear->stopReq);
+
+    if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
+    {
+        msg.type = WDA_LINK_LAYER_STATS_CLEAR_REQ;
+        msg.reserved = 0;
+        msg.bodyptr = pLinkLayerStatsClear;
+
+        if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
+                    "Not able to post SIR_HAL_LL_STATS_CLEAR message to HAL", __func__);
+            status = eHAL_STATUS_FAILURE;
+        }
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+    else
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
+                "sme_AcquireGlobalLock error", __func__);
+    }
+
+    return status;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SetLinkLayerStatsIndCB
+    \brief  API to trigger Link Layer Statistic indications from FW
+    \param  hHal - The handle returned by macOpen.
+    \param  sessionId - session ID
+    \param  callbackRoutine - HDD callback which needs to be invoked after
+            getting Link Layer Statistics from FW
+    \param  callbackContext - pAdapter context
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_SetLinkLayerStatsIndCB
+(
+    tHalHandle hHal, tANI_U8 sessionId,
+    void (*callbackRoutine) (void *callbackCtx, int indType, void *pRsp),
+    void *callbackContext
+)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus status;
+
+    if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
+    {
+        if (NULL != callbackRoutine)
+        {
+           pMac->sme.pLinkLayerStatsIndCallback = callbackRoutine;
+           pMac->sme.pLinkLayerStatsCallbackContext = callbackContext;
+        }
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status;
+}
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
 eHalStatus sme_UpdateConnectDebug(tHalHandle hHal, tANI_U32 set_value)
 {

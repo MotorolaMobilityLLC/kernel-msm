@@ -1201,6 +1201,13 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 
 #define WDA_GET_BCN_MISS_RATE_REQ        SIR_HAL_BCN_MISS_RATE_REQ
 
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+#define WDA_LINK_LAYER_STATS_CLEAR_REQ         SIR_HAL_LL_STATS_CLEAR_REQ
+#define WDA_LINK_LAYER_STATS_SET_REQ           SIR_HAL_LL_STATS_SET_REQ
+#define WDA_LINK_LAYER_STATS_GET_REQ           SIR_HAL_LL_STATS_GET_REQ
+#define WDA_LINK_LAYER_STATS_RESULTS_RSP       SIR_HAL_LL_STATS_RESULTS_RSP
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
 eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
@@ -1997,5 +2004,4 @@ void WDA_TrafficStatsTimerActivate(wpt_boolean activate);
 
 ===========================================================================*/
 void WDA_SetEnableSSR(v_BOOL_t enableSSR);
-
 #endif

@@ -144,6 +144,14 @@ typedef struct tagSmeStruct
 #ifdef FEATURE_WLAN_CH_AVOID
     void (*pChAvoidNotificationCb) (void *pAdapter, void *indParam);
 #endif /* FEATURE_WLAN_CH_AVOID */
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+   /* HDD callback to be called after receiving Link Layer Stats Results IND from FW */
+   void(*pLinkLayerStatsIndCallback)(void *callbackContext,
+                                     int indType, void *pRsp);
+   void *pLinkLayerStatsCallbackContext;
+#endif
+
 } tSmeStruct, *tpSmeStruct;
 
 

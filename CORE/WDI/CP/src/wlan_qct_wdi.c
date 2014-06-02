@@ -409,6 +409,16 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
   WDI_ProcessUpdateChannelParamsReq,    /* WDI_UPDATE_CHAN_REQ */
 
   WDI_ProcessGetBcnMissRateReq,          /* WDI_GET_BCN_MISS_RATE_REQ */
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+  WDI_ProcessLLStatsSetReq,              /* WDI_LL_STATS_SET_REQ */
+  WDI_ProcessLLStatsGetReq,              /* WDI_LL_STATS_GET_REQ */
+  WDI_ProcessLLStatsClearReq,            /* WDI_LL_STATS_CLEAR_REQ */
+#else
+  NULL,
+  NULL,
+  NULL,
+#endif
   /*-------------------------------------------------------------------------
     Indications
   -------------------------------------------------------------------------*/
@@ -634,6 +644,16 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 
   WDI_ProcessGetBcnMissRateRsp,        /*WDI_GET_BCN_MISS_RATE_RSP*/
 
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+    WDI_ProcessLLStatsSetRsp,           /* WDI_LL_STATS_SET_RSP */
+    WDI_ProcessLLStatsGetRsp,           /* WDI_LL_STATS_GET_RSP */
+    WDI_ProcessLLStatsClearRsp,           /* WDI_LL_STATS_CLEAR_RSP */
+#else
+    NULL,
+    NULL,
+    NULL,
+#endif
   /*---------------------------------------------------------------------
     Indications
   ---------------------------------------------------------------------*/
@@ -693,7 +713,12 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
    NULL,
 #endif /* FEATURE_WLAN_CH_AVOID */
 
-    WDI_printRegInfo                        /* WDI_PRINT_REG_INFO_IND */
+    WDI_printRegInfo,                        /* WDI_PRINT_REG_INFO_IND */
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+  WDI_ProcessLinkLayerStatsResultsInd,     /* WDI_HAL_LL_STATS_RESULTS_IND */
+#else
+  NULL,
+#endif
 };
 
 
@@ -1011,6 +1036,11 @@ static char *WDI_getReqMsgString(wpt_uint16 wdiReqMsgId)
     CASE_RETURN_STRING(WDI_START_HT40_OBSS_SCAN_IND);
     CASE_RETURN_STRING(WDI_STOP_HT40_OBSS_SCAN_IND);
     CASE_RETURN_STRING(WDI_UPDATE_CHAN_REQ);
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+    CASE_RETURN_STRING( WDI_LL_STATS_SET_REQ);
+    CASE_RETURN_STRING( WDI_LL_STATS_GET_REQ);
+    CASE_RETURN_STRING( WDI_LL_STATS_CLEAR_REQ);
+#endif
     default:
         return "Unknown WDI MessageId";
   }
@@ -1119,6 +1149,11 @@ static char *WDI_getRespMsgString(wpt_uint16 wdiRespMsgId)
 #endif
     CASE_RETURN_STRING( WDI_UPDATE_CHAN_RESP);
     CASE_RETURN_STRING( WDI_GET_BCN_MISS_RATE_RSP );
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+    CASE_RETURN_STRING( WDI_LL_STATS_SET_RSP);
+    CASE_RETURN_STRING( WDI_LL_STATS_GET_RSP);
+    CASE_RETURN_STRING( WDI_LL_STATS_CLEAR_RSP);
+#endif
     default:
         return "Unknown WDI MessageId";
   }
@@ -16996,6 +17031,100 @@ WDI_ProcessAddTSpecRsp
 }/*WDI_ProcessAddTSpecRsp*/
 
 
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+
+WDI_Status
+WDI_ProcessLLStatsSetRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LLStatsSetRspCb   wdiLLStatsSetRspCb;
+
+  WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+              "%s: Enter ", __func__);
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  wdiLLStatsSetRspCb = (WDI_LLStatsSetRspCb)pWDICtx->pfncRspCB;
+
+  wdiLLStatsSetRspCb((void *) pEventData->pEventData, pWDICtx->pRspCBUserData);
+
+  return WDI_STATUS_SUCCESS;
+}
+
+WDI_Status
+WDI_ProcessLLStatsGetRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LLStatsGetRspCb   wdiLLStatsGetRspCb;
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+  WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+              "%s: Enter ", __func__);
+
+  wdiLLStatsGetRspCb = (WDI_LLStatsGetRspCb)pWDICtx->pfncRspCB;
+
+  wdiLLStatsGetRspCb((void *) pEventData->pEventData, pWDICtx->pRspCBUserData);
+
+  return WDI_STATUS_SUCCESS;
+}
+
+WDI_Status
+WDI_ProcessLLStatsClearRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LLStatsClearRspCb   wdiLLStatsClearRspCb;
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+              "%s: CLEAR RESPONSE CALL BACK", __func__);
+  wdiLLStatsClearRspCb = (WDI_LLStatsClearRspCb)pWDICtx->pfncRspCB;
+
+  wdiLLStatsClearRspCb((void *) pEventData->pEventData, pWDICtx->pRspCBUserData);
+
+  return WDI_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
 /**
  @brief Process Del TSpec Rsp function (called when a response
         is being received over the bus from HAL)
@@ -23307,6 +23436,15 @@ WDI_2_HAL_REQ_TYPE
        return WLAN_HAL_CH_SWITCH_V1_REQ;
   case WDI_GET_BCN_MISS_RATE_REQ:
     return WLAN_HAL_GET_BCN_MISS_RATE_REQ;
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+  case WDI_LL_STATS_SET_REQ:
+       return WLAN_HAL_LL_SET_STATS_REQ;
+  case WDI_LL_STATS_GET_REQ:
+       return WLAN_HAL_LL_GET_STATS_REQ;
+  case WDI_LL_STATS_CLEAR_REQ:
+       return WLAN_HAL_LL_CLEAR_STATS_REQ;
+#endif
   default:
     return WLAN_HAL_MSG_MAX;
   }
@@ -23574,6 +23712,16 @@ case WLAN_HAL_DEL_STA_SELF_RSP:
     return  WDI_PRINT_REG_INFO_IND;
   case WLAN_HAL_GET_BCN_MISS_RATE_RSP:
     return WDI_GET_BCN_MISS_RATE_RSP;
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+  case WLAN_HAL_LL_SET_STATS_RSP:
+       return WDI_LL_STATS_SET_RSP;
+  case WLAN_HAL_LL_GET_STATS_RSP:
+       return WDI_LL_STATS_GET_RSP;
+  case WLAN_HAL_LL_CLEAR_STATS_RSP:
+       return WDI_LL_STATS_CLEAR_RSP;
+  case WLAN_HAL_LL_NOTIFY_STATS:
+       return WDI_HAL_LL_STATS_RESULTS_IND;
+#endif
   default:
     return eDRIVER_TYPE_MAX;
   }
@@ -29476,18 +29624,18 @@ WDI_ProcessSetBatchScanRsp
         return WDI_STATUS_E_FAILURE;
     }
 
-    /*extract response and send it to UMAC*/
+    /* extract response and send it to UMAC */
     pHalSetBatchScanRsp = (tHalBatchScanSetRspParam *)pEventData->pEventData;
 
     pSetBatchScanRsp->nScansToBatch = pHalSetBatchScanRsp->supportedMscan;
 
-    /*Notify UMAC*/
+    /* Notify UMAC */
     wdiSetBatchScanCb(pSetBatchScanRsp, pWDICtx->pRspCBUserData);
 
     wpalMemoryFree(pSetBatchScanRsp);
 
     return WDI_STATUS_SUCCESS;
-}/*WDI_ProcessSetBatchScanRsp*/
+}/* WDI_ProcessSetBatchScanRsp */
 
 /**
  @brief Process batch scan result indication from FW
@@ -29509,7 +29657,7 @@ WDI_ProcessBatchScanResultInd
     WDI_LowLevelIndType wdiInd;
     /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-    /*sanity check*/
+    /* sanity check */
     if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
       ( NULL == pEventData->pEventData))
     {
@@ -29519,15 +29667,15 @@ WDI_ProcessBatchScanResultInd
         return WDI_STATUS_E_FAILURE;
     }
 
-    /*extract response and send it to UMAC*/
+    /* extract response and send it to UMAC */
     pBatchScanResultInd = (void *)pEventData->pEventData;
 
-    /*Fill in the indication parameters*/
+    /* Fill in the indication parameters */
     wdiInd.wdiIndicationType = WDI_BATCH_SCAN_RESULT_IND;
 
     wdiInd.wdiIndicationData.pBatchScanResult = pBatchScanResultInd;
 
-    /*Notify UMAC*/
+    /* Notify UMAC */
     if (pWDICtx->wdiLowLevelIndCB)
     {
         pWDICtx->wdiLowLevelIndCB( &wdiInd, pWDICtx->pIndUserData );
@@ -29542,6 +29690,65 @@ WDI_ProcessBatchScanResultInd
 
     return WDI_STATUS_SUCCESS;
 } /*End of WDI_ProcessBatchScanResultInd*/
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+/**
+ @brief Process Link Layer Statistics Result indication from FW
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessLinkLayerStatsResultsInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+    void *pLinkLayerStatsInd;
+    WDI_LowLevelIndType wdiInd;
+    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+    VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                "%s: Event RESULTS Indication", __func__);
+
+    /* sanity check */
+    if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData))
+    {
+        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                 "%s: Invalid parameters", __func__);
+        WDI_ASSERT(0);
+        return WDI_STATUS_E_FAILURE;
+    }
+
+    /* extract response and send it to UMAC */
+    pLinkLayerStatsInd = (void *)pEventData->pEventData;
+
+    /* Fill in the indication parameters */
+    wdiInd.wdiIndicationType = WDI_LL_STATS_RESULTS_IND;
+
+    wdiInd.wdiIndicationData.pLinkLayerStatsResults = pLinkLayerStatsInd;
+
+    /* Notify UMAC */
+    if (pWDICtx->wdiLowLevelIndCB)
+    {
+        pWDICtx->wdiLowLevelIndCB( &wdiInd, pWDICtx->pIndUserData );
+    }
+    else
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                 "%s: WDILowLevelIndCb is null", __func__);
+        WDI_ASSERT(0);
+        return WDI_STATUS_E_FAILURE;
+    }
+
+    return WDI_STATUS_SUCCESS;
+} /* End of WDI_ProcessLinkLayerStatsResultsInd */
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
 /**
  @brief WDI_ProcessSetBatchScanReq -
@@ -30309,3 +30516,378 @@ WDI_Status WDI_GetBcnMissRate( void *pUserData,
 
   return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
 }
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+
+/**
+ @brief WDI_LLStatsSetReq
+    This API is called to set link layer stats request in FW
+
+ @param pwdiLLStatsSetReqParams : pointer to set link layer request params
+        wdiLLStatsSetRspCb : set link layer stats resp callback
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status
+WDI_LLStatsSetReq(WDI_LLStatsSetReqType* pwdiLLStatsSetReqParams,
+                           WDI_LLStatsSetRspCb   wdiLLStatsSetRspCb,
+                           void*                   pUserData)
+{
+   WDI_EventInfoType      wdiEventData;
+
+  /*------------------------------------------------------------------------
+    Sanity Check
+  ------------------------------------------------------------------------*/
+  if ( eWLAN_PAL_FALSE == gWDIInitialized )
+  {
+     VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_ERROR,
+                "WDI API call before module is initialized - Fail request");
+
+     return WDI_STATUS_E_NOT_ALLOWED;
+  }
+
+  wdiEventData.wdiRequest      = WDI_LL_STATS_SET_REQ;
+  wdiEventData.pEventData      = pwdiLLStatsSetReqParams;
+  wdiEventData.uEventDataSize  = sizeof(*pwdiLLStatsSetReqParams);
+  wdiEventData.pCBfnc          = wdiLLStatsSetRspCb;
+  wdiEventData.pUserData       = pUserData;
+
+  return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+/**
+ @brief WDI_ProcessLLStatsSetReq -
+    Set Link Layer Stats request to FW
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+
+ @see
+ @return none
+*/
+WDI_Status
+WDI_ProcessLLStatsSetReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LLStatsSetReqType* pwdiLLStatsSetReqParams;
+  WDI_LLStatsSetRspCb wdiLLStatsSetCb;
+  wpt_uint8*               pSendBuffer         = NULL;
+  wpt_uint16               usSendSize          = 0;
+  wpt_uint16               usDataOffset        = 0;
+  tHalMacLlSetStatsReqParams halLLStatsSetParams;
+
+  if (( NULL == pEventData ) || ( NULL == pEventData->pEventData ) ||
+      ( NULL == pEventData->pCBfnc ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  pwdiLLStatsSetReqParams = (WDI_LLStatsSetReqType*)pEventData->pEventData;
+  wdiLLStatsSetCb   = (WDI_LLStatsSetRspCb)pEventData->pCBfnc;
+
+  /*-----------------------------------------------------------------------
+    Get message buffer
+    ! TO DO : proper conversion into the HAL Message Request Format
+  -----------------------------------------------------------------------*/
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer(
+                                        pWDICtx,
+                                        WDI_LL_STATS_SET_REQ,
+                                        sizeof(tHalMacLlSetStatsReqParams),
+                                        &pSendBuffer, &usDataOffset,
+                                        &usSendSize))||
+      ( usSendSize < (usDataOffset + sizeof(halLLStatsSetParams) )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+              "Unable to get send buffer in %s %p %p %p", __func__,
+                pEventData, pwdiLLStatsSetReqParams, wdiLLStatsSetCb);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+
+
+  halLLStatsSetParams.req_id = pwdiLLStatsSetReqParams->reqId;
+  halLLStatsSetParams.sta_id = pwdiLLStatsSetReqParams->staId;
+  halLLStatsSetParams.mpdu_size_threshold =
+      pwdiLLStatsSetReqParams->mpduSizeThreshold;
+  halLLStatsSetParams.aggressive_statistics_gathering =
+      pwdiLLStatsSetReqParams->aggressiveStatisticsGathering;
+
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                  " halLLStatsSetParams.req_id = %u",
+                  halLLStatsSetParams.req_id);
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                  " halLLStatsSetParams.sta_id = %u",
+                  halLLStatsSetParams.sta_id);
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                  " halLLStatsSetParams.mpdu_size_threshold = %u",
+                  halLLStatsSetParams.mpdu_size_threshold);
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                  " halLLStatsSetParams.aggressive_statistics_gathering = %u",
+                  halLLStatsSetParams.aggressive_statistics_gathering);
+
+  wpalMemoryCopy(pSendBuffer+usDataOffset,
+                  &halLLStatsSetParams,
+                  sizeof(halLLStatsSetParams));
+
+  pWDICtx->pReqStatusUserData = pEventData->pUserData;
+
+  /*-------------------------------------------------------------------------
+    Send Clear Link Layer Stats Request to HAL
+  -------------------------------------------------------------------------*/
+  return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
+                       wdiLLStatsSetCb, pEventData->pUserData,
+                       WDI_LL_STATS_SET_RSP);
+}
+
+/**
+ @brief WDI_LLStatsGetReq
+    This API is called to get link layer stats request in FW
+
+ @param pwdiLLStatsGetReqParams : pointer to set link layer request params
+        wdiLLStatsGetRspCb : get link layer stats resp callback
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status
+WDI_LLStatsGetReq(WDI_LLStatsGetReqType* pwdiLLStatsGetReqParams,
+                           WDI_LLStatsGetRspCb   wdiLLStatsGetRspCb,
+                           void*                   pUserData)
+{
+   WDI_EventInfoType      wdiEventData;
+
+  /*------------------------------------------------------------------------
+    Sanity Check
+  ------------------------------------------------------------------------*/
+  if ( eWLAN_PAL_FALSE == gWDIInitialized )
+  {
+     WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                "WDI API call before module is initialized - Fail request");
+
+     return WDI_STATUS_E_NOT_ALLOWED;
+  }
+
+  wdiEventData.wdiRequest      = WDI_LL_STATS_GET_REQ;
+  wdiEventData.pEventData      = pwdiLLStatsGetReqParams;
+  wdiEventData.uEventDataSize  = sizeof(*pwdiLLStatsGetReqParams);
+  wdiEventData.pCBfnc          = wdiLLStatsGetRspCb;
+  wdiEventData.pUserData       = pUserData;
+
+  return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+/**
+ @brief WDI_ProcessLLStatsGetReq -
+    Get Link Layer Stats request to FW
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+
+ @see
+ @return none
+*/
+WDI_Status
+WDI_ProcessLLStatsGetReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LLStatsGetReqType* pwdiLLStatsGetReqParams;
+  WDI_LLStatsGetRspCb wdiLLStatsGetCb;
+  wpt_uint8*               pSendBuffer         = NULL;
+  wpt_uint16               usSendSize          = 0;
+  wpt_uint16               usDataOffset        = 0;
+  tHalMacLlGetStatsReqParams halLLStatsGetParams;
+
+  if (( NULL == pEventData ) || ( NULL == pEventData->pEventData ) ||
+      ( NULL == pEventData->pCBfnc ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  pwdiLLStatsGetReqParams = (WDI_LLStatsGetReqType*)pEventData->pEventData;
+  wdiLLStatsGetCb   = (WDI_LLStatsGetRspCb)pEventData->pCBfnc;
+
+  /*-----------------------------------------------------------------------
+    Get message buffer
+    ! TO DO : proper conversion into the HAL Message Request Format
+  -----------------------------------------------------------------------*/
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer(
+                                            pWDICtx,
+                                            WDI_LL_STATS_GET_REQ,
+                                            sizeof(tHalMacLlGetStatsReqParams),
+                                            &pSendBuffer, &usDataOffset,
+                                             &usSendSize))||
+      ( usSendSize < (usDataOffset + sizeof(halLLStatsGetParams) )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+              "Unable to get send buffer in %s %p %p %p", __func__,
+                pEventData, pwdiLLStatsGetReqParams, wdiLLStatsGetCb);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  halLLStatsGetParams.req_id = pwdiLLStatsGetReqParams->reqId;
+  halLLStatsGetParams.sta_id = pwdiLLStatsGetReqParams->staId;
+  halLLStatsGetParams.param_id_mask = pwdiLLStatsGetReqParams->paramIdMask;
+
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                  " halLLStatsGetParams.req_id = %u",
+                  halLLStatsGetParams.req_id);
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                  " halLLStatsGetParams.staId = %u",
+                  halLLStatsGetParams.sta_id);
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                  " halLLStatsGetParams.Mask = %u",
+                  halLLStatsGetParams.param_id_mask);
+
+  wpalMemoryCopy(pSendBuffer+usDataOffset,
+                  &halLLStatsGetParams,
+                  sizeof(halLLStatsGetParams));
+
+  pWDICtx->pReqStatusUserData = pEventData->pUserData;
+
+  /*-------------------------------------------------------------------------
+    Send Clear Link Layer Stats Request to HAL
+  -------------------------------------------------------------------------*/
+  return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
+                       wdiLLStatsGetCb, pEventData->pUserData,
+                       WDI_LL_STATS_GET_RSP);
+}
+
+/**
+ @brief WDI_LLStatsClearReq
+    This API is called to clear link layer stats request in FW
+
+ @param pwdiLLStatsClearReqParams : pointer to clear link layer request params
+        wdiLLStatsSetRspCb : clear link layer stats resp callback
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status
+WDI_LLStatsClearReq(WDI_LLStatsClearReqType* pwdiLLStatsClearReqParams,
+                           WDI_LLStatsClearRspCb   wdiLLStatsClearRspCb,
+                           void*                   pUserData)
+{
+   WDI_EventInfoType      wdiEventData;
+
+  /*------------------------------------------------------------------------
+    Sanity Check
+  ------------------------------------------------------------------------*/
+  if ( eWLAN_PAL_FALSE == gWDIInitialized )
+  {
+     WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                "WDI API call before module is initialized - Fail request");
+
+     return WDI_STATUS_E_NOT_ALLOWED;
+  }
+
+  wdiEventData.wdiRequest      = WDI_LL_STATS_CLEAR_REQ;
+  wdiEventData.pEventData      = pwdiLLStatsClearReqParams;
+  wdiEventData.uEventDataSize  = sizeof(*pwdiLLStatsClearReqParams);
+  wdiEventData.pCBfnc          = wdiLLStatsClearRspCb;
+  wdiEventData.pUserData       = pUserData;
+
+  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+  "%s:%d Enter", __func__, __LINE__);
+
+  return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+/**
+ @brief WDI_ProcessLLStatsClearReq -
+    Clear Link Layer Stats request to FW
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+
+ @see
+ @return none
+*/
+WDI_Status
+WDI_ProcessLLStatsClearReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LLStatsClearReqType* pwdiLLStatsClearReqParams;
+  WDI_LLStatsClearRspCb wdiLLStatsClearCb;
+  wpt_uint8*               pSendBuffer         = NULL;
+  wpt_uint16               usSendSize          = 0;
+  wpt_uint16               usDataOffset        = 0;
+  tHalMacLlClearStatsReqParams halLLStatsClearParams;
+
+  if (( NULL == pEventData ) || ( NULL == pEventData->pEventData ) ||
+      ( NULL == pEventData->pCBfnc ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  pwdiLLStatsClearReqParams = (WDI_LLStatsClearReqType*)pEventData->pEventData;
+  wdiLLStatsClearCb   = (WDI_LLStatsClearRspCb)pEventData->pCBfnc;
+
+  /*-----------------------------------------------------------------------
+    Get message buffer
+    ! TO DO : proper conversion into the HAL Message Request Format
+  -----------------------------------------------------------------------*/
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer(
+                                          pWDICtx,
+                                          WDI_LL_STATS_CLEAR_REQ,
+                                          sizeof(tHalMacLlClearStatsReqParams),
+                                          &pSendBuffer, &usDataOffset,
+                                          &usSendSize))||
+      ( usSendSize < (usDataOffset + sizeof(halLLStatsClearParams) )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+              "Unable to get send buffer in %s %p %p %p", __func__,
+                pEventData, pwdiLLStatsClearReqParams, wdiLLStatsClearCb);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  halLLStatsClearParams.req_id = pwdiLLStatsClearReqParams->reqId;
+  halLLStatsClearParams.sta_id = pwdiLLStatsClearReqParams->staId;
+  halLLStatsClearParams.stats_clear_req_mask =
+                    pwdiLLStatsClearReqParams->statsClearReqMask;
+  halLLStatsClearParams.stop_req = pwdiLLStatsClearReqParams->stopReq;
+
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+        "%s:HAL req_id = %d", __func__, halLLStatsClearParams.req_id);
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+        "%s: HAL sta_id = %d", __func__, halLLStatsClearParams.sta_id);
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+        "%s: HAL stats_clear_req_mask = 0x%X", __func__,
+                            halLLStatsClearParams.stats_clear_req_mask);
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+        "%s: HAL stop_req = %d", __func__, halLLStatsClearParams.stop_req);
+
+  wpalMemoryCopy(pSendBuffer+usDataOffset,
+                  &halLLStatsClearParams,
+                  sizeof(halLLStatsClearParams));
+
+  pWDICtx->pReqStatusUserData = pEventData->pUserData;
+
+  /*-------------------------------------------------------------------------
+    Send Clear Link Layer Stats Request to HAL
+  -------------------------------------------------------------------------*/
+  return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
+                       wdiLLStatsClearCb, pEventData->pUserData,
+                       WDI_LL_STATS_CLEAR_RSP);
+}
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
