@@ -1137,7 +1137,7 @@ typedef struct tagCsrConfigParam
     tANI_U8 isCoalesingInIBSSAllowed;
     tANI_U8 allowDFSChannelRoam;
     tANI_BOOLEAN initialScanSkipDFSCh;
-
+    tANI_BOOLEAN sendDeauthBeforeCon;
 }tCsrConfigParam;
 
 //Tush

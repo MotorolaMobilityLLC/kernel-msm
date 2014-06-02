@@ -167,6 +167,14 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
     ,CH_SWITCH_V1                   //33
     ,HT40_OBSS_SCAN                 //34
     ,UPDATE_CHANNEL_LIST            //35
+    ,FEATURE_NOT_SUPPORTED          //36
+    ,FEATURE_NOT_SUPPORTED          //37
+    ,FEATURE_NOT_SUPPORTED          //38
+#ifdef FEATURE_WLAN_TDLS
+    ,TDLS_SCAN_COEXISTENCE          //39
+#else
+    ,FEATURE_NOT_SUPPORTED          //39
+#endif
 
 };
 
@@ -1214,6 +1222,9 @@ void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
                                               sizeof("EXTENDED_NSOFFLOAD_SLOT"),
                                               "%s", "EXTENDED_NSOFFLOAD_SLOT");
                           pCapStr += strlen("EXTENDED_NSOFFLOAD_SLOT");
+                          break;
+                     case TDLS_SCAN_COEXISTENCE: snprintf(pCapStr, sizeof("TDLS_SCAN_COEXISTENCE"), "%s", "TDLS_SCAN_COEXISTENCE");
+                          pCapStr += strlen("TDLS_SCAN_COEXISTENCE");
                           break;
 
                  }

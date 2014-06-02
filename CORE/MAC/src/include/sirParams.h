@@ -102,6 +102,9 @@ typedef enum {
    UPDATE_CHANNEL_LIST    = 35,
    WLAN_MCADDR_FLT        = 36,
    WLAN_CH144             = 37,
+#ifdef FEATURE_WLAN_TDLS
+   TDLS_SCAN_COEXISTENCE  = 39,
+#endif
 
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;

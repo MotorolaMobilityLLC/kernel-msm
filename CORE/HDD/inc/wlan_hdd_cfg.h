@@ -1832,6 +1832,11 @@ static __inline tANI_U32 defHddRateToDefCfgRate( tANI_U32 defRateIndex )
 #define CFG_TDLS_WMM_MODE_ENABLE_MIN                 (0)
 #define CFG_TDLS_WMM_MODE_ENABLE_MAX                 (1)
 #define CFG_TDLS_WMM_MODE_ENABLE_DEFAULT             (0)
+
+#define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE            "gEnableTDLSScanCoexistence"
+#define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MIN        (0)
+#define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MAX        (1)
+#define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_DEFAULT    (0)
 #endif
 
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
@@ -2194,6 +2199,13 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_DEFER_IMPS_FOR_TIME_MAX                          (500)
 #define CFG_DEFER_IMPS_FOR_TIME_DEFAULT                      (200)
 
+/* If last disconnection was due to HB failure and we reconnect
+ * to same AP next time, send Deauth before starting connection
+ */
+#define CFG_ENABLE_DEAUTH_BEFORE_CONNECTION                  "gSendDeauthBeforeCon"
+#define CFG_ENABLE_DEAUTH_BEFORE_CONNECTION_MIN              (0)
+#define CFG_ENABLE_DEAUTH_BEFORE_CONNECTION_MAX              (1)
+#define CFG_ENABLE_DEAUTH_BEFORE_CONNECTION_DEFAULT          (0)
 
 /*--------------------------------------------------------------------------- 
   Type declarations
@@ -2559,6 +2571,7 @@ typedef struct
    v_BOOL_t                    fTDLSExternalControl;
    v_U32_t                     fEnableTDLSOffChannel;
    v_U32_t                     fEnableTDLSWmmMode;
+   v_BOOL_t                    fEnableTDLSScanCoexSupport;
 #endif
    v_U32_t                     enableLpwrImgTransition;
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
@@ -2652,6 +2665,7 @@ typedef struct
    v_U32_t                     pmfSaQueryRetryInterval;
 #endif
    v_U32_t                     deferImpsTime;
+   v_BOOL_t                    sendDeauthBeforeCon;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

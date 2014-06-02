@@ -447,6 +447,8 @@ typedef struct sAniSirLim
 
     // Heart-Beat interval value
     tANI_U32   gLimHeartBeatCount;
+    tSirMacAddr gLimHeartBeatApMac[2];
+    tANI_U8 gLimHeartBeatApMacIndex;
 
     // Statistics to keep track of no. beacons rcvd in heart beat interval
     tANI_U16            gLimHeartBeatBeaconStats[MAX_NO_BEACONS_PER_HEART_BEAT_INTERVAL];

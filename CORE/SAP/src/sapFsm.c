@@ -1198,6 +1198,15 @@ sapAddMacToACL(v_MACADDR_t *macList, v_U8_t *size, v_U8_t *peerMac)
     v_SINT_t nRes = -1;
     int i;
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,"add acl entered");
+
+    if ((NULL == macList) || (*size == 0) || (*size >= MAX_ACL_MAC_ADDRESS))
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                    "In %s, either buffer is NULL or size %d is incorrect."
+                    , __func__, *size);
+        return;
+    }
+
     for (i=((*size)-1); i>=0; i--)
     {
         nRes = vos_mem_compare2(&macList[i], peerMac, sizeof(v_MACADDR_t));
