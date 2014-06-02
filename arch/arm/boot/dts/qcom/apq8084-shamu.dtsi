@@ -33,6 +33,10 @@
 				<&msmgpio 73 0>; /* programming SDAT */
 	};
 
+	aliases {
+		uart3 = &c55_uart_blsp2;
+	};
+
 	/delete-node/ bt_qca6174;
 };
 
@@ -49,6 +53,34 @@
 
 	/delete-node/ qcom,cnss@0d400000;
 	/delete-node/ qca,qca1530;
+
+	c55_uart_blsp2: uart@f991e000 { /* HW BLSP2, BLSP1 UART1 Highspeed for C55 */
+		compatible = "qcom,msm-hsuart-v14";
+		status = "ok";
+		reg = <0xf991e000 0x1000>,
+			<0xf9904000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupt-parent = <&c55_uart_blsp2>;
+		#address-cells = <0>;
+		interrupts = <0 1 2>;
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 108 0
+				1 &intc 0 238 0
+				2 &msmgpio 6 0>;
+		qcom,bam-tx-ep-pipe-index = <2>;
+		qcom,bam-rx-ep-pipe-index = <3>;
+		qcom,msm-bus,name = "c55_uart_blsp2";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<86 512 0 0>,
+				<86 512 500 800>;
+	};
+
+
+
 };
 
 &max17050 {
@@ -203,9 +235,7 @@
 };
 
 &blsp2_uart3 {
-	interrupt-map = <0 &intc 0 115 0
-			1 &intc 0 239 0
-			2 &msmgpio 6 0>;
+	status = "disabled";
 };
 
 &tlmm_pinmux {
