@@ -117,6 +117,13 @@ config MMC_SDHCI_MSM
 
 	  If unsure, say N.
 
+config MMC_SDHCI_MSM_DEBUG
+	tristate "Qualcomm SDHCI Controller Debugging"
+	depends on ARCH_MSM
+	depends on MMC_SDHCI_PLTFM
+	depends on DEBUG_FS
+	default n
+
 config MMC_SDHCI_OF_ESDHC
 	tristate "SDHCI OF support for the Freescale eSDHC controller"
 	depends on MMC_SDHCI_PLTFM
