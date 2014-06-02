@@ -143,32 +143,54 @@ static int32_t msm_sensor_disable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
 }
 #endif
 
+static uint8_t ar0261_reverse_byte(uint8_t data)
+{
+	return ((data * 0x0802LU & 0x22110LU) |
+			(data * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16;
+}
+
 static int32_t ar0261_check_crc(uint8_t *otp_data)
 {
-	int32_t crc_match = 0;
+	int32_t crc_match = -1;
 	uint16_t crc = 0x0000;
+	uint16_t crc_reverse = 0x0000;
 	int i, j;
 	uint32_t tmp;
+	uint32_t tmp_reverse;
 	uint16_t otp_crc = otp_data[AR0261_OTP_PAGE_SIZE - 2] << 8 |
 		otp_data[AR0261_OTP_PAGE_SIZE - 1];
 
+	/* Calculate both methods of CRC since integrators differ on
+	 * how CRC should be calculated. */
 	for (i = 0; i < (AR0261_OTP_PAGE_SIZE - 2); i++) {
+		tmp_reverse = ar0261_reverse_byte(otp_data[i]);
 		tmp = otp_data[i] & 0xff;
 		for (j = 0; j < 8; j++) {
 			if (((crc & 0x8000) >> 8) ^ (tmp & 0x80))
 				crc = (crc << 1) ^ 0x8005;
 			else
 				crc = crc << 1;
-
 			tmp <<= 1;
+
+			if (((crc_reverse & 0x8000) >> 8) ^
+					(tmp_reverse & 0x80))
+				crc_reverse = (crc_reverse << 1) ^ 0x8005;
+			else
+				crc_reverse = crc_reverse << 1;
+
+			tmp_reverse <<= 1;
 		}
 	}
 
-	if (crc != otp_crc)
-		crc_match = -1;
+	crc_reverse = (ar0261_reverse_byte(crc_reverse) << 8) |
+		ar0261_reverse_byte(crc_reverse >> 8);
 
-	pr_debug("%s: OTP_CRC %x CRC %x matches? %d\n", __func__,
-			otp_crc, crc, crc_match);
+	if (crc == otp_crc || crc_reverse == otp_crc)
+		crc_match = 0;
+
+	pr_debug("%s: OTP_CRC %x CALC CRC %x CALC Reverse CRC %x matches? %d\n"
+			, __func__, otp_crc, crc, crc_reverse, crc_match);
+
 	return crc_match;
 }
 
@@ -260,7 +282,7 @@ static void ar0261_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 			rc = ar0261_check_crc(otp_data_ptr);
 			if (rc < 0) {
 				pr_warn("%s: CRC failed on page %x!\n",
-						__func__, (otp_page - 0x1));
+						__func__, (otp_page + 0x1));
 				s_ctrl->sensor_otp.otp_crc_pass = 0;
 			} else {
 				s_ctrl->sensor_otp.otp_crc_pass = 1;
