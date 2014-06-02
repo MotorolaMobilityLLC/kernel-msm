@@ -259,7 +259,7 @@
 	};
 
 	touch_reset_n {
-		qcom,pins = <&gp 4>;
+		qcom,pins = <&gp 20>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
 		label = "touch-reset";
@@ -272,7 +272,7 @@
 	};
 
 	touch_int_n {
-		qcom,pins = <&gp 5>;
+		qcom,pins = <&gp 21>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
 		label = "touch-int";
@@ -501,8 +501,8 @@
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x22>;
 		interrupts = <&msm_gpio 5 0>;
-		gpios = <&msm_gpio 5 0>, /* IRQ */
-			<&msm_gpio 4 0>; /* RESET */
+		gpios = <&msm_gpio 21 0>, /* IRQ */
+			<&msm_gpio 20 0>; /* RESET */
 		touch_vdd-supply = <&pm8916_l16>;
 		synaptics,normal-mode = <1>;
 		synaptics,gpio-config;
