@@ -3627,6 +3627,8 @@ tANI_BOOLEAN csrElectedCountryInfo(tpAniSirGlobal pMac)
     {
         memcpy(pMac->scan.countryCodeElected,
             pMac->scan.votes11d[j].countryCode, WNI_CFG_COUNTRY_CODE_LEN);
+        memcpy(pMac->scan.countryCode11d,
+            pMac->scan.votes11d[j].countryCode, WNI_CFG_COUNTRY_CODE_LEN);
         VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                  "Selected Country is %c%c With count %d\n",
                       pMac->scan.votes11d[j].countryCode[0],
