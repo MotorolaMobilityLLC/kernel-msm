@@ -1602,6 +1602,7 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
 {
     hdd_context_t *pHddCtx = (hdd_context_t*) wiphy_priv(wiphy);
     hdd_adapter_t *pAdapter = NULL;
+    hdd_scaninfo_t *pScanInfo = NULL;
     ENTER();
 
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
@@ -1625,6 +1626,19 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
        return -EAGAIN;
 #endif
     }
+
+    pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_INFRA_STATION);
+    pScanInfo =  &pHddCtx->scan_info;
+    if ((pScanInfo != NULL) && (pAdapter != NULL) &&
+        (pHddCtx->scan_info.mScanPending))
+    {
+        hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
+                           eCSR_SCAN_ABORT_DEFAULT);
+        hddLog(VOS_TRACE_LEVEL_INFO,
+               "%s: Abort Scan while adding virtual interface",__func__);
+    }
+
+    pAdapter = NULL;
     if (pHddCtx->cfg_ini->isP2pDeviceAddrAdministrated &&
         ((NL80211_IFTYPE_P2P_GO == type) ||
          (NL80211_IFTYPE_P2P_CLIENT == type)))
