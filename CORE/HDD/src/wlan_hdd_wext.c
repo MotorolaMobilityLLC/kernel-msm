@@ -4833,10 +4833,10 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             if (pMac && (wrqu->data.length < WE_MAX_STR_LEN)) {
                 __u32 pmmStatsLength = WE_MAX_STR_LEN - wrqu->data.length;
                 snprintf(extra+wrqu->data.length, pmmStatsLength,
-                        "\n BMPS sleepcnt %llx, BMPS awakecnt %llx"
-                        "\n BMPS sleepreqfailcnt %llx, BMPS wakeupreqfailcnt %llx"
-                        "\n IMPS sleepcnt %llx, IMPS awakecnt %llx"
-                        "\n IMPS sleeperrcnt %llx, IMPS wakeuperrcnt %llx, IMPS lasterr %llx"
+                        "\n BMPS sleepcnt %lld, BMPS awakecnt %lld"
+                        "\n BMPS sleepreqfailcnt %lld, BMPS wakeupreqfailcnt %lld"
+                        "\n IMPS sleepcnt %lld, IMPS awakecnt %lld"
+                        "\n IMPS sleepreqfailcnt %lld, IMPS wakeupreqfailcnt %lld, IMPS lasterr %lld"
                         "\n",
                         pMac->pmm.BmpscntSleep,
                         pMac->pmm.BmpscntAwake,
