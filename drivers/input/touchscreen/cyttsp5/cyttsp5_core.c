@@ -2633,10 +2633,6 @@ static int cyttsp5_get_config_ver_(struct cyttsp5_core_data *cd)
 	int rc;
 	u16 config_ver = 0;
 
-	rc = cyttsp5_hid_output_suspend_scanning_(cd);
-	if (rc)
-		goto error;
-
 	rc = cyttsp5_hid_output_read_conf_ver_(cd, &config_ver);
 	if (rc)
 		goto exit;
@@ -2644,8 +2640,6 @@ static int cyttsp5_get_config_ver_(struct cyttsp5_core_data *cd)
 	si->cydata.fw_ver_conf = config_ver;
 
 exit:
-	cyttsp5_hid_output_resume_scanning_(cd);
-error:
 	dev_dbg(cd->dev, "%s: CONFIG_VER:%04X\n", __func__, config_ver);
 	return rc;
 }
@@ -4460,10 +4454,6 @@ static int cyttsp5_get_ic_crc_(struct cyttsp5_core_data *cd, u8 ebid)
 	u16 calculated_crc = 0;
 	u16 stored_crc = 0;
 
-	rc = cyttsp5_hid_output_suspend_scanning_(cd);
-	if (rc)
-		goto error;
-
 	rc = cyttsp5_hid_output_verify_config_block_crc_(cd, ebid, &status,
 			&calculated_crc, &stored_crc);
 	if (rc)
@@ -4477,8 +4467,6 @@ static int cyttsp5_get_ic_crc_(struct cyttsp5_core_data *cd, u8 ebid)
 	si->ttconfig.crc = stored_crc;
 
 exit:
-	cyttsp5_hid_output_resume_scanning_(cd);
-error:
 	dev_dbg(cd->dev, "%s: CRC: ebid:%d, crc:0x%04X\n",
 			__func__, ebid, si->ttconfig.crc);
 	return rc;
@@ -4498,10 +4486,6 @@ static int cyttsp5_si_get_samsung_tsp_info_(struct cyttsp5_core_data *cd)
 
 	dev_dbg(cd->dev, "%s\n", __func__);
 
-	rc = cyttsp5_hid_output_suspend_scanning_(cd);
-	if (rc)
-		goto error;
-
 	rc = cyttsp5_hid_output_read_conf_block_(cd, 0, sizeof(read_buf),
 		CY_DDATA_EBID, read_buf, &crc);
 	if (rc)
@@ -4515,8 +4499,6 @@ static int cyttsp5_si_get_samsung_tsp_info_(struct cyttsp5_core_data *cd)
 			get_unaligned_be16(&sti->fw_versionh));
 	cd->md.fw_ver_ic = sti->fw_versionh;
 exit:
-	rc = cyttsp5_hid_output_resume_scanning_(cd);
-error:
 	dev_dbg(cd->dev, "%s: rc=%d\n", __func__, rc);
 	return rc;
 }
@@ -4588,6 +4570,7 @@ static int cyttsp5_check_silicon_id(struct cyttsp5_core_data *cd)
 static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 {
 	int rc;
+	int retry = 3;
 
 #ifdef TTHE_TUNER_SUPPORT
 	tthe_print(cd, NULL, 0, "enter startup");
@@ -4674,6 +4657,11 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 		goto exit;
 	}
 
+	rc = cyttsp5_hid_output_suspend_scanning_(cd);
+	if (rc)
+		dev_err(cd->dev, "%s: error on suspend scan, rc=%d\n",
+			__func__, rc);
+
 	rc = cyttsp5_get_config_ver_(cd);
 	if (rc)
 		dev_err(cd->dev, "%s: failed to read config version rc=%d\n",
@@ -4690,6 +4678,15 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 		dev_err(cd->dev, "%s: failed to get samsung tsp info rc=%d\n",
 			__func__, rc);
 #endif
+
+	while (retry--) {
+		rc = cyttsp5_hid_output_resume_scanning_(cd);
+		if (rc)
+			dev_err(cd->dev, "%s: error on resume scan, rc=%d, retry=%d\n",
+				__func__, rc, retry);
+		else
+			break;
+	}
 
 	/* attention startup */
 	call_atten_cb(cd, CY_ATTEN_STARTUP, 0);
