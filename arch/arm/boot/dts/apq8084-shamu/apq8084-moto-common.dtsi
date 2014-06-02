@@ -618,11 +618,12 @@
 	};
 
 	mpp@a100 { /* MPP 2 */
-		/* CC ALERT MAX17050 */
+		/* USB_ID */
 		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <1>;
-		qcom,vin-sel = <2>;		/* VPH_PWR */
-		qcom,src-sel = <0>;		/* Constant */
+		qcom,pull = <1>;          /* QPNP_PIN_MPP_PULL_UP_OPEN */
+		qcom,vin-sel = <3>;	  /* LDO6 1.8V */
+		qcom,src-sel = <0>;	  /* Constant */
+		qcom,master-en = <1>;     /* Enable */
 
 	};
 
@@ -1073,6 +1074,8 @@
 
 &usb3 {
 	vbus_dwc3-supply = <&smb1357_otg_vreg>;
+	interrupt-map = <0x0 0 &intc 0 133 0
+			0x0 1 &spmi_bus 0x0 0x0 0xA1 0x0>;
 	dwc3@f9200000 {
 		maximum-speed = "high-speed";
 	};
