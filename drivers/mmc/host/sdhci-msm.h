@@ -151,6 +151,7 @@ struct sdhci_msm_pltfm_data {
 	unsigned char sup_ice_clk_cnt;
 	u32 ice_clk_max;
 	u32 ice_clk_min;
+	u32 drv_types;
 	struct sdhci_msm_pm_qos_data pm_qos_data;
 	bool core_3_0v_support;
 };
@@ -214,6 +215,10 @@ struct sdhci_msm_host {
 	bool pm_qos_group_enable;
 	struct sdhci_msm_pm_qos_irq pm_qos_irq;
 	bool tuning_in_progress;
+#if defined(CONFIG_MMC_SDHCI_MSM_DEBUG)
+	struct dentry *debugfs_host_dir;
+	struct dentry *debugfs_drv_types;
+#endif
 };
 
 extern char *saved_command_line;
