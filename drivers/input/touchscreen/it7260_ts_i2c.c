@@ -26,6 +26,7 @@
 #include <linux/timer.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
+#include <linux/sync.h>
 
 #define MAX_BUFFER_SIZE		144
 #define DEVICE_NAME			"IT7260"
@@ -75,7 +76,7 @@ static struct input_dev *input_dev;
 struct IT7260_ts_data *gl_ts;
 static int Calibration__success_flag = 0;
 static int Upgrade__success_flag = 0; 
-static int Suspend_flag = 0;
+static atomic_t Suspend_flag;
 struct device *class_dev = NULL;
 static int it7260_status = 0; //ASUS_BSP Cliff +++ add for ATD check
 
@@ -897,10 +898,18 @@ static void IT7260_ts_work_func(struct work_struct *work) {
 
 //ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
 static void IT7260_ts_work_resume_func(struct work_struct *work) {
-	if (Suspend_flag == 1){
-		public_gpio_keys_gpio_report_event();
+	if (atomic_read(&Suspend_flag)){
+		static 	int last_time_shot_power = 0;
+		if (jiffies - last_time_shot_power > 2*HZ){
+			last_time_shot_power = jiffies;
+				public_gpio_keys_gpio_report_event();
+				atomic_read(&Suspend_flag);
+
+		}else{
+			printk("!!!! Skip Power key shoot by touch!!!\n");
+		}
 	}
-	Suspend_flag++;
+	//Suspend_flag++;
 	enable_irq(gl_ts->client->irq);
 }
 
@@ -908,7 +917,7 @@ int delayCount = 1;
 static irqreturn_t IT7260_ts_irq_handler(int irq, void *dev_id) {
 	struct IT7260_ts_data *ts = dev_id;
 
-	if (Suspend_flag)
+	if (atomic_read(&Suspend_flag))
 	{
 		disable_irq_nosync(gl_ts->client->irq);
 		queue_work(IT7260_wq, &ts->resume_work);			
@@ -1065,13 +1074,13 @@ void notify_it7260_ts_lowpowermode(int low)
 	
 	printk("[IT7260] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low) {
-		Suspend_flag = 1;
+		atomic_set(&Suspend_flag,1);
 		enable_irq_wake(gl_ts->client->irq);
 		//disable_irq(gl_ts->client->irq);
 		i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf, 3);
 	}
 	else {
-		Suspend_flag = 0;
+		atomic_set(&Suspend_flag,0);
 		disable_irq_wake(gl_ts->client->irq);
 		i2cReadFromIt7260(gl_ts->client, 0x80, &ucQuery, 1);
 		//enable_irq(gl_ts->client->irq);
