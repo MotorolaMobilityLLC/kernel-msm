@@ -46,8 +46,14 @@
 
 #define OLD_BOOT_VER 0x10
 
+#define I2C_RETRIES 5
+#define I2C_RETRY_DELAY 20
+#define COMMAND_RETRIES 5
+#define COMMAND_DELAY 2000
+
 #define ACK_BYTE 0x79
 #define BUSY_BYTE 0x76
+#define NACK_BYTE 0x1F
 
 #define ERASE_DELAY 200
 #define ERASE_TIMEOUT 80
@@ -76,6 +82,7 @@ static int stm401_boot_i2c_write(struct stm401_data *ps_stm401,
 	u8 *buf, int len)
 {
 	int ret;
+	int tries = I2C_RETRIES;
 	struct i2c_msg msgs[] = {
 		{
 			.addr = ps_stm401->client->addr,
@@ -88,11 +95,20 @@ static int stm401_boot_i2c_write(struct stm401_data *ps_stm401,
 	if (buf == NULL || len == 0)
 		return -EFAULT;
 
-	ret = i2c_transfer(ps_stm401->client->adapter, msgs, 1);
-	if (ret < 0) {
+	while (tries) {
+		ret = i2c_transfer(ps_stm401->client->adapter, msgs, 1);
+		if (ret >= 0)
+			break;
+
 		dev_err(&stm401_misc_data->client->dev,
-			"I2C write bus error\n");
+			"Boot mode I2C write error %d\n", ret);
+		tries--;
+		msleep(I2C_RETRY_DELAY);
 	}
+
+	if (ret < 0)
+		dev_err(&stm401_misc_data->client->dev,
+			"Boot mode I2C write fail %d\n", ret);
 
 	return  ret;
 }
@@ -100,6 +116,7 @@ static int stm401_boot_i2c_write(struct stm401_data *ps_stm401,
 static int stm401_boot_i2c_read(struct stm401_data *ps_stm401, u8 *buf, int len)
 {
 	int ret;
+	int tries = I2C_RETRIES;
 	struct i2c_msg msgs[] = {
 		{
 			.addr = ps_stm401->client->addr,
@@ -112,11 +129,20 @@ static int stm401_boot_i2c_read(struct stm401_data *ps_stm401, u8 *buf, int len)
 	if (buf == NULL || len == 0)
 		return -EFAULT;
 
-	ret = i2c_transfer(ps_stm401->client->adapter, msgs, 1);
-	if (ret < 0) {
+	while (tries) {
+		ret = i2c_transfer(ps_stm401->client->adapter, msgs, 1);
+		if (ret >= 0)
+			break;
+
 		dev_err(&stm401_misc_data->client->dev,
-			"I2C read bus error\n");
+			"Boot mode I2C read error %d\n", ret);
+		tries--;
+		msleep(I2C_RETRY_DELAY);
 	}
+
+	if (ret < 0)
+		dev_err(&stm401_misc_data->client->dev,
+			"Boot mode I2C read fail %d\n", ret);
 
 	return  ret;
 }
@@ -147,47 +173,56 @@ static int stm401_boot_checksum_write(struct stm401_data *ps_stm401,
 
 static int stm401_get_boot_ver(void)
 {
-	int err;
+	int tries = COMMAND_RETRIES;
+	int err = 0;
 
-	err = stm401_boot_cmd_write(stm401_misc_data, GET_VERSION);
-	if (err < 0)
-		return err;
-	err = stm401_boot_i2c_read(stm401_misc_data,
-		stm401_readbuff, 1);
-	if (err < 0)
-		return err;
+	while (tries) {
+		err = stm401_boot_cmd_write(stm401_misc_data, GET_VERSION);
+		if (err < 0)
+			goto RETRY_VER;
 
-	if (stm401_readbuff[0] != ACK_BYTE) {
+		err = stm401_boot_i2c_read(stm401_misc_data,
+			stm401_readbuff, 1);
+		if (err < 0)
+			goto RETRY_VER;
+		if (stm401_readbuff[0] != ACK_BYTE) {
+			dev_err(&stm401_misc_data->client->dev,
+				"Error sending GET_VERSION command 0x%02x\n",
+				stm401_readbuff[0]);
+			goto RETRY_VER;
+		}
+
+		err = stm401_boot_i2c_read(stm401_misc_data,
+			stm401_readbuff, 1);
+		if (err < 0)
+			goto RETRY_VER;
+		stm401_bootloader_ver = stm401_readbuff[0];
 		dev_err(&stm401_misc_data->client->dev,
-			"Error sending GET_VERSION command 0x%02x\n",
+			"Bootloader version 0x%02x\n", stm401_bootloader_ver);
+
+		err = stm401_boot_i2c_read(stm401_misc_data,
+			stm401_readbuff, 1);
+		if (err < 0)
+			goto RETRY_VER;
+		if (stm401_readbuff[0] == ACK_BYTE)
+			break;
+		dev_err(&stm401_misc_data->client->dev,
+			"Error reading GET_VERSION data 0x%02x\n",
 			stm401_readbuff[0]);
-		return -EIO;
+RETRY_VER:
+		tries--;
+		msleep(COMMAND_DELAY);
 	}
 
-	err = stm401_boot_i2c_read(stm401_misc_data,
-		stm401_readbuff, 1);
 	if (err < 0)
-		return err;
-	stm401_bootloader_ver = stm401_readbuff[0];
-	dev_err(&stm401_misc_data->client->dev,
-		"Bootloader version 0x%02x\n", stm401_bootloader_ver);
-
-	err = stm401_boot_i2c_read(stm401_misc_data,
-		stm401_readbuff, 1);
-	if (err < 0)
-		return err;
-	if (stm401_readbuff[0] != ACK_BYTE) {
-		dev_err(&stm401_misc_data->client->dev,
-			"Error sending GET_VERSION command 0x%02x\n",
-			stm401_readbuff[0]);
 		return -EIO;
-	}
 
 	return stm401_bootloader_ver;
 }
 
 int stm401_boot_flash_erase(void)
 {
+	int tries = COMMAND_RETRIES;
 	int index = 0;
 	int count = 0;
 	int err = 0;
@@ -204,48 +239,55 @@ int stm401_boot_flash_erase(void)
 
 	if (stm401_bootloader_ver > OLD_BOOT_VER) {
 		/* Use new bootloader erase command */
-		err = stm401_boot_cmd_write(stm401_misc_data, NO_WAIT_ERASE);
-		if (err < 0)
-			goto EXIT;
+		while (tries) {
+			err = stm401_boot_cmd_write(stm401_misc_data,
+				NO_WAIT_ERASE);
+			if (err < 0)
+				goto RETRY_ERASE;
 
-		err = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
-		if (err < 0)
-			goto EXIT;
-		if (stm401_readbuff[0] != ACK_BYTE) {
-			dev_err(&stm401_misc_data->client->dev,
-				"Error sending ERASE command 0x%02x\n",
-				stm401_readbuff[0]);
-			err = -EIO;
-			goto EXIT;
-		}
-
-		stm401_cmdbuff[index++] = 0xFF;
-		stm401_cmdbuff[index++] = 0xFF;
-		err = stm401_boot_checksum_write(stm401_misc_data,
-			stm401_cmdbuff, index);
-		if (err < 0)
-			goto EXIT;
-
-		stm401_readbuff[0] = 0;
-		do {
 			err = stm401_boot_i2c_read(stm401_misc_data,
 				stm401_readbuff, 1);
 			if (err < 0)
-				goto EXIT;
-			if (stm401_readbuff[0] == BUSY_BYTE) {
+				goto RETRY_ERASE;
+			if (stm401_readbuff[0] != ACK_BYTE) {
+				dev_err(&stm401_misc_data->client->dev,
+					"Error sending ERASE command 0x%02x\n",
+					stm401_readbuff[0]);
+				goto RETRY_ERASE;
+			}
+
+			stm401_cmdbuff[index++] = 0xFF;
+			stm401_cmdbuff[index++] = 0xFF;
+			err = stm401_boot_checksum_write(stm401_misc_data,
+				stm401_cmdbuff, index);
+			if (err < 0)
+				goto RETRY_ERASE;
+
+			stm401_readbuff[0] = 0;
+			do {
+				err = stm401_boot_i2c_read(stm401_misc_data,
+					stm401_readbuff, 1);
+				if ((err >= 0) && (stm401_readbuff[0] ==
+						NACK_BYTE))
+					break;
 				msleep(ERASE_DELAY);
 				count++;
 				if (count == ERASE_TIMEOUT)
 					break;
+			} while (stm401_readbuff[0] != ACK_BYTE);
+			if (stm401_readbuff[0] == ACK_BYTE) {
+				err = 0;
+				dev_dbg(&stm401_misc_data->client->dev,
+					"Flash erase successful\n");
+				break;
 			}
-		} while (stm401_readbuff[0] == BUSY_BYTE);
-		if (stm401_readbuff[0] != ACK_BYTE) {
 			dev_err(&stm401_misc_data->client->dev,
-				"Error sending ERASE data 0x%02x\n",
+				"Error waiting for ERASE complete 0x%02x\n",
 				stm401_readbuff[0]);
+RETRY_ERASE:
 			err = -EIO;
-			goto EXIT;
+			tries--;
+			msleep(COMMAND_DELAY);
 		}
 	} else {
 		/* Use old bootloader erase command */
@@ -280,8 +322,6 @@ int stm401_boot_flash_erase(void)
 		msleep(16000);
 	}
 
-	dev_dbg(&stm401_misc_data->client->dev,
-		"Flash erase successful\n");
 EXIT:
 	return err;
 }
@@ -317,7 +357,8 @@ int switch_stm401_mode(enum stm_mode mode)
 	struct stm401_platform_data *pdata;
 	unsigned int bslen_pin_active_value =
 		stm401_misc_data->pdata->bslen_pin_active_value;
-	int ret;
+	int tries = COMMAND_RETRIES;
+	int err = 0;
 
 	pdata = stm401_misc_data->pdata;
 	stm401_misc_data->mode = mode;
@@ -334,38 +375,44 @@ int switch_stm401_mode(enum stm_mode mode)
 		gpio_set_value(pdata->gpio_reset, 1);
 		msleep(STM401_RESET_DELAY);
 
-		ret = stm401_boot_cmd_write(stm401_misc_data, GET_ID);
-		if (ret < 0)
-			return ret;
+		while (tries) {
+			err = stm401_boot_cmd_write(stm401_misc_data, GET_ID);
+			if (err < 0)
+				goto RETRY_ID;
 
-		ret = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
-		if (ret < 0)
-			return ret;
-		if (stm401_readbuff[0] != ACK_BYTE) {
+			err = stm401_boot_i2c_read(stm401_misc_data,
+				stm401_readbuff, 1);
+			if (err < 0)
+				goto RETRY_ID;
+			if (stm401_readbuff[0] != ACK_BYTE) {
+				dev_err(&stm401_misc_data->client->dev,
+					"Error sending GET_ID command 0x%02x\n",
+					stm401_readbuff[0]);
+				goto RETRY_ID;
+			}
+
+			err = stm401_boot_i2c_read(stm401_misc_data,
+				stm401_readbuff, 3);
+			if (err < 0)
+				goto RETRY_ID;
 			dev_err(&stm401_misc_data->client->dev,
-				"Error sending GET_ID command 0x%02x\n",
-				stm401_readbuff[0]);
-			return -EIO;
-		}
+				"Part ID 0x%02x 0x%02x 0x%02x\n",
+				stm401_readbuff[0], stm401_readbuff[1],
+				stm401_readbuff[2]);
 
-		ret = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 3);
-		if (ret < 0)
-			return ret;
-		dev_err(&stm401_misc_data->client->dev,
-			"Part ID 0x%02x 0x%02x 0x%02x\n", stm401_readbuff[0],
-			stm401_readbuff[1], stm401_readbuff[2]);
-
-		ret = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
-		if (ret < 0)
-			return ret;
-		if (stm401_readbuff[0] != ACK_BYTE) {
+			err = stm401_boot_i2c_read(stm401_misc_data,
+				stm401_readbuff, 1);
+			if (err < 0)
+				goto RETRY_ID;
+			if (stm401_readbuff[0] == ACK_BYTE)
+				break;
 			dev_err(&stm401_misc_data->client->dev,
-				"Error reading part ID 0x%02x\n",
+				"Error reading GETID data 0x%02x\n",
 				stm401_readbuff[0]);
-			return -EIO;
+RETRY_ID:
+			err = -EIO;
+			tries--;
+			msleep(COMMAND_DELAY);
 		}
 	} else {
 		/*normal mode */
@@ -381,7 +428,7 @@ int switch_stm401_mode(enum stm_mode mode)
 			stm401_reset(pdata, stm401_cmdbuff);
 	}
 
-	return 0;
+	return err;
 }
 
 static int stm401_misc_open(struct inode *inode, struct file *file)
@@ -402,6 +449,7 @@ static int stm401_misc_open(struct inode *inode, struct file *file)
 ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 				 size_t count, loff_t *ppos)
 {
+	int tries = COMMAND_RETRIES;
 	int index = 0;
 	int wait_count = 0;
 	int err = 0;
@@ -409,8 +457,7 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 	if (count > STM401_MAXDATA_LENGTH || count == 0) {
 		dev_err(&stm401_misc_data->client->dev,
 			"Invalid packet size %d\n", count);
-		err = -EINVAL;
-		return err;
+		return -EINVAL;
 	}
 
 	mutex_lock(&stm401_misc_data->lock);
@@ -428,85 +475,109 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 			count, stm401_misc_data->current_addr);
 
 		if (stm401_bootloader_ver > OLD_BOOT_VER) {
-			/* Use new bootloader write command */
-			err = stm401_boot_cmd_write(stm401_misc_data,
-				NO_WAIT_WRITE_MEMORY);
-			if (err < 0)
-				goto EXIT;
+			while (tries) {
+				/* Use new bootloader write command */
+				err = stm401_boot_cmd_write(stm401_misc_data,
+					NO_WAIT_WRITE_MEMORY);
+				if (err < 0)
+					goto RETRY_WRITE;
 
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
-			if (err < 0)
-				goto EXIT;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
-				 "Error sending WRITE_MEMORY command 0x%02x\n",
-					stm401_readbuff[0]);
-				err = -EIO;
-				goto EXIT;
-			}
-
-			stm401_cmdbuff[index++]
-				= (stm401_misc_data->current_addr >> 24) & 0xFF;
-			stm401_cmdbuff[index++]
-				= (stm401_misc_data->current_addr >> 16) & 0xFF;
-			stm401_cmdbuff[index++]
-				= (stm401_misc_data->current_addr >> 8) & 0xFF;
-			stm401_cmdbuff[index++]
-				= stm401_misc_data->current_addr & 0xFF;
-			err = stm401_boot_checksum_write(stm401_misc_data,
-				stm401_cmdbuff, index);
-			if (err < 0)
-				goto EXIT;
-
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
-			if (err < 0)
-				goto EXIT;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
-					"Error sending write memory address 0x%02x\n",
-					stm401_readbuff[0]);
-				err = -EIO;
-				goto EXIT;
-			}
-
-			stm401_cmdbuff[0] = count - 1;
-			if (copy_from_user(&stm401_cmdbuff[1], buff, count)) {
-				dev_err(&stm401_misc_data->client->dev,
-					"Copy from user returned error\n");
-				err = -EINVAL;
-				goto EXIT;
-			}
-			if (count & 0x1) {
-				stm401_cmdbuff[count + 1] = 0xFF;
-				count++;
-			}
-			err = stm401_boot_checksum_write(stm401_misc_data,
-				stm401_cmdbuff, count + 1);
-			if (err < 0)
-				goto EXIT;
-
-			stm401_readbuff[0] = 0;
-			do {
 				err = stm401_boot_i2c_read(stm401_misc_data,
 					stm401_readbuff, 1);
 				if (err < 0)
+					goto RETRY_WRITE;
+				if (stm401_readbuff[0] != ACK_BYTE) {
+					dev_err(&stm401_misc_data->client->dev,
+					"Error sending WRITE_MEMORY "
+					"command 0x%02x\n",
+						stm401_readbuff[0]);
+					goto RETRY_WRITE;
+				}
+
+				stm401_cmdbuff[index++]
+					= (stm401_misc_data->current_addr >> 24)
+					& 0xFF;
+				stm401_cmdbuff[index++]
+					= (stm401_misc_data->current_addr >> 16)
+					& 0xFF;
+				stm401_cmdbuff[index++]
+					= (stm401_misc_data->current_addr >> 8)
+					& 0xFF;
+				stm401_cmdbuff[index++]
+					= stm401_misc_data->current_addr & 0xFF;
+				err = stm401_boot_checksum_write(
+					stm401_misc_data, stm401_cmdbuff,
+					index);
+				if (err < 0)
+					goto RETRY_WRITE;
+				err = stm401_boot_i2c_read(stm401_misc_data,
+					stm401_readbuff, 1);
+				if (err < 0)
+					goto RETRY_WRITE;
+				if (stm401_readbuff[0] != ACK_BYTE) {
+					dev_err(&stm401_misc_data->client->dev,
+						"Error sending MEMORY_WRITE "
+						"address 0x%02x\n",
+						stm401_readbuff[0]);
+					goto RETRY_WRITE;
+				}
+
+				stm401_cmdbuff[0] = count - 1;
+				if (copy_from_user(&stm401_cmdbuff[1], buff,
+						count)) {
+					dev_err(&stm401_misc_data->client->dev,
+						"Copy from user returned "
+						"error\n");
+					err = -EINVAL;
 					goto EXIT;
-				if (stm401_readbuff[0] == BUSY_BYTE) {
+				}
+				if (count & 0x1) {
+					stm401_cmdbuff[count + 1] = 0xFF;
+					count++;
+				}
+				err = stm401_boot_checksum_write(
+					stm401_misc_data, stm401_cmdbuff,
+					count + 1);
+				if (err < 0) {
+					dev_err(&stm401_misc_data->client->dev,
+						"Error sending MEMORY_WRITE "
+						"data 0x%02x\n",
+						stm401_readbuff[0]);
+					goto RETRY_WRITE;
+				}
+
+				stm401_readbuff[0] = 0;
+				do {
+					err = stm401_boot_i2c_read(
+						stm401_misc_data,
+						stm401_readbuff, 1);
+					if ((err >= 0) && (stm401_readbuff[0]
+							== NACK_BYTE))
+						break;
 					msleep(WRITE_DELAY);
 					wait_count++;
 					if (wait_count == WRITE_TIMEOUT)
 						break;
+				} while (stm401_readbuff[0] != ACK_BYTE);
+				if (stm401_readbuff[0] == ACK_BYTE) {
+					dev_dbg(&stm401_misc_data->client->dev,
+						"MEMORY_WRITE successful\n");
+					err = 0;
+					break;
 				}
-			} while (stm401_readbuff[0] == BUSY_BYTE);
-			if (stm401_readbuff[0] != ACK_BYTE) {
 				dev_err(&stm401_misc_data->client->dev,
-					"Error sending write data 0x%02x\n",
+					"Error writing MEMORY_WRITE "
+					"data 0x%02x\n",
 					stm401_readbuff[0]);
+RETRY_WRITE:
+				dev_dbg(&stm401_misc_data->client->dev,
+					"Retry MEMORY_WRITE\n");
 				err = -EIO;
-				goto EXIT;
+				tries--;
+				msleep(COMMAND_DELAY);
 			}
+			if (err < 0)
+				goto EXIT;
 		} else {
 			/* Use old bootloader write command */
 			err = stm401_boot_cmd_write(stm401_misc_data,
@@ -543,7 +614,8 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 				goto EXIT;
 			if (stm401_readbuff[0] != ACK_BYTE) {
 				dev_err(&stm401_misc_data->client->dev,
-					"Error sending write memory address 0x%02x\n",
+					"Error sending write memory "
+					"address 0x%02x\n",
 					stm401_readbuff[0]);
 				err = -EIO;
 				goto EXIT;
@@ -576,88 +648,103 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 				goto EXIT;
 			}
 		}
+
 		dev_dbg(&stm401_misc_data->client->dev,
 			"Flash write completed\n");
 
-		err = stm401_boot_cmd_write(stm401_misc_data,
-			READ_MEMORY);
-		if (err < 0)
-			goto EXIT;
+		tries = COMMAND_RETRIES;
+		while (tries) {
+			err = stm401_boot_cmd_write(stm401_misc_data,
+				READ_MEMORY);
+			if (err < 0)
+				goto RETRY_READ;
 
-		err = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
-		if (err < 0)
-			goto EXIT;
-		if (stm401_readbuff[0] != ACK_BYTE) {
-			dev_err(&stm401_misc_data->client->dev,
-			 "Error sending READ_MEMORY command 0x%02x\n",
-				stm401_readbuff[0]);
-			err = -EIO;
-			goto EXIT;
-		}
-
-		index = 0;
-		stm401_cmdbuff[index++]
-			= (stm401_misc_data->current_addr >> 24) & 0xFF;
-		stm401_cmdbuff[index++]
-			= (stm401_misc_data->current_addr >> 16) & 0xFF;
-		stm401_cmdbuff[index++]
-			= (stm401_misc_data->current_addr >> 8) & 0xFF;
-		stm401_cmdbuff[index++]
-			= stm401_misc_data->current_addr & 0xFF;
-		err = stm401_boot_checksum_write(stm401_misc_data,
-			stm401_cmdbuff, index);
-		if (err < 0)
-			goto EXIT;
-
-		err = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
-		if (err < 0)
-			goto EXIT;
-		if (stm401_readbuff[0] != ACK_BYTE) {
-			dev_err(&stm401_misc_data->client->dev,
-				"Error sending read memory address 0x%02x\n",
-				stm401_readbuff[0]);
-			err = -EIO;
-			goto EXIT;
-		}
-
-		err = stm401_boot_cmd_write(stm401_misc_data,
-			(count - 1));
-		if (err < 0)
-			goto EXIT;
-
-		err = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
-		if (err < 0)
-			goto EXIT;
-		if (stm401_readbuff[0] != ACK_BYTE) {
-			dev_err(&stm401_misc_data->client->dev,
-				"Error sending read memory count 0x%02x\n",
-				stm401_readbuff[0]);
-			err = -EIO;
-			goto EXIT;
-		}
-
-		err = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, count);
-		if (err < 0)
-			goto EXIT;
-
-		for (index = 0; index < count; index++) {
-			if (stm401_readbuff[index] != buff[index]) {
+			err = stm401_boot_i2c_read(stm401_misc_data,
+				stm401_readbuff, 1);
+			if (err < 0)
+				goto RETRY_READ;
+			if (stm401_readbuff[0] != ACK_BYTE) {
 				dev_err(&stm401_misc_data->client->dev,
-					"Error verifying write 0x%08x 0x%02x "
-					"0x%02x 0x%02x\n",
-					stm401_misc_data->current_addr,
-					index,
-					stm401_readbuff[index],
-					buff[index]);
-				err = -EIO;
-				goto EXIT;
+				 "Error sending READ_MEMORY command 0x%02x\n",
+					stm401_readbuff[0]);
+				goto RETRY_READ;
 			}
-		}
 
+			index = 0;
+			stm401_cmdbuff[index++]
+				= (stm401_misc_data->current_addr >> 24) & 0xFF;
+			stm401_cmdbuff[index++]
+				= (stm401_misc_data->current_addr >> 16) & 0xFF;
+			stm401_cmdbuff[index++]
+				= (stm401_misc_data->current_addr >> 8) & 0xFF;
+			stm401_cmdbuff[index++]
+				= stm401_misc_data->current_addr & 0xFF;
+			err = stm401_boot_checksum_write(stm401_misc_data,
+				stm401_cmdbuff, index);
+			if (err < 0)
+				goto RETRY_READ;
+			err = stm401_boot_i2c_read(stm401_misc_data,
+				stm401_readbuff, 1);
+			if (err < 0)
+				goto RETRY_READ;
+			if (stm401_readbuff[0] != ACK_BYTE) {
+				dev_err(&stm401_misc_data->client->dev,
+					"Error sending READ_MEMORY address "
+					"0x%02x\n",
+					stm401_readbuff[0]);
+				goto RETRY_READ;
+			}
+
+			err = stm401_boot_cmd_write(stm401_misc_data,
+				(count - 1));
+			if (err < 0)
+				goto RETRY_READ;
+			err = stm401_boot_i2c_read(stm401_misc_data,
+				stm401_readbuff, 1);
+			if (err < 0)
+				goto RETRY_READ;
+			if (stm401_readbuff[0] != ACK_BYTE) {
+				dev_err(&stm401_misc_data->client->dev,
+					"Error sending READ_MEMORY count "
+					"0x%02x\n",
+					stm401_readbuff[0]);
+				goto RETRY_READ;
+			}
+
+			err = stm401_boot_i2c_read(stm401_misc_data,
+				stm401_readbuff, count);
+			if (err < 0) {
+				dev_err(&stm401_misc_data->client->dev,
+					"Error reading READ_MEMORY data "
+					"0x%02x\n",
+					stm401_readbuff[0]);
+				goto RETRY_READ;
+			}
+
+			for (index = 0; index < count; index++) {
+				if (stm401_readbuff[index] != buff[index]) {
+					dev_err(&stm401_misc_data->client->dev,
+						"Error verifying write "
+						"0x%08x 0x%02x "
+						"0x%02x 0x%02x\n",
+						stm401_misc_data->current_addr,
+						index,
+						stm401_readbuff[index],
+						buff[index]);
+					goto RETRY_READ;
+				}
+			}
+			err = 0;
+			dev_dbg(&stm401_misc_data->client->dev,
+				"Data compare successful\n");
+			break;
+RETRY_READ:
+			dev_dbg(&stm401_misc_data->client->dev,
+				"Retry READ_MEMORY\n");
+			err = -EIO;
+			tries--;
+			msleep(COMMAND_DELAY);
+		}
 		stm401_misc_data->current_addr += count;
 	} else {
 		dev_dbg(&stm401_misc_data->client->dev,
