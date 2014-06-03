@@ -610,10 +610,6 @@
 };
 
 &pm8916_chg {
-	status = "disabled";
+	qcom,use-default-batt-values;
 };
 
-&pm8916_bms {
-	status = "ok";
-	qcom,disable-bms;
-};
