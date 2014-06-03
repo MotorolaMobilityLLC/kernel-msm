@@ -18,6 +18,7 @@
 / {
 	aliases {
 		serial0 = &blsp1_uart1;
+		serial1 = &blsp1_uart2;
 		spi5 = &spi_5; /* SPI0 controller device */
 		i2c1 = &i2c_1;
 	};
@@ -80,6 +81,12 @@
 };
 
 &blsp1_uart1 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_console_sleep>;
+};
+
+&blsp1_uart2 {
 	status = "ok";
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart_console_sleep>;
