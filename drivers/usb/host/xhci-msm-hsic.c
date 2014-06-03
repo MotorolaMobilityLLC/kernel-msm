@@ -1531,7 +1531,7 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 
 	mxhci->hsic_reboot.notifier_call = mxhci_hsic_reboot;
 	mxhci->hsic_reboot.next = NULL;
-	mxhci->hsic_reboot.priority = 0;
+	mxhci->hsic_reboot.priority = 1;
 	ret = register_reboot_notifier(&mxhci->hsic_reboot);
 	if (ret)
 		dev_err(&pdev->dev, "%s: register for reboot failed\n",
