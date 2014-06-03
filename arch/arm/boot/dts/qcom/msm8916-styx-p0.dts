@@ -46,6 +46,10 @@
 	};
 };
 
+&smb1360_otg_supply {
+	status = "ok";
+};
+
 &i2c_1 {
 	lm3697@36 {
 		status = "disabled";

@@ -534,6 +534,7 @@
 
 &i2c_4 {
 	smb1360_otg_supply: smb1360-chg-fg@14 {
+		status = "disabled";
 		compatible = "qcom,smb1360-chg-fg";
 		reg = <0x14>;
 		interrupt-parent = <&msm_gpio>;
