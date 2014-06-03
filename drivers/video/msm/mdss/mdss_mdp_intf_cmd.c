@@ -580,6 +580,8 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
+	unsigned long flags;
+	int need_wait = 0;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -589,6 +591,24 @@ int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
 
 	pr_debug("%s: clk_enabled=%d\n", __func__, ctx->clk_enabled);
 
+	spin_lock_irqsave(&ctx->clk_lock, flags);
+	if (ctx->rdptr_enabled) {
+		INIT_COMPLETION(ctx->stop_comp);
+		need_wait = 1;
+	}
+	spin_unlock_irqrestore(&ctx->clk_lock, flags);
+
+	if (need_wait) {
+		if (wait_for_completion_timeout(&ctx->stop_comp, STOP_TIMEOUT)
+		    <= 0) {
+			pr_debug("%s: stop cmd time out\n", __func__);
+			mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
+				ctx->pp_num);
+			ctx->rdptr_enabled = 0;
+			ctx->koff_cnt = 0;
+		}
+	}
+
 	ctx->off_pan_on = true;
 	if (cancel_work_sync(&ctx->clk_work))
 		pr_debug("no pending clk work\n");
@@ -596,7 +616,6 @@ int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
 	if (cancel_delayed_work_sync(&ctx->ulps_work))
 		pr_debug("deleted pending ulps work\n");
 
-	ctx->rdptr_enabled = 0;
 	mdss_mdp_cmd_clk_off(ctx);
 
 	if (!ctx->ulps) {
