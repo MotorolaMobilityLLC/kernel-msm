@@ -1021,6 +1021,10 @@ int mxhci_hsic_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 	u32 status;
 
 	ret = xhci_hub_control(hcd, typeReq, wValue, wIndex, buf, wLength);
+	if (!hcd->primary_hcd)
+		return ret;
+
+	mxhci = hcd_to_hsic(hcd->primary_hcd);
 
 	if (!hcd->primary_hcd)
 		return ret;
