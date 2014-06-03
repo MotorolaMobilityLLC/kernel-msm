@@ -332,7 +332,7 @@ static void mdss_dsi_link_clk_unprepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 static int mdss_dsi_link_clk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
-	u32 esc_clk_rate = 9600000;
+	u32 esc_clk_rate = 19200000;
 	int rc = 0;
 
 	if (!ctrl_pdata) {

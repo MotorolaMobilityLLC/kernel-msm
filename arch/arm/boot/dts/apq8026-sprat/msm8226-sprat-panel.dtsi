@@ -51,7 +51,7 @@
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,mdss-dsi-lane-0-state;
-		qcom,mdss-dsi-panel-timings = [3E 0E 04 00 26 28 0A 10 0E 03 04 00];
+		qcom,mdss-dsi-panel-timings = [2E 0E 04 00 26 28 0A 10 06 03 04 00];
 		qcom,mdss-dsi-lane-map = <0>;
 		qcom,mdss-dsi-t-clk-post = <0x04>;
 		qcom,mdss-dsi-t-clk-pre = <0x1B>;
