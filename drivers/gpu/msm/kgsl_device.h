@@ -554,6 +554,9 @@ int kgsl_context_detach(struct kgsl_context *context);
 
 void kgsl_context_dump(struct kgsl_context *context);
 
+int kgsl_memfree_find_entry(pid_t pid, unsigned long *gpuaddr,
+	unsigned long *size, unsigned int *flags);
+
 /**
  * kgsl_context_put() - Release context reference count
  * @context: Pointer to the KGSL context to be released
