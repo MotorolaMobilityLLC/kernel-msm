@@ -58,11 +58,6 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 		goto error;
 	}
 
-	if (pdata->panel_info.always_on && pdata->panel_info.is_suspending) {
-		pr_debug("%s: Leaving panel on or off\n", __func__);
-		return 0;
-	}
-
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	pr_debug("%s: enable=%d\n", __func__, enable);
@@ -518,6 +513,8 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 			goto error;
 		}
 
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 0);
+
 		/* Enable MMSS DSI Clamps */
 		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x3FF);
 		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x83FF);
@@ -528,7 +525,7 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		/* disable DSI controller */
 		mdss_dsi_controller_cfg(0, pdata);
 
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
 		ctrl_pdata->ulps = true;
 	} else if (ctrl_pdata->ulps) {
 		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
@@ -596,8 +593,7 @@ error:
 	return ret;
 }
 
-static int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl,
-	int enable)
+int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 {
 	int rc;
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
@@ -847,11 +843,6 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
 			mdss_dsi_set_tear_off(ctrl_pdata);
 		}
-	}
-
-	if (pdata->panel_info.always_on && pdata->panel_info.is_suspending) {
-		pr_debug("%s: Not sending off commands\n", __func__);
-		return ret;
 	}
 
 	if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
@@ -1375,7 +1366,7 @@ static int mdss_dsi_pm_prepare(struct device *dev)
 	}
 
 	mutex_lock(&ctrl_pdata->suspend_mutex);
-	if (pdata->panel_info.always_on && !ctrl_pdata->blanked) {
+	if (!ctrl_pdata->blanked) {
 		pr_debug("%s: set low fps mode on\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 1);
 	}
@@ -1400,7 +1391,7 @@ static void mdss_dsi_pm_complete(struct device *dev)
 	}
 
 	mutex_lock(&ctrl_pdata->suspend_mutex);
-	if (pdata->panel_info.always_on && !ctrl_pdata->blanked) {
+	if (!ctrl_pdata->blanked) {
 		pr_debug("%s: set low fps mode off\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 0);
 	}

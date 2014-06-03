@@ -639,8 +639,10 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 
 	pr_debug("mdss_fb suspend index=%d\n", mfd->index);
 
-	mfd->panel_info->is_suspending = true;
-
+#if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
+	if (mfd->index == 0)
+		return mfd->mdp.off_pan_on_fnc(mfd);
+#endif
 	mdss_fb_pan_idle(mfd);
 	ret = mdss_fb_send_panel_event(mfd, MDSS_EVENT_SUSPEND, NULL);
 	if (ret) {
@@ -672,6 +674,10 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
+#if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
+	if (mfd->index == 0)
+		return 0;
+#endif
 	INIT_COMPLETION(mfd->power_set_comp);
 	mfd->is_power_setting = true;
 	pr_debug("mdss_fb resume index=%d\n", mfd->index);
@@ -696,8 +702,6 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 	}
 	mfd->is_power_setting = false;
 	complete_all(&mfd->power_set_comp);
-
-	mfd->panel_info->is_suspending = false;
 
 	return ret;
 }
@@ -749,6 +753,15 @@ static int mdss_fb_pm_resume(struct device *dev)
 		return -ENODEV;
 
 	dev_dbg(dev, "display pm resume\n");
+
+	/*
+	 * It is possible that the runtime status of the fb device may
+	 * have been active when the system was suspended. Reset the runtime
+	 * status to suspended state after a complete system resume.
+	 */
+	pm_runtime_disable(dev);
+	pm_runtime_set_suspended(dev);
+	pm_runtime_enable(dev);
 
 	return mdss_fb_resume_sub(mfd);
 }

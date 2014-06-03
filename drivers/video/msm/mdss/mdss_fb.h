@@ -119,6 +119,7 @@ struct msm_mdp_interface {
 	int (*init_fnc)(struct msm_fb_data_type *mfd);
 	int (*on_fnc)(struct msm_fb_data_type *mfd);
 	int (*off_fnc)(struct msm_fb_data_type *mfd);
+	int (*off_pan_on_fnc)(struct msm_fb_data_type *mfd);
 	/* called to release resources associated to the process */
 	int (*release_fnc)(struct msm_fb_data_type *mfd, bool release_all);
 	int (*kickoff_fnc)(struct msm_fb_data_type *mfd,
