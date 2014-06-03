@@ -879,7 +879,8 @@ struct cyttsp5_core_data {
 	int irq;
 	bool irq_enabled;
 	bool irq_wake;
-	bool touch_wake;
+	bool touch_wake;	/* only for rev01 */
+	bool touch_wake_irq;
 	bool palm_ignore;
 	bool stay_awake;
 	struct wake_lock report_touch_wake_lock;

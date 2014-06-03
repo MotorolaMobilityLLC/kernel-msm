@@ -4124,17 +4124,19 @@ static irqreturn_t cyttsp5_irq(int irq, void *handle)
 	if (cd->irq_wake) {
 		dev_err(cd->dev, "%s: touch wake!!\n", __func__);
 		wake_lock_timeout(&cd->report_touch_wake_lock, 3 * HZ);
-		cd->touch_wake = true;
+		cd->touch_wake_irq = true;
 
-		if ((cd->silicon_id) == CSP_SILICON_ID)
+		if ((cd->silicon_id) == CSP_SILICON_ID) {
+			cd->touch_wake = true;
 			usleep_range(20000, 21000);
+		}
 	}
 
 	rc = cyttsp5_read_input(cd);
 	if (!rc)
 		cyttsp5_parse_input(cd);
 
-	cd->touch_wake = false;
+	cd->touch_wake_irq = false;
 	return IRQ_HANDLED;
 }
 
@@ -4904,7 +4906,7 @@ int cyttsp5_core_resume(struct device *dev)
 
 	if (!cd->irq_wake)
 		return 0;
-	if (!cd->touch_wake)
+	if (!cd->touch_wake_irq)
 		return 0;
 
 	dev_info(dev, "%s\n", __func__);
