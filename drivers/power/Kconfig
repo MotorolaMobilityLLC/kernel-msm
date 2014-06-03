@@ -521,6 +521,12 @@ config BATTERY_TEMP_MONITOR
 	  Say Y to enable battery temperature control for safety.
 	  It controls charging current depending on battery temperature.
 
+config BATTERY_BQ27421
+	tristate "BQ27421 battery driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for batteries with BQ27421 (I2C) chips.
 
 source "drivers/power/reset/Kconfig"
 
