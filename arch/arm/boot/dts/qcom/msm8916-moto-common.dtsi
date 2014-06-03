@@ -34,6 +34,11 @@
 		android,ramoops-annotate-size = <0x800>;
 	};
 
+	hob_ram {
+		compatible = "mmi,hob_ram";
+		mmi,allocation-type-smem;
+	};
+
 	sound {
 		compatible = "qcom,msm8x16-audio-codec";
 		qcom,model = "msm8x16-snd-card";
