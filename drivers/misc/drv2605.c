@@ -160,6 +160,9 @@
 #define RTP_CLOSED_LOOP_ENABLE  /* Set closed loop mode for RTP */
 #define RTP_ERM_OVERDRIVE_CLAMP_VOLTAGE     0xF0
 
+#define I2C_RETRY_DELAY		20 /* ms */
+#define I2C_RETRIES		5
+
 static struct drv260x {
 	struct class *class;
 	struct device *device;
@@ -316,13 +319,22 @@ static inline struct drv260x_platform_data
 static void drv260x_write_reg_val(const unsigned char *data, unsigned int size)
 {
 	int i = 0;
+	int tries;
+	int ret;
 
 	if (size % 2 != 0)
 		return;
 
 	while (i < size) {
-		i2c_smbus_write_byte_data(drv260x->client, data[i],
-					  data[i + 1]);
+		for (tries = 0; tries < I2C_RETRIES; tries++) {
+			ret = i2c_smbus_write_byte_data(drv260x->client,
+							data[i], data[i + 1]);
+			if (!ret)
+				break;
+			dev_err(&drv260x->client->dev,
+				"drv2605: i2c write retry %d\n", tries+1);
+			msleep_interruptible(I2C_RETRY_DELAY);
+		}
 		i += 2;
 	}
 }
@@ -337,7 +349,18 @@ static void drv260x_set_go_bit(char val)
 
 static unsigned char drv260x_read_reg(unsigned char reg)
 {
-	return i2c_smbus_read_byte_data(drv260x->client, reg);
+	int tries;
+	int ret;
+
+	for (tries = 0; tries < I2C_RETRIES; tries++) {
+		ret = i2c_smbus_read_byte_data(drv260x->client, reg);
+		if (ret >= 0)
+			break;
+		dev_err(&drv260x->client->dev, "drv2605: i2c read retry %d\n",
+						tries+1);
+		msleep_interruptible(I2C_RETRY_DELAY);
+	}
+	return ret;
 }
 
 static void drv2605_poll_go_bit(void)
@@ -367,6 +390,8 @@ static void drv2605_set_waveform_sequence(unsigned char *seq,
 						unsigned int size)
 {
 	unsigned char data[WAVEFORM_SEQUENCER_MAX + 1];
+	int tries;
+	int ret;
 
 	if (size > WAVEFORM_SEQUENCER_MAX)
 		return;
@@ -375,7 +400,14 @@ static void drv2605_set_waveform_sequence(unsigned char *seq,
 	memcpy(&data[1], seq, size);
 	data[0] = WAVEFORM_SEQUENCER_REG;
 
-	i2c_master_send(drv260x->client, data, sizeof(data));
+	for (tries = 0; tries < I2C_RETRIES; tries++) {
+		ret = i2c_master_send(drv260x->client, data, sizeof(data));
+		dev_err(&drv260x->client->dev, "drv2605: i2c send retry %d\n",
+						tries+1);
+		if (ret >= 0)
+			break;
+		msleep_interruptible(I2C_RETRY_DELAY);
+	}
 }
 
 static void drv260x_vreg_control(bool vdd_supply_enable)
