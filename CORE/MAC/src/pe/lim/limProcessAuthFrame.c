@@ -611,10 +611,19 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
 
                 /* pStaDS != NULL and isConnected = 1 means the STA is already
                  * connected, But SAP received the Auth from that station.
-                 * So dont accept this auth frame and send Deauth frame.
-                 * STA will retry to connect back.
+                 * For non PMF connection send Deauth frame as STA will retry
+                 * to connect back.
+                 *
+                 * For PMF connection the AP should not tear down or otherwise
+                 * modify the state of the existing association until the
+                 * SA-Query procedure determines that the original SA is
+                 * invalid.
                  */
-                if (isConnected)
+                if (isConnected
+#ifdef WLAN_FEATURE_11W
+                    && !pStaDs->rmfEnabled
+#endif
+                                          )
                 {
                     limLog(pMac, LOGE,
                             FL("STA is already connected but received auth frame"
