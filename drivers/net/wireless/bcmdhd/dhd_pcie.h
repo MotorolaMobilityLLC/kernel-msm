@@ -174,6 +174,10 @@ extern int32 dhdpcie_bus_isr(struct dhd_bus *bus);
 extern void dhdpcie_free_irq(dhd_bus_t *bus);
 extern int dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state);
 extern int dhdpcie_pci_suspend_resume(struct pci_dev *dev, bool state);
+extern int dhdpcie_start_host_pcieclock(dhd_bus_t *bus);
+extern int dhdpcie_stop_host_pcieclock(dhd_bus_t *bus);
+extern int dhdpcie_disable_device(dhd_bus_t *bus);
+extern int dhdpcie_enable_device(dhd_bus_t *bus);
 
 extern int dhd_buzzz_dump_dngl(dhd_bus_t *bus);
 #endif /* dhd_pcie_h */

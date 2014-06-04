@@ -702,10 +702,13 @@ int wl_android_wifi_on(struct net_device *dev)
 		dhd_net_bus_resume(dev, 1);
 #endif
 #endif /* BCMSDIO || BCMPCIE */
+#ifndef BCMPCIE
 		if (!ret) {
 			if (dhd_dev_init_ioctl(dev) < 0)
 				ret = -EFAULT;
 		}
+#endif
+	if (!ret)
 		g_wifi_on = TRUE;
 	}
 
@@ -727,10 +730,12 @@ int wl_android_wifi_off(struct net_device *dev)
 
 	dhd_net_if_lock(dev);
 	if (g_wifi_on) {
-#ifdef BCMSDIO
+#if defined(BCMSDIO) || defined(BCMPCIE)
 		ret = dhd_net_bus_devreset(dev, TRUE);
+#ifdef BCMSDIO
 		dhd_net_bus_suspend(dev);
 #endif
+#endif /* BCMSDIO || BCMPCIE */
 		dhd_net_wifi_platform_set_power(dev, FALSE, WIFI_TURNOFF_DELAY);
 		g_wifi_on = FALSE;
 	}
