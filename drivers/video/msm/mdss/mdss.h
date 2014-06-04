@@ -130,6 +130,7 @@ struct mdss_data_type {
 	int suspend_fs_ena;
 	u8 clk_ena;
 	u8 fs_ena;
+	bool vdd_cx_en;
 	u8 vsync_ena;
 	unsigned long min_mdp_clk;
 
