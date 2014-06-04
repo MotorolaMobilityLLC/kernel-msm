@@ -18,6 +18,7 @@
 #include <mach/gpio.h>
 #include <mach/gpiomux.h>
 #include <soc/qcom/socinfo.h>
+#include <mach/board_lge.h>
 
 static struct gpiomux_setting gpio_keys_active = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -264,20 +265,19 @@ static void msm_gpiomux_sdc3_install(void)
 static void msm_gpiomux_sdc3_install(void) {}
 #endif /* CONFIG_MMC_MSM_SDC3_SUPPORT */
 
-#ifdef CONFIG_BATTERY_MAX17050
-static struct gpiomux_setting max17050_i2c_sda_config = {
+static struct gpiomux_setting fuel_gauge_i2c_sda_config = {
 	.func = GPIOMUX_FUNC_3,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting max17050_i2c_scl_config = {
+static struct gpiomux_setting fuel_gauge_i2c_scl_config = {
 	.func = GPIOMUX_FUNC_3,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting max17050_int_config = {
+static struct gpiomux_setting fuel_gauge_int_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_6MA,
 	.dir = GPIOMUX_IN,
@@ -287,26 +287,55 @@ static struct msm_gpiomux_config msm_fuel_gauge_configs[] __initdata = {
 	{
 		.gpio      = 2,			/* BLSP1 QUP1 I2C_DAT */
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &max17050_i2c_sda_config,
-			[GPIOMUX_SUSPENDED] = &max17050_i2c_sda_config,
+			[GPIOMUX_ACTIVE]    = &fuel_gauge_i2c_sda_config,
+			[GPIOMUX_SUSPENDED] = &fuel_gauge_i2c_sda_config,
 		},
 	},
 	{
 		.gpio      = 3,			/* BLSP1 QUP1 I2C_CLK */
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &max17050_i2c_scl_config,
-			[GPIOMUX_SUSPENDED] = &max17050_i2c_scl_config,
+			[GPIOMUX_ACTIVE]    = &fuel_gauge_i2c_scl_config,
+			[GPIOMUX_SUSPENDED] = &fuel_gauge_i2c_scl_config,
 		},
 	},
 	{
 		.gpio      = 31,		/* FUEL_GAUGE_INT_N */
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &max17050_int_config,
-			[GPIOMUX_SUSPENDED] = &max17050_int_config,
+			[GPIOMUX_ACTIVE]    = &fuel_gauge_int_config,
+			[GPIOMUX_SUSPENDED] = &fuel_gauge_int_config,
 		},
 	},
 };
-#endif
+
+static struct gpiomux_setting fuel_gauge_gpio_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct msm_gpiomux_config msm_fuel_gauge_configs_evb2[] __initdata = {
+	{
+		.gpio      = 2,			/* i2c-gpio */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &fuel_gauge_gpio_config,
+			[GPIOMUX_SUSPENDED] = &fuel_gauge_gpio_config,
+		},
+	},
+	{
+		.gpio      = 3,			/* i2c-gpio */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &fuel_gauge_gpio_config,
+			[GPIOMUX_SUSPENDED] = &fuel_gauge_gpio_config,
+		},
+	},
+	{
+		.gpio      = 31,		/* FUEL_GAUGE_INT_N */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &fuel_gauge_int_config,
+			[GPIOMUX_SUSPENDED] = &fuel_gauge_int_config,
+		},
+	},
+};
 
 static struct gpiomux_setting bt_gpio_uart_active_config = {
 	.func = GPIOMUX_FUNC_2,
@@ -542,10 +571,13 @@ void __init msm8226_init_gpiomux(void)
 
 	msm_gpiomux_sdc3_install();
 
-#ifdef CONFIG_BATTERY_MAX17050
-	msm_gpiomux_install(msm_fuel_gauge_configs,
-			ARRAY_SIZE(msm_fuel_gauge_configs));
-#endif
+	if (lge_get_board_revno() == HW_REV_EVB2) {
+		msm_gpiomux_install(msm_fuel_gauge_configs_evb2,
+				ARRAY_SIZE(msm_fuel_gauge_configs_evb2));
+	} else {
+		msm_gpiomux_install(msm_fuel_gauge_configs,
+				ARRAY_SIZE(msm_fuel_gauge_configs));
+	}
 
 #if defined(CONFIG_MSM_PWM_VIBRATOR)
 	msm_gpiomux_install(vibrator_configs, ARRAY_SIZE(vibrator_configs));
