@@ -36,7 +36,7 @@
 #include "ti-lmu-backlight.h"
 
 #define LM3697_BL_MAX_STRINGS		3
-#define LM3697_MAX_BRIGHTNESS		2047
+#define LM3697_MAX_BRIGHTNESS		255
 
 static int lm3697_bl_init(struct ti_lmu_bl_chip *chip)
 {
@@ -68,20 +68,10 @@ static int lm3697_bl_enable(struct ti_lmu_bl *lmu_bl, int enable)
 
 static int lm3697_bl_set_brightness(struct ti_lmu_bl *lmu_bl, int brightness)
 {
-	int ret;
-	u8 data;
-	u8 reg_lsb[] = { LM3697_REG_BRT_A_LSB, LM3697_REG_BRT_B_LSB, };
 	u8 reg_msb[] = { LM3697_REG_BRT_A_MSB, LM3697_REG_BRT_B_MSB, };
 
-	data = brightness & LM3697_BRT_LSB_MASK;
-	ret = ti_lmu_update_bits(lmu_bl->chip->lmu, reg_lsb[lmu_bl->bank_id],
-				 LM3697_BRT_LSB_MASK, data);
-	if (ret)
-		return ret;
-
-	data = (brightness >> LM3697_BRT_MSB_SHIFT) & 0xFF;
 	return ti_lmu_write_byte(lmu_bl->chip->lmu, reg_msb[lmu_bl->bank_id],
-				 data);
+				 brightness);
 }
 
 static int lm3697_bl_set_ctrl_mode(struct ti_lmu_bl *lmu_bl)
