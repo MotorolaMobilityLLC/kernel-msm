@@ -1196,6 +1196,7 @@ static int get_card_status(struct mmc_card *card, u32 *status, int retries)
 	return err;
 }
 
+#define ERR_BUS		4
 #define ERR_NOMEDIUM	3
 #define ERR_RETRY	2
 #define ERR_ABORT	1
@@ -1291,6 +1292,8 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 		/* Check if the card is removed */
 		if (mmc_detect_card_removed(card->host))
 			return ERR_NOMEDIUM;
+		if (err == -EILSEQ)
+			return ERR_BUS;
 		return ERR_ABORT;
 	}
 
@@ -1719,6 +1722,8 @@ static int mmc_blk_err_check(struct mmc_card *card,
 			return MMC_BLK_ABORT;
 		case ERR_NOMEDIUM:
 			return MMC_BLK_NOMEDIUM;
+		case ERR_BUS:
+			return MMC_BLK_BUS_ERR;
 		case ERR_CONTINUE:
 			break;
 		}

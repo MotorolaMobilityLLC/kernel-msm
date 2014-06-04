@@ -696,17 +696,23 @@ static int mmc_sd_throttle_back(struct mmc_host *host)
 
 	mmc_claim_host(host);
 
-	if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR104) {
-		sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR104;
-		speed = "DDR50";
-	} else if (sw_caps->sd3_bus_mode & SD_MODE_UHS_DDR50) {
-		/* Skip SDR50 if DDR50 fails. */
-		sw_caps->sd3_bus_mode &= ~(SD_MODE_UHS_DDR50 |
-					   SD_MODE_UHS_SDR50);
-		speed = "SDR25";
-	} else if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR25) {
-		sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR25;
-		speed = "SDR12";
+	if (mmc_sd_card_uhs(host->card)) {
+		if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR104) {
+			sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR104;
+			speed = "DDR50";
+		} else if (sw_caps->sd3_bus_mode & SD_MODE_UHS_DDR50) {
+			/* Skip SDR50 if DDR50 fails. */
+			sw_caps->sd3_bus_mode &= ~(SD_MODE_UHS_DDR50 |
+						   SD_MODE_UHS_SDR50);
+			speed = "SDR25";
+		} else if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR25) {
+			sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR25;
+			speed = "SDR12";
+		}
+	} else if (sw_caps->hs_max_dtr > 0) {
+		/* Disable high speed for legacy cards */
+		sw_caps->hs_max_dtr = 0;
+		speed = "legacy";
 	}
 
 	mmc_release_host(host);
