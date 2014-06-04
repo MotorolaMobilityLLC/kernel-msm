@@ -310,6 +310,7 @@ typedef struct dhd_pktid_map {
 
 #define NATIVE_TO_PKTID_INIT(osh, items) dhd_pktid_map_init((osh), (items))
 #define NATIVE_TO_PKTID_FINI(map)        dhd_pktid_map_fini(map)
+#define NATIVE_TO_PKTID_CLEAR(map)        dhd_pktid_map_clear(map)
 
 #define NATIVE_TO_PKTID_RSV(map, pkt)    dhd_pktid_map_reserve((map), (pkt))
 #define NATIVE_TO_PKTID_SAVE(map, pkt, nkey, pa, len, dma) \
@@ -412,6 +413,39 @@ dhd_pktid_map_fini(dhd_pktid_map_handle_t *handle)
 	}
 
 	MFREE(osh, handle, dhd_pktid_map_sz);
+}
+
+static void
+dhd_pktid_map_clear(dhd_pktid_map_handle_t *handle)
+{
+	void *osh;
+	int nkey;
+	dhd_pktid_map_t *map;
+	dhd_pktid_item_t *locker;
+
+	DHD_TRACE(("%s\n",__FUNCTION__));
+
+	if (handle == NULL)
+		return;
+
+	map = (dhd_pktid_map_t *)handle;
+	osh = map->osh;
+	map->failures = 0;
+
+	nkey = 1; /* skip reserved KEY #0, and start from 1 */
+	locker = &map->lockers[nkey];
+
+	for (; nkey <= map->items; nkey++, locker++) {
+		map->keys[nkey] = nkey; /* populate with unique keys */
+		if (locker->inuse == TRUE) { /* numbered key still in use */
+			locker->inuse = FALSE; /* force open the locker */
+			DHD_TRACE(("%s free id%d\n",__FUNCTION__,nkey ));	
+			DMA_UNMAP(osh, (uint32)locker->physaddr, locker->len,
+				          locker->dma, 0, 0);
+			PKTFREE(osh, (ulong*)locker->pkt, FALSE);
+		}
+	}
+	map->avail = map->items;
 }
 
 /* Get the pktid free count */
@@ -3374,3 +3408,102 @@ dhd_rxchain_commit(dhd_pub_t *dhd)
 	dhd_rxchain_reset(rxchain);
 }
 #endif /* DHD_RX_CHAINING */
+static void
+dhd_prot_ring_clear(msgbuf_ring_t* ring)
+{
+	uint16 size;
+	DHD_TRACE(("%s\n",__FUNCTION__));
+
+	size = ring->ringmem->max_item * ring->ringmem->len_items;
+	OSL_CACHE_INV((void *) ring->ring_base.va, size);
+	bzero(ring->ring_base.va, size);
+	OSL_CACHE_FLUSH((void *) ring->ring_base.va, size);
+
+	bzero(ring->ringstate, sizeof(*ring->ringstate));
+}
+
+void
+dhd_prot_clear(dhd_pub_t *dhd)
+{
+	struct dhd_prot *prot = dhd->prot;
+
+	DHD_TRACE(("%s\n",__FUNCTION__));
+
+	if(prot == NULL)
+		return;
+
+	if(prot->h2dring_txp_subn)
+		dhd_prot_ring_clear(prot->h2dring_txp_subn);
+	if(prot->h2dring_rxp_subn)
+		dhd_prot_ring_clear(prot->h2dring_rxp_subn);
+	if(prot->h2dring_ctrl_subn)
+		dhd_prot_ring_clear(prot->h2dring_ctrl_subn);
+	if(prot->d2hring_tx_cpln)
+		dhd_prot_ring_clear(prot->d2hring_tx_cpln);
+	if(prot->d2hring_rx_cpln)
+		dhd_prot_ring_clear(prot->d2hring_rx_cpln);
+	if(prot->d2hring_ctrl_cpln)
+		dhd_prot_ring_clear(prot->d2hring_ctrl_cpln);
+
+
+	if(prot->retbuf.va) {
+		OSL_CACHE_INV((void *) prot->retbuf.va, IOCT_RETBUF_SIZE);
+		bzero(prot->retbuf.va, IOCT_RETBUF_SIZE);
+		OSL_CACHE_FLUSH((void *) prot->retbuf.va, IOCT_RETBUF_SIZE);
+	}
+
+	if(prot->ioctbuf.va) {
+		OSL_CACHE_INV((void *) prot->ioctbuf.va, IOCT_RETBUF_SIZE);
+		bzero(prot->ioctbuf.va, IOCT_RETBUF_SIZE);
+		OSL_CACHE_FLUSH((void *) prot->ioctbuf.va, IOCT_RETBUF_SIZE);
+	}
+
+	if(prot->d2h_dma_scratch_buf.va) {
+		OSL_CACHE_INV((void *)prot->d2h_dma_scratch_buf.va, DMA_D2H_SCRATCH_BUF_LEN);
+		bzero(prot->d2h_dma_scratch_buf.va, DMA_D2H_SCRATCH_BUF_LEN);
+		OSL_CACHE_FLUSH((void *)prot->d2h_dma_scratch_buf.va, DMA_D2H_SCRATCH_BUF_LEN);
+	}
+
+	if(prot->h2d_dma_readindx_buf.va) {
+		OSL_CACHE_INV((void *)prot->h2d_dma_readindx_buf.va, prot->h2d_dma_readindx_buf_len);
+		bzero(prot->h2d_dma_readindx_buf.va, prot->h2d_dma_readindx_buf_len);
+		OSL_CACHE_FLUSH((void *)prot->h2d_dma_readindx_buf.va, prot->h2d_dma_readindx_buf_len);
+	}
+
+	if(prot->h2d_dma_writeindx_buf.va) {
+		OSL_CACHE_INV((void *)prot->h2d_dma_writeindx_buf.va, prot->h2d_dma_writeindx_buf_len);
+		bzero(prot->h2d_dma_writeindx_buf.va, prot->h2d_dma_writeindx_buf_len);
+		OSL_CACHE_FLUSH((void *)prot->h2d_dma_writeindx_buf.va, prot->h2d_dma_writeindx_buf_len);
+	}
+
+	if(prot->d2h_dma_readindx_buf.va) {
+		OSL_CACHE_INV((void *)prot->d2h_dma_readindx_buf.va, prot->d2h_dma_readindx_buf_len);
+		bzero(prot->d2h_dma_readindx_buf.va, prot->d2h_dma_readindx_buf_len);
+		OSL_CACHE_FLUSH((void *)prot->d2h_dma_readindx_buf.va, prot->d2h_dma_readindx_buf_len);
+	}
+
+	if(prot->d2h_dma_writeindx_buf.va) {
+		OSL_CACHE_INV((void *)prot->d2h_dma_writeindx_buf.va, prot->d2h_dma_writeindx_buf_len);	
+		bzero(prot->d2h_dma_writeindx_buf.va, prot->d2h_dma_writeindx_buf_len);
+		OSL_CACHE_FLUSH((void *)prot->d2h_dma_writeindx_buf.va, prot->d2h_dma_writeindx_buf_len);
+	}
+
+	prot->rx_metadata_offset = 0;
+	prot->tx_metadata_offset = 0;
+
+	prot->rxbufpost = 0;
+	prot->cur_event_bufs_posted = 0;
+	prot->cur_ioctlresp_bufs_posted = 0;
+
+	prot->active_tx_count = 0;
+	prot->data_seq_no = 0;
+	prot->ioctl_seq_no = 0;
+	prot->pending = 0;
+	prot->lastcmd = 0;
+
+	prot->ioctl_trans_id = 1;
+
+	/* dhd_flow_rings_init is located at dhd_bus_start, so when stopping bus, flowrings shall be deleted */
+	dhd_flow_rings_deinit(dhd);
+	NATIVE_TO_PKTID_CLEAR(prot->pktid_map_handle);
+}
