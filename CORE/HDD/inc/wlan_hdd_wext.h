@@ -230,6 +230,9 @@ typedef enum
 #define WFD_OUI_TYPE_SIZE  4
 #endif
 
+#define WMM_OUI_TYPE   "\x00\x50\xf2\x02"
+#define WMM_OUI_TYPE_SIZE  4
+
 typedef enum
 {
     eWEXT_WPS_OFF = 0,

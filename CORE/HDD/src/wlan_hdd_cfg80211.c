@@ -2759,6 +2759,14 @@ static int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter,
          goto done;
     }
 
+    if (0 != wlan_hdd_add_ie(pHostapdAdapter, genie,
+                &total_ielen, WMM_OUI_TYPE, WMM_OUI_TYPE_SIZE))
+    {
+        hddLog(LOGE, FL("Adding WMM IE failed"));
+        ret = -EINVAL;
+        goto done;
+    }
+
     if (WLAN_HDD_SOFTAP == pHostapdAdapter->device_mode)
     {
         wlan_hdd_add_hostapd_conf_vsie(pHostapdAdapter, genie, &total_ielen);
