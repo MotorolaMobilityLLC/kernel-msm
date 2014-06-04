@@ -333,6 +333,25 @@ static struct log *log_from_idx(u32 idx, bool logbuf)
 	return msg;
 }
 
+/* get record by index; idx must point to valid msg */
+static struct log *asus_log_from_idx(u32 idx, bool logbuf)
+{
+	struct log *msg;
+	char *buf;
+
+	buf = g_printk_log_buf;
+
+	msg = (struct log *)(buf + idx);
+
+	/*
+	 * A length == 0 record is the end of buffer marker. Wrap around and
+	 * read the message at the start of the buffer.
+	 */
+	if (!msg->len)
+		return (struct log *)buf;
+	return msg;
+}
+
 /* get next record; idx must point to valid msg */
 static u32 log_next(u32 idx, bool logbuf)
 {
@@ -345,6 +364,29 @@ static u32 log_next(u32 idx, bool logbuf)
 	buf = log_buf;
 	BUG_ON(!logbuf);
 #endif
+	msg = (struct log *)(buf + idx);
+
+	/* length == 0 indicates the end of the buffer; wrap */
+	/*
+	 * A length == 0 record is the end of buffer marker. Wrap around and
+	 * read the message at the start of the buffer as *this* one, and
+	 * return the one after that.
+	 */
+	if (!msg->len) {
+		msg = (struct log *)buf;
+		return msg->len;
+	}
+	return idx + msg->len;
+}
+
+/* get next record; idx must point to valid msg */
+static u32 asus_log_next(u32 idx, bool logbuf)
+{
+	struct log *msg;
+	char *buf;
+
+	buf = g_printk_log_buf;
+
 	msg = (struct log *)(buf + idx);
 
 	/* length == 0 indicates the end of the buffer; wrap */
@@ -915,6 +957,7 @@ void printk_buffer_rebase(void)
 	unsigned long flags;
 
 	if(is_rebased){
+		printk("[adbg] printk buffer is rebased\n");
 		goto out;
 	}
 
@@ -1400,27 +1443,15 @@ static int asus_syslog_print(char *buf, int size)
 	struct log *msg;
 	int len = 0;
 
-	int tmp_rebase = 0;
-	unsigned long flags;
-	int origin_log_buf_len;
-	char* origin_log_buf;
-
 	u32 head_idx = 0;
 	u32 head_seq = 0;
 	size_t head_partial = 0;
 	enum log_flags head_prev;
 
 	if(!is_rebased){
-		/* Rebase to PRINTK_BUFFER */
-		tmp_rebase = 1;
-		
-		origin_log_buf_len = log_buf_len;
-		origin_log_buf = log_buf;
-		
-		raw_spin_lock_irqsave(&logbuf_lock, flags);
-		log_buf_len = PRINTK_BUFFER_SLOT_SIZE;
-		log_buf = (char *) PRINTK_BUFFER;
-		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+		g_printk_log_buf = (char *) PRINTK_BUFFER;
+	}else{
+		g_printk_log_buf = (char *) log_buf;
 	}
 
 	text = kmalloc(LOG_LINE_MAX + PREFIX_MAX, GFP_KERNEL);
@@ -1432,25 +1463,14 @@ static int asus_syslog_print(char *buf, int size)
 		size_t skip;
 
 		raw_spin_lock_irq(&logbuf_lock);
-		//if (syslog_seq < log_first_seq) {
-		//	/* messages are gone, move to first one */
-		//	syslog_seq = log_first_seq;
-		//	syslog_idx = log_first_idx;
-		//	syslog_prev = 0;
-		//	syslog_partial = 0;
-		//}
-		//if (syslog_seq == log_next_seq) {
-		//	raw_spin_unlock_irq(&logbuf_lock);
-		//	break;
-		//}
 
 		skip = syslog_partial;
-		msg = log_from_idx(head_idx, true);
+		msg = asus_log_from_idx(head_idx, true);
 		n = msg_print_text(msg, syslog_prev, true, text,
 				   LOG_LINE_MAX + PREFIX_MAX);
 		if (n - head_partial <= size) {
 			/* message fits into buffer, move forward */
-			head_idx = log_next(head_idx, true);
+			head_idx = asus_log_next(head_idx, true);
 			head_seq++;
 			head_prev = msg->flags;
 			n -= head_partial;
@@ -1470,14 +1490,6 @@ static int asus_syslog_print(char *buf, int size)
 		len += n;
 		size -= n;
 		buf += n;
-	}
-
-	if(tmp_rebase){	
-		raw_spin_lock_irqsave(&logbuf_lock, flags);
-		log_buf_len = origin_log_buf_len;
-		log_buf = origin_log_buf;
-		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
-		tmp_rebase = 0;
 	}
 	
 	kfree(text);

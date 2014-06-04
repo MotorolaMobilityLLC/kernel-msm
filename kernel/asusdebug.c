@@ -946,44 +946,30 @@ void save_last_shutdown_log(char* filename)
     char *last_shutdown_log;
 	char *last_shutdown_log_unparsed;	// ASUS_BSP ++++ Josh_Hsu: Unparsed log pointer
 	
-    //unsigned int *last_shutdown_log_addr;
-// ASUS_BSP ++
-    //~ struct rtc_time tm;
     int parse_length;
     int file_handle;
 	int file_handle_unparsed;
     unsigned long long t;
     unsigned long nanosec_rem;
 
-    //~ asus_rtc_read_time(&tm);
     t = cpu_clock(0);
     nanosec_rem = do_div(t, 1000000000);
 
-// ASUS_BSP ++++ Josh_Hsu: Add for support parse asdf log
-	last_shutdown_log = kmalloc(PRINTK_BUFFER_SLOT_SIZE, GFP_KERNEL);
-	parse_length = parse_last_shutdown_log(last_shutdown_log);
-// ASUS_BSP ---- Josh_Hsu
-    last_shutdown_log_unparsed = (char*)PRINTK_BUFFER;//phys_to_virt(PRINTK_BUFFER);
-    //last_shutdown_log_addr = (unsigned int *)((unsigned int)last_shutdown_log + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
+	pr_info("[adbg] %s()++\n", __func__);
+
+	// Address setting
+    last_shutdown_log_unparsed = (char*)PRINTK_BUFFER;
     sprintf(messages, "/asdf/LastShutdown_%lu.%06lu.txt", (unsigned long) t, nanosec_rem / 1000);
     printk("[adbg] %s(), messages: %s\n", __func__, messages);
 
-	//Save the unparsed ASDF log path
 	sprintf(messages_unparsed, "/asdf/LastShutdown_%lu.%06lu_unparsed.txt", (unsigned long) t, nanosec_rem / 1000);
 	printk("[adbg] %s(), messages_unparsed: %s\n", __func__, messages_unparsed);
-//ASUS_BSP --
 
     initKernelEnv();
+
+	// Save unparsed log first, in case parser cannnot work
     file_handle = sys_open(messages, O_CREAT|O_RDWR|O_SYNC, 0);
 	file_handle_unparsed = sys_open(messages_unparsed, O_CREAT|O_RDWR|O_SYNC, 0);
-	
-    if(!IS_ERR((const void *)file_handle))
-    {
-        sys_write(file_handle, (unsigned char*)last_shutdown_log, parse_length);
-        sys_close(file_handle);
-    } else {
-        printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle);
-    }
 
 	if(!IS_ERR((const void *)file_handle_unparsed))
     {
@@ -991,6 +977,20 @@ void save_last_shutdown_log(char* filename)
         sys_close(file_handle_unparsed);
     } else {
         printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle_unparsed);
+    }
+
+	// ASUS_BSP ++++ Josh_Hsu: Add for support parse asdf log
+	// Save parsed log, using parser parse_last_shutdown_log
+	last_shutdown_log = kmalloc(PRINTK_BUFFER_SLOT_SIZE, GFP_KERNEL);
+	parse_length = parse_last_shutdown_log(last_shutdown_log);
+	// ASUS_BSP ---- Josh_Hsu
+
+    if(!IS_ERR((const void *)file_handle))
+    {
+        sys_write(file_handle, (unsigned char*)last_shutdown_log, parse_length);
+        sys_close(file_handle);
+    } else {
+        printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle);
     }
 
     deinitKernelEnv();          
@@ -1134,7 +1134,7 @@ void get_last_shutdown_log(void)
     }
 
     printk_buffer_rebase();
-    //~ *last_shutdown_log_addr = PRINTK_BUFFER_MAGIC;  //ASUS_BSP ++
+    *last_shutdown_log_addr = PRINTK_BUFFER_MAGIC;  //ASUS_BSP ++
 }
 EXPORT_SYMBOL(get_last_shutdown_log);
 int first = 0;
@@ -1142,24 +1142,6 @@ int watchdog_test = 0;
 int asus_asdf_set = 0;
 
 //extern int save_tz_log(void);  //adbg++
-
-//adbg++
-static struct delayed_work asusdbg_worker;
-
-static void asusdbg_work(struct work_struct *work)
-{
-	unsigned int *last_shutdown_log_addr;
-	static int asus_rtc_set = 0;
-
-	last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
-
-	if(!asus_rtc_set) {  
-		asus_rtc_set = 1;
-		get_last_shutdown_log();
-		(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
-	}
-}
-//adbg--
 
 static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 {
@@ -1287,13 +1269,6 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 		g_user_dbg_mode = 1;
 		printk("[adbg] Kernel dbg mode = %d\n", g_user_dbg_mode);
 	}
-//adbg++	
-    else if(strncmp(messages, "joshtest", 3) == 0)
-    {
-
-	schedule_delayed_work(&asusdbg_worker, 3*HZ);
-	}
-//--
 	else if(strncmp(messages, "ndbg", 4) == 0)
     {
 		g_user_dbg_mode = 0;
@@ -1350,14 +1325,14 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 #endif
 #endif
             last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
-            printk("[ASDF] last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
+            printk("[ASDF] get_asdf_log last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 
             if(!asus_asdf_set)
             {
                 asus_asdf_set = 1;
 				save_phone_hang_log();
                 get_last_shutdown_log();
-                printk("[ASDF] get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
+                printk("[ASDF] get_asdf_log get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 #if 0
 #ifdef CONFIG_MSM_RTB
                 if ( (*last_shutdown_log_addr)==(unsigned int)PRINTK_BUFFER_MAGIC )
@@ -1762,11 +1737,6 @@ static int __init proc_asusdebug_init(void)
     //spin_lock_init(&spinlock_eventlog);
     ASUSEvtlog_workQueue  = create_singlethread_workqueue("ASUSEVTLOG_WORKQUEUE");
 
-
-//adbg++
-	INIT_DELAYED_WORK(&asusdbg_worker, asusdbg_work);
-	queue_delayed_work(ASUSEvtlog_workQueue, &asusdbg_worker, msecs_to_jiffies(19000));
-//--
     return 0;
 }
 module_init(proc_asusdebug_init);
