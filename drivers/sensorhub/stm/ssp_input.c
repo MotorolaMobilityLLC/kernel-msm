@@ -328,6 +328,7 @@ void report_hrm_lib_data(struct ssp_data *data, struct sensor_value *hrmdata)
 	data->buf[BIO_HRM_LIB].hr = hrmdata->hr;
 	data->buf[BIO_HRM_LIB].rri = hrmdata->rri;
 	data->buf[BIO_HRM_LIB].snr = hrmdata->snr;
+	data->buf[BIO_HRM_LIB].flag = hrmdata->flag;
 
 	input_report_rel(data->hrm_lib_input_dev, REL_X,
 		data->buf[BIO_HRM_LIB].hr + 1);
@@ -335,6 +336,10 @@ void report_hrm_lib_data(struct ssp_data *data, struct sensor_value *hrmdata)
 		data->buf[BIO_HRM_LIB].rri + 1);
 	input_report_rel(data->hrm_lib_input_dev, REL_Z,
 		data->buf[BIO_HRM_LIB].snr + 1);
+	input_report_rel(data->hrm_lib_input_dev, REL_MISC,
+		data->buf[BIO_HRM_LIB].flag >= 0 ?
+		(data->buf[BIO_HRM_LIB].flag + 1) :
+		data->buf[BIO_HRM_LIB].flag);
 	input_sync(data->hrm_lib_input_dev);
 }
 #endif
@@ -756,6 +761,7 @@ int initialize_input_dev(struct ssp_data *data)
 	input_set_capability(data->hrm_lib_input_dev, EV_REL, REL_X);
 	input_set_capability(data->hrm_lib_input_dev, EV_REL, REL_Y);
 	input_set_capability(data->hrm_lib_input_dev, EV_REL, REL_Z);
+	input_set_capability(data->hrm_lib_input_dev, EV_REL, REL_MISC);
 
 	iRet = input_register_device(data->hrm_lib_input_dev);
 	if (iRet < 0) {

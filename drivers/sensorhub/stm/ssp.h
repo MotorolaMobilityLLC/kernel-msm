@@ -318,6 +318,7 @@ struct sensor_value {
 			s16 hr;
 			s16 rri;
 			s32 snr;
+			s16 flag;
 		};
 #endif
 		u8 step_det;

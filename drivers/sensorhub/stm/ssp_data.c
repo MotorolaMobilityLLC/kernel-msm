@@ -50,8 +50,8 @@ static void get_3axis_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_hrm_lib_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
-	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 8);
-	*iDataIdx += 8;
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 10);
+	*iDataIdx += 10;
 }
 #endif
 
