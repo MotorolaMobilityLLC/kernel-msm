@@ -82,23 +82,36 @@ static const char * const mad_audio_mux_text[] = {
 
 static void msm_pcm_routing_cfg_pp(int port_id, int topology, int channels)
 {
+	int rc = 0;
 	switch (topology) {
 	case SRS_TRUMEDIA_TOPOLOGY_ID:
 		pr_debug("%s: SRS_TRUMEDIA_TOPOLOGY_ID\n", __func__);
 		msm_dts_srs_tm_send_params(port_id, 1, 0);
 		break;
+	case DS2_ADM_COPP_TOPOLOGY_ID:
+		pr_debug("%s: DS2_ADM_COPP_TOPOLOGY %d\n",
+			 __func__, DS2_ADM_COPP_TOPOLOGY_ID);
+		rc = msm_ds2_dap_init(port_id, channels, is_custom_stereo_on);
+		if (rc < 0)
+			pr_err("%s: DS2 topo_id 0x%x, port %d, CS %d rc %d\n",
+				__func__, topology, port_id,
+				is_custom_stereo_on, rc);
+		break;
 	case DOLBY_ADM_COPP_TOPOLOGY_ID:
 		if (is_ds2_on) {
-			pr_debug("%s: DS2_ADM_COPP_TOPOLOGY_ID\n", __func__);
-			if (msm_ds2_dap_init(port_id, channels,
-					     is_custom_stereo_on) < 0)
-				pr_err("%s: err DS2 dap\n", __func__);
+			pr_debug("%s: DS2_ADM_COPP_TOPOLOGY\n", __func__);
+			rc = msm_ds2_dap_init(port_id, channels,
+				is_custom_stereo_on);
+			if (rc < 0)
+				pr_err("%s:DS2 topo_id 0x%x, port %d, rc %d\n",
+					__func__, topology, port_id, rc);
 		} else {
 			pr_debug("%s: DOLBY_ADM_COPP_TOPOLOGY_ID\n", __func__);
-			if (msm_dolby_dap_init(port_id, channels,
-					       is_custom_stereo_on)
-					< 0)
-				pr_err("%s: err ds1 dolby dap\n", __func__);
+			rc = msm_dolby_dap_init(port_id, channels,
+						is_custom_stereo_on);
+			if (rc < 0)
+				pr_err("%s: DS1 topo_id 0x%x, port %d, rc %d\n",
+					__func__, topology, port_id, rc);
 		}
 		break;
 	default:
@@ -113,6 +126,11 @@ static void msm_pcm_routing_deinit_pp(int port_id, int topology)
 	case SRS_TRUMEDIA_TOPOLOGY_ID:
 		pr_debug("%s: SRS_TRUMEDIA_TOPOLOGY_ID\n", __func__);
 		msm_dts_srs_tm_set_port_id(-1);
+		break;
+	case DS2_ADM_COPP_TOPOLOGY_ID:
+		pr_debug("%s: DS2_ADM_COPP_TOPOLOGY_ID %d\n",
+			 __func__, DS2_ADM_COPP_TOPOLOGY_ID);
+		msm_ds2_dap_deinit(port_id);
 		break;
 	case DOLBY_ADM_COPP_TOPOLOGY_ID:
 		if (is_ds2_on) {
@@ -495,7 +513,8 @@ void msm_pcm_routing_dereg_phy_stream(int fedai_id, int stream_type)
 		   (test_bit(fedai_id, &msm_bedais[i].fe_sessions))) {
 			adm_close(msm_bedais[i].port_id,
 				  fe_dai_perf_mode[fedai_id][session_type]);
-			if ((DOLBY_ADM_COPP_TOPOLOGY_ID == topology) &&
+			if ((DOLBY_ADM_COPP_TOPOLOGY_ID == topology ||
+				DS2_ADM_COPP_TOPOLOGY_ID == topology) &&
 			    (fe_dai_perf_mode[fedai_id][session_type] ==
 							LEGACY_PCM_MODE))
 				msm_pcm_routing_deinit_pp(msm_bedais[i].port_id,
@@ -560,7 +579,6 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 		fdai = &fe_dai_map[val][session_type];
 		if (msm_bedais[reg].active && fdai->strm_id !=
 			INVALID_SESSION) {
-
 			channels = msm_bedais[reg].channel;
 			if (session_type == SESSION_TYPE_TX &&
 			    fdai->be_srate &&
@@ -621,7 +639,8 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 			INVALID_SESSION) {
 			adm_close(msm_bedais[reg].port_id,
 				  fe_dai_perf_mode[val][session_type]);
-			if ((DOLBY_ADM_COPP_TOPOLOGY_ID == topology) &&
+			if ((DOLBY_ADM_COPP_TOPOLOGY_ID == topology ||
+				DS2_ADM_COPP_TOPOLOGY_ID == topology) &&
 			    (fe_dai_perf_mode[val][session_type] ==
 							LEGACY_PCM_MODE))
 				msm_pcm_routing_deinit_pp(
