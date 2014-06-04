@@ -1145,8 +1145,8 @@ end:
 static int msm_ds2_dap_set_vspe_vdhe(int dev_map_idx,
 				     bool is_custom_stereo_enabled)
 {
-	char *params_value = NULL;
-	int32_t *update_params_value;
+	int32_t *update_params_value = NULL;
+	int32_t *param_val = NULL;
 	int idx, i, j, rc = 0, cdev;
 	uint32_t params_length = (TOTAL_LENGTH_DOLBY_PARAM +
 				2 * DOLBY_PARAM_PAYLOAD_SIZE) *
@@ -1163,14 +1163,14 @@ static int msm_ds2_dap_set_vspe_vdhe(int dev_map_idx,
 		rc = -EINVAL;
 		goto end;
 	}
-	params_value = kzalloc(params_length, GFP_KERNEL);
-	if (!params_value) {
+	update_params_value = kzalloc(params_length, GFP_KERNEL);
+	if (!update_params_value) {
 		pr_err("%s: params memory alloc failed\n", __func__);
 		rc = -ENOMEM;
 		goto end;
 	}
-	update_params_value = (int32_t *)params_value;
 	params_length = 0;
+	param_val = update_params_value;
 	cdev = dev_map[dev_map_idx].cache_dev;
 	/* for VDHE and VSPE DAP params at index 0 and 1 in table */
 	for (i = 0; i < 2; i++) {
@@ -1194,17 +1194,17 @@ static int msm_ds2_dap_set_vspe_vdhe(int dev_map_idx,
 	pr_debug("%s: valid param length: %d\n", __func__, params_length);
 	if (params_length) {
 		rc = adm_dolby_dap_send_params(dev_map[dev_map_idx].port_id,
-					       params_value, params_length);
+					       (char *)param_val,
+					       params_length);
 		if (rc) {
 			pr_err("%s: send vdhe/vspe params failed with rc=%d\n",
 				__func__, rc);
-			kfree(params_value);
 			rc = -EINVAL;
 			goto end;
 		}
 	}
 end:
-	kfree(params_value);
+	kfree(param_val);
 	return rc;
 }
 
@@ -1321,6 +1321,173 @@ int msm_ds2_dap_set_security_control(u32 cmd, void *arg)
 	pr_debug("%s: manufacturer_id %d\n", __func__, manufacturer_id);
 	core_set_dolby_manufacturer_id(manufacturer_id);
 	return 0;
+}
+
+int qti_set_custom_stereo_on(int port_id, bool is_custom_stereo_on)
+{
+
+	uint16_t op_FL_ip_FL_weight;
+	uint16_t op_FL_ip_FR_weight;
+	uint16_t op_FR_ip_FL_weight;
+	uint16_t op_FR_ip_FR_weight;
+
+	int32_t *update_params_value32 = NULL, rc = 0;
+	int32_t *param_val = NULL;
+	int16_t *update_params_value16 = 0;
+	uint32_t params_length_bytes = CUSTOM_STEREO_PAYLOAD_SIZE *
+				       sizeof(uint32_t);
+	uint32_t avail_length = params_length_bytes;
+
+	pr_debug("%s: port 0x%x, is_custom_stereo_on %d\n",
+		 __func__, port_id, is_custom_stereo_on);
+	if (is_custom_stereo_on) {
+		op_FL_ip_FL_weight =
+			Q14_GAIN_ZERO_POINT_FIVE;
+		op_FL_ip_FR_weight =
+			Q14_GAIN_ZERO_POINT_FIVE;
+		op_FR_ip_FL_weight =
+			Q14_GAIN_ZERO_POINT_FIVE;
+		op_FR_ip_FR_weight =
+			Q14_GAIN_ZERO_POINT_FIVE;
+	} else {
+		op_FL_ip_FL_weight = Q14_GAIN_UNITY;
+		op_FL_ip_FR_weight = 0;
+		op_FR_ip_FL_weight = 0;
+		op_FR_ip_FR_weight = Q14_GAIN_UNITY;
+	}
+
+	update_params_value32 = kzalloc(params_length_bytes, GFP_KERNEL);
+	if (!update_params_value32) {
+		pr_err("%s, params memory alloc failed\n", __func__);
+		rc = -ENOMEM;
+		goto skip_send_cmd;
+	}
+	param_val = update_params_value32;
+	if (avail_length < 2 * sizeof(uint32_t))
+		goto skip_send_cmd;
+	*update_params_value32++ = MTMX_MODULE_ID_DEFAULT_CHMIXER;
+	*update_params_value32++ = DEFAULT_CHMIXER_PARAM_ID_COEFF;
+	avail_length = avail_length - (2 * sizeof(uint32_t));
+
+	update_params_value16 = (int16_t *)update_params_value32;
+	if (avail_length < 10 * sizeof(uint16_t))
+		goto skip_send_cmd;
+	*update_params_value16++ = CUSTOM_STEREO_CMD_PARAM_SIZE;
+	/* for alignment only*/
+	*update_params_value16++ = 0;
+	/* index is 32-bit param in little endian*/
+	*update_params_value16++ = CUSTOM_STEREO_INDEX_PARAM;
+	*update_params_value16++ = 0;
+	/* for stereo mixing num out ch*/
+	*update_params_value16++ = CUSTOM_STEREO_NUM_OUT_CH;
+	/* for stereo mixing num in ch*/
+	*update_params_value16++ = CUSTOM_STEREO_NUM_IN_CH;
+
+	/* Out ch map FL/FR*/
+	*update_params_value16++ = PCM_CHANNEL_FL;
+	*update_params_value16++ = PCM_CHANNEL_FR;
+
+	/* In ch map FL/FR*/
+	*update_params_value16++ = PCM_CHANNEL_FL;
+	*update_params_value16++ = PCM_CHANNEL_FR;
+	avail_length = avail_length - (10 * sizeof(uint16_t));
+	/* weighting coefficients as name suggests,
+	mixing will be done according to these coefficients*/
+	if (avail_length < 4 * sizeof(uint16_t))
+		goto skip_send_cmd;
+	*update_params_value16++ = op_FL_ip_FL_weight;
+	*update_params_value16++ = op_FL_ip_FR_weight;
+	*update_params_value16++ = op_FR_ip_FL_weight;
+	*update_params_value16++ = op_FR_ip_FR_weight;
+	avail_length = avail_length - (4 * sizeof(uint16_t));
+	if (params_length_bytes != 0) {
+		rc = adm_dolby_dap_send_params(port_id,
+				(char *)param_val,
+				params_length_bytes);
+		if (rc) {
+			pr_err("%s: send params failed rc=%d\n", __func__, rc);
+			rc = -EINVAL;
+			goto skip_send_cmd;
+		}
+	}
+	kfree(param_val);
+	return 0;
+skip_send_cmd:
+		pr_err("%s: insufficient memory, send cmd failed\n",
+			__func__);
+		kfree(param_val);
+		return rc;
+
+}
+
+int set_custom_stereo_onoff(int dev_map_idx,
+					bool is_custom_stereo_enabled)
+{
+	int32_t *update_params_value = NULL, rc = 0;
+	int32_t *param_val = NULL;
+	uint32_t params_length_bytes = (TOTAL_LENGTH_DOLBY_PARAM +
+				DOLBY_PARAM_PAYLOAD_SIZE) * sizeof(uint32_t);
+
+	pr_debug("%s\n", __func__);
+	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	if (dev_map[dev_map_idx].port_id == DOLBY_INVALID_PORT_ID) {
+		rc = -EINVAL;
+		goto end;
+	}
+
+	if (ds2_dap_params_states.dap_bypass == true &&
+		ds2_dap_params_states.dap_bypass_type == DAP_HARD_BYPASS) {
+
+		rc = qti_set_custom_stereo_on(dev_map[dev_map_idx].port_id,
+					      is_custom_stereo_enabled);
+		if (rc < 0) {
+			pr_err("%s:qti_set_custom_stereo_on_copp failed C.S %d",
+				__func__, is_custom_stereo_enabled);
+		}
+		goto end;
+
+	}
+
+	/* DAP custom stereo */
+	msm_ds2_dap_set_vspe_vdhe(dev_map_idx,
+				  is_custom_stereo_enabled);
+	update_params_value = kzalloc(params_length_bytes, GFP_KERNEL);
+	if (!update_params_value) {
+		pr_err("%s: params memory alloc failed\n", __func__);
+		rc = -ENOMEM;
+		goto end;
+	}
+	params_length_bytes = 0;
+	param_val = update_params_value;
+	*update_params_value++ = DOLBY_BUNDLE_MODULE_ID;
+	*update_params_value++ = DOLBY_ENABLE_CUSTOM_STEREO;
+	*update_params_value++ = sizeof(uint32_t);
+	if (is_custom_stereo_enabled)
+		*update_params_value++ = 1;
+	else
+		*update_params_value++ = 0;
+	params_length_bytes += (DOLBY_PARAM_PAYLOAD_SIZE + 1) *
+				sizeof(uint32_t);
+	pr_debug("%s: valid param length: %d\n", __func__, params_length_bytes);
+	if (params_length_bytes) {
+		rc = adm_dolby_dap_send_params(dev_map[dev_map_idx].port_id,
+					       (char *)param_val,
+					       params_length_bytes);
+		if (rc) {
+			pr_err("%s: custom stereo param failed with rc=%d\n",
+				__func__, rc);
+			rc = -EINVAL;
+			goto end;
+		}
+	}
+end:
+	kfree(param_val);
+	return rc;
 }
 
 int msm_ds2_dap_update_port_parameters(struct snd_hwdep *hw,  struct file *file,
@@ -1466,7 +1633,7 @@ int msm_ds2_dap_init(int port_id, int channels,
 		}
 		dev_map[idx].stream_ref_count++;
 		if (is_custom_stereo_on)
-			msm_ds2_dap_set_custom_stereo_onoff(idx,
+			set_custom_stereo_onoff(idx,
 						is_custom_stereo_on);
 	}
 
@@ -1527,58 +1694,36 @@ void msm_ds2_dap_deinit(int port_id)
 	}
 }
 
-int msm_ds2_dap_set_custom_stereo_onoff(int dev_map_idx,
+int msm_ds2_dap_set_custom_stereo_onoff(int port_id,
 					bool is_custom_stereo_enabled)
 {
-	char *params_value = NULL;
-	int32_t *update_params_value, rc = 0;
-	uint32_t params_length = (TOTAL_LENGTH_DOLBY_PARAM +
-				DOLBY_PARAM_PAYLOAD_SIZE) *
-				sizeof(uint32_t);
-	pr_debug("%s\n", __func__);
-
-	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
-		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
-		rc = -EINVAL;
-		goto end;
-	}
-
-	if (dev_map[dev_map_idx].port_id == DOLBY_INVALID_PORT_ID) {
-		rc = -EINVAL;
-		goto end;
-	}
-
-	msm_ds2_dap_set_vspe_vdhe(dev_map_idx,
-				  is_custom_stereo_enabled);
-	params_value = kzalloc(params_length, GFP_KERNEL);
-	if (!params_value) {
-		pr_err("%s: params memory alloc failed\n", __func__);
-		rc = -ENOMEM;
-		goto end;
-	}
-	update_params_value = (int32_t *)params_value;
-	params_length = 0;
-	*update_params_value++ = DOLBY_BUNDLE_MODULE_ID;
-	*update_params_value++ = DOLBY_ENABLE_CUSTOM_STEREO;
-	*update_params_value++ = sizeof(uint32_t);
-	if (is_custom_stereo_enabled)
-		*update_params_value++ = 1;
-	else
-		*update_params_value++ = 0;
-	params_length += (DOLBY_PARAM_PAYLOAD_SIZE + 1) * sizeof(uint32_t);
-	pr_debug("%s: valid param length: %d\n", __func__, params_length);
-	if (params_length) {
-		rc = adm_dolby_dap_send_params(dev_map[dev_map_idx].port_id,
-					       params_value, params_length);
-		if (rc) {
-			pr_err("%s: custom stereo param failed with rc=%d\n",
-				__func__, rc);
-			rc = -EINVAL;
-			goto end;
+	int idx = -1, rc = 0, i;
+	pr_debug("%s: port_id %d\n", __func__, port_id);
+	if (port_id != DOLBY_INVALID_PORT_ID) {
+		for (i = 0; i < NUM_DS2_ENDP_DEVICE; i++) {
+			if ((dev_map[i].port_id == port_id) &&
+				/* device part of active device */
+				(dev_map[i].device_id &
+				ds2_dap_params_states.device)) {
+				idx = i;
+				if (dev_map[i].device_id == SPEAKER)
+					continue;
+				else
+					break;
+			}
+		}
+		if (idx < 0) {
+			pr_err("%s: invalid index for port %d\n",
+				__func__, port_id);
+			return rc;
+		}
+		rc = set_custom_stereo_onoff(idx,
+					is_custom_stereo_enabled);
+		if (rc < 0) {
+			pr_err("%s: Custom stereo set err %d for port %d",
+				__func__, rc, port_id);
 		}
 	}
-end:
-	kfree(params_value);
 	return rc;
 }
 
@@ -1696,6 +1841,15 @@ static int msm_ds2_dap_handle_bypass(struct dolby_param_data *dolby_data)
 }
 
 static int msm_ds2_dap_handle_bypass_wait(int port_id, int wait_time)
+{
+	return 0;
+}
+int qti_set_custom_stereo_on(int port_id, bool is_custom_stereo_on)
+{
+	return 0;
+}
+int set_custom_stereo_onoff(int dev_map_idx,
+					bool is_custom_stereo_enabled)
 {
 	return 0;
 }

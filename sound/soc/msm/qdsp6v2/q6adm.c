@@ -59,6 +59,7 @@ struct adm_ctl {
 	wait_queue_head_t adm_delay_wait[AFE_MAX_PORTS];
 	atomic_t adm_delay_stat[AFE_MAX_PORTS];
 	uint32_t adm_delay[AFE_MAX_PORTS];
+	int32_t topology[AFE_MAX_PORTS];
 };
 
 static struct adm_ctl			this_adm;
@@ -1462,6 +1463,7 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			atomic_read(&this_adm.copp_low_latency_id[index]));
 	} else {
 		atomic_inc(&this_adm.copp_cnt[index]);
+		this_adm.topology[index] = open.topology_id;
 		pr_debug("%s: index: %d coppid: %d", __func__, index,
 			atomic_read(&this_adm.copp_id[index]));
 	}
@@ -1854,6 +1856,7 @@ int adm_close(int port_id, int perf_mode)
 			goto fail_cmd;
 		}
 		atomic_dec(&this_adm.copp_cnt[index]);
+		this_adm.topology[index] = 0;
 	}
 	if ((perf_mode == LEGACY_PCM_MODE &&
 		!(atomic_read(&this_adm.copp_cnt[index]))) ||
@@ -2339,6 +2342,19 @@ end:
 	return rc;
 }
 
+int adm_get_topology_id(int port_id)
+{
+
+	int index = afe_get_port_index(port_id);
+	if (index < 0 || index >= AFE_MAX_PORTS) {
+		pr_err("%s: invalid port idx 0x%x portid 0x%x\n",
+			__func__, index, port_id);
+		return -EINVAL;
+	}
+	return this_adm.topology[index];
+
+}
+
 static int __init adm_init(void)
 {
 	int i = 0;
@@ -2357,6 +2373,7 @@ static int __init adm_init(void)
 		init_waitqueue_head(&this_adm.wait[i]);
 		init_waitqueue_head(&this_adm.adm_delay_wait[i]);
 		this_adm.adm_delay[i] = 0;
+		this_adm.topology[i] =  -1;
 	}
 	return 0;
 }
