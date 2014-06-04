@@ -13,10 +13,9 @@
 static struct rfkill *bt_rfk;
 static const char bt_name[] = "bcm20715";
 
-static int bluetooth_set_power(void *data, bool poweron)
+static int bluetooth_set_power(void *data, bool blocked)
 {
 	int rc_reset = 0 , rc_reg = 0;
-
 	rc_reset = gpio_request(GPIO_BT_RESET, "bt_reset");
 	if (rc_reset)
 		gpio_free(GPIO_BT_RESET);
@@ -27,7 +26,7 @@ static int bluetooth_set_power(void *data, bool poweron)
 
 	if (rc_reset || rc_reg) {
 		printk ("gpio request fail , free gpio \n");
-	} else if (poweron) {
+	} else if (!blocked) {
 		printk("BT power on\n");
 		// BT reg_eng high
  		gpio_direction_output(GPIO_BT_REGEN, 0);
@@ -38,6 +37,8 @@ static int bluetooth_set_power(void *data, bool poweron)
  		gpio_direction_output(GPIO_BT_RESET, 0);
 		usleep(300);	
 		gpio_direction_output(GPIO_BT_RESET, 1);
+		gpio_free(GPIO_BT_REGEN);
+		gpio_free(GPIO_BT_RESET);
 
 	} else {
 		printk("BT shutdown \n");
