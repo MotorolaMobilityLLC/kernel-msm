@@ -83,6 +83,7 @@ static DEFINE_SPINLOCK(mdp_lock);
 static DEFINE_MUTEX(mdp_clk_lock);
 static DEFINE_MUTEX(bus_bw_lock);
 static DEFINE_MUTEX(mdp_iommu_lock);
+static DEFINE_MUTEX(mdp_fs_ulps_lock);
 
 static struct mdss_panel_intf pan_types[] = {
 	{"dsi", MDSS_PANEL_INTF_DSI},
@@ -2663,16 +2664,19 @@ void mdss_mdp_footswitch_ctrl_ulps(int on, struct device *dev)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
-	pr_debug("called on=%d\n", on);
-	if (on) {
+	mutex_lock(&mdp_fs_ulps_lock);
+	pr_debug("called on=%d, ulps=%d\n", on, mdata->ulps);
+	if (on && mdata->ulps) {
 		pm_runtime_get_sync(dev);
 		mdss_iommu_attach(mdata);
 		mdss_hw_init(mdata);
 		mdata->ulps = false;
-	} else {
+	} else if (!on && !mdata->ulps) {
 		mdata->ulps = true;
 		pm_runtime_put_sync(dev);
 	}
+
+	mutex_unlock(&mdp_fs_ulps_lock);
 }
 
 static inline int mdss_mdp_suspend_sub(struct mdss_data_type *mdata)
@@ -2695,7 +2699,7 @@ static inline int mdss_mdp_resume_sub(struct mdss_data_type *mdata)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
+#if defined(CONFIG_PM_SLEEP)
 static int mdss_mdp_pm_suspend(struct device *dev)
 {
 	struct mdss_data_type *mdata;
@@ -2705,6 +2709,10 @@ static int mdss_mdp_pm_suspend(struct device *dev)
 		return -ENODEV;
 
 	dev_dbg(dev, "display pm suspend\n");
+
+#if !defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
+	mdata->ulps = false;
+#endif
 
 	return mdss_mdp_suspend_sub(mdata);
 }
@@ -2718,6 +2726,15 @@ static int mdss_mdp_pm_resume(struct device *dev)
 		return -ENODEV;
 
 	dev_dbg(dev, "display pm resume\n");
+
+	/*
+	 * It is possible that the runtime status of the mdp device may
+	 * have been active when the system was suspended. Reset the runtime
+	 * status to suspended state after a complete system resume.
+	 */
+	pm_runtime_disable(dev);
+	pm_runtime_set_suspended(dev);
+	pm_runtime_enable(dev);
 
 	return mdss_mdp_resume_sub(mdata);
 }
