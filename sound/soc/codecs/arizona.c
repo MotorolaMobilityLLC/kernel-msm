@@ -321,6 +321,7 @@ const char *arizona_mixer_texts[ARIZONA_NUM_MIXER_INPUTS] = {
 	"Tone Generator 2",
 	"Haptics",
 	"AEC",
+	"AEC2",
 	"Mic Mute Mixer",
 	"Noise Generator",
 	"IN1L",
@@ -428,6 +429,7 @@ int arizona_mixer_values[ARIZONA_NUM_MIXER_INPUTS] = {
 	0x05,
 	0x06,  /* Haptics */
 	0x08,  /* AEC */
+	0x09,  /* AEC2 */
 	0x0c,  /* Noise mixer */
 	0x0d,  /* Comfort noise */
 	0x10,  /* IN1L */
@@ -572,6 +574,12 @@ const struct soc_enum arizona_output_rate =
 			      arizona_rate_text,
 			      arizona_sample_rate_val);
 EXPORT_SYMBOL_GPL(arizona_output_rate);
+
+const SOC_ENUM_SINGLE_DECL(arizona_spdif_rate,
+			   ARIZONA_SPD1_TX_CONTROL,
+			   ARIZONA_SPD1_RATE_SHIFT,
+			   arizona_rate_text);
+EXPORT_SYMBOL_GPL(arizona_spdif_rate);
 
 const int arizona_rate_val[ARIZONA_RATE_ENUM_SIZE] = {
 	0, 1, 2, 8,
@@ -1723,6 +1731,8 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 	switch (priv->arizona->type) {
 	case WM5102:
 	case WM8997:
+	case WM8998:
+	case WM1814:
 		if (arizona_sr_vals[sr_val] >= 88200)
 			ret = arizona_dvfs_up(priv->arizona,
 					      ARIZONA_DVFS_SR1_RQ);
@@ -2224,6 +2234,11 @@ static int arizona_calc_fratio(struct arizona_fll *fll,
 	case WM8280:
 	case WM5110:
 		if (fll->arizona->rev < 3 || sync)
+			return init_ratio;
+		break;
+	case WM8998:
+	case WM1814:
+		if (sync)
 			return init_ratio;
 		break;
 	default:
