@@ -1255,7 +1255,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	if (req == NULL)
 		goto need_lock;
 
-	printk("MDSS:%s:  from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
+	//printk("MDSS:%s:  from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
 	/*
 	 * mdss interrupt is generated in mdp core clock domain
 	 * mdp clock need to be enabled to receive dsi interrupt
@@ -1284,8 +1284,8 @@ need_lock:
 		mdss_dsi_cmd_mdp_start(ctrl);
 
 	mutex_unlock(&ctrl->cmd_mutex);
-	if (req != NULL)
-		printk("MDSS:%s:---:ret=%d\n",__func__,ret);
+	//if (req != NULL)
+	//	printk("MDSS:%s:---:ret=%d\n",__func__,ret);
 	return ret;
 }
 

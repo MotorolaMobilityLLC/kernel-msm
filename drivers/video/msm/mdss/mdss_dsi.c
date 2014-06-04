@@ -1131,7 +1131,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
 	}
-	if (event != MDSS_EVENT_DSI_CMDLIST_KOFF && event != MDSS_EVENT_PANEL_CLK_CTRL)
+	if (event != MDSS_EVENT_DSI_CMDLIST_KOFF && event != MDSS_EVENT_PANEL_CLK_CTRL && event != MDSS_EVENT_DSI_ULPS_CTRL)
 		printk("MDSS:%s:---:event=%d, rc=%d\n", __func__, event, rc);
 	return rc;
 }

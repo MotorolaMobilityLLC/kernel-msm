@@ -899,14 +899,18 @@ static void IT7260_ts_work_func(struct work_struct *work) {
 //ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
 static void IT7260_ts_work_resume_func(struct work_struct *work) {
 	if (atomic_read(&Suspend_flag)){
-		static 	int last_time_shot_power = 0;
+		static int last_time_shot_power = 0;
+		static int skip_times=0;
 		if (jiffies - last_time_shot_power > 2*HZ){
 			last_time_shot_power = jiffies;
 				public_gpio_keys_gpio_report_event();
-				atomic_read(&Suspend_flag);
+				atomic_set(&Suspend_flag,0);
+				skip_times=0;
 
 		}else{
-			printk("!!!! Skip Power key shoot by touch!!!\n");
+			if (1 == skip_times)
+				printk("!!!! Skip Power key shoot by touch!!!\n");
+			skip_times++;
 		}
 	}
 	//Suspend_flag++;
