@@ -20,6 +20,22 @@
 #include <sound/q6afe-v2.h>
 #include <sound/q6audio-v2.h>
 
+#define MAX_MODULES_IN_TOPO 16
+#define ADM_GET_TOPO_MODULE_LIST_LENGTH\
+		((MAX_MODULES_IN_TOPO + 1) * sizeof(uint32_t))
+#define AUD_PROC_BLOCK_SIZE	4096
+#define AUD_VOL_BLOCK_SIZE	4096
+#define AUDIO_RX_CALIBRATION_SIZE	(AUD_PROC_BLOCK_SIZE + \
+						AUD_VOL_BLOCK_SIZE)
+enum {
+	ADM_RX_AUDPROC_CAL,
+	ADM_TX_AUDPROC_CAL,
+	ADM_RX_AUDVOL_CAL,
+	ADM_TX_AUDVOL_CAL,
+	ADM_CUSTOM_TOP_CAL,
+	ADM_RTAC,
+	ADM_MAX_CAL_TYPES,
+};
 
 /* multiple copp per stream. */
 struct route_payload {
@@ -73,4 +89,25 @@ void adm_get_multi_ch_map(char *channel_map);
 int adm_set_stereo_to_custom_stereo(int port_id, unsigned int session_id,
 				    char *params, uint32_t params_length);
 
+int adm_get_pp_topo_module_list(int port_id, int32_t param_length,
+				char *params);
+
+int adm_set_volume(int port_id, int volume);
+
+int adm_set_softvolume(int port_id,
+		       struct audproc_softvolume_params *softvol_param);
+
+int adm_param_enable(int port_id, int module_id,  int enable);
+
+int adm_send_calibration(int port_id, int path, int perf_mode, int cal_type,
+			 char *params, int size);
+
+int adm_set_wait_parameters(int port_id);
+
+int adm_reset_wait_parameters(int port_id);
+
+int adm_wait_timeout(int port_id, int wait_time);
+
+int adm_store_cal_data(int port_id, int path, int perf_mode, int cal_type,
+		       char *params, int *size);
 #endif /* __Q6_ADM_V2_H__ */
