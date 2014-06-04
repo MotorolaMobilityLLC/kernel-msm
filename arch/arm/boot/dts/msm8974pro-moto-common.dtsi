@@ -1303,3 +1303,9 @@
 		qcom,thermal-node;
 	};
 };
+
+&pm8941_adc_tm {
+	chan@6 {
+		qcom,meas-interval-timer-idx = <0>;
+	};
+};
