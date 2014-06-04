@@ -12,6 +12,7 @@
  */
 
 #include "apq8084-moto-common.dtsi"
+#include "apq8084-mot-camera-sensor.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "dsi-panel-mot-smd-QHD-cmd.dtsi"
 #include "dsi-panel-mot-smd-720p-cmd.dtsi"
