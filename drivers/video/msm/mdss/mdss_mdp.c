@@ -446,6 +446,29 @@ int mdss_mdp_bus_scale_set_quota(u64 ab_quota, u64 ib_quota)
 		new_uc_idx);
 }
 
+int mdss_bus_scale_set_quota(int client, u64 ab_quota, u64 ib_quota)
+{
+	int rc = 0;
+	int i;
+	u64 total_ab = 0;
+	u64 total_ib = 0;
+
+	mutex_lock(&bus_bw_lock);
+
+	mdss_res->ab[client] = ab_quota;
+	mdss_res->ib[client] = ib_quota;
+	for (i = 0; i < MDSS_MAX_HW_BLK; i++) {
+		total_ab += mdss_res->ab[i];
+		total_ib = max(total_ib, mdss_res->ib[i]);
+	}
+
+	rc = mdss_mdp_bus_scale_set_quota(total_ab, total_ib);
+
+	mutex_unlock(&bus_bw_lock);
+
+	return rc;
+}
+
 static inline u32 mdss_mdp_irq_mask(u32 intr_type, u32 intf_num)
 {
 	if (intr_type == MDSS_MDP_IRQ_INTF_UNDER_RUN ||
