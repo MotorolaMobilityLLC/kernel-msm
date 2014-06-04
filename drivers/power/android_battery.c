@@ -756,6 +756,17 @@ static int android_battery_parse_dt(struct device *dev,
 				(unsigned int *)&battery->pdata->recharging_voltage);
 		if (ret)
 			pr_info("%s: recharging_voltage is Empty\n", __func__);
+
+		if(battery->pdata->is_poweroff_charging) {
+			if(battery->pdata->is_poweroff_charging()) {
+				ret = of_property_read_u32(np, "battery,recharging_voltage_lpm",
+						(unsigned int *)&battery->pdata->recharging_voltage);
+				if (ret)
+					pr_info("%s: recharging_voltage_lpm is Empty\n", __func__);
+			}
+		}
+		pr_info("%s: recharging_voltage(%d)\n", __func__,
+				battery->pdata->recharging_voltage);
 	}
 	return 0;
 }
