@@ -37,7 +37,6 @@
 		uart3 = &c55_uart_blsp2;
 	};
 
-	/delete-node/ bt_qca6174;
 };
 
 &soc {
@@ -73,7 +72,14 @@
 				<86 512 500 800>;
 	};
 
-
+	bluesleep {
+		compatible = "qcom,bluesleep";
+		bt_host_wake = <&msmgpio 67 0>;
+		bt_ext_wake = <&msmgpio 71 0>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <67 0>;
+		interrupt-names = "host_wake";
+	};
 
 };
 
@@ -265,6 +271,7 @@
 			&unused_default
 			&disp_v1_en_default
 			&ter_auxpcm_default
+			&bt_wakeup_default
 		>;
 
 	cycapsense {
@@ -273,5 +280,16 @@
 
 	blsp_uart  {
 		qcom,pins = <&gp 4 &gp 5 &gp 6 &gp 7>;
+	};
+
+	bt_wakeup {
+		qcom,pins = <&gp 67 &gp 71>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <0>;
+		label = "bt_wakeup";
+		bt_wakeup_default: default {
+			bias-disable;
+			drive-strength = <2>;
+		};
 	};
 };
