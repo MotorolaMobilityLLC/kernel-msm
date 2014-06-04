@@ -362,9 +362,13 @@ struct smb135x_chg {
 	struct delayed_work		usb_insertion_work;
 
 	unsigned int			thermal_levels;
+	unsigned int                    dc_thermal_levels;
 	unsigned int			therm_lvl_sel;
+	unsigned int                    dc_therm_lvl_sel;
 	unsigned int			*thermal_mitigation;
+	unsigned int			*dc_thermal_mitigation;
 	struct mutex			current_change_lock;
+	struct mutex                    batti_change_lock;
 	bool				factory_mode;
 	int				batt_current_ma;
 	int				apsd_rerun_cnt;
@@ -647,6 +651,7 @@ static enum power_supply_property smb135x_battery_properties[] = {
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
+	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS,
 	/* Block from Fuel Gauge */
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
@@ -1193,7 +1198,7 @@ static int smb135x_set_dc_chg_current(struct smb135x_chg *chip,
 	u8 dc_cur_val;
 
 	for (i = chip->dc_current_arr_size - 1; i >= 0; i--) {
-		if (chip->dc_psy_ma >= chip->dc_current_table[i])
+		if (current_ma >= chip->dc_current_table[i])
 			break;
 	}
 	dc_cur_val = i & DCIN_INPUT_MASK;
@@ -1236,13 +1241,14 @@ static int smb135x_set_appropriate_current(struct smb135x_chg *chip,
 			func = NULL;
 	}
 
-	if (chip->therm_lvl_sel > 0
-			&& chip->therm_lvl_sel < (chip->thermal_levels - 1))
+	if ((path == DC) &&
+	    (chip->dc_therm_lvl_sel > 0) &&
+	    (chip->dc_therm_lvl_sel < chip->dc_thermal_levels))
 		/*
 		 * consider thermal limit only when it is active and not at
 		 * the highest level
 		 */
-		therm_ma = chip->thermal_mitigation[chip->therm_lvl_sel];
+		therm_ma = chip->dc_thermal_mitigation[chip->dc_therm_lvl_sel];
 	else
 		therm_ma = path_current;
 
@@ -1398,47 +1404,97 @@ static int smb135x_system_temp_level_set(struct smb135x_chg *chip,
 	mutex_lock(&chip->current_change_lock);
 	prev_therm_lvl = chip->therm_lvl_sel;
 	chip->therm_lvl_sel = lvl_sel;
-	if (chip->therm_lvl_sel == (chip->thermal_levels - 1)) {
+	if ((chip->therm_lvl_sel == (chip->thermal_levels - 1)) &&
+	    (chip->thermal_mitigation[lvl_sel] == 0)) {
+		/*
+		 * Disable charging if highest value selected by
+		 * setting the USB path in suspend
+		 */
+		rc = smb135x_path_suspend(chip, USB, THERMAL, true);
+		if (rc < 0)
+			dev_err(chip->dev,
+				"Couldn't set usb suspend rc %d\n", rc);
+		goto out;
+	}
+
+	rc = smb135x_set_batt_current(chip, chip->thermal_mitigation[lvl_sel]);
+	if (rc < 0)
+		dev_err(chip->dev,
+			"Couldn't set batt current rc %d\n", rc);
+
+	if (prev_therm_lvl == chip->thermal_levels - 1) {
+		/*
+		 * If previously highest value was selected charging must have
+		 * been disabed. Enable charging by taking the USB path out of
+		 * suspend.
+		 */
+		rc = smb135x_path_suspend(chip, USB, THERMAL, false);
+		if (rc < 0)
+			dev_err(chip->dev,
+				"Couldn't set usb suspend rc %d\n", rc);
+	}
+out:
+	mutex_unlock(&chip->current_change_lock);
+	return rc;
+}
+
+static int smb135x_dc_system_temp_level_set(struct smb135x_chg *chip,
+					    int lvl_sel)
+{
+	int rc = 0;
+	int prev_therm_lvl;
+
+	if (!chip->dc_thermal_mitigation) {
+		pr_err("Thermal mitigation not supported\n");
+		return -EINVAL;
+	}
+
+	if (lvl_sel < 0) {
+		pr_err("Unsupported level selected %d\n", lvl_sel);
+		return -EINVAL;
+	}
+
+	if (lvl_sel >= chip->dc_thermal_levels) {
+		pr_err("Unsupported DC level selected %d forcing %d\n", lvl_sel,
+				chip->dc_thermal_levels - 1);
+		lvl_sel = chip->dc_thermal_levels - 1;
+	}
+
+	if (lvl_sel == chip->dc_therm_lvl_sel)
+		return 0;
+
+	mutex_lock(&chip->current_change_lock);
+	prev_therm_lvl = chip->dc_therm_lvl_sel;
+	chip->dc_therm_lvl_sel = lvl_sel;
+	if ((chip->dc_therm_lvl_sel == (chip->dc_thermal_levels - 1)) &&
+	    (chip->dc_thermal_mitigation[lvl_sel] == 0)) {
 		/*
 		 * Disable charging if highest value selected by
 		 * setting the DC and USB path in suspend
 		 */
 		rc = smb135x_path_suspend(chip, DC, THERMAL, true);
-		if (rc < 0) {
+		if (rc < 0)
 			dev_err(chip->dev,
 				"Couldn't set dc suspend rc %d\n", rc);
-			goto out;
-		}
-		rc = smb135x_path_suspend(chip, USB, THERMAL, true);
-		if (rc < 0) {
-			dev_err(chip->dev,
-				"Couldn't set usb suspend rc %d\n", rc);
-			goto out;
-		}
 		goto out;
 	}
 
-	smb135x_set_appropriate_current(chip, USB);
 	smb135x_set_appropriate_current(chip, DC);
 
-	if (prev_therm_lvl == chip->thermal_levels - 1) {
+	if (rc < 0)
+		dev_err(chip->dev,
+			"Couldn't set dc current rc %d\n", rc);
+
+	if (prev_therm_lvl == chip->dc_thermal_levels - 1) {
 		/*
 		 * If previously highest value was selected charging must have
-		 * been disabed. Enable charging by taking the DC and USB path
-		 * out of suspend.
+		 * been disabed. Enable charging by taking the DC out of
+		 * suspend.
 		 */
 		rc = smb135x_path_suspend(chip, DC, THERMAL, false);
-		if (rc < 0) {
+		if (rc < 0)
 			dev_err(chip->dev,
 				"Couldn't set dc suspend rc %d\n", rc);
-			goto out;
-		}
-		rc = smb135x_path_suspend(chip, USB, THERMAL, false);
-		if (rc < 0) {
-			dev_err(chip->dev,
-				"Couldn't set usb suspend rc %d\n", rc);
-			goto out;
-		}
 	}
 out:
 	mutex_unlock(&chip->current_change_lock);
@@ -1543,6 +1599,9 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		val->intval = chip->therm_lvl_sel;
 		break;
+	case POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS:
+		val->intval = chip->thermal_levels;
+		break;
 	/* Block from Fuel Gauge */
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
@@ -1570,7 +1629,42 @@ static enum power_supply_property smb135x_dc_properties[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
+	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS,
 };
+
+static int smb135x_dc_set_property(struct power_supply *psy,
+				   enum power_supply_property prop,
+				   const union power_supply_propval *val)
+{
+	struct smb135x_chg *chip = container_of(psy,
+						struct smb135x_chg, dc_psy);
+	switch (prop) {
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		smb135x_dc_system_temp_level_set(chip, val->intval);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int smb135x_dc_is_writeable(struct power_supply *psy,
+				   enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
 
 static int smb135x_dc_get_property(struct power_supply *psy,
 				       enum power_supply_property prop,
@@ -1589,6 +1683,12 @@ static int smb135x_dc_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = chip->dc_present;
 		break;
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		val->intval = chip->dc_therm_lvl_sel;
+		break;
+	case POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS:
+		val->intval = chip->dc_thermal_levels;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -1601,7 +1701,7 @@ static void smb135x_external_power_changed(struct power_supply *psy)
 				struct smb135x_chg, batt_psy);
 	union power_supply_propval prop = {0,};
 	int rc, current_limit = 0;
-	pr_warn("Fired!!\n");
+
 	if (chip->bms_psy_name)
 		chip->bms_psy =
 			power_supply_get_by_name((char *)chip->bms_psy_name);
@@ -3366,6 +3466,28 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 		}
 	}
 
+	if (of_find_property(node, "qcom,dc-thermal-mitigation",
+					&chip->dc_thermal_levels)) {
+		chip->dc_thermal_mitigation = devm_kzalloc(chip->dev,
+			chip->dc_thermal_levels,
+			GFP_KERNEL);
+
+		if (chip->dc_thermal_mitigation == NULL) {
+			pr_err("DC thermal mitigation kzalloc() failed.\n");
+			return -ENOMEM;
+		}
+
+		chip->dc_thermal_levels /= sizeof(int);
+		rc = of_property_read_u32_array(node,
+				"qcom,dc-thermal-mitigation",
+				chip->dc_thermal_mitigation,
+				chip->dc_thermal_levels);
+		if (rc) {
+			pr_err("Couldn't read DC therm limits rc = %d\n", rc);
+			return rc;
+		}
+	}
+
 	return 0;
 }
 
@@ -3968,8 +4090,11 @@ static int smb135x_charger_probe(struct i2c_client *client,
 		chip->dc_psy.name		= "dc";
 		chip->dc_psy.type		= chip->dc_psy_type;
 		chip->dc_psy.get_property	= smb135x_dc_get_property;
+		chip->dc_psy.set_property       = smb135x_dc_set_property;
 		chip->dc_psy.properties		= smb135x_dc_properties;
 		chip->dc_psy.num_properties = ARRAY_SIZE(smb135x_dc_properties);
+		chip->dc_psy.property_is_writeable = smb135x_dc_is_writeable;
+
 		rc = power_supply_register(chip->dev, &chip->dc_psy);
 		if (rc < 0) {
 			dev_err(&client->dev,
