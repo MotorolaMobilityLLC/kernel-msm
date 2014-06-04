@@ -479,7 +479,7 @@
 				compatible = "ti,lmu-backlight", "ti,lm3697-backlight";
 				lcd {
 					hvled1-used;
-					max-current-milliamp = /bits/ 8 <20>;
+					max-current-milliamp = /bits/ 8 <24>;
 				};
 			};
 		};
