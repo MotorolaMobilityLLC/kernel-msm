@@ -322,8 +322,6 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	static int stored_bl_level = 255;
 	int request_bl_dim = 0;
 
-	pr_info("%s : bl_level %d, stored_bl %d\n",
-			__func__, bl_level, stored_bl_level);
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
