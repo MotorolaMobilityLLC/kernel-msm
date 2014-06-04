@@ -50,7 +50,7 @@ int msm_ds2_dap_ioctl(struct snd_hwdep *hw, struct file *file,
 int msm_ds2_dap_init(int port_id, int channels,
 		     bool is_custom_stereo_on);
 void msm_ds2_dap_deinit(int port_id);
-int msm_ds2_dap_set_custom_stereo_onoff(int dev_map_idx,
+int msm_ds2_dap_set_custom_stereo_onoff(int port_id,
 					bool is_custom_stereo_enabled);
 /* Dolby DOLBY end */
 #else
@@ -75,7 +75,7 @@ static inline int msm_ds2_dap_init(int port_id, int channels,
 
 static inline void msm_ds2_dap_deinit(int port_id) { }
 
-static inline int msm_ds2_dap_set_custom_stereo_onoff(int dev_map_idx,
+static inline int msm_ds2_dap_set_custom_stereo_onoff(int port_id,
 				    bool is_custom_stereo_enabled)
 {
 	return 0;

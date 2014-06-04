@@ -110,4 +110,6 @@ int adm_wait_timeout(int port_id, int wait_time);
 
 int adm_store_cal_data(int port_id, int path, int perf_mode, int cal_type,
 		       char *params, int *size);
+
+int adm_get_topology_id(int port_id);
 #endif /* __Q6_ADM_V2_H__ */
