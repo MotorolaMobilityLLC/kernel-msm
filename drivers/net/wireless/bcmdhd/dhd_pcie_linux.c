@@ -47,7 +47,9 @@
 #include <bcmmsgbuf.h>
 #include <pcicfg.h>
 #include <dhd_pcie.h>
-
+#if defined (CONFIG_ARCH_MSM)
+#include <mach/msm_pcie.h>
+#endif
 
 #define PCI_CFG_RETRY 		10
 #define OS_HANDLE_MAGIC		0x1234abcd	/* Magic # to recognize osh */
@@ -87,6 +89,8 @@ typedef struct dhdpcie_info
 	uint16		last_intrstatus;	/* to cache intrstatus */
 	int	irq;
 	char pciname[32];
+	
+	struct pci_saved_state* state;
 
 } dhdpcie_info_t;
 
@@ -395,6 +399,17 @@ int dhdpcie_get_resource(dhdpcie_info_t *dhdpcie_info)
 			DHD_ERROR(("%s:ioremap() failed\n", __FUNCTION__));
 			break;
 		}
+		/* Backup PCIe configuration so as to use Wi-Fi on/off process in case of built in driver */
+		pci_save_state(pdev);
+		dhdpcie_info->state = pci_store_saved_state(pdev);
+	
+		if(dhdpcie_info->state == NULL) {
+			DHD_ERROR(("%s pci_store_saved_state returns NULL\n", __FUNCTION__));
+			REG_UNMAP(dhdpcie_info->regs);
+			REG_UNMAP(dhdpcie_info->tcm);			
+			pci_disable_device(pdev);	
+			break;
+		}		
 		DHD_TRACE(("%s:Phys addr : reg space = %p base addr 0x"PRINTF_RESOURCE" \n",
 			__FUNCTION__, dhdpcie_info->regs, bar0_addr));
 		DHD_TRACE(("%s:Phys addr : tcm_space = %p base addr 0x"PRINTF_RESOURCE" \n",
@@ -436,7 +451,7 @@ int dhdpcie_init(struct pci_dev *pdev)
 	osl_t 				*osh = NULL;
 	dhd_bus_t 			*bus = NULL;
 	dhdpcie_info_t		*dhdpcie_info =  NULL;
-
+	DHD_ERROR(("%s enter\n", __FUNCTION__));
 	do {
 		/* osl attach */
 		if (!(osh = osl_attach(pdev, PCI_BUS, FALSE))) {
@@ -486,6 +501,15 @@ int dhdpcie_init(struct pci_dev *pdev)
 				"due to polling mode\n", __FUNCTION__));
 		}
 
+
+		/* set private data for pci_dev */
+		pci_set_drvdata(pdev, dhdpcie_info);
+		/* Attach to the OS network interface */
+		DHD_TRACE(("%s(): Calling dhd_register_if() \n", __FUNCTION__));
+		if(dhd_register_if(bus->dhd, 0, TRUE)) {
+			DHD_ERROR(("%s(): ERROR.. dhd_register_if() failed\n", __FUNCTION__));
+			break;
+		}
 		if (dhd_download_fw_on_driverload) {
 			if (dhd_bus_start(bus->dhd)) {
 				DHD_ERROR(("%s: dhd_bud_start() failed\n", __FUNCTION__));
@@ -493,12 +517,9 @@ int dhdpcie_init(struct pci_dev *pdev)
 			}
 		}
 
-		/* set private data for pci_dev */
-		pci_set_drvdata(pdev, dhdpcie_info);
-
 		dhdpcie_init_succeeded = TRUE;
 
-		DHD_TRACE(("%s:Exit - SUCCESS \n", __FUNCTION__));
+		DHD_ERROR(("%s:Exit - SUCCESS \n", __FUNCTION__));
 		return 0;  /* return  SUCCESS  */
 
 	} while (0);
@@ -563,3 +584,110 @@ dhdpcie_isr(int irq, void *arg)
 	else
 		return FALSE;
 }
+
+int
+dhdpcie_start_host_pcieclock(dhd_bus_t *bus)
+{
+	int ret=0;
+
+	DHD_TRACE(("%s Enter:\n", __FUNCTION__));	
+
+	if(bus == NULL)
+		return BCME_ERROR;
+
+	if(bus->dev == NULL)
+		return BCME_ERROR;
+	
+#if defined (CONFIG_ARCH_MSM)
+	ret = msm_pcie_pm_control(MSM_PCIE_RESUME,				
+				  bus->dev->bus->number, 	
+				  NULL, NULL, 0);
+	if (ret) {
+		DHD_ERROR(("%s Failed to bring up PCIe link\n", __FUNCTION__));
+		goto done;
+	}
+#endif
+
+done:
+	DHD_TRACE(("%s Exit:\n", __FUNCTION__));	
+
+	return ret;
+}
+
+int
+dhdpcie_stop_host_pcieclock(dhd_bus_t *bus)
+{
+	int ret=0;
+
+	DHD_TRACE(("%s Enter:\n", __FUNCTION__));
+	
+	if(bus == NULL)
+		return BCME_ERROR;
+
+	if(bus->dev == NULL)
+		return BCME_ERROR;
+	
+#if defined (CONFIG_ARCH_MSM)
+	ret = msm_pcie_pm_control(MSM_PCIE_SUSPEND,				
+			bus->dev->bus->number, 	
+			NULL, NULL, 0);
+	if (ret) {
+		DHD_ERROR(("Failed to stop PCIe link\n"));
+		goto done;
+	}	
+#endif
+
+done:
+	DHD_TRACE(("%s Exit:\n", __FUNCTION__));
+	return ret;
+}
+
+int
+dhdpcie_disable_device(dhd_bus_t *bus)
+{
+	if(bus == NULL) {
+		DHD_ERROR(("%s bus is null!!!\n", __FUNCTION__));
+		return BCME_ERROR;
+	}
+	if(bus->dev == NULL) {
+		DHD_ERROR(("%s dev is null!!!\n", __FUNCTION__));
+		return BCME_ERROR;
+	}
+	pci_disable_device(bus->dev);
+	
+	return 0;
+}
+
+int
+dhdpcie_enable_device(dhd_bus_t *bus)
+{
+	int ret = BCME_ERROR;
+	dhdpcie_info_t *pch;
+
+	DHD_TRACE(("%s Enter:\n", __FUNCTION__));
+
+	if(bus == NULL)
+		return BCME_ERROR;
+
+	if(bus->dev == NULL)
+		return BCME_ERROR;
+
+	pch = pci_get_drvdata(bus->dev);
+	if(pch == NULL)
+		return BCME_ERROR;
+	
+	if(pci_load_saved_state(bus->dev, pch->state))
+		pci_disable_device(bus->dev);
+	else {
+		pci_restore_state(bus->dev);
+		ret = pci_enable_device(bus->dev);
+		if(!ret)
+			pci_set_master(bus->dev);
+	}
+	
+	if(ret)
+		pci_disable_device(bus->dev);
+
+	return ret;
+}
+
