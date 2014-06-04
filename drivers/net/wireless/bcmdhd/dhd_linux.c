@@ -3072,6 +3072,27 @@ dhd_rxf_thread(void *data)
 	complete_and_exit(&tsk->completed, 0);
 }
 
+#ifdef BCMPCIE
+
+void dhd_dpc_kill(dhd_pub_t *dhdp){
+	dhd_info_t *dhd;
+
+	if (!dhdp)
+		return;
+
+	dhd = dhdp->info;
+
+	if(!dhd)
+		return;
+
+	tasklet_kill(&dhd->tasklet);
+	DHD_ERROR(("%s: tasklet disabled\n",__FUNCTION__));
+}
+#endif
+#ifdef CUSTOMER_HW10
+static int isresched = 0;
+#endif
+
 static void
 dhd_dpc(ulong data)
 {
@@ -6021,6 +6042,16 @@ dhd_register_if(dhd_pub_t *dhdp, int ifidx, bool need_rtnl_lock)
 		}
 	}
 #endif /* OEM_ANDROID && BCMLXSDMMC && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
+
+#if defined(BCMPCIE)
+	if (ifidx == 0) {
+		if (!dhd_download_fw_on_driverload) {
+			dhd_net_bus_devreset(net, TRUE);
+			wifi_platform_set_power(dhdp->info->adapter, FALSE, WIFI_TURNOFF_DELAY);
+		}
+	}
+#endif /* BCMPCIE */
+
 	return 0;
 
 fail:
@@ -6804,8 +6835,10 @@ void dhd_wait_event_wakeup(dhd_pub_t *dhd)
 int
 dhd_net_bus_devreset(struct net_device *dev, uint8 flag)
 {
-	int ret;
-
+	int ret = 0;
+#if defined (BCMPCIE)
+	int retry = POWERUP_MAX_RETRY;
+#endif
 	dhd_info_t *dhd = DHD_DEV_INFO(dev);
 
 	if (flag == TRUE) {
@@ -6823,7 +6856,7 @@ dhd_net_bus_devreset(struct net_device *dev, uint8 flag)
 #endif
 	}
 
-#ifdef BCMSDIO
+#if defined (BCMSDIO)
 	if (!flag) {
 		dhd_update_fw_nv_path(dhd);
 		/* update firmware and nvram path to sdio bus */
@@ -6836,10 +6869,95 @@ dhd_net_bus_devreset(struct net_device *dev, uint8 flag)
 		DHD_ERROR(("%s: dhd_bus_devreset: %d\n", __FUNCTION__, ret));
 		return ret;
 	}
-#else
-	ret = dhd_bus_start(&dhd->pub);
-#endif /* BCMSDIO */
+#elif defined (BCMPCIE)
+	if(dhd_download_fw_on_driverload) {
+		ret = dhd_bus_start(&dhd->pub);
+	} else {
+		if(!flag) {
+			if(dhd->pub.busstate == DHD_BUS_DOWN) {
+				if (dhd->pub.dongle_reset) {
+					while(retry--) {
+						ret = dhdpcie_bus_clock_start(dhd->pub.bus);
+						if(!ret)
+							break;
+						else
+							OSL_SLEEP(10);
+					}
 
+					if(ret && !retry) {
+						DHD_ERROR(("%s: host pcie clock enable failed: %d\n", __FUNCTION__, ret));
+						goto done;
+					}
+
+					ret = dhdpcie_bus_enable_device(dhd->pub.bus);
+					if(ret) {
+						DHD_ERROR(("%s: host configuration restore failed: %d\n", __FUNCTION__, ret));
+						goto done;
+					}
+
+					ret = dhdpcie_bus_dongle_attach(dhd->pub.bus);
+					if(ret) {
+						DHD_ERROR(("%s: dhd_bus_start: %d\n", __FUNCTION__, ret));
+						goto done;
+					}
+				}
+				dhd->pub.dongle_reset = FALSE;
+
+				ret = dhd_bus_start(&dhd->pub);
+				if(ret) {
+					DHD_ERROR(("%s: dhd_bus_start: %d\n", __FUNCTION__, ret));
+					goto done;
+				}
+			} else {
+				DHD_ERROR(("%s: what should we do here\n", __FUNCTION__));
+				goto done;
+			}
+		} else {
+			if(dhd->pub.busstate != DHD_BUS_DOWN) {
+				ret = dhdpcie_bus_disable_device(dhd->pub.bus);
+				if(ret) {
+					DHD_ERROR(("%s: dhdpcie_bus_disable_device: %d\n", __FUNCTION__, ret));
+					goto done;
+				}
+
+				dhd_os_wd_timer(&dhd->pub, 0);
+				dhd_bus_stop(dhd->pub.bus, TRUE);
+				dhd_bus_release_dongle(dhd->pub.bus);
+
+				ret = dhdpcie_bus_clock_stop(dhd->pub.bus);
+				if(ret) {
+					DHD_ERROR(("%s: host clock stop failed: %d\n", __FUNCTION__, ret));
+					goto done;
+				}
+
+				dhd->pub.busstate = DHD_BUS_DOWN;
+				dhd->pub.dongle_reset = TRUE;
+				dhd_prot_clear(&dhd->pub);					
+			}else {
+				ret = dhdpcie_bus_disable_device(dhd->pub.bus);
+				if(ret) {
+					DHD_ERROR(("%s: dhdpcie_bus_disable_device: %d\n", __FUNCTION__, ret));
+					goto done;
+				}
+
+				dhd_bus_release_dongle(dhd->pub.bus);
+
+				ret = dhdpcie_bus_clock_stop(dhd->pub.bus);
+				if(ret) {
+					DHD_ERROR(("%s: host clock stop failed: %d\n", __FUNCTION__, ret));
+					goto done;
+				}
+				dhd->pub.dongle_reset = TRUE;	
+
+				dhd_prot_clear(&dhd->pub);
+			}
+		}
+	}
+#endif /* BCMSDIO */
+done:
+
+	if (ret)
+		dhd->pub.busstate = DHD_BUS_DOWN;
 	return ret;
 }
 
