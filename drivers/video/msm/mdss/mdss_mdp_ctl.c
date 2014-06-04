@@ -1045,7 +1045,7 @@ static inline void mdss_mdp_ctl_perf_update_bus(struct mdss_data_type *mdata,
 			bw_vote_mode);
 
 	ATRACE_INT("bus_quota", bus_ib_quota);
-	mdss_mdp_bus_scale_set_quota(bus_ab_quota, bus_ib_quota);
+	mdss_bus_scale_set_quota(MDSS_HW_MDP, bus_ab_quota, bus_ib_quota);
 	pr_debug("ab=%llu ib=%llu mode=%d\n", bus_ab_quota, bus_ib_quota,
 		bw_vote_mode);
 	ATRACE_END(__func__);
