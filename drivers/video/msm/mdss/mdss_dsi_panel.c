@@ -1283,6 +1283,9 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		ctrl_pdata->panel_config.panel_ver,
 		detect_status);
 
+	panelinfo.panel_name = (char *) &ctrl_pdata->panel_config.panel_name;
+	panelinfo.panel_ver = &ctrl_pdata->panel_config.panel_ver;
+
 	of_node_put(np);
 
 	return 0;
