@@ -82,23 +82,36 @@ static const char * const mad_audio_mux_text[] = {
 
 static void msm_pcm_routing_cfg_pp(int port_id, int topology, int channels)
 {
+	int rc = 0;
 	switch (topology) {
 	case SRS_TRUMEDIA_TOPOLOGY_ID:
 		pr_debug("%s: SRS_TRUMEDIA_TOPOLOGY_ID\n", __func__);
 		msm_dts_srs_tm_send_params(port_id, 1, 0);
 		break;
+	case DS2_ADM_COPP_TOPOLOGY_ID:
+		pr_debug("%s: DS2_ADM_COPP_TOPOLOGY %d\n",
+			 __func__, DS2_ADM_COPP_TOPOLOGY_ID);
+		rc = msm_ds2_dap_init(port_id, channels, is_custom_stereo_on);
+		if (rc < 0)
+			pr_err("%s: DS2 topo_id 0x%x, port %d, CS %d rc %d\n",
+				__func__, topology, port_id,
+				is_custom_stereo_on, rc);
+		break;
 	case DOLBY_ADM_COPP_TOPOLOGY_ID:
 		if (is_ds2_on) {
-			pr_debug("%s: DS2_ADM_COPP_TOPOLOGY_ID\n", __func__);
-			if (msm_ds2_dap_init(port_id, channels,
-					     is_custom_stereo_on) < 0)
-				pr_err("%s: err DS2 dap\n", __func__);
+			pr_debug("%s: DS2_ADM_COPP_TOPOLOGY\n", __func__);
+			rc = msm_ds2_dap_init(port_id, channels,
+				is_custom_stereo_on);
+			if (rc < 0)
+				pr_err("%s:DS2 topo_id 0x%x, port %d, rc %d\n",
+					__func__, topology, port_id, rc);
 		} else {
 			pr_debug("%s: DOLBY_ADM_COPP_TOPOLOGY_ID\n", __func__);
-			if (msm_dolby_dap_init(port_id, channels,
-					       is_custom_stereo_on)
-					< 0)
-				pr_err("%s: err ds1 dolby dap\n", __func__);
+			rc = msm_dolby_dap_init(port_id, channels,
+						is_custom_stereo_on);
+			if (rc < 0)
+				pr_err("%s: DS1 topo_id 0x%x, port %d, rc %d\n",
+					__func__, topology, port_id, rc);
 		}
 		break;
 	default:
@@ -113,6 +126,11 @@ static void msm_pcm_routing_deinit_pp(int port_id, int topology)
 	case SRS_TRUMEDIA_TOPOLOGY_ID:
 		pr_debug("%s: SRS_TRUMEDIA_TOPOLOGY_ID\n", __func__);
 		msm_dts_srs_tm_set_port_id(-1);
+		break;
+	case DS2_ADM_COPP_TOPOLOGY_ID:
+		pr_debug("%s: DS2_ADM_COPP_TOPOLOGY_ID %d\n",
+			 __func__, DS2_ADM_COPP_TOPOLOGY_ID);
+		msm_ds2_dap_deinit(port_id);
 		break;
 	case DOLBY_ADM_COPP_TOPOLOGY_ID:
 		if (is_ds2_on) {
@@ -495,7 +513,8 @@ void msm_pcm_routing_dereg_phy_stream(int fedai_id, int stream_type)
 		   (test_bit(fedai_id, &msm_bedais[i].fe_sessions))) {
 			adm_close(msm_bedais[i].port_id,
 				  fe_dai_perf_mode[fedai_id][session_type]);
-			if ((DOLBY_ADM_COPP_TOPOLOGY_ID == topology) &&
+			if ((DOLBY_ADM_COPP_TOPOLOGY_ID == topology ||
+				DS2_ADM_COPP_TOPOLOGY_ID == topology) &&
 			    (fe_dai_perf_mode[fedai_id][session_type] ==
 							LEGACY_PCM_MODE))
 				msm_pcm_routing_deinit_pp(msm_bedais[i].port_id,
@@ -560,7 +579,6 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 		fdai = &fe_dai_map[val][session_type];
 		if (msm_bedais[reg].active && fdai->strm_id !=
 			INVALID_SESSION) {
-
 			channels = msm_bedais[reg].channel;
 			if (session_type == SESSION_TYPE_TX &&
 			    fdai->be_srate &&
@@ -621,7 +639,8 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 			INVALID_SESSION) {
 			adm_close(msm_bedais[reg].port_id,
 				  fe_dai_perf_mode[val][session_type]);
-			if ((DOLBY_ADM_COPP_TOPOLOGY_ID == topology) &&
+			if ((DOLBY_ADM_COPP_TOPOLOGY_ID == topology ||
+				DS2_ADM_COPP_TOPOLOGY_ID == topology) &&
 			    (fe_dai_perf_mode[val][session_type] ==
 							LEGACY_PCM_MODE))
 				msm_pcm_routing_deinit_pp(
@@ -2726,8 +2745,8 @@ static int msm_routing_put_stereo_to_custom_stereo_control(
 					struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
-	int flag = 0, i = 0;
-	int be_index = 0, port_id;
+	int flag = 0, i = 0, rc = 0;
+	int be_index = 0, port_id, topo_id;
 	unsigned int session_id = 0;
 	uint16_t op_FL_ip_FL_weight;
 	uint16_t op_FL_ip_FR_weight;
@@ -2736,52 +2755,64 @@ static int msm_routing_put_stereo_to_custom_stereo_control(
 	flag = ucontrol->value.integer.value[0];
 	pr_debug("%s E flag %d\n", __func__, flag);
 
-	if ((is_custom_stereo_on && flag) || (!is_custom_stereo_on && !flag))
+	if ((is_custom_stereo_on && flag) || (!is_custom_stereo_on && !flag)) {
+		pr_err("%s: is_custom_stereo_on %d, flag %d\n",
+			__func__, is_custom_stereo_on, flag);
 		return 0;
+	}
 	is_custom_stereo_on = flag ? true : false;
+	pr_debug("%s:is_custom_stereo_on %d\n", __func__, is_custom_stereo_on);
 	for (be_index = 0; be_index < MSM_BACKEND_DAI_MAX; be_index++) {
 		port_id = msm_bedais[be_index].port_id;
-		if (((port_id == SLIMBUS_0_RX) ||
-		     (port_id == RT_PROXY_PORT_001_RX)) &&
-		    msm_bedais[be_index].active) {
-			for_each_set_bit(i,
-				&msm_bedais[be_index].fe_sessions,
+		if (((port_id != SLIMBUS_0_RX) &&
+		     (port_id != RT_PROXY_PORT_001_RX)) ||
+		    (!msm_bedais[be_index].active)) {
+			continue;
+		}
+		for_each_set_bit(i, &msm_bedais[be_index].fe_sessions,
 				MSM_FRONTEND_DAI_MM_SIZE) {
-				if (fe_dai_perf_mode[i][SESSION_TYPE_RX] !=
-				    LEGACY_PCM_MODE)
-					goto skip_send_custom_stereo;
-				session_id =
-					fe_dai_map[i][SESSION_TYPE_RX].strm_id;
-				if (is_custom_stereo_on) {
-					op_FL_ip_FL_weight =
-						Q14_GAIN_ZERO_POINT_FIVE;
-					op_FL_ip_FR_weight =
-						Q14_GAIN_ZERO_POINT_FIVE;
-					op_FR_ip_FL_weight =
-						Q14_GAIN_ZERO_POINT_FIVE;
-					op_FR_ip_FR_weight =
-						Q14_GAIN_ZERO_POINT_FIVE;
-				} else {
-					op_FL_ip_FL_weight = Q14_GAIN_UNITY;
-					op_FL_ip_FR_weight = 0;
-					op_FR_ip_FL_weight = 0;
-					op_FR_ip_FR_weight = Q14_GAIN_UNITY;
-				}
-				if (msm_qti_pp_send_stereo_to_custom_stereo_cmd(
-						msm_bedais[be_index].port_id,
-						session_id,
-						op_FL_ip_FL_weight,
-						op_FL_ip_FR_weight,
-						op_FR_ip_FL_weight,
-						op_FR_ip_FR_weight) ||
-				    dolby_dap_set_custom_stereo_onoff(
-						msm_bedais[be_index].port_id,
-						is_custom_stereo_on)) {
-skip_send_custom_stereo:
-					pr_err("%s: err setting custom stereo\n",
-						__func__);
-				}
+			if (fe_dai_perf_mode[i][SESSION_TYPE_RX] !=
+				LEGACY_PCM_MODE)
+				goto skip_send_custom_stereo;
+			session_id = fe_dai_map[i][SESSION_TYPE_RX].strm_id;
+			if (is_custom_stereo_on) {
+				op_FL_ip_FL_weight = Q14_GAIN_ZERO_POINT_FIVE;
+				op_FL_ip_FR_weight = Q14_GAIN_ZERO_POINT_FIVE;
+				op_FR_ip_FL_weight = Q14_GAIN_ZERO_POINT_FIVE;
+				op_FR_ip_FR_weight = Q14_GAIN_ZERO_POINT_FIVE;
+			} else {
+				op_FL_ip_FL_weight = Q14_GAIN_UNITY;
+				op_FL_ip_FR_weight = 0;
+				op_FR_ip_FL_weight = 0;
+				op_FR_ip_FR_weight = Q14_GAIN_UNITY;
 			}
+
+			topo_id = adm_get_topology_id(
+					msm_bedais[be_index].port_id);
+			if (topo_id < 0)
+				pr_debug("%s:Err:custom stereo topo %d\n",
+					 __func__, topo_id);
+			if (topo_id == DS2_ADM_COPP_TOPOLOGY_ID)
+				rc = msm_ds2_dap_set_custom_stereo_onoff(
+					msm_bedais[be_index].port_id,
+					is_custom_stereo_on);
+			else if (topo_id == DOLBY_ADM_COPP_TOPOLOGY_ID)
+				rc = dolby_dap_set_custom_stereo_onoff(
+					msm_bedais[be_index].port_id,
+					is_custom_stereo_on);
+			else
+				rc =
+				msm_qti_pp_send_stereo_to_custom_stereo_cmd(
+					msm_bedais[be_index].port_id,
+					session_id,
+					op_FL_ip_FL_weight,
+					op_FL_ip_FR_weight,
+					op_FR_ip_FL_weight,
+					op_FR_ip_FR_weight);
+				if (rc < 0)
+skip_send_custom_stereo:
+					pr_err("%s:err 0x%x, port %d\n",
+						__func__, rc , port_id);
 		}
 	}
 	return 0;
