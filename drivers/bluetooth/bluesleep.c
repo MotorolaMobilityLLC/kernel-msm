@@ -52,7 +52,7 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/serial_core.h>
-#include <mach/msm_serial_hs.h>
+#include <linux/platform_data/msm_serial_hs.h>
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h> /* event notifications */
@@ -66,13 +66,13 @@
  * Defines
  */
 
-#define VERSION		"1.1"
+#define VERSION		"1.2"
 #define PROC_DIR	"bluetooth/sleep"
 
 #define POLARITY_LOW 0
 #define POLARITY_HIGH 1
 
-#define BT_PORT_ID	99
+#define BT_PORT_ID	0
 
 /* enable/disable wake-on-bluetooth */
 #define BT_ENABLE_IRQ_WAKE 1
@@ -121,8 +121,17 @@ DECLARE_DELAYED_WORK(sleep_workqueue, bluesleep_sleep_work);
 #define BT_EXT_WAKE	0x08
 #define BT_SUSPEND	0x10
 
+#define PROC_BTWAKE	0
+#define PROC_HOSTWAKE	1
+#define PROC_PROTO	2
+#define PROC_ASLEEP	3
 #if BT_BLUEDROID_SUPPORT
-static bool has_lpm_enabled = false;
+#define PROC_LPM	4
+#define PROC_BTWRITE	5
+#endif
+
+#if BT_BLUEDROID_SUPPORT
+static bool has_lpm_enabled;
 #else
 /* global pointer to a single hci device. */
 static struct hci_dev *bluesleep_hdev;
@@ -301,68 +310,8 @@ static void bluesleep_outgoing_data(void)
 	}
 }
 
-#if BT_BLUEDROID_SUPPORT
-static int bluesleep_read_proc_lpm(char *page, char **start, off_t offset,
-					int count, int *eof, void *data)
-{
-	*eof = 1;
-	return sprintf(page, "unsupported to read\n");
-}
 
-static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
-					unsigned long count, void *data)
-{
-	char b;
-
-	if (count < 1)
-		return -EINVAL;
-
-	if (copy_from_user(&b, buffer, 1))
-		return -EFAULT;
-
-	if (b == '0') {
-		/* HCI_DEV_UNREG */
-		bluesleep_stop();
-		has_lpm_enabled = false;
-		bsi->uport = NULL;
-	} else {
-		/* HCI_DEV_REG */
-		if (!has_lpm_enabled) {
-			has_lpm_enabled = true;
-			bsi->uport = msm_hs_get_uart_port(BT_PORT_ID);
-			/* if bluetooth started, start bluesleep*/
-			bluesleep_start();
-		}
-	}
-
-	return count;
-}
-
-static int bluesleep_read_proc_btwrite(char *page, char **start, off_t offset,
-					int count, int *eof, void *data)
-{
-	*eof = 1;
-	return sprintf(page, "unsupported to read\n");
-}
-
-static int bluesleep_write_proc_btwrite(struct file *file, const char *buffer,
-					unsigned long count, void *data)
-{
-	char b;
-
-	if (count < 1)
-		return -EINVAL;
-
-	if (copy_from_user(&b, buffer, 1))
-		return -EFAULT;
-
-	/* HCI_DEV_WRITE */
-	if (b != '0')
-		bluesleep_outgoing_data();
-
-	return count;
-}
-#else
+#if !BT_BLUEDROID_SUPPORT
 /**
  * Handles HCI device events.
  * @param this Not used.
@@ -544,164 +493,6 @@ static void bluesleep_stop(void)
 #endif
 	wake_lock_timeout(&bsi->wake_lock, HZ / 2);
 }
-/**
- * Read the <code>BT_WAKE</code> GPIO pin value via the proc interface.
- * When this function returns, <code>page</code> will contain a 1 if the
- * pin is high, 0 otherwise.
- * @param page Buffer for writing data.
- * @param start Not used.
- * @param offset Not used.
- * @param count Not used.
- * @param eof Whether or not there is more data to be read.
- * @param data Not used.
- * @return The number of bytes written.
- */
-static int bluepower_read_proc_btwake(char *page, char **start, off_t offset,
-					int count, int *eof, void *data)
-{
-	*eof = 1;
-	return sprintf(page, "btwake:%u\n",test_bit(BT_EXT_WAKE, &flags));
-}
-
-/**
- * Write the <code>BT_WAKE</code> GPIO pin value via the proc interface.
- * @param file Not used.
- * @param buffer The buffer to read from.
- * @param count The number of bytes to be written.
- * @param data Not used.
- * @return On success, the number of bytes written. On error, -1, and
- * <code>errno</code> is set appropriately.
- */
-static int bluepower_write_proc_btwake(struct file *file, const char *buffer,
-					unsigned long count, void *data)
-{
-	char *buf;
-
-	if (count < 1)
-		return -EINVAL;
-
-	buf = kmalloc(count, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	if (copy_from_user(buf, buffer, count)) {
-		kfree(buf);
-		return -EFAULT;
-	}
-
-	if (buf[0] == '0') {
-		if (debug_mask & DEBUG_BTWAKE)
-			pr_info("BT WAKE: set to wake\n");
-		if (bsi->has_ext_wake == 1)
-			gpio_set_value(bsi->ext_wake, 0);
-		clear_bit(BT_EXT_WAKE, &flags);
-	} else if (buf[0] == '1') {
-		if (debug_mask & DEBUG_BTWAKE)
-			pr_info("BT WAKE: set to sleep\n");
-		if (bsi->has_ext_wake == 1)
-			gpio_set_value(bsi->ext_wake, 1);
-		set_bit(BT_EXT_WAKE, &flags);
-	} else {
-		kfree(buf);
-		return -EINVAL;
-	}
-
-	kfree(buf);
-	return count;
-}
-
-/**
- * Read the <code>BT_HOST_WAKE</code> GPIO pin value via the proc interface.
- * When this function returns, <code>page</code> will contain a 1 if the pin
- * is high, 0 otherwise.
- * @param page Buffer for writing data.
- * @param start Not used.
- * @param offset Not used.
- * @param count Not used.
- * @param eof Whether or not there is more data to be read.
- * @param data Not used.
- * @return The number of bytes written.
- */
-static int bluepower_read_proc_hostwake(char *page, char **start, off_t offset,
-					int count, int *eof, void *data)
-{
-	*eof = 1;
-	return sprintf(page, "hostwake: %u \n", gpio_get_value(bsi->host_wake));
-}
-
-
-/**
- * Read the low-power status of the Host via the proc interface.
- * When this function returns, <code>page</code> contains a 1 if the Host
- * is asleep, 0 otherwise.
- * @param page Buffer for writing data.
- * @param start Not used.
- * @param offset Not used.
- * @param count Not used.
- * @param eof Whether or not there is more data to be read.
- * @param data Not used.
- * @return The number of bytes written.
- */
-static int bluesleep_read_proc_asleep(char *page, char **start, off_t offset,
-					int count, int *eof, void *data)
-{
-	unsigned int asleep;
-
-	asleep = test_bit(BT_ASLEEP, &flags) ? 1 : 0;
-	*eof = 1;
-	return sprintf(page, "asleep: %u\n", asleep);
-}
-
-/**
- * Read the low-power protocol being used by the Host via the proc interface.
- * When this function returns, <code>page</code> will contain a 1 if the Host
- * is using the Sleep Mode Protocol, 0 otherwise.
- * @param page Buffer for writing data.
- * @param start Not used.
- * @param offset Not used.
- * @param count Not used.
- * @param eof Whether or not there is more data to be read.
- * @param data Not used.
- * @return The number of bytes written.
- */
-static int bluesleep_read_proc_proto(char *page, char **start, off_t offset,
-					int count, int *eof, void *data)
-{
-	unsigned int proto;
-
-	proto = test_bit(BT_PROTO, &flags) ? 1 : 0;
-	*eof = 1;
-	return sprintf(page, "proto: %u\n", proto);
-}
-
-/**
- * Modify the low-power protocol used by the Host via the proc interface.
- * @param file Not used.
- * @param buffer The buffer to read from.
- * @param count The number of bytes to be written.
- * @param data Not used.
- * @return On success, the number of bytes written. On error, -1, and
- * <code>errno</code> is set appropriately.
- */
-static int bluesleep_write_proc_proto(struct file *file, const char *buffer,
-					unsigned long count, void *data)
-{
-	char proto;
-
-	if (count < 1)
-		return -EINVAL;
-
-	if (copy_from_user(&proto, buffer, 1))
-		return -EFAULT;
-
-	if (proto == '0')
-		bluesleep_stop();
-	else
-		bluesleep_start();
-
-	/* claim that we wrote everything */
-	return count;
-}
 
 void bluesleep_setup_uart_port(struct platform_device *uart_dev)
 {
@@ -786,8 +577,7 @@ static int bluesleep_probe(struct platform_device *pdev)
 	/* configure host_wake as input */
 	ret = gpio_request_one(bsi->host_wake, GPIOF_IN, "bt_host_wake");
 	if (ret < 0) {
-		BT_ERR("failed to configure input"
-				" direction for GPIO %d, error %d",
+		BT_ERR("failed to configure input direction for GPIO %d err %d",
 				bsi->host_wake, ret);
 		goto free_bsi;
 	}
@@ -799,9 +589,8 @@ static int bluesleep_probe(struct platform_device *pdev)
 		ret = gpio_request_one(bsi->ext_wake,
 				GPIOF_OUT_INIT_LOW, "bt_ext_wake");
 		if (ret < 0) {
-			BT_ERR("failed to configure output"
-				" direction for GPIO %d, error %d",
-				  bsi->ext_wake, ret);
+			BT_ERR("failed to configure output direction for GPIO %d err %d",
+					bsi->ext_wake, ret);
 			goto free_bt_host_wake;
 		}
 	}
@@ -901,6 +690,110 @@ static struct platform_driver bluesleep_driver = {
 		.of_match_table = bluesleep_match_table,
 	},
 };
+
+static int bluesleep_proc_show(struct seq_file *m, void *v)
+{
+	switch ((long)m->private) {
+	case PROC_BTWAKE:
+		seq_printf(m, "btwake:%u\n", test_bit(BT_EXT_WAKE, &flags));
+		break;
+	case PROC_HOSTWAKE:
+		seq_printf(m, "hostwake: %u\n", gpio_get_value(bsi->host_wake));
+		break;
+	case PROC_PROTO:
+		seq_printf(m, "proto: %u\n",
+				test_bit(BT_PROTO, &flags) ? 1 : 0);
+		break;
+	case PROC_ASLEEP:
+		seq_printf(m, "asleep: %u\n",
+				test_bit(BT_ASLEEP, &flags) ? 1 : 0);
+		break;
+	default:
+		return 0;
+	}
+	return 0;
+}
+
+static ssize_t bluesleep_proc_write(struct file *file, const char *buf,
+	size_t count, loff_t *pos)
+{
+	void *data = PDE_DATA(file_inode(file));
+	char lbuf[32];
+
+	if (count >= sizeof(lbuf))
+		count = sizeof(lbuf)-1;
+
+	if (copy_from_user(lbuf, buf, count))
+		return -EFAULT;
+	lbuf[count] = 0;
+
+	switch ((long)data) {
+	case PROC_BTWAKE:
+		if (lbuf[0] == '0') {
+			if (debug_mask & DEBUG_BTWAKE)
+				pr_info("BT WAKE: set to wake\n");
+			if (bsi->has_ext_wake == 1)
+				gpio_set_value(bsi->ext_wake, 0);
+			clear_bit(BT_EXT_WAKE, &flags);
+		} else if (buf[0] == '1') {
+			if (debug_mask & DEBUG_BTWAKE)
+				pr_info("BT WAKE: set to sleep\n");
+			if (bsi->has_ext_wake == 1)
+				gpio_set_value(bsi->ext_wake, 1);
+			set_bit(BT_EXT_WAKE, &flags);
+		}
+		break;
+	case PROC_PROTO:
+		if (lbuf[0] == '0')
+			bluesleep_stop();
+		else
+			bluesleep_start();
+		break;
+	case PROC_LPM:
+		if (lbuf[0] == '0') {
+			/* HCI_DEV_UNREG */
+			bluesleep_stop();
+			has_lpm_enabled = false;
+			bsi->uport = NULL;
+		} else {
+			/* HCI_DEV_REG */
+			if (!has_lpm_enabled) {
+				has_lpm_enabled = true;
+				bsi->uport = msm_hs_get_uart_port(BT_PORT_ID);
+				/* if bluetooth started, start bluesleep*/
+				bluesleep_start();
+			}
+		}
+		break;
+	case PROC_BTWRITE:
+		/* HCI_DEV_WRITE */
+		if (lbuf[0] != '0')
+			bluesleep_outgoing_data();
+		break;
+	default:
+		return 0;
+	}
+
+	return count;
+}
+
+static int bluesleep_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bluesleep_proc_show, PDE_DATA(inode));
+}
+
+static const struct file_operations bluesleep_proc_readwrite_fops = {
+	.owner	= THIS_MODULE,
+	.open	= bluesleep_proc_open,
+	.read   = seq_read,
+	.write  = bluesleep_proc_write,
+};
+static const struct file_operations bluesleep_proc_read_fops = {
+	.owner	= THIS_MODULE,
+	.open	= bluesleep_proc_open,
+	.read   = seq_read,
+};
+
 /**
  * Initializes the module.
  * @return On success, 0. On error, -1, and <code>errno</code> is set
@@ -937,38 +830,40 @@ static int __init bluesleep_init(void)
 	}
 
 	/* Creating read/write "btwake" entry */
-	ent = create_proc_entry("btwake", S_IRUGO | S_IWUSR | S_IWGRP,
-			sleep_dir);
+	ent = proc_create_data("btwake", S_IRUGO | S_IWUSR | S_IWGRP,
+			sleep_dir, &bluesleep_proc_readwrite_fops,
+			(void *)PROC_BTWAKE);
 	if (ent == NULL) {
 		BT_ERR("Unable to create /proc/%s/btwake entry", PROC_DIR);
 		retval = -ENOMEM;
 		goto fail;
 	}
-	ent->read_proc = bluepower_read_proc_btwake;
-	ent->write_proc = bluepower_write_proc_btwake;
 
 	/* read only proc entries */
-	if (create_proc_read_entry("hostwake", S_IRUGO, sleep_dir,
-				bluepower_read_proc_hostwake, NULL) == NULL) {
+	ent = proc_create_data("hostwake", S_IRUGO, sleep_dir,
+				&bluesleep_proc_read_fops,
+				(void *)PROC_HOSTWAKE);
+	if (ent == NULL) {
 		BT_ERR("Unable to create /proc/%s/hostwake entry", PROC_DIR);
 		retval = -ENOMEM;
 		goto fail;
 	}
 
 	/* read/write proc entries */
-	ent = create_proc_entry("proto", S_IRUGO | S_IWUSR | S_IWGRP,
-			sleep_dir);
+	ent = proc_create_data("proto", S_IRUGO | S_IWUSR | S_IWGRP,
+			sleep_dir, &bluesleep_proc_readwrite_fops,
+			(void *)PROC_PROTO);
 	if (ent == NULL) {
 		BT_ERR("Unable to create /proc/%s/proto entry", PROC_DIR);
 		retval = -ENOMEM;
 		goto fail;
 	}
-	ent->read_proc = bluesleep_read_proc_proto;
-	ent->write_proc = bluesleep_write_proc_proto;
 
 	/* read only proc entries */
-	if (create_proc_read_entry("asleep", S_IRUGO,
-			sleep_dir, bluesleep_read_proc_asleep, NULL) == NULL) {
+	ent = proc_create_data("asleep", S_IRUGO,
+			sleep_dir, &bluesleep_proc_read_fops,
+			(void *)PROC_ASLEEP);
+	if (ent == NULL) {
 		BT_ERR("Unable to create /proc/%s/asleep entry", PROC_DIR);
 		retval = -ENOMEM;
 		goto fail;
@@ -976,26 +871,25 @@ static int __init bluesleep_init(void)
 
 #if BT_BLUEDROID_SUPPORT
 	/* read/write proc entries */
-	ent = create_proc_entry("lpm", S_IRUGO | S_IWUSR | S_IWGRP,
-			sleep_dir);
+	ent = proc_create_data("lpm", S_IRUGO | S_IWUSR | S_IWGRP,
+			sleep_dir, &bluesleep_proc_readwrite_fops,
+			(void *)PROC_LPM);
 	if (ent == NULL) {
 		BT_ERR("Unable to create /proc/%s/lpm entry", PROC_DIR);
 		retval = -ENOMEM;
 		goto fail;
 	}
-	ent->read_proc = bluesleep_read_proc_lpm;
-	ent->write_proc = bluesleep_write_proc_lpm;
 
 	/* read/write proc entries */
-	ent = create_proc_entry("btwrite", S_IRUGO | S_IWUSR | S_IWGRP,
-			sleep_dir);
+	ent = proc_create_data("btwrite", S_IRUGO | S_IWUSR | S_IWGRP,
+			sleep_dir, &bluesleep_proc_readwrite_fops,
+			(void *)PROC_BTWRITE);
 	if (ent == NULL) {
 		BT_ERR("Unable to create /proc/%s/btwrite entry", PROC_DIR);
 		retval = -ENOMEM;
 		goto fail;
 	}
-	ent->read_proc = bluesleep_read_proc_btwrite;
-	ent->write_proc = bluesleep_write_proc_btwrite;
+
 #endif
 
 	flags = 0; /* clear all status bits */
