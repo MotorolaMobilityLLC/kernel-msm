@@ -19,7 +19,6 @@
 
 #ifdef CONFIG_DOLBY_DS2
 /* DOLBY DOLBY GUIDS */
-#define DS2_ADM_COPP_TOPOLOGY_ID	0x0001033C
 #define DS2_MODULE_ID			0x00010775
 
 #define NUM_DS2_ENDP_DEVICE			17
@@ -32,17 +31,7 @@ enum {
 	DAP_CMD_USE_CACHE_FOR_INIT = 2,
 	DAP_CMD_SET_BYPASS         = 3,
 	DAP_CMD_SET_ACTIVE_DEVICE  = 4,
-};
-
-/* DOLBY device definitions end */
-enum {
-	DOLBY_OFF_CACHE = 0,
-	DOLBY_SPEKAER_CACHE,
-	DOLBY_HEADPHONE_CACHE,
-	DOLBY_HDMI_CACHE,
-	DOLBY_WFD_CACHE,
-	DOLBY_FM_CACHE,
-	DOLBY_MAX_CACHE,
+	DAP_CMD_SET_BYPASS_TYPE    = 5,
 };
 
 #define DOLBY_PARAM_INT_ENDP_LENGTH             1
@@ -61,31 +50,32 @@ int msm_ds2_dap_ioctl(struct snd_hwdep *hw, struct file *file,
 int msm_ds2_dap_init(int port_id, int channels,
 		     bool is_custom_stereo_on);
 void msm_ds2_dap_deinit(int port_id);
-int msm_ds2_dap_set_custom_stereo_onoff(int dev_map_idx,
+int msm_ds2_dap_set_custom_stereo_onoff(int port_id,
 					bool is_custom_stereo_enabled);
 /* Dolby DOLBY end */
 #else
 
-void msm_ds2_dap_update_port_parameters(struct snd_hwdep *hw, struct file *file,
-					bool open)
+static inline void msm_ds2_dap_update_port_parameters(struct snd_hwdep *hw,
+					       struct file *file,
+					       bool open)
 {
-	return 0;
+	return;
 }
 
-int msm_ds2_dap_ioctl(struct snd_hwdep *hw, struct file *file, u32 cmd,
-		      void *arg)
+static inline int msm_ds2_dap_ioctl(struct snd_hwdep *hw, struct file *file,
+				    u32 cmd, void *arg)
 {
 	return 0;
 }
-int msm_ds2_dap_init(int port_id, int channels,
+static inline int msm_ds2_dap_init(int port_id, int channels,
 		     bool is_custom_stereo_on)
 {
 	return 0;
 }
 
-void msm_ds2_dap_deinit(int port_id) { }
+static inline void msm_ds2_dap_deinit(int port_id) { }
 
-int ds2_dap_set_custom_stereo_onoff(int dev_map_idx,
+static inline int msm_ds2_dap_set_custom_stereo_onoff(int port_id,
 				    bool is_custom_stereo_enabled)
 {
 	return 0;
