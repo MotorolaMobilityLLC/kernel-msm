@@ -3688,7 +3688,6 @@ static int mxt_apply_tdat_tsett(struct mxt_data *data)
 	int offset = 0;
 	int byte_offset;
 	int cfg_start_ofs;
-	u32 calculated_crc;
 	u8 *config_mem;
 	size_t config_mem_size;
 	const unsigned char *cfg_data, *obj_data;
@@ -3768,15 +3767,6 @@ static int mxt_apply_tdat_tsett(struct mxt_data *data)
 			data->T7_address, cfg_start_ofs);
 		goto release_mem;
 	}
-
-	calculated_crc = mxt_calculate_crc(config_mem,
-					   data->T7_address - cfg_start_ofs,
-					   config_mem_size);
-	dev_info(dev, "Config CRC, calculated=%06X, current=%06X\n",
-			 calculated_crc, data->config_crc);
-
-	if (data->config_crc == calculated_crc)
-		goto release_mem;
 
 	/* Write configuration as blocks */
 	byte_offset = 0;
