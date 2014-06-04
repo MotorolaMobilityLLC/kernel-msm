@@ -120,7 +120,7 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 	}
 }
 
-static const char *const auxpcm_rate_text[] = {"rate_8000", "rate_16000"};
+static const char *const auxpcm_rate_text[] = {"8000", "16000"};
 static const struct soc_enum msm8974_auxpcm_enum[] = {
 		SOC_ENUM_SINGLE_EXT(2, auxpcm_rate_text),
 };
