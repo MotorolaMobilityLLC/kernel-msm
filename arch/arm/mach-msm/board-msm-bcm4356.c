@@ -198,7 +198,7 @@ static int brcm_wlan_reset(int onoff)
 
 static int brcm_wlan_set_carddetect(int val)
 {
-	return msm_pcie_status_notify(val);
+	return 0;
 }
 
 /* Customized Locale table : OPTIONAL feature */
