@@ -112,6 +112,7 @@ static void dhd_fillup_ring_sharedptr_info(dhd_bus_t *bus, ring_info_t *ring_inf
 #ifdef BCMEMBEDIMAGE
 static int dhdpcie_download_code_array(dhd_bus_t *bus);
 #endif /* BCMEMBEDIMAGE */
+extern void dhd_dpc_kill(dhd_pub_t *dhdp);
 
 
 
@@ -227,9 +228,7 @@ dhd_bus_t* dhdpcie_bus_attach(osl_t *osh, volatile char* regs, volatile char* tc
 {
 	dhd_bus_t *bus;
 
-	int ret = 0;
-
-	DHD_TRACE(("%s: ENTER\n", __FUNCTION__));
+	DHD_ERROR(("%s: ENTER\n", __FUNCTION__));
 
 	do {
 		if (!(bus = MALLOC(osh, sizeof(dhd_bus_t)))) {
@@ -261,13 +260,6 @@ dhd_bus_t* dhdpcie_bus_attach(osl_t *osh, volatile char* regs, volatile char* tc
 		}
 		bus->dhd->busstate = DHD_BUS_DOWN;
 
-		/* Attach to the OS network interface */
-		DHD_TRACE(("%s(): Calling dhd_register_if() \n", __FUNCTION__));
-		ret = dhd_register_if(bus->dhd, 0, TRUE);
-		if (ret) {
-			DHD_ERROR(("%s(): ERROR.. dhd_register_if() failed\n", __FUNCTION__));
-			break;
-		}
 		DHD_TRACE(("%s: EXIT SUCCESS\n",
 			__FUNCTION__));
 
@@ -587,12 +579,15 @@ dhdpcie_bus_release(dhd_bus_t *bus)
 
 		if (bus->dhd) {
 			dongle_isolation = bus->dhd->dongle_isolation;
-			dhd_detach(bus->dhd);
 
 			if (bus->intr) {
-				dhdpcie_bus_intr_disable(bus);
+				if (bus->dhd->dongle_reset == FALSE)
+					dhdpcie_bus_intr_disable(bus);
 				dhdpcie_free_irq(bus);
 			}
+			/* Disable tasklet, already scheduled tasklet may be executed even though dongle has been released */
+			dhd_dpc_kill(bus->dhd);
+			dhd_detach(bus->dhd);
 			dhdpcie_bus_release_dongle(bus, osh, dongle_isolation, TRUE);
 			dhd_free(bus->dhd);
 			bus->dhd = NULL;
@@ -722,14 +717,20 @@ void dhd_bus_stop(struct dhd_bus *bus, bool enforce_mutex)
 	if (!bus->dhd)
 		return;
 
+	if(bus->dhd->busstate == DHD_BUS_DOWN) {
+		DHD_ERROR(("%s: already down by net_dev_reset\n",__FUNCTION__));
+		goto done;
+	}
 	bus->dhd->busstate = DHD_BUS_DOWN;
 	dhdpcie_bus_intr_disable(bus);
 	status =  dhdpcie_bus_cfg_read_dword(bus, PCIIntstatus, 4);
 	dhdpcie_bus_cfg_write_dword(bus, PCIIntstatus, 4, status);
 
+	dhd_dpc_kill(bus->dhd);
 	/* Clear rx control and wake any waiters */
 	bus->rxlen = 0;
 	dhd_os_ioctl_resp_wake(bus->dhd);
+done:
 
 	return;
 }
@@ -3996,4 +3997,55 @@ dhd_bus_max_h2d_queues(struct dhd_bus *bus, uint8 *txpush)
 	else
 		*txpush = 0;
 	return bus->max_sub_queues;
+}
+
+int
+dhdpcie_bus_clock_start(struct dhd_bus *bus)
+{
+	return dhdpcie_start_host_pcieclock(bus);
+}
+
+int
+dhdpcie_bus_clock_stop(struct dhd_bus *bus)
+{
+	return dhdpcie_stop_host_pcieclock(bus);
+}
+
+int
+dhdpcie_bus_disable_device(struct dhd_bus *bus)
+{
+	return dhdpcie_disable_device(bus);
+}
+
+int
+dhdpcie_bus_enable_device(struct dhd_bus *bus)
+{
+	return dhdpcie_enable_device(bus);
+}
+
+bool
+dhdpcie_bus_dongle_attach(struct dhd_bus *bus)
+{
+	return dhdpcie_dongle_attach(bus);
+}
+
+int
+dhd_bus_release_dongle(struct dhd_bus *bus)
+{
+	bool dongle_isolation;
+	osl_t		*osh;
+
+	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
+
+	if (bus) {
+		osh = bus->osh;
+		ASSERT(osh);
+
+		if (bus->dhd) {
+			dongle_isolation = bus->dhd->dongle_isolation;
+			dhdpcie_bus_release_dongle(bus, osh, dongle_isolation, TRUE);
+		}
+	}
+
+	return 0;
 }
