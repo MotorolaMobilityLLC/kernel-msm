@@ -2740,6 +2740,7 @@ static int msm_hs_startup(struct uart_port *uport)
 				      DMA_TO_DEVICE);
 
 	printk("msm_hs_startup, wake_lock(&msm_uport->dma_wake_lock)\n");
+	wakeunlock = false;
 	wake_lock(&msm_uport->dma_wake_lock);
 	/* turn on uart clk */
 	ret = msm_hs_init_clk(uport);
