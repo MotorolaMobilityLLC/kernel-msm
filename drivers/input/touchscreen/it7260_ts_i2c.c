@@ -551,6 +551,11 @@ static ssize_t IT7260_version_show(struct device *dev, struct device_attribute *
 	return sprintf(buf, "%x,%x,%x,%x # %x,%x,%x,%x\n",bufRead[5], bufRead[6], bufRead[7], bufRead[8],bufRead2[1], bufRead2[2], bufRead2[3], bufRead2[4]);
 }
 
+static ssize_t IT7260_sleep_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return 1;
+}
+
 ssize_t IT7260_status_store_temp(int ret)
 {
 	u8 cmdbuf[] = { 0x01, 0x00 };
@@ -572,6 +577,25 @@ ssize_t IT7260_status_store_temp(int ret)
 	return 1;
 }
 
+ssize_t IT7260_sleep_store_temp(int ret)
+{
+	unsigned char ucQuery;
+	u8 cmdbuf[] = { 0x04, 0x00, 0x02 };
+	
+	if(ret) {
+		disable_irq(gl_ts->client->irq);
+		i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf, 3);
+		printk("Touch is going to sleep...\n\n");
+	}
+	else {
+		i2cReadFromIt7260(gl_ts->client, 0x80, &ucQuery, 1);
+		enable_irq(gl_ts->client->irq);
+		printk("Touch is going to wake!\n\n");
+	}
+
+	return 1;
+}
+
 static ssize_t IT7260_status_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	int ret;
@@ -587,12 +611,23 @@ static ssize_t IT7260_version_store(struct device *dev, struct device_attribute 
 	return count;
 }
 
+static ssize_t IT7260_sleep_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	printk(KERN_DEBUG "%s():\n", __func__);
+	sscanf(buf, "%d", &ret);
+	IT7260_sleep_store_temp(ret);
+	return count;
+}
+
 static DEVICE_ATTR(status, 0666, IT7260_status_show, IT7260_status_store);
 static DEVICE_ATTR(version, 0666, IT7260_version_show, IT7260_version_store);
+static DEVICE_ATTR(sleep, 0666, IT7260_sleep_show, IT7260_sleep_store);
 
 static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_status.attr,
 	&dev_attr_version.attr,
+	&dev_attr_sleep.attr,
 	NULL
 };
 
@@ -1076,6 +1111,7 @@ void notify_it7260_ts_lowpowermode(int low)
 	unsigned char ucQuery;
 	u8 cmdbuf[] = { 0x04, 0x00, 0x01 };
 	
+	if (it7260_status){
 	printk("[IT7260] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low) {
 		atomic_set(&Suspend_flag,1);
@@ -1090,6 +1126,7 @@ void notify_it7260_ts_lowpowermode(int low)
 		//enable_irq(gl_ts->client->irq);
 	}
 	printk("[IT7260] %s: ---: (%s)\n", __func__, low?"enter":"exit");
+}
 }
 //ASUS_BSP --- Cliff "Touch change status to idle in Ambient mode"
 
