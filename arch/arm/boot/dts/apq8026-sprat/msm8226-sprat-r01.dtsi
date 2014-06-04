@@ -85,16 +85,17 @@
 		battery,charger_name = "max77836-charger";
 		battery,fuelgauge_name = "max17048-fuelgauge";
 		battery,temp_high_threshold = <520>;
-		battery,temp_high_recovery = <460>;
+		battery,temp_high_recovery = <470>;
 		battery,temp_low_threshold = <(-40)>;
 		battery,temp_low_recovery = <0>;
 		battery,temp_high_threshold_lpm = <520>;
-		battery,temp_high_recovery_lpm = <460>;
-		battery,temp_low_threshold_lpm = <(-40)>;
-		battery,temp_low_recovery_lpm = <0>;
+		battery,temp_high_recovery_lpm = <470>;
+		battery,temp_low_threshold_lpm = <(-10)>;
+		battery,temp_low_recovery_lpm = <20>;
 		battery,full_charging_time = <21600>;
 		battery,recharging_time = <5400>;
-		battery,recharging_voltage = <4300000>;
+		battery,recharging_voltage = <4260000>;
+		battery,recharging_voltage_lpm = <4270000>;
 		qcom,android-battery-vadc = <&pm8226_vadc>;
 	};
 
@@ -103,7 +104,7 @@
 		/* Charger */
 		charger,chg_float_voltage = <4350000>;
 		charger,fast_charging_current = <150000 150000 200000>;
-		charger,full_check_current = <30000 30000 70000>;
+		charger,full_check_current = <20000 20000 60000>;
 	};
 
 	i2c@20 {
