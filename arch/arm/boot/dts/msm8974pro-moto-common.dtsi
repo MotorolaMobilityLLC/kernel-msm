@@ -644,6 +644,7 @@
 	qcom,high-ocv-correction-limit-uv = <50>;
 	qcom,hold-soc-est = <3>;
 	qcom,low-voltage-threshold = <3020000>;
+	qcom,shutdown-voltage-uv = <2750000>;
 	qcom,enable-fcc-learning = <1>;
 	qcom,min-fcc-learning-soc = <20>;
 	qcom,fcc-resolution = <10>;
