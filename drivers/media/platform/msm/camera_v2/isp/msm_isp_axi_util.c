@@ -619,8 +619,6 @@ int msm_isp_request_axi_stream(struct vfe_device *vfe_dev, void *arg)
 	if (stream_info->vt_enable) {
 		vfe_dev->vt_enable = stream_info->vt_enable;
 		msm_isp_start_avtimer();
-		vfe_dev->p_avtimer_lsw = ioremap(AVTIMER_LSW_PHY_ADDR, 4);
-		vfe_dev->p_avtimer_msw = ioremap(AVTIMER_MSW_PHY_ADDR, 4);
 	}
 	if (stream_info->num_planes > 1) {
 		msm_isp_axi_reserve_comp_mask(
