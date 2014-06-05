@@ -1267,6 +1267,10 @@ __limProcessAddBAReq( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                             frmAddBAReq.AddBAParameterSet.bufferSize,
                             frmAddBAReq.AddBAParameterSet.amsduSupported);
 
+    limLog( pMac, LOG1, FL( "ssn = %d fragNumber = %d" ),
+                            frmAddBAReq.BAStartingSequenceControl.ssn,
+                            frmAddBAReq.BAStartingSequenceControl.fragNumber);
+
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
     // we can only do BA on "hard" STAs
     if (!(IS_HWSTA_IDX(pSta->staIndex)))
@@ -1602,8 +1606,9 @@ tANI_U8 *pBody;
     PELOG2(sirDumpBuf( pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frameLen );)
   }
 
-  limLog( pMac, LOGW,
-      FL( "Received DELBA for TID %d, Reason code %d" ),
+  limLog( pMac, LOG1,
+      FL( "Received DELBA from: "MAC_ADDRESS_STR" for TID %d, Reason code %d" ),
+      MAC_ADDR_ARRAY(pHdr->sa),
       frmDelBAInd.DelBAParameterSet.tid,
       frmDelBAInd.Reason.code );
 
