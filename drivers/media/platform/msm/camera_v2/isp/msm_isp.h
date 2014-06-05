@@ -35,8 +35,6 @@
 #define MAX_INIT_FRAME_DROP 31
 #define ISP_Q2 (1 << 2)
 
-#define AVTIMER_MSW_PHY_ADDR 0xFE05300C
-#define AVTIMER_LSW_PHY_ADDR 0xFE053008
 #define AVTIMER_ITERATION_CTR 16
 
 #define VFE_PING_FLAG 0xFFFFFFFF
@@ -409,10 +407,14 @@ struct vfe_device {
 	struct resource *vfe_irq;
 	struct resource *vfe_mem;
 	struct resource *vfe_vbif_mem;
+	struct resource *vfe_avtimer_mem;
+
 	struct resource *vfe_io;
 	struct resource *vfe_vbif_io;
 	void __iomem *vfe_base;
 	void __iomem *vfe_vbif_base;
+	void __iomem *vfe_avtimer_base;
+
 
 	struct device *iommu_ctx[MAX_IOMMU_CTX];
 	/*Add secure context banks*/
