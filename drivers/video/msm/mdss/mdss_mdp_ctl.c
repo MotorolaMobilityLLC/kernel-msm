@@ -1048,7 +1048,7 @@ static int mdss_mdp_ctl_free(struct mdss_mdp_ctl *ctl)
 	if (!ctl)
 		return -ENODEV;
 
-	pr_debug("free ctl_num=%d ref_cnt=%d\n", ctl->num, ctl->ref_cnt);
+	pr_info("free ctl_num=%d ref_cnt=%d\n", ctl->num, ctl->ref_cnt);
 
 	if (!ctl->ref_cnt) {
 		pr_err("called with ref_cnt=0\n");
@@ -1236,6 +1236,7 @@ struct mdss_mdp_mixer *mdss_mdp_wb_mixer_alloc(int rotator)
 	ctl->mixer_left = mixer;
 
 	ctl->start_fnc = mdss_mdp_writeback_start;
+	pr_info("%s:power_on set to true\n", __func__);
 	ctl->power_on = true;
 	ctl->wb_type = (rotator ? MDSS_MDP_WB_CTL_TYPE_BLOCK :
 			MDSS_MDP_WB_CTL_TYPE_LINE);
@@ -1834,8 +1835,10 @@ int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff)
 	 * keep power_on false during handoff to avoid unexpected
 	 * operations to overlay.
 	 */
-	if (!handoff)
+	if (!handoff) {
+		pr_info("%s:power_on set to true\n", __func__);
 		ctl->power_on = true;
+	}
 
 	memset(&ctl->cur_perf, 0, sizeof(ctl->cur_perf));
 
@@ -1922,6 +1925,7 @@ int mdss_mdp_ctl_stop(struct mdss_mdp_ctl *ctl)
 			off = __mdss_mdp_ctl_get_mixer_off(ctl->mixer_right);
 			mdss_mdp_ctl_write(ctl, off, 0);
 		}
+		pr_info("%s:power_on set to false\n", __func__);
 
 		ctl->power_on = false;
 		ctl->play_cnt = 0;

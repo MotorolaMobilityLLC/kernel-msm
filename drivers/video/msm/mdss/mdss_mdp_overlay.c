@@ -2020,8 +2020,11 @@ static ssize_t mdss_mdp_vsync_show_event(struct device *dev,
 
 	if (!mdp5_data->ctl ||
 		(!mdp5_data->ctl->panel_data->panel_info.cont_splash_enabled
-			&& !mdp5_data->ctl->power_on))
+			&& !mdp5_data->ctl->power_on)) {
+		if (mdp5_data->ctl)
+			pr_warn("%s:power_on status: %d\n", __func__, mdp5_data->ctl->power_on);
 		return -EAGAIN;
+	}
 
 	vsync_ticks = ktime_to_ns(mdp5_data->vsync_time);
 
