@@ -334,6 +334,11 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		bl_level = 30;
 	}
 
+	if (!pdata->panel_info.panel_power_on) {
+		pr_err("%s: DSI block is off state\n", __func__);
+		return;
+	}
+
 	mdss_dsi_panel_dimming_init(pdata);
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
