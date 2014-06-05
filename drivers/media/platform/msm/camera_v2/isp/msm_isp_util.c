@@ -27,6 +27,9 @@ static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
 #define MSM_ISP_MIN_AB 300000000
 #define MSM_ISP_MIN_IB 450000000
 
+#define VFE_AVTIMER_LSW 0
+#define VFE_AVTIMER_MSW 4
+
 #define VFE40_8974V2_VERSION 0x1001001A
 
 static struct msm_bus_vectors msm_isp_init_vectors[] = {
@@ -223,14 +226,17 @@ static inline void msm_isp_get_vt_tstamp(struct vfe_device *vfe_dev,
 	uint32_t avtimer_msw_1st = 0, avtimer_lsw = 0;
 	uint32_t avtimer_msw_2nd = 0;
 	uint8_t iter = 0;
-	if (!vfe_dev->p_avtimer_msw || !vfe_dev->p_avtimer_lsw) {
+	if (!vfe_dev->vfe_avtimer_base) {
 		pr_err("%s: ioremap failed\n", __func__);
 		return;
 	}
 	do {
-		avtimer_msw_1st = msm_camera_io_r(vfe_dev->p_avtimer_msw);
-		avtimer_lsw = msm_camera_io_r(vfe_dev->p_avtimer_lsw);
-		avtimer_msw_2nd = msm_camera_io_r(vfe_dev->p_avtimer_msw);
+		avtimer_msw_1st = msm_camera_io_r(vfe_dev->vfe_avtimer_base +
+			VFE_AVTIMER_MSW);
+		avtimer_lsw = msm_camera_io_r(vfe_dev->vfe_avtimer_base +
+			VFE_AVTIMER_LSW);
+		avtimer_msw_2nd = msm_camera_io_r(vfe_dev->vfe_avtimer_base +
+			VFE_AVTIMER_MSW);
 	} while ((avtimer_msw_1st != avtimer_msw_2nd)
 		&& (iter++ < AVTIMER_ITERATION_CTR));
 	if (iter >= AVTIMER_ITERATION_CTR) {
@@ -1242,8 +1248,6 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	vfe_dev->axi_data.hw_info = vfe_dev->hw_info->axi_hw_info;
 	vfe_dev->taskletq_idx = 0;
 	vfe_dev->vt_enable = 0;
-	vfe_dev->p_avtimer_lsw = NULL;
-	vfe_dev->p_avtimer_msw = NULL;
 	iommu_set_fault_handler(vfe_dev->buf_mgr->iommu_domain,
 		msm_vfe_iommu_fault_handler, vfe_dev);
 
@@ -1293,8 +1297,6 @@ int msm_isp_close_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	vfe_dev->buf_mgr->ops->buf_mgr_deinit(vfe_dev->buf_mgr);
 	vfe_dev->hw_info->vfe_ops.core_ops.release_hw(vfe_dev);
 	if (vfe_dev->vt_enable) {
-		iounmap(vfe_dev->p_avtimer_lsw);
-		iounmap(vfe_dev->p_avtimer_msw);
 		msm_isp_end_avtimer();
 		vfe_dev->vt_enable = 0;
 	}
