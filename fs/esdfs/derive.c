@@ -534,6 +534,7 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 	mode = S_IFREG;
 	esdfs_set_lower_mode(ESDFS_SB(dir_dentry->d_sb), &mode);
 	err = vfs_create(lower_path.dentry->d_inode, lower_dentry, mode, &nd);
+	dput(lower_dentry);
 
 out:
 	esdfs_put_lower_path(dir_dentry, &lower_path);
