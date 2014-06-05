@@ -30,6 +30,7 @@
 #include "mdss_mdp.h"
 
 #define DROPBOX_DISPLAY_ISSUE "display_issue"
+#define ESD_DROPBOX_MSG "ESD event detected"
 #define ESD_SENSORHUB_DROPBOX_MSG "ESD sensorhub detected"
 #define PWR_MODE_BLACK_DROPBOX_MSG "PWR_MODE black screen detected"
 #define PWR_MODE_FAIL_DROPBOX_MSG "PWR_MODE read failure"
@@ -379,6 +380,7 @@ int mdss_panel_check_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	int ret = 0;
 	u8 pwr_mode = 0;
 	struct mdss_panel_esd_pdata *esd_data = &ctrl->panel_esd_data;
+	static bool dropbox_sent;
 
 	if (!ctrl->panel_data.panel_info.panel_power_on) {
 		ret = 1;
@@ -392,8 +394,15 @@ int mdss_panel_check_status(struct mdss_dsi_ctrl_pdata *ctrl)
 						esd_data->esd_pwr_mode_chk) {
 		pr_warn("%s: ESD detected pwr_mode =0x%x expected mask = 0x%x\n",
 				__func__, pwr_mode, esd_data->esd_pwr_mode_chk);
+		if (!dropbox_sent) {
+			dropbox_queue_event_text(DROPBOX_DISPLAY_ISSUE,
+				ESD_DROPBOX_MSG, strlen(ESD_DROPBOX_MSG));
+			dropbox_sent = true;
+		}
+
 		goto end;
-	}
+	} else
+		dropbox_sent = false;
 
 	ret = 1;
 end:
