@@ -577,14 +577,21 @@ static inline int msm_ds2_dap_can_enable_module(int32_t module_id)
 	return true;
 }
 
-static int msm_ds2_dap_init_modules_in_topology(int port_id)
+static int msm_ds2_dap_init_modules_in_topology(int dev_map_idx)
 {
-	int rc = 0, i = 0;
+	int rc = 0, i = 0, port_id;
 	/* Account for 32 bit interger allocation */
 	int32_t param_sz = (ADM_GET_TOPO_MODULE_LIST_LENGTH / sizeof(uint32_t));
-	int32_t *update_param_val;
+	int32_t *update_param_val = NULL;
 
-	pr_debug("%s: port_id %d\n", __func__, port_id);
+	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	port_id = dev_map[dev_map_idx].port_id;
+	pr_debug("%s: port_id 0x%x\n", __func__, port_id);
 	update_param_val = kzalloc(ADM_GET_TOPO_MODULE_LIST_LENGTH, GFP_KERNEL);
 	if (!update_param_val) {
 		pr_err("%s, param memory alloc failed\n", __func__);
@@ -625,6 +632,9 @@ static int msm_ds2_dap_init_modules_in_topology(int port_id)
 			adm_param_enable(port_id, update_param_val[i],
 					 MODULE_DISABLE);
 		}
+	} else {
+		msm_ds2_dap_send_cal_data(dev_map_idx);
+
 	}
 	adm_param_enable(port_id, DS2_MODULE_ID,
 			 !ds2_dap_params_states.dap_bypass);
@@ -1697,7 +1707,7 @@ int msm_ds2_dap_init(int port_id, int channels,
 				}
 				ret =
 					msm_ds2_dap_init_modules_in_topology(
-							port_id);
+							idx);
 				if (ret < 0)
 					goto end;
 			}
@@ -1832,7 +1842,7 @@ static int msm_ds2_dap_can_enable_module(int32_t module_id)
 	return 0;
 }
 
-static int msm_ds2_dap_init_modules_in_topology(int port_id)
+static int msm_ds2_dap_init_modules_in_topology(int dev_map_idx)
 {
 	return 0;
 }
