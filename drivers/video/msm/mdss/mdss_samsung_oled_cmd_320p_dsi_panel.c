@@ -120,9 +120,6 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 	cd_idx = get_cmd_idx(bl_level);
 	cd_level = get_candela_value(bl_level);
 
-	if (stored_cd_level == cd_level)
-		return;
-
 	/* gamma control */
 	get_gamma_control_set(cd_level);
 
@@ -348,6 +345,10 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	 * than it, the controller can malfunction.
 	 */
 	mipi_samsung_disp_send_cmd(PANEL_MTP_ENABLE, true);
+	if (pdata->panel_info.first_bl_update) {
+		mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
+		pdata->panel_info.first_bl_update = 0;
+	}
 	if ((bl_level < pdata->panel_info.bl_min) && (bl_level != 0))
 		bl_level = pdata->panel_info.bl_min;
 	switch (ctrl_pdata->bklt_ctrl) {
@@ -564,7 +565,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	msd.dstat.on = 0;
 	msd.mfd->resume_state = MIPI_SUSPEND_STATE;
-
+	pdata->panel_info.first_bl_update = 1;
 	if (pinfo->alpm_event &&
 		pinfo->alpm_event(CHECK_CURRENT_STATUS) &&
 		!pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {

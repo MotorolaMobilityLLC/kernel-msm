@@ -322,6 +322,7 @@ struct mdss_panel_info {
 	int pwm_pmic_gpio;
 	int pwm_lpg_chan;
 	int pwm_period;
+	int first_bl_update;
 	bool dynamic_fps;
 	bool ulps_feature_enabled;
 	char dfps_update;
