@@ -316,6 +316,10 @@
 	cci: qcom,cci@fda0C000 {
 		vddio-supply = <&pma8084_lvs4>;
 	};
+
+	qcom,hdmi_tx@fd922100 {
+		status = "disabled";
+	};
 };
 
 &pma8084_lvs2 {
