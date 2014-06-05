@@ -78,7 +78,7 @@ int asus_set_backlight(int value)
 {
 	struct asus_backlight_data *pdata = asus_led_device.dev.platform_data;
 	int index;
-	int div = ((pdata->max_value-pdata->min_value)*BL_GAIN/(pdata->phone.max_index-pdata->phone.min_index));
+	//int div = ((pdata->max_value-pdata->min_value)*BL_GAIN/(pdata->phone.max_index-pdata->phone.min_index));
 
 	if (value == 0)
 		index = is_ambient_on() ? pdata->phone.ambient_index : 0;
@@ -87,7 +87,8 @@ int asus_set_backlight(int value)
 	else if (value > 0 && value <= pdata->min_value) 
 		index = pdata->phone.min_index;
 	else if (value > pdata->min_value && value < pdata->max_value) 
-		index = value*BL_GAIN/div+BL_SHIFT;
+		//index = value*BL_GAIN/div+BL_SHIFT;
+		index = value;
 	else {
 		printk("[BL] value (%d) not within spec, set to default brightness\n", value);
 		index = pdata->phone.default_index;//value not in spec, do set default value
