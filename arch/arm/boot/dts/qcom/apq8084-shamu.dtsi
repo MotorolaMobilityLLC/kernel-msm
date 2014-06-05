@@ -101,23 +101,6 @@
 	};
 };
 
-&pma8084_mpps {
-	mpp@a300 { /* MPP 4 */
-		/* Wireless Charge Complete N */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <1>;		/* Open Drain NMOS logic */
-		qcom,vin-sel = <2>;		/* VIN 2 */
-		qcom,src-sel = <0>;		/* Constant */
-		qcom,out-strength = <1>;	/* Low */
-		qcom,master-en = <1>;		/* Enable GPIO */
-	};
-	mpp@a600 { /* MPP 7 */
-		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <1>;	/* No pull */
-		qcom,vin-sel = <2>;
-		qcom,master-en = <1>;
-	};
-};
 &pma8084_l22 {
 	regulator-always-on;
 };
@@ -173,14 +156,6 @@
 
 &mot_smd_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
-};
-
-&i2c_0 {
-	mmi_wls_chrg@6c {
-		gpios = <&pma8084_gpios 1 0x1>, /* GPIOF_IN */
-			<&pma8084_mpps 4 0x2>, /* GPIOF_OUT_INIT_HIGH */
-			<&msmgpio 66 0x0>; /* GPIOF_OUT_INIT_LOW */
-	};
 };
 
 &mot_smd_QHD_0_cmd_v1 {
