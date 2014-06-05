@@ -301,6 +301,10 @@ struct qpnp_chg_regulator {
  * @cutoff_mv:                  cutoff voltage where the battery is considered
  *                              dead
  * @ float_timer_start          Indicates float timer has started.
+ * @ weak_chg_attached          Indicates that a Weak Charger is attached.
+ * @ hv_chg_attached            Indicates that a HV Charger is attached.
+ * @ usb_limit_ma               Current Limit Sent from USB.
+ * @ weak_check_work            Work for Detecting Weak Charger.
  *
  */
 struct qpnp_chg_chip {
@@ -444,6 +448,10 @@ struct qpnp_chg_chip {
 	unsigned int			float_charge_timer;
 	unsigned long			float_charge_start_time;
 	bool				float_timer_start;
+	bool				weak_chg_attached;
+	bool				hv_chg_attached;
+	int				usb_limit_ma;
+	struct delayed_work		weak_check_work;
 };
 
 static struct of_device_id qpnp_charger_match_table[] = {
@@ -503,6 +511,9 @@ qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip);
 
 static int
 qpnp_chg_vbatdet_set(struct qpnp_chg_chip *chip, int vbatdet_mv);
+
+static void
+qpnp_chg_weak_check(struct qpnp_chg_chip *chip);
 
 static inline int
 get_bpd(const char *name)
@@ -1704,6 +1715,8 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			qpnp_chg_vinmin_set(chip, chip->min_voltage_mv);
 			chip->prev_usb_max_ma = -EINVAL;
 			chip->aicl_settled = false;
+			chip->weak_chg_attached = false;
+			chip->hv_chg_attached = false;
 			chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
 			chip->float_charge_start_time = 0;
 			power_supply_set_online(chip->usb_psy, 0);
@@ -1963,6 +1976,8 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 			chip->float_timer_start = false;
 
 			if (!chip->charging_disabled) {
+				schedule_delayed_work(&chip->weak_check_work,
+						      msecs_to_jiffies(1000));
 				schedule_delayed_work(&chip->eoc_work,
 					msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 				pm_stay_awake(chip->dev);
@@ -2182,6 +2197,7 @@ static int ext_ovp_present;
 module_param(ext_ovp_present, int, 0444);
 
 #define USB_WALL_THRESHOLD_MA	500
+#define USB_WEAK_THRESHOLD_MA	400
 #define OVP_USB_WALL_THRESHOLD_MA	200
 static int
 qpnp_power_get_property_mains(struct power_supply *psy,
@@ -2207,6 +2223,16 @@ qpnp_power_get_property_mains(struct power_supply *psy,
 		return -EINVAL;
 	}
 	return 0;
+}
+
+static void
+qpnp_weak_check_work(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct qpnp_chg_chip *chip = container_of(dwork,
+				struct qpnp_chg_chip, weak_check_work);
+
+	qpnp_chg_weak_check(chip);
 }
 
 static void
@@ -2558,6 +2584,39 @@ static int get_prop_online(struct qpnp_chg_chip *chip)
 }
 
 static void
+qpnp_chg_weak_check(struct qpnp_chg_chip *chip)
+{
+	bool vchg_loop = get_prop_vchg_loop(chip);
+	union power_supply_propval ret = {0,};
+
+	chip->usb_psy->get_property(chip->usb_psy,
+				    POWER_SUPPLY_PROP_TYPE, &ret);
+
+	if (!vchg_loop ||
+	    (ret.intval != POWER_SUPPLY_TYPE_USB_DCP) ||
+	    chip->hv_chg_attached ||
+	    !qpnp_chg_is_usb_chg_plugged_in(chip))
+		return;
+
+	pr_debug("Find Weak Charger\n");
+	qpnp_chg_iusbmax_set(chip, USB_WALL_THRESHOLD_MA);
+	msleep(100);
+
+	if (!qpnp_chg_is_usb_chg_plugged_in(chip))
+		return;
+
+	vchg_loop = get_prop_vchg_loop(chip);
+	if (vchg_loop) {
+		qpnp_chg_iusbmax_set(chip, USB_WEAK_THRESHOLD_MA);
+		pr_warn("Weak Charger Detected\n");
+		chip->weak_chg_attached = true;
+		power_supply_changed(&chip->batt_psy);
+	} else {
+		qpnp_chg_iusbmax_set(chip, chip->usb_limit_ma);
+	}
+}
+
+static void
 qpnp_batt_external_power_changed(struct power_supply *psy)
 {
 	struct qpnp_chg_chip *chip = container_of(psy, struct qpnp_chg_chip,
@@ -2576,6 +2635,7 @@ qpnp_batt_external_power_changed(struct power_supply *psy)
 					    POWER_SUPPLY_PROP_POWER_NOW, &ret);
 		if ((USB_REQUEST_MODE_9V == ret.intval) ||
 			(USB_REQUEST_MODE_PENDING == ret.intval)) {
+			chip->hv_chg_attached = true;
 			qpnp_chg_vinmin_set(chip, 7000);
 			qpnp_chg_iusbmax_set(chip, 1600);
 			chip->prev_usb_max_ma = 1600;
@@ -2594,7 +2654,7 @@ qpnp_batt_external_power_changed(struct power_supply *psy)
 			goto skip_set_iusb_max;
 
 		chip->prev_usb_max_ma = ret.intval;
-
+		chip->usb_limit_ma = ret.intval / 1000;
 		if (ret.intval <= 2 && !chip->use_default_batt_values &&
 						get_prop_batt_present(chip)) {
 			if (ret.intval ==  2)
@@ -5714,6 +5774,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 			qpnp_usbin_health_check_work);
 	INIT_WORK(&chip->soc_check_work, qpnp_chg_soc_check_work);
 	INIT_DELAYED_WORK(&chip->aicl_check_work, qpnp_aicl_check_work);
+	INIT_DELAYED_WORK(&chip->weak_check_work, qpnp_weak_check_work);
 	INIT_DELAYED_WORK(&chip->update_heartbeat_work, update_heartbeat);
 
 	if (chip->dc_chgpth_base) {
