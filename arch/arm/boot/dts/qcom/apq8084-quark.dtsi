@@ -158,21 +158,35 @@
 &mot_smd_QHD_0_cmd_v0 {
 	qcom,cont-splash-enabled;
 	mmi,partial-mode-enabled;
+	mmi,quickdraw-enabled;
+	qcom,partial-update-enabled;
+	qcom,partial-update-dcs-cmd-by-left;
+	qcom,partial-update-roi-merge;
 };
 
 &mot_smd_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
 	mmi,partial-mode-enabled;
+	qcom,partial-update-enabled;
+	qcom,partial-update-dcs-cmd-by-left;
+	qcom,partial-update-roi-merge;
 };
 
 &mot_smd_QHD_0_cmd_v1 {
 	qcom,cont-splash-enabled;
 	mmi,partial-mode-enabled;
+	mmi,quickdraw-enabled;
+	qcom,partial-update-enabled;
+	qcom,partial-update-dcs-cmd-by-left;
+	qcom,partial-update-roi-merge;
 };
 
 &mot_smd_QHD_1_cmd_v1 {
 	qcom,cont-splash-enabled;
 	mmi,partial-mode-enabled;
+	qcom,partial-update-enabled;
+	qcom,partial-update-dcs-cmd-by-left;
+	qcom,partial-update-roi-merge;
 };
 
 
