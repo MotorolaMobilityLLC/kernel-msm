@@ -302,7 +302,6 @@ void xhci_ring_cmd_db(struct xhci_hcd *xhci)
 static int xhci_abort_cmd_ring(struct xhci_hcd *xhci)
 {
 	u64 temp_64;
-	int ret;
 
 	xhci_dbg(xhci, "Abort command ring\n");
 
@@ -320,26 +319,7 @@ static int xhci_abort_cmd_ring(struct xhci_hcd *xhci)
 	xhci->cmd_ring_state = CMD_RING_STATE_ABORTED;
 	xhci_write_64(xhci, temp_64 | CMD_RING_ABORT,
 			&xhci->op_regs->cmd_ring);
-
-	/* Section 4.6.1.2 of xHCI 1.0 spec says software should
-	 * time the completion od all xHCI commands, including
-	 * the Command Abort operation. If software doesn't see
-	 * CRR negated in a timely manner (e.g. longer than 5
-	 * seconds), then it should assume that the there are
-	 * larger problems with the xHC and assert HCRST.
-	 */
-	ret = xhci_handshake(xhci, &xhci->op_regs->cmd_ring,
-			CMD_RING_RUNNING, 0, 5 * 1000 * 1000);
-	if (ret < 0) {
-		xhci_err(xhci, "Stopped the command ring failed, "
-				"maybe the host is dead\n");
-		xhci->xhc_state |= XHCI_STATE_DYING;
-		xhci_quiesce(xhci);
-		xhci_halt(xhci);
-		return -ESHUTDOWN;
-	}
-
-	return 0;
+	return 1;
 }
 
 static int xhci_queue_cd(struct xhci_hcd *xhci,
@@ -392,15 +372,38 @@ int xhci_cancel_cmd(struct xhci_hcd *xhci, struct xhci_command *command,
 
 	/* abort command ring */
 	retval = xhci_abort_cmd_ring(xhci);
-	if (retval) {
-		xhci_err(xhci, "Abort command ring failed\n");
-		if (unlikely(retval == -ESHUTDOWN)) {
-			spin_unlock_irqrestore(&xhci->lock, flags);
-			usb_hc_died(xhci_to_hcd(xhci)->primary_hcd);
-			xhci_dbg(xhci, "xHCI host controller is dead.\n");
-			return retval;
-		}
-	}
+	spin_unlock_irqrestore(&xhci->lock, flags);
+
+	if (!retval)
+		return 0;
+
+	/* Section 4.6.1.2 of xHCI 1.0 spec says software should
+	 * time the completion od all xHCI commands, including
+	 * the Command Abort operation. If software doesn't see
+	 * CRR negated in a timely manner (e.g. longer than 5
+	 * seconds), then it should assume that the there are
+	 * larger problems with the xHC and assert HCRST.
+	 */
+	retval = xhci_handshake(xhci, &xhci->op_regs->cmd_ring,
+			CMD_RING_RUNNING, 0, 5 * 1000 * 1000);
+	if (retval == 0)
+		return 0;
+
+	xhci_err(xhci, "Stopped the command ring failed, "
+			"maybe the host is dead\n");
+
+	spin_lock_irqsave(&xhci->lock, flags);
+	xhci->xhc_state |= XHCI_STATE_DYING;
+	spin_unlock_irqrestore(&xhci->lock, flags);
+
+	xhci_quiesce(xhci);
+	xhci_halt(xhci);
+
+	xhci_err(xhci, "Abort command ring failed\n");
+	usb_hc_died(xhci_to_hcd(xhci)->primary_hcd);
+	xhci_dbg(xhci, "xHCI host controller is dead.\n");
+
+	return -ESHUTDOWN;
 
 fail:
 	spin_unlock_irqrestore(&xhci->lock, flags);
