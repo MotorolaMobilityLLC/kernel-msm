@@ -22,9 +22,12 @@
 #ifdef CONFIG_DOLBY_DS2
 
 /* ramp up/down for 30ms    */
-#define DOLBY_SOFT_VOLUME_PERIOD       30
+#define DOLBY_SOFT_VOLUME_PERIOD	40
 /* Step value 0ms or 0us */
-#define DOLBY_SOFT_VOLUME_STEP         0
+#define DOLBY_SOFT_VOLUME_STEP		1000
+#define DOLBY_ADDITIONAL_RAMP_WAIT	10
+#define SOFT_VOLUME_PARAM_SIZE		3
+#define PARAM_PAYLOAD_SIZE		3
 
 enum {
 	DOLBY_SOFT_VOLUME_CURVE_LINEAR = 0,
@@ -181,6 +184,42 @@ static int all_supported_devices = EARPIECE|SPEAKER|WIRED_HEADSET|
 			REMOTE_SUBMIX|ANC_HEADSET|ANC_HEADPHONE|
 			PROXY|FM|FM_TX|DEVICE_NONE|
 			BLUETOOTH_SCO_HEADSET|BLUETOOTH_SCO_CARKIT;
+
+
+static void msm_ds2_dap_check_and_update_ramp_wait(int port_id, int *ramp_wait)
+{
+
+	int32_t *update_params_value = NULL;
+	uint32_t params_length = SOFT_VOLUME_PARAM_SIZE * sizeof(uint32_t);
+	uint32_t param_payload_len = PARAM_PAYLOAD_SIZE * sizeof(uint32_t);
+	int rc = 0;
+
+	update_params_value = kzalloc(params_length, GFP_KERNEL);
+	if (!update_params_value) {
+		pr_err("%s: params memory alloc failed\n", __func__);
+		goto end;
+	}
+	rc = adm_get_params(port_id,
+			    AUDPROC_MODULE_ID_VOL_CTRL,
+			    AUDPROC_PARAM_ID_SOFT_VOL_STEPPING_PARAMETERS,
+			    params_length + param_payload_len,
+			    (char *) update_params_value);
+	if (rc == 0) {
+		pr_debug("%s: params_value [0x%x, 0x%x, 0x%x]\n",
+			__func__, update_params_value[0],
+			update_params_value[1],
+			update_params_value[2]);
+		*ramp_wait = update_params_value[0];
+	}
+end:
+	kfree(update_params_value);
+	/*
+	 * No error returned as we do not need to error out from dap on/dap
+	 * bypass. The default ramp parameter will be used to wait during
+	 * ramp down.
+	 */
+	return;
+}
 
 static int msm_ds2_dap_set_vspe_vdhe(int dev_map_idx,
 				     bool is_custom_stereo_enabled)
@@ -813,6 +852,7 @@ static int msm_ds2_dap_handle_bypass(struct dolby_param_data *dolby_data)
 	int32_t *mod_list = NULL;
 	int port_id = 0;
 	bool cs_onoff = ds2_dap_params_states.custom_stereo_onoff;
+	int ramp_wait = DOLBY_SOFT_VOLUME_PERIOD;
 
 	pr_debug("%s: bypass type %d bypass %d custom stereo %d\n", __func__,
 		 ds2_dap_params_states.dap_bypass_type,
@@ -830,6 +870,11 @@ static int msm_ds2_dap_handle_bypass(struct dolby_param_data *dolby_data)
 		if (dev_map[i].active) {
 			port_id = dev_map[i].port_id;
 
+			if (port_id == DOLBY_INVALID_PORT_ID) {
+				pr_err("%s: invalid port\n", __func__);
+				rc = 0;
+				goto end;
+			}
 			/* getmodules from dsp */
 			rc = adm_get_pp_topo_module_list(port_id,
 				    ADM_GET_TOPO_MODULE_LIST_LENGTH,
@@ -846,6 +891,13 @@ static int msm_ds2_dap_handle_bypass(struct dolby_param_data *dolby_data)
 				rc = -EINVAL;
 				goto end;
 			}
+			/*
+			 * get ramp parameters
+			 * check for change in ramp parameters
+			 * update ramp wait
+			 */
+			msm_ds2_dap_check_and_update_ramp_wait(port_id,
+							       &ramp_wait);
 
 			/* Mute before switching modules */
 			rc = adm_set_volume(port_id,  VOLUME_ZERO_GAIN);
@@ -859,7 +911,8 @@ static int msm_ds2_dap_handle_bypass(struct dolby_param_data *dolby_data)
 			}
 
 			rc = msm_ds2_dap_handle_bypass_wait(port_id,
-					DOLBY_SOFT_VOLUME_PERIOD);
+					    (ramp_wait +
+					     DOLBY_ADDITIONAL_RAMP_WAIT));
 			if (rc == -EINTR) {
 				pr_info("%s:bypass interupted-ignore,port %d\n",
 					__func__, port_id);
@@ -1660,7 +1713,7 @@ int msm_ds2_dap_init(int port_id, int channels,
 	struct audproc_softvolume_params softvol = {
 		.period = DOLBY_SOFT_VOLUME_PERIOD,
 		.step = DOLBY_SOFT_VOLUME_STEP,
-		.rampingcurve = DOLBY_SOFT_VOLUME_CURVE_LINEAR,
+		.rampingcurve = DOLBY_SOFT_VOLUME_CURVE_EXP,
 	};
 
 	pr_debug("%s: port id  %d\n", __func__, port_id);
