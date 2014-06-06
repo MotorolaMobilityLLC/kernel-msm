@@ -5354,22 +5354,6 @@ static int hdd_set_mac_address(struct net_device *dev, void *addr)
    ENTER();
 
    memcpy(&pAdapter->macAddressCurrent, psta_mac_addr->sa_data, ETH_ALEN);
-
-#ifdef HDD_SESSIONIZE 
-   // set the MAC address though the STA ID CFG.
-   halStatus = ccmCfgSetStr( pAdapter->hHal, WNI_CFG_STA_ID,
-                             (v_U8_t *)&pAdapter->macAddressCurrent,
-                             sizeof( pAdapter->macAddressCurrent ),
-                             hdd_set_mac_addr_cb, VOS_FALSE );
-
-   if(eHAL_STATUS_SUCCESS != halStatus)
-   {
-       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                       "%s: failed to set MAC address in CFG", __func__);
-   }
-
-#endif
-
    memcpy(dev->dev_addr, psta_mac_addr->sa_data, ETH_ALEN);
 
    EXIT();
