@@ -165,6 +165,21 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                     PELOGW(limLog(pMac, LOGW, FL("lim Delete Station Context (staId: %d, assocId: %d) "),
                                 pMsg->staId, pMsg->assocId);)
 
+                    if( pMac->roam.configParam.sendDeauthBeforeCon )
+                    {
+                       tANI_U8 apCount = pMac->lim.gLimHeartBeatApMacIndex;
+
+                       if(pMac->lim.gLimHeartBeatApMacIndex)
+                          pMac->lim.gLimHeartBeatApMacIndex = 0;
+                       else
+                          pMac->lim.gLimHeartBeatApMacIndex = 1;
+
+                       limLog(pMac, LOG1, FL("lim Delete Station Context for MAC "
+                                          MAC_ADDRESS_STR" Store it on Index %d"),
+                                          MAC_ADDR_ARRAY(pStaDs->staAddr),apCount);
+
+                       sirCopyMacAddr(pMac->lim.gLimHeartBeatApMac[apCount],pStaDs->staAddr);
+                    }
                     pStaDs->mlmStaContext.disassocReason = eSIR_MAC_UNSPEC_FAILURE_REASON;
                     pStaDs->mlmStaContext.cleanupTrigger = eLIM_LINK_MONITORING_DEAUTH;
 
