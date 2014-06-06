@@ -402,10 +402,10 @@ static void drv2605_set_waveform_sequence(unsigned char *seq,
 
 	for (tries = 0; tries < I2C_RETRIES; tries++) {
 		ret = i2c_master_send(drv260x->client, data, sizeof(data));
-		dev_err(&drv260x->client->dev, "drv2605: i2c send retry %d\n",
-						tries+1);
 		if (ret >= 0)
 			break;
+		dev_err(&drv260x->client->dev, "drv2605: i2c send retry %d\n",
+						tries+1);
 		msleep_interruptible(I2C_RETRY_DELAY);
 	}
 }
