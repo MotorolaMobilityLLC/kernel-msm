@@ -295,6 +295,13 @@ struct msm_fb_data_type {
 	struct led_trigger *boot_notification_led;
 };
 
+struct sys_panelinfo {
+	char *panel_name;
+	u64 *panel_ver;
+};
+
+extern struct sys_panelinfo panelinfo;
+
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
 {
 	int needs_complete = 0;
