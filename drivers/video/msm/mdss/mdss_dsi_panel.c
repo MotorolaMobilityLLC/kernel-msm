@@ -30,6 +30,7 @@
 #ifdef TARGET_HW_MDSS_HDMI
 #include "mdss_dba_utils.h"
 #endif
+#include "mdss_fb.h"
 
 #define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
 #define MDSS_PANEL_UNKNOWN_NAME "unknown"
@@ -623,6 +624,9 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		panel_ver & 0xff, (panel_ver & 0xff00) >> 8,
 		(panel_ver & 0xff0000) >> 16,
 		ctrl_pdata->panel_config.panel_ver);
+
+	panelinfo.panel_name = (char *) &ctrl_pdata->panel_config.panel_name;
+	panelinfo.panel_ver = &ctrl_pdata->panel_config.panel_ver;
 
 	of_node_put(np);
 
@@ -2034,6 +2038,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 {
 	struct mdss_panel_info *pinfo;
 	struct mdss_panel_config *pcfg;
+	const char *data;
 	int rc;
 
 	if (!np || !ctrl) {
@@ -2118,7 +2123,15 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl->lp_off_cmds,
 			"qcom,mdss-dsi-lp-mode-off", NULL);
-
+		
+	data = of_get_property(np, "qcom,mdss-dsi-panel-supplier", NULL);
+	if (!data)
+		memset(pinfo->supplier, '\0', sizeof(pinfo->supplier));
+	else if (strlcpy(pinfo->supplier, data, sizeof(pinfo->supplier)) >=
+		sizeof(pinfo->supplier)) {
+		pr_err("%s: Panel supplier name too large\n", __func__);
+	}
+	panelinfo.panel_supplier = pinfo->supplier;
 	return 0;
 }
 
