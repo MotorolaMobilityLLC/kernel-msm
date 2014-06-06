@@ -49,6 +49,7 @@
 					TFA9890_STATUS_CLKS | \
 					TFA9890_STATUS_VDDS | \
 					TFA9890_STATUS_ARFS)
+#define SYS_CLK_DEFAULT 1536000
 struct tfa9890_priv {
 	struct i2c_client *control_data;
 	struct regulator *vdd;
@@ -543,11 +544,14 @@ static const struct snd_kcontrol_new tfa9890_left_snd_controls[] = {
 	SOC_SINGLE_MULTI_EXT("NXP ModeL", SND_SOC_NOPM, 0, 255,
 				 0, 2, tfa9890_get_mode,
 				 tfa9890_put_mode),
+	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
+	SOC_SINGLE("NXP Left Ch Select", TFA9890_I2S_CTL_REG,
+			3, 0x3, 0),
 };
 
 /* bit 6,7 : 01 - DSP bypassed, 10 - DSP used */
 static const struct snd_kcontrol_new tfa9890_left_mixer_controls[] = {
-	SOC_DAPM_SINGLE("DSP Switch Left", TFA9890_I2S_CTL_REG, 6, 3, 0),
+	SOC_DAPM_SINGLE("DSP Bypass Left", TFA9890_I2S_CTL_REG, 6, 3, 0),
 };
 
 static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
@@ -559,7 +563,7 @@ static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
-	{"NXP Output Mixer Left", "DSP Switch Left", "I2S1L"},
+	{"NXP Output Mixer Left", "DSP Bypass Left", "I2S1L"},
 	{"NXP Speaker Boost Left", "Null", "NXP Output Mixer Left"},
 };
 
@@ -569,11 +573,14 @@ static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
 	SOC_SINGLE_MULTI_EXT("NXP ModeR", SND_SOC_NOPM, 0, 255,
 				 0, 2, tfa9890_get_mode,
 				 tfa9890_put_mode),
+	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
+	SOC_SINGLE("NXP Right Ch Select", TFA9890_I2S_CTL_REG,
+			3, 0x3, 0),
 };
 
 /* bit 6,7 : 01 - DSP bypassed, 10 - DSP used */
 static const struct snd_kcontrol_new tfa9890_right_mixer_controls[] = {
-	SOC_DAPM_SINGLE("DSP Switch Right", TFA9890_I2S_CTL_REG, 6, 3, 0),
+	SOC_DAPM_SINGLE("DSP Bypass Right", TFA9890_I2S_CTL_REG, 6, 3, 0),
 };
 
 static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
@@ -585,7 +592,7 @@ static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
-	{"NXP Output Mixer Right", "DSP Switch Right", "I2S1R"},
+	{"NXP Output Mixer Right", "DSP Bypass Right", "I2S1R"},
 	{"NXP Speaker Boost Right", "Null", "NXP Output Mixer Right"},
 };
 
@@ -1180,23 +1187,6 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 
 	snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 
-	if (stereo_mode) {
-		/* select right/left channel input for I2S */
-		if (!strncmp(tfa9890->tfa_dev, "left", 4)) {
-			val = val & (~TFA9890_I2S_CHS12);
-			val = val | TFA9890_I2S_LEFT_IN;
-		} else if (!strncmp(tfa9890->tfa_dev, "right", 5)) {
-			val = val & (~TFA9890_I2S_CHS12);
-			val = val | TFA9890_I2S_RIGHT_IN;
-		}
-		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
-		/* set datao left channel to send gain info */
-		val = snd_soc_read(codec, TFA9890_SYS_CTL2_REG);
-		val = val & (~TFA9890_DOLS_DATAO);
-		val = val | TFA9890_DOLS_GAIN;
-		snd_soc_write(codec, TFA9890_SYS_CTL2_REG, val);
-	}
-
 	/* calc bclk to ws freq ratio, tfa9890 supports only 32, 48, 64 */
 	bclk_ws_ratio = tfa9890->sysclk/params_rate(params);
 	if (bclk_ws_ratio != 32 && bclk_ws_ratio != 48
@@ -1605,6 +1595,7 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 {
 	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
 	int i;
+	u16 val;
 
 	/* set codec Bulk write method, will be used for
 	 * loading DSP firmware and config files.
@@ -1638,10 +1629,26 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 				ARRAY_SIZE(tfa9890_right_dapm_widgets));
 		snd_soc_dapm_add_routes(&codec->dapm, tfa9890_right_dapm_routes,
 				ARRAY_SIZE(tfa9890_right_dapm_routes));
-		/* set stereo mode */
-		stereo_mode = 1;
 	}
 
+	if (stereo_mode) {
+		val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
+		pr_info("%s : val 0x%x\n", tfa9890->tfa_dev, val);
+		/* select right/left channel input for I2S */
+		if (!strncmp(tfa9890->tfa_dev, "left", 4)) {
+			val = val & (~TFA9890_I2S_CHS12);
+			val = val | TFA9890_I2S_LEFT_IN;
+		} else if (!strncmp(tfa9890->tfa_dev, "right", 5)) {
+			val = val & (~TFA9890_I2S_CHS12);
+			val = val | TFA9890_I2S_RIGHT_IN;
+		}
+		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
+		/* set datao left channel to send gain info */
+		val = snd_soc_read(codec, TFA9890_SYS_CTL2_REG);
+		val = val & (~TFA9890_DOLS_DATAO);
+		val = val | TFA9890_DOLS_GAIN;
+		snd_soc_write(codec, TFA9890_SYS_CTL2_REG, val);
+	}
 	snd_soc_dapm_new_widgets(&codec->dapm);
 	snd_soc_dapm_sync(&codec->dapm);
 
@@ -1743,6 +1750,7 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 	tfa9890->vol_idx = pdata->max_vol_steps;
 	tfa9890->curr_vol_idx = pdata->max_vol_steps;
 	tfa9890->tfa_dev = pdata->tfa_dev;
+	tfa9890->sysclk = SYS_CLK_DEFAULT;
 	i2c_set_clientdata(i2c, tfa9890);
 	mutex_init(&tfa9890->dsp_init_lock);
 	mutex_init(&tfa9890->i2c_rw_lock);
@@ -1824,6 +1832,7 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 				__func__);
 			goto codec_fail;
 		}
+		stereo_mode = 1;
 	}
 
 	pr_info("tfa9890 %s probed successfully!", tfa9890->tfa_dev);
