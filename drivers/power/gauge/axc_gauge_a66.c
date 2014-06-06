@@ -45,8 +45,6 @@
 #define DEFAULT_DEVICE_RESISTOR_VALUE_NVT   136
 #define DEFAULT_DEVICE_RESISTOR_VALUE_TWS	146//ASUS_BSP Eason read battery ID
 #define DEFAULT_DEVICE_RESISTOR_VALUE_ME175KG   190
-#define DEFAULT_DEVICE_RESISTOR_VALUE_A11	100
-#define DEFAULT_DEVICE_RESISTOR_VALUE_A68M	100
 
 #define RESISTOR_MAX_VAL	200
 #define RESISTOR_MIN_VAL		100
@@ -78,87 +76,20 @@ extern char g_CHG_mode;
 #endif
 
 /* -------------------------------------------------------------------------- */
-/*
-int NVT_SrcOCVtoPerTbl[OCV_TBL_SIZE]={
-	3400, 3489, 3554, 3606, 3646, 3669, 3678, 3684, 3688, 3690,
-	3693, 3695, 3698, 3700, 3706, 3717, 3725, 3732, 3742, 3748,
-	3753, 3757, 3763, 3767, 3772, 3775, 3779, 3783, 3785, 3789,
-	3792, 3795, 3799, 3801, 3804, 3805, 3808, 3810, 3813, 3815,
-	3818, 3820, 3823, 3826, 3829, 3832, 3835, 3839, 3842, 3845,
+int Robin_SrcOCVtoPerTbl[OCV_TBL_SIZE]={
+	3400, 3486, 3547, 3595, 3634, 3663, 3674, 3679, 3681, 3683,
+	3684, 3686, 3687, 3692, 3701, 3710, 3716, 3723, 3730, 3734,
+	3738, 3742, 3746, 3751, 3755, 3759, 3762, 3765, 3769, 3771,
+	3774, 3777, 3780, 3782, 3785, 3788, 3791, 3794, 3797, 3801,
+	3804, 3807, 3811, 3815, 3819, 3823, 3828, 3832, 3837, 3843, 
 
-	3850, 3853, 3858, 3863, 3867, 3872, 3877, 3883, 3889, 3897,
-	3905, 3917, 3926, 3935, 3944, 3951, 3958, 3965, 3972, 3978,
-	3986, 3992, 3999, 4007, 4014, 4020, 4031, 4039, 4046, 4055,
-	4064, 4071, 4080, 4090, 4097, 4108, 4118, 4127, 4135, 4146,
-	4155, 4165, 4175, 4185, 4196, 4207, 4217, 4228, 4238, 4248,
-	4260
+	3848, 3854, 3861, 3869, 3877, 3886, 3895, 3903, 3911, 3919,
+	3926, 3932, 3939, 3946, 3953, 3959, 3963, 3966, 3971, 3979, 
+	3988, 4001, 4015, 4032, 4048, 4060, 4065, 4069, 4076, 4084, 
+	4094, 4104, 4114, 4123, 4134, 4144, 4154, 4164, 4174, 4184, 
+	4194, 4205, 4216, 4227, 4234, 4242, 4250, 4259, 4268, 4278, 
+	4284
 };
-*/
-int NVT_SrcOCVtoPerTbl[OCV_TBL_SIZE]={
-	3400, 3465, 3530, 3582, 3600, 3623, 3633, 3640, 3644, 3646,
-	3649, 3651, 3655, 3657, 3662, 3672, 3679, 3686, 3695, 3702,
-	3709, 3714, 3721, 3726, 3732, 3736, 3741, 3745, 3747, 3751,
-	3754, 3758, 3762, 3764, 3767, 3768, 3771, 3773, 3777, 3779,
-	3782, 3784, 3787, 3790, 3794, 3797, 3800, 3804, 3807, 3811,
-
-	3816, 3819, 3825, 3830, 3833, 3838, 3843, 3849, 3855, 3862,
-	3871, 3884, 3894, 3904, 3914, 3921, 3928, 3936, 3943, 3949,
-	3958, 3965, 3974, 3983, 3991, 3998, 4009, 4016, 4022, 4031,
-	4039, 4046, 4055, 4065, 4072, 4083, 4093, 4102, 4110, 4122,
-	4132, 4143, 4155, 4165, 4196, 4207, 4217, 4228, 4238, 4248,
-	4260
-};
-/*
-int TWS_SrcOCVtoPerTbl[OCV_TBL_SIZE]={
-	3400, 3483, 3543, 3590, 3628, 3655, 3665, 3670, 3672, 3674, 
-	3675, 3677, 3682, 3689, 3695, 3700, 3704, 3709, 3714, 3718,
-	3722, 3725, 3728, 3731, 3733, 3737, 3741, 3745, 3748, 3753,
-	3757, 3762, 3765, 3768, 3771, 3774, 3776, 3779, 3781, 3784,
-	3787, 3790, 3793, 3796, 3799, 3803, 3806, 3810, 3813, 3817,
-
-	3821, 3826, 3830, 3835, 3839, 3845, 3850, 3856, 3862, 3868,
-	3876, 3885, 3895, 3906, 3915, 3924, 3932, 3940, 3948, 3956,
-	3963, 3970, 3979, 3987, 3995, 4003, 4012, 4020, 4029, 4038,
-	4047, 4057, 4066, 4075, 4085, 4095, 4105, 4115, 4125, 4135,
-	4145, 4156, 4166, 4177, 4188, 4199, 4209, 4221, 4232, 4245,
-	4260
-};
-*/
-
-//TWS discharge  vf  OCVtable version20120904 +++
-int TWS_SrcOCVtoPerTbl[OCV_TBL_SIZE]={
-	3400, 3480, 3543, 3592, 3608, 3636, 3648, 3653, 3655, 3657, 
-	3659, 3660, 3666, 3673, 3679, 3682, 3685, 3691, 3694, 3699,
-	3706, 3710, 3713, 3717, 3721, 3726, 3731, 3734, 3738, 3742,
-	3745, 3749, 3752, 3756, 3760, 3761, 3765, 3767, 3770, 3774,
-	3777, 3779, 3782, 3786, 3790, 3793, 3796, 3799, 3803, 3808,
-
-	3812, 3815, 3821, 3826, 3830, 3836, 3839, 3846, 3853, 3858,
-	3863, 3872, 3880, 3888, 3894, 3899, 3906, 3915, 3923, 3930,
-	3939, 3948, 3958, 3966, 3975, 3984, 3990, 3999, 4007, 4017,
-	4025, 4033, 4043, 4052, 4062, 4071, 4080, 4091, 4101, 4113,
-	4123, 4135, 4148, 4158, 4188, 4199, 4210, 4221, 4232, 4246,
-	4260
-};
-//TWS discharge  vf  OCVtable version20120904 ---
-
-#ifdef ASUS_ME175KG_PROJECT
-int ME175KG_SrcOCVtoPerTbl[OCV_TBL_SIZE]={
-	3501, 3531, 3576, 3618, 3639, 3655, 3665, 3673, 3679, 3684,
-	3688, 3692, 3695, 3698, 3701, 3704, 3707, 3711, 3714, 3717,
-	3720, 3724, 3727, 3731, 3734, 3738, 3742, 3746, 3750, 3754,
-	3758, 3762, 3766, 3771, 3775, 3780, 3785, 3790, 3794, 3799,
-	3805, 3810, 3815, 3820, 3826, 3832, 3837, 3843, 3849, 3855, 
-
-	3861, 3867, 3874, 3880, 3886, 3893, 3900, 3907, 3913, 3920,
-	3927, 3934, 3941, 3948, 3955, 3962, 3969, 3977, 3984, 3992, 
-	4000, 4009, 4017, 4026, 4035, 4044, 4054, 4063, 4072, 4082, 
-	4092, 4102, 4112, 4122, 4133, 4143, 4154, 4165, 4176, 4187, 
-	4198, 4210, 4221, 4232, 4244, 4255, 4267, 4279, 4292, 4305, 
-	4310
-};
-#endif
-
 
 
 /* CurrOCVtoPerTbl - to determine which ocv to percent table used */
@@ -397,11 +328,7 @@ static int decideVoltSec(int volt)
 
 	for(j=0;j<20;j++)
 	{ 
-#ifdef ASUS_ME175KG_PROJECT
 		voltTableSec[j]=3447+47*j;
-#else
-		voltTableSec[j]=3440+40*j;
-#endif
 	}
 
 	while(voltTableSec[i]<=volt && i<20)
@@ -420,68 +347,45 @@ enum currentSec{
 
 static int decideCurrSec(int curr)
 {
-    if(curr <= 300){
+    if(curr <= 37){
         return currSectionI;
-    }else if(curr >= 900){
+    }else if(curr >= 185){
         return currSectionIII;
     }else{
         return currSectionII;
     }    
 }
 
-static int decideVf300(int voltSec)
+static int decideVf37(int voltSec)
 {
-#ifdef ASUS_ME175KG_PROJECT
-	int Vf300TableSec[20] = {65,63,60,58,56,50,43,35,36,28,38,40,36,36,36,36,37,38,37,37};
+	int Vf37TableSec[20] = {38,38,38,38,38,43,37,42,43,43,46,43,42,43,42,46,44,45,46,46};
 							//3447 to 4340	interval:47 mV, total:20
-#else
-	int Vf300TableSec[20] = {29,27,27,29,29,35,38,43,41,28,28,28,29,25,24,25,25,24,15,15};
-							//3440 to 4200  interval:40 mV , total:20
-#endif
 	if(voltSec > 19){                      
-		return Vf300TableSec[19];
+		return Vf37TableSec[19];
 	}else{
-		return Vf300TableSec[voltSec];                      
+		return Vf37TableSec[voltSec];                      
 	}
 }
 
-static int decideVf900(int voltSec)
+static int decideVf185(int voltSec)
 {
-#ifdef ASUS_ME175KG_PROJECT
-	int Vf900TableSec[20] = {161,150,135,124,120,115,110,107,104,103,103,108,114,103,102,103,105,107,108,108};
+	int Vf185TableSec[20] = {87,87,87,87,87,87,86,85,92,89,92,98,92,90,100,99,100,105,105,106};
 							//3447 to 4340	interval:47 mV, total:20
-#else
-	//int Vf900TableSec[20] = {15,15,15,9,19,22,29,31,42,45,48,52,64,65,67,65,60,61,33,33};
-	int Vf900TableSec[20] = {15,15,15,9,19,22,29,21,32,35,28,27,39,40,42,40,35,36,8,8};	
-							//3440 to 4200  interval:40 mV , total:20
-#endif
 	if(voltSec > 19){                      
-		return Vf900TableSec[19];
+		return Vf185TableSec[19];
 	}else{
-		return Vf900TableSec[voltSec];                      
+		return Vf185TableSec[voltSec];                      
 	}
 }
 
 static int decideVolSecSpec(int voltSec)
 {
 	if(0==voltSec){
-#ifdef ASUS_ME175KG_PROJECT
 		return 3447;
-#else
-		return 3440;
-#endif
 	}else if(20==voltSec){
-#ifdef ASUS_ME175KG_PROJECT
 		return 4340;
-#else
-		return 4200;
-#endif
     }else{
-#ifdef ASUS_ME175KG_PROJECT
 		return (3447+47*(voltSec-1));
-#else
-		return (3440+40*(voltSec-1));
-#endif
 	}
 }
 
@@ -490,11 +394,11 @@ static void doAdcVfModify(int* volt,int* curr)
 	int voltSec;
 	int currSec;
 	long Vfcurr_seci;
-	long Vf300_seci;
-	long Vf900_seci;
+	long Vf37_seci;
+	long Vf185_seci;
 	long Vfcurr_sec_iplusOne;
-	long Vf300_sec_iplusOne;
-	long Vf900_sec_iplusOne;
+	long Vf37_sec_iplusOne;
+	long Vf185_sec_iplusOne;
 	long Vminus;
 	long voltSpecSeci;
 
@@ -507,55 +411,47 @@ static void doAdcVfModify(int* volt,int* curr)
 
 
 	if(0==voltSec){//voltSec:0~20
-		Vf300_seci = decideVf300(voltSec);
-		Vf300_sec_iplusOne = decideVf300(voltSec);
+		Vf37_seci = decideVf37(voltSec);
+		Vf37_sec_iplusOne = decideVf37(voltSec);
 	}else if(20==voltSec){
-		Vf300_seci = decideVf300(voltSec-1);
-		Vf300_sec_iplusOne = decideVf300(voltSec-1);
+		Vf37_seci = decideVf37(voltSec-1);
+		Vf37_sec_iplusOne = decideVf37(voltSec-1);
 	}else{
-		Vf300_seci = decideVf300(voltSec-1);
-		Vf300_sec_iplusOne = decideVf300(voltSec);
+		Vf37_seci = decideVf37(voltSec-1);
+		Vf37_sec_iplusOne = decideVf37(voltSec);
 	}
 
 	if(0==voltSec){//voltSec:0~20
-		Vf900_seci = decideVf900(voltSec);
-		Vf900_sec_iplusOne = decideVf900(voltSec);
+		Vf185_seci = decideVf185(voltSec);
+		Vf185_sec_iplusOne = decideVf185(voltSec);
 	}else if(20==voltSec){
-		Vf900_seci = decideVf900(voltSec-1);
-		Vf900_sec_iplusOne = decideVf900(voltSec-1);
+		Vf185_seci = decideVf185(voltSec-1);
+		Vf185_sec_iplusOne = decideVf185(voltSec-1);
 	}else{
-		Vf900_seci = decideVf900(voltSec-1);
-		Vf900_sec_iplusOne = decideVf900(voltSec);
+		Vf185_seci = decideVf185(voltSec-1);
+		Vf185_sec_iplusOne = decideVf185(voltSec);
 	}
 
 
 	if(currSectionII==currSec){
-		Vfcurr_seci = Vf300_seci + (*curr-300)*(Vf900_seci-Vf300_seci)/(900-300);
-		Vfcurr_sec_iplusOne = Vf300_sec_iplusOne 
-							+ (*curr-300)*(Vf900_sec_iplusOne-Vf300_sec_iplusOne)/(900-300);
+		Vfcurr_seci = Vf37_seci + (*curr-37)*(Vf185_seci-Vf37_seci)/(185-37);
+		Vfcurr_sec_iplusOne = Vf37_sec_iplusOne 
+							+ (*curr-37)*(Vf185_sec_iplusOne-Vf37_sec_iplusOne)/(185-37);
 	}else if(currSectionI==currSec){
-		Vfcurr_seci = Vf300_seci;
-		Vfcurr_sec_iplusOne = Vf300_sec_iplusOne;
+		Vfcurr_seci = Vf37_seci;
+		Vfcurr_sec_iplusOne = Vf37_sec_iplusOne;
 	}else{//currSectionIII==currSec
-		Vfcurr_seci = Vf900_seci;
-		Vfcurr_sec_iplusOne = Vf900_sec_iplusOne;
+		Vfcurr_seci = Vf185_seci;
+		Vfcurr_sec_iplusOne = Vf185_sec_iplusOne;
 	}
 
 
 	voltSpecSeci =  decideVolSecSpec(voltSec);
 
-#ifdef ASUS_ME175KG_PROJECT
 	Vminus = Vfcurr_seci + (*volt-voltSpecSeci)*(Vfcurr_sec_iplusOne-Vfcurr_seci)/47;
-#elif defined (ASUS_A11_PROJECT)
-	Vminus = Vfcurr_seci + (*volt-voltSpecSeci)*(Vfcurr_sec_iplusOne-Vfcurr_seci)/47;
-#elif defined (ASUS_A68M_PROJECT)
-	Vminus = Vfcurr_seci + (*volt-voltSpecSeci)*(Vfcurr_sec_iplusOne-Vfcurr_seci)/47;
-#else
-	Vminus = Vfcurr_seci + (*volt-voltSpecSeci)*(Vfcurr_sec_iplusOne-Vfcurr_seci)/40;
-#endif
 
-	pr_debug("[BAT][vf]Vf300i:%ld,Vf300i+1:%ld,Vf900i:%ld,Vf900i+1:%ld,Vfcurri:%ld,Vfcurri+1:%ld,Vminus:%ld\n"
-					,Vf300_seci,Vf300_sec_iplusOne,Vf900_seci,Vf900_sec_iplusOne
+	pr_debug("[BAT][vf]Vf37i:%ld,Vf37i+1:%ld,Vf185i:%ld,Vf185i+1:%ld,Vfcurri:%ld,Vfcurri+1:%ld,Vminus:%ld\n"
+					,Vf37_seci,Vf37_sec_iplusOne,Vf185_seci,Vf185_sec_iplusOne
 					,Vfcurr_seci,Vfcurr_sec_iplusOne,Vminus);
 
 	*volt = (*volt)-(int)Vminus;
@@ -563,108 +459,6 @@ static void doAdcVfModify(int* volt,int* curr)
 
 }
 
-
-//Eason: A91 use 200 & 1100mA VF table +++
-static int decideVf200(int voltSec)
-{
-	int Vf300TableSec[20] = {47,47,47,47,47,45,45,48,48,51,52,42,53,53,51,58,58,57,56,25};
-							//3447 to 4340	interval:47 mV, total:20
-
-	if(voltSec > 19){                      
-		return Vf300TableSec[19];
-	}else{
-		return Vf300TableSec[voltSec];                      
-	}
-}
-
-static int decideVf1100(int voltSec)
-{
-	int Vf900TableSec[20] = {200,200,200,200,200,200,200,200,200,201,207,204,205,214,207,188,191,188,200,156};
-							//3447 to 4340	interval:47 mV, total:20
-
-	if(voltSec > 19){                      
-		return Vf900TableSec[19];
-	}else{
-		return Vf900TableSec[voltSec];                      
-	}
-}
-static void doAdcVfModify_A91(int* volt,int* curr)
-{   
-    int voltSec;
-    int currSec;
-    long Vfcurr_seci;
-    long Vf200_seci;
-    long Vf1100_seci;
-    long Vfcurr_sec_iplusOne;
-    long Vf200_sec_iplusOne;
-    long Vf1100_sec_iplusOne;
-    long Vminus;
-    long voltSpecSeci;
-    
-
-    *curr = (*curr)*(-1);//for calculate convinient
-    
-    voltSec = decideVoltSec(*volt);
-    currSec = decideCurrSec(*curr);
-
-    pr_debug("[BAT][vf]Vsec:%d,Csec:%d\n",voltSec,currSec);
-
-   
-    if(0==voltSec){//voltSec:0~20
-        Vf200_seci = decideVf200(voltSec);
-        Vf200_sec_iplusOne = decideVf200(voltSec);
-    }else if(20==voltSec){
-        Vf200_seci = decideVf200(voltSec-1);
-        Vf200_sec_iplusOne = decideVf200(voltSec-1);
-    }else{
-        Vf200_seci = decideVf200(voltSec-1);
-        Vf200_sec_iplusOne = decideVf200(voltSec);
-    }
-
-    if(0==voltSec){//voltSec:0~20
-        Vf1100_seci = decideVf1100(voltSec);
-        Vf1100_sec_iplusOne = decideVf1100(voltSec);
-    }else if(20==voltSec){
-        Vf1100_seci = decideVf1100(voltSec-1);
-        Vf1100_sec_iplusOne = decideVf1100(voltSec-1);
-    }else{
-        Vf1100_seci = decideVf1100(voltSec-1);
-        Vf1100_sec_iplusOne = decideVf1100(voltSec);
-    }
-    
-
-    if(currSectionII==currSec){
-        Vfcurr_seci = Vf200_seci + (*curr-200)*(Vf1100_seci-Vf200_seci)/(1100-200);
-        Vfcurr_sec_iplusOne = Vf200_sec_iplusOne 
-                            + (*curr-200)*(Vf1100_sec_iplusOne-Vf200_sec_iplusOne)/(1100-200);
-    }else if(currSectionI==currSec){
-        Vfcurr_seci = Vf200_seci;
-        Vfcurr_sec_iplusOne = Vf200_sec_iplusOne;
-    }else{//currSectionIII==currSec
-        Vfcurr_seci = Vf1100_seci;
-        Vfcurr_sec_iplusOne = Vf1100_sec_iplusOne;
-    }
-
-
-    voltSpecSeci =  decideVolSecSpec(voltSec);
-
-#ifdef CONFIG_PM_8941_CHARGER
-	Vminus = Vfcurr_seci + (*volt-voltSpecSeci)*(Vfcurr_sec_iplusOne-Vfcurr_seci)/47;
-#else
-	Vminus = Vfcurr_seci + (*volt-voltSpecSeci)*(Vfcurr_sec_iplusOne-Vfcurr_seci)/40;
-#endif
-
-    pr_debug("[BAT][vf]Vf200i:%ld,Vf200i+1:%ld,Vf1100i:%ld,Vf1100i+1:%ld,Vfcurri:%ld,Vfcurri+1:%ld,Vminus:%ld\n"
-                    ,Vf200_seci,Vf200_sec_iplusOne,Vf1100_seci,Vf1100_sec_iplusOne
-                    ,Vfcurr_seci,Vfcurr_sec_iplusOne,Vminus);
-
-    *volt = (*volt)-(int)Vminus;
-    *curr = (*curr)*(-1);//for calculate convinient
-    
-}
-//Eason: A91 use 200 & 1100mA VF table ---
-
-//Eason: A91 get SWgauge percent now+++
 /*get SWgauge percent by thermal tool, this result is not work after filter
 */
 AXC_Gauge_A66 * SW_this;
@@ -683,31 +477,24 @@ int cal_SWgauge_capacity(void)
 #ifdef CONFIG_PM_8226_CHARGER
 	if( (curr < -100) && (1==getIfonline()) && (false==pm8226_is_full()) )
 #else
-      if( (curr < -100) && (1==getIfonline()) && (false==smb346_IsFull()) )
+	if( (curr < -100) && (1==getIfonline()) && (false==smb346_IsFull()) )
 #endif
 	{
-            printk("[BAT][vf][SWgauge]beforeVF: V:%d,C:%d\n",volt,curr);
+		printk("[BAT][vf][SWgauge]beforeVF: V:%d,C:%d\n",volt,curr);
 
-#ifdef CONFIG_PM_8226_CHARGER
-		 doAdcVfModify_A91(&volt,&curr);
-#else
-            doAdcVfModify(&volt,&curr);
-#endif
-            //ASUS_BSP Eason_Chang add event log +++
-            printk("[BAT][vf][SWgauge]afterVF: V:%d,C:%d\n",volt,curr);
-            //ASUS_BSP Eason_Chang add event log ---
+		doAdcVfModify(&volt,&curr);
+
+		printk("[BAT][vf][SWgauge]afterVF: V:%d,C:%d\n",volt,curr);
 	}
 
 	ocv_percent = cal_ocv_percent_when_discharging(SW_this, volt, curr);
 
 	return ocv_percent;
-	
 }
-//Eason: A91 get SWgauge percent now---
 
 /* cal_bat_capacity_work -
  */
- int RSOC=0;
+int RSOC=0;
 static void cal_bat_capacity_work(struct work_struct *work)
 {
 	//int one_time_volt;
@@ -741,7 +528,7 @@ static void cal_bat_capacity_work(struct work_struct *work)
 	printk("[BAT][Gau][A66]judge curr:%d\n",one_time_curr);
 	*/
 
-    //Eason always use V+IR  +++++++++//
+	//Eason always use V+IR  +++++++++//
 	//if (one_time_curr > 0) {  // on discharging
 		this->msParentGauge.ReadVoltCurr(
 			&this->msParentGauge,
@@ -751,52 +538,47 @@ static void cal_bat_capacity_work(struct work_struct *work)
 
 	printk("[BAT][Gau]:volt = %d curr = %d \n",volt,curr);
 #ifdef CONFIG_PM_8226_CHARGER
-		if( (curr < -100) && (1==getIfonline()) && (false==pm8226_is_full()) )
+	if( (curr < -100) && (1==getIfonline()) && (false==pm8226_is_full()) )
 #else
-        if( (curr < -100) && (1==getIfonline()) && (false==smb346_IsFull()) )
+	if( (curr < -100) && (1==getIfonline()) && (false==smb346_IsFull()) )
 #endif
-        {
-            pr_debug("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
-#ifdef CONFIG_PM_8941_CHARGER
-		doAdcVfModify_A91(&volt,&curr);
-#else
-            doAdcVfModify(&volt,&curr);
-#endif
-            pr_debug("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
-            //ASUS_BSP Eason_Chang add event log +++
-//            ASUSEvtlog("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
-            //ASUS_BSP Eason_Chang add event log ---
-        }
+	{
+		pr_debug("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
+
+		doAdcVfModify(&volt,&curr);
+
+		pr_debug("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
+		//ASUS_BSP Eason_Chang add event log +++
+//		ASUSEvtlog("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
+		//ASUS_BSP Eason_Chang add event log ---
+	}
 #ifdef CONFIG_PM_8226_CHARGER        
-        else if((true == WhenBootUpDoVf) && (curr < -100) && (false==pm8226_is_full()))//Eason: Do VF with Cable when boot up+++
+	else if((true == WhenBootUpDoVf) && (curr < -100) && (false==pm8226_is_full()))//Eason: Do VF with Cable when boot up+++
 #else
-		else if((true == WhenBootUpDoVf) && (curr < -100) && (false==smb346_IsFull()))//Eason: Do VF with Cable when boot up+++
+	else if((true == WhenBootUpDoVf) && (curr < -100) && (false==smb346_IsFull()))//Eason: Do VF with Cable when boot up+++
 #endif
-        {
-        	online = getIfonline();
+	{
+		online = getIfonline();
 
-        	if( 1==online )
-            {
-                printk("[BAT][vf]:Do VF with Cable when boot up\n");
-                printk("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
-#ifdef CONFIG_PM_8941_CHARGER  				
-		   doAdcVfModify_A91(&volt,&curr);
-#else
-		   doAdcVfModify(&volt,&curr);
-#endif
-                printk("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
-            } 
-        }//Eason: Do VF with Cable when boot up---
+		if( 1==online )
+		{
+			printk("[BAT][vf]:Do VF with Cable when boot up\n");
+			printk("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
 
-        WhenBootUpDoVf = false;//Eason: Do VF with Cable when boot up
+			doAdcVfModify(&volt,&curr);
+			printk("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
+		} 
+	}//Eason: Do VF with Cable when boot up---
+
+	WhenBootUpDoVf = false;//Eason: Do VF with Cable when boot up
     
-        if (volt > 0){
-    		ocv_percent = cal_ocv_percent_when_discharging(this, volt, curr);
+	if (volt > 0){
+		ocv_percent = cal_ocv_percent_when_discharging(this, volt, curr);
 		RSOC=ocv_percent;
 		pr_debug("[BAT][Gau][A66] %s(), discharging, ocv = %d\n", __func__, ocv_percent);
-        }else{
-            pr_err("[BAT][Gau][A66]:Error: volt not >0\n");
-        }
+	}else{
+		pr_err("[BAT][Gau][A66]:Error: volt not >0\n");
+	}
 	/*} else { // on charging
 		this->gaugeCb->askSuspendCharging(this->gaugeCb);
 		this->msParentGauge.ReadVoltCurr(
@@ -812,16 +594,16 @@ static void cal_bat_capacity_work(struct work_struct *work)
     //Eason always use V+IR  --------//
 	wake_unlock(&this->calBatCapWlock);
 
-       //ASUS_BSP  +++ Eason_Chang "add BAT info time"
-        ReportTime();
-       //ASUS_BSP  --- Eason_Chang "add BAT info time"
+	//ASUS_BSP  +++ Eason_Chang "add BAT info time"
+	ReportTime();
+	//ASUS_BSP  --- Eason_Chang "add BAT info time"
 	
-    if (volt >0 ){
-        this->ocvPercent = ocv_percent;
-    	this->gaugeCb->onCapacityReply(&this->msParentGauge, this->gaugeCb, ocv_percent, BAT_CAP_REPLY_OK);
-    }else{
-        this->gaugeCb->onCapacityReply(&this->msParentGauge, this->gaugeCb, ocv_percent, BAT_CAP_REPLY_ERR);
-    }
+	if (volt >0 ){
+		this->ocvPercent = ocv_percent;
+		this->gaugeCb->onCapacityReply(&this->msParentGauge, this->gaugeCb, ocv_percent, BAT_CAP_REPLY_OK);
+	}else{
+		this->gaugeCb->onCapacityReply(&this->msParentGauge, this->gaugeCb, ocv_percent, BAT_CAP_REPLY_ERR);
+	}
 // TODO: need to add BAT_CAP_REPLY_ERR case
 
 	return;
@@ -1323,18 +1105,7 @@ void AXC_Gauge_A66_Constructor(AXI_Gauge *apGauge, int anType, AXI_Gauge_Callbac
 
 	BUG_ON((NULL == gaugeCb) || (NULL == apGauge));
 
-//ASUS_BSP Eason read battery ID+++
-#ifdef ASUS_ME175KG_PROJECT
-	CurrOCVtoPerTbl = ME175KG_SrcOCVtoPerTbl;
-#else
-	if(g_BatteryID_value<1100000){
-		CurrOCVtoPerTbl = NVT_SrcOCVtoPerTbl;
-	}
-	else{
-		CurrOCVtoPerTbl = TWS_SrcOCVtoPerTbl;
-	}
-#endif
-//ASUS_BSP Eason read battery ID---    
+	CurrOCVtoPerTbl = Robin_SrcOCVtoPerTbl;
 
 	this->gaugeCb = gaugeCb;
 
