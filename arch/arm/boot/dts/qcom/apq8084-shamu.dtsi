@@ -41,7 +41,24 @@
 
 &soc {
 	sound {
+		qcom,model = "apq8084-taiko-tfa9890_stereo_codec-snd-card";
 		qcom,ext_hs_detect = "fsa8500";
+		qcom,tfa9890-stereo;
+		qcom,tfa9890-left-name = "tfa9890.8-0035";
+		qcom,tfa9890-right-name = "tfa9890.8-0034";
+		qcom,tfa9890-earpiece-gpio = <&msmgpio 130 0>;
+	};
+
+	qcom,msm-dai-stub {
+		compatible = "qcom,msm-dai-stub";
+		qcom,msm-dai-tfa9890-stub-left-rx {
+			compatible = "qcom,msm-dai-stub-dev";
+			qcom,msm-dai-stub-dev-id = <4>;
+		};
+		qcom,msm-dai-tfa9890-stub-right-rx {
+			compatible = "qcom,msm-dai-stub-dev";
+			qcom,msm-dai-stub-dev-id = <5>;
+		};
 	};
 
 	/delete-node/ qcom,cnss@0d400000;
@@ -203,6 +220,22 @@
 		rated_voltage = <0x70>;         /* 2.4v */
 		overdrive_voltage = <0x89>;     /* 3.0v */
 	};
+
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		tfa_vdd-supply = <&pma8084_s4>;
+		nxp,tfa_max-vol-steps = <15>;
+		gpios = <&msmgpio 129 0>;     /* RESET */
+		nxp,tfa-dev = "right";
+	};
+	tfa9890@35 {
+		compatible = "nxp,tfa9890";
+		reg = <0x35>;
+		tfa_vdd-supply = <&pma8084_s4>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "left";
+	};
 };
 
 
@@ -252,6 +285,7 @@
 			&disp_v1_en_default
 			&ter_auxpcm_default
 			&bt_wakeup_default
+			&tfa9890_earpiece_default
 		>;
 
 	cycapsense {
@@ -268,6 +302,18 @@
 		qcom,pin-func = <0>;
 		label = "bt_wakeup";
 		bt_wakeup_default: default {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	/* tfa9890 earpiece */
+	tfa9890_earpiece_en {
+		qcom,pins = <&gp 130>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "tfa9890_earpiece";
+		tfa9890_earpiece_default: default {
 			bias-disable;
 			drive-strength = <2>;
 		};
