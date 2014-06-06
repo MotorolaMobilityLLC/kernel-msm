@@ -166,6 +166,11 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
             limLog(pMac, LOGP, FL("Could not update local power constraint to cfg."));
         }
 #endif
+        psessionEntry->countryInfoPresent = FALSE; /* Initializing before first use */
+        if (pBeaconStruct->countryInfoPresent)
+        {
+            psessionEntry->countryInfoPresent = TRUE;
+        }
     }
     vos_mem_free(pBeaconStruct);
     return;
