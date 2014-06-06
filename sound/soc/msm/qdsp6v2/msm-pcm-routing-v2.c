@@ -3533,6 +3533,10 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 	SND_SOC_DAPM_MIXER("QCHAT_Tx Mixer",
 	SND_SOC_NOPM, 0, 0, tx_qchat_mixer_controls,
 	ARRAY_SIZE(tx_qchat_mixer_controls)),
+	SND_SOC_DAPM_AIF_OUT("TFA9890_STUB_L", "TFA9890_LEFT Playback",
+			0, 0, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("TFA9890_STUB_R", "TFA9890_RIGHT Playback",
+			0, 0, 0, 0),
 	/* Virtual Pins to force backends ON atm */
 	SND_SOC_DAPM_OUTPUT("BE_OUT"),
 	SND_SOC_DAPM_INPUT("BE_IN"),
