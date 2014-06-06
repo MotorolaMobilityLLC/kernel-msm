@@ -795,8 +795,8 @@
 		compatible = "maxim,max17050";
 		reg = <0x36>;
 		maxim,rsns-microohm = <10000>;
-
-		interrupts = <&msmgpio 123 0x0>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <123 0x0>;
 		gpios = <&msmgpio 123 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
 		gpio-names = "cc-alert";
 		maxim,regs-init-data = <
