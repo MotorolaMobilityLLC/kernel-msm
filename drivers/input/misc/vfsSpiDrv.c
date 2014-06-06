@@ -45,7 +45,7 @@
 #include <linux/gpio.h>
 #include <linux/i2c/twl.h>
 #include <linux/wait.h>
-#include <asm-generic/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/irq.h>
 
 #include <asm-generic/siginfo.h>
