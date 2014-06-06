@@ -395,6 +395,7 @@ static int android_enable(struct android_dev *dev)
 			}
 		}
 		usb_gadget_connect(cdev->gadget);
+		printk("[USB] android_enable\n");
 	}
 
 	return err;
@@ -407,6 +408,7 @@ static void android_disable(struct android_dev *dev)
 
 	if (dev->disable_depth++ == 0) {
 		usb_gadget_disconnect(cdev->gadget);
+		printk("[USB] android_disable\n");
 		/* Cancel pending control requests */
 		usb_ep_dequeue(cdev->gadget->ep0, cdev->req);
 
@@ -662,6 +664,8 @@ acm_function_bind_config(struct android_usb_function *f,
 	acm_initialized = 1;
 	strlcpy(buf, acm_transports, sizeof(buf));
 	b = strim(buf);
+
+	printk("[USB] func:%s\n",buf);
 
 	while (b) {
 		name = strsep(&b, ",");

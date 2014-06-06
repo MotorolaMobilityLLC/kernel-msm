@@ -634,6 +634,8 @@ static int set_config(struct usb_composite_dev *cdev,
 	INFO(cdev, "%s config #%d: %s\n",
 	     usb_speed_string(gadget->speed),
 	     number, c ? c->label : "unconfigured");
+	
+	printk("[USB] speed:%d\n",gadget->speed);
 
 	if (!c)
 		goto done;
