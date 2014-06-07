@@ -1955,6 +1955,128 @@ static void getBcnMissRateCB(VOS_STATUS status, int bcnMissRate, void *data)
     return;
 }
 
+static int hdd_get_dwell_time(hdd_config_t *pCfg, tANI_U8 *command, char *extra, tANI_U8 n, tANI_U8 *len)
+{
+    int ret = 0;
+
+    if (!pCfg || !command || !extra || !len)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+             "%s: argument passsed for GETDWELLTIME is incorrect", __func__);
+        ret = -EINVAL;
+        return ret;
+    }
+
+    if (strncmp(command, "GETDWELLTIME ACTIVE MAX", 23) == 0)
+    {
+        *len = scnprintf(extra, n, "GETDWELLTIME ACTIVE MAX %u\n",
+                (int)pCfg->nActiveMaxChnTime);
+        return ret;
+    }
+    else if (strncmp(command, "GETDWELLTIME ACTIVE MIN", 23) == 0)
+    {
+        *len = scnprintf(extra, n, "GETDWELLTIME ACTIVE MIN %u\n",
+                (int)pCfg->nActiveMinChnTime);
+        return ret;
+    }
+    else if (strncmp(command, "GETDWELLTIME PASSIVE MAX", 24) == 0)
+    {
+        *len = scnprintf(extra, n, "GETDWELLTIME PASSIVE MAX %u\n",
+                (int)pCfg->nPassiveMaxChnTime);
+        return ret;
+    }
+    else if (strncmp(command, "GETDWELLTIME PASSIVE MIN", 24) == 0)
+    {
+        *len = scnprintf(extra, n, "GETDWELLTIME PASSIVE MIN %u\n",
+                (int)pCfg->nPassiveMinChnTime);
+        return ret;
+    }
+    else
+    {
+        ret = -EINVAL;
+    }
+
+    return ret;
+}
+
+static int hdd_set_dwell_time(hdd_adapter_t *pAdapter, tANI_U8 *command)
+{
+    hdd_config_t *pCfg;
+    tANI_U8 *value = command;
+    int val = 0, ret = 0, temp = 0;
+
+    if (!pAdapter || !command || !(pCfg = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini))
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+         "%s: argument passed for SETDWELLTIME is incorrect", __func__);
+        ret = -EINVAL;
+        return ret;
+    }
+
+    if (strncmp(command, "SETDWELLTIME ACTIVE MAX", 23) == 0 )
+    {
+        value = value + 24;
+        temp = kstrtou32(value, 10, &val);
+        if (temp != 0 || val < CFG_ACTIVE_MAX_CHANNEL_TIME_MIN ||
+                         val > CFG_ACTIVE_MAX_CHANNEL_TIME_MAX )
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+             "%s: argument passed for SETDWELLTIME ACTIVE MAX is incorrect", __func__);
+            ret = -EFAULT;
+            return ret;
+        }
+        pCfg->nActiveMaxChnTime = val;
+    }
+    else if (strncmp(command, "SETDWELLTIME ACTIVE MIN", 23) == 0)
+    {
+        value = value + 24;
+        temp = kstrtou32(value, 10, &val);
+        if (temp !=0 || val < CFG_ACTIVE_MIN_CHANNEL_TIME_MIN  ||
+                        val > CFG_ACTIVE_MIN_CHANNEL_TIME_MAX )
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+             "%s: argument passsed for SETDWELLTIME ACTIVE MIN is incorrect", __func__);
+            ret = -EFAULT;
+            return ret;
+        }
+        pCfg->nActiveMinChnTime = val;
+    }
+    else if (strncmp(command, "SETDWELLTIME PASSIVE MAX", 24) == 0)
+    {
+        value = value + 25;
+        temp = kstrtou32(value, 10, &val);
+        if (temp != 0 || val < CFG_PASSIVE_MAX_CHANNEL_TIME_MIN ||
+                         val > CFG_PASSIVE_MAX_CHANNEL_TIME_MAX )
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+             "%s: argument passed for SETDWELLTIME PASSIVE MAX is incorrect", __func__);
+            ret = -EFAULT;
+            return ret;
+        }
+        pCfg->nPassiveMaxChnTime = val;
+    }
+    else if (strncmp(command, "SETDWELLTIME PASSIVE MIN", 24) == 0)
+    {
+        value = value + 25;
+        temp = kstrtou32(value, 10, &val);
+        if (temp != 0 || val < CFG_PASSIVE_MIN_CHANNEL_TIME_MIN ||
+                         val > CFG_PASSIVE_MIN_CHANNEL_TIME_MAX )
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+             "%s: argument passed for SETDWELLTIME PASSIVE MIN is incorrect", __func__);
+            ret = -EFAULT;
+            return ret;
+        }
+        pCfg->nPassiveMinChnTime = val;
+    }
+    else
+    {
+        ret = -EINVAL;
+    }
+
+    return ret;
+}
+
 static int hdd_driver_command(hdd_adapter_t *pAdapter,
                               hdd_priv_data_t *ppriv_data)
 {
@@ -3546,9 +3668,9 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            char extra[32];
            tANI_U8 len = 0;
 
-           len = scnprintf(extra, sizeof(extra), "GETDWELLTIME %u\n",
-                  (int)pCfg->nActiveMaxChnTime);
-           if (copy_to_user(priv_data.buf, &extra, len + 1))
+           memset(extra, 0, sizeof(extra));
+           ret = hdd_get_dwell_time(pCfg, command, extra, sizeof(extra), &len);
+           if (ret != 0 || copy_to_user(priv_data.buf, &extra, len + 1))
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: failed to copy data to user buffer", __func__);
@@ -3559,21 +3681,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
        }
        else if (strncmp(command, "SETDWELLTIME", 12) == 0)
        {
-           tANI_U8 *value = command;
-           hdd_config_t *pCfg = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
-           int val = 0, temp;
-
-           value = value + 13;
-           temp = kstrtou32(value, 10, &val);
-           if ( temp != 0 || val < CFG_ACTIVE_MAX_CHANNEL_TIME_MIN ||
-                             val > CFG_ACTIVE_MAX_CHANNEL_TIME_MAX )
-           {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "%s: argument passed for SETDWELLTIME is incorrect", __func__);
-               ret = -EFAULT;
-               goto exit;
-           }
-           pCfg->nActiveMaxChnTime = val;
+           ret = hdd_set_dwell_time(pAdapter, command);
        }
        else if ( strncasecmp(command, "MIRACAST", 8) == 0 )
        {
