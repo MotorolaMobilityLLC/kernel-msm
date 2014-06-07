@@ -954,6 +954,13 @@ static int send_adm_cal_block(int port_id, struct acdb_cal_block *aud_cal,
 		goto done;
 	}
 
+	if (perf_mode == LEGACY_PCM_MODE &&
+		this_adm.topology[index] == DS2_ADM_COPP_TOPOLOGY_ID) {
+		pr_err("%s: perf_mode %d, topology 0x%x", __func__, perf_mode,
+			this_adm.topology[index]);
+		goto done;
+	}
+
 	adm_params.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
 		APR_HDR_LEN(20), APR_PKT_VER);
 	adm_params.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
