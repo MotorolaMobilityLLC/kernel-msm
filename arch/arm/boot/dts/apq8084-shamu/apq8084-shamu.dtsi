@@ -105,6 +105,11 @@
 	regulator-always-on;
 };
 
+/* VDD_P5 always on */
+&pma8084_l9 {
+	regulator-always-on;
+};
+
 &pma8084_l17 {
 	regulator-min-microvolt = <3100000>;
 	regulator-max-microvolt = <3100000>;
