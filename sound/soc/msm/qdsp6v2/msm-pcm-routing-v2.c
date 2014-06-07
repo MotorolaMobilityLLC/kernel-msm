@@ -2764,11 +2764,12 @@ static int msm_routing_put_stereo_to_custom_stereo_control(
 	pr_debug("%s:is_custom_stereo_on %d\n", __func__, is_custom_stereo_on);
 	for (be_index = 0; be_index < MSM_BACKEND_DAI_MAX; be_index++) {
 		port_id = msm_bedais[be_index].port_id;
-		if (((port_id != SLIMBUS_0_RX) &&
-		     (port_id != RT_PROXY_PORT_001_RX)) ||
-		    (!msm_bedais[be_index].active)) {
+		if (!msm_bedais[be_index].active)
 			continue;
-		}
+		if ((port_id != SLIMBUS_0_RX) &&
+		     (port_id != RT_PROXY_PORT_001_RX))
+			continue;
+
 		for_each_set_bit(i, &msm_bedais[be_index].fe_sessions,
 				MSM_FRONTEND_DAI_MM_SIZE) {
 			if (fe_dai_perf_mode[i][SESSION_TYPE_RX] !=
