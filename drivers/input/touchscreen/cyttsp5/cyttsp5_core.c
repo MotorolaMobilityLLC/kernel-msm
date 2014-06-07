@@ -4121,6 +4121,13 @@ static irqreturn_t cyttsp5_irq(int irq, void *handle)
 	struct cyttsp5_core_data *cd = handle;
 	int rc;
 
+	if (cd->cpdata->irq_stat &&
+		cd->cpdata->irq_stat(cd->cpdata, cd->dev)) {
+		dev_err(cd->dev,
+			"%s: int pin is high before i2c read\n", __func__);
+		return IRQ_HANDLED;
+	}
+
 	if (cd->irq_wake) {
 		dev_err(cd->dev, "%s: touch wake!!\n", __func__);
 		wake_lock_timeout(&cd->report_touch_wake_lock, 3 * HZ);
@@ -4235,18 +4242,20 @@ static int cyttsp5_reset_and_wait(struct cyttsp5_core_data *cd)
 {
 	int rc;
 	int t;
+	static bool do_reset = false;
 
 	mutex_lock(&cd->system_lock);
 	cd->hid_reset_cmd_state = 1;
 	mutex_unlock(&cd->system_lock);
 
-	if (cd->sysinfo.ready) {
+	if (do_reset) {
 		rc = cyttsp5_reset(cd);
 		if (rc < 0)
 			goto error;
 	} else {
 		dev_dbg(cd->dev, "%s: hw power on now\n", __func__);
 		rc = cd->cpdata->power(cd->cpdata, 1, cd->dev, 0);
+		do_reset = true;
 	}
 
 	t = wait_event_timeout(cd->wait_q, (cd->hid_reset_cmd_state == 0),
@@ -4569,16 +4578,31 @@ static int cyttsp5_check_silicon_id(struct cyttsp5_core_data *cd)
 	return 0;
 }
 
+#define RETRY_OR_EXIT(retry_cnt, retry_label, exit_label) \
+do { \
+	if (retry_cnt) \
+		goto retry_label; \
+	goto exit_label; \
+} while (0)
+
+#define CY_CORE_STARTUP_RETRY_COUNT	3
+
 static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 {
 	int rc;
-	int retry = 3;
+	int retry = CY_CORE_STARTUP_RETRY_COUNT;
+	int retry2 = CY_CORE_STARTUP_RETRY_COUNT;
 
 #ifdef TTHE_TUNER_SUPPORT
 	tthe_print(cd, NULL, 0, "enter startup");
 #endif
 
 	cyttsp5_stop_wd_timer(cd);
+
+reset:
+	if (retry != CY_CORE_STARTUP_RETRY_COUNT)
+		dev_dbg(cd->dev, "%s: Retry %d\n", __func__,
+			CY_CORE_STARTUP_RETRY_COUNT - retry);
 
 	if (cd->sysinfo.ready) {
 		rc = cyttsp4_check_and_deassert_int(cd);
@@ -4597,7 +4621,7 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 	if (rc < 0) {
 		dev_err(cd->dev, "%s: Error on getting HID descriptor r=%d\n",
 			__func__, rc);
-		goto exit;
+		RETRY_OR_EXIT(retry--, reset, exit);
 	}
 	cd->mode = cyttsp5_get_mode(cd, &cd->hid_desc);
 
@@ -4608,18 +4632,18 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 		if (rc < 0) {
 			dev_err(cd->dev, "%s: Error on launch app r=%d\n",
 				__func__, rc);
-			goto exit;
+			RETRY_OR_EXIT(retry--, reset, exit);
 		}
 		rc = cyttsp5_get_hid_descriptor_(cd, &cd->hid_desc);
 		if (rc < 0) {
 			dev_err(cd->dev,
 				"%s: Error on getting HID descriptor r=%d\n",
 				__func__, rc);
-			goto exit;
+			RETRY_OR_EXIT(retry--, reset, exit);
 		}
 		cd->mode = cyttsp5_get_mode(cd, &cd->hid_desc);
 		if (cd->mode == CY_MODE_BOOTLOADER)
-			goto exit;
+			RETRY_OR_EXIT(retry--, reset, exit);
 	}
 
 	mutex_lock(&cd->system_lock);
@@ -4640,7 +4664,7 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 		dev_err(cd->dev, "%s: Unknown mode\n", __func__);
 		rc = -ENODEV;
 		mutex_unlock(&cd->system_lock);
-		goto exit;
+		RETRY_OR_EXIT(retry--, reset, exit);
 	}
 	mutex_unlock(&cd->system_lock);
 
@@ -4649,20 +4673,22 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 	if (rc < 0) {
 		dev_err(cd->dev, "%s: Error on getting report descriptor r=%d\n",
 			__func__, rc);
-		goto exit;
+		RETRY_OR_EXIT(retry--, reset, exit);
 	}
 
 	rc = cyttsp5_hid_output_get_sysinfo_(cd);
 	if (rc) {
 		dev_err(cd->dev, "%s: Error on getting sysinfo r=%d\n",
 			__func__, rc);
-		goto exit;
+		RETRY_OR_EXIT(retry--, reset, exit);
 	}
 
 	rc = cyttsp5_hid_output_suspend_scanning_(cd);
-	if (rc)
+	if (rc) {
 		dev_err(cd->dev, "%s: error on suspend scan, rc=%d\n",
 			__func__, rc);
+		RETRY_OR_EXIT(retry--, reset, exit);
+	}
 
 	rc = cyttsp5_get_config_ver_(cd);
 	if (rc)
@@ -4676,16 +4702,18 @@ static int cyttsp5_startup_(struct cyttsp5_core_data *cd)
 
 #ifdef SAMSUNG_TSP_INFO
 	rc = cyttsp5_si_get_samsung_tsp_info_(cd);
-	if (rc)
+	if (rc) {
 		dev_err(cd->dev, "%s: failed to get samsung tsp info rc=%d\n",
 			__func__, rc);
+		RETRY_OR_EXIT(retry--, reset, exit);
+	}
 #endif
 
-	while (retry--) {
+	while (retry2--) {
 		rc = cyttsp5_hid_output_resume_scanning_(cd);
 		if (rc)
 			dev_err(cd->dev, "%s: error on resume scan, rc=%d, retry=%d\n",
-				__func__, rc, retry);
+				__func__, rc, retry2);
 		else
 			break;
 	}
@@ -5672,6 +5700,7 @@ error_startup_loader:
 	cyttsp5_stop_wd_timer(cd);
 	cyttsp5_free_si_ptrs(cd);
 error_start_up:
+	wake_lock_destroy(&cd->report_touch_wake_lock);
 	remove_sysfs_interfaces(dev);
 error_attr_create:
 	del_timer(&cd->watchdog_timer);

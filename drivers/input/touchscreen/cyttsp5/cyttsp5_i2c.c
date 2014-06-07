@@ -141,8 +141,10 @@ static int cyttsp5_hw_power(struct device *dev, int onoff)
 static int cyttsp5_xres(struct cyttsp5_core_platform_data *pdata,
 		struct device *dev)
 {
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	int rc;
 
+	disable_irq(cd->irq);
 	rc = cyttsp5_hw_power(dev, 0);
 	if (rc) {
 		dev_err(dev, "%s: Fail power down HW\n", __func__);
@@ -157,6 +159,7 @@ static int cyttsp5_xres(struct cyttsp5_core_platform_data *pdata,
 		goto exit;
 	}
 	msleep(100);
+	enable_irq(cd->irq);
 
 exit:
 	return rc;
@@ -674,16 +677,26 @@ static int cyttsp5_devtree_clean_pdata(struct device *adap_dev)
  *******************************************/
 
 #define CY_I2C_DATA_SIZE  (2 * 256)
+#define I2C_RETRY_TIMES		3
 
 static int cyttsp5_i2c_read_default(struct device *dev, void *buf, int size)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	int rc;
+	int retry;
 
 	if (!buf || !size || size > CY_I2C_DATA_SIZE)
 		return -EINVAL;
 
-	rc = i2c_master_recv(client, buf, size);
+	for (retry = 0; retry < I2C_RETRY_TIMES; retry++) {
+		rc = i2c_master_recv(client, buf, size);
+		if (rc < 0)
+			msleep(20);
+		else
+			break;
+	}
+	if (retry == I2C_RETRY_TIMES)
+		dev_err(dev, "%s: I2C retry 3 times over [%d]\n", __func__, rc);
 
 	return (rc < 0) ? rc : rc != size ? -EIO : 0;
 }
@@ -695,6 +708,7 @@ static int cyttsp5_i2c_read_default_nosize(struct device *dev, u8 *buf, u32 max)
 	u8 msg_count = 1;
 	int rc;
 	u32 size;
+	int retry;
 
 	if (!buf)
 		return -EINVAL;
@@ -703,7 +717,16 @@ static int cyttsp5_i2c_read_default_nosize(struct device *dev, u8 *buf, u32 max)
 	msgs[0].flags = (client->flags & I2C_M_TEN) | I2C_M_RD;
 	msgs[0].len = 2;
 	msgs[0].buf = buf;
-	rc = i2c_transfer(client->adapter, msgs, msg_count);
+	for (retry = 0; retry < I2C_RETRY_TIMES; retry++) {
+		rc = i2c_transfer(client->adapter, msgs, msg_count);
+		if (rc < 0)
+			msleep(20);
+		else
+			break;
+	}
+	if (retry == I2C_RETRY_TIMES)
+		dev_err(dev, "%s: I2C retry 3 times over [%d]\n", __func__, rc);
+
 	if (rc < 0 || rc != msg_count)
 		return (rc < 0) ? rc : -EIO;
 
@@ -714,7 +737,15 @@ static int cyttsp5_i2c_read_default_nosize(struct device *dev, u8 *buf, u32 max)
 	if (size > max)
 		return -EINVAL;
 
-	rc = i2c_master_recv(client, buf, size);
+	for (retry = 0; retry < I2C_RETRY_TIMES; retry++) {
+		rc = i2c_master_recv(client, buf, size);
+		if (rc < 0)
+			msleep(20);
+		else
+			break;
+	}
+	if (retry == I2C_RETRY_TIMES)
+		dev_err(dev, "%s: I2C retry 3 times over [%d]\n", __func__, rc);
 
 	return (rc < 0) ? rc : rc != (int)size ? -EIO : 0;
 }
@@ -726,6 +757,7 @@ static int cyttsp5_i2c_write_read_specific(struct device *dev, u8 write_len,
 	struct i2c_msg msgs[2];
 	u8 msg_count = 1;
 	int rc;
+	int retry;
 
 	if (!write_buf || !write_len)
 		return -EINVAL;
@@ -734,7 +766,15 @@ static int cyttsp5_i2c_write_read_specific(struct device *dev, u8 write_len,
 	msgs[0].flags = client->flags & I2C_M_TEN;
 	msgs[0].len = write_len;
 	msgs[0].buf = write_buf;
-	rc = i2c_transfer(client->adapter, msgs, msg_count);
+	for (retry = 0; retry < I2C_RETRY_TIMES; retry++) {
+		rc = i2c_transfer(client->adapter, msgs, msg_count);
+		if (rc < 0)
+			msleep(20);
+		else
+			break;
+	}
+	if (retry == I2C_RETRY_TIMES)
+		dev_err(dev, "%s: I2C retry 3 times over [%d]\n", __func__, rc);
 
 	if (rc < 0 || rc != msg_count)
 		return (rc < 0) ? rc : -EIO;

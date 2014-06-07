@@ -134,7 +134,7 @@ extern unsigned int system_rev;
 #ifdef VERBOSE_DEBUG
 #define CY_HID_OUTPUT_TIMEOUT			2000
 #else
-#define CY_HID_OUTPUT_TIMEOUT			200
+#define CY_HID_OUTPUT_TIMEOUT			500
 #endif
 #define CY_HID_OUTPUT_START_BOOTLOADER_TIMEOUT	2000
 #define CY_HID_OUTPUT_USER_TIMEOUT		8000
