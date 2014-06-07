@@ -45,7 +45,7 @@
 #define VFE44_BURST_LEN 3
 #define VFE44_STATS_BURST_LEN 2
 #define VFE44_UB_SIZE 2048
-#define VFE44_EQUAL_SLICE_UB 228
+#define MSM_ISP44_TOTAL_IMAGE_UB 1528
 #define VFE44_WM_BASE(idx) (0x6C + 0x24 * idx)
 #define VFE44_RDI_BASE(idx) (0x2E8 + 0x4 * idx)
 #define VFE44_XBAR_BASE(idx) (0x58 + 0x4 * (idx / 2))
@@ -293,65 +293,65 @@ static void msm_vfe44_process_violation_status(
 	if (!violation_status)
 		return;
 
-	if (violation_status == 0)
+	if (violation_status & (1 << 0))
 		pr_err("%s: camif violation\n", __func__);
-	if (violation_status == 1)
+	if (violation_status & (1 << 1))
 		pr_err("%s: black violation\n", __func__);
-	if (violation_status == 2)
+	if (violation_status & (1 << 2))
 		pr_err("%s: rolloff violation\n", __func__);
-	if (violation_status == 3)
+	if (violation_status & (1 << 3))
 		pr_err("%s: demux violation\n", __func__);
-	if (violation_status == 4)
+	if (violation_status & (1 << 4))
 		pr_err("%s: demosaic violation\n", __func__);
-	if (violation_status == 5)
+	if (violation_status & (1 << 5))
 		pr_err("%s: wb violation\n", __func__);
-	if (violation_status == 6)
+	if (violation_status & (1 << 6))
 		pr_err("%s: clf violation\n", __func__);
-	if (violation_status == 7)
+	if (violation_status & (1 << 7))
 		pr_err("%s: color correct violation\n", __func__);
-	if (violation_status == 8)
+	if (violation_status & (1 << 8))
 		pr_err("%s: rgb lut violation\n", __func__);
-	if (violation_status == 9)
+	if (violation_status & (1 << 9))
 		pr_err("%s: la violation\n", __func__);
-	if (violation_status == 10)
+	if (violation_status & (1 << 10))
 		pr_err("%s: chroma enhance violation\n", __func__);
-	if (violation_status == 11)
+	if (violation_status & (1 << 11))
 		pr_err("%s: chroma supress mce violation\n", __func__);
-	if (violation_status == 12)
+	if (violation_status & (1 << 12))
 		pr_err("%s: skin enhance violation\n", __func__);
-	if (violation_status == 13)
+	if (violation_status & (1 << 13))
 		pr_err("%s: color tranform enc violation\n", __func__);
-	if (violation_status == 14)
+	if (violation_status & (1 << 14))
 		pr_err("%s: color tranform view violation\n", __func__);
-	if (violation_status == 15)
+	if (violation_status & (1 << 15))
 		pr_err("%s: scale enc y violation\n", __func__);
-	if (violation_status == 16)
+	if (violation_status & (1 << 16))
 		pr_err("%s: scale enc cbcr violation\n", __func__);
-	if (violation_status == 17)
+	if (violation_status & (1 << 17))
 		pr_err("%s: scale view y violation\n", __func__);
-	if (violation_status == 18)
+	if (violation_status & (1 << 18))
 		pr_err("%s: scale view cbcr violation\n", __func__);
-	if (violation_status == 21)
+	if (violation_status & (1 << 21))
 		pr_err("%s: crop enc y violation\n", __func__);
-	if (violation_status == 22)
+	if (violation_status & (1 << 22))
 		pr_err("%s: crop enc cbcr violation\n", __func__);
-	if (violation_status == 23)
+	if (violation_status & (1 << 23))
 		pr_err("%s: crop view y violation\n", __func__);
-	if (violation_status == 24)
+	if (violation_status & (1 << 24))
 		pr_err("%s: crop view cbcr violation\n", __func__);
-	if (violation_status == 25)
+	if (violation_status & (1 << 25))
 		pr_err("%s: realign buf y violation\n", __func__);
-	if (violation_status == 26)
+	if (violation_status & (1 << 26))
 		pr_err("%s: realign buf cb violation\n", __func__);
-	if (violation_status == 27)
+	if (violation_status & (1 << 27))
 		pr_err("%s: realign buf cr violation\n", __func__);
-	if (violation_status == 28)
+	if (violation_status & (1 << 28))
 		pr_err("%s: ltm violation\n", __func__);
-	if (violation_status == 29)
+	if (violation_status & (1 << 29))
 		pr_err("%s: ltm cov violation\n", __func__);
-	if (violation_status == 30)
+	if (violation_status & (1 << 30))
 		pr_err("%s: abf violation\n", __func__);
-	if (violation_status == 31)
+	if (violation_status & (1 << 31))
 		pr_err("%s: bpc violation\n", __func__);
 }
 
@@ -902,8 +902,6 @@ static void msm_vfe44_axi_clear_wm_xbar_reg(
 		vfe_dev->vfe_base + VFE44_XBAR_BASE(wm));
 }
 
-#define MSM_ISP44_TOTAL_WM_UB 1203
-
 static void msm_vfe44_cfg_axi_ub_equal_default(
 	struct vfe_device *vfe_dev)
 {
@@ -923,7 +921,7 @@ static void msm_vfe44_cfg_axi_ub_equal_default(
 			total_image_size += axi_data->wm_image_size[i];
 		}
 	}
-	prop_size = MSM_ISP44_TOTAL_WM_UB -
+	prop_size = MSM_ISP44_TOTAL_IMAGE_UB -
 		axi_data->hw_info->min_wm_ub * num_used_wms;
 	for (i = 0; i < axi_data->hw_info->num_wm; i++) {
 		if (axi_data->free_wm[i]) {
@@ -946,10 +944,12 @@ static void msm_vfe44_cfg_axi_ub_equal_slicing(
 	int i;
 	uint32_t ub_offset = 0;
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
+	uint32_t ub_equal_slice = MSM_ISP44_TOTAL_IMAGE_UB /
+		axi_data->hw_info->num_wm;
 	for (i = 0; i < axi_data->hw_info->num_wm; i++) {
-		msm_camera_io_w(ub_offset << 16 | (VFE44_EQUAL_SLICE_UB - 1),
+		msm_camera_io_w(ub_offset << 16 | (ub_equal_slice - 1),
 			vfe_dev->vfe_base + VFE44_WM_BASE(i) + 0x10);
-		ub_offset += VFE44_EQUAL_SLICE_UB;
+		ub_offset += ub_equal_slice;
 	}
 }
 
@@ -1347,11 +1347,11 @@ static void msm_vfe44_get_error_mask(
 }
 
 static struct msm_vfe_axi_hardware_info msm_vfe44_axi_hw_info = {
-	.num_wm = 5,
+	.num_wm = 6,
 	.num_comp_mask = 3,
 	.num_rdi = 3,
 	.num_rdi_master = 3,
-	.min_wm_ub = 64,
+	.min_wm_ub = 96,
 };
 
 static struct msm_vfe_stats_hardware_info msm_vfe44_stats_hw_info = {
