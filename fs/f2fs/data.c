@@ -716,6 +716,11 @@ static int get_data_block_bmap(struct inode *inode, sector_t iblock,
 		return -EFBIG;
 	return get_data_block_ro(inode, iblock, bh_result, create);
 }
+int f2fs_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+		u64 start, u64 len)
+{
+	return generic_block_fiemap(inode, fieinfo, start, len, get_data_block);
+}
 
 static int f2fs_read_data_page(struct file *file, struct page *page)
 {
