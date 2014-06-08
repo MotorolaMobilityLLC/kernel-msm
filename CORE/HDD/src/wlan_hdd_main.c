@@ -9348,6 +9348,7 @@ static void hdd_driver_exit(void)
 {
    hdd_context_t *pHddCtx = NULL;
    v_CONTEXT_t pVosContext = NULL;
+   v_REGDOMAIN_t regId;
    unsigned long rc = 0;
 
    pr_info("%s: unloading driver v%s\n", WLAN_MODULE_NAME, QWLAN_VERSIONSTR);
@@ -9388,6 +9389,12 @@ static void hdd_driver_exit(void)
 
       pHddCtx->isLoadUnloadInProgress = WLAN_HDD_UNLOAD_IN_PROGRESS;
       vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+
+      if (eANI_BOOLEAN_TRUE == sme_Is11dCountrycode(pHddCtx->hHal) &&
+              pHddCtx->cfg_ini->fSupplicantCountryCodeHasPriority )
+      {
+          vos_nv_getRegDomainFromCountryCode(&regId , "00", COUNTRY_USER);
+      }
 
       //Do all the cleanup before deregistering the driver
       hdd_wlan_exit(pHddCtx);
