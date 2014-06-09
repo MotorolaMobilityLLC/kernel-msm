@@ -26,7 +26,7 @@ void esdfs_msg(struct super_block *sb, const char *level, const char *fmt, ...)
 	va_start(args, fmt);
 	vaf.fmt = fmt;
 	vaf.va = &args;
-	printk("%sESDFS-fs (%s): %pV\n", level, sb->s_id, &vaf);
+	printk("%sESDFS-fs (%s): %pV", level, sb->s_id, &vaf);
 	va_end(args);
 }
 
