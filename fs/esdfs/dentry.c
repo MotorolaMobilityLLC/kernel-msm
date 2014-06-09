@@ -40,7 +40,7 @@ static int esdfs_d_revalidate(struct dentry *dentry, struct nameidata *nd)
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
-	lower_parent_dentry = dget_parent(lower_dentry);
+	esdfs_get_lower_parent(dentry, &lower_parent_dentry);
 
 	parent_dentry = dget_parent(dentry);
 	esdfs_get_lower_path(parent_dentry, &lower_parent_path);
@@ -76,9 +76,9 @@ drop:
 	d_drop(dentry);
 	err = 0;
 out:
+	esdfs_put_lower_parent(dentry, &lower_parent_dentry);
 	esdfs_put_lower_path(parent_dentry, &lower_parent_path);
 	dput(parent_dentry);
-	dput(lower_parent_dentry);
 	esdfs_put_lower_path(dentry, &lower_path);
 	return err;
 }
@@ -138,6 +138,7 @@ static void esdfs_d_release(struct dentry *dentry)
 {
 	/* release and reset the lower paths */
 	esdfs_put_reset_lower_path(dentry);
+	esdfs_release_lower_parent(dentry);
 	free_dentry_private_data(dentry);
 	return;
 }
