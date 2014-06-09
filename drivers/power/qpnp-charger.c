@@ -3005,6 +3005,10 @@ qpnp_chg_ibatterm_set(struct qpnp_chg_chip *chip, int term_current)
 {
 	u8 temp;
 
+//ASUS_BSP +++
+	term_current = QPNP_CHG_ITERM_MIN_MA;
+//ASUS_BSP ---
+
 	if (term_current < QPNP_CHG_ITERM_MIN_MA
 			|| term_current > QPNP_CHG_ITERM_MAX_MA) {
 		pr_err("bad mA=%d asked to set\n", term_current);
