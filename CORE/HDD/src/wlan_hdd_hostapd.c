@@ -2003,44 +2003,6 @@ static iw_softap_ap_stats(struct net_device *dev,
     return 0;
 }
 
-static 
-int iw_softap_setmlme(struct net_device *dev,
-                        struct iw_request_info *info,
-                        union iwreq_data *wrqu, char *extra)
-{
-    struct sQcSapreq_mlme *pmlme;
-    hdd_adapter_t *pHostapdAdapter = (hdd_adapter_t*)(netdev_priv(dev));
-    v_MACADDR_t destAddress;
-    pmlme = (struct sQcSapreq_mlme *)(wrqu->name);
-    /* NOTE: this address is not valid incase of TKIP failure, since not filled */
-    vos_mem_copy(&destAddress.bytes, pmlme->im_macaddr, sizeof(v_MACADDR_t));
-    switch(pmlme->im_op)
-    {
-        case QCSAP_MLME_AUTHORIZE:
-                    hdd_softap_change_STA_state( pHostapdAdapter, &destAddress, WLANTL_STA_AUTHENTICATED);
-        break;
-        case QCSAP_MLME_ASSOC:
-        //TODO:inform to TL after associating (not needed  as we do in sapCallback)
-        break;
-        case QCSAP_MLME_UNAUTHORIZE:
-        //TODO: send the disassoc to station
-        //hdd_softap_change_STA_state( pHostapdAdapter, pmlme->im_macaddr, WLANTL_STA_AUTHENTICATED);
-        break;
-        case QCSAP_MLME_DISASSOC:
-            hdd_softap_sta_disassoc(pHostapdAdapter,pmlme->im_macaddr);
-        break;
-        case QCSAP_MLME_DEAUTH:
-            hdd_softap_sta_deauth(pHostapdAdapter,pmlme->im_macaddr);
-        break;
-        case QCSAP_MLME_MICFAILURE:
-            hdd_softap_tkip_mic_fail_counter_measure(pHostapdAdapter,pmlme->im_reason);
-        break;
-        default:
-        break;
-    }
-    return 0;
-}
-
 static int iw_softap_set_channel_range(struct net_device *dev, 
                           struct iw_request_info *info,
                           union iwreq_data *wrqu, char *extra)
@@ -3326,8 +3288,6 @@ static const struct iw_priv_args hostapd_private_args[] = {
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1, "setClearAcl" },
   { QCSAP_PARAM_ACL_MODE,
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1, 0, "setAclMode" },
-  { QCSAP_IOCTL_SETMLME,
-      IW_PRIV_TYPE_BYTE | sizeof(struct sQcSapreq_mlme)| IW_PRIV_SIZE_FIXED, 0, "setmlme" },
   { QCSAP_IOCTL_GET_STAWPAIE,
       IW_PRIV_TYPE_BYTE | IW_PRIV_SIZE_FIXED | 1, 0, "get_staWPAIE" },
   { QCSAP_IOCTL_SETWPAIE,
@@ -3426,7 +3386,6 @@ static const struct iw_priv_args hostapd_private_args[] = {
 static const iw_handler hostapd_private[] = {
    [QCSAP_IOCTL_SETPARAM - SIOCIWFIRSTPRIV] = iw_softap_setparam,  //set priv ioctl
    [QCSAP_IOCTL_GETPARAM - SIOCIWFIRSTPRIV] = iw_softap_getparam,  //get priv ioctl   
-   [QCSAP_IOCTL_SETMLME  - SIOCIWFIRSTPRIV] = iw_softap_setmlme,
    [QCSAP_IOCTL_GET_STAWPAIE - SIOCIWFIRSTPRIV] = iw_get_genie, //get station genIE
    [QCSAP_IOCTL_SETWPAIE - SIOCIWFIRSTPRIV] = iw_softap_setwpsie,
    [QCSAP_IOCTL_STOPBSS - SIOCIWFIRSTPRIV] = iw_softap_stopbss,       // stop bss

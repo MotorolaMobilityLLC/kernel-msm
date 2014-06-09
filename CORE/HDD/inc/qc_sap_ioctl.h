@@ -91,22 +91,6 @@ typedef enum {
     eQC_WPS_ASSOC_RSP_IE
 } eQCWPSType;
 
-/*
- * MLME state manipulation request.  QCSAP_MLME_ASSOC
- * is used for station mode only.  The other types are used for station or ap mode.
- */
-struct sQcSapreq_mlme {
-    u_int8_t    im_op;          /* operation to perform */
-#define QCSAP_MLME_ASSOC        1       /* associate station */
-#define QCSAP_MLME_DISASSOC     2       /* disassociate station */
-#define QCSAP_MLME_DEAUTH       3       /* deauthenticate station */
-#define QCSAP_MLME_AUTHORIZE    4       /* authorize station */
-#define QCSAP_MLME_UNAUTHORIZE  5       /* unauthorize station */
-#define QCSAP_MLME_MICFAILURE   6       /* TKIP MICFAILURE */
-    u_int16_t   im_reason;      /* 802.11 reason code */
-    u_int8_t    im_macaddr[QCSAP_ADDR_LEN];
-};
-
 
 /*
  * Retrieve the WPA/RSN information element for an associated station.
@@ -156,7 +140,6 @@ typedef struct
 #define QCSAP_IOCTL_SETPARAM          (SIOCIWFIRSTPRIV+0)
 #define QCSAP_IOCTL_GETPARAM          (SIOCIWFIRSTPRIV+1)
 #define QCSAP_IOCTL_COMMIT            (SIOCIWFIRSTPRIV+2)
-#define QCSAP_IOCTL_SETMLME           (SIOCIWFIRSTPRIV+3)
 
 #define QCSAP_IOCTL_GET_STAWPAIE      (SIOCIWFIRSTPRIV+4)
 #define QCSAP_IOCTL_SETWPAIE          (SIOCIWFIRSTPRIV+5)
