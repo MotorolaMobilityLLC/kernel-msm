@@ -30,13 +30,7 @@
 #include "mdss_samsung_dsi_panel_msm8x26.h"
 
 #define DT_CMD_HDR 6
-#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
-struct work_struct  err_fg_work;
-static int err_fg_gpio;
-static int esd_count;
-static int err_fg_working;
-#define ESD_DEBUG 1
-#endif
+
 /* #define CMD_DEBUG */
 #define ALPM_MODE
 
@@ -56,6 +50,7 @@ static struct mdss_samsung_driver_data msd;
 /* ALPM mode on/off command */
 static struct dsi_cmd alpm_on_seq;
 static struct dsi_cmd alpm_off_seq;
+static int disp_esd_gpio;
 /*
  * APIs for ALPM mode
  * alpm_store()
@@ -141,6 +136,7 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *pinfo = NULL;
+	int ambient_mode_check = 0;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -168,9 +164,17 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
 	if (pinfo->alpm_event) {
-		if (enable && pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
-			return;
-		else if (!enable && pinfo->alpm_event(CHECK_CURRENT_STATUS)) {
+		if (enable && pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
+			if (gpio_get_value(disp_esd_gpio)) {
+				pr_info("[ESD_DEBUG] check current alpm status\n");
+				if (pinfo->alpm_event(CHECK_CURRENT_STATUS))
+					ambient_mode_check = 1;
+				pinfo->alpm_event(CLEAR_MODE_STATUS);
+				if (ambient_mode_check)
+					pinfo->alpm_event(ALPM_MODE_ON);
+			} else
+				return;
+		} else if (!enable && pinfo->alpm_event(CHECK_CURRENT_STATUS)) {
 			pinfo->alpm_event(STORE_CURRENT_STATUS);
 			return;
 		}
@@ -507,10 +511,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	msd.dstat.on = 1;
 	msd.mfd->resume_state = MIPI_RESUME_STATE;
 
-#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
-	enable_irq(err_fg_gpio);
-#endif
-
 	/* ALPM Mode Change */
 	if (pinfo->alpm_event) {
 		if (!pinfo->alpm_event(CHECK_PREVIOUS_STATUS)
@@ -553,12 +553,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
-	if (!err_fg_working) {
-		disable_irq_nosync(err_fg_gpio);
-		cancel_work_sync(&err_fg_work);
-	}
-#endif
 	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	pinfo = &(ctrl->panel_data.panel_info);
@@ -1211,60 +1205,6 @@ static ssize_t mdss_disp_lcdtype_show(struct device *dev,
 static DEVICE_ATTR(lcd_type, S_IRUGO, mdss_disp_lcdtype_show, NULL);
 
 #endif
-#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
-static irqreturn_t err_fg_irq_handler(int irq, void *handle)
-{
-	pr_info("%s : handler start", __func__);
-	disable_irq_nosync(err_fg_gpio);
-	schedule_work(&err_fg_work);
-	pr_info("%s : handler end", __func__);
-
-	return IRQ_HANDLED;
-}
-static void err_fg_work_func(struct work_struct *work)
-{
-	struct mdss_panel_data *pdata = msd.pdata;
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-
-	if (msd.mfd->panel_power_on == false) {
-		pr_err("%s: Display off Skip ESD recovery\n", __func__);
-		return;
-	}
-	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-						panel_data);
-
-	pr_info("%s : start", __func__);
-	err_fg_working = 1;
-	gpio_direction_output(ctrl_pdata->bl_on_gpio, 0);
-	msd.mfd->fbi->fbops->fb_blank(FB_BLANK_POWERDOWN, msd.mfd->fbi);
-	msd.mfd->fbi->fbops->fb_blank(FB_BLANK_UNBLANK, msd.mfd->fbi);
-	esd_count++;
-	err_fg_working = 0;
-	pr_info("%s : end", __func__);
-	return;
-}
-#ifdef ESD_DEBUG
-static ssize_t mipi_samsung_esd_check_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
-{
-	int rc;
-	rc = snprintf(buf, PAGE_SIZE, "esd count:%d\n", esd_count);
-	return rc;
-}
-static ssize_t mipi_samsung_esd_check_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct msm_fb_data_type *mfd;
-	mfd = platform_get_drvdata(msd.msm_pdev);
-
-	err_fg_irq_handler(0, mfd);
-	return 1;
-}
-
-static DEVICE_ATTR(esd_check, S_IRUGO , mipi_samsung_esd_check_show,
-			 mipi_samsung_esd_check_store);
-#endif
-#endif
 
 static int is_panel_supported(const char *panel_name)
 {
@@ -1504,9 +1444,6 @@ static struct attribute *panel_sysfs_attributes[] = {
 #if defined(ALPM_MODE)
 	&dev_attr_alpm.attr,
 #endif
-#if defined(ESD_DEBUG)
-	&dev_attr_esd_check.attr,
-#endif
 	&dev_attr_ambient.attr,
 	NULL
 };
@@ -1521,9 +1458,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 	int rc = 0;
 	static const char *panel_name;
 	bool cont_splash_enabled;
-#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
-	int disp_esd_gpio;
-#endif
 #if defined(CONFIG_LCD_CLASS_DEVICE)
 	struct lcd_device *lcd_device;
 
@@ -1620,14 +1554,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 #endif
 #endif
 
-#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
 	msd.msm_pdev = pdev;
 	msd.dstat.on = 0;
 
-	INIT_WORK(&err_fg_work, err_fg_work_func);
-
-	disp_esd_gpio = of_get_named_gpio(node, "qcom,oled-esd-gpio", 0);
-	err_fg_gpio = gpio_to_irq(disp_esd_gpio);
+	disp_esd_gpio = of_get_named_gpio(node, "qcom,esd-det-gpio", 0);
 	rc = gpio_request(disp_esd_gpio, "err_fg");
 	if (rc) {
 		pr_err("request gpio GPIO_ESD failed, ret=%d\n", rc);
@@ -1642,12 +1572,5 @@ int mdss_dsi_panel_init(struct device_node *node,
 			__func__, disp_esd_gpio, rc);
 	}
 
-	rc = request_threaded_irq(err_fg_gpio, NULL, err_fg_irq_handler,
-		IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "esd_detect", NULL);
-	if (rc)
-		pr_err("%s : Failed to request_irq. :ret=%d", __func__, rc);
-
-	disable_irq(err_fg_gpio);
-#endif
 	return 0;
 }
