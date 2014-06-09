@@ -26,6 +26,10 @@
 	status = "disabled";
 };
 
+&blsp1_uart2 {
+	pinctrl-0 = <&uart_console_sleep>;
+};
+
 &tlmm_pinmux {
 	pmx-uartconsole {
 		qcom,pins = <&gp 4>, <&gp 5>;
