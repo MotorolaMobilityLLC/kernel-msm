@@ -263,6 +263,18 @@
 		qcom,pins = <&gp 0>, <&gp 1>;
 	};
 
+	pmx-uart-ccp {
+		qcom,pins = <&gp 4>, <&gp 5>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <2>;
+		label = "uart-ccp";
+
+		uart_ccp: uart-ccp {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
 	cc_alert {
 		qcom,pins = <&gp 12>;
 		qcom,num-grp-pins = <1>;
