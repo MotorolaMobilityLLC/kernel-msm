@@ -50,6 +50,10 @@
 	status = "ok";
 };
 
+&max17050 {
+	status = "disabled";
+};
+
 &i2c_1 {
 	lm3697@36 {
 		status = "disabled";
