@@ -140,6 +140,7 @@ struct esdfs_inode_info {
 struct esdfs_dentry_info {
 	spinlock_t lock;	/* protects lower_path */
 	struct path lower_path;
+	struct dentry *real_parent;
 };
 
 /* esdfs super-block data in memory */
@@ -258,6 +259,44 @@ static inline void esdfs_put_reset_lower_path(const struct dentry *dent)
 	ESDFS_D(dent)->lower_path.mnt = NULL;
 	spin_unlock(&ESDFS_D(dent)->lock);
 	path_put(&lower_path);
+	return;
+}
+static inline void esdfs_get_lower_parent(const struct dentry *dent,
+					  struct dentry **lower_parent)
+{
+	spin_lock(&ESDFS_D(dent)->lock);
+	if (ESDFS_D(dent)->real_parent) {
+		*lower_parent = ESDFS_D(dent)->real_parent;
+		dget(*lower_parent);
+	} else
+		*lower_parent = dget_parent(ESDFS_D(dent)->lower_path.dentry);
+	spin_unlock(&ESDFS_D(dent)->lock);
+	return;
+}
+static inline void esdfs_put_lower_parent(const struct dentry *dent,
+					  struct dentry **lower_parent)
+{
+	dput(*lower_parent);
+	return;
+}
+static inline void esdfs_set_lower_parent(const struct dentry *dent,
+					  struct dentry *parent)
+{
+	spin_lock(&ESDFS_D(dent)->lock);
+	if (ESDFS_D(dent)->real_parent)
+		dput(ESDFS_D(dent)->real_parent);
+	ESDFS_D(dent)->real_parent = parent;
+	spin_unlock(&ESDFS_D(dent)->lock);
+	return;
+}
+static inline void esdfs_release_lower_parent(const struct dentry *dent)
+{
+	spin_lock(&ESDFS_D(dent)->lock);
+	if (ESDFS_D(dent)->real_parent) {
+		dput(ESDFS_D(dent)->real_parent);
+		ESDFS_D(dent)->real_parent = NULL;
+	}
+	spin_unlock(&ESDFS_D(dent)->lock);
 	return;
 }
 
