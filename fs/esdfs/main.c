@@ -161,7 +161,7 @@ static int parse_options(struct super_block *sb, char *options)
 			clear_opt(sbi, DERIVE_SPLIT);
 			break;
 		default:
-			esdfs_msg(sb, KERN_ERR, "unrecognized mount option \"%s\" or missing value",
+			esdfs_msg(sb, KERN_ERR, "unrecognized mount option \"%s\" or missing value\n",
 				p);
 			return -EINVAL;
 		}
