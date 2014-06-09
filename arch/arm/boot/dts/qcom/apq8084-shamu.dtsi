@@ -45,8 +45,8 @@
 		qcom,model = "apq8084-taiko-tfa9890_stereo_codec-snd-card";
 		qcom,ext_hs_detect = "fsa8500";
 		qcom,tfa9890-stereo;
-		qcom,tfa9890-left-name = "tfa9890.8-0035";
-		qcom,tfa9890-right-name = "tfa9890.8-0034";
+		qcom,tfa9890-left-name = "tfa9890.8-0034";
+		qcom,tfa9890-right-name = "tfa9890.8-0035";
 		qcom,tfa9890-earpiece-gpio = <&msmgpio 130 0>;
 	};
 
@@ -228,14 +228,14 @@
 		tfa_vdd-supply = <&pma8084_s4>;
 		nxp,tfa_max-vol-steps = <15>;
 		gpios = <&msmgpio 129 0>;     /* RESET */
-		nxp,tfa-dev = "right";
+		nxp,tfa-dev = "left";
 	};
 	tfa9890@35 {
 		compatible = "nxp,tfa9890";
 		reg = <0x35>;
 		tfa_vdd-supply = <&pma8084_s4>;
 		nxp,tfa_max-vol-steps = <15>;
-		nxp,tfa-dev = "left";
+		nxp,tfa-dev = "right";
 	};
 };
 
