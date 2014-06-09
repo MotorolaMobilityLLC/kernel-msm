@@ -44,6 +44,10 @@
 	status = "ok";
 };
 
+&max17050 {
+	status = "disabled";
+};
+
 &pm8916_chg {
 	status = "disabled";
 };
