@@ -27,6 +27,7 @@
 #define REG_CNFG1_LDO2		0x53
 #define REG_CNFG2_LDO2		0x54
 #define REG_CNFG_LDO_BIAS	0x55
+#define REG_COMP		0x60
 
 /* CNFG1_LDOX */
 #define CNFG1_LDO_PWR_MD_L_SHIFT	0x6
@@ -45,7 +46,7 @@
 /* CNFG_LDO_BIAS */
 #define BIT_L_B_LEN			0x02
 #define BIT_L_B_EN			0x01
-
+#define BIT_COMPEN			0x10
 
 #define MAX77836_LDO_MINUV	800000		/* 0.8V */
 #define MAX77836_LDO_MAXUV	3950000		/* 3.95V */
@@ -290,6 +291,8 @@ static int max77836_regulator_probe(struct platform_device *pdev)
 	struct regulator_dev **rdev;
 	int rc, size;
 	int i;
+	int ret = 0;
+	u8 reg_data;
 	struct regulator_config config = { };
 
 	max77836_reg = devm_kzalloc(&pdev->dev,	sizeof(*max77836_reg),
@@ -344,6 +347,19 @@ static int max77836_regulator_probe(struct platform_device *pdev)
 			"%s: failed to create sysfs attribute group\n",
 			__func__);
 */
+	ret = max77836_read_reg(max77836_reg->i2c, REG_COMP, &reg_data);
+	if (ret < 0)
+		pr_err("%s:%s REG_COMP read failed. err:%d\n",
+				MFD_DEV_NAME, __func__, ret);
+	else {
+		reg_data |= BIT_COMPEN;
+		ret = max77836_write_reg(max77836_reg->i2c, REG_COMP, reg_data);
+		if (ret < 0)
+			pr_err("%s:%s REG_COMP, write failed. err:%d\n",
+					MFD_DEV_NAME, __func__, ret);
+		ret = max77836_read_reg(max77836_reg->i2c, REG_COMP, &reg_data);
+		pr_info("Read 0x60 REG=%02x", reg_data);
+	}
 
 	return 0;
 err:
