@@ -216,8 +216,8 @@ static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	esdfs_get_lower_path(new_dentry, &lower_new_path);
 	lower_old_dentry = lower_old_path.dentry;
 	lower_new_dentry = lower_new_path.dentry;
-	lower_old_dir_dentry = dget_parent(lower_old_dentry);
-	lower_new_dir_dentry = dget_parent(lower_new_dentry);
+	esdfs_get_lower_parent(old_dentry, &lower_old_dir_dentry);
+	esdfs_get_lower_parent(new_dentry, &lower_new_dir_dentry);
 
 	trap = lock_rename(lower_old_dir_dentry, lower_new_dir_dentry);
 	/* source should not be ancestor of target */
@@ -258,8 +258,8 @@ out_drop_old_write:
 	mnt_drop_write(lower_old_path.mnt);
 out:
 	unlock_rename(lower_old_dir_dentry, lower_new_dir_dentry);
-	dput(lower_old_dir_dentry);
-	dput(lower_new_dir_dentry);
+	esdfs_put_lower_parent(old_dentry, &lower_old_dir_dentry);
+	esdfs_put_lower_parent(new_dentry, &lower_new_dir_dentry);
 	esdfs_put_lower_path(old_dentry, &lower_old_path);
 	esdfs_put_lower_path(new_dentry, &lower_new_path);
 	esdfs_revert_creds(creds, &mask);

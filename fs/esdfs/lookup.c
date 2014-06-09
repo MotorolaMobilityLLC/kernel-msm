@@ -278,7 +278,7 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 			     struct nameidata *nd)
 {
 	struct dentry *ret, *old_parent, *parent;
-	struct path lower_parent_path;
+	struct path lower_parent_path, old_lower_parent_path;
 	int err = 0;
 	const struct cred *creds =
 			esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
@@ -316,14 +316,16 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 	fsstack_copy_attr_atime(parent->d_inode,
 				esdfs_lower_inode(parent->d_inode));
 
-	/* another obb grafting artifact */
-	if (parent != old_parent)
+	/* More pseudo-hard-link artifacts */
+	if (parent != old_parent) {
+		esdfs_get_lower_path(old_parent, &old_lower_parent_path);
+		esdfs_set_lower_parent(dentry, old_lower_parent_path.dentry);
+		esdfs_put_lower_path(old_parent, &old_lower_parent_path);
 		esdfs_derive_mkdir_contents(dentry);
+	}
 out_put:
 	esdfs_put_lower_path(parent, &lower_parent_path);
 out:
-	if (parent != old_parent)
-		dput(old_parent);
 	dput(parent);
 	esdfs_revert_creds(creds, NULL);
 	return ret;
