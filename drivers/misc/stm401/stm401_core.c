@@ -61,7 +61,7 @@ long stm401_time_delta;
 unsigned int stm401_irq_disable;
 module_param_named(irq_disable, stm401_irq_disable, uint, 0644);
 
-unsigned short stm401_i2c_retry_delay = 10;
+unsigned short stm401_i2c_retry_delay = 13;
 
 /* Remember the sensor state */
 unsigned short stm401_g_acc_delay;

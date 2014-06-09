@@ -77,7 +77,7 @@ void stm401_reset(struct stm401_platform_data *pdata, unsigned char *cmdbuff)
 	dev_err(&stm401_misc_data->client->dev, "stm401_reset\n");
 	msleep(stm401_i2c_retry_delay);
 	gpio_set_value(pdata->gpio_reset, 0);
-	msleep(stm401_i2c_retry_delay);
+	msleep(STM401_RESET_DELAY);
 	gpio_set_value(pdata->gpio_reset, 1);
 	msleep(STM401_RESET_DELAY);
 	stm401_detect_lowpower_mode(cmdbuff);
@@ -125,7 +125,7 @@ int stm401_reset_and_init(void)
 	if (err < 0)
 		ret_err = err;
 
-	stm401_i2c_retry_delay = 10;
+	stm401_i2c_retry_delay = 13;
 
 	rst_cmdbuff[0] = MAG_UPDATE_RATE;
 	rst_cmdbuff[1] = stm401_g_mag_delay;
