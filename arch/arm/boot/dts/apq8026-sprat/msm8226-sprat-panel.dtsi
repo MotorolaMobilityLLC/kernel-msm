@@ -16,6 +16,7 @@
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-destination = "display_1";
+		qcom,ulps-enabled;
 		qcom,rst-gpio = <&msmgpio 25 0>;
 		qcom,esd-det-gpio = <&msmgpio 74 0>;
 		qcom,te-gpio = <&msmgpio 24 0>;

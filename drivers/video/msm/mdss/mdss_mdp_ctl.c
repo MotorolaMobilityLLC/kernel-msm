@@ -1737,7 +1737,18 @@ int mdss_mdp_ctl_intf_event(struct mdss_mdp_ctl *ctl, int event, void *arg)
 
 int mdss_mdp_ctl_off_pan_on(struct mdss_mdp_ctl *ctl)
 {
-	return ctl->off_pan_on(ctl);
+	if (ctl->off_pan_on)
+		return ctl->off_pan_on(ctl);
+	else
+		return 0;
+}
+
+int mdss_mdp_ctl_disable_ulps(struct mdss_mdp_ctl *ctl)
+{
+	if (ctl->disable_ulps)
+		return ctl->disable_ulps(ctl);
+	else
+		return 0;
 }
 
 /*

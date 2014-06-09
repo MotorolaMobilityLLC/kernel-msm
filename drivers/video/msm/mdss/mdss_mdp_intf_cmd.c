@@ -259,6 +259,30 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 	mutex_unlock(&ctx->clk_mtx);
 }
 
+int mdss_mdp_cmd_disable_ulps(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_cmd_ctx *ctx;
+	struct mdss_panel_info *pinfo;
+	struct mdss_panel_data *pdata;
+
+	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
+	if (!ctx) {
+		pr_err("%s: invalid ctx\n", __func__);
+		return -ENODEV;
+	}
+
+	pdata = ctl->panel_data;
+	pinfo = &pdata->panel_info;
+
+	if (ctx->ulps) {
+		mdss_mdp_cmd_clk_on(ctx);
+	} else if (pinfo->ulps_feature_enabled) {
+		mod_delayed_work(system_wq, &ctx->ulps_work, ULPS_ENTER_TIME);
+	}
+
+	return 0;
+}
+
 static void mdss_mdp_cmd_readptr_done(void *arg)
 {
 	struct mdss_mdp_ctl *ctl = arg;
@@ -834,6 +858,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
 	ctl->off_pan_on = mdss_mdp_cmd_off_pan_on;
+	ctl->disable_ulps = mdss_mdp_cmd_disable_ulps;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;

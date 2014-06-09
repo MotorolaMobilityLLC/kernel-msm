@@ -523,8 +523,24 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		mdss_dsi_controller_cfg(0, pdata);
 
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
+
+		ret = msm_dss_enable_vreg(
+			ctrl_pdata->power_data.vreg_config + 3, 1, 0);
+		if (ret) {
+			pr_err("%s: Failed to disable vregs.rc=%d\n",
+				__func__, ret);
+		}
 		ctrl_pdata->ulps = true;
+		pr_err("enable ulps mode\n");
 	} else if (ctrl_pdata->ulps) {
+		ret = msm_dss_enable_vreg(
+			ctrl_pdata->power_data.vreg_config + 3, 1, 1);
+		if (ret) {
+			pr_err("%s:Failed to enable vregs.rc=%d\n",
+				__func__, ret);
+			goto error;
+		}
+
 		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
 		if (ret) {
 			pr_err("%s: Failed to enable bus clocks. rc=%d\n",
@@ -581,6 +597,7 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 0);
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
 		ctrl_pdata->ulps = false;
+		pr_err("disable ulps mode\n");
 	}
 
 	pr_debug("%s: DSI lane status = 0x%08x. Ulps %s\n", __func__,
@@ -1417,6 +1434,12 @@ int mdss_dsi_retrieve_ctrl_resources(struct platform_device *pdev, int mode,
 		pr_err("%s:%d unable to remap dsi phy resources",
 			       __func__, __LINE__);
 		return rc;
+	}
+
+	rc = msm_dss_ioremap_byname(pdev, &ctrl->mmss_misc_io, "mmss_misc_phys");
+	if (rc) {
+		pr_err("%s:%d unable to remap mmss misc resources",
+			       __func__, __LINE__);
 	}
 
 	//goog

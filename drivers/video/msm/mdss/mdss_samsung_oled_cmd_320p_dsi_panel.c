@@ -116,6 +116,9 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 	cd_idx = get_cmd_idx(bl_level);
 	cd_level = get_candela_value(bl_level);
 
+	if (stored_cd_level == cd_level)
+		return;
+
 	/* gamma control */
 	get_gamma_control_set(cd_level);
 
@@ -1477,6 +1480,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	int rc = 0;
 	static const char *panel_name;
 	bool cont_splash_enabled;
+	struct mdss_panel_info *pinfo;
 #if defined(CONFIG_LCD_CLASS_DEVICE)
 	struct lcd_device *lcd_device;
 
@@ -1521,6 +1525,14 @@ int mdss_dsi_panel_init(struct device_node *node,
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
 		return rc;
 	}
+
+	pinfo = &ctrl_pdata->panel_data.panel_info;
+
+	pinfo->ulps_feature_enabled = of_property_read_bool(np,
+		"qcom,ulps-enabled");
+	pr_info("%s: ulps feature %s", __func__,
+		(pinfo->ulps_feature_enabled ? "enabled" : "disabled"));
+	pinfo->ulps_feature_enabled = true;
 
 	/*if (cmd_cfg_cont_splash)*/
 		cont_splash_enabled = of_property_read_bool(node,

@@ -2627,7 +2627,7 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 		return;
 
 	if (on) {
-		pr_debug("Enable MDP FS\n");
+		pr_err("Enable MDP FS\n");
 		if (!mdata->fs_ena) {
 			ret = regulator_enable(mdata->fs);
 			if (ret)
@@ -2639,7 +2639,7 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 		}
 		mdata->fs_ena = true;
 	} else {
-		pr_debug("Disable MDP FS\n");
+		pr_err("Disable MDP FS\n");
 		mdss_iommu_dettach(mdata);
 		if (mdata->fs_ena) {
 			regulator_disable(mdata->fs);
