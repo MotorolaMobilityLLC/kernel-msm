@@ -1,0 +1,48 @@
+/* Copyright (c) 2014, Motorola Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "msm8226-titan-common.dtsi"
+/include/ "msm8226-v1-pm.dtsi"
+/include/ "msm8926-thea-gpiomux.dtsi"
+
+/ {
+	model = "Motorola QC-MSM8226 Thea";
+	compatible = "qcom,msm8226-Thea",
+		     "qcom,msm8226-moto",
+		     "qcom,msm8226";
+};
+
+
+&soc {
+
+	spi@f9923000 {
+		/delete-node/ nmi326@0; /* Remove DTV */
+	};
+};
+
+&vdd_touch_vreg {
+	/delete-property/ gpio;
+	gpio = <&msmgpio 69 0x0>;
+};
+
+&vddio_disp_vreg {
+	/delete-property/ gpio;
+	gpio = <&msmgpio 114 0x0>;
+};
+
+&imx132 {
+	/delete-property/ gpios;
+	gpios = <&msmgpio 26 0>,
+		<&msmgpio 36 0>,
+		<&msmgpio 114 0>,
+		<&msmgpio 35 0>;
+};
