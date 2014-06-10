@@ -60,3 +60,17 @@ config PSTORE_RAM
 	  "ramoops.ko".
 
 	  For more information, see Documentation/ramoops.txt.
+
+config PSTORE_RAM_ANNOTATION_APPEND
+	bool "Allow appending messages to pstore ram annotation"
+	default n
+	depends on PSTORE_RAM
+	help
+	  Existing pstore ram annotation stores messages and exports them
+	  after reset. Sometimes only after reset can we do some postmortem
+	  analysis. This adds function which can be used to append the
+	  analysis info to pstore ram annotation. The function should only
+	  be used before pstore ram annotation is exported. It's safe to use
+	  the function before pstore is initialized. Content will be buffered
+	  and merged to annotation-ramoops file.
+	  If unsure, say N.
