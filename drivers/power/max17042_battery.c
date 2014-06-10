@@ -112,6 +112,7 @@ struct max17042_chip {
 	struct dentry *debugfs_root;
 	u8 debugfs_addr;
 #endif
+	struct power_supply *batt_psy;
 };
 
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
@@ -742,6 +743,14 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 {
 	struct max17042_chip *chip = dev;
 	u16 val;
+	union power_supply_propval ret = {0, };
+	const char *batt_psy_name;
+
+	if (!chip->batt_psy && chip->pdata->batt_psy_name) {
+		batt_psy_name = chip->pdata->batt_psy_name;
+		chip->batt_psy =
+			power_supply_get_by_name((char *)batt_psy_name);
+	}
 
 	val = max17042_read_reg(chip->client, MAX17042_STATUS);
 	if ((val & STATUS_INTR_SOCMIN_BIT) ||
@@ -756,6 +765,11 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 	}
 
 	power_supply_changed(&chip->battery);
+
+	if (chip->batt_psy)
+		chip->batt_psy->set_property(chip->batt_psy,
+				POWER_SUPPLY_PROP_CAPACITY_LEVEL, &ret);
+
 	return IRQ_HANDLED;
 }
 
@@ -1134,6 +1148,7 @@ max17042_get_pdata(struct device *dev)
 	struct device_node *np = dev->of_node;
 	u32 prop;
 	struct max17042_platform_data *pdata;
+	int rc;
 
 	if (!np)
 		return dev->platform_data;
@@ -1159,6 +1174,14 @@ max17042_get_pdata(struct device *dev)
 
 	pdata->batt_undervoltage_zero_soc =
 		of_property_read_bool(np, "maxim,batt_undervoltage_zero_soc");
+
+	rc = of_property_read_string(np, "maxim,batt-psy-name",
+				     &pdata->batt_psy_name);
+	if (rc)
+		pdata->batt_psy_name = NULL;
+
+	if (pdata->batt_psy_name)
+		pr_warn("BATT SUPPLY NAME = %s\n", pdata->batt_psy_name);
 
 	pdata->tcnv = max17042_get_conv_table(dev);
 
@@ -1283,7 +1306,7 @@ static int max17042_probe(struct i2c_client *client,
 	}
 
 	chip->battery.name		= "max170xx_battery";
-	chip->battery.type		= POWER_SUPPLY_TYPE_BATTERY;
+	chip->battery.type		= POWER_SUPPLY_TYPE_BMS;
 	chip->battery.get_property	= max17042_get_property;
 	chip->battery.properties	= max17042_battery_props;
 	chip->battery.num_properties	= ARRAY_SIZE(max17042_battery_props);
