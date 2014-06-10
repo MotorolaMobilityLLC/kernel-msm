@@ -161,6 +161,7 @@ static void mmi_wls_chrg_get_psys(struct mmi_wls_chrg_chip *chip)
 		if (psy)
 			switch (psy->type) {
 			case POWER_SUPPLY_TYPE_BATTERY:
+			case POWER_SUPPLY_TYPE_BMS:
 				chip->batt_psy = psy;
 				break;
 			case POWER_SUPPLY_TYPE_MAINS:
