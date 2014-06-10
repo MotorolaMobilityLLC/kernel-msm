@@ -165,6 +165,14 @@ int msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
 	if (fctrl->flash_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
 		fctrl->flash_i2c_client->i2c_func_tbl->i2c_util(
 				fctrl->flash_i2c_client, MSM_CCI_RELEASE);
+	} else if (fctrl->flash_device_type == MSM_CAMERA_I2C_DEVICE) {
+		if (fctrl->flash_i2c_client && fctrl->reg_setting) {
+			rc = fctrl->flash_i2c_client->i2c_func_tbl->
+				i2c_write_table(fctrl->flash_i2c_client,
+				fctrl->reg_setting->release_setting);
+			if (rc < 0)
+				pr_err("%s:%d failed\n", __func__, __LINE__);
+		}
 	}
 	rc = msm_camera_request_gpio_table(
 		flashdata->gpio_conf->cam_gpio_req_tbl,
