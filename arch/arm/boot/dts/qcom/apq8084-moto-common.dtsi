@@ -807,6 +807,7 @@
 		>;
 		maxim,enable_por_init;
 		maxim,batt_undervoltage_zero_soc;
+		maxim,batt-psy-name = "battery";
 
 		maxim,configuration {
 			/* Required properties */
