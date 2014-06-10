@@ -14,29 +14,57 @@
 #include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/fb.h>
+#include <linux/delay.h>
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+// include files for QCT
+#include "mdss_fb.h"
+#include "mdss_dsi.h"
+
+////////////////////////////////////////////////////////////////////////////////
+// Global data used for ASUS MOBILE DISPLAY UTILITY
+
+struct watch_dog_data{
+	struct notifier_block fb_notifier;
+	struct delayed_work watch_dog;
+	int watch_dog_interval;
+	int dim_time_out;
+};
+struct panel_status{
+	bool	ambient;
+	bool	power_mode;
+	bool	auto_dim;
+	int		last_time_update;
+};
+struct fb_status{
+	struct msm_fb_data_type *mfd;
+	struct fb_info *fb_info;
+	bool	blank;
+	int		fps;
+};
+
+// We would like to use static variable for it's stable then kalloc
 struct amdu_global_data
 {
 	struct dentry *ent_reg;
 	unsigned int debug_log_flag;
 	struct mdss_dsi_ctrl_pdata *ctrl;
-	bool	ambient_on;
-	struct fb_info *fb0_info;
+
+	// components info
+	struct panel_status panel_status;
+	struct fb_status fb_status;
+	struct watch_dog_data watch_dog_data;
+
+	// string variable last
 	char	debug_str[128];
 };
 
 static struct amdu_global_data amdu_data;
-#if 0
-{
-	.debug_log_flag  = 0;
-}
-#endif
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 // DEBUGFS
-
 
 static int check_panel_status(void);
 
@@ -215,15 +243,13 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 	else if (!strncmp("ambient=",cmd_buf,strlen("ambient="))){
 		int val;
 		sscanf(cmd_buf+strlen("ambient="), "%d", &val);
-		amdu_data.ambient_on = (val != 0);
-		printk("MDSS:[mdss_debug.c]:%s:amdu_data.ambient_on = 0x%x\n", __func__,amdu_data.ambient_on);
+		amdu_data.panel_status.ambient = (val != 0);
+		printk("MDSS:[mdss_debug.c]:%s:amdu_data.panel_status.ambient = 0x%x\n", __func__,amdu_data.panel_status.ambient);
 	}
-// ASUSB_BSP +++ Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
 	else if (!strncmp("panelmsg=",cmd_buf,strlen("panelmsg="))){
 		show_panel_message(cmd_buf+strlen("panelmsg="));
 		printk("MDSS:[mdss_debug.c]:%s:panelmsg=%s\n", __func__,cmd_buf+strlen("panelmsg="));
 	}
-// ASUSB_BSP --- Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
 
 	printk("MDSS:[mdss_debug.c]:%s:---\n", __func__);
 
@@ -295,33 +321,117 @@ static const struct file_operations mdss_cmd_fops = {
 	.write = mdss_debug_base_cmd_write,
 };
 
+////////////////////////////////////////////////////////////////////////////////
+// Watch DOG task
+
+static void mdss_debug_watchdog(struct work_struct *work)
+{
+	// Handle things about
+	int sec_not_update = jiffies_to_msecs(jiffies - amdu_data.panel_status.last_time_update)/1000;
+
+	if (sec_not_update > 60 && (sec_not_update % 5 == 0))
+		printk("Framebuffer has not updated for %d sec, ambient=%d, timeout = %d\n",sec_not_update,amdu_data.panel_status.ambient,amdu_data.watch_dog_data.dim_time_out);
+
+	if (sec_not_update > amdu_data.watch_dog_data.dim_time_out)
+	{
+		int dim_val = amdu_data.fb_status.mfd->bl_level - (sec_not_update - amdu_data.watch_dog_data.dim_time_out);
+		if(dim_val > 0)
+		{
+			amdu_data.panel_status.auto_dim = true;
+			amdu_data.ctrl->panel_data.set_backlight(&(amdu_data.ctrl->panel_data), dim_val);
+		}
+	}else
+	{
+		if (amdu_data.panel_status.auto_dim)
+		{
+			amdu_data.ctrl->panel_data.set_backlight(&(amdu_data.ctrl->panel_data), amdu_data.fb_status.mfd->bl_level);
+			amdu_data.panel_status.auto_dim = false;
+		}
+	}
+
+	schedule_delayed_work(&(amdu_data.watch_dog_data.watch_dog),msecs_to_jiffies(amdu_data.watch_dog_data.watch_dog_interval));
+}
+
+
+
+static int fb_event_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+
+	amdu_data.fb_status.mfd = evdata->info->par;
+
+	if (event == FB_EVENT_BLANK && evdata) {
+		int *blank = evdata->data;
+		switch (*blank) {
+		case FB_BLANK_UNBLANK:
+			amdu_data.fb_status.blank = 0;
+			amdu_data.panel_status.last_time_update = 0;
+			schedule_delayed_work(&amdu_data.watch_dog_data.watch_dog,
+				msecs_to_jiffies(amdu_data.watch_dog_data.watch_dog_interval));
+			break;
+		case FB_BLANK_POWERDOWN:
+			amdu_data.fb_status.blank = 1;
+			amdu_data.panel_status.last_time_update = 0;
+			cancel_delayed_work(&amdu_data.watch_dog_data.watch_dog);
+			break;
+		}
+	}
+	return 0;
+}
+
+int mdss_debug_watch_dog_init(void)
+{
+	int rc = 0;
+	struct watch_dog_data* pwatch_dog_data;
+
+	amdu_data.watch_dog_data.watch_dog_interval = WATCH_DOG_INTERVAL;
+	amdu_data.watch_dog_data.dim_time_out = DIM_TIME_OUT;
+	amdu_data.watch_dog_data.fb_notifier.notifier_call = fb_event_callback;
+
+	rc = fb_register_client(&amdu_data.watch_dog_data.fb_notifier);
+	if (rc < 0) {
+		pr_err("%s: fb_register_client failed, returned with rc=%d\n",
+								__func__, rc);
+		kfree(pwatch_dog_data);
+		return -EPERM;
+	}
+
+	pr_info("%s: Watch dog interval:%d\n", __func__,amdu_data.watch_dog_data.watch_dog_interval);
+
+	INIT_DELAYED_WORK(&amdu_data.watch_dog_data.watch_dog, mdss_debug_watchdog);
+
+	pr_debug("%s: Watch Dog work queue initialized\n", __func__);
+
+	return rc;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// INIT
 
 int create_amdu_debugfs(struct dentry *parent)
 {
-// Tingyi +++
 //	amdu_data.debug_log_flag = 0xFF;
-	amdu_data.ambient_on = 0;
+	amdu_data.panel_status.ambient = 0;
 
 	amdu_data.ent_reg = debugfs_create_file("amdu_cmd", 0644, parent, 0/* we can transfer some data here*/, &mdss_cmd_fops);
 	if (IS_ERR_OR_NULL(amdu_data.ent_reg)) {
 		printk("[AMDU] debugfs_create_file: cmd fail !!\n");
 		return -EINVAL;
 	}
+
+	mdss_debug_watch_dog_init();
+
 	return 0;
 }
 
-int enable_ambient(int enable)
-{
-	int old = amdu_data.ambient_on;
-	amdu_data.ambient_on = enable;
-	printk("MDSS:DEBUG:%s:amdu_data.ambient_on = %d->%d\n",__func__,old,amdu_data.ambient_on);
-	return old;
-}
-//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
 // DSI COMMANDS
 // Read Number of Error on DSI
 //static char RDNUMED = 0x05;
-
 
 static int check_panel_status(void)
 {
@@ -370,18 +480,14 @@ static int check_panel_status(void)
 	printk("MDSS:[mdss_asus_debug.c]:%s: ---\n", __func__);
 #endif
 
-	printk("amdu_data.ambient_on = %d\n",amdu_data.ambient_on);
+	printk("amdu_data.panel_status.ambient = %d\n",amdu_data.panel_status.ambient);
 	printk("amdu_data.debug_str = %s\n",amdu_data.debug_str);
 
 	return 0;
 }
 
-int is_ambient_on(){
-	return amdu_data.ambient_on;
-}
 
-
-//==================================================================================================
+////////////////////////////////////////////////////////////////////////////////
 // MIPI Commands
 int send_mipi_write_cmd(char cmd0,char cmd1)
 {
@@ -497,7 +603,7 @@ int send_mipi_read_cmd(	char cmd0, char cmd1)
 
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // LOG 
 
 
@@ -533,7 +639,7 @@ int notify_amdu_panel_on_cmds_start(struct mdss_dsi_ctrl_pdata *ctrl)
 		return 1;
 
 	cmd_counter = 0;
-	printk("///////////////////////////////////////////////////////////////////////////////////\n");
+	printk("////////////////////////////////////////////////////////////////////////////////\n");
 	return 0;
 }
 extern int mdss_dsi_get_active_panel_type(void);
@@ -548,7 +654,7 @@ int notify_amdu_panel_on_cmds_stop(void)
 	
 		printk("};\n");
 		cmd_counter = -1;
-		printk("///////////////////////////////////////////////////////////////////////////////////\n");
+		printk("////////////////////////////////////////////////////////////////////////////////\n");
 	}
 	
 	return 0;
@@ -569,10 +675,9 @@ int notify_amdu_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	return 0;
 }
 
-// ASUS_BSP +++ Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
-void set_amdu_fbinfo(struct fb_info *fb0_info)
+void set_amdu_fbinfo(struct fb_info *info)
 {
-	amdu_data.fb0_info = fb0_info;
+	amdu_data.fb_status.fb_info = info;
 	return;
 }
 
@@ -582,33 +687,41 @@ void show_panel_message(char* msg)
 	static char panel_msg[128];
 	char *envp[2] = {panel_msg, NULL};
 	sprintf(panel_msg,"PANEL_MSG=%s",msg);
-	if (amdu_data.fb0_info){
+	if (amdu_data.fb_status.fb_info){
 		kobject_uevent_env(
-			&amdu_data.fb0_info->dev->kobj,KOBJ_CHANGE, envp);
+			&amdu_data.fb_status.fb_info->dev->kobj,KOBJ_CHANGE, envp);
 		printk("MDSS:DEBUG:%s: msg=%s\n",__func__,msg);
 	}else{
-		printk("MDSS:DEBUG:%s: ERR! amdu_data.fb0_info = 0\n\n",__func__);
+		printk("MDSS:DEBUG:%s: ERR! amdu_data.fb_status.fb_info = 0\n\n",__func__);
 	}
 	return;
 }
 
-// ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
-void notify_panel_lowpowermode(int low)
+void notify_amdu_panel_power_mode(int mode)
 {
 	static char panel_msg[32];
 	char *envp[2] = {panel_msg, NULL};
-	sprintf(panel_msg,"PANEL_LOWPOWER=%s",(low?"1":"0"));
-	if (amdu_data.fb0_info){
+	sprintf(panel_msg,"PANEL_LOWPOWER=%s",(mode == PANEL_POWER_LOW ?"1":"0"));
+	if (amdu_data.fb_status.fb_info){
 		kobject_uevent_env(
-			&amdu_data.fb0_info->dev->kobj,KOBJ_CHANGE, envp);
+			&amdu_data.fb_status.fb_info->dev->kobj,KOBJ_CHANGE, envp);
 		printk("MDSS:DEBUG:%s: msg=%s\n",__func__,panel_msg);
 	}else{
-		printk("MDSS:DEBUG:%s: ERR! amdu_data.fb0_info = 0\n\n",__func__);
+		printk("MDSS:DEBUG:%s: ERR! amdu_data.fb_status.fb_info = 0\n\n",__func__);
 	}
+	amdu_data.panel_status.power_mode = mode;
 	return;
 }
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
+void notify_amdu_panel_ambient_on(enable)
+{
+	amdu_data.panel_status.ambient = enable;
+	return;
+}
+
+void notify_amdu_overlay_commit(void)
+{
+	amdu_data.panel_status.last_time_update = jiffies;
+}
 
 
 void set_debug_str(char* debug_str)

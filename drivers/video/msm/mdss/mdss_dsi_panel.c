@@ -29,6 +29,30 @@
 #include "mdss_asus_debug.h"
 #endif
 // ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
+
+
+
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Ambient mode on/off support"
+enum PANEL_AMBIENT_MODE{
+	AMBIENT_MODE_ON = 1,
+	AMBIENT_MODE_OFF = 0,
+};
+static int panel_ambient_mode = AMBIENT_MODE_OFF;
+int is_ambient_on(){
+	return panel_ambient_mode;
+}
+int enable_ambient(int enable)
+{
+	int old = panel_ambient_mode;
+	panel_ambient_mode = enable;
+	printk("MDSS:%s:panel_ambient_mode = %d->%d\n",__func__,old,panel_ambient_mode);
+	notify_amdu_panel_ambient_on(enable);
+	return old;
+}
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Ambient mode on/off support"
+
+
+
 #define DT_CMD_HDR 6
 
 DEFINE_LED_TRIGGER(bl_led_trigger);

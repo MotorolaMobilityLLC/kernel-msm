@@ -13,6 +13,10 @@
 #define AMDU_DEBUGFAGL_LOGONOFFCMD  (0x0002)
 
 
+#define WATCH_DOG_INTERVAL	(1000)
+#define DIM_TIME_OUT		(70)
+
+
 // Supported commands
 #define DSI_CMD_NORON "normal"
 #define DSI_CMD_ALLPON "allpon"
@@ -38,7 +42,7 @@ int create_amdu_debugfs(struct dentry *parent);
 unsigned int set_amdu_logflag(unsigned int new_flag);
 unsigned int clr_amdu_logflag(unsigned int new_flag);
 unsigned int get_amdu_logflag(void);
-int enable_ambient(int enable);
+
 
 // integrated AMDU to MDSS
 // ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Be able to send debug MIPI cmd to MDSS"
@@ -47,6 +51,15 @@ void amdu_register_ctrl_pdata(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int notify_amdu_panel_on_cmds_start(struct mdss_dsi_ctrl_pdata *ctrl);
 int notify_amdu_panel_on_cmds_stop(void);
 int notify_amdu_dsi_cmd_dma_tx(struct dsi_buf *tp);
+void notify_amdu_overlay_commit(void);
+enum PANEL_POWER_MODE{
+	PANEL_POWER_LOW = 0,
+	PANEL_POWER_NORMAL = 1,
+};
+void notify_amdu_panel_power_mode(int mode);
+void notify_amdu_panel_ambient_on(int enable);
 
-int is_ambient_on(void);
 void show_panel_message(char* msg);
+
+// Move to mdss_dsi_panel.c
+int is_ambient_on(void);
