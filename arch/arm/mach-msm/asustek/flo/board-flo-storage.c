@@ -332,8 +332,10 @@ static struct mmc_platform_data *apq8064_sdc4_pdata;
 
 void __init apq8064_init_mmc(void)
 {
-	if (apq8064_sdc1_pdata)
+	if (apq8064_sdc1_pdata) {
 		apq8064_add_sdcc(1, apq8064_sdc1_pdata);
+		apq8064_add_uio();
+        }
 
 	if (apq8064_sdc2_pdata)
 		apq8064_add_sdcc(2, apq8064_sdc2_pdata);
