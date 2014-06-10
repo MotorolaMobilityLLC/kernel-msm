@@ -152,15 +152,20 @@ static ssize_t ramoops_pstore_read(u64 *id, enum pstore_type_id *type,
 	prz = ramoops_get_next_prz(cxt->przs, &cxt->dump_read_cnt,
 				   cxt->max_dump_cnt, id, type,
 				   PSTORE_TYPE_DMESG, 1);
-	if (!prz)
+	if (!prz) {
 		prz = ramoops_get_next_prz(&cxt->cprz, &cxt->console_read_cnt,
 					   1, id, type, PSTORE_TYPE_CONSOLE, 0);
+		if (prz && !persistent_ram_old_size(prz))
+			persistent_ram_annotation_merge(NULL);
+	}
 	if (!prz)
 		prz = ramoops_get_next_prz(&cxt->fprz, &cxt->ftrace_read_cnt,
 					   1, id, type, PSTORE_TYPE_FTRACE, 0);
-	if (!prz)
+	if (!prz) {
 		prz = ramoops_get_next_prz(&cxt->aprz, &cxt->annotate_read_cnt,
 					1, id, type, PSTORE_TYPE_ANNOTATE, 0);
+		persistent_ram_annotation_merge(prz);
+	}
 	if (!prz)
 		return 0;
 
