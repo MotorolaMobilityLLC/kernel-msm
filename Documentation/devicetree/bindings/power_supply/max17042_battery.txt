@@ -22,6 +22,9 @@ Optional properties :
  - maxim,batt_undervoltage_zero_soc : Define this property to report "0" SOC
    if and only if battery undervoltage interrupt has fired.
 
+ - maxim,batt_psy_name : Define this property to send notifications to another
+   battery driver.
+
 Optional subnodes:
  - maxim,configuration : Contains configuraiton data for POR initialization
    of the device defined in Maxim appnote. This data is either specific to how
