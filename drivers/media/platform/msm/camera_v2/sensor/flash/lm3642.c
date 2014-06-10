@@ -33,7 +33,7 @@ static struct msm_camera_i2c_reg_array lm3642_off_array[] = {
 };
 
 static struct msm_camera_i2c_reg_array lm3642_release_array[] = {
-	{0x0f, 0x00},
+	{0x0A, 0x00},
 };
 
 static struct msm_camera_i2c_reg_array lm3642_low_array[] = {
