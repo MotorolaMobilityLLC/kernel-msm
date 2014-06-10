@@ -304,10 +304,19 @@ typedef struct
 #endif
 
 #ifdef WCN_PRONTO
+#ifdef WLAN_FEATURE_EXTSCAN
+        wpt_uint32 extscanBuffer:1;
+#else
         wpt_uint32 reserved3: 1;
+#endif
         wpt_uint32 rxDXEPriorityRouting:1;
 #else
-        wpt_uint32 reserved3:2;
+#ifdef WLAN_FEATURE_EXTSCAN
+        wpt_uint32 extscanBuffer:1;
+        wpt_uint32 reserved3: 1;
+#else
+        wpt_uint32 reserved3: 2;
+#endif
 #endif //WCN_PRONTO
 
 
@@ -322,9 +331,18 @@ typedef struct
         wpt_uint32 tid:4;
 #ifdef WCN_PRONTO
         wpt_uint32 rxDXEPriorityRouting:1;
-        wpt_uint32 reserved3: 1;
+#ifdef WLAN_FEATURE_EXTSCAN
+        wpt_uint32 extscanBuffer:1;
 #else
-        wpt_uint32 reserved3:2;
+        wpt_uint32 reserved3: 1;
+#endif
+#else
+#ifdef WLAN_FEATURE_EXTSCAN
+        wpt_uint32 reserved3: 1;
+        wpt_uint32 extscanBuffer:1;
+#else
+        wpt_uint32 reserved3: 2;
+#endif
 #endif //WCN_PRONTO
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
         wpt_uint32 roamCandidateInd:1;

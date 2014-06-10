@@ -405,6 +405,14 @@ typedef enum
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
   WDI_LL_STATS_RESULTS_IND,
 #endif
+#ifdef WLAN_FEATURE_EXTSCAN
+  WDI_EXTSCAN_PROGRESS_IND,
+  WDI_EXTSCAN_SCAN_AVAILABLE_IND,
+  WDI_EXTSCAN_SCAN_RESULT_IND,
+  WDI_EXTSCAN_GET_CAPABILITIES_IND,
+  WDI_EXTSCAN_BSSID_HOTLIST_RESULT_IND,
+  WDI_EXTSCAN_SIGN_RSSI_RESULT_IND,
+#endif
 
   WDI_MAX_IND
 }WDI_LowLevelIndEnumType;
@@ -888,6 +896,10 @@ typedef struct
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
     /*Link Layer Statistics from FW*/
     void *pLinkLayerStatsResults;
+#endif
+#ifdef WLAN_FEATURE_EXTSCAN
+    /*EXTSCAN Results from FW*/
+    void *pEXTScanIndData;
 #endif
   }  wdiIndicationData;
 }WDI_LowLevelIndType;
@@ -5614,6 +5626,155 @@ typedef struct
   void*             pUserData;
 } WDI_DelPeriodicTxPtrnParamsType;
 
+#ifdef WLAN_FEATURE_EXTSCAN
+
+#define WDI_WLAN_EXTSCAN_MAX_CHANNELS                 16
+#define WDI_WLAN_EXTSCAN_MAX_BUCKETS                  16
+#define WDI_WLAN_EXTSCAN_MAX_HOTLIST_APS              128
+#define WDI_WLAN_EXTSCAN_MAX_SIGNIFICANT_CHANGE_APS   64
+
+typedef enum
+{
+    WDI_WIFI_BAND_UNSPECIFIED,
+    WDI_WIFI_BAND_BG             = 1,    // 2.4 GHz
+    WDI_WIFI_BAND_A              = 2,    // 5 GHz without DFS
+    WDI_WIFI_BAND_ABG            = 3,    // 2.4 GHz + 5 GHz; no DFS
+    WDI_WIFI_BAND_A_DFS          = 4,    // 5 GHz DFS only
+    WDI_WIFI_BAND_A_WITH_DFS     = 6,    // 5 GHz with DFS
+    WDI_WIFI_BAND_ABG_WITH_DFS   = 7,    // 2.4 GHz + 5 GHz with DFS
+
+    /* Keep it last */
+    WDI_WIFI_BAND_MAX
+} WDI_WifiBand;
+
+typedef struct
+{
+    wpt_uint32      channel;        // frequency
+    wpt_uint32      dwellTimeMs;    // dwell time hint
+    wpt_uint8       passive;        // 0 => active,
+                                  // 1 => passive scan; ignored for DFS
+    wpt_uint8       chnlClass;
+} WDI_WifiScanChannelSpec;
+
+typedef struct
+{
+    wpt_uint8       bucket;  // bucket index, 0 based
+    WDI_WifiBand     band;    // when UNSPECIFIED, use channel list
+
+    /*
+     * desired period, in millisecond; if this is too
+     * low, the firmware should choose to generate results as fast as
+     * it can instead of failing the command byte
+     */
+    wpt_uint32      period;
+
+    /*
+     * 0 => normal reporting (reporting rssi history
+     * only, when rssi history buffer is % full)
+     * 1 => same as 0 + report a scan completion event after scanning
+     * this bucket
+     * 2 => same as 1 + forward scan results (beacons/probe responses + IEs)
+     * in real time to HAL
+     */
+    wpt_uint8      reportEvents;
+
+    wpt_uint8      numChannels;
+
+    /*
+     * channels to scan; these may include DFS channels
+     */
+    WDI_WifiScanChannelSpec channels[WDI_WLAN_EXTSCAN_MAX_CHANNELS];
+} WDI_WifiScanBucketSpec;
+
+typedef struct
+{
+    wpt_uint32                requestId;
+    wpt_uint8                 sessionId;
+    wpt_uint32                basePeriod;   // base timer period
+    wpt_uint32                maxAPperScan;
+
+    /* in %, when buffer is this much full, wake up host */
+    wpt_uint32                reportThreshold;
+
+    wpt_uint8                numBuckets;
+    WDI_WifiScanBucketSpec  buckets[WDI_WLAN_EXTSCAN_MAX_BUCKETS];
+} WDI_EXTScanStartReqParams;
+
+typedef struct
+{
+    wpt_uint32      requestId;
+    wpt_uint8       sessionId;
+} WDI_EXTScanStopReqParams;
+
+typedef struct
+{
+    wpt_uint32      requestId;
+    wpt_uint8       sessionId;
+
+    /*
+     * 1 return cached results and flush it
+     * 0 return cached results and do not flush
+     */
+    wpt_boolean  flush;
+} WDI_EXTScanGetCachedResultsReqParams;
+
+typedef struct
+{
+    wpt_uint32    requestId;
+    wpt_uint8     sessionId;
+} WDI_EXTScanGetCapabilitiesReqParams;
+
+typedef struct
+{
+   wpt_uint8   bssid[6];     /* BSSID */
+   wpt_int32    low;     // low threshold
+   wpt_int32    high;    // high threshold
+   wpt_uint32   channel; // channel hint
+} WDI_APThresholdParam;
+
+typedef struct
+{
+    wpt_int32   requestId;
+    wpt_int8    sessionId;    // session Id mapped to vdev_id
+
+    wpt_int32   numAp;        // number of hotlist APs
+    WDI_APThresholdParam   ap[WDI_WLAN_EXTSCAN_MAX_HOTLIST_APS];    // hotlist APs
+} WDI_EXTScanSetBSSIDHotlistReqParams;
+
+typedef struct
+{
+    wpt_uint32    requestId;
+    wpt_uint8     sessionId;
+} WDI_EXTScanResetBSSIDHotlistReqParams;
+
+
+typedef struct
+{
+    wpt_int32   requestId;
+    wpt_int8    sessionId;    // session Id mapped to vdev_id
+
+    /* number of samples for averaging RSSI */
+    wpt_int32              rssiSampleSize;
+
+    /* number of missed samples to confirm AP loss */
+    wpt_int32              lostApSampleSize;
+
+    /* number of APs breaching threshold required for firmware
+     * to generate event
+     */
+    wpt_int32              minBreaching;
+
+    wpt_int32   numAp;        // number of hotlist APs
+    WDI_APThresholdParam   ap[WDI_WLAN_EXTSCAN_MAX_HOTLIST_APS];    // hotlist APs
+} WDI_EXTScanSetSignfRSSIChangeReqParams;
+
+typedef struct
+{
+    wpt_uint32    requestId;
+    wpt_uint8     sessionId;
+} WDI_EXTScanResetSignfRSSIChangeReqParams;
+#endif /* WLAN_FEATURE_EXTSCAN */
+
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
 typedef struct
 {
@@ -7498,6 +7659,24 @@ typedef void (*WDI_SetBatchScanCb)(void *pData, WDI_SetBatchScanRspType *pRsp);
 typedef void (*WDI_GetBcnMissRateCb)(wpt_uint8 status, wpt_uint32 bcnMissRate,
                                      void* pUserData);
 
+#ifdef WLAN_FEATURE_EXTSCAN
+typedef void  (*WDI_EXTScanStartRspCb)(void *pEventData,
+                                       void *pUserData);
+typedef void  (*WDI_EXTScanStopRspCb)(void *pEventData,
+                                       void *pUserData);
+typedef void  (*WDI_EXTScanGetCachedResultsRspCb)(void *pEventData,
+                                       void *pUserData);
+typedef void  (*WDI_EXTScanGetCapabilitiesRspCb)(void *pEventData,
+                                       void *pUserData);
+typedef void  (*WDI_EXTScanSetBSSIDHotlistRspCb)(void *pEventData,
+                                       void *pUserData);
+typedef void  (*WDI_EXTScanResetBSSIDHotlistRspCb)(void *pEventData,
+                                       void *pUserData);
+typedef void  (*WDI_EXTScanSetSignfRSSIChangeRspCb)(void *pEventData,
+                                       void *pUserData);
+typedef void  (*WDI_EXTScanResetSignfRSSIChangeRspCb)(void *pEventData,
+                                       void *pUserData);
+#endif /* WLAN_FEATURE_EXTSCAN */
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
 typedef void  (*WDI_LLStatsSetRspCb)(void *pEventData,
@@ -10587,6 +10766,146 @@ WDI_Status WDI_LPHBConfReq
    WDI_LphbCfgCb lphbCfgCb
 );
 #endif /* FEATURE_WLAN_LPHB */
+
+#ifdef WLAN_FEATURE_EXTSCAN
+/**
+ @brief WDI_EXTScanStartReq
+    This API is called to send EXTScan start request to FW
+
+ @param pwdiEXTScanStartReqParams : pointer to the request params.
+        wdiEXTScanStartRspCb  : callback on getting the response.
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_EXTScanStartReq
+(
+   WDI_EXTScanStartReqParams* pwdiEXTScanStartReqParams,
+   WDI_EXTScanStartRspCb          wdiEXTScanStartRspCb,
+   void*                   pUserData
+);
+
+/**
+ @brief WDI_EXTScanStopReq
+    This API is called to stop the EXTScan operations in the FW
+
+ @param pwdiEXTScanStopReqParams : pointer to the request params.
+        wdiEXTScanStopRspCb   : callback on getting the response.
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_EXTScanStopReq
+(
+   WDI_EXTScanStopReqParams* pwdiEXTScanStopReqParams,
+   WDI_EXTScanStopRspCb          wdiEXTScanStopRspCb,
+   void*                   pUserData
+);
+
+/**
+ @brief WDI_EXTScanGetCachedResultsReq
+    This API is called to send get link layer stats request in FW
+
+ @param pwdiEXTScanGetCachedResultsReqParams : pointer to the request params.
+        wdiEXTScanGetCachedResultsRspCb : callback on getting the response.
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_EXTScanGetCachedResultsReq
+(
+   WDI_EXTScanGetCachedResultsReqParams* pwdiEXTScanGetCachedResultsReqParams,
+   WDI_EXTScanGetCachedResultsRspCb          wdiEXTScanGetCachedResultsRspCb,
+   void*                   pUserData
+);
+
+/**
+ @brief WDI_EXTScanGetCapabilitiesReq
+    This API is called to send get EXTScan capabilities from FW
+
+ @param pwdiEXTScanGetCachedResultsReqParams  : pointer to the request params.
+        wdiEXTScanGetCachedResultsRspCb   : callback on getting the response.
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_EXTScanGetCapabilitiesReq
+(
+   WDI_EXTScanGetCapabilitiesReqParams* pwdiEXTScanGetCapabilitiesReqParams,
+   WDI_EXTScanGetCapabilitiesRspCb       wdiEXTScanGetCapabilitiesRspCb,
+   void*                   pUserData
+);
+
+/**
+ @brief WDI_EXTScanSetBSSIDHotlistReq
+    This API is called to send Set BSSID Hotlist Request FW
+
+ @param pwdiEXTScanSetBssidHotlistReqParams : pointer to the request params.
+        wdiEXTScanSetBSSIDHotlistRspCb   : callback on getting the response.
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_EXTScanSetBSSIDHotlistReq
+(
+   WDI_EXTScanSetBSSIDHotlistReqParams* pwdiEXTScanSetBSSIDHotlistReqParams,
+   WDI_EXTScanSetBSSIDHotlistRspCb     wdiEXTScanSetBSSIDHotlistRspCb,
+   void*                   pUserData
+);
+
+/**
+ @brief WDI_EXTScanResetBSSIDHotlistReq
+    This API is called to send Reset BSSID Hotlist Request FW
+
+ @param pwdiEXTScanResetBssidHotlistReqParams : pointer to the request params.
+        wdiEXTScanGetCachedResultsRspCb   : callback on getting the response.
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_EXTScanResetBSSIDHotlistReq
+(
+   WDI_EXTScanResetBSSIDHotlistReqParams* pwdiEXTScanResetBSSIDHotlistReqParams,
+   WDI_EXTScanResetBSSIDHotlistRspCb     wdiEXTScanResetBSSIDHotlistRspCb,
+   void*                   pUserData
+);
+
+/**
+ @brief WDI_EXTScanSetSignfRSSIChangeReq
+    This API is called to send Set Significant RSSI Request FW
+
+ @param pwdiEXTScanSetSignfRSSIChangeReqParams : pointer to the request params.
+        wdiEXTScanSetSignfRSSIChangeRspCb   : callback on getting the response.
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_EXTScanSetSignfRSSIChangeReq
+(
+   WDI_EXTScanSetSignfRSSIChangeReqParams*
+                                    pwdiEXTScanSetSignfRSSIChangeReqParams,
+   WDI_EXTScanSetSignfRSSIChangeRspCb   wdiEXTScanSetSignfRSSIChangeRspCb,
+   void*                   pUserData
+);
+
+/**
+ @brief WDI_EXTScanResetSignfRSSIChangeReq
+    This API is called to send Reset BSSID Hotlist Request FW
+
+ @param pwdiEXTScanResetSignfRSSIChangeReqParams : pointer to the request params.
+        wdiEXTScanResetSignfRSSIChangeRs  : callback on getting the response.
+        usrData : Client context
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_EXTScanResetSignfRSSIChangeReq
+(
+   WDI_EXTScanResetSignfRSSIChangeReqParams*
+                                       pwdiEXTScanResetSignfRSSIChangeReqParams,
+   WDI_EXTScanResetSignfRSSIChangeRspCb     wdiEXTScanResetSignfRSSIChangeRspCb,
+   void*                   pUserData
+);
+#endif /* WLAN_FEATURE_EXTSCAN */
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
 /**
