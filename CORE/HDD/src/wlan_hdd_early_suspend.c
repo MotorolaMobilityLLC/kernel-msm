@@ -1829,10 +1829,12 @@ VOS_STATUS hdd_wlan_reset_initialization(void)
  */
 void hdd_set_wlan_suspend_mode(bool suspend)
 {
+    vos_ssr_protect(__func__);
     if (suspend)
         hdd_suspend_wlan();
     else
         hdd_resume_wlan();
+    vos_ssr_unprotect(__func__);
 }
 
 static void hdd_ssr_timer_init(void)
