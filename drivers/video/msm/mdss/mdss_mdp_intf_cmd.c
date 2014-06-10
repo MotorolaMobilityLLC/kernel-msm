@@ -60,6 +60,7 @@ struct mdss_mdp_cmd_ctx {
 };
 
 struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
+struct mdss_mdp_cmd_ctx *stored_ctx;
 
 static inline u32 mdss_mdp_cmd_line_count(struct mdss_mdp_ctl *ctl)
 {
@@ -283,7 +284,16 @@ int mdss_mdp_cmd_disable_ulps(struct mdss_mdp_ctl *ctl)
 
 	return 0;
 }
-
+void mdss_mdp_cmd_clk_enable(void)
+{
+	if (stored_ctx)
+		mdss_mdp_cmd_clk_on(stored_ctx);
+}
+void mdss_mdp_cmd_clk_disable(void)
+{
+	if (stored_ctx)
+		mdss_mdp_cmd_clk_off(stored_ctx);
+}
 static void mdss_mdp_cmd_readptr_done(void *arg)
 {
 	struct mdss_mdp_ctl *ctl = arg;
@@ -586,6 +596,7 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 
+	stored_ctx = ctx;
 	pdata = ctl->panel_data;
 	pinfo = &pdata->panel_info;
 

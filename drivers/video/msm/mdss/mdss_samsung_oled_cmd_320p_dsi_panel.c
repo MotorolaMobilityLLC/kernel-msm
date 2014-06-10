@@ -60,6 +60,9 @@ static int disp_esd_gpio;
 static void alpm_store(u8 mode);
 #endif
 static int mdss_dsi_panel_dimming_init(struct mdss_panel_data *pdata);
+static int mipi_samsung_disp_send_cmd(
+				enum mipi_samsung_cmd_list cmd,
+				unsigned char lock);
 static struct panel_rev panel_supp_cdp[] = {
 	{"SDC_AMS163AX01", PANEL_320_OCTA_S6E63J},
 	{NULL}
@@ -131,6 +134,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 	cmdreq.cb = NULL;
 
 	mdss_dsi_cmd_dma_trigger_sel(ctrl, 1);
+	mipi_samsung_disp_send_cmd(PANEL_MTP_ENABLE, true);
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 	mdss_dsi_cmd_dma_trigger_sel(ctrl, 0);
 	stored_cd_level = cd_level;
@@ -378,7 +382,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	 * for the backlight brightness. If the brightness is less
 	 * than it, the controller can malfunction.
 	 */
-	mipi_samsung_disp_send_cmd(PANEL_MTP_ENABLE, true);
+
 	if (pdata->panel_info.first_bl_update) {
 		mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
 		pdata->panel_info.first_bl_update = 0;
