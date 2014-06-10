@@ -318,6 +318,8 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 				goto dt_exit;
 			}
 		}
+	} else {
+		gpio_direction_output(data->rst, 1);
 	}
 
 	data->vdd_hub = devm_regulator_get(dev, "ssp_vreg");
