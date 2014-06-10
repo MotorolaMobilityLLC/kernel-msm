@@ -123,6 +123,14 @@
 	regulator-always-on;
 };
 
+&pma8084_lvs1 {
+	regulator-always-on;
+};
+
+&pma8084_lvs4 {
+	regulator-always-on;
+};
+
 /* VDD_P5 always on */
 &pma8084_l9 {
 	regulator-always-on;
@@ -287,6 +295,9 @@
 			&ter_auxpcm_default
 			&bt_wakeup_default
 			&tfa9890_earpiece_default
+			&sensor_in_default
+			&sensor_out_hi_default
+			&sensor_out_low_default
 		>;
 
 	cycapsense {
@@ -315,6 +326,41 @@
 		qcom,pin-func = <0>;
 		label = "tfa9890_earpiece";
 		tfa9890_earpiece_default: default {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	sensor_out_low {
+		qcom,pins = <&gp 1 &gp 81>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <0>;
+		label = "sensor_out_low";
+		sensor_out_low_default: default {
+			bias-disable;
+			output-low;
+			drive-strength = <2>;
+		};
+	};
+
+	sensor_out_hi {
+		qcom,pins = <&gp 2>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "sensor_out_hi";
+		sensor_out_hi_default: default {
+			bias-disable;
+			output-high;
+			drive-strength = <2>;
+		};
+	};
+
+	sensor_in {
+		qcom,pins = <&gp 0 &gp 3>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <0>;
+		label = "sensor_in";
+		sensor_in_default: default {
 			bias-disable;
 			drive-strength = <2>;
 		};
