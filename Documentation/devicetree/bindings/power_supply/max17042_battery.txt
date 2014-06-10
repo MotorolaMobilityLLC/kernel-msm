@@ -26,6 +26,9 @@ Optional properties :
    max voltage alert thresholds. This will program the Valrt threshold register
    with the given value.
 
+ - maxim,batt_psy_name : Define this property to send notifications to another
+   battery driver.
+
 Optional subnodes:
  - maxim,configuration : Contains configuraiton data for POR initialization
    of the device defined in Maxim appnote. This data is either specific to how
