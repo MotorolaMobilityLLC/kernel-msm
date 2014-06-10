@@ -80,7 +80,7 @@
 		status = "ok";
 		};
 
-	qcom,camera@32 {
+	imx132: qcom,camera@32 {
 		compatible = "qcom,imx132";
 		reg = <0x32>;
 		qcom,slave-id = <0x6c 0x0 0x0132>;
