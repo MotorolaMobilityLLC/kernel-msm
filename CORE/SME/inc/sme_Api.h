@@ -174,6 +174,111 @@ sme_SetLinkLayerStatsIndCB
 
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
+#ifdef WLAN_FEATURE_EXTSCAN
+/* ---------------------------------------------------------------------------
+    \fn sme_GetValidChannelsByBand
+    \brief  SME API to fetch all valid channel filtered by band
+    \param  hHal
+    \param  wifiBand: RF band information
+    \param  aValidChannels: Array to store channel info
+    \param  len: number of channels
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_GetValidChannelsByBand (tHalHandle hHal, tANI_U8 wifiBand,
+                              tANI_U32 *aValidChannels, tANI_U8 *pNumChannels);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_EXTScanGetCapabilities
+    \brief  SME API to fetch Extented Scan capabilities
+    \param  hHal
+    \param  pReq: Extented Scan capabilities structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_EXTScanGetCapabilities (tHalHandle hHal,
+                                    tSirGetEXTScanCapabilitiesReqParams *pReq);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_EXTScanStart
+    \brief  SME API to issue Extented Scan start
+    \param  hHal
+    \param  pStartCmd: Extented Scan start structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_EXTScanStart (tHalHandle hHal,
+                          tSirEXTScanStartReqParams *pStartCmd);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_EXTScanStop
+    \brief  SME API to issue Extented Scan stop
+    \param  hHal
+    \param  pStopReq: Extented Scan stop structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_EXTScanStop(tHalHandle hHal, tSirEXTScanStopReqParams *pStopReq);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SetBssHotlist
+    \brief  SME API to set BSSID hotlist
+    \param  hHal
+    \param  pSetHotListReq: Extented Scan set hotlist structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_SetBssHotlist (tHalHandle hHal,
+                           tSirEXTScanSetBssidHotListReqParams *pSetHotListReq);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_ResetBssHotlist
+    \brief  SME API to reset BSSID hotlist
+    \param  hHal
+    \param  pSetHotListReq: Extented Scan set hotlist structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_ResetBssHotlist (tHalHandle hHal,
+                              tSirEXTScanResetBssidHotlistReqParams *pResetReq);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SetSignificantChange
+    \brief  SME API to set significant change
+    \param  hHal
+    \param  pSetSignificantChangeReq: Extented Scan set significant
+            change structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_SetSignificantChange (tHalHandle hHal,
+            tSirEXTScanSetSignificantChangeReqParams* pSetSignificantChangeReq);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_ResetSignificantChange
+    \brief  SME API to reset significant change
+    \param  hHal
+    \param  pResetReq: Extented Scan reset significant change structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_ResetSignificantChange (tHalHandle hHal,
+              tSirEXTScanResetSignificantChangeReqParams *pResetReq);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getCachedResults
+    \brief  SME API to get cached results
+    \param  hHal
+    \param  pCachedResultsReq: Extented Scan get cached results structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_getCachedResults (tHalHandle hHal,
+                      tSirEXTScanGetCachedResultsReqParams *pCachedResultsReq);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_EXTScanRegisterCallback
+    \brief  SME API to register Extented Scan notification callback
+    \param  pEXTScanIndCb
+    \- return void
+    -------------------------------------------------------------------------*/
+eHalStatus sme_EXTScanRegisterCallback (tHalHandle hHal,
+                          void (*pEXTScanIndCb)(void *, const tANI_U16, void *),
+                          void *);
+
+#endif /* WLAN_FEATURE_EXTSCAN */
+
 typedef enum
 {
     eSME_ROAM_TRIGGER_NONE = 0,

@@ -151,6 +151,12 @@ typedef struct tagSmeStruct
                                      int indType, void *pRsp);
    void *pLinkLayerStatsCallbackContext;
 #endif
+#ifdef WLAN_FEATURE_EXTSCAN
+   void (*pEXTScanIndCb) (void *, const tANI_U16, void *);
+   /* Use this request ID while sending Full Scan Results */
+   int  extScanStartReqId;
+   void *pEXTScanCallbackContext;
+#endif /* WLAN_FEATURE_EXTSCAN */
 
 } tSmeStruct, *tpSmeStruct;
 
