@@ -231,6 +231,7 @@ struct max17042_platform_data {
 	 * has fired.
 	 */
 	bool batt_undervoltage_zero_soc;
+	const char *batt_psy_name;
 };
 
 #endif /* __MAX17042_BATTERY_H_ */
