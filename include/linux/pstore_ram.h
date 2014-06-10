@@ -79,6 +79,15 @@ void *persistent_ram_old(struct persistent_ram_zone *prz);
 void persistent_ram_free_old(struct persistent_ram_zone *prz);
 ssize_t persistent_ram_ecc_string(struct persistent_ram_zone *prz,
 	char *str, size_t len);
+#ifdef CONFIG_PSTORE_RAM_ANNOTATION_APPEND
+__printf(1, 2)  int persistent_ram_annotation_append(const char *fmt, ...);
+void persistent_ram_annotation_merge(struct persistent_ram_zone *prz);
+#else
+static inline __printf(1, 2) void persistent_ram_annotation_append(
+			const char *fmt, ...) { };
+static inline void persistent_ram_annotation_merge(
+			struct persistent_ram_zone *prz) { };
+#endif
 
 void ramoops_console_write_buf(const char *buf, size_t size);
 
