@@ -536,6 +536,27 @@ static int persistent_ram_buffer_map(phys_addr_t start, phys_addr_t size,
 	return 0;
 }
 
+void *persistent_ram_map(phys_addr_t start, phys_addr_t size)
+{
+	void *vaddr;
+
+	if (pfn_valid(start >> PAGE_SHIFT))
+		vaddr = persistent_ram_vmap(start, size);
+	else
+		vaddr = persistent_ram_iomap(start, size);
+	return vaddr;
+}
+
+void persistent_ram_unmap(void *vaddr, phys_addr_t start, phys_addr_t size)
+{
+	if (pfn_valid(start >> PAGE_SHIFT)) {
+		vunmap(vaddr);
+	} else {
+		iounmap(vaddr);
+		release_mem_region(start, size);
+	}
+}
+
 static int persistent_ram_post_init(struct persistent_ram_zone *prz, u32 sig,
 				    struct persistent_ram_ecc_info *ecc_info)
 {
