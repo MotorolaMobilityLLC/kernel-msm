@@ -35,10 +35,6 @@
 	qcom,init-voltage = <3300000>;
 };
 
-&fb_mem {
-	reg = <0 0 0 0x1d00000>;
-};
-
 &mdss_fb0 {
 	qcom,mdss-fb-split = <720 720>;
 	qcom,mdss-fb-rot-180;
