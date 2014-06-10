@@ -2207,6 +2207,12 @@ tMgmtFrmDropReason limIsPktCandidateForDrop(tpAniSirGlobal pMac, tANI_U8 *pRxPac
             return eMGMT_DROP_NO_DROP;
         }
 #endif
+#ifdef WLAN_FEATURE_EXTSCAN
+        else if (WDA_GET_EXTSCANFULLSCANRESIND(pRxPacketInfo))
+        {
+            return eMGMT_DROP_NO_DROP;
+        }
+#endif
         else if (WDA_IS_RX_IN_SCAN(pRxPacketInfo))
         {
             return eMGMT_DROP_SCAN_MODE_FRAME;
