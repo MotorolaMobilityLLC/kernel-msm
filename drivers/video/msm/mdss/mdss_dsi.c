@@ -2983,6 +2983,14 @@ static struct device_node *mdss_dsi_config_panel(struct platform_device *pdev,
 		pr_warn("%s:%d:dsi specific cfg not present\n",
 			__func__, __LINE__);
 
+	/* Parse panel config */
+	rc = mdss_panel_parse_panel_config_dt(ctrl_pdata);
+	if (rc) {
+		pr_err("%s: failed to parse panel config dt, rc = %d\n",
+								__func__, rc);
+		return NULL;
+	}
+
 	/* find panel device node */
 	dsi_pan_node = mdss_dsi_find_panel_of_node(pdev, panel_cfg);
 	if (!dsi_pan_node) {

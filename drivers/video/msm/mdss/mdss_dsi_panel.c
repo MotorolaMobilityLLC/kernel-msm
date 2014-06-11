@@ -30,6 +30,9 @@
 #ifdef TARGET_HW_MDSS_HDMI
 #include "mdss_dba_utils.h"
 #endif
+
+#define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
+#define MDSS_PANEL_UNKNOWN_NAME "unknown"
 #define DT_CMD_HDR 6
 #define MIN_REFRESH_RATE 48
 #define DEFAULT_MDP_TRANSFER_TIME 14000
@@ -536,6 +539,55 @@ static int mdss_dsi_roi_merge(struct mdss_dsi_ctrl_pdata *ctrl,
 	}
 
 	return ans;
+}
+
+int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	struct device_node *np;
+	const char *pname;
+	u32 panel_ver;
+
+	np = of_find_node_by_path("/chosen");
+	ctrl_pdata->panel_config.esd_enable =
+				!of_property_read_bool(np, "mmi,esd");
+	if (!ctrl_pdata->panel_config.esd_enable)
+		pr_warn("%s: ESD detection is disabled by UTAGS\n", __func__);
+
+	ctrl_pdata->panel_config.bare_board =
+			of_property_read_bool(np, "mmi,bare_board");
+
+	ctrl_pdata->panel_config.panel_ver = MDSS_PANEL_DEFAULT_VER;
+	of_property_read_u64(np, "mmi,panel_ver",
+				&ctrl_pdata->panel_config.panel_ver);
+
+	pname = of_get_property(np, "mmi,panel_name", NULL);
+	if (!pname || strlen(pname) == 0) {
+		pr_warn("Failed to get mmi,panel_name\n");
+		strlcpy(ctrl_pdata->panel_config.panel_name,
+				MDSS_PANEL_UNKNOWN_NAME,
+				sizeof(ctrl_pdata->panel_config.panel_name));
+	} else
+		strlcpy(ctrl_pdata->panel_config.panel_name, pname,
+				sizeof(ctrl_pdata->panel_config.panel_name));
+
+	pr_debug("%s: esd_enable=%d bare_board_bl=%d panel_name=%s\n",
+				__func__, ctrl_pdata->panel_config.esd_enable,
+				ctrl_pdata->panel_config.bare_board,
+				ctrl_pdata->panel_config.panel_name);
+
+	panel_ver = (u32)ctrl_pdata->panel_config.panel_ver;
+	pr_info("%s: BL: panel=%s, manufacture_id(0xDA)= 0x%x "
+		"controller_ver(0xDB)= 0x%x controller_drv_ver(0XDC)= 0x%x, "
+		"full=0x%016llx\n",
+		__func__,
+		ctrl_pdata->panel_config.panel_name,
+		panel_ver & 0xff, (panel_ver & 0xff00) >> 8,
+		(panel_ver & 0xff0000) >> 16,
+		ctrl_pdata->panel_config.panel_ver);
+
+	of_node_put(np);
+
+	return 0;
 }
 
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
