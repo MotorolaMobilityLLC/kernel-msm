@@ -2,13 +2,13 @@
  * Linux cfg80211 Vendor Extension Code
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -35,15 +35,16 @@
 #define OUI_BRCM    0x001018
 #define OUI_GOOGLE  0x001A11
 #define BRCM_VENDOR_SUBCMD_PRIV_STR	1
-#define VENDOR_ID_OVERHEAD                 (NLA_HDRLEN  + 4)
-#define VENDOR_SUBCMD_OVERHEAD             (NLA_HDRLEN  + 4)
+#define ATTRIBUTE_U32_LEN                  (NLA_HDRLEN  + 4)
+#define VENDOR_ID_OVERHEAD                 ATTRIBUTE_U32_LEN
+#define VENDOR_SUBCMD_OVERHEAD             ATTRIBUTE_U32_LEN
 #define VENDOR_DATA_OVERHEAD               (NLA_HDRLEN)
 
-#define SCAN_RESULTS_COMPLETE_FLAG_LEN  (NLA_HDRLEN  + 4)
+#define SCAN_RESULTS_COMPLETE_FLAG_LEN       ATTRIBUTE_U32_LEN
 #define SCAN_INDEX_HDR_LEN                   (NLA_HDRLEN)
-#define SCAN_ID_HDR_LEN                      (NLA_HDRLEN + 4)
-#define SCAN_FLAGS_HDR_LEN                   (NLA_HDRLEN + 4)
-#define GSCAN_NUM_RESULTS_HDR_LEN            (NLA_HDRLEN + 4)
+#define SCAN_ID_HDR_LEN                      ATTRIBUTE_U32_LEN
+#define SCAN_FLAGS_HDR_LEN                   ATTRIBUTE_U32_LEN
+#define GSCAN_NUM_RESULTS_HDR_LEN            ATTRIBUTE_U32_LEN
 #define GSCAN_RESULTS_HDR_LEN                (NLA_HDRLEN)
 #define GSCAN_BATCH_RESULT_HDR_LEN  (SCAN_INDEX_HDR_LEN + SCAN_ID_HDR_LEN + \
 									SCAN_FLAGS_HDR_LEN + \
@@ -92,6 +93,7 @@ enum wl_vendor_subcmd {
 	GSCAN_SUBCMD_SET_HOTLIST,
 	GSCAN_SUBCMD_SET_SIGNIFICANT_CHANGE_CONFIG,
 	GSCAN_SUBCMD_ENABLE_FULL_SCAN_RESULTS,
+	GSCAN_SUBCMD_GET_CHANNEL_LIST,
     /* Add more sub commands here */
     GSCAN_SUBCMD_MAX,
 
@@ -109,6 +111,7 @@ enum gscan_attributes {
     GSCAN_ATTRIBUTE_NUM_AP_PER_SCAN,
     GSCAN_ATTRIBUTE_REPORT_THRESHOLD,
     GSCAN_ATTRIBUTE_NUM_SCANS_TO_CACHE,
+    GSCAN_ATTRIBUTE_BAND = GSCAN_ATTRIBUTE_BUCKETS_BAND,
 
     GSCAN_ATTRIBUTE_ENABLE_FEATURE = 20,
     GSCAN_ATTRIBUTE_SCAN_RESULTS_COMPLETE,
@@ -122,6 +125,8 @@ enum gscan_attributes {
     GSCAN_ATTRIBUTE_SCAN_ID,                            /* indicates scan number */
     GSCAN_ATTRIBUTE_SCAN_FLAGS,                         /* indicates if scan was aborted */
     GSCAN_ATTRIBUTE_AP_FLAGS,                           /* flags on significant change event */
+    GSCAN_ATTRIBUTE_NUM_CHANNELS,
+    GSCAN_ATTRIBUTE_CHANNEL_LIST,
 
 	/* remaining reserved for additional attributes */
 

@@ -187,9 +187,9 @@ static int wl_cfgvendor_gscan_get_capabilities(struct wiphy *wiphy,
 	uint32 reply_len = 0;
 
 	reply = dhd_dev_pno_get_gscan(wl_to_prmry_ndev(cfg),
-	   DHD_PNO_GET_CAPABILITIES, &reply_len);
+	   DHD_PNO_GET_CAPABILITIES, NULL, &reply_len);
 	if (!reply) {
-		WL_ERR(("Could not set CFG\n"));
+		WL_ERR(("Could not get capabilities\n"));
 		err = -EINVAL;
 		return err;
 	}
@@ -200,6 +200,54 @@ static int wl_cfgvendor_gscan_get_capabilities(struct wiphy *wiphy,
 	if (unlikely(err))
 		WL_ERR(("Vendor Command reply failed ret:%d \n", err));
 
+	kfree(reply);
+	return err;
+}
+
+static int wl_cfgvendor_gscan_get_channel_list(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void  *data, int len)
+{
+	int err = 0, type, band;
+	struct wl_priv *cfg = wiphy_priv(wiphy);
+	uint16 *reply = NULL;
+	uint32 reply_len = 0, num_channels, mem_needed;
+	struct sk_buff *skb;
+
+	type = nla_type(data);
+
+	if (type == GSCAN_ATTRIBUTE_BAND) {
+		band = nla_get_u32(data);
+	} else {
+		return -1;
+	}
+
+	reply = dhd_dev_pno_get_gscan(wl_to_prmry_ndev(cfg),
+	   DHD_PNO_GET_CHANNEL_LIST, &band, &reply_len);
+
+	if (!reply) {
+		WL_ERR(("Could not get channel list\n"));
+		err = -EINVAL;
+		return err;
+	}
+	num_channels =  reply_len/ sizeof(uint32);
+	mem_needed = reply_len + VENDOR_REPLY_OVERHEAD + (ATTRIBUTE_U32_LEN * 2);
+
+	/* Alloc the SKB for vendor_event */
+	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, mem_needed);
+	if (unlikely(!skb)) {
+		WL_ERR(("skb alloc failed"));
+		err = -ENOMEM;
+		goto exit;
+	}
+
+	nla_put_u32(skb, GSCAN_ATTRIBUTE_NUM_CHANNELS, num_channels);
+	nla_put(skb, GSCAN_ATTRIBUTE_CHANNEL_LIST, reply_len, reply);
+
+	err =  cfg80211_vendor_cmd_reply(skb);
+
+	if (unlikely(err))
+		WL_ERR(("Vendor Command reply failed ret:%d \n", err));
+exit:
 	kfree(reply);
 	return err;
 }
@@ -218,7 +266,7 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	struct nlattr *scan_hdr;
 
 	results = dhd_dev_pno_get_gscan(wl_to_prmry_ndev(cfg),
-	             DHD_PNO_GET_BATCH_RESULTS, &reply_len);
+	             DHD_PNO_GET_BATCH_RESULTS, NULL, &reply_len);
 
 	if (!results) {
 		WL_ERR(("No results to send %d\n", err));
@@ -241,9 +289,9 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	} else {
 		complete = 1;
 	}
-	/* !!temp!!! to debug 15144213 */
-	printk("complete %d mem_needed %d max_mem %d\n", complete, mem_needed,
-        (int)NLMSG_DEFAULT_SIZE);
+
+	WL_TRACE(("complete %d mem_needed %d max_mem %d\n", complete, mem_needed,
+		(int)NLMSG_DEFAULT_SIZE));
 	/* Alloc the SKB for vendor_event */
 	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, mem_needed);
 	if (unlikely(!skb)) {
@@ -775,6 +823,14 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		},
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = wl_cfgvendor_gscan_get_batch_results
+	},
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = GSCAN_SUBCMD_GET_CHANNEL_LIST
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_gscan_get_channel_list
 	},
 #endif /* GSCAN_SUPPORT */
 	{

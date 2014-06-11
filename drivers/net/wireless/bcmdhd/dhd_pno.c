@@ -511,6 +511,10 @@ _dhd_pno_get_channels(dhd_pub_t *dhd, uint16 *d_chan_list,
 			if (skip_dfs && is_dfs(dtoh32(list->element[i])))
 				continue;
 
+		} else if (band == WLC_BAND_AUTO) {
+			if (skip_dfs || !is_dfs(dtoh32(list->element[i])))
+				continue;
+
 		} else { /* All channels */
 			if (skip_dfs && is_dfs(dtoh32(list->element[i])))
 				continue;
@@ -1383,10 +1387,16 @@ static void *dhd_get_gscan_batch_results(dhd_pub_t *dhd, uint32 *len)
 	return results;
 }
 
-void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type, uint32 *len)
+void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
+                          void *info, uint32 *len)
 {
 	void *ret = NULL;
 	dhd_pno_gscan_capabilities_t *ptr;
+
+	if (!info || !len) {
+		DHD_ERROR((" Info buffer is NULL\n"));
+		return ret;
+	}
 
 	switch (type) {
 		case DHD_PNO_GET_CAPABILITIES:
@@ -1410,6 +1420,57 @@ void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type, uint32 *l
 
 		case DHD_PNO_GET_BATCH_RESULTS:
 			ret = dhd_get_gscan_batch_results(dhd, len);
+			break;
+		case DHD_PNO_GET_CHANNEL_LIST:
+			{
+				uint16 ch_list[WL_NUMCHANNELS];
+				uint32 *ptr, mem_needed, i;
+				int32 err, nchan = WL_NUMCHANNELS;
+				uint32 *gscan_band = (uint32 *) info;
+				uint8 band = 0;
+
+				/* No band specified?, nothing to do */
+				if ((*gscan_band & GSCAN_BAND_MASK) == 0) {
+					DHD_PNO(("No band specified\n"));
+					*len = 0;
+					break;
+				}
+
+				/* HAL and DHD use different bits for 2.4G and
+				 * 5G in bitmap. Hence translating it here...
+				 */
+				if (*gscan_band & GSCAN_BG_BAND_MASK) {
+					band |= WLC_BAND_2G;
+				}
+				if (*gscan_band & GSCAN_A_BAND_MASK) {
+					band |= WLC_BAND_5G;
+				}
+
+				err = _dhd_pno_get_channels(dhd, ch_list, &nchan,
+				                          (band & GSCAN_ABG_BAND_MASK),
+				                          !(*gscan_band & GSCAN_DFS_MASK));
+
+				if (err < 0) {
+					DHD_ERROR(("%s: failed to get valid channel list\n",
+						__FUNCTION__));
+					*len = 0;
+				} else {
+					mem_needed = sizeof(uint32) * nchan;
+					ptr = (uint32 *) kmalloc(mem_needed, GFP_KERNEL);
+					if (!ptr) {
+						DHD_ERROR(("%s: Unable to malloc %d bytes\n",
+							__FUNCTION__, mem_needed));
+						break;
+					}
+					for (i = 0; i < nchan; i++) {
+						ptr[i] = wf_channel2mhz(ch_list[i],
+							(ch_list[i] <= CH_MAX_2G_CHANNEL?
+							WF_CHAN_FACTOR_2_4_G : WF_CHAN_FACTOR_5_G));
+					}
+					ret = ptr;
+					*len = mem_needed;
+				}
+			}
 			break;
 
 		default:
@@ -1560,17 +1621,17 @@ int dhd_pno_set_cfg_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
 							0);
 					}
 					ch_bucket[i].band = 0;
-					if (band == WIFI_BAND_BG ||
-						band == WIFI_BAND_ABG ||
-						band == WIFI_BAND_ABG_WITH_DFS) {
-						ch_bucket[i].band = GSCAN_BG_BAND_MASK;
+					/* HAL and DHD use different bits for 2.4G and
+					 * 5G in bitmap. Hence translating it here...
+					 */
+					if (band & GSCAN_BG_BAND_MASK) {
+						ch_bucket[i].band |= WLC_BAND_2G;
 					}
-					if (band > WIFI_BAND_BG) {
-						ch_bucket[i].band |= GSCAN_A_BAND_MASK;
+					if (band & GSCAN_A_BAND_MASK) {
+						ch_bucket[i].band |= WLC_BAND_5G;
 					}
-					if (band == WIFI_BAND_A_WITH_DFS ||
-						band == WIFI_BAND_ABG_WITH_DFS) {
-						ch_bucket[i].band |= GSCAN_DFS_BAND_MASK;
+					if (band & GSCAN_DFS_MASK) {
+						ch_bucket[i].band |= GSCAN_DFS_MASK;
 					}
 					if (ptr->scan_fr ==
 					    ptr->channel_bucket[i].bucket_freq_multiple) {
@@ -2055,8 +2116,8 @@ dhd_pno_gscan_create_channel_list(dhd_pub_t *dhd,
 		} else {
 			/* get a valid channel list based on band B or A */
 			err = _dhd_pno_get_channels(dhd, ptr,
-			        &nchan, (gscan_buckets[i].band & GSCAN_BAND_MASK),
-			        !(gscan_buckets[i].band & GSCAN_DFS_BAND_MASK));
+			        &nchan, (gscan_buckets[i].band & GSCAN_ABG_BAND_MASK),
+			        !(gscan_buckets[i].band & GSCAN_DFS_MASK));
 
 			if (err < 0) {
 				DHD_ERROR(("%s: failed to get valid channel list(band : %d)\n",

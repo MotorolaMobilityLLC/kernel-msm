@@ -63,10 +63,11 @@
 #ifdef GSCAN_SUPPORT
 
 #define GSCAN_MAX_CH_BUCKETS         8
-#define GSCAN_A_BAND_MASK              (1 << 0)
-#define GSCAN_BG_BAND_MASK             (1 << 1)
-#define GSCAN_DFS_BAND_MASK            (1 << 2)
-#define GSCAN_BAND_MASK            (GSCAN_A_BAND_MASK | GSCAN_BG_BAND_MASK)
+#define GSCAN_BG_BAND_MASK             (1 << 0)
+#define GSCAN_A_BAND_MASK              (1 << 1)
+#define GSCAN_DFS_MASK                 (1 << 2)
+#define GSCAN_ABG_BAND_MASK            (GSCAN_A_BAND_MASK | GSCAN_BG_BAND_MASK)
+#define GSCAN_BAND_MASK                (GSCAN_ABG_BAND_MASK | GSCAN_DFS_MASK)
 
 #define GSCAN_FLUSH_HOTLIST_CFG      (1 << 0)
 #define GSCAN_FLUSH_SIGNIFICANT_CFG  (1 << 1)
@@ -125,11 +126,12 @@ typedef struct cmd_tlv {
 #ifdef GSCAN_SUPPORT
 typedef enum {
     WIFI_BAND_UNSPECIFIED,
-    WIFI_BAND_BG,                       /* 2.4 GHz                     */
-    WIFI_BAND_A,                        /* 5 GHz without DFS           */
-    WIFI_BAND_A_WITH_DFS,               /* 5 GHz with DFS              */
-    WIFI_BAND_ABG,                      /* 2.4 GHz + 5 GHz; no DFS     */
-    WIFI_BAND_ABG_WITH_DFS,             /* 2.4 GHz + 5 GHz with DFS    */
+    WIFI_BAND_BG = 1,                       /* 2.4 GHz                   */
+    WIFI_BAND_A = 2,                        /* 5 GHz without DFS         */
+    WIFI_BAND_A_DFS = 4,                    /* 5 GHz DFS only            */
+    WIFI_BAND_A_WITH_DFS = 6,               /* 5 GHz with DFS            */
+    WIFI_BAND_ABG = 3,                      /* 2.4 GHz + 5 GHz; no DFS   */
+    WIFI_BAND_ABG_WITH_DFS = 7,             /* 2.4 GHz + 5 GHz with DFS  */
 } gscan_wifi_band_t;
 
 typedef enum dhd_pno_gscan_cmd_cfg {
@@ -138,7 +140,8 @@ typedef enum dhd_pno_gscan_cmd_cfg {
 	DHD_PNO_SIGNIFICANT_SCAN_CFG_ID,
 	DHD_PNO_SCAN_CFG_ID,
 	DHD_PNO_GET_CAPABILITIES,
-	DHD_PNO_GET_BATCH_RESULTS
+	DHD_PNO_GET_BATCH_RESULTS,
+	DHD_PNO_GET_CHANNEL_LIST
 } dhd_pno_gscan_cmd_cfg_t;
 
 typedef enum dhd_pno_mode {
@@ -409,7 +412,8 @@ extern int
 dhd_dev_pno_set_cfg_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type,
               void *buf, uint8 flush);
 extern void *
-dhd_dev_pno_get_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type, uint32 *len);
+dhd_dev_pno_get_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type, void *info,
+        uint32 *len);
 void dhd_dev_pno_lock_access_batch_results(struct net_device *dev);
 void dhd_dev_pno_unlock_access_batch_results(struct net_device *dev);
 extern int dhd_dev_pno_run_gscan(struct net_device *dev, bool run, bool flush);
@@ -449,7 +453,8 @@ extern int dhd_pno_deinit(dhd_pub_t *dhd);
 #ifdef GSCAN_SUPPORT
 extern int dhd_pno_set_cfg_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
                        void *buf, uint8 flush);
-extern void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type, uint32 *len);
+extern void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type, void *info,
+                       uint32 *len);
 extern void dhd_pno_lock_batch_results(dhd_pub_t *dhd);
 extern void dhd_pno_unlock_batch_results(dhd_pub_t *dhd);
 extern int dhd_pno_initiate_gscan_request(dhd_pub_t *dhd, bool run, bool flush);

@@ -5663,11 +5663,12 @@ dhd_dev_pno_set_cfg_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type,
 
 /* Linux wrapper to call common dhd_pno_get_gscan */
 void *
-dhd_dev_pno_get_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type, uint32 *len)
+dhd_dev_pno_get_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type,
+                      void *info, uint32 *len)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 
-	return (dhd_pno_get_gscan(&dhd->pub, type, len));
+	return (dhd_pno_get_gscan(&dhd->pub, type, info, len));
 }
 
 /* Linux wrapper to call common dhd_pno_lock_batch_results */
