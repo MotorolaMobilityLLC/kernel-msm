@@ -259,6 +259,13 @@ struct dsi_kickoff_action {
 	void *data;
 };
 
+struct mdss_panel_config {
+	bool esd_enable;
+	bool bare_board;
+	char panel_name[32];
+	u64 panel_ver;
+};
+
 struct dsi_drv_cm_data {
 	struct dss_io_data phy_regulator_io;
 	int phy_disable_refcount;
@@ -309,6 +316,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	void (*switch_mode) (struct mdss_panel_data *pdata, int mode);
 	struct mdss_panel_data panel_data;
+	struct mdss_panel_config panel_config;
 	unsigned char *ctrl_base;
 	u32 hw_rev;
 	struct dss_io_data ctrl_io;
@@ -508,6 +516,7 @@ int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 
 int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 								bool active);
+int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
 static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 {
