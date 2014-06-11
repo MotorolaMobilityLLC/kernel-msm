@@ -310,6 +310,7 @@
 
 	qcom,wdt@f9017000 {
 		qcom,bark-time = <22000>;
+		qcom,memblock-reserve = <0x3eb20000 0xb000>;
 	};
 
 	cci: qcom,cci@fda0C000 {
