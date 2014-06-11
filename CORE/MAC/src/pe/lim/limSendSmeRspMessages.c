@@ -247,15 +247,23 @@ tANI_U32 limGetMaxRateFlags(tpDphHashNode pStaDs, tpPESession psessionEntry)
 #ifdef WLAN_FEATURE_11AC
         if(IS_DOT11_MODE_VHT(psessionEntry->dot11mode))
         {
-            if (eHT_CHANNEL_WIDTH_80MHZ == pStaDs->vhtSupportedChannelWidthSet)
+            if (WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ ==
+                            pStaDs->vhtSupportedChannelWidthSet)
+            {
                 rate_flags |= eHAL_TX_RATE_VHT80;
-
-             if (eHT_CHANNEL_WIDTH_40MHZ == pStaDs->vhtSupportedChannelWidthSet)
-                 rate_flags |= eHAL_TX_RATE_VHT40;
-
-             if (eHT_CHANNEL_WIDTH_20MHZ == pStaDs->vhtSupportedChannelWidthSet)
-                 rate_flags |= eHAL_TX_RATE_VHT20;
+            }
+            else if(WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ ==
+                           pStaDs->vhtSupportedChannelWidthSet)
+            {
+                if (eHT_CHANNEL_WIDTH_40MHZ ==
+                               pStaDs->htSupportedChannelWidthSet)
+                    rate_flags |= eHAL_TX_RATE_VHT40;
+                else
+                    rate_flags |= eHAL_TX_RATE_VHT20;
+           }
         }
+        else
+            rate_flags |= eHAL_TX_RATE_VHT20;
 #endif
     }
 
