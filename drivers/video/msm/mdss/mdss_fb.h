@@ -46,6 +46,8 @@
 #define  MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
+extern int androidboot_mode_charger;
+extern int androidboot_is_recovery;
 /**
  * enum mdp_notify_event - Different frame events to indicate frame update state
  *

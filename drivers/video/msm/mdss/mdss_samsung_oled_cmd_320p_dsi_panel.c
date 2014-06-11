@@ -536,6 +536,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		}
 	}
 
+	if (androidboot_mode_charger || androidboot_is_recovery)
+		mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
 	pr_info("%s:-\n", __func__);
 	return 0;
 }

@@ -62,9 +62,6 @@
 
 #define MAX_FBI_LIST 32
 
-extern int androidboot_is_recovery;
-extern int androidboot_mode_charger;
-
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
 
