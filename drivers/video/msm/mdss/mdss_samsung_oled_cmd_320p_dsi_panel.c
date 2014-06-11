@@ -320,6 +320,32 @@ static int mdss_dsi_panel_registered(struct mdss_panel_data *pdata)
 	pr_info("%s:%d, panel registered succesfully\n", __func__, __LINE__);
 	return 0;
 }
+
+static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
+							bool mode)
+{
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	if (!pdata->panel_info.panel_power_on) {
+		pr_err("%s: DSI block is off state\n", __func__);
+		return;
+	}
+
+	if (pdata->panel_info.alpm_mode == mode)
+		return;
+
+	if (mode)
+		mipi_samsung_disp_send_cmd(PANEL_ALPM_ON, true);
+	else
+		/* Turn Off ALPM Mode */
+		mipi_samsung_disp_send_cmd(PANEL_ALPM_OFF, true);
+	pdata->panel_info.alpm_event(STORE_CURRENT_STATUS);
+	pdata->panel_info.alpm_mode = mode;
+}
+
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
@@ -1553,6 +1579,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->event_handler = samsung_dsi_panel_event_handler;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
+	ctrl_pdata->panel_data.send_alpm = mdss_dsi_panel_alpm_ctrl;
 	ctrl_pdata->panel_reset = mdss_dsi_samsung_panel_reset;
 	ctrl_pdata->registered = mdss_dsi_panel_registered;
 #if defined(CONFIG_LCD_CLASS_DEVICE)

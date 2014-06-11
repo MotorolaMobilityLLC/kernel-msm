@@ -627,14 +627,22 @@ static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 {
 	int ret = 0;
+	struct mdss_panel_data *pdata;
 
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
 	pr_debug("mdss_fb suspend index=%d\n", mfd->index);
 #if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
-	if (mfd->index == 0)
+	if (mfd->index == 0) {
+		if ((pdata) && (pdata->send_alpm)) {
+			mfd->mdp.disable_ulps(mfd);
+			pdata->send_alpm(pdata, true);
+		}
 		return mfd->mdp.off_pan_on_fnc(mfd);
+	}
 #endif
 	mfd->panel_info->is_suspending = false;
 
@@ -665,12 +673,19 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 {
 	int ret = 0;
+	struct mdss_panel_data *pdata;
 
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
 #if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
 	if (mfd->index == 0)
+		if ((pdata) && (pdata->send_alpm)) {
+			mfd->mdp.disable_ulps(mfd);
+			pdata->send_alpm(pdata, false);
+		}
 		return 0;
 #endif
 	INIT_COMPLETION(mfd->power_set_comp);

@@ -349,6 +349,7 @@ struct mdss_panel_info {
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
 	u32 alpm_ldo_offset;
+	bool alpm_mode;
 	u8 (*alpm_event) (u8 flag);
 };
 
@@ -372,6 +373,7 @@ enum {
 struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
+	void (*send_alpm) (struct mdss_panel_data *pdata, bool status);
 	unsigned char *mmss_cc_base;
 
 	/**
