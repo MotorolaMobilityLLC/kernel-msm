@@ -1069,7 +1069,8 @@ static int taiko_set_micbias3(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	int value = ucontrol->value.integer.value[0];
-	int rc;
+	struct snd_soc_dapm_widget *w;
+	int rc = 0;
 
 	pr_debug("%s: enable micbias 3 standalone %d,\n",
 		 __func__, value);
@@ -1079,13 +1080,24 @@ static int taiko_set_micbias3(struct snd_kcontrol *kcontrol,
 	if (micbias3_standalone_enabled)
 		rc = snd_soc_dapm_force_enable_pin(&codec->dapm,
 					     DAPM_MICBIAS3_EXTERNAL_STANDALONE);
-	else
+	else {
+		/* Don't turn off mic bias 3 if the widget power is on, parallel
+		 * capture session voip/camcorder could be running, dapm will
+		 * turn it off when capture session ends.
+		*/
+		w = snd_soc_get_codec_widget(codec->card,
+						codec, "MIC BIAS3 External");
+		if ((w != NULL) && w->power)
+			goto out;
+
 		rc = snd_soc_dapm_disable_pin(&codec->dapm,
-					     DAPM_MICBIAS3_EXTERNAL_STANDALONE);
-	if (!rc)
-		snd_soc_dapm_sync(&codec->dapm);
+					DAPM_MICBIAS3_EXTERNAL_STANDALONE);
+		if (!rc)
+			snd_soc_dapm_sync(&codec->dapm);
+	}
 	pr_debug("%s: leave ret %d\n", __func__, rc);
 
+out:
 	return rc;
 }
 
