@@ -216,9 +216,12 @@ struct dsi_kickoff_action {
 	void *data;
 };
 
+struct mdss_panel_esd_pdata {
+	int esd_pwr_mode_chk;
+};
+
 struct mdss_panel_config {
 	bool esd_enable;
-	bool esd_disable_bl;
 	bool bare_board;
 	char panel_name[32];
 	u64 panel_ver;
@@ -269,6 +272,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*set_hbm)(struct mdss_dsi_ctrl_pdata *ctrl, int state);
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
+	struct mdss_panel_esd_pdata panel_esd_data;
 	unsigned char *ctrl_base;
 	struct dss_io_data ctrl_io;
 	struct dss_io_data mmss_misc_io;
