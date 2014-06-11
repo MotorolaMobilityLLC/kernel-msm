@@ -35,6 +35,8 @@
 #define MIN_REFRESH_RATE 48
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
+#define DCS_CMD_GET_POWER_MODE 0x0A    /* get power_mode */
+
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -335,6 +337,28 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	return rc;
 }
 
+static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata, u8 *pwr_mode,
+								int read_mode)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	int old_rd_mode;
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+
+	old_rd_mode = mdss_dsi_get_tx_power_mode(pdata);
+	if (read_mode != old_rd_mode)
+		mdss_dsi_set_tx_power_mode(read_mode, pdata);
+
+	mdss_dsi_panel_cmd_read(ctrl, DCS_CMD_GET_POWER_MODE, 0x00,
+							NULL, pwr_mode, 1);
+	if (read_mode != old_rd_mode)
+		mdss_dsi_set_tx_power_mode(old_rd_mode, pdata);
+
+	pr_debug("%s: panel power mode = 0x%x\n", __func__, *pwr_mode);
+
+	return 0;
+}
+
 /**
  * mdss_dsi_roi_merge() -  merge two roi into single roi
  *
@@ -601,6 +625,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
+	u8 pwr_mode = 0;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -621,9 +646,14 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
+	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, DSI_MODE_BIT_LP);
+	if ((pwr_mode & 0x04) != 0x04)
+		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
+								__func__);
+
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
-	pr_debug("%s:-\n", __func__);
+	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 	return 0;
 }
 
