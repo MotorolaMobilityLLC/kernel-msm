@@ -56,6 +56,7 @@ struct mdss_mdp_cmd_ctx {
 	struct mdss_panel_recovery recovery;
 	bool ulps;
 	bool off_pan_on;
+	struct mutex ulps_lock;
 };
 
 struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
@@ -432,12 +433,17 @@ static void __mdss_mdp_cmd_ulps_work(struct work_struct *work)
 		return;
 	}
 
-	if (!mdss_mdp_ctl_intf_event(ctx->ctl, MDSS_EVENT_DSI_ULPS_CTRL,
-		(void *)1)) {
-		ctx->ulps = true;
-		ctx->ctl->play_cnt = 0;
-		mdss_mdp_footswitch_ctrl_ulps(0, &ctx->ctl->mfd->pdev->dev);
+	mutex_lock(&ctx->ulps_lock);
+	if (!ctx->ulps) {
+		pr_debug("%s: entring in ulps state\n", __func__);
+		if (!mdss_mdp_ctl_intf_event(ctx->ctl, MDSS_EVENT_DSI_ULPS_CTRL,
+			(void *)1)) {
+			ctx->ulps = true;
+			ctx->ctl->play_cnt = 0;
+			mdss_mdp_footswitch_ctrl_ulps(0, &ctx->ctl->mfd->pdev->dev);
+		}
 	}
+	mutex_unlock(&ctx->ulps_lock);
 }
 
 static int mdss_mdp_cmd_add_vsync_handler(struct mdss_mdp_ctl *ctl,
@@ -669,6 +675,7 @@ int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
 
 	mdss_mdp_cmd_clk_off(ctx);
 
+	mutex_lock(&ctx->ulps_lock);
 	if (!ctx->ulps) {
 		pr_debug("%s: forcing ulps with panel always on feature\n",
 			__func__);
@@ -680,6 +687,7 @@ int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
 				&ctx->ctl->mfd->pdev->dev);
 		}
 	}
+	mutex_unlock(&ctx->ulps_lock);
 
 	return 0;
 }
@@ -821,6 +829,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	init_completion(&ctx->stop_comp);
 	spin_lock_init(&ctx->clk_lock);
 	mutex_init(&ctx->clk_mtx);
+	mutex_init(&ctx->ulps_lock);
 	INIT_WORK(&ctx->clk_work, clk_ctrl_work);
 	if (pinfo.ulps_feature_enabled)
 		INIT_DELAYED_WORK(&ctx->ulps_work, __mdss_mdp_cmd_ulps_work);
