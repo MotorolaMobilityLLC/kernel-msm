@@ -198,7 +198,7 @@ static int inv_akm_read_data(struct inv_mpu_state *st, short *o)
 	} else {
 		result = inv_i2c_read(st, REG_EXT_SENS_DATA_00,
 					DATA_AKM_99_BYTES_DMP - 1, d);
-		if (((DATA_AKM_DRDY != d[0]) && (!d[7])) || result)
+		if ((DATA_AKM_DRDY != d[0]) || (d[7] & 0x8) || result)
 			result = -EINVAL;
 	}
 	if (COMPASS_ID_AK09911 == st->plat_data.sec_slave_id)
