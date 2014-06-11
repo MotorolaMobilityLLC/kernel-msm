@@ -260,6 +260,13 @@ struct dsi_kickoff_action {
 	void *data;
 };
 
+struct mdss_panel_config {
+	bool esd_enable;
+	bool bare_board;
+	char panel_name[32];
+	u64 panel_ver;
+};
+
 struct dsi_drv_cm_data {
 	struct regulator *vdd_vreg;
 	struct regulator *vdd_io_vreg;
@@ -313,6 +320,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	void (*switch_mode) (struct mdss_panel_data *pdata, int mode);
 	struct mdss_panel_data panel_data;
+	struct mdss_panel_config panel_config;
 	unsigned char *ctrl_base;
 	u32 hw_rev;
 	struct dss_io_data ctrl_io;
@@ -529,6 +537,7 @@ static inline const char *__mdss_dsi_pm_supply_node_name(
 	}
 }
 
+int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 static inline bool mdss_dsi_split_display_enabled(void)
 {
 	/*
