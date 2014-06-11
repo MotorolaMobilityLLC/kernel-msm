@@ -327,6 +327,9 @@ out_put:
 	esdfs_put_lower_path(parent, &lower_parent_path);
 out:
 	dput(parent);
+	if (parent != old_parent)
+		dput(old_parent);
+
 	esdfs_revert_creds(creds, NULL);
 	return ret;
 }
