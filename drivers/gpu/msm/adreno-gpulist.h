@@ -205,6 +205,6 @@ static const struct adreno_gpulist {
 		.pfp_jt_addr = 0x400,
 		.pm4_bstrp_size = 0x06,
 		.pfp_bstrp_size = 0x28,
-		.pfp_bstrp_ver = 0x4ff091,
+		.pfp_bstrp_ver = 0x4ff083,
 	},
 };
