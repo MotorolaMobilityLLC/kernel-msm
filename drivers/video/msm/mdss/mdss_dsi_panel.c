@@ -344,6 +344,32 @@ static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata, u8 *pwr_mode,
 	return 0;
 }
 
+int mdss_panel_check_status(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	int ret = 0;
+	u8 pwr_mode = 0;
+	struct mdss_panel_esd_pdata *esd_data = &ctrl->panel_esd_data;
+
+	if (!ctrl->panel_data.panel_info.panel_power_on) {
+		ret = 1;
+		goto end;
+	}
+
+	/* Check panel power mode */
+	pr_debug("%s: Checking power mode\n", __func__);
+	mdss_dsi_get_pwr_mode(&ctrl->panel_data, &pwr_mode, DSI_MODE_BIT_HS);
+	if ((pwr_mode & esd_data->esd_pwr_mode_chk) !=
+						esd_data->esd_pwr_mode_chk) {
+		pr_warn("%s: Detected pwr_mode = 0x%x expected mask = 0x%x\n",
+				__func__, pwr_mode, esd_data->esd_pwr_mode_chk);
+		goto end;
+	}
+
+	ret = 1;
+end:
+	return ret;
+}
+
 /**
  * mdss_dsi_roi_merge() -  merge two roi into single roi
  *
@@ -396,9 +422,9 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	u32 panel_ver;
 
 	np = of_find_node_by_path("/chosen");
-	ctrl_pdata->panel_config.esd_disable_bl =
-			of_property_read_bool(np, "mmi,esd");
-	if (ctrl_pdata->panel_config.esd_disable_bl)
+	ctrl_pdata->panel_config.esd_enable =
+					!of_property_read_bool(np, "mmi,esd");
+	if (!ctrl_pdata->panel_config.esd_enable)
 		pr_warn("%s: ESD detection is disabled by UTAGS\n", __func__);
 
 	if (of_property_read_bool(np, "mmi,bare_board") == true)
@@ -1452,6 +1478,24 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		goto error;
 	}
 
+	if (ctrl_pdata->panel_config.bare_board == true) {
+		ctrl_pdata->panel_config.esd_enable = false;
+
+		pr_warn("%s: ESD will be disable by bare_board=%d \n", __func__,
+					ctrl_pdata->panel_config.bare_board);
+	} else if (ctrl_pdata->panel_config.esd_enable) {
+		ctrl_pdata->panel_config.esd_enable = !of_property_read_bool(np,
+					"qcom,panel-esd-detect-disable");
+
+		if (!(ctrl_pdata->panel_config.esd_enable))
+			pr_warn("%s: ESD detection is disabled by DTS\n",
+								__func__);
+		else
+			of_property_read_u32(np,
+				"qcom,panel-esd-power-mode-chk",
+				&ctrl_pdata->panel_esd_data.esd_pwr_mode_chk);
+	}
+
 	mdss_dsi_parse_panel_horizintal_line_idle(np, ctrl_pdata);
 
 	if (mdss_panel_parse_hbm(np, pinfo, ctrl_pdata)) {
@@ -1504,6 +1548,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
+	ctrl_pdata->check_status_disabled =
+				!ctrl_pdata->panel_config.esd_enable;
+	ctrl_pdata->check_status = mdss_panel_check_status;
+
 	ctrl_pdata->set_hbm = mdss_dsi_panel_set_hbm;
 
 	return 0;
