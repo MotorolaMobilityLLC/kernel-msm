@@ -499,7 +499,7 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 	struct esdfs_inode_info *inode_i = ESDFS_I(dir_dentry->d_inode);
 	struct qstr nomedia;
 	struct dentry *lower_dentry;
-	struct path lower_path;
+	struct path lower_dir_path, lower_path;
 	struct nameidata nd;
 	umode_t mode;
 	int err = 0;
@@ -512,32 +512,37 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 	nomedia.len = strlen(nomedia.name);
 	nomedia.hash = full_name_hash(nomedia.name, nomedia.len);
 
-	esdfs_get_lower_path(dir_dentry, &lower_path);
+	esdfs_get_lower_path(dir_dentry, &lower_dir_path);
 
-	/* If it's in the cache already, there is no reason to create it. */
-	lower_dentry = d_lookup(lower_path.dentry, &nomedia);
-	if (lower_dentry) {
-		dput(lower_dentry);
+	/* See if the lower file is there already. */
+	err = vfs_path_lookup(lower_dir_path.dentry, lower_dir_path.mnt,
+			      nomedia.name, 0, &lower_path);
+	/* If it's there or there was an error, we're done */
+	if (!err || err != -ENOENT)
 		goto out;
-	}
 
-	/* Create a negative, lower dentry. */
-	lower_dentry = d_alloc(lower_path.dentry, &nomedia);
+	/* The lower file is not there.  See if the dentry is in the cache. */
+	lower_dentry = d_lookup(lower_dir_path.dentry, &nomedia);
 	if (!lower_dentry) {
-		err = -ENOMEM;
-		goto out;
+		/* It's not there, so create a negative lower dentry. */
+		lower_dentry = d_alloc(lower_dir_path.dentry, &nomedia);
+		if (!lower_dentry) {
+			err = -ENOMEM;
+			goto out;
+		}
+		d_add(lower_dentry, NULL);
 	}
-	d_add(lower_dentry, NULL);
 
-	/* Create the lower file. */
+	/* Now create the lower file. */
 	nd.path.dentry = lower_dentry;
 	mode = S_IFREG;
 	esdfs_set_lower_mode(ESDFS_SB(dir_dentry->d_sb), &mode);
-	err = vfs_create(lower_path.dentry->d_inode, lower_dentry, mode, &nd);
+	err = vfs_create(lower_dir_path.dentry->d_inode, lower_dentry, mode,
+			 &nd);
 	dput(lower_dentry);
 
 out:
-	esdfs_put_lower_path(dir_dentry, &lower_path);
+	esdfs_put_lower_path(dir_dentry, &lower_dir_path);
 
 	return err;
 }
