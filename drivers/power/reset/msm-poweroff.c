@@ -111,7 +111,7 @@ static bool get_dload_mode(void)
 }
 #endif
 //adbg--
-
+#ifndef ASUS_SHIP_BUILD
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -139,6 +139,7 @@ static void enable_emergency_dload_mode(void)
 			pr_err("Failed to set EDLOAD mode: %d\n", ret);
 	}
 }
+#endif
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -234,6 +235,16 @@ static void msm_restart_prepare(const char *cmd)
 		printk("%s, in panic \n", __func__);
 	}
 
+	//+++ ASUS_BSP: try to support GOOGLE ASIT for bootreason
+	if(!download_mode)
+	{
+		if(in_panic || restart_mode == RESTART_DLOAD)
+		{
+			cmd = "oem-90";
+		}
+	}
+	//--- ASUS_BSP: try to support GOOGLE ASIT for bootreason
+
 	printk("[adbg] %s(): last_shutdown_log_addr=0x%08x, value=0x%08x\n",
 		__func__, (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 //adbg--
@@ -258,14 +269,12 @@ static void msm_restart_prepare(const char *cmd)
 			enable_emergency_dload_mode();
 		} 
 		#endif
-		#ifndef ASUS_SHIP_BUILD
 		//+++ ASUS_BSP: support adb reboot hardreset command
 		else if (!strncmp(cmd, "hardreset", 9)) {
 			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 			__raw_writel(0x77665501, restart_reason);
 		} 
-		//+++ ASUS_BSP: support adb reboot hardreset command
-		#endif
+		//--- ASUS_BSP: support adb reboot hardreset command
 		else {
 			__raw_writel(0x77665501, restart_reason);
 		}
