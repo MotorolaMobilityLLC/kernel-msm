@@ -374,7 +374,7 @@ static int lis3dsh_major = 0;
 static int lis3dsh_minor = 0;
 static dev_t lis3dsh_dev;
 struct device *lis3dsh_class_dev = NULL;
-static char double_tap[16];
+static char event_status[10];
 // ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
 
 /* sets default init values to be written in registers at probe stage */
@@ -892,8 +892,15 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x20) ||(rbuf[0] == 0x80)) {
 			printk("***********************Tilt to wake event\n");
+			#ifndef ASUS_FACTORY_BUILD
 			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
-			public_gpio_keys_gpio_report_event();
+			#endif
+			if(is_suspend)
+				public_gpio_keys_gpio_report_event();
+// ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for tilt"
+			strcpy(event_status,"TILT");
+			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
+// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for tilt"
 		}
 	}
 	if(status & LIS3DSH_STAT_INTSM2_BIT) {
@@ -928,11 +935,13 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02)) {
 			printk("***********************report event SM2\n");
+			#ifndef ASUS_FACTORY_BUILD
 			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
+			#endif
 			if(is_suspend)
 				public_gpio_keys_gpio_report_event();
 // ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
-			strcpy(double_tap,"TAP");
+			strcpy(event_status,"KNOCK");
 			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
 // ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
 		}
@@ -1785,7 +1794,9 @@ void notify_st_sensor_lowpowermode(int low)
 		is_suspend=false;
 		disable_irq_wake(g_acc->irq1);
 		disable_irq_wake(g_acc->irq2);
+		#ifndef ASUS_FACTORY_BUILD
 		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
+		#endif
 	}
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
@@ -2038,7 +2049,12 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	chip_status=1;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
 	lis3dsh_acc_enable(acc);			//default on
-	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);			//SM1: tilt-to-wake SM2: double tap
+
+	#ifdef ASUS_FACTORY_BUILD
+	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_EN);			//SM1: tilt-to-wake SM2: double tap
+	#else
+	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
+	#endif
 
 	#ifdef CONFIG_I2C_STRESS_TEST
 	i2c_add_test_case(client, "STSensorTest", ARRAY_AND_SIZE(gLIS3DSHTestCaseInfo));
@@ -2164,17 +2180,17 @@ static struct i2c_driver lis3dsh_acc_driver = {
 };
 
 // ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
-static ssize_t show_double_tap(struct device *device, struct device_attribute *attr, char *buf)
+static ssize_t show_event_status(struct device *device, struct device_attribute *attr, char *buf)
 {
-	ssize_t ret = snprintf(buf, PAGE_SIZE, "%s\n", double_tap);
-	double_tap[0] = 0;
+	ssize_t ret = snprintf(buf, PAGE_SIZE, "%s\n", event_status);
+	memset(&event_status[0], 0, sizeof(event_status));
 	return ret;
 }
+// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
 
 static struct device_attribute lis3dsh_attrs[] = {
-	__ATTR(double_tap, S_IRUGO, show_double_tap, NULL),
+	__ATTR(event_status, S_IRUGO, show_event_status, NULL),
 };
-// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
 
 static int __init lis3dsh_acc_init(void)
 {
@@ -2197,7 +2213,7 @@ static int __init lis3dsh_acc_init(void)
 		sensor_debug(DEBUG_INFO, "Err: failed in creating device.\n");
 		goto error;
 	}
-	double_tap[0] = 0;
+	memset(&event_status[0], 0, sizeof(event_status));
 	device_create_file(lis3dsh_class_dev, &lis3dsh_attrs[0]);
 
 	return i2c_add_driver(&lis3dsh_acc_driver);
