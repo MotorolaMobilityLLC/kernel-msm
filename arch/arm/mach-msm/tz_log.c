@@ -22,6 +22,14 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/uaccess.h>
+#ifdef CONFIG_MSM_TZ_LOG_WDOG_DUMP
+#include <linux/of.h>
+#include <linux/ctype.h>
+#include <linux/pstore_ram.h>
+#include <asm/bootinfo.h>
+#include <soc/qcom/socinfo.h>
+#include <soc/qcom/memory_dump.h>
+#endif /* CONFIG_MSM_TZ_LOG_WDOG_DUMP */
 #include <soc/qcom/scm.h>
 #include <mach/qseecomi.h>
 
@@ -36,7 +44,7 @@
 /*
  * Preprocessor Definitions and Constants
  */
-#define TZBSP_CPU_COUNT 0x02
+#define TZBSP_CPU_COUNT 0x04
 /*
  * Number of VMID Tables
  */
@@ -53,6 +61,24 @@
  * Length of descriptive name associated with Interrupt
  */
 #define TZBSP_MAX_INT_DESC 16
+
+#ifdef CONFIG_MSM_TZ_LOG_WDOG_DUMP
+/*
+ * TZBSP Diag Magic number
+ */
+#define TZBSP_DIAG_MAGIC_NUM	0x747A6461
+
+/*
+ * Diagnostic area Version number
+ */
+#define TZBSP_DIAG_MAJOR_VERSION	3
+#define TZBSP_DIAG_MINOR_VERSION	0
+#define TZBSP_DIAG_VERSION		\
+		((((TZBSP_DIAG_MAJOR_VERSION) & 0xFFFF) << 16) | \
+		((TZBSP_DIAG_MINOR_VERSION) & 0xFFFF))
+
+#endif /* CONFIG_MSM_TZ_LOG_WDOG_DUMP */
+
 /*
  * VMID Table
  */
@@ -670,6 +696,178 @@ static void tzdbgfs_exit(struct platform_device *pdev)
 }
 }
 
+#ifdef CONFIG_MSM_TZ_LOG_WDOG_DUMP
+
+static int get_vmid_info_off(int cpu_count)
+{
+	return offsetof(struct tzdbg_t, vmid_info);
+}
+
+static int get_boot_info_off(int cpu_count)
+{
+	return offsetof(struct tzdbg_t, boot_info);
+}
+
+static int get_reset_info_off(int cpu_count)
+{
+	if (cpu_count == TZBSP_CPU_COUNT)
+		return offsetof(struct tzdbg_t, reset_info);
+	else
+		return get_boot_info_off(cpu_count) +
+			(sizeof(struct tzdbg_boot_info_t) * cpu_count);
+}
+
+static int get_int_info_off(int cpu_count)
+{
+	if (cpu_count == TZBSP_CPU_COUNT)
+		return offsetof(struct tzdbg_t, int_info);
+	else
+		return get_reset_info_off(cpu_count) + sizeof(uint32_t) +
+			(sizeof(struct tzdbg_reset_info_t) * cpu_count);
+}
+static int get_ring_off(int cpu_count)
+{
+	if (cpu_count == TZBSP_CPU_COUNT) {
+		return offsetof(struct tzdbg_t, ring_buffer.log_buf);
+	} else {
+		int tzdbg_int_size = sizeof(struct tzdbg_int_t) +
+			((cpu_count - TZBSP_CPU_COUNT) * sizeof(uint64_t));
+		return get_int_info_off(cpu_count) +
+			(tzdbg_int_size * TZBSP_DIAG_INT_NUM) +
+			offsetof(struct tzdbg_log_t, log_buf);
+	}
+}
+
+#define MSMWDTD(fmt, args...) persistent_ram_annotation_append(fmt, ##args)
+
+static void tzlog_bck_show_boot_info(struct tzdbg_t *diag_buf)
+{
+	int cpu;
+	struct tzdbg_boot_info_t *boot_info =
+		(struct tzdbg_boot_info_t *)((u8 *)diag_buf +
+			diag_buf->boot_info_off);
+	MSMWDTD("--- TZ Power Collapse Counters\n");
+	MSMWDTD("     | WarmEntry : WarmExit :  PCEntry :");
+	MSMWDTD("   PCExit : JumpAddr |\n");
+	for (cpu = 0; cpu < get_core_count(); boot_info++, cpu++) {
+		int power_collapsed = boot_info->wb_entry_cnt +
+			boot_info->pc_exit_cnt - boot_info->pc_entry_cnt;
+		if (cpu)
+			power_collapsed--;
+		MSMWDTD("CPU%d |  %8x : %8x : %8x : %8x : %8x | %sPC\n",
+			cpu, boot_info->wb_entry_cnt, boot_info->wb_exit_cnt,
+			boot_info->pc_entry_cnt, boot_info->pc_exit_cnt,
+			boot_info->warm_jmp_addr,
+			power_collapsed ? "IN-" : "NOT-");
+	}
+}
+
+static void tzlog_bck_show_log(struct tzdbg_t *diag_buf)
+{
+	struct tzdbg_log_t *log_ptr;
+	const char *log_buf, *p, *start;
+
+	log_buf = (const char *)diag_buf + diag_buf->ring_off;
+	log_ptr = (struct tzdbg_log_t *)(log_buf -
+				offsetof(struct tzdbg_log_t, log_buf));
+
+	if (log_ptr->log_pos.offset >= diag_buf->ring_len)
+		return;
+	MSMWDTD("--- TZ Log start ---\n");
+	if (log_ptr->log_pos.wrap) {
+		for (start = log_buf + log_ptr->log_pos.offset, p = start;
+				p < (log_buf + diag_buf->ring_len); p++) {
+			if (isprint(*p))
+				MSMWDTD("%c", *p);
+			else if ((p > start) && isprint(*(p-1)))
+				MSMWDTD("\n");
+		}
+	}
+	for (start = log_buf, p = start;
+			p < (log_buf + log_ptr->log_pos.offset); p++) {
+		if (isprint(*p))
+			MSMWDTD("%c", *p);
+		else if ((p > start) && isprint(*(p-1)))
+			MSMWDTD("\n");
+	}
+	MSMWDTD("\n--- TZ Log end ---\n");
+}
+
+static void tzlog_bck_show(unsigned long phys)
+{
+	struct tzdbg_t *diag_buf;
+	int cpu_count;
+
+	diag_buf = persistent_ram_map(phys, DEBUG_MAX_RW_BUF);
+	if (!diag_buf) {
+		pr_err("%s: cannot remap buffer: %08lX\n", __func__, phys);
+		return;
+	}
+	cpu_count = get_core_count();
+	if ((bi_powerup_reason() != PU_REASON_WDOG_AP_RESET) ||
+		(diag_buf->magic_num != TZBSP_DIAG_MAGIC_NUM) ||
+		(diag_buf->version != TZBSP_DIAG_VERSION) ||
+		(diag_buf->cpu_count != cpu_count) ||
+		(diag_buf->vmid_info_off != get_vmid_info_off(cpu_count)) ||
+		(diag_buf->boot_info_off != get_boot_info_off(cpu_count)) ||
+		(diag_buf->reset_info_off != get_reset_info_off(cpu_count)) ||
+		(diag_buf->num_interrupts != TZBSP_DIAG_INT_NUM) ||
+		(diag_buf->int_info_off != get_int_info_off(cpu_count)) ||
+		(diag_buf->ring_off != get_ring_off(cpu_count)) ||
+		(diag_buf->ring_len + diag_buf->ring_off != DEBUG_MAX_RW_BUF))
+		goto reset;
+	tzlog_bck_show_boot_info(diag_buf);
+	tzlog_bck_show_log(diag_buf);
+reset:
+	memset(diag_buf, 0, DEBUG_MAX_RW_BUF);
+	persistent_ram_unmap(diag_buf, phys, DEBUG_MAX_RW_BUF);
+}
+
+static void tzlog_bck_check(struct platform_device *pdev)
+{
+	struct msm_client_dump dump_entry;
+	u32 offsets[2];
+	int ret;
+
+	ret = of_property_read_u32_array(pdev->dev.of_node,
+				"qcom,memblock-reserve", offsets, 2);
+	if (ret) {
+		MSMWDTD("tzlog: read memblock-reserve failed %d\n", ret);
+		dev_err(&pdev->dev, "read memblock-reserve failed %d\n", ret);
+		goto err_no_reservation;
+	}
+
+	if (offsets[1] < DEBUG_MAX_RW_BUF) {
+		MSMWDTD("tzlog: mem reserve too small: %x/%x\n",
+				offsets[1], DEBUG_MAX_RW_BUF);
+		dev_err(&pdev->dev, "mem reserve too small: %x/%x\n",
+				offsets[1], DEBUG_MAX_RW_BUF);
+		goto err_no_reservation;
+	}
+
+	tzlog_bck_show(offsets[0]);
+
+	dump_entry.id = MSM_TZ_LOG;
+	dump_entry.start_addr = offsets[0];
+	dump_entry.end_addr = offsets[0] + DEBUG_MAX_RW_BUF;
+	ret = msm_dump_table_register(&dump_entry);
+	if (ret) {
+		MSMWDTD("tzlog: cannot register buffer: %x\n", offsets[0]);
+		dev_err(&pdev->dev, "cannot register buffer: %x\n", offsets[0]);
+	}
+err_no_reservation:
+	return;
+}
+EXPORT_COMPAT("qcom,tz-log");
+
+#else
+
+static inline void tzlog_bck_check(struct platform_device *pdev)
+{
+}
+
+#endif /* CONFIG_MSM_TZ_LOG_WDOG_DUMP */
+
 /*
  * Driver functions
  */
@@ -735,6 +933,7 @@ static int tz_log_probe(struct platform_device *pdev)
 		goto err;
 
 	tzdbg_register_qsee_log_buf();
+	tzlog_bck_check(pdev);
 	return 0;
 err:
 	kfree(tzdbg.diag_buf);
