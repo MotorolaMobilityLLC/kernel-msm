@@ -199,6 +199,8 @@ struct dsi_clk_desc {
 	u32 pre_div_func;
 };
 
+#define DSI_MODE_BIT_HS 0
+#define DSI_MODE_BIT_LP 1
 
 struct dsi_panel_cmds {
 	char *buf;
@@ -366,6 +368,7 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr);
 void mdss_dsi_irq_handler_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
 void mdss_dsi_set_tx_power_mode(int mode, struct mdss_panel_data *pdata);
+int mdss_dsi_get_tx_power_mode(struct mdss_panel_data *pdata);
 int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 			    int frame_rate);
 int mdss_dsi_clk_init(struct platform_device *pdev,
