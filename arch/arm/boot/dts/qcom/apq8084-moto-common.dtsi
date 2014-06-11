@@ -313,6 +313,10 @@
 		qcom,memblock-reserve = <0x3eb20000 0xb000>;
 	};
 
+	qcom,tz-log@fe805720 {
+		qcom,memblock-reserve = <0x3eb2b000 0x1000>;
+	};
+
 	cci: qcom,cci@fda0C000 {
 		vddio-supply = <&pma8084_lvs4>;
 	};
