@@ -321,6 +321,12 @@
 	};
 };
 
+&mdss_dsi0 {
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+};
+
 &pma8084_lvs2 {
 	regulator-always-on;
 };
