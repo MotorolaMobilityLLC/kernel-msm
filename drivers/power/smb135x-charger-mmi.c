@@ -235,6 +235,10 @@
 #define IRQ_G_REG			0x56
 #define IRQ_G_SRC_DETECT_BIT		BIT(6)
 
+static int ignore_disconnect;
+module_param(ignore_disconnect, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(ignore_disconnect, "Ignore Disconnects due to"
+					" Under/Over Voltage");
 enum {
 	WRKARND_USB100_BIT = BIT(0),
 	WRKARND_APSD_FAIL = BIT(1),
@@ -2377,6 +2381,12 @@ static int usbin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 
 	pr_debug("chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
+
+	if (ignore_disconnect) {
+		pr_info("Ignore usbin_uv - usb_present = %d\n", usb_present);
+		return 0;
+	}
+
 	if (chip->usb_present && !usb_present) {
 		/* USB removed */
 		chip->usb_present = usb_present;
@@ -2396,6 +2406,12 @@ static int usbin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 
 	pr_debug("chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
+
+	if (ignore_disconnect) {
+		pr_info("Ignore usbin_uv - usb_present = %d\n", usb_present);
+		return 0;
+	}
+
 	if (chip->usb_present && !usb_present) {
 		/* USB removed */
 		chip->usb_present = usb_present;
