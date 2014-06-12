@@ -103,6 +103,7 @@
 			touch_vdd-supply = <&vdd_touch_vreg>;
 			synaptics,reset-on-resume;
 			synaptics,hw-reset;
+			/delete-property/ synaptics,normal-mode;
 		};
 
 		cyttsp3_i2c@3b {
