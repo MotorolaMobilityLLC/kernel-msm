@@ -888,7 +888,7 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	ctrl_restore = __mdss_dsi_cmd_mode_config(ctrl, 1);
 
-	if (rlen == 0) {
+	if (rlen <= 2) {
 		short_response = 1;
 		rx_byte = 4;
 	} else {
@@ -1113,8 +1113,8 @@ static int mdss_dsi_cmd_dma_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	for (i = 0; i < cnt; i++) {
 		data = (u32)MIPI_INP((ctrl->ctrl_base) + off);
 		*lp++ = ntohl(data);	/* to network byte order */
-		pr_debug("%s: data = 0x%x and ntohl(data) = 0x%x\n",
-					 __func__, data, ntohl(data));
+		pr_debug("%s: off = 0x%x data = 0x%x and ntohl(data) = 0x%x\n",
+					__func__, off, data, ntohl(data));
 		off -= 4;
 	}
 

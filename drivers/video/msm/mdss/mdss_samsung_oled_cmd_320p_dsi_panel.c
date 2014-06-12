@@ -42,6 +42,7 @@ static struct dsi_cmd mtp_id_cmds;
 static struct dsi_cmd mtp_enable_cmds;
 static struct dsi_cmd gamma_cmds_list;
 static struct dsi_cmd backlight_cmds;
+static struct dsi_cmd rddpm_cmds;
 
 static struct candella_lux_map candela_map_table;
 DEFINE_LED_TRIGGER(bl_led_trigger);
@@ -1029,6 +1030,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->mipi.te_sel =
 			(!rc ? tmp : 1);
 
+	rc = of_property_read_u32(np,
+		"qcom,mdss-pan-dsi-tx-eot-append", &tmp);
+	pinfo->mipi.tx_eot_append = (!rc ? tmp : 0);
+
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-virtual-channel-id", &tmp);
 	pinfo->mipi.vc = (!rc ? tmp : 0);
 
@@ -1128,6 +1133,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_samsung_parse_candella_lux_mapping_table(np,
 			&candela_map_table,
 			"samsung,panel-candella-mapping-table-300");
+	mdss_samsung_parse_panel_cmd(np, &rddpm_cmds,
+				"samsung,panel-rddpm-read-cmds");
 
 #if defined(ALPM_MODE)
 	mdss_samsung_parse_panel_cmd(np, &alpm_on_seq,
@@ -1227,6 +1234,15 @@ static int is_panel_supported(const char *panel_name)
 	return -EINVAL;
 }
 
+static int mipi_samsung_rddpm_status(void)
+{
+	mdss_dsi_cmd_receive(msd.ctrl_pdata,
+				&rddpm_cmds.cmd_desc[0],
+				rddpm_cmds.read_size[0]);
+
+	return (int)msd.ctrl_pdata->rx_buf.data[0];
+}
+
 static int samsung_dsi_panel_event_handler(int event)
 {
 	pr_debug("%s : %d", __func__, event);
@@ -1235,7 +1251,8 @@ static int samsung_dsi_panel_event_handler(int event)
 		if (msd.dstat.wait_disp_on) {
 			mipi_samsung_disp_send_cmd(PANEL_DISPLAY_ON, true);
 			msd.dstat.wait_disp_on = 0;
-			pr_info("DISPLAY_ON\n");
+			pr_info("DISPLAY_ON(rddpm: 0x%x)\n",
+					mipi_samsung_rddpm_status());
 		}
 		break;
 	default:
