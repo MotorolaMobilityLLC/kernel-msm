@@ -2935,16 +2935,17 @@ limProcessMlmDisassocReqNtf(tpAniSirGlobal pMac, eHalStatus suspendStatus, tANI_
     pStaDs->mlmStaContext.disassocReason = (tSirMacReasonCodes)
                                            pMlmDisassocReq->reasonCode;
     pStaDs->mlmStaContext.cleanupTrigger = pMlmDisassocReq->disassocTrigger;
+   /** Set state to mlm State to eLIM_MLM_WT_DEL_STA_RSP_STATE
+    * This is to address the issue of race condition between
+    * disconnect request from the HDD and deauth from AP
+    */
+    pStaDs->mlmStaContext.mlmState   = eLIM_MLM_WT_DEL_STA_RSP_STATE;
 
     /// Send Disassociate frame to peer entity
     if (sendDisassocFrame && (pMlmDisassocReq->reasonCode != eSIR_MAC_DISASSOC_DUE_TO_FTHANDOFF_REASON))
     {
         pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq = pMlmDisassocReq;
-        /* Set state to mlm State to eLIM_MLM_WT_DEL_STA_RSP_STATE
-         * This is to address the issue of race condition between
-         * disconnect request from the HDD and deauth from AP
-         */
-        pStaDs->mlmStaContext.mlmState   = eLIM_MLM_WT_DEL_STA_RSP_STATE;
+
 
         /* If the reason for disassociation is inactivity of STA, then
            dont wait for acknowledgement. Also, if FW_IN_TX_PATH feature
