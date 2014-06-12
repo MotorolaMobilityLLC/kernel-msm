@@ -132,12 +132,20 @@ enum mdss_mdp_wb_ctl_type {
 	MDSS_MDP_WB_CTL_TYPE_LINE
 };
 
+enum mdss_mdp_bw_vote_mode {
+	MDSS_MDP_BW_MODE_NONE = 0,
+	MDSS_MDP_BW_MODE_UHD = BIT(0),
+	MDSS_MDP_BW_MODE_QHD = BIT(1),
+	MDSS_MDP_BW_MODE_MAX
+};
+
 struct mdss_mdp_perf_params {
 	u64 bw_overlap;
 	u64 bw_prefill;
 	u32 prefill_bytes;
 	u64 bw_ctl;
 	u32 mdp_clk_rate;
+	u32 bw_vote_mode;
 };
 
 struct mdss_mdp_ctl {
