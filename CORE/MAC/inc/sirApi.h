@@ -2739,7 +2739,7 @@ typedef struct sSirQosMapSet
     tANI_U8      present;
     tANI_U8      num_dscp_exceptions;
     tANI_U8      dscp_exceptions[21][2];
-    tANI_U8      dscp_range[7][2];
+    tANI_U8      dscp_range[8][2];
 } tSirQosMapSet, *tpSirQosMapSet;
 
 //
