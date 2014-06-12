@@ -3445,7 +3445,8 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
                         wiphy->bands[i]->channels[j].flags &= ~IEEE80211_CHAN_PASSIVE_SCAN;
                     }
 
-                    wiphy->bands[i]->channels[j].max_power = reg_rule->power_rule.max_eirp;
+                    wiphy->bands[i]->channels[j].max_power =
+                        (int) MBM_TO_DBM(reg_rule->power_rule.max_eirp);
                 }
             }
 
