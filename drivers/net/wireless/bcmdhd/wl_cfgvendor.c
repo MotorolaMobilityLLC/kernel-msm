@@ -241,8 +241,9 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	} else {
 		complete = 1;
 	}
-
-
+	/* !!temp!!! to debug 15144213 */
+	printk("complete %d mem_needed %d max_mem %d\n", complete, mem_needed,
+        (int)NLMSG_DEFAULT_SIZE);
 	/* Alloc the SKB for vendor_event */
 	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, mem_needed);
 	if (unlikely(!skb)) {
@@ -406,6 +407,14 @@ static int wl_cfgvendor_set_scan_cfg(struct wiphy *wiphy,
 								k++;
 							}
 							k = 0;
+							break;
+						case GSCAN_ATTRIBUTE_BUCKETS_BAND:
+							ch_bucket[j].band = (uint16)
+							     nla_get_u32(iter1);
+							break;
+						case GSCAN_ATTRIBUTE_REPORT_EVENTS:
+							ch_bucket[j].report_flag = (uint8)
+							     nla_get_u32(iter1);
 							break;
 					}
 				}

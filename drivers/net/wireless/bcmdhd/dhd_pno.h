@@ -66,6 +66,7 @@
 #define GSCAN_A_BAND_MASK              (1 << 0)
 #define GSCAN_BG_BAND_MASK             (1 << 1)
 #define GSCAN_DFS_BAND_MASK            (1 << 2)
+#define GSCAN_BAND_MASK            (GSCAN_A_BAND_MASK | GSCAN_BG_BAND_MASK)
 
 #define GSCAN_FLUSH_HOTLIST_CFG      (1 << 0)
 #define GSCAN_FLUSH_SIGNIFICANT_CFG  (1 << 1)
@@ -251,7 +252,8 @@ typedef struct dhd_pno_gscan_channel_bucket {
 	 * band = 0 chan_list channels
 	 */
 	uint16 band;
-	uint16 num_channels;
+	uint8 report_flag;
+	uint8 num_channels;
 	uint16 chan_list[GSCAN_MAX_CH_BUCKETS];
 } dhd_pno_gscan_channel_bucket_t;
 
