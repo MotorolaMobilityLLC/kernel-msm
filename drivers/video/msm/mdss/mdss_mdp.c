@@ -2416,8 +2416,8 @@ static void mdss_mdp_footswitch_ctrl_locked(struct mdss_data_type *mdata,
 	if (on) {
 		if (!mdata->fs_ena) {
 			regulator_enable(mdata->fs);
+			mdss_mdp_cx_ctrl(mdata, true);
 			if (!mdata->ulps) {
-				mdss_mdp_cx_ctrl(mdata, true);
 				mdss_mdp_batfet_ctrl(mdata, true);
 			}
 		}
@@ -2433,8 +2433,8 @@ static void mdss_mdp_footswitch_ctrl_locked(struct mdss_data_type *mdata,
 		if (!mdata->fs_ena) {
 			mdss_iommu_dettach(mdata);
 			regulator_disable(mdata->fs);
+			mdss_mdp_cx_ctrl(mdata, false);
 			if (!mdata->ulps) {
-				mdss_mdp_cx_ctrl(mdata, false);
 				mdss_mdp_batfet_ctrl(mdata, false);
 			}
 		}
