@@ -5519,6 +5519,7 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
    int params[HDD_WLAN_WMM_PARAM_COUNT];
    sme_QosWmmTspecInfo tSpec;
    v_U32_t handle;
+   struct iw_point s_priv_data;
 
    // make sure the application is sufficiently priviledged
    // note that the kernel will do this for "set" ioctls, but since
@@ -5545,9 +5546,26 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
 
    // since we are defined to be a "get" ioctl, and since the number
    // of params exceeds the number of params that wireless extensions
-   // will pass down in the iwreq_data, we must copy the "set" params
+   // will pass down in the iwreq_data, we must copy the "set" params.
+   // We must handle the compat for iwreq_data in 32U/64K environment.
+
+   // helper fucntion to get iwreq_data with compat handling.
+   if (hdd_priv_get_data(&s_priv_data, wrqu))
+   {
+      *pStatus = HDD_WLAN_WMM_STATUS_SETUP_FAILED_BAD_PARAM;
+      return 0;
+   }
+
+   // make sure all params are correctly passed to function
+   if ((NULL == s_priv_data.pointer) ||
+       (HDD_WLAN_WMM_PARAM_COUNT != s_priv_data.length))
+   {
+      *pStatus = HDD_WLAN_WMM_STATUS_SETUP_FAILED_BAD_PARAM;
+      return 0;
+   }
+
    // from user space ourselves
-   if (copy_from_user(&params, wrqu->data.pointer, sizeof(params)))
+   if (copy_from_user(&params, s_priv_data.pointer, sizeof(params)))
    {
       // hmmm, can't get them
       return -EIO;
