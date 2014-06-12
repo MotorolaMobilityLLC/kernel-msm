@@ -599,7 +599,11 @@ static void hex_dump_ipc(char *prefix, char *string, int size)
 */
 static void dump_uart_hs_registers(struct msm_hs_port *msm_uport)
 {
-	msm_hs_clock_vote(msm_uport);
+	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
+		MSM_HS_WARN("%s: Failed.Clocks are OFF\n", __func__);
+		return;
+	}
+
 	MSM_HS_DBG("============= UART Registers ================\n");
 	MSM_HS_DBG("UART_DM_MR1:%x\n", msm_hs_read(&(msm_uport->uport),
 		UART_DM_MR1));
@@ -614,7 +618,6 @@ static void dump_uart_hs_registers(struct msm_hs_port *msm_uport)
 	MSM_HS_DBG("UART_DM_IMR: %x\n", msm_hs_read(&(msm_uport->uport),
 		UART_DM_IMR));
 	MSM_HS_DBG("=============================================\n");
-	msm_hs_clock_unvote(msm_uport);
 
 }
 
