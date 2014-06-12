@@ -62,6 +62,7 @@
 		qcom,mdss-force-clk-lane-hs = <1>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 /*		qcom,mdss-dsi-panel-clock-rate = <500000000>;*/
+		qcom,mdss-pan-dsi-tx-eot-append = <1>;
 		qcom,mdss-display-on-seq = [
 					39 01 00 00 00 00 03 F0 5A 5A
 					39 01 00 00 00 00 03 F1 5A 5A
@@ -100,6 +101,7 @@
 					39 01 00 00 01 00 02 51 FF
 					39 01 00 00 05 00 02 53 20
 					];
+		samsung,panel-rddpm-read-cmds = [ 06 01 00 00 00 00 01 0A 01 00];	/* read 0A 1st */
 
 	   /*
 		* ************************************************************************************************************************
