@@ -411,6 +411,41 @@ static void *mem_alloc_copy_from_user_helper(const void *wrqu_data, size_t len)
     return ptr;
 }
 
+// Function to handle and get compatible struct iw_point passed to ioctl.
+int hdd_priv_get_data(struct iw_point *p_priv_data,
+                      union iwreq_data *wrqu)
+{
+   if ((NULL == p_priv_data) || (NULL == wrqu))
+   {
+      return -EINVAL;
+   }
+
+#ifdef CONFIG_COMPAT
+   if (is_compat_task())
+   {
+      struct compat_iw_point *p_compat_priv_data;
+
+      // Compat task: typecast to campat structure and copy the members.
+      p_compat_priv_data = (struct compat_iw_point *) &wrqu->data;
+
+      p_priv_data->pointer = compat_ptr(p_compat_priv_data->pointer);
+      p_priv_data->length  = p_compat_priv_data->length;
+      p_priv_data->flags   = p_compat_priv_data->flags;
+   }//if(is_compat_task())
+   else
+   {
+#endif //#ifdef CONFIG_COMPAT
+
+      // Non compat task: directly copy the structure.
+      memcpy(p_priv_data, &wrqu->data, sizeof(struct iw_point));
+
+#ifdef CONFIG_COMPAT
+   }//else of - if(is_compat_task())
+#endif //#ifdef CONFIG_COMPAT
+
+   return 0;
+}
+
 /**---------------------------------------------------------------------------
 
   \brief hdd_wlan_get_version() -
