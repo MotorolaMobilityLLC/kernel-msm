@@ -297,6 +297,8 @@ struct mdss_panel_info {
 	u32 brightness_max;
 	u32 bl_max;
 	u32 bl_min;
+	u32 blmap_size;
+	u8  *blmap;
 	u32 fb_num;
 	u32 clk_rate;
 	u32 clk_min;

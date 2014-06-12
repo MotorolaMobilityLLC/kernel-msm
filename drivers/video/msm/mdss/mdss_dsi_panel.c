@@ -132,9 +132,15 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 }
 
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
-static struct dsi_cmd_desc backlight_cmd = {
+static struct dsi_cmd_desc backlight_cmd1 = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
 	led_pwm1
+};
+
+static char led_pwm2[3] = {0x51, 0x0, 0x0};	/* DTYPE_DCS_LWRITE */
+static struct dsi_cmd_desc backlight_cmd2 = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm2)},
+	led_pwm2
 };
 
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
@@ -143,10 +149,15 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 	pr_debug("%s: level=%d\n", __func__, level);
 
-	led_pwm1[1] = (unsigned char)level;
-
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = &backlight_cmd;
+
+	if (ctrl->bklt_ctrl == BL_DCS_L_CMD) {
+		led_pwm2[1] = (unsigned char)level;
+		cmdreq.cmds = &backlight_cmd2;
+	} else {
+		led_pwm1[1] = (unsigned char)level;
+		cmdreq.cmds = &backlight_cmd1;
+	}
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq.rlen = 0;
@@ -384,6 +395,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
 		break;
 	case BL_DCS_CMD:
+	case BL_DCS_L_CMD:
 		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
 		if (mdss_dsi_is_master_ctrl(ctrl_pdata)) {
 			struct mdss_dsi_ctrl_pdata *sctrl =
@@ -945,8 +957,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			pr_debug("%s: SUCCESS-> WLED TRIGGER register\n",
 				__func__);
 			ctrl_pdata->bklt_ctrl = BL_WLED;
+			pinfo->bklt_ctrl = BL_WLED;
 		} else if (!strncmp(data, "bl_ctrl_pwm", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_PWM;
+			pinfo->bklt_ctrl = BL_PWM;
 			rc = of_property_read_u32(np,
 				"qcom,mdss-dsi-bl-pmic-pwm-frequency", &tmp);
 			if (rc) {
@@ -966,10 +980,15 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			tmp = of_get_named_gpio(np,
 				"qcom,mdss-dsi-pwm-gpio", 0);
 			ctrl_pdata->pwm_pmic_gpio = tmp;
+		} else if (!strncmp(data, "bl_ctrl_dcs_l", 13)) {
+			ctrl_pdata->bklt_ctrl = BL_DCS_L_CMD;
+			pinfo->bklt_ctrl = BL_DCS_L_CMD;
 		} else if (!strncmp(data, "bl_ctrl_dcs", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
+			pinfo->bklt_ctrl = BL_DCS_CMD;
 		} else if (!strncmp(data, "bl_external", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_EXTERNAL;
+			pinfo->bklt_ctrl = BL_EXTERNAL;
 		}
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
@@ -979,6 +998,30 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-max-level", &tmp);
 	pinfo->bl_max = (!rc ? tmp : 255);
 	ctrl_pdata->bklt_max = pinfo->bl_max;
+	/*
+	 * Use a backlight map if there is a specific map from device tree
+	 */
+	data = of_get_property(np, "qcom,blmap", &tmp);
+	if (data) {
+		pinfo->blmap_size = tmp;
+
+		pinfo->blmap = kzalloc(pinfo->blmap_size, GFP_KERNEL);
+		if (!pinfo->blmap) {
+			pr_err("%s:%d, Error, no mem for blmap\n",
+					__func__, __LINE__);
+			return -ENOMEM;
+		}
+
+		rc = of_property_read_u8_array(np, "qcom,blmap",
+				pinfo->blmap, pinfo->blmap_size);
+		if (rc) {
+			pr_err("%s:%d, Error, blmap\n",
+					__func__, __LINE__);
+			return -EINVAL;
+		}
+		pr_info("%s: blmap @%08x (size %d)\n", __func__,
+				(int)pinfo->blmap, pinfo->blmap_size);
+	}
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-interleave-mode", &tmp);
 	pinfo->mipi.interleave_mode = (!rc ? tmp : 0);
