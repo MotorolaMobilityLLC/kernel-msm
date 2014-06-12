@@ -522,10 +522,12 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		/* disable DSI controller */
 		mdss_dsi_controller_cfg(0, pdata);
 
+		mdss_dsi_phy_disable(ctrl_pdata);
+
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
 
 		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data.vreg_config + 3, 1, 0);
+			ctrl_pdata->power_data.vreg_config + 2, 2, 0);
 		if (ret) {
 			pr_err("%s: Failed to disable vregs.rc=%d\n",
 				__func__, ret);
@@ -534,7 +536,7 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		pr_err("enable ulps mode\n");
 	} else if (ctrl_pdata->ulps) {
 		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data.vreg_config + 3, 1, 1);
+			ctrl_pdata->power_data.vreg_config + 2, 2, 1);
 		if (ret) {
 			pr_err("%s:Failed to enable vregs.rc=%d\n",
 				__func__, ret);
