@@ -333,6 +333,19 @@ u32 mdss_mdp_perf_calc_pipe_prefill_single(struct mdss_mdp_prefill_params
 	return prefill_bytes;
 }
 
+static u32 mdss_mdp_get_bw_vote_mode(struct mdss_mdp_pipe *pipe)
+{
+	u32 bw_mode = MDSS_MDP_BW_MODE_NONE;
+
+	if (pipe->src_fmt->is_yuv) {
+		if ((pipe->img_width > 2560) || (pipe->img_height > 2560))
+			bw_mode = MDSS_MDP_BW_MODE_UHD;
+		else if ((pipe->img_width <= 2560) && (pipe->img_width > 1920))
+			bw_mode = MDSS_MDP_BW_MODE_QHD;
+	}
+	return bw_mode;
+}
+
 /**
  * mdss_mdp_perf_calc_pipe() - calculate performance numbers required by pipe
  * @pipe:	Source pipe struct containing updated pipe params
@@ -454,6 +467,9 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 	prefill_params.is_hflip = pipe->flags & MDP_FLIP_LR;
 	prefill_params.is_cmd = !mixer->ctl->is_video_mode;
 
+	if (mixer->ctl->is_video_mode)
+		perf->bw_vote_mode = mdss_mdp_get_bw_vote_mode(pipe);
+
 	if (is_single_layer)
 		perf->prefill_bytes =
 			mdss_mdp_perf_calc_pipe_prefill_single(&prefill_params);
@@ -464,9 +480,9 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 		perf->prefill_bytes =
 			mdss_mdp_perf_calc_pipe_prefill_cmd(&prefill_params);
 
-	pr_debug("mixer=%d pnum=%d clk_rate=%u bw_overlap=%llu prefill=%d\n",
+	pr_debug("mixer=%d pnum=%d clk_rate=%u bw_overlap=%llu prefill=%d mode=%d\n",
 		 mixer->num, pipe->num, perf->mdp_clk_rate, perf->bw_overlap,
-		 perf->prefill_bytes);
+		 perf->prefill_bytes, perf->bw_vote_mode);
 
 	return 0;
 }
@@ -497,6 +513,7 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 	u32 prefill_bytes = 0;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	bool apply_fudge = true;
+	u32 bw_vote_mode = MDSS_MDP_BW_MODE_NONE;
 
 	BUG_ON(num_pipes > MAX_PIPES_PER_LM);
 
@@ -558,6 +575,9 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 
 	for (i = 0; i < num_pipes; i++) {
 		struct mdss_mdp_perf_params tmp;
+
+		memset(&tmp, 0, sizeof(tmp));
+
 		pipe = pipe_list[i];
 		if (pipe == NULL)
 			continue;
@@ -574,6 +594,7 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 			apply_fudge, (num_pipes == 1)))
 			continue;
 
+		bw_vote_mode |= tmp.bw_vote_mode;
 		prefill_bytes += tmp.prefill_bytes;
 		bw_overlap[i] = tmp.bw_overlap;
 		v_region[2*i] = pipe->dst.y;
@@ -616,13 +637,15 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 	perf->bw_overlap += bw_overlap_max;
 	perf->prefill_bytes += prefill_bytes;
 
+	perf->bw_vote_mode = bw_vote_mode;
+
 	if (max_clk_rate > perf->mdp_clk_rate)
 		perf->mdp_clk_rate = max_clk_rate;
 
 exit:
-	pr_debug("final mixer=%d video=%d clk_rate=%u bw=%llu prefill=%d\n",
+	pr_debug("final mixer=%d video=%d clk_rate=%u bw=%llu prefill=%d mode:%d\n",
 		mixer->num, mixer->ctl->is_video_mode, perf->mdp_clk_rate,
-		perf->bw_overlap, perf->prefill_bytes);
+		perf->bw_overlap, perf->prefill_bytes, perf->bw_vote_mode);
 }
 
 static u32 mdss_mdp_get_vbp_factor(struct mdss_mdp_ctl *ctl)
@@ -678,6 +701,7 @@ static void __mdss_mdp_perf_calc_ctl_helper(struct mdss_mdp_ctl *ctl,
 	if (ctl->mixer_left) {
 		mdss_mdp_perf_calc_mixer(ctl->mixer_left, &tmp,
 				left_plist, left_cnt);
+		perf->bw_vote_mode = tmp.bw_vote_mode;
 		perf->bw_overlap += tmp.bw_overlap;
 		perf->prefill_bytes += tmp.prefill_bytes;
 		perf->mdp_clk_rate = tmp.mdp_clk_rate;
@@ -686,6 +710,7 @@ static void __mdss_mdp_perf_calc_ctl_helper(struct mdss_mdp_ctl *ctl,
 	if (ctl->mixer_right) {
 		mdss_mdp_perf_calc_mixer(ctl->mixer_right, &tmp,
 				right_plist, right_cnt);
+		perf->bw_vote_mode |= tmp.bw_vote_mode;
 		perf->bw_overlap += tmp.bw_overlap;
 		perf->prefill_bytes += tmp.prefill_bytes;
 		if (tmp.mdp_clk_rate > perf->mdp_clk_rate)
@@ -815,8 +840,9 @@ static void mdss_mdp_perf_calc_ctl(struct mdss_mdp_ctl *ctl,
 				&mdss_res->ib_factor);
 	}
 	pr_debug("ctl=%d clk_rate=%u\n", ctl->num, perf->mdp_clk_rate);
-	pr_debug("bw_overlap=%llu bw_prefill=%llu prefill_bytes=%d\n",
-		 perf->bw_overlap, perf->bw_prefill, perf->prefill_bytes);
+	pr_debug("bw_overlap=%llu bw_prefill=%llu prefill_bytes=%d mode:%d\n",
+		 perf->bw_overlap, perf->bw_prefill, perf->prefill_bytes,
+		 perf->bw_vote_mode);
 }
 
 static void set_status(u32 *value, bool status, u32 bit_num)
@@ -918,12 +944,33 @@ u32 mdss_mdp_ctl_perf_get_transaction_status(struct mdss_mdp_ctl *ctl)
 	return transaction_status;
 }
 
+static inline void mdss_mdp_ctl_perf_bus_override(struct mdss_data_type *mdata,
+	u64 *bus_ib_quota, u32 bw_vote_mode)
+{
+	if (MDSS_MDP_BW_MODE_UHD & bw_vote_mode) {
+		if (mdata->perf_tune.min_uhd_bus_vote > 0)
+			*bus_ib_quota = max((*bus_ib_quota),
+				mdata->perf_tune.min_uhd_bus_vote);
+		else
+			*bus_ib_quota = max((*bus_ib_quota),
+				(u64)5000000000ULL);
+	} else if (MDSS_MDP_BW_MODE_QHD & bw_vote_mode) {
+		if (mdata->perf_tune.min_qhd_bus_vote > 0)
+			*bus_ib_quota = max((*bus_ib_quota),
+				mdata->perf_tune.min_qhd_bus_vote);
+		else
+			*bus_ib_quota = max((*bus_ib_quota),
+				(u64)2500000000ULL);
+	}
+}
+
 static inline void mdss_mdp_ctl_perf_update_bus(struct mdss_mdp_ctl *ctl)
 {
 	u64 bw_sum_of_intfs = 0;
 	u64 bus_ab_quota, bus_ib_quota;
 	struct mdss_data_type *mdata;
 	int i;
+	u32 bw_vote_mode = MDSS_MDP_BW_MODE_NONE;
 
 	if (!ctl || !ctl->mdata)
 		return;
@@ -933,16 +980,26 @@ static inline void mdss_mdp_ctl_perf_update_bus(struct mdss_mdp_ctl *ctl)
 		struct mdss_mdp_ctl *ctl;
 		ctl = mdata->ctl_off + i;
 		if (ctl->power_on) {
+			if (ctl->cur_perf.bw_vote_mode)
+				bw_vote_mode |= ctl->cur_perf.bw_vote_mode;
 			bw_sum_of_intfs += ctl->cur_perf.bw_ctl;
-			pr_debug("c=%d bw=%llu\n", ctl->num,
-				ctl->cur_perf.bw_ctl);
+			pr_debug("c=%d bw=%llu mode=%d\n", ctl->num,
+				ctl->cur_perf.bw_ctl,
+				ctl->cur_perf.bw_vote_mode);
 		}
 	}
 	bus_ib_quota = max(bw_sum_of_intfs, mdata->perf_tune.min_bus_vote);
 	bus_ab_quota = apply_fudge_factor(bus_ib_quota,
 		&mdss_res->ab_factor);
+
+	if ((bw_vote_mode != MDSS_MDP_BW_MODE_NONE) &&
+		IS_MDSS_MAJOR_MINOR_SAME(mdata->mdp_rev, MDSS_MDP_HW_REV_103))
+		mdss_mdp_ctl_perf_bus_override(mdata, &bus_ib_quota,
+			bw_vote_mode);
+
 	mdss_mdp_bus_scale_set_quota(bus_ab_quota, bus_ib_quota);
-	pr_debug("ab=%llu ib=%llu\n", bus_ab_quota, bus_ib_quota);
+	pr_debug("ab=%llu ib=%llu mode=%d\n", bus_ab_quota, bus_ib_quota,
+		bw_vote_mode);
 }
 
 /**
@@ -1023,11 +1080,13 @@ static void mdss_mdp_ctl_perf_update(struct mdss_mdp_ctl *ctl,
 		 * MDP
 		 */
 		if ((params_changed && (new->bw_ctl > old->bw_ctl)) ||
-		    (!params_changed && (new->bw_ctl < old->bw_ctl))) {
-			pr_debug("c=%d p=%d new_bw=%llu,old_bw=%llu\n",
+		    (!params_changed && (new->bw_ctl < old->bw_ctl)) ||
+		    (new->bw_vote_mode != MDSS_MDP_BW_MODE_NONE)) {
+			pr_debug("c=%d p=%d new_bw=%llu,old_bw=%llu mode=%d\n",
 				ctl->num, params_changed, new->bw_ctl,
-				old->bw_ctl);
+				old->bw_ctl, new->bw_vote_mode);
 			old->bw_ctl = new->bw_ctl;
+			old->bw_vote_mode = new->bw_vote_mode;
 			update_bus = 1;
 		}
 
