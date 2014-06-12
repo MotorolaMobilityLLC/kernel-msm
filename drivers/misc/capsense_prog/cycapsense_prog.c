@@ -125,6 +125,22 @@ fw_upd_end:
 }
 EXPORT_SYMBOL(cycapsense_fw_update);
 
+int cycapsense_reset(void)
+{
+	if (ctrl_data == NULL || ctrl_data->dev == NULL) {
+		pr_err("%s: Ctrl data not initialized\n", __func__);
+		return -ENODEV;
+	}
+	dev_info(ctrl_data->dev, "Reset requested\n");
+	device_lock(ctrl_data->dev);
+	gpio_set_value(ctrl_data->issp_d.rst_gpio, 1);
+	usleep_range(1000, 2000);
+	gpio_set_value(ctrl_data->issp_d.rst_gpio, 0);
+	device_unlock(ctrl_data->dev);
+	return 0;
+}
+EXPORT_SYMBOL(cycapsense_reset);
+
 static ssize_t cycapsense_fw_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
@@ -139,6 +155,12 @@ static ssize_t cycapsense_fw_store(struct device *dev,
 		*(char *)cp = 0;
 
 	ctrl_data->issp_d.inf.fw_name = buf;
+
+	if (!strcmp(buf, "reset")) {
+		cycapsense_reset();
+		return count;
+	}
+
 	if (!strcmp(buf, "1"))
 		ctrl_data->issp_d.inf.fw_name = NULL;
 	cycapsense_fw_update();
@@ -188,6 +210,8 @@ static int __devinit cycapsense_prog_probe(struct platform_device *pdev)
 		ctrl_data->issp_d.rst_gpio, "capsense_reset_gpio", 1, 0);
 	if (error)
 		return error;
+
+	gpio_export(ctrl_data->issp_d.rst_gpio, false);
 
 	ctrl_data->issp_d.c_gpio = of_get_gpio(np, 1);
 	/*request only, direction == 2. Will be set by firmware loader*/
