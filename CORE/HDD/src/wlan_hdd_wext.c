@@ -5219,7 +5219,7 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
                }
 
                /*Make sure that pAdapter cleaned properly*/
-               hdd_stop_adapter( pHddCtx, pAdapter_to_stop );
+               hdd_stop_adapter( pHddCtx, pAdapter_to_stop, VOS_TRUE );
                hdd_deinit_adapter( pHddCtx, pAdapter_to_stop );
                memset(&pAdapter_to_stop->sessionCtx, 0, sizeof(pAdapter_to_stop->sessionCtx));
 

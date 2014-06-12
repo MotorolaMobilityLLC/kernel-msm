@@ -1721,7 +1721,7 @@ int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev )
     wlan_hdd_release_intf_addr( pHddCtx,
                                  pVirtAdapter->macAddressCurrent.bytes );
 
-    hdd_stop_adapter( pHddCtx, pVirtAdapter );
+    hdd_stop_adapter( pHddCtx, pVirtAdapter, VOS_TRUE);
     hdd_close_adapter( pHddCtx, pVirtAdapter, TRUE );
     EXIT();
     return 0;

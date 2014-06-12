@@ -5084,12 +5084,39 @@ int hdd_stop (struct net_device *dev)
       return -ENODEV;
    }
 
+   /* Nothing to be done if the interface is not opened */
+   if (VOS_FALSE == test_bit(DEVICE_IFACE_OPENED, &pAdapter->event_flags))
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: NETDEV Interface is not OPENED", __func__);
+      return -ENODEV;
+   }
+
+   /* Make sure the interface is marked as closed */
    clear_bit(DEVICE_IFACE_OPENED, &pAdapter->event_flags);
    hddLog(VOS_TRACE_LEVEL_INFO, "%s: Disabling OS Tx queues", __func__);
+
+   /* Disable TX on the interface, after this hard_start_xmit() will not
+    * be called on that interface
+    */
    netif_tx_disable(pAdapter->dev);
+
+   /* Mark the interface status as "down" for outside world */
    netif_carrier_off(pAdapter->dev);
 
+   /* The interface is marked as down for outside world (aka kernel)
+    * But the driver is pretty much alive inside. The driver needs to
+    * tear down the existing connection on the netdev (session)
+    * cleanup the data pipes and wait until the control plane is stabilized
+    * for this interface. The call also needs to wait until the above
+    * mentioned actions are completed before returning to the caller.
+    * Notice that the hdd_stop_adapter is requested not to close the session
+    * That is intentional to be able to scan if it is a STA/P2P interface
+    */
+   hdd_stop_adapter(pHddCtx, pAdapter, VOS_FALSE);
 
+   /* DeInit the adapter. This ensures datapath cleanup as well */
+   hdd_deinit_adapter(pHddCtx, pAdapter);
    /* SoftAP ifaces should never go in power save mode
       making sure same here. */
    if ( (WLAN_HDD_SOFTAP == pAdapter->device_mode )
@@ -5103,9 +5130,9 @@ int hdd_stop (struct net_device *dev)
       EXIT();
       return 0;
    }
-
-   /* Find if any iface is up then
-      if any iface is up then can't put device to sleep/ power save mode. */
+   /* Find if any iface is up. If any iface is up then can't put device to
+    * sleep/power save mode
+    */
    status = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
    while ( (NULL != pAdapterNode) && (VOS_STATUS_SUCCESS == status) )
    {
@@ -6576,7 +6603,8 @@ void wlan_hdd_reset_prob_rspies(hdd_adapter_t* pHostapdAdapter)
     }
 }
 
-VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
+VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
+                             const v_BOOL_t bCloseSession )
 {
    eHalStatus halStatus = eHAL_STATUS_SUCCESS;
    hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
@@ -6688,23 +6716,27 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
 #ifdef WLAN_OPEN_SOURCE
          cancel_work_sync(&pAdapter->ipv4NotifierWorkQueue);
 #endif
-         if (test_bit(SME_SESSION_OPENED, &pAdapter->event_flags)) 
+         /* It is possible that the caller of this function does not
+          * wish to close the session
+          */
+         if (VOS_TRUE == bCloseSession &&
+              test_bit(SME_SESSION_OPENED, &pAdapter->event_flags))
          {
             INIT_COMPLETION(pAdapter->session_close_comp_var);
             if (eHAL_STATUS_SUCCESS ==
-                sme_CloseSession(pHddCtx->hHal, pAdapter->sessionId, 
-                                 hdd_smeCloseSessionCallback, pAdapter))
+                  sme_CloseSession(pHddCtx->hHal, pAdapter->sessionId,
+                     hdd_smeCloseSessionCallback, pAdapter))
             {
                unsigned long ret;
 
                //Block on a completion variable. Can't wait forever though.
                ret = wait_for_completion_timeout(
-                          &pAdapter->session_close_comp_var, 
-                          msecs_to_jiffies(WLAN_WAIT_TIME_SESSIONOPENCLOSE));
+                     &pAdapter->session_close_comp_var,
+                     msecs_to_jiffies(WLAN_WAIT_TIME_SESSIONOPENCLOSE));
                if ( 0 >= ret)
                {
                   hddLog(LOGE, "%s: failure waiting for session_close_comp_var %ld",
-                  __func__, ret);
+                        __func__, ret);
                }
             }
          }
@@ -6814,7 +6846,7 @@ VOS_STATUS hdd_stop_all_adapters( hdd_context_t *pHddCtx )
       netif_tx_disable(pAdapter->dev);
       netif_carrier_off(pAdapter->dev);
 
-      hdd_stop_adapter( pHddCtx, pAdapter );
+      hdd_stop_adapter( pHddCtx, pAdapter, VOS_TRUE );
 
       status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
       pAdapterNode = pNext;
