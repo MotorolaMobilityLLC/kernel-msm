@@ -235,8 +235,8 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	             (num_scan_ids * GSCAN_BATCH_RESULT_HDR_LEN) +
 	             VENDOR_REPLY_OVERHEAD + SCAN_RESULTS_COMPLETE_FLAG_LEN;
 
-	if (mem_needed > NLMSG_DEFAULT_SIZE) {
-		mem_needed = NLMSG_DEFAULT_SIZE;
+	if (mem_needed > (int32)NLMSG_DEFAULT_SIZE) {
+		mem_needed = (int32)NLMSG_DEFAULT_SIZE;
 		complete = 0;
 	} else {
 		complete = 1;

@@ -1363,7 +1363,7 @@ static void *dhd_get_gscan_batch_results(dhd_pub_t *dhd, uint32 *len)
 	_params = &_pno_state->pno_params_arr[INDEX_OF_GSCAN_PARAMS];
 
 	/* Has the workqueue finished its job already?? */
-	if (_params->params_gscan.get_batch_flag == GSCAN_BATCH_RETREIVAL_IN_PROGRESS) {
+	if (_params->params_gscan.get_batch_flag == GSCAN_BATCH_RETRIEVAL_IN_PROGRESS) {
 		DHD_PNO(("%s: Waiting to complete retrieval..\n", __FUNCTION__));
 		wait_for_completion(&_pno_state->get_batch_done);
 	}
@@ -2493,13 +2493,13 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 exit_mutex_unlock:
 	mutex_unlock(&_pno_state->pno_mutex);
 exit:
+	params->params_gscan.get_batch_flag = GSCAN_BATCH_RETRIEVAL_COMPLETE;
 	if (nAPs_per_scan)
 		MFREE(dhd->osh, nAPs_per_scan, gscan_params->mscan * sizeof(uint8));
 	if (plbestnet)
 		MFREE(dhd->osh, plbestnet, PNO_BESTNET_LEN);
 	if (waitqueue_active(&_pno_state->get_batch_done.wait))
 		complete(&_pno_state->get_batch_done);
-	params->params_gscan.get_batch_flag = GSCAN_BATCH_RETREIVAL_COMPLETE;
 	DHD_PNO(("Batch retrieval done!\n"));
 	return err;
 }
@@ -3207,12 +3207,12 @@ int dhd_retreive_batch_scan_results(dhd_pub_t *dhd)
 	_params = &_pno_state->pno_params_arr[INDEX_OF_GSCAN_PARAMS];
 
 	params_batch = &_pno_state->pno_params_arr[INDEX_OF_BATCH_PARAMS].params_batch;
-	if (_params->params_gscan.get_batch_flag == GSCAN_BATCH_RETREIVAL_COMPLETE) {
+	if (_params->params_gscan.get_batch_flag == GSCAN_BATCH_RETRIEVAL_COMPLETE) {
 		DHD_PNO(("WLC_E_PFN_BEST_BATCHING\n"));
 		params_batch->get_batch.buf = NULL;
 		params_batch->get_batch.bufsize = 0;
 		params_batch->get_batch.reason = PNO_STATUS_EVENT;
-		_params->params_gscan.get_batch_flag = GSCAN_BATCH_RETREIVAL_IN_PROGRESS;
+		_params->params_gscan.get_batch_flag = GSCAN_BATCH_RETRIEVAL_IN_PROGRESS;
 		schedule_work(&_pno_state->work);
 	} else {
 		DHD_PNO(("%s : WLC_E_PFN_BEST_BATCHING"
