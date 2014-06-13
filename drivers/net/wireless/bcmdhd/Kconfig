@@ -1,0 +1,156 @@
+config BCMDHD
+	tristate "Broadcom wireless cards support"
+	depends on MMC
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom chipset.
+
+config BCM4330
+	tristate "Broadcom 4330 wireless cards support"
+	depends on BCMDHD
+	default n
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4330 chipset.
+
+config BCM4334
+	tristate "Broadcom 4334 wireless cards support"
+	depends on BCMDHD
+	default n
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4334 chipset.
+
+config BCM4343
+	tristate "Broadcom 4343 wireless cards support"
+	depends on BCMDHD
+	default n
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4343 chipset.
+
+
+config BCM43341
+	tristate "Broadcom 43341 wireless cards support"
+	depends on BCMDHD
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 43341 chipset.
+
+config BCM4335
+	tristate "Broadcom 4335 wireless cards support"
+	depends on BCMDHD
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4335 chipset.
+
+config BCM4339
+	tristate "Broadcom 4339 wireless cards support"
+	depends on BCMDHD
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4339 chipset.
+
+config BCM4354
+	tristate "Broadcom 4354 wireless cards support"
+	depends on BCMDHD
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4354 chipset.
+
+config BCMDHD_COB
+	bool "Enables COB type support"
+	depends on BCMDHD
+	default n
+	---help---
+	  This is configuration for COB type support.
+
+config BCMDHD_FW_PATH
+	depends on BCMDHD
+	string "Firmware path"
+	default "/system/etc/firmware/fw_bcmdhd.bin"
+	---help---
+	  Path to the firmware file.
+
+config BCMDHD_NVRAM_PATH
+	depends on BCMDHD
+	string "NVRAM path"
+	default "/system/etc/wifi/bcmdhd.cal"
+	---help---
+	  Path to the calibration file.
+
+config BCMDHD_WEXT
+	bool "Enable WEXT support"
+	depends on BCMDHD && CFG80211 = n
+	select WIRELESS_EXT
+	select WEXT_PRIV
+	---help---
+	  Enables WEXT support
+
+config LGE_BCM433X_PATCH
+	bool "BCM433X Patch by LGE"
+	default y
+	depends on BCMDHD
+
+config BCMDHD_CONFIG_PATH
+	depends on LGE_BCM433X_PATCH
+	string "Config path"
+	default "/data/misc/wifi/config"
+	---help---
+	  Path to the config file.
+
+config BCMDHD_GPIO_WL_RESET
+	depends on BCMDHD
+	int "GPIO to the Reset"
+	default 82
+	---help---
+	  GPIO to the Reset
+
+config BCMDHD_HOSTWAKEUP_USE_GPIO
+	depends on BCMDHD
+	bool "Use GPIO to Host Wakeup"
+	default y
+	---help---
+	  Use GPIO to Host Wakeup
+
+config BCMDHD_GPIO_WL_HOSTWAKEUP
+	depends on BCMDHD && BCMDHD_HOSTWAKEUP_USE_GPIO = y
+	int "GPIO to the Host Wakeup"
+	default 81
+	---help---
+	  GPIO to the Host Wakeup
+
+config BCMDHD_HW_OOB
+	depends on BCMDHD && BCMDHD_HOSTWAKEUP_USE_GPIO = y
+	bool "Use H/W OOB to the Host Wakeup"
+	default y
+	---help---
+	  Use H/W OOB to the Host Wakeup
+
+config BRCM_CCX
+	depends on BCMDHD
+	bool "Enables CCX support"
+	default n
+	---help---
+	  Enables CCX support
+
+config DHD_USE_SCHED_SCAN
+	bool "Use CFG80211 sched scan"
+	depends on BCMDHD && CFG80211
+	default n
+	---help---
+	  Use CFG80211 sched scan
+
+config BROADCOM_WIFI_RESERVED_MEM
+	bool "BROADCOM Reserved memory for wifi device"
+	depends on BCMDHD
+	---help---
+	  This is a configuration for broadcom WLAN driver.
+
+config BCM4335BT
+	bool "BROADCOM BTLOCK Enable"
+	depends on BCM4335
+	default y
+	---help---
+	  This is a configuration for bt lock enable.
+

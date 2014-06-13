@@ -1,0 +1,4 @@
+BCM4343X DHD 1.141.55 for Kitkat.
+
+DHD 1.141.55 (2014.05.09)
+  - Initial release
