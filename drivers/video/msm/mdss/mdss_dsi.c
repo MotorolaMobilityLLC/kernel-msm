@@ -2810,6 +2810,33 @@ static struct device_node *mdss_dsi_pref_prim_panel(
 	return dsi_pan_node;
 }
 
+int mdss_dsi_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg)
+{
+	int rc = -ENOSYS;
+	struct msmfb_reg_access reg_access;
+
+	if (mdss_panel_is_power_off(pdata->panel_info.panel_power_state)) {
+		pr_err("%s: Panel is off\n", __func__);
+		return -EPERM;
+	}
+
+	switch (cmd) {
+	case MSMFB_REG_WRITE:
+	case MSMFB_REG_READ:
+		if (copy_from_user(&reg_access, arg, sizeof(reg_access)))
+			return -EFAULT;
+
+		rc = mdss_dsi_panel_ioctl_handler(pdata, cmd, arg);
+		break;
+	default:
+		pr_err("%s: unsupport ioctl =0x%x\n", __func__, cmd);
+		rc = -EFAULT;
+		break;
+	}
+
+	return rc;
+}
+
 /**
  * mdss_dsi_find_panel_of_node(): find device node of dsi panel
  * @pdev: platform_device of the dsi ctrl node
