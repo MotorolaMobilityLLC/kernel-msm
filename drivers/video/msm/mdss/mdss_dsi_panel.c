@@ -143,7 +143,7 @@ static int mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	pinfo = &(ctrl->panel_data.panel_info);
 	if (pinfo->partial_update_dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
-			return -EINVAL;
+			return 0;
 	}
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
@@ -613,8 +613,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			return 0;
 	}
 
-	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
-
+	if (!ctrl->ndx)
+		pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
@@ -624,7 +624,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (!ctrl->ndx && (pwr_mode & 0x04) != 0x04)
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
-	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
+	if (!ctrl->ndx)
+		pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
+
 	return 0;
 }
 
@@ -649,7 +651,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			return 0;
 	}
 
-	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+	if (!ctrl->ndx)
+		pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
 

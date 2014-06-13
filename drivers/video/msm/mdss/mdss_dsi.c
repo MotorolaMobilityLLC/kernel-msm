@@ -77,6 +77,33 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev)
 	return rc;
 }
 
+static int mdss_dsi_panel_power_panel_on(struct mdss_panel_data *pdata,
+								int enable)
+{
+	int ret = 0;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+								panel_data);
+	pr_debug("%s: enable=%d\n", __func__, enable);
+
+	ret = msm_dss_enable_vreg(
+			ctrl_pdata->power_data[DSI_PANEL_PM].vreg_config,
+			ctrl_pdata->power_data[DSI_PANEL_PM].num_vreg, enable);
+	if (ret)
+		pr_err("%s: failed to %s vregs for %s\n",
+				__func__, enable ? "enable" : "disable",
+				__mdss_dsi_pm_name(DSI_PANEL_PM));
+error:
+	return ret;
+}
+
 static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 {
 	int ret = 0;
@@ -99,7 +126,8 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			 * Core power module will be enabled when the
 			 * clocks are enabled
 			 */
-			if (DSI_CORE_PM == i)
+			if ((DSI_CORE_PM == i) || ((DSI_PANEL_PM == i) &&
+					pdata->panel_info.mipi.lp11_init))
 				continue;
 			ret = msm_dss_enable_vreg(
 				ctrl_pdata->power_data[i].vreg_config,
@@ -120,11 +148,13 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			}
 		}
 	} else {
-		ret = mdss_dsi_panel_reset(pdata, 0);
-		if (ret) {
-			pr_err("%s: Panel reset failed. rc=%d\n",
-					__func__, ret);
-			goto error;
+		if (!pdata->panel_info.mipi.lp11_init) {
+			ret = mdss_dsi_panel_reset(pdata, 0);
+			if (ret) {
+				pr_err("%s: Panel reset failed. rc=%d\n",
+						__func__, ret);
+				goto error;
+			}
 		}
 
 		for (i = DSI_MAX_PM - 1; i >= 0; i--) {
@@ -132,7 +162,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			 * Core power module will be disabled when the
 			 * clocks are disabled
 			 */
-			if (DSI_CORE_PM == i)
+			if ((DSI_CORE_PM == i) || (DSI_PANEL_PM == i))
 				continue;
 			ret = msm_dss_enable_vreg(
 				ctrl_pdata->power_data[i].vreg_config,
@@ -407,11 +437,21 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 				panel_data);
 
 	panel_info = &ctrl_pdata->panel_data.panel_info;
-	pr_debug("%s+: ctrl=%p ndx=%d\n", __func__,
+	if (!ctrl_pdata->ndx)
+		pr_info("%s+: ctrl=%p ndx=%d\n", __func__,
 				ctrl_pdata, ctrl_pdata->ndx);
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+
+	if (pdata->panel_info.mipi.lp11_init) {
+		mdss_dsi_panel_reset(pdata, 0);
+		ret = mdss_dsi_panel_power_panel_on(pdata, 0);
+		if (ret) {
+			pr_err("%s: Panel power off failed\n", __func__);
+			return ret;
+		}
+	}
 
 	/* disable DSI controller */
 	mdss_dsi_controller_cfg(0, pdata);
@@ -423,7 +463,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 
 	ret = mdss_dsi_panel_power_on(pdata, 0);
 	if (ret) {
-		pr_err("%s: Panel power off failed\n", __func__);
+		pr_err("%s: DSI Block power off failed\n", __func__);
 		return ret;
 	}
 
@@ -713,7 +753,8 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	pr_debug("%s+: ctrl=%p ndx=%d\n",
+	if (!ctrl_pdata->ndx)
+		pr_info("%s+: ctrl=%p ndx=%d\n",
 				__func__, ctrl_pdata, ctrl_pdata->ndx);
 
 	pinfo = &pdata->panel_info;
@@ -721,7 +762,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 	ret = mdss_dsi_panel_power_on(pdata, 1);
 	if (ret) {
-		pr_err("%s:Panel power on failed. rc=%d\n", __func__, ret);
+		pr_err("%s:DSI power on failed. rc=%d\n", __func__, ret);
 		return ret;
 	}
 
@@ -753,8 +794,10 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	 * Issue hardware reset line after enabling the DSI clocks and data
 	 * data lanes for LP11 init
 	 */
-	if (mipi->lp11_init)
+	if (mipi->lp11_init) {
+		mdss_dsi_panel_power_panel_on(pdata, 1);
 		mdss_dsi_panel_reset(pdata, 1);
+	}
 
 	pdata->panel_info.panel_power_on = 1;
 
@@ -1771,8 +1814,24 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		pinfo->panel_power_on = 1;
 		rc = mdss_dsi_panel_power_on(&(ctrl_pdata->panel_data), 1);
 		if (rc) {
-			pr_err("%s: Panel power on failed\n", __func__);
+			pr_err("%s: DSI power on failed\n", __func__);
 			return rc;
+		}
+
+		if (pinfo->mipi.lp11_init) {
+			rc = mdss_dsi_panel_reset(&(ctrl_pdata->panel_data), 1);
+			if (rc) {
+				pr_err("%s: Panel reset failed. rc=%d\n",
+								__func__, rc);
+				return rc;
+			}
+
+			rc = mdss_dsi_panel_power_panel_on(
+						&(ctrl_pdata->panel_data), 1);
+			if (rc) {
+				pr_err("%s: Panel power on failed\n", __func__);
+				return rc;
+			}
 		}
 
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
