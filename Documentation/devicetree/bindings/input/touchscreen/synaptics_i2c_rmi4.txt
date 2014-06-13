@@ -44,6 +44,7 @@ Optional property:
 				- synaptics,panel-coords
 				- synaptics-display-coords
 				- synaptics,button-map
+ - synaptics,is_wake            : specify to indicate wearable target
 
 Optional properties inside child node:
 These properties are defined only when synaptics,detect-device property is defined in DT.
