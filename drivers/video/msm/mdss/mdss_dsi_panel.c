@@ -22,6 +22,9 @@
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
 #include <linux/string.h>
+#include <linux/uaccess.h>
+#include <linux/msm_mdp.h>
+
 
 #include "mdss_dsi.h"
 #ifdef TARGET_HW_MDSS_HDMI
@@ -2728,6 +2731,164 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 error:
 	return -EINVAL;
+}
+
+static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
+				u8 reg, size_t size, u8 *buffer, bool hs_mode)
+{
+	int ret;
+	struct dcs_cmd_req cmdreq;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct dsi_cmd_desc reg_read_cmd = {
+		.dchdr.dtype = DTYPE_DCS_READ,
+		.dchdr.last = 1,
+		.dchdr.vc = 0,
+		.dchdr.ack = 1,
+		.dchdr.wait = 1,
+		.dchdr.dlen = 1,
+		.payload = &reg
+	};
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	if (size > MDSS_DSI_LEN) {
+		pr_warn("%s: size %zu, max rx length is %d.\n", __func__,
+							size, MDSS_DSI_LEN);
+		return -EINVAL;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+	pr_debug("%s: Reading %zu bytes from 0x%02x\n", __func__, size, reg);
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &reg_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	if (hs_mode)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
+	cmdreq.rlen = size;
+	cmdreq.cb = NULL; /* call back */
+	cmdreq.rbuf = kmalloc(MDSS_DSI_LEN, GFP_KERNEL);
+	if (!cmdreq.rbuf) {
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if (ret != size) {
+		pr_err("%s: Error reading %zu bytes from reg 0x%02x. ret=0x%x\n",
+				__func__, size, (unsigned int) reg, ret);
+		ret = -EFAULT;
+	} else {
+		memcpy(buffer, cmdreq.rbuf, size);
+		ret = 0;
+	}
+
+	kfree(cmdreq.rbuf);
+err1:
+	return ret;
+}
+
+static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata,
+				size_t size, u8 *buffer, bool hs_mode)
+{
+	int ret = 0;
+	struct dcs_cmd_req cmdreq;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct dsi_cmd_desc reg_write_cmd = {
+		.dchdr.dtype = DTYPE_DCS_LWRITE,
+		.dchdr.last = 1,
+		.dchdr.vc = 0,
+		.dchdr.ack = 0,
+		.dchdr.wait = 0,
+		.dchdr.dlen = size,
+		.payload = buffer
+	};
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	/* Limit size to 32 to match with disp_util size checking */
+	if (size > 32) {
+		pr_err("%s: size is larger than 32 bytes. size=%zu\n",
+							__func__, size);
+		return -EINVAL;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+	pr_debug("%s: Writing %zu bytes to 0x%02x\n",
+		__func__, size, buffer[0]);
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &reg_write_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_COMMIT;
+	if (hs_mode)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if (ret <= 0) {
+		pr_err("%s: Failed writing %zu bytes to 0x%02x. Ret=0x%x\n",
+					__func__, size, buffer[0], ret);
+		ret = -EFAULT;
+	} else
+		ret = 0;
+
+
+	return ret;
+}
+
+int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
+							u32 cmd, void *arg)
+{
+	int rc = -EINVAL;
+	struct msmfb_reg_access reg_access;
+	u8 *reg_access_buf;
+
+	if (copy_from_user(&reg_access, arg, sizeof(reg_access)))
+		return -EFAULT;
+
+	reg_access_buf = kmalloc(reg_access.buffer_size + 1, GFP_KERNEL);
+	if (reg_access_buf == NULL)
+		return -ENOMEM;
+
+	switch (cmd) {
+	case MSMFB_REG_WRITE:
+		reg_access_buf[0] = reg_access.address;
+		if (copy_from_user(&reg_access_buf[1], reg_access.buffer,
+						reg_access.buffer_size))
+			rc = -EFAULT;
+		else
+			rc = mdss_dsi_panel_reg_write(pdata,
+						reg_access.buffer_size + 1,
+						reg_access_buf,
+						reg_access.use_hs_mode);
+		break;
+	case MSMFB_REG_READ:
+		rc = mdss_dsi_panel_reg_read(pdata, reg_access.address,
+					reg_access.buffer_size,
+					reg_access_buf,
+					reg_access.use_hs_mode);
+		if ((rc == 0) && (copy_to_user(reg_access.buffer,
+						reg_access_buf,
+						reg_access.buffer_size)))
+			rc = -EFAULT;
+		break;
+	default:
+		pr_err("%s: unsupport ioctl =0x%x\n", __func__, cmd);
+		rc = -EFAULT;
+		break;
+	}
+
+	kfree(reg_access_buf);
+
+	return rc;
 }
 
 int mdss_dsi_panel_init(struct device_node *node,
