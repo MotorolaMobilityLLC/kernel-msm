@@ -589,6 +589,7 @@ static void fsa8500_det_thread(struct work_struct *work)
 	fsa8500_update_device_status(irq_data);
 	fsa8500_report_hs(irq_data);
 
+	wake_unlock(&irq_data->wake_lock);
 	mutex_unlock(&irq_data->lock);
 }
 
