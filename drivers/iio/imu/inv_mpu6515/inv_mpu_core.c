@@ -2903,7 +2903,6 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 
 	if (st->chip_config.dmp_on &&
 		st->chip_config.enable &&
-		st->batch.on &&
 		(!st->chip_config.dmp_event_int_on)) {
 		/* turn off data interrupt in suspend mode;turn on resume */
 		result = inv_set_interrupt_on_gesture_event(st, suspend);
@@ -2922,6 +2921,58 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 }
 
 #ifdef CONFIG_PM
+static void inv_disable_nonwake_sensors(struct inv_mpu_state *st)
+{
+	int err = 0;
+	if (st->chip_config.gyro_enable) {
+		err = inv_switch_gyro_engine(st, false);
+		if (err)
+			pr_err("%s: ERROR %d disabling gyro\n", __func__, err);
+	}
+
+	/* don't disable accel if pedometer or significant motion is enabled */
+	if (!st->ped.on && !st->chip_config.smd_enable &&
+					st->chip_config.accel_enable) {
+		err = inv_switch_accel_engine(st, false);
+		if (err)
+			pr_err("%s: ERROR %d disabling accelerometer\n",
+							__func__, err);
+	}
+
+	if (st->sensor[SENSOR_COMPASS].on) {
+		err = st->slave_compass->suspend(st);
+		if (err)
+			pr_err("%s: ERROR %d disabling compass\n",
+							__func__, err);
+	}
+}
+
+static void inv_enable_nonwake_sensors(struct inv_mpu_state *st)
+{
+	int err = 0;
+	if (st->chip_config.gyro_enable) {
+		err = inv_switch_gyro_engine(st, true);
+		if (err)
+			pr_err("%s: ERROR %d restoring gyro state\n",
+							__func__, err);
+	}
+
+	if (!st->ped.on && !st->chip_config.smd_enable &&
+					st->chip_config.accel_enable) {
+		err = inv_switch_accel_engine(st, true);
+		if (err)
+			pr_err("%s: ERROR %d restoring accelerometer state\n",
+							__func__, err);
+	}
+
+	if (st->sensor[SENSOR_COMPASS].on) {
+		err = st->slave_compass->resume(st);
+		if (err)
+			pr_err("%s: ERROR %d restoring compass state\n",
+							__func__, err);
+	}
+}
+
 /*
  * inv_mpu_resume(): resume method for this driver.
  *    This method can be modified according to the request of different
@@ -2948,6 +2999,10 @@ static int inv_mpu_resume(struct device *dev)
 			result |= inv_set_display_orient_interrupt_dmp(st,
 								true);
 		result |= inv_setup_suspend_batchmode(indio_dev, false);
+
+		/* restore enable state all non-wakeup sensors */
+		inv_enable_nonwake_sensors(st);
+
 	} else if (st->chip_config.enable) {
 		result = st->set_power_state(st, true);
 	}
@@ -2988,6 +3043,10 @@ static int inv_mpu_suspend(struct device *dev)
 								false);
 		/* setup batch mode related during suspend */
 		result = inv_setup_suspend_batchmode(indio_dev, true);
+
+		/* disable all non-wakeup sensors */
+		inv_disable_nonwake_sensors(st);
+
 		/* only in DMP non-batch data mode, turn off the power */
 		if ((!st->batch.on) && (!st->chip_config.smd_enable) &&
 					(!st->ped.on))
