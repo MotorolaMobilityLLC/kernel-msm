@@ -38,6 +38,9 @@
 		uart3 = &c55_uart_blsp2;
 	};
 
+	bt_qca6174 {
+		/delete-property/ qca,bt-vdd-pa-supply;
+	};
 };
 
 &soc {
@@ -64,6 +67,11 @@
 
 	/delete-node/ qcom,cnss@0d400000;
 	/delete-node/ qca,qca1530;
+	/delete-node/ wlan_vreg;
+
+	qcom,pcie@fc520000 {
+		/delete-property/ vreg-3.3-supply;
+	};
 
 	c55_uart_blsp2: uart@f991e000 { /* HW BLSP2, BLSP1 UART1 Highspeed for C55 */
 		compatible = "qcom,msm-hsuart-v14";
@@ -98,7 +106,6 @@
 		interrupts = <67 0>;
 		interrupt-names = "host_wake";
 	};
-
 };
 
 &max17050 {
