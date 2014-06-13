@@ -892,8 +892,13 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x20) ||(rbuf[0] == 0x80)) {
 			printk("***********************Tilt to wake event\n");
+			#ifndef ASUS_FACTORY_BUILD
 			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
-			public_gpio_keys_gpio_report_event();
+			#endif
+			if(is_suspend)
+				public_gpio_keys_gpio_report_event();
+			strcpy(double_tap, "TILT");
+			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
 		}
 	}
 	if(status & LIS3DSH_STAT_INTSM2_BIT) {
@@ -928,7 +933,9 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02)) {
 			printk("***********************report event SM2\n");
+			#ifndef ASUS_FACTORY_BUILD
 			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
+			#endif
 			if(is_suspend)
 				public_gpio_keys_gpio_report_event();
 // ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
@@ -2038,8 +2045,13 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	chip_status=1;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
 	lis3dsh_acc_enable(acc);			//default on
+	
+	#ifdef ASUS_FACTORY_BUILD
+	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_EN);			//SM1: tilt-to-wake SM2: double tap
+	#else
 	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);			//SM1: tilt-to-wake SM2: double tap
-
+	#endif
+	
 	#ifdef CONFIG_I2C_STRESS_TEST
 	i2c_add_test_case(client, "STSensorTest", ARRAY_AND_SIZE(gLIS3DSHTestCaseInfo));
 	#endif
@@ -2197,7 +2209,7 @@ static int __init lis3dsh_acc_init(void)
 		sensor_debug(DEBUG_INFO, "Err: failed in creating device.\n");
 		goto error;
 	}
-	double_tap[0] = 0;
+	memset(&double_tap, 0, sizeof(double_tap));
 	device_create_file(lis3dsh_class_dev, &lis3dsh_attrs[0]);
 
 	return i2c_add_driver(&lis3dsh_acc_driver);
