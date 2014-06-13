@@ -115,6 +115,8 @@ enum device_status {
 #define F12_MAX_X		65536
 #define F12_MAX_Y		65536
 
+static bool wake_report;
+
 static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
 		unsigned short length);
@@ -1500,6 +1502,13 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
+	if (wake_report) {
+		wake_report = 0;
+		input_report_key(rmi4_data->input_dev, KEY_TOUCHPAD_TOGGLE, 1);
+		input_sync(rmi4_data->input_dev);
+		input_report_key(rmi4_data->input_dev, KEY_TOUCHPAD_TOGGLE, 0);
+		input_sync(rmi4_data->input_dev);
+	}
 	/*
 	 * Get interrupt status information from F01 Data1 register to
 	 * determine the source(s) that are flagging the interrupt.
@@ -1761,6 +1770,8 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 	rmi4_pdata->y_flip = of_property_read_bool(np, "synaptics,y-flip");
 	rmi4_pdata->do_lockdown = of_property_read_bool(np,
 			"synaptics,do-lockdown");
+	rmi4_pdata->is_wake = of_property_read_bool(np,
+			"synaptics,is_wake");
 
 	rc = synaptics_rmi4_get_dt_coords(dev, "synaptics,display-coords",
 			rmi4_pdata, NULL);
@@ -3396,6 +3407,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->fw_updating = false;
 	rmi4_data->suspended = false;
 
+	rmi4_data->stay_awake = rmi4_data->board->is_wake;
 	rmi4_data->i2c_read = synaptics_rmi4_i2c_read;
 	rmi4_data->i2c_write = synaptics_rmi4_i2c_write;
 	rmi4_data->irq_enable = synaptics_rmi4_irq_enable;
@@ -3623,6 +3635,12 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Failed to check configuration\n");
 		return retval;
 	}
+
+	device_init_wakeup(&client->dev, rmi4_data->stay_awake);
+	if (rmi4_data->stay_awake)
+		input_set_capability(rmi4_data->input_dev, EV_KEY,
+						KEY_TOUCHPAD_TOGGLE);
+
 
 	return retval;
 
@@ -4116,7 +4134,9 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	int retval;
 
 	if (rmi4_data->stay_awake) {
+		wake_report = 1;
 		rmi4_data->staying_awake = true;
+		enable_irq_wake(rmi4_data->irq);
 		return 0;
 	} else
 		rmi4_data->staying_awake = false;
@@ -4200,8 +4220,11 @@ static int synaptics_rmi4_resume(struct device *dev)
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	int retval;
 
-	if (rmi4_data->staying_awake)
+	if (rmi4_data->staying_awake) {
+		wake_report = 0;
+		disable_irq_wake(rmi4_data->irq);
 		return 0;
+	}
 
 	if (!rmi4_data->suspended) {
 		dev_info(dev, "Already in awake state\n");
@@ -4275,15 +4298,10 @@ err_gpio_configure:
 	return retval;
 }
 
-#if (!defined(CONFIG_FB) && !defined(CONFIG_HAS_EARLYSUSPEND))
 static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 	.suspend = synaptics_rmi4_suspend,
 	.resume  = synaptics_rmi4_resume,
 };
-#else
-static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
-};
-#endif
 #else
 static int synaptics_rmi4_suspend(struct device *dev)
 {
