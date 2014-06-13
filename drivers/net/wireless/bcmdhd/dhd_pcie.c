@@ -2,13 +2,13 @@
  * DHD Bus Module for PCIE
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -358,7 +358,7 @@ dhdpcie_bus_isr(dhd_bus_t *bus)
 			}
 
 			if (bus->dhd->busstate == DHD_BUS_DOWN) {
-				DHD_ERROR(("%s : bus is down. we have nothing to do\n",
+				DHD_INFO(("%s : bus is down. we have nothing to do\n",
 					__FUNCTION__));
 				break;
 			}
@@ -503,6 +503,7 @@ dhdpcie_dongle_attach(dhd_bus_t *bus)
 	bus->intr = (bool)dhd_intr;
 
 	bus->wait_for_d3_ack = 1;
+	bus->suspended = FALSE;
 	DHD_TRACE(("%s: EXIT: SUCCESS\n",
 		__FUNCTION__));
 	return 0;
@@ -2705,6 +2706,8 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 	int timeleft;
 	bool pending;
 	int rc = 0;
+	uint32 status = 0;
+	DHD_ERROR(("%s Enter with state :%d\n", __FUNCTION__, state));
 
 	if (bus->dhd == NULL) {
 		DHD_ERROR(("bus not inited\n"));
@@ -2724,13 +2727,23 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 	if (state == (bus->dhd->busstate == DHD_BUS_SUSPEND)) /* Set to same state */
 		return BCME_OK;
 
+	if (bus->suspended == state) /* Set to same state */
+		return BCME_OK;
+
 	if (state) {
-		dhdpcie_send_mb_data(bus, H2D_HOST_D3_INFORM);
+		if (dhd_os_check_wakelock(bus->dhd))
+			return BCME_ERROR;
+		DHD_ERROR(("dhdpcie_send_mb_data H2D_HOST_D3_INFORM\n"));
 		bus->wait_for_d3_ack = 0;
+		dhdpcie_send_mb_data(bus, H2D_HOST_D3_INFORM);
+		dhd_os_wake_lock_waive(bus->dhd);
 		timeleft = dhd_os_ioctl_resp_wait(bus->dhd, &bus->wait_for_d3_ack, &pending);
+		dhd_os_wake_lock_restore(bus->dhd);
 		if (bus->wait_for_d3_ack) {
 			/* Got D3 Ack. Suspend the bus */
+			DHD_ERROR(("dhdpcie_send_mb_data ack received\n"));
 			rc = dhdpcie_pci_suspend_resume(bus->dev, state);
+			bus->suspended = TRUE;
 			bus->dhd->busstate = DHD_BUS_SUSPEND;
 		} else if (timeleft == 0) {
 			DHD_ERROR(("%s: resumed on timeout\n", __FUNCTION__));
@@ -2740,9 +2753,14 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 	}
 	else {
 		/* Resume */
+		DHD_ERROR(("dhdpcie_bus_suspend resume\n"));
+		status =  dhdpcie_bus_cfg_read_dword(bus, PCIECFGREG_PM_CSR, 4);
+		status |= (1 << 15); /* clear PMEStat */
+		status |= (1 << 8); /* PME en */
+		dhdpcie_bus_cfg_write_dword(bus, PCIECFGREG_PM_CSR, 4, status);
 		rc = dhdpcie_pci_suspend_resume(bus->dev, state);
+		bus->suspended = FALSE;
 		bus->dhd->busstate = DHD_BUS_DATA;
-
 	}
 	return rc;
 }
@@ -3139,7 +3157,12 @@ dhd_bus_dpc(struct dhd_bus *bus)
 		bus->intstatus = 0;
 		return 0;
 	}
-
+	if (bus->suspended) {
+		resched = TRUE;
+		DHD_INFO(("%s : PCIe is still in suspend state\n",__FUNCTION__));
+		OSL_DELAY(20 * 1000);
+		return resched;
+	}
 	intstatus = bus->intstatus;
 
 	if ((bus->sih->buscorerev == 6) || (bus->sih->buscorerev == 4) ||
