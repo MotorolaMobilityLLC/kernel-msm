@@ -1148,6 +1148,7 @@ static char *WDI_getRespMsgString(wpt_uint16 wdiRespMsgId)
     CASE_RETURN_STRING( WDI_SET_BATCH_SCAN_RESP);
 #endif
     CASE_RETURN_STRING( WDI_UPDATE_CHAN_RESP);
+    CASE_RETURN_STRING( WDI_CH_SWITCH_RESP_V1 );
     CASE_RETURN_STRING( WDI_GET_BCN_MISS_RATE_RSP );
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
     CASE_RETURN_STRING( WDI_LL_STATS_SET_RSP);
@@ -1260,6 +1261,9 @@ void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
                           break;
                      case TDLS_SCAN_COEXISTENCE: snprintf(pCapStr, sizeof("TDLS_SCAN_COEXISTENCE"), "%s", "TDLS_SCAN_COEXISTENCE");
                           pCapStr += strlen("TDLS_SCAN_COEXISTENCE");
+                          break;
+                     case CH_SWITCH_V1: snprintf(pCapStr, sizeof("CH_SWITCH_V1"), "%s", "CH_SWITCH_V1");
+                          pCapStr += strlen("CH_SWITCH_V1");
                           break;
 
                  }
@@ -23710,6 +23714,8 @@ case WLAN_HAL_DEL_STA_SELF_RSP:
     return WDI_UPDATE_CHAN_RESP;
   case WLAN_HAL_PRINT_REG_INFO_IND:
     return  WDI_PRINT_REG_INFO_IND;
+  case WLAN_HAL_CH_SWITCH_V1_RSP:
+    return WDI_CH_SWITCH_RESP_V1;
   case WLAN_HAL_GET_BCN_MISS_RATE_RSP:
     return WDI_GET_BCN_MISS_RATE_RSP;
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
