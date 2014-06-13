@@ -29,6 +29,9 @@
 #include <soc/qcom/memory_dump.h>
 //adbg++
 #include <linux/asus_global.h>
+#include <linux/io.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
 extern struct _asus_global asus_global;
 //adbg--
 
@@ -86,6 +89,10 @@ module_param(enable, int, 0);
  */
 static long WDT_HZ = 32765;
 module_param(WDT_HZ, long, 0);
+
+// ASUS_BSP +++ Josh_Hsu "try to support GOOGLE ASIT for bootreason"
+void* restart_reason_wd;
+// ASUS_BSP --- Josh_Hsu "try to support GOOGLE ASIT for bootreason"
 
 static void pet_watchdog_work(struct work_struct *work);
 static void init_watchdog_work(struct work_struct *work);
@@ -467,6 +474,20 @@ static void init_watchdog_work(struct work_struct *work)
 	int error;
 	u64 timeout;
 	int ret;
+
+//ASUS_BSP +++ Josh_Hsu "try to support GOOGLE ASIT for bootreason"
+	struct device_node *np;
+	np = of_find_compatible_node(NULL, NULL,
+				"qcom,msm-imem-restart_reason");
+	if (!np) {
+		pr_err("unable to find DT imem restart reason node\n");
+	} else {
+		restart_reason_wd = of_iomap(np, 0);
+		if (!restart_reason_wd) {
+			pr_err("unable to map imem restart reason offset\n");
+		}
+	}
+//ASUS_BSP --- Josh_Hsu "try to support GOOGLE ASIT for bootreason"
 
 	if (wdog_dd->irq_ppi) {
 		wdog_dd->wdog_cpu_dd = alloc_percpu(struct msm_watchdog_data *);
