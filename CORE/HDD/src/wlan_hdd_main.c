@@ -3933,12 +3933,21 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            tANI_U8 *value = command;
            tCsrEseBeaconReq eseBcnReq;
            eHalStatus status = eHAL_STATUS_SUCCESS;
+
            status = hdd_parse_ese_beacon_req(value, &eseBcnReq);
            if (eHAL_STATUS_SUCCESS != status)
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: Failed to parse ese beacon req", __func__);
                ret = -EINVAL;
+               goto exit;
+           }
+           if (!hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))) {
+               hddLog(VOS_TRACE_LEVEL_INFO, FL("Not associated"));
+               hdd_indicateEseBcnReportNoResults (pAdapter,
+                                      eseBcnReq.bcnReq[0].measurementToken,
+                                      0x02,  //BIT(1) set for measurement done
+                                      0);    // no BSS
                goto exit;
            }
 

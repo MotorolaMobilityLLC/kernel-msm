@@ -130,4 +130,12 @@ int hdd_set_csr_auth_type( hdd_adapter_t *pAdapter, eCsrAuthType RSNAuthType );
 VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
                                     tANI_U8 *peerMac, tANI_U16 staId, tANI_U8 ucastSig);
 void hdd_PerformRoamSetKeyComplete(hdd_adapter_t *pAdapter);
+
+#if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
+void hdd_indicateEseBcnReportNoResults(const hdd_adapter_t *pAdapter,
+                                       const tANI_U16 measurementToken,
+                                       const tANI_BOOLEAN flag,
+                                       const tANI_U8 numBss);
+#endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
+
 #endif
