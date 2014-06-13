@@ -5728,6 +5728,20 @@ static int mdss_mdp_overlay_ioctl_handler(struct msm_fb_data_type *mfd,
 		break;
 
 	default:
+		if (mfd->panel.type == MIPI_VIDEO_PANEL ||
+			mfd->panel.type == MIPI_CMD_PANEL) {
+			struct mdss_panel_data *pdata;
+			struct mdss_overlay_private *mdp5_data =
+				mfd_to_mdp5_data(mfd);
+
+			pdata = dev_get_platdata(&mfd->pdev->dev);
+			if (!pdata || !mdp5_data)
+				return -EFAULT;
+			mutex_lock(&mdp5_data->ov_lock);
+			ret = mdss_dsi_ioctl_handler(pdata, cmd, argp);
+			mutex_unlock(&mdp5_data->ov_lock);
+		}
+
 		break;
 	}
 
