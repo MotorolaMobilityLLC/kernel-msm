@@ -65,7 +65,7 @@
 &soc {
 	qcom,ion {
 		qcom,ion-heap@23 { /* OTHER PIL HEAP */
-			qcom,memory-fixed = <0x04b00000 0x2700000>;
+			qcom,memory-fixed = <0x05100000 0x2100000>;
 		};
 
 		qcom,ion-heap@26 { /* MODEM HEAP */
@@ -1203,7 +1203,8 @@
 };
 
 &memory_hole {
-	qcom,memblock-remove = <0x04b00000 0xb400000>; /* Address and size of the hole */
+	qcom,memblock-remove = <0x05100000 0x8200000
+				0x0fa00000 0x500000>; /* Address and size of the hole */
 };
 
 &rpm_bus {
