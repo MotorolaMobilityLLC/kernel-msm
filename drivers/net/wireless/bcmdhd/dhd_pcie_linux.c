@@ -2,13 +2,13 @@
  * Linux DHD Bus Module for PCIE
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -89,7 +89,7 @@ typedef struct dhdpcie_info
 	uint16		last_intrstatus;	/* to cache intrstatus */
 	int	irq;
 	char pciname[32];
-	
+
 	struct pci_saved_state* state;
 
 } dhdpcie_info_t;
@@ -153,7 +153,7 @@ static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
 	int ret = 0;
 	dhdpcie_info_t *pch = pci_get_drvdata(pdev);
 	dhd_bus_t *bus = NULL;
-
+	DHD_ERROR(("%s Enter with state :%x\n", __FUNCTION__, state));
 	if (pch) {
 		bus = pch->bus;
 	}
@@ -165,25 +165,25 @@ static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
 		return ret;
 	}
 
-	if (state == TRUE) {
-		/* This function works only in case of Resume. force return */
-		return ret;
-	}
-
-	if (bus && (bus->dhd->busstate == DHD_BUS_SUSPEND)) {
+	if (bus && bus->dhd &&
+		((bus->dhd->busstate == DHD_BUS_DATA) || (bus->dhd->busstate == DHD_BUS_SUSPEND)) &&
+		(bus->suspended != state)) {
 		ret = dhdpcie_bus_suspend(bus, state);
 	}
+	DHD_ERROR(("%s Exit with state :%d\n", __FUNCTION__, ret));
 	return ret;
 }
 
 static int dhdpcie_pci_suspend(struct pci_dev * pdev, pm_message_t state)
 {
 	BCM_REFERENCE(state);
+	DHD_ERROR(("%s Enter with event %x\n", __FUNCTION__, state.event));
 	return dhdpcie_set_suspend_resume(pdev, TRUE);
 }
 
 static int dhdpcie_pci_resume(struct pci_dev *pdev)
 {
+	DHD_ERROR(("%s Enter\n", __FUNCTION__));
 	return dhdpcie_set_suspend_resume(pdev, FALSE);
 }
 
@@ -402,14 +402,14 @@ int dhdpcie_get_resource(dhdpcie_info_t *dhdpcie_info)
 		/* Backup PCIe configuration so as to use Wi-Fi on/off process in case of built in driver */
 		pci_save_state(pdev);
 		dhdpcie_info->state = pci_store_saved_state(pdev);
-	
+
 		if(dhdpcie_info->state == NULL) {
 			DHD_ERROR(("%s pci_store_saved_state returns NULL\n", __FUNCTION__));
 			REG_UNMAP(dhdpcie_info->regs);
-			REG_UNMAP(dhdpcie_info->tcm);			
-			pci_disable_device(pdev);	
+			REG_UNMAP(dhdpcie_info->tcm);
+			pci_disable_device(pdev);
 			break;
-		}		
+		}
 		DHD_TRACE(("%s:Phys addr : reg space = %p base addr 0x"PRINTF_RESOURCE" \n",
 			__FUNCTION__, dhdpcie_info->regs, bar0_addr));
 		DHD_TRACE(("%s:Phys addr : tcm_space = %p base addr 0x"PRINTF_RESOURCE" \n",
@@ -590,17 +590,17 @@ dhdpcie_start_host_pcieclock(dhd_bus_t *bus)
 {
 	int ret=0;
 
-	DHD_TRACE(("%s Enter:\n", __FUNCTION__));	
+	DHD_TRACE(("%s Enter:\n", __FUNCTION__));
 
 	if(bus == NULL)
 		return BCME_ERROR;
 
 	if(bus->dev == NULL)
 		return BCME_ERROR;
-	
+
 #if defined (CONFIG_ARCH_MSM)
-	ret = msm_pcie_pm_control(MSM_PCIE_RESUME,				
-				  bus->dev->bus->number, 	
+	ret = msm_pcie_pm_control(MSM_PCIE_RESUME,
+				  bus->dev->bus->number,
 				  NULL, NULL, 0);
 	if (ret) {
 		DHD_ERROR(("%s Failed to bring up PCIe link\n", __FUNCTION__));
@@ -609,7 +609,7 @@ dhdpcie_start_host_pcieclock(dhd_bus_t *bus)
 #endif
 
 done:
-	DHD_TRACE(("%s Exit:\n", __FUNCTION__));	
+	DHD_TRACE(("%s Exit:\n", __FUNCTION__));
 
 	return ret;
 }
@@ -620,21 +620,21 @@ dhdpcie_stop_host_pcieclock(dhd_bus_t *bus)
 	int ret=0;
 
 	DHD_TRACE(("%s Enter:\n", __FUNCTION__));
-	
+
 	if(bus == NULL)
 		return BCME_ERROR;
 
 	if(bus->dev == NULL)
 		return BCME_ERROR;
-	
+
 #if defined (CONFIG_ARCH_MSM)
-	ret = msm_pcie_pm_control(MSM_PCIE_SUSPEND,				
-			bus->dev->bus->number, 	
+	ret = msm_pcie_pm_control(MSM_PCIE_SUSPEND,
+			bus->dev->bus->number,
 			NULL, NULL, 0);
 	if (ret) {
 		DHD_ERROR(("Failed to stop PCIe link\n"));
 		goto done;
-	}	
+	}
 #endif
 
 done:
@@ -654,7 +654,7 @@ dhdpcie_disable_device(dhd_bus_t *bus)
 		return BCME_ERROR;
 	}
 	pci_disable_device(bus->dev);
-	
+
 	return 0;
 }
 
@@ -675,7 +675,7 @@ dhdpcie_enable_device(dhd_bus_t *bus)
 	pch = pci_get_drvdata(bus->dev);
 	if(pch == NULL)
 		return BCME_ERROR;
-	
+
 	if(pci_load_saved_state(bus->dev, pch->state))
 		pci_disable_device(bus->dev);
 	else {
@@ -684,7 +684,7 @@ dhdpcie_enable_device(dhd_bus_t *bus)
 		if(!ret)
 			pci_set_master(bus->dev);
 	}
-	
+
 	if(ret)
 		pci_disable_device(bus->dev);
 
