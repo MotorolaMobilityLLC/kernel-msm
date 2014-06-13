@@ -276,6 +276,24 @@ static int max77836_i2c_probe(struct i2c_client *i2c,
 	if (ret < 0)
 		goto err_mfd;
 
+	ret = max77836_read_reg(max77836->i2c_pmic,
+			MAX77836_PMIC_REG_COMP, &reg_data);
+	if (ret < 0)
+		pr_err("%s:%s REG_COMP read failed. err:%d\n",
+				MFD_DEV_NAME, __func__, ret);
+	else {
+		pr_info("Prev COMP REG=%02x\n", reg_data);
+		reg_data |= BIT_COMPEN;
+		ret = max77836_write_reg(max77836->i2c_pmic,
+				MAX77836_PMIC_REG_COMP, reg_data);
+		if (ret < 0)
+			pr_err("%s:%s REG_COMP, write failed. err:%d\n",
+					MFD_DEV_NAME, __func__, ret);
+		ret = max77836_read_reg(max77836->i2c_pmic,
+				MAX77836_PMIC_REG_COMP, &reg_data);
+		pr_info("Read COMP REG=%02x\n", reg_data);
+	}
+
 	device_init_wakeup(max77836->dev, pdata->wakeup);
 
 	return ret;
@@ -301,6 +319,31 @@ static int max77836_i2c_remove(struct i2c_client *i2c)
 	kfree(max77836);
 
 	return 0;
+}
+
+static void max77836_i2c_shutdown(struct i2c_client *i2c)
+{
+	struct max77836_dev *max77836 = i2c_get_clientdata(i2c);
+	u8 reg_data;
+	int ret = 0;
+
+	ret = max77836_read_reg(max77836->i2c_pmic,
+			MAX77836_PMIC_REG_COMP, &reg_data);
+	if (ret < 0)
+		pr_err("%s:%s REG_COMP read failed. err:%d\n",
+				MFD_DEV_NAME, __func__, ret);
+	else {
+		pr_info("Prev COMP REG=%02x\n", reg_data);
+		reg_data &= ~BIT_COMPEN;
+		ret = max77836_write_reg(max77836->i2c_pmic,
+				MAX77836_PMIC_REG_COMP, reg_data);
+		if (ret < 0)
+			pr_err("%s:%s REG_COMP, write failed. err:%d\n",
+					MFD_DEV_NAME, __func__, ret);
+		ret = max77836_read_reg(max77836->i2c_pmic,
+				MAX77836_PMIC_REG_COMP, &reg_data);
+		pr_info("Read COMP REG=%02x\n", reg_data);
+	}
 }
 
 static const struct i2c_device_id max77836_i2c_id[] = {
@@ -356,6 +399,7 @@ static struct i2c_driver max77836_i2c_driver = {
 	},
 	.probe = max77836_i2c_probe,
 	.remove = max77836_i2c_remove,
+	.shutdown = max77836_i2c_shutdown,
 	.id_table = max77836_i2c_id,
 };
 
