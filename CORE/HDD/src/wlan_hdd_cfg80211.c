@@ -2759,6 +2759,14 @@ static int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter,
          goto done;
     }
 
+    if (0 != wlan_hdd_add_ie(pHostapdAdapter, genie,
+                &total_ielen, WMM_OUI_TYPE, WMM_OUI_TYPE_SIZE))
+    {
+        hddLog(LOGE, FL("Adding WMM IE failed"));
+        ret = -EINVAL;
+        goto done;
+    }
+
     if (WLAN_HDD_SOFTAP == pHostapdAdapter->device_mode)
     {
         wlan_hdd_add_hostapd_conf_vsie(pHostapdAdapter, genie, &total_ielen);
@@ -9578,7 +9586,7 @@ static int wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
 
 #ifdef FEATURE_WLAN_LFR
 
-static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *dev,
+static int __wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *dev,
             struct cfg80211_pmksa *pmksa)
 {
     tANI_U32 j=0;
@@ -9671,9 +9679,20 @@ static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *d
     return 0;
 }
 
+static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *dev,
+            struct cfg80211_pmksa *pmksa)
+{
+   int ret;
+
+   vos_ssr_protect(__func__);
+   ret = __wlan_hdd_cfg80211_set_pmksa(wiphy, dev, pmksa);
+   vos_ssr_unprotect(__func__);
+
+   return ret;
+}
 
 
-static int wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device *dev,
+static int __wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device *dev,
              struct cfg80211_pmksa *pmksa)
 {
     tANI_U32 j=0;
@@ -9774,8 +9793,20 @@ static int wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device *d
 }
 
 
+static int wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device *dev,
+             struct cfg80211_pmksa *pmksa)
+{
+    int ret;
 
-static int wlan_hdd_cfg80211_flush_pmksa(struct wiphy *wiphy, struct net_device *dev)
+    vos_ssr_protect(__func__);
+    ret = __wlan_hdd_cfg80211_del_pmksa(wiphy, dev, pmksa);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+
+}
+
+static int __wlan_hdd_cfg80211_flush_pmksa(struct wiphy *wiphy, struct net_device *dev)
 {
     tANI_U32 j=0;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
@@ -9835,6 +9866,17 @@ static int wlan_hdd_cfg80211_flush_pmksa(struct wiphy *wiphy, struct net_device 
 
     pHddStaCtx->PMKIDCacheIndex = 0;
     return status;
+}
+
+static int wlan_hdd_cfg80211_flush_pmksa(struct wiphy *wiphy, struct net_device *dev)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __wlan_hdd_cfg80211_flush_pmksa(wiphy, dev);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
 }
 #endif
 

@@ -11793,8 +11793,13 @@ eHalStatus csrRoamIssueStartBss( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRo
     }
 #endif //FEATURE_WLAN_DIAG_SUPPORT_CSR
     //Put RSN information in for Starting BSS
-    pParam->nRSNIELength = (tANI_U16)pProfile->nRSNReqIELength;
-    pParam->pRSNIE = pProfile->pRSNReqIE;
+    if (pProfile->nRSNReqIELength && pProfile->pRSNReqIE) {
+        pParam->nRSNIELength = (tANI_U16)pProfile->nRSNReqIELength;
+        pParam->pRSNIE = pProfile->pRSNReqIE;
+    } else if (pProfile->nWPAReqIELength && pProfile->pWPAReqIE) {
+        pParam->nRSNIELength = (tANI_U16)pProfile->nWPAReqIELength;
+        pParam->pRSNIE = pProfile->pWPAReqIE;
+    }
 
     pParam->privacy           = pProfile->privacy;
     pParam->fwdWPSPBCProbeReq = pProfile->fwdWPSPBCProbeReq;   

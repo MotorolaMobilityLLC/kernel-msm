@@ -93,6 +93,109 @@ tSirRetStatus schGetP2pIeOffset(tANI_U8 *pExtraIe, tANI_U32 extraIeLen, tANI_U16
      return status;
 }
 
+tSirRetStatus schUpdateWmeIe(tpAniSirGlobal pMac, tpPESession psessionEntry,
+        tANI_U32 maxBeaconSize, tANI_U32 *nBytes)
+{
+    tSirRetStatus status = eSIR_FAILURE;
+    tANI_U32 present, len, i;
+    tANI_U8 *addIE = NULL;
+
+    if (NULL == pMac)
+    {
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_FATAL,
+                          "%s: Invalid (Null) pmac",__func__);
+        return status;
+    }
+
+    if (NULL == psessionEntry)
+    {
+        schLog(pMac, LOGP, FL("Invalid (Null) pessionEntry"));
+        return status;
+    }
+    if (NULL == nBytes) {
+        schLog(pMac, LOGP, FL("Invalid (Null) nBytes"));
+        return status;
+    }
+
+    if ((status = wlan_cfgGetInt(pMac, WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG,
+                    &present)) != eSIR_SUCCESS)
+    {
+        schLog(pMac, LOGP,
+            "Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG, ret: %d",
+            status);
+        return status;
+    }
+
+    if (!present) {
+        /* No Wme IE in ADDNIE_DATA */
+        return eSIR_SUCCESS;
+    }
+
+    if ((status = wlan_cfgGetStrLen(pMac,
+                                    WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA,
+                                    &len)) != eSIR_SUCCESS)
+    {
+        schLog(pMac, LOGP,
+            "Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA length, ret: %d",
+            status);
+        return status;
+    }
+
+    if (!len) {
+        schLog(pMac, LOG1,
+            "Incorrect WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA_LEN length, %d",
+            len);
+        return status;
+    }
+
+    addIE = vos_mem_malloc(WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA_LEN);
+
+    if (NULL == addIE) {
+        schLog(pMac, LOGE,
+            FL("Failed to allocate memory for BCN_ADDNIE_DATA"));
+        return eSIR_MEM_ALLOC_FAILED;
+    }
+
+    if (len <= WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA_LEN &&
+        ((len + *nBytes) <= maxBeaconSize))
+    {
+        if ((status = wlan_cfgGetStr(pMac,
+                        WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA,
+                        &addIE[0],
+                        &len)) == eSIR_SUCCESS)
+        {
+            tANI_U8* pWmeIe = limGetWmeIEPtr(pMac, &addIE[0], len);
+
+            if (pWmeIe != NULL)
+            {
+                len = pWmeIe[1];
+
+                /* ac policy starts from offset [10] */
+                vos_mem_copy(psessionEntry->gLimEdcaParamsBC,
+                       &(pWmeIe[10]),
+                       sizeof(psessionEntry->gLimEdcaParamsBC));
+
+                for (i = 0; i < MAX_NUM_AC; i++)
+                {
+                    schLog(pMac, LOG1,
+                        "AC :%d: AIFSN: %d, ACM %d, CWmin %d, "
+                        "CWmax %d, TxOp %d",
+                        i,
+                        psessionEntry->gLimEdcaParamsBC[i].aci.aifsn,
+                        psessionEntry->gLimEdcaParamsBC[i].aci.acm,
+                        psessionEntry->gLimEdcaParamsBC[i].cw.min,
+                        psessionEntry->gLimEdcaParamsBC[i].cw.max,
+                        psessionEntry->gLimEdcaParamsBC[i].txoplimit);
+                }
+            }
+        }
+    }
+    if (NULL != addIE)
+        vos_mem_free(addIE);
+
+    return status;
+}
+
 tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                                      tANI_U8 *pFrame, tANI_U32 maxBeaconSize,
                                      tANI_U32 *nBytes)
@@ -130,11 +233,17 @@ tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                 {
                     tANI_U8 noaLen = 0;
                     tANI_U8 noaStream[SIR_MAX_NOA_ATTR_LEN + SIR_P2P_IE_HEADER_LEN];
+
+                    /* ADDNIE_DATA is not for p2p only, make sure len
+                     * is carried with correct p2pIe length
+                     */
+                    len = pP2pIe[1];
+
                     //get NoA attribute stream P2P IE
                     noaLen = limGetNoaAttrStream(pMac, noaStream, psessionEntry);
                     if(noaLen)
                     {
-                        if(noaLen + len <= WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA_LEN)
+                        if(noaLen + len < WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA_LEN)
                         {
                             vos_mem_copy(&addIE[len], noaStream, noaLen);
                             len += noaLen;
@@ -147,10 +256,25 @@ tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                                FL("Not able to insert NoA because of length constraint"));
                         }
                     }
+
+                    if (len < WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA_LEN)
+                    {
+                        vos_mem_copy(pFrame, &addIE[0], len);
+                        *nBytes = *nBytes + len;
+                    }
+                    else
+                    {
+                        schLog(pMac, LOGE,
+                            FL("Not able to insert P2P IE because of length constraint"));
+                    }
                 }
-                vos_mem_copy(pFrame, &addIE[0], len);
-                *nBytes = *nBytes + len;
             }
+        }
+
+        if (schUpdateWmeIe(pMac, psessionEntry, maxBeaconSize, nBytes) !=
+                eSIR_SUCCESS)
+        {
+            schLog(pMac, LOG1, FL("No WmeIe to be added"));
         }
     }
 

@@ -87,6 +87,7 @@ struct wlan_logging {
 	unsigned int drop_count;
 	/* current logbuf to which the log will be filled to */
 	struct log_msg *pcur_node;
+	bool is_buffer_free;
 };
 
 static struct wlan_logging gwlan_logging;
@@ -183,7 +184,6 @@ static int wlan_queue_logmsg_for_app(void)
 {
 	char *ptr;
 	int ret = 0;
-
 	ptr = &gwlan_logging.pcur_node->logbuf[sizeof(tAniHdr)];
 	ptr[gwlan_logging.pcur_node->filled_length] = '\0';
 
@@ -199,6 +199,8 @@ static int wlan_queue_logmsg_for_app(void)
 		gwlan_logging.pcur_node =
 			(struct log_msg *)(gwlan_logging.free_list.next);
 		list_del_init(gwlan_logging.free_list.next);
+		 /* reset when free list is available. */
+		gwlan_logging.is_buffer_free = FALSE;
 	} else if (!list_empty(&gwlan_logging.filled_list)) {
 		/* Get buffer from filled list */
 		/* This condition will drop the packet from being
@@ -206,11 +208,13 @@ static int wlan_queue_logmsg_for_app(void)
 		 */
 		gwlan_logging.pcur_node =
 			(struct log_msg *)(gwlan_logging.filled_list.next);
-		if (gapp_pid != INVALID_PID) {
+		if (gapp_pid != INVALID_PID && !gwlan_logging.is_buffer_free) {
 			pr_err("%s: drop_count = %u index = %d filled_length = %d\n",
 				__func__, ++gwlan_logging.drop_count,
 				gwlan_logging.pcur_node->index,
 				gwlan_logging.pcur_node->filled_length);
+				/* print above logs only 1st time. */
+				gwlan_logging.is_buffer_free = TRUE;
 		}
 		list_del_init(gwlan_logging.filled_list.next);
 		ret = 1;
