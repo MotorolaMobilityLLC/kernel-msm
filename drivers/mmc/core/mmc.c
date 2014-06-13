@@ -1357,6 +1357,7 @@ static int mmc_change_bus_speed(struct mmc_host *host, unsigned long *freq)
 	}
 out:
 	mmc_release_host(host);
+	printk("%s : !bus speed change to %lu !\n", __func__, *freq);
 	return err;
 }
 
