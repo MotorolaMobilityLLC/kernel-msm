@@ -913,6 +913,53 @@ WLANTL_Close
   v_PVOID_t  pvosGCtx 
 );
 
+/*===========================================================================
+
+  FUNCTION    WLANTL_StartForwarding
+
+  DESCRIPTION
+
+    This function is used to ask serialization through TX thread of the
+    cached frame forwarding (if statation has been registered in the mean while)
+    or flushing (if station has not been registered by the time)
+
+    In case of forwarding, upper layer is only required to call WLANTL_RegisterSTAClient()
+    and doesn't need to call this function explicitly. TL will handle this inside
+    WLANTL_RegisterSTAClient().
+
+    In case of flushing, upper layer is required to call this function explicitly
+
+  DEPENDENCIES
+
+    TL must have been initialized before this gets called.
+
+
+  PARAMETERS
+
+   ucSTAId:   station id
+
+  RETURN VALUE
+
+    The result code associated with performing the operation
+    Please check return values of vos_tx_mq_serialize.
+
+  SIDE EFFECTS
+    If TL was asked to perform WLANTL_CacheSTAFrame() in WLANTL_RxFrames(),
+    either WLANTL_RegisterSTAClient() or this function must be called
+    within reasonable time. Otherwise, TL will keep cached vos buffer until
+    one of this function is called, and may end up with system buffer exhasution.
+
+    It's an upper layer's responsibility to call this function in case of
+    flushing
+
+============================================================================*/
+VOS_STATUS
+WLANTL_StartForwarding
+(
+  v_U8_t ucSTAId,
+  v_U8_t ucUcastSig,
+  v_U8_t ucBcastSig
+);
 
 /*----------------------------------------------------------------------------
     INTERACTION WITH HDD

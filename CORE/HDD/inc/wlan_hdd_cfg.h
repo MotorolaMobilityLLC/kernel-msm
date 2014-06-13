@@ -799,7 +799,7 @@ typedef enum
 #define CFG_FAST_TRANSITION_ENABLED_NAME                    "FastTransitionEnabled"
 #define CFG_FAST_TRANSITION_ENABLED_NAME_MIN                (0)
 #define CFG_FAST_TRANSITION_ENABLED_NAME_MAX                (1)
-#define CFG_FAST_TRANSITION_ENABLED_NAME_DEFAULT            (0) //disabled
+#define CFG_FAST_TRANSITION_ENABLED_NAME_DEFAULT            (1) //Enabled
 
 /* This parameter is used to decide whether to Roam or not.
  * AP1 is the currently associated AP and AP2 is chosen for roaming.
