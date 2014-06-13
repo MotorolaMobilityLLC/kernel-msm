@@ -534,7 +534,7 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		}
 		ctrl_pdata->ulps = true;
 		pr_err("enable ulps mode\n");
-	} else if (ctrl_pdata->ulps) {
+	} else if (!enable && ctrl_pdata->ulps) {
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data.vreg_config + 2, 2, 1);
 		if (ret) {

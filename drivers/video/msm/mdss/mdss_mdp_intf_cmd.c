@@ -264,8 +264,6 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 int mdss_mdp_cmd_disable_ulps(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
-	struct mdss_panel_info *pinfo;
-	struct mdss_panel_data *pdata;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -273,14 +271,7 @@ int mdss_mdp_cmd_disable_ulps(struct mdss_mdp_ctl *ctl)
 		return -ENODEV;
 	}
 
-	pdata = ctl->panel_data;
-	pinfo = &pdata->panel_info;
-
-	if (ctx->ulps) {
-		mdss_mdp_cmd_clk_on(ctx);
-	} else if (pinfo->ulps_feature_enabled) {
-		mod_delayed_work(system_wq, &ctx->ulps_work, ULPS_ENTER_TIME);
-	}
+	mdss_mdp_cmd_clk_on(ctx);
 
 	return 0;
 }
