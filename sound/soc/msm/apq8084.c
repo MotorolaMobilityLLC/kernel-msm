@@ -4478,7 +4478,7 @@ static struct snd_soc_dai_link  apq8084_tfa9890_dai_link[] = {
 		.cpu_dai_name = "msm-dai-stub-dev.5",
 		.platform_name = "msm-pcm-routing",
 		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_id = MSM_BACKEND_DAI_TFA9890_STUB_RIGHT_RX,
 		.init = &msm_tfa9890_stereo_init,
 		.be_hw_params_fixup = apq8084_mi2s_rx_be_hw_params_fixup,
 		/* dai link has playback support */
@@ -4840,6 +4840,8 @@ static int apq8084_asoc_machine_probe(struct platform_device *pdev)
 							"TFA9890_LEFT Playback";
 		apq8084_tfa9890_dai_link[0].cpu_dai_name =
 							"msm-dai-stub-dev.4";
+		apq8084_tfa9890_dai_link[0].be_id =
+			MSM_BACKEND_DAI_TFA9890_STUB_LEFT_RX,
 
 		memcpy((apq8084_dai_tfa9890_links + card->num_links),
 				&apq8084_tfa9890_dai_link[0],
