@@ -363,12 +363,13 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 					(OTGDISABLE0 | USB2_SUSPEND_N_SEL |
 					USB2_SUSPEND_N),
 					(OTGDISABLE0 | USB2_SUSPEND_N_SEL));
-				if (!chg_connected)
+				if (!chg_connected) {
 					/* Enable PHY retention */
 					msm_usb_write_readback(phy->base,
 							HS_PHY_CTRL_REG(i),
 							RETENABLEN, 0);
-				phy->lpm_flags |= PHY_RETENTIONED;
+					phy->lpm_flags |= PHY_RETENTIONED;
+				}
 			}
 
 			if (!phy->ext_vbus_id)
