@@ -1302,9 +1302,10 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 		mutex_unlock(&ctrl->cmd_mutex);
 		return rc;
 	}
-	if (req->flags & CMD_REQ_RX)
-		ret = mdss_dsi_cmdlist_rx(ctrl, req);
-	else
+	if (req->flags & CMD_REQ_RX) {
+		mdss_dsi_cmdlist_rx(ctrl, req);
+		ret = ctrl->rx_buf.len;
+	} else
 		ret = mdss_dsi_cmdlist_tx(ctrl, req);
 	mdss_iommu_ctrl(0);
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
