@@ -538,6 +538,9 @@ static inline const char *__mdss_dsi_pm_supply_node_name(
 }
 
 int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
+int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
+							u32 cmd, void *arg);
+
 static inline bool mdss_dsi_split_display_enabled(void)
 {
 	/*
