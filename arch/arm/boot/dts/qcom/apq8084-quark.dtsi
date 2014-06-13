@@ -156,18 +156,22 @@
 
 &mot_smd_QHD_0_cmd_v0 {
 	qcom,cont-splash-enabled;
+	mmi,partial-mode-enabled;
 };
 
 &mot_smd_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
+	mmi,partial-mode-enabled;
 };
 
 &mot_smd_QHD_0_cmd_v1 {
 	qcom,cont-splash-enabled;
+	mmi,partial-mode-enabled;
 };
 
 &mot_smd_QHD_1_cmd_v1 {
 	qcom,cont-splash-enabled;
+	mmi,partial-mode-enabled;
 };
 
 
