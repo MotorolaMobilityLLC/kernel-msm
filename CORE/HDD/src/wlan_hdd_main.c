@@ -7609,6 +7609,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    hdd_adapter_t* pAdapter = NULL;
    struct statsContext powerContext;
    long lrc;
+   hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
 
    ENTER();
 
@@ -7616,57 +7617,52 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    {
       // Unloading, restart logic is no more required.
       wlan_hdd_restart_deinit(pHddCtx);
-   }
 
-   if (VOS_STA_SAP_MODE != hdd_get_conparam())
-   {
-      if (VOS_FTM_MODE != hdd_get_conparam())
+      vosStatus = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
+      while (NULL != pAdapterNode && VOS_STATUS_E_EMPTY != vosStatus)
       {
-         hdd_adapter_t* pAdapter = hdd_get_adapter(pHddCtx,
-                                      WLAN_HDD_INFRA_STATION);
-         if (pAdapter == NULL)
-            pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_CLIENT);
-
-         if (pAdapter != NULL)
+         pAdapter = pAdapterNode->pAdapter;
+         if (NULL != pAdapter)
          {
-            wlan_hdd_cfg80211_deregister_frames(pAdapter);
-            hdd_UnregisterWext(pAdapter->dev);
+            if (WLAN_HDD_INFRA_STATION ==  pAdapter->device_mode ||
+                WLAN_HDD_P2P_CLIENT == pAdapter->device_mode)
+            {
+                wlan_hdd_cfg80211_deregister_frames(pAdapter);
+                hdd_UnregisterWext(pAdapter->dev);
+            }
+            // Cancel any outstanding scan requests.  We are about to close all
+            // of our adapters, but an adapter structure is what SME passes back
+            // to our callback function. Hence if there are any outstanding scan
+            // requests then there is a race condition between when the adapter
+            // is closed and when the callback is invoked.We try to resolve that
+            // race condition here by canceling any outstanding scans before we
+            // close the adapters.
+            // Note that the scans may be cancelled in an asynchronous manner,
+            // so ideally there needs to be some kind of synchronization. Rather
+            // than introduce a new synchronization here, we will utilize the
+            // fact that we are about to Request Full Power, and since that is
+            // synchronized, the expectation is that by the time Request Full
+            // Power has completed all scans will be cancelled.
+            if (pHddCtx->scan_info.mScanPending)
+            {
+                hddLog(VOS_TRACE_LEVEL_INFO,
+                       FL("abort scan mode: %d sessionId: %d"),
+                           pAdapter->device_mode,
+                           pAdapter->sessionId);
+                hdd_abort_mac_scan(pHddCtx,
+                                   pAdapter->sessionId,
+                                   eCSR_SCAN_ABORT_DEFAULT);
+            }
          }
+         vosStatus = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+         pAdapterNode = pNext;
       }
    }
-
-   if (VOS_FTM_MODE == hdd_get_conparam())
+   else
    {
       hddLog(VOS_TRACE_LEVEL_INFO,"%s: FTM MODE",__func__);
       wlan_hdd_ftm_close(pHddCtx);
       goto free_hdd_ctx;
-   }
-   //Stop the Interface TX queue.
-   //netif_tx_disable(pWlanDev);
-   //netif_carrier_off(pWlanDev);
-
-   if (VOS_STA_SAP_MODE == hdd_get_conparam())
-   {
-      hddLog(VOS_TRACE_LEVEL_INFO,"%s: SAP MODE",__func__);
-      pAdapter = hdd_get_adapter(pHddCtx,
-                                   WLAN_HDD_SOFTAP);
-   }
-   else
-   {
-      if (VOS_FTM_MODE != hdd_get_conparam())
-      {
-         hddLog(VOS_TRACE_LEVEL_INFO,"%s: STA MODE",__func__);
-         pAdapter = hdd_get_adapter(pHddCtx,
-                                    WLAN_HDD_INFRA_STATION);
-         if (pAdapter == NULL)
-            pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_IBSS);
-      }
-   }
-
-   if(NULL == pAdapter)
-   {
-       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: pAdapter is NULL",__func__);
-       goto free_hdd_ctx;
    }
 
    /* DeRegister with platform driver as client for Suspend/Resume */
@@ -7682,25 +7678,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    {
       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: hddDevTmUnregisterNotifyCallback failed",__func__);
    }
-
-   // Cancel any outstanding scan requests.  We are about to close all
-   // of our adapters, but an adapter structure is what SME passes back
-   // to our callback function.  Hence if there are any outstanding scan
-   // requests then there is a race condition between when the adapter
-   // is closed and when the callback is invoked.  We try to resolve that
-   // race condition here by canceling any outstanding scans before we
-   // close the adapters.
-   // Note that the scans may be cancelled in an asynchronous manner, so
-   // ideally there needs to be some kind of synchronization.  Rather than
-   // introduce a new synchronization here, we will utilize the fact that
-   // we are about to Request Full Power, and since that is synchronized,
-   // the expectation is that by the time Request Full Power has completed,
-   // all scans will be cancelled.
-   if (NULL != pAdapter)
-      hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId, eCSR_SCAN_ABORT_DEFAULT);
-   else
-       hddLog(VOS_TRACE_LEVEL_ERROR,
-           "%s: pAdapter is NULL, cannot Abort scan", __func__);
 
    //Stop the traffic monitor timer
    if ( VOS_TIMER_STATE_RUNNING ==
