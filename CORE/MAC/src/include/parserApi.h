@@ -899,3 +899,7 @@ void PopulateDot11fTimeoutInterval( tpAniSirGlobal pMac,
                                     tDot11fIETimeoutInterval *pDot11f,
                                     tANI_U8 type, tANI_U32 value );
 
+tSirRetStatus ValidateAndRectifyIEs(tpAniSirGlobal pMac,
+                                    tANI_U8 *pMgmtFrame,
+                                    tANI_U32 nFrameBytes,
+                                    tANI_U32 *nMissingRsnBytes);

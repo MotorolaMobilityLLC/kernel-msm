@@ -3496,7 +3496,6 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     VOS_STATUS status;
 #ifdef FEATURE_WLAN_CH_AVOID
-    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
     v_U16_t unsafeChannelList[NUM_20MHZ_RF_CHANNELS];
     v_U16_t unsafeChannelCount;
 #endif /* FEATURE_WLAN_CH_AVOID */
@@ -3515,7 +3514,7 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
               "%s : Unsafe Channel count %d",
               __func__, unsafeChannelCount);
-    hdd_hostapd_update_unsafe_channel_list(pVosContext,
+    hdd_hostapd_update_unsafe_channel_list(pHddCtx,
                                   unsafeChannelList,
                                   unsafeChannelCount);
 #endif /* FEATURE_WLAN_CH_AVOID */
