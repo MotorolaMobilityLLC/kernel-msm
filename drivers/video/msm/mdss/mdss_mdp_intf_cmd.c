@@ -194,6 +194,7 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 			pr_debug("deleted pending ulps work\n");
 
 		if (ctx->ulps) {
+			mutex_lock(&ctx->ulps_lock);
 			mdss_mdp_footswitch_ctrl_ulps(1,
 				&ctx->ctl->mfd->pdev->dev);
 			mdss_mdp_ctl_restore(ctx->ctl);
@@ -204,6 +205,7 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 			mdss_mdp_ctl_intf_event(ctx->ctl,
 				MDSS_EVENT_DSI_ULPS_CTRL, (void *)0);
 			ctx->ulps = false;
+			mutex_unlock(&ctx->ulps_lock);
 		} else {
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 		}
