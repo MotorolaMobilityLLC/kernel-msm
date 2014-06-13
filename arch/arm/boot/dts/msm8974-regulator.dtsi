@@ -32,7 +32,7 @@
 		qcom,ocp-retry-delay = <30>;
 		qcom,soft-start-enable = <1>;
 		qcom,vs-soft-start-strength = <0>;
-		qcom,hpm-enable = <1>;
+		qcom,hpm-enable = <0>;
 		qcom,auto-mode-enable = <0>;
 		status = "okay";
 	};
