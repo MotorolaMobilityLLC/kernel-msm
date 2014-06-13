@@ -715,38 +715,41 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 	mipi  = &pdata->panel_info.mipi;
 
 	mfd = pdata->mfd;
-
-	mdss_dsi_get_pwr_mode(pdata, pwr_mode, DSI_MODE_BIT_LP);
-
-	if (*pwr_mode == 0xFF) {
-		int gpio_val = gpio_get_value(ctrl->mipi_d0_sel);
-		pr_warn("%s: unable to read power state! [gpio: %d]\n",
-			__func__, gpio_val);
+	if (mfd->quickdraw_panel_state == DSI_DISP_INVALID_STATE) {
+		pr_warn("%s: quickdraw requests full reinitialization\n",
+			__func__);
 		panel_dead = 1;
-		*dropbox_issue = PWR_MODE_FAIL_DROPBOX_MSG;
+		*dropbox_issue = ESD_SENSORHUB_DROPBOX_MSG;
 	} else {
-		panel_state = detect_panel_state(*pwr_mode);
-		if (panel_state == DSI_DISP_INVALID_STATE) {
-			pr_warn("%s: detected invalid panel state\n", __func__);
-			panel_dead = 1;
-			*dropbox_issue = PWR_MODE_INVALID_DROPBOX_MSG;
-		}
-	}
+		mdss_dsi_get_pwr_mode(pdata, pwr_mode, DSI_MODE_BIT_LP);
 
-	if (!panel_dead) {
-		if (mfd->quickdraw_panel_state == DSI_DISP_INVALID_STATE) {
-			pr_warn("%s: quickdraw requests full reinitialization\n",
-				__func__);
+		if (*pwr_mode == 0xFF) {
+			int gpio_val = gpio_get_value(ctrl->mipi_d0_sel);
+			pr_warn("%s: unable to read power state! [gpio: %d]\n",
+				__func__, gpio_val);
 			panel_dead = 1;
-			*dropbox_issue = ESD_SENSORHUB_DROPBOX_MSG;
-		} else if (mfd->quickdraw_panel_state != panel_state) {
-			pr_warn("%s: panel state is %d while %d expected\n",
-				__func__, panel_state,
-				mfd->quickdraw_panel_state);
-			panel_dead = 1;
-			*dropbox_issue = PWR_MODE_MISMATCH_DROPBOX_MSG;
-		} else if (mfd->quickdraw_panel_state == DSI_DISP_OFF_SLEEP_IN)
-			ret = 1;
+			*dropbox_issue = PWR_MODE_FAIL_DROPBOX_MSG;
+		} else {
+			panel_state = detect_panel_state(*pwr_mode);
+			if (panel_state == DSI_DISP_INVALID_STATE) {
+				pr_warn("%s: detected invalid panel state\n",
+					__func__);
+				panel_dead = 1;
+				*dropbox_issue = PWR_MODE_INVALID_DROPBOX_MSG;
+			}
+		}
+
+		if (!panel_dead) {
+			if (mfd->quickdraw_panel_state != panel_state) {
+				pr_warn("%s: panel state is %d while %d expected\n",
+					__func__, panel_state,
+					mfd->quickdraw_panel_state);
+				panel_dead = 1;
+				*dropbox_issue = PWR_MODE_MISMATCH_DROPBOX_MSG;
+			} else if (mfd->quickdraw_panel_state ==
+				DSI_DISP_OFF_SLEEP_IN)
+				ret = 1;
+		}
 	}
 
 	if (panel_dead) {
