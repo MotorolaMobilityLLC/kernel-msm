@@ -81,6 +81,8 @@
 						- (uint32)(timestamp2/1000)))
 #define TIME_DIFF_MS(timestamp1, timestamp2) (abs((uint32)(timestamp1)  \
 						- (uint32)(timestamp2)))
+#define TIMESPEC_TO_US(ts)  (((uint64)(ts).tv_sec * USEC_PER_SEC) + \
+							(ts).tv_nsec / NSEC_PER_USEC)
 
 #define ENTRY_OVERHEAD strlen("bssid=\nssid=\nfreq=\nlevel=\nage=\ndist=\ndistSd=\n====")
 #define TIME_MIN_DIFF 5
@@ -129,6 +131,14 @@ exit:
 	return err;
 }
 #ifdef GSCAN_SUPPORT
+static uint64 convert_fw_rel_time_to_systime(uint32 fw_ts_ms)
+{
+	struct timespec ts;
+
+	get_monotonic_boottime(&ts);
+	return ((uint64)(TIMESPEC_TO_US(ts)) - (uint64)(fw_ts_ms * 1000));
+}
+
 static int
 _dhd_pno_gscan_cfg(dhd_pub_t *dhd, wl_pfn_gscan_cfg_t *pfncfg_gscan_param, int size)
 {
@@ -1393,8 +1403,8 @@ void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
 	void *ret = NULL;
 	dhd_pno_gscan_capabilities_t *ptr;
 
-	if (!info || !len) {
-		DHD_ERROR((" Info buffer is NULL\n"));
+	if (!len) {
+		DHD_ERROR(("%s: len is NULL\n", __FUNCTION__));
 		return ret;
 	}
 
@@ -1422,7 +1432,7 @@ void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
 			ret = dhd_get_gscan_batch_results(dhd, len);
 			break;
 		case DHD_PNO_GET_CHANNEL_LIST:
-			{
+			if (info) {
 				uint16 ch_list[WL_NUMCHANNELS];
 				uint32 *ptr, mem_needed, i;
 				int32 err, nchan = WL_NUMCHANNELS;
@@ -1470,6 +1480,9 @@ void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
 					ret = ptr;
 					*len = mem_needed;
 				}
+			} else {
+				*len = 0;
+				DHD_ERROR(("%s: info buffer is NULL\n", __FUNCTION__));
 			}
 			break;
 
@@ -2525,7 +2538,7 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 				result->ie_length = 0;
 				result->rtt = (uint64) plnetinfo->rtt0;
 				result->rtt_sd = (uint64) plnetinfo->rtt1;
-				result->ts = (uint64) plnetinfo->timestamp;
+				result->ts = convert_fw_rel_time_to_systime(plnetinfo->timestamp);
 				ts = plnetinfo->timestamp;
 				memcpy(result->ssid, plnetinfo->pfnsubnet.SSID,
 					plnetinfo->pfnsubnet.SSID_len);
@@ -3387,10 +3400,10 @@ dhd_process_full_gscan_result(dhd_pub_t *dhd, const void *data, int *size)
 	wl_gscan_result_t *gscan_result;
 	wifi_gscan_result_t *result = NULL;
 	u32 bi_length = 0;
-	uint32 *timestamp;
 	uint16 kflags;
 	uint8 channel;
 	uint32 mem_needed;
+	struct timespec ts;
 
 	*size = 0;
 
@@ -3435,9 +3448,8 @@ dhd_process_full_gscan_result(dhd_pub_t *dhd, const void *data, int *size)
 	result->rssi = (int32) bi->RSSI;
 	result->rtt = 0;
 	result->rtt_sd = 0;
-	timestamp = (uint32 *) &result->ts;
-	timestamp[0] = dtoh32(gscan_result->bss_info[0].timestamp[0]);
-	timestamp[1] = dtoh32(gscan_result->bss_info[0].timestamp[1]);
+	get_monotonic_boottime(&ts);
+	result->ts = (uint64) TIMESPEC_TO_US(ts);
 	result->beacon_period = dtoh16(bi->beacon_period);
 	result->capability = dtoh16(bi->capability);
 	result->ie_length = dtoh32(bi->ie_length);
@@ -3498,7 +3510,7 @@ void *dhd_handle_hotlist_scan_evt(dhd_pub_t *dhd, const void *event_data, int *s
 		hotlist_found_array->capability = 0;
 		hotlist_found_array->ie_length = 0;
 
-		hotlist_found_array->ts = (uint64) plnetinfo->timestamp;
+		hotlist_found_array->ts = convert_fw_rel_time_to_systime(plnetinfo->timestamp);
 		memcpy(hotlist_found_array->ssid, plnetinfo->pfnsubnet.SSID,
 			plnetinfo->pfnsubnet.SSID_len);
 		hotlist_found_array->ssid[plnetinfo->pfnsubnet.SSID_len] = '\0';
