@@ -76,6 +76,7 @@
 					05 01 00 00 64 00 02 11 00      /* Sleep out */
 					39 01 00 00 00 00 02 36 40
 					39 01 00 00 00 00 02 D2 8A
+					39 01 00 00 01 00 02 51 FF
 					39 01 00 00 00 00 02 55 00
 					39 01 00 00 00 00 03 B1 00 09
 					39 01 00 00 00 00 02 36 40
@@ -99,7 +100,6 @@
 		samsung,panel-manufacture-id-read-cmds = [ 06 01 00 00 00 00 01 A1 03 00 ];
 		samsung,panel-mtp-id-read-cmds = [ 06 01 00 00 00 00 01 D4 1B 00 ];
 		samsung,panel-backlight-cmds = [
-					39 01 00 00 01 00 02 51 FF
 					39 01 00 00 05 00 02 53 20
 					];
 		samsung,panel-rddpm-read-cmds = [ 06 01 00 00 00 00 01 0A 01 00];	/* read 0A 1st */
