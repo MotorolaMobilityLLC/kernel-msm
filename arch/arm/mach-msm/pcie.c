@@ -90,9 +90,9 @@
 #define REFCLK_STABILIZATION_DELAY_US_MAX     1500
 #define LINK_RETRY_TIMEOUT_US_MIN             20000
 #define LINK_RETRY_TIMEOUT_US_MAX             25000
-#define LINK_UP_TIMEOUT_US_MIN                100000
-#define LINK_UP_TIMEOUT_US_MAX                105000
-#define LINK_UP_CHECK_MAX_COUNT               1
+#define LINK_UP_TIMEOUT_US_MIN                5000
+#define LINK_UP_TIMEOUT_US_MAX                5100
+#define LINK_UP_CHECK_MAX_COUNT               20
 #define PHY_STABILIZATION_DELAY_US_MIN        995
 #define PHY_STABILIZATION_DELAY_US_MAX        1005
 
