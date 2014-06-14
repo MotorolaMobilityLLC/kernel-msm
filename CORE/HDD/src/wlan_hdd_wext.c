@@ -5132,8 +5132,9 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
                        union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    int sub_cmd = wrqu->data.flags;
+    int sub_cmd;
     int ret = 0; /* success */
+    struct iw_point s_priv_data;
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
@@ -5141,6 +5142,14 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
                                   "%s:LOGP in Progress. Ignore!!!", __func__);
         return -EBUSY;
     }
+
+    /* helper function to get iwreq_data with compat handling. */
+    if (hdd_priv_get_data(&s_priv_data, wrqu))
+    {
+      return -EINVAL;
+    }
+
+    sub_cmd = s_priv_data.flags;
 
     switch (sub_cmd)
     {
