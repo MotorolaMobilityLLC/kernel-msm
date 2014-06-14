@@ -383,10 +383,6 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	 * than it, the controller can malfunction.
 	 */
 
-	if (pdata->panel_info.first_bl_update) {
-		mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
-		pdata->panel_info.first_bl_update = 0;
-	}
 	if ((bl_level < pdata->panel_info.bl_min) && (bl_level != 0))
 		bl_level = pdata->panel_info.bl_min;
 	switch (ctrl_pdata->bklt_ctrl) {
@@ -401,6 +397,10 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		pr_err("%s: Unknown bl_ctrl configuration\n",
 			__func__);
 		break;
+	}
+	if (pdata->panel_info.first_bl_update) {
+		mipi_samsung_disp_send_cmd(PANEL_BACKLIGHT_CMD, true);
+		pdata->panel_info.first_bl_update = 0;
 	}
 	if (request_bl_dim)
 		bl_level = stored_bl_level;
