@@ -44,6 +44,7 @@
 #define HAL_BUFFERFLAG_READONLY         0x00000200
 #define HAL_BUFFERFLAG_ENDOFSUBFRAME    0x00000400
 #define HAL_BUFFERFLAG_EOSEQ            0x00200000
+#define HAL_BUFFERFLAG_MBAFF            0x08000000
 #define HAL_BUFFERFLAG_YUV_601_709_CSC_CLAMP   0x10000000
 #define HAL_BUFFERFLAG_DROP_FRAME       0x20000000
 #define HAL_BUFFERFLAG_TS_DISCONTINUITY	0x40000000
@@ -204,6 +205,8 @@ enum hal_property {
 	HAL_PARAM_VPE_COLOR_SPACE_CONVERSION,
 	HAL_CONFIG_VENC_HIER_P_NUM_FRAMES,
 	HAL_PARAM_VENC_HIER_P_MAX_ENH_LAYERS,
+	HAL_PARAM_VENC_ENABLE_INITIAL_QP,
+	HAL_PARAM_VENC_SEARCH_RANGE,
 };
 
 enum hal_domain {
@@ -642,6 +645,13 @@ struct hal_quantization {
 	u32 layer_id;
 };
 
+struct hal_initial_quantization {
+	u32 qpi;
+	u32 qpp;
+	u32 qpb;
+	u32 init_qp_enable;
+};
+
 struct hal_quantization_range {
 	u32 min_qp;
 	u32 max_qp;
@@ -854,6 +864,13 @@ struct hal_vpe_color_space_conversion {
 	u32 csc_matrix[HAL_MAX_MATRIX_COEFFS];
 	u32 csc_bias[HAL_MAX_BIAS_COEFFS];
 	u32 csc_limit[HAL_MAX_LIMIT_COEFFS];
+};
+
+struct hal_vc1e_perf_cfg_type {
+	struct {
+		u32 x_subsampled;
+		u32 y_subsampled;
+	} i_frame, p_frame, b_frame;
 };
 
 enum vidc_resource_id {

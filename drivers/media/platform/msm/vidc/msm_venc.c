@@ -819,6 +819,111 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.step = 1,
 		.qmenu = NULL,
 	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_ENABLE_INITIAL_QP,
+		.name = "Enable setting initial QP",
+		.type = V4L2_CTRL_TYPE_BUTTON,
+		.minimum = 0,
+		.maximum = 0,
+		.default_value = 0,
+		.step = 0,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_I_FRAME_QP,
+		.name = "Iframe initial QP",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 1,
+		.maximum = 51,
+		.default_value = 1,
+		.step = 1,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_P_FRAME_QP,
+		.name = "Pframe initial QP",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 1,
+		.maximum = 51,
+		.default_value = 1,
+		.step = 1,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_B_FRAME_QP,
+		.name = "Bframe initial QP",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 1,
+		.maximum = 51,
+		.default_value = 1,
+		.step = 1,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_X_RANGE,
+		.name = "I-Frame X coordinate search range",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 4,
+		.maximum = 128,
+		.default_value = 4,
+		.step = 1,
+		.menu_skip_mask = 0,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_Y_RANGE,
+		.name = "I-Frame Y coordinate search range",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 4,
+		.maximum = 128,
+		.default_value = 4,
+		.step = 1,
+		.menu_skip_mask = 0,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_X_RANGE,
+		.name = "P-Frame X coordinate search range",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 4,
+		.maximum = 128,
+		.default_value = 4,
+		.step = 1,
+		.menu_skip_mask = 0,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_Y_RANGE,
+		.name = "P-Frame Y coordinate search range",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 4,
+		.maximum = 128,
+		.default_value = 4,
+		.step = 1,
+		.menu_skip_mask = 0,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_X_RANGE,
+		.name = "B-Frame X coordinate search range",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 4,
+		.maximum = 128,
+		.default_value = 4,
+		.step = 1,
+		.menu_skip_mask = 0,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_Y_RANGE,
+		.name = "B-Frame Y coordinate search range",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 4,
+		.maximum = 128,
+		.default_value = 4,
+		.step = 1,
+		.menu_skip_mask = 0,
+		.qmenu = NULL,
+	},
 };
 
 #define NUM_CTRLS ARRAY_SIZE(msm_venc_ctrls)
@@ -2219,7 +2324,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_MPEG_VIDC_VIDEO_USELTRFRAME:
 		property_id = HAL_CONFIG_VENC_USELTRFRAME;
-		useltr.refltr = (1 << ctrl->val);
+		useltr.refltr = ctrl->val;
 		useltr.useconstrnt = false;
 		useltr.frames = 0;
 		pdata = &useltr;
@@ -2270,9 +2375,11 @@ static int try_set_ext_ctrl(struct msm_vidc_inst *inst,
 	struct v4l2_ext_control *control;
 	struct hfi_device *hdev;
 	struct hal_ltrmode ltrmode;
+	struct hal_vc1e_perf_cfg_type search_range = { {0} };
 	u32 property_id = 0;
 	void *pdata = NULL;
 	struct msm_vidc_core_capability *cap = NULL;
+	struct hal_initial_quantization quant;
 
 	if (!inst || !inst->core || !inst->core->device || !ctrl) {
 		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
@@ -2295,9 +2402,9 @@ static int try_set_ext_ctrl(struct msm_vidc_inst *inst,
 			ltrmode.ltrcount =  control[i].value;
 			if (ltrmode.ltrcount > cap->ltr_count.max) {
 				dprintk(VIDC_ERR,
-						"Invalid LTR count %d. Supported max: %d\n",
-						ltrmode.ltrcount,
-						cap->ltr_count.max);
+					"Invalid LTR count %d. Supported max: %d\n",
+					ltrmode.ltrcount,
+					cap->ltr_count.max);
 				/*
 				 * FIXME: Return an error (-EINVALID)
 				 * here once VP8 supports LTR count
@@ -2309,9 +2416,59 @@ static int try_set_ext_ctrl(struct msm_vidc_inst *inst,
 			property_id = HAL_PARAM_VENC_LTRMODE;
 			pdata = &ltrmode;
 			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_ENABLE_INITIAL_QP:
+			property_id = HAL_PARAM_VENC_ENABLE_INITIAL_QP;
+			quant.init_qp_enable = control[i].value;
+			pdata = &quant;
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_I_FRAME_QP:
+			quant.qpi = control[i].value;
+			property_id = HAL_PARAM_VENC_ENABLE_INITIAL_QP;
+			pdata = &quant;
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_P_FRAME_QP:
+			quant.qpp = control[i].value;
+			property_id = HAL_PARAM_VENC_ENABLE_INITIAL_QP;
+			pdata = &quant;
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_B_FRAME_QP:
+			quant.qpb = control[i].value;
+			property_id = HAL_PARAM_VENC_ENABLE_INITIAL_QP;
+			pdata = &quant;
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_X_RANGE:
+			search_range.i_frame.x_subsampled = control[i].value;
+			property_id = HAL_PARAM_VENC_SEARCH_RANGE;
+			pdata = &search_range;
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_Y_RANGE:
+			search_range.i_frame.y_subsampled = control[i].value;
+			property_id = HAL_PARAM_VENC_SEARCH_RANGE;
+			pdata = &search_range;
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_X_RANGE:
+			search_range.p_frame.x_subsampled = control[i].value;
+			property_id = HAL_PARAM_VENC_SEARCH_RANGE;
+			pdata = &search_range;
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_Y_RANGE:
+			search_range.p_frame.y_subsampled = control[i].value;
+			property_id = HAL_PARAM_VENC_SEARCH_RANGE;
+			pdata = &search_range;
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_X_RANGE:
+			search_range.b_frame.x_subsampled = control[i].value;
+			property_id = HAL_PARAM_VENC_SEARCH_RANGE;
+			pdata = &search_range;
+			break;
+		case V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_Y_RANGE:
+			search_range.b_frame.y_subsampled = control[i].value;
+			property_id = HAL_PARAM_VENC_SEARCH_RANGE;
+			pdata = &search_range;
+			break;
 		default:
 			dprintk(VIDC_ERR, "Invalid id set: %d\n",
-					control[i].id);
+				control[i].id);
 			rc = -ENOTSUPP;
 			break;
 		}

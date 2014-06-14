@@ -1313,6 +1313,31 @@ int create_pkt_cmd_session_set_property(
 			sizeof(struct hfi_quantization_range);
 		break;
 	}
+	case HAL_PARAM_VENC_SEARCH_RANGE:
+	{
+		struct hfi_vc1e_perf_cfg_type *hfi;
+		struct hal_vc1e_perf_cfg_type *hal_mv_searchrange =
+			(struct hal_vc1e_perf_cfg_type *) pdata;
+		pkt->rg_property_data[0] =
+			HFI_PROPERTY_PARAM_VENC_VC1_PERF_CFG;
+		hfi = (struct hfi_vc1e_perf_cfg_type *)
+				&pkt->rg_property_data[1];
+		hfi->search_range_x_subsampled[0] =
+			hal_mv_searchrange->i_frame.x_subsampled;
+		hfi->search_range_x_subsampled[1] =
+			hal_mv_searchrange->p_frame.x_subsampled;
+		hfi->search_range_x_subsampled[2] =
+			hal_mv_searchrange->b_frame.x_subsampled;
+		hfi->search_range_y_subsampled[0] =
+			hal_mv_searchrange->i_frame.y_subsampled;
+		hfi->search_range_y_subsampled[1] =
+			hal_mv_searchrange->p_frame.y_subsampled;
+		hfi->search_range_y_subsampled[2] =
+			hal_mv_searchrange->b_frame.y_subsampled;
+		pkt->size += sizeof(u32) +
+			sizeof(struct hfi_vc1e_perf_cfg_type);
+		break;
+	}
 	case HAL_PARAM_VENC_MAX_NUM_B_FRAMES:
 	{
 		struct hfi_max_num_b_frames *hfi;
@@ -1700,6 +1725,22 @@ int create_pkt_cmd_session_set_property(
 		memcpy(hfi->csc_limit, hal->csc_limit, sizeof(hfi->csc_limit));
 		pkt->size += sizeof(u32) +
 				sizeof(struct hfi_vpe_color_space_conversion);
+		break;
+	}
+	case HAL_PARAM_VENC_ENABLE_INITIAL_QP:
+	{
+		struct hfi_initial_quantization *hfi;
+		struct hal_initial_quantization *quant = pdata;
+		pkt->rg_property_data[0] =
+			HFI_PROPERTY_PARAM_VENC_INITIAL_QP;
+		hfi = (struct hfi_initial_quantization *)
+			&pkt->rg_property_data[1];
+		hfi->init_qp_enable = quant->init_qp_enable;
+		hfi->qp_i = quant->qpi;
+		hfi->qp_p = quant->qpp;
+		hfi->qp_b = quant->qpb;
+		pkt->size += sizeof(u32) +
+			sizeof(struct hfi_initial_quantization);
 		break;
 	}
 	/* FOLLOWING PROPERTIES ARE NOT IMPLEMENTED IN CORE YET */
