@@ -231,7 +231,7 @@ void mdss_dsi_cmd_dma_trigger_sel(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	int temp;
 	int mask = 0x02;
 
-//	mdss_mdp_cmd_clk_enable();
+	mdss_mdp_cmd_clk_enable();
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 	temp = MIPI_INP((ctrl_pdata->ctrl_base) + 0x0084);
 	if (enable)
