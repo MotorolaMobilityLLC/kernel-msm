@@ -119,9 +119,6 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 	cd_idx = get_cmd_idx(bl_level);
 	cd_level = get_candela_value(bl_level);
 
-	if (stored_cd_level == cd_level)
-		return;
-
 	/* gamma control */
 	get_gamma_control_set(cd_level);
 

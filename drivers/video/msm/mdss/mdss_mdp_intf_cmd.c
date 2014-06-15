@@ -736,19 +736,10 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 
 		if (timeout_status <= 0) {
 			WARN(1, "stop cmd time out\n");
-
-			if (IS_ERR_OR_NULL(ctl->panel_data)) {
-				pr_err("no panel data\n");
-			} else {
-				pinfo = &ctl->panel_data->panel_info;
-
-				if (pinfo->panel_dead) {
-					mdss_mdp_irq_disable
-						(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
-								ctx->pp_num);
-					ctx->rdptr_enabled = 0;
-				}
-			}
+			mdss_mdp_irq_disable
+				(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
+						ctx->pp_num);
+			ctx->rdptr_enabled = 0;
 		}
 	}
 
