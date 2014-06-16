@@ -181,6 +181,7 @@ static int32_t imx135_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	uint16_t chipid = 0;
+	uint16_t hw_rev = 0;
 
 	s_ctrl->sensordata->slave_info->sensor_slave_addr =
 		IMX135_PRIMARY_I2C_ADDRESS;
@@ -217,8 +218,18 @@ check_chipid:
 	}
 
 	imx135_read_eeprom(s_ctrl);
-	pr_info("%s: success with slave addr 0x%x!\n", __func__,
-			s_ctrl->sensor_i2c_client->cci_client->sid);
+
+	if (s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+				s_ctrl->sensor_i2c_client,
+				0x0018,
+				&hw_rev,
+				MSM_CAMERA_I2C_BYTE_DATA) < 0)
+		pr_err("%s: Unable to read hw rev of camera!\n", __func__);
+
+	s_ctrl->sensor_otp.hw_rev = hw_rev;
+	pr_info("%s: success with slave addr 0x%x and hw rev 0x%x!\n", __func__,
+			s_ctrl->sensor_i2c_client->cci_client->sid,
+			s_ctrl->sensor_otp.hw_rev);
 	return rc;
 }
 
