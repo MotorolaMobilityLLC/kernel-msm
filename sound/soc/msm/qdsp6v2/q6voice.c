@@ -2982,8 +2982,8 @@ static int voice_unmap_cal_memory(int32_t cal_type,
 		}
 		mutex_unlock(&v->lock);
 	}
-done:
 	mutex_unlock(&common.common_lock);
+done:
 	return result;
 }
 
