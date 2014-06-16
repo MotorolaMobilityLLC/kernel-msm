@@ -54,6 +54,8 @@
 
 #include "mdss_fb.h"
 
+#include "mdss_asus_debug.h"
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
 #else
@@ -939,23 +941,22 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 				__func__,mfd->panel_power_on,ret);
 		break;
 // ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
-	case FB_BLANK_LOWPOWERMODE_ON:
-		printk("MDSS:%s:+++,blank_mode=LOWPOWERMODE_ON,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+	case FB_BLANK_ENTER_NON_INTERACTIVE:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_NON_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
 		if (mfd->panel_power_on) {
 			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
 		}
-		notify_panel_lowpowermode(1);
+		notify_amdu_panel_power_mode(PANEL_POWER_LOW);
 		notify_st_sensor_lowpowermode(1);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
 		notify_it7260_ts_lowpowermode(1);		//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
-		//enable_ambient(1);
 		return 0;
 		break;
-	case FB_BLANK_LOWPOWERMODE_OFF:
-		printk("MDSS:%s:+++,blank_mode=LOWPOWERMODE_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+	case FB_BLANK_ENTER_INTERACTIVE:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
 		if (mfd->panel_power_on) {
 			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
 		}
-		notify_panel_lowpowermode(0);
+		notify_amdu_panel_power_mode(PANEL_POWER_NORMAL);
 		notify_st_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
 		notify_it7260_ts_lowpowermode(0);		//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
 		return 0;

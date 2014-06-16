@@ -351,18 +351,13 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 	nanosec_rem = do_div(t, 1000000000);
 	printk(KERN_INFO "Watchdog bark! Now = %lu.%06lu\n", (unsigned long) t,
 		nanosec_rem / 1000);
-//ASUS_BSP +++ Josh_Hsu "try to support GOOGLE ASIT for bootreason"
-	__raw_writel(0x6f656d91, restart_reason_wd);
-//ASUS_BSP --- Josh_Hsu "try to support GOOGLE ASIT for bootreason"
+
 	nanosec_rem = do_div(wdog_dd->last_pet, 1000000000);
 	printk(KERN_INFO "Watchdog last pet at %lu.%06lu\n", (unsigned long)
 		wdog_dd->last_pet, nanosec_rem / 1000);
 	if (wdog_dd->do_ipi_ping)
 		dump_cpu_alive_mask(wdog_dd);
 	printk(KERN_INFO "Causing a watchdog bite!");
-//ASUS_BSP +++ Josh_Hsu "try to support GOOGLE ASIT for bootreason"
-	__raw_writel(0x6f656d91, restart_reason_wd);
-//ASUS_BSP --- Josh_Hsu "try to support GOOGLE ASIT for bootreason"
 	__raw_writel(1, wdog_dd->base + WDT0_BITE_TIME);
 	mb();
 	__raw_writel(1, wdog_dd->base + WDT0_RST);

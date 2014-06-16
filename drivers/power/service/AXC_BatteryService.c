@@ -973,11 +973,7 @@ static void BatteryService_enable_Gauge(AXC_BatteryService *_this)
 static void BatteryService_enable_Filter(AXC_BatteryService *_this)
 {
 	if(NULL == _this->gpCapFilterA66){
-#ifdef ASUS_ME175KG_PROJECT
-		AXC_Cap_Filter_Get(E_CAP_FILTER_PHONE_A66, &_this->gpCapFilterA66, 3910);
-#else
-		AXC_Cap_Filter_Get(E_CAP_FILTER_PHONE_A66, &_this->gpCapFilterA66, 2100);
-#endif
+		AXC_Cap_Filter_Get(E_CAP_FILTER_PHONE_A66, &_this->gpCapFilterA66, 369); //FCC
 	}
 
 #ifdef CONFIG_EEPROM_NUVOTON

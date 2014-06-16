@@ -79,8 +79,7 @@ static int Upgrade__success_flag = 0;
 static atomic_t Suspend_flag;
 struct device *class_dev = NULL;
 static int it7260_status = 0; //ASUS_BSP Cliff +++ add for ATD check
-
-extern void public_gpio_keys_gpio_report_event(void);	//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
+static int last_time_shot_power = 0;
 
 #ifdef DEBUG
 #define TS_DEBUG(fmt,args...)  printk( KERN_DEBUG "[it7260_i2c]: " fmt, ## args)
@@ -739,7 +738,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 	static int x[2] = { (int) -1, (int) -1 };
 	static int y[2] = { (int) -1, (int) -1 };
 	static bool finger[2] = { 0, 0 };
-	static int home_match_flag = 0;
+	//static int home_match_flag = 0;
 
 	i2cReadFromIt7260(ts->client, 0x80, &ucQuery, 1);
 	if (ucQuery < 0) {
@@ -761,7 +760,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 				//pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
 // ASUS_BSP +++ Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
 // Sample code for magic key detection
-#if 1
+#if 0
 {	
 	static unsigned long time_start_check = 0;
 	static unsigned int match_offset = 0;
@@ -865,19 +864,25 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 
 				// palm
 				if (pucPoint[1] & 0x01) {
-					if (!home_match_flag){
-						home_match_flag = 1;
-						printk("MagicTouch:HOME KEY DETECTED !!!!\n");
-						strcpy(magic_key,"HOME");
-						kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+					static int palm_flag = 1;				
+					palm_flag = atomic_read(&Suspend_flag);		
+					if (!palm_flag){
+						if (jiffies - last_time_shot_power > 2*HZ){
+							last_time_shot_power = jiffies;
+							printk("MagicTouch:PALM!!! palm_flag = %x\n\n", palm_flag);
+							input_event(gl_ts->input_dev, EV_KEY, 142, 1);
+							input_sync(gl_ts->input_dev);
+							msleep(5);
+							input_event(gl_ts->input_dev, EV_KEY, 142, 0);
+							input_sync(gl_ts->input_dev);					
+							//public_sleep_keys_gpio_report_event();
+						}
+						//atomic_set(&Suspend_flag,1);
 					}
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
-					//pr_info("pucPoint 1 is 0x01, it's a palm\n") ;
+					//pr_info("pucPoint 1 is 0x01, it's a palm\n");
 					return;
-				}
-				else {
-					home_match_flag = 0;
 				}
 				
 				// no more data
@@ -890,7 +895,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 		
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
-					//pr_info("(pucPoint[0] & 0x08) is false, means no more data\n") ;
+					//pr_info("(pucPoint[0] & 0x08) is false, means no more data\n");
 					return;
 				}
 
@@ -934,11 +939,16 @@ static void IT7260_ts_work_func(struct work_struct *work) {
 //ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
 static void IT7260_ts_work_resume_func(struct work_struct *work) {
 	if (atomic_read(&Suspend_flag)){
-		static int last_time_shot_power = 0;
 		static int skip_times=0;
+		last_time_shot_power = 0;
 		if (jiffies - last_time_shot_power > 2*HZ){
 			last_time_shot_power = jiffies;
-				public_gpio_keys_gpio_report_event();
+				input_event(gl_ts->input_dev, EV_KEY, 116, 1);
+				input_sync(gl_ts->input_dev);
+				msleep(5);
+				input_event(gl_ts->input_dev, EV_KEY, 116, 0);
+				input_sync(gl_ts->input_dev);			
+				//public_gpio_keys_gpio_report_event();
 				atomic_set(&Suspend_flag,0);
 				skip_times=0;
 
@@ -1202,13 +1212,15 @@ static int IT7260_ts_probe(struct i2c_client *client,
     set_bit(KEY_MENU,input_dev->keybit);
     set_bit(INPUT_PROP_DIRECT,input_dev->propbit);
 	set_bit(BTN_TOUCH, input_dev->keybit);
+	set_bit(KEY_SLEEP,input_dev->keybit);
+	set_bit(KEY_POWER,input_dev->keybit);
 	//set_bit(BTN_2, input_dev->keybit);
 
 	input_set_abs_params(input_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
 	input_set_abs_params(input_dev, ABS_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
 	input_err = input_register_device(input_dev);
 	if (input_err) goto input_error;
-
+	
 	//IT7260_wq = create_singlethread_workqueue("IT7260_wq");
     IT7260_wq = create_workqueue("IT7260_wq");
 	if (!IT7260_wq)

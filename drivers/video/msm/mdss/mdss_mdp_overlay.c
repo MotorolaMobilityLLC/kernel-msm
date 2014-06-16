@@ -1332,6 +1332,11 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 		mutex_unlock(&mfd->lock);
 	}
 
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Add watch dog task about frame update status for image stick issue"
+	notify_amdu_overlay_commit();
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Add watch dog task about frame update status for image stick issue"
+
+
 	mdss_fb_update_notify_update(mfd);
 commit_fail:
 	mdss_mdp_overlay_cleanup(mfd);

@@ -42,9 +42,7 @@
 
 #define TIMES_FOR_GENERAL_READ_ADC		15
 
-#define DEFAULT_DEVICE_RESISTOR_VALUE_NVT   136
-#define DEFAULT_DEVICE_RESISTOR_VALUE_TWS	146//ASUS_BSP Eason read battery ID
-#define DEFAULT_DEVICE_RESISTOR_VALUE_ME175KG   190
+#define DEFAULT_DEVICE_RESISTOR_VALUE_ROBIN   200
 
 #define RESISTOR_MAX_VAL	200
 #define RESISTOR_MIN_VAL		100
@@ -187,18 +185,9 @@ static int init_resistor_cali(AXC_Gauge_A66 *this)
 	if (IS_ERR(fd))
 	{
 		pr_err( "[BAT][Gau][A66]error! can not open battery Resistor cali file, use default value.\n");
-//ASUS_BSP Eason read battery ID+++  
-#ifdef ASUS_ME175KG_PROJECT
-	this->resistorCali = DEFAULT_DEVICE_RESISTOR_VALUE_ME175KG;
-#else
-	if(g_BatteryID_value<1100000){
-		this->resistorCali = DEFAULT_DEVICE_RESISTOR_VALUE_NVT;
-	}
-	else{
-		this->resistorCali = DEFAULT_DEVICE_RESISTOR_VALUE_TWS;
-	}
-#endif
-//ASUS_BSP Eason read battery ID---            
+
+		this->resistorCali = DEFAULT_DEVICE_RESISTOR_VALUE_ROBIN;
+
 		set_fs(mmseg_fs);
 		return -1;
 	}
@@ -266,20 +255,7 @@ static int cal_ocv_percent_when_discharging(
 
 	int resistor;
 
-	resistor = this->resistorCali;
-
-//ASUS_BSP Eason read battery ID+++    
-#ifdef ASUS_ME175KG_PROJECT
-	resistor = DEFAULT_DEVICE_RESISTOR_VALUE_ME175KG;
-#else
-	if(g_BatteryID_value<1100000){
-		resistor = DEFAULT_DEVICE_RESISTOR_VALUE_NVT;
-	}
-	else{
-		resistor = DEFAULT_DEVICE_RESISTOR_VALUE_TWS;
-	}
-#endif
-//ASUS_BSP Eason read battery ID---    
+	resistor = DEFAULT_DEVICE_RESISTOR_VALUE_ROBIN;
 
 	if(curr < 0){
 		ocv = volt;
