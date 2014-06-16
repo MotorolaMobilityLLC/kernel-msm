@@ -131,7 +131,6 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 	cmdreq.cb = NULL;
 
 	mdss_dsi_cmd_dma_trigger_sel(ctrl, 1);
-	mipi_samsung_disp_send_cmd(PANEL_MTP_ENABLE, true);
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 	mdss_dsi_cmd_dma_trigger_sel(ctrl, 0);
 	stored_cd_level = cd_level;
