@@ -10246,7 +10246,10 @@ v_BOOL_t WDA_IsSelfSTA(v_PVOID_t pVosContext, tANI_U8 ucSTAIdx)
 
   tWDA_CbContext *pWDA = (tWDA_CbContext *)VOS_GET_WDA_CTXT(pVosContext);
 
-  return WDI_IsSelfSTA(pWDA->pWdiContext,ucSTAIdx);
+  if (NULL != pWDA)
+     return WDI_IsSelfSTA(pWDA->pWdiContext,ucSTAIdx);
+  else
+     return VOS_TRUE;
 }
 /*
  * FUNCTION: WDA_NvDownloadReqCallback

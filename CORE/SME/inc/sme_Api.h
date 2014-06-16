@@ -3293,4 +3293,5 @@ const char * sme_PmcStatetoString(const v_U8_t pmcState);
 
 eHalStatus sme_getBcnMissRate(tHalHandle, tANI_U8, void *, void *);
 
+tANI_BOOLEAN  sme_Is11dCountrycode(tHalHandle hHal);
 #endif //#if !defined( __SME_API_H )
