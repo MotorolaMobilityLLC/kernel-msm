@@ -46,6 +46,7 @@
 #include <linux/netdevice.h>
 #include <linux/skbuff.h>
 #include <linux/etherdevice.h>
+#include <linux/ratelimit.h>
 
 #include <wlan_hdd_p2p.h>
 #include <linux/wireless.h>
@@ -75,6 +76,13 @@ const v_U8_t hdd_QdiscAcToTlAC[] = {
    WLANTL_AC_BE,
    WLANTL_AC_BK,
 };
+
+#define HDD_TX_TIMEOUT_RATELIMIT_INTERVAL 20*HZ
+#define HDD_TX_TIMEOUT_RATELIMIT_BURST    1
+
+static DEFINE_RATELIMIT_STATE(hdd_tx_timeout_rs,                 \
+                              HDD_TX_TIMEOUT_RATELIMIT_INTERVAL, \
+                              HDD_TX_TIMEOUT_RATELIMIT_BURST);
 
 static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter);
 
@@ -892,14 +900,14 @@ void hdd_tx_timeout(struct net_device *dev)
    //case of disassociation it is ok to ignore this. But if associated, we have
    //do possible recovery here
 
-   VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+   VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
               "num_bytes AC0: %d AC1: %d AC2: %d AC3: %d",
               pAdapter->wmm_tx_queue[0].count,
               pAdapter->wmm_tx_queue[1].count,
               pAdapter->wmm_tx_queue[2].count,
               pAdapter->wmm_tx_queue[3].count);
 
-   VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+   VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
               "tx_suspend AC0: %d AC1: %d AC2: %d AC3: %d",
               pAdapter->isTxSuspended[0],
               pAdapter->isTxSuspended[1],
@@ -909,13 +917,25 @@ void hdd_tx_timeout(struct net_device *dev)
    for (i = 0; i < 8; i++)
    {
       txq = netdev_get_tx_queue(dev, i);
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
                 "Queue%d status: %d", i, netif_tx_queue_stopped(txq));
    }
 
-   VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+   VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
               "carrier state: %d", netif_carrier_ok(dev));
-} 
+
+   /* If Tx stalled for a long time then *hdd_tx_timeout* is called
+    * every 5sec. The TL debug spits out a lot of information on the
+    * serial console, if it is called every time *hdd_tx_timeout* is
+    * called then we may get a watchdog bite on the Application
+    * processor, so ratelimit the TL debug logs.
+    */
+   if (__ratelimit(&hdd_tx_timeout_rs))
+   {
+      hdd_wmm_tx_snapshot(pAdapter);
+      WLANTL_TLDebugMessage(VOS_TRUE);
+   }
+}
 
 
 /**============================================================================
