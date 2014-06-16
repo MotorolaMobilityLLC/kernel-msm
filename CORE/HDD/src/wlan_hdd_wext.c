@@ -411,6 +411,41 @@ static void *mem_alloc_copy_from_user_helper(const void *wrqu_data, size_t len)
     return ptr;
 }
 
+// Function to handle and get compatible struct iw_point passed to ioctl.
+int hdd_priv_get_data(struct iw_point *p_priv_data,
+                      union iwreq_data *wrqu)
+{
+   if ((NULL == p_priv_data) || (NULL == wrqu))
+   {
+      return -EINVAL;
+   }
+
+#ifdef CONFIG_COMPAT
+   if (is_compat_task())
+   {
+      struct compat_iw_point *p_compat_priv_data;
+
+      // Compat task: typecast to campat structure and copy the members.
+      p_compat_priv_data = (struct compat_iw_point *) &wrqu->data;
+
+      p_priv_data->pointer = compat_ptr(p_compat_priv_data->pointer);
+      p_priv_data->length  = p_compat_priv_data->length;
+      p_priv_data->flags   = p_compat_priv_data->flags;
+   }//if(is_compat_task())
+   else
+   {
+#endif //#ifdef CONFIG_COMPAT
+
+      // Non compat task: directly copy the structure.
+      memcpy(p_priv_data, &wrqu->data, sizeof(struct iw_point));
+
+#ifdef CONFIG_COMPAT
+   }//else of - if(is_compat_task())
+#endif //#ifdef CONFIG_COMPAT
+
+   return 0;
+}
+
 /**---------------------------------------------------------------------------
 
   \brief hdd_wlan_get_version() -
@@ -5365,12 +5400,14 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
     {
         case WE_LOG_DUMP_CMD:
             {
+                vos_ssr_protect(__func__);
                 hddLog(LOG1, "%s: LOG_DUMP %d arg1 %d arg2 %d arg3 %d arg4 %d",
                         __func__, apps_args[0], apps_args[1], apps_args[2],
                         apps_args[3], apps_args[4]);
 
                 logPrintf(hHal, apps_args[0], apps_args[1], apps_args[2],
                         apps_args[3], apps_args[4]);
+                vos_ssr_unprotect(__func__);
 
             }
             break;
@@ -5482,6 +5519,7 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
    int params[HDD_WLAN_WMM_PARAM_COUNT];
    sme_QosWmmTspecInfo tSpec;
    v_U32_t handle;
+   struct iw_point s_priv_data;
 
    // make sure the application is sufficiently priviledged
    // note that the kernel will do this for "set" ioctls, but since
@@ -5508,9 +5546,26 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
 
    // since we are defined to be a "get" ioctl, and since the number
    // of params exceeds the number of params that wireless extensions
-   // will pass down in the iwreq_data, we must copy the "set" params
+   // will pass down in the iwreq_data, we must copy the "set" params.
+   // We must handle the compat for iwreq_data in 32U/64K environment.
+
+   // helper fucntion to get iwreq_data with compat handling.
+   if (hdd_priv_get_data(&s_priv_data, wrqu))
+   {
+      *pStatus = HDD_WLAN_WMM_STATUS_SETUP_FAILED_BAD_PARAM;
+      return 0;
+   }
+
+   // make sure all params are correctly passed to function
+   if ((NULL == s_priv_data.pointer) ||
+       (HDD_WLAN_WMM_PARAM_COUNT != s_priv_data.length))
+   {
+      *pStatus = HDD_WLAN_WMM_STATUS_SETUP_FAILED_BAD_PARAM;
+      return 0;
+   }
+
    // from user space ourselves
-   if (copy_from_user(&params, wrqu->data.pointer, sizeof(params)))
+   if (copy_from_user(&params, s_priv_data.pointer, sizeof(params)))
    {
       // hmmm, can't get them
       return -EIO;
@@ -6689,10 +6744,21 @@ static int iw_set_packet_filter_params(struct net_device *dev, struct iw_request
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tpPacketFilterCfg pRequest = NULL;
     int ret;
+    struct iw_point s_priv_data;
+
+    if (hdd_priv_get_data(&s_priv_data, wrqu))
+    {
+       return -EINVAL;
+    }
+
+    if ((NULL == s_priv_data.pointer) || (0 == s_priv_data.length))
+    {
+       return -EINVAL;
+    }
 
     /* ODD number is used for set, copy data using copy_from_user */
-    pRequest = mem_alloc_copy_from_user_helper(wrqu->data.pointer,
-                                               wrqu->data.length);
+    pRequest = mem_alloc_copy_from_user_helper(s_priv_data.pointer,
+                                               s_priv_data.length);
     if (NULL == pRequest)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
