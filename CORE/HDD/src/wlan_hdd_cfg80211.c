@@ -3358,6 +3358,11 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     }
     pConfig->fwdWPSPBCProbeReq  = 1; // Forward WPS PBC probe request frame up
 
+    pConfig->RSNEncryptType = eCSR_ENCRYPT_TYPE_NONE;
+    pConfig->mcRSNEncryptType = eCSR_ENCRYPT_TYPE_NONE;
+    (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->ucEncryptType =
+        eCSR_ENCRYPT_TYPE_NONE;
+
     pConfig->RSNWPAReqIELength = 0;
     pConfig->pRSNWPAReqIE = NULL;
     pIe = wlan_hdd_cfg80211_get_ie_ptr(pBeacon->tail, pBeacon->tail_len,
