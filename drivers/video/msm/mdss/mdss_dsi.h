@@ -342,6 +342,9 @@ struct mdss_dsi_ctrl_pdata {
 	bool cmd_cfg_restore;
 	bool do_unicast;
 
+	int mipi_d0_sel;
+	bool partial_mode_enabled;
+
 	int horizontal_idle_cnt;
 	struct panel_horizontal_idle *line_idle;
 	bool check_status_disabled;
