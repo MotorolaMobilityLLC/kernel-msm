@@ -413,6 +413,12 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pr_debug("%s: enable = %d\n", __func__, enable);
 
 	if (enable) {
+		rc = mdss_dsi_pinctrl_set_state(ctrl_pdata, true);
+		if (rc) {
+			pr_err("pinctrl set state active failed %d\n", rc);
+			return rc;
+		}
+
 		rc = mdss_dsi_request_gpios(ctrl_pdata);
 		if (rc) {
 			pr_err("gpio request failed\n");
@@ -491,6 +497,10 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
+
+		rc = mdss_dsi_pinctrl_set_state(ctrl_pdata, false);
+		if (rc)
+			pr_err("pinctrl set suspend state failed %d\n", rc);
 	}
 
 exit:
