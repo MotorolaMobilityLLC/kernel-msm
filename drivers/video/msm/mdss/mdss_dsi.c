@@ -446,11 +446,18 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
 	if (pdata->panel_info.mipi.lp11_init) {
-		mdss_dsi_panel_reset(pdata, 0);
-		ret = mdss_dsi_panel_power_panel_on(pdata, 0);
-		if (ret) {
-			pr_err("%s: Panel power off failed\n", __func__);
-			return ret;
+		if (ctrl_pdata->partial_mode_enabled &&
+				!mdss_dsi_is_panel_dead(pdata)) {
+			if (gpio_is_valid(ctrl_pdata->mipi_d0_sel))
+				gpio_set_value(ctrl_pdata->mipi_d0_sel, 1);
+		} else {
+			mdss_dsi_panel_reset(pdata, 0);
+			ret = mdss_dsi_panel_power_panel_on(pdata, 0);
+			if (ret) {
+				pr_err("%s: Panel power off failed\n",
+								__func__);
+				return ret;
+			}
 		}
 	}
 
@@ -796,8 +803,14 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	 * data lanes for LP11 init
 	 */
 	if (mipi->lp11_init) {
-		mdss_dsi_panel_power_panel_on(pdata, 1);
-		mdss_dsi_panel_reset(pdata, 1);
+		if (ctrl_pdata->partial_mode_enabled &&
+					!mdss_dsi_is_panel_dead(pdata)) {
+			if (gpio_is_valid(ctrl_pdata->mipi_d0_sel))
+				gpio_set_value(ctrl_pdata->mipi_d0_sel, 0);
+		} else {
+			mdss_dsi_panel_power_panel_on(pdata, 1);
+			mdss_dsi_panel_reset(pdata, 1);
+		}
 	}
 
 	pdata->panel_info.panel_power_on = 1;
@@ -1613,6 +1626,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	struct platform_device *ctrl_pdev = NULL;
 	bool dynamic_fps;
 	const char *data;
+	enum of_gpio_flags flags;
 
 	mipi  = &(pinfo->mipi);
 
@@ -1809,6 +1823,30 @@ int dsi_panel_device_register(struct device_node *pan_node,
 							__func__, __LINE__);
 	} else {
 		ctrl_pdata->mode_gpio = -EINVAL;
+	}
+
+	if (ctrl_pdata->partial_mode_enabled && pinfo->pdest == DISPLAY_1) {
+		ctrl_pdata->mipi_d0_sel = of_get_named_gpio_flags(
+			ctrl_pdev->dev.of_node, "mmi,mipi-d0-sel", 0, &flags);
+		if (!gpio_is_valid(ctrl_pdata->mipi_d0_sel)) {
+			pr_err("%s:%d, mipi d0 sel gpio not specified\n",
+							__func__, __LINE__);
+			/*
+			 * TODO: if this error happens, then does flag
+			 * partial_mode_enabled from DSI1 need to be cleared?
+			 */
+			ctrl_pdata->partial_mode_enabled = false;
+		} else {
+			rc = gpio_request_one(ctrl_pdata->mipi_d0_sel, flags,
+				"mipi_d0_sel");
+			if (rc) {
+				pr_err("request mipi d0 sel gpio failed, rc=%d\n",
+					rc);
+				ctrl_pdata->partial_mode_enabled = false;
+				return -ENODEV;
+			}
+			gpio_export(ctrl_pdata->mipi_d0_sel, 1);
+		}
 	}
 
 	if (mdss_dsi_clk_init(ctrl_pdev, ctrl_pdata)) {

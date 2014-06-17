@@ -1521,6 +1521,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		goto error;
 	}
 
+	ctrl_pdata->partial_mode_enabled = of_property_read_bool(np,
+						"mmi,partial-mode-enabled");
+	pr_info("%s: MMI partial mode %s\n", __func__,
+		ctrl_pdata->partial_mode_enabled ? "enabled" : "disabled");
+
 	return 0;
 
 error:
