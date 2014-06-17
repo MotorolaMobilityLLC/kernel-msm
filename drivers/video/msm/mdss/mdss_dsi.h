@@ -441,6 +441,9 @@ int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
 							u32 cmd, void *arg);
 
 
+int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+	bool active);
+
 static inline bool mdss_dsi_sync_wait_enable(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	return ctrl->cmd_sync_wait_broadcast;
