@@ -414,19 +414,36 @@ void esdfs_set_derived_perms(struct inode *inode)
 
 int esdfs_derived_lookup(struct dentry *dentry, struct dentry **parent)
 {
-	/* Deny access to security-sensitive entries */
+	struct esdfs_sb_info *sbi = ESDFS_SB((*parent)->d_sb);
+	struct esdfs_inode_info *parent_i = ESDFS_I((*parent)->d_inode);
+
+	/* Deny access to security-sensitive entries. */
 	if (ESDFS_I((*parent)->d_inode)->tree == ESDFS_TREE_ROOT &&
 	    match_name(&dentry->d_name, names_secure)) {
 		pr_debug("esdfs: denying access to: %s", dentry->d_name.name);
 		return -EACCES;
 	}
 
-	/* Handle obb directory "grafting" as a sort of hard link. */
-	if (ESDFS_I((*parent)->d_inode)->tree == ESDFS_TREE_ANDROID &&
+	/* Pin the unified mode obb link parent as it flies by. */
+	if (!sbi->obb_parent &&
+	    test_opt(sbi, DERIVE_UNIFIED) &&
+	    parent_i->tree == ESDFS_TREE_ROOT &&
+	    parent_i->userid == 0 &&
+	    !strncasecmp(dentry->d_name.name, "Android", dentry->d_name.len))
+		sbi->obb_parent = dget(dentry);		/* keep it pinned */
+
+	/*
+	 * Handle obb directory "grafting" as a pseudo hard link by overriding
+	 * its parent to point to the target obb directory's parent.  The rest
+	 * of the lookup process will take care of setting up the bottom half
+	 * to point to the real obb directory.
+	 */
+	if (parent_i->tree == ESDFS_TREE_ANDROID &&
 	    !strncasecmp(dentry->d_name.name, "obb", dentry->d_name.len)) {
-		if (test_opt(ESDFS_SB((*parent)->d_sb), DERIVE_LEGACY))
-			*parent = dget(dentry->d_sb->s_root);
-		/* FIXME: unified mode for SD cards */
+		BUG_ON(!sbi->obb_parent);
+		if (test_opt(sbi, DERIVE_LEGACY) ||
+		    (test_opt(sbi, DERIVE_UNIFIED) && parent_i->userid > 0))
+			*parent = dget(sbi->obb_parent);
 	}
 	return 0;
 }
