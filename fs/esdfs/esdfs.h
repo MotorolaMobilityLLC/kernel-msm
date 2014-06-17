@@ -58,6 +58,9 @@
 #define AID_SDCARD_AV     1034
 #define AID_SDCARD_ALL    1035
 
+/* used in extra persmission check during file creation */
+#define ESDFS_MAY_CREATE	0x00001000
+
 /* derived permissions model based on tree location */
 enum {
 	ESDFS_TREE_NONE = 0,		/* permissions not derived */
@@ -149,6 +152,7 @@ struct esdfs_sb_info {
 	struct super_block *lower_sb;
 	struct esdfs_perms lower_perms;
 	struct esdfs_perms upper_perms;	/* root in derived mode */
+	struct dentry *obb_parent;	/* pinned dentry for obb link parent */
 	unsigned int options;
 };
 
