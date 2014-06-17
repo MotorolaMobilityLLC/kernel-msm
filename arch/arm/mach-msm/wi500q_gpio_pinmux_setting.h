@@ -132,31 +132,6 @@ static struct gpiomux_setting gpio_uart_config = { // BT uart
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
-static struct gpiomux_setting bt_rst_act_cfg = { // bt_rst_active
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_HIGH,
-};
-static struct gpiomux_setting bt_rst_sus_cfg= { // bt_rst_suspend
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_HIGH,
-};
-
-static struct gpiomux_setting bt_reg_act_cfg = { // bt_reg_active
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_HIGH,
-};
-static struct gpiomux_setting bt_reg_sus_cfg= { // bt_reg_suspend
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_HIGH,
-};
 
 static struct gpiomux_setting bt_wakup_host_act_cfg = { // bt_wakeup_active
 	.func = GPIOMUX_FUNC_GPIO,

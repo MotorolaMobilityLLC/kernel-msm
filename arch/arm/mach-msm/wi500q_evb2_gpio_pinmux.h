@@ -131,15 +131,7 @@ static struct msm_gpiomux_config wi500q_evb2_msm8226_gpio_configs[] __initdata= 
 			[GPIOMUX_SUSPENDED] = &gyro_int,
 		},
 	},
-// ASUS_BSP BerylHou +++ "BT REG_EN config"
-	{
-		.gpio      = 34,	/* BT REG_EN */
-		.settings = {
-                        [GPIOMUX_ACTIVE] = &bt_reg_act_cfg,
-                        [GPIOMUX_SUSPENDED] = &bt_reg_sus_cfg,
-		},
-	},
- // ASUS_BSP BerylHou ---
+
 	{
 		.gpio = 35,
 		.settings = {
@@ -147,15 +139,6 @@ static struct msm_gpiomux_config wi500q_evb2_msm8226_gpio_configs[] __initdata= 
 			[GPIOMUX_SUSPENDED] = &mpu_int,
 		},
 	},
-// ASUS_BSP BerylHou +++ "BT RST config"
-	{
-		.gpio      = 36,	/* BT RST */
-		.settings = {
-                        [GPIOMUX_ACTIVE] = &bt_rst_act_cfg,
-                        [GPIOMUX_SUSPENDED] = &bt_rst_sus_cfg,
-		},
-	},
-// ASUS_BSP BerylHou ---
 	{
 		.gpio = 37,
 		.settings = {
