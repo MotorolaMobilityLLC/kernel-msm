@@ -334,6 +334,13 @@ static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
 		return;
 	}
 
+	if (pdata->panel_info.alpm_event(CHECK_PREVIOUS_STATUS)
+		&& pdata->panel_info.alpm_event(CHECK_CURRENT_STATUS)) {
+		pdata->panel_info.alpm_mode = mode;
+		pr_info("%s: ambient -> ambient\n", __func__);
+		return;
+	}
+
 	if (pdata->panel_info.alpm_mode == mode)
 		return;
 
