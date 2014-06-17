@@ -420,22 +420,78 @@ void esdfs_set_derived_perms(struct inode *inode)
 		inode->i_mode &= ~S_IXUGO;
 }
 
+/*
+ * Before rerouting a lookup to follow a pseudo hard link, make sure that
+ * a stub exists at the source.  Without it, readdir won't see an entry there
+ * resulting in a strange user experience.
+ */
+static int lookup_link_source(struct dentry *dentry, struct dentry *parent)
+{
+	struct path lower_parent_path, lower_path;
+	int err;
+
+	esdfs_get_lower_path(parent, &lower_parent_path);
+
+	/* Check if the stub user profile obb is there. */
+	err = vfs_path_lookup(lower_parent_path.dentry, lower_parent_path.mnt,
+			      dentry->d_name.name, LOOKUP_NOCASE, &lower_path);
+	/* Remember it to handle renames and removal. */
+	if (!err)
+		esdfs_set_lower_stub_path(dentry, &lower_path);
+
+	esdfs_put_lower_path(parent, &lower_parent_path);
+
+	return err;
+}
+
 int esdfs_derived_lookup(struct dentry *dentry, struct dentry **parent)
 {
-	/* Deny access to security-sensitive entries */
+	struct esdfs_sb_info *sbi = ESDFS_SB((*parent)->d_sb);
+	struct esdfs_inode_info *parent_i = ESDFS_I((*parent)->d_inode);
+
+	/* Deny access to security-sensitive entries. */
 	if (ESDFS_I((*parent)->d_inode)->tree == ESDFS_TREE_ROOT &&
 	    match_name(&dentry->d_name, names_secure)) {
 		pr_debug("esdfs: denying access to: %s", dentry->d_name.name);
 		return -EACCES;
 	}
 
-	/* Handle obb directory "grafting" as a sort of hard link. */
-	if (ESDFS_I((*parent)->d_inode)->tree == ESDFS_TREE_ANDROID &&
-	    !strncasecmp(dentry->d_name.name, "obb", dentry->d_name.len)) {
-		if (test_opt(ESDFS_SB((*parent)->d_sb), DERIVE_LEGACY))
-			*parent = dget(dentry->d_sb->s_root);
-		/* FIXME: unified mode for SD cards */
+	/* Pin the unified mode obb link parent as it flies by. */
+	if (!sbi->obb_parent &&
+	    test_opt(sbi, DERIVE_UNIFIED) &&
+	    parent_i->tree == ESDFS_TREE_ROOT &&
+	    parent_i->userid == 0 &&
+	    !strncasecmp(dentry->d_name.name, "Android", dentry->d_name.len))
+		sbi->obb_parent = dget(dentry);		/* keep it pinned */
+
+	/*
+	 * Handle obb directory "grafting" as a pseudo hard link by overriding
+	 * its parent to point to the target obb directory's parent.  The rest
+	 * of the lookup process will take care of setting up the bottom half
+	 * to point to the real obb directory.
+	 */
+	if (parent_i->tree == ESDFS_TREE_ANDROID &&
+	    ESDFS_DENTRY_NEEDS_LINK(dentry) &&
+	    lookup_link_source(dentry, *parent) == 0) {
+		BUG_ON(!sbi->obb_parent);
+		if (ESDFS_INODE_CAN_LINK((*parent)->d_inode))
+			*parent = dget(sbi->obb_parent);
 	}
+	return 0;
+}
+
+int esdfs_derived_revalidate(struct dentry *dentry, struct dentry *parent)
+{
+	/*
+	 * If obb is not linked yet, it means the dentry is pointing to the
+	 * stub.  Invalidate the dentry to force another lookup.
+	 */
+	if (ESDFS_I(parent->d_inode)->tree == ESDFS_TREE_ANDROID &&
+	    ESDFS_INODE_CAN_LINK(dentry->d_inode) &&
+	    ESDFS_DENTRY_NEEDS_LINK(dentry) &&
+	    !ESDFS_DENTRY_IS_LINKED(dentry))
+		return -ESTALE;
+
 	return 0;
 }
 
@@ -455,7 +511,8 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 	appid = uid % PKG_APPID_PER_USER;
 
 	/* Reads, owners, and root are always granted access */
-	if (!(mask & MAY_WRITE) || uid == 0 || uid_eq(cred->uid, inode->i_uid))
+	if (!(mask & (MAY_WRITE | ESDFS_MAY_CREATE)) ||
+	    uid == 0 || uid_eq(cred->uid, inode->i_uid))
 		return 0;
 
 	/*
@@ -482,15 +539,17 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 
 	/*
 	 * Grant access to sdcard_rw holders, unless we are in unified mode
-	 * and we are trying to write to the protected /Android tree.
+	 * and we are trying to write to the protected /Android tree or to
+	 * create files in the root.
 	 */
 	if ((access & HAS_SDCARD_RW) &&
 	    (!test_opt(ESDFS_SB(inode->i_sb), DERIVE_UNIFIED) ||
-	     (ESDFS_I(inode)->tree != ESDFS_TREE_ROOT &&
-	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID &&
+	     (ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_DATA &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_OBB &&
-	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_APP)))
+	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_APP &&
+	      (ESDFS_I(inode)->tree != ESDFS_TREE_ROOT ||
+	       !(mask & ESDFS_MAY_CREATE)))))
 		return 0;
 
 	pr_debug("esdfs: %s: denying access to appid: %u\n", __func__, appid);
@@ -503,15 +562,27 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
  */
 int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 {
-	struct esdfs_inode_info *inode_i = ESDFS_I(dir_dentry->d_inode);
+	struct esdfs_inode_info *inode_i;
 	struct qstr nomedia;
 	struct dentry *lower_dentry;
 	struct path lower_dir_path, lower_path;
 	umode_t mode;
 	int err = 0;
 
-	if (inode_i->tree != ESDFS_TREE_ANDROID_DATA &&
-	    inode_i->tree != ESDFS_TREE_ANDROID_OBB)
+	if (!dir_dentry->d_inode)
+		return 0;
+
+	inode_i = ESDFS_I(dir_dentry->d_inode);
+
+	/*
+	 * Only create .nomedia in Android/data and Android/obb, but never in
+	 * pseudo link stubs.
+	 */
+	if ((inode_i->tree != ESDFS_TREE_ANDROID_DATA &&
+	     inode_i->tree != ESDFS_TREE_ANDROID_OBB) ||
+	    (ESDFS_INODE_CAN_LINK(dir_dentry->d_inode) &&
+	     ESDFS_DENTRY_NEEDS_LINK(dir_dentry) &&
+	     !ESDFS_DENTRY_IS_LINKED(dir_dentry)))
 		return 0;
 
 	nomedia.name = ".nomedia";
