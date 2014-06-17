@@ -248,6 +248,7 @@
 		nxp,tfa_max-vol-steps = <15>;
 		gpios = <&msmgpio 129 0>;     /* RESET */
 		nxp,tfa-dev = "left";
+		nxp,tfa-firmware-part-name = "boost";
 	};
 	tfa9890@35 {
 		compatible = "nxp,tfa9890";
@@ -255,6 +256,7 @@
 		tfa_vdd-supply = <&pma8084_s4>;
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "right";
+		nxp,tfa-firmware-part-name = "boost";
 	};
 };
 
