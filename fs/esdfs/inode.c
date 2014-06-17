@@ -20,8 +20,17 @@ static int esdfs_create(struct inode *dir, struct dentry *dentry,
 	struct dentry *lower_parent_dentry = NULL;
 	struct path lower_path;
 	int mask;
-	const struct cred *creds =
-			esdfs_override_creds(ESDFS_SB(dir->i_sb), &mask);
+	const struct cred *creds;
+
+	/*
+	 * Need to recheck derived permissions unified mode to prevent certain
+	 * applications from creating files at the root.
+	 */
+	if (test_opt(ESDFS_SB(dir->i_sb), DERIVE_UNIFIED) &&
+	    esdfs_check_derived_permission(dir, ESDFS_MAY_CREATE) != 0)
+		return -EACCES;
+
+	creds = esdfs_override_creds(ESDFS_SB(dir->i_sb), &mask);
 	if (!creds)
 		return -ENOMEM;
 
@@ -346,22 +355,29 @@ out_err:
 static int esdfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
 		 struct kstat *stat)
 {
-	struct dentry *lower_dentry;
-	struct inode *inode;
-	struct inode *lower_inode;
+	int err;
 	struct path lower_path;
-
-	inode = dentry->d_inode;
+	struct kstat lower_stat;
+	struct inode *lower_inode;
+	struct inode *inode = dentry->d_inode;
 
 	esdfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
+
+	/* We need the lower getattr to calculate stat->blocks for us. */
+	err = vfs_getattr(&lower_path, &lower_stat);
+	if (err)
+		goto out;
+
 	lower_inode = esdfs_lower_inode(inode);
-
 	esdfs_copy_attr(inode, lower_inode);
-
+	fsstack_copy_inode_size(inode, lower_inode);
 	generic_fillattr(inode, stat);
+
+	stat->blocks = lower_stat.blocks;
+
+out:
 	esdfs_put_lower_path(dentry, &lower_path);
-	return 0;
+	return err;
 }
 
 const struct inode_operations esdfs_symlink_iops = {
