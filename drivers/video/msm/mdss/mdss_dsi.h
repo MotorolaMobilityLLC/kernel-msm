@@ -684,6 +684,9 @@ int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
 							u32 cmd, void *arg);
 int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
+int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+								bool active);
+
 static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 {
 	switch (module) {
