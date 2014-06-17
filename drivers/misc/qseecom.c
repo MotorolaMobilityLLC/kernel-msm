@@ -3493,7 +3493,6 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 			ret = -EINVAL;
 			break;
 		}
-		data->type = QSEECOM_CLIENT_APP;
 		pr_debug("SET_MEM_PARAM: qseecom addr = 0x%x\n", (u32)data);
 		ret = qseecom_set_client_mem_param(data, argp);
 		if (ret)
