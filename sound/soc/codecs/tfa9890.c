@@ -74,6 +74,8 @@ struct tfa9890_priv {
 	int curr_vol_idx;
 	int ic_version;
 	char const *tfa_dev;
+	char const *fw_path;
+	char const *fw_name;
 };
 
 static DEFINE_MUTEX(lr_lock);
@@ -135,12 +137,11 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 };
 
 /* presets tables per volume step for different modes */
-static char const *fw_path;
 
 static char const *tfa9890_preset_tables[] = {
-	"tfa9890_music_table.preset",
-	"tfa9890_voice_table.preset",
-	"tfa9890_ringtone_table.preset",
+	"music_table.preset",
+	"voice_table.preset",
+	"ringtone_table.preset",
 };
 
 static char const *tfa9890_mode[] = {
@@ -539,13 +540,13 @@ static const struct soc_enum tfa9890_mode_enum[] = {
 };
 
 static const struct snd_kcontrol_new tfa9890_left_snd_controls[] = {
-	SOC_SINGLE_TLV("NXP VolumeL", TFA9890_VOL_CTL_REG,
+	SOC_SINGLE_TLV("BOOST VolumeL", TFA9890_VOL_CTL_REG,
 			8, 0xff, 0, tlv_step_0_5),
-	SOC_SINGLE_MULTI_EXT("NXP ModeL", SND_SOC_NOPM, 0, 255,
+	SOC_SINGLE_MULTI_EXT("BOOST ModeL", SND_SOC_NOPM, 0, 255,
 				 0, 2, tfa9890_get_mode,
 				 tfa9890_put_mode),
 	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
-	SOC_SINGLE("NXP Left Ch Select", TFA9890_I2S_CTL_REG,
+	SOC_SINGLE("BOOST Left Ch Select", TFA9890_I2S_CTL_REG,
 			3, 0x3, 0),
 };
 
@@ -556,25 +557,25 @@ static const struct snd_kcontrol_new tfa9890_left_mixer_controls[] = {
 
 static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("I2S1L"),
-	SND_SOC_DAPM_MIXER("NXP Output Mixer Left", SND_SOC_NOPM, 0, 0,
+	SND_SOC_DAPM_MIXER("BOOST Output Mixer Left", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_left_mixer_controls[0],
 			   ARRAY_SIZE(tfa9890_left_mixer_controls)),
-	SND_SOC_DAPM_OUTPUT("NXP Speaker Boost Left"),
+	SND_SOC_DAPM_OUTPUT("BOOST Speaker Left"),
 };
 
 static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
-	{"NXP Output Mixer Left", "DSP Bypass Left", "I2S1L"},
-	{"NXP Speaker Boost Left", "Null", "NXP Output Mixer Left"},
+	{"BOOST Output Mixer Left", "DSP Bypass Left", "I2S1L"},
+	{"BOOST Speaker Left", "Null", "BOOST Output Mixer Left"},
 };
 
 static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
-	SOC_SINGLE_TLV("NXP VolumeR", TFA9890_VOL_CTL_REG,
+	SOC_SINGLE_TLV("BOOST VolumeR", TFA9890_VOL_CTL_REG,
 			8, 0xff, 0, tlv_step_0_5),
-	SOC_SINGLE_MULTI_EXT("NXP ModeR", SND_SOC_NOPM, 0, 255,
+	SOC_SINGLE_MULTI_EXT("BOOST ModeR", SND_SOC_NOPM, 0, 255,
 				 0, 2, tfa9890_get_mode,
 				 tfa9890_put_mode),
 	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
-	SOC_SINGLE("NXP Right Ch Select", TFA9890_I2S_CTL_REG,
+	SOC_SINGLE("BOOST Right Ch Select", TFA9890_I2S_CTL_REG,
 			3, 0x3, 0),
 };
 
@@ -585,15 +586,15 @@ static const struct snd_kcontrol_new tfa9890_right_mixer_controls[] = {
 
 static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("I2S1R"),
-	SND_SOC_DAPM_MIXER("NXP Output Mixer Right", SND_SOC_NOPM, 0, 0,
+	SND_SOC_DAPM_MIXER("BOOST Output Mixer Right", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_right_mixer_controls[0],
 			   ARRAY_SIZE(tfa9890_right_mixer_controls)),
-	SND_SOC_DAPM_OUTPUT("NXP Speaker Boost Right"),
+	SND_SOC_DAPM_OUTPUT("BOOST Speaker Right"),
 };
 
 static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
-	{"NXP Output Mixer Right", "DSP Bypass Right", "I2S1R"},
-	{"NXP Speaker Boost Right", "Null", "NXP Output Mixer Right"},
+	{"BOOST Output Mixer Right", "DSP Bypass Right", "I2S1R"},
+	{"BOOST Speaker Right", "Null", "BOOST Output Mixer Right"},
 };
 
 /*
@@ -802,16 +803,20 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	/* check IC version to get correct firmware */
 	tfa9890->ic_version = tfa9890_get_ic_ver(codec);
 	if (tfa9890->ic_version == TFA9890_N1C2) {
-		scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890_n1c2.patch",
-				fw_path);
+		scnprintf(fw_name, FIRMWARE_NAME_SIZE,
+				"%s/%s.%s_n1c2.patch",
+				tfa9890->fw_path, tfa9890->tfa_dev,
+				tfa9890->fw_name);
 		ret = request_firmware(&fw_patch, fw_name, codec->dev);
 		if (ret) {
 			pr_err("tfa9890: Failed to locate tfa9890_n1c2.patch");
 			goto out;
 		}
 	} else if (tfa9890->ic_version == TFA9890_N1B12) {
-		scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890_n1b12.patch",
-				fw_path);
+		scnprintf(fw_name, FIRMWARE_NAME_SIZE,
+				"%s/%s.%s_n1b12.patch",
+				tfa9890->fw_path, tfa9890->tfa_dev,
+				tfa9890->fw_name);
 		ret = request_firmware(&fw_patch, fw_name, codec->dev);
 		if (ret) {
 			pr_err("tfa9890: Failed to locate tfa9890_n1b12.patch");
@@ -828,7 +833,8 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 		}
 	}
 
-	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.speaker", fw_path);
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/%s.%s.speaker",
+			tfa9890->fw_path, tfa9890->tfa_dev, tfa9890->fw_name);
 	ret = request_firmware(&fw_speaker, fw_name, codec->dev);
 	if (ret) {
 		pr_err("tfa9890: Failed to locate speaker model!!");
@@ -843,7 +849,8 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 			fw_speaker->size, TFA9890_DSP_WRITE, 0);
 	if (ret < 0)
 		goto out;
-	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.config", fw_path);
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/%s.%s.config",
+		tfa9890->fw_path, tfa9890->tfa_dev, tfa9890->fw_name);
 	ret = request_firmware(&fw_config, fw_name, codec->dev);
 	if (ret) {
 		pr_err("tfa9890: Failed to locate dsp config!!");
@@ -863,7 +870,8 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	ret = tfa9890_set_mode(tfa9890);
 	if (ret < 0)
 		goto out;
-	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.eq", fw_path);
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/%s.%s.eq",
+		tfa9890->fw_path, tfa9890->tfa_dev, tfa9890->fw_name);
 	ret = request_firmware(&fw_coeff, fw_name, codec->dev);
 
 	if (ret) {
@@ -973,8 +981,10 @@ static void tfa9890_load_preset(struct work_struct *work)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(fw_pst_table); i++) {
-		scnprintf(preset_name, FIRMWARE_NAME_SIZE, "%s/%s",
-				fw_path, tfa9890_preset_tables[i]);
+		scnprintf(preset_name, FIRMWARE_NAME_SIZE, "%s/%s.%s_%s",
+				tfa9890->fw_path, tfa9890->tfa_dev,
+				tfa9890->fw_name,
+				tfa9890_preset_tables[i]);
 		ret = request_firmware(&fw_pst_table[i],
 				preset_name,
 				codec->dev);
@@ -1687,14 +1697,14 @@ tfa9890_of_init(struct i2c_client *client)
 	struct tfa9890_pdata *pdata;
 	struct device_node *np = client->dev.of_node;
 
-	if (of_property_read_string(np, "tfa9890_bin_path", &fw_path))
-		fw_path = ".";
-
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
 		pr_err("%s : pdata allocation failure\n", __func__);
 		return NULL;
 	}
+	if (of_property_read_string(np, "nxp,tfa9890_bin_path",
+				&pdata->fw_path))
+		pdata->fw_path = ".";
 
 	of_property_read_u32(np, "nxp,tfa_max-vol-steps",
 				&pdata->max_vol_steps);
@@ -1702,6 +1712,10 @@ tfa9890_of_init(struct i2c_client *client)
 
 	if (of_property_read_string(np, "nxp,tfa-dev", &pdata->tfa_dev))
 		pdata->tfa_dev = "left";
+
+	if (of_property_read_string(np, "nxp,tfa-firmware-part-name",
+					&pdata->fw_name))
+		pdata->fw_name = "tfa9890";
 
 	return pdata;
 }
@@ -1751,6 +1765,8 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 	tfa9890->curr_vol_idx = pdata->max_vol_steps;
 	tfa9890->tfa_dev = pdata->tfa_dev;
 	tfa9890->sysclk = SYS_CLK_DEFAULT;
+	tfa9890->fw_path = pdata->fw_path;
+	tfa9890->fw_name = pdata->fw_name;
 	i2c_set_clientdata(i2c, tfa9890);
 	mutex_init(&tfa9890->dsp_init_lock);
 	mutex_init(&tfa9890->i2c_rw_lock);
