@@ -2625,13 +2625,22 @@ static int iw_softap_setwpsie(struct net_device *dev,
    tpSap_WPSIE pSap_WPSIe;
    u_int8_t WPSIeType;
    u_int16_t length;   
+   struct iw_point s_priv_data;
    ENTER();
 
-   if(!wrqu->data.length || wrqu->data.length < QCSAP_MAX_WSC_IE)
-      return 0;
+   /* helper function to get iwreq_data with compat handling. */
+   if (hdd_priv_get_data(&s_priv_data, wrqu))
+   {
+      return -EINVAL;
+   }
 
-   wps_genie = mem_alloc_copy_from_user_helper(wrqu->data.pointer,
-                                               wrqu->data.length);
+   if ((NULL == s_priv_data.pointer) || (s_priv_data.length < QCSAP_MAX_WSC_IE))
+   {
+      return -EINVAL;
+   }
+
+   wps_genie = mem_alloc_copy_from_user_helper(s_priv_data.pointer,
+                                               s_priv_data.length);
 
    if(NULL == wps_genie)
    {
