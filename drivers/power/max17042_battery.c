@@ -53,7 +53,9 @@
 /* Interrupt mask bits */
 #define CONFIG_ALRT_BIT_ENBL	(1 << 2)
 #define STATUS_INTR_VMIN_BIT	(1 << 8)
+#define STATUS_INTR_TEMPMIN_BIT	(1 << 9)
 #define STATUS_INTR_SOCMIN_BIT	(1 << 10)
+#define STATUS_INTR_TEMP_BIT	(1 << 13)
 #define STATUS_INTR_SOCMAX_BIT	(1 << 14)
 
 #define VFSOC0_LOCK		0x0000
@@ -113,6 +115,7 @@ struct max17042_chip {
 	u8 debugfs_addr;
 #endif
 	struct power_supply *batt_psy;
+	int temp_state;
 };
 
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
@@ -187,6 +190,31 @@ static int max17042_conv_temp(struct max17042_temp_conv *conv, int t)
 	}
 }
 
+/* input and output temperature is in centigrade */
+static int max17042_find_temp_threshold(struct max17042_temp_conv *conv,
+					int t, bool low_side)
+{
+	int i; /* conversion table index */
+	s16 *r = conv->result;
+	int dt;
+
+	dt = t * 10;
+
+	if (low_side) {
+		for (i = (conv->num_result - 1); i >= 0; i--) {
+			if (r[i] <= dt)
+				break;
+		}
+	} else {
+		for (i = 0; i < conv->num_result; i++) {
+			if (r[i] >= dt)
+				break;
+		}
+	}
+
+	return conv->start + i;
+}
+
 int max17042_read_charge_counter(struct i2c_client *client, int ql)
 {
 	int uah = 0, uah_old = 0, uahl = 0;
@@ -215,6 +243,35 @@ int max17042_read_charge_counter(struct i2c_client *client, int ql)
 	} else
 		uah = uah * MAX17042_CHRG_CONV_FCTR;
 	return uah;
+}
+
+int max17042_read_temp(struct max17042_chip *chip, int *temp_dc)
+{
+	int ret;
+	int intval;
+
+	ret = max17042_read_reg(chip->client, MAX17042_TEMP);
+	if (ret < 0)
+		return ret;
+
+	intval = ret;
+	/* The value is signed. */
+	if (intval & 0x8000) {
+		intval = (0x7fff & ~intval) + 1;
+		intval *= -1;
+	}
+
+	/* The value is converted into deci-centigrade scale */
+	/* Units of LSB = 1 / 256 degree Celsius */
+	intval = intval * 10 / 256;
+
+	/* Convert IC temp to "real" temp */
+	if (chip->pdata->tcnv)
+		intval = max17042_conv_temp(chip->pdata->tcnv,
+					    intval);
+	*temp_dc = intval;
+
+	return 0;
 }
 
 static int max17042_get_property(struct power_supply *psy,
@@ -320,25 +377,9 @@ static int max17042_get_property(struct power_supply *psy,
 		val->intval = ret;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		ret = max17042_read_reg(chip->client, MAX17042_TEMP);
+		ret = max17042_read_temp(chip, &val->intval);
 		if (ret < 0)
 			return ret;
-
-		val->intval = ret;
-		/* The value is signed. */
-		if (val->intval & 0x8000) {
-			val->intval = (0x7fff & ~val->intval) + 1;
-			val->intval *= -1;
-		}
-
-		/* The value is converted into deci-centigrade scale */
-		/* Units of LSB = 1 / 256 degree Celsius */
-		val->intval = val->intval * 10 / 256;
-
-		/* Convert IC temp to "real" temp */
-		if (chip->pdata->tcnv)
-			val->intval = max17042_conv_temp(chip->pdata->tcnv,
-							 val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		if (chip->pdata->enable_current_sense) {
@@ -726,6 +767,129 @@ static int max17042_init_chip(struct max17042_chip *chip)
 	return 0;
 }
 
+static void max17042_set_temp_threshold(struct max17042_chip *chip,
+					int max_c,
+					int min_c)
+{
+	u16 temp_tr;
+	s8 max;
+	s8 min;
+
+	max = (s8)max17042_find_temp_threshold(chip->pdata->tcnv, max_c,
+					       false);
+	min = (s8)max17042_find_temp_threshold(chip->pdata->tcnv, min_c,
+					       true);
+
+	temp_tr = 0;
+	temp_tr |= min;
+	temp_tr &= 0x00FF;
+
+	temp_tr |=  (max << 8) & 0xFF00;
+
+	pr_debug("Program Temp Thresholds = 0x%X\n", temp_tr);
+
+	max17042_write_reg(chip->client, MAX17042_TALRT_Th, temp_tr);
+}
+
+#define HYSTERISIS_DEGC 2
+static int max17042_check_temp(struct max17042_chip *chip)
+{
+	int batt_temp;
+	int max_t;
+	int min_t;
+	struct max17042_platform_data *pdata;
+	int temp_state = POWER_SUPPLY_HEALTH_GOOD;
+
+	if (!chip)
+		return 0;
+
+	pdata = chip->pdata;
+
+	max17042_read_temp(chip, &batt_temp);
+
+	/* Convert to Degrees C */
+	batt_temp /= 10;
+
+	if (chip->temp_state == POWER_SUPPLY_HEALTH_WARM) {
+		if (batt_temp > pdata->hot_temp_c)
+			/* Warm to Hot */
+			temp_state = POWER_SUPPLY_HEALTH_OVERHEAT;
+		else if (batt_temp <=
+			 pdata->warm_temp_c - HYSTERISIS_DEGC)
+			/* Warm to Normal */
+			temp_state = POWER_SUPPLY_HEALTH_GOOD;
+		else
+			/* Stay Warm */
+			temp_state = POWER_SUPPLY_HEALTH_WARM;
+	} else if ((chip->temp_state == POWER_SUPPLY_HEALTH_GOOD) ||
+		   (chip->temp_state == POWER_SUPPLY_HEALTH_UNKNOWN)) {
+		if (batt_temp >= pdata->warm_temp_c)
+			/* Normal to Warm */
+			temp_state = POWER_SUPPLY_HEALTH_WARM;
+		else if (batt_temp <= pdata->cool_temp_c)
+			/* Normal to Cool */
+			temp_state = POWER_SUPPLY_HEALTH_COOL;
+		else
+			/* Stay Normal */
+			temp_state = POWER_SUPPLY_HEALTH_GOOD;
+	} else if (chip->temp_state == POWER_SUPPLY_HEALTH_COOL) {
+		if (batt_temp >=
+		    pdata->cool_temp_c + HYSTERISIS_DEGC)
+			/* Cool to Normal */
+			temp_state = POWER_SUPPLY_HEALTH_GOOD;
+		else if (batt_temp < pdata->cold_temp_c)
+			/* Cool to Cold */
+			temp_state = POWER_SUPPLY_HEALTH_COLD;
+		else
+			/* Stay Cool */
+			temp_state = POWER_SUPPLY_HEALTH_COOL;
+	} else if (chip->temp_state == POWER_SUPPLY_HEALTH_COLD) {
+		if (batt_temp >
+		    pdata->cold_temp_c + HYSTERISIS_DEGC)
+			/* Cold to Cool */
+			temp_state = POWER_SUPPLY_HEALTH_COOL;
+		else
+			/* Stay Cold */
+			temp_state = POWER_SUPPLY_HEALTH_COLD;
+	} else if (chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT) {
+		if (batt_temp <
+		    pdata->hot_temp_c - HYSTERISIS_DEGC)
+			/* Hot to Warm */
+			temp_state = POWER_SUPPLY_HEALTH_WARM;
+		else
+			/* Stay Hot */
+			temp_state = POWER_SUPPLY_HEALTH_OVERHEAT;
+	}
+
+	if (chip->temp_state != temp_state) {
+		chip->temp_state = temp_state;
+		if (chip->temp_state == POWER_SUPPLY_HEALTH_WARM) {
+			max_t = pdata->hot_temp_c;
+			min_t = pdata->warm_temp_c - HYSTERISIS_DEGC;
+		} else if (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD) {
+			max_t = pdata->warm_temp_c;
+			min_t = pdata->cool_temp_c;
+		} else if (chip->temp_state == POWER_SUPPLY_HEALTH_COOL) {
+			max_t = pdata->cool_temp_c + HYSTERISIS_DEGC;
+			min_t = pdata->cold_temp_c;
+		} else if (chip->temp_state == POWER_SUPPLY_HEALTH_COLD) {
+			max_t = pdata->cold_temp_c + HYSTERISIS_DEGC;
+			min_t = pdata->cold_temp_c * 2;
+		} else if (chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT) {
+			max_t = pdata->hot_temp_c * 2;
+			min_t = pdata->hot_temp_c - HYSTERISIS_DEGC;
+		}
+
+		max17042_set_temp_threshold(chip, max_t, min_t);
+
+		pr_warn("Battery Temp State = %d\n", chip->temp_state);
+
+		return 1;
+	}
+
+	return 0;
+}
+
 static void max17042_set_soc_threshold(struct max17042_chip *chip, u16 off)
 {
 	u16 soc, soc_tr;
@@ -764,6 +928,18 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 		chip->batt_undervoltage = true;
 	}
 
+	if ((val & STATUS_INTR_TEMP_BIT) ||
+	    (val & STATUS_INTR_TEMPMIN_BIT)) {
+		dev_info(&chip->client->dev, "Temperature INTR\n");
+		max17042_check_temp(chip);
+		if (chip->batt_psy) {
+			ret.intval = chip->temp_state;
+			chip->batt_psy->set_property(chip->batt_psy,
+				      POWER_SUPPLY_PROP_HEALTH, &ret);
+		}
+	}
+
+
 	power_supply_changed(&chip->battery);
 
 	if (chip->batt_psy)
@@ -785,6 +961,10 @@ static void max17042_init_worker(struct work_struct *work)
 		if (ret)
 			return;
 	}
+
+	max17042_set_soc_threshold(chip, 1);
+	chip->temp_state = POWER_SUPPLY_HEALTH_UNKNOWN;
+	max17042_check_temp(chip);
 
 	chip->init_complete = 1;
 }
@@ -1183,6 +1363,10 @@ max17042_get_pdata(struct device *dev)
 	if (pdata->batt_psy_name)
 		pr_warn("BATT SUPPLY NAME = %s\n", pdata->batt_psy_name);
 
+	of_property_read_u32(np, "maxim,warm-temp-c", &pdata->warm_temp_c);
+	of_property_read_u32(np, "maxim,hot-temp-c", &pdata->hot_temp_c);
+	of_property_read_u32(np, "maxim,cool-temp-c", &pdata->cool_temp_c);
+	of_property_read_u32(np, "maxim,cold-temp-c", &pdata->cold_temp_c);
 	pdata->tcnv = max17042_get_conv_table(dev);
 
 	pdata->config_data = max17042_get_config_data(dev);
@@ -1334,6 +1518,9 @@ static int max17042_probe(struct i2c_client *client,
 		dev_err(&client->dev, "failed: power supply register\n");
 		return ret;
 	}
+
+	chip->temp_state = POWER_SUPPLY_HEALTH_UNKNOWN;
+	max17042_check_temp(chip);
 
 	ret = gpio_request_array(chip->pdata->gpio_list,
 				 chip->pdata->num_gpio_list);
