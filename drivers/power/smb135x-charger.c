@@ -378,9 +378,16 @@ struct smb135x_chg {
 	int				apsd_rerun_cnt;
 	struct smb_wakeup_source        smb_wake_source;
 	struct delayed_work		heartbeat_work;
+	int				ext_temp_volt_mv;
+	int				ext_temp_soc;
+	int				ext_high_temp;
+	int				temp_check;
+	int				bms_check;
 };
 
 static struct smb135x_chg *the_chip;
+
+static int smb135x_float_voltage_set(struct smb135x_chg *chip, int vfloat_mv);
 
 static void smb_stay_awake(struct smb_wakeup_source *source)
 {
@@ -840,6 +847,62 @@ static int smb135x_get_prop_batt_health(struct smb135x_chg *chip)
 	return ret.intval;
 }
 
+static int smb135x_set_prop_batt_health(struct smb135x_chg *chip, int health)
+{
+	switch (health) {
+	case POWER_SUPPLY_HEALTH_OVERHEAT:
+		chip->batt_hot = true;
+		chip->batt_cold = false;
+		chip->batt_warm = false;
+		chip->batt_cool = false;
+		break;
+	case POWER_SUPPLY_HEALTH_COLD:
+		chip->batt_cold = true;
+		chip->batt_hot = false;
+		chip->batt_warm = false;
+		chip->batt_cool = false;
+		break;
+	case POWER_SUPPLY_HEALTH_WARM:
+		chip->batt_warm = true;
+		chip->batt_hot = false;
+		chip->batt_cold = false;
+		chip->batt_cool = false;
+		break;
+	case POWER_SUPPLY_HEALTH_COOL:
+		chip->batt_cool = true;
+		chip->batt_hot = false;
+		chip->batt_cold = false;
+		chip->batt_warm = false;
+		break;
+	case POWER_SUPPLY_HEALTH_GOOD:
+	default:
+		chip->batt_hot = false;
+		chip->batt_cold = false;
+		chip->batt_warm = false;
+		chip->batt_cool = false;
+	}
+
+	return 0;
+}
+
+static int smb135x_get_prop_batt_voltage_now(struct smb135x_chg *chip, int *volt_mv)
+{
+	union power_supply_propval ret = {0, };
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	if (chip->bms_psy) {
+		chip->bms_psy->get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_VOLTAGE_NOW, &ret);
+		*volt_mv = ret.intval / 1000;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static int smb135x_enable_volatile_writes(struct smb135x_chg *chip)
 {
 	int rc;
@@ -1081,6 +1144,67 @@ static int smb135x_path_suspend(struct smb135x_chg *chip, enum path_type path,
 
 	mutex_unlock(&chip->path_suspend_lock);
 	return rc;
+}
+static int smb135x_temp_charging(struct smb135x_chg *chip, int enable)
+{
+	int rc = 0;
+
+	pr_debug("charging enable = %d\n", enable);
+
+	rc = smb135x_masked_write(chip, CMD_CHG_REG,
+			CMD_CHG_EN, enable ? CMD_CHG_EN : 0);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"Couldn't set CHG_ENABLE_BIT enable = %d rc = %d\n",
+			enable, rc);
+		return rc;
+	}
+	chip->chg_enabled = enable;
+
+	return 0;
+}
+
+static void smb135x_set_chrg_path_temp(struct smb135x_chg *chip)
+{
+	if (chip->batt_cool && !chip->ext_high_temp)
+		smb135x_float_voltage_set(chip,
+					  chip->ext_temp_volt_mv);
+	else
+		smb135x_float_voltage_set(chip, chip->vfloat_mv);
+
+	if (chip->ext_high_temp || chip->batt_cold || chip->batt_hot)
+		smb135x_temp_charging(chip, 0);
+	else
+		smb135x_temp_charging(chip, 1);
+}
+
+static int smb135x_check_temp_range(struct smb135x_chg *chip)
+{
+	int batt_volt;
+	int batt_soc;
+	int ext_high_temp = 0;
+
+	if (smb135x_get_prop_batt_voltage_now(chip, &batt_volt))
+		return 0;
+
+	batt_soc = smb135x_get_prop_batt_capacity(chip);
+
+	if (((chip->batt_cool) &&
+	     (batt_volt > chip->ext_temp_volt_mv)) ||
+	    ((chip->batt_warm) &&
+	     (batt_soc > chip->ext_temp_soc)))
+		ext_high_temp = 1;
+
+	if (chip->ext_high_temp != ext_high_temp) {
+		chip->ext_high_temp = ext_high_temp;
+
+		dev_warn(chip->dev, "Ext High = %s\n",
+			 chip->ext_high_temp ? "High" : "Low");
+
+		return 1;
+	}
+
+	return 0;
 }
 
 static int smb135x_set_high_usb_chg_current(struct smb135x_chg *chip,
@@ -1524,6 +1648,19 @@ static int smb135x_battery_set_property(struct power_supply *psy,
 		smb135x_system_temp_level_set(chip, val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		smb_stay_awake(&chip->smb_wake_source);
+		chip->bms_check = 1;
+		cancel_delayed_work(&chip->heartbeat_work);
+		schedule_delayed_work(&chip->heartbeat_work,
+			msecs_to_jiffies(0));
+		break;
+	case POWER_SUPPLY_PROP_HEALTH:
+		smb_stay_awake(&chip->smb_wake_source);
+		smb135x_set_prop_batt_health(chip, val->intval);
+		smb135x_check_temp_range(chip);
+		smb135x_set_chrg_path_temp(chip);
+		chip->temp_check = 1;
+		cancel_delayed_work(&chip->heartbeat_work);
 		schedule_delayed_work(&chip->heartbeat_work,
 			msecs_to_jiffies(0));
 		break;
@@ -1544,6 +1681,7 @@ static int smb135x_battery_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CAPACITY:
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+	case POWER_SUPPLY_PROP_HEALTH:
 		rc = 1;
 		break;
 	default:
@@ -2128,9 +2266,28 @@ static void heartbeat_work(struct work_struct *work)
 	struct smb135x_chg *chip =
 		container_of(work, struct smb135x_chg,
 				heartbeat_work.work);
+	int batt_health = smb135x_get_prop_batt_health(chip);
 
-	power_supply_changed(&chip->batt_psy);
+	dev_dbg(chip->dev, "HB Pound!\n");
 
+	if ((batt_health == POWER_SUPPLY_HEALTH_WARM) ||
+	    (batt_health == POWER_SUPPLY_HEALTH_COOL) ||
+	    (batt_health == POWER_SUPPLY_HEALTH_OVERHEAT) ||
+	    (batt_health == POWER_SUPPLY_HEALTH_COLD))
+		chip->temp_check = smb135x_check_temp_range(chip);
+
+	smb135x_set_chrg_path_temp(chip);
+
+	if (chip->temp_check || chip->bms_check) {
+		chip->temp_check = 0;
+		chip->bms_check = 0;
+		power_supply_changed(&chip->batt_psy);
+	}
+
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(60000));
+
+	smb_relax(&chip->smb_wake_source);
 }
 
 static int hot_hard_handler(struct smb135x_chg *chip, u8 rt_stat)
@@ -3438,6 +3595,14 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 	rc = of_property_read_u32(node, "qcom,iterm-ma", &chip->iterm_ma);
 	if (rc < 0)
 		chip->iterm_ma = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,ext-temp-volt-mv", &chip->ext_temp_volt_mv);
+	if (rc < 0)
+		chip->ext_temp_volt_mv = 0;
+
+	rc = of_property_read_u32(node, "qcom,ext-temp-soc", &chip->ext_temp_soc);
+	if (rc < 0)
+		chip->ext_temp_soc = 0;
 
 	chip->iterm_disabled = of_property_read_bool(node,
 						"qcom,iterm-disabled");
