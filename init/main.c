@@ -222,28 +222,6 @@ __setup("androidboot.mode=", set_chg_mode);
 #endif
 //ASUS_BSP porting charger mode ---
 
-//+++ ASUS_BSP : miniporting : Add for audio dbg mode
-int g_user_dbg_mode = 1;
-EXPORT_SYMBOL(g_user_dbg_mode);
-
-static int set_user_dbg_mode(char *str)
-{
-    if ( strcmp("y", str) == 0 )
-    {
-        g_user_dbg_mode = 1;
-    }
-    else
-    {
-        g_user_dbg_mode = 0;
-    }
-    g_user_dbg_mode = 1;
-    printk("Kernel dbg mode = %d\n", g_user_dbg_mode);
-
-    return 0;
-}
-__setup("dbg=", set_user_dbg_mode);
-//--- ASUS_BSP : miniporting : Add for audio dbg mode
-
 /*
  * If set, this is an indication to the drivers that reset the underlying
  * device before going ahead with the initialization otherwise driver might

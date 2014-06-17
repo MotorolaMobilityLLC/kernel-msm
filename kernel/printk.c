@@ -947,9 +947,6 @@ struct _asus_global asus_global =
 		.kernel_log_size = __LOG_BUF_LEN,
 //		.kernel_version = ASUS_SW_VER,
 };
-unsigned char debug_mask_setting[ASUS_MSK_GROUP] = DEFAULT_MASK;
-EXPORT_SYMBOL(debug_mask_setting);
-
 
 void printk_buffer_rebase(void)
 {

@@ -31,7 +31,6 @@ enum DEVICE_HWID
 };
 
 extern enum DEVICE_HWID g_ASUS_hwID;
-extern int g_user_dbg_mode;//wendy4_wang@asus.com
 // --- ASUS_BSP : add for miniporting
 
 #define USHRT_MAX	((u16)(~0U))

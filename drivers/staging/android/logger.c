@@ -485,11 +485,6 @@ static ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	struct timespec now;
 	ssize_t ret = 0;
 
-//adbg++
-	if (asusdebug_enable==0x11223344)
-		return 0;
-//adbg--
-
 	now = current_kernel_time();
 
 	header.pid = current->tgid;

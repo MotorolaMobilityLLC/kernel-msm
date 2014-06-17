@@ -870,10 +870,10 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 						if (jiffies - last_time_shot_power > 2*HZ){
 							last_time_shot_power = jiffies;
 							printk("MagicTouch:PALM!!! palm_flag = %x\n\n", palm_flag);
-							input_event(gl_ts->input_dev, EV_KEY, 142, 1);
+							input_event(gl_ts->input_dev, EV_KEY, KEY_SLEEP, 1);
 							input_sync(gl_ts->input_dev);
 							msleep(5);
-							input_event(gl_ts->input_dev, EV_KEY, 142, 0);
+							input_event(gl_ts->input_dev, EV_KEY, KEY_SLEEP, 0);
 							input_sync(gl_ts->input_dev);					
 							//public_sleep_keys_gpio_report_event();
 						}
@@ -943,10 +943,10 @@ static void IT7260_ts_work_resume_func(struct work_struct *work) {
 		last_time_shot_power = 0;
 		if (jiffies - last_time_shot_power > 2*HZ){
 			last_time_shot_power = jiffies;
-				input_event(gl_ts->input_dev, EV_KEY, 116, 1);
+				input_event(gl_ts->input_dev, EV_KEY, KEY_POWER, 1);
 				input_sync(gl_ts->input_dev);
 				msleep(5);
-				input_event(gl_ts->input_dev, EV_KEY, 116, 0);
+				input_event(gl_ts->input_dev, EV_KEY, KEY_POWER, 0);
 				input_sync(gl_ts->input_dev);			
 				//public_gpio_keys_gpio_report_event();
 				atomic_set(&Suspend_flag,0);
