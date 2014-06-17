@@ -4432,7 +4432,7 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
                        union iwreq_data *wrqu, char *extra)
 {
     VOS_STATUS vstatus;
-    int sub_cmd = wrqu->data.flags;
+    int sub_cmd;
     int ret = 0; /* success */
     char *pBuffer = NULL;
     hdd_adapter_t *pAdapter = (netdev_priv(dev));
@@ -4440,6 +4440,7 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
 #ifdef WLAN_FEATURE_VOWIFI
     hdd_config_t  *pConfig = pHddCtx->cfg_ini;
 #endif /* WLAN_FEATURE_VOWIFI */
+    struct iw_point s_priv_data;
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
@@ -4448,9 +4449,23 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
         return -EBUSY;
     }
 
+    /* helper function to get iwreq_data with compat handling. */
+    if (hdd_priv_get_data(&s_priv_data, wrqu))
+    {
+       return -EINVAL;
+    }
+
+    /* make sure all params are correctly passed to function */
+    if ((NULL == s_priv_data.pointer) || (0 == s_priv_data.length))
+    {
+       return -EINVAL;
+    }
+
+    sub_cmd = s_priv_data.flags;
+
     /* ODD number is used for set, copy data using copy_from_user */
-    pBuffer = mem_alloc_copy_from_user_helper(wrqu->data.pointer,
-                                              wrqu->data.length);
+    pBuffer = mem_alloc_copy_from_user_helper(s_priv_data.pointer,
+                                               s_priv_data.length);
     if (NULL == pBuffer)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -4459,7 +4474,7 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
     }
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-              "%s: Received length %d", __func__, wrqu->data.length);
+              "%s: Received length %d", __func__, s_priv_data.length);
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
               "%s: Received data %s", __func__, pBuffer);
 
@@ -4482,10 +4497,10 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
              if (pConfig->fRrmEnable)
              {
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "Neighbor Request");
-                neighborReq.no_ssid = (wrqu->data.length - 1) ? false : true ;
+                neighborReq.no_ssid = (s_priv_data.length - 1) ? false : true ;
                 if( !neighborReq.no_ssid )
                 {
-                   neighborReq.ssid.length = (wrqu->data.length - 1) > 32 ? 32 : (wrqu->data.length - 1) ;
+                   neighborReq.ssid.length = (s_priv_data.length - 1) > 32 ? 32 : (s_priv_data.length - 1) ;
                    vos_mem_copy( neighborReq.ssid.ssId, pBuffer, neighborReq.ssid.length );
                 }
 
@@ -4504,7 +4519,7 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
 #endif
        case WE_SET_AP_WPS_IE:
           hddLog( LOGE, "Received WE_SET_AP_WPS_IE" );
-          sme_updateP2pIe( WLAN_HDD_GET_HAL_CTX(pAdapter), pBuffer, wrqu->data.length );
+          sme_updateP2pIe( WLAN_HDD_GET_HAL_CTX(pAdapter), pBuffer, s_priv_data.length );
           break;
        case WE_SET_CONFIG:
           vstatus = hdd_execute_config_command(pHddCtx, pBuffer);
@@ -5132,8 +5147,9 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
                        union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    int sub_cmd = wrqu->data.flags;
+    int sub_cmd;
     int ret = 0; /* success */
+    struct iw_point s_priv_data;
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
@@ -5141,6 +5157,14 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
                                   "%s:LOGP in Progress. Ignore!!!", __func__);
         return -EBUSY;
     }
+
+    /* helper function to get iwreq_data with compat handling. */
+    if (hdd_priv_get_data(&s_priv_data, wrqu))
+    {
+      return -EINVAL;
+    }
+
+    sub_cmd = s_priv_data.flags;
 
     switch (sub_cmd)
     {
@@ -5344,15 +5368,30 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
-    int sub_cmd = wrqu->data.flags;
+    int sub_cmd;
     int apps_args[MAX_VAR_ARGS] = {0};
-    int num_args = wrqu->data.length;
+    int num_args;
     hdd_station_ctx_t *pStaCtx = NULL ;
     hdd_ap_ctx_t  *pAPCtx = NULL;
     int cmd = 0;
     int staId = 0;
+    struct iw_point s_priv_data;
 
-    hddLog(LOG1, "%s: Received length %d", __func__, wrqu->data.length);
+    /* helper function to get iwreq_data with compat handling. */
+    if (hdd_priv_get_data(&s_priv_data, wrqu))
+    {
+       return -EINVAL;
+    }
+
+    if (NULL == s_priv_data.pointer)
+    {
+       return -EINVAL;
+    }
+
+    sub_cmd = s_priv_data.flags;
+    num_args = s_priv_data.length;
+
+    hddLog(LOG1, "%s: Received length %d", __func__, s_priv_data.length);
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
@@ -5367,7 +5406,7 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
     }
 
     /* ODD number is used for set, copy data using copy_from_user */
-    if (copy_from_user(apps_args, wrqu->data.pointer, (sizeof(int)) * num_args))
+    if (copy_from_user(apps_args, s_priv_data.pointer, (sizeof(int)) * num_args))
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: failed to copy data to user buffer", __func__);

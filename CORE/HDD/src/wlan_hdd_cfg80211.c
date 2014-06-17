@@ -3358,6 +3358,11 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     }
     pConfig->fwdWPSPBCProbeReq  = 1; // Forward WPS PBC probe request frame up
 
+    pConfig->RSNEncryptType = eCSR_ENCRYPT_TYPE_NONE;
+    pConfig->mcRSNEncryptType = eCSR_ENCRYPT_TYPE_NONE;
+    (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->ucEncryptType =
+        eCSR_ENCRYPT_TYPE_NONE;
+
     pConfig->RSNWPAReqIELength = 0;
     pConfig->pRSNWPAReqIE = NULL;
     pIe = wlan_hdd_cfg80211_get_ie_ptr(pBeacon->tail, pBeacon->tail_len,
@@ -3846,7 +3851,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
 
     ret = wlan_hdd_scan_abort(pAdapter);
 
-    if (ret <= 0)
+    if (ret < 0)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    FL("Timeout occurred while waiting for abortscan %ld"), ret);
@@ -10074,7 +10079,7 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     }
 
     ret = wlan_hdd_scan_abort(pAdapter);
-    if (ret <= 0)
+    if (ret < 0)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: aborting the existing scan is unsuccessfull", __func__);
