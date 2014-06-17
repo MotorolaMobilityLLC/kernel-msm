@@ -69,6 +69,9 @@ static int esdfs_d_revalidate(struct dentry *dentry, unsigned int flags)
 	spin_unlock(&lower_dentry->d_lock);
 
 	esdfs_revalidate_perms(dentry);
+	if (ESDFS_DERIVE_PERMS(ESDFS_SB(dentry->d_sb)) &&
+	    esdfs_derived_revalidate(dentry, parent_dentry))
+		goto drop;
 
 	goto out;
 
@@ -135,7 +138,7 @@ static int esdfs_d_compare(const struct dentry *parent,
 static void esdfs_d_release(struct dentry *dentry)
 {
 	/* release and reset the lower paths */
-	esdfs_put_reset_lower_path(dentry);
+	esdfs_put_reset_lower_paths(dentry);
 	esdfs_release_lower_parent(dentry);
 	free_dentry_private_data(dentry);
 	return;
