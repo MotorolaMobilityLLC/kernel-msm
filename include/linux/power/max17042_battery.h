@@ -232,6 +232,10 @@ struct max17042_platform_data {
 	 */
 	bool batt_undervoltage_zero_soc;
 	const char *batt_psy_name;
+	int warm_temp_c;
+	int hot_temp_c;
+	int cool_temp_c;
+	int cold_temp_c;
 };
 
 #endif /* __MAX17042_BATTERY_H_ */
