@@ -586,7 +586,7 @@ static void hex_dump_ipc(char *prefix, char *string, int size)
 static void dump_uart_hs_registers(struct msm_hs_port *msm_uport)
 {
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
-		MSM_HS_WARN("%s: Failed.Clocks are OFF\n", __func__);
+		MSM_HS_DBG("%s: Failed. Clocks are OFF\n", __func__);
 		return;
 	}
 
