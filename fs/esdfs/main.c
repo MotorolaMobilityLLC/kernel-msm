@@ -290,8 +290,9 @@ static int esdfs_read_super(struct super_block *sb, const char *dev_name,
 	 * /data/media/N.  This approach of having each user in a common root
 	 * is now considered "legacy" by the sdcard service.
 	 */
-	if (test_opt(sbi, DERIVE_LEGACY))
+	if (test_opt(sbi, DERIVE_LEGACY)) {
 		ESDFS_I(inode)->tree = ESDFS_TREE_ROOT_LEGACY;
+		sbi->obb_parent = dget(sb->s_root);
 	/*
 	 * Android 4.4 reorganized this sturcture yet again, so that the
 	 * primary user's content was again at the root.  Secondary users'
@@ -299,7 +300,7 @@ static int esdfs_read_super(struct super_block *sb, const char *dev_name,
 	 * seems to use the legacy tree, but secondary external storage uses
 	 * this method.
 	 */
-	else if (test_opt(sbi, DERIVE_UNIFIED))
+	} else if (test_opt(sbi, DERIVE_UNIFIED))
 		ESDFS_I(inode)->tree = ESDFS_TREE_ROOT;
 	/*
 	 * Later versions of Android organize user content using quantum
@@ -355,11 +356,19 @@ struct dentry *esdfs_mount(struct file_system_type *fs_type, int flags,
 	return dget(s->s_root);
 }
 
+static void esdfs_kill_sb(struct super_block *sb)
+{
+	if (ESDFS_SB(sb)->obb_parent)
+		dput(ESDFS_SB(sb)->obb_parent);
+
+	generic_shutdown_super(sb);
+}
+
 static struct file_system_type esdfs_fs_type = {
 	.owner		= THIS_MODULE,
 	.name		= ESDFS_NAME,
 	.mount		= esdfs_mount,
-	.kill_sb	= generic_shutdown_super,
+	.kill_sb	= esdfs_kill_sb,
 	.fs_flags	= 0,
 };
 MODULE_ALIAS_FS(ESDFS_NAME);
