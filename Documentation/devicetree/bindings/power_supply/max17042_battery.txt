@@ -26,6 +26,17 @@ Optional properties :
    max voltage alert thresholds. This will program the Valrt threshold register
    with the given value.
 
+ - maxim,batt_psy_name : Define this property to send notifications to another
+   battery driver.
+
+ - maxim,warm-temp-c : Define this property to set Warm Temperature Level
+
+ - maxim,hot-temp-c : Define this property to set Hot Temperature Level
+
+ - maxim,cool-temp-c : Define this property to set Cool Temperature Level
+
+ - maxim,cold-temp-c : Define this property to set Cold Temperature Level
+
 Optional subnodes:
  - maxim,configuration : Contains configuraiton data for POR initialization
    of the device defined in Maxim appnote. This data is either specific to how
@@ -90,6 +101,11 @@ Example:
 		>;
 		maxim,enable_por_init;
 		maxim,batt_undervoltage_zero_soc;
+		maxim,warm-temp-c = <45>;
+		maxim,hot-temp-c = <60>;
+		maxim,cool-temp-c = <0>;
+		maxim,cold-temp-c = <(-20)>;
+
 		maxim,configuration {
 			/* Required properties */
 			config		= /bits/ 16 <0x2250>;
