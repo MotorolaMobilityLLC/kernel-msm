@@ -6405,7 +6405,7 @@ int __wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
 
                 if ( pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
                 {
-                    if (0 != wlan_hdd_tdls_init (pAdapter))
+                    if (0 != wlan_hdd_sta_tdls_init (pAdapter))
                     {
                         hddLog(VOS_TRACE_LEVEL_ERROR,
                             "%s: tdls initialization failed", __func__);
@@ -12713,6 +12713,12 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
                         __func__, MAC_ADDR_ARRAY(peer), action_code);
 
         return -ENOTSUPP;
+        }
+
+        if (vos_max_concurrent_connections_reached())
+        {
+            hddLog(VOS_TRACE_LEVEL_INFO, FL("Reached max concurrent connections"));
+            return -EINVAL;
         }
     }
 
