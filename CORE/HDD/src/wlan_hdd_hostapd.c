@@ -2627,23 +2627,20 @@ static int iw_softap_setwpsie(struct net_device *dev,
    u_int16_t length;   
    ENTER();
 
-   if(!wrqu->data.length || wrqu->data.length <= QCSAP_MAX_WSC_IE)
+   if(!wrqu->data.length || wrqu->data.length < QCSAP_MAX_WSC_IE)
       return 0;
 
-   wps_genie = kmalloc(wrqu->data.length, GFP_KERNEL);
+   wps_genie = mem_alloc_copy_from_user_helper(wrqu->data.pointer,
+                                               wrqu->data.length);
 
-   if(NULL == wps_genie) {
-       hddLog(LOG1, "unable to allocate memory");
-       return -ENOMEM;
-   }
-   fwps_genie = wps_genie;
-   if (copy_from_user((void *)wps_genie,
-       wrqu->data.pointer, wrqu->data.length))
+   if(NULL == wps_genie)
    {
-       hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
-       kfree(fwps_genie);
+       hddLog(LOG1, "%s: failed to alloc memory "
+                    "and copy data from user buffer", __func__);
        return -EFAULT;
    }
+
+   fwps_genie = wps_genie;
 
    pSap_WPSIe = vos_mem_malloc(sizeof(tSap_WPSIE));
    if (NULL == pSap_WPSIe) 
