@@ -260,7 +260,7 @@ static struct dentry *__esdfs_lookup(struct dentry *dentry,
 		esdfs_set_lower_path(dentry, &lower_path);
 		err = esdfs_interpose(dentry, dentry->d_sb, &lower_path);
 		if (err) /* path_put underlying path on error */
-			esdfs_put_reset_lower_path(dentry);
+			esdfs_put_reset_lower_paths(dentry);
 		goto out;
 	}
 
@@ -306,7 +306,7 @@ out:
 struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 			    unsigned int flags)
 {
-	struct dentry *ret, *old_parent, *parent;
+	struct dentry *ret, *real_parent, *parent;
 	struct path lower_parent_path, old_lower_parent_path;
 	int err = 0;
 	const struct cred *creds =
@@ -314,7 +314,14 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 	if (!creds)
 		return NULL;
 
-	parent = old_parent = dget_parent(dentry);
+	parent = real_parent = dget_parent(dentry);
+
+	/* allocate dentry private data.  We free it in ->d_release */
+	err = new_dentry_private_data(dentry);
+	if (err) {
+		ret = ERR_PTR(err);
+		goto out;
+	}
 
 	if (ESDFS_DERIVE_PERMS(ESDFS_SB(dir->i_sb))) {
 		err = esdfs_derived_lookup(dentry, &parent);
@@ -326,12 +333,6 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 
 	esdfs_get_lower_path(parent, &lower_parent_path);
 
-	/* allocate dentry private data.  We free it in ->d_release */
-	err = new_dentry_private_data(dentry);
-	if (err) {
-		ret = ERR_PTR(err);
-		goto out_put;
-	}
 	ret = __esdfs_lookup(dentry, flags, &lower_parent_path);
 	if (IS_ERR(ret))
 		goto out_put;
@@ -344,19 +345,22 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 	fsstack_copy_attr_atime(parent->d_inode,
 				esdfs_lower_inode(parent->d_inode));
 
-	/* More pseudo-hard-link artifacts */
-	if (parent != old_parent) {
-		esdfs_get_lower_path(old_parent, &old_lower_parent_path);
+	/*
+	 * If this is a pseudo hard link, store the real parent and ensure
+	 * that the link target directory contains any derived contents.
+	 */
+	if (parent != real_parent) {
+		esdfs_get_lower_path(real_parent, &old_lower_parent_path);
 		esdfs_set_lower_parent(dentry, old_lower_parent_path.dentry);
-		esdfs_put_lower_path(old_parent, &old_lower_parent_path);
+		esdfs_put_lower_path(real_parent, &old_lower_parent_path);
 		esdfs_derive_mkdir_contents(dentry);
 	}
 out_put:
 	esdfs_put_lower_path(parent, &lower_parent_path);
 out:
 	dput(parent);
-	if (parent != old_parent)
-		dput(old_parent);
+	if (parent != real_parent)
+		dput(real_parent);
 
 	esdfs_revert_creds(creds, NULL);
 	return ret;
