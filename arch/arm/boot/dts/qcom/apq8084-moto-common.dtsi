@@ -803,6 +803,8 @@
 		qcom,dc-psy-ma = <600>;
 		qcom,bms-psy-name = "max170xx_battery";
 		qcom,max-batt-curr-ma = <2500>;
+		qcom,ext-temp-volt-mv = <4000>;
+		qcom,ext-temp-soc = <65>;
 	};
 
 	max17050: max17050-battery@36 {
@@ -819,6 +821,10 @@
 		maxim,enable_por_init;
 		maxim,batt_undervoltage_zero_soc;
 		maxim,batt-psy-name = "battery";
+		maxim,warm-temp-c = <45>;
+		maxim,hot-temp-c = <60>;
+		maxim,cool-temp-c = <0>;
+		maxim,cold-temp-c = <(-20)>;
 
 		maxim,configuration {
 			/* Required properties */
