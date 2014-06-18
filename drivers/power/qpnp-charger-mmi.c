@@ -333,6 +333,8 @@ struct qpnp_chg_chip {
 	bool				bat_is_warm;
 	bool                            bat_therm_is_warm;
 	bool                            bat_hotspot_is_warm;
+	int                             bat_hotspot_temp;
+	int                             bat_hotspot_thrs;
 	bool				ext_hi_temp;
 	bool				out_of_temp;
 	struct mutex                    update_ext_hi_state_lock;
@@ -3196,9 +3198,6 @@ qpnp_batt_system_temp_level_set(struct qpnp_chg_chip *chip, int lvl_sel)
 	}
 }
 
-static int batt_hotspot_threshold = 50000;
-module_param(batt_hotspot_threshold, int, 0644);
-
 static bool
 qpnp_update_ext_hi_state(struct qpnp_chg_chip *chip)
 {
@@ -3273,40 +3272,42 @@ qpnp_update_ext_hi_state(struct qpnp_chg_chip *chip)
 	return resuming;
 }
 
-static int batt_hotspot_temperature;
-static int batt_hotspot_set(const char *val, const struct kernel_param *kp)
+#define CHG_SHOW_MAX_SIZE 50
+static ssize_t hotspot_temp_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
 {
-	int rc;
+	struct qpnp_chg_chip *chip = dev_get_drvdata(dev);
+	int err;
+	long hsp;
 	bool is_hotspot = false;
 	int temp;
-	struct power_supply *batt_psy = power_supply_get_by_name("battery");
-	struct qpnp_chg_chip *chip = container_of(batt_psy,
-					struct qpnp_chg_chip, batt_psy);
+
+	err = kstrtol(buf, 0, &hsp);
+	if (err) {
+		pr_err("Invalid hotspot temp value = %d\n", (int)hsp);
+		return err;
+	}
 
 	if (chip->use_default_batt_values || !get_prop_batt_present(chip)) {
 		pr_err("hotspot disabled\n");
 		return -ENODEV;
 	}
 
-	rc = param_set_int(val, kp);
-	if (rc) {
-		batt_hotspot_temperature = 0;
-		pr_err("Unable to set batt_hotspot_temperature: %d\n", rc);
-		return rc;
-	}
+	chip->bat_hotspot_temp = hsp;
 
 	temp = get_prop_batt_temp(chip);
 	temp *= 100;
 
 	if ((temp > chip->cool_bat_decidegc) &&
-	    (batt_hotspot_temperature > temp) &&
-	    (batt_hotspot_temperature >= batt_hotspot_threshold)) {
+	    (chip->bat_hotspot_temp > temp) &&
+	    (chip->bat_hotspot_temp >= chip->bat_hotspot_thrs)) {
 		pr_debug("hotspot detected:%d, threshold=%d\n",
-			 batt_hotspot_temperature, batt_hotspot_threshold);
+			 chip->bat_hotspot_temp, chip->bat_hotspot_thrs);
 		is_hotspot = true;
 	} else {
 		pr_debug("hotspot cleared:%d, threshold=%d\n",
-		       batt_hotspot_temperature, batt_hotspot_threshold);
+		       chip->bat_hotspot_temp, chip->bat_hotspot_thrs);
 		is_hotspot = false;
 	}
 
@@ -3316,15 +3317,21 @@ static int batt_hotspot_set(const char *val, const struct kernel_param *kp)
 		qpnp_update_ext_hi_state(chip);
 	}
 
-	return 0;
+	return count;
 }
 
-static struct kernel_param_ops batt_hotspot_ops = {
-	.set = batt_hotspot_set,
-	.get = param_get_int,
-};
-module_param_cb(batt_hotspot_temperature, &batt_hotspot_ops,
-		&batt_hotspot_temperature, 0644);
+static ssize_t hotspot_temp_show(struct device *dev,
+				      struct device_attribute *attr,
+				      char *buf)
+{
+	struct qpnp_chg_chip *chip = dev_get_drvdata(dev);
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n",
+			 chip->bat_hotspot_temp);
+}
+
+static DEVICE_ATTR(hotspot_temp, 0664,
+		   hotspot_temp_show,
+		   hotspot_temp_store);
 
 /* OTG regulator operations */
 static int
@@ -5417,7 +5424,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 
 	of_property_read_u32(chip->spmi->dev.of_node,
 			     "qcom,hotspot-thresh",
-			     &batt_hotspot_threshold);
+			     &(chip->bat_hotspot_thrs));
 
 	of_get_property(chip->spmi->dev.of_node, "qcom,thermal-mitigation",
 		&(chip->thermal_levels));
@@ -5515,6 +5522,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	chip->chrg_ocv_bv_mv = 0;
 	chip->maint_chrg = false;
 	chip->float_timer_start = false;
+	chip->bat_hotspot_thrs = 50000;
 	qpnp_charger_mmi_battid();
 	chip->usb_psy = power_supply_get_by_name("usb");
 	if (!chip->usb_psy) {
@@ -5795,6 +5803,13 @@ qpnp_charger_probe(struct spmi_device *spmi)
 		}
 	}
 
+	rc = device_create_file(&spmi->dev,
+				&dev_attr_hotspot_temp);
+	if (rc) {
+		pr_err("couldn't create hotspot_temp\n");
+		goto unregister_dc_psy;
+	}
+
 	/* Turn on appropriate workaround flags */
 	rc = qpnp_chg_setup_flags(chip);
 	if (rc < 0) {
@@ -5903,6 +5918,7 @@ qpnp_charger_remove(struct spmi_device *spmi)
 	}
 
 	cancel_delayed_work_sync(&chip->aicl_check_work);
+	device_remove_file(&spmi->dev, &dev_attr_hotspot_temp);
 	power_supply_unregister(&chip->dc_psy);
 	cancel_work_sync(&chip->soc_check_work);
 	cancel_delayed_work_sync(&chip->usbin_health_check);
