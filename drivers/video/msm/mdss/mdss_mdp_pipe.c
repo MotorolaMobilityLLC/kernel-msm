@@ -19,6 +19,7 @@
 #include <linux/mutex.h>
 
 #include "mdss_mdp.h"
+#include "mdss_dsi.h"
 
 #define SMP_MB_SIZE		(mdss_res->smp_mb_size)
 #define SMP_MB_CNT		(mdss_res->smp_mb_cnt)
@@ -989,6 +990,9 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	int ret = 0;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	struct mdss_mdp_img_rect sci, dst, src;
+#ifdef CONFIG_FB_MSM_MDSS_FLIP_UD
+	int panel_height;
+#endif
 
 	pr_debug("pnum=%d wh=%dx%d src={%d,%d,%d,%d} dst={%d,%d,%d,%d}\n",
 			pipe->num, pipe->img_width, pipe->img_height,
@@ -1020,6 +1024,11 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	if (decimation)
 		pr_debug("Image decimation h=%d v=%d\n",
 				pipe->horz_deci, pipe->vert_deci);
+
+#ifdef CONFIG_FB_MSM_MDSS_FLIP_UD
+	panel_height = mdss_dsi_panel_get_height();
+	pipe->dst.y = (panel_height) - (pipe->dst.y + pipe->dst.h);
+#endif
 
 	sci = pipe->mixer_left->ctl->roi;
 	dst = pipe->dst;
@@ -1111,6 +1120,10 @@ static int mdss_mdp_format_setup(struct mdss_mdp_pipe *pipe)
 		opmode |= MDSS_MDP_OP_FLIP_LR;
 	if (pipe->flags & MDP_FLIP_UD)
 		opmode |= MDSS_MDP_OP_FLIP_UD;
+
+#ifdef CONFIG_FB_MSM_MDSS_FLIP_UD
+	opmode ^= MDSS_MDP_OP_FLIP_UD;
+#endif
 
 	pr_debug("pnum=%d format=%d opmode=%x\n", pipe->num, fmt->format,
 			opmode);

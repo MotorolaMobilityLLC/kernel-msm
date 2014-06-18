@@ -26,6 +26,8 @@
 
 #define DT_CMD_HDR 6
 
+static int mdss_panel_height = 480;
+
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -851,6 +853,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		return -EINVAL;
 	}
 	pinfo->yres = (!rc ? tmp : 480);
+	mdss_panel_height = pinfo->yres;
 
 	rc = of_property_read_u32(np,
 		"qcom,mdss-pan-physical-width-dimension", &tmp);
@@ -1175,4 +1178,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 
 	return 0;
+}
+
+int mdss_dsi_panel_get_height(void)
+{
+	return mdss_panel_height;
 }

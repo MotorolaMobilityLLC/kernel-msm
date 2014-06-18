@@ -375,6 +375,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 		bool cmd_cfg_cont_splash);
 void mdss_dsi_panel_idle_mode(struct mdss_dsi_ctrl_pdata *ctrl, int enable);
 void mdss_dsi_panel_low_fps_mode(struct mdss_dsi_ctrl_pdata *ctrl, int enable);
+int mdss_dsi_panel_get_height(void);
 
 static inline bool mdss_dsi_broadcast_mode_enabled(void)
 {
