@@ -1187,8 +1187,9 @@ void adreno_ringbuffer_set_constraint(struct kgsl_device *device,
 		constraint = adreno_ringbuffer_get_constraint(device, context);
 
 		/*
-		 * If a constraint is already set, set a new
-		 * constraint only if it is faster
+		 * If a constraint is already set, set a new constraint only
+		 * if it is faster.  If the requested constraint is the same
+		 * as the current one, update ownership and timestamp.
 		 */
 		if ((device->pwrctrl.constraint.type ==
 			KGSL_CONSTRAINT_NONE) || (constraint <
@@ -1199,14 +1200,21 @@ void adreno_ringbuffer_set_constraint(struct kgsl_device *device,
 					context->pwr_constraint.type;
 			device->pwrctrl.constraint.hint.
 					pwrlevel.level = constraint;
+			device->pwrctrl.constraint.owner_id = context->id;
+			device->pwrctrl.constraint.expires = jiffies +
+					device->pwrctrl.interval_timeout;
 			/* Trace the constraint being set by the driver */
 			trace_kgsl_constraint(device,
 					device->pwrctrl.constraint.type,
 					constraint, 1);
+		} else if ((device->pwrctrl.constraint.type ==
+				context->pwr_constraint.type) &&
+			(device->pwrctrl.constraint.hint.pwrlevel.level ==
+				constraint)) {
+			device->pwrctrl.constraint.owner_id = context->id;
+			device->pwrctrl.constraint.expires = jiffies +
+					device->pwrctrl.interval_timeout;
 		}
-
-		device->pwrctrl.constraint.expires = jiffies +
-			device->pwrctrl.interval_timeout;
 	}
 
 }
