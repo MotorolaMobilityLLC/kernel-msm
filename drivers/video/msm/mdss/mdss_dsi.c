@@ -448,8 +448,13 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	if (pdata->panel_info.mipi.lp11_init) {
 		if (ctrl_pdata->partial_mode_enabled &&
 				!mdss_dsi_is_panel_dead(pdata)) {
-			if (gpio_is_valid(ctrl_pdata->mipi_d0_sel))
+			if (gpio_is_valid(ctrl_pdata->mipi_d0_sel)) {
 				gpio_set_value(ctrl_pdata->mipi_d0_sel, 1);
+				udelay(10);
+			}
+
+			mdss_dsi_ulps_config(ctrl_pdata, 1, 1);
+			mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 		} else {
 			mdss_dsi_panel_reset(pdata, 0);
 			ret = mdss_dsi_panel_power_panel_on(pdata, 0);
@@ -461,18 +466,21 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 		}
 	}
 
-	/* disable DSI controller */
-	mdss_dsi_controller_cfg(0, pdata);
+	if (!ctrl_pdata->partial_mode_enabled ||
+					mdss_dsi_is_panel_dead(pdata)) {
+		/* disable DSI controller */
+		mdss_dsi_controller_cfg(0, pdata);
 
-	/* disable DSI phy */
-	mdss_dsi_phy_disable(ctrl_pdata);
+		/* disable DSI phy */
+		mdss_dsi_phy_disable(ctrl_pdata);
 
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
-	ret = mdss_dsi_panel_power_on(pdata, 0);
-	if (ret) {
-		pr_err("%s: DSI Block power off failed\n", __func__);
-		return ret;
+		ret = mdss_dsi_panel_power_on(pdata, 0);
+		if (ret) {
+			pr_err("%s: DSI Block power off failed\n", __func__);
+			return ret;
+		}
 	}
 
 	if (panel_info->dynamic_fps
@@ -570,7 +578,8 @@ static void __mdss_dsi_ctrl_setup(struct mdss_panel_data *pdata)
 	}
 }
 
-int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable)
+int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable,
+								int partial)
 {
 	int ret = 0;
 	struct mdss_panel_data *pdata = NULL;
@@ -597,7 +606,7 @@ int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable)
 	pinfo = &pdata->panel_info;
 	mipi = &pinfo->mipi;
 
-	if (!mdss_dsi_ulps_feature_enabled(pdata)) {
+	if (!partial && !mdss_dsi_ulps_feature_enabled(pdata)) {
 		pr_debug("%s: ULPS feature not supported. enable=%d\n",
 			__func__, enable);
 		return -ENOTSUPP;
@@ -734,8 +743,8 @@ int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable)
 		ctrl_pdata->ulps = false;
 	}
 
-	pr_debug("%s: DSI lane status = 0x%08x. Ulps %s\n", __func__,
-		lane_status, enable ? "enabled" : "disabled");
+	pr_debug("%s(ndx%d): DSI lane status = 0x%08x. Ulps %s\n", __func__,
+		ctrl_pdata->ndx, lane_status, enable ? "enabled" : "disabled");
 
 error:
 	return ret;
@@ -768,35 +777,42 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	mipi = &pdata->panel_info.mipi;
 
-	ret = mdss_dsi_panel_power_on(pdata, 1);
-	if (ret) {
-		pr_err("%s:DSI power on failed. rc=%d\n", __func__, ret);
-		return ret;
-	}
-
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
-	if (ret) {
-		pr_err("%s: failed to enable bus clocks. rc=%d\n", __func__,
-			ret);
-		ret = mdss_dsi_panel_power_on(pdata, 0);
+	if (ctrl_pdata->partial_mode_enabled &&
+				!mdss_dsi_is_panel_dead(pdata)) {
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+		mdss_dsi_ulps_config(ctrl_pdata, 0, 1);
+	} else {
+		ret = mdss_dsi_panel_power_on(pdata, 1);
 		if (ret) {
-			pr_err("%s: Panel reset failed. rc=%d\n",
-					__func__, ret);
+			pr_err("%s:DSI power on failed. rc=%d\n",
+							__func__, ret);
 			return ret;
 		}
-		pdata->panel_info.panel_power_on = 0;
-		return ret;
+
+		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
+		if (ret) {
+			pr_err("%s: failed to enable bus clocks. rc=%d\n",
+							__func__, ret);
+			ret = mdss_dsi_panel_power_on(pdata, 0);
+			if (ret) {
+				pr_err("%s: Panel reset failed. rc=%d\n",
+							__func__, ret);
+				return ret;
+			}
+			pdata->panel_info.panel_power_on = 0;
+			return ret;
+		}
+
+		mdss_dsi_phy_sw_reset((ctrl_pdata->ctrl_base));
+		mdss_dsi_phy_init(pdata);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
+
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+
+		__mdss_dsi_ctrl_setup(pdata);
+		mdss_dsi_sw_reset(pdata);
+		mdss_dsi_host_init(pdata);
 	}
-
-	mdss_dsi_phy_sw_reset((ctrl_pdata->ctrl_base));
-	mdss_dsi_phy_init(pdata);
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
-
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-
-	__mdss_dsi_ctrl_setup(pdata);
-	mdss_dsi_sw_reset(pdata);
-	mdss_dsi_host_init(pdata);
 
 	/*
 	 * Issue hardware reset line after enabling the DSI clocks and data
