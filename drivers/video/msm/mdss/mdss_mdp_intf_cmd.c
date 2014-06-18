@@ -761,6 +761,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP, ctx->pp_num,
 				   NULL, NULL);
 
+	stored_ctx = NULL;
 	memset(ctx, 0, sizeof(*ctx));
 	ctl->priv_data = NULL;
 
@@ -864,6 +865,8 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->off_pan_on = mdss_mdp_cmd_off_pan_on;
 	ctl->disable_ulps = mdss_mdp_cmd_disable_ulps;
 	pr_debug("%s:-\n", __func__);
+
+	stored_ctx = ctx;
 
 	return 0;
 }
