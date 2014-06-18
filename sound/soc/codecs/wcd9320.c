@@ -1092,12 +1092,12 @@ static int taiko_set_micbias3(struct snd_kcontrol *kcontrol,
 
 		rc = snd_soc_dapm_disable_pin(&codec->dapm,
 					DAPM_MICBIAS3_EXTERNAL_STANDALONE);
-		if (!rc)
-			snd_soc_dapm_sync(&codec->dapm);
 	}
-	pr_debug("%s: leave ret %d\n", __func__, rc);
+	if (!rc)
+		snd_soc_dapm_sync(&codec->dapm);
 
 out:
+	pr_debug("%s: leave ret %d\n", __func__, rc);
 	return rc;
 }
 
