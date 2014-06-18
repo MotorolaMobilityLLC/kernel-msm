@@ -638,7 +638,6 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 #if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
 	if (mfd->index == 0) {
 		if ((pdata) && (pdata->send_alpm)) {
-			mfd->mdp.disable_ulps(mfd);
 			pdata->send_alpm(pdata, true);
 		}
 		return mfd->mdp.off_pan_on_fnc(mfd);
@@ -683,7 +682,6 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 #if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
 	if (mfd->index == 0)
 		if ((pdata) && (pdata->send_alpm)) {
-			mfd->mdp.disable_ulps(mfd);
 			pdata->send_alpm(pdata, false);
 		}
 		return 0;
@@ -864,7 +862,6 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 			mfd->bl_level = bkl_lvl;
 			return;
 		}
-		mfd->mdp.disable_ulps(mfd);
 		pdata->set_backlight(pdata, temp);
 		mfd->bl_level = bkl_lvl;
 		mfd->bl_level_old = temp;

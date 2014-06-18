@@ -130,10 +130,12 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
+	mdss_mdp_cmd_clk_enable();
 	mdss_dsi_cmd_dma_trigger_sel(ctrl, 1);
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 	mdss_dsi_cmd_dma_trigger_sel(ctrl, 0);
 	stored_cd_level = cd_level;
+	mdss_mdp_cmd_clk_disable();
 }
 
 void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
@@ -283,7 +285,11 @@ static int mipi_samsung_disp_send_cmd(
 	}
 #endif
 
+	if (cmd != PANEL_DISPLAY_ON_SEQ && cmd != PANEL_DISP_OFF)
+		mdss_mdp_cmd_clk_enable();
 	mdss_dsi_cmds_send(msd.ctrl_pdata, cmd_desc, cmd_size, flag);
+	if (cmd != PANEL_DISPLAY_ON_SEQ && cmd != PANEL_DISP_OFF)
+		mdss_mdp_cmd_clk_disable();
 
 	if (lock)
 		mutex_unlock(&msd.lock);
@@ -435,7 +441,9 @@ u32 mdss_dsi_cmd_receive(struct mdss_dsi_ctrl_pdata *ctrl,
 	* This mutex is to sync up with dynamic FPS changes
 	* so that DSI lockups shall not happen
 	*/
+	mdss_mdp_cmd_clk_enable();
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	mdss_mdp_cmd_clk_disable();
 
 	/*
 	* blocked here, untill call back called
