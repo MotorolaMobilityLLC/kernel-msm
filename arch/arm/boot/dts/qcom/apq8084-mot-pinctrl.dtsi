@@ -489,11 +489,11 @@
 			label = "cam_mclk0";
 			cam_mclk0_default: default {
 				bias-pull-down;
-				drive-strength = <2>;
+				drive-strength = <6>;
 			};
 			cam_mclk0_active: active {
 				bias-disable;
-				drive-strength = <2>;
+				drive-strength = <6>;
 			};
 		};
 
@@ -506,11 +506,11 @@
 			label = "cam_mclk2";
 			cam_mclk2_default: default {
 				bias-pull-down;
-				drive-strength = <2>;
+				drive-strength = <6>;
 			};
 			cam_mclk2_active: active {
 				bias-disable;
-				drive-strength = <2>;
+				drive-strength = <6>;
 			};
 		};
 
