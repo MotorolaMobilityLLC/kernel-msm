@@ -22,6 +22,14 @@
 /* BSP++ */
 #include <linux/syslog.h>
 
+#define ASUS_LAST_KMSG	1	//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+#ifdef ASUS_LAST_KMSG
+char* LAST_KMSG_BUFFER;
+static int last_kmsg_length = 0;
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
+
 /* Must be the same with the config of qcom,asusdebug in *.dtsi */
 unsigned int PRINTK_BUFFER = 0x11F00000;
 
@@ -730,6 +738,61 @@ EXPORT_SYMBOL(delta_all_thread_info);
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 extern void printk_buffer_rebase(void);
 
+//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+#ifdef ASUS_LAST_KMSG
+
+static unsigned int g_cat_amount_left;
+static unsigned int g_cat_read_pos;
+
+static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
+             size_t length, loff_t *offset)
+{	
+    /* Number of bytes actually written to the buffer */
+   	int bytes_read = 0;
+	char* msg_Ptr = LAST_KMSG_BUFFER + g_cat_read_pos;
+
+   	/* If we're at the end of the message, return 0 signifying end of file */
+   	if (g_cat_amount_left == 0){
+		g_cat_read_pos = 0;
+		g_cat_amount_left = last_kmsg_length;
+		return 0;
+   	}
+
+   	/* Actually put the data into the buffer */
+   	while (length && g_cat_amount_left)  {
+
+        /* The buffer is in the user data segment, not the kernel segment;
+         * assignment won't work.  We have to use put_user which copies data from
+         * the kernel data segment to the user data segment. */
+         put_user(*(msg_Ptr++), buf++);
+
+         length--;
+		 g_cat_amount_left--;
+         bytes_read++;
+   	}
+
+	g_cat_read_pos += bytes_read;
+
+	printk("[adbg] Cat amount left %d, cat read pos %d\n", g_cat_amount_left, g_cat_read_pos);
+
+   	/* Most read functions return the number of bytes put into the buffer */
+   	return bytes_read;
+}
+
+static void last_kmsg_buffer_rebase(void){
+	//Allocate last_kmsg buffer
+	LAST_KMSG_BUFFER = kmalloc(PRINTK_PARSE_SIZE, GFP_KERNEL);
+
+	//Copy content to last_kmsg buffer
+	last_kmsg_length = parse_last_shutdown_log(LAST_KMSG_BUFFER, PRINTK_PARSE_SIZE);
+
+	g_cat_amount_left = last_kmsg_length;
+	g_cat_read_pos = 0;
+
+	printk("[adbg] last_kmsg_buffer_rebase: size %d\n", last_kmsg_length);
+}
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
 static int asusdebug_open(struct inode * inode, struct file * file)
 {
@@ -804,8 +867,8 @@ EXPORT_SYMBOL(save_phone_hang_log);
  * parse_last_shutdown_log will convert struct log to readable text
  * @char* buf: a memory space used to store readable text
  */
-int parse_last_shutdown_log(char* buf){
-		return do_syslog(SYSLOG_ACTION_READ_KERNEL, buf, PRINTK_BUFFER_SLOT_SIZE, SYSLOG_FROM_PROC);
+int parse_last_shutdown_log(char* buf, int len){
+		return do_syslog(SYSLOG_ACTION_READ_KERNEL, buf, len, SYSLOG_FROM_PROC);
 }
 /* ASUS_BSP ---- Josh_Hsu: Add for support parse asdf log */
 
@@ -849,13 +912,14 @@ void save_last_shutdown_log(char* filename)
 
 	// ASUS_BSP ++++ Josh_Hsu: Add for support parse asdf log
 	// Save parsed log, using parser parse_last_shutdown_log
-	last_shutdown_log = kmalloc(PRINTK_BUFFER_SLOT_SIZE, GFP_KERNEL);
-	parse_length = parse_last_shutdown_log(last_shutdown_log);
+	last_shutdown_log = kmalloc(PRINTK_PARSE_SIZE, GFP_KERNEL);
+	parse_length = parse_last_shutdown_log(last_shutdown_log, PRINTK_PARSE_SIZE);
 	// ASUS_BSP ---- Josh_Hsu
 
     if(!IS_ERR((const void *)file_handle))
     {
-        sys_write(file_handle, (unsigned char*)last_shutdown_log, parse_length);
+        //sys_write(file_handle, (unsigned char*)last_shutdown_log, parse_length);
+        sys_write(file_handle, (unsigned char*)last_shutdown_log, PRINTK_PARSE_SIZE);
         sys_close(file_handle);
     } else {
         printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle);
@@ -952,6 +1016,12 @@ void get_last_shutdown_log(void)
     printk("[adbg] get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n",
         (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 
+//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+#ifdef ASUS_LAST_KMSG
+	last_kmsg_buffer_rebase();
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
+
     if( *last_shutdown_log_addr == (unsigned int)PRINTK_BUFFER_MAGIC)
     {
         save_last_shutdown_log("LastShutdown");
@@ -972,13 +1042,17 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 {
 	unsigned int *last_shutdown_log_addr;
 
-
 	if (count > 256)
 		count = 256;
 	if (copy_from_user(messages, buf, count))
 		return -EFAULT;
 
-	if(strncmp(messages, "slowlog", 7) == 0)
+    if(strncmp(messages, "load", 4) == 0)
+    {
+        first = 1;
+        return count;
+    }
+    else if(strncmp(messages, "slowlog", 7) == 0)
 	{
 		printk("[adbg] start to gi chk, line:%d\n", __LINE__);
 		save_all_thread_info();
@@ -992,7 +1066,6 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 	}
 	else if(strncmp(messages, "panic", 5) == 0)
 	{
-//        printk_lcd("panic");
 		panic("panic test");
 	}
 	else if(strncmp(messages, "get_asdf_log", strlen("get_asdf_log")) == 0)
@@ -1012,7 +1085,6 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 
 				(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
 			}
-
 	}
 #ifndef ASUS_SHIP_BUILD
 	else if(strncmp(messages, "watchdog_test", 13) == 0)
@@ -1261,12 +1333,24 @@ static const struct file_operations proc_asusdebug_operations = {
     .release    = asusdebug_release,
 };
 
+//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+#ifdef ASUS_LAST_KMSG
+static const struct file_operations proc_asuslastkmsg_operations = {
+    .read       = asuslastkmsg_read,
+};
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
 static int __init proc_asusdebug_init(void)
 {
     proc_create("asusdebug", S_IALLUGO, NULL, &proc_asusdebug_operations);
     proc_create("asusevtlog", S_IRWXUGO, NULL, &proc_asusevtlog_operations);
     proc_create("asusevtlog-switch", S_IRWXUGO, NULL, &proc_evtlogswitch_operations);
+//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+#ifdef ASUS_LAST_KMSG
+	proc_create("last_kmsg", S_IALLUGO, NULL, &proc_asuslastkmsg_operations);
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
     PRINTK_BUFFER = (unsigned int)ioremap(PRINTK_BUFFER, PRINTK_BUFFER_SIZE);
     mutex_init(&mA);
     fake_mutex.owner = current;

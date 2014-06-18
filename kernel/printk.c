@@ -311,95 +311,73 @@ static char *log_dict(const struct log *msg)
 }
 
 /* get record by index; idx must point to valid msg */
+static struct log *asus_log_from_idx(u32 idx, bool logbuf, int mode)
+{
+	struct log *msg;
+	char *buf;
+
+	if(mode == 0){
+#if defined(CONFIG_OOPS_LOG_BUFFER)
+		buf = logbuf ? log_buf : log_oops_buf;
+#else
+		buf = log_buf;
+		BUG_ON(!logbuf);
+#endif
+	}else{
+		buf = g_printk_log_buf;
+	}
+
+	msg = (struct log *)(buf + idx);
+
+	/*
+	 * A length == 0 record is the end of buffer marker. Wrap around and
+	 * read the message at the start of the buffer.
+	 */
+	if (!msg->len)
+		return (struct log *)buf;
+	return msg;
+}
+
 static struct log *log_from_idx(u32 idx, bool logbuf)
 {
-	struct log *msg;
-	char *buf;
-
-#if defined(CONFIG_OOPS_LOG_BUFFER)
-	buf = logbuf ? log_buf : log_oops_buf;
-#else
-	buf = log_buf;
-	BUG_ON(!logbuf);
-#endif
-	msg = (struct log *)(buf + idx);
-
-	/*
-	 * A length == 0 record is the end of buffer marker. Wrap around and
-	 * read the message at the start of the buffer.
-	 */
-	if (!msg->len)
-		return (struct log *)buf;
-	return msg;
+	return asus_log_from_idx(idx, logbuf, 0);
 }
 
-/* get record by index; idx must point to valid msg */
-static struct log *asus_log_from_idx(u32 idx, bool logbuf)
+/* get next record; idx must point to valid msg */
+static u32 asus_log_next(u32 idx, bool logbuf, int mode)
 {
 	struct log *msg;
 	char *buf;
 
-	buf = g_printk_log_buf;
+	if(mode == 0){
+#if defined(CONFIG_OOPS_LOG_BUFFER)
+		buf = logbuf ? log_buf : log_oops_buf;
+#else
+		buf = log_buf;
+		BUG_ON(!logbuf);
+#endif
+	}else{
+		buf = g_printk_log_buf;
+	}
 
 	msg = (struct log *)(buf + idx);
 
+	/* length == 0 indicates the end of the buffer; wrap */
 	/*
 	 * A length == 0 record is the end of buffer marker. Wrap around and
-	 * read the message at the start of the buffer.
+	 * read the message at the start of the buffer as *this* one, and
+	 * return the one after that.
 	 */
-	if (!msg->len)
-		return (struct log *)buf;
-	return msg;
+	if (!msg->len) {
+		msg = (struct log *)buf;
+		return msg->len;
+	}
+	return idx + msg->len;
 }
 
-/* get next record; idx must point to valid msg */
 static u32 log_next(u32 idx, bool logbuf)
 {
-	struct log *msg;
-	char *buf;
-
-#if defined(CONFIG_OOPS_LOG_BUFFER)
-	buf = logbuf ? log_buf : log_oops_buf;
-#else
-	buf = log_buf;
-	BUG_ON(!logbuf);
-#endif
-	msg = (struct log *)(buf + idx);
-
-	/* length == 0 indicates the end of the buffer; wrap */
-	/*
-	 * A length == 0 record is the end of buffer marker. Wrap around and
-	 * read the message at the start of the buffer as *this* one, and
-	 * return the one after that.
-	 */
-	if (!msg->len) {
-		msg = (struct log *)buf;
-		return msg->len;
-	}
-	return idx + msg->len;
-}
-
-/* get next record; idx must point to valid msg */
-static u32 asus_log_next(u32 idx, bool logbuf)
-{
-	struct log *msg;
-	char *buf;
-
-	buf = g_printk_log_buf;
-
-	msg = (struct log *)(buf + idx);
-
-	/* length == 0 indicates the end of the buffer; wrap */
-	/*
-	 * A length == 0 record is the end of buffer marker. Wrap around and
-	 * read the message at the start of the buffer as *this* one, and
-	 * return the one after that.
-	 */
-	if (!msg->len) {
-		msg = (struct log *)buf;
-		return msg->len;
-	}
-	return idx + msg->len;
+	return asus_log_next(idx, logbuf, 0);
 }
 
 #if defined(CONFIG_OOPS_LOG_BUFFER)
@@ -1420,20 +1398,17 @@ int syslog_print(char __user *buf, int size)
 	return len;
 }
 
-/* 
- * ASUS_BSP ++++ Josh_Hsu: Add for parsing asdf log 
- *
+/* ASUS_BSP +++ Josh_Hsu: Add for parsing */
+/**
  * This function will fill kernel log in buf
  * If is_rebased is not set, this indicates that 
  * devices is panic reset. Thus, we need rebase 
  * temporarily to fetch previous log in PRINTK_BUFFER 
- * 
- * Input:
- * @char* buf	: buffer that need to be fill
- * @int size	: size of buffer 
- * Output:
- * return 		: the size (in byte) of log filled
- */
+ *
+ * @param buf buffer in kernel space that need to be fill
+ * @param size size of buffer 
+ * @return the size (in byte) of log filled
+ */ 
 static int asus_syslog_print(char *buf, int size)
 {
 	char *text;
@@ -1462,12 +1437,12 @@ static int asus_syslog_print(char *buf, int size)
 		raw_spin_lock_irq(&logbuf_lock);
 
 		skip = syslog_partial;
-		msg = asus_log_from_idx(head_idx, true);
+		msg = asus_log_from_idx(head_idx, true, 1);
 		n = msg_print_text(msg, syslog_prev, true, text,
 				   LOG_LINE_MAX + PREFIX_MAX);
 		if (n - head_partial <= size) {
 			/* message fits into buffer, move forward */
-			head_idx = asus_log_next(head_idx, true);
+			head_idx = asus_log_next(head_idx, true, 1);
 			head_seq++;
 			head_prev = msg->flags;
 			n -= head_partial;

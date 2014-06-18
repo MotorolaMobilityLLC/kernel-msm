@@ -11,7 +11,10 @@
 
 extern unsigned int PRINTK_BUFFER;
 extern unsigned int RTB_BUFFER;
+extern char* LAST_KMSG_BUFFER;	//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #define PRINTK_BUFFER_SIZE      (0x00200000)
+
+#define PRINTK_PARSE_SIZE       (0x00080000)
 
 #define PRINTK_BUFFER_MAGIC     (0xFEEDBEEF)
 #define PRINTK_BUFFER_SLOT_SIZE (0x00040000)
@@ -190,4 +193,6 @@ void printk_lcd_xy(int xx, int yy, unsigned int color, const char *fmt, ...);
 void ASUSEvtlog(const char *fmt, ...);
 //20101202_Bruno: added to get debug mask value
 bool isASUS_MSK_set(const char *fmt);
+
+int parse_last_shutdown_log(char* buf, int len); //ASUS_BSP +++ Josh_Hsu "Add for parse kmsg"
 #endif
