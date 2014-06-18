@@ -101,9 +101,9 @@ static struct gpiomux_setting gpio_i2c_func5_cfg = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting lcd_en_act_cfg = {
+static struct gpiomux_setting wm_reset_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
+	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
 	.dir = GPIOMUX_OUT_HIGH,
 };
@@ -389,11 +389,11 @@ static struct msm_gpiomux_config msm_rumi_blsp_configs[] __initdata = {
 	},
 };
 
-static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
+static struct msm_gpiomux_config wm_reset_configs[] __initdata = {
 	{
 		.gpio = 23,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &lcd_en_act_cfg,
+			[GPIOMUX_SUSPENDED] = &wm_reset_act_cfg,
 		},
 	},
 };
@@ -605,13 +605,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
-		},
-	},
-	{
-		.gpio = 23, /* FLASH_LED_EN */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[0],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
 		},
 	},
 	{
@@ -1187,8 +1180,8 @@ void __init msm_8974_moto_init_gpiomux(void)
 	msm_gpiomux_install(msm8974_quat_auxpcm_configs,
 		ARRAY_SIZE(msm8974_quat_auxpcm_configs));
 
-	msm_gpiomux_install(msm_lcd_configs,
-			ARRAY_SIZE(msm_lcd_configs));
+	msm_gpiomux_install(wm_reset_configs,
+			ARRAY_SIZE(wm_reset_configs));
 
 	if (of_board_is_rumi())
 		msm_gpiomux_install(msm_rumi_blsp_configs,
