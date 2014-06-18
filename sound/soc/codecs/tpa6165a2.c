@@ -86,6 +86,7 @@ struct tpa6165_data {
 	int mono_hs_detect_state;
 	int force_hstype;
 	int jack_detect_config;
+	int jack_detect_config_tty;
 	atomic_t is_suspending;
 	struct notifier_block pm_notifier;
 	struct mutex lock;
@@ -1225,7 +1226,7 @@ static int tpa6165_set_mode(struct snd_kcontrol *kcontrol,
 	if (value)
 		/* enable tty mode */
 		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
-				TPA6165_JACK_SHORT_Z|TPA6165_JACK_HP_LO_TH,
+				tpa6165->jack_detect_config_tty,
 				0xff);
 	else
 		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
@@ -1432,7 +1433,9 @@ tpa6165_of_init(struct i2c_client *client)
 	pdata->jack_detect_config = TPA6165_JACK_SHORT_Z;
 	of_property_read_u32(np, "ti,tpa6165-jack-detect-config",
 				&pdata->jack_detect_config);
-
+	pdata->jack_detect_config_tty = pdata->jack_detect_config;
+	of_property_read_u32(np, "ti,tpa6165-jack-detect-config-tty",
+				&pdata->jack_detect_config_tty);
 	return pdata;
 }
 #else
@@ -1495,6 +1498,8 @@ static int tpa6165_probe(struct i2c_client *client,
 	 */
 	tpa6165->alwayson_micb = tpa6165_pdata->alwayson_micbias;
 	tpa6165->jack_detect_config = tpa6165_pdata->jack_detect_config;
+	tpa6165->jack_detect_config_tty =
+				tpa6165_pdata->jack_detect_config_tty;
 
 	/* enable regulators */
 	tpa6165->vdd = regulator_get(&client->dev, "hs_det_vdd");
