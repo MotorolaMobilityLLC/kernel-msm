@@ -58,6 +58,10 @@
 		qcom,ldo-delta-voltage = <12500>;
 };
 
+&mdss_mdp {
+	vdd-cx-supply = <&pm8841_s2_corner>;
+};
+
 &tspp {
 	vdd_cx-supply = <&pm8841_s2_corner>;
 };
