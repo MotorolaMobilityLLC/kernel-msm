@@ -146,8 +146,7 @@ VOS_STATUS WDA_ProcessSetTxPerTrackingReq(tWDA_CbContext *pWDA, tSirTxPerTrackin
 
 extern v_BOOL_t sys_validateStaConfig( void *pImage, unsigned long cbFile,
                                void **ppStaConfig, v_SIZE_t *pcbStaConfig ) ;
-void processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length, 
-                                                         tANI_U32 *pConfig) ;
+void processCfgDownloadReq(tpAniSirGlobal pMac) ;
 void WDA_UpdateBSSParams(tWDA_CbContext *pWDA, 
         WDI_ConfigBSSReqInfoType *wdiBssParams, tAddBssParams *wdaBssParams) ;
 void WDA_UpdateSTAParams(tWDA_CbContext *pWDA, 
@@ -2330,12 +2329,7 @@ VOS_STATUS WDA_GetWcnssHardwareVersion(v_PVOID_t pvosGCtx,
 VOS_STATUS WDA_WniCfgDnld(tWDA_CbContext *pWDA) 
 {
    tpAniSirGlobal pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
-   VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
-   v_VOID_t *pFileImage = NULL;
-   v_SIZE_t cbFileImageSize = 0;
-   v_VOID_t *pCfgBinary = NULL;
-   v_SIZE_t cbCfgBinarySize = 0;
-   v_BOOL_t bStatus = VOS_FALSE;
+   VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
 
    if (NULL == pMac )
    {
@@ -2344,61 +2338,7 @@ VOS_STATUS WDA_WniCfgDnld(tWDA_CbContext *pWDA)
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAILURE;
    }
-   /* get the number of bytes in the CFG Binary... */
-   vosStatus = vos_get_binary_blob( VOS_BINARY_ID_CONFIG, NULL, 
-                                                &cbFileImageSize );
-   if ( VOS_STATUS_E_NOMEM != vosStatus )
-   {
-      VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                 "Error obtaining binary size" );
-      goto fail;
-   }
-   // malloc a buffer to read in the Configuration binary file.
-   pFileImage = vos_mem_malloc( cbFileImageSize );
-   if ( NULL == pFileImage )
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-              "Unable to allocate memory for the CFG binary [size= %d bytes]",
-                 cbFileImageSize );
-      vosStatus = VOS_STATUS_E_NOMEM;
-      goto fail;
-   }
-   
-   /* Get the entire CFG file image... */
-   vosStatus = vos_get_binary_blob( VOS_BINARY_ID_CONFIG, pFileImage, 
-                                                         &cbFileImageSize );
-   if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-         "Error: Cannot retrieve CFG file image from vOSS. [size= %d bytes]",
-                                                             cbFileImageSize );
-      goto fail;
-   }
-   
-   /* 
-    * Validate the binary image.  This function will return a pointer 
-    * and length where the CFG binary is located within the binary image file.
-    */
-   bStatus = sys_validateStaConfig( pFileImage, cbFileImageSize,
-                                   &pCfgBinary, &cbCfgBinarySize );
-   if ( VOS_FALSE == bStatus )
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                 "Error: Cannot find STA CFG in binary image file" );
-      vosStatus = VOS_STATUS_E_FAILURE;
-      goto fail;
-   }
-   /*
-    * TODO: call the config download function 
-    * for now calling the existing cfg download API 
-    */
-   processCfgDownloadReq(pMac,cbCfgBinarySize,pCfgBinary);
-   vosStatus = VOS_STATUS_SUCCESS;
-
-   /* fall through to clean up and return success */
-   
-fail:
-   vos_mem_free( pFileImage );
+   processCfgDownloadReq(pMac);
    return vosStatus;
 }
 /* -----------------------------------------------------------------
