@@ -584,12 +584,12 @@ ssize_t IT7260_sleep_store_temp(int ret)
 	if(ret) {
 		disable_irq(gl_ts->client->irq);
 		i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf, 3);
-		printk("Touch is going to sleep...\n\n");
+		printk("[IT7260] Touch is going to sleep...\n\n");
 	}
 	else {
 		i2cReadFromIt7260(gl_ts->client, 0x80, &ucQuery, 1);
 		enable_irq(gl_ts->client->irq);
-		printk("Touch is going to wake!\n\n");
+		printk("[IT7260] Touch is going to wake!\n\n");
 	}
 
 	return 1;
@@ -815,7 +815,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 			{
 				if (xraw < 120 && yraw > 260){
 // ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
-					printk("MagicTouch:DEBUG KEY DETECTED !!!!\n");
+					printk("[IT7260] DEBUG KEY DETECTED !!!!\n");
 					strcpy(magic_key,"DEBUG");
 					kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 // ASUS_BSP --- Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
@@ -850,7 +850,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 	static int home_match_flag = 0;
 	if (!home_match_flag && pucPoint[0] == 0xB && (jiffies > last_time_detect_home + 3 * HZ)){
 		home_match_flag = 1;
-		printk("MagicTouch:HOME KEY DETECTED !!!!\n");
+		printk("[IT7260] HOME KEY DETECTED !!!!\n");
 		strcpy(magic_key,"HOME");
 		kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 		last_time_detect_home = jiffies;
@@ -869,15 +869,13 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 					if (!palm_flag){
 						if (jiffies - last_time_shot_power > 2*HZ){
 							last_time_shot_power = jiffies;
-							printk("MagicTouch:PALM!!! palm_flag = %x\n\n", palm_flag);
-							input_event(gl_ts->input_dev, EV_KEY, KEY_SLEEP, 1);
+							printk("[IT7260] PALM!!!\n\n");
+							input_report_key(gl_ts->input_dev, KEY_SLEEP,1);
 							input_sync(gl_ts->input_dev);
 							msleep(5);
-							input_event(gl_ts->input_dev, EV_KEY, KEY_SLEEP, 0);
+							input_report_key(gl_ts->input_dev, KEY_SLEEP,0);
 							input_sync(gl_ts->input_dev);					
-							//public_sleep_keys_gpio_report_event();
 						}
-						//atomic_set(&Suspend_flag,1);
 					}
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
@@ -943,22 +941,21 @@ static void IT7260_ts_work_resume_func(struct work_struct *work) {
 		last_time_shot_power = 0;
 		if (jiffies - last_time_shot_power > 2*HZ){
 			last_time_shot_power = jiffies;
-				input_event(gl_ts->input_dev, EV_KEY, KEY_POWER, 1);
-				input_sync(gl_ts->input_dev);
-				msleep(5);
-				input_event(gl_ts->input_dev, EV_KEY, KEY_POWER, 0);
-				input_sync(gl_ts->input_dev);			
-				//public_gpio_keys_gpio_report_event();
-				atomic_set(&Suspend_flag,0);
-				skip_times=0;
+			input_report_key(gl_ts->input_dev, KEY_POWER,1);
+			input_sync(gl_ts->input_dev);
+			msleep(5);
+			input_report_key(gl_ts->input_dev, KEY_POWER,0);
+			input_sync(gl_ts->input_dev);			
+			skip_times=0;
 
 		}else{
 			if (1 == skip_times)
-				printk("!!!! Skip Power key shoot by touch!!!\n");
+				printk("[IT7260] Skip Power key shoot by touch!!!\n");
 			skip_times++;
 		}
 	}
 	//Suspend_flag++;
+	atomic_set(&Suspend_flag,0);
 	enable_irq(gl_ts->client->irq);
 }
 
@@ -975,8 +972,8 @@ static irqreturn_t IT7260_ts_irq_handler(int irq, void *dev_id) {
 	{
 		if (delayCount == 1)
 		{
-			pr_info("=IT7260_ts_irq_handler=\n");
-			printk ("=IT7260_ts_irq_handler=\n");
+			//pr_info("=IT7260_ts_irq_handler=\n");
+			//printk ("=IT7260_ts_irq_handler=\n");
 		}
 		disable_irq_nosync(ts->client->irq);
 		queue_work(IT7260_wq, &ts->work);
@@ -1073,7 +1070,7 @@ static int IdentifyCapSensor(struct IT7260_ts_data *ts) {
 	//pr_info("=IdentifyCapSensor write read id=\n");
 	ret = i2cReadFromIt7260(ts->client, 0xA0, pucCmd, 8);
 	printk(
-			"CLIFF=IdentifyCapSensor read id--[%d][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]=\n",
+			"[IT7260] =IdentifyCapSensor read id--[%d][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]=\n",
 			ret, pucCmd[0], pucCmd[1], pucCmd[2], pucCmd[3], pucCmd[4],
 			pucCmd[5], pucCmd[6], pucCmd[7], pucCmd[8], pucCmd[9]);
 			
@@ -1231,7 +1228,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
     // >>> 
     init_timer(&tp_timer) ;
 
-    tp_timer.expires = jiffies + 10 * HZ;
+    tp_timer.expires = jiffies + 500 * HZ;	//fix booting warning message
     tp_timer.function = &tp_irq_handler_reg;
 
     add_timer(&tp_timer);
