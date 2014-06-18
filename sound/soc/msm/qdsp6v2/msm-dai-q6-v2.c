@@ -117,28 +117,32 @@ static int msm_dai_q6_dai_add_route(struct snd_soc_dai *dai)
 {
 	struct snd_soc_dapm_route intercon;
 
-	if (!dai || !dai->driver) {
-			pr_err("%s Invalid params\n", __func__);
-			return -EINVAL;
+	if (!dai) {
+		pr_err("%s: Invalid params dai\n", __func__);
+		return -EINVAL;
+	}
+	if (!dai->driver) {
+		pr_err("%s: Invalid params dai driver\n", __func__);
+		return -EINVAL;
 	}
 	memset(&intercon, 0 , sizeof(intercon));
 	if (dai->driver->playback.stream_name &&
 		dai->driver->playback.aif_name) {
-		dev_dbg(dai->dev, "%s add route for widget %s",
+		dev_dbg(dai->dev, "%s: add route for widget %s",
 				__func__, dai->driver->playback.stream_name);
 		intercon.source = dai->driver->playback.aif_name;
 		intercon.sink = dai->driver->playback.stream_name;
-		dev_dbg(dai->dev, "%s src %s sink %s\n",
+		dev_dbg(dai->dev, "%s: src %s sink %s\n",
 				__func__, intercon.source, intercon.sink);
 		snd_soc_dapm_add_routes(&dai->dapm, &intercon, 1);
 	}
 	if (dai->driver->capture.stream_name &&
 		dai->driver->capture.aif_name) {
-		dev_dbg(dai->dev, "%s add route for widget %s",
+		dev_dbg(dai->dev, "%s: add route for widget %s",
 				__func__, dai->driver->capture.stream_name);
 		intercon.sink = dai->driver->capture.aif_name;
 		intercon.source = dai->driver->capture.stream_name;
-		dev_dbg(dai->dev, "%s src %s sink %s\n",
+		dev_dbg(dai->dev, "%s: src %s sink %s\n",
 				__func__, intercon.source, intercon.sink);
 		snd_soc_dapm_add_routes(&dai->dapm, &intercon, 1);
 	}
@@ -252,7 +256,7 @@ static void msm_dai_q6_auxpcm_shutdown(struct snd_pcm_substream *substream,
 			clear_bit(STATUS_TX_PORT,
 				  aux_dai_data->auxpcm_port_status);
 		else {
-			dev_dbg(dai->dev, "%s(): PCM_TX port already closed\n",
+			dev_dbg(dai->dev, "%s: PCM_TX port already closed\n",
 				__func__);
 			goto exit;
 		}
@@ -261,14 +265,14 @@ static void msm_dai_q6_auxpcm_shutdown(struct snd_pcm_substream *substream,
 			clear_bit(STATUS_RX_PORT,
 				  aux_dai_data->auxpcm_port_status);
 		else {
-			dev_dbg(dai->dev, "%s(): PCM_RX port already closed\n",
+			dev_dbg(dai->dev, "%s: PCM_RX port already closed\n",
 				__func__);
 			goto exit;
 		}
 	}
 	if (test_bit(STATUS_TX_PORT, aux_dai_data->auxpcm_port_status) ||
 	    test_bit(STATUS_RX_PORT, aux_dai_data->auxpcm_port_status)) {
-		dev_dbg(dai->dev, "%s(): cannot shutdown PCM ports\n",
+		dev_dbg(dai->dev, "%s: cannot shutdown PCM ports\n",
 			__func__);
 		goto exit;
 	}
@@ -314,7 +318,7 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		if (test_bit(STATUS_TX_PORT,
 				aux_dai_data->auxpcm_port_status)) {
-			dev_dbg(dai->dev, "%s(): PCM_TX port already ON\n",
+			dev_dbg(dai->dev, "%s: PCM_TX port already ON\n",
 				__func__);
 			goto exit;
 		} else
@@ -323,7 +327,7 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	} else if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (test_bit(STATUS_RX_PORT,
 				aux_dai_data->auxpcm_port_status)) {
-			dev_dbg(dai->dev, "%s(): PCM_RX port already ON\n",
+			dev_dbg(dai->dev, "%s: PCM_RX port already ON\n",
 				__func__);
 			goto exit;
 		} else
@@ -332,7 +336,7 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	}
 	if (test_bit(STATUS_TX_PORT, aux_dai_data->auxpcm_port_status) &&
 	    test_bit(STATUS_RX_PORT, aux_dai_data->auxpcm_port_status)) {
-		dev_dbg(dai->dev, "%s(): PCM ports already set\n", __func__);
+		dev_dbg(dai->dev, "%s: PCM ports already set\n", __func__);
 		goto exit;
 	}
 
@@ -425,6 +429,7 @@ static int msm_dai_q6_auxpcm_trigger(struct snd_pcm_substream *substream,
 		return 0;
 
 	default:
+		pr_err("%s: cmd %d\n", __func__, cmd);
 		rc = -EINVAL;
 	}
 
@@ -440,7 +445,7 @@ static int msm_dai_q6_dai_auxpcm_remove(struct snd_soc_dai *dai)
 
 	aux_dai_data = dev_get_drvdata(dai->dev);
 
-	dev_dbg(dai->dev, "%s(): dai->id %d closing afe\n",
+	dev_dbg(dai->dev, "%s: dai->id %d closing afe\n",
 		__func__, dai->id);
 
 	if (test_bit(STATUS_TX_PORT, aux_dai_data->auxpcm_port_status) ||
@@ -467,8 +472,12 @@ static int msm_dai_q6_aux_pcm_probe(struct snd_soc_dai *dai)
 {
 	int rc = 0;
 
-	if (!dai || !dai->dev) {
-		pr_err("%s Invalid params\n", __func__);
+	if (!dai) {
+		pr_err("%s: Invalid params dai\n", __func__);
+		return -EINVAL;
+	}
+	if (!dai->dev) {
+		pr_err("%s: Invalid params dai dev\n", __func__);
 		return -EINVAL;
 	}
 	rc = msm_dai_q6_dai_add_route(dai);
@@ -648,6 +657,8 @@ static int msm_dai_q6_spdif_hw_params(struct snd_pcm_substream *substream,
 		dai_data->spdif_port.cfg.bit_width = 24;
 		break;
 	default:
+		pr_err("%s: format %d\n",
+			__func__, params_format(params));
 		return -EINVAL;
 	}
 
@@ -694,14 +705,14 @@ static int msm_dai_q6_spdif_prepare(struct snd_pcm_substream *substream,
 	int rc = 0;
 
 	if (IS_ERR_VALUE(rc)) {
-		dev_err(dai->dev, "%s clk_config failed", __func__);
+		dev_err(dai->dev, "%s: clk_config failed", __func__);
 		return rc;
 	}
 	if (!test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
 		rc = afe_spdif_port_start(dai->id, &dai_data->spdif_port,
 				dai_data->rate);
 		if (IS_ERR_VALUE(rc))
-			dev_err(dai->dev, "fail to open AFE port %x\n",
+			dev_err(dai->dev, "fail to open AFE port 0x%x\n",
 					dai->id);
 		else
 			set_bit(STATUS_PORT_STARTED,
@@ -736,21 +747,21 @@ static int msm_dai_q6_spdif_dai_probe(struct snd_soc_dai *dai)
 	if (!rc && dai && dai->driver) {
 		if (dai->driver->playback.stream_name &&
 				dai->driver->playback.aif_name) {
-			dev_dbg(dai->dev, "%s add route for widget %s",
+			dev_dbg(dai->dev, "%s: add route for widget %s",
 				__func__, dai->driver->playback.stream_name);
 			intercon.source = dai->driver->playback.aif_name;
 			intercon.sink = dai->driver->playback.stream_name;
-			dev_dbg(dai->dev, "%s src %s sink %s\n",
+			dev_dbg(dai->dev, "%s: src %s sink %s\n",
 				__func__, intercon.source, intercon.sink);
 			snd_soc_dapm_add_routes(&dai->dapm, &intercon, 1);
 		}
 		if (dai->driver->capture.stream_name &&
 				dai->driver->capture.aif_name) {
-			dev_dbg(dai->dev, "%s add route for widget %s",
+			dev_dbg(dai->dev, "%s: add route for widget %s",
 				__func__, dai->driver->capture.stream_name);
 			intercon.sink = dai->driver->capture.aif_name;
 			intercon.source = dai->driver->capture.stream_name;
-			dev_dbg(dai->dev, "%s src %s sink %s\n",
+			dev_dbg(dai->dev, "%s: src %s sink %s\n",
 				__func__, intercon.source, intercon.sink);
 			snd_soc_dapm_add_routes(&dai->dapm, &intercon, 1);
 		}
@@ -819,7 +830,7 @@ static int msm_dai_q6_prepare(struct snd_pcm_substream *substream,
 					dai_data->rate);
 
 		if (IS_ERR_VALUE(rc))
-			dev_err(dai->dev, "fail to open AFE port %x\n",
+			dev_err(dai->dev, "fail to open AFE port 0x%x\n",
 				dai->id);
 		else
 			set_bit(STATUS_PORT_STARTED,
@@ -843,6 +854,8 @@ static int msm_dai_q6_cdc_hw_params(struct snd_pcm_hw_params *params,
 		break;
 	default:
 		return -EINVAL;
+		pr_err("%s: err channels %d\n",
+			__func__, dai_data->channels);
 		break;
 	}
 
@@ -855,6 +868,8 @@ static int msm_dai_q6_cdc_hw_params(struct snd_pcm_hw_params *params,
 		dai_data->port_config.i2s.bit_width = 24;
 		break;
 	default:
+		pr_err("%s: format %d\n",
+			__func__, params_format(params));
 		return -EINVAL;
 	}
 
@@ -898,7 +913,8 @@ static int msm_dai_q6_i2s_hw_params(struct snd_pcm_hw_params *params,
 			dai_data->port_config.i2s.mono_stereo = MSM_AFE_MONO;
 			break;
 		default:
-			pr_warn("greater than stereo has not been validated");
+			pr_warn("%s: greater than stereo has not been validated %d",
+				__func__, dai_data->channels);
 			break;
 		}
 	}
@@ -931,6 +947,8 @@ static int msm_dai_q6_slim_bus_hw_params(struct snd_pcm_hw_params *params,
 		dai_data->port_config.slim_sch.bit_width = 24;
 		break;
 	default:
+		pr_err("%s: format %d\n",
+			__func__, params_format(params));
 		return -EINVAL;
 	}
 
@@ -1090,7 +1108,7 @@ static int msm_dai_q6_hw_params(struct snd_pcm_substream *substream,
 						dai, substream->stream);
 		break;
 	default:
-		dev_err(dai->dev, "invalid AFE port ID\n");
+		dev_err(dai->dev, "invalid AFE port ID 0x%x\n", dai->id);
 		rc = -EINVAL;
 		break;
 	}
@@ -1105,7 +1123,7 @@ static void msm_dai_q6_shutdown(struct snd_pcm_substream *substream,
 	int rc = 0;
 
 	if (test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
-		pr_debug("%s, stop pseudo port:%d\n", __func__,  dai->id);
+		pr_debug("%s: stop pseudo port:%d\n", __func__,  dai->id);
 		rc = afe_close(dai->id); /* can block */
 
 		if (IS_ERR_VALUE(rc))
@@ -1128,6 +1146,7 @@ static int msm_dai_q6_cdc_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		dai_data->port_config.i2s.ws_src = 0; /* CPU is slave */
 		break;
 	default:
+		pr_err("%s: fmt 0x%x\n", __func__, fmt & SND_SOC_DAIFMT_MASTER_MASK);
 		return -EINVAL;
 	}
 
@@ -1138,7 +1157,7 @@ static int msm_dai_q6_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	int rc = 0;
 
-	dev_dbg(dai->dev, "enter %s, id = %d fmt[%d]\n", __func__,
+	dev_dbg(dai->dev, "%s: id = %d fmt[%d]\n", __func__,
 							dai->id, fmt);
 	switch (dai->id) {
 	case PRIMARY_I2S_TX:
@@ -1148,7 +1167,7 @@ static int msm_dai_q6_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		rc = msm_dai_q6_cdc_set_fmt(dai, fmt);
 		break;
 	default:
-		dev_err(dai->dev, "invalid cpu_dai set_fmt\n");
+		dev_err(dai->dev, "invalid cpu_dai id 0x%x\n", dai->id);
 		rc = -EINVAL;
 		break;
 	}
@@ -1165,7 +1184,7 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 	struct msm_dai_q6_dai_data *dai_data = dev_get_drvdata(dai->dev);
 	unsigned int i = 0;
 
-	dev_dbg(dai->dev, "enter %s, id = %d\n", __func__, dai->id);
+	dev_dbg(dai->dev, "%s: id = %d\n", __func__, dai->id);
 	switch (dai->id) {
 	case SLIMBUS_0_RX:
 	case SLIMBUS_1_RX:
@@ -1179,8 +1198,10 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 		 * from 138 to 144 for pre-Taiko
 		 * from 144 to 159 for Taiko
 		 */
-		if (!rx_slot)
+		if (!rx_slot) {
+			pr_err("%s: rx slot not found\n", __func__);
 			return -EINVAL;
+		}
 		for (i = 0; i < rx_num; i++) {
 			dai_data->port_config.slim_sch.shared_ch_mapping[i] =
 			    rx_slot[i];
@@ -1188,7 +1209,7 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 			       __func__, i, rx_slot[i]);
 		}
 		dai_data->port_config.slim_sch.num_channels = rx_num;
-		pr_debug("%s:SLIMBUS_%d_RX cnt[%d] ch[%d %d]\n", __func__,
+		pr_debug("%s: SLIMBUS_%d_RX cnt[%d] ch[%d %d]\n", __func__,
 			(dai->id - SLIMBUS_0_RX) / 2, rx_num,
 			dai_data->port_config.slim_sch.shared_ch_mapping[0],
 			dai_data->port_config.slim_sch.shared_ch_mapping[1]);
@@ -1207,8 +1228,10 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 		 * from 128 to 137 for pre-Taiko
 		 * from 128 to 143 for Taiko
 		 */
-		if (!tx_slot)
+		if (!tx_slot) {
+			pr_err("%s: tx slot not found\n", __func__);
 			return -EINVAL;
+		}
 		for (i = 0; i < tx_num; i++) {
 			dai_data->port_config.slim_sch.shared_ch_mapping[i] =
 			    tx_slot[i];
@@ -1222,7 +1245,7 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 			dai_data->port_config.slim_sch.shared_ch_mapping[1]);
 		break;
 	default:
-		dev_err(dai->dev, "invalid cpu_dai id %d\n", dai->id);
+		dev_err(dai->dev, "invalid cpu_dai id 0x%x\n", dai->id);
 		rc = -EINVAL;
 		break;
 	}
@@ -1242,8 +1265,12 @@ static int msm_dai_q6_dai_probe(struct snd_soc_dai *dai)
 	struct msm_dai_q6_dai_data *dai_data;
 	int rc = 0;
 
-	if (!dai || !dai->dev) {
-		pr_err("%s Invalid params\n", __func__);
+	if (!dai) {
+		pr_err("%s: Invalid params dai\n", __func__);
+		return -EINVAL;
+	}
+	if (!dai->dev) {
+		pr_err("%s: Invalid params dai dev\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1269,7 +1296,7 @@ static int msm_dai_q6_dai_remove(struct snd_soc_dai *dai)
 
 	/* If AFE port is still up, close it */
 	if (test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
-		pr_debug("%s, stop pseudo port:%d\n", __func__,  dai->id);
+		pr_debug("%s: stop pseudo port:%d\n", __func__,  dai->id);
 		rc = afe_close(dai->id); /* can block */
 
 		if (IS_ERR_VALUE(rc))
@@ -2065,15 +2092,17 @@ static int msm_mi2s_get_port_id(u32 mi2s_id, int stream, u16 *port_id)
 			*port_id = AFE_PORT_ID_QUATERNARY_MI2S_TX;
 			break;
 		default:
+			pr_err("%s: capture err id 0x%x\n", __func__, mi2s_id);
 			ret = -1;
 		break;
 		}
 	break;
 	default:
+		pr_err("%s: default err %d\n", __func__, stream);
 		ret = -1;
 	break;
 	}
-	pr_debug("%s: port_id = %#x\n", __func__, *port_id);
+	pr_debug("%s: port_id = 0x%x\n", __func__, *port_id);
 	return ret;
 }
 
@@ -2091,12 +2120,12 @@ static int msm_dai_q6_mi2s_prepare(struct snd_pcm_substream *substream,
 
 	if (msm_mi2s_get_port_id(dai->id, substream->stream,
 				 &port_id) != 0) {
-		dev_err(dai->dev, "%s: Invalid Port ID %#x\n",
+		dev_err(dai->dev, "%s: Invalid Port ID 0x%x\n",
 				__func__, port_id);
 		return -EINVAL;
 	}
 
-	dev_dbg(dai->dev, "%s: dai id %d, afe port id = %x\n"
+	dev_dbg(dai->dev, "%s: dai id %d, afe port id = 0x%x\n"
 		"dai_data->channels = %u sample_rate = %u\n", __func__,
 		dai->id, port_id, dai_data->channels, dai_data->rate);
 
@@ -2108,7 +2137,7 @@ static int msm_dai_q6_mi2s_prepare(struct snd_pcm_substream *substream,
 				    dai_data->rate);
 
 		if (IS_ERR_VALUE(rc))
-			dev_err(dai->dev, "fail to open AFE port %x\n",
+			dev_err(dai->dev, "fail to open AFE port 0x%x\n",
 				dai->id);
 		else
 			set_bit(STATUS_PORT_STARTED,
@@ -2185,6 +2214,8 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 			dai_data->port_config.i2s.mono_stereo = MSM_AFE_MONO;
 		break;
 	default:
+		pr_err("%s: default err channels %d\n",
+			__func__, dai_data->channels);
 		goto error_invalid_data;
 	}
 	dai_data->rate = params_rate(params);
@@ -2200,6 +2231,8 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 		dai_data->bitwidth = 24;
 		break;
 	default:
+		pr_err("%s: format %d\n",
+			__func__, params_format(params));
 		return -EINVAL;
 	}
 
@@ -2237,7 +2270,7 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 
 error_invalid_data:
-	pr_debug("%s: dai_data->channels = %d channel_mode = %d\n", __func__,
+	pr_err("%s: dai_data->channels = %d channel_mode = %d\n", __func__,
 		 dai_data->channels, dai_data->port_config.i2s.channel_mode);
 	return -EINVAL;
 }
@@ -2267,6 +2300,8 @@ static int msm_dai_q6_mi2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		mi2s_dai_data->tx_dai.mi2s_dai_data.port_config.i2s.ws_src = 0;
 		break;
 	default:
+		pr_err("%s: fmt %d\n",
+			__func__, fmt & SND_SOC_DAIFMT_MASTER_MASK);
 		return -EINVAL;
 	}
 
@@ -2287,11 +2322,11 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 
 	if (msm_mi2s_get_port_id(dai->id, substream->stream,
 				 &port_id) != 0) {
-		dev_err(dai->dev, "%s: Invalid Port ID %#x\n",
+		dev_err(dai->dev, "%s: Invalid Port ID 0x%x\n",
 				__func__, port_id);
 	}
 
-	dev_dbg(dai->dev, "%s: closing afe port id = %x\n",
+	dev_dbg(dai->dev, "%s: closing afe port id = 0x%x\n",
 			__func__, port_id);
 
 	if (test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
@@ -2432,8 +2467,8 @@ static int msm_dai_q6_mi2s_get_lineconfig(u16 sd_lines, u16 *config_ptr,
 			*config_ptr = AFE_PORT_I2S_SD3;
 			break;
 		default:
-			pr_err("%s: invalid SD line\n",
-				   __func__);
+			pr_err("%s: invalid SD lines %d\n",
+				   __func__, sd_lines);
 			goto error_invalid_data;
 		}
 		break;
@@ -2446,8 +2481,8 @@ static int msm_dai_q6_mi2s_get_lineconfig(u16 sd_lines, u16 *config_ptr,
 			*config_ptr = AFE_PORT_I2S_QUAD23;
 			break;
 		default:
-			pr_err("%s: invalid SD line\n",
-				   __func__);
+			pr_err("%s: invalid SD lines %d\n",
+				   __func__, sd_lines);
 			goto error_invalid_data;
 		}
 		break;
@@ -2457,8 +2492,8 @@ static int msm_dai_q6_mi2s_get_lineconfig(u16 sd_lines, u16 *config_ptr,
 			*config_ptr = AFE_PORT_I2S_6CHS;
 			break;
 		default:
-			pr_err("%s: invalid SD lines\n",
-				   __func__);
+			pr_err("%s: invalid SD lines %d\n",
+				   __func__, sd_lines);
 			goto error_invalid_data;
 		}
 		break;
@@ -2468,19 +2503,20 @@ static int msm_dai_q6_mi2s_get_lineconfig(u16 sd_lines, u16 *config_ptr,
 			*config_ptr = AFE_PORT_I2S_8CHS;
 			break;
 		default:
-			pr_err("%s: invalid SD lines\n",
-				   __func__);
+			pr_err("%s: invalid SD lines %d\n",
+				   __func__, sd_lines);
 			goto error_invalid_data;
 		}
 		break;
 	default:
-		pr_err("%s: invalid SD lines\n", __func__);
+		pr_err("%s: invalid SD lines %d\n", __func__, num_of_sd_lines);
 		goto error_invalid_data;
 	}
 	*ch_cnt = num_of_sd_lines;
 	return 0;
 
 error_invalid_data:
+	pr_err("%s: invalid data\n", __func__);
 	return -EINVAL;
 }
 
@@ -2536,7 +2572,7 @@ static int msm_dai_q6_mi2s_platform_data_validation(
 		dai_driver->capture.channels_max = 0;
 	}
 
-	dev_dbg(&pdev->dev, "%s: playback sdline %x capture sdline %x\n",
+	dev_dbg(&pdev->dev, "%s: playback sdline 0x%x capture sdline 0x%x\n",
 		__func__, dai_data->rx_dai.pdata_mi2s_lines,
 		dai_data->tx_dai.pdata_mi2s_lines);
 	dev_dbg(&pdev->dev, "%s: playback ch_max %d capture ch_mx %d\n",
@@ -2563,11 +2599,11 @@ static int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 				  &mi2s_intf);
 	if (rc) {
 		dev_err(&pdev->dev,
-			"%s: missing %x in dt node\n", __func__, mi2s_intf);
+			"%s: missing 0x%x in dt node\n", __func__, mi2s_intf);
 		goto rtn;
 	}
 
-	dev_dbg(&pdev->dev, "dev name %s dev id %x\n", dev_name(&pdev->dev),
+	dev_dbg(&pdev->dev, "dev name %s dev id 0x%x\n", dev_name(&pdev->dev),
 		mi2s_intf);
 
 	if (mi2s_intf < MSM_PRIM_MI2S || mi2s_intf > MSM_QUAT_MI2S
@@ -2604,7 +2640,7 @@ static int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 			"qcom,msm-mi2s-tx-lines");
 		goto free_pdata;
 	}
-	dev_dbg(&pdev->dev, "dev name %s Rx line %x , Tx ine %x\n",
+	dev_dbg(&pdev->dev, "dev name %s Rx line 0x%x , Tx ine 0x%x\n",
 		dev_name(&pdev->dev), rx_line, tx_line);
 	mi2s_pdata->rx_sd_lines = rx_line;
 	mi2s_pdata->tx_sd_lines = tx_line;
@@ -2704,7 +2740,7 @@ register_slim_playback:
 			}
 		}
 		if (rc)
-			pr_err("%s Device not found stream name %s\n",
+			pr_err("%s: Device not found stream name %s\n",
 				__func__, stream_name);
 		break;
 	case SLIMBUS_0_TX:
@@ -2742,7 +2778,7 @@ register_slim_capture:
 			}
 		}
 		if (rc)
-			pr_err("%s Device not found stream name %s\n",
+			pr_err("%s: Device not found stream name %s\n",
 				__func__, stream_name);
 		break;
 	case INT_BT_SCO_RX:
@@ -2780,7 +2816,7 @@ register_afe_playback:
 			}
 		}
 		if (rc)
-			pr_err("%s Device not found stream name %s\n",
+			pr_err("%s: Device not found stream name %s\n",
 			__func__, stream_name);
 		break;
 	case RT_PROXY_DAI_001_TX:
@@ -2802,7 +2838,7 @@ register_afe_capture:
 			}
 		}
 		if (rc)
-			pr_err("%s Device not found stream name %s\n",
+			pr_err("%s: Device not found stream name %s\n",
 			__func__, stream_name);
 		break;
 	case VOICE_PLAYBACK_TX:
@@ -2829,7 +2865,7 @@ register_uplink_capture:
 			}
 		}
 		if (rc)
-			pr_err("%s Device not found stream name %s\n",
+			pr_err("%s: Device not found stream name %s\n",
 			__func__, stream_name);
 		break;
 
