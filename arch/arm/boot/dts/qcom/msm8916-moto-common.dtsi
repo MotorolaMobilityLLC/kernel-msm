@@ -17,7 +17,7 @@
 
 / {
 	aliases {
-		serial0 = &blsp1_uart1;
+		serial0 = &blsp1_ls_uart1;
 		spi5 = &spi_5; /* SPI0 controller device */
 		i2c1 = &i2c_1;
 	};
@@ -65,10 +65,19 @@
 	};
 };
 
-&blsp1_uart1 {
-	status = "ok";
-	pinctrl-names = "default";
-	pinctrl-0 = <&uart_console_sleep>;
+&soc {
+	/delete-node/ serial@78af000;
+	blsp1_ls_uart1: serial@78af000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0x78af000 0x200>;
+		interrupts = <0 107 0>;
+		status = "ok";
+		clocks = <&clock_gcc clk_gcc_blsp1_uart1_apps_clk>,
+			 <&clock_gcc clk_gcc_blsp1_ahb_clk>;
+		clock-names = "core_clk", "iface_clk";
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart_console_sleep>;
+	};
 };
 
 &soc {
