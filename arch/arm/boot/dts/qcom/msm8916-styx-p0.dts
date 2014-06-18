@@ -22,7 +22,7 @@
 	};
 };
 
-&blsp1_uart1 {
+&blsp1_ls_uart1 {
 	status = "disabled";
 };
 
