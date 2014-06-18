@@ -149,7 +149,7 @@
 		"att",		/* 132 */
 		"tmo",		/* 133 */
 		"sprint",	/* 134 */
-		"repw",		/* 135 */
+		"sprint",	/* 135 - Republic Wireless, use sprint string instead of repw */
 		"aio",		/* 136 */
 		"???",		/* 137 */
 		"???",		/* 138 */
