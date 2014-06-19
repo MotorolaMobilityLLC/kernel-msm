@@ -1049,7 +1049,7 @@ static void Do_Factory5060Mode(void)
    balance_this->fsm->onChargingStart(balance_this->fsm);
    */
    
-	if(balance_this->A66_capacity >= 60){
+	if(balance_this->A66_capacity >= 80){
 		g_5060modeCharging = false;
 		gpCharger->EnableCharging(gpCharger,false);
 		DisChg = true;
@@ -1058,7 +1058,7 @@ static void Do_Factory5060Mode(void)
 #ifdef CONFIG_EEPROM_NUVOTON
 		printk("[BAT][Factory]mode:%d,StopChg,Vbus:%d\n",IsBalanceMode,get_microp_vbus());
 #endif
-	}else if(balance_this->A66_capacity <= 50){   
+	}else if(balance_this->A66_capacity <= 60){   
 		g_5060modeCharging = true;
 		gpCharger->EnableCharging(gpCharger,true);
 		DisChg = false;
