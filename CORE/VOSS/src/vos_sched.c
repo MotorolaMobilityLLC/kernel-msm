@@ -780,7 +780,8 @@ VosWDThread
         if(!pWdContext->resetInProgress)
         {
           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-          "%s: Trying to do WLAN re-init when it is not shutdown !!",__func__);
+          "%s: Do WLAN re-init only when it is shutdown !!",__func__);
+          break;
         }
         vosStatus = hdd_wlan_re_init();
 
