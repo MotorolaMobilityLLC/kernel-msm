@@ -7953,6 +7953,112 @@ void csrRemoveCmdFromPendingList(tpAniSirGlobal pMac, tDblLinkList *pList,
 
 }
 
+eHalStatus csrScanAbortScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tSirSmeScanAbortReq *pMsg;
+    tANI_U16 msgLen;
+    tListElem *pEntry;
+    tSmeCmd *pCommand;
+
+    if (!pMac->fScanOffload)
+    {
+        pMac->scan.fDropScanCmd = eANI_BOOLEAN_TRUE;
+#ifdef WLAN_AP_STA_CONCURRENCY
+        csrRemoveScanForSSIDFromPendingList( pMac, &pMac->scan.scanCmdPendingList, sessionId);
+#endif
+        csrRemoveScanForSSIDFromPendingList( pMac, &pMac->roam.roamCmdPendingList, sessionId);
+        csrRemoveScanForSSIDFromPendingList( pMac, &pMac->sme.smeCmdPendingList, sessionId);
+        pMac->scan.fDropScanCmd = eANI_BOOLEAN_FALSE;
+        pEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK);
+    }
+    else
+    {
+        pMac->scan.fDropScanCmd = eANI_BOOLEAN_TRUE;
+        csrRemoveScanForSSIDFromPendingList( pMac, &pMac->sme.smeScanCmdPendingList, sessionId);
+        pMac->scan.fDropScanCmd = eANI_BOOLEAN_FALSE;
+        pEntry = csrLLPeekHead(&pMac->sme.smeScanCmdActiveList, LL_ACCESS_LOCK);
+    }
+
+    if(NULL != pEntry)
+    {
+       pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+
+       if ( (eSmeCommandScan == pCommand->command ) &&
+                        (sessionId == pCommand->sessionId))
+       {
+          if ( eCsrScanForSsid == pCommand->u.scanCmd.reason)
+          {
+             msgLen = (tANI_U16)(sizeof( tSirSmeScanAbortReq ));
+             pMsg = vos_mem_malloc(msgLen);
+             if ( NULL == pMsg )
+             {
+                status = eHAL_STATUS_FAILURE;
+                smsLog(pMac, LOGE, FL("Failed to allocate memory for SmeScanAbortReq"));
+             }
+             else
+             {
+                vos_mem_zero((void *)pMsg, msgLen);
+                pMsg->type = pal_cpu_to_be16((tANI_U16)eWNI_SME_SCAN_ABORT_IND);
+                pMsg->msgLen = pal_cpu_to_be16(msgLen);
+                pMsg->sessionId = sessionId;
+                status = palSendMBMessage(pMac->hHdd, pMsg);
+             }
+          }
+       }
+    }
+    return( status );
+}
+
+void csrRemoveScanForSSIDFromPendingList(tpAniSirGlobal pMac, tDblLinkList *pList, tANI_U32 sessionId)
+{
+    tDblLinkList localList;
+    tListElem *pEntry;
+    tSmeCmd   *pCommand;
+    tListElem  *pEntryToRemove;
+
+    vos_mem_zero(&localList, sizeof(tDblLinkList));
+    if(!HAL_STATUS_SUCCESS(csrLLOpen(pMac->hHdd, &localList)))
+    {
+        smsLog(pMac, LOGE, FL(" failed to open list"));
+        return;
+    }
+
+    csrLLLock(pList);
+    if( !csrLLIsListEmpty( pList, LL_ACCESS_NOLOCK ) )
+    {
+        pEntry = csrLLPeekHead( pList, LL_ACCESS_NOLOCK);
+
+        // Have to make sure we don't loop back to the head of the list, which will
+        // happen if the entry is NOT on the list...
+        while( pEntry )
+        {
+            pEntryToRemove = pEntry;
+            pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+            pCommand = GET_BASE_ADDR( pEntryToRemove, tSmeCmd, Link );
+            if ( (eSmeCommandScan == pCommand->command ) &&
+                             (sessionId == pCommand->sessionId) )
+            {
+               if ( eCsrScanForSsid == pCommand->u.scanCmd.reason)
+               {
+                 // Remove that entry only
+                 if ( csrLLRemoveEntry( pList, pEntryToRemove, LL_ACCESS_NOLOCK))
+                 {
+                    csrLLInsertTail(&localList, pEntryToRemove, LL_ACCESS_NOLOCK);
+                 }
+               }
+            }
+        }
+    }
+    csrLLUnlock(pList);
+
+    while( (pEntry = csrLLRemoveHead(&localList, LL_ACCESS_NOLOCK)) )
+    {
+        pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+        csrAbortCommand( pMac, pCommand, eANI_BOOLEAN_FALSE);
+    }
+    csrLLClose(&localList);
+}
 
 eHalStatus csrScanAbortMacScanNotForConnect(tpAniSirGlobal pMac,
                                             tANI_U8 sessionId)
