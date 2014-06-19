@@ -139,6 +139,10 @@ static int vfsspi_send_drdy_eventfd(struct vfsspi_device_data *vfsspi_device)
 		}
 		efd_file = fcheck_files(t->files, vfsspi_device->eventfd);
 		rcu_read_unlock();
+		if (efd_file == NULL) {
+			pr_err("fcheck_files returned null\n");
+			return -ENODEV;
+		}
 		efd_ctx = eventfd_ctx_fileget(efd_file);
 		if (efd_ctx == NULL || efd_ctx == ERR_PTR(-EINVAL)) {
 			pr_err("eventfd_ctx_fileget is failed\n");
