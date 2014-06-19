@@ -8880,10 +8880,6 @@ int hdd_wlan_startup(struct device *dev )
                        pHddCtx->cfg_ini->isRoamOffloadScanEnabled);
    }
 #endif
-#ifdef FEATURE_WLAN_SCAN_PNO
-   /*SME must send channel update configuration to RIVA*/
-   sme_UpdateChannelConfig(pHddCtx->hHal); 
-#endif
 
    sme_Register11dScanDoneCallback(pHddCtx->hHal, hdd_11d_scan_done);
 
@@ -8983,7 +8979,6 @@ int hdd_wlan_startup(struct device *dev )
 
    mutex_init(&pHddCtx->sap_lock);
 
-   pHddCtx->isLoadUnloadInProgress = WLAN_HDD_NO_LOAD_UNLOAD_IN_PROGRESS;
 
 #ifdef WLAN_OPEN_SOURCE
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
@@ -9001,8 +8996,15 @@ int hdd_wlan_startup(struct device *dev )
    vos_event_init(&pHddCtx->scan_info.scan_finished_event);
    pHddCtx->scan_info.scan_pending_option = WEXT_SCAN_PENDING_GIVEUP;
 
+   pHddCtx->isLoadUnloadInProgress = WLAN_HDD_NO_LOAD_UNLOAD_IN_PROGRESS;
    vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    hdd_allow_suspend();
+
+#ifdef FEATURE_WLAN_SCAN_PNO
+   /*SME must send channel update configuration to RIVA*/
+   sme_UpdateChannelConfig(pHddCtx->hHal);
+#endif
+
 #ifndef CONFIG_ENABLE_LINUX_REG
    /*updating wiphy so that regulatory user hints can be processed*/
    if (wiphy)
