@@ -1485,6 +1485,7 @@ static int msm_hsl_console_setup(struct console *co, char *options)
 
 	port->cons = co;
 
+	console_lock();
 	pm_runtime_get_noresume(port->dev);
 
 #ifndef CONFIG_PM_RUNTIME
@@ -1520,6 +1521,7 @@ static int msm_hsl_console_setup(struct console *co, char *options)
 	msm_hsl_write(port, 1, regmap[vid][UARTDM_NCF_TX]);
 	msm_hsl_read(port, regmap[vid][UARTDM_NCF_TX]);
 
+	console_unlock();
 	pr_info("console setup on port #%d\n", port->line);
 
 	return ret;
