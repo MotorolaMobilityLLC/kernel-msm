@@ -304,7 +304,7 @@
 
 	android_usb {
 		compatible = "qcom,android-usb";
-		qcom,android-usb-swfi-latency = <1>;
+		qcom,pm-qos-latency = <2 1001 12701>;
 	};
 
 	rmtfs_sharedmem {
