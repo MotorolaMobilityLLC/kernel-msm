@@ -718,7 +718,6 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 	struct cci_device *cci_dev;
 	enum cci_i2c_master_t master;
 	cci_dev = v4l2_get_subdevdata(sd);
-
 	if (!cci_dev || !c_ctrl) {
 		pr_err("%s:%d failed: invalid params %p %p\n", __func__,
 			__LINE__, cci_dev, c_ctrl);
