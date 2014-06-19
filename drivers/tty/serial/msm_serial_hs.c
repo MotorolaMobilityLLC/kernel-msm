@@ -3654,6 +3654,9 @@ static void msm_hs_shutdown(struct uart_port *uport)
 			if (pdata->gpio_config(0))
 				dev_err(uport->dev, "GPIO config error\n");
 	}
+
+	if (wake_lock_active(&msm_uport->rx.wake_lock))
+		wake_unlock(&msm_uport->rx.wake_lock);
 }
 
 static void __exit msm_serial_hs_exit(void)
