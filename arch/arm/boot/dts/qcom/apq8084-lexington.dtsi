@@ -30,9 +30,9 @@
 };
 
 &pma8084_l17 {
-	regulator-min-microvolt = <3100000>;
-	regulator-max-microvolt = <3100000>;
-	qcom,init-voltage = <3100000>;
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
 };
 
 &fb_mem {
@@ -53,6 +53,7 @@
 };
 
 &mdss_dsi0 {
+	mmi,mipi-d0-sel = <&msmgpio 14 0>;
 	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_0_cmd_v0>;
 	qcom,platform-reset-gpio = <&msmgpio 86 0>;
 	qcom,platform-te-gpio = <&msmgpio 12 0>;
@@ -60,13 +61,91 @@
 	vdd_disp-supply = <&vdd_disp_vreg>;
 	vci_disp-supply = <&vci_disp_vreg>;
 	/delete-property/ vdd-supply;
-	/delete-node/ qcom,platform-supply-entry1;
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vbat_disp";
+			qcom,supply-min-voltage = <5000000>;
+			qcom,supply-max-voltage = <5000000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vdd_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@2 {
+			reg = <2>;
+			qcom,supply-name = "vci_disp";
+			qcom,supply-min-voltage = <3300000>;
+			qcom,supply-max-voltage = <3300000>;
+			qcom,supply-enable-load = <330000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <20>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+	};
 };
 
 &mdss_dsi1 {
 	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_1_cmd_v0>;
 	/delete-property/ vdd-supply;
-	/delete-node/ qcom,platform-supply-entry1;
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vbat_disp";
+			qcom,supply-min-voltage = <5000000>;
+			qcom,supply-max-voltage = <5000000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vdd_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@2 {
+			reg = <2>;
+			qcom,supply-name = "vci_disp";
+			qcom,supply-min-voltage = <3300000>;
+			qcom,supply-max-voltage = <3300000>;
+			qcom,supply-enable-load = <330000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+	};
 };
 
 &mot_smd_598_1080p_cmd_v0 {
