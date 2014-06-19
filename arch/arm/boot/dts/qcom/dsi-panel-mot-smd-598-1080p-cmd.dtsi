@@ -84,6 +84,7 @@
 		qcom,mdss-dsi-lane-3-state;
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-dsi-panel-timings = [b0 23 1b 00 94 93 1e 25 15 03 04 00];
+		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-t-clk-post = <0x04>;
 		qcom,mdss-dsi-t-clk-pre = <0x1b>;
 		qcom,mdss-dsi-bl-min-level = <1>;
@@ -99,38 +100,5 @@
 
 		qcom,panel-en-reset-sequence = <1 11>;
 		qcom,panel-dis-reset-sequence = <0 1>;
-		qcom,platform-supply-entry1 {
-			qcom,supply-name = "vbat_disp";
-			qcom,supply-min-voltage = <3800000>;
-			qcom,supply-max-voltage = <3800000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,platform-supply-entry2 {
-			qcom,supply-name = "vdd_disp";
-			qcom,supply-min-voltage = <1800000>;
-			qcom,supply-max-voltage = <1800000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,platform-supply-entry3 {
-			qcom,supply-name = "vci_disp";
-			qcom,supply-min-voltage = <3300000>;
-			qcom,supply-max-voltage = <3300000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <21>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
 	};
 };
