@@ -3627,27 +3627,21 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
 #endif
        else if (strncmp(command, "BTCOEXMODE", 10) == 0 )
        {
-           char *dhcpPhase;
-           dhcpPhase = command + 11;
-           if ('1' == *dhcpPhase)
+           char *bcMode;
+           bcMode = command + 11;
+           if ('1' == *bcMode)
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                        FL("send DHCP START indication"));
+                        FL("BTCOEXMODE %d"), *bcMode);
 
                pHddCtx->btCoexModeSet = TRUE;
-
-               sme_DHCPStartInd(pHddCtx->hHal, pAdapter->device_mode,
-                                pAdapter->sessionId);
            }
-           else if ('2' == *dhcpPhase)
+           else if ('2' == *bcMode)
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                         FL("send DHCP STOP indication"));
+                         FL("BTCOEXMODE %d"), *bcMode);
 
                pHddCtx->btCoexModeSet = FALSE;
-
-               sme_DHCPStopInd(pHddCtx->hHal, pAdapter->device_mode,
-                               pAdapter->sessionId);
            }
        }
        else if (strncmp(command, "SCAN-ACTIVE", 11) == 0)
