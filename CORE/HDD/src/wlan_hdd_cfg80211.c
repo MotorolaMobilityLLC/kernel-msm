@@ -5819,23 +5819,13 @@ static struct cfg80211_bss* wlan_hdd_cfg80211_inform_bss(
        return NULL;
     }
 
-    bss = cfg80211_get_bss(wiphy, chan, pBssDesc->bssId,
-                           &roamProfile->SSID.ssId[0], roamProfile->SSID.length,
-                           WLAN_CAPABILITY_ESS, WLAN_CAPABILITY_ESS);
-    if (bss == NULL)
-    {
-        rssi = (VOS_MIN ((pBssDesc->rssi + pBssDesc->sinr), 0))*100;
+    rssi = (VOS_MIN ((pBssDesc->rssi + pBssDesc->sinr), 0))*100;
 
-        return (cfg80211_inform_bss(wiphy, chan, pBssDesc->bssId,
+    return cfg80211_inform_bss(wiphy, chan, pBssDesc->bssId,
                 le64_to_cpu(*(__le64 *)pBssDesc->timeStamp),
                 pBssDesc->capabilityInfo,
                 pBssDesc->beaconInterval, ie, ie_length,
-                rssi, GFP_KERNEL ));
-}
-    else
-    {
-        return bss;
-    }
+                rssi, GFP_KERNEL );
 }
 
 
