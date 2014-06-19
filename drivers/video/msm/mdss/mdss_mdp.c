@@ -737,7 +737,7 @@ void mdss_mdp_clk_ctrl(int enable, int isr)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	static int mdp_clk_cnt;
-	int changed = 0, rc;
+	int changed = 0;
 
 	mutex_lock(&mdp_clk_lock);
 	if (enable) {
@@ -769,10 +769,6 @@ void mdss_mdp_clk_ctrl(int enable, int isr)
 		mdss_mdp_clk_update(MDSS_CLK_MDP_LUT, enable);
 		if (mdata->vsync_ena)
 			mdss_mdp_clk_update(MDSS_CLK_MDP_VSYNC, enable);
-
-		rc = mdss_bus_bandwidth_ctrl(enable);
-		if (rc)
-			pr_err("bus bandwidth control failed rc=%d", rc);
 
 		if (!enable)
 			pm_runtime_put(&mdata->pdev->dev);
