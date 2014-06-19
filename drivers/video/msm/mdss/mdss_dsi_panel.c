@@ -690,9 +690,16 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, DSI_MODE_BIT_LP);
 	/* validate screen is actually on from the master control only */
-	if ((pwr_mode & 0x04) != 0x04)
+	if ((pwr_mode & 0x04) != 0x04) {
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
+
+		if (pdata->panel_info.panel_dead)
+			pr_err("%s: Panel recovery FAILED!!\n", __func__);
+
+		pdata->panel_info.panel_dead = true;
+	}
+
 end:
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
