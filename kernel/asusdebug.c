@@ -22,7 +22,7 @@
 /* BSP++ */
 #include <linux/syslog.h>
 
-#define ASUS_LAST_KMSG	1	//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+//#define ASUS_LAST_KMSG	1	//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #ifdef ASUS_LAST_KMSG
 char* LAST_KMSG_BUFFER;
@@ -773,7 +773,7 @@ static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
 
 	g_cat_read_pos += bytes_read;
 
-	printk("[adbg] Cat amount left %d, cat read pos %d\n", g_cat_amount_left, g_cat_read_pos);
+	//printk("[adbg] Cat amount left %d, cat read pos %d\n", g_cat_amount_left, g_cat_read_pos);
 
    	/* Most read functions return the number of bytes put into the buffer */
    	return bytes_read;
