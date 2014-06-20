@@ -1622,9 +1622,9 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 	mxhci_hsic_init_clocks(mxhci, 0);
 	mxhci_msm_config_gdsc(mxhci, 0);
 	kfree(xhci);
+	unregister_reboot_notifier(&mxhci->hsic_reboot);
 	usb_put_hcd(hcd);
 
-	unregister_reboot_notifier(&mxhci->hsic_reboot);
 
 	/* only need this if we want to set default state on exit */
 	if (IS_ERR(devm_pinctrl_get_select_default(&pdev->dev)))
