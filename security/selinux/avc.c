@@ -639,8 +639,11 @@ int avc_ss_reset(u32 seqno)
 	struct avc_callback_node *c;
 	int rc = 0, tmprc;
 
+	printk(KERN_DEBUG "[ASUS]avc_ss_reset DEBUG 1 \n");
+
 	avc_flush();
 
+	printk(KERN_DEBUG "[ASUS]avc_ss_reset DEBUG 2 \n");
 	for (c = avc_callbacks; c; c = c->next) {
 		if (c->events & AVC_CALLBACK_RESET) {
 			tmprc = c->callback(AVC_CALLBACK_RESET);
@@ -649,9 +652,12 @@ int avc_ss_reset(u32 seqno)
 			if (!rc)
 				rc = tmprc;
 		}
+		//msleep(10);// tony1_yu
 	}
+	printk(KERN_DEBUG "[ASUS]avc_ss_reset DEBUG 3 \n");
 
 	avc_latest_notif_update(seqno, 0);
+	printk(KERN_DEBUG "[ASUS]avc_ss_reset DEBUG 4 \n");
 	return rc;
 }
 
