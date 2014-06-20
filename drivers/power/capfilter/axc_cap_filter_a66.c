@@ -55,6 +55,8 @@ int g_BatFil_InPhoneCall_PastTime = 0;
 extern char g_CHG_mode;
 #endif
 
+extern enum DEVICE_HWID g_ASUS_hwID;
+
 //Eason:fix Cap drop too slowly in unattended mode+++
  /*
  *- interval           
@@ -535,8 +537,10 @@ int AXC_Cap_Filter_A66_FilterCapacity(struct AXI_Cap_Filter *apCapFilter, int no
 	 && (g_CHG_mode != 1)
 #endif
 	 ) {
-		pr_info("[BAT][Fil]%s(), bat low and cap <= 3, shutdown!! \n", __func__);
-		return BAT_LIFE_TO_SHUTDOWN;
+		if(g_ASUS_hwID >= WI500Q_ER){ 
+			pr_info("[BAT][Fil]%s(), bat low and cap <= 3, shutdown!! \n", __func__);
+			return BAT_LIFE_TO_SHUTDOWN;
+		}
 	}
 #endif
 	
