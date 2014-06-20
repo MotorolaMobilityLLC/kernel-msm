@@ -868,6 +868,8 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 					palm_flag = atomic_read(&Suspend_flag);		
 					if (!palm_flag){
 						if (jiffies - last_time_shot_power > 2*HZ){
+							strcpy(magic_key,"PALM");
+							kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 							last_time_shot_power = jiffies;
 							printk("[IT7260] PALM!!!\n\n");
 							input_report_key(gl_ts->input_dev, KEY_SLEEP,1);
