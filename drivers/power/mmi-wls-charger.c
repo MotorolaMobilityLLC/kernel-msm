@@ -510,7 +510,8 @@ static int mmi_wls_chrg_probe(struct i2c_client *client,
 
 	chip->wl_psy.supplied_from =
 		devm_kzalloc(&client->dev,
-			     sizeof(chip->wl_psy.supplied_from),
+			     sizeof(char *) *
+			     chip->wl_psy.num_supplies,
 			     GFP_KERNEL);
 
 	if (!chip->wl_psy.supplied_from) {
@@ -519,17 +520,6 @@ static int mmi_wls_chrg_probe(struct i2c_client *client,
 		goto fail_gpios;
 	}
 
-	*(chip->wl_psy.supplied_from) =
-		devm_kzalloc(&client->dev,
-			     sizeof(char *) *
-			     chip->wl_psy.num_supplies,
-			     GFP_KERNEL);
-
-	if (!*chip->wl_psy.supplied_from) {
-		dev_err(&client->dev,
-			"mmi_wls fail create supplied_from list\n");
-		goto fail_gpios;
-	}
 
 	for (i = 0; i < chip->wl_psy.num_supplies; i++) {
 		sf = &chip->wl_psy.supplied_from[i];
