@@ -132,6 +132,12 @@ enum {
 	I2C_CLK_FORCED_LOW_STATE	= 5,
 };
 
+static struct gpiomux_setting recovery_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 enum msm_i2c_state {
 	MSM_I2C_PM_ACTIVE,
 	MSM_I2C_PM_SUSPENDED,
@@ -909,6 +915,47 @@ qup_set_wr_mode(struct qup_i2c_dev *dev, int rem)
 	return ret;
 }
 
+static void qup_i2c_recover_gpio(struct qup_i2c_dev *dev)
+{
+	int i;
+	int gpio_clk;
+	int gpio_dat;
+	struct gpiomux_setting old_gpio_setting[ARRAY_SIZE(i2c_rsrcs)];
+
+	if (dev->pdata->msm_i2c_config_gpio)
+		return;
+	gpio_clk = dev->i2c_gpios[0];
+	gpio_dat = dev->i2c_gpios[1];
+	if ((gpio_clk == -1) && (gpio_dat == -1)) {
+		dev_err(dev->dev, "GPIO Recovery failed due to undefined GPIO's\n");
+		return;
+	}
+	for (i = 0; i < ARRAY_SIZE(i2c_rsrcs); ++i) {
+		if (msm_gpiomux_write(dev->i2c_gpios[i], GPIOMUX_ACTIVE,
+				&recovery_config, &old_gpio_setting[i])) {
+			dev_err(dev->dev, "GPIO pins have no active setting\n");
+			return;
+		}
+	}
+	dev_info(dev->dev, "i2c_scl: %d, i2c_sda: %d\n",
+		 gpio_get_value(gpio_clk), gpio_get_value(gpio_dat));
+
+	gpio_direction_output(gpio_clk, 0);
+	udelay(5);
+	gpio_direction_output(gpio_dat, 1);
+	udelay(20);
+	gpio_direction_input(gpio_clk);
+	udelay(5);
+	gpio_direction_input(gpio_dat);
+
+	udelay(20);
+	/* Configure ALT funciton to QUP I2C*/
+	for (i = 0; i < ARRAY_SIZE(i2c_rsrcs); ++i) {
+		msm_gpiomux_write(dev->i2c_gpios[i], GPIOMUX_ACTIVE,
+				&old_gpio_setting[i], NULL);
+	}
+}
+
 static int qup_i2c_reset(struct qup_i2c_dev *dev)
 {
 	int ret;
@@ -974,6 +1021,16 @@ static int qup_i2c_recover_bus_busy(struct qup_i2c_dev *dev)
 	status = readl_relaxed(dev->base + QUP_I2C_STATUS);
 	dev_info(dev->dev, "Bus recovery %s\n",
 		(status & I2C_STATUS_BUS_ACTIVE) ? "fail" : "success");
+
+	if (dev->pdata->extended_recovery &&
+					(status & I2C_STATUS_BUS_ACTIVE)) {
+		dev_info(dev->dev,
+		"9 clk pulse bus recovery did not help, try 1 clk pulse\n");
+		qup_i2c_recover_gpio(dev);
+		status = readl_relaxed(dev->base + QUP_I2C_STATUS);
+		dev_info(dev->dev, "Extended Bus recovery %s\n",
+			(status & I2C_STATUS_BUS_ACTIVE) ? "fail" : "success");
+	}
 
 recovery_end:
 	enable_irq(dev->err_irq);
@@ -1347,6 +1404,8 @@ int __devinit msm_i2c_rsrcs_dt_to_pdata_map(struct platform_device *pdev,
 	{"qcom,scl-gpio",      gpios,               DT_OPTIONAL,  DT_GPIO, -1},
 	{"qcom,sda-gpio",      gpios + 1,           DT_OPTIONAL,  DT_GPIO, -1},
 	{"qcom,clk-ctl-xfer", &pdata->clk_ctl_xfer, DT_OPTIONAL,  DT_BOOL, -1},
+	{"qcom,extended-recovery", &pdata->extended_recovery,
+						DT_OPTIONAL,  DT_BOOL, -1},
 	{"qcom,noise-rjct-scl", &pdata->noise_rjct_scl, DT_OPTIONAL, DT_U32, 0},
 	{"qcom,noise-rjct-sda", &pdata->noise_rjct_sda, DT_OPTIONAL, DT_U32, 0},
 	{NULL,                                    NULL,           0,      0, 0},
