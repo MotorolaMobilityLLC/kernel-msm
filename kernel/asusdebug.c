@@ -825,6 +825,34 @@ static void deinitKernelEnv(void)
 char messages[256];
 char messages_unparsed[256];
 
+void print_log_to_console(unsigned char* buf, int len){
+    int count = len;
+    char* buffer = buf;
+    
+    const int printk_max_size = 512;
+    char* record;
+    int record_offset = 0;
+    
+    while(count > 0){
+        char message[printk_max_size];
+        
+        record = strchr(buffer, '\n');
+
+        if (record == NULL )
+            break;
+        
+        record_offset = record - buffer;
+        
+        memcpy(message, buffer, record_offset);
+        message[record_offset] = '\0';
+        
+        printk("%s\n", message);
+        
+        count = count - record_offset - 1;
+        buffer = buffer + record_offset + 1;
+    }
+}
+
 void save_phone_hang_log(void)
 {
     int file_handle;
@@ -849,6 +877,9 @@ void save_phone_hang_log(void)
         {
             ret = sys_write(file_handle, (unsigned char*)g_phonehang_log, strlen(g_phonehang_log));
             sys_close(file_handle);
+        }else {
+            printk("[adbg] /asdf is not mounted yet, print to console.\n");
+            print_log_to_console((unsigned char*)g_phonehang_log, strlen(g_phonehang_log));
         }
         deinitKernelEnv();
         
