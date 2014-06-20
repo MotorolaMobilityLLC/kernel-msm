@@ -435,19 +435,27 @@ static void usbnet_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	dev->cdev = cdev;
 
-	usb_ep_disable(context->bulk_in);
-	usb_ep_disable(context->bulk_out);
+	if (context->bulk_in)
+		usb_ep_disable(context->bulk_in);
 
-	/* Free BULK OUT Requests */
-	while ((req = usb_get_recv_request(context)))
-		usb_ep_free_request(context->bulk_out, req);
+	if (context->bulk_out) {
+		usb_ep_disable(context->bulk_out);
 
-	/* Free BULK IN Requests */
-	while ((req = usb_get_xmit_request(DO_NOT_STOP_QUEUE,
-					  context->dev))) {
-		usb_ep_free_request(context->bulk_in, req);
+		/* Free BULK OUT Requests */
+		while ((req = usb_get_recv_request(context)))
+			usb_ep_free_request(context->bulk_out, req);
 	}
 
+	if (context->bulk_in) {
+		/* Free BULK IN Requests */
+		while ((req = usb_get_xmit_request(DO_NOT_STOP_QUEUE,
+						  context->dev))) {
+			usb_ep_free_request(context->bulk_in, req);
+		}
+	}
+
+	context->bulk_in = NULL;
+	context->bulk_out = NULL;
 	context->config = 0;
 }
 
