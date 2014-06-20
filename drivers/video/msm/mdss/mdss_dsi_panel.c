@@ -330,6 +330,11 @@ static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata, u8 *pwr_mode,
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 
+	if (ctrl->panel_config.bare_board == true) {
+		*pwr_mode = 0;
+		goto end;
+	}
+
 	old_rd_mode = mdss_dsi_get_tx_power_mode(pdata);
 	if (read_mode != old_rd_mode)
 		mdss_dsi_set_tx_power_mode(read_mode, pdata);
@@ -339,6 +344,7 @@ static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata, u8 *pwr_mode,
 	if (read_mode != old_rd_mode)
 		mdss_dsi_set_tx_power_mode(old_rd_mode, pdata);
 
+end:
 	pr_debug("%s: panel power mode = 0x%x\n", __func__, *pwr_mode);
 
 	return 0;
@@ -642,6 +648,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (!ctrl->ndx)
 		pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
+	if (ctrl->panel_config.bare_board == true) {
+		pr_warn("%s: This is bare_board configuration\n", __func__);
+		goto end;
+	}
+
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
@@ -650,6 +661,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (!ctrl->ndx && (pwr_mode & 0x04) != 0x04)
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
+end:
 	if (!ctrl->ndx)
 		pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
@@ -682,12 +694,16 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	mipi  = &pdata->panel_info.mipi;
 
+	if (ctrl->panel_config.bare_board == true)
+		goto end;
+
 	if (ctrl->set_hbm)
 		ctrl->set_hbm(ctrl, 0);
 
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
+end:
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
