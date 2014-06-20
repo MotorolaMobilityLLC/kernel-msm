@@ -8479,6 +8479,7 @@ static eHalStatus csrRoamIssueSetKeyCommand( tpAniSirGlobal pMac, tANI_U32 sessi
             status = eHAL_STATUS_RESOURCES;
             break;
         }
+        vos_mem_zero(pCommand, sizeof(tSmeCmd));
         pCommand->command = eSmeCommandSetKey;
         pCommand->sessionId = (tANI_U8)sessionId;
         // validate the key length,  Adjust if too long...
@@ -13722,6 +13723,8 @@ eHalStatus csrSendMBSetContextReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId,
     tANI_U8 *pBuf = NULL;
     tANI_U8 *p = NULL;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
+    smsLog( pMac, LOG1, FL("keylength is %d, Encry type is : %d"),
+                            keyLength, edType);
     do {
         if( ( 1 != numKeys ) && ( 0 != numKeys ) ) break;
         // all of these fields appear in every SET_CONTEXT message.  Below we'll add in the size for each 
