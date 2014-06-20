@@ -2792,8 +2792,8 @@ static int venus_hfi_init_regs_and_interrupts(
 	}
 	hal->irq = device->irq;
 	hal->device_base_addr = device->base_addr;
-	hal->register_base_addr =
-		ioremap_nocache(device->register_base, device->register_size);
+	hal->register_base_addr = devm_ioremap_nocache(&res->pdev->dev,
+			device->register_base, device->register_size);
 	if (!hal->register_base_addr) {
 		dprintk(VIDC_ERR,
 			"could not map reg addr %d of size %d\n",
