@@ -388,7 +388,11 @@ static inline int msm_pcie_oper_conf(struct pci_bus *bus, u32 devfn, int oper,
 		writel_relaxed(wr_val, config_base + word_offset);
 		wmb(); /* ensure config data is written to hardware register */
 
-		if (dev->shadow_en) {
+		if (rd_val == PCIE_LINK_DOWN) {
+			PCIE_ERR(dev,
+				"Read of RC%d %d:0x%02x + 0x%04x[%d] is all FFs\n",
+				rc_idx, bus->number, devfn, where, size);
+		} else if (dev->shadow_en) {
 			if (rc)
 				dev->rc_shadow[word_offset / 4] = wr_val;
 			else
@@ -1319,15 +1323,6 @@ void msm_pcie_disable(struct msm_pcie_dev_t *dev, u32 options)
 
 	mutex_lock(&dev->setup_lock);
 
-	if ((dev->link_status == MSM_PCIE_LINK_DISABLED)
-		&& !(options & PM_EXPT)) {
-		PCIE_ERR(dev,
-			"PCIe: the link of RC%d is already disabled\n",
-			dev->rc_idx);
-		mutex_unlock(&dev->setup_lock);
-		return;
-	}
-
 	if (!dev->power_on) {
 		PCIE_DBG(dev,
 			"PCIe: the link of RC%d is already power down.\n",
@@ -1335,6 +1330,9 @@ void msm_pcie_disable(struct msm_pcie_dev_t *dev, u32 options)
 		mutex_unlock(&dev->setup_lock);
 		return;
 	}
+
+	dev->link_status = MSM_PCIE_LINK_DISABLED;
+	dev->power_on = false;
 
 	PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
 		dev->rc_idx);
@@ -1354,9 +1352,6 @@ void msm_pcie_disable(struct msm_pcie_dev_t *dev, u32 options)
 
 	if (options & PM_PIPE_CLK)
 		msm_pcie_pipe_clk_deinit(dev);
-
-	dev->link_status = MSM_PCIE_LINK_DISABLED;
-	dev->power_on = false;
 
 	mutex_unlock(&dev->setup_lock);
 }
@@ -1817,6 +1812,13 @@ static int msm_pcie_pm_suspend(struct pci_dev *dev,
 	pcie_dev->suspending = true;
 	PCIE_DBG(pcie_dev, "RC%d\n", pcie_dev->rc_idx);
 
+	if (!pcie_dev->power_on) {
+		PCIE_DBG(pcie_dev,
+			"PCIe: power of RC%d has been turned off.\n",
+			pcie_dev->rc_idx);
+		return ret;
+	}
+
 	if (dev && !(options & MSM_PCIE_CONFIG_NO_CFG_RESTORE)) {
 		ret = pci_save_state(dev);
 		pcie_dev->saved_state =	pci_store_saved_state(dev);
@@ -2218,7 +2220,14 @@ int msm_pcie_recover_config(struct pci_dev *dev)
 		msm_pcie_cfg_recover(pcie_dev, true);
 		PCIE_DBG(pcie_dev, "Recover EP of RC%d\n", pcie_dev->rc_idx);
 		msm_pcie_cfg_recover(pcie_dev, false);
+		PCIE_DBG(pcie_dev,
+			"Refreshing the saved config space in PCI framework for RC%d and its EP\n",
+			pcie_dev->rc_idx);
+		pci_save_state(pcie_dev->dev);
+		pci_save_state(dev);
 		pcie_dev->shadow_en = true;
+		PCIE_DBG(pcie_dev, "Turn on shadow for RC%d\n",
+			pcie_dev->rc_idx);
 	} else {
 		PCIE_ERR(pcie_dev,
 			"PCIe: the link of RC%d is not up yet; can't recover config space.\n",
@@ -2229,3 +2238,31 @@ int msm_pcie_recover_config(struct pci_dev *dev)
 	return ret;
 }
 EXPORT_SYMBOL(msm_pcie_recover_config);
+
+int msm_pcie_shadow_control(struct pci_dev *dev, bool enable)
+{
+	int ret = 0;
+	struct msm_pcie_dev_t *pcie_dev;
+
+	if (dev) {
+		pcie_dev = PCIE_BUS_PRIV_DATA(dev);
+		PCIE_DBG(pcie_dev,
+			"Recovery for the link of RC%d\n", pcie_dev->rc_idx);
+	} else {
+		pr_err("PCIe: the input pci dev is NULL.\n");
+		return -ENODEV;
+	}
+
+	PCIE_DBG(pcie_dev,
+		"The shadowing of RC%d is %s enabled currently.\n",
+		pcie_dev->rc_idx, pcie_dev->shadow_en ? "" : "not");
+
+	pcie_dev->shadow_en = enable;
+
+	PCIE_DBG(pcie_dev,
+		"Shadowing of RC%d is turned %s upon user's request.\n",
+		pcie_dev->rc_idx, enable ? "on" : "off");
+
+	return ret;
+}
+EXPORT_SYMBOL(msm_pcie_shadow_control);
