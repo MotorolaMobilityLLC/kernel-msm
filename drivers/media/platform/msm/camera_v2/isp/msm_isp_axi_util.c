@@ -1262,6 +1262,10 @@ static int msm_isp_stop_axi_stream(struct vfe_device *vfe_dev,
 			if (camif_update != DISABLE_CAMIF_IMMEDIATELY)
 				wait_for_complete = 1;
 		}
+		if (!wait_for_complete) {
+			msm_isp_axi_stream_enable_cfg(vfe_dev, stream_info);
+			stream_info->state = INACTIVE;
+		}
 	}
 	if (wait_for_complete) {
 		rc = msm_isp_axi_wait_for_cfg_done(vfe_dev, camif_update);
@@ -1269,9 +1273,6 @@ static int msm_isp_stop_axi_stream(struct vfe_device *vfe_dev,
 			pr_err("%s: wait for config done failed\n", __func__);
 			return rc;
 		}
-	} else {
-		msm_isp_axi_stream_enable_cfg(vfe_dev, stream_info);
-		stream_info->state = INACTIVE;
 	}
 
 	if (camif_update == DISABLE_CAMIF)
