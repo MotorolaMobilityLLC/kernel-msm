@@ -23,12 +23,13 @@
 #define ADM_CMD_SHARED_MEM_UNMAP_REGIONS 0x00010324
 
 #define ADM_CMD_MATRIX_MAP_ROUTINGS_V5 0x00010325
-
+#define ADM_CMD_STREAM_DEVICE_MAP_ROUTINGS_V5 0x0001033D
 /* Enumeration for an audio Rx matrix ID.*/
 #define ADM_MATRIX_ID_AUDIO_RX              0
 
 #define ADM_MATRIX_ID_AUDIO_TX              1
 
+#define ADM_MATRIX_ID_COMPRESSED_AUDIO_RX   2
 /* Enumeration for an audio Tx matrix ID.*/
 #define ADM_MATRIX_ID_AUDIOX              1
 
@@ -2459,6 +2460,7 @@ struct afe_port_cmdrsp_get_param_v2 {
 #define NULL_COPP_TOPOLOGY				0x00010312
 #define DEFAULT_COPP_TOPOLOGY				0x00010be3
 #define DEFAULT_POPP_TOPOLOGY				0x00010be4
+#define COMPRESSED_PASSTHROUGH_DEFAULT_TOPOLOGY         0x0001076B
 #define VPM_TX_SM_ECNS_COPP_TOPOLOGY			0x00010F71
 #define VPM_TX_DM_FLUENCE_COPP_TOPOLOGY			0x00010F72
 #define VPM_TX_QMIC_FLUENCE_COPP_TOPOLOGY		0x00010F75
@@ -7461,4 +7463,10 @@ struct afe_svc_cmd_set_clip_bank_selection {
 #define US_GES_SYNC_FORMAT      0x00012730
 
 #define AUDPROC_MODULE_ID_RESAMPLER 0x00010719
+
+enum {
+	LEGACY_PCM = 0,
+	COMPRESSED_PASSTHROUGH,
+	COMPRESSED_PASSTHROUGH_CONVERT,
+};
 #endif /*_APR_AUDIO_V2_H_ */
