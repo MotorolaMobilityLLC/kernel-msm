@@ -16,6 +16,7 @@
 #define ADM_PATH_PLAYBACK 0x1
 #define ADM_PATH_LIVE_REC 0x2
 #define ADM_PATH_NONLIVE_REC 0x3
+#define ADM_PATH_COMPRESSED_RX 0x5
 #include <linux/qdsp6v2/rtac.h>
 #include <sound/q6afe-v2.h>
 #include <sound/q6audio-v2.h>
@@ -37,6 +38,7 @@ enum {
 	ADM_MAX_CAL_TYPES,
 };
 
+#define ADM_MAX_CHANNELS 8
 /* multiple copp per stream. */
 struct route_payload {
 	unsigned int copp_ids[AFE_MAX_PORTS];
