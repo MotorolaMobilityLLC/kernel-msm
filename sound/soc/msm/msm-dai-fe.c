@@ -308,6 +308,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.rate_max = 192000,
 		},
 		.ops = &msm_fe_Multimedia_dai_ops,
+		.compress_dai = 1,
 		.name = "MultiMedia7",
 		.probe = fe_dai_probe,
 	},
@@ -997,6 +998,25 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 		},
 		.ops = &msm_fe_dai_ops,
 		.name = "LSM8",
+		.probe = fe_dai_probe,
+	},
+	/* FE DAIs created for multiple instances of offload playback */
+	{
+		.playback = {
+			.stream_name = "MultiMedia10 Playback",
+			.aif_name = "MM_DL10",
+			.rates = (SNDRV_PCM_RATE_8000_192000 |
+				  SNDRV_PCM_RATE_KNOT),
+			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
+				    SNDRV_PCM_FMTBIT_S24_LE),
+			.channels_min = 1,
+			.channels_max = 8,
+			.rate_min = 8000,
+			.rate_max = 192000,
+		},
+		.ops = &msm_fe_Multimedia_dai_ops,
+		.compress_dai = 1,
+		.name = "MultiMedia10",
 		.probe = fe_dai_probe,
 	},
 };
