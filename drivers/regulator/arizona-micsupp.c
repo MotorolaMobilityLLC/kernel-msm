@@ -82,67 +82,6 @@ static int arizona_micsupp_list_voltage(struct regulator_dev *rdev,
 	}
 }
 
-static int arizona_micsupp_voltage_to_sel(int min_uV, int max_uV)
-{
-	int selector;
-
-	if (min_uV > 3200000)
-		selector = ARIZONA_MICSUPP_MAX_SELECTOR;
-	else
-		selector = DIV_ROUND_UP(min_uV - 1700000, 50000);
-
-	return selector;
-}
-
-static int arizona_micsupp_ext_voltage_to_sel(int min_uV, int max_uV)
-{
-	int selector;
-
-	if (min_uV > 3300000) {
-		selector = ARIZONA_MICSUPP_RANGE2_MAX_SELECTOR;
-	} else if (min_uV > 1400000) {
-		selector = DIV_ROUND_UP(min_uV - 1400000, 100000) +
-			   ARIZONA_MICSUPP_RANGE1_MAX_SELECTOR;
-	} else {
-		selector = DIV_ROUND_UP(min_uV - 900000, 25000);
-	}
-
-	return selector;
-}
-
-static int arizona_micsupp_map_voltage(struct regulator_dev *rdev,
-				       int min_uV, int max_uV)
-{
-	struct arizona_micsupp *micsupp = rdev_get_drvdata(rdev);
-	unsigned int voltage;
-	int selector;
-
-	switch (micsupp->arizona->type) {
-	case WM8280:
-	case WM5110:
-		if (min_uV < 900000)
-			min_uV = 900000;
-
-		selector = arizona_micsupp_ext_voltage_to_sel(min_uV, max_uV);
-		break;
-	default:
-		if (min_uV < 1700000)
-			min_uV = 1700000;
-
-		selector = arizona_micsupp_voltage_to_sel(min_uV, max_uV);
-		break;
-	}
-
-	if (selector < 0)
-		return -EINVAL;
-
-	voltage = arizona_micsupp_list_voltage(rdev, selector);
-	if (voltage < min_uV || voltage > max_uV)
-		return -EINVAL;
-
-	return selector;
-}
-
 static void arizona_micsupp_check_cp(struct work_struct *work)
 {
 	struct arizona_micsupp *micsupp =
@@ -217,7 +156,7 @@ static struct regulator_ops arizona_micsupp_ops = {
 	.is_enabled = regulator_is_enabled_regmap,
 
 	.list_voltage = arizona_micsupp_list_voltage,
-	.map_voltage = arizona_micsupp_map_voltage,
+	.map_voltage = regulator_map_voltage_ascend,
 
 	.get_voltage_sel = regulator_get_voltage_sel_regmap,
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
