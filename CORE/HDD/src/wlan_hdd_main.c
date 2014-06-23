@@ -9908,7 +9908,7 @@ VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx)
    /* A tight check to make sure reentrancy */
    if(atomic_xchg(&pHddCtx->isRestartInProgress, 1))
    {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, 
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
             "%s: WLAN restart is already in progress", __func__);
 
       return VOS_STATUS_E_ALREADY;

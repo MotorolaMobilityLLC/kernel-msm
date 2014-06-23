@@ -791,6 +791,7 @@ VosWDThread
           VOS_ASSERT(0);
           goto err_reset;
         }
+        atomic_set(&pHddCtx->isRestartInProgress, 0);
         pWdContext->resetInProgress = false;
         complete(&pHddCtx->ssr_comp_var);
       }
