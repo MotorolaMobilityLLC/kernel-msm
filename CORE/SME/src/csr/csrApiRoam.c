@@ -2827,7 +2827,11 @@ eHalStatus csrRoamIssueDeauth( tpAniSirGlobal pMac, tANI_U32 sessionId, eCsrRoam
     csrRoamSubstateChange( pMac, NewSubstate, sessionId);
     
     status = csrSendMBDeauthReqMsg( pMac, sessionId, bssId, eSIR_MAC_DEAUTH_LEAVING_BSS_REASON );
-    if(!HAL_STATUS_SUCCESS(status))
+    if(HAL_STATUS_SUCCESS(status))
+    {
+        csrRoamLinkDown(pMac, sessionId);
+    }
+    else
     {
         smsLog(pMac, LOGE, FL("csrSendMBDeauthReqMsg failed with status %d Session ID: %d"
                                 MAC_ADDRESS_STR ), status, sessionId, MAC_ADDR_ARRAY(bssId));
@@ -5456,6 +5460,13 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                        roamInfo.nBeaconLength = pSession->connectedInfo.nBeaconLength;
                        roamInfo.pbFrames = pSession->connectedInfo.pbFrames;
                    }
+                }
+                /* Update the staId from the previous connected profile info
+                   as the reassociation is triggred at SME/HDD */
+                if( (eCsrHddIssuedReassocToSameAP == pCommand->u.roamCmd.roamReason) ||
+                    (eCsrSmeIssuedReassocToSameAP == pCommand->u.roamCmd.roamReason) )
+                {
+                    roamInfo.staId = pSession->connectedInfo.staId;
                 }
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
                 // Indicate SME-QOS with reassoc success event, only after 

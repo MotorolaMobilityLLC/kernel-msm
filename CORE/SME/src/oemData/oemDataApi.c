@@ -231,6 +231,7 @@ eHalStatus oemData_SendMBOemDataReq(tpAniSirGlobal pMac, tOemDataReq *pOemDataRe
     {
         vos_mem_set(pMsg, msgLen, 0);
         pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_OEM_DATA_REQ);
+        pMsg->messageLen = pal_cpu_to_be16(msgLen);
         vos_mem_copy(pMsg->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr) );
         vos_mem_copy(pMsg->oemDataReq, pOemDataReq->oemDataReq, OEM_DATA_REQ_SIZE);
         smsLog(pMac, LOGW, "OEM_DATA: sending message to pe%s", __func__);

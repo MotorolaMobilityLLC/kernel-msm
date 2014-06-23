@@ -924,6 +924,7 @@ typedef struct sSirSmeScanChanReq
 typedef struct sSirOemDataReq
 {
     tANI_U16              messageType; //eWNI_SME_OEM_DATA_REQ
+    tANI_U16              messageLen;
     tSirMacAddr           selfMacAddr;
     tANI_U8               oemDataReq[OEM_DATA_REQ_SIZE];
 } tSirOemDataReq, *tpSirOemDataReq;

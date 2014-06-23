@@ -50,6 +50,19 @@
 #include "wlan_nv.h"
 #include "wlan_nv2.h"
 
+/* Maximum number of channels per country can be ignored */
+#define MAX_CHANNELS_IGNORE 10
+#define MAX_COUNTRY_IGNORE 5
+
+typedef struct sCsrIgnoreChannels
+{
+   tANI_U8 countryCode[NV_FIELD_COUNTRY_CODE_SIZE];
+   tANI_U16 channelList[MAX_CHANNELS_IGNORE];
+   tANI_U16 channelCount;
+}tCsrIgnoreChannels;
+
+extern tCsrIgnoreChannels countryIgnoreList[];
+
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
   ------------------------------------------------------------------------*/
