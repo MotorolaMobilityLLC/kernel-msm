@@ -51,9 +51,13 @@
 		status = "ok";
 
 		android,ramoops-buffer-start = <0x3eae0000>;
-		android,ramoops-buffer-size = <0x40000>;
-		android,ramoops-console-size = <0x20000>;
+		android,ramoops-buffer-size = <0x100000>;
+		android,ramoops-console-size = <0x80000>;
 		android,ramoops-annotate-size = <0x800>;
+		android,ramoops-hole {
+			compatible = "qcom,msm-contig-mem";
+			qcom,memblock-reserve = <0x3eae0000 0x100000>;
+		};
 	};
 
 	sound-9330 {
@@ -310,11 +314,11 @@
 
 	qcom,wdt@f9017000 {
 		qcom,bark-time = <22000>;
-		qcom,memblock-reserve = <0x3eb20000 0xb000>;
+		qcom,memblock-reserve = <0x3ebe0000 0xb000>;
 	};
 
 	qcom,tz-log@fe805720 {
-		qcom,memblock-reserve = <0x3eb2b000 0x1000>;
+		qcom,memblock-reserve = <0x3ebeb000 0x1000>;
 	};
 
 	cci: qcom,cci@fda0C000 {
