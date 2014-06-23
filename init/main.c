@@ -202,6 +202,17 @@ static int set_cpu_id(char *str)
 __setup("CPU_RV=", set_cpu_id);
 // better_ding@asus.com get cpu id from aboot ---
 
+//+++ASUS_BSP: for recovery mode
+int g_recovery_mode=0;
+static int set_recovery_mode(char *str)
+{
+	g_recovery_mode = 1;
+      printk("Recovery mode = %d\n",g_recovery_mode);
+      return 0;
+}
+__setup("recovery", set_recovery_mode);
+//---ASUS_BSP: for recovery mode
+
 //ASUS_BSP porting charger mode +++
 #if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
 int g_CHG_mode=0;
