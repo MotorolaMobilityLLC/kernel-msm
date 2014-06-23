@@ -129,6 +129,7 @@
 				cy,name = "cyttsp5_core";
 				cy,irq_gpio = <17>;
 				cy,hid_desc_register = <1>;
+				cy,level_irq_udelay = <1>;
 				cy,mt {
 					cy,name = "cyttsp5_mt";
 					cy,inp_dev_name = "sec_touchscreen";
