@@ -41,10 +41,12 @@
 #include <linux/pm_wakeup.h>
 #include <linux/power_supply.h>
 #include <linux/qpnp/qpnp-adc.h>
+#include <linux/qpnp/pin.h>
 #include <linux/cdev.h>
 #include <linux/completion.h>
 #include <linux/clk/msm-clk.h>
 #include <soc/qcom/scm.h>
+#include <linux/of_gpio.h>
 
 #include <mach/rpm-regulator.h>
 #include <mach/msm_bus.h>
@@ -119,7 +121,9 @@ struct dwc3_msm_scm_cmd_buf {
 };
 
 #define DWC3_ID_STATUS_DELAY        150 /* 150 msec */
-#define DWC3_ID_STATUS_MAX_DELAY    600 /* 600 msec */
+#define DWC3_ID_GND_THRESH          400000  /* 400 mV */
+#define DWC3_ID_DEFAULT_VOLTS       1000000 /* 1V */
+
 struct dwc3_msm_req_complete {
 	struct list_head list_item;
 	struct usb_request *req;
@@ -165,7 +169,12 @@ struct dwc3_msm {
 	enum usb_chg_state	chg_state;
 	int			pmic_id_irq;
 	bool                    id_irq_enabled;
+	unsigned int		pmic_id_gpio;
+	unsigned int		pmic_id_vin;
+	unsigned int		pmic_id_pull;
+	unsigned int		pmic_id_amux_chan;
 	struct delayed_work	id_work;
+	struct qpnp_vadc_chip   *vadc_dev;
 	struct qpnp_adc_tm_btm_param	adc_param;
 	struct qpnp_adc_tm_chip *adc_tm_dev;
 	struct delayed_work	init_adc_work;
@@ -1680,6 +1689,64 @@ static irqreturn_t msm_dwc3_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static int
+get_prop_usbid_voltage_now(struct dwc3_msm *mdwc)
+{
+	int rc = 0;
+	struct qpnp_vadc_result results;
+	struct qpnp_pin_cfg id_pin_cfg;
+	int enable_id = 0;
+	int id_voltage;
+
+	/* Disable ID irq before voltage measurement to prevent triggering */
+	if (mdwc->id_irq_enabled) {
+		disable_irq(mdwc->pmic_id_irq);
+		mdwc->id_irq_enabled = false;
+		enable_id = 1;
+	}
+
+	/* Switch ID Pin to Analog IN */
+	memset(&id_pin_cfg, 0 , sizeof(id_pin_cfg));
+	id_pin_cfg.mode = QPNP_PIN_MODE_AIN;
+	id_pin_cfg.ain_route = mdwc->pmic_id_amux_chan;
+	id_pin_cfg.master_en  = QPNP_PIN_MASTER_ENABLE;
+	qpnp_pin_config(mdwc->pmic_id_gpio, &id_pin_cfg);
+
+	if (IS_ERR_OR_NULL(mdwc->vadc_dev)) {
+		mdwc->vadc_dev = qpnp_get_vadc(mdwc->dev, "dwc3-usb");
+		if (IS_ERR(mdwc->vadc_dev)) {
+			id_voltage = DWC3_ID_DEFAULT_VOLTS;
+			goto reset_pin;
+		}
+	}
+
+	rc = qpnp_vadc_read(mdwc->vadc_dev, P_MUX2_1_1, &results);
+	if (rc) {
+		pr_err("Unable to read usbid rc=%d\n", rc);
+		id_voltage =  DWC3_ID_DEFAULT_VOLTS;
+	} else {
+		id_voltage = results.physical;
+	}
+
+reset_pin:
+	/* Switch ID Pin to Digital IN */
+	memset(&id_pin_cfg, 0 , sizeof(id_pin_cfg));
+	id_pin_cfg.mode = QPNP_PIN_MODE_DIG_IN;
+	id_pin_cfg.vin_sel = mdwc->pmic_id_vin;
+	id_pin_cfg.pull = mdwc->pmic_id_pull;
+	id_pin_cfg.master_en  = QPNP_PIN_MASTER_ENABLE;
+	qpnp_pin_config(mdwc->pmic_id_gpio, &id_pin_cfg);
+
+	/* Leave ID irq enabled if enabled before voltage measurement */
+	if (enable_id) {
+		enable_irq(mdwc->pmic_id_irq);
+		mdwc->id_irq_enabled = true;
+	}
+
+	pr_debug("id_voltage = %d\n", id_voltage);
+	return id_voltage;
+}
+
 static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
@@ -1956,6 +2023,14 @@ static void dwc3_id_work(struct work_struct *w)
 		mdwc->ext_inuse = (ret == 0);
 	}
 
+	if (mdwc->pmic_id_irq &&
+		(mdwc->id_state == DWC3_ID_GROUND) &&
+		(get_prop_usbid_voltage_now(mdwc) > DWC3_ID_GND_THRESH)) {
+		mdwc->id_state = DWC3_ID_FLOAT;
+		pr_err("Spurious ID GND, Ignore\n");
+		return;
+	}
+
 	if (!mdwc->ext_inuse) { /* notify OTG */
 		mdwc->ext_xceiv.id = mdwc->id_state;
 		dwc3_resume_work(&mdwc->resume_work.work);
@@ -1974,15 +2049,9 @@ static irqreturn_t dwc3_pmic_id_irq(int irq, void *data)
 		if (mdwc->vbus_active)
 			return IRQ_HANDLED;
 
-		/* Debounce Host Mode detection more */
-		if (mdwc->id_state == DWC3_ID_GROUND)
-			queue_delayed_work(system_nrt_wq, &mdwc->id_work,
-					 msecs_to_jiffies(
-						DWC3_ID_STATUS_MAX_DELAY));
-		else
-			queue_delayed_work(system_nrt_wq, &mdwc->id_work,
-					 msecs_to_jiffies(
-						DWC3_ID_STATUS_DELAY));
+		queue_delayed_work(system_nrt_wq, &mdwc->id_work,
+				 msecs_to_jiffies(
+					DWC3_ID_STATUS_DELAY));
 	}
 
 	return IRQ_HANDLED;
@@ -2698,6 +2767,23 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	/* Update initial ID state */
 	if (mdwc->pmic_id_irq) {
+		mdwc->pmic_id_gpio = of_get_named_gpio(node,
+					"pmic-id-gpio", 0);
+		if (of_property_read_u32(node,
+				"pmic-id-amux-chan",
+				&mdwc->pmic_id_amux_chan))
+			dev_dbg(&pdev->dev,
+				"unable to read ID amux\n");
+		if (of_property_read_u32(node,
+				"pmic-id-vin",
+				&mdwc->pmic_id_vin))
+			dev_dbg(&pdev->dev,
+				"unable to read ID vin\n");
+		if (of_property_read_u32(node,
+				"pmic-id-pull",
+				&mdwc->pmic_id_pull))
+			dev_dbg(&pdev->dev,
+				"unable to read ID pull\n");
 		mdwc->defer_read_id = true;
 		enable_irq_wake(mdwc->pmic_id_irq);
 		mdwc->id_irq_enabled = true;
