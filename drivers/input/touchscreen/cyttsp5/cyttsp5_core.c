@@ -3086,13 +3086,23 @@ static int cyttsp5_hw_soft_reset(struct cyttsp5_core_data *cd)
 
 static int cyttsp5_hw_hard_reset(struct cyttsp5_core_data *cd)
 {
-	if (cd->cpdata->xres) {
-		cd->cpdata->xres(cd->cpdata, cd->dev);
-		dev_dbg(cd->dev, "%s: execute HARD reset\n", __func__);
-		return 0;
-	}
-	dev_err(cd->dev, "%s: FAILED to execute HARD reset\n", __func__);
-	return -ENOSYS;
+	mutex_lock(&cd->system_lock);
+	if (cd->irq_enabled)
+		disable_irq_nosync(cd->irq);
+	mutex_unlock(&cd->system_lock);
+
+	cd->cpdata->power(cd->cpdata, 0, cd->dev, 0);
+
+	msleep(50);
+
+	cd->cpdata->power(cd->cpdata, 1, cd->dev, 0);
+
+	mutex_lock(&cd->system_lock);
+	if (cd->irq_enabled)
+		enable_irq(cd->irq);
+	mutex_unlock(&cd->system_lock);
+
+	return 0;
 }
 
 static int cyttsp5_hw_reset(struct cyttsp5_core_data *cd)
@@ -4121,6 +4131,11 @@ static irqreturn_t cyttsp5_irq(int irq, void *handle)
 	struct cyttsp5_core_data *cd = handle;
 	int rc;
 
+	if (!cd->irq_enabled) {
+		dev_info(cd->dev, "%s: !cd->irq_enabled\n", __func__);
+		return IRQ_HANDLED;
+	}
+
 	if (cd->cpdata->irq_stat &&
 		cd->cpdata->irq_stat(cd->cpdata, cd->dev)) {
 		dev_err(cd->dev,
@@ -4256,6 +4271,14 @@ static int cyttsp5_reset_and_wait(struct cyttsp5_core_data *cd)
 		dev_dbg(cd->dev, "%s: hw power on now\n", __func__);
 		rc = cd->cpdata->power(cd->cpdata, 1, cd->dev, 0);
 		do_reset = true;
+
+		mutex_lock(&cd->system_lock);
+		if (!cd->irq_enabled) {
+			cd->irq_enabled = true;
+			enable_irq(cd->irq);
+			dev_dbg(cd->dev, "%s: irq enabled\n", __func__);
+		}
+		mutex_unlock(&cd->system_lock);
 	}
 
 	t = wait_event_timeout(cd->wait_q, (cd->hid_reset_cmd_state == 0),
@@ -5579,7 +5602,7 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 		rc = -EINVAL;
 		goto error_gpio_irq;
 	}
-	cd->irq_enabled = true;
+	cd->irq_enabled = false;
 
 	dev_set_drvdata(dev, cd);
 	cyttsp5_add_core(dev);
@@ -5597,12 +5620,14 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 
 
 	dev_info(dev, "%s: initialize irq=%d\n", __func__, cd->irq);
-	if (cd->cpdata->level_irq_udelay > 0)
+	if (cd->cpdata->level_irq_udelay > 0) {
 		/* use level triggered interrupts */
+		irq_set_status_flags(cd->irq, IRQ_NOAUTOEN);
 		irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
-	else
+	} else {
 		/* use edge triggered interrupts */
 		irq_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
+	}
 
 	rc = request_threaded_irq(cd->irq, NULL, cyttsp5_irq, irq_flags,
 		dev_name(dev), cd);
