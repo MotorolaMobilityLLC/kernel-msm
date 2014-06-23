@@ -65,6 +65,8 @@ struct adm_ctl {
 
 	int set_custom_topology;
 	int ec_ref_rx;
+
+	int port_none_topo;
 };
 
 static struct adm_ctl			this_adm;
@@ -1164,6 +1166,12 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			(open.topology_id == VPM_TX_DM_FLUENCE_COPP_TOPOLOGY))
 				rate = 16000;
 
+		if (this_adm.port_none_topo == port_id &&
+				this_adm.port_none_topo != AFE_PORT_INVALID) {
+			open.topology_id = NULL_COPP_TOPOLOGY;
+			pr_debug("set topology none for port 0X%x\n", port_id);
+		}
+
 		if (perf_mode == ULTRA_LOW_LATENCY_PCM_MODE) {
 			open.topology_id = NULL_COPP_TOPOLOGY;
 			rate = ULL_SUPPORTED_SAMPLE_RATE;
@@ -1609,6 +1617,12 @@ void adm_ec_ref_rx_id(int port_id)
 	pr_debug("%s ec_ref_rx:%d", __func__, this_adm.ec_ref_rx);
 }
 
+void adm_set_none_topo_portid(int port_id)
+{
+	this_adm.port_none_topo = port_id;
+	pr_debug("%s port_none_topo: 0X%x", __func__, this_adm.port_none_topo);
+}
+
 int adm_close(int port_id, int perf_mode)
 {
 	struct apr_hdr close;
@@ -1724,6 +1738,7 @@ static int __init adm_init(void)
 	this_adm.apr = NULL;
 	this_adm.set_custom_topology = 1;
 	this_adm.ec_ref_rx = -1;
+	this_adm.port_none_topo = AFE_PORT_INVALID;
 
 	for (i = 0; i < AFE_MAX_PORTS; i++) {
 		atomic_set(&this_adm.copp_id[i], RESET_COPP_ID);
