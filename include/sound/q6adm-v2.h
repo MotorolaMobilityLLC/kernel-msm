@@ -70,4 +70,6 @@ void adm_set_multi_ch_map(char *channel_map);
 
 void adm_get_multi_ch_map(char *channel_map);
 
+void adm_set_none_topo_portid(int port_id);
+
 #endif /* __Q6_ADM_V2_H__ */
