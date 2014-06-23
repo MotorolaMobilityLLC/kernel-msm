@@ -4039,7 +4039,8 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
     tANI_U8 ccode[WNI_CFG_COUNTRY_CODE_LEN];
     tANI_U8 uBufLen = WNI_CFG_COUNTRY_CODE_LEN;
     eCsrBand nBandCapability = eCSR_BAND_ALL;
-    int i,j,k,m;
+    int i,j,k,m,n;
+    int countryIndex = -1;
 
     wiphy_dbg(wiphy, "info: cfg80211 reg_notifier callback for country"
                      " %c%c\n", request->alpha2[0], request->alpha2[1]);
@@ -4166,6 +4167,14 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
          }
 
          wiphy_dbg(wiphy, "country: %c%c set by driver\n",ccode[0],ccode[1]);
+         for (n = 0; n < MAX_COUNTRY_IGNORE; n++)
+         {
+             if (vos_mem_compare(ccode, countryIgnoreList[n].countryCode, VOS_COUNTRY_CODE_LEN))
+             {
+                 countryIndex = n;
+                 break;
+             }
+         }
          /* if set by driver itself, it means driver can accept the crda
             regulatory settings and wiphy->regd should be populated with crda
             settings. iwiphy->bands doesn't seem to set ht40 flags in kernel
@@ -4236,6 +4245,23 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
                                                              |IEEE80211_CHAN_NO_IBSS
                                                              |IEEE80211_CHAN_RADAR);
                  }
+
+                 if (countryIndex != -1)
+                 {
+                     for (n = 0; n < MAX_CHANNELS_IGNORE; n++)
+                     {
+                          v_U16_t freq = vos_chan_to_freq(countryIgnoreList[countryIndex].channelList[n]);
+                          if (wiphy->bands[i]->channels[j].center_freq == freq)
+                          {
+                              wiphy->bands[i]->channels[j].flags  &= ~(IEEE80211_CHAN_DISABLED
+                                     |IEEE80211_CHAN_PASSIVE_SCAN
+                                     |IEEE80211_CHAN_NO_IBSS
+                                     |IEEE80211_CHAN_RADAR);
+                              wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+                          }
+                     }
+                 }
+
              }
          }
 
