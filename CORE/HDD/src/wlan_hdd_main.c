@@ -2283,6 +2283,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            }
 
            /* Set Reassoc threshold to (lookup rssi threshold + 5 dBm) */
+           pHddCtx->cfg_ini->nNeighborReassocRssiThreshold = lookUpThreshold + 5;
            sme_setNeighborReassocRssiThreshold((tHalHandle)(pHddCtx->hHal), lookUpThreshold + 5);
        }
        else if (strncmp(command, "GETROAMTRIGGER", 14) == 0)
