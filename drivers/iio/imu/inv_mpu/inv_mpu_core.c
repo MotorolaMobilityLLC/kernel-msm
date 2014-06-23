@@ -2793,6 +2793,49 @@ static struct i2c_test_case_info gMPU9250TestCaseInfo[] =
 };
 #endif
 
+void notify_mpu_sensor_lowpowermode(int low)
+{
+	struct inv_reg_map_s *reg;
+	int result;	
+	reg = &g_st->reg;
+
+	printk("[MPU9250] %s: +++: (%s)\n", __func__, low?"enter":"exit");
+
+	if(low) {
+		result = inv_i2c_read(g_st, reg->pwr_mgmt_1, 1, &g_st->pwr_mgmt1);
+		if (result)
+			return;
+
+		result = inv_i2c_read(g_st, reg->pwr_mgmt_2, 1, &g_st->pwr_mgmt2);
+		if (result)
+			return;
+
+//		result = inv_i2c_single_write(g_st, reg->pwr_mgmt_1, BIT_H_RESET);
+	//	if (result)
+		//	return;
+
+		result = inv_i2c_single_write(g_st, reg->pwr_mgmt_1, BIT_CYCLE);
+		if (result)
+			return;
+
+		result = inv_i2c_single_write(g_st, reg->pwr_mgmt_2, BIT_PWR_GYRO_STBY);
+		if (result)
+			return;
+	}
+	else {
+		result = inv_i2c_single_write(g_st, reg->pwr_mgmt_1, g_st->pwr_mgmt1);
+		if (result)
+			return;
+
+		result = inv_i2c_single_write(g_st, reg->pwr_mgmt_2, g_st->pwr_mgmt1);
+		if (result)
+			return;
+		
+	}
+
+	printk("[MPU9250] %s: --- : (%s)\n", __func__, low?"enter":"exit");
+}
+
 /*
  *  inv_mpu_probe() - probe function.
  */
