@@ -50,6 +50,12 @@ Optional properties :
 - qcom,no-suspend-resume: If present, the device will not perform any activity
 		during suspend/resume
 - qcom,usb-dbm : phandle for the DBM device
+- qcom,dwc3-usb-vadc: Corresponding vadc device's phandle to read usb pin voltage
+		using VADC.
+- pmic-id-gpio: If present, this is the gpio that is used to indicate host_detect
+- pmic-id-amux-chan: If present, this is the AMUX chan when pmic-id-gpio is Analog Input
+- pmic-id-pull: If present, this is the pull value when pmic-id-gpio is Digital Input
+- pmic-id-vin: If present, this is the voltage level when pmic-id-gpio is Digital Input
 
 Sub nodes:
 - Sub node for "DWC3- USB3 controller".
