@@ -1632,7 +1632,11 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
     {
        hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Interface type %d already exists. Two"
                      "interfaces of same type are not supported currently.",__func__, type);
-       return NULL;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
+       return ERR_PTR(-EINVAL);
+#else
+       return -EAGAIN;
+#endif
     }
 
     if (pHddCtx->isLogpInProgress)
@@ -1640,7 +1644,7 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s:LOGP in Progress. Ignore!!!", __func__);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
-       return NULL;
+       return ERR_PTR(-EINVAL);
 #else
        return -EAGAIN;
 #endif
@@ -1682,7 +1686,7 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
     {
         hddLog(VOS_TRACE_LEVEL_ERROR,"%s: hdd_open_adapter failed",__func__);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
-        return NULL;
+        return ERR_PTR(-EINVAL);
 #else
         return -EINVAL;
 #endif
