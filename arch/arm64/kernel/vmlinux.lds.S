@@ -12,6 +12,8 @@
 #include <asm/pgtable.h>
 #endif
 
+#include "image.h"
+
 #if (!defined(CONFIG_DEBUG_SPINLOCK)) || defined(CONFIG_GENERIC_BUG)
 #define ARM_EXIT_KEEP(x)	x
 #define ARM_EXIT_DISCARD(x)
@@ -131,6 +133,8 @@ SECTIONS
 	_end = .;
 
 	STABS_DEBUG
+
+	HEAD_SYMBOLS
 }
 
 /*
