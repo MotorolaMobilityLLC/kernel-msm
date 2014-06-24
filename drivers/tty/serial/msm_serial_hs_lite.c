@@ -1502,8 +1502,6 @@ static int msm_hsl_console_setup(struct console *co, char *options)
 	msm_hsl_write(port, UARTDM_MR2_BITS_PER_CHAR_8 | STOP_BIT_ONE,
 		      regmap[vid][UARTDM_MR2]);	/* 8N1 */
 
-	if (baud < 300 || baud > 115200)
-		baud = 115200;
 	msm_hsl_set_baud_rate(port, baud);
 
 	ret = uart_set_options(port, co, baud, parity, bits, flow);
