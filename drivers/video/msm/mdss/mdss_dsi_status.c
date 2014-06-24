@@ -106,6 +106,11 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 		return;
 	}
 
+	if (!pdsi_status->mfd->panel_power_on) {
+		pr_err("%s: panel off\n", __func__);
+		return;
+	}
+
 	mutex_lock(&ctl->offlock);
 	if (ctl->shared_lock)
 		mutex_lock(ctl->shared_lock);
