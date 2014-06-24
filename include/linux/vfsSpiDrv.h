@@ -39,6 +39,8 @@
 #define DEFAULT_BUFFER_SIZE (4096 * 6)
 #define DRDY_IRQ_ENABLE     1
 #define DRDY_IRQ_DISABLE    0
+#define VFSSPI_DRDY_NOTIFY_TYPE_SIGNAL      0x00000001
+#define VFSSPI_DRDY_NOTIFY_TYPE_EVENTFD     0x00000002
 
 /* IOCTL commands definitions */
 
@@ -65,12 +67,11 @@
  */
 #define VFSSPI_IOCTL_CHECK_DRDY             _IO(VFSSPI_IOCTL_MAGIC,   4)
 /*
- * Register DRDY signal. It is used by SPI driver for indicating host that
+ * Register DRDY eventfd. It is used by SPI driver for indicating host that
  * DRDY signal is asserted.
  */
-#define VFSSPI_IOCTL_REGISTER_DRDY_SIGNAL   _IOW(VFSSPI_IOCTL_MAGIC,	\
+#define VFSSPI_IOCTL_REGISTER_DRDY_EVENTFD   _IOW(VFSSPI_IOCTL_MAGIC,	\
 							 5, unsigned int)
-
 /*
  * Enable/disable DRDY interrupt handling in the SPI driver
  */
@@ -91,6 +92,11 @@
 #define VFSSPI_IOCTL_STREAM_READ_STOP       _IO(VFSSPI_IOCTL_MAGIC,   11)
 
 /*
+ * Inform user service of suported notification method
+ */
+#define VFSSPI_IOCTL_SELECT_DRDY_NTF_TYPE   _IOWR(VFSSPI_IOCTL_MAGIC,	\
+							 21, unsigned int)
+/*
  * Used by IOCTL command:
  *         VFSSPI_IOCTL_RW_SPI_MESSAGE
  *
@@ -106,15 +112,27 @@ struct vfsspi_ioctl_transfer {
 
 /*
  * Used by IOCTL command:
- *         VFSSPI_IOCTL_REGISTER_DRDY_SIGNAL
+ *         VFSSPI_IOCTL_REGISTER_DRDY_EVENTFD
  *
  * @user_pid:Process ID to which SPI driver sends signal indicating that DRDY
  *			is asserted
- * @signal_id:signal_id
+ * @eventfd:eventfd
 */
-struct vfsspi_ioctl_register_signal {
+struct vfsspi_ioctl_register_eventfd {
 	int user_pid;
-	int signal_id;
+	unsigned int eventfd;
+};
+
+/*
+ * Used by IOCTL command:
+ *         VFSSPI_IOCTL_SELECT_DRDY_NTF_TYPE
+ *
+ * @supported_types: indicated types supported by driver
+ * @selected_type: inform service which notification type to use
+*/
+struct vfsspi_ioc_select_drdy_ntf_type {
+	unsigned int supported_types;
+	unsigned int selected_type;
 };
 
 #endif /* VFSSPIDRV_H_ */
