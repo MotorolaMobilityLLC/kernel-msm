@@ -11,7 +11,13 @@
 
 extern unsigned int PRINTK_BUFFER;
 extern unsigned int RTB_BUFFER;
-extern char* LAST_KMSG_BUFFER;	//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+
+//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+extern char* LAST_KMSG_BUFFER;
+extern unsigned int LAST_KMSG_HEAD_POS1;
+extern unsigned int LAST_KMSG_HEAD_POS2;
+//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
+
 #define PRINTK_BUFFER_SIZE      (0x00200000)
 
 #define PRINTK_PARSE_SIZE       (0x00080000)

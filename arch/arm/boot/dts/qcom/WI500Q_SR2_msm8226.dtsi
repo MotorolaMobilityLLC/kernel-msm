@@ -16,19 +16,19 @@
 	model = "Qualcomm MSM 8226";
 	compatible = "qcom,msm8226";
 	interrupt-parent = <&intc>;
-//adbg++
+// ASUS_BSP +++ Josh Hsu "Reserve 2MB+8Bytes for Asusdebug and Google ASIT"
 	qcom,asusdebug {
 		compatible = "qcom,asusdebug";
-		/* Remove 2MB at 0x1FF00000*/
-		qcom,memblock-remove = <0x11F00000 0x200000>;
+		/* Remove 2MB+8Bytes at 0x1FF00000*/
+		qcom,memblock-remove = <0x11F00000 0x200008>;
 	};
 	
 	qcom,asusdebug {
 		compatible = "qcom,asusdebug";
-		/* Fixed Memory region of 2MB at 0x1FF00000*/
-		qcom,memory-fixed = <0x11F00000 0x200000>;
+		/* Fixed Memory region of 2MB+8Bytes at 0x1FF00000*/
+		qcom,memory-fixed = <0x11F00000 0x200008>;
 	};
-//adbg--
+// ASUS_BSP --- Josh Hsu "Reserve 2MB+8Byte for Asusdebug and Google ASIT"
 	aliases {
 		spi0 = &spi_0;
 		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */

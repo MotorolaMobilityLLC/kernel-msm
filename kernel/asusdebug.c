@@ -22,16 +22,30 @@
 /* BSP++ */
 #include <linux/syslog.h>
 
-//#define ASUS_LAST_KMSG	1	//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+#define ASUS_LAST_KMSG	1
+
 #ifdef ASUS_LAST_KMSG
 char* LAST_KMSG_BUFFER;
 static int last_kmsg_length = 0;
+static int is_lk_rebased = 0;
+
+unsigned int LAST_KMSG_HEAD_POS1 = 0x11F00000;
+unsigned int LAST_KMSG_HEAD_POS2 = 0x11F00004;
+
+unsigned int last_kmsg_read_head = 0;
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
 /* Must be the same with the config of qcom,asusdebug in *.dtsi */
-unsigned int PRINTK_BUFFER = 0x11F00000;
+/* 
+ * For Google ASIT requirment, we need to implement last_kmsg 
+ * in case we need to save the position of pointer head to read
+ * the log. We save the position in 0x11F00000 and move the 
+ * PRINTK_BUFFER to 0x11F00008
+ *
+ */
+unsigned int PRINTK_BUFFER = 0x11F00008;
 
 extern struct timezone sys_tz;
 
@@ -52,11 +66,9 @@ int asus_rtc_read_time(struct rtc_time *tm)
 }
 EXPORT_SYMBOL(asus_rtc_read_time);
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-//                             all thread information
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-
+/*
+ *   All thread information
+ */
 
 static char* g_phonehang_log;
 static int g_iPtr = 0;
@@ -82,16 +94,16 @@ int save_log(const char *f, ...)
 }
 
 static char *task_state_array[] = {
-    "RUNNING",      /*  0 */
-    "INTERRUPTIBLE",     /*  1 */
-    "UNINTERRUPTIB",   /*  2 */
-    "STOPPED",      /*  4 */
-    "TRACED", /*  8 */
-    "EXIT ZOMBIE",       /* 16 */
-    "EXIT DEAD",      /* 32 */
-    "DEAD",      /* 64 */
-    "WAKEKILL",      /* 128 */
-    "WAKING"      /* 256 */
+    "RUNNING",      	/*  0 */
+    "INTERRUPTIBLE",	/*  1 */
+    "UNINTERRUPTIB",   	/*  2 */
+    "STOPPED",      	/*  4 */
+    "TRACED", 			/*  8 */
+    "EXIT ZOMBIE",		/* 16 */
+    "EXIT DEAD",      	/* 32 */
+    "DEAD",      		/* 64 */
+    "WAKEKILL",      	/* 128 */
+    "WAKING"      		/* 256 */
 };
 struct thread_info_save;
 struct thread_info_save
@@ -113,7 +125,6 @@ static char * print_state(long state)
             return task_state_array[i];
     }
     return "NOTFOUND";
-    
 }
 
 /*
@@ -747,23 +758,16 @@ static unsigned int g_cat_read_pos;
 static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
              size_t length, loff_t *offset)
 {	
-    /* Number of bytes actually written to the buffer */
    	int bytes_read = 0;
 	char* msg_Ptr = LAST_KMSG_BUFFER + g_cat_read_pos;
 
-   	/* If we're at the end of the message, return 0 signifying end of file */
    	if (g_cat_amount_left == 0){
 		g_cat_read_pos = 0;
 		g_cat_amount_left = last_kmsg_length;
 		return 0;
    	}
 
-   	/* Actually put the data into the buffer */
    	while (length && g_cat_amount_left)  {
-
-        /* The buffer is in the user data segment, not the kernel segment;
-         * assignment won't work.  We have to use put_user which copies data from
-         * the kernel data segment to the user data segment. */
          put_user(*(msg_Ptr++), buf++);
 
          length--;
@@ -775,19 +779,59 @@ static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
 
 	//printk("[adbg] Cat amount left %d, cat read pos %d\n", g_cat_amount_left, g_cat_read_pos);
 
-   	/* Most read functions return the number of bytes put into the buffer */
    	return bytes_read;
 }
 
+static ssize_t asuslastkmsg_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
+{
+	char command[256];
+	
+	if (count > 256)
+		count = 256;
+	if (copy_from_user(command, buf, count))
+		return -EFAULT;
+
+    printk("[adbg] LAST_POS: 0x%08x, POS1: 0x%08x, POS2: 0x%08x\n", last_kmsg_read_head,  
+			*((unsigned int *)LAST_KMSG_HEAD_POS1), *((unsigned int *)LAST_KMSG_HEAD_POS2));
+	
+    return count;
+}
+
 static void last_kmsg_buffer_rebase(void){
-	//Allocate last_kmsg buffer
+    /* If LK is rebased, we skip here */
+    if(is_lk_rebased)
+        return;
+
+    /* Test consistency of LAST_KMSG_HEAD_POS */
+	if( *((unsigned int *)LAST_KMSG_HEAD_POS1) == *((unsigned int *)LAST_KMSG_HEAD_POS2) ){
+		printk("[adbg] Last kmsg head pos is consist! POS1: 0x%08x, POS2: 0x%08x\n", 
+			*((unsigned int *)LAST_KMSG_HEAD_POS1), *((unsigned int *)LAST_KMSG_HEAD_POS2));
+		last_kmsg_read_head = *((unsigned int *)LAST_KMSG_HEAD_POS1);
+	}else{
+		printk("[adbg] Last kmsg head pos is not consist! POS1: 0x%08x, POS2: 0x%08x\n", 
+			*((unsigned int *)LAST_KMSG_HEAD_POS1), *((unsigned int *)LAST_KMSG_HEAD_POS2));
+		last_kmsg_read_head = 0;
+	}
+
+    /* Check if last_kmsg_read_head is valid */
+    if( last_kmsg_read_head >= PRINTK_BUFFER_SLOT_SIZE ){
+        printk("[adbg] Last kmsg head pos is not valid, set to 0\n");
+        last_kmsg_read_head = 0;
+    }
+
+    /* Reset HEAD because these values left before buffer wrap around */
+    *((unsigned int *)LAST_KMSG_HEAD_POS1) = 0;
+    *((unsigned int *)LAST_KMSG_HEAD_POS2) = 0;
+    
+	/* Allocate last_kmsg buffer */
 	LAST_KMSG_BUFFER = kmalloc(PRINTK_PARSE_SIZE, GFP_KERNEL);
 
-	//Copy content to last_kmsg buffer
+	/* Copy content to last_kmsg buffer */
 	last_kmsg_length = parse_last_shutdown_log(LAST_KMSG_BUFFER, PRINTK_PARSE_SIZE);
 
 	g_cat_amount_left = last_kmsg_length;
 	g_cat_read_pos = 0;
+    is_lk_rebased = 1;
 
 	printk("[adbg] last_kmsg_buffer_rebase: size %d\n", last_kmsg_length);
 }
@@ -796,13 +840,11 @@ static void last_kmsg_buffer_rebase(void){
 
 static int asusdebug_open(struct inode * inode, struct file * file)
 {
-    //printk("asusdebug_open\n");
     return 0;
 }
 
 static int asusdebug_release(struct inode * inode, struct file * file)
 {
-    //printk("asusdebug_release\n");
     return 0;
 }
 
@@ -811,6 +853,7 @@ static ssize_t asusdebug_read(struct file *file, char __user *buf,
 {
         return 0;
 }
+
 static mm_segment_t oldfs;
 static void initKernelEnv(void)
 {
@@ -822,32 +865,33 @@ static void deinitKernelEnv(void)
 {
     set_fs(oldfs);
 }
+
 char messages[256];
 char messages_unparsed[256];
 
 void print_log_to_console(unsigned char* buf, int len){
     int count = len;
     char* buffer = buf;
-    
+
     const int printk_max_size = 512;
     char* record;
     int record_offset = 0;
-    
+
     while(count > 0){
         char message[printk_max_size];
-        
+
         record = strchr(buffer, '\n');
 
         if (record == NULL )
             break;
-        
+
         record_offset = record - buffer;
-        
+
         memcpy(message, buffer, record_offset);
         message[record_offset] = '\0';
-        
+
         printk("%s\n", message);
-        
+
         count = count - record_offset - 1;
         buffer = buffer + record_offset + 1;
     }
@@ -950,7 +994,7 @@ void save_last_shutdown_log(char* filename)
     if(!IS_ERR((const void *)file_handle))
     {
         //sys_write(file_handle, (unsigned char*)last_shutdown_log, parse_length);
-        sys_write(file_handle, (unsigned char*)last_shutdown_log, PRINTK_PARSE_SIZE);
+        sys_write(file_handle, (unsigned char*)last_shutdown_log, parse_length);
         sys_close(file_handle);
     } else {
         printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle);
@@ -1067,8 +1111,6 @@ int first = 0;
 int watchdog_test = 0;
 int asus_asdf_set = 0;
 
-//extern int save_tz_log(void);  //adbg++
-
 static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 {
 	unsigned int *last_shutdown_log_addr;
@@ -1103,19 +1145,19 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 	{
 
 		printk(KERN_WARNING "[ASDF] Now dumping ASDF last shutdown log\n");
-			last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
-			printk(KERN_WARNING "[ASDF] last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
+		last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
+		printk(KERN_WARNING "[ASDF] last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 
-			if(!asus_asdf_set)
-			{
-				asus_asdf_set = 1;
-				save_phone_hang_log();
-				get_last_shutdown_log();
-				printk(KERN_WARNING "[ASDF] get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
+		if(!asus_asdf_set)
+		{
+			asus_asdf_set = 1;
+			save_phone_hang_log();
+			get_last_shutdown_log();
+			printk(KERN_WARNING "[ASDF] get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n", (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 
 
-				(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
-			}
+			(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
+		}
 	}
 #ifndef ASUS_SHIP_BUILD
 	else if(strncmp(messages, "watchdog_test", 13) == 0)
@@ -1131,7 +1173,6 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 	else if(strncmp(messages, "gidelta", 7) == 0)
 	{
 		delta_all_thread_info();
-		//printk("gidelta\n");
 		save_phone_hang_log();
 		return count;
 	}
@@ -1154,9 +1195,9 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////
-////                  Eventlog mask mechanism
-/////////////////////////////////////////////////////////////////////////////////////////////
+/*
+ *  Eventlog mask mechanism
+ */
 
 extern int suspend_in_progress;
 static int g_hfileEvtlog = -MAX_ERRNO;
@@ -1278,19 +1319,17 @@ void ASUSEvtlog(const char *fmt, ...)
     
     if(g_bEventlogEnable == 0)
         return;
-    //printk("-------------------------------g_Asus_Eventlog_write/asdf/ASUSEvtlog = %d\n", g_Asus_Eventlog_write);
-    //mutex_lock(&mA);
+
     if (!in_interrupt() && !in_atomic() && !irqs_disabled())
         mutex_lock(&mA);//spin_lock(&spinlock_eventlog);
     
     buffer = g_Asus_Eventlog[g_Asus_Eventlog_write];
-    //printk("g_Asus_Eventlog_write = %d\n", g_Asus_Eventlog_write);
+
     g_Asus_Eventlog_write ++;
     g_Asus_Eventlog_write %= ASUS_EVTLOG_MAX_ITEM;
         
     if (!in_interrupt() && !in_atomic() && !irqs_disabled())
         mutex_unlock(&mA);//spin_unlock(&spinlock_eventlog);
-    //mutex_unlock(&mA);
 
     memset(buffer, 0, ASUS_EVTLOG_STR_MAXLEN);
     if(buffer)
@@ -1307,18 +1346,15 @@ void ASUSEvtlog(const char *fmt, ...)
         va_start(args, fmt);
         vscnprintf(buffer + strlen(buffer), ASUS_EVTLOG_STR_MAXLEN - strlen(buffer), fmt, args);
         va_end(args);
-        //printk(buffer);
+
         queue_work(ASUSEvtlog_workQueue, &eventLog_Work);
-        
-        
-        
     }
     else
         printk("[adbg] ASUSEvtlog buffer cannot be allocated");
 
-
 }
 EXPORT_SYMBOL(ASUSEvtlog);
+
 static ssize_t evtlogswitch_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 {
     if(strncmp(buf, "0", 1) == 0) {
@@ -1335,6 +1371,7 @@ static ssize_t evtlogswitch_write(struct file *file, const char __user *buf, siz
 
     return count;
 }
+
 static ssize_t asusevtlog_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 {
     if (count > 256)
@@ -1348,15 +1385,18 @@ static ssize_t asusevtlog_write(struct file *file, const char __user *buf, size_
     return count;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////
-////                  Asusdebug module initial function
-/////////////////////////////////////////////////////////////////////////////////////////////
+/*
+ *                  Asusdebug module initial function
+ */
+
 static const struct file_operations proc_evtlogswitch_operations = {
     .write      = evtlogswitch_write,
 };
+
 static const struct file_operations proc_asusevtlog_operations = {
     .write      = asusevtlog_write,
 };
+
 static const struct file_operations proc_asusdebug_operations = {
     .read       = asusdebug_read,
     .write      = asusdebug_write,
@@ -1368,6 +1408,7 @@ static const struct file_operations proc_asusdebug_operations = {
 #ifdef ASUS_LAST_KMSG
 static const struct file_operations proc_asuslastkmsg_operations = {
     .read       = asuslastkmsg_read,
+	.write      = asuslastkmsg_write,
 };
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
@@ -1380,6 +1421,9 @@ static int __init proc_asusdebug_init(void)
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #ifdef ASUS_LAST_KMSG
 	proc_create("last_kmsg", S_IALLUGO, NULL, &proc_asuslastkmsg_operations);
+
+    LAST_KMSG_HEAD_POS1 = (unsigned int)ioremap(LAST_KMSG_HEAD_POS1, 4);
+	LAST_KMSG_HEAD_POS2 = (unsigned int)ioremap(LAST_KMSG_HEAD_POS2, 4);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
     PRINTK_BUFFER = (unsigned int)ioremap(PRINTK_BUFFER, PRINTK_BUFFER_SIZE);
