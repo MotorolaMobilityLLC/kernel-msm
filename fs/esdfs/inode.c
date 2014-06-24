@@ -33,6 +33,17 @@ static int esdfs_create(struct inode *dir, struct dentry *dentry,
 	if (err)
 		goto out_unlock;
 
+	/*
+	 * Don't allow file creation at the root in unified mode.  Other
+	 * restrictions, including hash lookups, were done previously via
+	 * esdfs_permission().
+	 */
+	if (test_opt(ESDFS_SB(dir->i_sb), DERIVE_UNIFIED) &&
+	    ESDFS_I(dir)->tree == ESDFS_TREE_ROOT) {
+		err = -EACCES;
+		goto out_unlock;
+	}
+
 	esdfs_set_lower_mode(ESDFS_SB(dir->i_sb), &mode);
 
 	pathcpy(&saved_path, &nd->path);
