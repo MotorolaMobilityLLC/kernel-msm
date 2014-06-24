@@ -641,6 +641,7 @@
 		qcom,pull = <1>;          /* QPNP_PIN_MPP_PULL_UP_OPEN */
 		qcom,vin-sel = <3>;	  /* LDO6 1.8V */
 		qcom,src-sel = <0>;	  /* Constant */
+		qcom,ain-route = <1>;     /* QPNP_PIN_AIN_AMUX_CH6 */
 		qcom,master-en = <1>;     /* Enable */
 
 	};
@@ -685,6 +686,16 @@
 	chan@7 {
 		label = "vph_pwr";
 		reg = <0x7>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+	chan@11 {
+		label = "host_det";
+		reg = <0x11>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <1>;
 		qcom,calibration-type = "absolute";
@@ -1105,6 +1116,11 @@
 	vbus_dwc3-supply = <&smb1357_otg_vreg>;
 	interrupt-map = <0x0 0 &intc 0 133 0
 			0x0 1 &spmi_bus 0x0 0x0 0xA1 0x0>;
+	qcom,dwc3-usb-vadc = <&pma8084_vadc>;
+	pmic-id-gpio = <&pma8084_mpps 2 0>;    /* HOST_DET */
+	pmic-id-amux-chan = <1>;              /* QPNP_PIN_AIN_AMUX_CH6 */
+	pmic-id-pull = <1>;                   /* QPNP_PIN_MPP_PULL_UP_OPEN */
+	pmic-id-vin = <3>;                    /* LDO6 1.8V */
 	dwc3@f9200000 {
 		maximum-speed = "high-speed";
 	};
