@@ -994,6 +994,7 @@
 		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
 		qcom,vin-sel = <3>;       /* LDO6 1.8V */
 		qcom,pull = <1>;          /* QPNP_PIN_MPP_PULL_UP_OPEN */
+		qcom,ain-route = <1>;     /* QPNP_PIN_AIN_AMUX_CH6 */
 		qcom,master-en = <1>;
 	};
 
@@ -1156,6 +1157,10 @@
                          0x0 1 &spmi_bus 0x0 0x0 0xA1 0x0>;
 	interrupt-names = "hs_phy_irq", "pmic_id_irq";
 	qcom,otg-capability;
+	pmic-id-gpio = <&pm8941_mpps 2 0>;    /* HOST_DET */
+	pmic-id-amux-chan = <1>;              /* QPNP_PIN_AIN_AMUX_CH6 */
+	pmic-id-pull = <1>;                   /* QPNP_PIN_MPP_PULL_UP_OPEN */
+	pmic-id-vin = <3>;                    /* LDO6 1.8V */
 	dwc3@f9200000 {
 		maximum-speed = "high-speed";
 	};
@@ -1227,6 +1232,17 @@
 	/delete-node/ chan@b4;
 	/delete-node/ chan@b7;
 	/delete-node/ chan@b8;
+
+	chan@11 {
+		label = "host_det";
+		reg = <0x11>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
 
 	chan@26 {
 		label = "bphi";
