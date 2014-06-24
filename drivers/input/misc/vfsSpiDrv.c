@@ -48,10 +48,13 @@
 #include <linux/uaccess.h>
 #include <linux/irq.h>
 
-#include <asm-generic/siginfo.h>
+#include <linux/fdtable.h>
+#include <linux/eventfd.h>
+
 #include <linux/rcupdate.h>
 #include <linux/sched.h>
 #include <linux/jiffies.h>
+
 
 #define VALIDITY_PART_NAME "metallica"
 static LIST_HEAD(device_list);
@@ -83,10 +86,10 @@ static struct of_device_id validity_metallica_table[] = {
  * @stream_buffer_size:streaming buffer size
  * @drdy_pin:DRDY GPIO pin number
  * @sleep_pin:Sleep GPIO pin number
- * @user_pid:User process ID, to which the kernel signal
+ * @user_pid:User process ID, associated with the eventfd
  *	indicating DRDY event is to be sent
- * @signal_id:Signal ID which kernel uses to indicating
- *	user mode driver that DRDY is asserted
+ * @eventfd: eventfd which kernel uses to notify the user_pid
+ *	that DRDY is asserted
  * @current_spi_speed:Current baud rate of SPI master clock
  */
 struct vfsspi_device_data {
@@ -107,40 +110,42 @@ struct vfsspi_device_data {
 	unsigned int cs_pin;
 #endif
 	int user_pid;
-	int signal_id;
+	unsigned int eventfd;
 	unsigned int current_spi_speed;
 	unsigned int is_drdy_irq_enabled;
+	unsigned int drdy_ntf_type;
 	struct mutex kernel_lock;
 };
 
-static int vfsspi_send_drdy_signal(struct vfsspi_device_data *vfsspi_device)
+static int vfsspi_send_drdy_eventfd(struct vfsspi_device_data *vfsspi_device)
 {
 	struct task_struct *t;
+	struct file *efd_file = NULL;
+	struct eventfd_ctx *efd_ctx = NULL;
 	int ret = 0;
 
-	pr_debug("vfsspi_send_drdy_signal\n");
-
+	pr_debug("vfsspi_send_drdy_eventfd\n");
 	if (vfsspi_device->user_pid != 0) {
 		rcu_read_lock();
 		/* find the task_struct associated with userpid */
 		pr_debug("Searching task with PID=%08x\n",
 			vfsspi_device->user_pid);
 		t = pid_task(find_pid_ns(vfsspi_device->user_pid, &init_pid_ns),
-			     PIDTYPE_PID);
+			PIDTYPE_PID);
 		if (t == NULL) {
 			pr_debug("No such pid\n");
 			rcu_read_unlock();
 			return -ENODEV;
 		}
+		efd_file = fcheck_files(t->files, vfsspi_device->eventfd);
 		rcu_read_unlock();
-		/* notify DRDY signal to user process */
-		ret = send_sig_info(vfsspi_device->signal_id,
-				    (struct siginfo *)1, t);
-		if (ret < 0)
-			pr_err("Error sending signal\n");
-
-	} else {
-		pr_err("pid not received yet\n");
+		efd_ctx = eventfd_ctx_fileget(efd_file);
+		if (efd_ctx == NULL || efd_ctx == ERR_PTR(-EINVAL)) {
+			pr_err("eventfd_ctx_fileget is failed\n");
+			return -ENODEV;
+		}
+		eventfd_signal(efd_ctx, 1);
+		eventfd_ctx_put(efd_ctx);
 	}
 
 	return ret;
@@ -407,16 +412,18 @@ static int vfsspi_set_clk(struct vfsspi_device_data *vfsspi_device,
 	return 0;
 }
 
-static int vfsspi_register_drdy_signal(struct vfsspi_device_data *vfsspi_device,
-				       unsigned long arg)
+static int vfsspi_register_drdy_eventfd(
+				struct vfsspi_device_data *vfsspi_device,
+				unsigned long arg)
 {
-	struct vfsspi_ioctl_register_signal usr_signal;
-	if (copy_from_user(&usr_signal, (void *)arg, sizeof(usr_signal)) != 0) {
+	struct vfsspi_ioctl_register_eventfd usr_eventfd;
+	if (copy_from_user(&usr_eventfd,
+			(void *)arg, sizeof(usr_eventfd)) != 0) {
 		pr_err("Failed copy from user.\n");
 		return -EFAULT;
 	} else {
-		vfsspi_device->user_pid = usr_signal.user_pid;
-		vfsspi_device->signal_id = usr_signal.signal_id;
+		vfsspi_device->user_pid = usr_eventfd.user_pid;
+		vfsspi_device->eventfd = usr_eventfd.eventfd;
 	}
 	return 0;
 }
@@ -426,7 +433,7 @@ static irqreturn_t vfsspi_irq(int irq, void *context)
 	struct vfsspi_device_data *vfsspi_device = context;
 
 	if (gpio_get_value(vfsspi_device->drdy_pin) == DRDY_ACTIVE_STATUS)
-		vfsspi_send_drdy_signal(vfsspi_device);
+		vfsspi_send_drdy_eventfd(vfsspi_device);
 
 	return IRQ_HANDLED;
 }
@@ -474,13 +481,9 @@ static int vfsspi_set_drdy_int(struct vfsspi_device_data *vfsspi_device,
 		vfsspi_disableIrq(vfsspi_device);
 	else {
 		vfsspi_enableIrq(vfsspi_device);
-		/* Workaround the issue where the system
-		   misses DRDY notification to host when
-		   DRDY pin was asserted before enabling
-		   device.*/
 		if (gpio_get_value(vfsspi_device->drdy_pin) ==
 		    DRDY_ACTIVE_STATUS) {
-			vfsspi_send_drdy_signal(vfsspi_device);
+			vfsspi_send_drdy_eventfd(vfsspi_device);
 		}
 	}
 	return 0;
@@ -542,10 +545,31 @@ static long vfsspi_ioctl(struct file *filp, unsigned int cmd,
 		pr_debug("VFSSPI_IOCTL_SET_CLK\n");
 		ret_val = vfsspi_set_clk(vfsspi_device, arg);
 		break;
-	case VFSSPI_IOCTL_REGISTER_DRDY_SIGNAL:
-		pr_debug("VFSSPI_IOCTL_REGISTER_DRDY_SIGNAL\n");
-		ret_val = vfsspi_register_drdy_signal(vfsspi_device, arg);
+	case VFSSPI_IOCTL_REGISTER_DRDY_EVENTFD:
+		pr_debug("VFSSPI_IOCTL_REGISTER_DRDY_EVENTFD\n");
+		ret_val = vfsspi_register_drdy_eventfd(vfsspi_device, arg);
 		break;
+	case VFSSPI_IOCTL_SELECT_DRDY_NTF_TYPE:
+	{
+		struct vfsspi_ioc_select_drdy_ntf_type drdy_types;
+		pr_debug("VFSSPI_IOCTL_SELECT_DRDY_NTF_TYPE\n");
+		if (copy_from_user(&drdy_types, (void *)arg,
+			sizeof(struct vfsspi_ioc_select_drdy_ntf_type)) != 0) {
+			pr_err("copy from user failed.\n");
+			ret_val = -EFAULT;
+		} else {
+			vfsspi_device->drdy_ntf_type =
+						VFSSPI_DRDY_NOTIFY_TYPE_EVENTFD;
+			drdy_types.selected_type = vfsspi_device->drdy_ntf_type;
+			if (copy_to_user((void *)arg, &(drdy_types),
+			sizeof(struct vfsspi_ioc_select_drdy_ntf_type)) == 0) {
+				ret_val = 0;
+			} else {
+				pr_err("copy to user failed\n");
+			}
+		}
+	}
+	break;
 	case VFSSPI_IOCTL_SET_DRDY_INT:
 		pr_debug("VFSSPI_IOCTL_SET_DRDY_INT\n");
 		ret_val = vfsspi_set_drdy_int(vfsspi_device, arg);
@@ -744,6 +768,8 @@ static int vfsspi_probe(struct spi_device *spi)
 		status = -EBUSY;
 		goto vfsspi_probe_irq_failed;
 	}
+
+	vfsspi_disableIrq(vfsspi_device);
 
 	spi->bits_per_word = BITS_PER_WORD;
 	spi->max_speed_hz = SLOW_BAUD_RATE;
