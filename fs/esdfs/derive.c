@@ -496,8 +496,7 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 	 */
 	if ((access & HAS_SDCARD_RW) &&
 	    (!test_opt(ESDFS_SB(inode->i_sb), DERIVE_UNIFIED) ||
-	     (ESDFS_I(inode)->tree != ESDFS_TREE_ROOT &&
-	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID &&
+	     (ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_DATA &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_OBB &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_APP)))
