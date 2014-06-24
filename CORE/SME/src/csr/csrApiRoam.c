@@ -3805,7 +3805,7 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
     //Do we need to worry about sequence for OSs that are not Windows??
     if (pBssDesc)
     {
-        if (csrLearnCountryInformation(pMac, eANI_BOOLEAN_TRUE))
+        if (csrLearnCountryInformation(pMac, pBssDesc, pIes, eANI_BOOLEAN_TRUE))
         {
             //Make sure the 11d info from this BSSDesc can be applied
             pMac->scan.fAmbiguous11dInfoFound = eANI_BOOLEAN_FALSE;
