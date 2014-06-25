@@ -18,3 +18,11 @@
 / {
 	qcom,msm-id = <194 0x4D 0x82B0>;
 };
+
+&i2c_2 {
+	bcm2079x@76 {
+		gpios = <&msmgpio 31 0x0>, /* NFC_WAKE */
+			<&msmgpio 34 0x0>, /* NFC_IRQ */
+			<&msmgpio 32 0x0>; /* REG_PU */
+	};
+};
