@@ -83,3 +83,7 @@
 &pm8916_l16 {
 	regulator-always-on;
 };
+
+&fan54046 {
+	status = "disabled";
+};
