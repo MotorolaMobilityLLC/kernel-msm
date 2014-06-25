@@ -2076,6 +2076,10 @@ static int arizona_calc_fratio(struct arizona_fll *fll,
 	while (div <= ARIZONA_FLL_MAX_REFDIV) {
 		for (ratio = init_ratio; ratio <= ARIZONA_FLL_MAX_FRATIO;
 		     ratio++) {
+			if (ARIZONA_FLL_VCO_CORNER / (fll->vco_mult * ratio) <
+			    Fref)
+				break;
+
 			if (target % (ratio * Fref)) {
 				cfg->refdiv = refdiv;
 				cfg->fratio = ratio - 1;
@@ -2084,10 +2088,6 @@ static int arizona_calc_fratio(struct arizona_fll *fll,
 		}
 
 		for (ratio = init_ratio - 1; ratio > 0; ratio--) {
-			if (ARIZONA_FLL_VCO_CORNER / (fll->vco_mult * ratio) <
-			    Fref)
-				break;
-
 			if (target % (ratio * Fref)) {
 				cfg->refdiv = refdiv;
 				cfg->fratio = ratio - 1;
