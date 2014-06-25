@@ -573,6 +573,17 @@ config QPNP_CABLE_DETECTION
 	  that can be used solely for cable detection and paired with an
 	  external charger IC - perhaps one of the switching variety.
 
+config FAN5404X_CHARGER
+	tristate "FAN540XX Battery Charger"
+	depends on I2C
+	help
+	  Say Y to include support for FAN540XX Battery Charger.
+	  FAN5404X family of devices are I2C controlled 1.55A USB-compliant
+	  switch-mode chargers with power path and USB OTG boost operation.
+	  The driver supports charger enable/disable.
+	  The driver reports the charger status via the power supply framework.
+	  A charger status change triggers an IRQ via the device STAT pin.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY
