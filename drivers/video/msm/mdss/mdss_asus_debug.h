@@ -18,6 +18,7 @@
 
 
 // Supported commands
+#define STICKING_SOL1 "stick_sol_1"
 #define DSI_CMD_NORON "normal"
 #define DSI_CMD_ALLPON "allpon"
 #define SET_LOGFLAG "setlogfg:"
@@ -60,6 +61,6 @@ void notify_amdu_panel_power_mode(int mode);
 void notify_amdu_panel_ambient_on(int enable);
 
 void show_panel_message(char* msg);
-
+void pixel_invert_proc(void);
 // Move to mdss_dsi_panel.c
 int is_ambient_on(void);

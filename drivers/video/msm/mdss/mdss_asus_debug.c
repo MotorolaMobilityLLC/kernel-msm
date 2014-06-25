@@ -16,10 +16,15 @@
 #include <linux/uaccess.h>
 #include <linux/fb.h>
 #include <linux/delay.h>
+#include <linux/power_supply.h>
 
 // include files for QCT
 #include "mdss_fb.h"
 #include "mdss_dsi.h"
+
+static bool pixel_invert = false;
+static bool stick_sol1_on = false;
+extern int pm8226_get_prop_batt_status(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Global data used for ASUS MOBILE DISPLAY UTILITY
@@ -102,6 +107,10 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 	cmd_buf[count] = 0;	/* end of string */
 
 	// Build Commands
+	if (!strncmp(STICKING_SOL1,cmd_buf,strlen(STICKING_SOL1))){
+		stick_sol1_on = (!stick_sol1_on);
+		printk("stick_sol1_on:%d\n",stick_sol1_on ? 1:0);
+	}
 	if (!strncmp(DSI_CMD_NORON,cmd_buf,strlen(DSI_CMD_NORON))){
 
 		// 13 Normal Display mode on
@@ -288,6 +297,8 @@ static ssize_t mdss_debug_base_cmd_read(struct file *file,
 	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_CMD_DISPOFF);
 	printk("	%s\n",DSI_CMD_DISPON);
 	tot += scnprintf(buf + tot, len - tot, "	%s\n",DSI_CMD_DISPON);
+	printk("	%s\n",STICKING_SOL1);
+	tot += scnprintf(buf + tot, len - tot, "	%s\n",STICKING_SOL1);
 	printk("---------------------------------------\n");
 	tot += scnprintf(buf + tot, len - tot, "---------------------------------------\n");
 	printk("DEBUG CMDS:\n");
@@ -328,6 +339,7 @@ static void mdss_debug_watchdog(struct work_struct *work)
 {
 	// Handle things about
 	int sec_not_update = jiffies_to_msecs(jiffies - amdu_data.panel_status.last_time_update)/1000;
+	static int pixel_invert_count = 0;
 
 	if (sec_not_update > 60 && (sec_not_update % 5 == 0))
 		printk("Framebuffer has not updated for %d sec, ambient=%d, timeout = %d\n",sec_not_update,amdu_data.panel_status.ambient,amdu_data.watch_dog_data.dim_time_out);
@@ -347,6 +359,20 @@ static void mdss_debug_watchdog(struct work_struct *work)
 			amdu_data.ctrl->panel_data.set_backlight(&(amdu_data.ctrl->panel_data), amdu_data.fb_status.mfd->bl_level);
 			amdu_data.panel_status.auto_dim = false;
 		}
+	}
+
+	if (stick_sol1_on)
+	{
+		if (amdu_data.panel_status.ambient && (pm8226_get_prop_batt_status() == 1))
+		{
+			if (pixel_invert_count == 0)
+				pixel_invert_proc();
+		}
+		if ( !amdu_data.panel_status.ambient && pixel_invert)
+			pixel_invert_proc();
+
+		pixel_invert_count++;
+		pixel_invert_count%=5;
 	}
 
 	schedule_delayed_work(&(amdu_data.watch_dog_data.watch_dog),msecs_to_jiffies(amdu_data.watch_dog_data.watch_dog_interval));
@@ -486,7 +512,56 @@ static int check_panel_status(void)
 	return 0;
 }
 
+void pixel_invert_proc(void)
+{
 
+	char cmd_data[10];
+	unsigned int tmp1,tmp2;
+	int i;
+	int offset=0;
+	unsigned int value;	
+	struct dsi_cmd_desc* dsi_cmd = (struct dsi_cmd_desc*)
+		kzalloc(sizeof(struct dsi_cmd_desc),GFP_KERNEL);
+	memset(cmd_buf,0,CMD_BUF_SIZE);
+	// Build Commands
+	if (pixel_invert == false)
+	{
+		// 21 INVON
+		printk("echo > 'write:05 01 00 00 00 00 01 21' > /d/mdp/amdu_cmd\n");
+		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 21");
+		pixel_invert =true;
+	}else{
+		// 20 INVOFF
+		printk("echo > 'write:05 01 00 00 00 00 01 20' > /d/mdp/amdu_cmd\n");
+		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 20");
+		pixel_invert =false;
+	}	
+
+	offset=strlen(DSI_WRITE_CMD);
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.dtype = tmp1;offset+= 3;
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.last = tmp1;offset+= 3;
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.vc = tmp1;offset+= 3;
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.ack = tmp1;offset+= 3;
+	sscanf(cmd_buf+offset, "%x %x", &tmp1,&tmp2); offset+= 6;
+	dsi_cmd->dchdr.wait = tmp1 + (tmp2 << 8);
+	sscanf(cmd_buf+offset, "%x", &tmp1); dsi_cmd->dchdr.dlen = tmp1,offset+= 3;
+	dsi_cmd->payload = cmd_data;
+
+	printk("MDSS:[mdss_debug.c]:%s:write >>>> \n", __func__);
+	printk("MDSS:MIPI cmd dtype=0x%x,last=0x%x,vc=0x%x,ack=0x%x,wait=0x%x(%d),dlen=0x%x(%d)\n",
+			dsi_cmd->dchdr.dtype,dsi_cmd->dchdr.last,dsi_cmd->dchdr.vc,dsi_cmd->dchdr.ack,dsi_cmd->dchdr.wait,dsi_cmd->dchdr.wait,
+			dsi_cmd->dchdr.dlen,dsi_cmd->dchdr.dlen);
+
+	for (i=0;i<dsi_cmd->dchdr.dlen;i++){
+		sscanf(cmd_buf+offset, "%x", &value); offset+= 3;
+		cmd_data[i] = (unsigned char)value;
+		printk("MDSS:dsi_cmd cmd_data[%d]=0x%x\n",i,cmd_data[i]);
+	}
+
+	_send_mipi_write_cmd(dsi_cmd);
+
+	if (dsi_cmd) kzfree(dsi_cmd);
+}
 ////////////////////////////////////////////////////////////////////////////////
 // MIPI Commands
 int send_mipi_write_cmd(char cmd0,char cmd1)
