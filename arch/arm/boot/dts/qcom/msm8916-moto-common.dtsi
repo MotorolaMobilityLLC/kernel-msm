@@ -391,6 +391,17 @@
 		};
 	};
 
+	fan5404x_int_pin {
+		qcom,pins = <&gp 62>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "fan5404x_int_gpio";
+		fan5404x_int_default: fan5404x_int_default {
+			drive-strength = <2>;	/* 2 MA */
+			bias-pull-up;		/* PULL UP*/
+		};
+	};
+
 	msm_hs_det {
 		qcom,pins = <&gp 69>;
 		qcom,num-grp-pins = <1>;
@@ -601,6 +612,19 @@
 		qcom,charging-disabled;
 		qcom,recharge-thresh-mv = <100>;
 		qcom,thermal-mitigation = <1500 700 600 0>;
+	};
+
+	fan54046: fan54046-charger@6b {
+		compatible = "fairchild,fan54046-charger";
+		reg = <0x6b>;
+
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <62 0x0>;
+
+		fairchild,bms-psy-name = "max170xx_battery";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&fan5404x_int_default>;
 	};
 
 	max17050: max17050-battery@36 {
