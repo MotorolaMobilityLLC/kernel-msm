@@ -761,8 +761,6 @@ struct inv_mpu_state {
 	u64 last_run_time;
 	u8 name[20];
 	u8 secondary_name[20];
-	u8 pwr_mgmt1;
-	u8 pwr_mgmt2;
 };
 
 /* produces an unique identifier for each device based on the
