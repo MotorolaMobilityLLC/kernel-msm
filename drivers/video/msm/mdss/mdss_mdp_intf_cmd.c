@@ -581,8 +581,7 @@ static void mdss_mdp_cmd_set_sync_ctx(
 
 	ctx = (struct mdss_mdp_cmd_ctx *)ctl->priv_data;
 
-	if (!ctl->panel_data->panel_info.partial_update_enabled || !sctl) {
-		/* not partial or right only at partial update */
+	if (!sctl) {
 		ctx->sync_ctx = NULL;
 		return;
 	}
@@ -651,10 +650,8 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 
-	if (ctl->panel_data->panel_info.partial_update_enabled) {
-		/* sctl will be null for right only */
-		sctl = mdss_mdp_get_split_ctl(ctl);
-	}
+	/* sctl will be null for right only in the case of Partial update */
+	sctl = mdss_mdp_get_split_ctl(ctl);
 
 	if (sctl && (sctl->roi.w == 0 || sctl->roi.h == 0)) {
 		/* left update only, set ssctl to null */
