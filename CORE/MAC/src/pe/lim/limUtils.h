@@ -524,6 +524,10 @@ void limUpdateOBSSScanParams(tpPESession psessionEntry ,
 
 #ifdef WLAN_FEATURE_11W
 void limPmfSaQueryTimerHandler(void *pMacGlobal, tANI_U32 param);
-#endif
 
+void limSetProtectedBit(tpAniSirGlobal  pMac,
+                           tpPESession     psessionEntry,
+                           tSirMacAddr     peer,
+                           tpSirMacMgmtHdr pMacHdr);
+#endif
 #endif /* __LIM_UTILS_H */
