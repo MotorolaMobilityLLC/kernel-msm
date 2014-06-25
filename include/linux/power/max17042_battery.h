@@ -100,6 +100,7 @@ enum max17042_register {
 
 	MAX17042_VFSOC0		= 0x48,
 
+	MAX17042_QH0		= 0x4C,
 	MAX17042_QH		= 0x4D,
 	MAX17042_QL		= 0x4E,
 
