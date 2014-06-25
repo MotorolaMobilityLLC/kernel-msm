@@ -318,7 +318,12 @@ static struct msm_gpiomux_config bcm2079x_configs[] __initdata = {
 			[GPIOMUX_ACTIVE]    = &bcm2079x_active_gpio_cfg,
 			[GPIOMUX_SUSPENDED] = &bcm2079x_suspended_gpio_cfg,
 		},
-		.gpio = 32, /* REG_PU*/
+		.gpio = 32, /* REG_PU for P2BD and older */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bcm2079x_active_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &bcm2079x_suspended_gpio_cfg,
+		},
+		.gpio = 13, /* REG_PU for P2BF and greater */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &bcm2079x_active_gpio_cfg,
 			[GPIOMUX_SUSPENDED] = &bcm2079x_suspended_gpio_cfg,
