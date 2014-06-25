@@ -3720,15 +3720,115 @@ tANI_BOOLEAN csrGetRSNInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eCs
     return( fAcceptableCyphers );
 }
 
+#ifdef WLAN_FEATURE_11W
+/* ---------------------------------------------------------------------------
+    \fn csrIsPMFCapabilitiesInRSNMatch
 
-tANI_BOOLEAN csrIsRSNMatch( tHalHandle hHal, tCsrAuthList *pAuthType, eCsrEncryptionType enType, tCsrEncryptionList *pEnMcType, 
-                            tDot11fBeaconIEs *pIes, eCsrAuthType *pNegotiatedAuthType, eCsrEncryptionType *pNegotiatedMCCipher )
+    \brief this function is to match our current capabilities with the AP
+           to which we are expecting make the connection.
+
+    \param hHal               - HAL Pointer
+           pFilterMFPEnabled  - given by supplicant to us to specify what kind
+                                of connection supplicant is expecting to make
+                                if it is enabled then make PMF connection.
+                                if it is disabled then make normal connection.
+           pFilterMFPRequired - given by supplicant based on our configuration
+                                if it is 1 then we will require mandatory
+                                PMF connection and if it is 0 then we PMF
+                                connection is optional.
+           pFilterMFPCapable  - given by supplicant based on our configuration
+                                if it 1 then we are PMF capable and if it 0
+                                then we are not PMF capable.
+           pRSNIe             - RSNIe from Beacon/probe response of
+                                neighbor AP against which we will compare
+                                our capabilities.
+
+    \return tANI_BOOLEAN      - if our PMF capabilities matches with AP then we
+                                will return true to indicate that we are good
+                                to make connection with it. Else we will return
+                                false.
+  -------------------------------------------------------------------------------*/
+static tANI_BOOLEAN
+csrIsPMFCapabilitiesInRSNMatch( tHalHandle hHal,
+                                tANI_BOOLEAN *pFilterMFPEnabled,
+                                tANI_U8 *pFilterMFPRequired,
+                                tANI_U8 *pFilterMFPCapable,
+                                tDot11fIERSN *pRSNIe)
+{
+    tANI_U8 apProfileMFPCapable  = 0;
+    tANI_U8 apProfileMFPRequired = 0;
+    if (pRSNIe && pFilterMFPEnabled && pFilterMFPCapable && pFilterMFPRequired)
+    {
+       /* Extracting MFPCapable bit from RSN Ie */
+       apProfileMFPCapable  = (pRSNIe->RSN_Cap[0] >> 7) & 0x1;
+       apProfileMFPRequired = (pRSNIe->RSN_Cap[0] >> 6) & 0x1;
+       if (*pFilterMFPEnabled && *pFilterMFPCapable && *pFilterMFPRequired
+           && (apProfileMFPCapable == 0))
+       {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "AP is not capable to make PMF connection");
+           return VOS_FALSE;
+       }
+       else if (*pFilterMFPEnabled && *pFilterMFPCapable &&
+                !(*pFilterMFPRequired) && (apProfileMFPCapable == 0))
+       {
+           /*
+            * This is tricky, because supplicant asked us to make mandatory
+            * PMF connection eventhough PMF connection is optional here.
+            * so if AP is not capable of PMF then drop it. Don't try to
+            * connect with it.
+            */
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+           "we need PMF connection & AP isn't capable to make PMF connection");
+           return VOS_FALSE;
+       }
+       else if (!(*pFilterMFPCapable) &&
+                apProfileMFPCapable && apProfileMFPRequired)
+       {
+           /*
+            * In this case, AP with whom we trying to connect requires
+            * mandatory PMF connections and we are not capable so this AP
+            * is not good choice to connect
+            */
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+           "AP needs PMF connection and we are not capable of pmf connection");
+           return VOS_FALSE;
+       }
+       else if (!(*pFilterMFPEnabled) && *pFilterMFPCapable &&
+                (apProfileMFPCapable == 1))
+       {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+           "we don't need PMF connection eventhough both parties are capable");
+           return VOS_FALSE;
+       }
+    }
+    return VOS_TRUE;
+}
+#endif
+
+tANI_BOOLEAN csrIsRSNMatch( tHalHandle hHal, tCsrAuthList *pAuthType,
+                            eCsrEncryptionType enType,
+                            tCsrEncryptionList *pEnMcType,
+                            tANI_BOOLEAN *pMFPEnabled, tANI_U8 *pMFPRequired,
+                            tANI_U8 *pMFPCapable,
+                            tDot11fBeaconIEs *pIes,
+                            eCsrAuthType *pNegotiatedAuthType,
+                            eCsrEncryptionType *pNegotiatedMCCipher )
 {
     tANI_BOOLEAN fRSNMatch = FALSE;
 
         // See if the cyphers in the Bss description match with the settings in the profile.
     fRSNMatch = csrGetRSNInformation( hHal, pAuthType, enType, pEnMcType, &pIes->RSN, NULL, NULL, NULL, NULL, 
                                       pNegotiatedAuthType, pNegotiatedMCCipher );
+#ifdef WLAN_FEATURE_11W
+    /* If all the filter matches then finally checks for PMF capabilities */
+    if (fRSNMatch)
+    {
+        fRSNMatch = csrIsPMFCapabilitiesInRSNMatch( hHal, pMFPEnabled,
+                                                    pMFPRequired, pMFPCapable,
+                                                    &pIes->RSN);
+    }
+#endif
 
     return( fRSNMatch );
 }
@@ -4823,9 +4923,16 @@ tANI_BOOLEAN csrValidateWep( tpAniSirGlobal pMac, eCsrEncryptionType ucEncryptio
 
 
 //pIes shall contain IEs from pSirBssDesc. It shall be returned from function csrGetParsedBssDescriptionIEs
-tANI_BOOLEAN csrIsSecurityMatch( tHalHandle hHal, tCsrAuthList *authType, tCsrEncryptionList *pUCEncryptionType, tCsrEncryptionList *pMCEncryptionType,
-                                 tSirBssDescription *pSirBssDesc, tDot11fBeaconIEs *pIes, 
-                                 eCsrAuthType *negotiatedAuthtype, eCsrEncryptionType *negotiatedUCCipher, eCsrEncryptionType *negotiatedMCCipher )
+tANI_BOOLEAN csrIsSecurityMatch( tHalHandle hHal, tCsrAuthList *authType,
+                                 tCsrEncryptionList *pUCEncryptionType,
+                                 tCsrEncryptionList *pMCEncryptionType,
+                                 tANI_BOOLEAN *pMFPEnabled,
+                                 tANI_U8 *pMFPRequired, tANI_U8 *pMFPCapable,
+                                 tSirBssDescription *pSirBssDesc,
+                                 tDot11fBeaconIEs *pIes,
+                                 eCsrAuthType *negotiatedAuthtype,
+                                 eCsrEncryptionType *negotiatedUCCipher,
+                                 eCsrEncryptionType *negotiatedMCCipher )
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     tANI_BOOLEAN fMatch = FALSE;
@@ -4908,7 +5015,10 @@ tANI_BOOLEAN csrIsSecurityMatch( tHalHandle hHal, tCsrAuthList *authType, tCsrEn
                     if(pIes)
                     {
                         // First check if there is a RSN match
-                        fMatch = csrIsRSNMatch( pMac, authType, ucCipher, pMCEncryptionType, pIes, &negAuthType, &mcCipher );
+                        fMatch = csrIsRSNMatch( pMac, authType, ucCipher,
+                                                pMCEncryptionType, pMFPEnabled,
+                                                pMFPRequired, pMFPCapable,
+                                                pIes, &negAuthType, &mcCipher );
                         if( !fMatch )
                         {
                             // If not RSN, then check if there is a WPA match
@@ -4947,12 +5057,19 @@ tANI_BOOLEAN csrIsSecurityMatch( tHalHandle hHal, tCsrAuthList *authType, tCsrEn
                 {
                     //Check AES first
                     ucCipher = eCSR_ENCRYPT_TYPE_AES;
-                    fMatchAny = csrIsRSNMatch( hHal, authType, ucCipher, pMCEncryptionType, pIes, &negAuthType, &mcCipher );
+                    fMatchAny = csrIsRSNMatch( hHal, authType, ucCipher,
+                                               pMCEncryptionType, pMFPEnabled,
+                                               pMFPRequired, pMFPCapable, pIes,
+                                               &negAuthType, &mcCipher );
                     if(!fMatchAny)
                     {
                         //Check TKIP
                         ucCipher = eCSR_ENCRYPT_TYPE_TKIP;
-                        fMatchAny = csrIsRSNMatch( hHal, authType, ucCipher, pMCEncryptionType, pIes, &negAuthType, &mcCipher );
+                        fMatchAny = csrIsRSNMatch( hHal, authType, ucCipher,
+                                                   pMCEncryptionType,
+                                                   pMFPEnabled, pMFPRequired,
+                                                   pMFPCapable, pIes,
+                                                   &negAuthType, &mcCipher );
                     }
 #ifdef FEATURE_WLAN_WAPI
                     if(!fMatchAny)
@@ -5556,8 +5673,14 @@ tANI_BOOLEAN csrMatchBSS( tHalHandle hHal, tSirBssDescription *pBssDesc, tCsrSca
 #endif
         if ( !csrIsPhyModeMatch( pMac, pFilter->phyMode, pBssDesc, NULL, NULL, pIes ) ) break;
         if ( (!pFilter->bWPSAssociation) && (!pFilter->bOSENAssociation) &&
-             !csrIsSecurityMatch( pMac, &pFilter->authType, &pFilter->EncryptionType, &pFilter->mcEncryptionType,
-                                 pBssDesc, pIes, pNegAuth, pNegUc, pNegMc ) ) break;
+             !csrIsSecurityMatch( pMac, &pFilter->authType,
+                                  &pFilter->EncryptionType,
+                                  &pFilter->mcEncryptionType,
+                                  &pFilter->MFPEnabled,
+                                  &pFilter->MFPRequired,
+                                  &pFilter->MFPCapable,
+                                  pBssDesc, pIes, pNegAuth,
+                                  pNegUc, pNegMc ) ) break;
         if ( !csrIsCapabilitiesMatch( pMac, pFilter->BSSType, pBssDesc ) ) break;
         if ( !csrIsRateSetMatch( pMac, &pIes->SuppRates, &pIes->ExtSuppRates ) ) break;
         //Tush-QoS: validate first if asked for APSD or WMM association
@@ -5614,7 +5737,9 @@ tANI_BOOLEAN csrMatchConnectedBSSSecurity( tpAniSirGlobal pMac, tCsrRoamConnecte
     authList.numEntries = 1;
     authList.authType[0] = pProfile->AuthType;
 
-    return( csrIsSecurityMatch( pMac, &authList, &ucEncryptionList, &mcEncryptionList, pBssDesc, pIes, NULL, NULL, NULL ));
+    return( csrIsSecurityMatch( pMac, &authList, &ucEncryptionList,
+                                &mcEncryptionList, NULL, NULL, NULL,
+                                pBssDesc, pIes, NULL, NULL, NULL ));
 
 }
 

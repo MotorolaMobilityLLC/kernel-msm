@@ -8997,7 +8997,14 @@ eHalStatus csrRoamPrepareFilterFromProfile(tpAniSirGlobal pMac, tCsrRoamProfile 
             pScanFilter->MDID.mobilityDomain = pProfile->MDID.mobilityDomain;
         }
 #endif
-    
+
+#ifdef WLAN_FEATURE_11W
+        // Management Frame Protection
+        pScanFilter->MFPEnabled = pProfile->MFPEnabled;
+        pScanFilter->MFPRequired = pProfile->MFPRequired;
+        pScanFilter->MFPCapable = pProfile->MFPCapable;
+#endif
+
     }while(0);
     
     if(!HAL_STATUS_SUCCESS(status))
