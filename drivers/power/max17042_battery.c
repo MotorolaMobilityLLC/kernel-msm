@@ -621,15 +621,18 @@ static void max17042_update_capacity_regs(struct max17042_chip *chip)
 				config->fullcapnom);
 }
 
-static void max17042_reset_vfsoc0_reg(struct max17042_chip *chip)
+static void max17042_reset_vfsoc0_qh0_regs(struct max17042_chip *chip)
 {
-	unsigned int vfSoc;
+	unsigned int data;
 	struct regmap *map = chip->regmap;
 
-	regmap_read(map, MAX17042_VFSOC, &vfSoc);
+	regmap_read(map, MAX17042_VFSOC, &data);
 	regmap_write(map, MAX17042_VFSOC0Enable, VFSOC0_UNLOCK);
-	max17042_write_verify_reg(map, MAX17042_VFSOC0, vfSoc);
+	max17042_write_verify_reg(map, MAX17042_VFSOC0, data);
 	regmap_write(map, MAX17042_VFSOC0Enable, VFSOC0_LOCK);
+
+	regmap_read(map, MAX17042_QH, &data);
+	regmap_write(map, MAX17042_QH0, data);
 }
 
 static void max17042_load_new_capacity_params(struct max17042_chip *chip)
@@ -768,8 +771,8 @@ static int max17042_init_chip(struct max17042_chip *chip)
 	 */
 	msleep(350);
 
-	/* reset vfsoc0 reg */
-	max17042_reset_vfsoc0_reg(chip);
+	/* reset vfsoc0 and qh0 regs */
+	max17042_reset_vfsoc0_qh0_regs(chip);
 
 	/* load new capacity params */
 	max17042_load_new_capacity_params(chip);
