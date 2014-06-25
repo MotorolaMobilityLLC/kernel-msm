@@ -115,7 +115,8 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	struct mdss_panel_info *pinfo;
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->partial_update_dcs_cmd_by_left ||
+			!mdss_dsi_broadcast_mode_enabled()) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return -EINVAL;
 	}
@@ -144,7 +145,8 @@ static int mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct mdss_panel_info *pinfo;
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->partial_update_dcs_cmd_by_left ||
+			!mdss_dsi_broadcast_mode_enabled()) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return 0;
 	}
@@ -178,7 +180,8 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	struct mdss_panel_info *pinfo;
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->partial_update_dcs_cmd_by_left ||
+			!mdss_dsi_broadcast_mode_enabled()) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return;
 	}
@@ -656,13 +659,13 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->partial_update_dcs_cmd_by_left ||
+			!mdss_dsi_broadcast_mode_enabled()) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return 0;
 	}
 
-	if (!ctrl->ndx)
-		pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	if (ctrl->panel_config.bare_board == true) {
 		pr_warn("%s: This is bare_board configuration\n", __func__);
@@ -674,12 +677,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, DSI_MODE_BIT_LP);
 	/* validate screen is actually on from the master control only */
-	if (!ctrl->ndx && (pwr_mode & 0x04) != 0x04)
+	if ((pwr_mode & 0x04) != 0x04)
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
 end:
-	if (!ctrl->ndx)
-		pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
+	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
 	return 0;
 }
@@ -700,13 +702,13 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->partial_update_dcs_cmd_by_left ||
+			!mdss_dsi_broadcast_mode_enabled()) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return 0;
 	}
 
-	if (!ctrl->ndx)
-		pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
 
