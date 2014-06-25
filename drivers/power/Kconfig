@@ -562,6 +562,17 @@ config MSM_BCL_PERIPHERAL_CTL
 	  provides routines to configure and monitor the BCL
 	  PMIC peripheral.
 
+config QPNP_CABLE_DETECTION
+	tristate "QPNP Charger Detection driver"
+	depends on SPMI
+	depends on OF_SPMI
+	depends on MSM_QPNP_INT
+	help
+	  Say Y here to enable the QPNP Charger IC USB detection. This is a
+	  subset of the functionality supplied by the QPNP Linear charger
+	  that can be used solely for cable detection and paired with an
+	  external charger IC - perhaps one of the switching variety.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY
