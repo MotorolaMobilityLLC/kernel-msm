@@ -163,7 +163,7 @@ static int cycapsense_validate_gpio(struct device *dev,
 f_end:
 	return error;
 }
-static DEVICE_ATTR(cycapsense_fw, 0664, NULL, cycapsense_fw_store);
+static DEVICE_ATTR(cycapsense_fw, 0220, NULL, cycapsense_fw_store);
 
 static int cycapsense_prog_probe(struct platform_device *pdev)
 {
