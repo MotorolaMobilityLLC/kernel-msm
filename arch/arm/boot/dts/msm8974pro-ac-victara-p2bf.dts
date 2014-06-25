@@ -1,4 +1,4 @@
-/* Copyright (c) 2014 Motorola Mobility LLC
+/* Copyright (c) 2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,24 +11,10 @@
  */
 
 /dts-v1/;
-/include/ "msm8974pro-ab-moto-common.dtsi"
+/include/ "msm8974pro-ac-moto-common.dtsi"
 /include/ "msm8974pro-victara-common.dtsi"
 
 
 / {
-	qcom,msm-id = <217 0x4D 0x82A0>;
-};
-
-&i2c_0 {
-	stm401@39 {
-		stm401_fw_version = "_p0";
-	};
-};
-
-&i2c_2 {
-	bcm2079x@76 {
-		gpios = <&msmgpio 31 0x0>, /* NFC_WAKE */
-			<&msmgpio 34 0x0>, /* NFC_IRQ */
-			<&msmgpio 32 0x0>; /* REG_PU */
-	};
+	qcom,msm-id = <194 0x4D 0x82BF>;
 };
