@@ -20,8 +20,8 @@
 #include <linux/spinlock.h>
 #include <linux/mpu.h>
 
-#include "iio.h"
-#include "buffer.h"
+#include <linux/iio/iio.h>
+#include <linux/iio/buffer.h>
 
 #include "dmpKey.h"
 
@@ -808,8 +808,7 @@ struct inv_mpu_slave {
 	int (*read_data)(struct inv_mpu_state *, short *out);
 	int (*get_mode)(void);
 	int (*set_lpf)(struct inv_mpu_state *, int rate);
-//--yd 	int (*set_fs)(struct inv_mpu_state *, int fs);
-	int (*set_fs1)(struct inv_mpu_state *, int fs);
+	int (*set_fs)(struct inv_mpu_state *, int fs);
 	u64 prev_ts;
 };
 

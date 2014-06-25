@@ -29,7 +29,7 @@
 #include <linux/spinlock.h>
 
 #include "inv_mpu_iio.h"
-#include "sysfs.h"
+#include <linux/iio/sysfs.h>
 #include "inv_test/inv_counters.h"
 
 #ifdef CONFIG_DTS_INV_MPU_IIO
@@ -460,7 +460,7 @@ static int inv_write_accel_fs(struct inv_mpu_state *st, int fs)
 	if (fs == st->chip_config.accel_fs)
 		return 0;
 	if (INV_MPU3050 == st->chip_type)
-		result = st->slave_accel->set_fs1(st, fs);
+		result = st->slave_accel->set_fs(st, fs);
 	else
 		result = inv_i2c_single_write(st, reg->accel_config,
 				(fs << ACCEL_CONFIG_FSR_SHIFT));
@@ -2807,6 +2807,7 @@ static int inv_mpu_probe(struct i2c_client *client,
 #ifdef CONFIG_DTS_INV_MPU_IIO
 	enable_irq_wake(client->irq);
 #endif
+
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		result = -ENOSYS;
 		pr_err("I2c function error\n");
@@ -2843,7 +2844,6 @@ msleep(100);
 	//st->plat_data = *(struct mpu_platform_data *)dev_get_platdata(&client->dev);
  	st->plat_data = gyro_platform_data;			//ASUS_BSP +++ Maggie_Lee "fill platform data"
 #endif
-
 	result = inv_check_chip_type(st, id);
 	if (result)
 		goto out_free;
@@ -2867,6 +2867,7 @@ msleep(100);
 	indio_dev->info = &mpu_info;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->currentmode = INDIO_DIRECT_MODE;
+
 	result = inv_mpu_configure_ring(indio_dev);
 	if (result) {
 		pr_err("configure ring buffer fail\n");

@@ -13,23 +13,14 @@ inv-mpu-iio-objs += dmpDefaultMPU6050.o
 inv-mpu-iio-objs += inv_slave_compass.o
 inv-mpu-iio-objs += inv_slave_pressure.o
 
-#--yd CFLAGS_inv_mpu_core.o      += -Idrivers/staging/iio 
-CFLAGS_inv_mpu_core.o      += -Idrivers/iio -Iinclude/linux/iio -Idrivers/iio/imu
-#--yd CFLAGS_inv_mpu_ring.o      += -Idrivers/staging/iio
-CFLAGS_inv_mpu_ring.o      += -Idrivers/iio -Iinclude/linux/iio -Idrivers/iio/imu
-#--yd CFLAGS_inv_mpu_trigger.o   += -Idrivers/staging/iio
-CFLAGS_inv_mpu_trigger.o   += -Idrivers/iio -Iinclude/linux/iio -Idrivers/iio/imu
-#--yd CFLAGS_inv_mpu_misc.o      += -Idrivers/staging/iio
-CFLAGS_inv_mpu_misc.o      += -Idrivers/iio -Iinclude/linux/iio -Idrivers/iio/imu
-#--yd CFLAGS_inv_mpu3050_iio.o   += -Idrivers/staging/iio
-CFLAGS_inv_mpu3050_iio.o   += -Idrivers/iio -Iinclude/linux/iio -Idrivers/iio/imu
-#--yd CFLAGS_dmpDefaultMPU6050.o += -Idrivers/staging/iio
-CFLAGS_dmpDefaultMPU6050.o += -Idrivers/iio -Iinclude/linux/iio -Idrivers/iio/imu
-#--yd CFLAGS_inv_slave_compass.o   += -Idrivers/staging/iio
-CFLAGS_inv_slave_compass.o   += -Idrivers/iio -Iinclude/linux/iio -Idrivers/iio/imu
-#--yd CFLAGS_inv_slave_pressure.o   += -Idrivers/staging/iio
-CFLAGS_inv_slave_pressure.o   += -Idrivers/iio -Iinclude/linux/iio -Idrivers/iio/imu
-
+CFLAGS_inv_mpu_core.o      += -Idrivers/staging/iio
+CFLAGS_inv_mpu_ring.o      += -Idrivers/staging/iio
+CFLAGS_inv_mpu_trigger.o   += -Idrivers/staging/iio
+CFLAGS_inv_mpu_misc.o      += -Idrivers/staging/iio
+CFLAGS_inv_mpu3050_iio.o   += -Idrivers/staging/iio
+CFLAGS_dmpDefaultMPU6050.o += -Idrivers/staging/iio
+CFLAGS_inv_slave_compass.o   += -Idrivers/staging/iio
+CFLAGS_inv_slave_pressure.o   += -Idrivers/staging/iio
 
 # the Bosch BMA250 driver is added to the inv-mpu device driver because it
 # must be connected to an MPU3050 device on the secondary slave bus.

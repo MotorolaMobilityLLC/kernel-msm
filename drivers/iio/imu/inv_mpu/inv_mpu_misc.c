@@ -45,7 +45,7 @@
 #define DMP_PRECISION                   1000
 #define DMP_MAX_DIVIDER                 4
 #define DMP_MAX_MIN_TAPS                4
-#define DMP_IMAGE_CRC_VALUE             0xc1d16974
+#define DMP_IMAGE_CRC_VALUE             0x77a5148f
 
 /*--- Test parameters defaults --- */
 #define DEF_OLDEST_SUPP_PROD_REV        8
