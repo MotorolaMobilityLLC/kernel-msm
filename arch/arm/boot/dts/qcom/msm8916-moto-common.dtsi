@@ -429,6 +429,24 @@
 };
 
 &spmi_bus {
+	qcom,pm8916@0 {
+		pm8916_cbl: qcom,cbl-det {
+			spmi-dev-container;
+			compatible = "qcom,qpnp-cable-detection";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			qcom,usb-chgpth@1300 {
+				reg = <0x1300 0x100>;
+				interrupts =	<0 0x13 0x4>,
+						<0 0x13 0x2>,
+						<0 0x13 0x1>;
+				interrupt-names =	"usb-over-temp",
+							"chg-gone",
+							"usbin-valid";
+			};
+		};
+	};
 	qcom,pm8916@1 {
 		qcom,vibrator@c000 {
 			status = "okay";
