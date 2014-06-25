@@ -51,8 +51,9 @@
 #include <linux/asus_global.h>
 #include <linux/rtc.h>
 
+#include <linux/init.h>     //For getting bootreason
+
 static int is_rebased = 0;
-static int stop_parsing = 0;
 int suspend_in_progress = 0;
 static char *g_printk_log_buf;
 int boot_after_60sec = 0;
@@ -61,9 +62,7 @@ int boot_after_60sec = 0;
 #define ASUS_LAST_KMSG	1
 
 #ifdef ASUS_LAST_KMSG
-unsigned int* last_kmsg_read_head_1;
-unsigned int* last_kmsg_read_head_2;
-extern unsigned int last_kmsg_read_head;
+static char bootreason[30];
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 //adbg--
@@ -295,6 +294,17 @@ static const char log_oops_end[] = "---end of oops log buffer---";
 /* cpu currently holding logbuf_lock */
 static volatile unsigned int logbuf_cpu = UINT_MAX;
 
+//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+#ifdef ASUS_LAST_KMSG
+static int set_bootreason(char *str)
+{
+    strcpy(bootreason, str);
+	return 0;
+}
+__setup("bootreason=", set_bootreason);
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
+
 /* human readable text of the record */
 static char *log_text(const struct log *msg)
 {
@@ -461,14 +471,6 @@ static void log_store(int facility, int level,
 		/* drop old messages until we have enough contiuous space */
 		log_first_idx = log_next(log_first_idx, true);
 		log_first_seq++;
-
-//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#ifdef ASUS_LAST_KMSG
-        /* update last kmsg read head */
-        *last_kmsg_read_head_1 = log_first_idx;
-        *last_kmsg_read_head_2 = log_first_idx;
-#endif
-//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 	}
 
 	if (log_next_idx + size + sizeof(struct log) >= log_buf_len) {
@@ -941,13 +943,6 @@ void printk_buffer_rebase(void)
 		goto out;
 	}
 
-//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#ifdef ASUS_LAST_KMSG
-    last_kmsg_read_head_1 = (unsigned int *)LAST_KMSG_HEAD_POS1;
-    last_kmsg_read_head_2 = (unsigned int *)LAST_KMSG_HEAD_POS2;
-#endif
-//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
-
 	new_log_buf = g_printk_log_buf = (char *) PRINTK_BUFFER;//__va(PRINTK_BUFFER);  
 	printk("[adbg] printk_buffer_rebase new_log_buf=%p, __LOG_BUF_LEN:0x%x\n", new_log_buf, __LOG_BUF_LEN);
 	if (!new_log_buf) {
@@ -1410,98 +1405,6 @@ int syslog_print(char __user *buf, int size)
 	return len;
 }
 
-/* ASUS_BSP +++ Josh_Hsu: Add for parsing */
-/**
- * This function will fill kernel log in buf
- * If is_rebased is not set, this indicates that 
- * devices is panic reset. Thus, we need rebase 
- * temporarily to fetch previous log in PRINTK_BUFFER 
- *
- * @param buf buffer in kernel space that need to be fill
- * @param size size of buffer 
- * @return the size (in byte) of log filled
- */ 
-static int asus_syslog_print(char *buf, int size)
-{
-	char *text;
-	struct log *msg;
-	int len = 0;
-    u64 prev_timestamp = 0;
-    u64 diff_timestamp = 0;
-
-	u32 head_idx = 0;
-	size_t head_partial = 0;
-	enum log_flags head_prev;
-
-	if(!is_rebased){
-		g_printk_log_buf = (char *) PRINTK_BUFFER;
-	}else{
-		g_printk_log_buf = (char *) log_buf;
-	}
-
-//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#ifdef ASUS_LAST_KMSG
-    head_idx = last_kmsg_read_head;
-#endif
-//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-
-	text = kmalloc(LOG_LINE_MAX + PREFIX_MAX, GFP_KERNEL);
-	if (!text)
-		return -ENOMEM;
-
-	while (size > 0) {
-		size_t n;
-		size_t skip;
-
-		raw_spin_lock_irq(&logbuf_lock);
-
-		skip = syslog_partial;
-		msg = asus_log_from_idx(head_idx, true, 1);
-
-        /* Check for timestamp to prevent duplicate */
-        diff_timestamp = msg->ts_nsec - prev_timestamp;
-        do_div(diff_timestamp, 1000000000);
-        if((msg->ts_nsec < prev_timestamp) || ( diff_timestamp > 1000))
-            stop_parsing = 1;
-
-		n = msg_print_text(msg, syslog_prev, true, text,
-				   LOG_LINE_MAX + PREFIX_MAX);
-
-		if (n - head_partial <= size) {
-			/* message fits into buffer, move forward */
-			head_idx = asus_log_next(head_idx, true, 1);
-			head_prev = msg->flags;
-			n -= head_partial;
-			syslog_partial = 0;
-		} else if (!len){
-			/* partial read(), remember position */
-			n = size;
-			head_partial += n;
-		} else
-			n = 0;
-		raw_spin_unlock_irq(&logbuf_lock);
-
-        if(stop_parsing){
-            printk("[adbg] Kernel log parsed\n");
-            break;
-        }
-		if (!n)
-			break;
-		memcpy(buf, text + skip, n);
-
-		len += n;
-		size -= n;
-		buf += n;
-        prev_timestamp = msg->ts_nsec;
-	}
-
-    stop_parsing = 0;
-	kfree(text);
-	return len;
-}
-/* ASUS_BSP ---- Josh_Hsu: Add for parsing */
-
-
 static int syslog_print_all(char __user *buf, int size, bool clear)
 {
 	char *text;
@@ -1646,29 +1549,6 @@ int do_syslog(int type, char __user *buf, int len, bool from_file)
 			goto out;
 		error = syslog_print(buf, len);
 		break;
-	/* ASUS_BSP ++++ Josh_Hsu: Add for support parse asdf log */
-	case SYSLOG_ACTION_READ_KERNEL:
-		error = -EINVAL;
-		if (!buf || len < 0)
-			goto out;
-		error = 0;
-		if (!len)
-			goto out;
-		/* 
-		 * Skip check access user space accessibility 
-		 * because we implement in kernel 		
-		 */
-		//if (!access_ok(VERIFY_WRITE, buf, len)) {
-		//	error = -EFAULT;
-		//	goto out;
-		//}
-		error = wait_event_interruptible(log_wait,
-						 syslog_seq != log_next_seq);
-		if (error)
-			goto out;
-		error = asus_syslog_print(buf, len);
-		break;
-	/* ASUS_BSP ---- Josh_Hsu: Add for support parse asdf log */
 	/* Read/clear last kernel messages */
 	case SYSLOG_ACTION_READ_CLEAR:
 		clear = true;

@@ -14,8 +14,6 @@ extern unsigned int RTB_BUFFER;
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 extern char* LAST_KMSG_BUFFER;
-extern unsigned int LAST_KMSG_HEAD_POS1;
-extern unsigned int LAST_KMSG_HEAD_POS2;
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
 #define PRINTK_BUFFER_SIZE      (0x00200000)
@@ -200,5 +198,4 @@ void ASUSEvtlog(const char *fmt, ...);
 //20101202_Bruno: added to get debug mask value
 bool isASUS_MSK_set(const char *fmt);
 
-int parse_last_shutdown_log(char* buf, int len); //ASUS_BSP +++ Josh_Hsu "Add for parse kmsg"
 #endif

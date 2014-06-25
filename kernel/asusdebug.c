@@ -29,11 +29,6 @@
 char* LAST_KMSG_BUFFER;
 static int last_kmsg_length = 0;
 static int is_lk_rebased = 0;
-
-unsigned int LAST_KMSG_HEAD_POS1 = 0x11F00000;
-unsigned int LAST_KMSG_HEAD_POS2 = 0x11F00004;
-
-unsigned int last_kmsg_read_head = 0;
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
@@ -758,6 +753,8 @@ static unsigned int g_cat_read_pos;
 static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
              size_t length, loff_t *offset)
 {	
+    return 0;
+    /*
    	int bytes_read = 0;
 	char* msg_Ptr = LAST_KMSG_BUFFER + g_cat_read_pos;
 
@@ -779,7 +776,7 @@ static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
 
 	//printk("[adbg] Cat amount left %d, cat read pos %d\n", g_cat_amount_left, g_cat_read_pos);
 
-   	return bytes_read;
+   	return bytes_read;*/
 }
 
 static ssize_t asuslastkmsg_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
@@ -790,9 +787,6 @@ static ssize_t asuslastkmsg_write(struct file *file, const char __user *buf, siz
 		count = 256;
 	if (copy_from_user(command, buf, count))
 		return -EFAULT;
-
-    printk("[adbg] LAST_POS: 0x%08x, POS1: 0x%08x, POS2: 0x%08x\n", last_kmsg_read_head,  
-			*((unsigned int *)LAST_KMSG_HEAD_POS1), *((unsigned int *)LAST_KMSG_HEAD_POS2));
 	
     return count;
 }
@@ -802,36 +796,16 @@ static void last_kmsg_buffer_rebase(void){
     if(is_lk_rebased)
         return;
 
-    /* Test consistency of LAST_KMSG_HEAD_POS */
-	if( *((unsigned int *)LAST_KMSG_HEAD_POS1) == *((unsigned int *)LAST_KMSG_HEAD_POS2) ){
-		printk("[adbg] Last kmsg head pos is consist! POS1: 0x%08x, POS2: 0x%08x\n", 
-			*((unsigned int *)LAST_KMSG_HEAD_POS1), *((unsigned int *)LAST_KMSG_HEAD_POS2));
-		last_kmsg_read_head = *((unsigned int *)LAST_KMSG_HEAD_POS1);
-	}else{
-		printk("[adbg] Last kmsg head pos is not consist! POS1: 0x%08x, POS2: 0x%08x\n", 
-			*((unsigned int *)LAST_KMSG_HEAD_POS1), *((unsigned int *)LAST_KMSG_HEAD_POS2));
-		last_kmsg_read_head = 0;
-	}
-
-    /* Check if last_kmsg_read_head is valid */
-    if( last_kmsg_read_head >= PRINTK_BUFFER_SLOT_SIZE ){
-        printk("[adbg] Last kmsg head pos is not valid, set to 0\n");
-        last_kmsg_read_head = 0;
-    }
-
-    /* Reset HEAD because these values left before buffer wrap around */
-    *((unsigned int *)LAST_KMSG_HEAD_POS1) = 0;
-    *((unsigned int *)LAST_KMSG_HEAD_POS2) = 0;
+    is_lk_rebased = 1;
     
 	/* Allocate last_kmsg buffer */
-	LAST_KMSG_BUFFER = kmalloc(PRINTK_PARSE_SIZE, GFP_KERNEL);
+	//LAST_KMSG_BUFFER = kmalloc(PRINTK_PARSE_SIZE, GFP_KERNEL);
 
 	/* Copy content to last_kmsg buffer */
-	last_kmsg_length = parse_last_shutdown_log(LAST_KMSG_BUFFER, PRINTK_PARSE_SIZE);
+	//last_kmsg_length = parse_last_shutdown_log(LAST_KMSG_BUFFER, PRINTK_PARSE_SIZE);
 
 	g_cat_amount_left = last_kmsg_length;
 	g_cat_read_pos = 0;
-    is_lk_rebased = 1;
 
 	printk("[adbg] last_kmsg_buffer_rebase: size %d\n", last_kmsg_length);
 }
@@ -937,23 +911,10 @@ void save_phone_hang_log(void)
 }
 EXPORT_SYMBOL(save_phone_hang_log);
 
-/* ASUS_BSP ++++ Josh_Hsu: Add for support parse asdf log */
-/*
- * parse_last_shutdown_log will convert struct log to readable text
- * @char* buf: a memory space used to store readable text
- */
-int parse_last_shutdown_log(char* buf, int len){
-		return do_syslog(SYSLOG_ACTION_READ_KERNEL, buf, len, SYSLOG_FROM_PROC);
-}
-/* ASUS_BSP ---- Josh_Hsu: Add for support parse asdf log */
-
 void save_last_shutdown_log(char* filename)
 {
-    char *last_shutdown_log;
-	char *last_shutdown_log_unparsed;	// ASUS_BSP ++++ Josh_Hsu: Unparsed log pointer
+	char *last_shutdown_log_unparsed;
 	
-    int parse_length;
-    int file_handle;
 	int file_handle_unparsed;
     unsigned long long t;
     unsigned long nanosec_rem;
@@ -965,8 +926,6 @@ void save_last_shutdown_log(char* filename)
 
 	// Address setting
     last_shutdown_log_unparsed = (char*)PRINTK_BUFFER;
-    sprintf(messages, "/asdf/LastShutdown_%lu.%06lu.txt", (unsigned long) t, nanosec_rem / 1000);
-    printk("[adbg] %s(), messages: %s\n", __func__, messages);
 
 	sprintf(messages_unparsed, "/asdf/LastShutdown_%lu.%06lu_unparsed.txt", (unsigned long) t, nanosec_rem / 1000);
 	printk("[adbg] %s(), messages_unparsed: %s\n", __func__, messages_unparsed);
@@ -974,7 +933,6 @@ void save_last_shutdown_log(char* filename)
     initKernelEnv();
 
 	// Save unparsed log first, in case parser cannnot work
-    file_handle = sys_open(messages, O_CREAT|O_RDWR|O_SYNC, 0);
 	file_handle_unparsed = sys_open(messages_unparsed, O_CREAT|O_RDWR|O_SYNC, 0);
 
 	if(!IS_ERR((const void *)file_handle_unparsed))
@@ -984,28 +942,10 @@ void save_last_shutdown_log(char* filename)
     } else {
         printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle_unparsed);
     }
-
-	// ASUS_BSP ++++ Josh_Hsu: Add for support parse asdf log
-	// Save parsed log, using parser parse_last_shutdown_log
-	last_shutdown_log = kmalloc(PRINTK_PARSE_SIZE, GFP_KERNEL);
-	parse_length = parse_last_shutdown_log(last_shutdown_log, PRINTK_PARSE_SIZE);
-	// ASUS_BSP ---- Josh_Hsu
-
-    if(!IS_ERR((const void *)file_handle))
-    {
-        //sys_write(file_handle, (unsigned char*)last_shutdown_log, parse_length);
-        sys_write(file_handle, (unsigned char*)last_shutdown_log, parse_length);
-        sys_close(file_handle);
-    } else {
-        printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle);
-    }
-
+    
     deinitKernelEnv();          
 
     pr_info("[adbg] %s()--\n", __func__);
-
-	kfree(last_shutdown_log); // ASUS_BSP ++++ Josh_Hsu: Release memory
-
 }
 
 typedef struct tzbsp_dump_cpu_ctx_s
@@ -1422,8 +1362,8 @@ static int __init proc_asusdebug_init(void)
 #ifdef ASUS_LAST_KMSG
 	proc_create("last_kmsg", S_IALLUGO, NULL, &proc_asuslastkmsg_operations);
 
-    LAST_KMSG_HEAD_POS1 = (unsigned int)ioremap(LAST_KMSG_HEAD_POS1, 4);
-	LAST_KMSG_HEAD_POS2 = (unsigned int)ioremap(LAST_KMSG_HEAD_POS2, 4);
+    //LAST_KMSG_HEAD_POS1 = (unsigned int)ioremap(LAST_KMSG_HEAD_POS1, 4);
+	//LAST_KMSG_HEAD_POS2 = (unsigned int)ioremap(LAST_KMSG_HEAD_POS2, 4);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
     PRINTK_BUFFER = (unsigned int)ioremap(PRINTK_BUFFER, PRINTK_BUFFER_SIZE);
