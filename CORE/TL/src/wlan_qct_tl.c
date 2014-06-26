@@ -986,6 +986,44 @@ WLANTL_StartForwarding
 
 /*===========================================================================
 
+  FUNCTION    WLANTL_EnableCaching
+
+  DESCRIPTION
+
+    This function is used to enable caching only when assoc/reassoc req is send.
+    that is cache packets only for such STA ID.
+
+
+  DEPENDENCIES
+
+    TL must have been initialized before this gets called.
+
+
+  PARAMETERS
+
+   staId:   station id
+
+  RETURN VALUE
+
+   none
+
+============================================================================*/
+void WLANTL_EnableCaching(v_U8_t staId)
+{
+  v_PVOID_t pvosGCtx= vos_get_global_context(VOS_MODULE_ID_TL,NULL);
+  WLANTL_CbType* pTLCb = VOS_GET_TL_CB(pvosGCtx);
+  if ( NULL == pTLCb )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+           "WLAN TL:Invalid TL pointer from pvosGCtx on "
+           "WLANTL_EnableCaching"));
+    return;
+  }
+  pTLCb->atlSTAClients[staId]->enableCaching = 1;
+}
+
+/*===========================================================================
+
   FUNCTION    WLANTL_AssocFailed
 
   DESCRIPTION
@@ -1373,7 +1411,6 @@ WLANTL_RegisterSTAClient
     Start with the state suggested by client caller
     -----------------------------------------------------------------------*/
   pClientSTA->tlState = pwSTADescType->ucInitState;
-  pClientSTA->ucRxBlocked = 1;
   /*-----------------------------------------------------------------------
     After all the init is complete we can mark the existance flag 
     ----------------------------------------------------------------------*/
@@ -4959,7 +4996,7 @@ done:
     /*-----------------------------------------------------------------------
     After all the init is complete we can mark the existance flag 
     ----------------------------------------------------------------------*/
-  pClientSTA->ucRxBlocked = 0;
+  pClientSTA->enableCaching = 0;
 
   //WLAN_TL_UNLOCK_STA_CACHE(pTLCb->atlSTAClients[ucSTAId]); 
   return VOS_STATUS_SUCCESS; 
@@ -5791,15 +5828,11 @@ WLANTL_RxFrames
       }
 #endif
 
-      if ((( 0 == pClientSTA->ucExists ) ||
-           (0 != pClientSTA->ucRxBlocked) ||
-           ( WLANTL_STA_DISCONNECTED == pClientSTA->tlState)) &&
+      if (( pClientSTA->enableCaching == 1 ) &&
             /*Dont buffer Broadcast/Multicast frames. If AP transmits bursts of Broadcast/Multicast data frames, 
              * libra buffers all Broadcast/Multicast packets after authentication with AP, 
              * So it will lead to low resource condition in Rx Data Path.*/
-          (WDA_IS_RX_BCAST(pvBDHeader) == 0) &&
-           /* Dont cache frames for SOFTAP */
-          (WLAN_STA_SOFTAP != pClientSTA->wSTADesc.wSTAType))
+          ( WDA_IS_RX_BCAST(pvBDHeader) == 0 ))
       {
         if( WDA_IsSelfSTA(pvosGCtx,ucSTAId))
         {
@@ -6661,7 +6694,7 @@ WLANTL_TxThreadDebugHandler
               "ucEAPOLPktPending: %d\tucNoMoreData: %d",
               pClientSTA->ucEapolPktPending, pClientSTA->ucNoMoreData));
         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "ucRxBlocked: %d\t fcStaTxDisabled: %d", pClientSTA->ucRxBlocked,
+               "enableCaching: %d\t fcStaTxDisabled: %d", pClientSTA->enableCaching,
                pClientSTA->fcStaTxDisabled));
         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                "ucCurrentAC: %d\tucServicedAC: %d", pClientSTA->ucCurrentAC,
