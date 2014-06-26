@@ -3737,7 +3737,7 @@ qpnp_chrg_ocv_work(struct work_struct *work)
 	int curr_time =
 		ktime_to_timespec(alarm_get_elapsed_realtime()).tv_sec;
 
-	if (!chip->bms_psy) {
+	if (!chip->bms_psy || !qpnp_chg_is_usb_chg_plugged_in(chip)) {
 		chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
 		return;
 	}
