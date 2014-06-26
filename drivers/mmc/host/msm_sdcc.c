@@ -5860,6 +5860,8 @@ static struct mmc_platform_data *msmsdcc_populate_pdata(struct device *dev)
 		pdata->xpc_cap = true;
 	if (of_get_property(np, "qcom,nonremovable", NULL))
 		pdata->nonremovable = true;
+	if (of_get_property(np, "qcom,emmc", NULL))
+		pdata->is_emmc = true;
 	if (of_get_property(np, "qcom,disable-cmd23", NULL))
 		pdata->disable_cmd23 = true;
 	of_property_read_u32(np, "qcom,dat1-mpm-int",
@@ -6166,6 +6168,8 @@ msmsdcc_probe(struct platform_device *pdev)
 
 	if (plat->nonremovable)
 		mmc->caps |= MMC_CAP_NONREMOVABLE;
+	if (plat->is_emmc)
+		mmc->caps2 |= MMC_CAP2_MMC_ONLY;
 	mmc->caps |= MMC_CAP_SDIO_IRQ;
 
 	if (plat->is_sdio_al_client)
