@@ -3335,7 +3335,8 @@ int _mmc_detect_card_removed(struct mmc_host *host)
 	 * Addendum, Appendix C: Card Detection Switch"). So reschedule a
 	 * detect work 200ms later for this case.
 	 */
-	if (!ret && host->ops->get_cd && !host->ops->get_cd(host)) {
+	if (!ret && ((host->ops->get_cd && !host->ops->get_cd(host)) ||
+		     (host->slot.get_cd && !host->slot.get_cd(host)))) {
 		mmc_detect_change(host, msecs_to_jiffies(200));
 		pr_debug("%s: card removed too slowly\n", mmc_hostname(host));
 	}
@@ -3448,7 +3449,8 @@ void mmc_rescan(struct work_struct *work)
 	 */
 	mmc_bus_put(host);
 
-	if (host->ops->get_cd && host->ops->get_cd(host) == 0) {
+	if ((host->ops->get_cd && host->ops->get_cd(host) == 0) ||
+	    (host->slot.get_cd && host->slot.get_cd(host) == 0)) {
 		mmc_claim_host(host);
 		mmc_power_off(host);
 		mmc_release_host(host);

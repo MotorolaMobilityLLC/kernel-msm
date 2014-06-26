@@ -194,6 +194,7 @@ struct mmc_slot {
 	int cd_irq;
 	struct mutex lock;
 	void *handler_priv;
+	int (*get_cd) (struct mmc_host *host);
 };
 
 /**
