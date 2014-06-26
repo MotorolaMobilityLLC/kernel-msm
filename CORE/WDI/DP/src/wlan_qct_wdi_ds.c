@@ -130,7 +130,7 @@ WDI_Status WDI_DS_TxPacket(void *pContext,
   wpt_uint8      ucTypeSubtype;
   wpt_uint8      isEapol;
   wpt_uint8      alignment;
-  wpt_uint8      ucTxFlag;
+  wpt_uint32     ucTxFlag;
   wpt_uint8      ucProtMgmtFrame;
   wpt_uint8*     pSTAMACAddress;
   wpt_uint8*     pAddr2MACAddress;
