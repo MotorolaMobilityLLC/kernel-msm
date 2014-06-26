@@ -208,9 +208,10 @@ static int wlan_queue_logmsg_for_app(void)
 		 */
 		gwlan_logging.pcur_node =
 			(struct log_msg *)(gwlan_logging.filled_list.next);
+		++gwlan_logging.drop_count;
 		if (gapp_pid != INVALID_PID && !gwlan_logging.is_buffer_free) {
 			pr_err("%s: drop_count = %u index = %d filled_length = %d\n",
-				__func__, ++gwlan_logging.drop_count,
+				__func__, gwlan_logging.drop_count,
 				gwlan_logging.pcur_node->index,
 				gwlan_logging.pcur_node->filled_length);
 				/* print above logs only 1st time. */
@@ -326,17 +327,23 @@ static int send_filled_buffers_to_user(void)
 	struct nlmsghdr *nlh;
 	static int nlmsg_seq;
 	unsigned long flags;
+	static int rate_limit;
 
 	while (!list_empty(&gwlan_logging.filled_list)
 		&& !gwlan_logging.exit) {
 
 		skb = dev_alloc_skb(MAX_LOGMSG_LENGTH);
 		if (skb == NULL) {
-			pr_err("%s: dev_alloc_skb() failed for msg size[%d]\n",
-				__func__, MAX_LOGMSG_LENGTH);
+			if (!rate_limit) {
+				pr_err("%s: dev_alloc_skb() failed for msg size[%d] drop count = %u\n",
+					__func__, MAX_LOGMSG_LENGTH,
+					gwlan_logging.drop_count);
+			}
+			rate_limit = 1;
 			ret = -ENOMEM;
 			break;
 		}
+		rate_limit = 0;
 
 		spin_lock_irqsave(&gwlan_logging.spin_lock, flags);
 
@@ -404,6 +411,7 @@ static int send_filled_buffers_to_user(void)
 static int wlan_logging_thread(void *Arg)
 {
 	int ret_wait_status = 0;
+	int ret = 0;
 
 	set_user_nice(current, -2);
 
@@ -433,7 +441,10 @@ static int wlan_logging_thread(void *Arg)
 			continue;
 		}
 
-		send_filled_buffers_to_user();
+		ret = send_filled_buffers_to_user();
+		if (-ENOMEM == ret) {
+			msleep(200);
+		}
 	}
 
 	complete_and_exit(&gwlan_logging.shutdown_comp, 0);
