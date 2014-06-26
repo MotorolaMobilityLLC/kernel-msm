@@ -584,7 +584,7 @@
                 stk,transmittance = <500>;
                 stk,state-reg = <0x00>;
                 stk,psctrl-reg = <0x31>;
-                stk,alsctrl-reg = <0x39>;
+                stk,alsctrl-reg = <0x38>;
                 stk,ledctrl-reg = <0xFF>;
                 stk,wait-reg = <0xA7>;
 		stk,als_thresh_pct = <5>;
