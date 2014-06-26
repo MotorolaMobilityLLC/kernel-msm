@@ -37,18 +37,30 @@ enum PANEL_AMBIENT_MODE{
 	AMBIENT_MODE_ON = 1,
 	AMBIENT_MODE_OFF = 0,
 };
+
 static int panel_ambient_mode = AMBIENT_MODE_OFF;
+
 int is_ambient_on(){
 	return panel_ambient_mode;
 }
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Always entering ambient mode in factory build."
 int enable_ambient(int enable)
 {
 	int old = panel_ambient_mode;
+#ifdef ASUS_FACTORY_BUILD
+	if (enable){
+		panel_ambient_mode = enable;
+	}else{
+		printk("MDSS:%s:Try to config panel_ambient_mode to %d but blocked by FACTORY build.\n",__func__,enable);
+	}
+#else
 	panel_ambient_mode = enable;
 	printk("MDSS:%s:panel_ambient_mode = %d->%d\n",__func__,old,panel_ambient_mode);
-	notify_amdu_panel_ambient_on(enable);
+#endif
+	notify_amdu_panel_ambient_on(panel_ambient_mode);
 	return old;
 }
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Always entering ambient mode in factory build."
 // ASUS_BSP --- Tingyi "[ROBIN][MDSS] Ambient mode on/off support"
 
 
@@ -438,6 +450,20 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	printk("MDSS:%s:+++: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
+
+//ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
+	if (is_ambient_on()){
+		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
+
+		if (ctrl->idle_off_cmds.cmd_cnt){
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+		}else{
+			printk("MDSS:DSI: idle off command is not set!\n");
+		}
+		return 0;
+	}
+//ASUS_BSP --- Jason Chang "[Robin][display] support ambient mode"
+
 // ASUS_BSP +++ Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
 #ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
 	// Log DSI commands for LK porting
@@ -449,10 +475,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 #ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
 	notify_amdu_panel_on_cmds_stop();
 #endif
-// ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
-//	if (!is_ambient_on()){
-//		enable_ambient(1);
-//	}
+
 	printk("MDSS:%s:---\n", __func__);
 	return 0;
 }
@@ -477,7 +500,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		if (ctrl->idle_on_cmds.cmd_cnt){
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
 		}else{
-			printk("MDSS:DSI: idle command is not set!\n");
+			printk("MDSS:DSI: idle on command is not set!\n");
 		}
 		return 0;
 	}

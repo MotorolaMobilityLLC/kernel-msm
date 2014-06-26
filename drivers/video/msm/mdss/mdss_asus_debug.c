@@ -792,11 +792,26 @@ void notify_amdu_panel_ambient_on(enable)
 	amdu_data.panel_status.ambient = enable;
 	return;
 }
-
+// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Always entering ambient mode in factory build."
+extern int enable_ambient(int enable);
 void notify_amdu_overlay_commit(void)
 {
 	amdu_data.panel_status.last_time_update = jiffies;
+
+#ifdef ASUS_FACTORY_BUILD
+	{
+		static int cnt = 10;
+		if (cnt){
+			cnt --;
+			if (cnt == 0)
+				enable_ambient(1);
+		}
+	}
+#endif
+
+
 }
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Always entering ambient mode in factory build."
 
 
 void set_debug_str(char* debug_str)

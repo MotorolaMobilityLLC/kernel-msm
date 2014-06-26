@@ -961,7 +961,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		notify_it7260_ts_lowpowermode(0);		//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
 		return 0;
 		break;
-
+#ifdef ASUS_FACTORY_BUILD
 	case FB_BLANK_AMBIENT_OFF:
 		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
 		enable_ambient(0);
@@ -972,6 +972,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		enable_ambient(1);
 		return 0;
 		break;
+#endif
 	default:
 		printk("MDSS:%s:+++,Unknown blank_mode=%d,mfd->panel_power_on=%d\n",__func__,blank_mode,mfd->panel_power_on);
 		break;
