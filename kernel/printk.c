@@ -61,8 +61,9 @@ int boot_after_60sec = 0;
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #define ASUS_LAST_KMSG	1
 
-#ifdef ASUS_LAST_KMSG
+#if ASUS_LAST_KMSG
 static char bootreason[30];
+static size_t asus_print_time(u64 ts, char *buf);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 //adbg--
@@ -274,6 +275,13 @@ static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
 static char *log_buf = __log_buf;
 static u32 log_buf_len = __LOG_BUF_LEN;
 
+#if ASUS_LAST_KMSG
+static char __lk_log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
+static char *lk_log_buf = __lk_log_buf;
+static u32 lk_log_buf_len = __LOG_BUF_LEN;
+static u32 lk_log_next_idx = 0;
+#endif
+
 #if defined(CONFIG_OOPS_LOG_BUFFER)
 #define __OOPS_LOG_BUF_LEN (1 << CONFIG_OOPS_LOG_BUF_SHIFT)
 static char __log_oops_buf[__OOPS_LOG_BUF_LEN] __aligned(LOG_ALIGN);
@@ -295,7 +303,9 @@ static const char log_oops_end[] = "---end of oops log buffer---";
 static volatile unsigned int logbuf_cpu = UINT_MAX;
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#ifdef ASUS_LAST_KMSG
+#if ASUS_LAST_KMSG
+
+/* Setup bootreason */
 static int set_bootreason(char *str)
 {
     strcpy(bootreason, str);
@@ -448,6 +458,31 @@ static void log_store(int facility, int level,
 {
 	struct log *msg;
 	u32 size, pad_len;
+
+#if ASUS_LAST_KMSG
+    /* put record in last kmsg buffer */
+    int max_record_size = 512;
+    char lk_buf[max_record_size];
+    int lk_size = 0;
+
+    if (ts_nsec > 0)
+		lk_size += asus_print_time(ts_nsec, lk_buf);
+	else
+		lk_size += asus_print_time(local_clock(), lk_buf);
+    
+    lk_size += snprintf(lk_buf + lk_size, max_record_size - lk_size, text);
+
+    /* If there is no sufficient space for new record, wrap it around */
+    if(lk_log_next_idx + lk_size > lk_log_buf_len)
+        lk_log_next_idx = 0;
+
+    /* Store to lk buffer */
+    memcpy(lk_log_buf + lk_log_next_idx, lk_buf, lk_size);
+
+    /* Adjust next index */
+    lk_log_next_idx += lk_size;
+    
+#endif
 
 	/* number of '\0' padding bytes to next message */
 	size = sizeof(struct log) + text_len + dict_len;
@@ -937,22 +972,38 @@ void printk_buffer_rebase(void)
 {
 	char *new_log_buf;
 	unsigned long flags;
+#if ASUS_LAST_KMSG
+    char *new_lk_log_buf;
+#endif
 
 	if(is_rebased){
 		printk("[adbg] printk buffer is rebased\n");
 		goto out;
 	}
 
-	new_log_buf = g_printk_log_buf = (char *) PRINTK_BUFFER;//__va(PRINTK_BUFFER);  
+	new_log_buf = g_printk_log_buf = (char *) PRINTK_BUFFER;
 	printk("[adbg] printk_buffer_rebase new_log_buf=%p, __LOG_BUF_LEN:0x%x\n", new_log_buf, __LOG_BUF_LEN);
+    
 	if (!new_log_buf) {
 		printk("[adbg] printk_buffer_rebase log_buf_len: allocation failed\n");
 		goto out;
 	}
     
 	memset(g_printk_log_buf, 0, PRINTK_BUFFER_SLOT_SIZE);
+
+#if ASUS_LAST_KMSG
+    new_lk_log_buf = (char *) LAST_KMSG_BUFFER;
+
+    if (!new_lk_log_buf) {
+		printk("[adbg] new lk log buf: allocation failed\n");
+		goto out;
+	}
+
+    memset(new_lk_log_buf, 0, PRINTK_PARSE_SIZE);
+#endif
     
 	raw_spin_lock_irqsave(&logbuf_lock, flags);
+
 	log_buf_len = PRINTK_BUFFER_SLOT_SIZE;
 	log_buf = new_log_buf;
 	asus_global.kernel_log_addr = log_buf;
@@ -962,6 +1013,15 @@ void printk_buffer_rebase(void)
 	strncpy(asus_global.kernel_version, ASUS_SW_VER, sizeof(asus_global.kernel_version));
 
 	memcpy(log_buf, __log_buf, __LOG_BUF_LEN);
+
+#if ASUS_LAST_KMSG
+    /* Rebase last kmsg buffer and copy original content */
+    lk_log_buf_len = PRINTK_PARSE_SIZE;
+    lk_log_buf = new_lk_log_buf;
+
+    memcpy(lk_log_buf, __lk_log_buf, __LOG_BUF_LEN);
+#endif
+
 	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
 
 	printk("[adbg] printk_buffer_rebase, log_buf:%p, log_buf_len: 0x%x\n", log_buf, log_buf_len);

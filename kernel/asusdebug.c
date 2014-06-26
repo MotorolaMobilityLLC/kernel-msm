@@ -25,22 +25,23 @@
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #define ASUS_LAST_KMSG	1
 
-#ifdef ASUS_LAST_KMSG
-char* LAST_KMSG_BUFFER;
+#if ASUS_LAST_KMSG
+unsigned int LAST_KMSG_BUFFER = 0x11F00000;
 static int last_kmsg_length = 0;
 static int is_lk_rebased = 0;
+
+static void initKernelEnv(void);
+static void deinitKernelEnv(void);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
 /* Must be the same with the config of qcom,asusdebug in *.dtsi */
 /* 
  * For Google ASIT requirment, we need to implement last_kmsg 
- * in case we need to save the position of pointer head to read
- * the log. We save the position in 0x11F00000 and move the 
- * PRINTK_BUFFER to 0x11F00008
- *
+ * we put last_kmsg buffer to 0x11F00000, length is 512 kbytes
+ * and move PRINTK_BUFFER to 0x11F80000
  */
-unsigned int PRINTK_BUFFER = 0x11F00008;
+unsigned int PRINTK_BUFFER = 0x11F80000;
 
 extern struct timezone sys_tz;
 
@@ -745,7 +746,7 @@ EXPORT_SYMBOL(delta_all_thread_info);
 extern void printk_buffer_rebase(void);
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#ifdef ASUS_LAST_KMSG
+#if ASUS_LAST_KMSG
 
 static unsigned int g_cat_amount_left;
 static unsigned int g_cat_read_pos;
@@ -791,24 +792,44 @@ static ssize_t asuslastkmsg_write(struct file *file, const char __user *buf, siz
     return count;
 }
 
-static void last_kmsg_buffer_rebase(void){
+static void save_last_kmsg_buffer(char* filename){
+
+    char *last_kmsg_buffer;
+    char lk_filename[256];
+	int lk_file_handle;
+
     /* If LK is rebased, we skip here */
     if(is_lk_rebased)
         return;
 
-    is_lk_rebased = 1;
-    
-	/* Allocate last_kmsg buffer */
-	//LAST_KMSG_BUFFER = kmalloc(PRINTK_PARSE_SIZE, GFP_KERNEL);
+	// Address setting
+    last_kmsg_buffer = (char*)LAST_KMSG_BUFFER;
+    if(filename)
+        sprintf(lk_filename, filename);
+    else
+	    sprintf(lk_filename, "/asdf/last_kmsg.txt");
 
-	/* Copy content to last_kmsg buffer */
-	//last_kmsg_length = parse_last_shutdown_log(LAST_KMSG_BUFFER, PRINTK_PARSE_SIZE);
+    initKernelEnv();
 
+	// Save last kmsg
+	lk_file_handle = sys_open(lk_filename, O_CREAT|O_RDWR|O_SYNC, 0);
+
+	if(!IS_ERR((const void *)lk_file_handle))
+    {
+        sys_write(lk_file_handle, (unsigned char*)last_kmsg_buffer, PRINTK_PARSE_SIZE);
+        sys_close(lk_file_handle);
+    } else {
+        printk("[adbg] last kmsg save failed: [%d]\n", lk_file_handle);
+    }
+
+    deinitKernelEnv();
+
+    // Adjust read position
 	g_cat_amount_left = last_kmsg_length;
 	g_cat_read_pos = 0;
 
-	printk("[adbg] last_kmsg_buffer_rebase: size %d\n", last_kmsg_length);
 }
+
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
@@ -825,7 +846,7 @@ static int asusdebug_release(struct inode * inode, struct file * file)
 static ssize_t asusdebug_read(struct file *file, char __user *buf,
              size_t count, loff_t *ppos)
 {
-        return 0;
+    return 0;
 }
 
 static mm_segment_t oldfs;
@@ -927,8 +948,15 @@ void save_last_shutdown_log(char* filename)
 	// Address setting
     last_shutdown_log_unparsed = (char*)PRINTK_BUFFER;
 
+    // File name setting
 	sprintf(messages_unparsed, "/asdf/LastShutdown_%lu.%06lu_unparsed.txt", (unsigned long) t, nanosec_rem / 1000);
 	printk("[adbg] %s(), messages_unparsed: %s\n", __func__, messages_unparsed);
+
+    sprintf(messages, "/asdf/LastShutdown_%lu.%06lu.txt", (unsigned long) t, nanosec_rem / 1000);
+
+#if ASUS_LAST_KMSG
+	save_last_kmsg_buffer(messages);
+#endif
 
     initKernelEnv();
 
@@ -1032,18 +1060,20 @@ void get_last_shutdown_log(void)
         (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#ifdef ASUS_LAST_KMSG
-	last_kmsg_buffer_rebase();
+#if ASUS_LAST_KMSG
+	save_last_kmsg_buffer(NULL);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
     if( *last_shutdown_log_addr == (unsigned int)PRINTK_BUFFER_MAGIC)
     {
         save_last_shutdown_log("LastShutdown");
-            //save_last_watchdog_reg();
     }
 
+    /* Printk buffer rebase will also rebase last_kmsg if needed */
     printk_buffer_rebase();
+    is_lk_rebased = 1;
+    
     *last_shutdown_log_addr = PRINTK_BUFFER_MAGIC;  //ASUS_BSP ++
 }
 EXPORT_SYMBOL(get_last_shutdown_log);
@@ -1359,11 +1389,10 @@ static int __init proc_asusdebug_init(void)
     proc_create("asusevtlog", S_IRWXUGO, NULL, &proc_asusevtlog_operations);
     proc_create("asusevtlog-switch", S_IRWXUGO, NULL, &proc_evtlogswitch_operations);
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#ifdef ASUS_LAST_KMSG
+#if ASUS_LAST_KMSG
 	proc_create("last_kmsg", S_IALLUGO, NULL, &proc_asuslastkmsg_operations);
 
-    //LAST_KMSG_HEAD_POS1 = (unsigned int)ioremap(LAST_KMSG_HEAD_POS1, 4);
-	//LAST_KMSG_HEAD_POS2 = (unsigned int)ioremap(LAST_KMSG_HEAD_POS2, 4);
+    LAST_KMSG_BUFFER = (unsigned int)ioremap(LAST_KMSG_BUFFER, PRINTK_PARSE_SIZE);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
     PRINTK_BUFFER = (unsigned int)ioremap(PRINTK_BUFFER, PRINTK_BUFFER_SIZE);
