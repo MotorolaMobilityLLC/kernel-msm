@@ -3248,7 +3248,8 @@ void mmc_rescan(struct work_struct *work)
 	 */
 	mmc_bus_put(host);
 
-	if (host->ops->get_cd && host->ops->get_cd(host) == 0)
+	if ((host->ops->get_cd && host->ops->get_cd(host) == 0) ||
+	    (host->hotplug.get_cd && host->hotplug.get_cd(host) == 0))
 		goto out;
 
 	mmc_rpm_hold(host, &host->class_dev);

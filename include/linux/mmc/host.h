@@ -196,6 +196,7 @@ struct mmc_context_info {
 struct mmc_hotplug {
 	unsigned int irq;
 	void *handler_priv;
+	int (*get_cd) (struct mmc_host *host);
 };
 
 struct mmc_host {
