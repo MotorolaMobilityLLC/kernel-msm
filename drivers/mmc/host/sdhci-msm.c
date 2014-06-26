@@ -335,6 +335,7 @@ struct sdhci_msm_pltfm_data {
 	bool nonhotplug;
 	bool no_1p8v;
 	bool pin_cfg_sts;
+	bool is_emmc;
 	struct sdhci_msm_pin_data *pin_data;
 	struct sdhci_pinctrl_data *pctrl_data;
 	u32 *cpu_dma_latency_us;
@@ -1783,6 +1784,9 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 
 	if (of_property_read_bool(np, "qcom,wakeup-on-idle"))
 		msm_host->mmc->wakeup_on_idle = true;
+
+	if (of_get_property(np, "qcom,emmc", NULL))
+		pdata->is_emmc = true;
 
 	return pdata;
 out:
@@ -3721,6 +3725,9 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	if (msm_host->pdata->nonhotplug)
 		msm_host->mmc->caps2 |= MMC_CAP2_NONHOTPLUG;
+
+	if (msm_host->pdata->is_emmc)
+		msm_host->mmc->caps2 |= MMC_CAP2_MMC_ONLY;
 
 	if (mmc_host_uhs(msm_host->mmc)) {
 		sdhci_caps = readl_relaxed(host->ioaddr + SDHCI_CAPABILITIES_1);
