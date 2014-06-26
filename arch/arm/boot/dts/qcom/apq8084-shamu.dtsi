@@ -14,7 +14,7 @@
 #include "apq8084-moto-common.dtsi"
 #include "apq8084-shamu-camera-sensor.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
-#include "dsi-panel-mot-smd-QHD-cmd.dtsi"
+#include "dsi-panel-mot-smd-596-QHD-cmd.dtsi"
 #include "dsi-panel-mot-smd-598-1080p-cmd.dtsi"
 
 / {
@@ -254,7 +254,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_0_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_596_QHD_0_cmd_v0>;
 	qcom,platform-reset-gpio = <&msmgpio 86 0>;
 	qcom,platform-te-gpio = <&msmgpio 12 0>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
@@ -305,7 +305,7 @@
 };
 
 &mdss_dsi1 {
-	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_1_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_596_QHD_1_cmd_v0>;
 	/delete-property/ vdd-supply;
 	qcom,panel-supply-entries {
 		#address-cells = <1>;
@@ -353,19 +353,11 @@
 	qcom,cont-splash-enabled;
 };
 
-&mot_smd_QHD_0_cmd_v0 {
+&mot_smd_596_QHD_0_cmd_v0 {
 	qcom,cont-splash-enabled;
 };
 
-&mot_smd_QHD_1_cmd_v0 {
-	qcom,cont-splash-enabled;
-};
-
-&mot_smd_QHD_0_cmd_v1 {
-	qcom,cont-splash-enabled;
-};
-
-&mot_smd_QHD_1_cmd_v1 {
+&mot_smd_596_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
 };
 
