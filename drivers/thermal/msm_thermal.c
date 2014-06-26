@@ -52,7 +52,9 @@
 
 static struct msm_thermal_data msm_thermal_info;
 static struct delayed_work check_temp_work;
+#ifdef ASUS_FACTORY_BUILD
 static struct delayed_work asus_temp_work;
+#endif
 static bool core_control_enabled;
 static uint32_t cpus_offlined;
 static DEFINE_MUTEX(core_control_mutex);
@@ -1239,7 +1241,8 @@ static void msm_thermal_bite(int tsens_id, long temp)
 {
 	pr_err("TSENS:%d reached temperature:%ld. System reset\n",
 		tsens_id, temp);
-	scm_call_atomic1(SCM_SVC_BOOT, THERM_SECURE_BITE_CMD, 0);
+	//scm_call_atomic1(SCM_SVC_BOOT, THERM_SECURE_BITE_CMD, 0);
+	kernel_power_off();
 }
 
 static int do_therm_reset(void)
@@ -1759,13 +1762,11 @@ static void do_freq_control(long temp)
 	put_online_cpus();
 }
 
+#ifdef ASUS_FACTORY_BUILD
 static void asus_temp(struct work_struct *work)
 {
 	long temp = 0;
 	int ret = 0;
-#ifdef ASUS_FACTORY_BUILD
-	static int log_reduce=0;
-#endif
 
 	ret = therm_get_temp(msm_thermal_info.sensor_id, THERM_TSENS_ID, &temp);
 	if (ret) {
@@ -1774,22 +1775,13 @@ static void asus_temp(struct work_struct *work)
 		goto reschedule;
 	}
 
-#ifdef ASUS_FACTORY_BUILD
-	log_reduce%=8;
-	if(0 == log_reduce)
-		printk("%s temp=%ld\n",__func__,temp);
-	log_reduce++;
-#endif
-
-	if(temp > 85) {
-		printk("CPU too hot(t=%ld)!!! System shutdown...\n",temp);
-		kernel_power_off();
-	}
+	printk("%s temp=%ld\n",__func__,temp);
 
 reschedule:
 	schedule_delayed_work(&asus_temp_work,
-			msecs_to_jiffies(msm_thermal_info.poll_ms));
+			msecs_to_jiffies(2000)); //2 seconds
 }
+#endif
 
 static void check_temp(struct work_struct *work)
 {
@@ -3002,8 +2994,10 @@ int msm_thermal_init(struct msm_thermal_data *pdata)
 	INIT_DELAYED_WORK(&check_temp_work, check_temp);
 	schedule_delayed_work(&check_temp_work, 0);
 
+#ifdef ASUS_FACTORY_BUILD
 	INIT_DELAYED_WORK(&asus_temp_work, asus_temp);
 	schedule_delayed_work(&asus_temp_work, 0);
+#endif
 
 	if (num_possible_cpus() > 1)
 		register_cpu_notifier(&msm_thermal_cpu_notifier);
