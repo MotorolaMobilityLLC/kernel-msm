@@ -1086,6 +1086,7 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	return ret;
 }
 
+#ifndef CONFIG_SND_SOC_FSA8500
 static void *def_msm8x16_wcd_mbhc_cal(void)
 {
 	void *msm8x16_wcd_cal;
@@ -1131,6 +1132,7 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 
 	return msm8x16_wcd_cal;
 }
+#endif
 
 static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 {
@@ -1165,15 +1167,6 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_sync(dapm);
 
-	mbhc_cfg.calibration = def_msm8x16_wcd_mbhc_cal();
-	if (mbhc_cfg.calibration) {
-		ret = msm8x16_wcd_hs_detect(codec, &mbhc_cfg);
-		if (ret) {
-			pr_err("%s: msm8x16_wcd_hs_detect failed\n", __func__);
-			kfree(mbhc_cfg.calibration);
-			return ret;
-		}
-	}
 #ifdef CONFIG_SND_SOC_FSA8500
 	ret = fsa8500_hs_detect(codec);
 	if (!ret) {
@@ -1190,6 +1183,15 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		snd_soc_dapm_sync(dapm);
 	}
 #else
+	mbhc_cfg.calibration = def_msm8x16_wcd_mbhc_cal();
+	if (mbhc_cfg.calibration) {
+		ret = msm8x16_wcd_hs_detect(codec, &mbhc_cfg);
+		if (ret) {
+			pr_err("%s: msm8x16_wcd_hs_detect failed\n", __func__);
+			kfree(mbhc_cfg.calibration);
+			return ret;
+		}
+	}
 	ret = msm8x16_wcd_hs_detect(codec, &mbhc_cfg);
 #endif
 	return ret;
