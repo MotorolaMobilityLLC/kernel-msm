@@ -91,7 +91,15 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			}
 		}
 
-		if (!pdata->panel_info.mipi.lp11_init) {
+		/*
+		 * If the panel is already on (as part of the cont splash
+		 * screen feature), then we need to request all the GPIOs that
+		 * have already been configured in the bootloader. This needs
+		 * to be done irresepective of whether the lp11_init flag is
+		 * set or not.
+		 */
+		if (pdata->panel_info.panel_power_on ||
+			!pdata->panel_info.mipi.lp11_init) {
 			ret = mdss_dsi_panel_reset(pdata, 1);
 			if (ret) {
 				pr_err("%s: Panel reset failed. rc=%d\n",
