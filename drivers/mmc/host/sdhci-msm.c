@@ -282,6 +282,7 @@ struct sdhci_msm_pltfm_data {
 	unsigned long mmc_bus_width;
 	struct sdhci_msm_slot_reg_data *vreg_data;
 	bool nonremovable;
+	bool is_emmc;
 	struct sdhci_msm_pin_data *pin_data;
 	u8 drv_types;
 	u32 cpu_dma_latency_us;
@@ -1475,6 +1476,9 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 
 	if (of_get_property(np, "qcom,nonremovable", NULL))
 		pdata->nonremovable = true;
+
+	if (of_get_property(np, "qcom,emmc", NULL))
+		pdata->is_emmc = true;
 
 	return pdata;
 out:
@@ -3058,6 +3062,9 @@ static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 
 	if (msm_host->pdata->nonremovable)
 		msm_host->mmc->caps |= MMC_CAP_NONREMOVABLE;
+
+	if (msm_host->pdata->is_emmc)
+		msm_host->mmc->caps2 |= MMC_CAP2_MMC_ONLY;
 
 	if (mmc_host_uhs(msm_host->mmc)) {
 		sdhci_caps = readl_relaxed(host->ioaddr + SDHCI_CAPABILITIES_1);
