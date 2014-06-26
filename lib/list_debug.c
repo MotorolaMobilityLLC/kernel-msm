@@ -12,6 +12,41 @@
 #include <linux/kernel.h>
 #include <linux/rculist.h>
 
+#ifdef CONFIG_X86_64
+static unsigned long count_bits(unsigned long value)
+{
+	value = value - ((value >> 1) & 0x5555555555555555);
+	value = (value & 0x3333333333333333) + ((value >> 2) & 0x3333333333333333);
+	return (((value + (value >> 4)) & 0xF0F0F0F0F0F0F0F) * 0x101010101010101) >> 56;
+}
+#else
+static unsigned long count_bits(unsigned long value)
+{
+	value = value - ((value >> 1) & 0x55555555);
+	value = (value & 0x33333333) + ((value >> 2) & 0x33333333);
+	return (((value + (value >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
+#endif
+
+inline int check_list_corruption(void *ptr1, void *ptr2, void *ptr3, const char *func_name,
+		const char *ptr1_name, const char *ptr2_name, const char *ptr3_name) {
+	unsigned long delta_bits = (unsigned long)ptr1 ^ (unsigned long)ptr2;
+	if (!delta_bits)
+		return 0;
+
+	if (count_bits(delta_bits)  < 3) {
+		/* less than 3 bits differ; probably a bit flip...*/
+		panic("Bit flip in %s: value %p should be %p\n", func_name, ptr2, ptr1);
+	}
+
+	return WARN(1,
+		"%s corruption. %s should be "
+		"%s (%p), but was %p. (%s=%p).\n",
+		func_name, ptr1_name, ptr2_name, ptr2, ptr1, ptr3_name, ptr3);
+}
+
+
+
 /*
  * Insert a new entry between two known consecutive entries.
  *
@@ -23,14 +58,8 @@ void __list_add(struct list_head *new,
 			      struct list_head *prev,
 			      struct list_head *next)
 {
-	WARN(next->prev != prev,
-		"list_add corruption. next->prev should be "
-		"prev (%p), but was %p. (next=%p).\n",
-		prev, next->prev, next);
-	WARN(prev->next != next,
-		"list_add corruption. prev->next should be "
-		"next (%p), but was %p. (prev=%p).\n",
-		next, prev->next, prev);
+	check_list_corruption(next->prev, prev, next, __func__, "next->prev", "prev", "next");
+	check_list_corruption(prev->next, next, prev, __func__, "prev->next", "next", "prev");
 	WARN(new == prev || new == next,
 	     "list_add double add: new=%p, prev=%p, next=%p.\n",
 	     new, prev, next);
@@ -54,12 +83,10 @@ void __list_del_entry(struct list_head *entry)
 	    WARN(prev == LIST_POISON2,
 		"list_del corruption, %p->prev is LIST_POISON2 (%p)\n",
 		entry, LIST_POISON2) ||
-	    WARN(prev->next != entry,
-		"list_del corruption. prev->next should be %p, "
-		"but was %p\n", entry, prev->next) ||
-	    WARN(next->prev != entry,
-		"list_del corruption. next->prev should be %p, "
-		"but was %p\n", entry, next->prev))
+	    check_list_corruption(next->prev, entry, next,
+		__func__, "next->prev", "entry", "next") ||
+	    check_list_corruption(prev->next, entry, prev,
+		__func__, "prev->next", "entry", "prev"))
 		return;
 
 	__list_del(prev, next);
@@ -86,12 +113,8 @@ EXPORT_SYMBOL(list_del);
 void __list_add_rcu(struct list_head *new,
 		    struct list_head *prev, struct list_head *next)
 {
-	WARN(next->prev != prev,
-		"list_add_rcu corruption. next->prev should be prev (%p), but was %p. (next=%p).\n",
-		prev, next->prev, next);
-	WARN(prev->next != next,
-		"list_add_rcu corruption. prev->next should be next (%p), but was %p. (prev=%p).\n",
-		next, prev->next, prev);
+	check_list_corruption(next->prev, prev, next, __func__, "next->prev", "prev", "next");
+	check_list_corruption(prev->next, next, prev, __func__, "prev->next", "next", "prev");
 	new->next = next;
 	new->prev = prev;
 	rcu_assign_pointer(list_next_rcu(prev), new);

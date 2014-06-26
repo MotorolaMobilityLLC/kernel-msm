@@ -196,6 +196,34 @@ DEFINE_EVENT(power_domain, power_domain_target,
 
 	TP_ARGS(name, state, cpu_id)
 );
+
+/* Event class which will help in synchronizing the start of the
+*	power measurement with the logs.
+*/
+DECLARE_EVENT_CLASS(trigger,
+
+	TP_PROTO(unsigned short state),
+
+	TP_ARGS(state),
+
+	TP_STRUCT__entry(
+		__field(u16, state)
+	),
+
+	TP_fast_assign(
+		__entry->state = state;
+	),
+
+	TP_printk("state=%lu", (unsigned long)__entry->state)
+);
+
+DEFINE_EVENT(trigger, vibrator,
+
+	TP_PROTO(unsigned short state),
+
+	TP_ARGS(state)
+);
+
 #endif /* _TRACE_POWER_H */
 
 /* This part must be outside protection */

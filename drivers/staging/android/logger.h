@@ -70,10 +70,41 @@ struct logger_entry {
 	char		msg[0];
 };
 
+/**
+ * struct logger_plugin - defines a plugin for a given log, allowing to
+ * export the trace messages to different outputs (e.g. PTI)
+ * @list:      The associated entry in @logger_log's list
+ * @init:      Pointer to an init function that is called when plugin is added
+ * @exit:      Pointer to an exit function that is called when plugin is removed
+ * @write:     Pointer to a write function, used to write a complete msg
+ * @write_seg: Pointer to a write_seg function, used to write a segment of msg
+ * @write_seg_recover: Pointer to a recovery function, called in case of error
+ *                     during writev operation
+ * @data:      Callback data
+ */
+struct logger_plugin {
+	struct list_head list;
+	void (*init) (void * /* callback data */);
+	void (*exit) (void * /* callback data */);
+	void (*write) (unsigned char * /* msg to write */,
+		       unsigned int /* length */,
+		       bool /* from user ? */,
+		       void * /* callback data */);
+	void (*write_seg) (void * /* msg segment to write */,
+			   unsigned int /* length */,
+			   bool /* from user ? */,
+			   bool /* start of msg ? */,
+			   bool /* end of msg ? */,
+			   void * /* callback data*/);
+	void (*write_seg_recover) (void * /* callback data */);
+	void *data;
+};
+
+
 #define LOGGER_LOG_RADIO	"log_radio"	/* radio-related messages */
 #define LOGGER_LOG_EVENTS	"log_events"	/* system/hardware events */
 #define LOGGER_LOG_SYSTEM	"log_system"	/* system/framework messages */
-#define LOGGER_LOG_MAIN		"log_main"	/* everything else */
+#define LOGGER_LOG_MAIN	"log_main"	/* everything else */
 
 #define LOGGER_ENTRY_MAX_PAYLOAD	4076
 
@@ -85,5 +116,8 @@ struct logger_entry {
 #define LOGGER_FLUSH_LOG		_IO(__LOGGERIO, 4) /* flush log */
 #define LOGGER_GET_VERSION		_IO(__LOGGERIO, 5) /* abi version */
 #define LOGGER_SET_VERSION		_IO(__LOGGERIO, 6) /* abi version */
+
+void logger_add_plugin(struct logger_plugin *plugin, const char *name);
+void logger_remove_plugin(struct logger_plugin *plugin, const char *name);
 
 #endif /* _LINUX_LOGGER_H */

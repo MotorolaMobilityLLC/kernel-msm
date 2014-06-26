@@ -81,6 +81,17 @@ config GPIO_SYSFS
 	  Kernel drivers may also request that a particular GPIO be
 	  exported to userspace; this can be useful when debugging.
 
+config GPIODEBUG
+	tristate "GPIO Setting DEBUG"
+	depends on DEBUG_FS
+	help
+	  Say yes here to support GPIO/FLIS Setting Debug.
+
+	  This is mostly useful to dump and set gpio/flis conguration.
+
+	  Kernel drivers may also request that a particular GPIO be
+	  exported to userspace; this can be useful when debugging.
+
 config GPIO_GENERIC
 	tristate
 
@@ -105,6 +116,14 @@ config GPIO_DA9055
 
 config GPIO_MAX730X
 	tristate
+
+config GPIO_VIRTUAL
+	tristate "Virtual GPIO Controller"
+	help
+	  Say yes here to enable the Virtual GPIO Controller driver. This
+	  driver enables USH wakeup from D0i3.
+
+	  If driver is built as a module it will be called gpio-virtual.
 
 comment "Memory mapped GPIO drivers:"
 
@@ -575,6 +594,25 @@ config GPIO_LANGWELL
 	select IRQ_DOMAIN
 	help
 	  Say Y here to support Intel Langwell/Penwell GPIO.
+
+config GPIO_VALLEYVIEW2
+	bool "Intel ValleyView GPIO support"
+	select IRQ_DOMAIN
+	help
+	  This driver is for Intel ValleyView.
+
+	  Say Y here to support Intel ValleyView GPIO.
+
+config GPIO_CHERRYVIEW
+	bool "Intel CherryView GPIO support"
+	select IRQ_DOMAIN
+	help
+	  This driver is for Intel CherryView.
+	  Cherryview GPIO controllers provide electrical control and
+	  functional muxing between all units and the GPIOs/CFIOs in
+	  CHV SoC.
+
+	  Say Y here to support Intel CherryView GPIO.
 
 config GPIO_PCH
 	tristate "Intel EG20T PCH/LAPIS Semiconductor IOH(ML7223/ML7831) GPIO"

@@ -8,3 +8,6 @@ obj-$(CONFIG_EXTCON_ADC_JACK)	+= extcon-adc-jack.o
 obj-$(CONFIG_EXTCON_MAX77693)	+= extcon-max77693.o
 obj-$(CONFIG_EXTCON_MAX8997)	+= extcon-max8997.o
 obj-$(CONFIG_EXTCON_ARIZONA)	+= extcon-arizona.o
+obj-$(CONFIG_EXTCON_USB)	+= extcon-usb.o
+obj-$(CONFIG_EXTCON_FSA9285)	+= extcon-fsa9285.o
+obj-$(CONFIG_EXTCON_SMSC375X)	+= extcon-smsc375x.o

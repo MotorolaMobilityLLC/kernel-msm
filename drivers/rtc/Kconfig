@@ -614,6 +614,20 @@ config RTC_DRV_CMOS
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-cmos.
 
+config RTC_DRV_CMOS_WAKEUP_FROM_LPSTATES
+	tristate "PC-style 'CMOS' can wakeup from low power states"
+	depends on RTC_DRV_CMOS
+	help
+	  Say "yes" to have rtc-cmos driver capability to wakeup from low
+	  power states (S3 and S4/5).
+
+config RTC_DRV_CMOS_DAYOFMONTH_ALARM
+	tristate "PC-style 'CMOS' supports day of month for alarms"
+	depends on RTC_DRV_CMOS_WAKEUP_FROM_LPSTATES
+	help
+	  Say "yes" to have rtc-cmos driver support day of month for
+	  alarms through REG_D register.
+
 config RTC_DRV_VRTC
 	tristate "Virtual RTC for Intel MID platforms"
 	depends on X86_INTEL_MID

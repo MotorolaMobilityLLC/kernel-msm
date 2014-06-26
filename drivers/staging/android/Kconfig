@@ -31,6 +31,18 @@ config ASHMEM
 	  It is, in theory, a good memory allocator for low-memory devices,
 	  because it can discard shared memory units when under memory pressure.
 
+config ANDROID_BINDER_IPC_COMPAT_32
+	bool "Binder Driver 32 bit IOCTL support"
+	default y
+	depends on X86_64
+	depends on ANDROID_BINDER_IPC
+	---help---
+	  Setting this option will tell the Binder in a 64bit kernel
+	  to expect 32-bit user space processes. If this is set, 64-bit processes
+	  will not be able to use the binder.
+
+	  If in doubt, say Y here when building Android for 64bit.
+
 config ANDROID_LOGGER
 	tristate "Android log driver"
 	default n
@@ -47,6 +59,11 @@ config ANDROID_LOGGER
 	  Log reading and writing is performed via normal Linux reads and
 	  optimized writes. This optimization avoids logging having too
 	  much overhead in the system.
+
+config ANDROID_LOGGER_PTI
+	tristate "Android log driver on PTI"
+	default n
+	depends on ANDROID_LOGGER && INTEL_MID_PTI
 
 config ANDROID_TIMED_OUTPUT
 	bool "Timed output class driver"

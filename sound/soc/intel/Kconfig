@@ -1,0 +1,168 @@
+config SND_MFLD_MACHINE
+	tristate "SOC Machine Audio driver for Intel Medfield MID platform"
+	depends on INTEL_SCU_IPC && INTEL_SCU_IPC_UTIL && X86 && GPIO_LANGWELL
+	depends on MSIC_GPADC
+	select SND_SOC_SN95031
+	select SND_SST_PLATFORM
+	select SND_SST_MACHINE
+	select SND_INTEL_SST
+	default n
+	help
+          This adds support for ASoC machine driver for Intel(R) MID Medfield platform
+          used as alsa device in audio subsystem in Intel(R) MID devices
+          Say Y if you have such a device
+	  If unsure select "N".
+
+config SND_MFLD_MACHINE_GI
+	tristate "SOC Machine Audio driver for Intel Medfield GI board"
+	depends on INTEL_SCU_IPC && INTEL_SCU_IPC_UTIL && X86 && GPIO_LANGWELL
+	depends on MSIC_GPADC
+	select SND_SOC_SN95031
+	select SND_SST_PLATFORM
+	select SND_SST_MACHINE
+	select SND_INTEL_SST
+	default n
+	help
+          This adds support for ASoC machine driver for Gilligan Island board, based on
+	  Intel(R) MID Medfield platform. This will create an alsa sound card.
+          Say Y if you have such a device
+          If unsure select "N".
+
+config SND_YUKKABEACH_MACHINE
+	tristate "SOC Machine Audio driver for Intel Yukkbeach board"
+	depends on INTEL_SCU_IPC && INTEL_SCU_IPC_UTIL && X86 && GPIO_LANGWELL
+	depends on MSIC_GPADC
+	select SND_SOC_SN95031
+	select SND_SST_PLATFORM
+	select SND_SST_MACHINE
+	select SND_INTEL_SST
+	default n
+	help
+          This adds support for ASoC machine driver for Yukkabeach board, based on
+	  Intel(R) MID Medfield platform(and Lexington board). This will create an
+	  alsa sound card.
+          Say Y if you have such a device
+          If unsure select "N".
+
+config SND_MRFLD_MACHINE
+	tristate "SOC Machine Audio driver for Intel Merrifield MID platform"
+	depends on INTEL_SCU_IPC && X86
+	select SND_SOC_LM49453
+	select SND_SOC_WM8994
+	select MFD_CORE
+	select MFD_WM8994
+	select REGULATOR_WM8994
+	select SND_SST_PLATFORM
+	select SND_SST_MACHINE
+	select SND_INTEL_SST
+	select SND_EFFECTS_OFFLOAD
+	default n
+	help
+	  This adds support for ASoC machine driver for Intel(R) MID Merrifield platform
+          used as alsa device in audio substem in Intel(R) MID devices
+          Say Y if you have such a device
+          If unsure select "N".
+
+config SND_MOOR_MACHINE
+	tristate "SOC Machine Audio driver for Intel Moorefield MID platform"
+	depends on INTEL_SCU_IPC && X86
+	select SND_SOC_WM8994
+	select MFD_CORE
+	select MFD_WM8994
+	select REGULATOR_WM8994
+	select SND_SST_PLATFORM
+	select SND_SST_MACHINE
+	select SND_INTEL_SST
+	select SND_EFFECTS_OFFLOAD
+	default n
+	help
+	  This adds support for ASoC machine driver for Intel(R) MID Moorefield platform
+          used as alsa device in audio substream in Intel(R) MID devices
+          Say Y if you have such a device
+          If unsure select "N".
+
+config SND_BYT_MACHINE
+	tristate "SOC Machine Audio driver for Intel Baytrail MID platform"
+	depends on X86
+	select SND_SOC_RT5642
+	select SND_SOC_TLV320AIC31XX
+	select SND_SST_PLATFORM
+	select SND_SST_MACHINE
+	select SND_INTEL_SST
+	select SND_HWDEP
+	default n
+	help
+	  This adds support for ASoC machine driver for Intel(R) MID Baytrail platform
+          used as alsa device in audio substem in Intel(R) MID devices
+          Say Y if you have such a device
+          If unsure select "N".
+
+
+config SND_CHT_MACHINE
+	tristate "SOC Machine Audio driver for Intel Cherrytrail MID platform"
+	select SND_SOC_RT5672
+	select SND_SST_PLATFORM
+	select SND_SST_MACHINE
+	select SND_INTEL_SST
+	default n
+	help
+	  This adds support for ASoC machine driver for Intel(R) MID Cherrytrail platform
+          used as alsa device in audio subsystem in Intel(R) MID devices
+          Say Y if you have such a device
+
+config SND_CTP_MACHINE
+	tristate "SOC Machine Audio driver for Intel Cloverview MID platform"
+	depends on INTEL_SCU_IPC_UTIL && X86 && GPIO_LANGWELL
+	select SND_SOC_CS42L73
+	select SND_SOC_WM5102
+	select SND_SOC_WM8994
+	select MFD_CORE
+	select MFD_WM8994
+	select SND_SST_PLATFORM
+	select SND_SST_MACHINE
+	select SND_INTEL_SST
+	select SND_COMPRESS_OFFLOAD
+	select SND_SOC_COMMS_SSP
+	default n
+	help
+          This adds support for ASoC machine driver for Intel(R) MID Cloverview platform
+	  used as alsa device in audio substem in Intel(R) MID devices
+          Say Y if you have such a device
+          If unsure select "N".
+
+config SND_INTEL_SST
+       tristate
+
+config SND_SST_PLATFORM
+	tristate
+
+config SND_SOC_COMMS_SSP
+	depends on SND_INTEL_MID_I2S
+	tristate "Use ASOC framework to drive AudioComms SSP BT and Modem"
+	help
+	  Sound SOC cards usually used for BT VOIP and MODEM MIXING use cases.
+	  This will add devices for these uses cases in the list of alsa cards.
+	  Say Y if you need these sound cards (BT chipset or Modem present).
+	  Requires to enable the INTEL_MID_I2S low level SSP I2S driver.
+
+config SND_MFLD_MONO_SPEAKER_SUPPORT
+	tristate "Mono Speaker support for Medfield based devices"
+	default N
+	help
+          This adds support for Mono speaker support on Intel(R) MID Medfield based devices.
+          Say Y if you have device with mono speaker. If you say N support for stereo speakers
+          will be enabled.
+          If unsure select "N".
+
+config PRH_TEMP_WA_FOR_SPID
+	tristate "Workaround for PRh since SPID is unavailable"
+
+config SST_DPCM
+	bool "Use DPCM based Machine Audio driver"
+	default n
+	help
+	  This adds an option to enable the DPCM based machine driver
+
+config SND_SST_MACHINE
+	tristate
+

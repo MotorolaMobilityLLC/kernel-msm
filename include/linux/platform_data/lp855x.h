@@ -12,6 +12,10 @@
 #ifndef _LP855X_H
 #define _LP855X_H
 
+extern struct lp855x *lpdata;
+int lp855x_ext_write_byte(u8 reg, u8 data);
+int lp855x_ext_read_byte(u8 reg);
+
 #define BL_CTL_SHFT	(0)
 #define BRT_MODE_SHFT	(1)
 #define BRT_MODE_MASK	(0x06)
@@ -48,6 +52,79 @@
 #define LP8556_COMB2_CONFIG	(LP8556_COMBINED2 << BRT_MODE_SHFT)
 #define LP8556_FAST_CONFIG	BIT(7) /* use it if EPROMs should be maintained
 					  when exiting the low power mode */
+#define	LP8556_5LEDSTR		0x1F  /* 5 led string definition for ffrd8 and bytcr-rvp boards.*/
+
+#define	LP8556_LEDSTREN		0x16
+#define LP8556_CFG98		0x98
+#define LP8556_CFG9E		0x9E
+#define LP8556_CFG0		0xA0
+#define LP8556_CFG1		0xA1
+#define LP8556_CFG2		0xA2
+#define LP8556_CFG3		0xA3
+#define LP8556_CFG4		0xA4
+#define LP8556_CFG5		0xA5
+	#define LP8556_PWM_DRECT_EN	0x80
+	#define LP8556_PWM_DRECT_DIS	0x00
+	#define LP8556_PS_MODE_6P6D	0x00
+	#define LP8556_PS_MODE_5P5D	0x10
+	#define LP8556_PS_MODE_4P4D	0x20
+	#define LP8556_PS_MODE_3P3D	0x30
+	#define LP8556_PS_MODE_2P2D	0x40
+	#define LP8556_PS_MODE_3P6D	0x50
+	#define LP8556_PS_MODE_2P6D	0x60
+	#define LP8556_PS_MODE_1P6D	0x70
+	#define LP8556_PWM_FREQ_4808HZ	0x00
+	#define LP8556_PWM_FREQ_6010HZ	0x01
+	#define LP8556_PWM_FREQ_7212HZ	0x02
+	#define LP8556_PWM_FREQ_8414HZ	0x03
+	#define LP8556_PWM_FREQ_9616HZ	0x04
+	#define LP8556_PWM_FREQ_12020HZ	0x05
+	#define LP8556_PWM_FREQ_13222HZ	0x06
+	#define LP8556_PWM_FREQ_14424HZ	0x07
+	#define LP8556_PWM_FREQ_15626HZ	0x08
+	#define LP8556_PWM_FREQ_16828HZ	0x09
+	#define LP8556_PWM_FREQ_18030HZ	0x0A
+	#define LP8556_PWM_FREQ_19232HZ	0x0B
+	#define LP8556_PWM_FREQ_24040HZ	0x0C
+	#define LP8556_PWM_FREQ_28848HZ	0x0D
+	#define LP8556_PWM_FREQ_33656HZ	0x0E
+	#define LP8556_PWM_FREQ_38464HZ	0x0F
+#define LP8556_CFG6		0xA6
+#define LP8556_CFG7		0xA7
+	#define LP8556_RSRVD_76	0xC0
+	#define LP8556_DRV3_EN	0x20
+	#define LP8556_DRV3_DIS	0x00
+	#define LP8556_DRV2_EN	0x10
+	#define LP8556_DRV2_DIS	0x00
+	#define LP8556_RSRVD_32	0x0C
+	#define LP8556_IBOOST_LIM_0_9A_1_6A	0x00
+	#define LP8556_IBOOST_LIM_1_2A_2_1A	0x01
+	#define LP8556_IBOOST_LIM_1_5A_2_6A	0x02
+	#define LP8556_IBOOST_LIM_1_8A_NA	0x03
+#define LP8556_CFG8		0xA8
+#define LP8556_CFG9		0xA9
+	#define LP8556_VBOOST_MAX_NA_21V	0x40
+	#define LP8556_VBOOST_MAX_NA_25V	0x60
+	#define LP8556_VBOOST_MAX_21V_30V	0x80
+	#define LP8556_VBOOST_MAX_25V_34_5V	0xA0
+	#define LP8556_VBOOST_MAX_30V_39V	0xC0
+	#define LP8556_VBOOST_MAX_34V_43V	0xE0
+	#define LP8556_JUMP_EN			0x10
+	#define LP8556_JUMP_DIS			0x00
+	#define LP8556_JMP_TSHOLD_10P		0x00
+	#define LP8556_JMP_TSHOLD_30P		0x04
+	#define LP8556_JMP_TSHOLD_50P		0x08
+	#define LP8556_JMP_TSHOLD_70P		0x0C
+	#define LP8556_JMP_VOLT_0_5V		0x00
+	#define LP8556_JMP_VOLT_1V		0x01
+	#define LP8556_JMP_VOLT_2V		0x02
+	#define LP8556_JMP_VOLT_4V		0x03
+#define LP8556_CFGA		0xAA
+#define LP8556_CFGB		0xAB
+#define LP8556_CFGC		0xAC
+#define LP8556_CFGD		0xAD
+#define LP8556_CFGE		0xAE
+#define LP8556_CFGF		0xAF
 
 /* CONFIG register - LP8557 */
 #define LP8557_PWM_STANDBY	BIT(7)

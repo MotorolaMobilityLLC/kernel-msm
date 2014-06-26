@@ -35,6 +35,7 @@ struct regmap_irq_chip_data {
 	int wake_count;
 
 	void *status_reg_buf;
+	void *mask_reg_buf;
 	unsigned int *status_buf;
 	unsigned int *mask_buf;
 	unsigned int *mask_buf_def;
@@ -199,7 +200,20 @@ static irqreturn_t regmap_irq_thread(int irq, void *d)
 		u16 *buf16 = data->status_reg_buf;
 		u32 *buf32 = data->status_reg_buf;
 
+		u8 *mask8 = data->mask_reg_buf;
+		u16 *mask16 = data->mask_reg_buf;
+		u32 *mask32 = data->mask_reg_buf;
+
 		BUG_ON(!data->status_reg_buf);
+		BUG_ON(!data->mask_reg_buf);
+
+		ret = regmap_bulk_read(map, chip->mask_base, data->mask_reg_buf,
+				       chip->num_regs);
+		if (ret != 0) {
+			dev_err(map->dev, "Failed to read mask register: %d\n",
+				ret);
+			return IRQ_NONE;
+		}
 
 		ret = regmap_bulk_read(map, chip->status_base,
 				       data->status_reg_buf,
@@ -214,12 +228,18 @@ static irqreturn_t regmap_irq_thread(int irq, void *d)
 			switch (map->format.val_bytes) {
 			case 1:
 				data->status_buf[i] = buf8[i];
+				data->mask_buf[i] = mask8[i];
+				data->mask_buf_def[i] = mask8[i];
 				break;
 			case 2:
 				data->status_buf[i] = buf16[i];
+				data->mask_buf[i] = mask16[i];
+				data->mask_buf_def[i] = mask16[i];
 				break;
 			case 4:
 				data->status_buf[i] = buf32[i];
+				data->mask_buf[i] = mask32[i];
+				data->mask_buf_def[i] = mask32[i];
 				break;
 			default:
 				BUG();
@@ -242,6 +262,21 @@ static irqreturn_t regmap_irq_thread(int irq, void *d)
 					pm_runtime_put(map->dev);
 				return IRQ_NONE;
 			}
+
+			ret = regmap_read(map, chip->mask_base +
+					  (i * map->reg_stride
+					   * data->irq_reg_stride),
+					  &data->mask_buf[i]);
+
+			if (ret != 0) {
+				dev_err(map->dev,
+					"Failed to read mask reg: %d\n",
+					ret);
+				if (chip->runtime_pm)
+					pm_runtime_put(map->dev);
+				return IRQ_NONE;
+			}
+			data->mask_buf_def[i] = data->mask_buf[i];
 		}
 	}
 
@@ -394,6 +429,11 @@ int regmap_add_irq_chip(struct regmap *map, int irq, int irq_flags,
 					    chip->num_regs, GFP_KERNEL);
 		if (!d->status_reg_buf)
 			goto err_alloc;
+
+		d->mask_reg_buf = kmalloc(map->format.val_bytes *
+					    chip->num_regs, GFP_KERNEL);
+		if (!d->mask_reg_buf)
+			goto err_alloc;
 	}
 
 	mutex_init(&d->lock);
@@ -475,6 +515,7 @@ err_alloc:
 	kfree(d->mask_buf);
 	kfree(d->status_buf);
 	kfree(d->status_reg_buf);
+	kfree(d->mask_reg_buf);
 	kfree(d);
 	return ret;
 }
@@ -497,6 +538,7 @@ void regmap_del_irq_chip(int irq, struct regmap_irq_chip_data *d)
 	kfree(d->mask_buf_def);
 	kfree(d->mask_buf);
 	kfree(d->status_reg_buf);
+	kfree(d->mask_reg_buf);
 	kfree(d->status_buf);
 	kfree(d);
 }

@@ -203,7 +203,7 @@ EXPORT_SYMBOL(drm_master_put);
 int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
 {
-	int ret;
+	int ret = 0;
 
 	if (file_priv->is_master)
 		return 0;
@@ -229,7 +229,7 @@ int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 	}
 	mutex_unlock(&dev->struct_mutex);
 
-	return 0;
+	return ret;
 }
 
 int drm_dropmaster_ioctl(struct drm_device *dev, void *data,
@@ -266,6 +266,9 @@ int drm_fill_in_dev(struct drm_device *dev,
 	spin_lock_init(&dev->event_lock);
 	mutex_init(&dev->struct_mutex);
 	mutex_init(&dev->ctxlist_mutex);
+	mutex_init(&dev->halt_mutex);
+	init_waitqueue_head(&dev->ioctl_queue);
+	init_waitqueue_head(&dev->halt_queue);
 
 	if (drm_ht_create(&dev->map_hash, 12)) {
 		return -ENOMEM;
@@ -451,14 +454,8 @@ void drm_put_dev(struct drm_device *dev)
 
 	drm_lastclose(dev);
 
-	if (drm_core_has_MTRR(dev) && drm_core_has_AGP(dev) &&
-	    dev->agp && dev->agp->agp_mtrr >= 0) {
-		int retval;
-		retval = mtrr_del(dev->agp->agp_mtrr,
-				  dev->agp->agp_info.aper_base,
-				  dev->agp->agp_info.aper_size * 1024 * 1024);
-		DRM_DEBUG("mtrr_del=%d\n", retval);
-	}
+	if (drm_core_has_MTRR(dev) && drm_core_has_AGP(dev) && dev->agp)
+		arch_phys_wc_del(dev->agp->agp_mtrr);
 
 	if (dev->driver->unload)
 		dev->driver->unload(dev);

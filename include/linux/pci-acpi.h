@@ -45,6 +45,12 @@ static inline acpi_handle acpi_pci_get_bridge_handle(struct pci_bus *pbus)
 void acpi_pci_add_bus(struct pci_bus *bus);
 void acpi_pci_remove_bus(struct pci_bus *bus);
 
+#ifdef CONFIG_INTEL_SOC_PMC
+extern bool acpi_pci_quirk_power_manageable(struct pci_dev *dev);
+extern pci_power_t acpi_pci_quirk_choose_state(struct pci_dev *pdev);
+extern int acpi_pci_quirk_set_state(struct pci_dev *dev, pci_power_t state);
+#endif
+
 #ifdef	CONFIG_ACPI_PCI_SLOT
 void acpi_pci_slot_init(void);
 void acpi_pci_slot_enumerate(struct pci_bus *bus, acpi_handle handle);

@@ -166,6 +166,7 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_DESTROY_DUMB, drm_mode_destroy_dumb_ioctl, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_OBJ_GETPROPERTIES, drm_mode_obj_get_properties_ioctl, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_OBJ_SETPROPERTY, drm_mode_obj_set_property_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_CURSOR2, drm_mode_cursor2_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 };
 
 #define DRM_CORE_IOCTL_COUNT	ARRAY_SIZE( drm_ioctls )
@@ -358,6 +359,61 @@ static int drm_version(struct drm_device *dev, void *data,
 	return err;
 }
 
+
+
+/** Prevent new IOCTLs from starting.
+ */
+void drm_halt(struct drm_device *dev)
+{
+	DRM_DEBUG("Halt request\n");
+	/* Hold the mutex to prevent the ioctl_count incrementing
+	* while halt_count == 0 in drm_ioctl */
+	mutex_lock(&dev->halt_mutex);
+	atomic_inc(&dev->halt_count);
+	mutex_unlock(&dev->halt_mutex);
+}
+EXPORT_SYMBOL(drm_halt);
+
+
+/** Wait up to timeout milliseconds for active IOCTLs to complete.
+ * Note: drm_continue() must be called to allow new
+ *       IOCTLs even if this call timeout.
+ */
+int drm_wait_idle(struct drm_device *dev, unsigned timeout)
+{
+	int rc;
+
+	/* Wait for all active IOCTLs to exit */
+	rc = wait_event_interruptible_timeout(dev->halt_queue,
+		(atomic_read(&dev->ioctl_count) == 0),
+		msecs_to_jiffies(timeout));
+
+	if (rc == 0)
+		return -ETIMEDOUT;
+	else if (rc < 0)
+		return rc;
+
+	return 0;
+}
+EXPORT_SYMBOL(drm_wait_idle);
+
+
+/** Release a previous halt request.
+ * Notifies sleeping IOCTLs that they can continue
+ * once the refcount reaches 0.
+ */
+void drm_continue(struct drm_device *dev)
+{
+	mutex_lock(&dev->halt_mutex);
+	WARN_ON(atomic_read(&dev->halt_count) == 0);
+	if (atomic_dec_return(&dev->halt_count) == 0)
+		wake_up_all(&dev->ioctl_queue);
+	mutex_unlock(&dev->halt_mutex);
+	DRM_DEBUG("Continue\n");
+}
+EXPORT_SYMBOL(drm_continue);
+
+
 /**
  * Called whenever a process performs an ioctl on /dev/drm.
  *
@@ -382,14 +438,50 @@ long drm_ioctl(struct file *filp,
 	char stack_kdata[128];
 	char *kdata = NULL;
 	unsigned int usize, asize;
+	unsigned ready = 0;
 
 	dev = file_priv->minor->dev;
 
 	if (drm_device_is_unplugged(dev))
 		return -ENODEV;
 
-	atomic_inc(&dev->ioctl_count);
-	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
+	while (!ready) {
+		/* halt_mutex ensures that ioctl_count can only increment
+		* whilst halt_count == 0. Without this we could get
+		* the following scenario:
+		*
+		*	drm_ioctl:	halt_count == 0 ? --> YES
+		*	    drm_halt:	    halt_count++
+		*	    drm_wait_idle:  ioctl_count == 0 ? --> YES
+		*	drm_ioctl:	ioctl_count++
+		*	    drm_wait_idle:  return "idle" to caller
+		*	drm_ioctl:	ioctl continues executing
+		*
+		* In the above scenario drm_wait_idle thinks we are
+		* halted with no active ioctls but drm_ioctl
+		* thinks we are not halted so it allows the current
+		* ioctl to execute! The mutex protects against this
+		* concurrency problem.
+		*/
+		mutex_lock(&dev->halt_mutex);
+		if (atomic_read(&dev->halt_count) == 0) {
+			atomic_inc(&dev->ioctl_count);
+			ready = 1;
+		}
+		mutex_unlock(&dev->halt_mutex);
+
+		if (!ready) {
+			retcode = wait_event_interruptible(dev->ioctl_queue,
+					(atomic_read(&dev->halt_count) == 0));
+
+			if (retcode != 0)
+				return retcode;
+
+			/* OK to proceed. Set retcode back to default */
+			retcode = -EINVAL;
+		}
+	}
+
 	++file_priv->ioctl_count;
 
 	if ((nr >= DRM_CORE_IOCTL_COUNT) &&
@@ -430,14 +522,24 @@ long drm_ioctl(struct file *filp,
 	if ((nr == DRM_IOCTL_NR(DRM_IOCTL_DMA)) && dev->driver->dma_ioctl)
 		func = dev->driver->dma_ioctl;
 
+	/* workaround drm authentification issue on Android
+	* don't need following check for DRM_AUTH
+	* otherwise maybe it will be reset before the check
+	*/
+	file_priv->authenticated = 1;
+
 	if (!func) {
 		DRM_DEBUG("no function\n");
 		retcode = -EINVAL;
-	} else if (((ioctl->flags & DRM_ROOT_ONLY) && !capable(CAP_SYS_ADMIN)) ||
-		   ((ioctl->flags & DRM_AUTH) && !file_priv->authenticated) ||
-		   ((ioctl->flags & DRM_MASTER) && !file_priv->is_master) ||
-		   (!(ioctl->flags & DRM_CONTROL_ALLOW) && (file_priv->minor->type == DRM_MINOR_CONTROL))) {
+	} else if (((ioctl->flags & DRM_ROOT_ONLY) &&
+			   !capable(CAP_SYS_ADMIN)) ||
+		    (!(ioctl->flags & DRM_CONTROL_ALLOW) &&
+			   (file_priv->minor->type == DRM_MINOR_CONTROL))) {
 		retcode = -EACCES;
+		DRM_ERROR("Ioctl check failed for ioctl nr 0x%x"\
+				"for process %s with pid=%d & is root=%d\n",
+				nr, current->comm,
+				task_pid_nr(current), capable(CAP_SYS_ADMIN));
 	} else {
 		if (cmd & (IOC_IN | IOC_OUT)) {
 			if (asize <= sizeof(stack_kdata)) {
@@ -459,7 +561,7 @@ long drm_ioctl(struct file *filp,
 				retcode = -EFAULT;
 				goto err_i1;
 			}
-		} else
+		} else if (cmd & IOC_OUT)
 			memset(kdata, 0, usize);
 
 		if (ioctl->flags & DRM_UNLOCKED)
@@ -486,7 +588,8 @@ long drm_ioctl(struct file *filp,
 
 	if (kdata != stack_kdata)
 		kfree(kdata);
-	atomic_dec(&dev->ioctl_count);
+	if (atomic_dec_return(&dev->ioctl_count) == 0)
+		wake_up_all(&dev->halt_queue);
 	if (retcode)
 		DRM_DEBUG("ret = %d\n", retcode);
 	return retcode;

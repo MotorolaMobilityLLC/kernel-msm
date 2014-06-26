@@ -652,6 +652,21 @@ config INTEL_SCU_IPC
 	  some embedded Intel x86 platforms. This is not needed for PC-type
 	  machines.
 
+choice
+	prompt "IPC access mode"
+	depends on INTEL_SCU_IPC
+	default INTEL_SCU_IPC_INTR_MODE
+	---help---
+	Select the desired access mode for IPC call.
+
+config INTEL_SCU_IPC_INTR_MODE
+	bool "Intel SCU IPC interrupt mode"
+
+config INTEL_SCU_IPC_POLL_MODE
+	bool "Intel SCU IPC polling mode"
+
+endchoice
+
 config INTEL_SCU_IPC_UTIL
 	tristate "Intel SCU IPC utility driver"
 	depends on INTEL_SCU_IPC
@@ -676,12 +691,36 @@ config INTEL_MID_POWER_BUTTON
 
 	  If unsure, say N.
 
-config INTEL_MFLD_THERMAL
-       tristate "Thermal driver for Intel Medfield platform"
-       depends on MFD_INTEL_MSIC && THERMAL
-       help
-         Say Y here to enable thermal driver support for the  Intel Medfield
-         platform.
+config INTEL_PMIC_CHARGER
+	tristate "pmic charger driver config"
+	default y
+	---help---
+	  This driver handles the USBDET interrupt on CLVP for USB connect/disconnect.
+	  With the powering off the USB PHY for D3 if nothing attached, there is no interrupt
+	  from USB PHY for USB connect, we should use the UDBDET interrupt for USB connect.
+
+	  If unsure, say N.
+
+config INTEL_FG_HELPER
+	tristate "Intel Fuel gauge helper"
+	help
+	  This driver exposes a device file interface to store and restore
+          Fuel gauge configuration data.
+          Any fuel gauge driver can use the interfaces exposed by this
+          driver to store and retrieve their configuration data.
+
+          If unsure, say N.
+
+config INTEL_MODEM_NVRAM
+	tristate "modem NVRAM driver for Intel CTP/MERR platforms"
+	default n
+	---help---
+	This driver adds NVRAM support for telephony use.
+	It provides SYSFS entries to allow any user application to read/write
+	in this zone.
+	The driver also ensure that there is no buffer overflow.
+
+	If unsure, say N.
 
 config INTEL_IPS
 	tristate "Intel Intelligent Power Sharing"
@@ -788,5 +827,60 @@ config PVPANIC
 	  This driver provides support for the pvpanic device.  pvpanic is
 	  a paravirtualized device provided by QEMU; it lets a virtual machine
 	  (guest) communicate panic events to the host.
+
+config INTEL_SCU_FLIS
+	bool "scu flis driver config"
+	depends on INTEL_SCU_IPC
+	default y
+	help
+	  This driver builds the SCU Flis Access Sysfs Interfaces.
+	  We could read write the flis address and configure the
+	  pin pull up/down using these interfaces.
+
+config INTEL_SOC_PMC
+	tristate "Baytrial PMC driver"
+	help
+	  This driver supports the Intel Baytrial PMC power management
+	  by implementing platform suspend operations
+
+config INTEL_CRYSTALCOVE_PWRSRC
+        tristate "Crystal Cove PMIC Power Source detection driver"
+        depends on CRYSTAL_COVE
+        help
+          This driver does the Crystal Cove PMIC Power source detection.
+
+          If unsure, say N.
+
+config INTEL_BYT_EC
+	tristate "Intel Baytrail EC driver"
+	help
+	  This driver provides the interface to access Intel Baytrail EC.
+
+config INTEL_BYT_M_BTN
+	tristate "Intel Baytrail-M Key Buttons driver"
+	depends on INTEL_BYT_EC
+	help
+	  This driver provides the interface to access Intel Baytrail-M
+	  Key Buttons, including power button, volume up button, volume down
+	  button and home button.
+	  This driver depends on Intel Baytrail-M EC driver.
+	  Say Y to compile the driver by default.
+
+config INTEL_CRYSTALCOVE_PAGE0
+	bool "Crystal Cove PMIC Page0 access"
+	depends on I2C
+	help
+	  This driver provides the access to crystal cove page0 register map.
+
+	  If unsure, say N.
+
+config INTEL_BYTCR_BOOST_CNTL
+	bool "Baytrail CR GPIO based reverse boost control"
+	depends on I2C
+	help
+	  This driver provides the access to control reverse VBUS boost on
+	  Baytrail CR platform through GPIO interface.
+
+	  If unsure, say N.
 
 endif # X86_PLATFORM_DEVICES

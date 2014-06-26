@@ -314,8 +314,10 @@ static void watchdog_overflow_callback(struct perf_event *event,
 		if (__this_cpu_read(hard_watchdog_warn) == true)
 			return;
 
-		if (hardlockup_panic)
+		if (hardlockup_panic) {
+			trigger_all_cpu_backtrace();
 			panic("Watchdog detected hard LOCKUP on cpu %d", this_cpu);
+		}
 		else
 			WARN(1, "Watchdog detected hard LOCKUP on cpu %d", this_cpu);
 
@@ -401,8 +403,10 @@ static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 		else
 			dump_stack();
 
-		if (softlockup_panic)
+		if (softlockup_panic) {
+			trigger_all_cpu_backtrace();
 			panic("softlockup: hung tasks");
+		}
 		__this_cpu_write(soft_watchdog_warn, true);
 	} else
 		__this_cpu_write(soft_watchdog_warn, false);

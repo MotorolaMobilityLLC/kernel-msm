@@ -190,5 +190,21 @@ void __init x86_64_start_reservations(char *real_mode_data)
 
 	reserve_ebda_region();
 
+	/* Call the subarch specific early setup function */
+	switch (boot_params.hdr.hardware_subarch) {
+	case X86_SUBARCH_INTEL_MID:
+		printk(KERN_CRIT "X86_SUBARCH_INTEL_MID\n");
+		x86_intel_mid_early_setup();
+		break;
+	case X86_SUBARCH_CE4100:
+		printk(KERN_CRIT "X86_SUBARCH_CE4100\n");
+		x86_ce4100_early_setup();
+		break;
+	default:
+		printk(KERN_CRIT "X86_SUBARCH default (%x)\n",
+			boot_params.hdr.hardware_subarch);
+		break;
+	}
+
 	start_kernel();
 }

@@ -26,6 +26,7 @@
 #include <sound/compress_driver.h>
 #include <sound/control.h>
 #include <sound/ac97_codec.h>
+#include <sound/effect_driver.h>
 
 /*
  * Convenience kcontrol builders
@@ -92,6 +93,12 @@
 		{.reg = xreg, .rreg = xreg, .shift = xshift, \
 		 .rshift = xshift, .min = xmin, .max = xmax, \
 		 .platform_max = xmax, .invert = xinvert} }
+#define SND_SOC_BYTES_EXT(xname, xcount, xhandler_get, xhandler_put) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.info = snd_soc_info_bytes_ext, \
+	.get = xhandler_get, .put = xhandler_put, \
+	.private_value = (unsigned long)&(struct soc_bytes_ext) \
+		{.max = xcount} }
 #define SOC_DOUBLE(xname, reg, shift_left, shift_right, max, invert) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
 	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw, \
@@ -420,6 +427,21 @@ struct snd_pcm_substream *snd_soc_get_dai_substream(struct snd_soc_card *card,
 		const char *dai_link, int stream);
 struct snd_soc_pcm_runtime *snd_soc_get_pcm_runtime(struct snd_soc_card *card,
 		const char *dai_link);
+#if IS_ENABLED(CONFIG_SND_EFFECTS_OFFLOAD)
+int snd_soc_register_effect(struct snd_soc_card *card,
+				struct snd_effect_ops *ops);
+int snd_soc_unregister_effect(struct snd_soc_card *card);
+#else
+static inline int snd_soc_register_effect(struct snd_soc_card *card,
+					struct snd_effect_ops *ops)
+{
+	return -ENODEV;
+}
+static inline int snd_soc_unregister_effect(struct snd_soc_card *card)
+{
+	return -ENODEV;
+}
+#endif
 
 /* Utility functions to get clock rates from various things */
 int snd_soc_calc_frame_size(int sample_size, int channels, int tdm_slots);
@@ -538,6 +560,8 @@ int snd_soc_get_strobe(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_put_strobe(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
+int snd_soc_info_bytes_ext(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_info *ucontrol);
 
 /**
  * struct snd_soc_reg_access - Describes whether a given register is
@@ -594,6 +618,7 @@ struct snd_soc_jack_zone {
  * @name:         gpio name
  * @report:       value to report when jack detected
  * @invert:       report presence in low state
+ * @irq_flag:	  Interrupt flags for GPIO-Irq line
  * @debouce_time: debouce time in ms
  * @wake:	  enable as wake source
  * @jack_status_check: callback function which overrides the detection
@@ -608,6 +633,7 @@ struct snd_soc_jack_gpio {
 	int invert;
 	int debounce_time;
 	bool wake;
+	unsigned long irq_flags;
 
 	struct snd_soc_jack *jack;
 	struct delayed_work work;
@@ -902,6 +928,7 @@ struct snd_soc_dai_link {
 	int be_id;	/* optional ID for machine driver BE identification */
 
 	const struct snd_soc_pcm_stream *params;
+	bool dsp_loopback;
 
 	unsigned int dai_fmt;           /* format to set on init */
 
@@ -932,6 +959,10 @@ struct snd_soc_dai_link {
 	/* machine stream operations */
 	const struct snd_soc_ops *ops;
 	const struct snd_soc_compr_ops *compr_ops;
+
+	/*no of substreams */
+	unsigned int playback_count;
+	unsigned int capture_count;
 };
 
 struct snd_soc_codec_conf {
@@ -1063,6 +1094,7 @@ struct snd_soc_pcm_runtime {
 
 	/* Dynamic PCM BE runtime data */
 	struct snd_soc_dpcm_runtime dpcm[2];
+	int fe_compr;
 
 	long pmdown_time;
 	unsigned char pop_wait:1;
@@ -1098,6 +1130,10 @@ struct soc_bytes {
 struct soc_mreg_control {
 	long min, max;
 	unsigned int regbase, regcount, nbits, invert;
+};
+
+struct soc_bytes_ext {
+	int max;
 };
 
 /* enumerated kcontrol */

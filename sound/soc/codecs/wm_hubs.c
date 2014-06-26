@@ -855,6 +855,17 @@ static const struct snd_kcontrol_new line2p_mix[] = {
 SOC_DAPM_SINGLE("Right Output Switch", WM8993_LINE_MIXER2, 0, 1, 0),
 };
 
+static const char *hpvirtual_mux_text[] = {
+	"Enable",
+	"Disable",
+};
+
+static const struct soc_enum  hpvirtual_enum =
+	SOC_ENUM_SINGLE(0, 0, 2,  hpvirtual_mux_text);
+
+static const struct snd_kcontrol_new hpvirtual_mux =
+	SOC_DAPM_ENUM_VIRT("HPVIRTUAL",  hpvirtual_enum);
+
 static const struct snd_soc_dapm_widget analogue_dapm_widgets[] = {
 SND_SOC_DAPM_INPUT("IN1LN"),
 SND_SOC_DAPM_INPUT("IN1LP"),
@@ -941,7 +952,8 @@ SND_SOC_DAPM_OUT_DRV_E("LINEOUT2N Driver", WM8993_POWER_MANAGEMENT_3, 11, 0,
 SND_SOC_DAPM_OUT_DRV_E("LINEOUT2P Driver", WM8993_POWER_MANAGEMENT_3, 10, 0,
 		       NULL, 0, lineout_event,
 		       SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
-
+SND_SOC_DAPM_VIRT_MUX_E("HPVIRTUAL", SND_SOC_NOPM, 0, 0, &hpvirtual_mux,
+			NULL, SND_SOC_DAPM_PRE_POST_PMD),
 SND_SOC_DAPM_OUTPUT("SPKOUTLP"),
 SND_SOC_DAPM_OUTPUT("SPKOUTLN"),
 SND_SOC_DAPM_OUTPUT("SPKOUTRP"),
@@ -1070,8 +1082,9 @@ static const struct snd_soc_dapm_route analogue_routes[] = {
 	{ "Headphone PGA", NULL, "CLK_SYS" },
 	{ "Headphone PGA", NULL, "Headphone Supply" },
 
-	{ "HPOUT1L", NULL, "Headphone PGA" },
-	{ "HPOUT1R", NULL, "Headphone PGA" },
+	{ "HPVIRTUAL", "Enable", "Headphone PGA"},
+	{ "HPOUT1L", NULL, "HPVIRTUAL"},
+	{ "HPOUT1R", NULL, "HPVIRTUAL"},
 
 	{ "LINEOUT1N Driver", NULL, "VMID" },
 	{ "LINEOUT1P Driver", NULL, "VMID" },
@@ -1223,11 +1236,6 @@ int wm_hubs_handle_analogue_pdata(struct snd_soc_codec *codec,
 				    WM8993_LINEOUT2_MODE,
 				    WM8993_LINEOUT2_MODE);
 
-	if (!lineout1_diff && !lineout2_diff)
-		snd_soc_update_bits(codec, WM8993_ANTIPOP1,
-				    WM8993_LINEOUT_VMID_BUF_ENA,
-				    WM8993_LINEOUT_VMID_BUF_ENA);
-
 	if (lineout1fb)
 		snd_soc_update_bits(codec, WM8993_ADDITIONAL_CONTROL,
 				    WM8993_LINEOUT1_FB, WM8993_LINEOUT1_FB);
@@ -1252,6 +1260,13 @@ void wm_hubs_vmid_ena(struct snd_soc_codec *codec)
 {
 	struct wm_hubs_data *hubs = snd_soc_codec_get_drvdata(codec);
 	int val = 0;
+
+	if ((hubs->lineout1_se && hubs->lineout2_se) &&
+			(hubs->lineout1n_ena  || hubs->lineout1p_ena ||
+			hubs->lineout2n_ena || hubs->lineout2p_ena))
+		snd_soc_update_bits(codec, WM8993_ANTIPOP1,
+			WM8993_LINEOUT_VMID_BUF_ENA,
+			WM8993_LINEOUT_VMID_BUF_ENA);
 
 	if (hubs->lineout1_se)
 		val |= WM8993_LINEOUT1N_ENA | WM8993_LINEOUT1P_ENA;
@@ -1281,6 +1296,13 @@ void wm_hubs_set_bias_level(struct snd_soc_codec *codec,
 		/* Turn off any unneded single ended outputs */
 		val = 0;
 		mask = 0;
+
+		if ((hubs->lineout1_se && hubs->lineout2_se) &&
+				(hubs->lineout1n_ena  || hubs->lineout1p_ena ||
+				hubs->lineout2n_ena || hubs->lineout2p_ena))
+			snd_soc_update_bits(codec, WM8993_ANTIPOP1,
+				WM8993_LINEOUT_VMID_BUF_ENA,
+				WM8993_LINEOUT_VMID_BUF_ENA);
 
 		if (hubs->lineout1_se)
 			mask |= WM8993_LINEOUT1N_ENA | WM8993_LINEOUT1P_ENA;

@@ -192,6 +192,21 @@ config USB_FUSB300
 	help
 	   Faraday usb device controller FUSB300 driver
 
+config USB_LANGWELL
+	boolean "Intel Langwell/Penwell USB Device Controller"
+	depends on PCI
+	select USB_GADGET_LANGWELL
+	help
+	   Intel Langwell/Penwell USB Device Controller is a High-Speed USB
+	   On-The-Go device controller.
+
+	   The number of programmable endpoints is different through
+	   controller revision.
+
+	   Say "y" to link the driver statically, or "m" to build a
+	   dynamically linked module called "langwell_udc" and force all
+	   gadget drivers to also be dynamically linked.
+
 config USB_OMAP
 	tristate "OMAP USB Device Controller"
 	depends on ARCH_OMAP1
@@ -487,6 +502,20 @@ config USB_DUMMY_HCD
 # first and will be selected by default.
 
 endmenu
+
+config USB_LANGWELLUDC_OTG
+	boolean "Intel Langwell/Penwell USB Device Controller OTG support"
+	depends on USB_LANGWELL
+	help
+	   OTG support from UDC driver's point of view, this will decide if
+	   USB OTG descriptor is needed or not from gadget.
+
+# Selected by LANGWELL UDC driver
+config USB_GADGET_LANGWELL
+	bool
+	depends on USB_LANGWELL
+
+
 
 #
 # USB Gadget Drivers

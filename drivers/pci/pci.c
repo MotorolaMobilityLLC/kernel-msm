@@ -59,7 +59,19 @@ static void pci_dev_d3_sleep(struct pci_dev *dev)
 	if (delay < pci_pm_d3_delay)
 		delay = pci_pm_d3_delay;
 
-	msleep(delay);
+	if (delay) {
+		/*
+		* convert delay from ms to us
+		* if oops in progress, interrupts are disabled
+		* so do not call usleep that reenables interrupts
+		* but udelay that does not reenable interrupts
+		*/
+		delay = 1000*delay;
+		if (oops_in_progress)
+			udelay(delay);
+		else
+			usleep_range(delay-10, delay+10);
+	}
 }
 
 #ifdef CONFIG_PCI_DOMAINS
@@ -562,8 +574,11 @@ static int pci_raw_set_power_state(struct pci_dev *dev, pci_power_t state)
 	if (state == PCI_D3hot || dev->current_state == PCI_D3hot)
 		pci_dev_d3_sleep(dev);
 	else if (state == PCI_D2 || dev->current_state == PCI_D2)
+#ifdef CONFIG_ATOM_SOC_POWER
+		; /* On Intel mid platforms pci delays are handled by SCU */
+#else
 		udelay(PCI_PM_D2_DELAY);
-
+#endif
 	pci_read_config_word(dev, dev->pm_cap + PCI_PM_CTRL, &pmcsr);
 	dev->current_state = (pmcsr & PCI_PM_CTRL_STATE_MASK);
 	if (dev->current_state != state && printk_ratelimit())
@@ -672,7 +687,12 @@ static void __pci_start_power_transition(struct pci_dev *dev, pci_power_t state)
 		 * because have already delayed for the bridge.
 		 */
 		if (dev->runtime_d3cold) {
-			msleep(dev->d3cold_delay);
+			/*
+			 * msleep(0) will actually sleep for 1 jiffy.
+			 * if d3cold_delay is 0 we don't want to sleep at all.
+			*/
+			if (dev->d3cold_delay > 0)
+				msleep(dev->d3cold_delay);
 			/*
 			 * When powering on a bridge from D3cold, the
 			 * whole hierarchy may be powered on into
@@ -759,10 +779,6 @@ int pci_set_power_state(struct pci_dev *dev, pci_power_t state)
 		 * ignore the request if we're doing anything other than putting
 		 * it into D0 (which would only happen on boot).
 		 */
-		return 0;
-
-	/* Check if we're already there */
-	if (dev->current_state == state)
 		return 0;
 
 	__pci_start_power_transition(dev, state);

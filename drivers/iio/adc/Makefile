@@ -17,3 +17,6 @@ obj-$(CONFIG_MAX1363) += max1363.o
 obj-$(CONFIG_TI_ADC081C) += ti-adc081c.o
 obj-$(CONFIG_TI_AM335X_ADC) += ti_am335x_adc.o
 obj-$(CONFIG_VIPERBOARD_ADC) += viperboard_adc.o
+obj-$(CONFIG_IIO_BASINCOVE_GPADC) += iio_basincove_gpadc.o
+obj-$(CONFIG_CRYSTAL_COVE) += iio_crystalcove_gpadc.o
+obj-$(CONFIG_INTEL_MID_PMIC) += iio_dc_xpwr_gpadc.o

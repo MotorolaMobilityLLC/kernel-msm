@@ -12,6 +12,7 @@
 #include <linux/gfp.h>
 #include <linux/smp.h>
 #include <linux/cpu.h>
+#include <linux/nmi.h>
 
 #include "smpboot.h"
 
@@ -102,14 +103,26 @@ void __init call_function_init(void)
  */
 static void csd_lock_wait(struct call_single_data *csd)
 {
-	while (csd->flags & CSD_FLAG_LOCK)
+	unsigned long timeout = jiffies + 5 * HZ;	/* must be less than Soft & Hard lockup timeouts */
+
+	while (csd->flags & CSD_FLAG_LOCK) {
 		cpu_relax();
+
+		/* Dump useful info in case of deadlock */
+		if (time_after(jiffies, timeout)) {
+			timeout = jiffies + 5 * HZ;
+			pr_emerg("BUG: CPU %d waiting for CSD lock held by CPU %d\n", get_cpu(), csd->cpu);
+			dump_stack();
+			trigger_all_cpu_backtrace();
+		}
+	}
 }
 
-static void csd_lock(struct call_single_data *csd)
+static void csd_lock(int cpu, struct call_single_data *csd)
 {
 	csd_lock_wait(csd);
 	csd->flags |= CSD_FLAG_LOCK;
+	csd->cpu = cpu;
 
 	/*
 	 * prevent CPU from reordering the above assignment
@@ -129,6 +142,7 @@ static void csd_unlock(struct call_single_data *csd)
 	smp_mb();
 
 	csd->flags &= ~CSD_FLAG_LOCK;
+	csd->cpu = -1;
 }
 
 /*
@@ -254,7 +268,7 @@ int smp_call_function_single(int cpu, smp_call_func_t func, void *info,
 			if (!wait)
 				csd = &__get_cpu_var(csd_data);
 
-			csd_lock(csd);
+			csd_lock(cpu, csd);
 
 			csd->func = func;
 			csd->info = info;
@@ -346,7 +360,7 @@ void __smp_call_function_single(int cpu, struct call_single_data *csd,
 		csd->func(csd->info);
 		local_irq_restore(flags);
 	} else {
-		csd_lock(csd);
+		csd_lock(cpu, csd);
 		generic_exec_single(cpu, csd, wait);
 	}
 	put_cpu();
@@ -423,7 +437,7 @@ void smp_call_function_many(const struct cpumask *mask,
 					&per_cpu(call_single_queue, cpu);
 		unsigned long flags;
 
-		csd_lock(csd);
+		csd_lock(cpu, csd);
 		csd->func = func;
 		csd->info = info;
 

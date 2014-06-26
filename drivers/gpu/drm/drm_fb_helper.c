@@ -168,6 +168,9 @@ static void drm_fb_helper_save_lut_atomic(struct drm_crtc *crtc, struct drm_fb_h
 	uint16_t *r_base, *g_base, *b_base;
 	int i;
 
+	if (helper->funcs->gamma_get == NULL)
+		return;
+
 	r_base = crtc->gamma_store;
 	g_base = r_base + crtc->gamma_size;
 	b_base = g_base + crtc->gamma_size;
@@ -284,13 +287,27 @@ EXPORT_SYMBOL(drm_fb_helper_debug_leave);
  */
 bool drm_fb_helper_restore_fbdev_mode(struct drm_fb_helper *fb_helper)
 {
+	struct drm_device *dev = fb_helper->dev;
+	struct drm_plane *plane;
 	bool error = false;
-	int i, ret;
+	int i;
 
-	drm_warn_on_modeset_not_all_locked(fb_helper->dev);
+	drm_warn_on_modeset_not_all_locked(dev);
+
+	list_for_each_entry(plane, &dev->mode_config.plane_list, head)
+		drm_plane_force_disable(plane);
 
 	for (i = 0; i < fb_helper->crtc_count; i++) {
 		struct drm_mode_set *mode_set = &fb_helper->crtc_info[i].mode_set;
+		struct drm_crtc *crtc = mode_set->crtc;
+		int ret;
+
+		if (crtc->funcs->cursor_set) {
+			ret = crtc->funcs->cursor_set(crtc, NULL, 0, 0, 0);
+			if (ret)
+				error = true;
+		}
+
 		ret = drm_mode_set_config_internal(mode_set);
 		if (ret)
 			error = true;
@@ -336,9 +353,12 @@ static int drm_fb_helper_panic(struct notifier_block *n, unsigned long ununsed,
 	return drm_fb_helper_force_kernel_mode();
 }
 
+#if !defined(CONFIG_INTEL_NO_FB_PANIC_NOTIFY)
 static struct notifier_block paniced = {
 	.notifier_call = drm_fb_helper_panic,
 };
+#endif
+
 
 static bool drm_fb_helper_is_bound(struct drm_fb_helper *fb_helper)
 {
@@ -358,6 +378,7 @@ static bool drm_fb_helper_is_bound(struct drm_fb_helper *fb_helper)
 	return true;
 }
 
+#if !defined(CONFIG_INTEL_NO_FB_PANIC_NOTIFY)
 #ifdef CONFIG_MAGIC_SYSRQ
 static void drm_fb_helper_restore_work_fn(struct work_struct *ignored)
 {
@@ -382,6 +403,7 @@ static struct sysrq_key_op sysrq_drm_fb_helper_restore_op = {
 static struct sysrq_key_op sysrq_drm_fb_helper_restore_op = { };
 #endif
 
+#endif
 static void drm_fb_helper_dpms(struct fb_info *info, int dpms_mode)
 {
 	struct drm_fb_helper *fb_helper = info->par;
@@ -541,12 +563,15 @@ void drm_fb_helper_fini(struct drm_fb_helper *fb_helper)
 {
 	if (!list_empty(&fb_helper->kernel_fb_list)) {
 		list_del(&fb_helper->kernel_fb_list);
+#if !defined(CONFIG_INTEL_NO_FB_PANIC_NOTIFY)
 		if (list_empty(&kernel_fb_helper_list)) {
 			pr_info("drm: unregistered panic notifier\n");
 			atomic_notifier_chain_unregister(&panic_notifier_list,
 							 &paniced);
 			unregister_sysrq_key('v', &sysrq_drm_fb_helper_restore_op);
 		}
+#endif
+
 	}
 
 	drm_fb_helper_crtc_free(fb_helper);
@@ -582,6 +607,14 @@ static int setcolreg(struct drm_crtc *crtc, u16 red, u16 green,
 		palette[regno] = value;
 		return 0;
 	}
+
+	/*
+	 * The driver really shouldn't advertise pseudo/directcolor
+	 * visuals if it can't deal with the palette.
+	 */
+	if (WARN_ON(!fb_helper->funcs->gamma_set ||
+		    !fb_helper->funcs->gamma_get))
+		return -EINVAL;
 
 	pindex = regno;
 
@@ -626,11 +659,18 @@ static int setcolreg(struct drm_crtc *crtc, u16 red, u16 green,
 int drm_fb_helper_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 {
 	struct drm_fb_helper *fb_helper = info->par;
+	struct drm_device *dev = fb_helper->dev;
 	struct drm_crtc_helper_funcs *crtc_funcs;
 	u16 *red, *green, *blue, *transp;
 	struct drm_crtc *crtc;
 	int i, j, rc = 0;
 	int start;
+
+	drm_modeset_lock_all(dev);
+	if (!drm_fb_helper_is_bound(fb_helper)) {
+		drm_modeset_unlock_all(dev);
+		return -EBUSY;
+	}
 
 	for (i = 0; i < fb_helper->crtc_count; i++) {
 		crtc = fb_helper->crtc_info[i].mode_set.crtc;
@@ -654,10 +694,13 @@ int drm_fb_helper_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 
 			rc = setcolreg(crtc, hred, hgreen, hblue, start++, info);
 			if (rc)
-				return rc;
+				goto out;
 		}
-		crtc_funcs->load_lut(crtc);
+		if (crtc_funcs->load_lut)
+			crtc_funcs->load_lut(crtc);
 	}
+ out:
+	drm_modeset_unlock_all(dev);
 	return rc;
 }
 EXPORT_SYMBOL(drm_fb_helper_setcmap);
@@ -951,6 +994,7 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 	dev_info(fb_helper->dev->dev, "fb%d: %s frame buffer device\n",
 			info->node, info->fix.id);
 
+#if !defined(CONFIG_INTEL_NO_FB_PANIC_NOTIFY)
 	/* Switch back to kernel console on panic */
 	/* multi card linked list maybe */
 	if (list_empty(&kernel_fb_helper_list)) {
@@ -959,7 +1003,7 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 					       &paniced);
 		register_sysrq_key('v', &sysrq_drm_fb_helper_restore_op);
 	}
-
+#endif
 	list_add(&fb_helper->kernel_fb_list, &kernel_fb_helper_list);
 
 	return 0;

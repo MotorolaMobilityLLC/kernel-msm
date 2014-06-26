@@ -58,6 +58,9 @@
 #define __HYPERVISOR_physdev_op           33
 #define __HYPERVISOR_hvm_op               34
 #define __HYPERVISOR_tmem_op              38
+#define __HYPERVISOR_monitor_op           39
+#define __HYPERVISOR_mwait_op             40
+#define __HYPERVISOR_ipi_op               41
 
 /* Architecture-specific hypercall definitions. */
 #define __HYPERVISOR_arch_0               48

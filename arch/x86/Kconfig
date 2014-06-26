@@ -13,9 +13,10 @@ config X86_32
 	select HAVE_UID16
 
 config X86_64
-	def_bool y
+	def_bool 64BIT
 	depends on 64BIT
 	select X86_DEV_DMA_OPS
+	select CLKSRC_I8253
 
 ### Arch settings
 config X86
@@ -82,6 +83,7 @@ config X86
 	select HAVE_ARCH_JUMP_LABEL
 	select HAVE_TEXT_POKE_SMP
 	select HAVE_GENERIC_HARDIRQS
+	select HARDIRQS_SW_RESEND
 	select ARCH_HAS_ATOMIC64_DEC_IF_POSITIVE
 	select SPARSE_IRQ
 	select GENERIC_FIND_FIRST_BIT
@@ -252,6 +254,11 @@ config ARCH_CPU_PROBE_RELEASE
 
 config ARCH_SUPPORTS_UPROBES
 	def_bool y
+
+config NR_CPUS_PER_MODULE
+        int "number of cpu cores per module"
+        default "2"
+        depends on SMP
 
 source "init/Kconfig"
 source "kernel/Kconfig.freezer"
@@ -430,42 +437,51 @@ config X86_INTEL_CE
 	  This option compiles in support for the CE4100 SOC for settop
 	  boxes and media devices.
 
-config X86_WANT_INTEL_MID
-	bool "Intel MID platform support"
-	depends on X86_32
-	depends on X86_EXTENDED_PLATFORM
-	---help---
-	  Select to build a kernel capable of supporting Intel MID platform
-	  systems which do not have the PCI legacy interfaces (Moorestown,
-	  Medfield). If you are building for a PC class system say N here.
-
-if X86_WANT_INTEL_MID
-
 config X86_INTEL_MID
-	bool
-
-config X86_MDFLD
-       bool "Medfield MID platform"
+	bool "Intel MID platform"
 	depends on PCI
 	depends on PCI_GOANY
 	depends on X86_IO_APIC
-	select X86_INTEL_MID
+	depends on X86_32 || X86_64
+	depends on X86_EXTENDED_PLATFORM
 	select SFI
-	select DW_APB_TIMER
-	select APB_TIMER
-	select I2C
-	select SPI
 	select INTEL_SCU_IPC
 	select X86_PLATFORM_DEVICES
-	select MFD_INTEL_MSIC
 	---help---
-	  Medfield is Intel's Low Power Intel Architecture (LPIA) based Moblin
-	  Internet Device(MID) platform. 
-	  Unlike standard x86 PCs, Medfield does not have many legacy devices
-	  nor standard legacy replacement devices/features. e.g. Medfield does
-	  not contain i8259, i8254, HPET, legacy BIOS, most of the io ports.
+	  Intel MID is Intel's Low Power Intel Architecture (LPIA) based Mobile
+	  Internet Device(MID) platform.
+	  Unlike standard x86 PCs, Intel MID does not have many legacy devices
+	  nor standard legacy replacement devices/features. e.g. It does not
+	  contain i8259, i8254, HPET, legacy BIOS, most of the io ports.
 
-endif
+config ATOM_SOC_POWER
+	bool "Select Atom SOC Power"
+
+choice
+	prompt "Select PMU support"
+	depends on ATOM_SOC_POWER
+	default REMOVEME_INTEL_ATOM_MDFLD_POWER
+
+config REMOVEME_INTEL_ATOM_MDFLD_POWER
+	bool "Medfield"
+
+config REMOVEME_INTEL_ATOM_CLV_POWER
+	bool "Clovertrail"
+
+config REMOVEME_INTEL_ATOM_MRFLD_POWER
+	bool "Merrifield"
+
+endchoice
+
+config INTEL_DEBUG_FEATURE
+       bool "Debug feature interface on Intel MID platform"
+       depends on X86_INTEL_MID
+       ---help---
+         Provides an interface to list the debug features
+	 that are enabled on an Intel MID platform. The
+	 enabling of the debug features depends on the mode
+	 the device is in (e.g. manufacturing, production,
+	 end user, etc...).
 
 config X86_INTEL_LPSS
 	bool "Intel Low Power Subsystem Support"
@@ -476,6 +492,13 @@ config X86_INTEL_LPSS
 	  found on Intel Lynxpoint PCH. Selecting this option enables
 	  things like clock tree (common clock framework) which are needed
 	  by the LPSS peripheral drivers.
+
+config X86_INTEL_OSC_CLK
+	bool "Intel OSC CLK Support"
+	select COMMON_CLK
+	---help---
+	  Select to build support for Intel OSC0~OSC4 clock. Selecting
+	  this option enables Linux common clock framework.
 
 config X86_RDC321X
 	bool "RDC R-321x SoC"
@@ -689,8 +712,7 @@ config X86_CYCLONE_TIMER
 source "arch/x86/Kconfig.cpu"
 
 config HPET_TIMER
-	def_bool X86_64
-	prompt "HPET Timer Support" if X86_32
+	prompt "HPET Timer Support"
 	---help---
 	  Use the IA-PC HPET (High Precision Event Timer) to manage
 	  time in preference to the PIT and RTC, if a HPET is
@@ -834,6 +856,26 @@ config SCHED_MC
 	  Multi-core scheduler support improves the CPU scheduler's decision
 	  making when dealing with multi-core CPU chips at a cost of slightly
 	  increased overhead in some places. If unsure say N here.
+
+config CPU_CONCURRENCY
+	bool "CPU ConCurency (CC)"
+	default n
+	depends on SMP
+	---help---
+	  CPU ConCurrency (CC) is a new CPU semantic that measures the CPU load
+	  by averaging the number of running tasks. Using CC, the scheduler can
+	  evaluate the load of CPUs to improve load balance for power efficiency
+	  without sacrificing performance. If unsure say N here.
+
+config WORKLOAD_CONSOLIDATION
+	bool "CPU Workload Consolidation"
+	default n
+	depends on CPU_CONCURRENCY
+	---help---
+	  CPU Workload Consolidation is a new CPU PM module, which uses the CPU
+	  concurrency of the CPU, and allows asymmetric concurrency across CPUs to
+	  reduce the SW and HW overhead to increase load balance efficiency and
+	  conserve energy. If unsure say N here.
 
 source "kernel/Kconfig.preempt"
 
@@ -2008,7 +2050,7 @@ config PCI
 
 choice
 	prompt "PCI access mode"
-	depends on X86_32 && PCI
+	depends on (X86_32 || X86_64) && PCI
 	default PCI_GOANY
 	---help---
 	  On PCI systems, the BIOS can be used to detect the PCI devices and
@@ -2071,7 +2113,9 @@ config PCI_DOMAINS
 
 config PCI_MMCONFIG
 	bool "Support mmconfig PCI config space access"
-	depends on X86_64 && PCI && ACPI
+	depends on X86_64 && PCI && (ACPI || SFI)
+	help
+	  Provides Low-level direct PCI config space access via MMCONFIG
 
 config PCI_CNB20LE_QUIRK
 	bool "Read CNB20LE Host Bridge Windows" if EXPERT
@@ -2323,7 +2367,7 @@ config HAVE_TEXT_POKE_SMP
 
 config X86_DEV_DMA_OPS
 	bool
-	depends on X86_64 || STA2X11
+	depends on X86_64 || STA2X11 || VIDEO_CSS2600
 
 config X86_DMA_REMAP
 	bool

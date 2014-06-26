@@ -663,11 +663,13 @@ static void __cpuinit init_amd(struct cpuinfo_x86 *c)
 
 #ifdef CONFIG_X86_64
 	if (c->x86 == 0x10) {
+#if 0
 		/* do this for boot cpu */
 		if (c == &boot_cpu_data)
 			check_enable_amd_mmconf_dmi();
 
 		fam10h_check_enable_mmcfg();
+#endif
 	}
 
 	if (c == &boot_cpu_data && c->x86 >= 0xf) {

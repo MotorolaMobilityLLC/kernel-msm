@@ -34,6 +34,7 @@ static int try_to_freeze_tasks(bool user_only)
 	unsigned int elapsed_msecs;
 	bool wakeup = false;
 	int sleep_usecs = USEC_PER_MSEC;
+	char *busy_wq_name = NULL;
 
 	do_gettimeofday(&start);
 
@@ -55,7 +56,7 @@ static int try_to_freeze_tasks(bool user_only)
 		read_unlock(&tasklist_lock);
 
 		if (!user_only) {
-			wq_busy = freeze_workqueues_busy();
+			wq_busy = freeze_workqueues_busy(&busy_wq_name);
 			todo += wq_busy;
 		}
 
@@ -85,10 +86,10 @@ static int try_to_freeze_tasks(bool user_only)
 	if (todo) {
 		printk("\n");
 		printk(KERN_ERR "Freezing of tasks %s after %d.%03d seconds "
-		       "(%d tasks refusing to freeze, wq_busy=%d):\n",
-		       wakeup ? "aborted" : "failed",
+		       "(%d tasks refusing to freeze, wq_busy=%d, "
+		       "wq_name=%s):\n", wakeup ? "aborted" : "failed",
 		       elapsed_msecs / 1000, elapsed_msecs % 1000,
-		       todo - wq_busy, wq_busy);
+		       todo - wq_busy, wq_busy, wq_busy ? "" : busy_wq_name);
 
 		if (!wakeup) {
 			read_lock(&tasklist_lock);

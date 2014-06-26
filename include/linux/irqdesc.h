@@ -123,6 +123,20 @@ static inline int irq_has_action(unsigned int irq)
 	return desc->action != NULL;
 }
 
+/* Test to see if the IRQ is chained */
+static inline int irq_is_chained(unsigned int irq)
+{
+	struct irq_desc *desc = irq_to_desc(irq);
+	return desc->status_use_accessors & IRQ_CHAINED;
+}
+
+/* Test to see if the IRQ is nested_thread */
+static inline int irq_is_nested_thread(unsigned int irq)
+{
+	struct irq_desc *desc = irq_to_desc(irq);
+	return desc->status_use_accessors & IRQ_NESTED_THREAD;
+}
+
 /* caller has locked the irq_desc and both params are valid */
 static inline void __irq_set_handler_locked(unsigned int irq,
 					    irq_flow_handler_t handler)

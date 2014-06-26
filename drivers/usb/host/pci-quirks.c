@@ -18,7 +18,7 @@
 #include <linux/acpi.h>
 #include <linux/dmi.h>
 #include "pci-quirks.h"
-#include "xhci-ext-caps.h"
+#include "xhci.h"
 
 
 #define UHCI_USBLEGSUP		0xc0		/* legacy support */
@@ -313,6 +313,36 @@ void usb_amd_quirk_pll_disable(void)
 	usb_amd_quirk_pll(1);
 }
 EXPORT_SYMBOL_GPL(usb_amd_quirk_pll_disable);
+
+/* usb_quirk_ignore_comp_plc - If ignore PLC event for
+ * compliance/loopback mode transition.
+ * @ptr: base address of PORTSC egisters to be read.
+ * @ports: number of ports.
+ *
+ * Some xHC controller will generate PLC event when link transfer to
+ * compliance/loopback mode. By design, driver will trigger warm reset
+ * for this case which will interrupt USB3 electronic compliance test.
+ * So if want to avoid it, need to set XHCI_COMP_PLC_QUIRK during driver
+ * initialization.
+ **/
+int usb_quirk_ignore_comp_plc(void __iomem *ptr, int ports)
+{
+	int i;
+	u32 val;
+	__le32 __iomem *addr;
+
+	addr = ptr;
+	for (i = 0; i < ports; i++) {
+		val = readl(addr);
+		if (((val & PORT_PLC) && (val & PORT_PLS_MASK) == XDEV_COMP) ||
+			((val & PORT_PLC) && (val & PORT_PLS_MASK) == XDEV_LOOPBACK))
+			return 1;
+		addr += NUM_PORT_REGS;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(usb_quirk_ignore_comp_plc);
 
 void usb_amd_quirk_pll_enable(void)
 {

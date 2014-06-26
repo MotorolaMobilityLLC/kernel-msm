@@ -164,9 +164,9 @@ static void rwlock_bug(rwlock_t *lock, const char *msg)
 	if (!debug_locks_off())
 		return;
 
-	printk(KERN_EMERG "BUG: rwlock %s on CPU#%d, %s/%d, %p\n",
+	printk(KERN_EMERG "BUG: rwlock %s on CPU#%d, %s/%d, %p, m:oc:o %u %u %p\n",
 		msg, raw_smp_processor_id(), current->comm,
-		task_pid_nr(current), lock);
+		task_pid_nr(current), lock, lock->magic, lock->owner_cpu, lock->owner);
 	dump_stack();
 }
 

@@ -39,6 +39,8 @@
 #include "f_rndis.c"
 #include "rndis.c"
 #include "u_ether.c"
+#include "f_dvc_dfx.c"
+#include "f_dvc_trace.c"
 
 MODULE_AUTHOR("Mike Lockwood");
 MODULE_DESCRIPTION("Android Composite USB Driver");
@@ -142,11 +144,22 @@ static struct usb_device_descriptor device_desc = {
 	.bNumConfigurations   = 1,
 };
 
+static struct usb_otg_descriptor otg_descriptor = {
+	.bLength              = sizeof(otg_descriptor),
+	.bDescriptorType      = USB_DT_OTG,
+	.bcdOTG               = 0x0200, /* version 2.0 */
+};
+
+const struct usb_descriptor_header *otg_desc[] = {
+	(struct usb_descriptor_header *) &otg_descriptor,
+	NULL,
+};
+
 static struct usb_configuration android_config_driver = {
 	.label		= "android",
 	.unbind		= android_unbind_config,
 	.bConfigurationValue = 1,
-	.bmAttributes	= USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_SELFPOWER,
+	.bmAttributes	= USB_CONFIG_ATT_ONE,
 	.MaxPower	= 500, /* 500ma */
 };
 
@@ -197,6 +210,13 @@ static void android_disable(struct android_dev *dev)
 
 	if (dev->disable_depth++ == 0) {
 		usb_gadget_disconnect(cdev->gadget);
+
+		/* As connection is disconnected here,
+		 * any flying request should be completed or potential
+		 * request should be added within 50ms.
+		 */
+		 msleep(50);
+
 		/* Cancel pending control requests */
 		usb_ep_dequeue(cdev->gadget->ep0, cdev->req);
 		usb_remove_config(cdev, &android_config_driver);
@@ -442,16 +462,6 @@ err_usb_add_function:
 	return ret;
 }
 
-static void acm_function_unbind_config(struct android_usb_function *f,
-				       struct usb_configuration *c)
-{
-	int i;
-	struct acm_function_config *config = f->config;
-
-	for (i = 0; i < config->instances_on; i++)
-		usb_remove_function(c, config->f_acm[i]);
-}
-
 static ssize_t acm_instances_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -486,7 +496,6 @@ static struct android_usb_function acm_function = {
 	.init		= acm_function_init,
 	.cleanup	= acm_function_cleanup,
 	.bind_config	= acm_function_bind_config,
-	.unbind_config	= acm_function_unbind_config,
 	.attributes	= acm_function_attributes,
 };
 
@@ -537,6 +546,13 @@ static int mtp_function_ctrlrequest(struct android_usb_function *f,
 	return mtp_ctrlrequest(cdev, c);
 }
 
+static int ptp_function_ctrlrequest(struct android_usb_function *f,
+					struct usb_composite_dev *cdev,
+					const struct usb_ctrlrequest *c)
+{
+	return ptp_ctrlrequest(cdev, c);
+}
+
 static struct android_usb_function mtp_function = {
 	.name		= "mtp",
 	.init		= mtp_function_init,
@@ -551,6 +567,7 @@ static struct android_usb_function ptp_function = {
 	.init		= ptp_function_init,
 	.cleanup	= ptp_function_cleanup,
 	.bind_config	= ptp_function_bind_config,
+	.ctrlrequest	= ptp_function_ctrlrequest,
 };
 
 
@@ -930,6 +947,307 @@ static struct android_usb_function audio_source_function = {
 	.attributes	= audio_source_function_attributes,
 };
 
+
+struct dvcdfx_function_config {
+	bool	enabled;
+	u8	bFunctionProtocol;
+	u8	bInterfaceProtocol;
+};
+
+static int dvcdfx_function_init(struct android_usb_function *f,
+					struct usb_composite_dev *cdev)
+{
+	f->config = kzalloc(sizeof(struct dvcdfx_function_config), GFP_KERNEL);
+	if (!f->config)
+		return -ENOMEM;
+	return dvc_dfx_setup();
+}
+
+static void dvcdfx_function_cleanup(struct android_usb_function *f)
+{
+	kfree(f->config);
+	f->config = NULL;
+	dvc_dfx_cleanup();
+}
+
+static int dvcdfx_function_bind_config(struct android_usb_function *f,
+						struct usb_configuration *c)
+{
+	struct dvcdfx_function_config *dvcdfx = f->config;
+	if (!dvcdfx) {
+		pr_err("%s: dvcdfx_pdata\n", __func__);
+		return -1;
+	}
+
+	dfx_iad_desc.bFunctionProtocol = dvcdfx->bFunctionProtocol;
+	dfx_interface_desc.bInterfaceProtocol = dvcdfx->bInterfaceProtocol;
+	dfx_data_interface_desc.bInterfaceProtocol = dvcdfx->bInterfaceProtocol;
+
+	return dvc_dfx_bind_config(c);
+}
+
+static int dvcdfx_function_ctrlrequest(struct android_usb_function *f,
+		struct usb_composite_dev *cdev,
+		const struct usb_ctrlrequest *c)
+{
+
+	struct dvcdfx_function_config *dvcdfx = f->config;
+	int ret;
+	ret = dvc_dfx_ctrlrequest(cdev, c);
+	if (ret != -EOPNOTSUPP)
+		dvcdfx->enabled = false;
+	return ret;
+}
+
+static ssize_t dvcdfx_reset_store(struct device *pdev,
+		  struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_dev *dev = _android_dev;
+
+	mutex_lock(&dev->mutex);
+	/* reset DvC.Dfx function */
+	android_disable(dev);
+
+	android_enable(dev);
+	mutex_unlock(&dev->mutex);
+
+	return size;
+}
+
+static DEVICE_ATTR(reset_dfx, S_IWUSR, NULL, dvcdfx_reset_store);
+
+static ssize_t dvcdfx_enable_store(struct device *pdev,
+		  struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value, ret;
+	struct android_usb_function *f = dev_get_drvdata(pdev);
+	struct dvcdfx_function_config *dvcdfx = f->config;
+
+	if (!dvcdfx) {
+		pr_err("%s: dvcdfx_pdata\n", __func__);
+		return -ENODEV;
+	}
+
+	if (sscanf(buf, "%d", &value) == 1) {
+		if ((value > 0)  && (!dvcdfx->enabled)) {
+			ret = dvc_dfx_start_transfer(value);
+			if (ret < 0)
+				return -EINVAL;
+
+			dvcdfx->enabled = true;
+			return value;
+
+		} else if ((value == 0) && (dvcdfx->enabled)) {
+			ret = dvc_dfx_disable_transfer();
+			if (ret < 0)
+				return -EINVAL;
+
+			dvcdfx->enabled = false;
+			return value;
+		}
+	}
+	return -EINVAL;
+}
+
+static DEVICE_ATTR(enable_dfx, S_IWUSR, NULL, dvcdfx_enable_store);
+
+static ssize_t dvcdfx_bFunctionProtocol_show(struct device *dev,
+					     struct device_attribute *attr,
+					     char *buf)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct dvcdfx_function_config *config = f->config;
+
+	return sprintf(buf, "%d\n", config->bFunctionProtocol);
+}
+static ssize_t dvcdfx_bFunctionProtocol_store(struct device *dev,
+					      struct device_attribute *attr,
+					      const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct dvcdfx_function_config *config = f->config;
+	int value;
+
+	if (sscanf(buf, "%d", &value) == 1) {
+		config->bFunctionProtocol = value;
+		config->bInterfaceProtocol = value;
+		return size;
+	}
+	return -1;
+}
+static DEVICE_ATTR(bFunctionProtocol_dfx, S_IRUGO | S_IWUSR,
+		   dvcdfx_bFunctionProtocol_show ,
+		   dvcdfx_bFunctionProtocol_store);
+
+static struct device_attribute *dvcdfx_function_attributes[] = {
+	&dev_attr_reset_dfx,
+	&dev_attr_enable_dfx,
+	&dev_attr_bFunctionProtocol_dfx,
+	NULL
+};
+
+static struct android_usb_function dvcdfx_function = {
+	.name		= "dvcdfx",
+	.init		= dvcdfx_function_init,
+	.cleanup	= dvcdfx_function_cleanup,
+	.bind_config	= dvcdfx_function_bind_config,
+	.ctrlrequest	= dvcdfx_function_ctrlrequest,
+	.attributes	= dvcdfx_function_attributes,
+};
+
+
+struct dvctrace_function_config {
+	bool	enabled;
+	u8	bFunctionProtocol;
+	u8	bInterfaceProtocol;
+};
+
+static int dvctrace_function_init(struct android_usb_function *f,
+				  struct usb_composite_dev *cdev)
+{
+	f->config = kzalloc(sizeof(struct dvctrace_function_config),
+			    GFP_KERNEL);
+	if (!f->config)
+		return -ENOMEM;
+	return dvc_trace_setup();
+}
+
+static void dvctrace_function_cleanup(struct android_usb_function *f)
+{
+	kfree(f->config);
+	f->config = NULL;
+	return dvc_trace_cleanup();
+}
+
+static int dvctrace_function_bind_config(struct android_usb_function *f,
+					 struct usb_configuration *c)
+{
+	struct dvctrace_function_config *dvctrace = f->config;
+	if (!dvctrace) {
+		pr_err("%s: dvctrace_pdata\n", __func__);
+		return -1;
+	}
+
+	dvctrace->enabled = false;
+	trace_iad_desc.bFunctionProtocol = dvctrace->bFunctionProtocol;
+	trace_interface_desc.bInterfaceProtocol = dvctrace->bInterfaceProtocol;
+	trace_data_interface_desc.bInterfaceProtocol =
+		dvctrace->bInterfaceProtocol;
+
+	return dvc_trace_bind_config(c);
+}
+
+static int dvctrace_function_ctrlrequest(struct android_usb_function *f,
+						struct usb_composite_dev *cdev,
+						const struct usb_ctrlrequest *c)
+{
+	struct dvctrace_function_config *dvctrace = f->config;
+	int ret;
+
+	ret = dvc_trace_ctrlrequest(cdev, c);
+	if (!ret)
+		dvctrace->enabled = false;
+	else if (ret > 0)
+		dvctrace->enabled = true;
+	return ret;
+}
+
+static ssize_t dvctrace_reset_store(struct device *pdev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_dev *dev = _android_dev;
+
+	mutex_lock(&dev->mutex);
+	/* reset DvC.Trace function */
+	android_disable(dev);
+
+	android_enable(dev);
+	mutex_unlock(&dev->mutex);
+
+	return size;
+}
+
+static DEVICE_ATTR(reset_trace, S_IWUSR, NULL, dvctrace_reset_store);
+
+static ssize_t dvctrace_enable_store(struct device *pdev,
+		  struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value, ret;
+	struct android_usb_function *f = dev_get_drvdata(pdev);
+	struct dvctrace_function_config *dvctrace = f->config;
+
+	if (!dvctrace) {
+		pr_err("%s: dvctrace_pdata\n", __func__);
+		return -ENODEV;
+	}
+
+	if (sscanf(buf, "%d", &value) == 1) {
+		if ((value > 0)  && (!dvctrace->enabled)) {
+			ret = dvc_trace_start_transfer(value);
+			if (ret < 0)
+				return -EINVAL;
+
+			dvctrace->enabled = true;
+			return value;
+
+		} else if ((value == 0) && (dvctrace->enabled)) {
+			ret = dvc_trace_disable_transfer();
+			if (ret < 0)
+				return -EINVAL;
+
+			dvctrace->enabled = false;
+			return value;
+		}
+	}
+	return -EINVAL;
+}
+
+static DEVICE_ATTR(enable_trace, S_IWUSR, NULL, dvctrace_enable_store);
+
+static ssize_t dvctrace_bFunctionProtocol_show(struct device *dev,
+					       struct device_attribute *attr,
+					       char *buf)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct dvctrace_function_config *config = f->config;
+
+	return sprintf(buf, "%d\n", config->bFunctionProtocol);
+}
+static ssize_t dvctrace_bFunctionProtocol_store(struct device *dev,
+						struct device_attribute *attr,
+						const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct dvctrace_function_config *config = f->config;
+	int value;
+
+	if (sscanf(buf, "%d", &value) == 1) {
+		config->bFunctionProtocol = value;
+		config->bInterfaceProtocol = value;
+		return size;
+	}
+	return -1;
+}
+static DEVICE_ATTR(bFunctionProtocol_trace, S_IRUGO | S_IWUSR,
+		   dvctrace_bFunctionProtocol_show,
+		   dvctrace_bFunctionProtocol_store);
+
+static struct device_attribute *dvctrace_function_attributes[] = {
+	&dev_attr_reset_trace,
+	&dev_attr_enable_trace,
+	&dev_attr_bFunctionProtocol_trace,
+	NULL
+};
+
+static struct android_usb_function dvctrace_function = {
+	.name		= "dvctrace",
+	.init		= dvctrace_function_init,
+	.cleanup	= dvctrace_function_cleanup,
+	.bind_config	= dvctrace_function_bind_config,
+	.ctrlrequest	= dvctrace_function_ctrlrequest,
+	.attributes	= dvctrace_function_attributes,
+};
+
 static struct android_usb_function *supported_functions[] = {
 	&ffs_function,
 	&acm_function,
@@ -939,6 +1257,8 @@ static struct android_usb_function *supported_functions[] = {
 	&mass_storage_function,
 	&accessory_function,
 	&audio_source_function,
+	&dvcdfx_function,
+	&dvctrace_function,
 	NULL
 };
 
@@ -1043,6 +1363,7 @@ static int android_enable_function(struct android_dev *dev, char *name)
 {
 	struct android_usb_function **functions = dev->functions;
 	struct android_usb_function *f;
+
 	while ((f = *functions++)) {
 		if (!strcmp(name, f->name)) {
 			list_add_tail(&f->enabled_list,
@@ -1102,6 +1423,14 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 	while (b) {
 		name = strsep(&b, ",");
 		if (!name)
+			continue;
+
+		if (!strcmp(name, "dvctrace") &&
+		    !dvc_trace_is_enabled())
+			continue;
+
+		if (!strcmp(name, "dvcdfx") &&
+		    !dvc_dfx_is_enabled())
 			continue;
 
 		is_ffs = 0;
@@ -1184,6 +1513,9 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 			if (f->disable)
 				f->disable(f);
 		}
+		dev->enabled = false;
+	} else if (!enabled && !dev->enabled) {
+		usb_gadget_disconnect(cdev->gadget);
 		dev->enabled = false;
 	} else {
 		pr_err("android_usb: already %s\n",
@@ -1292,6 +1624,9 @@ static int android_bind_config(struct usb_configuration *c)
 	struct android_dev *dev = _android_dev;
 	int ret = 0;
 
+	if (gadget_is_otg(c->cdev->gadget))
+		c->descriptors = otg_desc;
+
 	ret = android_bind_enabled_functions(dev, c);
 	if (ret)
 		return ret;
@@ -1348,7 +1683,13 @@ static int android_bind(struct usb_composite_dev *cdev)
 	strings_dev[STRING_SERIAL_IDX].id = id;
 	device_desc.iSerialNumber = id;
 
-	usb_gadget_set_selfpowered(gadget);
+	cdev->reset_string_id = id;
+
+	if (gadget_is_otg(gadget))
+		cdev->otg_desc = &otg_descriptor;
+
+	if (android_config_driver.bmAttributes & USB_CONFIG_ATT_SELFPOWER)
+		usb_gadget_set_selfpowered(gadget);
 	dev->cdev = cdev;
 
 	return 0;
@@ -1400,6 +1741,13 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (!dev->connected) {
 		dev->connected = 1;
+
+		/* set MaxPower as 900mA for SuperSpeed mode */
+		if (gadget->speed == USB_SPEED_SUPER)
+			android_config_driver.MaxPower = 896;
+		else
+			android_config_driver.MaxPower = 500;
+
 		schedule_work(&dev->work);
 	} else if (c->bRequest == USB_REQ_SET_CONFIGURATION &&
 						cdev->config) {
@@ -1457,6 +1805,16 @@ static int android_create_device(struct android_dev *dev)
 	return 0;
 }
 
+static void android_free_device(struct android_dev *dev)
+{
+	struct device_attribute **attrs = android_usb_attributes;
+	struct device_attribute *attr;
+
+	while ((attr = *attrs++))
+		device_remove_file(dev->dev, attr);
+
+	device_destroy(android_class, dev->dev->devt);
+}
 
 static int __init init(void)
 {
@@ -1502,6 +1860,7 @@ static int __init init(void)
 err_probe:
 	device_destroy(android_class, dev->dev->devt);
 err_create:
+	android_free_device(dev);
 	kfree(dev);
 err_dev:
 	class_destroy(android_class);

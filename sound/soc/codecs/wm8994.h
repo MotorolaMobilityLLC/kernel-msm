@@ -41,6 +41,7 @@ enum wm8994_vmid_mode {
 
 typedef void (*wm1811_micdet_cb)(void *data);
 typedef void (*wm1811_mic_id_cb)(void *data, u16 status);
+typedef void (*wm8958_micd_set_custom_rate_cb)(struct snd_soc_codec *codec);
 
 int wm8994_mic_detect(struct snd_soc_codec *codec, struct snd_soc_jack *jack,
 		      int micbias);
@@ -54,6 +55,10 @@ int wm8958_aif_ev(struct snd_soc_dapm_widget *w,
 		  struct snd_kcontrol *kcontrol, int event);
 
 void wm8958_dsp2_init(struct snd_soc_codec *codec);
+
+int wm8958_micd_set_custom_rate(struct snd_soc_codec *codec,
+			wm8958_micd_set_custom_rate_cb micd_custom_rate_cb,
+			void *micd_custom_rate_cb_data);
 
 struct wm8994_micdet {
 	struct snd_soc_jack *jack;
@@ -86,6 +91,7 @@ struct wm8994_priv {
 	bool fll_locked_irq;
 	bool fll_byp;
 	bool clk_has_run;
+	int slots;
 
 	int vmid_refcount;
 	int active_refcount;
@@ -134,8 +140,14 @@ struct wm8994_priv {
 	struct mutex accdet_lock;
 	struct wm8994_micdet micdet[2];
 	struct delayed_work mic_work;
+	struct delayed_work open_circuit_work;
+	struct delayed_work mic_complete_work;
+	struct delayed_work micd_set_custom_rate_work;
+
+	u16 mic_status;
 	bool mic_detecting;
 	bool jack_mic;
+	bool headphone_detected;
 	int btn_mask;
 	bool jackdet;
 	int jackdet_mode;
@@ -146,6 +158,8 @@ struct wm8994_priv {
 	void *micd_cb_data;
 	wm1811_mic_id_cb mic_id_cb;
 	void *mic_id_cb_data;
+	wm8958_micd_set_custom_rate_cb micd_custom_rate_cb;
+	void *micd_custom_rate_cb_data;
 
 	unsigned int aif1clk_enable:1;
 	unsigned int aif2clk_enable:1;

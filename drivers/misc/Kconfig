@@ -147,6 +147,18 @@ config INTEL_MID_PTI
 	  an Intel Atom (non-netbook) mobile device containing a MIPI
 	  P1149.7 standard implementation.
 
+config INTEL_PTI_STM
+	tristate "MIPI Sytem Trace Macro (STM) for Intel"
+	default n
+	depends on INTEL_MID_PTI
+	help
+	  The STM (Sytem Trace Monitor) driver control trace data
+	  route through an Intel Tangier PTI port or through USB xDCI
+	  interface with Debug-Class DvC.Trace support.
+
+	  It provide the ability to PTI driver to setup the output and
+	  to user to change the output with sysfs and exported header.
+
 config SGI_IOC4
 	tristate "SGI IOC4 Base IO support"
 	depends on PCI
@@ -381,6 +393,15 @@ config HMC6352
 	  This driver provides support for the Honeywell HMC6352 compass,
 	  providing configuration and heading data via sysfs.
 
+config MONZA_X
+	tristate "Impinj Monza-x-2K RFID Chip"
+	depends on I2C
+	help
+	  This driver provides support for the Impinj Monza-x-2K RFID Chip,
+	  Monza x-Dura is UHF Gen2 RFID IC product with 2176bits user NVM,
+	  it can be accessed by i2c interface and UHF Gen2 RFID protocol,
+	  this driver provide access interface via sysfs for userland.
+
 config EP93XX_PWM
 	tristate "EP93xx PWM support"
 	depends on ARCH_EP93XX
@@ -530,6 +551,11 @@ config SRAM
 	  This driver allows you to declare a memory region to be managed by
 	  the genalloc API. It is supposed to be used for small on-chip SRAM
 	  areas found on many SoCs.
+
+config VLV2_PLAT_CLK
+	tristate "Vlv2 platform clock control driver"
+	---help---
+	 Driver to enable the platform clock control for valleyview2
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"

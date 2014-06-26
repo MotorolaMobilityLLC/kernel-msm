@@ -53,4 +53,29 @@ config EXTCON_ARIZONA
 	  with Wolfson Arizona devices. These are audio CODECs with
 	  advanced audio accessory detection support.
 
+config EXTCON_USB
+	tristate "Intel USB Headset devices EXTCON support"
+	default n
+	help
+	  Say Y here to enable support for external accessory (usb headset)
+	  detection for usb headset devices on Android. This will
+	  enable playing back audio over USB headsets. This uses the
+	  extcon drivers to detect the usb headset.
+
+config EXTCON_FSA9285
+	tristate "FSA9295 EXTCON support"
+	depends on I2C
+	help
+	  Say Y here to enable support for external accessory detection
+	  with FSA9285. FSA9285 is MCPC compliant, USB port, multimedia
+	  switch with auto detection.
+
+config EXTCON_SMSC375X
+	tristate "SMSC375X EXTCON support"
+	depends on I2C
+	help
+	  Say Y here to enable support for external charger detection
+	  with SMSC375X. SMSC375X has BC1.2 charger detection support
+	  with USB mux switch.
+
 endif # MULTISTATE_SWITCH

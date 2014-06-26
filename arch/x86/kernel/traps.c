@@ -263,6 +263,36 @@ dotraplinkage void do_double_fault(struct pt_regs *regs, long error_code)
 }
 #endif
 
+#ifdef CONFIG_X86_64
+static unsigned long count_bits(unsigned long value)
+{
+	value = value - ((value >> 1) & 0x5555555555555555);
+	value = (value & 0x3333333333333333) + ((value >> 2) & 0x3333333333333333);
+	return (((value + (value >> 4)) & 0xF0F0F0F0F0F0F0F) * 0x101010101010101) >> 56;
+}
+
+/* Check that all the registers representing an address are in canonical form
+ if not, check that the bits differening are 2 or less to detect a bit flip */
+static void check_bit_flip(struct pt_regs *_regs, long error_code)
+{
+	int regs_nr = sizeof(struct pt_regs) / sizeof(unsigned long), idx;
+	unsigned long *regs = (unsigned long *)_regs;
+	unsigned long address;
+
+	for (idx = 0; idx < regs_nr; idx++) {
+		address = regs[idx];
+		if (((address & 0xffff800000000000) != 0xffff800000000000) &&
+		    ((address & 0xffff800000000000) != 0)) {
+			address ^= 0xffff800000000000;
+			address &= 0xffff800000000000;
+			if (count_bits(address) < 3) {
+				panic("Bit flip detected with register 0x%016lx during gpf\n", regs[idx]);
+			}
+		}
+	}
+}
+#endif
+
 dotraplinkage void __kprobes
 do_general_protection(struct pt_regs *regs, long error_code)
 {
@@ -289,6 +319,9 @@ do_general_protection(struct pt_regs *regs, long error_code)
 		tsk->thread.trap_nr = X86_TRAP_GP;
 		if (notify_die(DIE_GPF, "general protection fault", regs, error_code,
 			       X86_TRAP_GP, SIGSEGV) != NOTIFY_STOP)
+#ifdef CONFIG_X86_64
+			check_bit_flip(regs, error_code);
+#endif
 			die("general protection fault", regs, error_code);
 		goto exit;
 	}

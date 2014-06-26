@@ -20,3 +20,6 @@ config REGMAP_MMIO
 
 config REGMAP_IRQ
 	bool
+
+config REGMAP_ALLOW_WRITE_DEBUGFS
+	tristate

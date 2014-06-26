@@ -530,6 +530,15 @@ static int soc_ac97_dev_register(struct snd_soc_codec *codec)
 }
 #endif
 
+static void codec2codec_close_delayed_work(struct work_struct *work)
+{
+	/* Currently nothing to do for c2c links
+	 * Since c2c links are internal nodes in the DAPM graph and
+	 * don't interface with the outside world or application layer
+	 * we don't have to do any special handling on close.
+	 */
+}
+
 #ifdef CONFIG_PM_SLEEP
 /* powers down audio subsystem for suspend */
 int snd_soc_suspend(struct device *dev)
@@ -1163,6 +1172,11 @@ static int soc_probe_platform(struct snd_soc_card *card,
 		if (dai->dev != platform->dev)
 			continue;
 
+		/* dummy platform doesn't have and DAIs, don't add dummy-codec
+		 * widgets here (since dev is the same)
+		 */
+		if (!strcmp(dai->name, "snd-soc-dummy-dai"))
+			continue;
 		snd_soc_dapm_new_dai_widgets(&platform->dapm, dai);
 	}
 
@@ -1223,9 +1237,6 @@ static int soc_post_component_init(struct snd_soc_card *card,
 		name = aux_dev->name;
 	}
 	rtd->card = card;
-
-	/* Make sure all DAPM widgets are instantiated */
-	snd_soc_dapm_new_widgets(&codec->dapm);
 
 	/* machine controls, routes and widgets are not prefixed */
 	temp = codec->name_prefix;
@@ -1362,7 +1373,6 @@ static int soc_probe_link_dais(struct snd_soc_card *card, int num, int order)
 				return -ENODEV;
 
 			list_add(&cpu_dai->dapm.list, &card->dapm_list);
-			snd_soc_dapm_new_dai_widgets(&cpu_dai->dapm, cpu_dai);
 		}
 
 		if (cpu_dai->driver->probe) {
@@ -1429,9 +1439,18 @@ static int soc_probe_link_dais(struct snd_soc_card *card, int num, int order)
 				return ret;
 			}
 		} else {
+			INIT_DELAYED_WORK(&rtd->delayed_work,
+						codec2codec_close_delayed_work);
+
 			/* link the DAI widgets */
-			play_w = codec_dai->playback_widget;
-			capture_w = cpu_dai->capture_widget;
+			if (!dai_link->dsp_loopback) {
+				play_w = codec_dai->playback_widget;
+				capture_w = cpu_dai->capture_widget;
+			} else {
+				play_w = codec_dai->playback_widget;
+				capture_w = cpu_dai->playback_widget;
+			}
+
 			if (play_w && capture_w) {
 				ret = snd_soc_dapm_new_pcm(card, dai_link->params,
 						   capture_w, play_w);
@@ -1442,8 +1461,14 @@ static int soc_probe_link_dais(struct snd_soc_card *card, int num, int order)
 				}
 			}
 
-			play_w = cpu_dai->playback_widget;
-			capture_w = codec_dai->capture_widget;
+			if (!dai_link->dsp_loopback) {
+				play_w = cpu_dai->playback_widget;
+				capture_w = codec_dai->capture_widget;
+			} else {
+				play_w = cpu_dai->capture_widget;
+				capture_w = codec_dai->capture_widget;
+			}
+
 			if (play_w && capture_w) {
 				ret = snd_soc_dapm_new_pcm(card, dai_link->params,
 						   capture_w, play_w);
@@ -1716,8 +1741,6 @@ static int snd_soc_instantiate_card(struct snd_soc_card *card)
 	if (card->dapm_routes)
 		snd_soc_dapm_add_routes(&card->dapm, card->dapm_routes,
 					card->num_dapm_routes);
-
-	snd_soc_dapm_new_widgets(&card->dapm);
 
 	for (i = 0; i < card->num_links; i++) {
 		dai_link = &card->dai_link[i];
@@ -2812,7 +2835,8 @@ int snd_soc_put_volsw_sx(struct snd_kcontrol *kcontrol,
 		val2 = (ucontrol->value.integer.value[1] + min) & mask;
 		val2 = val2 << rshift;
 
-		if (snd_soc_update_bits_locked(codec, reg2, val_mask, val2))
+		err = snd_soc_update_bits_locked(codec, reg2, val_mask, val2);
+		if (err < 0)
 			return err;
 	}
 	return 0;
@@ -3173,6 +3197,19 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(snd_soc_bytes_put);
+
+int snd_soc_info_bytes_ext(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_info *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct soc_bytes_ext *params = (void *)kcontrol->private_value;
+
+	ucontrol->type = SNDRV_CTL_ELEM_TYPE_BYTES;
+	ucontrol->count = params->max;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_info_bytes_ext);
 
 /**
  * snd_soc_info_xr_sx - signed multi register info callback
@@ -4261,6 +4298,23 @@ found:
 	kfree(cmpnt->name);
 }
 EXPORT_SYMBOL_GPL(snd_soc_unregister_component);
+
+#if IS_ENABLED(CONFIG_SND_EFFECTS_OFFLOAD)
+int snd_soc_register_effect(struct snd_soc_card *card,
+				struct snd_effect_ops *ops)
+{
+	return snd_effect_register(card->snd_card, ops);
+
+}
+EXPORT_SYMBOL_GPL(snd_soc_register_effect);
+
+int snd_soc_unregister_effect(struct snd_soc_card *card)
+{
+	return snd_effect_deregister(card->snd_card);
+
+}
+EXPORT_SYMBOL_GPL(snd_soc_unregister_effect);
+#endif
 
 /* Retrieve a card's name from device tree */
 int snd_soc_of_parse_card_name(struct snd_soc_card *card,

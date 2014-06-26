@@ -130,6 +130,12 @@ struct wm8958_micd_rate {
 	int rate;
 };
 
+struct wm8958_custom_config {
+	int format;
+	int rate;
+	int channels;
+};
+
 struct wm8994_pdata {
 	int gpio_base;
 
@@ -182,6 +188,16 @@ struct wm8994_pdata {
 	 */
 	int micdet_delay;
 
+	/* Delay between microphone detect completing and reporting on
+	 * insert (specified in ms)
+	 */
+	int mic_id_delay;
+
+	/* Keep MICBIAS2 high for micb_en_delay, during jack insertion
+	 * removal
+	 */
+	int micb_en_delay;
+
 	/* IRQ for microphone detection if brought out directly as a
 	 * signal.
 	 */
@@ -223,6 +239,9 @@ struct wm8994_pdata {
 	 * lines is mastered.
 	 */
 	int max_channels_clocked[WM8994_NUM_AIF];
+
+	/* custom config for overriding the hw params */
+	struct wm8958_custom_config *custom_cfg;
 };
 
 #endif

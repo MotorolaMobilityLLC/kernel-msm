@@ -10,6 +10,8 @@
 
 #include <linux/interrupt.h>
 #include <linux/completion.h>
+#include <linux/device.h>
+#include <linux/mmc/ioctl.h>
 
 struct request;
 struct mmc_data;
@@ -121,6 +123,7 @@ struct mmc_data {
 	unsigned int		sg_len;		/* size of scatter list */
 	struct scatterlist	*sg;		/* I/O scatter list */
 	s32			host_cookie;	/* host private data */
+	dma_addr_t		dmabuf;		/* used in panic mode */
 };
 
 struct mmc_host;
@@ -134,6 +137,34 @@ struct mmc_request {
 	void			(*done)(struct mmc_request *);/* completion function */
 	struct mmc_host		*host;
 };
+
+/*
+ * RPMB frame structure for MMC core stack
+ */
+struct mmc_core_rpmb_req {
+	struct mmc_ioc_rpmb_req *req;
+	__u8 *frame;
+	bool ready;
+};
+
+#define RPMB_PROGRAM_KEY       1       /* Program RPMB Authentication Key */
+#define RPMB_GET_WRITE_COUNTER 2       /* Read RPMB write counter */
+#define RPMB_WRITE_DATA		3	/* Write data to RPMB partition */
+#define RPMB_READ_DATA         4       /* Read data from RPMB partition */
+#define RPMB_RESULT_READ       5       /* Read result request */
+#define RPMB_REQ               1       /* RPMB request mark */
+#define RPMB_RESP              (1 << 1)/* RPMB response mark */
+#define RPMB_AVALIABLE_SECTORS 8       /* 4K page size */
+
+#define RPMB_TYPE_BEG          510
+#define RPMB_RES_BEG           508
+#define RPMB_BLKS_BEG          506
+#define RPMB_ADDR_BEG          504
+#define RPMB_WCOUNTER_BEG      500
+
+#define RPMB_NONCE_BEG         484
+#define RPMB_DATA_BEG          228
+#define RPMB_MAC_BEG           196
 
 struct mmc_card;
 struct mmc_async_req;
@@ -152,6 +183,13 @@ extern void mmc_start_bkops(struct mmc_card *card, bool from_exception);
 extern int __mmc_switch(struct mmc_card *, u8, u8, u8, unsigned int, bool);
 extern int mmc_switch(struct mmc_card *, u8, u8, u8, unsigned int);
 extern int mmc_send_ext_csd(struct mmc_card *card, u8 *ext_csd);
+extern int mmc_rpmb_partition_ops(struct mmc_core_rpmb_req *,
+		struct mmc_card *);
+extern int mmc_rpmb_pre_frame(struct mmc_core_rpmb_req *, struct mmc_card *);
+extern void mmc_rpmb_post_frame(struct mmc_core_rpmb_req *);
+
+extern int mmc_set_user_wp(struct mmc_card *, unsigned int, unsigned int);
+extern int mmc_wp_status(struct mmc_card *, unsigned int, unsigned int, u8 *);
 
 #define MMC_ERASE_ARG		0x00000000
 #define MMC_SECURE_ERASE_ARG	0x80000000
@@ -204,5 +242,7 @@ static inline void mmc_claim_host(struct mmc_host *host)
 }
 
 extern u32 mmc_vddrange_to_ocrmask(int vdd_min, int vdd_max);
+
+extern int mmc_busy_wait(struct mmc_host *host);
 
 #endif /* LINUX_MMC_CORE_H */

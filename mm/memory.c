@@ -2233,6 +2233,26 @@ int vm_insert_pfn(struct vm_area_struct *vma, unsigned long addr,
 }
 EXPORT_SYMBOL(vm_insert_pfn);
 
+int vm_insert_pfn_with_pgprot(struct vm_area_struct *vma, unsigned long addr,
+			      unsigned long pfn, pgprot_t pgprot)
+{
+	/*
+	 * Technically, architectures with pte_special can avoid all these
+	 * restrictions (same for remap_pfn_range).  However we would like
+	 * consistency in testing and feature parity among all, so we should
+	 * try to keep these invariants in place for everybody.
+	 */
+	BUG_ON((vma->vm_flags & VM_PFNMAP) == 0);
+	BUG_ON((vma->vm_flags & VM_MIXEDMAP));
+	BUG_ON(is_cow_mapping(vma->vm_flags));
+
+	if (addr < vma->vm_start || addr >= vma->vm_end)
+		return -EFAULT;
+
+	return insert_pfn(vma, addr, pfn, pgprot);
+}
+EXPORT_SYMBOL(vm_insert_pfn_with_pgprot);
+
 int vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
 			unsigned long pfn)
 {

@@ -60,6 +60,7 @@
 #include <asm/irq_remapping.h>
 #include <asm/hpet.h>
 #include <asm/hw_irq.h>
+#include <asm/intel-mid.h>
 
 #include <asm/apic.h>
 
@@ -315,6 +316,24 @@ void io_apic_eoi(unsigned int apic, unsigned int vector)
 	struct io_apic __iomem *io_apic = io_apic_base(apic);
 	writel(vector, &io_apic->eoi);
 }
+
+/*
+ * This index matches with 1024 - 4 address in SCU RTE table area.
+ * That is not used for anything. Works in CLVP only
+ */
+#define LAST_INDEX_IN_IO_APIC_SPACE 255
+#define KERNEL_TO_SCU_PANIC_REQUEST (0x0515dead)
+void apic_scu_panic_dump(void)
+{
+	unsigned long flags;
+
+	printk(KERN_ERR "Request SCU panic dump");
+	raw_spin_lock_irqsave(&ioapic_lock, flags);
+	io_apic_write(0, LAST_INDEX_IN_IO_APIC_SPACE,
+		      KERNEL_TO_SCU_PANIC_REQUEST);
+	raw_spin_unlock_irqrestore(&ioapic_lock, flags);
+}
+EXPORT_SYMBOL_GPL(apic_scu_panic_dump);
 
 unsigned int native_io_apic_read(unsigned int apic, unsigned int reg)
 {
@@ -2355,6 +2374,10 @@ int native_ioapic_set_affinity(struct irq_data *data,
 	return ret;
 }
 
+static int ioapic_set_wake(struct irq_data *data, unsigned int on)
+{
+	return 0;
+}
 static void ack_apic_edge(struct irq_data *data)
 {
 	irq_complete_move(data->chip_data);
@@ -2519,7 +2542,9 @@ static struct irq_chip ioapic_chip __read_mostly = {
 	.irq_ack		= ack_apic_edge,
 	.irq_eoi		= ack_apic_level,
 	.irq_set_affinity	= native_ioapic_set_affinity,
+	.irq_set_wake		= ioapic_set_wake,
 	.irq_retrigger		= ioapic_retrigger_irq,
+	.flags			= IRQCHIP_SKIP_SET_WAKE,
 };
 
 static inline void init_IO_APIC_traps(void)
@@ -2857,7 +2882,9 @@ void __init setup_IO_APIC(void)
 	sync_Arb_IDs();
 	setup_IO_APIC_irqs();
 	init_IO_APIC_traps();
-	if (legacy_pic->nr_legacy_irqs)
+
+	/* Skip the timer check for newer CPU with ARAT timer */
+	if (!boot_cpu_has(X86_FEATURE_ARAT) && legacy_pic->nr_legacy_irqs)
 		check_timer();
 }
 

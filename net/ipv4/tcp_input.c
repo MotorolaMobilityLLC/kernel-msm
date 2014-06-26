@@ -4501,7 +4501,8 @@ restart:
 		 *   overlaps to the next one.
 		 */
 		if (!tcp_hdr(skb)->syn && !tcp_hdr(skb)->fin &&
-		    (tcp_win_from_space(skb->truesize) > skb->len ||
+		    ((tcp_win_from_space(skb->truesize) > skb->len &&
+				!before(start, TCP_SKB_CB(skb)->seq)) ||
 		     before(TCP_SKB_CB(skb)->seq, start))) {
 			end_of_skbs = false;
 			break;

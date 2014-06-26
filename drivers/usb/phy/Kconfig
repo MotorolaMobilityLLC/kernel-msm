@@ -1,6 +1,14 @@
 #
 # Physical Layer USB driver configuration
 #
+config USB_OTG_WAKELOCK
+	bool "Hold a wakelock when USB connected"
+	depends on WAKELOCK
+	select USB_OTG_UTILS
+	help
+	  Select this to automatically hold a wakelock when USB is
+	  connected, preventing suspend.
+
 menuconfig USB_PHY
 	bool "USB Physical Layer drivers"
 	help
@@ -15,14 +23,6 @@ menuconfig USB_PHY
 
 	  If you're not sure if this applies to you, it probably doesn't;
 	  say N here.
-
-config USB_OTG_WAKELOCK
-	bool "Hold a wakelock when USB connected"
-	depends on WAKELOCK
-	select USB_OTG_UTILS
-	help
-	  Select this to automatically hold a wakelock when USB is
-	  connected, preventing suspend.
 
 if USB_PHY
 
@@ -192,6 +192,19 @@ config USB_MXS_PHY
 	  Enable this to support the Freescale MXS USB PHY.
 
 	  MXS Phy is used by some of the i.MX SoCs, for example imx23/28/6x.
+
+config USB_PENWELL_OTG
+        tristate "Intel Penwell USB OTG dual-role support"
+        depends on USB && PCI && INTEL_SCU_IPC
+        select USB_OTG
+        help
+          Say Y here if you want to build Intel Penwell USB OTG
+          transciever driver in kernel. This driver implements role
+          switch between EHCI host driver and Penwell USB OTG
+          client driver.
+
+          To compile this driver as a module, choose M here: the
+          module will be called penwell_otg.
 
 config USB_RCAR_PHY
 	tristate "Renesas R-Car USB phy support"

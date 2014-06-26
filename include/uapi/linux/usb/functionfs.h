@@ -37,6 +37,7 @@ struct usb_functionfs_descs_head {
 	__le32 length;
 	__le32 fs_count;
 	__le32 hs_count;
+	__le32 ss_count;
 } __attribute__((packed));
 
 /*

@@ -10,6 +10,9 @@ struct gpio_keys_button {
 	int active_low;
 	const char *desc;
 	unsigned int type;	/* input event type (EV_KEY, EV_SW, EV_ABS) */
+#ifdef CONFIG_ACPI
+	int acpi_idx;		/* ACPI gpio index */
+#endif
 	int wakeup;		/* configure the button as a wake-up source */
 	int debounce_interval;	/* debounce ticks interval in msecs */
 	bool can_disable;

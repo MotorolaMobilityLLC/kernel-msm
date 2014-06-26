@@ -7,7 +7,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  */
@@ -159,7 +159,7 @@ TRACE_EVENT(binder_transaction_node_to_ref,
 	TP_fast_assign(
 		__entry->debug_id = t->debug_id;
 		__entry->node_debug_id = node->debug_id;
-		__entry->node_ptr = node->ptr;
+		__entry->node_ptr = BINDER_PTR node->ptr;
 		__entry->ref_debug_id = ref->debug_id;
 		__entry->ref_desc = ref->desc;
 	),
@@ -184,7 +184,7 @@ TRACE_EVENT(binder_transaction_ref_to_node,
 		__entry->ref_debug_id = ref->debug_id;
 		__entry->ref_desc = ref->desc;
 		__entry->node_debug_id = ref->node->debug_id;
-		__entry->node_ptr = ref->node->ptr;
+		__entry->node_ptr = BINDER_PTR ref->node->ptr;
 	),
 	TP_printk("transaction=%d node=%d src_ref=%d src_desc=%d ==> dest_ptr=0x%p",
 		  __entry->debug_id, __entry->node_debug_id,

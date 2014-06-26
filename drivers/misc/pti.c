@@ -21,6 +21,8 @@
  * compact JTAG, standard.
  */
 
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
 #include <linux/init.h>
 #include <linux/sched.h>
 #include <linux/interrupt.h>
@@ -30,11 +32,17 @@
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
 #include <linux/pci.h>
-#include <linux/mutex.h>
+#include <linux/spinlock.h>
 #include <linux/miscdevice.h>
 #include <linux/pti.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+
+#include <asm/intel_scu_ipc.h>
+
+#ifdef CONFIG_INTEL_PTI_STM
+#include "stm.h"
+#endif
 
 #define DRIVERNAME		"pti"
 #define PCINAME			"pciPTI"
@@ -55,6 +63,55 @@
 #define APERTURE_14		0x3800000 /* offset to first OS write addr */
 #define APERTURE_LEN		0x400000  /* address length */
 
+#define SMIP_PTI_OFFSET	0x30C  /* offset to PTI config in MIP header */
+#define SMIP_PTI_EN	(1<<7) /* PTI enable bit in PTI configuration */
+
+#define PTI_PNW_PCI_ID			0x082B
+#define PTI_CLV_PCI_ID			0x0900
+#define PTI_TNG_PCI_ID			0x119F
+
+#define INTEL_PTI_PCI_DEVICE(dev, info) {	\
+	.vendor = PCI_VENDOR_ID_INTEL,		\
+	.device = dev,				\
+	.subvendor = PCI_ANY_ID,		\
+	.subdevice = PCI_ANY_ID,		\
+	.driver_data = (unsigned long) info }
+
+struct pti_device_info {
+	u8 pci_bar;
+	u8 scu_secure_mode:1;
+	u8 has_d8_d16_support:1;
+};
+
+static const struct pti_device_info intel_pti_pnw_info = {
+	.pci_bar = 1,
+	.scu_secure_mode = 0,
+	.has_d8_d16_support = 0,
+};
+
+static const struct pti_device_info intel_pti_clv_info = {
+	.pci_bar = 1,
+	.scu_secure_mode = 1,
+	.has_d8_d16_support = 0,
+};
+
+static const struct pti_device_info intel_pti_tng_info = {
+	.pci_bar = 2,
+	.scu_secure_mode = 0,
+	.has_d8_d16_support = 1,
+};
+
+static DEFINE_PCI_DEVICE_TABLE(pci_ids) = {
+	INTEL_PTI_PCI_DEVICE(PTI_PNW_PCI_ID, &intel_pti_pnw_info),
+	INTEL_PTI_PCI_DEVICE(PTI_CLV_PCI_ID, &intel_pti_clv_info),
+	INTEL_PTI_PCI_DEVICE(PTI_TNG_PCI_ID, &intel_pti_tng_info),
+	{0}
+};
+
+#define GET_PCI_BAR(pti_dev) (pti_dev->pti_dev_info->pci_bar)
+#define HAS_SCU_SECURE_MODE(pti_dev) (pti_dev->pti_dev_info->scu_secure_mode)
+#define HAS_D8_D16_SUPPORT(pti_dev) (pti_dev->pti_dev_info->has_d8_d16_support)
+
 struct pti_tty {
 	struct pti_masterchannel *mc;
 };
@@ -67,19 +124,22 @@ struct pti_dev {
 	u8 ia_app[MAX_APP_IDS];
 	u8 ia_os[MAX_OS_IDS];
 	u8 ia_modem[MAX_MODEM_IDS];
+	struct pti_device_info *pti_dev_info;
+#ifdef CONFIG_INTEL_PTI_STM
+	struct stm_dev stm;
+#endif
 };
+
+static unsigned int stm_enabled;
+module_param(stm_enabled, uint, 0600);
+MODULE_PARM_DESC(stm_enabled, "set to 1 to enable stm");
 
 /*
  * This protects access to ia_app, ia_os, and ia_modem,
  * which keeps track of channels allocated in
  * an aperture write id.
  */
-static DEFINE_MUTEX(alloclock);
-
-static const struct pci_device_id pci_ids[] = {
-		{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x82B)},
-		{0}
-};
+static DEFINE_SPINLOCK(cid_lock);
 
 static struct tty_driver *pti_tty_driver;
 static struct pti_dev *drv_data;
@@ -95,6 +155,8 @@ static unsigned int pti_control_channel;
  *  @buf: Data being written to the HW that will ultimately be seen
  *        in a debugging tool (Fido, Lauterbach).
  *  @len: Size of buffer.
+ *  @eom: End Of Message indication. If true, DTS shall be used for
+ *        the last bytes of the message.
  *
  *  Since each aperture is specified by a unique
  *  master/channel ID, no two processes will be writing
@@ -106,12 +168,15 @@ static unsigned int pti_control_channel;
  */
 static void pti_write_to_aperture(struct pti_masterchannel *mc,
 				  u8 *buf,
-				  int len)
+				  int len,
+				  bool eom)
 {
 	int dwordcnt;
 	int final;
 	int i;
 	u32 ptiword;
+	u16 ptishort;
+	u8  ptibyte;
 	u32 __iomem *aperture;
 	u8 *p = buf;
 
@@ -135,13 +200,40 @@ static void pti_write_to_aperture(struct pti_masterchannel *mc,
 		iowrite32(ptiword, aperture);
 	}
 
-	aperture += PTI_LASTDWORD_DTS;	/* adding DTS signals that is EOM */
+	if (!HAS_D8_D16_SUPPORT(drv_data)) {
+		aperture += eom ? PTI_LASTDWORD_DTS : 0; /* DTS signals EOM */
+		ptiword = 0;
+		for (i = 0; i < final; i++)
+			ptiword |= *p++ << (24-(8*i));
+		iowrite32(ptiword, aperture);
+	} else {
+		switch (final) {
 
-	ptiword = 0;
-	for (i = 0; i < final; i++)
-		ptiword |= *p++ << (24-(8*i));
+		case 3:
+			ptishort = be16_to_cpu(*(u16 *)p);
+			p += 2;
+			iowrite16(ptishort, aperture);
+			/* fall-through */
+		case 1:
+			ptibyte = *(u8 *)p;
+			aperture += eom ? PTI_LASTDWORD_DTS : 0;
+			iowrite8(ptibyte, aperture);
+			break;
+		case 2:
+			ptishort = be16_to_cpu(*(u16 *)p);
+			aperture += eom ? PTI_LASTDWORD_DTS : 0;
+			iowrite16(ptishort, aperture);
+			break;
+		case 4:
+			ptiword = be32_to_cpu(*(u32 *)p);
+			aperture += eom ? PTI_LASTDWORD_DTS : 0;
+			iowrite32(ptiword, aperture);
+			break;
+		default:
+			break;
+		}
+	}
 
-	iowrite32(ptiword, aperture);
 	return;
 }
 
@@ -177,10 +269,12 @@ static void pti_control_frame_built_and_sent(struct pti_masterchannel *mc,
 	u8 control_frame[CONTROL_FRAME_LEN];
 
 	if (!thread_name) {
-		if (!in_interrupt())
-			get_task_comm(comm, current);
+		if (in_irq())
+			strncpy(comm, "hardirq", sizeof(comm));
+		else if (in_softirq())
+			strncpy(comm, "softirq", sizeof(comm));
 		else
-			strncpy(comm, "Interrupt", TASK_COMM_LEN);
+			strncpy(comm, current->comm, sizeof(comm));
 
 		/* Absolutely ensure our buffer is zero terminated. */
 		comm[TASK_COMM_LEN-1] = 0;
@@ -194,7 +288,8 @@ static void pti_control_frame_built_and_sent(struct pti_masterchannel *mc,
 
 	snprintf(control_frame, CONTROL_FRAME_LEN, control_format, mc->master,
 		mc->channel, thread_name_p);
-	pti_write_to_aperture(&mccontrol, control_frame, strlen(control_frame));
+	pti_write_to_aperture(&mccontrol, control_frame,
+			      strlen(control_frame), true);
 }
 
 /**
@@ -216,7 +311,7 @@ static void pti_write_full_frame_to_aperture(struct pti_masterchannel *mc,
 						int len)
 {
 	pti_control_frame_built_and_sent(mc, NULL);
-	pti_write_to_aperture(mc, (u8 *)buf, len);
+	pti_write_to_aperture(mc, (u8 *)buf, len, true);
 }
 
 /**
@@ -224,7 +319,7 @@ static void pti_write_full_frame_to_aperture(struct pti_masterchannel *mc,
  *
  * @id_array:    an array of bits representing what channel
  *               id's are allocated for writing.
- * @max_ids:     The max amount of available write IDs to use.
+ * @array_size:  array size in bytes
  * @base_id:     The starting SW channel ID, based on the Intel
  *               PTI arch.
  * @thread_name: The thread name associated with the master / channel or
@@ -239,37 +334,40 @@ static void pti_write_full_frame_to_aperture(struct pti_masterchannel *mc,
  * every master there are 128 channel id's.
  */
 static struct pti_masterchannel *get_id(u8 *id_array,
-					int max_ids,
+					int array_size,
 					int base_id,
 					const char *thread_name)
 {
 	struct pti_masterchannel *mc;
-	int i, j, mask;
+	unsigned long flags;
+	unsigned long *addr = (unsigned long *)id_array;
+	unsigned long num_bits = array_size*8, n;
 
-	mc = kmalloc(sizeof(struct pti_masterchannel), GFP_KERNEL);
+	/* Allocate memory with GFP_ATOMIC flag because this API
+	 * can be called in interrupt context.
+	 */
+	mc = kmalloc(sizeof(struct pti_masterchannel), GFP_ATOMIC);
 	if (mc == NULL)
 		return NULL;
 
-	/* look for a byte with a free bit */
-	for (i = 0; i < max_ids; i++)
-		if (id_array[i] != 0xff)
-			break;
-	if (i == max_ids) {
+	/* Find the first available channel ID (first zero bit) in the
+	 * bitdfield and toggle the corresponding bit to reserve it.
+	 * This must be done under spinlock with interrupts disabled
+	 * to ensure there is no concurrent access to the bitfield.
+	 */
+	spin_lock_irqsave(&cid_lock, flags);
+	n = find_first_zero_bit(addr, num_bits);
+	if (n >= num_bits) {
 		kfree(mc);
+		spin_unlock_irqrestore(&cid_lock, flags);
 		return NULL;
 	}
-	/* find the bit in the 128 possible channel opportunities */
-	mask = 0x80;
-	for (j = 0; j < 8; j++) {
-		if ((id_array[i] & mask) == 0)
-			break;
-		mask >>= 1;
-	}
+	change_bit(n, addr);
+	spin_unlock_irqrestore(&cid_lock, flags);
 
-	/* grab it */
-	id_array[i] |= mask;
 	mc->master  = base_id;
-	mc->channel = ((i & 0xf)<<3) + j;
+	mc->channel = n;
+
 	/* write new master Id / channel Id allocation to channel control */
 	pti_control_frame_built_and_sent(mc, thread_name);
 	return mc;
@@ -306,7 +404,8 @@ struct pti_masterchannel *pti_request_masterchannel(u8 type,
 {
 	struct pti_masterchannel *mc;
 
-	mutex_lock(&alloclock);
+	if (drv_data == NULL)
+		return NULL;
 
 	switch (type) {
 
@@ -328,7 +427,6 @@ struct pti_masterchannel *pti_request_masterchannel(u8 type,
 		mc = NULL;
 	}
 
-	mutex_unlock(&alloclock);
 	return mc;
 }
 EXPORT_SYMBOL_GPL(pti_request_masterchannel);
@@ -343,29 +441,41 @@ EXPORT_SYMBOL_GPL(pti_request_masterchannel);
  */
 void pti_release_masterchannel(struct pti_masterchannel *mc)
 {
-	u8 master, channel, i;
-
-	mutex_lock(&alloclock);
+	u8 master, channel;
 
 	if (mc) {
 		master = mc->master;
 		channel = mc->channel;
 
-		if (master == APP_BASE_ID) {
-			i = channel >> 3;
-			drv_data->ia_app[i] &=  ~(0x80>>(channel & 0x7));
-		} else if (master == OS_BASE_ID) {
-			i = channel >> 3;
-			drv_data->ia_os[i] &= ~(0x80>>(channel & 0x7));
-		} else {
-			i = channel >> 3;
-			drv_data->ia_modem[i] &= ~(0x80>>(channel & 0x7));
+		switch (master) {
+
+		/* Note that clear_bit is atomic, so there is no need
+		 * to use cid_lock here to protect the bitfield
+		 */
+
+		case APP_BASE_ID:
+			clear_bit(mc->channel,
+				  (unsigned long *)drv_data->ia_app);
+			break;
+
+		case OS_BASE_ID:
+			clear_bit(mc->channel,
+				  (unsigned long *)drv_data->ia_os);
+			break;
+
+		case MODEM_BASE_ID:
+			clear_bit(mc->channel,
+				  (unsigned long *)drv_data->ia_modem);
+			break;
+
+		default:
+			pr_err("%s(%d) : Invalid master ID!\n",
+			       __func__, __LINE__);
+			break;
 		}
 
 		kfree(mc);
 	}
-
-	mutex_unlock(&alloclock);
 }
 EXPORT_SYMBOL_GPL(pti_release_masterchannel);
 
@@ -379,8 +489,10 @@ EXPORT_SYMBOL_GPL(pti_release_masterchannel);
  *         Null value will return with no write occurring.
  * @count: Size of buf. Value of 0 or a negative number will
  *         return with no write occuring.
+ * @eom:   End Of Message indication. If true, DTS shall be used
+ *         for last bytes of the message.
  */
-void pti_writedata(struct pti_masterchannel *mc, u8 *buf, int count)
+void pti_writedata(struct pti_masterchannel *mc, u8 *buf, int count, bool eom)
 {
 	/*
 	 * since this function is exported, this is treated like an
@@ -388,7 +500,7 @@ void pti_writedata(struct pti_masterchannel *mc, u8 *buf, int count)
 	 * be checked for validity.
 	 */
 	if ((mc != NULL) && (buf != NULL) && (count > 0))
-		pti_write_to_aperture(mc, buf, count);
+		pti_write_to_aperture(mc, buf, count, eom);
 	return;
 }
 EXPORT_SYMBOL_GPL(pti_writedata);
@@ -518,7 +630,7 @@ static int pti_tty_driver_write(struct tty_struct *tty,
 {
 	struct pti_tty *pti_tty_data = tty->driver_data;
 	if ((pti_tty_data != NULL) && (pti_tty_data->mc != NULL)) {
-		pti_write_to_aperture(pti_tty_data->mc, (u8 *)buf, len);
+		pti_write_to_aperture(pti_tty_data->mc, (u8 *)buf, len, true);
 		return len;
 	}
 	/*
@@ -636,7 +748,7 @@ static ssize_t pti_char_write(struct file *filp, const char __user *data,
 			return n ? n : -EFAULT;
 		}
 
-		pti_write_to_aperture(mc, kbuf, size);
+		pti_write_to_aperture(mc, kbuf, size, true);
 		n  += size;
 		tmp += size;
 
@@ -780,6 +892,36 @@ static const struct tty_port_operations tty_port_ops = {
 	.shutdown = pti_port_shutdown,
 };
 
+
+#ifdef CONFIG_INTEL_SCU_IPC
+/**
+ * pti_scu_check()- Used to check whether the PTI is enabled on SCU
+ *
+ * Returns:
+ *	0 if PTI is enabled
+ *	otherwise, error value
+ */
+static int pti_scu_check(void)
+{
+	int retval;
+	u8 smip_pti;
+
+	retval = intel_scu_ipc_read_mip(&smip_pti, 1, SMIP_PTI_OFFSET, 1);
+	if (retval) {
+		pr_err("%s(%d): Mip read failed (retval = %d)\n",
+		       __func__, __LINE__, retval);
+		return retval;
+	}
+	if (!(smip_pti & SMIP_PTI_EN)) {
+		pr_info("%s(%d): PTI disabled in MIP header\n",
+			__func__, __LINE__);
+		return -EPERM;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_INTEL_SCU_IPC */
+
 /*
  * Note the _probe() call sets everything up and ties the char and tty
  * to successfully detecting the PTI device on the pci bus.
@@ -801,7 +943,6 @@ static int pti_pci_probe(struct pci_dev *pdev,
 {
 	unsigned int a;
 	int retval = -EINVAL;
-	int pci_bar = 1;
 
 	dev_dbg(&pdev->dev, "%s %s(%d): PTI PCI ID %04x:%04x\n", __FILE__,
 			__func__, __LINE__, pdev->vendor, pdev->device);
@@ -831,9 +972,21 @@ static int pti_pci_probe(struct pci_dev *pdev,
 			__func__, __LINE__);
 		goto err_disable_pci;
 	}
-	drv_data->pti_addr = pci_resource_start(pdev, pci_bar);
 
-	retval = pci_request_region(pdev, pci_bar, dev_name(&pdev->dev));
+	drv_data->pti_dev_info = (struct pti_device_info *)ent->driver_data;
+
+#ifdef CONFIG_INTEL_SCU_IPC
+	if (HAS_SCU_SECURE_MODE(drv_data)) {
+		retval = pti_scu_check();
+		if (retval != 0)
+			goto err_free_dd;
+	}
+#endif /* CONFIG_INTEL_SCU_IPC */
+
+	drv_data->pti_addr = pci_resource_start(pdev, GET_PCI_BAR(drv_data));
+
+	retval = pci_request_region(pdev, GET_PCI_BAR(drv_data),
+				    dev_name(&pdev->dev));
 	if (retval != 0) {
 		dev_err(&pdev->dev,
 			"%s(%d): pci_request_region() returned error %d\n",
@@ -849,6 +1002,14 @@ static int pti_pci_probe(struct pci_dev *pdev,
 		goto err_rel_reg;
 	}
 
+#ifdef CONFIG_INTEL_PTI_STM
+	/* Initialize STM resources */
+	if ((stm_enabled) && (stm_dev_init(pdev, &drv_data->stm) != 0)) {
+		retval = -ENOMEM;
+		goto err_rel_reg;
+	}
+#endif
+
 	pci_set_drvdata(pdev, drv_data);
 
 	for (a = 0; a < PTITTY_MINOR_NUM; a++) {
@@ -863,9 +1024,10 @@ static int pti_pci_probe(struct pci_dev *pdev,
 
 	return 0;
 err_rel_reg:
-	pci_release_region(pdev, pci_bar);
+	pci_release_region(pdev, GET_PCI_BAR(drv_data));
 err_free_dd:
 	kfree(drv_data);
+	drv_data = NULL;
 err_disable_pci:
 	pci_disable_device(pdev);
 err_unreg_misc:
@@ -891,10 +1053,14 @@ static void pti_pci_remove(struct pci_dev *pdev)
 		tty_port_destroy(&drv_data->port[a]);
 	}
 
+#ifdef CONFIG_INTEL_PTI_STM
+	if (stm_enabled)
+		stm_dev_clean(pdev, &drv_data->stm);
+#endif
 	iounmap(drv_data->pti_ioaddr);
+	pci_release_region(pdev, GET_PCI_BAR(drv_data));
 	pci_set_drvdata(pdev, NULL);
 	kfree(drv_data);
-	pci_release_region(pdev, 1);
 	pci_disable_device(pdev);
 
 	misc_deregister(&pti_char_driver);

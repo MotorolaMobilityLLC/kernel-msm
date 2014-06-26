@@ -110,6 +110,7 @@
 #include <asm/mce.h>
 #include <asm/alternative.h>
 #include <asm/prom.h>
+#include <asm/intel-mid.h>
 
 /*
  * max_low_pfn_mapped: highest direct mapped pfn under 4GB
@@ -491,6 +492,24 @@ static void __init memblock_x86_reserve_range_setup_data(void)
 		early_iounmap(data, sizeof(*data));
 	}
 }
+
+#ifdef CONFIG_CRASH_DUMP
+static void __init e820_crashdump_remove_ram(void)
+{
+	/*
+	* We are doing a crash dump, so remove all RAM ranges
+	* as they are the ones that need to be dumped.
+	* We still need all non-RAM information in order to do I/O.
+	*/
+	/* NOTE: if you use old kexec, please remove memmap=exactmap
+	* which remove all ranges, not only RAM ranges.
+	*/
+	saved_max_pfn = e820_end_of_ram_pfn();
+	e820_remove_range(0, ULLONG_MAX, E820_RAM, 1);
+	sanitize_e820_map(e820.map, ARRAY_SIZE(e820.map), &e820.nr_map);
+	e820_print_map("crash_dump");
+}
+#endif
 
 /*
  * --------- Crashkernel reservation ------------------------------
@@ -926,6 +945,9 @@ void __init setup_arch(char **cmdline_p)
 	parse_setup_data();
 	/* update the e820_saved too */
 	e820_reserve_setup_data();
+#ifdef CONFIG_CRASH_DUMP
+	e820_crashdump_remove_ram();
+#endif
 
 	copy_edd();
 
@@ -1091,7 +1113,9 @@ void __init setup_arch(char **cmdline_p)
 			(max_pfn_mapped<<PAGE_SHIFT) - 1);
 #endif
 
+#ifndef CONFIG_XEN
 	reserve_real_mode();
+#endif
 
 	trim_platform_memory_ranges();
 	trim_low_memory_range();
@@ -1100,7 +1124,9 @@ void __init setup_arch(char **cmdline_p)
 
 	early_trap_pf_init();
 
+#ifndef CONFIG_XEN
 	setup_real_mode();
+#endif
 
 	memblock.current_limit = get_max_mapped();
 	dma_contiguous_reserve(0);
@@ -1195,6 +1221,10 @@ void __init setup_arch(char **cmdline_p)
 	e820_mark_nosave_regions(max_low_pfn);
 
 	x86_init.resources.reserve_resources();
+
+#ifdef CONFIG_INTEL_MID_PSTORE_RAM
+	pstore_ram_reserve_memory();
+#endif
 
 	e820_setup_gap();
 

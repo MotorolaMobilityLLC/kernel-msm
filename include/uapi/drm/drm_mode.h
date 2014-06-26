@@ -59,12 +59,19 @@
 #define DRM_MODE_FLAG_DBLCLK	(1<<12)
 #define DRM_MODE_FLAG_CLKDIV2	(1<<13)
 
+/*  FIXME - Begin - Added at Intel - move this to a file owned by HDMI code? */
+#define DRM_MODE_FLAG_PAR16_9	(1<<14)
+#define DRM_MODE_FLAG_PAR4_3	(1<<15)
+/*  FIXME - End   - Added at Intel - move this to a file owned by HDMI code? */
+
 /* DPMS flags */
 /* bit compatible with the xorg definitions. */
 #define DRM_MODE_DPMS_ON	0
 #define DRM_MODE_DPMS_STANDBY	1
 #define DRM_MODE_DPMS_SUSPEND	2
 #define DRM_MODE_DPMS_OFF	3
+#define DRM_MODE_DPMS_ASYNC_ON	4
+#define DRM_MODE_DPMS_ASYNC_OFF	5
 
 /* Scaling mode options */
 #define DRM_MODE_SCALE_NONE		0 /* Unmodified timing (display or
@@ -92,6 +99,9 @@ struct drm_mode_modeinfo {
 
 	__u32 flags;
 	__u32 type;
+#if defined(CONFIG_DRM_I915)
+	__u32 picture_aspect_ratio;
+#endif
 	char name[DRM_DISPLAY_MODE_LEN];
 };
 
@@ -139,6 +149,7 @@ struct drm_mode_set_plane {
 	/* Source values are 16.16 fixed point */
 	__u32 src_x, src_y;
 	__u32 src_h, src_w;
+	__u64 user_data;
 };
 
 struct drm_mode_get_plane {
@@ -164,7 +175,11 @@ struct drm_mode_get_plane_res {
 #define DRM_MODE_ENCODER_TMDS	2
 #define DRM_MODE_ENCODER_LVDS	3
 #define DRM_MODE_ENCODER_TVDAC	4
-#define DRM_MODE_ENCODER_VIRTUAL 5
+#define DRM_MODE_ENCODER_DSI	5
+#define DRM_MODE_ENCODER_VIRTUAL 6
+
+/*  Temp work-around until older references removed. */
+#define DRM_MODE_ENCODER_MIPI DRM_MODE_ENCODER_DSI
 
 struct drm_mode_get_encoder {
 	__u32 encoder_id;
@@ -202,7 +217,11 @@ struct drm_mode_get_encoder {
 #define DRM_MODE_CONNECTOR_HDMIB	12
 #define DRM_MODE_CONNECTOR_TV		13
 #define DRM_MODE_CONNECTOR_eDP		14
-#define DRM_MODE_CONNECTOR_VIRTUAL      15
+#define DRM_MODE_CONNECTOR_DSI		15
+#define DRM_MODE_CONNECTOR_VIRTUAL      16
+
+/*  Temp work-around until older references removed. */
+#define DRM_MODE_CONNECTOR_MIPI DRM_MODE_CONNECTOR_DSI
 
 struct drm_mode_get_connector {
 
@@ -388,6 +407,19 @@ struct drm_mode_cursor {
 	__u32 height;
 	/* driver specific handle */
 	__u32 handle;
+};
+
+struct drm_mode_cursor2 {
+	__u32 flags;
+	__u32 crtc_id;
+	__s32 x;
+	__s32 y;
+	__u32 width;
+	__u32 height;
+	/* driver specific handle */
+	__u32 handle;
+	__s32 hot_x;
+	__s32 hot_y;
 };
 
 struct drm_mode_crtc_lut {

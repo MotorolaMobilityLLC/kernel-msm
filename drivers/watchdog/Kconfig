@@ -615,6 +615,27 @@ config INTEL_SCU_WATCHDOG
 
 	  To compile this driver as a module, choose M here.
 
+config INTEL_SCU_WATCHDOG_EVO
+	bool "Intel SCU Watchdog Evolution for Mobile Platforms"
+	depends on X86_INTEL_MID
+	---help---
+	  Hardware driver evolution for the watchdog timer built into the Intel
+	  SCU for Intel Mobile Platforms.
+
+	  This driver supports the watchdog evolution implementation in SCU,
+	  available for Merrifield generation.
+
+	  To compile this driver as a module, choose M here.
+
+config DISABLE_SCU_WATCHDOG
+	bool "De-activate Intel SCU Watchdog by cmdline for Mobile Platforms"
+	depends on INTEL_SCU_WATCHDOG || INTEL_SCU_WATCHDOG_EVO
+	---help---
+	  De-activate the watchdog by cmdline for Intel Mobile Platforms.
+	  This allows to use breakpoints without resetting.
+
+	  Only for debug purpose.
+
 config ITCO_WDT
 	tristate "Intel TCO Timer/Watchdog"
 	depends on (X86 || IA64) && PCI

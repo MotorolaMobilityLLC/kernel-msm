@@ -6,11 +6,9 @@
 
 #include <linux/types.h>
 #include <linux/fs.h>
-
 struct proc_dir_entry;
 
 #ifdef CONFIG_PROC_FS
-
 extern void proc_root_init(void);
 extern void proc_flush_task(struct task_struct *);
 

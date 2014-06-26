@@ -1315,21 +1315,25 @@ int native_cpu_disable(void)
 	return 0;
 }
 
+/*
+ * We let cpus' idle tasks announce their own death to complete
+ * logical cpu unplug sequence.
+ */
+DECLARE_COMPLETION(cpu_die_comp);
+
 void native_cpu_die(unsigned int cpu)
 {
 	/* We don't do anything here: idle task is faking death itself. */
-	unsigned int i;
+	unsigned long timeout = HZ; /* 1 sec */
 
-	for (i = 0; i < 10; i++) {
-		/* They ack this in play_dead by setting CPU_DEAD */
-		if (per_cpu(cpu_state, cpu) == CPU_DEAD) {
-			if (system_state == SYSTEM_RUNNING)
-				pr_info("CPU %u is now offline\n", cpu);
-			return;
-		}
-		msleep(100);
-	}
-	pr_err("CPU %u didn't die...\n", cpu);
+	/* They ack this in play_dead by setting CPU_DEAD */
+	wait_for_completion_timeout(&cpu_die_comp, timeout);
+	if (per_cpu(cpu_state, cpu) == CPU_DEAD) {
+		if (system_state == SYSTEM_RUNNING)
+			pr_info("CPU %u is now offline\n", cpu);
+		return;
+	} else
+		pr_err("CPU %u didn't die...\n", cpu);
 }
 
 void play_dead_common(void)
@@ -1341,6 +1345,7 @@ void play_dead_common(void)
 	mb();
 	/* Ack it */
 	__this_cpu_write(cpu_state, CPU_DEAD);
+	complete(&cpu_die_comp);
 
 	/*
 	 * With physical CPU hotplug, we should halt the cpu
@@ -1393,8 +1398,15 @@ static inline void mwait_play_dead(void)
 				highest_subcstate = edx & MWAIT_SUBSTATE_MASK;
 			}
 		}
-		eax = (highest_cstate << MWAIT_SUBSTATE_SIZE) |
-			(highest_subcstate - 1);
+
+		if (highest_cstate < 6) {
+			eax = (highest_cstate << MWAIT_SUBSTATE_SIZE) |
+				(highest_subcstate - 1);
+		} else {
+			/* For s0i3 substate code is 4 */
+			eax = (highest_cstate << MWAIT_SUBSTATE_SIZE) |
+				((highest_subcstate - 1) * 2);
+		}
 	}
 
 	/*
@@ -1405,6 +1417,13 @@ static inline void mwait_play_dead(void)
 	mwait_ptr = &current_thread_info()->flags;
 
 	wbinvd();
+
+	/*
+	 * FIXME: SCU will abort S3 entry with ACK C6 timeout
+	 * if the lapic timer value programmed is low.
+	 * Hence program a high value before offlineing the CPU
+	 */
+	apic_write(APIC_TMICT, ~0);
 
 	while (1) {
 		/*

@@ -25,7 +25,7 @@
  */
 
 #ifndef ARCH_NR_GPIOS
-#define ARCH_NR_GPIOS		256
+#define ARCH_NR_GPIOS		384
 #endif
 
 /*
@@ -117,6 +117,9 @@ struct gpio_chip {
 						unsigned offset, int value);
 	int			(*set_debounce)(struct gpio_chip *chip,
 						unsigned offset, unsigned debounce);
+
+	void			(*set_pinmux)(int gpio, int alt);
+	int			(*get_pinmux)(int gpio);
 
 	void			(*set)(struct gpio_chip *chip,
 						unsigned offset, int value);

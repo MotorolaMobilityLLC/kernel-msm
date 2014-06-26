@@ -44,7 +44,7 @@ int iio_map_array_register(struct iio_dev *indio_dev, struct iio_map *maps)
 		}
 		mapi->map = &maps[i];
 		mapi->indio_dev = indio_dev;
-		list_add(&mapi->l, &iio_map_list);
+		list_add_tail(&mapi->l, &iio_map_list);
 		i++;
 	}
 error_ret:
@@ -413,6 +413,48 @@ void iio_channel_release_all(struct iio_channel *channels)
 }
 EXPORT_SYMBOL_GPL(iio_channel_release_all);
 
+int iio_channel_get_num(const struct iio_channel *chan)
+{
+	int num = 0;
+
+	if (chan == NULL)
+		return -ENODEV;
+
+	while (chan[num].indio_dev)
+		num++;
+
+	return num;
+}
+EXPORT_SYMBOL_GPL(iio_channel_get_num);
+
+int iio_channel_get_name(const struct iio_channel *chan, char **chan_name)
+{
+	int i = 0;
+	struct iio_map_internal *c = NULL;
+
+	if (chan == NULL)
+		return -ENODEV;
+
+	if (chan_name == NULL)
+		return -EINVAL;
+
+	while (chan[i].indio_dev) {
+		mutex_lock(&iio_map_list_lock);
+		list_for_each_entry(c, &iio_map_list, l) {
+			if (strcmp(chan[i].channel->datasheet_name,
+				c->map->adc_channel_label) != 0)
+				continue;
+			strcpy(chan_name[i], c->map->consumer_channel);
+			break;
+		}
+		mutex_unlock(&iio_map_list_lock);
+		i++;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(iio_channel_get_name);
+
 static int iio_channel_read(struct iio_channel *chan, int *val, int *val2,
 	enum iio_chan_info_enum info)
 {
@@ -442,6 +484,24 @@ err_unlock:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(iio_read_channel_raw);
+
+int iio_read_channel_all_raw(struct iio_channel *chan, int *val)
+{
+	int ret;
+
+	mutex_lock(&chan->indio_dev->info_exist_lock);
+	if (chan->indio_dev->info == NULL) {
+		ret = -ENODEV;
+		goto err_unlock;
+	}
+
+	ret = chan->indio_dev->info->read_all_raw(chan, val);
+err_unlock:
+	mutex_unlock(&chan->indio_dev->info_exist_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(iio_read_channel_all_raw);
 
 static int iio_convert_raw_to_processed_unlocked(struct iio_channel *chan,
 	int raw, int *processed, unsigned int scale)

@@ -295,7 +295,7 @@ static int xhci_stop_device(struct xhci_hcd *xhci, int slot_id, int suspend)
 	/* Wait for last stop endpoint command to finish */
 	timeleft = wait_for_completion_interruptible_timeout(
 			cmd->completion,
-			USB_CTRL_SET_TIMEOUT);
+			XHCI_CMD_DEFAULT_TIMEOUT);
 	if (timeleft <= 0) {
 		xhci_warn(xhci, "%s while waiting for stop endpoint command\n",
 				timeleft == 0 ? "Timeout" : "Signal");
@@ -548,6 +548,8 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 	u16 link_state = 0;
 	u16 wake_mask = 0;
 	u16 timeout = 0;
+	u32 __iomem *status_reg = NULL;
+	u32 i, command, num_ports, selector;
 
 	max_ports = xhci_get_ports(hcd, &port_array);
 	bus_state = &xhci->bus_state[hcd_index(hcd)];
@@ -703,12 +705,15 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			link_state = (wIndex & 0xff00) >> 3;
 		if (wValue == USB_PORT_FEAT_REMOTE_WAKE_MASK)
 			wake_mask = wIndex & 0xff00;
+		selector = wIndex >> 8;
 		/* The MSB of wIndex is the U1/U2 timeout */
 		timeout = (wIndex & 0xff00) >> 8;
 		wIndex &= 0xff;
 		if (!wIndex || wIndex > max_ports)
 			goto error;
 		wIndex--;
+		status_reg = &xhci->op_regs->port_power_base +
+			NUM_PORT_REGS*wIndex;
 		temp = xhci_readl(xhci, port_array[wIndex]);
 		if (temp == 0xffffffff) {
 			retval = -ENODEV;
@@ -823,6 +828,16 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				bus_state->suspended_ports |= 1 << wIndex;
 			break;
 		case USB_PORT_FEAT_POWER:
+			/* FIXME Do not turn on BYT XHCI port 6 power,
+			 * Disable this port's power to disable HSIC hub
+			 */
+			 if ((xhci->quirks & XHCI_PORT_DISABLE_QUIRK) &&
+				(wIndex == 5)) {
+				temp = xhci_readl(xhci, port_array[wIndex]);
+				temp &= ~PORT_POWER;
+				xhci_writel(xhci, temp, port_array[wIndex]);
+				break;
+			}
 			/*
 			 * Turn on ports, even if there isn't per-port switching.
 			 * HC will report connect events even before this is set.
@@ -864,21 +879,96 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 
 			temp = xhci_readl(xhci, port_array[wIndex]);
 			break;
+		case USB_PORT_FEAT_TEST:
+			if (!selector || selector >= 5 || !status_reg)
+				goto error;
+			/*
+			 * Disable all Device Slots.
+			 */
+			for (i = 0; i < MAX_HC_SLOTS; i++) {
+				if (xhci->dcbaa->dev_context_ptrs[i]) {
+					if (xhci_queue_slot_control(xhci,
+						TRB_DISABLE_SLOT, i)) {
+						xhci_err(xhci,
+						"Disable slot[%d] failed!\n",
+						i);
+						goto error;
+					}
+				xhci_dbg(xhci, "Disable Slot[%d].\n", i);
+				}
+			}
+			/*
+			 *	All ports shall be in the Disable state (PP = 0)
+			 */
+			xhci_dbg(xhci, "Disable all port (PP = 0)\n");
+			num_ports = HCS_MAX_PORTS(xhci->hcs_params1);
+			for (i = 0; i < num_ports; i++) {
+				u32 __iomem *sreg =
+					&xhci->op_regs->port_status_base +
+						NUM_PORT_REGS*i;
+				temp = xhci_readl(xhci, sreg);
+				temp &= ~PORT_POWER;
+				xhci_writel(xhci, temp, sreg);
+			}
+
+			/*	Set the Run/Stop (R/S) bit in the USBCMD
+			 *	register to a '0' and wait for HCHalted(HCH) bit
+			 *	in the USBSTS register, to transition to a '1'.
+			 */
+			xhci_dbg(xhci, "Stop controller\n");
+			command = xhci_readl(xhci, &xhci->op_regs->command);
+			command &= ~CMD_RUN;
+			xhci_writel(xhci, command, &xhci->op_regs->command);
+			if (xhci_handshake(xhci, &xhci->op_regs->status,
+						STS_HALT, STS_HALT, 100*100)) {
+				xhci_warn(xhci, "WARN: xHC CMD_RUN timeout\n");
+				return -ETIMEDOUT;
+			}
+
+			/*
+			 * start to test
+			 */
+			xhci_dbg(xhci, "test case:");
+			switch (selector) {
+			case 1:
+				xhci_dbg(xhci, "TEST_J\n");
+				break;
+			case 2:
+				xhci_dbg(xhci, "TEST_K\n");
+				break;
+			case 3:
+				xhci_dbg(xhci, "TEST_SE0_NAK\n");
+				break;
+			case 4:
+				xhci_dbg(xhci, "TEST_PACKET\n");
+				break;
+			default:
+				xhci_dbg(xhci, "Invalide test case!\n");
+				goto error;
+			}
+			/* prevent controller enters Low power state in Test mode.
+			 * some controller will exit Test mode once enter low power
+			 * mode */
+			pm_runtime_get(hcd->self.controller);
+			temp = xhci_readl(xhci, status_reg);
+			temp |= selector << 28;
+			xhci_writel(xhci, temp, status_reg);
+			break;
 		case USB_PORT_FEAT_U1_TIMEOUT:
 			if (hcd->speed != HCD_USB3)
 				goto error;
-			temp = xhci_readl(xhci, port_array[wIndex] + 1);
+			temp = xhci_readl(xhci, port_array[wIndex] + PORTPMSC);
 			temp &= ~PORT_U1_TIMEOUT_MASK;
 			temp |= PORT_U1_TIMEOUT(timeout);
-			xhci_writel(xhci, temp, port_array[wIndex] + 1);
+			xhci_writel(xhci, temp, port_array[wIndex] + PORTPMSC);
 			break;
 		case USB_PORT_FEAT_U2_TIMEOUT:
 			if (hcd->speed != HCD_USB3)
 				goto error;
-			temp = xhci_readl(xhci, port_array[wIndex] + 1);
+			temp = xhci_readl(xhci, port_array[wIndex] + PORTPMSC);
 			temp &= ~PORT_U2_TIMEOUT_MASK;
 			temp |= PORT_U2_TIMEOUT(timeout);
-			xhci_writel(xhci, temp, port_array[wIndex] + 1);
+			xhci_writel(xhci, temp, port_array[wIndex] + PORTPMSC);
 			break;
 		default:
 			goto error;
@@ -986,6 +1076,10 @@ int xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 	struct xhci_bus_state *bus_state;
 	bool reset_change = false;
 
+	/* Forbid to access register if controller in suspneded */
+	if (!HCD_HW_ACCESSIBLE(hcd))
+		return -ESHUTDOWN;
+
 	max_ports = xhci_get_ports(hcd, &port_array);
 	bus_state = &xhci->bus_state[hcd_index(hcd)];
 
@@ -1092,20 +1186,6 @@ int xhci_bus_suspend(struct usb_hcd *hcd)
 		t1 = xhci_port_state_to_neutral(t1);
 		if (t1 != t2)
 			xhci_writel(xhci, t2, port_array[port_index]);
-
-		if (hcd->speed != HCD_USB3) {
-			/* enable remote wake up for USB 2.0 */
-			__le32 __iomem *addr;
-			u32 tmp;
-
-			/* Add one to the port status register address to get
-			 * the port power control register address.
-			 */
-			addr = port_array[port_index] + 1;
-			tmp = xhci_readl(xhci, addr);
-			tmp |= PORT_RWE;
-			xhci_writel(xhci, tmp, addr);
-		}
 	}
 	hcd->state = HC_STATE_SUSPENDED;
 	bus_state->next_statechange = jiffies + msecs_to_jiffies(10);
@@ -1160,6 +1240,10 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 				xhci_set_link_state(xhci, port_array,
 						port_index, XDEV_RESUME);
 
+				/* need 1ms delay between access to USB2 PORTSC
+				 * and USB3 PORTSC to avoid Fabric Error.
+				 * */
+				mdelay(1);
 				spin_unlock_irqrestore(&xhci->lock, flags);
 				msleep(20);
 				spin_lock_irqsave(&xhci->lock, flags);
@@ -1184,23 +1268,29 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 				xhci_ring_device(xhci, slot_id);
 		} else
 			xhci_writel(xhci, temp, port_array[port_index]);
-
-		if (hcd->speed != HCD_USB3) {
-			/* disable remote wake up for USB 2.0 */
-			__le32 __iomem *addr;
-			u32 tmp;
-
-			/* Add one to the port status register address to get
-			 * the port power control register address.
-			 */
-			addr = port_array[port_index] + 1;
-			tmp = xhci_readl(xhci, addr);
-			tmp &= ~PORT_RWE;
-			xhci_writel(xhci, tmp, addr);
-		}
 	}
 
 	(void) xhci_readl(xhci, &xhci->op_regs->command);
+
+	/* This is for wakeup IRQ case. For USB3 remote wakeup for S3 case,
+	 * the wakeup IRQ get immediately which before HCD set accessiable.
+	 * So the IRQ be disabled in usb_hcd_irq. For S3 case, after bus
+	 * resume done, the kernel will call their children directly. This
+	 * will cause children driver resume called before hcd_resume_work.
+	 *
+	 * The USB device corresponding port only be resume to U0/Enabled
+	 * state during xhci driver handle port change event. So this gap
+	 * will cause port haven't resumed when matched usb driver resume
+	 * callback be called. It will cause usb core try to disconnect the
+	 * usb device and cause some unexpected behavior.
+	 *
+	 * So we need to enable IRQ immediately at the end of bus_resume to
+	 * prevent above gap.
+	 **/
+	if (HCD_IRQ_DISABLED(hcd) && hcd->has_wakeup_irq) {
+		clear_bit(HCD_FLAG_IRQ_DISABLED, &hcd->flags);
+		enable_irq(hcd->irq);
+	}
 
 	bus_state->next_statechange = jiffies + msecs_to_jiffies(5);
 	/* re-enable irqs */

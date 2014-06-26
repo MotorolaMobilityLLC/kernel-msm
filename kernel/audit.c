@@ -64,6 +64,9 @@
 #include <linux/freezer.h>
 #include <linux/tty.h>
 #include <linux/pid_namespace.h>
+#ifdef CONFIG_TRACEPOINT_TO_EVENT
+#include <trace/events/tp2e.h>
+#endif
 
 #include "audit.h"
 
@@ -436,6 +439,20 @@ static void flush_hold_queue(void)
 	if (skb)
 		consume_skb(skb);
 }
+
+#ifdef CONFIG_TRACEPOINT_TO_EVENT
+static void audit_tp2e_skb(struct sk_buff *skb)
+{
+	struct nlmsghdr *nlh = nlmsg_hdr(skb);
+	char *data = nlmsg_data(nlh);
+
+	/* for the moment, only SE violation needs to be reported */
+	if ((nlh->nlmsg_type == AUDIT_AVC) || (nlh->nlmsg_type == AUDIT_SELINUX_ERR)) {
+		trace_tp2e_generic_event(TP2E_EV_INFO, "SELinux", "Violation",
+		"", "", "", "", "", data, "");
+	}
+}
+#endif
 
 static int kauditd_thread(void *dummy)
 {
@@ -1669,7 +1686,10 @@ void audit_log_end(struct audit_buffer *ab)
 	} else {
 		struct nlmsghdr *nlh = nlmsg_hdr(ab->skb);
 		nlh->nlmsg_len = ab->skb->len - NLMSG_HDRLEN;
-
+#ifdef CONFIG_TRACEPOINT_TO_EVENT
+		/* function added to create a crashtool event on condition */
+		audit_tp2e_skb(ab->skb);
+#endif
 		if (audit_pid) {
 			skb_queue_tail(&audit_skb_queue, ab->skb);
 			wake_up_interruptible(&kauditd_wait);

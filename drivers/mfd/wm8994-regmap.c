@@ -1107,6 +1107,7 @@ static bool wm8958_readable_register(struct device *dev, unsigned int reg)
 	case WM8958_MBC_LPF_2:
 	case WM8958_MBC_RMS_LIMIT_1:
 	case WM8958_MBC_RMS_LIMIT_2:
+	case 0xCB:
 		return true;
 	default:
 		return wm8994_readable_register(dev, reg);

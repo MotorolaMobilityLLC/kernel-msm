@@ -115,6 +115,11 @@ void *hcd_buffer_alloc(
 		return kmalloc(size, mem_flags);
 	}
 
+	/* we won't use internal SRAM as data payload, we can't get
+	   any benefits from it */
+	if (hcd->has_sram && hcd->sram_no_payload)
+		return dma_alloc_coherent(NULL, size, dma, mem_flags);
+
 	for (i = 0; i < HCD_BUFFER_POOLS; i++) {
 		if (size <= pool_max[i])
 			return dma_pool_alloc(hcd->pool[i], mem_flags, dma);
@@ -138,6 +143,11 @@ void hcd_buffer_free(
 	if (!bus->controller->dma_mask &&
 	    !(hcd->driver->flags & HCD_LOCAL_MEM)) {
 		kfree(addr);
+		return;
+	}
+
+	if (hcd->has_sram && hcd->sram_no_payload) {
+		dma_free_coherent(NULL, size, addr, dma);
 		return;
 	}
 

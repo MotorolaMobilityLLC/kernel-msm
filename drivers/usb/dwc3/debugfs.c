@@ -638,6 +638,300 @@ static const struct file_operations dwc3_link_state_fops = {
 	.release		= single_release,
 };
 
+static int dwc3_hiber_enabled_show(struct seq_file *s, void *unused)
+{
+	struct dwc3		*dwc = s->private;
+
+	if (dwc->hiber_enabled)
+		seq_puts(s, "hibernation enabled\n");
+	else
+		seq_puts(s, "hibernation disabled\n");
+
+	return 0;
+}
+
+static int dwc3_hiber_enabled_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dwc3_hiber_enabled_show, inode->i_private);
+}
+
+static ssize_t dwc3_hiber_enabled_write(struct file *file,
+		const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file		*s = file->private_data;
+	struct dwc3		*dwc = s->private;
+	char			buf[32];
+	int			enabled = 0;
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	sscanf(buf, "%d", &enabled);
+	dwc->hiber_enabled = enabled;
+
+	return count;
+}
+
+static const struct file_operations dwc3_hiber_enabled_fops = {
+	.open			= dwc3_hiber_enabled_open,
+	.write			= dwc3_hiber_enabled_write,
+	.read			= seq_read,
+	.llseek			= seq_lseek,
+	.release		= single_release,
+};
+
+static void dwc3_dump_requests(struct seq_file *s, struct list_head *head,
+					const char *list_name)
+{
+	struct dwc3_request	*dreq;
+
+	if (list_empty(head)) {
+		seq_printf(s, "list %s is empty\n", list_name);
+		return;
+	}
+
+	seq_printf(s, "list %s:\n", list_name);
+	list_for_each_entry(dreq, head, list) {
+		struct usb_request *req = &dreq->request;
+
+		seq_printf(s, "usb_request@0x%p: buf@0x%p(dma@0x%llx): len=0x%x: status=%d: actual=0x%x; start_slot=%u: trb@%p: trb_dma@0x%llx\n",
+			req, req->buf, (unsigned long long)req->dma,
+			req->length, req->status, req->actual,
+			dreq->start_slot, dreq->trb,
+			(unsigned long long)dreq->trb_dma);
+	}
+}
+
+static void dwc3_dump_trbs(struct seq_file *s, struct dwc3_ep *dep)
+{
+	struct dwc3_trb	*trb;
+	int i;
+
+	seq_printf(s, "busy_slot = %u, free_slot = %u\n",
+				dep->busy_slot % DWC3_TRB_NUM,
+				dep->free_slot % DWC3_TRB_NUM);
+
+	seq_puts(s, "\t bpl, bph, size, ctrl\n");
+	for (i = 0; i < DWC3_TRB_NUM; i++) {
+		trb = &dep->trb_pool[i];
+		if (i == dep->busy_slot % DWC3_TRB_NUM) {
+			seq_puts(s, "busy_slot--|\n");
+			seq_puts(s, "           \\\n");
+		}
+		if (i == dep->free_slot % DWC3_TRB_NUM) {
+			seq_puts(s, "free_slot--|\n");
+			seq_puts(s, "           \\\n");
+		}
+		seq_printf(s, "trb[%d](dma&0x%llx): %08x, %08x, %08x, %08x\n",
+			i, (unsigned long long) dep->trb_pool_dma + i * sizeof(*trb),
+			trb->bpl, trb->bph, trb->size, trb->ctrl);
+	}
+}
+
+static void dwc3_dump_dev_event(struct seq_file *s, union dwc3_event event)
+{
+	seq_puts(s, "[0]DEV ");
+	seq_printf(s, "[1:7]%s ",
+		event.type.type == DWC3_EVENT_TYPE_DEV ? "TYPE_DEV" :
+		event.type.type == DWC3_EVENT_TYPE_CARKIT ? "TYPE_CARKIT" :
+		"TYPE_I2C");
+
+	switch (event.devt.type) {
+	case DWC3_DEVICE_EVENT_DISCONNECT:
+		seq_puts(s, "[8:11] DISCONNECT ");
+		break;
+	case DWC3_DEVICE_EVENT_RESET:
+		seq_puts(s, "[8:11] RESET ");
+		break;
+	case DWC3_DEVICE_EVENT_CONNECT_DONE:
+		seq_puts(s, "[8:11] CONNECTION_DONE ");
+		break;
+	case DWC3_DEVICE_EVENT_WAKEUP:
+		seq_puts(s, "[8:11] WAKEUP ");
+		break;
+	case DWC3_DEVICE_EVENT_LINK_STATUS_CHANGE:
+		seq_puts(s, "[8:11] LINK_CHANGE ");
+		seq_puts(s, "[16:24] ");
+		seq_printf(s, "%s ",
+			event.devt.event_info & BIT(4) ? "SS" : "HS");
+		switch (event.devt.event_info & DWC3_LINK_STATE_MASK) {
+		case DWC3_LINK_STATE_U0:
+			seq_puts(s, "U0");
+			break;
+		case DWC3_LINK_STATE_U1:
+			seq_puts(s, "U1");
+			break;
+		case DWC3_LINK_STATE_U2:
+			seq_puts(s, "U2");
+			break;
+		case DWC3_LINK_STATE_U3:
+			seq_puts(s, "U3");
+			break;
+		case DWC3_LINK_STATE_SS_DIS:
+			seq_puts(s, "SS_DIS");
+			break;
+		case DWC3_LINK_STATE_RX_DET:
+			seq_puts(s, "RX_DET");
+			break;
+		case DWC3_LINK_STATE_SS_INACT:
+			seq_puts(s, "SS_INACT");
+			break;
+		case DWC3_LINK_STATE_POLL:
+			seq_puts(s, "POLL");
+			break;
+		case DWC3_LINK_STATE_RECOV:
+			seq_puts(s, "RECOV");
+			break;
+		case DWC3_LINK_STATE_HRESET:
+			seq_puts(s, "HRESET");
+			break;
+		case DWC3_LINK_STATE_CMPLY:
+			seq_puts(s, "CMPLY");
+			break;
+		case DWC3_LINK_STATE_LPBK:
+			seq_puts(s, "LPBK");
+			break;
+		case DWC3_LINK_STATE_RESET:
+			seq_puts(s, "RESET");
+			break;
+		case DWC3_LINK_STATE_RESUME:
+			seq_puts(s, "RESUME");
+			break;
+		}
+		seq_printf(s, "(%x) ", event.devt.event_info & DWC3_LINK_STATE_MASK);
+		break;
+	case DWC3_DEVICE_EVENT_HIBER_REQ:
+		seq_puts(s, "[8:11] HIBER_REQ ");
+		break;
+	case DWC3_DEVICE_EVENT_EOPF:
+		seq_puts(s, "[8:11] EOPF ");
+		break;
+	case DWC3_DEVICE_EVENT_SOF:
+		seq_puts(s, "[8:11] SOF ");
+		break;
+	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
+		seq_puts(s, "[8:11] ERRATIC_ERROR ");
+		break;
+	case DWC3_DEVICE_EVENT_CMD_CMPL:
+		seq_puts(s, "[8:11] COMMAND_COMPLETE ");
+		break;
+	case DWC3_DEVICE_EVENT_OVERFLOW:
+		seq_puts(s, "[8:11] OVERFLOW ");
+		break;
+	default:
+		seq_printf(s, "[8:11] UNKNOWN (%x) ", event.devt.type);
+	}
+}
+
+static void dwc3_dump_ep_event(struct seq_file *s, union dwc3_event event)
+{
+	seq_puts(s, "[0]EP ");
+	seq_printf(s, "[1:5]ep%d ", event.depevt.endpoint_number);
+	seq_printf(s, "[6:9]%s ",
+		dwc3_ep_event_string(event.depevt.endpoint_event));
+
+	switch (event.depevt.endpoint_event) {
+	case DWC3_DEPEVT_XFERCOMPLETE:
+	case DWC3_DEPEVT_XFERINPROGRESS:
+		if (event.depevt.status & DEPEVT_STATUS_BUSERR)
+			seq_puts(s, "[12] BUSERR ");
+		if (event.depevt.status & DEPEVT_STATUS_SHORT)
+			seq_puts(s, "[13] SHORT ");
+		if (event.depevt.status & DEPEVT_STATUS_IOC)
+			seq_puts(s, "[14] IOC ");
+		if (event.depevt.status & DEPEVT_STATUS_LST)
+			seq_puts(s, "[15] LST ");
+		break;
+	case DWC3_DEPEVT_XFERNOTREADY:
+		if ((event.depevt.status & 0x3) == 1)
+			seq_puts(s, "[12:13] Data_Stage ");
+		else if ((event.depevt.status & 0x3) == 2)
+			seq_puts(s, "[12:13] Status_Stage ");
+		if (event.depevt.status & DEPEVT_STATUS_TRANSFER_ACTIVE)
+			seq_puts(s, "[15] XferActive ");
+		else
+			seq_puts(s, "[15] XferNotActive ");
+		break;
+	case DWC3_DEPEVT_EPCMDCMPLT:
+		if (event.depevt.status & BIT(0))
+			seq_puts(s, "[12:15] Invalid Transfer Resource ");
+		break;
+	}
+}
+
+static void dwc3_dump_event_buf(struct seq_file *s, struct dwc3_event_buffer *evt)
+{
+	union dwc3_event	event;
+	int			i;
+
+	seq_printf(s, "evt->buf=0x%p(dma@0x%llx), length=%u, lpos=%u, count=%u, flags=%s\n",
+		evt->buf, (unsigned long long) evt->dma, evt->length,
+		evt->lpos, evt->count,
+		evt->flags & DWC3_EVENT_PENDING ? "pending" : "0");
+
+	for (i = 0; i < evt->length; i += 4) {
+		event.raw = *(u32 *) (evt->buf + i);
+		if (i == evt->lpos) {
+			seq_puts(s, "lpos-------|\n");
+			seq_puts(s, "           \\\n");
+		}
+		seq_printf(s, "event[%d]: %08x ", i, event.raw);
+
+		/* analyze device specific events */
+		if (event.type.is_devspec)
+			dwc3_dump_dev_event(s, event);
+		else
+			dwc3_dump_ep_event(s, event);
+
+		seq_puts(s, "\n");
+	}
+}
+
+static int dwc3_snapshot_show(struct seq_file *s, void *unused)
+{
+	struct dwc3		*dwc = s->private;
+	unsigned long		flags;
+	int			i;
+
+	spin_lock_irqsave(&dwc->lock, flags);
+	for (i = 2; i < DWC3_ENDPOINTS_NUM; i++) {
+		struct dwc3_ep	*dep = dwc->eps[i];
+
+		if (!(dep->flags & DWC3_EP_ENABLED))
+			continue;
+
+		seq_printf(s, "[%s]\n", dep->name);
+		dwc3_dump_requests(s, &dep->request_list, "request_list");
+		dwc3_dump_requests(s, &dep->req_queued, "req_queued");
+		if (!list_empty(&dep->req_queued))
+			dwc3_dump_trbs(s, dep);
+		seq_puts(s, "\n");
+	}
+	dwc3_dump_event_buf(s, dwc->ev_buffs[0]);
+	spin_unlock_irqrestore(&dwc->lock, flags);
+
+	return 0;
+}
+
+static int dwc3_snapshot_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dwc3_snapshot_show, inode->i_private);
+}
+
+static ssize_t dwc3_snapshot_write(struct file *file,
+		const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	return count;
+}
+
+static const struct file_operations dwc3_snapshot_fops = {
+	.open			= dwc3_snapshot_open,
+	.write			= dwc3_snapshot_write,
+	.read			= seq_read,
+	.llseek			= seq_lseek,
+	.release		= single_release,
+};
+
 int dwc3_debugfs_init(struct dwc3 *dwc)
 {
 	struct dentry		*root;
@@ -688,6 +982,20 @@ int dwc3_debugfs_init(struct dwc3 *dwc)
 
 		file = debugfs_create_file("link_state", S_IRUGO | S_IWUSR, root,
 				dwc, &dwc3_link_state_fops);
+		if (!file) {
+			ret = -ENOMEM;
+			goto err1;
+		}
+
+		file = debugfs_create_file("hiber_enabled", S_IRUGO | S_IWUSR,
+				root, dwc, &dwc3_hiber_enabled_fops);
+		if (!file) {
+			ret = -ENOMEM;
+			goto err1;
+		}
+
+		file = debugfs_create_file("snapshot", S_IRUGO | S_IWUSR, root,
+				dwc, &dwc3_snapshot_fops);
 		if (!file) {
 			ret = -ENOMEM;
 			goto err1;

@@ -198,6 +198,15 @@ config SPI_IMX
 	  This enables using the Freescale i.MX SPI controllers in master
 	  mode.
 
+config SPI_INTEL_MID_SSP
+	tristate "SSP SPI controller driver for Intel MID platforms (EXPERIMENTAL)"
+	depends on SPI_MASTER && INTEL_MID_DMAC
+	help
+	  This is the unified SSP SPI slave controller driver for the Intel
+	  MID platforms (Moorestown, Medfield, Clovertrial and
+	  Merrifield), primarily used to implement a SPI host controller
+	  driver over a SSP host controller.
+
 config SPI_LM70_LLP
 	tristate "Parallel port adapter for LM70 eval board (DEVELOPMENT)"
 	depends on PARPORT

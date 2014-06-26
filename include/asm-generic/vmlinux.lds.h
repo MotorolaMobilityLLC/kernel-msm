@@ -416,6 +416,8 @@
 		*(.text.hot)						\
 		*(.text)						\
 		*(.ref.text)						\
+		*(.text.ssse3)					\
+		*(.rodata.ssse3)				\
 	DEV_KEEP(init.text)						\
 	DEV_KEEP(exit.text)						\
 	CPU_KEEP(init.text)						\

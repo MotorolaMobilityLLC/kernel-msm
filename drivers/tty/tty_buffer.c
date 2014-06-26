@@ -61,7 +61,12 @@ static struct tty_buffer *tty_buffer_alloc(struct tty_port *port, size_t size)
 {
 	struct tty_buffer *p;
 
-	if (port->buf.memory_used + size > 65536)
+	/* This will increase the maximum size of the buffering that is between
+	   the MUX write and the gsmtty read by the client to an amount that is
+	   higher than the maximum size of what the modem can flush through its
+	   NVM code. This is a workaround pending a proper flow control
+	   solution. */
+	if (port->buf.memory_used + size > (6 * 65536))
 		return NULL;
 	p = kmalloc(sizeof(struct tty_buffer) + 2 * size, GFP_ATOMIC);
 	if (p == NULL)

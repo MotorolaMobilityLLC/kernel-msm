@@ -679,6 +679,31 @@ static void input_dev_release_keys(struct input_dev *dev)
 }
 
 /*
+ * Simulate keyup events for all keys that were marked as
+ * pressed during input device suspend.
+ * The function must be called with dev->event_lock held.
+ */
+static void input_dev_resume_keys(struct input_dev *dev)
+{
+	int code;
+	bool sync = false;
+
+	if (!is_event_supported(EV_KEY, dev->evbit, EV_MAX))
+		return;
+
+	for (code = 0; code <= KEY_MAX; code++) {
+		if (is_event_supported(code, dev->keybit, KEY_MAX) &&
+		    test_bit(code, dev->key_suspend) &&
+		    __test_and_clear_bit(code, dev->key)) {
+			sync = true;
+			input_pass_event(dev, EV_KEY, code, 0);
+		}
+	}
+	if (sync)
+		input_pass_event(dev, EV_SYN, SYN_REPORT, 1);
+}
+
+/*
  * Prepare device for unregistering
  */
 static void input_disconnect_device(struct input_dev *dev)
@@ -1658,10 +1683,6 @@ void input_reset_device(struct input_dev *dev)
 	if (dev->users) {
 		input_dev_toggle(dev, true);
 
-		/*
-		 * Keys that have been pressed at suspend time are unlikely
-		 * to be still pressed when we resume.
-		 */
 		spin_lock_irq(&dev->event_lock);
 		input_dev_release_keys(dev);
 		spin_unlock_irq(&dev->event_lock);
@@ -1678,8 +1699,11 @@ static int input_dev_suspend(struct device *dev)
 
 	mutex_lock(&input_dev->mutex);
 
-	if (input_dev->users)
+	if (input_dev->users) {
 		input_dev_toggle(input_dev, false);
+		memcpy(input_dev->key_suspend, input_dev->key,
+			sizeof(input_dev->key_suspend));
+	}
 
 	mutex_unlock(&input_dev->mutex);
 
@@ -1690,7 +1714,22 @@ static int input_dev_resume(struct device *dev)
 {
 	struct input_dev *input_dev = to_input_dev(dev);
 
-	input_reset_device(input_dev);
+	mutex_lock(&input_dev->mutex);
+
+	if (input_dev->users) {
+		input_dev_toggle(input_dev, true);
+
+		/*
+		 * For keys that have been pressed at suspend time
+		 * and are seen as released at resume time, simulate
+		 * a key release event for upper layers.
+		 */
+		spin_lock_irq(&input_dev->event_lock);
+		input_dev_resume_keys(input_dev);
+		spin_unlock_irq(&input_dev->event_lock);
+	}
+
+	mutex_unlock(&input_dev->mutex);
 
 	return 0;
 }

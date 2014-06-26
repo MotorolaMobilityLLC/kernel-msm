@@ -37,13 +37,14 @@
  * struct logger_log - represents a specific log, such as 'main' or 'radio'
  * @buffer:	The actual ring buffer
  * @misc:	The "misc" device representing the log
- * @wq:		The wait queue for @readers
+ * @wq:	The wait queue for @readers
  * @readers:	This log's readers
  * @mutex:	The mutex that protects the @buffer
  * @w_off:	The current write head offset
  * @head:	The head, or location that readers start reading at.
  * @size:	The size of the log
  * @logs:	The list of log channels
+ * @plugins:    The list of plugins (to export traces to different outputs)
  *
  * This structure lives from module insertion until module removal, so it does
  * not need additional reference counting. The structure is protected by the
@@ -59,6 +60,7 @@ struct logger_log {
 	size_t			head;
 	size_t			size;
 	struct list_head	logs;
+	struct list_head        plugins;
 };
 
 static LIST_HEAD(log_list);
@@ -473,6 +475,8 @@ static ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	struct logger_entry header;
 	struct timespec now;
 	ssize_t ret = 0;
+	unsigned long num_segs = nr_segs;
+	struct logger_plugin *plugin;
 
 	now = current_kernel_time();
 
@@ -509,10 +513,20 @@ static ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 		/* figure out how much of this vector we can keep */
 		len = min_t(size_t, iov->iov_len, header.len - ret);
 
-		/* write out this segment's payload */
+		/* send this segment's payload to the different plugins */
+		list_for_each_entry(plugin, &log->plugins, list)
+			plugin->write_seg(iov->iov_base, len,
+				true, /* from_user */
+				(nr_segs + 1 == num_segs), /* start of msg ? */
+				(nr_segs == 0), /* end of msg ? */
+				plugin->data); /* call-back data */
+
+		/* write out this segment's payload to the log's buffer */
 		nr = do_write_log_from_user(log, iov->iov_base, len);
 		if (unlikely(nr < 0)) {
 			log->w_off = orig;
+			list_for_each_entry(plugin, &log->plugins, list)
+				plugin->write_seg_recover(plugin->data);
 			mutex_unlock(&log->mutex);
 			return nr;
 		}
@@ -536,6 +550,17 @@ static struct logger_log *get_log_from_minor(int minor)
 	list_for_each_entry(log, &log_list, logs)
 		if (log->misc.minor == minor)
 			return log;
+	return NULL;
+}
+
+static struct logger_log *get_log_from_name(const char *name)
+{
+	struct logger_log *log;
+
+	list_for_each_entry(log, &log_list, logs)
+		if (strncmp(log->misc.name, name, strlen(name)) == 0)
+			return log;
+
 	return NULL;
 }
 
@@ -775,6 +800,7 @@ static int __init create_log(char *log_name, int size)
 
 	init_waitqueue_head(&log->wq);
 	INIT_LIST_HEAD(&log->readers);
+	INIT_LIST_HEAD(&log->plugins);
 	mutex_init(&log->mutex);
 	log->w_off = 0;
 	log->head = 0;
@@ -842,9 +868,51 @@ static void __exit logger_exit(void)
 	}
 }
 
-
 device_initcall(logger_init);
 module_exit(logger_exit);
+
+#include "logger_kernel.c"
+
+/**
+ * @logger_add_plugin() - adds a plugin to a given log
+ *
+ * @plugin: The @logger_plugin to be added
+ * @name:   The name of the targetted log
+ */
+void logger_add_plugin(struct logger_plugin *plugin, const char *name)
+{
+	struct logger_log *log = get_log_from_name(name);
+
+	if ((plugin == NULL) || (log == NULL))
+		return;
+
+	mutex_lock(&log->mutex);
+	list_add_tail(&plugin->list, &log->plugins);
+	plugin->init(plugin->data);
+	mutex_unlock(&log->mutex);
+}
+EXPORT_SYMBOL(logger_add_plugin);
+
+/**
+ * @logger_remove_plugin() - removes a plugin from a given log
+ *
+ * @plugin: The @logger_plugin to be removed
+ * @name:   The name of the targetted log
+ */
+void logger_remove_plugin(struct logger_plugin *plugin, const char *name)
+{
+	struct logger_log *log = get_log_from_name(name);
+
+	if ((plugin == NULL) || (log == NULL))
+		return;
+
+	mutex_lock(&log->mutex);
+	plugin->exit(plugin->data);
+	list_del(&plugin->list);
+	mutex_unlock(&log->mutex);
+}
+EXPORT_SYMBOL(logger_remove_plugin);
+
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Robert Love, <rlove@google.com>");

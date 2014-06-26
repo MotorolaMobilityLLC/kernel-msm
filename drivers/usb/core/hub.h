@@ -85,6 +85,7 @@ struct usb_hub {
  * @portnum: port index num based one
  * @power_is_on: port's power state
  * @did_runtime_put: port has done pm_runtime_put().
+ * @wakeup_mutex: mutex for remote wakeup.
  */
 struct usb_port {
 	struct usb_device *child;
@@ -94,6 +95,7 @@ struct usb_port {
 	u8 portnum;
 	unsigned power_is_on:1;
 	unsigned did_runtime_put:1;
+	struct mutex wakeup_mutex;
 };
 
 #define to_usb_port(_dev) \

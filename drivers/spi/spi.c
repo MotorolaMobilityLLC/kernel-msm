@@ -366,7 +366,11 @@ int spi_add_device(struct spi_device *spi)
 	}
 
 	/* Set the bus ID string */
-	dev_set_name(&spi->dev, "%s.%u", dev_name(&spi->master->dev),
+	if (!strcmp(spi->modalias, "spidev"))
+		dev_set_name(&spi->dev, "spidev%u.%u", spi->master->bus_num,
+			spi->chip_select);
+	else
+		dev_set_name(&spi->dev, "%s.%u", dev_name(&spi->master->dev),
 			spi->chip_select);
 
 

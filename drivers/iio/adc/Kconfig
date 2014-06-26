@@ -157,4 +157,10 @@ config VIPERBOARD_ADC
 	  Say yes here to access the ADC part of the Nano River
 	  Technologies Viperboard.
 
+config IIO_BASINCOVE_GPADC
+	tristate "IIO Basincove GPADC driver"
+	depends on IIO
+	help
+	  Say yes here to build support for the IIO basincove GPADC driver.
+
 endmenu

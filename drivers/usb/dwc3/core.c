@@ -49,14 +49,17 @@
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/of.h>
+#include <linux/pci.h>
 
 #include <linux/usb/otg.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
+#include <linux/usb/ulpi.h>
 
 #include "core.h"
 #include "gadget.h"
 #include "io.h"
+#include "otg.h"
 
 #include "debug.h"
 
@@ -74,6 +77,38 @@ void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
 	reg &= ~(DWC3_GCTL_PRTCAPDIR(DWC3_GCTL_PRTCAP_OTG));
 	reg |= DWC3_GCTL_PRTCAPDIR(mode);
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+}
+
+/**
+ * dwc3_is_cht - This is a workaround solution to distinguish Cherryview,
+ * as SPID has not been created and PHY has some unstable issue.
+ */
+int dwc3_is_cht(void)
+{
+	struct usb_phy		*usb_phy;
+	struct dwc_otg2		*otg;
+	struct pci_dev		*pdev;
+	int			is_cht = 0;
+
+	usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
+	if (!usb_phy)
+		goto done;
+
+	otg = container_of(usb_phy, struct dwc_otg2, usb2_phy);
+	if (!otg)
+		goto done;
+
+	pdev = container_of(otg->dev, struct pci_dev, dev);
+	if (!pdev)
+		goto done;
+
+	if (pdev->device == PCI_DEVICE_ID_DWC_CHT)
+		is_cht = 1;
+
+done:
+	usb_put_phy(usb_phy);
+
+	return is_cht;
 }
 
 /**
@@ -256,7 +291,8 @@ static void dwc3_event_buffers_cleanup(struct dwc3 *dwc)
 		dwc3_writel(dwc->regs, DWC3_GEVNTADRLO(n), 0);
 		dwc3_writel(dwc->regs, DWC3_GEVNTADRHI(n), 0);
 		dwc3_writel(dwc->regs, DWC3_GEVNTSIZ(n), 0);
-		dwc3_writel(dwc->regs, DWC3_GEVNTCOUNT(n), 0);
+		dwc3_writel(dwc->regs, DWC3_GEVNTCOUNT(n),
+			dwc3_readl(dwc->regs, DWC3_GEVNTCOUNT(n)));
 	}
 }
 
@@ -297,6 +333,7 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	unsigned long		timeout;
 	u32			reg;
 	int			ret;
+	struct usb_phy		*usb_phy;
 
 	reg = dwc3_readl(dwc->regs, DWC3_GSNPSID);
 	/* This should read as U3 followed by revision number */
@@ -324,7 +361,20 @@ static int dwc3_core_init(struct dwc3 *dwc)
 		cpu_relax();
 	} while (true);
 
-	dwc3_core_soft_reset(dwc);
+	if (!dwc3_is_cht())
+		dwc3_core_soft_reset(dwc);
+
+	/* DCTL core soft reset may cause PHY hang, delay 1 ms and check ulpi */
+	mdelay(1);
+
+	if (!dwc->utmi_phy && !dwc3_is_cht()) {
+		usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
+		if (usb_phy &&
+			usb_phy_io_read(usb_phy, ULPI_VENDOR_ID_LOW) < 0)
+			dev_err(dwc->dev,
+				"ULPI not working after DCTL soft reset\n");
+		usb_put_phy(usb_phy);
+	}
 
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
 	reg &= ~DWC3_GCTL_SCALEDOWN_MASK;

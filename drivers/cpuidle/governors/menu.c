@@ -20,6 +20,10 @@
 #include <linux/sched.h>
 #include <linux/math64.h>
 #include <linux/module.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
+#include <linux/uaccess.h>
+#include <linux/slab.h>
 
 #define BUCKETS 12
 #define INTERVALS 8
@@ -28,6 +32,26 @@
 #define MAX_INTERESTING 50000
 #define STDDEV_THRESH 400
 
+/* 60 * 60 > STDDEV_THRESH * INTERVALS = 400 * 8 */
+#define MAX_DEVIATION 60
+
+#ifdef CONFIG_PM_DEBUG
+#define IDLE_HIST_BUCKET_WIDTH 10
+
+struct idle_hist {
+	u32 no_of_buckets;
+	u32 max_range;
+	u32 bucket_width;
+	u32 *buckets;
+	bool active;
+};
+static DEFINE_PER_CPU(struct idle_hist *, idle_hists);
+#endif
+
+static DEFINE_PER_CPU(struct hrtimer, menu_hrtimer);
+static DEFINE_PER_CPU(int, hrtimer_status);
+/* menu hrtimer mode */
+enum {MENU_HRTIMER_STOP, MENU_HRTIMER_REPEAT};
 
 /*
  * Concepts and ideas behind the menu governor
@@ -126,6 +150,14 @@ struct menu_device {
 #define LOAD_INT(x) ((x) >> FSHIFT)
 #define LOAD_FRAC(x) LOAD_INT(((x) & (FIXED_1-1)) * 100)
 
+/*
+ * Define a variable per CPU in order to indicate when to
+ * update the buckets or not. The buckets need to be updated
+ * only when the wakeup is destinated to the CPU otherwise
+ * consider a perfect prediction for the buckets.
+ */
+DEFINE_PER_CPU(int, update_buckets);
+
 static int get_loadavg(void)
 {
 	unsigned long this = this_cpu_load();
@@ -196,17 +228,42 @@ static u64 div_round64(u64 dividend, u32 divisor)
 	return div_u64(dividend + (divisor / 2), divisor);
 }
 
+/* Cancel the hrtimer if it is not triggered yet */
+void menu_hrtimer_cancel(void)
+{
+	int cpu = smp_processor_id();
+	struct hrtimer *hrtmr = &per_cpu(menu_hrtimer, cpu);
+
+	/* The timer is still not time out*/
+	if (per_cpu(hrtimer_status, cpu)) {
+		hrtimer_cancel(hrtmr);
+		per_cpu(hrtimer_status, cpu) = MENU_HRTIMER_STOP;
+	}
+}
+EXPORT_SYMBOL_GPL(menu_hrtimer_cancel);
+
+/* Call back for hrtimer is triggered */
+static enum hrtimer_restart menu_hrtimer_notify(struct hrtimer *hrtimer)
+{
+	int cpu = smp_processor_id();
+
+	per_cpu(hrtimer_status, cpu) = MENU_HRTIMER_STOP;
+
+	return HRTIMER_NORESTART;
+}
+
 /*
  * Try detecting repeating patterns by keeping track of the last 8
  * intervals, and checking if the standard deviation of that set
  * of points is below a threshold. If it is... then use the
  * average of these 8 points as the estimated value.
  */
-static void get_typical_interval(struct menu_device *data)
+static u32 get_typical_interval(struct menu_device *data)
 {
 	int i = 0, divisor = 0;
 	uint64_t max = 0, avg = 0, stddev = 0;
 	int64_t thresh = LLONG_MAX; /* Discard outliers above this value. */
+	unsigned int ret = 0;
 
 again:
 
@@ -247,13 +304,16 @@ again:
 	if (((avg > stddev * 6) && (divisor * 4 >= INTERVALS * 3))
 							|| stddev <= 20) {
 		data->predicted_us = avg;
-		return;
+		ret = 1;
+		return ret;
 
 	} else if ((divisor * 4) > INTERVALS * 3) {
 		/* Exclude the max interval */
 		thresh = max - 1;
 		goto again;
 	}
+
+	return ret;
 }
 
 /**
@@ -268,6 +328,12 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	int i;
 	int multiplier;
 	struct timespec t;
+	int repeat = 0, low_predicted = 0;
+	int cpu = smp_processor_id();
+	struct hrtimer *hrtmr = &per_cpu(menu_hrtimer, cpu);
+#ifdef CONFIG_PM_DEBUG
+	struct idle_hist *idle_hist = per_cpu(idle_hists, cpu);
+#endif
 
 	if (data->needs_update) {
 		menu_update(drv, dev);
@@ -302,7 +368,23 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->predicted_us = div_round64(data->expected_us * data->correction_factor[data->bucket],
 					 RESOLUTION * DECAY);
 
-	get_typical_interval(data);
+#ifdef CONFIG_PM_DEBUG
+	/* Collect the idleness histogram data if it is activated */
+	if (idle_hist && idle_hist->active && idle_hist->buckets &&
+						idle_hist->bucket_width) {
+		u32 bucket = (u32)div_round64(data->predicted_us,
+					idle_hist->bucket_width);
+
+		/* Last bucket is used to collect the frequency of idleness
+		 * longer than target_residency of deepest C-state.
+		 */
+		if (bucket > idle_hist->no_of_buckets)
+			bucket = idle_hist->no_of_buckets;
+		idle_hist->buckets[bucket] += 1;
+	}
+#endif
+
+	repeat = get_typical_interval(data);
 
 	/*
 	 * We want to default to C1 (hlt), not to busy polling
@@ -323,8 +405,10 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 
 		if (s->disabled || su->disable)
 			continue;
-		if (s->target_residency > data->predicted_us)
+		if (s->target_residency > data->predicted_us) {
+			low_predicted = 1;
 			continue;
+		}
 		if (s->exit_latency > latency_req)
 			continue;
 		if (s->exit_latency * multiplier > data->predicted_us)
@@ -332,6 +416,28 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 
 		data->last_state_idx = i;
 		data->exit_us = s->exit_latency;
+	}
+
+	/* not deepest C-state chosen for low predicted residency */
+	if (low_predicted) {
+		unsigned int timer_us = 0;
+
+		/*
+		 * Set a timer to detect whether this sleep is much
+		 * longer than repeat mode predicted.  If the timer
+		 * triggers, the code will evaluate whether to put
+		 * the CPU into a deeper C-state.
+		 * The timer is cancelled on CPU wakeup.
+		 */
+		timer_us = 2 * (data->predicted_us + MAX_DEVIATION);
+
+		if (repeat && (4 * timer_us < data->expected_us)) {
+			RCU_NONIDLE(hrtimer_start(hrtmr,
+				ns_to_ktime(1000 * timer_us),
+				HRTIMER_MODE_REL_PINNED));
+			/* In repeat case, menu hrtimer is started */
+			per_cpu(hrtimer_status, cpu) = MENU_HRTIMER_REPEAT;
+		}
 	}
 
 	return data->last_state_idx;
@@ -391,7 +497,9 @@ static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	new_factor = data->correction_factor[data->bucket]
 			* (DECAY - 1) / DECAY;
 
-	if (data->expected_us > 0 && measured_us < MAX_INTERESTING)
+	/* if its a fake wakeup just consider it has perfect wakeup */
+	if ((__get_cpu_var(update_buckets)) &&
+		(data->expected_us > 0 && measured_us < MAX_INTERESTING))
 		new_factor += RESOLUTION * measured_us / data->expected_us;
 	else
 		/*
@@ -410,9 +518,15 @@ static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	data->correction_factor[data->bucket] = new_factor;
 
 	/* update the repeating-pattern data */
-	data->intervals[data->interval_ptr++] = last_idle_us;
+	if (__get_cpu_var(update_buckets))
+		data->intervals[data->interval_ptr++] = last_idle_us;
+	else
+		data->intervals[data->interval_ptr++] = data->expected_us;
+
 	if (data->interval_ptr >= INTERVALS)
 		data->interval_ptr = 0;
+
+	__get_cpu_var(update_buckets) = 1;
 }
 
 /**
@@ -424,9 +538,39 @@ static int menu_enable_device(struct cpuidle_driver *drv,
 				struct cpuidle_device *dev)
 {
 	struct menu_device *data = &per_cpu(menu_devices, dev->cpu);
+	struct hrtimer *t = &per_cpu(menu_hrtimer, dev->cpu);
+#ifdef CONFIG_PM_DEBUG
+	struct idle_hist *idle_hist = kzalloc(sizeof(struct idle_hist),
+							GFP_KERNEL);
+#endif
+
+	hrtimer_init(t, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	t->function = menu_hrtimer_notify;
 
 	memset(data, 0, sizeof(struct menu_device));
 
+#ifdef CONFIG_PM_DEBUG
+	if (!idle_hist) {
+		pr_warn("Failed to allocate memory for idle_hist\n");
+		return 0;
+	}
+
+	/* Max range is the target_residency of deepest C-state */
+	idle_hist->max_range =
+		drv->states[drv->state_count - 1].target_residency;
+	idle_hist->bucket_width = IDLE_HIST_BUCKET_WIDTH;
+	idle_hist->no_of_buckets =
+		idle_hist->max_range / idle_hist->bucket_width;
+	idle_hist->buckets = kzalloc(
+		(idle_hist->no_of_buckets + 1) * sizeof(u32), GFP_KERNEL);
+	if (!idle_hist->buckets)
+		pr_warn("Failed to allocate memory for idle_hist buckets\n");
+	pr_info("cpu %d: max_range = %u, #buckets = %d, width = %d\n",
+		dev->cpu, idle_hist->max_range, idle_hist->no_of_buckets,
+		idle_hist->bucket_width);
+
+	per_cpu(idle_hists, dev->cpu) = idle_hist;
+#endif
 	return 0;
 }
 
@@ -439,11 +583,126 @@ static struct cpuidle_governor menu_governor = {
 	.owner =	THIS_MODULE,
 };
 
+#ifdef CONFIG_PM_DEBUG
+static int idle_hist_show(struct seq_file *s, void *unused)
+{
+	int cpu, i, max_no_of_buckets = 0;
+	struct idle_hist *idle_hist;
+
+	for_each_online_cpu(cpu) {
+		idle_hist = per_cpu(idle_hists, cpu);
+		if (idle_hist && idle_hist->no_of_buckets > max_no_of_buckets)
+			max_no_of_buckets = idle_hist->no_of_buckets;
+		seq_printf(s, "\tCPU%d", cpu);
+	}
+
+	if (unlikely(idle_hist == NULL))
+		return 0;
+
+	seq_puts(s, "\n");
+	for (i = 0; i <= max_no_of_buckets; i++) {
+		seq_printf(s, "%d", i * idle_hist->bucket_width);
+		for_each_online_cpu(cpu) {
+			u32 freq = -1; /* -1 indicates invalid frquency */
+			idle_hist = per_cpu(idle_hists, cpu);
+			if (idle_hist && idle_hist->buckets &&
+				i <= idle_hist->no_of_buckets)
+				freq = idle_hist->buckets[i];
+			seq_printf(s, "\t%d", freq);
+		}
+		seq_puts(s, "\n");
+	}
+	return 0;
+}
+
+static ssize_t idle_hist_write(struct file *file,
+		const char __user *userbuf, size_t count, loff_t *ppos)
+{
+	char buf[32];
+	struct idle_hist *idle_hist;
+	int buf_size = min(count, sizeof(buf)-1);
+	int bucket_width = 0, no_of_buckets;
+	char *start_msg = "start";
+	char *stop_msg = "stop";
+	u32 *temp;
+	int cpu;
+
+	if (copy_from_user(buf, userbuf, buf_size))
+		return -EFAULT;
+
+	if (buf[0] != 's') {	/* If it is not 'start' or 'stop' most probably
+				 * it is a update of bucket_width
+				 */
+		if (sscanf(buf, "%u", &bucket_width) != 1)
+			return -EFAULT;
+
+		if (bucket_width <= 0)
+			return -EFAULT;
+
+		/* update bucket width */
+		for_each_online_cpu(cpu) {
+			idle_hist = per_cpu(idle_hists, cpu);
+			if (bucket_width == idle_hist->bucket_width)
+					/* No need to update */
+				continue;
+
+			idle_hist->active = false;
+			no_of_buckets =	idle_hist->max_range / bucket_width;
+			temp = krealloc(idle_hist->buckets,
+				(no_of_buckets + 1) * sizeof(u32), GFP_KERNEL);
+			if (!temp) {
+				pr_warn("Failed to update bucket_width\n");
+				continue;
+			}
+			memset(temp, 0, (no_of_buckets + 1) * sizeof(u32));
+			idle_hist->buckets = temp;
+			idle_hist->bucket_width = bucket_width;
+			idle_hist->no_of_buckets = no_of_buckets;
+		}
+	} else if (!strncmp(buf, start_msg, strlen(start_msg))) {
+		/* start data collecting */
+		for_each_online_cpu(cpu) {
+			idle_hist = per_cpu(idle_hists, cpu);
+			memset(idle_hist->buckets, 0,
+				(idle_hist->no_of_buckets + 1) * sizeof(u32));
+			idle_hist->active = true;
+		}
+	} else if (!strncmp(buf, stop_msg, strlen(stop_msg))) {
+		/* stop data collecting */
+		for_each_online_cpu(cpu) {
+			idle_hist = per_cpu(idle_hists, cpu);
+			idle_hist->active = false;
+		}
+	}
+
+	return count;
+}
+
+static int idle_hist_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, idle_hist_show, NULL);
+}
+
+static const struct file_operations idle_hist_ops = {
+	.open           = idle_hist_open,
+	.read           = seq_read,
+	.write		= idle_hist_write,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+#endif
+
 /**
  * init_menu - initializes the governor
  */
 static int __init init_menu(void)
 {
+#ifdef CONFIG_PM_DEBUG
+	struct dentry *d3 = debugfs_create_file("idle_hist", S_IFREG | S_IRUGO,
+				NULL, NULL, &idle_hist_ops);
+	if (!d3)
+		pr_warn("idle_hist: Failed to create debugfs for idle_hist\n");
+#endif
 	return cpuidle_register_governor(&menu_governor);
 }
 

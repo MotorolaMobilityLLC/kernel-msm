@@ -110,4 +110,8 @@ int xen_test_irq_shared(int irq);
 
 /* initialize Xen IRQ subsystem */
 void xen_init_IRQ(void);
+
+void xen_irq_set_handler_data(unsigned irq, void *data);
+void *xen_irq_get_handler_data(unsigned irq);
+
 #endif	/* _XEN_EVENTS_H */

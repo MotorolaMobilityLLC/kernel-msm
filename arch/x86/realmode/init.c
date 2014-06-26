@@ -121,4 +121,6 @@ static int __init set_real_mode_permissions(void)
 
 	return 0;
 }
+#ifndef CONFIG_XEN
 early_initcall(set_real_mode_permissions);
+#endif

@@ -31,6 +31,7 @@
 #include <asm/pci_x86.h>
 #include <asm/hw_irq.h>
 #include <asm/io_apic.h>
+#include <asm/intel-mid.h>
 
 #define PCIE_CAP_OFFSET	0x100
 
@@ -203,8 +204,9 @@ static int pci_write(struct pci_bus *bus, unsigned int devfn, int where,
 			       where, size, value);
 }
 
-static int mrst_pci_irq_enable(struct pci_dev *dev)
+static int intel_mid_pci_irq_enable(struct pci_dev *dev)
 {
+#ifndef CONFIG_XEN
 	u8 pin;
 	struct io_apic_irq_attr irq_attr;
 
@@ -214,31 +216,41 @@ static int mrst_pci_irq_enable(struct pci_dev *dev)
 	 * IOAPIC RTE entries, so we just enable RTE for the device.
 	 */
 	irq_attr.ioapic = mp_find_ioapic(dev->irq);
+	if (irq_attr.ioapic < 0)
+		return -EINVAL;
 	irq_attr.ioapic_pin = dev->irq;
 	irq_attr.trigger = 1; /* level */
-	irq_attr.polarity = 1; /* active low */
+	if ((intel_mid_identify_cpu() == INTEL_MID_CPU_CHIP_TANGIER) ||
+		(intel_mid_identify_cpu() == INTEL_MID_CPU_CHIP_ANNIEDALE))
+		irq_attr.polarity = 0; /* active high */
+	else
+		irq_attr.polarity = 1; /* active low */
 	io_apic_set_pci_routing(&dev->dev, dev->irq, &irq_attr);
 
 	return 0;
+#else
+	xen_register_gsi(dev->irq, -1, 0, 1);
+	return xen_pcifront_enable_irq(dev);
+#endif
 }
 
-struct pci_ops pci_mrst_ops = {
+struct pci_ops intel_mid_pci_ops = {
 	.read = pci_read,
 	.write = pci_write,
 };
 
 /**
- * pci_mrst_init - installs pci_mrst_ops
+ * intel_mid_pci_init - installs intel_mid_pci_ops
  *
  * Moorestown has an interesting PCI implementation (see above).
  * Called when the early platform detection installs it.
  */
-int __init pci_mrst_init(void)
+int __init intel_mid_pci_init(void)
 {
 	printk(KERN_INFO "Intel MID platform detected, using MID PCI ops\n");
 	pci_mmcfg_late_init();
-	pcibios_enable_irq = mrst_pci_irq_enable;
-	pci_root_ops = pci_mrst_ops;
+	pcibios_enable_irq = intel_mid_pci_irq_enable;
+	pci_root_ops = intel_mid_pci_ops;
 	pci_soc_mode = 1;
 	/* Continue with standard init */
 	return 1;
@@ -259,6 +271,7 @@ static void pci_d3delay_fixup(struct pci_dev *dev)
 	if (type1_access_ok(dev->bus->number, dev->devfn, PCI_DEVICE_ID))
 		return;
 	dev->d3_delay = 0;
+	dev->d3cold_delay = 0;
 }
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, PCI_ANY_ID, pci_d3delay_fixup);
 

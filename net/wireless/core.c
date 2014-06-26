@@ -241,7 +241,7 @@ void cfg80211_stop_p2p_device(struct cfg80211_registered_device *rdev,
 		WARN_ON(!busy);
 
 		rdev->scan_req->aborted = true;
-		___cfg80211_scan_done(rdev, !busy);
+		___cfg80211_scan_done(rdev);
 	}
 }
 
@@ -787,7 +787,7 @@ static void wdev_cleanup_work(struct work_struct *work)
 
 	if (WARN_ON(rdev->scan_req && rdev->scan_req->wdev == wdev)) {
 		rdev->scan_req->aborted = true;
-		___cfg80211_scan_done(rdev, true);
+		___cfg80211_scan_done(rdev);
 	}
 
 	if (WARN_ON(rdev->sched_scan_req &&

@@ -731,6 +731,12 @@ static ssize_t store_governor(struct device *dev, struct device_attribute *attr,
 out:
 	mutex_unlock(&devfreq_list_lock);
 
+	if (!ret) {
+		mutex_lock(&df->lock);
+		ret = update_devfreq(df);
+		mutex_unlock(&df->lock);
+	}
+
 	if (!ret)
 		ret = count;
 	return ret;

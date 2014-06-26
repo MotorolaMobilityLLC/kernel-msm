@@ -76,6 +76,8 @@ struct input_value {
  *	about absolute axes (current value, min, max, flat, fuzz,
  *	resolution)
  * @key: reflects current state of device's keys/buttons
+ * @key_suspend: reflects state of device's keys/buttons during device
+ *	suspend entry.
  * @led: reflects current state of device's LEDs
  * @snd: reflects current state of sound effects
  * @sw: reflects current state of device's switches
@@ -160,6 +162,7 @@ struct input_dev {
 	struct input_absinfo *absinfo;
 
 	unsigned long key[BITS_TO_LONGS(KEY_CNT)];
+	unsigned long key_suspend[BITS_TO_LONGS(KEY_CNT)];
 	unsigned long led[BITS_TO_LONGS(LED_CNT)];
 	unsigned long snd[BITS_TO_LONGS(SND_CNT)];
 	unsigned long sw[BITS_TO_LONGS(SW_CNT)];

@@ -18,6 +18,7 @@ enum usb_phy_events {
 	USB_EVENT_ID,           /* id was grounded */
 	USB_EVENT_CHARGER,      /* usb dedicated charger */
 	USB_EVENT_ENUMERATED,   /* gadget driver enumerated */
+	USB_EVENT_DRIVE_VBUS,	/* drive vbus request */
 };
 
 /* associate a type with PHY */
@@ -25,6 +26,12 @@ enum usb_phy_type {
 	USB_PHY_TYPE_UNDEFINED,
 	USB_PHY_TYPE_USB2,
 	USB_PHY_TYPE_USB3,
+};
+
+/* usb2 phy interface type */
+enum usb_phy_intf {
+	USB2_PHY_ULPI,
+	USB2_PHY_UTMI,
 };
 
 /* OTG defines lots of enumeration states before device reset */
@@ -51,6 +58,12 @@ enum usb_otg_state {
 	OTG_STATE_A_VBUS_ERR,
 };
 
+enum vbus_state {
+	UNKNOW_STATE,
+	VBUS_ENABLED,			/* vbus at normal state */
+	VBUS_DISABLED,			/* vbus disabled by a_bus_drop */
+};
+
 struct usb_phy;
 struct usb_otg;
 
@@ -68,6 +81,7 @@ struct usb_phy {
 	unsigned int		 flags;
 
 	enum usb_phy_type	type;
+	enum usb_phy_intf	intf;
 	enum usb_otg_state	state;
 	enum usb_phy_events	last_event;
 
@@ -83,6 +97,11 @@ struct usb_phy {
 	/* to pass extra port status to the root hub */
 	u16			port_status;
 	u16			port_change;
+
+	/* Porivde sysfs interface to userspace for set a_bus_drop argument */
+	struct class *usb_otg_class;
+	struct device *class_dev;
+	int vbus_state;
 
 	/* to support controllers that have multiple transceivers */
 	struct list_head	head;
@@ -107,6 +126,14 @@ struct usb_phy {
 			enum usb_device_speed speed);
 	int	(*notify_disconnect)(struct usb_phy *x,
 			enum usb_device_speed speed);
+
+	/* check charger status */
+	int	(*get_chrg_status)(struct usb_phy *x, void *data);
+	/* check ID status */
+	int	(*get_id_status)(struct usb_phy *x, void *data);
+
+	/* for a_bus_drop handler fromed user space */
+	void (*a_bus_drop)(struct usb_phy *phy);
 };
 
 /**
@@ -297,4 +324,24 @@ static inline const char *usb_phy_type_string(enum usb_phy_type type)
 		return "UNKNOWN PHY TYPE";
 	}
 }
+
+static inline int
+otg_get_chrg_status(struct usb_phy *x, void *data)
+{
+	if (x && x->get_chrg_status)
+		return x->get_chrg_status(x, data);
+
+	return -ENOTSUPP;
+}
+
+static inline int
+otg_get_id_status(struct usb_phy *x, void *data)
+{
+	if (x && x->get_id_status)
+		return x->get_id_status(x, data);
+
+	return -ENOTSUPP;
+}
+
+void otg_uevent_trigger(struct usb_phy *phy);
 #endif /* __LINUX_USB_PHY_H */

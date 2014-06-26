@@ -166,6 +166,7 @@ int usb_hub_create_port_device(struct usb_hub *hub, int port1)
 	port_dev->dev.groups = port_dev_group;
 	port_dev->dev.type = &usb_port_device_type;
 	dev_set_name(&port_dev->dev, "port%d", port1);
+	mutex_init(&port_dev->wakeup_mutex);
 
 	retval = device_register(&port_dev->dev);
 	if (retval)

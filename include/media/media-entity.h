@@ -23,6 +23,7 @@
 #ifndef _MEDIA_ENTITY_H
 #define _MEDIA_ENTITY_H
 
+#include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/media.h>
 

@@ -115,6 +115,20 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 	}
 	if (pdev->vendor == PCI_VENDOR_ID_VIA)
 		xhci->quirks |= XHCI_RESET_ON_RESUME;
+
+	if (pdev->vendor == PCI_VENDOR_ID_INTEL &&
+			pdev->device == PCI_DEVICE_ID_INTEL_BYT_USH) {
+		xhci->quirks |= XHCI_SPURIOUS_SUCCESS;
+		/* FIXME BYT USH Controller need to disable HSIC hub port,
+		 * so add this quirks here.
+		 */
+		xhci->quirks |= XHCI_PORT_DISABLE_QUIRK;
+		/**
+		 * We found two USB Disk cannot pass Enumeration with LPM
+		 * token sent on BYT, so disable LPM here.
+		 */
+		xhci->quirks |= XHCI_LPM_DISABLE_QUIRK;
+	}
 }
 
 /* called during probe() after chip reset completes */
@@ -134,6 +148,17 @@ static int xhci_pci_setup(struct usb_hcd *hcd)
 
 	pci_read_config_byte(pdev, XHCI_SBRN_OFFSET, &xhci->sbrn);
 	xhci_dbg(xhci, "Got SBRN %u\n", (unsigned int) xhci->sbrn);
+
+	if (pdev->vendor == PCI_VENDOR_ID_INTEL) {
+		if (pdev->device == PCI_DEVICE_ID_INTEL_BYT_USH) {
+			xhci_dbg(xhci, "Detect BayTrail USH Controller\n");
+			device_set_wakeup_enable(&pdev->dev, true);
+
+			pm_runtime_put_noidle(&pdev->dev);
+			pm_runtime_allow(&pdev->dev);
+			pm_runtime_set_active(&pdev->dev);
+		}
+	}
 
 	/* Find any debug ports */
 	retval = xhci_pci_reinit(xhci, pdev);
@@ -211,6 +236,13 @@ static void xhci_pci_remove(struct pci_dev *dev)
 	if (xhci->shared_hcd) {
 		usb_remove_hcd(xhci->shared_hcd);
 		usb_put_hcd(xhci->shared_hcd);
+	}
+
+	if (dev->vendor == PCI_VENDOR_ID_INTEL) {
+		if (dev->device == PCI_DEVICE_ID_INTEL_BYT_USH) {
+			pm_runtime_get_noresume(&dev->dev);
+			pm_runtime_forbid(&dev->dev);
+		}
 	}
 	usb_hcd_pci_remove(dev);
 	kfree(xhci);

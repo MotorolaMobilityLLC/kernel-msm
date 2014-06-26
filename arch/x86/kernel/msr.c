@@ -174,9 +174,6 @@ static int msr_open(struct inode *inode, struct file *file)
 	unsigned int cpu = iminor(file_inode(file));
 	struct cpuinfo_x86 *c;
 
-	if (!capable(CAP_SYS_RAWIO))
-		return -EPERM;
-
 	if (cpu >= nr_cpu_ids || !cpu_online(cpu))
 		return -ENXIO;	/* No such CPU */
 

@@ -188,6 +188,8 @@ ep_matches (
 	ep->address = desc->bEndpointAddress;
 	return 1;
 }
+EXPORT_SYMBOL_GPL(ep_matches);
+
 
 static struct usb_ep *
 find_ep (struct usb_gadget *gadget, const char *name)
@@ -200,6 +202,7 @@ find_ep (struct usb_gadget *gadget, const char *name)
 	}
 	return NULL;
 }
+EXPORT_SYMBOL_GPL(find_ep);
 
 /**
  * usb_ep_autoconfig_ss() - choose an endpoint matching the ep
@@ -253,7 +256,11 @@ struct usb_ep *usb_ep_autoconfig_ss(
 {
 	struct usb_ep	*ep;
 	u8		type;
+#ifdef CONFIG_USB_DWC3_GADGET
+	u8	       addr;
 
+	addr = desc->bEndpointAddress & USB_ENDPOINT_NUMBER_MASK;
+#endif
 	type = desc->bmAttributes & USB_ENDPOINT_XFERTYPE_MASK;
 
 	/* First, apply chip-specific "best usage" knowledge.
@@ -301,10 +308,44 @@ struct usb_ep *usb_ep_autoconfig_ss(
 		if (ep && ep_matches(gadget, ep, desc, ep_comp))
 			goto found_ep;
 #endif
+
+#ifdef CONFIG_USB_DWC3_GADGET
+	} else if (gadget_is_middwc3tng(gadget)) {
+		if (addr == 0x1) {
+			/* statically assigned ebc-ep1 in/out  */
+			if ((desc->bEndpointAddress & USB_ENDPOINT_DIR_MASK)
+			    & USB_DIR_IN)
+				ep = find_ep(gadget, "ep1in");
+			else
+				ep = NULL;
+		} else if (addr == 0x8) {
+			/* statically assigned ebc-ep8 in/out */
+			if ((desc->bEndpointAddress & USB_ENDPOINT_DIR_MASK)
+			    & USB_DIR_IN)
+				ep = find_ep (gadget, "ep8in");
+			else
+				ep = find_ep (gadget, "ep8out");
+		} else
+			ep = NULL;
+		if (ep && ep_matches(gadget, ep, desc, ep_comp))
+			goto found_ep;
+#endif
+
 	}
 
 	/* Second, look at endpoints until an unclaimed one looks usable */
 	list_for_each_entry (ep, &gadget->ep_list, ep_list) {
+#ifdef CONFIG_USB_DWC3_GADGET
+		/* ep1in and ep8in are reserved for DWC3 device controller */
+		if (!strncmp(ep->name, "ep1in", 5) ||
+		    !strncmp(ep->name, "ep8in", 5))
+			continue;
+		if (gadget_is_middwc3tng(gadget))
+			/* ep1out and ep8out are also reserved */
+			if (!strncmp(ep->name, "ep1out", 6) ||
+			    !strncmp(ep->name, "ep8out", 6))
+				continue;
+#endif
 		if (ep_matches(gadget, ep, desc, ep_comp))
 			goto found_ep;
 	}

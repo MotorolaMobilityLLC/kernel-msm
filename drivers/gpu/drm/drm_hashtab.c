@@ -206,3 +206,34 @@ void drm_ht_remove(struct drm_open_hash *ht)
 	}
 }
 EXPORT_SYMBOL(drm_ht_remove);
+
+
+static struct hlist_node *drm_ht_find_anyused(struct drm_open_hash *ht)
+{
+	struct hlist_head *h_list;
+	struct hlist_node *list;
+	int i;
+
+	for (i = 0; i < (1 << ht->order); i++) {
+		h_list = &ht->table[i];
+		hlist_for_each(list, h_list) {
+			return list;
+		}
+	}
+	return NULL;
+}
+
+
+int drm_ht_find_item_anyused(struct drm_open_hash *ht,
+		     struct drm_hash_item **item)
+{
+	struct hlist_node *list;
+
+	list = drm_ht_find_anyused(ht);
+	if (!list)
+		return -EINVAL;
+
+	*item = hlist_entry(list, struct drm_hash_item, head);
+	return 0;
+}
+EXPORT_SYMBOL(drm_ht_find_item_anyused);

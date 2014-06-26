@@ -200,8 +200,11 @@ static void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 		ehci_writel(ehci, t2, reg);
 	}
 
-	/* enter phy low-power mode again */
-	if (ehci->has_hostpc) {
+	/* enter phy low-power mode again if it's suspending*/
+	/* during remote-wakeup if the phy enters low power mode, the port
+	 * will get disconnected.
+	 */
+	if (ehci->has_hostpc && suspending) {
 		port = HCS_N_PORTS(ehci->hcs_params);
 		while (port--) {
 			u32 __iomem	*hostpc_reg = &ehci->regs->hostpc[port];
@@ -224,7 +227,10 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 	int			port;
 	int			mask;
 	int			changed;
-
+	int			rc = 0;
+#ifdef CONFIG_USB_HCD_HSIC
+	struct pci_dev   *pdev;
+#endif
 	ehci_dbg(ehci, "suspend root hub\n");
 
 	if (time_before (jiffies, ehci->next_statechange))
@@ -236,6 +242,13 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 	spin_lock_irq (&ehci->lock);
 	if (ehci->rh_state < EHCI_RH_RUNNING)
 		goto done;
+
+#ifdef CONFIG_USB_HCD_HSIC
+	pdev = to_pci_dev(hcd->self.controller);
+	if (pdev->device == 0x119D)
+		if (device_can_wakeup(&hcd->self.root_hub->dev))
+			hcd->self.root_hub->do_remote_wakeup = 1;
+#endif
 
 	/* Once the controller is stopped, port resumes that are already
 	 * in progress won't complete.  Hence if remote wakeup is enabled
@@ -303,6 +316,9 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 			u32 __iomem	*hostpc_reg = &ehci->regs->hostpc[port];
 			u32		t3;
 
+			struct pci_dev  *pdev =
+				to_pci_dev(hcd->self.controller);
+
 			t3 = ehci_readl(ehci, hostpc_reg);
 			ehci_writel(ehci, t3 | HOSTPC_PHCD, hostpc_reg);
 			t3 = ehci_readl(ehci, hostpc_reg);
@@ -317,8 +333,13 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 	if (ehci->bus_suspended)
 		udelay(150);
 
+	/* if halt ehci, after remote-wakeup, the port get disabled,
+	 * so don't halt ehci here
+	 */
+#if 0
 	/* turn off now-idle HC */
 	ehci_halt (ehci);
+#endif
 
 	spin_lock_irq(&ehci->lock);
 	if (ehci->enabled_hrtimer_events & BIT(EHCI_HRTIMER_POLL_DEAD))
@@ -339,6 +360,11 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 	ehci_writel(ehci, mask, &ehci->regs->intr_enable);
 	ehci_readl(ehci, &ehci->regs->intr_enable);
 
+#ifdef CONFIG_USB_OTG
+	if (ehci->has_otg && ehci->otg_suspend)
+		rc = ehci->otg_suspend(hcd);
+#endif
+
  done:
 	ehci->next_statechange = jiffies + msecs_to_jiffies(10);
 	ehci->enabled_hrtimer_events = 0;
@@ -358,6 +384,7 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 	u32			power_okay;
 	int			i;
 	unsigned long		resume_needed = 0;
+	int			rc = 0;
 
 	if (time_before (jiffies, ehci->next_statechange))
 		msleep(5);
@@ -387,6 +414,11 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 	 */
 	ehci_writel(ehci, 0, &ehci->regs->intr_enable);
 
+	/* if halt ehci in ehci_bus_suspend, after remote-wakeup, the port
+	 * gets disabled, so don't halt ehci in ehci_bus_suspend, and don't need
+	 * to re-start here
+	 */
+#if 0
 	/* re-init operational registers */
 	ehci_writel(ehci, 0, &ehci->regs->segment);
 	ehci_writel(ehci, ehci->periodic_dma, &ehci->regs->frame_list);
@@ -395,6 +427,8 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 	/* restore CMD_RUN, framelist size, and irq threshold */
 	ehci->command |= CMD_RUN;
 	ehci_writel(ehci, ehci->command, &ehci->regs->command);
+#endif
+
 	ehci->rh_state = EHCI_RH_RUNNING;
 
 	/*
@@ -481,6 +515,12 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 		goto shutdown;
 	ehci_writel(ehci, INTR_MASK, &ehci->regs->intr_enable);
 	(void) ehci_readl(ehci, &ehci->regs->intr_enable);
+
+#ifdef CONFIG_USB_OTG
+	if (ehci->has_otg && ehci->otg_resume)
+		rc = ehci->otg_resume(hcd);
+#endif
+
 	spin_unlock_irq(&ehci->lock);
 
 	return 0;
@@ -1023,7 +1063,7 @@ static int ehci_hub_control (
 			ehci_writel(ehci, temp | PORT_SUSPEND, status_reg);
 			if (ehci->has_hostpc) {
 				spin_unlock_irqrestore(&ehci->lock, flags);
-				msleep(5);/* 5ms for HCD enter low pwr mode */
+				mdelay(5);/* 5ms for HCD enter low pwr mode */
 				spin_lock_irqsave(&ehci->lock, flags);
 				temp1 = ehci_readl(ehci, hostpc_reg);
 				ehci_writel(ehci, temp1 | HOSTPC_PHCD,

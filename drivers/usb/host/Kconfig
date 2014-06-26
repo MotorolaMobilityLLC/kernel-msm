@@ -132,6 +132,29 @@ config XPS_USB_HCD_XILINX
 		support both high speed and full speed devices, or high speed
 		devices only.
 
+config USB_EHCI_HCD_SPH
+	bool "EHCI SPH Support"
+	depends on USB_EHCI_HCD && USB_EHCI_PCI
+	default n
+	---help---
+	  Say 'Y' to turn on SPH support for the EHCI host controller driver.
+	  Now SPH is used for debugging and tracing between Application Processor
+	  and Baseband Processor, it can also work as a standard EHCI host that
+	  can connect different devices.
+
+	  If unsure, say N
+
+config USB_HCD_HSIC
+	bool "HSIC support"
+	depends on USB_EHCI_HCD
+	default n
+	---help---
+	  Say 'Y' to turn on HSIC support for the EHCI host controller driver.
+	  HSIC is used for AP and BP IPC. In AP side, it will work as a EHCI host.
+	  Some functionalities like AUX signal and LPM will be supported.
+
+	  If unsure, say N.
+
 config USB_EHCI_FSL
 	bool "Support for Freescale PPC on-chip EHCI USB controller"
 	depends on FSL_SOC

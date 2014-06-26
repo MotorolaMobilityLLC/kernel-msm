@@ -268,8 +268,6 @@ static noinline __kprobes int vmalloc_fault(unsigned long address)
 	if (!(address >= VMALLOC_START && address < VMALLOC_END))
 		return -1;
 
-	WARN_ON_ONCE(in_nmi());
-
 	/*
 	 * Synchronize this task's top level page-table
 	 * with the 'reference' page table.
@@ -572,6 +570,33 @@ static int is_f00f_bug(struct pt_regs *regs, unsigned long address)
 static const char nx_warning[] = KERN_CRIT
 "kernel tried to execute NX-protected page - exploit attempt? (uid: %d)\n";
 
+
+#ifdef CONFIG_X86_64
+static unsigned long count_bits(unsigned long value)
+{
+	value = value - ((value >> 1) & 0x5555555555555555);
+	value = (value & 0x3333333333333333) + ((value >> 2) & 0x3333333333333333);
+	return (((value + (value >> 4)) & 0xF0F0F0F0F0F0F0F) * 0x101010101010101) >> 56;
+}
+
+/* Check for all the registers to find one very close to the address
+	raising the fault, if one is found and the bits differing
+	is 1, we very probably have a bit flip */
+static void check_bit_flip(unsigned long address, struct pt_regs *_regs)
+{
+	int regs_nr = sizeof(struct pt_regs) / sizeof(unsigned long), idx;
+	unsigned long *regs = (unsigned long *)_regs;
+
+	for (idx = 0; idx < regs_nr; idx++) {
+		unsigned long reg = regs[idx] & PAGE_MASK;
+		if ((reg != address) && (count_bits(reg ^ address) == 1)) {
+			/* Found a bit flip*/
+			panic("Bit flip detected at address 0x%016lx with register 0x%016lx during pf\n", address, regs[idx]);
+		}
+	}
+}
+#endif
+
 static void
 show_fault_oops(struct pt_regs *regs, unsigned long error_code,
 		unsigned long address)
@@ -587,6 +612,12 @@ show_fault_oops(struct pt_regs *regs, unsigned long error_code,
 		if (pte && pte_present(*pte) && !pte_exec(*pte))
 			printk(nx_warning, from_kuid(&init_user_ns, current_uid()));
 	}
+
+#ifdef CONFIG_X86_64
+	/* Just ignore NULL pointer exceptions for bit flips */
+	if (address & PAGE_MASK)
+		check_bit_flip(address & PAGE_MASK, regs);
+#endif
 
 	printk(KERN_ALERT "BUG: unable to handle kernel ");
 	if (address < PAGE_SIZE)

@@ -15,6 +15,8 @@
 #include <asm/x86_init.h>
 #include <asm/iommu_table.h>
 
+#include <asm/hypervisor.h>
+
 static int forbid_dac __read_mostly;
 
 struct dma_map_ops *dma_ops = &nommu_dma_ops;
@@ -79,8 +81,10 @@ void __init pci_iommu_alloc(void)
 	for (p = __iommu_table; p < __iommu_table_end; p++) {
 		if (p && p->detect && p->detect() > 0) {
 			p->flags |= IOMMU_DETECTED;
+#ifndef CONFIG_XEN
 			if (p->early_init)
 				p->early_init();
+#endif
 			if (p->flags & IOMMU_FINISH_IF_DETECTED)
 				break;
 		}

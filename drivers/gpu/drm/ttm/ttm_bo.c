@@ -363,6 +363,7 @@ void ttm_bo_unreserve_locked(struct ttm_buffer_object *bo)
 	atomic_set(&bo->reserved, 0);
 	wake_up_all(&bo->event_queue);
 }
+EXPORT_SYMBOL(ttm_bo_unreserve_locked);
 
 void ttm_bo_unreserve(struct ttm_buffer_object *bo)
 {
@@ -446,8 +447,7 @@ static int ttm_bo_handle_move_mem(struct ttm_buffer_object *bo,
 
 	if (!(new_man->flags & TTM_MEMTYPE_FLAG_FIXED)) {
 		if (bo->ttm == NULL) {
-			bool zero = !(old_man->flags & TTM_MEMTYPE_FLAG_FIXED);
-			ret = ttm_bo_add_ttm(bo, zero);
+			ret = ttm_bo_add_ttm(bo, false);
 			if (ret)
 				goto out_err;
 		}
@@ -1619,9 +1619,7 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 		goto out_no_sys;
 
 	bdev->addr_space_rb = RB_ROOT;
-	ret = drm_mm_init(&bdev->addr_space_mm, file_page_offset, 0x10000000);
-	if (unlikely(ret != 0))
-		goto out_no_addr_mm;
+	drm_mm_init(&bdev->addr_space_mm, file_page_offset, 0x10000000);
 
 	INIT_DELAYED_WORK(&bdev->wq, ttm_bo_delayed_workqueue);
 	INIT_LIST_HEAD(&bdev->ddestroy);
@@ -1635,8 +1633,6 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 	mutex_unlock(&glob->device_list_mutex);
 
 	return 0;
-out_no_addr_mm:
-	ttm_bo_clean_mm(bdev, 0);
 out_no_sys:
 	return ret;
 }

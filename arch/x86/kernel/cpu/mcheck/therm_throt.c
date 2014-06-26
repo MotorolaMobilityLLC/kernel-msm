@@ -30,8 +30,17 @@
 #include <asm/mce.h>
 #include <asm/msr.h>
 
-/* How long to wait between reporting thermal events */
+/*
+ * How long to wait between reporting thermal events ?
+ * If Interrupt is enabled for Coretemp driver, the BIOS
+ * takes care of hysteresis and thus there are no spurious
+ * interrupts expected. Hence making this interval to 0.
+ */
+#ifdef CONFIG_SENSORS_CORETEMP_INTERRUPT
+#define CHECK_INTERVAL         (0)
+#else
 #define CHECK_INTERVAL		(300 * HZ)
+#endif
 
 #define THERMAL_THROTTLING_EVENT	0
 #define POWER_LIMIT_EVENT		1
@@ -177,12 +186,12 @@ static int therm_throt_process(bool new_event, int event, int level)
 	/* if we just entered the thermal event */
 	if (new_event) {
 		if (event == THERMAL_THROTTLING_EVENT)
-			printk(KERN_CRIT "CPU%d: %s temperature above threshold, cpu clock throttled (total events = %lu)\n",
+			pr_crit_ratelimited("CPU%d: %s temperature above threshold, cpu clock throttled (total events = %lu)\n",
 				this_cpu,
 				level == CORE_LEVEL ? "Core" : "Package",
 				state->count);
 		else
-			printk(KERN_CRIT "CPU%d: %s power limit notification (total events = %lu)\n",
+			pr_crit_ratelimited("CPU%d: %s power limit notification (total events = %lu)\n",
 				this_cpu,
 				level == CORE_LEVEL ? "Core" : "Package",
 				state->count);
@@ -190,11 +199,11 @@ static int therm_throt_process(bool new_event, int event, int level)
 	}
 	if (old_event) {
 		if (event == THERMAL_THROTTLING_EVENT)
-			printk(KERN_INFO "CPU%d: %s temperature/speed normal\n",
+			pr_info_ratelimited("CPU%d: %s temperature/speed normal\n",
 				this_cpu,
 				level == CORE_LEVEL ? "Core" : "Package");
 		else
-			printk(KERN_INFO "CPU%d: %s power limit normal\n",
+			pr_info_ratelimited("CPU%d: %s power limit normal\n",
 				this_cpu,
 				level == CORE_LEVEL ? "Core" : "Package");
 		return 1;

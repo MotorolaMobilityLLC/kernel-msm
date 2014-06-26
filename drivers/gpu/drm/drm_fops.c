@@ -271,9 +271,22 @@ static int drm_open_helper(struct inode *inode, struct file *filp,
 	priv->uid = current_euid();
 	priv->pid = get_pid(task_pid(current));
 	priv->minor = idr_find(&drm_minors_idr, minor_id);
+	if (!priv->minor) {
+		ret = -ENODEV;
+		goto out_put_pid;
+	}
+
 	priv->ioctl_count = 0;
 	/* for compatibility root is always authenticated */
-	priv->authenticated = capable(CAP_SYS_ADMIN);
+
+	/*
+	 * HACK: For Android compatibility we don't require CAP_SYS_ADMIN.
+	 *
+	 * Commented line:
+	 * priv->authenticated = capable(CAP_SYS_ADMIN);
+	 */
+	priv->authenticated = 1;
+
 	priv->lock_count = 0;
 
 	INIT_LIST_HEAD(&priv->lhead);
@@ -292,7 +305,7 @@ static int drm_open_helper(struct inode *inode, struct file *filp,
 	if (dev->driver->open) {
 		ret = dev->driver->open(dev, priv);
 		if (ret < 0)
-			goto out_free;
+			goto out_prime_destroy;
 	}
 
 
@@ -304,7 +317,7 @@ static int drm_open_helper(struct inode *inode, struct file *filp,
 		if (!priv->minor->master) {
 			mutex_unlock(&dev->struct_mutex);
 			ret = -ENOMEM;
-			goto out_free;
+			goto out_close;
 		}
 
 		priv->is_master = 1;
@@ -322,7 +335,7 @@ static int drm_open_helper(struct inode *inode, struct file *filp,
 				drm_master_put(&priv->minor->master);
 				drm_master_put(&priv->master);
 				mutex_unlock(&dev->struct_mutex);
-				goto out_free;
+				goto out_close;
 			}
 		}
 		mutex_lock(&dev->struct_mutex);
@@ -333,7 +346,7 @@ static int drm_open_helper(struct inode *inode, struct file *filp,
 				drm_master_put(&priv->minor->master);
 				drm_master_put(&priv->master);
 				mutex_unlock(&dev->struct_mutex);
-				goto out_free;
+				goto out_close;
 			}
 		}
 		mutex_unlock(&dev->struct_mutex);
@@ -367,7 +380,17 @@ static int drm_open_helper(struct inode *inode, struct file *filp,
 #endif
 
 	return 0;
-      out_free:
+
+out_close:
+	if (dev->driver->postclose)
+		dev->driver->postclose(dev, priv);
+out_prime_destroy:
+	if (drm_core_check_feature(dev, DRIVER_PRIME))
+		drm_prime_destroy_file_private(&priv->prime);
+	if (dev->driver->driver_features & DRIVER_GEM)
+		drm_gem_release(dev, priv);
+out_put_pid:
+	put_pid(priv->pid);
 	kfree(priv);
 	filp->private_data = NULL;
 	return ret;
@@ -501,10 +524,12 @@ int drm_release(struct inode *inode, struct file *filp)
 	if (file_priv->is_master) {
 		struct drm_master *master = file_priv->master;
 		struct drm_file *temp;
-		list_for_each_entry(temp, &dev->filelist, lhead) {
-			if ((temp->master == file_priv->master) &&
-			    (temp != file_priv))
-				temp->authenticated = 0;
+		if (!list_empty(&dev->filelist)) {
+			list_for_each_entry(temp, &dev->filelist, lhead) {
+				if ((temp->master == file_priv->master) &&
+				    (temp != file_priv))
+					temp->authenticated = 0;
+			}
 		}
 
 		/**

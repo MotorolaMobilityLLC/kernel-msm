@@ -1993,6 +1993,13 @@ static int cgroup_attach_task(struct cgroup *cgrp, struct task_struct *tsk,
 	do {
 		struct task_and_cgroup ent;
 
+		/*
+		 * @Leader exiting: stop right now to avoid infinite loop
+		 * as it will be removed from the list
+		 */
+		if (leader->flags & PF_EXITING)
+			break;
+
 		/* @tsk either already exited or can't exit until the end */
 		if (tsk->flags & PF_EXITING)
 			goto next;

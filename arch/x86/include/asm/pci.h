@@ -188,5 +188,6 @@ struct pci_setup_rom {
 	unsigned long function;
 	uint8_t romdata[0];
 };
+extern int xen_pcifront_enable_irq(struct pci_dev *dev);
 
 #endif /* _ASM_X86_PCI_H */

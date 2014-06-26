@@ -25,6 +25,10 @@
 #include <linux/alarmtimer.h>
 #include "android_alarm.h"
 
+#ifdef CONFIG_COMPAT
+#include <linux/compat.h>
+#endif
+
 #define ANDROID_ALARM_PRINT_INFO (1U << 0)
 #define ANDROID_ALARM_PRINT_IO (1U << 1)
 #define ANDROID_ALARM_PRINT_INT (1U << 2)
@@ -40,7 +44,8 @@ do {									\
 
 #define ANDROID_ALARM_WAKEUP_MASK ( \
 	ANDROID_ALARM_RTC_WAKEUP_MASK | \
-	ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP_MASK)
+	ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP_MASK | \
+	ANDROID_ALARM_POWER_OFF_WAKEUP_MASK)
 
 static int alarm_opened;
 static DEFINE_SPINLOCK(alarm_slock);
@@ -64,7 +69,8 @@ static struct devalarm alarms[ANDROID_ALARM_TYPE_COUNT];
 static int is_wakeup(enum android_alarm_type type)
 {
 	return (type == ANDROID_ALARM_RTC_WAKEUP ||
-		type == ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP);
+		type == ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP ||
+		type == ANDROID_ALARM_POWER_OFF_WAKEUP);
 }
 
 
@@ -181,6 +187,7 @@ static int alarm_get_time(enum android_alarm_type alarm_type,
 	switch (alarm_type) {
 	case ANDROID_ALARM_RTC_WAKEUP:
 	case ANDROID_ALARM_RTC:
+	case ANDROID_ALARM_POWER_OFF_WAKEUP:
 		getnstimeofday(ts);
 		break;
 	case ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP:
@@ -252,7 +259,8 @@ static long alarm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 
 	struct timespec ts;
-	int rv;
+	long rv = 0;
+
 
 	switch (ANDROID_ALARM_BASE_CMD(cmd)) {
 	case ANDROID_ALARM_SET_AND_WAIT(0):
@@ -282,7 +290,7 @@ static long alarm_compat_ioctl(struct file *file, unsigned int cmd,
 {
 
 	struct timespec ts;
-	int rv;
+	long rv;
 
 	switch (ANDROID_ALARM_BASE_CMD(cmd)) {
 	case ANDROID_ALARM_SET_AND_WAIT_COMPAT(0):
@@ -389,6 +397,9 @@ static enum alarmtimer_restart devalarm_alarmhandler(struct alarm *alrm,
 static const struct file_operations alarm_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = alarm_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl   = alarm_ioctl,
+#endif
 	.open = alarm_open,
 	.release = alarm_release,
 #ifdef CONFIG_COMPAT
@@ -413,6 +424,8 @@ static int __init alarm_dev_init(void)
 
 	alarm_init(&alarms[ANDROID_ALARM_RTC_WAKEUP].u.alrm,
 			ALARM_REALTIME, devalarm_alarmhandler);
+	alarm_init(&alarms[ANDROID_ALARM_POWER_OFF_WAKEUP].u.alrm,
+			ALARM_REALTIME_OFF, devalarm_alarmhandler);
 	hrtimer_init(&alarms[ANDROID_ALARM_RTC].u.hrt,
 			CLOCK_REALTIME, HRTIMER_MODE_ABS);
 	alarm_init(&alarms[ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP].u.alrm,

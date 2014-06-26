@@ -98,6 +98,11 @@ static int __init sfi_parse_ioapic(struct sfi_table_header *table)
  */
 int __init sfi_platform_init(void)
 {
+#ifdef CONFIG_XEN
+	/* FIXME: reserve IRQs based on hypervisor's IOAPIC info */
+	gsi_top += 100;
+	return;
+#endif
 #ifdef CONFIG_X86_LOCAL_APIC
 	register_lapic_address(sfi_lapic_addr);
 	sfi_table_parse(SFI_SIG_CPUS, NULL, NULL, sfi_parse_cpus);

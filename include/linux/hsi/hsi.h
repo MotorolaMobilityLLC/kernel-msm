@@ -65,6 +65,8 @@ enum {
 enum {
 	HSI_EVENT_START_RX,
 	HSI_EVENT_STOP_RX,
+	HSI_EVENT_RESUME,
+	HSI_EVENT_SUSPEND,
 };
 
 /**
@@ -129,6 +131,8 @@ struct hsi_client {
 	struct device		device;
 	struct hsi_config	tx_cfg;
 	struct hsi_config	rx_cfg;
+	void			(*hsi_start_rx)(struct hsi_client *cl);
+	void			(*hsi_stop_rx)(struct hsi_client *cl);
 	/* private: */
 	void			(*ehandler)(struct hsi_client *, unsigned long);
 	unsigned int		pclaimed:1;

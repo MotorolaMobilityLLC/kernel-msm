@@ -269,6 +269,11 @@ config WIFI_CONTROL_FUNC
 	help
 	  Enables Power/Reset/Carddetect function abstraction
 
+config WIFI_PLATFORM_DATA
+	bool "Enable WiFi platform data"
+	---help---
+	 Enables platform_wifi
+
 source "drivers/net/wireless/ath/Kconfig"
 source "drivers/net/wireless/b43/Kconfig"
 source "drivers/net/wireless/b43legacy/Kconfig"

@@ -55,16 +55,13 @@
 #include <linux/mm.h>
 #include <linux/cdev.h>
 #include <linux/mutex.h>
+#include <linux/io.h>
 #include <linux/slab.h>
 #if defined(__alpha__) || defined(__powerpc__)
 #include <asm/pgtable.h>	/* For pte_wrprotect */
 #endif
-#include <asm/io.h>
 #include <asm/mman.h>
 #include <asm/uaccess.h>
-#ifdef CONFIG_MTRR
-#include <asm/mtrr.h>
-#endif
 #if defined(CONFIG_AGP) || defined(CONFIG_AGP_MODULE)
 #include <linux/types.h>
 #include <linux/agp_backend.h>
@@ -96,6 +93,9 @@ struct videomode;
 #define DRM_UT_DRIVER		0x02
 #define DRM_UT_KMS		0x04
 #define DRM_UT_PRIME		0x08
+#define DRM_UT_PM		0x20
+#define DRM_UT_TDR      0x10
+
 /*
  * Three debug levels are defined.
  * drm_core, drm_driver, drm_kms
@@ -210,7 +210,6 @@ int drm_err(const char *func, const char *format, ...);
 		drm_ut_debug_printk(DRM_UT_CORE, DRM_NAME, 		\
 					__func__, fmt, ##args);		\
 	} while (0)
-
 #define DRM_DEBUG_DRIVER(fmt, args...)					\
 	do {								\
 		drm_ut_debug_printk(DRM_UT_DRIVER, DRM_NAME,		\
@@ -226,6 +225,14 @@ int drm_err(const char *func, const char *format, ...);
 		drm_ut_debug_printk(DRM_UT_PRIME, DRM_NAME,		\
 					__func__, fmt, ##args);		\
 	} while (0)
+#define DRM_DEBUG_PM(fmt, args...)					\
+	do {								\
+		drm_ut_debug_printk(DRM_UT_PM, DRM_NAME,		\
+					__func__, fmt, ##args);		\
+	} while (0)
+#define DRM_DEBUG_TDR(fmt, args...)					\
+		drm_ut_debug_printk(DRM_UT_TDR, DRM_NAME,		\
+					__func__, fmt, ##args);
 #define DRM_LOG(fmt, args...)						\
 	do {								\
 		drm_ut_debug_printk(DRM_UT_CORE, NULL,			\
@@ -250,7 +257,9 @@ int drm_err(const char *func, const char *format, ...);
 #define DRM_DEBUG_DRIVER(fmt, args...) do { } while (0)
 #define DRM_DEBUG_KMS(fmt, args...)	do { } while (0)
 #define DRM_DEBUG_PRIME(fmt, args...)	do { } while (0)
+#define DRM_DEBUG_TDR(fmt, args...)	do { } while (0)
 #define DRM_DEBUG(fmt, arg...)		 do { } while (0)
+#define DRM_DEBUG_PM(fmt, args...) do { } while (0)
 #define DRM_LOG(fmt, arg...)		do { } while (0)
 #define DRM_LOG_KMS(fmt, args...) do { } while (0)
 #define DRM_LOG_MODE(fmt, arg...) do { } while (0)
@@ -933,12 +942,15 @@ struct drm_driver {
 				struct dma_buf *dma_buf);
 	/* low-level interface used by drm_gem_prime_{import,export} */
 	int (*gem_prime_pin)(struct drm_gem_object *obj);
+	void (*gem_prime_unpin)(struct drm_gem_object *obj);
 	struct sg_table *(*gem_prime_get_sg_table)(struct drm_gem_object *obj);
 	struct drm_gem_object *(*gem_prime_import_sg_table)(
 				struct drm_device *dev, size_t size,
 				struct sg_table *sgt);
 	void *(*gem_prime_vmap)(struct drm_gem_object *obj);
 	void (*gem_prime_vunmap)(struct drm_gem_object *obj, void *vaddr);
+	int (*gem_prime_mmap)(struct drm_gem_object *obj,
+				struct vm_area_struct *vma);
 
 	/* vga arb irq handler */
 	void (*vgaarb_irq)(struct drm_device *dev, bool state);
@@ -1218,6 +1230,11 @@ struct drm_device {
 	int switch_power_state;
 
 	atomic_t unplugged; /* device has been unplugged or gone away */
+
+	struct mutex halt_mutex;
+	atomic_t halt_count;
+	wait_queue_head_t ioctl_queue;
+	wait_queue_head_t halt_queue;
 };
 
 #define DRM_SWITCH_POWER_ON 0
@@ -1250,37 +1267,8 @@ static inline int drm_core_has_MTRR(struct drm_device *dev)
 {
 	return drm_core_check_feature(dev, DRIVER_USE_MTRR);
 }
-
-#define DRM_MTRR_WC		MTRR_TYPE_WRCOMB
-
-static inline int drm_mtrr_add(unsigned long offset, unsigned long size,
-			       unsigned int flags)
-{
-	return mtrr_add(offset, size, flags, 1);
-}
-
-static inline int drm_mtrr_del(int handle, unsigned long offset,
-			       unsigned long size, unsigned int flags)
-{
-	return mtrr_del(handle, offset, size);
-}
-
 #else
 #define drm_core_has_MTRR(dev) (0)
-
-#define DRM_MTRR_WC		0
-
-static inline int drm_mtrr_add(unsigned long offset, unsigned long size,
-			       unsigned int flags)
-{
-	return 0;
-}
-
-static inline int drm_mtrr_del(int handle, unsigned long offset,
-			       unsigned long size, unsigned int flags)
-{
-	return 0;
-}
 #endif
 
 static inline void drm_device_set_unplugged(struct drm_device *dev)
@@ -1447,12 +1435,19 @@ extern void drm_core_reclaim_buffers(struct drm_device *dev,
 extern int drm_control(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv);
 extern int drm_irq_install(struct drm_device *dev);
+extern int drm_irq_install_locked(struct drm_device *dev, int locked);
 extern int drm_irq_uninstall(struct drm_device *dev);
+extern int drm_irq_uninstall_locked(struct drm_device *dev, int locked);
+
+extern void drm_halt(struct drm_device *dev);
+extern int drm_wait_idle(struct drm_device *dev, unsigned timeout);
+extern void drm_continue(struct drm_device *dev);
 
 extern int drm_vblank_init(struct drm_device *dev, int num_crtcs);
 extern int drm_wait_vblank(struct drm_device *dev, void *data,
 			   struct drm_file *filp);
 extern int drm_vblank_wait(struct drm_device *dev, unsigned int *vbl_seq);
+void drm_clean_pending_vblanks(struct drm_device *dev);
 extern u32 drm_vblank_count(struct drm_device *dev, int crtc);
 extern u32 drm_vblank_count_and_time(struct drm_device *dev, int crtc,
 				     struct timeval *vblanktime);
@@ -1630,7 +1625,6 @@ extern void drm_sysfs_destroy(void);
 extern int drm_sysfs_device_add(struct drm_minor *minor);
 extern void drm_sysfs_hotplug_event(struct drm_device *dev);
 extern void drm_sysfs_device_remove(struct drm_minor *minor);
-extern char *drm_get_connector_status_name(enum drm_connector_status status);
 extern int drm_sysfs_connector_add(struct drm_connector *connector);
 extern void drm_sysfs_connector_remove(struct drm_connector *connector);
 
@@ -1648,6 +1642,8 @@ int drm_gem_private_object_init(struct drm_device *dev,
 void drm_gem_object_handle_free(struct drm_gem_object *obj);
 void drm_gem_vm_open(struct vm_area_struct *vma);
 void drm_gem_vm_close(struct vm_area_struct *vma);
+int drm_gem_mmap_obj(struct drm_gem_object *obj, unsigned long obj_size,
+		     struct vm_area_struct *vma);
 int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma);
 
 #include <drm/drm_global.h>

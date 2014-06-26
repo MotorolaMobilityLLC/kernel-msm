@@ -818,6 +818,10 @@ static void quiesce_and_remove_host(struct us_data *us)
 {
 	struct Scsi_Host *host = us_to_host(us);
 
+	/* Kill all transfer first. Otherwise, it will cause scsi-host
+	 * remove blocking about 30sec. */
+	usb_stor_stop_transport(us);
+
 	/* If the device is really gone, cut short reset delays */
 	if (us->pusb_dev->state == USB_STATE_NOTATTACHED) {
 		set_bit(US_FLIDX_DISCONNECTING, &us->dflags);

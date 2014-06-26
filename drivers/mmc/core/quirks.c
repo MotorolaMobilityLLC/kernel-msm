@@ -13,6 +13,7 @@
 #include <linux/kernel.h>
 #include <linux/export.h>
 #include <linux/mmc/card.h>
+#include <linux/mmc/host.h>
 
 #ifndef SDIO_VENDOR_ID_TI
 #define SDIO_VENDOR_ID_TI		0x0097
@@ -61,6 +62,25 @@ static const struct mmc_fixup mmc_fixup_methods[] = {
 	END_FIXUP
 };
 
+/*
+ * Some product name in CID may contain '\n' or other non-name
+ * character. So use below func to compare name.
+ */
+static int str_cmp(const char *dst, const char *src)
+{
+	int i = 0;
+
+	if (NULL == dst || NULL == src)
+		return 0;
+
+	while (dst[i] != '\0' && src[i] != '\0') {
+		if (dst[i] != src[i])
+			return 0;
+		i++;
+	}
+	return 1;
+}
+
 void mmc_fixup_device(struct mmc_card *card, const struct mmc_fixup *table)
 {
 	const struct mmc_fixup *f;
@@ -76,8 +96,8 @@ void mmc_fixup_device(struct mmc_card *card, const struct mmc_fixup *table)
 		    (f->oemid == CID_OEMID_ANY ||
 		     f->oemid == card->cid.oemid) &&
 		    (f->name == CID_NAME_ANY ||
-		     !strncmp(f->name, card->cid.prod_name,
-			      sizeof(card->cid.prod_name))) &&
+		     str_cmp((const char *)f->name,
+			(const char *)card->cid.prod_name)) &&
 		    (f->cis_vendor == card->cis.vendor ||
 		     f->cis_vendor == (u16) SDIO_ANY_ID) &&
 		    (f->cis_device == card->cis.device ||
@@ -89,3 +109,16 @@ void mmc_fixup_device(struct mmc_card *card, const struct mmc_fixup *table)
 	}
 }
 EXPORT_SYMBOL(mmc_fixup_device);
+
+void dis_cache_mmc(struct mmc_card *card, int data)
+{
+	if (mmc_card_mmc(card)) {
+		mmc_claim_host(card->host);
+		pr_warn("%s: enther dis_cache_mmc.\n",
+			mmc_hostname(card->host));
+		mmc_cache_ctrl(card->host, 0);
+		card->host->caps2 &= ~MMC_CAP2_CACHE_CTRL;
+		mmc_release_host(card->host);
+	}
+}
+EXPORT_SYMBOL(dis_cache_mmc);

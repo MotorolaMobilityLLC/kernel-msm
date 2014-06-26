@@ -47,7 +47,7 @@
 # define NEED_NOPL	0
 #endif
 
-#ifdef CONFIG_MATOM
+#if defined(CONFIG_MATOM) || defined(CONFIG_MSLM)
 # define NEED_MOVBE	(1<<(X86_FEATURE_MOVBE & 31))
 #else
 # define NEED_MOVBE	0

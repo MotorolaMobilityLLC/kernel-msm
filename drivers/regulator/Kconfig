@@ -514,5 +514,9 @@ config REGULATOR_AS3711
 	  This driver provides support for the voltage regulators on the
 	  AS3711 PMIC
 
-endif
+config REGULATOR_PMIC_BASIN_COVE
+        tristate "PMIC Basin Cove voltage regulator"
+        help
+          This driver controls intel Basin Cove pmic voltage output regulator
 
+endif

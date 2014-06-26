@@ -7,6 +7,7 @@
 #include <linux/blkdev.h>
 #include <scsi/scsi.h>
 #include <linux/atomic.h>
+#include <linux/ratelimit.h>
 
 struct device;
 struct request_queue;
@@ -225,6 +226,15 @@ struct scsi_dh_data {
 
 #define sdev_printk(prefix, sdev, fmt, a...)	\
 	dev_printk(prefix, &(sdev)->sdev_gendev, fmt, ##a)
+
+#define sdev_printk_ratelimited(prefix, sdev, fmt, a...)  \
+do {                                                      \
+	static DEFINE_RATELIMIT_STATE(_rs,                       \
+		DEFAULT_RATELIMIT_INTERVAL,                            \
+		DEFAULT_RATELIMIT_BURST);                              \
+	if (__ratelimit(&_rs))                                   \
+		dev_printk(prefix, &(sdev)->sdev_gendev, fmt, ##a);    \
+} while (0)
 
 #define scmd_printk(prefix, scmd, fmt, a...)				\
         (scmd)->request->rq_disk ?					\

@@ -138,10 +138,7 @@ static inline unsigned long drm_mm_hole_node_end(struct drm_mm_node *hole_node)
 /*
  * Basic range manager support (drm_mm.c)
  */
-extern struct drm_mm_node *drm_mm_create_block(struct drm_mm *mm,
-					       unsigned long start,
-					       unsigned long size,
-					       bool atomic);
+extern int drm_mm_reserve_node(struct drm_mm *mm, struct drm_mm_node *node);
 extern struct drm_mm_node *drm_mm_get_block_generic(struct drm_mm_node *node,
 						    unsigned long size,
 						    unsigned alignment,
@@ -155,6 +152,7 @@ extern struct drm_mm_node *drm_mm_get_block_range_generic(
 						unsigned long start,
 						unsigned long end,
 						int atomic);
+
 static inline struct drm_mm_node *drm_mm_get_block(struct drm_mm_node *parent,
 						   unsigned long size,
 						   unsigned alignment)
@@ -175,17 +173,6 @@ static inline struct drm_mm_node *drm_mm_get_block_range(
 						unsigned long end)
 {
 	return drm_mm_get_block_range_generic(parent, size, alignment, 0,
-					      start, end, 0);
-}
-static inline struct drm_mm_node *drm_mm_get_color_block_range(
-						struct drm_mm_node *parent,
-						unsigned long size,
-						unsigned alignment,
-						unsigned long color,
-						unsigned long start,
-						unsigned long end)
-{
-	return drm_mm_get_block_range_generic(parent, size, alignment, color,
 					      start, end, 0);
 }
 static inline struct drm_mm_node *drm_mm_get_block_atomic_range(
@@ -255,29 +242,10 @@ static inline  struct drm_mm_node *drm_mm_search_free_in_range(
 	return drm_mm_search_free_in_range_generic(mm, size, alignment, 0,
 						   start, end, best_match);
 }
-static inline struct drm_mm_node *drm_mm_search_free_color(const struct drm_mm *mm,
-							   unsigned long size,
-							   unsigned alignment,
-							   unsigned long color,
-							   bool best_match)
-{
-	return drm_mm_search_free_generic(mm,size, alignment, color, best_match);
-}
-static inline  struct drm_mm_node *drm_mm_search_free_in_range_color(
-						const struct drm_mm *mm,
-						unsigned long size,
-						unsigned alignment,
-						unsigned long color,
-						unsigned long start,
-						unsigned long end,
-						bool best_match)
-{
-	return drm_mm_search_free_in_range_generic(mm, size, alignment, color,
-						   start, end, best_match);
-}
-extern int drm_mm_init(struct drm_mm *mm,
-		       unsigned long start,
-		       unsigned long size);
+
+extern void drm_mm_init(struct drm_mm *mm,
+			unsigned long start,
+			unsigned long size);
 extern void drm_mm_takedown(struct drm_mm *mm);
 extern int drm_mm_clean(struct drm_mm *mm);
 extern int drm_mm_pre_get(struct drm_mm *mm);

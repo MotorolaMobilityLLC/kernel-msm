@@ -149,7 +149,11 @@ static inline int invalid_vm86_irq(int irq)
  * static arrays.
  */
 
+#ifdef CONFIG_XEN
+#define NR_IRQS_LEGACY			  0
+#else
 #define NR_IRQS_LEGACY			  16
+#endif /* CONFIG_XEN */
 
 #define IO_APIC_VECTOR_LIMIT		( 32 * MAX_IO_APICS )
 

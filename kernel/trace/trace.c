@@ -40,6 +40,9 @@
 #include <linux/fs.h>
 #include <linux/sched/rt.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/marker_event.h>
+
 #include "trace.h"
 #include "trace_output.h"
 
@@ -4607,6 +4610,9 @@ tracing_mark_write(struct file *filp, const char __user *ubuf,
 	 * pages directly. We then write the data directly into the
 	 * ring buffer.
 	 */
+
+	trace_marker_event(ubuf, cnt);
+
 	BUILD_BUG_ON(TRACE_BUF_SIZE >= PAGE_SIZE);
 
 	/* check if we cross pages */

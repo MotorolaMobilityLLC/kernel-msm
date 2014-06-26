@@ -244,6 +244,9 @@ static DEFINE_MUTEX(sysfs_lock);
 
 /*
  * /sys/class/gpio/gpioN... only for GPIOs that are exported
+ *   /pinmux
+ *      * configures GPIO or alternate function
+ *      * r/w as zero (normal GPIO) or alternate function number
  *   /direction
  *      * MAY BE OMITTED if kernel won't allow direction changes
  *      * is read/write as "in" or "out"
@@ -262,6 +265,54 @@ static DEFINE_MUTEX(sysfs_lock);
  *      * also affects existing and subsequent "falling" and "rising"
  *        /edge configuration
  */
+static ssize_t gpio_pinmux_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	const struct gpio_desc	*desc = dev_get_drvdata(dev);
+	unsigned		gpio = desc - gpio_desc;
+	struct gpio_chip	*chip;
+	ssize_t			status = -EINVAL;
+
+	mutex_lock(&sysfs_lock);
+
+	chip = desc->chip;
+
+	if (!test_bit(FLAG_EXPORT, &desc->flags))
+		status = -EIO;
+	else if (chip->get_pinmux != NULL)
+		status = sprintf(buf, "%d\n", chip->get_pinmux(gpio));
+
+	mutex_unlock(&sysfs_lock);
+	return status;
+}
+
+static ssize_t gpio_pinmux_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	const struct gpio_desc	*desc = dev_get_drvdata(dev);
+	unsigned		gpio = desc - gpio_desc;
+	ssize_t			status = -EINVAL;
+	struct gpio_chip	*chip;
+	long	mux;
+
+	mutex_lock(&sysfs_lock);
+
+	chip = desc->chip;
+
+	if (!test_bit(FLAG_EXPORT, &desc->flags))
+		status = -EIO;
+	else if (chip->set_pinmux != NULL) {
+		status = kstrtol(buf, 0, &mux);
+		if (status == 0)
+			chip->set_pinmux(gpio, mux);
+	}
+
+	mutex_unlock(&sysfs_lock);
+	return status ? : size;
+}
+
+static DEVICE_ATTR(pinmux, 0644,
+		gpio_pinmux_show, gpio_pinmux_store);
 
 static ssize_t gpio_direction_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -796,6 +847,10 @@ static int gpiod_export(struct gpio_desc *desc, bool direction_may_change)
 			    desc_to_gpio(desc));
 	if (IS_ERR(dev)) {
 		status = PTR_ERR(dev);
+			if (!status)
+				status = device_create_file(dev,
+						&dev_attr_pinmux);
+
 		goto fail_unlock;
 	}
 

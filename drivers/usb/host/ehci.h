@@ -212,6 +212,18 @@ struct ehci_hcd {			/* one per controller */
 	unsigned		has_hostpc:1;
 	unsigned		has_ppcd:1; /* support per-port change bits */
 	u8			sbrn;		/* packed release number */
+	unsigned int		sram_addr;
+	unsigned int		sram_size;
+
+	/* SRAM backup memory */
+	void			*sram_swap;
+
+#ifdef CONFIG_USB_OTG
+	unsigned		has_otg:1;	/* if it is otg host*/
+	/* otg host has additional bus_suspend and bus_resume */
+	int (*otg_suspend)(struct usb_hcd *hcd);
+	int (*otg_resume)(struct usb_hcd *hcd);
+#endif
 
 	/* irq statistics */
 #ifdef EHCI_STATS
@@ -243,6 +255,9 @@ static inline struct usb_hcd *ehci_to_hcd (struct ehci_hcd *ehci)
 /*-------------------------------------------------------------------------*/
 
 #include <linux/usb/ehci_def.h>
+#ifdef CONFIG_USB_EHCI_HCD_SPH
+#include <linux/usb/ehci_sph_pci.h>
+#endif
 
 /*-------------------------------------------------------------------------*/
 
@@ -806,4 +821,6 @@ extern int	ehci_suspend(struct usb_hcd *hcd, bool do_wakeup);
 extern int	ehci_resume(struct usb_hcd *hcd, bool hibernated);
 #endif	/* CONFIG_PM */
 
+extern void ehci_stop(struct usb_hcd *hcd);
+extern int ehci_reset(struct ehci_hcd *ehci);
 #endif /* __LINUX_EHCI_HCD_H */

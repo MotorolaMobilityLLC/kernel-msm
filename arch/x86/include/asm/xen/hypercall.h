@@ -447,6 +447,27 @@ HYPERVISOR_suspend(unsigned long start_info_mfn)
 }
 
 static inline int
+HYPERVISOR_monitor_op(const void *eax, unsigned long ecx,
+		   unsigned long edx)
+{
+	return _hypercall3(int, monitor_op, eax, ecx, edx);
+}
+
+static inline int
+HYPERVISOR_mwait_op(unsigned long eax, unsigned long ecx,
+			void *monitor_addr, unsigned long disable_timer)
+{
+	return _hypercall4(int, mwait_op, eax, ecx, monitor_addr,
+				disable_timer);
+}
+
+static inline int
+HYPERVISOR_ipi_op(unsigned long cpu)
+{
+	return _hypercall1(int, ipi_op, cpu);
+}
+
+static inline int
 HYPERVISOR_nmi_op(unsigned long op, unsigned long arg)
 {
 	return _hypercall2(int, nmi_op, op, arg);

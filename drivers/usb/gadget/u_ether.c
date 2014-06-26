@@ -84,9 +84,15 @@ struct eth_dev {
 
 #define DEFAULT_QLEN	2	/* double buffering by default */
 
-static unsigned qmult = 5;
+static unsigned qmult = 8;
 module_param(qmult, uint, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(qmult, "queue length multiplier at high/super speed");
+
+/* Add padding space before the NET_IP_ALIGN to ensure the address of data
+ * buffer align on 64B
+ */
+#define DMA_ALIGN_64    64
+#define DMA_IP_ALIGN_PAD   (DMA_ALIGN_64 - NET_IP_ALIGN)
 
 /* for dual-speed hardware, use deeper queues at high/super speed */
 static inline int qlen(struct usb_gadget *gadget)
@@ -223,13 +229,11 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	 */
 	size += sizeof(struct ethhdr) + dev->net->mtu + RX_EXTRA;
 	size += dev->port_usb->header_len;
-	size += out->maxpacket - 1;
-	size -= size % out->maxpacket;
 
 	if (dev->port_usb->is_fixed)
 		size = max_t(size_t, size, dev->port_usb->fixed_out_len);
 
-	skb = alloc_skb(size + NET_IP_ALIGN, gfp_flags);
+	skb = alloc_skb(size + NET_IP_ALIGN + DMA_IP_ALIGN_PAD, gfp_flags);
 	if (skb == NULL) {
 		DBG(dev, "no rx skb\n");
 		goto enomem;
@@ -239,7 +243,7 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	 * but on at least one, checksumming fails otherwise.  Note:
 	 * RNDIS headers involve variable numbers of LE32 values.
 	 */
-	skb_reserve(skb, NET_IP_ALIGN);
+	skb_reserve(skb, NET_IP_ALIGN + DMA_IP_ALIGN_PAD);
 
 	req->buf = skb->data;
 	req->length = size;

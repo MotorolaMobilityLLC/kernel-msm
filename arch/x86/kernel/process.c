@@ -38,9 +38,7 @@
  */
 DEFINE_PER_CPU_SHARED_ALIGNED(struct tss_struct, init_tss) = INIT_TSS;
 
-#ifdef CONFIG_X86_64
 static DEFINE_PER_CPU(unsigned char, is_idle);
-#endif
 
 struct kmem_cache *task_xstate_cachep;
 EXPORT_SYMBOL_GPL(task_xstate_cachep);
@@ -240,7 +238,6 @@ static inline void play_dead(void)
 }
 #endif
 
-#ifdef CONFIG_X86_64
 void enter_idle(void)
 {
 	this_cpu_write(is_idle, 1);
@@ -262,7 +259,6 @@ void exit_idle(void)
 		return;
 	__exit_idle();
 }
-#endif
 
 void arch_cpu_idle_enter(void)
 {

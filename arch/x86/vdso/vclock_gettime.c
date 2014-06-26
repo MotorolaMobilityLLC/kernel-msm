@@ -60,7 +60,11 @@ notrace static cycle_t vread_tsc(void)
 
 static notrace cycle_t vread_hpet(void)
 {
-	return readl((const void __iomem *)fix_to_virt(VSYSCALL_HPET) + HPET_COUNTER);
+	/*
+	 * This is a upstream bug, we should only use HPET_COUNTER
+	 * when CONFIG_HPET_TIMER==y
+	 */
+	return readl((const void __iomem *)fix_to_virt(VSYSCALL_HPET) + 0xf0);
 }
 
 #ifdef CONFIG_PARAVIRT_CLOCK

@@ -681,8 +681,10 @@ cmos_do_probe(struct device *dev, struct resource *ports, int rtc_irq)
 	hpet_set_periodic_freq(cmos_rtc.rtc->irq_freq);
 	CMOS_WRITE(RTC_REF_CLCK_32KHZ | 0x06, RTC_FREQ_SELECT);
 
+#ifndef CONFIG_RTC_DRV_CMOS_WAKEUP_FROM_LPSTATES
 	/* disable irqs */
 	cmos_irq_disable(&cmos_rtc, RTC_PIE | RTC_AIE | RTC_UIE);
+#endif
 
 	rtc_control = CMOS_READ(RTC_CONTROL);
 
@@ -975,6 +977,30 @@ static void cmos_wake_setup(struct device *dev)
 	device_init_wakeup(dev, 1);
 }
 
+#elif defined(CONFIG_RTC_DRV_CMOS_WAKEUP_FROM_LPSTATES)
+
+#ifdef	CONFIG_RTC_DRV_CMOS_DAYOFMONTH_ALARM
+static struct cmos_rtc_board_info cmos_wakeup_rtc_info;
+#endif
+
+static void cmos_wake_setup(struct device *dev)
+{
+#ifdef	CONFIG_RTC_DRV_CMOS_DAYOFMONTH_ALARM
+	/* add day of month capability for alarms */
+	cmos_wakeup_rtc_info.rtc_day_alarm = RTC_REG_D;
+	cmos_wakeup_rtc_info.rtc_mon_alarm = 0;
+	cmos_wakeup_rtc_info.rtc_century = 0;
+
+	cmos_wakeup_rtc_info.wake_on = NULL;
+	cmos_wakeup_rtc_info.wake_off = NULL;
+
+	dev->platform_data = &cmos_wakeup_rtc_info;
+#endif
+
+	/* RTC always wakes from S1/S2/S3, and often S4/STD */
+	device_init_wakeup(dev, 1);
+}
+
 #else
 
 static void cmos_wake_setup(struct device *dev)
@@ -1120,10 +1146,12 @@ static int __exit cmos_platform_remove(struct platform_device *pdev)
 
 static void cmos_platform_shutdown(struct platform_device *pdev)
 {
+#ifndef CONFIG_RTC_DRV_CMOS_WAKEUP_FROM_LPSTATES
 	if (system_state == SYSTEM_POWER_OFF && !cmos_poweroff(&pdev->dev))
 		return;
 
 	cmos_do_shutdown();
+#endif
 }
 
 /* work with hotplug and coldplug */

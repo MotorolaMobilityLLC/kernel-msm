@@ -681,6 +681,8 @@ extern int	       skb_to_sgvec(struct sk_buff *skb,
 extern int	       skb_cow_data(struct sk_buff *skb, int tailbits,
 				    struct sk_buff **trailer);
 extern int	       skb_pad(struct sk_buff *skb, int pad);
+extern void copy_skb_header(struct sk_buff *new, const struct sk_buff *old);
+extern void skb_clone_fraglist(struct sk_buff *skb);
 #define dev_kfree_skb(a)	consume_skb(a)
 
 extern int skb_append_datato_frags(struct sock *sk, struct sk_buff *skb,

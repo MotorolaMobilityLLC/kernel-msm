@@ -696,8 +696,10 @@ struct paravirt_patch_site {
 	u16 clobbers;		/* what registers you may clobber */
 };
 
+#ifdef CONFIG_XEN
 extern struct paravirt_patch_site __parainstructions[],
 	__parainstructions_end[];
+#endif
 
 #endif	/* __ASSEMBLY__ */
 

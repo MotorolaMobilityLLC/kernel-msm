@@ -55,6 +55,12 @@ void arch_trigger_all_cpu_backtrace(void)
 			break;
 		mdelay(1);
 	}
+	if (cpumask_empty(to_cpumask(backtrace_mask)))
+		printk(KERN_INFO "All CPUs responded to NMI.\n");
+	else
+		for_each_cpu(i, to_cpumask(backtrace_mask))
+			printk(KERN_INFO "CPU %d did not respond to NMI%s.\n",
+				i, (smp_processor_id() == i) ? " (itself)" : "");
 
 	clear_bit(0, &backtrace_flag);
 	smp_mb__after_clear_bit();

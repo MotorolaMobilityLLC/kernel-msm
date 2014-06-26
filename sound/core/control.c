@@ -29,6 +29,7 @@
 #include <sound/minors.h>
 #include <sound/info.h>
 #include <sound/control.h>
+#include <sound/effect_driver.h>
 
 /* max number of user-defined controls */
 #define MAX_USER_CONTROLS	32
@@ -1395,6 +1396,31 @@ static long snd_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 		return put_user(card->power_state, ip) ? -EFAULT : 0;
 #else
 		return put_user(SNDRV_CTL_POWER_D0, ip) ? -EFAULT : 0;
+#endif
+#if IS_ENABLED(CONFIG_SND_EFFECTS_OFFLOAD)
+	case SNDRV_CTL_IOCTL_EFFECT_VERSION:
+		return put_user(SNDRV_EFFECT_VERSION, ip) ? -EFAULT : 0;
+	case SNDRV_CTL_IOCTL_EFFECT_CREATE:
+		return snd_ctl_effect_create(card, argp);
+	case SNDRV_CTL_IOCTL_EFFECT_DESTROY:
+		return snd_ctl_effect_destroy(card, argp);
+	case SNDRV_CTL_IOCTL_EFFECT_SET_PARAMS:
+		return snd_ctl_effect_set_params(card, argp);
+	case SNDRV_CTL_IOCTL_EFFECT_GET_PARAMS:
+		return snd_ctl_effect_get_params(card, argp);
+	case SNDRV_CTL_IOCTL_EFFECT_QUERY_NUM:
+		return snd_ctl_effect_query_num_effects(card, argp);
+	case SNDRV_CTL_IOCTL_EFFECT_QUERY_CAPS:
+		return snd_ctl_effect_query_effect_caps(card, argp);
+#else
+	case SNDRV_CTL_IOCTL_EFFECT_VERSION:
+	case SNDRV_CTL_IOCTL_EFFECT_CREATE:
+	case SNDRV_CTL_IOCTL_EFFECT_DESTROY:
+	case SNDRV_CTL_IOCTL_EFFECT_SET_PARAMS:
+	case SNDRV_CTL_IOCTL_EFFECT_GET_PARAMS:
+	case SNDRV_CTL_IOCTL_EFFECT_QUERY_NUM:
+	case SNDRV_CTL_IOCTL_EFFECT_QUERY_CAPS:
+		return -ENOPROTOOPT;
 #endif
 	}
 	down_read(&snd_ioctl_rwsem);

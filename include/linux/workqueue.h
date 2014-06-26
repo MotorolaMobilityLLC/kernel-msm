@@ -602,7 +602,7 @@ long work_on_cpu(int cpu, long (*fn)(void *), void *arg);
 
 #ifdef CONFIG_FREEZER
 extern void freeze_workqueues_begin(void);
-extern bool freeze_workqueues_busy(void);
+extern bool freeze_workqueues_busy(char **busy_wq_name);
 extern void thaw_workqueues(void);
 #endif /* CONFIG_FREEZER */
 

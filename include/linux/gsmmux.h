@@ -1,8 +1,9 @@
 #ifndef _LINUX_GSMMUX_H
 #define _LINUX_GSMMUX_H
 
-struct gsm_config
-{
+#include <linux/if.h>
+
+struct gsm_config {
 	unsigned int adaption;
 	unsigned int encapsulation;
 	unsigned int initiator;
@@ -14,12 +15,15 @@ struct gsm_config
 	unsigned int mtu;
 	unsigned int k;
 	unsigned int i;
-	unsigned int unused[8];		/* Padding for expansion without
+	unsigned int clocal;
+	unsigned int burst;
+	unsigned int unused[6];		/* Padding for expansion without
 					   breaking stuff */
 };
 
 #define GSMIOC_GETCONF		_IOR('G', 0, struct gsm_config)
 #define GSMIOC_SETCONF		_IOW('G', 1, struct gsm_config)
+#define GSMIOC_DEMUX		_IO('G', 4)
 
 struct gsm_netconfig {
 	unsigned int adaption;  /* Adaption to use in network mode */

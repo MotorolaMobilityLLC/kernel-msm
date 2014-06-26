@@ -59,6 +59,7 @@ static const struct i2c_device_id pca953x_id[] = {
 	{ "pca9557", 8  | PCA953X_TYPE, },
 	{ "pca9574", 8  | PCA957X_TYPE | PCA_INT, },
 	{ "pca9575", 16 | PCA957X_TYPE | PCA_INT, },
+	{ "pca953x", 8  | PCA957X_TYPE | PCA_INT, },
 
 	{ "max7310", 8  | PCA953X_TYPE, },
 	{ "max7312", 16 | PCA953X_TYPE | PCA_INT, },
@@ -778,7 +779,6 @@ static int pca953x_probe(struct i2c_client *client,
 		if (ret < 0)
 			dev_warn(&client->dev, "setup failed, %d\n", ret);
 	}
-
 	i2c_set_clientdata(client, chip);
 	return 0;
 }
@@ -838,6 +838,17 @@ static const struct of_device_id pca953x_dt_ids[] = {
 
 MODULE_DEVICE_TABLE(of, pca953x_dt_ids);
 
+int pca953x_command(struct i2c_client *client, unsigned int cmd, void *arg)
+{
+	u8 *buff = (u8 *)arg;
+	struct pca953x_chip *chip;
+	if (cmd == 1) {
+		chip = i2c_get_clientdata(client);
+		pca953x_write_single(chip, buff[0], buff[1], 0);
+	}
+	return 0;
+}
+
 static struct i2c_driver pca953x_driver = {
 	.driver = {
 		.name	= "pca953x",
@@ -846,8 +857,8 @@ static struct i2c_driver pca953x_driver = {
 	.probe		= pca953x_probe,
 	.remove		= pca953x_remove,
 	.id_table	= pca953x_id,
+	.command	= pca953x_command,
 };
-
 static int __init pca953x_init(void)
 {
 	return i2c_add_driver(&pca953x_driver);

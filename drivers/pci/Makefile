@@ -34,6 +34,7 @@ obj-$(CONFIG_PCI_IOV) += iov.o
 # Some architectures use the generic PCI setup functions
 #
 obj-$(CONFIG_X86) += setup-bus.o
+obj-$(CONFIG_ATOM_SOC_POWER) += pci-atom_soc.o
 obj-$(CONFIG_ALPHA) += setup-bus.o setup-irq.o
 obj-$(CONFIG_ARM) += setup-bus.o setup-irq.o
 obj-$(CONFIG_UNICORE32) += setup-bus.o setup-irq.o

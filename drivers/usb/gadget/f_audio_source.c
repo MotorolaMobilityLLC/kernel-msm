@@ -353,8 +353,23 @@ static void audio_send(struct audio_dev *audio)
 	frames -= audio->frames_sent;
 
 	/* We need to send something to keep the pipeline going */
-	if (frames <= 0)
+	if (frames < FRAMES_PER_MSEC) {
 		frames = FRAMES_PER_MSEC;
+	} else if (frames == 2 * FRAMES_PER_MSEC) {
+		frames = FRAMES_PER_MSEC;
+
+		/* Adjust frames_sent.
+		 *
+		 * "frames" is calulated from kernel time which grows a
+		 * little faster than frames_sent, and we should adjust
+		 * frames_sent to catch up with "frames" to insure the
+		 * jitter won't exceed 2 * FRAMES_PER_MSEC + 1
+		 */
+		audio->frames_sent += FRAMES_PER_MSEC;
+	} else if (frames == 2 * FRAMES_PER_MSEC + 1) {
+		frames = FRAMES_PER_MSEC + 1;
+		audio->frames_sent += FRAMES_PER_MSEC;
+	}
 
 	while (frames > 0) {
 		req = audio_req_get(audio);
@@ -528,11 +543,16 @@ static int audio_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 
 	pr_debug("audio_set_alt intf %d, alt %d\n", intf, alt);
 
-	ret = config_ep_by_speed(cdev->gadget, f, audio->in_ep);
-	if (ret)
-		return ret;
+	if (intf == as_interface_alt_1_desc.bInterfaceNumber &&
+		alt == 1 && !audio->in_ep->driver_data) {
+		ret = config_ep_by_speed(cdev->gadget, f, audio->in_ep);
+		if (ret)
+			return ret;
 
-	usb_ep_enable(audio->in_ep);
+		usb_ep_enable(audio->in_ep);
+		audio->in_ep->driver_data = audio;
+	}
+
 	return 0;
 }
 
@@ -542,6 +562,8 @@ static void audio_disable(struct usb_function *f)
 
 	pr_debug("audio_disable\n");
 	usb_ep_disable(audio->in_ep);
+
+	audio->in_ep->driver_data = NULL;
 }
 
 /*-------------------------------------------------------------------------*/

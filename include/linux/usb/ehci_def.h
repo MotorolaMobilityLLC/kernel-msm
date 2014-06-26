@@ -179,6 +179,7 @@ struct ehci_regs {
  */
 	/* HOSTPC: offset 0x84 */
 	u32		hostpc[1];	/* HOSTPC extension */
+#define HOSTPC_ASUS	(1<<0)		/* Auto PHY low power mode */
 #define HOSTPC_PHCD	(1<<22)		/* Phy clock disable */
 #define HOSTPC_PSPD	(3<<25)		/* Port speed detection */
 

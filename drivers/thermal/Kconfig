@@ -51,6 +51,13 @@ config THERMAL_DEFAULT_GOV_USER_SPACE
 
 endchoice
 
+config INTEL_MFLD_THERMAL
+	tristate "Thermal driver for Intel Medfield platform"
+	depends on MFD_INTEL_MSIC && THERMAL && MSIC_GPADC
+	help
+	  Say Y here to enable thermal driver support for the  Intel Medfield
+	   platform.
+
 config THERMAL_GOV_FAIR_SHARE
 	bool "Fair-share thermal governor"
 	help
@@ -168,5 +175,61 @@ config INTEL_POWERCLAMP
 	  Enable this to enable Intel PowerClamp idle injection driver. This
 	  enforce idle time which results in more package C-state residency. The
 	  user interface is exposed via generic thermal framework.
+
+config INTEL_BYT_THERMAL
+	tristate "Thermal driver for Intel Baytrail platform"
+	depends on THERMAL && IIO && CRYSTAL_COVE
+	help
+	  Say Y here to enable thermal driver on Intel Baytrail platform.
+
+	  To load this driver as a module, select M here. The module
+	  will be called "byt_thermal"
+
+config SENSORS_THERMAL_MRFLD
+	tristate "Thermal driver for Intel Merrifield platform"
+	depends on THERMAL && IIO && IIO_BASINCOVE_GPADC
+	help
+	  Say Y here to enable thermal driver on Intel Merrifield platform.
+
+	  To load this driver as a module, select M here. The module
+	  will be called "mrfl_thermal"
+
+config INTEL_BYT_EC_THERMAL
+	tristate "Thermal driver for Intel Baytrail platform"
+	depends on THERMAL && INTEL_BYT_EC
+	help
+	  Say Y here to enable thermal driver on Intel Baytrail-M platform.
+
+	  To load this driver as a module, select M here. The module
+	  will be called "byt_ec_thermal"
+
+config SOC_THERMAL
+	tristate "SoC Thermal driver"
+	depends on THERMAL
+	help
+	  SoC Thermal driver registers to Generic Thermal Framework.
+	  Exposes SoC DTS and aux trip point values through the framework.
+
+	  Say Y here to enable thermal driver on Intel Merrifield
+	  platform. To load this driver as a module, select M here.
+
+config DEBUG_THERMAL
+	bool "Thermal debug information support"
+	depends on THERMAL
+	help
+	  This enables debug sysfs interfaces/information for Thermal
+	  subsystem.
+
+	  Saying Y here will expose extra sysfs nodes under
+	  /sys/class/thermal/thermal_zoneX/
+
+config INTEL_MOOR_THERMAL
+	tristate "Thermal driver for Intel Moorefield platform"
+	depends on THERMAL && IIO && IIO_BASINCOVE_GPADC
+	help
+	  Say Y here to enable thermal driver on Intel Moorefield platform.
+
+	  To load this driver as a module, select M here. The module
+	  will be called "moor_thermal"
 
 endif

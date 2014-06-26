@@ -5,7 +5,9 @@
 #include <linux/interrupt.h>
 #include <linux/keyboard.h>
 
+#ifndef CONFIG_ANDROID
 extern struct tasklet_struct keyboard_tasklet;
+#endif
 
 extern char *func_table[MAX_NR_FUNC];
 extern char func_buf[];
@@ -74,11 +76,15 @@ extern void (*kbd_ledfunc)(unsigned int led);
 extern int set_console(int nr);
 extern void schedule_console_callback(void);
 
+#ifndef CONFIG_ANDROID
 /* FIXME: review locking for vt.c callers */
 static inline void set_leds(void)
 {
 	tasklet_schedule(&keyboard_tasklet);
 }
+#else
+static inline void set_leds(void) {}
+#endif
 
 static inline int vc_kbd_mode(struct kbd_struct * kbd, int flag)
 {

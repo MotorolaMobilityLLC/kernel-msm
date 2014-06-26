@@ -31,7 +31,7 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/gpio.h>
-#include <asm/intel_scu_ipc.h>
+#include <asm/intel_scu_pmic.h>
 #include <linux/device.h>
 #include <linux/intel_pmic_gpio.h>
 #include <linux/platform_device.h>

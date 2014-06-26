@@ -192,8 +192,12 @@ int snd_dma_alloc_pages(int type, struct device *device, size_t size,
 	dmab->bytes = 0;
 	switch (type) {
 	case SNDRV_DMA_TYPE_CONTINUOUS:
+#ifdef CONFIG_XEN
+		dmab->area = snd_malloc_pages(size, __GFP_DMA32);
+#else
 		dmab->area = snd_malloc_pages(size,
-					(__force gfp_t)(unsigned long)device);
+			(__force gfp_t)(unsigned long)device);
+#endif
 		dmab->addr = 0;
 		break;
 #ifdef CONFIG_HAS_DMA

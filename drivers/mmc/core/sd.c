@@ -215,7 +215,7 @@ static int mmc_decode_scr(struct mmc_card *card)
 static int mmc_read_ssr(struct mmc_card *card)
 {
 	unsigned int au, es, et, eo;
-	int err, i;
+	int err, i, max_au;
 	u32 *ssr;
 
 	if (!(card->csd.cmdclass & CCC_APP_SPEC)) {
@@ -239,12 +239,15 @@ static int mmc_read_ssr(struct mmc_card *card)
 	for (i = 0; i < 16; i++)
 		ssr[i] = be32_to_cpu(ssr[i]);
 
+	/* SD3.0 increases max AU size to 64MB (0xF) from 4MB (0x9) */
+	max_au = card->scr.sda_spec3 ? 0xF : 0x9;
+
 	/*
 	 * UNSTUFF_BITS only works with four u32s so we have to offset the
 	 * bitfield positions accordingly.
 	 */
 	au = UNSTUFF_BITS(ssr, 428 - 384, 4);
-	if (au > 0 && au <= 9) {
+	if (au > 0 && au <= max_au) {
 		card->ssr.au = 1 << (au + 4);
 		es = UNSTUFF_BITS(ssr, 408 - 384, 16);
 		et = UNSTUFF_BITS(ssr, 402 - 384, 6);
@@ -982,6 +985,26 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	err = mmc_sd_setup_card(host, card, oldcard != NULL);
 	if (err)
 		goto free_card;
+
+	if (!(rocr & SD_ROCR_S18A) && mmc_sd_card_uhs(card)) {
+		/*
+		 * SD card which has DDR50/SDR104 flag and noddr50 flag has
+		 * already in 1.8v IO voltage without a power loss
+		 */
+		err = __mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180);
+		if (err) {
+			pr_err("%s: swith to 1.8v for re-init failed\n",
+					mmc_hostname(host));
+			goto free_card;
+		}
+		rocr |= SD_ROCR_S18A;
+	}
+
+	if (mmc_card_noddr50(card)) {
+		card->sw_caps.sd3_bus_mode &= ~(SD_MODE_UHS_DDR50 |
+				SD_MODE_UHS_SDR104);
+		pr_info("%s: disable DDR50/SDR104\n", __func__);
+	}
 
 	/* Initialization sequence for UHS-I cards */
 	if (rocr & SD_ROCR_S18A) {

@@ -24,6 +24,7 @@
 #include <linux/init.h>
 
 struct persistent_ram_buffer;
+struct persistent_ram_buffer_ctrl;
 struct rs_control;
 
 struct persistent_ram_ecc_info {
@@ -38,6 +39,7 @@ struct persistent_ram_zone {
 	size_t size;
 	void *vaddr;
 	struct persistent_ram_buffer *buffer;
+	struct persistent_ram_buffer_ctrl *buffer_ctrl;
 	size_t buffer_size;
 
 	/* ECC correction */

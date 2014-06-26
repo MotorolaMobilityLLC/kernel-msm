@@ -239,7 +239,8 @@ static int mmc_get_ext_csd(struct mmc_card *card, u8 **new_ext_csd)
 static void mmc_select_card_type(struct mmc_card *card)
 {
 	struct mmc_host *host = card->host;
-	u8 card_type = card->ext_csd.raw_card_type & EXT_CSD_CARD_TYPE_MASK;
+	u8 card_type = card->ext_csd.raw_card_type &
+			EXT_CSD_CARD_TYPE_MASK_FULL;
 	u32 caps = host->caps, caps2 = host->caps2;
 	unsigned int hs_max_dtr = 0;
 
@@ -261,6 +262,12 @@ static void mmc_select_card_type(struct mmc_card *card)
 	    (caps2 & MMC_CAP2_HS200_1_2V_SDR &&
 			card_type & EXT_CSD_CARD_TYPE_SDR_1_2V))
 		hs_max_dtr = MMC_HS200_MAX_DTR;
+
+	if ((caps2 & MMC_CAP2_HS400_1_8V_DDR &&
+			card_type & EXT_CSD_CARD_TYPE_HS400_1_8V) ||
+	    (caps2 & MMC_CAP2_HS400_1_2V_DDR &&
+			card_type & EXT_CSD_CARD_TYPE_HS400_1_2V))
+		hs_max_dtr = MMC_HS400_MAX_DTR;
 
 	card->ext_csd.hs_max_dtr = hs_max_dtr;
 	card->ext_csd.card_type = card_type;
@@ -293,7 +300,7 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	}
 
 	card->ext_csd.rev = ext_csd[EXT_CSD_REV];
-	if (card->ext_csd.rev > 6) {
+	if (card->ext_csd.rev > 7) {
 		pr_err("%s: unrecognised EXT_CSD revision %d\n",
 			mmc_hostname(card->host), card->ext_csd.rev);
 		err = -EINVAL;
@@ -324,6 +331,8 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		ext_csd[EXT_CSD_ERASE_TIMEOUT_MULT];
 	card->ext_csd.raw_hc_erase_grp_size =
 		ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE];
+	card->ext_csd.part_set_complete =
+		ext_csd[EXT_CSD_PART_SET_COMPLETE];
 	if (card->ext_csd.rev >= 3) {
 		u8 sa_shift = ext_csd[EXT_CSD_S_A_TIMEOUT];
 		card->ext_csd.part_config = ext_csd[EXT_CSD_PART_CONFIG];
@@ -438,12 +447,15 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 					<< 8) +
 				ext_csd[EXT_CSD_GP_SIZE_MULT + idx * 3];
 				part_size *= (size_t)(hc_erase_grp_sz *
-					hc_wp_grp_sz);
+						hc_wp_grp_sz);
+				card->ext_csd.gpp_sz[idx] = part_size << 10;
 				mmc_part_add(card, part_size << 19,
 					EXT_CSD_PART_CONFIG_ACC_GP0 + idx,
 					"gp%d", idx, false,
 					MMC_BLK_DATA_AREA_GP);
 			}
+			card->ext_csd.wpg_sz = (size_t)(hc_erase_grp_sz *
+					hc_wp_grp_sz);
 		}
 		card->ext_csd.sec_trim_mult =
 			ext_csd[EXT_CSD_SEC_TRIM_MULT];
@@ -497,7 +509,11 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		 * RPMB regions are defined in multiples of 128K.
 		 */
 		card->ext_csd.raw_rpmb_size_mult = ext_csd[EXT_CSD_RPMB_MULT];
-		if (ext_csd[EXT_CSD_RPMB_MULT] && mmc_host_cmd23(card->host)) {
+		card->ext_csd.rpmb_size = 128 *
+			card->ext_csd.raw_rpmb_size_mult;
+		card->ext_csd.rpmb_size <<= 2; /* Unit: half sector */
+		if (ext_csd[EXT_CSD_RPMB_MULT] && mmc_host_cmd23(card->host)
+			&& mmc_rpmb_partition_access(card->host)) {
 			mmc_part_add(card, ext_csd[EXT_CSD_RPMB_MULT] << 17,
 				EXT_CSD_PART_CONFIG_ACC_RPMB,
 				"rpmb", 0, false,
@@ -548,6 +564,17 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		card->ext_csd.data_sector_size = 512;
 	}
 
+	/*
+	 * If use legacy relaible write, then the blk counts must not
+	 * big than the relaible write sectors
+	 */
+	if (!(card->ext_csd.rel_param & EXT_CSD_WR_REL_PARAM_EN)) {
+		if (card->ext_csd.rel_sectors < RPMB_AVALIABLE_SECTORS)
+			card->rpmb_max_req = card->ext_csd.rel_sectors;
+		else
+			card->rpmb_max_req = RPMB_AVALIABLE_SECTORS;
+	} else
+		card->rpmb_max_req = RPMB_AVALIABLE_SECTORS;
 out:
 	return err;
 }
@@ -630,11 +657,153 @@ MMC_DEV_ATTR(name, "%s\n", card->cid.prod_name);
 MMC_DEV_ATTR(oemid, "0x%04x\n", card->cid.oemid);
 MMC_DEV_ATTR(prv, "0x%x\n", card->cid.prv);
 MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
-MMC_DEV_ATTR(enhanced_area_offset, "%llu\n",
+MMC_DEV_ATTR(enhanced_area_offset, "%lld\n",
 		card->ext_csd.enhanced_area_offset);
-MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
+MMC_DEV_ATTR(enhanced_area_size, "%d KBytes\n",
+		card->ext_csd.enhanced_area_size);
 MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
 MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
+MMC_DEV_ATTR(hpi_support, "%d\n", card->ext_csd.hpi);
+MMC_DEV_ATTR(hpi_enable, "%d\n", card->ext_csd.hpi_en);
+MMC_DEV_ATTR(hpi_command, "%d\n", card->ext_csd.hpi_cmd);
+MMC_DEV_ATTR(hw_reset_support, "%d\n", card->ext_csd.rst_n_function);
+MMC_DEV_ATTR(bkops_support, "%d\n", card->ext_csd.bkops);
+MMC_DEV_ATTR(bkops_enable, "%d\n", card->ext_csd.bkops_en);
+MMC_DEV_ATTR(rpmb_size, "%d\n", card->ext_csd.rpmb_size);
+
+/* init gpp_wppart as an invalide GPP */
+static unsigned int gpp_wppart = EXT_CSD_PART_CONFIG_ACC_GP0 - 1;
+static ssize_t gpp_wppart_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	/* make GPP number readable */
+	return sprintf(buf, "%d\n", gpp_wppart -
+			EXT_CSD_PART_CONFIG_ACC_GP0 + 1);
+}
+
+static ssize_t gpp_wppart_set(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t n)
+{
+	long part;
+	struct mmc_card *card = mmc_dev_to_card(dev);
+
+	if (card == NULL)
+		return -ENODEV;
+	if (kstrtol(buf, 10, &part) != 0 || part != (u32)part)
+		return -EINVAL;
+	if (part > EXT_CSD_GPP_NUM || part <= 0)
+		return -EINVAL;
+	if (!card->ext_csd.gpp_sz[part - 1])
+		return -EINVAL;
+	device_lock(dev);
+	/* make GPP number recognized by eMMC device */
+	gpp_wppart = part + EXT_CSD_PART_CONFIG_ACC_GP0 - 1;
+	device_unlock(dev);
+	return n;
+}
+static DEVICE_ATTR(gpp_wppart, 0644, gpp_wppart_show, gpp_wppart_set);
+
+static unsigned int gpp_wpgroup;
+static ssize_t gpp_wpgroup_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", gpp_wpgroup);
+}
+
+static ssize_t gpp_wpgroup_set(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t n)
+{
+	long group;
+	struct mmc_card *card = mmc_dev_to_card(dev);
+
+	if (card == NULL)
+		return -ENODEV;
+
+	if (kstrtol(buf, 10, &group) != 0 || group != (u32)group)
+		return -EINVAL;
+
+	if (group < 0 || gpp_wppart < EXT_CSD_PART_CONFIG_ACC_GP0 ||
+			gpp_wppart >
+			EXT_CSD_PART_CONFIG_ACC_GP0 + EXT_CSD_GPP_NUM - 1)
+		return -EINVAL;
+
+	if (group > card->ext_csd.gpp_sz[gpp_wppart -
+			EXT_CSD_PART_CONFIG_ACC_GP0] - 1)
+		return -EINVAL;
+
+	device_lock(dev);
+	gpp_wpgroup = group;
+	device_unlock(dev);
+	return n;
+}
+static DEVICE_ATTR(gpp_wpgroup, 0644, gpp_wpgroup_show, gpp_wpgroup_set);
+
+static ssize_t gpp_wp_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mmc_card *card = mmc_dev_to_card(dev);
+	int err;
+	u8 wp_status = 0;
+
+	if (card == NULL)
+		return -ENODEV;
+
+	device_lock(dev);
+	if (gpp_wppart < EXT_CSD_PART_CONFIG_ACC_GP0) {
+		device_unlock(dev);
+		return -EINVAL;
+	}
+
+	err = mmc_wp_status(card, gpp_wppart, gpp_wpgroup, &wp_status);
+	if (err) {
+		device_unlock(dev);
+		return err;
+	}
+
+	device_unlock(dev);
+
+	return sprintf(buf, "%d\n", wp_status);
+}
+
+#define PERMANENT_PROTECT      1
+#define GPP_WPG0               0
+/*
+ * protect: 1 means permanent write protect. Right now only allow this
+ * protection method
+ */
+static ssize_t gpp_wp_set(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t n)
+{
+	long protect;
+	struct mmc_card *card = mmc_dev_to_card(dev);
+	int err;
+
+	if (card == NULL)
+		return -ENODEV;
+
+	if (kstrtol(buf, 10, &protect) != 0 || protect != (u32)protect)
+		return -EINVAL;
+
+	if (protect != PERMANENT_PROTECT)
+		return -EINVAL;
+
+	device_lock(dev);
+
+	if (gpp_wppart != EXT_CSD_PART_CONFIG_ACC_GP0 ||
+			gpp_wpgroup != GPP_WPG0) {
+		device_unlock(dev);
+		return -EINVAL;
+	}
+
+	err = mmc_set_user_wp(card, gpp_wppart, gpp_wpgroup);
+	if (err) {
+		pr_err("%s: err to set write protect\n", __func__);
+		n = err;
+	}
+	device_unlock(dev);
+	return n;
+}
+static DEVICE_ATTR(gpp_wp, 0644, gpp_wp_show, gpp_wp_set);
 
 static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_cid.attr,
@@ -653,6 +822,16 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_enhanced_area_size.attr,
 	&dev_attr_raw_rpmb_size_mult.attr,
 	&dev_attr_rel_sectors.attr,
+	&dev_attr_hpi_support.attr,
+	&dev_attr_hpi_enable.attr,
+	&dev_attr_hpi_command.attr,
+	&dev_attr_hw_reset_support.attr,
+	&dev_attr_bkops_support.attr,
+	&dev_attr_bkops_enable.attr,
+	&dev_attr_rpmb_size.attr,
+	&dev_attr_gpp_wppart.attr,
+	&dev_attr_gpp_wpgroup.attr,
+	&dev_attr_gpp_wp.attr,
 	NULL,
 };
 
@@ -707,8 +886,12 @@ static int mmc_select_powerclass(struct mmc_card *card,
 			index = (bus_width <= EXT_CSD_BUS_WIDTH_8) ?
 				EXT_CSD_PWR_CL_52_195 :
 				EXT_CSD_PWR_CL_DDR_52_195;
-		else if (host->ios.clock <= 200000000)
-			index = EXT_CSD_PWR_CL_200_195;
+		else if (host->ios.clock <= 200000000) {
+			if (mmc_card_hs400(card))
+				index = EXT_CSD_PWR_CL_200_DDR_195;
+			else
+				index = EXT_CSD_PWR_CL_200_195;
+		}
 		break;
 	case MMC_VDD_27_28:
 	case MMC_VDD_28_29:
@@ -755,6 +938,81 @@ static int mmc_select_powerclass(struct mmc_card *card,
 }
 
 /*
+ * Support HS400:
+ * This function should be called after HS200 tuning.
+ */
+static int mmc_select_hs400_start(struct mmc_card *card)
+{
+	int err = -EINVAL;
+	struct mmc_host *host;
+	static unsigned ext_csd_bit = EXT_CSD_DDR_BUS_WIDTH_8;
+	static unsigned bus_width = MMC_BUS_WIDTH_8;
+
+	BUG_ON(!card);
+
+	host = card->host;
+	/* HS400 mode only supports 8bit bus.*/
+	if (!(host->caps & MMC_CAP_8_BIT_DATA)) {
+		pr_err("HS400: MMC host does not support 8bit bus, error!\n");
+		goto err;
+	}
+
+	/* Must set HS_TIMING to 1 after tuning completion. */
+	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+			EXT_CSD_HS_TIMING, 1, 0);
+	if (!err) {
+		/* Set timing to DDR50 first */
+		mmc_set_timing(card->host, MMC_TIMING_UHS_DDR50);
+		/* Then, set clock to 50MHz */
+		mmc_set_clock(host, MMC_HIGH_DDR_MAX_DTR);
+	} else {
+		goto err;
+	}
+
+	/*
+	 * Host is capable of 8bit transfer, switch
+	 * the device to work in 8bit transfer mode.
+	 * On success set 8bit bus width on the host.
+	 */
+	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+			EXT_CSD_BUS_WIDTH,
+			ext_csd_bit,
+			card->ext_csd.generic_cmd6_time);
+	if (err)
+		goto err;
+
+	/* Bus test */
+	mmc_set_bus_width(card->host, bus_width);
+	if (!(host->caps & MMC_CAP_BUS_WIDTH_TEST))
+		err = mmc_compare_ext_csds(card, bus_width);
+	else
+		err = mmc_bus_test(card, bus_width);
+	if (err)
+		goto err;
+
+err:
+	return err;
+}
+
+static int mmc_select_hs400_end(struct mmc_card *card, unsigned int max_dtr)
+{
+	int err = -EINVAL;
+
+	/* Switch timing to HS400 now. */
+	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+			EXT_CSD_HS_TIMING, 3, 0);
+	if (!err) {
+		mmc_set_timing(card->host, MMC_TIMING_MMC_HS400);
+		/*
+		 * After enablig HS400 mode, we should restore
+		 * frequency to 200MHz.
+		 */
+		mmc_set_clock(card->host, max_dtr);
+	}
+	return err;
+}
+
+/*
  * Selects the desired buswidth and switch to the HS200 mode
  * if bus width set without error
  */
@@ -775,12 +1033,16 @@ static int mmc_select_hs200(struct mmc_card *card)
 
 	host = card->host;
 
-	if (card->ext_csd.card_type & EXT_CSD_CARD_TYPE_SDR_1_2V &&
-			host->caps2 & MMC_CAP2_HS200_1_2V_SDR)
+	if ((card->ext_csd.card_type & EXT_CSD_CARD_TYPE_SDR_1_2V &&
+			host->caps2 & MMC_CAP2_HS200_1_2V_SDR) ||
+	    (card->ext_csd.card_type & EXT_CSD_CARD_TYPE_HS400_1_2V &&
+			host->caps2 & MMC_CAP2_HS400_1_2V_DDR))
 		err = __mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_120);
 
-	if (err && card->ext_csd.card_type & EXT_CSD_CARD_TYPE_SDR_1_8V &&
-			host->caps2 & MMC_CAP2_HS200_1_8V_SDR)
+	if (err && ((card->ext_csd.card_type & EXT_CSD_CARD_TYPE_SDR_1_8V &&
+			host->caps2 & MMC_CAP2_HS200_1_8V_SDR) ||
+	    (card->ext_csd.card_type & EXT_CSD_CARD_TYPE_HS400_1_8V &&
+			host->caps2 & MMC_CAP2_HS400_1_8V_DDR)))
 		err = __mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180);
 
 	/* If fails try again during next card power cycle */
@@ -826,6 +1088,12 @@ static int mmc_select_hs200(struct mmc_card *card)
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				 EXT_CSD_HS_TIMING, 2, 0);
 err:
+	if (err) {
+		host->caps2 &= ~MMC_CAP2_HS200;
+		pr_warn("%s: failed to init eMMC in HS200 retry other mode\n",
+				mmc_hostname(card->host));
+	}
+
 	return err;
 }
 
@@ -971,25 +1239,20 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 * If enhanced_area_en is TRUE, host needs to enable ERASE_GRP_DEF
 	 * bit.  This bit will be lost every time after a reset or power off.
 	 */
-	if (card->ext_csd.enhanced_area_en ||
+	if (card->ext_csd.enhanced_area_en || card->ext_csd.part_set_complete ||
 	    (card->ext_csd.rev >= 3 && (host->caps2 & MMC_CAP2_HC_ERASE_SZ))) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				 EXT_CSD_ERASE_GROUP_DEF, 1,
 				 card->ext_csd.generic_cmd6_time);
 
-		if (err && err != -EBADMSG)
+		/*
+		 * GPP partition write protection is set when
+		 * ERASE_GROUP_DEF is 1, if driver failed to set
+		 * this bit to 1, report error
+		 */
+		if (err)
 			goto free_card;
-
-		if (err) {
-			err = 0;
-			/*
-			 * Just disable enhanced area off & sz
-			 * will try to enable ERASE_GROUP_DEF
-			 * during next time reinit
-			 */
-			card->ext_csd.enhanced_area_offset = -EINVAL;
-			card->ext_csd.enhanced_area_size = -EINVAL;
-		} else {
+		else {
 			card->ext_csd.erase_group_def = 1;
 			/*
 			 * enable ERASE_GRP_DEF successfully.
@@ -1038,8 +1301,10 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 */
 	if (card->ext_csd.hs_max_dtr != 0) {
 		err = 0;
+		/* Support HS400: set to HS200 before tuning complete. */
 		if (card->ext_csd.hs_max_dtr > 52000000 &&
-		    host->caps2 & MMC_CAP2_HS200)
+		    (host->caps2 & MMC_CAP2_HS200 ||
+		    host->caps2 & MMC_CAP2_HS400))
 			err = mmc_select_hs200(card);
 		else if	(host->caps & MMC_CAP_MMC_HIGHSPEED)
 			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
@@ -1055,11 +1320,20 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			err = 0;
 		} else {
 			if (card->ext_csd.hs_max_dtr > 52000000 &&
+			    host->caps2 & MMC_CAP2_HS400 &&
+			    (card->ext_csd.card_type &
+				EXT_CSD_CARD_TYPE_HS400_1_8V ||
+			    card->ext_csd.card_type &
+				EXT_CSD_CARD_TYPE_HS400_1_2V)) {
+				mmc_card_set_hs400(card);
+				mmc_set_timing(card->host,
+						MMC_TIMING_MMC_HS200);
+			} else if (card->ext_csd.hs_max_dtr > 52000000 &&
 			    host->caps2 & MMC_CAP2_HS200) {
 				mmc_card_set_hs200(card);
 				mmc_set_timing(card->host,
 					       MMC_TIMING_MMC_HS200);
-			} else {
+			} else if (host->caps & MMC_CAP_MMC_HIGHSPEED) {
 				mmc_card_set_highspeed(card);
 				mmc_set_timing(card->host, MMC_TIMING_MMC_HS);
 			}
@@ -1071,7 +1345,9 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 */
 	max_dtr = (unsigned int)-1;
 
-	if (mmc_card_highspeed(card) || mmc_card_hs200(card)) {
+	if (mmc_card_highspeed(card) ||
+	    mmc_card_hs200(card) ||
+	    mmc_card_hs400(card)) {
 		if (max_dtr > card->ext_csd.hs_max_dtr)
 			max_dtr = card->ext_csd.hs_max_dtr;
 		if (mmc_card_highspeed(card) && (max_dtr > 52000000))
@@ -1099,9 +1375,9 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	}
 
 	/*
-	 * Indicate HS200 SDR mode (if supported).
+	 * Indicate HS200 SDR mode or HS400 DDR mode (if supported).
 	 */
-	if (mmc_card_hs200(card)) {
+	if (mmc_card_hs200(card) || mmc_card_hs400(card)) {
 		u32 ext_csd_bits;
 		u32 bus_width = card->host->ios.bus_width;
 
@@ -1116,7 +1392,9 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		 * 3. set the clock to > 52Mhz <=200MHz and
 		 * 4. execute tuning for HS200
 		 */
-		if ((host->caps2 & MMC_CAP2_HS200) &&
+		/* Support HS400: tuning under HS200 mode. */
+		if ((host->caps2 & MMC_CAP2_HS200 ||
+		    host->caps2 & MMC_CAP2_HS400) &&
 		    card->host->ops->execute_tuning) {
 			mmc_host_clk_hold(card->host);
 			err = card->host->ops->execute_tuning(card->host,
@@ -1129,19 +1407,45 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			goto err;
 		}
 
-		ext_csd_bits = (bus_width == MMC_BUS_WIDTH_8) ?
+		/* Support HS400 */
+		if (mmc_card_hs400(card)) {
+			/*
+			 * Per spec 5.0, follow below sequence to enable HS400:
+			 * 1. Set HS_TIMING to 1 after HS200 tuning.
+			 * 2. Set frequency below 52MHz.
+			 * 3. Set bus width to DDR 8bit.
+			 * 4. Set HS_TIMING to 3 as HS400.
+			 */
+			err = mmc_select_hs400_start(card);
+			if (err) {
+				pr_warn("%s: hs400_start err=0x%x.\n",
+					mmc_hostname(card->host), err);
+				goto free_card;
+			}
+			ext_csd_bits = EXT_CSD_DDR_BUS_WIDTH_8;
+		} else {
+			ext_csd_bits = (bus_width == MMC_BUS_WIDTH_8) ?
 				EXT_CSD_BUS_WIDTH_8 : EXT_CSD_BUS_WIDTH_4;
+		}
 		err = mmc_select_powerclass(card, ext_csd_bits, ext_csd);
 		if (err)
-			pr_warning("%s: power class selection to bus width %d"
+			pr_warn("%s: power class selection to bus width %d"
 				   " failed\n", mmc_hostname(card->host),
 				   1 << bus_width);
+		if (mmc_card_hs400(card)) {
+			err = mmc_select_hs400_end(card, max_dtr);
+			if (err) {
+				pr_warn("%s: hs400_end err=0x%x.\n",
+					mmc_hostname(card->host), err);
+				goto free_card;
+			}
+		}
 	}
 
 	/*
 	 * Activate wide bus and DDR (if supported).
 	 */
-	if (!mmc_card_hs200(card) &&
+	if ((!mmc_card_hs200(card) && !mmc_card_hs400(card)) &&
 	    (card->csd.mmca_vsn >= CSD_SPEC_VER_4) &&
 	    (host->caps & (MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA))) {
 		static unsigned ext_csd_bits[][2] = {
@@ -1231,6 +1535,15 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			if (ddr == MMC_1_2V_DDR_MODE) {
 				err = __mmc_set_signal_voltage(host,
 					MMC_SIGNAL_VOLTAGE_120);
+				if (err)
+					goto err;
+			} else {
+				/*
+				 * for SDHC host controller, 1.8v signaling is
+				 * required for DDR mode
+				 */
+				err = __mmc_set_signal_voltage(host,
+					MMC_SIGNAL_VOLTAGE_180);
 				if (err)
 					goto err;
 			}

@@ -33,6 +33,10 @@
 
 #include "hub.h"
 
+#ifdef CONFIG_USB_HCD_HSIC
+#include <linux/usb/ehci-tangier-hsic-pci.h>
+#endif
+
 /* if we are in debug mode, always announce new devices */
 #ifdef DEBUG
 #ifndef CONFIG_USB_ANNOUNCE_NEW_DEVICES
@@ -589,6 +593,13 @@ static void kick_khubd(struct usb_hub *hub)
 		wake_up(&khubd_wait);
 	}
 	spin_unlock_irqrestore(&hub_event_lock, flags);
+}
+
+void usb_set_change_bits(struct usb_device *hdev, unsigned int port)
+{
+	struct usb_hub *hub = usb_hub_to_struct_hub(hdev);
+
+	set_bit(port, hub->change_bits);
 }
 
 void usb_kick_khubd(struct usb_device *hdev)
@@ -1861,9 +1872,11 @@ static void recursively_mark_NOTATTACHED(struct usb_device *udev)
 	struct usb_hub *hub = usb_hub_to_struct_hub(udev);
 	int i;
 
-	for (i = 0; i < udev->maxchild; ++i) {
-		if (hub->ports[i]->child)
-			recursively_mark_NOTATTACHED(hub->ports[i]->child);
+	if (hub) {
+		for (i = 0; i < udev->maxchild; ++i) {
+			if (hub->ports[i]->child)
+				recursively_mark_NOTATTACHED(hub->ports[i]->child);
+		}
 	}
 	if (udev->state == USB_STATE_SUSPENDED)
 		udev->active_duration -= jiffies;
@@ -2008,6 +2021,24 @@ static void hub_free_dev(struct usb_device *udev)
 		hcd->driver->free_dev(hcd, udev);
 }
 
+#ifdef CONFIG_USB_HCD_HSIC
+
+static void hsic_notify(struct usb_device *udev, unsigned action)
+{
+	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+
+	if (hcd->hsic_notify)
+		hcd->hsic_notify(udev, action);
+}
+
+#else
+
+static inline void hsic_notify(struct usb_device *udev, unsigned action)
+{
+}
+
+#endif
+
 /**
  * usb_disconnect - disconnect a device (usbcore-internal)
  * @pdev: pointer to device being disconnected
@@ -2075,6 +2106,7 @@ void usb_disconnect(struct usb_device **pdev)
 	 * notifier chain (used by usbfs and possibly others).
 	 */
 	device_del(&udev->dev);
+	hsic_notify(udev, USB_DEVICE_REMOVE);
 
 	/* Free the device number and delete the parent's children[]
 	 * (or root_hub) pointer.
@@ -2156,23 +2188,26 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 						? "" : "non-");
 
 				/* enable HNP before suspend, it's simpler */
-				if (port1 == bus->otg_port)
+				if (port1 == bus->otg_port) {
 					bus->b_hnp_enable = 1;
-				err = usb_control_msg(udev,
-					usb_sndctrlpipe(udev, 0),
-					USB_REQ_SET_FEATURE, 0,
-					bus->b_hnp_enable
-						? USB_DEVICE_B_HNP_ENABLE
-						: USB_DEVICE_A_ALT_HNP_SUPPORT,
-					0, NULL, 0, USB_CTRL_SET_TIMEOUT);
-				if (err < 0) {
-					/* OTG MESSAGE: report errors here,
-					 * customize to match your product.
-					 */
-					dev_info(&udev->dev,
+					/* don't use A_ALT_HNP_SUPPORT as it is
+					 * obsoleted in OTG2.0 Spec */
+					err = usb_control_msg(udev,
+						usb_sndctrlpipe(udev, 0),
+						USB_REQ_SET_FEATURE, 0,
+						USB_DEVICE_B_HNP_ENABLE,
+						0, NULL, 0,
+						USB_CTRL_SET_TIMEOUT);
+					if (err < 0) {
+						/* OTG MESSAGE: report errors
+						 * here, customize to match
+						 * your product. */
+						dev_info(&udev->dev,
 						"can't set HNP mode: %d\n",
-						err);
-					bus->b_hnp_enable = 0;
+							err);
+						bus->b_hnp_enable = 0;
+					}
+
 				}
 			}
 		}
@@ -2355,6 +2390,7 @@ int usb_new_device(struct usb_device *udev)
 	 * notifier chain (used by usbfs and possibly others).
 	 */
 	err = device_add(&udev->dev);
+	hsic_notify(udev, USB_DEVICE_ADD);
 	if (err) {
 		dev_err(&udev->dev, "can't device_add, error %d\n", err);
 		goto fail;
@@ -2931,6 +2967,7 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 	int		port1 = udev->portnum;
 	int		status;
 	bool		really_suspend = true;
+	bool		wakeup_mutex_locked = false;
 
 	/* enable remote wakeup when appropriate; this lets the device
 	 * wake up the upstream hub (including maybe the root hub).
@@ -2984,6 +3021,15 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 		status = -ENOMEM;
 		if (PMSG_IS_AUTO(msg))
 			goto err_lpm3;
+	}
+
+	/*
+	 * Hold port wakeup mutex before set port suspend if device may
+	 * generate remote wakeup to avoid race condition.
+	 */
+	if (udev->do_remote_wakeup) {
+		mutex_lock(&port_dev->wakeup_mutex);
+		wakeup_mutex_locked = true;
 	}
 
 	/* see 7.1.7.6 */
@@ -3052,6 +3098,9 @@ int usb_port_suspend(struct usb_device *udev, pm_message_t msg)
 		}
 		usb_set_device_state(udev, USB_STATE_SUSPENDED);
 	}
+
+	if (wakeup_mutex_locked)
+		mutex_unlock(&port_dev->wakeup_mutex);
 
 	if (status == 0 && !udev->do_remote_wakeup && udev->persist_enabled) {
 		pm_runtime_put_sync(&port_dev->dev);
@@ -3430,6 +3479,9 @@ static int usb_req_set_sel(struct usb_device *udev, enum usb3_link_state state)
 	unsigned long long u2_sel;
 	unsigned long long u2_pel;
 	int ret;
+
+	if (udev->state != USB_STATE_CONFIGURED)
+		return 0;
 
 	/* Convert SEL and PEL stored in ns to us */
 	u1_sel = DIV_ROUND_UP(udev->u1_params.sel, 1000);
@@ -4347,6 +4399,14 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		"port %d, status %04x, change %04x, %s\n",
 		port1, portstatus, portchange, portspeed(hub, portstatus));
 
+#ifdef CONFIG_PM_RUNTIME
+	/* add 5s time-out wakelock for delay system suspend */
+	wake_lock_timeout(&hcd->wake_lock, 5 * HZ);
+	dev_dbg(hub_dev,
+		"%s add 5s wake_lock for port connect change\n",
+		__func__);
+#endif
+
 	if (hub->has_indicators) {
 		set_port_led(hub, port1, HUB_LED_AUTO);
 		hub->indicator[port1-1] = INDICATOR_AUTO;
@@ -4552,6 +4612,10 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 loop_disable:
 		hub_port_disable(hub, port1, 1);
 loop:
+		/* If the hcd was already quiesce,
+		 * we needn't to continue retry. */
+		if (hcd->state == HC_STATE_QUIESCING)
+			return;
 		usb_ep0_reinit(udev);
 		release_devnum(udev);
 		hub_free_dev(udev);
@@ -4600,7 +4664,12 @@ static int hub_handle_remote_wakeup(struct usb_hub *hub, unsigned int port,
 		msleep(10);
 
 		usb_lock_device(udev);
+		/* hold port mutex before handle remote wakup */
+		if (hub->ports[port - 1])
+			mutex_lock(&hub->ports[port - 1]->wakeup_mutex);
 		ret = usb_remote_wakeup(udev);
+		if (hub->ports[port - 1])
+			mutex_unlock(&hub->ports[port - 1]->wakeup_mutex);
 		usb_unlock_device(udev);
 		if (ret < 0)
 			connect_change = 1;
@@ -5076,6 +5145,12 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 		return -EISDIR;
 	}
 	parent_hub = usb_hub_to_struct_hub(parent_hdev);
+
+	/* Disable USB2 hardware LPM.
+	 * It will be re-enabled by the enumeration process.
+	 */
+	if (udev->usb2_hw_lpm_enabled == 1)
+		usb_set_usb2_hardware_lpm(udev, 0);
 
 	/* Disable LPM and LTM while we reset the device and reinstall the alt
 	 * settings.  Device-initiated LPM settings, and system exit latency

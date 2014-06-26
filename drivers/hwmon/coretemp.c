@@ -37,6 +37,7 @@
 #include <linux/smp.h>
 #include <linux/moduleparam.h>
 #include <asm/msr.h>
+#include <asm/mce.h>
 #include <asm/processor.h>
 #include <asm/cpu_device_id.h>
 
@@ -52,9 +53,10 @@ MODULE_PARM_DESC(tjmax, "TjMax value in degrees Celsius");
 
 #define BASE_SYSFS_ATTR_NO	2	/* Sysfs Base attr no for coretemp */
 #define NUM_REAL_CORES		32	/* Number of Real cores per cpu */
-#define CORETEMP_NAME_LENGTH	17	/* String Length of attrs */
-#define MAX_CORE_ATTRS		4	/* Maximum no of basic attrs */
-#define TOTAL_ATTRS		(MAX_CORE_ATTRS + 1)
+#define CORETEMP_NAME_LENGTH	33	/* String Length of attrs */
+#define MAX_CORE_ATTRS		5	/* Maximum no of basic attrs */
+#define MAX_THRESH_ATTRS	4	/* Maximum no of threshold attrs */
+#define TOTAL_ATTRS		(MAX_CORE_ATTRS + MAX_THRESH_ATTRS)
 #define MAX_CORE_DATA		(NUM_REAL_CORES + BASE_SYSFS_ATTR_NO)
 
 #define TO_PHYS_ID(cpu)		(cpu_data(cpu).phys_proc_id)
@@ -75,6 +77,8 @@ MODULE_PARM_DESC(tjmax, "TjMax value in degrees Celsius");
  *		This value is passed as "id" field to rdmsr/wrmsr functions.
  * @status_reg: One of IA32_THERM_STATUS or IA32_PACKAGE_THERM_STATUS,
  *		from where the temperature values should be read.
+ * @intrpt_reg: One of IA32_THERM_INTERRUPT or IA32_PACKAGE_THERM_INTERRUPT,
+ *		from where the thresholds are read.
  * @attr_size:  Total number of pre-core attrs displayed in the sysfs.
  * @is_pkg_data: If this is 1, the temp_data holds pkgtemp data.
  *		Otherwise, temp_data holds coretemp data.
@@ -88,6 +92,7 @@ struct temp_data {
 	unsigned int cpu;
 	u32 cpu_core_id;
 	u32 status_reg;
+	u32 intrpt_reg;
 	int attr_size;
 	bool is_pkg_data;
 	bool valid;
@@ -102,6 +107,7 @@ struct platform_data {
 	u16 phys_proc_id;
 	struct temp_data *core_data[MAX_CORE_DATA];
 	struct device_attribute name_attr;
+
 };
 
 struct pdev_entry {
@@ -113,10 +119,117 @@ struct pdev_entry {
 static LIST_HEAD(pdev_list);
 static DEFINE_MUTEX(pdev_list_mutex);
 
+#ifdef CONFIG_SENSORS_CORETEMP_INTERRUPT
+static DEFINE_PER_CPU(struct delayed_work, core_threshold_work);
+#endif
 static ssize_t show_name(struct device *dev,
 			struct device_attribute *devattr, char *buf)
 {
 	return sprintf(buf, "%s\n", DRVNAME);
+}
+
+static ssize_t show_tx_triggered(struct device *dev,
+				 struct device_attribute *devattr, char *buf,
+				 u32 mask)
+{
+	u32 eax, edx;
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	struct platform_data *pdata = dev_get_drvdata(dev);
+	struct temp_data *tdata = pdata->core_data[attr->index];
+
+	rdmsr_on_cpu(tdata->cpu, tdata->status_reg, &eax, &edx);
+
+	return sprintf(buf, "%d\n", !!(eax & mask));
+}
+
+static ssize_t show_t0_triggered(struct device *dev,
+				 struct device_attribute *devattr, char *buf)
+{
+	return show_tx_triggered(dev, devattr, buf, THERM_STATUS_THRESHOLD0);
+}
+
+static ssize_t show_t1_triggered(struct device *dev,
+				 struct device_attribute *devattr, char *buf)
+{
+	return show_tx_triggered(dev, devattr, buf, THERM_STATUS_THRESHOLD1);
+}
+
+static ssize_t show_tx(struct device *dev,
+		       struct device_attribute *devattr, char *buf,
+		       u32 mask, int shift)
+{
+	struct platform_data *pdata = dev_get_drvdata(dev);
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	struct temp_data *tdata = pdata->core_data[attr->index];
+	u32 eax, edx;
+	int t;
+
+	rdmsr_on_cpu(tdata->cpu, tdata->intrpt_reg, &eax, &edx);
+	t = tdata->tjmax - ((eax & mask) >> shift) * 1000;
+	return sprintf(buf, "%d\n", t);
+}
+
+static ssize_t store_tx(struct device *dev,
+			struct device_attribute *devattr,
+			const char *buf, size_t count,
+			u32 mask, int shift)
+{
+	struct platform_data *pdata = dev_get_drvdata(dev);
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	struct temp_data *tdata = pdata->core_data[attr->index];
+	u32 eax, edx;
+	unsigned long val;
+	int diff;
+
+	if (kstrtoul(buf, 10, &val))
+		return -EINVAL;
+
+	/*
+	 * Thermal threshold mask is 7 bits wide. Values are entered in terms
+	 * of milli degree celsius. Hence don't accept val > (127 * 1000)
+	 */
+	if (val > tdata->tjmax || val > 127000)
+		return -EINVAL;
+
+	diff = (tdata->tjmax - val) / 1000;
+
+	mutex_lock(&tdata->update_lock);
+	rdmsr_on_cpu(tdata->cpu, tdata->intrpt_reg, &eax, &edx);
+	eax = (eax & ~mask) | (diff << shift);
+	wrmsr_on_cpu(tdata->cpu, tdata->intrpt_reg, eax, edx);
+	mutex_unlock(&tdata->update_lock);
+
+	return count;
+}
+
+static ssize_t show_t0(struct device *dev,
+		       struct device_attribute *devattr, char *buf)
+{
+	return show_tx(dev, devattr, buf, THERM_MASK_THRESHOLD0,
+		       THERM_SHIFT_THRESHOLD0);
+}
+
+static ssize_t store_t0(struct device *dev,
+			struct device_attribute *devattr,
+			const char *buf, size_t count)
+{
+	return store_tx(dev, devattr, buf, count, THERM_MASK_THRESHOLD0,
+			THERM_SHIFT_THRESHOLD0);
+}
+
+static ssize_t show_t1(struct device *dev,
+		       struct device_attribute *devattr, char *buf)
+{
+	return show_tx(dev, devattr, buf, THERM_MASK_THRESHOLD1,
+		       THERM_SHIFT_THRESHOLD1);
+}
+
+static ssize_t store_t1(struct device *dev,
+			struct device_attribute *devattr,
+			const char *buf, size_t count)
+{
+	return store_tx(dev, devattr, buf, count, THERM_MASK_THRESHOLD1,
+			THERM_SHIFT_THRESHOLD1);
 }
 
 static ssize_t show_label(struct device *dev,
@@ -187,6 +300,7 @@ static ssize_t show_temp(struct device *dev,
 	}
 
 	mutex_unlock(&tdata->update_lock);
+
 	return tdata->valid ? sprintf(buf, "%d\n", tdata->temp) : -EAGAIN;
 }
 
@@ -198,7 +312,7 @@ struct tjmax {
 static const struct tjmax __cpuinitconst tjmax_table[] = {
 	{ "CPU  230", 100000 },		/* Model 0x1c, stepping 2	*/
 	{ "CPU  330", 125000 },		/* Model 0x1c, stepping 2	*/
-	{ "CPU CE4110", 110000 },	/* Model 0x1c, stepping 10 Sodaville */
+	{ "CPU CE4110", 110000 },	/* Model 0x1c, stepping 10	*/
 	{ "CPU CE4150", 110000 },	/* Model 0x1c, stepping 10	*/
 	{ "CPU CE4170", 110000 },	/* Model 0x1c, stepping 10	*/
 };
@@ -212,7 +326,7 @@ struct tjmax_model {
 #define ANY 0xff
 
 static const struct tjmax_model __cpuinitconst tjmax_model_table[] = {
-	{ 0x1c, 10, 100000 },	/* D4xx, K4xx, N4xx, D5xx, K5xx, N5xx */
+	{ 0x1c, 10, 100000 },	/* D4xx, N4xx, D5xx, N5xx */
 	{ 0x1c, ANY, 90000 },	/* Z5xx, N2xx, possibly others
 				 * Note: Also matches 230 and 330,
 				 * which are covered by tjmax_table
@@ -222,7 +336,7 @@ static const struct tjmax_model __cpuinitconst tjmax_model_table[] = {
 				 * is undetectable by software
 				 */
 	{ 0x27, ANY, 90000 },	/* Atom Medfield (Z2460) */
-	{ 0x35, ANY, 90000 },	/* Atom Clover Trail/Cloverview (Z2760) */
+	{ 0x35, ANY, 90000 },	/* Atom Clovertrail */
 	{ 0x36, ANY, 100000 },	/* Atom Cedar Trail/Cedarview (N2xxx, D2xxx) */
 };
 
@@ -357,67 +471,7 @@ static int __cpuinit get_tjmax(struct cpuinfo_x86 *c, u32 id,
 	return adjust_tjmax(c, id, dev);
 }
 
-static int create_name_attr(struct platform_data *pdata,
-				      struct device *dev)
-{
-	sysfs_attr_init(&pdata->name_attr.attr);
-	pdata->name_attr.attr.name = "name";
-	pdata->name_attr.attr.mode = S_IRUGO;
-	pdata->name_attr.show = show_name;
-	return device_create_file(dev, &pdata->name_attr);
-}
-
-static int __cpuinit create_core_attrs(struct temp_data *tdata,
-				       struct device *dev, int attr_no)
-{
-	int err, i;
-	static ssize_t (*const rd_ptr[TOTAL_ATTRS]) (struct device *dev,
-			struct device_attribute *devattr, char *buf) = {
-			show_label, show_crit_alarm, show_temp, show_tjmax,
-			show_ttarget };
-	static const char *const names[TOTAL_ATTRS] = {
-					"temp%d_label", "temp%d_crit_alarm",
-					"temp%d_input", "temp%d_crit",
-					"temp%d_max" };
-
-	for (i = 0; i < tdata->attr_size; i++) {
-		snprintf(tdata->attr_name[i], CORETEMP_NAME_LENGTH, names[i],
-			attr_no);
-		sysfs_attr_init(&tdata->sd_attrs[i].dev_attr.attr);
-		tdata->sd_attrs[i].dev_attr.attr.name = tdata->attr_name[i];
-		tdata->sd_attrs[i].dev_attr.attr.mode = S_IRUGO;
-		tdata->sd_attrs[i].dev_attr.show = rd_ptr[i];
-		tdata->sd_attrs[i].index = attr_no;
-		err = device_create_file(dev, &tdata->sd_attrs[i].dev_attr);
-		if (err)
-			goto exit_free;
-	}
-	return 0;
-
-exit_free:
-	while (--i >= 0)
-		device_remove_file(dev, &tdata->sd_attrs[i].dev_attr);
-	return err;
-}
-
-
-static int __cpuinit chk_ucode_version(unsigned int cpu)
-{
-	struct cpuinfo_x86 *c = &cpu_data(cpu);
-
-	/*
-	 * Check if we have problem with errata AE18 of Core processors:
-	 * Readings might stop update when processor visited too deep sleep,
-	 * fixed for stepping D0 (6EC).
-	 */
-	if (c->x86_model == 0xe && c->x86_mask < 0xc && c->microcode < 0x39) {
-		pr_err("Errata AE18 not fixed, update BIOS or microcode of the CPU!\n");
-		return -ENODEV;
-	}
-	return 0;
-}
-
-static struct platform_device __cpuinit *coretemp_get_pdev(unsigned int cpu)
+static struct platform_device *coretemp_get_pdev(unsigned int cpu)
 {
 	u16 phys_proc_id = TO_PHYS_ID(cpu);
 	struct pdev_entry *p;
@@ -434,6 +488,228 @@ static struct platform_device __cpuinit *coretemp_get_pdev(unsigned int cpu)
 	return NULL;
 }
 
+#ifdef CONFIG_SENSORS_CORETEMP_INTERRUPT
+/* Interrupt Handler for Core Threshold Events */
+static int coretemp_interrupt(__u64 msr_val)
+{
+	unsigned int cpu = smp_processor_id();
+
+	schedule_delayed_work_on(cpu, &per_cpu(core_threshold_work, cpu), 0);
+	return 0;
+}
+
+static void core_threshold_work_fn(struct work_struct *work)
+{
+	u32 eax, edx;
+	int t0, t1, temp;
+	int event = -1, thresh = -1;
+	char *thermal_event[5];
+	bool notify = false;
+	unsigned int cpu = smp_processor_id();
+	int indx = TO_ATTR_NO(cpu);
+	struct platform_device *pdev = coretemp_get_pdev(cpu);
+	struct platform_data *pdata = platform_get_drvdata(pdev);
+	struct temp_data *tdata = pdata->core_data[indx];
+
+	if (!tdata) {
+		pr_err("Could not retrieve temp_data\n");
+		return;
+	}
+
+	rdmsr_on_cpu(cpu, MSR_IA32_THERM_STATUS, &eax, &edx);
+	if (eax & THERM_LOG_THRESHOLD0) {
+		thresh = 0;
+		event = !!(eax & THERM_STATUS_THRESHOLD0);
+
+		/* Reset the Threshold0 interrupt */
+		eax = eax & ~THERM_LOG_THRESHOLD0;
+		wrmsr_on_cpu(cpu, MSR_IA32_THERM_STATUS, eax, edx);
+
+		/* Notify only when we go below the lower threshold */
+		if (event != 1)
+			notify = true;
+
+	} else if (eax & THERM_LOG_THRESHOLD1) {
+		thresh = 1;
+		event = !!(eax & THERM_STATUS_THRESHOLD1);
+
+		/* Reset the Threshold1 interrupt */
+		eax = eax & ~THERM_LOG_THRESHOLD1;
+		wrmsr_on_cpu(cpu, MSR_IA32_THERM_STATUS, eax, edx);
+
+		/* Notify only when we go above the upper threshold */
+		if (event != 0)
+			notify = true;
+	}
+
+	/*
+	 * Read the current Temperature and send it to user land;
+	 * so that the user space can avoid a sysfs read.
+	 */
+	temp = tdata->tjmax - ((eax >> 16) & 0x7f) * 1000;
+
+	/* Read the threshold registers (only) to print threshold values. */
+	rdmsr_on_cpu(cpu, MSR_IA32_THERM_INTERRUPT, &eax, &edx);
+	t0 = tdata->tjmax - ((eax & THERM_MASK_THRESHOLD0) >> THERM_SHIFT_THRESHOLD0) * 1000;
+	t1 = tdata->tjmax - ((eax & THERM_MASK_THRESHOLD1) >> THERM_SHIFT_THRESHOLD1) * 1000;
+
+	if (!notify) {
+		pr_debug("Thermal Event: Sensor: Core %u, cur_temp: %d,\
+			event: %d, level: %d, t0: %d, t1: %d\n",
+			tdata->cpu_core_id, temp, event, thresh, t0, t1);
+		return;
+	} else {
+		pr_info("Thermal Event: Sensor: Core %u, cur_temp: %d,\
+			event: %d, level: %d, t0: %d, t1: %d\n",
+			tdata->cpu_core_id, temp, event, thresh, t0, t1);
+	}
+
+	thermal_event[0] = kasprintf(GFP_KERNEL, "NAME=Core %u",
+						tdata->cpu_core_id);
+	thermal_event[1] = kasprintf(GFP_KERNEL, "TEMP=%d", temp);
+	thermal_event[2] = kasprintf(GFP_KERNEL, "EVENT=%d", event);
+	thermal_event[3] = kasprintf(GFP_KERNEL, "LEVEL=%d", thresh);
+	thermal_event[4] = NULL;
+
+	kobject_uevent_env(&pdev->dev.kobj, KOBJ_CHANGE, thermal_event);
+
+	kfree(thermal_event[3]);
+	kfree(thermal_event[2]);
+	kfree(thermal_event[1]);
+	kfree(thermal_event[0]);
+}
+
+static void configure_apic(void *info)
+{
+	u32 l;
+	int *flag = (int *)info;
+
+	l = apic_read(APIC_LVTTHMR);
+
+	if (*flag)	/* Non-Zero flag Masks the APIC */
+		apic_write(APIC_LVTTHMR, l | APIC_LVT_MASKED);
+	else		/* Zero flag UnMasks the APIC */
+		apic_write(APIC_LVTTHMR, l & ~APIC_LVT_MASKED);
+}
+
+static int config_thresh_intrpt(struct temp_data *data, int enable)
+{
+	u32 eax, edx;
+	unsigned int cpu = data->cpu;
+	int flag = 1; /* Non-Zero Flag masks the apic */
+
+	smp_call_function_single(cpu, &configure_apic, &flag, 1);
+
+	rdmsr_on_cpu(cpu, MSR_IA32_THERM_INTERRUPT, &eax, &edx);
+
+	if (enable) {
+		INIT_DELAYED_WORK(&per_cpu(core_threshold_work, cpu),
+					core_threshold_work_fn);
+
+		eax |= (THERM_INT_THRESHOLD0_ENABLE |
+						THERM_INT_THRESHOLD1_ENABLE);
+		platform_thermal_notify = coretemp_interrupt;
+
+		pr_info("Enabled Aux0/Aux1 interrupts for coretemp\n");
+	} else {
+		eax &= (~(THERM_INT_THRESHOLD0_ENABLE |
+						THERM_INT_THRESHOLD1_ENABLE));
+		platform_thermal_notify = NULL;
+
+		cancel_delayed_work_sync(&per_cpu(core_threshold_work, cpu));
+	}
+
+	wrmsr_on_cpu(cpu, MSR_IA32_THERM_INTERRUPT, eax, edx);
+
+	flag = 0; /* Flag should be zero to unmask the apic */
+	smp_call_function_single(cpu, &configure_apic, &flag, 1);
+
+	return 0;
+}
+#else
+static inline int config_thresh_intrpt(struct temp_data *data, int enable)
+{
+	return 0;
+}
+#endif
+
+static int create_name_attr(struct platform_data *pdata,
+				      struct device *dev)
+{
+	sysfs_attr_init(&pdata->name_attr.attr);
+	pdata->name_attr.attr.name = "name";
+	pdata->name_attr.attr.mode = S_IRUGO;
+	pdata->name_attr.show = show_name;
+	return device_create_file(dev, &pdata->name_attr);
+}
+
+static int __cpuinit create_core_attrs(struct temp_data *tdata,
+			struct device *dev, int attr_no, bool have_ttarget)
+{
+	int err, i;
+	static ssize_t (*const rd_ptr[TOTAL_ATTRS]) (struct device *dev,
+			struct device_attribute *devattr, char *buf) = {
+			show_label, show_crit_alarm, show_temp, show_tjmax,
+			show_ttarget, show_t0, show_t0_triggered,
+			show_t1, show_t1_triggered };
+	static ssize_t (*rw_ptr[TOTAL_ATTRS]) (struct device *dev,
+			struct device_attribute *devattr, const char *buf,
+			size_t count) = { NULL, NULL, NULL, NULL, NULL,
+					store_t0, NULL, store_t1, NULL };
+	static const char *const names[TOTAL_ATTRS] = {
+					"temp%d_label", "temp%d_crit_alarm",
+					"temp%d_input", "temp%d_crit",
+					"temp%d_max",
+					"temp%d_threshold1",
+					"temp%d_threshold1_triggered",
+					"temp%d_threshold2",
+					"temp%d_threshold2_triggered" };
+
+	for (i = 0; i < tdata->attr_size; i++) {
+		snprintf(tdata->attr_name[i], CORETEMP_NAME_LENGTH,
+				names[i], attr_no);
+		sysfs_attr_init(&tdata->sd_attrs[i].dev_attr.attr);
+		tdata->sd_attrs[i].dev_attr.attr.name = tdata->attr_name[i];
+		tdata->sd_attrs[i].dev_attr.attr.mode = S_IRUGO;
+		if (rw_ptr[i]) {
+			tdata->sd_attrs[i].dev_attr.attr.mode |= S_IWUSR;
+			tdata->sd_attrs[i].dev_attr.store = rw_ptr[i];
+		}
+		tdata->sd_attrs[i].dev_attr.show = rd_ptr[i];
+		tdata->sd_attrs[i].index = attr_no;
+		err = device_create_file(dev, &tdata->sd_attrs[i].dev_attr);
+		if (err)
+			goto exit_free;
+	}
+	return 0;
+
+exit_free:
+	while (--i >= 0) {
+		if (!tdata->sd_attrs[i].dev_attr.attr.name)
+			continue;
+		device_remove_file(dev, &tdata->sd_attrs[i].dev_attr);
+	}
+	return err;
+}
+
+
+static int __cpuinit chk_ucode_version(unsigned int cpu)
+{
+	struct cpuinfo_x86 *c = &cpu_data(cpu);
+
+	/*
+	 * Check if we have problem with errata AE18 of Core processors:
+	 * Readings might stop update when processor visited too deep sleep,
+	 * fixed for stepping D0 (6EC).
+	 */
+	if (c->x86_model == 0xe && c->x86_mask < 0xc && c->microcode < 0x39) {
+		pr_err("Errata AE18 not fixed, update BIOS or "
+		       "microcode of the CPU!\n");
+		return -ENODEV;
+	}
+	return 0;
+}
+
 static struct temp_data __cpuinit *init_temp_data(unsigned int cpu,
 						  int pkg_flag)
 {
@@ -445,6 +721,8 @@ static struct temp_data __cpuinit *init_temp_data(unsigned int cpu,
 
 	tdata->status_reg = pkg_flag ? MSR_IA32_PACKAGE_THERM_STATUS :
 							MSR_IA32_THERM_STATUS;
+	tdata->intrpt_reg = pkg_flag ? MSR_IA32_PACKAGE_THERM_INTERRUPT :
+						MSR_IA32_THERM_INTERRUPT;
 	tdata->is_pkg_data = pkg_flag;
 	tdata->cpu = cpu;
 	tdata->cpu_core_id = TO_CORE_ID(cpu);
@@ -461,6 +739,7 @@ static int __cpuinit create_core_data(struct platform_device *pdev,
 	struct cpuinfo_x86 *c = &cpu_data(cpu);
 	u32 eax, edx;
 	int err, attr_no;
+	bool have_ttarget = false;
 
 	/*
 	 * Find attr number for sysfs:
@@ -506,16 +785,27 @@ static int __cpuinit create_core_data(struct platform_device *pdev,
 		if (!err) {
 			tdata->ttarget
 			  = tdata->tjmax - ((eax >> 8) & 0xff) * 1000;
-			tdata->attr_size++;
+			have_ttarget = true;
 		}
 	}
+
+	/*
+	 * Test if we can access the intrpt register. If so, increase
+	 * 'size' enough to support t0 and t1 attributes.
+	 */
+	err = rdmsr_safe_on_cpu(cpu, tdata->intrpt_reg, &eax, &edx);
+	if (!err)
+		tdata->attr_size += MAX_THRESH_ATTRS;
 
 	pdata->core_data[attr_no] = tdata;
 
 	/* Create sysfs interfaces */
-	err = create_core_attrs(tdata, &pdev->dev, attr_no);
+	err = create_core_attrs(tdata, &pdev->dev, attr_no, have_ttarget);
 	if (err)
 		goto exit_free;
+
+	/* Enable threshold interrupt support */
+	config_thresh_intrpt(tdata, 1);
 
 	return 0;
 exit_free:
@@ -544,8 +834,14 @@ static void coretemp_remove_core(struct platform_data *pdata,
 	struct temp_data *tdata = pdata->core_data[indx];
 
 	/* Remove the sysfs attributes */
-	for (i = 0; i < tdata->attr_size; i++)
+	for (i = 0; i < tdata->attr_size; i++) {
+		if (!tdata->sd_attrs[i].dev_attr.attr.name)
+			continue;
 		device_remove_file(dev, &tdata->sd_attrs[i].dev_attr);
+	}
+
+	/* Enable threshold interrupt support */
+	config_thresh_intrpt(tdata, 0);
 
 	kfree(pdata->core_data[indx]);
 	pdata->core_data[indx] = NULL;

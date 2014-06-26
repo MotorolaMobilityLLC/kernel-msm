@@ -3,6 +3,7 @@
 #
 
 obj-y   += proc.o
+obj-y   += history_record.o
 
 proc-y			:= nommu.o task_nommu.o
 proc-$(CONFIG_MMU)	:= task_mmu.o

@@ -63,4 +63,15 @@ config DA8XX_REMOTEPROC
 	  It's safe to say n here if you're not interested in multimedia
 	  offloading.
 
+config INTEL_MID_REMOTEPROC
+	tristate "Intel MID remoteproc support"
+	depends on X86
+	select REMOTEPROC
+	select RPMSG
+	help
+	  Say y to support Intel MID's remote processors core driver
+	  and SCU driver.
+	  Please say y here if you want to enable x86 remoteproc core
+	  driver support.
+
 endmenu

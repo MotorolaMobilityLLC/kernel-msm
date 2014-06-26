@@ -53,6 +53,15 @@ static void resume_irqs(bool want_early)
 		if (is_early != want_early)
 			continue;
 
+#ifdef CONFIG_PM_DEBUG
+		if (desc->istate & IRQS_PENDING) {
+			printk(KERN_DEBUG "Wakeup from IRQ %d %s\n",
+				irq,
+				desc->action && desc->action->name ?
+				desc->action->name : "");
+		}
+#endif /* CONFIG_PM_DEBUG */
+
 		raw_spin_lock_irqsave(&desc->lock, flags);
 		__enable_irq(desc, irq, true);
 		raw_spin_unlock_irqrestore(&desc->lock, flags);

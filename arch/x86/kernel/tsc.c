@@ -37,7 +37,7 @@ static int __read_mostly tsc_unstable;
    erroneous rdtsc usage on !cpu_has_tsc processors */
 static int __read_mostly tsc_disabled = -1;
 
-int tsc_clocksource_reliable;
+int tsc_clocksource_reliable = 1;
 /*
  * Scheduler clock - returns current time in nanosec units.
  */

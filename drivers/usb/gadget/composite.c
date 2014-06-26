@@ -660,6 +660,13 @@ static int set_config(struct usb_composite_dev *cdev,
 			descriptors = f->fs_descriptors;
 		}
 
+		if (!descriptors) {
+			INFO(cdev, "%s is not supported\n",
+			     usb_speed_string(gadget->speed));
+			cdev->config = NULL;
+			return -ENODEV;
+		}
+
 		for (; *descriptors; ++descriptors) {
 			struct usb_endpoint_descriptor *ep;
 			int addr;
@@ -831,6 +838,12 @@ static void unbind_config(struct usb_composite_dev *cdev,
 		config->unbind(config);
 			/* may free memory for "c" */
 	}
+
+	/* reset cdev->next_string_id to cdev->reset_string_id
+	 * because "android_usb" driver is working and its
+	 * string descriptor numbers have been allocated
+	 */
+	cdev->next_string_id = cdev->reset_string_id;
 }
 
 /**
@@ -1291,6 +1304,12 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 				value = min(w_length, (u16) value);
 			}
 			break;
+		case USB_DT_OTG:
+			if (cdev->otg_desc) {
+				memcpy(req->buf, cdev->otg_desc, w_length);
+				value = w_length;
+			}
+			break;
 		}
 		break;
 
@@ -1436,6 +1455,8 @@ unknown:
 			break;
 
 		case USB_RECIP_ENDPOINT:
+			if (!cdev->config)
+				break;
 			endp = ((w_index & 0x80) >> 3) | (w_index & 0x0f);
 			list_for_each_entry(f, &cdev->config->functions, list) {
 				if (test_bit(endp, f->endpoints))
@@ -1717,7 +1738,7 @@ composite_resume(struct usb_gadget *gadget)
 {
 	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
 	struct usb_function		*f;
-	u8				maxpower;
+	u16				maxpower;
 
 	/* REVISIT:  should we have config level
 	 * suspend/resume callbacks?

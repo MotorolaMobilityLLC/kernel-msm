@@ -18,6 +18,7 @@
 #include <linux/mmc/host.h>
 
 struct sdhci_host {
+	void __iomem *gpiobase;
 	/* Data set by hardware interface driver */
 	const char *hw_name;	/* Hardware bus name */
 
@@ -96,8 +97,55 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_NO_1_8_V				(1<<2)
 #define SDHCI_QUIRK2_PRESET_VALUE_BROKEN		(1<<3)
 
+/* Intel private quirk2 starts on 15 */
+
+/* V2.0 host controller support DDR50 */
+#define SDHCI_QUIRK2_V2_0_SUPPORT_DDR50			(1<<15)
+/* Controller has bug when enabling Auto CMD23 */
+#define SDHCI_QUIRK2_BROKEN_AUTO_CMD23			(1<<16)
+/* HC Reg High Speed must be set later than HC2 Reg 1.8v Signaling Enable */
+#define SDHCI_QUIRK2_HIGH_SPEED_SET_LATE		(1<<17)
+/* SDR104 broken */
+#define SDHCI_QUIRK2_SDR104_BROKEN			(1<<18)
+/* to allow mmc_detect to detach the bus */
+#define SDHCI_QUIRK2_DISABLE_MMC_CAP_NONREMOVABLE	(1<<19)
+/* avoid detect/rescan/poweoff operations on suspend/resume. */
+#define SDHCI_QUIRK2_ENABLE_MMC_PM_IGNORE_PM_NOTIFY	(1<<20)
+/* Disable eMMC/SD card High speed feature. */
+#define SDHCI_QUIRK2_DISABLE_HIGH_SPEED			(1<<21)
+/* Fake VDD for device */
+#define SDHCI_QUIRK2_FAKE_VDD				(1<<22)
+#define SDHCI_QUIRK2_CARD_CD_DELAY			(1<<24)
+#define SDHCI_QUIRK2_WAIT_FOR_IDLE			(1<<25)
+/* BAD sd cd in HOST IC. This will cause system hang when removing SD */
+#define SDHCI_QUIRK2_BAD_SD_CD				(1<<26)
+#define SDHCI_QUIRK2_POWER_PIN_GPIO_MODE		(1<<27)
+#define SDHCI_QUIRK2_NON_STD_CIS   (1<<29)
+#define SDHCI_QUIRK2_TUNING_POLL			(1<<30)
+
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
+
+	/*
+	 * XXX: SCU/X86 mutex variables base address in shared SRAM
+	 * NOTE: Max size of this struct is 16 bytes
+	 * without shared SRAM re-organization.
+	 */
+	void __iomem *sram_addr;        /* Shared SRAM address */
+
+	void __iomem *rte_addr;	/* IOAPIC RTE register address */
+
+#define DEKKER_EMMC_OWNER_OFFSET        0
+#define DEKKER_IA_REQ_OFFSET            0x04
+#define DEKKER_SCU_REQ_OFFSET           0x08
+/* 0xc offset: state of the emmc chip to SCU. */
+#define DEKKER_EMMC_STATE               0x0c
+#define DEKKER_OWNER_IA                 0
+#define DEKKER_OWNER_SCU                1
+#define DEKKER_EMMC_CHIP_ACTIVE         0
+#define DEKKER_EMMC_CHIP_SUSPENDED      1
+
+	unsigned int	usage_cnt;	/* eMMC mutex usage count */
 
 	const struct sdhci_ops *ops;	/* Low level hw interface */
 
@@ -114,6 +162,7 @@ struct sdhci_host {
 #endif
 
 	spinlock_t lock;	/* Mutex */
+	spinlock_t dekker_lock; /* eMMC Dekker Mutex lock */
 
 	int flags;		/* Host attributes */
 #define SDHCI_USE_SDMA		(1<<0)	/* Host is SDMA capable */
@@ -128,6 +177,8 @@ struct sdhci_host {
 #define SDHCI_SDIO_IRQ_ENABLED	(1<<9)	/* SDIO irq enabled */
 #define SDHCI_HS200_NEEDS_TUNING (1<<10)	/* HS200 needs tuning */
 #define SDHCI_USING_RETUNING_TIMER (1<<11)	/* Host is using a retuning timer for the card */
+#define SDHCI_POWER_CTRL_DEV	(1<<12) /* ctrl dev power */
+#define SDHCI_EXIT_RPM_RESUME (1<<13)	/* Exit from runtime PM resume */
 
 	unsigned int version;	/* SDHCI spec. version */
 
@@ -139,11 +190,13 @@ struct sdhci_host {
 	u8 pwr;			/* Current voltage */
 
 	bool runtime_suspended;	/* Host is runtime suspended */
+	bool suspended;		/* Host is suspended */
 
 	struct mmc_request *mrq;	/* Current request */
 	struct mmc_command *cmd;	/* Current command */
 	struct mmc_data *data;	/* Current data request */
 	unsigned int data_early:1;	/* Data finished before cmd */
+	unsigned int r1b_busy_end:1;	/* R1B busy end */
 
 	struct sg_mapping_iter sg_miter;	/* SG state for PIO */
 	unsigned int blocks;	/* remaining PIO blocks */
@@ -175,6 +228,9 @@ struct sdhci_host {
 	unsigned int		tuning_mode;	/* Re-tuning mode supported by host */
 #define SDHCI_TUNING_MODE_1	0
 	struct timer_list	tuning_timer;	/* Timer for tuning */
+
+	unsigned int            gpio_pwr_en;
+	unsigned int            gpio_1p8_en;
 
 	unsigned long private[0] ____cacheline_aligned;
 };

@@ -8,6 +8,36 @@ menuconfig POWER_SUPPLY
 
 if POWER_SUPPLY
 
+config POWER_SUPPLY_CHARGER
+        bool "Power Supply Charger"
+        select EXTCON
+        select POWER_SUPPLY_BATTID
+        help
+          Say Y here to enable the power supply charger framework. Charger
+          framework supports charging in a generic way. This allows the charger
+          drivers to keep the charging logic outside and the charger driver
+          just need to abstract the charger hardware
+
+config POWER_SUPPLY_CHARGING_ALGO_PSE
+        bool "PSE compliant charging algorithm"
+        help
+          Say Y here to select PSE compliant charging algorithm. As per PSE
+          standard the battery characteristics and thereby the charging rates
+          can vary on different temperature zones. This config will enable PSE
+          compliant charging algorithm with maintenance charging support. The
+          algorithm can be selected by the charging framework based on the type
+          of the battery charging profile.
+
+        depends on POWER_SUPPLY_CHARGER
+
+config POWER_SUPPLY_BATTID
+        bool "Power Supply Battery Identification Framework"
+        help
+         Say Y here to enable the power supply battery idnetification
+         framework. The framework would allow different battery identification
+         drivers to interface with power supply subsystem. Also it allows consumer
+         drivers to register for notification from the power_supply subsystem.
+
 config POWER_SUPPLY_DEBUG
 	bool "Power supply debug"
 	help
@@ -361,6 +391,21 @@ config BATTERY_GOLDFISH
 	help
 	  Say Y to enable support for the battery and AC power in the
 	  Goldfish emulator.
+
+config BYT_EC_BATTERY
+	bool "Baytrail EC battery driver"
+	help
+	  Say Y here to enable support for Baytrail EC battery driver.
+
+config DC_XPWR_BATTERY
+	bool "Dollar Cove(Xpower) PMIC Fuel Gauge driver"
+	help
+	  Say Y here to enable support for Dollar Cove(Xpower) PMIC Fuel Gauge.
+
+config DC_XPWR_CHARGER
+	bool "Dollar Cove(Xpower) PMIC Charger driver"
+	help
+	  Say Y here to enable support for Dollar Cove(Xpower) PMIC Charger.
 
 source "drivers/power/reset/Kconfig"
 

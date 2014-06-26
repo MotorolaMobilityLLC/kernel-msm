@@ -17,6 +17,7 @@
 #include <linux/compiler.h>
 #include <linux/types.h>
 #include <linux/io.h>
+#include <linux/gpio.h>
 
 #include <linux/mmc/sdhci.h>
 
@@ -72,6 +73,7 @@
 #define  SDHCI_WRITE_PROTECT	0x00080000
 #define  SDHCI_DATA_LVL_MASK	0x00F00000
 #define   SDHCI_DATA_LVL_SHIFT	20
+#define   SDHCI_DATA_0_LVL_MASK	0x00100000
 
 #define SDHCI_HOST_CONTROL	0x28
 #define  SDHCI_CTRL_LED		0x01
@@ -83,12 +85,15 @@
 #define   SDHCI_CTRL_ADMA32	0x10
 #define   SDHCI_CTRL_ADMA64	0x18
 #define   SDHCI_CTRL_8BITBUS	0x20
+#define	SDHCI_CTRL_CD_SD	0x80
+#define	SDHCI_CTRL_CD_TL	0x40
 
 #define SDHCI_POWER_CONTROL	0x29
 #define  SDHCI_POWER_ON		0x01
 #define  SDHCI_POWER_180	0x0A
 #define  SDHCI_POWER_300	0x0C
 #define  SDHCI_POWER_330	0x0E
+#define	 SDHCI_HW_RESET		0x10
 
 #define SDHCI_BLOCK_GAP_CONTROL	0x2A
 
@@ -130,6 +135,7 @@
 #define  SDHCI_INT_ERROR	0x00008000
 #define  SDHCI_INT_TIMEOUT	0x00010000
 #define  SDHCI_INT_CRC		0x00020000
+#define  SDHCI_INT_CMD_CONFLICT	0x00030000
 #define  SDHCI_INT_END_BIT	0x00040000
 #define  SDHCI_INT_INDEX	0x00080000
 #define  SDHCI_INT_DATA_TIMEOUT	0x00100000
@@ -138,6 +144,7 @@
 #define  SDHCI_INT_BUS_POWER	0x00800000
 #define  SDHCI_INT_ACMD12ERR	0x01000000
 #define  SDHCI_INT_ADMA_ERROR	0x02000000
+#define  SDHCI_INT_TAR_RSP_ERR	0x10000000
 
 #define  SDHCI_INT_NORMAL_MASK	0x00007FFF
 #define  SDHCI_INT_ERROR_MASK	0xFFFF8000
@@ -148,7 +155,7 @@
 		SDHCI_INT_DATA_AVAIL | SDHCI_INT_SPACE_AVAIL | \
 		SDHCI_INT_DATA_TIMEOUT | SDHCI_INT_DATA_CRC | \
 		SDHCI_INT_DATA_END_BIT | SDHCI_INT_ADMA_ERROR | \
-		SDHCI_INT_BLK_GAP)
+		SDHCI_INT_BLK_GAP | SDHCI_INT_TAR_RSP_ERR)
 #define SDHCI_INT_ALL_MASK	((unsigned int)-1)
 
 #define SDHCI_ACMD12_ERR	0x3C
@@ -160,7 +167,8 @@
 #define   SDHCI_CTRL_UHS_SDR50		0x0002
 #define   SDHCI_CTRL_UHS_SDR104		0x0003
 #define   SDHCI_CTRL_UHS_DDR50		0x0004
-#define   SDHCI_CTRL_HS_SDR200		0x0005 /* reserved value in SDIO spec */
+#define   SDHCI_CTRL_HS_SDR200		SDHCI_CTRL_UHS_SDR104
+#define   SDHCI_CTRL_HS_DDR200		0x0005
 #define  SDHCI_CTRL_VDD_180		0x0008
 #define  SDHCI_CTRL_DRV_TYPE_MASK	0x0030
 #define   SDHCI_CTRL_DRV_TYPE_B		0x0000
@@ -198,6 +206,8 @@
 #define  SDHCI_DRIVER_TYPE_D	0x00000040
 #define  SDHCI_RETUNING_TIMER_COUNT_MASK	0x00000F00
 #define  SDHCI_RETUNING_TIMER_COUNT_SHIFT	8
+#define  SDHCI_MAX_TUNING_TIMER			0xb
+#define  SDHCI_OTHER_TUNING_SOURCE		0xf
 #define  SDHCI_USE_SDR50_TUNING			0x00002000
 #define  SDHCI_RETUNING_MODE_MASK		0x0000C000
 #define  SDHCI_RETUNING_MODE_SHIFT		14
@@ -234,6 +244,7 @@
 #define SDHCI_PRESET_FOR_SDR50 0x6A
 #define SDHCI_PRESET_FOR_SDR104        0x6C
 #define SDHCI_PRESET_FOR_DDR50 0x6E
+#define SDHCI_PRESET_FOR_HS400 0x74
 #define SDHCI_PRESET_DRV_MASK  0xC000
 #define SDHCI_PRESET_DRV_SHIFT  14
 #define SDHCI_PRESET_CLKGEN_SEL_MASK   0x400
@@ -294,6 +305,13 @@ struct sdhci_ops {
 	void	(*platform_resume)(struct sdhci_host *host);
 	void    (*adma_workaround)(struct sdhci_host *host, u32 intmask);
 	void	(*platform_init)(struct sdhci_host *host);
+	int	(*power_up_host)(struct sdhci_host *host);
+	void	(*set_dev_power)(struct sdhci_host *, bool);
+	int	(*get_cd)(struct sdhci_host *host);
+	int	(*get_tuning_count)(struct sdhci_host *host);
+	int	(*gpio_buf_check)(struct sdhci_host *host, unsigned int clk);
+	int	(*gpio_buf_dump)(struct sdhci_host *host);
+	int	(*set_io_voltage)(struct sdhci_host *, bool);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS
@@ -392,6 +410,7 @@ static inline void *sdhci_priv(struct sdhci_host *host)
 extern void sdhci_card_detect(struct sdhci_host *host);
 extern int sdhci_add_host(struct sdhci_host *host);
 extern void sdhci_remove_host(struct sdhci_host *host, int dead);
+extern int sdhci_try_get_regulator(struct sdhci_host *host);
 
 #ifdef CONFIG_PM
 extern int sdhci_suspend_host(struct sdhci_host *host);
@@ -404,4 +423,5 @@ extern int sdhci_runtime_suspend_host(struct sdhci_host *host);
 extern int sdhci_runtime_resume_host(struct sdhci_host *host);
 #endif
 
+extern void sdhci_alloc_panic_host(struct sdhci_host *host);
 #endif /* __SDHCI_HW_H */

@@ -23,6 +23,8 @@
 /*
  * Vendors and devices.  Sort key: vendor first, device next.
  */
+#define IWL_SDIO_DEVICE_ID_WKP1	0x3160
+#define IWL_SDIO_DEVICE_ID_WKP2	0x7260
 #define SDIO_VENDOR_ID_INTEL			0x0089
 #define SDIO_DEVICE_ID_INTEL_IWMC3200WIMAX	0x1402
 #define SDIO_DEVICE_ID_INTEL_IWMC3200WIFI	0x1403
