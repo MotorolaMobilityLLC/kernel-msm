@@ -3119,11 +3119,16 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 
 	mmc_send_if_cond(host, host->ocr_avail);
 
-	/* Order's important: probe SDIO, then SD, then MMC */
-	if (!mmc_attach_sdio(host))
-		return 0;
-	if (!mmc_attach_sd(host))
-		return 0;
+	/*
+	 * Order's important: probe SDIO, then SD, then MMC (unless we already
+	 * know it's an MMC).
+	 */
+	if (!(host->caps2 & MMC_CAP2_MMC_ONLY)) {
+		if (!mmc_attach_sdio(host))
+			return 0;
+		if (!mmc_attach_sd(host))
+			return 0;
+	}
 	if (!mmc_attach_mmc(host))
 		return 0;
 
