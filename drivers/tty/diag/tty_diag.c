@@ -93,8 +93,12 @@ static void diag_tty_close(struct tty_struct *tty, struct file *f)
 	if (disconnect_channel && legacy_ch.notify && legacy_ch.priv)
 		legacy_ch.priv_usb = NULL;
 
-	if (tty_data->open_count == 0)
+	if (tty_data->open_count <= 0) {
+		WARN(tty_data->open_count < 0,
+			" diag tty might be over closed.\n");
+		tty_data->tty = NULL;
 		tty->driver_data = NULL;
+	}
 
 	spin_unlock_irqrestore(&diag_tty_lock, flags);
 }
@@ -289,6 +293,11 @@ int tty_diag_channel_write(struct usb_diag_ch *diag_ch,
 	}
 
 	if (tty_data->tty == NULL) {
+		spin_unlock_irqrestore(&diag_tty_lock, flags);
+		return -EIO;
+	}
+
+	if (tty_data->tty->magic != TTY_MAGIC) {
 		spin_unlock_irqrestore(&diag_tty_lock, flags);
 		return -EIO;
 	}
