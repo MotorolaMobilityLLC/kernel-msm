@@ -4346,6 +4346,11 @@ void WDA_UpdateSTAParams(tWDA_CbContext *pWDA,
    wdiStaParams->ucVhtCapableSta = wdaStaParams->vhtCapable;
    wdiStaParams->ucVhtTxChannelWidthSet = wdaStaParams->vhtTxChannelWidthSet;
    wdiStaParams->ucVhtTxBFEnabled = wdaStaParams->vhtTxBFCapable;
+   wdiStaParams->vhtTxMUBformeeCapable = wdaStaParams->vhtTxMUBformeeCapable;
+   /* When MU vhtTxMUBformeeCapable is set, SU ucVhtTxBFEnabled
+    * must be set by default */
+   if ( wdiStaParams->vhtTxMUBformeeCapable )
+       wdiStaParams->ucVhtTxBFEnabled = wdaStaParams->vhtTxMUBformeeCapable;
 #endif
    wdiStaParams->ucHtLdpcEnabled= wdaStaParams->htLdpcCapable;
    wdiStaParams->ucVhtLdpcEnabled = wdaStaParams->vhtLdpcCapable;
