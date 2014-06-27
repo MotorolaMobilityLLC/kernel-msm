@@ -55,6 +55,8 @@ typedef enum
 #define LIM_AID_MASK                              0xC000
 #define LIM_SPECTRUM_MANAGEMENT_BIT_MASK          0x0100
 #define LIM_RRM_BIT_MASK                          0x1000
+#define LIM_SHORT_PREAMBLE_BIT_MASK               0x0020
+#define LIM_IMMEDIATE_BLOCK_ACK_MASK              0x8000
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
 #define LIM_MAX_REASSOC_RETRY_LIMIT            2
 #endif
