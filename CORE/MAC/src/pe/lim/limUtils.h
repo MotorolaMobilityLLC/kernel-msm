@@ -387,9 +387,6 @@ tANI_U8 limUnmapChannel(tANI_U8 mapChannel);
 #define limGetP2pIEPtr(pMac, ie, ie_len) \
     limGetVendorIEOuiPtr(pMac, SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE, ie, ie_len)
 
-#define limGetWmeIEPtr(pMac, ie, ie_len) \
-    limGetVendorIEOuiPtr(pMac, SIR_MAC_WME_OUI, SIR_MAC_WME_OUI_SIZE, ie, ie_len)
-
 v_U8_t limGetNoaAttrStreamInMultP2pIes(tpAniSirGlobal pMac,v_U8_t* noaStream,v_U8_t noaLen,v_U8_t overFlowLen);
 v_U8_t limGetNoaAttrStream(tpAniSirGlobal pMac, v_U8_t*pNoaStream,tpPESession psessionEntry);
 

@@ -448,8 +448,8 @@
 
 // OUI and type definition for WPA IE in network byte order
 #define SIR_MAC_WPA_OUI             0x01F25000
-#define SIR_MAC_WME_OUI             "\x00\x50\xf2\x02"
-#define SIR_MAC_WME_OUI_SIZE        4
+#define SIR_MAC_WME_OUI             0x02F25000
+#define SIR_MAC_WSM_OUI             SIR_MAC_WME_OUI
 #define SIR_MAC_WSC_OUI             "\x00\x50\xf2\x04"
 #define SIR_MAC_WSC_OUI_SIZE        4
 #define SIR_MAC_P2P_OUI             "\x50\x6f\x9a\x09"
