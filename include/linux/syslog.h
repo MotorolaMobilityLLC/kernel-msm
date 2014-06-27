@@ -44,11 +44,6 @@
 /* Return size of the log buffer */
 #define SYSLOG_ACTION_SIZE_BUFFER   10
 
-/* ASUS_BSP ++++ Josh_Hsu: Add for support parse asdf log */
-/* Read from the log in kernel space */
-#define SYSLOG_ACTION_READ_KERNEL   11
-/* ASUS_BSP ---- Josh_Hsu: Add for support parse asdf log */
-
 #define SYSLOG_FROM_READER           0
 #define SYSLOG_FROM_PROC             1
 

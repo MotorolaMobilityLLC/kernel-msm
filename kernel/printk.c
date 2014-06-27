@@ -51,8 +51,6 @@
 #include <linux/asus_global.h>
 #include <linux/rtc.h>
 
-#include <linux/init.h>     //For getting bootreason
-
 static int is_rebased = 0;
 int suspend_in_progress = 0;
 static char *g_printk_log_buf;
@@ -62,7 +60,6 @@ int boot_after_60sec = 0;
 #define ASUS_LAST_KMSG	1
 
 #if ASUS_LAST_KMSG
-static char bootreason[30];
 static size_t asus_print_time(u64 ts, char *buf);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
@@ -301,19 +298,6 @@ static const char log_oops_end[] = "---end of oops log buffer---";
 
 /* cpu currently holding logbuf_lock */
 static volatile unsigned int logbuf_cpu = UINT_MAX;
-
-//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#if ASUS_LAST_KMSG
-
-/* Setup bootreason */
-static int set_bootreason(char *str)
-{
-    strcpy(bootreason, str);
-	return 0;
-}
-__setup("bootreason=", set_bootreason);
-#endif
-//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
 /* human readable text of the record */
 static char *log_text(const struct log *msg)

@@ -26,9 +26,12 @@
 #define ASUS_LAST_KMSG	1
 
 #if ASUS_LAST_KMSG
+#include <linux/init.h>     //For getting bootreason
+
 unsigned int LAST_KMSG_BUFFER = 0x11F00000;
 static int last_kmsg_length = 0;
 static int is_lk_rebased = 0;
+static char bootreason[30];
 
 static void initKernelEnv(void);
 static void deinitKernelEnv(void);
@@ -61,6 +64,19 @@ int asus_rtc_read_time(struct rtc_time *tm)
     return 0; 
 }
 EXPORT_SYMBOL(asus_rtc_read_time);
+
+//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+#if ASUS_LAST_KMSG
+
+/* Setup bootreason */
+static int set_bootreason(char *str)
+{
+    strcpy(bootreason, str);
+	return 0;
+}
+__setup("bootreason=", set_bootreason);
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
 /*
  *   All thread information
@@ -750,19 +766,121 @@ extern void printk_buffer_rebase(void);
 
 static unsigned int g_cat_amount_left;
 static unsigned int g_cat_read_pos;
+static int g_lk_fetched;
+static char* g_last_kmsg_buffer;
+static int g_cat_finished;
+
+/* Get last kmsg from file */
+int fill_lk_content(char* buf, int buflen){
+
+    if(g_lk_fetched)
+        return 0;
+
+    if(buflen > PRINTK_PARSE_SIZE)
+        return -2;
+
+    /* Allocate buffer */
+    g_last_kmsg_buffer = kmalloc(buflen, GFP_KERNEL);
+    if (!g_last_kmsg_buffer)
+    {
+        printk("[adbg] g_last_kmsg_buffer malloc failure\n");
+        return -1;
+    }
+
+    /* Copy content */
+    memcpy(g_last_kmsg_buffer, buf, buflen);
+
+    g_lk_fetched = 1;
+
+    return 0;
+}
+
+/* Calculate the size of lk and skip the extra 0's in buffer */
+int fetch_last_kmsg_size(char* buf, int buflen, int option){
+
+    int offset = 0;
+    int zero_count = 0;
+    int size = 0;
+    int zero_tolerent = 30;
+    int ret;
+
+    /* 
+     * Following situaion is not allowed 
+     * 1. buf and buflen is not legal
+     * 2. option is set to 1, which means debug mode
+     * 3. we already fetech lk, skip here
+     */
+    if(!buf || !buflen || option == 1 || g_lk_fetched)
+        return 0;
+
+    while(buflen){
+        if( !*(buf + offset ) ){
+            zero_count++;
+            if(zero_count > zero_tolerent){
+                break;
+            }
+        }
+        size++;
+        offset++;
+        buflen--;
+    }
+
+    last_kmsg_length = size - zero_count; //Leave the end of string byte
+    
+    // Adjust read position
+	g_cat_amount_left = last_kmsg_length;
+	g_cat_read_pos = 0;
+
+    // Fill the lk buffer for user to cat
+    ret = fill_lk_content(buf, last_kmsg_length);
+    if(ret)
+        printk("[adbg] Fill LK content failed %d\n", ret);
+
+    printk("[adbg] Fetch last kmsg finished with size %d\n", last_kmsg_length);
+
+    return size;
+}
 
 static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
              size_t length, loff_t *offset)
 {	
-    return 0;
-    /*
    	int bytes_read = 0;
-	char* msg_Ptr = LAST_KMSG_BUFFER + g_cat_read_pos;
+	char* msg_Ptr = g_last_kmsg_buffer + g_cat_read_pos;
+    char reason[100];
+    int reason_size = 0;
+
+    if(!msg_Ptr){
+        printk("[adbg] Read LK: msg_Prt is null.\n");
+        return 0;
+    }
+
+    if(g_cat_finished){
+        g_cat_finished = 0;
+        return 0;
+    }
 
    	if (g_cat_amount_left == 0){
+        /* Start print bootreason and reset read head */
+        printk("[adbg] Read LK: Start print bootreason, len left %d\n", length);
+        
+        reason_size = snprintf(reason, 100, 
+            "\n\nNo errors detected\nBoot info:\nLast boot reason: %s\n", bootreason);
+        if(reason_size < length){
+            while (reason_size && length)  {
+                put_user(*(reason + bytes_read), buf++);
+                reason_size--;
+                bytes_read++;
+                length--;
+   	        }
+        }
+
+        printk("%s", reason);
+        
 		g_cat_read_pos = 0;
 		g_cat_amount_left = last_kmsg_length;
-		return 0;
+        g_cat_finished = 1;
+        
+		return bytes_read;
    	}
 
    	while (length && g_cat_amount_left)  {
@@ -775,9 +893,7 @@ static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
 
 	g_cat_read_pos += bytes_read;
 
-	//printk("[adbg] Cat amount left %d, cat read pos %d\n", g_cat_amount_left, g_cat_read_pos);
-
-   	return bytes_read;*/
+   	return bytes_read;
 }
 
 static ssize_t asuslastkmsg_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
@@ -822,12 +938,9 @@ static void save_last_kmsg_buffer(char* filename){
         printk("[adbg] last kmsg save failed: [%d]\n", lk_file_handle);
     }
 
+    fetch_last_kmsg_size(last_kmsg_buffer, PRINTK_PARSE_SIZE, 0);
+
     deinitKernelEnv();
-
-    // Adjust read position
-	g_cat_amount_left = last_kmsg_length;
-	g_cat_read_pos = 0;
-
 }
 
 #endif
