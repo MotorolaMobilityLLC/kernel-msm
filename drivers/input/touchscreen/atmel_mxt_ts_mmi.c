@@ -383,6 +383,142 @@ bool throttle_dbgout(struct debug_section *dbg, int n, unsigned int msec)
 		return true;
 }
 
+struct touch_up_down {
+	int	mismatch;
+	u8	up_down;
+	unsigned int counter;
+};
+
+struct touch_area_stats {
+	struct touch_up_down *ud;
+	ssize_t ud_len;
+	ssize_t ud_id;
+	ssize_t unknown_counter;
+	const char *name;
+};
+
+static struct touch_up_down display_ud[20];
+static struct touch_area_stats display_ud_stats = {
+	.ud = display_ud,
+	.ud_len = ARRAY_SIZE(display_ud),
+	.name = "ts"
+};
+
+static struct touch_up_down button_ud[10];
+static struct touch_area_stats button_ud_stats = {
+	.ud = button_ud,
+	.ud_len = ARRAY_SIZE(button_ud),
+	.name = "btn"
+};
+
+static void ud_set_id(struct touch_area_stats *tas, int id)
+{
+	tas->ud_id = id;
+}
+
+static void ud_log_status(struct touch_area_stats *tas, bool down)
+{
+	struct touch_up_down *ud = tas->ud;
+	ssize_t id = tas->ud_id;
+
+	if (id >= tas->ud_len)
+		tas->unknown_counter++;
+
+	if (!down) { /* up */
+		if (ud[id].up_down == 0x10) {
+			pr_debug("%s UP[%d]\n", tas->name, id);
+			ud[id].up_down |= 1;
+			ud[id].mismatch--;
+		}
+	} else if (down) { /* down */
+		if (ud[id].up_down == 0) {
+			ud[id].up_down |= (1 << 4);
+			pr_debug("%s DOWN[%d]\n", tas->name, id);
+			ud[id].mismatch++;
+		} else if (ud[id].up_down == 0x10)
+			return;
+	}
+
+	if (ud[id].up_down == 0x11) {
+		pr_debug("%s CLEAR[%d]\n", tas->name, id);
+		ud[id].up_down = 0;
+		ud[id].counter++;
+	}
+}
+
+static void TSI_state(struct input_dev *dev, unsigned int tool, bool status)
+{
+	ud_log_status(&display_ud_stats, status);
+	input_mt_report_slot_state(dev, tool, status);
+}
+
+static void TSI_id(struct input_dev *dev, int id)
+{
+	ud_set_id(&display_ud_stats, id);
+	input_mt_slot(dev, id);
+}
+
+#define input_mt_report_slot_state	TSI_state
+#define input_mt_slot	TSI_id
+
+static ssize_t mxt_ud_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	int i;
+	struct mxt_data *data = dev_get_drvdata(dev);
+	ssize_t total = 0;
+	total += scnprintf(buf + total, PAGE_SIZE - total, "display:\n");
+	for (i = 0; i < display_ud_stats.ud_len; i++)
+		total += scnprintf(buf + total, PAGE_SIZE - total,
+				"[%d]: full cycles-%u, mismatch-%d\n", i,
+				display_ud[i].counter,
+				display_ud[i].mismatch);
+
+	if (data->buttons_enabled) {
+		total += scnprintf(buf + total, PAGE_SIZE - total,
+			"buttons:\n");
+		for (i = 0; i < button_ud_stats.ud_len; i++)
+			total += scnprintf(buf + total, PAGE_SIZE - total,
+					"[%d]: full cycles-%u, mismatch-%d\n",
+					i,
+					button_ud[i].counter,
+					button_ud[i].mismatch);
+	}
+	return total;
+}
+
+static ssize_t mxt_ud_stat(char *buf, ssize_t size)
+{
+	int i;
+	ssize_t total = 0;
+	total += scnprintf(buf + total, size - total, "screen: ");
+	for (i = 0; i < display_ud_stats.ud_len; i++)
+		if (display_ud[i].mismatch)
+			total += scnprintf(buf + total, size - total,
+				"%d)%u,%d ", i,
+				display_ud[i].counter,
+				display_ud[i].mismatch);
+		else if (display_ud[i].counter)
+			total += scnprintf(buf + total, size - total,
+				"%d)%u ", i,
+				display_ud[i].counter);
+
+	total += scnprintf(buf + total, size - total, "buttons: ");
+	for (i = 0; i < button_ud_stats.ud_len; i++)
+		if (button_ud[i].mismatch)
+			total += scnprintf(buf + total, size - total,
+				"%d)%u,%d ", i,
+				button_ud[i].counter,
+				button_ud[i].mismatch);
+		else if (button_ud[i].counter)
+			total += scnprintf(buf + total, size - total,
+				"%d)%u ", i,
+				button_ud[i].counter);
+
+	return total;
+}
+
+
 #define TOUCH_QUERY_STRING_SIZE 512
 static char touch_setup_string[TOUCH_QUERY_STRING_SIZE];
 
@@ -1278,7 +1414,6 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 static void mxt_proc_t15_messages(struct mxt_data *data, u8 *msg)
 {
 	struct input_dev *input_dev = data->input_dev;
-	struct device *dev = &data->client->dev;
 	int key;
 	bool curr_state, new_state;
 	bool sync = false;
@@ -1292,18 +1427,20 @@ static void mxt_proc_t15_messages(struct mxt_data *data, u8 *msg)
 		curr_state = test_bit(key, &data->t15_keystatus);
 		new_state = test_bit(key, &keystates);
 
+		ud_set_id(&button_ud_stats, key);
+
 		if (!curr_state && new_state) {
-			dev_dbg(dev, "T15 key press: %u\n", key);
 			__set_bit(key, &data->t15_keystatus);
 			input_event(input_dev, EV_KEY,
 				    data->pdata->t15_keymap[key], 1);
 			sync = true;
+			ud_log_status(&button_ud_stats, true);
 		} else if (curr_state && !new_state) {
-			dev_dbg(dev, "T15 key release: %u\n", key);
 			__clear_bit(key, &data->t15_keystatus);
 			input_event(input_dev, EV_KEY,
 				    data->pdata->t15_keymap[key], 0);
 			sync = true;
+			ud_log_status(&button_ud_stats, false);
 		}
 	}
 
@@ -4097,6 +4234,7 @@ static DEVICE_ATTR(debug_v2_enable, S_IWUSR | S_IRUSR, NULL,
 static DEVICE_ATTR(debug_notify, S_IRUGO, mxt_debug_notify_show, NULL);
 static DEVICE_ATTR(debug_enable, S_IWUSR | S_IRUSR, mxt_debug_enable_show,
 				mxt_debug_enable_store);
+static DEVICE_ATTR(tsi, S_IRUGO, mxt_ud_show, NULL);
 
 static struct attribute *mxt_attrs[] = {
 	&dev_attr_fw_version.attr,
@@ -4117,6 +4255,7 @@ static struct attribute *mxt_attrs[] = {
 	&dev_attr_debug_enable.attr,
 	&dev_attr_debug_v2_enable.attr,
 	&dev_attr_debug_notify.attr,
+	&dev_attr_tsi.attr,
 	NULL
 };
 
@@ -4560,6 +4699,7 @@ static int mxt_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
+	static char ud_stats[PAGE_SIZE];
 
 	if (!data->suspended) {
 		/* if driver is in critical section at the moment,
@@ -4578,6 +4718,9 @@ static int mxt_suspend(struct device *dev)
 
 	data->poweron = false;
 	data->suspended = true;
+
+	mxt_ud_stat(ud_stats, sizeof(ud_stats));
+	pr_info("%s\n", ud_stats);
 
 	return 0;
 }
