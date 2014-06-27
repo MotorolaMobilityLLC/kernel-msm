@@ -1363,6 +1363,218 @@ static ssize_t attr_reg_dump(struct device *dev, struct device_attribute *attr, 
 		dev_err(&acc->client->dev, "Error reading ECG register\n");
 		return sprintf(buf, "0x%02x\n", dbuf[0]);
 }
+
+static int factory_test_get_output(struct device *dev, short *rOUT)
+{
+	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
+	u16 OUT[2];
+	u8 rbuf[2];
+	int err;
+	int i;
+
+	//Read output registers to clear ZYXDA
+	rbuf[0] = LIS3DSH_OUTX_L;
+	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+	rbuf[0] = LIS3DSH_OUTX_H;
+	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+	rbuf[0] = LIS3DSH_OUTY_L;
+	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+	rbuf[0] = LIS3DSH_OUTY_H;
+	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+	rbuf[0] = LIS3DSH_OUTZ_L;
+	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+	rbuf[0] = LIS3DSH_OUTZ_H;
+	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+
+	//Check ZYXDA
+	for(i=0 ; i<5 ; i++) {
+		rbuf[0] = LIS3DSH_STATUS_REG;
+		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+		printk("[lis3dsh] %d: LIS3DSH_STATUS_REG=%d XYZDA=%d\n", i, rbuf[0], (rbuf[0]&0x08)>0?1:0);
+		if ((rbuf[0]&0x08) > 0) {
+			rbuf[0] = LIS3DSH_OUTX_L;
+			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+			if (err < 0)
+				goto err_resume_state;
+			OUT[0] = rbuf[0];
+
+			rbuf[0] = LIS3DSH_OUTX_H;
+			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+			if (err < 0)
+				goto err_resume_state;
+			OUT[0] = (rbuf[0] << 8 | OUT[0]);
+
+			rbuf[0] = LIS3DSH_OUTY_L;
+			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+			if (err < 0)
+				goto err_resume_state;
+			OUT[1] = rbuf[0];
+			
+			rbuf[0] = LIS3DSH_OUTY_H;
+			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+			if (err < 0)
+				goto err_resume_state;
+			OUT[1] = (rbuf[0] << 8 | OUT[1]);
+
+			rbuf[0] = LIS3DSH_OUTZ_L;
+			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+			if (err < 0)
+				goto err_resume_state;
+			OUT[2] = rbuf[0];
+
+			rbuf[0] = LIS3DSH_OUTZ_H;
+			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
+			if (err < 0)
+				goto err_resume_state;
+			OUT[2] = (rbuf[0] << 8 | OUT[2]);
+
+			//convert the output to mg (2's complement then multiply by 0.06)
+			printk("[lis3dsh] OUT[X]=%d OUT[Y]=%d OUT[Z]=%d\n", OUT[0], OUT[1], OUT[2]);
+			for(i=0;i<2;i++) {
+				rOUT[i] = (short)OUT[i];
+				rOUT[i] = rOUT[i]*6/100;
+			}
+			return 0;
+			
+		}
+		if (i==5)
+			goto err_no_zyxda;
+	}
+
+	err_resume_state:
+	dev_err(&acc->client->dev, "i2c read err 0x%02x,0x%02x: %d\n", rbuf[0], rbuf[1], err);
+	return err;
+
+	err_no_zyxda:
+	dev_err(&acc->client->dev, "ZYXDA can not be obtained\n");
+	return -1;	
+}
+
+static ssize_t attr_factory_test(struct device *dev,	struct device_attribute *attr, char *buf)
+{
+	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
+	short OUT_NOST[3], OUT_ST[3], OUT_ABS[3];
+	int err, i, j;
+	u8 rbuf[2], temp[4];
+
+	printk("[lis3dsh] factory_test +++ \n");
+
+	//Store current register settings then disable irq
+	for(i=32, j=0;i < 37;i++, j++) {
+		if(i==33)
+			i=35;
+		rbuf[0] = (u8)i;
+		lis3dsh_acc_i2c_read(acc, rbuf, 1);
+		temp[j] = rbuf[0];
+	}
+	if(acc->pdata->gpio_int1)
+		disable_irq_nosync(acc->irq1);
+	if(acc->pdata->gpio_int2)
+		disable_irq_nosync(acc->irq2);
+
+	//Initialize sensor: turn on sensors, enable X/Y/Z, set BDU=1, ODR=100HZ, Cut-off freq=50Hz, FS=2g
+	buf[0] = LIS3DSH_CTRL_REG4;
+	buf[1] = 0x6F;
+	err = lis3dsh_acc_i2c_write(acc, buf, 1);
+	if (err < 0)
+		goto err_resume_state;
+
+	buf[0] = LIS3DSH_CTRL_REG5;
+	buf[1] = 0xC0;
+	err = lis3dsh_acc_i2c_write(acc, buf, 1);
+	if (err < 0)
+		goto err_resume_state;
+
+	buf[0] = LIS3DSH_CTRL_REG3;
+	buf[1] = 0x00;
+	err = lis3dsh_acc_i2c_write(acc, buf, 1);
+	if (err < 0)
+		goto err_resume_state;
+
+	buf[0] = LIS3DSH_CTRL_REG6;
+	buf[1] = 0x00;
+	err = lis3dsh_acc_i2c_write(acc, buf, 1);
+	if (err < 0)
+		goto err_resume_state;
+
+	//wait 80 ms for stable output
+	msleep(80);
+	err=factory_test_get_output(dev, OUT_NOST);
+	if (err < 0) 
+		goto err_out_of_range;
+
+	printk("[lis3dsh] OUT_NOST[X]=%d OUT_NOST[Y]=%d OUT_NOST[Z]=%d\n", OUT_NOST[0], OUT_NOST[1], OUT_NOST[2]);
+
+	//Enable positive sign self test and wait 80ms for stable output
+	buf[0] = LIS3DSH_CTRL_REG5;
+	buf[1] = 0xC2;
+	err = lis3dsh_acc_i2c_write(acc, buf, 1);
+	if (err < 0)
+		goto err_resume_state;
+
+	msleep(80);
+	err=factory_test_get_output(dev, OUT_ST);
+	if (err < 0)
+		goto err_out_of_range;
+
+	printk("[lis3dsh] OUT_ST[X]=%d OUT_ST[Y]=%d OUT_ST[Z]=%d\n", OUT_ST[0], OUT_ST[1], OUT_ST[2]);
+
+	//the absolute different between obtained data (OUT_NOST) and self test data (OUT_ST) should be between 70 and 1400
+	OUT_ABS[0] = abs(OUT_ST[0] - OUT_NOST[0]);
+	OUT_ABS[1] = abs(OUT_ST[1] - OUT_NOST[1]);
+	OUT_ABS[2] = abs(OUT_ST[2] - OUT_NOST[2]);
+	printk("[lis3dsh] OUT_ABS[X]=%d OUT_ABS[Y]=%d OUT_ABS[Z]=%d\n", OUT_ABS[0], OUT_ABS[1], OUT_ABS[2]);
+
+	for( i=0 ; i < 2 ; i++) {
+		if (70 > OUT_ABS[i] || OUT_ABS[i] > 1400)
+			goto err_out_of_range;
+	}
+
+	//Restore reg value prior to self test and enable irq
+	for(i=32, j=0;i < 37;i++, j++) {
+		if(i==33)
+			i=35;
+		rbuf[0] = (u8)i;
+		rbuf[1] = temp[j];
+		lis3dsh_acc_i2c_write(acc, rbuf, 1);
+	}
+	if(acc->pdata->gpio_int1 >= 0)
+		enable_irq(acc->irq1);
+	if(acc->pdata->gpio_int2 >= 0)
+		enable_irq(acc->irq2);
+
+	return sprintf(buf, "PASS\n");
+
+	err_resume_state:
+	dev_err(&acc->client->dev, "i2c error 0x%02x,0x%02x: %d\n", buf[0], buf[1], err);
+	for(i=32, j=0;i < 37;i++, j++) {
+		if(i==33)
+			i=35;
+		rbuf[0] = (u8)i;
+		rbuf[1] = temp[j];
+		lis3dsh_acc_i2c_write(acc, rbuf, 1);
+	}
+	if(acc->pdata->gpio_int1 >= 0)
+		enable_irq(acc->irq1);
+	if(acc->pdata->gpio_int2 >= 0)
+		enable_irq(acc->irq2);
+	return sprintf(buf, "FAIL\n");
+
+	err_out_of_range:
+	dev_err(&acc->client->dev, "out of range error %d %d %d\n", OUT_ABS[0], OUT_ABS[1], OUT_ABS[2]);
+	for(i=32, j=0;i < 37;i++, j++) {
+		if(i==33)
+			i=35;
+		rbuf[0] = (u8)i;
+		rbuf[1] = temp[j];
+		lis3dsh_acc_i2c_write(acc, rbuf, 1);
+	}
+	if(acc->pdata->gpio_int1 >= 0)
+		enable_irq(acc->irq1);
+	if(acc->pdata->gpio_int2 >= 0)
+		enable_irq(acc->irq2);
+	return sprintf(buf, "FAIL\n");
+}
 #endif
 
 static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc, u8 settings)
@@ -1517,6 +1729,7 @@ static struct device_attribute attributes[] = {
 #ifdef ASUS_FACTORY_BUILD
 	__ATTR(chip_status, 0444, attr_get_chip_status, NULL),			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 	__ATTR(dump, 0444, attr_reg_dump, NULL),
+	__ATTR(factory_test, 0444, attr_factory_test, NULL),	
 #endif
 };
 
