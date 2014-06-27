@@ -342,8 +342,10 @@ static int __cpuinit cpu_stop_cpu_callback(struct notifier_block *nfb,
 		kthread_stop(stopper->thread);
 		/* drain remaining works */
 		spin_lock_irq(&stopper->lock);
-		list_for_each_entry(work, &stopper->works, list)
+		list_for_each_entry(work, &stopper->works, list) {
 			cpu_stop_signal_done(work->done, false);
+			list_del_init(&work->list);
+		}
 		stopper->enabled = false;
 		spin_unlock_irq(&stopper->lock);
 		/* release the stopper */
