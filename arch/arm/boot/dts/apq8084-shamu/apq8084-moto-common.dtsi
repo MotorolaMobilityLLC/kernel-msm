@@ -1126,6 +1126,14 @@
 	};
 };
 
+&hsphy0 {
+	qcom,hsphy-init = <0x00F7D9A4>;
+};
+
+&hsphy1 {
+	qcom,hsphy-init = <0x00F7D9A4>;
+};
+
 &soc {
 	/delete-node/ qcom,pcie@fc528000;
 };
