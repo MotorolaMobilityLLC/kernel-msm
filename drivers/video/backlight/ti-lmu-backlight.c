@@ -168,8 +168,9 @@ static int ti_lmu_backlight_parse_dt(struct device *dev, struct ti_lmu *lmu)
 		of_property_read_u8(child, "max-current-milliamp", &imax_mA);
 		pdata[i].imax = ti_lmu_get_current_code(imax_mA);
 
-		of_property_read_u8(child, "initial-brightness",
-				    &pdata[i].init_brightness);
+		if (!of_property_read_u8(child, "initial-brightness",
+				    &pdata[i].init_brightness))
+			pdata[i].default_on = true;
 
 		/* Light effect */
 		of_property_read_u32(child, "ramp-up", &pdata[i].ramp_up_ms);
@@ -306,7 +307,8 @@ ti_lmu_backlight_register(struct ti_lmu_bl_chip *chip,
 			goto cleanup_backlights;
 		}
 
-		backlight_update_status(each->bl_dev);
+		if (pdata->default_on)
+			backlight_update_status(each->bl_dev);
 	}
 
 	chip->num_backlights = num_backlights;
