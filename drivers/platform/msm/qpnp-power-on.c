@@ -55,6 +55,7 @@
 #define QPNP_PON_WD_RST_S2_CTL2(base)		(base + 0x57)
 #define QPNP_PON_TRIGGER_EN(base)		(base + 0x80)
 #define QPNP_PON_S3_DBC_CTL(base)		(base + 0x75)
+#define QPNP_PON_XVDD_RB_SPARE(base)		(base + 0x8E)
 
 #define QPNP_PON_WARM_RESET_TFT			BIT(4)
 
@@ -79,6 +80,8 @@
 #define QPNP_PON_WD_EN			BIT(7)
 #define QPNP_PON_RESET_EN			BIT(7)
 #define QPNP_PON_POWER_OFF_MASK			0xF
+
+#define QPNP_PON_UVLO_DLOAD_EN		BIT(7)
 
 /* Ranges */
 #define QPNP_PON_S1_TIMER_MAX			10256
@@ -1175,6 +1178,79 @@ free_input_dev:
 		input_free_device(pon->pon_input);
 	return rc;
 }
+
+static bool dload_on_uvlo;
+
+static int qpnp_pon_debugfs_uvlo_dload_get(char *buf,
+		const struct kernel_param *kp)
+{
+	struct qpnp_pon *pon = sys_reset_dev;
+	int rc = 0;
+	u8 reg;
+
+	if (!pon)
+		return -ENODEV;
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+			QPNP_PON_XVDD_RB_SPARE(pon->base), &reg, 1);
+	if (rc) {
+		dev_err(&pon->spmi->dev,
+			"Unable to read addr=%x, rc(%d)\n",
+			QPNP_PON_XVDD_RB_SPARE(pon->base), rc);
+		return rc;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d",
+			!!(QPNP_PON_UVLO_DLOAD_EN & reg));
+}
+
+static int qpnp_pon_debugfs_uvlo_dload_set(const char *val,
+		const struct kernel_param *kp)
+{
+	struct qpnp_pon *pon = sys_reset_dev;
+	int rc = 0;
+	u8 reg;
+
+	if (!pon)
+		return -ENODEV;
+
+	rc = param_set_bool(val, kp);
+	if (rc) {
+		pr_err("Unable to set bms_reset: %d\n", rc);
+		return rc;
+	}
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+			QPNP_PON_XVDD_RB_SPARE(pon->base), &reg, 1);
+	if (rc) {
+		dev_err(&pon->spmi->dev,
+			"Unable to read addr=%x, rc(%d)\n",
+			QPNP_PON_XVDD_RB_SPARE(pon->base), rc);
+		return rc;
+	}
+
+	reg &= ~QPNP_PON_UVLO_DLOAD_EN;
+	if (*(bool *)kp->arg)
+		reg |= QPNP_PON_UVLO_DLOAD_EN;
+
+	rc = spmi_ext_register_writel(pon->spmi->ctrl, pon->spmi->sid,
+			QPNP_PON_XVDD_RB_SPARE(pon->base), &reg, 1);
+	if (rc) {
+		dev_err(&pon->spmi->dev,
+			"Unable to write to addr=%hx, rc(%d)\n",
+				QPNP_PON_XVDD_RB_SPARE(pon->base), rc);
+		return rc;
+	}
+
+	return 0;
+}
+
+static struct kernel_param_ops dload_on_uvlo_ops = {
+	.set = qpnp_pon_debugfs_uvlo_dload_set,
+	.get = qpnp_pon_debugfs_uvlo_dload_get,
+};
+
+module_param_cb(dload_on_uvlo, &dload_on_uvlo_ops, &dload_on_uvlo, 0644);
 
 static int qpnp_pon_probe(struct spmi_device *spmi)
 {
