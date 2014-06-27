@@ -184,8 +184,10 @@ static int32_t msm_actuator_init_focus(struct msm_actuator_ctrl_t *a_ctrl,
 	}
 
 	a_ctrl->curr_step_pos = 0;
-	/* recover register addr_type after the init
-	settings are written  */
+	/*
+	 * Recover register addr_type after the init
+	 * settings are written.
+	 */
 	a_ctrl->i2c_client.addr_type = save_addr_type;
 	CDBG("Exit\n");
 	return rc;
