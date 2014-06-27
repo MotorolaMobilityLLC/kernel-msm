@@ -70,6 +70,13 @@ static int lm3697_bl_set_brightness(struct ti_lmu_bl *lmu_bl, int brightness)
 {
 	u8 reg_msb[] = { LM3697_REG_BRT_A_MSB, LM3697_REG_BRT_B_MSB, };
 
+	static int old_level = -1;
+
+	if (brightness != old_level && old_level == 0)
+		dev_info(&lmu_bl->bl_dev->dev, "backlight on");
+	else if (brightness == 0 && old_level != 0)
+		dev_info(&lmu_bl->bl_dev->dev, "backlight off");
+	old_level = brightness;
 	return ti_lmu_write_byte(lmu_bl->chip->lmu, reg_msb[lmu_bl->bank_id],
 				 brightness);
 }
