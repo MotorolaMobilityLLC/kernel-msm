@@ -317,6 +317,9 @@ typedef struct hdd_tx_rx_stats_s
    __u32    rxRefused;
    __u32    pkt_tx_count; //TX pkt Counter used for dynamic splitscan
    __u32    pkt_rx_count; //RX pkt Counter used for dynamic splitscan
+   // tx timeout stats
+   __u32    txTimeoutCount;
+   __u32    continuousTxTimeoutCount;
 } hdd_tx_rx_stats_t;
 
 typedef struct hdd_chip_reset_stats_s
