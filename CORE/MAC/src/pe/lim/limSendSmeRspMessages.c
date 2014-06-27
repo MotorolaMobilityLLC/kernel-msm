@@ -262,8 +262,6 @@ tANI_U32 limGetMaxRateFlags(tpDphHashNode pStaDs, tpPESession psessionEntry)
                     rate_flags |= eHAL_TX_RATE_VHT20;
            }
         }
-        else
-            rate_flags |= eHAL_TX_RATE_VHT20;
 #endif
     }
 
