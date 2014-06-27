@@ -62,6 +62,7 @@ enum ti_lmu_max_current {
  * @bl_string: Bit mask of backlight output string
  * @imax: Max current for backlight output string
  * @init_brightness: Initial brightness value
+ * @default_on: apply initial brightness on power up
  * @ramp_up_ms: Backlight light effect for ramp up or slope rate
  * @ramp_down_ms: Backlight light effect for ramp down rate
  * @pwm_period: Platform specific PWM period value. unit is nano
@@ -76,6 +77,7 @@ struct ti_lmu_backlight_platform_data {
 
 	enum ti_lmu_max_current imax;
 	u8 init_brightness;
+	bool default_on;
 
 	/* Used for light effect */
 	unsigned int ramp_up_ms;
