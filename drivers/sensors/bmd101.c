@@ -163,7 +163,7 @@ static ssize_t sensors_status_store(struct device *dev, struct device_attribute 
 {
 	unsigned long val;
 
-	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 1))
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 2))
 		return -EINVAL;
 
 	sensor_data->status = val;
