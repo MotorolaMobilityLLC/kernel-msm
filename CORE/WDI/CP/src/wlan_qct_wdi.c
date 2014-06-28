@@ -31871,9 +31871,6 @@ WDI_ProcessEXTScanStartReq
 
   }
 
-  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
-          " size of tHalExtScanStartReq %d ", sizeof(tHalExtScanStartReq) );
-
   pWDICtx->pReqStatusUserData = pEventData->pUserData;
 
   /*-------------------------------------------------------------------------
