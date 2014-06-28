@@ -22,6 +22,10 @@ enum esoc_evt {
 	ESOC_ERR_FATAL,
 	ESOC_IN_DEBUG,
 	ESOC_BOOT_FAIL,
+	ESOC_REQ_ENG_ON,
+	ESOC_REQ_ENG_OFF,
+	ESOC_CMD_ENG_ON,
+	ESOC_CMD_ENG_OFF,
 };
 
 enum esoc_cmd {
