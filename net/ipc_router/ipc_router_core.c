@@ -329,6 +329,12 @@ fail_clone:
 	return NULL;
 }
 
+/**
+ * create_pkt() - Create a Router packet
+ * @data: SKB queue to be contained inside the packet.
+ *
+ * @return: pointer to packet on success, NULL on failure.
+ */
 struct rr_packet *create_pkt(struct sk_buff_head *data)
 {
 	struct rr_packet *pkt;
@@ -340,9 +346,21 @@ struct rr_packet *create_pkt(struct sk_buff_head *data)
 		return NULL;
 	}
 
-	pkt->pkt_fragment_q = data;
-	skb_queue_walk(pkt->pkt_fragment_q, temp_skb)
-		pkt->length += temp_skb->len;
+	if (data) {
+		pkt->pkt_fragment_q = data;
+		skb_queue_walk(pkt->pkt_fragment_q, temp_skb)
+			pkt->length += temp_skb->len;
+	} else {
+		pkt->pkt_fragment_q = kmalloc(sizeof(struct sk_buff_head),
+					      GFP_KERNEL);
+		if (!pkt->pkt_fragment_q) {
+			IPC_RTR_ERR("%s: Couldn't alloc pkt_fragment_q\n",
+				    __func__);
+			kfree(pkt);
+			return NULL;
+		}
+		skb_queue_head_init(pkt->pkt_fragment_q);
+	}
 	return pkt;
 }
 
@@ -849,6 +867,39 @@ static int post_pkt_to_port(struct msm_ipc_port *port_ptr,
 	return 0;
 }
 
+/**
+ * ipc_router_peek_pkt_size() - Peek into the packet header to get potential packet size
+ * @data: Starting address of the packet which points to router header.
+ *
+ * @returns: potential packet size on success, < 0 on error.
+ *
+ * This function is used by the underlying transport abstraction layer to
+ * peek into the potential packet size of an incoming packet. This information
+ * is used to perform link layer fragmentation and re-assembly
+ */
+int ipc_router_peek_pkt_size(char *data)
+{
+	int size;
+
+	if (!data) {
+		pr_err("%s: NULL PKT\n", __func__);
+		return -EINVAL;
+	}
+
+	/* FUTURE: Calculate optional header len in V2 header*/
+	if (data[0] == IPC_ROUTER_V1)
+		size = ((struct rr_header_v1 *)data)->size +
+			sizeof(struct rr_header_v1);
+	else if (data[0] == IPC_ROUTER_V2)
+		size = ((struct rr_header_v2 *)data)->size +
+			sizeof(struct rr_header_v2);
+	else
+		return -EINVAL;
+
+	size += ALIGN_SIZE(size);
+	return size;
+}
+
 static int post_control_ports(struct rr_packet *pkt)
 {
 	struct msm_ipc_port *port_ptr;
@@ -946,7 +997,7 @@ struct msm_ipc_port *msm_ipc_router_create_raw_port(void *endpoint,
 		return NULL;
 	}
 
-	spin_lock_init(&port_ptr->port_lock);
+	mutex_init(&port_ptr->port_lock_lhb1);
 	INIT_LIST_HEAD(&port_ptr->port_rx_q);
 	mutex_init(&port_ptr->port_rx_q_lock_lhb3);
 	init_waitqueue_head(&port_ptr->port_rx_wait_q);
@@ -2213,7 +2264,6 @@ int msm_ipc_router_register_server(struct msm_ipc_port *port_ptr,
 				   struct msm_ipc_addr *name)
 {
 	struct msm_ipc_server *server;
-	unsigned long flags;
 	union rr_control_msg ctl;
 
 	if (!port_ptr || !name)
@@ -2253,19 +2303,18 @@ int msm_ipc_router_register_server(struct msm_ipc_port *port_ptr,
 	up_write(&server_list_lock_lha2);
 	broadcast_ctl_msg(&ctl);
 	broadcast_ctl_msg_locally(&ctl);
-	spin_lock_irqsave(&port_ptr->port_lock, flags);
+	mutex_lock(&port_ptr->port_lock_lhb1);
 	port_ptr->type = SERVER_PORT;
 	port_ptr->mode_info.mode = MULTI_LINK_MODE;
 	port_ptr->port_name.service = server->name.service;
 	port_ptr->port_name.instance = server->name.instance;
-	spin_unlock_irqrestore(&port_ptr->port_lock, flags);
+	mutex_unlock(&port_ptr->port_lock_lhb1);
 	return 0;
 }
 
 int msm_ipc_router_unregister_server(struct msm_ipc_port *port_ptr)
 {
 	struct msm_ipc_server *server;
-	unsigned long flags;
 	union rr_control_msg ctl;
 
 	if (!port_ptr)
@@ -2306,9 +2355,9 @@ int msm_ipc_router_unregister_server(struct msm_ipc_port *port_ptr)
 	up_write(&server_list_lock_lha2);
 	broadcast_ctl_msg(&ctl);
 	broadcast_ctl_msg_locally(&ctl);
-	spin_lock_irqsave(&port_ptr->port_lock, flags);
+	mutex_lock(&port_ptr->port_lock_lhb1);
 	port_ptr->type = CLIENT_PORT;
-	spin_unlock_irqrestore(&port_ptr->port_lock, flags);
+	mutex_unlock(&port_ptr->port_lock_lhb1);
 	return 0;
 }
 
@@ -3138,13 +3187,12 @@ static int dump_control_ports(char *buf, int max)
 static int dump_local_ports(char *buf, int max)
 {
 	int i = 0, j;
-	unsigned long flags;
 	struct msm_ipc_port *port_ptr;
 
 	down_read(&local_ports_lock_lha2);
 	for (j = 0; j < LP_HASH_SIZE; j++) {
 		list_for_each_entry(port_ptr, &local_ports[j], list) {
-			spin_lock_irqsave(&port_ptr->port_lock, flags);
+			mutex_lock(&port_ptr->port_lock_lhb1);
 			i += scnprintf(buf + i, max - i, "Node_id: 0x%08x\n",
 				       port_ptr->this_port.node_id);
 			i += scnprintf(buf + i, max - i, "Port_id: 0x%08x\n",
@@ -3157,7 +3205,7 @@ static int dump_local_ports(char *buf, int max)
 				       port_ptr->num_tx_bytes);
 			i += scnprintf(buf + i, max - i, "# bytes rx'd %ld\n",
 				       port_ptr->num_rx_bytes);
-			spin_unlock_irqrestore(&port_ptr->port_lock, flags);
+			mutex_unlock(&port_ptr->port_lock_lhb1);
 			i += scnprintf(buf + i, max - i, "\n");
 		}
 	}
@@ -3404,11 +3452,6 @@ static int __init msm_ipc_router_init(void)
 		IPC_RTR_ERR("%s: Unable to create IPC logging for IPC RTR",
 			__func__);
 
-	msm_ipc_router_workqueue =
-		create_singlethread_workqueue("msm_ipc_router");
-	if (!msm_ipc_router_workqueue)
-		return -ENOMEM;
-
 	debugfs_init();
 
 	for (i = 0; i < SRV_HASH_SIZE; i++)
@@ -3434,6 +3477,10 @@ static int __init msm_ipc_router_init(void)
 	if (ret < 0)
 		IPC_RTR_ERR("%s: Security Init failed\n", __func__);
 
+	msm_ipc_router_workqueue =
+		create_singlethread_workqueue("msm_ipc_router");
+	if (!msm_ipc_router_workqueue)
+		return -ENOMEM;
 	complete_all(&msm_ipc_local_router_up);
 	return ret;
 }
