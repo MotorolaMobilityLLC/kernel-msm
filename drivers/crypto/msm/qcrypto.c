@@ -4726,6 +4726,9 @@ static int  _qcrypto_resume(struct platform_device *pdev)
 
 		qcrypto_bw_set_timeout(pengine);
 
+		init_timer(&(pengine->bw_reaper_timer));
+		qcrypto_bw_set_timeout(pengine);
+
 		spin_lock_irqsave(&cp->lock, flags);
 		pengine->bw_state = BUS_NO_BANDWIDTH;
 		pengine->active_seq++;
