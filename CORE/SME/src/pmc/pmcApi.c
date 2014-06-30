@@ -1353,7 +1353,12 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             {
                 pmcLog(pMac, LOGE, FL("Response message to request to exit "
                    "IMPS indicates failure, status %x"), pMsg->statusCode);
-                if( eHAL_STATUS_SUCCESS ==
+                if (vos_is_logp_in_progress(VOS_MODULE_ID_SME, NULL))
+                {
+                    pmcLog(pMac, LOGE, FL("SSR Is in progress do not send "
+                                          "exit imps req again"));
+                }
+                else if( eHAL_STATUS_SUCCESS ==
                       pmcSendMessage(pMac, eWNI_PMC_EXIT_IMPS_REQ, NULL, 0) )
                 {
                     fRemoveCommand = eANI_BOOLEAN_FALSE;
