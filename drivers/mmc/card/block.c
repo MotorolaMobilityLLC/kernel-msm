@@ -1926,6 +1926,7 @@ static int mmc_blk_update_interrupted_req(struct mmc_card *card,
 {
 	int ret = MMC_BLK_SUCCESS;
 	u8 *ext_csd;
+	int retry, status, err;
 	int correctly_done;
 	struct mmc_queue_req *mq_rq = container_of(areq, struct mmc_queue_req,
 				      mmc_active);
@@ -1940,10 +1941,33 @@ static int mmc_blk_update_interrupted_req(struct mmc_card *card,
 		return MMC_BLK_ABORT;
 
 	/* get correctly programmed sectors number from card */
-	ret = mmc_send_ext_csd(card, ext_csd);
+	for (retry = 2; retry >= 0; retry--) {
+		ret = mmc_send_ext_csd(card, ext_csd);
+		if (!ret)
+			break;
+		pr_err("%s: error %d reading correctly programmed sectors, %sing\n",
+		       mq_rq->req->rq_disk->disk_name, ret,
+		       retry ? "retry" : "abort");
+		err = get_card_status(card, &status, 0);
+		if (err)
+			pr_err("%s: error %d sending status command\n",
+			       mq_rq->req->rq_disk->disk_name, err);
+		else
+			pr_err("%s: card status: 0x%X\n",
+			       mq_rq->req->rq_disk->disk_name, status);
+
+		if (R1_CURRENT_STATE(status) == R1_STATE_DATA ||
+		    R1_CURRENT_STATE(status) == R1_STATE_RCV) {
+			err = send_stop(card, &status);
+			if (err) {
+				pr_err("%s: error %d sending stop command; status: 0x%X\n",
+				       mq_rq->req->rq_disk->disk_name, err,
+				       status);
+				break;
+			}
+		}
+	}
 	if (ret) {
-		pr_err("%s: error %d reading ext_csd\n",
-				mmc_hostname(card->host), ret);
 		ret = MMC_BLK_ABORT;
 		goto exit;
 	}
@@ -1982,13 +2006,20 @@ static int mmc_blk_packed_err_check(struct mmc_card *card,
 	struct request *req = mq_rq->req;
 	struct mmc_packed *packed = mq_rq->packed;
 	int err, check, status;
+	int retry;
 	u8 *ext_csd;
 
 	BUG_ON(!packed);
 
 	packed->retries--;
 	check = mmc_blk_err_check(card, areq);
-	err = get_card_status(card, &status, 0);
+	for (retry = 2; retry >= 0; retry--) {
+		err = get_card_status(card, &status, 0);
+		if (!err)
+			break;
+		pr_err("%s: error %d sending status command, %sing\n",
+		       req->rq_disk->disk_name, err, retry ? "retry" : "abort");
+	}
 	if (err) {
 		pr_err("%s: error %d sending status command\n",
 		       req->rq_disk->disk_name, err);
@@ -3461,6 +3492,17 @@ static const struct mmc_fixup blk_fixups[] =
 		  MMC_QUIRK_INAND_CMD38),
 
 	/*
+	 * Sometimes, these Sandisk iNAND devices have a race condition during
+	 * an HPI that causes the card to enter the incorrect state.
+	 */
+	MMC_FIXUP_EXT_CSD_REV("SEM08G", CID_MANFID_SANDISK2, CID_OEMID_ANY,
+			      add_quirk_mmc, MMC_QUIRK_SLOW_HPI_RESPONSE, 6),
+	MMC_FIXUP_EXT_CSD_REV("SEM16G", CID_MANFID_SANDISK2, CID_OEMID_ANY,
+			      add_quirk_mmc, MMC_QUIRK_SLOW_HPI_RESPONSE, 6),
+	MMC_FIXUP_EXT_CSD_REV("SEM32G", CID_MANFID_SANDISK2, CID_OEMID_ANY,
+			      add_quirk_mmc, MMC_QUIRK_SLOW_HPI_RESPONSE, 6),
+
+	/*
 	 * Some MMC cards experience performance degradation with CMD23
 	 * instead of CMD12-bounded multiblock transfers. For now we'll
 	 * black list what's bad...
@@ -3513,9 +3555,6 @@ static const struct mmc_fixup blk_fixups[] =
 	MMC_FIXUP(CID_NAME_ANY, CID_MANFID_HYNIX, CID_OEMID_ANY, add_quirk_mmc,
 		  MMC_QUIRK_BROKEN_DATA_TIMEOUT),
 
-	/* Some INAND MCP devices advertise incorrect timeout values */
-	MMC_FIXUP("SEM04G", 0x45, CID_OEMID_ANY, add_quirk_mmc,
-		  MMC_QUIRK_INAND_DATA_TIMEOUT),
 	MMC_FIXUP(CID_NAME_ANY, CID_MANFID_HYNIX, CID_OEMID_ANY, add_quirk_mmc,
 		  MMC_QUIRK_RETRY_FLUSH_TIMEOUT),
 
