@@ -1299,6 +1299,11 @@ static inline int skb_pagelen(const struct sk_buff *skb)
 	return len + skb_headlen(skb);
 }
 
+static inline bool skb_has_frags(const struct sk_buff *skb)
+{
+	return skb_shinfo(skb)->nr_frags;
+}
+
 /**
  * __skb_fill_page_desc - initialise a paged fragment in an skb
  * @skb: buffer containing fragment to be initialised
@@ -1735,6 +1740,11 @@ static inline void skb_set_mac_header(struct sk_buff *skb, const int offset)
 	skb->mac_header = skb->data + offset;
 }
 #endif /* NET_SKBUFF_DATA_USES_OFFSET */
+
+static inline void skb_pop_mac_header(struct sk_buff *skb)
+{
+	skb->mac_header = skb->network_header;
+}
 
 static inline void skb_probe_transport_header(struct sk_buff *skb,
 					      const int offset_hint)
@@ -2478,6 +2488,8 @@ extern int	       skb_shift(struct sk_buff *tgt, struct sk_buff *skb,
 extern struct sk_buff *skb_segment(struct sk_buff *skb,
 				   netdev_features_t features);
 
+unsigned int skb_gso_transport_seglen(const struct sk_buff *skb);
+
 static inline void *skb_header_pointer(const struct sk_buff *skb, int offset,
 				       int len, void *buffer)
 {
@@ -2900,6 +2912,23 @@ u32 __skb_get_poff(const struct sk_buff *skb);
 static inline bool skb_head_is_locked(const struct sk_buff *skb)
 {
 	return !skb->head_frag || skb_cloned(skb);
+}
+
+/**
+ * skb_gso_network_seglen - Return length of individual segments of a gso packet
+ *
+ * @skb: GSO skb
+ *
+ * skb_gso_network_seglen is used to determine the real size of the
+ * individual segments, including Layer3 (IP, IPv6) and L4 headers (TCP/UDP).
+ *
+ * The MAC/L2 header is not accounted for.
+ */
+static inline unsigned int skb_gso_network_seglen(const struct sk_buff *skb)
+{
+	unsigned int hdr_len = skb_transport_header(skb) -
+			       skb_network_header(skb);
+	return hdr_len + skb_gso_transport_seglen(skb);
 }
 #endif	/* __KERNEL__ */
 #endif	/* _LINUX_SKBUFF_H */
