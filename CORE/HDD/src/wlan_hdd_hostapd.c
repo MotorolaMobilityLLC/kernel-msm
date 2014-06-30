@@ -1277,6 +1277,34 @@ void hdd_hostapd_update_unsafe_channel_list(hdd_context_t *pHddCtx,
 }
 
 /**---------------------------------------------------------------------------
+  \brief hdd_restart_softap() -
+   Restart SAP  on STA channel to support
+   STA + SAP concurrency.
+
+  --------------------------------------------------------------------------*/
+void hdd_restart_softap
+(
+   hdd_context_t *pHddCtx,
+   hdd_adapter_t *pHostapdAdapter
+)
+{
+   tSirChAvoidIndType *chAvoidInd;
+
+   chAvoidInd =
+         (tSirChAvoidIndType *)vos_mem_malloc(sizeof(tSirChAvoidIndType));
+   if (NULL == chAvoidInd)
+   {
+       hddLog(VOS_TRACE_LEVEL_INFO, FL("CH_AVOID IND buffer alloc Fail"));
+       return ;
+   }
+   chAvoidInd->avoidRangeCount = 1;
+   chAvoidInd->avoidFreqRange[0].startFreq =
+    vos_chan_to_freq(pHostapdAdapter->sessionCtx.ap.operatingChannel);
+   chAvoidInd->avoidFreqRange[0].endFreq =
+     vos_chan_to_freq(pHostapdAdapter->sessionCtx.ap.operatingChannel);
+   hdd_hostapd_ch_avoid_cb((void *)pHddCtx, (void *)chAvoidInd);
+}
+/**---------------------------------------------------------------------------
 
   \brief hdd_hostapd_ch_avoid_cb() -
 
