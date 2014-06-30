@@ -546,6 +546,7 @@ static irqreturn_t mdm_errfatal(int irq, void *dev_id)
 	dev = mdm->dev;
 	if (!mdm->ready)
 		goto mdm_pwroff_irq;
+	mdm->ready = false;
 	esoc = mdm->esoc;
 	dev_err(dev, "%s: mdm sent errfatal interrupt\n",
 					 __func__);
