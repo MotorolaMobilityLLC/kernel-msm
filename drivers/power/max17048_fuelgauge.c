@@ -589,6 +589,11 @@ static int max17048_fuelgauge_resume(struct device *dev)
 
 static void max17048_fuelgauge_shutdown(struct i2c_client *client)
 {
+	u16 data;
+
+	data = 0xFFFF;
+	i2c_smbus_write_word_data(client,
+			MAX17048_HIBERNATE, swab16(data));
 }
 
 static const struct i2c_device_id max17048_fuelgauge_id[] = {
