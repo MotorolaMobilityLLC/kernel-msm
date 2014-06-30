@@ -152,6 +152,8 @@ xfs-delayed-logging-design.txt
 	- info on the XFS Delayed Logging Design.
 xfs-self-describing-metadata.txt
 	- info on XFS Self Describing Metadata.
+wrapfs.txt
+	- info and mount options for the stackable wrapper file system
 xfs.txt
 	- info and mount options for the XFS filesystem.
 xip.txt
