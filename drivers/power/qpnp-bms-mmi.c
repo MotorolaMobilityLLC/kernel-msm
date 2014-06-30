@@ -291,6 +291,7 @@ struct qpnp_bms_chip {
 	struct qpnp_vadc_chip		*vadc_dev;
 	struct qpnp_iadc_chip		*iadc_dev;
 	struct qpnp_adc_tm_chip		*adc_tm_dev;
+	bool				poll_fast;
 };
 
 static struct of_device_id qpnp_bms_match_table[] = {
@@ -317,6 +318,7 @@ static enum power_supply_property msm_bms_power_props[] = {
 static int discard_backup_fcc_data(struct qpnp_bms_chip *chip);
 static void backup_charge_cycle(struct qpnp_bms_chip *chip);
 static int clamp_soc_based_on_voltage(struct qpnp_bms_chip *chip, int soc);
+static int setup_vbat_monitoring(struct qpnp_bms_chip *chip);
 
 static bool bms_reset;
 static int last_ocv_uv = -EINVAL;
@@ -2700,6 +2702,15 @@ static int recalculate_soc(struct qpnp_bms_chip *chip)
 			soc = calculate_state_of_charge(chip, &raw, batt_temp);
 			mutex_unlock(&chip->last_ocv_uv_mutex);
 		}
+		if (chip->shutdown_voltage) {
+			if (soc < 20)
+				chip->poll_fast = true;
+			else
+				chip->poll_fast = false;
+			mutex_lock(&chip->vbat_monitor_mutex);
+			setup_vbat_monitoring(chip);
+			mutex_unlock(&chip->vbat_monitor_mutex);
+		}
 	}
 	bms_relax(&chip->soc_wake_source);
 	return soc;
@@ -2939,7 +2950,15 @@ static int setup_vbat_monitoring(struct qpnp_bms_chip *chip)
 	chip->vbat_monitor_params.state_request = ADC_TM_HIGH_LOW_THR_ENABLE;
 	chip->vbat_monitor_params.channel = VBAT_SNS;
 	chip->vbat_monitor_params.btm_ctx = (void *)chip;
-	chip->vbat_monitor_params.timer_interval = ADC_MEAS1_INTERVAL_1S;
+
+	if (chip->poll_fast) { /* the adc polling rate is higher*/
+		chip->vbat_monitor_params.timer_interval =
+				ADC_MEAS1_INTERVAL_31P3MS;
+	} else /* adc polling rate is default*/ {
+		chip->vbat_monitor_params.timer_interval =
+				ADC_MEAS1_INTERVAL_1S;
+	}
+
 	chip->vbat_monitor_params.threshold_notification = &btm_notify_vbat;
 	pr_debug("set low thr to %d and high to %d\n",
 			chip->vbat_monitor_params.low_thr,
@@ -4014,6 +4033,7 @@ static inline void bms_initialize_constants(struct qpnp_bms_chip *chip)
 	chip->prev_last_good_ocv_raw = OCV_RAW_UNINITIALIZED;
 	chip->first_time_calc_soc = 1;
 	chip->first_time_calc_uuc = 1;
+	chip->poll_fast = false;
 }
 
 #define SPMI_FIND_IRQ(chip, irq_name)					\
