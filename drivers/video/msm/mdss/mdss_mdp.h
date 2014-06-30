@@ -117,6 +117,19 @@ enum mdp_wfd_blk_type {
 	MDSS_MDP_WFD_DEDICATED,
 };
 
+/**
+ * enum mdp_commit_stage_type - Indicate different commit stages
+ *
+ * @MDP_COMMIT_STATE_WAIT_FOR_PINGPONG:	At the stage of
+ *			being ready to wait for pingpong buffer.
+ * @MDP_COMMIT_STATE_PINGPONG_DONE:	At the stage that pingpong buffer
+ *			is ready.
+ */
+enum mdp_commit_stage_type {
+	MDP_COMMIT_STAGE_WAIT_FOR_PINGPONG,
+	MDP_COMMIT_STAGE_PINGPONG_DONE,
+};
+
 struct mdss_mdp_ctl;
 typedef void (*mdp_vsync_handler_t)(struct mdss_mdp_ctl *, ktime_t);
 
@@ -466,6 +479,12 @@ struct mdss_overlay_private {
 	int retire_cnt;
 };
 
+struct mdss_mdp_commit_cb {
+	void *data;
+	int (*commit_cb_fnc) (enum mdp_commit_stage_type commit_state,
+		void *data);
+};
+
 /**
  * enum mdss_screen_state - Screen states that MDP can be forced into
  *
@@ -669,7 +688,8 @@ int mdss_mdp_mixer_pipe_update(struct mdss_mdp_pipe *pipe,
 int mdss_mdp_mixer_pipe_unstage(struct mdss_mdp_pipe *pipe,
 	struct mdss_mdp_mixer *mixer);
 void mdss_mdp_mixer_unstage_all(struct mdss_mdp_mixer *mixer);
-int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg);
+int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
+	struct mdss_mdp_commit_cb *commit_cb);
 int mdss_mdp_display_wait4comp(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_display_wait4pingpong(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_display_wakeup_time(struct mdss_mdp_ctl *ctl,
