@@ -116,4 +116,8 @@ int adm_store_cal_data(int port_id, int path, int perf_mode, int cal_type,
 int adm_get_topology_id(int port_id);
 
 void adm_set_none_topo_portid(int port_id);
+
+int adm_send_compressed_device_mute(int port_id, bool mute_on);
+
+int adm_send_compressed_device_latency(int port_id, int latency);
 #endif /* __Q6_ADM_V2_H__ */
