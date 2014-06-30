@@ -688,6 +688,9 @@ static int mmc_stop_request(struct mmc_host *host)
 			break;
 		}
 	}
+	if (card->quirks & MMC_QUIRK_SLOW_HPI_RESPONSE)
+		usleep_range(5000, 5500);
+
 	err = mmc_interrupt_hpi(card);
 	if (err) {
 		pr_err("%s: mmc_interrupt_hpi() failed (%d)\n",
