@@ -1061,7 +1061,6 @@ typedef struct sAniSirGlobal
     tANI_U8 fScanOffload;
     tANI_U8 isCoalesingInIBSSAllowed;
     tANI_U32 fEnableDebugLog;
-    tSirQosMapSet QosMapSet;
     tANI_U32 fDeferIMPSTime;
     tANI_BOOLEAN deferImps;
 } tAniSirGlobal;

@@ -3239,8 +3239,19 @@ tANI_BOOLEAN csrNeighborRoamIsSsidAndSecurityMatch(
                     eANI_BOOLEAN_TRUE );
             if(TRUE == fMatch)
             {
-                fMatch = csrIsSecurityMatch( pMac, &authType, &uCEncryptionType,
-                            &mCEncryptionType, pBssDesc, pIes, NULL, NULL, NULL );
+                /*
+                 * for now we are sending NULL for all PMF related filter
+                 * parameters during roam to the neighbor AP because
+                 * so far 80211W spec doesn't specify anything about
+                 * roaming scenario.
+                 *
+                 * Once roaming scenario is defined, we should re-visit
+                 * this section and remove this comment.
+                 */
+                fMatch = csrIsSecurityMatch(pMac, &authType, &uCEncryptionType,
+                                            &mCEncryptionType,
+                                            NULL, NULL, NULL,
+                                            pBssDesc, pIes, NULL, NULL, NULL);
                 return (fMatch);
             }
             else

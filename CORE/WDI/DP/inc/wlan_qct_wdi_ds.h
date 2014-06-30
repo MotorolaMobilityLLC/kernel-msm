@@ -156,6 +156,9 @@ typedef struct
    wpt_uint32 offloadScanLearn;
    wpt_uint32 roamCandidateInd;
 #endif
+#ifdef WLAN_FEATURE_EXTSCAN
+   wpt_uint32 extscanBuffer;
+#endif
 } WDI_DS_RxMetaInfoType;
 
 typedef struct sPktMetaInfo

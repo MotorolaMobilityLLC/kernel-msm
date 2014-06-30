@@ -81,6 +81,10 @@
 /* This value corresponds to 500 ms */
 #define MAX_PROBEREQ_TIME 5000
 
+#ifdef WLAN_FEATURE_EXTSCAN
+#define  SIZE_OF_FIXED_PARAM 12
+#endif
+
 void limLogSessionStates(tpAniSirGlobal pMac);
 
 /** -------------------------------------------------------------
@@ -501,6 +505,153 @@ limCheckMgmtRegisteredFrames(tpAniSirGlobal pMac, tANI_U8 *pBd,
     return match;
 } /*** end  limCheckMgmtRegisteredFrames() ***/
 
+#ifdef WLAN_FEATURE_EXTSCAN
+
+void
+limProcessEXTScanRealTimeData(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
+{
+    tpSirMacMgmtHdr       pHdr = NULL;
+    eHalStatus            status;
+    void                  *pCallbackContext;
+    tANI_U8               rfBand = 0;
+    tANI_U8               rxChannelInBD = 0;
+    tSirMacFrameCtl       fc;
+    tDot11fBeacon         *pBeacon = NULL;
+    tDot11fProbeResponse  *pProbeResponse = NULL;
+    tSirWifiFullScanResultEvent tEXTScanFullScanResult;
+
+    pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+    fc = pHdr->fc;
+
+    limLog(pMac, LOG2,
+             FL("Received EXTScan Real Time data with length=%d from "),
+             WDA_GET_RX_MPDU_LEN(pRxPacketInfo));
+
+    limPrintMacAddr(pMac, pHdr->sa, LOG2);
+
+    vos_mem_set((tANI_U8 *) &tEXTScanFullScanResult,
+                sizeof(tSirWifiFullScanResultEvent), 0);
+
+    tEXTScanFullScanResult.ap.ts = WDA_GET_RX_TIMESTAMP(pRxPacketInfo);
+
+    vos_mem_copy(&tEXTScanFullScanResult.ap.bssid,
+                 pHdr->bssId, sizeof(tSirMacAddr));
+
+    limPrintMacAddr(pMac, pHdr->bssId, LOGE);
+
+
+    rfBand = WDA_GET_RX_RFBAND(pRxPacketInfo);
+    rxChannelInBD = WDA_GET_RX_CH(pRxPacketInfo);
+
+    if ((!rfBand) || IS_5G_BAND(rfBand))
+    {
+        rxChannelInBD = limUnmapChannel(rxChannelInBD);
+    }
+
+    tEXTScanFullScanResult.ap.channel = rxChannelInBD;
+    tEXTScanFullScanResult.ap.rssi = WDA_GET_RX_RSSI_DB(pRxPacketInfo);
+
+    if (fc.subType == SIR_MAC_MGMT_BEACON)
+    {
+        limLog( pMac, LOG2, FL("Beacon "));
+
+        pBeacon = vos_mem_malloc(sizeof(tDot11fBeacon));
+        if ( NULL == pBeacon ){
+            limLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+            return;
+        }
+
+        vos_mem_set( ( tANI_U8* )pBeacon, sizeof(tDot11fBeacon), 0 );
+        // delegate to the framesc-generated code,
+        status = dot11fUnpackBeacon( pMac,
+                    (tANI_U8 *)WDA_GET_RX_MPDU_DATA(pRxPacketInfo),
+                    WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo), pBeacon );
+
+        if ( DOT11F_FAILED( status ) )
+        {
+            limLog(pMac, LOGE, FL("Failed to parse a Beacons"
+                        "(%d):\n"), status);
+            vos_mem_free(pBeacon);
+            return;
+        }
+        if ( pBeacon->SSID.present )
+        {
+            vos_mem_copy(tEXTScanFullScanResult.ap.ssid,
+                pBeacon->SSID.ssid,
+                pBeacon->SSID.num_ssid);
+        }
+        //NULL Terminate the string.
+        tEXTScanFullScanResult.ap.ssid[pBeacon->SSID.num_ssid] = 0;
+        tEXTScanFullScanResult.ap.beaconPeriod =
+                                       pBeacon->BeaconInterval.interval;
+        tEXTScanFullScanResult.ap.capability =
+                                   *((tANI_U16 *)&pBeacon->Capabilities);
+        vos_mem_free(pBeacon);
+    }
+    else if (fc.subType == SIR_MAC_MGMT_PROBE_RSP)
+    {
+        limLog( pMac, LOG2, FL("Probe rsp "));
+
+        pProbeResponse = vos_mem_malloc(sizeof(tDot11fProbeResponse));
+        if ( NULL == pProbeResponse ){
+            limLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+            return;
+        }
+
+        vos_mem_set( ( tANI_U8* )pProbeResponse,
+                                sizeof(tDot11fProbeResponse), 0);
+        //delegate to the framesc-generated code,
+        status = dot11fUnpackProbeResponse( pMac,
+                    (tANI_U8 *)WDA_GET_RX_MPDU_DATA(pRxPacketInfo),
+                    WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo), pProbeResponse );
+
+        if ( DOT11F_FAILED( status ) )
+        {
+            limLog(pMac, LOGE, FL("Failed to parse a Probe"
+                        "Response (%d:\n"), status);
+            vos_mem_free(pProbeResponse);
+            return;
+        }
+        if ( pProbeResponse->SSID.present )
+        {
+            vos_mem_copy(tEXTScanFullScanResult.ap.ssid,
+                pProbeResponse->SSID.ssid,
+                pProbeResponse->SSID.num_ssid);
+        }
+        //NULL Terminate the string.
+        tEXTScanFullScanResult.ap.ssid[pProbeResponse->SSID.num_ssid] = 0;
+        tEXTScanFullScanResult.ap.beaconPeriod =
+                                    pProbeResponse->BeaconInterval.interval;
+        tEXTScanFullScanResult.ap.capability =
+                            *(((tANI_U16 *)&pProbeResponse->Capabilities));
+
+        vos_mem_free(pBeacon);
+    }
+    else
+    {
+        limLog( pMac, LOGE, FL("Wrong frame Type %d, Subtype %d for LFR"),
+                fc.type, fc.subType);
+        VOS_ASSERT(0);
+        return;
+    }
+
+    tEXTScanFullScanResult.requestId = pMac->sme.extScanStartReqId;
+    tEXTScanFullScanResult.ieLength =
+                   WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo) - SIZE_OF_FIXED_PARAM;
+    tEXTScanFullScanResult.ie =(tSirInformationElement *)
+        ((tANI_U8 *)WDA_GET_RX_MPDU_DATA(pRxPacketInfo) + SIZE_OF_FIXED_PARAM);
+
+    pCallbackContext = pMac->sme.pEXTScanCallbackContext;
+    if(pMac->sme.pEXTScanIndCb)
+    {
+        pMac->sme.pEXTScanIndCb(pCallbackContext,
+                SIR_HAL_EXTSCAN_FULL_SCAN_RESULT_IND,
+                (tANI_U8 *)&tEXTScanFullScanResult);
+    }
+
+    return;
+} /*** end limProcessEXTScanRealTimeData() ***/
+#endif /* WLAN_FEATURE_EXTSCAN */
 
 /**
  * limHandle80211Frames()
@@ -536,6 +687,16 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
 
     *pDeferMsg= false;
     limGetBDfromRxPacket(pMac, limMsg->bodyptr, (tANI_U32 **)&pRxPacketInfo);
+
+#ifdef WLAN_FEATURE_EXTSCAN
+
+    if ( WDA_GET_EXTSCANFULLSCANRESIND(pRxPacketInfo))
+    {
+        limLog( pMac, LOG2, FL("Notify EXTSCAN scan results to the HDD"));
+        limProcessEXTScanRealTimeData(pMac, pRxPacketInfo);
+        goto end;
+    }
+#endif //WLAN_FEATURE_EXTSCAN
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
     isFrmFt = WDA_GET_RX_FT_DONE(pRxPacketInfo);
