@@ -80,38 +80,6 @@ void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
 }
 
 /**
- * dwc3_is_cht - This is a workaround solution to distinguish Cherryview,
- * as SPID has not been created and PHY has some unstable issue.
- */
-int dwc3_is_cht(void)
-{
-	struct usb_phy		*usb_phy;
-	struct dwc_otg2		*otg;
-	struct pci_dev		*pdev;
-	int			is_cht = 0;
-
-	usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
-	if (!usb_phy)
-		goto done;
-
-	otg = container_of(usb_phy, struct dwc_otg2, usb2_phy);
-	if (!otg)
-		goto done;
-
-	pdev = container_of(otg->dev, struct pci_dev, dev);
-	if (!pdev)
-		goto done;
-
-	if (pdev->device == PCI_DEVICE_ID_DWC_CHT)
-		is_cht = 1;
-
-done:
-	usb_put_phy(usb_phy);
-
-	return is_cht;
-}
-
-/**
  * dwc3_core_soft_reset - Issues core soft reset and PHY reset
  * @dwc: pointer to our context structure
  */
@@ -361,13 +329,12 @@ static int dwc3_core_init(struct dwc3 *dwc)
 		cpu_relax();
 	} while (true);
 
-	if (!dwc3_is_cht())
-		dwc3_core_soft_reset(dwc);
+	dwc3_core_soft_reset(dwc);
 
 	/* DCTL core soft reset may cause PHY hang, delay 1 ms and check ulpi */
 	mdelay(1);
 
-	if (!dwc->utmi_phy && !dwc3_is_cht()) {
+	if (!dwc->utmi_phy) {
 		usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
 		if (usb_phy &&
 			usb_phy_io_read(usb_phy, ULPI_VENDOR_ID_LOW) < 0)

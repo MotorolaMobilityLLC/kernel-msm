@@ -809,11 +809,6 @@ static void poll_transfer(unsigned long data)
 
 	bool delay = false;
 
-	if ((intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_VP) ||
-	     intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_HVP) {
-		delay = true;
-	}
-
 	if (sspc->tx)
 		while (sspc->tx != sspc->tx_end) {
 			/* [REVERT ME] Tangier simulator requires a delay */
@@ -994,14 +989,7 @@ static int handle_message(struct ssp_drv_context *sspc)
 	sspc->tx_end = sspc->tx + transfer->len;
 	sspc->rx_end = sspc->rx + transfer->len;
 
-	/* [REVERT ME] Bug in status register clear for Tangier simulation */
-	if ((intel_mid_identify_cpu() == INTEL_MID_CPU_CHIP_TANGIER) ||
-	    (intel_mid_identify_cpu() == INTEL_MID_CPU_CHIP_ANNIEDALE)) {
-		if ((intel_mid_identify_sim() != INTEL_MID_CPU_SIMULATION_VP &&
-		    (intel_mid_identify_sim() != INTEL_MID_CPU_SIMULATION_HVP)))
-			write_SSSR(sspc->clear_sr, reg);
-	} else /* Clear status  */
-		write_SSSR(sspc->clear_sr, reg);
+	write_SSSR(sspc->clear_sr, reg);
 
 	/* setup the CR1 control register */
 	cr1 = chip->cr1 | sspc->cr1_sig;
@@ -1027,8 +1015,7 @@ static int handle_message(struct ssp_drv_context *sspc)
 		sspc->len, sspc->n_bytes, chip->cr0, cr1);
 
 	/* first set CR1 */
-	if (intel_mid_identify_sim() != INTEL_MID_CPU_SIMULATION_SLE)
-		write_SSCR1(cr1, reg);
+	write_SSCR1(cr1, reg);
 
 	if ((intel_mid_identify_cpu() == INTEL_MID_CPU_CHIP_TANGIER) ||
 		(intel_mid_identify_cpu() == INTEL_MID_CPU_CHIP_ANNIEDALE))
@@ -1045,21 +1032,19 @@ static int handle_message(struct ssp_drv_context *sspc)
 			start_bitbanging(sspc);
 	} else {
 		/* (re)start the SSP */
-		if (intel_mid_identify_sim() != INTEL_MID_CPU_SIMULATION_SLE) {
-			if (ssp_timing_wr) {
-				dev_dbg(dev, "original cr0 before reset:%x",
-					chip->cr0);
-				/*we should not disable TUM and RIM interrup*/
-				write_SSCR0(0x0000000F, reg);
-				chip->cr0 &= ~(SSCR0_SSE);
-				dev_dbg(dev, "reset ssp:cr0:%x", chip->cr0);
-				write_SSCR0(chip->cr0, reg);
-				chip->cr0 |= SSCR0_SSE;
-				dev_dbg(dev, "reset ssp:cr0:%x", chip->cr0);
-				write_SSCR0(chip->cr0, reg);
-			} else
-				write_SSCR0(chip->cr0, reg);
-		}
+		if (ssp_timing_wr) {
+			dev_dbg(dev, "original cr0 before reset:%x",
+				chip->cr0);
+			/*we should not disable TUM and RIM interrup*/
+			write_SSCR0(0x0000000F, reg);
+			chip->cr0 &= ~(SSCR0_SSE);
+			dev_dbg(dev, "reset ssp:cr0:%x", chip->cr0);
+			write_SSCR0(chip->cr0, reg);
+			chip->cr0 |= SSCR0_SSE;
+			dev_dbg(dev, "reset ssp:cr0:%x", chip->cr0);
+			write_SSCR0(chip->cr0, reg);
+		} else
+			write_SSCR0(chip->cr0, reg);
 	}
 
 	if (sspc->cs_control)
@@ -1392,18 +1377,8 @@ static int intel_mid_ssp_spi_probe(struct pci_dev *pdev,
 
 	if ((intel_mid_identify_cpu() == INTEL_MID_CPU_CHIP_TANGIER) ||
 		(intel_mid_identify_cpu() == INTEL_MID_CPU_CHIP_ANNIEDALE)) {
-		if ((intel_mid_identify_sim() ==
-				INTEL_MID_CPU_SIMULATION_SLE) ||
-		    (intel_mid_identify_sim() ==
-				INTEL_MID_CPU_SIMULATION_NONE)) {
-			/* [REVERT ME] Tangier SLE not supported.
-			 * Requires debug before removal.  Assume
-			 * also required in Si. */
-			disable_irq_nosync(sspc->irq);
-		}
-		if ((intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_NONE) ||
-		    (intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_SLE))
-			ssp_timing_wr = 1;
+		disable_irq_nosync(sspc->irq);
+		ssp_timing_wr = 1;
 	}
 
 	if (status < 0) {
@@ -1521,7 +1496,7 @@ static int intel_mid_ssp_spi_plat_probe(struct platform_device *pdev)
 static int intel_mid_ssp_spi_plat_remove(struct platform_device *pdev)
 {
 	pm_runtime_forbid(&pdev->dev);
-	return;
+	return 0;
 }
 
 #ifdef CONFIG_PM

@@ -79,13 +79,8 @@ static ssize_t sst_debug_shim_read(struct file *file, char __user *user_buf,
 
 	for (addr = SST_SHIM_BEGIN; addr <= SST_SHIM_END; addr += 8) {
 		switch (drv->pci_id) {
-		case SST_CLV_PCI_ID:
-			val = sst_shim_read(drv->shim, addr);
-			break;
 		case SST_MRFLD_PCI_ID:
 		case PCI_DEVICE_ID_INTEL_SST_MOOR:
-		case SST_BYT_PCI_ID:
-		case SST_CHT_PCI_ID:
 			val = sst_shim_read64(drv->shim, addr);
 			break;
 		}
@@ -164,9 +159,7 @@ static ssize_t sst_debug_shim_write(struct file *file,
 
 	pr_debug("writing shim: 0x%.2lx=0x%.8llx", reg_addr, value);
 
-	if (drv->pci_id == SST_CLV_PCI_ID)
-		sst_shim_write(drv->shim, reg_addr, (u32) value);
-	else if ((drv->pci_id == SST_MRFLD_PCI_ID) ||
+	if ((drv->pci_id == SST_MRFLD_PCI_ID) ||
 			(drv->pci_id == PCI_DEVICE_ID_INTEL_SST_MOOR))
 		sst_shim_write64(drv->shim, reg_addr, (u64) value);
 
@@ -644,15 +637,6 @@ static ssize_t sst_debug_readme_read(struct file *file, char __user *user_buf,
 		"get the iram and dram dump, these buffers will have data only\n"
 		"after the recovery is triggered\n";
 
-	const char *ctp_buf =
-		"8. Enable input clock by 'echo enable > osc_clk0'.\n"
-		"This prevents the input OSC clock from switching off till it is disabled by\n"
-		"'echo disable > osc_clk0'. The status of the clock indicated who are using it.\n"
-		"9. lpe_log_enable usage:\n"
-		"	echo <dbg_type> <module_id> <log_level> > lpe_log_enable.\n"
-		"10. cat fw_ssp_reg,This will dump the ssp register contents\n"
-		"11. cat fw_dma_reg,This will dump the dma register contents\n";
-
 	const char *mrfld_buf =
 		"8. lpe_log_enable usage:\n"
 		"	echo <dbg_type> <module_id> <log_level> > lpe_log_enable.\n"
@@ -669,10 +653,6 @@ static ssize_t sst_debug_readme_read(struct file *file, char __user *user_buf,
 	int size, ret = 0;
 
 	switch (sst_drv_ctx->pci_id) {
-	case SST_CLV_PCI_ID:
-		size = strlen(buf) + strlen(ctp_buf) + 2;
-		buf2 = ctp_buf;
-		break;
 	case SST_MRFLD_PCI_ID:
 	case PCI_DEVICE_ID_INTEL_SST_MOOR:
 		size = strlen(buf) + strlen(mrfld_buf) + 2;
@@ -1330,9 +1310,6 @@ void sst_debugfs_init(struct intel_sst_drv *sst)
 			(sst->pci_id == PCI_DEVICE_ID_INTEL_SST_MOOR)) {
 		debug = mrfld_dbg_entries;
 		size = ARRAY_SIZE(mrfld_dbg_entries);
-	} else if (sst->pci_id == SST_CLV_PCI_ID) {
-		debug = ctp_dbg_entries;
-		size = ARRAY_SIZE(ctp_dbg_entries);
 	}
 
 	if (debug)

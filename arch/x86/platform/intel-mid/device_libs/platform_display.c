@@ -17,7 +17,6 @@
 #include <linux/i2c.h>
 #include <linux/printk.h>
 #include <linux/platform_data/lp855x.h>
-#include <asm/spid.h>
 
 static struct i2c_board_info __initdata lp8556_i2c_device = {
 	I2C_BOARD_INFO("lp8556", 0x2C),
@@ -47,17 +46,6 @@ static int __init platform_display_module_init(void)
 		pr_debug("failed to get platform data for lp8556.");
 		return -EINVAL;
 	}
-
-	if (INTEL_MID_BOARD(3, TABLET, BYT, BLK, PRO, 8PR0) ||
-			INTEL_MID_BOARD(3, TABLET, BYT, BLK, ENG, 8PR0) ||
-			INTEL_MID_BOARD(3, TABLET, BYT, BLK, PRO, 8PR1) ||
-			INTEL_MID_BOARD(3, TABLET, BYT, BLK, ENG, 8PR1))
-		return i2c_register_board_info(3, &lp8556_i2c_device, 1);
-
-	if (INTEL_MID_BOARD(3, TABLET, BYT, BLK, PRO, CRV2) ||
-			INTEL_MID_BOARD(3, TABLET, BYT, BLK, ENG, CRV2))
-		return i2c_register_board_info(4, &lp8556_i2c_device, 1);
-
 
 	return -EPERM;
 }

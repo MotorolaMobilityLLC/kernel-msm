@@ -83,12 +83,8 @@ unsigned long long read_shim_data(struct intel_sst_drv *sst, int addr)
 	unsigned long long val = 0;
 
 	switch (sst->pci_id) {
-	case SST_CLV_PCI_ID:
-		val = sst_shim_read(sst->shim, addr);
-		break;
 	case SST_MRFLD_PCI_ID:
 	case PCI_DEVICE_ID_INTEL_SST_MOOR:
-	case SST_BYT_PCI_ID:
 		val = sst_shim_read64(sst->shim, addr);
 		break;
 	}
@@ -99,12 +95,8 @@ void write_shim_data(struct intel_sst_drv *sst, int addr,
 				unsigned long long data)
 {
 	switch (sst->pci_id) {
-	case SST_CLV_PCI_ID:
-		sst_shim_write(sst->shim, addr, (u32) data);
-		break;
 	case SST_MRFLD_PCI_ID:
 	case PCI_DEVICE_ID_INTEL_SST_MOOR:
-	case SST_BYT_PCI_ID:
 		sst_shim_write64(sst->shim, addr, (u64) data);
 		break;
 	}
@@ -175,31 +167,6 @@ void reset_sst_shim(struct intel_sst_drv *sst)
 	csr.full &= ~(0xf);
 	csr.full |= 0x01;
 	sst_shim_write64(sst_drv_ctx->shim, SST_CSR, csr.full);
-}
-
-static void dump_sst_crash_area(void)
-{
-	void __iomem *fw_dump_area;
-	u32 dump_word;
-	u8 i;
-
-	/* dump the firmware SRAM where the exception details are stored */
-	fw_dump_area = ioremap_nocache(SST_EXCE_DUMP_BASE, SST_EXCE_DUMP_SIZE);
-
-	pr_err("Firmware exception dump begins:\n");
-	pr_err("Exception start signature:%#x\n", readl(fw_dump_area + SST_EXCE_DUMP_WORD));
-	pr_err("EXCCAUSE:\t\t\t%#x\n", readl(fw_dump_area + SST_EXCE_DUMP_WORD*2));
-	pr_err("EXCVADDR:\t\t\t%#x\n", readl(fw_dump_area + (SST_EXCE_DUMP_WORD*3)));
-	pr_err("Firmware additional data:\n");
-
-	/* dump remaining FW debug data */
-	for (i = 1; i < (SST_EXCE_DUMP_LEN-4+1); i++) {
-		dump_word = readl(fw_dump_area + (SST_EXCE_DUMP_WORD*3)
-						+ (i*SST_EXCE_DUMP_WORD));
-		pr_err("Data[%d]=%#x\n", i, dump_word);
-	}
-	iounmap(fw_dump_area);
-	pr_err("Firmware exception dump ends\n");
 }
 
 /**
@@ -437,10 +404,6 @@ void sst_do_recovery(struct intel_sst_drv *sst)
 
 	dump_stack();
 	dump_sst_shim(sst);
-
-	if (sst->sst_state == SST_FW_RUNNING &&
-		sst_drv_ctx->pci_id == SST_CLV_PCI_ID)
-		dump_sst_crash_area();
 
 	sst_dump_ipc_dispatch_lists(sst_drv_ctx);
 

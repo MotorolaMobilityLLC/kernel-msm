@@ -49,17 +49,9 @@ static int hdmi_i2c_workaround(void)
 		kfree(pdev);
 		return -ENOMEM;
 	}
-	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
-	    INTEL_MID_BOARD(1, TABLET, MRFL) ||
-		INTEL_MID_BOARD(1, PHONE, MOFD) ||
-		INTEL_MID_BOARD(1, TABLET, MOFD)) {
-		/* Pins 17 and 18 are used in Merrifield/MOOR-PRH for HDMI i2c (bus3) */
-		pdata->scl_pin = 17;
-		pdata->sda_pin = 18;
-	} else {
-		pdata->scl_pin = 35 + 96;
-		pdata->sda_pin = 36 + 96;
-	}
+	/* Pins 17 and 18 are used in Merrifield/MOOR-PRH for HDMI i2c (bus3) */
+	pdata->scl_pin = 17;
+	pdata->sda_pin = 18;
 	pdata->sda_is_open_drain = 0;
 	pdata->scl_is_open_drain = 0;
 	pdev->dev.platform_data = pdata;

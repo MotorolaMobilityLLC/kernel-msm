@@ -23,7 +23,6 @@
 #include <linux/usb/dwc3-intel-mid.h>
 #include <linux/usb/phy.h>
 #include <linux/wakelock.h>
-#include <asm/spid.h>
 
 #include "core.h"
 #include "gadget.h"
@@ -66,23 +65,6 @@ struct dwc3_dev_data {
 static struct dwc3_dev_data	*_dev_data;
 
 /*
- * dwc3_set_fils_reg - set FLIS register
- *
- * This is a workaround for OTG3 IP bug of using EP #8 for host mode
- */
-static void dwc3_set_flis_reg(void)
-{
-	u32			reg;
-	void __iomem		*flis_reg;
-
-	flis_reg = _dev_data->flis_reg;
-
-	reg = dwc3_readl(flis_reg, DWC3_GLOBALS_REGS_START);
-	reg &= ~(1 << 3);
-	dwc3_writel(flis_reg, DWC3_GLOBALS_REGS_START, reg);
-}
-
-/*
  * dwc3_disable_multi_packet - set GRXTHRCFG register to disable
  * reception multi-packet thresholdingfor DWC2.50a.
  */
@@ -122,9 +104,6 @@ static void dwc3_enable_host_auto_retry(struct dwc3 *dwc, bool enable)
 static void dwc3_do_extra_change(struct dwc3 *dwc)
 {
 	u32		reg;
-
-	if (!dwc3_is_cht())
-		dwc3_set_flis_reg();
 
 	if (dwc->revision == DWC3_REVISION_250A)
 		dwc3_disable_multi_packet(dwc);
@@ -205,9 +184,7 @@ static irqreturn_t dwc3_quirks_process_event_buf(struct dwc3 *dwc, u32 buf)
 	/* WORKAROUND: Add 4 us delay as moorfield seems to have memory
 	 * inconsistent issue
 	 */
-	if (INTEL_MID_BOARD(1, PHONE, MOFD) ||
-		INTEL_MID_BOARD(1, TABLET, MOFD))
-		udelay(4);
+	udelay(4);
 
 	left = evt->count;
 
@@ -619,9 +596,8 @@ static int dwc3_device_intel_probe(struct platform_device *pdev)
 	dwc3_cache_hwparams(dwc);
 	dwc3_core_num_eps(dwc);
 
-	if (!dwc3_is_cht())
-		_dev_data->flis_reg =
-			ioremap_nocache(APBFC_EXIOTG3_MISC0_REG, 4);
+	_dev_data->flis_reg =
+		ioremap_nocache(APBFC_EXIOTG3_MISC0_REG, 4);
 
 	ret = dwc3_alloc_event_buffers(dwc, DWC3_EVENT_BUFFERS_SIZE);
 	if (ret) {

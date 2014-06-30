@@ -447,70 +447,6 @@ static struct sdhci_pci_data mrfl_sdhci_pci_data[] = {
 	},
 };
 
-/* Board specific setup related to SDIO goes here */
-static int byt_sdio_setup(struct sdhci_pci_data *data)
-{
-	struct pci_dev *pdev = data->pdev;
-#ifdef CONFIG_ACPI
-	acpi_handle handle;
-	acpi_status status;
-#endif
-
-	/* Control card power through a regulator */
-	wlan_vmmc_supply.dev_name = dev_name(&pdev->dev);
-
-#ifdef CONFIG_ACPI
-	status = acpi_get_handle(NULL, "\\_SB.SDHB", &handle);
-	if (ACPI_FAILURE(status))
-		pr_err("wlan: cannot get SDHB acpi handle");
-	ACPI_HANDLE_SET(&pdev->dev, handle);
-	vwlan.gpio = acpi_get_gpio_by_index(&pdev->dev, 0, NULL);
-#endif
-
-	if (vwlan.gpio < 0) {
-		pr_err("%s: No wlan-enable GPIO in SDHB ACPI block\n",
-		       __func__);
-
-		if (INTEL_MID_BOARD(2, TABLET, BYT, BLB, PRO) ||
-		    INTEL_MID_BOARD(2, TABLET, BYT, BLB, ENG))
-			vwlan.gpio = acpi_get_gpio("\\_SB.GPO2", 21);
-		else
-			vwlan.gpio = acpi_get_gpio("\\_SB.GPO2", 20);
-	}
-	pr_info("vwlan gpio %d\n", vwlan.gpio);
-
-#ifdef CONFIG_ACPI
-	/* Have to set handle back to null so that we dont use ACPI
-	 * PM. Currently the DSDT allows only for D3hot, and not D3cold,
-	 * this will cause the device to enter D0 and prevent S3.
-	 */
-	ACPI_HANDLE_SET(&pdev->dev, NULL);
-#endif
-
-	/* add a regulator to control wlan enable gpio */
-	if (platform_device_register(&vwlan_device))
-		pr_err("regulator register failed\n");
-	else
-		sdhci_pci_request_regulators();
-
-	return 0;
-}
-
-
-/* BYT platform data */
-static struct sdhci_pci_data byt_sdhci_pci_data[] = {
-	[SDIO_INDEX] = {
-			.pdev = NULL,
-			.slotno = 0,
-			.rst_n_gpio = -EINVAL,
-			.cd_gpio = -EINVAL,
-			.quirks = 0,
-			.platform_quirks = 0,
-			.setup = byt_sdio_setup,
-			.cleanup = NULL,
-	},
-};
-
 /* Moorefield platform data */
 static struct sdhci_pci_data moor_sdhci_pci_data[] = {
 	[EMMC0_INDEX] = {
@@ -553,90 +489,19 @@ static struct sdhci_pci_data *get_sdhci_platform_data(struct pci_dev *pdev)
 	struct sdhci_pci_data *pdata = NULL;
 
 	switch (pdev->device) {
-	case PCI_DEVICE_ID_INTEL_MFD_EMMC0:
-		pdata = &mfld_sdhci_pci_data[EMMC0_INDEX];
-		break;
-	case PCI_DEVICE_ID_INTEL_MFD_EMMC1:
-		pdata = &mfld_sdhci_pci_data[EMMC1_INDEX];
-		break;
-	case PCI_DEVICE_ID_INTEL_MFD_SD:
-		pdata = &mfld_sdhci_pci_data[SD_INDEX];
-		break;
-	case PCI_DEVICE_ID_INTEL_MFD_SDIO1:
-		pdata = &mfld_sdhci_pci_data[SDIO_INDEX];
-		pdata->quirks = sdhci_pdata_quirks;
-		pdata->register_embedded_control = sdhci_embedded_control;
-		break;
-	case PCI_DEVICE_ID_INTEL_CLV_EMMC0:
-		pdata = &clv_sdhci_pci_data[EMMC0_INDEX];
-		pdata->rst_n_gpio = get_gpio_by_name("emmc0_rst");
-		break;
-	case PCI_DEVICE_ID_INTEL_CLV_EMMC1:
-		pdata = &clv_sdhci_pci_data[EMMC1_INDEX];
-		pdata->rst_n_gpio = get_gpio_by_name("emmc1_rst");
-		break;
-	case PCI_DEVICE_ID_INTEL_CLV_SDIO0:
-		pdata = &clv_sdhci_pci_data[SD_INDEX];
-		break;
-	case PCI_DEVICE_ID_INTEL_CLV_SDIO1:
-		pdata = &clv_sdhci_pci_data[SDIO_INDEX];
-		pdata->quirks = sdhci_pdata_quirks;
-		pdata->register_embedded_control = sdhci_embedded_control;
-		break;
 	case PCI_DEVICE_ID_INTEL_MRFL_MMC:
 		switch (PCI_FUNC(pdev->devfn)) {
 		case 0:
 			pdata = &mrfl_sdhci_pci_data[EMMC0_INDEX];
-			/*
-			 * The current eMMC device simulation in Merrifield
-			 * VP only implements boot partition 0, does not
-			 * implements boot partition 1. And the VP will
-			 * crash if eMMC boot partition 1 is accessed
-			 * during kernel boot. So, we just disable boot
-			 * partition support for Merrifield VP platform.
-			 */
-			if (intel_mid_identify_sim() ==
-					INTEL_MID_CPU_SIMULATION_VP)
-				pdata->platform_quirks |=
-					PLFM_QUIRK_NO_EMMC_BOOT_PART;
-			if (intel_mid_identify_sim() ==
-					INTEL_MID_CPU_SIMULATION_HVP)
-				pdata->platform_quirks |=
-					PLFM_QUIRK_NO_HIGH_SPEED;
 			break;
 		case 1:
 			pdata = &mrfl_sdhci_pci_data[EMMC1_INDEX];
-			if (intel_mid_identify_sim() ==
-					INTEL_MID_CPU_SIMULATION_VP)
-				pdata->platform_quirks |=
-					PLFM_QUIRK_NO_EMMC_BOOT_PART;
-			/*
-			 * Merrifield HVP platform only implements
-			 * eMMC0 host controller in its FPGA, and
-			 * does not implements other 3 Merrifield
-			 * SDHCI host controllers.
-			 */
-			if (intel_mid_identify_sim() ==
-					INTEL_MID_CPU_SIMULATION_HVP)
-				pdata->platform_quirks |=
-					PLFM_QUIRK_NO_HOST_CTRL_HW;
 			break;
 		case 2:
 			pdata = &mrfl_sdhci_pci_data[SD_INDEX];
-			if (intel_mid_identify_sim() ==
-					INTEL_MID_CPU_SIMULATION_HVP)
-				pdata->platform_quirks |=
-					PLFM_QUIRK_NO_HOST_CTRL_HW;
 			break;
 		case 3:
 			pdata = &mrfl_sdhci_pci_data[SDIO_INDEX];
-			if (intel_mid_identify_sim() ==
-					INTEL_MID_CPU_SIMULATION_HVP)
-				pdata->platform_quirks |=
-					PLFM_QUIRK_NO_HOST_CTRL_HW;
-				pdata->quirks = sdhci_pdata_quirks;
-				pdata->register_embedded_control =
-					sdhci_embedded_control;
 			break;
 		default:
 			pr_err("%s func %s: Invalid PCI Dev func no. (%d)\n",
@@ -644,32 +509,15 @@ static struct sdhci_pci_data *get_sdhci_platform_data(struct pci_dev *pdev)
 			break;
 		}
 		break;
-	case PCI_DEVICE_ID_INTEL_BYT_SDIO:
-		pr_err("setting quirks/embedded controls on SDIO");
-		pdata = &byt_sdhci_pci_data[SDIO_INDEX];
-		pdata->quirks = sdhci_pdata_quirks;
-		pdata->register_embedded_control = sdhci_embedded_control;
-		break;
 	case PCI_DEVICE_ID_INTEL_MOOR_EMMC:
 		pdata = &moor_sdhci_pci_data[EMMC0_INDEX];
-		if (intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_HVP)
-			pdata->platform_quirks |= PLFM_QUIRK_NO_HIGH_SPEED;
-		if (intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_VP)
-			pdata->platform_quirks |= PLFM_QUIRK_NO_EMMC_BOOT_PART;
 		break;
 	case PCI_DEVICE_ID_INTEL_MOOR_SD:
 		pdata = &moor_sdhci_pci_data[SD_INDEX];
-		if (intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_HVP)
-			pdata->platform_quirks |= PLFM_QUIRK_NO_HOST_CTRL_HW;
 		break;
 	case PCI_DEVICE_ID_INTEL_MOOR_SDIO:
 		pdata = &moor_sdhci_pci_data[SDIO_INDEX];
-		if (intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_HVP)
-			pdata->platform_quirks |= PLFM_QUIRK_NO_HOST_CTRL_HW;
-		else if (intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_SLE)
-			pdata->platform_quirks |= PLFM_QUIRK_NO_HOST_CTRL_HW;
-		else
-			pdata->quirks = sdhci_pdata_quirks;
+		pdata->quirks = sdhci_pdata_quirks;
 		break;
 	default:
 		break;

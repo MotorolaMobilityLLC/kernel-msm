@@ -343,9 +343,7 @@ static int mrfld_8958_set_vflex_vsel(struct snd_soc_dapm_widget *w,
 
 	/*FIXME: seems to be issue with bypass mode in MOOR, for now
 		force the bias off volate as VFLEXVSEL_5V */
-	if ((INTEL_MID_BOARD(1, PHONE, MOFD)) ||
-			(INTEL_MID_BOARD(1, TABLET, MOFD)))
-		vflexvsel = VFLEXVSEL_5V;
+	vflexvsel = VFLEXVSEL_5V;
 
 	if (SND_SOC_DAPM_EVENT_ON(event))
 		retval = intel_scu_ipc_iowrite8(VFLEXCNT, VFLEXVSEL_5V);

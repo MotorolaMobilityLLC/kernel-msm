@@ -749,29 +749,11 @@ static int __init intel_scu_flis_init(void)
 	struct platform_device *pdev = NULL;
 	static struct intel_scu_flis_platform_data flis_pdata;
 
-	if (INTEL_MID_BOARD(1, PHONE, CLVTP) ||
-		INTEL_MID_BOARD(1, TABLET, CLVT)) {
-		flis_pdata.pin_t = ctp_pin_table;
-		flis_pdata.pin_num = CTP_PIN_NUM;
-		flis_pdata.mmio_flis_t = NULL;
-		flis_pdata.shim_access = true;
-	} else if (INTEL_MID_BOARD(1, PHONE, MRFL)) {
-		flis_pdata.pin_t = NULL;
-		flis_pdata.pin_num = TNG_PIN_NUM;
-		flis_pdata.flis_base = 0xFF0C0000;
-		flis_pdata.flis_len = 0x8000;
-		flis_pdata.mmio_flis_t = tng_pin_mmio_flis_table;
-	} else if (INTEL_MID_BOARD(1, PHONE, MOFD) ||
-		INTEL_MID_BOARD(1, TABLET, MOFD)) {
-		flis_pdata.pin_t = NULL;
-		flis_pdata.pin_num = ANN_PIN_TABLE_SIZE;
-		flis_pdata.flis_base = 0xFF0C0000;
-		flis_pdata.flis_len = 0x8000;
-		flis_pdata.mmio_flis_t = ann_pin_mmio_flis_table;
-	} else {
-		/* Runtime flis config is supported on CLV & TNG only */
-		return -EINVAL;
-	}
+	flis_pdata.pin_t = NULL;
+	flis_pdata.pin_num = ANN_PIN_TABLE_SIZE;
+	flis_pdata.flis_base = 0xFF0C0000;
+	flis_pdata.flis_len = 0x8000;
+	flis_pdata.mmio_flis_t = ann_pin_mmio_flis_table;
 
 	pdev = platform_device_alloc(FLIS_DEVICE_NAME, -1);
 	if (!pdev) {

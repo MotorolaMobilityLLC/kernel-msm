@@ -52,29 +52,10 @@ void __init *msic_power_btn_platform_data(void *info)
 		return NULL;
 	}
 
-	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
-		INTEL_MID_BOARD(1, PHONE, MOFD) ||
-		INTEL_MID_BOARD(1, TABLET, MOFD)) {
-		msic_power_btn_pdata.pbstat = 0xfffff61a;
-		msic_power_btn_pdata.pb_level = (1 << 4);
-		msic_power_btn_pdata.irq_lvl1_mask = 0x0c;
-		msic_power_btn_pdata.irq_ack = mrfl_pb_irq_ack;
-	} else if (INTEL_MID_BOARD(1, PHONE, CLVTP)) {
-		msic_power_btn_pdata.pbstat = 0xffffefcb;
-		msic_power_btn_pdata.pb_level = (1 << 3);
-		msic_power_btn_pdata.irq_lvl1_mask = 0x21;
-		msic_power_btn_pdata.irq_ack = NULL;
-	} else if (INTEL_MID_BOARD(1, TABLET, CLVT)) {
-		msic_power_btn_pdata.pbstat = 0xffff7fcb;
-		msic_power_btn_pdata.pb_level = (1 << 3);
-		msic_power_btn_pdata.irq_lvl1_mask = 0x21;
-		msic_power_btn_pdata.irq_ack = NULL;
-	} else {
-		msic_power_btn_pdata.pbstat = 0xffff7fd0;
-		msic_power_btn_pdata.pb_level = (1 << 3);
-		msic_power_btn_pdata.irq_lvl1_mask = 0x21;
-		msic_power_btn_pdata.irq_ack = NULL;
-	}
+	msic_power_btn_pdata.pbstat = 0xfffff61a;
+	msic_power_btn_pdata.pb_level = (1 << 4);
+	msic_power_btn_pdata.irq_lvl1_mask = 0x0c;
+	msic_power_btn_pdata.irq_ack = mrfl_pb_irq_ack;
 
 	pdev->dev.platform_data = &msic_power_btn_pdata;
 

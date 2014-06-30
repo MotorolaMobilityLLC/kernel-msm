@@ -70,13 +70,10 @@ void __init *bq24261_platform_data(void *info)
 	bq24261_pdata.dump_master_regs = dump_pmic_regs;
 	bq24261_pdata.enable_vbus = pmic_enable_vbus;
 	/* WA for ShadyCove VBUS removal detect issue */
-	if (INTEL_MID_BOARD(1, PHONE, MOFD) ||
-		INTEL_MID_BOARD(1, TABLET, MOFD)) {
-		bq24261_pdata.handle_low_supply = pmic_handle_low_supply;
-		bq24261_pdata.handle_otgmode = pmic_handle_otgmode;
-		/* WA for ShadyCove host-mode WDT issue */
-		bq24261_pdata.is_wdt_kick_needed = true;
-	}
+	bq24261_pdata.handle_low_supply = pmic_handle_low_supply;
+	bq24261_pdata.handle_otgmode = pmic_handle_otgmode;
+	/* WA for ShadyCove host-mode WDT issue */
+	bq24261_pdata.is_wdt_kick_needed = true;
 #endif
 	bq24261_pdata.set_iterm = NULL;
 	bq24261_pdata.boost_mode_ma = BOOST_CUR_LIM;

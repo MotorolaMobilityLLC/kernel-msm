@@ -142,17 +142,4 @@ struct bq24192_platform_data {
 	void (*free_platform_data)(void);
 };
 
-#ifdef CONFIG_CHARGER_BQ24192
-extern int bq24192_slave_mode_enable_charging(int volt, int cur, int ilim);
-extern int bq24192_slave_mode_disable_charging(void);
-extern int bq24192_query_battery_status(void);
-extern int bq24192_get_battery_pack_temp(int *temp);
-extern int bq24192_get_battery_health(void);
-extern bool bq24192_is_volt_shutdown_enabled(void);
-#else
-static int bq24192_get_battery_health(void)
-{
-	return 0;
-}
-#endif
 #endif /* __BQ24192_CHARGER_H_ */

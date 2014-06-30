@@ -982,36 +982,17 @@ static int sst_pcm_new(struct snd_soc_pcm_runtime *rtd)
 
 static int sst_soc_probe(struct snd_soc_platform *platform)
 {
-	struct sst_data *ctx = snd_soc_platform_get_drvdata(platform);
-	struct soft_platform_id spid;
 	int ret = 0;
 
-	memcpy(&spid, ctx->pdata->spid, sizeof(spid));
 	pr_debug("Enter:%s\n", __func__);
-	if (INTEL_MID_BOARD(1, PHONE, CLVTP) ||
-	    INTEL_MID_BOARD(1, TABLET, CLVT) ||
-	    INTEL_MID_BOARD(1, TABLET, BYT))
-		return sst_platform_clv_init(platform);
-	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
-			INTEL_MID_BOARD(1, TABLET, MRFL) ||
-			INTEL_MID_BOARD(1, PHONE, MOFD) ||
-			INTEL_MID_BOARD(1, TABLET, MOFD)) {
-		if (dpcm_enable == 1)
-			ret = sst_dsp_init_v2_dpcm(platform);
-		else
-			ret = sst_dsp_init(platform);
-		if (ret)
-			return ret;
-		ret = snd_soc_register_effect(platform->card, &effects_ops);
-	}
-	if (INTEL_MID_BOARD(1, TABLET, CHT)) {
-		if (dpcm_enable == 1)
-			ret = sst_dsp_init_v2_dpcm(platform);
-		else
-			ret = sst_dsp_init(platform);
-		if (ret)
-			pr_err("Dsp init failed: %d\n", ret);
-	}
+	if (dpcm_enable == 1)
+		ret = sst_dsp_init_v2_dpcm(platform);
+	else
+		ret = sst_dsp_init(platform);
+	if (ret)
+		return ret;
+	ret = snd_soc_register_effect(platform->card, &effects_ops);
+
 	return ret;
 }
 

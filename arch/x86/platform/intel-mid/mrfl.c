@@ -24,9 +24,6 @@
 #define APIC_DIVISOR 16
 #define MRFL_I2_TERM_MA 120
 
-enum intel_mid_sim_type __intel_mid_sim_platform;
-EXPORT_SYMBOL_GPL(__intel_mid_sim_platform);
-
 static void (*intel_mid_timer_init)(void);
 static struct ps_pse_mod_prof *battery_chrg_profile;
 static struct ps_batt_chg_prof *ps_batt_chrg_profile;
@@ -41,108 +38,76 @@ static struct intel_mid_ops tangier_ops = {
 static unsigned long __init tangier_calibrate_tsc(void)
 {
 	/* [REVERT ME] fast timer calibration method to be defined */
-	if ((intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_VP) ||
-	    (intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_HVP)) {
-		lapic_timer_frequency = 50000;
-		return 1000000;
+	unsigned long fast_calibrate;
+	u32 lo, hi, ratio, fsb, bus_freq;
+
+	/* *********************** */
+	/* Compute TSC:Ratio * FSB */
+	/* *********************** */
+
+	/* Compute Ratio */
+	rdmsr(MSR_PLATFORM_INFO, lo, hi);
+	pr_debug("IA32 PLATFORM_INFO is 0x%x : %x\n", hi, lo);
+
+	ratio = (lo >> 8) & 0xFF;
+	pr_debug("ratio is %d\n", ratio);
+	if (!ratio) {
+		pr_err("Read a zero ratio, force tsc ratio to 4 ...\n");
+		ratio = 4;
 	}
 
-	if ((intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_SLE) ||
-	    (intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_NONE)) {
+	/* Compute FSB */
+	rdmsr(MSR_FSB_FREQ, lo, hi);
+	pr_debug("Actual FSB frequency detected by SOC 0x%x : %x\n",
+		hi, lo);
 
-		unsigned long fast_calibrate;
-		u32 lo, hi, ratio, fsb, bus_freq;
+	bus_freq = lo & 0x7;
+	pr_debug("bus_freq = 0x%x\n", bus_freq);
 
-		/* *********************** */
-		/* Compute TSC:Ratio * FSB */
-		/* *********************** */
-
-		/* Compute Ratio */
-		rdmsr(MSR_PLATFORM_INFO, lo, hi);
-		pr_debug("IA32 PLATFORM_INFO is 0x%x : %x\n", hi, lo);
-
-		ratio = (lo >> 8) & 0xFF;
-		pr_debug("ratio is %d\n", ratio);
-		if (!ratio) {
-			pr_err("Read a zero ratio, force tsc ratio to 4 ...\n");
-			ratio = 4;
-		}
-
-		/* Compute FSB */
-		rdmsr(MSR_FSB_FREQ, lo, hi);
-		pr_debug("Actual FSB frequency detected by SOC 0x%x : %x\n",
-			hi, lo);
-
-		bus_freq = lo & 0x7;
-		pr_debug("bus_freq = 0x%x\n", bus_freq);
-
-		if (bus_freq == 0)
-			fsb = FSB_FREQ_83SKU;
-		else if (bus_freq == 1)
-			fsb = FSB_FREQ_100SKU;
-		else if (bus_freq == 2)
-			fsb = FSB_FREQ_133SKU;
-		else if (bus_freq == 3)
-			fsb = FSB_FREQ_167SKU;
-		else if (bus_freq == 4)
-			fsb = FSB_FREQ_83SKU;
-		else if (bus_freq == 5)
-			fsb = FSB_FREQ_400SKU;
-		else if (bus_freq == 6)
-			fsb = FSB_FREQ_267SKU;
-		else if (bus_freq == 7)
-			fsb = FSB_FREQ_333SKU;
-		else {
-			BUG();
-			pr_err("Invalid bus_freq! Setting to minimal value!\n");
-			fsb = FSB_FREQ_100SKU;
-		}
-
-		/* TSC = FSB Freq * Resolved HFM Ratio */
-		fast_calibrate = ratio * fsb;
-		pr_debug("calculate tangier tsc %lu KHz\n", fast_calibrate);
-
-		/* ************************************ */
-		/* Calculate Local APIC Timer Frequency */
-		/* ************************************ */
-		lapic_timer_frequency = (fsb * 1000) / HZ;
-
-		pr_debug("Setting lapic_timer_frequency = %d\n",
-			lapic_timer_frequency);
-
-		/* mark tsc clocksource as reliable */
-		set_cpu_cap(&boot_cpu_data, X86_FEATURE_TSC_RELIABLE);
-
-		if (fast_calibrate)
-			return fast_calibrate;
+	if (bus_freq == 0)
+		fsb = FSB_FREQ_83SKU;
+	else if (bus_freq == 1)
+		fsb = FSB_FREQ_100SKU;
+	else if (bus_freq == 2)
+		fsb = FSB_FREQ_133SKU;
+	else if (bus_freq == 3)
+		fsb = FSB_FREQ_167SKU;
+	else if (bus_freq == 4)
+		fsb = FSB_FREQ_83SKU;
+	else if (bus_freq == 5)
+		fsb = FSB_FREQ_400SKU;
+	else if (bus_freq == 6)
+		fsb = FSB_FREQ_267SKU;
+	else if (bus_freq == 7)
+		fsb = FSB_FREQ_333SKU;
+	else {
+		BUG();
+		pr_err("Invalid bus_freq! Setting to minimal value!\n");
+		fsb = FSB_FREQ_100SKU;
 	}
+
+	/* TSC = FSB Freq * Resolved HFM Ratio */
+	fast_calibrate = ratio * fsb;
+	pr_debug("calculate tangier tsc %lu KHz\n", fast_calibrate);
+
+	/* ************************************ */
+	/* Calculate Local APIC Timer Frequency */
+	/* ************************************ */
+	lapic_timer_frequency = (fsb * 1000) / HZ;
+
+	pr_debug("Setting lapic_timer_frequency = %d\n",
+		lapic_timer_frequency);
+
+	/* mark tsc clocksource as reliable */
+	set_cpu_cap(&boot_cpu_data, X86_FEATURE_TSC_RELIABLE);
+
+	if (fast_calibrate)
+		return fast_calibrate;
 	return 0;
 }
 
-/* Allow user to enable simulator quirks settings for kernel */
-static int __init set_simulation_platform(char *str)
-{
-	int platform;
-
-	__intel_mid_sim_platform = INTEL_MID_CPU_SIMULATION_NONE;
-	if (get_option(&str, &platform)) {
-		__intel_mid_sim_platform = platform;
-		pr_info("simulator mode %d enabled.\n",
-			__intel_mid_sim_platform);
-		return 0;
-	}
-
-	return -EINVAL;
-}
-early_param("mrfld_simulation", set_simulation_platform);
-
 static void __init tangier_time_init(void)
 {
-	/* [REVERT ME] ARAT capability not set in VP. Force setting */
-	if (intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_VP ||
-	    intel_mid_identify_sim() == INTEL_MID_CPU_SIMULATION_HVP)
-		set_cpu_cap(&boot_cpu_data, X86_FEATURE_ARAT);
-
 	if (intel_mid_timer_init)
 		intel_mid_timer_init();
 }
@@ -198,12 +163,6 @@ static int __init mrfl_platform_init(void)
 	struct sfi_table_header *table;
 
 	table = get_oem0_table();
-
-	if (!(INTEL_MID_BOARD(1, PHONE, MRFL) ||
-	      INTEL_MID_BOARD(1, TABLET, MRFL) ||
-		INTEL_MID_BOARD(1, PHONE, MOFD) ||
-		 INTEL_MID_BOARD(1, TABLET, MOFD)))
-		return 0;
 
 	if (!table)
 		return 0;

@@ -193,19 +193,6 @@ config USB_MXS_PHY
 
 	  MXS Phy is used by some of the i.MX SoCs, for example imx23/28/6x.
 
-config USB_PENWELL_OTG
-        tristate "Intel Penwell USB OTG dual-role support"
-        depends on USB && PCI && INTEL_SCU_IPC
-        select USB_OTG
-        help
-          Say Y here if you want to build Intel Penwell USB OTG
-          transciever driver in kernel. This driver implements role
-          switch between EHCI host driver and Penwell USB OTG
-          client driver.
-
-          To compile this driver as a module, choose M here: the
-          module will be called penwell_otg.
-
 config USB_RCAR_PHY
 	tristate "Renesas R-Car USB phy support"
 	depends on USB || USB_GADGET

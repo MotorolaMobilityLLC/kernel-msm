@@ -23,9 +23,7 @@
 #include <asm/platform_mrfld_audio.h>
 #include "platform_msic.h"
 
-static struct mrfld_audio_platform_data mrfld_audio_pdata = {
-	.spid = &spid,
-};
+static struct mrfld_audio_platform_data mrfld_audio_pdata;
 
 void *merfld_audio_platform_data(void *info)
 {

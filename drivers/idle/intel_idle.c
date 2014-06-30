@@ -1215,18 +1215,6 @@ static int __init intel_idle_init(void)
 			cpuidle_unregister_driver(&intel_idle_driver);
 			return retval;
 		}
-
-		if (platform_is(INTEL_ATOM_BYT) || platform_is(INTEL_ATOM_CHT)) {
-			/* Disable automatic core C6 demotion by PUNIT */
-			if (wrmsr_on_cpu(i, CLPU_CR_C6_POLICY_CONFIG,
-					DISABLE_CORE_C6_DEMOTION, 0x0))
-				pr_err("Error to disable core C6 demotion");
-
-			/* Disable automatic module C6 demotion by PUNIT */
-			if (wrmsr_on_cpu(i, CLPU_MD_C6_POLICY_CONFIG,
-					DISABLE_MODULE_C6_DEMOTION, 0x0))
-				pr_err("Error to disable module C6 demotion");
-		}
 	}
 	register_cpu_notifier(&cpu_hotplug_notifier);
 

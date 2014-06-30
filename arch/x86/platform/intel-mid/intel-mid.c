@@ -154,13 +154,6 @@ static void __cpuinit intel_mid_arch_setup(void)
 		return;
 	}
 	switch (boot_cpu_data.x86_model) {
-	case 0x35:
-		__intel_mid_cpu_chip = INTEL_MID_CPU_CHIP_CLOVERVIEW;
-		break;
-	case 0x3C:
-	case 0x4A:
-		__intel_mid_cpu_chip = INTEL_MID_CPU_CHIP_TANGIER;
-		break;
 	case 0x5A:
 		__intel_mid_cpu_chip = INTEL_MID_CPU_CHIP_ANNIEDALE;
 		break;

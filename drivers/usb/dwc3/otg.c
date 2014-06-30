@@ -772,8 +772,7 @@ static int do_b_peripheral(struct dwc_otg2 *otg)
 
 	if (user_events & USER_ID_A_CHANGE_EVENT) {
 		otg_dbg(otg, "USER_ID_A_CHANGE_EVENT\n");
-		if (!dwc3_is_cht())
-			otg->user_events |= USER_ID_A_CHANGE_EVENT;
+		otg->user_events |= USER_ID_A_CHANGE_EVENT;
 		return DWC_STATE_B_IDLE;
 	}
 
@@ -881,13 +880,8 @@ static void start_main_thread(struct dwc_otg2 *otg)
 	mutex_lock(&lock);
 
 	if ((mode == DWC3_DEVICE_ONLY) &&
-			otg->otg.gadget) {
-		/* CHT: wait host driver to map MUX register space  */
-		if (pdev->device == PCI_DEVICE_ID_DWC_CHT && !otg->otg.host)
-			children_ready = false;
-		else
-			children_ready = true;
-	}
+			otg->otg.gadget)
+		children_ready = true;
 
 	if ((mode == DWC3_HOST_ONLY) &&
 			otg->otg.host)
@@ -1464,11 +1458,6 @@ static DEFINE_PCI_DEVICE_TABLE(pci_ids) = {
 		.vendor = PCI_VENDOR_ID_INTEL,
 		.device = PCI_DEVICE_ID_DWC,
 	},
-	{ PCI_DEVICE_CLASS(((PCI_CLASS_SERIAL_USB << 8) | 0x80), ~0),
-		.vendor = PCI_VENDOR_ID_INTEL,
-		.device = PCI_DEVICE_ID_DWC_VLV,
-	},
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_DWC_CHT)},
 	{ /* end: all zeroes */ }
 };
 

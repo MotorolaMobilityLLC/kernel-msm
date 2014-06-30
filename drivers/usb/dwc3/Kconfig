@@ -92,28 +92,6 @@ config USB_DWC3_INTEL_MRFL
 	  This driver is must be set if you want to enable host mode on Intel
 	  Merrifield platforms.
 
-config USB_DWC3_INTEL_BYT
-	tristate "DWC OTG 3.0 for Intel Baytrail platforms"
-	depends on USB && USB_DWC3_OTG
-	select USB_DWC3_DEVICE_INTEL
-	help
-	  Say Y here to enable DWC3 OTG driver for Intel Baytrail platforms.
-	  It implement OTG feature on DWC3 OTG controller.
-	  Support role switch and charger detection feature.
-	  This driver is must be set if you want to enable device mode on Intel
-	  Baytrial platforms.
-
-config USB_DWC3_INTEL_CHT
-	tristate "DWC OTG 3.0 for Intel Cherrytrail platform"
-	depends on USB && USB_DWC3_OTG
-	select USB_DWC3_DEVICE_INTEL
-	help
-	  Say Y here to enable DWC3 OTG driver for Intel Cherrytrail platforms.
-	  It implement OTG feature on DWC3 OTG controller.
-	  Support role switch and charger detection feature.
-	  This driver is must be set if you want to enable device mode on Intel
-	  Baytrial platforms.
-
 config USB_DWC3_DEVICE_INTEL
 	bool "DWC3 Device Mode support on Intel platform"
 	depends on USB_DWC3_OTG

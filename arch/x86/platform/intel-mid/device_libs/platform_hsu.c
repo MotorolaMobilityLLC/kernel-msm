@@ -986,47 +986,17 @@ int intel_mid_hsu_plat_init(int port, ulong plat, struct device *dev)
 static __init int hsu_dev_platform_data(void)
 {
 	switch (boot_cpu_data.x86_model) {
-	/* penwell */
-	case 0x27:
-		platform_hsu_info = &hsu_port_cfgs[hsu_pnw][0];
-		hsu_port_gpio_mux = &hsu_port_pin_cfgs[hsu_pnw][hsu_pid_def][0];
-		break;
-	/* cloverview */
-	case 0x35:
-		platform_hsu_info = &hsu_port_cfgs[hsu_clv][0];
-		if (INTEL_MID_BOARD(2, PHONE, CLVTP, VB, PRO))
-			hsu_port_gpio_mux =
-				&hsu_port_pin_cfgs[hsu_clv][hsu_pid_vtb_pro][0];
-		else if (INTEL_MID_BOARD(2, PHONE, CLVTP, VB, ENG))
-			hsu_port_gpio_mux =
-				&hsu_port_pin_cfgs[hsu_clv][hsu_pid_vtb_eng][0];
-		else
-			hsu_port_gpio_mux =
-				&hsu_port_pin_cfgs[hsu_clv][hsu_pid_rhb][0];
-		break;
 	/* tangier */
 	case 0x3C:
 	case 0x4A:
 		platform_hsu_info = &hsu_port_cfgs[hsu_tng][0];
 		hsu_port_gpio_mux = &hsu_port_pin_cfgs[hsu_tng][hsu_pid_def][0];
 		break;
-	/* valleyview*/
-	case 0x37:
-		platform_hsu_info = &hsu_port_cfgs[hsu_vlv2][0];
-		hsu_port_gpio_mux =
-			&hsu_port_pin_cfgs[hsu_vlv2][hsu_pid_def][0];
-		break;
 	/* anniedale */
 	case 0x5A:
 		/* anniedale same config as tangier */
 		platform_hsu_info = &hsu_port_cfgs[hsu_tng][0];
 		hsu_port_gpio_mux = &hsu_port_pin_cfgs[hsu_tng][hsu_pid_def][0];
-		break;
-	/* cherryview */
-	case 0x4C:
-		platform_hsu_info = &hsu_port_cfgs[hsu_chv][0];
-		hsu_port_gpio_mux =
-			&hsu_port_pin_cfgs[hsu_chv][hsu_pid_def][0];
 		break;
 	default:
 		pr_err("HSU: cpu%x no platform config!\n", boot_cpu_data.x86_model);

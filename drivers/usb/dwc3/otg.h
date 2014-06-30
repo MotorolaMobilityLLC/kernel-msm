@@ -385,8 +385,6 @@ struct dwc_otg2 {
 
 #define VBUS_TIMEOUT	20
 #define PCI_DEVICE_ID_DWC 0x119E
-#define PCI_DEVICE_ID_DWC_VLV 0x0F37
-#define PCI_DEVICE_ID_DWC_CHT 0x22B7
 
 enum dwc3_otg_mode {
 	DWC3_DEVICE_ONLY,
@@ -437,5 +435,4 @@ void dwc3_wakeup_otg_thread(struct dwc_otg2 *otg);
 struct dwc_otg2 *dwc3_get_otg(void);
 int dwc3_otg_register(struct dwc3_otg_hw_ops *pdata);
 int dwc3_otg_unregister(struct dwc3_otg_hw_ops *pdata);
-int dwc3_is_cht(void);
 #endif /* __DWC3_OTG_H */

@@ -1757,7 +1757,7 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 		/* WORKAROUND: reset PHY via FUNC_CTRL before disconnect
 		 * to avoid PHY hang
 		 */
-		if (!dwc->utmi_phy && !dwc3_is_cht()) {
+		if (!dwc->utmi_phy) {
 			usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
 			if (usb_phy)
 				usb_phy_io_write(usb_phy,
@@ -3207,7 +3207,7 @@ int dwc3_gadget_init(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_DCFG, reg);
 
 	/* Enable USB2 LPM and automatic phy suspend only on recent versions */
-	if (!dwc3_is_cht() && dwc->revision >= DWC3_REVISION_194A) {
+	if (dwc->revision >= DWC3_REVISION_194A) {
 		dwc3_gadget_usb2_phy_suspend(dwc, false);
 		dwc3_gadget_usb3_phy_suspend(dwc, false);
 	}

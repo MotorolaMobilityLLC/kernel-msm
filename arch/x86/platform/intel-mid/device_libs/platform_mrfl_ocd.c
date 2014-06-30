@@ -30,15 +30,7 @@ static int get_bcu_config(struct ocd_bcove_config_data *ocd_smip_data)
 	if (!ocd_smip_data)
 		return -ENXIO;
 
-	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
-		INTEL_MID_BOARD(1, TABLET, MRFL)) {
-		sram_addr = MRFL_SMIP_SRAM_ADDR;
-	} else if (INTEL_MID_BOARD(1, PHONE, MOFD) ||
-		INTEL_MID_BOARD(1, TABLET, MOFD)) {
-		sram_addr = MOFD_SMIP_SRAM_ADDR;
-	} else
-		return -EINVAL;
-
+	sram_addr = MOFD_SMIP_SRAM_ADDR;
 	plat_smip_data = (u8 *)ocd_smip_data;
 	bcu_smip_sram_addr = ioremap_nocache(sram_addr +
 					BCU_SMIP_OFFSET, NUM_SMIP_BYTES);

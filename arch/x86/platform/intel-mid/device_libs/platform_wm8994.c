@@ -236,16 +236,11 @@ static int wm8994_fill_mofd_pr_data(struct wm8994_pdata *pdata)
 		return -EINVAL;
 	}
 
-	/* Only MOFD v0-PR0 & v1-PR1, utilizes the LDOs */
-	if (INTEL_MID_BOARD(3, PHONE, MOFD, V0, PRO, PR0) ||
-		INTEL_MID_BOARD(3, PHONE, MOFD, V1, PRO, PR1)) {
-
-		pr_debug("%s: Assign LDOs to MOFD PR0's pdata...\n", __func__);
-		pdata->ldo[0].enable = pdata->ldo[1].enable = 0;
-		pdata->ldo[0].init_data = &wm8994_ldo1_data;
-		pdata->ldo[1].init_data = &wm8994_ldo2_data;
-		pdata->ldo_ena_always_driven = 1;
-	}
+	pr_debug("%s: Assign LDOs to MOFD PR0's pdata...\n", __func__);
+	pdata->ldo[0].enable = pdata->ldo[1].enable = 0;
+	pdata->ldo[0].init_data = &wm8994_ldo1_data;
+	pdata->ldo[1].init_data = &wm8994_ldo2_data;
+	pdata->ldo_ena_always_driven = 1;
 
 	return 0;
 }
@@ -256,40 +251,17 @@ void __init *wm8994_platform_data(void *info)
 	int irq = 0, ret = 0;
 	struct wm8994_pdata *pdata = &wm8994_pdata;
 
-	if ((INTEL_MID_BOARD(1, PHONE, MRFL)) ||
-		   (INTEL_MID_BOARD(1, TABLET, MRFL))) {
-		platform_add_devices(wm8958_reg_devices,
-				ARRAY_SIZE(wm8958_reg_devices));
-		irq = wm8994_get_irq_data(pdata, i2c_info, "audiocodec_int");
-		if (irq < 0)
-			return NULL;
-	} else if ((INTEL_MID_BOARD(1, PHONE, MOFD)) ||
-		   (INTEL_MID_BOARD(1, TABLET, MOFD))) {
-		platform_add_devices(wm8958_reg_devices,
-				ARRAY_SIZE(wm8958_reg_devices));
+	platform_add_devices(wm8958_reg_devices,
+			ARRAY_SIZE(wm8958_reg_devices));
 
-		/* if it is not VV, then use PR pdata */
-		if (!(SPID_PRODUCT(INTEL, MOFD, PHONE, MP))) {
-			pdata = &wm8994_mofd_pr_pdata;
-			ret = wm8994_fill_mofd_pr_data(pdata);
-			if (ret < 0)
-				return NULL;
-		}
-
-		irq = wm8994_get_irq_data(pdata, i2c_info, "audiocodec_int");
-		if (irq < 0)
-			return NULL;
-	} else if ((SPID_PRODUCT(INTEL, CLVTP, PHONE, RHB)) ||
-		   (SPID_PRODUCT(INTEL, CLVT, TABLET, TBD))) {
-
-		platform_add_devices(wm1811a_reg_devices,
-			ARRAY_SIZE(wm1811a_reg_devices));
-
-		i2c_info->addr = 0x1a;
-	} else {
-		pr_err("Not supported....\n");
+	pdata = &wm8994_mofd_pr_pdata;
+	ret = wm8994_fill_mofd_pr_data(pdata);
+	if (ret < 0)
 		return NULL;
-	}
+
+	irq = wm8994_get_irq_data(pdata, i2c_info, "audiocodec_int");
+	if (irq < 0)
+		return NULL;
 
 	return pdata;
 }

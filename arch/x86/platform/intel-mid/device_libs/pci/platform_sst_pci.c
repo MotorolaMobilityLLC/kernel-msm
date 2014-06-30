@@ -208,10 +208,6 @@ static void set_mrfld_sst_config(struct sst_platform_info *sst_info)
 	sst_info->lib_info = &mrfld_lib_dnld_info;
 	/* By default set recovery to true for all mrfld based devices */
 	sst_info->enable_recovery = 1;
-	/* Disable recovery for MOFD V1 */
-	if (INTEL_MID_BOARD(2, PHONE, MOFD, V1, PRO) ||
-		 INTEL_MID_BOARD(2, PHONE, MOFD, V1, ENG))
-		sst_info->enable_recovery = 0;
 
 	return ;
 

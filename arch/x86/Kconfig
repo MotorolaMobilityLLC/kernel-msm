@@ -460,13 +460,7 @@ config ATOM_SOC_POWER
 choice
 	prompt "Select PMU support"
 	depends on ATOM_SOC_POWER
-	default REMOVEME_INTEL_ATOM_MDFLD_POWER
-
-config REMOVEME_INTEL_ATOM_MDFLD_POWER
-	bool "Medfield"
-
-config REMOVEME_INTEL_ATOM_CLV_POWER
-	bool "Clovertrail"
+	default REMOVEME_INTEL_ATOM_MRFLD_POWER
 
 config REMOVEME_INTEL_ATOM_MRFLD_POWER
 	bool "Merrifield"
@@ -713,6 +707,7 @@ source "arch/x86/Kconfig.cpu"
 
 config HPET_TIMER
 	prompt "HPET Timer Support"
+	def_bool X86_64
 	---help---
 	  Use the IA-PC HPET (High Precision Event Timer) to manage
 	  time in preference to the PIT and RTC, if a HPET is

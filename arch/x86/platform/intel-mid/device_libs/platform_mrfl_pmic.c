@@ -91,15 +91,8 @@ void __init *mrfl_pmic_ccsm_platform_data(void *info)
 	}
 	install_irq_resource(pdev, entry->irq);
 
-	if (INTEL_MID_BOARD(1, PHONE, MRFL) ||
-			INTEL_MID_BOARD(1, TABLET, MRFL)) {
-		pmic_pdata.max_tbl_row_cnt = ARRAY_SIZE(basincove_adc_tbl);
-		pmic_pdata.adc_tbl = basincove_adc_tbl;
-	} else if (INTEL_MID_BOARD(1, PHONE, MOFD) ||
-			INTEL_MID_BOARD(1, TABLET, MOFD)) {
-		pmic_pdata.max_tbl_row_cnt = ARRAY_SIZE(shadycove_adc_tbl);
-		pmic_pdata.adc_tbl = shadycove_adc_tbl;
-	}
+	pmic_pdata.max_tbl_row_cnt = ARRAY_SIZE(shadycove_adc_tbl);
+	pmic_pdata.adc_tbl = shadycove_adc_tbl;
 
 #ifdef CONFIG_BQ24261_CHARGER
 	pmic_pdata.cc_to_reg = bq24261_cc_to_reg;
@@ -121,22 +114,19 @@ void __init pmic_reset_value_wa(void)
 	u8 id_val;
 	int ret;
 
-	if (INTEL_MID_BOARD(1, PHONE, MOFD) ||
-			INTEL_MID_BOARD(1, TABLET, MOFD)) {
-		ret = intel_scu_ipc_ioread8(PMIC_ID_ADDR, &id_val);
-		if (ret) {
-			pr_err("%s:%d Error(%d) reading PMIC ID register\n",
-					__func__, __LINE__, ret);
-			return;
-		}
+	ret = intel_scu_ipc_ioread8(PMIC_ID_ADDR, &id_val);
+	if (ret) {
+		pr_err("%s:%d Error(%d) reading PMIC ID register\n",
+				__func__, __LINE__, ret);
+		return;
+	}
 
-		pr_info("%s:%d ShadyCove ID_REG-val:%x\n",
-				__func__, __LINE__, id_val);
-		if ((id_val == SHADYCOVE_A0) || (id_val == SHADYCOVE_A1)) {
-			pr_info("%s:%d Reset MCHGRIRQs\n", __func__, __LINE__);
-			intel_scu_ipc_iowrite8(MCHGRIRQ0_ADDR, 0xFF);
-			intel_scu_ipc_iowrite8(MCHGRIRQ1_ADDR, 0x1F);
-		}
+	pr_info("%s:%d ShadyCove ID_REG-val:%x\n",
+			__func__, __LINE__, id_val);
+	if ((id_val == SHADYCOVE_A0) || (id_val == SHADYCOVE_A1)) {
+		pr_info("%s:%d Reset MCHGRIRQs\n", __func__, __LINE__);
+		intel_scu_ipc_iowrite8(MCHGRIRQ0_ADDR, 0xFF);
+		intel_scu_ipc_iowrite8(MCHGRIRQ1_ADDR, 0x1F);
 	}
 }
 rootfs_initcall(pmic_reset_value_wa);

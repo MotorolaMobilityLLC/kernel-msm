@@ -31,7 +31,6 @@
 #include <asm/intel_mid_rpmsg.h>
 #include <asm/intel_scu_flis.h>
 #include <asm/intel_scu_pmic.h>
-#include <asm/spid.h>
 
 #include "sdhci.h"
 
@@ -621,179 +620,6 @@ static const struct sdhci_pci_fixes sdhci_intel_mfd_emmc = {
 static const struct sdhci_pci_fixes sdhci_intel_pch_sdio = {
 	.quirks		= SDHCI_QUIRK_BROKEN_ADMA,
 	.probe_slot	= pch_hc_probe_slot,
-};
-
-static int byt_emmc_probe_slot(struct sdhci_pci_slot *slot)
-{
-	slot->host->mmc->caps |= MMC_CAP_8_BIT_DATA | MMC_CAP_NONREMOVABLE;
-	slot->host->mmc->caps2 |= MMC_CAP2_HC_ERASE_SZ;
-
-	switch (slot->chip->pdev->device) {
-	case PCI_DEVICE_ID_INTEL_BYT_EMMC45:
-		slot->host->quirks2 |= SDHCI_QUIRK2_CARD_CD_DELAY |
-			SDHCI_QUIRK2_WAIT_FOR_IDLE | SDHCI_QUIRK2_TUNING_POLL;
-		if (!INTEL_MID_BOARDV3(TABLET, BYT, BLK, PRO, RVP1) &&
-			!INTEL_MID_BOARDV3(TABLET, BYT, BLK, PRO, RVP2) &&
-			!INTEL_MID_BOARDV3(TABLET, BYT, BLK, PRO, RVP3) &&
-			!INTEL_MID_BOARDV3(TABLET, BYT, BLK, ENG, RVP1) &&
-			!INTEL_MID_BOARDV3(TABLET, BYT, BLK, ENG, RVP2) &&
-			!INTEL_MID_BOARDV3(TABLET, BYT, BLK, ENG, RVP3))
-			slot->host->mmc->caps2 |= MMC_CAP2_HS200_1_8V_SDR;
-	case PCI_DEVICE_ID_INTEL_BYT_EMMC:
-		if (!INTEL_MID_BOARDV2(TABLET, BYT, BLB, PRO) &&
-				!INTEL_MID_BOARDV2(TABLET, BYT, BLB, ENG))
-			sdhci_alloc_panic_host(slot->host);
-		slot->host->mmc->caps |= MMC_CAP_1_8V_DDR;
-		slot->host->mmc->caps2 |= MMC_CAP2_INIT_CARD_SYNC |
-			MMC_CAP2_CACHE_CTRL;
-		slot->host->mmc->qos = kzalloc(sizeof(struct pm_qos_request),
-				GFP_KERNEL);
-		slot->tuning_count = 8;
-		break;
-	default:
-		break;
-	}
-	if (slot->host->mmc->qos)
-		pm_qos_add_request(slot->host->mmc->qos, PM_QOS_CPU_DMA_LATENCY,
-				PM_QOS_DEFAULT_VALUE);
-
-	return 0;
-}
-
-static void byt_emmc_remove_slot(struct sdhci_pci_slot *slot, int dead)
-{
-	if (slot->host->mmc->qos) {
-		pm_qos_remove_request(slot->host->mmc->qos);
-		kfree(slot->host->mmc->qos);
-	}
-}
-
-#define BYT_SD_WP	7
-#define BYT_SD_CD	38
-#define BYT_SD_1P8_EN	40
-#define BYT_SD_PWR_EN	41
-static int byt_sd_probe_slot(struct sdhci_pci_slot *slot)
-{
-	int err;
-
-	slot->cd_gpio = acpi_get_gpio("\\_SB.GPO0", BYT_SD_CD);
-	/*
-	 * change GPIOC_7 to alternate function 2
-	 * This should be done in IA FW
-	 * Do this in driver as a temporal solution
-	 */
-	lnw_gpio_set_alt(BYT_SD_WP, 2);
-	/* change the GPIO pin to GPIO mode */
-	if (slot->host->quirks2 & SDHCI_QUIRK2_POWER_PIN_GPIO_MODE) {
-		/* change to GPIO mode */
-		lnw_gpio_set_alt(BYT_SD_PWR_EN, 0);
-		err = gpio_request(BYT_SD_PWR_EN, "sd_pwr_en");
-		if (err)
-			return -ENODEV;
-		slot->host->gpio_pwr_en = BYT_SD_PWR_EN;
-		/* disable the power by default */
-		gpio_direction_output(slot->host->gpio_pwr_en, 0);
-		gpio_set_value(slot->host->gpio_pwr_en, 1);
-
-		/* change to GPIO mode */
-		lnw_gpio_set_alt(BYT_SD_1P8_EN, 0);
-		err = gpio_request(BYT_SD_1P8_EN, "sd_1p8_en");
-		if (err) {
-			gpio_free(slot->host->gpio_pwr_en);
-			return -ENODEV;
-		}
-		slot->host->gpio_1p8_en = BYT_SD_1P8_EN;
-		/* 3.3v signaling by default */
-		gpio_direction_output(slot->host->gpio_1p8_en, 0);
-		gpio_set_value(slot->host->gpio_1p8_en, 0);
-	}
-
-	/* Bayley Bay board */
-	if (INTEL_MID_BOARD(2, TABLET, BYT, BLB, PRO) ||
-			INTEL_MID_BOARD(2, TABLET, BYT, BLB, ENG))
-		slot->host->quirks2 |= SDHCI_QUIRK2_NO_1_8_V;
-
-	slot->host->mmc->caps2 |= MMC_CAP2_PWCTRL_POWER |
-		MMC_CAP2_FIXED_NCRC;
-
-	/* On BYT-M, SD card is using to store ipanic as a W/A */
-	if (INTEL_MID_BOARDV2(TABLET, BYT, BLB, PRO) ||
-			INTEL_MID_BOARDV2(TABLET, BYT, BLB, ENG))
-		sdhci_alloc_panic_host(slot->host);
-
-	slot->host->mmc->qos = kzalloc(sizeof(struct pm_qos_request),
-			GFP_KERNEL);
-	if (slot->host->mmc->qos)
-		pm_qos_add_request(slot->host->mmc->qos, PM_QOS_CPU_DMA_LATENCY,
-				PM_QOS_DEFAULT_VALUE);
-
-	return 0;
-}
-
-static void byt_sd_remove_slot(struct sdhci_pci_slot *slot, int dead)
-{
-	if (slot->host->quirks2 & SDHCI_QUIRK2_POWER_PIN_GPIO_MODE) {
-		if (gpio_is_valid(slot->host->gpio_1p8_en))
-			gpio_free(slot->host->gpio_1p8_en);
-		if (gpio_is_valid(slot->host->gpio_pwr_en))
-			gpio_free(slot->host->gpio_pwr_en);
-	}
-	if (slot->host->mmc->qos) {
-		pm_qos_remove_request(slot->host->mmc->qos);
-		kfree(slot->host->mmc->qos);
-	}
-}
-
-static int byt_sdio_probe_slot(struct sdhci_pci_slot *slot)
-{
-	slot->host->mmc->caps |= MMC_CAP_POWER_OFF_CARD | MMC_CAP_NONREMOVABLE;
-	switch (slot->chip->pdev->device) {
-	case PCI_DEVICE_ID_INTEL_BYT_SDIO:
-		/* add a delay after runtime resuming back from D0i3 */
-		slot->chip->pdev->d3_delay = 10;
-		/* reduce the auto suspend delay for SDIO to be 500ms */
-		slot->chip->autosuspend_delay = 500;
-		slot->host->mmc->qos = kzalloc(sizeof(struct pm_qos_request),
-				GFP_KERNEL);
-		break;
-	}
-
-	if (slot->host->mmc->qos)
-		pm_qos_add_request(slot->host->mmc->qos, PM_QOS_CPU_DMA_LATENCY,
-				PM_QOS_DEFAULT_VALUE);
-
-	return 0;
-}
-
-static void byt_sdio_remove_slot(struct sdhci_pci_slot *slot, int dead)
-{
-	if (slot->host->mmc->qos) {
-		pm_qos_remove_request(slot->host->mmc->qos);
-		kfree(slot->host->mmc->qos);
-	}
-}
-
-static const struct sdhci_pci_fixes sdhci_intel_byt_emmc = {
-	.quirks2	= SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
-	.allow_runtime_pm = true,
-	.probe_slot	= byt_emmc_probe_slot,
-	.remove_slot	= byt_emmc_remove_slot,
-};
-
-static const struct sdhci_pci_fixes sdhci_intel_byt_sdio = {
-	.quirks2	= SDHCI_QUIRK2_HOST_OFF_CARD_ON |
-		SDHCI_QUIRK2_PRESET_VALUE_BROKEN | SDHCI_QUIRK2_FAKE_VDD,
-	.allow_runtime_pm = true,
-	.probe_slot	= byt_sdio_probe_slot,
-	.remove_slot	= byt_sdio_remove_slot,
-};
-
-static const struct sdhci_pci_fixes sdhci_intel_byt_sd = {
-	.quirks2	= SDHCI_QUIRK2_PRESET_VALUE_BROKEN |
-		SDHCI_QUIRK2_POWER_PIN_GPIO_MODE,
-	.allow_runtime_pm = true,
-	.probe_slot	= byt_sd_probe_slot,
-	.remove_slot	= byt_sd_remove_slot,
 };
 
 #define TNG_IOAPIC_IDX	0xfec00000
@@ -1535,78 +1361,6 @@ static const struct pci_device_id pci_ids[] = {
 		.subvendor	= PCI_ANY_ID,
 		.subdevice	= PCI_ANY_ID,
 		.driver_data	= (kernel_ulong_t)&sdhci_intel_pch_sdio,
-	},
-
-	{
-		.vendor		= PCI_VENDOR_ID_INTEL,
-		.device		= PCI_DEVICE_ID_INTEL_BYT_EMMC,
-		.subvendor	= PCI_ANY_ID,
-		.subdevice	= PCI_ANY_ID,
-		.driver_data	= (kernel_ulong_t)&sdhci_intel_byt_emmc,
-	},
-
-	{
-		.vendor		= PCI_VENDOR_ID_INTEL,
-		.device		= PCI_DEVICE_ID_INTEL_BYT_EMMC45,
-		.subvendor	= PCI_ANY_ID,
-		.subdevice	= PCI_ANY_ID,
-		.driver_data	= (kernel_ulong_t)&sdhci_intel_byt_emmc,
-	},
-
-	{
-		.vendor		= PCI_VENDOR_ID_INTEL,
-		.device		= PCI_DEVICE_ID_INTEL_BYT_SDIO,
-		.subvendor	= PCI_ANY_ID,
-		.subdevice	= PCI_ANY_ID,
-		.driver_data	= (kernel_ulong_t)&sdhci_intel_byt_sdio,
-	},
-
-	{
-		.vendor		= PCI_VENDOR_ID_INTEL,
-		.device		= PCI_DEVICE_ID_INTEL_BYT_SD,
-		.subvendor	= PCI_ANY_ID,
-		.subdevice	= PCI_ANY_ID,
-		.driver_data	= (kernel_ulong_t)&sdhci_intel_byt_sd,
-	},
-
-	{
-		.vendor		= PCI_VENDOR_ID_INTEL,
-		.device		= PCI_DEVICE_ID_INTEL_CLV_SDIO0,
-		.subvendor	= PCI_ANY_ID,
-		.subdevice	= PCI_ANY_ID,
-		.driver_data	= (kernel_ulong_t)&sdhci_intel_mfd_sd,
-	},
-
-	{
-		.vendor		= PCI_VENDOR_ID_INTEL,
-		.device		= PCI_DEVICE_ID_INTEL_CLV_SDIO1,
-		.subvendor	= PCI_ANY_ID,
-		.subdevice	= PCI_ANY_ID,
-		.driver_data	= (kernel_ulong_t)&sdhci_intel_mfd_sdio,
-	},
-
-	{
-		.vendor		= PCI_VENDOR_ID_INTEL,
-		.device		= PCI_DEVICE_ID_INTEL_CLV_SDIO2,
-		.subvendor	= PCI_ANY_ID,
-		.subdevice	= PCI_ANY_ID,
-		.driver_data	= (kernel_ulong_t)&sdhci_intel_mfd_sdio,
-	},
-
-	{
-		.vendor		= PCI_VENDOR_ID_INTEL,
-		.device		= PCI_DEVICE_ID_INTEL_CLV_EMMC0,
-		.subvendor	= PCI_ANY_ID,
-		.subdevice	= PCI_ANY_ID,
-		.driver_data	= (kernel_ulong_t)&sdhci_intel_mfd_emmc,
-	},
-
-	{
-		.vendor		= PCI_VENDOR_ID_INTEL,
-		.device		= PCI_DEVICE_ID_INTEL_CLV_EMMC1,
-		.subvendor	= PCI_ANY_ID,
-		.subdevice	= PCI_ANY_ID,
-		.driver_data	= (kernel_ulong_t)&sdhci_intel_mfd_emmc,
 	},
 
 	{
@@ -2495,26 +2249,11 @@ static void sdhci_pci_shutdown(struct pci_dev *pdev)
 	}
 
 	switch (chip->pdev->device) {
-	case PCI_DEVICE_ID_INTEL_CLV_SDIO0:
-		for (i = 0; i < chip->num_slots; i++) {
-			if (chip->slots[i]->host->flags & SDHCI_POWER_CTRL_DEV)
-				ctp_sd_card_power_save(chip->slots[i]);
-		}
-		break;
 	case PCI_DEVICE_ID_INTEL_MRFL_MMC:
 		if (chip->allow_runtime_pm) {
 			pm_runtime_get_sync(&pdev->dev);
 			pm_runtime_disable(&pdev->dev);
 			pm_runtime_put_noidle(&pdev->dev);
-		}
-		break;
-	case PCI_DEVICE_ID_INTEL_BYT_EMMC:
-	case PCI_DEVICE_ID_INTEL_BYT_EMMC45:
-	case PCI_DEVICE_ID_INTEL_BYT_SD:
-	case PCI_DEVICE_ID_INTEL_BYT_SDIO:
-		if (chip->allow_runtime_pm) {
-			pm_runtime_put_sync_suspend(&pdev->dev);
-			pm_runtime_disable(&pdev->dev);
 		}
 		break;
 	default:
