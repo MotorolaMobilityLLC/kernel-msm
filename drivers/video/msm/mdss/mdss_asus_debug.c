@@ -351,7 +351,7 @@ static void mdss_debug_watchdog(struct work_struct *work)
 		{
 			amdu_data.panel_status.auto_dim = true;
 #ifdef ASUS_FACTORY_BUILD
-			printk("[AMDU] Skip dum backlight due %d to factory build.\n;",dim_val)
+			printk("[AMDU] Skip dum backlight due %d to factory build.\n;",dim_val);
 #else
 			amdu_data.ctrl->panel_data.set_backlight(&(amdu_data.ctrl->panel_data), dim_val);
 #endif
@@ -361,7 +361,7 @@ static void mdss_debug_watchdog(struct work_struct *work)
 		if (amdu_data.panel_status.auto_dim)
 		{
 #ifdef ASUS_FACTORY_BUILD
-			printk("[AMDU] Skip restore backlight due %d to factory build.\n;",amdu_data.fb_status.mfd->bl_level)
+			printk("[AMDU] Skip restore backlight due %d to factory build.\n;",amdu_data.fb_status.mfd->bl_level);
 #else
 			amdu_data.ctrl->panel_data.set_backlight(&(amdu_data.ctrl->panel_data), amdu_data.fb_status.mfd->bl_level);
 #endif
