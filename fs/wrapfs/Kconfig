@@ -1,0 +1,8 @@
+config WRAP_FS
+	tristate "Wrapfs stackable file system (EXPERIMENTAL)"
+	help
+	  Wrapfs is a stackable file system which simply passes its
+	  operations to the lower layer.  It is designed as a useful
+	  template for developing or debugging other stackable file systems,
+	  and more (see Documentation/filesystems/wrapfs.txt).  See
+	  <http://wrapfs.filesystems.org/> for details.
