@@ -871,7 +871,7 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
     tANI_U8 type = WLAN_HDD_GET_TYPE_FRM_FC(buf[0]);
     tANI_U8 subType = WLAN_HDD_GET_SUBTYPE_FRM_FC(buf[0]);
-    tActionFrmType actionFrmType;
+    tActionFrmType actionFrmType = WLAN_HDD_ACTION_FRM_TYPE_MAX;
     bool noack = 0;
     int status;
 
