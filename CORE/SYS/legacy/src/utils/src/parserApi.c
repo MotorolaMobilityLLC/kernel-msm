@@ -2530,10 +2530,10 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
     }
     if ( ar.QosMapSet.present )
     {
-        pMac->QosMapSet.present = 1;
-        ConvertQosMapsetFrame( pMac, &pMac->QosMapSet, &ar.QosMapSet);
+        pAssocRsp->QosMapSet.present = 1;
+        ConvertQosMapsetFrame( pMac, &pAssocRsp->QosMapSet, &ar.QosMapSet);
         limLog( pMac, LOG1, FL("Received Assoc Response with Qos Map Set"));
-        limLogQosMapSet(pMac, &pMac->QosMapSet);
+        limLogQosMapSet(pMac, &pAssocRsp->QosMapSet);
     }
     return eSIR_SUCCESS;
 } // End sirConvertAssocRespFrame2Struct.
@@ -4063,7 +4063,7 @@ sirConvertQosMapConfigureFrame2Struct(tpAniSirGlobal    pMac,
     }
     pQosMapSet->present = mapConfigure.QosMapSet.present;
     ConvertQosMapsetFrame(pMac->hHdd, pQosMapSet, &mapConfigure.QosMapSet);
-    limLogQosMapSet(pMac, &pMac->QosMapSet);
+    limLogQosMapSet(pMac, pQosMapSet);
     return eSIR_SUCCESS;
 }
 

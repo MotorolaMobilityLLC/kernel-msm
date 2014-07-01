@@ -386,7 +386,7 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
 {
     tSmeCmd *pRetCmd = NULL, *pTempCmd = NULL;
     tListElem *pEntry;
-
+    static int smeCommandQueueFull = 0;
     pEntry = csrLLRemoveHead( &pMac->sme.smeCmdFreeList, LL_ACCESS_LOCK );
 
     // If we can get another MS Msg buffer, then we are ok.  Just link
@@ -395,6 +395,8 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
     if ( pEntry )
     {
         pRetCmd = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+        /* reset when free list is available */
+            smeCommandQueueFull = 0;
     }
     else {
         int idx = 1;
@@ -419,11 +421,14 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
         //dump what is in the pending queue
         csrLLLock(&pMac->sme.smeCmdPendingList);
         pEntry = csrLLPeekHead( &pMac->sme.smeCmdPendingList, LL_ACCESS_NOLOCK );
-        while(pEntry)
+        while(pEntry && !smeCommandQueueFull)
         {
             pTempCmd = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+            /* Print only 1st five commands from pending queue. */
+            if (idx <= 5)
             smsLog( pMac, LOGE, "Out of command buffer.... SME pending command #%d (0x%X)",
-                    idx++, pTempCmd->command );
+                    idx, pTempCmd->command );
+            idx++;
             if( eSmeCsrCommandMask & pTempCmd->command )
             {
                 //CSR command is stuck. See what the reason code is for that command
@@ -431,6 +436,8 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
             }
             pEntry = csrLLNext( &pMac->sme.smeCmdPendingList, pEntry, LL_ACCESS_NOLOCK );
         }
+        /* Increament static variable so that it prints pending command only once*/
+        smeCommandQueueFull++;
         csrLLUnlock(&pMac->sme.smeCmdPendingList);
 
         //There may be some more command in CSR's own pending queue
@@ -3671,6 +3678,45 @@ eHalStatus sme_CfgSetStr(tHalHandle hHal, tANI_U32 cfgId, tANI_U8 *pStr,
                          eAniBoolean toBeSaved)
 {
    return(ccmCfgSetStr(hHal, cfgId, pStr, length, callback, toBeSaved));
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_GetModifyProfileFields
+    \brief HDD or SME - QOS calls this function to get the current values of
+    connected profile fields, changing which can cause reassoc.
+    This function must be called after CFG is downloaded and STA is in connected
+    state. Also, make sure to call this function to get the current profile
+    fields before calling the reassoc. So that pModifyProfileFields will have
+    all the latest values plus the one(s) has been updated as part of reassoc
+    request.
+    \param pModifyProfileFields - pointer to the connected profile fields
+    changing which can cause reassoc
+
+    \return eHalStatus
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_GetModifyProfileFields(tHalHandle hHal, tANI_U8 sessionId,
+                                     tCsrRoamModifyProfileFields * pModifyProfileFields)
+{
+   eHalStatus status = eHAL_STATUS_FAILURE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   MTRACE(vos_trace(VOS_MODULE_ID_SME,
+              TRACE_CODE_SME_RX_HDD_GET_MODPROFFIELDS, sessionId, 0));
+   status = sme_AcquireGlobalLock( &pMac->sme );
+   if ( HAL_STATUS_SUCCESS( status ) )
+   {
+       if( CSR_IS_SESSION_VALID( pMac, sessionId ) )
+       {
+          status = csrGetModifyProfileFields(pMac, sessionId, pModifyProfileFields);
+       }
+       else
+       {
+          status = eHAL_STATUS_INVALID_PARAMETER;
+       }
+       sme_ReleaseGlobalLock( &pMac->sme );
+   }
+
+   return (status);
 }
 
 /* ---------------------------------------------------------------------------
@@ -10741,15 +10787,47 @@ eHalStatus sme_UpdateConnectDebug(tHalHandle hHal, tANI_U32 set_value)
 }
 
 VOS_STATUS sme_UpdateDSCPtoUPMapping( tHalHandle hHal,
-                                      sme_QosWmmUpType  *dscpmapping)
+                                      sme_QosWmmUpType  *dscpmapping,
+                                      v_U8_t sessionId )
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    eHalStatus status    = eHAL_STATUS_SUCCESS;
-    v_U8_t i, j;
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    v_U8_t i, j, peSessionId;
+    tCsrRoamSession *pCsrSession = NULL;
+    tpPESession pSession = NULL;
+
     status = sme_AcquireGlobalLock( &pMac->sme );
     if ( HAL_STATUS_SUCCESS( status ) )
     {
-        if ( !pMac->QosMapSet.present )
+        if (!CSR_IS_SESSION_VALID( pMac, sessionId ))
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Invalid session Id %u", __func__, sessionId);
+            sme_ReleaseGlobalLock( &pMac->sme);
+            return eHAL_STATUS_FAILURE;
+        }
+        pCsrSession = CSR_GET_SESSION( pMac, sessionId );
+
+        if (pCsrSession == NULL)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: CSR Session lookup fails %u", __func__, sessionId);
+            sme_ReleaseGlobalLock( &pMac->sme);
+            return eHAL_STATUS_FAILURE;
+        }
+
+        pSession = peFindSessionByBssid( pMac,
+            pCsrSession->connectedProfile.bssid, &peSessionId );
+
+        if (pSession == NULL)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Session lookup fails for BSSID", __func__);
+            sme_ReleaseGlobalLock( &pMac->sme);
+            return eHAL_STATUS_FAILURE;
+        }
+
+        if ( !pSession->QosMapSet.present )
         {
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                      "%s: QOS Mapping IE not present", __func__);
@@ -10758,13 +10836,13 @@ VOS_STATUS sme_UpdateDSCPtoUPMapping( tHalHandle hHal,
         }
         else
         {
-            for (i=0; i < 8; i++)
+            for (i = 0; i < SME_QOS_WMM_UP_MAX; i++)
             {
-                for (j = pMac->QosMapSet.dscp_range[i][0];
-                               j <= pMac->QosMapSet.dscp_range[i][1]; j++)
+                for (j = pSession->QosMapSet.dscp_range[i][0];
+                               j <= pSession->QosMapSet.dscp_range[i][1]; j++)
                 {
-                   if ((pMac->QosMapSet.dscp_range[i][0] == 255) &&
-                                (pMac->QosMapSet.dscp_range[i][1] == 255))
+                   if ((pSession->QosMapSet.dscp_range[i][0] == 255) &&
+                                (pSession->QosMapSet.dscp_range[i][1] == 255))
                    {
                        dscpmapping[j]= 0;
                        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
@@ -10778,12 +10856,12 @@ VOS_STATUS sme_UpdateDSCPtoUPMapping( tHalHandle hHal,
                    }
                 }
             }
-            for (i=0; i< pMac->QosMapSet.num_dscp_exceptions; i++)
+            for (i = 0; i< pSession->QosMapSet.num_dscp_exceptions; i++)
             {
-                if (pMac->QosMapSet.dscp_exceptions[i][0] != 255)
+                if (pSession->QosMapSet.dscp_exceptions[i][0] != 255)
                 {
-                    dscpmapping[pMac->QosMapSet.dscp_exceptions[i][0] ] =
-                                         pMac->QosMapSet.dscp_exceptions[i][1];
+                    dscpmapping[pSession->QosMapSet.dscp_exceptions[i][0] ] =
+                                         pSession->QosMapSet.dscp_exceptions[i][1];
                 }
             }
         }
@@ -10791,7 +10869,6 @@ VOS_STATUS sme_UpdateDSCPtoUPMapping( tHalHandle hHal,
     sme_ReleaseGlobalLock( &pMac->sme);
     return status;
 }
-
 
 tANI_BOOLEAN  sme_Is11dCountrycode(tHalHandle hHal)
 {
@@ -10807,3 +10884,379 @@ tANI_BOOLEAN  sme_Is11dCountrycode(tHalHandle hHal)
         return eANI_BOOLEAN_FALSE;
     }
 }
+
+#ifdef WLAN_FEATURE_EXTSCAN
+/* ---------------------------------------------------------------------------
+    \fn sme_GetValidChannelsByBand
+    \brief  SME API to fetch all valid channel filtered by band
+    \param  hHal
+    \param  wifiBand: RF band information
+    \param  aValidChannels: Array to store channel info
+    \param  len: number of channels
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_GetValidChannelsByBand (tHalHandle hHal, tANI_U8 wifiBand,
+                               tANI_U32 *aValidChannels, tANI_U8 *pNumChannels)
+{
+    eHalStatus status                                   = eHAL_STATUS_SUCCESS;
+    tANI_U8 chanList[WNI_CFG_VALID_CHANNEL_LIST_LEN]    = {0};
+    tpAniSirGlobal pMac                                 = PMAC_STRUCT(hHal);
+    tANI_U8 numChannels                                 = 0;
+    tANI_U8 i                                           = 0;
+    tANI_U32 totValidChannels                 = WNI_CFG_VALID_CHANNEL_LIST_LEN;
+
+    if (!aValidChannels || !pNumChannels) {
+        smsLog(pMac, VOS_TRACE_LEVEL_ERROR,
+               FL("Output channel list/NumChannels is NULL"));
+        return eHAL_STATUS_INVALID_PARAMETER;
+    }
+
+    if ((wifiBand < WIFI_BAND_UNSPECIFIED) || (wifiBand >= WIFI_BAND_MAX)) {
+        smsLog(pMac, VOS_TRACE_LEVEL_ERROR,
+                     FL("Invalid wifiBand (%d)"), wifiBand);
+        return eHAL_STATUS_INVALID_PARAMETER;
+    }
+
+    status = sme_GetCfgValidChannels(hHal, &chanList[0],
+                                     &totValidChannels);
+    if (!HAL_STATUS_SUCCESS(status)) {
+        smsLog(pMac, VOS_TRACE_LEVEL_ERROR,
+               FL("Failed to get valid channel list (err=%d)"), status);
+        return status;
+    }
+
+    switch (wifiBand) {
+    case WIFI_BAND_UNSPECIFIED:
+            smsLog(pMac, VOS_TRACE_LEVEL_INFO, FL("Unspecified wifiBand, "
+                         "return all (%d) valid channels"), totValidChannels);
+            numChannels = totValidChannels;
+            for (i = 0; i < numChannels; i++)
+                aValidChannels[i] = vos_chan_to_freq(chanList[i]);
+            break;
+
+    case WIFI_BAND_BG:
+            smsLog(pMac, VOS_TRACE_LEVEL_INFO, FL("WIFI_BAND_BG (2.4 GHz)"));
+            for (i = 0; i < totValidChannels; i++)
+                if (CSR_IS_CHANNEL_24GHZ(chanList[i]))
+                    aValidChannels[numChannels++] =
+                                                 vos_chan_to_freq(chanList[i]);
+            break;
+
+    case WIFI_BAND_A:
+            smsLog(pMac, VOS_TRACE_LEVEL_INFO,
+                          FL("WIFI_BAND_A (5 GHz without DFS)"));
+            for (i = 0; i < totValidChannels; i++)
+                if (CSR_IS_CHANNEL_5GHZ(chanList[i]) &&
+                             !CSR_IS_CHANNEL_DFS(chanList[i]))
+                    aValidChannels[numChannels++] =
+                                                 vos_chan_to_freq(chanList[i]);
+            break;
+
+    case WIFI_BAND_ABG:
+            smsLog(pMac, VOS_TRACE_LEVEL_INFO,
+                          FL("WIFI_BAND_ABG (2.4 GHz + 5 GHz; no DFS)"));
+            for (i = 0; i < totValidChannels; i++)
+                if ((CSR_IS_CHANNEL_24GHZ(chanList[i]) ||
+                             CSR_IS_CHANNEL_5GHZ(chanList[i])) &&
+                             !CSR_IS_CHANNEL_DFS(chanList[i]))
+                    aValidChannels[numChannels++] =
+                                                 vos_chan_to_freq(chanList[i]);
+            break;
+
+    case WIFI_BAND_A_DFS_ONLY:
+            smsLog(pMac, VOS_TRACE_LEVEL_INFO,
+                          FL("WIFI_BAND_A_DFS (5 GHz DFS only)"));
+            for (i = 0; i < totValidChannels; i++)
+                if (CSR_IS_CHANNEL_5GHZ(chanList[i]) &&
+                             CSR_IS_CHANNEL_DFS(chanList[i]))
+                    aValidChannels[numChannels++] =
+                                                 vos_chan_to_freq(chanList[i]);
+            break;
+
+    case WIFI_BAND_A_WITH_DFS:
+            smsLog(pMac, VOS_TRACE_LEVEL_INFO,
+                          FL("WIFI_BAND_A_WITH_DFS (5 GHz with DFS)"));
+            for (i = 0; i < totValidChannels; i++)
+                if (CSR_IS_CHANNEL_5GHZ(chanList[i]))
+                    aValidChannels[numChannels++] =
+                                                 vos_chan_to_freq(chanList[i]);
+            break;
+
+    case WIFI_BAND_ABG_WITH_DFS:
+            smsLog(pMac, VOS_TRACE_LEVEL_INFO,
+                     FL("WIFI_BAND_ABG_WITH_DFS (2.4 GHz + 5 GHz with DFS)"));
+            for (i = 0; i < totValidChannels; i++)
+                if (CSR_IS_CHANNEL_24GHZ(chanList[i]) ||
+                             CSR_IS_CHANNEL_5GHZ(chanList[i]))
+                    aValidChannels[numChannels++] =
+                                                 vos_chan_to_freq(chanList[i]);
+            break;
+
+    default:
+            smsLog(pMac, VOS_TRACE_LEVEL_ERROR,
+                    FL("Unknown wifiBand (%d))"), wifiBand);
+            return eHAL_STATUS_INVALID_PARAMETER;
+            break;
+    }
+    *pNumChannels = numChannels;
+
+    return status;
+}
+/* ---------------------------------------------------------------------------
+    \fn sme_EXTScanGetCapabilities
+    \brief  SME API to fetch Extended Scan capabilities
+    \param  hHal
+    \param  pReq: Extended Scan capabilities structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_EXTScanGetCapabilities (tHalHandle hHal,
+                                     tSirGetEXTScanCapabilitiesReqParams *pReq)
+{
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+    vos_msg_t vosMessage;
+
+    MTRACE(vos_trace(VOS_MODULE_ID_SME,
+               TRACE_CODE_SME_RX_HDD_EXTSCAN_GET_CAPABILITIES, NO_SESSION, 0));
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        /* Serialize the req through MC thread */
+        vosMessage.bodyptr = pReq;
+        vosMessage.type    = WDA_EXTSCAN_GET_CAPABILITIES_REQ;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+           status = eHAL_STATUS_FAILURE;
+
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return(status);
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_EXTScanStart
+    \brief  SME API to issue Extended Scan start
+    \param  hHal
+    \param  pStartCmd: Extended Scan start structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_EXTScanStart (tHalHandle hHal,
+                           tSirEXTScanStartReqParams *pStartCmd)
+{
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+    vos_msg_t vosMessage;
+
+    MTRACE(vos_trace(VOS_MODULE_ID_SME,
+                 TRACE_CODE_SME_RX_HDD_EXTSCAN_START, NO_SESSION, 0));
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        /* Serialize the req through MC thread */
+        vosMessage.bodyptr = pStartCmd;
+        vosMessage.type    = WDA_EXTSCAN_START_REQ;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+           status = eHAL_STATUS_FAILURE;
+
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return(status);
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_EXTScanStop
+    \brief  SME API to issue Extended Scan stop
+    \param  hHal
+    \param  pStopReq: Extended Scan stop structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_EXTScanStop(tHalHandle hHal, tSirEXTScanStopReqParams *pStopReq)
+{
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+    vos_msg_t vosMessage;
+
+    MTRACE(vos_trace(VOS_MODULE_ID_SME,
+                 TRACE_CODE_SME_RX_HDD_EXTSCAN_STOP, NO_SESSION, 0));
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme)))
+    {
+        /* Serialize the req through MC thread */
+        vosMessage.bodyptr = pStopReq;
+        vosMessage.type    = WDA_EXTSCAN_STOP_REQ;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+        {
+           status = eHAL_STATUS_FAILURE;
+        }
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return(status);
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SetBssHotlist
+    \brief  SME API to set BSSID hotlist
+    \param  hHal
+    \param  pSetHotListReq: Extended Scan set hotlist structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_SetBssHotlist (tHalHandle hHal,
+                            tSirEXTScanSetBssidHotListReqParams *pSetHotListReq)
+{
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+    vos_msg_t vosMessage;
+
+    MTRACE(vos_trace(VOS_MODULE_ID_SME,
+               TRACE_CODE_SME_RX_HDD_EXTSCAN_SET_BSS_HOTLIST, NO_SESSION, 0));
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        /* Serialize the req through MC thread */
+        vosMessage.bodyptr = pSetHotListReq;
+        vosMessage.type    = WDA_EXTSCAN_SET_BSSID_HOTLIST_REQ;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+           status = eHAL_STATUS_FAILURE;
+
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+
+    return(status);
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_ResetBssHotlist
+    \brief  SME API to reset BSSID hotlist
+    \param  hHal
+    \param  pSetHotListReq: Extended Scan set hotlist structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_ResetBssHotlist (tHalHandle hHal,
+                               tSirEXTScanResetBssidHotlistReqParams *pResetReq)
+{
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+    vos_msg_t vosMessage;
+
+    MTRACE(vos_trace(VOS_MODULE_ID_SME,
+              TRACE_CODE_SME_RX_HDD_EXTSCAN_RESET_BSS_HOTLIST, NO_SESSION, 0));
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        /* Serialize the req through MC thread */
+        vosMessage.bodyptr = pResetReq;
+        vosMessage.type    = WDA_EXTSCAN_RESET_BSSID_HOTLIST_REQ;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+           status = eHAL_STATUS_FAILURE;
+
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return(status);
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SetSignificantChange
+    \brief  SME API to set significant change
+    \param  hHal
+    \param  pSetSignificantChangeReq: Extended Scan set significant change structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_SetSignificantChange (tHalHandle hHal,
+         tSirEXTScanSetSignificantChangeReqParams *pSetSignificantChangeReq)
+{
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+    vos_msg_t vosMessage;
+
+    MTRACE(vos_trace(VOS_MODULE_ID_SME,
+           TRACE_CODE_SME_RX_HDD_EXTSCAN_SET_SIGNF_CHANGE, NO_SESSION, 0));
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        /* Serialize the req through MC thread */
+        vosMessage.bodyptr = pSetSignificantChangeReq;
+        vosMessage.type    = WDA_EXTSCAN_SET_SIGNF_RSSI_CHANGE_REQ;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+           status = eHAL_STATUS_FAILURE;
+
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return(status);
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_ResetSignificantChange
+    \brief  SME API to reset significant change
+    \param  hHal
+    \param  pResetReq: Extended Scan reset significant change structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_ResetSignificantChange (tHalHandle hHal,
+                          tSirEXTScanResetSignificantChangeReqParams *pResetReq)
+{
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+    vos_msg_t vosMessage;
+
+    MTRACE(vos_trace(VOS_MODULE_ID_SME,
+           TRACE_CODE_SME_RX_HDD_EXTSCAN_RESET_SIGNF_CHANGE, NO_SESSION, 0));
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        /* Serialize the req through MC thread */
+        vosMessage.bodyptr = pResetReq;
+        vosMessage.type    = WDA_EXTSCAN_RESET_SIGNF_RSSI_CHANGE_REQ;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+           status = eHAL_STATUS_FAILURE;
+
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return(status);
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getCachedResults
+    \brief  SME API to get cached results
+    \param  hHal
+    \param  pCachedResultsReq: Extended Scan get cached results structure
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_getCachedResults (tHalHandle hHal,
+                        tSirEXTScanGetCachedResultsReqParams *pCachedResultsReq)
+{
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+    vos_msg_t vosMessage;
+
+    MTRACE(vos_trace(VOS_MODULE_ID_SME,
+           TRACE_CODE_SME_RX_HDD_EXTSCAN_GET_CACHED_RESULTS, NO_SESSION, 0));
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        /* Serialize the req through MC thread */
+        vosMessage.bodyptr = pCachedResultsReq;
+        vosMessage.type    = WDA_EXTSCAN_GET_CACHED_RESULTS_REQ;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+           status = eHAL_STATUS_FAILURE;
+
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return(status);
+}
+
+eHalStatus sme_EXTScanRegisterCallback (tHalHandle hHal,
+                          void (*pEXTScanIndCb)(void *, const tANI_U16, void *),
+                           void *callbackContext)
+{
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        pMac->sme.pEXTScanIndCb = pEXTScanIndCb;
+        pMac->sme.pEXTScanCallbackContext = callbackContext;
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return(status);
+}
+
+#endif /* WLAN_FEATURE_EXTSCAN */

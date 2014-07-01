@@ -217,7 +217,8 @@ typedef enum
     eHAL_STATUS_FT_PREAUTH_KEY_SUCCESS,
     eHAL_STATUS_FT_PREAUTH_KEY_FAILED,
 #endif
-
+    //CMD not Queued in SME
+    eHAL_STATUS_CMD_NOT_QUEUED,
     // not a real status.  Just a way to mark the maximum in the enum.
     eHAL_STATUS_MAX
 

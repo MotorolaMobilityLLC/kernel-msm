@@ -385,8 +385,11 @@ void sme_QosUpdateHandOff(v_U8_t sessionId,
    qos mapping table maintained in HDD
   \param hHal - The handle returned by macOpen.
   \param dscpmapping - pointer to the qos mapping structure in HDD
+  \param sessionId - session id
 
   \sa
 -------------------------------------------------------------------------*/
-VOS_STATUS sme_UpdateDSCPtoUPMapping( tHalHandle hHal, sme_QosWmmUpType* dscpmapping);
+VOS_STATUS sme_UpdateDSCPtoUPMapping(tHalHandle hHal,
+    sme_QosWmmUpType* dscpmapping, v_U8_t sessionId);
+
 #endif //#if !defined( __SME_QOSAPI_H )

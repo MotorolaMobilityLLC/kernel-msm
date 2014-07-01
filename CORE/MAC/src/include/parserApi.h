@@ -269,6 +269,7 @@ typedef struct sSirAssocRsp
     tDot11fIEVHTOperation     VHTOperation;
 #endif
     tDot11fIEOBSSScanParameters OBSSScanParameters;
+    tSirQosMapSet QosMapSet;
 } tSirAssocRsp, *tpSirAssocRsp;
 
 #if defined(FEATURE_WLAN_ESE_UPLOAD)

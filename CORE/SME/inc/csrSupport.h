@@ -764,7 +764,12 @@ tANI_BOOLEAN csrRatesIsDot11Rate11bSupportedRate( tANI_U8 dot11Rate );
 tANI_BOOLEAN csrRatesIsDot11Rate11aSupportedRate( tANI_U8 dot11Rate );
 tAniEdType csrTranslateEncryptTypeToEdType( eCsrEncryptionType EncryptType ); 
 //pIes shall contain IEs from pSirBssDesc. It shall be returned from function csrGetParsedBssDescriptionIEs 
-tANI_BOOLEAN csrIsSecurityMatch( tHalHandle hHal, tCsrAuthList *authType, tCsrEncryptionList *pUCEncryptionType, tCsrEncryptionList *pMCEncryptionType,
+tANI_BOOLEAN csrIsSecurityMatch( tHalHandle hHal, tCsrAuthList *authType,
+                                 tCsrEncryptionList *pUCEncryptionType,
+                                 tCsrEncryptionList *pMCEncryptionType,
+                                 tANI_BOOLEAN *pMFPEnabled,
+                                 tANI_U8 *pMFPRequired,
+                                 tANI_U8 *pMFPCapable,
                                  tSirBssDescription *pSirBssDesc, tDot11fBeaconIEs *pIes, 
                                  eCsrAuthType *negotiatedAuthtype, eCsrEncryptionType *negotiatedUCCipher, eCsrEncryptionType *negotiatedMCCipher );
 tANI_BOOLEAN csrIsBSSTypeMatch(eCsrRoamBssType bssType1, eCsrRoamBssType bssType2);

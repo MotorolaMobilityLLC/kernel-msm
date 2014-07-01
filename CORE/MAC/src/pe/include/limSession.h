@@ -351,6 +351,8 @@ typedef struct sPESession           // Added to Support BT-AMP
     tSirOBSSHT40Param obssHT40ScanParam;
     /* flag to indicate country code in beacon */
     tANI_U8  countryInfoPresent;
+    /*  DSCP to UP mapping for HS 2.0 */
+    tSirQosMapSet QosMapSet;
 }tPESession, *tpPESession;
 
 #define LIM_MAX_ACTIVE_SESSIONS 4
