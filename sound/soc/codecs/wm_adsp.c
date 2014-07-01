@@ -22,6 +22,7 @@
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
+#include <linux/vmalloc.h>
 #include <linux/workqueue.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -2740,7 +2741,7 @@ int wm_adsp_stream_alloc(struct wm_adsp *adsp,
 
 	if (!adsp->capt_buf.buf) {
 		adsp->capt_buf_size = WM_ADSP_CAPTURE_BUFFER_SIZE;
-		adsp->capt_buf.buf = kzalloc(adsp->capt_buf_size, GFP_KERNEL);
+		adsp->capt_buf.buf = vmalloc(adsp->capt_buf_size);
 
 		if (!adsp->capt_buf.buf)
 			return -ENOMEM;
@@ -2785,7 +2786,7 @@ int wm_adsp_stream_alloc(struct wm_adsp *adsp,
 err_raw_capt_buf:
 	kfree(adsp->raw_capt_buf);
 err_capt_buf:
-	kfree(adsp->capt_buf.buf);
+	vfree(adsp->capt_buf.buf);
 
 	return ret;
 }
@@ -2804,7 +2805,7 @@ int wm_adsp_stream_free(struct wm_adsp *adsp)
 	}
 
 	if (adsp->capt_buf.buf) {
-		kfree(adsp->capt_buf.buf);
+		vfree(adsp->capt_buf.buf);
 		adsp->capt_buf.buf = NULL;
 	}
 
