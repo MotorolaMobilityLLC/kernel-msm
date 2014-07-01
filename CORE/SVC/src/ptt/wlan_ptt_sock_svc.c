@@ -112,7 +112,7 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid, int
    }
    wnl = (tAniNlHdr *) nlh;
    wnl->radio = radio;
-   memcpy(&wnl->wmsg, wmsg, wmsg_length);
+   vos_mem_copy(&wnl->wmsg, wmsg, wmsg_length);
    PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: Sending Msg Type [0x%X] to pid[%d]\n",
       __func__, be16_to_cpu(wmsg->type), pid);
 #ifdef PTT_SOCK_DEBUG_VERBOSE

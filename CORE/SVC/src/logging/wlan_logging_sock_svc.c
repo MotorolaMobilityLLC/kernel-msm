@@ -37,8 +37,8 @@
 #include <wlan_nlink_common.h>
 #include <wlan_logging_sock_svc.h>
 #include <vos_types.h>
-#include <vos_trace.h>
 #include <kthread.h>
+#include "vos_memory.h"
 
 #define LOGGING_TRACE(level, args...) \
 		VOS_TRACE(VOS_MODULE_ID_HDD, level, ## args)
@@ -139,7 +139,7 @@ static int wlan_send_sock_msg_to_app(tAniHdr *wmsg, int radio,
 
 	wnl = (tAniNlHdr *) nlh;
 	wnl->radio = radio;
-	memcpy(&wnl->wmsg, wmsg, wmsg_length);
+	vos_mem_copy(&wnl->wmsg, wmsg, wmsg_length);
 	LOGGING_TRACE(VOS_TRACE_LEVEL_INFO,
 			"%s: Sending Msg Type [0x%X] to pid[%d]\n",
 			__func__, be16_to_cpu(wmsg->type), pid);
@@ -293,8 +293,8 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 		total_log_len = MAX_LOGMSG_LENGTH - sizeof(tAniNlHdr) - 2;
 	}
 
-	memcpy(&ptr[*pfilled_length], tbuf, tlen);
-	memcpy(&ptr[*pfilled_length + tlen], to_be_sent,
+	vos_mem_copy(&ptr[*pfilled_length], tbuf, tlen);
+	vos_mem_copy(&ptr[*pfilled_length + tlen], to_be_sent,
 			min(length, (total_log_len - tlen)));
 	*pfilled_length += tlen + min(length, total_log_len - tlen);
 	ptr[*pfilled_length] = '\n';
@@ -377,7 +377,7 @@ static int send_filled_buffers_to_user(void)
 
 		wnl = (tAniNlHdr *) nlh;
 		wnl->radio = plog_msg->radio;
-		memcpy(&wnl->wmsg, plog_msg->logbuf,
+		vos_mem_copy(&wnl->wmsg, plog_msg->logbuf,
 				plog_msg->filled_length +
 				sizeof(tAniHdr));
 
