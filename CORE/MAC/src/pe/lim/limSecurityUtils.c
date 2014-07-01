@@ -1064,6 +1064,7 @@ tANI_U32 val = 0;
           {
              limLog( pMac, LOGE, FL("WEPIdx length %d more than "
                                     "the Max limit, reset to Max"),defWEPIdx);
+             vos_mem_free (pSetStaKeyParams);
              return;
           }
           vos_mem_copy((tANI_U8 *) &pSetStaKeyParams->key[defWEPIdx],
