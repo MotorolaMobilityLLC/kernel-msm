@@ -36,7 +36,6 @@
 
 		qcom,msm-bus,name = "uart4";
 		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
 				<86 512 0 0>,
