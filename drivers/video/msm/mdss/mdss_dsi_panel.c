@@ -975,7 +975,7 @@ static void mdss_dsi_parse_panel_horizintal_line_idle(struct device_node *np,
 
 	cnt = len / sizeof(u32);
 
-	kp = kzalloc(sizeof(*kp) * cnt, GFP_KERNEL);
+	kp = kzalloc(sizeof(*kp) * (cnt / 3), GFP_KERNEL);
 	if (kp == NULL) {
 		pr_err("%s: No memory\n", __func__);
 		return;
