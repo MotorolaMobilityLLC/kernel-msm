@@ -60,7 +60,10 @@
 
 #define ADSP_STATE_READY_TIMEOUT_MS 3000
 
+//ASUS_BSP Ken_Cheng
+#if defined(ASUS_CW_WITH_CODEC)
 static void *adsp_state_notifier;
+#endif
 
 static int msm8226_auxpcm_rate = 8000;
 static atomic_t auxpcm_rsc_ref;
@@ -78,10 +81,15 @@ static const struct soc_enum msm8226_auxpcm_enum[] = {
 #define I2S_PCM_SEL 1
 #define I2S_PCM_SEL_OFFSET 1
 
+//ASUS_BSP Ken_Cheng
+#if defined(ASUS_CW_WITH_CODEC)
 void *def_tapan_mbhc_cal(void);
+#endif
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
 
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 static struct wcd9xxx_mbhc_config mbhc_cfg = {
 	.read_fw_bin = false,
 	.calibration = NULL,
@@ -105,6 +113,8 @@ static struct wcd9xxx_mbhc_config mbhc_cfg = {
 	.enable_anc_mic_detect = false,
 	.hw_jack_type = FOUR_POLE_JACK,
 };
+#endif
+//ASUS_BSP Ken_Cheng ---
 
 struct msm_auxpcm_gpio {
 	unsigned gpio_no;
@@ -150,11 +160,15 @@ static int msm_slim_0_rx_ch = 1;
 static int msm_slim_0_tx_ch = 1;
 
 static int msm_btsco_rate = BTSCO_RATE_8KHZ;
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 static int msm_btsco_ch = 1;
 
 static struct mutex cdc_mclk_mutex;
 static struct clk *codec_clk;
 static int clk_users;
+#endif
+//ASUS_BSP Ken_Cheng ---
 static int ext_spk_amp_gpio = -1;
 static int vdd_spkr_gpio = -1;
 static int msm_proxy_rx_ch = 2;
@@ -162,6 +176,81 @@ static int msm_proxy_rx_ch = 2;
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
+#if defined(ASUS_WI500Q_PROJECT)
+struct request_gpio {
+        unsigned gpio_no;
+        char *gpio_name;
+};
+
+static struct request_gpio pri_mi2s_gpio[] = {
+
+        {
+                .gpio_name = "PRI_MI2S_EN",
+        },
+
+        {
+                .gpio_name = "PRI_MI2S_SCK",
+        },
+        {
+                .gpio_name = "PRI_MI2S_WS",
+        },
+
+        {
+                .gpio_name = "PRI_MI2S_DIN",
+        },
+};
+/* MI2S clock */
+struct mi2s_clk {
+        struct clk *core_clk;
+        struct clk *osr_clk;
+        struct clk *bit_clk;
+        atomic_t mi2s_rsc_ref;
+};
+static struct mi2s_clk pri_mi2s_clk;
+static struct platform_device *spdev;
+
+static int msm8226_dtparse_mi2s(void)
+{
+        pri_mi2s_gpio[0].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+                "qcom,pri-mi2s-gpio-en", 0);
+        if (pri_mi2s_gpio[0].gpio_no < 0) {
+                pr_err("%s: MI2S_EN GPIO error in the device tree\n",
+                        __func__);
+                return -EINVAL;
+        }
+
+        pri_mi2s_gpio[1].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+                "qcom,pri-mi2s-gpio-sck", 0);
+        if (pri_mi2s_gpio[1].gpio_no < 0) {
+                pr_err("%s: MI2S_SCK GPIO error in the device tree\n",
+                        __func__);
+                return -EINVAL;
+        }
+
+        pri_mi2s_gpio[2].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+                "qcom,pri-mi2s-gpio-ws", 0);
+        if (pri_mi2s_gpio[2].gpio_no < 0) {
+                pr_err("%s: MI2S_WS GPIO error in the device tree\n",
+                        __func__);
+                return -EINVAL;
+        }
+
+        pri_mi2s_gpio[3].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+                "qcom,pri-mi2s-gpio-din", 0);
+        if (pri_mi2s_gpio[3].gpio_no < 0) {
+                pr_err("%s: MI2S_DIN GPIO error in the device tree\n",
+                        __func__);
+                return -EINVAL;
+        }
+
+        return 0;
+}
+#endif
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
+
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 static inline int param_is_mask(int p)
 {
 	return ((p >= SNDRV_PCM_HW_PARAM_FIRST_MASK) &&
@@ -184,11 +273,15 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 		m->bits[bit >> 5] |= (1 << (bit & 31));
 	}
 }
+#endif
+//ASUS_BSP Ken_Cheng ---
 
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm)
 {
 	int ret = 0;
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	pr_debug("%s: enable = %d clk_users = %d\n",
 		__func__, enable, clk_users);
 
@@ -228,6 +321,8 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 	}
 exit:
 	mutex_unlock(&cdc_mclk_mutex);
+#endif
+//ASUS_BSP Ken_Cheng ---
 	return ret;
 }
 
@@ -524,6 +619,8 @@ static int msm_btsco_rate_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 static int msm_btsco_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -554,6 +651,8 @@ static int msm_be_fm_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+#endif
+//ASUS_BSP Ken_Cheng ---
 
 static int msm8226_auxpcm_rate_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
@@ -790,6 +889,8 @@ static struct snd_soc_ops msm_auxpcm_be_ops = {
 	.shutdown = msm_auxpcm_shutdown,
 };
 
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 static int msm_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					    struct snd_pcm_hw_params *params)
 {
@@ -826,6 +927,8 @@ static int msm_slim_0_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+#endif
+//ASUS_BSP Ken_Cheng ---
 
 static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
@@ -864,6 +967,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			slim0_rx_sample_rate_get, slim0_rx_sample_rate_put),
 };
 
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 static int msm_afe_set_config(struct snd_soc_codec *codec)
 {
 	int rc;
@@ -1195,6 +1300,118 @@ static struct snd_soc_ops msm8226_be_ops = {
 	.hw_params = msm_snd_hw_params,
 	.shutdown = msm_snd_shutdown,
 };
+#endif
+//ASUS_BSP Ken_Cheng ---
+
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
+#if defined(ASUS_WI500Q_PROJECT)
+static struct afe_clk_cfg lpass_mi2s_enable = {
+        AFE_API_VERSION_I2S_CONFIG,
+        Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ,
+        Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+        Q6AFE_LPASS_CLK_SRC_INTERNAL,
+        Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+        Q6AFE_LPASS_MODE_BOTH_VALID,
+        0,
+};
+static struct afe_clk_cfg lpass_mi2s_disable = {
+        AFE_API_VERSION_I2S_CONFIG,
+        0,
+        0,
+        Q6AFE_LPASS_CLK_SRC_INTERNAL,
+        Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+        Q6AFE_LPASS_MODE_BOTH_VALID,
+        0,
+};
+
+
+static int msm226_pri_mi2s_free_gpios(void)
+{
+        int     i;
+        for (i = 0; i < ARRAY_SIZE(pri_mi2s_gpio); i++)
+                gpio_free(pri_mi2s_gpio[i].gpio_no);
+        return 0;
+}
+
+static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream)
+{
+        int ret =0;
+
+        if (atomic_dec_return(&pri_mi2s_clk.mi2s_rsc_ref) == 0) {
+                pr_info("%s: free mi2s resources\n", __func__);
+
+                ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX, &lpass_mi2s_disable);
+                if (ret < 0) {
+                        pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+
+                }
+                msm226_pri_mi2s_free_gpios();
+        }
+}
+
+static int msm8226_configure_pri_mi2s_gpio(void)
+{
+        int     rtn;
+        int     i;
+        for (i = 0; i < ARRAY_SIZE(pri_mi2s_gpio); i++) {
+
+                rtn = gpio_request(pri_mi2s_gpio[i].gpio_no,
+                                pri_mi2s_gpio[i].gpio_name);
+
+                pr_info("%s: gpio = %d, gpio name = %s, rtn = %d\n", __func__,
+                pri_mi2s_gpio[i].gpio_no, pri_mi2s_gpio[i].gpio_name, rtn);
+                if (rtn) {
+                        pr_err("%s: Failed to request gpio %d\n",
+                                   __func__,
+                                   pri_mi2s_gpio[i].gpio_no);
+                        while( i >= 0) {
+                                gpio_free(pri_mi2s_gpio[i].gpio_no);
+                                i--;
+                        }
+                        break;
+                }
+        }
+        gpio_direction_output(60, 1);
+        printk("msm8226_configure_pri_mi2s_gpio: done");
+
+        return rtn;
+}
+static int msm8226_mi2s_startup(struct snd_pcm_substream *substream)
+{
+        int ret = 0;
+        struct snd_soc_pcm_runtime *rtd = substream->private_data;
+        struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+
+        pr_info("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+
+	if (atomic_inc_return(&pri_mi2s_clk.mi2s_rsc_ref) == 1) {
+                pr_info("%s: acquire mi2s resources\n", __func__);
+                msm8226_configure_pri_mi2s_gpio();
+                ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX, &lpass_mi2s_enable);
+                printk("afe_set_lpass_clock: for AFE_PORT_ID_PRIMARY_MI2S_TX done\n");
+                if (ret < 0) {
+                        pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+                        return ret;
+                }
+
+                ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+                if (ret < 0) {
+                        dev_err(cpu_dai->dev, "set format for CPU dai"
+                                " failed\n");
+                        printk("msm8226_mi2s_startup: set format for CPU dai failed\n");
+                }
+                printk("msm8226_mi2s_startup: snd_soc_dai_set_fmt for cpu_dai done\n");
+        }
+        printk("msm8226_mi2s_startup: done\n");
+        return ret;
+}
+
+static struct snd_soc_ops msm8226_mi2s_be_ops = {
+        .startup = msm8226_mi2s_startup,
+        .shutdown = msm8226_mi2s_shutdown
+};
+#endif
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm8226_common_dai[] = {
@@ -1229,6 +1446,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
 	},
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "Circuit-Switch Voice",
 		.stream_name = "CS-Voice",
@@ -1260,6 +1479,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_VOIP,
 	},
+#endif
+//ASUS_BSP Ken_Cheng ---
 	{
 		.name = "MSM8226 LPA",
 		.stream_name = "LPA",
@@ -1275,6 +1496,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA3,
 	},
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	/* Hostless PCM purpose */
 	{
 		.name = "SLIMBUS_0 Hostless",
@@ -1305,6 +1528,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+#endif
+//ASUS_BSP Ken_Cheng ---
 	{
 		.name = "MSM AFE-PCM RX",
 		.stream_name = "AFE-PROXY RX",
@@ -1355,6 +1580,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "SLIMBUS_1 Hostless",
 		.stream_name = "SLIMBUS_1 Hostless",
@@ -1412,6 +1639,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+#endif
+//ASUS_BSP Ken_Cheng ---
 	{
 		.name = "MSM8226 LowLatency",
 		.stream_name = "MultiMedia5",
@@ -1442,6 +1671,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA9,
 	},
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "VoLTE",
 		.stream_name = "VoLTE",
@@ -1709,6 +1940,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
+#endif
+//ASUS_BSP Ken_Cheng ---
 	/* Backend AFE DAI Links */
 	{
 		.name = LPASS_BE_AFE_PCM_RX,
@@ -1736,6 +1969,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.be_hw_params_fixup = msm_proxy_tx_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	/* HDMI Hostless */
 	{
 		.name = "HDMI_RX_HOSTLESS",
@@ -1751,6 +1986,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+#endif
+//ASUS_BSP Ken_Cheng ---
 	/* AUX PCM Backend DAI Links */
 	{
 		.name = LPASS_BE_AUXPCM_RX,
@@ -1780,6 +2017,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ops = &msm_auxpcm_be_ops,
 		.ignore_suspend = 1
 	},
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	/* Incall Record Uplink BACK END DAI Link */
 	{
 		.name = LPASS_BE_INCALL_RECORD_TX,
@@ -1832,9 +2071,29 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
+#endif
+//ASUS_BSP Ken_Cheng ---
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
+#if defined(ASUS_WI500Q_PROJECT)
+        {
+                .name = LPASS_BE_PRI_MI2S_TX,
+                .stream_name = "Primary MI2S Capture",
+                .cpu_dai_name = "msm-dai-q6-mi2s.0",
+                .platform_name = "msm-pcm-routing",
+                .codec_name     = "msm-stub-codec.1",
+                .codec_dai_name = "msm-stub-tx",
+                .no_pcm = 1,
+                .be_id = MSM_BACKEND_DAI_PRI_MI2S_TX,
+                .be_hw_params_fixup = msm_be_hw_params_fixup,
+                .ops = &msm8226_mi2s_be_ops,
+        },
+#endif
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 };
 
 static struct snd_soc_dai_link msm8226_9306_dai[] = {
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	/* Backend DAI Links */
 	{
 		.name = LPASS_BE_SLIMBUS_0_RX,
@@ -1961,9 +2220,13 @@ static struct snd_soc_dai_link msm8226_9306_dai[] = {
 		.ops = &msm8226_be_ops,
 		.ignore_suspend = 1,
 	},
+#endif
+//ASUS_BSP Ken_Cheng ---
 };
 
 static struct snd_soc_dai_link msm8226_9302_dai[] = {
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	/* Backend DAI Links */
 	{
 		.name = LPASS_BE_SLIMBUS_0_RX,
@@ -2090,6 +2353,8 @@ static struct snd_soc_dai_link msm8226_9302_dai[] = {
 		.ops = &msm8226_be_ops,
 		.ignore_suspend = 1,
 	},
+#endif
+//ASUS_BSP Ken_Cheng ---
 };
 
 static struct snd_soc_dai_link msm8226_9306_dai_links[
@@ -2176,6 +2441,8 @@ err:
 	return ret;
 }
 
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 static int msm8226_prepare_codec_mclk(struct snd_soc_card *card)
 {
 	struct msm8226_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
@@ -2229,12 +2496,16 @@ static int msm8226_setup_hs_jack(struct platform_device *pdev,
 	}
 	return 0;
 }
+#endif
+//ASUS_BSP Ken_Cheng ---
 
 static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 {
 
 	struct snd_soc_card *card;
 
+//ASUS_BSP Ken_Cheng
+#if defined(ASUS_CW_WITH_CODEC)
 	if (of_property_read_bool(dev->of_node,
 					"qcom,tapan-codec-9302")) {
 		card = &snd_soc_card_9302_msm8226;
@@ -2245,6 +2516,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 			msm8226_9302_dai, sizeof(msm8226_9302_dai));
 
 	} else {
+#endif
 
 		card = &snd_soc_card_msm8226;
 
@@ -2252,7 +2524,10 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 				sizeof(msm8226_common_dai));
 		memcpy(msm8226_9306_dai_links + ARRAY_SIZE(msm8226_common_dai),
 			msm8226_9306_dai, sizeof(msm8226_9306_dai));
+//ASUS_BSP Ken_Cheng
+#if defined(ASUS_CW_WITH_CODEC)
 	}
+#endif
 
 	return card;
 }
@@ -2263,7 +2538,10 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	struct msm8226_asoc_mach_data *pdata;
 	int ret;
 	const char *auxpcm_pri_gpio_set = NULL;
+//ASUS_BSP Ken_Cheng
+#if defined(ASUS_CW_WITH_CODEC)
 	const char *mbhc_audio_jack_type = NULL;
+#endif
 
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, "No platform supplied from device tree\n");
@@ -2278,6 +2556,13 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_WI500Q_PROJECT)
+        spdev = pdev;
+        msm8226_dtparse_mi2s();
+#endif
+//ASUS_BSP Ken_Cheng ---
+
 	card = populate_snd_card_dailinks(&pdev->dev);
 
 	card->dev = &pdev->dev;
@@ -2288,6 +2573,8 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	ret = snd_soc_of_parse_audio_routing(card,
 			"qcom,audio-routing");
 	if (ret)
@@ -2356,6 +2643,8 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 			dev_dbg(&pdev->dev, "Unknown value, hence setting to default");
 		}
 	}
+#endif
+//ASUS_BSP Ken_Cheng ---
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
@@ -2373,6 +2662,8 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 	vdd_spkr_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,cdc-vdd-spkr-gpios", 0);
 	if (vdd_spkr_gpio < 0) {
@@ -2411,6 +2702,8 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	}
 
 	msm8226_setup_hs_jack(pdev, pdata);
+#endif
+//ASUS_BSP Ken_Cheng ---
 
 	ret = of_property_read_string(pdev->dev.of_node,
 			"qcom,prim-auxpcm-gpio-set", &auxpcm_pri_gpio_set);
@@ -2444,11 +2737,15 @@ err_lineout_spkr:
 		ext_spk_amp_gpio = -1;
 	}
 
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 err_vdd_spkr:
 	if (vdd_spkr_gpio >= 0) {
 		gpio_free(vdd_spkr_gpio);
 		vdd_spkr_gpio = -1;
 	}
+#endif
+//ASUS_BSP Ken_Cheng ---
 
 err:
 	if (pdata->mclk_gpio > 0) {
@@ -2457,8 +2754,14 @@ err:
 		gpio_free(pdata->mclk_gpio);
 		pdata->mclk_gpio = 0;
 	}
+
+//ASUS_BSP Ken_Cheng +++
+#if defined(ASUS_CW_WITH_CODEC)
 err1:
 	devm_kfree(&pdev->dev, pdata);
+#endif
+//ASUS_BSP Ken_Cheng ---
+
 	return ret;
 }
 
