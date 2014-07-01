@@ -2336,7 +2336,8 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 		ret = msm_hs_clock_vote(msm_uport);
 		if (ret) {
 			dev_err(uport->dev, "Clock ON Failure"
-			"For UART CLK Stalling HSUART\n");
+				" For UART CLK Stalling HSUART\n");
+			spin_lock_irqsave(&uport->lock, flags);
 			break;
 		}
 
@@ -2660,7 +2661,7 @@ static int msm_hs_startup(struct uart_port *uport)
 			  "msm_hs_uart", msm_uport);
 	if (unlikely(ret)) {
 		MSM_HS_ERR("%s():Error getting uart irq\n", __func__);
-		goto free_wake_irq;
+		goto clear_wake_irq;
 	}
 	if (use_low_power_wakeup(msm_uport)) {
 
@@ -2681,7 +2682,7 @@ static int msm_hs_startup(struct uart_port *uport)
 	if (ret) {
 		MSM_HS_ERR("%s(): Error could not turn on UART clk\n",
 				__func__);
-		goto free_uart_irq;
+		goto free_wake_irq;
 	}
 
 	spin_lock_irqsave(&uport->lock, flags);
@@ -2696,9 +2697,12 @@ static int msm_hs_startup(struct uart_port *uport)
 
 	return 0;
 
+free_wake_irq:
+	if (use_low_power_wakeup(msm_uport))
+		free_irq(msm_uport->wakeup.irq, msm_uport);
 free_uart_irq:
 	free_irq(uport->irq, msm_uport);
-free_wake_irq:
+clear_wake_irq:
 	if (use_low_power_wakeup(msm_uport))
 		irq_set_irq_wake(msm_uport->wakeup.irq, 0);
 sps_disconnect_rx:
