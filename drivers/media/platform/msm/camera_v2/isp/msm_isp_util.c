@@ -480,6 +480,11 @@ long msm_isp_ioctl(struct v4l2_subdev *sd,
 		rc = msm_isp_cfg_stats_stream(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
+	case VIDIOC_MSM_ISP_UPDATE_STATS_STREAM:
+		mutex_lock(&vfe_dev->core_mutex);
+		rc = msm_isp_update_stats_stream(vfe_dev, arg);
+		mutex_unlock(&vfe_dev->core_mutex);
+		break;
 	case VIDIOC_MSM_ISP_UPDATE_STREAM:
 		mutex_lock(&vfe_dev->core_mutex);
 		rc = msm_isp_update_axi_stream(vfe_dev, arg);
