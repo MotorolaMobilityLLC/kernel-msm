@@ -217,7 +217,7 @@ typedef struct sIEDefn {
 
 #if ! defined(BTAMP_MEMCPY)
 #   define BTAMP_MEMCPY(ctx, dst, src, len) \
-        memcpy( (dst), (src), (len) )        \
+        vos_mem_copy( (dst), (src), (len) )        \
 
 #endif
 
