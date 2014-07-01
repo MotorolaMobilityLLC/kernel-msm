@@ -1363,8 +1363,8 @@ static ssize_t attr_reg_dump(struct device *dev, struct device_attribute *attr, 
 static int factory_test_get_output(struct device *dev, short *rOUT)
 {
 	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	u16 OUT[2];
-	u8 rbuf[2];
+	u16 OUT[3];
+	u8 rbuf[3];
 	int err;
 	int i;
 
@@ -1426,7 +1426,7 @@ static int factory_test_get_output(struct device *dev, short *rOUT)
 
 			//convert the output to mg (2's complement then multiply by 0.06)
 			printk("[lis3dsh] OUT[X]=%d OUT[Y]=%d OUT[Z]=%d\n", OUT[0], OUT[1], OUT[2]);
-			for(i=0;i<2;i++) {
+			for(i=0;i<3;i++) {
 				rOUT[i] = (short)OUT[i];
 				rOUT[i] = rOUT[i]*6/100;
 			}
@@ -1521,7 +1521,7 @@ static ssize_t attr_factory_test(struct device *dev,	struct device_attribute *at
 	OUT_ABS[2] = abs(OUT_ST[2] - OUT_NOST[2]);
 	printk("[lis3dsh] OUT_ABS[X]=%d OUT_ABS[Y]=%d OUT_ABS[Z]=%d\n", OUT_ABS[0], OUT_ABS[1], OUT_ABS[2]);
 
-	for( i=0 ; i < 2 ; i++) {
+	for( i=0 ; i < 3 ; i++) {
 		if (70 > OUT_ABS[i] || OUT_ABS[i] > 1400)
 			goto err_out_of_range;
 	}
