@@ -11,6 +11,7 @@
 */
 
 #include "msm8916.dtsi"
+#include "msm8916-memory.dtsi"
 #include "msm8916-pinctrl.dtsi"
 #include "msm8916-camera-sensor-mtp.dtsi"
 #include "dsi-panel-mot-boe-450-qHD-video.dtsi"
