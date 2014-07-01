@@ -281,8 +281,9 @@ Optional properties:
 					--> Sleep value (in ms)
 - qcom,partial-update-enabled:		Boolean used to enable partial
 					panel update for command mode panels.
-- qcom,mdss-dsi-horizontal-line-idle:	A list of horizontal line idle value.
-					--> (EC - SC) range (low and hight) + idle value.
+- qcom,mdss-dsi-horizontal-line-idle:	List of width ranges (EC - SC) in pixels indicating
+					additional idle time in dsi clock cycles that is needed
+					to compensate for smaller line width.
 - qcom,partial-update-roi-merge:	Boolean indicates roi combination is need
 					and function has been provided for dcs
 					2A/2B command.
@@ -404,7 +405,7 @@ Example:
 		mdss-dsi-tx-eot-append;
 		qcom,ulps-enabled;
 		qcom,panel-roi-alignment = <4 4 2 2 20 20>;
-		qcom,mdss-dsi-hor-line-idle = <0 40 256>,
+		qcom,mdss-dsi-horizontal-line-idle = <0 40 256>,
 						<40 120 128>,
 						<128 240 64>;
 	};
