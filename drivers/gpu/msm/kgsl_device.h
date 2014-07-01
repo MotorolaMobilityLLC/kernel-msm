@@ -704,18 +704,8 @@ void kgsl_cmdbatch_destroy_object(struct kref *kref);
 static inline int kgsl_process_private_get(struct kgsl_process_private *process)
 {
 	int ret = 0;
-	if (process != NULL) {
-		struct kgsl_process_private *priv;
-		mutex_lock(&kgsl_driver.process_mutex);
-		list_for_each_entry(priv, &kgsl_driver.process_list, list) {
-			if (priv == process) {
-				kref_get(&process->refcount);
-				ret = 1;
-				break;
-			}
-		}
-		mutex_unlock(&kgsl_driver.process_mutex);
-	}
+	if (process != NULL)
+		ret = kref_get_unless_zero(&process->refcount);
 	return ret;
 }
 
