@@ -156,7 +156,6 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_IBSS_STATUS       2
 #define WE_PMC_STATE         3
 #define WE_GET_WLAN_DBG      4
-#define WE_MODULE_DOWN_IND   5
 #define WE_GET_MAX_ASSOC     6
 #define WE_GET_WDI_DBG       7
 #define WE_GET_SAP_AUTO_CHANNEL_SELECTION 8
@@ -4582,19 +4581,6 @@ static int iw_setnone_getint(struct net_device *dev, struct iw_request_info *inf
            *value = 0;
            break;
         }
-        case WE_MODULE_DOWN_IND:
-        {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"%s: sending WLAN_MODULE_DOWN_IND", __func__);
-            send_btc_nlink_msg(WLAN_MODULE_DOWN_IND, 0);
-#ifdef WLAN_BTAMP_FEATURE
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"%s: Take down AMP PAL", __func__);
-            BSL_Deinit(vos_get_global_context(VOS_MODULE_ID_HDD, NULL));
-#endif
-            //WLANBAP_Close(vos_get_global_context(VOS_MODULE_ID_HDD, NULL));
-
-            *value = 0;
-            break;
-        }
         case WE_GET_MAX_ASSOC:
         {
             if (ccmCfgGetInt(hHal, WNI_CFG_ASSOC_STA_LIMIT, (tANI_U32 *)value) != eHAL_STATUS_SUCCESS)
@@ -7645,11 +7631,6 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         "getwlandbg" },
-
-    {   WE_MODULE_DOWN_IND,
-        0,
-        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
-        "moduleDownInd" },
 
     {   WE_GET_MAX_ASSOC,
         0,

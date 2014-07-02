@@ -209,7 +209,7 @@ static void vos_pkti_replenish_raw_pool(void)
       pSkb = alloc_skb(VPKT_SIZE_BUFFER, GFP_ATOMIC);
       if (unlikely(NULL == pSkb))
       {
-         // we have replenished all that we can
+         gpVosPacketContext->rxReplenishFailCount++;
          break;
       }
       skb_reserve(pSkb, VPKT_SIZE_BUFFER);

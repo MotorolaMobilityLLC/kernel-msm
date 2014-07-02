@@ -711,6 +711,22 @@ limProcessMlmAuthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                caps &= (~LIM_RRM_BIT_MASK);
             }
 
+            /* Clear short preamble bit if AP does not support it */
+            if(!(psessionEntry->pLimJoinReq->bssDescription.capabilityInfo &
+                (LIM_SHORT_PREAMBLE_BIT_MASK)))
+            {
+                caps &= (~LIM_SHORT_PREAMBLE_BIT_MASK);
+                limLog(pMac, LOG1, FL("Clearing short preamble:no AP support"));
+            }
+
+            /* Clear immediate block ack bit if AP does not support it */
+            if(!(psessionEntry->pLimJoinReq->bssDescription.capabilityInfo &
+                (LIM_IMMEDIATE_BLOCK_ACK_MASK)))
+            {
+                caps &= (~LIM_IMMEDIATE_BLOCK_ACK_MASK);
+                limLog(pMac, LOG1, FL("Clearing Immed Blk Ack:no AP support"));
+            }
+
             pMlmAssocReq->capabilityInfo = caps;
            PELOG3(limLog(pMac, LOG3,
                FL("Capabilities to be used in AssocReq=0x%X, privacy bit=%x shortSlotTime %x"),
