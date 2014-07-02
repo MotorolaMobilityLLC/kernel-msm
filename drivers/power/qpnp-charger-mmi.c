@@ -2183,6 +2183,7 @@ static enum power_supply_property msm_batt_power_props[] = {
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_VOLTAGE_OCV,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
+	POWER_SUPPLY_PROP_CHARGE_RATE,
 };
 
 static char *pm_power_supplied_to[] = {
@@ -2697,6 +2698,22 @@ skip_set_iusb_max:
 }
 
 static int
+get_prop_charge_rate(struct qpnp_chg_chip *chip)
+{
+
+	if (chip->weak_chg_attached)
+		return POWER_SUPPLY_CHARGE_RATE_WEAK;
+
+	else if (chip->hv_chg_attached)
+		return POWER_SUPPLY_CHARGE_RATE_TURBO;
+
+	if (!qpnp_chg_is_usb_chg_plugged_in(chip))
+		return POWER_SUPPLY_CHARGE_RATE_NONE;
+
+	return POWER_SUPPLY_CHARGE_RATE_NORMAL;
+}
+
+static int
 qpnp_batt_power_get_property(struct power_supply *psy,
 				       enum power_supply_property psp,
 				       union power_supply_propval *val)
@@ -2798,6 +2815,9 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
 		val->intval = get_prop_charge_counter(chip);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_RATE:
+		val->intval = get_prop_charge_rate(chip);
 		break;
 	default:
 		return -EINVAL;
