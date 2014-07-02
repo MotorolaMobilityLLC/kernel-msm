@@ -1285,6 +1285,17 @@ static bool dwc3_chg_det_check_linestate(struct dwc3_msm *mdwc)
 	return chg_det & (3 << 8);
 }
 
+static u32 dwc3_msm_get_linestate(struct dwc3_charger *charger)
+{
+	struct dwc3_msm *mdwc = container_of(charger, struct dwc3_msm, charger);
+	u32 linestate;
+
+	linestate = dwc3_msm_read_reg_field(mdwc->base, CHARGING_DET_OUTPUT_REG,
+								(3 << 8));
+	pr_debug("line state in chg_det_output_reg = 0x%08x\n", linestate);
+	return linestate;
+}
+
 static bool dwc3_chg_det_check_output(struct dwc3_msm *mdwc)
 {
 	u32 chg_det;
@@ -3235,6 +3246,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		mdwc->otg_xceiv = dwc->dotg->otg.phy;
 	/* Register with OTG if present */
 	if (mdwc->otg_xceiv) {
+		mdwc->charger.get_linestate = dwc3_msm_get_linestate;
 		/* Skip charger detection for simulator targets */
 		if (!mdwc->charger.skip_chg_detect) {
 			mdwc->charger.start_detection = dwc3_start_chg_det;
