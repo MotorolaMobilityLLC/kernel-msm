@@ -61,7 +61,9 @@
 };
 
 &i2c_2 {
-	synaptics_dsx_i2c@22 {
+	synaptics_dsx_i2c@20 {
+		/* override i2c addr as P0 only works with the old panel */
+		reg = <0x22>;
 		interrupts = <&msm_gpio 37 0>;
 		gpios = <&msm_gpio 37 0>, /* IRQ */
 			<&msm_gpio 38 0>; /* RESET - Dummy value, unused */

@@ -565,9 +565,9 @@
 };
 
 &i2c_2 {
-	synaptics_dsx_i2c@22 {
+	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
-		reg = <0x22>;
+		reg = <0x20>;
 		interrupts = <&msm_gpio 5 0>;
 		gpios = <&msm_gpio 21 0>, /* IRQ */
 			<&msm_gpio 20 0>; /* RESET */
