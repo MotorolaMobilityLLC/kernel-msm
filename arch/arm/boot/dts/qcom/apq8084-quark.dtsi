@@ -48,6 +48,7 @@
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
+	vdd-cx-supply = <&pma8084_s2_corner>;
 };
 
 &vbat_disp_vreg {
