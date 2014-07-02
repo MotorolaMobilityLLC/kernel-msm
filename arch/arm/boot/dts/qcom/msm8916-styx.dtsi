@@ -12,6 +12,7 @@
 
 #include "msm8916-moto-reserve.dtsi"
 #include "msm8916-moto-common.dtsi"
+#include "dsi-panel-mot-boe-450-qHD-video.dtsi"
 
 / {
 	model = "Motorola Mobility MSM 8916 Styx";
@@ -19,6 +20,9 @@
 };
 
 &mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_boe_450_qhd_vid_v2>;
+	vci_disp-supply = <&pm8916_l17>;
+	vddio_disp-supply = <&pm8916_l6>;
 	qcom,panel-supply-entries {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -45,4 +49,14 @@
 			qcom,supply-post-off-sleep = <1>;
 		};
 	};
+};
+
+&pm8916_l17 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&pm8916_l6 {
+	regulator-always-on;
+	regulator-boot-on;
 };
