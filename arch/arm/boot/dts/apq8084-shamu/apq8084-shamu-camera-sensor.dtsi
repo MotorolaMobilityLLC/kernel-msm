@@ -123,6 +123,7 @@
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&cam_mclk0_default &cam1_ctrl_default>;
 		pinctrl-1 = <&cam_mclk0_active &cam1_ctrl_active>;
+		qcom,ois-src = <&ois0>;
 	};
 
 	qcom,camera@1 {
