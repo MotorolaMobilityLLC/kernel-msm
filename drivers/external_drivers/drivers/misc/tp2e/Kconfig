@@ -1,0 +1,10 @@
+config TRACEPOINT_TO_EVENT
+	tristate "Tracepoint To Event (tp2e)"
+	depends on TRACEPOINTS && KCT_DAEMON
+	help
+	  This module enable bindings between tracepoints and specific
+	  events.
+	  Tracepoint probes (bindings) are defined in headers doing
+	  matching between tracepoint elements and event
+	  fields. Including those headers in the module declares and
+	  registers the probe.

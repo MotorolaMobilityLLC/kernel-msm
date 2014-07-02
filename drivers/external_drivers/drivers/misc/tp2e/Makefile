@@ -1,0 +1,1 @@
+obj-$(CONFIG_TRACEPOINT_TO_EVENT) += tp2e.o

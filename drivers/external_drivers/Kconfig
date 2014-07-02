@@ -9,7 +9,6 @@ menuconfig EXTERNAL_DRIVERS
 	  inside kernel tree.
 
 if EXTERNAL_DRIVERS
-
 menuconfig EXTERNAL_MISC_DRIVERS
 	bool "Enable support to misc drivers"
 	depends on EXTERNAL_DRIVERS
@@ -17,9 +16,7 @@ menuconfig EXTERNAL_MISC_DRIVERS
 	help
 	  Enable support to external misc drivers.
 
-if EXTERNAL_MISC_DRIVERS
 source "drivers/external_drivers/drivers/Kconfig"
-endif
 
 menuconfig EXTERNAL_INTEL_MEDIA
 	bool "Enable support to intel media drivers"

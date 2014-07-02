@@ -1,0 +1,41 @@
+config SCU_LOGGING
+	tristate "Intel SCU fabric debug driver"
+	default n
+	---help---
+	 Driver that enable for debugging Intel SCU firmware fabric related error.
+
+config UUID
+	tristate "get uuid"
+	default n
+	---help---
+	 Driver for get UUID.
+
+config EMMC_IPANIC
+	bool "Intel kernel panic diagnostics driver FOR EMMC"
+	default n
+	---help---
+	  Driver which handles kernel panics and attempts to write
+	  critical debugging data to a dedicated partition on EMMC.
+
+config EMMC_IPANIC_PLABEL
+	string "Intel kernel panic driver (EMMC_IPANIC) partition label"
+	depends on EMMC_IPANIC
+	default "panic"
+	---help---
+	  Set the default mmc partition label for EMMC_IPANIC driver.
+
+config KCT_DAEMON
+	tristate "Intel Kernel Crash Tool daemon"
+	default n
+	---help---
+	 Driver that enables the kct daemon to handle Intel crashtool events.
+
+config FPS_THROTTLE
+	tristate "register a new cooling device for FPS throttling"
+	depends on THERMAL
+	---help---
+	  register a new cooling device for FPS throttling.
+
+source "drivers/external_drivers/drivers/misc/bcm-lpm/Kconfig"
+source "drivers/external_drivers/drivers/misc/rawio/Kconfig"
+source "drivers/external_drivers/drivers/misc/tp2e/Kconfig"

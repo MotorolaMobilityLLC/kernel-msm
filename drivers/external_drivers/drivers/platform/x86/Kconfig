@@ -1,0 +1,46 @@
+#
+# X86 Platform Specific Drivers
+#
+config INTEL_MID_OSIP
+	tristate "osip driver for Intel MID platforms"
+	default y
+	help
+	  This driver modifies the osip header when rebooting,
+	  so that one can type 'reboot bootloader' to fall back
+	  in kboot mode.
+
+	  If unsure, say N.
+
+config INTEL_MID_OSIP_DEBUG_FS
+	tristate "osip driver debug fs"
+	depends on INTEL_MID_OSIP && DEBUG_FS
+	default y
+	help
+	  This driver adds debugfs interface.
+	  The main feature of that interface is to be able to modify the kernel
+	  cmdline directly in the OSIP.
+	  This has to be disabled if we have secure boot enabled by default.
+
+	  If unsure, say N.
+
+config INTEL_PSH_IPC
+	bool "Intel PSH IPC Support"
+	depends on X86_INTEL_MID
+	---help---
+	  PSH(Platform Services Hub) is a low frequence IA core on Tangier Platform,
+	  whose power consumption is quite low. PSH runs RTOS software inside itself,
+	  which independently controls and collects sensor data, pre-processes the data,
+	  and communicates with Atom. Thus ATOM side could be put into low power mode
+	  with more time, while all the sensor data are collected without any lost.
+
+	  PSH IPC is used as a  bridge for OS sensor service to control and access PSH
+	  sensors communications between kernel and PSH. This is not needed for PC-type
+	  machines.
+
+	  Say Y here to get Intel PSH IPC support.
+
+config INTEL_REBOOT_TARGET
+	bool "Intel Reboot Target"
+	---help---
+	  This driver provides a generic implementation for reboot target setting at
+	  reset time.

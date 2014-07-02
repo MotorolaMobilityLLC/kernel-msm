@@ -46,8 +46,6 @@ obj-$(subst m,y,$(CONFIG_SERIAL_MFD_HSU_EXT)) += platform_hsu.o
 
 # Panel Control Device
 obj-$(subst m,y,$(CONFIG_DRM_MRFLD)) += platform_panel.o
-# GPS
-obj-$(subst m,y,$(CONFIG_INTEL_MID_GPS)) += platform_gps.o
 # WIFI devices
 obj-$(subst m,y,$(CONFIG_WIFI_PLATFORM_DATA)) += platform_wifi.o
 # SCU log

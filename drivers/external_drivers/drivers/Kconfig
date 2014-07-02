@@ -1,0 +1,6 @@
+source "drivers/external_drivers/drivers/hwmon/Kconfig"
+source "drivers/external_drivers/drivers/misc/Kconfig"
+source "drivers/external_drivers/drivers/i2c/busses/Kconfig"
+source "drivers/external_drivers/drivers/power/Kconfig"
+source "drivers/external_drivers/drivers/platform/x86/Kconfig"
+source "drivers/external_drivers/drivers/hsu/Kconfig"

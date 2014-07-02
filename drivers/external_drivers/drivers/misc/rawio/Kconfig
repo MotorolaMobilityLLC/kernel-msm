@@ -1,0 +1,81 @@
+#
+# rawio utility drivers
+#
+
+menuconfig RAWIO
+	tristate "Debug fs based raw io device read/write framework "
+	depends on DEBUG_FS
+	default y 
+	help
+	  This option enables support for reading or writing registers/memory
+	  region in a io device via debug fs.
+	  With this option and related rawio driver options enabled, you could
+	  read configuration space of a PCI device, registers of a memory
+	  mapped or port mapped device, registers of a i2c device, etc.
+	  This is the just the framework driver. You need enable more
+	  options to support specific device types.
+
+	  To compile this driver as a module, choose M: the module will
+	  be called rawio.
+
+	  If you are not sure, say N here.
+
+if RAWIO
+
+config RAWIO_PCI
+	tristate "rawio PCI driver"
+	depends on RAWIO && PCI
+	default y
+	help
+	  This option enables the rawio PCI driver.
+	  With this driver, you can read or write any PCI device's
+	  configuration space via debugfs.
+	  To compile this driver as a module, choose M: the module will
+	  be called rawio_pci.
+
+config RAWIO_IOMEM
+	tristate "rawio I/O memory driver"
+	depends on RAWIO
+	default y
+	help
+	  This option enables the rawio I/O memory driver.
+	  With this driver, you can read or write registers of a memory
+	  mapped I/O devices.
+
+	  To compile this driver as a module, choose M: the module will
+	  be called rawio_iomem.
+
+config RAWIO_I2C
+	tristate "rawio I2C driver"
+	depends on RAWIO && I2C
+	default y
+	help
+	  This option enables the rawio I2C driver.
+	  With this driver, you can read or write any I2C device's
+	  register debugfs interface.
+	  To compile this driver as a module, choose M: the module will
+	  be called rawio_i2c.
+
+config RAWIO_MSGBUS
+	tristate "rawio Message Bus driver"
+	depends on RAWIO && X86_WANT_INTEL_MID
+	default y
+	help
+	  This option enables the rawio Message Bus driver.
+	  With this driver, you can read or write any message bus
+	  register via the rawio debugfs interface.
+	  To compile this driver as a module, choose M: the module will
+	  be called rawio_msgbus.
+
+config RAWIO_MSR
+	tristate "rawio MSR driver"
+	depends on RAWIO && X86
+	default y
+	help
+	  This option enables the rawio MSR driver.
+	  With this driver, you can read or write any MSR register
+	  on X86 platform via the rawio debugfs interface.
+	  To compile this driver as a module, choose M: the module will
+	  be called rawio_msr.
+
+endif # RAWIO

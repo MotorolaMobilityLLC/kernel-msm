@@ -1,0 +1,11 @@
+config SERIAL_MFD_HSU_EXT
+	tristate "Medfield High Speed UART support"
+	depends on PCI
+	select SERIAL_CORE
+
+config SERIAL_MFD_HSU_EXT_CONSOLE
+	boolean "Medfile HSU serial console support"
+	depends on SERIAL_MFD_HSU_EXT=y
+	select SERIAL_CORE_CONSOLE
+
+

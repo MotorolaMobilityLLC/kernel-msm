@@ -76,9 +76,7 @@
 #include "device_libs/platform_rmi4.h"
 #include "device_libs/platform_bq24192.h"
 #include "device_libs/platform_bq24261.h"
-#include "device_libs/platform_r69001.h"
 #include "device_libs/platform_pn544.h"
-#include "device_libs/platform_lsm303.h"
 #include "device_libs/platform_pca9574.h"
 
 /* SW devices */
@@ -93,9 +91,6 @@
 /* WIFI devices */
 #include "device_libs/platform_wifi.h"
 
-/* UART devices */
-#include "device_libs/platform_gps.h"
-
 /* USB devices */
 #include "device_libs/pci/platform_usb_otg.h"
 
@@ -105,12 +100,6 @@ static void __init *no_platform_data(void *info)
 }
 
 struct devs_id __initconst device_ids[] = {
-	/* UART devices */
-	{"bcm4752", SFI_DEV_TYPE_UART, 0, &intel_mid_gps_device_init, NULL},
-	{"bcm47521", SFI_DEV_TYPE_UART, 0, &intel_mid_gps_device_init, NULL},
-	{"bcm47531", SFI_DEV_TYPE_UART, 0, &intel_mid_gps_device_init, NULL},
-	{"csrg05t", SFI_DEV_TYPE_UART, 0, &intel_mid_gps_device_init, NULL},
-
 	/* SD devices */
 	{"bcm43xx_clk_vmmc", SFI_DEV_TYPE_SD, 0, &wifi_platform_data, NULL},
 	{"bcm43xx_vmmc", SFI_DEV_TYPE_SD, 0, &wifi_platform_data, NULL},
@@ -130,7 +119,6 @@ struct devs_id __initconst device_ids[] = {
 	{"pmic_audio", SFI_DEV_TYPE_IPC, 1, &no_platform_data,
 					&ipc_device_handler},
 	{"i2c_disp_brig", SFI_DEV_TYPE_I2C, 0, &tc35876x_platform_data, NULL},
-	{"r69001-ts-i2c", SFI_DEV_TYPE_I2C, 0, &r69001_platform_data, NULL},
 	{"synaptics_3202", SFI_DEV_TYPE_I2C, 0, &rmi4_platform_data, NULL},
 	{"syn_3400_cgs", SFI_DEV_TYPE_I2C, 0, &rmi4_platform_data, NULL},
 	{"syn_3400_igzo", SFI_DEV_TYPE_I2C, 0, &rmi4_platform_data, NULL},
@@ -140,9 +128,6 @@ struct devs_id __initconst device_ids[] = {
 	{"bq24192", SFI_DEV_TYPE_I2C, 1, &bq24192_platform_data},
 	{"bq24261_charger", SFI_DEV_TYPE_I2C, 1, &bq24261_platform_data, NULL},
 	{"pn544", SFI_DEV_TYPE_I2C, 0, &pn544_platform_data, NULL},
-	{"lps331ap", SFI_DEV_TYPE_I2C, 0, &no_platform_data},
-	{"lsm303dl", SFI_DEV_TYPE_I2C, 0, &lsm303dlhc_accel_platform_data},
-	{"lsm303cmp", SFI_DEV_TYPE_I2C, 0, &no_platform_data, NULL},
 	{"MNZX8000", SFI_DEV_TYPE_I2C, 0, &no_platform_data, NULL},
 	{"pca953x", SFI_DEV_TYPE_I2C, 0, &nxp_pca9574_platform_data, NULL},
 
