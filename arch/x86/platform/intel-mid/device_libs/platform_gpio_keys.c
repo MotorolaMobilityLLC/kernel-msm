@@ -23,7 +23,6 @@
 #include <linux/input.h>
 #include <linux/platform_device.h>
 #include <linux/pnp.h>
-#include <asm/intel_vlv2.h>
 #include <asm/io_apic.h>
 #include <asm/acpi.h>
 #include <asm/hw_irq.h>
