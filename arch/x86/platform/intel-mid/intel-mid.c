@@ -111,14 +111,6 @@ static unsigned long __init intel_mid_calibrate_tsc(void)
 	return 0;
 }
 
-extern void xen_time_init(void);
-
-#ifdef CONFIG_XEN
-static void __init intel_mid_time_init(void)
-{
-	return xen_time_init();
-}
-#else
 static void __init intel_mid_time_init(void)
 {
 
@@ -143,7 +135,6 @@ static void __init intel_mid_time_init(void)
 	pre_init_apic_IRQ0();
 	apbt_time_init();
 }
-#endif /* CONFIG_XEN */
 
 static void __cpuinit intel_mid_arch_setup(void)
 {
@@ -199,13 +190,9 @@ void __init x86_intel_mid_early_setup(void)
 {
 	x86_init.resources.probe_roms = x86_init_noop;
 	x86_init.resources.reserve_resources = x86_init_noop;
-#ifdef CONFIG_XEN
-	xen_oem_arch_setup = intel_mid_arch_setup;
-#else
 	x86_init.oem.arch_setup = intel_mid_arch_setup;
 	x86_init.timers.setup_percpu_clockev = x86_init_noop;
 	x86_cpuinit.setup_percpu_clockev = apbt_setup_secondary_clock;
-#endif /* CONFIG_XEN */
 
 	x86_init.timers.timer_init = intel_mid_time_init;
 

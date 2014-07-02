@@ -2373,11 +2373,9 @@ static void __cpuinit apic_pm_activate(void)
 
 static int __init init_lapic_sysfs(void)
 {
-#ifndef CONFIG_XEN_DOM0
 	/* XXX: remove suspend/resume procs if !apic_pm_state.active? */
 	if (cpu_has_apic)
 		register_syscore_ops(&lapic_syscore_ops);
-#endif
 
 	return 0;
 }

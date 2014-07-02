@@ -770,12 +770,6 @@ static SIMPLE_DEV_PM_OPS(serial_m3110_pm_ops, serial_m3110_suspend,
 #define SERIAL_M3110_PM_OPS NULL
 #endif
 
-#ifdef CONFIG_XEN
-static int serial_m3110_probe(struct spi_device *spi)
-{
-	return -ENODEV;
-}
-#else
 static int serial_m3110_probe(struct spi_device *spi)
 {
 	struct uart_max3110 *max;
@@ -880,7 +874,6 @@ err_get_page:
 	kfree(max);
 	return ret;
 }
-#endif /* CONFIG_XEN */
 
 static int serial_m3110_remove(struct spi_device *dev)
 {

@@ -66,8 +66,6 @@
 #include <asm/mwait.h>
 #include <asm/msr.h>
 #include <asm/io_apic.h>
-#include <asm/hypervisor.h>
-#include <asm/xen/hypercall.h>
 
 
 #define INTEL_IDLE_VERSION "0.4"
@@ -602,16 +600,10 @@ static int intel_idle(struct cpuidle_device *dev,
 		clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &cpu);
 
 	if (!need_resched()) {
-#ifdef CONFIG_XEN
-		HYPERVISOR_mwait_op(eax, ecx,
-					(void *)&current_thread_info()->flags,
-					0);
-#else
 		__monitor((void *)&current_thread_info()->flags, 0, 0);
 		smp_mb();
 		if (!need_resched())
 			__mwait(eax, ecx);
-#endif /* CONFIG_XEN */
 	}
 
 	if (!(lapic_timer_reliable_states & (1 << (cstate))))

@@ -206,7 +206,6 @@ static int pci_write(struct pci_bus *bus, unsigned int devfn, int where,
 
 static int intel_mid_pci_irq_enable(struct pci_dev *dev)
 {
-#ifndef CONFIG_XEN
 	u8 pin;
 	struct io_apic_irq_attr irq_attr;
 
@@ -228,10 +227,6 @@ static int intel_mid_pci_irq_enable(struct pci_dev *dev)
 	io_apic_set_pci_routing(&dev->dev, dev->irq, &irq_attr);
 
 	return 0;
-#else
-	xen_register_gsi(dev->irq, -1, 0, 1);
-	return xen_pcifront_enable_irq(dev);
-#endif
 }
 
 struct pci_ops intel_mid_pci_ops = {

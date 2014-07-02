@@ -1113,9 +1113,7 @@ void __init setup_arch(char **cmdline_p)
 			(max_pfn_mapped<<PAGE_SHIFT) - 1);
 #endif
 
-#ifndef CONFIG_XEN
 	reserve_real_mode();
-#endif
 
 	trim_platform_memory_ranges();
 	trim_low_memory_range();
@@ -1124,9 +1122,7 @@ void __init setup_arch(char **cmdline_p)
 
 	early_trap_pf_init();
 
-#ifndef CONFIG_XEN
 	setup_real_mode();
-#endif
 
 	memblock.current_limit = get_max_mapped();
 	dma_contiguous_reserve(0);
