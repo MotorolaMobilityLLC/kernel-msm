@@ -504,9 +504,6 @@ static int fan5404x_get_prop_batt_status(struct fan5404x_chg *chip)
 	int stat_reg;
 	uint8_t ctrl1;
 
-	if (chip->fake_battery_soc >= 0)
-		return chip->fake_battery_soc;
-
 	stat_reg = fan5404x_stat_read(chip);
 	if (stat_reg < 0) {
 		dev_err(chip->dev, "Fail read STAT bits, rc = %d\n", stat_reg);
