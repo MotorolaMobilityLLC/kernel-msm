@@ -356,10 +356,7 @@ static void intel_mid_ssp_spi_dma_init(struct ssp_drv_context *sspc)
 	ds->dst_addr_width = sspc->n_bytes;
 	ds->src_addr_width = sspc->n_bytes;
 
-	if (sspc->quirks & QUIRKS_PLATFORM_BYT) {
-		/*These are fixed HW info from Baytrail datasheet*/
-		rxs->device_instance = 1; /*DMA Req line*/
-	} else if (sspc->quirks & QUIRKS_PLATFORM_MRFL)
+	if (sspc->quirks & QUIRKS_PLATFORM_MRFL)
 		rxs->device_instance = sspc->master->bus_num;
 	else
 		rxs->device_instance = 0;
@@ -386,10 +383,7 @@ static void intel_mid_ssp_spi_dma_init(struct ssp_drv_context *sspc)
 	ds->src_addr_width = sspc->n_bytes;
 	ds->dst_addr_width = sspc->n_bytes;
 
-	if (sspc->quirks & QUIRKS_PLATFORM_BYT) {
-		/*These are fixed HW info from Baytrail datasheet*/
-		txs->device_instance = 0;/*DMA Req Line*/
-	} else if (sspc->quirks & QUIRKS_PLATFORM_MRFL)
+	if (sspc->quirks & QUIRKS_PLATFORM_MRFL)
 		txs->device_instance = sspc->master->bus_num;
 	else
 		txs->device_instance = 0;
@@ -411,14 +405,8 @@ static void intel_mid_ssp_spi_dma_init(struct ssp_drv_context *sspc)
 		return;
 
 	/* Use DMAC1 */
-	if (sspc->quirks & QUIRKS_PLATFORM_MRST)
-		device_id = PCI_MRST_DMAC1_ID;
-	else if (sspc->quirks & QUIRKS_PLATFORM_BYT)
-		device_id = PCI_BYT_DMAC1_ID;
-	else if (sspc->quirks & QUIRKS_PLATFORM_MRFL)
+	if (sspc->quirks & QUIRKS_PLATFORM_MRFL)
 		device_id = PCI_MRFL_DMAC_ID;
-	else
-		device_id = PCI_MDFL_DMAC1_ID;
 
 	sspc->dmac1 = pci_get_device(PCI_VENDOR_ID_INTEL, device_id, NULL);
 	if (!sspc->dmac1) {
@@ -1581,18 +1569,8 @@ static int intel_mid_ssp_spi_runtime_idle(struct device *dev)
 
 
 static DEFINE_PCI_DEVICE_TABLE(pci_ids) = {
-	/* MRST SSP0 */
-	{ PCI_VDEVICE(INTEL, 0x0815), QUIRKS_PLATFORM_MRST},
-	/* MDFL SSP0 */
-	{ PCI_VDEVICE(INTEL, 0x0832), QUIRKS_PLATFORM_MDFL},
-	/* MDFL SSP1 */
-	{ PCI_VDEVICE(INTEL, 0x0825), QUIRKS_PLATFORM_MDFL},
-	/* MDFL SSP3 */
-	{ PCI_VDEVICE(INTEL, 0x0816), QUIRKS_PLATFORM_MDFL},
 	/* MRFL SSP5 */
 	{ PCI_VDEVICE(INTEL, 0x1194), QUIRKS_PLATFORM_MRFL},
-	/* BYT SSP3 */
-	{ PCI_VDEVICE(INTEL, 0x0f0e), QUIRKS_PLATFORM_BYT},
 	{},
 };
 

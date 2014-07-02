@@ -110,8 +110,6 @@ int mid_state_to_sys_state(int mid_state)
 
 /* PCI Device Id structure */
 static DEFINE_PCI_DEVICE_TABLE(mid_pm_ids) = {
-	{PCI_VDEVICE(INTEL, MID_PMU_MFLD_DRV_DEV_ID), 0},
-	{PCI_VDEVICE(INTEL, MID_PMU_CLV_DRV_DEV_ID), 0},
 	{PCI_VDEVICE(INTEL, MID_PMU_MRFL_DRV_DEV_ID), 0},
 	{}
 };
@@ -395,29 +393,10 @@ static inline int pmu_read_interrupt_status(void)
 static void pmu_prepare_wake(int s0ix_state)
 {
 
-	struct pmu_ss_states cur_pmsss;
-
 	/* setup the wake capable devices */
 	if (s0ix_state == MID_S3_STATE) {
 		writel(~IGNORE_S3_WKC0, &mid_pmu_cxt->pmu_reg->pm_wkc[0]);
 		writel(~IGNORE_S3_WKC1, &mid_pmu_cxt->pmu_reg->pm_wkc[1]);
-	}
-
-	if (platform_is(INTEL_ATOM_MFLD) || platform_is(INTEL_ATOM_CLV)) {
-
-		/* Re-program the sub systems state on wakeup as
-		 * the current SSS
-		 */
-		pmu_read_sss(&cur_pmsss);
-
-		writel(cur_pmsss.pmu2_states[0],
-				&mid_pmu_cxt->pmu_reg->pm_wssc[0]);
-		writel(cur_pmsss.pmu2_states[1],
-				&mid_pmu_cxt->pmu_reg->pm_wssc[1]);
-		writel(cur_pmsss.pmu2_states[2],
-				&mid_pmu_cxt->pmu_reg->pm_wssc[2]);
-		writel(cur_pmsss.pmu2_states[3],
-				&mid_pmu_cxt->pmu_reg->pm_wssc[3]);
 	}
 }
 
@@ -526,13 +505,6 @@ static irqreturn_t pmu_sc_irq(int irq, void *ignored)
 	if (pmu_ops->wakeup)
 		pmu_ops->wakeup();
 
-	if (platform_is(INTEL_ATOM_MFLD) ||
-				platform_is(INTEL_ATOM_CLV)) {
-		mid_pmu_cxt->s0ix_entered = 0;
-		/* S0ix case release it */
-		up(&mid_pmu_cxt->scu_ready_sem);
-	}
-
 	ret = IRQ_HANDLED;
 ret_no_clear:
 	/* clear interrupt enable bit */
@@ -600,15 +572,10 @@ static inline u32 find_index_in_hash(struct pci_dev *pdev, int *found)
 
 static bool is_display_subclass(unsigned int sub_class)
 {
-	/* On MDFLD and CLV, we have display PCI device class 0x30000,
-	 * On MRFLD, we have display PCI device class 0x38000
-	 */
+	 /* On MRFLD, we have display PCI device class 0x38000 */
 
-	if ((sub_class == 0x0 &&
-		(platform_is(INTEL_ATOM_MFLD) ||
-		platform_is(INTEL_ATOM_CLV))) ||
-		(sub_class == 0x80 && (platform_is(INTEL_ATOM_MRFLD)
-				|| platform_is(INTEL_ATOM_MOORFLD))))
+	if (sub_class == 0x80 && (platform_is(INTEL_ATOM_MRFLD)
+				|| platform_is(INTEL_ATOM_MOORFLD)))
 		return true;
 
 	return false;
@@ -824,11 +791,7 @@ static bool update_nc_device_states(int i, pci_power_t state)
 	* in PMCSR refuses to change.
 	*/
 	else if (i == ISP_POS) {
-		if (platform_is(INTEL_ATOM_MFLD) ||
-				 platform_is(INTEL_ATOM_CLV)) {
-			islands = APM_ISP_ISLAND | APM_IPH_ISLAND;
-			reg = APM_REG_TYPE;
-		} else if (platform_is(INTEL_ATOM_MRFLD) ||
+		if (platform_is(INTEL_ATOM_MRFLD) ||
 				platform_is(INTEL_ATOM_MOORFLD)) {
 			islands = TNG_ISP_ISLAND;
 			reg = ISP_SS_PM0;
@@ -1159,25 +1122,6 @@ static ssize_t debug_read_history(struct file *file, char __user *buffer,
 static ssize_t debug_write_read_history_entry(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
-	char buf[20] = "0";
-	unsigned long len = min(sizeof(buf) - 1, count);
-	u32 islands;
-	u32 on;
-	int ret;
-
-	/*do nothing if platform is nether medfield or clv*/
-	if (!platform_is(INTEL_ATOM_MFLD) && !platform_is(INTEL_ATOM_CLV))
-		return count;
-
-	if (copy_from_user(buf, buffer, len))
-		return -1;
-
-	buf[len] = 0;
-
-	ret = sscanf(buf, "%x%x", &islands, &on);
-	if (ret == 2)
-		pmu_nc_set_power_state(islands, on, OSPM_REG_TYPE);
-
 	return count;
 }
 
@@ -1264,41 +1208,7 @@ EXPORT_SYMBOL(pmu_nc_set_power_state);
  */
 int pmu_nc_get_power_state(int island, int reg_type)
 {
-	u32 pwr_sts;
-	unsigned long flags;
-	int i, lss;
-	int ret = -EINVAL;
-
-	/*do nothing if platform is nether medfield or clv*/
-	if (!platform_is(INTEL_ATOM_MFLD) && !platform_is(INTEL_ATOM_CLV))
-		return 0;
-
-	spin_lock_irqsave(&mid_pmu_cxt->nc_ready_lock, flags);
-
-	switch (reg_type) {
-	case APM_REG_TYPE:
-		pwr_sts = inl(mid_pmu_cxt->apm_base + APM_STS);
-		break;
-	case OSPM_REG_TYPE:
-		pwr_sts = inl(mid_pmu_cxt->ospm_base + OSPM_PM_SSS);
-		break;
-	default:
-		pr_err("%s: invalid argument 'island': %d.\n",
-				 __func__, island);
-		goto unlock;
-	}
-
-	for (i = 0; i < OSPM_MAX_POWER_ISLANDS; i++) {
-		lss = island & (0x1 << i);
-		if (lss) {
-			ret = (pwr_sts >> (2 * i)) & 0x3;
-			break;
-		}
-	}
-
-unlock:
-	spin_unlock_irqrestore(&mid_pmu_cxt->nc_ready_lock, flags);
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL(pmu_nc_get_power_state);
 
@@ -1673,41 +1583,7 @@ int pmu_issue_interactive_command(struct pmu_ss_states *pm_ssc, bool ioc,
  */
 static void update_all_lss_states(struct pmu_ss_states *pmu_config)
 {
-	int i;
 	u32 PCIALLDEV_CFG[4] = {0, 0, 0, 0};
-
-	if (platform_is(INTEL_ATOM_MFLD) || platform_is(INTEL_ATOM_CLV)) {
-		for (i = 0; i < MAX_DEVICES; i++) {
-			int pmu_num = get_mid_pci_pmu_num(i);
-			struct pci_dev *pdev = get_mid_pci_drv(i, 0);
-
-			if ((pmu_num == PMU_NUM_2) && pdev) {
-				int ss_idx, ss_pos;
-				pci_power_t state;
-
-				ss_idx = get_mid_pci_ss_idx(i);
-				ss_pos = get_mid_pci_ss_pos(i);
-				state = pdev->current_state;
-				/* The case of device not probed yet:
-				 * Force D0i3 */
-				if (state == PCI_UNKNOWN)
-					state = pmu_pci_choose_state(pdev);
-
-				/* By default its set to '0' hence
-				 * no need to update PCI_D0 state
-				 */
-				state = pmu_pci_get_weakest_state_for_lss
-							(i, pdev, state);
-
-				pmu_config->pmu2_states[ss_idx] |=
-				 (pci_to_platform_state(state) <<
-					(ss_pos * BITS_PER_LSS));
-
-				PCIALLDEV_CFG[ss_idx] |=
-					(D0I3_MASK << (ss_pos * BITS_PER_LSS));
-			}
-		}
-	}
 
 	platform_update_all_lss_states(pmu_config, PCIALLDEV_CFG);
 }
@@ -1856,16 +1732,6 @@ mid_pmu_probe(struct pci_dev *dev, const struct pci_device_id *pci_id)
 {
 	int ret;
 	struct mrst_pmu_reg __iomem *pmu;
-	u32 data;
-
-	u32 dc_islands = (OSPM_DISPLAY_A_ISLAND |
-			  OSPM_DISPLAY_B_ISLAND |
-			  OSPM_DISPLAY_C_ISLAND |
-			  OSPM_MIPI_ISLAND);
-	u32 gfx_islands = (APM_VIDEO_DEC_ISLAND |
-			   APM_VIDEO_ENC_ISLAND |
-			   APM_GL3_CACHE_ISLAND |
-			   APM_GRAPHICS_ISLAND);
 
 	mid_pmu_cxt->pmu_wake_lock =
 				wakeup_source_register("pmu_wake_lock");
@@ -1895,17 +1761,6 @@ mid_pmu_probe(struct pci_dev *dev, const struct pci_device_id *pci_id)
 	mid_pmu_cxt->pmu1_max_devs = PMU1_MAX_DEVS;
 	mid_pmu_cxt->pmu2_max_devs = PMU2_MAX_DEVS;
 	mid_pmu_cxt->ss_per_reg = 16;
-
-	/* Following code is used to map address required for NC PM
-	 * which is not needed for all platforms
-	 */
-	if (platform_is(INTEL_ATOM_MFLD) || platform_is(INTEL_ATOM_CLV)) {
-		data = intel_mid_msgbus_read32(OSPM_PUNIT_PORT, OSPM_APMBA);
-		mid_pmu_cxt->apm_base = data & 0xffff;
-
-		data = intel_mid_msgbus_read32(OSPM_PUNIT_PORT, OSPM_OSPMBA);
-		mid_pmu_cxt->ospm_base = data & 0xffff;
-	}
 
 	/* Map the memory of pmu1 PMU reg base */
 	pmu = pci_iomap(dev, 0, 0);

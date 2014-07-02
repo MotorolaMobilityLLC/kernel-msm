@@ -457,16 +457,6 @@ config X86_INTEL_MID
 config ATOM_SOC_POWER
 	bool "Select Atom SOC Power"
 
-choice
-	prompt "Select PMU support"
-	depends on ATOM_SOC_POWER
-	default REMOVEME_INTEL_ATOM_MRFLD_POWER
-
-config REMOVEME_INTEL_ATOM_MRFLD_POWER
-	bool "Merrifield"
-
-endchoice
-
 config INTEL_DEBUG_FEATURE
        bool "Debug feature interface on Intel MID platform"
        depends on X86_INTEL_MID

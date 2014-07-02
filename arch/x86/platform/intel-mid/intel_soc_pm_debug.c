@@ -223,51 +223,6 @@ void s0ix_scu_latency_stat(int type)
 					lat_stat->count[type]);
 }
 
-void s0ix_lat_stat_init(void)
-{
-	if (!platform_is(INTEL_ATOM_CLV))
-		return;
-
-	lat_stat = devm_kzalloc(&mid_pmu_cxt->pmu_dev->dev,
-			sizeof(struct latency_stat), GFP_KERNEL);
-	if (unlikely(!lat_stat)) {
-		pr_err("Failed to allocate memory for s0ix latency!\n");
-		goto out_err;
-	}
-
-	lat_stat->scu_s0ix_lat_addr =
-		devm_ioremap_nocache(&mid_pmu_cxt->pmu_dev->dev,
-			S0IX_LAT_SRAM_ADDR_CLVP, S0IX_LAT_SRAM_SIZE_CLVP);
-	if (unlikely(!lat_stat->scu_s0ix_lat_addr)) {
-		pr_err("Failed to map SCU_S0IX_LAT_ADDR!\n");
-		goto out_err;
-	}
-
-	lat_stat->dentry = debugfs_create_file("s0ix_latency",
-			S_IFREG | S_IRUGO, NULL, NULL, &s0ix_latency_ops);
-	if (unlikely(!lat_stat->dentry)) {
-		pr_err("Failed to create debugfs for s0ix latency!\n");
-		goto out_err;
-	}
-
-	return;
-
-out_err:
-	pr_err("%s: Initialization failed\n", __func__);
-}
-
-void s0ix_lat_stat_finish(void)
-{
-	if (!platform_is(INTEL_ATOM_CLV))
-		return;
-
-	if (unlikely(!lat_stat))
-		return;
-
-	if (likely(lat_stat->dentry))
-		debugfs_remove(lat_stat->dentry);
-}
-
 void time_stamp_in_suspend_flow(int mark, bool start)
 {
 	if (!lat_stat || !lat_stat->latency_measure)
@@ -323,8 +278,6 @@ void time_stamp_for_sleep_state_latency(int sleep_state, bool start, bool entry)
 }
 #else /* CONFIG_PM_DEBUG */
 void s0ix_scu_latency_stat(int type) {}
-void s0ix_lat_stat_init(void) {}
-void s0ix_lat_stat_finish(void) {}
 void time_stamp_for_sleep_state_latency(int sleep_state, bool start,
 							bool entry) {}
 void time_stamp_in_suspend_flow(int mark, bool start) {}
@@ -337,8 +290,7 @@ static char *dstates[] = {"D0", "D0i1", "D0i2", "D0i3"};
 /* This can be used to report NC power transitions */
 void (*nc_report_power_state) (u32, int);
 
-#if defined(CONFIG_REMOVEME_INTEL_ATOM_MDFLD_POWER)			\
-			|| defined(CONFIG_REMOVEME_INTEL_ATOM_CLV_POWER)
+#if defined(CONFIG_INTEL_ATOM_SOC_POWER)
 
 #define PMU_DEBUG_PRINT_STATS	(1U << 0)
 static int debug_mask;
@@ -1277,8 +1229,6 @@ void pmu_stats_init(void)
 	(void) debugfs_create_file("pmu_dev_stats", S_IFREG | S_IRUGO,
 				NULL, NULL, &pmu_dev_stat_operations);
 
-	s0ix_lat_stat_init();
-
 #ifdef CONFIG_PM_DEBUG
 	/* dynamic debug tracing in every 5 mins */
 	INIT_DEFERRABLE_WORK(&mid_pmu_cxt->log_work, pmu_log_stat);
@@ -1305,12 +1255,11 @@ void pmu_stats_finish(void)
 #ifdef CONFIG_PM_DEBUG
 	cancel_delayed_work_sync(&mid_pmu_cxt->log_work);
 #endif
-	s0ix_lat_stat_finish();
 }
 
 #endif /*if CONFIG_X86_MDFLD_POWER || CONFIG_X86_CLV_POWER*/
 
-#ifdef CONFIG_REMOVEME_INTEL_ATOM_MRFLD_POWER
+#ifdef CONFIG_ATOM_SOC_POWER
 
 static u32 prev_s0ix_cnt[SYS_STATE_MAX];
 static unsigned long long prev_s0ix_res[SYS_STATE_MAX];
@@ -2597,4 +2546,4 @@ void pmu_stats_init(void)
 #endif
 }
 
-#endif /*if CONFIG_REMOVEME_INTEL_ATOM_MRFLD_POWER*/
+#endif /*if CONFIG_ATOM_SOC_POWER */

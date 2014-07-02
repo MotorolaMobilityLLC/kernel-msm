@@ -111,7 +111,7 @@ static unsigned long __init intel_mid_calibrate_tsc(void)
 	return 0;
 }
 
-extern void xen_time_init();
+extern void xen_time_init(void);
 
 #ifdef CONFIG_XEN
 static void __init intel_mid_time_init(void)

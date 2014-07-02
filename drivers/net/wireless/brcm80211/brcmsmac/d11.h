@@ -1879,9 +1879,6 @@ struct macstat {
 #define	TST_TXTEST_RATE_11MBPS	3
 #define	TST_TXTEST_RATE_SHIFT	3
 
-#define SHM_BYT_CNT	0x2	/* IHR location */
-#define MAX_BYT_CNT	0x600	/* Maximum frame len */
-
 struct d11cnt {
 	u32 txfrag;
 	u32 txmulti;

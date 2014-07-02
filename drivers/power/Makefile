@@ -56,6 +56,5 @@ obj-$(CONFIG_CHARGER_BQ2415X)	+= bq2415x_charger.o
 obj-$(CONFIG_POWER_AVS)		+= avs/
 obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
 obj-$(CONFIG_POWER_RESET)	+= reset/
-obj-$(CONFIG_BYT_EC_BATTERY)	+= byt_ec_battery.o
 obj-$(CONFIG_DC_XPWR_BATTERY)	+= dc_xpwr_battery.o
 obj-$(CONFIG_DC_XPWR_CHARGER)	+= dc_xpwr_charger.o

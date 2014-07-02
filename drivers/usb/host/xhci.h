@@ -1745,15 +1745,11 @@ void xhci_free_command(struct xhci_hcd *xhci,
 
 #ifdef CONFIG_PCI
 /* xHCI PCI glue */
-int xhci_register_ush_pci(void);
-void xhci_unregister_ush_pci(void);
 int xhci_register_pci(void);
 void xhci_unregister_pci(void);
 #else
 static inline int xhci_register_pci(void) { return 0; }
 static inline void xhci_unregister_pci(void) {}
-static inline int xhci_register_ush_pci(void) { return 0; }
-static inline void xhci_unregister_ush_pci(void) {}
 #endif
 
 #if defined(CONFIG_USB_XHCI_PLATFORM) \

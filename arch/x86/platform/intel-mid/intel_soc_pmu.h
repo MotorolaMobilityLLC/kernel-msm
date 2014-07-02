@@ -45,8 +45,6 @@
 
 #include "intel_soc_mrfld.h"
 
-#define MID_PMU_MFLD_DRV_DEV_ID                 0x0828
-#define MID_PMU_CLV_DRV_DEV_ID			0x08EC
 #define MID_PMU_MRFL_DRV_DEV_ID			0x11A1
 
 #define MID_MRFL_HDMI_DRV_DEV_ID		0x11A6

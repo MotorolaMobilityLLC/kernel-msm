@@ -27,13 +27,8 @@
 
 
 /* Chip ID of Intel Atom SOC*/
-#define INTEL_ATOM_MRST 0x26
-#define INTEL_ATOM_MFLD 0x27
-#define INTEL_ATOM_CLV 0x35
 #define INTEL_ATOM_MRFLD 0x4a
-#define INTEL_ATOM_BYT 0x37
 #define INTEL_ATOM_MOORFLD 0x5a
-#define INTEL_ATOM_CHT 0x4c
 
 static inline int platform_is(u8 model)
 {
@@ -85,19 +80,9 @@ static inline int platform_is(u8 model)
 /* Since entry latency is substantial
  * put exit_latency = entry+exit latency
  */
-#ifdef CONFIG_REMOVEME_INTEL_ATOM_MRFLD_POWER
 #define CSTATE_EXIT_LATENCY_S0i1 1200
 #define CSTATE_EXIT_LATENCY_S0i2 2000
 #define CSTATE_EXIT_LATENCY_S0i3 10000
-#else
-#define CSTATE_EXIT_LATENCY_LPMP3 1040
-#define CSTATE_EXIT_LATENCY_S0i1 1040
-#define CSTATE_EXIT_LATENCY_S0i3 2800
-#endif
-#define BYT_S0I1_STATE         0x60
-#define BYT_S0I2_STATE         0x62
-#define BYT_LPMP3_STATE        0x62
-#define BYT_S0I3_STATE         0x64
 
 enum s3_parts {
 	PROC_FRZ,
@@ -123,17 +108,10 @@ enum s3_parts {
 #define	SET_LPAUDIO			4
 #define	SET_AOAC_S0i2			7
 
-#ifdef CONFIG_REMOVEME_INTEL_ATOM_MRFLD_POWER
 #define MID_S0I1_STATE         0x60
 #define MID_S0I2_STATE         0x62
 #define MID_LPMP3_STATE        0x62
 #define MID_S0I3_STATE         0x64
-#else
-#define MID_S0I1_STATE         0x1
-#define MID_LPMP3_STATE        0x3
-#define MID_S0I2_STATE         0x7
-#define MID_S0I3_STATE         0x7
-#endif
 
 #define MID_S0IX_STATE         0xf
 #define MID_S3_STATE           0x1f

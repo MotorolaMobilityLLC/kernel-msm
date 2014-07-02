@@ -66,8 +66,6 @@ static int __init mid_pci_init(void)
 	 * and additional checks are necessary inside the pmu driver
 	 */
 	switch (boot_cpu_data.x86_model) {
-	case INTEL_ATOM_MFLD:
-	case INTEL_ATOM_CLV:
 	case INTEL_ATOM_MRFLD:
 	case INTEL_ATOM_MOORFLD:
 		pci_set_platform_pm(&mid_pci_platform_pm);

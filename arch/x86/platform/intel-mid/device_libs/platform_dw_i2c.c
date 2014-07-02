@@ -139,7 +139,7 @@ fs_initcall(intel_mid_msgbus_init);
 
 #define PUNIT_DOORBELL_OPCODE	(0xE0)
 #define PUNIT_DOORBELL_REG	(0x0)
-#define PUNIT_SEMAPHORE		(platform_is(INTEL_ATOM_BYT) ? 0x7 : 0x10E)
+#define PUNIT_SEMAPHORE		(0x10E)
 
 #define GET_SEM() (intel_mid_msgbus_read32(PUNIT_PORT, PUNIT_SEMAPHORE) & 0x1)
 

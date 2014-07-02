@@ -32,9 +32,6 @@
 #include <linux/wakelock.h>
 #include <linux/completion.h>
 
-#define PCI_MRST_DMAC1_ID	0x0814
-#define PCI_MDFL_DMAC1_ID	0x0827
-#define PCI_BYT_DMAC1_ID	0x0f06
 #define PCI_MRFL_DMAC_ID	0x11A2
 
 #define SSP_NOT_SYNC 0x400000

@@ -38,17 +38,8 @@
 #define INTEL_MID_DMAC1_ID		0x0814
 #define INTEL_MID_DMAC2_ID		0x0813
 #define INTEL_MID_GP_DMAC2_ID		0x0827
-#define INTEL_MFLD_DMAC1_ID		0x0830
-#define INTEL_CLV_GP_DMAC2_ID		0x08EF
-#define INTEL_CLV_DMAC1_ID		0x08F0
 #define INTEL_MRFLD_GP_DMAC2_ID         0x11A2
 #define INTEL_MRFLD_DMAC0_ID		0x119B
-#define INTEL_BYT_LPIO1_DMAC_ID		0x0F06
-#define INTEL_BYT_LPIO2_DMAC_ID		0x0F40
-#define INTEL_BYT_DMAC0_ID		0x0F28
-#define INTEL_CHT_DMAC0_ID             0x22A8
-#define INTEL_CHT_LPIO1_DMAC_ID		0x2286
-#define INTEL_CHT_LPIO2_DMAC_ID		0x22C0
 
 #define LNW_PERIPHRAL_MASK_SIZE		0x20
 #define ENABLE_PARTITION_UPDATE		(BIT(26))
@@ -86,14 +77,6 @@ static int get_ch_index(int status, unsigned int base)
 			return i;
 	}
 	return -1;
-}
-
-static inline bool is_byt_lpio_dmac(struct middma_device *mid)
-{
-	return (mid->pci_id == INTEL_BYT_LPIO1_DMAC_ID ||
-		mid->pci_id == INTEL_BYT_LPIO2_DMAC_ID ||
-		mid->pci_id == INTEL_CHT_LPIO1_DMAC_ID ||
-		mid->pci_id == INTEL_CHT_LPIO2_DMAC_ID);
 }
 
 static void dump_dma_reg(struct dma_chan *chan)
@@ -936,13 +919,8 @@ static struct dma_async_tx_descriptor *intel_mid_dma_prep_memcpy(
 			}
 		} else {
 			cfg_hi.cfgx.protctl = 0x1; /*default value*/
-			/* Baytrail DMAC uses dynamic device instance */
-			if (is_byt_lpio_dmac(midc->dma))
-				cfg_hi.cfgx.src_per = cfg_hi.cfgx.dst_per =
-					mids->device_instance;
-			else
-				cfg_hi.cfgx.src_per = cfg_hi.cfgx.dst_per =
-					midc->ch_id - midc->dma->chan_base;
+			cfg_hi.cfgx.src_per = cfg_hi.cfgx.dst_per =
+				midc->ch_id - midc->dma->chan_base;
 		}
 	}
 	/*calculate CTL_HI*/
@@ -1656,10 +1634,6 @@ static irqreturn_t intel_mid_dma_interrupt(int irq, void *data)
 		return IRQ_NONE;
 	}
 
-	/* On Baytrail, the DMAC is sharing IRQ with other devices */
-	if (is_byt_lpio_dmac(mid) && mid->state == SUSPENDED)
-		return IRQ_NONE;
-
 	/* Read the interrupt status registers */
 	tfr_status = ioread32(mid->dma_base + STATUS_TFR);
 	err_status = ioread32(mid->dma_base + STATUS_ERR);
@@ -2100,13 +2074,6 @@ static struct pci_device_id intel_mid_dma_ids[] = {
 		INFO(2, 0, 2047, 0, 0, 1, 0, INTEL_MID_DMAC2_ID, &v1_dma_ops)},
 	{ PCI_VDEVICE(INTEL, INTEL_MID_GP_DMAC2_ID),
 		INFO(2, 0, 2047, 0, 0, 1, 0, INTEL_MID_GP_DMAC2_ID, &v1_dma_ops)},
-	{ PCI_VDEVICE(INTEL, INTEL_MFLD_DMAC1_ID),
-		INFO(4, 0, SST_MAX_DMA_LEN, 0x400040, 0xFFAE8008, 1, 0x8, INTEL_MFLD_DMAC1_ID, &v1_dma_ops)},
-	/* Cloverview support */
-	{ PCI_VDEVICE(INTEL, INTEL_CLV_GP_DMAC2_ID),
-		INFO(2, 0, 2047, 0, 0, 1, 0, INTEL_CLV_GP_DMAC2_ID, &v1_dma_ops)},
-	{ PCI_VDEVICE(INTEL, INTEL_CLV_DMAC1_ID),
-		INFO(4, 0, SST_MAX_DMA_LEN, 0x400040, 0xFFAE8008, 1, 0x8, INTEL_CLV_DMAC1_ID, &v1_dma_ops)},
 	/* Mrfld */
 	{ PCI_VDEVICE(INTEL, INTEL_MRFLD_GP_DMAC2_ID),
 		INFO(4, 0, SST_MAX_DMA_LEN_MRFLD, 0, 0, 0, 0, INTEL_MRFLD_GP_DMAC2_ID, &v2_dma_ops)},
@@ -2121,83 +2088,9 @@ static struct pci_device_id intel_mid_dma_ids[] = {
 		INFO(2, 6, SST_MAX_DMA_LEN_MRFLD, 0xFF0000, 0xFF340018, 0, 0x10,
 				PCI_DEVICE_ID_INTEL_AUDIO_DMAC0_MOOR, &v2_dma_ops)},
 
-	/* Baytrail Low Speed Peripheral DMA */
-	{ PCI_VDEVICE(INTEL, INTEL_BYT_LPIO1_DMAC_ID),
-		INFO(6, 0, 2047, 0, 0, 1, 0, INTEL_BYT_LPIO1_DMAC_ID, &v1_dma_ops)},
-	{ PCI_VDEVICE(INTEL, INTEL_BYT_LPIO2_DMAC_ID),
-		INFO(6, 0, 2047, 0, 0, 1, 0, INTEL_BYT_LPIO2_DMAC_ID, &v1_dma_ops)},
-	/* Cherryview Low Speed Peripheral DMA */
-	{ PCI_VDEVICE(INTEL, INTEL_CHT_LPIO1_DMAC_ID),
-		INFO(6, 0, 2047, 0, 0, 1, 0, INTEL_CHT_LPIO1_DMAC_ID,
-			&v1_dma_ops)},
-	{ PCI_VDEVICE(INTEL, INTEL_CHT_LPIO2_DMAC_ID),
-		INFO(6, 0, 2047, 0, 0, 1, 0, INTEL_CHT_LPIO2_DMAC_ID,
-			&v1_dma_ops)},
-
 	{ 0, }
 };
 MODULE_DEVICE_TABLE(pci, intel_mid_dma_ids);
-
-struct intel_mid_dma_probe_info dma_byt_info = {
-	.max_chan = 4,
-	.ch_base = 4,
-	.block_size = 131071,
-	.pimr_mask = 0x00FF0000,
-	.pimr_base = 0, /* get base addr from device table */
-	.dword_trf = 0,
-	.pimr_offset = 0x10,
-	.pci_id = INTEL_BYT_DMAC0_ID,
-	.pdma_ops = &v2_dma_ops,
-};
-
-struct intel_mid_dma_probe_info dma_byt1_info = {
-	.max_chan = 6,
-	.ch_base = 0,
-	.block_size = 2047,
-	.pimr_mask = 0,
-	.pimr_base = 0,
-	.dword_trf = 1,
-	.pimr_offset = 0,
-	.pci_id = INTEL_BYT_LPIO1_DMAC_ID,
-	.pdma_ops = &v1_dma_ops,
-};
-
-
-struct intel_mid_dma_probe_info dma_cht_info = {
-	.max_chan = 4,
-	.ch_base = 4,
-	.block_size = 131071,
-	.pimr_mask = 0x00FF0000,
-	.pimr_base = 0, /* get base addr from device table */
-	.dword_trf = 0,
-	.pimr_offset = 0x10,
-	.pci_id = INTEL_CHT_DMAC0_ID,
-	.pdma_ops = &v2_dma_ops,
-};
-
-struct intel_mid_dma_probe_info dma_cht1_info = {
-	.max_chan = 6,
-	.ch_base = 0,
-	.block_size = 2047,
-	.pimr_mask = 0,
-	.pimr_base = 0,
-	.dword_trf = 1,
-	.pimr_offset = 0,
-	.pci_id = INTEL_CHT_LPIO1_DMAC_ID,
-	.pdma_ops = &v1_dma_ops,
-};
-
-struct intel_mid_dma_probe_info dma_cht2_info = {
-	.max_chan = 6,
-	.ch_base = 0,
-	.block_size = 2047,
-	.pimr_mask = 0,
-	.pimr_base = 0,
-	.dword_trf = 1,
-	.pimr_offset = 0,
-	.pci_id = INTEL_CHT_LPIO2_DMAC_ID,
-	.pdma_ops = &v1_dma_ops,
-};
 
 static const struct dev_pm_ops intel_mid_dma_pm = {
 	.suspend_late = dma_suspend,
@@ -2219,39 +2112,6 @@ static struct pci_driver intel_mid_dma_pci_driver = {
 #endif
 };
 
-static const struct acpi_device_id dma_acpi_ids[];
-
-struct intel_mid_dma_probe_info *mid_get_acpi_driver_data(const char *hid)
-{
-	const struct acpi_device_id *id;
-
-	pr_debug("%s", __func__);
-	for (id = dma_acpi_ids; id->id[0]; id++)
-		if (!strncmp(id->id, hid, 16))
-			return (struct intel_mid_dma_probe_info *)id->driver_data;
-	return NULL;
-}
-static const struct acpi_device_id dma_acpi_ids[] = {
-	{ "DMA0F28", (kernel_ulong_t)&dma_byt_info },
-	{ "ADMA0F28", (kernel_ulong_t)&dma_byt_info },
-	{ "INTL9C60", (kernel_ulong_t)&dma_byt1_info },
-	{ "80862286", (kernel_ulong_t)&dma_cht1_info },
-	{ "808622C0", (kernel_ulong_t)&dma_cht2_info },
-	{ "ADMA22A8", (kernel_ulong_t)&dma_cht_info },
-	{ },
-};
-
-static struct platform_driver intel_dma_acpi_driver = {
-	.driver = {
-		.name			= "intel_dma_acpi",
-		.owner			= THIS_MODULE,
-		.acpi_match_table	= dma_acpi_ids,
-		.pm			= &intel_mid_dma_pm,
-	},
-	.probe	= dma_acpi_probe,
-	.remove	= dma_acpi_remove,
-};
-
 static int __init intel_mid_dma_init(void)
 {
 	int ret;
@@ -2262,9 +2122,6 @@ static int __init intel_mid_dma_init(void)
 	if (ret)
 		pr_err("PCI dev registration failed");
 
-	ret = platform_driver_register(&intel_dma_acpi_driver);
-	if (ret)
-		pr_err("Platform dev registration failed");
 	return ret;
 }
 module_init(intel_mid_dma_init);
@@ -2272,7 +2129,6 @@ module_init(intel_mid_dma_init);
 static void __exit intel_mid_dma_exit(void)
 {
 	pci_unregister_driver(&intel_mid_dma_pci_driver);
-	platform_driver_unregister(&intel_dma_acpi_driver);
 }
 module_exit(intel_mid_dma_exit);
 

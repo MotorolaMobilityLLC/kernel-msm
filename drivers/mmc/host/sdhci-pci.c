@@ -287,103 +287,11 @@ static inline void sdhci_pci_remove_own_cd(struct sdhci_pci_slot *slot)
 
 #endif
 
-#define MFD_SDHCI_DEKKER_BASE  0xffff7fb0
-static void mfd_emmc_mutex_register(struct sdhci_pci_slot *slot)
-{
-	u32 mutex_var_addr;
-#ifdef CONFIG_INTEL_SCU_IPC
-	int err;
-
-	err = rpmsg_send_generic_command(IPC_EMMC_MUTEX_CMD, 0,
-			NULL, 0, &mutex_var_addr, 1);
-	if (err) {
-		dev_err(&slot->chip->pdev->dev, "IPC error: %d\n", err);
-		dev_info(&slot->chip->pdev->dev, "Specify mutex address\n");
-		/*
-		 * Since we failed to get mutex sram address, specify it
-		 */
-		mutex_var_addr = MFD_SDHCI_DEKKER_BASE;
-	}
-#else
-	mutex_var_addr = MFD_SDHCI_DEKKER_BASE;
-#endif
-
-	/* 3 housekeeping mutex variables, 12 bytes length */
-	slot->host->sram_addr = ioremap_nocache(mutex_var_addr,
-			3 * sizeof(u32));
-	if (!slot->host->sram_addr)
-		dev_err(&slot->chip->pdev->dev, "ioremap failed!\n");
-	else {
-		dev_info(&slot->chip->pdev->dev, "mapped addr: %p\n",
-				slot->host->sram_addr);
-		dev_info(&slot->chip->pdev->dev,
-		"current eMMC owner: %d, IA req: %d, SCU req: %d\n",
-				readl(slot->host->sram_addr +
-					DEKKER_EMMC_OWNER_OFFSET),
-				readl(slot->host->sram_addr +
-					DEKKER_IA_REQ_OFFSET),
-				readl(slot->host->sram_addr +
-					DEKKER_SCU_REQ_OFFSET));
-	}
-	spin_lock_init(&slot->host->dekker_lock);
-}
-
 static int mfd_emmc_probe_slot(struct sdhci_pci_slot *slot)
 {
-	switch (slot->chip->pdev->device) {
-	case PCI_DEVICE_ID_INTEL_MFD_EMMC0:
-		mfd_emmc_mutex_register(slot);
-		sdhci_alloc_panic_host(slot->host);
-		slot->host->mmc->caps2 |= MMC_CAP2_INIT_CARD_SYNC |
-			MMC_CAP2_BOOTPART_NOACC | MMC_CAP2_RPMBPART_NOACC;
-		break;
-	case PCI_DEVICE_ID_INTEL_MFD_EMMC1:
-		break;
-	case PCI_DEVICE_ID_INTEL_CLV_EMMC0:
-		sdhci_alloc_panic_host(slot->host);
-		slot->host->mmc->caps |= MMC_CAP_1_8V_DDR;
-		slot->host->mmc->caps2 |= MMC_CAP2_INIT_CARD_SYNC |
-					MMC_CAP2_CACHE_CTRL;
-		slot->host->quirks2 |= SDHCI_QUIRK2_V2_0_SUPPORT_DDR50;
-		/*
-		 * CLV host controller has a special POWER_CTL register,
-		 * which can do HW reset, so it doesn't need to operate
-		 * a GPIO, so make sure platform data won't pass a valid
-		 * GPIO pin to CLV host
-		 */
-		slot->host->mmc->caps |= MMC_CAP_HW_RESET;
-		slot->rst_n_gpio = -EINVAL;
-		break;
-	case PCI_DEVICE_ID_INTEL_CLV_EMMC1:
-		slot->host->mmc->caps |= MMC_CAP_1_8V_DDR;
-		slot->host->quirks2 |= SDHCI_QUIRK2_V2_0_SUPPORT_DDR50;
-		slot->host->mmc->caps2 |= MMC_CAP2_BOOTPART_NOACC |
-			MMC_CAP2_RPMBPART_NOACC;
-		/*
-		 * CLV host controller has a special POWER_CTL register,
-		 * which can do HW reset, so it doesn't need to operate
-		 * a GPIO, so make sure platform data won't pass a valid
-		 * GPIO pin to CLV host
-		 */
-		slot->host->mmc->caps |= MMC_CAP_HW_RESET;
-		slot->rst_n_gpio = -EINVAL;
-		break;
-	}
 	slot->host->mmc->caps |= MMC_CAP_8_BIT_DATA | MMC_CAP_NONREMOVABLE;
 	slot->host->mmc->caps2 |= MMC_CAP2_HC_ERASE_SZ | MMC_CAP2_POLL_R1B_BUSY;
 	return 0;
-}
-
-static void mfd_emmc_remove_slot(struct sdhci_pci_slot *slot, int dead)
-{
-	switch (slot->chip->pdev->device) {
-	case PCI_DEVICE_ID_INTEL_MFD_EMMC0:
-		if (slot->host->sram_addr)
-			iounmap(slot->host->sram_addr);
-		break;
-	case PCI_DEVICE_ID_INTEL_MFD_EMMC1:
-		break;
-	}
 }
 
 static int mfd_sdio_probe_slot(struct sdhci_pci_slot *slot)
@@ -391,164 +299,6 @@ static int mfd_sdio_probe_slot(struct sdhci_pci_slot *slot)
 	slot->host->mmc->caps |= MMC_CAP_POWER_OFF_CARD | MMC_CAP_NONREMOVABLE;
 	return 0;
 }
-
-#ifdef CONFIG_INTEL_SCU_FLIS
-/*
- * Save the current power and shim status, if they are on, turn them off.
- */
-static int ctp_sd_card_power_save(struct sdhci_pci_slot *slot)
-{
-	int err;
-	u16 addr;
-	u8 data;
-	struct sdhci_pci_chip *chip;
-
-	if (!slot->dev_power)
-		return 0;
-
-	chip = slot->chip;
-	err = intel_scu_ipc_read_shim(&chip->enctrl0_orig,
-			STORAGESTIO_FLISNUM, ENCTRL0_OFF);
-	if (err) {
-		pr_err("SDHCI device %04X: ENCTRL0 read failed, err %d\n",
-				chip->pdev->device, err);
-		chip->enctrl0_orig = ENCTRL0_ISOLATE;
-		chip->enctrl1_orig = ENCTRL1_ISOLATE;
-		/*
-		 * stop to shut down VCCSDIO, since we cannot recover
-		 * it.
-		 * this should not block system entering S3
-		 */
-		return 0;
-	}
-	err = intel_scu_ipc_read_shim(&chip->enctrl1_orig,
-			STORAGESTIO_FLISNUM, ENCTRL1_OFF);
-	if (err) {
-		pr_err("SDHCI device %04X: ENCTRL1 read failed, err %d\n",
-				chip->pdev->device, err);
-		chip->enctrl0_orig = ENCTRL0_ISOLATE;
-		chip->enctrl1_orig = ENCTRL1_ISOLATE;
-		/*
-		 * stop to shut down VCCSDIO, since we cannot recover
-		 * it.
-		 * this should not block system entering S3
-		 */
-		return 0;
-	}
-
-	/* isolate shim */
-	err = intel_scu_ipc_write_shim(ENCTRL0_ISOLATE,
-			STORAGESTIO_FLISNUM, ENCTRL0_OFF);
-	if (err) {
-		pr_err("SDHCI device %04X: ENCTRL0 ISOLATE failed, err %d\n",
-				chip->pdev->device, err);
-		/*
-		 * stop to shut down VCCSDIO. Without isolate shim, the power
-		 * may have leak if turn off VCCSDIO.
-		 * during S3 resuming, shim and VCCSDIO will be recofigured
-		 * this should not block system entering S3
-		 */
-		return 0;
-	}
-
-	err = intel_scu_ipc_write_shim(ENCTRL1_ISOLATE,
-			STORAGESTIO_FLISNUM, ENCTRL1_OFF);
-	if (err) {
-		pr_err("SDHCI device %04X: ENCTRL1 ISOLATE failed, err %d\n",
-				chip->pdev->device, err);
-		/*
-		 * stop to shut down VCCSDIO. Without isolate shim, the power
-		 * may have leak if turn off VCCSDIO.
-		 * during S3 resuming, shim and VCCSDIO will be recofigured
-		 * this should not block system entering S3
-		 */
-		return 0;
-	}
-
-	addr = VCCSDIO_ADDR;
-	data = VCCSDIO_OFF;
-	err = intel_scu_ipc_writev(&addr, &data, 1);
-	if (err) {
-		pr_err("SDHCI device %04X: VCCSDIO turn off failed, err %d\n",
-				chip->pdev->device, err);
-		/*
-		 * during S3 resuming, VCCSDIO will be recofigured
-		 * this should not block system entering S3.
-		 */
-	}
-
-	slot->dev_power = false;
-	return 0;
-}
-
-/*
- * Restore the power and shim if they are original on.
- */
-static int ctp_sd_card_power_restore(struct sdhci_pci_slot *slot)
-{
-	int err;
-	u16 addr;
-	u8 data;
-	struct sdhci_pci_chip *chip;
-
-	if (slot->dev_power)
-		return 0;
-
-	chip = slot->chip;
-
-	addr = VCCSDIO_ADDR;
-	data = VCCSDIO_NORMAL;
-	err = intel_scu_ipc_writev(&addr, &data, 1);
-	if (err) {
-		pr_err("SDHCI device %04X: VCCSDIO turn on failed, err %d\n",
-				chip->pdev->device, err);
-		/*
-		 * VCCSDIO trun on failed. This may impact the SD card
-		 * init and the read/write functions. We just report a
-		 * warning, and go on to have a try. Anyway, SD driver
-		 * can encounter error if powering up is failed
-		 */
-		WARN_ON(err);
-	}
-
-	if (chip->enctrl0_orig == ENCTRL0_ISOLATE &&
-			chip->enctrl1_orig == ENCTRL1_ISOLATE)
-		/* means we needn't to reconfigure the shim */
-		return 0;
-
-	/* reconnect shim */
-	err = intel_scu_ipc_write_shim(chip->enctrl0_orig,
-			STORAGESTIO_FLISNUM, ENCTRL0_OFF);
-
-	if (err) {
-		pr_err("SDHCI device %04X: ENCTRL0 CONNECT shim failed, err %d\n",
-				chip->pdev->device, err);
-		/* keep on setting enctrl1, but report a waring */
-		WARN_ON(err);
-	}
-
-	err = intel_scu_ipc_write_shim(chip->enctrl1_orig,
-			STORAGESTIO_FLISNUM, ENCTRL1_OFF);
-	if (err) {
-		pr_err("SDHCI device %04X: ENCTRL1 CONNECT shim failed, err %d\n",
-				chip->pdev->device, err);
-		/* leave this error to driver, but report a warning */
-		WARN_ON(err);
-	}
-
-	slot->dev_power = true;
-	return 0;
-}
-#else
-static int ctp_sd_card_power_save(struct sdhci_pci_slot *slot)
-{
-	return 0;
-}
-static int ctp_sd_card_power_restore(struct sdhci_pci_slot *slot)
-{
-	return 0;
-}
-#endif
 
 static const struct sdhci_pci_fixes sdhci_intel_mrst_hc0 = {
 	.quirks		= SDHCI_QUIRK_BROKEN_ADMA | SDHCI_QUIRK_NO_HISPD_BIT,
@@ -560,52 +310,14 @@ static const struct sdhci_pci_fixes sdhci_intel_mrst_hc1_hc2 = {
 	.probe		= mrst_hc_probe,
 };
 
-static int ctp_sd_probe_slot(struct sdhci_pci_slot *slot)
-{
-#ifdef CONFIG_INTEL_SCU_IPC
-	int err;
-	u16 addr;
-#endif
-	u8 data = VCCSDIO_OFF;
-
-	if (!slot || !slot->chip || !slot->chip->pdev)
-		return -ENODEV;
-
-	if (slot->chip->pdev->device != PCI_DEVICE_ID_INTEL_CLV_SDIO0)
-		return 0;
-
-	mutex_init(&slot->power_lock);
-
-	slot->host->flags |= SDHCI_POWER_CTRL_DEV;
-
-#ifdef CONFIG_INTEL_SCU_IPC
-	addr = VCCSDIO_ADDR;
-	err = intel_scu_ipc_readv(&addr, &data, 1);
-	if (err) {
-		/* suppose dev_power is true */
-		slot->dev_power = true;
-		return 0;
-	}
-#endif
-	if (data == VCCSDIO_NORMAL)
-		slot->dev_power = true;
-	else
-		slot->dev_power = false;
-
-	return 0;
-}
-
 static const struct sdhci_pci_fixes sdhci_intel_mfd_sd = {
 	.quirks		= SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
-	.quirks2	= SDHCI_QUIRK2_BAD_SD_CD,
 	.allow_runtime_pm = true,
-	.probe_slot	= ctp_sd_probe_slot,
 };
 
 static const struct sdhci_pci_fixes sdhci_intel_mfd_sdio = {
 	.quirks		= SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
-	.quirks2	= SDHCI_QUIRK2_HOST_OFF_CARD_ON |
-		SDHCI_QUIRK2_FAKE_VDD,
+	.quirks2	= SDHCI_QUIRK2_HOST_OFF_CARD_ON,
 	.allow_runtime_pm = true,
 	.probe_slot	= mfd_sdio_probe_slot,
 };
@@ -614,7 +326,6 @@ static const struct sdhci_pci_fixes sdhci_intel_mfd_emmc = {
 	.quirks		= SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
 	.allow_runtime_pm = true,
 	.probe_slot	= mfd_emmc_probe_slot,
-	.remove_slot	= mfd_emmc_remove_slot,
 };
 
 static const struct sdhci_pci_fixes sdhci_intel_pch_sdio = {
@@ -1620,29 +1331,6 @@ static int sdhci_pci_power_up_host(struct sdhci_host *host)
 	return 0;
 }
 
-static void sdhci_pci_set_dev_power(struct sdhci_host *host, bool poweron)
-{
-	struct sdhci_pci_slot *slot;
-	struct sdhci_pci_chip *chip;
-
-	slot = sdhci_priv(host);
-	if (slot)
-		chip = slot->chip;
-	else
-		return;
-
-	/* only available for Intel CTP platform */
-	if (chip && chip->pdev &&
-		chip->pdev->device == PCI_DEVICE_ID_INTEL_CLV_SDIO0) {
-		mutex_lock(&slot->power_lock);
-		if (poweron)
-			ctp_sd_card_power_restore(slot);
-		else
-			ctp_sd_card_power_save(slot);
-		mutex_unlock(&slot->power_lock);
-	}
-}
-
 static int sdhci_pci_get_cd(struct sdhci_host *host)
 {
 	bool present;
@@ -1707,7 +1395,6 @@ static const struct sdhci_ops sdhci_pci_ops = {
 	.platform_bus_width	= sdhci_pci_bus_width,
 	.hw_reset		= sdhci_pci_hw_reset,
 	.power_up_host		= sdhci_pci_power_up_host,
-	.set_dev_power		= sdhci_pci_set_dev_power,
 	.get_cd		= sdhci_pci_get_cd,
 	.platform_reset_exit = sdhci_platform_reset_exit,
 	.get_tuning_count = sdhci_pci_get_tuning_count,

@@ -22,9 +22,6 @@
 #include <asm/intel-mid.h>
 #include <asm/intel_mid_thermal.h>
 
-#define BYT_SOC_THRM_IRQ	86
-#define BYT_SOC_THRM		"soc_thrm"
-
 static struct resource res = {
 		.flags = IORESOURCE_IRQ,
 };
