@@ -190,6 +190,7 @@ struct fan5404x_chg {
 	bool usb_present;
 	bool batt_present;
 	bool chg_done_batt_full;
+	bool charging;
 };
 
 static int __fan5404x_read(struct fan5404x_chg *chip, int reg,
@@ -291,22 +292,6 @@ static int fan5404x_fault_read(struct fan5404x_chg *chip)
 	}
 
 	return (reg & CONTROL0_FAULT) >> CONTROL0_FAULT_SHIFT;
-}
-
-static irqreturn_t fan5404x_chg_stat_handler(int irq, void *dev_id)
-{
-	struct fan5404x_chg *chip = dev_id;
-	int stat;
-	int fault;
-
-	stat = fan5404x_stat_read(chip);
-	fault = fan5404x_fault_read(chip);
-
-	pr_debug("CONTROL0.STAT: %X CONTROL0.FAULT: %X\n", stat, fault);
-
-	power_supply_changed(&chip->batt_psy);
-
-	return IRQ_HANDLED;
 }
 
 #define OREG_MIN      3500
@@ -440,6 +425,8 @@ static int start_charging(struct fan5404x_chg *chip)
 		return rc;
 	}
 
+	chip->charging = true;
+
 	return 0;
 }
 
@@ -455,7 +442,28 @@ static int stop_charging(struct fan5404x_chg *chip)
 		return rc;
 	}
 
+	chip->charging = false;
+
 	return 0;
+}
+
+static irqreturn_t fan5404x_chg_stat_handler(int irq, void *dev_id)
+{
+	struct fan5404x_chg *chip = dev_id;
+	int stat;
+	int fault;
+
+	stat = fan5404x_stat_read(chip);
+	fault = fan5404x_fault_read(chip);
+
+	if (chip->charging && stat == STAT_PWM_ENABLED)
+		start_charging(chip);
+
+	pr_debug("CONTROL0.STAT: %X CONTROL0.FAULT: %X\n", stat, fault);
+
+	power_supply_changed(&chip->batt_psy);
+
+	return IRQ_HANDLED;
 }
 
 static void fan5404x_external_power_changed(struct power_supply *psy)
