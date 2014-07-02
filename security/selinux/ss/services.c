@@ -3048,8 +3048,10 @@ static int aurule_avc_callback(u32 event)
 {
 	int err = 0;
 
+	printk(KERN_DEBUG "[ASUS]aurule_avc_callback DEBUG begin \n");
 	if (event == AVC_CALLBACK_RESET && aurule_callback)
 		err = aurule_callback();
+	printk(KERN_DEBUG "[ASUS]aurule_avc_callback DEBUG end \n");
 	return err;
 }
 
