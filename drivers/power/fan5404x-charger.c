@@ -436,7 +436,7 @@ static int stop_charging(struct fan5404x_chg *chip)
 
 	/* Set CE# High, TE Low */
 	rc = fan5404x_masked_write(chip, REG_CONTROL1,
-				CONTROL1_CE_N | CONTROL1_CE_N, CONTROL1_TE);
+				CONTROL1_CE_N | CONTROL1_CE_N, CONTROL1_CE_N);
 	if (rc) {
 		dev_err(chip->dev, "stop-charge: Failed to set TE/CE_N\n");
 		return rc;
