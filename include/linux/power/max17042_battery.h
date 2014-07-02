@@ -237,6 +237,7 @@ struct max17042_platform_data {
 	int hot_temp_c;
 	int cool_temp_c;
 	int cold_temp_c;
+	int hotspot_thrs_c;
 };
 
 #endif /* __MAX17042_BATTERY_H_ */
