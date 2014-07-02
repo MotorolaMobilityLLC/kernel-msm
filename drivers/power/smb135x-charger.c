@@ -673,6 +673,7 @@ static enum power_supply_property smb135x_battery_properties[] = {
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
 	/* Notification from Fuel Gauge */
@@ -1629,6 +1630,22 @@ out:
 	return rc;
 }
 
+static int smb135x_bms_set_property(struct smb135x_chg *chip,
+				    enum power_supply_property prop,
+				    const union power_supply_propval *val)
+{
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	if (chip->bms_psy) {
+		chip->bms_psy->set_property(chip->bms_psy,
+					    prop, val);
+		return 0;
+	}
+
+	return -EINVAL;
+}
 static int smb135x_battery_set_property(struct power_supply *psy,
 				       enum power_supply_property prop,
 				       const union power_supply_propval *val)
@@ -1664,6 +1681,10 @@ static int smb135x_battery_set_property(struct power_supply *psy,
 		schedule_delayed_work(&chip->heartbeat_work,
 			msecs_to_jiffies(0));
 		break;
+	/* Block from Fuel Gauge */
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
+		smb135x_bms_set_property(chip, prop, val);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -1682,6 +1703,7 @@ static int smb135x_battery_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 	case POWER_SUPPLY_PROP_HEALTH:
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 		rc = 1;
 		break;
 	default:
@@ -1754,6 +1776,7 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
 	case POWER_SUPPLY_PROP_TEMP:
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 		val->intval = smb135x_bms_get_property(chip, prop);
