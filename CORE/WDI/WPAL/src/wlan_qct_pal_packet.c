@@ -42,6 +42,7 @@
 #include "wlan_qct_pal_packet.h"
 #include "wlan_qct_pal_api.h"
 #include "wlan_qct_pal_trace.h"
+#include "wlan_qct_os_status.h"
 #include "vos_packet.h"
 #include "vos_trace.h"
 #include "vos_list.h"
@@ -863,6 +864,24 @@ wpt_status wpalGetNumRxRawPacket(wpt_uint32 *numRxResource)
    *numRxResource = (wpt_uint32)vos_pkt_get_num_of_rx_raw_pkts();
 
    return eWLAN_PAL_STATUS_SUCCESS;
+}
+
+/*---------------------------------------------------------------------------
+   wpalGetNumRxFreePacket   Query available RX Free buffer count
+   param:
+       numRxResource  pointer of queried value
+
+   return:
+       WPT_STATUS
+---------------------------------------------------------------------------*/
+wpt_status wpalGetNumRxFreePacket(wpt_uint32 *numRxResource)
+{
+   VOS_STATUS status;
+
+   status = vos_pkt_get_available_buffer_pool(VOS_PKT_TYPE_RX_RAW,
+                                              (v_SIZE_t *)numRxResource);
+
+   return WPAL_VOS_TO_WPAL_STATUS(status);
 }
 
 /*---------------------------------------------------------------------------

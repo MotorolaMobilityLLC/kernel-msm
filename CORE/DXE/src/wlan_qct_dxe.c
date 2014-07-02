@@ -1973,6 +1973,7 @@ void dxeRXResourceAvailableTimerExpHandler
 )
 {
    WLANDXE_CtrlBlkType      *dxeCtxt    = NULL;
+   wpt_uint32               numRxFreePackets;
 
    dxeCtxt = (WLANDXE_CtrlBlkType *)usrData;
 
@@ -1980,7 +1981,30 @@ void dxeRXResourceAvailableTimerExpHandler
             "RX Low resource, Durign wait time period %d, RX resource not allocated",
             T_WLANDXE_MAX_RX_PACKET_WAIT);
 
-   if(0 != dxeCtxt)
+   //This API wil also try to replenish packets
+   wpalGetNumRxFreePacket(&numRxFreePackets);
+
+   if (numRxFreePackets > 0)
+   {
+      /* If no. of free packets is greater than 0, it means
+       * that some packets were replenished and can be used
+       * by DXE to receive frames. So try to restart the
+       * resourceAvailable timer here, it will be stopped
+       * by the DXE's low resource callback if atleast one
+       * free packet reaches DXE.
+       */
+      if (NULL != dxeCtxt)
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                  "%s: Replenish successful. Restart the Rx Low resource timer",
+                  __func__);
+         wpalTimerStart(&dxeCtxt->rxResourceAvailableTimer,
+                        T_WLANDXE_MAX_RX_PACKET_WAIT);
+         return;
+      }
+   }
+
+   if (NULL != dxeCtxt)
       dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
 
    wpalWlanReload();
