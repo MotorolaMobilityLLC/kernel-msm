@@ -2134,6 +2134,10 @@ int adm_set_softvolume(int port_id,
 	audproc_softvol.step = softvol_param->step;
 	audproc_softvol.ramping_curve = softvol_param->rampingcurve;
 
+	pr_debug("%s: period %d, step %d, curve %d\n", __func__,
+		 audproc_softvol.period, audproc_softvol.step,
+		 audproc_softvol.ramping_curve);
+
 	atomic_set(&this_adm.copp_stat[index], 0);
 	rc = apr_send_pkt(this_adm.apr, (uint32_t *)&audproc_softvol);
 	if (rc < 0) {
