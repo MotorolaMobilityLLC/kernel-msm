@@ -30,6 +30,7 @@
 #include <linux/interrupt.h>
 #include <linux/pm.h>
 #include <linux/mod_devicetable.h>
+#include <linux/mutex.h>
 #include <linux/power_supply.h>
 #include <linux/power/max17042_battery.h>
 #include <linux/of.h>
@@ -113,6 +114,8 @@ struct max17042_chip {
 	enum max170xx_chip_type chip_type;
 	struct max17042_platform_data *pdata;
 	struct work_struct work;
+	struct work_struct check_temp_work;
+	struct mutex check_temp_lock;
 	int    init_complete;
 	bool batt_undervoltage;
 #ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
@@ -121,6 +124,7 @@ struct max17042_chip {
 #endif
 	struct power_supply *batt_psy;
 	int temp_state;
+	int hotspot_temp;
 };
 
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
@@ -166,6 +170,7 @@ static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
+	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
 };
 
 /* input and output temperature is in deci-centigrade */
@@ -277,6 +282,41 @@ int max17042_read_temp(struct max17042_chip *chip, int *temp_dc)
 	*temp_dc = intval;
 
 	return 0;
+}
+
+static int max17042_set_property(struct power_supply *psy,
+				 enum power_supply_property prop,
+				 const union power_supply_propval *val)
+{
+	struct max17042_chip *chip = container_of(psy,
+				struct max17042_chip, battery);
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
+		chip->hotspot_temp = val->intval;
+		schedule_work(&chip->check_temp_work);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int max17042_is_writeable(struct power_supply *psy,
+				 enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
 }
 
 static int max17042_get_property(struct power_supply *psy,
@@ -422,6 +462,9 @@ static int max17042_get_property(struct power_supply *psy,
 		} else {
 			return -EINVAL;
 		}
+		break;
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
+		val->intval = chip->hotspot_temp;
 		break;
 	default:
 		return -EINVAL;
@@ -803,20 +846,34 @@ static void max17042_set_temp_threshold(struct max17042_chip *chip,
 static int max17042_check_temp(struct max17042_chip *chip)
 {
 	int batt_temp;
+	int hotspot;
 	int max_t;
 	int min_t;
 	struct max17042_platform_data *pdata;
 	int temp_state = POWER_SUPPLY_HEALTH_GOOD;
+	union power_supply_propval ps = {0, };
+	const char *batt_psy_name;
+	int ret = 0;
 
 	if (!chip)
 		return 0;
 
+	mutex_lock(&chip->check_temp_lock);
 	pdata = chip->pdata;
 
 	max17042_read_temp(chip, &batt_temp);
 
 	/* Convert to Degrees C */
 	batt_temp /= 10;
+	hotspot = chip->hotspot_temp / 1000;
+
+	/* Override batt_temp if battery hot spot condition
+	   is active */
+	if ((batt_temp > pdata->cool_temp_c) &&
+	    (hotspot > batt_temp) &&
+	    (hotspot >= pdata->hotspot_thrs_c)) {
+		batt_temp = hotspot;
+	}
 
 	if (chip->temp_state == POWER_SUPPLY_HEALTH_WARM) {
 		if (batt_temp > pdata->hot_temp_c)
@@ -892,10 +949,25 @@ static int max17042_check_temp(struct max17042_chip *chip)
 
 		pr_warn("Battery Temp State = %d\n", chip->temp_state);
 
-		return 1;
+		ret = 1;
+	}
+	mutex_unlock(&chip->check_temp_lock);
+
+	if (!chip->batt_psy && chip->pdata->batt_psy_name) {
+		batt_psy_name = chip->pdata->batt_psy_name;
+		chip->batt_psy =
+			power_supply_get_by_name((char *)batt_psy_name);
 	}
 
-	return 0;
+	if (chip->batt_psy) {
+		ps.intval = chip->temp_state;
+		chip->batt_psy->set_property(chip->batt_psy,
+					     POWER_SUPPLY_PROP_HEALTH, &ps);
+	}
+
+	power_supply_changed(&chip->battery);
+
+	return ret;
 }
 
 static void max17042_set_soc_threshold(struct max17042_chip *chip, u16 off)
@@ -940,11 +1012,6 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 	    (val & STATUS_INTR_TEMPMIN_BIT)) {
 		dev_info(&chip->client->dev, "Temperature INTR\n");
 		max17042_check_temp(chip);
-		if (chip->batt_psy) {
-			ret.intval = chip->temp_state;
-			chip->batt_psy->set_property(chip->batt_psy,
-				      POWER_SUPPLY_PROP_HEALTH, &ret);
-		}
 	}
 
 
@@ -975,6 +1042,15 @@ static void max17042_init_worker(struct work_struct *work)
 	max17042_check_temp(chip);
 
 	chip->init_complete = 1;
+}
+
+static void max17042_check_temp_worker(struct work_struct *work)
+{
+	struct max17042_chip *chip = container_of(work,
+						  struct max17042_chip,
+						  check_temp_work);
+
+	max17042_check_temp(chip);
 }
 
 struct max17042_config_data eg30_lg_config = {
@@ -1376,6 +1452,14 @@ max17042_get_pdata(struct device *dev)
 	of_property_read_u32(np, "maxim,hot-temp-c", &pdata->hot_temp_c);
 	of_property_read_u32(np, "maxim,cool-temp-c", &pdata->cool_temp_c);
 	of_property_read_u32(np, "maxim,cold-temp-c", &pdata->cold_temp_c);
+	rc = of_property_read_u32(np, "maxim,hotspot-thrs-c",
+				  &pdata->hotspot_thrs_c);
+	if (rc) {
+		pdata->hotspot_thrs_c = 50;
+		pr_debug("DT hotspot threshold not available using %d\n",
+			 pdata->hotspot_thrs_c);
+	}
+
 	pdata->tcnv = max17042_get_conv_table(dev);
 
 	pdata->config_data = max17042_get_config_data(dev);
@@ -1501,8 +1585,10 @@ static int max17042_probe(struct i2c_client *client,
 	chip->battery.name		= "max170xx_battery";
 	chip->battery.type		= POWER_SUPPLY_TYPE_BMS;
 	chip->battery.get_property	= max17042_get_property;
+	chip->battery.set_property	= max17042_set_property;
 	chip->battery.properties	= max17042_battery_props;
 	chip->battery.num_properties	= ARRAY_SIZE(max17042_battery_props);
+	chip->battery.property_is_writeable = max17042_is_writeable;
 
 	/* When current is not measured,
 	 * CURRENT_NOW and CURRENT_AVG properties should be invisible. */
@@ -1529,7 +1615,9 @@ static int max17042_probe(struct i2c_client *client,
 	}
 
 	chip->temp_state = POWER_SUPPLY_HEALTH_UNKNOWN;
+	mutex_init(&chip->check_temp_lock);
 	max17042_check_temp(chip);
+	INIT_WORK(&chip->check_temp_work, max17042_check_temp_worker);
 
 	ret = gpio_request_array(chip->pdata->gpio_list,
 				 chip->pdata->num_gpio_list);
@@ -1607,6 +1695,9 @@ static int max17042_probe(struct i2c_client *client,
 static int max17042_remove(struct i2c_client *client)
 {
 	struct max17042_chip *chip = i2c_get_clientdata(client);
+
+	cancel_work_sync(&chip->check_temp_work);
+	mutex_destroy(&chip->check_temp_lock);
 
 #ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
 	debugfs_remove_recursive(chip->debugfs_root);
