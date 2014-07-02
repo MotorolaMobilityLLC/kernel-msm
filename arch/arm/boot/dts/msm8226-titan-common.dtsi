@@ -551,6 +551,8 @@
 };
 
 &i2c_2 {
+	qcom,extended-recovery = <1>;
+
         bma2x2@11 {
                 compatible = "bosch,bma2x2";
                 reg = <0x11>;
