@@ -1260,8 +1260,8 @@ int mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 {
 	struct dcs_cmd_req *req;
-	struct mdss_panel_info *pinfo;
 	struct mdss_rect *roi = NULL;
+	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
 	int ret = -EINVAL;
 	int rc = 0;
 
@@ -1330,7 +1330,7 @@ need_lock:
 		if (pinfo->partial_update_enabled)
 			roi = &pinfo->roi;
 
-		if (!roi || (roi->w != 0 || roi->h != 0))
+		if (!roi || (pinfo->roi.w != 0 || pinfo->roi.h != 0))
 			mdss_dsi_cmd_mdp_start(ctrl);
 
 		mutex_unlock(&ctrl->cmd_mutex);
