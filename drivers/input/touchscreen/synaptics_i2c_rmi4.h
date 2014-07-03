@@ -198,6 +198,7 @@ struct synaptics_rmi4_device_info {
  * @flip_x: set to TRUE if desired to flip direction on x-axis
  * @flip_y: set to TRUE if desired to flip direction on y-axis
  * @fw_updating: firmware is updating flag
+ * @check_build: check the build information for firmware
  * @sensor_sleep: flag to indicate sleep state of sensor
  * @wait: wait queue for touch data polling in interrupt thread
  * @i2c_read: pointer to i2c read function
@@ -255,6 +256,7 @@ struct synaptics_rmi4_data {
 	wait_queue_head_t wait;
 	bool stay_awake;
 	bool staying_awake;
+	bool check_build;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
 	int (*i2c_write)(struct synaptics_rmi4_data *pdata, unsigned short addr,

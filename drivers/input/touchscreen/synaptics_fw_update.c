@@ -350,12 +350,11 @@ static void parse_header(void)
 	memcpy(img->product_info, data->product_info,
 		sizeof(data->product_info));
 
-#ifdef CHECK_BUILD_INFO
-	img->is_contain_build_info =
-		(data->options_firmware_id == (1 << OPTION_BUILD_INFO));
-#else
-	img->is_contain_build_info = 0;
-#endif
+	if (fwu->rmi4_data->check_build)
+		img->is_contain_build_info =
+			(data->options_firmware_id == (1 << OPTION_BUILD_INFO));
+	else
+		img->is_contain_build_info = 0;
 
 	if (img->is_contain_build_info) {
 		img->package_id = (data->pkg_id_msb << 8) |

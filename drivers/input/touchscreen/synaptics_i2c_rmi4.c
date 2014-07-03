@@ -1679,6 +1679,8 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 	rmi4_pdata->do_lockdown = of_property_read_bool(np,
 			"synaptics,do-lockdown");
 	rmi4_pdata->wakeup = of_property_read_bool(np, "synaptics,wakeup");
+	rmi4_pdata->check_build = of_property_read_bool(np,
+			"synaptics,check-build");
 
 	rc = synaptics_rmi4_get_dt_coords(dev, "synaptics,display-coords",
 				rmi4_pdata);
@@ -3292,6 +3294,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->irq_enabled = false;
 	rmi4_data->fw_updating = false;
 	rmi4_data->suspended = false;
+	rmi4_data->check_build = rmi4_data->board->check_build;
 
 	rmi4_data->i2c_read = synaptics_rmi4_i2c_read;
 	rmi4_data->i2c_write = synaptics_rmi4_i2c_write;

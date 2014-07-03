@@ -37,6 +37,7 @@ struct synaptics_rmi4_capacitance_button_map {
  * @y_flip: y flip flag
  * @i2c_pull_up: pull up i2c bus with regulator
  * @power_down_enable: enable complete regulator shutdown in suspend
+ * @check_build: check the build information for firmware
  * @irq_gpio: attention interrupt gpio
  * @irq_flags: flags used by the irq
  * @reset_flags: flags used by reset line
@@ -65,6 +66,7 @@ struct synaptics_rmi4_platform_data {
 	bool wakeup;
 	bool disable_gpios;
 	bool do_lockdown;
+	bool check_build;
 	unsigned irq_gpio;
 	u32 irq_flags;
 	u32 reset_flags;
