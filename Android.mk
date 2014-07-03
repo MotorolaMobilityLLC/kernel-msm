@@ -46,6 +46,7 @@ endif
 # Copy WCNSS_cfg.dat file from firmware_bin/ folder to target out directory.
 ifeq ($(WLAN_PROPRIETARY),0)
 
+$(shell mkdir -p $(TARGET_OUT_ETC)/firmware/wlan/prima)
 $(shell rm -f $(TARGET_OUT_ETC)/firmware/wlan/prima/WCNSS_cfg.dat)
 $(shell cp $(LOCAL_PATH)/firmware_bin/WCNSS_cfg.dat $(TARGET_OUT_ETC)/firmware/wlan/prima)
 
