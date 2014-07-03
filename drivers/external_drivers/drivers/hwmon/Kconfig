@@ -7,3 +7,13 @@ config SENSORS_MRFL_OCD
 
 	  This driver is specific to basin cove PMIC used in the
           Merrifield platform.
+
+config SENSORS_PSH_MRLD
+        tristate "Intel PSH driver for Merrifield"
+        depends on INTEL_PSH_IPC && INTEL_SCU_IPC_UTIL
+        help
+          Say Y here to enable PSH driver on Intel Merrifield Platform, and
+          this driver depends on PSH IPC and SCU IPC driver.
+
+          This driver can also be built as a module. If so, the module
+          will be called psh.

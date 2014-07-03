@@ -1,0 +1,102 @@
+# Kbuild - the "makefile" used to build the dfrgx software.
+#
+# Invocations
+# 1.  usual: as a part of a full kernel build if CONFIG_GFX_RGX_DEVFREQ is
+# defined as "y" or "m".  This file ("Kbuild") is selected by the kernel
+# build system because "Kbuild" has priority over "Makefile".
+#
+# In which case, either:
+# -- (CONFIG_GFX_RGX_DEVFREQ=y) the dfrgx software is built-in to the kernel.
+# or
+# -- (CONFIG_GFX_RGX_DEVFREQ=m) the dfrgx software is built as a module into
+#    dfrgx.ko .  HOWEVER, some portions of dfrgx (e.g., hooks into the
+#    graphics device driver) are still built into the kernel.
+#
+# 2.  Alternate invocation: The module may be built separately from the rest of
+# the kernel (typically to reduce debug cycle time during development):
+# File "Makefile" in this directory is invoked from the command line,
+# defines DF_RGX_EXT_MOD_BUILD as "y", and then causes Kbuild to be invoked.
+# The kernel against which the module will be loaded should have been created
+# in the usual way with CONFIG_GFX_RGX_DEVFREQ=m.
+# Requires one of the following have been done:
+# -- "make modules_prepare"    (ok, but does not set up Module.symvers)
+# -- "make" or "make bzImage" -- regular kernel build to establish build
+#    environment.
+
+# To add verbosity during build:
+#   make KBUILD_VERBOSE=1
+
+ifeq ($(DF_RGX_EXT_MOD_BUILD),y)
+CONFIG_GFX_RGX_DEVFREQ := m
+endif
+
+# MY_DEBUG - 1 to force compilation to include "-g".
+MY_DEBUG := 1
+
+# THERMAL_DEBUG for force_states and get_available_states sysfs entries
+THERMAL_DEBUG := 1
+
+ifeq ($(THERMAL_DEBUG),1)
+ccflags-y += -DTHERMAL_DEBUG
+endif
+
+ccflags-y += -Werror
+
+# This makefile written for dir: drivers/staging/intel_media/graphics/dfrgx
+
+ifneq ($(MY_DEBUG),)
+ifneq ($(MY_DEBUG),0)
+# Causes build errors: ## ccflags-y += -O0 -fno-inline
+ifndef CONFIG_DEBUG_INFO
+# If CONFIG_DEBUG_INFO, then "-g" is already present by default.
+ccflags-y += -g
+endif
+endif
+endif
+
+obj-$(CONFIG_GFX_RGX_DEVFREQ)	+= dfrgx.o
+
+dfrgx-y :=
+dfrgx-y += df_rgx.o
+dfrgx-y += dev_freq_graphics_pm.o
+dfrgx-y += df_rgx_utils.o
+dfrgx-y += df_rgx_burst.o
+dfrgx-y += dev_freq_attrib.o
+
+include drivers/external_drivers/intel_media/graphics/dfrgx/dependencies/Makefile
+
+my_warning_flags :=
+my_warning_flags += -Wall -fmessage-length=0 -Wunused-parameter
+
+my_warning_flags += -Wextra -Wno-sign-compare -Wformat-nonliteral -Wformat-security -fdiagnostics-show-option -Wdeclaration-after-statement -Wmissing-format-attribute -Wpointer-arith -Wlogical-op -Wbad-function-cast -Wmissing-prototypes
+
+# Turn off things that too many kernel headers cause.
+my_warning_flags += -Wno-unused-parameter -Wno-pointer-arith -Wno-bad-function-cast
+
+## my_warning_flags += -Wundef -Wc++-compat
+
+ccflags-y += $(my_warning_flags)
+
+# To request an assembly listing:
+## ccflags-y += -Wa,-alh=$(PWD)/q.lst
+
+# Variable c_flags is the embodiment of the kbuild compilation options.
+
+# TOP_REL_* - directory spec relative to top directory.
+#    Used for makefile include references.
+#    Used for -I header file inclusion.
+
+CFLAGS_df_rgx.o += -Idrivers/devfreq
+
+# Fixme: Replace the hardcoded path with something more intelligent approach
+CFLAGS_df_rgx.o += \
+	-Idrivers/external_drivers/intel_media/display/tng/drv \
+	-Idrivers/external_drivers/intel_media/graphics/dfrgx \
+	-I$(INCLUDES_RGX)
+
+CFLAGS_dev_freq_graphics_pm.o += -I$(INCLUDES_RGX)
+
+CFLAGS_df_rgx_burst.o += \
+	-Idrivers/external_drivers/intel_media/display/tng/drv \
+	-I$(INCLUDES_RGX)
+

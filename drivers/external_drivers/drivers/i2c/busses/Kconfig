@@ -12,6 +12,17 @@ config I2C_DESIGNWARE_CORE_FORK
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-designware-core.
 
+config I2C_DESIGNWARE_PCI_FORK
+	tristate "Synopsys DesignWare PCI"
+	depends on PCI && I2C_DESIGNWARE_CORE_FORK
+	help
+	  If you say yes to this option, support will be included for the
+	  Synopsys DesignWare I2C adapter. Only master mode is supported.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called i2c-designware-pci.
+
+
 config I2C_DW_SPEED_MODE_DEBUG
 	bool "Designware I2C Speed Mode Debug"
 	depends on I2C_DESIGNWARE_CORE_FORK

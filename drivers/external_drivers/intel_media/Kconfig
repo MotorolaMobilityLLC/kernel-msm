@@ -1,0 +1,175 @@
+#
+# Drm device configuration
+#
+# This driver provides support for the
+# Direct Rendering Infrastructure (DRI) in XFree86 4.1.0 and higher.
+#
+
+config DRM_INTEL_MID
+	tristate "Intel Moorestown/Medfield (load along with IMG driver)"
+	depends on DRM && PCI
+	select FB_CFB_COPYAREA
+        select FB_CFB_FILLRECT
+        select FB_CFB_IMAGEBLIT
+        select DRM_KMS_HELPER
+        select GENERIC_ALLOCATOR
+        select DRM_TTM
+	help
+	  xxxxxxxxxxxxxxxxxxxxxxxxxx
+
+choice
+	prompt "Build IMG kernel service as "
+	depends on DRM_INTEL_MID
+	default DRM_MID_RELEASE
+
+config DRM_MID_RELEASE
+	bool "Release"
+	depends on DRM_INTEL_MID
+	help
+	  Build IMG kernel services as release
+
+config DRM_MID_DEBUG
+	bool "Debug"
+	depends on DRM_INTEL_MID
+	help
+	 Build IMG kernel services as debug
+
+endchoice
+
+config SUPPORT_HDMI
+        bool "SUPPORT_HDMI"
+        depends on DRM_MDFLD || DRM_CTP || DRM_I915 || DRM_MRFLD
+        default n
+        help
+          Choose this option to support HDMI.
+
+config R63311_MIPI_VIDEO_MODE
+	bool "support jdi 1920x1080 MIPI panel"
+	default n
+
+config DRM_INTEL_HANDSET
+	tristate "Intel Merrifield Graphics Driver Support (load along with IMG driver)"
+	depends on DRM && PCI
+	select FB_CFB_COPYAREA
+        select FB_CFB_FILLRECT
+        select FB_CFB_IMAGEBLIT
+        select DRM_KMS_HELPER
+        select DRM_TTM
+	help
+	  xxxxxxxxxxxxxxxxxxxxxxxxxx
+
+choice
+	prompt "Build IMG kernel service as "
+	depends on DRM_INTEL_HANDSET
+	default DRM_HANDSET_RELEASE
+
+config DRM_HANDSET_RELEASE
+	bool "Release"
+	depends on DRM_INTEL_HANDSET
+	help
+	  Build IMG kernel services as release
+
+config DRM_HANDSET_DEBUG
+	bool "Debug"
+	depends on DRM_INTEL_HANDSET
+	help
+	  Build IMG kernel services as debug
+
+endchoice
+
+config GFX_RGX_BVNC
+	string
+	depends on DRM_INTEL_HANDSET
+	prompt "IMG graphics driver BNVC specification"
+	help
+	    A build configuration parameter which must have the same value
+	    for the IMG kernel mode driver and the IMG user mode driver.
+	    The BVNC value will differ depending upon target (e.g.,
+	    Merrifield vs. Moorefield) and desired build configuration.
+	    Normally a value recommended by IMG is used.
+	    Examples as of 2013-12-06:
+	    - Merrifield - 1.14.4.4 - DDK1.2
+	    - Merrifield - 1.76.4.6 - DDK1.3
+	    - Moorefield - 1.72.4.12 - either DDK
+
+config MRFL_DISPLAY
+	tristate "Intel Merrifield Generic Framebuffer Driver"
+	depends on PCI && X86_MRFLD && !DRM_MDFLD && FB
+	default n
+	select FB_CFB_COPYAREA
+        select FB_CFB_FILLRECT
+        select FB_CFB_IMAGEBLIT
+	help
+	   Basic support for Generic Framebuffer Driver for Merrifield.
+
+config DRM_MRFLD
+        tristate "Intel Merrifield Graphics Driver Support with IMG"
+        depends on DRM_INTEL_HANDSET && PCI
+        select FB_CFB_COPYAREA
+        select FB_CFB_FILLRECT
+        select FB_CFB_IMAGEBLIT
+        select DRM_KMS_HELPER
+        select GENERIC_ALLOCATOR
+        help
+          Choose this option if you have a Merrifield platform.
+          If M is selected the module will be called mid_gfx.
+
+config PDUMP
+        bool "Enable pdump in Merrifield graphics driver"
+        depends on DRM_MRFLD
+        default n
+        help
+          Choose this option to enable pdump on Merrifield.
+
+config MID_DSI_DSR
+	bool "Support DSI Fullscreen Display Self Refreshment "
+	depends on DRM_INTEL_HANDSET && !MID_DSI_DPU
+	default y
+	help
+	  Choose this option if you have a Type1 MIPI panel.
+
+config MID_DSI_DPU
+	bool "Support DSI Display Partial Update"
+	depends on DRM_INTEL_HANDSET
+	default n
+	help
+	  xxxxxx
+
+config GFX_RTPM
+	bool "Enable GFX runtime_pm"
+	depends on DRM_INTEL_HANDSET
+	default n
+	help
+          xxxxxx
+
+config SUPPORT_VSP
+        bool "SUPPORT_VIDEO_VSP"
+        depends on DRM_MRFLD
+        default n
+        help
+          xxxxxx
+
+config GFX_RGX_DEVFREQ
+	tristate "IMG Rogue Graphics DEVFREQ Driver"
+	default y
+	depends on PM_DEVFREQ && DRM_INTEL_HANDSET
+	select DEVFREQ_GOV_SIMPLE_ONDEMAND
+	select DEVFREQ_GOV_PERFORMANCE
+	select DEVFREQ_GOV_POWERSAVE
+	help
+	  This adds the DEVFREQ driver for Imagination Technologies (IMG)
+	  Rogue/Hood graphics (RGX).  This driver helps control GPU clock
+	  speed in order to provide high performance on demand and power
+	  savings when not busy or when thermal conditions suggest.
+
+config MOOREFIELD
+	bool "Build option for the Moorefield platform"
+	depends on DRM_INTEL_HANDSET
+	default n
+	help
+	  For the GFX block of TNG/ANN, its power islands' power on/off sequences are:
+	  1. Power on:  SLC_LDO -> SLC -> Sidekick -> Rascal/Dust;
+	  2. Power off: Rascal/Dust -> Sidekick -> SLC -> SLC_LDO;
+	  So we should follow the sequence, and VED/VEC/VSP power islands just depend
+	  on the SLC power island.
+	  And it would distinguish the Display Class implementation.

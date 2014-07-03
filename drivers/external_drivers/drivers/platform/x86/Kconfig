@@ -1,6 +1,15 @@
 #
 # X86 Platform Specific Drivers
 #
+config GPIO_INTEL_MSIC
+	bool "Intel MSIC GPIO support"
+	depends on INTEL_SCU_IPC && GPIOLIB
+	---help---
+	  MSIC provides a GPIO subsystem containing several input
+	  output pins.
+	  Say Y here to support GPIO via the SCU IPC interface
+	  on Intel MID platforms.
+
 config INTEL_MID_OSIP
 	tristate "osip driver for Intel MID platforms"
 	default y
