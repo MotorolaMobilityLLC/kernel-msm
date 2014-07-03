@@ -22,14 +22,12 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
  	{
 		.gpio      = 2,	/* BLSP1 BT Uart CTS */
 		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
                         [GPIOMUX_SUSPENDED] = &gpio_uart_config,
 		},
 	},
 	{
 		.gpio      = 3,	/* BLSP1 BT Uart RTS */
 		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
                         [GPIOMUX_SUSPENDED] = &gpio_uart_config,
 		},
 	},

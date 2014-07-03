@@ -131,9 +131,6 @@ module_param_named(debug_mask, hs_serial_debug_mask,
  * High Speed UART (i.e. Legacy HSUART), GSBI based HSUART
  * and BSLP based HSUART.
  */
-
-#define DBG             false
-
 enum uart_core_type {
 	LEGACY_HSUART,
 	GSBI_HSUART,
@@ -276,7 +273,7 @@ struct msm_hs_port {
 	bool rx_bam_inprogress;
 	unsigned int *reg_ptr;
 	wait_queue_head_t bam_disconnect_wait;
-
+	bool obs;
 };
 
 unsigned int regmap_nonblsp[UART_DM_LAST] = {
@@ -364,8 +361,6 @@ static struct msm_hs_port *msm_hs_get_hs_port(int port_index);
 	container_of((uart_port), struct msm_hs_port, uport)
 
 extern void bluesleep_setup_uart_port(struct uart_port *uport); //ASUS_BSP BerylHou +++
-bool wakeunlock = false;
-
 static int msm_hs_ioctl(struct uart_port *uport, unsigned int cmd,
 						unsigned long arg)
 {
@@ -373,8 +368,6 @@ static int msm_hs_ioctl(struct uart_port *uport, unsigned int cmd,
 	enum msm_hs_clk_states_e clk_state;
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-
-	if(DBG) printk(" Beryl, msm_hs_ioctl \n");
 
 	switch (cmd) {
 	case MSM_ENABLE_UART_CLOCK: {
@@ -415,8 +408,6 @@ static int msm_hs_clock_vote(struct msm_hs_port *msm_uport)
 {
 	int rc = 0;
 
-	if(DBG) printk(" Beryl, msm_hs_clock_vote \n");
-
 	if (1 == atomic_inc_return(&msm_uport->clk_count)) {
 		msm_hs_bus_voting(msm_uport, BUS_SCALING);
 		/* Turn on core clk and iface clk */
@@ -439,7 +430,7 @@ static int msm_hs_clock_vote(struct msm_hs_port *msm_uport)
 			}
 		}
 		msm_uport->clk_state = MSM_HS_CLK_ON;
-		printk("%s: Clock ON successful\n", __func__);
+		MSM_HS_DBG("%s: Clock ON successful\n", __func__);
 	}
 
 
@@ -449,8 +440,6 @@ static int msm_hs_clock_vote(struct msm_hs_port *msm_uport)
 static void msm_hs_clock_unvote(struct msm_hs_port *msm_uport)
 {
 	int rc = atomic_read(&msm_uport->clk_count);
-
-	if(DBG) printk(" Beryl, msm_hs_clock_unvote \n");
 
 	if (rc <= 0) {
 		WARN(rc, "msm_uport->clk_count < 0!");
@@ -468,7 +457,7 @@ static void msm_hs_clock_unvote(struct msm_hs_port *msm_uport)
 		/* Unvote the PNOC clock */
 		msm_hs_bus_voting(msm_uport, BUS_RESET);
 		msm_uport->clk_state = MSM_HS_CLK_OFF;
-		printk("%s: Clock OFF successful\n", __func__);
+		MSM_HS_DBG("%s: Clock OFF successful\n", __func__);
 	}
 }
 
@@ -480,7 +469,7 @@ static struct msm_hs_port *get_matching_hs_port(struct platform_device *pdev)
 {
 	struct msm_serial_hs_platform_data *pdata = pdev->dev.platform_data;
 	struct msm_hs_port *msm_uport = msm_hs_get_hs_port(pdev->id);
-	if(DBG) printk(" Beryl, get_matching_hs_port \n");
+
 	if ((!msm_uport) || (msm_uport->uport.line != pdev->id
 	   && msm_uport->uport.line != pdata->userid)) {
 		MSM_HS_ERR("uport line number mismatch!");
@@ -501,8 +490,6 @@ static ssize_t show_clock(struct device *dev, struct device_attribute *attr,
 	struct platform_device *pdev = container_of(dev, struct
 						    platform_device, dev);
 	struct msm_hs_port *msm_uport = get_matching_hs_port(pdev);
-	if(DBG) printk(" Beryl, show_clock \n");
-
 
 	/* This check should not fail */
 	if (msm_uport) {
@@ -523,12 +510,9 @@ static ssize_t set_clock(struct device *dev, struct device_attribute *attr,
 {
 	int state;
 	ssize_t ret = 0;
-
 	struct platform_device *pdev = container_of(dev, struct
 						    platform_device, dev);
 	struct msm_hs_port *msm_uport = get_matching_hs_port(pdev);
-
-	if(DBG) printk(" Beryl, set_clock \n");
 
 	/* This check should not fail */
 	if (msm_uport) {
@@ -553,8 +537,6 @@ static DEVICE_ATTR(clock, S_IWUSR | S_IRUGO, show_clock, set_clock);
 
 static inline unsigned int use_low_power_wakeup(struct msm_hs_port *msm_uport)
 {
-	if(DBG) printk(" Beryl, use_low_power_wakeup \n");
-
 	return (msm_uport->wakeup.irq > 0);
 }
 
@@ -565,15 +547,12 @@ static inline int is_gsbi_uart(struct msm_hs_port *msm_uport)
 }
 static unsigned int is_blsp_uart(struct msm_hs_port *msm_uport)
 {
-	if(DBG) printk(" Beryl, is_blsp_uart \n");
-
 	return (msm_uport->uart_type == BLSP_HSUART);
 }
 
 static void msm_hs_bus_voting(struct msm_hs_port *msm_uport, unsigned int vote)
 {
 	int ret;
-	if(DBG) printk(" Beryl, msm_hs_bus_voting \n");
 
 	if (is_blsp_uart(msm_uport) && msm_uport->bus_perf_client) {
 		MSM_HS_DBG("Bus voting:%d\n", vote);
@@ -610,7 +589,6 @@ static int sps_rx_disconnect(struct sps_pipe *sps_pipe_handler)
 {
 	struct sps_connect config;
 	int ret;
-	if(DBG) printk(" Beryl, sps_rx_disconnect \n");
 
 	ret = sps_get_config(sps_pipe_handler, &config);
 	if (ret) {
@@ -629,7 +607,6 @@ static int sps_rx_disconnect(struct sps_pipe *sps_pipe_handler)
 static void hex_dump_ipc(char *prefix, char *string, int size)
 {
 	char linebuf[512];
-	if(DBG) printk(" Beryl, hex_dump_ipc \n");
 
 	hex_dump_to_buffer(string, size, 16, 1, linebuf, sizeof(linebuf), 1);
 	MSM_HS_DBG("%s : %s", prefix, linebuf);
@@ -645,7 +622,6 @@ static void dump_uart_hs_registers(struct msm_hs_port *msm_uport)
 		MSM_HS_WARN("%s: Failed.Clocks are OFF\n", __func__);
 		return;
 	}
-	if(DBG) printk(" Beryl, dump_uart_hs_registers \n");
 
 	MSM_HS_DBG(
 	"MR1:%x MR2:%x TFWR:%x RFWR:%x DMEN:%x IMR:%x MISR:%x NCF_TX:%x\n",
@@ -676,7 +652,6 @@ static void msm_hs_release_port(struct uart_port *port)
 	struct platform_device *pdev = to_platform_device(port->dev);
 	struct resource *gsbi_resource;
 	resource_size_t size;
-	if(DBG) printk(" Beryl, msm_hs_release_port \n");
 
 	if (is_gsbi_uart(msm_uport)) {
 		iowrite32(GSBI_PROTOCOL_IDLE, msm_uport->mapped_gsbi +
@@ -704,8 +679,6 @@ static int msm_hs_request_port(struct uart_port *port)
 	gsbi_resource = platform_get_resource_byname(pdev,
 						     IORESOURCE_MEM,
 						     "gsbi_resource");
-	if(DBG) printk(" Beryl, msm_hs_request_port \n");
-
 	if (gsbi_resource) {
 		size = resource_size(gsbi_resource);
 		if (unlikely(!request_mem_region(gsbi_resource->start, size,
@@ -728,7 +701,6 @@ static int msm_serial_loopback_enable_set(void *data, u64 val)
 	struct uart_port *uport = &(msm_uport->uport);
 	unsigned long flags;
 	int ret = 0;
-	if(DBG) printk(" Beryl, msm_serial_loopback_enable_set \n");
 
 	msm_hs_clock_vote(msm_uport);
 
@@ -766,7 +738,6 @@ static int msm_serial_loopback_enable_get(void *data, u64 *val)
 	struct uart_port *uport = &(msm_uport->uport);
 	unsigned long flags;
 	int ret = 0;
-	if(DBG) printk(" Beryl, msm_serial_loopback_enable_get \n");
 
 	msm_hs_clock_vote(msm_uport);
 
@@ -799,7 +770,6 @@ static void msm_serial_debugfs_init(struct msm_hs_port *msm_uport,
 						debug_base,
 						msm_uport,
 						&loopback_enable_fops);
-	if(DBG) printk(" Beryl, msm_serial_loopback_enable_get \n");
 
 	if (IS_ERR_OR_NULL(msm_uport->loopback_dir))
 		MSM_HS_ERR("%s(): Cannot create loopback.%d debug entry",
@@ -811,7 +781,6 @@ static int msm_hs_remove(struct platform_device *pdev)
 
 	struct msm_hs_port *msm_uport;
 	struct device *dev;
-	if(DBG) printk(" Beryl, msm_hs_remove \n");
 
 	if (pdev->id < 0 || pdev->id >= UARTDM_NR) {
 		MSM_HS_ERR("Invalid plaform device ID = %d\n", pdev->id);
@@ -866,18 +835,17 @@ static int msm_hs_init_clk(struct uart_port *uport)
 {
 	int ret;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if(DBG) printk(" Beryl, msm_hs_init_clk \n");
 
 	/* Set up the MREG/NREG/DREG/MNDREG */
 	ret = clk_set_rate(msm_uport->clk, uport->uartclk);
 	if (ret) {
-		printk("Error setting clock rate on UART\n");
+		MSM_HS_WARN("Error setting clock rate on UART\n");
 		return ret;
 	}
 
 	ret = msm_hs_clock_vote(msm_uport);
 	if (ret) {
-		printk("Error could not turn on UART clk\n");
+		MSM_HS_ERR("Error could not turn on UART clk\n");
 		return ret;
 	}
 
@@ -904,7 +872,6 @@ static int msm_hs_spsconnect_tx(struct uart_port *uport)
 	struct sps_pipe *sps_pipe_handle = tx->cons.pipe_handle;
 	struct sps_connect *sps_config = &tx->cons.config;
 	struct sps_register_event *sps_event = &tx->cons.event;
-	if(DBG) printk(" Beryl, msm_hs_spsconnect_tx \n");
 
 	/* Establish connection between peripheral and memory endpoint */
 	ret = sps_connect(sps_pipe_handle, sps_config);
@@ -946,7 +913,6 @@ static int msm_hs_spsconnect_rx(struct uart_port *uport)
 	struct sps_pipe *sps_pipe_handle = rx->prod.pipe_handle;
 	struct sps_connect *sps_config = &rx->prod.config;
 	struct sps_register_event *sps_event = &rx->prod.event;
-	if(DBG) printk(" Beryl, msm_hs_spsconnect_rx \n");
 
 	/* Establish connection between peripheral and memory endpoint */
 	ret = sps_connect(sps_pipe_handle, sps_config);
@@ -984,7 +950,6 @@ static void msm_hs_set_bps_locked(struct uart_port *uport,
 	unsigned long rxstale;
 	unsigned long data;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if(DBG) printk(" Beryl,  Beryl, msm_hs_set_bps_locked\n");
 
 	switch (bps) {
 	case 300:
@@ -1115,7 +1080,6 @@ static void msm_hs_set_std_bps_locked(struct uart_port *uport,
 {
 	unsigned long rxstale;
 	unsigned long data;
-	if(DBG) printk(" Beryl,  Beryl, msm_hs_set_std_bps_locked\n");
 
 	switch (bps) {
 	case 9600:
@@ -1178,7 +1142,6 @@ static void msm_hs_set_termios(struct uart_port *uport,
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	struct msm_hs_rx *rx = &msm_uport->rx;
 	struct sps_pipe *sps_pipe_handle = rx->prod.pipe_handle;
-	if(DBG) printk(" Beryl,  Beryl, msm_hs_set_termios\n");
 
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
 		MSM_HS_WARN("%s: Failed.Clocks are OFF\n", __func__);
@@ -1355,24 +1318,14 @@ unsigned int msm_hs_tx_empty(struct uart_port *uport)
 	unsigned int data;
 	unsigned int ret = 0;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if (DBG) printk(" Beryl, msm_hs_tx_empty\n");
 
 	msm_hs_clock_vote(msm_uport);
 	data = msm_hs_read(uport, UART_DM_SR);
-	if (DBG) printk("%s(): SR Reg Read 0x%x\n", __func__, data);
-	msm_hs_clock_unvote(msm_uport); 
+	msm_hs_clock_unvote(msm_uport);
+	MSM_HS_DBG("%s(): SR Reg Read 0x%x", __func__, data);
 
-	if (data & UARTDM_SR_TXEMT_BMSK) { // unlock dma wake lock if no data is in transmitting
+	if (data & UARTDM_SR_TXEMT_BMSK)
 		ret = TIOCSER_TEMT;
-		if (wakeunlock != true) { // only unlock dma_wake_lock onece after uart start up
-			wake_unlock(&msm_uport->dma_wake_lock);
-			printk("msm_hs_tx_empty, wake_unlock(&msm_uport->dma_wake_lock)\n");
-			wakeunlock = true;
-		}
-	}
-	if(DBG) printk("ret %d\n", ret);
-
-
 
 	return ret;
 }
@@ -1386,7 +1339,6 @@ EXPORT_SYMBOL(msm_hs_tx_empty);
 static void msm_hs_stop_tx_locked(struct uart_port *uport)
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if(DBG) printk(" Beryl, msm_hs_stop_tx_locked\n");
 
 	msm_uport->tx.tx_ready_int_en = 0;
 }
@@ -1403,15 +1355,13 @@ static void hsuart_disconnect_rx_endpoint_work(struct work_struct *w)
 	const struct msm_serial_hs_platform_data *pdata =
 					pdev->dev.platform_data;
 	int ret = 0;
-	if (DBG) printk(" Beryl, hsuart_disconnect_rx_endpoint_work\n");
 
 	ret = sps_rx_disconnect(sps_pipe_handle);
 	if (ret)
 		MSM_HS_ERR("%s(): sps_disconnect failed\n", __func__);
-
-	if (pdata->no_suspend_delay) {
+	if (pdata->no_suspend_delay)
 		wake_unlock(&msm_uport->rx.wake_lock);
-	} else
+	else
 		wake_lock_timeout(&msm_uport->rx.wake_lock,
 						HZ / 2);
 	msm_uport->rx.flush = FLUSH_SHUTDOWN;
@@ -1433,7 +1383,6 @@ static void msm_hs_stop_rx_locked(struct uart_port *uport)
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	unsigned int data;
-	if (DBG) printk(" Beryl, msm_hs_stop_rx_locked\n");
 
 	MSM_HS_DBG("In %s():\n", __func__);
 	if (msm_uport->clk_state != MSM_HS_CLK_OFF) {
@@ -1479,7 +1428,6 @@ static void msm_hs_submit_tx_locked(struct uart_port *uport)
 	struct msm_hs_tx *tx = &msm_uport->tx;
 	struct circ_buf *tx_buf = &msm_uport->uport.state->xmit;
 	struct sps_pipe *sps_pipe_handle;
-	if(DBG) printk(" Beryl, msm_hs_submit_tx_locked\n");
 
 	if (uart_circ_empty(tx_buf) || uport->state->port.tty->stopped) {
 		msm_hs_stop_tx_locked(uport);
@@ -1563,7 +1511,6 @@ static void msm_hs_start_rx_locked(struct uart_port *uport)
 	u32 flags = SPS_IOVEC_FLAG_INT;
 	unsigned int buffer_pending = msm_uport->rx.buffer_pending;
 	unsigned int data;
-	if(DBG) printk(" Beryl, msm_hs_start_rx_locked\n");
 
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
 		MSM_HS_WARN("%s: Failed.Clocks are OFF\n", __func__);
@@ -1637,7 +1584,6 @@ static void flip_insert_work(struct work_struct *work)
 		container_of(work, struct msm_hs_port,
 			     rx.flip_insert_work.work);
 	struct tty_struct *tty = msm_uport->uport.state->port.tty;
-	if(DBG) printk(" Beryl, flip_insert_work\n");
 
 	spin_lock_irqsave(&msm_uport->uport.lock, flags);
 	if (msm_uport->rx.buffer_pending == NONE_PENDING) {
@@ -1696,11 +1642,9 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 	u32 sps_flags = SPS_IOVEC_FLAG_INT;
 	struct platform_device *pdev;
 	const struct msm_serial_hs_platform_data *pdata;
-	if(DBG) printk(" Beryl, msm_serial_hs_rx_tlet\n");
 
 	msm_uport = container_of((struct tasklet_struct *)tlet_ptr,
 				 struct msm_hs_port, rx.tlet);
-
 	uport = &msm_uport->uport;
 	tty = uport->state->port.tty;
 	notify = &msm_uport->notify;
@@ -1835,7 +1779,6 @@ out:
 static void msm_hs_start_tx_locked(struct uart_port *uport )
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if(DBG) printk(" Beryl, msm_hs_start_tx_locked\n");
 
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
 		MSM_HS_WARN("%s: Failed.Clocks are OFF\n", __func__);
@@ -1862,7 +1805,6 @@ static void msm_hs_sps_tx_callback(struct sps_event_notify *notify)
 	struct msm_hs_port *msm_uport =
 		(struct msm_hs_port *)
 		((struct sps_event_notify *)notify)->user;
-	if(DBG) printk(" Beryl, msm_hs_sps_tx_callback\n");
 
 	msm_uport->notify = *notify;
 	MSM_HS_DBG("%s: ev_id=%d, addr=0x%x, size=0x%x, flags=0x%x, line=%d\n",
@@ -1887,8 +1829,6 @@ static void msm_hs_dmov_tx_callback(struct msm_dmov_cmd *cmd_ptr,
 					struct msm_dmov_errdata *err)
 {
 	struct msm_hs_port *msm_uport;
-	if(DBG) printk(" Beryl, msm_hs_dmov_tx_callback\n");
-
 
 	msm_uport = container_of(cmd_ptr, struct msm_hs_port, tx.xfer);
 	if (msm_uport->tx.flush == FLUSH_STOP)
@@ -1904,13 +1844,12 @@ static void msm_hs_dmov_tx_callback(struct msm_dmov_cmd *cmd_ptr,
 static void msm_serial_hs_tx_tlet(unsigned long tlet_ptr)
 {
 	unsigned long flags;
-
 	struct msm_hs_port *msm_uport = container_of((struct tasklet_struct *)
 				tlet_ptr, struct msm_hs_port, tx.tlet);
 	struct uart_port *uport = &msm_uport->uport;
 	struct circ_buf *tx_buf = &uport->state->xmit;
 	struct msm_hs_tx *tx = &msm_uport->tx;
-	if(DBG) printk(" Beryl, msm_serial_hs_tx_tlet\n");
+
 	/*
 	 * Do the work buffer related work in BAM
 	 * mode that is equivalent to legacy mode
@@ -1976,7 +1915,6 @@ static void msm_hs_sps_rx_callback(struct sps_event_notify *notify)
 		((struct sps_event_notify *)notify)->user;
 	struct uart_port *uport;
 	unsigned long flags;
-	if(DBG) printk(" Beryl, msm_hs_sps_rx_callback\n");
 
 	uport = &(msm_uport->uport);
 	msm_uport->notify = *notify;
@@ -2013,8 +1951,6 @@ static void msm_hs_dmov_rx_callback(struct msm_dmov_cmd *cmd_ptr,
 	msm_uport = container_of(cmd_ptr, struct msm_hs_port, rx.xfer);
 	uport = &(msm_uport->uport);
 
-	if(DBG) printk(" Beryl, msm_hs_dmov_rx_callback\n");
-
 	MSM_HS_DBG("%s(): called result:%x\n", __func__, result);
 	if (!(result & DMOV_RSLT_ERROR)) {
 		if (result & DMOV_RSLT_FLUSH) {
@@ -2045,8 +1981,6 @@ static void msm_hs_dmov_rx_callback(struct msm_dmov_cmd *cmd_ptr,
  */
 static unsigned int msm_hs_get_mctrl_locked(struct uart_port *uport)
 {
-	if(DBG) printk(" Beryl, msm_hs_get_mctrl_locked\n");
-
 	return TIOCM_DSR | TIOCM_CAR | TIOCM_CTS;
 }
 
@@ -2064,7 +1998,6 @@ void msm_hs_set_mctrl_locked(struct uart_port *uport,
 	unsigned int set_rts;
 	unsigned int data;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if(DBG) printk(" Beryl, msm_hs_set_mctrl_locked\n");
 
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
 		MSM_HS_WARN("%s:Failed.Clocks are OFF\n", __func__);
@@ -2093,7 +2026,6 @@ void msm_hs_set_mctrl(struct uart_port *uport,
 {
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if (DBG) printk(" Beryl, msm_hs_set_mctrl\n");
 
 	msm_hs_clock_vote(msm_uport);
 	spin_lock_irqsave(&uport->lock, flags);
@@ -2107,7 +2039,6 @@ EXPORT_SYMBOL(msm_hs_set_mctrl);
 static void msm_hs_enable_ms_locked(struct uart_port *uport)
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if(DBG) printk(" Beryl, msm_hs_enable_ms_locked\n");
 
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
 		MSM_HS_WARN("%s:Failed.Clocks are OFF\n", __func__);
@@ -2131,7 +2062,6 @@ static void msm_hs_break_ctl(struct uart_port *uport, int ctl)
 {
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if(DBG) printk(" Beryl, msm_hs_break_ctl\n");
 
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
 		MSM_HS_WARN("%s: Failed.Clocks are OFF\n", __func__);
@@ -2148,7 +2078,6 @@ static void msm_hs_config_port(struct uart_port *uport, int cfg_flags)
 {
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if(DBG) printk(" Beryl, msm_hs_config_port\n");
 
 	if (cfg_flags & UART_CONFIG_TYPE) {
 		uport->type = PORT_MSM;
@@ -2171,7 +2100,6 @@ static void msm_hs_config_port(struct uart_port *uport, int cfg_flags)
 static void msm_hs_handle_delta_cts_locked(struct uart_port *uport)
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	if(DBG) printk(" Beryl, msm_hs_handle_delta_cts_locked\n");
 
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
 		MSM_HS_WARN("%s: Failed.Clocks are OFF\n", __func__);
@@ -2199,7 +2127,6 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	unsigned int data;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	struct circ_buf *tx_buf = &uport->state->xmit;
-	if(DBG) printk(" Beryl, msm_hs_check_clock_off\n");
 
 	mutex_lock(&msm_uport->clk_mutex);
 	spin_lock_irqsave(&uport->lock, flags);
@@ -2215,13 +2142,18 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 		mutex_unlock(&msm_uport->clk_mutex);
 		if (msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF) {
 			msm_uport->clk_state = MSM_HS_CLK_ON;
-			/* Pulling RFR line high */
-			msm_hs_write(uport, UART_DM_CR, RFR_LOW);
-			/* Enable auto RFR */
-			data = msm_hs_read(uport, UART_DM_MR1);
-			data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
-			msm_hs_write(uport, UART_DM_MR1, data);
-			mb();
+			/* Pull RFR GPIO line HIGH for IBS
+			 * and return
+			 */
+			if (!msm_uport->obs) {
+				/* Pulling RFR line high */
+				msm_hs_write(uport, UART_DM_CR, RFR_LOW);
+				/* Enable auto RFR */
+				data = msm_hs_read(uport, UART_DM_MR1);
+				data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
+				msm_hs_write(uport, UART_DM_MR1, data);
+				mb();
+			}
 		}
 		MSM_HS_DBG("%s(): clkstate %d", __func__, msm_uport->clk_state);
 		return -1;
@@ -2254,19 +2186,26 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 
 	spin_unlock_irqrestore(&uport->lock, flags);
 
-	/* Pulling RFR line high */
-	msm_hs_write(uport, UART_DM_CR, RFR_LOW);
-	/* Enable auto RFR */
-	data = msm_hs_read(uport, UART_DM_MR1);
-	data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
-	msm_hs_write(uport, UART_DM_MR1, data);
-	mb();
-
+	/* Pull RFR GPIO line HIGH for IBS
+	 * to receive Wakeup byte
+	 */
+	if (!msm_uport->obs) {
+		/* Pulling RFR line high */
+		msm_hs_write(uport, UART_DM_CR, RFR_LOW);
+		/* Enable auto RFR */
+		data = msm_hs_read(uport, UART_DM_MR1);
+		data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
+		msm_hs_write(uport, UART_DM_MR1, data);
+		mb();
+	}
 	/* we really want to clock off */
 	msm_hs_clock_unvote(msm_uport);
 
 	spin_lock_irqsave(&uport->lock, flags);
-	if (use_low_power_wakeup(msm_uport)) {
+
+	/* Enable wakeup interrupt for IBS
+	 */
+	if (!msm_uport->obs && use_low_power_wakeup(msm_uport)) {
 		msm_uport->wakeup.ignore = 1;
 		enable_irq(msm_uport->wakeup.irq);
 		/*
@@ -2277,7 +2216,6 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 		disable_irq(uport->irq);
 	}
 	wake_unlock(&msm_uport->dma_wake_lock);
-	if (DBG)  printk("Beryl, msm_hs_check_clock_off, wake_unlock(&msm_uport->dma_wake_lock)\n");
 
 	spin_unlock_irqrestore(&uport->lock, flags);
 
@@ -2291,7 +2229,6 @@ static void hsuart_clock_off_work(struct work_struct *w)
 	struct msm_hs_port *msm_uport = container_of(w, struct msm_hs_port,
 							clock_off_w);
 	struct uart_port *uport = &msm_uport->uport;
-	printk(" Beryl, hsuart_clock_off_work\n");
 
 	if (!msm_hs_check_clock_off(uport)) {
 		hrtimer_start(&msm_uport->clk_off_timer,
@@ -2304,7 +2241,6 @@ static enum hrtimer_restart msm_hs_clk_off_retry(struct hrtimer *timer)
 {
 	struct msm_hs_port *msm_uport = container_of(timer, struct msm_hs_port,
 							clk_off_timer);
-	if(DBG) printk(" Beryl, hrtimer_restart msm_hs_clk_off_retry\n");
 
 	queue_work(msm_uport->hsuart_wq, &msm_uport->clock_off_w);
 	return HRTIMER_NORESTART;
@@ -2319,7 +2255,6 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 	struct circ_buf *tx_buf = &uport->state->xmit;
 	struct msm_hs_tx *tx = &msm_uport->tx;
 	struct msm_hs_rx *rx = &msm_uport->rx;
-	if(DBG) printk(" Beryl, irqreturn_t msm_hs_isr\n");
 
 	spin_lock_irqsave(&uport->lock, flags);
 
@@ -2329,7 +2264,6 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 
 	/* Uart RX starting */
 	if (isr_status & UARTDM_ISR_RXLEV_BMSK) {
-		if (DBG)  printk(" Beryl, irqreturn_t msm_hs_isr, wake_lock(&rx->wake_lock)\n");
 		wake_lock(&rx->wake_lock);  /* hold wakelock while rx dma */
 		MSM_HS_DBG("%s:UARTDM_ISR_RXLEV_BMSK\n", __func__);
 		msm_uport->imr_reg &= ~UARTDM_ISR_RXLEV_BMSK;
@@ -2416,7 +2350,6 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 struct uart_port *msm_hs_get_uart_port(int port_index)
 {
 	struct uart_state *state = msm_hs_driver.state + port_index;
-	if(DBG) printk(" Beryl, msm_hs_get_uart_port\n");
 
 	/* The uart_driver structure stores the states in an array.
 	 * Thus the corresponding offset from the drv->state returns
@@ -2432,7 +2365,6 @@ EXPORT_SYMBOL(msm_hs_get_uart_port);
 static struct msm_hs_port *msm_hs_get_hs_port(int port_index)
 {
 	struct uart_port *uport = msm_hs_get_uart_port(port_index);
-	if(DBG) printk(" Beryl, msm_hs_get_hs_port\n");
 	if (uport)
 		return UARTDM_TO_MSM(uport);
 	return NULL;
@@ -2443,19 +2375,22 @@ void msm_hs_request_clock_off(struct uart_port *uport) {
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	int data;
-	if (DBG)  printk(" Beryl, msm_hs_request_clock_off\n");
 
 	spin_lock_irqsave(&uport->lock, flags);
 	if (msm_uport->clk_state == MSM_HS_CLK_ON) {
-		if (DBG)  printk(" Beryl, msm_hs_request_clock_off, msm_uport->clk_state == MSM_HS_CLK_ON\n");
 		msm_uport->clk_state = MSM_HS_CLK_REQUEST_OFF;
-		data = msm_hs_read(uport, UART_DM_MR1);
-		/*disable auto ready-for-receiving */
-		data &= ~UARTDM_MR1_RX_RDY_CTL_BMSK;
-		msm_hs_write(uport, UART_DM_MR1, data);
-		mb();
-		/* set RFR_N to high */
-		msm_hs_write(uport, UART_DM_CR, RFR_HIGH);
+		/* Stop receiving data by pulling RFR GPIO line
+		 * LOW and disabling Auto RFR for IBS
+		 */
+		if (!msm_uport->obs) {
+			data = msm_hs_read(uport, UART_DM_MR1);
+			/*disable auto ready-for-receiving */
+			data &= ~UARTDM_MR1_RX_RDY_CTL_BMSK;
+			msm_hs_write(uport, UART_DM_MR1, data);
+			mb();
+			/* set RFR_N to high */
+			msm_hs_write(uport, UART_DM_CR, RFR_HIGH);
+		}
 
 		data = msm_hs_read(uport, UART_DM_SR);
 		MSM_HS_DBG("%s(): TXEMT, queuing clock off work\n",
@@ -2464,7 +2399,6 @@ void msm_hs_request_clock_off(struct uart_port *uport) {
 
 		mb();
 	}
-	
 	spin_unlock_irqrestore(&uport->lock, flags);
 }
 EXPORT_SYMBOL(msm_hs_request_clock_off);
@@ -2475,14 +2409,14 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 	unsigned long flags;
 	unsigned int data;
 	int ret = 0;
-	if (DBG) printk(" Beryl, msm_hs_request_clock_on\n");
 
 	mutex_lock(&msm_uport->clk_mutex);
 	spin_lock_irqsave(&uport->lock, flags);
-
-	if (msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF) {
-		if (DBG)  printk(" Beryl, msm_hs_request_clock_on,msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF\n");
-
+	/* Pull RFR GPIO line HIGH and Enable Auto
+	 * RFR control for IBS
+	 */
+	if (!msm_uport->obs &&
+		msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF) {
 		/* Pulling RFR line high */
 		msm_hs_write(uport, UART_DM_CR, RFR_LOW);
 		/* Enable auto RFR */
@@ -2493,11 +2427,10 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 	}
 	switch (msm_uport->clk_state) {
 	case MSM_HS_CLK_OFF:
-		if (DBG)  printk("Beryl, msm_hs_request_clock_on,case MSM_HS_CLK_OFF\n");
-		if (DBG)  printk("Beryl, msm_hs_request_clock_on,wake_lock(&msm_uport->dma_wake_lock)\n");
 		wake_lock(&msm_uport->dma_wake_lock);
 
-		if (use_low_power_wakeup(msm_uport)) {
+		/* Disable Wakeup Interrupt for IBS */
+		if (!msm_uport->obs && use_low_power_wakeup(msm_uport)) {
 			disable_irq_nosync(msm_uport->wakeup.irq);
 			/* uport-irq was disabled when clocked off */
 			enable_irq(uport->irq);
@@ -2514,8 +2447,6 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 		spin_lock_irqsave(&uport->lock, flags);
 		/* else fall-through */
 	case MSM_HS_CLK_REQUEST_OFF:
-		printk(" Beryl, msm_hs_request_clock_on,case MSM_HS_CLK_REQUEST_OFF\n");
-
 		hrtimer_cancel(&msm_uport->clk_off_timer);
 		if (msm_uport->rx.flush == FLUSH_STOP) {
 			spin_unlock_irqrestore(&uport->lock, flags);
@@ -2556,7 +2487,6 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 		}
 		if (msm_uport->rx.flush == FLUSH_STOP)
 			msm_uport->rx.flush = FLUSH_IGNORE;
-		printk(" Beryl, msm_hs_request_clock_on complete\n");
 
 		break;
 	case MSM_HS_CLK_ON:
@@ -2578,7 +2508,6 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 	struct uart_port *uport = &msm_uport->uport;
 	struct tty_struct *tty = NULL;
 
-	if(DBG) printk(" Beryl, msm_hs_wakeup_isr\n");
 	spin_lock_irqsave(&uport->lock, flags);
 	if (msm_uport->clk_state == MSM_HS_CLK_OFF)  {
 		/* ignore the first irq - it is a pending irq that occured
@@ -2614,8 +2543,6 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 
 static const char *msm_hs_type(struct uart_port *port)
 {
-	if(DBG) printk(" Beryl, msm_hs_type\n");
-
 	return ("MSM HS UART");
 }
 
@@ -2628,7 +2555,6 @@ static void msm_hs_unconfig_uart_gpios(struct uart_port *uport)
 	struct platform_device *pdev = to_platform_device(uport->dev);
 	const struct msm_serial_hs_platform_data *pdata =
 					pdev->dev.platform_data;
-	if(DBG) printk(" Beryl, msm_hs_unconfig_uart_gpios\n");
 
 	if (pdata) {
 		if (gpio_is_valid(pdata->uart_tx_gpio))
@@ -2653,7 +2579,6 @@ static int msm_hs_config_uart_gpios(struct uart_port *uport)
 	const struct msm_serial_hs_platform_data *pdata =
 					pdev->dev.platform_data;
 	int ret = 0;
-	if(DBG) printk(" Beryl, msm_hs_config_uart_gpios\n");
 
 	if (pdata) {
 		if (gpio_is_valid(pdata->uart_tx_gpio)) {
@@ -2730,7 +2655,6 @@ static int msm_hs_startup(struct uart_port *uport)
 	struct msm_hs_rx *rx = &msm_uport->rx;
 	struct sps_pipe *sps_pipe_handle_tx = tx->cons.pipe_handle;
 	struct sps_pipe *sps_pipe_handle_rx = rx->prod.pipe_handle;
-	if(DBG) printk(" Beryl, msm_hs_startup\n");
 
 	rfr_level = uport->fifosize;
 	if (rfr_level > 16)
@@ -2739,32 +2663,25 @@ static int msm_hs_startup(struct uart_port *uport)
 	tx->dma_base = dma_map_single(uport->dev, tx_buf->buf, UART_XMIT_SIZE,
 				      DMA_TO_DEVICE);
 
-	printk("msm_hs_startup, wake_lock(&msm_uport->dma_wake_lock)\n");
-	wakeunlock = false;
 	wake_lock(&msm_uport->dma_wake_lock);
 	/* turn on uart clk */
 	ret = msm_hs_init_clk(uport);
 	if (unlikely(ret)) {
 		MSM_HS_ERR("Turning ON uartclk error\n");
-		printk("msm_hs_startup fail, wake_unlock(&msm_uport->dma_wake_lock)\n");
 		wake_unlock(&msm_uport->dma_wake_lock);
 		return ret;
 	}
 
 	if (is_blsp_uart(msm_uport)) {
 		ret = msm_hs_config_uart_gpios(uport);
-		if(DBG) printk(" Beryl, msm_hs_startup blsp uart \n");
-
 		if (ret) {
 			MSM_HS_ERR("Uart GPIO request failed\n");
 			goto deinit_uart_clk;
 		}
 	} else {
 		if (pdata && pdata->gpio_config)
-			if (unlikely(pdata->gpio_config(1))){
+			if (unlikely(pdata->gpio_config(1)))
 				dev_err(uport->dev, "Cannot configure gpios\n");
-				printk(" Beryl, Cannot configure gpios \n");
-			}
 	}
 
 	/* SPS Connect for BAM endpoints */
@@ -2772,14 +2689,14 @@ static int msm_hs_startup(struct uart_port *uport)
 		/* SPS connect for TX */
 		ret = msm_hs_spsconnect_tx(uport);
 		if (ret) {
-			printk("msm_serial_hs: SPS connect failed for TX");
+			MSM_HS_ERR("msm_serial_hs: SPS connect failed for TX");
 			goto unconfig_uart_gpios;
 		}
 
 		/* SPS connect for RX */
 		ret = msm_hs_spsconnect_rx(uport);
 		if (ret) {
-			printk("msm_serial_hs: SPS connect failed for RX");
+			MSM_HS_ERR("msm_serial_hs: SPS connect failed for RX");
 			goto sps_disconnect_tx;
 		}
 	}
@@ -2863,7 +2780,7 @@ static int msm_hs_startup(struct uart_port *uport)
 	if (use_low_power_wakeup(msm_uport)) {
 		ret = irq_set_irq_wake(msm_uport->wakeup.irq, 1);
 		if (unlikely(ret)) {
-			printk("%s():Err setting wakeup irq\n", __func__);
+			MSM_HS_ERR("%s():Err setting wakeup irq\n", __func__);
 			goto sps_disconnect_rx;
 		}
 	}
@@ -2882,7 +2799,7 @@ static int msm_hs_startup(struct uart_port *uport)
 					"msm_hs_wakeup", msm_uport);
 
 		if (unlikely(ret)) {
-			printk("%s():Err getting uart wakeup_irq\n",
+			MSM_HS_ERR("%s():Err getting uart wakeup_irq\n",
 				  __func__);
 			goto free_uart_irq;
 		}
@@ -2913,9 +2830,7 @@ unconfig_uart_gpios:
 	if (is_blsp_uart(msm_uport))
 		msm_hs_unconfig_uart_gpios(uport);
 deinit_uart_clk:
-	printk("deinit_uart_clk\n");
 	msm_hs_clock_unvote(msm_uport);
-	printk("deinit_uart_clk ,wake_unlock(&msm_uport->dma_wake_lock) \n");
 	wake_unlock(&msm_uport->dma_wake_lock);
 
 	return ret;
@@ -2928,7 +2843,6 @@ static int uartdm_init_port(struct uart_port *uport)
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	struct msm_hs_tx *tx = &msm_uport->tx;
 	struct msm_hs_rx *rx = &msm_uport->rx;
-	if(DBG) printk(" Beryl, uartdm_init_port \n");
 
 	init_waitqueue_head(&rx->wait);
 	init_waitqueue_head(&tx->wait);
@@ -3098,6 +3012,10 @@ struct msm_serial_hs_platform_data
 
 	pdata->no_suspend_delay = of_property_read_bool(node,
 				"qcom,no-suspend-delay");
+	pdata->obs = of_property_read_bool(node,
+				"qcom,msm-obs");
+	if (pdata->obs)
+		MSM_HS_DBG("%s:Out Band Sleep is Enabled\n", __func__);
 
 	pdata->inject_rx_on_wakeup = of_property_read_bool(node,
 				"qcom,inject-rx-on-wakeup");
@@ -3159,7 +3077,6 @@ static void msm_hs_exit_ep_conn(struct msm_hs_port *msm_uport,
 {
 	struct sps_pipe *sps_pipe_handle = ep->pipe_handle;
 	struct sps_connect *sps_config = &ep->config;
-	if(DBG) printk(" Beryl, msm_hs_exit_ep_conn\n");
 
 	dma_free_coherent(msm_uport->uport.dev,
 			sps_config->desc.size,
@@ -3191,7 +3108,6 @@ static int msm_hs_sps_init_ep_conn(struct msm_hs_port *msm_uport,
 	struct sps_pipe *sps_pipe_handle;
 	struct sps_connect *sps_config = &ep->config;
 	struct sps_register_event *sps_event = &ep->event;
-	if(DBG) printk(" Beryl, msm_hs_sps_init_ep_conn\n");
 
 	/* Allocate endpoint context */
 	sps_pipe_handle = sps_alloc_endpoint();
@@ -3286,7 +3202,6 @@ static int msm_hs_sps_init(struct msm_hs_port *msm_uport)
 	int rc = 0;
 	struct sps_bam_props bam = {0};
 	unsigned long bam_handle;
-	if(DBG) printk(" Beryl, msm_hs_sps_init\n");
 
 	rc = sps_phy2h(msm_uport->bam_mem, &bam_handle);
 	if (rc || !bam_handle) {
@@ -3357,8 +3272,6 @@ static int device_id_grab_next_free(void)
 {
 	int i;
 	int ret = -ENODEV;
-	if(DBG) printk(" Beryl, device_id_grab_next_free\n");
-
 	mutex_lock(&mutex_next_device_id);
 	for (i = 0; i < UARTDM_NR; i++)
 		if (!deviceid[i]) {
@@ -3373,8 +3286,6 @@ static int device_id_grab_next_free(void)
 static int device_id_set_used(int index)
 {
 	int ret = 0;
-	if(DBG) printk(" Beryl, device_id_set_used\n");
-
 	mutex_lock(&mutex_next_device_id);
 	if (deviceid[index])
 		ret = -ENODEV;
@@ -3396,7 +3307,6 @@ static int msm_hs_probe(struct platform_device *pdev)
 	struct msm_serial_hs_platform_data *pdata = pdev->dev.platform_data;
 	const struct of_device_id *match;
 	unsigned long data;
-	if(DBG) printk(" Beryl, msm_hs_probe\n");
 
 	if (pdev->dev.of_node) {
 		dev_dbg(&pdev->dev, "device tree enabled\n");
@@ -3507,9 +3417,7 @@ static int msm_hs_probe(struct platform_device *pdev)
 				goto unmap_memory;
 			}
 		}
-
 		bluesleep_setup_uart_port(&(msm_uport->uport)); //ASUS_BSP BerylHou +++ "set bluesleep uart port"
-
 	} else {
 
 		resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -3536,6 +3444,7 @@ static int msm_hs_probe(struct platform_device *pdev)
 		msm_uport->wakeup.ignore = 1;
 		msm_uport->wakeup.inject_rx = pdata->inject_rx_on_wakeup;
 		msm_uport->wakeup.rx_to_inject = pdata->rx_to_inject;
+		msm_uport->obs = pdata->obs;
 
 		if (is_blsp_uart(msm_uport)) {
 			msm_uport->bam_tx_ep_pipe_index =
@@ -3699,7 +3608,6 @@ unmap_memory:
 static int __init msm_serial_hs_init(void)
 {
 	int ret;
-	if(DBG) printk(" Beryl, msm_serial_hs_init\n");
 
 	ipc_msm_hs_log_ctxt = ipc_log_context_create(IPC_MSM_HS_LOG_PAGES,
 							"msm_serial_hs");
@@ -3743,7 +3651,6 @@ static void msm_hs_shutdown(struct uart_port *uport)
 				pdev->dev.platform_data;
 	struct msm_hs_tx *tx = &msm_uport->tx;
 	struct sps_pipe *sps_pipe_handle = tx->cons.pipe_handle;
-	printk("msm_hs_shutdown\n");
 
 	msm_hs_clock_vote(msm_uport);
 	if (msm_uport->tx.dma_in_flight) {
@@ -3802,7 +3709,6 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	if (msm_uport->clk_state != MSM_HS_CLK_OFF) {
 		/* to balance clk_state */
 		msm_hs_clock_unvote(msm_uport);
-		printk("msm_hs_shutdown, wake_unlock(&msm_uport->dma_wake_lock)\n");
 		wake_unlock(&msm_uport->dma_wake_lock);
 	}
 
@@ -3829,7 +3735,6 @@ static void msm_hs_shutdown(struct uart_port *uport)
 
 static void __exit msm_serial_hs_exit(void)
 {
-	if(DBG) printk(" Beryl, msm_serial_hs_exit\n");
 	MSM_HS_INFO("msm_serial_hs module removed\n");
 	debugfs_remove_recursive(debug_base);
 	platform_driver_unregister(&msm_serial_hs_platform_driver);
@@ -3842,8 +3747,6 @@ static int msm_hs_runtime_idle(struct device *dev)
 	 * returning success from idle results in runtime suspend to be
 	 * called
 	 */
-	printk("msm_hs_runtime_idle\n");
-
 	return 0;
 }
 
@@ -3852,7 +3755,6 @@ static int msm_hs_runtime_resume(struct device *dev)
 	struct platform_device *pdev = container_of(dev, struct
 						    platform_device, dev);
 	struct msm_hs_port *msm_uport = get_matching_hs_port(pdev);
-	printk("sm_hs_runtime_resume\n");
 
 	/* This check should not fail
 	 * During probe, we set uport->line to either pdev->id or userid */
@@ -3867,8 +3769,6 @@ static int msm_hs_runtime_suspend(struct device *dev)
 	struct platform_device *pdev = container_of(dev, struct
 						    platform_device, dev);
 	struct msm_hs_port *msm_uport = get_matching_hs_port(pdev);
-
-	printk("msm_hs_runtime_suspend\n");
 
 	/* This check should not fail
 	 * During probe, we set uport->line to either pdev->id or userid */

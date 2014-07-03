@@ -66,6 +66,7 @@ HSUART driver injects provided character with property rx_to_inject.
 - qcom, rx-char-to-inject : The character to be inserted on wakeup.
 - qcom, no-suspend-delay : This decides system to go to suspend immediately
 or not
+-qcom, msm-obs : This tells Out of Band Sleep Mechanism is enabled or not
 
 - Refer to "Documentation/devicetree/bindings/arm/msm/msm_bus.txt" for
 below optional properties:
