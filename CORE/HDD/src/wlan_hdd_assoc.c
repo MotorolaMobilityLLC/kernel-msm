@@ -1623,8 +1623,6 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
             }
         }
 
-        /*Clear the roam profile*/
-        hdd_clearRoamProfileIe( pAdapter );
         hdd_wmm_init( pAdapter );
 
         if (pRoamInfo)
