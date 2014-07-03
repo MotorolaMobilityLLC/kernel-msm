@@ -1113,6 +1113,7 @@ typedef struct tagCsrConfigParam
     tANI_U8         enableTxBF;
     tANI_U8         txBFCsnValue;
     tANI_BOOLEAN    enableVhtFor24GHz;
+    tANI_U8         enableMuBformee;
 #endif
 
     /*

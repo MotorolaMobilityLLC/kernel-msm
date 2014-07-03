@@ -3699,6 +3699,16 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
                 {
                     pAddBssParams->staContext.vhtTxBFCapable = 1;
                 }
+                if (pAssocRsp->VHTCaps.muBeamformerCap &&
+                                    psessionEntry->txMuBformee )
+                {
+                    pAddBssParams->staContext.vhtTxMUBformeeCapable = 1;
+                    limLog(pMac, LOG1,FL("Enabling MUBformeeCapable for peer"));
+                    /* Dont allow any other MuBf session as concurrency
+                     * is not supported
+                     */
+                    pMac->isMuBfsessionexist = TRUE;
+                }
             }
 #endif
             if( (pAssocRsp->HTCaps.supportedChannelWidthSet) &&
@@ -4130,6 +4140,17 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
                 {
                     pAddBssParams->staContext.vhtTxBFCapable = 1;
                 }
+                if (pBeaconStruct->VHTCaps.muBeamformerCap &&
+                                    psessionEntry->txMuBformee )
+                {
+                    pAddBssParams->staContext.vhtTxMUBformeeCapable = 1;
+                    limLog(pMac, LOG1,FL("Enabling MUBformeeCapable for peer"));
+                    /* Dont allow any other MuBf session as concurrency
+                     * is not supported
+                     */
+                    pMac->isMuBfsessionexist = TRUE;
+                }
+
             }
 #endif
             if( (pBeaconStruct->HTCaps.supportedChannelWidthSet) &&

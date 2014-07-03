@@ -1063,6 +1063,13 @@ typedef struct sAniSirGlobal
     tANI_U32 fEnableDebugLog;
     tANI_U32 fDeferIMPSTime;
     tANI_BOOLEAN deferImps;
+
+#ifdef WLAN_FEATURE_11AC
+    /* Alow Mu BFormee session only if MU BF session doesnt exist.
+     */
+    v_BOOL_t isMuBfsessionexist;
+#endif
+
 } tAniSirGlobal;
 
 #ifdef FEATURE_WLAN_TDLS

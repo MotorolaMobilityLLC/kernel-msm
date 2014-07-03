@@ -951,7 +951,7 @@ static void PopulateDot11fTdlsHtVhtCap(tpAniSirGlobal pMac, uint32 selfDot11Mode
             IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
         {
             /* Include VHT Capability IE */
-            PopulateDot11fVHTCaps( pMac, vhtCap );
+            PopulateDot11fVHTCaps( pMac, vhtCap, eSIR_FALSE );
         }
         else
         {
