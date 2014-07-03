@@ -2797,6 +2797,9 @@ static void wlan_hdd_cfg80211_extscan_scan_progress_event(void *ctx, void *pMsg)
     if (nla_put_u8(skb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_EVENT_TYPE,
                    pData->extScanEventType) ||
         nla_put_u32(skb,
+                    QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_REQUEST_ID,
+                    pData->requestId) ||
+        nla_put_u32(skb,
                     QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_EVENT_STATUS,
                     pData->status)) {
         hddLog(VOS_TRACE_LEVEL_ERROR, FL("nla put fail"));

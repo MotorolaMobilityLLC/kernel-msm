@@ -2546,6 +2546,31 @@ VOS_STATUS WLANTL_GetSoftAPStatistics(v_PVOID_t pAdapter, WLANTL_TRANSFER_STA_TY
  }
 #endif 
 
+/*===========================================================================
+
+  FUNCTION    WLANTL_EnableCaching
+
+  DESCRIPTION
+
+    This function is used to enable caching only when assoc/reassoc req is send.
+    that is cache packets only for such STA ID.
+
+
+  DEPENDENCIES
+
+    TL must have been initialized before this gets called.
+
+
+  PARAMETERS
+
+   staId:   station id.
+
+  RETURN VALUE
+
+   none
+
+============================================================================*/
+void WLANTL_EnableCaching(v_U8_t staId);
 
  /*===========================================================================
 
