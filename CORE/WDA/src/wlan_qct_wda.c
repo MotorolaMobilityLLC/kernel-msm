@@ -2100,8 +2100,8 @@ VOS_STATUS WDA_stop(v_PVOID_t pVosContext, tANI_U8 reason)
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                    "%s: FTM Stop Timepoout", __func__);
          VOS_ASSERT(0);
-         vos_event_reset(&pWDA->ftmStopDoneEvent);
       }
+      vos_event_destroy(&pWDA->ftmStopDoneEvent);
    }
    return status;
 }
