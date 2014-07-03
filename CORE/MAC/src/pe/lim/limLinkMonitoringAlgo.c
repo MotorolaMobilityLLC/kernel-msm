@@ -489,8 +489,11 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
     /* Ensure HB Status for the session has been reseted */
     psessionEntry->LimHBFailureStatus = eANI_BOOLEAN_FALSE;
 
-    if (((psessionEntry->limSystemRole == eLIM_STA_ROLE)||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))&&
-         (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE))
+    if (((psessionEntry->limSystemRole == eLIM_STA_ROLE)||
+         (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))&&
+         (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE)&&
+         (psessionEntry->limSmeState != eLIM_SME_WT_DISASSOC_STATE) &&
+         (psessionEntry->limSmeState != eLIM_SME_WT_DEAUTH_STATE))
     {
         if (!pMac->sys.gSysEnableLinkMonitorMode)
             return;
