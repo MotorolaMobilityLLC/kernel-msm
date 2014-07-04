@@ -867,6 +867,21 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 					static int palm_flag = 1;				
 					palm_flag = atomic_read(&Suspend_flag);		
 					if (!palm_flag){
+#ifdef ASUS_FACTORY_BUILD
+						static unsigned long last_time_detect_home = 0;
+						static int home_match_flag = 0;
+						
+						if (!home_match_flag && (jiffies > last_time_detect_home + 3 * HZ)){
+							home_match_flag = 1;
+							printk("[IT7260] HOME KEY DETECTED !!!!\n\n");
+							strcpy(magic_key,"HOME");
+							kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+							last_time_detect_home = jiffies;
+						} else {
+							home_match_flag = 0;
+						}
+						
+#else
 						if (jiffies - last_time_shot_power > 2*HZ){
 							strcpy(magic_key,"PALM");
 							kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
@@ -878,6 +893,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 							input_report_key(gl_ts->input_dev, KEY_SLEEP,0);
 							input_sync(gl_ts->input_dev);					
 						}
+#endif
 					}
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
