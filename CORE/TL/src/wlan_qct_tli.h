@@ -497,13 +497,6 @@ typedef struct
      ID allowed */
   v_U8_t                        ucExists;
 
-  /*The flag controls the Rx path for the station - as long as there are
-    packets at sta level that need to be fwd-ed the Rx path will be blocked,
-    it will become unblocked only when the cached frames were fwd-ed;
-    while the rx path is blocked all rx-ed frames for that STA will be cached
-    */
-  v_U8_t                        ucRxBlocked;
-
   /* Function pointer to the receive packet handler from HDD */
   WLANTL_STARxCBType            pfnSTARx;
 
@@ -611,6 +604,8 @@ typedef struct
 
   WLANTL_CacheInfoType       tlCacheInfo;
   /* LWM related fields */
+
+  v_BOOL_t  enableCaching;
 
   //current station is slow. LWM mode is enabled.
   v_BOOL_t ucLwmModeEnabled;

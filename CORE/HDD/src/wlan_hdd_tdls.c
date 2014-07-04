@@ -1638,9 +1638,12 @@ hddTdlsPeer_t *wlan_hdd_tdls_get_first_connected_peer(hdd_adapter_t *pAdapter)
 
         list_for_each(pos, head) {
             curr_peer= list_entry (pos, hddTdlsPeer_t, node);
-            if (curr_peer)
+            if (curr_peer && (curr_peer->link_status == eTDLS_LINK_CONNECTED))
             {
                mutex_unlock(&pHddCtx->tdls_lock);
+               VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                          "%s: " MAC_ADDRESS_STR " eTDLS_LINK_CONNECTED",
+                           __func__, MAC_ADDR_ARRAY(curr_peer->peerMac));
                return curr_peer;
             }
         }
@@ -2490,7 +2493,7 @@ void wlan_hdd_tdls_indicate_teardown(hdd_adapter_t *pAdapter,
                                            hddTdlsPeer_t *curr_peer,
                                            tANI_U16 reason)
 {
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_context_t *pHddCtx;
 
     if (NULL == pAdapter || NULL == curr_peer)
     {
@@ -2498,6 +2501,8 @@ void wlan_hdd_tdls_indicate_teardown(hdd_adapter_t *pAdapter,
                  FL("parameters passed are invalid"));
         return;
     }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
     if (eTDLS_LINK_CONNECTED != curr_peer->link_status)
         return;
@@ -2508,7 +2513,7 @@ void wlan_hdd_tdls_indicate_teardown(hdd_adapter_t *pAdapter,
      * to be operational, explicitly make it false to enable
      * throughput monitor takes the control of split scan.
      */
-    if (pHddCtx->isTdlsScanCoexistence == TRUE)
+    if (pHddCtx && (pHddCtx->isTdlsScanCoexistence == TRUE))
     {
         pHddCtx->isTdlsScanCoexistence = FALSE;
     }

@@ -52,6 +52,12 @@
 #include <aniGlobal.h>
 #include <halTypes.h>
 #include <net/ieee80211_radiotap.h>
+#include <linux/ratelimit.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
+#include <soc/qcom/subsystem_restart.h>
+#else
+#include <mach/subsystem_restart.h>
+#endif
 
 
 /*--------------------------------------------------------------------------- 
@@ -86,6 +92,14 @@ static void hdd_softap_dump_sk_buff(struct sk_buff * skb)
 #endif
 
 extern void hdd_set_wlan_suspend_mode(bool suspend);
+
+#define HDD_SAP_TX_TIMEOUT_RATELIMIT_INTERVAL 20*HZ
+#define HDD_SAP_TX_TIMEOUT_RATELIMIT_BURST    1
+#define HDD_SAP_TX_STALL_SSR_THRESHOLD        5
+
+static DEFINE_RATELIMIT_STATE(hdd_softap_tx_timeout_rs,                 \
+                              HDD_SAP_TX_TIMEOUT_RATELIMIT_INTERVAL,    \
+                              HDD_SAP_TX_TIMEOUT_RATELIMIT_BURST);
 
 /**============================================================================
   @brief hdd_softap_traffic_monitor_timeout_handler() -
@@ -599,12 +613,58 @@ xmit_end:
   ===========================================================================*/
 void hdd_softap_tx_timeout(struct net_device *dev)
 {
+   hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
+   struct netdev_queue *txq;
+   int i = 0;
+
    VOS_TRACE( VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_ERROR,
       "%s: Transmission timeout occurred", __func__);
-   //Getting here implies we disabled the TX queues for too long. Queues are 
-   //disabled either because of disassociation or low resource scenarios. In
-   //case of disassociation it is ok to ignore this. But if associated, we have
-   //do possible recovery here
+
+   if ( NULL == pAdapter )
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_ERROR,
+              FL("pAdapter is NULL"));
+      VOS_ASSERT(0);
+      return;
+   }
+
+   ++pAdapter->hdd_stats.hddTxRxStats.txTimeoutCount;
+
+   for (i = 0; i < 8; i++)
+   {
+      txq = netdev_get_tx_queue(dev, i);
+      VOS_TRACE( VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_ERROR,
+                "Queue%d status: %d", i, netif_tx_queue_stopped(txq));
+   }
+
+   VOS_TRACE( VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_ERROR,
+              "carrier state: %d", netif_carrier_ok(dev));
+
+   ++pAdapter->hdd_stats.hddTxRxStats.continuousTxTimeoutCount;
+
+   if (pAdapter->hdd_stats.hddTxRxStats.continuousTxTimeoutCount >
+          HDD_SAP_TX_STALL_SSR_THRESHOLD)
+   {
+      // Driver could not recover, issue SSR
+      VOS_TRACE(VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_ERROR,
+                "%s: Cannot recover from Data stall Issue SSR",
+                __func__);
+      subsystem_restart("wcnss");
+      return;
+   }
+
+   /* If Tx stalled for a long time then *hdd_tx_timeout* is called
+    * every 5sec. The TL debug spits out a lot of information on the
+    * serial console, if it is called every time *hdd_tx_timeout* is
+    * called then we may get a watchdog bite on the Application
+    * processor, so ratelimit the TL debug logs.
+    */
+   if (__ratelimit(&hdd_softap_tx_timeout_rs))
+   {
+      hdd_wmm_tx_snapshot(pAdapter);
+      WLANTL_TLDebugMessage(VOS_TRUE);
+   }
+
 } 
 
 
@@ -1221,6 +1281,7 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    ++pAdapter->stats.tx_packets;
    ++pAdapter->hdd_stats.hddTxRxStats.txFetchDequeued;
    ++pAdapter->hdd_stats.hddTxRxStats.txFetchDequeuedAC[ac];
+   pAdapter->hdd_stats.hddTxRxStats.continuousTxTimeoutCount = 0;
 
    VOS_TRACE( VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_INFO,
               "%s: Valid VOS PKT returned to TL", __func__);
