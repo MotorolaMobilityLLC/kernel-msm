@@ -11046,12 +11046,26 @@ eHalStatus sme_EXTScanGetCapabilities (tHalHandle hHal,
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
     tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
     vos_msg_t vosMessage;
+    tSirGetEXTScanCapabilitiesReqParams *pGetEXTScanCapabilitiesReq;
+
+    pGetEXTScanCapabilitiesReq =
+        vos_mem_malloc(sizeof(*pGetEXTScanCapabilitiesReq));
+    if ( !pGetEXTScanCapabilitiesReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_EXTSCAN_GET_CAPABILITIES_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    *pGetEXTScanCapabilitiesReq = *pReq;
 
     MTRACE(vos_trace(VOS_MODULE_ID_SME,
                TRACE_CODE_SME_RX_HDD_EXTSCAN_GET_CAPABILITIES, NO_SESSION, 0));
     if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
         /* Serialize the req through MC thread */
-        vosMessage.bodyptr = pReq;
+        vosMessage.bodyptr = pGetEXTScanCapabilitiesReq;
         vosMessage.type    = WDA_EXTSCAN_GET_CAPABILITIES_REQ;
         vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -11076,12 +11090,26 @@ eHalStatus sme_EXTScanStart (tHalHandle hHal,
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
     tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
     vos_msg_t vosMessage;
+    tSirEXTScanStartReqParams *pextScanStartReq;
+
+    pextScanStartReq = vos_mem_malloc(sizeof(*pextScanStartReq));
+    if ( !pextScanStartReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_EXTSCAN_START_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    *pextScanStartReq = *pStartCmd;
+
 
     MTRACE(vos_trace(VOS_MODULE_ID_SME,
                  TRACE_CODE_SME_RX_HDD_EXTSCAN_START, NO_SESSION, 0));
     if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
         /* Serialize the req through MC thread */
-        vosMessage.bodyptr = pStartCmd;
+        vosMessage.bodyptr = pextScanStartReq;
         vosMessage.type    = WDA_EXTSCAN_START_REQ;
         vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -11105,13 +11133,26 @@ eHalStatus sme_EXTScanStop(tHalHandle hHal, tSirEXTScanStopReqParams *pStopReq)
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
     tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
     vos_msg_t vosMessage;
+    tSirEXTScanStopReqParams *pEXTScanStopReq;
+
+    pEXTScanStopReq = vos_mem_malloc(sizeof(*pEXTScanStopReq));
+    if ( !pEXTScanStopReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_EXTSCAN_STOP_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    *pEXTScanStopReq = *pStopReq;
 
     MTRACE(vos_trace(VOS_MODULE_ID_SME,
                  TRACE_CODE_SME_RX_HDD_EXTSCAN_STOP, NO_SESSION, 0));
     if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme)))
     {
         /* Serialize the req through MC thread */
-        vosMessage.bodyptr = pStopReq;
+        vosMessage.bodyptr = pEXTScanStopReq;
         vosMessage.type    = WDA_EXTSCAN_STOP_REQ;
         vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -11137,12 +11178,26 @@ eHalStatus sme_SetBssHotlist (tHalHandle hHal,
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
     tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
     vos_msg_t vosMessage;
+    tSirEXTScanSetBssidHotListReqParams *pEXTScanSetBssidHotlistReq;
+
+    pEXTScanSetBssidHotlistReq =
+        vos_mem_malloc(sizeof(*pEXTScanSetBssidHotlistReq));
+    if ( !pEXTScanSetBssidHotlistReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_EXTSCAN_SET_BSSID_HOTLIST_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    *pEXTScanSetBssidHotlistReq = *pSetHotListReq;
 
     MTRACE(vos_trace(VOS_MODULE_ID_SME,
                TRACE_CODE_SME_RX_HDD_EXTSCAN_SET_BSS_HOTLIST, NO_SESSION, 0));
     if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
         /* Serialize the req through MC thread */
-        vosMessage.bodyptr = pSetHotListReq;
+        vosMessage.bodyptr = pEXTScanSetBssidHotlistReq;
         vosMessage.type    = WDA_EXTSCAN_SET_BSSID_HOTLIST_REQ;
         vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -11168,12 +11223,26 @@ eHalStatus sme_ResetBssHotlist (tHalHandle hHal,
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
     tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
     vos_msg_t vosMessage;
+    tSirEXTScanResetBssidHotlistReqParams *pEXTScanHotlistResetReq;
+
+    pEXTScanHotlistResetReq = vos_mem_malloc(sizeof(*pEXTScanHotlistResetReq));
+    if ( !pEXTScanHotlistResetReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_EXTSCAN_RESET_BSSID_HOTLIST_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    *pEXTScanHotlistResetReq = *pResetReq;
+
 
     MTRACE(vos_trace(VOS_MODULE_ID_SME,
               TRACE_CODE_SME_RX_HDD_EXTSCAN_RESET_BSS_HOTLIST, NO_SESSION, 0));
     if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
         /* Serialize the req through MC thread */
-        vosMessage.bodyptr = pResetReq;
+        vosMessage.bodyptr = pEXTScanHotlistResetReq;
         vosMessage.type    = WDA_EXTSCAN_RESET_BSSID_HOTLIST_REQ;
         vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -11198,12 +11267,27 @@ eHalStatus sme_SetSignificantChange (tHalHandle hHal,
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
     tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
     vos_msg_t vosMessage;
+    tSirEXTScanSetSignificantChangeReqParams *pEXTScanSetSignificantReq;
+
+    pEXTScanSetSignificantReq = vos_mem_malloc(sizeof(*pEXTScanSetSignificantReq));
+    if ( !pEXTScanSetSignificantReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_EXTSCAN_SET_SIGNF_RSSI_CHANGE_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    *pEXTScanSetSignificantReq = *pSetSignificantChangeReq;
+
+
 
     MTRACE(vos_trace(VOS_MODULE_ID_SME,
            TRACE_CODE_SME_RX_HDD_EXTSCAN_SET_SIGNF_CHANGE, NO_SESSION, 0));
     if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
         /* Serialize the req through MC thread */
-        vosMessage.bodyptr = pSetSignificantChangeReq;
+        vosMessage.bodyptr = pEXTScanSetSignificantReq;
         vosMessage.type    = WDA_EXTSCAN_SET_SIGNF_RSSI_CHANGE_REQ;
         vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -11228,12 +11312,26 @@ eHalStatus sme_ResetSignificantChange (tHalHandle hHal,
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
     tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
     vos_msg_t vosMessage;
+    tSirEXTScanResetSignificantChangeReqParams *pEXTScanResetSignificantReq;
+
+    pEXTScanResetSignificantReq =
+        vos_mem_malloc(sizeof(*pEXTScanResetSignificantReq));
+    if ( !pEXTScanResetSignificantReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_EXTSCAN_RESET_SIGNF_RSSI_CHANGE_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    *pEXTScanResetSignificantReq = *pResetReq;
 
     MTRACE(vos_trace(VOS_MODULE_ID_SME,
            TRACE_CODE_SME_RX_HDD_EXTSCAN_RESET_SIGNF_CHANGE, NO_SESSION, 0));
     if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
         /* Serialize the req through MC thread */
-        vosMessage.bodyptr = pResetReq;
+        vosMessage.bodyptr = pEXTScanResetSignificantReq;
         vosMessage.type    = WDA_EXTSCAN_RESET_SIGNF_RSSI_CHANGE_REQ;
         vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -11258,12 +11356,27 @@ eHalStatus sme_getCachedResults (tHalHandle hHal,
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
     tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
     vos_msg_t vosMessage;
+    tSirEXTScanGetCachedResultsReqParams *pEXTScanCachedResultsReq;
+
+    pEXTScanCachedResultsReq =
+            vos_mem_malloc(sizeof(*pEXTScanCachedResultsReq));
+    if ( !pEXTScanCachedResultsReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_EXTSCAN_GET_CACHED_RESULTS_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    *pEXTScanCachedResultsReq = *pCachedResultsReq;
+
 
     MTRACE(vos_trace(VOS_MODULE_ID_SME,
            TRACE_CODE_SME_RX_HDD_EXTSCAN_GET_CACHED_RESULTS, NO_SESSION, 0));
     if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
         /* Serialize the req through MC thread */
-        vosMessage.bodyptr = pCachedResultsReq;
+        vosMessage.bodyptr = pEXTScanCachedResultsReq;
         vosMessage.type    = WDA_EXTSCAN_GET_CACHED_RESULTS_REQ;
         vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))

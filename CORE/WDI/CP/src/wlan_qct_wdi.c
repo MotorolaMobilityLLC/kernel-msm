@@ -180,6 +180,12 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
 #else
     ,FEATURE_NOT_SUPPORTED          //40
 #endif
+    ,FEATURE_NOT_SUPPORTED          //41
+#ifdef WLAN_FEATURE_EXTSCAN
+    ,EXTENDED_SCAN                  //42
+#else
+    ,FEATURE_NOT_SUPPORTED          //42
+#endif
 
 };
 
@@ -1350,6 +1356,11 @@ void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
                      case LINK_LAYER_STATS_MEAS: snprintf(pCapStr, sizeof("LINK_LAYER_STATS_MEAS"), "%s", "LINK_LAYER_STATS_MEAS");
                           pCapStr += strlen("LINK_LAYER_STATS_MEAS");
+                          break;
+#endif
+#ifdef WLAN_FEATURE_EXTSCAN
+                     case EXTENDED_SCAN: snprintf(pCapStr, sizeof("EXTENDED_SCAN"), "%s", "EXTENDED_SCAN");
+                          pCapStr += strlen("EXTENDED_SCAN");
                           break;
 #endif
 

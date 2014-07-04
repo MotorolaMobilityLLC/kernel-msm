@@ -108,6 +108,9 @@ typedef enum {
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
    LINK_LAYER_STATS_MEAS  = 40,
 #endif
+#ifdef WLAN_FEATURE_EXTSCAN
+   EXTENDED_SCAN          = 42,
+#endif
 
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;

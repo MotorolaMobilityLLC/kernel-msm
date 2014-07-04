@@ -1846,6 +1846,13 @@ static __inline tANI_U32 defHddRateToDefCfgRate( tANI_U32 defRateIndex )
 #define CFG_LINK_LAYER_STATS_ENABLE_DEFAULT          (0)
 #endif
 
+#ifdef WLAN_FEATURE_EXTSCAN
+#define CFG_EXTSCAN_ENABLE                  "gEnableEXTScan"
+#define CFG_EXTSCAN_ENABLE_MIN              (0)
+#define CFG_EXTSCAN_ENABLE_MAX              (1)
+#define CFG_EXTSCAN_ENABLE_DEFAULT          (0)
+#endif
+
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE         "gEnableActiveModeOffload"
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE_MIN     ( 0 )
@@ -2587,6 +2594,9 @@ typedef struct
 #endif
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
    v_BOOL_t                    fEnableLLStats;
+#endif
+#ifdef WLAN_FEATURE_EXTSCAN
+   v_BOOL_t                    fEnableEXTScan;
 #endif
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
    v_BOOL_t                    fEnableVSTASupport;
