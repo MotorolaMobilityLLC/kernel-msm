@@ -1839,6 +1839,13 @@ static __inline tANI_U32 defHddRateToDefCfgRate( tANI_U32 defRateIndex )
 #define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_DEFAULT    (0)
 #endif
 
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+#define CFG_LINK_LAYER_STATS_ENABLE                  "gEnableLLStats"
+#define CFG_LINK_LAYER_STATS_ENABLE_MIN              (0)
+#define CFG_LINK_LAYER_STATS_ENABLE_MAX              (1)
+#define CFG_LINK_LAYER_STATS_ENABLE_DEFAULT          (0)
+#endif
+
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE         "gEnableActiveModeOffload"
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE_MIN     ( 0 )
@@ -2578,13 +2585,16 @@ typedef struct
    v_U32_t                     fEnableTDLSWmmMode;
    v_BOOL_t                    fEnableTDLSScanCoexSupport;
 #endif
-   v_U32_t                     enableLpwrImgTransition;
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+   v_BOOL_t                    fEnableLLStats;
+#endif
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
    v_BOOL_t                    fEnableVSTASupport;
 #endif
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
    v_BOOL_t                    fEnableActiveModeOffload;
 #endif
+   v_U32_t                     enableLpwrImgTransition;
    v_U8_t                      scanAgingTimeout;
    v_BOOL_t                    enableTxLdpc;
    v_U8_t                      disableLDPCWithTxbfAP;

@@ -10621,20 +10621,26 @@ eHalStatus sme_LLStatsSetReq(tHalHandle hHal,
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     vos_msg_t msg;
     eHalStatus status = eHAL_STATUS_FAILURE;
+    tSirLLStatsSetReq *plinkLayerSetReq;
 
-    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-      "%s:  pLinkLayerStatsSetReq.mpdu_size = %u", __func__,
-        pLinkLayerStatsSetReq->mpduSizeThreshold);
+    plinkLayerSetReq = vos_mem_malloc(sizeof(*plinkLayerSetReq));
+    if ( !plinkLayerSetReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_LINK_LAYER_STATS_SET_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
 
-    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-      " pLinkLayerStatsSetReq->mpdu_size = %u",
-      pLinkLayerStatsSetReq->mpduSizeThreshold);
+    *plinkLayerSetReq = *pLinkLayerStatsSetReq;
+
 
     if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
     {
         msg.type = WDA_LINK_LAYER_STATS_SET_REQ;
         msg.reserved = 0;
-        msg.bodyptr = pLinkLayerStatsSetReq;
+        msg.bodyptr = plinkLayerSetReq;
 
         if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
         {
@@ -10669,13 +10675,24 @@ eHalStatus sme_LLStatsGetReq(tHalHandle hHal,
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     vos_msg_t msg;
     eHalStatus status = eHAL_STATUS_FAILURE;
+    tSirLLStatsGetReq *pGetStatsReq;
 
+    pGetStatsReq = vos_mem_malloc(sizeof(*pGetStatsReq));
+    if ( !pGetStatsReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_LINK_LAYER_STATS_GET_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+    *pGetStatsReq = *pLinkLayerStatsGetReq;
 
     if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
     {
         msg.type = WDA_LINK_LAYER_STATS_GET_REQ;
         msg.reserved = 0;
-        msg.bodyptr = pLinkLayerStatsGetReq;
+        msg.bodyptr = pGetStatsReq;
         if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
         {
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
@@ -10709,6 +10726,7 @@ eHalStatus sme_LLStatsClearReq(tHalHandle hHal,
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     vos_msg_t msg;
     eHalStatus status = eHAL_STATUS_FAILURE;
+    tSirLLStatsClearReq *pClearStatsReq;
 
 
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
@@ -10721,11 +10739,23 @@ eHalStatus sme_LLStatsClearReq(tHalHandle hHal,
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
               "stopReq = %u", pLinkLayerStatsClear->stopReq);
 
+    pClearStatsReq = vos_mem_malloc(sizeof(*pClearStatsReq));
+    if ( !pClearStatsReq)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for "
+                "WDA_LINK_LAYER_STATS_CLEAR_REQ",
+                __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    *pClearStatsReq = *pLinkLayerStatsClear;
+
     if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
     {
         msg.type = WDA_LINK_LAYER_STATS_CLEAR_REQ;
         msg.reserved = 0;
-        msg.bodyptr = pLinkLayerStatsClear;
+        msg.bodyptr = pClearStatsReq;
 
         if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
         {

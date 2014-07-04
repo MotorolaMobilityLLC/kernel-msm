@@ -105,6 +105,9 @@ typedef enum {
 #ifdef FEATURE_WLAN_TDLS
    TDLS_SCAN_COEXISTENCE  = 39,
 #endif
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+   LINK_LAYER_STATS_MEAS  = 40,
+#endif
 
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
