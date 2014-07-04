@@ -27,6 +27,8 @@
 #include <linux/gpio.h>
 #include <linux/slab.h>
 #include <linux/sync.h>
+#include <linux/proc_fs.h>
+//#include <linux/math.h>
 
 #define MAX_BUFFER_SIZE		144
 #define DEVICE_NAME			"IT7260"
@@ -619,6 +621,1351 @@ static ssize_t IT7260_sleep_store(struct device *dev, struct device_attribute *a
 	return count;
 }
 
+// alfred
+#define USED_CIN_NUM 12
+#define MAX_STAGE_NUMBER 45
+#define MAX_CHANNEL 45
+#define GTEMP_SIZE 16000
+//u8 ucPosValue[MAX_STAGE_NUMBER+1] = {0};	// 0 ~ 45
+//u8 ucNegValue[MAX_STAGE_NUMBER+1] = {0};
+u8 ucCXXFR[6] = {0};
+u8 ucCStrayBuf[96] = {0};
+bool exist_flag = false;
+static u8 wTemp[USED_CIN_NUM * 2 * 2] = {0x00};	// Word + Pos/Neg
+static u8 pucCDC1CstrayBuffer[96] = {0x00};
+static u8 pucCDC2CstrayBuffer[96] = {0x00};
+static u8 pucCDC1CXXFRBuffer[6] = {0x00};
+u8 ucPosCin[USED_CIN_NUM] = { 8, 12, 16, 6, 10, 14, 38, 31, 27, 33, 29, 25 };
+u8 ucNegCin[USED_CIN_NUM] = { 12, 16, 19, 10, 14, 17, 31, 27, 23, 29, 25, 21 };
+static u8 gTemp[500] = {0};
+static u8 ucTemp[500] = {0};
+
+static ssize_t fnGetCDC(u16* CDC)
+{
+	int i = 0;
+						//    Read|	  Count 	| Byte|  Offset  |  Segment  |
+	u8 pucBuffer_6830[7] = { 0xE1, USED_CIN_NUM, 0x02, 0x30, 0x68, 0x00, 0x00 }; // 0x6830
+
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6830, 7);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, USED_CIN_NUM*2);
+
+	for ( i = 0; i < USED_CIN_NUM; i++)
+	{
+		CDC[i] = (u16)(( wTemp[2*i+1] << 8 ) + wTemp[2*i]);
+		//CDC[i*2] = wTemp[2*i+1];
+		//CDC[i*2+1] = wTemp[2*i];
+		pr_info( "[IT7263] : %s, %4X\n", __func__, CDC[i]);
+	}
+	pr_info( "\n\n\n");
+	
+	return 0;
+}
+
+static bool fnAutoTuneCDCCStray(void)
+{
+	int i = 0;
+	int nCstrayPlusValue = 0;
+	u8 arucCDCBuffer[255] = {0};
+	u8 ucCStray;
+	u16 wCDCTemp = 0;
+	u16 wCDCTempAfter = 0;
+	u16 wDiff = 0;
+	bool bFinish = false;
+	bool bFirst = true;
+	
+	u8 pucBuffer_6060[13] = { 0xE0, 0x06, 0x01, 0x60, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x6060
+	u8 pucBuffer_6030w[8] = { 0xE0, 0x01, 0x01, 0x30, 0x60, 0x00, 0x00, 0x80 }; // 0x6030
+	u8 pucBuffer_6000w[8] = { 0xE0, 0x01, 0x01, 0x00, 0x60, 0x00, 0x00, 0x00 }; // 0x6000
+	
+	u8 pucBuffer_6000r[7] = { 0xE1, 0x01, 0x01, 0x00, 0x60, 0x00, 0x00 }; // 0x6000
+	u8 pucBuffer_6030r[7] = { 0xE1, 0x01, 0x01, 0x30, 0x60, 0x00, 0x00 }; // 0x6000
+	u8 pucBuffer_6830[ 7] = { 0xE1, MAX_CHANNEL, 0x02, 0x30, 0x68, 0x00, 0x00 }; // 0x6830
+
+	// CXXFR -> 0
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6060, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, AT_1 pucBuffer_6060 Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+		return -1;
+	}
+
+	for ( i = 0; i < USED_CIN_NUM; i++)
+	{
+		bFinish = false;
+		wCDCTemp = 0;
+		wCDCTempAfter = 0;
+		wDiff = 0;
+		nCstrayPlusValue = 0;
+		bFirst = true;
+	   
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6830, 7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, arucCDCBuffer, MAX_CHANNEL*2);
+
+		wCDCTemp = *((u16*)arucCDCBuffer + i);
+
+		if(wCDCTemp > 0x8000)
+		{
+			//positive CStray 0~0x7F，CStray愈大，CDC值愈小
+			//positve CStray 0x80~0xff，CStray 愈大，CDC值愈大
+			//第一次先調大級距
+			bFirst = true;
+			
+			
+			//u8 pucBuffer_6000r[7] = { 0xE1, 0x01, 0x01, 0x00, 0x60, 0x00, 0x00 }; // 0x6000
+			waitCommandDone();
+			pucBuffer_6000r[3] = ucPosCin[i];
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000r, 7);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, &ucCStray, 1);
+			
+			ucCStray++;
+			
+			//u8 pucBuffer_6000w[8] = { 0xE0, 0x01, 0x01, 0x00, 0x60, 0x00, 0x00, 0x00 }; // 0x6000
+			waitCommandDone();
+			pucBuffer_6000w[3] = ucPosCin[i];
+			pucBuffer_6000w[7] = ucCStray;
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 8);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+			if( (wTemp[0] + wTemp[1]) != 0 ){
+				pr_info( "[IT7263] : %s, AT_2 pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+				return -1;
+			}
+			
+			mdelay(100);
+			
+			waitCommandDone();
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6830, 7);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, arucCDCBuffer, MAX_CHANNEL*2);
+			
+			wCDCTempAfter = *((u16*)arucCDCBuffer + i);
+
+			if(!(wCDCTempAfter < 0x8000 ))
+			{
+				wDiff = wCDCTemp - wCDCTempAfter;
+				if(wDiff!=0)
+					nCstrayPlusValue = (wCDCTempAfter - 0x8000)/ wDiff;
+				else
+					nCstrayPlusValue= 0;
+			}
+			else
+			{
+				if(wCDCTemp >= 0x6000)
+					continue;
+			}
+
+			ucCStray += nCstrayPlusValue;
+			//表示調超過範圍了，得回到一開始設定
+			if(ucCStray > 0x80)
+				ucCStray -= nCstrayPlusValue;
+
+			waitCommandDone();
+			pucBuffer_6000w[3] = ucPosCin[i];
+			pucBuffer_6000w[7] = ucCStray;
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 8);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+			if( (wTemp[0] + wTemp[1]) != 0 ){
+				pr_info( "[IT7263] : %s, AT_3 pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+				return -1;
+			}
+
+			mdelay(100);
+
+			waitCommandDone();
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6830, 7);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, arucCDCBuffer, MAX_CHANNEL*2);
+
+			wCDCTempAfter = *((u16*)arucCDCBuffer + i);
+			//再微調
+			if(wCDCTempAfter > 0x8000 )
+			{
+				while(!bFinish)
+				{
+					ucCStray++;
+					
+					waitCommandDone();
+					pucBuffer_6000w[3] = ucPosCin[i];
+					pucBuffer_6000w[7] = ucCStray;
+					i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 8);
+					waitCommandDone();
+					i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+					if( (wTemp[0] + wTemp[1]) != 0 ){
+						pr_info( "[IT7263] : %s, AT_4 pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+						return -1;
+					}
+
+					mdelay(100);
+
+					waitCommandDone();
+					i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6830, 7);
+					waitCommandDone();
+					i2cReadFromIt7260(gl_ts->client, 0xA0, arucCDCBuffer, MAX_CHANNEL*2);
+
+					wCDCTemp = *((u16*)arucCDCBuffer + i);
+					if(wCDCTemp < 0x8000 )
+						bFinish = true;
+					else if(ucCStray>=0x7F)
+					{
+						bFinish = true;
+						pr_info( "[IT7263] : %s, AT_5 Stage %02d can not adjust to the range %04x ~ %04x.\n", __func__, i, 0x6000, 0x8000);
+						return false;
+					}
+				}
+			}
+			else
+			{
+				if(wCDCTemp >= 0x6000)
+					continue;
+			}
+		}
+	   
+		bFinish = false;
+		if(wCDCTemp < 0x6000)
+		{
+			//第一次先調大級距
+			bFirst = true;
+
+			//u8 pucBuffer_6030r[7] = { 0xE1, 0x01, 0x01, 0x30+ucNegCin[i], 0x60, 0x00, 0x00 }; // 0x6000
+			waitCommandDone();
+			pucBuffer_6030r[3] = 0x30 + ucNegCin[i];
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6030r, 7);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, &ucCStray, 1);
+			
+			ucCStray++;
+
+			//u8 pucBuffer_6030w[8] = { 0xE0, 0x01, 0x01, 0x30, 0x60, 0x00, 0x00, 0x80 }; // 0x6030
+			waitCommandDone();
+			pucBuffer_6030w[3] = 0x30 + ucNegCin[i];
+			pucBuffer_6030w[7] = ucCStray;
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6030w, 8);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+			if( (wTemp[0] + wTemp[1]) != 0 ){
+				pr_info( "[IT7263] : %s, AT_6 pucBuffer_6030w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+				return -1;
+			}
+			
+			mdelay(100);
+
+			waitCommandDone();
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6830, 7);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, arucCDCBuffer, MAX_CHANNEL*2);
+
+			wCDCTempAfter = *((u16*)arucCDCBuffer + i);
+			if(wCDCTempAfter < 0x6000)
+			{
+				wDiff = wCDCTempAfter - wCDCTemp;
+				if(wDiff != 0)
+					nCstrayPlusValue = (0x6000 - wCDCTempAfter)/ wDiff;
+				else
+					nCstrayPlusValue = 0;    
+			}
+			else
+			{
+				if(wCDCTemp <= 0x8000)
+					continue;
+			}
+
+			ucCStray += nCstrayPlusValue;
+
+			//表示調超過範圍了，得回到一開始設定
+			if(ucCStray >= 0xff)
+				ucCStray -= nCstrayPlusValue;
+
+			waitCommandDone();
+			pucBuffer_6030w[3] = 0x30 + ucNegCin[i];
+			pucBuffer_6030w[7] = ucCStray;
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6030w, 8);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+			if( (wTemp[0] + wTemp[1]) != 0 ){
+				pr_info( "[IT7263] : %s, AT_7 pucBuffer_6030w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+				return -1;
+			}
+
+			mdelay(100);
+
+			waitCommandDone();
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6830, 7);
+			waitCommandDone();
+			i2cReadFromIt7260(gl_ts->client, 0xA0, arucCDCBuffer, MAX_CHANNEL*2);
+
+			wCDCTempAfter = *((u16*)arucCDCBuffer + i);
+			if((wCDCTempAfter < 0x6000 ))
+			{
+				while(!bFinish)
+				{
+					ucCStray++;
+
+					waitCommandDone();
+					pucBuffer_6030w[3] = 0x30 + ucNegCin[i];
+					pucBuffer_6030w[7] = ucCStray;
+					i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6030w, 8);
+					waitCommandDone();
+					i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+					if( (wTemp[0] + wTemp[1]) != 0 ){
+						pr_info( "[IT7263] : %s, AT_8 pucBuffer_6030w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+						return -1;
+					}
+					
+					mdelay(100);
+
+					waitCommandDone();
+					i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6830, 7);
+					waitCommandDone();
+					i2cReadFromIt7260(gl_ts->client, 0xA0, arucCDCBuffer, MAX_CHANNEL*2);
+					
+					wCDCTemp = *((u16*)arucCDCBuffer + i);
+					if((wCDCTemp > 0x6000) && (wCDCTemp <= 0x8000))
+					{
+						bFinish = true;
+					}
+					else if(ucCStray>=0xff)
+					{
+						bFinish = true;
+						pr_info( "[IT7263] : %s, AT_9 Stage %02d can not adjust to the range %04x ~ %04x.\n", __func__, i, 0x6000, 0x8000);
+						return false;
+					}
+				}
+			}
+			else
+			{
+				if(wCDCTemp <= 0x8000)
+					continue;
+			}
+		}      
+	}
+	
+	return 0;
+}
+
+static ssize_t IT7260_tp_goldsample_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	u16 pwCDC_1[USED_CIN_NUM] = {0x00};
+	u16 pwCDC_2[USED_CIN_NUM] = {0x00};
+	int i = 0, g_size = 0;
+	
+	struct file *g_sample;
+	mm_segment_t fs;
+	
+	u8 mp_testing[2] = { 0x17, 0x01 };
+						//   Write|Count| Byte |  Offset  |  Segment  |					Data 				|
+	u8 pucBuffer_6890[13] = { 0xE0, 0x03, 0x02, 0x90, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x6890
+	u8 pucBuffer_689C[13] = { 0xE0, 0x03, 0x02, 0x9C, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x689C
+	u8 pucBuffer_68A8[13] = { 0xE0, 0x03, 0x02, 0xA8, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x68A8
+	u8 pucBuffer_6060[13] = { 0xE0, 0x06, 0x01, 0x60, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x6060
+	u8 pucBuffer_F204[ 8] = { 0xE0, 0x01, 0x01, 0x04, 0xF2, 0x00, 0x00, 0x88 }; // 0xF204
+	u8 pucBuffer_6000w[7+96] = { 0 }; // 0x6000
+						//    Read|Count| Byte |  Offset  |  Segment  |
+	u8 pucBuffer_6060r[7] = { 0xE1, 0x06, 0x01, 0x60, 0x60, 0x00, 0x00 }; // 0x6060
+	u8 pucBuffer_6000r[7] = { 0xE1,   96, 0x01, 0x00, 0x60, 0x00, 0x00 }; // 0x6000
+	
+	disable_irq(gl_ts->client->irq);
+	mdelay(100);
+	
+	fs = get_fs();
+	set_fs(get_ds());
+	
+	//g_sample = filp_open("/sdcard/g_sample.bin", O_RDWR|O_CREAT, (S_IRUGO | S_IWUGO) );
+	g_sample = filp_open("/sdcard/g_sample.bin", O_RDWR|O_CREAT, 0666 );
+	if(IS_ERR(g_sample)) {
+		pr_info("[IT7263] : %s open /sdcard/g_sample.bin failed = %ld\n", __func__, PTR_ERR(g_sample));
+		set_fs(fs);
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	g_size = g_sample->f_op->read(g_sample, gTemp, 500, &g_sample->f_pos);
+	pr_info("[IT7263] : g_size = %d\n", g_size);
+	
+	if( g_size > 255 )
+		exist_flag = true;
+	else
+		exist_flag = false;
+
+	// Module Testing Process Enable
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, mp_testing, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, mp_testing Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	// Disable Interrupt
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6890, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6890 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_689C, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_689C Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_68A8, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_68A8 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_F204, 8);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_F204 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	if( exist_flag )
+	{
+		//gTemp[] - CStray CXXFR CDC
+		pucBuffer_6000w[0] = 0xE0;
+		pucBuffer_6000w[1] = 96;
+		pucBuffer_6000w[2] = 0x01;
+		pucBuffer_6000w[3] = 0x00;
+		pucBuffer_6000w[4] = 0x60;
+		pucBuffer_6000w[5] = pucBuffer_6000w[6] = 0x00;
+		
+		//Adjust CStray
+		for( i = 0; i < 96; i++)
+		{
+			pucBuffer_6000w[7+i] = gTemp[i];
+		}
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 96+7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+		if( (wTemp[0] + wTemp[1]) != 0 ){
+			pr_info( "[IT7263] : %s, pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+			enable_irq(gl_ts->client->irq);
+			return -1;
+		}
+	}else{
+		// Read CDC1 cstray
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000r, 7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, pucCDC1CstrayBuffer, 96);
+		pr_info("[7263] CDC1 CStray:\n");
+		//for( i = 0; i < USED_CIN_NUM; i++)
+		//{
+		//	pr_info("%2X, ", pucCDC1CstrayBuffer[ ucPosCin[i] ]);
+		//	pr_info("%2X, ", pucCDC1CstrayBuffer[ ucNegCin[i] + 48 ]);
+		//}
+		//pr_info("\n\n");
+		
+		//read CDC1 CXXFR
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6060r, 7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, pucCDC1CXXFRBuffer, 6);
+		//pr_info("[7263] CDC1 CXXFR:\n");
+		//for( i = 0; i < 6; i++)
+		//{
+		//	pr_info("%2X, ", pucCDC1CXXFRBuffer[i]);
+		//}
+		//pr_info("\n\n");
+	}
+	
+	// Read CDC1
+	fnGetCDC(pwCDC_1);
+	
+	if( exist_flag )
+	{
+		// CXXFR -> 0
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6060, 13);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+		if( (wTemp[0] + wTemp[1]) != 0 ){
+			pr_info( "[IT7263] : %s, pucBuffer_6060 Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+			enable_irq(gl_ts->client->irq);
+			return -1;
+		}
+		
+		//gTemp[] - CStray CXXFR CDC
+		pucBuffer_6000w[0] = 0xE0;
+		pucBuffer_6000w[1] = 96;
+		pucBuffer_6000w[2] = 0x01;
+		pucBuffer_6000w[3] = 0x00;
+		pucBuffer_6000w[4] = 0x60;
+		pucBuffer_6000w[5] = pucBuffer_6000w[6] = 0x00;
+		
+		//Adjust CStray
+		for( i = 0; i < 96; i++)
+		{
+			pucBuffer_6000w[7+i] = gTemp[96+i];
+		}
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 96+7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+		if( (wTemp[0] + wTemp[1]) != 0 ){
+			pr_info( "[IT7263] : %s, pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+			enable_irq(gl_ts->client->irq);
+			return -1;
+		}
+	}else{
+		fnAutoTuneCDCCStray(); // 把CXXFR全設0
+		
+		// Read CDC2 cstray
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000r, 7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, pucCDC2CstrayBuffer, 96);
+		pr_info("[7263] CDC2 CStray:\n");
+		//for( i = 0; i < USED_CIN_NUM; i++)
+		//{
+		//	pr_info("%2X, ", pucCDC2CstrayBuffer[ ucPosCin[i] ]);
+		//	pr_info("%2X, ", pucCDC2CstrayBuffer[ ucNegCin[i] + 48 ]);
+		//}
+		//pr_info("\n\n");
+	}
+	
+	// Read CDC2
+	fnGetCDC(pwCDC_2);
+	
+	if(exist_flag)
+	{
+		for( i = 0; i < USED_CIN_NUM; i++)
+		{
+			if( pwCDC_1[i] > ( (gTemp[204+(i*2)] << 8) + gTemp[204+(i*2)+1] ) ){
+				ucTemp[204+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+				ucTemp[204+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			}else{
+				ucTemp[204+(i*2)] = gTemp[204+(i*2)];
+				ucTemp[204+(i*2)+1] = gTemp[204+(i*2)+1];
+			}
+			
+			if( pwCDC_1[i] < ( (gTemp[228+(i*2)] << 8) + gTemp[228+(i*2)+1] ) ){
+				ucTemp[228+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+				ucTemp[228+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			}else{
+				ucTemp[228+(i*2)] = gTemp[228+(i*2)];
+				ucTemp[228+(i*2)+1] = gTemp[228+(i*2)+1];
+			}
+			
+			if( pwCDC_2[i] > ( (gTemp[252+(i*2)] << 8) + gTemp[252+(i*2)+1] ) ){
+				ucTemp[252+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+				ucTemp[252+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+			}else{
+				ucTemp[252+(i*2)] = gTemp[252+(i*2)];
+				ucTemp[252+(i*2)+1] = gTemp[252+(i*2)+1];
+			}
+			
+			if( pwCDC_2[i] < ( (gTemp[276+(i*2)] << 8) + gTemp[276+(i*2)+1] ) ){
+				ucTemp[276+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+				ucTemp[276+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+			}else{
+				ucTemp[276+(i*2)] = gTemp[276+(i*2)];
+				ucTemp[276+(i*2)+1] = gTemp[276+(i*2)+1];
+			}
+		}
+		g_sample->f_op->llseek(g_sample, 204, 0);
+		g_sample->f_op->write(g_sample, ucTemp+204, USED_CIN_NUM*2*2*2, &g_sample->f_pos);// 12組*大小*正負*Word
+	}else{
+		for( i = 0; i < 96; i++) // CStray
+		{
+			ucTemp[i] = pucCDC1CstrayBuffer[i];
+			ucTemp[96+i] = pucCDC2CstrayBuffer[i];
+		}
+		for( i = 0; i < 6; i++) //CXXFR
+		{
+			ucTemp[192+i] = pucCDC1CXXFRBuffer[i];
+			ucTemp[198+i] = 0x00;
+		}
+		for( i = 0; i < USED_CIN_NUM; i++) // CDC
+		{
+			// CDC 1 Max
+			ucTemp[204+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+			ucTemp[204+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			
+			// CDC 1 Min
+			ucTemp[228+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+			ucTemp[228+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			
+			// CDC 2 Max
+			ucTemp[252+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+			ucTemp[252+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+			
+			// CDC 1 Min
+			ucTemp[276+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+			ucTemp[276+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+		}
+		g_sample->f_op->llseek(g_sample, 0, 0);
+		g_sample->f_op->write(g_sample, ucTemp, 500, &g_sample->f_pos);
+	}
+	
+	filp_close(g_sample, NULL);
+	fnFirmwareReinitialize();
+	enable_irq(gl_ts->client->irq);
+	return count;
+}
+
+static ssize_t IT7260_tp_goldsample_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	u16 pwCDC_1[USED_CIN_NUM] = {0x00};
+	u16 pwCDC_2[USED_CIN_NUM] = {0x00};
+	int i = 0, g_size = 0;
+	
+	struct file *g_sample;
+	mm_segment_t fs;
+	
+	u8 mp_testing[2] = { 0x17, 0x01 };
+						//   Write|Count| Byte |  Offset  |  Segment  |					Data 				|
+	u8 pucBuffer_6890[13] = { 0xE0, 0x03, 0x02, 0x90, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x6890
+	u8 pucBuffer_689C[13] = { 0xE0, 0x03, 0x02, 0x9C, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x689C
+	u8 pucBuffer_68A8[13] = { 0xE0, 0x03, 0x02, 0xA8, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x68A8
+	u8 pucBuffer_6060[13] = { 0xE0, 0x06, 0x01, 0x60, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x6060
+	u8 pucBuffer_F204[ 8] = { 0xE0, 0x01, 0x01, 0x04, 0xF2, 0x00, 0x00, 0x88 }; // 0xF204
+	u8 pucBuffer_6000w[7+96] = { 0 }; // 0x6000
+						//    Read|Count| Byte |  Offset  |  Segment  |
+	u8 pucBuffer_6060r[7] = { 0xE1, 0x06, 0x01, 0x60, 0x60, 0x00, 0x00 }; // 0x6060
+	u8 pucBuffer_6000r[7] = { 0xE1,   96, 0x01, 0x00, 0x60, 0x00, 0x00 }; // 0x6000
+	
+	disable_irq(gl_ts->client->irq);
+	mdelay(100);
+	
+	fs = get_fs();
+	set_fs(get_ds());
+	
+	//g_sample = filp_open("/sdcard/g_sample.bin", O_RDWR|O_CREAT, (S_IRUGO | S_IWUGO) );
+	g_sample = filp_open("/sdcard/g_sample.bin", O_RDWR|O_CREAT, 0666 );
+	if(IS_ERR(g_sample)) {
+		pr_info("[IT7263] : %s open /sdcard/g_sample.bin failed = %ld\n", __func__, PTR_ERR(g_sample));
+		set_fs(fs);
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "0\n");
+	}
+	
+	g_size = g_sample->f_op->read(g_sample, gTemp, 500, &g_sample->f_pos);
+	pr_info("[IT7263] : g_size = %d\n", g_size);
+	
+	if( g_size > 255 )
+		exist_flag = true;
+	else
+		exist_flag = false;
+
+	// Module Testing Process Enable
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, mp_testing, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, mp_testing Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "0\n");
+	}
+	
+	// Disable Interrupt
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6890, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6890 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "0\n");
+	}
+	
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_689C, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_689C Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "0\n");
+	}
+
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_68A8, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_68A8 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "0\n");
+	}
+
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_F204, 8);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_F204 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "0\n");
+	}
+	
+	if( exist_flag )
+	{
+		//gTemp[] - CStray CXXFR CDC
+		pucBuffer_6000w[0] = 0xE0;
+		pucBuffer_6000w[1] = 96;
+		pucBuffer_6000w[2] = 0x01;
+		pucBuffer_6000w[3] = 0x00;
+		pucBuffer_6000w[4] = 0x60;
+		pucBuffer_6000w[5] = pucBuffer_6000w[6] = 0x00;
+		
+		//Adjust CStray
+		for( i = 0; i < 96; i++)
+		{
+			pucBuffer_6000w[7+i] = gTemp[i];
+		}
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 96+7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+		if( (wTemp[0] + wTemp[1]) != 0 ){
+			pr_info( "[IT7263] : %s, pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+			enable_irq(gl_ts->client->irq);
+			return sprintf(buf, "0\n");
+		}
+	}else{
+		// Read CDC1 cstray
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000r, 7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, pucCDC1CstrayBuffer, 96);
+		pr_info("[7263] CDC1 CStray:\n");
+		//for( i = 0; i < USED_CIN_NUM; i++)
+		//{
+		//	pr_info("%2X, ", pucCDC1CstrayBuffer[ ucPosCin[i] ]);
+		//	pr_info("%2X, ", pucCDC1CstrayBuffer[ ucNegCin[i] + 48 ]);
+		//}
+		//pr_info("\n\n");
+		
+		//read CDC1 CXXFR
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6060r, 7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, pucCDC1CXXFRBuffer, 6);
+		//pr_info("[7263] CDC1 CXXFR:\n");
+		//for( i = 0; i < 6; i++)
+		//{
+		//	pr_info("%2X, ", pucCDC1CXXFRBuffer[i]);
+		//}
+		//pr_info("\n\n");
+	}
+	
+	// Read CDC1
+	fnGetCDC(pwCDC_1);
+	
+	if( exist_flag )
+	{
+		// CXXFR -> 0
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6060, 13);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+		if( (wTemp[0] + wTemp[1]) != 0 ){
+			pr_info( "[IT7263] : %s, pucBuffer_6060 Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+			enable_irq(gl_ts->client->irq);
+			return sprintf(buf, "0\n");
+		}
+		
+		//gTemp[] - CStray CXXFR CDC
+		pucBuffer_6000w[0] = 0xE0;
+		pucBuffer_6000w[1] = 96;
+		pucBuffer_6000w[2] = 0x01;
+		pucBuffer_6000w[3] = 0x00;
+		pucBuffer_6000w[4] = 0x60;
+		pucBuffer_6000w[5] = pucBuffer_6000w[6] = 0x00;
+		
+		//Adjust CStray
+		for( i = 0; i < 96; i++)
+		{
+			pucBuffer_6000w[7+i] = gTemp[96+i];
+		}
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 96+7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+		if( (wTemp[0] + wTemp[1]) != 0 ){
+			pr_info( "[IT7263] : %s, pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+			enable_irq(gl_ts->client->irq);
+			return sprintf(buf, "0\n");
+		}
+	}else{
+		fnAutoTuneCDCCStray(); // 把CXXFR全設0
+		
+		// Read CDC2 cstray
+		waitCommandDone();
+		i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000r, 7);
+		waitCommandDone();
+		i2cReadFromIt7260(gl_ts->client, 0xA0, pucCDC2CstrayBuffer, 96);
+		pr_info("[7263] CDC2 CStray:\n");
+		//for( i = 0; i < USED_CIN_NUM; i++)
+		//{
+		//	pr_info("%2X, ", pucCDC2CstrayBuffer[ ucPosCin[i] ]);
+		//	pr_info("%2X, ", pucCDC2CstrayBuffer[ ucNegCin[i] + 48 ]);
+		//}
+		//pr_info("\n\n");
+	}
+	
+	// Read CDC2
+	fnGetCDC(pwCDC_2);
+	
+	if(exist_flag)
+	{
+		for( i = 0; i < USED_CIN_NUM; i++)
+		{
+			if( pwCDC_1[i] > ( (gTemp[204+(i*2)] << 8) + gTemp[204+(i*2)+1] ) ){
+				ucTemp[204+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+				ucTemp[204+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			}else{
+				ucTemp[204+(i*2)] = gTemp[204+(i*2)];
+				ucTemp[204+(i*2)+1] = gTemp[204+(i*2)+1];
+			}
+			
+			if( pwCDC_1[i] < ( (gTemp[228+(i*2)] << 8) + gTemp[228+(i*2)+1] ) ){
+				ucTemp[228+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+				ucTemp[228+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			}else{
+				ucTemp[228+(i*2)] = gTemp[228+(i*2)];
+				ucTemp[228+(i*2)+1] = gTemp[228+(i*2)+1];
+			}
+			
+			if( pwCDC_2[i] > ( (gTemp[252+(i*2)] << 8) + gTemp[252+(i*2)+1] ) ){
+				ucTemp[252+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+				ucTemp[252+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+			}else{
+				ucTemp[252+(i*2)] = gTemp[252+(i*2)];
+				ucTemp[252+(i*2)+1] = gTemp[252+(i*2)+1];
+			}
+			
+			if( pwCDC_2[i] < ( (gTemp[276+(i*2)] << 8) + gTemp[276+(i*2)+1] ) ){
+				ucTemp[276+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+				ucTemp[276+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+			}else{
+				ucTemp[276+(i*2)] = gTemp[276+(i*2)];
+				ucTemp[276+(i*2)+1] = gTemp[276+(i*2)+1];
+			}
+		}
+		g_sample->f_op->llseek(g_sample, 204, 0);
+		g_sample->f_op->write(g_sample, ucTemp+204, USED_CIN_NUM*2*2*2, &g_sample->f_pos);// 12組*大小*正負*Word
+	}else{
+		for( i = 0; i < 96; i++) // CStray
+		{
+			ucTemp[i] = pucCDC1CstrayBuffer[i];
+			ucTemp[96+i] = pucCDC2CstrayBuffer[i];
+		}
+		for( i = 0; i < 6; i++) //CXXFR
+		{
+			ucTemp[192+i] = pucCDC1CXXFRBuffer[i];
+			ucTemp[198+i] = 0x00;
+		}
+		for( i = 0; i < USED_CIN_NUM; i++) // CDC
+		{
+			// CDC 1 Max
+			ucTemp[204+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+			ucTemp[204+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			
+			// CDC 1 Min
+			ucTemp[228+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+			ucTemp[228+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			
+			// CDC 2 Max
+			ucTemp[252+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+			ucTemp[252+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+			
+			// CDC 1 Min
+			ucTemp[276+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+			ucTemp[276+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+		}
+		g_sample->f_op->llseek(g_sample, 0, 0);
+		g_sample->f_op->write(g_sample, ucTemp, 500, &g_sample->f_pos);
+	}
+	
+	filp_close(g_sample, NULL);
+	fnFirmwareReinitialize();
+	enable_irq(gl_ts->client->irq);
+
+	return sprintf(buf, "1\n");
+}
+
+static ssize_t IT7260_selftest_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	u16 pwCDC_1[USED_CIN_NUM] = {0x00};
+	u16 pwCDC_2[USED_CIN_NUM] = {0x00};
+	int i = 0, g_size = 0;
+	int threshold = 0x500;
+	bool test_result = false;
+	
+	struct file *g_sample;
+	struct file *fail_sample;
+	mm_segment_t fs;
+	
+	u8 mp_testing[2] = { 0x17, 0x01 };
+						//   Write|Count| Byte |  Offset  |  Segment  |					Data 				|
+	u8 pucBuffer_6890[13] = { 0xE0, 0x03, 0x02, 0x90, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x6890
+	u8 pucBuffer_689C[13] = { 0xE0, 0x03, 0x02, 0x9C, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x689C
+	u8 pucBuffer_68A8[13] = { 0xE0, 0x03, 0x02, 0xA8, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x68A8
+	u8 pucBuffer_6060[13] = { 0xE0, 0x06, 0x01, 0x60, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x6060
+	u8 pucBuffer_F204[ 8] = { 0xE0, 0x01, 0x01, 0x04, 0xF2, 0x00, 0x00, 0x88 }; // 0xF204
+	u8 pucBuffer_6000w[7+96] = { 0 }; // 0x6000
+	
+	disable_irq(gl_ts->client->irq);
+	mdelay(100);
+	
+	fs = get_fs();
+	set_fs(get_ds());
+	
+	//g_sample = filp_open("/sdcard/g_sample.bin", O_RDWR|O_CREAT, (S_IRUGO | S_IWUGO) );
+	g_sample = filp_open("/sdcard/g_sample.bin", O_RDWR, 0666 );
+	if(IS_ERR(g_sample)) {
+		pr_info("[IT7263] : %s open /sdcard/g_sample.bin failed = %ld\n", __func__, PTR_ERR(g_sample));
+		set_fs(fs);
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	g_size = g_sample->f_op->read(g_sample, gTemp, 500, &g_sample->f_pos);
+
+	// Module Testing Process Enable
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, mp_testing, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, mp_testing Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	// Disable Interrupt
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6890, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6890 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_689C, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_689C Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_68A8, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_68A8 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_F204, 8);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_F204 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	//gTemp[] - CStray CXXFR CDC
+	pucBuffer_6000w[0] = 0xE0;
+	pucBuffer_6000w[1] = 96;
+	pucBuffer_6000w[2] = 0x01;
+	pucBuffer_6000w[3] = 0x00;
+	pucBuffer_6000w[4] = 0x60;
+	pucBuffer_6000w[5] = pucBuffer_6000w[6] = 0x00;
+	
+	//Adjust CStray
+	for( i = 0; i < 96; i++)
+	{
+		pucBuffer_6000w[7+i] = gTemp[i];
+	}
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 96+7);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	// Read CDC1
+	fnGetCDC(pwCDC_1);
+	
+	// CXXFR -> 0
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6060, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6060 Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	//gTemp[] - CStray CXXFR CDC
+	pucBuffer_6000w[0] = 0xE0;
+	pucBuffer_6000w[1] = 96;
+	pucBuffer_6000w[2] = 0x01;
+	pucBuffer_6000w[3] = 0x00;
+	pucBuffer_6000w[4] = 0x60;
+	pucBuffer_6000w[5] = pucBuffer_6000w[6] = 0x00;
+	
+	//Adjust CStray
+	for( i = 0; i < 96; i++)
+	{
+		pucBuffer_6000w[7+i] = gTemp[96+i];
+	}
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 96+7);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	// Read CDC2
+	fnGetCDC(pwCDC_2);
+	
+	for( i = 0; i < USED_CIN_NUM; i++)
+	{
+		if( pwCDC_1[i] > (((gTemp[204+(i*2)] << 8) + gTemp[204+(i*2)+1])+threshold) ){
+			pr_info( "[IT7263] : %s, pwCDC_1[%d]:%4X + %4X \n", __func__, i, pwCDC_1[i], (((gTemp[204+(i*2)] << 8) + gTemp[204+(i*2)+1])+threshold) );
+			test_result = true;
+		}
+		
+		if( pwCDC_1[i] < (((gTemp[228+(i*2)] << 8) + gTemp[228+(i*2)+1] )-threshold)){
+			pr_info( "[IT7263] : %s, pwCDC_1[%d]:%4X - %4X \n", __func__, i, pwCDC_1[i], (((gTemp[228+(i*2)] << 8) + gTemp[228+(i*2)+1] )-threshold) );
+			test_result = true;
+		}
+		
+		if( pwCDC_2[i] > (((gTemp[252+(i*2)] << 8) + gTemp[252+(i*2)+1] )+threshold)){
+			pr_info( "[IT7263] : %s, pwCDC_2[%d]:%4X + %4X \n", __func__, i, pwCDC_2[i], (((gTemp[252+(i*2)] << 8) + gTemp[252+(i*2)+1] )+threshold) );
+			test_result = true;
+		}
+		
+		if( pwCDC_2[i] < (((gTemp[276+(i*2)] << 8) + gTemp[276+(i*2)+1] )-threshold)){
+			pr_info( "[IT7263] : %s, pwCDC_2[%d]:%4X - %4X \n", __func__, i, pwCDC_2[i], (((gTemp[276+(i*2)] << 8) + gTemp[276+(i*2)+1] )-threshold) );
+			test_result = true;
+		}
+	}
+
+	if( test_result ){
+		fail_sample = filp_open("/sdcard/fail_sample.bin", O_RDWR|O_CREAT, 0666 );
+		if(IS_ERR(fail_sample)) {
+			pr_info("[IT7263] : %s open /sdcard/fail_sample.bin failed = %ld\n", __func__, PTR_ERR(g_sample));
+			set_fs(fs);
+			filp_close(g_sample, NULL);
+			enable_irq(gl_ts->client->irq);
+			return -1;
+		}
+		
+		for( i = 0; i < USED_CIN_NUM; i++) // CDC
+		{
+			// CDC 1 Max
+			ucTemp[204+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+			ucTemp[204+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			
+			// CDC 1 Min
+			ucTemp[228+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+			ucTemp[228+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			
+			// CDC 2 Max
+			ucTemp[252+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+			ucTemp[252+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+			
+			// CDC 1 Min
+			ucTemp[276+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+			ucTemp[276+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+		}
+		
+		fail_sample->f_op->llseek(fail_sample, 0, 0);
+		fail_sample->f_op->write(fail_sample, ucTemp+204, USED_CIN_NUM*2*2*2, &fail_sample->f_pos);
+
+		filp_close(fail_sample, NULL);
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+	}
+	
+	set_fs(fs);
+	filp_close(g_sample, NULL);
+	fnFirmwareReinitialize();
+	enable_irq(gl_ts->client->irq);
+
+	return count;
+}
+
+static ssize_t IT7260_selftest_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	u16 pwCDC_1[USED_CIN_NUM] = {0x00};
+	u16 pwCDC_2[USED_CIN_NUM] = {0x00};
+	int i = 0, g_size = 0;
+	int threshold = 0x500;
+	bool test_result = false;
+	
+	struct file *g_sample;
+	struct file *fail_sample;
+	mm_segment_t fs;
+	
+	u8 mp_testing[2] = { 0x17, 0x01 };
+						//   Write|Count| Byte |  Offset  |  Segment  |					Data 				|
+	u8 pucBuffer_6890[13] = { 0xE0, 0x03, 0x02, 0x90, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x6890
+	u8 pucBuffer_689C[13] = { 0xE0, 0x03, 0x02, 0x9C, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x689C
+	u8 pucBuffer_68A8[13] = { 0xE0, 0x03, 0x02, 0xA8, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x68A8
+	u8 pucBuffer_6060[13] = { 0xE0, 0x06, 0x01, 0x60, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x6060
+	u8 pucBuffer_F204[ 8] = { 0xE0, 0x01, 0x01, 0x04, 0xF2, 0x00, 0x00, 0x88 }; // 0xF204
+	u8 pucBuffer_6000w[7+96] = { 0 }; // 0x6000
+	
+	disable_irq(gl_ts->client->irq);
+	mdelay(100);
+	
+	fs = get_fs();
+	set_fs(get_ds());
+	
+	//g_sample = filp_open("/sdcard/g_sample.bin", O_RDWR|O_CREAT, (S_IRUGO | S_IWUGO) );
+	g_sample = filp_open("/sdcard/g_sample.bin", O_RDWR, 0666 );
+	if(IS_ERR(g_sample)) {
+		pr_info("[IT7263] : %s open /sdcard/g_sample.bin failed = %ld\n", __func__, PTR_ERR(g_sample));
+		set_fs(fs);
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	g_size = g_sample->f_op->read(g_sample, gTemp, 500, &g_sample->f_pos);
+
+	// Module Testing Process Enable
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, mp_testing, 2);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, mp_testing Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	// Disable Interrupt
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6890, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6890 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_689C, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_689C Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_68A8, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_68A8 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_F204, 8);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_F204 Fail\n", __func__ );
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	//gTemp[] - CStray CXXFR CDC
+	pucBuffer_6000w[0] = 0xE0;
+	pucBuffer_6000w[1] = 96;
+	pucBuffer_6000w[2] = 0x01;
+	pucBuffer_6000w[3] = 0x00;
+	pucBuffer_6000w[4] = 0x60;
+	pucBuffer_6000w[5] = pucBuffer_6000w[6] = 0x00;
+	
+	//Adjust CStray
+	for( i = 0; i < 96; i++)
+	{
+		pucBuffer_6000w[7+i] = gTemp[i];
+	}
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 96+7);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	// Read CDC1
+	fnGetCDC(pwCDC_1);
+	
+	// CXXFR -> 0
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6060, 13);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6060 Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	//gTemp[] - CStray CXXFR CDC
+	pucBuffer_6000w[0] = 0xE0;
+	pucBuffer_6000w[1] = 96;
+	pucBuffer_6000w[2] = 0x01;
+	pucBuffer_6000w[3] = 0x00;
+	pucBuffer_6000w[4] = 0x60;
+	pucBuffer_6000w[5] = pucBuffer_6000w[6] = 0x00;
+	
+	//Adjust CStray
+	for( i = 0; i < 96; i++)
+	{
+		pucBuffer_6000w[7+i] = gTemp[96+i];
+	}
+	waitCommandDone();
+	i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer_6000w, 96+7);
+	waitCommandDone();
+	i2cReadFromIt7260(gl_ts->client, 0xA0, wTemp, 2);
+	if( (wTemp[0] + wTemp[1]) != 0 ){
+		pr_info( "[IT7263] : %s, pucBuffer_6000w Fail, %d   %d   \n", __func__, wTemp[0], wTemp[1]);
+		enable_irq(gl_ts->client->irq);
+		return -1;
+	}
+	
+	// Read CDC2
+	fnGetCDC(pwCDC_2);
+	
+	for( i = 0; i < USED_CIN_NUM; i++)
+	{
+		if( pwCDC_1[i] > (((gTemp[204+(i*2)] << 8) + gTemp[204+(i*2)+1])+threshold) ){
+			pr_info( "[IT7263] : %s, pwCDC_1[%d]:%4X + %4X \n", __func__, i, pwCDC_1[i], (((gTemp[204+(i*2)] << 8) + gTemp[204+(i*2)+1])+threshold) );
+			test_result = true;
+		}
+		
+		if( pwCDC_1[i] < (((gTemp[228+(i*2)] << 8) + gTemp[228+(i*2)+1] )-threshold)){
+			pr_info( "[IT7263] : %s, pwCDC_1[%d]:%4X - %4X \n", __func__, i, pwCDC_1[i], (((gTemp[228+(i*2)] << 8) + gTemp[228+(i*2)+1] )-threshold) );
+			test_result = true;
+		}
+		
+		if( pwCDC_2[i] > (((gTemp[252+(i*2)] << 8) + gTemp[252+(i*2)+1] )+threshold)){
+			pr_info( "[IT7263] : %s, pwCDC_2[%d]:%4X + %4X \n", __func__, i, pwCDC_2[i], (((gTemp[252+(i*2)] << 8) + gTemp[252+(i*2)+1] )+threshold) );
+			test_result = true;
+		}
+		
+		if( pwCDC_2[i] < (((gTemp[276+(i*2)] << 8) + gTemp[276+(i*2)+1] )-threshold)){
+			pr_info( "[IT7263] : %s, pwCDC_2[%d]:%4X - %4X \n", __func__, i, pwCDC_2[i], (((gTemp[276+(i*2)] << 8) + gTemp[276+(i*2)+1] )-threshold) );
+			test_result = true;
+		}
+	}
+
+	if( test_result ){
+		fail_sample = filp_open("/sdcard/fail_sample.bin", O_RDWR|O_CREAT, 0666 );
+		if(IS_ERR(fail_sample)) {
+			pr_info("[IT7263] : %s open /sdcard/fail_sample.bin failed = %ld\n", __func__, PTR_ERR(g_sample));
+			set_fs(fs);
+			filp_close(g_sample, NULL);
+			enable_irq(gl_ts->client->irq);
+			return -1;
+		}
+		
+		for( i = 0; i < USED_CIN_NUM; i++) // CDC
+		{
+			// CDC 1 Max
+			ucTemp[204+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+			ucTemp[204+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			
+			// CDC 1 Min
+			ucTemp[228+(i*2)] = (u8)((pwCDC_1[i] & 0xFF00) >> 8);
+			ucTemp[228+(i*2)+1] = (u8)(pwCDC_1[i] & 0x00FF);
+			
+			// CDC 2 Max
+			ucTemp[252+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+			ucTemp[252+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+			
+			// CDC 1 Min
+			ucTemp[276+(i*2)] = (u8)((pwCDC_2[i] & 0xFF00) >> 8);
+			ucTemp[276+(i*2)+1] = (u8)(pwCDC_2[i] & 0x00FF);
+		}
+		
+		fail_sample->f_op->llseek(fail_sample, 0, 0);
+		fail_sample->f_op->write(fail_sample, ucTemp+204, USED_CIN_NUM*2*2*2, &fail_sample->f_pos);
+
+		filp_close(fail_sample, NULL);
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+		pr_info("[IT7263] : Self-test Fail!!!\n");
+	}
+	
+	set_fs(fs);
+	filp_close(g_sample, NULL);
+	fnFirmwareReinitialize();
+	enable_irq(gl_ts->client->irq);
+	if( test_result ){
+		return sprintf(buf, "0\n");
+	}else{
+		return sprintf(buf, "1\n");
+	}
+}
+
 static DEVICE_ATTR(status, 0666, IT7260_status_show, IT7260_status_store);
 static DEVICE_ATTR(version, 0666, IT7260_version_show, IT7260_version_store);
 static DEVICE_ATTR(sleep, 0666, IT7260_sleep_show, IT7260_sleep_store);
@@ -691,12 +2038,16 @@ static ssize_t IT7260_upgrade_store(struct device *dev, struct device_attribute 
 	return count;
 }
 
+static DEVICE_ATTR(testtp, 0666, IT7260_selftest_show, IT7260_selftest_store);
+static DEVICE_ATTR(goldensample, 0666, IT7260_tp_goldsample_show, IT7260_tp_goldsample_store);
 static DEVICE_ATTR(calibration, 0666, IT7260_calibration_show, IT7260_calibration_store);
 static DEVICE_ATTR(upgrade, 0666, IT7260_upgrade_show, IT7260_upgrade_store);
 
 static struct attribute *it7260_attributes[] = {
 	&dev_attr_calibration.attr,
+	&dev_attr_goldensample.attr,
 	&dev_attr_upgrade.attr,
+	&dev_attr_testtp.attr,
 	NULL
 };
 
@@ -870,7 +2221,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 #ifdef ASUS_FACTORY_BUILD
 						static unsigned long last_time_detect_home = 0;
 						static int home_match_flag = 0;
-						
+
 						if (!home_match_flag && (jiffies > last_time_detect_home + 3 * HZ)){
 							home_match_flag = 1;
 							printk("[IT7260] HOME KEY DETECTED !!!!\n\n");
@@ -880,8 +2231,10 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 						} else {
 							home_match_flag = 0;
 						}
-						
+
 #else
+
+						
 						if (jiffies - last_time_shot_power > 2*HZ){
 							strcpy(magic_key,"PALM");
 							kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
