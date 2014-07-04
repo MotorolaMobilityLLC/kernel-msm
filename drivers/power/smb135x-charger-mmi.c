@@ -219,6 +219,7 @@
 
 #define IRQ_C_REG			0x52
 #define IRQ_C_TERM_BIT			BIT(0)
+#define IRQ_C_FAST_CHG_BIT		BIT(6)
 
 #define IRQ_D_REG			0x53
 #define IRQ_D_TIMEOUT_BIT		BIT(2)
@@ -542,6 +543,32 @@ out:
 	return rc;
 }
 
+static int is_usb_plugged_in(struct smb135x_chg *chip)
+{
+	int rc;
+	u8 reg = 0;
+
+	rc = smb135x_read(chip, IRQ_E_REG, &reg);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read irq E rc = %d\n", rc);
+		return rc;
+	}
+	return !(reg & IRQ_E_USB_OV_BIT) && !(reg & IRQ_E_USB_UV_BIT);
+}
+
+static int is_dc_plugged_in(struct smb135x_chg *chip)
+{
+	int rc;
+	u8 reg = 0;
+
+	rc = smb135x_read(chip, IRQ_E_REG, &reg);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read irq E rc = %d\n", rc);
+		return rc;
+	}
+	return !(reg & IRQ_E_DC_OV_BIT) && !(reg & IRQ_E_DC_UV_BIT);
+}
+
 static int read_revision(struct smb135x_chg *chip, u8 *revision)
 {
 	int rc;
@@ -744,7 +771,8 @@ static int smb135x_get_prop_batt_status(struct smb135x_chg *chip)
 	u8 reg = 0;
 	u8 chg_type;
 
-	if (chip->chg_done_batt_full)
+	if ((is_usb_plugged_in(chip) || is_dc_plugged_in(chip))
+			&& chip->chg_done_batt_full)
 		return POWER_SUPPLY_STATUS_FULL;
 
 	rc = smb135x_read(chip, STATUS_4_REG, &reg);
@@ -2369,6 +2397,8 @@ static int taper_handler(struct smb135x_chg *chip, u8 rt_stat)
 static int fast_chg_handler(struct smb135x_chg *chip, u8 rt_stat)
 {
 	pr_debug("rt_stat = 0x%02x\n", rt_stat);
+	if (rt_stat & IRQ_C_FAST_CHG_BIT)
+		chip->chg_done_batt_full = false;
 	power_supply_changed(&chip->batt_psy);
 	return 0;
 }
@@ -2439,6 +2469,8 @@ static int dcin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 	if (chip->dc_present && !dc_present) {
 		/* dc removed */
 		chip->dc_present = dc_present;
+		if (!dc_present && !is_usb_plugged_in(chip))
+			chip->chg_done_batt_full = false;
 		handle_dc_removal(chip);
 	}
 
@@ -2570,6 +2602,8 @@ static int usbin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 	if (chip->usb_present && !usb_present) {
 		/* USB removed */
 		chip->usb_present = usb_present;
+		if (!usb_present && !is_dc_plugged_in(chip))
+			chip->chg_done_batt_full = false;
 		handle_usb_removal(chip);
 	}
 	return 0;
