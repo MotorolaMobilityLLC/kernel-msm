@@ -42,6 +42,7 @@
 #include <net/sock.h>
 #include <wlan_nlink_srv.h>
 #include <vos_trace.h>
+#include "vos_memory.h"
 
 //Global variables
 static DEFINE_MUTEX(nl_srv_sem);
@@ -322,7 +323,7 @@ void nl_srv_nl_ready_indication
    nlh->nlmsg_flags = 0;
    nlh->nlmsg_seq = 0;
    nlh->nlmsg_len = sizeof(driverLoaded);
-   memcpy(((char *)nlh) + sizeof(struct nlmsghdr),
+   vos_mem_copy(((char *)nlh) + sizeof(struct nlmsghdr),
           driverLoaded,
           sizeof(driverLoaded));
    skb_put(skb, NLMSG_SPACE(sizeof(driverLoaded)));
@@ -367,7 +368,7 @@ void nl_srv_nl_close_indication
    nlh->nlmsg_flags = 0;
    nlh->nlmsg_seq = 0;
    nlh->nlmsg_len = sizeof(driverUnLoaded);
-   memcpy(((char *)nlh) + sizeof(struct nlmsghdr),
+   vos_mem_copy(((char *)nlh) + sizeof(struct nlmsghdr),
           driverUnLoaded,
           sizeof(driverUnLoaded));
    skb_put(skb, NLMSG_SPACE(sizeof(driverUnLoaded)));

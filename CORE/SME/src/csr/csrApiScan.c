@@ -48,6 +48,7 @@
 #include "vos_diag_core_event.h"
 
 #include "vos_nvitem.h"
+#include "vos_memory.h"
 #include "wlan_qct_wda.h"
 #include "vos_utils.h"
 
@@ -3629,9 +3630,9 @@ tANI_BOOLEAN csrElectedCountryInfo(tpAniSirGlobal pMac)
     }
     if (fRet)
     {
-        memcpy(pMac->scan.countryCodeElected,
+        vos_mem_copy(pMac->scan.countryCodeElected,
             pMac->scan.votes11d[j].countryCode, WNI_CFG_COUNTRY_CODE_LEN);
-        memcpy(pMac->scan.countryCode11d,
+        vos_mem_copy(pMac->scan.countryCode11d,
             pMac->scan.votes11d[j].countryCode, WNI_CFG_COUNTRY_CODE_LEN);
         VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                  "Selected Country is %c%c With count %d\n",
