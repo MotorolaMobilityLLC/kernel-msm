@@ -8725,8 +8725,13 @@ int hdd_wlan_startup(struct device *dev )
     /* Plug in avoid channel notification callback
      * This should happen before ADD_SELF_STA
      * FW will send first IND with ADD_SELF_STA REQ from host */
-    sme_AddChAvoidCallback(pHddCtx->hHal,
-                           hdd_hostapd_ch_avoid_cb);
+
+    /* check the Channel Avoidance is enabled */
+   if (TRUE == pHddCtx->cfg_ini->fenableCHAvoidance)
+   {
+       sme_AddChAvoidCallback(pHddCtx->hHal,
+                              hdd_hostapd_ch_avoid_cb);
+   }
 #endif /* FEATURE_WLAN_CH_AVOID */
 
    /* Exchange capability info between Host and FW and also get versioning info from FW */
