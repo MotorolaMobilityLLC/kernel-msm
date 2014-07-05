@@ -2003,6 +2003,12 @@ static int hdd_get_dwell_time(hdd_config_t *pCfg, tANI_U8 *command, char *extra,
                 (int)pCfg->nPassiveMinChnTime);
         return ret;
     }
+    else if (strncmp(command, "GETDWELLTIME", 12) == 0)
+    {
+        *len = scnprintf(extra, n, "GETDWELLTIME %u \n",
+                (int)pCfg->nActiveMaxChnTime);
+        return ret;
+    }
     else
     {
         ret = -EINVAL;
@@ -2093,6 +2099,22 @@ static int hdd_set_dwell_time(hdd_adapter_t *pAdapter, tANI_U8 *command)
         }
         pCfg->nPassiveMinChnTime = val;
         smeConfig.csrConfig.nPassiveMinChnTime = val;
+        sme_UpdateConfig(hHal, &smeConfig);
+    }
+    else if (strncmp(command, "SETDWELLTIME", 12) == 0)
+    {
+        value = value + 13;
+        temp = kstrtou32(value, 10, &val);
+        if (temp != 0 || val < CFG_ACTIVE_MAX_CHANNEL_TIME_MIN ||
+                         val > CFG_ACTIVE_MAX_CHANNEL_TIME_MAX )
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+             "%s: argument passed for SETDWELLTIME is incorrect", __func__);
+            ret = -EFAULT;
+            return ret;
+        }
+        pCfg->nActiveMaxChnTime = val;
+        smeConfig.csrConfig.nActiveMaxChnTime = val;
         sme_UpdateConfig(hHal, &smeConfig);
     }
     else
