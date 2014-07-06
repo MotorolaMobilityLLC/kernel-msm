@@ -320,7 +320,6 @@ static
 int sharp25x16_cmd_exit_deep_standby(
 		struct mdfld_dsi_config *dsi_config)
 {
-	struct drm_device *dev = dsi_config->dev;
 	PSB_DEBUG_ENTRY("\n");
 	gpio_set_value_cansleep(mipi_reset_gpio, 0);
 	usleep_range(1000, 1500);

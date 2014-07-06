@@ -334,7 +334,7 @@ static bool power_down_island(struct ospm_power_island *p_island)
 	if (atomic_dec_return(&p_island->ref_count) < 0) {
 		DRM_ERROR("Island %x, UnExpect RefCount %d\n",
 				p_island->island,
-				p_island->ref_count);
+				atomic_read(&p_island->ref_count));
 		dump_stack();
 		goto power_down_err;
 	}
@@ -415,7 +415,7 @@ bool power_island_get(u32 hw_island)
 		pm_ret = pm_runtime_get_sync(&g_ospm_data->dev->pdev->dev);
 		if (pm_ret < 0) {
 			ret = false;
-			PSB_DEBUG_PM("pm_runtime_get_sync failed 0x%x.\n",
+			PSB_DEBUG_PM("pm_runtime_get_sync failed 0x%p.\n",
 				&g_ospm_data->dev->pdev->dev);
 			goto out_err;
 		}
@@ -471,7 +471,7 @@ bool power_island_put(u32 hw_island)
 		}
 	}
 
-out_err:
+/* out_err: */
 	/* Check to see if we need to suspend PCI */
 	if (!any_island_on()) {
 		PSB_DEBUG_PM("Suspending PCI\n");
@@ -689,10 +689,9 @@ void ospm_apm_power_down_msvdx(struct drm_device *dev, int force_off)
 {
 	unsigned long irq_flags;
 	int ret, frame_finished = 0;
-	int seq_flag = 0, shp_ctx_count = 0;
+	int shp_ctx_count = 0;
 	struct ospm_power_island *p_island;
 	struct drm_psb_private *dev_priv = psb_priv(dev);
-	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
 	struct psb_video_ctx *pos, *n;
 
 
@@ -807,7 +806,6 @@ void ospm_apm_power_down_vsp(struct drm_device *dev)
 {
 	int ret;
 	struct ospm_power_island *p_island;
-	unsigned long flags;
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct vsp_private *vsp_priv = dev_priv->vsp_private;
 

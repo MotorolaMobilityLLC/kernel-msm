@@ -140,7 +140,6 @@ void maxfifo_timer_stop(struct drm_device *dev)
 void enable_repeat_frame_intr(struct drm_device *dev)
 {
 #ifndef ENABLE_HW_REPEAT_FRAME
-	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct dc_maxfifo * maxfifo_info =
 		(struct dc_maxfifo *)
 		((struct drm_psb_private *)dev->dev_private)->dc_maxfifo_info;
@@ -157,7 +156,6 @@ void enable_repeat_frame_intr(struct drm_device *dev)
 void disable_repeat_frame_intr(struct drm_device *dev)
 {
 #ifndef ENABLE_HW_REPEAT_FRAME
-	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct dc_maxfifo * maxfifo_info =
 		(struct dc_maxfifo *)
 		((struct drm_psb_private *)dev->dev_private)->dc_maxfifo_info;
@@ -256,7 +254,6 @@ bool enter_maxfifo_mode(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = psb_priv(dev);
 	struct dc_maxfifo * maxfifo_info = dev_priv->dc_maxfifo_info;
-	u32 dsp_ss_pm_val;
 	u32 dspsrctrl_val = MAXFIFO_LOW_WATEMARK | MAXFIFO_HIGH_WATERMARK;
 	u32 regs_to_set;
 
@@ -300,7 +297,6 @@ bool exit_maxfifo_mode(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = psb_priv(dev);
 	struct dc_maxfifo *maxfifo_info = dev_priv->dc_maxfifo_info;
-	u32 dsp_ss_pm_val;
 	u32 dspsrctrl_val = MAXFIFO_LOW_WATEMARK | MAXFIFO_HIGH_WATERMARK;
 
 	if (!maxfifo_info)
@@ -311,8 +307,8 @@ bool exit_maxfifo_mode(struct drm_device *dev)
 
 	mutex_lock(&maxfifo_info->maxfifo_mtx);
 	if (power_island_get(OSPM_DISPLAY_A)) {
-		PSB_WVDC32(dspsrctrl_val, DSPSRCTRL_REG);
 		unsigned long irqflags;
+		PSB_WVDC32(dspsrctrl_val, DSPSRCTRL_REG);
 
 		spin_lock_irqsave(&dev_priv->irqmask_lock, irqflags);
 		exit_s0i1_display_mode(dev);
@@ -425,7 +421,6 @@ static ssize_t _store_sysfs_enable (struct device *kdev,
 static ssize_t _show_sysfs_state (struct device *kdev,
 					struct device_attribute *attr, char *buf)
 {
-	int enabled = 0;
 	int ret = 0;
 
 	struct drm_minor *minor = container_of(kdev, struct drm_minor, kdev);

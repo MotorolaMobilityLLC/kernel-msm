@@ -126,14 +126,15 @@ static inline u32 mid_pipeconf(int pipe)
 void psb_enable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 {
 	struct drm_device *dev = dev_priv->dev;
+	u32 write_val;
 
 	u32 reg = psb_pipestat(pipe);
 	dev_priv->pipestat[pipe] |= mask;
 	/* Enable the interrupt, clear any pending status */
-	u32 writeVal = PSB_RVDC32(reg);
+	write_val = PSB_RVDC32(reg);
 
-	writeVal |= (mask | (mask >> 16));
-	PSB_WVDC32(writeVal, reg);
+	write_val |= (mask | (mask >> 16));
+	PSB_WVDC32(write_val, reg);
 	(void)PSB_RVDC32(reg);
 }
 
@@ -142,9 +143,9 @@ void psb_recover_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 	struct drm_device *dev = dev_priv->dev;
 	if ((dev_priv->pipestat[pipe] & mask) == mask) {
 		u32 reg = psb_pipestat(pipe);
-		u32 writeVal = PSB_RVDC32(reg);
-		writeVal |= (mask | (mask >> 16));
-		PSB_WVDC32(writeVal, reg);
+		u32 write_val = PSB_RVDC32(reg);
+		write_val |= (mask | (mask >> 16));
+		PSB_WVDC32(write_val, reg);
 		(void)PSB_RVDC32(reg);
 	}
 }
@@ -153,12 +154,12 @@ void psb_disable_pipestat(struct drm_psb_private *dev_priv, int pipe, u32 mask)
 {
 	struct drm_device *dev = dev_priv->dev;
 	u32 reg = psb_pipestat(pipe);
-	u32 writeVal;
+	u32 write_val;
 
 	dev_priv->pipestat[pipe] &= ~mask;
-	writeVal = PSB_RVDC32(reg);
-	writeVal &= ~mask;
-	PSB_WVDC32(writeVal, reg);
+	write_val = PSB_RVDC32(reg);
+	write_val &= ~mask;
+	PSB_WVDC32(write_val, reg);
 	(void)PSB_RVDC32(reg);
 }
 
@@ -429,7 +430,6 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 	    (dev_priv->psb_dpst_state != NULL)) {
 		uint32_t pwm_reg = 0;
 		uint32_t hist_reg = 0;
-		u32 irqCtrl = 0;
 		struct dpst_guardband guardband_reg;
 		struct dpst_ie_histogram_control ie_hist_cont_reg;
 
@@ -810,9 +810,6 @@ void psb_irq_turn_on_dpst(struct drm_device *dev)
 	struct mdfld_dsi_hw_context *ctx = NULL;
 	unsigned long irqflags;
 
-	u32 hist_reg;
-	u32 pwm_reg;
-
 	if(!dev_priv)
 		return;
 
@@ -1171,7 +1168,6 @@ int mdfld_enable_te(struct drm_device *dev, int pipe)
 	struct drm_psb_private *dev_priv =
 	    (struct drm_psb_private *)dev->dev_private;
 	unsigned long irqflags;
-	uint32_t reg_val = 0;
 	uint32_t pipeconf_reg = mid_pipeconf(pipe);
 	uint32_t retry = 0;
 

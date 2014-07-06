@@ -595,7 +595,7 @@ err_out:
 
 bool disable_DSIPLL(struct drm_device * dev)
 {
-	u32 val, guit_val, retry;
+	u32 val, guit_val;
 
 	/* Disable PLL*/
 	intel_mid_msgbus_write32(CCK_PORT, DSI_PLL_DIV_REG, 0);

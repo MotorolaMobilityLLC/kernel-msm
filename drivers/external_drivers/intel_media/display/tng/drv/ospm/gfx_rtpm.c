@@ -79,7 +79,6 @@ int rtpm_idle(struct device *dev)
 
 int rtpm_allow(struct drm_device *dev)
 {
-	struct drm_psb_private *dev_priv = dev->dev_private;
 	PSB_DEBUG_PM("%s\n", __func__);
 	pm_runtime_allow(&dev->pdev->dev);
 	return 0;
@@ -87,7 +86,6 @@ int rtpm_allow(struct drm_device *dev)
 
 void rtpm_forbid(struct drm_device *dev)
 {
-	struct drm_psb_private *dev_priv = dev->dev_private;
 	PSB_DEBUG_PM("%s\n", __func__);
 	pm_runtime_forbid(&dev->pdev->dev);
 	return;
