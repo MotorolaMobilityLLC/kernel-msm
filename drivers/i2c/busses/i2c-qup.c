@@ -172,6 +172,7 @@ struct qup_i2c_clk_path_vote {
 	bool                        reg_err;
 };
 
+#define RECOVER_FAILED_PANIC_COUNT	100
 struct qup_i2c_dev {
 	struct device                *dev;
 	void __iomem                 *base;		/* virtual */
@@ -202,6 +203,7 @@ struct qup_i2c_dev {
 	void                         *complete;
 	int                          i2c_gpios[ARRAY_SIZE(i2c_rsrcs)];
 	struct qup_i2c_clk_path_vote clk_path_vote;
+	unsigned int                 recover_failed_count;
 };
 
 #ifdef CONFIG_PM
@@ -1030,7 +1032,19 @@ static int qup_i2c_recover_bus_busy(struct qup_i2c_dev *dev)
 		status = readl_relaxed(dev->base + QUP_I2C_STATUS);
 		dev_info(dev->dev, "Extended Bus recovery %s\n",
 			(status & I2C_STATUS_BUS_ACTIVE) ? "fail" : "success");
+
+		/* Only panic on extended-recovery enabled bus */
+		if (status & I2C_STATUS_BUS_ACTIVE &&
+		    dev->recover_failed_count > RECOVER_FAILED_PANIC_COUNT) {
+			pr_info("BUG: Bus recovery failed trigger panic\n");
+			BUG();
+		}
 	}
+
+	if (status & I2C_STATUS_BUS_ACTIVE)
+		dev->recover_failed_count++;
+	else
+		dev->recover_failed_count = 0;
 
 recovery_end:
 	enable_irq(dev->err_irq);
@@ -1350,6 +1364,8 @@ timeout_err:
 		}
 	}
 
+	/* reset failed count in case recovered by hardware reset */
+	dev->recover_failed_count = 0;
 	ret = num;
  out_err:
 	disable_irq(dev->err_irq);
