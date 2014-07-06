@@ -297,14 +297,14 @@ static inline int get_chrgr_prop_cache(struct power_supply *psy,
 
 static void dump_charger_props(struct charger_props *props)
 {
-	pr_devel("%s:name=%s present=%d is_charging=%d health=%d online=%d cable=%d tstamp=%d\n",
+	pr_devel("%s:name=%s present=%d is_charging=%d health=%d online=%d cable=%lu tstamp=%lu\n",
 		__func__, props->name, props->present, props->is_charging,
 		props->health, props->online, props->cable, props->tstamp);
 }
 
 static void dump_battery_props(struct batt_props *props)
 {
-	pr_devel("%s:name=%s voltage_now=%d current_now=%d temperature=%d status=%d health=%d tstamp=%d algo_stat=%d ",
+	pr_devel("%s:name=%s voltage_now=%ld current_now=%ld temperature=%d status=%ld health=%d tstamp=%lu algo_stat=%d ",
 		__func__, props->name, props->voltage_now, props->current_now,
 		props->temperature, props->status, props->health,
 		props->tstamp, props->algo_stat);
@@ -1107,6 +1107,7 @@ int power_supply_unregister_charging_algo(struct charging_algo *algo)
 }
 EXPORT_SYMBOL(power_supply_unregister_charging_algo);
 
+#if 0
 static struct charging_algo *get_charging_algo_byname(char *algo_name)
 {
 	struct charging_algo *algo;
@@ -1118,6 +1119,7 @@ static struct charging_algo *get_charging_algo_byname(char *algo_name)
 
 	return NULL;
 }
+#endif
 
 static struct charging_algo *get_charging_algo_by_type
 		(enum batt_chrg_prof_type chrg_prof_type)

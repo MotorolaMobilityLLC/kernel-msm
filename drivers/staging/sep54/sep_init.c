@@ -595,7 +595,8 @@ static int create_fwinit_command(struct sep_drvdata *drvdata,
 
 	/* For klocwork, add extra check */
 	if (qs_num > SEP_MAX_NUM_OF_DESC_Q) {
-		pr_err("Max number of desc queues (%d) exceeded (%d)\n");
+		pr_err("Max number of desc queues (%d) exceeded (%d)\n",
+		       qs_num, SEP_MAX_NUM_OF_DESC_Q);
 		return -EINVAL;
 	}
 

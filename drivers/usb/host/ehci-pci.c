@@ -578,8 +578,6 @@ static int ehci_pci_suspend(struct usb_hcd *hcd, bool do_wakeup)
 		while (port--) {
 			u32 __iomem	*hostpc_reg;
 			u32		temp;
-			struct pci_dev  *pdev =
-				to_pci_dev(hcd->self.controller);
 
 			hostpc_reg = &ehci->regs->hostpc[port];
 			temp = ehci_readl(ehci, hostpc_reg);

@@ -234,7 +234,7 @@ static void intr_complete (struct urb *urb)
 	case -ENOENT:		/* urb killed */
 		if (urb->actual_length) {
 			netdev_dbg(dev->net,
-				"intr status %d\, length: %dn",
+				"intr status %d\n, length: %dn",
 				status, urb->actual_length);
 			dev->driver_info->status(dev, urb);
 		}

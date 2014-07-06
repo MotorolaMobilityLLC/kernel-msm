@@ -248,8 +248,8 @@ static void dwc_xhci_enable_phy_suspend(struct usb_hcd *hcd, bool enable)
 static int dwc3_link_issue_wa(struct xhci_hcd *xhci)
 {
 	__le32 __iomem **addr;
-	int delay_time, ret;
-	u32 pls, val, delay;
+	int delay_time;
+	u32 val, delay = 0;
 
 	addr = dwc3_xhci.xhci->usb3_ports;
 	val = xhci_readl(dwc3_xhci.xhci, addr[0]);
@@ -405,7 +405,6 @@ store_host_comp_test(struct device *_dev,
 {
 	struct platform_device		*pdev = to_platform_device(_dev);
 	struct usb_hcd		*hcd = platform_get_drvdata(pdev);
-	struct xhci_hcd		*xhci = hcd_to_xhci(hcd);
 
 	void __iomem *addr;
 	u32 val;

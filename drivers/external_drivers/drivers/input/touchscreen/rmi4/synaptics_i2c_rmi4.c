@@ -1971,7 +1971,9 @@ void rmi4_resume(struct rmi4_data *pdata)
 	if (pdata->regulator) {
 		/*need wait to stable if regulator first output*/
 		int needwait = !regulator_is_enabled(pdata->regulator);
-		regulator_enable(pdata->regulator);
+		if (regulator_enable(pdata->regulator))
+			dev_err(&client->dev, "Failed to enable regulator\n");
+
 		if (needwait)
 			msleep(50);
 	}

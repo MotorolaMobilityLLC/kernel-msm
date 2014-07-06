@@ -1725,7 +1725,7 @@ static void handle_port_status(struct xhci_hcd *xhci,
 				HCS_MAX_PORTS(xhci->hcs_params1))) {
 		xhci_test_and_clear_bit(xhci, port_array,
 				faked_port_index, PORT_PLC);
-		return 0;
+		return;
 	}
 
 	if ((temp & PORT_PLC) && (temp & PORT_PLS_MASK) == XDEV_RESUME) {

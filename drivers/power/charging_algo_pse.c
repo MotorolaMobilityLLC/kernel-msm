@@ -40,7 +40,7 @@ static int get_tempzone(struct ps_pse_mod_prof *pse_mod_bprof,
 static inline bool __is_battery_full
 	(long volt, long cur, long iterm, unsigned long cv)
 {
-	pr_devel("%s:current=%d pse_mod_bprof->chrg_term_ma =%d voltage_now=%d full_cond=%d",
+	pr_devel("%s:current=%ld pse_mod_bprof->chrg_term_ma =%ld voltage_now=%ld full_cond=%lu",
 			__func__, cur, iterm, volt * 100, (FULL_CV_MIN * cv));
 
 	return ((cur > 0) && (cur <= iterm) &&
@@ -57,7 +57,7 @@ static inline bool is_battery_full(struct batt_props bat_prop,
 	*  battery Full. The voltage also verified to avoid false charge
 	*  full detection.
 	*/
-	pr_devel("%s:current=%d pse_mod_bprof->chrg_term_ma =%d bat_prop.voltage_now=%d full_cond=%d",
+	pr_devel("%s:current=%ld pse_mod_bprof->chrg_term_ma =%d bat_prop.voltage_now=%ld full_cond=%ld",
 		__func__, bat_prop.current_now, (pse_mod_bprof->chrg_term_ma),
 		bat_prop.voltage_now * 100, (FULL_CV_MIN * cv));
 
@@ -105,7 +105,7 @@ static enum psy_algo_stat pse_get_next_cc_cv(struct batt_props bat_prop,
 	*  is not present, no need to take any action.
 	*/
 
-	pr_devel("%s:battery status = %d algo_status=%d\n",
+	pr_devel("%s:battery status = %ld algo_status=%d\n",
 			__func__, bat_prop.status, algo_stat);
 
 	if ((bprof.chrg_prof_type != PSE_MOD_CHRG_PROF) || (!pse_mod_bprof))

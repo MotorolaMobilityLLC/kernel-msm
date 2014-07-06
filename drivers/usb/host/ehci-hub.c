@@ -316,9 +316,6 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 			u32 __iomem	*hostpc_reg = &ehci->regs->hostpc[port];
 			u32		t3;
 
-			struct pci_dev  *pdev =
-				to_pci_dev(hcd->self.controller);
-
 			t3 = ehci_readl(ehci, hostpc_reg);
 			ehci_writel(ehci, t3 | HOSTPC_PHCD, hostpc_reg);
 			t3 = ehci_readl(ehci, hostpc_reg);

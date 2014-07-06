@@ -596,7 +596,6 @@ static void hsic_port_suspend(struct usb_device *udev)
 
 static void hsic_port_resume(struct usb_device *udev)
 {
-	int retval;
 	struct pci_dev *pdev = to_pci_dev(udev->bus->controller);
 
 	if (pdev->device != 0x119d)
@@ -755,7 +754,7 @@ static ssize_t hsic_port_enable_store(struct device *dev,
 	int org_req;
 
 	if (size > HSIC_ENABLE_SIZE) {
-		dev_dbg(dev, "Invalid, size = %d\n", size);
+		dev_dbg(dev, "Invalid, size = %zu\n", size);
 		return -EINVAL;
 	}
 
@@ -844,7 +843,7 @@ static ssize_t hsic_port_inactivityDuration_store(struct device *dev,
 	unsigned duration;
 
 	if (size > HSIC_DURATION_SIZE) {
-		dev_dbg(dev, "Invalid, size = %d\n", size);
+		dev_dbg(dev, "Invalid, size = %zu\n", size);
 		return -EINVAL;
 	}
 
@@ -884,7 +883,7 @@ static ssize_t hsic_autosuspend_enable_store(struct device *dev,
 	int org_req;
 
 	if (size > HSIC_ENABLE_SIZE) {
-		dev_dbg(dev, "Invalid, size = %d\n", size);
+		dev_dbg(dev, "Invalid, size = %zu\n", size);
 		return -EINVAL;
 	}
 
@@ -933,12 +932,12 @@ static ssize_t hsic_pm_enable_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	int rc;
-	u8 pm_enable;
+	unsigned int pm_enable;
 
 	if (size > HSIC_ENABLE_SIZE)
 		return -EINVAL;
 
-	if (sscanf(buf, "%d", &pm_enable) != 1) {
+	if (sscanf(buf, "%u", &pm_enable) != 1) {
 		dev_dbg(dev, "Invalid, value\n");
 		return -EINVAL;
 	}
@@ -954,8 +953,10 @@ static ssize_t hsic_pm_enable_store(struct device *dev,
 		rc = hsic_autosuspend_enable_store(dev, attr, "1", size);
 		break;
 	case 2: /*Reserved for L1 only*/
+		rc = -EINVAL;
 		break;
 	case 3: /* Reserved for L1 + L2*/
+		rc = -EINVAL;
 		break;
 	default:
 		rc = -EINVAL;
@@ -983,7 +984,7 @@ static ssize_t hsic_bus_inactivityDuration_store(struct device *dev,
 	unsigned duration;
 
 	if (size > HSIC_DURATION_SIZE) {
-		dev_dbg(dev, "Invalid, size = %d\n", size);
+		dev_dbg(dev, "Invalid, size = %zu\n", size);
 		return -EINVAL;
 	}
 
@@ -1021,7 +1022,7 @@ static ssize_t hsic_remoteWakeup_store(struct device *dev,
 	int org_req;
 
 	if (size > HSIC_ENABLE_SIZE) {
-		dev_dbg(dev, "Invalid, size = %d\n", size);
+		dev_dbg(dev, "Invalid, size = %zu\n", size);
 		return -EINVAL;
 	}
 
@@ -1223,10 +1224,10 @@ bus_duration:
 port_duration:
 	device_remove_file(&pci_dev->dev, &dev_attr_L2_autosuspend_enable);
 autosuspend:
-host_resume:
+/* host_resume: */
 	device_remove_file(&pci_dev->dev, &dev_attr_hsic_enable);
 hsic_enable:
-hsic_class_fail:
+/* hsic_class_fail: */
 
 	return retval;
 }
@@ -1240,7 +1241,7 @@ static void remove_device_files()
 	device_remove_file(&pci_dev->dev, &dev_attr_hsic_enable);
 }
 
-static void hsic_debugfs_cleanup()
+static void hsic_debugfs_cleanup(void)
 {
 	debugfs_remove_recursive(hsic_debugfs_root);
 	hsic_debugfs_root = NULL;

@@ -552,7 +552,8 @@ static int reboot_notifier(struct notifier_block *this,
 
 #ifdef CONFIG_DEBUG_FS
 /* This code triggers a Security Watchdog */
-int write_security(struct inode *i, struct file *f)
+ssize_t write_security(struct file *file, const char __user *buff, size_t count,
+		       loff_t *ppos)
 {
 	int ret = 0;
 	void __iomem *ptr;
@@ -580,7 +581,7 @@ static const struct file_operations security_watchdog_fops = {
 	.llseek = no_llseek,
 };
 
-static int kwd_trigger_write(struct file *file, const char __user *buff,
+static ssize_t kwd_trigger_write(struct file *file, const char __user *buff,
 			     size_t count, loff_t *ppos)
 {
 	pr_debug("kwd_trigger_write\n");
@@ -635,7 +636,7 @@ static ssize_t kwd_reset_type_write(struct file *file, const char __user *buff,
 	int ret, reset_type;
 
 	if (count > STRING_RESET_TYPE_MAX_LEN) {
-		pr_err("Invalid size: count=%d\n", count);
+		pr_err("Invalid size: count=%zu\n", count);
 		return -EINVAL;
 	}
 

@@ -552,7 +552,7 @@ static void dma_transfer(struct ssp_drv_context *sspc)
 		rxdesc->callback = intel_mid_ssp_spi_dma_done;
 		rxdesc->callback_param = &sspc->rx_param;
 	} else {
-		dev_dbg(dev, "rxdesc is null! (len_dma_rx:%d)\n",
+		dev_dbg(dev, "rxdesc is null! (len_dma_rx:%zu)\n",
 			sspc->len_dma_rx);
 		sspc->rxdma_done = 1;
 	}
@@ -575,7 +575,7 @@ static void dma_transfer(struct ssp_drv_context *sspc)
 			txdesc->callback = intel_mid_ssp_spi_dma_done;
 			txdesc->callback_param = &sspc->tx_param;
 		} else {
-			dev_dbg(dev, "txdesc is null! (len_dma_tx:%d)\n",
+			dev_dbg(dev, "txdesc is null! (len_dma_tx:%zu)\n",
 				sspc->len_dma_tx);
 			sspc->txdma_done = 1;
 		}
@@ -584,7 +584,7 @@ static void dma_transfer(struct ssp_drv_context *sspc)
 		return;
 	}
 
-	dev_dbg(dev, "DMA transfer len:%d len_dma_tx:%d len_dma_rx:%d\n",
+	dev_dbg(dev, "DMA transfer len:%zu len_dma_tx:%zu len_dma_rx:%zu\n",
 		sspc->len, sspc->len_dma_tx, sspc->len_dma_rx);
 
 	if (rxdesc || txdesc) {

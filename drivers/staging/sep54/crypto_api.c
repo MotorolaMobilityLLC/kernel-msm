@@ -254,7 +254,8 @@ static int digest_final(struct ahash_request *req);
 static int digest_finup(struct ahash_request *req);
 static int digest_integrated(struct ahash_request *req);
 static int mac_setkey(struct crypto_ahash *tfm,
-		      const u8 *key, unsigned int keylen);
+		      const u8 *key,
+		      unsigned int keylen) __attribute__((unused));
 
 /* Save set key in tfm ctx */
 struct mac_key_data {
