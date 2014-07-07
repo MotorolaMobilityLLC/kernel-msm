@@ -383,6 +383,13 @@ static int cluster_select(struct lpm_cluster *cluster, bool from_idle)
 
 	if (!cluster)
 		return -EINVAL;
+	/*
+	 * TODO:
+	 * use per_cpu pm_qos to prevent low power modes based on
+	 * latency
+	 */
+	if (msm_rpm_waiting_for_ack())
+		return best_level;
 
 	sleep_us = (uint32_t)get_cluster_sleep_time(cluster, NULL, from_idle);
 
