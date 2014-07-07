@@ -689,8 +689,8 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_VFC_1);
 	buf[1] = acc->resume_state[LIS3DSH_VFC_1];
 	buf[2] = acc->resume_state[LIS3DSH_VFC_2];
-	buf[1] = acc->resume_state[LIS3DSH_VFC_3];
-	buf[2] = acc->resume_state[LIS3DSH_VFC_4];
+	buf[3] = acc->resume_state[LIS3DSH_VFC_3];
+	buf[4] = acc->resume_state[LIS3DSH_VFC_4];
 	err = lis3dsh_acc_i2c_write(acc, buf, 4);
 	if (err < 0)
 		goto err_resume_state;
@@ -1186,6 +1186,30 @@ static int lis3dsh_acc_disable(struct lis3dsh_acc_data *acc)
 	return 0;
 }
 
+static void lis3dsh_acc_reg_dump(struct lis3dsh_acc_data *acc)
+{
+	int rc;
+	u8 dbuf[0];
+	int i;
+
+	for(i=15;i<128; i++) {
+		if (i==38) i++;
+		if (i==48) i+=32;
+		dbuf[0] = (u8)i;
+		printk("Reg = 0x%02x\t", dbuf[0]);
+		rc = lis3dsh_acc_i2c_read(acc, dbuf, 1);
+		if (rc < 0)
+			goto error;
+		printk("Value = 0x%02x\n", dbuf[0]);
+	}
+
+	return;
+
+	error:
+		dev_err(&acc->client->dev, "Error reading ECG register\n");
+	
+}
+
 static ssize_t attr_get_polling_rate(struct device *dev,
 					struct device_attribute *attr,
 								char *buf)
@@ -1336,7 +1360,7 @@ static ssize_t attr_get_acc_data(struct device *dev,
 	return err;
 }
 
-#ifdef ASUS_FACTORY_BUILD
+#ifndef ASUS_USER_BUILD
 //ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 static ssize_t attr_get_chip_status(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -1349,28 +1373,12 @@ static ssize_t attr_get_chip_status(struct device *dev,
 static ssize_t attr_reg_dump(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	int rc;
-	u8 dbuf[0];
-	int i;
-
-	for(i=15;i<128; i++) {
-		if (i==38) i++;
-		if (i==48) i+=32;
-		dbuf[0] = (u8)i;
-		printk("Reg = 0x%02x\t", dbuf[0]);
-		rc = lis3dsh_acc_i2c_read(acc, dbuf, 1);
-		if (rc < 0)
-			goto error;
-		printk("Value = 0x%02x\n", dbuf[0]);
-	}
-
-	return sprintf(buf, "0x%02x\n", dbuf[0]);
-
-	error:
-		dev_err(&acc->client->dev, "Error reading ECG register\n");
-		return sprintf(buf, "0x%02x\n", dbuf[0]);
+	lis3dsh_acc_reg_dump(acc);
+	return sprintf(buf, "DONE\n");
 }
+#endif
 
+#ifdef ASUS_FACTORY_BUILD
 static int factory_test_get_output(struct device *dev, short *rOUT)
 {
 	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
@@ -1738,9 +1746,11 @@ static struct device_attribute attributes[] = {
 	__ATTR(reg_value, 0600, attr_reg_get, attr_reg_set),
 	__ATTR(reg_addr, 0200, NULL, attr_addr_set),
 #endif
-#ifdef ASUS_FACTORY_BUILD
+#ifndef ASUS_USER_BUILD
 	__ATTR(chip_status, 0444, attr_get_chip_status, NULL),			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 	__ATTR(dump, 0444, attr_reg_dump, NULL),
+#endif
+#ifdef ASUS_FACTORY_BUILD
 	__ATTR(factory_test, 0444, attr_factory_test, NULL),	
 #endif
 };
