@@ -328,7 +328,6 @@ module_param(int2_gpio, int, S_IRUGO);
 MODULE_PARM_DESC(int1_gpio, "integer: gpio number being assined to interrupt PIN1");
 MODULE_PARM_DESC(int2_gpio, "integer: gpio number being assined to interrupt PIN2");
 
-extern void public_gpio_keys_gpio_report_event(void);
 static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc, u8 settings);
 
 struct lis3dsh_acc_data {
@@ -367,7 +366,7 @@ struct lis3dsh_acc_data {
 };
 
 static int chip_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
-static bool is_suspend=false;
+static atomic_t is_suspend;
 // ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
 static struct class *lis3dsh_class = NULL;
 static int lis3dsh_major = 0;
@@ -893,8 +892,14 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		if((rbuf[0] == 0x20) ||(rbuf[0] == 0x80)) {
 			printk("***********************Tilt to wake event\n");
 			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
-			if (is_suspend)
-				public_gpio_keys_gpio_report_event();
+			if (atomic_read(&is_suspend)) {
+				printk("[lis3dsh] send pwr key\n");
+				input_report_key(g_acc->input_dev, KEY_POWER,1);
+				input_sync(g_acc->input_dev);
+				msleep(5);
+				input_report_key(g_acc->input_dev, KEY_POWER,0);
+				input_sync(g_acc->input_dev);
+			}
 // ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for tilt"
 			strcpy(event_status,"TILT");
 			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
@@ -934,8 +939,14 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02)) {
 			printk("***********************knock-knock event\n");
 			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
-			if(is_suspend)
-				public_gpio_keys_gpio_report_event();
+			if(atomic_read(&is_suspend)) {
+				printk("[lis3dsh] send pwr key\n");
+				input_report_key(g_acc->input_dev, KEY_POWER,1);
+				input_sync(g_acc->input_dev);
+				msleep(5);
+				input_report_key(g_acc->input_dev, KEY_POWER,0);
+				input_sync(g_acc->input_dev);
+			}
 // ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
 			strcpy(event_status,"KNOCK");
 			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
@@ -1851,6 +1862,8 @@ static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 	set_bit(ABS_MISC, acc->input_dev->absbit);
 	/*	next is used for interruptB sources data if the case */
 	set_bit(ABS_WHEEL, acc->input_dev->absbit);
+	set_bit(EV_KEY, acc->input_dev->evbit);
+	set_bit(KEY_POWER, acc->input_dev->keybit);
 
 	input_set_abs_params(acc->input_dev, ABS_X, -G_MAX, G_MAX, 0, 0);
 	input_set_abs_params(acc->input_dev, ABS_Y, -G_MAX, G_MAX, 0, 0);
@@ -1999,13 +2012,13 @@ void notify_st_sensor_lowpowermode(int low)
 {
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low) {
-		is_suspend=true;
+		atomic_set(&is_suspend,1);
 		enable_irq_wake(g_acc->irq1);
 		enable_irq_wake(g_acc->irq2);
 		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_EN);
 	}
 	else {
-		is_suspend=false;
+		atomic_set(&is_suspend,0);
 		disable_irq_wake(g_acc->irq1);
 		disable_irq_wake(g_acc->irq2);
 		#ifndef ASUS_FACTORY_BUILD
@@ -2258,7 +2271,7 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 		disable_irq_nosync(acc->irq2);
 	}
 
-	g_acc = acc;
+	atomic_set(&is_suspend,0);
 	mutex_unlock(&acc->lock);
 	chip_status=1;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
