@@ -643,7 +643,7 @@ static struct snd_soc_compr_ops mrfld_compr_ops = {
 	.set_params = mrfld_wm8958_compr_set_params,
 };
 
-struct snd_soc_dai_link mrfld_8958_msic_dailink[] = {
+struct snd_soc_dai_link mrfld_8958_dpcm_msic_dailink[] = {
 	[MERR_DPCM_AUDIO] = {
 		.name = "Merrifield Audio Port",
 		.stream_name = "Saltbay Audio",
@@ -783,7 +783,7 @@ struct snd_soc_dai_link mrfld_8958_msic_dailink[] = {
 };
 
 #ifdef CONFIG_PM_SLEEP
-static int snd_mrfld_8958_prepare(struct device *dev)
+static int snd_mrfld_dpcm_8958_prepare(struct device *dev)
 {
 	struct snd_soc_card *card = dev_get_drvdata(dev);
 	struct snd_soc_codec *codec;
@@ -807,7 +807,7 @@ static int snd_mrfld_8958_prepare(struct device *dev)
 	return 0;
 }
 
-static void snd_mrfld_8958_complete(struct device *dev)
+static void snd_mrfld_dpcm_8958_complete(struct device *dev)
 {
 	struct snd_soc_card *card = dev_get_drvdata(dev);
 	struct snd_soc_codec *codec;
@@ -831,23 +831,23 @@ static void snd_mrfld_8958_complete(struct device *dev)
 	return;
 }
 
-static int snd_mrfld_8958_poweroff(struct device *dev)
+static int snd_mrfld_dpcm_8958_poweroff(struct device *dev)
 {
 	pr_debug("In %s\n", __func__);
 	snd_soc_poweroff(dev);
 	return 0;
 }
 #else
-#define snd_mrfld_8958_prepare NULL
-#define snd_mrfld_8958_complete NULL
-#define snd_mrfld_8958_poweroff NULL
+#define snd_mrfld_dpcm_8958_prepare NULL
+#define snd_mrfld_dpcm_8958_complete NULL
+#define snd_mrfld_dpcm_8958_poweroff NULL
 #endif
 
 /* SoC card */
 static struct snd_soc_card snd_soc_card_mrfld = {
 	.name = "wm8958-audio",
-	.dai_link = mrfld_8958_msic_dailink,
-	.num_links = ARRAY_SIZE(mrfld_8958_msic_dailink),
+	.dai_link = mrfld_8958_dpcm_msic_dailink,
+	.num_links = ARRAY_SIZE(mrfld_8958_dpcm_msic_dailink),
 	.set_bias_level = mrfld_8958_set_bias_level,
 	.set_bias_level_post = mrfld_8958_set_bias_level_post,
 	.dapm_widgets = widgets,
@@ -856,7 +856,7 @@ static struct snd_soc_card snd_soc_card_mrfld = {
 	.num_dapm_routes = ARRAY_SIZE(map),
 };
 
-static int snd_mrfld_8958_mc_probe(struct platform_device *pdev)
+static int snd_mrfld_dpcm_8958_mc_probe(struct platform_device *pdev)
 {
 	int ret_val = 0;
 	struct mrfld_8958_mc_private *drv;
@@ -902,7 +902,7 @@ unalloc:
 	return ret_val;
 }
 
-static int snd_mrfld_8958_mc_remove(struct platform_device *pdev)
+static int snd_mrfld_dpcm_8958_mc_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
 	struct mrfld_8958_mc_private *drv = snd_soc_card_get_drvdata(soc_card);
@@ -915,35 +915,35 @@ static int snd_mrfld_8958_mc_remove(struct platform_device *pdev)
 	return 0;
 }
 
-const struct dev_pm_ops snd_mrfld_8958_mc_pm_ops = {
-	.prepare = snd_mrfld_8958_prepare,
-	.complete = snd_mrfld_8958_complete,
-	.poweroff = snd_mrfld_8958_poweroff,
+const struct dev_pm_ops snd_mrfld_dpcm_8958_mc_pm_ops = {
+	.prepare = snd_mrfld_dpcm_8958_prepare,
+	.complete = snd_mrfld_dpcm_8958_complete,
+	.poweroff = snd_mrfld_dpcm_8958_poweroff,
 };
 
-static struct platform_driver snd_mrfld_8958_mc_driver = {
+static struct platform_driver snd_mrfld_dpcm_8958_mc_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "mrfld_wm8958",
-		.pm = &snd_mrfld_8958_mc_pm_ops,
+		.pm = &snd_mrfld_dpcm_8958_mc_pm_ops,
 	},
-	.probe = snd_mrfld_8958_mc_probe,
-	.remove = snd_mrfld_8958_mc_remove,
+	.probe = snd_mrfld_dpcm_8958_mc_probe,
+	.remove = snd_mrfld_dpcm_8958_mc_remove,
 };
 
-static int snd_mrfld_8958_driver_init(void)
+static int snd_mrfld_dpcm_8958_driver_init(void)
 {
 	pr_info("Merrifield Machine Driver mrfld_wm8958 registerd\n");
-	return platform_driver_register(&snd_mrfld_8958_mc_driver);
+	return platform_driver_register(&snd_mrfld_dpcm_8958_mc_driver);
 }
 
-static void snd_mrfld_8958_driver_exit(void)
+static void snd_mrfld_dpcm_8958_driver_exit(void)
 {
 	pr_debug("In %s\n", __func__);
-	platform_driver_unregister(&snd_mrfld_8958_mc_driver);
+	platform_driver_unregister(&snd_mrfld_dpcm_8958_mc_driver);
 }
 
-static int snd_mrfld_8958_rpmsg_probe(struct rpmsg_channel *rpdev)
+static int snd_mrfld_dpcm_8958_rpmsg_probe(struct rpmsg_channel *rpdev)
 {
 	int ret = 0;
 
@@ -955,19 +955,19 @@ static int snd_mrfld_8958_rpmsg_probe(struct rpmsg_channel *rpdev)
 
 	dev_info(&rpdev->dev, "Probed snd_mrfld wm8958 rpmsg device\n");
 
-	ret = snd_mrfld_8958_driver_init();
+	ret = snd_mrfld_dpcm_8958_driver_init();
 
 out:
 	return ret;
 }
 
-static void snd_mrfld_8958_rpmsg_remove(struct rpmsg_channel *rpdev)
+static void snd_mrfld_dpcm_8958_rpmsg_remove(struct rpmsg_channel *rpdev)
 {
-	snd_mrfld_8958_driver_exit();
+	snd_mrfld_dpcm_8958_driver_exit();
 	dev_info(&rpdev->dev, "Removed snd_mrfld wm8958 rpmsg device\n");
 }
 
-static void snd_mrfld_8958_rpmsg_cb(struct rpmsg_channel *rpdev, void *data,
+static void snd_mrfld_dpcm_8958_rpmsg_cb(struct rpmsg_channel *rpdev, void *data,
 				int len, void *priv, u32 src)
 {
 	dev_warn(&rpdev->dev, "unexpected, message\n");
@@ -976,32 +976,32 @@ static void snd_mrfld_8958_rpmsg_cb(struct rpmsg_channel *rpdev, void *data,
 			data, len,  true);
 }
 
-static struct rpmsg_device_id snd_mrfld_8958_rpmsg_id_table[] = {
+static struct rpmsg_device_id snd_mrfld_dpcm_8958_rpmsg_id_table[] = {
 	{ .name = "rpmsg_mrfld_wm8958_audio" },
 	{ },
 };
-MODULE_DEVICE_TABLE(rpmsg, snd_mrfld_8958_rpmsg_id_table);
+MODULE_DEVICE_TABLE(rpmsg, snd_mrfld_dpcm_8958_rpmsg_id_table);
 
-static struct rpmsg_driver snd_mrfld_8958_rpmsg = {
+static struct rpmsg_driver snd_mrfld_dpcm_8958_rpmsg = {
 	.drv.name	= KBUILD_MODNAME,
 	.drv.owner	= THIS_MODULE,
-	.id_table	= snd_mrfld_8958_rpmsg_id_table,
-	.probe		= snd_mrfld_8958_rpmsg_probe,
-	.callback	= snd_mrfld_8958_rpmsg_cb,
-	.remove		= snd_mrfld_8958_rpmsg_remove,
+	.id_table	= snd_mrfld_dpcm_8958_rpmsg_id_table,
+	.probe		= snd_mrfld_dpcm_8958_rpmsg_probe,
+	.callback	= snd_mrfld_dpcm_8958_rpmsg_cb,
+	.remove		= snd_mrfld_dpcm_8958_rpmsg_remove,
 };
 
-static int __init snd_mrfld_8958_rpmsg_init(void)
+static int __init snd_mrfld_dpcm_8958_rpmsg_init(void)
 {
-	return register_rpmsg_driver(&snd_mrfld_8958_rpmsg);
+	return register_rpmsg_driver(&snd_mrfld_dpcm_8958_rpmsg);
 }
-late_initcall(snd_mrfld_8958_rpmsg_init);
+late_initcall(snd_mrfld_dpcm_8958_rpmsg_init);
 
-static void __exit snd_mrfld_8958_rpmsg_exit(void)
+static void __exit snd_mrfld_dpcm_8958_rpmsg_exit(void)
 {
-	return unregister_rpmsg_driver(&snd_mrfld_8958_rpmsg);
+	return unregister_rpmsg_driver(&snd_mrfld_dpcm_8958_rpmsg);
 }
-module_exit(snd_mrfld_8958_rpmsg_exit);
+module_exit(snd_mrfld_dpcm_8958_rpmsg_exit);
 
 MODULE_DESCRIPTION("ASoC Intel(R) Merrifield MID Machine driver");
 MODULE_AUTHOR("Vinod Koul <vinod.koul@linux.intel.com>");
