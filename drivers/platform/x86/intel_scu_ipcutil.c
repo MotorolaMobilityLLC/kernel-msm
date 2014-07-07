@@ -147,6 +147,7 @@ static struct osnib_target_os osnib_target_oses[] = {
 	{ "fastboot", SIGNED_POS_ATTR },
 	{ "factory", SIGNED_FACTORY_ATTR },
 	{ "factory2", SIGNED_FACTORY2_ATTR },
+	{ "bootoneshot", SIGNED_BOOTONESHOOT_ATTR },
 };
 
 

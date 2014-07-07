@@ -25,6 +25,7 @@
 #define SIGNED_POS_ATTR		0x0E
 #define SIGNED_FACTORY_ATTR	0x12
 #define SIGNED_FACTORY2_ATTR	0x18
+#define SIGNED_BOOTONESHOOT_ATTR 0x1A
 
 enum intel_scu_ipc_wake_src {
 	WAKE_BATT_INSERT,
