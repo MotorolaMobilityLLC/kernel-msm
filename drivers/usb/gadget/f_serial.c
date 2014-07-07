@@ -328,7 +328,7 @@ static struct usb_descriptor_header *gser_ss_function[] = {
 
 /* string descriptors: */
 
-static struct usb_string gser_string_defs[] = {
+static struct usb_string gser_string_defs[GSERIAL_NO_PORTS+1] = {
 	[0].s = "Generic Serial",
 	{  } /* end of list */
 };
@@ -837,12 +837,14 @@ static int gser_bind(struct usb_configuration *c, struct usb_function *f)
 	 */
 
 	/* maybe allocate device-global string ID */
-	if (gser_string_defs[0].id == 0) {
+	if (gser_string_defs[gser->port_num].id == 0) {
 		status = usb_string_id(c->cdev);
 		if (status < 0)
 			return status;
-		gser_string_defs[0].id = status;
+		gser_string_defs[gser->port_num].id = status;
 	}
+	gser_string_defs[gser->port_num].s = gser->port.func.name;
+	gser_interface_desc.iInterface = gser_string_defs[gser->port_num].id;
 
 	/* allocate instance-specific interface IDs */
 	status = usb_interface_id(c, f);
