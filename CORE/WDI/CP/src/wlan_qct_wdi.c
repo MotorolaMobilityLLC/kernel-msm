@@ -22219,7 +22219,16 @@ WDI_QueuePendingReq
   /*Send wpt a pointer to the node (this is the 1st element in the event data)*/
   pNode = (wpt_list_node*)pEventDataQueue;
 
-  wpal_list_insert_back(&(pWDICtx->wptPendingQueue), pNode);
+  if (eWLAN_PAL_STATUS_E_FAILURE ==
+            wpal_list_insert_back(&(pWDICtx->wptPendingQueue), pNode))
+  {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                "pEventDataQueue wpal_list_insert_back failed");
+      WDI_ASSERT(0);
+      wpalMemoryFree(pEventDataQueue);
+      wpalMemoryFree(pEventInfo);
+      return WDI_STATUS_MEM_FAILURE;
+  }
 
   return WDI_STATUS_SUCCESS;
 }/*WDI_QueuePendingReq*/
@@ -22492,7 +22501,17 @@ WDI_QueueNewAssocRequest
   /*This association is currently being queued*/
   pSession->bAssocReqQueued = eWLAN_PAL_TRUE;
 
-  wpal_list_insert_back(&(pSession->wptPendingQueue), pNode);
+  if (eWLAN_PAL_STATUS_E_FAILURE ==
+            wpal_list_insert_back(&(pSession->wptPendingQueue), pNode))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+           "%s: pEventDataQueue wpal_list_insert_back failed", __func__);
+    WDI_ASSERT(0);
+    wpalMemoryFree(pSessionIdElement);
+    wpalMemoryFree(pEventDataQueue);
+    wpalMemoryFree(pEventInfo);
+    return WDI_STATUS_MEM_FAILURE;
+  }
 
   /*We need to maintain a separate list that keeps track of the order in which
   the new assoc requests are being queued such that we can start processing
@@ -22502,7 +22521,17 @@ WDI_QueueNewAssocRequest
 
   WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
        "Queueing up new assoc session : %d ", pSessionIdElement->ucIndex);
-  wpal_list_insert_back(&pWDICtx->wptPendingAssocSessionIdQueue, pNode);
+  if (eWLAN_PAL_STATUS_E_FAILURE ==
+         wpal_list_insert_back(&pWDICtx->wptPendingAssocSessionIdQueue, pNode))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+           "%s: pSessionIdElement wpal_list_insert_back failed", __func__);
+    WDI_ASSERT(0);
+    wpalMemoryFree(pSessionIdElement);
+    wpalMemoryFree(pEventDataQueue);
+    wpalMemoryFree(pEventInfo);
+    return WDI_STATUS_MEM_FAILURE;
+  }
 
   /*Return pending as this is what the status of the request is since it has
     been queued*/
@@ -22585,7 +22614,17 @@ WDI_QueueAssocRequest
   /*This association is currently being queued*/
   pSession->bAssocReqQueued = eWLAN_PAL_TRUE;
 
-  wpal_list_insert_back(&(pSession->wptPendingQueue), pNode);
+  if (eWLAN_PAL_STATUS_E_FAILURE ==
+          wpal_list_insert_back(&(pSession->wptPendingQueue), pNode))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "%s: Cannot allocate memory for queueing event data info",
+               __func__);
+    WDI_ASSERT(0);
+    wpalMemoryFree(pEventDataQueue);
+    wpalMemoryFree(pEventInfo);
+    return WDI_STATUS_MEM_FAILURE;
+  }
 
   /*The result of this operation is pending because the request has been
     queued and it will be processed at a later moment in time */
