@@ -83,6 +83,10 @@ Required "maxim,temp-conv" properties :
 Optional "maxim,configuration" node properties :
  - tgain : TGAIN register value (u16) specific to the thermistor
  - toff : TOFF register value (u16) specific to the thermistor
+ - cgain : CGAIN register value (u16) specific to the current sense
+ - coff : COFF register value (u16) specific to the current sense
+ - misc_cfg : MiscCFG register value (u16) specific to the device
+   application.
 
 Example:
 
@@ -136,6 +140,9 @@ Example:
 			/* Optional properties */
 			tgain		= /bits/ 16 <0xE71C>;
 			toff		= /bits/ 16 <0x251A>;
+			cgain		= /bits/ 16 <0x4000>;
+			coff		= /bits/ 16 <0xFFE3>;
+			misc_cfg	= /bits/ 16 <0x0170>;
 		}
 
 		maxim,temp-conv {
