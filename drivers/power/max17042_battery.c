@@ -75,6 +75,8 @@
 #define MAX17050_CFG_REV_REG	MAX17042_ManName
 #define MAX17050_CFG_REV_MASK	0x0007
 
+#define MAX17050_FORCE_POR	0x000F
+
 #define INIT_DATA_PROPERTY		"maxim,regs-init-data"
 #define CONFIG_NODE			"maxim,configuration"
 #define CONFIG_PROPERTY			"config"
@@ -84,6 +86,7 @@
 #define LEARN_CFG_PROPERTY		"learn_cfg"
 #define FILTER_CFG_PROPERTY		"filter_cfg"
 #define RELAX_CFG_PROPERTY		"relax_cfg"
+#define MISC_CFG_PROPERTY		"misc_cfg"
 #define FULLCAP_PROPERTY		"fullcap"
 #define FULLCAPNOM_PROPERTY		"fullcapnom"
 #define QRTBL00_PROPERTY		"qrtbl00"
@@ -95,6 +98,8 @@
 #define CELL_CHAR_TBL_PROPERTY		"maxim,cell-char-tbl"
 #define TGAIN_PROPERTY			"tgain"
 #define TOFF_PROPERTY			"toff"
+#define CGAIN_PROPERTY			"cgain"
+#define COFF_PROPERTY			"coff"
 #define TEMP_CONV_NODE			"maxim,temp-conv"
 #define RESULT_PROPERTY			"result"
 #define START_PROPERTY			"start"
@@ -1222,6 +1227,9 @@ static void max17042_cfg_optnl_prop(struct device_node *np,
 {
 	of_property_read_u16(np, TGAIN_PROPERTY, &config_data->tgain);
 	of_property_read_u16(np, TOFF_PROPERTY, &config_data->toff);
+	of_property_read_u16(np, CGAIN_PROPERTY, &config_data->cgain);
+	of_property_read_u16(np, COFF_PROPERTY, &config_data->coff);
+	of_property_read_u16(np, MISC_CFG_PROPERTY, &config_data->misc_cfg);
 	of_property_read_u16(np, REVISION, &config_data->revision);
 	config_data->revision &= MAX17050_CFG_REV_MASK;
 }
@@ -1253,8 +1261,6 @@ max17042_get_config_data(struct device *dev)
 	dev_warn(dev, "Config Revision = %d", config_data->revision);
 
 	config_data->cur_sense_val = 10;
-	config_data->cgain = 0x4000;
-	config_data->coff = 0x0000;
 	config_data->valrt_thresh = 0xFF97;
 	config_data->talrt_thresh = 0x7F80;
 	config_data->soc_alrt_thresh = 0xFF00;
@@ -1458,7 +1464,7 @@ static int max17042_probe(struct i2c_client *client,
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct max17042_chip *chip;
 	int ret;
-	int reg, reg2;
+	int reg;
 	int i;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_WORD_DATA))
@@ -1566,15 +1572,18 @@ static int max17042_probe(struct i2c_client *client,
 		}
 	}
 
+	reg = max17042_read_reg(chip->client, MAX17050_CFG_REV_REG);
+	reg &= MAX17050_CFG_REV_MASK;
+	if (reg != chip->pdata->config_data->revision) {
+		dev_warn(&client->dev, "Revision Change, Forcing POR!\n");
+		max17042_write_reg(client, MAX17042_VFSOC0Enable,
+				   MAX17050_FORCE_POR);
+		msleep(20);
+	}
+
 	reg = max17042_read_reg(chip->client, MAX17042_STATUS);
-	reg2 = max17042_read_reg(chip->client, MAX17050_CFG_REV_REG);
-	reg2 &= MAX17050_CFG_REV_MASK;
 	if (reg & STATUS_POR_BIT) {
 		dev_warn(&client->dev, "POR Detected, Loading Config\n");
-		INIT_WORK(&chip->work, max17042_init_worker);
-		schedule_work(&chip->work);
-	} else if (reg2 != chip->pdata->config_data->revision) {
-		dev_warn(&client->dev, "Revision Change, Loading Config\n");
 		INIT_WORK(&chip->work, max17042_init_worker);
 		schedule_work(&chip->work);
 	} else {
