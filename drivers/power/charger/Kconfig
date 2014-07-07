@@ -1,0 +1,18 @@
+config SMB_346_CHARGER
+        bool "Support for Maxim 8934 charger"
+
+config DUMMY_CHARGER
+        bool "Support for dummy charger"
+
+config PM_8921_CHARGER
+        bool "Support for PM 8921 charger"
+
+config PM_8941_CHARGER
+        bool "Support for PM 8941 charger"
+
+config IDTP9023_CHARGER
+        bool "Support for IDTP 9023 charger"
+
+config PM_8226_CHARGER
+        bool "Support for PM 8226 charger"
+		default y

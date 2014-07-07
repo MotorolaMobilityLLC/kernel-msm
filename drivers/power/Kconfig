@@ -505,6 +505,34 @@ config QPNP_LINEAR_CHARGER
 	  detection and charging. The driver also offers relevant information
 	  to userspace via the power supply framework.
 
+#ASUS_BSP Lenter +++
+config BATTERY_ASUS
+	tristate "asus battery driver"
+	help
+	Say Y here to enable support for asus battery driver
+	
+config CHARGER_ASUS
+	tristate "asus charger api"
+	help
+	Say Y here to enable support for asus charger api
+
+config BATTERY_ASUS_DBG
+	tristate "asus battery driver debug enabled"
+	help
+	Say Y here to enable support for asus battery driver debug enabled
+
+config BAT_DEBUG
+	tristate "asus battery driver debug enabled"
+	help
+	Say Y here to enable support for asus battery driver debug enabled
+
+source "drivers/power/gauge/Kconfig"
+source "drivers/power/charger/Kconfig"
+source "drivers/power/fsm/Kconfig"
+source "drivers/power/util/Kconfig"
+source "drivers/power/service/Kconfig"
+#ASUS_BSP Lenter ---
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY
