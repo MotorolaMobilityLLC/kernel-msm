@@ -144,21 +144,18 @@
 		qcom,cam-vreg-op-mode = <105000 0>;
 		qcom,gpio-no-mux = <0>;
 		gpios = <&msmgpio 17 0>,
-                        <&msmgpio 18 0>,
 			<&msmgpio 38 0>,
 			<&msmgpio 37 0>;
-		qcom,gpio-vdig = <1>;
-                qcom,gpio-reset = <2>;
-		qcom,gpio-standby = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
-                                        "CAMIF_VDIG",
 					"CAM_RESET",
-					"CAM_STANDBY";
-		qcom,gpio-set-tbl-num = <1 1 1 1>;
-		qcom,gpio-set-tbl-flags = <0 2 0 0>;
-		qcom,gpio-set-tbl-delay = <1000 4000 1000 1000>;
+					"CAM_AVDD";
+		qcom,gpio-set-tbl-num = <1 1>;
+		qcom,gpio-set-tbl-flags = <0 2>;
+		qcom,gpio-set-tbl-delay = <1000 4000>;
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x07>;
 		qcom,sensor-position = <1>;

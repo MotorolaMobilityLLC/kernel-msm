@@ -616,7 +616,7 @@
 		/* camera 2 CAM_R_PWDN_N		*/
 		/* not allocated, add to pinctrl hump	*/
 		cam2_pwdn {
-			qcom,pins = <&gp 37>;
+			qcom,pins = <&gp 25>;
 			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <0>;
 			label = "cam2_pwdn";
@@ -693,8 +693,8 @@
 		};
 
 		unused {
-			qcom,pins = <&gp 25 &gp 32>;
-			qcom,num-grp-pins = <2>;
+			qcom,pins = <&gp 32>;
+			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <0>;
 			label = "unused";
 			unused_default: default {
