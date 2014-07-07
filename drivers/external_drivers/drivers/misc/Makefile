@@ -1,3 +1,5 @@
+ccflags-y = -I$(src)
+
 intel_fabric_logging-objs  := intel_fw_logging.o intel_fabricerr_status.o
 
 obj-$(CONFIG_BCM_BT_LPM)        += bcm-lpm/
