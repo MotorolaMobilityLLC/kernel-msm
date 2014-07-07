@@ -175,6 +175,20 @@ struct diag_context {
 };
 
 static struct list_head diag_dev_list;
+static unsigned int diag_ch_index;
+
+#define MAX_DIAG_PORTS          2
+static struct usb_string diag_string_defs[MAX_DIAG_PORTS+1];
+
+static struct usb_gadget_strings diag_string_table = {
+	.language =             0x0409, /* en-us */
+	.strings =              diag_string_defs,
+};
+
+static struct usb_gadget_strings *diag_strings[] = {
+	&diag_string_table,
+	NULL,
+};
 
 static inline struct diag_context *func_to_diag(struct usb_function *f)
 {
@@ -799,6 +813,8 @@ static int diag_function_bind(struct usb_configuration *c,
 			goto fail;
 	}
 	diag_update_pid_and_serial_num(ctxt);
+	if (++diag_ch_index >= MAX_DIAG_PORTS)
+		diag_ch_index = MAX_DIAG_PORTS-1;
 	return 0;
 fail:
 	if (f->ss_descriptors)
@@ -820,7 +836,7 @@ int diag_function_add(struct usb_configuration *c, const char *name,
 {
 	struct diag_context *dev;
 	struct usb_diag_ch *_ch;
-	int found = 0, ret;
+	int found = 0, ret, status;
 
 	DBG(c->cdev, "diag_function_add\n");
 
@@ -840,6 +856,19 @@ int diag_function_add(struct usb_configuration *c, const char *name,
 		return -ENOMEM;
 
 	list_add_tail(&dev->list_item, &diag_dev_list);
+
+	if (diag_string_defs[diag_ch_index].id == 0) {
+		status = usb_string_id(c->cdev);
+		if (status < 0) {
+			pr_err("%s: failed to get string id, err:%d\n",
+					__func__, status);
+			return status;
+		}
+		diag_string_defs[diag_ch_index].id = status;
+	}
+	diag_string_defs[diag_ch_index].s = _ch->name;
+	intf_desc.iInterface = diag_string_defs[diag_ch_index].id;
+	dev->function.strings = diag_strings;
 
 	/*
 	 * A few diag devices can point to the same channel, in case that
