@@ -628,7 +628,7 @@ tSirRetStatus limSendHT40OBSSScanInd(tpAniSirGlobal pMac,
     tSirHT40OBSSScanInd    *ht40OBSSScanInd;
     tANI_U32                validChannelNum;
     tSirMsgQ             msgQ;
-    tANI_U8              validChanList[SIR_ROAM_MAX_CHANNELS];
+    tANI_U8              validChanList[WNI_CFG_VALID_CHANNEL_LIST_LEN];
     tANI_U8              channel24GNum, count;
 
     ht40OBSSScanInd = vos_mem_malloc(sizeof(tSirHT40OBSSScanInd));

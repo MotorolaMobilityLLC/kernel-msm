@@ -15935,6 +15935,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
        {
           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                     "%s : pIes is Null", __func__);
+          vos_mem_free(pRequestBuf);
           return eHAL_STATUS_FAILURE;
        }
        if (pIes->SuppRates.present)
