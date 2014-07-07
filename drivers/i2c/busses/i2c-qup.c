@@ -237,9 +237,6 @@ qup_i2c_interrupt(int irq, void *devid)
 	uint32_t op_flgs = 0;
 	int err = 0;
 
-	if (dev->pwr_state != MSM_I2C_PM_ACTIVE)
-		return IRQ_NONE;
-
 	status = readl_relaxed(dev->base + QUP_I2C_STATUS);
 	status1 = readl_relaxed(dev->base + QUP_ERROR_FLAGS);
 	op_flgs = readl_relaxed(dev->base + QUP_OPERATIONAL);
@@ -1196,6 +1193,7 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 		do {
 			int idx = 0;
 			uint32_t carry_over = 0;
+			uint32_t istatus, qstatus, op_flgs;
 
 			/* Transition to PAUSE state only possible from RUN */
 			err = qup_update_state(dev, QUP_PAUSE_STATE);
@@ -1252,14 +1250,11 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 			qup_print_status(dev);
 			timeout = wait_for_completion_timeout(&complete,
 					msecs_to_jiffies(dev->out_fifo_sz));
-			if (!timeout) {
-				uint32_t istatus = readl_relaxed(dev->base +
-							QUP_I2C_STATUS);
-				uint32_t qstatus = readl_relaxed(dev->base +
-							QUP_ERROR_FLAGS);
-				uint32_t op_flgs = readl_relaxed(dev->base +
-							QUP_OPERATIONAL);
+			istatus = readl_relaxed(dev->base + QUP_I2C_STATUS);
+			qstatus = readl_relaxed(dev->base + QUP_ERROR_FLAGS);
+			op_flgs = readl_relaxed(dev->base + QUP_OPERATIONAL);
 
+			if (!timeout) {
 				/*
 				 * Dont wait for 1 sec if i2c sees the bus
 				 * active and controller is not master.
@@ -1272,15 +1267,21 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 									HZ);
 					if (timeout)
 						goto timeout_err;
+					/* If there was an actual i2c error, try
+					   to recover, since either we are
+					   the master or no one claims to be. */
+					if (istatus & I2C_STATUS_ERROR_MASK)
+						qup_i2c_recover_bus_busy(dev);
 				}
-				qup_i2c_recover_bus_busy(dev);
 				dev_err(dev->dev,
 					"Transaction timed out, SL-AD = 0x%x\n",
 					dev->msg->addr);
 
-				dev_err(dev->dev, "I2C Status: %x\n", istatus);
-				dev_err(dev->dev, "QUP Status: %x\n", qstatus);
-				dev_err(dev->dev, "OP Flags: %x\n", op_flgs);
+				if (istatus & I2C_STATUS_ERROR_MASK) {
+					dev_err(dev->dev, "I2C Status: %x\n", istatus);
+					dev_err(dev->dev, "QUP Status: %x\n", qstatus);
+					dev_err(dev->dev, "OP Flags: %x\n", op_flgs);
+				}
 				ret = -ETIMEDOUT;
 				goto out_err;
 			}
@@ -1302,9 +1303,16 @@ timeout_err:
 					 * ISR returns +ve error if error code
 					 * is I2C related, e.g. unexpected start
 					 * So you may call recover-bus-busy when
-					 * this error happens
+					 * this error happens, but only if we
+					 * are the master or bus is idle.
+					 * Also we may get a timeout even when
+					 * there was no I2C error, so check it.
 					 */
-					qup_i2c_recover_bus_busy(dev);
+					if ((!(istatus & I2C_STATUS_BUS_ACTIVE) ||
+						(istatus & I2C_STATUS_BUS_MASTER)) &&
+						istatus & I2C_STATUS_ERROR_MASK) {
+						qup_i2c_recover_bus_busy(dev);
+					}
 				}
 				ret = -dev->err;
 				goto out_err;
