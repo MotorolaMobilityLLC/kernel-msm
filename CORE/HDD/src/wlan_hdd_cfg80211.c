@@ -1415,10 +1415,11 @@ static v_VOID_t hdd_link_layer_process_radio_stats(hdd_adapter_t *pAdapter,
  */
 static void hdd_link_layer_stats_ind_callback ( void *pCtx,
                                                 int indType,
-                                                void *pRsp )
+                                                void *pRsp, u8  *macAddr)
 {
-    hdd_adapter_t *pAdapter = (hdd_adapter_t *)pCtx;
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_context_t *pHddCtx = (hdd_context_t *)pCtx;
+    hdd_adapter_t *pAdapter = NULL;
+    tpSirLLStatsResults linkLayerStatsResults = (tpSirLLStatsResults)pRsp;
     int status;
 
     status = wlan_hdd_validate_context(pHddCtx);
@@ -1430,24 +1431,33 @@ static void hdd_link_layer_stats_ind_callback ( void *pCtx,
         return;
     }
 
+
+
+    pAdapter = hdd_get_adapter_by_macaddr(pHddCtx, macAddr);
+    if (NULL == pAdapter)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                FL(" MAC address %pM does not exist with host"),
+                macAddr);
+        return;
+    }
+
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-            "%s: Link Layer Indication indType: %d", __func__, indType);
+            "%s: Interface: %s LLStats indType: %d", __func__,
+            pAdapter->dev->name, indType);
+
     switch (indType)
     {
     case SIR_HAL_LL_STATS_RESULTS_RSP:
         {
-            tpSirLLStatsResults linkLayerStatsResults =
-                (tpSirLLStatsResults)pRsp;
-
-
             hddLog(VOS_TRACE_LEVEL_INFO,
                     FL("RESPONSE SIR_HAL_LL_STATS_RESULTS_RSP") );
             hddLog(VOS_TRACE_LEVEL_INFO,
                     "LL_STATS RESULTS RESPONSE paramID = 0x%x",
                     linkLayerStatsResults->paramId);
             hddLog(VOS_TRACE_LEVEL_INFO,
-                    "LL_STATS RESULTS RESPONSE ifaceId = %u",
-                    linkLayerStatsResults->ifaceId);
+               "LL_STATS RESULTS RESPONSE ifaceId = %u MAC: %pM",
+               linkLayerStatsResults->ifaceId, macAddr);
             hddLog(VOS_TRACE_LEVEL_INFO,
                     "LL_STATS RESULTS RESPONSE respId = %u",
                     linkLayerStatsResults->respId);
@@ -1563,18 +1573,14 @@ static int wlan_hdd_cfg80211_ll_stats_set(struct wiphy *wiphy,
         nla_get_u32(
             tb_vendor[QCA_WLAN_VENDOR_ATTR_LL_STATS_SET_CONFIG_AGGRESSIVE_STATS_GATHERING]);
 
-    /* staId 0 in Firmware is reserved for Broadcast/Multicast data.
-     * Hence the interface staId start from 1. Hence the staId matching the
-     * interface in the firmware is sessionId + 1.
-     */
-    linkLayerStatsSetReq.staId = pAdapter->sessionId + 1;
+    vos_mem_copy(linkLayerStatsSetReq.macAddr,
+               pAdapter->macAddressCurrent.bytes, sizeof(v_MACADDR_t));
 
 
     hddLog(VOS_TRACE_LEVEL_INFO,
-           "LL_STATS_SET reqId = %d",
-           linkLayerStatsSetReq.reqId);
+           "LL_STATS_SET reqId = %d", linkLayerStatsSetReq.reqId);
     hddLog(VOS_TRACE_LEVEL_INFO,
-            "LL_STATS_SET staId = %d", linkLayerStatsSetReq.staId);
+            "LL_STATS_SET MAC = %pM", linkLayerStatsSetReq.macAddr);
     hddLog(VOS_TRACE_LEVEL_INFO,
             "LL_STATS_SET mpduSizeThreshold = %d",
             linkLayerStatsSetReq.mpduSizeThreshold);
@@ -1584,9 +1590,7 @@ static int wlan_hdd_cfg80211_ll_stats_set(struct wiphy *wiphy,
 
     if (eHAL_STATUS_SUCCESS != sme_SetLinkLayerStatsIndCB(
                                pHddCtx->hHal,
-                               pAdapter->sessionId,
-                               hdd_link_layer_stats_ind_callback,
-                               pAdapter))
+                               hdd_link_layer_stats_ind_callback))
     {
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s:"
            "sme_SetLinkLayerStatsIndCB Failed", __func__);
@@ -1697,16 +1701,13 @@ static int wlan_hdd_cfg80211_ll_stats_get(struct wiphy *wiphy,
         nla_get_u32( tb_vendor[
             QCA_WLAN_VENDOR_ATTR_LL_STATS_GET_CONFIG_REQ_MASK]);
 
-    /* staId 0 in Firmware is reserved for Broadcast/Multicast data.
-     * Hence the interface staId start from 1. Hence the staId matching the
-     * interface in the firmware is sessionId + 1.
-     */
-    linkLayerStatsGetReq.staId = pAdapter->sessionId + 1;
+    vos_mem_copy(linkLayerStatsGetReq.macAddr,
+               pAdapter->macAddressCurrent.bytes, sizeof(v_MACADDR_t));
 
     hddLog(VOS_TRACE_LEVEL_INFO,
            "LL_STATS_GET reqId = %d", linkLayerStatsGetReq.reqId);
     hddLog(VOS_TRACE_LEVEL_INFO,
-           "LL_STATS_GET staId = %d", linkLayerStatsGetReq.staId);
+           "LL_STATS_GET MAC = %pM", linkLayerStatsGetReq.macAddr);
     hddLog(VOS_TRACE_LEVEL_INFO,
            "LL_STATS_GET paramIdMask = %d",
            linkLayerStatsGetReq.paramIdMask);
@@ -1805,16 +1806,13 @@ static int wlan_hdd_cfg80211_ll_stats_clear(struct wiphy *wiphy,
     // Shall take the request Id if the Upper layers pass. 1 For now.
     linkLayerStatsClearReq.reqId = 1;
 
-    /* staId 0 in Firmware is reserved for Broadcast/Multicast data.
-     * Hence the interface staId start from 1. Hence the staId matching the
-     * interface in the firmware is sessionId + 1.
-     */
-    linkLayerStatsClearReq.staId = pAdapter->sessionId + 1;
+    vos_mem_copy(linkLayerStatsClearReq.macAddr,
+               pAdapter->macAddressCurrent.bytes, sizeof(v_MACADDR_t));
 
     hddLog(VOS_TRACE_LEVEL_INFO,
             "LL_STATS_CLEAR reqId = %d", linkLayerStatsClearReq.reqId);
     hddLog(VOS_TRACE_LEVEL_INFO,
-            "LL_STATS_CLEAR staId = %d", linkLayerStatsClearReq.staId);
+            "LL_STATS_CLEAR MAC = %pM", linkLayerStatsClearReq.macAddr);
     hddLog(VOS_TRACE_LEVEL_INFO,
             "LL_STATS_CLEAR statsClearReqMask = 0x%X",
             linkLayerStatsClearReq.statsClearReqMask);

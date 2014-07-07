@@ -956,6 +956,21 @@ typedef WPT_PACK_PRE struct
   eHalStatus   halStatus;
 }WPT_PACK_POST WDI_PostAssocRspInfoType;
 
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+/*---------------------------------------------------------------------------
+  WDI_LLStatsResultsType
+---------------------------------------------------------------------------*/
+typedef WPT_PACK_PRE struct
+{
+   wpt_uint32 param_id;
+   wpt_uint8  iface_id;
+   wpt_uint32 resp_id;
+   wpt_uint32 more_result_to_follow;
+   wpt_uint8  result[1];
+}WPT_PACK_POST WDI_LLstatsResultsType;
+
+#endif
+
 /*--------------------------------------------------------------------------- 
    WLAN DAL FSM Event Info Type 
  ---------------------------------------------------------------------------*/

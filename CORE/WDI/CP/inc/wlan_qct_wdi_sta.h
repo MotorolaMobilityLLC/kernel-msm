@@ -395,6 +395,25 @@ WDI_STATableGetStaAddr
 );
 
 /**
+ @brief WDI_STATableGetStaMacAddr - get station MAC address
+
+ @param  pWDICtx:  WDI Context pointer
+         ucSTAIdx:  station index
+         pStaAddr: output station MAC address
+
+ @see
+ @return Result of the function call
+*/
+
+WDI_Status
+WDI_STATableGetStaMacAddr
+(
+    WDI_ControlBlockType*  pWDICtx,
+    wpt_uint8              ucSTAIdx,
+    wpt_macAddr*           staMacAddr
+);
+
+/**
  @brief WDI_STATableSetStaAddr - set station address
  
  @param  pWDICtx:  WDI Context pointer

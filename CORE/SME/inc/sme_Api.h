@@ -157,18 +157,16 @@ eHalStatus sme_LLStatsClearReq(tHalHandle hHal, tSirLLStatsClearReq *pStatsReq);
     \fn sme_SetLinkLayerStatsIndCB
     \brief  API to trigger Link Layer stats result indications from from FW
     \param  hHal - The handle returned by macOpen.
-    \param  sessionId - session ID
     \param  callbackRoutine - HDD callback which needs to be invoked after
             getting get Link Layer Statistics results from FW
-    \param  callbackContext - pAdapter context
     \return eHalStatus
   ---------------------------------------------------------------------------*/
 eHalStatus
 sme_SetLinkLayerStatsIndCB
 (
-    tHalHandle hHal, tANI_U8 sessionId,
-    void (*callbackRoutine) (void *callbackCtx, int indType, void *pRsp),
-    void *callbackContext
+    tHalHandle hHal,
+    void (*callbackRoutine) (void *callbackCtx, int indType, void *pRsp,
+            tANI_U8 *macAddr)
 );
 
 
