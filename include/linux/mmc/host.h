@@ -417,13 +417,14 @@ struct mmc_host {
 #define MMC_CMD_LOG_MODE_EN		(1 << 0)
 #define MMC_CMD_LOG_MODE_RESP		(1 << 1)
 #define MMC_CMD_LOG_MODE_TIME		(1 << 2)
-#define MMC_CMD_LOG_MODE_DELTA		(1 << 3)
+#define MMC_CMD_LOG_MODE_LATENCY	(1 << 3)
 #define MMC_CMD_LOG_MODE_FORCE_DUMP	(1 << 7)
 
 	unsigned int		mmc_cmd_log_recsize;
 #define MMC_CMD_LOG_RECSIZE_BASE	2  /* base record size */
 #define MMC_CMD_LOG_RECSIZE_RESP	1  /* command responses */
-#define MMC_CMD_LOG_RECSIZE_TIME	1  /* time stamps */
+#define MMC_CMD_LOG_RECSIZE_TIME	1  /* one time stamp */
+#define MMC_CMD_LOG_RECSIZE_LATENCY	1  /* a second time stamp */
 
 	unsigned int		mmc_cmd_log_flags;
 #define MMC_CMD_LOG_FLAG_RESP		(1 << 0)  /* response is pending */
@@ -612,20 +613,54 @@ static inline int mmc_use_core_pm(struct mmc_host *host)
 }
 
 #ifdef CONFIG_MMC_CMD_LOG
-void mmc_cmd_log(struct mmc_host *, u32, u32);
-void mmc_cmd_log_resp(struct mmc_host *, u32);
+int mmc_cmd_log_size(struct mmc_host *, unsigned int);
+int mmc_cmd_log_config(struct mmc_host *, unsigned int);
 void mmc_cmd_log_dump(struct mmc_host *);
+void _mmc_cmd_log(struct mmc_host *, u32, u32);
+void _mmc_cmd_log_resp(struct mmc_host *, u32);
+static inline void mmc_cmd_log(struct mmc_host *host, u32 cmd, u32 arg)
+{
+	if (!(host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_EN) ||
+	    !host->mmc_cmd_log)
+		return;
+	_mmc_cmd_log(host, cmd, arg);
+}
+static inline void mmc_cmd_log_resp(struct mmc_host *host, u32 resp)
+{
+	if (!(host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_EN) ||
+	    !host->mmc_cmd_log)
+		return;
+	_mmc_cmd_log_resp(host, resp);
+}
 #else
+static inline int mmc_cmd_log_size(struct mmc_host *host , unsigned int size)
+{
+	return 0;
+}
+static inline int mmc_cmd_log_config(struct mmc_host *host, unsigned int mode)
+{
+	return 0;
+}
 static inline void mmc_cmd_log(struct mmc_host *host, u32 cmd, u32 arg)
 {
 }
-
 static inline void mmc_cmd_log_resp(struct mmc_host *host, u32 resp)
 {
 }
-
 static inline void mmc_cmd_log_dump(struct mmc_host *host)
 {
 }
 #endif
+static inline int mmc_cmd_log_init(struct mmc_host *host, unsigned int size,
+				   unsigned int config)
+{
+	int rc;
+
+	rc = mmc_cmd_log_config(host, config);
+	if (!rc)
+		rc = mmc_cmd_log_size(host, size);
+
+	return rc;
+}
+
 #endif /* LINUX_MMC_HOST_H */
