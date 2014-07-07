@@ -24,7 +24,6 @@
 #define SUPPORT_SYSRQ
 #endif
 
-
 #include <linux/atomic.h>
 #include <linux/hrtimer.h>
 #include <linux/module.h>
@@ -52,7 +51,6 @@
 #include <asm/byteorder.h>
 #include <linux/platform_data/qcom-serial_hs_lite.h>
 #include <linux/msm-bus.h>
-#include <linux/slab.h>
 #include "msm_serial_hs_hwreg.h"
 
 /*
@@ -156,22 +154,6 @@ static struct of_device_id msm_hsl_match_table[] = {
 	},
 	{}
 };
-
-// ASUS_BSP +++ Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
-#define BLOCKED_BUF_SIZE (1024)
-static char* blocked_buf = 0;
-static int blocked_buf_cur = 0;
-static atomic_t hold_output;
-
-#define CONSOLE_FLUSH_DELAY (1500) /* ms */
-static void tx_release_work_func(struct work_struct *data)
-{
-	atomic_set(&hold_output,0);
-	//printk(" ");
-}
-static DECLARE_DELAYED_WORK(tx_release_task, tx_release_work_func);
-
-// ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
 
 #ifdef CONFIG_SERIAL_MSM_HSL_CONSOLE
 static int get_console_state(struct uart_port *port);
@@ -567,7 +549,6 @@ static void msm_hsl_enable_ms(struct uart_port *port)
 		regmap[msm_hsl_port->ver_id][UARTDM_IMR]);
 }
 
-extern void set_debug_str(char* debug_str);
 static void handle_rx(struct uart_port *port, unsigned int misr)
 {
 	struct tty_struct *tty = port->state->port.tty;
@@ -575,7 +556,6 @@ static void handle_rx(struct uart_port *port, unsigned int misr)
 	unsigned int sr;
 	int count = 0;
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
-	bool enter_pressed = false;
 
 	vid = msm_hsl_port->ver_id;
 	/*
@@ -611,7 +591,6 @@ static void handle_rx(struct uart_port *port, unsigned int misr)
 			break;
 		}
 		c = msm_hsl_read(port, regmap[vid][UARTDM_RF]);
-
 		if (sr & UARTDM_SR_RX_BREAK_BMSK) {
 			port->icount.brk++;
 			if (uart_handle_break(port))
@@ -631,33 +610,12 @@ static void handle_rx(struct uart_port *port, unsigned int misr)
 
 		/* TODO: handle sysrq */
 		/* if (!uart_handle_sysrq_char(port, c)) */
-
-// ASUS_BSP +++ Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
-{
-#if 0
-			static int cnt = 0;
-			static char debug_str[128];
-			cnt ++;
-			sprintf(debug_str,"Get %d char, 0x%x,%d\n",cnt,c,count);
-			set_debug_str(debug_str);
-#endif
-			atomic_set(&hold_output,1);
-			//printk("[0x%x]\n",c);
-			if (c==0xD) enter_pressed = true;
-}
-// ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
 		tty_insert_flip_string(tty->port, (char *) &c,
-					   (count > 4) ? 4 : count);
+				       (count > 4) ? 4 : count);
 		count -= 4;
 	}
 
 	tty_flip_buffer_push(tty->port);
-
-// ASUS_BSP +++ Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
-	if (enter_pressed){
-		schedule_delayed_work(&tx_release_task, msecs_to_jiffies(CONSOLE_FLUSH_DELAY));
-	}
-// ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
 }
 
 static void handle_tx(struct uart_port *port)
@@ -1491,26 +1449,6 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 
 	BUG_ON(co->index < 0 || co->index >= UART_NR);
 
-// ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
-	if(atomic_read(&hold_output)){
-		if (blocked_buf_cur + count < BLOCKED_BUF_SIZE){
-			memcpy(blocked_buf+blocked_buf_cur,s,count);
-			blocked_buf_cur += count;
-		}
-		return;
-	}else{
-		if (blocked_buf_cur){
-			int cnt = blocked_buf_cur;
-			blocked_buf_cur = 0;
-			msm_hsl_console_write(co, blocked_buf,cnt);
-		}
-	}
-
-	gpio_set_value(32,0);
-
-// ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
-
-
 	port = get_port_from_line(co->index);
 	msm_hsl_port = UART_TO_MSM(port);
 	vid = msm_hsl_port->ver_id;
@@ -1527,19 +1465,6 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 	msm_hsl_write(port, msm_hsl_port->imr, regmap[vid][UARTDM_IMR]);
 	if (locked == 1)
 		spin_unlock(&port->lock);
-
-// ASUS_BSP +++ Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
-{
-	int wait_retry = 100;
-	while (wait_retry && ! (msm_hsl_read(port, regmap[vid][UARTDM_SR]) & UARTDM_SR_TXEMT_BMSK) )
-	{
-		udelay(100);
-		wait_retry --;
-	}
-}
-
-	gpio_set_value(32,1); 
-// ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
 }
 
 static int msm_hsl_console_setup(struct console *co, char *options)
@@ -2051,16 +1976,6 @@ static int __init msm_serial_hsl_init(void)
 		uart_unregister_driver(&msm_hsl_uart_driver);
 
 	pr_info("driver initialized\n");
-
-// ASUS_BSP +++ Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
-	atomic_set(&hold_output,0);
-	if (unlikely(gpio_request(32,"UART_DIR_GPIO"))){
-		pr_err("gpio request failed for UART_DIR_GPIO(32)\n");
-	}
-	gpio_direction_output(32,0);
-	blocked_buf = kmalloc(BLOCKED_BUF_SIZE, GFP_KERNEL);
-// ASUS_BSP --- Tingyi "[ROBIN][DEBUG] Be able to handle RX from UART console"
-
 
 	return ret;
 }
