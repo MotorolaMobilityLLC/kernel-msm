@@ -40,8 +40,6 @@ static int ehci_hsic_start_host(struct pci_dev  *pdev);
 static int ehci_hsic_stop_host(struct pci_dev *pdev);
 static int create_device_files(void);
 static int create_class_device_files(void);
-static void remove_class_device_files(void);
-static void remove_device_files(void);
 
 static int enabling_disabling;
 static int hsic_enable;
@@ -1171,12 +1169,6 @@ hsic_class_fail:
 	return retval;
 }
 
-static void remove_class_device_files(void)
-{
-	device_destroy(hsic_class, hsic_class_dev->devt);
-	class_destroy(hsic_class);
-}
-
 /* FixMe: create_device_files() need to be removed */
 static int create_device_files()
 {
@@ -1230,15 +1222,6 @@ hsic_enable:
 /* hsic_class_fail: */
 
 	return retval;
-}
-
-static void remove_device_files()
-{
-	device_remove_file(&pci_dev->dev, &dev_attr_L2_autosuspend_enable);
-	device_remove_file(&pci_dev->dev, &dev_attr_L2_inactivityDuration);
-	device_remove_file(&pci_dev->dev, &dev_attr_bus_inactivityDuration);
-	device_remove_file(&pci_dev->dev, &dev_attr_remoteWakeup);
-	device_remove_file(&pci_dev->dev, &dev_attr_hsic_enable);
 }
 
 static void hsic_debugfs_cleanup(void)

@@ -2346,6 +2346,7 @@ u8 *drm_find_cea_extension(struct edid *edid)
 }
 EXPORT_SYMBOL(drm_find_cea_extension);
 
+#if defined(CONFIG_DRM_I915)
 /*
  * helper function to check whether two clocks can fall into the same VIC.
  *
@@ -2385,6 +2386,7 @@ static void drm_add_aspect_cea_mode(struct drm_display_mode *cur_mode,
 			HDMI_PICTURE_ASPECT_16_9;
 	}
 }
+#endif
 
 /*
  * Calculate the alternate clock for the CEA mode

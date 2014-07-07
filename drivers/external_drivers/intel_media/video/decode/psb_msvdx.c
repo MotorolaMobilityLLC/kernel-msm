@@ -169,6 +169,9 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 	void *cmd, *cmd_copy, *cmd_start;
 	bool is_iomem;
 	union msg_header *header;
+	uint32_t cur_cmd_size, cur_cmd_id, mmu_ptd = 0, msvdx_mmu_invalid = 0;
+	struct fw_decode_msg *decode_msg;
+	struct fw_deblock_msg *deblock_msg;
 
 	/* command buffers may not exceed page boundary */
 	if ((cmd_size > PAGE_SIZE) || (cmd_size + cmd_page_offset > PAGE_SIZE))
@@ -194,14 +197,12 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 			goto out;
 		}
 		header = (union msg_header *)cmd;
-		uint32_t cur_cmd_size = header->bits.msg_size;
-		uint32_t cur_cmd_id = header->bits.msg_type;
-
-		uint32_t mmu_ptd = 0, msvdx_mmu_invalid = 0;
-
-		PSB_DEBUG_GENERAL("cmd start at %08x cur_cmd_size = %d"
+		cur_cmd_size = header->bits.msg_size;
+		cur_cmd_id = header->bits.msg_type;
+		PSB_DEBUG_GENERAL("cmd start at %p cur_cmd_size = %d"
 				  " cur_cmd_id = %02x fence = %08x\n",
-				  (uint32_t) cmd, cur_cmd_size, cur_cmd_id, sequence);
+				  cmd, cur_cmd_size,
+				  cur_cmd_id, sequence);
 		if ((cur_cmd_size % sizeof(uint32_t))
 		    || (cur_cmd_size > cmd_size_remaining)) {
 			ret = -EINVAL;
@@ -217,12 +218,12 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 				PSB_DEBUG_MSVDX("MSVDX: wrong msg size.\n");
 				goto out;
 			}
-			struct fw_decode_msg *decode_msg =
-					(struct fw_decode_msg *)cmd;
+			decode_msg = (struct fw_decode_msg *)cmd;
 			decode_msg->header.bits.msg_fence = sequence;
 
 			mmu_ptd = psb_get_default_pd_addr(dev_priv->mmu);
-			msvdx_mmu_invalid = atomic_cmpxchg(&dev_priv->msvdx_mmu_invaldc,
+			msvdx_mmu_invalid = atomic_cmpxchg(&dev_priv->
+							   msvdx_mmu_invaldc,
 							   1, 0);
 			if (msvdx_mmu_invalid == 1) {
 				decode_msg->flag_size.bits.flags |=
@@ -266,10 +267,10 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 				PSB_DEBUG_MSVDX("MSVDX: wrong msg size.\n");
 				goto out;
 			}
-			struct fw_deblock_msg *deblock_msg =
-					(struct fw_deblock_msg *)cmd;
+			deblock_msg = (struct fw_deblock_msg *)cmd;
 			mmu_ptd = psb_get_default_pd_addr(dev_priv->mmu);
-			msvdx_mmu_invalid = atomic_cmpxchg(&dev_priv->msvdx_mmu_invaldc,
+			msvdx_mmu_invalid = atomic_cmpxchg(&dev_priv->
+							   msvdx_mmu_invaldc,
 							   1, 0);
 			if (msvdx_mmu_invalid == 1) {
 				deblock_msg->flag_type.bits.flags |=
@@ -283,7 +284,8 @@ static int psb_msvdx_map_command(struct drm_device *dev,
 					MTX_MSGID_DEBLOCK_MFLD +
 					MTX_MSGID_DEBLOCK;
 
-			deblock_msg->header.bits.msg_fence = (uint16_t)(sequence & 0xffff);
+			deblock_msg->header.bits.msg_fence =
+				(uint16_t)(sequence & 0xffff);
 			deblock_msg->mmu_context.bits.mmu_ptd = (mmu_ptd >> 8);
 			PSB_DEBUG_MSVDX("MSVDX: MSGID_DEBLOCK:"
 				" - fence: %08x"
@@ -714,11 +716,12 @@ static int psb_msvdx_send(struct drm_device *dev, void *cmd,
 	struct drm_psb_private *dev_priv = psb_priv(dev);
 	union msg_header *header;
 	uint32_t cur_sequence = 0xffffffff;
+	uint32_t cur_cmd_size, cur_cmd_id;
 
 	while (cmd_size > 0) {
 		header = (union msg_header *)cmd;
-		uint32_t cur_cmd_size = header->bits.msg_size;
-		uint32_t cur_cmd_id = header->bits.msg_type;
+		cur_cmd_size = header->bits.msg_size;
+		cur_cmd_id = header->bits.msg_type;
 
 		cur_sequence = ((struct fw_msg_header *)cmd)->header.bits.msg_fence;
 
@@ -873,9 +876,8 @@ static void psb_msvdx_mtx_interrupt(struct drm_device *dev)
 	int i;
 	union msg_header *header;
 	int cmd_complete = 0;
-#ifdef CONFIG_SLICE_HEADER_PARSING
-	int frame_finished = 1;
-#endif
+	struct psb_msvdx_ec_ctx *msvdx_ec_ctx = NULL;
+
 	PSB_DEBUG_GENERAL("MSVDX:Got a MSVDX MTX interrupt\n");
 
 	/* we need clocks enabled before we touch VEC local ram,
@@ -1055,8 +1057,7 @@ loop: /* just for coding style check */
 
 	case MTX_MSGID_CONTIGUITY_WARNING: {
 		drm_psb_msvdx_decode_status_t *fault_region = NULL;
-		struct psb_msvdx_ec_ctx *msvdx_ec_ctx = NULL;
-		uint32_t reg_idx;
+		uint32_t reg_idx, fence, start, end;
 		int found = 0;
 
 		struct fw_contiguity_msg *contiguity_msg =
@@ -1070,9 +1071,9 @@ loop: /* just for coding style check */
 			contiguity_msg->mb.bits.begin_mb_num);
 
 		/*get erro info*/
-		uint32_t fence = contiguity_msg->header.bits.msg_fence;
-		uint32_t start = contiguity_msg->mb.bits.begin_mb_num;
-		uint32_t end = contiguity_msg->mb.bits.end_mb_num;
+		fence = contiguity_msg->header.bits.msg_fence;
+		start = contiguity_msg->mb.bits.begin_mb_num;
+		end = contiguity_msg->mb.bits.end_mb_num;
 
 		/*get the frame_info struct for error concealment frame*/
 		for (i = 0; i < PSB_MAX_EC_INSTANCE; i++)
@@ -1084,7 +1085,7 @@ loop: /* just for coding style check */
 		/* psb_msvdx_mtx_message_dump(dev); */
 		if (!msvdx_ec_ctx || !(msvdx_ec_ctx->tfile) || found > 1) {
 			PSB_DEBUG_MSVDX(
-			"no matched ctx: fence 0x%x, found %d, ctx 0x%08x\n",
+				"no matched ctx: fence 0x%x, found %d, ctx %p\n",
 				fence, found, msvdx_ec_ctx);
 			goto done;
 		}
@@ -1140,16 +1141,14 @@ loop: /* just for coding style check */
 
 	case MTX_MSGID_DEBLOCK_REQUIRED: {
 		struct fw_deblock_required_msg *deblock_required_msg =
-					(struct fw_deblock_required_msg *)buf;
+			(struct fw_deblock_required_msg *)buf;
 		uint32_t fence;
+		int found = 0;
 
 		fence = deblock_required_msg->header.bits.msg_fence;
 		PSB_DEBUG_GENERAL(
 		    "MSVDX: MTX_MSGID_DEBLOCK_REQUIRED Fence=%08x\n", fence);
 
-
-		struct psb_msvdx_ec_ctx *msvdx_ec_ctx = NULL;
-		int found = 0;
 		PSB_DEBUG_MSVDX("Get deblock required msg for ec\n");
 		for (i = 0; i < PSB_MAX_EC_INSTANCE; i++)
 			if (msvdx_priv->msvdx_ec_ctx[i]->fence
@@ -1162,7 +1161,7 @@ loop: /* just for coding style check */
 		if (!msvdx_ec_ctx ||
 		    !(msvdx_ec_ctx->tfile) || found > 1) {
 			PSB_DEBUG_MSVDX(
-		"no matched ctx: fence 0x%x, found %d, ctx 0x%08x\n",
+				"no matched ctx: fence 0x%x, found %d, ctx %p\n",
 				fence, found, msvdx_ec_ctx);
 			PSB_WMSVDX32(0, MSVDX_CMDS_END_SLICE_PICTURE_OFFSET + MSVDX_CMDS_BASE);
 			PSB_WMSVDX32(1, MSVDX_CMDS_END_SLICE_PICTURE_OFFSET + MSVDX_CMDS_BASE);
@@ -1707,8 +1706,6 @@ int psb_allocate_term_buf(struct drm_device *dev,
 
 static int psb_msvdx_protected_frame_finished(struct drm_psb_private *dev_priv, struct psb_video_ctx *pos, uint32_t fence)
 {
-	int is_protected = 0;
-
 	if (unlikely(pos == NULL)) {
 		return 1;
 	}
@@ -1765,7 +1762,7 @@ static void psb_msvdx_fw_error_detected(struct drm_device *dev, uint32_t fence, 
 	/* psb_msvdx_mtx_message_dump(dev); */
 	if (!msvdx_ec_ctx || !(msvdx_ec_ctx->tfile) || found > 1) {
 		PSB_DEBUG_MSVDX(
-		"no matched ctx: fence 0x%x, found %d, ctx 0x%08x\n",
+			"no matched ctx: fence 0x%x, found %d, ctx %p\n",
 			fence, found, msvdx_ec_ctx);
 		return;
 	}

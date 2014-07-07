@@ -21,8 +21,6 @@
 #ifndef _TNG_TOPAZ_HW_REG_H_
 #define _TNG_TOPAZ_HW_REG_H_
 
-/* #define KPDUMP */
-
 #ifdef _LNC_TOPAZ_HW_REG_H_
 #error "lnc_topaz_hw_reg.h shouldn't be included"
 #endif
@@ -792,20 +790,6 @@ struct IMG_WRITEBACK_MSG {
 	};
 };
 
-#if 1// _TNG_64B_
-
-/*
-#define ED_TNG_WRITE32(_base, _offs, _val) \
-	do { \ 
-		iowrite32((_val), dev_priv->topaz_reg + (_base) + (_offs)); \ 
-		printk(KERN_ERR "WRW :REG_MTX:0x%x 0x%x\n", (_base)+(_offs), _val); \ 
-		printk(KERN_ERR "RRG :REG_MTX:0x%x 0x%x\n", (_base)+(_offs), \ 
-			ioread32(dev_priv->topaz_reg + (_base) + (_offs))); \ 
-		udelay(5); \ 
-	} while (0)
-*/
-
-
 #define TNG_WRITE32(_base, _offs, _val) \
 	iowrite32((_val), dev_priv->topaz_reg + (_base) + (_offs))
 
@@ -839,178 +823,21 @@ struct IMG_WRITEBACK_MSG {
 #define VLC_WRITE32(core, offset, value) \
 	TNG_WRITE32(core*(0x1000)+0x1000+REG_OFFSET_TOPAZ_VLC, offset, value)
 
-#else
-#ifdef KPDUMP
-#define MULTICORE_WRITE32(offset, value) \
-	do { \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-		+ REG_OFFSET_TOPAZ_MULTICORE + offset)) = value; \
-		printk(KERN_ERR "WRW :REG_TOPAZHP_MULTICORE:0x%x 0x%x\n", \
-		offset, value); \
-	} while (0)
-
-#define MULTICORE_READ32(offset, pointer) \
-	do { \
-		*(pointer) = *((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg) \
-			+ REG_OFFSET_TOPAZ_MULTICORE + offset)); \
-	} while (0)
-
-#define DMAC_WRITE32(offset, value) \
-	do {				       \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-		+ REG_OFFSET_TOPAZ_DMAC + offset)) = value; \
-		printk(KERN_ERR "WRW :REG_DMAC:0x%x 0x%x\n", offset, value); \
-	} while (0)
-
-#define DMAC_READ32(offset, pointer) \
-	do {                                   \
-		*(pointer) = *((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg) \
-			+ REG_OFFSET_TOPAZ_DMAC + offset)); \
-	} while (0)
-
-#define MTX_WRITE32(offset, value) \
-	do { \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-				+ REG_OFFSET_TOPAZ_MTX + offset)) = value; \
-		printk(KERN_ERR "WRW :REG_MTX:0x%x 0x%x\n", offset, value); \
-	} while (0)
-
-#define MTX_READ32(offset, pointer) \
-	do { \
-		*(pointer) = *((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg) \
-			+ REG_OFFSET_TOPAZ_MTX + offset)); \
-	} while (0)
-
-#define TOPAZCORE_WRITE32(core, offset, value) \
-	do { \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-		+ core*(0x1000) + 0x1000 + offset)) = value; \
-		printk(KERN_ERR "WRW :REG_TOPAZHP_CORE_0:0x%x 0x%x\n", \
-			offset, value); \
-	} while (0)
-
-#define TOPAZCORE_READ32(core, offset, pointer) \
-	do { \
-		*(pointer) = *((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg) \
-			+ core*(0x1000) + 0x1000 + offset));	\
-	} while (0)
-
-#define VLC_WRITE32(core, offset, value) \
-	do { \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-		+ core*(0x1000) + 0x1000 + \
-		REG_OFFSET_TOPAZ_VLC + offset)) = value; \
-		printk(KERN_ERR "WRW :REG_TOPAZHP_VLC_CORE_0:0x%x 0x%x\n", \
-			offset, value); \
-	} while (0)
-
-#else
-
-#define MULTICORE_WRITE32(offset, value) \
-	do { \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-		+ REG_OFFSET_TOPAZ_MULTICORE + offset)) = value; \
-	} while (0)
-
-#define MULTICORE_READ32(offset, pointer) \
-	do { \
-		*(pointer) = *((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg) \
-			+ REG_OFFSET_TOPAZ_MULTICORE + offset)); \
-	} while (0)
-
-#define DMAC_WRITE32(offset, value) \
-	do {				       \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-		+ REG_OFFSET_TOPAZ_DMAC + offset)) = value; \
-	} while (0)
-
-#define DMAC_READ32(offset, pointer) \
-	do { \
-		*(pointer) = *((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg) \
-			+ REG_OFFSET_TOPAZ_DMAC + offset)); \
-	} while (0)
-
-#define MTX_WRITE32(offset, value) \
-	do { \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-		+ REG_OFFSET_TOPAZ_MTX + offset)) = value; \
-	} while (0)
-
-#define MTX_READ32(offset, pointer) \
-	do { \
-		*(pointer) = *((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg) \
-			+ REG_OFFSET_TOPAZ_MTX + offset));	\
-	} while (0)
-
-#define TOPAZCORE_WRITE32(core, offset, value) \
-	do { \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-		+ core*(0x1000) + 0x1000 + offset)) = value; \
-	} while (0)
-
-#define TOPAZCORE_READ32(core, offset, pointer) \
-	do { \
-		*(pointer) = *((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg) \
-			+ core*(0x1000) + 0x1000 + offset)); \
-	} while (0)
-
-#define VLC_WRITE32(core, offset, value) \
-	do { \
-		*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg) \
-		+ core*(0x1000) + 0x1000 + \
-		REG_OFFSET_TOPAZ_VLC + offset)) = value; \
-	} while (0)
-#endif
-#endif //_TNG_64B_
-
 #define FPGA_AXI_WRITE32
 #define FPGA_AXI_READ32
 #define FPGA_OCP_WRITE32
 #define FPGA_OCP_READ32
 
-#if 1 //_TNG_64B_
 #define BIAS_MM_WRITE32(base, offset, value)  \
 	TNG_WRITE32(base, offset, value)
 
+#undef MM_WRITE32
 #define MM_WRITE32(base, offset, value)  \
 	TNG_WRITE32(base, offset, value)
 
+#undef MM_READ32
 #define MM_READ32(base, offset, pointer) \
 	TNG_READ32(base, offset, pointer)
-
-#else
-#define BIAS_MM_WRITE32(base, offset, value)  \
-do {				       \
-	*((unsigned long *)((unsigned char *)(dev_priv->topaz_reg)	\
-				+ base + offset)) = value;		\
-} while (0)
-
-/*
- * MACROS to insert values into fields within a word. The basename of the
- * field must have MASK_BASENAME and SHIFT_BASENAME constants.
- */
-#define MM_WRITE32(base, offset, value)  \
-	do { \
-		*((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg)	\
-			+ base + offset)) = value;		\
-	} while (0)
-
-#define MM_READ32(base, offset, pointer) \
-	do { \
-		*(pointer) = *((unsigned long *)( \
-			(unsigned char *)(dev_priv->topaz_reg) \
-		+ base + offset));      \
-	} while (0)
-#endif //_TNG_64B_
 
 #define F_MASK(basename)  (MASK_##basename)
 #define F_SHIFT(basename) (SHIFT_##basename)
@@ -2378,7 +2205,7 @@ int tng_topaz_power_up(
 
 int tng_topaz_power_off(struct drm_device *dev);
 
-int Is_Secure_Fw();
+int Is_Secure_Fw(void);
 
 #define SHIFT_WB_PRODUCER       (0)
 #define MASK_WB_PRODUCER	\

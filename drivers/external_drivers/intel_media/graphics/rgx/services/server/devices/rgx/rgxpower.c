@@ -89,148 +89,6 @@ static IMG_VOID RGXEnableClocks(PVRSRV_RGXDEV_INFO	*psDevInfo)
 /*!
 *******************************************************************************
 
- @Function	RGXInitSLC
-
- @Description Initialise RGX SLC
-
- @Input psDevInfo - device info structure
-
- @Return   IMG_VOID
-
-******************************************************************************/
-#if !defined(RGX_FEATURE_S7_CACHE_HIERARCHY)
-
-#define RGX_INIT_SLC RGXInitSLC
-
-static IMG_VOID RGXInitSLC(PVRSRV_RGXDEV_INFO	*psDevInfo)
-{
-	IMG_UINT32	ui32Reg;
-	IMG_UINT32	ui32RegVal;
-
-#if defined(FIX_HW_BRN_36492)
-	/* Because the WA for this BRN forbids using SLC reset, need to inval it instead */
-	PDUMPCOMMENTWITHFLAGS(PDUMP_FLAGS_POWERTRANS, "Invalidate the SLC");
-	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, 
-			RGX_CR_SLC_CTRL_FLUSH_INVAL, RGX_CR_SLC_CTRL_FLUSH_INVAL_ALL_EN);
-	PDUMPREG32(RGX_PDUMPREG_NAME, 
-			RGX_CR_SLC_CTRL_FLUSH_INVAL, RGX_CR_SLC_CTRL_FLUSH_INVAL_ALL_EN, 
-			PDUMP_FLAGS_CONTINUOUS | PDUMP_FLAGS_POWERTRANS);
-
-	/* poll for completion */
-	PVRSRVPollForValueKM((IMG_UINT32 *)((IMG_UINT8*)psDevInfo->pvRegsBaseKM + RGX_CR_SLC_STATUS0),
-							 0x0,
-							 RGX_CR_SLC_STATUS0_INVAL_PENDING_EN);
-
-	PDUMPREGPOL(RGX_PDUMPREG_NAME,
-				RGX_CR_SLC_STATUS0,
-				0x0,
-				RGX_CR_SLC_STATUS0_INVAL_PENDING_EN,
-				PDUMP_FLAGS_CONTINUOUS | PDUMP_FLAGS_POWERTRANS,
-				PDUMP_POLL_OPERATOR_EQUAL);
-#endif
-	 
-	/*
-	 * SLC Bypass control
-	 */
-	ui32Reg = RGX_CR_SLC_CTRL_BYPASS;
-	ui32RegVal = 0x0;
-
-	if (!PVRSRVSystemSnoopingOfCPUCache() && !PVRSRVSystemSnoopingOfDeviceCache())
-	{
-		PDUMPCOMMENTWITHFLAGS(PDUMP_FLAGS_POWERTRANS, "System has NO cache snooping");
-	}
-	else
-	{
-		if (PVRSRVSystemSnoopingOfCPUCache())
-		{
-			PDUMPCOMMENTWITHFLAGS(PDUMP_FLAGS_POWERTRANS, "System has CPU cache snooping");
-		}
-		if (PVRSRVSystemSnoopingOfDeviceCache())
-		{
-			PDUMPCOMMENTWITHFLAGS(PDUMP_FLAGS_POWERTRANS, "System has DEVICE cache snooping");
-		}
-	}
-
-	/* Bypass SLC for textures if the SLC size is less than 128kB */
-#if (RGX_FEATURE_SLC_SIZE_IN_BYTES < (128*1024))
-	PDUMPCOMMENTWITHFLAGS(PDUMP_FLAGS_POWERTRANS, "Bypass SLC for TPU");
-	ui32RegVal |= RGX_CR_SLC_CTRL_BYPASS_REQ_TPU_EN;
-#endif
-
-	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, ui32Reg, ui32RegVal);
-	PDUMPREG32(RGX_PDUMPREG_NAME, ui32Reg, ui32RegVal, PDUMP_FLAGS_CONTINUOUS | PDUMP_FLAGS_POWERTRANS);
-
-	/*
-	 * SLC Bypass control
-	 */
-	ui32Reg = RGX_CR_SLC_CTRL_MISC;
-	ui32RegVal = RGX_CR_SLC_CTRL_MISC_ADDR_DECODE_MODE_PVR_HASH1;
-
-	/* Bypass burst combiner if SLC line size is smaller than 1024 bits */
-#if (RGX_FEATURE_SLC_CACHE_LINE_SIZE_BITS < 1024)
-	ui32RegVal |= RGX_CR_SLC_CTRL_MISC_BYPASS_BURST_COMBINER_EN;
-#endif
-	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, ui32Reg, ui32RegVal);
-	PDUMPREG32(RGX_PDUMPREG_NAME, ui32Reg, ui32RegVal, PDUMP_FLAGS_CONTINUOUS | PDUMP_FLAGS_POWERTRANS);
-
-}
-#endif /* RGX_FEATURE_S7_CACHE_HIERARCHY */
-
-
-/*!
-*******************************************************************************
-
- @Function	RGXInitSLC3
-
- @Description Initialise RGX SLC3
-
- @Input psDevInfo - device info structure
-
- @Return   IMG_VOID
-
-******************************************************************************/
-#if defined(RGX_FEATURE_S7_CACHE_HIERARCHY)
-
-#define RGX_INIT_SLC RGXInitSLC3
-
-static IMG_VOID RGXInitSLC3(PVRSRV_RGXDEV_INFO	*psDevInfo)
-{
-#if (RGX_FEATURE_SLC_BANKS == 4) && (RGX_FEATURE_SLC_CACHE_LINE_SIZE_BITS == 512)
-	IMG_UINT32	ui32Reg;
-	IMG_UINT32	ui32RegVal;
-	IMG_UINT64	ui64RegVal;
-
-    /*
-     * SLC control
-     */
-    ui32Reg = RGX_CR_SLC3_CTRL_MISC;
-    ui32RegVal = RGX_CR_SLC3_CTRL_MISC_ADDR_DECODE_MODE_SCRAMBLE_PVR_HASH;
-	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, ui32Reg, ui32RegVal);
-	PDUMPREG32(RGX_PDUMPREG_NAME, ui32Reg, ui32RegVal, PDUMP_FLAGS_CONTINUOUS | PDUMP_FLAGS_POWERTRANS);
-
-	/*
-	 * SLC scramble bits
-	 */
-	ui32Reg = RGX_CR_SLC3_SCRAMBLE;
-	ui64RegVal = IMG_UINT64_C(0xB42DD24B4BD22DB4);
-	OSWriteHWReg64(psDevInfo->pvRegsBaseKM, ui32Reg, ui64RegVal);
-	PDUMPREG64(RGX_PDUMPREG_NAME, ui32Reg, ui64RegVal, PDUMP_FLAGS_CONTINUOUS | PDUMP_FLAGS_POWERTRANS);
-
-	ui32Reg = RGX_CR_SLC3_SCRAMBLE2;
-	ui64RegVal = IMG_UINT64_C(0xB42DD24B4BD22DB4);
-	OSWriteHWReg64(psDevInfo->pvRegsBaseKM, ui32Reg, ui64RegVal);
-	PDUMPREG64(RGX_PDUMPREG_NAME, ui32Reg, ui64RegVal, PDUMP_FLAGS_CONTINUOUS | PDUMP_FLAGS_POWERTRANS);
-#else	
-	PVR_UNREFERENCED_PARAMETER(psDevInfo);
-#endif	
-
-}
-#endif
-
-
-/*!
-*******************************************************************************
-
  @Function	RGXInitBIF
 
  @Description Initialise RGX BIF
@@ -416,13 +274,6 @@ static PVRSRV_ERROR RGXStart(PVRSRV_RGXDEV_INFO	*psDevInfo, PVRSRV_DEVICE_CONFIG
 	 * Enable clocks.
 	 */
 	RGXEnableClocks(psDevInfo);
-#endif
-
-#ifndef CONFIG_MOOREFIELD
-	/*		
-	 Initialise SLC.		
-	*/
-	//RGX_INIT_SLC(psDevInfo);
 #endif
 
 #if !defined(SUPPORT_META_SLAVE_BOOT)
@@ -638,6 +489,7 @@ PVRSRV_ERROR RGXPrePowerState (IMG_HANDLE				hDevHandle,
 		RGXFWIF_TRACEBUF	*psFWTraceBuf = psDevInfo->psRGXFWIfTraceBuf;
 		IMG_UINT32			ui32DM;
 		IMG_BOOL		bCanPowerOff = IMG_FALSE;
+		IMG_UINT64		ui64CRTimeStamp, ui64OSTimeStamp;
 
 		/* Can We power-off the device?*/
 		bCanPowerOff = rgx_powermeter_poweroff();
@@ -695,10 +547,16 @@ PVRSRV_ERROR RGXPrePowerState (IMG_HANDLE				hDevHandle,
 				}
 				else
 				{
-					psDevInfo->bIgnoreFurtherIRQs = IMG_TRUE;
+					psDevInfo->bIgnoreFurtherIRQs =
+						IMG_TRUE;
 
-                                       IMG_UINT64 ui64CRTimeStamp = (OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_TIMER) & ~RGX_CR_TIMER_VALUE_CLRMSK) >> RGX_CR_TIMER_VALUE_SHIFT;
-                                       IMG_UINT64 ui64OSTimeStamp = OSClockus64();
+					ui64CRTimeStamp =
+						(OSReadHWReg64(psDevInfo->
+							       pvRegsBaseKM,
+							       RGX_CR_TIMER) &
+						 ~RGX_CR_TIMER_VALUE_CLRMSK)
+						>> RGX_CR_TIMER_VALUE_SHIFT;
+					ui64OSTimeStamp = OSClockus64();
 
                                        /* Add two entries to the GPU utilisation FWCB (current CR timestamp and current OS timestamp)
                                         * so that RGXGetGpuUtilStats() can link a power-on period to a previous power-off period (this one) */
@@ -1115,7 +973,7 @@ PVRSRV_ERROR RGXActivePowerRequest(IMG_HANDLE hDevHandle)
 
 }
 
-IMG_VOID RGXActivePowerRequestEntry(IMG_HANDLE data)
+IMG_VOID RGXActivePowerRequestEntry(struct work_struct *work)
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
 	PDUMPPOWCMDSTART();

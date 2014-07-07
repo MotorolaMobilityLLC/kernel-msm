@@ -1961,9 +1961,7 @@ void rmi4_suspend(struct rmi4_data *pdata)
 
 void rmi4_resume(struct rmi4_data *pdata)
 {
-	int retval;
 	struct i2c_client *client = pdata->i2c_client;
-	int try = 0;
 	u8 intr_status[4];
 
 	dev_info(&client->dev, "Enter %s", __func__);

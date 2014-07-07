@@ -1995,7 +1995,6 @@ static int psb_drm_hdmi_test_ioctl(struct drm_device *dev,
 				   void *data, struct drm_file *file_priv)
 {
 	drm_psb_hdmireg_p reg = data;
-	struct drm_psb_private *dev_priv = dev->dev_private;
 
 	if (!power_island_get(OSPM_DISPLAY_B | OSPM_DISPLAY_HDMI))
 		return -EAGAIN;
@@ -2249,7 +2248,7 @@ static int psb_enable_display_ied_ioctl(struct drm_device *dev, void *data,
 {
 	int ret = 0;
 	int temp = 0;
-	struct drm_psb_private *dev_priv = psb_priv(dev);
+
 	if (power_island_get(OSPM_DISPLAY_ISLAND)) {
 		temp = PSB_RVDC32(DSPCHICKENBIT);
 		temp &= ~(1 << 31);
@@ -2266,7 +2265,7 @@ static int psb_disable_display_ied_ioctl(struct drm_device *dev, void *data,
 {
 	int ret = 0;
 	int temp = 0;
-	struct drm_psb_private *dev_priv = psb_priv(dev);
+
 	if (power_island_get(OSPM_DISPLAY_ISLAND)) {
 		temp = PSB_RVDC32(DSPCHICKENBIT);
 		temp |= (1 << 31);
@@ -2408,7 +2407,6 @@ static int psb_hist_enable_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv)
 {
 	u32 irqCtrl = 0;
-	struct drm_psb_private *dev_priv = psb_priv(dev);
 	struct dpst_guardband guardband_reg;
 	struct dpst_ie_histogram_control ie_hist_cont_reg;
 	uint32_t *enable = data;
@@ -2455,7 +2453,6 @@ static int psb_hist_enable_ioctl(struct drm_device *dev, void *data,
 static int psb_hist_status_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv)
 {
-	struct drm_psb_private *dev_priv = psb_priv(dev);
 	struct drm_psb_hist_status_arg *hist_status = data;
 	uint32_t *arg = hist_status->buf;
 	u32 iedbr_reg_data = 0;
@@ -2536,7 +2533,6 @@ static int psb_init_comm_ioctl(struct drm_device *dev, void *data,
 static int psb_dpst_ioctl(struct drm_device *dev, void *data,
 			  struct drm_file *file_priv)
 {
-	struct drm_psb_private *dev_priv = psb_priv(dev);
 	uint32_t *arg = data;
 	uint32_t x;
 	uint32_t y;
@@ -2596,7 +2592,6 @@ static int psb_gamma_ioctl(struct drm_device *dev, void *data,
 static int psb_update_guard_ioctl(struct drm_device *dev, void *data,
 				  struct drm_file *file_priv)
 {
-	struct drm_psb_private *dev_priv = psb_priv(dev);
 	struct dpst_guardband *input = (struct dpst_guardband *)data;
 	struct dpst_guardband reg_data;
 
@@ -2630,7 +2625,6 @@ static int psb_mode_operation_ioctl(struct drm_device *dev, void *data,
 	struct psb_framebuffer *psb_fb;
 	struct drm_connector_helper_funcs *connector_funcs;
 	int ret = 0;
-	int resp = MODE_OK;
 	struct drm_psb_private *dev_priv = psb_priv(dev);
 
 	arg = (struct drm_psb_mode_operation_arg *)data;
@@ -2699,11 +2693,12 @@ static int psb_mode_operation_ioctl(struct drm_device *dev, void *data,
 		}
 
 		connector_funcs = (struct drm_connector_helper_funcs *)
-		    connector->helper_private;
+			connector->helper_private;
 
 		if (connector_funcs->mode_valid) {
-			resp = connector_funcs->mode_valid(connector, mode);
-			arg->data = (void *)resp;
+			arg->data = (void *)
+				(uintptr_t) connector_funcs->
+				mode_valid(connector, mode);
 		}
 
 		/*do some clean up work */
@@ -2919,7 +2914,6 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 	u32 vbl_count = 0;
 	s64 nsecs = 0;
 	int ret = -EINVAL;
-	struct android_hdmi_priv *hdmi_priv = dev_priv->hdmi_priv;
 
 	if (arg->vsync_operation_mask) {
 		pipe = arg->vsync.pipe;
@@ -3842,13 +3836,13 @@ ssize_t gpio_control_write(struct file *file, const char *buffer,
 	return count;
 }
 
-static int csc_control_read(struct file *file, char __user *buf,
+static ssize_t csc_control_read(struct file *file, char __user *buf,
 				    size_t nbytes,loff_t *ppos)
 {
 	return 0;
 }
 
-static int csc_control_write(struct file *file, const char *buffer,
+static ssize_t csc_control_write(struct file *file, const char *buffer,
 				      size_t count, loff_t *ppos)
 {
 	char buf[2];
@@ -4097,13 +4091,14 @@ int psb_release(struct inode *inode, struct file *filp)
 	struct psb_fpriv *psb_fp;
 	struct drm_psb_private *dev_priv;
 	struct msvdx_private *msvdx_priv;
-	int ret;
+	struct ttm_object_file *tfile;
+	struct psb_msvdx_ec_ctx *ec_ctx;
+	int ret, i;
+
 	file_priv = (struct drm_file *)filp->private_data;
 	psb_fp = BCVideoGetPriv(file_priv);
 	dev_priv = psb_priv(file_priv->minor->dev);
-	struct ttm_object_file *tfile = psb_fpriv(file_priv)->tfile;
-	int i;
-	struct psb_msvdx_ec_ctx *ec_ctx;
+	tfile = psb_fpriv(file_priv)->tfile;
 	msvdx_priv = (struct msvdx_private *)dev_priv->msvdx_private;
 
 #if 0
@@ -4129,8 +4124,8 @@ int psb_release(struct inode *inode, struct file *filp)
 
 		if (i < PSB_MAX_EC_INSTANCE) {
 			ec_ctx = msvdx_priv->msvdx_ec_ctx[i];
-			printk(KERN_DEBUG "remove ec ctx with tfile 0x%08x\n",
-			       ec_ctx->tfile);
+			PSB_DEBUG_ENTRY("remove ec ctx with tfile %p\n",
+					ec_ctx->tfile);
 			ec_ctx->tfile = NULL;
 			ec_ctx->fence = PSB_MSVDX_INVALID_FENCE;
 		}

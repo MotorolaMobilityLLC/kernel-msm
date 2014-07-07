@@ -229,9 +229,6 @@ uint64_t gvalue;
 
 static void drm_dpms_execute(struct work_struct *work)
 {
-	struct delayed_work *delayed_work = to_delayed_work(work);
-	struct drm_device *dev = container_of(delayed_work,
-		struct drm_device, mode_config.dpms_work);
 	struct drm_connector *connector = obj_to_connector(gobj);
 	(*connector->funcs->dpms)(connector, (int)gvalue);
 	drm_object_property_set_value(&connector->base,
@@ -3597,8 +3594,6 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev,
 	unsigned long flags;
 	int hdisplay, vdisplay;
 	int ret = -EINVAL;
-	struct drm_connector *connector = NULL;
-	uint64_t panel_fitter_en = 0;
 
 	if (page_flip->flags & ~DRM_MODE_PAGE_FLIP_FLAGS ||
 	    page_flip->reserved != 0)

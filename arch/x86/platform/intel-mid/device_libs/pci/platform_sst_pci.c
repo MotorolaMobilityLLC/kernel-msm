@@ -114,7 +114,6 @@ static void set_mrfld_sst_config(struct sst_platform_info *sst_info)
 
 static struct sst_platform_info *get_sst_platform_data(struct pci_dev *pdev)
 {
-	int ret;
 	struct sst_platform_info *sst_pinfo = NULL;
 
 	switch (pdev->device) {

@@ -999,7 +999,7 @@ static int handle_message(struct ssp_drv_context *sspc)
 			write_SSTO(chip->timeout, reg);
 	}
 
-	dev_dbg(dev, "transfer len:%d  n_bytes:%d  cr0:%x  cr1:%x",
+	dev_dbg(dev, "transfer len:%zd  n_bytes:%d  cr0:%x  cr1:%x",
 		sspc->len, sspc->n_bytes, chip->cr0, cr1);
 
 	/* first set CR1 */

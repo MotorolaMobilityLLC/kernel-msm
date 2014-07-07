@@ -47,8 +47,6 @@ static const unsigned int sdhci_quirk = SDHCI_QUIRK2_NON_STD_CIS |
 static void __init wifi_platform_data_init_sfi_fastirq(struct sfi_device_table_entry *pentry,
 						       bool should_register)
 {
-	int wifi_irq_gpio = -1;
-
 	/* If the GPIO mode was previously called, this code overloads
 	   the IRQ anyway */
 	wifi_res[0].start = wifi_res[0].end = pentry->irq;

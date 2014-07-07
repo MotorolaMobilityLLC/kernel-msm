@@ -1248,7 +1248,7 @@ static void bq24261_wdt_reset_worker(struct work_struct *work)
 	ret = bq24261_reset_timer(chip);
 
 	if (ret)
-		dev_err(&chip->client->dev, "Error (%d) in WDT reset\n");
+		dev_err(&chip->client->dev, "Error (%d) in WDT reset\n", ret);
 	else
 		dev_info(&chip->client->dev, "WDT reset\n");
 

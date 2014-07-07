@@ -718,7 +718,7 @@ bool ips_hdcp_compute_tx_v(uint8_t *rep_ksv_list,
 		goto exit;
 
 	ips_hdcp_set_repeater_control(HDCP_REPEATER_32BIT_MO_IP);
-	hdmi_write32(MDFLD_HDCP_SHA1_IN, (uint32_t)temp_buffer);
+	hdmi_write32(MDFLD_HDCP_SHA1_IN, (uint32_t)(uintptr_t) temp_buffer);
 	temp_buffer += 4;
 	num_mo_bytes_left -= 4;
 
@@ -751,7 +751,8 @@ bool ips_hdcp_compute_tx_v(uint8_t *rep_ksv_list,
 			goto exit;
 		}
 
-		hdmi_write32(MDFLD_HDCP_SHA1_IN, (uint32_t)temp_buffer);
+		hdmi_write32(MDFLD_HDCP_SHA1_IN,
+			     (uint32_t)(uintptr_t) temp_buffer);
 		temp_buffer += 4;
 		num_mo_bytes_left = 0;
 	}

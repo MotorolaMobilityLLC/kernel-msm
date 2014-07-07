@@ -23,18 +23,10 @@
 
 static struct intel_msic_power_btn_platform_data msic_power_btn_pdata;
 
-static int mrfl_pb_irq_ack(struct intel_msic_power_btn_platform_data *pdata)
+static int moor_pb_irq_ack(struct intel_msic_power_btn_platform_data *pdata)
 {
 	intel_scu_ipc_update_register(BCOVE_PBIRQ, 0, MSIC_PWRBTNM);
 	intel_scu_ipc_update_register(BCOVE_PBIRQMASK, 0, MSIC_PWRBTNM);
-
-	return 0;
-}
-
-static int moor_pb_irq_ack(struct intel_msic_power_btn_platform_data *pdata)
-{
-	intel_scu_ipc_update_register(SCOVE_PBIRQ, 0, MSIC_PWRBTNM);
-	intel_scu_ipc_update_register(SCOVE_PBIRQMASK, 0, MSIC_PWRBTNM);
 
 	return 0;
 }
@@ -55,7 +47,7 @@ void __init *msic_power_btn_platform_data(void *info)
 	msic_power_btn_pdata.pbstat = 0xfffff61a;
 	msic_power_btn_pdata.pb_level = (1 << 4);
 	msic_power_btn_pdata.irq_lvl1_mask = 0x0c;
-	msic_power_btn_pdata.irq_ack = mrfl_pb_irq_ack;
+	msic_power_btn_pdata.irq_ack = moor_pb_irq_ack;
 
 	pdev->dev.platform_data = &msic_power_btn_pdata;
 

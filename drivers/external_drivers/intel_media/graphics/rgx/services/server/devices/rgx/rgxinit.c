@@ -300,7 +300,6 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 	IMG_UINT32				ui32Remainder;
 	RGXFWIF_GPU_UTIL_STATS	sRet;
 	PVRSRV_DEV_POWER_STATE	ePowerState;
-	PVRSRV_ERROR            eError;
        IMG_UINT32                              ui32Type;
        IMG_UINT32                              ui32NextType;
        

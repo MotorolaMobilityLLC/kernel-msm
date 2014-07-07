@@ -283,7 +283,7 @@ __update_concurrency(struct rq *rq, u64 now, struct cpu_concurrency_t *cc)
 {
 	u64 sum_pds, sum_pds_s, sum_pds_e;
 	u64 contrib_pds, ts_contrib, contrib_pds_one;
-	u64 sum_now;
+	u64 sum_now = 0;
 	unsigned long weight;
 	int updated = 0;
 

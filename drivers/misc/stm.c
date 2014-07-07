@@ -402,7 +402,7 @@ int stm_dev_init(struct pci_dev *pdev,
 			__func__, __LINE__, retval);
 		return retval;
 	}
-	pr_info("stm add %x\n", stm->stm_addr);
+	pr_info("stm add %lx\n", stm->stm_addr);
 
 	stm->stm_reg_base = stm->stm_addr+STM_REG_BASE;
 	stm->stm_ioaddr = ioremap_nocache((u32)stm->stm_reg_base,

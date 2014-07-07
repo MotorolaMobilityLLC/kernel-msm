@@ -490,7 +490,7 @@ static int drm_mmap_dma(struct file *filp, struct vm_area_struct *vma)
 
 	/* Length must match exact page count */
 	if (!dma) {
-		DRM_DEBUG("return EINVAL. dma: %x\n", dma);
+		DRM_DEBUG("return EINVAL\n");
 		return -EINVAL;
 	}
 	if (!dma || (length >> PAGE_SHIFT) != dma->page_count)

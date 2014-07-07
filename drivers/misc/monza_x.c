@@ -95,7 +95,7 @@ static ssize_t monza_eeprom_read(struct monza_data *monza, char *buf,
 	status = i2c_transfer(client->adapter, msg, 2);
 	if (status == 2)
 		status = count;
-	dev_dbg(&client->dev, "read %u@%d --> %d\n",
+	dev_dbg(&client->dev, "read %zd@%d --> %d\n",
 			count, offset, status);
 	return status;
 }
@@ -176,7 +176,7 @@ static ssize_t monza_eeprom_write(struct monza_data *monza, const char *buf,
 	msg.len = i + count;
 
 	status = i2c_transfer(client->adapter, &msg, 1);
-	dev_dbg(&client->dev, "write %u@%d --> %d\n",
+	dev_dbg(&client->dev, "write %zd@%d --> %d\n",
 			count, offset, status);
 	if (status == 1)
 		status = count;

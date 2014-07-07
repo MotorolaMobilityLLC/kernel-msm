@@ -340,6 +340,7 @@ static void msvdx_upload_fw(struct drm_psb_private *dev_priv,
 
 #endif
 
+#if 0
 static int msvdx_verify_fw(struct drm_psb_private *dev_priv,
 			 const uint32_t ram_bank_size,
 			 const uint32_t data_mem, uint32_t address,
@@ -404,6 +405,7 @@ static int msvdx_verify_fw(struct drm_psb_private *dev_priv,
 
 	return ret;
 }
+#endif
 
 static int msvdx_get_fw_bo(struct drm_device *dev,
 			   const struct firmware **raw, uint8_t *name)

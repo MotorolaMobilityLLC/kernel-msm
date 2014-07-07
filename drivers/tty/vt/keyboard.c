@@ -1014,6 +1014,7 @@ static inline unsigned char getleds(void)
 	return leds;
 }
 
+#ifndef CONFIG_ANDROID
 static int kbd_update_leds_helper(struct input_handle *handle, void *data)
 {
 	unsigned char leds = *(unsigned char *)data;
@@ -1027,6 +1028,7 @@ static int kbd_update_leds_helper(struct input_handle *handle, void *data)
 
 	return 0;
 }
+#endif
 
 /**
  *	vt_get_leds	-	helper for braille console

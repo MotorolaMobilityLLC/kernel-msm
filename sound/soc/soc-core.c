@@ -3201,7 +3201,6 @@ EXPORT_SYMBOL_GPL(snd_soc_bytes_put);
 int snd_soc_info_bytes_ext(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_info *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct soc_bytes_ext *params = (void *)kcontrol->private_value;
 
 	ucontrol->type = SNDRV_CTL_ELEM_TYPE_BYTES;

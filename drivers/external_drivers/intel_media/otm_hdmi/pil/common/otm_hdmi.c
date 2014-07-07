@@ -1255,12 +1255,12 @@ EXPORT_SYMBOL(__pd_attr_get_name);
  * Generic attribute declaration routine
  * @table	: attribute table to be updated
  * @id		: id to be updated to the table
- * @type		: attribute type
+ * @type	: attribute type
  * @flags	: attribute flags
- * @name		: attribute name
+ * @name	: attribute name
  * @value	: attribute default value
- * @min		: min value possible for the attribute
- * @max		: max value possible for the attribute
+ * @min	: min value possible for the attribute
+ * @max	: max value possible for the attribute
  *
  * Returns check otm_hdmi_ret_t
  */
@@ -1295,8 +1295,10 @@ static otm_hdmi_ret_t __pd_attr_declare(otm_hdmi_attribute_t *table,
 
 	switch (type) {
 	case OTM_HDMI_ATTR_TYPE_UINT:
-		table[id].content._uint.value         = (unsigned int) value;
-		table[id].content._uint.value_default = (unsigned int) value;
+		table[id].content._uint.value         =
+			(unsigned int) (uintptr_t) value;
+		table[id].content._uint.value_default =
+			(unsigned int) (uintptr_t) value;
 		table[id].content._uint.value_min     = min;
 		table[id].content._uint.value_max     = max;
 		break;

@@ -1366,7 +1366,7 @@ compat_PVRSRVBridgeRGXSubmitTransfer(IMG_UINT32 ui32BridgeID,
 	}
 
 	{
-		IMG_UINT32 i, j;
+		IMG_UINT32 i;
 		PRGXFWIF_UFO_ADDR **psPtr = 0;
 
 		/* Loop over all the pointers in the array copying the data into the kernel */

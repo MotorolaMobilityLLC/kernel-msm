@@ -409,13 +409,13 @@ static int mdfld_dsi_jdi_panel_reset(struct mdfld_dsi_config *dsi_config)
 		if (ret < 0) {
 			DRM_ERROR("Faild to get panel reset gpio, " \
 				  "use default reset pin\n");
-			return;
+			return ret;
 		}
 		mipi_reset_gpio = ret;
 		ret = gpio_request(mipi_reset_gpio, "mipi_display");
 		if (ret) {
 			DRM_ERROR("Faild to request panel reset gpio\n");
-			return;
+			return ret;
 		}
 		gpio_direction_output(mipi_reset_gpio, 0);
 	}

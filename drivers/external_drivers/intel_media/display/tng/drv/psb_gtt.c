@@ -568,8 +568,6 @@ int psb_gtt_mm_init(struct psb_gtt *pg)
 		 (unsigned long)tt_start,
 		 (unsigned long)(tt_size - tt_start));
 	return 0;
- err_mm_init:
-	drm_ht_remove(ht);
 
  err_free:
 	kfree(gtt_mm);
@@ -1178,7 +1176,7 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 
 	if ((ret = psb_gtt_add_node(mm,
 				    (u32) gtt_get_tgid(),
-				    (u32) hKernelMemInfo,
+				    (u32) (uintptr_t) hKernelMemInfo,
 				    node, &mapping)) != 0) {
 		DRM_DEBUG("add_node failed");
 
@@ -1209,7 +1207,7 @@ int psb_gtt_map_meminfo(struct drm_device *dev,
 	} else {
 		psb_gtt_remove_node(mm,
 				    (u32) gtt_get_tgid(),
-				    (u32) hKernelMemInfo, &node);
+				    (u32) (uintptr_t) hKernelMemInfo, &node);
 		psb_gtt_mm_free_mem(mm, node);
 
 		return ret;
@@ -1231,7 +1229,7 @@ int psb_gtt_unmap_meminfo(struct drm_device *dev, void *hKernelMemInfo)
 
 	ret = psb_gtt_remove_node(mm,
 				  (u32) gtt_get_tgid(),
-				  (u32) hKernelMemInfo, &node);
+				  (u32) (uintptr_t) hKernelMemInfo, &node);
 	if (ret) {
 		DRM_DEBUG("remove node failed\n");
 		return ret;

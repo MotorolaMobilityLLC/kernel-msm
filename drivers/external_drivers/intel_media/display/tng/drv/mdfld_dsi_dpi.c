@@ -48,8 +48,8 @@ u16 mdfld_dsi_dpi_to_byte_clock_count(int pixel_clock_count,
 /*
  * Calculate the dpi time basing on a given drm mode @mode
  * return 0 on success.
- * FIXME: I was using proposed mode value for calculation, may need to 
- * use crtc mode values later 
+ * FIXME: I was using proposed mode value for calculation, may need to
+ * use crtc mode values later
  */
 int mdfld_dsi_dpi_timing_calculation(struct drm_device *dev,
 		struct drm_display_mode *mode,
@@ -350,7 +350,6 @@ static int __dpi_panel_power_on(struct mdfld_dsi_config *dsi_config,
 	int retry, reset_count = 10;
 	int i;
 	int err = 0;
-	u32 guit_val = 0;
 	u32 power_island = 0;
 	int offset = 0;
 
@@ -564,7 +563,6 @@ static int __dpi_panel_power_off(struct mdfld_dsi_config *dsi_config,
 	int retry;
 	int i;
 	int err = 0;
-	u32 guit_val = 0;
 	u32 power_island = 0;
 	int offset = 0;
 
@@ -853,17 +851,21 @@ void mdfld_dsi_dpi_set_power(struct drm_encoder *encoder, bool on)
 	struct mdfld_dsi_encoder *dsi_encoder = MDFLD_DSI_ENCODER(encoder);
 	struct mdfld_dsi_config *dsi_config =
 		mdfld_dsi_encoder_get_config(dsi_encoder);
+	struct drm_device *dev;
+	struct drm_psb_private *dev_priv;
+	struct mdfld_dsi_dpi_output *dpi_output = NULL;
+	u32 mipi_reg = MIPI;
+	u32 pipeconf_reg = PIPEACONF;
+	int pipe;
+
 	if (!dsi_config) {
 		DRM_ERROR("dsi_config is NULL\n");
 		return;
 	}
 
-	int pipe = mdfld_dsi_encoder_get_pipe(dsi_encoder);
-	struct drm_device *dev = dsi_config->dev;
-	struct drm_psb_private *dev_priv = dev->dev_private;
-	struct mdfld_dsi_dpi_output *dpi_output = NULL;
-	u32 mipi_reg = MIPI;
-	u32 pipeconf_reg = PIPEACONF;
+	pipe = mdfld_dsi_encoder_get_pipe(dsi_encoder);
+	dev = dsi_config->dev;
+	dev_priv = dev->dev_private;
 
 	PSB_DEBUG_ENTRY("set power %s on pipe %d\n", on ? "On" : "Off", pipe);
 
@@ -920,10 +922,13 @@ void mdfld_dsi_dpi_dpms(struct drm_encoder *encoder, int mode)
 		DC_MRFLD_onPowerOn(dsi_config->pipe);
 
 #ifdef CONFIG_BACKLIGHT_CLASS_DEVICE
-		struct mdfld_dsi_hw_context *ctx = &dsi_config->dsi_hw_context;
-		struct backlight_device bd;
-		bd.props.brightness = ctx->lastbrightnesslevel;
-		psb_set_brightness(&bd);
+		{
+			struct mdfld_dsi_hw_context *ctx =
+				&dsi_config->dsi_hw_context;
+			struct backlight_device bd;
+			bd.props.brightness = ctx->lastbrightnesslevel;
+			psb_set_brightness(&bd);
+		}
 #endif
 	} else if (mode == DRM_MODE_DPMS_STANDBY) {
 #ifdef CONFIG_BACKLIGHT_CLASS_DEVICE
@@ -967,7 +972,7 @@ bool mdfld_dsi_dpi_mode_fixup(struct drm_encoder *encoder,
 
 	if (!dsi_config) {
 		DRM_ERROR("dsi_config is NULL\n");
-		return;
+		return false;
 	}
 
 	fixed_mode = dsi_config->fixed_mode;
@@ -1022,13 +1027,12 @@ static void __mdfld_dsi_dpi_set_timing(struct mdfld_dsi_config *config,
 {
 	struct mdfld_dsi_dpi_timing dpi_timing;
 	struct mdfld_dsi_hw_context *ctx;
-	
-	if (!config) {
-                DRM_ERROR("Invalid parameters\n");
-                return;
-        }
-
 	struct drm_device *dev = config->dev;
+
+	if (!config) {
+		DRM_ERROR("Invalid parameters\n");
+		return;
+	}
 
 	mode = adjusted_mode;
 	ctx = &config->dsi_hw_context;
@@ -1076,10 +1080,10 @@ void mdfld_dsi_dpi_mode_set(struct drm_encoder *encoder,
 	 * if TMD panel call new power on/off sequences instead.
 	 * NOTE: refine TOSHIBA panel code later
 	 */
-      if (!dsi_config) {
-                DRM_ERROR("Invalid dsi config\n");
-                return NULL;
-        }
+	if (!dsi_config) {
+		DRM_ERROR("Invalid dsi config\n");
+		return;
+	}
 
 	__mdfld_dsi_dpi_set_timing(dsi_config, mode, adjusted_mode);
 	mdfld_dsi_set_drain_latency(encoder, adjusted_mode);

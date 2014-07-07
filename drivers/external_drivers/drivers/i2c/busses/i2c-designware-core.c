@@ -710,7 +710,9 @@ struct dw_i2c_dev *i2c_dw_setup(struct device *pdev, int bus_idx,
 	void __iomem *base;
 	struct  dw_controller *controller;
 	int r;
+#ifdef CONFIG_ACPI
 	void *handle_save = ACPI_HANDLE(pdev);
+#endif
 	u32 param1;
 
 	if (bus_idx >= ARRAY_SIZE(dw_controllers)) {

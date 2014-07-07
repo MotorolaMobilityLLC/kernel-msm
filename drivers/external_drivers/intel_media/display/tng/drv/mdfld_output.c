@@ -104,7 +104,7 @@ mdfld_dsi_encoder_t is_panel_vid_or_cmd(struct drm_device *dev)
 		if (panel_list[i].p_type == dev_priv->panel_id)
 			return panel_list[i].encoder_type;
 	}
-	DRM_INFO("%s : Could not find panel: dev_priv->pabel_id = %d, ARRAY_SIZE(panel_list) = %d",
+	DRM_INFO("%s : Could not find panel: pabel_id = %d, ARRAY_SIZE = %zd",
 			__func__, dev_priv->panel_id, ARRAY_SIZE(panel_list));
 	DRM_INFO("%s : Crashing...", __func__);
 	BUG();

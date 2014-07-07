@@ -210,13 +210,13 @@ static int __init mrfl_platform_init(void)
 }
 arch_initcall_sync(mrfl_platform_init);
 
-void *get_tangier_ops()
+void *get_tangier_ops(void)
 {
 	return &tangier_ops;
 }
 
 /* piggy back on anniedale ops right now */
-void *get_anniedale_ops()
+void *get_anniedale_ops(void)
 {
 	return &tangier_ops;
 }

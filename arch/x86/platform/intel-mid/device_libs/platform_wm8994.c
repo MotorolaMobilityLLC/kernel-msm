@@ -82,15 +82,6 @@ static struct platform_device vwm89942_device = {
 	},
 };
 
-static struct platform_device wm8994_ldo1_device;
-static struct platform_device wm8994_ldo2_device;
-static struct platform_device *wm1811a_reg_devices[] __initdata = {
-	&vwm89941_device,
-	&vwm89942_device,
-	&wm8994_ldo1_device,
-	&wm8994_ldo2_device
-};
-
 static struct platform_device *wm8958_reg_devices[] __initdata = {
 	&vwm89941_device,
 	&vwm89942_device
@@ -112,22 +103,6 @@ static struct regulator_init_data wm8994_ldo1_data = {
 	.consumer_supplies	= &wm8994_avdd1_supply,
 };
 
-static struct fixed_voltage_config wm8994_ldo1_config = {
-	.supply_name	= "V_BAT_X",
-	.microvolts	= 3700000,
-	.gpio		= -EINVAL,
-	.init_data  = &wm8994_ldo1_data,
-};
-
-static struct platform_device wm8994_ldo1_device = {
-	.name = "reg-fixed-voltage",
-	.id = PLATFORM_DEVID_AUTO,
-	.dev = {
-		.platform_data = &wm8994_ldo1_config,
-	},
-};
-
-
 static struct regulator_init_data wm8994_ldo2_data = {
 	.constraints	= {
 		.always_on	= 1,
@@ -135,21 +110,6 @@ static struct regulator_init_data wm8994_ldo2_data = {
 	},
 	.num_consumer_supplies	= 1,
 	.consumer_supplies	= &wm8994_dcvdd_supply,
-};
-
-static struct fixed_voltage_config wm8994_ldo2_config = {
-	.supply_name	= "V_BAT_Y",
-	.microvolts	= 3700000,
-	.gpio		= -EINVAL,
-	.init_data  = &wm8994_ldo2_data,
-};
-
-static struct platform_device wm8994_ldo2_device = {
-	.name = "reg-fixed-voltage",
-	.id = PLATFORM_DEVID_AUTO,
-	.dev = {
-		.platform_data = &wm8994_ldo2_config,
-	},
 };
 
 static struct  wm8958_custom_config custom_config = {

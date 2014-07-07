@@ -34,6 +34,8 @@
 #include <asm/intel-mid.h>
 #include "pmu_tng.h"
 
+static bool need_set_ved_freq = true;
+
 static int pm_cmd_freq_get(u32 reg_freq);
 static int pm_cmd_freq_set(u32 reg_freq, u32 freq_code, u32 *p_freq_code_rlzd);
 static int pm_cmd_freq_wait(u32 reg_freq, u32 *freq_code_rlzd);

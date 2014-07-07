@@ -158,6 +158,7 @@ struct menu_device {
  */
 DEFINE_PER_CPU(int, update_buckets);
 
+/* not used anymore in performance_multiplier - keep it for reference
 static int get_loadavg(void)
 {
 	unsigned long this = this_cpu_load();
@@ -165,6 +166,7 @@ static int get_loadavg(void)
 
 	return LOAD_INT(this) * 10 + LOAD_FRAC(this) / 10;
 }
+*/
 
 static inline int which_bucket(unsigned int duration)
 {
@@ -587,7 +589,7 @@ static struct cpuidle_governor menu_governor = {
 static int idle_hist_show(struct seq_file *s, void *unused)
 {
 	int cpu, i, max_no_of_buckets = 0;
-	struct idle_hist *idle_hist;
+	struct idle_hist *idle_hist = NULL;
 
 	for_each_online_cpu(cpu) {
 		idle_hist = per_cpu(idle_hists, cpu);

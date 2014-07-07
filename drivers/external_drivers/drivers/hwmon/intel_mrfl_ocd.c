@@ -622,7 +622,7 @@ static inline int bcu_get_battery_voltage(int *volt)
 
 static void handle_VW1_event(void *dev_data)
 {
-	uint8_t irq_status, beh_data;
+	uint8_t irq_status;
 	struct ocd_info *cinfo = (struct ocd_info *)dev_data;
 	int ret;
 	char *bcu_envp[2];

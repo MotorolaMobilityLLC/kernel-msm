@@ -865,17 +865,21 @@ int psb_cmdbuf_ioctl(struct drm_device *dev, void *data,
 	struct psb_video_ctx *n = NULL;
 	struct psb_video_ctx *msvdx_ctx = NULL;
 	unsigned long irq_flags;
+#if defined(MERRIFIELD)
+	struct tng_topaz_private *topaz_priv;
+#endif
+	int engine, po_correct;
+	int found = 0;
+	struct psb_context *context = NULL;
+
 	if (dev_priv == NULL)
 		return -EINVAL;
 	mmu = dev_priv->mmu;
 	msvdx_priv = dev_priv->msvdx_private;
 
 #if defined(MERRIFIELD)
-	struct tng_topaz_private *topaz_priv = dev_priv->topaz_private;
+	topaz_priv = dev_priv->topaz_private;
 #endif
-	int engine, po_correct;
-	int found = 0;
-	struct psb_context *context = NULL;
 
 #ifdef SUPPORT_VSP
 	vsp_priv = dev_priv->vsp_private;
@@ -1002,7 +1006,7 @@ int psb_cmdbuf_ioctl(struct drm_device *dev, void *data,
 		if (pos->filp == file_priv->filp) {
 			int entrypoint = pos->ctx_type & 0xff;
 
-		PSB_DEBUG_GENERAL("cmds for profile %d, entrypoint %d\n",
+		PSB_DEBUG_GENERAL("cmds for profile %llu, entrypoint %llu\n",
 					(pos->ctx_type >> 8) & 0xff,
 					(pos->ctx_type & 0xff));
 

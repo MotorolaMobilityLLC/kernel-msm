@@ -135,20 +135,3 @@ u32 intel_mid_soc_stepping(void)
 	return pci_root->revision;
 }
 EXPORT_SYMBOL(intel_mid_soc_stepping);
-
-static bool is_south_complex_device(struct pci_dev *dev)
-{
-	unsigned base_class = dev->class >> 16;
-	unsigned sub_class  = (dev->class & SUB_CLASS_MASK) >> 8;
-
-	/* other than camera, pci bridges and display,
-	 * everything else are south complex devices.
-	 */
-	if (((base_class == PCI_BASE_CLASS_MULTIMEDIA) &&
-	     (sub_class == ISP_SUB_CLASS)) ||
-	    (base_class == PCI_BASE_CLASS_BRIDGE) ||
-	    ((base_class == PCI_BASE_CLASS_DISPLAY) && !sub_class))
-		return false;
-	else
-		return true;
-}

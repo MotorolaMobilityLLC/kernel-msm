@@ -1320,7 +1320,6 @@ int mdfld_dsi_send_dcs(struct mdfld_dsi_pkg_sender *sender,
 	u8 *dst = NULL;
 	u8 *pSendparam = NULL;
 	int err = 0;
-	u32 fifo_sr;
 	int i;
 	int loop_num = 1;
 	int offset = 0;
@@ -1372,8 +1371,10 @@ int mdfld_dsi_send_dcs(struct mdfld_dsi_pkg_sender *sender,
 			atomic64_read(&sender->te_seq)) {
 			mutex_unlock(&sender->lock);
 			if (dev_priv->b_async_flip_enable)
-				DRM_INFO("reject write_mem_start last_screen_update[%lld], te_seq[%lld]\n",
-						atomic64_read(&sender->last_screen_update), atomic64_read(&sender->te_seq));
+				DRM_INFO("reject WMS LSU[%ld], te_seq[%ld]\n",
+					 atomic64_read(&sender->
+						       last_screen_update),
+					 atomic64_read(&sender->te_seq));
 			return -EAGAIN;
 		}
 
@@ -1683,16 +1684,20 @@ int mdfld_dsi_pkg_sender_init(struct mdfld_dsi_connector *dsi_connector,
 	struct mdfld_dsi_pkg_sender *pkg_sender;
 	struct mdfld_dsi_config *dsi_config =
 		mdfld_dsi_get_config(dsi_connector);
+	struct drm_device *dev;
+	struct drm_psb_private *dev_priv;
+	struct psb_gtt *pg;
+	struct mdfld_dsi_pkg *pkg, *tmp;
+	int i;
+
 	if (!dsi_config) {
 		DRM_ERROR("dsi_config is NULL\n");
 		return -EINVAL;
 	}
 
-	struct drm_device *dev = dsi_config->dev;
-	struct drm_psb_private *dev_priv = dev->dev_private;
-	struct psb_gtt *pg = dev_priv->pg;
-	int i;
-	struct mdfld_dsi_pkg *pkg, *tmp;
+	dev = dsi_config->dev;
+	dev_priv = dev->dev_private;
+	pg = dev_priv->pg;
 
 	PSB_DEBUG_ENTRY("\n");
 

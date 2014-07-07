@@ -190,10 +190,12 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 		return -ENOMEM;
 	}
 
-	/*insert this bo into gtt */
-//        DRM_INFO("%s: map meminfo for hw cursor. handle %x, pipe = %d \n", __FUNCTION__, handle, pipe);
+	/* insert this bo into gtt */
+	/* DRM_INFO("%s: map meminfo for hw cursor. handle %x, pipe = %d\n",
+	   __FUNCTION__, handle, pipe); */
 
-	ret = psb_gtt_map_meminfo(dev, (void *)handle, 0, &page_offset);
+	ret = psb_gtt_map_meminfo(dev, (void *)(uintptr_t)handle, 0,
+				  &page_offset);
 	if (ret) {
 		DRM_ERROR("Can not map meminfo to GTT. handle 0x%x\n", handle);
 		return ret;

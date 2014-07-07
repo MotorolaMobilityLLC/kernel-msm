@@ -688,12 +688,8 @@ static void pmic_get_bat_zone(int *bat_zone)
 
 static void pmic_bat_zone_changed(void)
 {
-	int retval;
 	int cur_zone;
-	u16 addr = 0;
-	u8 data = 0;
 	struct power_supply *psy_bat;
-	int vendor_id;
 
 	pmic_get_bat_zone(&cur_zone);
 	dev_info(chc.dev, "Battery Zone changed. Current zone is %d\n",
@@ -1674,8 +1670,8 @@ static void set_pmic_batt_prof(struct ps_pse_mod_prof *new_prof,
 	int num_zones;
 	int split_index;
 	int i, j = 0;
-	short int temp_up_lim;
-	short int interval;
+	short int temp_up_lim = 0;
+	short int interval = 0;
 
 	if ((new_prof == NULL) || (bprof == NULL))
 		return;

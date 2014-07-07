@@ -31,7 +31,7 @@ static int state_list[STATE_NUM] = {100, 75, 50, 25};
 static struct kobject *adapter_kobj;
 struct thermal_cooling_device *tcd_fps;
 
-static struct adapter_attr {
+struct adapter_attr {
 	struct attribute attr;
 	int value;
 };

@@ -60,7 +60,7 @@ extern struct drm_device *gpsPVRDRMDev;
 
 static PVRSRV_DEVICE_NODE* pDevNode = IMG_NULL;
 
-static PVRSRV_DEVICE_NODE* RGXGetDeviceNode()
+static PVRSRV_DEVICE_NODE* RGXGetDeviceNode(void)
 {
 	if(pDevNode == IMG_NULL)
 	{
@@ -162,7 +162,6 @@ EXPORT_SYMBOL(RGXPreClockSpeed);
 unsigned int RGXPostClockSpeed(void){
 
 	PVRSRV_ERROR	eError = PVRSRV_OK;
-	RGX_DATA	*psRGXData = IMG_NULL;
 	PVRSRV_DEVICE_NODE* psDeviceNode = RGXGetDeviceNode();
 
 	if(!psDeviceNode){

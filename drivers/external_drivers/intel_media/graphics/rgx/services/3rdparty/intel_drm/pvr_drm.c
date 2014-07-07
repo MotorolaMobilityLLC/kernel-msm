@@ -293,7 +293,7 @@ int PVRSRVGetMeminfoPages(void* hMemHandle, int npages, struct page ***pages)
         return -EFAULT;
     }
 
-    kaddr = (uint32_t)minfo.pvCpuVirtAddr;
+    kaddr = (uint32_t)(uintptr_t)minfo.pvCpuVirtAddr;
 
     if ((pglist = kzalloc(npages * sizeof(struct page*),GFP_KERNEL)) == NULL)
     {
@@ -341,7 +341,7 @@ int PVRSRVGetMeminfoPfn(void           *hMemHandle,
         return 0;
     }
 
-    kaddr = (uint32_t)minfo.pvCpuVirtAddr;
+    kaddr = (uint32_t)(uintptr_t)minfo.pvCpuVirtAddr;
 
     if ((pfnlist = kzalloc(npages * sizeof(unsigned long),
                            GFP_KERNEL)) == NULL)

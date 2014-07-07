@@ -265,6 +265,7 @@ static PVRSRV_ERROR SysDevicePostPowerState(
 	return PVRSRV_OK;
 }
 
+typedef int (*psb_irq_handler_t)(void *data);
 
 PVRSRV_ERROR SysInstallDeviceLISR(IMG_UINT32 ui32IRQ,
 				  IMG_BOOL bShared,
@@ -273,7 +274,7 @@ PVRSRV_ERROR SysInstallDeviceLISR(IMG_UINT32 ui32IRQ,
 				  IMG_PVOID pvData,
 				  IMG_HANDLE *phLISRData)
 {
-	register_rgx_irq_handler(pfnLISR, pvData);
+	register_rgx_irq_handler((psb_irq_handler_t) pfnLISR, pvData);
 	return PVRSRV_OK;
 
 }

@@ -488,13 +488,16 @@ static int mdfld_dsi_connector_get_modes(struct drm_connector *connector)
 		MDFLD_DSI_CONNECTOR(psb_output);
 	struct mdfld_dsi_config *dsi_config =
 		mdfld_dsi_get_config(dsi_connector);
+	struct drm_display_mode *fixed_mode;
+	struct drm_display_mode *dup_mode = NULL;
+	struct drm_device *dev;
+
 	if (!dsi_config) {
 		DRM_ERROR("dsi_config is NULL\n");
 		return MODE_ERROR;
 	}
-	struct drm_display_mode *fixed_mode = dsi_config->fixed_mode;
-	struct drm_display_mode *dup_mode = NULL;
-	struct drm_device *dev = connector->dev;
+	fixed_mode = dsi_config->fixed_mode;
+	dev = connector->dev;
 
 	PSB_DEBUG_ENTRY("\n");
 
@@ -525,11 +528,13 @@ static int mdfld_dsi_connector_mode_valid(struct drm_connector *connector,
 		MDFLD_DSI_CONNECTOR(psb_output);
 	struct mdfld_dsi_config *dsi_config =
 		mdfld_dsi_get_config(dsi_connector);
+	struct drm_display_mode *fixed_mode;
+
 	if (!dsi_config) {
 		DRM_ERROR("dsi_config is NULL\n");
 		return MODE_ERROR;
 	}
-	struct drm_display_mode *fixed_mode = dsi_config->fixed_mode;
+	fixed_mode = dsi_config->fixed_mode;
 
 	PSB_DEBUG_ENTRY("mode %p, fixed mode %p\n", mode, fixed_mode);
 
@@ -539,9 +544,8 @@ static int mdfld_dsi_connector_mode_valid(struct drm_connector *connector,
 	if (mode->flags & DRM_MODE_FLAG_INTERLACE)
 		return MODE_NO_INTERLACE;
 
-	/**
-	 * FIXME: current DC has no fitting unit, reject any mode setting request
-	 * will figure out a way to do up-scaling(pannel fitting) later.  
+	/** FIXME: current DC has no fitting unit, reject any mode setting
+	 * request will figure out a way to do up-scaling(pannel fitting) later
 	 **/
 	if (fixed_mode) {
 		if (mode->hdisplay != fixed_mode->hdisplay)
@@ -565,17 +569,17 @@ static void mdfld_dsi_connector_dpms(struct drm_connector *connector, int mode)
 static struct drm_encoder *
 mdfld_dsi_connector_best_encoder(struct drm_connector *connector)
 {
-	struct psb_intel_output *psb_output =
-		to_psb_intel_output(connector);
+	struct psb_intel_output *psb_output = to_psb_intel_output(connector);
 	struct mdfld_dsi_connector *dsi_connector =
 		MDFLD_DSI_CONNECTOR(psb_output);
 	struct mdfld_dsi_config *dsi_config =
 		mdfld_dsi_get_config(dsi_connector);
+	struct mdfld_dsi_encoder *encoder = NULL;
+
 	if (!dsi_config) {
 		DRM_ERROR("dsi_config is NULL\n");
 		return NULL;
 	}
-	struct mdfld_dsi_encoder *encoder = NULL;
 
 	PSB_DEBUG_ENTRY("config type %d\n", dsi_config->type);
 
@@ -1039,7 +1043,9 @@ int mdfld_dsi_output_init(struct drm_device *dev,
 dsi_init_err2:
 	mdfld_dsi_error_detector_exit(dsi_connector);
 
+#if 0
 dsi_init_err1:
+#endif
 	/*destroy sender*/
 	mdfld_dsi_pkg_sender_destroy(dsi_connector->pkg_sender);
 
@@ -1066,8 +1072,6 @@ dsi_init_err0:
 void mdfld_dsi_set_drain_latency(struct drm_encoder *encoder,
 		struct drm_display_mode *mode)
 {
-	int drain_rate = 0;
-	u8 value;
 	struct mdfld_dsi_encoder *dsi_encoder = MDFLD_DSI_ENCODER(encoder);
 	struct mdfld_dsi_config *dsi_config =
 		mdfld_dsi_encoder_get_config(dsi_encoder);

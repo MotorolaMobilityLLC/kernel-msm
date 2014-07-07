@@ -55,34 +55,4 @@ enum panel_type {
 	GCT_DETECT
 };
 
-struct support_panel_list_t {
-	enum panel_type panel_id;
-	char name[SFI_NAME_LEN];
-};
-static struct support_panel_list_t
-	support_panel_list[] = {
-		{CMI_7x12_CMD, "PANEL_CMI_CMD"},
-		{JDI_7x12_VID, "PANEL_JDI_VID"},
-		{JDI_7x12_CMD, "PANEL_JDI_CMD"},
-	/*  above 3 items will be removed
-	* after firmware changing
-	*/
-		{CMI_7x12_CMD, "PNC_CMI_7x12"},
-		{JDI_7x12_VID, "PNV_JDI_7x12"},
-		{JDI_7x12_CMD, "PNC_JDI_7x12"},
-		{SHARP_10x19_CMD, "PNC_SHARP_10x19"},
-		{SHARP_10x19_DUAL_CMD, "PNCD_SHARP_10x19"},
-		{SHARP_25x16_VID, "PNV_SHARP_25x16"},
-		{SHARP_25x16_CMD, "PNC_SHARP_25x16"},
-		{JDI_25x16_VID, "PNV_JDI_25x16"},
-		{JDI_25x16_CMD, "PNC_JDI_25x16"},
-		{SDC_16x25_CMD, "PNC_SDC_16x25"},
-		{SDC_25x16_CMD, "PNC_SDC_25x16"}
-	};
-
-#define NUM_SUPPORT_PANELS (sizeof( \
-		support_panel_list) \
-	/ sizeof(struct support_panel_list_t))
-
-
 #endif

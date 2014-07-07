@@ -429,7 +429,6 @@ static int soc_compr_set_params_fe(struct snd_compr_stream *cstream,
 	struct snd_pcm_substream *fe_substream = fe->pcm->streams[0].substream;
 	struct snd_soc_platform *platform = fe->platform;
 	struct snd_soc_dai *cpu_dai = fe->cpu_dai;
-	struct snd_soc_dai *codec_dai =  fe->codec_dai;
 
 	struct snd_pcm_hw_params *hw_params;
 	int ret = 0, stream;

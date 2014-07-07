@@ -35,7 +35,7 @@
 
 static struct drm_device *g_dev;
 
-static void gfx_early_suspend()
+static void gfx_early_suspend(void)
 {
 	struct drm_psb_private *dev_priv = g_dev->dev_private;
 	struct drm_device *dev = dev_priv->dev;
@@ -81,7 +81,7 @@ static void gfx_early_suspend()
 	mutex_unlock(&dev->mode_config.mutex);
 }
 
-static void gfx_late_resume()
+static void gfx_late_resume(void)
 {
 	struct drm_psb_private *dev_priv = g_dev->dev_private;
 	struct drm_device *dev = dev_priv->dev;

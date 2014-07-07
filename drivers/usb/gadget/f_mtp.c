@@ -545,7 +545,7 @@ static ssize_t mtp_read(struct file *fp, char __user *buf,
 	int r = count, xfer;
 	int ret = 0;
 
-	DBG(cdev, "mtp_read(%d)\n", count);
+	DBG(cdev, "mtp_read(%zd)\n", count);
 
 	if (count > MTP_BULK_RX_BUFFER_SIZE)
 		return -EINVAL;
@@ -620,7 +620,7 @@ static ssize_t mtp_write(struct file *fp, const char __user *buf,
 	int sendZLP = 0;
 	int ret;
 
-	DBG(cdev, "mtp_write(%d)\n", count);
+	DBG(cdev, "mtp_write(%zd)\n", count);
 
 	spin_lock_irq(&dev->lock);
 	if (dev->state == STATE_CANCELED) {
@@ -914,7 +914,7 @@ static int mtp_send_event(struct mtp_dev *dev, struct mtp_event *event)
 	int ret;
 	int length = event->length;
 
-	DBG(dev->cdev, "mtp_send_event(%d)\n", event->length);
+	DBG(dev->cdev, "mtp_send_event(%zd)\n", event->length);
 
 	if (length < 0 || length > INTR_BUFFER_SIZE)
 		return -EINVAL;
@@ -1071,7 +1071,7 @@ static long mtp_compat_ioctl(struct file *fp, unsigned code, unsigned long value
 			get_user(id, &mfr32->transaction_id) || put_user(id, &mfr64->transaction_id))
 				return -EFAULT;
 		/* copy mfr64 to value */
-		value = (void __user *)mfr64;
+		value = (uintptr_t) mfr64;
 
 		break;
 	}
@@ -1091,7 +1091,7 @@ static long mtp_compat_ioctl(struct file *fp, unsigned code, unsigned long value
 			put_user(compat_ptr(udata), &event64->data))
 			return -EFAULT;
 		/* copy event pointer to value */
-		value = (void __user *) event64;
+		value = (uintptr_t) event64;
 		break;
 	}
 	}

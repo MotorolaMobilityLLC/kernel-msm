@@ -1459,8 +1459,6 @@ PVRSRVBridgeDCDisplayContextFlush(IMG_UINT32 ui32BridgeID,
 					 CONNECTION_DATA *psConnection)
 
 {
-	IMG_HANDLE hDisplayContextInt2 = IMG_NULL;
-
 	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTFLUSH);
 
 	psDCDisplayContextFlushOUT->eError = DCDisplayContextFlush();

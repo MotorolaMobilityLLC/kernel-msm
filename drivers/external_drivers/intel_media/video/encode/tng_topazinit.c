@@ -277,12 +277,6 @@ static void release_mtx_control_from_dash(struct drm_psb_private *dev_priv);
 
 static void tng_topaz_mmu_hwsetup(struct drm_psb_private *dev_priv);
 
-static int mtx_dma_write(
-	struct drm_device *dev,
-	struct ttm_buffer_object *src_bo,
-	uint32_t dst_ram_addr,
-	uint32_t size);
-
 #ifdef MRFLD_B0_DEBUG
 static int tng_error_dump_reg(struct drm_psb_private *dev_priv)
 {
@@ -643,12 +637,9 @@ static int tng_topaz_query_queue(struct drm_device *dev)
 void tng_powerdown_topaz(struct work_struct *work)
 {
 	struct tng_topaz_private *topaz_priv =
-		container_of(work, struct tng_topaz_private,
-					topaz_suspend_work);
-	struct drm_psb_private *dev_priv =
-		(struct drm_psb_private *)topaz_priv->dev->dev_private;
+		container_of(to_delayed_work(work), struct tng_topaz_private,
+			     topaz_suspend_work);
 	struct drm_device *dev = (struct drm_device *)topaz_priv->dev;
-	struct ospm_power_island *p_island;
 	int32_t ret = 0;
 
 	PSB_DEBUG_TOPAZ("TOPAZ: Task start\n");
@@ -658,7 +649,7 @@ void tng_powerdown_topaz(struct work_struct *work)
 			ret = tng_topaz_power_off(dev);
 			if (ret) {
 				DRM_ERROR("TOPAZ: Failed to power off");
-				return ret;
+				return;
 			}
 		}
 		tng_topaz_dequeue_send(dev);
@@ -667,11 +658,10 @@ void tng_powerdown_topaz(struct work_struct *work)
 		ret = tng_topaz_power_off(dev);
 		if (ret) {
 			DRM_ERROR("TOPAZ: Failed to power off");
-			return ret;
+			return;
 		}
 	}
 
-out:
 	if (drm_topaz_cmdpolicy != PSB_CMDPOLICY_PARALLEL) {
 		atomic_set(&topaz_priv->cmd_wq_free, 1);
 		wake_up_interruptible(&topaz_priv->cmd_wq);
@@ -689,11 +679,10 @@ int tng_topaz_init(struct drm_device *dev)
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct ttm_bo_device *bdev = &dev_priv->bdev;
 	int ret = 0, n;
-	int ui32RegValue;
 	bool is_iomem;
-	uint32_t reg_val;
 	struct tng_topaz_private *topaz_priv;
 	void *topaz_bo_virt;
+
 	PSB_DEBUG_TOPAZ("TOPAZ: init topazsc data structures\n");
 	topaz_priv = kmalloc(sizeof(struct tng_topaz_private), GFP_KERNEL);
 	if (topaz_priv == NULL)
@@ -1044,7 +1033,6 @@ int tng_topaz_init_board(
 	struct drm_psb_private *dev_priv;
 	struct tng_topaz_private *topaz_priv;
 	int32_t i;
-	int32_t ret = 0;
 	uint32_t reg_val = 0;
 
 	dev_priv = dev->dev_private;
@@ -1112,8 +1100,6 @@ int tng_topaz_setup_fw(
 {
 	struct drm_psb_private *dev_priv;
 	struct tng_topaz_private *topaz_priv;
-	uint32_t verify_pc;
-	int32_t i;
 	int32_t ret = 0;
 	uint32_t reg_val = 0;
 
@@ -1235,7 +1221,6 @@ int tng_topaz_fw_run(
 {
 	struct drm_psb_private *dev_priv;
 	struct tng_topaz_private *topaz_priv;
-	uint32_t verify_pc;
 	int32_t ret = 0;
 	uint32_t reg_val = 0;
 
@@ -1608,7 +1593,7 @@ int32_t mtx_read_core_reg(
 
 	/* Issue read request */
 	MTX_WRITE32(MTX_CR_MTX_REGISTER_READ_WRITE_REQUEST,
-		    MASK_MTX_MTX_RNW | reg & ~MASK_MTX_MTX_DREADY);
+		    (MASK_MTX_MTX_RNW | reg) & ~MASK_MTX_MTX_DREADY);
 
 	/* Wait for done */
 	ret = tng_topaz_wait_for_register(dev_priv, CHECKFUNC_ISEQUAL,
@@ -1673,9 +1658,7 @@ static void release_mtx_control_from_dash(struct drm_psb_private *dev_priv)
 
 void tng_topaz_mmu_hwsetup(struct drm_psb_private *dev_priv)
 {
-	uint32_t reg_val = 0;
-	uint32_t pd_addr = 0;
-	struct tng_topaz_private *topaz_priv = dev_priv->topaz_private;
+	uint32_t reg_val = 0, pd_addr = 0;
 
 	PSB_DEBUG_TOPAZ("TOPAZ: Setup MMU\n");
 
@@ -1780,6 +1763,7 @@ int32_t mtx_dma_read(struct drm_device *dev, struct ttm_buffer_object *dst_bo,
 	return ret;
 }
 
+#if 0
 static int mtx_dma_write(
 	struct drm_device *dev,
 	struct ttm_buffer_object *src_bo,
@@ -1831,6 +1815,6 @@ static int mtx_dma_write(
 
 	return ret;
 }
-
+#endif
 
 

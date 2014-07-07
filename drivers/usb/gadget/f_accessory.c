@@ -561,7 +561,7 @@ static ssize_t acc_read(struct file *fp, char __user *buf,
 	int r = count, xfer;
 	int ret = 0;
 
-	pr_debug("acc_read(%d)\n", count);
+	pr_debug("acc_read(%zd)\n", count);
 
 	if (dev->disconnected)
 		return -ENODEV;
@@ -623,7 +623,7 @@ static ssize_t acc_write(struct file *fp, const char __user *buf,
 	int r = count, xfer;
 	int ret;
 
-	pr_debug("acc_write(%d)\n", count);
+	pr_debug("acc_write(%zd)\n", count);
 
 	if (!dev->online || dev->disconnected)
 		return -ENODEV;

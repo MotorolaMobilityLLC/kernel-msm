@@ -993,12 +993,16 @@ int android_hdmi_get_modes(struct drm_connector *connector)
 	struct edid *edid = NULL;
 	/* Edid address in HDMI context */
 	struct edid *ctx_edid = NULL;
-	struct drm_display_mode *mode, *t, *dup_mode, *user_mode;
-	int i = 0, j = 0, ret = 0, mode_present = 0;
+	struct drm_display_mode *mode, *t;
+	int i = 0, j = 0, ret = 0;
 	int refresh_rate = 0;
 	bool pref_mode_found = false;
 	struct i2c_adapter *adapter = NULL;
 	struct drm_display_mode *pref_mode_assigned;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
+	struct drm_display_mode *dup_mode, *user_mode;
+	int mode_present = 0
+#endif
 
 	debug_modes_count = 0;
 	pr_debug("Enter %s\n", __func__);
@@ -1073,7 +1077,7 @@ edid_is_ready:
 				ret++;
 	}
 #endif
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
 	connector->display_info.raw_edid = NULL;
 #endif
 	/* monitor_type is being used to switch state between HDMI & DVI */
@@ -1107,7 +1111,7 @@ edid_is_ready:
 
 		j++;
 	}
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
 	/* add user mode to connector->mode list to support
 	 * DRM IOCTL attachmode
 	 */
@@ -1451,7 +1455,7 @@ int android_hdmi_crtc_mode_set(struct drm_crtc *crtc,
 			continue;
 		psb_intel_output = to_psb_intel_output(connector);
 	}
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
 	if (psb_intel_output)
 		drm_connector_property_get_value(&psb_intel_output->base,
 			dev->mode_config.scaling_mode_property, &scalingType);
@@ -2335,7 +2339,7 @@ static int android_hdmi_set_property(struct drm_connector *connector,
 		default:
 			goto set_prop_error;
 		}
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
 		if (drm_connector_property_get_value(connector, property, &curValue))
 #else
                 if (drm_object_property_get_value(&connector->base, property, &curValue))
@@ -2344,7 +2348,7 @@ static int android_hdmi_set_property(struct drm_connector *connector,
 
 		if (curValue == value)
 			goto set_prop_done;
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
 		if (drm_connector_property_set_value(connector, property, value))
 #else 
                 if (drm_object_property_set_value(&connector->base, property, value))
@@ -2396,14 +2400,14 @@ void android_hdmi_connector_destroy(struct drm_connector *connector)
 void android_hdmi_connector_dpms(struct drm_connector *connector, int mode)
 {
 	struct drm_device *dev = connector->dev;
-	struct drm_psb_private *dev_priv = dev->dev_private;
 	bool hdmi_audio_busy = false;
 	u32 dspcntr_val;
-
 #if (defined CONFIG_PM_RUNTIME) && (!defined MERRIFIELD)
+	struct drm_psb_private *dev_priv = dev->dev_private;
 	bool panel_on = false, panel_on2 = false;
 	struct mdfld_dsi_config **dsi_configs;
 #endif
+
 	pr_debug("Entered %s\n", __func__);
 	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
 				OSPM_UHB_FORCE_POWER_ON))
@@ -2652,7 +2656,7 @@ void android_hdmi_driver_init(struct drm_device *dev,
 				DRM_MODE_CONNECTOR_DVID);
 	drm_connector_helper_add(connector,
 				 &android_hdmi_connector_helper_funcs);
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
 	drm_connector_attach_property(connector,
 					dev->mode_config.scaling_mode_property,
 					default_hdmi_scaling_mode);

@@ -28,7 +28,6 @@ static struct intel_mid_ssp_spi_chip chip = {
 void __init *max3111_platform_data(void *info)
 {
 	struct spi_board_info *spi_info = info;
-	int intr;
 	static struct plat_max3110 max3110_pdata;
 
 	spi_info->mode = SPI_MODE_0;

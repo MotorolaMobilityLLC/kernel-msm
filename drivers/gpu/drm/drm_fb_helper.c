@@ -124,7 +124,8 @@ static int drm_fb_helper_parse_command_line(struct drm_fb_helper *fb_helper)
 		mode = &fb_helper_conn->cmdline_mode;
 
 		/* do something on return - turn off connector maybe */
-		if (fb_get_options(drm_get_connector_name(connector), &option))
+		if (fb_get_options((char *) drm_get_connector_name(connector),
+				   &option))
 			continue;
 
 		if (drm_mode_parse_command_line_for_connector(option,
@@ -316,6 +317,7 @@ bool drm_fb_helper_restore_fbdev_mode(struct drm_fb_helper *fb_helper)
 }
 EXPORT_SYMBOL(drm_fb_helper_restore_fbdev_mode);
 
+#if !defined(CONFIG_INTEL_NO_FB_PANIC_NOTIFY)
 /*
  * restore fbcon display for all kms driver's using this helper, used for sysrq
  * and panic handling.
@@ -353,7 +355,6 @@ static int drm_fb_helper_panic(struct notifier_block *n, unsigned long ununsed,
 	return drm_fb_helper_force_kernel_mode();
 }
 
-#if !defined(CONFIG_INTEL_NO_FB_PANIC_NOTIFY)
 static struct notifier_block paniced = {
 	.notifier_call = drm_fb_helper_panic,
 };

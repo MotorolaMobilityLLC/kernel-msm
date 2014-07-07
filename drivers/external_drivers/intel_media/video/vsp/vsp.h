@@ -94,18 +94,24 @@ static const unsigned int vsp_processor_base[] = {
 				};
 
 /* help macro */
-#define MM_WRITE32(base, offset, value)					\
+#ifdef MM_WRITE32
+#undef MM_WRITE32
+#endif
+#define MM_WRITE32(base, offset, value)				\
 	do {								\
-		*((uint32_t *)((unsigned char *)(dev_priv->vsp_reg) \
-				    + base + offset)) = value;		\
+		*((uint32_t *)((unsigned char *)(dev_priv->vsp_reg)	\
+			       + base + offset)) = value;		\
 	} while (0)
 
+#ifdef MM_READ32
+#undef MM_READ32
+#endif
 #define MM_READ32(base, offset, pointer)				\
 	do {								\
 		*(pointer) =						\
 			*((uint32_t *)((unsigned char *)		\
-					    (dev_priv->vsp_reg)		\
-						 + base + offset));	\
+				       (dev_priv->vsp_reg)		\
+				       + base + offset));		\
 	} while (0)
 
 #define SP1_DMEM_WRITE32(offset, value)		\

@@ -115,8 +115,8 @@ irqreturn_t msic_vreg_handler(int irq, void *dev_id)
 	if (sram_vreg_addr)
 		data = readb(sram_vreg_addr);
 	else
-		DRM_ERROR("%s: sram_vreg_addr = 0x%x.\n",
-			  __func__, (u32) sram_vreg_addr);
+		DRM_ERROR("%s: sram_vreg_addr = %p.\n",
+			  __func__, sram_vreg_addr);
 
 	if (dev) {
 		PSB_DEBUG_ENTRY("data = 0x%x.\n", data);

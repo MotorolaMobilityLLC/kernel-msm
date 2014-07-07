@@ -477,13 +477,22 @@ int ttm_pl_ub_create_ioctl(struct ttm_object_file *tfile,
 	int ret = 0;
 	struct ttm_mem_global *mem_glob = bdev->glob->mem_glob;
 	struct ttm_placement placement = default_placement;
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
 	size_t acc_size =
 		ttm_pl_size(bdev, (req->size + PAGE_SIZE - 1) >> PAGE_SHIFT);
 #else
 	size_t acc_size = ttm_bo_acc_size(bdev, req->size,
 		sizeof(struct ttm_buffer_object));
+	/* Handle frame buffer allocated in user space, Convert
+	   user space virtual address into pages list */
+	unsigned int page_nr = 0;
+	struct vm_area_struct *vma = NULL;
+	struct sg_table *sg = NULL;
+	unsigned long num_pages = 0;
+	struct page **pages = 0;
+	unsigned long before_flags;
 #endif
+
 	if (req->user_address & ~PAGE_MASK) {
 		printk(KERN_ERR "User pointer buffer need page alignment\n");
 		return -EFAULT;
@@ -510,79 +519,54 @@ int ttm_pl_ub_create_ioctl(struct ttm_object_file *tfile,
 	placement.num_placement = 1;
 	placement.placement = &flags;
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
+	num_pages = (req->size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	pages = kzalloc(num_pages * sizeof(struct page *), GFP_KERNEL);
+	if (unlikely(pages == NULL)) {
+		printk(KERN_ERR "kzalloc pages failed\n");
+		return -ENOMEM;
+	}
 
-/*  For kernel 3.0, use the desired type. */
-#define TTM_HACK_WORKAROUND_ttm_bo_type_user ttm_bo_type_user
-
-#else
-/*  TTM_HACK_WORKAROUND_ttm_bo_type_user -- Hack for porting,
-    as ttm_bo_type_user is no longer implemented.
-    This will not result in working code.
-    FIXME - to be removed. */
-
-#warning warning: ttm_bo_type_user no longer supported
-
-/*  For kernel 3.3+, use the wrong type, which will compile but not work. */
-#define TTM_HACK_WORKAROUND_ttm_bo_type_user ttm_bo_type_kernel
-
-#endif
-
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 3, 0))
-		/* Handle frame buffer allocated in user space, Convert
-		  user space virtual address into pages list */
-		unsigned int page_nr = 0;
-		struct vm_area_struct *vma = NULL;
-		struct sg_table *sg = NULL;
-		unsigned long num_pages = 0;
-		struct page **pages = 0;
-
-		num_pages = (req->size + PAGE_SIZE - 1) >> PAGE_SHIFT;
-		pages = kzalloc(num_pages * sizeof(struct page *), GFP_KERNEL);
-		if (unlikely(pages == NULL)) {
-			printk(KERN_ERR "kzalloc pages failed\n");
-			return -ENOMEM;
-		}
-
-		down_read(&current->mm->mmap_sem);
-		vma = find_vma(current->mm, req->user_address);
-		if (unlikely(vma == NULL)) {
-			up_read(&current->mm->mmap_sem);
-			kfree(pages);
-			printk(KERN_ERR "find_vma failed\n");
-			return -EFAULT;
-		}
-		unsigned long before_flags = vma->vm_flags;
-		if (vma->vm_flags & (VM_IO | VM_PFNMAP))
-			vma->vm_flags = vma->vm_flags & ((~VM_IO) & (~VM_PFNMAP));
-		page_nr = get_user_pages(current, current->mm,
-					 req->user_address,
-					 (int)(num_pages), 1, 0, pages,
-					 NULL);
-		vma->vm_flags = before_flags;
+	down_read(&current->mm->mmap_sem);
+	vma = find_vma(current->mm, req->user_address);
+	if (unlikely(vma == NULL)) {
 		up_read(&current->mm->mmap_sem);
-
-		/* can be written by caller, not forced */
-		if (unlikely(page_nr < num_pages)) {
-			kfree(pages);
-			pages = 0;
-			printk(KERN_ERR "get_user_pages err.\n");
-			return -ENOMEM;
-		}
-		sg = drm_prime_pages_to_sg(pages, num_pages);
-		if (unlikely(sg == NULL)) {
-			kfree(pages);
-			printk(KERN_ERR "drm_prime_pages_to_sg err.\n");
-			return -ENOMEM;
-		}
 		kfree(pages);
+		printk(KERN_ERR "find_vma failed\n");
+		return -EFAULT;
+	}
+	before_flags = vma->vm_flags;
+	if (vma->vm_flags & (VM_IO | VM_PFNMAP))
+		vma->vm_flags = vma->vm_flags &
+			((~VM_IO) & (~VM_PFNMAP));
+	page_nr = get_user_pages(current, current->mm,
+				 req->user_address,
+				 (int)(num_pages), 1, 0, pages,
+				 NULL);
+	vma->vm_flags = before_flags;
+	up_read(&current->mm->mmap_sem);
+
+	/* can be written by caller, not forced */
+	if (unlikely(page_nr < num_pages)) {
+		kfree(pages);
+		pages = 0;
+		printk(KERN_ERR "get_user_pages err.\n");
+		return -ENOMEM;
+	}
+	sg = drm_prime_pages_to_sg(pages, num_pages);
+	if (unlikely(sg == NULL)) {
+		kfree(pages);
+		printk(KERN_ERR "drm_prime_pages_to_sg err.\n");
+		return -ENOMEM;
+	}
+	kfree(pages);
 #endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
 	ret = ttm_bo_init(bdev,
 			  bo,
 			  req->size,
-			  TTM_HACK_WORKAROUND_ttm_bo_type_user,
+			  ttm_bo_type_user,
 			  &placement,
 			  req->page_alignment,
 			  req->user_address,

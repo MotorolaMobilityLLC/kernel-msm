@@ -44,6 +44,8 @@
 #ifndef __ACHWARE_H__
 #define __ACHWARE_H__
 
+#include "aclocal.h"
+
 /* Values for the _SST predefined method */
 
 #define ACPI_SST_INDICATOR_OFF  0

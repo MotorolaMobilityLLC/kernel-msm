@@ -211,7 +211,7 @@ static int user_memref_to_sw_desc_memref(struct dxdi_memref *cur_memref,
 		/* Temp. registration */
 		memref_idx =
 		    register_client_memref(client_ctx,
-					   (u8 __user *)cur_memref->
+					   (u8 __user *)(uintptr_t) cur_memref->
 					   start_or_offset, NULL,
 					   cur_memref->size, dma_dir);
 		if (unlikely(!IS_VALID_MEMREF_IDX(memref_idx))) {

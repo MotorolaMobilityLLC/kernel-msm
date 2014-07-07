@@ -126,7 +126,7 @@ int psb_msvdx_core_reset(struct drm_psb_private *dev_priv)
 {
 	int ret = 0;
 	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
-	uint32_t core_rev;
+
 	/* Enable Clocks */
 	PSB_DEBUG_GENERAL("Enabling clocks\n");
 	psb_msvdx_mtx_set_clocks(dev_priv->dev, clk_enable_all);
@@ -326,9 +326,7 @@ static ssize_t ved_freq_scaling_show(struct device *dev,
 {
 	struct drm_device *drm_dev = dev_get_drvdata(dev);
 	int ret = -EINVAL;
-	int chars;
 	int freq_code;
-	u32 freq_val;
 
 	if (drm_dev == NULL)
                return 0;
@@ -370,7 +368,7 @@ static ssize_t ved_freq_scaling_store(struct device *dev,
 		if ((freq_code ^ IP_FREQ_RESUME_SET) == 0) {
 			psb_set_freq_control_switch(true);
 		} else {
-			printk(KERN_ERR "%s: invalid freq_code %d\n", freq_code);
+			printk(KERN_ERR "%s: invalid freq_code %d\n", buf, freq_code);
 		}
 	}
 	return size;
@@ -385,13 +383,14 @@ static int32_t msvdx_alloc_ccb_for_rendec(struct drm_device *dev)
 {
 	struct msvdx_private *msvdx_priv = NULL;
 	int32_t ret = 0;
+	struct drm_psb_private *dev_priv;
 
 	PSB_DEBUG_INIT("MSVDX: Setting up RENDEC,allocate CCB 0/1\n");
 
 	if (dev == NULL)
 		return 1;
 
-	struct drm_psb_private *dev_priv = psb_priv(dev);
+	dev_priv = psb_priv(dev);
 	if (dev_priv == NULL)
 		return 1;
 
@@ -435,6 +434,7 @@ err_exit:
 	return 1;
 }
 
+#ifndef CONFIG_SLICE_HEADER_PARSING
 static void msvdx_rendec_init_by_reg(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = psb_priv(dev);
@@ -475,6 +475,7 @@ static void msvdx_rendec_init_by_reg(struct drm_device *dev)
 			1);
 	PSB_WMSVDX32(cmd, MSVDX_RENDEC_CONTROL0_OFFSET);
 }
+#endif
 
 int32_t msvdx_rendec_init_by_msg(struct drm_device *dev)
 {
@@ -637,7 +638,6 @@ void msvdx_init_test(struct drm_device *dev)
 static int msvdx_startup_init(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = psb_priv(dev);
-	int ret;
 	struct msvdx_private *msvdx_priv;
 
 	msvdx_priv = kmalloc(sizeof(struct msvdx_private), GFP_KERNEL);
@@ -820,7 +820,6 @@ int msvdx_mtx_init(struct drm_device *dev, int error_reset)
 #define WDT_CLOCK_DIVIDER 128
 int psb_msvdx_post_boot_init(struct drm_device *dev)
 {
-	struct fw_init_msg init_msg;
 	struct drm_psb_private *dev_priv = psb_priv(dev);
 	struct msvdx_private *msvdx_priv = dev_priv->msvdx_private;
 	uint32_t device_node_flags =
@@ -883,9 +882,7 @@ int psb_msvdx_post_boot_init(struct drm_device *dev)
 int psb_msvdx_init(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv = psb_priv(dev);
-	uint32_t cmd;
 	int ret;
-	struct msvdx_private *msvdx_priv;
 
 	if (!dev_priv->msvdx_private) {
 		if (msvdx_startup_init(dev))

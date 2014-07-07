@@ -56,7 +56,6 @@ int vsp_init(struct drm_device *dev)
 	struct vsp_private *vsp_priv;
 	bool is_iomem;
 	int ret;
-	unsigned int context_size;
 	int i = 0;
 
 	VSP_DEBUG("init vsp private data structure\n");

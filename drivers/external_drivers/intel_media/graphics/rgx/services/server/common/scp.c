@@ -431,6 +431,7 @@ static void _SCPDumpFence(const char *psczName, struct sync_fence *psFence)
 static IMG_VOID _SCPDumpCommand(SCP_COMMAND *psCommand)
 {
 	IMG_UINT32 i;
+        SCP_SYNC_DATA *psSCPSyncData;
 
 	PVR_LOG(("\tCommand type = %d (@%p)", psCommand->ui32CmdType, psCommand));
 
@@ -441,8 +442,8 @@ static IMG_VOID _SCPDumpCommand(SCP_COMMAND *psCommand)
 			if (!psCommand->pasSCPSyncData)
 				continue;
 
-			SCP_SYNC_DATA *psSCPSyncData = &psCommand->pasSCPSyncData[i];
-		   
+			psSCPSyncData = &psCommand->pasSCPSyncData[i];
+
 			/*
 				Only dump this sync if there is a fence operation on it
 			*/

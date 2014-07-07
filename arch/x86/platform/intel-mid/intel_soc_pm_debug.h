@@ -95,7 +95,7 @@ extern int s0ix_residency_reg_map[];
 #define ISLANDS_ISP	2
 #define NC_DEVS		2
 
-static struct lss_definition lsses[] = {
+struct lss_definition lsses[] = {
 	{"Lss00", "Storage", "SDIO0 (HC2)"},
 	{"Lss01", "Storage", "eMMC0 (HC0a)"},
 	{"NA", "Storage", "ND_CTL (Note 5)"},

@@ -63,7 +63,9 @@
 
 static struct mutex dpst_mutex;
 static int blc_adj2;
+#ifdef GAMMA_SETTINGS
 static u32 lut_adj[256];
+#endif
 
 static struct drm_device *g_dev = NULL;	// hack for the queue
 static uint32_t diet_saved[33];
@@ -80,7 +82,7 @@ int send_hist(void)
 	dispmgr_cmd.module = DISPMGR_MOD_DPST;
 	dispmgr_cmd.cmd = DISPMGR_DPST_HIST_DATA;
 	dispmgr_cmd.data_size = sizeof(struct drm_psb_hist_status_arg);
-	dispmgr_cmd.data = &mydata;
+	dispmgr_cmd.data = (uintptr_t) &mydata;
 	dispmgr_nl_send_msg(&dispmgr_cmd);
 	return 0;
 }
@@ -676,6 +678,7 @@ static void dpst_restore_bl_adj_factor(struct drm_device *dev)
 	}
 }
 
+#ifdef GAMMA_SETTINGS
 static void dpst_save_gamma_settings(struct drm_device *dev)
 {
     struct drm_psb_private *dev_priv = dev->dev_private;
@@ -745,6 +748,7 @@ static void dpst_restore_gamma_settings(struct drm_device *dev)
 
     power_island_put(OSPM_DISPLAY_A);
 }
+#endif
 
 void dpst_disable_post_process(struct drm_device *dev)
 {
@@ -761,7 +765,7 @@ void dpst_disable_post_process(struct drm_device *dev)
 			struct dispmgr_command_hdr send_cmd_hdr;
 			psb_dpst_mode(g_dev, &xy);
 			send_cmd_hdr.data_size = sizeof(xy);
-			send_cmd_hdr.data = &xy;
+			send_cmd_hdr.data = (uintptr_t) &xy;
 			send_cmd_hdr.module = DISPMGR_MOD_DPST;
 			send_cmd_hdr.cmd = DISPMGR_DPST_GET_MODE;
 			dispmgr_nl_send_msg(&send_cmd_hdr);

@@ -87,7 +87,7 @@ static void execute_recv_command(struct dispmgr_command_hdr *cmd_hdr)
 						    ("kdispmgr: received DISPMGR_TEST cmd NO data.\n");
 
 					send_cmd_hdr.data_size = sizeof(data);
-					send_cmd_hdr.data = &data;
+					send_cmd_hdr.data = (uintptr_t) &data;
 					send_cmd_hdr.module =
 					    DISPMGR_MOD_NETLINK;
 					send_cmd_hdr.cmd = DISPMGR_TEST;
@@ -112,7 +112,8 @@ static void execute_recv_command(struct dispmgr_command_hdr *cmd_hdr)
 					send_cmd_hdr.cmd = DISPMGR_TEST_TEXT;
 					send_cmd_hdr.data_size =
 					    strlen(data) + 1;
-					send_cmd_hdr.data = (void *)data;
+					send_cmd_hdr.data =
+						(uintptr_t) (void *)data;
 					dispmgr_nl_send_msg(&send_cmd_hdr);
 				}
 				break;
@@ -167,7 +168,7 @@ void dispmgr_nl_send_msg(struct dispmgr_command_hdr *cmd_hdr)
 
 	memcpy(nlmsg_data(nlh), cmd_hdr, hdr_size);
 	if (cmd_hdr->data_size) {
-		memcpy(nlmsg_data(nlh) + hdr_size, cmd_hdr->data,
+		memcpy(nlmsg_data(nlh) + hdr_size, (void *) cmd_hdr->data,
 		       cmd_hdr->data_size);
 	}
 	ret = netlink_unicast(nl_sk, skb_out, g_pid, MSG_DONTWAIT);
@@ -190,7 +191,7 @@ static void nl_recv_msg(struct sk_buff *skb)
 
 	memcpy((void *)(&cmd_hdr), NLMSG_DATA(nlh), hdr_size);
 	if (cmd_hdr.data_size) {
-		cmd_hdr.data = NLMSG_DATA(nlh) + hdr_size;
+		cmd_hdr.data = (uintptr_t) (NLMSG_DATA(nlh) + hdr_size);
 	}
 
 	execute_recv_command(&cmd_hdr);
@@ -216,11 +217,11 @@ static int dispmgr_nl_init(void)
 				      NETLINK_DISPMGR,
 				      0, nl_recv_msg, NULL, THIS_MODULE);
 #else
-        struct netlink_kernel_cfg cfg = {
-                 .groups         = 0,
-                 .input          = nl_recv_msg,
-                 .cb_mutex       = NULL,
-                 .flags          = THIS_MODULE,
+	struct netlink_kernel_cfg cfg = {
+		.groups = 0,
+		.input = nl_recv_msg,
+		.cb_mutex = NULL,
+		.flags = (uintptr_t) (THIS_MODULE),
 	};
 
 	nl_sk = netlink_kernel_create(&init_net, NETLINK_DISPMGR, &cfg);

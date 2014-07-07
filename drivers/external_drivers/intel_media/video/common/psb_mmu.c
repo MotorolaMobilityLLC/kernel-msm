@@ -1271,7 +1271,7 @@ int psb_ttm_bo_clflush(struct psb_mmu_driver *mmu,
 	struct ttm_bo_kmap_obj bo_kmap;
 
 	if (unlikely(!mmu || !bo)) {
-		DRM_ERROR("NULL pointer, mmu:0x%x bo:0x%x\n", mmu, bo);
+		DRM_ERROR("NULL pointer, mmu:%p bo:%p\n", mmu, bo);
 		return 1;
 	}
 

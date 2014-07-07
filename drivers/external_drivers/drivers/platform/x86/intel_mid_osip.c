@@ -348,11 +348,13 @@ static int osip_reboot_target_call(const char *target, int id)
 		/* If device is already in RECOVERY we must be able */
 		/* to reboot in MOS if given target is MOS or POS.  */
 		pr_warn("[REBOOT] %s, restoring OSIP\n", __func__);
-		access_osip_record(osip_restore, (void *)(get_osii_index(SIGNED_MOS_ATTR)));
+		access_osip_record(osip_restore, (void *)(uintptr_t)
+				   (get_osii_index(SIGNED_MOS_ATTR)));
 	}
 	if (id == SIGNED_RECOVERY_ATTR && ret_ipc >= 0) {
 		pr_warn("[REBOOT] %s, invalidating osip\n", __func__);
-		access_osip_record(osip_invalidate, (void *)(get_osii_index(SIGNED_MOS_ATTR)));
+		access_osip_record(osip_invalidate, (void *)(uintptr_t)
+				   (get_osii_index(SIGNED_MOS_ATTR)));
 	}
 	return NOTIFY_DONE;
 }
@@ -611,20 +613,26 @@ static void create_debugfs_files(void)
 	osip_dir = debugfs_create_dir("osip", NULL);
 	/* /sys/kernel/debug/osip/cmdline */
 	(void) debugfs_create_file("cmdline",
-				S_IFREG | S_IRUGO | S_IWUSR | S_IWGRP,
-				osip_dir, (void *)(get_osii_index(SIGNED_MOS_ATTR)), &osip_cmdline_fops);
+				   S_IFREG | S_IRUGO | S_IWUSR | S_IWGRP,
+				   osip_dir, (void *)(uintptr_t)
+				   (get_osii_index(SIGNED_MOS_ATTR)),
+				   &osip_cmdline_fops);
 	/* /sys/kernel/debug/osip/cmdline_ros */
 	(void) debugfs_create_file("cmdline_ros",
 				S_IFREG | S_IRUGO | S_IWUSR | S_IWGRP,
-				osip_dir, (void *)(get_osii_index(SIGNED_RECOVERY_ATTR)), &osip_cmdline_fops);
+				   osip_dir, (void *)(uintptr_t)
+				   (get_osii_index(SIGNED_RECOVERY_ATTR)),
+				   &osip_cmdline_fops);
 	/* /sys/kernel/debug/osip/cmdline_pos */
 	(void) debugfs_create_file("cmdline_pos",
-				S_IFREG | S_IRUGO | S_IWUSR | S_IWGRP,
-				osip_dir, (void *)(get_osii_index(SIGNED_POS_ATTR)), &osip_cmdline_fops);
+				   S_IFREG | S_IRUGO | S_IWUSR | S_IWGRP,
+				   osip_dir, (void *)(uintptr_t)
+				   (get_osii_index(SIGNED_POS_ATTR)),
+				   &osip_cmdline_fops);
 	/* /sys/kernel/debug/osip/decode */
 	(void) debugfs_create_file("decode",
-				S_IFREG | S_IRUGO,
-				osip_dir, NULL, &osip_decode_fops);
+				   S_IFREG | S_IRUGO,
+				   osip_dir, NULL, &osip_decode_fops);
 }
 static void remove_debugfs_files(void)
 {

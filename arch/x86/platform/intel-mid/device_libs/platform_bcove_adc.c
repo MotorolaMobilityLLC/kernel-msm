@@ -24,18 +24,6 @@
 /* SRAM address where the GPADC interrupt register is cached */
 #define GPADC_SRAM_INTR_ADDR	0xfffff615
 
-static struct gpadc_regmap_t basincove_gpadc_regmaps[BCOVE_GPADC_CH_NUM] = {
-	{"VBAT",        5, 0xE9, 0xEA, },
-	{"BATID",       4, 0xEB, 0xEC, },
-	{"IBAT",        5, 0xED, 0xEE, },
-	{"PMICTEMP",    3, 0xCC, 0xCD, },
-	{"BATTEMP0",    2, 0xC8, 0xC9, },
-	{"BATTEMP1",    2, 0xCA, 0xCB, },
-	{"SYSTEMP0",    3, 0xC2, 0xC3, },
-	{"SYSTEMP1",    3, 0xC4, 0xC5, },
-	{"SYSTEMP2",    3, 0xC6, 0xC7, },
-};
-
 static struct gpadc_regmap_t shadycove_gpadc_regmaps[SCOVE_GPADC_CH_NUM] = {
 	{"VBAT",        5, 0xE9, 0xEA, },
 	{"BATID",       4, 0xEC, 0xED, },
@@ -49,17 +37,6 @@ static struct gpadc_regmap_t shadycove_gpadc_regmaps[SCOVE_GPADC_CH_NUM] = {
 	{"PEAK",        7, 0xF7, 0xF8, },
 	{"AGND",	6, 0xF0, 0xF1, },
 	{"VREF",	6, 0xF0, 0xF1, },
-};
-
-static struct gpadc_regs_t basincove_gpadc_regs = {
-	.gpadcreq		= 0xDC,
-	.gpadcreq_irqen		= (1 << 1),
-	.gpadcreq_busy		= (1 << 0),
-	.mirqlvl1		= 0x0C,
-	.mirqlvl1_adc		= (1 << 4),
-	.adc1cntl		= 0xDD,
-	.adcirq			= 0x06,
-	.madcirq		= 0x11,
 };
 
 static struct gpadc_regs_t shadycove_gpadc_regs = {

@@ -73,10 +73,12 @@ static IMG_PIXFMT DC_MRFLD_Supported_PixelFormats[] = {
 	IMG_PIXFMT_YUV420_2PLANE,
 };
 
+#if 0
 static uint32_t DC_MRFLD_PixelFormat_Mapping[] = {
 	[IMG_PIXFMT_B5G6R5_UNORM] = (0x5 << 26),
 	[IMG_PIXFMT_B8G8R8A8_UNORM] = (0x6 << 26),
 };
+#endif
 
 static uint32_t DC_ExtraPowerIslands[DC_PLANE_MAX][MAX_PLANE_INDEX] = {
 	{ 0,              0,              0},
@@ -133,7 +135,7 @@ static IMG_BOOL _Is_Valid_DC_Buffer(DC_BUFFER_IMPORT_INFO *psBufferInfo)
 }
 #endif /* if KEEP_UNUSED_CODE */
 
-static IMG_BOOL _Is_Task_KThread()
+static IMG_BOOL _Is_Task_KThread(void)
 {
 	/* skip task from user space and work queue */
 	if (((current->flags & PF_NO_SETAFFINITY) == 0)
@@ -156,6 +158,7 @@ static void _Update_PlanePipeMapping(DC_MRFLD_DEVICE *psDevice,
 	mutex_unlock(&psDevice->sMappingLock);
 }
 
+#if 0
 static IMG_BOOL _Enable_ExtraPowerIslands(DC_MRFLD_DEVICE *psDevice,
 					IMG_UINT32 ui32ExtraPowerIslands)
 {
@@ -171,7 +174,7 @@ static IMG_BOOL _Enable_ExtraPowerIslands(DC_MRFLD_DEVICE *psDevice,
 		return IMG_TRUE;
 
 	if (!power_island_get(ui32ExtraPowerIslands)) {
-		DRM_ERROR("Failed to turn on islands %lx\n",
+		DRM_ERROR("Failed to turn on islands %x\n",
 			ui32ExtraPowerIslands);
 		return IMG_FALSE;
 
@@ -228,6 +231,7 @@ static void _Flip_To_Surface(DC_MRFLD_DEVICE *psDevice,
 	uint32_t format = DC_MRFLD_PixelFormat_Mapping[eFormat];
 	DCCBFlipToSurface(psDrmDev, ulSurfAddr, format, ulStride, iPipe);
 }
+#endif
 
 static void _Flip_Overlay(DC_MRFLD_DEVICE *psDevice,
 			DC_MRFLD_OVERLAY_CONTEXT *psContext,
@@ -241,8 +245,6 @@ static void _Flip_Sprite(DC_MRFLD_DEVICE *psDevice,
 			DC_MRFLD_SPRITE_CONTEXT *psContext,
 			IMG_INT iPipe)
 {
-	int index = psContext->index;
-
 	if ((iPipe && psContext->pipe) || (!iPipe && !psContext->pipe))
 		DCCBFlipSprite(psDevice->psDrmDevice, psContext);
 }
@@ -251,8 +253,6 @@ static void _Flip_Primary(DC_MRFLD_DEVICE *psDevice,
 			DC_MRFLD_PRIMARY_CONTEXT *psContext,
 			IMG_INT iPipe)
 {
-	int index = psContext->index;
-
 	if ((iPipe && psContext->pipe) || (!iPipe && !psContext->pipe))
 		DCCBFlipPrimary(psDevice->psDrmDevice, psContext);
 }
@@ -437,10 +437,9 @@ static void free_flip_states_on_pipe(struct drm_device *psDrmDev, int pipe)
 	struct list_head *psFlipQueue;
 	DC_MRFLD_FLIP *psFlip, *psTmp;
 	IMG_UINT32 eFlipState;
-	IMG_BOOL bActivePipe;
 
 	if (pipe != DC_PIPE_A && pipe != DC_PIPE_B)
-		return IMG_NULL;
+		return;
 
 	psFlipQueue = &gpsDevice->sFlipQueues[pipe];
 
@@ -469,7 +468,7 @@ static void free_flip_states_on_pipe(struct drm_device *psDrmDev, int pipe)
 		}
 	}
 
-	return IMG_NULL;
+	return;
 }
 
 static void timer_flip_handler(struct work_struct *work)
@@ -483,7 +482,7 @@ static void timer_flip_handler(struct work_struct *work)
 	bool bHasPendingCommand[MAX_PIPE_NUM] = { false };
 
 	if (!gpsDevice)
-		return IMG_TRUE;
+		return;
 
 	/* acquire flip queue mutex */
 	mutex_lock(&gpsDevice->sFlipQueueLock);
@@ -536,16 +535,11 @@ static void _Flip_Timer_Fn(unsigned long arg)
 
 static IMG_BOOL _Do_Flip(DC_MRFLD_FLIP *psFlip, int iPipe)
 {
-	DC_MRFLD_SURF_CUSTOM *psSurfCustom = NULL;
 	struct intel_dc_plane_zorder *zorder = NULL;
 	DC_MRFLD_BUFFER **pasBuffers;
 	struct flip_plane *plane;
 	IMG_UINT32 uiNumBuffers;
-	IMG_UINT32 ulAddr;
-	IMG_PIXFMT eFormat;
-	IMG_UINT32 ulStride;
 	IMG_BOOL bUpdated;
-	int i, j;
 	unsigned long flags;
 
 	if (!gpsDevice || !psFlip) {
@@ -969,8 +963,6 @@ static int _Vsync_ISR(struct drm_device *psDrmDev, int iPipe)
 	DC_MRFLD_FLIP *psFlip, *psTmp;
 	DC_MRFLD_FLIP *psNextFlip;
 	IMG_UINT32 eFlipState;
-	int i, j;
-	struct plane_state *pstate;
 	IMG_UINT32 uiVblankCounter;
 	IMG_BOOL bNewFlipUpdated = IMG_FALSE;
 
@@ -1310,8 +1302,9 @@ static PVRSRV_ERROR DC_MRFLD_ContextConfigureCheck(
 
 		/*copy the context from userspace*/
 		err = copy_from_user(psSurfCustom,
-				(void *)pasSurfAttrib[i].ui32Custom,
-				sizeof(DC_MRFLD_SURF_CUSTOM));
+				     (void *)(uintptr_t)
+				     pasSurfAttrib[i].ui32Custom,
+				     sizeof(DC_MRFLD_SURF_CUSTOM));
 		if (err) {
 			DRM_ERROR("Failed to copy plane context\n");
 			continue;
@@ -1461,11 +1454,11 @@ static PVRSRV_ERROR DC_MRFLD_BufferAlloc(IMG_HANDLE hDisplayContext,
 
 	/*map this buffer to gtt*/
 	DCCBgttMapMemory(psDrmDev,
-			(unsigned int)psBuffer,
-			psBuffer->ui32OwnerTaskID,
-			psBuffer->psSysAddr,
-			ulPagesNumber,
-			(unsigned int *)&psBuffer->sDevVAddr.uiAddr);
+			 (unsigned int)(uintptr_t)psBuffer,
+			 psBuffer->ui32OwnerTaskID,
+			 psBuffer->psSysAddr,
+			 ulPagesNumber,
+			 (unsigned int *)&psBuffer->sDevVAddr.uiAddr);
 
 	psBuffer->sDevVAddr.uiAddr <<= PAGE_SHIFT;
 
@@ -1600,8 +1593,8 @@ static IMG_VOID DC_MRFLD_BufferFree(IMG_HANDLE hBuffer)
 	 */
 	if (psBuffer->eSource == DCMrfldEX_BUFFER_SOURCE_ALLOC) {
 		/*make sure unmap this buffer from gtt*/
-		DCCBgttUnmapMemory(psDrmDev, (unsigned int)psBuffer,
-				psBuffer->ui32OwnerTaskID);
+		DCCBgttUnmapMemory(psDrmDev, (unsigned int)(uintptr_t)psBuffer,
+				   psBuffer->ui32OwnerTaskID);
 		kfree(psBuffer->psSysAddr);
 		vfree(psBuffer->sCPUVAddr);
 	}
@@ -1967,7 +1960,7 @@ void DC_MRFLD_onPowerOn(uint32_t iPipe)
 	/* we do nothing on ExtraPowerIsland during power on.
 	 * It will be automatically turned on during flip.
 	 */
-	int i, j;
+	int j;
 	struct plane_state *pstate;
 	struct drm_psb_private *dev_priv;
 
@@ -1994,7 +1987,9 @@ int DC_MRFLD_Enable_Plane(int type, int index, u32 ctx)
 {
 	int err = 0;
 	IMG_INT32 *ui32ActivePlanes;
+#if 0
 	IMG_UINT32 uiExtraPowerIslands = 0;
+#endif
 
 	if (type <= DC_UNKNOWN_PLANE || type >= DC_PLANE_MAX) {
 		DRM_ERROR("Invalid plane type %d\n", type);
@@ -2018,8 +2013,7 @@ int DC_MRFLD_Enable_Plane(int type, int index, u32 ctx)
 #if 0
 		/* power on extra power islands if required */
 		uiExtraPowerIslands = DC_ExtraPowerIslands[type][index];
-		_Enable_ExtraPowerIslands(gpsDevice,
-					uiExtraPowerIslands);
+		_Enable_ExtraPowerIslands(gpsDevice, uiExtraPowerIslands);
 #endif
 	}
 
@@ -2048,8 +2042,6 @@ int DC_MRFLD_Disable_Plane(int type, int index, u32 ctx)
 {
 	int err = 0;
 	IMG_INT32 *ui32ActivePlanes;
-	struct power_off_req *req;
-	struct drm_psb_private *dev_priv = gpsDevice->psDrmDevice->dev_private;
 	IMG_UINT32 uiExtraPowerIslands = 0;
 
 	if (type <= DC_UNKNOWN_PLANE || type >= DC_PLANE_MAX) {
@@ -2083,8 +2075,8 @@ int DC_MRFLD_Disable_Plane(int type, int index, u32 ctx)
 
 		/* power off extra power islands if required */
 		uiExtraPowerIslands = DC_ExtraPowerIslands[type][index];
-		if (uiExtraPowerIslands) {
 #if 0
+		if (uiExtraPowerIslands) {
 			req = kzalloc(sizeof(*req), GFP_KERNEL);
 			if (!req) {
 				DRM_ERROR("fail to alloc power_off_req\n");
@@ -2096,9 +2088,9 @@ int DC_MRFLD_Disable_Plane(int type, int index, u32 ctx)
 
 			queue_delayed_work(dev_priv->power_wq,
 					   &req->work, msecs_to_jiffies(32));
-#endif
 		}
-out_mapping:
+	out_mapping:
+#endif
 		/* update plane pipe mapping */
 		_Update_PlanePipeMapping(gpsDevice, type, index, -1);
 	}

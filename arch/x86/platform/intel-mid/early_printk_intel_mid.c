@@ -173,18 +173,6 @@ static void max3110_spi_write_data(char c)
 	dw_writel(pspi, dr, data);
 }
 
-/* similar to max3110_spi_write_config, but via SSP controller */
-static void max3110_ssp_write_config(void)
-{
-	u16 config;
-
-	config = 0xc001;
-	dw_writel(pssp, dr, config);
-	dw_readl(pssp, dr);
-	udelay(10);
-	return;
-}
-
 /* similar to max3110_spi_write_data, but via SSP controller */
 static void max3110_ssp_write_data(char c)
 {

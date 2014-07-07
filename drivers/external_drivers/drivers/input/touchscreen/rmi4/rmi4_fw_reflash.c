@@ -724,7 +724,7 @@ print_image_info(struct i2c_client *client, struct image_header *header,
 			header->product_id);
 	dev_info(&client->dev, "Img product info:       %#04x %#04x\n",
 			header->product_info[0], header->product_info[1]);
-	dev_info(&client->dev, "Got firmware, size: %d.\n", fw_entry->size);
+	dev_info(&client->dev, "Got firmware, size: %zd.\n", fw_entry->size);
 }
 
 int rmi4_fw_update(struct rmi4_data *pdata,

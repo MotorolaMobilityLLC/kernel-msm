@@ -1,9 +1,3 @@
-/**
- * file psb_msvdx_ec.c
- * MSVDX error concealment I/O operations
- *
- */
-
 /**************************************************************************
  *
  * Copyright (c) 2007 Intel Corporation, Hillsboro, OR, USA
@@ -103,7 +97,7 @@ void psb_msvdx_do_concealment(struct work_struct *work)
 #else
 	if (!ospm_power_using_video_begin(OSPM_VIDEO_DEC_ISLAND)) {
 #endif
-		printk(KERN_ERR, "MSVDX: fail to power on ved for ec\n");
+		printk(KERN_ERR "MSVDX: fail to power on ved for ec\n");
 		return;
 	}
 
@@ -382,7 +376,7 @@ struct psb_msvdx_ec_ctx *psb_msvdx_find_ec_ctx(
 	if (i < PSB_MAX_EC_INSTANCE)
 		ec_ctx = msvdx_priv->msvdx_ec_ctx[i];
 	else if (free_idx >= 0 && cmd) {
-		PSB_DEBUG_MSVDX("acquire ec ctx idx %d for tfile 8x%08x\n",
+		PSB_DEBUG_MSVDX("acquire ec ctx idx %d for tfile %p\n",
 				free_idx, tfile);
 		ec_ctx = msvdx_priv->msvdx_ec_ctx[free_idx];
 		memset(ec_ctx, 0, sizeof(*ec_ctx));
@@ -420,7 +414,7 @@ void psb_msvdx_update_frame_info(struct msvdx_private *msvdx_priv,
 	for (i = 0; i < MAX_DECODE_BUFFERS; i++) {
 		if (buffer_handle == ec_ctx->frame_info[i].handle)
 			break;
-		if (free_idx < 0 && ec_ctx->frame_info[i].handle == NULL)
+		if ((free_idx < 0) && (ec_ctx->frame_info[i].handle == 0))
 			free_idx = i;
 	}
 

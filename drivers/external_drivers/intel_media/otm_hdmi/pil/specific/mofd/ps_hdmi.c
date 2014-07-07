@@ -256,9 +256,10 @@ bool ps_hdmi_power_rails_off(void)
 /* enable/disable IRQ and CPD_HPD */
 bool ps_hdmi_enable_hpd(bool enable)
 {
+	u8 pin = 0;
+
 	pr_debug("Entered %s: %s\n", __func__, enable ? "enable" : "disable");
 
-	u8 pin = 0;
 	/* see ShadyCove PMIC spec and board schema */
 	/* VV board uses GPIO1 for CT_CP_HPD */
 	pin = 0x7f;
@@ -270,7 +271,7 @@ bool ps_hdmi_enable_hpd(bool enable)
 	return true;
 }
 
-bool ps_hdmi_power_islands_on()
+bool ps_hdmi_power_islands_on(void)
 {
 	/* power on display island C to use overlay C and sprite D planes */
 	return ospm_power_using_hw_begin(
@@ -278,7 +279,7 @@ bool ps_hdmi_power_islands_on()
 			OSPM_UHB_FORCE_POWER_ON);
 }
 
-void ps_hdmi_power_islands_off()
+void ps_hdmi_power_islands_off(void)
 {
 	ospm_power_using_hw_end(
 		OSPM_DISPLAY_HDMI | OSPM_DISPLAY_B);
@@ -381,7 +382,7 @@ int ps_hdmi_get_hpd_pin(void)
 void ps_hdmi_override_cable_status(bool state, bool auto_state)
 {
 	if (g_context == NULL)
-		return 0;
+		return;
 
 	g_context->override_cable_state = auto_state;
 

@@ -296,12 +296,12 @@ struct psb_video_ctx {
 
 	/* AIR parameters */
 	struct adaptive_intra_refresh_info_type air_info;
-	struct ttm_buffer_object *bufs_first_pass_out_params_bo;
-	struct ttm_bo_kmap_obj bufs_first_pass_out_params_kmap;
-	uint32_t *bufs_first_pass_out_params_addr;
-	struct ttm_buffer_object *bufs_first_pass_out_best_multipass_param_bo;
-	struct ttm_bo_kmap_obj bufs_first_pass_out_best_multipass_param_kmap;
-	uint32_t *bufs_first_pass_out_best_multipass_param_addr;
+	struct ttm_buffer_object *bufs_f_p_out_params_bo;
+	struct ttm_bo_kmap_obj bufs_f_p_out_params_kmap;
+	uint32_t *bufs_f_p_out_params_addr;
+	struct ttm_buffer_object *bufs_f_p_out_best_mp_param_bo;
+	struct ttm_bo_kmap_obj bufs_f_p_out_best_mp_param_kmap;
+	uint32_t *bufs_f_p_out_best_mp_param_addr;
 
 	/* Save state registers */
 	uint32_t *bias_reg;

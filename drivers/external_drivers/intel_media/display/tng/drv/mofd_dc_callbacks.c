@@ -144,7 +144,6 @@ void DCCBFlipToSurface(struct drm_device *dev, unsigned long uiAddr,
 	u32 dspstride;
 	u32 reg_offset;
 	u32 val = 0;
-	u32 power_island = 0;
 	struct mdfld_dsi_config *dsi_config = NULL;
 	struct mdfld_dsi_hw_context *dsi_ctx;
 
@@ -476,6 +475,7 @@ static int _GetPipeFromOvadd(u32 ovadd)
 	return pipe;
 }
 
+#if 0
 static void _OverlayWaitVblank(struct drm_device *dev, int pipe)
 {
 	union drm_wait_vblank vblwait;
@@ -495,6 +495,7 @@ static void _OverlayWaitVblank(struct drm_device *dev, int pipe)
 		DRM_ERROR("%s: fail to wait vsync of pipe %d\n", __func__, pipe);
 	}
 }
+#endif
 
 static void _OverlayWaitFlip(struct drm_device *dev, u32 ovstat_reg,
 			int index, int pipe)
@@ -570,7 +571,6 @@ int DCCBOverlayEnable(struct drm_device *dev, u32 ctx,
 	u32 ovadd_reg = OV_OVADD;
 	u32 ovstat_reg = OV_DOVASTA;
 	u32 power_islands = OSPM_DISPLAY_A;
-	int retry;
 	int pipe;
 
 	if (index != 0 && index != 1) {
@@ -604,8 +604,10 @@ int DCCBOverlayEnable(struct drm_device *dev, u32 ctx,
 
 	if (power_island_get(power_islands)) {
 		/*make sure previous flip was done*/
-		//_OverlayWaitFlip(dev, ovstat_reg, index, pipe);
-		//_OverlayWaitVblank(dev, pipe);
+#if 0
+		_OverlayWaitFlip(dev, ovstat_reg, index, pipe);
+		_OverlayWaitVblank(dev, pipe);
+#endif
 
 		PSB_WVDC32(ctx, ovadd_reg);
 

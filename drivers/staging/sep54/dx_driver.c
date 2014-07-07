@@ -2398,6 +2398,7 @@ static int dispatch_sep_rpc(struct sep_op_ctx *op_ctx,
 		} else {
 			memref_idx = register_client_memref(client_ctx,
 							    (u8 __user *)
+							    (uintptr_t)
 							    mem_refs[i].
 							    start_or_offset,
 							    NULL,
@@ -3405,6 +3406,7 @@ static int sep_ioctl_register_mem4dma(struct sep_client_ctx *client_ctx,
 	} else {
 		params.memref_id = register_client_memref(client_ctx,
 							  (u8 __user *)
+							  (uintptr_t)
 							  params.memref.
 							  start_or_offset, NULL,
 							  params.memref.size,

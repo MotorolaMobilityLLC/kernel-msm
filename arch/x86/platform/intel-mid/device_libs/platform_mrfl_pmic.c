@@ -30,26 +30,6 @@
 #define SHADYCOVE_A0	0x00
 #define SHADYCOVE_A1	0x01
 
-static struct temp_lookup basincove_adc_tbl[] = {
-	{0x24, 125, 0}, {0x28, 120, 0},
-	{0x2D, 115, 0}, {0x32, 110, 0},
-	{0x38, 105, 0}, {0x40, 100, 0},
-	{0x48, 95, 0}, {0x51, 90, 0},
-	{0x5C, 85, 0}, {0x68, 80, 0},
-	{0x77, 75, 0}, {0x87, 70, 0},
-	{0x99, 65, 0}, {0xAE, 60, 0},
-	{0xC7, 55, 0}, {0xE2, 50, 0},
-	{0x101, 45, 0}, {0x123, 40, 0},
-	{0x149, 35, 0}, {0x172, 30, 0},
-	{0x19F, 25, 0}, {0x1CE, 20, 0},
-	{0x200, 15, 0}, {0x233, 10, 0},
-	{0x266, 5, 0}, {0x299, 0, 0},
-	{0x2CA, -5, 0}, {0x2F9, -10, 0},
-	{0x324, -15, 0}, {0x34B, -20, 0},
-	{0x36D, -25, 0}, {0x38A, -30, 0},
-	{0x3A4, -35, 0}, {0x3B8, -40, 0},
-};
-
 static struct temp_lookup shadycove_adc_tbl[] = {
 	{0x35, 125, 0}, {0x3C, 120, 0},
 	{0x43, 115, 0}, {0x4C, 110, 0},
@@ -109,7 +89,7 @@ out:
  * as soon as the IPC driver is loaded.
  * Issue is supposed to be fixed with A2-PMIC
  */
-void __init pmic_reset_value_wa(void)
+static int __init pmic_reset_value_wa(void)
 {
 	u8 id_val;
 	int ret;
@@ -118,7 +98,7 @@ void __init pmic_reset_value_wa(void)
 	if (ret) {
 		pr_err("%s:%d Error(%d) reading PMIC ID register\n",
 				__func__, __LINE__, ret);
-		return;
+		return 0;
 	}
 
 	pr_info("%s:%d ShadyCove ID_REG-val:%x\n",
@@ -128,5 +108,6 @@ void __init pmic_reset_value_wa(void)
 		intel_scu_ipc_iowrite8(MCHGRIRQ0_ADDR, 0xFF);
 		intel_scu_ipc_iowrite8(MCHGRIRQ1_ADDR, 0x1F);
 	}
+	return 0;
 }
 rootfs_initcall(pmic_reset_value_wa);
