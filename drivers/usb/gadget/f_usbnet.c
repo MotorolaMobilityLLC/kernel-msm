@@ -783,8 +783,13 @@ int usbnet_bind_config(struct usbnet_device *dev, struct usb_configuration *c)
 
 	pr_debug("usbnet_bind_config\n");
 
-	status = usb_string_id(c->cdev);
-	if (status >= 0) {
+	if (usbnet_string_defs[STRING_INTERFACE].id == 0) {
+		status = usb_string_id(c->cdev);
+		if (status < 0) {
+			pr_err("%s: failed to get string id, err:%d\n",
+					__func__, status);
+			return status;
+		}
 		usbnet_string_defs[STRING_INTERFACE].id = status;
 		usbnet_intf_desc.iInterface = status;
 	}
