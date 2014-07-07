@@ -1435,6 +1435,8 @@ static int factory_test_get_output(struct device *dev, short *rOUT)
 		}
 		if (i==5)
 			goto err_no_zyxda;
+
+		msleep(10);
 	}
 
 	err_resume_state:
@@ -1526,6 +1528,7 @@ static ssize_t attr_factory_test(struct device *dev,	struct device_attribute *at
 			goto err_out_of_range;
 	}
 
+	printk("[lis3dsh] PASS\n");
 	//Restore reg value prior to self test and enable irq
 	for(i=32, j=0;i < 37;i++, j++) {
 		if(i==33)
@@ -1543,6 +1546,7 @@ static ssize_t attr_factory_test(struct device *dev,	struct device_attribute *at
 
 	err_resume_state:
 	dev_err(&acc->client->dev, "i2c error 0x%02x,0x%02x: %d\n", buf[0], buf[1], err);
+	printk("[lis3dsh] FAIL\n");
 	for(i=32, j=0;i < 37;i++, j++) {
 		if(i==33)
 			i=35;
@@ -1558,6 +1562,7 @@ static ssize_t attr_factory_test(struct device *dev,	struct device_attribute *at
 
 	err_out_of_range:
 	dev_err(&acc->client->dev, "out of range error %d %d %d\n", OUT_ABS[0], OUT_ABS[1], OUT_ABS[2]);
+	printk("[lis3dsh] FAIL\n");
 	for(i=32, j=0;i < 37;i++, j++) {
 		if(i==33)
 			i=35;
