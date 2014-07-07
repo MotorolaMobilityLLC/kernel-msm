@@ -2,7 +2,7 @@ DRIVER_NAME := tngdisp
 
 include drivers/external_drivers/intel_media/bld/merrifield/rgx/Makefile
 
-obj-m += $(DRIVER_NAME).o
+obj-$(CONFIG_DRM_INTEL_HANDSET) += $(DRIVER_NAME).o
 
 MEDIADIR=../../..
 DISPLAYDIR=$(MEDIADIR)/display/tng/drv

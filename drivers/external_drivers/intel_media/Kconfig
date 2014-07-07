@@ -43,12 +43,23 @@ config SUPPORT_HDMI
         help
           Choose this option to support HDMI.
 
+config INTEL_HDMI_AUDIO
+	tristate "INTEL_HDMI_AUDIO"
+	depends on SUPPORT_HDMI
+	default y
+	help
+	  Controls HDMI audio support.
+	  Specify option INTEL_HDMI_AUDIO as:
+	  y - built-in
+	  m - module
+	  n - not supported.
+
 config R63311_MIPI_VIDEO_MODE
 	bool "support jdi 1920x1080 MIPI panel"
 	default n
 
 config DRM_INTEL_HANDSET
-	tristate "Intel Merrifield Graphics Driver Support (load along with IMG driver)"
+	tristate "Intel Display and IMG/RGX Graphics Driver Support"
 	depends on DRM && PCI
 	select FB_CFB_COPYAREA
         select FB_CFB_FILLRECT
@@ -56,7 +67,11 @@ config DRM_INTEL_HANDSET
         select DRM_KMS_HELPER
         select DRM_TTM
 	help
-	  xxxxxxxxxxxxxxxxxxxxxxxxxx
+	  Specify DRM_INTEL_HANDSET to control presence of display and IMG
+	  RGX graphics driver as:
+	  y - built-in
+	  m - module
+	  n - not present
 
 choice
 	prompt "Build IMG kernel service as "

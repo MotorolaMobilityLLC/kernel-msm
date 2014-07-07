@@ -3,7 +3,7 @@
 # DRIVER_NAME := pvrrgx
 DRIVER_NAME := tngdisp
 
-obj-m += $(DRIVER_NAME).o
+obj-$(CONFIG_DRM_INTEL_HANDSET) += $(DRIVER_NAME).o
 
 KERNELDIR ?= $(ANDROID_BUILD_TOP)/$(KERNEL_SRC_DIR)
 
