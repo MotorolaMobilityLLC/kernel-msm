@@ -235,7 +235,6 @@ qup_i2c_interrupt(int irq, void *devid)
 	uint32_t status = 0;
 	uint32_t status1 = 0;
 	uint32_t op_flgs = 0;
-	int err = 0;
 
 	status = readl_relaxed(dev->base + QUP_I2C_STATUS);
 	status1 = readl_relaxed(dev->base + QUP_ERROR_FLAGS);
@@ -254,7 +253,7 @@ qup_i2c_interrupt(int irq, void *devid)
 	if (status & I2C_STATUS_ERROR_MASK) {
 		dev_err(dev->dev, "QUP: I2C status flags :0x%x, irq:%d\n",
 			status, irq);
-		err = status;
+		dev->err = status;
 		/* Clear Error interrupt if it's a level triggered interrupt*/
 		if (dev->num_irqs == 1) {
 			writel_relaxed(QUP_RESET_STATE, dev->base+QUP_STATE);
@@ -266,7 +265,7 @@ qup_i2c_interrupt(int irq, void *devid)
 
 	if (status1 & 0x7F) {
 		dev_err(dev->dev, "QUP: QUP status flags :0x%x\n", status1);
-		err = -status1;
+		dev->err = -status1;
 		/* Clear Error interrupt if it's a level triggered interrupt*/
 		if (dev->num_irqs == 1) {
 			writel_relaxed((status1 & QUP_STATUS_ERROR_FLAGS),
@@ -304,7 +303,6 @@ intr_done:
 	dev_dbg(dev->dev, "QUP intr= %d, i2c status=0x%x, qup status = 0x%x\n",
 			irq, status, status1);
 	qup_print_status(dev);
-	dev->err = err;
 	complete(dev->complete);
 	return IRQ_HANDLED;
 }
@@ -1193,7 +1191,6 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 		do {
 			int idx = 0;
 			uint32_t carry_over = 0;
-			uint32_t istatus, qstatus, op_flgs;
 
 			/* Transition to PAUSE state only possible from RUN */
 			err = qup_update_state(dev, QUP_PAUSE_STATE);
@@ -1250,11 +1247,20 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 			qup_print_status(dev);
 			timeout = wait_for_completion_timeout(&complete,
 					msecs_to_jiffies(dev->out_fifo_sz));
-			istatus = readl_relaxed(dev->base + QUP_I2C_STATUS);
-			qstatus = readl_relaxed(dev->base + QUP_ERROR_FLAGS);
-			op_flgs = readl_relaxed(dev->base + QUP_OPERATIONAL);
 
 			if (!timeout) {
+				uint32_t istatus =
+				readl_relaxed(dev->base + QUP_I2C_STATUS);
+				uint32_t qstatus =
+				readl_relaxed(dev->base + QUP_ERROR_FLAGS);
+				uint32_t op_flgs =
+				readl_relaxed(dev->base + QUP_OPERATIONAL);
+
+				/* ISR may have already cleared I2C status,
+				 *  but then it has been saved into dev->err.
+				 */
+				if (!istatus && dev->err > 0)
+					istatus = dev->err;
 				/*
 				 * Dont wait for 1 sec if i2c sees the bus
 				 * active and controller is not master.
@@ -1267,21 +1273,24 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 									HZ);
 					if (timeout)
 						goto timeout_err;
-					/* If there was an actual i2c error, try
-					   to recover, since either we are
-					   the master or no one claims to be. */
-					if (istatus & I2C_STATUS_ERROR_MASK)
-						qup_i2c_recover_bus_busy(dev);
+					/* Try to recover, since either we are
+					 * the master or no one claims to be.
+					 * There may or may not be an I2C error,
+					 * but recovery code will try up to
+					 * RECOVER_FAILED_PANIC_COUNT times
+					 * and then BUG out.
+					 */
+					qup_i2c_recover_bus_busy(dev);
 				}
 				dev_err(dev->dev,
 					"Transaction timed out, SL-AD = 0x%x\n",
 					dev->msg->addr);
-
-				if (istatus & I2C_STATUS_ERROR_MASK) {
-					dev_err(dev->dev, "I2C Status: %x\n", istatus);
-					dev_err(dev->dev, "QUP Status: %x\n", qstatus);
-					dev_err(dev->dev, "OP Flags: %x\n", op_flgs);
-				}
+				dev_err(dev->dev, "I2C Status: %x\n",
+						istatus);
+				dev_err(dev->dev, "QUP Status: %x\n",
+						qstatus);
+				dev_err(dev->dev, "OP Flags: %x\n",
+						op_flgs);
 				ret = -ETIMEDOUT;
 				goto out_err;
 			}
@@ -1304,15 +1313,11 @@ timeout_err:
 					 * is I2C related, e.g. unexpected start
 					 * So you may call recover-bus-busy when
 					 * this error happens, but only if we
-					 * are the master or bus is idle.
-					 * Also we may get a timeout even when
-					 * there was no I2C error, so check it.
+					 * are the master or the bus is idle.
 					 */
-					if ((!(istatus & I2C_STATUS_BUS_ACTIVE) ||
-						(istatus & I2C_STATUS_BUS_MASTER)) &&
-						istatus & I2C_STATUS_ERROR_MASK) {
+					if (!(dev->err & I2C_STATUS_BUS_ACTIVE)
+					  || (dev->err & I2C_STATUS_BUS_MASTER))
 						qup_i2c_recover_bus_busy(dev);
-					}
 				}
 				ret = -dev->err;
 				goto out_err;
