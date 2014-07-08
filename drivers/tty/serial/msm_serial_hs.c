@@ -273,7 +273,7 @@ struct msm_hs_port {
 	bool rx_bam_inprogress;
 	unsigned int *reg_ptr;
 	wait_queue_head_t bam_disconnect_wait;
-
+	bool obs;
 };
 
 unsigned int regmap_nonblsp[UART_DM_LAST] = {
@@ -2142,13 +2142,18 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 		mutex_unlock(&msm_uport->clk_mutex);
 		if (msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF) {
 			msm_uport->clk_state = MSM_HS_CLK_ON;
-			/* Pulling RFR line high */
-			msm_hs_write(uport, UART_DM_CR, RFR_LOW);
-			/* Enable auto RFR */
-			data = msm_hs_read(uport, UART_DM_MR1);
-			data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
-			msm_hs_write(uport, UART_DM_MR1, data);
-			mb();
+			/* Pull RFR GPIO line HIGH for IBS
+			 * and return
+			 */
+			if (!msm_uport->obs) {
+				/* Pulling RFR line high */
+				msm_hs_write(uport, UART_DM_CR, RFR_LOW);
+				/* Enable auto RFR */
+				data = msm_hs_read(uport, UART_DM_MR1);
+				data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
+				msm_hs_write(uport, UART_DM_MR1, data);
+				mb();
+			}
 		}
 		MSM_HS_DBG("%s(): clkstate %d", __func__, msm_uport->clk_state);
 		return -1;
@@ -2181,19 +2186,26 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 
 	spin_unlock_irqrestore(&uport->lock, flags);
 
-	/* Pulling RFR line high */
-	msm_hs_write(uport, UART_DM_CR, RFR_LOW);
-	/* Enable auto RFR */
-	data = msm_hs_read(uport, UART_DM_MR1);
-	data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
-	msm_hs_write(uport, UART_DM_MR1, data);
-	mb();
-
+	/* Pull RFR GPIO line HIGH for IBS
+	 * to receive Wakeup byte
+	 */
+	if (!msm_uport->obs) {
+		/* Pulling RFR line high */
+		msm_hs_write(uport, UART_DM_CR, RFR_LOW);
+		/* Enable auto RFR */
+		data = msm_hs_read(uport, UART_DM_MR1);
+		data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
+		msm_hs_write(uport, UART_DM_MR1, data);
+		mb();
+	}
 	/* we really want to clock off */
 	msm_hs_clock_unvote(msm_uport);
 
 	spin_lock_irqsave(&uport->lock, flags);
-	if (use_low_power_wakeup(msm_uport)) {
+
+	/* Enable wakeup interrupt for IBS
+	 */
+	if (!msm_uport->obs && use_low_power_wakeup(msm_uport)) {
 		msm_uport->wakeup.ignore = 1;
 		enable_irq(msm_uport->wakeup.irq);
 		/*
@@ -2367,13 +2379,18 @@ void msm_hs_request_clock_off(struct uart_port *uport) {
 	spin_lock_irqsave(&uport->lock, flags);
 	if (msm_uport->clk_state == MSM_HS_CLK_ON) {
 		msm_uport->clk_state = MSM_HS_CLK_REQUEST_OFF;
-		data = msm_hs_read(uport, UART_DM_MR1);
-		/*disable auto ready-for-receiving */
-		data &= ~UARTDM_MR1_RX_RDY_CTL_BMSK;
-		msm_hs_write(uport, UART_DM_MR1, data);
-		mb();
-		/* set RFR_N to high */
-		msm_hs_write(uport, UART_DM_CR, RFR_HIGH);
+		/* Stop receiving data by pulling RFR GPIO line
+		 * LOW and disabling Auto RFR for IBS
+		 */
+		if (!msm_uport->obs) {
+			data = msm_hs_read(uport, UART_DM_MR1);
+			/*disable auto ready-for-receiving */
+			data &= ~UARTDM_MR1_RX_RDY_CTL_BMSK;
+			msm_hs_write(uport, UART_DM_MR1, data);
+			mb();
+			/* set RFR_N to high */
+			msm_hs_write(uport, UART_DM_CR, RFR_HIGH);
+		}
 
 		data = msm_hs_read(uport, UART_DM_SR);
 		MSM_HS_DBG("%s(): TXEMT, queuing clock off work\n",
@@ -2395,8 +2412,11 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 
 	mutex_lock(&msm_uport->clk_mutex);
 	spin_lock_irqsave(&uport->lock, flags);
-
-	if (msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF) {
+	/* Pull RFR GPIO line HIGH and Enable Auto
+	 * RFR control for IBS
+	 */
+	if (!msm_uport->obs &&
+		msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF) {
 		/* Pulling RFR line high */
 		msm_hs_write(uport, UART_DM_CR, RFR_LOW);
 		/* Enable auto RFR */
@@ -2408,7 +2428,9 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 	switch (msm_uport->clk_state) {
 	case MSM_HS_CLK_OFF:
 		wake_lock(&msm_uport->dma_wake_lock);
-		if (use_low_power_wakeup(msm_uport)) {
+
+		/* Disable Wakeup Interrupt for IBS */
+		if (!msm_uport->obs && use_low_power_wakeup(msm_uport)) {
 			disable_irq_nosync(msm_uport->wakeup.irq);
 			/* uport-irq was disabled when clocked off */
 			enable_irq(uport->irq);
@@ -2990,6 +3012,10 @@ struct msm_serial_hs_platform_data
 
 	pdata->no_suspend_delay = of_property_read_bool(node,
 				"qcom,no-suspend-delay");
+	pdata->obs = of_property_read_bool(node,
+				"qcom,msm-obs");
+	if (pdata->obs)
+		MSM_HS_DBG("%s:Out Band Sleep is Enabled\n", __func__);
 
 	pdata->inject_rx_on_wakeup = of_property_read_bool(node,
 				"qcom,inject-rx-on-wakeup");
@@ -3417,6 +3443,7 @@ static int msm_hs_probe(struct platform_device *pdev)
 		msm_uport->wakeup.ignore = 1;
 		msm_uport->wakeup.inject_rx = pdata->inject_rx_on_wakeup;
 		msm_uport->wakeup.rx_to_inject = pdata->rx_to_inject;
+		msm_uport->obs = pdata->obs;
 
 		if (is_blsp_uart(msm_uport)) {
 			msm_uport->bam_tx_ep_pipe_index =
