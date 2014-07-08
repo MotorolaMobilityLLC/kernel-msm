@@ -322,6 +322,7 @@ static int msm_slim_1_rx_ch = 1;
 static int msm_slim_1_tx_ch = 1;
 static int msm_slim_3_rx_ch = 1;
 static int rec_mode = INCALL_REC_MONO;
+static int msm_pri_mi2s_rate = SAMPLING_RATE_16KHZ;
 
 static struct mutex cdc_mclk_mutex;
 static struct clk *codec_clk;
@@ -1193,6 +1194,11 @@ enum {
 	HDMI_RATE_192KHZ
 };
 
+static const char *const pri_mi2s_rate_text[] = {"16000", "48000", "96000"};
+static const struct soc_enum msm_pri_mi2s_enum[] = {
+	SOC_ENUM_SINGLE_EXT(3, pri_mi2s_rate_text),
+};
+
 static int slim0_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
@@ -1510,6 +1516,35 @@ static int hdmi_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+
+static int msm_pri_mi2s_rate_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_pri_mi2s_rate  = %d", __func__, msm_pri_mi2s_rate);
+	ucontrol->value.integer.value[0] = msm_pri_mi2s_rate;
+	return 0;
+}
+
+static int msm_pri_mi2s_rate_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 16000:
+		msm_pri_mi2s_rate = SAMPLING_RATE_16KHZ;
+		break;
+	case 48000:
+		msm_pri_mi2s_rate = SAMPLING_RATE_48KHZ;
+		break;
+	case 96000:
+		msm_pri_mi2s_rate = SAMPLING_RATE_96KHZ;
+		break;
+	default:
+		msm_pri_mi2s_rate = SAMPLING_RATE_16KHZ;
+		break;
+	}
+	pr_debug("%s: msm_pri_mi2s_rate = %d\n", __func__, msm_pri_mi2s_rate);
+	return 0;
+}
 static int apq8084_auxpcm_rate_get(struct snd_kcontrol *kcontrol,
 				   struct snd_ctl_elem_value *ucontrol)
 {
@@ -2328,7 +2363,7 @@ static int msm_be_pri_mi2s_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					SNDRV_PCM_HW_PARAM_RATE);
 
 	pr_debug("%s()\n", __func__);
-	rate->min = rate->max = 16000;
+	rate->min = rate->max = msm_pri_mi2s_rate;
 
 	return 0;
 }
@@ -2398,6 +2433,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			apq8084_mi2s_rx_ch_get, apq8084_mi2s_rx_ch_put),
 	SOC_ENUM_EXT("QUAT_MI2S_TX Channels", msm_snd_enum[12],
 			apq8084_mi2s_tx_ch_get, apq8084_mi2s_tx_ch_put),
+	SOC_ENUM_EXT("Primary MI2S SampleRate", msm_pri_mi2s_enum[0],
+		     msm_pri_mi2s_rate_get, msm_pri_mi2s_rate_put),
 };
 
 static bool apq8084_swap_gnd_mic(struct snd_soc_codec *codec)
@@ -3265,6 +3302,24 @@ static int apq8084_mi2s_pri_snd_startup(struct snd_pcm_substream *substream)
 			pr_err("%s: PRI MI2S GPIO request failed\n", __func__);
 			atomic_dec_return(&pri_mi2s_rsc_ref);
 			return -EINVAL;
+		}
+		/* set the clk val based on sampling rate */
+		switch (msm_pri_mi2s_rate) {
+		case SAMPLING_RATE_96KHZ:
+			lpass_pri_i2s_enable.clk_val1 =
+				Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+			break;
+
+		case SAMPLING_RATE_48KHZ:
+			lpass_pri_i2s_enable.clk_val1 =
+				Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			break;
+
+		case SAMPLING_RATE_16KHZ:
+			lpass_pri_i2s_enable.clk_val1 =
+				Q6AFE_LPASS_IBIT_CLK_512_KHZ;
+		default:
+			break;
 		}
 
 		ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX,
