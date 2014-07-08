@@ -85,7 +85,7 @@
 			qcom,vddsafe-mv = <4380>;
 			qcom,vinmin-mv = <4350>;
 			qcom,vbatdet-delta-mv = <100>;
-			qcom,ibatmax-ma = <50>;
+			qcom,ibatmax-ma = <150>;
 			qcom,ibatterm-ma = <30>;
 			qcom,ibatsafe-ma = <1500>;
 			qcom,thermal-mitigation = <1500 700 600 325>;
@@ -94,12 +94,12 @@
 			qcom,chg-vadc = <&pm8226_vadc>;
 			qcom,chg-adc_tm = <&pm8226_adc_tm>;
 			qcom,pmic-revid = <&pm8226_revid>;
-			qcom,ibatmax-warm-ma = <50>;
+			qcom,ibatmax-warm-ma = <150>;
 			qcom,warm-bat-decidegc = <450>;
 			qcom,warm-bat-mv = <4100>;
 			qcom,cool-bat-decidegc = <100>;
 			qcom,cool-bat-mv = <4350>;
-			qcom,ibatmax-cool-ma = <50>;
+			qcom,ibatmax-cool-ma = <100>;
 
 			qcom,chgr@1000 {
 				status = "disabled";
