@@ -27,6 +27,14 @@ config MMC_PERF_PROFILING
 	  If you say Y here, support will be added for collecting
 	  performance numbers at the MMC Queue and Host layers.
 
+config MMC_CMD_LOG
+	bool "MMC command logging"
+	depends on MMC != n
+	default n
+	help
+	  This is an option for use by developers; most people should
+	  say N here.  This enables raw MMC command logging to RAM.
+
 if MMC
 
 source "drivers/mmc/core/Kconfig"
