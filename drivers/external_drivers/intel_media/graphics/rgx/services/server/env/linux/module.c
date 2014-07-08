@@ -295,7 +295,7 @@ static struct dev_pm_ops powervr_dev_pm_ops = {
 	.resume		= PVRSRVDriverResume,
 };
 
-static LDM_DRV powervr_driver = {
+static LDM_DRV powervr_driver __attribute__ ((unused)) = {
 #if defined(LDM_PLATFORM)
 	.driver = {
 		.name	= DRVNAME,
