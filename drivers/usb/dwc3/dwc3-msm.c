@@ -171,6 +171,11 @@ MODULE_PARM_DESC(prop_chg_detect, "Enable Proprietary charger detection");
 #define DWC3_VBUS_IN_THRESH         1000000 /* 1V */
 #define DWC3_ID_GND_THRESH          400000  /* 400 mV */
 #define DWC3_ID_DEFAULT_VOLTS       1000000 /* 1V */
+
+/* Number of failures before ignoring Voltage Requests */
+#define DWC3_HVDCP_MAX_FAILURES     5
+#define DWC3_HVDCP_FAIL_MAX_VOLTS   5000000
+
 struct dwc3_msm_req_complete {
 	struct list_head list_item;
 	struct usb_request *req;
@@ -261,6 +266,7 @@ struct dwc3_msm {
 	struct completion ext_chg_wait;
 	unsigned int		hvdcp_chrg_mode;
 	int			hvdcp_chrg_stat;
+	int			hvdcp_failures;
 	bool                    defer_read_id;
 };
 
@@ -2378,7 +2384,10 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 		val->intval = mdwc->host_mode;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		val->intval = mdwc->voltage_max;
+		if (mdwc->hvdcp_failures >= DWC3_HVDCP_MAX_FAILURES)
+			val->intval = DWC3_HVDCP_FAIL_MAX_VOLTS;
+		else
+			val->intval = mdwc->voltage_max;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = mdwc->current_max;
@@ -2461,6 +2470,7 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 				init = true;
 		}
 		mdwc->vbus_active = val->intval;
+		mdwc->hvdcp_failures = 0;
 
 		if (!mdwc->pmic_id_irq)
 			break;
@@ -2844,6 +2854,15 @@ dwc3_msm_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
+
+		if (mdwc->hvdcp_failures >= DWC3_HVDCP_MAX_FAILURES) {
+			pr_err("%s: too many voltage request failures\n",
+								__func__);
+			mdwc->hvdcp_chrg_mode = USB_REQUEST_MODE_NONE;
+			ret = -EFAULT;
+			break;
+		}
+
 		if (val == USB_REQUEST_5V) {
 			pr_info("%s:voting 5V voltage request\n", __func__);
 			mdwc->hvdcp_chrg_mode = USB_REQUEST_MODE_5V;
@@ -2870,6 +2889,7 @@ dwc3_msm_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		} else {
 			pr_info("%s:voltage request failed\n", __func__);
 			mdwc->hvdcp_chrg_stat = USB_REQUEST_STAT_FAIL;
+			mdwc->hvdcp_failures++;
 		}
 
 		power_supply_changed(&mdwc->usb_psy);
