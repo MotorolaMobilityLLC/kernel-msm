@@ -62,7 +62,7 @@
 
 #define VERSION		"1.1"
 #define PROC_DIR	"bluetooth/sleep"
-#define DBG             true
+#define DBG             false
 
 #define POLARITY_LOW 0
 #define POLARITY_HIGH 1
@@ -152,7 +152,7 @@ static struct uart_port *bluesleep_get_uart_port(void)
 
 void bluesleep_setup_uart_port(struct uart_port *uport)
 {
-	if(DBG) printk("bluesleep_setup_uart_port\n");
+	printk("bluesleep_setup_uart_port\n");
 	if (uport != NULL);
 		if(DBG) printk("uport != null \n");
 
@@ -192,7 +192,7 @@ void bluesleep_sleep_wakeup(void)
 	if(DBG) printk("bluesleep_sleep_wakeup\n");
 
 	if (test_bit(BT_ASLEEP, &flags)) {
-		if (DBG)  printk("bluetooth waking up...\n");
+		printk("bluetooth waking up...\n");
 		/* Start the timer */
 		wake_lock(&bsi->wake_lock);
 
@@ -671,10 +671,10 @@ static int __init bluesleep_probe(struct platform_device *pdev)
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_IO,"gpio_ext_wake");
 	if (!res) {
-		printk("bluesleep_populate_dt_pinfo , bsi->has_ext_wake set to 0\n");
+		printk("bsi->has_ext_wake set to 0\n");
 		bsi->has_ext_wake = 0;
 	} else {
-		printk("bluesleep_populate_dt_pinfo , bsi->has_ext_wake set to 1\n");
+		printk("bsi->has_ext_wake set to 1\n");
 		bsi->has_ext_wake = 1;
 	}
 	if (bsi->has_ext_wake) {
@@ -889,7 +889,7 @@ static int __init bluesleep_init(void)
 {
 	int retval;
 
-	if(DBG) printk("MSM Sleep Mode Driver Ver %s\n", VERSION);
+	printk("MSM Sleep Mode Driver Ver %s\n", VERSION);
 
 	retval = platform_driver_probe(&bluesleep_driver, bluesleep_probe);
 	if (retval) {
