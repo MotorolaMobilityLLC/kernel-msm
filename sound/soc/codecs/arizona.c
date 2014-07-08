@@ -2214,7 +2214,7 @@ static void arizona_apply_fll(struct arizona *arizona, unsigned int base,
 			   ARIZONA_FLL1_CTRL_UPD | cfg->n);
 }
 
-static bool arizona_is_enabled_fll(struct arizona_fll *fll)
+static int arizona_is_enabled_fll(struct arizona_fll *fll)
 {
 	struct arizona *arizona = fll->arizona;
 	unsigned int reg;
@@ -2230,12 +2230,16 @@ static bool arizona_is_enabled_fll(struct arizona_fll *fll)
 	return reg & ARIZONA_FLL1_ENA;
 }
 
-static void arizona_enable_fll(struct arizona_fll *fll)
+static int arizona_enable_fll(struct arizona_fll *fll)
 {
 	struct arizona *arizona = fll->arizona;
 	int ret;
 	bool use_sync = false;
+	int already_enabled = arizona_is_enabled_fll(fll);
 	struct arizona_fll_cfg cfg;
+
+	if (already_enabled < 0)
+		return already_enabled;
 
 	/*
 	 * If we have both REFCLK and SYNCCLK then enable both,
@@ -2264,7 +2268,7 @@ static void arizona_enable_fll(struct arizona_fll *fll)
 				   ARIZONA_FLL1_SYNC_ENA, 0);
 	} else {
 		arizona_fll_err(fll, "No clocks provided\n");
-		return;
+		return -EINVAL;
 	}
 
 	/*
@@ -2278,7 +2282,7 @@ static void arizona_enable_fll(struct arizona_fll *fll)
 		regmap_update_bits(arizona->regmap, fll->base + 0x17,
 				   ARIZONA_FLL1_SYNC_BW, ARIZONA_FLL1_SYNC_BW);
 
-	if (!arizona_is_enabled_fll(fll))
+	if (!already_enabled)
 		pm_runtime_get(arizona->dev);
 
 	/* Clear any pending completions */
@@ -2297,6 +2301,8 @@ static void arizona_enable_fll(struct arizona_fll *fll)
 					  msecs_to_jiffies(250));
 	if (ret == 0)
 		arizona_fll_warn(fll, "Timed out waiting for lock\n");
+
+	return 0;
 }
 
 static void arizona_disable_fll(struct arizona_fll *fll)
@@ -2318,7 +2324,7 @@ static void arizona_disable_fll(struct arizona_fll *fll)
 int arizona_set_fll_refclk(struct arizona_fll *fll, int source,
 			   unsigned int Fref, unsigned int Fout)
 {
-	int ret;
+	int ret = 0;
 
 	if (fll->ref_src == source && fll->ref_freq == Fref)
 		return 0;
@@ -2333,17 +2339,17 @@ int arizona_set_fll_refclk(struct arizona_fll *fll, int source,
 	fll->ref_freq = Fref;
 
 	if (fll->fout && Fref > 0) {
-		arizona_enable_fll(fll);
+		ret = arizona_enable_fll(fll);
 	}
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(arizona_set_fll_refclk);
 
 int arizona_set_fll(struct arizona_fll *fll, int source,
 		    unsigned int Fref, unsigned int Fout)
 {
-	int ret;
+	int ret = 0;
 
 	if (fll->sync_src == source &&
 	    fll->sync_freq == Fref && fll->fout == Fout)
@@ -2366,11 +2372,11 @@ int arizona_set_fll(struct arizona_fll *fll, int source,
 	fll->fout = Fout;
 
 	if (Fout)
-		arizona_enable_fll(fll);
+		ret = arizona_enable_fll(fll);
 	else
 		arizona_disable_fll(fll);
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(arizona_set_fll);
 
