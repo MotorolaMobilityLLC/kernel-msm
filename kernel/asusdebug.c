@@ -44,25 +44,7 @@ static void deinitKernelEnv(void);
 unsigned int PRINTK_BUFFER = 0x11F80000;
 
 extern struct timezone sys_tz;
-
-struct mutex fake_mutex;
-struct completion fake_completion;
-struct rt_mutex fake_rtmutex;
 static struct workqueue_struct *ASUSEvtlog_workQueue;
-
-int asus_rtc_read_time(struct rtc_time *tm)
-{
-    struct timespec ts; 
-    
-    getnstimeofday(&ts);
-    ts.tv_sec -= sys_tz.tz_minuteswest * 60;
-    rtc_time_to_tm(ts.tv_sec, tm);
-    printk("[adbg] now %04d%02d%02d-%02d%02d%02d, tz=%d\r\n", 
-        tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, 
-        tm->tm_sec, sys_tz.tz_minuteswest);
-    return 0; 
-}
-EXPORT_SYMBOL(asus_rtc_read_time);
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #if ASUS_LAST_KMSG
@@ -78,7 +60,7 @@ __setup("bootreason=", set_bootreason);
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
 /*
- *   All thread information
+ *   All thread information (Refined)
  */
 
 static char* g_phonehang_log;
@@ -104,43 +86,8 @@ int save_log(const char *f, ...)
     return -1;
 }
 
-#define MAX_STACK_TRACE_DEPTH   64
-struct stack_trace {
-    unsigned int nr_entries, max_entries;
-    unsigned long *entries;
-    int skip;   /* input argument: How many entries to skip */
-};
-
-void save_stack_trace_asus(struct task_struct *tsk, struct stack_trace *trace);
-
-#define SPLIT_NS(x) nsec_high(x), nsec_low(x)
-void print_all_thread_info(void)
-{
-	//Should be removed at future
-}
-
-struct thread_info_save *ptis_head = NULL;
-int find_thread_info(struct task_struct *pts, int force)
-{
-	//Should be removed at future
-    return 0;    
-}
-
-void save_all_thread_info(void)
-{
-	//Should be removed at future
-}
-
-EXPORT_SYMBOL(save_all_thread_info);
-
-void delta_all_thread_info(void)
-{
-	//Should be removed at future
-}
-EXPORT_SYMBOL(delta_all_thread_info);
-
 /*
- * Printk and Last kmsg
+ *   Printk and Last kmsg
  */
 extern void printk_buffer_rebase(void);
 
@@ -389,43 +336,6 @@ void print_log_to_console(unsigned char* buf, int len){
     }
 }
 
-void save_phone_hang_log(void)
-{
-    int file_handle;
-    int ret;
-
-    g_phonehang_log = (char*)PHONE_HANG_LOG_BUFFER;
-    printk("[adbg] save_phone_hang_log PRINTK_BUFFER=%x, PRINTK_BUFFER=PHONE_HANG_LOG_BUFFE=%x \n", 
-        PRINTK_BUFFER, PHONE_HANG_LOG_BUFFER);
-
-    if(g_phonehang_log && ((strncmp(g_phonehang_log, "PhoneHang", 9) == 0) || 
-        (strncmp(g_phonehang_log, "ASUSSlowg", 9) == 0)) )
-    {
-        printk("[adbg] save_phone_hang_log-1\n");
-        initKernelEnv();
-        memset(messages, 0, sizeof(messages));
-        strcpy(messages, "/asdf/");
-        strncat(messages, g_phonehang_log, 29);
-        file_handle = sys_open(messages, O_CREAT|O_WRONLY|O_SYNC, 0);
-        printk("[adbg] save_phone_hang_log-2 file_handle %d, name=%s\n", file_handle, messages);
-        if(!IS_ERR((const void *)file_handle))
-        {
-            ret = sys_write(file_handle, (unsigned char*)g_phonehang_log, strlen(g_phonehang_log));
-            sys_close(file_handle);
-        }else {
-            printk("[adbg] /asdf is not mounted yet, print to console.\n");
-            print_log_to_console((unsigned char*)g_phonehang_log, strlen(g_phonehang_log));
-        }
-        deinitKernelEnv();
-        
-    }
-    if(g_phonehang_log)
-    {
-        g_phonehang_log[0] = 0;   
-    }
-}
-EXPORT_SYMBOL(save_phone_hang_log);
-
 void save_last_shutdown_log(char* filename)
 {
 	char *last_shutdown_log_unparsed;
@@ -470,82 +380,6 @@ void save_last_shutdown_log(char* filename)
     pr_info("[adbg] %s()--\n", __func__);
 }
 
-typedef struct tzbsp_dump_cpu_ctx_s
-{
-    unsigned int mon_lr;
-    unsigned int mon_spsr;
-    unsigned int usr_r0;
-    unsigned int usr_r1;
-    unsigned int usr_r2;
-    unsigned int usr_r3;
-    unsigned int usr_r4;
-    unsigned int usr_r5;
-    unsigned int usr_r6;
-    unsigned int usr_r7;
-    unsigned int usr_r8;
-    unsigned int usr_r9;
-    unsigned int usr_r10;
-    unsigned int usr_r11;
-    unsigned int usr_r12;
-    unsigned int usr_r13;
-    unsigned int usr_r14;
-    unsigned int irq_spsr;
-    unsigned int irq_r13;
-    unsigned int irq_r14;
-    unsigned int svc_spsr;
-    unsigned int svc_r13;
-    unsigned int svc_r14;
-    unsigned int abt_spsr;
-    unsigned int abt_r13;
-    unsigned int abt_r14;
-    unsigned int und_spsr;
-    unsigned int und_r13;
-    unsigned int und_r14;
-    unsigned int fiq_spsr;
-    unsigned int fiq_r8;
-    unsigned int fiq_r9;
-    unsigned int fiq_r10;
-    unsigned int fiq_r11;
-    unsigned int fiq_r12;
-    unsigned int fiq_r13;
-    unsigned int fiq_r14;
-    
-} tzbsp_dump_cpu_ctx_t;
-
-typedef struct tzbsp_dump_buf_s
-{
-    unsigned int sc_status[2];
-    tzbsp_dump_cpu_ctx_t sc_ns[2];
-    tzbsp_dump_cpu_ctx_t sec;
-} tzbsp_dump_buf_t;
-
-void save_last_watchdog_reg(void)
-{
-    tzbsp_dump_buf_t *last_watchdog_reg;
-    struct rtc_time tm;
-    int file_handle;
-    
-    asus_rtc_read_time(&tm);    
-    last_watchdog_reg = (tzbsp_dump_buf_t*)PHONE_HANG_LOG_BUFFER - PRINTK_BUFFER_SLOT_SIZE / 2;
-    if(*((int*)last_watchdog_reg) != PRINTK_BUFFER_MAGIC)
-    {
-        sprintf(messages, "/asdf/%s_%04d%02d%02d-%02d%02d%02d.txt", 
-            "WatchdogReg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
-            tm.tm_hour, tm.tm_min, tm.tm_sec);
-    
-        initKernelEnv();
-        file_handle = sys_open(messages, O_CREAT|O_RDWR|O_SYNC, 0);
-        if(!IS_ERR((const void *)file_handle))
-        {
-            sys_write(file_handle, (unsigned char*)last_watchdog_reg, sizeof(tzbsp_dump_buf_t));
-            sys_close(file_handle);
-        }
-        deinitKernelEnv();          
-    }
-    memset(last_watchdog_reg, 0, sizeof(tzbsp_dump_buf_t));
-    *((int*)last_watchdog_reg) = PRINTK_BUFFER_MAGIC;
-}
-
 void get_last_shutdown_log(void)
 {
     unsigned int *last_shutdown_log_addr;
@@ -574,8 +408,8 @@ void get_last_shutdown_log(void)
     *last_shutdown_log_addr = PRINTK_BUFFER_MAGIC;  //ASUS_BSP ++
 }
 EXPORT_SYMBOL(get_last_shutdown_log);
+
 int first = 0;
-int watchdog_test = 0;
 int asus_asdf_set = 0;
 
 static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
@@ -599,6 +433,7 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 	}
 	else if(strncmp(messages, "panic", 5) == 0)
 	{
+		printk("[adbg] Please use echo c > /proc/sysrq-trigger instead.\n");
 		panic("panic test");
 	}
 	else if(strncmp(messages, "get_asdf_log", strlen("get_asdf_log")) == 0)
@@ -612,7 +447,6 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 		if(!asus_asdf_set)
 		{
 			asus_asdf_set = 1;
-			save_phone_hang_log();
 			get_last_shutdown_log();
 			printk(KERN_WARNING "[ASDF] get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n", 
 			    (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
@@ -733,7 +567,6 @@ static void do_write_event_worker(struct work_struct *work)
          
 void ASUSEvtlog(const char *fmt, ...)
 {
-
     va_list args;
     char* buffer;
     
