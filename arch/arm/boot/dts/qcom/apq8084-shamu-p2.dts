@@ -17,35 +17,5 @@
 #include "apq8084-shamu.dtsi"
 
 / {
-	qcom,msm-id = <178 0x47 0x8100>;
-};
-
-&pma8084_gpios {
-	gpio@c600 { /* GPIO 7 RED LED */
-		qcom,master-en = <0>;		/* Disable GPIO */
-	};
-
-	gpio@c700 { /* GPIO 8 GREEN LED */
-		qcom,master-en = <0>;		/* Disable GPIO */
-	};
-
-	gpio@c800 { /* GPIO 9 BLUE LED */
-		qcom,master-en = <0>;		/* Disable GPIO */
-	};
-};
-
-&spmi_bus {
-	qcom,pma8084@0 {
-		qcom,leds@c600 {
-			status = "disabled";
-		};
-
-		qcom,leds@c700 {
-			status = "disabled";
-		};
-
-		qcom,leds@c800 {
-			status = "disabled";
-		};
-	};
+	qcom,msm-id = <178 0x47 0x8200>;
 };
