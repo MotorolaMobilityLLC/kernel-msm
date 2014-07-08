@@ -209,6 +209,270 @@ static int mmc_clock_opt_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(mmc_clock_fops, mmc_clock_opt_get, mmc_clock_opt_set,
 	"%llu\n");
 
+#ifdef CONFIG_MMC_CMD_LOG
+/*
+ * Initialize the log buffer.  The host must be claimed.
+ */
+int mmc_cmd_log_size(struct mmc_host *host, unsigned int size)
+{
+	kfree(host->mmc_cmd_log);
+	host->mmc_cmd_log = NULL;
+	host->mmc_cmd_log_len = 0;
+	host->mmc_cmd_log_idx = 0;
+
+	size *= host->mmc_cmd_log_recsize;	/* slots per command */
+	if (size > 0) {
+		host->mmc_cmd_log = kmalloc(size * sizeof(*host->mmc_cmd_log),
+				GFP_KERNEL);
+	}
+	if (host->mmc_cmd_log) {
+		memset(host->mmc_cmd_log, 0xFF,
+				size * sizeof(*host->mmc_cmd_log));
+		host->mmc_cmd_log_len = size;
+	} else if (size > 0)
+		pr_err("%s: could not allocate %u records\n", __func__, size);
+
+	return 0;
+}
+
+/*
+ * Configure the logger.  The host must be claimed.
+ */
+int mmc_cmd_log_config(struct mmc_host *host, unsigned int mode)
+{
+	int record_size = 0;
+	int records = 0;
+
+	if (host->mmc_cmd_log_recsize > 0)
+		records = host->mmc_cmd_log_len / host->mmc_cmd_log_recsize;
+
+	/* Latency measurements require start time */
+	if (mode & MMC_CMD_LOG_MODE_LATENCY)
+		mode |= MMC_CMD_LOG_MODE_TIME;
+
+	if (mode & MMC_CMD_LOG_MODE_EN)
+		record_size += MMC_CMD_LOG_RECSIZE_BASE;
+	if (mode & MMC_CMD_LOG_MODE_RESP)
+		record_size += MMC_CMD_LOG_RECSIZE_RESP;
+	if (mode & MMC_CMD_LOG_MODE_TIME)
+		record_size += MMC_CMD_LOG_RECSIZE_TIME;
+	if (mode & MMC_CMD_LOG_MODE_LATENCY)
+		record_size += MMC_CMD_LOG_RECSIZE_LATENCY;
+
+	host->mmc_cmd_log_mode = mode;
+	host->mmc_cmd_log_recsize = record_size;
+	if (records > 0)
+		return mmc_cmd_log_size(host, records);
+
+	return 0;
+}
+
+/*
+ * Add a command and argument to the ring buffer.  The host must be claimed.
+ */
+void _mmc_cmd_log(struct mmc_host *host, u32 cmd, u32 arg)
+{
+	int i = host->mmc_cmd_log_idx;
+
+	host->mmc_cmd_log[i++] = cmd;
+	host->mmc_cmd_log[i++] = arg;
+	if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_TIME)
+		host->mmc_cmd_log[i++] = (u32)sched_clock();
+
+	if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_RESP)
+		host->mmc_cmd_log[i++] = UINT_MAX;  /* mark as in-progress */
+}
+
+/*
+ * Add a command response to the ring buffer.  The host must be claimed.
+ */
+void _mmc_cmd_log_resp(struct mmc_host *host, u32 resp)
+{
+	int i = host->mmc_cmd_log_idx + MMC_CMD_LOG_RECSIZE_BASE;
+	int when = -1;
+
+	if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_TIME)
+		when = i++;
+
+	if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_RESP)
+		host->mmc_cmd_log[i++] = resp;
+
+	if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_LATENCY && when >= 0) {
+		u32 now = (u32)sched_clock();
+		u32 then = host->mmc_cmd_log[when];
+
+		if (now < then)
+			then = (UINT_MAX - then) + now;
+		else
+			then = now - then;
+		host->mmc_cmd_log[i++] = then;
+	}
+
+	host->mmc_cmd_log_idx = i;
+	if (host->mmc_cmd_log_idx >= host->mmc_cmd_log_len)
+		host->mmc_cmd_log_idx = 0;
+}
+
+static int _mmc_cmd_log_dump(struct mmc_host *host, struct seq_file *s)
+{
+	int i;
+
+	if (!host->mmc_cmd_log)
+		return 0;
+
+	mmc_claim_host(host);
+
+	i = host->mmc_cmd_log_idx;  /* next slot should be the oldest */
+	do {
+		u32 cmd = host->mmc_cmd_log[i++];
+		u32 arg = host->mmc_cmd_log[i++];
+		u32 resp = 0;
+		u32 when = 0;
+		u32 then = 0;
+
+		if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_TIME)
+			when = host->mmc_cmd_log[i++];
+		if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_RESP)
+			resp = host->mmc_cmd_log[i++];
+		if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_LATENCY)
+			then = host->mmc_cmd_log[i++];
+
+		if (i >= host->mmc_cmd_log_len)
+			i = 0;
+
+		/* Skip empty records */
+		if (cmd == UINT_MAX)
+			continue;
+
+		if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_TIME) {
+			if (s)
+				seq_printf(s, "[%u] ", when);
+			else
+				pr_info("Start: %uns ", when);
+		}
+		if (s)
+			seq_printf(s, "CMD%d: 0x%08X", cmd & 0x3F, arg);
+		else
+			pr_info("CMD%d: 0x%08X", cmd & 0x3F, arg);
+		if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_RESP) {
+			if (resp == UINT_MAX) {
+				if (s)
+					seq_printf(s, ", (no response)");
+				else
+					pr_info(" R:(no response)");
+				goto skip;
+			}
+			if (s)
+				seq_printf(s, ", R:0x%08X", resp);
+			else
+				pr_info(" R:0x%08X", resp);
+		}
+		if (host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_LATENCY) {
+			if (s)
+				seq_printf(s, " (%uns)", then);
+			else
+				pr_info(" Latency: %uns", then);
+		}
+skip:
+		if (s)
+			seq_printf(s, "\n");
+		else
+			pr_info("\n");
+	} while (i != host->mmc_cmd_log_idx);
+
+	mmc_release_host(host);
+
+	return 0;
+}
+
+/*
+ * Dump the command log to the kernel log.  This is useful to call from the
+ * host driver while debugging controller or card problems.
+ */
+void mmc_cmd_log_dump(struct mmc_host *host)
+{
+	pr_err("%s: Command history (oldest first):\n",
+		mmc_hostname(host));
+
+	_mmc_cmd_log_dump(host, NULL);
+}
+
+static int mmc_cmd_log_show(struct seq_file *s, void *v)
+{
+	struct mmc_host *host = (struct mmc_host *)s->private;
+
+	return _mmc_cmd_log_dump(host, s);
+}
+
+static int mmc_cmd_log_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mmc_cmd_log_show, inode->i_private);
+}
+
+static const struct file_operations mmc_cmd_log_fops = {
+	.owner		= THIS_MODULE,
+	.open		= mmc_cmd_log_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int mmc_cmd_log_mode_get(void *data, u64 *val)
+{
+	struct mmc_host *host = data;
+
+	*val = (u64)host->mmc_cmd_log_mode;
+
+	return 0;
+}
+
+static int mmc_cmd_log_mode_set(void *data, u64 val)
+{
+	struct mmc_host *host = data;
+
+	if (val & MMC_CMD_LOG_MODE_FORCE_DUMP) {
+		mmc_cmd_log_dump(host);
+		return 0;
+	}
+
+	mmc_claim_host(host);
+
+	mmc_cmd_log_config(host, val);
+
+	mmc_release_host(host);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_cmd_log_mode_fops, mmc_cmd_log_mode_get,
+			mmc_cmd_log_mode_set, "%llu\n");
+
+static int mmc_cmd_log_size_get(void *data, u64 *val)
+{
+	struct mmc_host *host = data;
+
+	*val = (u64)(host->mmc_cmd_log_len / host->mmc_cmd_log_recsize);
+
+	return 0;
+}
+
+static int mmc_cmd_log_size_set(void *data, u64 val)
+{
+	struct mmc_host *host = data;
+
+	mmc_claim_host(host);
+
+	mmc_cmd_log_size(host, val);
+
+	mmc_release_host(host);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_cmd_log_size_fops, mmc_cmd_log_size_get,
+			mmc_cmd_log_size_set, "%llu\n");
+#endif /* CONFIG_MMC_CMDLOG /*/
+
 static int mmc_max_clock_get(void *data, u64 *val)
 {
 	struct mmc_host *host = data;
@@ -319,6 +583,17 @@ void mmc_add_host_debugfs(struct mmc_host *host)
 	if (IS_ERR(fault_create_debugfs_attr("fail_mmc_request",
 					     root,
 					     &host->fail_mmc_request)))
+		goto err_node;
+#endif
+#ifdef CONFIG_MMC_CMD_LOG
+	if (!debugfs_create_file("cmd_log", S_IRUSR, root, host,
+			&mmc_cmd_log_fops))
+		goto err_node;
+	if (!debugfs_create_file("cmd_log_mode", S_IRUSR | S_IWUSR, root, host,
+			&mmc_cmd_log_mode_fops))
+		goto err_node;
+	if (!debugfs_create_file("cmd_log_size", S_IRUSR | S_IWUSR, root, host,
+			&mmc_cmd_log_size_fops))
 		goto err_node;
 #endif
 	return;
