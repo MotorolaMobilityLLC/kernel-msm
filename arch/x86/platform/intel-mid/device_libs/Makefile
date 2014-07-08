@@ -48,6 +48,8 @@ obj-$(subst m,y,$(CONFIG_SERIAL_MFD_HSU_EXT)) += platform_hsu.o
 obj-$(subst m,y,$(CONFIG_DRM_MRFLD)) += platform_panel.o
 # WIFI devices
 obj-$(subst m,y,$(CONFIG_WIFI_PLATFORM_DATA)) += platform_wifi.o
+# BT devices
+obj-$(subst m,y,$(CONFIG_BCM_BT_LPM)) += platform_btlpm.o
 # SCU log
 obj-$(subst m,y,$(CONFIG_SCU_LOGGING)) += platform_scu_log.o
 # Display Control Device

@@ -44,7 +44,6 @@ enum {
 	host_wake_acpi_idx
 };
 #endif
-#define LPM_ON
 
 static struct rfkill *bt_rfkill;
 static bool bt_enabled;
@@ -56,7 +55,9 @@ static bool int_handler_enabled;
 #endif
 
 
+#ifdef LPM_ON
 static void activate_irq_handler(void);
+#endif
 
 struct bcm_bt_lpm {
 #ifdef LPM_ON
@@ -493,7 +494,9 @@ static int bcm43xx_bluetooth_probe(struct platform_device *pdev)
 
 	return ret;
 
+#ifdef LPM_ON
 err_lpm_init:
+#endif
 	rfkill_unregister(bt_rfkill);
 err_rfkill_register:
 	rfkill_destroy(bt_rfkill);
