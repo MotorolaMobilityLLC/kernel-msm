@@ -537,7 +537,7 @@ limProcessEXTScanRealTimeData(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     vos_mem_copy(&tEXTScanFullScanResult.ap.bssid,
                  pHdr->bssId, sizeof(tSirMacAddr));
 
-    limPrintMacAddr(pMac, pHdr->bssId, LOGE);
+    limPrintMacAddr(pMac, pHdr->bssId, LOG2);
 
 
     rfBand = WDA_GET_RX_RFBAND(pRxPacketInfo);

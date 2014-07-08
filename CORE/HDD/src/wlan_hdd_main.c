@@ -1927,7 +1927,13 @@ exit:
 
 static void getBcnMissRateCB(VOS_STATUS status, int bcnMissRate, void *data)
 {
-    bcnMissRateContext_t *pCBCtx = (bcnMissRateContext_t *)data;
+    bcnMissRateContext_t *pCBCtx;
+
+    if (NULL == data)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("argument data is NULL"));
+        return;
+    }
 
    /* there is a race condition that exists between this callback
       function and the caller since the caller could time out either
@@ -1935,20 +1941,26 @@ static void getBcnMissRateCB(VOS_STATUS status, int bcnMissRate, void *data)
       serialize these actions */
     spin_lock(&hdd_context_lock);
 
+    pCBCtx = (bcnMissRateContext_t *)data;
     gbcnMissRate = -1;
 
-    if(pCBCtx->magic != BCN_MISS_RATE_CONTEXT_MAGIC || NULL == data)
+    if (pCBCtx->magic != BCN_MISS_RATE_CONTEXT_MAGIC)
     {
         hddLog(VOS_TRACE_LEVEL_ERROR,
-               FL("invalid context magic: %08x data: %p"), pCBCtx->magic, data );
+               FL("invalid context magic: %08x"), pCBCtx->magic);
         spin_unlock(&hdd_context_lock);
         return ;
     }
 
     if (VOS_STATUS_SUCCESS == status)
     {
-       gbcnMissRate = bcnMissRate;
+        gbcnMissRate = bcnMissRate;
     }
+    else
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("failed to get bcnMissRate"));
+    }
+
     complete(&(pCBCtx->completion));
     spin_unlock(&hdd_context_lock);
 
