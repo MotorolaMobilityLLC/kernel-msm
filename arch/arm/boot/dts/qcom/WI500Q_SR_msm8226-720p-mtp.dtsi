@@ -18,9 +18,6 @@
 	};
 
 //ASUS_BSP +++ Maggie_Lee "ECG Sensor Porting"
-	serial@f9921000 {
-		status = "ok";
-	};
 	serial@f9922000 {
 		status = "ok";
 	};

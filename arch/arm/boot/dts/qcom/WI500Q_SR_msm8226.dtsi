@@ -273,20 +273,6 @@
 	aliases {
 		serial2 = &uart_5;
 	};
-
-	uart_4:serial@f9921000 {
-		compatible = "qcom,msm-lsuart-v14";
-		reg = <0xf9921000 0x1000>;
-		interrupts = <0 111 0>;
-		status = "ok";
-
-		qcom,msm-bus,name = "blsp1_uart4";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-			<86 512 0 0>,
-			<86 512 500 800>;
-	};
 	//ASUS_BSP --- Maggie_Lee "UART Porting for ECG sensor"
 
 	qcom,msm-imem@fe805000 {

@@ -107,13 +107,13 @@ static struct gpiomux_setting mpu_int = {				//MPU9250
     .func = GPIOMUX_FUNC_GPIO,
     .drv = GPIOMUX_DRV_2MA,
     .pull = GPIOMUX_PULL_NONE,
-    .dir = GPIOMUX_OUT_LOW,
+    .dir = GPIOMUX_IN,
 };
 static struct gpiomux_setting gyro_int = {				//LIS3DSH
     .func = GPIOMUX_FUNC_GPIO,
     .drv = GPIOMUX_DRV_2MA,
     .pull = GPIOMUX_PULL_NONE,
-    .dir = GPIOMUX_OUT_LOW,
+    .dir = GPIOMUX_IN,
 };
 //ASUS_BSP --- Maggie_Lee "Sensors Porting"
 
