@@ -115,6 +115,40 @@
 };
 
 &pma8084_gpios {
+
+	gpio@c600 { /* GPIO 7 RED LED */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,pull = <5>;		/* No Pull */
+		qcom,invert = <0>;		/* Do not invert the output */
+		qcom,vin-sel = <0>;		/* VIN 0*/
+		qcom,src-sel = <2>;		/* FUNC 1 */
+		qcom,out-strength = <2>;	/* Medium drive strength */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+
+	gpio@c700 { /* GPIO 8 GREEN LED */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,pull = <5>;		/* No Pull */
+		qcom,invert = <0>;		/* Do not invert the output */
+		qcom,vin-sel = <0>;		/* VIN 0*/
+		qcom,src-sel = <2>;		/* FUNC 1 */
+		qcom,out-strength = <2>;	/* Medium drive strength */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+
+	gpio@c800 { /* GPIO 9 BLUE LED */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,pull = <5>;		/* No Pull */
+		qcom,invert = <0>;		/* Do not invert the output */
+		qcom,vin-sel = <0>;		/* VIN 0*/
+		qcom,src-sel = <2>;		/* FUNC 1 */
+		qcom,out-strength = <2>;	/* Medium drive strength */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+
 	gpio@d000 { /* GPIO 17 */
 		qcom,mode = <1>;		/* Digital output */
 		qcom,output-type = <0>;		/* CMOS logic */
@@ -123,6 +157,58 @@
 		qcom,src-sel = <0>;		/* GPIO */
 		qcom,out-strength = <2>;	/* Medium */
 		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+};
+
+&spmi_bus {
+	qcom,pma8084@0 {
+		qcom,leds@c600 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xc600 0x100>;
+			status = "okay";
+			qcom,led_gpio_7 {
+				label = "gpio";
+				linux,name = "red";
+				qcom,max-current = <20>;
+				qcom,id = <8>;
+				qcom,default-state = "on";
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x10>;
+				qcom,vin-ctrl = <0x02>;
+			};
+		};
+
+		qcom,leds@c700 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xc700 0x100>;
+			status = "okay";
+			qcom,led_gpio_8 {
+				label = "gpio";
+				linux,name = "green";
+				qcom,max-current = <20>;
+				qcom,id = <8>;
+				qcom,default-state = "on";
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x10>;
+				qcom,vin-ctrl = <0x02>;
+			};
+		};
+
+		qcom,leds@c800 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xc800 0x100>;
+			status = "okay";
+			qcom,led_gpio_9 {
+				label = "gpio";
+				linux,name = "blue";
+				qcom,max-current = <20>;
+				qcom,id = <8>;
+				qcom,default-state = "on";
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x10>;
+				qcom,vin-ctrl = <0x02>;
+			};
+		};
 	};
 };
 
