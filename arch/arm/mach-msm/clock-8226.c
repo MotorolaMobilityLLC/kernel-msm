@@ -3230,9 +3230,19 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9925000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"),		//NFC
 
+	//ASUS_BSP BerylHou +++ "BT porting"  
+	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f991d000.serial"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart1_apps_clk.c, "f991d000.serial"),         //BT
+	//ASUS_BSP BerylHou ---
+
 	/* lsuart-v14 Clocks */
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f991f000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart3_apps_clk.c, "f991f000.serial"),
+
+	//ASUS_BSP BerylHou +++ "BT porting"  
+	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9920000.serial"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart4_apps_clk.c, "f9920000.serial"),         //BT
+	//ASUS_BSP BerylHou ---
 
 	//ASUS_BSP +++ Maggie_Lee "ECG Sensor porting"
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9922000.serial"),
