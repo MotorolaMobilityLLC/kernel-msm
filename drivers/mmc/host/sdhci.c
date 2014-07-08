@@ -1249,6 +1249,9 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 	if (cmd->data)
 		host->data_start_time = ktime_get();
 	trace_mmc_cmd_rw_start(cmd->opcode, cmd->arg, cmd->flags);
+
+	mmc_cmd_log(host->mmc, cmd->opcode, cmd->arg);
+
 	sdhci_writew(host, SDHCI_MAKE_CMD(cmd->opcode, flags), SDHCI_COMMAND);
 }
 
@@ -1272,6 +1275,7 @@ static void sdhci_finish_command(struct sdhci_host *host)
 		} else {
 			host->cmd->resp[0] = sdhci_readl(host, SDHCI_RESPONSE);
 		}
+		mmc_cmd_log_resp(host->mmc, host->cmd->resp[0]);
 	}
 
 	/* Finished CMD23, now send actual command. */
