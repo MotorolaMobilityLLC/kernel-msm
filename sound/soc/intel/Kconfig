@@ -16,6 +16,13 @@ config SND_MOOR_MACHINE
           Say Y if you have such a device
           If unsure select "N".
 
+config SND_MOOR_DPCM
+	bool "Use DPCM for Intel Moorefield MID platform"
+	default SST_DPCM
+	depends on SND_MOOR_MACHINE
+	help
+	  This adds an option to enable the DPCM for Intel Moorefield
+
 config SND_INTEL_SST
        tristate
 
