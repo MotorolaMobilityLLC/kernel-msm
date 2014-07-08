@@ -460,7 +460,7 @@ int vsp_send_command(struct drm_device *dev,
 
 		VSP_DEBUG("VSP: rd %d, wr %d, remaining_space %d, ",
 			  rd, wr, remaining_space);
-		VSP_DEBUG("cmd_size %ld sizeof(*cur_cmd) %ld\n",
+		VSP_DEBUG("cmd_size %ld sizeof(*cur_cmd) %zu\n",
 			  cmd_size, sizeof(*cur_cmd));
 
 		if (remaining_space < vsp_priv->vsp_cmd_num) {

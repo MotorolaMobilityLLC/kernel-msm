@@ -1591,9 +1591,9 @@ static void binder_transaction(struct binder_proc *proc,
 				binder_inc_node(ref->node, fp->type == BINDER_TYPE_BINDER, 0, NULL);
 				trace_binder_transaction_ref_to_node(t, ref);
 				binder_debug(BINDER_DEBUG_TRANSACTION,
-					     "        ref %d desc %d -> node %d u0x%x\n",
+					     "        ref %d desc %d -> node %d u0x%016llx\n",
 					     ref->debug_id, ref->desc, ref->node->debug_id,
-					     ref->node->ptr);
+					     (u64)ref->node->ptr);
 			} else {
 				struct binder_ref *new_ref;
 				new_ref = binder_get_ref_for_node(target_proc, ref->node);
