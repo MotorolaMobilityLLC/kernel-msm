@@ -360,7 +360,7 @@ static struct msm_hs_port *msm_hs_get_hs_port(int port_index);
 #define UARTDM_TO_MSM(uart_port) \
 	container_of((uart_port), struct msm_hs_port, uport)
 
-
+extern void bluesleep_setup_uart_port(struct uart_port *uport); //ASUS_BSP BerylHou +++
 static int msm_hs_ioctl(struct uart_port *uport, unsigned int cmd,
 						unsigned long arg)
 {
@@ -3417,6 +3417,7 @@ static int msm_hs_probe(struct platform_device *pdev)
 				goto unmap_memory;
 			}
 		}
+		bluesleep_setup_uart_port(&(msm_uport->uport)); //ASUS_BSP BerylHou +++ "set bluesleep uart port"
 	} else {
 
 		resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);

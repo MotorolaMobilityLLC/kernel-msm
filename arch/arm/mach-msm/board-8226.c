@@ -77,6 +77,37 @@ void __init device_gpiomux_init(void)
 	device_gpio_init();
 
 }
+//ASUS_BSP BerylHou +++ "Add for BT porting"
+static struct resource bluesleep_resources[] = {
+	{
+		.name	= "gpio_host_wake", //gpio bt_wake_up_host
+		.start	= -1,
+		.end	= -1, 
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "gpio_ext_wake", //gpio host_wake_up_bt
+		.start	= -1, 
+		.end	= -1, 
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "host_wake", //IRQ bt wake up host
+		.start	= -1, 
+		.end	= -1, 
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device msm_bluesleep_device = {
+	.name		= "bluesleep",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(bluesleep_resources),
+	.resource	= bluesleep_resources,
+};
+
+//ASUS_BSP BerylHou ---
+
 //--ASUS_BSP : add for miniporting
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
@@ -92,6 +123,35 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 
 	{}
 };
+
+//ASUS_BSP BerylHou +++ "Add for BT porting"
+static void gpio_bt_init(void)
+{
+	printk("[bt] gpio init");
+	
+	bluesleep_resources[0].start = GPIO_BT_WAKE_UP_HOST;
+	bluesleep_resources[0].end = GPIO_BT_WAKE_UP_HOST;
+
+	if (g_ASUS_hwID == WI500Q_EVB2) {
+		bluesleep_resources[1].start = GPIO_HOST_WAKE_UP_BT_EVB2;
+		bluesleep_resources[1].end = GPIO_HOST_WAKE_UP_BT_EVB2;
+	} else {
+		bluesleep_resources[1].start = GPIO_HOST_WAKE_UP_BT_SR;
+		bluesleep_resources[1].end = GPIO_HOST_WAKE_UP_BT_SR;
+	}
+
+	bluesleep_resources[2].start = gpio_to_irq(GPIO_BT_WAKE_UP_HOST);
+	bluesleep_resources[2].end = gpio_to_irq(GPIO_BT_WAKE_UP_HOST);
+
+}
+
+static void __init board_8226_bluesleep_setup(void)
+{
+	printk("set up bt sleep mode\n");
+	gpio_bt_init();
+	platform_device_register(&msm_bluesleep_device);
+}
+//ASUS_BSP BerylHou ---
 
 static void __init msm8226_early_memory(void)
 {
@@ -151,6 +211,7 @@ void __init msm8226_init(void)
 	device_gpiomux_init();
 //---ASUS_BSP : add for miniporting
 	msm8226_add_drivers();
+	board_8226_bluesleep_setup(); //ASUS_BSP BerylHou +++ "BT porting"
 }
 
 static const char *msm8226_dt_match[] __initconst = {
