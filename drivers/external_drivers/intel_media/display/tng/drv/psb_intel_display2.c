@@ -24,11 +24,13 @@
  *	Eric Anholt <eric@anholt.net>
  */
 
+#ifdef CONFIG_SUPPORT_MIPI
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_dpi.h"
 //#include "mdfld_dsi_output.h"
 #ifdef CONFIG_MID_DSI_DPU
 #include "mdfld_dsi_dbi_dpu.h"
+#endif
 #endif
 
 #include "psb_intel_display.h"
@@ -227,6 +229,7 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 
 static int mdfld_intel_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
 {
+#ifdef CONFIG_SUPPORT_MIPI
 	struct drm_device *dev = crtc->dev;
 #ifndef CONFIG_MID_DSI_DPU
 	struct drm_psb_private *dev_priv =
@@ -300,7 +303,7 @@ static int mdfld_intel_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
 		REG_WRITE(base, addr);
 		power_island_put(power_island);
 	}
-
+#endif
 	return 0;
 }
 
@@ -367,11 +370,13 @@ int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	}
 
 	switch (pipe) {
+#ifdef CONFIG_SUPPORT_MIPI
 	case 0:
 		if (IS_MID(dev))
 			dsplinoff = DSPALINOFF;
 		swapchain_plane = PVRSRV_SWAPCHAIN_ATTACHED_PLANE_A;
 		break;
+#endif
 	case 1:
 		dsplinoff = DSPBLINOFF;
 		dspsurf = DSPBSURF;
@@ -379,6 +384,7 @@ int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 		dspcntr_reg = DSPBCNTR;
 		swapchain_plane = PVRSRV_SWAPCHAIN_ATTACHED_PLANE_B;
 		break;
+#ifdef CONFIG_SUPPORT_MIPI
 	case 2:
 		dsplinoff = DSPCLINOFF;
 		dspsurf = DSPCSURF;
@@ -386,8 +392,9 @@ int mdfld__intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 		dspcntr_reg = DSPCCNTR;
 		swapchain_plane = PVRSRV_SWAPCHAIN_ATTACHED_PLANE_C;
 		break;
+#endif
 	default:
-		DRM_ERROR("Illegal Pipe Number. \n");
+		DRM_ERROR("Illegal Pipe Number.\n");
 		return -EINVAL;
 	}
 
@@ -462,11 +469,14 @@ void mdfld_disable_crtc(struct drm_device *dev, int pipe)
 	int dspcntr_reg = DSPACNTR;
 	int dspbase_reg = MRST_DSPABASE;
 	int pipeconf_reg = PIPEACONF;
+#ifdef CONFIG_SUPPORT_MIPI
 	u32 gen_fifo_stat_reg = GEN_FIFO_STAT_REG;
+#endif
 	u32 temp;
 
 	PSB_DEBUG_ENTRY("pipe = %d\n", pipe);
 
+#ifdef CONFIG_SUPPORT_MIPI
 #ifndef CONFIG_SUPPORT_TOSHIBA_MIPI_DISPLAY
 	/**
 	 * NOTE: this path only works for TMD panel now. update it to
@@ -476,16 +486,23 @@ void mdfld_disable_crtc(struct drm_device *dev, int pipe)
 			  (get_panel_type(dev, pipe) == TMD_6X10_VID)))
 		return;
 #endif
+#else
+	if (pipe != 1)
+		return;
+#endif
 
 	switch (pipe) {
+#ifdef CONFIG_SUPPORT_MIPI
 	case 0:
 		break;
+#endif
 	case 1:
 		dpll_reg = MDFLD_DPLL_B;
 		dspcntr_reg = DSPBCNTR;
 		dspbase_reg = DSPBSURF;
 		pipeconf_reg = PIPEBCONF;
 		break;
+#ifdef CONFIG_SUPPORT_MIPI
 	case 2:
 		dpll_reg = MRST_DPLL_A;
 		dspcntr_reg = DSPCCNTR;
@@ -493,15 +510,18 @@ void mdfld_disable_crtc(struct drm_device *dev, int pipe)
 		pipeconf_reg = PIPECCONF;
 		gen_fifo_stat_reg = GEN_FIFO_STAT_REG + MIPIC_REG_OFFSET;
 		break;
+#endif
 	default:
-		DRM_ERROR("Illegal Pipe Number. \n");
+		DRM_ERROR("Illegal Pipe Number.\n");
 		return;
 	}
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (pipe != 1)
 		mdfld_dsi_gen_fifo_ready(dev, gen_fifo_stat_reg,
 					 HS_CTRL_FIFO_EMPTY |
 					 HS_DATA_FIFO_EMPTY);
+#endif
 
 	/* Disable display plane */
 	temp = REG_READ(dspcntr_reg);
@@ -1111,6 +1131,7 @@ static int mdfld_crtc_dsi_pll_calc(struct drm_crtc *crtc,
 }
 #endif /* if KEEP_UNUSED_CODE */
 
+#ifdef CONFIG_SUPPORT_MIPI
 static int mdfld_crtc_dsi_mode_set(struct drm_crtc *crtc,
 				   struct mdfld_dsi_config *dsi_config,
 				   struct drm_display_mode *mode,
@@ -1246,6 +1267,7 @@ static int mdfld_crtc_dsi_mode_set(struct drm_crtc *crtc,
 	mutex_unlock(&dsi_config->context_lock);
 	return 0;
 }
+#endif
 
 #if KEEP_UNUSED_CODE
 static int mdfld_crtc_mode_set(struct drm_crtc *crtc,

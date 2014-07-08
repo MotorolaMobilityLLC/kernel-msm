@@ -29,7 +29,11 @@
 #include "pwr_mgmt.h"
 #include "mrfld_clock.h"
 #include "mrfld_s3d.h"
+
+#ifdef CONFIG_SUPPORT_MIPI
+#include "mdfld_dsi_output.h"
 #include "mdfld_dsi_dbi_dsr.h"
+#endif
 /* FIXME may delete after MRFLD PO */
 #include "mrfld_display.h"
 #include "mdfld_csc.h"
@@ -236,6 +240,7 @@ int psb_intel_panel_fitter_pipe(struct drm_device *dev)
 /** Loads the palette/gamma unit for the CRTC with the prepared values */
 void psb_intel_crtc_load_lut(struct drm_crtc *crtc)
 {
+#ifdef CONFIG_SUPPORT_MIPI
 	struct drm_device *dev = crtc->dev;
 	struct drm_psb_private *dev_priv =
 	    (struct drm_psb_private *)dev->dev_private;
@@ -298,6 +303,7 @@ void psb_intel_crtc_load_lut(struct drm_crtc *crtc)
 		}
 
 	}
+#endif
 }
 
 #ifndef CONFIG_X86_MRST
@@ -505,6 +511,7 @@ static void psb_intel_crtc_destroy(struct drm_crtc *crtc)
 int mdfld_intel_crtc_set_gamma(struct drm_device *dev,
 				struct gamma_setting *setting_data)
 {
+#ifdef CONFIG_SUPPORT_MIPI
 	struct drm_psb_private *dev_priv = NULL;
 	struct mdfld_dsi_hw_context *ctx = NULL;
 	struct mdfld_dsi_hw_registers *regs;
@@ -719,6 +726,9 @@ int mdfld_intel_crtc_set_gamma(struct drm_device *dev,
 _fun_exit:
 	mutex_unlock(&dev_priv->gamma_csc_lock);
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 /*
@@ -728,6 +738,7 @@ _fun_exit:
 int mdfld_intel_crtc_set_color_conversion(struct drm_device *dev,
 					struct csc_setting *setting_data)
 {
+#ifdef CONFIG_SUPPORT_MIPI
 	struct drm_psb_private *dev_priv = NULL;
 	struct mdfld_dsi_hw_context *ctx = NULL;
 	struct mdfld_dsi_hw_registers *regs;
@@ -857,6 +868,10 @@ int mdfld_intel_crtc_set_color_conversion(struct drm_device *dev,
 _fun_exit:
 	mutex_unlock(&dev_priv->gamma_csc_lock);
 	return ret;
+
+#else
+	return 0;
+#endif
 }
 static const struct drm_crtc_helper_funcs mrfld_helper_funcs;
 const struct drm_crtc_funcs mdfld_intel_crtc_funcs;

@@ -40,8 +40,10 @@
 #include "psb_fb.h"
 #include "pvrsrv_interface.h"
 
+#ifdef CONFIG_SUPPORT_MIPI
 #include "mdfld_dsi_dbi.h"
 #include "mdfld_dsi_output.h"
+#endif
 #include "mdfld_output.h"
 
 static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb);
@@ -388,6 +390,7 @@ static struct drm_framebuffer *psb_user_framebuffer_create(
 	if (!info)
 		return ERR_PTR(-ENOMEM);
 
+	info->par = fbdev;
 	info->screen_base = pg->vram_addr;
 
 	strcpy(info->fix.id, "psbfb");
@@ -438,12 +441,15 @@ static int psbfb_create(struct psb_fbdev *fbdev,
 	struct device *device = &dev->pdev->dev;
 	int size;
 	int ret;
+#ifdef CONFIG_SUPPORT_MIPI
 	struct mdfld_dsi_encoder *dsi_encoder =
 		MDFLD_DSI_ENCODER_WITH_DRM_ENABLE(dev_priv->encoder0);
 	struct mdfld_dsi_config *dsi_config =
 		mdfld_dsi_encoder_get_config(dsi_encoder);
 	struct drm_display_mode *fixed_mode;
+#endif
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (!dsi_config) {
 		DRM_ERROR("Failed to get encoder config\n");
 		return -EINVAL;
@@ -462,6 +468,13 @@ static int psbfb_create(struct psb_fbdev *fbdev,
 	else
 		mode_cmd.width = fixed_mode->hdisplay;
 	mode_cmd.height = fixed_mode->vdisplay;
+#else
+	mode_cmd.width = sizes->fb_width;
+	mode_cmd.height = sizes->fb_height;
+	DRM_INFO("sizes fb [%d, %d], surface [%d %d]\n",
+				sizes->fb_width, sizes->fb_height,
+				sizes->surface_width, sizes->surface_height);
+#endif
 
 	mode_cmd.pitches[0] = mode_cmd.width * (sizes->surface_bpp >> 3);
 
@@ -519,12 +532,17 @@ static int psbfb_create(struct psb_fbdev *fbdev,
 
 	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (get_panel_type(dev, 0) == TMD_6X10_VID)
 		drm_fb_helper_fill_var(info, &fbdev->psb_fb_helper,
 				       fixed_mode->hdisplay - 200, fixed_mode->vdisplay);
 	else
 		drm_fb_helper_fill_var(info, &fbdev->psb_fb_helper,
 				       fixed_mode->hdisplay, fixed_mode->vdisplay);
+#else
+		drm_fb_helper_fill_var(info, &fbdev->psb_fb_helper,
+				       sizes->fb_width, sizes->fb_height);
+#endif
 
 	info->fix.mmio_start = pci_resource_start(dev->pdev, 0);
 	info->fix.mmio_len = pci_resource_len(dev->pdev, 0);

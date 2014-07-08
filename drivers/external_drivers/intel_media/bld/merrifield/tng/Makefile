@@ -41,6 +41,11 @@ ccflags-y += -DCONFIG_VIDEO_MRFLD_EC
 
 ccflags-$(CONFIG_SUPPORT_HDMI) += -DCONFIG_SUPPORT_HDMI
 
+#
+# HDMI PRIMARY devices
+#
+ccflags-$(CONFIG_SUPPORT_MIPI) += -DCONFIG_SUPPORT_MIPI
+
 #only for internal testing
 ccflags-$(CONFIG_SUPPORT_HDMI) += -DOTM_HDMI_UNIT_TEST
 
@@ -77,8 +82,6 @@ ccflags-y += \
 #
 $(DRIVER_NAME)-objs += \
 	$(DISPLAYDIR)/psb_bl.o \
-	$(DISPLAYDIR)/psb_dpst.o \
-	$(DISPLAYDIR)/psb_dpst_func.o \
 	$(DISPLAYDIR)/psb_drv.o \
 	$(DISPLAYDIR)/psb_fb.o \
 	$(DISPLAYDIR)/psb_gtt.o \
@@ -92,18 +95,30 @@ $(DRIVER_NAME)-objs += \
 	$(DISPLAYDIR)/psb_intel_hdmi.o \
 	$(DISPLAYDIR)/psb_socket.o \
 	$(DISPLAYDIR)/psb_umevents.o \
-	$(DISPLAYDIR)/mdfld_dsi_dbi.o \
-	$(DISPLAYDIR)/mdfld_dsi_dpi.o \
-	$(DISPLAYDIR)/mdfld_dsi_output.o \
 	$(DISPLAYDIR)/mdfld_output.o \
-	$(DISPLAYDIR)/mdfld_dsi_esd.o \
-	$(DISPLAYDIR)/mdfld_dsi_dbi_dsr.o \
-	$(DISPLAYDIR)/dispmgrnl.o \
-	$(DISPLAYDIR)/mdfld_dsi_pkg_sender.o \
 	$(DISPLAYDIR)/mrfld_clock.o \
 	$(DISPLAYDIR)/psb_irq.o \
 	$(DISPLAYDIR)/tng_wa.o \
 	$(DISPLAYDIR)/pmu_tng.o \
+	$(DISPLAYDIR)/ospm/pwr_mgmt.o \
+	$(DISPLAYDIR)/ospm/gfx_rtpm.o \
+	$(DISPLAYDIR)/ospm/dc_ospm.o \
+	$(DISPLAYDIR)/ospm/dc_maxfifo.o \
+	$(DISPLAYDIR)/ospm/video_ospm.o \
+	$(DISPLAYDIR)/ospm/early_suspend.o \
+	$(DISPLAYDIR)/ospm/early_suspend_sysfs.o
+
+ifeq ($(CONFIG_SUPPORT_MIPI),y)
+$(DRIVER_NAME)-objs += \
+	$(DISPLAYDIR)/psb_dpst.o \
+	$(DISPLAYDIR)/psb_dpst_func.o \
+	$(DISPLAYDIR)/mdfld_dsi_dbi.o \
+	$(DISPLAYDIR)/mdfld_dsi_dpi.o \
+	$(DISPLAYDIR)/mdfld_dsi_output.o \
+	$(DISPLAYDIR)/mdfld_dsi_esd.o \
+	$(DISPLAYDIR)/mdfld_dsi_dbi_dsr.o \
+	$(DISPLAYDIR)/dispmgrnl.o \
+	$(DISPLAYDIR)/mdfld_dsi_pkg_sender.o \
 	$(DISPLAYDIR)/jdi_vid.o \
 	$(DISPLAYDIR)/jdi_cmd.o \
 	$(DISPLAYDIR)/cmi_vid.o \
@@ -114,14 +129,8 @@ $(DRIVER_NAME)-objs += \
 	$(DISPLAYDIR)/sdc16x25_8_cmd.o \
 	$(DISPLAYDIR)/sdc25x16_cmd.o \
 	$(DISPLAYDIR)/jdi25x16_vid.o \
-	$(DISPLAYDIR)/jdi25x16_cmd.o \
-	$(DISPLAYDIR)/ospm/pwr_mgmt.o \
-	$(DISPLAYDIR)/ospm/gfx_rtpm.o \
-	$(DISPLAYDIR)/ospm/dc_ospm.o \
-	$(DISPLAYDIR)/ospm/dc_maxfifo.o \
-	$(DISPLAYDIR)/ospm/video_ospm.o \
-	$(DISPLAYDIR)/ospm/early_suspend.o \
-	$(DISPLAYDIR)/ospm/early_suspend_sysfs.o
+	$(DISPLAYDIR)/jdi25x16_cmd.o
+endif
 
 ifeq ($(CONFIG_MOOREFIELD),y)
 $(DRIVER_NAME)-objs += \

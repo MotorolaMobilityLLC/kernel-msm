@@ -26,8 +26,6 @@
 #include "psb_drv.h"
 #include "psb_reg.h"
 #include "psb_msvdx.h"
-#include "mdfld_dsi_dbi_dsr.h"
-
 #include "tng_topaz.h"
 
 #ifdef SUPPORT_VSP
@@ -38,12 +36,14 @@
 #include "pwr_mgmt.h"
 #include "dc_maxfifo.h"
 
-#include "mdfld_dsi_dbi_dpu.h"
-
 #include "psb_irq.h"
 #include "psb_intel_hdmi.h"
 
+#ifdef CONFIG_SUPPORT_MIPI
+#include "mdfld_dsi_dbi_dsr.h"
+#include "mdfld_dsi_dbi_dpu.h"
 #include "mdfld_dsi_pkg_sender.h"
+#endif
 
 #define KEEP_UNUSED_CODE 0
 
@@ -55,6 +55,7 @@ extern int drm_psb_smart_vsync;
 
 static inline void update_te_counter(struct drm_device *dev, uint32_t pipe)
 {
+#ifdef CONFIG_SUPPORT_MIPI
 	struct mdfld_dsi_pkg_sender *sender;
 	struct mdfld_dsi_dbi_output **dbi_outputs;
 	struct mdfld_dsi_dbi_output *dbi_output;
@@ -69,6 +70,9 @@ static inline void update_te_counter(struct drm_device *dev, uint32_t pipe)
 	dbi_output = pipe ? dbi_outputs[1] : dbi_outputs[0];
 	sender = mdfld_dsi_encoder_get_pkg_sender(&dbi_output->base);
 	mdfld_dsi_report_te(sender);
+#else
+	return;
+#endif
 }
 
 static inline u32 psb_pipestat(int pipe)
@@ -323,6 +327,7 @@ void mdfld_vsync_event_work(struct work_struct *work)
 	/* mdfld_vsync_event(dev, pipe); */
 }
 
+#ifdef CONFIG_SUPPORT_MIPI
 void mdfld_te_handler_work(struct work_struct *work)
 {
 	struct drm_psb_private *dev_priv =
@@ -349,7 +354,7 @@ void mdfld_te_handler_work(struct work_struct *work)
 			(*dev_priv->psb_vsync_handler)(dev, pipe);
 	}
 }
-
+#endif
 /**
  * Display controller interrupt handler for pipe event.
  *
@@ -363,17 +368,20 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 	uint32_t pipe_stat_reg = psb_pipestat(pipe);
 	uint32_t pipe_enable = dev_priv->pipestat[pipe];
 	uint32_t pipe_status = dev_priv->pipestat[pipe] >> 16;
-	uint32_t i = 0;
 	unsigned long irq_flags;
+#ifdef CONFIG_SUPPORT_MIPI
+	uint32_t i = 0;
 	uint32_t mipi_intr_stat_val = 0;
 	uint32_t mipi_intr_stat_reg = 0;
 	struct mdfld_dsi_config *dsi_config = NULL;
 	struct mdfld_dsi_hw_registers *regs = NULL;
 	struct mdfld_dsi_hw_context *ctx = NULL;
 	u32 val = 0;
+#endif
 
 	spin_lock_irqsave(&dev_priv->irqmask_lock, irq_flags);
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (pipe == MDFLD_PIPE_A)
 		mipi_intr_stat_reg = MIPIA_INTR_STAT_REG;
 
@@ -398,12 +406,20 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 				DRM_INFO("Display pipe C received a DPI_FIFO_UNDER_RUN event\n");
 		}
 	}
-
+#else
+	if (pipe != 1) {
+		spin_unlock_irqrestore(&dev_priv->irqmask_lock, irq_flags);
+		DRM_ERROR("called with other than HDMI PIPE %d\n", pipe);
+		return;
+	}
+#endif
 	pipe_stat_val = PSB_RVDC32(pipe_stat_reg);
 	/* Sometimes We read 0 from HW - keep reading until we get non-zero */
 	if (!pipe_stat_val) {
 		pipe_stat_val = REG_READ(pipe_stat_reg);
 	}
+
+#ifdef CONFIG_SUPPORT_MIPI
 #ifdef ENABLE_HW_REPEAT_FRAME
 	/* In the case of the repeated frame count interrupt, we need to disable
 	   the repeat_frame_count_threshold register as otherwise we keep getting
@@ -418,6 +434,7 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 				PIPEA_REPEAT_FRM_CNT_TRESHOLD_REG);
 	}
 #endif
+#endif
 
 	/* clear the 2nd level interrupt status bits */
 	PSB_WVDC32(pipe_stat_val, pipe_stat_reg);
@@ -426,6 +443,7 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 
 	spin_unlock_irqrestore(&dev_priv->irqmask_lock, irq_flags);
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if ((pipe_stat_val & PIPE_DPST_EVENT_STATUS) &&
 	    (dev_priv->psb_dpst_state != NULL)) {
 		uint32_t pwm_reg = 0;
@@ -466,6 +484,7 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 			   PWM_CONTROL_LOGIC); */
 		}
 	}
+#endif
 
 	if (pipe_stat_val & PIPE_VBLANK_STATUS) {
 		dev_priv->vsync_pipe = pipe;
@@ -473,6 +492,7 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 		queue_work(dev_priv->vsync_wq, &dev_priv->vsync_event_work);
 	}
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (pipe_stat_val & PIPE_TE_STATUS) {
 		dev_priv->te_pipe = pipe;
 		update_te_counter(dev, pipe);
@@ -510,6 +530,7 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
                (pipe_stat_val & PIPE_REPEATED_FRAME_STATUS)) {
 		maxfifo_report_repeat_frame_interrupt(dev);
 	}
+#endif
 #endif
 
 #ifdef CONFIG_SUPPORT_HDMI
@@ -804,6 +825,7 @@ void psb_irq_uninstall_islands(struct drm_device *dev, int hw_islands)
 
 void psb_irq_turn_on_dpst(struct drm_device *dev)
 {
+#ifdef CONFIG_SUPPORT_MIPI
 	struct drm_psb_private *dev_priv =
 	    (struct drm_psb_private *)dev->dev_private;
 	struct mdfld_dsi_config *dsi_config = NULL;
@@ -853,6 +875,9 @@ void psb_irq_turn_on_dpst(struct drm_device *dev)
 
 		power_island_put(OSPM_DISPLAY_A);
 	}
+#else
+	return;
+#endif
 }
 
 int psb_irq_enable_dpst(struct drm_device *dev)
@@ -866,6 +891,7 @@ int psb_irq_enable_dpst(struct drm_device *dev)
 
 void psb_irq_turn_off_dpst(struct drm_device *dev)
 {
+#ifdef CONFIG_SUPPORT_MIPI
 	struct drm_psb_private *dev_priv =
 	    (struct drm_psb_private *)dev->dev_private;
 	struct mdfld_dsi_config *dsi_config = NULL;
@@ -897,7 +923,9 @@ void psb_irq_turn_off_dpst(struct drm_device *dev)
 
 		power_island_put(OSPM_DISPLAY_A);
 	}
-
+#else
+	return;
+#endif
 }
 
 int psb_irq_disable_dpst(struct drm_device *dev)
@@ -933,6 +961,7 @@ int psb_enable_vblank(struct drm_device *dev, int pipe)
 	unsigned long irqflags;
 	uint32_t reg_val = 0;
 	uint32_t pipeconf_reg = mid_pipeconf(pipe);
+#ifdef CONFIG_SUPPORT_MIPI
 	mdfld_dsi_encoder_t encoder_type;
 
 	PSB_DEBUG_ENTRY("\n");
@@ -941,7 +970,10 @@ int psb_enable_vblank(struct drm_device *dev, int pipe)
 	if (IS_MRFLD(dev) && (encoder_type == MDFLD_DSI_ENCODER_DBI) &&
 			(pipe != 1))
 		return mdfld_enable_te(dev, pipe);
-
+#else
+	if (pipe != 1)
+		return -EINVAL;
+#endif
 	reg_val = REG_READ(pipeconf_reg);
 
 	if (!(reg_val & PIPEACONF_ENABLE)) {
@@ -969,6 +1001,7 @@ void psb_disable_vblank(struct drm_device *dev, int pipe)
 	struct drm_psb_private *dev_priv =
 	    (struct drm_psb_private *)dev->dev_private;
 	unsigned long irqflags;
+#ifdef CONFIG_SUPPORT_MIPI
 	mdfld_dsi_encoder_t encoder_type;
 
 	PSB_DEBUG_ENTRY("\n");
@@ -979,7 +1012,10 @@ void psb_disable_vblank(struct drm_device *dev, int pipe)
 		mdfld_disable_te(dev, pipe);
 		return;
 	}
-
+#else
+	if (pipe != 1)
+		return;
+#endif
 	spin_lock_irqsave(&dev_priv->irqmask_lock, irqflags);
 
 	psb_disable_pipestat(dev_priv, pipe, PIPE_VBLANK_INTERRUPT_ENABLE);

@@ -95,8 +95,10 @@ static bool disp_a_power_up(struct drm_device *dev,
 
 	PSB_DEBUG_PM("Power on island %x, returned %d\n", p_island->island, ret);
 
+#ifdef CONFIG_SUPPORT_MIPI
 	/* FIXME: Can we move dpst out of ospm code? */
 	psb_dpst_diet_restore(dev);
+#endif
 	return !ret;
 }
 
@@ -110,7 +112,10 @@ static bool disp_a_power_down(struct drm_device *dev,
 {
 	bool ret;
 
+#ifdef CONFIG_SUPPORT_MIPI
 	psb_dpst_diet_save(dev);
+#endif
+
 #ifndef USE_GFX_INTERNAL_PM_FUNC
 	ret = pmu_nc_set_power_state(PMU_DISP_A, OSPM_ISLAND_DOWN, DSP_SS_PM);
 #else
@@ -262,10 +267,12 @@ static bool mio_power_up(struct drm_device *dev,
 {
 	bool ret = false;
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (!enable_DSIPLL(dev)){
 		DRM_ERROR("Not Powering up MIO since DSI PLL could not be locked");
 		return ret;
 	}
+#endif
 
 	if (IS_TNG_A0(dev))
 	{
@@ -302,10 +309,12 @@ static bool mio_power_down(struct drm_device *dev,
 			struct ospm_power_island *p_island)
 {
 	bool ret;
+#ifdef CONFIG_SUPPORT_MIPI
 	if (!disable_DSIPLL(dev)){
 		DRM_ERROR("Skipping MIO power down ad DSI PLL could not be unlocked\n");
 		return false;
 	}
+#endif
 
 #ifndef USE_GFX_INTERNAL_PM_FUNC
 	ret = pmu_nc_set_power_state(PMU_MIO, OSPM_ISLAND_DOWN, MIO_SS_PM);

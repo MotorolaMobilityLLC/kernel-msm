@@ -54,6 +54,13 @@ config INTEL_HDMI_AUDIO
 	  m - module
 	  n - not supported.
 
+config SUPPORT_MIPI
+	bool "SUPPORT_MIPI"
+	depends on DRM_MDFLD || DRM_CTP || DRM_I915 || DRM_MRFLD
+	default n
+	help
+	  Choose this option to support MIPI.
+
 config R63311_MIPI_VIDEO_MODE
 	bool "support jdi 1920x1080 MIPI panel"
 	default n

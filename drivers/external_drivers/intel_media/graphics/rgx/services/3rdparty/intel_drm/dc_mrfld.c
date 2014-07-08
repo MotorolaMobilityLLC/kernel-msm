@@ -884,6 +884,7 @@ static void _Dispatch_Flip(DC_MRFLD_FLIP *psFlip)
 		psFlip = NULL;
 	}
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (send_wms) {
 
 		/* Ensure that *psFlip is not freed while lock is not held. */
@@ -906,6 +907,7 @@ static void _Dispatch_Flip(DC_MRFLD_FLIP *psFlip)
 			psFlip->uiVblankCounters[DC_PIPE_A] =
 				drm_vblank_count(gpsDevice->psDrmDevice, DC_PIPE_A);
 	}
+#endif
 
 	mutex_unlock(&gpsDevice->sFlipQueueLock);
 }

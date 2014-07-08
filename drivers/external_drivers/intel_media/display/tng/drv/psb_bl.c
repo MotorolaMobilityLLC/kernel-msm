@@ -26,7 +26,10 @@
 #include "psb_intel_reg.h"
 #include "psb_intel_drv.h"
 #include "pwr_mgmt.h"
+
+#ifdef CONFIG_SUPPORT_MIPI
 #include "mdfld_dsi_dbi.h"
+#endif
 
 #define MRST_BLC_MAX_PWM_REG_FREQ	    0xFFFF
 #define BLC_PWM_PRECISION_FACTOR 100	/* 10000000 */
@@ -88,6 +91,7 @@ int psb_set_brightness(struct backlight_device *bd)
 		adjusted_level = adjusted_level / BLC_ADJUSTMENT_MAX / BRIGHTNESS_MAX_LEVEL;
 		dev_priv->brightness_adjusted = adjusted_level;
 
+#ifdef CONFIG_SUPPORT_MIPI
 #ifndef CONFIG_MID_DSI_DPU
 		if (!(dev_priv->dsr_fb_update & MDFLD_DSR_MIPI_CONTROL)
 				&& (dev_priv->dbi_panel_on
@@ -104,6 +108,7 @@ int psb_set_brightness(struct backlight_device *bd)
 		PSB_DEBUG_BL("Adjusted Backlight value: %d\n", adjusted_level);
 		mdfld_dsi_brightness_control(dev, 0, adjusted_level);
 		mdfld_dsi_brightness_control(dev, 2, adjusted_level);
+#endif
 	}
 
 	/* cache the brightness for later use */

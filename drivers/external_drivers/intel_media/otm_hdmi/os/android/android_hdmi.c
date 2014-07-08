@@ -82,7 +82,9 @@
 #ifdef OTM_HDMI_HDCP_ENABLE
 #include "hdcp_api.h"
 #endif
+#ifdef CONFIG_SUPPORT_MIPI
 #include "mdfld_dsi_output.h"
+#endif
 
 /* Include file for sending uevents */
 #include "psb_umevents.h"
@@ -2413,7 +2415,8 @@ void android_hdmi_connector_dpms(struct drm_connector *connector, int mode)
 	struct drm_device *dev = connector->dev;
 	bool hdmi_audio_busy = false;
 	u32 dspcntr_val;
-#if (defined CONFIG_PM_RUNTIME) && (!defined MERRIFIELD)
+#if (defined CONFIG_PM_RUNTIME) && (!defined MERRIFIELD) \
+	&& (defined CONFIG_SUPPORT_MIPI)
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	bool panel_on = false, panel_on2 = false;
 	struct mdfld_dsi_config **dsi_configs;
@@ -2452,7 +2455,8 @@ void android_hdmi_connector_dpms(struct drm_connector *connector, int mode)
 			DISP_PLANEB_STATUS = DISPLAY_PLANE_ENABLE;
 	}
 
-#if (defined CONFIG_PM_RUNTIME) && (!defined MERRIFIELD)
+#if (defined CONFIG_PM_RUNTIME) && (!defined MERRIFIELD) \
+	&& (defined CONFIG_SUPPORT_MIPI)
 	dsi_configs = dev_priv->dsi_configs;
 
 	if (dsi_configs[0])

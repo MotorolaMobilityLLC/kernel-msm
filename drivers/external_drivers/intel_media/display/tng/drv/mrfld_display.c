@@ -144,8 +144,12 @@ void mrfld_disable_crtc(struct drm_device *dev, int pipe, bool plane_d)
 
 	PSB_DEBUG_ENTRY("pipe = %d\n", pipe);
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (pipe != 1 && ((get_panel_type(dev, pipe) == JDI_7x12_VID) ||
 			(get_panel_type(dev, pipe) == CMI_7x12_VID)))
+#else
+	if (pipe != 1)
+#endif
 		return;
 
 	switch (pipe) {
@@ -211,12 +215,12 @@ void mrfld_disable_crtc(struct drm_device *dev, int pipe, bool plane_d)
 
 void mofd_update_fifo_size(struct drm_device *dev, bool hdmi_on)
 {
+#ifdef CONFIG_SUPPORT_MIPI
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct mdfld_dsi_config *dsi_config = dev_priv->dsi_configs[0];
-	struct mdfld_dsi_hw_context *ctx = &dsi_config->dsi_hw_context;
+	struct mdfld_dsi_hw_context *ctx = NULL;
 
 	DRM_INFO("setting fifo size, hdmi_suspend: %d\n", hdmi_on);
-
 	if (!hdmi_on) {
 		/* no hdmi, 12KB for plane A D E F */
 		REG_WRITE(DSPARB2, 0x90180);
@@ -227,8 +231,24 @@ void mofd_update_fifo_size(struct drm_device *dev, bool hdmi_on)
 		REG_WRITE(DSPARB, 0x120480a0);
 	}
 
-	ctx->dsparb = REG_READ(DSPARB);
-	ctx->dsparb2 = REG_READ(DSPARB2);
+	if (dsi_config) {
+		ctx = &dsi_config->dsi_hw_context;
+		ctx->dsparb = REG_READ(DSPARB);
+		ctx->dsparb2 = REG_READ(DSPARB2);
+	}
+#else
+	REG_WRITE(DDL1, 0x86868686);
+	REG_WRITE(DDL2, 0x86868686);
+	REG_WRITE(DDL3, 0x86);
+	REG_WRITE(DDL4, 0x8686);
+
+	/* FIXME: tune for HDMI only device */
+	/* with hdmi, 16KB for plane A B D */
+	REG_WRITE(DSPARB2, 0xc0300);
+	REG_WRITE(DSPARB, 0x20080100);
+	DRM_INFO("setting fifo size, arb2:0x%x, arb: 0x%x\n",
+			REG_READ(DSPARB2), REG_READ(DSPARB));
+#endif
 }
 
 /**
@@ -245,11 +265,13 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 	int dspcntr_reg = DSPACNTR;
 	int dspbase_reg = MRST_DSPABASE;
 	int pipeconf_reg = PIPEACONF;
-	u32 pipestat_reg = PIPEASTAT;
 	u32 gen_fifo_stat_reg = GEN_FIFO_STAT_REG;
 	u32 pipeconf = dev_priv->pipeconf;
 	u32 dspcntr = dev_priv->dspcntr;
+#ifdef CONFIG_SUPPORT_MIPI
+	u32 pipestat_reg = PIPEASTAT;
 	u32 mipi_enable_reg = MIPIA_DEVICE_READY_REG;
+#endif
 	u32 temp;
 	bool enabled;
 	u32 power_island = 0;
@@ -258,6 +280,7 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 
 	PSB_DEBUG_ENTRY("mode = %d, pipe = %d\n", mode, pipe);
 
+#ifdef CONFIG_SUPPORT_MIPI
 #ifndef CONFIG_SUPPORT_TOSHIBA_MIPI_DISPLAY
 	/**
 	 * MIPI dpms
@@ -282,6 +305,10 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		return;
 	}
 #endif
+#else
+	if (pipe != 1)
+		return;
+#endif
 
 	power_island = pipe_to_island(pipe);
 
@@ -289,8 +316,10 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		return;
 
 	switch (pipe) {
+#ifdef CONFIG_SUPPORT_MIPI
 	case 0:
 		break;
+#endif
 	case 1:
 		dpll_reg = DPLL_B;
 		dspcntr_reg = DSPBCNTR;
@@ -301,6 +330,7 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		if (IS_MDFLD(dev))
 			dpll_reg = MDFLD_DPLL_B;
 		break;
+#ifdef CONFIG_SUPPORT_MIPI
 	case 2:
 		dpll_reg = MRST_DPLL_A;
 		dspcntr_reg = DSPCCNTR;
@@ -312,6 +342,7 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		gen_fifo_stat_reg = GEN_FIFO_STAT_REG + MIPIC_REG_OFFSET;
 		mipi_enable_reg = MIPIA_DEVICE_READY_REG + MIPIC_REG_OFFSET;
 		break;
+#endif
 	default:
 		DRM_ERROR("Illegal Pipe Number.\n");
 		goto crtc_dpms_err;
@@ -378,6 +409,7 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 			mdfldWaitForPipeEnable(dev, pipe);
 		}
 
+#ifdef CONFIG_SUPPORT_MIPI
 		/*workaround for sighting 3741701 Random X blank display */
 		/*perform w/a in video mode only on pipe A or C */
 		if ((pipe == 0 || pipe == 2) &&
@@ -425,6 +457,7 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		}
 
 		psb_intel_crtc_load_lut(crtc);
+#endif
 
 		if ((pipe == 1) && hdmi_priv)
 			hdmi_priv->hdmi_suspended = false;
@@ -533,13 +566,16 @@ static int mrfld_crtc_mode_set(struct drm_crtc *crtc,
 {
 	struct drm_device *dev = crtc->dev;
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
+#ifdef CONFIG_SUPPORT_MIPI
 	struct drm_psb_private *dev_priv =
 		(struct drm_psb_private *)dev->dev_private;
 	struct mdfld_dsi_config *dsi_config = NULL;
+#endif
 	int pipe = psb_intel_crtc->pipe;
 
 	PSB_DEBUG_ENTRY("pipe = 0x%x\n", pipe);
 
+#ifdef CONFIG_SUPPORT_MIPI
 	switch (pipe) {
 	case 0:
 		dsi_config = dev_priv->dsi_configs[0];
@@ -574,6 +610,15 @@ static int mrfld_crtc_mode_set(struct drm_crtc *crtc,
 
 		return 0;
 	}
+#else
+	if (pipe == 1) {
+		if (IS_ANN(dev))
+			mofd_update_fifo_size(dev, true);
+		android_hdmi_crtc_mode_set(crtc, mode, adjusted_mode,
+				x, y, old_fb);
+	}
+	return 0;
+#endif
 }
 
 
@@ -3269,6 +3314,7 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 
 	DRM_DEBUG("\n");
 
+#ifdef CONFIG_SUPPORT_MIPI
 	switch (pipe) {
 	case 0:
 		break;
@@ -3354,6 +3400,7 @@ static int mdfld_intel_crtc_cursor_set(struct drm_crtc *crtc,
 		mode_dev->bo_unpin_for_scanout(dev, psb_intel_crtc->cursor_bo);
 		psb_intel_crtc->cursor_bo = bo;
 	}
+#endif
 
 	return 0;
 }
@@ -3392,17 +3439,20 @@ void mdfld_disable_crtc(struct drm_device *dev, int pipe)
 	u32 gen_fifo_stat_reg = GEN_FIFO_STAT_REG;
 	u32 temp;
 
-	PSB_DEBUG_ENTRY("pipe = %d \n", pipe);
+	PSB_DEBUG_ENTRY("pipe = %d\n", pipe);
 
 	switch (pipe) {
+#ifdef CONFIG_SUPPORT_MIPI
 	case 0:
 		break;
+#endif
 	case 1:
 		dpll_reg = MDFLD_DPLL_B;
 		dspcntr_reg = DSPBCNTR;
 		dspbase_reg = DSPBSURF;
 		pipeconf_reg = PIPEBCONF;
 		break;
+#ifdef CONFIG_SUPPORT_MIPI
 	case 2:
 		dpll_reg = MRST_DPLL_A;
 		dspcntr_reg = DSPCCNTR;
@@ -3410,15 +3460,18 @@ void mdfld_disable_crtc(struct drm_device *dev, int pipe)
 		pipeconf_reg = PIPECCONF;
 		gen_fifo_stat_reg = GEN_FIFO_STAT_REG + MIPIC_REG_OFFSET;
 		break;
+#endif
 	default:
-		DRM_ERROR("Illegal Pipe Number. \n");
+		DRM_ERROR("Illegal Pipe Number.\n");
 		return;
 	}
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (pipe != 1)
 		mdfld_dsi_gen_fifo_ready(dev, gen_fifo_stat_reg,
 					 HS_CTRL_FIFO_EMPTY |
 					 HS_DATA_FIFO_EMPTY);
+#endif
 
 	/* Disable display plane */
 	temp = REG_READ(dspcntr_reg);

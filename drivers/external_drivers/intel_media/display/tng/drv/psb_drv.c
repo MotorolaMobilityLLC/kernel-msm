@@ -41,7 +41,9 @@
 
 #include <drm/drm_pciids.h>
 #include "pwr_mgmt.h"
-#include "dispmgrnl.h"
+#include "psb_intel_display.h"
+#include "mdfld_output.h"
+
 #include <linux/cpu.h>
 #include <linux/notifier.h>
 #include <linux/spinlock.h>
@@ -49,9 +51,15 @@
 #include <asm/intel_scu_ipc.h>
 #include <asm/intel-mid.h>
 
+#ifdef CONFIG_SUPPORT_MIPI
+#include "dispmgrnl.h"
 #include "mdfld_dsi_dbi.h"
 #ifdef CONFIG_MID_DSI_DPU
 #include "mdfld_dsi_dbi_dpu.h"
+#endif
+#include "mdfld_dsi_dbi_dsr.h"
+/* SH DPST */
+#include "psb_dpst_func.h"
 #endif
 
 #ifdef CONFIG_MID_HDMI
@@ -69,10 +77,6 @@
 
 #include "pvr_bridge.h"
 
-/* SH DPST */
-#include "psb_dpst_func.h"
-
-#include "mdfld_dsi_dbi_dsr.h"
 #include "mrfld_clock.h"
 #include "mdfld_debugfs.h"
 
@@ -575,6 +579,7 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv);
 static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv);
+#ifdef CONFIG_SUPPORT_MIPI
 static int psb_hist_enable_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv);
 static int psb_hist_status_ioctl(struct drm_device *dev, void *data,
@@ -593,9 +598,9 @@ static int psb_dpu_query_ioctl(struct drm_device *dev, void *data,
 			       struct drm_file *file_priv);
 static int psb_dpu_dsr_on_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
-
 static int psb_dpu_dsr_off_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv);
+#endif
 static int psb_get_panel_orientation_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv);
 #ifdef CONFIG_SUPPORT_HDMI
@@ -705,6 +710,7 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_GETPAGEADDRS,
 		      psb_getpageaddrs_ioctl,
 		      DRM_AUTH),
+#ifdef CONFIG_SUPPORT_MIPI
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_HIST_ENABLE,
 		      psb_hist_enable_ioctl,
 		      DRM_AUTH),
@@ -717,6 +723,7 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_DPST, psb_dpst_ioctl, DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_GAMMA, psb_gamma_ioctl, DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_DPST_BL, psb_dpst_bl_ioctl, DRM_AUTH),
+#endif
 #if 0
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_GET_PIPE_FROM_CRTC_ID,
 		      psb_intel_get_pipe_from_crtc_id, 0),
@@ -752,12 +759,14 @@ static struct drm_ioctl_desc psb_ioctls[] = {
 	/*PSB_IOCTL_DEF(DRM_IOCTL_PSB_FLIP, psb_page_flip, DRM_AUTH), */
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_VIDEO_GETPARAM,
 		psb_video_getparam, DRM_AUTH | DRM_UNLOCKED),
+#ifdef CONFIG_SUPPORT_MIPI
 	PSB_IOCTL_DEF(DRM_IOCRL_PSB_DPU_QUERY, psb_dpu_query_ioctl,
 		      DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCRL_PSB_DPU_DSR_ON, psb_dpu_dsr_on_ioctl,
 		      DRM_AUTH),
 	PSB_IOCTL_DEF(DRM_IOCRL_PSB_DPU_DSR_OFF, psb_dpu_dsr_off_ioctl,
 		      DRM_AUTH),
+#endif
 #ifdef CONFIG_SUPPORT_HDMI
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_HDMI_FB_CMD, psb_disp_ioctl, 0),
 	PSB_IOCTL_DEF(DRM_IOCTL_PSB_QUERY_HDCP, psb_query_hdcp_ioctl, DRM_AUTH),
@@ -1108,6 +1117,7 @@ bool mid_get_pci_revID(struct drm_psb_private *dev_priv)
 	return true;
 }
 
+#ifdef CONFIG_SUPPORT_MIPI
 bool mrst_get_vbt_data(struct drm_psb_private *dev_priv)
 {
 	struct drm_device *dev = dev_priv->dev;
@@ -1137,6 +1147,7 @@ bool mrst_get_vbt_data(struct drm_psb_private *dev_priv)
 	}
 	return true;
 }
+#endif
 
 void hdmi_do_hotplug_wq(struct work_struct *work)
 {
@@ -1626,7 +1637,9 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 #endif
 	if (IS_MID(dev)) {
 		mrst_get_fuse_settings(dev);
+#ifdef CONFIG_SUPPORT_MIPI
 		mrst_get_vbt_data(dev_priv);
+#endif
 		mid_get_pci_revID(dev_priv);
 	}
 
@@ -1762,6 +1775,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 	dev->driver->get_vblank_counter = psb_get_vblank_counter;
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (IS_FLDS(dev) &&
 			(is_panel_vid_or_cmd(dev) == MDFLD_DSI_ENCODER_DBI)) {
 #ifdef CONFIG_MID_DSI_DPU
@@ -1774,6 +1788,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 		INIT_WORK(&dev_priv->reset_panel_work,
 				mdfld_reset_panel_handler_work);
 	}
+#endif
 	INIT_WORK(&dev_priv->vsync_event_work, mdfld_vsync_event_work);
 
 	dev_priv->vsync_wq = alloc_workqueue("vsync_wq", WQ_UNBOUND, 2);
@@ -1847,6 +1862,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 	/*Intel drm driver load is done, continue doing pvr load */
 	DRM_DEBUG("Pvr driver load\n");
 
+#ifdef CONFIG_SUPPORT_MIPI
 	/* init display manager */
 	dispmgr_start(dev);
 
@@ -1856,6 +1872,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 	dpst_init(dev, 5, 1);
 
 	mdfld_dsi_dsr_enable(dev_priv->dsi_configs[0]);
+#endif
 
 	return PVRSRVDrmLoad(dev, chipset);
  out_err:
@@ -2052,7 +2069,9 @@ static int psb_enable_ied_session_ioctl(struct drm_device *dev, void *data,
 						struct drm_file *file_priv)
 {
 	struct drm_psb_private *dev_priv = psb_priv(dev);
+#ifdef CONFIG_SUPPORT_MIPI
 	struct mdfld_dsi_config *dsi_config = dev_priv->dsi_configs[0];
+#endif
 
 	DRM_DEBUG("Enabling IED session...\n");
 
@@ -2070,7 +2089,9 @@ static int psb_enable_ied_session_ioctl(struct drm_device *dev, void *data,
 	dev_priv->ied_context = file_priv->filp;
 
 	if (power_island_get(OSPM_DISPLAY_A)) {
+#ifdef CONFIG_SUPPORT_MIPI
 		mdfld_dsi_dsr_forbid(dsi_config);
+#endif
 
 		/* Set bit 31 to enable IED pipeline */
 		REG_WRITE(PSB_IED_DRM_CNTL_STATUS, 0x80000000);
@@ -2089,7 +2110,9 @@ static int psb_disable_ied_session_ioctl(struct drm_device *dev, void *data,
 {
 	int ret = 0;
 	struct drm_psb_private *dev_priv = psb_priv(dev);
+#ifdef CONFIG_SUPPORT_MIPI
 	struct mdfld_dsi_config *dsi_config = dev_priv->dsi_configs[0];
+#endif
 
 	DRM_DEBUG("Disabling IED session...\n");
 
@@ -2110,7 +2133,9 @@ static int psb_disable_ied_session_ioctl(struct drm_device *dev, void *data,
 
 	if (power_island_get(OSPM_DISPLAY_A)) {
 		REG_WRITE(PSB_IED_DRM_CNTL_STATUS, 0);
+#ifdef CONFIG_SUPPORT_MIPI
 		mdfld_dsi_dsr_allow(dsi_config);
+#endif
 
 		power_island_put(OSPM_DISPLAY_A);
 
@@ -2127,10 +2152,11 @@ static int psb_disable_ied_session_ioctl(struct drm_device *dev, void *data,
 
 static int psb_panel_query_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv) {
-
+#ifdef CONFIG_SUPPORT_MIPI
 	uint32_t *arg = data;
 
 	*arg = (is_panel_vid_or_cmd(dev) == MDFLD_DSI_ENCODER_DPI);
+#endif
 	return 0;
 }
 
@@ -2373,6 +2399,7 @@ static int psb_dc_state_ioctl(struct drm_device *dev, void *data,
 	return -EINVAL;
 }
 
+#ifdef CONFIG_SUPPORT_MIPI
 static int psb_dpst_bl_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *file_priv)
 {
@@ -2387,6 +2414,7 @@ static int psb_dpst_bl_ioctl(struct drm_device *dev, void *data,
 #endif
 	return 0;
 }
+#endif
 
 static int psb_adb_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
@@ -2403,6 +2431,7 @@ static int psb_adb_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
+#ifdef CONFIG_SUPPORT_MIPI
 static int psb_hist_enable_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv)
 {
@@ -2610,6 +2639,7 @@ static int psb_update_guard_ioctl(struct drm_device *dev, void *data,
 
 	return 0;
 }
+#endif
 
 static int psb_mode_operation_ioctl(struct drm_device *dev, void *data,
 				    struct drm_file *file_priv)
@@ -2728,6 +2758,7 @@ static int psb_stolen_memory_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
+#ifdef CONFIG_SUPPORT_MIPI
 static int psb_dpu_query_ioctl(struct drm_device *dev, void *arg,
 			       struct drm_file *file_priv)
 {
@@ -2848,6 +2879,7 @@ static int psb_dpu_dsr_off_ioctl(struct drm_device *dev, void *arg,
 #endif
 	return 0;
 }
+#endif
 
 #if KEEP_UNUSED_CODE
 /*wait for vblank*/
@@ -2907,7 +2939,9 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_psb_private *dev_priv = psb_priv(dev);
 	struct drm_psb_vsync_set_arg *arg = data;
+#ifdef CONFIG_SUPPORT_MIPI
 	struct mdfld_dsi_config *dsi_config = NULL;
+#endif
 	struct timespec now;
 	uint32_t pipe;
 	union drm_wait_vblank vblwait;
@@ -2932,18 +2966,24 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 			arg->vsync.vsync_count = (uint64_t)vbl_count;
 		}
 
+#ifdef CONFIG_SUPPORT_MIPI
 		if (!pipe)
 			dsi_config = dev_priv->dsi_configs[0];
 		else if (pipe == 2)
 			dsi_config = dev_priv->dsi_configs[1];
+#endif
 
 		if (arg->vsync_operation_mask & VSYNC_WAIT) {
 			if (IS_MOFD(dev))
 				mutex_lock(&dev->mode_config.mutex);
 
+#ifdef CONFIG_SUPPORT_MIPI
 			if (dev_priv->vsync_enabled[pipe] && ((pipe == 1) ||
 						(dsi_config &&
 						 dsi_config->dsi_hw_context.panel_on))) {
+#else
+			if (dev_priv->vsync_enabled[pipe] && (pipe == 1)) {
+#endif
 				vblwait.request.type =
 					(_DRM_VBLANK_RELATIVE |
 					 _DRM_VBLANK_NEXTONMISS);
@@ -2959,6 +2999,7 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 					DRM_ERROR("fail to get vsync on pipe %d, ret %d\n", pipe, ret);
 					vsync_state_dump(dev, pipe);
 
+#ifdef CONFIG_SUPPORT_MIPI
 					if (!IS_ANN(dev)) {
 						if (pipe != 1 &&
 							is_panel_vid_or_cmd(dev) == MDFLD_DSI_ENCODER_DBI &&
@@ -2967,6 +3008,7 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 							schedule_work(&dev_priv->reset_panel_work);
 						}
 					}
+#endif
 				} else if (ret == -EINTR)
 					ret = 0;
 			}else{
@@ -2989,6 +3031,7 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 						__func__, pipe);
 				return 0;
 			}
+#ifdef CONFIG_SUPPORT_MIPI
 			mdfld_dsi_dsr_forbid(dsi_config);
 #if 0
 			ret = drm_vblank_get(dev, pipe);
@@ -2997,6 +3040,7 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 						__func__, pipe);
 				mdfld_dsi_dsr_allow(dsi_config);
 			} else
+#endif
 #endif
 			dev_priv->vsync_enabled[pipe] = true;
 			ret = 0;
@@ -3009,10 +3053,12 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 				return 0;
 			}
 			dev_priv->vsync_enabled[pipe] = false;
+#ifdef CONFIG_SUPPORT_MIPI
 #if 0
 			drm_vblank_put(dev, pipe);
 #endif
 			mdfld_dsi_dsr_allow(dsi_config);
+#endif
 			ret = 0;
 		}
 	}
@@ -3023,9 +3069,11 @@ static int psb_vsync_set_ioctl(struct drm_device *dev, void *data,
 static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 				 struct drm_file *file_priv)
 {
-	struct drm_psb_private *dev_priv = psb_priv(dev);
 	struct drm_psb_register_rw_arg *arg = data;
+#ifdef CONFIG_SUPPORT_MIPI
+	struct drm_psb_private *dev_priv = psb_priv(dev);
 	struct mdfld_dsi_config *dsi_config = NULL;
+#endif
 	u32 power_island = 0;
 
 	if (arg->overlay_write_mask != 0) {
@@ -3066,9 +3114,11 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 				return -EINVAL;
 			}
 
+#ifdef CONFIG_SUPPORT_MIPI
 			/*forbid dsr which will restore regs*/
 			dsi_config = dev_priv->dsi_configs[0];
 			mdfld_dsi_dsr_forbid(dsi_config);
+#endif
 
 			if (arg->overlay_write_mask & OV_REGRWBITS_OGAM_ALL) {
 				PSB_WVDC32(arg->overlay.OGAMC5, ov_ogamc5_reg);
@@ -3079,6 +3129,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 				PSB_WVDC32(arg->overlay.OGAMC0, ov_ogamc0_reg);
 			}
 
+#ifdef CONFIG_SUPPORT_MIPI
 			if (arg->overlay_write_mask & OV_REGRWBITS_OVADD) {
 				PSB_WVDC32(arg->overlay.OVADD, OV_OVADD);
 				if (arg->overlay.b_wms){
@@ -3087,6 +3138,7 @@ static int psb_register_rw_ioctl(struct drm_device *dev, void *data,
 			}
 			/*allow entering dsr*/
 			mdfld_dsi_dsr_allow(dsi_config);
+#endif
 
 			power_island_put(power_island);
 		}
@@ -3692,8 +3744,10 @@ static int psb_display_register_write(struct file *file, const char *buffer,
 #endif
 	}
 
+#ifdef CONFIG_SUPPORT_MIPI
 	/*forbid dsr which will restore regs*/
 	mdfld_dsi_dsr_forbid(dsi_config);
+#endif
 
 	if (op == 'r') {
 		if (reg >= 0xa000) {
@@ -3775,8 +3829,10 @@ static int psb_display_register_write(struct file *file, const char *buffer,
 		}
 	}
 fun_exit:
+#ifdef CONFIG_SUPPORT_MIPI
 	/*allow entering dsr*/
 	mdfld_dsi_dsr_allow(dsi_config);
+#endif
 
 	power_island_put(OSPM_DISPLAY_ISLAND);
 	return count;

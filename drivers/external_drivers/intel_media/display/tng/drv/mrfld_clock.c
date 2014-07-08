@@ -31,7 +31,9 @@
 #include "psb_intel_reg.h"
 #include "psb_intel_display.h"
 #include "mrfld_clock.h"
+#ifdef CONFIG_SUPPORT_MIPI
 #include "mdfld_dsi_output.h"
+#endif
 #include <asm/intel-mid.h>
 
 #define MRFLD_LIMT_DPLL_19	    0
@@ -245,6 +247,8 @@ void mrfld_setup_pll(struct drm_device *dev, int pipe, int clk)
 	bool ok;
 	u32 pll = 0, fp = 0;
 	bool is_mipi = false, is_mipi2 = false, is_hdmi = false;
+
+#ifdef CONFIG_SUPPORT_MIPI
 	struct mdfld_dsi_config *dsi_config = NULL;
 	struct mdfld_dsi_hw_context *ctx = NULL;
 
@@ -277,6 +281,12 @@ void mrfld_setup_pll(struct drm_device *dev, int pipe, int clk)
 		is_mipi2 = true;
 		break;
 	}
+#else
+	if (pipe == 1)
+		is_hdmi = true;
+	else
+		return;
+#endif
 
 	if ((dev_priv->ksel == KSEL_CRYSTAL_19)
 	    || (dev_priv->ksel == KSEL_BYPASS_19)) {
@@ -327,6 +337,7 @@ void mrfld_setup_pll(struct drm_device *dev, int pipe, int clk)
 	ok = mrfld_find_best_PLL(dev, pipe, clk_tmp, refclk, &clock);
 	dev_priv->tmds_clock_khz = clock.dot / (clk_n * clk_p2 * clk_byte);
 
+#ifdef CONFIG_SUPPORT_MIPI
 	/*
 	 * FIXME: Hard code the divisors' value for JDI panel, and need to
 	 * calculate them according to the DSI PLL HAS spec.
@@ -373,6 +384,7 @@ void mrfld_setup_pll(struct drm_device *dev, int pipe, int clk)
 		}
 		clk_n = 1;
 	}
+#endif
 
 	if (!ok) {
 		DRM_ERROR("mdfldFindBestPLL fail in mrfld_crtc_mode_set.\n");
@@ -388,6 +400,7 @@ void mrfld_setup_pll(struct drm_device *dev, int pipe, int clk)
 	fp = (clk_n / 2) << 16;
 	fp |= m_conv;
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (is_mipi) {
 		/* Enable DSI PLL clocks for DSI0 rather than CCK. */
 		pll |= _CLK_EN_PLL_DSI0;
@@ -403,6 +416,7 @@ void mrfld_setup_pll(struct drm_device *dev, int pipe, int clk)
 		/* Select DSI PLL as the source of the mux input clocks. */
 		pll &= ~_DSI_MUX_SEL_CCK_DSI1;
 	}
+#endif
 
 	if (is_hdmi)
 		pll |= MDFLD_VCO_SEL;
@@ -410,11 +424,13 @@ void mrfld_setup_pll(struct drm_device *dev, int pipe, int clk)
 	/* compute bitmask from p1 value */
 	pll |= (1 << (clock.p1 - 2)) << 17;
 
+#ifdef CONFIG_SUPPORT_MIPI
 	if (pipe != 1) {
 		ctx->dpll = pll;
 		ctx->fp = fp;
 		mutex_unlock(&dsi_config->context_lock);
 	}
+#endif
 }
 
 /**
@@ -499,14 +515,17 @@ void enable_HFPLL(struct drm_device *dev)
 					pll_select | _DSI_CCK_PLL_SELECT);
 			ctrl_reg5 |= (1 << 7) | 0xF;
 
+#ifdef CONFIG_SUPPORT_MIPI
 			if (get_panel_type(dev, 0) == SHARP_10x19_CMD)
 				ctrl_reg5 = 0x1f87;
+#endif
 			intel_mid_msgbus_write32(CCK_PORT,
 					FUSE_OVERRIDE_FREQ_CNTRL_REG5,
 					ctrl_reg5);
 	}
 }
 
+#ifdef CONFIG_SUPPORT_MIPI
 bool enable_DSIPLL(struct drm_device *dev)
 {
 	DRM_DRIVER_PRIVATE_T *dev_priv = dev->dev_private;
@@ -616,3 +635,4 @@ bool disable_DSIPLL(struct drm_device * dev)
 	}
 	return true;
 }
+#endif

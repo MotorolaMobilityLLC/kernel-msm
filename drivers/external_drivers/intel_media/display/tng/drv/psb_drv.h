@@ -29,7 +29,9 @@
 
 #include "psb_intel_drv.h"
 #include "psb_hotplug.h"
+#ifdef CONFIG_SUPPORT_MIPI
 #include "psb_dpst.h"
+#endif
 #include "psb_gtt.h"
 #include "ospm/pwr_mgmt.h"
 #include "ttm/ttm_object.h"
