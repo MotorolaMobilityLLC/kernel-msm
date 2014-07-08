@@ -198,6 +198,9 @@
 	};
 
 	mmi_batterydata: qcom,battery-data {
+		mmi,ed30-sony-batterydata {
+			qcom,batt-id-range = <403046 448366>;
+		};
 		mmi,ed30-lg-batterydata {
 			qcom,batt-id-range = <977044 1039064>;
 		};
