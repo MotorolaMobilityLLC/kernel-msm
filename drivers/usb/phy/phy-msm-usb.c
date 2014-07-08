@@ -2582,7 +2582,7 @@ static void msm_chg_detect_work(struct work_struct *w)
 	queue_delayed_work(system_nrt_wq, &motg->chg_work, delay);
 }
 
-#define VBUS_INIT_TIMEOUT	msecs_to_jiffies(5000)
+#define VBUS_INIT_TIMEOUT	msecs_to_jiffies(6000)
 
 /*
  * We support OTG, Peripheral only and Host only configurations. In case
