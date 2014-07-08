@@ -1541,10 +1541,6 @@ static int msm_compr_pointer(struct snd_compr_stream *cstream,
 	/* DSP returns timestamp in usec */
 	pr_debug("%s: timestamp = %lld usec\n", __func__, timestamp);
 	timestamp *= prtd->sample_rate;
-	/* i/p sample rate for DDP passthrough session is 4 times sample rate */
-	if (prtd->compr_passthr == COMPRESSED_PASSTHROUGH &&
-		prtd->codec == FORMAT_EAC3)
-		timestamp /= 4;
 	tstamp.pcm_io_frames = (snd_pcm_uframes_t)div64_u64(timestamp, 1000000);
 	memcpy(arg, &tstamp, sizeof(struct snd_compr_tstamp));
 
