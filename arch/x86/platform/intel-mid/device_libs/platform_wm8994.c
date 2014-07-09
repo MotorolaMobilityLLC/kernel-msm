@@ -189,34 +189,17 @@ static int wm8994_get_irq_data(struct wm8994_pdata *pdata,
 	return codec_gpio;
 }
 
-static int wm8994_fill_mofd_pr_data(struct wm8994_pdata *pdata)
-{
-	if (!pdata) {
-		pr_err("%s: pdata is NULL\n", __func__);
-		return -EINVAL;
-	}
-
-	pr_debug("%s: Assign LDOs to MOFD PR0's pdata...\n", __func__);
-	pdata->ldo[0].enable = pdata->ldo[1].enable = 0;
-	pdata->ldo[0].init_data = &wm8994_ldo1_data;
-	pdata->ldo[1].init_data = &wm8994_ldo2_data;
-	pdata->ldo_ena_always_driven = 1;
-
-	return 0;
-}
-
 void __init *wm8994_platform_data(void *info)
 {
 	struct i2c_board_info *i2c_info = (struct i2c_board_info *)info;
-	int irq = 0, ret = 0;
+	int irq = 0;
 	struct wm8994_pdata *pdata = &wm8994_pdata;
 
 	platform_add_devices(wm8958_reg_devices,
 			ARRAY_SIZE(wm8958_reg_devices));
 
 	pdata = &wm8994_mofd_pr_pdata;
-	ret = wm8994_fill_mofd_pr_data(pdata);
-	if (ret < 0)
+	if (!pdata)
 		return NULL;
 
 	irq = wm8994_get_irq_data(pdata, i2c_info, "audiocodec_int");

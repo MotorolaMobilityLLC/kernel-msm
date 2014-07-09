@@ -66,7 +66,7 @@ extern int sepapp_image_verify(u8 *addr, ssize_t size, u32 key_index, u32 magic_
 #define mofd_ffrd_pr0_vsp	mofd_vv_fab_a_vsp
 #define mofd_prh_b0_vsp		"vsp.bin.000c.0001.0001"
 
-#define mofd_default_spid	"0008.0000.0000"
+#define mofd_default_spid	"0008.0001.0001"
 /*
  * Firmware name if there is no entry in spid2fw table
  */
