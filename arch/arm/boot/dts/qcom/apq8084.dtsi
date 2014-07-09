@@ -548,7 +548,7 @@
 				"int_wake";
 
 		perst-gpio = <&msmgpio 70 0>;
-		wake-gpio = <&msmgpio 69 0>;
+		wake-gpio = <&msmgpio 69 0x1>; /* GPIOF_IN */
 		clkreq-gpio = <&msmgpio 68 0>;
 
 		gdsc-vdd-supply = <&gdsc_pcie_0>;
