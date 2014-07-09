@@ -1195,7 +1195,7 @@ typedef enum
 #define CFG_SAR_POWER_BACKOFF_NAME           "SARPowerBackoff"
 #define CFG_SAR_POWER_BACKOFF_MIN            ( 0 )
 #define CFG_SAR_POWER_BACKOFF_MAX            ( 0xFFFFFFFF )
-#define CFG_SAR_POWER_BACKOFF_DEFAULT        ( 0 )
+#define CFG_SAR_POWER_BACKOFF_DEFAULT        ( 13 )
 
 #if defined WLAN_FEATURE_VOWIFI_11R
 #define CFG_FT_RESOURCE_REQ_NAME                        "gFTResourceReqSupported"
