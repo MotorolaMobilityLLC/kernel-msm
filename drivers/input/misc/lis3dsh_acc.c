@@ -361,6 +361,8 @@ struct lis3dsh_acc_data {
 	struct work_struct irq2_work;
 	struct workqueue_struct *irq2_work_queue;
 
+	int report_event_en;
+
 #ifdef DEBUG
 	u8 reg_addr;
 #endif
@@ -1204,7 +1206,8 @@ static int lis3dsh_acc_enable(struct lis3dsh_acc_data *acc)
 			atomic_set(&acc->enabled, 0);
 			return err;
 		}
-		schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
+		if (acc->report_event_en)
+			schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
 		sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
 	}
 	return 0;
@@ -1214,7 +1217,8 @@ static int lis3dsh_acc_disable(struct lis3dsh_acc_data *acc)
 {
 	if (atomic_cmpxchg(&acc->enabled, 1, 0)) {
 		sensor_debug(DEBUG_INFO, "[Sensors] %s +++\n", __func__);
-		cancel_delayed_work_sync(&acc->input_work);
+		if (acc->report_event_en)
+			cancel_delayed_work_sync(&acc->input_work);
 		lis3dsh_acc_device_power_off(acc);
 	}
 	sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
@@ -1830,8 +1834,7 @@ static void lis3dsh_acc_input_work_func(struct work_struct *work)
 	else
 		lis3dsh_acc_report_values(acc, xyz);
 
-	schedule_delayed_work(&acc->input_work, msecs_to_jiffies(
-			acc->pdata->poll_interval));
+	schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
 	mutex_unlock(&acc->lock);
 }
 
@@ -1885,6 +1888,7 @@ static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 {
 	int err;
 
+	acc->report_event_en = 0; 			//default report ABS event OFF
 	INIT_DELAYED_WORK(&acc->input_work, lis3dsh_acc_input_work_func);
 	acc->input_dev = input_allocate_device();
 	if (!acc->input_dev) {
@@ -2384,8 +2388,8 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 		destroy_workqueue(acc->irq2_work_queue);
 	}
 
-	if (atomic_cmpxchg(&acc->enabled, 1, 0))
-			cancel_delayed_work_sync(&acc->input_work);
+	if (atomic_cmpxchg(&acc->enabled, 1, 0) && acc->report_event_en)
+		cancel_delayed_work_sync(&acc->input_work);
 
 	lis3dsh_acc_device_power_off(acc);
 	lis3dsh_acc_input_cleanup(acc);
