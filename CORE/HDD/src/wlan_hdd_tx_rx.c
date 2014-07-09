@@ -1530,6 +1530,20 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
       return VOS_STATUS_E_FAILURE;
    }
 
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+   {
+       v_MACADDR_t *pDestMacAddress = (v_MACADDR_t*)skb->data;
+       /* vos_is_macaddr_group expects data in v_MACADDR_t format
+        */
+       if (vos_is_macaddr_group(pDestMacAddress))
+       {
+            pAdapter->hdd_stats.hddTxRxStats.txMcast[ac]++;
+       }
+
+   }
+
+#endif
+
 #ifdef FEATURE_WLAN_TDLS
     if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode)
     {
