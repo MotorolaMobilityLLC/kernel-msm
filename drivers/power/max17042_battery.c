@@ -52,12 +52,13 @@
 
 /* Interrupt mask bits */
 #define CONFIG_ALRT_BIT_ENBL	(1 << 2)
-#define STATUS_INTR_VMIN_BIT	(1 << 8)
-#define STATUS_INTR_SOCMIN_BIT	(1 << 10)
-#define STATUS_INTR_SOCMAX_BIT	(1 << 14)
-
+#define CONFIG_VS_BIT_ENBL		(1 << 12)
+#define CONFIG_TS_BIT_ENBL		(1 << 13)
+#define CONFIG_SS_BIT_ENBL		(1 << 14)
+#define CONFIG_STICK_ALL_ENBL   (CONFIG_VS_BIT_ENBL | \
+CONFIG_TS_BIT_ENBL | CONFIG_SS_BIT_ENBL)
 #define VFSOC0_LOCK		0x0000
-#define VFSOC0_UNLOCK		0x0080
+#define VFSOC0_UNLOCK	0x0080
 #define MODEL_UNLOCK1	0X0059
 #define MODEL_UNLOCK2	0X00C4
 #define MODEL_LOCK1		0X0000
@@ -94,6 +95,10 @@
 #define RESULT_PROPERTY			"result"
 #define START_PROPERTY			"start"
 
+/* we need to set the alert threshold to a default value
+   before powerlib calls into the driver */
+#define DEFAULT_ALERT_THRESHOLD	1
+
 struct max17042_chip {
 	struct i2c_client *client;
 	struct power_supply battery;
@@ -102,6 +107,7 @@ struct max17042_chip {
 	struct work_struct work;
 	int    init_complete;
 	bool batt_undervoltage;
+	u16 alert_threshold;
 #ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
 	struct dentry *debugfs_root;
 	u8 debugfs_addr;
@@ -721,16 +727,25 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 	u16 val;
 
 	val = max17042_read_reg(chip->client, MAX17042_STATUS);
-	if ((val & STATUS_INTR_SOCMIN_BIT) ||
-		(val & STATUS_INTR_SOCMAX_BIT)) {
-		dev_info(&chip->client->dev, "SOC threshold INTR\n");
-		max17042_set_soc_threshold(chip, 1);
+
+	dev_dbg(&chip->client->dev, "status:0x%x soc_tr:0x%x\n",
+		 val, chip->alert_threshold);
+
+	if ((val & STATUS_SMN_BIT) || (val & STATUS_SMX_BIT)) {
+		max17042_set_soc_threshold(chip, chip->alert_threshold);
+		/* clear the  Smin Smax bits if set */
+		if (chip->pdata->config_data->config & CONFIG_SS_BIT_ENBL)
+			val &= ~STATUS_SMN_BIT & ~STATUS_SMX_BIT;
 	}
 
-	if (val & STATUS_INTR_VMIN_BIT) {
-		dev_info(&chip->client->dev, "Battery undervoltage INTR\n");
+	if (val & STATUS_VMN_BIT) {
+		dev_dbg(&chip->client->dev, "Battery undervoltage INTR\n");
 		chip->batt_undervoltage = true;
 	}
+
+	/* if sticky bits are used, clear them */
+	if (chip->pdata->config_data->config & CONFIG_STICK_ALL_ENBL)
+		max17042_write_reg(chip->client, MAX17042_STATUS, val);
 
 	power_supply_changed(&chip->battery);
 	return IRQ_HANDLED;
@@ -1110,6 +1125,44 @@ err_debugfs:
 }
 #endif
 
+static ssize_t max17042_show_alert_threshold(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	struct max17042_chip *chip = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", chip->alert_threshold);
+}
+
+static ssize_t max17042_store_alert_threshold(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct max17042_chip *chip = dev_get_drvdata(dev);
+	unsigned long t;
+	u16 r;
+
+	r = kstrtoul(buf, 10, &t);
+	if ((!r) && ( r < 100 )) {
+		chip->alert_threshold = (u16)t;
+		max17042_set_soc_threshold(chip, chip->alert_threshold);
+	}
+
+	return r ? r : count;
+}
+
+static DEVICE_ATTR(alert_threshold, S_IRUGO | S_IWUSR,
+		max17042_show_alert_threshold, max17042_store_alert_threshold);
+
+static struct attribute *max17042_attrs[] = {
+	&dev_attr_alert_threshold.attr,
+	NULL,
+};
+
+static struct attribute_group max17042_attr_group = {
+	.attrs = max17042_attrs,
+};
+
 static int max17042_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -1152,6 +1205,8 @@ static int max17042_probe(struct i2c_client *client,
 	chip->battery.properties	= max17042_battery_props;
 	chip->battery.num_properties	= ARRAY_SIZE(max17042_battery_props);
 
+	chip->alert_threshold = DEFAULT_ALERT_THRESHOLD;
+
 	/* When current is not measured,
 	 * CURRENT_NOW and CURRENT_AVG properties should be invisible. */
 	if (!chip->pdata->enable_current_sense)
@@ -1193,7 +1248,7 @@ static int max17042_probe(struct i2c_client *client,
 			reg =  max17042_read_reg(client, MAX17042_CONFIG);
 			reg |= CONFIG_ALRT_BIT_ENBL;
 			max17042_write_reg(client, MAX17042_CONFIG, reg);
-			max17042_set_soc_threshold(chip, 1);
+			max17042_set_soc_threshold(chip, chip->alert_threshold);
 		} else {
 			client->irq = 0;
 			dev_err(&client->dev, "%s(): cannot get IRQ\n",
@@ -1217,6 +1272,10 @@ static int max17042_probe(struct i2c_client *client,
 	}
 #endif
 
+	ret = sysfs_create_group(&client->dev.kobj, &max17042_attr_group);
+	if (ret)
+		dev_err(&client->dev, "failed to create sysfs files\n");
+
 	return 0;
 }
 
@@ -1227,6 +1286,8 @@ static int max17042_remove(struct i2c_client *client)
 #ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
 	debugfs_remove_recursive(chip->debugfs_root);
 #endif
+
+	sysfs_remove_group(&client->dev.kobj, &max17042_attr_group);
 
 	if (client->irq)
 		free_irq(client->irq, chip);
@@ -1260,7 +1321,7 @@ static int max17042_resume(struct device *dev)
 		disable_irq_wake(chip->client->irq);
 		enable_irq(chip->client->irq);
 		/* re-program the SOC thresholds to 1% change */
-		max17042_set_soc_threshold(chip, 1);
+		max17042_set_soc_threshold(chip, chip->alert_threshold);
 	}
 
 	return 0;
