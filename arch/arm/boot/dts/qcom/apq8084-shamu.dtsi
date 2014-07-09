@@ -368,9 +368,10 @@
 
 &i2c_1 {
 	/delete-node/ drv2605@5a;
+	/delete-node/ synaptics_dsx_i2c@20;
 
-	synaptics_dsx_i2c@20 {
-		status = "disabled";
+	atmel_mxt_ts@4a {
+		/delete-property/ atmel,key-buttons;
 	};
 };
 
