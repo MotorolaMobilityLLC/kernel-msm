@@ -747,6 +747,9 @@ static void apanic_mmc_logbuf_dump(struct kmsg_dumper *dumper)
 	if (tracing_get_trace_buf_size() < (SZ_512K + 1))
 		ftrace_dump(1);
 
+	touch_hw_watchdog();
+	touch_nmi_watchdog();
+
 	show_state_thread_filter(0, SHOW_APP_THREADS);
 	ctx->buf_offset = ALIGN(ctx->written, 512);
 	start_apanic_threads = 0;
@@ -880,7 +883,7 @@ static void apanic_mmc(struct kmsg_dumper *dumper, enum kmsg_dump_reason reason)
 	* suspend/resume). Enable HW watchdog to avoid hang
 	* in raw mmc operation.
 	*/
-	panic_watchdog_set(10);
+	panic_watchdog_set(22);
 
 #ifdef CONFIG_PREEMPT
 	/* Ensure that cond_resched() won't try to preempt anybody */
