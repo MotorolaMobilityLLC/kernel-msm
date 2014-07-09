@@ -43,6 +43,10 @@
 	};
 };
 
+&uart6 {
+	/delete-property/ qcom,inject-rx-on-wakeup;
+	/delete-property/ qcom,rx-char-to-inject;
+};
 &soc {
 	sound {
 		qcom,model = "apq8084-taiko-tfa9890_stereo_codec-snd-card";
