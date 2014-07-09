@@ -65,7 +65,8 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 #define LOAD_SM2_PROGRAM	1
 #define LOAD_SP2_PARAMETERS	1
 
-#define LIS3DSH_TILT_TO_WAKE		1
+#define LIS3DSH_TILT_TO_WAKE		10
+#define LIS3DSH_KNOCK_KNOCK		3
 
 #define G_MAX			23920640	/* ug */
 #define I2C_RETRY_DELAY		5		/* Waiting for signals [ms] */
@@ -360,6 +361,8 @@ struct lis3dsh_acc_data {
 	struct work_struct irq2_work;
 	struct workqueue_struct *irq2_work_queue;
 
+	int report_event_en;
+
 #ifdef DEBUG
 	u8 reg_addr;
 #endif
@@ -421,11 +424,11 @@ static void lis3dsh_acc_set_init_statepr1_inst(struct lis3dsh_acc_data *acc, int
 
 	switch (sel) {
 	case LIS3DSH_TILT_TO_WAKE:				//detect tilt
-		acc->resume_stmach_program1[0] = 0x51;
-		acc->resume_stmach_program1[1] = 0x24;
-		acc->resume_stmach_program1[2] = 0X26;
-		acc->resume_stmach_program1[3] = 0X11;
-		acc->resume_stmach_program1[4] = 0x00;
+		acc->resume_stmach_program1[0] = 0x09;
+		acc->resume_stmach_program1[1] = 0x71;
+		acc->resume_stmach_program1[2] = 0x88;
+		acc->resume_stmach_program1[3] = 0xFF;
+		acc->resume_stmach_program1[4] = 0x11;
 		acc->resume_stmach_program1[5] = 0x00;
 		acc->resume_stmach_program1[6] = 0x00;
 		acc->resume_stmach_program1[7] = 0x00;
@@ -438,11 +441,29 @@ static void lis3dsh_acc_set_init_statepr1_inst(struct lis3dsh_acc_data *acc, int
 		acc->resume_stmach_program1[14] = 0x00;
 		acc->resume_stmach_program1[15] = 0x00;
 		break;
+	case LIS3DSH_KNOCK_KNOCK:				//detect knock
+		acc->resume_stmach_program1[0] = 0x15;
+		acc->resume_stmach_program1[1] = 0x47;
+		acc->resume_stmach_program1[2] = 0X03;
+		acc->resume_stmach_program1[3] = 0X62;
+		acc->resume_stmach_program1[4] = 0x15;
+		acc->resume_stmach_program1[5] = 0x47;
+		acc->resume_stmach_program1[6] = 0x03;
+		acc->resume_stmach_program1[7] = 0x62;
+		acc->resume_stmach_program1[8] = 0x11;
+		acc->resume_stmach_program1[9] = 0x00;
+		acc->resume_stmach_program1[10] = 0x00;
+		acc->resume_stmach_program1[11] = 0x00;
+		acc->resume_stmach_program1[12] = 0x00;
+		acc->resume_stmach_program1[13] = 0x00;
+		acc->resume_stmach_program1[14] = 0x00;
+		acc->resume_stmach_program1[15] = 0x00;
+		break;
 	default:
 		acc->resume_stmach_program1[0] = 0x00;
 		acc->resume_stmach_program1[1] = 0x00;
-		acc->resume_stmach_program1[2] = 0X00;
-		acc->resume_stmach_program1[3] = 0X00;
+		acc->resume_stmach_program1[2] = 0x00;
+		acc->resume_stmach_program1[3] = 0x00;
 		acc->resume_stmach_program1[4] = 0x00;
 		acc->resume_stmach_program1[5] = 0x00;
 		acc->resume_stmach_program1[6] = 0x00;
@@ -463,16 +484,15 @@ static void lis3dsh_acc_set_init_statepr2_inst(struct lis3dsh_acc_data *acc)
 {
 #if (LOAD_SM2_PROGRAM == 1)
 	/* Place here state machine 2 program */
-	/* Double Tap function */
-	acc->resume_stmach_program2[0] = 0x15;
-	acc->resume_stmach_program2[1] = 0x47;
-	acc->resume_stmach_program2[2] = 0X03;
-	acc->resume_stmach_program2[3] = 0X62;
-	acc->resume_stmach_program2[4] = 0x15;
-	acc->resume_stmach_program2[5] = 0x47;
-	acc->resume_stmach_program2[6] = 0x03;
-	acc->resume_stmach_program2[7] = 0x62;
-	acc->resume_stmach_program2[8] = 0x11;
+	acc->resume_stmach_program2[0] = 0xFF;
+	acc->resume_stmach_program2[1] = 0x33;
+	acc->resume_stmach_program2[2] = 0x07;
+	acc->resume_stmach_program2[3] = 0x51;
+	acc->resume_stmach_program2[4] = 0x88;
+	acc->resume_stmach_program2[5] = 0x44;
+	acc->resume_stmach_program2[6] = 0x11;
+	acc->resume_stmach_program2[7] = 0x00;
+	acc->resume_stmach_program2[8] = 0x00;
 	acc->resume_stmach_program2[9] = 0x00;
 	acc->resume_stmach_program2[10] = 0x00;
 	acc->resume_stmach_program2[11] = 0x00;
@@ -483,8 +503,8 @@ static void lis3dsh_acc_set_init_statepr2_inst(struct lis3dsh_acc_data *acc)
 #else
 	acc->resume_stmach_program2[0] = 0x00;
 	acc->resume_stmach_program2[1] = 0x00;
-	acc->resume_stmach_program2[2] = 0X00;
-	acc->resume_stmach_program2[3] = 0X00;
+	acc->resume_stmach_program2[2] = 0x00;
+	acc->resume_stmach_program2[3] = 0x00;
 	acc->resume_stmach_program2[4] = 0x00;
 	acc->resume_stmach_program2[5] = 0x00;
 	acc->resume_stmach_program2[6] = 0x00;
@@ -500,23 +520,56 @@ static void lis3dsh_acc_set_init_statepr2_inst(struct lis3dsh_acc_data *acc)
 #endif /* LOAD_SM2_PROGRAM */
 }
 
-static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc)
+static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc, int sel)
 {
 #if (LOAD_SP1_PARAMETERS == 1)
-	/* Place here state machine 1 parameters */
-	/* Tilt to wake function */
-	acc->resume_state[RES_LIS3DSH_TIM4_1] = 0x00;
-	acc->resume_state[RES_LIS3DSH_TIM3_1] = 0x00;
-	acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0x01;
-	acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x02;
-	acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_THRS2_1] = 0x32;
-	acc->resume_state[RES_LIS3DSH_THRS1_1] = 0x06;
-	/* DES1 not available*/
-	acc->resume_state[RES_LIS3DSH_SA_1] = 0xF0;
-	acc->resume_state[RES_LIS3DSH_MA_1] = 0x0C;
-	acc->resume_state[RES_LIS3DSH_SETT_1] = 0x01;
+	switch (sel) {
+	case LIS3DSH_TILT_TO_WAKE:				//detect tilt
+		/* Place here state machine 1 parameters */
+		/* Tilt to wake function */
+		acc->resume_state[RES_LIS3DSH_TIM4_1] = 0x00;
+		acc->resume_state[RES_LIS3DSH_TIM3_1] = 0x00;
+		acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0xC8;
+		acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
+		acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x1E;
+		acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
+		acc->resume_state[RES_LIS3DSH_THRS2_1] = 0x36;
+		acc->resume_state[RES_LIS3DSH_THRS1_1] = 0x36;
+		/* DES1 not available*/
+		acc->resume_state[RES_LIS3DSH_SA_1] = 0x80;
+		acc->resume_state[RES_LIS3DSH_MA_1] = 0x80;
+		acc->resume_state[RES_LIS3DSH_SETT_1] = 0x00;
+		break;
+	case LIS3DSH_KNOCK_KNOCK:				//detect tap
+		/* Double tap function */
+		acc->resume_state[RES_LIS3DSH_TIM4_1] = 0x05;
+		acc->resume_state[RES_LIS3DSH_TIM3_1] = 0x14;
+		acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0x24;
+		acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
+		acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x86;
+		acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
+		acc->resume_state[RES_LIS3DSH_THRS2_1] = 0x03;
+		acc->resume_state[RES_LIS3DSH_THRS1_1] = 0x03;
+		/* DES1 not available*/
+		acc->resume_state[RES_LIS3DSH_SA_1] = 0x00;
+		acc->resume_state[RES_LIS3DSH_MA_1] = 0x03;
+		acc->resume_state[RES_LIS3DSH_SETT_1] = 0x21;
+		break;
+	default:
+		acc->resume_state[RES_LIS3DSH_TIM4_1] = 0x00;
+		acc->resume_state[RES_LIS3DSH_TIM3_1] = 0x00;
+		acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0x00;
+		acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
+		acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x00;
+		acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
+		acc->resume_state[RES_LIS3DSH_THRS2_1] = 0x00;
+		acc->resume_state[RES_LIS3DSH_THRS1_1] = 0x00;
+		/* DES1 not available*/
+		acc->resume_state[RES_LIS3DSH_SA_1] = 0x00;
+		acc->resume_state[RES_LIS3DSH_MA_1] = 0x00;
+		acc->resume_state[RES_LIS3DSH_SETT_1] = 0x00;
+		break;
+	}
 #else
 	acc->resume_state[RES_LIS3DSH_TIM4_1] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM3_1] = 0x00;
@@ -537,19 +590,18 @@ static void lis3dsh_acc_set_init_statepr2_param(struct lis3dsh_acc_data *acc)
 {
 #if (LOAD_SP2_PARAMETERS == 1)
 	/* Place here state machine 2 parameters */
-	/* Double Tap function */
-	acc->resume_state[RES_LIS3DSH_TIM4_2] = 0x05;
-	acc->resume_state[RES_LIS3DSH_TIM3_2] = 0x14;
-	acc->resume_state[RES_LIS3DSH_TIM2_2_L] = 0x24;
+	acc->resume_state[RES_LIS3DSH_TIM4_2] = 0x00;
+	acc->resume_state[RES_LIS3DSH_TIM3_2] = 0x00;
+	acc->resume_state[RES_LIS3DSH_TIM2_2_L] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM2_2_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x86;
+	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x03;
-	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x03;
+	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x36;
+	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x36;
 	acc->resume_state[RES_LIS3DSH_DES_2] = 0x00;
-	acc->resume_state[RES_LIS3DSH_SA_2] = 0x00;
-	acc->resume_state[RES_LIS3DSH_MA_2] = 0x03;
-	acc->resume_state[RES_LIS3DSH_SETT_2] = 0x21;
+	acc->resume_state[RES_LIS3DSH_SA_2] = 0x80;
+	acc->resume_state[RES_LIS3DSH_MA_2] = 0x80;
+	acc->resume_state[RES_LIS3DSH_SETT_2] = 0x00;
 #else
 	acc->resume_state[RES_LIS3DSH_TIM4_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM3_2] = 0x00;
@@ -687,10 +739,10 @@ static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 		goto err_resume_state;
 
 	buf[0] = (I2C_AUTO_INCREMENT | LIS3DSH_VFC_1);
-	buf[1] = acc->resume_state[LIS3DSH_VFC_1];
-	buf[2] = acc->resume_state[LIS3DSH_VFC_2];
-	buf[3] = acc->resume_state[LIS3DSH_VFC_3];
-	buf[4] = acc->resume_state[LIS3DSH_VFC_4];
+	buf[1] = acc->resume_state[RES_LIS3DSH_VFC_1];
+	buf[2] = acc->resume_state[RES_LIS3DSH_VFC_2];
+	buf[3] = acc->resume_state[RES_LIS3DSH_VFC_3];
+	buf[4] = acc->resume_state[RES_LIS3DSH_VFC_4];
 	err = lis3dsh_acc_i2c_write(acc, buf, 4);
 	if (err < 0)
 		goto err_resume_state;
@@ -889,21 +941,23 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_1;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] == 0x20) ||(rbuf[0] == 0x80)) {
+		if((rbuf[0] == 0x80)) {
 			printk("***********************Tilt to wake event\n");
-			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
+			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_DIS);
 			if (atomic_read(&is_suspend)) {
-				printk("[lis3dsh] send pwr key\n");
 				input_report_key(g_acc->input_dev, KEY_POWER,1);
 				input_sync(g_acc->input_dev);
 				msleep(5);
 				input_report_key(g_acc->input_dev, KEY_POWER,0);
 				input_sync(g_acc->input_dev);
 			}
-// ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for tilt"
 			strcpy(event_status,"TILT");
 			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
-// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for tilt"
+		}
+		else if((rbuf[0] == 0x01) || (rbuf[0] == 0x02)) {
+			printk("***********************knock-knock event\n");
+			strcpy(event_status,"KNOCK");
+			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
 		}
 	}
 	if(status & LIS3DSH_STAT_INTSM2_BIT) {
@@ -936,23 +990,6 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_2;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02)) {
-			printk("***********************knock-knock event\n");
-			lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
-			if(atomic_read(&is_suspend)) {
-				printk("[lis3dsh] send pwr key\n");
-				input_report_key(g_acc->input_dev, KEY_POWER,1);
-				input_sync(g_acc->input_dev);
-				msleep(5);
-				input_report_key(g_acc->input_dev, KEY_POWER,0);
-				input_sync(g_acc->input_dev);
-			}
-// ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
-			strcpy(event_status,"KNOCK");
-			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
-// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
-		}
-		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: OUTS_2: 0x%02x\n", __func__, rbuf[0]);
 	}
 	enable_irq(acc->irq2);
 	sensor_debug(DEBUG_VERBOSE, "[lis3dsh] %s: IRQ2 re-enabled\n", __func__);
@@ -1169,7 +1206,8 @@ static int lis3dsh_acc_enable(struct lis3dsh_acc_data *acc)
 			atomic_set(&acc->enabled, 0);
 			return err;
 		}
-		schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
+		if (acc->report_event_en)
+			schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
 		sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
 	}
 	return 0;
@@ -1179,7 +1217,8 @@ static int lis3dsh_acc_disable(struct lis3dsh_acc_data *acc)
 {
 	if (atomic_cmpxchg(&acc->enabled, 1, 0)) {
 		sensor_debug(DEBUG_INFO, "[Sensors] %s +++\n", __func__);
-		cancel_delayed_work_sync(&acc->input_work);
+		if (acc->report_event_en)
+			cancel_delayed_work_sync(&acc->input_work);
 		lis3dsh_acc_device_power_off(acc);
 	}
 	sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
@@ -1795,8 +1834,7 @@ static void lis3dsh_acc_input_work_func(struct work_struct *work)
 	else
 		lis3dsh_acc_report_values(acc, xyz);
 
-	schedule_delayed_work(&acc->input_work, msecs_to_jiffies(
-			acc->pdata->poll_interval));
+	schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
 	mutex_unlock(&acc->lock);
 }
 
@@ -1850,6 +1888,7 @@ static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 {
 	int err;
 
+	acc->report_event_en = 0; 			//default report ABS event OFF
 	INIT_DELAYED_WORK(&acc->input_work, lis3dsh_acc_input_work_func);
 	acc->input_dev = input_allocate_device();
 	if (!acc->input_dev) {
@@ -2025,15 +2064,23 @@ void notify_st_sensor_lowpowermode(int low)
 		atomic_set(&is_suspend,1);
 		enable_irq_wake(g_acc->irq1);
 		enable_irq_wake(g_acc->irq2);
+		lis3dsh_acc_device_power_off(g_acc);
+		lis3dsh_acc_set_init_statepr1_param(g_acc, LIS3DSH_TILT_TO_WAKE);
+		lis3dsh_acc_set_init_statepr1_inst(g_acc, LIS3DSH_TILT_TO_WAKE);
+		lis3dsh_acc_device_power_on(g_acc);
+		lis3dsh_acc_update_odr(g_acc, LIS3DSH_TILT_TO_WAKE);
 		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_EN);
 	}
 	else {
 		atomic_set(&is_suspend,0);
 		disable_irq_wake(g_acc->irq1);
 		disable_irq_wake(g_acc->irq2);
-		#ifndef ASUS_FACTORY_BUILD
-		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
-		#endif
+		lis3dsh_acc_device_power_off(g_acc);
+		lis3dsh_acc_set_init_statepr1_param(g_acc, LIS3DSH_KNOCK_KNOCK);
+		lis3dsh_acc_set_init_statepr1_inst(g_acc, LIS3DSH_KNOCK_KNOCK);
+		lis3dsh_acc_device_power_on(g_acc);
+		lis3dsh_acc_update_odr(g_acc, LIS3DSH_KNOCK_KNOCK);
+		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_DIS);
 	}
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
@@ -2199,8 +2246,8 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	memset(acc->resume_state, 0, ARRAY_SIZE(acc->resume_state));
 	lis3dsh_acc_set_init_register_values(acc);
 	//init state program1 and params
-	lis3dsh_acc_set_init_statepr1_param(acc);
-	lis3dsh_acc_set_init_statepr1_inst(acc, 1);
+	lis3dsh_acc_set_init_statepr1_param(acc, LIS3DSH_KNOCK_KNOCK);
+	lis3dsh_acc_set_init_statepr1_inst(acc, LIS3DSH_KNOCK_KNOCK);
 	//init state program2  and params
 	lis3dsh_acc_set_init_statepr2_param(acc);
 	lis3dsh_acc_set_init_statepr2_inst(acc);
@@ -2287,7 +2334,7 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 
 	lis3dsh_acc_enable(acc);			//default on
 
-	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_DIS_SM2_EN);
+	lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_DIS);
 
 	#ifdef CONFIG_I2C_STRESS_TEST
 	i2c_add_test_case(client, "STSensorTest", ARRAY_AND_SIZE(gLIS3DSHTestCaseInfo));
@@ -2341,8 +2388,8 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 		destroy_workqueue(acc->irq2_work_queue);
 	}
 
-	if (atomic_cmpxchg(&acc->enabled, 1, 0))
-			cancel_delayed_work_sync(&acc->input_work);
+	if (atomic_cmpxchg(&acc->enabled, 1, 0) && acc->report_event_en)
+		cancel_delayed_work_sync(&acc->input_work);
 
 	lis3dsh_acc_device_power_off(acc);
 	lis3dsh_acc_input_cleanup(acc);
