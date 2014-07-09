@@ -83,8 +83,8 @@
 			ti,ledb-max-brt = <0xff>;
 			ti,leda-init-brt = <0xff>;
 			ti,ledb-init-brt = <0xff>;
-			ti,leda-max-cur = <0x11>;
-			ti,ledb-max-cur = <0x11>;
+			ti,leda-max-cur = <0x14>;
+			ti,ledb-max-cur = <0x14>;
 			ti,boost-ctrl = <0x20>;
 			ti,config = <0x09>;
 			ti,irq-gpio = <&msmgpio 4 0>;
@@ -547,8 +547,12 @@
 	qcom,cont-splash-enabled;
 };
 
+&mot_jdi_720p_vid_v1 {
+	qcom,cont-splash-enabled;
+};
+
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_jdi_720p_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_jdi_720p_vid_v1>;
 	vddio_disp-supply = <&vddio_disp_vreg>;
 	lcdbias-supply = <&tps65132>;
 };
