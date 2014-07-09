@@ -30587,7 +30587,6 @@ WDI_ProcessGetBcnMissRateReq
   wpt_uint16                   usSendSize          = 0;
   wpt_uint8                    ucCurrentBSSSesIdx  = 0;
   WDI_BSSSessionType*          pBSSSes             = NULL;
-  wpt_macAddr                  macBSSID;
   WDI_GetBcnMissRateCb        *wdiGetBcnMissRateCb;
   tHalBcnMissRateReqParams    halBcnMissRateReq;
 
@@ -30615,7 +30614,8 @@ WDI_ProcessGetBcnMissRateReq
   {
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
         "%s: Association sequence for this BSS does not yet exist. macBSSID"
-         MAC_ADDRESS_STR, __func__, MAC_ADDR_ARRAY(macBSSID));
+         MAC_ADDRESS_STR, __func__,
+         MAC_ADDR_ARRAY((wpt_uint8 *)(pEventData->pEventData)));
     wpalMutexRelease(&pWDICtx->wptMutex);
     return WDI_STATUS_E_NOT_ALLOWED;
   }

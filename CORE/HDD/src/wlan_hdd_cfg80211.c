@@ -12483,6 +12483,7 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         goto error;
     }
 
+    vos_mem_free(pPnoRequest);
     ret = pAdapter->pno_req_status;
     return ret;
 
