@@ -11153,6 +11153,13 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_devic
         return 0;
     }
 
+    if (VOS_TRUE == pHddStaCtx->hdd_ReassocScenario)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                  "%s: Roaming in progress, so unable to proceed this request", __func__);
+        return 0;
+    }
+
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)
