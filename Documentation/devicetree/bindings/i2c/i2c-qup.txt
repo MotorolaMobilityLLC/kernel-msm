@@ -44,9 +44,14 @@ Optional property:
 		       unprepare_disable) is controlled by i2c-transaction's
 		       begining and ending. When missing, the clock's state
 		       is controlled by runtime-pm events.
- - extended_recovery   : When true,the driver will try to do extra recovery
-		       if the 9-clk bus recovery failed. SDA and CLK GPIOs
-		       have to be configured to make the recovery works.
+ - qcom,extended-recovery : Bitfield.
+		       Bit 0 will make the driver will try to do extra 1-pulse
+		       bit-banged recovery if the HW-driven 9-clk bus recovery
+		       has failed. SDA and CLK GPIOs have to be configured
+		       to make the extra recovery work.
+		       Bit 1 will make the driver attempt recovery regardless
+		       of current mastership of the bus (useful for some
+		       single-master devices with badly misbehaving slaves)
 
 Example:
 	i2c_3: i2c@f9966000 {
