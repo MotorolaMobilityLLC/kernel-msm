@@ -1019,7 +1019,7 @@ static int qup_i2c_recover_bus_busy(struct qup_i2c_dev *dev)
 	dev_info(dev->dev, "Bus recovery %s\n",
 		(status & I2C_STATUS_BUS_ACTIVE) ? "fail" : "success");
 
-	if (dev->pdata->extended_recovery &&
+	if (dev->pdata->extended_recovery & 0x1 &&
 					(status & I2C_STATUS_BUS_ACTIVE)) {
 		dev_info(dev->dev,
 		"9 clk pulse bus recovery did not help, try 1 clk pulse\n");
@@ -1266,8 +1266,9 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 				 * active and controller is not master.
 				 * A slave has pulled line low. Try to recover
 				 */
-				if (!(istatus & I2C_STATUS_BUS_ACTIVE) ||
-					(istatus & I2C_STATUS_BUS_MASTER)) {
+				if (!(istatus & I2C_STATUS_BUS_ACTIVE)
+					|| istatus & I2C_STATUS_BUS_MASTER
+					|| dev->pdata->extended_recovery & 0x2){
 					timeout =
 					wait_for_completion_timeout(&complete,
 									HZ);
@@ -1316,7 +1317,8 @@ timeout_err:
 					 * are the master or the bus is idle.
 					 */
 					if (!(dev->err & I2C_STATUS_BUS_ACTIVE)
-					  || (dev->err & I2C_STATUS_BUS_MASTER))
+					 || dev->err & I2C_STATUS_BUS_MASTER
+					 || dev->pdata->extended_recovery & 0x2)
 						qup_i2c_recover_bus_busy(dev);
 				}
 				ret = -dev->err;
@@ -1434,7 +1436,7 @@ int __devinit msm_i2c_rsrcs_dt_to_pdata_map(struct platform_device *pdev,
 	{"qcom,sda-gpio",      gpios + 1,           DT_OPTIONAL,  DT_GPIO, -1},
 	{"qcom,clk-ctl-xfer", &pdata->clk_ctl_xfer, DT_OPTIONAL,  DT_BOOL, -1},
 	{"qcom,extended-recovery", &pdata->extended_recovery,
-						DT_OPTIONAL,  DT_BOOL, -1},
+							DT_OPTIONAL, DT_U32, 0},
 	{"qcom,noise-rjct-scl", &pdata->noise_rjct_scl, DT_OPTIONAL, DT_U32, 0},
 	{"qcom,noise-rjct-sda", &pdata->noise_rjct_sda, DT_OPTIONAL, DT_U32, 0},
 	{NULL,                                    NULL,           0,      0, 0},
