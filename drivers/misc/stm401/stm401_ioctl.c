@@ -61,7 +61,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long current_posix_time;
 	struct timespec current_time;
 
-	mutex_lock(&ps_stm401->lock);
+	if (mutex_lock_interruptible(&ps_stm401->lock) != 0)
+		return -EINTR;
 
 	stm401_wake(ps_stm401);
 
