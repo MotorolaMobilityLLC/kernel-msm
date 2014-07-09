@@ -16,6 +16,111 @@
  * VERSION = "1.0"
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
+	mot_boe_450_qhd_vid_v2: qcom,mdss_dsi_mot_boe_450_qhd_video_v2 {
+		qcom,mdss-dsi-panel-name = "mipi_mot_video_boe_qhd_450_v2";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-type = "dsi_video_mode";
+		qcom,mdss-dsi-panel-destination = "display_1";
+		qcom,mdss-dsi-panel-framerate = <60>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-panel-width = <540>;
+		qcom,mdss-dsi-panel-height = <960>;
+		qcom,mdss-pan-physical-width-dimension = <55>;
+		qcom,mdss-pan-physical-height-dimension = <99>;
+
+		qcom,mdss-dsi-h-front-porch = <24>;
+		qcom,mdss-dsi-h-back-porch = <40>;
+		qcom,mdss-dsi-h-pulse-width = <4>;
+		qcom,mdss-dsi-h-sync-skew = <0>;
+		qcom,mdss-dsi-v-back-porch = <16>;
+		qcom,mdss-dsi-v-front-porch = <16>;
+		qcom,mdss-dsi-v-pulse-width = <2>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-on-command = [
+			29 01 00 00 00 00 06 F0 55 AA 52 08 00
+			29 01 00 00 00 00 06 B0 00 0C 40 3C 3C
+			29 01 00 00 00 00 03 B1 6B 06
+			13 01 00 00 00 00 02 B6 09
+			29 01 00 00 00 00 03 B7 03 02
+			29 01 00 00 00 00 05 B8 01 04 04 04
+			13 01 00 00 00 00 02 BA 01
+			29 01 00 00 00 00 03 BB 63 30
+			13 01 00 00 00 00 02 BC 00
+			29 01 00 00 00 00 04 CC 03 17 50
+			29 01 00 00 00 00 0a D4 00 00 00 00 00 00 00 00 00
+			29 01 00 00 00 00 11 D6 00 00 00 01 01 01 01 01 01 01 01 01 02 02 02 02
+			29 01 00 00 00 00 0d D7 31 31 31 31 31 31 31 31 31 31 31 31
+			29 01 00 00 00 00 0e D8 31 31 31 31 31 31 31 31 31 31 31 31 31
+			29 01 00 00 00 00 0b E3 F0 E4 DE D7 D0 CB C9 C6 C3 C0
+			29 01 00 00 00 00 06 F0 55 AA 52 08 01
+			13 01 00 00 00 00 02 B0 0A
+			13 01 00 00 00 00 02 B6 33
+			13 01 00 00 00 00 02 B1 0A
+			13 01 00 00 00 00 02 B7 24
+			13 01 00 00 00 00 02 B2 01
+			13 01 00 00 00 00 02 B8 33
+			13 01 00 00 00 00 02 B3 0A
+			13 01 00 00 00 00 02 B9 23
+			13 01 00 00 00 00 02 B4 0A
+			13 01 00 00 00 00 02 BA 25
+			15 01 00 00 00 00 02 53 2C
+			15 01 00 00 00 00 02 55 82
+			05 01 00 00 78 00 01 11		/* Exit sleep mode */
+			15 01 00 00 00 00 02 51 FF
+			05 01 00 00 28 00 01 29];	/* display on */
+		qcom,mdss-dsi-off-command = [
+			05 01 00 00 0a 00 01 28		/* display_off */
+			05 01 00 00 78 00 01 10];	/* enter sleep mode */
+
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-h-sync-pulse = <0>;
+		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-lane-1-state;
+		qcom,mdss-dsi-panel-timings = [82 1c 12 00 40 42 16 1e 14 03 04 00];
+		qcom,mdss-dsi-t-clk-post = <0x04>;
+		qcom,mdss-dsi-t-clk-pre = <0x1a>;
+		qcom,mdss-dsi-bl-min-level = <1>;
+		qcom,mdss-dsi-bl-max-level = <4095>;
+		qcom,mdss-dsi-dma-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
+		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+		qcom,mdss-dsi-reset-sequence = <1 2>, <0 1>, <1 21>;
+
+		qcom,platform-supply-entry1 {
+			qcom,supply-name = "vci_disp";
+			qcom,supply-min-voltage = <3800000>;
+			qcom,supply-max-voltage = <3800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,platform-supply-entry2 {
+			qcom,supply-name = "vddio_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <10>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <1>;
+		};
+	};
+
 	mot_boe_450_qhd_vid_v1: qcom,mdss_dsi_mot_boe_450_qhd_video_v1 {
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_boe_qhd_450_v1";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
@@ -73,7 +178,7 @@
 			15 01 00 00 00 00 02 55 82
 			05 01 00 00 78 00 01 11		/* Exit sleep mode */
 			15 01 00 00 00 00 02 51 FF
-			05 01 00 00 0b 00 01 29];	/* display on */
+			05 01 00 00 28 00 01 29];	/* display on */
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 0a 00 01 28		/* display_off */
 			05 01 00 00 78 00 01 10];	/* enter sleep mode */
@@ -208,7 +313,7 @@
 			05 01 00 00 78 00 01 11		/* Exit sleep mode */
 			15 01 00 00 00 00 02 53 2C
 			15 01 00 00 00 00 02 51 FF
-			05 01 00 00 0b 00 01 29];	/* display on */
+			05 01 00 00 28 00 01 29];	/* display on */
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 0a 00 01 28		/* display_off */
 			05 01 00 00 78 00 01 10];	/* enter sleep mode */
