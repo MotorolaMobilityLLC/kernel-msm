@@ -758,6 +758,7 @@ static const struct file_operations logger_fops = {
 	.release = logger_release,
 };
 
+static bool kernel_log_init = true;
 /*
  * Log size must must be a power of two, and greater than
  * (LOGGER_ENTRY_MAX_PAYLOAD + sizeof(struct logger_entry)).
@@ -800,6 +801,9 @@ static int __init create_log(char *log_name, int size)
 	INIT_LIST_HEAD(&log->logs);
 	list_add_tail(&log->logs, &log_list);
 
+	if (kernel_log_init == true)
+		goto out;
+
 	/* finally, initialize the misc device for this log */
 	ret = misc_register(&log->misc);
 	if (unlikely(ret)) {
@@ -810,7 +814,7 @@ static int __init create_log(char *log_name, int size)
 
 	pr_info("created %luK log '%s'\n",
 		(unsigned long) log->size >> 10, log->misc.name);
-
+out:
 	return 0;
 
 out_free_log:
@@ -828,7 +832,6 @@ static int __init logger_init(void)
 {
 	int ret;
 	struct logger_log *log;
-	struct logger_reader *reader;
 
 	ret = create_log(LOGGER_LOG_MAIN, CONFIG_LOGCAT_SIZE*1024);
 	if (unlikely(ret))
@@ -846,36 +849,21 @@ static int __init logger_init(void)
 	if (unlikely(ret))
 		goto out;
 
-	ret = create_log(LOGGER_LOG_KERNEL, 256*1024);
-	if (unlikely(ret))
-		goto out;
-
-	ret = create_log(LOGGER_LOG_KERNEL_BOT, 64*1024);
-	if (unlikely(ret))
-		goto out;
 
 	list_for_each_entry(log, &log_list, logs) {
-		if (!strcmp(log->misc.name, LOGGER_LOG_KERNEL))
-			log_kernel = log;
-		else if (!strcmp(log->misc.name, LOGGER_LOG_KERNEL_BOT)) {
-			log_kernel_bottom = log;
-			misc_deregister(&log->misc);
+		if (!strcmp(log->misc.name, LOGGER_LOG_KERNEL)) {
+			ret = misc_register(&log->misc);
+			if (unlikely(ret)) {
+				pr_err("failed to register");
+				pr_err("misc device for log '%s'!\n",
+					log->misc.name);
+				kfree(log);
+				goto out;
+			}
+			pr_info("created %luK log '%s'\n",
+			(unsigned long) log->size >> 10, log->misc.name);
 		}
 	}
-
-	/* Init log kernel bottom */
-	reader = kmalloc(sizeof(struct logger_reader), GFP_KERNEL);
-	if (!reader)
-		return -ENOMEM;
-
-	reader->log = log_kernel_bottom;
-	INIT_LIST_HEAD(&reader->list);
-	mutex_lock(&log_kernel_bottom->mutex);
-	reader->r_off = log_kernel_bottom->head;
-	list_add_tail(&reader->list, &log_kernel_bottom->readers);
-	mutex_unlock(&log_kernel_bottom->mutex);
-
-	log_kernel->log_bottom = log_kernel_bottom;
 
 out:
 	return ret;
@@ -1053,14 +1041,49 @@ static struct console logger_console = {
 
 static int __init logger_console_init(void)
 {
+	struct logger_log *log;
+	struct logger_reader *reader;
+	int ret = 0;
+
+	ret = create_log(LOGGER_LOG_KERNEL, 256*1024);
+	if (unlikely(ret))
+		goto out;
+
+	ret = create_log(LOGGER_LOG_KERNEL_BOT, 64*1024);
+	if (unlikely(ret))
+		goto out;
+
+	list_for_each_entry(log, &log_list, logs)
+		if (!strcmp(log->misc.name, LOGGER_LOG_KERNEL))
+			log_kernel = log;
+		else if (!strcmp(log->misc.name, LOGGER_LOG_KERNEL_BOT))
+			log_kernel_bottom = log;
+
+	reader = kmalloc(sizeof(struct logger_reader), GFP_KERNEL);
+	if (!reader) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	reader->log = log_kernel_bottom;
+	INIT_LIST_HEAD(&reader->list);
+	mutex_lock(&log_kernel_bottom->mutex);
+	reader->r_off = log_kernel_bottom->head;
+	list_add_tail(&reader->list, &log_kernel_bottom->readers);
+	mutex_unlock(&log_kernel_bottom->mutex);
+
+	log_kernel->log_bottom = log_kernel_bottom;
+
+	kernel_log_init = false;
+
 	INIT_WORK(&write_console_wq, write_console);
 	tasklet_init(&schedule_work_tasklet, schedule_work_tasklet_func,
 			(unsigned long)&write_console_wq);
 
-
 	printk(KERN_INFO "register logcat console\n");
 	register_console(&logger_console);
-	return 0;
+out:
+	return ret;
 }
 
 console_initcall(logger_console_init);
