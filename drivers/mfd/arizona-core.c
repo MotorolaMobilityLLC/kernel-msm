@@ -923,8 +923,8 @@ static const struct {
 	},
 };
 
-static void arizona_florida_mute_analog(struct arizona* arizona,
-					unsigned int mute)
+void arizona_florida_mute_analog(struct arizona* arizona,
+				 unsigned int mute)
 {
 	unsigned int val, chans;
 	int i;
@@ -948,6 +948,7 @@ static void arizona_florida_mute_analog(struct arizona* arizona,
 				   mute);
 	}
 }
+EXPORT_SYMBOL_GPL(arizona_florida_mute_analog);
 
 static bool arizona_florida_get_input_state(struct arizona* arizona)
 {
