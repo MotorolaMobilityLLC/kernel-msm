@@ -43,6 +43,10 @@
 #include <csrInsideApi.h>
 #include <csrNeighborRoam.h>
 
+#ifdef DEBUG_ROAM_DELAY
+#include "vos_utils.h"
+#endif
+
 /*--------------------------------------------------------------------------
   Initialize the FT context. 
   ------------------------------------------------------------------------*/
@@ -61,6 +65,9 @@ void sme_FTOpen(tHalHandle hHal)
         smsLog(pMac, LOGE, FL("Preauth Reassoc interval Timer allocation failed"));
         return;
     }                 
+#ifdef DEBUG_ROAM_DELAY
+    vos_reset_roam_timer_log();
+#endif
 }
 
 /*--------------------------------------------------------------------------
@@ -470,6 +477,9 @@ void sme_PreauthReassocIntvlTimerCallback(void *context)
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
     tpAniSirGlobal pMac = (tpAniSirGlobal )context;
     csrNeighborRoamRequestHandoff(pMac);
+#endif
+#ifdef DEBUG_ROAM_DELAY
+    vos_record_roam_event(e_SME_PREAUTH_CALLBACK_HIT, NULL, 0);
 #endif
     return;
 }
