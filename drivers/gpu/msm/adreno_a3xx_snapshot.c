@@ -277,7 +277,6 @@ static int a3xx_snapshot_debugbus_block(struct kgsl_device *device,
 
 	struct kgsl_snapshot_debugbus *header = snapshot;
 	struct debugbus_block *block = priv;
-	unsigned int val;
 	int i;
 	unsigned int *data = snapshot + sizeof(*header);
 	unsigned int dwords;
@@ -299,8 +298,6 @@ static int a3xx_snapshot_debugbus_block(struct kgsl_device *device,
 		SNAPSHOT_ERR_NOMEM(device, "DEBUGBUS");
 		return 0;
 	}
-
-	val = (block->block_id << 8) | (1 << 16);
 
 	header->id = block->block_id;
 	header->count = dwords;
