@@ -1754,14 +1754,10 @@ static struct clk_freq_tbl ftbl_mdss_mdp_clk[] = {
 	F_MMSS(  60000000,      gpll0,  10,    0,    0),
 	F_MMSS(  75000000,      gpll0,   8,    0,    0),
 	F_MMSS(  92310000,      gpll0, 6.5,    0,    0),
-//ASUS_BSP +++ Jason Chang "[WI500Q][mdp]restrict the max clock rate of mdp"
-#ifndef ASUS_PERFORMANCE_RESTRICTION
 	F_MMSS( 100000000,      gpll0,   6,    0,    0),
 	F_MMSS( 133330000, mmpll0_pll,   6,    0,    0),
 	F_MMSS( 177780000, mmpll0_pll, 4.5,    0,    0),
 	F_MMSS( 200000000, mmpll0_pll,   4,    0,    0),
-#endif
-//ASUS_BSP --- Jason Chang "[WI500Q][mdp]restrict the max clock rate of mdp"
 	F_END
 };
 
@@ -3249,8 +3245,6 @@ static struct clk_lookup msm_clocks_8226[] = {
 	//ASUS_BSP BerylHou ---
 
 	//ASUS_BSP +++ Maggie_Lee "ECG Sensor porting"
-	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9921000.serial"),
-	CLK_LOOKUP("core_clk", gcc_blsp1_uart5_apps_clk.c, "f9921000.serial"),		//UART for ECG sensor
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9922000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart6_apps_clk.c, "f9922000.serial"),		//UART for ECG sensor
 	//ASUS_BSP --- Maggie_Lee "ECG Sensor porting"

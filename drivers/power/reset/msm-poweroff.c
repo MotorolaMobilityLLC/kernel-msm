@@ -31,11 +31,6 @@
 #include <soc/qcom/scm.h>
 #include <soc/qcom/restart.h>
 
-//adbg++
-#include <linux/asus_global.h>
-#include <asm/cacheflush.h>
-//adbg--
-
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -67,9 +62,6 @@ static int dload_set(const char *val, struct kernel_param *kp);
 static int download_mode = 1;
 module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
-
-extern struct _asus_global asus_global;  //adbg++
-
 static int panic_prep_restart(struct notifier_block *this,
 			      unsigned long event, void *ptr)
 {
@@ -81,7 +73,7 @@ static struct notifier_block panic_blk = {
 	.notifier_call	= panic_prep_restart,
 };
 
-void set_dload_mode(int on)  //adbg++
+static void set_dload_mode(int on)
 {
 	int ret;
 
@@ -102,16 +94,13 @@ void set_dload_mode(int on)  //adbg++
 	dload_mode_enabled = on;
 }
 
-//adbg++
 #if 0
 static bool get_dload_mode(void)
 {
-	pr_debug("[adbg] %s, %d\n", __func__, dload_mode_enabled);  //adbg++
 	return dload_mode_enabled;
 }
 #endif
-//adbg--
-#ifndef ASUS_SHIP_BUILD
+
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -139,7 +128,6 @@ static void enable_emergency_dload_mode(void)
 			pr_err("Failed to set EDLOAD mode: %d\n", ret);
 	}
 }
-#endif
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -263,19 +251,9 @@ static void msm_restart_prepare(const char *cmd)
 			code = kstrtoul(cmd + 4, 16, &result) & 0xff;
 			printk("[msm_restart_prepare]: code: %lu, result: %lu\n",code,result);
 			__raw_writel(0x6f656d00 | result, restart_reason);
-		} 
-		#ifndef ASUS_SHIP_BUILD
-		else if (!strncmp(cmd, "edl", 3)) {
+		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
-		} 
-		#endif
-		//+++ ASUS_BSP: support adb reboot hardreset command
-		else if (!strncmp(cmd, "hardreset", 9)) {
-			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
-			__raw_writel(0x77665501, restart_reason);
-		} 
-		//--- ASUS_BSP: support adb reboot hardreset command
-		else {
+		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}

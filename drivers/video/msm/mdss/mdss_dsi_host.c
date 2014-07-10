@@ -27,14 +27,7 @@
 #include "mdss_dsi.h"
 #include "mdss_panel.h"
 
-// ASUS_BSP +++ Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
-#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
-#include "mdss_asus_debug.h"
-#endif
-// ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
-//#define VSYNC_PERIOD 17
-#define VSYNC_PERIOD (1000/30)
-
+#define VSYNC_PERIOD 17
 
 struct mdss_dsi_ctrl_pdata *ctrl_list[DSI_CTRL_MAX];
 
@@ -628,9 +621,8 @@ int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	}
 
 	pr_debug("%s: Checking BTA status\n", __func__);
-#ifndef DEBUG_KEEP_CLK_ON
+
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-#endif
 	spin_lock_irqsave(&ctrl_pdata->mdp_lock, flag);
 	INIT_COMPLETION(ctrl_pdata->bta_comp);
 	mdss_dsi_enable_irq(ctrl_pdata, DSI_BTA_TERM);
@@ -644,9 +636,8 @@ int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		mdss_dsi_disable_irq(ctrl_pdata, DSI_BTA_TERM);
 		pr_err("%s: DSI BTA error: %i\n", __func__, ret);
 	}
-#ifndef DEBUG_KEEP_CLK_ON
+
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
-#endif
 	pr_debug("%s: BTA done with ret: %d\n", __func__, ret);
 
 	return ret;
@@ -1033,11 +1024,6 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	len = ALIGN(tp->len, 4);
 	size = ALIGN(tp->len, SZ_4K);
 
-// ASUS_BSP +++ Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
-#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
-	notify_amdu_dsi_cmd_dma_tx(tp);
-#endif
-// ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
 
 	if (is_mdss_iommu_attached()) {
 		int ret = msm_iommu_map_contig_buffer(tp->dmap,
@@ -1255,7 +1241,6 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	if (req == NULL)
 		goto need_lock;
 
-	//printk("MDSS:%s:  from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
 	/*
 	 * mdss interrupt is generated in mdp core clock domain
 	 * mdp clock need to be enabled to receive dsi interrupt
@@ -1265,17 +1250,14 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	mdss_bus_bandwidth_ctrl(1);
 
 	pr_debug("%s:  from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
-#ifndef DEBUG_KEEP_CLK_ON
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
-#endif
 
 	if (req->flags & CMD_REQ_RX)
 		ret = mdss_dsi_cmdlist_rx(ctrl, req);
 	else
 		ret = mdss_dsi_cmdlist_tx(ctrl, req);
-#ifndef DEBUG_KEEP_CLK_ON
+
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
-#endif
 	mdss_bus_bandwidth_ctrl(0);
 
 need_lock:
@@ -1284,8 +1266,6 @@ need_lock:
 		mdss_dsi_cmd_mdp_start(ctrl);
 
 	mutex_unlock(&ctrl->cmd_mutex);
-	//if (req != NULL)
-	//	printk("MDSS:%s:---:ret=%d\n",__func__,ret);
 	return ret;
 }
 
@@ -1510,7 +1490,7 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 	pr_debug("%s: ndx=%d isr=%x\n", __func__, ctrl->ndx, isr);
 
 	if (isr & DSI_INTR_ERROR) {
-		pr_err("%s: ndx=%d isr=%x !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", __func__, ctrl->ndx, isr);
+		pr_err("%s: ndx=%d isr=%x\n", __func__, ctrl->ndx, isr);
 		mdss_dsi_error(ctrl);
 	}
 

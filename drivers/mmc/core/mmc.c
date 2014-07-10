@@ -44,7 +44,7 @@ static const unsigned int tacc_mant[] = {
 	35,	40,	45,	50,	55,	60,	70,	80,
 };
 
-#define UNSTUFF_BITS(resp,start,size)					\
+#define UNSTUFF_BITS(resp, start, size)					\
 	({								\
 		const int __size = size;				\
 		const u32 __mask = (__size < 32 ? 1 << __size : 0) - 1;	\
@@ -77,69 +77,6 @@ static const struct mmc_fixup mmc_fixups[] = {
 	END_FIXUP
 };
 
-//ASUS_BSP +++ shunmin "emmc info for ATD"
-static char* asus_get_emmc_status(struct mmc_card *card)
-{
-	BUG_ON(!card);
-
-	return card->mmc_info;
-}
-
-static char* asus_get_emmc_total_size(struct mmc_card *card)
-{
-	u32 ext_csd_sector_count;
-	
-	BUG_ON(!card);
-	
-	ext_csd_sector_count = card->ext_csd.raw_sectors[0] << 0 |card->ext_csd.raw_sectors[1] << 8 | card->ext_csd.raw_sectors[2] << 16 |card->ext_csd.raw_sectors[3] << 24;
-	#if 0
-	/* Hynix 4G */
-	if (ext_csd_sector_count == 0x748000)
-	{
-		sprintf(card->mmc_total_size, "4");
-	}
-	/* Hynix 8G */
-	else if (ext_csd_sector_count == 0xe74000)
-	{
-		sprintf(card->mmc_total_size, "8");
-	}		
-	/* Hynix 16G */
-	else if (ext_csd_sector_count == 0x1d5c000)
-	{
-		sprintf(card->mmc_total_size, "16");
-	}
-	/* Hynix 32G */
-	else if (ext_csd_sector_count == 0x3a40000)
-	{
-		sprintf(card->mmc_total_size, "32");
-	}
-	/* Hynix 64G */
-	else if (ext_csd_sector_count == 0x7480000)
-	{
-		sprintf(card->mmc_total_size, "64");
-	}
-	/* Hynix 8G */
-	else if (ext_csd_sector_count == 0xe90000)
-	{
-		sprintf(card->mmc_total_size, "8");
-	}
-	/* Hynix 16G */
-	else if (ext_csd_sector_count == 0x1d5c000)
-	{
-		sprintf(card->mmc_total_size, "16");
-	}
-	/* Hynix 32G */
-	else if (ext_csd_sector_count == 0x3a40000)
-	{
-		sprintf(card->mmc_total_size, "32");
-	}
-	#endif
-	
-	sprintf(card->mmc_total_size, "4");	//Robin only use 4G emmc chip
-	
-	return card->mmc_total_size;
-}
-//ASUS_BSP --- shunmin "emmc info for ATD"
 /*
  * Given the decoded CSD structure, decode the raw CID to our CID structure.
  */
@@ -560,7 +497,8 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 	if (card->ext_csd.rev >= 5) {
 		/* check whether the eMMC card supports HPI */
-		#if 0 //ASUS_BSP Shunmin +++ Disable HPI Feature
+		/* ASUS_BSP Shunmin +++ Disable HPI/BKOPS Feature */
+		#if 0
 		if ((ext_csd[EXT_CSD_HPI_FEATURES] & 0x1) &&
 				!(card->quirks & MMC_QUIRK_BROKEN_HPI)) {
 			card->ext_csd.hpi = 1;
@@ -575,13 +513,11 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 			card->ext_csd.out_of_int_time =
 				ext_csd[EXT_CSD_OUT_OF_INTERRUPT_TIME] * 10;
 		}
-		#endif //ASUS_BSP Shunmin --- Disable HPI Feature
 
 		/*
 		 * check whether the eMMC card supports BKOPS.
 		 * If HPI is not supported then BKOPs shouldn't be enabled.
 		 */
-		#if 0 //ASUS_BSP Shunmin +++ Disable BKOPS Feature
 		if ((ext_csd[EXT_CSD_BKOPS_SUPPORT] & 0x1) &&
 		    card->ext_csd.hpi) {
 			card->ext_csd.bkops = 1;
@@ -599,7 +535,8 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 					card->ext_csd.bkops_en = 1;
 			}
 		}
-		#endif //ASUS_BSP Shunmin --- Disable BKOPS Feature
+		#endif
+		/* ASUS_BSP Shunmin --- Disable BKOPS/HPI Feature */
 
 		pr_info("%s: BKOPS_EN bit = %d\n",
 			mmc_hostname(card->host), card->ext_csd.bkops_en);
@@ -749,12 +686,6 @@ MMC_DEV_ATTR(enhanced_area_offset, "%llu\n",
 MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
 MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
 MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
-//ASUS_BSP +++ shunmin "emmc info for ATD"
-MMC_DEV_ATTR(emmc_total_size, "%s\n", asus_get_emmc_total_size(card));
-MMC_DEV_ATTR(emmc_status, "%s\n", asus_get_emmc_status(card));
-MMC_DEV_ATTR(emmc_size, "0x%02x%02x%02x%02x\n", card->ext_csd.raw_sectors[3], card->ext_csd.raw_sectors[2],
-	card->ext_csd.raw_sectors[1], card->ext_csd.raw_sectors[0]);
-//ASUS_BSP --- shunmin "emmc info for ATD"
 
 static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_cid.attr,
@@ -773,11 +704,6 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_enhanced_area_size.attr,
 	&dev_attr_raw_rpmb_size_mult.attr,
 	&dev_attr_rel_sectors.attr,
-//ASUS_BSP +++ shunmin "emmc info for ATD"
-	&dev_attr_emmc_status.attr,
-	&dev_attr_emmc_size.attr,
-	&dev_attr_emmc_total_size.attr,	
-//ASUS_BSP --- shunmin "emmc info for ATD"
 	NULL,
 };
 
@@ -1357,58 +1283,8 @@ static int mmc_change_bus_speed(struct mmc_host *host, unsigned long *freq)
 	}
 out:
 	mmc_release_host(host);
-	printk("%s : !bus speed change to %lu !\n", __func__, *freq);
 	return err;
 }
-
-//ASUS_BSP +++ shunmin "emmc info for ATD"
-static void mmc_set_info(struct mmc_card *card)
-{
-	int offset = 0;
-	
-	if (card->cid.manfid == 0x90) {
-		#if 0
-		/* Hynix 4G */
-		if ((card->ext_csd.sectors == 0x748000) && !strncmp(card->cid.prod_name, "H4G1d", 5))
-			offset += sprintf(card->mmc_info, "Hynix4G-");
-		/* Hynix 8G */
-		else if ((card->ext_csd.sectors == 0xe74000) && !strncmp(card->cid.prod_name, "H8G2d", 5))
-			offset += sprintf(card->mmc_info, "Hynix8G-");		
-		/* Hynix 16G */
-		else if ((card->ext_csd.sectors == 0x1d5c000) && !strncmp(card->cid.prod_name, "HAG2e", 5))
-			offset += sprintf(card->mmc_info, "Hynix16G-");
-		/* Hynix 32G */
-		else if ((card->ext_csd.sectors == 0x3a40000) && !strncmp(card->cid.prod_name, "HBG4e", 5))
-			offset += sprintf(card->mmc_info, "Hynix32G-");
-		/* Hynix 64G */
-		else if ((card->ext_csd.sectors == 0x7480000) && !strncmp(card->cid.prod_name, "HCG8e", 5))
-			offset += sprintf(card->mmc_info, "Hynix64G-");
-		/* Hynix 8G */
-		else if ((card->ext_csd.sectors == 0xe90000) && !strncmp(card->cid.prod_name, "H8G2d", 5))
-			offset += sprintf(card->mmc_info, "Hynix8G-");
-		/* Hynix 16G */
-		else if ((card->ext_csd.sectors == 0x1d5c000) && !strncmp(card->cid.prod_name, "HAG4d", 5))
-			offset += sprintf(card->mmc_info, "Hynix16G-");
-		/* Hynix 32G */
-		else if ((card->ext_csd.sectors == 0x3a40000) && !strncmp(card->cid.prod_name, "HBG8d", 5))
-			offset += sprintf(card->mmc_info, "Hynix32G-");
-		#endif
-		offset += sprintf(card->mmc_info, "Hynix4G-");
-
-	}
-
-	if (card->ext_csd.rev == 0x6) {
-		offset += sprintf(card->mmc_info + offset, "4.5");
-	} else if (card->ext_csd.rev == 0x5)
-		offset += sprintf(card->mmc_info + offset, "4.41");
-
-	pr_info("%s: manfid:0x%x, sectors:0x%x, prod_name:%s, mmc_info:%s\n",
-		mmc_hostname(card->host), card->cid.manfid, card->ext_csd.sectors, card->cid.prod_name, card->mmc_info);
-
-	return;
-}
-
-//ASUS_BSP --- shunmin "emmc info for ATD"
 
 static int mmc_reboot_notify(struct notifier_block *notify_block,
 		unsigned long event, void *unused)
@@ -1629,13 +1505,6 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		}
 	}
 
-//ASUS_BSP +++ shunmin "emmc info for ATD"
-	if (!oldcard) {
-		mmc_set_info(card);
-//		pr_info("%s:mmc info: %s\n", mmc_hostname(host), card->mmc_info);
-	}
-//ASUS_BSP --- shunmin "emmc info for ATD"
-
 	/*
 	 * Ensure eMMC user default partition is enabled
 	 */
@@ -1654,7 +1523,8 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 * If the host supports the power_off_notify capability then
 	 * set the notification byte in the ext_csd register of device
 	 */
-	#if 0	//ASUS_BSP Shunmin +++ Disable PON feature
+	/* ASUS_BSP Shunmin +++ Disable PON feature */
+	#if 0
 	if ((host->caps2 & MMC_CAP2_POWEROFF_NOTIFY) &&
 	    (card->ext_csd.rev >= 6)) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
@@ -1671,7 +1541,8 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		if (!err)
 			card->ext_csd.power_off_notification = EXT_CSD_POWER_ON;
 	}
-	#endif	//ASUS_BSP Shunmin --- Disable PON feature
+	#endif
+	/* ASUS_BSP Shunmin --- Disable PON feature */
 
 	/*
 	 * Activate highest bus speed mode supported by both host and card.
@@ -1805,7 +1676,7 @@ static int mmc_poweroff_notify(struct mmc_card *card, unsigned int notify_type)
 {
 	unsigned int timeout = card->ext_csd.generic_cmd6_time;
 	int err;
-	
+
 	panic("!!!!! PON CMD SHOULD NOT BE ALLOWED !!!!!");
 
 	/* Use EXT_CSD_POWER_OFF_SHORT as default notification type. */

@@ -2233,8 +2233,6 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 						}
 
 #else
-
-						
 						if (jiffies - last_time_shot_power > 2*HZ){
 							strcpy(magic_key,"PALM");
 							kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);

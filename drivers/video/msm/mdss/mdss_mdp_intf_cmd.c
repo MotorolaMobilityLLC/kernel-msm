@@ -21,10 +21,7 @@
 #define MAX_SESSIONS 2
 
 /* wait for at most 2 vsync for lowest refresh rate (24hz) */
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Longer kick off timeout to stable MDSS"
-#undef KOFF_TIMEOUT
-#define KOFF_TIMEOUT msecs_to_jiffies(100*2)
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Longer kick off timeout for 30 fps"
+#define KOFF_TIMEOUT msecs_to_jiffies(84)
 
 #define STOP_TIMEOUT msecs_to_jiffies(16 * (VSYNC_EXPIRE_TICK + 2))
 #define ULPS_ENTER_TIME msecs_to_jiffies(100)
@@ -49,6 +46,7 @@ struct mdss_mdp_cmd_ctx {
 	atomic_t pp_done_cnt;
 	struct mdss_panel_recovery recovery;
 	bool ulps;
+	bool off_pan_on;
 };
 
 struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
@@ -190,6 +188,7 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 	mutex_lock(&ctx->clk_mtx);
 	if (!ctx->clk_enabled) {
 		ctx->clk_enabled = 1;
+		ctx->off_pan_on = false;
 		if (cancel_delayed_work_sync(&ctx->ulps_work))
 			pr_debug("deleted pending ulps work\n");
 
@@ -239,7 +238,7 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 		mdss_mdp_ctl_intf_event
 			(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-		if (ctx->panel_on)
+		if (ctx->panel_on && !ctx->off_pan_on)
 			schedule_delayed_work(&ctx->ulps_work, ULPS_ENTER_TIME);
 	}
 	mutex_unlock(&ctx->clk_mtx);
@@ -279,8 +278,7 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 		mdss_mdp_irq_disable_nosync
 			(MDSS_MDP_IRQ_PING_PONG_RD_PTR, ctx->pp_num);
 		complete(&ctx->stop_comp);
-		//schedule_work(&ctx->clk_work); // Tingyi: This turn off MDSS clk, cause
-		// kernel/drivers/clk/qcom/clock-local2.c:402 branch_clk_halt_check+0xe8/0x108()
+		schedule_work(&ctx->clk_work);
 	}
 
 	spin_unlock(&ctx->clk_lock);
@@ -318,45 +316,6 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 	struct mdss_mdp_vsync_handler *tmp;
 	ktime_t vsync_time;
 
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
-#if 0
-{
-	static unsigned long last_time_cb = 0;
-	static unsigned int max_time_used = 0;
-	static unsigned int min_time_used = 99999;
-	static unsigned int total_time_used = 1;
-	static unsigned int total_time_count = 0;
-	if (last_time_cb){
-		unsigned int time_used;
-		time_used = jiffies_to_msecs(jiffies - last_time_cb);
-		if (total_time_used > 1000){
-
-		//if (time_used > 1000/30)
-			printk("MDSS:(%d ~ %d),%d PP Cnt,\n",min_time_used,max_time_used,total_time_count);
-
-			max_time_used = 0;
-			min_time_used = 99999;
-			total_time_used = 1;
-			total_time_count = 0;
-		}else{
-			if (time_used > max_time_used )
-				max_time_used = time_used;
-			if (time_used < min_time_used )
-				min_time_used = time_used;
-			total_time_used += time_used;
-			total_time_count ++;
-		}
-
-//		if (time_used < 1000/30)
-//			mdelay(1000/30 - 1000/30);
-
-	}
-
-
-	last_time_cb = jiffies;
-}
-#endif
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
 	if (!ctx) {
 		pr_err("%s: invalid ctx\n", __func__);
 		return;
@@ -538,18 +497,6 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 	if (need_wait) {
 		rc = wait_for_completion_timeout(
 				&ctx->pp_comp, KOFF_TIMEOUT);
-// Tingyi +++
-#if 0
-{
-	int retry = 5;
-	while(rc <= 0 && retry--){
-		printk("MDSS:PP retry %d..\n",retry);
-		rc = wait_for_completion_timeout(
-				&ctx->pp_comp, KOFF_TIMEOUT);
-	}
-}
-#endif
-// Tingyi ---
 
 		if (rc <= 0) {
 			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
@@ -575,7 +522,7 @@ static int mdss_mdp_cmd_set_partial_roi(struct mdss_mdp_ctl *ctl)
 		ctl->panel_data->panel_info.roi_h = ctl->roi.h;
 
 		rc = mdss_mdp_ctl_intf_event(ctl,
-				MDSS_EVENT_ENABLE_PARTIAL_UPDATE, NULL); // Tingyi: calling mdss_dsi_ctl_partial_update()
+				MDSS_EVENT_ENABLE_PARTIAL_UPDATE, NULL);
 	}
 	return rc;
 }
@@ -626,6 +573,62 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		PERF_SW_COMMIT_STATE, PERF_STATUS_DONE);
 
 	mb();
+
+	return 0;
+}
+
+int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_cmd_ctx *ctx;
+	unsigned long flags;
+	int need_wait = 0;
+
+	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
+	if (!ctx) {
+		pr_err("invalid ctx\n");
+		return -ENODEV;
+	}
+
+	pr_debug("%s: clk_enabled=%d\n", __func__, ctx->clk_enabled);
+
+	spin_lock_irqsave(&ctx->clk_lock, flags);
+	if (ctx->rdptr_enabled) {
+		INIT_COMPLETION(ctx->stop_comp);
+		need_wait = 1;
+	}
+	spin_unlock_irqrestore(&ctx->clk_lock, flags);
+
+	if (need_wait) {
+		if (wait_for_completion_timeout(&ctx->stop_comp, STOP_TIMEOUT)
+		    <= 0) {
+			pr_debug("%s: stop cmd time out\n", __func__);
+			mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
+						ctx->pp_num);
+			ctx->rdptr_enabled = 0;
+			ctx->koff_cnt = 0;
+		}
+	}
+
+	ctx->off_pan_on = true;
+	if (cancel_work_sync(&ctx->clk_work))
+		pr_debug("no pending clk work\n");
+
+	if (cancel_delayed_work_sync(&ctx->ulps_work))
+		pr_debug("deleted pending ulps work\n");
+
+	mdss_mdp_cmd_clk_off(ctx);
+
+	if (!ctx->ulps) {
+		pr_debug("%s: forcing ulps with panel always on feature\n",
+			__func__);
+		if (!mdss_mdp_ctl_intf_event(ctx->ctl,
+			MDSS_EVENT_DSI_ULPS_CTRL, (void *)1)) {
+			ctx->ulps = true;
+			ctx->ctl->play_cnt = 0;
+			mdss_mdp_footswitch_ctrl_ulps(0,
+				&ctx->ctl->mfd->pdev->dev);
+		}
+	}
 
 	return 0;
 }
@@ -782,6 +785,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->add_vsync_handler = mdss_mdp_cmd_add_vsync_handler;
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
+	ctl->off_pan_on = mdss_mdp_cmd_off_pan_on;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;

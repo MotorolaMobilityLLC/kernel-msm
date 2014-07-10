@@ -24,7 +24,6 @@
 #define SENSORS_PROXIMITY_HANDLE		4
 #define SENSORS_GYROSCOPE_HANDLE		5
 #define SENSORS_PRESSURE_HANDLE			6
-#define SENSORS_HEART_RATE_HANDLE			7
 
 #define SENSOR_TYPE_ACCELEROMETER		1
 #define SENSOR_TYPE_GEOMAGNETIC_FIELD		2
@@ -47,7 +46,6 @@
 #define SENSOR_TYPE_STEP_DETECTOR		18
 #define SENSOR_TYPE_STEP_COUNTER		19
 #define SENSOR_TYPE_GEOMAGNETIC_ROTATION_VECTOR	20
-#define SENSOR_TYPE_HEART_RATE		21
 
 /**
  * struct sensors_classdev - hold the sensor general parameters and APIs
@@ -93,13 +91,11 @@ struct sensors_classdev {
 	int			fifo_max_event_count;
 	unsigned int		enabled;
 	unsigned int		delay_msec;
-	int			status;					//ASUS_BSP +++ Maggie_Lee "Add ATD interface"
 	/* enable and disable the sensor handle*/
 	int	(*sensors_enable)(struct sensors_classdev *sensors_cdev,
 					unsigned int enabled);
 	int	(*sensors_poll_delay)(struct sensors_classdev *sensors_cdev,
 					unsigned int delay_msec);
-	int	(*sensors_data)(struct sensors_classdev *sensors_cdev, unsigned int data);			//ASUS_BSP +++ Maggie_Lee "Add ECG data interface"
 };
 
 extern int sensors_classdev_register(struct device *parent,

@@ -25,40 +25,11 @@
 
 static struct class *leds_class;
 
-//ASUS_BSP +++ Maggie_Lee "Backlight Porting"
-#ifdef CONFIG_ASUS_BACKLIGHT
-extern void asus_set_bl_brightness(struct led_classdev *, int);
-#endif
-//ASUS_BSP -- Maggie_Lee "Backlight Porting"
-
 static void led_update_brightness(struct led_classdev *led_cdev)
 {
 	if (led_cdev->brightness_get)
 		led_cdev->brightness = led_cdev->brightness_get(led_cdev);
 }
-
-#ifdef CONFIG_ASUS_BACKLIGHT_DEBUG
-bool brightness_lock = false;
-static ssize_t led_brightness_lock_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	return snprintf(buf, LED_BUFF_SIZE,"%s\n", brightness_lock ? "lock":"unlock");
-}
-
-static ssize_t led_brightness_lock_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-	unsigned long lock;
-	ssize_t ret = -EINVAL;
-	ret = kstrtoul(buf, 10, &lock);
-	if (lock == 1){
-		brightness_lock = true;
-	} else {
-		brightness_lock = false;
-	}
-	return size;
-}
-#endif
 
 static ssize_t led_brightness_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -78,24 +49,13 @@ static ssize_t led_brightness_store(struct device *dev,
 	unsigned long state;
 	ssize_t ret = -EINVAL;
 
-	#ifdef CONFIG_ASUS_BACKLIGHT_DEBUG
-	if (brightness_lock)
-		return size;
-	#endif
 	ret = kstrtoul(buf, 10, &state);
 	if (ret)
 		return ret;
 
 	if (state == LED_OFF)
 		led_trigger_remove(led_cdev);
-
-	//ASUS_BSP +++ Maggie_Lee "Backlight Porting"
-	#ifdef CONFIG_ASUS_BACKLIGHT
-	asus_set_bl_brightness(led_cdev, state);
-	#else
 	__led_set_brightness(led_cdev, state);
-	#endif
-	//ASUS_BSP --- Maggie_Lee "Backlight Porting"
 
 	return size;
 }
@@ -128,9 +88,6 @@ static ssize_t led_max_brightness_show(struct device *dev,
 }
 
 static struct device_attribute led_class_attrs[] = {
-#ifdef CONFIG_ASUS_BACKLIGHT_DEBUG
-	__ATTR(brightness_lock, 0666, led_brightness_lock_show, led_brightness_lock_store),
-#endif
 	__ATTR(brightness, 0644, led_brightness_show, led_brightness_store),
 	__ATTR(max_brightness, 0644, led_max_brightness_show,
 			led_max_brightness_store),

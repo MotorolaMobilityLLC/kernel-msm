@@ -24,47 +24,6 @@
 
 #include "mdss_dsi.h"
 
-// ASUS_BSP +++ Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
-#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
-#include "mdss_asus_debug.h"
-#endif
-// ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
-
-
-
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Ambient mode on/off support"
-enum PANEL_AMBIENT_MODE{
-	AMBIENT_MODE_ON = 1,
-	AMBIENT_MODE_OFF = 0,
-};
-
-static int panel_ambient_mode = AMBIENT_MODE_OFF;
-
-int is_ambient_on(){
-	return panel_ambient_mode;
-}
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Always entering ambient mode in factory build."
-int enable_ambient(int enable)
-{
-	int old = panel_ambient_mode;
-#ifdef ASUS_FACTORY_BUILD
-	if (enable){
-		panel_ambient_mode = enable;
-	}else{
-		printk("MDSS:%s:Try to config panel_ambient_mode to %d but blocked by FACTORY build.\n",__func__,enable);
-	}
-#else
-	panel_ambient_mode = enable;
-	printk("MDSS:%s:panel_ambient_mode = %d->%d\n",__func__,old,panel_ambient_mode);
-#endif
-	notify_amdu_panel_ambient_on(panel_ambient_mode);
-	return old;
-}
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Always entering ambient mode in factory build."
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Ambient mode on/off support"
-
-
-
 #define DT_CMD_HDR 6
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
@@ -250,8 +209,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	struct mdss_panel_info *pinfo = NULL;
 	int i, rc = 0;
 
-	printk("MDSS:%s(enable=%d):+++\n", __func__,enable);
-
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -271,11 +228,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		return rc;
 	}
 
-	if (is_ambient_on() /*&& !enable*/){
-		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
-		gpio_free(ctrl_pdata->rst_gpio);
-		return 0;
-	}
 	pr_debug("%s: enable = %d\n", __func__, enable);
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
@@ -326,7 +278,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
 	}
-	printk("MDSS:%s(enable=%d):---\n", __func__,enable);
 	return rc;
 }
 
@@ -448,35 +399,12 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
-	printk("MDSS:%s:+++: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
-
-//ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
-	if (is_ambient_on()){
-		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
-
-		if (ctrl->idle_off_cmds.cmd_cnt){
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
-		}else{
-			printk("MDSS:DSI: idle off command is not set!\n");
-		}
-		return 0;
-	}
-//ASUS_BSP --- Jason Chang "[Robin][display] support ambient mode"
-
-// ASUS_BSP +++ Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
-#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
-	// Log DSI commands for LK porting
-	notify_amdu_panel_on_cmds_start(ctrl);
-#endif
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
-#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
-	notify_amdu_panel_on_cmds_stop();
-#endif
-
-	printk("MDSS:%s:---\n", __func__);
+	pr_debug("%s:-\n", __func__);
 	return 0;
 }
 
@@ -489,68 +417,20 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
-	printk("MDSS:%s:+++\n", __func__);
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-//ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
-	if (is_ambient_on()){
-		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
 
-		if (ctrl->idle_on_cmds.cmd_cnt){
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
-		}else{
-			printk("MDSS:DSI: idle on command is not set!\n");
-		}
-		return 0;
-	}
-//ASUS_BSP --- Jason Chang "[Robin][display] support ambient mode"
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
-	printk("MDSS:DSI:All pixel on %s !!!\n",__func__);
 
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
-	printk("MDSS:%s:---\n", __func__);
+	pr_debug("%s:-\n", __func__);
 	return 0;
 }
-
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
-int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
-{
-	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
-
-	if (pdata == NULL) {
-		pr_err("%s: Invalid input data\n", __func__);
-		return -EINVAL;
-	}
-	printk("MDSS:%s:+++,on=%d\n", __func__,on);
-
-	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
-
-if (on){
-	if (ctrl->idle_on_cmds.cmd_cnt){
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
-	}else{
-		printk("MDSS:DSI: idle ON command is not set!\n");
-	}
-}else{
-	if (ctrl->idle_off_cmds.cmd_cnt){
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
-	}else{
-		printk("MDSS:DSI: idle OFF command is not set!\n");
-	}
-}
-
-	printk("MDSS:%s:---\n", __func__);
-	return 0;
-}
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
-
-
 
 static void mdss_dsi_parse_lane_swap(struct device_node *np, char *dlane_swap)
 {
@@ -911,13 +791,6 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	pinfo->cont_splash_enabled = of_property_read_bool(np,
 		"qcom,cont-splash-enabled");
 
-//ASUS_BSP +++ Jason Chang "[WI500Q][Display]enable splash mode on PDK"
-//only enable splash on pdk build, KK still disable splash
-#ifndef ASUS_PDK_BUILD
-	pinfo->cont_splash_enabled = 0;
-#endif
-//ASUS_BSP --- Jason Chang "[WI500Q][Display]enable splash mode on PDK"
-
 	pinfo->partial_update_enabled = of_property_read_bool(np,
 		"qcom,partial-update-enabled");
 	pr_info("%s:%d Partial update %s\n", __func__, __LINE__,
@@ -1215,13 +1088,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->off_cmds,
 		"qcom,mdss-dsi-off-command", "qcom,mdss-dsi-off-command-state");
-//ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
-	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_on_cmds,
-		"qcom,mdss-dsi-idle-on-command", "qcom,mdss-dsi-on-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_off_cmds,
-		"qcom,mdss-dsi-idle-off-command", "qcom,mdss-dsi-off-command-state");
-
-//ASUS_BSP --- Jason Chang "[Robin][display] support ambient mode"
 
 	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
 	if (rc) {
@@ -1272,10 +1138,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
-
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Be able to send debug MIPI cmd to MDSS"
-	amdu_register_ctrl_pdata(ctrl_pdata);
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Be able to send debug MIPI cmd to MDSS"
 
 	return 0;
 }

@@ -453,7 +453,7 @@ static void log_store(int facility, int level,
 		lk_size += asus_print_time(ts_nsec, lk_buf);
 	else
 		lk_size += asus_print_time(local_clock(), lk_buf);
-    
+
     lk_size += snprintf(lk_buf + lk_size, max_record_size - lk_size, text);
 
     /* If there is no sufficient space for new record, wrap it around */
@@ -465,7 +465,7 @@ static void log_store(int facility, int level,
 
     /* Adjust next index */
     lk_log_next_idx += lk_size;
-    
+
 #endif
 
 	/* number of '\0' padding bytes to next message */
@@ -967,12 +967,12 @@ void printk_buffer_rebase(void)
 
 	new_log_buf = g_printk_log_buf = (char *) PRINTK_BUFFER;
 	printk("[adbg] printk_buffer_rebase new_log_buf=%p, __LOG_BUF_LEN:0x%x\n", new_log_buf, __LOG_BUF_LEN);
-    
+
 	if (!new_log_buf) {
 		printk("[adbg] printk_buffer_rebase log_buf_len: allocation failed\n");
 		goto out;
 	}
-    
+
 	memset(g_printk_log_buf, 0, PRINTK_BUFFER_SLOT_SIZE);
 
 #if ASUS_LAST_KMSG
@@ -985,14 +985,14 @@ void printk_buffer_rebase(void)
 
     memset(new_lk_log_buf, 0, PRINTK_PARSE_SIZE);
 #endif
-    
+
 	raw_spin_lock_irqsave(&logbuf_lock, flags);
 
 	log_buf_len = PRINTK_BUFFER_SLOT_SIZE;
 	log_buf = new_log_buf;
 	asus_global.kernel_log_addr = log_buf;
 	asus_global.kernel_log_size = log_buf_len;
-	
+
 	memset( asus_global.kernel_version, 0, sizeof(asus_global.kernel_version));
 	strncpy(asus_global.kernel_version, ASUS_SW_VER, sizeof(asus_global.kernel_version));
 
@@ -1011,8 +1011,8 @@ void printk_buffer_rebase(void)
 	printk("[adbg] printk_buffer_rebase, log_buf:%p, log_buf_len: 0x%x\n", log_buf, log_buf_len);
 
 	is_rebased = 1;
-out:    
-    return;    
+out:
+    return;
 }
 EXPORT_SYMBOL(printk_buffer_rebase);
 //adbg--
@@ -2332,7 +2332,7 @@ MODULE_PARM_DESC(console_suspend, "suspend console during suspend"
 void suspend_console(void)
 {
 //adbg++
-	ASUSEvtlog("[UTS] System Suspend");
+	//ASUSEvtlog("[UTS] System Suspend");
 	suspend_in_progress = 1;
 //adbg--
 	if (!console_suspend_enabled)
@@ -2347,7 +2347,7 @@ void resume_console(void)
 {
 //adbg++
 	suspend_in_progress = 0;
-	ASUSEvtlog("[UTS] System Resume");
+	//ASUSEvtlog("[UTS] System Resume");
 //adbg--
 	if (!console_suspend_enabled)
 		return;
@@ -3386,43 +3386,3 @@ void show_regs_print_info(const char *log_lvl)
 }
 
 #endif
-
-//adbg++
-#if defined(CONFIG_DEBUG_FS)
-#include <linux/debugfs.h>
-static int Asus_ramdump_debug_set(void *data, u64 val)
-{
-	if (val == 1)
-		asus_global.ramdump_enable_magic = ASUS_GLOBAL_RUMDUMP_MAGIC;
-	else
-		asus_global.ramdump_enable_magic = 0;
-		
-	return 0;
-}
-
-static int Asus_ramdump_debug_get(void *data, u64 *val)
-{
-	if (asus_global.ramdump_enable_magic == ASUS_GLOBAL_RUMDUMP_MAGIC)
-	*val = 1;
-	else
-	*val = 0;
-	
-	return 0;
-}
-DEFINE_SIMPLE_ATTRIBUTE(Asus_ramdump_debug_fops, Asus_ramdump_debug_get, Asus_ramdump_debug_set, "%llu\n");
-static int __init Asus_ramdump_debug_init(void)
-{
-	struct dentry *dent;
-
-	dent = debugfs_create_dir("Asus_ramdump", 0);
-	if (IS_ERR(dent))
-		return PTR_ERR(dent);
-
-	debugfs_create_file("Asus_ramdump_flag", 0644, dent, NULL, &Asus_ramdump_debug_fops);
-
-	return 0;
-}
-
-device_initcall(Asus_ramdump_debug_init);
-#endif
-//adbg--

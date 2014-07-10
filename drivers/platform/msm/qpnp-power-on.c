@@ -503,12 +503,9 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		input_sync(pon->pon_input);
 	}
 
-//ASUS_BSP++ Josh_Liao "use gpio to send key event"
-#if 0
 	input_report_key(pon->pon_input, cfg->key_code, key_status);
 	input_sync(pon->pon_input);
-#endif
-//ASUS_BSP-- Josh_Liao "use gpio to send key event"
+
 	cfg->old_state = !!key_status;
 
 	return 0;

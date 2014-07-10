@@ -28,13 +28,10 @@
 #include <soc/qcom/scm.h>
 #include <soc/qcom/memory_dump.h>
 //adbg++
-#include <linux/asus_global.h>
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-extern struct _asus_global asus_global;
 //adbg--
-
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
 #define TCSR_WDT_CFG	0x30
@@ -285,7 +282,7 @@ static void ping_other_cpus(struct msm_watchdog_data *wdog_dd)
 	for_each_cpu(cpu, cpu_online_mask)
 		smp_call_function_single(cpu, keep_alive_response, wdog_dd, 1);
 }
-extern int watchdog_test;  //adbg++
+
 static void pet_watchdog_work(struct work_struct *work)
 {
 	unsigned long delay_time;
@@ -293,18 +290,6 @@ static void pet_watchdog_work(struct work_struct *work)
 	struct msm_watchdog_data *wdog_dd = container_of(delayed_work,
 						struct msm_watchdog_data,
 							dogwork_struct);
-//adbg++
-	if (watchdog_test){
-		printk("test watchdog function...\r\n");
-		printk("Wdog - STS: 0x%x, CTL: 0x%x, BARK TIME: 0x%x, BITE TIME: 0x%x",
-		__raw_readl(wdog_dd->base + WDT0_STS),
-		__raw_readl(wdog_dd->base + WDT0_EN),
-		__raw_readl(wdog_dd->base + WDT0_BARK_TIME),
-		__raw_readl(wdog_dd->base + WDT0_BITE_TIME));
-		return;
-	} 
-//adbg--
-
 	delay_time = msecs_to_jiffies(wdog_dd->pet_time);
 	if (enable) {
 		if (wdog_dd->do_ipi_ping)
@@ -405,10 +390,6 @@ static void configure_bark_dump(struct msm_watchdog_data *wdog_dd)
 		if (wdog_dd->scm_regsave) {
 			cmd_buf.addr = virt_to_phys(wdog_dd->scm_regsave);
 			cmd_buf.len  = PAGE_SIZE;
-//adbg++
-		printk("[adbg]scm_regsave = 0x%x,cmd_buf.addr = 0x%x\r\n",(unsigned int)wdog_dd->scm_regsave,(unsigned int)cmd_buf.addr);
-		asus_global.phycpucontextadd = cmd_buf.addr;
-//adbg--
 			ret = scm_call(SCM_SVC_UTIL, SCM_SET_REGSAVE_CMD,
 					&cmd_buf, sizeof(cmd_buf), NULL, 0);
 			if (ret)

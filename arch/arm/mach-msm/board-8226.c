@@ -164,7 +164,7 @@ static void __init msm8226_reserve(void)
 }
 
 
-//ASUS_BSP +++
+//ASUS_BSP lenter +++
 #ifdef CONFIG_BATTERY_ASUS
 static struct platform_device robin_asus_bat_device = {
        .name = "asus_bat",
@@ -177,7 +177,7 @@ static struct platform_device *msm_robin_devices[] = {
 	&robin_asus_bat_device,
 	#endif
 };
-//ASUS_BSP ---
+//ASUS_BSP lenter ---
 
 /*
  * Used to satisfy dependencies for devices that need to be
@@ -204,9 +204,9 @@ void __init msm8226_add_drivers(void)
 	fan53555_regulator_init();
 	cpr_regulator_init();
 
-//ASUS_BSP +++
+//ASUS_BSP lenter +++
 	platform_add_devices(msm_robin_devices, ARRAY_SIZE(msm_robin_devices));
-//ASUS_BSP ---
+//ASUS_BSP lenter ---
 }
 
 void __init msm8226_init(void)

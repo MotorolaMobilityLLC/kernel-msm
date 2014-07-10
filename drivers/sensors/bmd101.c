@@ -64,7 +64,6 @@ static struct sensors_classdev bmd101_cdev = {
 	.version = 1,
 	.enabled = 0,
 	.sensors_enable = NULL,
-	.status = 0,
 };
 struct bmd101_data {
 	struct sensors_classdev cdev;

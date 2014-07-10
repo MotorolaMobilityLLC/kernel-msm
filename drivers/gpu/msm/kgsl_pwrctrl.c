@@ -305,7 +305,7 @@ static ssize_t kgsl_pwrctrl_min_pwrlevel_store(struct device *dev,
 	pwr = &device->pwrctrl;
 
 	ret = kgsl_sysfs_store(buf, &level);
-	if (ret != count)
+	if (ret)
 		return ret;
 
 	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
@@ -870,7 +870,7 @@ void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 	int i = 0;
 
 //ASUS_BSP +++ Cliff_Yu "[WI500Q][gpu]restrict the max clock rate of gpu"
-#ifdef ASUS_PERFORMANCE_RESTRICTION
+#ifndef ASUS_PERFORMANCE_RESTRICTION
         pwr->max_pwrlevel = 2;
 #endif
 //ASUS_BSP --- Cliff_Yu "[WI500Q][gpu]restrict the max clock rate of gpu"

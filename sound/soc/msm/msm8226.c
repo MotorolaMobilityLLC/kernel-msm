@@ -60,7 +60,7 @@
 
 #define ADSP_STATE_READY_TIMEOUT_MS 3000
 
-//ken_cheng@asus.com
+//ASUS_BSP Ken_Cheng
 #if defined(ASUS_CW_WITH_CODEC)
 static void *adsp_state_notifier;
 #endif
@@ -81,14 +81,14 @@ static const struct soc_enum msm8226_auxpcm_enum[] = {
 #define I2S_PCM_SEL 1
 #define I2S_PCM_SEL_OFFSET 1
 
-//ken_cheng@asus.com
+//ASUS_BSP Ken_Cheng
 #if defined(ASUS_CW_WITH_CODEC)
 void *def_tapan_mbhc_cal(void);
 #endif
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 static struct wcd9xxx_mbhc_config mbhc_cfg = {
 	.read_fw_bin = false,
@@ -114,7 +114,7 @@ static struct wcd9xxx_mbhc_config mbhc_cfg = {
 	.hw_jack_type = FOUR_POLE_JACK,
 };
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 struct msm_auxpcm_gpio {
 	unsigned gpio_no;
@@ -160,7 +160,7 @@ static int msm_slim_0_rx_ch = 1;
 static int msm_slim_0_tx_ch = 1;
 
 static int msm_btsco_rate = BTSCO_RATE_8KHZ;
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 static int msm_btsco_ch = 1;
 
@@ -168,7 +168,7 @@ static struct mutex cdc_mclk_mutex;
 static struct clk *codec_clk;
 static int clk_users;
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 static int ext_spk_amp_gpio = -1;
 static int vdd_spkr_gpio = -1;
 static int msm_proxy_rx_ch = 2;
@@ -176,7 +176,7 @@ static int msm_proxy_rx_ch = 2;
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
-//ken_cheng@asus.com MI2S for Digital MIC +++
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
 #if defined(ASUS_WI500Q_PROJECT)
 struct request_gpio {
         unsigned gpio_no;
@@ -247,9 +247,9 @@ static int msm8226_dtparse_mi2s(void)
         return 0;
 }
 #endif
-//ken_cheng@asus.com MI2S for Digital MIC ---
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 static inline int param_is_mask(int p)
 {
@@ -274,13 +274,13 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 	}
 }
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm)
 {
 	int ret = 0;
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	pr_debug("%s: enable = %d clk_users = %d\n",
 		__func__, enable, clk_users);
@@ -322,7 +322,7 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 exit:
 	mutex_unlock(&cdc_mclk_mutex);
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 	return ret;
 }
 
@@ -619,7 +619,7 @@ static int msm_btsco_rate_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 static int msm_btsco_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
@@ -652,7 +652,7 @@ static int msm_be_fm_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 static int msm8226_auxpcm_rate_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
@@ -889,7 +889,7 @@ static struct snd_soc_ops msm_auxpcm_be_ops = {
 	.shutdown = msm_auxpcm_shutdown,
 };
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 static int msm_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					    struct snd_pcm_hw_params *params)
@@ -928,7 +928,7 @@ static int msm_slim_0_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
@@ -967,7 +967,7 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			slim0_rx_sample_rate_get, slim0_rx_sample_rate_put),
 };
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 static int msm_afe_set_config(struct snd_soc_codec *codec)
 {
@@ -1301,9 +1301,9 @@ static struct snd_soc_ops msm8226_be_ops = {
 	.shutdown = msm_snd_shutdown,
 };
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
-//ken_cheng@asus.com MI2S for Digital MIC +++
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
 #if defined(ASUS_WI500Q_PROJECT)
 static struct afe_clk_cfg lpass_mi2s_enable = {
         AFE_API_VERSION_I2S_CONFIG,
@@ -1421,7 +1421,7 @@ static struct snd_soc_ops msm8226_mi2s_be_ops = {
         .shutdown = msm8226_mi2s_shutdown
 };
 #endif
-//ken_cheng@asus.com MI2S for Digital MIC ---
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm8226_common_dai[] = {
@@ -1456,7 +1456,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
 	},
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "Circuit-Switch Voice",
@@ -1490,7 +1490,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.be_id = MSM_FRONTEND_DAI_VOIP,
 	},
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 	{
 		.name = "MSM8226 LPA",
 		.stream_name = "LPA",
@@ -1506,7 +1506,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA3,
 	},
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	/* Hostless PCM purpose */
 	{
@@ -1539,7 +1539,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_name = "snd-soc-dummy",
 	},
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 	{
 		.name = "MSM AFE-PCM RX",
 		.stream_name = "AFE-PROXY RX",
@@ -1590,7 +1590,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "SLIMBUS_1 Hostless",
@@ -1650,7 +1650,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_name = "snd-soc-dummy",
 	},
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 	{
 		.name = "MSM8226 LowLatency",
 		.stream_name = "MultiMedia5",
@@ -1681,7 +1681,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA9,
 	},
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "VoLTE",
@@ -1951,7 +1951,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_suspend = 1,
 	},
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 	/* Backend AFE DAI Links */
 	{
 		.name = LPASS_BE_AFE_PCM_RX,
@@ -1979,7 +1979,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.be_hw_params_fixup = msm_proxy_tx_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	/* HDMI Hostless */
 	{
@@ -1997,7 +1997,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_name = "snd-soc-dummy",
 	},
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 	/* AUX PCM Backend DAI Links */
 	{
 		.name = LPASS_BE_AUXPCM_RX,
@@ -2027,7 +2027,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ops = &msm_auxpcm_be_ops,
 		.ignore_suspend = 1
 	},
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	/* Incall Record Uplink BACK END DAI Link */
 	{
@@ -2082,8 +2082,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_suspend = 1,
 	},
 #endif
-//ken_cheng@asus.com ---
-//ken_cheng@asus.com MI2S for Digital MIC +++
+//ASUS_BSP Ken_Cheng ---
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
 #if defined(ASUS_WI500Q_PROJECT)
         {
                 .name = LPASS_BE_PRI_MI2S_TX,
@@ -2098,11 +2098,11 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
                 .ops = &msm8226_mi2s_be_ops,
         },
 #endif
-//ken_cheng@asus.com MI2S for Digital MIC ---
+//ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 };
 
 static struct snd_soc_dai_link msm8226_9306_dai[] = {
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	/* Backend DAI Links */
 	{
@@ -2231,11 +2231,11 @@ static struct snd_soc_dai_link msm8226_9306_dai[] = {
 		.ignore_suspend = 1,
 	},
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 };
 
 static struct snd_soc_dai_link msm8226_9302_dai[] = {
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	/* Backend DAI Links */
 	{
@@ -2364,7 +2364,7 @@ static struct snd_soc_dai_link msm8226_9302_dai[] = {
 		.ignore_suspend = 1,
 	},
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 };
 
 static struct snd_soc_dai_link msm8226_9306_dai_links[
@@ -2451,7 +2451,7 @@ err:
 	return ret;
 }
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 static int msm8226_prepare_codec_mclk(struct snd_soc_card *card)
 {
@@ -2507,14 +2507,14 @@ static int msm8226_setup_hs_jack(struct platform_device *pdev,
 	return 0;
 }
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 {
 
 	struct snd_soc_card *card;
 
-//ken_cheng@asus.com
+//ASUS_BSP Ken_Cheng
 #if defined(ASUS_CW_WITH_CODEC)
 	if (of_property_read_bool(dev->of_node,
 					"qcom,tapan-codec-9302")) {
@@ -2534,7 +2534,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 				sizeof(msm8226_common_dai));
 		memcpy(msm8226_9306_dai_links + ARRAY_SIZE(msm8226_common_dai),
 			msm8226_9306_dai, sizeof(msm8226_9306_dai));
-//ken_cheng@asus.com
+//ASUS_BSP Ken_Cheng
 #if defined(ASUS_CW_WITH_CODEC)
 	}
 #endif
@@ -2548,7 +2548,7 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	struct msm8226_asoc_mach_data *pdata;
 	int ret;
 	const char *auxpcm_pri_gpio_set = NULL;
-//ken_cheng@asus.com
+//ASUS_BSP Ken_Cheng
 #if defined(ASUS_CW_WITH_CODEC)
 	const char *mbhc_audio_jack_type = NULL;
 #endif
@@ -2566,7 +2566,7 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_WI500Q_PROJECT)
         spdev = pdev;
         msm8226_dtparse_mi2s();
@@ -2583,7 +2583,7 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 
 //ASUS BSP Jessy --- : config DMIC 1p8
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 	card = populate_snd_card_dailinks(&pdev->dev);
 
@@ -2595,7 +2595,7 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	ret = snd_soc_of_parse_audio_routing(card,
 			"qcom,audio-routing");
@@ -2666,7 +2666,7 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
@@ -2684,7 +2684,7 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	vdd_spkr_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,cdc-vdd-spkr-gpios", 0);
@@ -2725,7 +2725,7 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 
 	msm8226_setup_hs_jack(pdev, pdata);
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 	ret = of_property_read_string(pdev->dev.of_node,
 			"qcom,prim-auxpcm-gpio-set", &auxpcm_pri_gpio_set);
@@ -2759,7 +2759,7 @@ err_lineout_spkr:
 		ext_spk_amp_gpio = -1;
 	}
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 err_vdd_spkr:
 	if (vdd_spkr_gpio >= 0) {
@@ -2767,7 +2767,7 @@ err_vdd_spkr:
 		vdd_spkr_gpio = -1;
 	}
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 err:
 	if (pdata->mclk_gpio > 0) {
@@ -2777,12 +2777,12 @@ err:
 		pdata->mclk_gpio = 0;
 	}
 
-//ken_cheng@asus.com +++
+//ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 err1:
 	devm_kfree(&pdev->dev, pdata);
 #endif
-//ken_cheng@asus.com ---
+//ASUS_BSP Ken_Cheng ---
 
 	return ret;
 }

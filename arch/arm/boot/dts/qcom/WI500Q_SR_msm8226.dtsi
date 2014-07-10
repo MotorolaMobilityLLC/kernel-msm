@@ -16,7 +16,7 @@
 	model = "Qualcomm MSM 8226";
 	compatible = "qcom,msm8226";
 	interrupt-parent = <&intc>;
-// ASUS_BSP +++ Josh Hsu "Reserve 2MB for Asusdebug and Google ASIT"
+//adbg++
 	qcom,asusdebug {
 		compatible = "qcom,asusdebug";
 		/* Remove 2MB at 0x1FF00000*/
@@ -28,7 +28,7 @@
 		/* Fixed Memory region of 2MB at 0x1FF00000*/
 		qcom,memory-fixed = <0x11F00000 0x200000>;
 	};
-// ASUS_BSP --- Josh Hsu "Reserve 2MB for Asusdebug and Google ASIT"
+//adbg--
 	aliases {
 		spi0 = &spi_0;
 		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
@@ -273,20 +273,6 @@
 	};
 	aliases {
 		serial2 = &uart_5;
-	};
-
-	uart_4:serial@f9921000 {
-		compatible = "qcom,msm-lsuart-v14";
-		reg = <0xf9921000 0x1000>;
-		interrupts = <0 111 0>;
-		status = "ok";
-
-		qcom,msm-bus,name = "blsp1_uart4";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-			<86 512 0 0>,
-			<86 512 500 800>;
 	};
 	//ASUS_BSP --- Maggie_Lee "UART Porting for ECG sensor"
 

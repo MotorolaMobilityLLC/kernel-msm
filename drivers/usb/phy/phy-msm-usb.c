@@ -2582,7 +2582,7 @@ static void msm_chg_detect_work(struct work_struct *w)
 	queue_delayed_work(system_nrt_wq, &motg->chg_work, delay);
 }
 
-#define VBUS_INIT_TIMEOUT	msecs_to_jiffies(6000)
+#define VBUS_INIT_TIMEOUT	msecs_to_jiffies(6500)
 
 /*
  * We support OTG, Peripheral only and Host only configurations. In case
@@ -2634,7 +2634,7 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			ret = wait_for_completion_timeout(&pmic_vbus_init,
 							  VBUS_INIT_TIMEOUT);
 			if (!ret) {
-				dev_dbg(motg->phy.dev, "%s: timeout waiting for PMIC VBUS\n",
+				dev_err(motg->phy.dev, "%s: timeout waiting for PMIC VBUS\n",
 					__func__);
 				clear_bit(B_SESS_VLD, &motg->inputs);
 				pmic_vbus_init.done = 1;

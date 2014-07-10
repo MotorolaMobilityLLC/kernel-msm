@@ -502,14 +502,4 @@ config LEDS_BLINKM
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
-config ASUS_BACKLIGHT
-        tristate "Enable backlight driver"
-        help
-         According to PMIC trigger backlight driver.
-
-config ASUS_BACKLIGHT_DEBUG
-		default N
-        tristate "Enable backlight debug mode"
-        help
-         Enable backlight debug mode
 endif # NEW_LEDS

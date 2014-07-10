@@ -671,7 +671,7 @@ ifeq ($(shell $(CONFIG_SHELL) $(srctree)/scripts/gcc-goto.sh $(CC)), y)
 	KBUILD_CFLAGS += -DCC_HAVE_ASM_GOTO
 endif
 
-# ASUS_BSP : miniporting : jackson : add ASUS software version support +++
+# ASUS_BSP : miniporting : add ASUS software version support +++
 ifneq ($(BUILD_NUMBER),)
         KBUILD_CPPFLAGS += -DASUS_SW_VER=\"$(BUILD_NUMBER)\"
 else
@@ -688,37 +688,7 @@ endif
 ifneq ($(ASUS_FACTORY_BUILD),)
         KBUILD_CPPFLAGS += -DASUS_FACTORY_BUILD=1
 endif
-# ASUS_BSP --- Jason "factory compile option support"
-# ASUS_BSP : for user build
-ifeq ($(TARGET_BUILD_VARIANT), user)
-        KBUILD_CPPFLAGS += -DASUS_SHIP_BUILD=1
-#        KBUILD_CPPFLAGS += -DASUS_DOWNLOAD_MODE_DISABLE=1
-endif
-# ASUS_BSP : for user build
-
-# ASUS_BSP : for userdebug build
-ifeq ($(TARGET_BUILD_VARIANT), userdebug)
-        KBUILD_CPPFLAGS += -DASUS_USERDEBUG_BUILD=1
-#        KBUILD_CPPFLAGS += -DASUS_DOWNLOAD_MODE_DISABLE=1
-endif
-# ASUS_BSP : for userdebug build
-
-# ASUS_BSP : for eng build
-ifeq ($(TARGET_BUILD_VARIANT), eng)
-        KBUILD_CPPFLAGS += -DASUS_ENG_BUILD=1
-endif
-# ASUS_BSP : for eng build
-
-# ASUS_BSP : for pdk build
-ifeq ($(TARGET_PRODUCT), anthias)
-	KBUILD_CPPFLAGS += -DASUS_PDK_BUILD=1
-	KBUILD_CPPFLAGS += -DASUS_PERFORMANCE_RESTRICTION=1
-endif
-# ASUS_BSP : for pdk build
-
-# +++ ASUS_BSP : for passing building android
-KBUILD_CPPFLAGS += -DKERNEL_VERSION_310
-# --- ASUS_BSP : for passing building android
+# ASUS_BSP : miniporting : add ASUS software version support ---
 
 #ASUS_BSP +++
 KBUILD_CPPFLAGS += -DASUS_CHARGING_MODE=1

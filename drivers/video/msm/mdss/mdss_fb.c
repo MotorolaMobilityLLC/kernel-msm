@@ -54,8 +54,6 @@
 
 #include "mdss_fb.h"
 
-#include "mdss_asus_debug.h"
-
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
 #else
@@ -98,11 +96,6 @@ static int __mdss_fb_display_thread(void *data);
 static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd);
 static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 					int event, void *arg);
-
-// ASUSB_BSP +++ Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
-void set_amdu_fbinfo(struct fb_info *fb0_info);
-// ASUSB_BSP --- Tingyi "[ROBIN][DEBUG] Support debug command to show msg on panel"
-
 void mdss_fb_no_update_notify_timer_cb(unsigned long data)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)data;
@@ -535,7 +528,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mdss_fb_create_sysfs(mfd);
 	mdss_fb_send_panel_event(mfd, MDSS_EVENT_FB_REGISTERED, fbi);
 
-	mfd->mdp_sync_pt_data.fence_name = "mdp-fence"; // Tingyi: MDP Fence
+	mfd->mdp_sync_pt_data.fence_name = "mdp-fence";
 	if (mfd->mdp_sync_pt_data.timeline == NULL) {
 		char timeline_name[16];
 		snprintf(timeline_name, sizeof(timeline_name),
@@ -547,7 +540,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 			return -ENOMEM;
 		}
 		mfd->mdp_sync_pt_data.notifier.notifier_call =
-			__mdss_fb_sync_buf_done_callback; // Tingyi: MDP Fence callback
+			__mdss_fb_sync_buf_done_callback;
 	}
 
 	switch (mfd->panel.type) {
@@ -637,8 +630,12 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
-	printk("MDSS:%s:+++:index=%d\n", __func__,mfd->index);
+	pr_debug("mdss_fb suspend index=%d\n", mfd->index);
 
+#if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
+	if ((mfd->index == 0) && (mfd->panel_info->type == MIPI_CMD_PANEL))
+		return mfd->mdp.off_pan_on_fnc(mfd);
+#endif
 	mdss_fb_pan_idle(mfd);
 	ret = mdss_fb_send_panel_event(mfd, MDSS_EVENT_SUSPEND, NULL);
 	if (ret) {
@@ -659,7 +656,6 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 		mfd->op_enable = false;
 		fb_set_suspend(mfd->fbi, FBINFO_STATE_SUSPENDED);
 	}
-	printk("MDSS:%s:---:index=%d\n", __func__,mfd->index);
 
 	return 0;
 }
@@ -670,8 +666,11 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
-	printk("MDSS:%s:+++:index=%d\n", __func__,mfd->index);
 
+#if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
+	if ((mfd->index == 0) && (mfd->panel_info->type == MIPI_CMD_PANEL))
+		return 0;
+#endif
 	INIT_COMPLETION(mfd->power_set_comp);
 	mfd->is_power_setting = true;
 	pr_debug("mdss_fb resume index=%d\n", mfd->index);
@@ -696,7 +695,6 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 	}
 	mfd->is_power_setting = false;
 	complete_all(&mfd->power_set_comp);
-	printk("MDSS:%s:---:index=%d\n", __func__,mfd->index);
 
 	return ret;
 }
@@ -748,6 +746,15 @@ static int mdss_fb_pm_resume(struct device *dev)
 		return -ENODEV;
 
 	dev_dbg(dev, "display pm resume\n");
+
+	/*
+	 * It is possible that the runtime status of the fb device may
+	 * have been active when the system was suspended. Reset the runtime
+	 * status to suspended state after a complete system resume.
+	 */
+	pm_runtime_disable(dev);
+	pm_runtime_set_suspended(dev);
+	pm_runtime_enable(dev);
 
 	return mdss_fb_resume_sub(mfd);
 }
@@ -870,10 +877,6 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	}
 }
 
-extern void notify_panel_lowpowermode(int low);
-extern void notify_st_sensor_lowpowermode(int low);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
-extern void notify_it7260_ts_lowpowermode(int low);		//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
-extern int enable_ambient(int enable);
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
@@ -910,8 +913,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_HSYNC_SUSPEND:
 	case FB_BLANK_NORMAL:
 	case FB_BLANK_POWERDOWN:
-		printk("MDSS:%s:+++,blank_mode=%d,mfd->panel_power_on=%d\n",
-				__func__,blank_mode,mfd->panel_power_on);
+	default:
 		if (mfd->panel_power_on && mfd->mdp.off_fnc) {
 			int curr_pwr_state;
 
@@ -929,7 +931,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->panel_power_on = false;
 			mfd->bl_updated = 0;
 
-			ret = mfd->mdp.off_fnc(mfd); // Tingyi: mdss_mdp_overlay_off()
+			ret = mfd->mdp.off_fnc(mfd);
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
 			else
@@ -937,47 +939,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->op_enable = true;
 			complete(&mfd->power_off_comp);
 		}
-		printk("MDSS:%s:---,mfd->panel_power_on=%d,ret=%d\n",
-				__func__,mfd->panel_power_on,ret);
 		break;
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
-	case FB_BLANK_ENTER_NON_INTERACTIVE:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_NON_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		if (mfd->panel_power_on) {
-			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
-		}
-		notify_amdu_panel_power_mode(PANEL_POWER_LOW);
-		notify_st_sensor_lowpowermode(1);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
-		notify_it7260_ts_lowpowermode(1);		//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
-		return 0;
-		break;
-	case FB_BLANK_ENTER_INTERACTIVE:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		if (mfd->panel_power_on) {
-			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
-		}
-		notify_amdu_panel_power_mode(PANEL_POWER_NORMAL);
-		notify_st_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
-		notify_it7260_ts_lowpowermode(0);		//ASUS_BSP +++ Cliff "Touch change status to idle in Ambient mode"
-		return 0;
-		break;
-#ifdef ASUS_FACTORY_BUILD
-	case FB_BLANK_AMBIENT_OFF:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		enable_ambient(0);
-		return 0;
-		break;
-	case FB_BLANK_AMBIENT_ON:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_ON,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		enable_ambient(1);
-		return 0;
-		break;
-#endif
-	default:
-		printk("MDSS:%s:+++,Unknown blank_mode=%d,mfd->panel_power_on=%d\n",__func__,blank_mode,mfd->panel_power_on);
-		break;
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
-
 	}
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
@@ -988,9 +950,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-	int ret;
 
-	printk("MDSS:%s:+++\n",__func__);
 	mdss_fb_pan_idle(mfd);
 	if (mfd->op_enable == 0) {
 		if (blank_mode == FB_BLANK_UNBLANK)
@@ -999,10 +959,7 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 			mfd->suspend.panel_power_on = false;
 		return 0;
 	}
-	ret = mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
-
-	printk("MDSS:%s:---;ret = %d\n",__func__,ret);
-	return ret;
+	return mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
 }
 
 /*
@@ -1389,12 +1346,6 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	pr_info("FrameBuffer[%d] %dx%d size=%d registered successfully!\n",
 		     mfd->index, fbi->var.xres, fbi->var.yres,
 		     fbi->fix.smem_len);
-
-// ASUS_BSP +++ Tingyi
-	if (mfd->index == 0)
-		set_amdu_fbinfo(mfd->fbi);
-// ASUS_BSP --- Tingyi
-
 
 	return 0;
 }
@@ -1818,48 +1769,6 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 	mfd->msm_fb_backup.info = *info;
 	mfd->msm_fb_backup.disp_commit = *disp_commit;
 
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
-#if 0
-{
-	static unsigned long last_time_cb = 0;
-	static unsigned int max_time_used = 0;
-	static unsigned int min_time_used = 99999;
-	static unsigned int total_time_used = 1;
-	static unsigned int total_time_count = 0;
-	if (last_time_cb){
-		unsigned int time_used;
-		time_used = jiffies_to_msecs(jiffies - last_time_cb);
-		if (total_time_used > 1000){
-
-		//if (time_used > 1000/30)
-			printk("MDSS:(%d ~ %d),%d Pan Cnt\n",min_time_used,max_time_used,total_time_count);
-
-			max_time_used = 0;
-			min_time_used = 99999;
-			total_time_used = 1;
-			total_time_count = 0;
-		}else{
-			if (time_used > max_time_used )
-				max_time_used = time_used;
-			if (time_used < min_time_used )
-				min_time_used = time_used;
-			total_time_used += time_used;
-			total_time_count ++;
-		}
-
-		if (time_used < 1000/30){
-//			printk("MDSS:msleep(%d ms) +++\n",1000/30 - time_used);
-//			msleep(1000/30 - time_used);
-//			printk("MDSS:msleep(%d ms) ---\n",1000/30 - time_used);
-		}
-
-	}
-
-
-	last_time_cb = jiffies;
-}
-#endif
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Flow control agast MIPI tx storm"
 	atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
 	atomic_inc(&mfd->commits_pending);
 	wake_up_all(&mfd->commit_wait_q);
@@ -1902,7 +1811,7 @@ static int mdss_fb_pan_display_sub(struct fb_var_screeninfo *var,
 		(var->yoffset / info->fix.ypanstep) * info->fix.ypanstep;
 
 	if (mfd->mdp.dma_fnc)
-		mfd->mdp.dma_fnc(mfd, NULL, 0, NULL); // Tingyi:mdp5_interface->dma_fnc = mdss_mdp_overlay_pan_display;
+		mfd->mdp.dma_fnc(mfd, NULL, 0, NULL);
 	else
 		pr_warn("dma function not set for panel type=%d\n",
 				mfd->panel.type);
@@ -1942,7 +1851,7 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
 	sync_pt_data->flushed = false;
 
 	if (fb_backup->disp_commit.flags & MDP_DISPLAY_COMMIT_OVERLAY) {
-		if (mfd->mdp.kickoff_fnc) // Tingyi:mdp5_interface->kickoff_fnc = mdss_mdp_overlay_kickoff;
+		if (mfd->mdp.kickoff_fnc)
 			ret = mfd->mdp.kickoff_fnc(mfd,
 					&fb_backup->disp_commit);
 		else

@@ -26,7 +26,6 @@
 #include <linux/of_platform.h>
 #include <linux/ssbi.h>
 #include <linux/msm-bus.h>
-#include <linux/kernel.h>
 
 //ASUS_BSP BerylHou +++
 #define GPIO_HOST_WAKE_UP_BT_SR 61

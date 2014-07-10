@@ -121,7 +121,6 @@ static struct msm_gpiomux_config wi500q_sr_msm8226_gpio_configs[] __initdata= {
 			[GPIOMUX_SUSPENDED] = &gyro_int,
 		},
 	},
-
 	{
 		.gpio = 35,
 		.settings = {

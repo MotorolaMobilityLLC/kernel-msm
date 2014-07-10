@@ -22,7 +22,6 @@
 #include "mdss_dsi.h"
 #include "mdss_edp.h"
 
-#define DEBUG
 #define SW_RESET BIT(2)
 #define SW_RESET_PLL BIT(0)
 #define PWRDN_B BIT(7)
@@ -140,7 +139,6 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 	u8 lanes = 0, bpp;
 	struct dsi_clk_mnd_table const *mnd_entry = mnd_table;
 
-	printk("MDSS:DSI:mdss_dsi_clk_div_config(frame_rate=%d)++\n",frame_rate);
 	if (panel_info->mipi.data_lane3)
 		lanes += 1;
 	if (panel_info->mipi.data_lane2)
@@ -185,13 +183,7 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 				(h_period * v_period * frame_rate * bpp * 8);
 		}
 	}
-	printk("MDSS:DSI:mdss_dsi_clk_div_config():After calculate,panel_info->clk_rate=%d\n",panel_info->clk_rate);
-
-// Tingyi +++
-	panel_info->clk_rate=	290000000; // 290MHz
-	printk("MDSS:DSI:mdss_dsi_clk_div_config():Force panel_info->clk_rate=%d\n",panel_info->clk_rate);
 	pll_divider_config.clk_rate = panel_info->clk_rate;
-// Tingyi ---
 
 
 	if (pll_divider_config.clk_rate == 0)
@@ -313,15 +305,6 @@ error:
 
 static void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
-// Tingyi +++ "[ROBIN][MDSS] Error handling for NULL pointer"
-	if (ctrl_pdata == 0)
-	{
-		printk("MDSS:%s:ERR!!! NULL Pointer !!!\n",__func__);
-		dump_stack();
-		return;
-	}
-// Tingyi --- "[ROBIN][MDSS] Error handling for NULL pointer"
-
 	if (ctrl_pdata->mmss_misc_ahb_clk)
 		clk_disable_unprepare(ctrl_pdata->mmss_misc_ahb_clk);
 	clk_disable_unprepare(ctrl_pdata->axi_clk);

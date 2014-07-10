@@ -18,9 +18,6 @@
 	};
 
 //ASUS_BSP +++ Maggie_Lee "ECG Sensor Porting"
-	serial@f9921000 {
-		status = "ok";
-	};
 	serial@f9922000 {
 		status = "ok";
 	};
@@ -58,18 +55,18 @@
 			vdd_ana-supply = <&pm8226_l19>;
 			vcc_i2c-supply = <&pm8226_lvs1>;
 			mpu9250,irq-gpio = <&msmgpio 35 0x00>;
-			axis_map_x = <1>;
-			negate_x = <1>;
-			axis_map_y = <0>;
-			negate_y = <1>;
+			axis_map_x = <0>;
+			negate_x = <0>;
+			axis_map_y = <1>;
+			negate_y = <0>;
 			axis_map_z = <2>;
-			negate_z = <1>;
+			negate_z = <0>;
 			inven,secondary_type = "compass";
 			inven,secondary_name = "ak8963";
 			inven,secondary_reg = <0x0c>;
-			inven,secondary_axis_map_x = <0>;
-			inven,secondary_negate_x = <1>;
-			inven,secondary_axis_map_y = <1>;
+			inven,secondary_axis_map_x = <1>;
+			inven,secondary_negate_x = <0>;
+			inven,secondary_axis_map_y = <0>;
 			inven,secondary_negate_y = <1>;
 			inven,secondary_axis_map_z = <2>;
 			inven,secondary_negate_z = <0>;
@@ -129,8 +126,8 @@
 	backlight {
 		compatible = "qcom, asus-backlight";
 		input-name = "backlight";
-		value = <1 255>;								//min max
-		phone-bl-param = <1 255 155 113>;				//min max default ambient
+		value = <10 255>;								//min max
+		phone-bl-param = <113 255 155 113>;				//min max default ambient
 		status = "okay";
 	};
 	//ASUS_BSP --- Maggie_Lee "Backlight Porting"

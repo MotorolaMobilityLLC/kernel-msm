@@ -213,6 +213,17 @@ static int set_recovery_mode(char *str)
 __setup("recovery", set_recovery_mode);
 //---ASUS_BSP: for recovery mode
 
+//+++ASUS_BSP: for recovery mode
+char device_serialno[16]={0};
+static int set_serialno(char *str)
+{
+	sprintf(device_serialno, str);	
+    printk("serialno = %s\n",device_serialno);
+	return 0;
+}
+__setup("serialno=", set_serialno);
+//---ASUS_BSP: for recovery mode
+
 //ASUS_BSP porting charger mode +++
 #if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
 int g_CHG_mode=0;
@@ -232,6 +243,28 @@ static int set_chg_mode(char *str)
 __setup("androidboot.mode=", set_chg_mode);
 #endif
 //ASUS_BSP porting charger mode ---
+
+//+++ ASUS_BSP : miniporting : Add for audio dbg mode
+int g_user_dbg_mode = 1;
+EXPORT_SYMBOL(g_user_dbg_mode);
+
+static int set_user_dbg_mode(char *str)
+{
+    if ( strcmp("y", str) == 0 )
+    {
+        g_user_dbg_mode = 1;
+    }
+    else
+    {
+        g_user_dbg_mode = 0;
+    }
+    g_user_dbg_mode = 1;
+    printk("Kernel dbg mode = %d\n", g_user_dbg_mode);
+
+    return 0;
+}
+__setup("dbg=", set_user_dbg_mode);
+//--- ASUS_BSP : miniporting : Add for audio dbg mode
 
 /*
  * If set, this is an indication to the drivers that reset the underlying
