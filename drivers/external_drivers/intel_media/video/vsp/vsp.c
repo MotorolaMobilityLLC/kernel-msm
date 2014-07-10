@@ -573,7 +573,7 @@ static int vsp_prehandle_command(struct drm_file *priv,
 	struct vss_command_t *cur_cmd;
 	unsigned int cmd_size = arg->cmdbuf_size;
 	int ret = 0;
-	struct ttm_buffer_object *pic_param_bo;
+	struct ttm_buffer_object *pic_param_bo = NULL;
 	int pic_param_num, vsp_cmd_num = 0;
 	struct ttm_validate_buffer *pos, *next;
 	struct drm_device *dev = priv->minor->dev;
@@ -791,7 +791,7 @@ int vsp_fence_vpp_surfaces(struct drm_file *priv,
 	struct ttm_buffer_object *surf_bo;
 	struct ttm_fence_object *fence = NULL;
 	struct list_head surf_list, tmp_list;
-	struct ttm_validate_buffer *pos, *next, *cur_valid_buf;
+	struct ttm_validate_buffer *pos, *next, *cur_valid_buf = NULL;
 	struct ttm_object_file *tfile = BCVideoGetPriv(priv)->tfile;
 	struct drm_device *dev = priv->minor->dev;
 	struct drm_psb_private *dev_priv = dev->dev_private;

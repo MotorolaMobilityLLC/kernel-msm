@@ -2031,7 +2031,7 @@ compat_PVRSRVBridgeRGXCreateHWRTData(IMG_UINT32 ui32BridgeID,
 					 compat_PVRSRV_BRIDGE_OUT_RGXCREATEHWRTDATA *psRGXCreateHWRTDataOUT_32,
 					 CONNECTION_DATA *psConnection)
 {
-	IMG_INT ret;
+	IMG_INT ret = 0;
 	IMG_HANDLE __user *hapsFreeListsInt2 = IMG_NULL;
 	IMG_UINT32 *hapsFreeListsInt3 = IMG_NULL;
 
