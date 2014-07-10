@@ -453,7 +453,6 @@
 			&blsp_spi_default
 			&cam_mclk1_default
 			&cam_mclk3_default
-			&cam2_pwdn_default
 			&max17050_default
 			&factory_default
 			&factory_kill_default

@@ -16,13 +16,6 @@
 	pinctrl-0 = <&cam_i2c_default>;
 	pinctrl-1 = <&cam_i2c_active>;
 
-	rohm_bu64296gwx: qcom,actuator@18 {
-		cell-index = <1>;
-		reg = <0x18>;
-		compatible = "qcom,actuator";
-		qcom,cci-master = <0>;
-	};
-
 	ois0: qcom,ois@48 {
 		cell-index = <0>;
 		reg = <0x48>;
@@ -31,6 +24,18 @@
 		cam_vaf-supply = <&pma8084_l23>;
 		qcom,cam-vreg-name = "cam_vaf";
 		qcom,cam-vreg-type = <0>;
+		qcom,cam-vreg-min-voltage = <2700000>;
+		qcom,cam-vreg-max-voltage = <2700000>;
+		qcom,cam-vreg-op-mode = <100000>;
+	};
+
+	actuator0: qcom,actuator@36 {
+		cell-index = <0>;
+		reg = <0x36>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+		cam_vaf-supply = <&pma8084_l23>;
+		qcom,cam-vreg-name = "cam_vaf";
 		qcom,cam-vreg-min-voltage = <2700000>;
 		qcom,cam-vreg-max-voltage = <2700000>;
 		qcom,cam-vreg-op-mode = <100000>;
@@ -67,6 +72,7 @@
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,ois-src = <&ois0>;
+		qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&lm3646_led_flash>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "imx214";
@@ -74,24 +80,23 @@
 		cam_vio-supply = <&pma8084_lvs4>;
 		cam_vaf-supply = <&pma8084_l23>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vaf";
-		qcom,cam-vreg-type = <0 1 0>;
 		qcom,cam-vreg-min-voltage = <1050000 0 2700000>;
 		qcom,cam-vreg-max-voltage = <1050000 0 2700000>;
 		qcom,cam-vreg-op-mode = <105000 0 100000>;
 		qcom,gpio-no-mux = <0>;
 		gpios = <&msmgpio 15 0>,
 			<&msmgpio 36 0>,
-			<&msmgpio 120 0>;
+			<&msmgpio 120 0>,
+			<&msmgpio 35 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vana = <2>;
-		qcom,gpio-req-tbl-num = <0 1 2>;
-		qcom,gpio-req-tbl-flags = <1 0 0>;
-		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+		qcom,gpio-vdig = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
 				"CAM_RESET1",
-				"CAM_VANA";
-		qcom,gpio-set-tbl-num = <1 1 1>;
-		qcom,gpio-set-tbl-flags = <0 1 2>;
-		qcom,gpio-set-tbl-delay = <1000 30000 1000>;
+				"CAM_VANA_EN",
+				"CAM_VCM_REG_EN";
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x1F>;
 		qcom,sensor-position = <0>;
@@ -100,8 +105,8 @@
 		qcom,cci-master = <0>;
 		status = "ok";
 		pinctrl-names = "default", "active";
-		pinctrl-0 = <&cam_mclk0_default &cam1_ctrl_default>;
-		pinctrl-1 = <&cam_mclk0_active &cam1_ctrl_active>;
+		pinctrl-0 = <&cam_mclk0_default &cam1_ctrl_default &cam2_pwdn_default>;
+		pinctrl-1 = <&cam_mclk0_active &cam1_ctrl_active &cam2_pwdn_active>;
 	};
 
 	qcom,camera@1 {
@@ -116,7 +121,6 @@
 		cam_vdig-supply = <&pma8084_l15>;
 		cam_vio-supply = <&pma8084_lvs4>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
-		qcom,cam-vreg-type = <0 1>;
 		qcom,cam-vreg-min-voltage = <1200000 0>;
 		qcom,cam-vreg-max-voltage = <1200000 0>;
 		qcom,cam-vreg-op-mode = <105000 0>;
