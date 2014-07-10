@@ -766,12 +766,12 @@ DEVICE_ATTR(thermal_pwrlevel, 0644,
 DEVICE_ATTR(num_pwrlevels, 0444,
 	kgsl_pwrctrl_num_pwrlevels_show,
 	NULL);
-DEVICE_ATTR(reset_count, 0444,
-	kgsl_pwrctrl_reset_count_show,
-	NULL);
 DEVICE_ATTR(pmqos_latency, 0644,
 	kgsl_pwrctrl_pmqos_latency_show,
 	kgsl_pwrctrl_pmqos_latency_store);
+DEVICE_ATTR(reset_count, 0444,
+	kgsl_pwrctrl_reset_count_show,
+	NULL);
 DEVICE_ATTR(force_clk_on, 0644,
 	kgsl_pwrctrl_force_clk_on_show,
 	kgsl_pwrctrl_force_clk_on_store);
@@ -793,8 +793,8 @@ static const struct device_attribute *pwrctrl_attr_list[] = {
 	&dev_attr_min_pwrlevel,
 	&dev_attr_thermal_pwrlevel,
 	&dev_attr_num_pwrlevels,
-	&dev_attr_reset_count,
 	&dev_attr_pmqos_latency,
+	&dev_attr_reset_count,
 	&dev_attr_force_clk_on,
 	&dev_attr_force_bus_on,
 	&dev_attr_force_rail_on,
@@ -1381,7 +1381,6 @@ int kgsl_pwrctrl_sleep(struct kgsl_device *device)
 		break;
 	case KGSL_STATE_SLEEP:
 		status = _sleep(device);
-		kgsl_mmu_disable_clk_on_ts(&device->mmu, 0, false);
 		break;
 	case KGSL_STATE_SLUMBER:
 		status = _slumber(device);
@@ -1432,6 +1431,7 @@ int kgsl_pwrctrl_wake(struct kgsl_device *device)
 			kgsl_pwrstate_to_str(state),
 			context ? context->id : -1, ts_processed);
 		kgsl_context_put(context);
+
 		/* fall through */
 	case KGSL_STATE_NAP:
 		/* Turn on the core clocks */
@@ -1538,13 +1538,11 @@ int kgsl_active_count_get(struct kgsl_device *device)
 	int ret = 0;
 	BUG_ON(!mutex_is_locked(&device->mutex));
 
-	if (atomic_read(&device->active_cnt) == 0) {
-		if (device->requested_state == KGSL_STATE_SUSPEND ||
-				device->state == KGSL_STATE_SUSPEND) {
-			mutex_unlock(&device->mutex);
-			wait_for_completion(&device->hwaccess_gate);
-			mutex_lock(&device->mutex);
-		}
+	if ((atomic_read(&device->active_cnt) == 0) &&
+		(device->state != KGSL_STATE_ACTIVE)) {
+		mutex_unlock(&device->mutex);
+		wait_for_completion(&device->hwaccess_gate);
+		mutex_lock(&device->mutex);
 
 		ret = kgsl_pwrctrl_wake(device);
 	}
@@ -1597,12 +1595,9 @@ void kgsl_active_count_put(struct kgsl_device *device)
 
 	if (atomic_dec_and_test(&device->active_cnt)) {
 		if (device->state == KGSL_STATE_ACTIVE &&
-				 device->requested_state == KGSL_STATE_NONE) {
+			device->requested_state == KGSL_STATE_NONE) {
 			kgsl_pwrctrl_request_state(device, KGSL_STATE_NAP);
-			if (kgsl_pwrctrl_sleep(device)) {
-				kgsl_pwrctrl_request_state(device, KGSL_STATE_NAP);
-				queue_work(device->work_queue, &device->idle_check_ws);
-			}
+			queue_work(device->work_queue, &device->idle_check_ws);
 		}
 
 		mod_timer(&device->idle_timer,

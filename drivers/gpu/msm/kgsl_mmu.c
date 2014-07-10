@@ -348,7 +348,7 @@ kgsl_mmu_log_fault_addr(struct kgsl_mmu *mmu, phys_addr_t pt_base,
 	unsigned int ret = 0;
 
 	if (!mmu->mmu_ops || !mmu->mmu_ops->mmu_pt_equal)
-		return KGSL_MMU_GLOBAL_PT;
+		return 0;
 	spin_lock(&kgsl_driver.ptlock);
 	list_for_each_entry(pt, &kgsl_driver.pagetable_list, list) {
 		if (kref_get_unless_zero(&pt->refcount)) {

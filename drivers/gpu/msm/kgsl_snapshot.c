@@ -210,10 +210,8 @@ static int snapshot_os(struct kgsl_device *device,
 	header->ctxtcount = ctxtcount;
 
 	_ctxtptr = snapshot + sizeof(*header);
-
 	/* append information for the global context */
 	snapshot_context_info(KGSL_MEMSTORE_GLOBAL, NULL, device);
-
 	/* append information for each context */
 
 	read_lock(&device->context_lock);

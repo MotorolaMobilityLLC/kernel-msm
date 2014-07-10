@@ -412,6 +412,7 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 	int ret;
 
 	drawctxt = kzalloc(sizeof(struct adreno_context), GFP_KERNEL);
+
 	if (drawctxt == NULL)
 		return ERR_PTR(-ENOMEM);
 
@@ -424,7 +425,7 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 	drawctxt->bin_base_offset = 0;
 	drawctxt->timestamp = 0;
 
-	*flags &= (KGSL_CONTEXT_PREAMBLE |
+	drawctxt->base.flags = *flags & (KGSL_CONTEXT_PREAMBLE |
 		KGSL_CONTEXT_NO_GMEM_ALLOC |
 		KGSL_CONTEXT_PER_CONTEXT_TS |
 		KGSL_CONTEXT_USER_GENERATED_TS |
@@ -433,20 +434,7 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 		KGSL_CONTEXT_PWR_CONSTRAINT);
 
 	/* Always enable per-context timestamps */
-	*flags |= KGSL_CONTEXT_PER_CONTEXT_TS;
-	drawctxt->flags |= CTXT_FLAGS_PER_CONTEXT_TS;
-
-	if (*flags & KGSL_CONTEXT_PREAMBLE)
-		drawctxt->flags |= CTXT_FLAGS_PREAMBLE;
-
-	if (*flags & KGSL_CONTEXT_NO_GMEM_ALLOC)
-		drawctxt->flags |= CTXT_FLAGS_NOGMEMALLOC;
-
-	if (*flags & KGSL_CONTEXT_USER_GENERATED_TS)
-		drawctxt->flags |= CTXT_FLAGS_USER_GENERATED_TS;
-
-	if (*flags & KGSL_CONTEXT_PWR_CONSTRAINT)
-		drawctxt->flags |= CTXT_FLAGS_PWR_CONSTRAINT;
+	drawctxt->base.flags |= KGSL_CONTEXT_PER_CONTEXT_TS;
 
 	mutex_init(&drawctxt->mutex);
 	init_waitqueue_head(&drawctxt->wq);
@@ -460,18 +448,12 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 
 	plist_node_init(&drawctxt->pending, ADRENO_CONTEXT_DEFAULT_PRIORITY);
 
-	if (*flags & KGSL_CONTEXT_NO_FAULT_TOLERANCE)
-		drawctxt->flags |= CTXT_FLAGS_NO_FAULT_TOLERANCE;
-
-	drawctxt->type =
-		(*flags & KGSL_CONTEXT_TYPE_MASK) >> KGSL_CONTEXT_TYPE_SHIFT;
-
 	if (adreno_dev->gpudev->ctxt_create) {
 		ret = adreno_dev->gpudev->ctxt_create(adreno_dev, drawctxt);
 		if (ret)
 			goto err;
-	} else if ((*flags & KGSL_CONTEXT_PREAMBLE) == 0 ||
-		  (*flags & KGSL_CONTEXT_NO_GMEM_ALLOC) == 0) {
+	} else if ((drawctxt->base.flags & KGSL_CONTEXT_PREAMBLE) == 0 ||
+		  (drawctxt->base.flags & KGSL_CONTEXT_NO_GMEM_ALLOC) == 0) {
 		KGSL_DEV_ERR_ONCE(device,
 				"legacy context switch not supported\n");
 		ret = -EINVAL;
@@ -487,7 +469,8 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 	kgsl_sharedmem_writel(device, &device->memstore,
 			KGSL_MEMSTORE_OFFSET(drawctxt->base.id, eoptimestamp),
 			0);
-
+	/* copy back whatever flags we dediced were valid */
+	*flags = drawctxt->base.flags;
 	return &drawctxt->base;
 err:
 	kgsl_context_detach(&drawctxt->base);
@@ -715,10 +698,10 @@ int adreno_drawctxt_switch(struct adreno_device *adreno_dev,
 		if (flags & KGSL_CONTEXT_SAVE_GMEM)
 			/* Set the flag in context so that the save is done
 			* when this context is switched out. */
-			drawctxt->flags |= CTXT_FLAGS_GMEM_SAVE;
+			set_bit(ADRENO_CONTEXT_GMEM_SAVE, &drawctxt->priv);
 		else
 			/* Remove GMEM saving flag from the context */
-			drawctxt->flags &= ~CTXT_FLAGS_GMEM_SAVE;
+			clear_bit(ADRENO_CONTEXT_GMEM_SAVE, &drawctxt->priv);
 	}
 
 	/* already current? */

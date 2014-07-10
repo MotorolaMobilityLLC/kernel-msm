@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2008-2011, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2008-2011,2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -12,8 +12,6 @@
  */
 #ifndef __KGSL_LOG_H
 #define __KGSL_LOG_H
-
-extern unsigned int kgsl_cff_dump_enable;
 
 #define KGSL_LOG_INFO(dev, lvl, fmt, args...) \
 	do { \

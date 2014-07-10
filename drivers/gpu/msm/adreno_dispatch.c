@@ -233,7 +233,6 @@ static void  dispatcher_queue_context(struct adreno_device *adreno_dev,
 
 	spin_lock(&dispatcher->plist_lock);
 
-
 	if (plist_node_empty(&drawctxt->pending)) {
 		/* Get a reference to the context while it sits on the list */
 		if (_kgsl_context_get(&drawctxt->base)) {
@@ -569,7 +568,7 @@ static int get_timestamp(struct adreno_context *drawctxt,
 		return 0;
 	}
 
-	if (drawctxt->flags & CTXT_FLAGS_USER_GENERATED_TS) {
+	if (drawctxt->base.flags & KGSL_CONTEXT_USER_GENERATED_TS) {
 		/*
 		 * User specified timestamps need to be greater than the last
 		 * issued timestamp in the context
@@ -586,7 +585,7 @@ static int get_timestamp(struct adreno_context *drawctxt,
 }
 
 /**
- * adreno_dispatcher_queue_cmd() - Queue a new command in the context
+ * adreno_dispactcher_queue_cmd() - Queue a new command in the context
  * @adreno_dev: Pointer to the adreno device struct
  * @drawctxt: Pointer to the adreno draw context
  * @cmdbatch: Pointer to the command batch being submitted
@@ -613,10 +612,8 @@ int adreno_dispatcher_queue_cmd(struct adreno_device *adreno_dev,
 	 * to run (if it exists) regardless of the context state.
 	 */
 
-	if (drawctxt->flags & CTXT_FLAGS_FORCE_PREAMBLE) {
+	if (test_and_clear_bit(ADRENO_CONTEXT_FORCE_PREAMBLE, &drawctxt->priv))
 		set_bit(CMDBATCH_FLAG_FORCE_PREAMBLE, &cmdbatch->priv);
-		drawctxt->flags &= ~CTXT_FLAGS_FORCE_PREAMBLE;
-	}
 
 	/*
 	 * If we are waiting for the end of frame and it hasn't appeared yet,
@@ -624,7 +621,7 @@ int adreno_dispatcher_queue_cmd(struct adreno_device *adreno_dev,
 	 * through the pipeline but it won't actually send any commands
 	 */
 
-	if (drawctxt->flags & CTXT_FLAGS_SKIP_EOF) {
+	if (test_bit(ADRENO_CONTEXT_SKIP_EOF, &drawctxt->priv)) {
 		set_bit(CMDBATCH_FLAG_SKIP, &cmdbatch->priv);
 
 		/*
@@ -633,14 +630,13 @@ int adreno_dispatcher_queue_cmd(struct adreno_device *adreno_dev,
 		 */
 
 		if (cmdbatch->flags & KGSL_CONTEXT_END_OF_FRAME) {
-			drawctxt->flags &= ~CTXT_FLAGS_SKIP_EOF;
+			clear_bit(ADRENO_CONTEXT_SKIP_EOF, &drawctxt->priv);
 
 			/*
 			 * Force the preamble on the next command to ensure that
 			 * the state is correct
 			 */
-
-			drawctxt->flags |= CTXT_FLAGS_FORCE_PREAMBLE;
+			set_bit(ADRENO_CONTEXT_FORCE_PREAMBLE, &drawctxt->priv);
 		}
 	}
 
@@ -686,10 +682,10 @@ int adreno_dispatcher_queue_cmd(struct adreno_device *adreno_dev,
 
 	/*
 	 * Set the fault tolerance policy for the command batch - assuming the
-	 * context hsn't disabled FT use the current device policy
+	 * context hasn't disabled FT use the current device policy
 	 */
 
-	if (drawctxt->flags & CTXT_FLAGS_NO_FAULT_TOLERANCE)
+	if (drawctxt->base.flags & KGSL_CONTEXT_NO_FAULT_TOLERANCE)
 		set_bit(KGSL_FT_DISABLE, &cmdbatch->fault_policy);
 	else
 		cmdbatch->fault_policy = adreno_dev->ft_policy;
@@ -721,6 +717,44 @@ int adreno_dispatcher_queue_cmd(struct adreno_device *adreno_dev,
 		adreno_dispatcher_issuecmds(adreno_dev);
 
 	return 0;
+}
+
+static int _mark_context(int id, void *ptr, void *data)
+{
+	unsigned int guilty = *((unsigned int *) data);
+	struct kgsl_context *context = ptr;
+
+	/*
+	 * If the context is guilty mark it as such.  Otherwise mark it as
+	 * innocent if it had not already been marked as guilty.  If id is
+	 * passed as 0 then mark EVERYBODY guilty (recovery failed)
+	 */
+
+	if (guilty == 0 || guilty == context->id)
+		context->reset_status =
+			KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT;
+	else if (context->reset_status !=
+		KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT)
+		context->reset_status =
+			KGSL_CTX_STAT_INNOCENT_CONTEXT_RESET_EXT;
+
+	return 0;
+}
+
+/**
+ * mark_guilty_context() - Mark the given context as guilty (failed recovery)
+ * @device: Pointer to a KGSL device structure
+ * @id: Context ID of the guilty context (or 0 to mark all as guilty)
+ *
+ * Mark the given (or all) context(s) as guilty (failed recovery)
+ */
+static void mark_guilty_context(struct kgsl_device *device, unsigned int id)
+{
+	/* Mark the status for all the contexts in the device */
+
+	read_lock(&device->context_lock);
+	idr_for_each(&device->context_idr, _mark_context, &id);
+	read_unlock(&device->context_lock);
 }
 
 /*
@@ -781,7 +815,7 @@ static void cmdbatch_skip_frame(struct kgsl_cmdbatch *cmdbatch,
 	 */
 
 	if (skip && drawctxt)
-		drawctxt->flags |= CTXT_FLAGS_SKIP_EOF;
+		set_bit(ADRENO_CONTEXT_SKIP_EOF, &drawctxt->priv);
 
 	/*
 	 * If we did see the EOF flag then force the preamble on for the
@@ -789,7 +823,7 @@ static void cmdbatch_skip_frame(struct kgsl_cmdbatch *cmdbatch,
 	 */
 
 	if (!skip && drawctxt)
-		drawctxt->flags |= CTXT_FLAGS_FORCE_PREAMBLE;
+		set_bit(ADRENO_CONTEXT_FORCE_PREAMBLE, &drawctxt->priv);
 }
 
 static void remove_invalidated_cmdbatches(struct kgsl_device *device,
@@ -956,6 +990,9 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 	if (replay == NULL) {
 		unsigned int ptr = dispatcher->head;
 
+		/* Recovery failed - mark everybody guilty */
+		mark_guilty_context(device, 0);
+
 		while (ptr != dispatcher->tail) {
 			struct kgsl_context *context =
 				dispatcher->cmdqueue[ptr]->context;
@@ -1028,6 +1065,7 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 		pr_fault(device, cmdbatch, "gpu skipped ctx %d ts %d\n",
 			cmdbatch->context->id, cmdbatch->timestamp);
 
+		mark_guilty_context(device, cmdbatch->context->id);
 		adreno_drawctxt_invalidate(device, cmdbatch->context);
 	}
 
@@ -1123,6 +1161,9 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 	pr_fault(device, cmdbatch, "gpu failed ctx %d ts %d\n",
 		cmdbatch->context->id, cmdbatch->timestamp);
 
+	/* Mark the context as failed */
+	mark_guilty_context(device, cmdbatch->context->id);
+
 	/* Invalidate the context */
 	adreno_drawctxt_invalidate(device, cmdbatch->context);
 
@@ -1183,6 +1224,9 @@ replay:
 				"gpu reset failed ctx %d ts %d\n",
 				replay[i]->context->id, replay[i]->timestamp);
 
+			/* Mark this context as guilty (failed recovery) */
+			mark_guilty_context(device, replay[i]->context->id);
+
 			adreno_drawctxt_invalidate(device, replay[i]->context);
 			remove_invalidated_cmdbatches(device, &replay[i],
 				count - i);
@@ -1239,6 +1283,7 @@ static void adreno_dispatcher_work(struct work_struct *work)
 		container_of(dispatcher, struct adreno_device, dispatcher);
 	struct kgsl_device *device = &adreno_dev->dev;
 	int count = 0;
+	int last_context = KGSL_CONTEXT_INVALID;
 	int fault_handled = 0;
 
 	mutex_lock(&dispatcher->mutex);
@@ -1270,11 +1315,21 @@ static void adreno_dispatcher_work(struct work_struct *work)
 			 * successful completion to the world
 			 */
 
-			if (cmdbatch->fault_recovery != 0)
+			if (cmdbatch->fault_recovery != 0) {
+				struct adreno_context *drawctxt =
+					ADRENO_CONTEXT(cmdbatch->context);
+
+				/* Mark the context as faulted and recovered */
+				set_bit(ADRENO_CONTEXT_FAULT, &drawctxt->priv);
+
 				_print_recovery(device, cmdbatch);
+			}
 
 			trace_adreno_cmdbatch_retired(cmdbatch,
 				dispatcher->inflight - 1);
+
+			/* Remember the last context that got retired */
+			last_context = cmdbatch->context->id;
 
 			/* Reduce the number of inflight command batches */
 			dispatcher->inflight--;
@@ -1324,7 +1379,7 @@ static void adreno_dispatcher_work(struct work_struct *work)
 		 */
 
 		if (!adreno_dev->long_ib_detect ||
-			drawctxt->flags & CTXT_FLAGS_NO_FAULT_TOLERANCE)
+			drawctxt->base.flags & KGSL_CONTEXT_NO_FAULT_TOLERANCE)
 			break;
 
 		/*
@@ -1379,6 +1434,18 @@ done:
 
 		/* Update the timeout timer for the next command batch */
 		mod_timer(&dispatcher->timer, cmdbatch->expires);
+
+		/*
+		 * if the context for the next pending cmdbatch is different
+		 * than the last one we retired, then trace it as a GPU switch
+		 */
+
+		if (cmdbatch->context->id != last_context) {
+			u64 now = ktime_to_ns(ktime_get());
+			kgsl_trace_gpu_sched_switch(device->name, now,
+				cmdbatch->context->id, cmdbatch->priority,
+				cmdbatch->timestamp);
+		}
 
 		/* There are still things in flight - update the idle counts */
 		mutex_lock(&device->mutex);
@@ -1498,7 +1565,6 @@ void adreno_dispatcher_irq_fault(struct kgsl_device *device)
  * adreno_dispatcher_start() - activate the dispatcher
  * @adreno_dev: pointer to the adreno device structure
  *
- * Set the disaptcher active and start the loop once to get things going
  */
 void adreno_dispatcher_start(struct kgsl_device *device)
 {
