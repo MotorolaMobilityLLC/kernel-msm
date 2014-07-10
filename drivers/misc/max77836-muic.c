@@ -199,6 +199,28 @@ static const struct max77836_muic_vps_data muic_vps_table[] = {
 		.vps_name	= "CDP",
 		.attached_dev	= ATTACHED_DEV_CDP_MUIC,
 	},
+	{
+		.adcerr 	= 0x00,
+		.adclow 	= (0x1 << STATUS1_ADCLOW_SHIFT),
+		.adc		= ADC_OPEN,
+		.vbvolt 	= (0x1 << STATUS2_VBVOLT_SHIFT),
+		.chgdetrun	= 0x00,
+		.chgtyp 	= CHGTYP_500MA_CHARGER,
+		.control1	= CTRL1_OPEN,
+		.vps_name	= "Special 500mA TA",
+		.attached_dev	= ATTACHED_DEV_TA_MUIC,
+	},
+	{
+		.adcerr 	= 0x00,
+		.adclow 	= (0x1 << STATUS1_ADCLOW_SHIFT),
+		.adc		= ADC_OPEN,
+		.vbvolt 	= (0x1 << STATUS2_VBVOLT_SHIFT),
+		.chgdetrun	= 0x00,
+		.chgtyp 	= CHGTYP_1A_CHARGER,
+		.control1	= CTRL1_OPEN,
+		.vps_name	= "Special 1A TA",
+		.attached_dev	= ATTACHED_DEV_TA_MUIC,
+	},
 };
 
 static int muic_lookup_vps_table(enum muic_attached_dev new_dev)
