@@ -116,6 +116,19 @@ struct msm8x16_wcd_regulator {
 	struct regulator *regulator;
 };
 
+struct msm8916_asoc_mach_data {
+	int codec_type;
+	int ext_pa;
+	int us_euro_gpio;
+	int mclk_freq;
+	int lb_mode;
+	atomic_t mclk_rsc_ref;
+	atomic_t mclk_enabled;
+	struct mutex cdc_mclk_mutex;
+	struct delayed_work disable_mclk_work;
+	struct afe_digital_clk_cfg digital_cdc_clk;
+};
+
 struct msm8x16_wcd_pdata {
 	int irq;
 	int irq_base;

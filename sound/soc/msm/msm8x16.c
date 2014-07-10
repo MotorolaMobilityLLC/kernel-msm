@@ -963,6 +963,17 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	}
 	card = &bear_cards[pdev->id];
 
+	/* initialize the mclk */
+	pdata->digital_cdc_clk.i2s_cfg_minor_version =
+					AFE_API_VERSION_I2S_CONFIG;
+	pdata->digital_cdc_clk.clk_val = pdata->mclk_freq;
+	pdata->digital_cdc_clk.clk_root = 5;
+	pdata->digital_cdc_clk.reserved = 0;
+	/* Initialize loopback mode to false */
+	pdata->lb_mode = false;
+
+	msm8x16_setup_hs_jack(pdev, pdata);
+
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, pdata);
