@@ -232,7 +232,7 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 	 * queued.
 	 */
 	if (context == NULL ||
-		((drawctxt->flags & KGSL_CONTEXT_USER_GENERATED_TS) == 0)) {
+		((drawctxt->flags & CTXT_FLAGS_USER_GENERATED_TS) == 0)) {
 		queued = kgsl_readtimestamp(device, context,
 			KGSL_TIMESTAMP_QUEUED);
 
