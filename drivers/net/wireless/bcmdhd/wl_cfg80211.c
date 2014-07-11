@@ -408,6 +408,10 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 static s32 wl_notify_pfn_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	const wl_event_msg_t *e, void *data);
 #endif /* PNO_SUPPORT */
+#ifdef GSCAN_SUPPORT
+static s32 wl_notify_gscan_event(struct bcm_cfg80211 *wl, bcm_struct_cfgdev *cfgdev,
+	const wl_event_msg_t *e, void *data);
+#endif /* GSCAN_SUPPORT */
 static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_net_info,
 	enum wl_status state, bool set);
 
@@ -7791,7 +7795,7 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
 	wiphy_apply_custom_regulatory(wdev->wiphy, &brcm_regdom);
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 13, 0)) || defined(WL_VENDOR_EXT_SUPPORT)
-	WL_ERR(("Registering Vendor80211)\n"));
+	WL_ERR(("Registering Vendor80211\n"));
 	err = wl_cfgvendor_attach(wdev->wiphy);
 	if (unlikely(err < 0)) {
 		WL_ERR(("Couldn not attach vendor commands (%d)\n", err));
@@ -8837,6 +8841,75 @@ wl_notify_pfn_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 }
 #endif /* PNO_SUPPORT */
 
+#ifdef GSCAN_SUPPORT
+static s32
+wl_notify_gscan_event(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
+	const wl_event_msg_t *e, void *data)
+{
+	s32 err = 0;
+	u32 event = be32_to_cpu(e->event_type);
+	void *ptr;
+	int send_evt_bytes = 0;
+	int batch_event_result_dummy = 0;
+	struct net_device *ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
+	struct wiphy *wiphy = bcmcfg_to_wiphy(cfg);
+
+	switch (event) {
+		case WLC_E_PFN_SWC:
+			ptr = dhd_dev_swc_scan_event(ndev, data, &send_evt_bytes);
+			if (send_evt_bytes) {
+				wl_cfgvendor_send_async_event(wiphy, ndev,
+				    GOOGLE_GSCAN_SIGNIFICANT_EVENT, ptr, send_evt_bytes);
+				kfree(ptr);
+			}
+			break;
+		case WLC_E_PFN_BEST_BATCHING:
+			err = dhd_dev_retrieve_batch_scan(ndev);
+			if (err < 0) {
+				WL_ERR(("Batch retrieval already in progress %d\n", err));
+			} else {
+				wl_cfgvendor_send_async_event(wiphy, ndev,
+				    GOOGLE_GSCAN_BATCH_SCAN_EVENT,
+				     &batch_event_result_dummy, sizeof(int));
+			}
+			break;
+		case WLC_E_PFN_SCAN_COMPLETE:
+			batch_event_result_dummy = WIFI_SCAN_COMPLETE;
+			wl_cfgvendor_send_async_event(wiphy, ndev,
+				GOOGLE_SCAN_COMPLETE_EVENT,
+				&batch_event_result_dummy, sizeof(int));
+			break;
+		case WLC_E_PFN_BSSID_NET_FOUND:
+			ptr = dhd_dev_hotlist_scan_event(ndev, data, &send_evt_bytes,
+			      HOTLIST_FOUND);
+			if (ptr) {
+				wl_cfgvendor_send_hotlist_event(wiphy, ndev,
+				 ptr, send_evt_bytes, GOOGLE_GSCAN_GEOFENCE_FOUND_EVENT);
+				dhd_dev_gscan_hotlist_cache_cleanup(ndev, HOTLIST_FOUND);
+			}
+			break;
+		case WLC_E_PFN_BSSID_NET_LOST:
+			ptr = dhd_dev_hotlist_scan_event(ndev, data, &send_evt_bytes, HOTLIST_LOST);
+			if (ptr) {
+				wl_cfgvendor_send_hotlist_event(wiphy, ndev,
+				 ptr, send_evt_bytes, GOOGLE_GSCAN_GEOFENCE_LOST_EVENT);
+				dhd_dev_gscan_hotlist_cache_cleanup(ndev, HOTLIST_LOST);
+			}
+			break;
+		case WLC_E_PFN_GSCAN_FULL_RESULT:
+			ptr = dhd_dev_process_full_gscan_result(ndev, data, &send_evt_bytes);
+			if (ptr) {
+				wl_cfgvendor_send_async_event(wiphy, ndev,
+				    GOOGLE_SCAN_FULL_RESULTS_EVENT, ptr, send_evt_bytes);
+				kfree(ptr);
+			}
+			break;
+
+	}
+	return err;
+}
+#endif /* GSCAN_SUPPORT */
+
 static s32
 wl_notify_scan_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	const wl_event_msg_t *e, void *data)
@@ -9361,6 +9434,14 @@ static void wl_init_event_handler(struct bcm_cfg80211 *cfg)
 #ifdef PNO_SUPPORT
 	cfg->evt_handler[WLC_E_PFN_NET_FOUND] = wl_notify_pfn_status;
 #endif /* PNO_SUPPORT */
+#ifdef GSCAN_SUPPORT
+	cfg->evt_handler[WLC_E_PFN_BEST_BATCHING] = wl_notify_gscan_event;
+	cfg->evt_handler[WLC_E_PFN_SCAN_COMPLETE] = wl_notify_gscan_event;
+	cfg->evt_handler[WLC_E_PFN_GSCAN_FULL_RESULT] = wl_notify_gscan_event;
+	cfg->evt_handler[WLC_E_PFN_SWC] = wl_notify_gscan_event;
+	cfg->evt_handler[WLC_E_PFN_BSSID_NET_FOUND] = wl_notify_gscan_event;
+	cfg->evt_handler[WLC_E_PFN_BSSID_NET_LOST] = wl_notify_gscan_event;
+#endif /* GSCAN_SUPPORT */
 #ifdef WLTDLS
 	cfg->evt_handler[WLC_E_TDLS_PEER_EVENT] = wl_tdls_event_handler;
 #endif /* WLTDLS */
