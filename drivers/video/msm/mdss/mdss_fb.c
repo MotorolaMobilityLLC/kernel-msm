@@ -524,6 +524,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	if (!lcd_backlight_registered &&
 			mfd->panel_info->bklt_ctrl != BL_EXTERNAL &&
 			mfd->panel_info->bklt_ctrl != UNKNOWN_CTRL) {
+		mfd->bl_level = mfd->panel_info->brightness_default;
 		backlight_led.brightness = mfd->panel_info->brightness_max;
 		backlight_led.max_brightness = mfd->panel_info->brightness_max;
 		if (led_classdev_register(&pdev->dev, &backlight_led))
@@ -899,6 +900,9 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		if (!mfd->panel_power_on && mfd->mdp.on_fnc) {
+			struct mdss_panel_data *pdata;
+			u32 temp;
+
 			ret = mfd->mdp.on_fnc(mfd);
 			if (ret == 0) {
 				mfd->panel_power_on = true;
@@ -913,6 +917,19 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			if (mfd->idle_time)
 				schedule_delayed_work(&mfd->idle_notify_work,
 					msecs_to_jiffies(mfd->idle_time));
+
+			/* Control backlight level for Android recovery mode */
+			pdata = dev_get_platdata(&mfd->pdev->dev);
+			if (lcd_backlight_registered &&
+					pdata && pdata->set_backlight) {
+				temp = mfd->bl_level;
+
+				if (!IS_CALIB_MODE_BL(mfd))
+					mdss_fb_scale_bl(mfd, &temp);
+
+				if (mfd->bl_level)
+					pdata->set_backlight(pdata, temp);
+			}
 		}
 		break;
 
