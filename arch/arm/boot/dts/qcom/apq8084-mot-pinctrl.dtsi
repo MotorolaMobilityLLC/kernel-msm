@@ -603,6 +603,22 @@
 			};
 		};
 
+		eeprom_ctrl {
+			qcom,pins = <&gp 125>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "eeprom_ctrl";
+			eeprom_ctrl_default: default {
+				bias-disable;
+				output-low;
+				drive-strength = <2>;
+			};
+			eeprom_ctrl_active: active {
+				bias-disable;
+				drive-strength = <2>;
+			};
+		};
+
 		/* camera pinmux settings		*/
 		/* camera 2 reset and stand-by pins	*/
 		cam2_ctrl {
