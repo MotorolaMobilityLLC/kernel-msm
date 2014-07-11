@@ -49,6 +49,8 @@
 
 #include "irqchip.h"
 
+int gic_irq_cnt,gic_resume_irq[8];
+
 union gic_base {
 	void __iomem *common_base;
 	void __percpu __iomem **percpu_base;
@@ -247,6 +249,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 	unsigned long pending[32];
 	void __iomem *base = gic_data_dist_base(gic);
 
+	gic_irq_cnt=0;
 	if (!msm_show_resume_irq_mask)
 		return;
 
@@ -271,6 +274,10 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 
 		pr_warning("%s: %d triggered %s\n", __func__,
 					i + gic->irq_offset, name);
+		if(gic_irq_cnt < 8) {
+			gic_resume_irq[gic_irq_cnt]=i + gic->irq_offset;
+			gic_irq_cnt++;
+		}
 	}
 }
 

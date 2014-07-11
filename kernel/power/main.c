@@ -464,7 +464,7 @@ static ssize_t autosleep_store(struct kobject *kobj,
 	suspend_state_t state = decode_state(buf, n);
 	int error;
 
-	printk("[PM]request_suspend_state: (%d->%d)\n", old_state, state);
+	ASUSEvtlog("[PM]request_suspend_state: (%d->%d)\n", old_state, state);
 	if (state == PM_SUSPEND_ON
 	    && strcmp(buf, "off") && strcmp(buf, "off\n"))
 		return -EINVAL;
