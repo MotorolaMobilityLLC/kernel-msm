@@ -185,7 +185,9 @@ typedef struct {
     v_MACADDR_t peerMac;
 } tdlsConnInfo_t;
 
-int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter);
+int wlan_hdd_sta_tdls_init(hdd_adapter_t *pAdapter);
+
+void wlan_hdd_tdls_init(hdd_context_t * pHddCtx);
 
 void wlan_hdd_tdls_exit(hdd_adapter_t *pAdapter);
 

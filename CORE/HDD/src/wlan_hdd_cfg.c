@@ -3076,6 +3076,13 @@ REG_VARIABLE( CFG_EXTSCAN_ENABLE, WLAN_PARAM_Integer,
                  CFG_ENABLE_CH_AVOID_DEFAULT,
                  CFG_ENABLE_CH_AVOID_MIN,
                  CFG_ENABLE_CH_AVOID_MAX ),
+
+   REG_VARIABLE(CFG_MAX_CONCURRENT_CONNECTIONS_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, gMaxConcurrentActiveSessions,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_MAX_CONCURRENT_CONNECTIONS_DEFAULT,
+                CFG_MAX_CONCURRENT_CONNECTIONS_MIN,
+                CFG_MAX_CONCURRENT_CONNECTIONS_MAX ),
 };
 
 /*
@@ -3457,6 +3464,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAsdTriggerThreshold] Value = [%u]",pHddCtx->cfg_ini->gAsdTriggerThreshold);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAsdRTTRssiHystThreshold]Value = [%u]",pHddCtx->cfg_ini->gAsdRTTRssiHystThreshold);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gRoamtoDFSChannel] Value = [%u] ",pHddCtx->cfg_ini->allowDFSChannelRoam);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gMaxConcurrentActiveSessions] Value = [%u] ", pHddCtx->cfg_ini->gMaxConcurrentActiveSessions);
 }
 
 
