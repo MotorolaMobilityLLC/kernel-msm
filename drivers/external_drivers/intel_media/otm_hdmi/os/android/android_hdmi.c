@@ -2715,6 +2715,8 @@ void android_hdmi_driver_init(struct drm_device *dev,
 	/* Enable hotplug detection */
 	otm_hdmi_enable_hpd(true);
 
+	usleep_range(1000, 2000);
+
 	pr_info("%s: Done with driver init\n", __func__);
 	pr_info("Exit %s\n", __func__);
 }
