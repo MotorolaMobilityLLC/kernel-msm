@@ -47,6 +47,7 @@
 #include <linux/ioport.h>
 #include <linux/param.h>
 #include <linux/bitops.h>
+#include <linux/debugfs.h>
 #include <linux/termios.h>
 #include <linux/wakelock.h>
 #include <linux/gpio.h>
@@ -170,6 +171,19 @@ struct notifier_block hci_event_nblock = {
 
 struct proc_dir_entry *bluetooth_dir, *sleep_dir;
 
+/** Debug file to collect debug history */
+static struct dentry *bluedroid_debugfs_dentry;
+static int bluedroid_debugfs_show(struct seq_file *s, void *unused);
+#define TIMESTAMP_LEN 80
+static char lpm_0_time[TIMESTAMP_LEN];
+static char lpm_1_time[TIMESTAMP_LEN];
+static char sleep_0_time[TIMESTAMP_LEN];
+static char sleep_1_time[TIMESTAMP_LEN];
+static char wklock_time[TIMESTAMP_LEN];
+static char unlock_time[TIMESTAMP_LEN];
+static char lock_destroy_time[TIMESTAMP_LEN];
+static char sleep_work_time[TIMESTAMP_LEN];
+
 /*
  * Local functions
  */
@@ -200,9 +214,18 @@ int bluesleep_can_sleep(void)
 
 void bluesleep_sleep_wakeup(void)
 {
+	struct timeval timestamp;
+
 	if (test_bit(BT_ASLEEP, &flags)) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("waking up...\n");
+                do_gettimeofday(&timestamp);
+                sprintf(wklock_time, "%lu.%lu: lock - sleep wakeup %d,%d,%d,%d", (long)timestamp.tv_sec,
+                (long)timestamp.tv_usec,
+		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+		(test_bit(BT_EXT_WAKE, &flags)),
+		bsi->uport != NULL, has_lpm_enabled);
+
 		wake_lock(&bsi->wake_lock);
 		/* Start the timer */
 		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
@@ -223,6 +246,15 @@ void bluesleep_sleep_wakeup(void)
  */
 static void bluesleep_sleep_work(struct work_struct *work)
 {
+	struct timeval timestamp;
+
+	do_gettimeofday(&timestamp);
+	sprintf(sleep_work_time, "%lu.%lu: sleep work %d,%d,%d,%d", (long)timestamp.tv_sec,
+		(long)timestamp.tv_usec,
+		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+		(test_bit(BT_EXT_WAKE, &flags)),
+		bsi->uport != NULL, has_lpm_enabled);
+
 	if (bluesleep_can_sleep()) {
 		/* already asleep, this is an error case */
 		if (test_bit(BT_ASLEEP, &flags)) {
@@ -237,6 +269,12 @@ static void bluesleep_sleep_work(struct work_struct *work)
 			set_bit(BT_ASLEEP, &flags);
 			/*Deactivating UART */
 			hsuart_power(0);
+			do_gettimeofday(&timestamp);
+			sprintf(unlock_time, "%lu.%lu: unlock sleep work %d,%d,%d,%d", (long)timestamp.tv_sec,
+			(long)timestamp.tv_usec,
+			(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+			(test_bit(BT_EXT_WAKE, &flags)),
+			bsi->uport != NULL, has_lpm_enabled);
 			/* UART clk is not turned off immediately. Release
 			 * wakelock after 500 ms.
 			 */
@@ -313,6 +351,7 @@ static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
 					unsigned long count, void *data)
 {
 	char b;
+	struct timeval timestamp;
 
 	if (count < 1)
 		return -EINVAL;
@@ -320,13 +359,26 @@ static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
 	if (copy_from_user(&b, buffer, 1))
 		return -EFAULT;
 
+	do_gettimeofday(&timestamp);
 	if (b == '0') {
+		sprintf(lpm_1_time, "%lu.%lu: lpm non-0 %d: %d,%d,%d,%d", (long)timestamp.tv_sec,
+		(long)timestamp.tv_usec, b,
+		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+		(test_bit(BT_EXT_WAKE, &flags)),
+		bsi->uport != NULL, has_lpm_enabled);
+
 		/* HCI_DEV_UNREG */
 		bluesleep_stop();
 		has_lpm_enabled = false;
 		bsi->uport = NULL;
 	} else {
 		/* HCI_DEV_REG */
+		sprintf(lpm_0_time, "%lu.%lu: lpm 0 %d: %d,%d,%d,%d", (long)timestamp.tv_sec,
+		(long)timestamp.tv_usec, b,
+		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+		(test_bit(BT_EXT_WAKE, &flags)),
+		bsi->uport != NULL, has_lpm_enabled);
+
 		if (!has_lpm_enabled) {
 			has_lpm_enabled = true;
 			bsi->uport = msm_hs_get_uart_port(BT_PORT_ID);
@@ -349,6 +401,7 @@ static int bluesleep_write_proc_btwrite(struct file *file, const char *buffer,
 					unsigned long count, void *data)
 {
 	char b;
+	struct timeval timestamp;
 
 	if (count < 1)
 		return -EINVAL;
@@ -357,8 +410,22 @@ static int bluesleep_write_proc_btwrite(struct file *file, const char *buffer,
 		return -EFAULT;
 
 	/* HCI_DEV_WRITE */
-	if (b != '0')
+        do_gettimeofday(&timestamp);
+	if (b != '0') {
+		sprintf(sleep_1_time, "%lu.%lu: sleep non-0 %d: %d,%d,%d,%d", (long)timestamp.tv_sec,
+		(long)timestamp.tv_usec, b,
+		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+		(test_bit(BT_EXT_WAKE, &flags)),
+		bsi->uport != NULL, has_lpm_enabled);
+
 		bluesleep_outgoing_data();
+	} else {
+		sprintf(sleep_0_time, "%lu.%lu: sleep 0 %d: %d,%d,%d,%d", (long)timestamp.tv_sec,
+		(long)timestamp.tv_usec, b,
+		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+		(test_bit(BT_EXT_WAKE, &flags)),
+		bsi->uport != NULL, has_lpm_enabled);
+	}
 
 	return count;
 }
@@ -463,6 +530,7 @@ static int bluesleep_start(void)
 {
 	int retval;
 	unsigned long irq_flags;
+        struct timeval timestamp;
 
 	spin_lock_irqsave(&rw_lock, irq_flags);
 
@@ -496,6 +564,14 @@ static int bluesleep_start(void)
 	}
 #endif
 	set_bit(BT_PROTO, &flags);
+
+	do_gettimeofday(&timestamp);
+	sprintf(wklock_time, "%lu.%lu: lock sleep start %d,%d,%d,%d", (long)timestamp.tv_sec,
+		(long)timestamp.tv_usec,
+		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+		(test_bit(BT_EXT_WAKE, &flags)),
+		bsi->uport != NULL, has_lpm_enabled);
+
 	wake_lock(&bsi->wake_lock);
 	return 0;
 fail:
@@ -511,6 +587,7 @@ fail:
 static void bluesleep_stop(void)
 {
 	unsigned long irq_flags;
+	struct timeval timestamp;
 
 	spin_lock_irqsave(&rw_lock, irq_flags);
 
@@ -542,6 +619,12 @@ static void bluesleep_stop(void)
 	if (disable_irq_wake(bsi->host_wake_irq))
 		BT_ERR("Couldn't disable hostwake IRQ wakeup mode");
 #endif
+	do_gettimeofday(&timestamp);
+	sprintf(unlock_time, "%lu.%lu: unlock sleep stop %d,%d,%d,%d", (long)timestamp.tv_sec,
+		(long)timestamp.tv_usec,
+		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+		(test_bit(BT_EXT_WAKE, &flags)),
+		bsi->uport != NULL, has_lpm_enabled);
 	wake_lock_timeout(&bsi->wake_lock, HZ / 2);
 }
 /**
@@ -851,9 +934,17 @@ free_bsi:
 
 static int bluesleep_remove(struct platform_device *pdev)
 {
+	struct timeval timestamp;
+
 	free_irq(bsi->host_wake_irq, NULL);
 	gpio_free(bsi->host_wake);
 	gpio_free(bsi->ext_wake);
+
+	do_gettimeofday(&timestamp);
+	sprintf(wklock_time, "%lu.%lu: destroy %d,%d,%d,%d", (long)timestamp.tv_sec, (long)timestamp.tv_usec,
+		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
+		(test_bit(BT_EXT_WAKE, &flags)),
+		bsi->uport != NULL, has_lpm_enabled);
 	wake_lock_destroy(&bsi->wake_lock);
 	kfree(bsi);
 	return 0;
@@ -884,6 +975,39 @@ static int bluesleep_suspend(struct platform_device *pdev, pm_message_t state)
 	set_bit(BT_SUSPEND, &flags);
 	return 0;
 }
+
+static int bluedroid_debugfs_show(struct seq_file *s, void *unused)
+{
+	struct timeval timestamp;
+	do_gettimeofday(&timestamp);
+	seq_printf(s, "%lu.%lu: current time\n", (long)timestamp.tv_sec, (long)timestamp.tv_usec);
+	seq_printf(s, "host can sleep: %d\n",
+			(gpio_get_value(bsi->host_wake) != bsi->irq_polarity));
+	seq_printf(s, "BT_EXT_WAKE bit: %d\n", test_bit(BT_EXT_WAKE, &flags));
+	seq_printf(s, "bsi->uport not null %d\n", (bsi->uport != NULL));
+	seq_printf(s, "%s\n", wklock_time);
+	seq_printf(s, "%s\n", unlock_time);
+	seq_printf(s, "%s\n", lock_destroy_time);
+	seq_printf(s, "%s\n", sleep_work_time);
+	seq_printf(s, "%s\n", lpm_0_time);
+	seq_printf(s, "%s\n", lpm_1_time);
+	seq_printf(s, "%s\n", sleep_0_time);
+	seq_printf(s, "%s\n", sleep_1_time);
+
+	return 0;
+}
+
+static int bluedroid_debugfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bluedroid_debugfs_show, inode->i_private);
+}
+
+static const struct file_operations bluedroid_debugfs_fops = {
+	.open           = bluedroid_debugfs_open,
+	.read           = seq_read,
+	.llseek    	 = seq_lseek,
+	.release        = single_release,
+};
 
 static struct of_device_id bluesleep_match_table[] = {
 	{ .compatible = "qcom,bluesleep" },
@@ -1020,7 +1144,8 @@ static int __init bluesleep_init(void)
 #if !BT_BLUEDROID_SUPPORT
 	hci_register_notifier(&hci_event_nblock);
 #endif
-
+	bluedroid_debugfs_dentry = debugfs_create_file("bluedroid", S_IRUGO, NULL,
+							NULL, &bluedroid_debugfs_fops);
 	return 0;
 
 fail:
@@ -1062,6 +1187,7 @@ static void __exit bluesleep_exit(void)
 	hci_unregister_notifier(&hci_event_nblock);
 #endif
 	platform_driver_unregister(&bluesleep_driver);
+	debugfs_remove(bluedroid_debugfs_dentry);
 
 #if BT_BLUEDROID_SUPPORT
 	remove_proc_entry("btwrite", sleep_dir);
