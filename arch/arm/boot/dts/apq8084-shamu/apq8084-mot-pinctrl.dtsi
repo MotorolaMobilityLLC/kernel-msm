@@ -494,12 +494,20 @@
 		cam_mclk0 {
 			qcom,pins = <&gp 15>;
 			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <1>;
 			label = "cam_mclk0";
 			cam_mclk0_default: default {
 				bias-pull-down;
 				drive-strength = <6>;
 			};
+
+		};
+
+		cam_mclk0_active {
+			qcom,pins = <&gp 15>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "cam_mclk0_active";
+
 			cam_mclk0_active: active {
 				bias-disable;
 				drive-strength = <6>;
@@ -588,16 +596,39 @@
 		/* camera pinmux settings		*/
 		/* camera 1 reset and stand-by pins	*/
 		cam1_ctrl {
-			qcom,pins = <&gp 26 &gp 35 &gp 36 &gp 120 &gp 125>;
-			qcom,num-grp-pins = <5>;
-			qcom,pin-func = <0>;
+			qcom,pins = <&gp 26 &gp 35 &gp 36 &gp 120>;
+			qcom,num-grp-pins = <4>;
 			label = "cam1_ctrl";
 			cam1_ctrl_default: default {
 				bias-disable;
 				output-low;
 				drive-strength = <2>;
 			};
+		};
+
+		cam1_ctrl_active {
+			qcom,pins = <&gp 26 &gp 35 &gp 36 &gp 120>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <0>;
+			label = "cam1_ctrl_active";
+
 			cam1_ctrl_active: active {
+				bias-disable;
+				drive-strength = <2>;
+			};
+		};
+
+		eeprom_ctrl {
+			qcom,pins = <&gp 125>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "eeprom_ctrl";
+			eeprom_ctrl_default: default {
+				bias-disable;
+				output-low;
+				drive-strength = <2>;
+			};
+			eeprom_ctrl_active: active {
 				bias-disable;
 				drive-strength = <2>;
 			};
