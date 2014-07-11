@@ -15,7 +15,7 @@ mmi,ed30-sony-batterydata {
 	};
 
 	qcom,pc-temp-ocv-lut {
-		qcom,lut-col-legend = <(-10) 23 60>;
+		qcom,lut-col-legend = <(-10) 0 23 60>;
 		qcom,lut-row-legend = <100 95 90 85 80 75 70>,
 				<65 60 55 50 45 40 35>,
 				<30 25 20 15 10 9 8>,
