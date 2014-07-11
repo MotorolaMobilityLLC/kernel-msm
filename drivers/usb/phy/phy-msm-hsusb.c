@@ -131,6 +131,9 @@ struct msm_hsphy {
 	int			num_ports;
 };
 
+/* global reference counter between all HSPHY instances */
+static atomic_t hsphy_active_count;
+
 static int msm_hsusb_config_vdd(struct msm_hsphy *phy, int high)
 {
 	int min, ret;
@@ -255,8 +258,13 @@ static int msm_hsphy_init(struct usb_phy *uphy)
 {
 	struct msm_hsphy *phy = container_of(uphy, struct msm_hsphy, phy);
 	u32 val;
+	int ret;
 
-	if (phy->tcsr) {
+	/* skip reset if there are other active PHY instances */
+	ret = atomic_read(&hsphy_active_count);
+	if (ret > 1) {
+		dev_dbg(uphy->dev, "skipping reset, inuse count=%d\n", ret);
+	} else if (phy->tcsr) {
 		val = readl_relaxed(phy->tcsr);
 
 		/* Assert/deassert TCSR Reset */
@@ -324,7 +332,7 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 	struct msm_hsphy *phy = container_of(uphy, struct msm_hsphy, phy);
 	bool host = uphy->flags & PHY_HOST_MODE;
 	bool chg_connected = uphy->flags & PHY_CHARGER_CONNECTED;
-	int i;
+	int i, count;
 
 	if (!!suspend == phy->suspended) {
 		dev_dbg(uphy->dev, "%s\n", suspend ? "already suspended"
@@ -389,7 +397,15 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 			}
 			msm_hsusb_config_vdd(phy, 0);
 		}
+
+		count = atomic_dec_return(&hsphy_active_count);
+		if (count < 0) {
+			dev_WARN(uphy->dev, "hsphy_active_count=%d, something wrong?\n",
+					count);
+			atomic_set(&hsphy_active_count, 0);
+		}
 	} else {
+		atomic_inc(&hsphy_active_count);
 		if (phy->lpm_flags & PHY_RETENTIONED) {
 			msm_hsusb_config_vdd(phy, 1);
 			if (phy->ext_vbus_id) {
@@ -659,6 +675,7 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 	if (ret)
 		goto disable_hs_ldo;
 
+	atomic_inc(&hsphy_active_count);
 	return 0;
 
 disable_hs_ldo:
@@ -682,6 +699,8 @@ static int msm_hsphy_remove(struct platform_device *pdev)
 	msm_hsusb_ldo_enable(phy, 0);
 	regulator_disable(phy->vdd);
 	msm_hsusb_config_vdd(phy, 0);
+	if (!phy->suspended)
+		atomic_dec(&hsphy_active_count);
 	kfree(phy);
 
 	return 0;
