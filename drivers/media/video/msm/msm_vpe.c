@@ -899,7 +899,7 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 	mctl = v4l2_get_subdev_hostdata(sd);
 	switch (cmd) {
 	case VIDIOC_MSM_VPE_INIT: {
-		msm_vpe_subdev_init(sd);
+		rc = msm_vpe_subdev_init(sd);
 		break;
 		}
 
