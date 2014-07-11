@@ -877,6 +877,7 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	}
 }
 
+extern int enable_ambient(int enable);
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
@@ -907,6 +908,30 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 				schedule_delayed_work(&mfd->idle_notify_work,
 					msecs_to_jiffies(mfd->idle_time));
 		}
+		break;
+	case FB_BLANK_ENTER_NON_INTERACTIVE:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_NON_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		if (mfd->panel_power_on) {
+			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
+		}
+		return 0;
+		break;
+	case FB_BLANK_ENTER_INTERACTIVE:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		if (mfd->panel_power_on) {
+			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
+		}
+		return 0;
+		break;
+	case FB_BLANK_AMBIENT_OFF:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		enable_ambient(0);
+		return 0;
+		break;
+	case FB_BLANK_AMBIENT_ON:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_ON,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		enable_ambient(1);
+		return 0;
 		break;
 
 	case FB_BLANK_VSYNC_SUSPEND:

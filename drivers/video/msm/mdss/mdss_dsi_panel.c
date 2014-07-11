@@ -24,6 +24,23 @@
 
 #include "mdss_dsi.h"
 
+/* ASUS extend for panel low power mode */
+enum PANEL_AMBIENT_MODE{
+	AMBIENT_MODE_ON = 1,
+	AMBIENT_MODE_OFF = 0,
+};
+static int panel_ambient_mode = AMBIENT_MODE_OFF;
+int is_ambient_on() {
+	return panel_ambient_mode;
+}
+int enable_ambient(int enable)
+{
+	int old = panel_ambient_mode;
+	panel_ambient_mode = enable;
+	pr_info("MDSS:%s:panel_ambient_mode = %d->%d\n",__func__, old, panel_ambient_mode);
+	return old;
+}
+
 #define DT_CMD_HDR 6
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
@@ -228,6 +245,12 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		return rc;
 	}
 
+	if (is_ambient_on()){
+		pr_info("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
+		gpio_free(ctrl_pdata->rst_gpio);
+		return 0;
+	}
+
 	pr_debug("%s: enable = %d\n", __func__, enable);
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
@@ -421,6 +444,17 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+	if (is_ambient_on()){
+		pr_info("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
+
+		if (ctrl->idle_on_cmds.cmd_cnt){
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+		}else{
+			pr_info("MDSS:DSI: idle command is not set!\n");
+		}
+		return 0;
+	}
+
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
@@ -432,6 +466,37 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	return 0;
 }
 
+int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+	pr_debug("MDSS:%s:+++,on=%d\n", __func__,on);
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (on){
+		if (ctrl->idle_on_cmds.cmd_cnt){
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+		}else{
+			printk("MDSS:DSI: idle ON command is not set!\n");
+		}
+	}else{
+		if (ctrl->idle_off_cmds.cmd_cnt){
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+		}else{
+			printk("MDSS:DSI: idle OFF command is not set!\n");
+		}
+	}
+
+	pr_debug("MDSS:%s:---\n", __func__);
+	return 0;
+}
+// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Export ambient mode control vi blank ioctl"
 static void mdss_dsi_parse_lane_swap(struct device_node *np, char *dlane_swap)
 {
 	const char *data;

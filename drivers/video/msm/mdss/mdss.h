@@ -224,6 +224,7 @@ void mdss_enable_irq(struct mdss_hw *hw);
 void mdss_disable_irq(struct mdss_hw *hw);
 void mdss_disable_irq_nosync(struct mdss_hw *hw);
 void mdss_bus_bandwidth_ctrl(int enable);
+int is_ambient_on(void);
 
 static inline struct ion_client *mdss_get_ionclient(void)
 {
