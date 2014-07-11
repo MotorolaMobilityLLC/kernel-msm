@@ -38,6 +38,8 @@ enum {
 	MSM_LPM_LVL_DBG_IDLE_LIMITS = BIT(1),
 };
 
+unsigned int pwrcs_time, pm_pwrcs_ret=0;
+
 struct power_params {
 	uint32_t latency_us;
 	uint32_t ss_power;
@@ -838,6 +840,11 @@ static void lpm_suspend_wake(void)
 	getnstimeofday(&ts);
 	suspend_time = timespec_to_ns(&ts) - suspend_time;
 	msm_pm_add_stat(MSM_PM_STAT_SUSPEND, suspend_time);
+
+	do_div(suspend_time, NSEC_PER_SEC / 100);
+	pwrcs_time = suspend_time;
+	pr_info("[PM]Suspended for %d.%02d seconds\n", pwrcs_time/100, pwrcs_time%100);
+	pm_pwrcs_ret=1;
 
 	msm_mpm_suspend_wake();
 	suspend_in_progress = false;

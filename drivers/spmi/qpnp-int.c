@@ -79,6 +79,8 @@ static DEFINE_MUTEX(qpnpint_chips_mutex);
 #define QPNPINT_MAX_BUSSES 4
 struct q_chip_data *chip_lookup[QPNPINT_MAX_BUSSES];
 
+int qpnpint_irq = -1;
+
 /**
  * qpnpint_encode_hwirq - translate between qpnp_irq_spec and
  *			  hwirq representation.
@@ -633,6 +635,7 @@ static int __qpnpint_handle_irq(struct spmi_controller *spmi_ctrl,
 
 		pr_warn("%d triggered [0x%01x, 0x%02x,0x%01x] %s\n",
 				irq, spec->slave, spec->per, spec->irq, name);
+		qpnpint_irq = irq;
 	} else {
 		generic_handle_irq(irq);
 	}
