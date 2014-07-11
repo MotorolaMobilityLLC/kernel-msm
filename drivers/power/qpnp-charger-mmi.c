@@ -1747,6 +1747,9 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			if (!qpnp_chg_is_dc_chg_plugged_in(chip)) {
 				chip->delta_vddmax_mv = 0;
 				qpnp_chg_set_appropriate_vddmax(chip);
+				chip->resuming_charging = true;
+				qpnp_chg_set_appropriate_vbatdet(chip);
+				chip->resuming_charging = false;
 			}
 			if ((tv.tv_sec >= chrg_ocv_time) &&
 			    (tv.tv_sec >= (chrg_ocv_try_time + SECS_PER_HR)) &&
