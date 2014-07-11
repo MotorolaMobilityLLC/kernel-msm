@@ -879,6 +879,7 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 
 extern int enable_ambient(int enable);
 extern void notify_st_sensor_lowpowermode(int low);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+extern void notify_it7260_ts_lowpowermode(int low);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
 
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
@@ -917,6 +918,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
 		}
 		notify_st_sensor_lowpowermode(1);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+		notify_it7260_ts_lowpowermode(1);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
 		return 0;
 		break;
 	case FB_BLANK_ENTER_INTERACTIVE:
@@ -925,6 +927,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
 		}
 		notify_st_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+		notify_it7260_ts_lowpowermode(0);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
 		return 0;
 		break;
 	case FB_BLANK_AMBIENT_OFF:
