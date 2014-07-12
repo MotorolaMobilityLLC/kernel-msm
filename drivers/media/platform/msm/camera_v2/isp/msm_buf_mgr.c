@@ -765,7 +765,7 @@ static int msm_isp_request_bufq(struct msm_isp_buf_mgr *buf_mgr,
 	buf_request->handle = msm_isp_get_buf_handle(buf_mgr,
 		buf_request->session_id, buf_request->stream_id);
 	if (!buf_request->handle) {
-		pr_err("Invalid buffer handle\n");
+		pr_err("%s: Invalid buffer handle\n", __func__);
 		return rc;
 	}
 
@@ -807,6 +807,7 @@ static int msm_isp_release_bufq(struct msm_isp_buf_mgr *buf_mgr,
 {
 	struct msm_isp_bufq *bufq = NULL;
 	int rc = -1;
+
 	bufq = msm_isp_get_bufq(buf_mgr, bufq_handle);
 	if (!bufq) {
 		pr_err("Invalid bufq release\n");
