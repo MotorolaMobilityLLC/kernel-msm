@@ -63,7 +63,7 @@
 #include "wlan_hdd_tdls.h"
 #endif
 #include "sme_Api.h"
-
+#include "wlan_hdd_hostapd.h"
 v_BOOL_t mibIsDot11DesiredBssTypeInfrastructure( hdd_adapter_t *pAdapter );
 
 struct ether_addr
@@ -1215,6 +1215,7 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
     struct net_device *dev = pAdapter->dev;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    hdd_adapter_t *pHostapdAdapter = NULL;
     VOS_STATUS vosStatus;
     v_U8_t reqRsnIe[DOT11F_IE_RSN_MAX_LEN];
     tANI_U32 reqRsnLength = DOT11F_IE_RSN_MAX_LEN;
@@ -1656,6 +1657,16 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
     }
 
+    if (eCSR_ROAM_ASSOCIATION_FAILURE == roamStatus ||
+        eCSR_ROAM_RESULT_ASSOCIATED == roamResult)
+    {
+        pHostapdAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_SOFTAP);
+        if (pHostapdAdapter != NULL)
+        {
+             hddLog(VOS_TRACE_LEVEL_INFO,"Restart Sap");
+             hdd_restart_softap(pHddCtx, pHostapdAdapter);
+        }
+    }
     return eHAL_STATUS_SUCCESS;
 }
 

@@ -93,6 +93,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
 VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter );
 void hdd_set_ap_ops( struct net_device *pWlanHostapdDev );
 int hdd_hostapd_stop (struct net_device *dev);
+void hdd_restart_softap (hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter);
 #ifdef FEATURE_WLAN_CH_AVOID
 void hdd_hostapd_ch_avoid_cb(void *pAdapter, void *indParam);
 #endif /* FEATURE_WLAN_CH_AVOID */
