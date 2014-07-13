@@ -1213,7 +1213,8 @@ struct hdd_context_s
    /** Concurrency Parameters*/
    tVOS_CONCURRENCY_MODE concurrency_mode;
 
-   v_U16_t no_of_sessions[VOS_MAX_NO_OF_MODE + 1];
+   v_U8_t no_of_open_sessions[VOS_MAX_NO_OF_MODE];
+   v_U8_t no_of_active_sessions[VOS_MAX_NO_OF_MODE];
 
    hdd_chip_reset_stats_t hddChipResetStats;
    /* Number of times riva restarted */
@@ -1380,8 +1381,14 @@ void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAd
 void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 
 void crda_regulatory_entry_default(v_U8_t *countryCode, int domain_id);
-void wlan_hdd_set_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
-void wlan_hdd_clear_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
+void wlan_hdd_set_concurrency_mode(hdd_context_t *pHddCtx,
+                                   tVOS_CON_MODE mode);
+void wlan_hdd_clear_concurrency_mode(hdd_context_t *pHddCtx,
+                                     tVOS_CON_MODE mode);
+void wlan_hdd_incr_active_session(hdd_context_t *pHddCtx,
+                                  tVOS_CON_MODE mode);
+void wlan_hdd_decr_active_session(hdd_context_t *pHddCtx,
+                                  tVOS_CON_MODE mode);
 void wlan_hdd_reset_prob_rspies(hdd_adapter_t* pHostapdAdapter);
 void hdd_prevent_suspend(void);
 void hdd_allow_suspend(void);

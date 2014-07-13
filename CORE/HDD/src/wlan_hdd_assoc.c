@@ -631,6 +631,15 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
 
     if(eConnectionState_Associated == pHddStaCtx->conn_info.connState)/* Associated */
     {
+       /* In case of roaming ; We are not doing disconnect.
+        * If disconnect is not being done for roam; We will not
+        * decrease count for Active sessions. We should not increase active
+        * active session in case of roaming.
+        */
+       if(pHddStaCtx->ft_carrier_on == FALSE)
+       {
+           wlan_hdd_incr_active_session(pHddCtx, pAdapter->device_mode);
+       }
         memcpy(wrqu.ap_addr.sa_data, pCsrRoamInfo->pBssDesc->bssId, sizeof(pCsrRoamInfo->pBssDesc->bssId));
         type = WLAN_STA_ASSOC_DONE_IND;
 
@@ -676,6 +685,7 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
     }
     else if (eConnectionState_IbssConnected == pHddStaCtx->conn_info.connState) // IBss Associated
     {
+        wlan_hdd_incr_active_session(pHddCtx, pAdapter->device_mode);
         memcpy(wrqu.ap_addr.sa_data, pHddStaCtx->conn_info.bssId, ETH_ALEN);
         type = WLAN_STA_ASSOC_DONE_IND;
         pr_info("wlan: new IBSS connection to " MAC_ADDRESS_STR"\n",
@@ -805,13 +815,15 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                    __func__);
     hdd_connSetConnectionState( pHddStaCtx, eConnectionState_Disconnecting );
     /* If only STA mode is on */
-    if((pHddCtx->concurrency_mode <= 1) && (pHddCtx->no_of_sessions[WLAN_HDD_INFRA_STATION] <=1))
+    if((pHddCtx->concurrency_mode <= 1) &&
+       (pHddCtx->no_of_open_sessions[WLAN_HDD_INFRA_STATION] <= 1))
     {
         pHddCtx->isAmpAllowed = VOS_TRUE;
     }
     hdd_clearRoamProfileIe( pAdapter );
 
     hdd_wmm_init( pAdapter );
+    wlan_hdd_decr_active_session(pHddCtx, pAdapter->device_mode);
 
     // indicate 'disconnect' status to wpa_supplicant...
     hdd_SendAssociationEvent(dev,pRoamInfo);
@@ -874,8 +886,8 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                    if(NULL != pHddCtx)
                    {
                        //Only P2P Client is there Enable Bmps back
-                       if((0 == pHddCtx->no_of_sessions[VOS_STA_SAP_MODE]) &&
-                          (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]))
+                       if((0 == pHddCtx->no_of_open_sessions[VOS_STA_SAP_MODE]) &&
+                          (0 == pHddCtx->no_of_open_sessions[VOS_P2P_GO_MODE]))
                        {
                            if (pHddCtx->hdd_wlan_suspended)
                            {
@@ -1115,24 +1127,22 @@ static void hdd_SendReAssocEvent(struct net_device *dev, hdd_adapter_t *pAdapter
 {
     unsigned int len = 0;
     u8 *pFTAssocRsp = NULL;
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     v_U8_t *rspRsnIe = kmalloc(IW_GENERIC_IE_MAX, GFP_KERNEL);
     tANI_U32 rspRsnLength = 0;
     struct ieee80211_channel *chan;
 
-    if (!rspRsnIe)
-    {
+    if (!rspRsnIe) {
         hddLog(LOGE, "%s: Unable to allocate RSN IE", __func__);
         return;
     }
 
-    if (pCsrRoamInfo == NULL)
-    {
+    if (pCsrRoamInfo == NULL) {
         hddLog(LOGE, "%s: Invalid CSR roam info", __func__);
         goto done;
     }
 
-    if (pCsrRoamInfo->nAssocRspLength == 0)
-    {
+    if (pCsrRoamInfo->nAssocRspLength == 0) {
         hddLog(LOGE, "%s: Invalid assoc response length", __func__);
         goto done;
     }
@@ -1147,6 +1157,16 @@ static void hdd_SendReAssocEvent(struct net_device *dev, hdd_adapter_t *pAdapter
     hddLog(LOG1, "%s: AssocRsp is now at %02x%02x", __func__,
                     (unsigned int)pFTAssocRsp[0],
                     (unsigned int)pFTAssocRsp[1]);
+
+    /* Active session count is decremented upon disconnection, but during
+     * roaming, there is no disconnect indication and hence active session
+     * count is not decremented.
+     * After roaming is completed, active session count is incremented
+     * as a part of connect indication but effectively after roaming the
+     * active session count should still be the same and hence upon
+     * successful reassoc decrement the active session count here */
+
+    wlan_hdd_decr_active_session(pHddCtx, pAdapter->device_mode);
 
     // Send the Assoc Resp, the supplicant needs this for initial Auth.
     len = pCsrRoamInfo->nAssocRspLength - FT_ASSOC_RSP_IES_OFFSET;
@@ -1533,7 +1553,8 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                    __func__);
             hdd_connSetConnectionState( pHddStaCtx, eConnectionState_NotConnected);
         }
-        if((pHddCtx->concurrency_mode <= 1) && (pHddCtx->no_of_sessions[WLAN_HDD_INFRA_STATION] <=1))
+        if((pHddCtx->concurrency_mode <= 1) &&
+           (pHddCtx->no_of_open_sessions[WLAN_HDD_INFRA_STATION] <=1))
         {
             pHddCtx->isAmpAllowed = VOS_TRUE;
         }
@@ -1546,7 +1567,7 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         // Enable BMPS/IMPS in case P2P_CLIENT disconnected
         if(((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
             (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode)) &&
-            (vos_concurrent_sessions_running()))
+            (vos_concurrent_open_sessions_running()))
         {
            //Enable BMPS only of other Session is P2P Client
            hdd_context_t *pHddCtx = NULL;
@@ -1559,8 +1580,8 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                if(NULL != pHddCtx)
                {
                     //Only P2P Client is there Enable Bmps back
-                    if((0 == pHddCtx->no_of_sessions[VOS_STA_SAP_MODE]) &&
-                       (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]))
+                    if((0 == pHddCtx->no_of_open_sessions[VOS_STA_SAP_MODE]) &&
+                       (0 == pHddCtx->no_of_open_sessions[VOS_P2P_GO_MODE]))
                     {
                          if (pHddCtx->hdd_wlan_suspended)
                          {

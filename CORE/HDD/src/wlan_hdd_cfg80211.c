@@ -5721,6 +5721,11 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
         return 0;
     }
 
+    if (vos_max_concurrent_connections_reached()) {
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Reached max concurrent connections"));
+        return -EINVAL;
+    }
+
     pConfig->persona = pHostapdAdapter->device_mode;
 
     pSapEventCallback = hdd_hostapd_SAPEventCB;
@@ -5745,6 +5750,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     }
 
     set_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags);
+    wlan_hdd_incr_active_session(pHddCtx, pHostapdAdapter->device_mode);
 
 #ifdef WLAN_FEATURE_P2P_DEBUG
     if (pHostapdAdapter->device_mode == WLAN_HDD_P2P_GO)
@@ -5796,6 +5802,11 @@ static int wlan_hdd_cfg80211_add_beacon(struct wiphy *wiphy,
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: HDD context is not valid", __func__);
         return status;
+    }
+
+    if (vos_max_concurrent_connections_reached()) {
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Reached max concurrent connections"));
+        return -EINVAL;
     }
 
     if ( (pAdapter->device_mode == WLAN_HDD_SOFTAP)
@@ -6004,6 +6015,8 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
                  }
              }
             clear_bit(SOFTAP_BSS_STARTED, &pAdapter->event_flags);
+            /* BSS stopped, clear the active sessions for this device mode */
+            wlan_hdd_decr_active_session(pHddCtx, pAdapter->device_mode);
         }
         mutex_unlock(&pHddCtx->sap_lock);
 
@@ -6312,6 +6325,10 @@ int __wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
             __func__, hdd_device_modetoString(pAdapter->device_mode),
                                               pAdapter->device_mode);
 
+    if (vos_max_concurrent_connections_reached()) {
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Reached max concurrent connections"));
+        return -EINVAL;
+    }
     pConfig = pHddCtx->cfg_ini;
     wdev = ndev->ieee80211_ptr;
 
@@ -6388,7 +6405,7 @@ int __wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
 
                 if ( pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
                 {
-                    if (0 != wlan_hdd_tdls_init (pAdapter))
+                    if (0 != wlan_hdd_sta_tdls_init (pAdapter))
                     {
                         hddLog(VOS_TRACE_LEVEL_ERROR,
                             "%s: tdls initialization failed", __func__);
@@ -6676,7 +6693,7 @@ done:
 
 #ifdef WLAN_BTAMP_FEATURE
     if((NL80211_IFTYPE_STATION == type) && (pHddCtx->concurrency_mode <= 1) &&
-       (pHddCtx->no_of_sessions[WLAN_HDD_INFRA_STATION] <=1))
+       (pHddCtx->no_of_open_sessions[WLAN_HDD_INFRA_STATION] <=1))
     {
         //we are ok to do AMP
         pHddCtx->isAmpAllowed = VOS_TRUE;
@@ -10109,9 +10126,8 @@ static int wlan_hdd_try_disconnect( hdd_adapter_t *pAdapter )
 }
 
 /*
- * FUNCTION: __wlan_hdd_cfg80211_set_privacy
- * This function is used to initialize the security
- * parameters during connect operation.
+ * FUNCTION: __wlan_hdd_cfg80211_connect
+ * This function is used to start the association process
  */
 static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
                                       struct net_device *ndev,
@@ -10138,7 +10154,7 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: HDD context is null", __func__);
-        return VOS_STATUS_E_FAILURE;
+        return -EINVAL;
     }
 
     status = wlan_hdd_validate_context(pHddCtx);
@@ -10148,6 +10164,11 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: HDD context is not valid", __func__);
         return status;
+    }
+
+    if (vos_max_concurrent_connections_reached()) {
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Reached max concurrent connections"));
+        return -ECONNREFUSED;
     }
 
 #ifdef WLAN_BTAMP_FEATURE
@@ -10163,9 +10184,9 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
     //If Device Mode is Station Concurrent Sessions Exit BMps
     //P2P Mode will be taken care in Open/close adapter
     if((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) &&
-        (vos_concurrent_sessions_running()))
-    {
-        exitbmpsStatus = hdd_disable_bmps_imps(pHddCtx, WLAN_HDD_INFRA_STATION);
+        (vos_concurrent_open_sessions_running())) {
+        exitbmpsStatus = hdd_disable_bmps_imps(pHddCtx,
+                                               WLAN_HDD_INFRA_STATION);
     }
 
     /*Try disconnecting if already in connected state*/
@@ -10212,8 +10233,7 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
            //ReEnable Bmps and Imps back
            hdd_enable_bmps_imps(pHddCtx);
         }
-
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: connect failed", __func__);
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("connect failed"));
         return status;
     }
     pHddCtx->isAmpAllowed = VOS_FALSE;
@@ -10569,6 +10589,11 @@ static int __wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
         hddLog (VOS_TRACE_LEVEL_ERROR, "%s ERROR: Data Storage Corruption",
                 __func__);
         return -EIO;
+    }
+
+    if (vos_max_concurrent_connections_reached()) {
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Reached max concurrent connections"));
+        return -ECONNREFUSED;
     }
 
     /*Try disconnecting if already in connected state*/
@@ -12688,6 +12713,12 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
                         __func__, MAC_ADDR_ARRAY(peer), action_code);
 
         return -ENOTSUPP;
+        }
+
+        if (vos_max_concurrent_connections_reached())
+        {
+            hddLog(VOS_TRACE_LEVEL_INFO, FL("Reached max concurrent connections"));
+            return -EINVAL;
         }
     }
 

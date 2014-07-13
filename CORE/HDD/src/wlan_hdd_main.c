@@ -5833,10 +5833,10 @@ VOS_STATUS hdd_init_station_mode( hdd_adapter_t *pAdapter )
    set_bit(WMM_INIT_DONE, &pAdapter->event_flags);
 
 #ifdef FEATURE_WLAN_TDLS
-   if(0 != wlan_hdd_tdls_init(pAdapter))
+   if(0 != wlan_hdd_sta_tdls_init(pAdapter))
    {
        status = VOS_STATUS_E_FAILURE;
-       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: wlan_hdd_tdls_init failed",__func__);
+       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: wlan_hdd_sta_tdls_init failed",__func__);
        goto error_tdls_init;
    }
    set_bit(TDLS_INIT_DONE, &pAdapter->event_flags);
@@ -6549,9 +6549,9 @@ VOS_STATUS hdd_close_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
 
 
       /* If there is a single session of STA/P2P client, re-enable BMPS */
-      if ((!vos_concurrent_sessions_running()) && 
-           ((pHddCtx->no_of_sessions[VOS_STA_MODE] >= 1) || 
-           (pHddCtx->no_of_sessions[VOS_P2P_CLIENT_MODE] >= 1)))
+      if ((!vos_concurrent_open_sessions_running()) &&
+           ((pHddCtx->no_of_open_sessions[VOS_STA_MODE] >= 1) ||
+           (pHddCtx->no_of_open_sessions[VOS_P2P_CLIENT_MODE] >= 1)))
       {
           if (pHddCtx->hdd_wlan_suspended)
           {
@@ -6804,6 +6804,7 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
                hddLog(LOGE, "%s: failure in WLANSAP_StopBss", __func__);
             }
             clear_bit(SOFTAP_BSS_STARTED, &pAdapter->event_flags);
+            wlan_hdd_decr_active_session(pHddCtx, pAdapter->device_mode);
 
             if (eHAL_STATUS_FAILURE ==
                 ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG,
@@ -8926,6 +8927,8 @@ int hdd_wlan_startup(struct device *dev )
    }
 #endif
 
+   wlan_hdd_tdls_init(pHddCtx);
+
    sme_Register11dScanDoneCallback(pHddCtx->hHal, hdd_11d_scan_done);
 
    /* Register with platform driver as client for Suspend/Resume */
@@ -9753,14 +9756,15 @@ void wlan_hdd_set_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode)
        case VOS_P2P_GO_MODE:
        case VOS_STA_SAP_MODE:
             pHddCtx->concurrency_mode |= (1 << mode);
-            pHddCtx->no_of_sessions[mode]++;
+            pHddCtx->no_of_open_sessions[mode]++;
             break;
        default:
             break;
-
    }
-   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: concurrency_mode = 0x%x NumberofSessions for mode %d = %d",
-    __func__,pHddCtx->concurrency_mode,mode,pHddCtx->no_of_sessions[mode]);
+   hddLog(VOS_TRACE_LEVEL_INFO, FL("concurrency_mode = 0x%x "
+          "Number of open sessions for mode %d = %d"),
+           pHddCtx->concurrency_mode, mode,
+           pHddCtx->no_of_open_sessions[mode]);
 }
 
 
@@ -9772,15 +9776,82 @@ void wlan_hdd_clear_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode)
        case VOS_P2P_CLIENT_MODE:
        case VOS_P2P_GO_MODE:
        case VOS_STA_SAP_MODE:
-    pHddCtx->no_of_sessions[mode]--;
-    if (!(pHddCtx->no_of_sessions[mode]))
-            pHddCtx->concurrency_mode &= (~(1 << mode));
+            pHddCtx->no_of_open_sessions[mode]--;
+            if (!(pHddCtx->no_of_open_sessions[mode]))
+                pHddCtx->concurrency_mode &= (~(1 << mode));
             break;
        default:
             break;
    }
-   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: concurrency_mode = 0x%x NumberofSessions for mode %d = %d",
-    __func__,pHddCtx->concurrency_mode,mode,pHddCtx->no_of_sessions[mode]);
+   hddLog(VOS_TRACE_LEVEL_INFO, FL("concurrency_mode = 0x%x "
+          "Number of open sessions for mode %d = %d"),
+          pHddCtx->concurrency_mode, mode, pHddCtx->no_of_open_sessions[mode]);
+
+}
+/**---------------------------------------------------------------------------
+ *
+ *   \brief wlan_hdd_incr_active_session()
+ *
+ *   This function increments the number of active sessions
+ *   maintained per device mode
+ *   Incase of STA/P2P CLI/IBSS upon connection indication it is incremented
+ *   Incase of SAP/P2P GO upon bss start it is incremented
+ *
+ *   \param  pHddCtx - HDD Context
+ *   \param  mode    - device mode
+ *
+ *   \return - None
+ *
+ * --------------------------------------------------------------------------*/
+void wlan_hdd_incr_active_session(hdd_context_t *pHddCtx, tVOS_CON_MODE mode)
+{
+   switch (mode) {
+   case VOS_STA_MODE:
+   case VOS_P2P_CLIENT_MODE:
+   case VOS_P2P_GO_MODE:
+   case VOS_STA_SAP_MODE:
+        pHddCtx->no_of_active_sessions[mode]++;
+        break;
+   default:
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Not Expected Mode %d"), mode);
+        break;
+   }
+   hddLog(VOS_TRACE_LEVEL_INFO, FL("No.# of active sessions for mode %d = %d"),
+                                mode,
+                                pHddCtx->no_of_active_sessions[mode]);
+}
+
+/**---------------------------------------------------------------------------
+ *
+ *   \brief wlan_hdd_decr_active_session()
+ *
+ *   This function decrements the number of active sessions
+ *   maintained per device mode
+ *   Incase of STA/P2P CLI/IBSS upon disconnection it is decremented
+ *   Incase of SAP/P2P GO upon bss stop it is decremented
+ *
+ *   \param  pHddCtx - HDD Context
+ *   \param  mode    - device mode
+ *
+ *   \return - None
+ *
+ * --------------------------------------------------------------------------*/
+void wlan_hdd_decr_active_session(hdd_context_t *pHddCtx, tVOS_CON_MODE mode)
+{
+   switch (mode) {
+   case VOS_STA_MODE:
+   case VOS_P2P_CLIENT_MODE:
+   case VOS_P2P_GO_MODE:
+   case VOS_STA_SAP_MODE:
+        pHddCtx->no_of_active_sessions[mode]--;
+        break;
+   default:
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Not Expected Mode %d"), mode);
+        break;
+   }
+   hddLog(VOS_TRACE_LEVEL_INFO, FL("No.# of active sessions for mode %d = %d"),
+                                mode,
+                                pHddCtx->no_of_active_sessions[mode]);
 }
 
 /**---------------------------------------------------------------------------

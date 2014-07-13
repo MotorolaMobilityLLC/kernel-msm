@@ -1666,7 +1666,7 @@ tANI_BOOLEAN pmcValidateConnectState( tHalHandle hHal )
       pmcLog(pMac, LOGW, "PMC: BT-AMP exists. BMPS cannot be entered");
       return eANI_BOOLEAN_FALSE;
    }
-   if ((vos_concurrent_sessions_running()) &&
+   if ((vos_concurrent_open_sessions_running()) &&
        (csrIsConcurrentInfraConnected( pMac ) ||
        (vos_get_concurrency_mode()& VOS_SAP) ||
        (vos_get_concurrency_mode()& VOS_P2P_GO)))
