@@ -96,6 +96,7 @@ struct bluesleep_info {
 	int irq_polarity;
 	int has_ext_wake;
 	int port_id;
+	int tx_timer_interval;
 };
 
 /* work function */
@@ -213,7 +214,7 @@ void bluesleep_sleep_wakeup(void)
 			pr_info("waking up...\n");
 		wake_lock(&bsi->wake_lock);
 		/* Start the timer */
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		mod_timer(&tx_timer, jiffies + (bsi->tx_timer_interval * HZ));
 		if (debug_mask & DEBUG_BTWAKE)
 			pr_info("BT WAKE: set to wake\n");
 		if (bsi->has_ext_wake == 1)
@@ -251,12 +252,14 @@ static void bluesleep_sleep_work(struct work_struct *work)
 			wake_lock_timeout(&bsi->wake_lock, HZ / 8);
 		} else {
 
-		  mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+			mod_timer(&tx_timer, jiffies +
+					(bsi->tx_timer_interval * HZ));
 			return;
 		}
 	} else if (test_bit(BT_EXT_WAKE, &flags)
 			&& !test_bit(BT_ASLEEP, &flags)) {
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		mod_timer(&tx_timer, jiffies +
+				(bsi->tx_timer_interval * HZ));
 		if (debug_mask & DEBUG_BTWAKE)
 			pr_info("BT WAKE: set to wake\n");
 		if (bsi->has_ext_wake == 1)
@@ -380,7 +383,8 @@ static void bluesleep_tx_timer_expire(unsigned long data)
 	} else {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("Tx data during last period\n");
-		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL*HZ));
+		mod_timer(&tx_timer, jiffies +
+				(bsi->tx_timer_interval * HZ));
 	}
 
 	/* clear the incoming data flag */
@@ -428,7 +432,8 @@ static int bluesleep_start(void)
 
 	/* start the timer */
 
-	mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL*HZ));
+	mod_timer(&tx_timer, jiffies +
+			(bsi->tx_timer_interval * HZ));
 
 	/* assert BT_WAKE */
 	if (debug_mask & DEBUG_BTWAKE)
@@ -502,6 +507,10 @@ static int bluesleep_populate_dt_pinfo(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	int tmp;
+	u32 val;
+
+	if (!of_property_read_u32(np, "tx-timer-interval", &val))
+		bsi->tx_timer_interval = val;
 
 	tmp = of_property_read_u32(np, "bt_port_id", &bsi->port_id);
 	if (tmp) {
@@ -579,6 +588,9 @@ static int bluesleep_probe(struct platform_device *pdev)
 			return ret;
 		}
 	}
+
+	if (!bsi->tx_timer_interval)
+		bsi->tx_timer_interval = TX_TIMER_INTERVAL;
 
 	/* configure host_wake as input */
 	ret = gpio_request_one(bsi->host_wake, GPIOF_IN, "bt_host_wake");
