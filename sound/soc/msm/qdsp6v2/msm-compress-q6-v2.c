@@ -157,6 +157,12 @@ static int msm_compr_set_volume(struct snd_compr_stream *cstream,
 
 	pr_debug("%s: volume_l %d volume_r %d\n",
 		__func__, volume_l, volume_r);
+
+	if (!cstream || !cstream->runtime) {
+		pr_err("%s: session not active\n", __func__);
+		return -EPERM;
+	}
+
 	prtd = cstream->runtime->private_data;
 	if (prtd && prtd->audio_client) {
 		if (volume_l != volume_r) {
