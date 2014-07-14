@@ -1522,6 +1522,10 @@ static inline int mdss_mdp_set_split_ctl(struct mdss_mdp_ctl *ctl,
 	 * original ctl can work the same way as dual pipe solution */
 	ctl->mixer_right = split_ctl->mixer_left;
 
+	/* link the split ctl to the main ctl */
+	split_ctl->main_ctl = ctl;
+	ctl->main_ctl = NULL;
+
 	if ((mdata->mdp_rev >= MDSS_MDP_HW_REV_103) && ctl->is_video_mode)
 		ctl->split_flush_en = true;
 
