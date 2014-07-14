@@ -2318,8 +2318,12 @@ static void heartbeat_work(struct work_struct *work)
 		container_of(work, struct smb135x_chg,
 				heartbeat_work.work);
 	int batt_health = smb135x_get_prop_batt_health(chip);
+	int batt_soc = smb135x_get_prop_batt_capacity(chip);
 
 	dev_dbg(chip->dev, "HB Pound!\n");
+
+	if (chip->iterm_disabled && (batt_soc >= 100))
+		chip->chg_done_batt_full = true;
 
 	if ((batt_health == POWER_SUPPLY_HEALTH_WARM) ||
 	    (batt_health == POWER_SUPPLY_HEALTH_COOL) ||
