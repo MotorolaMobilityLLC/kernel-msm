@@ -162,7 +162,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	priv.fence_fd = get_unused_fd_flags(0);
 	if (priv.fence_fd < 0) {
 		KGSL_DRV_ERR(device, "invalid fence fd\n");
-		ret = -EINVAL;
+		ret = priv.fence_fd;
 		goto fail_fd;
 	}
 	sync_fence_install(fence, priv.fence_fd);
