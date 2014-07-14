@@ -57,12 +57,26 @@ static char *g_printk_log_buf;
 int boot_after_60sec = 0;
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#define ASUS_LAST_KMSG	1
+#define ASUS_LAST_KMSG  1
 
 #if ASUS_LAST_KMSG
 static size_t asus_print_time(u64 ts, char *buf);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
+
+//ASUS_BSP +++ Josh_Hsu "Enable kernel message to logcat"
+#define ASUS_KLOGCAT    0   //Current disabled for test
+
+#if ASUS_KLOGCAT
+#define KER_TAG "Kernel"
+static int klogcat_fd = -1;
+static int klogcat_initialized = 0;
+
+int klogcat_init(void);
+int klogcat_write(char* buf, int len);
+
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable kernel message to logcat"
 //adbg--
 
 #define CREATE_TRACE_POINTS
@@ -443,6 +457,12 @@ static void log_store(int facility, int level,
 	struct log *msg;
 	u32 size, pad_len;
 
+#if ASUS_KLOGCAT
+    char klog_buf[512];
+    int klog_size = 0;
+    int ret = -1;
+#endif
+
 #if ASUS_LAST_KMSG
     /* put record in last kmsg buffer */
     int max_record_size = 512;
@@ -465,6 +485,22 @@ static void log_store(int facility, int level,
 
     /* Adjust next index */
     lk_log_next_idx += lk_size;
+
+#endif
+
+#if ASUS_KLOGCAT
+    /* Put record in klogcat */
+    if (ts_nsec > 0)
+		klog_size += asus_print_time(ts_nsec, klog_buf);
+	else
+		klog_size += asus_print_time(local_clock(), klog_buf);
+
+    klog_size += snprintf(klog_buf + klog_size, 512 - klog_size, text);
+
+    ret = klogcat_write(klog_buf, klog_size);
+
+    if (ret < 0)
+        printk("[adbg] Unable to copy to logger.\n");
 
 #endif
 
@@ -1015,6 +1051,41 @@ out:
     return;
 }
 EXPORT_SYMBOL(printk_buffer_rebase);
+
+#if ASUS_KLOGCAT
+/* Initialize and open the logger device */
+int klogcat_init(void){
+    char* logger_dev = "/dev/log/main";
+
+    if (klogcat_initialized)
+        return 0;
+
+    klogcat_fd = open(logger_dev, O_RDWR);
+
+    if (klogcat_fd < 0){
+        printk("[adbg] Klogcat can not be opened.\n");
+        return -1;
+    } else {
+        printk("[adbg] Klogcat is opened successufully!\n");
+    }
+
+    klogcat_initialized = 1;
+    return 0;
+}
+
+/* Write kmsg to logger device */
+int klogcat_write(char * buf, int len){
+    int ret = -1;
+
+    /* If klogcat is not initialized, drop it */
+    if (!klogcat_initialized)
+        return -1;
+
+    /* Write to logger */
+    ret = write(klogcat_fd, buf, len);
+    return ret;
+}
+#endif
 //adbg--
 
 
@@ -2923,6 +2994,9 @@ static int __init printk_late_init(void)
 		}
 	}
 	hotcpu_notifier(console_cpu_notify, 0);
+#if ASUS_KLOGCAT
+    klogcat_init();
+#endif
 	return 0;
 }
 late_initcall(printk_late_init);
