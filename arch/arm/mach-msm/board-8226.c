@@ -57,6 +57,28 @@ static struct of_dev_auxdata msm_hsic_host_adata[] = {
 	{}
 };
 
+//++ASUS_BSP : add for miniporting
+#include <linux/init.h>
+#include <linux/ioport.h>
+#include <mach/board.h>
+#include <mach/gpio.h>
+#include <mach/gpiomux.h>
+extern int __init device_gpio_init(void);// asus gpio init
+void __init device_gpiomux_init(void)
+{
+	int rc;
+
+	rc = msm_gpiomux_init_dt();
+	if (rc) {
+		pr_err("%s failed %d\n", __func__, rc);
+		return;
+	}
+
+	device_gpio_init();
+
+}
+//--ASUS_BSP : add for miniporting
+
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, \
 			"msm_sdcc.1", NULL),
@@ -124,7 +146,10 @@ void __init msm8226_init(void)
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
-	msm8226_init_gpiomux();
+//+++ASUS_BSP : add for miniporting
+//	msm8226_init_gpiomux();
+	device_gpiomux_init();
+//---ASUS_BSP : add for miniporting
 	msm8226_add_drivers();
 }
 

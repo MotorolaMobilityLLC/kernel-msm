@@ -134,6 +134,138 @@ static char *static_command_line;
 static char *execute_command;
 static char *ramdisk_execute_command;
 
+//+++ ASUS_BSP : miniporting
+enum DEVICE_HWID g_ASUS_hwID=HWID_UNKNOWN;
+char hwid_info[16]={0};
+
+EXPORT_SYMBOL(g_ASUS_hwID);
+
+static int set_hardware_id(char *str)
+{
+
+#ifdef ASUS_WI500Q_PROJECT
+	if ( strcmp("WI500Q_EVB", str) == 0 )
+	{
+		g_ASUS_hwID = WI500Q_EVB;
+		printk("Kernel HW ID = WI500Q_EVB\n");
+	}
+	else if ( strcmp("WI500Q_EVB2", str) == 0 )
+	{
+		g_ASUS_hwID = WI500Q_EVB2;
+		printk("Kernel HW ID = WI500Q_EVB2\n");
+	}
+	else if ( strcmp("WI500Q_SR", str) == 0 )
+	{
+		g_ASUS_hwID = WI500Q_SR;
+		printk("Kernel HW ID = WI500Q_SR\n");
+	}
+	else if ( strcmp("WI500Q_SR2", str) == 0 )
+	{
+		g_ASUS_hwID = WI500Q_SR2;
+		printk("Kernel HW ID = WI500Q_SR2\n");
+	}
+
+#endif
+
+	printk("g_ASUS_hwID = %d\n", g_ASUS_hwID);
+	return 0;
+}
+__setup("HW_ID=", set_hardware_id);
+
+// better_ding@asus.com get cpu id from aboot +++
+int  g_cpuID = 0;
+EXPORT_SYMBOL(g_cpuID);
+
+static int set_cpu_id(char *str)
+{
+	if ( memcmp("8000e1", (str + 2) , 6) == 0 )
+	{
+		g_cpuID = 0x800;
+		printk("CPUID = 0x%x\n", g_cpuID);
+	}
+	else if ( memcmp("8040e1", (str + 2) , 6) == 0 )
+	{
+		g_cpuID = 0x804;
+		printk("CPUID = 0x%x\n", g_cpuID);
+	}
+	else
+	{
+		g_cpuID = -1;
+		printk("CPUID = UNKNOW!!\n");
+	}
+
+	printk("g_cpuID = 0x%x \n", g_cpuID);
+
+	return 0;
+}
+
+__setup("CPU_RV=", set_cpu_id);
+// better_ding@asus.com get cpu id from aboot ---
+
+//+++ASUS_BSP: for recovery mode
+int g_recovery_mode=0;
+static int set_recovery_mode(char *str)
+{
+	g_recovery_mode = 1;
+      printk("Recovery mode = %d\n",g_recovery_mode);
+      return 0;
+}
+__setup("recovery", set_recovery_mode);
+//---ASUS_BSP: for recovery mode
+
+//+++ASUS_BSP: for recovery mode
+char device_serialno[16]={0};
+static int set_serialno(char *str)
+{
+	sprintf(device_serialno, str);	
+    printk("serialno = %s\n",device_serialno);
+	return 0;
+}
+__setup("serialno=", set_serialno);
+//---ASUS_BSP: for recovery mode
+
+//ASUS_BSP porting charger mode +++
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+int g_CHG_mode=0;
+static int set_chg_mode(char *str)
+{
+       if ( strcmp("charger", str) == 0 )
+       {
+               g_CHG_mode = 1;
+       }
+       else
+       {
+               g_CHG_mode = 0;
+       }
+       printk("JB charger mode = %d\n", g_CHG_mode);
+       return 0;
+}
+__setup("androidboot.mode=", set_chg_mode);
+#endif
+//ASUS_BSP porting charger mode ---
+
+//+++ ASUS_BSP : miniporting : Add for audio dbg mode
+int g_user_dbg_mode = 1;
+EXPORT_SYMBOL(g_user_dbg_mode);
+
+static int set_user_dbg_mode(char *str)
+{
+    if ( strcmp("y", str) == 0 )
+    {
+        g_user_dbg_mode = 1;
+    }
+    else
+    {
+        g_user_dbg_mode = 0;
+    }
+    g_user_dbg_mode = 1;
+    printk("Kernel dbg mode = %d\n", g_user_dbg_mode);
+
+    return 0;
+}
+__setup("dbg=", set_user_dbg_mode);
+//--- ASUS_BSP : miniporting : Add for audio dbg mode
+
 /*
  * If set, this is an indication to the drivers that reset the underlying
  * device before going ahead with the initialization otherwise driver might
