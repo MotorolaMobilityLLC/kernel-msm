@@ -424,6 +424,17 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
+
+	if (is_ambient_on()){
+		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
+
+		if (ctrl->idle_off_cmds.cmd_cnt){
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+		}else{
+			printk("MDSS:DSI: idle off command is not set!\n");
+		}
+		return 0;
+	}
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
@@ -1153,6 +1164,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->off_cmds,
 		"qcom,mdss-dsi-off-command", "qcom,mdss-dsi-off-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_on_cmds,
+		"qcom,mdss-dsi-idle-on-command", "qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_off_cmds,
+		"qcom,mdss-dsi-idle-off-command", "qcom,mdss-dsi-off-command-state");
+
 
 	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
 	if (rc) {
