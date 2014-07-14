@@ -361,7 +361,7 @@ static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
 
 	do_gettimeofday(&timestamp);
 	if (b == '0') {
-		sprintf(lpm_1_time, "%lu.%lu: lpm non-0 %d: %d,%d,%d,%d", (long)timestamp.tv_sec,
+		sprintf(lpm_1_time, "%lu.%lu: lpm 0 %d: %d,%d,%d,%d", (long)timestamp.tv_sec,
 		(long)timestamp.tv_usec, b,
 		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
 		(test_bit(BT_EXT_WAKE, &flags)),
@@ -373,7 +373,7 @@ static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
 		bsi->uport = NULL;
 	} else {
 		/* HCI_DEV_REG */
-		sprintf(lpm_0_time, "%lu.%lu: lpm 0 %d: %d,%d,%d,%d", (long)timestamp.tv_sec,
+		sprintf(lpm_0_time, "%lu.%lu: lpm non-0 %d: %d,%d,%d,%d", (long)timestamp.tv_sec,
 		(long)timestamp.tv_usec, b,
 		(gpio_get_value(bsi->host_wake) != bsi->irq_polarity),
 		(test_bit(BT_EXT_WAKE, &flags)),
