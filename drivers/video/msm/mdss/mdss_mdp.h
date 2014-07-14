@@ -228,6 +228,7 @@ struct mdss_mdp_ctl {
 				struct mdss_mdp_ctl *sctl, int new_fps);
 
 	struct blocking_notifier_head notifier_head;
+	int (*panel_on_locked) (struct mdss_mdp_ctl *ctl);
 
 	void *priv_data;
 	u32 wb_type;
@@ -635,6 +636,8 @@ int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
 void mdss_mdp_handoff_cleanup_pipes(struct msm_fb_data_type *mfd,
 							u32 type);
 int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx);
+int mdss_mdp_overlay_release_sub(struct msm_fb_data_type *mfd, int ndx,
+	bool unstage);
 int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd);
 int mdss_mdp_video_addr_setup(struct mdss_data_type *mdata,
 		u32 *offsets,  u32 count);
@@ -643,6 +646,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_writeback_start(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 		struct mdp_display_commit *data);
+void mdss_mdp_overlay_cleanup(struct msm_fb_data_type *mfd);
 
 struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 					struct msm_fb_data_type *mfd);
@@ -836,4 +840,10 @@ int mdss_mdp_footswitch_ctrl_idle_pc(int on, struct device *dev);
 				(mfd->mdp.private1))->wb)
 
 int  mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl);
+
+int mdss_mdp_overlay_set(struct msm_fb_data_type *mfd, struct mdp_overlay *req);
+int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
+			  struct msmfb_overlay_data *req);
+int mdss_mdp_overlay_unset(struct msm_fb_data_type *mfd, int ndx);
+
 #endif /* MDSS_MDP_H */

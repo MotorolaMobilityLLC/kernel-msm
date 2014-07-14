@@ -652,6 +652,7 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 	if (sctl)
 		sctx = (struct mdss_mdp_cmd_ctx *) sctl->priv_data;
 
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 	if (ctx->panel_on == 0) {
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNBLANK, NULL);
 		WARN(rc, "intf %d unblank error (%d)\n", ctl->intf_num, rc);
@@ -663,10 +664,41 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
 	}
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 
 	return rc;
 }
 
+int mdss_mdp_cmd_panel_on_locked(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_ctl *sctl = NULL;
+	struct mdss_mdp_cmd_ctx *ctx, *sctx = NULL;
+	int rc = 0;
+
+	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
+	if (!ctx) {
+		pr_err("invalid ctx\n");
+		return -ENODEV;
+	}
+
+	if (ctl->panel_data->panel_info.partial_update_enabled) {
+		/* sctl will be null for right only */
+		sctl = mdss_mdp_get_split_ctl(ctl);
+	}
+
+	mdss_mdp_ctl_perf_set_transaction_status(ctl,
+		PERF_HW_MDP_STATE, PERF_STATUS_BUSY);
+
+	if (sctl) {
+		sctx = (struct mdss_mdp_cmd_ctx *) sctl->priv_data;
+		mdss_mdp_ctl_perf_set_transaction_status(sctl,
+			PERF_HW_MDP_STATE, PERF_STATUS_BUSY);
+	}
+
+	rc = mdss_mdp_cmd_panel_on(ctl, sctl);
+
+	return rc;
+}
 /*
  * There are 3 partial update possibilities
  * left only ==> enable left pingpong_done
@@ -791,7 +823,13 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	}
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
-	if (need_wait)
+	if (need_wait) {
+		if (ctl->mfd->quickdraw_in_progress) {
+			mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
+				ctx->pp_num);
+			ctx->rdptr_enabled = 0;
+			goto skip_wait;
+		}
 		if (wait_for_completion_timeout(&ctx->stop_comp, STOP_TIMEOUT)
 		    <= 0) {
 			WARN(1, "stop cmd time out\n");
@@ -809,7 +847,8 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 				}
 			}
 		}
-
+	}
+skip_wait:
 	if (cancel_work_sync(&ctx->clk_work))
 		pr_debug("no pending clk work\n");
 
@@ -848,6 +887,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	ctl->wait_pingpong = NULL;
 	ctl->add_vsync_handler = NULL;
 	ctl->remove_vsync_handler = NULL;
+	ctl->panel_on_locked = NULL;
 
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 				ctx->rdptr_enabled, XLOG_FUNC_EXIT);
@@ -927,6 +967,8 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->add_vsync_handler = mdss_mdp_cmd_add_vsync_handler;
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
+	ctl->panel_on_locked = mdss_mdp_cmd_panel_on_locked;
+
 	pr_debug("%s:-\n", __func__);
 
 	return 0;

@@ -26,6 +26,7 @@
 
 #include "mdss_dsi.h"
 #include "mdss_fb.h"
+#include "mdss_mdp.h"
 
 #define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
 #define MDSS_PANEL_UNKNOWN_NAME "unknown"
@@ -502,6 +503,7 @@ static struct dsi_cmd_desc set_col_page_addr_cmd[] = {
 static int mdss_dsi_set_col_page_addr(struct mdss_panel_data *pdata)
 {
 	struct mdss_panel_info *pinfo;
+	struct msm_fb_data_type *mfd;
 	struct mdss_rect roi;
 	struct mdss_rect *p_roi;
 	struct mdss_rect *c_roi;
@@ -521,6 +523,11 @@ static int mdss_dsi_set_col_page_addr(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	p_roi = &pinfo->roi;
 
+	if (ctrl->ndx == DSI_CTRL_RIGHT)
+		mfd = pdata->prev->mfd;
+	else
+		mfd = pdata->mfd;
+
 	if (pinfo->partial_update_roi_merge) {
 		left_or_both = mdss_dsi_roi_merge(ctrl, &roi);
 
@@ -537,7 +544,8 @@ static int mdss_dsi_set_col_page_addr(struct mdss_panel_data *pdata)
 	 * then do col_page update
 	 */
 	if (mdss_dsi_sync_wait_enable(ctrl) ||
-				!mdss_rect_cmp(c_roi, &roi)) {
+				!mdss_rect_cmp(c_roi, &roi) ||
+		mfd->quickdraw_in_progress) {
 		pr_debug("%s: ndx=%d x=%d y=%d w=%d h=%d\n",
 				__func__, ctrl->ndx, p_roi->x,
 				p_roi->y, p_roi->w, p_roi->h);
@@ -648,11 +656,86 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
+static unsigned int detect_panel_state(u8 pwr_mode)
+{
+	unsigned int panel_state = DSI_DISP_INVALID_STATE;
+
+	switch (pwr_mode & 0x14) {
+	case 0x14:
+		panel_state = DSI_DISP_ON_SLEEP_OUT;
+		break;
+	case 0x10:
+		panel_state = DSI_DISP_OFF_SLEEP_OUT;
+		break;
+	case 0x00:
+		panel_state = DSI_DISP_OFF_SLEEP_IN;
+		break;
+	}
+
+	return panel_state;
+}
+
+static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
+						u8 *pwr_mode)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct mipi_panel_info *mipi;
+	struct msm_fb_data_type *mfd;
+	int panel_dead = 0;
+	unsigned int panel_state = 0;
+	int ret = 0;
+
+	*pwr_mode = 0xFF;
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+	mipi  = &pdata->panel_info.mipi;
+
+	mfd = pdata->mfd;
+
+	mdss_dsi_get_pwr_mode(pdata, pwr_mode, DSI_MODE_BIT_LP);
+
+	if (*pwr_mode == 0xFF) {
+		int gpio_val = gpio_get_value(ctrl->mipi_d0_sel);
+		pr_warn("%s: unable to read power state! [gpio: %d]\n",
+			__func__, gpio_val);
+		panel_dead = 1;
+	} else {
+		panel_state = detect_panel_state(*pwr_mode);
+		if (panel_state == DSI_DISP_INVALID_STATE) {
+			pr_warn("%s: detected invalid panel state\n", __func__);
+			panel_dead = 1;
+		}
+	}
+
+	if (!panel_dead) {
+		if (mfd->quickdraw_panel_state == DSI_DISP_INVALID_STATE) {
+			pr_warn("%s: quickdraw requests full reinitialization\n",
+				__func__);
+			panel_dead = 1;
+		} else if (mfd->quickdraw_panel_state != panel_state) {
+			pr_warn("%s: panel state is %d while %d expected\n",
+				__func__, panel_state,
+				mfd->quickdraw_panel_state);
+			panel_dead = 1;
+		} else if (mfd->quickdraw_panel_state == DSI_DISP_OFF_SLEEP_IN)
+			ret = 1;
+	}
+
+	if (panel_dead) {
+		pr_err("%s: triggering ESD recovery\n", __func__);
+		mfd->quickdraw_reset_panel = true;
+	}
+
+	return ret;
+}
+
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
+	struct msm_fb_data_type *mfd;
 	u8 pwr_mode = 0;
 
 	if (pdata == NULL) {
@@ -665,6 +748,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
+	mfd = pdata->mfd;
 
 	if (pinfo->partial_update_dcs_cmd_by_left ||
 			!mdss_dsi_broadcast_mode_enabled()) {
@@ -679,6 +763,14 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		goto end;
 	}
 
+	if (!ctrl->ndx && mfd->quickdraw_in_progress) {
+		int do_init = mdss_dsi_quickdraw_check_panel_state(pdata,
+			&pwr_mode);
+		if (!do_init || mfd->quickdraw_reset_panel) {
+			pr_info("%s: skip panel init cmds\n", __func__);
+			goto end;
+		}
+	}
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
@@ -698,6 +790,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
+	struct msm_fb_data_type *mfd;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -708,6 +801,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
+	mfd = pdata->mfd;
 
 	if (pinfo->partial_update_dcs_cmd_by_left ||
 			!mdss_dsi_broadcast_mode_enabled()) {
@@ -725,7 +819,10 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	if (ctrl->set_hbm)
 		ctrl->set_hbm(ctrl, 0);
 
-	if (ctrl->off_cmds.cmd_cnt)
+	if (!ctrl->ndx && mfd->quickdraw_in_progress)
+		pr_debug("%s: in quickdraw, SH wants the panel SLEEP OUT\n",
+			__func__);
+	else if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
 end:
@@ -1540,6 +1637,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	}
 
 	mdss_dsi_parse_panel_horizintal_line_idle(np, ctrl_pdata);
+
+	pinfo->quickdraw_enabled = of_property_read_bool(np,
+						"mmi,quickdraw-enabled");
+	pr_info("%s: Quickdraw %s\n", __func__,
+		pinfo->quickdraw_enabled ? "enabled" : "disabled");
 
 	if (mdss_panel_parse_hbm(np, pinfo, ctrl_pdata)) {
 		pr_err("Error parsing HBM\n");
