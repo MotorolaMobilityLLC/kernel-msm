@@ -99,18 +99,13 @@
 		_IOW(STM401_IOCTL_BASE, 38, char*)
 #define STM401_IOCTL_SET_POSIX_TIME	\
 		_IOW(STM401_IOCTL_BASE, 39, unsigned long)
-#define STM401_IOCTL_SET_CONTROL_REG	\
-		_IOW(STM401_IOCTL_BASE, 40, char*)
-#define STM401_IOCTL_GET_STATUS_REG	\
-		_IOR(STM401_IOCTL_BASE, 41, char*)
-#define STM401_IOCTL_GET_TOUCH_REG	\
-		_IOR(STM401_IOCTL_BASE, 42, char*)
+/* 40-42 unused */
 #define STM401_IOCTL_SET_ALGO_REQ \
 		_IOR(STM401_IOCTL_BASE, 43, char*)
 #define STM401_IOCTL_GET_ALGO_EVT \
 		_IOR(STM401_IOCTL_BASE, 44, char*)
-#define STM401_IOCTL_GET_AOD_INSTRUMENTATION_REG \
-		_IOR(STM401_IOCTL_BASE, 45, char*)
+#define STM401_IOCTL_ENABLE_BREATHING \
+		_IOW(STM401_IOCTL_BASE, 45, unsigned char)
 #define STM401_IOCTL_WRITE_REG \
 		_IOR(STM401_IOCTL_BASE, 46, char*)
 #define STM401_IOCTL_READ_REG \
@@ -170,6 +165,7 @@
 #define M_PROXIMITY		0x000002
 #define M_TOUCH			0x000004
 #define M_COVER			0x000008
+#define M_QUICKPEEK		0x000010
 #define M_HUB_RESET		0x000080
 
 #define M_FLATUP		0x000100
@@ -293,6 +289,11 @@ struct stm_response {
 };
 
 #ifdef __KERNEL__
+#include <linux/fb_quickdraw.h>
+#if defined(CONFIG_FB)
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
 
 /* STM401 memory map */
 #define ID                              0x00
@@ -300,6 +301,8 @@ struct stm_response {
 #define ERROR_STATUS                    0x02
 #define LOWPOWER_REG                    0x03
 
+#define STM401_PEEKDATA_REG             0x09
+#define STM401_PEEKSTATUS_REG           0x0A
 #define STM401_STATUS_REG               0x0B
 #define STM401_TOUCH_REG                0x0C
 #define STM401_CONTROL_REG              0x0D
@@ -414,7 +417,29 @@ struct stm_response {
 
 #define STM401_CLIENT_MASK		0xF0
 
+#define STM401_BUSY_STATUS_MASK	0x80
+#define STM401_BUSY_SLEEP_USEC	10000
+#define STM401_BUSY_RESUME_COUNT	14
+#define STM401_BUSY_SUSPEND_COUNT	6
+
 #define AOD_WAKEUP_REASON_ESD		4
+#define AOD_WAKEUP_REASON_QP_PREPARE		5
+#define AOD_WAKEUP_REASON_QP_DRAW		6
+#define AOD_WAKEUP_REASON_QP_ERASE		7
+#define AOD_WAKEUP_REASON_QP_COMPLETE		8
+
+#define AOD_QP_ACK_BUFFER_ID_MASK	0x3F
+#define AOD_QP_ACK_SUCCESS		0
+#define AOD_QP_ACK_BAD_MSG_ORDER	1
+#define AOD_QP_ACK_INVALID		2
+#define AOD_QP_ACK_ESD_RECOVERED	3
+
+#define AOD_QP_DRAW_MAX_BUFFER_ID	63
+#define AOD_QP_DRAW_NO_OVERRIDE		0xFFFF
+
+#define AOD_QP_ENABLED_VOTE_KERN		0x01
+#define AOD_QP_ENABLED_VOTE_USER		0x02
+#define AOD_QP_ENABLED_VOTE_MASK		0x03
 
 #define STM401_MAX_GENERIC_DATA		512
 
@@ -491,6 +516,29 @@ struct stm_response {
 #define STM16_TO_HOST(x) ((short) be16_to_cpu(*((u16 *) (stm401_readbuff+(x)))))
 #define STM32_TO_HOST(x) ((short) be32_to_cpu(*((u32 *) (stm401_readbuff+(x)))))
 
+enum stm_quickpeek_state {
+	QP_IDLE,
+	QP_AWAKE,
+	QP_PREPARED
+};
+
+struct stm401_quickpeek_message {
+	u8 message;
+	u8 panel_state;
+	u8 buffer_id;
+	u16 x1;
+	u16 y1;
+	u16 x2;
+	u16 y2;
+	struct list_head list;
+};
+
+struct stm401_aod_enabled_vote {
+	struct mutex vote_lock;
+	unsigned int vote;
+	unsigned int resolved_vote;
+};
+
 struct stm401_platform_data {
 	int (*init)(void);
 	void (*exit)(void);
@@ -502,8 +550,6 @@ struct stm401_platform_data {
 	int gpio_int;
 	int gpio_sh_wake;
 	int gpio_sh_wake_resp;
-	int gpio_mipi_req;
-	int gpio_mipi_busy;
 	unsigned int bslen_pin_active_value;
 	u16 lux_table[LIGHTING_TABLE_SIZE];
 	u8 brightness_table[LIGHTING_TABLE_SIZE];
@@ -559,14 +605,26 @@ struct stm401_data {
 	int stm401_ms_data_buffer_head;
 	int stm401_ms_data_buffer_tail;
 	wait_queue_head_t stm401_ms_data_wq;
-	bool ap_stm401_handoff_ctrl;
-	bool ap_stm401_handoff_enable;
 
 	struct regulator *regulator_1;
 	struct regulator *regulator_2;
 
+	/* Quick peek data */
+	enum stm_quickpeek_state quickpeek_state;
+	struct workqueue_struct *quickpeek_work_queue;
+	struct work_struct quickpeek_work;
+	struct wake_lock quickpeek_wakelock;
+	struct completion quickpeek_done;
+	struct list_head quickpeek_command_list;
+	atomic_t qp_enabled;
+	unsigned short qw_irq_status;
+	struct stm401_aod_enabled_vote aod_enabled;
+
 	bool is_suspended;
 	bool pending_wake_work;
+#if defined(CONFIG_FB)
+	struct notifier_block fb_notif;
+#endif
 };
 
 /* per algo config, request, and event registers */
@@ -625,6 +683,21 @@ void stm401_detect_lowpower_mode(unsigned char *cmdbuff);
 
 int stm401_load_brightness_table(struct stm401_data *ps_stm401,
 	unsigned char *cmdbuff);
+
+int stm401_irq_wake_work_func_display_locked(struct stm401_data *ps_stm401,
+	unsigned short irq_status);
+unsigned short stm401_get_interrupt_status(struct stm401_data *ps_stm401,
+	unsigned char reg, int *err);
+int stm401_quickpeek_status_ack(struct stm401_data *ps_stm401,
+	struct stm401_quickpeek_message *qp_message, int ack_return);
+void stm401_quickpeek_work_func(struct work_struct *work);
+void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401);
+void stm401_vote_aod_enabled(struct stm401_data *ps_stm401, int voter,
+	bool enable);
+int stm401_resolve_aod_enabled_locked(struct stm401_data *ps_stm401);
+int stm401_display_handle_touch_locked(struct stm401_data *ps_stm401);
+int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
+	bool releaseWakelock);
 
 int stm401_boot_flash_erase(void);
 int stm401_get_version(struct stm401_data *ps_stm401);

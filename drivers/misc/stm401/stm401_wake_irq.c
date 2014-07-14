@@ -82,6 +82,9 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 
 	stm401_wake(ps_stm401);
 
+	if (ps_stm401->is_suspended)
+		goto EXIT;
+
 	/* read interrupt mask register */
 	stm401_cmdbuff[0] = WAKESENSOR_STATUS;
 	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
@@ -188,36 +191,13 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			stm401_readbuff[PROX_DISTANCE]);
 	}
 	if (irq_status & M_TOUCH) {
-		u8 aod_wake_up_reason;
-		stm401_cmdbuff[0] = STM401_STATUS_REG;
-		if (stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2)
-			< 0) {
-			dev_err(&ps_stm401->client->dev,
-				"Get status reg failed\n");
+		if (stm401_display_handle_touch_locked(ps_stm401) < 0)
 			goto EXIT;
-		}
-		aod_wake_up_reason = (stm401_readbuff[TOUCH_REASON] >> 4) & 0xf;
-		if (aod_wake_up_reason == AOD_WAKEUP_REASON_ESD) {
-			char *envp[2];
-			envp[0] = "STM401WAKE=ESD";
-			envp[1] = NULL;
-			if (kobject_uevent_env(&ps_stm401->client->dev.kobj,
-				KOBJ_CHANGE, envp)) {
-				dev_err(&ps_stm401->client->dev,
-					"Failed to create uevent\n");
-				goto EXIT;
-			}
-			sysfs_notify(&ps_stm401->client->dev.kobj,
-				NULL, "stm401_esd");
-			dev_info(&ps_stm401->client->dev,
-				"Sent uevent, STM401 ESD wake\n");
-		} else {
-			input_report_key(ps_stm401->input_dev, KEY_POWER, 1);
-			input_report_key(ps_stm401->input_dev, KEY_POWER, 0);
-			input_sync(ps_stm401->input_dev);
-			dev_info(&ps_stm401->client->dev,
-				"Report pwrkey toggle, touch event wake\n");
-		}
+	}
+	if (irq_status & M_QUICKPEEK) {
+		if (stm401_display_handle_quickpeek_locked(ps_stm401,
+			irq_status == M_QUICKPEEK) < 0)
+			goto EXIT;
 	}
 	if (irq_status & M_COVER) {
 		int state;
@@ -445,6 +425,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		dev_dbg(&ps_stm401->client->dev,
 			"Sending generic interrupt event:%d\n", irq3_status);
 	}
+
 EXIT:
 	stm401_sleep(ps_stm401);
 EXIT_NO_WAKE:
