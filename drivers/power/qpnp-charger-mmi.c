@@ -1179,11 +1179,16 @@ static int
 qpnp_chg_force_run_on_batt(struct qpnp_chg_chip *chip, int disable)
 {
 	/* Don't run on battery for batteryless hardware */
-	if (chip->use_default_batt_values)
+	if (chip->use_default_batt_values) {
+		pr_err("force on: Using default batt values\n");
 		return 0;
+	}
+
 	/* Don't force on battery if battery is not present */
-	if (!qpnp_chg_is_batt_present(chip))
+	if (!qpnp_chg_is_batt_present(chip)) {
+		pr_err("force on: No battery present\n");
 		return 0;
+	}
 
 	/* This bit forces the charger to run off of the battery rather
 	 * than a connected charger */
@@ -1744,6 +1749,8 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 				}
 			}
 
+			qpnp_chg_force_run_on_batt(chip,
+					chip->charging_disabled);
 			if (!qpnp_chg_is_dc_chg_plugged_in(chip)) {
 				chip->delta_vddmax_mv = 0;
 				qpnp_chg_set_appropriate_vddmax(chip);
@@ -4281,7 +4288,8 @@ static void update_heartbeat(struct work_struct *work)
 						POWER_SUPPLY_PROP_LOW_POWER,
 						&ret);
 		}
-	}
+	} else if (usb_present)
+		qpnp_chg_force_run_on_batt(chip, chip->charging_disabled);
 
 	schedule_delayed_work(&chip->update_heartbeat_work,
 		msecs_to_jiffies(UPDATE_HEARTBEAT_MS));
