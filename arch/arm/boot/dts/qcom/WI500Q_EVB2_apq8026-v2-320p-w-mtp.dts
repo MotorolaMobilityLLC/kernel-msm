@@ -21,7 +21,7 @@
 #include "msm8x26w-gpu.dts"
 
 / {
-	model = "Qualcomm APQ 8026v2W MTP";
+	model = "WI500Q EVB2 -Qualcomm APQ 8026v2W MTP";
 	compatible = "qcom,apq8026-mtp", "qcom,apq8026", "qcom,mtp";
 	qcom,board-id = <8 41>; /*chage from 4 to 42*/
 };
