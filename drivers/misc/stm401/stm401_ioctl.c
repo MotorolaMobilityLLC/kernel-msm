@@ -426,84 +426,6 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			& 0xff);
 		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 5);
 		break;
-	case STM401_IOCTL_SET_CONTROL_REG:
-		dev_dbg(&ps_stm401->client->dev,
-			"STM401_IOCTL_SET_CONTROL_REG");
-		if (brightness_table_loaded == 0) {
-			err = stm401_load_brightness_table(ps_stm401,
-					stm401_cmdbuff);
-			if (err) {
-				dev_err(&ps_stm401->client->dev,
-					"Loading brightness failed\n");
-				break;
-			}
-			brightness_table_loaded = 1;
-		}
-		stm401_cmdbuff[0] = STM401_CONTROL_REG;
-		if (copy_from_user(&stm401_cmdbuff[1], argp,
-			 STM401_CONTROL_REG_SIZE)) {
-			dev_err(&ps_stm401->client->dev,
-				"Copy from user returned error\n");
-			err = -EFAULT;
-			break;
-		}
-		stm401_g_control_reg_restore = 1;
-		memcpy(stm401_g_control_reg, &stm401_cmdbuff[1],
-			STM401_CONTROL_REG_SIZE);
-
-		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff,
-			(STM401_CONTROL_REG_SIZE + 1));
-		if (err < 0)
-			dev_err(&stm401_misc_data->client->dev,
-				"unable to write control reg %d\n", err);
-		else
-			ps_stm401->ap_stm401_handoff_enable = true;
-
-		break;
-	case STM401_IOCTL_GET_AOD_INSTRUMENTATION_REG:
-		dev_dbg(&ps_stm401->client->dev,
-			"STM401_IOCTL_GET_AOD_INTRUMENTATION_REG");
-		stm401_cmdbuff[0] = STM_AOD_INSTRUMENTATION_REG;
-		err = stm401_i2c_write_read(ps_stm401,
-			stm401_cmdbuff, 1, STM_AOD_INSTRUMENTATION_REG_SIZE);
-		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
-				"Get AOD instrumentation reg failed\n");
-			break;
-		}
-		if (copy_to_user(argp, stm401_readbuff,
-				STM_AOD_INSTRUMENTATION_REG_SIZE))
-			err = -EFAULT;
-		break;
-	case STM401_IOCTL_GET_STATUS_REG:
-		dev_dbg(&ps_stm401->client->dev,
-			"STM401_IOCTL_GET_STATUS_REG");
-		stm401_cmdbuff[0] = STM401_STATUS_REG;
-		err = stm401_i2c_write_read(ps_stm401,
-			 stm401_cmdbuff, 1, STM401_STATUS_REG_SIZE);
-		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
-				"Get status reg failed\n");
-			break;
-		}
-
-		if (copy_to_user(argp, stm401_readbuff, STM401_STATUS_REG_SIZE))
-			err = -EFAULT;
-		break;
-	case STM401_IOCTL_GET_TOUCH_REG:
-		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_TOUCH_REG");
-		stm401_cmdbuff[0] = STM401_TOUCH_REG;
-		err = stm401_i2c_write_read(ps_stm401,
-			 stm401_cmdbuff, 1, STM401_TOUCH_REG_SIZE);
-		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
-				"Get touch reg failed\n");
-			break;
-		}
-
-		if (copy_to_user(argp, stm401_readbuff, STM401_TOUCH_REG_SIZE))
-			err = -EFAULT;
-		break;
 	case STM401_IOCTL_SET_ALGO_REQ:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_ALGO_REQ");
 		/* copy algo into bytes[2] */
@@ -785,6 +707,24 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			stm401_wake(ps_stm401);
 			lowpower_mode = stm401_cmdbuff[0];
 		}
+		break;
+	case STM401_IOCTL_ENABLE_BREATHING:
+		if (copy_from_user(&byte, argp, sizeof(byte))) {
+			dev_err(&ps_stm401->client->dev,
+				"Enable Breathing, copy byte returned error\n");
+			err = -EFAULT;
+			break;
+		}
+
+		if (byte)
+			stm401_vote_aod_enabled(ps_stm401,
+				AOD_QP_ENABLED_VOTE_USER, true);
+		else
+			stm401_vote_aod_enabled(ps_stm401,
+				AOD_QP_ENABLED_VOTE_USER, false);
+		stm401_resolve_aod_enabled_locked(ps_stm401);
+		/* the user's vote can not fail */
+		err = 0;
 		break;
 
 	/* No default here since previous switch could have
