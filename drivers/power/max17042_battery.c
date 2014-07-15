@@ -256,13 +256,6 @@ static int max17042_get_property(struct power_supply *psy,
 			break;
 		}
 
-		ret = max17042_read_reg(chip->client, MAX17042_VCELL);
-		if (ret > 0 && (ret * 625 / 8) < 3500000) {
-			dev_warn(&chip->client->dev, "temp power off under 3.5v\n");
-			val->intval = 0;
-			break;
-		}
-
 		ret = max17042_read_reg(chip->client, MAX17042_RepSOC);
 		if (ret < 0)
 			return ret;
