@@ -741,7 +741,7 @@
 		qcom,pre-div-channel-scaling = <0>;
 		qcom,calibration-type = "absolute";
 		qcom,scale-function = <0>;
-		qcom,hw-settle-time = <0xc>;
+		qcom,hw-settle-time = <0xF>;
 		qcom,fast-avg-setup = <0>;
 	};
 	chan@78 {
