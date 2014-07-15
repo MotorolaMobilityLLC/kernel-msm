@@ -1859,7 +1859,7 @@ eHalStatus sme_getBcnMissRate(tHalHandle hHal, tANI_U8 sessionId, void *callback
             return eHAL_STATUS_FAILURE;
         }
 
-        pMsg = (tSirBcnMissRateReq *) vos_mem_malloc(sizeof(tSirTxPerTrackingParam));
+        pMsg = (tSirBcnMissRateReq *) vos_mem_malloc(sizeof(tSirBcnMissRateReq));
         if (NULL == pMsg)
         {
             smsLog(pMac, LOGE, FL("failed to allocated memory"));
