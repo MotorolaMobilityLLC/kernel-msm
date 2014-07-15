@@ -349,6 +349,11 @@ static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata, u8 *pwr_mode,
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 
+	if (ctrl->panel_config.bare_board == true) {
+		*pwr_mode = 0;
+		goto end;
+	}
+
 	old_rd_mode = mdss_dsi_get_tx_power_mode(pdata);
 	if (read_mode != old_rd_mode)
 		mdss_dsi_set_tx_power_mode(read_mode, pdata);
@@ -358,6 +363,7 @@ static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata, u8 *pwr_mode,
 	if (read_mode != old_rd_mode)
 		mdss_dsi_set_tx_power_mode(old_rd_mode, pdata);
 
+end:
 	pr_debug("%s: panel power mode = 0x%x\n", __func__, *pwr_mode);
 
 	return 0;
@@ -719,6 +725,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
+	if (ctrl->panel_config.bare_board == true) {
+		pr_warn("%s: This is bare_board configuration\n", __func__);
+		goto end;
+	}
+
 	on_cmds = &ctrl->on_cmds;
 
 	if ((pinfo->mipi.dms_mode == DYNAMIC_MODE_SWITCH_IMMEDIATE) &&
@@ -760,6 +771,9 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			goto end;
 	}
+
+	if (ctrl->panel_config.bare_board == true)
+		goto end;
 
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
