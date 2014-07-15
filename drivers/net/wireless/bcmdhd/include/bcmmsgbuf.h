@@ -34,6 +34,9 @@
 
 #define MSGBUF_MAX_MSG_SIZE   ETHER_MAX_LEN
 
+#define D2H_EPOCH_MODULO			253 /* sequence number wrap */
+#define D2H_EPOCH_INIT_VAL			(D2H_EPOCH_MODULO + 1)
+
 #define H2DRING_TXPOST_ITEMSIZE		48
 #define H2DRING_RXPOST_ITEMSIZE		32
 #define H2DRING_CTRL_SUB_ITEMSIZE	40
@@ -114,8 +117,8 @@ typedef struct cmn_msg_hdr {
 	uint8 if_id;
 	/* flags */
 	uint8 flags;
-	/* alignment */
-	uint8 reserved;
+	/* sequence number */
+	uint8 epoch;
 	/* packet Identifier for the associated host buffer */
 	uint32 request_id;
 } cmn_msg_hdr_t;
@@ -282,6 +285,9 @@ typedef struct compl_msg_hdr {
 	uint16	flow_ring_id;
 } compl_msg_hdr_t;
 
+/* XOR checksum or a magic number to audit DMA done */
+typedef uint32 dma_done_t;
+
 /* completion header status codes */
 #define	BCMPCIE_SUCCESS			0
 #define BCMPCIE_NOTFOUND		1
@@ -308,18 +314,21 @@ typedef struct ioctl_compl_resp_msg {
 	uint16			trans_id;
 	/* cmd id */
 	uint32			cmd;
-	uint32			resvd;
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } ioctl_comp_resp_msg_t;
 
 /* IOCTL request acknowledgement */
 typedef struct ioctl_req_ack_msg {
 	/* common message header */
 	cmn_msg_hdr_t		cmn_hdr;
-	/* completeion message header */
+	/* completion message header */
 	compl_msg_hdr_t 	compl_hdr;
 	/* cmd id */
 	uint32			cmd;
-	uint32			rsvd[2];
+	uint32			rsvd[1];
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } ioctl_req_ack_msg_t;
 
 /* WL event message: send from device to host */
@@ -333,16 +342,20 @@ typedef struct wlevent_req_msg {
 	/* sequence number */
 	uint16			seqnum;
 	/* rsvd	*/
-	uint16			rsvd[4];
+	uint32			rsvd;
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } wlevent_req_msg_t;
 
 /* dma xfer complete message */
 typedef struct pcie_dmaxfer_cmplt {
 	/* common message header */
 	cmn_msg_hdr_t		cmn_hdr;
-	/* completeion message header */
+	/* completion message header */
 	compl_msg_hdr_t		compl_hdr;
-	uint32			rsvd[3];
+	uint32			rsvd[2];
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } pcie_dmaxfer_cmplt_t;
 
 /* general status message */
@@ -351,36 +364,57 @@ typedef struct pcie_gen_status {
 	cmn_msg_hdr_t		cmn_hdr;
 	/* completeion message header */
 	compl_msg_hdr_t		compl_hdr;
-	uint32			rsvd[3];
+	uint32			rsvd[2];
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } pcie_gen_status_t;
 
 /* ring status message */
 typedef struct pcie_ring_status {
 	/* common message header */
 	cmn_msg_hdr_t		cmn_hdr;
-	/* completeion message header */
+	/* completion message header */
 	compl_msg_hdr_t		compl_hdr;
 	/* message which firmware couldn't decode */
 	uint16			write_idx;
-	uint16			rsvd[5];
+	uint16			rsvd[3];
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } pcie_ring_status_t;
 
 typedef struct tx_flowring_create_response {
 	cmn_msg_hdr_t		msg;
 	compl_msg_hdr_t 	cmplt;
-	uint32			rsvd[3];
+	uint32			rsvd[2];
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } tx_flowring_create_response_t;
 typedef struct tx_flowring_delete_response {
 	cmn_msg_hdr_t		msg;
 	compl_msg_hdr_t 	cmplt;
-	uint32			rsvd[3];
+	uint32			rsvd[2];
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } tx_flowring_delete_response_t;
 
 typedef struct tx_flowring_flush_response {
 	cmn_msg_hdr_t		msg;
 	compl_msg_hdr_t 	cmplt;
-	uint32			rsvd[3];
+	uint32			rsvd[2];
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } tx_flowring_flush_response_t;
+
+/* Common layout of all d2h control messages */
+typedef struct ctrl_compl_msg {
+	/* common message header */
+	cmn_msg_hdr_t		cmn_hdr;
+	/* completion message header */
+	compl_msg_hdr_t		compl_hdr;
+	uint32			rsvd[2];
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
+} ctrl_compl_msg_t;
 
 typedef union ctrl_completion_item {
 	ioctl_comp_resp_msg_t		ioctl_resp;
@@ -392,6 +426,7 @@ typedef union ctrl_completion_item {
 	tx_flowring_create_response_t	txfl_create_resp;
 	tx_flowring_delete_response_t	txfl_delete_resp;
 	tx_flowring_flush_response_t	txfl_flush_resp;
+	ctrl_compl_msg_t		ctrl_compl;
 	unsigned char		check[D2HRING_CTRL_CMPLT_ITEMSIZE];
 } ctrl_completion_item_t;
 
@@ -434,7 +469,8 @@ typedef struct host_rxbuf_cmpl {
 	/* rx status */
 	uint32		rx_status_0;
 	uint32		rx_status_1;
-	uint32		rsvd;
+	/* XOR checksum or a magic number to audit DMA done */
+	dma_done_t		marker;
 } host_rxbuf_cmpl_t;
 
 typedef union rxbuf_complete_item {
@@ -490,12 +526,18 @@ typedef union txbuf_submit_item {
 typedef struct host_txbuf_cmpl {
 	/* common message header */
 	cmn_msg_hdr_t	cmn_hdr;
-	/* completeion message header */
+	/* completion message header */
 	compl_msg_hdr_t	compl_hdr;
-	/* provided meta data len */
-	uint16	metadata_len;
-	/* WLAN side txstatus */
-	uint16	tx_status;
+	union {
+		struct {
+			/* provided meta data len */
+			uint16	metadata_len;
+			/* WLAN side txstatus */
+			uint16	tx_status;
+		};
+		/* XOR checksum or a magic number to audit DMA done */
+		dma_done_t		marker;
+	};
 } host_txbuf_cmpl_t;
 
 typedef union txbuf_complete_item {

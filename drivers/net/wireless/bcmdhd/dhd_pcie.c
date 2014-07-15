@@ -73,13 +73,14 @@ int dhd_dongle_ramsize;
 #ifdef DHD_DEBUG
 static int dhdpcie_checkdied(dhd_bus_t *bus, char *data, uint size);
 static int dhdpcie_bus_readconsole(dhd_bus_t *bus);
-static int dhdpcie_mem_dump(dhd_bus_t *bus);
 #endif
 static int dhdpcie_bus_membytes(dhd_bus_t *bus, bool write, ulong address, uint8 *data, uint size);
 static int dhdpcie_bus_doiovar(dhd_bus_t *bus, const bcm_iovar_t *vi, uint32 actionid,
 	const char *name, void *params,
 	int plen, void *arg, int len, int val_size);
 static int dhdpcie_bus_lpback_req(struct  dhd_bus *bus, uint32 intval);
+static int dhdpcie_bus_dmaxfer_req(struct  dhd_bus *bus,
+	uint32 len, uint32 srcdelay, uint32 destdelay);
 static int dhdpcie_bus_download_state(dhd_bus_t *bus, bool enter);
 static int _dhdpcie_download_firmware(struct dhd_bus *bus);
 static int dhdpcie_download_firmware(dhd_bus_t *bus, osl_t *osh);
@@ -132,6 +133,7 @@ enum {
 	IOV_RAMSIZE,
 	IOV_RAMSTART,
 	IOV_SLEEP_ALLOWED,
+	IOV_PCIE_DMAXFER,
 	IOV_PCIE_SUSPEND,
 	IOV_PCIEREG,
 	IOV_PCIECFGREG,
@@ -145,7 +147,8 @@ enum {
 	IOV_TXP_THRESHOLD,
 	IOV_BUZZZ_DUMP,
 	IOV_DUMP_RINGUPD_BLOCK,
-	IOV_DMA_RINGINDICES
+	IOV_DMA_RINGINDICES,
+	IOV_FLOW_PRIO_MAP
 };
 
 
@@ -165,6 +168,7 @@ const bcm_iovar_t dhdpcie_iovars[] = {
 	{"pciecorereg",	IOV_PCIECOREREG,	0,	IOVT_BUFFER,	2 * sizeof(int32) },
 	{"bar0secwinreg",	IOV_BAR0_SECWIN_REG,	0,	IOVT_BUFFER,	2 * sizeof(int32) },
 	{"sbreg",	IOV_SBREG,	0,	IOVT_BUFFER,	sizeof(sdreg_t) },
+	{"pcie_dmaxfer",	IOV_PCIE_DMAXFER,	0,	IOVT_BUFFER,	3 * sizeof(int32) },
 	{"pcie_suspend", IOV_PCIE_SUSPEND,	0,	IOVT_UINT32,	0 },
 	{"sleep_allowed",	IOV_SLEEP_ALLOWED,	0,	IOVT_BOOL,	0 },
 	{"dngl_isolation", IOV_DONGLEISOLATION,	0,	IOVT_UINT32,	0 },
@@ -175,6 +179,7 @@ const bcm_iovar_t dhdpcie_iovars[] = {
 	{"tx_metadata_len", IOV_TX_METADATALEN,	0,	IOVT_UINT32,	0 },
 	{"txp_thresh", IOV_TXP_THRESHOLD,	0,	IOVT_UINT32,	0 },
 	{"buzzz_dump", IOV_BUZZZ_DUMP,		0,	IOVT_UINT32,	0 },
+	{"flow_prio_map", IOV_FLOW_PRIO_MAP,	0,	IOVT_UINT32,	0 },
 	{NULL, 0, 0, 0, 0 }
 };
 
@@ -259,6 +264,7 @@ dhd_bus_t* dhdpcie_bus_attach(osl_t *osh, volatile char* regs, volatile char* tc
 			break;
 		}
 		bus->dhd->busstate = DHD_BUS_DOWN;
+		bus->dhd->hang_report  = TRUE;
 
 		DHD_TRACE(("%s: EXIT SUCCESS\n",
 			__FUNCTION__));
@@ -726,8 +732,9 @@ void dhd_bus_stop(struct dhd_bus *bus, bool enforce_mutex)
 	dhdpcie_bus_intr_disable(bus);
 	status =  dhdpcie_bus_cfg_read_dword(bus, PCIIntstatus, 4);
 	dhdpcie_bus_cfg_write_dword(bus, PCIIntstatus, 4, status);
+	if (!dhd_download_fw_on_driverload)
+		dhd_dpc_kill(bus->dhd);
 
-	dhd_dpc_kill(bus->dhd);
 	/* Clear rx control and wake any waiters */
 	bus->rxlen = 0;
 	dhd_os_ioctl_resp_wake(bus->dhd);
@@ -1415,8 +1422,6 @@ dhdpcie_checkdied(dhd_bus_t *bus, char *data, uint size)
 						printf("CONSOLE: %s\n", line);
 				}
 			}
-			/* write core dump to file */
-			dhdpcie_mem_dump(bus);
 		}
 	}
 
@@ -1436,59 +1441,6 @@ done:
 
 	return bcmerror;
 }
-
-static int
-dhdpcie_mem_dump(dhd_bus_t *bus)
-{
-	int ret = 0;
-	int size; /* Full mem size */
-	int start = 0; /* Start address */
-	int read_size = 0; /* Read size of each iteration */
-	uint8 *buf = NULL, *databuf = NULL;
-
-	/* Get full mem size */
-	size = bus->ramsize;
-	buf = MALLOC(bus->dhd->osh, size);
-	if (!buf) {
-		DHD_ERROR(("%s: Out of memory (%d bytes)\n", __FUNCTION__, size));
-		return BCME_ERROR;
-	}
-
-	/* Read mem content */
-	DHD_TRACE(("Dump dongle memory"));
-	databuf = buf;
-	while (size)
-	{
-		read_size = MIN(MEMBLOCK, size);
-		if ((ret = dhdpcie_bus_membytes(bus, FALSE, start, databuf, read_size)))
-		{
-			DHD_ERROR(("%s: Error membytes %d\n", __FUNCTION__, ret));
-			if (buf) {
-				MFREE(bus->dhd->osh, buf, size);
-			}
-			return BCME_ERROR;
-		}
-		DHD_TRACE(("."));
-
-		/* Decrement size and increment start address */
-		size -= read_size;
-		start += read_size;
-		databuf += read_size;
-	}
-
-	DHD_TRACE(("%s FUNC: Copy fw image to the embedded buffer \n", __FUNCTION__));
-
-	/* free buf before return !!! */
-	if (write_to_file(bus->dhd, buf, bus->ramsize))
-	{
-		DHD_ERROR(("%s Error writing to file\n", __FUNCTION__));
-		return BCME_ERROR;
-	}
-
-	/* buf free handled in write_to_file, not here */
-	return ret;
-}
-
 #endif /* DHD_DEBUG */
 
 /**
@@ -1575,6 +1527,8 @@ dhd_bus_schedule_queue(struct dhd_bus  *bus, uint16 flow_id, bool txs)
 		DHD_QUEUE_LOCK(queue->lock, flags);
 
 		while ((txp = dhd_flow_queue_dequeue(bus->dhd, queue)) != NULL) {
+			PKTORPHAN(txp);
+
 #ifdef DHDTCPACK_SUPPRESS
 		dhd_tcpack_check_xmit(bus->dhd, txp);
 #endif /* DHDTCPACK_SUPPRESS */
@@ -2439,6 +2393,11 @@ dhdpcie_bus_doiovar(dhd_bus_t *bus, const bcm_iovar_t *vi, uint32 actionid, cons
 	case IOV_SVAL(IOV_PCIE_LPBK):
 		bcmerror = dhdpcie_bus_lpback_req(bus, int_val);
 		break;
+
+	case IOV_SVAL(IOV_PCIE_DMAXFER):
+		bcmerror = dhdpcie_bus_dmaxfer_req(bus, int_val, int_val2, int_val3);
+		break;
+
 	case IOV_GVAL(IOV_PCIE_SUSPEND):
 		int_val = (bus->dhd->busstate == DHD_BUS_SUSPEND) ? 1 : 0;
 		bcopy(&int_val, arg, val_size);
@@ -2662,6 +2621,16 @@ dhdpcie_bus_doiovar(dhd_bus_t *bus, const bcm_iovar_t *vi, uint32 actionid, cons
 		dhd_prot_metadatalen_set(bus->dhd, int_val, FALSE);
 		break;
 
+	case IOV_GVAL(IOV_FLOW_PRIO_MAP):
+		int_val = bus->dhd->flow_prio_map_type;
+		bcopy(&int_val, arg, val_size);
+		break;
+
+	case IOV_SVAL(IOV_FLOW_PRIO_MAP):
+		int_val = (int32)dhd_update_flow_prio_map(bus->dhd, (uint8)int_val);
+		bcopy(&int_val, arg, val_size);
+		break;
+
 	default:
 		bcmerror = BCME_UNSUPPORTED;
 		break;
@@ -2706,7 +2675,6 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 	int timeleft;
 	bool pending;
 	int rc = 0;
-	uint32 status = 0;
 	DHD_ERROR(("%s Enter with state :%d\n", __FUNCTION__, state));
 
 	if (bus->dhd == NULL) {
@@ -2731,14 +2699,11 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 		return BCME_OK;
 
 	if (state) {
-		if (dhd_os_check_wakelock(bus->dhd))
-			return BCME_ERROR;
-		DHD_ERROR(("dhdpcie_send_mb_data H2D_HOST_D3_INFORM\n"));
 		bus->wait_for_d3_ack = 0;
+		DHD_OS_WAKE_LOCK_WAIVE(bus->dhd);
 		dhdpcie_send_mb_data(bus, H2D_HOST_D3_INFORM);
-		dhd_os_wake_lock_waive(bus->dhd);
 		timeleft = dhd_os_ioctl_resp_wait(bus->dhd, &bus->wait_for_d3_ack, &pending);
-		dhd_os_wake_lock_restore(bus->dhd);
+		DHD_OS_WAKE_LOCK_RESTORE(bus->dhd);
 		if (bus->wait_for_d3_ack) {
 			/* Got D3 Ack. Suspend the bus */
 			DHD_ERROR(("dhdpcie_send_mb_data ack received\n"));
@@ -2754,15 +2719,35 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 	else {
 		/* Resume */
 		DHD_ERROR(("dhdpcie_bus_suspend resume\n"));
-		status =  dhdpcie_bus_cfg_read_dword(bus, PCIECFGREG_PM_CSR, 4);
-		status |= (1 << 15); /* clear PMEStat */
-		status |= (1 << 8); /* PME en */
-		dhdpcie_bus_cfg_write_dword(bus, PCIECFGREG_PM_CSR, 4, status);
 		rc = dhdpcie_pci_suspend_resume(bus->dev, state);
 		bus->suspended = FALSE;
 		bus->dhd->busstate = DHD_BUS_DATA;
 	}
 	return rc;
+}
+
+/* Transfers bytes from host to dongle and to host again using DMA */
+static int
+dhdpcie_bus_dmaxfer_req(struct  dhd_bus *bus, uint32 len, uint32 srcdelay, uint32 destdelay)
+{
+	if (bus->dhd == NULL) {
+		DHD_ERROR(("bus not inited\n"));
+		return BCME_ERROR;
+	}
+	if (bus->dhd->prot == NULL) {
+		DHD_ERROR(("prot is not inited\n"));
+		return BCME_ERROR;
+	}
+	if (bus->dhd->busstate != DHD_BUS_DATA) {
+		DHD_ERROR(("not in a readystate to LPBK  is not inited\n"));
+		return BCME_ERROR;
+	}
+
+	if (len < 5 || len > 4194296) {
+		DHD_ERROR(("len is too small or too large\n"));
+		return BCME_ERROR;
+	}
+	return dhdmsgbuf_dmaxfer_req(bus->dhd, len, srcdelay, destdelay);
 }
 
 
@@ -3309,13 +3294,11 @@ dhdpcie_readshared(dhd_bus_t *bus)
 
 	while (((addr == 0) || (addr == bus->nvram_csm)) && !dhd_timeout_expired(&tmo)) {
 		/* Read last word in memory to determine address of sdpcm_shared structure */
-		if ((rv = dhdpcie_bus_membytes(bus, FALSE, shaddr, (uint8 *)&addr, 4)) < 0)
-			return rv;
-
-		addr = ltoh32(addr);
+		addr = LTOH32(dhdpcie_bus_rtcm32(bus, shaddr));
 	}
 
-	if ((addr == 0) || (addr == bus->nvram_csm)) {
+	if ((addr == 0) || (addr == bus->nvram_csm) || (addr < bus->dongle_ram_base) ||
+		(addr > shaddr)) {
 		DHD_ERROR(("%s: address (0x%08x) of pciedev_shared invalid\n",
 			__FUNCTION__, addr));
 		DHD_ERROR(("Waited %u usec, dongle is not ready\n", tmo.elapsed));

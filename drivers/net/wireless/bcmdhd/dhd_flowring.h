@@ -52,6 +52,10 @@
 
 #define DHD_FLOWRING_RX_BUFPOST_PKTSZ	2048
 
+#define DHD_FLOW_PRIO_AC_MAP		0
+#define DHD_FLOW_PRIO_TID_MAP		1
+
+
 /* Pkttag not compatible with PROP_TXSTATUS or WLFC */
 typedef struct dhd_pkttag_fr {
 	uint16  flowid;
@@ -73,6 +77,8 @@ typedef struct dhd_pkttag_fr {
 #define DHD_IF_ROLE(pub, idx)		(((if_flow_lkup_t *)(pub)->if_flow_lkup)[idx].role)
 #define DHD_IF_ROLE_AP(pub, idx)	(DHD_IF_ROLE(pub, idx) == WLC_E_IF_ROLE_AP)
 #define DHD_IF_ROLE_P2PGO(pub, idx)	(DHD_IF_ROLE(pub, idx) == WLC_E_IF_ROLE_P2P_GO)
+#define DHD_FLOW_RING(dhdp, flowid) \
+	(flow_ring_node_t *)&(((flow_ring_node_t *)((dhdp)->flow_ring_table))[flowid])
 
 struct flow_queue;
 
@@ -162,6 +168,8 @@ extern void dhd_update_interface_flow_info(dhd_pub_t *dhdp, uint8 ifindex,
 /* Handle a STA interface link status update */
 extern int dhd_update_interface_link_status(dhd_pub_t *dhdp, uint8 ifindex,
                 uint8 status);
+extern int dhd_flow_prio_map(dhd_pub_t *dhd, uint8 *map, bool set);
+extern int dhd_update_flow_prio_map(dhd_pub_t *dhdp, uint8 map);
 
-
+extern uint8 dhd_flow_rings_ifindex2role(dhd_pub_t *dhdp, uint8 ifindex);
 #endif /* _dhd_flowrings_h_ */

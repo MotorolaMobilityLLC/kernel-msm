@@ -148,6 +148,19 @@ static struct pci_driver dhdpcie_driver = {
 
 int dhdpcie_init_succeeded = FALSE;
 
+static void dhdpcie_pme_active(struct pci_dev *pdev, bool enable)
+{
+	uint16 pmcsr;
+
+	pci_read_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, &pmcsr);
+	/* Clear PME Status by writing 1 to it and enable PME# */
+	pmcsr |= PCI_PM_CTRL_PME_STATUS | PCI_PM_CTRL_PME_ENABLE;
+	if (!enable)
+		pmcsr &= ~PCI_PM_CTRL_PME_ENABLE;
+
+	pci_write_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, pmcsr);
+}
+
 static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
 {
 	int ret = 0;
@@ -165,9 +178,9 @@ static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
 		return ret;
 	}
 
-	if (bus && bus->dhd &&
-		((bus->dhd->busstate == DHD_BUS_DATA) || (bus->dhd->busstate == DHD_BUS_SUSPEND)) &&
-		(bus->suspended != state)) {
+	if (bus && ((bus->dhd->busstate == DHD_BUS_SUSPEND)||
+		(bus->dhd->busstate == DHD_BUS_DATA))) {
+
 		ret = dhdpcie_bus_suspend(bus, state);
 	}
 	DHD_ERROR(("%s Exit with state :%d\n", __FUNCTION__, ret));
@@ -190,6 +203,7 @@ static int dhdpcie_pci_resume(struct pci_dev *pdev)
 static int dhdpcie_suspend_dev(struct pci_dev *dev)
 {
 	int ret;
+	dhdpcie_pme_active(dev, TRUE);
 	pci_save_state(dev);
 	pci_enable_wake(dev, PCI_D0, TRUE);
 	pci_disable_device(dev);
@@ -218,6 +232,7 @@ static int dhdpcie_resume_dev(struct pci_dev *dev)
 		printf("%s:pci_set_power_state error %d \n", __FUNCTION__, err);
 		return err;
 	}
+	dhdpcie_pme_active(dev, FALSE);
 	return err;
 }
 
@@ -231,6 +246,27 @@ int dhdpcie_pci_suspend_resume(struct pci_dev *dev, bool state)
 		rc = dhdpcie_resume_dev(dev);
 	return rc;
 }
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
+static int dhdpcie_device_scan(struct device *dev, void *data)
+{
+	struct pci_dev *pcidev;
+	int *cnt = data;
+
+	pcidev = container_of(dev, struct pci_dev, dev);
+	if (pcidev->vendor != 0x14e4)
+		return 0;
+
+	DHD_INFO(("Found Broadcom PCI device 0x%04x\n", pcidev->device));
+	*cnt += 1;
+	if (pcidev->driver && strcmp(pcidev->driver->name, dhdpcie_driver.name))
+		DHD_ERROR(("Broadcom PCI Device 0x%04x has allocated with driver %s\n",
+			pcidev->device, pcidev->driver->name));
+
+	return 0;
+}
+#endif /* LINUX_VERSION >= 2.6.0 */
+
 int
 dhdpcie_bus_register(void)
 {
@@ -240,18 +276,23 @@ dhdpcie_bus_register(void)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 	if (!(error = pci_module_init(&dhdpcie_driver)))
 		return 0;
-#else
-	if (!(error = pci_register_driver(&dhdpcie_driver))) {
-		if (!dhdpcie_init_succeeded) {
-			DHD_ERROR(("%s: dhdpcie initialize failed.\n", __FUNCTION__));
-			pci_unregister_driver(&dhdpcie_driver);
-			error = BCME_ERROR;
-		} else
-			return 0;
-	}
-#endif
 
 	DHD_ERROR(("%s: pci_module_init failed 0x%x\n", __FUNCTION__, error));
+#else
+	if (!(error = pci_register_driver(&dhdpcie_driver))) {
+		bus_for_each_dev(dhdpcie_driver.driver.bus, NULL, &error, dhdpcie_device_scan);
+		if (!error) {
+			DHD_ERROR(("No Broadcom PCI device enumerated!\n"));
+		} else if (!dhdpcie_init_succeeded) {
+			DHD_ERROR(("%s: dhdpcie initialize failed.\n", __FUNCTION__));
+		} else {
+			return 0;
+		}
+
+		pci_unregister_driver(&dhdpcie_driver);
+		error = BCME_ERROR;
+	}
+#endif /* LINUX_VERSION < 2.6.0 */
 
 	return error;
 }
@@ -289,6 +330,10 @@ dhdpcie_detach(dhdpcie_info_t *pch)
 {
 	osl_t *osh = pch->osh;
 	if (pch) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
+		if (!dhd_download_fw_on_driverload)
+			pci_load_and_free_saved_state(pch->dev, &pch->state);
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
 		MFREE(osh, pch, sizeof(dhdpcie_info_t));
 	}
 	return 0;
@@ -399,17 +444,26 @@ int dhdpcie_get_resource(dhdpcie_info_t *dhdpcie_info)
 			DHD_ERROR(("%s:ioremap() failed\n", __FUNCTION__));
 			break;
 		}
-		/* Backup PCIe configuration so as to use Wi-Fi on/off process in case of built in driver */
-		pci_save_state(pdev);
-		dhdpcie_info->state = pci_store_saved_state(pdev);
 
-		if(dhdpcie_info->state == NULL) {
-			DHD_ERROR(("%s pci_store_saved_state returns NULL\n", __FUNCTION__));
-			REG_UNMAP(dhdpcie_info->regs);
-			REG_UNMAP(dhdpcie_info->tcm);
-			pci_disable_device(pdev);
-			break;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
+		if (!dhd_download_fw_on_driverload) {
+			/* Backup PCIe configuration so as to use Wi-Fi on/off process
+			 * in case of built in driver
+			 */
+			pci_save_state(pdev);
+			dhdpcie_info->state = pci_store_saved_state(pdev);
+
+			if (dhdpcie_info->state == NULL) {
+				DHD_ERROR(("%s pci_store_saved_state returns NULL\n",
+					__FUNCTION__));
+				REG_UNMAP(dhdpcie_info->regs);
+				REG_UNMAP(dhdpcie_info->tcm);
+				pci_disable_device(pdev);
+				break;
+			}
 		}
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
+
 		DHD_TRACE(("%s:Phys addr : reg space = %p base addr 0x"PRINTF_RESOURCE" \n",
 			__FUNCTION__, dhdpcie_info->regs, bar0_addr));
 		DHD_TRACE(("%s:Phys addr : tcm_space = %p base addr 0x"PRINTF_RESOURCE" \n",
@@ -645,14 +699,12 @@ done:
 int
 dhdpcie_disable_device(dhd_bus_t *bus)
 {
-	if(bus == NULL) {
-		DHD_ERROR(("%s bus is null!!!\n", __FUNCTION__));
+	if (bus == NULL)
 		return BCME_ERROR;
-	}
-	if(bus->dev == NULL) {
-		DHD_ERROR(("%s dev is null!!!\n", __FUNCTION__));
+
+	if (bus->dev == NULL)
 		return BCME_ERROR;
-	}
+
 	pci_disable_device(bus->dev);
 
 	return 0;
@@ -676,14 +728,18 @@ dhdpcie_enable_device(dhd_bus_t *bus)
 	if(pch == NULL)
 		return BCME_ERROR;
 
-	if(pci_load_saved_state(bus->dev, pch->state))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
+	if (pci_load_saved_state(bus->dev, pch->state))
 		pci_disable_device(bus->dev);
 	else {
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
 		pci_restore_state(bus->dev);
 		ret = pci_enable_device(bus->dev);
 		if(!ret)
 			pci_set_master(bus->dev);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
 	}
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
 
 	if(ret)
 		pci_disable_device(bus->dev);
