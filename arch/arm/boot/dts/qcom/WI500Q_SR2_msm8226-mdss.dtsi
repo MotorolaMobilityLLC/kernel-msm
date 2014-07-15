@@ -115,11 +115,14 @@
 		reg-names = "dsi_ctrl", "dsi_phy", "mmss_misc_phys";
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
-// ASUS_BSP +++ Tingyi "[ROBIN][MDSS] Enable 320x320 panel"
+		
+// ASUS_BSP +++ Jason2 "[ROBIN][MDSS] Control LDO7 for Panel internal usage"
 		vdd-supply = <&pm8226_l19>; 
 		vddio-supply = <&pm8226_l8>;
-// ASUS_BSP --- Tingyi "[ROBIN][MDSS] Enable 320x320 panel"		
 		vdda-supply = <&pm8226_l4>;
+		panel-supply = <&pm8226_l7>;
+// ASUS_BSP --- Jason2 "[ROBIN][MDSS] Control LDO7 for Panel internal usage"		
+		
 		qcom,platform-reset-gpio = <&msmgpio 25 0>;
 		qcom,platform-te-gpio = <&msmgpio 24 0>;
 		qcom,platform-strength-ctrl = [ff 06];
@@ -130,6 +133,7 @@
 			00 00 00 00 0a 00 00 01 97
 			00 00 00 00 0f 00 00 01 97
 			00 c0 00 00 00 00 00 01 bb];
+			
 		qcom,platform-supply-entry1 {
 			qcom,supply-name = "vdd"; // VREG_L19_2P85V
 			qcom,supply-min-voltage = <2850000>;
@@ -163,6 +167,19 @@
 			qcom,supply-pre-off-sleep = <0>;
 			qcom,supply-post-off-sleep = <0>;
 		};
+// ASUS_BSP +++ Jason2 "[ROBIN][MDSS] Control LDO7 for Panel internal usage"
+		qcom,platform-supply-entry4 {
+			qcom,supply-name = "panel"; // For panel internal usage.
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};		
+// ASUS_BSP --- Jason2 "[ROBIN][MDSS] Control LDO7 for Panel internal usage"		
 	};
 
 /*
