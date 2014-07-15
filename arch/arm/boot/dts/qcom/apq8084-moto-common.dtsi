@@ -819,7 +819,7 @@
 		qcom,dc-psy-type = "Wireless";
 		qcom,dc-psy-ma = <600>;
 		qcom,bms-psy-name = "max170xx_battery";
-		qcom,max-batt-curr-ma = <2500>;
+		qcom,max-batt-curr-ma = <2600>;
 		qcom,ext-temp-volt-mv = <4000>;
 		qcom,ext-temp-soc = <65>;
 	};
