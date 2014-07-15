@@ -24,3 +24,9 @@
 		ti,tpa6165-jack-detect-config = <0xC0>;
 	};
 };
+
+&max17050 {
+	maxim,configuration {
+		coff		= /bits/ 16 <0xFFE3>; /* -9.28 * 3.125 */
+	};
+};

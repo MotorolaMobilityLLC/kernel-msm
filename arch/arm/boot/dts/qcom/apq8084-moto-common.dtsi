@@ -873,7 +873,6 @@
 			tgain		= /bits/ 16 <0xE71C>;	/* thermistor attribute */
 			toff		= /bits/ 16 <0x251A>;	/* thermistor attribute */
 			cgain		= /bits/ 16 <0x4000>;	/* current sense attribute */
-			coff		= /bits/ 16 <0xFFE3>;	/* current sense attribute */
 			misc_cfg	= /bits/ 16 <0x0170>;
 			rev		= /bits/ 16 <0x0002>;
 		};

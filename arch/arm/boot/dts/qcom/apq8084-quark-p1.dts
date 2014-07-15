@@ -178,3 +178,9 @@
 		qcom,thermal-node;
 	};
 };
+
+&max17050 {
+	maxim,configuration {
+		coff		= /bits/ 16 <0xFFE3>; /* -9.28 * 3.125 */
+	};
+};
