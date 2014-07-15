@@ -30,3 +30,7 @@
 		coff		= /bits/ 16 <0xFFE3>; /* -9.28 * 3.125 */
 	};
 };
+
+&smb1357_otg_vreg {
+	qcom,max-batt-curr-ma = <2300>;
+};
