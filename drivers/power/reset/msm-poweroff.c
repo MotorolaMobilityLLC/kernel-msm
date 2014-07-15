@@ -194,6 +194,16 @@ static void msm_restart_prepare(const char *cmd)
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
 
+	//+++ ASUS_BSP: try to support GOOGLE ASIT for bootreason
+	if(!download_mode)
+	{
+		if(in_panic || restart_mode == RESTART_DLOAD)
+		{
+			cmd = "oem-90";
+		}
+	}
+	//--- ASUS_BSP: try to support GOOGLE ASIT for bootreason
+
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
@@ -209,8 +219,11 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665503, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
-			code = kstrtoul(cmd + 4, 16, NULL) & 0xff;
-			__raw_writel(0x6f656d00 | code, restart_reason);
+			unsigned long result;
+			printk("[msm_restart_prepare]: cmd: %s\n",cmd);
+			code = kstrtoul(cmd + 4, 16, &result) & 0xff;
+			printk("[msm_restart_prepare]: code: %lu, result: %lu\n",code,result);
+			__raw_writel(0x6f656d00 | result, restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
 		} else {
