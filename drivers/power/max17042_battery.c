@@ -1104,6 +1104,10 @@ max17042_get_pdata(struct device *dev)
 		pdata->enable_por_init = true;
 	}
 
+	/* Read Valrt threshold override */
+	if (of_property_read_u32(np, "maxim,valrt-threshold", &prop) == 0)
+		pdata->config_data->valrt_thresh = (u16)prop;
+
 	return pdata;
 }
 #else
@@ -1277,6 +1281,10 @@ static int max17042_probe(struct i2c_client *client,
 			}
 		}
 	}
+
+	/* Override Voltage Alert Threshold */
+	max17042_override_por(chip->client, MAX17042_VALRT_Th,
+				chip->pdata->config_data->valrt_thresh);
 
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,
