@@ -1198,7 +1198,7 @@ static void BatteryServiceDoBalance(struct AXC_BatteryService *_this)
 					IsSystemdraw = false;
 					printk("[BAT][Bal]mode:%d,N_Vbus N_Chg,Vbus:%d,SysD:%d\n"
 									,IsBalanceMode,get_microp_vbus(),IsSystemdraw);
-					//ASUSEvtlog("[BAT][Bal]draw system[stop]\n");
+					ASUSEvtlog("[BAT][Bal]draw system[stop]\n");
 	          
 			}else if((_this->A66_capacity*10 - _this->Pad_capacity*StartRatio <= 0)
 					&&(_this->A66_capacity <= 70 ))
@@ -1212,7 +1212,7 @@ static void BatteryServiceDoBalance(struct AXC_BatteryService *_this)
 					IsSystemdraw = true;
 					printk("[BAT][Bal]mode:%d,Y_Vbus N_Chg,Vbus:%d,SysD:%d\n"
 									,IsBalanceMode,get_microp_vbus(),IsSystemdraw);
-					//ASUSEvtlog("[BAT][Bal]draw system[Start]\n");
+					ASUSEvtlog("[BAT][Bal]draw system[Start]\n");
 			}
 			//judge if draw current to system, but does not charge battery ---
 		}
@@ -1230,7 +1230,7 @@ static void BatteryServiceDoBalance(struct AXC_BatteryService *_this)
 				
 				printk("[BAT][Bal]mode:%d,F_Vbus N_Chg,Vbus:%d\n"
 								,IsBalanceMode,get_microp_vbus());
-				//ASUSEvtlog("[BAT][Bal]active charge[stop]\n");
+				ASUSEvtlog("[BAT][Bal]active charge[stop]\n");
 				
 		}else if(_this->A66_capacity<=15)
 		{
@@ -1244,7 +1244,7 @@ static void BatteryServiceDoBalance(struct AXC_BatteryService *_this)
 				
 				printk("[BAT][Bal]mode:%d,Y_Vbus Y_Chg,Vbus:%d\n"
 								,IsBalanceMode,get_microp_vbus());
-				//ASUSEvtlog("[BAT][Bal]active charge[Start]\n");
+				ASUSEvtlog("[BAT][Bal]active charge[Start]\n");
 		}
 		//judge if charge to battery ---
 		//Eason: dynamic set Pad alarm +++
@@ -2290,7 +2290,7 @@ static time_t BatteryService_getIntervalSinceLastUpdate(AXC_BatteryService  *_th
 		if( (true==_this->BatteryService_IsBatLow) && ((mtNow.tv_sec - batLowTriggerTime )>BATLOW_KEEPTIME_SHUTDOWN) )
 		{
 				g_batLowLongTimeShut = true;
-				//ASUSEvtlog("[BAT][Fil][BatLow]Long tme\n");
+				ASUSEvtlog("[BAT][Fil][BatLow]Long tme\n");
 		}
 		//Eason: if BatLow keep 15 min, shutdown devices, prevent gauge not low Cap---
 
@@ -2914,7 +2914,7 @@ static void AXC_BatteryService_onBatteryLowAlarm(struct AXI_BatteryServiceFacade
 		schedule_delayed_work(&balance_this->SetBatLowRTCWorker, 0*HZ);
 		//Eason: if BatLow keep 15 min, shutdown devices+++
 		batLowTriggerTime = updateNowTime(balance_this);
-		//ASUSEvtlog("[BAT][Fil][BatLow]TriggerTime\n");
+		ASUSEvtlog("[BAT][Fil][BatLow]TriggerTime\n");
 		//Eason: if BatLow keep 15 min, shutdown devices---
 	}
 	else if(true==_this->BatteryService_IsBatLow && false==isCurrentBattlow){
@@ -2923,7 +2923,7 @@ static void AXC_BatteryService_onBatteryLowAlarm(struct AXI_BatteryServiceFacade
 		spin_unlock_irqrestore(&batLow_alarm_slock, batLowFlags);
 		//Eason: if BatLow keep 15 min, shutdown devices+++
 		g_batLowLongTimeShut = false;
-		//ASUSEvtlog("[BAT][Fil][BatLow]Release\n");
+		ASUSEvtlog("[BAT][Fil][BatLow]Release\n");
 		//Eason: if BatLow keep 15 min, shutdown devices---
 	}
 	_this->BatteryService_IsBatLow = isCurrentBattlow ;
@@ -3053,7 +3053,7 @@ static void AXC_BatteryService_resume(struct AXI_BatteryServiceFacade *bat,int d
 	if(1==AX_MicroP_IsP01Connected())
 	{
 		#ifndef ASUS_FACTORY_BUILD		
-		//ASUSEvtlog("[BAT][Bal]resume:%d\n",IsBalanceSuspendStartcharge);
+		ASUSEvtlog("[BAT][Bal]resume:%d\n",IsBalanceSuspendStartcharge);
 		if( 1==getIfonline() )
 			setChgLimitInPadWhenChgReset();
 		#endif//ASUS_FACTORY_BUILD
@@ -3760,7 +3760,7 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 	pm8226_0x105D_value = pm8226_qpnp_chg_read_register(0x105D);
 	//ASUS_BSP Eason read PM8226 register value---		
 	pmicTemp = pm8226_get_prop_batt_temp();
-#if 0
+
 	ASUSEvtlog("[BAT][Ser]report Capacity:%d,%d,%d,%d,%d,%d,%d,%d,%ld==>%d  ,BMS:%d, Cur:%d, Temp:%d, 0x105B:0x%x, 0x1040:0x%x, 0x1054:0x%x, 0x1049:0x%x, 0x1344:0x%x, 0x1010:0x%x, 0x1210:0x%x, 0x1044:0x%x, 0x105D:0x%x\n",
                                     refcapacity,
                                     lastCapacity,
@@ -3784,7 +3784,7 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
                                       pm8226_0x1210_value,
                                       pm8226_0x1044_value,
                                       pm8226_0x105D_value);
-#endif
+
 	//ASUS_BSP --- Eason_Chang add event log ---   
 
 	//Eason: remember last BMS Cap to filter+++
@@ -3963,7 +3963,7 @@ static int BatteryServiceGauge_OnCapacityReply(struct AXI_Gauge *gauge, struct A
 			if(true==gIsBMSerror){
 				  	AXC_BatteryService_reportPropertyCapacity(_this,batCap);
 					printk("[BAT][BMS]:Error BMS need to use SWgauge capacity\n");
-					//ASUSEvtlog("[BAT]:SWgauge\n");
+					ASUSEvtlog("[BAT]:SWgauge\n");
 			}else
 			//ASUS BSP: Eason check correct BMS RUC---
 			if((true==g_BootUp_IsBatLow)||(true==_this->BatteryService_IsBatLow))
@@ -3971,16 +3971,16 @@ static int BatteryServiceGauge_OnCapacityReply(struct AXI_Gauge *gauge, struct A
 			      if(batCap<BMSCap){
 				  	AXC_BatteryService_reportPropertyCapacity(_this,batCap);
 					printk("[BAT][BMS][low]:use lower SWgauge capacity\n");
-					//ASUSEvtlog("[BAT]:SWgauge low\n");
+					ASUSEvtlog("[BAT]:SWgauge low\n");
 			      	}else{
 			      		AXC_BatteryService_reportPropertyCapacity(_this,BMSCap);
-					//ASUSEvtlog("[BAT]:BMS low\n");
+					ASUSEvtlog("[BAT]:BMS low\n");
 		      		}
 			}
 			else
 			{
 		   		AXC_BatteryService_reportPropertyCapacity(_this,BMSCap);
-				//ASUSEvtlog("[BAT]:BMS\n");
+				ASUSEvtlog("[BAT]:BMS\n");
 			}
 #else
 			AXC_BatteryService_reportPropertyCapacity(_this,gBMS_Cap);
@@ -4130,7 +4130,7 @@ static void P02_reportPropertyCapacity(struct AXC_BatteryService *_this, int P02
                                       P02_intervalSinceLastUpdate,
                                       Pad_capacity);
     //ASUS_BSP Eason_Chang add event log +++
-#if 0
+
 	ASUSEvtlog("[BAT][Ser][P02]report Capacity:%d,%d,%d,%d,%d,%d,%d,%ld==>%d\n",
                                     P02_refcapacity,
                                     lastCapacity,
@@ -4141,7 +4141,7 @@ static void P02_reportPropertyCapacity(struct AXC_BatteryService *_this, int P02
                                       P02_maxMah,
                                       P02_intervalSinceLastUpdate,
                                       Pad_capacity);
-#endif
+
     //ASUS_BSP Eason_Chang add event log ---
 
 //ASUS_BSP +++ Eason_Chang  : set Pad_cap for cmd test

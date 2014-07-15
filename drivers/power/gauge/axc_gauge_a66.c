@@ -271,7 +271,7 @@ static int cal_ocv_percent_when_discharging(
 		 percent, ocv, resistor);
     
     //ASUS_BSP Eason_Chang add event log +++
-    //ASUSEvtlog( "[BAT][Gau]ocv per=%d, ocv=%d, r=%d\n", percent, ocv, resistor);
+    ASUSEvtlog( "[BAT][Gau]ocv per=%d, ocv=%d, r=%d\n", percent, ocv, resistor);
     //ASUS_BSP Eason_Chang add event log ---
 
 	return percent;
@@ -525,7 +525,7 @@ static void cal_bat_capacity_work(struct work_struct *work)
 
 		pr_debug("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
 		//ASUS_BSP Eason_Chang add event log +++
-		//ASUSEvtlog("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
+		ASUSEvtlog("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
 		//ASUS_BSP Eason_Chang add event log ---
 	}
 #ifdef CONFIG_PM_8226_CHARGER        
@@ -953,8 +953,8 @@ static void AXC_Gauge_A66_ReadVoltCurrWithoutCali(
 		printk("[BAT][Gau][A66]:Vmax:%d,Vmin:%d,avgV:%d,Cmax:%d,Cmin:%d,avgC:%d\n",volArray[volMax],volArray[volMin],*volt,
             currArray[currMax],currArray[currMin],*curr);
         //ASUS_BSP Eason_Chang add event log +++
-        //ASUSEvtlog("[BAT][Gau][A66]:Vmax:%d,Vmin:%d,avgV:%d,Cmax:%d,Cmin:%d,avgC:%d\n",volArray[volMax],volArray[volMin],*volt,
-        //    currArray[currMax],currArray[currMin],*curr);
+        ASUSEvtlog("[BAT][Gau][A66]:Vmax:%d,Vmin:%d,avgV:%d,Cmax:%d,Cmin:%d,avgC:%d\n",volArray[volMax],volArray[volMin],*volt,
+            currArray[currMax],currArray[currMin],*curr);
         //ASUS_BSP Eason_Chang add event log ---
 	}
     //Eason takeoff ADC read max & min---
