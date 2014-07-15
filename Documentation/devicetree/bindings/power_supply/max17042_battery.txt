@@ -22,6 +22,10 @@ Optional properties :
  - maxim,batt_undervoltage_zero_soc : Define this property to report "0" SOC
    if and only if battery undervoltage interrupt has fired.
 
+ - maxim,valrt-threshold : Define this property to override the default min and
+   max voltage alert thresholds. This will program the Valrt threshold register
+   with the given value.
+
 Optional subnodes:
  - maxim,configuration : Contains configuraiton data for POR initialization
    of the device defined in Maxim appnote. This data is either specific to how
