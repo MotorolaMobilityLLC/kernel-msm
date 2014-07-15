@@ -38,6 +38,10 @@
 	gpios = <&pma8084_mpps 2 0x11>;  /* GPIOF_DIR_IN|GPIOF_EXPORT */
 };
 
+&smb1357_otg_vreg {
+	qcom,max-batt-curr-ma = <2300>;
+};
+
 &soc {
 	factory_support {
 		gpios = <&pma8084_gpios 17 0x0>, /* GPIOF_OUT_INIT_LOW */

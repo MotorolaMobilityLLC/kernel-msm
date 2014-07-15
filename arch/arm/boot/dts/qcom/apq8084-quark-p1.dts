@@ -50,6 +50,10 @@
 	};
 };
 
+&smb1357_otg_vreg {
+	qcom,max-batt-curr-ma = <2300>;
+};
+
 &pma8084_gpios {
 	gpio@d000 { /* GPIO 17 */
 		qcom,mode = <1>;		/* Digital output */
