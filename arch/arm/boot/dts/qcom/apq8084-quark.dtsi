@@ -201,3 +201,9 @@
 		status = "disabled";
 	};
 };
+
+&max17050 {
+	maxim,configuration {
+		coff		= /bits/ 16 <0xFFF9>; /* -2.18 * 3.125 */
+	};
+};
