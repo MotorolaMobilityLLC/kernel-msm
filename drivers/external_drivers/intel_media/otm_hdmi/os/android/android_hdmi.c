@@ -323,6 +323,10 @@ exit:
 			edid_ready_in_hpd = 0;
 			uevent_string = "HOTPLUG_OUT=1";
 			psb_sysfs_uevent(hdmi_priv->dev, uevent_string);
+
+			switch_set_state(&hdmi_priv->sdev, 0);
+			pr_info("%s: hdmi state switched to %d\n", __func__,
+			hdmi_priv->sdev.state);
 		}
 
 		drm_helper_hpd_irq_event(hdmi_priv->dev);
@@ -444,6 +448,13 @@ void android_hdmi_driver_setup(struct drm_device *dev)
 	hdmi_priv->is_hdcp_supported = true;
 
 	dev_priv->hdmi_priv = (void *)hdmi_priv;
+
+	/* Register hdmi switch_dev */
+	hdmi_priv->sdev.name = "hdmi";
+	if (switch_dev_register(&hdmi_priv->sdev) < 0) {
+		pr_err("%s: Hdmi switch registration failed\n", __func__);
+		goto free;
+	}
 
 	/* Register callback to be used with Hotplug interrupts */
 	ret = otm_hdmi_hpd_callback_register(hdmi_priv->context,
@@ -2542,8 +2553,12 @@ void android_hdmi_encoder_dpms(struct drm_encoder *encoder, int mode)
 		otm_hdmi_vblank_control(dev, true);
 		REG_WRITE(hdmi_priv->hdmib_reg, hdmib | HDMIB_PORT_EN);
 
-		if (is_monitor_hdmi && (hdmip_enabled == 0))
+		if (is_monitor_hdmi && (hdmip_enabled == 0)) {
 			mid_hdmi_audio_signal_event(dev, HAD_EVENT_HOT_PLUG);
+			switch_set_state(&hdmi_priv->sdev, 1);
+			pr_info("%s: hdmi state switched to %d\n", __func__,
+			hdmi_priv->sdev.state);
+		}
 
 		if (hdmi_priv->current_mode)
 			__android_hdmi_drm_mode_to_otm_timing(&otm_mode,
