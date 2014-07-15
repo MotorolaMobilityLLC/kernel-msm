@@ -468,9 +468,9 @@ static void lis3dsh_acc_set_init_statepr2_inst(struct lis3dsh_acc_data *acc)
 	/* Place here state machine 2 program */
 	/* Knock Knock Function */
 	acc->resume_stmach_program2[0] = 0x08;
-	acc->resume_stmach_program2[1] = 0x61;
+	acc->resume_stmach_program2[1] = 0x03;
 	acc->resume_stmach_program2[2] = 0x61;
-	acc->resume_stmach_program2[3] = 0x15;
+	acc->resume_stmach_program2[3] = 0x05;
 	acc->resume_stmach_program2[4] = 0x47;
 	acc->resume_stmach_program2[5] = 0x03;
 	acc->resume_stmach_program2[6] = 0x52;
@@ -566,7 +566,7 @@ static void lis3dsh_acc_set_init_statepr2_param(struct lis3dsh_acc_data *acc)
 	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x86;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_H] = 0x00;
 	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x02;
-	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x05;
+	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x03;
 	acc->resume_state[RES_LIS3DSH_DES_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_SA_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_MA_2] = 0x03;
