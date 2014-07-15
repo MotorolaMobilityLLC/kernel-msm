@@ -253,6 +253,9 @@ static void _kgsl_destroy_pagetable(struct kgsl_pagetable *pagetable)
 
 	pagetable->pt_ops->mmu_destroy_pagetable(pagetable);
 
+	if (pagetable->mem_bitmap)
+		vfree(pagetable->mem_bitmap);
+
 	kfree(pagetable);
 }
 
@@ -565,6 +568,7 @@ kgsl_mmu_createpagetableobject(struct kgsl_mmu *mmu,
 	int status = 0;
 	struct kgsl_pagetable *pagetable = NULL;
 	unsigned long flags;
+	int nbits;
 
 	pagetable = kzalloc(sizeof(struct kgsl_pagetable), GFP_KERNEL);
 	if (pagetable == NULL)
@@ -582,25 +586,32 @@ kgsl_mmu_createpagetableobject(struct kgsl_mmu *mmu,
 	if (pagetable->pool == NULL) {
 		KGSL_CORE_ERR("gen_pool_create(%d) failed\n",
 			      PAGE_SHIFT);
-		goto err_alloc;
+		goto err;
 	}
 
 	if (gen_pool_add(pagetable->pool, mmu->pt_base,
 				mmu->pt_size, -1)) {
 		KGSL_CORE_ERR("gen_pool_add failed\n");
-		goto err_pool;
+		goto err;
 	}
+
+	/* allocate bitmap for virtual memory management */
+	nbits = TASK_SIZE >> PAGE_SHIFT;
+	pagetable->mem_bitmap = vmalloc(BITS_TO_LONGS(nbits) * sizeof(long));
+	if (!pagetable->mem_bitmap)
+		goto err;
+	memset(pagetable->mem_bitmap, 0, BITS_TO_LONGS(nbits) * sizeof(long));
 
 	if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_type)
 		pagetable->pt_ops = &iommu_pt_ops;
 
 	pagetable->priv = pagetable->pt_ops->mmu_create_pagetable();
 	if (!pagetable->priv)
-		goto err_pool;
+		goto err;
 
 	status = kgsl_setup_pt(pagetable);
 	if (status)
-		goto err_mmu_create;
+		goto err;
 
 	spin_lock_irqsave(&kgsl_driver.ptlock, flags);
 	list_add(&pagetable->list, &kgsl_driver.pagetable_list);
@@ -611,11 +622,14 @@ kgsl_mmu_createpagetableobject(struct kgsl_mmu *mmu,
 
 	return pagetable;
 
-err_mmu_create:
-	pagetable->pt_ops->mmu_destroy_pagetable(pagetable);
-err_pool:
-	gen_pool_destroy(pagetable->pool);
-err_alloc:
+err:
+	if (pagetable->priv)
+		pagetable->pt_ops->mmu_destroy_pagetable(pagetable);
+	if (pagetable->pool)
+		gen_pool_destroy(pagetable->pool);
+	if (pagetable->mem_bitmap)
+		vfree(pagetable->mem_bitmap);
+
 	kfree(pagetable);
 
 	return NULL;
@@ -715,17 +729,37 @@ kgsl_mmu_get_gpuaddr(struct kgsl_pagetable *pagetable,
 		if (kgsl_memdesc_use_cpu_map(memdesc)) {
 			if (memdesc->gpuaddr == 0)
 				return -EINVAL;
+			bitmap_set(pagetable->mem_bitmap,
+				memdesc->gpuaddr >> PAGE_SHIFT,
+				size >> PAGE_SHIFT);
+			memdesc->priv |= KGSL_MEMDESC_BITMAP_ALLOC;
 			return 0;
 		}
 	}
 
-	memdesc->gpuaddr = gen_pool_alloc_aligned(pagetable->pool, size,
-		page_align);
+	if (KGSL_MEMFLAGS_USERMEM_MASK & memdesc->flags) {
+		memdesc->gpuaddr = gen_pool_alloc_aligned(pagetable->pool, size,
+						page_align);
+		if (memdesc->gpuaddr)
+			memdesc->priv |= KGSL_MEMDESC_GENPOOL_ALLOC;
+	} else {
+		unsigned int gpuaddr = bitmap_find_next_zero_area(
+				pagetable->mem_bitmap,
+				TASK_SIZE >> PAGE_SHIFT, 1,
+				size >> PAGE_SHIFT, 0);
+
+		if (gpuaddr < (TASK_SIZE >> PAGE_SHIFT)) {
+			bitmap_set(pagetable->mem_bitmap,
+				gpuaddr, size >> PAGE_SHIFT);
+			memdesc->gpuaddr = gpuaddr << PAGE_SHIFT;
+		}
+		if (memdesc->gpuaddr)
+			memdesc->priv |= KGSL_MEMDESC_BITMAP_ALLOC;
+	}
 
 	if (memdesc->gpuaddr == 0)
 		return -ENOMEM;
 
-	memdesc->priv |= KGSL_MEMDESC_GENPOOL_ALLOC;
 	return 0;
 }
 EXPORT_SYMBOL(kgsl_mmu_get_gpuaddr);
@@ -797,27 +831,35 @@ kgsl_mmu_put_gpuaddr(struct kgsl_pagetable *pagetable,
 	if (kgsl_mmu_type == KGSL_MMU_TYPE_NONE)
 		goto done;
 
-	if (!(KGSL_MEMDESC_GENPOOL_ALLOC & memdesc->priv))
-		goto done;
-
 	/* Add space for the guard page when freeing the mmu VA. */
 	size = memdesc->size;
 	if (kgsl_memdesc_has_guard_page(memdesc))
 		size += PAGE_SIZE;
 
+	if (KGSL_MEMDESC_BITMAP_ALLOC & memdesc->priv) {
+		bitmap_clear(pagetable->mem_bitmap,
+			memdesc->gpuaddr >> PAGE_SHIFT,
+			size >> PAGE_SHIFT);
+		memdesc->priv &= ~KGSL_MEMDESC_BITMAP_ALLOC;
+		goto done;
+	}
+
+	if (!(KGSL_MEMDESC_GENPOOL_ALLOC & memdesc->priv))
+		goto done;
+
 	pool = pagetable->pool;
 
-	if (pool)
+	if (pool) {
 		gen_pool_free(pool, memdesc->gpuaddr, size);
+		memdesc->priv &= ~KGSL_MEMDESC_GENPOOL_ALLOC;
+	}
 	/*
 	 * Don't clear the gpuaddr on global mappings because they
 	 * may be in use by other pagetables
 	 */
 done:
-	if (!kgsl_memdesc_is_global(memdesc)) {
+	if (!kgsl_memdesc_is_global(memdesc))
 		memdesc->gpuaddr = 0;
-		memdesc->priv &= ~KGSL_MEMDESC_GENPOOL_ALLOC;
-	}
 	return 0;
 }
 EXPORT_SYMBOL(kgsl_mmu_put_gpuaddr);
