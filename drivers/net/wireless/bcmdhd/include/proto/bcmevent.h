@@ -2,13 +2,13 @@
  * Broadcom Event  protocol definitions
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -227,9 +227,11 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_RSSI_LQM			133	/* Enhancement addition for WLC_E_RSSI */
 #define WLC_E_PFN_GSCAN_FULL_RESULT		134 /* Full probe/beacon (IEs etc) results */
 #define WLC_E_PFN_SWC		135 /* Significant change in rssi of bssids being tracked */
-#define WLC_E_LAST		136	/* highest val + 1 for range checking */
-#if (WLC_E_LAST > 136)
-#error "WLC_E_LAST: Invalid value for last event; must be <= 134."
+#define WLC_E_RMC_EVENT			139	/* RMC event */
+#define WLC_E_LAST			140	/* highest val + 1 for range checking */
+
+#if (WLC_E_LAST > 140)
+#error "WLC_E_LAST: Invalid value for last event; must be <= 140."
 #endif /* WLC_E_LAST */
 
 /* define an API for getting the string name of an event */
@@ -371,6 +373,11 @@ typedef struct wl_event_data_rssi {
 #define WLC_E_TDLS_PEER_CONNECTED		1
 #define WLC_E_TDLS_PEER_DISCONNECTED	2
 
+/* reason codes for WLC_E_RMC_EVENT event */
+#define WLC_E_REASON_RMC_NONE		0
+#define WLC_E_REASON_RMC_AR_LOST		1
+#define WLC_E_REASON_RMC_AR_NO_ACK		2
+
 
 /* GAS event data */
 typedef BWL_PRE_PACKED_STRUCT struct wl_event_gas {
@@ -476,7 +483,10 @@ enum nan_app_events {
 	WL_NAN_EVENT_REPLIED = 6,
 	WL_NAN_EVENT_TERMINATED = 7,	/* the instance ID will be present in the ev data */
 	WL_NAN_EVENT_RECEIVE = 8,
-	WL_NAN_EVENT_STATUS_CHG = 9  /* generated on any change in nan_mac status */
+	WL_NAN_EVENT_STATUS_CHG = 9,  /* generated on any change in nan_mac status */
+	WL_NAN_EVENT_MERGE = 10,      /* Merged to a NAN cluster */
+	WL_NAN_EVENT_STOP = 11,       /* NAN stopped */
+	WL_NAN_EVENT_INVALID = 12,	/* delimiter for max value */
 };
 #define IS_NAN_EVT_ON(var, evt) ((var & (1 << (evt-1))) != 0)
 /*  ******************* end of NAN section *************** */

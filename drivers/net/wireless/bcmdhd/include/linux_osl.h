@@ -187,7 +187,7 @@ extern void osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction);
 /* API for DMA addressing capability */
 #define OSL_DMADDRWIDTH(osh, addrwidth) ({BCM_REFERENCE(osh); BCM_REFERENCE(addrwidth);})
 
-#if defined(__ARM_ARCH_7A__)
+#if defined(__mips__) || (defined(BCM47XX_CA9) && defined(__ARM_ARCH_7A__))
 	extern void osl_cache_flush(void *va, uint size);
 	extern void osl_cache_inv(void *va, uint size);
 	extern void osl_prefetch(const void *ptr);
@@ -203,7 +203,7 @@ extern void osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction);
 #else
 	#define OSL_CACHE_FLUSH(va, len)	BCM_REFERENCE(va)
 	#define OSL_CACHE_INV(va, len)		BCM_REFERENCE(va)
-	#define OSL_PREFETCH(ptr)			prefetch(ptr)
+	#define OSL_PREFETCH(ptr)		BCM_REFERENCE(ptr)
 
 	#define OSL_ARCH_IS_COHERENT()		NULL
 #endif 
@@ -408,6 +408,12 @@ extern int osl_error(int bcmerror);
 #define PKTID(skb)              ({BCM_REFERENCE(skb); 0;})
 #define PKTSETID(skb, id)       ({BCM_REFERENCE(skb); BCM_REFERENCE(id);})
 #define PKTSHRINK(osh, m)		({BCM_REFERENCE(osh); m;})
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
+#define PKTORPHAN(skb)          skb_orphan(skb)
+#else
+#define PKTORPHAN(skb)          ({BCM_REFERENCE(skb); 0;})
+#endif /* LINUX VERSION >= 3.6 */
+
 
 #ifdef BCMDBG_CTRACE
 #define	DEL_CTRACE(zosh, zskb) { \
@@ -820,6 +826,7 @@ extern void osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt);
 extern void osl_pktfree(osl_t *osh, void *skb, bool send);
 extern void *osl_pktget_static(osl_t *osh, uint len);
 extern void osl_pktfree_static(osl_t *osh, void *skb, bool send);
+extern void osl_pktclone(osl_t *osh, void **pkt);
 
 #ifdef BCMDBG_CTRACE
 #define PKT_CTRACE_DUMP(osh, b)	osl_ctrace_dump((osh), (b))
