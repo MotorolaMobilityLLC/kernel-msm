@@ -16,12 +16,11 @@
 #include "apq8084-quark.dtsi"
 
 / {
-	qcom,msm-id = <178 0x42 0x8200>,
-		  <178 0x44 0x8200>;
+	qcom,msm-id = <178 0x45 0x8400>;
 };
 
-&max17050 {
-	maxim,configuration {
-		coff		= /bits/ 16 <0xFFE3>; /* -9.28 * 3.125 */
+&i2c_8 {
+	tpa6165xx@40 {
+		ti,tpa6165-jack-detect-config = <0xC0>;
 	};
 };
