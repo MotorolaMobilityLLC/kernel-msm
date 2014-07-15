@@ -2,13 +2,13 @@
  * Linux platform device for DHD WLAN adapter
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -491,7 +491,77 @@ int dhd_wifi_platform_register_drv(void)
 static int dhd_wifi_platform_load_pcie(void)
 {
 	int err = 0;
-	err = dhd_bus_register();
+	int i;
+	wifi_adapter_info_t *adapter;
+
+	BCM_REFERENCE(i);
+	BCM_REFERENCE(adapter);
+
+	if (dhd_wifi_platdata == NULL) {
+		err = dhd_bus_register();
+	} else {
+		if (dhd_download_fw_on_driverload) {
+			/* power up all adapters */
+			for (i = 0; i < dhd_wifi_platdata->num_adapters; i++) {
+				int retry = POWERUP_MAX_RETRY;
+				adapter = &dhd_wifi_platdata->adapters[i];
+
+				DHD_ERROR(("Power-up adapter '%s'\n", adapter->name));
+				DHD_INFO((" - irq %d [flags %d], firmware: %s, nvram: %s\n",
+					adapter->irq_num, adapter->intr_flags, adapter->fw_path,
+					adapter->nv_path));
+				DHD_INFO((" - bus type %d, bus num %d, slot num %d\n\n",
+					adapter->bus_type, adapter->bus_num, adapter->slot_num));
+
+				do {
+					err = wifi_platform_set_power(adapter,
+						TRUE, WIFI_TURNON_DELAY);
+					if (err) {
+						DHD_ERROR(("failed to power up %s,"
+							" %d retry left\n",
+							adapter->name, retry));
+						/* WL_REG_ON state unknown, Power off forcely */
+						wifi_platform_set_power(adapter,
+							FALSE, WIFI_TURNOFF_DELAY);
+						continue;
+					} else {
+						err = wifi_platform_bus_enumerate(adapter, TRUE);
+						if (err) {
+							DHD_ERROR(("failed to enumerate bus %s, "
+								"%d retry left\n",
+								adapter->name, retry));
+							wifi_platform_set_power(adapter, FALSE,
+								WIFI_TURNOFF_DELAY);
+						} else {
+							break;
+						}
+					}
+				} while (retry--);
+
+				if (!retry) {
+					DHD_ERROR(("failed to power up %s, max retry reached**\n",
+						adapter->name));
+					return -ENODEV;
+				}
+			}
+		}
+
+		err = dhd_bus_register();
+
+		if (err) {
+			DHD_ERROR(("%s: pcie_register_driver failed\n", __FUNCTION__));
+			if (dhd_download_fw_on_driverload) {
+				/* power down all adapters */
+				for (i = 0; i < dhd_wifi_platdata->num_adapters; i++) {
+					adapter = &dhd_wifi_platdata->adapters[i];
+					wifi_platform_bus_enumerate(adapter, FALSE);
+					wifi_platform_set_power(adapter,
+						FALSE, WIFI_TURNOFF_DELAY);
+				}
+			}
+		}
+	}
+
 	return err;
 }
 #else
@@ -515,7 +585,7 @@ extern int dhd_dpc_prio;
 extern uint dhd_deferred_tx;
 #if defined(BCMLXSDMMC)
 extern struct semaphore dhd_registration_sem;
-#endif 
+#endif
 
 #ifdef BCMSDIO
 static int dhd_wifi_platform_load_sdio(void)
@@ -626,7 +696,7 @@ fail:
 	/* x86 bring-up PC needs no power-up operations */
 	err = dhd_bus_register();
 
-#endif 
+#endif
 
 	return err;
 }

@@ -2,13 +2,13 @@
  * Linux OS Independent Layer
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -31,9 +31,9 @@
 #include <linuxver.h>
 #include <bcmdefs.h>
 
-#ifdef __ARM_ARCH_7A__
+#if defined(BCM47XX_CA9) && defined(__ARM_ARCH_7A__)
 #include <asm/cacheflush.h>
-#endif /* __ARM_ARCH_7A__ */
+#endif /* BCM47XX_CA9 && __ARM_ARCH_7A__ */
 
 #include <linux/random.h>
 
@@ -657,7 +657,7 @@ osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt)
 #if defined(BCMDBG_CTRACE)
 	int i;
 	struct sk_buff *skb;
-#endif 
+#endif
 
 #if defined(BCMDBG_CTRACE)
 	if (skb_cnt > 1) {
@@ -676,7 +676,7 @@ osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt)
 		ADD_CTRACE(osh, skb, file, line);
 #endif /* BCMDBG_CTRACE */
 	}
-#endif 
+#endif
 
 	atomic_add(skb_cnt, &osh->cmn->pktalloced);
 }
@@ -1249,7 +1249,7 @@ osl_dma_alloc_consistent(osl_t *osh, uint size, uint16 align_bits, uint *alloced
 		size += align;
 	*alloced = size;
 
-#ifdef __ARM_ARCH_7A__
+#if defined(BCM47XX_CA9) && defined(__ARM_ARCH_7A__)
 	va = kmalloc(size, GFP_ATOMIC | __GFP_ZERO);
 	if (va)
 		*pap = (ulong)__virt_to_phys((ulong)va);
@@ -1268,11 +1268,11 @@ osl_dma_free_consistent(osl_t *osh, void *va, uint size, dmaaddr_t pa)
 {
 	ASSERT((osh && (osh->magic == OS_HANDLE_MAGIC)));
 
-#ifdef __ARM_ARCH_7A__
+#if defined(BCM47XX_CA9) && defined(__ARM_ARCH_7A__)
 	kfree(va);
 #else
 	pci_free_consistent(osh->pdev, size, va, (dma_addr_t)pa);
-#endif
+#endif /* BCM47XX_CA9 && __ARM_ARCH_7A__ */
 }
 
 dmaaddr_t BCMFASTPATH
@@ -1355,7 +1355,7 @@ osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction)
 }
 
 
-#if defined(__ARM_ARCH_7A__)
+#if defined(BCM47XX_CA9) && defined(__ARM_ARCH_7A__)
 
 inline void BCMFASTPATH
 osl_cache_flush(void *va, uint size)
@@ -1364,7 +1364,8 @@ osl_cache_flush(void *va, uint size)
 	if (virt_to_phys(va) < ACP_WIN_LIMIT)
 		return;
 #endif
-	dma_sync_single_for_device(OSH_NULL, virt_to_dma(OSH_NULL, va), size, DMA_TX);
+	if (size > 0)
+		dma_sync_single_for_device(OSH_NULL, virt_to_dma(OSH_NULL, va), size, DMA_TX);
 }
 
 inline void BCMFASTPATH
@@ -1395,7 +1396,7 @@ int osl_arch_is_coherent(void)
 	return arch_is_coherent();
 #endif
 }
-#endif 
+#endif
 
 #if defined(BCMASSERT_LOG)
 void
@@ -1420,7 +1421,7 @@ osl_assert(const char *exp, const char *file, int line)
 
 
 }
-#endif 
+#endif
 
 void
 osl_delay(uint usec)

@@ -2,13 +2,13 @@
  * Linux cfgp2p driver
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -159,22 +159,6 @@ bool wl_cfgp2p_is_gas_action(void *frame, u32 frame_len)
 	if (sd_act_frm->category != P2PSD_ACTION_CATEGORY)
 		return false;
 
-#ifdef WL11U
-	if (sd_act_frm->action == P2PSD_ACTION_ID_GAS_IRESP)
-		return wl_cfgp2p_find_gas_subtype(P2PSD_GAS_OUI_SUBTYPE,
-			(u8 *)sd_act_frm->query_data + GAS_RESP_OFFSET,
-			frame_len);
-
-	else if (sd_act_frm->action == P2PSD_ACTION_ID_GAS_CRESP)
-		return wl_cfgp2p_find_gas_subtype(P2PSD_GAS_OUI_SUBTYPE,
-			(u8 *)sd_act_frm->query_data + GAS_CRESP_OFFSET,
-			frame_len);
-	else if (sd_act_frm->action == P2PSD_ACTION_ID_GAS_IREQ ||
-		sd_act_frm->action == P2PSD_ACTION_ID_GAS_CREQ)
-		return true;
-	else
-		return false;
-#else
 	if (sd_act_frm->action == P2PSD_ACTION_ID_GAS_IREQ ||
 		sd_act_frm->action == P2PSD_ACTION_ID_GAS_IRESP ||
 		sd_act_frm->action == P2PSD_ACTION_ID_GAS_CREQ ||
@@ -182,7 +166,6 @@ bool wl_cfgp2p_is_gas_action(void *frame, u32 frame_len)
 		return true;
 	else
 		return false;
-#endif /* WL11U */
 }
 void wl_cfgp2p_print_actframe(bool tx, void *frame, u32 frame_len, u32 channel)
 {
@@ -615,7 +598,7 @@ wl_cfgp2p_init_discovery(struct bcm_cfg80211 *cfg)
 
 	CFGP2P_DBG(("enter\n"));
 
-	if (wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE) != 0) {
+	if (wl_to_p2p_bss_bssidx(cfg, P2PAPI_BSSCFG_DEVICE) > 0) {
 		CFGP2P_ERR(("do nothing, already initialized\n"));
 		return ret;
 	}
@@ -1662,16 +1645,17 @@ wl_cfgp2p_cancel_listen(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	 */
 	if (timer_pending(&cfg->p2p->listen_timer)) {
 		del_timer_sync(&cfg->p2p->listen_timer);
-		if (notify)
-			if (ndev && ndev->ieee80211_ptr) {
+		if (notify) {
 #if defined(WL_CFG80211_P2P_DEV_IF)
+			if (wdev)
 				cfg80211_remain_on_channel_expired(wdev, cfg->last_roc_id,
 					&cfg->remain_on_chan, GFP_KERNEL);
 #else
+			if (ndev && ndev->ieee80211_ptr)
 				cfg80211_remain_on_channel_expired(ndev, cfg->last_roc_id,
 					&cfg->remain_on_chan, cfg->remain_on_chan_type, GFP_KERNEL);
 #endif /* WL_CFG80211_P2P_DEV_IF */
-			}
+		}
 	}
 	return 0;
 }
@@ -2062,9 +2046,6 @@ wl_cfgp2p_down(struct bcm_cfg80211 *cfg)
 			if (index != WL_INVALID)
 				wl_cfgp2p_clear_management_ie(cfg, index);
 	}
-#if defined(WL_CFG80211_P2P_DEV_IF)
-	wl_cfgp2p_del_p2p_disc_if(wdev, cfg);
-#endif /* WL_CFG80211_P2P_DEV_IF */
 	wl_cfgp2p_deinit_priv(cfg);
 	return 0;
 }
@@ -2495,7 +2476,7 @@ static int wl_cfgp2p_do_ioctl(struct net_device *net, struct ifreq *ifr, int cmd
 
 	return ret;
 }
-#endif 
+#endif
 
 #if defined(WL_ENABLE_P2P_IF)
 static int wl_cfgp2p_if_open(struct net_device *net)

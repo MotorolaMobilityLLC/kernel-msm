@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wlioctl.h 475037 2014-05-02 23:55:49Z $
+ * $Id: wlioctl.h 490639 2014-07-11 08:31:53Z $
  */
 
 #ifndef _wlioctl_h_
@@ -45,6 +45,7 @@
 
 #include <bcm_mpool_pub.h>
 #include <bcmcdc.h>
+
 
 
 
@@ -4885,7 +4886,6 @@ typedef BWL_PRE_PACKED_STRUCT struct wl_proxd_collect_header {
 } BWL_POST_PACKED_STRUCT wl_proxd_collect_header_t;
 
 
-#ifdef WL_NAN
 /*  ********************** NAN wl interface struct types and defs ******************** */
 
 #define WL_NAN_IOCTL_VERSION	0x1
@@ -4910,29 +4910,29 @@ typedef BWL_PRE_PACKED_STRUCT struct wl_nan_ioc {
 	uint8	data [1];	/* var len payload of bcm_xtlv_t type */
 } BWL_POST_PACKED_STRUCT wl_nan_ioc_t;
 
-typedef BWL_PRE_PACKED_STRUCT struct wl_nan_status {
+typedef struct wl_nan_status {
 	uint8 inited;
 	uint8 joined;
 	uint8 role;
-	uint16 chspec;
 	uint8 hop_count;
-	struct ether_addr cid;
+	uint32 chspec;
 	uint8 amr[8];			/* Anchor Master Rank */
 	uint32 cnt_pend_txfrm;		/* pending TX frames */
 	uint32 cnt_bcn_tx;		/* TX disc/sync beacon count */
 	uint32 cnt_bcn_rx;		/* RX disc/sync beacon count */
 	uint32 cnt_svc_disc_tx;		/* TX svc disc frame count */
 	uint32 cnt_svc_disc_rx;		/* RX svc disc frame count */
-} BWL_POST_PACKED_STRUCT wl_nan_status_t;
+	struct ether_addr cid;
+} wl_nan_status_t;
 
 /* various params and ctl swithce for nan_debug instance  */
-typedef BWL_PRE_PACKED_STRUCT struct nan_debug_params {
-	bool	enabled; /* runtime debuging enabled */
-	bool	collect; /* enables debug svc sdf monitor mode  */
+typedef struct nan_debug_params {
+	uint8	enabled; /* runtime debuging enabled */
+	uint8	collect; /* enables debug svc sdf monitor mode  */
+	uint16	cmd;	/* debug cmd to perform a debug action */
 	uint32	msglevel; /* msg level if enabled */
-	uint16 	cmd;	/* debug cmd to perform a debug action */
 	uint16	status;
-} BWL_POST_PACKED_STRUCT nan_debug_params_t;
+} nan_debug_params_t;
 
 
 /* nan passive scan params */
@@ -5010,6 +5010,8 @@ enum wl_nan_cmd_xtlv_id {
 	WL_NAN_XTLV_SVC_NAME = 0x124,       /* Optional UTF-8 service name, for debugging. */
 	WL_NAN_XTLV_INSTANCE_ID = 0x125,    /* Identifies unique publish or subscribe instance */
 	WL_NAN_XTLV_PRIORITY = 0x126,       /* used in transmit cmd context */
+	WL_NAN_XTLV_REQUESTOR_ID = 0x127,	/* Requestor instance ID */
+	WL_NAN_XTLV_VNDR = 0x128,		/* Vendor specific attribute */
 	/* explicit types, primarily for NAN MAC iovars   */
 	WL_NAN_XTLV_DW_LEN = 0x140,            /* discovery win length */
 	WL_NAN_XTLV_BCN_INTERVAL = 0x141,      /* beacon interval, both sync and descovery bcns?  */
@@ -5035,7 +5037,8 @@ enum wl_nan_cmd_xtlv_id {
 	WL_NAN_XTLV_DEBUGPARAMS = 0x153,  /* payload is nan_scan_params_t */
 	WL_NAN_XTLV_SUBSCR_ID = 0x154,   /* subscriber id  */
 	WL_NAN_XTLV_PUBLR_ID = 0x155,	/* publisher id */
-	WL_NAN_XTLV_EVENT_MASK = 0x156
+	WL_NAN_XTLV_EVENT_MASK = 0x156,
+	WL_NAN_XTLV_MERGE = 0x157
 };
 
 /* Flag bits for Publish and Subscribe (wl_nan_disc_params_t flags) */
@@ -5054,6 +5057,8 @@ enum wl_nan_cmd_xtlv_id {
 #define WL_NAN_PUB_EVENT               0x8000
 /* Used for one-time solicited Publish functions to indicate transmision occurred */
 #define WL_NAN_PUB_SOLICIT_PENDING	0x10000
+/* Follow-up frames */
+#define WL_NAN_FOLLOWUP			0x20000
 /* Bits specific to Subscribe */
 /* Active subscribe mode (Leave unset for passive) */
 #define WL_NAN_SUB_ACTIVE              0x1000
@@ -5073,9 +5078,9 @@ typedef uint8 wl_nan_instance_id_t;
 
 /* Mandatory parameters for publish/subscribe iovars - NAN_TLV_SVC_PARAMS */
 typedef struct wl_nan_disc_params_s {
-	/* Periodicity of unsolicited/query transmissions, in TUs */
+	/* Periodicity of unsolicited/query transmissions, in DWs */
 	uint32 period;
-	/* Time to live in TUs */
+	/* Time to live in DWs */
 	uint32 ttl;
 	/* Flag bits */
 	uint32 flags;
@@ -5084,7 +5089,6 @@ typedef struct wl_nan_disc_params_s {
 	/* Publish or subscribe id */
 	wl_nan_instance_id_t instance_id;
 } wl_nan_disc_params_t;
-
 
 /*
 * desovery interface event structures *
@@ -5095,9 +5099,8 @@ typedef struct wl_nan_disc_params_s {
 /* Bit defines for global flags */
 #define WL_NAN_RANGING_ENABLE		1 /* enable RTT */
 #define WL_NAN_RANGING_RANGED		2 /* Report to host if ranged as target */
-typedef BWL_PRE_PACKED_STRUCT struct nan_ranging_config {
-	uint16 flags;
-	chanspec_t chanspec;		/* Ranging chanspec */
+typedef struct nan_ranging_config {
+	uint32 chanspec;		/* Ranging chanspec */
 	uint16 timeslot;		/* NAN RTT start time slot  1-511 */
 	uint16 duration;		/* NAN RTT duration in ms */
 	struct ether_addr allow_mac;	/* peer initiated ranging: the allowed peer mac
@@ -5106,27 +5109,29 @@ typedef BWL_PRE_PACKED_STRUCT struct nan_ranging_config {
 					 * means responding to none,same as not setting
 					 * the flag bit NAN_RANGING_RESPOND
 					 */
-} BWL_POST_PACKED_STRUCT wl_nan_ranging_config_t;
+	uint16 flags;
+} wl_nan_ranging_config_t;
 
 /* list of peers for self initiated ranging */
 /* Bit defines for per peer flags */
 #define WL_NAN_RANGING_REPORT (1<<0)	/* Enable reporting range to target */
-typedef BWL_PRE_PACKED_STRUCT struct nan_ranging_peer {
-	chanspec_t chanspec;		/* desired chanspec for this peer */
-	uint16 flags;			/* per peer flags, report or not */
+typedef struct nan_ranging_peer {
+	uint32 chanspec;		/* desired chanspec for this peer */
 	uint32 abitmap;			/* available bitmap */
 	struct ether_addr ea;		/* peer MAC address */
 	uint8 frmcnt;			/* frame count */
 	uint8 retrycnt;			/* retry count */
-} BWL_POST_PACKED_STRUCT wl_nan_ranging_peer_t;
-typedef BWL_PRE_PACKED_STRUCT struct nan_ranging_list {
+	uint16 flags;			/* per peer flags, report or not */
+} wl_nan_ranging_peer_t;
+typedef struct nan_ranging_list {
 	uint8 count;			/* number of MAC addresses */
 	uint8 num_peers_done;		/* host set to 0, when read, shows number of peers
 					 * completed, success or fail
 					 */
 	uint8 num_dws;			/* time period to do the ranging, specified in dws */
+	uint8 reserve;			/* reserved field */
 	wl_nan_ranging_peer_t rp[1];	/* variable length array of peers */
-} BWL_POST_PACKED_STRUCT wl_nan_ranging_list_t;
+} wl_nan_ranging_list_t;
 
 /* ranging results, a list for self initiated ranging and one for peer initiated ranging */
 /* There will be one structure for each peer */
@@ -5134,11 +5139,11 @@ typedef BWL_PRE_PACKED_STRUCT struct nan_ranging_list {
 #define WL_NAN_RANGING_STATUS_FAIL			2
 #define WL_NAN_RANGING_STATUS_TIMEOUT		3
 #define WL_NAN_RANGING_STATUS_ABORT		4 /* with partial results if sounding count > 0 */
-typedef BWL_PRE_PACKED_STRUCT struct nan_ranging_result {
+typedef struct nan_ranging_result {
 	uint8 status;			/* 1: Success, 2: Fail 3: Timeout 4: Aborted */
 	uint8 sounding_count;		/* number of measurements completed (0 = failure) */
-	struct ether_addr ea;		/* peer MAC address */
-	chanspec_t chanspec;		/* Chanspec where the ranging was done */
+	struct ether_addr ea;		/* initiator MAC address */
+	uint32 chanspec;		/* Chanspec where the ranging was done */
 	uint32 timestamp;		/* 32bits of the TSF timestamp ranging was completed at */
 	uint32 distance;		/* mean distance in meters expressed as Q4 number.
 					 * Only valid when sounding_count > 0. Examples:
@@ -5150,18 +5155,18 @@ typedef BWL_PRE_PACKED_STRUCT struct nan_ranging_result {
 	int32 rtt_var;			/* standard deviation in 10th of ns of RTTs measured.
 					 * Only valid when sounding_count > 0
 					 */
-} BWL_POST_PACKED_STRUCT wl_nan_ranging_result_t;
-typedef BWL_PRE_PACKED_STRUCT struct nan_ranging_event_data {
+	struct ether_addr tgtea;	/* target MAC address */
+} wl_nan_ranging_result_t;
+typedef struct nan_ranging_event_data {
 	uint8 mode;			/* 1: Result of host initiated ranging */
 					/* 2: Result of peer initiated ranging */
 	uint8 reserved;
 	uint8 success_count;		/* number of peers completed successfully */
 	uint8 count;			/* number of peers in the list */
 	wl_nan_ranging_result_t rr[1];	/* variable array of ranging peers */
-} BWL_POST_PACKED_STRUCT wl_nan_ranging_event_data_t;
+} wl_nan_ranging_event_data_t;
 
 /* ********************* end of NAN section ******************************** */
-#endif /* WL_NAN */
 
 
 #define RSSI_THRESHOLD_SIZE 16
@@ -5170,7 +5175,7 @@ typedef BWL_PRE_PACKED_STRUCT struct nan_ranging_event_data {
 typedef BWL_PRE_PACKED_STRUCT struct wl_proxd_rssi_bias {
 	int32		version;			/* version */
 	int32		threshold[RSSI_THRESHOLD_SIZE];	/* threshold */
-	int32		peak_offset;			/* peak offset */
+	int32		peak_offset;		/* peak offset */
 	int32		bias;				/* rssi bias */
 	int32		gd_delta;			/* GD - GD_ADJ */
 	int32		imp_resp[MAX_IMP_RESP_SIZE];	/* (Hi*Hi)+(Hr*Hr) */
@@ -5346,7 +5351,8 @@ enum tof_mode_type {
 
 enum tof_way_type {
 	TOF_TYPE_ONE_WAY = 0,
-	TOF_TYPE_TWO_WAY = 1
+	TOF_TYPE_TWO_WAY = 1,
+	TOF_TYPE_REPORT = 2
 };
 
 enum tof_rate_type {

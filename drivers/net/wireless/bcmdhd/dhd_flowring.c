@@ -38,6 +38,7 @@
 #include <dhd_bus.h>
 #include <dhd_proto.h>
 #include <dhd_dbg.h>
+#include <proto/802.1d.h>
 
 static INLINE uint16 dhd_flowid_find(dhd_pub_t *dhdp, uint8 ifindex,
                                      uint8 prio, char *sa, char *da);
@@ -51,6 +52,9 @@ int BCMFASTPATH dhd_flow_queue_overflow(flow_queue_t *queue, void *pkt);
 
 #define FLOW_QUEUE_PKT_NEXT(p)          PKTLINK(p)
 #define FLOW_QUEUE_PKT_SETNEXT(p, x)    PKTSETLINK((p), (x))
+
+const uint8 prio2ac[8] = { 0, 1, 1, 0, 2, 2, 3, 3 };
+const uint8 prio2tid[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
 int BCMFASTPATH
 dhd_flow_queue_overflow(flow_queue_t *queue, void *pkt)
@@ -221,6 +225,9 @@ dhd_flow_rings_init(dhd_pub_t *dhdp, uint32 num_flow_rings)
 	dhdp->flow_ring_table = (void *)flow_ring_table;
 	dhdp->if_flow_lkup = (void *)if_flow_lkup;
 
+	dhdp->flow_prio_map_type = DHD_FLOW_PRIO_AC_MAP;
+	bcopy(prio2ac, dhdp->flow_prio_map, sizeof(uint8) * NUMPRIO);
+
 	DHD_INFO(("%s done\n", __FUNCTION__));
 	return BCME_OK;
 }
@@ -270,6 +277,28 @@ void dhd_flow_rings_deinit(dhd_pub_t *dhdp)
 	dhdp->num_flow_rings = 0U;
 }
 
+uint8
+dhd_flow_rings_ifindex2role(dhd_pub_t *dhdp, uint8 ifindex)
+{
+	if_flow_lkup_t *if_flow_lkup = (if_flow_lkup_t *)dhdp->if_flow_lkup;
+	ASSERT(if_flow_lkup);
+	return if_flow_lkup[ifindex].role;
+}
+
+#ifdef WLTDLS
+bool is_tdls_destination(dhd_pub_t *dhdp, uint8 *da)
+{
+	tdls_peer_node_t *cur = dhdp->peer_tbl.node;
+	while (cur != NULL) {
+		if (!memcmp(da, cur->addr, ETHER_ADDR_LEN)) {
+			return TRUE;
+		}
+		cur = cur->next;
+	}
+	return FALSE;
+}
+#endif /* WLTDLS */
+
 /* For a given interface, search the hash table for a matching flow */
 static INLINE uint16
 dhd_flowid_find(dhd_pub_t *dhdp, uint8 ifindex, uint8 prio, char *sa, char *da)
@@ -282,6 +311,19 @@ dhd_flowid_find(dhd_pub_t *dhdp, uint8 ifindex, uint8 prio, char *sa, char *da)
 	if_flow_lkup = (if_flow_lkup_t *)dhdp->if_flow_lkup;
 
 	if (if_flow_lkup[ifindex].role == WLC_E_IF_ROLE_STA) {
+#ifdef WLTDLS
+		if (dhdp->peer_tbl.tdls_peer_count && !(ETHER_ISMULTI(da)) &&
+			is_tdls_destination(dhdp, da)) {
+			hash = DHD_FLOWRING_HASHINDEX(da, prio);
+			cur = if_flow_lkup[ifindex].fl_hash[hash];
+			while (cur != NULL) {
+				if (!memcmp(cur->flow_info.da, da, ETHER_ADDR_LEN))
+					return cur->flowid;
+				cur = cur->next;
+			}
+			return FLOWID_INVALID;
+		}
+#endif /* WLTDLS */
 		cur = if_flow_lkup[ifindex].fl_hash[prio];
 		if (cur) {
 			return cur->flowid;
@@ -339,8 +381,23 @@ dhd_flowid_alloc(dhd_pub_t *dhdp, uint8 ifindex, uint8 prio, char *sa, char *da)
 
 	if_flow_lkup = (if_flow_lkup_t *)dhdp->if_flow_lkup;
 	if (if_flow_lkup[ifindex].role == WLC_E_IF_ROLE_STA) {
-		/* For STA we allocate entry based on prio only */
-		if_flow_lkup[ifindex].fl_hash[prio] = fl_hash_node;
+		/* For STA non TDLS dest we allocate entry based on prio only */
+#ifdef WLTDLS
+		if (dhdp->peer_tbl.tdls_peer_count &&
+			(is_tdls_destination(dhdp, da))) {
+			hash = DHD_FLOWRING_HASHINDEX(da, prio);
+			cur = if_flow_lkup[ifindex].fl_hash[hash];
+			if (cur) {
+				while (cur->next) {
+					cur = cur->next;
+				}
+				cur->next = fl_hash_node;
+			} else {
+				if_flow_lkup[ifindex].fl_hash[hash] = fl_hash_node;
+			}
+		} else
+#endif /* WLTDLS */
+			if_flow_lkup[ifindex].fl_hash[prio] = fl_hash_node;
 	} else {
 
 		/* For bcast/mcast assign first slot in in interface */
@@ -534,15 +591,12 @@ dhd_flow_rings_delete_for_peer(dhd_pub_t *dhdp, uint8 ifindex, char *addr)
 {
 	uint32 id;
 	flow_ring_table_t *flow_ring_table;
-	if_flow_lkup_t *if_flow_lkup;
 
 	DHD_ERROR(("%s: ifindex %u\n", __FUNCTION__, ifindex));
 
 	ASSERT(ifindex < DHD_MAX_IFS);
 	if (ifindex >= DHD_MAX_IFS)
 		return;
-
-	if_flow_lkup = (if_flow_lkup_t *)dhdp->if_flow_lkup;
 
 	if (!dhdp->flow_ring_table)
 		return;
@@ -551,8 +605,7 @@ dhd_flow_rings_delete_for_peer(dhd_pub_t *dhdp, uint8 ifindex, char *addr)
 	for (id = 0; id < dhdp->num_flow_rings; id++) {
 		if (flow_ring_table[id].active &&
 		    (flow_ring_table[id].flow_info.ifindex == ifindex) &&
-		    ((if_flow_lkup[ifindex].role == WLC_E_IF_ROLE_STA) ||
-		     !memcmp(flow_ring_table[id].flow_info.da, addr, ETHER_ADDR_LEN)) &&
+		    (!memcmp(flow_ring_table[id].flow_info.da, addr, ETHER_ADDR_LEN)) &&
 		    (flow_ring_table[id].status != FLOW_RING_STATUS_DELETE_PENDING)) {
 			DHD_INFO(("%s: deleting flowid %d\n",
 			          __FUNCTION__, flow_ring_table[id].flowid));
@@ -617,6 +670,60 @@ dhd_update_interface_link_status(dhd_pub_t *dhdp, uint8 ifindex, uint8 status)
 			if_flow_lkup[ifindex].status = TRUE;
 		else
 			if_flow_lkup[ifindex].status = FALSE;
+	}
+	return BCME_OK;
+}
+/* Update flow priority mapping */
+int dhd_update_flow_prio_map(dhd_pub_t *dhdp, uint8 map)
+{
+	uint16 flowid;
+	flow_ring_node_t *flow_ring_node;
+
+	if (map > DHD_FLOW_PRIO_TID_MAP)
+		return BCME_BADOPTION;
+
+	/* Check if we need to change prio map */
+	if (map == dhdp->flow_prio_map_type)
+		return BCME_OK;
+
+	/* If any ring is active we cannot change priority mapping for flow rings */
+	for (flowid = 0; flowid < dhdp->num_flow_rings; flowid++) {
+		flow_ring_node = DHD_FLOW_RING(dhdp, flowid);
+		if (flow_ring_node->active)
+			return BCME_EPERM;
+	}
+	/* Infor firmware about new mapping type */
+	if (BCME_OK != dhd_flow_prio_map(dhdp, &map, TRUE))
+		return BCME_ERROR;
+
+	/* update internal structures */
+	dhdp->flow_prio_map_type = map;
+	if (dhdp->flow_prio_map_type == DHD_FLOW_PRIO_TID_MAP)
+		bcopy(prio2tid, dhdp->flow_prio_map, sizeof(uint8) * NUMPRIO);
+	else
+		bcopy(prio2ac, dhdp->flow_prio_map, sizeof(uint8) * NUMPRIO);
+
+	return BCME_OK;
+}
+
+/* Set/Get flwo ring priority map */
+int dhd_flow_prio_map(dhd_pub_t *dhd, uint8 *map, bool set)
+{
+	uint8 iovbuf[24];
+	if (!set) {
+		bcm_mkiovar("bus:fl_prio_map", NULL, 0, (char*)iovbuf, sizeof(iovbuf));
+		if (dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, iovbuf, sizeof(iovbuf), FALSE, 0) < 0) {
+			DHD_ERROR(("%s: failed to get fl_prio_map\n", __FUNCTION__));
+			return BCME_ERROR;
+		}
+		*map = iovbuf[0];
+		return BCME_OK;
+	}
+	bcm_mkiovar("bus:fl_prio_map", (char *)map, 4, (char*)iovbuf, sizeof(iovbuf));
+	if (dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0) < 0) {
+		DHD_ERROR(("%s: failed to set fl_prio_map \n",
+			__FUNCTION__));
+		return BCME_ERROR;
 	}
 	return BCME_OK;
 }

@@ -2,13 +2,13 @@
  * Broadcom Dongle Host Driver (DHD), common DHD core.
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -120,7 +120,7 @@ const char dhd_version[] = "Dongle Host Driver, version " EPI_VERSION_STR
 	DHD_COMPILED " on " __DATE__ " at " __TIME__;
 #else
 const char dhd_version[] = "\nDongle Host Driver, version " EPI_VERSION_STR "\nCompiled from ";
-#endif 
+#endif
 
 void dhd_set_timer(void *bus, uint wdtick);
 
@@ -151,6 +151,7 @@ enum {
 	IOV_PROPTXSTATUS_MODULE_IGNORE,
 	IOV_PROPTXSTATUS_CREDIT_IGNORE,
 	IOV_PROPTXSTATUS_TXSTATUS_IGNORE,
+	IOV_PROPTXSTATUS_RXPKT_CHK,
 #endif /* PROP_TXSTATUS */
 	IOV_BUS_TYPE,
 #ifdef WLMEDIA_HTSF
@@ -211,6 +212,7 @@ const bcm_iovar_t dhd_iovars[] = {
 	{"pmodule_ignore", IOV_PROPTXSTATUS_MODULE_IGNORE, 0, IOVT_BOOL, 0 },
 	{"pcredit_ignore", IOV_PROPTXSTATUS_CREDIT_IGNORE, 0, IOVT_BOOL, 0 },
 	{"ptxstatus_ignore", IOV_PROPTXSTATUS_TXSTATUS_IGNORE, 0, IOVT_BOOL, 0 },
+	{"rxpkt_chk", IOV_PROPTXSTATUS_RXPKT_CHK, 0, IOVT_BOOL, 0 },
 #endif /* PROP_TXSTATUS */
 	{"bustype", IOV_BUS_TYPE, 0, IOVT_UINT32, 0},
 #ifdef WLMEDIA_HTSF
@@ -589,6 +591,18 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 	case IOV_SVAL(IOV_PROPTXSTATUS_TXSTATUS_IGNORE):
 		dhd_wlfc_set_txstatus_ignore(dhd_pub, int_val);
 		break;
+
+	case IOV_GVAL(IOV_PROPTXSTATUS_RXPKT_CHK):
+		bcmerror = dhd_wlfc_get_rxpkt_chk(dhd_pub, &int_val);
+		if (bcmerror != BCME_OK)
+			goto exit;
+		bcopy(&int_val, arg, val_size);
+		break;
+
+	case IOV_SVAL(IOV_PROPTXSTATUS_RXPKT_CHK):
+		dhd_wlfc_set_rxpkt_chk(dhd_pub, int_val);
+		break;
+
 #endif /* PROP_TXSTATUS */
 
 	case IOV_GVAL(IOV_BUS_TYPE):
@@ -1582,6 +1596,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	uint32 type, status, datalen;
 	uint16 flags;
 	int evlen;
+	int hostidx;
 
 	if (bcmp(BRCM_OUI, &pvt_data->bcm_hdr.oui[0], DOT11_OUI_LEN)) {
 		DHD_ERROR(("%s: mismatched OUI, bailing\n", __FUNCTION__));
@@ -1597,6 +1612,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	*data_ptr = &pvt_data[1];
 	event_data = *data_ptr;
 
+
 	/* memcpy since BRCM event pkt may be unaligned. */
 	memcpy(event, &pvt_data->event, sizeof(wl_event_msg_t));
 
@@ -1605,6 +1621,9 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	status = ntoh32_ua((void *)&event->status);
 	datalen = ntoh32_ua((void *)&event->datalen);
 	evlen = datalen + sizeof(bcm_event_t);
+
+	/* find equivalent host index for event ifidx */
+	hostidx = dhd_ifidx2hostidx(dhd_pub->info, event->ifidx);
 
 	switch (type) {
 #ifdef PROP_TXSTATUS
@@ -1687,7 +1706,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 #endif /* !PROP_TXSTATUS */
 		}
 			/* send up the if event: btamp user needs it */
-			*ifidx = dhd_ifname2idx(dhd_pub->info, event->ifname);
+			*ifidx = hostidx;
 			/* push up to external supp/auth */
 			dhd_event(dhd_pub->info, (char *)pvt_data, evlen, *ifidx);
 		break;
@@ -1714,23 +1733,20 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	case WLC_E_PFN_BEST_BATCHING:
 		dhd_pno_event_handler(dhd_pub, event, (void *)event_data);
 		break;
-#endif 
+#endif
 		/* These are what external supplicant/authenticator wants */
 	case WLC_E_ASSOC_IND:
 	case WLC_E_AUTH_IND:
 	case WLC_E_REASSOC_IND:
-		dhd_findadd_sta(dhd_pub,
-			dhd_ifname2idx(dhd_pub->info, event->ifname),
-			&event->addr.octet);
+		dhd_findadd_sta(dhd_pub, hostidx, &event->addr.octet);
 		break;
 	case WLC_E_LINK:
 #ifdef PCIE_FULL_DONGLE
-		if (dhd_update_interface_link_status(dhd_pub, (uint8)dhd_ifname2idx(dhd_pub->info,
-			event->ifname), (uint8)flags) != BCME_OK)
+		if (dhd_update_interface_link_status(dhd_pub, (uint8)hostidx,
+			(uint8)flags) != BCME_OK)
 			break;
 		if (!flags) {
-			dhd_flow_rings_delete(dhd_pub, (uint8)dhd_ifname2idx(dhd_pub->info,
-				event->ifname));
+			dhd_flow_rings_delete(dhd_pub, hostidx);
 		}
 		/* fall through */
 #endif
@@ -1739,22 +1755,25 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	case WLC_E_DISASSOC:
 	case WLC_E_DISASSOC_IND:
 		if (type != WLC_E_LINK) {
-			dhd_del_sta(dhd_pub,
-				dhd_ifname2idx(dhd_pub->info, event->ifname),
-			    &event->addr.octet);
+			dhd_del_sta(dhd_pub, hostidx, &event->addr.octet);
 		}
 		DHD_EVENT(("%s: Link event %d, flags %x, status %x\n",
 		           __FUNCTION__, type, flags, status));
 #ifdef PCIE_FULL_DONGLE
 		if (type != WLC_E_LINK) {
-			dhd_flow_rings_delete_for_peer(dhd_pub,
-				(uint8)dhd_ifname2idx(dhd_pub->info, event->ifname),
-				&event->addr.octet[0]);
+			uint8 ifindex = (uint8)hostidx;
+			uint8 role = dhd_flow_rings_ifindex2role(dhd_pub, ifindex);
+			if (role == WLC_E_IF_ROLE_STA) {
+				dhd_flow_rings_delete(dhd_pub, ifindex);
+			} else {
+				dhd_flow_rings_delete_for_peer(dhd_pub, ifindex,
+					&event->addr.octet[0]);
+			}
 		}
 #endif
 		/* fall through */
 	default:
-		*ifidx = dhd_ifname2idx(dhd_pub->info, event->ifname);
+		*ifidx = hostidx;
 		/* push up to external supp/auth */
 		dhd_event(dhd_pub->info, (char *)pvt_data, evlen, *ifidx);
 		DHD_TRACE(("%s: MAC event %d, flags %x, status %x\n",
