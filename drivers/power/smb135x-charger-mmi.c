@@ -384,6 +384,7 @@ struct smb135x_chg {
 	int				ext_high_temp;
 	int				temp_check;
 	int				bms_check;
+	unsigned long			float_charge_start_time;
 };
 
 static struct smb135x_chg *the_chip;
@@ -771,8 +772,8 @@ static int smb135x_get_prop_batt_status(struct smb135x_chg *chip)
 	u8 reg = 0;
 	u8 chg_type;
 
-	if ((is_usb_plugged_in(chip) || is_dc_plugged_in(chip))
-			&& chip->chg_done_batt_full)
+	if ((is_usb_plugged_in(chip) || is_dc_plugged_in(chip)) &&
+	    (chip->chg_done_batt_full || chip->float_charge_start_time))
 		return POWER_SUPPLY_STATUS_FULL;
 
 	rc = smb135x_read(chip, STATUS_4_REG, &reg);
@@ -1201,7 +1202,10 @@ static void smb135x_set_chrg_path_temp(struct smb135x_chg *chip)
 	else
 		smb135x_float_voltage_set(chip, chip->vfloat_mv);
 
-	if (chip->ext_high_temp || chip->batt_cold || chip->batt_hot)
+	if (chip->ext_high_temp ||
+	    chip->batt_cold ||
+	    chip->batt_hot ||
+	    chip->chg_done_batt_full)
 		smb135x_temp_charging(chip, 0);
 	else
 		smb135x_temp_charging(chip, 1);
@@ -2312,8 +2316,11 @@ static void usb_insertion_work(struct work_struct *work)
 	smb_relax(&chip->smb_wake_source);
 }
 
+#define FLOAT_CHG_TIME_SECS 1800
 static void heartbeat_work(struct work_struct *work)
 {
+	struct timespec bootup_time;
+	unsigned long float_timestamp;
 	struct smb135x_chg *chip =
 		container_of(work, struct smb135x_chg,
 				heartbeat_work.work);
@@ -2322,8 +2329,25 @@ static void heartbeat_work(struct work_struct *work)
 
 	dev_dbg(chip->dev, "HB Pound!\n");
 
-	if (chip->iterm_disabled && (batt_soc >= 100))
+	get_monotonic_boottime(&bootup_time);
+	float_timestamp = bootup_time.tv_sec;
+
+	if (!chip->chg_done_batt_full &&
+	    !chip->float_charge_start_time &&
+	    chip->iterm_disabled &&
+	    (batt_soc >= 100)) {
+		chip->float_charge_start_time = float_timestamp;
+		dev_warn(chip->dev, "Float Start!\n");
+	} else if (chip->float_charge_start_time &&
+		   ((float_timestamp - chip->float_charge_start_time)
+		    >= FLOAT_CHG_TIME_SECS)) {
+		chip->float_charge_start_time = 0;
 		chip->chg_done_batt_full = true;
+		dev_warn(chip->dev, "Float Done!\n");
+	} else if (chip->chg_done_batt_full && (batt_soc < 100)) {
+		chip->chg_done_batt_full = false;
+		dev_warn(chip->dev, "SOC dropped,  Charge Resume!\n");
+	}
 
 	if ((batt_health == POWER_SUPPLY_HEALTH_WARM) ||
 	    (batt_health == POWER_SUPPLY_HEALTH_COOL) ||
@@ -2333,7 +2357,10 @@ static void heartbeat_work(struct work_struct *work)
 
 	smb135x_set_chrg_path_temp(chip);
 
-	if (chip->temp_check || chip->bms_check) {
+	if (chip->temp_check ||
+	    chip->bms_check ||
+	    chip->chg_done_batt_full ||
+	    chip->float_charge_start_time) {
 		chip->temp_check = 0;
 		chip->bms_check = 0;
 		power_supply_changed(&chip->batt_psy);
@@ -2388,7 +2415,8 @@ static int chg_hot_handler(struct smb135x_chg *chip, u8 rt_stat)
 static int chg_term_handler(struct smb135x_chg *chip, u8 rt_stat)
 {
 	pr_debug("rt_stat = 0x%02x\n", rt_stat);
-	chip->chg_done_batt_full = !!rt_stat;
+	if (!chip->iterm_disabled)
+		chip->chg_done_batt_full = !!rt_stat;
 	return 0;
 }
 
@@ -2401,8 +2429,10 @@ static int taper_handler(struct smb135x_chg *chip, u8 rt_stat)
 static int fast_chg_handler(struct smb135x_chg *chip, u8 rt_stat)
 {
 	pr_debug("rt_stat = 0x%02x\n", rt_stat);
-	if (rt_stat & IRQ_C_FAST_CHG_BIT)
+	if (rt_stat & IRQ_C_FAST_CHG_BIT) {
 		chip->chg_done_batt_full = false;
+		chip->float_charge_start_time = 0;
+	}
 	power_supply_changed(&chip->batt_psy);
 	return 0;
 }
@@ -2473,8 +2503,10 @@ static int dcin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 	if (chip->dc_present && !dc_present) {
 		/* dc removed */
 		chip->dc_present = dc_present;
-		if (!dc_present && !is_usb_plugged_in(chip))
+		if (!dc_present && !is_usb_plugged_in(chip)) {
 			chip->chg_done_batt_full = false;
+			chip->float_charge_start_time = 0;
+		}
 		handle_dc_removal(chip);
 	}
 
@@ -2606,8 +2638,10 @@ static int usbin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 	if (chip->usb_present && !usb_present) {
 		/* USB removed */
 		chip->usb_present = usb_present;
-		if (!usb_present && !is_dc_plugged_in(chip))
+		if (!usb_present && !is_dc_plugged_in(chip)) {
 			chip->chg_done_batt_full = false;
+			chip->float_charge_start_time = 0;
+		}
 		handle_usb_removal(chip);
 	}
 	return 0;
@@ -2675,7 +2709,8 @@ static int chg_inhibit_handler(struct smb135x_chg *chip, u8 rt_stat)
 	 * battery full
 	 */
 	pr_debug("rt_stat = 0x%02x\n", rt_stat);
-	chip->chg_done_batt_full = !!rt_stat;
+	if (!chip->iterm_disabled)
+		chip->chg_done_batt_full = !!rt_stat;
 	return 0;
 }
 
@@ -4526,6 +4561,9 @@ static int smb135x_charger_probe(struct i2c_client *client,
 		}
 
 	}
+
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(60000));
 
 	dev_info(chip->dev, "SMB135X version = %s revision = %s successfully probed batt=%d dc = %d usb = %d\n",
 			version_str[chip->version],
