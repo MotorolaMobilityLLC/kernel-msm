@@ -293,7 +293,7 @@
 
 		cc_alert_default: cc-alert {
 			drive-strength = <2>;
-			bias-disable;
+			bias-pull-up;
 		};
 	};
 
