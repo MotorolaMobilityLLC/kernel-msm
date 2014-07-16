@@ -626,7 +626,6 @@ struct stm401_data {
 	struct stm401_aod_enabled_vote aod_enabled;
 	bool qw_in_progress;
 
-	bool in_reset_and_init;
 	bool is_suspended;
 	bool ignore_wakeable_interrupts;
 	int ignored_interrupts;
