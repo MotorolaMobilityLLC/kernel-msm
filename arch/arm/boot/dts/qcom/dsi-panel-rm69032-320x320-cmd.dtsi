@@ -89,6 +89,25 @@
 //					05 01 00 00 32 00 02 23 00
 
 					];
+//ASUS_BSP +++ Jason Chang [WI500Q][Display]support V2 Panel
+		qcom,mdss-dsi-idle-on-command-V2 = [
+					39 01 00 00 00 00 06 F0 55 AA 52 08 01
+					39 01 00 00 46 00 0D C2 02 02 02 02 02 02 02 02 02 02 02 02
+ 					05 01 00 00 00 00 02 39 00
+					39 01 00 00 00 00 06 F0 55 AA 52 08 01
+					15 01 00 00 00 00 02 B3 89
+					15 01 00 00 00 00 02 C0 26
+					];
+		qcom,mdss-dsi-idle-off-command-V2 = [
+					39 01 00 00 00 00 06 F0 55 AA 52 08 01
+					15 01 00 00 00 00 02 C0 28
+					05 01 00 00 3C 00 02 38 00
+					39 01 00 00 00 00 06 F0 55 AA 52 08 01
+					15 01 00 00 00 00 02 B3 00
+					39 01 00 00 00 00 0D C2 0B 0B 0B 0B 0B 0B 0B 0B 0B 0B 0B 0B
+					05 01 00 00 00 00 02 38 00
+					];
+//ASUS_BSP --- Jason Chang [WI500Q][Display]support V2 Panel
 //ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
 		qcom,mdss-dsi-idle-on-command = [
 					05 01 00 00 00 00 02 39 00
