@@ -1623,7 +1623,6 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 #define DMP_MIN_RUN_TIME (37 * NSEC_PER_MSEC)
 	if (st->suspend_state)
 		return IRQ_HANDLED;
-	mutex_lock(&st->suspend_resume_lock);
 	mutex_lock(&indio_dev->mlock);
 	if (st->chip_config.dmp_on) {
 		pts1 = get_time_ns();
@@ -1713,7 +1712,6 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 	}
 end_session:
 	mutex_unlock(&indio_dev->mlock);
-	mutex_unlock(&st->suspend_resume_lock);
 
 	return IRQ_HANDLED;
 flush_fifo:
@@ -1721,7 +1719,6 @@ flush_fifo:
 	inv_reset_fifo(indio_dev);
 	inv_clear_kfifo(st);
 	mutex_unlock(&indio_dev->mlock);
-	mutex_unlock(&st->suspend_resume_lock);
 
 	return IRQ_HANDLED;
 }
