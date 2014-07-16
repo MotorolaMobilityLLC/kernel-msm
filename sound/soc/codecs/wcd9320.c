@@ -49,6 +49,7 @@
 
 #define DAPM_MICBIAS2_EXTERNAL_STANDALONE "MIC BIAS2 External Standalone"
 #define DAPM_MICBIAS3_EXTERNAL_STANDALONE "MIC BIAS3 External Standalone"
+#define DAPM_MICBIAS3_EXTERNAL "MIC BIAS3 External"
 
 /* RX_HPH_CNP_WG_TIME increases by 0.24ms */
 #define TAIKO_WG_TIME_FACTOR_US	240
@@ -61,6 +62,8 @@ static int high_perf_mode;
 module_param(high_perf_mode, int,
 			S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(high_perf_mode, "enable/disable class AB config for hph");
+
+static int micbias3_standalone_enabled;
 
 static struct kernel_param_ops spkr_drv_wrnd_param_ops = {
 	.set = spkr_drv_wrnd_param_set,
@@ -1059,7 +1062,63 @@ static int taiko_config_compander(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int taiko_get_micbias3(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = micbias3_standalone_enabled;
+	return 0;
+}
 
+static int taiko_set_micbias3(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_card *card = codec->card;
+	int value = ucontrol->value.integer.value[0];
+	struct snd_soc_dapm_widget *w;
+	int rc;
+	bool widget_found = false;
+
+	pr_debug("%s: enable micbias 3 standalone %d,\n",
+		__func__, value);
+
+	micbias3_standalone_enabled = value;
+
+	if (micbias3_standalone_enabled)
+		rc = snd_soc_dapm_force_enable_pin(&codec->dapm,
+			DAPM_MICBIAS3_EXTERNAL_STANDALONE);
+
+	else {
+		/* Don't turn off mic bias 3 if the widget power is on, parallel
+		 * capture session voip/camcorder could be running, dapm will
+		 * turn it off when capture session ends.
+		 */
+		/* get stream root widget AIF from stream string and direction */
+		list_for_each_entry(w, &card->widgets, list) {
+			/* make sure the widget belongs the DAI codec or platform */
+			if (w->codec && w->codec != codec) {
+				continue;
+			}
+			if (!strncmp(w->name, DAPM_MICBIAS3_EXTERNAL, 18))
+				widget_found = true;
+		}
+		if (!widget_found) {
+			dev_err(card->dapm.dev, "DAI AIF widget for %s not found\n",
+				DAPM_MICBIAS3_EXTERNAL);
+			w = NULL;
+		}
+		if ((w != NULL) && w->power)
+			goto out;
+
+		rc = snd_soc_dapm_disable_pin(&codec->dapm,
+			DAPM_MICBIAS3_EXTERNAL_STANDALONE);
+	}
+	if (!rc)
+		snd_soc_dapm_sync(&codec->dapm);
+out:
+	pr_debug("%s: leave ret %d\n", __func__, rc);
+	return rc;
+}
 
 static const char *const taiko_anc_func_text[] = {"OFF", "ON"};
 static const struct soc_enum taiko_anc_func_enum =
@@ -1470,6 +1529,8 @@ static const struct snd_kcontrol_new taiko_snd_controls[] = {
 
 	SOC_ENUM_EXT("MAD Input", taiko_conn_mad_enum,
 			taiko_mad_input_get, taiko_mad_input_put),
+	SOC_SINGLE_EXT("Mic Bias3 Enable", SND_SOC_NOPM, 0, 1, 0,
+			taiko_get_micbias3, taiko_set_micbias3),
 
 };
 
