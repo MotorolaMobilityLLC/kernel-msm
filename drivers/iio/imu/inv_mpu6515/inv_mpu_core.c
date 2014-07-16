@@ -2988,10 +2988,12 @@ static int inv_mpu_resume(struct device *dev)
 	/* add code according to different request Start */
 	pr_debug("%s inv_mpu_resume\n", st->hw->name);
 	mutex_lock(&indio_dev->mlock);
+	st->suspend_state = false;
 
 	result = 0;
 	if (st->chip_config.dmp_on && st->chip_config.enable) {
 		result = st->set_power_state(st, true);
+		enable_irq(st->client->irq);
 		result |= inv_read_time_and_ticks(st, true);
 		if (st->ped.int_on)
 			result |= inv_enable_pedometer_interrupt(st, true);
@@ -3005,11 +3007,10 @@ static int inv_mpu_resume(struct device *dev)
 
 	} else if (st->chip_config.enable) {
 		result = st->set_power_state(st, true);
+		enable_irq(st->client->irq);
 	}
 	mutex_unlock(&indio_dev->mlock);
 	/* add code according to different request End */
-
-	mutex_unlock(&st->suspend_resume_lock);
 
 	return result;
 }
@@ -3047,11 +3048,17 @@ static int inv_mpu_suspend(struct device *dev)
 		/* disable all non-wakeup sensors */
 		inv_disable_nonwake_sensors(st);
 
+		/* disable irq's to assure inv_read_fifo() runs if pending */
+		disable_irq(st->client->irq);
+
 		/* only in DMP non-batch data mode, turn off the power */
 		if ((!st->batch.on) && (!st->chip_config.smd_enable) &&
 					(!st->ped.on))
 			result |= st->set_power_state(st, false);
 	} else if (st->chip_config.enable) {
+		/* disable irq's to assure inv_read_fifo() runs if pending */
+		disable_irq(st->client->irq);
+
 		/* in non DMP case, just turn off the power */
 		result |= st->set_power_state(st, false);
 	}
@@ -3061,19 +3068,8 @@ static int inv_mpu_suspend(struct device *dev)
 	return 0;
 }
 
-static int inv_mpu_suspend_noirq(struct device *dev)
-{
-	struct iio_dev *indio_dev = i2c_get_clientdata(to_i2c_client(dev));
-	struct inv_mpu_state *st = iio_priv(indio_dev);
-
-	mutex_lock(&st->suspend_resume_lock);
-	st->suspend_state = false;
-
-	return 0;
-}
 static const struct dev_pm_ops inv_mpu_pmops = {
 	.suspend       = inv_mpu_suspend,
-	.suspend_noirq = inv_mpu_suspend_noirq,
 	.resume        = inv_mpu_resume,
 };
 #define INV_MPU_PMOPS (&inv_mpu_pmops)
