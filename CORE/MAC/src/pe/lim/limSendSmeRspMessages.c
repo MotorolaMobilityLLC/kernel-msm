@@ -1274,7 +1274,8 @@ limSendSmeDisassocNtf(tpAniSirGlobal pMac,
     switch (disassocTrigger)
     {
         case eLIM_PEER_ENTITY_DISASSOC:
-            return;
+            if (reasonCode != eSIR_SME_STA_NOT_ASSOCIATED)
+                return;
 
         case eLIM_HOST_DISASSOC:
             /**
