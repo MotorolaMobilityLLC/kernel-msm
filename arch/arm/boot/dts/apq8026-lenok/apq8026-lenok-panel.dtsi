@@ -42,6 +42,32 @@
 		qcom,mdss-dsi-on-command = [05 01 00 00 80 00 01 11
 					39 01 00 00 00 00 02 36 40
 					15 01 00 00 00 00 02 53 20
+					15 01 00 00 00 00 02 B0 AC
+					15 01 00 00 00 00 02 5C 34 /* Contrast, Color Management ON, S curve */
+					39 01 00 00 00 00 05 E5
+					00 00 18 18 /* Contrast */
+					39 01 00 00 00 00 02 5E 0B /* Color Management offset */
+					39 01 00 00 00 00 31 5F
+					80 80 80 80 80 80
+					80 80 80 80 80 80
+					8D 8D 8D 8D 8D 8D
+					8D 8D 8D 8D 8D 8D
+					7F 7F 7F 7F 7F 7F
+					7F 7F 7F 7F 7F 7F
+					FF FF FF FF FF FF
+					FF FF FF FF FF FF /* Color Management 10*/
+					39 01 00 00 00 00 11 E1
+					3E 3A 46 4E 4E 46
+					3A 32 00 FC F0 E4
+					E4 F8 1F 38 /* digital gamma( S curve) R */
+					39 01 00 00 00 00 11 E2
+					3E 3A 46 4E 4E 46
+					3A 32 00 FC F0 E4
+					E4 F8 1F 38 /* digital gamma( S curve) G */
+					39 01 00 00 00 00 11 E3
+					3E 3A 46 4E 4E 46
+					3A 32 00 FC F0 E4
+					E4 F8 1F 38 /* digital gamma( S curve) B */
 					05 01 00 00 00 00 01 35
 					05 01 00 00 00 00 01 29];
 		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 01 28
