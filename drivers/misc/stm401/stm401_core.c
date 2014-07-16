@@ -43,9 +43,6 @@
 
 #include <linux/stm401.h>
 
-
-#define NAME			     "stm401"
-
 #define I2C_RETRIES			5
 #define RESET_RETRIES			2
 #define STM401_DELAY_USEC		10
@@ -1109,6 +1106,13 @@ static int stm401_probe(struct i2c_client *client,
 	ps_stm401->quickpeek_state = QP_IDLE;
 	INIT_LIST_HEAD(&ps_stm401->quickpeek_command_list);
 	atomic_set(&ps_stm401->qp_enabled, 0);
+	ps_stm401->qw_in_progress = false;
+
+	ps_stm401->ignore_wakeable_interrupts = false;
+	ps_stm401->ignored_interrupts = 0;
+	ps_stm401->quickpeek_occurred = false;
+
+	stm401_quickwakeup_init(ps_stm401);
 
 	ps_stm401->is_suspended = false;
 
@@ -1228,8 +1232,47 @@ static int stm401_suspend(struct device *dev)
 	return 0;
 }
 
+static int stm401_suspend_noirq(struct device *dev)
+{
+	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	int ret = 0;
+
+	dev_dbg(dev, "%s\n", __func__);
+
+	mutex_lock(&ps_stm401->lock);
+
+	/* If we received wakeable interrupts between finishing a quickwake and
+	   now, return an error and reschedule the work so we will resume to
+	   process it instead of dropping into suspend and interrupting it */
+	if (ps_stm401->ignored_interrupts) {
+		dev_info(dev,
+			"Force system resume to handle deferred interrupts [%d]\n",
+			ps_stm401->ignored_interrupts);
+		wake_lock_timeout(&ps_stm401->wakelock, HZ);
+		queue_work(ps_stm401->irq_work_queue,
+			&ps_stm401->irq_wake_work);
+		ret = -EBUSY;
+	}
+
+	ps_stm401->ignore_wakeable_interrupts = false;
+	ps_stm401->ignored_interrupts = 0;
+	ps_stm401->quickpeek_occurred = false;
+
+	/* Init this here, because there is the unlikely posibility that an
+	   entire quickpeek operation might occur in interrupt work before
+	   qw_check has a chance to run. In that case, the completion will
+	   have already been completed, and we don't want to lose that
+	   status, or qw_execute will block for no reason. */
+	INIT_COMPLETION(ps_stm401->quickpeek_done);
+
+	mutex_unlock(&ps_stm401->lock);
+
+	return ret;
+}
+
 static const struct dev_pm_ops stm401_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(stm401_suspend, stm401_resume)
+	.suspend_noirq = stm401_suspend_noirq,
 };
 
 static const struct i2c_device_id stm401_id[] = {

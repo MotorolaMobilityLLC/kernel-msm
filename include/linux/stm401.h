@@ -295,6 +295,8 @@ struct stm_response {
 #include <linux/fb.h>
 #endif
 
+#define NAME			     "stm401"
+
 /* STM401 memory map */
 #define ID                              0x00
 #define REV_ID                          0x01
@@ -440,6 +442,8 @@ struct stm_response {
 #define AOD_QP_ENABLED_VOTE_KERN		0x01
 #define AOD_QP_ENABLED_VOTE_USER		0x02
 #define AOD_QP_ENABLED_VOTE_MASK		0x03
+
+#define AOD_QP_TIMEOUT			(2*HZ)
 
 #define STM401_MAX_GENERIC_DATA		512
 
@@ -617,8 +621,12 @@ struct stm401_data {
 	struct completion quickpeek_done;
 	struct list_head quickpeek_command_list;
 	atomic_t qp_enabled;
+	bool quickpeek_occurred;
 	unsigned short qw_irq_status;
 	struct stm401_aod_enabled_vote aod_enabled;
+	bool qw_in_progress;
+	bool ignore_wakeable_interrupts;
+	int ignored_interrupts;
 
 	bool in_reset_and_init;
 	bool is_suspended;
@@ -699,6 +707,7 @@ int stm401_resolve_aod_enabled_locked(struct stm401_data *ps_stm401);
 int stm401_display_handle_touch_locked(struct stm401_data *ps_stm401);
 int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 	bool releaseWakelock);
+void stm401_quickwakeup_init(struct stm401_data *ps_stm401);
 
 int stm401_boot_flash_erase(void);
 int stm401_get_version(struct stm401_data *ps_stm401);
