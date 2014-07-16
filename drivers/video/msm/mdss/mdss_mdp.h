@@ -845,5 +845,6 @@ int mdss_mdp_overlay_set(struct msm_fb_data_type *mfd, struct mdp_overlay *req);
 int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
 			  struct msmfb_overlay_data *req);
 int mdss_mdp_overlay_unset(struct msm_fb_data_type *mfd, int ndx);
+void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on);
 
 #endif /* MDSS_MDP_H */
