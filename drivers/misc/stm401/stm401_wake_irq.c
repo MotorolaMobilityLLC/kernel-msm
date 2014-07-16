@@ -74,16 +74,20 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	if (ps_stm401->mode == BOOTMODE)
 		goto EXIT_NO_WAKE;
 
-	if (ps_stm401->is_suspended) {
-		dev_dbg(&ps_stm401->client->dev, "setting pending_wake_work [true]\n");
-		ps_stm401->pending_wake_work = true;
+	/* This is to handle the case of having completed a quickwake and
+	   receiving another wakeable interrupt before we reach suspend. By
+	   the nature of quickwake, we are already going into suspend here
+	   so the only way to ensure we can process this interrupt is to
+	   throw an error at the last suspend step (noirq) so that we
+	   resume to handle this interrupt properly */
+	if (ps_stm401->ignore_wakeable_interrupts) {
+		dev_info(&ps_stm401->client->dev,
+			"Interrupt received after quickwake complete, defer until next resume\n");
+		ps_stm401->ignored_interrupts++;
 		goto EXIT_NO_WAKE;
 	}
 
 	stm401_wake(ps_stm401);
-
-	if (ps_stm401->is_suspended)
-		goto EXIT;
 
 	/* read interrupt mask register */
 	stm401_cmdbuff[0] = WAKESENSOR_STATUS;
@@ -114,6 +118,11 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		goto EXIT;
 	}
 	irq3_status = stm401_readbuff[0];
+
+	if (ps_stm401->qw_irq_status) {
+		irq_status |= ps_stm401->qw_irq_status;
+		ps_stm401->qw_irq_status = 0;
+	}
 
 	/* First, check for error messages */
 	if (irq_status & M_LOG_MSG) {

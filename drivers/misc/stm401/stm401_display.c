@@ -77,6 +77,8 @@ int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 	if (ps_stm401->quickpeek_state == QP_IDLE)
 		ps_stm401->quickpeek_state = QP_AWAKE;
 
+	ps_stm401->quickpeek_occurred = true;
+
 	wake_lock(&ps_stm401->quickpeek_wakelock);
 	/* If this is only us, we dont need a full 1 sec */
 	if (releaseWakelock)
@@ -217,6 +219,9 @@ void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401)
 	}
 
 	ps_stm401->quickpeek_state = QP_IDLE;
+	ps_stm401->ignored_interrupts = 0;
+	ps_stm401->ignore_wakeable_interrupts = false;
+
 	wake_unlock(&ps_stm401->quickpeek_wakelock);
 	complete(&ps_stm401->quickpeek_done);
 }
@@ -390,6 +395,10 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 	}
 
 	if (ps_stm401->quickpeek_state == QP_AWAKE) {
+		if (ps_stm401->qw_in_progress) {
+			ps_stm401->ignored_interrupts = 0;
+			ps_stm401->ignore_wakeable_interrupts = true;
+		}
 		wake_unlock(&ps_stm401->quickpeek_wakelock);
 		complete(&ps_stm401->quickpeek_done);
 		ps_stm401->quickpeek_state = QP_IDLE;
@@ -529,4 +538,82 @@ unsigned short stm401_get_interrupt_status(struct stm401_data *ps_stm401,
 
 	stm401_sleep(ps_stm401);
 	return (stm401_readbuff[1] << 8) | stm401_readbuff[0];
+}
+
+/* WARNING: This code is extrememly prone to race conditions. Be very careful
+   modifying this code or the variables it uses to control flow. */
+
+static int stm401_qw_check(void *data)
+{
+	struct stm401_data *ps_stm401 = (struct stm401_data *)data;
+	unsigned short irq_status;
+	int err, ret = 0;
+
+	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
+
+	mutex_lock(&ps_stm401->lock);
+
+	if (ps_stm401->quickpeek_occurred) {
+		if (ps_stm401->quickpeek_state == QP_IDLE) {
+			/* Wow, we've completed an entire quickpeek before
+			   getting here. Unexpected, but we should handle it. */
+			ps_stm401->ignored_interrupts = 0;
+			ps_stm401->ignore_wakeable_interrupts = true;
+		}
+		ret = 1;
+		goto EXIT;
+	}
+
+	irq_status = stm401_get_interrupt_status(ps_stm401, WAKESENSOR_STATUS,
+		&err);
+	if (err < 0)
+		goto EXIT;
+
+	ps_stm401->qw_irq_status = irq_status;
+
+	if (irq_status & M_QUICKPEEK) {
+		queue_work(ps_stm401->irq_work_queue,
+			&ps_stm401->irq_wake_work);
+		ret = 1;
+	}
+
+EXIT:
+	if (ret == 1)
+		ps_stm401->qw_in_progress = true;
+
+	mutex_unlock(&ps_stm401->lock);
+
+	return ret;
+}
+
+static int stm401_qw_execute(void *data)
+{
+	struct stm401_data *ps_stm401 = (struct stm401_data *)data;
+	int ret = 1;
+
+	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
+
+	if (!wait_for_completion_timeout(&ps_stm401->quickpeek_done,
+							AOD_QP_TIMEOUT)) {
+		dev_err(&ps_stm401->client->dev,
+			"timed out waiting for complete message, reset stm401\n");
+		stm401_reset_and_init();
+		ret = 0;
+	}
+
+	ps_stm401->qw_in_progress = false;
+
+	return ret;
+}
+
+static struct quickwakeup_ops stm401_quickwakeup_ops = {
+	.name = NAME,
+	.qw_execute = stm401_qw_execute,
+	.qw_check   = stm401_qw_check,
+};
+
+void stm401_quickwakeup_init(struct stm401_data *ps_stm401)
+{
+	stm401_quickwakeup_ops.data = ps_stm401;
+	quickwakeup_register(&stm401_quickwakeup_ops);
 }
