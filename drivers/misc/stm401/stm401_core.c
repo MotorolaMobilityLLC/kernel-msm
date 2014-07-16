@@ -788,13 +788,8 @@ static int stm401_fb_notifier_callback(struct notifier_block *self,
 	struct stm401_data *ps_stm401 = container_of(self, struct stm401_data,
 		fb_notif);
 	int blank;
-	int mutex_locked = 0;
-	int mutex_lock_retries = 0;
 
 	dev_dbg(&ps_stm401->client->dev, "%s+\n", __func__);
-
-	if (stm401_misc_data->in_reset_and_init || ps_stm401->mode == BOOTMODE)
-		goto exit;
 
 	/* If we aren't interested in this event, skip it immediately ... */
 	switch (event) {
@@ -810,17 +805,7 @@ static int stm401_fb_notifier_callback(struct notifier_block *self,
 
 	blank = *(int *)evdata->data;
 
-	do {
-		mutex_locked = mutex_trylock(&ps_stm401->lock);
-		if (!mutex_locked)
-			usleep(10000);
-	} while (!mutex_locked && mutex_lock_retries++ < 10);
-
-	/* just give up, we've taken too long already... */
-	if (!mutex_locked) {
-		dev_warn(&ps_stm401->client->dev, "failed to acquire mutex...bailing\n");
-		goto exit;
-	}
+	mutex_lock(&ps_stm401->lock);
 
 	if (event == FB_EARLY_EVENT_BLANK && blank == FB_BLANK_UNBLANK)
 		stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN,
