@@ -379,6 +379,7 @@
 			&hsic_rdy_default &hsic_data_default>;
 	pinctrl-1 = <&hsic_resume_active &hsic_wake_active
 			&hsic_rdy_active &hsic_data_active>;
+	hsic,resume-gpio = <&msmgpio 108 0x00>;
 };
 
 &mdm0 {
