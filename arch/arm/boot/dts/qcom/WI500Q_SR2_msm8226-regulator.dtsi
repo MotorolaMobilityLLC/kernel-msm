@@ -270,10 +270,11 @@
 		status = "okay";
 		pm8226_l7: regulator-l7 {
 			regulator-name = "8226_l7";
-			regulator-min-microvolt = <1850000>;
-			regulator-max-microvolt = <1850000>;
-			qcom,init-voltage = <1850000>;
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage = <1800000>;
 			status = "okay";
+			regulator-always-on;
 		};
 	};
 
