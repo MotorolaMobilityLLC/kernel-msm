@@ -46,6 +46,10 @@
 &uart6 {
 	/delete-property/ qcom,inject-rx-on-wakeup;
 	/delete-property/ qcom,rx-char-to-inject;
+	interrupt-names = "core_irq", "bam_irq";
+	interrupts = <0 1>;
+	interrupt-map = <0 &intc 0 112 0
+			1 &intc 0 238 0>;
 };
 &soc {
 	sound {
