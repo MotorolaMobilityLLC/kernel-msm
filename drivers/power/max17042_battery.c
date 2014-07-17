@@ -167,6 +167,7 @@ static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
+	POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
@@ -255,6 +256,32 @@ int max17042_read_charge_counter(struct i2c_client *client, int ql)
 	return uah;
 }
 
+int64_t max17042_read_charge_counter_ext(struct i2c_client *client)
+{
+	int uah = 0, uah_old = 0, uahl = 0;
+	int i;
+	int64_t ret;
+
+	uah = max17042_read_reg(client, MAX17042_QH);
+	if (uah < 0)
+		return uah;
+	for (i = 0; i < 3; i++) {
+		uahl = max17042_read_reg(client, MAX17042_QL);
+		if (uahl < 0)
+			return uahl;
+		uah_old = uah;
+		uah = max17042_read_reg(client, MAX17042_QH);
+		if (uah < 0)
+			return uah;
+		if (uah == uah_old)
+			break;
+	}
+	if (uah != uah_old)
+		return -ETIMEDOUT;
+	ret = (((int64_t)uah << 16) + uahl) * 8;
+	return ret;
+}
+
 int max17042_read_temp(struct max17042_chip *chip, int *temp_dc)
 {
 	int ret;
@@ -326,6 +353,7 @@ static int max17042_get_property(struct power_supply *psy,
 	struct max17042_chip *chip = container_of(psy,
 				struct max17042_chip, battery);
 	int ret;
+	int64_t ret64;
 
 	if (!chip->init_complete)
 		return -EAGAIN;
@@ -420,6 +448,13 @@ static int max17042_get_property(struct power_supply *psy,
 			return ret;
 
 		val->intval = ret;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT:
+		ret64 = max17042_read_charge_counter_ext(chip->client);
+		if (ret64 < 0)
+			return ret64;
+
+		val->int64val = ret64;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		ret = max17042_read_temp(chip, &val->intval);
