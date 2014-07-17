@@ -2063,7 +2063,9 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	}
 
 	spin_unlock_irqrestore(&uport->lock, flags);
-	msm_hs_enable_flow_control(uport);
+
+	if (use_low_power_wakeup(msm_uport))
+		msm_hs_enable_flow_control(uport);
 
 	/* we really want to clock off */
 	mutex_unlock(&msm_uport->clk_mutex);
