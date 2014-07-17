@@ -12,7 +12,10 @@ Required properties:
 		<0> enable - the enable gpio
 		<1> trigger - optional, external trigger or PWM/Audio in gpio
 	- external_trigger:
-		enable external trigger in stand-by mode
+		can be one of
+		<0> - disable external trigger mode
+		<1> - enable external trigger pin in stand-by mode
+		<2> - do external trigger confuration but keep stand-by mode
 	- default_effect:
 		the library effect ID for the trigger pin activated vibes
 	- rated_voltage:
