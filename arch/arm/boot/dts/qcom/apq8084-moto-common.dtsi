@@ -986,7 +986,7 @@
 		reg = <0x5A>;
 		gpios = <&msmgpio 75 0>,        /* EN_GPIO */
 			<&msmgpio 74 0>;        /* Trigger */
-		external_trigger = <1>;
+		external_trigger = <2>;
 		default_effect = <17>;          /* Strong Click 100% */
 		rated_voltage = <0x70>;         /* 2.4v */
 		overdrive_voltage = <0x89>;     /* 3.0v */
