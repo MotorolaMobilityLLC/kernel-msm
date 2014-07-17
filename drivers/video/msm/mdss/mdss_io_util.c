@@ -167,7 +167,6 @@ int msm_dss_config_vreg(struct device *dev, struct dss_vreg *in_vreg,
 						__builtin_return_address(0),
 						__func__,
 						curr_vreg->vreg_name);
-					if(strcmp(curr_vreg->vreg_name,"panel"))		//workaround:skip check panel VDDIO
 					goto vreg_set_voltage_fail;
 				}
 			}
