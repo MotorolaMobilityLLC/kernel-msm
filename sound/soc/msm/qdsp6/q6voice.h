@@ -153,6 +153,9 @@ struct vss_unmap_memory_cmd {
  * vocproc from all the streams to which it is currently attached.
 */
 
+#define VSS_IMVM_CMD_PAUSE_VOICE			0x0001137D
+/* No payload. Wait for APRV2_IBASIC_RSP_RESULT response. */
+
 #define VSS_IMVM_CMD_START_VOICE			0x00011190
 /*
  * Start Voice call command.
