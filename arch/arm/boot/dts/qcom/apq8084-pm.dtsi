@@ -257,9 +257,16 @@
 			<0xff 113>, /* o_ocmem_axi_timeout_nonseq_irq */
 			<0xff 116>, /* mdss_vbif_irpt */
 			<0xff 126>, /* bam_dma_irq[0] */
+			<0xff 127>, /* f9923000.spi */
 			<0xff 129>, /* blsp1_qup_3_irq */
+			<0xff 130>, /* f9926000.spi */
+			<0xff 131>, /* qup_err_intr */
+			<0xff 134>, /* qup_err_intr */
+			<0xff 136>, /* qup_err_intr */
+			<0xff 138>, /* qup_err_intr */
 			<0xff 140>, /* uart_dm_intr */
 			<0xff 143>, /* blsp1_uart_5_irq */
+			<0xff 147>, /* blsp2_uart_3_core_irq */
 			<0xff 149>, /* blsp2_uart_5_irq */
 			<0xff 155>, /* sdc1_irq[0] */
 			<0xff 157>, /* sdcc_irq[0] */
