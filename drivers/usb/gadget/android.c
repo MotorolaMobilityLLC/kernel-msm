@@ -3688,7 +3688,7 @@ static int android_bind(struct usb_composite_dev *cdev)
 	struct android_dev *dev;
 	struct usb_gadget	*gadget = cdev->gadget;
 	struct android_configuration *conf;
-	int			id, ret;
+	int			gcnum, id, ret;
 
 	/* Bind to the last android_dev that was probed */
 	dev = list_entry(android_dev_list.prev, struct android_dev, list_item);
@@ -3742,6 +3742,14 @@ static int android_bind(struct usb_composite_dev *cdev)
 		list_for_each_entry(conf, &dev->configs, list_item)
 			conf->usb_config.descriptors = otg_desc;
 
+	gcnum = usb_gadget_controller_number(gadget);
+	if (gcnum >= 0)
+		device_desc.bcdDevice = cpu_to_le16(0x0200 + gcnum);
+	else {
+		pr_warn("%s: controller '%s' not recognized\n",
+			longname, gadget->name);
+		device_desc.bcdDevice = __constant_cpu_to_le16(0x9999);
+	}
 	return 0;
 }
 
