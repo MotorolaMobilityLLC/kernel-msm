@@ -218,6 +218,7 @@
 			<62 222>, /* ee0_krait_hlos_spmi_periph_irq */
 			<0xff 18>,  /* APCx_qgicQTmrSecPhysIrptReq */
 			<0xff 19>,  /* APCx_qgicQTmrSecPhysIrptReq */
+			<0xff 20>, /* arch timer VIRT_PPI */
 			<0xff 25>,  /* APCx_qgicExtFaultIrptReq */
 			<0xff 33>, /* APCC_qgicL2PerfMonIrptReq */
 			<0xff 34>, /* APCC_qgicL2ErrorIrptReq */
