@@ -146,7 +146,27 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
              {
                  PELOG1(limLog(pMac, LOG1, FL("SAP:lim Delete Station Context (staId: %d, assocId: %d) "),
                              pMsg->staId, pMsg->assocId);)
-                 limTriggerSTAdeletion(pMac, pStaDs, psessionEntry);
+                 /*
+                  * Check if Deauth/Disassoc is triggered from Host.
+                  * If mlmState is in some transient state then
+                  * don't trigger STA deletion to avoid the race
+                  * condition.
+                  */
+                  if ((pStaDs &&
+                      ((pStaDs->mlmStaContext.mlmState !=
+                        eLIM_MLM_LINK_ESTABLISHED_STATE) &&
+                       (pStaDs->mlmStaContext.mlmState !=
+                        eLIM_MLM_WT_ASSOC_CNF_STATE) &&
+                       (pStaDs->mlmStaContext.mlmState !=
+                        eLIM_MLM_ASSOCIATED_STATE))))
+                 {
+                     PELOGE(limLog(pMac, LOGE, FL("SAP:received Del STA context in some transit state(staId: %d, assocId: %d)"),
+                            pMsg->staId, pMsg->assocId);)
+                     vos_mem_free(pMsg);
+                     return;
+                 }
+                 else
+                     limTriggerSTAdeletion(pMac, pStaDs, psessionEntry);
              }
              else
              {

@@ -46,7 +46,7 @@
 #define WLAN_FTM_PHY_CMD         100
 #define SIR_HAL_FTM_CMD          10
 #define QUALCOMM_MODULE_TYPE     2
-#define WLAN_FTM_COMMAND_TIME_OUT 1000
+#define WLAN_FTM_COMMAND_TIME_OUT 10000
 #define PHYDBG_PREAMBLE_NOT_SUPPORTED 0xFF
 /* Private ioctls and their sub-ioctls */
 #define WLAN_FTM_PRIV_SET_INT_GET_NONE    (SIOCIWFIRSTPRIV + 0)
