@@ -1140,10 +1140,14 @@ static void mxt_proc_t9_message(struct mxt_data *data, u8 *message)
 	int amplitude;
 	u8 vector;
 	int tool;
+	struct timespec hw_time = ktime_to_timespec(ktime_get());
 
 	/* do not report events if input device not yet registered */
 	if (!data->enable_reporting)
 		return;
+
+	input_event(input_dev, EV_SYN, SYN_TIME_SEC, hw_time.tv_sec);
+	input_event(input_dev, EV_SYN, SYN_TIME_NSEC, hw_time.tv_nsec);
 
 	id = message[0] - data->T9_reportid_min;
 	status = message[1];
@@ -1222,6 +1226,7 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 	unsigned char number_of_fingers_actually_touching;
 	static char finger_register[32];
 #endif
+	struct timespec hw_time = ktime_to_timespec(ktime_get());
 
 	/* do not report events if input device not yet registered */
 	if (!data->enable_reporting)
@@ -1232,6 +1237,9 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 	/* ignore SCRSTATUS events */
 	if (id < 0)
 		return;
+
+	input_event(input_dev, EV_SYN, SYN_TIME_SEC, hw_time.tv_sec);
+	input_event(input_dev, EV_SYN, SYN_TIME_NSEC, hw_time.tv_nsec);
 
 	status = message[1];
 	x = (message[3] << 8) | message[2];
