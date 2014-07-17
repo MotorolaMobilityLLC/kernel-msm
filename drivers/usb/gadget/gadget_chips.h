@@ -35,6 +35,27 @@
 #define gadget_is_pxa(g)		(!strcmp("pxa25x_udc", (g)->name))
 #define gadget_is_pxa27x(g)		(!strcmp("pxa27x_udc", (g)->name))
 
+static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
+{
+	pr_debug("%s: %s\n", __func__, gadget->name);
+
+	if (gadget_is_dwc3(gadget))
+		return 0x23;
+	else if (gadget_is_net2280(gadget))
+		return 0x01;
+	else if (gadget_is_pxa(gadget))
+		return 0x03;
+	else if (gadget_is_goku(gadget))
+		return 0x06;
+	else if (gadget_is_pxa27x(gadget))
+		return 0x11;
+	else if (gadget_is_at91(gadget))
+		return 0x13;
+	else if (gadget_is_musbhdrc(gadget))
+		return 0x16;
+
+	return -ENOENT;
+}
 /**
  * gadget_supports_altsettings - return true if altsettings work
  * @gadget: the gadget in question
