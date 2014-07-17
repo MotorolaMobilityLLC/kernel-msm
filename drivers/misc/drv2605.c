@@ -479,11 +479,16 @@ static void drv260x_standby(void)
 		Control3_REG, NG_Thresh_2|ERM_OpenLoop_Enabled,
 		OVERDRIVE_CLAMP_VOLTAGE_REG, drv260x->overdrive_voltage,
 #endif
+	};
+	unsigned char mode[] = {
 		MODE_REG, MODE_EXTERNAL_TRIGGER_EDGE
 	};
 	if (drv260x->external_trigger) {
 		drv2605_set_waveform_sequence(drv260x->default_sequence, 1);
 		drv260x_write_reg_val(tmp, sizeof(tmp));
+		if (drv260x->external_trigger == 2)
+			mode[1] = MODE_STANDBY;
+		drv260x_write_reg_val(mode, sizeof(mode));
 		gpio_set_value(drv260x->en_gpio, GPIO_LEVEL_LOW);
 	} else
 		drv260x_change_mode(MODE_STANDBY);
