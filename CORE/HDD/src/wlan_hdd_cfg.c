@@ -389,6 +389,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ENABLE_IMPS_MIN,
                  CFG_ENABLE_IMPS_MAX ),
 
+   REG_VARIABLE( CFG_SSR_PANIC_ON_FAILURE_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, fIsSsrPanicOnFailure,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_SSR_PANIC_ON_FAILURE_DEFAULT,
+                 CFG_SSR_PANIC_ON_FAILURE_MIN,
+                 CFG_SSR_PANIC_ON_FAILURE_MAX),
+
    REG_VARIABLE( CFG_ENABLE_LOGP_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, fIsLogpEnabled,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
