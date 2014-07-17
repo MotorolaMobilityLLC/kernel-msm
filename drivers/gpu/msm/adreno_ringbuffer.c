@@ -20,6 +20,7 @@
 #include "kgsl.h"
 #include "kgsl_sharedmem.h"
 #include "kgsl_cffdump.h"
+#include "kgsl_trace.h"
 
 #include "adreno.h"
 #include "adreno_pm4types.h"
@@ -1189,6 +1190,10 @@ void adreno_ringbuffer_set_constraint(struct kgsl_device *device,
 			device->pwrctrl.constraint.owner_id = context->id;
 			device->pwrctrl.constraint.expires = jiffies +
 					device->pwrctrl.interval_timeout;
+			/* Trace the constraint being set by the driver */
+			trace_kgsl_constraint(device,
+					device->pwrctrl.constraint.type,
+					constraint, 1);
 		} else if ((device->pwrctrl.constraint.type ==
 				context->pwr_constraint.type) &&
 			(device->pwrctrl.constraint.hint.pwrlevel.level ==
