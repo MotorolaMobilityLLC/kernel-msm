@@ -85,6 +85,11 @@
 
 #include "device_libs/platform_wm8994.h"
 
+/*
+ * SPI devices
+ */
+#include "device_libs/platform_max17042.h"
+
 /* HSI devices */
 
 /* SW devices */
@@ -127,6 +132,9 @@ struct devs_id __initconst device_ids[] = {
 	{"synaptics_3402", SFI_DEV_TYPE_I2C, 0, &rmi4_platform_data, NULL},
 
 	/* I2C devices*/
+	{"max17042", SFI_DEV_TYPE_I2C, 1, &max17042_platform_data, NULL},
+	{"max17047", SFI_DEV_TYPE_I2C, 1, &max17042_platform_data, NULL},
+	{"max17050", SFI_DEV_TYPE_I2C, 1, &max17042_platform_data, NULL},
 	{"bq24192", SFI_DEV_TYPE_I2C, 1, &bq24192_platform_data},
 	{"bq24261_charger", SFI_DEV_TYPE_I2C, 1, &bq24261_platform_data, NULL},
 	{"pn544", SFI_DEV_TYPE_I2C, 0, &pn544_platform_data, NULL},
