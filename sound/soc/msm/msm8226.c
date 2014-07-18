@@ -1441,6 +1441,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA1
 	},
+//ASUS_BSP Jessy +++
+#if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "MSM8226 Media2",
 		.stream_name = "MultiMedia2",
@@ -1456,6 +1458,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
 	},
+#endif
+//ASUS_BSP Jessy ---
 //ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	{
@@ -1491,6 +1495,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 	},
 #endif
 //ASUS_BSP Ken_Cheng ---
+//ASUS_BSP Jessy +++
+#if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "MSM8226 LPA",
 		.stream_name = "LPA",
@@ -1506,6 +1512,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA3,
 	},
+#endif
+//ASUS_BSP Jessy ---
 //ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	/* Hostless PCM purpose */
@@ -1540,6 +1548,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 	},
 #endif
 //ASUS_BSP Ken_Cheng ---
+//ASUS_BSP Jessy +++
+#if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "MSM AFE-PCM RX",
 		.stream_name = "AFE-PROXY RX",
@@ -1590,6 +1600,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+#endif
+//ASUS_BSP Jessy ---
 //ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	{
@@ -1651,6 +1663,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 	},
 #endif
 //ASUS_BSP Ken_Cheng ---
+//ASUS_BSP Jessy +++
+#if defined(ASUS_CW_WITH_CODEC)
 	{
 		.name = "MSM8226 LowLatency",
 		.stream_name = "MultiMedia5",
@@ -1681,6 +1695,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA9,
 	},
+#endif
+//ASUS_BSP Jessy ---
 //ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
 	{
