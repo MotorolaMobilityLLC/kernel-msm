@@ -55,4 +55,49 @@
 		status = "ok";
 	};
 
+	qcom,camera@7a {
+		cell-index = <1>;
+		compatible = "qcom,mt9v113";
+		reg = <0x7a 0x0>;
+		qcom,slave-id = <0x7a 0x00 0x2280>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
+		qcom,csi_phy_sel = <1>;
+		qcom,mount-angle = <270>;
+		qcom,sensor-name = "mt9v113";
+		cam_vdig-supply = <&pm8916_l10>;
+		qcom,cam-vreg-name = "cam_vdig";
+		qcom,cam-vreg-type = <1>;
+		qcom,cam-vreg-min-voltage = <1800000>;
+		qcom,cam-vreg-max-voltage = <1800000>;
+		qcom,cam-vreg-op-mode = <1800000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_default
+			&cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk1_sleep &cam_sensor_front_sleep>;
+		gpios = <&msm_gpio 27 0>,
+			<&msm_gpio 34 0>,
+			<&msm_gpio 28 0>,
+			<&msm_gpio 33 0>;
+		qcom,gpio-vana = <1>;
+		qcom,gpio-reset = <2>;
+		qcom,gpio-standby = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <0 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					"CAM_VANA",
+					"CAM_RESET",
+					"CAM_STANDBY";
+		qcom,csi-lane-assign = <0x4320>;
+		qcom,csi-lane-mask = <0x3>;
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <1>;
+		qcom,cci-master = <0>;
+		qcom,mclk-23880000;
+		clocks = <&clock_gcc clk_mclk1_clk_src>,
+			<&clock_gcc clk_gcc_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+
+		status = "ok";
+	};
 };
