@@ -171,6 +171,8 @@
 /* misc define */
 #define MIN_ALS_POLL_DELAY_NS		110000000
 
+#define STK_ALS_CORRECT_FACTOR		1300
+
 #define STK2213_PID			0x23
 #define STK2213I_PID			0x22
 #define STK3010_PID			0x33
@@ -1661,7 +1663,8 @@ static void stk_work_func(struct work_struct *work)
 					ps_data->als_correct_factor =
 						STK_IRC_ALS_CORREC;
 				else
-					ps_data->als_correct_factor = 1000;
+					ps_data->als_correct_factor =
+						STK_ALS_CORRECT_FACTOR;
 			}
 			dev_dbg(&ps_data->client->dev,
 				"%s: als=%d, ir=%d, als_correct_factor=%d",
@@ -1800,7 +1803,7 @@ static int32_t stk3x1x_init_all_setting(struct i2c_client *client,
 	ps_data->delayed_work = false;
 	ps_data->re_enable_als = false;
 	ps_data->ir_code = 0;
-	ps_data->als_correct_factor = 1000;
+	ps_data->als_correct_factor = STK_ALS_CORRECT_FACTOR;
 #ifdef STK_ALS_FIR
 	memset(&ps_data->fir, 0x00, sizeof(ps_data->fir));  
 #endif
