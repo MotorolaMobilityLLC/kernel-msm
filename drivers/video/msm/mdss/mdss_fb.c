@@ -1595,6 +1595,8 @@ static int mdss_fb_release_all(struct fb_info *info, struct file *file)
 	struct mdss_fb_proc_info *release_pinfo = NULL;
 	int pid_ref_cnt = 0;
 	int ret = 0;
+	int pid = current->tgid;
+	struct task_struct *task = current->group_leader;
 	struct mdss_panel_data *pdata;
 
 	if (!mfd->ref_cnt) {
