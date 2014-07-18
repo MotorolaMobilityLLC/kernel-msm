@@ -1259,7 +1259,7 @@ static int max77836_muic_probe(struct platform_device *pdev)
 	/* initial cable detection */
 	INIT_DELAYED_WORK(&muic_data->init_work, max77836_muic_init_detect);
 	schedule_delayed_work(&muic_data->init_work,
-			msecs_to_jiffies(3000));
+			msecs_to_jiffies(200));
 
 	INIT_DELAYED_WORK(&muic_data->usb_work, max77836_muic_usb_detect);
 	schedule_delayed_work(&muic_data->usb_work, msecs_to_jiffies(17000));
