@@ -1290,15 +1290,13 @@ static void handle_level0_interrupt(u8 int_reg, u8 stat_reg,
 	return ;
 }
 
-static void handle_level1_interrupt(u8 int_reg, u8 stat_reg)
-{
-	int mask;
-	u8 val;
-	int ret;
-	int vendor_id = chc.pmic_id & PMIC_VENDOR_ID_MASK;
 
-	if (!int_reg)
-		return;
+static void pmic_ccsm_check_host_connect(u8 int_reg, u8 stat_reg)
+{
+	int __maybe_unused mask;
+	int vendor_id = chc.pmic_id & PMIC_VENDOR_ID_MASK;
+	int __maybe_unused ret;
+	u8 __maybe_unused val;
 
 	if (vendor_id == SHADYCOVE_VENDORID) {
 		if (int_reg & CHRGRIRQ1_SUSBIDFLTDET_MASK)
@@ -1308,6 +1306,7 @@ static void handle_level1_interrupt(u8 int_reg, u8 stat_reg)
 		ret = pmic_read_reg(CHGRCTRL1_ADDR, &val);
 		mask = ((stat_reg & SCHRGRIRQ1_SUSBIDGNDDET_MASK)
 				== SHRT_GND_DET) ? 1 : 0;
+
 		if (int_reg & CHRGRIRQ1_SUSBIDGNDDET_MASK) {
 			if (mask) {
 				dev_info(chc.dev,
@@ -1323,13 +1322,27 @@ static void handle_level1_interrupt(u8 int_reg, u8 stat_reg)
 				ret = intel_scu_ipc_iowrite8(
 				CHGRCTRL1_ADDR,
 				val);
+				chc.otg_mode_enabled = false;
 			}
 
 			atomic_notifier_call_chain(&chc.otg->notifier,
 					USB_EVENT_ID, &mask);
 		}
 	}
+}
 
+static void handle_level1_interrupt(u8 int_reg, u8 stat_reg)
+{
+	int mask;
+	u8 val;
+	u16 val1;
+	int ret;
+	int vendor_id = chc.pmic_id & PMIC_VENDOR_ID_MASK;
+
+	if (!int_reg)
+		return;
+
+	pmic_ccsm_check_host_connect(int_reg, stat_reg);
 	mask = !!(int_reg & stat_reg);
 	if ((vendor_id == BASINCOVE_VENDORID) &&
 			(int_reg & CHRGRIRQ1_SUSBIDDET_MASK)) {
@@ -1350,6 +1363,11 @@ static void handle_level1_interrupt(u8 int_reg, u8 stat_reg)
 				"USB VBUS Detected. Notifying OTG driver\n");
 			chc.vbus_connect_status = true;
 
+			msleep(100);
+			val1 = ioread16(chc.pmic_intr_iomap);
+			int_reg = (u8)(val1 >> 8);
+			pmic_read_reg(SCHGRIRQ1_ADDR, &stat_reg);
+			pmic_ccsm_check_host_connect(int_reg, stat_reg);
 			ret = pmic_read_reg(CHGRCTRL1_ADDR, &val);
 			if (ret != 0) {
 				dev_err(chc.dev,
