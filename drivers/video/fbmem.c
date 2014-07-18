@@ -1049,8 +1049,8 @@ fb_blank(struct fb_info *info, int blank)
 	struct fb_event event;
 	int ret = -EINVAL, early_ret;
 
- 	if (blank > FB_BLANK_POWERDOWN)
- 		blank = FB_BLANK_POWERDOWN;
+// 	if (blank > FB_BLANK_POWERDOWN)
+// 		blank = FB_BLANK_POWERDOWN;
 
 	event.info = info;
 	event.data = &blank;

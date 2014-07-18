@@ -877,6 +877,10 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	}
 }
 
+extern int enable_ambient(int enable);
+//extern void notify_st_sensor_lowpowermode(int low);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+//extern void notify_it7260_ts_lowpowermode(int low);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
+
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
@@ -907,6 +911,34 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 				schedule_delayed_work(&mfd->idle_notify_work,
 					msecs_to_jiffies(mfd->idle_time));
 		}
+		break;
+	case FB_BLANK_ENTER_NON_INTERACTIVE:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_NON_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		if (mfd->panel_power_on) {
+			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
+		}
+		//notify_st_sensor_lowpowermode(1);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+		//notify_it7260_ts_lowpowermode(1);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
+		return 0;
+		break;
+	case FB_BLANK_ENTER_INTERACTIVE:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		if (mfd->panel_power_on) {
+			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
+		}
+		//notify_st_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+		//notify_it7260_ts_lowpowermode(0);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
+		return 0;
+		break;
+	case FB_BLANK_AMBIENT_OFF:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		enable_ambient(0);
+		return 0;
+		break;
+	case FB_BLANK_AMBIENT_ON:
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_ON,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		enable_ambient(1);
+		return 0;
 		break;
 
 	case FB_BLANK_VSYNC_SUSPEND:

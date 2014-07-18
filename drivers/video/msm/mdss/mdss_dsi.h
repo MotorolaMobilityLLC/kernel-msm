@@ -306,6 +306,11 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_buf rx_buf;
 
 	struct dsi_pinctrl_res pin_res;
+
+// ASUS extend properties for panel low power mode
+	struct dsi_panel_cmds idle_on_cmds;
+	struct dsi_panel_cmds idle_off_cmds;
+
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,
@@ -360,6 +365,7 @@ void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
 bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
 
+int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on);
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		bool cmd_cfg_cont_splash);

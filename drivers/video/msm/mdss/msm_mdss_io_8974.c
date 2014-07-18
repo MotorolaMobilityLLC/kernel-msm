@@ -183,6 +183,8 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 				(h_period * v_period * frame_rate * bpp * 8);
 		}
 	}
+	panel_info->clk_rate=	290000000; // 290MHz
+	printk("MDSS:DSI:mdss_dsi_clk_div_config():Force panel_info->clk_rate=%d\n",panel_info->clk_rate);
 	pll_divider_config.clk_rate = panel_info->clk_rate;
 
 
@@ -305,6 +307,12 @@ error:
 
 static void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
+	if (ctrl_pdata == 0)
+	{
+		printk("MDSS:%s:ERR!!! NULL Pointer !!!\n",__func__);
+		dump_stack();
+		return;
+	}
 	if (ctrl_pdata->mmss_misc_ahb_clk)
 		clk_disable_unprepare(ctrl_pdata->mmss_misc_ahb_clk);
 	clk_disable_unprepare(ctrl_pdata->axi_clk);

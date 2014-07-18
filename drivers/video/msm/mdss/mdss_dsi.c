@@ -51,6 +51,14 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 {
 	int ret;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	if (is_ambient_on()){
+		printk("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
+		ret = mdss_dsi_panel_reset(pdata, enable);
+		if (ret) {
+				pr_err("%s: Panel reset failed. rc=%d\n",__func__, ret);
+		}
+		goto error; // Not error, just exit
+	}
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -1081,6 +1089,12 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_DSI_ULPS_CTRL:
 		rc = mdss_dsi_ulps_config(ctrl_pdata, (int)arg);
+		break;
+	case MDSS_EVENT_AMBIENT_MODE_ON:
+		rc = mdss_dsi_panel_ambient_enable(pdata, 1);
+		break;
+	case MDSS_EVENT_AMBIENT_MODE_OFF:
+		rc = mdss_dsi_panel_ambient_enable(pdata, 0);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
