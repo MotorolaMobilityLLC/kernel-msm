@@ -12,6 +12,8 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/bootmem.h>
+#include <linux/memblock.h>
 
 #include "mdss_mdp.h"
 #include "mdss_panel.h"
@@ -480,6 +482,7 @@ static int mdss_mdp_cmd_remove_vsync_handler(struct mdss_mdp_ctl *ctl,
 int mdss_mdp_cmd_reconfigure_splash_done(struct mdss_mdp_ctl *ctl, bool handoff)
 {
 	struct mdss_panel_data *pdata;
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(ctl->mfd);
 	int ret = 0;
 
 	pdata = ctl->panel_data;
@@ -491,6 +494,11 @@ int mdss_mdp_cmd_reconfigure_splash_done(struct mdss_mdp_ctl *ctl, bool handoff)
 		pr_err("%s: fail to send event PANEL_CONT_SPLASH_FINISH. "
 			"ret = %d\n", __func__, ret);
 	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
+
+	/* Give back the reserved memory to the system */
+	memblock_free(mdp5_data->splash_mem_addr, mdp5_data->splash_mem_size);
+	free_bootmem_late(mdp5_data->splash_mem_addr,
+				 mdp5_data->splash_mem_size);
 
 	return ret;
 }
