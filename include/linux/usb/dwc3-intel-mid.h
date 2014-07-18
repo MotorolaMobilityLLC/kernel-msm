@@ -61,6 +61,9 @@ struct intel_dwc_otg_pdata {
 	/* If the VUSBPHY power rail using for providing
 	 * power for USB PHY. */
 	int using_vusbphy;
+
+	/* WA for PMIC can't detect VBUS drop. */
+	int detect_vbus_drop;
 };
 
 /* timeout for disconnect from a suspended host */
@@ -223,6 +226,7 @@ struct intel_dwc_otg_pdata {
 #define PMIC_USBIDRSLTH_USBID_H_MASK	(0x0F)
 #define PMIC_USBIDRSLTH_USBID_CURSRC_MASK	(0xF0)
 #define PMIC_SCHGRIRQ1_SUSBIDDET(v)	((v & 0x3) << 3)
+#define PMIC_SCHGRIRQ1_SVBUSDET	(1 << 0)
 
 /* SCCB registers */
 #define SCCB_USB_CFG	0xff03a018

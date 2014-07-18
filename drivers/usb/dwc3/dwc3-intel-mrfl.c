@@ -582,6 +582,18 @@ int dwc3_intel_b_idle(struct dwc_otg2 *otg)
 	return 0;
 }
 
+static int check_vbus_status(struct dwc_otg2 *otg)
+{
+	int ret;
+	u8 schgrirq1;
+
+	ret = intel_scu_ipc_ioread8(PMIC_SCHGRIRQ1, &schgrirq1);
+	if (ret)
+		return -EINVAL;
+
+	return schgrirq1 & PMIC_SCHGRIRQ1_SVBUSDET;
+}
+
 static int dwc3_intel_set_power(struct usb_phy *_otg,
 		unsigned ma)
 {
@@ -591,6 +603,24 @@ static int dwc3_intel_set_power(struct usb_phy *_otg,
 	struct intel_dwc_otg_pdata *data;
 
 	data = (struct intel_dwc_otg_pdata *)otg->otg_data;
+
+	/* On ANN, due the VBUS haven't connect to internal USB PHY. So
+	 * controller can't get disconnect interrupt which depend on vbus drop
+	 * detection.
+	 * So controller will receive early suspend and suspend interrupt. But
+	 * we can detect vbus status to determine current scenario is real
+	 * suspend or vbus drop.
+	 */
+	if (data->detect_vbus_drop && ma == OTG_DEVICE_SUSPEND) {
+		if (!check_vbus_status(otg)) {
+			cap.chrg_type = otg->charging_cap.chrg_type;
+			cap.ma = otg->charging_cap.ma;
+			cap.chrg_evt = POWER_SUPPLY_CHARGER_EVENT_DISCONNECT;
+			atomic_notifier_call_chain(&otg->usb2_phy.notifier,
+						USB_EVENT_CHARGER, &cap);
+			return 0;
+		}
+	}
 
 	if (otg->charging_cap.chrg_type ==
 			POWER_SUPPLY_CHARGER_TYPE_USB_CDP)
