@@ -97,6 +97,7 @@
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 		qcom,mdss-dsi-reset-sequence = <1 2>, <0 1>, <1 21>;
 		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-dsi-tx-eot-append;
 	};
 
 	mot_boe_450_qhd_vid_v1: qcom,mdss_dsi_mot_boe_450_qhd_video_v1 {
@@ -179,6 +180,7 @@
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 		qcom,mdss-dsi-reset-sequence = <1 2>, <0 1>, <1 21>;
 		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-dsi-tx-eot-append;
 	};
 
 	mot_boe_450_qhd_vid_v0: qcom,mdss_dsi_mot_boe_450_qhd_video_v0 {
@@ -292,5 +294,6 @@
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 		qcom,mdss-dsi-reset-sequence = <1 2>, <0 1>, <1 21>;
 		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-dsi-tx-eot-append;
 	};
 };
