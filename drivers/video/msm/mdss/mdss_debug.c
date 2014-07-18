@@ -437,6 +437,9 @@ static int mdss_debugfs_perf_init(struct mdss_debug_data *mdd,
 	debugfs_create_bool("enable_bw_release", 0644, mdd->perf,
 		(u32 *)&mdata->enable_bw_release);
 
+	debugfs_create_bool("enable_rotator_bw_release", 0644, mdd->perf,
+		(u32 *)&mdata->enable_rotator_bw_release);
+
 	debugfs_create_u64("min_uhd_bus_vote", 0644, mdd->perf,
 		(u64 *)&mdata->perf_tune.min_uhd_bus_vote);
 
