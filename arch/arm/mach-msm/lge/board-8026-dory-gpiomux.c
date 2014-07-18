@@ -50,6 +50,47 @@ static struct gpiomux_setting gpio_console_uart_rx_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+static struct gpiomux_setting gpio_console_uart_disabled = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config msm_console_uart_configs[] __initdata = {
+	{
+		.gpio      = 8,         /* BLSP1 QUP3 UART_TX */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_console_uart_tx_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_console_uart_tx_cfg,
+		},
+	},
+	{
+		.gpio      = 9,         /* BLSP1 QUP3 UART_RX */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_console_uart_rx_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_console_uart_rx_cfg,
+		},
+	},
+};
+
+static struct msm_gpiomux_config msm_console_uart_disabled_configs[] __initdata = {
+	{
+		.gpio      = 8,         /* GPIO  */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_console_uart_disabled,
+			[GPIOMUX_SUSPENDED] = &gpio_console_uart_disabled,
+		},
+	},
+	{
+		.gpio      = 9,         /* GPIO */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_console_uart_disabled,
+			[GPIOMUX_SUSPENDED] = &gpio_console_uart_disabled,
+		},
+	},
+};
+
 static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 	{
 		.gpio = 106,
@@ -130,20 +171,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config
-		},
-	},
-	{
-		.gpio      = 8,         /* BLSP1 QUP3 UART_TX */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_console_uart_tx_cfg,
-			[GPIOMUX_SUSPENDED] = &gpio_console_uart_tx_cfg,
-		},
-	},
-	{
-		.gpio      = 9,         /* BLSP1 QUP3 UART_RX */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_console_uart_rx_cfg,
-			[GPIOMUX_SUSPENDED] = &gpio_console_uart_rx_cfg,
 		},
 	},
 	{
@@ -709,6 +736,13 @@ void __init msm8226_init_gpiomux(void)
 		pr_err("%s failed %d\n", __func__, rc);
 		return;
 	}
+
+	if (lge_uart_console_enabled())
+		msm_gpiomux_install(msm_console_uart_configs,
+				ARRAY_SIZE(msm_console_uart_configs));
+	else
+		msm_gpiomux_install(msm_console_uart_disabled_configs,
+				ARRAY_SIZE(msm_console_uart_disabled_configs));
 
 	msm_gpiomux_install(msm_keypad_configs,
 			ARRAY_SIZE(msm_keypad_configs));
