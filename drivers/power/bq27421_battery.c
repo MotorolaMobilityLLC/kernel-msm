@@ -27,6 +27,9 @@
 #include <linux/mod_devicetable.h>
 #include <linux/power/bq27421_battery.h>
 
+#define RETRY_CNT_EXIT_CFGUPDATE 100
+#define RETRY_CNT_ENTER_CFGUPDATE 10
+
 #define SOC_LOW_THRESHOLD  3
 
 struct bq27421_chip {
@@ -44,6 +47,19 @@ struct bq27421_chip {
 	int temperature;
 };
 
+static int bq27421_read_byte(struct i2c_client *client, u8 reg)
+{
+	int ret;
+
+	ret = i2c_smbus_read_byte_data(client, reg);
+	if (ret < 0)
+		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+
+	pr_debug("%s: [%x]=%x\n", __func__, reg, ret);
+
+	return ret;
+}
+
 static int bq27421_read_word(struct i2c_client *client, u8 reg)
 {
 	int ret;
@@ -57,6 +73,19 @@ static int bq27421_read_word(struct i2c_client *client, u8 reg)
 	return ret;
 }
 
+static int bq27421_write_byte(struct i2c_client *client, u8 reg, u8 value)
+{
+	int ret;
+
+	ret = i2c_smbus_write_byte_data(client, reg, value);
+	if (ret < 0)
+		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+
+	pr_debug("%s: [%x]=%x\n", __func__, reg, value);
+
+	return ret;
+}
+
 static int bq27421_write_word(struct i2c_client *client, u8 reg, u16 value)
 {
 	int ret;
@@ -66,6 +95,18 @@ static int bq27421_write_word(struct i2c_client *client, u8 reg, u16 value)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 
 	pr_debug("%s: [%x]=%x\n", __func__, reg, value);
+
+	return ret;
+}
+
+static int bq27421_write_block(struct i2c_client *client, u8 reg,
+							u8 *buf, u8 len)
+{
+	int ret;
+
+	ret = i2c_smbus_write_i2c_block_data(client, reg, len, buf);
+	if (ret < 0)
+		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 
 	return ret;
 }
@@ -94,6 +135,16 @@ static bool bq27421_is_unsealed(struct bq27421_chip *chip)
 	return !(status & 0x2000);
 }
 
+static bool bq27421_ctrl_unsealed(struct bq27421_chip *chip)
+{
+	bq27421_write_word(chip->client, BQ27421_CONTROL, UNSEAL_KEY0);
+	bq27421_write_word(chip->client, BQ27421_CONTROL, UNSEAL_KEY1);
+
+	msleep(100);
+
+	return bq27421_is_unsealed(chip);
+}
+
 static bool bq27421_ctrl_sealed(struct bq27421_chip *chip)
 {
 	bq27421_write_word(chip->client, BQ27421_CONTROL,
@@ -102,6 +153,127 @@ static bool bq27421_ctrl_sealed(struct bq27421_chip *chip)
 	msleep(100);
 
 	return !bq27421_is_unsealed(chip);
+}
+
+static bool bq27421_is_cfgupdate(struct bq27421_chip *chip)
+{
+	int ret;
+
+	ret = bq27421_read_word(chip->client, BQ27421_FLAGS);
+	if (ret < 0) {
+		pr_err("%s: failed to get flags\n", __func__);
+		return false;
+	}
+
+	return !!(ret & 0x0010);
+}
+
+static bool bq27421_enter_cfgupdate(struct bq27421_chip *chip)
+{
+	int retry = 0;
+
+	if (bq27421_is_cfgupdate(chip))
+		return true;
+
+	do {
+		bq27421_write_word(chip->client, BQ27421_CONTROL,
+						BQ27421_SCMD_CFGUPDATE);
+		if (bq27421_is_cfgupdate(chip)) {
+			return true;
+		} else {
+			retry++;
+			msleep(100);
+		}
+	} while (retry < RETRY_CNT_ENTER_CFGUPDATE);
+
+	return false;
+
+}
+
+static bool bq27421_exit_cfgupdate(struct bq27421_chip *chip)
+{
+	int retry = 0;
+
+	if (!bq27421_is_cfgupdate(chip))
+		return true;
+
+	do {
+		bq27421_write_word(chip->client, BQ27421_CONTROL,
+					BQ27421_SCMD_EXIT_CFGUPDATE);
+		if (!bq27421_is_cfgupdate(chip)) {
+			return true;
+		} else {
+			retry++;
+			msleep(100);
+		}
+	} while (retry < RETRY_CNT_EXIT_CFGUPDATE);
+
+	return false;
+}
+
+static void bq27421_set_fast_hibernate(struct bq27421_chip *chip)
+{
+	struct bq27421_platform_data *pdata = chip->pdata;
+	int checksum;
+	int i;
+
+	mutex_lock(&chip->mutex);
+
+	if (!bq27421_ctrl_unsealed(chip)) {
+		pr_err("%s: failed to set unseal\n", __func__);
+		mutex_unlock(&chip->mutex);
+		return;
+	}
+
+	if (!bq27421_enter_cfgupdate(chip)) {
+		pr_err("%s: failed to enter config mode\n", __func__);
+		mutex_unlock(&chip->mutex);
+		return;
+	}
+
+	bq27421_write_byte(chip->client, BQ27421_ECMD_BLKCTRL, 0x00);
+	for (i = 0; i < pdata->num_fast_hib_data; i++) {
+		bq27421_write_byte(chip->client, BQ27421_ECMD_DATACLASS,
+					pdata->fast_hib_data[i].data_class);
+		bq27421_write_byte(chip->client, BQ27421_ECMD_DATABLK,
+					pdata->fast_hib_data[i].data_block);
+		msleep(10);
+
+		bq27421_write_block(chip->client,
+				pdata->fast_hib_data[i].data[0][0],
+				&pdata->fast_hib_data[i].data[0][1], 16);
+		bq27421_write_block(chip->client,
+				pdata->fast_hib_data[i].data[1][0],
+				&pdata->fast_hib_data[i].data[1][1], 16);
+		bq27421_write_byte(chip->client, BQ27421_ECMD_BLKCHECKSUM,
+					pdata->fast_hib_data[i].checksum);
+		msleep(10);
+
+		bq27421_write_byte(chip->client, BQ27421_ECMD_DATACLASS,
+						pdata->fast_hib_data[i].data_class);
+		bq27421_write_byte(chip->client, BQ27421_ECMD_DATABLK,
+						pdata->fast_hib_data[i].data_block);
+		msleep(10);
+
+		checksum = bq27421_read_byte(chip->client,
+					BQ27421_ECMD_BLKCHECKSUM);
+		if (checksum == (int)pdata->fast_hib_data[i].checksum) {
+			pr_debug("%s: successed to set ramdata[%d]\n",
+							__func__,  i);
+		} else {
+			pr_err("%s: failed to set ramdata [%d]\n",
+							__func__,  i);
+			break;
+		}
+	}
+
+	if (!bq27421_exit_cfgupdate(chip))
+		pr_err("%s: failed to exit config model\n", __func__);
+
+	if (!bq27421_ctrl_sealed(chip))
+		pr_err("%s: failed to set seal\n", __func__);
+
+	mutex_unlock(&chip->mutex);
 }
 
 /* Must call with mutex locked */
@@ -194,6 +366,8 @@ static struct bq27421_platform_data *bq27421_get_pdata(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
 	struct bq27421_platform_data *pdata;
+	int len;
+	const u8 *data;
 
 	if (!np)
 		return dev->platform_data;
@@ -203,7 +377,16 @@ static struct bq27421_platform_data *bq27421_get_pdata(struct device *dev)
 		return NULL;
 
 	pdata->ext_batt_psy =
-			of_property_read_bool(np, "bq27421,ext_batt_psy");
+			of_property_read_bool(np, "ti,ext_batt_psy");
+
+	data = of_get_property(np, "ti,fast-hib-data", &len);
+	if (data && len) {
+		pdata->num_fast_hib_data =
+				len / sizeof(struct bq27421_dataram);
+		pdata->fast_hib_data = (struct bq27421_dataram *)data;
+	} else {
+		return NULL;
+	}
 
 	return pdata;
 }
@@ -290,6 +473,14 @@ static int bq27421_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void bq27421_shutdown(struct i2c_client *client)
+{
+	struct bq27421_chip *chip = i2c_get_clientdata(client);
+
+	/* Set fast hibernate mode to prevent leakage */
+	bq27421_set_fast_hibernate(chip);
+}
+
 static int bq27421_pm_prepare(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -351,6 +542,7 @@ static struct i2c_driver bq27421_i2c_driver = {
 	.probe  = bq27421_probe,
 	.remove  = bq27421_remove,
 	.id_table  = bq27421_id,
+	.shutdown  = bq27421_shutdown,
 };
 
 module_i2c_driver(bq27421_i2c_driver);

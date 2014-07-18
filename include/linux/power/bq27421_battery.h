@@ -30,6 +30,8 @@ struct bq27421_dataram {
 
 struct bq27421_platform_data {
 	bool ext_batt_psy;
+	struct bq27421_dataram *fast_hib_data;
+	u8 num_fast_hib_data;
 };
 
 /* Standard data commands */
