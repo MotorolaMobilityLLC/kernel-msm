@@ -1305,15 +1305,25 @@ static void handle_level1_interrupt(u8 int_reg, u8 stat_reg)
 			dev_info(chc.dev,
 				"USBID-FLT interrupt received\n");
 
+		ret = pmic_read_reg(CHGRCTRL1_ADDR, &val);
 		mask = ((stat_reg & SCHRGRIRQ1_SUSBIDGNDDET_MASK)
 				== SHRT_GND_DET) ? 1 : 0;
 		if (int_reg & CHRGRIRQ1_SUSBIDGNDDET_MASK) {
-			if (mask)
+			if (mask) {
 				dev_info(chc.dev,
 				"USBID-GND Detected. Notifying OTG\n");
-			else
+				val |= (1<<6);
+				ret = intel_scu_ipc_iowrite8(
+				CHGRCTRL1_ADDR,
+				val);
+			} else {
 				dev_info(chc.dev,
 				"USBID-GND Removed. Notifying OTG\n");
+				val &= ~(1<<6);
+				ret = intel_scu_ipc_iowrite8(
+				CHGRCTRL1_ADDR,
+				val);
+			}
 
 			atomic_notifier_call_chain(&chc.otg->notifier,
 					USB_EVENT_ID, &mask);
