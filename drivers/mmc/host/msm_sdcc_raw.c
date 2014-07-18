@@ -20,6 +20,7 @@
 #include <linux/mmc/card.h>
 #include <linux/apanic_mmc.h>
 #include <linux/init.h>
+#include <linux/clk/msm-clk.h>
 
 static void __iomem *raw_mmc_mci_base;
 
@@ -686,19 +687,6 @@ static unsigned int raw_mmc_enable_clock(struct raw_mmc_host *host,
 	if (host == NULL)
 		return RAW_MMC_E_INVAL;
 
-	if (!host->clk_enabled) {
-		/* set clock */
-		if (mmc_clock_enable_disable(SDC_PCLK, MMC_CLK_ENABLE) < 0) {
-			pr_crit("msm_sdcc_raw: Failure enabling PCLK!\n");
-			goto error_pclk;
-		}
-
-		if (mmc_clock_enable_disable(SDC_CLK, MMC_CLK_ENABLE) < 0) {
-			pr_crit("msm_sdcc_raw: Failure enabling MMC Clock!\n");
-			goto error;
-		}
-		host->clk_enabled = 1;
-	}
 	if (host->mclk_rate != mclk) {
 		if (mmc_clock_set_rate(SDC_CLK, mclk) < 0) {
 			pr_crit("msm_sdcc_raw: Failure setting clock rate for "
@@ -715,6 +703,20 @@ static unsigned int raw_mmc_enable_clock(struct raw_mmc_host *host,
 		}
 
 		host->mclk_rate = (unsigned int) mmc_signed_ret;
+	}
+
+	if (!host->clk_enabled) {
+		/* set clock */
+		if (mmc_clock_enable_disable(SDC_PCLK, MMC_CLK_ENABLE) < 0) {
+			pr_crit("msm_sdcc_raw: Failure enabling PCLK!\n");
+			goto error_pclk;
+		}
+
+		if (mmc_clock_enable_disable(SDC_CLK, MMC_CLK_ENABLE) < 0) {
+			pr_crit("msm_sdcc_raw: Failure enabling MMC Clock!\n");
+			goto error;
+		}
+		host->clk_enabled = 1;
 	}
 
 	mmc_signed_ret = mmc_clock_get_rate(SDC_PCLK);
@@ -2311,14 +2313,10 @@ static void mmc_controller_reset(void)
 
 	sdc_clk = clk_get_sys("msm_sdcc.1", "core_clk");
 	if (sdc_clk) {
-		/*
-		 * FIXME: the clk reset will trigger WARNING and writing
-		 * to mmc will fail. This issue is tracked by CR#IKDVX-313
-		 */
-		/*
 		clk_reset(sdc_clk, 1);
 		clk_reset(sdc_clk, 0);
-		*/
+		mb();
+		mdelay(1);
 	}
 }
 
@@ -2339,6 +2337,7 @@ static unsigned int raw_mmc_main(unsigned char slot, unsigned int base)
 	/* Initialize necessary data structure and enable/set clock and power */
 	pr_debug(" Initializing MMC host data structure and clock!\n");
 	mmc_controller_reset();
+	pr_debug(" MMC controller reset done!\n");
 	mmc_ret = raw_mmc_init(&mmc_host);
 	if (mmc_ret != RAW_MMC_E_SUCCESS) {
 		pr_crit("MMC Boot: Error Initializing MMC Card!!!\n");
