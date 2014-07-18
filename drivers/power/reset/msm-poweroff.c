@@ -94,10 +94,12 @@ static void set_dload_mode(int on)
 	dload_mode_enabled = on;
 }
 
+#if 0
 static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
 }
+#endif
 
 static void enable_emergency_dload_mode(void)
 {
@@ -183,6 +185,9 @@ static void halt_spmi_pmic_arbiter(void)
 
 static void msm_restart_prepare(const char *cmd)
 {
+
+	unsigned int *last_shutdown_log_addr;  //adbg++
+
 #ifdef CONFIG_MSM_DLOAD_MODE
 
 	/* Write download mode flags if we're panic'ing
@@ -194,6 +199,30 @@ static void msm_restart_prepare(const char *cmd)
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
 
+//adbg++
+#if 0
+	/* Hard reset the PMIC unless memory contents must be maintained. */
+	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0')) {
+		printk("%s, PON_POWER_OFF_WARM_RESET\n", __func__);  //adbg++
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+	} else {
+		printk("%s, PON_POWER_OFF_HARD_RESET\n", __func__);  //adbg++
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+	}
+#endif
+
+	qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+
+	last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
+
+	if (!in_panic) {
+		printk("%s, not in panic, clean magic number\n", __func__);
+		// Normal reboot. Clean the printk buffer magic    
+		*last_shutdown_log_addr = 0;
+	} else {
+		printk("%s, in panic \n", __func__);
+	}
+
 	//+++ ASUS_BSP: try to support GOOGLE ASIT for bootreason
 	if(!download_mode)
 	{
@@ -204,11 +233,9 @@ static void msm_restart_prepare(const char *cmd)
 	}
 	//--- ASUS_BSP: try to support GOOGLE ASIT for bootreason
 
-	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
-	else
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+	printk("[adbg] %s(): last_shutdown_log_addr=0x%08x, value=0x%08x\n",
+		__func__, (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
+//adbg--
 
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {

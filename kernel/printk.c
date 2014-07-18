@@ -47,6 +47,38 @@
 #include <linux/utsname.h>
 
 #include <asm/uaccess.h>
+//adbg++
+#include <linux/asus_global.h>
+#include <linux/rtc.h>
+#include <linux/syscalls.h>         /* For sys_open and sys_write */
+
+static int is_rebased = 0;
+int suspend_in_progress = 0;
+static char *g_printk_log_buf;
+int boot_after_60sec = 0;
+
+//ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
+#define ASUS_LAST_KMSG  1
+
+#if ASUS_LAST_KMSG
+static size_t asus_print_time(u64 ts, char *buf);
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
+
+//ASUS_BSP +++ Josh_Hsu "Enable kernel message to logcat"
+#define ASUS_KLOGCAT    0   //Current disabled for test
+
+#if ASUS_KLOGCAT
+#define KER_TAG "Kernel"
+static int klogcat_fd = -1;
+static int klogcat_initialized = 0;
+
+int klogcat_init(void);
+int klogcat_write(char* buf, int len);
+
+#endif
+//ASUS_BSP --- Josh_Hsu "Enable kernel message to logcat"
+//adbg--
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/printk.h>
@@ -255,6 +287,13 @@ static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
 static char *log_buf = __log_buf;
 static u32 log_buf_len = __LOG_BUF_LEN;
 
+#if ASUS_LAST_KMSG
+static char __lk_log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
+static char *lk_log_buf = __lk_log_buf;
+static u32 lk_log_buf_len = __LOG_BUF_LEN;
+static u32 lk_log_next_idx = 0;
+#endif
+
 #if defined(CONFIG_OOPS_LOG_BUFFER)
 #define __OOPS_LOG_BUF_LEN (1 << CONFIG_OOPS_LOG_BUF_SHIFT)
 static char __log_oops_buf[__OOPS_LOG_BUF_LEN] __aligned(LOG_ALIGN);
@@ -288,17 +327,22 @@ static char *log_dict(const struct log *msg)
 }
 
 /* get record by index; idx must point to valid msg */
-static struct log *log_from_idx(u32 idx, bool logbuf)
+static struct log *asus_log_from_idx(u32 idx, bool logbuf, int mode)
 {
 	struct log *msg;
 	char *buf;
 
+	if(mode == 0){
 #if defined(CONFIG_OOPS_LOG_BUFFER)
-	buf = logbuf ? log_buf : log_oops_buf;
+		buf = logbuf ? log_buf : log_oops_buf;
 #else
-	buf = log_buf;
-	BUG_ON(!logbuf);
+		buf = log_buf;
+		BUG_ON(!logbuf);
 #endif
+	}else{
+		buf = g_printk_log_buf;
+	}
+
 	msg = (struct log *)(buf + idx);
 
 	/*
@@ -310,18 +354,28 @@ static struct log *log_from_idx(u32 idx, bool logbuf)
 	return msg;
 }
 
+static struct log *log_from_idx(u32 idx, bool logbuf)
+{
+	return asus_log_from_idx(idx, logbuf, 0);
+}
+
 /* get next record; idx must point to valid msg */
-static u32 log_next(u32 idx, bool logbuf)
+static u32 asus_log_next(u32 idx, bool logbuf, int mode)
 {
 	struct log *msg;
 	char *buf;
 
+	if(mode == 0){
 #if defined(CONFIG_OOPS_LOG_BUFFER)
-	buf = logbuf ? log_buf : log_oops_buf;
+		buf = logbuf ? log_buf : log_oops_buf;
 #else
-	buf = log_buf;
-	BUG_ON(!logbuf);
+		buf = log_buf;
+		BUG_ON(!logbuf);
 #endif
+	}else{
+		buf = g_printk_log_buf;
+	}
+
 	msg = (struct log *)(buf + idx);
 
 	/* length == 0 indicates the end of the buffer; wrap */
@@ -335,6 +389,11 @@ static u32 log_next(u32 idx, bool logbuf)
 		return msg->len;
 	}
 	return idx + msg->len;
+}
+
+static u32 log_next(u32 idx, bool logbuf)
+{
+	return asus_log_next(idx, logbuf, 0);
 }
 
 #if defined(CONFIG_OOPS_LOG_BUFFER)
@@ -398,6 +457,53 @@ static void log_store(int facility, int level,
 {
 	struct log *msg;
 	u32 size, pad_len;
+
+#if ASUS_KLOGCAT
+    char klog_buf[512];
+    int klog_size = 0;
+    int ret = -1;
+#endif
+
+#if ASUS_LAST_KMSG
+    /* put record in last kmsg buffer */
+    int max_record_size = 512;
+    char lk_buf[max_record_size];
+    int lk_size = 0;
+
+    if (ts_nsec > 0)
+		lk_size += asus_print_time(ts_nsec, lk_buf);
+	else
+		lk_size += asus_print_time(local_clock(), lk_buf);
+
+    lk_size += snprintf(lk_buf + lk_size, max_record_size - lk_size, text);
+
+    /* If there is no sufficient space for new record, wrap it around */
+    if(lk_log_next_idx + lk_size > lk_log_buf_len)
+        lk_log_next_idx = 0;
+
+    /* Store to lk buffer */
+    memcpy(lk_log_buf + lk_log_next_idx, lk_buf, lk_size);
+
+    /* Adjust next index */
+    lk_log_next_idx += lk_size;
+
+#endif
+
+#if ASUS_KLOGCAT
+    /* Put record in klogcat */
+    if (ts_nsec > 0)
+		klog_size += asus_print_time(ts_nsec, klog_buf);
+	else
+		klog_size += asus_print_time(local_clock(), klog_buf);
+
+    klog_size += snprintf(klog_buf + klog_size, 512 - klog_size, text);
+
+    ret = klogcat_write(klog_buf, klog_size);
+
+    if (ret < 0)
+        printk("[adbg] Unable to copy to logger.\n");
+
+#endif
 
 	/* number of '\0' padding bytes to next message */
 	size = sizeof(struct log) + text_len + dict_len;
@@ -873,6 +979,117 @@ void log_buf_kexec_setup(void)
 /* requested log_buf_len from kernel cmdline */
 static unsigned long __initdata new_log_buf_len;
 
+//adbg++
+struct _asus_global asus_global =
+{
+		.asus_global_magic = ASUS_GLOBAL_MAGIC,
+		.ramdump_enable_magic = ASUS_GLOBAL_RUMDUMP_MAGIC,
+		.kernel_log_addr = __log_buf,
+		.kernel_log_size = __LOG_BUF_LEN,
+//		.kernel_version = ASUS_SW_VER,
+};
+
+void printk_buffer_rebase(void)
+{
+	char *new_log_buf;
+	unsigned long flags;
+#if ASUS_LAST_KMSG
+    char *new_lk_log_buf;
+#endif
+
+	if(is_rebased){
+		printk("[adbg] printk buffer is rebased\n");
+		goto out;
+	}
+
+	new_log_buf = g_printk_log_buf = (char *) PRINTK_BUFFER;
+	printk("[adbg] printk_buffer_rebase new_log_buf=%p, __LOG_BUF_LEN:0x%x\n", new_log_buf, __LOG_BUF_LEN);
+
+	if (!new_log_buf) {
+		printk("[adbg] printk_buffer_rebase log_buf_len: allocation failed\n");
+		goto out;
+	}
+
+	memset(g_printk_log_buf, 0, PRINTK_BUFFER_SLOT_SIZE);
+
+#if ASUS_LAST_KMSG
+    new_lk_log_buf = (char *) LAST_KMSG_BUFFER;
+
+    if (!new_lk_log_buf) {
+		printk("[adbg] new lk log buf: allocation failed\n");
+		goto out;
+	}
+
+    memset(new_lk_log_buf, 0, PRINTK_PARSE_SIZE);
+#endif
+
+	raw_spin_lock_irqsave(&logbuf_lock, flags);
+
+	log_buf_len = PRINTK_BUFFER_SLOT_SIZE;
+	log_buf = new_log_buf;
+	asus_global.kernel_log_addr = log_buf;
+	asus_global.kernel_log_size = log_buf_len;
+
+	memset( asus_global.kernel_version, 0, sizeof(asus_global.kernel_version));
+	strncpy(asus_global.kernel_version, ASUS_SW_VER, sizeof(asus_global.kernel_version));
+
+	memcpy(log_buf, __log_buf, __LOG_BUF_LEN);
+
+#if ASUS_LAST_KMSG
+    /* Rebase last kmsg buffer and copy original content */
+    lk_log_buf_len = PRINTK_PARSE_SIZE;
+    lk_log_buf = new_lk_log_buf;
+
+    memcpy(lk_log_buf, __lk_log_buf, __LOG_BUF_LEN);
+#endif
+
+	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+
+	printk("[adbg] printk_buffer_rebase, log_buf:%p, log_buf_len: 0x%x\n", log_buf, log_buf_len);
+
+	is_rebased = 1;
+out:
+    return;
+}
+EXPORT_SYMBOL(printk_buffer_rebase);
+
+#if ASUS_KLOGCAT
+/* Initialize and open the logger device */
+int klogcat_init(void){
+    char* logger_dev = "/dev/log/main";
+
+    if (klogcat_initialized)
+        return 0;
+
+    klogcat_fd = sys_open(logger_dev, O_RDWR);
+
+    if (klogcat_fd < 0){
+        printk("[adbg] Klogcat can not be opened.\n");
+        return -1;
+    } else {
+        printk("[adbg] Klogcat is opened successufully!\n");
+    }
+
+    klogcat_initialized = 1;
+    return 0;
+}
+
+/* Write kmsg to logger device */
+int klogcat_write(char * buf, int len){
+    int ret = -1;
+
+    /* If klogcat is not initialized, drop it */
+    if (!klogcat_initialized)
+        return -1;
+
+    /* Write to logger */
+    ret = sys_write(klogcat_fd, buf, len);
+    return ret;
+}
+#endif
+//adbg--
+
+
 /* save requested log_buf_len since it's too early to process it */
 static int __init log_buf_len_setup(char *str)
 {
@@ -926,7 +1143,7 @@ void __init setup_log_buf(int early)
 		free, (free * 100) / __LOG_BUF_LEN);
 }
 
-static bool __read_mostly ignore_loglevel;
+static bool __read_mostly ignore_loglevel=1;
 
 static int __init ignore_loglevel_setup(char *str)
 {
@@ -1003,6 +1220,8 @@ static bool printk_time;
 #endif
 module_param_named(time, printk_time, bool, S_IRUGO | S_IWUSR);
 
+//adbg++
+#if 0
 static size_t print_time(u64 ts, char *buf)
 {
 	unsigned long rem_nsec;
@@ -1018,6 +1237,24 @@ static size_t print_time(u64 ts, char *buf)
 	return sprintf(buf, "[%5lu.%06lu] ",
 		       (unsigned long)ts, rem_nsec / 1000);
 }
+#endif
+
+static size_t asus_print_time(u64 ts, char *buf)
+{
+	unsigned long rem_nsec;
+
+	if (!printk_time)
+		return 0;
+
+	rem_nsec = do_div(ts, 1000000000);
+
+	if (!buf)
+		return snprintf(NULL, 0, "[%5lu.000000](CPU:%d-pid:%d:%s) ", (unsigned long)ts, smp_processor_id(), current->pid, current->comm);
+
+	return sprintf(buf, "[%5lu.%06lu](CPU:%d-pid:%d:%s) ",
+		       (unsigned long)ts, rem_nsec / 1000, smp_processor_id(), current->pid, current->comm);
+}
+//adbg--
 
 static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 {
@@ -1038,7 +1275,8 @@ static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 		}
 	}
 
-	len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
+	//len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
+	len += asus_print_time(msg->ts_nsec, buf ? buf + len : NULL);
 	return len;
 }
 
@@ -1740,7 +1978,10 @@ static size_t cont_print_text(char *text, size_t size)
 	size_t len;
 
 	if (cont.cons == 0 && (console_prev & LOG_NEWLINE)) {
-		textlen += print_time(cont.ts_nsec, text);
+//adbg++
+//		textlen += print_time(cont.ts_nsec, text);
+		textlen += asus_print_time(cont.ts_nsec, text);
+//adbg--
 		size -= textlen;
 	}
 
@@ -2162,6 +2403,10 @@ MODULE_PARM_DESC(console_suspend, "suspend console during suspend"
  */
 void suspend_console(void)
 {
+//adbg++
+	//ASUSEvtlog("[UTS] System Suspend");
+	suspend_in_progress = 1;
+//adbg--
 	if (!console_suspend_enabled)
 		return;
 	printk("Suspending console(s) (use no_console_suspend to debug)\n");
@@ -2172,6 +2417,10 @@ void suspend_console(void)
 
 void resume_console(void)
 {
+//adbg++
+	suspend_in_progress = 0;
+	//ASUSEvtlog("[UTS] System Resume");
+//adbg--
 	if (!console_suspend_enabled)
 		return;
 	down(&console_sem);
@@ -2728,6 +2977,9 @@ static int __init printk_late_init(void)
 		}
 	}
 	hotcpu_notifier(console_cpu_notify, 0);
+#if ASUS_KLOGCAT
+    klogcat_init();
+#endif
 	return 0;
 }
 late_initcall(printk_late_init);
