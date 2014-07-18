@@ -4120,6 +4120,13 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
             fRet = eANI_BOOLEAN_FALSE;
             break;
         }
+
+        /* updating 11d Country Code with Country code selected. */
+
+        vos_mem_copy(pMac->scan.countryCode11d,
+                             pCountryCodeSelected,
+                             WNI_CFG_COUNTRY_CODE_LEN);
+
 #ifndef CONFIG_ENABLE_LINUX_REG
         // Checking for Domain Id change
         if ( domainId != pMac->scan.domainIdCurrent )
