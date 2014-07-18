@@ -28,6 +28,8 @@
 #include <mach/lge_handle_panic.h>
 #endif
 
+static int uart_console_enabled = 0;
+
 #ifdef CONFIG_PSTORE_RAM
 static char bootreason[128] = {0,};
 
@@ -140,3 +142,21 @@ int lge_get_board_revno(void)
 {
     return system_rev;
 }
+
+int lge_uart_console_enabled(void)
+{
+	return uart_console_enabled;
+}
+
+static int __init uart_console_setup(char *str)
+{
+	if (str && !strncmp(str, "enable", 6))
+		uart_console_enabled = 1;
+
+	pr_info("UART CONSOLE: %s\n",
+			uart_console_enabled? "enabled" : "disabled");
+
+	return 1;
+}
+
+__setup("uart_console=", uart_console_setup);

@@ -37,4 +37,6 @@ void __init lge_reserve(void);
 void __init lge_add_persistent_device(void);
 #endif
 
+int lge_uart_console_enabled(void);
+
 #endif
