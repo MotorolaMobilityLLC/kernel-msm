@@ -164,6 +164,16 @@ config MT9M114
 		and snapshot. The preview and snapshot resolution shall be
 		1280 * 270. It does not support auto focus. It supports
 		few special effects like saturation.
+
+config MT9V113
+	bool "Sensor MT9V113 (YUV .3MP)"
+	depends on MSMB_CAMERA
+	---help---
+		MT9V113 is Aptina YUV sensor. It supports .3 MP preview
+		and snapshot. The preview and snapshot resolution shall be
+		640 * 480. It does not support auto focus. It supports
+		few special effects like saturation.
+
 config OV5645
 	bool "Sensor OV5645 (YUV 5.0MP)"
 	depends on MSMB_CAMERA
