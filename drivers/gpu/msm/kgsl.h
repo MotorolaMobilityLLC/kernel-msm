@@ -134,6 +134,9 @@ struct kgsl_memdesc_ops {
 #define KGSL_MEMDESC_MAPPED BIT(3)
 /* Indicates gpuaddr is assigned via gen pool */
 #define KGSL_MEMDESC_GENPOOL_ALLOC BIT(4)
+/* Indicates gpuaddr is assigned via bimap */
+#define KGSL_MEMDESC_BITMAP_ALLOC BIT(6)
+
 /* shared memory allocation */
 struct kgsl_memdesc {
 	struct kgsl_pagetable *pagetable;
