@@ -296,13 +296,9 @@ static int max77836_chg_set_property(struct power_supply *psy,
 		charger->cable_type = val->intval;
 		pr_info("%s: bootdone(%d), poweroff_charging(%d)\n",
 				__func__, charger->bootdone, androidboot_mode_charger);
-		if (!charger->bootdone && !androidboot_mode_charger) {
+		if (!charger->bootdone) {
 			charger->charging_current =
 				CHARGING_CURRENT_MAX;
-		} else if (androidboot_mode_charger) {
-			charger->charging_current =
-				charger->pdata->charging_current[
-				CHARGE_SOURCE_AC].fast_charging_current;
 		} else {
 			charger->charging_current =
 				charger->pdata->charging_current[
