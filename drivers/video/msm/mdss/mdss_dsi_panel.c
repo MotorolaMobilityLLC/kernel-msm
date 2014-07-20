@@ -140,7 +140,8 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = pcmds->cmds;
 	cmdreq.cmds_cnt = pcmds->cmd_cnt;
-	cmdreq.flags = CMD_REQ_COMMIT;
+	// To flush MIPI cmd before suspend"			
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_REQ_COMMIT;
 
 	/*Panel ON/Off commands should be sent in DSI Low Power Mode*/
 	if (pcmds->link_state == DSI_LP_MODE)
@@ -252,8 +253,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	}
 
 	if (is_ambient_on()){
-		pr_info("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
-		gpio_free(ctrl_pdata->rst_gpio);
+		pr_info("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
 		return 0;
 	}
 
@@ -484,7 +484,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	if (is_ambient_on()){
-		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
+		printk("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
 
 		if (ctrl->idle_off_cmds.cmd_cnt){
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
@@ -514,7 +514,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 				panel_data);
 
 	if (is_ambient_on()){
-		pr_info("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
+		pr_info("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
 
 		if (ctrl->idle_on_cmds.cmd_cnt){
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);

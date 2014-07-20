@@ -3150,11 +3150,7 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 
 	if (need_cleanup) {
 		pr_debug("cleaning up pipes on fb%d\n", mfd->index);
-		if (is_ambient_on()){
-			printk("MDSS:Skip clean pipes for ambient mode.\n");
-		}else{
 		mdss_mdp_overlay_kickoff(mfd, NULL);
-	}
 	}
 
 	rc = mdss_mdp_ctl_stop(mdp5_data->ctl);

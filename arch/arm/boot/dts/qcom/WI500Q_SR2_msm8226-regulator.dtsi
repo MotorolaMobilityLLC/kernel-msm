@@ -285,6 +285,8 @@
 			regulator-max-microvolt = <1800000>;
 			qcom,init-voltage = <1800000>;
 			status = "okay";
+			// Force LDO8 on or we get pingpong tome out after idle			
+			regulator-always-on;
 		};
 
 		pm8226_l8_ao: regulator-l8-ao {
