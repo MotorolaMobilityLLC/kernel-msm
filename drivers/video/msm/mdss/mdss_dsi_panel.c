@@ -39,13 +39,6 @@ static int panel_ambient_mode = AMBIENT_MODE_OFF;
 int is_ambient_on() {
 	return panel_ambient_mode;
 }
-int enable_ambient(int enable)
-{
-	int old = panel_ambient_mode;
-	panel_ambient_mode = enable;
-	pr_info("MDSS:%s:panel_ambient_mode = %d->%d\n",__func__, old, panel_ambient_mode);
-	return old;
-}
 
 #define DT_CMD_HDR 6
 
@@ -554,12 +547,14 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 	if (on){
 		if (ctrl->idle_on_cmds.cmd_cnt){
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+			panel_ambient_mode = AMBIENT_MODE_ON;
 		}else{
 			printk("MDSS:DSI: idle ON command is not set!\n");
 		}
 	}else{
 		if (ctrl->idle_off_cmds.cmd_cnt){
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+			panel_ambient_mode = AMBIENT_MODE_OFF;
 		}else{
 			printk("MDSS:DSI: idle OFF command is not set!\n");
 		}
