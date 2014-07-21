@@ -866,6 +866,12 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
             // start SA Query procedure, respond to Association Request
             // with try again later
             case DPH_SA_QUERY_NOT_IN_PROGRESS:
+                /*
+                 * We should reset the retry counter before we start
+                 * the SA query procedure, otherwise in next set of SA query
+                 * procedure we will end up using the stale value.
+                 */
+                pStaDs->pmfSaQueryRetryCount = 0;
                 limSendAssocRspMgmtFrame(pMac, eSIR_MAC_TRY_AGAIN_LATER, 1,
                                          pHdr->sa, subType, pStaDs, psessionEntry);
                 limSendSaQueryRequestFrame(
@@ -873,7 +879,6 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
                     pHdr->sa, psessionEntry);
                 pStaDs->pmfSaQueryStartTransId = pStaDs->pmfSaQueryCurrentTransId;
                 pStaDs->pmfSaQueryCurrentTransId++;
-                pStaDs->pmfSaQueryRetryCount = 0;
 
                 // start timer for SA Query retry
                 if (tx_timer_activate(&pStaDs->pmfSaQueryTimer) != TX_SUCCESS)
