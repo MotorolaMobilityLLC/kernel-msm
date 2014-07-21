@@ -22,6 +22,9 @@
 #define I2C_COMPARE_MISMATCH 1
 #define I2C_POLL_MAX_ITERATION 20
 
+#define I2C_POLL_MAX_DELAY_US 11000
+#define I2C_POLL_MIN_DELAY_US 10000
+
 int32_t msm_camera_cci_i2c_read(struct msm_camera_i2c_client *client,
 	uint32_t addr, uint16_t *data,
 	enum msm_camera_i2c_data_type data_type)
@@ -345,11 +348,23 @@ int32_t msm_camera_cci_i2c_poll(struct msm_camera_i2c_client *client,
 	enum msm_camera_i2c_data_type data_type)
 {
 	int32_t rc;
+	int i;
 	S_I2C_DBG("%s: addr: 0x%x data: 0x%x dt: %d\n",
 		__func__, addr, data, data_type);
-
-	rc = msm_camera_cci_i2c_compare(client,
-		addr, data, data_type);
+	for (i = 0; i < I2C_POLL_MAX_ITERATION; i++) {
+		rc = msm_camera_cci_i2c_compare(client,
+			addr, data, data_type);
+		if (rc <= I2C_COMPARE_MATCH)
+			break;
+		if (i < I2C_POLL_MAX_ITERATION)
+			usleep_range(I2C_POLL_MIN_DELAY_US,
+			I2C_POLL_MAX_DELAY_US);
+		}
+	if (rc == I2C_COMPARE_MATCH)
+		S_I2C_DBG("%s:%d match on try # %d\n", __func__, __LINE__, i);
+	else if (rc == I2C_COMPARE_MISMATCH)
+		pr_err("%s: poll timeout addr: 0x%x data: 0x%x dt: %d\n",
+			__func__, addr, data, data_type);
 	return rc;
 }
 
