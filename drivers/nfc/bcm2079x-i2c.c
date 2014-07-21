@@ -126,7 +126,7 @@ static int change_client_addr(struct bcm2079x_dev *bcm2079x_dev, int addr)
 	dev_info(&client->dev,
 		 "Change client device from (0x%04X) flag = "\
 		 "%04x, addr_data[%d] = %02x\n",
-		 client->addr, client->flags, sizeof(addr_data) - 1,
+		 client->addr, client->flags, (int)sizeof(addr_data) - 1,
 		 addr_data[sizeof(addr_data) - 1]);
 	ret = i2c_master_send(client, addr_data, sizeof(addr_data));
 	if (ret != sizeof(addr_data)) {
@@ -135,7 +135,7 @@ static int change_client_addr(struct bcm2079x_dev *bcm2079x_dev, int addr)
 		dev_info(&client->dev,
 			 "Change client device from (0x%04X) flag = "\
 			 "%04x, addr_data[%d] = %02x\n",
-			 client->addr, client->flags, sizeof(addr_data) - 1,
+			 client->addr, client->flags, (int)sizeof(addr_data) - 1,
 			 addr_data[sizeof(addr_data) - 1]);
 		ret = i2c_master_send(client, addr_data, sizeof(addr_data));
 	}
