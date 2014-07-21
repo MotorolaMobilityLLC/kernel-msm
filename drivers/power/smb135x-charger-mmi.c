@@ -167,6 +167,9 @@
 #define OTG_EN				BIT(0)
 
 /* Status registers */
+#define STATUS_0_REG			0x46
+#define AICL_DONE_BIT			BIT(7)
+
 #define STATUS_1_REG			0x47
 #define USING_USB_BIT			BIT(1)
 #define USING_DC_BIT			BIT(0)
@@ -192,6 +195,9 @@
 #define ACA_B_BIT			BIT(2)
 #define ACA_C_BIT			BIT(1)
 #define ACA_DOCK_BIT			BIT(0)
+
+#define STATUS_6_REG			0x4D
+#define HVDCP_BIT			BIT(4)
 
 #define STATUS_8_REG			0x4E
 #define USBIN_9V			BIT(5)
@@ -222,6 +228,7 @@
 #define IRQ_C_FAST_CHG_BIT		BIT(6)
 
 #define IRQ_D_REG			0x53
+#define IRQ_D_AICL_DONE_BIT		BIT(4)
 #define IRQ_D_TIMEOUT_BIT		BIT(2)
 
 #define IRQ_E_REG			0x54
@@ -385,6 +392,7 @@ struct smb135x_chg {
 	int				temp_check;
 	int				bms_check;
 	unsigned long			float_charge_start_time;
+	struct delayed_work		aicl_check_work;
 };
 
 static struct smb135x_chg *the_chip;
@@ -700,6 +708,7 @@ static enum power_supply_property smb135x_battery_properties[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
 	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS,
+	POWER_SUPPLY_PROP_CHARGE_RATE,
 	/* Block from Fuel Gauge */
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
@@ -940,6 +949,33 @@ static int smb135x_get_prop_batt_voltage_now(struct smb135x_chg *chip, int *volt
 	}
 
 	return -EINVAL;
+}
+
+static int smb135x_get_prop_charge_rate(struct smb135x_chg *chip)
+{
+	u8 reg;
+	int rc;
+
+	if (!is_usb_plugged_in(chip))
+		return POWER_SUPPLY_CHARGE_RATE_NONE;
+
+	rc = smb135x_read(chip, STATUS_0_REG, &reg);
+	if (rc < 0)
+		return POWER_SUPPLY_CHARGE_RATE_NORMAL;
+
+	if ((reg & AICL_DONE_BIT) &&
+	    ((reg & USBIN_INPUT_MASK) < 0x02))
+		return POWER_SUPPLY_CHARGE_RATE_WEAK;
+
+	rc = smb135x_read(chip, STATUS_6_REG, &reg);
+
+	if (rc < 0)
+		return POWER_SUPPLY_CHARGE_RATE_NORMAL;
+
+	if (reg & HVDCP_BIT)
+		return POWER_SUPPLY_CHARGE_RATE_TURBO;
+
+	return POWER_SUPPLY_CHARGE_RATE_NORMAL;
 }
 
 static int smb135x_enable_volatile_writes(struct smb135x_chg *chip)
@@ -1807,6 +1843,9 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS:
 		val->intval = chip->thermal_levels;
 		break;
+	case POWER_SUPPLY_PROP_CHARGE_RATE:
+		val->intval = smb135x_get_prop_charge_rate(chip);
+		break;
 	/* Block from Fuel Gauge */
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
@@ -2310,6 +2349,22 @@ static void wireless_insertion_work(struct work_struct *work)
 	smb135x_path_suspend(chip, DC, CURRENT, false);
 }
 
+static void aicl_check_work(struct work_struct *work)
+{
+	struct smb135x_chg *chip =
+		container_of(work, struct smb135x_chg,
+				aicl_check_work.work);
+	int cr;
+
+	cr = smb135x_get_prop_charge_rate(chip);
+	pr_warn("Charger Rate = %d\n", cr);
+
+	if (cr > POWER_SUPPLY_CHARGE_RATE_NORMAL)
+		power_supply_changed(&chip->batt_psy);
+
+	smb_relax(&chip->smb_wake_source);
+}
+
 static void usb_insertion_work(struct work_struct *work)
 {
 	struct smb135x_chg *chip =
@@ -2472,6 +2527,15 @@ static int safety_timeout_handler(struct smb135x_chg *chip, u8 rt_stat)
 	return 0;
 }
 
+static int aicl_done_handler(struct smb135x_chg *chip, u8 rt_stat)
+{
+	if (rt_stat & IRQ_D_AICL_DONE_BIT)
+		pr_warn("aicl done rt_stat = 0x%02x Rate = %d\n", rt_stat,
+			smb135x_get_prop_charge_rate(chip));
+
+	return 0;
+}
+
 /**
  * power_ok_handler() - called when the switcher turns on or turns off
  * @chip: pointer to smb135x_chg chip
@@ -2572,6 +2636,7 @@ static int dcin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 static int handle_usb_removal(struct smb135x_chg *chip)
 {
 	cancel_delayed_work(&chip->usb_insertion_work);
+	cancel_delayed_work(&chip->aicl_check_work);
 	chip->apsd_rerun_cnt = 0;
 
 	if (chip->usb_psy) {
@@ -2634,6 +2699,10 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 		pr_debug("setting usb psy present = %d\n", chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 	}
+	smb_stay_awake(&chip->smb_wake_source);
+	cancel_delayed_work(&chip->aicl_check_work);
+	schedule_delayed_work(&chip->aicl_check_work,
+			      msecs_to_jiffies(1000));
 	return 0;
 }
 
@@ -2833,6 +2902,7 @@ static struct irq_handler_info handlers[] = {
 			},
 			{
 				.name		= "aicl_done",
+				.smb_irq	= aicl_done_handler,
 			},
 			{
 				.name		= "battery_ov",
@@ -4280,6 +4350,8 @@ static int smb135x_charger_probe(struct i2c_client *client,
 					usb_insertion_work);
 	INIT_DELAYED_WORK(&chip->heartbeat_work,
 					heartbeat_work);
+	INIT_DELAYED_WORK(&chip->aicl_check_work,
+					aicl_check_work);
 
 	mutex_init(&chip->path_suspend_lock);
 	mutex_init(&chip->current_change_lock);
