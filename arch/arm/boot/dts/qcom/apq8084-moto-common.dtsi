@@ -1061,8 +1061,8 @@
 			<&msmgpio 141 0>,        /* WakeIRQ */
 			<&msmgpio 0 0>,          /* SH Wake */
 			<&msmgpio 1 0>;          /* SH Wake Resp */
-		lux_table = <5 50 100 1500 3000 8000>;
-		brightness_table = <9 14 18 46 67 93 140>;
+		lux_table = <6 70 85 1600 3100 8000>;
+		brightness_table = <12 20 25 55 80 111 165>;
 		bslen_pin_active_value = <1>;
 		ct406_detect_threshold = <0x006E>;
 		ct406_undetect_threshold = <0x0050>;
