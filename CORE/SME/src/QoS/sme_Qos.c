@@ -7134,6 +7134,27 @@ eHalStatus sme_QosAddTsSuccessFnp(tpAniSirGlobal pMac, tListElem *pEntry)
       }
       else
       {
+         //For downgrading purpose Hdd set WmmTspecValid to false during roaming
+         //So need to set that flag we need to call the hdd in successful case.
+         if((hdd_status == SME_QOS_STATUS_SETUP_SUCCESS_IND)
+#if defined (WLAN_FEATURE_VOWIFI_11R)
+            &&
+            (!csrRoamIs11rAssoc(pMac))
+#endif
+#if defined(FEATURE_WLAN_ESE)
+            &&
+            (!csrRoamIsCCXAssoc(pMac))
+#endif
+           )
+         {
+             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                       "%s calling hdd_wmm_smecallback during  roaming for ac = %d", __func__, ac);
+             flow_info->QoSCallback(pMac, flow_info->HDDcontext,
+                                    &pACInfo->curr_QoSInfo[pACInfo->tspec_pending - 1],
+                                    hdd_status,
+                                    flow_info->QosFlowID
+                                    );
+         }
          flow_info->hoRenewal = VOS_FALSE;
       }
    }
