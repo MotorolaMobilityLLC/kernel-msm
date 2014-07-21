@@ -520,6 +520,14 @@ typedef enum
    DATA_RATE_11AC_MAX_MCS_NA
 } eDataRate11ACMaxMcs;
 
+/* SSID broadcast  type */
+typedef enum eSSIDBcastType
+{
+  eBCAST_UNKNOWN      = 0,
+  eBCAST_NORMAL       = 1,
+  eBCAST_HIDDEN       = 2,
+} tSSIDBcastType;
+
 /* MCS Based VHT rate table */
 static struct index_vht_data_rate_type supported_vht_mcs_rate[] =
 {
@@ -12318,7 +12326,7 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     tpSirPNOScanReq pPnoRequest = NULL;
     hdd_context_t *pHddCtx;
     tHalHandle hHal;
-    v_U32_t i, indx, num_ch, tempInterval;
+    v_U32_t i, indx, num_ch, tempInterval, j;
     u8 valid_ch[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
     u8 channels_allowed[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
     v_U32_t num_channels_allowed = WNI_CFG_VALID_CHANNEL_LIST_LEN;
@@ -12471,6 +12479,26 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         pPnoRequest->aNetworks[i].rssiThreshold = 0; //Default value
     }
 
+    for (i = 0; i < request->n_ssids; i++)
+    {
+        j = 0;
+        while (j < pPnoRequest->ucNetworksCount)
+        {
+            if ((pPnoRequest->aNetworks[j].ssId.length ==
+                 request->ssids[i].ssid_len) &&
+                 (0 == memcmp(pPnoRequest->aNetworks[j].ssId.ssId,
+                            request->ssids[i].ssid,
+                            pPnoRequest->aNetworks[j].ssId.length)))
+            {
+                pPnoRequest->aNetworks[j].bcastNetwType = eBCAST_HIDDEN;
+                break;
+            }
+            j++;
+        }
+    }
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "Number of hidden networks being Configured = %d",
+              request->n_ssids);
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
               "request->ie_len = %zu", request->ie_len);
     if ((0 < request->ie_len) && (NULL != request->ie))
