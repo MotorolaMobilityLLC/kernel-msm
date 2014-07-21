@@ -7583,6 +7583,7 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
     if (!is11dCountry && pMac->roam.configParam.fSupplicantCountryCodeHasPriority)
     {
         pMac->roam.configParam.Is11dSupportEnabled = eANI_BOOLEAN_FALSE;
+        smsLog( pMac, LOG1, FL(" 11d is being  disabled"));
     }
 
     vos_mem_copy(pMac->scan.countryCodeCurrent, pMsg->countryCode,
