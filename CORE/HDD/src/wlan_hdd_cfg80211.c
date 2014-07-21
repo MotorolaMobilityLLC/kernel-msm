@@ -537,6 +537,15 @@ static struct index_vht_data_rate_type supported_vht_mcs_rate[] =
 };
 #endif /* WLAN_FEATURE_11AC */
 
+/*array index points to MCS and array value points respective rssi*/
+static int rssiMcsTbl[][10] =
+{
+/*MCS 0   1     2   3    4    5    6    7    8    9*/
+   {-82, -79, -77, -74, -70, -66, -65, -64, -59, -57}, //20
+   {-79, -76, -74, -71, -67, -63, -62, -61, -56, -54}, //40
+   {-76, -73, -71, -68, -64, -60, -59, -58, -53, -51}  //80
+};
+
 extern struct net_device_ops net_ops_struct;
 
 #ifdef WLAN_NL80211_TESTMODE
@@ -11133,7 +11142,7 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_devic
     tANI_U8  maxSpeedMCS = 0;
     tANI_U8  maxMCSIdx = 0;
     tANI_U8  rateFlag = 1;
-    tANI_U8  i, j, rssidx;
+    tANI_U8  i, j, rssidx, mode=0;
     tANI_U16 temp;
     int status;
 
@@ -11179,7 +11188,7 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_devic
     /*overwrite rate_flags if MAX link-speed need to be reported*/
     if ((eHDD_LINK_SPEED_REPORT_MAX == pCfg->reportMaxLinkSpeed) ||
         (eHDD_LINK_SPEED_REPORT_MAX_SCALED == pCfg->reportMaxLinkSpeed &&
-         sinfo->signal >= pCfg->linkSpeedRssiHigh))
+         sinfo->signal >= pCfg->linkSpeedRssiLow))
     {
         rate_flags = pAdapter->maxRateFlags;
     }
@@ -11288,12 +11297,19 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_devic
             /* Update MAX rate */
             maxRate = (currentRate > maxRate)?currentRate:maxRate;
         }
+
         /* Get MCS Rate Set --
            Only if we are always reporting max speed  (or)
            if we have good rssi */
-         if ((0 == rssidx) ||
-              (eHDD_LINK_SPEED_REPORT_MAX == pCfg->reportMaxLinkSpeed))
+        if ((3 != rssidx) && !(rate_flags & eHAL_TX_RATE_LEGACY))
         {
+            if (rate_flags & eHAL_TX_RATE_VHT80)
+                mode = 2;
+            else if (rate_flags & (eHAL_TX_RATE_VHT40 | eHAL_TX_RATE_HT40))
+                mode = 1;
+            else
+                mode = 0;
+
             if (0 != ccmCfgGetStr(WLAN_HDD_GET_HAL_CTX(pAdapter), WNI_CFG_CURRENT_MCS_SET,
                                  MCSRates, &MCSLeng))
             {
@@ -11327,6 +11343,19 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_devic
                         maxMCSIdx = 8;
                     else
                         maxMCSIdx = 9;
+                }
+
+                if (0 != rssidx)/*check for scaled */
+                {
+                    //get middle rate MCS index if rssi=1/2
+                    for (i=0; i <= maxMCSIdx; i++)
+                    {
+                        if (sinfo->signal <= rssiMcsTbl[mode][i])
+                        {
+                            maxMCSIdx = i;
+                            break;
+                        }
+                    }
                 }
 
                 if (rate_flags & eHAL_TX_RATE_VHT80)
@@ -11364,9 +11393,25 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_devic
                     rateFlag |= 2;
                 }
 
-                for (i = 0; i < MCSLeng; i++)
+                if (rssidx == 1 || rssidx == 2)
+                {
+                    //get middle rate MCS index if rssi=1/2
+                    for (i=0; i <= 7; i++)
+                    {
+                        if (sinfo->signal <= rssiMcsTbl[mode][i])
+                        {
+                            temp = i+1;
+                            break;
+                         }
+                     }
+                }
+                else
                 {
                     temp = sizeof(supported_mcs_rate) / sizeof(supported_mcs_rate[0]);
+                }
+
+                for (i = 0; i < MCSLeng; i++)
+                {
                     for (j = 0; j < temp; j++)
                     {
                         if (supported_mcs_rate[j].beacon_rate_index == MCSRates[i])
@@ -11391,10 +11436,8 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_devic
             maxSpeedMCS = 1;
             maxMCSIdx = pAdapter->hdd_stats.ClassA_stat.mcs_index;
         }
-
         // make sure we report a value at least as big as our current rate
-        if (((maxRate < myRate) && (0 == rssidx)) ||
-             (0 == maxRate))
+        if ((maxRate < myRate) || (0 == maxRate))
         {
            maxRate = myRate;
            if (rate_flags & eHAL_TX_RATE_LEGACY)

@@ -1808,7 +1808,24 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                     retCode = eSIR_LOGP_EXCEPTION;
                     goto end;
                 }
+
+                if ( FALSE == pMac->isMuBfsessionexist )
+                    psessionEntry->txMuBformee = pSmeJoinReq->txMuBformee;
             }
+
+            VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+                     "SmeJoinReq:txMuBformee=%d psessionEntry: txMuBformee = %d",
+                     pSmeJoinReq->txMuBformee, psessionEntry->txMuBformee);
+
+            if(cfgSetInt(pMac, WNI_CFG_VHT_MU_BEAMFORMEE_CAP, psessionEntry->txMuBformee)
+                                                                 != eSIR_SUCCESS)
+            {
+                limLog(pMac, LOGE, FL("could not set "
+                                  "WNI_CFG_VHT_MU_BEAMFORMEE_CAP at CFG"));
+                retCode = eSIR_LOGP_EXCEPTION;
+                goto end;
+            }
+
         }
 
 #endif

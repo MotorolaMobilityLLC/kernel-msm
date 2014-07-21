@@ -108,6 +108,8 @@ typedef enum {
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
    LINK_LAYER_STATS_MEAS  = 40,
 #endif
+
+   MU_MIMO                = 41,
 #ifdef WLAN_FEATURE_EXTSCAN
    EXTENDED_SCAN          = 42,
 #endif

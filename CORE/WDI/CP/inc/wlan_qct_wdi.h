@@ -1691,6 +1691,7 @@ typedef struct
   wpt_uint8                 ucVhtCapableSta;
   wpt_uint8                 ucVhtTxChannelWidthSet;
   wpt_uint8                 ucVhtTxBFEnabled;
+  wpt_uint8                 vhtTxMUBformeeCapable;
 #endif
 
   wpt_uint8                 ucHtLdpcEnabled;
