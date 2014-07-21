@@ -35,6 +35,11 @@ enum PANEL_AMBIENT_MODE{
 	AMBIENT_MODE_ON = 1,
 	AMBIENT_MODE_OFF = 0,
 };
+
+/* Lock backlight of ambient mode to 28nits */
+#define AMBIENT_BL_LEVEL	(86)
+static int backup_bl_level = 0;
+
 static int panel_ambient_mode = AMBIENT_MODE_OFF;
 int is_ambient_on() {
 	return panel_ambient_mode;
@@ -371,6 +376,16 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+	mutex_lock(&ctrl_pdata->blcmd_mutex);
+
+	/* Lock backlight of ambient mode to 28nits */
+	backup_bl_level = bl_level;
+	if (is_ambient_on()) {
+		pr_debug("%s: Ignore bk light level=%d due to ambient on\n", __func__, bl_level);
+		mutex_unlock(&ctrl_pdata->blcmd_mutex);
+		return;
+	}
+
 	/*
 	 * Some backlight controllers specify a minimum duty cycle
 	 * for the backlight brightness. If the brightness is less
@@ -395,6 +410,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			if (!sctrl) {
 				pr_err("%s: Invalid slave ctrl data\n",
 					__func__);
+				mutex_unlock(&ctrl_pdata->blcmd_mutex);
 				return;
 			}
 			mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
@@ -405,6 +421,8 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			__func__);
 		break;
 	}
+
+	mutex_unlock(&ctrl_pdata->blcmd_mutex);
 }
 
 char mdss_panel_get_version(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -546,6 +564,7 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 	
 	if (on){
 		if (ctrl->idle_on_cmds.cmd_cnt){
+			mdss_dsi_panel_bl_ctrl(pdata,AMBIENT_BL_LEVEL);
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
 			panel_ambient_mode = AMBIENT_MODE_ON;
 		}else{
@@ -555,6 +574,7 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 		if (ctrl->idle_off_cmds.cmd_cnt){
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
 			panel_ambient_mode = AMBIENT_MODE_OFF;
+			mdss_dsi_panel_bl_ctrl(pdata,backup_bl_level);
 		}else{
 			printk("MDSS:DSI: idle OFF command is not set!\n");
 		}
