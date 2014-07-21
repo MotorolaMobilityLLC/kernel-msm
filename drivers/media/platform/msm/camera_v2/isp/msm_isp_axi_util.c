@@ -838,7 +838,7 @@ static void msm_isp_get_done_buf(struct vfe_device *vfe_dev,
 	for (i = 0; i < stream_info->num_planes; i++) {
 		if (pingpong_bit !=
 			(~(pingpong_status >> stream_info->wm[i]) & 0x1)) {
-			pr_warn("%s: Write master ping pong mismatch. Status: 0x%x\n",
+			pr_err_ratelimited("%s: Write master ping pong mismatch. Status: 0x%x\n",
 				__func__, pingpong_status);
 		}
 	}
