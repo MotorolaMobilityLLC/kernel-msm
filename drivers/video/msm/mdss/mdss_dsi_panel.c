@@ -485,12 +485,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	if (is_ambient_on()){
 		printk("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
-
-		if (ctrl->idle_off_cmds.cmd_cnt){
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
-		}else{
-			printk("MDSS:DSI: idle off command is not set!\n");
-		}
 		return 0;
 	}
 	if (ctrl->on_cmds.cmd_cnt)
@@ -515,12 +509,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	if (is_ambient_on()){
 		pr_info("MDSS:DSI:Skip %s when disable due to ambient_on()\n",__func__);
-
-		if (ctrl->idle_on_cmds.cmd_cnt){
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
-		}else{
-			pr_info("MDSS:DSI: idle command is not set!\n");
-		}
 		return 0;
 	}
 
