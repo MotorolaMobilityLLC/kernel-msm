@@ -5612,8 +5612,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	} else if (ret2 < 0 && ret2 != BCME_UNSUPPORTED) {
 		DHD_ERROR(("%s read event mask ext failed %d\n", __FUNCTION__, ret2));
 		kfree(eventmask_msg);
-		/* !!!!Temp - Will remove once compatible FW is used!!!! */
-		/* goto done;                                            */
+		goto done;
 	} /* unsupported is ok */
 	kfree(eventmask_msg);
 
@@ -7354,7 +7353,7 @@ dhd_dev_pno_stop_for_ssid(struct net_device *dev)
 }
 /* Linux wrapper to call common dhd_pno_set_for_ssid */
 int
-dhd_dev_pno_set_for_ssid(struct net_device *dev, wlc_ssid_t* ssids_local, int nssid,
+dhd_dev_pno_set_for_ssid(struct net_device *dev, wlc_ssid_ext_t* ssids_local, int nssid,
 	uint16  scan_fr, int pno_repeat, int pno_freq_expo_max, uint16 *channel_list, int nchan)
 {
 	dhd_info_t *dhd = DHD_DEV_INFO(dev);
