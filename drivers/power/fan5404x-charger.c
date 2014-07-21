@@ -405,8 +405,7 @@ static int start_charging(struct fan5404x_chg *chip)
 		return rc;
 
 	/* Clear IO_LEVEL */
-	rc = fan5404x_masked_write(chip, REG_VBUS_CONTROL,
-					VBUS_IO_LEVEL, VBUS_IO_LEVEL);
+	rc = fan5404x_masked_write(chip, REG_VBUS_CONTROL, VBUS_IO_LEVEL, 0);
 	if (rc) {
 		dev_err(chip->dev, "start-charge: Couldn't clear IOLEVEL\n");
 		return rc;
