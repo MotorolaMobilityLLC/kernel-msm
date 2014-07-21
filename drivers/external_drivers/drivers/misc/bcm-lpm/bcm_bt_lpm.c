@@ -45,6 +45,7 @@ enum {
 };
 #endif
 
+
 static struct rfkill *bt_rfkill;
 static bool bt_enabled;
 
@@ -401,6 +402,7 @@ static int bcm43xx_bluetooth_probe(struct platform_device *pdev)
 #ifndef BCM_BT_LPM_DBG
 	int_handler_enabled = false;
 #endif
+
 #ifdef CONFIG_ACPI
 	if (ACPI_HANDLE(&pdev->dev)) {
 		/*
@@ -601,7 +603,7 @@ static void __exit bcm43xx_bluetooth_exit(void)
 }
 
 
-module_init(bcm43xx_bluetooth_init);
+late_initcall(bcm43xx_bluetooth_init);
 module_exit(bcm43xx_bluetooth_exit);
 
 MODULE_ALIAS("platform:bcm43xx");

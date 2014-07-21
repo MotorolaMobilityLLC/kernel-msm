@@ -75,4 +75,4 @@ static int __init bluetooth_init(void)
 	return 0;
 }
 
-device_initcall(bluetooth_init);
+rootfs_initcall(bluetooth_init);
