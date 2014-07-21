@@ -121,12 +121,32 @@ static struct gpiomux_setting lcd_rst_sus_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+static struct gpiomux_setting lcd_en_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting lcd_en_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	{
 		.gpio = 25,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_rst_act_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_rst_sus_cfg,
+		},
+	},
+	{
+		.gpio = 108,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
 		},
 	},
 };
