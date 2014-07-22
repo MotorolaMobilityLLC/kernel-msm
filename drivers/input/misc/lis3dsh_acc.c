@@ -40,6 +40,10 @@
 struct notifier_block lis3dsh_fb_notif;
 #endif
 
+#ifdef CONFIG_PM_8226_CHARGER
+extern int pm8226_is_ac_usb_in(void);
+#endif
+
 //Debug Masks +++
 #define NO_DEBUG       0
 #define DEBUG_POWER     1
@@ -470,16 +474,16 @@ static void lis3dsh_acc_set_init_statepr2_inst(struct lis3dsh_acc_data *acc)
 	acc->resume_stmach_program2[0] = 0x08;
 	acc->resume_stmach_program2[1] = 0x03;
 	acc->resume_stmach_program2[2] = 0x61;
-	acc->resume_stmach_program2[3] = 0x05;
-	acc->resume_stmach_program2[4] = 0x47;
-	acc->resume_stmach_program2[5] = 0x03;
-	acc->resume_stmach_program2[6] = 0x52;
-	acc->resume_stmach_program2[7] = 0x15;
-	acc->resume_stmach_program2[8] = 0x47;
-	acc->resume_stmach_program2[9] = 0x03;
-	acc->resume_stmach_program2[10] = 0x52;
-	acc->resume_stmach_program2[11] = 0x11;
-	acc->resume_stmach_program2[12] = 0x00;
+	acc->resume_stmach_program2[3] = 0x61;
+	acc->resume_stmach_program2[4] = 0x05;
+	acc->resume_stmach_program2[5] = 0x47;
+	acc->resume_stmach_program2[6] = 0x03;
+	acc->resume_stmach_program2[7] = 0x52;
+	acc->resume_stmach_program2[8] = 0x15;
+	acc->resume_stmach_program2[9] = 0x47;
+	acc->resume_stmach_program2[10] = 0x03;
+	acc->resume_stmach_program2[11] = 0x52;
+	acc->resume_stmach_program2[12] = 0x11;
 	acc->resume_stmach_program2[13] = 0x00;
 	acc->resume_stmach_program2[14] = 0x00;
 	acc->resume_stmach_program2[15] = 0x00;
@@ -565,7 +569,7 @@ static void lis3dsh_acc_set_init_statepr2_param(struct lis3dsh_acc_data *acc)
 	acc->resume_state[RES_LIS3DSH_TIM2_2_H] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x86;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x02;
+	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x01;
 	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x03;
 	acc->resume_state[RES_LIS3DSH_DES_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_SA_2] = 0x00;
@@ -919,8 +923,6 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 					input_report_key(acc->input_dev, KEY_POWER,0);
 					input_sync(acc->input_dev);
 				}
-				strcpy(event_status,"TILT");
-				kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
 			}
 		}
 	}
@@ -954,7 +956,7 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_2;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02)) {
+		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02) & !pm8226_is_ac_usb_in()) {		//do not report knock event if device is inserted into pogo
 			printk("***********************knock-knock event\n");
 			strcpy(event_status,"KNOCK");
 			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
