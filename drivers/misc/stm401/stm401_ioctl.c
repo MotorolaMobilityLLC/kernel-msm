@@ -604,7 +604,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		if (byte > sizeof(stm401_g_ir_config_reg)) {
 			dev_err(&ps_stm401->client->dev,
-				"IR Config too big: %d > %d\n", byte,
+				"IR Config too big: %d > %zu\n", byte,
 				sizeof(stm401_g_ir_config_reg));
 			err = -EINVAL;
 			break;
@@ -632,7 +632,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		if (stm401_cmdbuff[1] > sizeof(stm401_g_ir_config_reg)) {
 			dev_err(&ps_stm401->client->dev,
-				"IR Config too big: %d > %d\n",
+				"IR Config too big: %d > %zu\n",
 				stm401_cmdbuff[1],
 				sizeof(stm401_g_ir_config_reg));
 			err = -EINVAL;
