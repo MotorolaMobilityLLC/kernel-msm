@@ -77,14 +77,14 @@ static char msm_hw[MSMHW_MAX_LEN+1];
 
 void mach_cpuinfo_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "Device\t\t: %s\n", androidboot_device);
+	seq_printf(m, "Hardware\t: %s\n", androidboot_device);
 	/* Zero is not a valid "Radio" value.      */
 	/* Lack of "Radio" entry in cpuinfo means: */
 	/*	look for radio in "Revision"       */
 	if (androidboot_radio)
 		seq_printf(m, "Radio\t\t: %x\n", androidboot_radio);
 
-	seq_printf(m, "MSM Hardware\t: %s\n", msm_hw);
+	seq_printf(m, "SOC name\t: %s\n", msm_hw);
 }
 
 static char extended_baseband[BASEBAND_MAX_LEN+1] = "\0";
