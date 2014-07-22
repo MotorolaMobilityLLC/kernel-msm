@@ -89,7 +89,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
     {
         // Received Disassoc frame from a BC/MC address
         // Log error and ignore it
-        PELOGE(limLog(pMac, LOGE,
+        PELOGE(limLog(pMac, LOG1,
                FL("received Disassoc frame from a BC/MC address"));)
 
         return;
@@ -99,7 +99,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
     {
         // Received Disassoc frame for a MC address
         // Log error and ignore it
-        PELOGE(limLog(pMac, LOGE,
+        PELOGE(limLog(pMac, LOG1,
                FL("received Disassoc frame for a MC address"));)
 
         return;
@@ -109,7 +109,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
     /* PMF: If this session is a PMF session, then ensure that this frame was protected */
     if(psessionEntry->limRmfEnabled  && (WDA_GET_RX_DPU_FEEDBACK(pRxPacketInfo) & DPU_FEEDBACK_UNPROTECTED_ERROR))
     {
-        PELOGE(limLog(pMac, LOGE, FL("received an unprotected disassoc from AP"));)
+        PELOGE(limLog(pMac, LOG1, FL("received an unprotected disassoc from AP"));)
         // If the frame received is unprotected, forward it to the supplicant to initiate
         // an SA query
         frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
@@ -142,7 +142,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
          * Disassociating STA is not associated.
          * Log error.
          */
-        PELOGE(limLog(pMac, LOGE,
+        PELOGE(limLog(pMac, LOG1,
            FL("received Disassoc frame from STA that does not have context "
            "reasonCode=%d, addr "MAC_ADDRESS_STR),
             reasonCode,MAC_ADDR_ARRAY(pHdr->sa));)
@@ -152,7 +152,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
 
     if (limCheckDisassocDeauthAckPending(pMac, (tANI_U8*)pHdr->sa))
     {
-        PELOGE(limLog(pMac, LOGE,
+        PELOGE(limLog(pMac, LOG1,
                     FL("Ignore the DisAssoc received, while waiting "
                     "for ack of disassoc/deauth"));)
         limCleanUpDisassocDeauthReq(pMac,(tANI_U8*)pHdr->sa, 1);
@@ -258,7 +258,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
     {
         // Received Disassociation frame in either IBSS
         // or un-known role. Log and ignore it
-        limLog(pMac, LOGE,
+        limLog(pMac, LOG1,
                FL("received Disassoc frame with invalid reasonCode %d in role "
                "%d in sme state %d from "MAC_ADDRESS_STR), reasonCode,
                psessionEntry->limSystemRole, psessionEntry->limSmeState,
