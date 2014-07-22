@@ -4694,6 +4694,8 @@ eHalStatus csrRoamProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
                 pIes = NULL;
             }
         }
+        else
+            status = eHAL_STATUS_FAILURE;
         break;
     }
     case eCsrCapsChange:
