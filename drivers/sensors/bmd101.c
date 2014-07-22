@@ -56,7 +56,6 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 #define BMD101_CS_GPIO		53
 #define BMD101_RST_GPIO		55
 
-static int bmd101_enable;
 static struct regulator *pm8921_l28;
 static struct sensors_classdev bmd101_cdev = {
 	.name = "bmd101",
@@ -89,9 +88,9 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 {
 	int rc;
 
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor currently %s, turning sensor %s\n", __func__, bmd101_enable ? "on":"off", enable ? "on":"off");
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor currently %s, turning sensor %s\n", __func__, sensors_cdev->enabled? "on":"off", enable ? "on":"off");
 
-	if (enable && !bmd101_enable) {
+	if (enable && !sensors_cdev->enabled) {
 		rc = gpio_request(BMD101_RST_GPIO, "BMD101_RST");
 		if (rc) {
 			pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_RST_GPIO);
@@ -119,10 +118,10 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		gpio_direction_output(BMD101_RST_GPIO, 1);
 		msleep(100);
 
-		bmd101_enable = 1;
-		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, bmd101_enable);
+		sensors_cdev->enabled = 1;
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensors_cdev->enabled);
 	}
-	else if (!enable && bmd101_enable) {	
+	else if (!enable && sensors_cdev->enabled) {	
 		rc = regulator_disable(pm8921_l28);
     		if (rc) {
 			pr_err("%s: regulator_enable of 8921_l28 failed(%d)\n", __func__, rc);
@@ -132,9 +131,9 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		gpio_direction_output(BMD101_RST_GPIO, 0);
 		gpio_free(BMD101_CS_GPIO);
 		gpio_free(BMD101_RST_GPIO);
-		bmd101_enable = 0;
+		sensors_cdev->enabled = 0;
 
-		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, bmd101_enable);
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensors_cdev->enabled);
 	}
 	else
 		pr_err("[bmd101] %s : sensor is already %s\n", __func__, enable ? "enabled":"disabled");
@@ -232,16 +231,14 @@ static const struct attribute_group bmd101_attr_group = {
 static void bmd101_early_suspend(struct early_suspend *h)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	if(sensor_data->cdev.enabled && !sensor_data->esd)
-		bmd101_enable_set(&sensor_data->cdev, 0);
+	bmd101_enable_set(&sensor_data->cdev, 0);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
 
 static void bmd101_late_resume(struct early_suspend *h)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	if(sensor_data->cdev.enabled && !sensor_data->esd)
-		bmd101_enable_set(&sensor_data->cdev, 1);
+	bmd101_enable_set(&sensor_data->cdev, 1);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
 
@@ -254,16 +251,14 @@ struct early_suspend bmd101_early_suspend_handler = {
 static void bmd101_early_suspend(void)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	if(sensor_data->cdev.enabled && !sensor_data->esd)
-		bmd101_enable_set(&sensor_data->cdev, 0);
+	bmd101_enable_set(&sensor_data->cdev, 0);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
 
 static void bmd101_late_resume(void)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	if(sensor_data->cdev.enabled && !sensor_data->esd)
-		bmd101_enable_set(&sensor_data->cdev, 1);
+	bmd101_enable_set(&sensor_data->cdev, 1);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 }
 
@@ -376,7 +371,7 @@ static int bmd101_probe(struct platform_device *pdev)
     	}
 
 	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: enable sensor +++\n", __func__);
-	//bmd101_enable_set(&sensor_data->cdev, 1);
+	bmd101_enable_set(&sensor_data->cdev, 1);
 	
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 
