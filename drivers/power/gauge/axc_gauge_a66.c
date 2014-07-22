@@ -916,6 +916,7 @@ static void AXC_Gauge_A66_ReadVoltCurrWithoutCali(
 		*curr = (*curr)*(-1);
 	}    
 
+#if 0
     //ASUS BSP Eason filter adc read current <= 15mA when doesn't has cable +++
     if( (*curr >= 0)&&(*curr <= 15)&&(false == report_BatteryService_If_HasCable()) )
     {
@@ -926,7 +927,7 @@ static void AXC_Gauge_A66_ReadVoltCurrWithoutCali(
             return;
     }
     //ASUS BSP Eason filter adc read current <= 15mA when doesn't has cable ---
-    
+#endif
 
 	//Eason print VC +++
 	/*for(i = 0; i < anTimes; i++){ 
