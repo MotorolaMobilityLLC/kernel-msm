@@ -270,6 +270,7 @@
 	qcom,clk-rates = <400000 25000000 50000000 100000000>;
 	qcom,bus-speed-mode = "DDR50", "DDR_1p8v";
 	qcom,nonremovable;
+	qcom,emmc;
 
 	status = "ok";
 };
