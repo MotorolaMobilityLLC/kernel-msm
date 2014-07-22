@@ -99,6 +99,8 @@ int stm401_reset_and_init(void)
 
 	wake_lock(&stm401_misc_data->reset_wakelock);
 
+	stm401_misc_data->in_reset_and_init = true;
+
 	pdata = stm401_misc_data->pdata;
 
 	stm401_reset(pdata, rst_cmdbuff);
@@ -263,6 +265,7 @@ int stm401_reset_and_init(void)
 
 	kfree(rst_cmdbuff);
 	stm401_sleep(stm401_misc_data);
+	stm401_misc_data->in_reset_and_init = false;
 	wake_unlock(&stm401_misc_data->reset_wakelock);
 	return ret_err;
 }

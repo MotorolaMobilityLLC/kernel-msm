@@ -620,6 +620,7 @@ struct stm401_data {
 	unsigned short qw_irq_status;
 	struct stm401_aod_enabled_vote aod_enabled;
 
+	bool in_reset_and_init;
 	bool is_suspended;
 	bool pending_wake_work;
 #if defined(CONFIG_FB)
