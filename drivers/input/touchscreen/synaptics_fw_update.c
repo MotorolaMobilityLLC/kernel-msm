@@ -831,15 +831,15 @@ static enum flash_area fwu_go_nogo(void)
 			"Device firmware id %d, .img firmware id %d\n",
 			deviceFirmwareID,
 			(unsigned int)imageFirmwareID);
-	if (imageFirmwareID > deviceFirmwareID) {
-		flash_area = UI_FIRMWARE;
-		goto exit;
-	} else if (imageFirmwareID < deviceFirmwareID) {
-		flash_area = NONE;
-		dev_info(&i2c_client->dev,
-			"%s: Img fw is older than device fw. Skip fw update.\n",
-			__func__);
-		goto exit;
+
+	/*
+	 * New firmware's FirmwareID isn't always increased
+	 * from the current firmware's, so just mark firmware update flag
+	 * if FirmwareIDs are different.
+	 * Firmware update will be decided by checking "config_id".
+	 */
+	if (imageFirmwareID != deviceFirmwareID) {
+		config_flag = 1;
 	}
 
 check_config_id:
