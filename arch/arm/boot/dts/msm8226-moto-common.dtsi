@@ -244,6 +244,7 @@
 
 	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
 	qcom,nonremovable;
+	qcom,emmc;
 
 	status = "ok";
 };
