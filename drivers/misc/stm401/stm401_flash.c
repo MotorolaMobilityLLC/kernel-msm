@@ -456,7 +456,7 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 
 	if (count > STM401_MAXDATA_LENGTH || count == 0) {
 		dev_err(&stm401_misc_data->client->dev,
-			"Invalid packet size %d\n", count);
+			"Invalid packet size %zu\n", count);
 		return -EINVAL;
 	}
 
@@ -471,7 +471,7 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 
 	if (stm401_misc_data->mode == BOOTMODE) {
 		dev_dbg(&stm401_misc_data->client->dev,
-			"Starting flash write, %d bytes to address 0x%08x\n",
+			"Starting flash write, %zu bytes to address 0x%08x\n",
 			count, stm401_misc_data->current_addr);
 
 		if (stm401_bootloader_ver > OLD_BOOT_VER) {
