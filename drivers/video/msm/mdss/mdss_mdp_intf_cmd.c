@@ -201,6 +201,8 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 	MDSS_XLOG(ctx->pp_num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 						ctx->rdptr_enabled);
 	if (!ctx->clk_enabled) {
+		mdss_bus_bandwidth_ctrl(true);
+
 		ctx->clk_enabled = 1;
 		if (cancel_delayed_work_sync(&ctx->pc_work))
 			pr_debug("deleted pending power collapse work\n");
@@ -259,6 +261,7 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 			(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
 		mdss_iommu_ctrl(0);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+		mdss_bus_bandwidth_ctrl(false);
 		if ((ctx->panel_on) && (mdata->idle_pc_enabled))
 			schedule_delayed_work(&ctx->pc_work,
 				POWER_COLLAPSE_TIME);
