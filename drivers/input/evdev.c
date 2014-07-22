@@ -125,9 +125,28 @@ static void evdev_events(struct input_handle *handle,
 {
 	struct evdev *evdev = handle->private;
 	struct evdev_client *client;
+	const struct input_value *iv = vals;
+	bool mono_time_is_set = false;
 	ktime_t time_mono, time_real;
 
-	time_mono = ktime_get();
+	if (count > 2 && iv->type == EV_SYN) {
+		int hw_ts_sec = -1, hw_ts_nsec = -1;
+
+		if (iv->code == SYN_TIME_SEC)
+			hw_ts_sec = (iv++)->value;
+
+		if (iv->code == SYN_TIME_NSEC)
+			hw_ts_nsec = iv->value;
+
+		if (hw_ts_sec > 0 && hw_ts_nsec > 0) {
+			time_mono = ktime_set(hw_ts_sec, hw_ts_nsec);
+			mono_time_is_set = true;
+		}
+	}
+
+	if (!mono_time_is_set)
+		time_mono = ktime_get();
+
 	time_real = ktime_sub(time_mono, ktime_get_monotonic_offset());
 
 	rcu_read_lock();
