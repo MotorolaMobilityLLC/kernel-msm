@@ -11644,25 +11644,6 @@ static int __wlan_hdd_cfg80211_set_power_mgmt(struct wiphy *wiphy,
      **/
     vos_status =  wlan_hdd_enter_bmps(pAdapter, !mode);
 
-    if (!mode)
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_DEBUG,
-                  "%s: DHCP start indicated through power save", __func__);
-
-        pHddCtx->btCoexModeSet = TRUE;
-        sme_DHCPStartInd(pHddCtx->hHal, pAdapter->device_mode,
-                         pAdapter->sessionId);
-    }
-    else
-    {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_DEBUG,
-                  "%s: DHCP stop indicated through power save", __func__);
-
-        pHddCtx->btCoexModeSet = FALSE;
-        sme_DHCPStopInd(pHddCtx->hHal, pAdapter->device_mode,
-                        pAdapter->sessionId);
-    }
-
     EXIT();
     if (VOS_STATUS_E_FAILURE == vos_status)
     {
