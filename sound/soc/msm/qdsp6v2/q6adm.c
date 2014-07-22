@@ -2452,6 +2452,133 @@ int adm_get_topology_id(int port_id)
 
 }
 
+int adm_send_compressed_device_mute(int port_id, bool mute_on)
+{
+	struct adm_set_compressed_device_mute mute_params;
+	int index, ret = 0;
+
+	pr_debug("%s port_id: 0x%x, mute_on: %d\n", __func__, port_id, mute_on);
+	index = afe_get_port_index(port_id);
+	if (index < 0 || index >= AFE_MAX_PORTS) {
+		pr_err("%s: invalid port idx 0x%x portid 0x%x\n",
+			__func__, index, port_id);
+		ret = -EINVAL;
+		goto end;
+	}
+
+	mute_params.command.hdr.hdr_field =
+			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+			APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+	mute_params.command.hdr.pkt_size =
+			sizeof(struct adm_set_compressed_device_mute);
+	mute_params.command.hdr.src_svc = APR_SVC_ADM;
+	mute_params.command.hdr.src_domain = APR_DOMAIN_APPS;
+	mute_params.command.hdr.src_port = port_id;
+	mute_params.command.hdr.dest_svc = APR_SVC_ADM;
+	mute_params.command.hdr.dest_domain = APR_DOMAIN_ADSP;
+	mute_params.command.hdr.dest_port =
+			atomic_read(&this_adm.copp_id[index]);
+	mute_params.command.hdr.token = port_id;
+	mute_params.command.hdr.opcode = ADM_CMD_SET_PP_PARAMS_V5;
+	mute_params.command.payload_addr_lsw = 0;
+	mute_params.command.payload_addr_msw = 0;
+	mute_params.command.mem_map_handle = 0;
+	mute_params.command.payload_size = sizeof(mute_params) -
+						sizeof(mute_params.command);
+	mute_params.params.module_id = AUDPROC_MODULE_ID_COMPRESSED_MUTE;
+	mute_params.params.param_id = AUDPROC_PARAM_ID_COMPRESSED_MUTE;
+	mute_params.params.param_size = mute_params.command.payload_size -
+					sizeof(mute_params.params);
+	mute_params.params.reserved = 0;
+	mute_params.mute_on = mute_on;
+
+	atomic_set(&this_adm.copp_stat[index], 0);
+	ret = apr_send_pkt(this_adm.apr, (uint32_t *)&mute_params);
+	if (ret < 0) {
+		pr_err("%s: send device mute for port %d failed, ret %d\n",
+			__func__, port_id, ret);
+		ret = -EINVAL;
+		goto end;
+	}
+
+	/* Wait for the callback */
+	ret = wait_event_timeout(this_adm.wait[index],
+		atomic_read(&this_adm.copp_stat[index]),
+		msecs_to_jiffies(TIMEOUT_MS));
+	if (!ret) {
+		pr_err("%s: send device mute for port %d failed\n", __func__,
+			port_id);
+		ret = -EINVAL;
+		goto end;
+	}
+	ret = 0;
+end:
+	return ret;
+}
+
+int adm_send_compressed_device_latency(int port_id, int latency)
+{
+	struct adm_set_compressed_device_latency latency_params;
+	int index, ret = 0;
+
+	pr_debug("%s port_id: 0x%x, latency: %d\n", __func__, port_id, latency);
+	index = afe_get_port_index(port_id);
+	if (index < 0 || index >= AFE_MAX_PORTS) {
+		pr_err("%s: invalid port idx 0x%x portid 0x%x\n",
+			__func__, index, port_id);
+		ret = -EINVAL;
+		goto end;
+	}
+
+	latency_params.command.hdr.hdr_field =
+			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+			APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+	latency_params.command.hdr.pkt_size =
+			sizeof(struct adm_set_compressed_device_latency);
+	latency_params.command.hdr.src_svc = APR_SVC_ADM;
+	latency_params.command.hdr.src_domain = APR_DOMAIN_APPS;
+	latency_params.command.hdr.src_port = port_id;
+	latency_params.command.hdr.dest_svc = APR_SVC_ADM;
+	latency_params.command.hdr.dest_domain = APR_DOMAIN_ADSP;
+	latency_params.command.hdr.dest_port =
+			atomic_read(&this_adm.copp_id[index]);
+	latency_params.command.hdr.token = port_id;
+	latency_params.command.hdr.opcode = ADM_CMD_SET_PP_PARAMS_V5;
+	latency_params.command.payload_addr_lsw = 0;
+	latency_params.command.payload_addr_msw = 0;
+	latency_params.command.mem_map_handle = 0;
+	latency_params.command.payload_size = sizeof(latency_params) -
+						sizeof(latency_params.command);
+	latency_params.params.module_id = AUDPROC_MODULE_ID_COMPRESSED_LATENCY;
+	latency_params.params.param_id = AUDPROC_PARAM_ID_COMPRESSED_LATENCY;
+	latency_params.params.param_size = latency_params.command.payload_size -
+					sizeof(latency_params.params);
+	latency_params.params.reserved = 0;
+	latency_params.latency = latency;
+
+	atomic_set(&this_adm.copp_stat[index], 0);
+	ret = apr_send_pkt(this_adm.apr, (uint32_t *)&latency_params);
+	if (ret < 0) {
+		pr_err("%s: send device latency for port %d failed, ret %d\n",
+			__func__, port_id, ret);
+		ret = -EINVAL;
+		goto end;
+	}
+
+	/* Wait for the callback */
+	ret = wait_event_timeout(this_adm.wait[index],
+		atomic_read(&this_adm.copp_stat[index]),
+		msecs_to_jiffies(TIMEOUT_MS));
+	if (!ret) {
+		pr_err("%s: send device latency for port %d failed\n", __func__,
+			port_id);
+		ret = -EINVAL;
+		goto end;
+	}
+	ret = 0;
+end:
+	return ret;
+}
 static int __init adm_init(void)
 {
 	int i = 0;
