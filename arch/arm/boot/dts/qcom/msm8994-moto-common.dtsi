@@ -242,7 +242,7 @@
 
 &pmx_mdss {
 	qcom,num-grp-pins = <1>;
-	qcom,pins = <&gp 78>;
+	qcom,pins = <&gp 94>;
 };
 
 &mdss_dsi0 {
@@ -251,7 +251,7 @@
 	pinctrl-0 = <&mdss_dsi_active>;
 	pinctrl-1 = <&mdss_dsi_suspend>;
 	qcom,dsi-panel-bias-vreg;
-	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
+	qcom,platform-reset-gpio = <&msm_gpio 94 0>;
 };
 
 &mdss_dsi1 {
