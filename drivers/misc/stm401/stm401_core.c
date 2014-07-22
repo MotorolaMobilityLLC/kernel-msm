@@ -820,6 +820,11 @@ static int stm401_fb_notifier_callback(struct notifier_block *self,
 
 	dev_dbg(&ps_stm401->client->dev, "%s+\n", __func__);
 
+	if (ps_stm401->in_reset_and_init || ps_stm401->mode == BOOTMODE) {
+		dev_warn(&ps_stm401->client->dev, "stm401 in reset or BOOTMODE...bailing\n");
+		goto exit;
+	}
+
 	/* If we aren't interested in this event, skip it immediately ... */
 	switch (event) {
 	case FB_EVENT_BLANK:
