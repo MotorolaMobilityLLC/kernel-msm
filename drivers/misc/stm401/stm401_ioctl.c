@@ -61,6 +61,22 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long current_posix_time;
 	struct timespec current_time;
 
+	/* limit which commands can be handled in BOOTMODE */
+	if (ps_stm401->mode == BOOTMODE &&
+	    cmd != STM401_IOCTL_BOOTLOADERMODE &&
+	    cmd != STM401_IOCTL_NORMALMODE &&
+	    cmd != STM401_IOCTL_MASSERASE &&
+	    cmd != STM401_IOCTL_SETSTARTADDR &&
+	    cmd != STM401_IOCTL_SET_FACTORY_MODE &&
+	    cmd != STM401_IOCTL_TEST_BOOTMODE &&
+	    cmd != STM401_IOCTL_SET_DEBUG &&
+	    cmd != STM401_IOCTL_GET_VERNAME &&
+	    cmd != STM401_IOCTL_GET_BOOTED) {
+		dev_err(&ps_stm401->client->dev,
+			"Attempted normal mode ioctl in boot\n");
+		return -EBUSY;
+	}
+
 	if (mutex_lock_interruptible(&ps_stm401->lock) != 0)
 		return -EINTR;
 
@@ -120,14 +136,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		else
 			err = 0;
 		break;
-	default:
-		if (ps_stm401->mode == BOOTMODE) {
-			dev_err(&ps_stm401->client->dev,
-				"Attempted normal mode ioctl in boot\n");
-			stm401_sleep(ps_stm401);
-			mutex_unlock(&ps_stm401->lock);
-			return -EBUSY;
-		}
+	/* No default since commands not supported in BOOTMODE handled above */
 	}
 
 	switch (cmd) {
