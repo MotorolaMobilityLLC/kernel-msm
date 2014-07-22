@@ -374,10 +374,17 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
     tANI_U8               rxChannelInBD = 0;
 
     tSirMacAddr bssid = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    tSirMacAddr bssid_zero =  {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
     tANI_BOOLEAN fFound = FALSE;
     tpSirMacDataHdr3a pHdr;
 
     pHdr = WDA_GET_RX_MPDUHEADER3A((tANI_U8 *)pRxPacketInfo);
+
+    // Check For Null BSSID; Skip in case of P2P.
+    if (vos_mem_compare(bssid_zero, &pHdr->addr3, 6))
+    {
+        return ;
+    }
 
     //Checking if scanning for a particular BSSID
     if ((fScanning) && (pMac->lim.gpLimMlmScanReq)) 

@@ -283,6 +283,7 @@ typedef struct
     tANI_U8    vhtCapable;
     tANI_U8    vhtTxChannelWidthSet;
     tANI_U8    vhtTxBFCapable;
+    tANI_U8    vhtTxMUBformeeCapable;
 #endif
 
     tANI_U8    htLdpcCapable;

@@ -766,7 +766,8 @@ void limLogQosMapSet(tpAniSirGlobal pMac, tSirQosMapSet *pQosMapSet)
 
 tSirRetStatus
 PopulateDot11fVHTCaps(tpAniSirGlobal           pMac,
-                           tDot11fIEVHTCaps *pDot11f)
+                      tDot11fIEVHTCaps *pDot11f,
+                      tAniBool isProbeRspAssocRspBeacon)
 {
     tSirRetStatus        nStatus;
     tANI_U32             nCfgValue=0;
@@ -820,13 +821,25 @@ PopulateDot11fVHTCaps(tpAniSirGlobal           pMac,
                                                                nCfgValue );
     pDot11f->numSoundingDim = (nCfgValue & 0x0007);
 
-    nCfgValue = 0;
-    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_MU_BEAMFORMER_CAP, nCfgValue );
-    pDot11f->muBeamformerCap = (nCfgValue & 0x0001);
-
-    nCfgValue = 0;
-    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_MU_BEAMFORMEE_CAP, nCfgValue );
-    pDot11f->muBeamformeeCap = (nCfgValue & 0x0001);
+    /* muBeamformerCap should be 0 for non AP and
+     * muBeamformeeCap should be 0 for AP
+     */
+    if(eSIR_TRUE == isProbeRspAssocRspBeacon)
+    {
+       nCfgValue = 0;
+       CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_MU_BEAMFORMER_CAP, nCfgValue );
+       pDot11f->muBeamformerCap = (nCfgValue & 0x0001);
+       pDot11f->muBeamformeeCap = 0;
+    }
+    else
+    {
+       pDot11f->muBeamformerCap = 0;
+       nCfgValue = 0;
+       CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_MU_BEAMFORMEE_CAP, nCfgValue );
+       /* Enable only if FW and host both support the MU_MIMO feature
+        */
+       pDot11f->muBeamformeeCap = IS_MUMIMO_BFORMEE_CAPABLE ? (nCfgValue & 0x0001): 0;
+    }
 
     nCfgValue = 0;
     CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_TXOP_PS, nCfgValue );

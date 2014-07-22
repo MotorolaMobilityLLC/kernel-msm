@@ -362,8 +362,19 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
             }
         }
     }
-    
-    if(psessionEntry->pLimStartBssReq != NULL)
+
+#ifdef WLAN_FEATURE_11AC
+
+    /* Unblock the MuBF for other session if the MuBf session is deleted
+     */
+    if(psessionEntry->txMuBformee)
+    {
+        pMac->isMuBfsessionexist = FALSE;
+    }
+
+#endif
+
+    if (psessionEntry->pLimStartBssReq != NULL)
     {
         vos_mem_free( psessionEntry->pLimStartBssReq );
         psessionEntry->pLimStartBssReq = NULL;
