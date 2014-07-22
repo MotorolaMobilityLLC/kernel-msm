@@ -250,8 +250,8 @@ static struct synaptics_rmi4_func_packet_regs f34_query_regs_v0 = {
 
 struct image_header {
 	unsigned int checksum;
-	unsigned int image_size;
-	unsigned int config_size;
+	size_t image_size;
+	size_t config_size;
 	unsigned char options;
 	unsigned char bootloader_version;
 	unsigned char product_id[SYNAPTICS_RMI4_PRODUCT_ID_SIZE + 1];
@@ -403,7 +403,7 @@ static void parse_header(struct image_header *header,
 			SYNAPTICS_RMI4_PRODUCT_INFO_SIZE);
 
 	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-		"Firwmare size %d, config size %d\n",
+		"Firwmare size %zu, config size %zu\n",
 		header->image_size,
 		header->config_size);
 
@@ -1206,7 +1206,7 @@ static int fwu_parse_tdat_image(struct image_header *header,
 
 
 	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-		"%s: Firwmare size %d, config size %d\n",
+		"%s: Firwmare size %zu, config size %zu\n",
 		__func__,
 		header->image_size,
 		header->config_size);
