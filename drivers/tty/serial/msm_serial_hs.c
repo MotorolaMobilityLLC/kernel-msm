@@ -1615,6 +1615,13 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 				 struct msm_hs_port, rx.tlet);
 	uport = &msm_uport->uport;
 	tty = uport->state->port.tty;
+	if (tty == NULL)
+	{
+		pr_info("%s() : tty is NULL!! stop the rx", __func__);
+		msm_hs_stop_rx_locked(uport);
+		return;
+	}
+
 	notify = &msm_uport->notify;
 	rx = &msm_uport->rx;
 
