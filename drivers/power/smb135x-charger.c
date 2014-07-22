@@ -75,6 +75,7 @@
 #define USBIN_INPUT_MASK		SMB135X_MASK(4, 0)
 
 #define CFG_D_REG			0x0D
+#define AICL_GLITCH			BIT(3)
 
 #define CFG_E_REG			0x0E
 #define POLARITY_100_500_BIT		BIT(2)
@@ -2635,9 +2636,17 @@ static int dcin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 
 static int handle_usb_removal(struct smb135x_chg *chip)
 {
+	int rc;
 	cancel_delayed_work(&chip->usb_insertion_work);
 	cancel_delayed_work(&chip->aicl_check_work);
 	chip->apsd_rerun_cnt = 0;
+
+	/* Set AICL Glich to 20ms */
+	rc = smb135x_masked_write(chip, CFG_D_REG, AICL_GLITCH, 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set 20 ms AICL glitch\n");
+		return rc;
+	}
 
 	if (chip->usb_psy) {
 		pr_debug("setting usb psy type = %d\n",
@@ -2680,6 +2689,11 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 	}
 
 	chip->apsd_rerun_cnt = 0;
+
+	/* Set AICL Glich to 15 us */
+	rc = smb135x_masked_write(chip, CFG_D_REG, AICL_GLITCH, AICL_GLITCH);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't set 15 us AICL glitch\n");
 
 	/*
 	 * Report the charger type as UNKNOWN if the
@@ -3427,6 +3441,13 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 	else
 		/* this ignores APSD results */
 		reg = USE_REGISTER_FOR_CURRENT;
+
+	/* Set AICL Glich to 20 ms */
+	rc = smb135x_masked_write(chip, CFG_D_REG, AICL_GLITCH, 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set 20 ms AICL glitch\n");
+		return rc;
+	}
 
 	rc = smb135x_masked_write(chip, CMD_INPUT_LIMIT, mask, reg);
 	if (rc < 0) {
