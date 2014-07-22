@@ -920,16 +920,16 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		return 0;
 		break;
 	case FB_BLANK_ENTER_INTERACTIVE:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		if (mfd->panel_power_on) {
-			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
-		}
 		notify_st_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
 		notify_it7260_ts_lowpowermode(0);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
 		return 0;
 		break;
 	case FB_BLANK_AMBIENT_OFF:
 		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		if (mfd->panel_power_on) {
+			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
+		}
 		return 0;
 		break;
 	case FB_BLANK_AMBIENT_ON:
