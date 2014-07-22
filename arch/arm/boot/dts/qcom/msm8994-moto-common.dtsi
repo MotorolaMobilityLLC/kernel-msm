@@ -266,32 +266,6 @@
 
 &soc {
 	i2c@f9924000 {
-		synaptics@20 {
-			compatible = "synaptics,dsx";
-			reg = <0x20>;
-			interrupt-parent = <&msm_gpio>;
-			interrupts = <61 0x2008>;
-			vdd-supply = <&pm8994_l14>;
-			avdd-supply = <&pm8994_l22>;
-			pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
-			pinctrl-0 = <&ts_active>;
-			pinctrl-1 = <&ts_suspend>;
-			synaptics,display-coords = <0 0 1599 2559>;
-			synaptics,panel-coords = <0 0 1599 2703>;
-			synaptics,reset-gpio = <&msm_gpio 60 0x00>;
-			synaptics,irq-gpio = <&msm_gpio 61 0x2008>;
-			synaptics,disable-gpios;
-		};
-	};
-
-	gen-vkeys {
-		compatible = "qcom,gen-vkeys";
-		label = "synaptics_dsx";
-		qcom,disp-maxx = <1599>;
-		qcom,disp-maxy = <2559>;
-		qcom,panel-maxx = <1599>;
-		qcom,panel-maxy = <2703>;
-		qcom,key-codes = <158 139 102 217>;
 	};
 
 	i2c@f9928000 { /* BLSP1 QUP6 */
