@@ -76,9 +76,10 @@ struct bmd101_data *sensor_data;
 
 static int bmd101_data_report(int data)
 {
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) \n", __func__, data);
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s\n", __func__, data, sensor_data->status<2?"DROP":"REPORT");
+	if(sensor_data->status<2)
+		data=0;				//report 0 bpm to set sensor status to SENSOR_STATUS_NO_CONTACT
 	input_report_abs(sensor_data->input_dev, ABS_MISC, data);
-//	input_event(sensor_data->input_dev, EV_SYN, SYN_REPORT, 1);
 	input_sync(sensor_data->input_dev);
 
 	return 0;
