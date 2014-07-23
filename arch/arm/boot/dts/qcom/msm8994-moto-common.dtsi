@@ -218,6 +218,50 @@
 		};
 	};
 
+	blsp2_uart4_rxtx_active {
+		qcom,pins = <&gp 53>, <&gp 54>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <4>;
+		label = "blsp2_uart4_rxtx_active";
+		hsuart_10_rxtx_active: default {
+			drive-strength = <16>;
+			bias-disable;
+		};
+	};
+
+	blsp2_uart4_rxtx_sleep {
+		qcom,pins = <&gp 53>, <&gp 54>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <4>;
+		label = "blsp2_uart4_rxtx_sleep";
+		hsuart_10_rxtx_sleep: default {
+			drive-strength = <16>;
+			bias-disable;
+		};
+	};
+
+	blsp2_uart4_cts_rfr_active {
+		qcom,pins = <&gp 55>, <&gp 56>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <3>;
+		label = "blsp2_uart4_cts_rfr_active";
+		hsuart_10_cts_rfr_active: default {
+			drive-strength = <16>;
+			bias-disable;
+		};
+	};
+
+	blsp2_uart4_cts_rfr_sleep {
+		qcom,pins = <&gp 55>, <&gp 56>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <3>;
+		label = "blsp2_uart4_cts_rfr_sleep";
+		hsuart_10_cts_rfr_sleep: default {
+			drive-strength = <16>;
+			bias-disable;
+		};
+	};
+
 	pmx_c55_ap_int {
 		qcom,pins = <&gp 66>;
 		qcom,num-grp-pins = <1>;
@@ -657,6 +701,42 @@
 
 		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
 			 <&clock_gcc clk_gcc_blsp2_qup1_spi_apps_clk>;
+	};
+
+	blsp2_uart4: uart@f9960000 { /* BLSP2 UART4 */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf9960000 0x1000>,
+			<0xf9944000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#address-cells = <0>;
+		interrupt-parent = <&blsp2_uart4>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 116 0
+				1 &intc 0 241 0
+				2 &msm_gpio 54 0>;
+
+		qcom,inject-rx-on-wakeup = <1>;
+		qcom,rx-char-to-inject = <0xFD>;
+
+		qcom,bam-tx-ep-pipe-index = <4>;
+		qcom,bam-rx-ep-pipe-index = <5>;
+		qcom,master-id = <84>;
+		clock-names = "core_clk", "iface_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_uart4_apps_clk>,
+			<&clock_gcc clk_gcc_blsp2_ahb_clk>;
+		pinctrl-names = "sleep", "default";
+		pinctrl-0 = <&hsuart_10_cts_rfr_active &hsuart_10_rxtx_active>;
+		pinctrl-1 = <&hsuart_10_cts_rfr_sleep &hsuart_10_rxtx_sleep>;
+
+		qcom,msm-bus,name = "buart10";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<84 512 0 0>,
+				<84 512 500 800>;
 	};
 };
 
