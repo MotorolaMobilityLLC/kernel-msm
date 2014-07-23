@@ -420,19 +420,41 @@
 	};
 
 	mpp@a100 { /* MPP 2 */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;		/* CMOS logic */
+	};
+
+	mpp@a200 { /* MPP 3 */
+	};
+
+	mpp@a300 { /* MPP 4 - USB_HM_DET_N */
+		qcom,mode = <0>;		/* Digital Input */
 		qcom,vin-sel = <2>;		/* S4 1.8V */
+		qcom,pull = <1>;		/* QPNP_PIN_MPP_PULL_UP_OPEN */
 		qcom,src-sel = <0>;		/* Constant */
+		qcom,ain-route = <1>;		/* QPNP_PIN_AIN_AMUX_CH6 */
 		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
-	mpp@a300 { /* MPP 4 */
-		/* HDMI_5v_vreg regulator enable */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;		/* CMOS logic */
+	mpp@a400 { /* MPP 5 */
+	};
+
+	mpp@a500 { /* MPP 6 - CCP_RESOUT_N */
+		qcom,mode = <0>;		/* Digital Input */
 		qcom,vin-sel = <2>;		/* S4 1.8V */
 		qcom,src-sel = <0>;		/* Constant */
+		qcom,pull = <0>;		/* Pull-Up 0.6k */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+
+	mpp@a600 { /* MPP 7 - NCP6343_EN */
+		qcom,mode = <1>;		/* Digital Output */
+		qcom,vin-sel = <2>;		/* S4 1.8V */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,pull = <0>;		/* Pull-Up 0.6k */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+
+	mpp@a700 { /* MPP 8 - LED_SOL_SINK */
+		qcom,mode = <6>;		/* QPNP_PIN_MODE_SINK */
 		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 };
@@ -449,14 +471,6 @@
 
 		qcom,cdc-on-demand-supplies = "cdc-vdd-spkdrv",
 					      "cdc-vdd-spkdrv-2";
-	};
-};
-
-&pmi8994_mpps {
-	mpp@a300 { /* MPP 4 */
-		/* WLED FET */
-		qcom,mode = <1>;
-		qcom,master-en = <1>;
 	};
 };
 
