@@ -398,7 +398,7 @@ bool mdss_dsi_is_panel_dead(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 								panel_data);
 
-	if (ctrl_pdata->ndx == DSI_CTRL_MASTER)
+	if (ctrl_pdata->ndx == DSI_CTRL_LEFT)
 		ret = (pdata->panel_info.panel_dead) ? true : false;
 	else {
 		struct mdss_panel_data *pdata_dsi0;

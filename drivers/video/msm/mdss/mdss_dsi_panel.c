@@ -115,8 +115,7 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	struct mdss_panel_info *pinfo;
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left ||
-			!mdss_dsi_broadcast_mode_enabled()) {
+	if (pinfo->partial_update_dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return -EINVAL;
 	}
@@ -145,8 +144,7 @@ static int mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct mdss_panel_info *pinfo;
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left ||
-			!mdss_dsi_broadcast_mode_enabled()) {
+	if (pinfo->partial_update_dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return 0;
 	}
@@ -180,8 +178,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	struct mdss_panel_info *pinfo;
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left ||
-			!mdss_dsi_broadcast_mode_enabled()) {
+	if (pinfo->partial_update_dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return;
 	}
@@ -343,12 +340,22 @@ static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata, u8 *pwr_mode,
 {
 	struct mdss_dsi_ctrl_pdata *ctrl;
 	int old_rd_mode;
+	struct mdss_panel_info *pinfo;
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 
 	if (ctrl->panel_config.bare_board == true) {
 		*pwr_mode = 0;
 		goto end;
+	}
+
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo->partial_update_dcs_cmd_by_left) {
+		if (ctrl->ndx != DSI_CTRL_LEFT) {
+			pr_err("%s: reading the pwr_mode on DSI_CTRL_RIGHT\n",
+								__func__);
+			return -EINVAL;
+		}
 	}
 
 	old_rd_mode = mdss_dsi_get_tx_power_mode(pdata);
@@ -659,8 +666,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
-	if (pinfo->partial_update_dcs_cmd_by_left ||
-			!mdss_dsi_broadcast_mode_enabled()) {
+	if (pinfo->partial_update_dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return 0;
 	}
@@ -702,8 +708,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	if (pinfo->partial_update_dcs_cmd_by_left ||
-			!mdss_dsi_broadcast_mode_enabled()) {
+	if (pinfo->partial_update_dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return 0;
 	}
