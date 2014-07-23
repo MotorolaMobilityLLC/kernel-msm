@@ -130,6 +130,30 @@
 			bias-pull-up; /* no pull */
 		};
 	};
+
+	pmx_stm401_out {
+		qcom,pins = <&gp 57 &gp 78 &gp 89>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <0>;
+		label = "stm401_out";
+		stm401_out_default: default {
+			bias-disable;
+			output-low;
+			drive-strength = <2>;
+		};
+	};
+
+	pmx_stm401_in {
+		qcom,pins = <&gp 16 &gp 65 &gp 127>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <0>;
+		label = "stm401_in";
+		stm401_in_default: default {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
 };
 
 &sdhc_1 {
@@ -434,6 +458,29 @@
 		qcom,bam-pipe-idx-cons = <16>;
 		qcom,bam-pipe-idx-prod = <17>;
 		qcom,master-id = <86>;
+
+		stm401@39 {
+			compatible = "stm,stm401";
+			reg = <0x39>;
+			gpios = <&msm_gpio 127 0>,      /* IRQ          */
+				<&msm_gpio 57 0>,       /* RESET        */
+				<&msm_gpio 78 0>,       /* BSLEN        */
+				<&msm_gpio 65 0>,       /* WakeIRQ      */
+				<&msm_gpio 89 0>,       /* SH Wake      */
+				<&msm_gpio 16 0>;       /* SH Wake Resp */
+			lux_table = <5 50 100 1500 3000 8000>;
+			brightness_table = <9 14 18 46 67 93 140>;
+			bslen_pin_active_value = <1>;
+			ct406_detect_threshold = <0x006E>;
+			ct406_undetect_threshold = <0x0050>;
+			ct406_recalibrate_threshold = <0x0064>;
+			ct406_pulse_count = <0x04>;
+			sensor1-supply = <&pm8994_lvs2>;
+			sensor2-supply = <&pm8994_l17>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&stm401_out_default &stm401_in_default>;
+		};
 	};
 
 	i2c@f9928000 { /* BLSP1 QUP6 */
