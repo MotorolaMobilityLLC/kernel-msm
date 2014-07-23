@@ -459,21 +459,6 @@
 	};
 };
 
-&slim_msm {
-	tomtom_codec {
-		cdc-vdd-spkdrv-supply = <&pmi8994_boost>;
-		qcom,cdc-vdd-spkdrv-voltage = <5000000 5000000>;
-		qcom,cdc-vdd-spkdrv-current = <600000>;
-
-		cdc-vdd-spkdrv-2-supply = <&pmi8994_boost>;
-		qcom,cdc-vdd-spkdrv-2-voltage = <5000000 5000000>;
-		qcom,cdc-vdd-spkdrv-2-current = <600000>;
-
-		qcom,cdc-on-demand-supplies = "cdc-vdd-spkdrv",
-					      "cdc-vdd-spkdrv-2";
-	};
-};
-
 &blsp2_uart2 {
 	status = "ok";
 };
