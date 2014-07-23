@@ -1453,6 +1453,7 @@ static int mdss_panel_parse_optional_prop(struct device_node *np,
 				struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	int rc = 0;
+	u32 tmp;
 
 	/* HBM properties */
 	pinfo->hbm_state = 0;
@@ -1461,7 +1462,12 @@ static int mdss_panel_parse_optional_prop(struct device_node *np,
 				"qcom,mdss-dsi-hbm-on-command", NULL);
 	rc |= mdss_dsi_parse_optional_dcs_cmds(np, &ctrl->hbm_off_cmds,
 				"qcom,mdss-dsi-hbm-off-command", NULL);
-	if (ctrl->hbm_on_cmds.cmd_cnt && ctrl->hbm_off_cmds.cmd_cnt) {
+	if (!of_property_read_u32(np, "qcom,mdss-dsi-hbm-on-brightness", &tmp))
+		ctrl->hbm_on_brts = tmp;
+	if (!of_property_read_u32(np, "qcom,mdss-dsi-hbm-off-brightness", &tmp))
+		ctrl->hbm_off_brts = tmp;
+	if ((ctrl->hbm_on_cmds.cmd_cnt && ctrl->hbm_off_cmds.cmd_cnt) ||
+		(ctrl->hbm_on_brts && ctrl->hbm_off_brts)) {
 		pinfo->hbm_feature_enabled = true;
 		pr_info("%s: High Brightness Mode enabled.\n", __func__);
 	}
@@ -1483,7 +1489,7 @@ static int mdss_panel_parse_optional_prop(struct device_node *np,
 
 int mdss_dsi_panel_set_hbm(struct mdss_dsi_ctrl_pdata *ctrl, int state)
 {
-	int rc;
+	int rc = 0;
 	if (!ctrl->panel_data.panel_info.hbm_feature_enabled) {
 		pr_debug("HBM is disabled, ignore request\n");
 		return 0;
@@ -1495,10 +1501,21 @@ int mdss_dsi_panel_set_hbm(struct mdss_dsi_ctrl_pdata *ctrl, int state)
 		return 0;
 	}
 
-	if (state)
-		rc = mdss_dsi_panel_cmds_send(ctrl, &ctrl->hbm_on_cmds);
-	else
-		rc = mdss_dsi_panel_cmds_send(ctrl, &ctrl->hbm_off_cmds);
+	if (state) {
+		if (ctrl->hbm_on_cmds.cmd_cnt)
+			rc = mdss_dsi_panel_cmds_send(ctrl,
+						&ctrl->hbm_on_cmds);
+		if (ctrl->hbm_on_brts)
+			mdss_dsi_panel_bl_ctrl(&ctrl->panel_data,
+						ctrl->hbm_on_brts);
+	} else {
+		if (ctrl->hbm_off_cmds.cmd_cnt)
+			rc = mdss_dsi_panel_cmds_send(ctrl,
+						&ctrl->hbm_off_cmds);
+		if (ctrl->hbm_off_brts)
+			mdss_dsi_panel_bl_ctrl(&ctrl->panel_data,
+						ctrl->hbm_off_brts);
+	}
 
 	if (!rc)
 		ctrl->panel_data.panel_info.hbm_state = state;
