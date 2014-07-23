@@ -79,6 +79,7 @@ int mdss_create_xlog_debug(struct mdss_debug_data *mdd);
 void mdss_xlog(const char *name, ...);
 void mdss_xlog_dump(void);
 void mdss_dump_reg(char __iomem *base, int len);
+void mdss_dsi_debug_check_te(struct mdss_panel_data *pdata);
 void mdss_xlog_tout_handler(const char *name, ...);
 #else
 static inline int mdss_debugfs_init(struct mdss_data_type *mdata) { return 0; }
