@@ -76,6 +76,7 @@
 
 #define CFG_D_REG			0x0D
 #define AICL_GLITCH			BIT(3)
+#define AICL_ENABLE			BIT(2)
 
 #define CFG_E_REG			0x0E
 #define POLARITY_100_500_BIT		BIT(2)
@@ -2381,9 +2382,26 @@ static void usb_insertion_work(struct work_struct *work)
 	smb_relax(&chip->smb_wake_source);
 }
 
+static void toggle_usbin_aicl(struct smb135x_chg *chip)
+{
+	int rc;
+
+	/* Set AICL OFF */
+	rc = smb135x_masked_write(chip, CFG_D_REG, AICL_ENABLE, 0);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't disable AICL\n");
+
+	/* Set AICL ON */
+	rc = smb135x_masked_write(chip, CFG_D_REG, AICL_ENABLE, AICL_ENABLE);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't enable AICL\n");
+}
+
 #define FLOAT_CHG_TIME_SECS 1800
 static void heartbeat_work(struct work_struct *work)
 {
+	u8 reg;
+	int rc;
 	struct timespec bootup_time;
 	unsigned long float_timestamp;
 	bool usb_present;
@@ -2409,6 +2427,14 @@ static void heartbeat_work(struct work_struct *work)
 			chip->float_charge_start_time = 0;
 		}
 		handle_usb_removal(chip);
+	} else if (usb_present) {
+		rc = smb135x_read(chip, STATUS_0_REG, &reg);
+		if (rc < 0) {
+			pr_info("Failed to Read Status 0x46\n");
+		} else if (!reg) {
+			dev_warn(chip->dev, "HB Caught Low Rate!\n");
+			toggle_usbin_aicl(chip);
+		}
 	}
 
 	if (!chip->chg_done_batt_full &&
@@ -2727,6 +2753,8 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
  */
 static int usbin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 {
+	u8 reg;
+	int rc;
 	/*
 	 * rt_stat indicates if usb is undervolted. If so usb_present
 	 * should be marked removed
@@ -2741,8 +2769,15 @@ static int usbin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 		return 0;
 	}
 
-	if (is_usb_plugged_in(chip))
+	if (is_usb_plugged_in(chip)) {
+		rc = smb135x_read(chip, STATUS_0_REG, &reg);
+		if (rc < 0)
+			pr_info("Failed to Read Status 0x46\n");
+		else if (!reg)
+			toggle_usbin_aicl(chip);
+
 		return 0;
+	}
 
 	if (chip->usb_present && !usb_present) {
 		/* USB removed */
