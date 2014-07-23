@@ -14,6 +14,12 @@
 #include "msm8994-pinctrl.dtsi"
 #include "msm8994-camera-sensor-cdp.dtsi"
 
+/ {
+	aliases {
+		i2c5 = &i2c_5;
+	};
+};
+
 &tlmm_pinmux {
 	pmx_c55_reset {
 		qcom,pins = <&gp 8>;
@@ -51,6 +57,40 @@
 			drive-strength = <2>;
 			bias-disable; /* no pull */
 			output-low;
+		};
+	};
+
+	pmx_i2c_5_sda {
+		qcom,pins = <&gp 23>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <4>;
+		label = "pmx_i2c_5_sda";
+
+		i2c_5_sda_active: i2c_5_sda_active {
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		i2c_5_sda_sleep: i2c_5_sda_sleep {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	pmx_i2c_5_scl {
+		qcom,pins = <&gp 24>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <5>;
+		label = "pmx_i2c_5_scl";
+
+		i2c_5_scl_active: i2c_5_scl_active {
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		i2c_5_scl_sleep: i2c_5_scl_sleep {
+			drive-strength = <2>;
+			bias-disable;
 		};
 	};
 
@@ -369,6 +409,31 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&c55_reset_default &c55_core_en_default
 				&c55_ap_int_default &ap_c55_int_n_default>;
+	};
+
+	i2c_5: i2c@f9927000 { /* BLSP1 QUP5 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr", "bam_phys_addr";
+		reg = <0xf9927000 0x1000>,
+		      <0xf9904000 0x19000>;
+		interrupt-names = "qup_irq", "bam_irq";
+		interrupts = <0 99 0>, <0 238 0>;
+		qcom,clk-freq-out = <100000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup5_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_5_sda_active &i2c_5_scl_active>;
+		pinctrl-1 = <&i2c_5_sda_sleep &i2c_5_scl_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,bam-pipe-idx-cons = <16>;
+		qcom,bam-pipe-idx-prod = <17>;
+		qcom,master-id = <86>;
 	};
 
 	i2c@f9928000 { /* BLSP1 QUP6 */
