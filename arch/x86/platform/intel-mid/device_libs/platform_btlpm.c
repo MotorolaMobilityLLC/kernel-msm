@@ -46,7 +46,7 @@ static int __init bluetooth_init(void)
 		return -ENODEV;
 	}
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	bcm_bt_lpm_pdata.gpio_host_wake = get_gpio_by_name("bt_uart_enable");
 	if (!gpio_is_valid(bcm_bt_lpm_pdata.gpio_host_wake)) {
 		pr_err("%s: gpio %s not found\n", __func__, "bt_uart_enable");

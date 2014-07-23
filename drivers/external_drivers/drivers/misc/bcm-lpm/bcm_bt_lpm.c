@@ -48,25 +48,25 @@ enum {
 static struct rfkill *bt_rfkill;
 static bool bt_enabled;
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 static bool host_wake_uart_enabled;
 static bool wake_uart_enabled;
 static bool int_handler_enabled;
 #endif
 
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 static void activate_irq_handler(void);
 #endif
 
 struct bcm_bt_lpm {
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	unsigned int gpio_wake;
 	unsigned int gpio_host_wake;
 	unsigned int int_host_wake;
 #endif
 	unsigned int gpio_enable_bt;
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	int wake;
 	int host_wake;
 #endif
@@ -74,14 +74,14 @@ struct bcm_bt_lpm {
 	ktime_t enter_lpm_delay;
 
 	struct device *tty_dev;
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	struct wake_lock wake_lock;
 	char wake_lock_name[100];
 #endif
 	int port;
 } bt_lpm;
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 static void uart_enable(struct device *tty)
 {
 	pr_debug("%s: runtime get\n", __func__);
@@ -117,7 +117,7 @@ static int bcm_bt_lpm_acpi_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	bt_lpm.gpio_wake = acpi_get_gpio_by_index(&pdev->dev,
 						gpio_wake_acpi_idx, &info);
 	if (!gpio_is_valid(bt_lpm.gpio_wake)) {
@@ -168,7 +168,7 @@ static int bcm43xx_bt_rfkill_set_power(void *data, bool blocked)
 	/* rfkill_ops callback. Turn transmitter on when blocked is false */
 
 	if (!blocked) {
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 		gpio_set_value(bt_lpm.gpio_wake, 1);
 		/*
 		* Delay advice by BRCM is min 2.5ns,
@@ -192,7 +192,7 @@ static const struct rfkill_ops bcm43xx_bt_rfkill_ops = {
 	.set_block = bcm43xx_bt_rfkill_set_power,
 };
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 static void set_wake_locked(int wake)
 {
 	bt_lpm.wake = wake;
@@ -375,7 +375,7 @@ static int bcm43xx_bluetooth_pdata_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	if (!gpio_is_valid(pdata->gpio_wake) ||
 		!gpio_is_valid(pdata->gpio_host_wake)) {
 		pr_err("%s: gpio not valid\n", __func__);
@@ -398,7 +398,7 @@ static int bcm43xx_bluetooth_probe(struct platform_device *pdev)
 {
 	bool default_state = true;	/* off */
 	int ret = 0;
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	int_handler_enabled = false;
 #endif
 #ifdef CONFIG_ACPI
@@ -435,7 +435,7 @@ static int bcm43xx_bluetooth_probe(struct platform_device *pdev)
 		goto err_gpio_enable_dir;
 	}
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	ret = gpio_request(bt_lpm.gpio_host_wake, pdev->name);
 	if (ret < 0) {
 		pr_err("%s: Unable to request gpio %d\n",
@@ -486,7 +486,7 @@ static int bcm43xx_bluetooth_probe(struct platform_device *pdev)
 	if (unlikely(ret))
 		goto err_rfkill_register;
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	ret = bcm_bt_lpm_init(pdev);
 	if (ret)
 		goto err_lpm_init;
@@ -494,14 +494,14 @@ static int bcm43xx_bluetooth_probe(struct platform_device *pdev)
 
 	return ret;
 
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 err_lpm_init:
 #endif
 	rfkill_unregister(bt_rfkill);
 err_rfkill_register:
 	rfkill_destroy(bt_rfkill);
 err_rfkill_alloc:
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 err_gpio_wake_dir:
 	gpio_free(bt_lpm.gpio_wake);
 err_gpio_wake_req:
@@ -522,14 +522,14 @@ static int bcm43xx_bluetooth_remove(struct platform_device *pdev)
 	rfkill_destroy(bt_rfkill);
 
 	gpio_free(bt_lpm.gpio_enable_bt);
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	gpio_free(bt_lpm.gpio_wake);
 	gpio_free(bt_lpm.gpio_host_wake);
 	wake_lock_destroy(&bt_lpm.wake_lock);
 #endif
 	return 0;
 }
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 int bcm43xx_bluetooth_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	int host_wake;
@@ -576,7 +576,7 @@ MODULE_DEVICE_TABLE(acpi, bcm_id_table);
 static struct platform_driver bcm43xx_bluetooth_platform_driver = {
 	.probe = bcm43xx_bluetooth_probe,
 	.remove = bcm43xx_bluetooth_remove,
-#ifdef LPM_ON
+#ifndef BCM_BT_LPM_DBG
 	.suspend = bcm43xx_bluetooth_suspend,
 	.resume = bcm43xx_bluetooth_resume,
 #endif

@@ -4,3 +4,10 @@ config BCM_BT_LPM
 	default n
 	help
 	   Select this module for Broadcom Bluetooth low power management.
+
+config BCM_BT_LPM_DBG
+	bool "Set this flag to disable LPM, for debug purpose."
+	depends on BCM_BT_LPM
+	default n
+	help
+	   Set this flag to disable LPM, for debug purpose.
