@@ -17,6 +17,7 @@
 / {
 	aliases {
 		i2c5 = &i2c_5;
+		spi6 = &spi_6;
 	};
 };
 
@@ -91,6 +92,74 @@
 		i2c_5_scl_sleep: i2c_5_scl_sleep {
 			drive-strength = <2>;
 			bias-disable;
+		};
+	};
+
+	pmx_spi_6_mosi {
+		qcom,pins = <&gp 25>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <3>;
+		label = "spi_6_mosi";
+
+		spi_6_mosi_active: active {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		spi_6_mosi_sleep: sleep {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+	pmx_spi_6_miso {
+		qcom,pins = <&gp 26>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <2>;
+		label = "spi_6_miso";
+
+		spi_6_miso_active: active {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		spi_6_miso_sleep: sleep {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+	pmx_spi_6_cs {
+		qcom,pins = <&gp 27>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "spi_6_cs";
+
+		spi_6_cs_active: active {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		spi_6_cs_sleep: sleep {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+	pmx_spi_6_clk {
+		qcom,pins = <&gp 28>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "spi_6_clk";
+
+		spi_6_clk_active: active {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		spi_6_clk_sleep: sleep {
+			drive-strength = <6>;
+			bias-pull-up;
 		};
 	};
 
@@ -516,6 +585,34 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+	};
+
+	spi_6: spi@f9928000 { /* BLSP1 QUP6 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xf9928000 0x1000>,
+		      <0xf9904000 0x19000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 100 0>, <0 238 0>;
+		spi-max-frequency = <19200000>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <22>;
+		qcom,bam-producer-pipe-index = <23>;
+		qcom,master-id = <86>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_6_miso_active &spi_6_mosi_active &spi_6_clk_active>;
+		pinctrl-1 = <&spi_6_miso_sleep &spi_6_mosi_sleep &spi_6_clk_sleep>;
+
+		clock-names = "iface_clk", "core_clk";
+
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup6_spi_apps_clk>;
 	};
 };
 
