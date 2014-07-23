@@ -55,6 +55,7 @@ enum {
 	Opt_err_continue,
 	Opt_err_panic,
 	Opt_err_recover,
+	Opt_nobarrier,
 	Opt_err,
 };
 
@@ -75,6 +76,7 @@ static match_table_t f2fs_tokens = {
 	{Opt_err_continue, "errors=continue"},
 	{Opt_err_panic, "errors=panic"},
 	{Opt_err_recover, "errors=recover"},
+	{Opt_nobarrier, "nobarrier"},
 	{Opt_err, NULL},
 };
 
@@ -356,6 +358,8 @@ static int parse_options(struct super_block *sb, char *options)
 		case Opt_err_recover:
 			set_opt(sbi, ERRORS_RECOVER);
 			clear_opt(sbi, ERRORS_PANIC);
+		case Opt_nobarrier:
+			set_opt(sbi, NOBARRIER);
 			break;
 		default:
 			f2fs_msg(sb, KERN_ERR,
@@ -568,6 +572,8 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 		seq_puts(seq, ",inline_data");
 	if (!f2fs_readonly(sbi->sb) && test_opt(sbi, FLUSH_MERGE))
 		seq_puts(seq, ",flush_merge");
+	if (test_opt(sbi, NOBARRIER))
+		seq_puts(seq, ",nobarrier");
 	seq_printf(seq, ",active_logs=%u", sbi->active_logs);
 
 	return 0;
