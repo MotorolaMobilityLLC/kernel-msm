@@ -37,16 +37,6 @@
 	qcom,cont-splash-enabled;
 };
 
-&soc {
-	qcom,mss@fc880000 {
-		/delete-property/ qcom,gpio-err-fatal;
-		/delete-property/ qcom,gpio-err-ready;
-		/delete-property/ qcom,gpio-proxy-unvote;
-		/delete-property/ qcom,gpio-stop-ack;
-		/delete-property/ qcom,gpio-force-stop;
-	};
-};
-
 &pm8x26_rtc {
 	qcom,qpnp-rtc-write = <1>;
 };
