@@ -14,6 +14,33 @@
 #include "msm8994-pinctrl.dtsi"
 #include "msm8994-camera-sensor-cdp.dtsi"
 
+&tlmm_pinmux {
+	touch_reset_n {
+		qcom,pins = <&gp 39>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "touch-reset";
+
+		touch_reset_default: touch-reset {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			output-low;
+		};
+	};
+
+	touch_int_n {
+		qcom,pins = <&gp 40>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "touch-int";
+
+		touch_int_default: touch-int {
+			drive-strength = <2>;
+			bias-pull-up; /* pull-up */
+		};
+	};
+};
+
 &sdhc_1 {
 	vdd-supply = <&pm8994_l20>;
 	qcom,vdd-voltage-level = <2950000 2950000>;
@@ -264,10 +291,22 @@
 	qcom,mdss-dsi-bl-max-level = <4095>;
 };
 
-&soc {
-	i2c@f9924000 {
+&i2c_2 {
+	synaptics_dsx_i2c@3b {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x3b>;
+		interrupts = <&msm_gpio 40 0>;
+		gpios = <&msm_gpio 40 0>, /* IRQ */
+			<&msm_gpio 39 0>; /* RESET */
+		touch_vdd-supply = <&pm8994_l22>;
+		synaptics,normal-mode = <1>;
+		synaptics,gpio-config;
+		pinctrl-names = "default";
+		pinctrl-0 = <&touch_reset_default &touch_int_default>;
 	};
+};
 
+&soc {
 	i2c@f9928000 { /* BLSP1 QUP6 */
 		status = "ok";
 		nfc-nci@e {
