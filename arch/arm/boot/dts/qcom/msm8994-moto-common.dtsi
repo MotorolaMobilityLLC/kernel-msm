@@ -274,6 +274,17 @@
 		};
 	};
 
+	tmp108_irq {
+		qcom,pins = <&gp 77>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "tmp108_irq";
+		tmp108_irq_default: default {
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
 	pmx_stm401_out {
 		qcom,pins = <&gp 57 &gp 78 &gp 89>;
 		qcom,num-grp-pins = <3>;
@@ -937,5 +948,14 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&fsa8500_hs_det_default>;
+	};
+
+	tmp108@48 {
+		compatible = "ti,tmp108";
+		reg = <0x48>;
+		gpios = <&msm_gpio 77 0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&tmp108_irq_default>;
 	};
 };
