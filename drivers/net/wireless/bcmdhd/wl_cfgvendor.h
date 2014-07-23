@@ -56,30 +56,30 @@
 									VENDOR_DATA_OVERHEAD)
 typedef enum {
 	/* don't use 0 as a valid subcommand */
-    VENDOR_NL80211_SUBCMD_UNSPECIFIED,
+	VENDOR_NL80211_SUBCMD_UNSPECIFIED,
 
-    /* define all vendor startup commands between 0x0 and 0x0FFF */
-    VENDOR_NL80211_SUBCMD_RANGE_START = 0x0001,
-    VENDOR_NL80211_SUBCMD_RANGE_END   = 0x0FFF,
+	/* define all vendor startup commands between 0x0 and 0x0FFF */
+	VENDOR_NL80211_SUBCMD_RANGE_START = 0x0001,
+	VENDOR_NL80211_SUBCMD_RANGE_END   = 0x0FFF,
 
-    /* define all GScan related commands between 0x1000 and 0x10FF */
-    ANDROID_NL80211_SUBCMD_GSCAN_RANGE_START = 0x1000,
-    ANDROID_NL80211_SUBCMD_GSCAN_RANGE_END   = 0x10FF,
+	/* define all GScan related commands between 0x1000 and 0x10FF */
+	ANDROID_NL80211_SUBCMD_GSCAN_RANGE_START = 0x1000,
+	ANDROID_NL80211_SUBCMD_GSCAN_RANGE_END   = 0x10FF,
 
-    /* define all NearbyDiscovery related commands between 0x1100 and 0x11FF */
-    ANDROID_NL80211_SUBCMD_NBD_RANGE_START = 0x1100,
-    ANDROID_NL80211_SUBCMD_NBD_RANGE_END   = 0x11FF,
+	/* define all NearbyDiscovery related commands between 0x1100 and 0x11FF */
+	ANDROID_NL80211_SUBCMD_NBD_RANGE_START = 0x1100,
+	ANDROID_NL80211_SUBCMD_NBD_RANGE_END   = 0x11FF,
 
-    /* define all RTT related commands between 0x1100 and 0x11FF */
-    ANDROID_NL80211_SUBCMD_RTT_RANGE_START = 0x1100,
-    ANDROID_NL80211_SUBCMD_RTT_RANGE_END   = 0x11FF,
+	/* define all RTT related commands between 0x1100 and 0x11FF */
+	ANDROID_NL80211_SUBCMD_RTT_RANGE_START = 0x1100,
+	ANDROID_NL80211_SUBCMD_RTT_RANGE_END   = 0x11FF,
 
 	ANDROID_NL80211_SUBCMD_LSTATS_RANGE_START = 0x1200,
-    ANDROID_NL80211_SUBCMD_LSTATS_RANGE_END   = 0x12FF,
+	ANDROID_NL80211_SUBCMD_LSTATS_RANGE_END   = 0x12FF,
 
 	ANDROID_NL80211_SUBCMD_TDLS_RANGE_START = 0x1300,
 	ANDROID_NL80211_SUBCMD_TDLS_RANGE_END	= 0x13FF,
-    /* This is reserved for future usage */
+	/* This is reserved for future usage */
 
 } ANDROID_VENDOR_SUB_COMMAND;
 
