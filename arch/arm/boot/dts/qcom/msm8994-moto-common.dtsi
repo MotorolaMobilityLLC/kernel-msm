@@ -15,6 +15,45 @@
 #include "msm8994-camera-sensor-cdp.dtsi"
 
 &tlmm_pinmux {
+	pmx_c55_reset {
+		qcom,pins = <&gp 8>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "c55-reset";
+
+		c55_reset_default: default {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			output-low;
+		};
+	};
+
+	pmx_ap_c55_int_n {
+		qcom,pins = <&gp 11>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "ap-c55-int-n";
+
+		ap_c55_int_n_default: default {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			output-high;
+		};
+	};
+
+	pmx_c55_core_en {
+		qcom,pins = <&gp 21>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "c55-core-en";
+
+		c55_core_en_default: default {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			output-low;
+		};
+	};
+
 	touch_reset_n {
 		qcom,pins = <&gp 39>;
 		qcom,num-grp-pins = <1>;
@@ -37,6 +76,18 @@
 		touch_int_default: touch-int {
 			drive-strength = <2>;
 			bias-pull-up; /* pull-up */
+		};
+	};
+
+	pmx_c55_ap_int {
+		qcom,pins = <&gp 66>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "c55-ap-int";
+
+		c55_ap_int_default: default {
+			drive-strength = <2>;
+			bias-pull-up; /* no pull */
 		};
 	};
 };
@@ -307,6 +358,19 @@
 };
 
 &soc {
+	ti,c55-ctrl {
+		compatible = "ti,c55-ctrl";
+		reg = <0 0>;
+		gpios = <&msm_gpio 21 2>,     /* gpio_core */
+			<&msm_gpio 8 0>,      /* gpio_reset */
+			<&msm_gpio 66 1>,     /* gpio_ap_int */
+			<&msm_gpio 11 2>;     /* gpio_c55_int */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&c55_reset_default &c55_core_en_default
+				&c55_ap_int_default &ap_c55_int_n_default>;
+	};
+
 	i2c@f9928000 { /* BLSP1 QUP6 */
 		status = "ok";
 		nfc-nci@e {
