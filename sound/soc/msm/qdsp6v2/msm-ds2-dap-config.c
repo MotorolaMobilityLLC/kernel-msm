@@ -1208,7 +1208,7 @@ static int msm_ds2_dap_commit_params(struct dolby_param_data *dolby_data,
 	/* Do not commit params if in hard bypass */
 	if (ds2_dap_params_states.dap_bypass_type == DAP_HARD_BYPASS &&
 		ds2_dap_params_states.dap_bypass == true) {
-		pr_err("%s: called in bypass", __func__);
+		pr_debug("%s: called in bypass", __func__);
 		ret = -EINVAL;
 		goto end;
 	}
@@ -1770,7 +1770,7 @@ int msm_ds2_dap_init(int port_id, int channels,
 			}
 			ret =  msm_ds2_dap_commit_params(&dolby_data, 0);
 			if (ret < 0) {
-				pr_info("%s: commit params ret %d\n",
+				pr_debug("%s: commit params ret %d\n",
 					__func__, ret);
 				ret = 0;
 			}
