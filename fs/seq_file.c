@@ -82,7 +82,7 @@ int seq_open(struct file *file, const struct seq_operations *op)
 }
 EXPORT_SYMBOL(seq_open);
 
-static int traverse(struct seq_file *m, loff_t offset)
+static int traverse(struct file *file, struct seq_file *m, loff_t offset)
 {
 	loff_t pos = 0, index;
 	int error = 0;
@@ -137,6 +137,17 @@ Eoverflow:
 	m->op->stop(m, p);
 	kfree(m->buf);
 	m->count = 0;
+	if ((m->size << 1) > (PAGE_SIZE << PAGE_ALLOC_COSTLY_ORDER)) {
+		char *pathbuf = kmalloc(PATH_MAX, GFP_KERNEL);
+		if (pathbuf) {
+			char *path = d_path(&file->f_path, pathbuf, PATH_MAX);
+			if (!IS_ERR(path))
+				pr_info("%pF %pF : %s : alloc %d\n",
+					(void *)_RET_IP_, (void *)_THIS_IP_,
+					path, m->size << 1);
+			kfree(pathbuf);
+		}
+	}
 	m->buf = kmalloc(m->size <<= 1, GFP_KERNEL);
 	return !m->buf ? -ENOMEM : -EAGAIN;
 }
@@ -176,7 +187,7 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 
 	/* Don't assume *ppos is where we left it */
 	if (unlikely(*ppos != m->read_pos)) {
-		while ((err = traverse(m, *ppos)) == -EAGAIN)
+		while ((err = traverse(file, m, *ppos)) == -EAGAIN)
 			;
 		if (err) {
 			/* With prejudice... */
@@ -234,6 +245,19 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 		m->op->stop(m, p);
 		kfree(m->buf);
 		m->count = 0;
+		if ((m->size << 1) > (PAGE_SIZE << PAGE_ALLOC_COSTLY_ORDER)) {
+			char *pathbuf = kmalloc(PATH_MAX, GFP_KERNEL);
+			if (pathbuf) {
+				char *path = d_path(&file->f_path, pathbuf,
+						PATH_MAX);
+				if (!IS_ERR(path))
+					pr_info("%pF %pF : %s : alloc %d\n",
+						(void *)_RET_IP_,
+						(void *)_THIS_IP_,
+						path, m->size << 1);
+				kfree(pathbuf);
+			}
+		}
 		m->buf = kmalloc(m->size <<= 1, GFP_KERNEL);
 		if (!m->buf)
 			goto Enomem;
@@ -316,7 +340,7 @@ loff_t seq_lseek(struct file *file, loff_t offset, int whence)
 			break;
 		retval = offset;
 		if (offset != m->read_pos) {
-			while ((retval = traverse(m, offset)) == -EAGAIN)
+			while ((retval = traverse(file, m, offset)) == -EAGAIN)
 				;
 			if (retval) {
 				/* with extreme prejudice... */
