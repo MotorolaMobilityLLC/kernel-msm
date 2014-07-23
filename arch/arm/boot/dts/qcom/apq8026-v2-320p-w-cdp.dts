@@ -38,14 +38,6 @@
 };
 
 &soc {
-	qcom,mss@fc880000 {
-		/delete-property/ qcom,gpio-err-fatal;
-		/delete-property/ qcom,gpio-err-ready;
-		/delete-property/ qcom,gpio-proxy-unvote;
-		/delete-property/ qcom,gpio-stop-ack;
-		/delete-property/ qcom,gpio-force-stop;
-	};
-
 	i2c@f9927000 {
 		synaptics@20 {
 			/delete-property/ synaptics,power-down;
