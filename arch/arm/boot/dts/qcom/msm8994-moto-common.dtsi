@@ -163,6 +163,18 @@
 		};
 	};
 
+	pmx_hs_det_n {
+		qcom,pins = <&gp 29>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "hs-det-n";
+
+		fsa8500_hs_det_default: fsa8500-hs-det {
+			drive-strength = <2>;
+			bias-pull-up; /* pull up */
+		};
+	};
+
 	touch_reset_n {
 		qcom,pins = <&gp 39>;
 		qcom,num-grp-pins = <1>;
@@ -491,6 +503,13 @@
 };
 
 &soc {
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
+
 	ti,c55-ctrl {
 		compatible = "ti,c55-ctrl";
 		reg = <0 0>;
@@ -780,3 +799,17 @@
 	status = "okay";
 };
 
+
+&i2c_11 {
+	fsa8500@23 {
+		compatible = "fairchild,fsa8500";
+		reg = <0x23>;
+		gpios = <&msm_gpio 29 0x0>;
+		hs_det_vdd-supply = <&dummy_vreg>; /* Connected to B+ */
+		hs_det_micvdd-supply = <&pm8994_s4>;
+		fsa8500-init-regs = <0x0c 0xa1>, <0x0f 0xf9>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&fsa8500_hs_det_default>;
+	};
+};
