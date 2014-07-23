@@ -346,6 +346,8 @@ struct mdss_dsi_ctrl_pdata {
 
 	struct dsi_panel_cmds hbm_on_cmds;
 	struct dsi_panel_cmds hbm_off_cmds;
+	u32 hbm_on_brts;
+	u32 hbm_off_brts;
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,
