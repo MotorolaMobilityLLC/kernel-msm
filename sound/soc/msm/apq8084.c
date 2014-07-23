@@ -3255,7 +3255,7 @@ static int apq8084_mi2s_pri_snd_hw_params(struct snd_pcm_substream *substream,
 			SNDRV_PCM_HW_PARAM_RATE);
 
 	pr_debug("%s()\n", __func__);
-	rate->min = rate->max = 16000;
+	rate->min = rate->max = msm_pri_mi2s_rate;;
 
 	return 1;
 }
