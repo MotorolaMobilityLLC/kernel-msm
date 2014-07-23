@@ -4730,6 +4730,7 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 	}
 #endif /* BCMEMBEDIMAGE */
 
+	DHD_ERROR(("Using firmware: %s, nvram: %s\n", dhdinfo->fw_path, dhdinfo->nv_path));
 	return TRUE;
 }
 
