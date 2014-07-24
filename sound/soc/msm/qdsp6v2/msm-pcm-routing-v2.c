@@ -57,6 +57,7 @@ static uint32_t voc_session_id = ALL_SESSION_VSID;
 static int msm_route_ext_ec_ref = AFE_PORT_INVALID;
 static bool is_custom_stereo_on;
 static bool is_ds2_on;
+static int msm_portid_none_topo = AFE_PORT_INVALID;
 
 enum {
 	MADNONE,
@@ -1132,6 +1133,89 @@ static int msm_routing_lsm_func_put(struct snd_kcontrol *kcontrol,
 		 mad_type);
 	return afe_port_set_mad_type(port_id, mad_type);
 }
+
+static int msm_get_port_none_topology(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (msm_portid_none_topo) {
+	case AFE_PORT_ID_INVALID:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	case AFE_PORT_ID_PRIMARY_MI2S_TX:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	case AFE_PORT_ID_SECONDARY_MI2S_TX:
+		ucontrol->value.integer.value[0] = 2;
+		break;
+	case AFE_PORT_ID_TERTIARY_MI2S_TX:
+		ucontrol->value.integer.value[0] = 3;
+		break;
+	case AFE_PORT_ID_QUATERNARY_MI2S_TX:
+		ucontrol->value.integer.value[0] = 4;
+		break;
+	default:
+		ucontrol->value.integer.value[0] = 0;
+	}
+
+	pr_debug("%s: msm_portid_none_topo  = 0X%x\n", __func__,
+		 msm_portid_none_topo);
+	ucontrol->value.integer.value[0] = msm_portid_none_topo;
+	return 0;
+}
+
+static int msm_set_port_none_topology(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	mutex_lock(&routing_lock);
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_portid_none_topo =
+			AFE_PORT_ID_INVALID;
+		break;
+	case 1:
+		msm_portid_none_topo =
+			AFE_PORT_ID_PRIMARY_MI2S_TX;
+		break;
+	case 2:
+		msm_portid_none_topo =
+			AFE_PORT_ID_SECONDARY_MI2S_TX;
+		break;
+	case 3:
+		msm_portid_none_topo =
+			AFE_PORT_ID_TERTIARY_MI2S_TX;
+		break;
+	case 4:
+		msm_portid_none_topo =
+			AFE_PORT_ID_QUATERNARY_MI2S_TX;
+		break;
+	default:
+		msm_portid_none_topo =
+			AFE_PORT_ID_INVALID;
+	}
+
+	adm_set_none_topo_portid(msm_portid_none_topo);
+
+	pr_debug("%s: msm_portid_none_topo = 0X%x\n", __func__,
+		msm_portid_none_topo);
+	mutex_unlock(&routing_lock);
+	return 1;
+}
+
+static const char * const port_none_topo_text[] = {
+	"None", "PRI_MI2S_TX", "SEC_MI2S_TX", "TERT_MI2S_TX",
+	"QUAT_MI2S_TX",
+};
+
+static const struct soc_enum port_none_topo_enum =
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(port_none_topo_text),
+			port_none_topo_text);
+
+static const struct snd_kcontrol_new port_none_topology[] = {
+	SOC_ENUM_EXT("Port None Topology", port_none_topo_enum,
+		msm_get_port_none_topology,
+		msm_set_port_none_topology),
+};
+
 
 static int msm_routing_slim_0_rx_aanc_mux_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -4615,6 +4699,9 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, lsm_function,
 				      ARRAY_SIZE(lsm_function));
+
+	snd_soc_add_platform_controls(platform, port_none_topology,
+				      ARRAY_SIZE(port_none_topology));
 
 	snd_soc_add_platform_controls(platform,
 				aanc_slim_0_rx_mux,
