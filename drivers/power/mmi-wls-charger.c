@@ -332,6 +332,7 @@ static int mmi_wls_chrg_get_property(struct power_supply *psy,
 				 union power_supply_propval *val)
 {
 	struct mmi_wls_chrg_chip *chip;
+	int powered = 0;
 
 	if (!psy || !psy->dev || !val) {
 		pr_err("mmi_wls_chrg_get_property NO dev!\n");
@@ -351,9 +352,16 @@ static int mmi_wls_chrg_get_property(struct power_supply *psy,
 		val->intval = !gpio_get_value(chip->pad_det_n_gpio);
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = (!gpio_get_value(chip->pad_det_n_gpio) &&
+		if (chip->dc_psy) {
+			mmi_wls_chrg_get_psy_info(chip->dc_psy,
+				      POWER_SUPPLY_PROP_PRESENT, &powered);
+			val->intval = powered;
+		} else {
+			val->intval = (!gpio_get_value(chip->pad_det_n_gpio) &&
 			       gpio_get_value(chip->charge_cmplt_n_gpio) &&
 			       !gpio_get_value(chip->charge_term_gpio));
+		}
+
 		break;
 	default:
 		return -EINVAL;
