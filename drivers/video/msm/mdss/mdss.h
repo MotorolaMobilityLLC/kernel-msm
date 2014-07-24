@@ -169,6 +169,7 @@ struct mdss_data_type {
 	struct mdss_fudge_factor clk_factor;
 
 	u32 enable_bw_release;
+	u32 enable_rotator_bw_release;
 
 	struct mdss_hw_settings *hw_settings;
 
