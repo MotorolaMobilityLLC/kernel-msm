@@ -85,6 +85,8 @@
 			ti,ledb-init-brt = <0xff>;
 			ti,leda-max-cur = <0x14>;
 			ti,ledb-max-cur = <0x14>;
+			ti,leda-max-hbm-cur = <0x1C>;
+			ti,ledb-max-hbm-cur = <0x1C>;
 			ti,boost-ctrl = <0x20>;
 			ti,config = <0x09>;
 			ti,irq-gpio = <&msmgpio 4 0>;

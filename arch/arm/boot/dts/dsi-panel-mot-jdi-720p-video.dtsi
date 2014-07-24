@@ -103,6 +103,8 @@
 			15 01 00 00 20 00 02 5E 7C
 			15 01 00 00 20 00 02 5E 78
 			15 01 00 00 00 00 02 5E 74];
+		qcom,mdss-dsi-hbm-off-brightness = <256>;
+		qcom,mdss-dsi-hbm-on-brightness = <257>;
 		qcom,mdss-dsi-h-sync-pulse = <1>;
 		qcom,mdss-dsi-traffic-mode = "burst_mode";
 		qcom,mdss-dsi-bllp-eof-power-mode;
@@ -239,6 +241,8 @@
 			15 01 00 00 20 00 02 5E B0
 			15 01 00 00 20 00 02 5E AC
 			15 01 00 00 00 00 02 5E A8];
+		qcom,mdss-dsi-hbm-off-brightness = <256>;
+		qcom,mdss-dsi-hbm-on-brightness = <257>;
 		qcom,mdss-dsi-h-sync-pulse = <1>;
 		qcom,mdss-dsi-traffic-mode = "burst_mode";
 		qcom,mdss-dsi-bllp-eof-power-mode;
