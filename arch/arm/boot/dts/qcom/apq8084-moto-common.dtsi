@@ -1068,8 +1068,8 @@
 		lux_table = <6 70 85 1600 3100 8000>;
 		brightness_table = <12 20 25 55 80 111 165>;
 		bslen_pin_active_value = <1>;
-		ct406_detect_threshold = <0x006E>;
-		ct406_undetect_threshold = <0x0050>;
+		ct406_detect_threshold = <0x0104>;
+		ct406_undetect_threshold = <0x00D2>;
 		ct406_recalibrate_threshold = <0x0064>;
 		ct406_pulse_count = <0x04>;
 		sensor1-supply = <&pma8084_lvs1>;
