@@ -63,6 +63,7 @@
 #define CFG_A_REG			0x0A
 #define DCIN_VOLT_SEL			SMB135X_MASK(7, 5)
 #define DCIN_INPUT_MASK			SMB135X_MASK(4, 0)
+#define DCIN_INPUT_FAC                  0x06
 
 #define CFG_B_REG			0x0B
 #define DCIN_AICL_BIT			BIT(2)
@@ -3761,6 +3762,100 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 	return rc;
 }
 
+static int smb135x_hw_init_fac(struct smb135x_chg *chip)
+{
+	int rc;
+
+	pr_info("Factory Mode I2C Writes Disabled!\n");
+	rc = smb135x_masked_write_fac(chip, CMD_I2C_REG,
+				      ALLOW_VOLATILE_BIT,
+				      ALLOW_VOLATILE_BIT);
+	if (rc < 0)
+		dev_err(chip->dev,
+			"Couldn't configure for volatile rc = %d\n",
+			rc);
+	/* interrupt enabling - active low */
+	if (chip->client->irq) {
+		rc = smb135x_masked_write_fac(chip, CFG_17_REG,
+					      CHG_STAT_IRQ_ONLY_BIT |
+					      CHG_STAT_ACTIVE_HIGH_BIT
+					      | CHG_STAT_DISABLE_BIT,
+					      CHG_STAT_IRQ_ONLY_BIT);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set irq config rc = %d\n",
+				rc);
+			return rc;
+		}
+
+		/* enabling only interesting interrupts */
+		rc = __smb135x_write_fac(chip, IRQ_CFG_REG,
+					 IRQ_BAT_HOT_COLD_HARD_BIT
+					 | IRQ_BAT_HOT_COLD_SOFT_BIT
+					 | IRQ_INTERNAL_TEMPERATURE_BIT
+					 | IRQ_USBIN_UV_BIT);
+
+		rc |= __smb135x_write_fac(chip, IRQ2_CFG_REG,
+					  IRQ2_SAFETY_TIMER_BIT
+					  | IRQ2_CHG_ERR_BIT
+					  | IRQ2_CHG_PHASE_CHANGE_BIT
+					  | IRQ2_POWER_OK_BIT
+					  | IRQ2_BATT_MISSING_BIT
+					  | IRQ2_VBAT_LOW_BIT);
+
+		rc |= __smb135x_write_fac(chip, IRQ3_CFG_REG,
+					  IRQ3_SRC_DETECT_BIT
+					  | IRQ3_DCIN_UV_BIT);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set irq enable rc = %d\n",
+				rc);
+			return rc;
+		}
+	}
+
+	if (chip->dc_psy_type != -EINVAL) {
+		rc = smb135x_masked_write_fac(chip, CFG_A_REG,
+					      DCIN_INPUT_MASK,
+					      DCIN_INPUT_FAC);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't set dc current rc = %d\n",
+				rc);
+			return rc;
+		}
+
+		/* Configure Command mode for DCIN */
+		rc = smb135x_masked_write_fac(chip, CFG_18_REG,
+					      DCIN_CMD_BIT, 0);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set dc command mode rc = %d\n",
+				rc);
+			return rc;
+		}
+
+		/* Configure DCIN 5V to 9V */
+		rc = smb135x_masked_write_fac(chip, CFG_A_REG,
+					      DCIN_VOLT_SEL, 0x40);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set dc voltage mode rc = %d\n",
+				rc);
+			return rc;
+		}
+
+		/* Configure DCIN AICL */
+		rc = smb135x_masked_write_fac(chip, CFG_B_REG,
+					      DCIN_AICL_BIT, 0);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't set dc AICL rc = %d\n",
+				rc);
+			return rc;
+		}
+	}
+	return rc;
+}
+
 static struct of_device_id smb135x_match_table[] = {
 	{ .compatible = "qcom,smb1356-charger", },
 	{ .compatible = "qcom,smb1357-charger", },
@@ -4458,52 +4553,12 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	}
 
 	if (chip->factory_mode) {
-		pr_info("Factory Mode I2C Writes Disabled!\n");
-		rc = smb135x_masked_write_fac(chip, CMD_I2C_REG,
-					      ALLOW_VOLATILE_BIT,
-					      ALLOW_VOLATILE_BIT);
-		if (rc < 0)
-			dev_err(chip->dev,
-				"Couldn't configure for volatile rc = %d\n",
+		rc = smb135x_hw_init_fac(chip);
+		if (rc < 0) {
+			dev_err(&client->dev,
+			 "Unable to init hardware for factory status rc = %d\n",
 				rc);
-		/* interrupt enabling - active low */
-		if (chip->client->irq) {
-			rc = smb135x_masked_write_fac(chip, CFG_17_REG,
-						      CHG_STAT_IRQ_ONLY_BIT |
-						      CHG_STAT_ACTIVE_HIGH_BIT
-						      | CHG_STAT_DISABLE_BIT,
-						      CHG_STAT_IRQ_ONLY_BIT);
-			if (rc < 0) {
-				dev_err(chip->dev,
-					"Couldn't set irq config rc = %d\n",
-					rc);
-				goto free_regulator;
-			}
-
-			/* enabling only interesting interrupts */
-			rc = __smb135x_write_fac(chip, IRQ_CFG_REG,
-						 IRQ_BAT_HOT_COLD_HARD_BIT
-						 | IRQ_BAT_HOT_COLD_SOFT_BIT
-						 | IRQ_INTERNAL_TEMPERATURE_BIT
-						 | IRQ_USBIN_UV_BIT);
-
-			rc |= __smb135x_write_fac(chip, IRQ2_CFG_REG,
-						  IRQ2_SAFETY_TIMER_BIT
-						  | IRQ2_CHG_ERR_BIT
-						  | IRQ2_CHG_PHASE_CHANGE_BIT
-						  | IRQ2_POWER_OK_BIT
-						  | IRQ2_BATT_MISSING_BIT
-						  | IRQ2_VBAT_LOW_BIT);
-
-			rc |= __smb135x_write_fac(chip, IRQ3_CFG_REG,
-						  IRQ3_SRC_DETECT_BIT
-						  | IRQ3_DCIN_UV_BIT);
-			if (rc < 0) {
-				dev_err(chip->dev,
-					"Couldn't set irq enable rc = %d\n",
-				rc);
-				goto free_regulator;
-			}
+			goto free_regulator;
 		}
 	}
 
