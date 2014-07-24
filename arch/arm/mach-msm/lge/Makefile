@@ -1,4 +1,5 @@
 obj-$(CONFIG_MACH_LGE) += devices_lge.o
+obj-$(CONFIG_MACH_LGE) += lge_earjack_debugger.o
 obj-$(CONFIG_MACH_DORY) += board-8026-dory.o
 obj-$(CONFIG_MACH_DORY) += board-8026-dory-gpiomux.o
 obj-$(CONFIG_MACH_LENOK) += board-8026-lenok.o
