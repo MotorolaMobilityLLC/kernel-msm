@@ -1033,4 +1033,30 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&tfa9890_reset_default>;
 	};
+
+	smb1357_otg_vreg: smb1357-charger@1e {
+		compatible = "qcom,smb1359-charger";
+		reg = <0x1e>;
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <0x2 0xc6 0x0>; /* pmi8994 GPIO 7 */
+		qcom,float-voltage-mv = <4350>;
+		qcom,charging-timeout = <1536>;
+		qcom,recharge-thresh-mv = <200>;
+		qcom,iterm-disabled;
+		regulator-name = "smb1357_otg_vreg";
+		qcom,soft-vfloat-comp-disabled;
+		qcom,thermal-mitigation = <2500>, <2400>, <2300>, <2100>,
+					  <2000>, <1910>, <1800>, <1600>,
+					  <1500>, <1400>, <1200>, <1100>,
+					  <1000>, <900>, <700>, <600>,
+					  <500>, <400>, <300>;
+		qcom,dc-thermal-mitigation = <600>, <500>, <400>, <300>;
+		qcom,dc-psy-type = "Wireless";
+		qcom,dc-psy-ma = <600>;
+		qcom,bms-psy-name = "bms";
+		qcom,max-batt-curr-ma = <2500>;
+		qcom,ext-temp-volt-mv = <4000>;
+		qcom,ext-temp-soc = <65>;
+	};
+
 };
