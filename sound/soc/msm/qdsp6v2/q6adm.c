@@ -60,6 +60,8 @@ struct adm_ctl {
 	atomic_t adm_delay_stat[AFE_MAX_PORTS];
 	uint32_t adm_delay[AFE_MAX_PORTS];
 	int32_t topology[AFE_MAX_PORTS];
+
+	int port_none_topo;
 };
 
 static struct adm_ctl			this_adm;
@@ -1530,6 +1532,11 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			goto fail_cmd;
 		}
 	}
+	if (this_adm.port_none_topo == port_id &&
+		this_adm.port_none_topo != AFE_PORT_INVALID) {
+		open.topology_id = NULL_COPP_TOPOLOGY;
+		pr_debug("set topology none for port 0X%x\n", port_id);
+	}
 	if (perf_mode == ULTRA_LOW_LATENCY_PCM_MODE ||
 			perf_mode == LOW_LATENCY_PCM_MODE) {
 		atomic_inc(&this_adm.copp_low_latency_cnt[index]);
@@ -1906,6 +1913,12 @@ void adm_ec_ref_rx_id(int port_id)
 {
 	this_adm.ec_ref_rx = port_id;
 	pr_debug("%s: ec_ref_rx:%d", __func__, this_adm.ec_ref_rx);
+}
+
+void adm_set_none_topo_portid(int port_id)
+{
+	this_adm.port_none_topo = port_id;
+	pr_debug("%s port_none_topo: 0X%x", __func__, this_adm.port_none_topo);
 }
 
 int adm_close(int port_id, int perf_mode)
