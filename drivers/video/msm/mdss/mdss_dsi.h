@@ -299,6 +299,7 @@ struct mdss_dsi_ctrl_pdata {
 	int mdp_busy;
 	struct mutex mutex;
 	struct mutex cmd_mutex;
+	struct mutex blcmd_mutex;
 
 	bool ulps;
 
