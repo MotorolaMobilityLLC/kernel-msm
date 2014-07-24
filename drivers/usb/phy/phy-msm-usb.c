@@ -4891,9 +4891,12 @@ static int msm_otg_probe(struct platform_device *pdev)
 				goto remove_phy;
 			}
 		} else {
+			set_bit(ID, &motg->inputs);
+			/*
 			ret = -ENODEV;
 			dev_err(&pdev->dev, "PMIC IRQ for ID notifications doesn't exist\n");
 			goto remove_phy;
+			*/
 		}
 	}
 
