@@ -49,6 +49,15 @@
 #define CHG_ITERM_500MA			0x30
 #define CHG_ITERM_600MA			0x38
 #define CHG_ITERM_MASK			SMB135X_MASK(5, 3)
+#define CHG_IR_COMP_DIS			0x00
+#define CHG_IR_COMP_25MV		0x01
+#define CHG_IR_COMP_50MV		0x02
+#define CHG_IR_COMP_75MV		0x03
+#define CHG_IR_COMP_100MV		0x04
+#define CHG_IR_COMP_125MV		0x05
+#define CHG_IR_COMP_150MV		0x06
+#define CHG_IR_COMP_175MV		0x07
+#define CHG_IR_COMP_MASK		SMB135X_MASK(2, 0)
 
 #define CFG_4_REG			0x04
 #define CHG_INHIBIT_MASK		SMB135X_MASK(7, 6)
@@ -403,6 +412,7 @@ struct smb135x_chg {
 	struct delayed_work		rate_check_work;
 	int				rate_check_count;
 	struct notifier_block		smb_reboot;
+	int				ir_comp_mv;
 };
 
 static struct smb135x_chg *the_chip;
@@ -3705,6 +3715,34 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 		}
 	}
 
+	/* set ir comp */
+	if (chip->ir_comp_mv != -EINVAL) {
+		if (chip->ir_comp_mv == 0)
+			reg = CHG_IR_COMP_DIS;
+		else if (chip->ir_comp_mv <= 25)
+			reg = CHG_IR_COMP_25MV;
+		else if (chip->ir_comp_mv <= 50)
+			reg = CHG_IR_COMP_50MV;
+		else if (chip->ir_comp_mv <= 75)
+			reg = CHG_IR_COMP_75MV;
+		else if (chip->ir_comp_mv <= 100)
+			reg = CHG_IR_COMP_100MV;
+		else if (chip->ir_comp_mv <= 125)
+			reg = CHG_IR_COMP_125MV;
+		else if (chip->ir_comp_mv <= 150)
+			reg = CHG_IR_COMP_150MV;
+		else
+			reg = CHG_IR_COMP_175MV;
+
+		rc = smb135x_masked_write(chip, CFG_3_REG,
+					  CHG_IR_COMP_MASK, reg);
+		if (rc) {
+			dev_err(chip->dev,
+				"Couldn't set ir comp rc = %d\n", rc);
+			return rc;
+		}
+	}
+
 	/* set the safety time voltage */
 	if (chip->safety_time != -EINVAL) {
 		if (chip->safety_time == 0) {
@@ -4059,6 +4097,10 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 	rc = of_property_read_u32(node, "qcom,iterm-ma", &chip->iterm_ma);
 	if (rc < 0)
 		chip->iterm_ma = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,ir-comp-mv", &chip->ir_comp_mv);
+	if (rc < 0)
+		chip->ir_comp_mv = -EINVAL;
 
 	rc = of_property_read_u32(node, "qcom,ext-temp-volt-mv", &chip->ext_temp_volt_mv);
 	if (rc < 0)
