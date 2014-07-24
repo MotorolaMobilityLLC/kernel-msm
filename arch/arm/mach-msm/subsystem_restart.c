@@ -71,6 +71,24 @@ enum subsys_state {
 	SUBSYS_ONLINE,
 };
 
+/**
+ * enum recovery_policy - recovery policy requested by the subsystem
+ * @SOC_RESTART: reboot the soc if subsystem restart fails (default)
+ * @SOC_SKIP_RESTART: attempt to continue running
+ *
+ *
+*/
+
+enum recovery_policy {
+	SOC_RESTART,
+	SOC_SKIP_RESTART,
+};
+
+static const char * const recovery_policies[] = {
+	[SOC_RESTART] = "RESTART",
+	[SOC_SKIP_RESTART] = "SKIP_RESTART",
+};
+
 static const char * const subsys_states[] = {
 	[SUBSYS_OFFLINE] = "OFFLINE",
 	[SUBSYS_ONLINE] = "ONLINE",
@@ -134,6 +152,7 @@ struct restart_log {
  * @count: reference count of subsystem_get()/subsystem_put()
  * @id: ida
  * @restart_level: restart level (0 - panic, 1 - related, 2 - independent, etc.)
+ * @recovery_policy: error handling when subsystem restart fails (0 - panic 1 - nop)
  * @restart_order: order of other devices this devices restarts with
  * @crash_count: number of times the device has crashed
  * @dentry: debugfs directory for this device
@@ -155,6 +174,7 @@ struct subsys_device {
 	int count;
 	int id;
 	int restart_level;
+	int recovery_policy;
 	int crash_count;
 	struct subsys_soc_restart_order *restart_order;
 #ifdef CONFIG_DEBUG_FS
@@ -218,6 +238,32 @@ static ssize_t restart_level_store(struct device *dev,
 	return -EPERM;
 }
 
+static ssize_t
+recovery_policy_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int policy = to_subsys(dev)->recovery_policy;
+	return snprintf(buf, PAGE_SIZE, "%s\n", recovery_policies[policy]);
+}
+
+static ssize_t recovery_policy_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct subsys_device *subsys = to_subsys(dev);
+	int i;
+	const char *p;
+
+	p = memchr(buf, '\n', count);
+	if (p)
+		count = p - buf;
+
+	for (i = 0; i < ARRAY_SIZE(recovery_policies); i++)
+		if (!strncasecmp(buf, recovery_policies[i], count)) {
+			subsys->recovery_policy = i;
+			return count;
+		}
+	return -EPERM;
+}
+
 int subsys_get_restart_level(struct subsys_device *dev)
 {
 	return dev->restart_level;
@@ -258,6 +304,7 @@ static struct device_attribute subsys_attrs[] = {
 	__ATTR_RO(state),
 	__ATTR_RO(crash_count),
 	__ATTR(restart_level, 0644, restart_level_show, restart_level_store),
+	__ATTR(recovery_policy, 0644, recovery_policy_show, recovery_policy_store),
 	__ATTR_NULL,
 };
 
@@ -282,6 +329,23 @@ static DEFINE_MUTEX(restart_log_mutex);
 static DEFINE_MUTEX(subsys_list_lock);
 static DEFINE_MUTEX(char_device_lock);
 static DEFINE_MUTEX(ssr_order_mutex);
+
+static void handle_recovery(struct subsys_device *dev)
+{
+	const char *name = dev->desc->name;
+	switch (dev->recovery_policy) {
+
+	case SOC_SKIP_RESTART:
+		pr_err("Peripheral %s not available until a manual reboot\n",
+								name);
+		break;
+	case SOC_RESTART:
+	default:
+		panic("subsys-restart: Resetting the SoC due to %s", name);
+		break;
+	}
+
+}
 
 static struct subsys_soc_restart_order *
 update_restart_order(struct subsys_device *dev)
@@ -361,9 +425,10 @@ static void do_epoch_check(struct subsys_device *dev)
 	if (time_first && n >= max_restarts_check) {
 		if ((curr_time->tv_sec - time_first->tv_sec) <
 				max_history_time_check)
-			panic("Subsystems have crashed %d times in less than "
+			pr_err("Subsystems have crashed %d times in less than "
 				"%ld seconds!", max_restarts_check,
 				max_history_time_check);
+			handle_recovery(dev);
 	}
 
 out:
@@ -460,9 +525,11 @@ static void subsystem_shutdown(struct subsys_device *dev, void *data)
 	const char *name = dev->desc->name;
 
 	pr_info("[%p]: Shutting down %s\n", current, name);
-	if (dev->desc->shutdown(dev->desc, true) < 0)
-		panic("subsys-restart: [%p]: Failed to shutdown %s!",
+	if (dev->desc->shutdown(dev->desc, true) < 0) {
+		pr_err("subsys-restart: [%p]: Failed to shutdown %s!",
 			current, name);
+		handle_recovery(dev);
+	}
 	dev->crash_count++;
 	subsys_set_state(dev, SUBSYS_OFFLINE);
 	disable_all_irqs(dev);
@@ -489,7 +556,8 @@ static void subsystem_powerup(struct subsys_device *dev, void *data)
 	if (dev->desc->powerup(dev->desc) < 0) {
 		notify_each_subsys_device(&dev, 1, SUBSYS_POWERUP_FAILURE,
 								NULL);
-		panic("[%p]: Powerup error: %s!", current, name);
+		pr_err("[%p]: Powerup error: %s!", current, name);
+		handle_recovery(dev);
 	}
 	enable_all_irqs(dev);
 
@@ -497,8 +565,9 @@ static void subsystem_powerup(struct subsys_device *dev, void *data)
 	if (ret) {
 		notify_each_subsys_device(&dev, 1, SUBSYS_POWERUP_FAILURE,
 								NULL);
-		panic("[%p]: Timed out waiting for error ready: %s!",
+		pr_err("[%p]: Timed out waiting for error ready: %s!",
 			current, name);
+		handle_recovery(dev);
 	}
 	subsys_set_state(dev, SUBSYS_ONLINE);
 	subsys_set_crash_status(dev, false);
@@ -769,7 +838,8 @@ static void __subsystem_restart_dev(struct subsys_device *dev)
 			wake_lock(&dev->wake_lock);
 			queue_work(ssr_wq, &dev->work);
 		} else {
-			panic("Subsystem %s crashed during SSR!", name);
+			pr_err("Subsystem %s crashed during SSR!", name);
+			handle_recovery(dev);
 		}
 	}
 	spin_unlock_irqrestore(&track->s_lock, flags);
