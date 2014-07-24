@@ -654,7 +654,32 @@
 };
 
 &spi_0 {
+	pinctrl-1 = <&spi0_default &spi0_cs0_active>;
+
+	/delete-property/ qcom,use-bam;
 	/delete-node/ lattice,spi-usb@0;
+
+	stml0xx@0 {
+		compatible = "stm,stml0xx";
+		status = "okay";
+		reg = <0>;
+		spi-max-frequency = <9600000>;
+		gpios = <&msm_gpio 115 0>,       /* IRQ */
+			<&msm_gpio 120 0>,       /* RESET */
+			<&msm_gpio 121 0>,       /* BSLEN */
+			<&msm_gpio 113 0>,       /* WakeIRQ */
+			<&msm_gpio 4 0>,         /* SPI Ready for Receive */
+			<&msm_gpio 38 0>;        /* SPI Data Ack */
+		lux_table = <5 50 100 1500 3000 8000>;
+		brightness_table = <9 14 18 46 67 93 140>;
+		bslen_pin_active_value = <1>;
+		ct406_detect_threshold = <0x006E>;
+		ct406_undetect_threshold = <0x0050>;
+		ct406_recalibrate_threshold = <0x0064>;
+		ct406_pulse_count = <0x04>;
+		sensor1-supply = <&pm8916_l6>;
+		sensor2-supply = <&pm8916_l17>;
+	};
 };
 
 &pm8916_l16 {

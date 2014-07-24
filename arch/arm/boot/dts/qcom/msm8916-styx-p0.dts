@@ -89,3 +89,9 @@
 &fan54046 {
 	status = "disabled";
 };
+
+&spi_0 {
+	stml0xx@0 {
+		stml0xx_fw_version = "_p0";
+	};
+};
