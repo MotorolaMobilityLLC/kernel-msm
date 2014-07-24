@@ -38,6 +38,8 @@ Optional Properties:
 				the THERM pin for battery missing detection.
 - qcom,iterm-ma			Specifies the termination current to indicate end-of-charge.
 				Possible values in mA - 50, 100, 150, 200, 250, 300, 500, 600.
+- qcom,ir-comp-mv		Specifies the IR compensation for vFloat.
+				Possible values in mV - 25, 50, 75, 100, 125, 150, 175.
 - qcom,iterm-disabled		Disables the termination current feature. This is a bool
 				property.
 - qcom,soft-vfloat-comp-disabled	Set this property when the battery is powered via external
@@ -65,6 +67,7 @@ Example:
 			interrupts = <0x00 0xCD 0>;
 			qcom,float-voltage-mv = <4200>;
 			qcom,iterm-ma = <100>;
+			qcom,ir-comp-mv = <100>;
 			qcom,dc-psy-type = <8>;
 			qcom,dc-psy-ma = <800>;
 			qcom,charging-disabled;
