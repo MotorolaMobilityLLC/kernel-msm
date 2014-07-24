@@ -63,7 +63,7 @@
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,csi_phy_sel = <1>;
-		qcom,mount-angle = <270>;
+		qcom,mount-angle = <90>;
 		qcom,sensor-name = "mt9v113";
 		cam_vdig-supply = <&pm8916_l10>;
 		qcom,cam-vreg-name = "cam_vdig";
