@@ -1035,6 +1035,7 @@
 	};
 
 	smb1357_otg_vreg: smb1357-charger@1e {
+		status = "disable";
 		compatible = "qcom,smb1359-charger";
 		reg = <0x1e>;
 		interrupt-parent = <&spmi_bus>;
