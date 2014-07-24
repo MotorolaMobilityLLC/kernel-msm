@@ -309,6 +309,19 @@
 		};
 	};
 
+	pmx_tfa9890_reset {
+		qcom,pins = <&gp 105>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "tfa9890-reset";
+
+		tfa9890_reset_default: default {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			output-low;
+		};
+	};
+
 	pmx_stm401_out {
 		qcom,pins = <&gp 57 &gp 78 &gp 89>;
 		qcom,num-grp-pins = <3>;
@@ -1007,5 +1020,17 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&drv2605_en_default>;
+	};
+
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&msm_gpio 105 0>;     /* RESET */
+		tfa_vdd-supply = <&pm8994_s4>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "left";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&tfa9890_reset_default>;
 	};
 };
