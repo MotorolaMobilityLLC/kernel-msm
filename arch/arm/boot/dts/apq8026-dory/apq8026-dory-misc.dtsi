@@ -26,4 +26,11 @@
 		vdd-supply = <&pm8226_l28>;
 		use-vdd-supply;
 	};
+
+	earjack-debugger {
+		compatible = "serial,earjack-debugger";
+		status = "ok";
+		qcom,usbid-adc_tm = <&pm8226_adc_tm>;
+		qcom,usbid-vadc = <&pm8226_vadc>;
+	};
 };
