@@ -57,11 +57,13 @@ struct lm3630a_platform_data {
 	int leda_init_brt;
 	int leda_max_brt;
 	int leda_max_cur;
+	int leda_max_hbm_cur;
 	enum lm3630a_leda_ctrl leda_ctrl;
 	/* led b config. */
 	int ledb_init_brt;
 	int ledb_max_brt;
 	int ledb_max_cur;
+	int ledb_max_hbm_cur;
 	enum lm3630a_ledb_ctrl ledb_ctrl;
 	/* pwm config. */
 	int pwm_gpio;
