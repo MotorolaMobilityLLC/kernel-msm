@@ -1059,4 +1059,58 @@
 		qcom,ext-temp-soc = <65>;
 	};
 
+	mmi_wls_chrg@6c {
+		compatible = "mmi,wls-charger-bq51021";
+		reg = <0x6c>;
+		gpios = <&pmi8994_gpios 10 0x1>, /* GPIOF_IN */
+			<&pmi8994_gpios 4 0x2>, /* GPIOF_OUT_INIT_HIGH */
+			<&pmi8994_gpios 3 0x0>; /* GPIOF_OUT_INIT_LOW */
+		gpio-names = "pad_detect_n",
+				"charge_complete_n",
+				"charge_terminate";
+		supply-names = "dc", "usb";
+		mmi,priority = <1>;
+		mmi,resume-soc = <99>;
+		mmi,resume-vbatt-mv = <4270>;
+		mmi,hot-temp-thresh = <60>;
+		mmi,cold-temp-thresh = <(-20)>;
+	};
+
 };
+
+&pmi8994_gpios {
+	gpio@c200 { /* GPIO 3 - WCHG_TERMINATE */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+	};
+
+	gpio@c300 { /* GPIO 4 - WCHG_COMPLETE_N */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+	};
+
+	gpio@c800 { /* GPIO 9 - WCHG_CHG_GOOD_N */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;        /* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;     /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@c900 { /* GPIO 10 - WCHG_PAD_DET_N */
+		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;         /* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+};
+
