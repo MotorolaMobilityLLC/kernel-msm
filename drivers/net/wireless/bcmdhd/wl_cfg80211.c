@@ -6464,6 +6464,23 @@ fail:
 #define PNO_TIME		30
 #define PNO_REPEAT		4
 #define PNO_FREQ_EXPO_MAX	2
+static bool
+is_ssid_in_list(struct cfg80211_ssid *ssid, struct cfg80211_ssid *ssid_list, int count)
+{
+	int i;
+
+	if (!ssid || !ssid_list)
+		return FALSE;
+
+	for (i = 0; i < count; i++) {
+		if (ssid->ssid_len == ssid_list[i].ssid_len) {
+			if (strncmp(ssid->ssid, ssid_list[i].ssid, ssid->ssid_len) == 0)
+				return TRUE;
+		}
+	}
+	return FALSE;
+}
+
 static int
 wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
                              struct net_device *dev,
@@ -6472,10 +6489,11 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 	ushort pno_time = PNO_TIME;
 	int pno_repeat = PNO_REPEAT;
 	int pno_freq_expo_max = PNO_FREQ_EXPO_MAX;
-	wlc_ssid_t ssids_local[MAX_PFN_LIST_COUNT];
+	wlc_ssid_ext_t ssids_local[MAX_PFN_LIST_COUNT];
 	struct wl_priv *wl = wiphy_priv(wiphy);
 	struct cfg80211_ssid *ssid = NULL;
-	int ssid_count = 0;
+	struct cfg80211_ssid *hidden_ssid_list = NULL;
+	int ssid_cnt = 0;
 	int i;
 	int ret = 0;
 
@@ -6494,30 +6512,29 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 
 	memset(&ssids_local, 0, sizeof(ssids_local));
 
-	if (request->n_match_sets > 0) {
-		for (i = 0; i < request->n_match_sets; i++) {
-			ssid = &request->match_sets[i].ssid;
-			memcpy(ssids_local[i].SSID, ssid->ssid, ssid->ssid_len);
-			ssids_local[i].SSID_len = ssid->ssid_len;
-			WL_PNO((">>> PNO filter set for ssid (%s) \n", ssid->ssid));
-			ssid_count++;
+	if (request->n_ssids > 0)
+		hidden_ssid_list = request->ssids;
+
+	for (i = 0; i < request->n_match_sets && ssid_cnt < MAX_PFN_LIST_COUNT; i++) {
+		ssid = &request->match_sets[i].ssid;
+		/* No need to include null ssid */
+		if (ssid->ssid_len) {
+			memcpy(ssids_local[ssid_cnt].SSID, ssid->ssid, ssid->ssid_len);
+			ssids_local[ssid_cnt].SSID_len = ssid->ssid_len;
+			if (is_ssid_in_list(ssid, hidden_ssid_list, request->n_ssids)) {
+				ssids_local[ssid_cnt].hidden = TRUE;
+				WL_PNO((">>> PNO hidden SSID (%s) \n", ssid->ssid));
+			} else {
+				ssids_local[ssid_cnt].hidden = FALSE;
+				WL_PNO((">>> PNO non-hidden SSID (%s) \n", ssid->ssid));
+			}
+			ssid_cnt++;
 		}
 	}
 
-	if (request->n_ssids > 0) {
-		for (i = 0; i < request->n_ssids; i++) {
-			/* Active scan req for ssids */
-			WL_PNO((">>> Active scan req for ssid (%s) \n", request->ssids[i].ssid));
-
-			/* match_set ssids is a supert set of n_ssid list, so we need
-			 * not add these set seperately
-			 */
-		}
-	}
-
-	if (ssid_count) {
-		if ((ret = dhd_dev_pno_set_for_ssid(dev, ssids_local, request->n_match_sets,
-			pno_time, pno_repeat, pno_freq_expo_max, NULL, 0)) < 0) {
+	if (ssid_cnt) {
+		if ((ret = dhd_dev_pno_set_for_ssid(dev, ssids_local, ssid_cnt, pno_time,
+		        pno_repeat, pno_freq_expo_max, NULL, 0)) < 0) {
 			WL_ERR(("PNO setup failed!! ret=%d \n", ret));
 			return -EINVAL;
 		}
@@ -7833,12 +7850,27 @@ wl_notify_gscan_event(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 				     &batch_event_result_dummy, sizeof(int));
 			}
 			break;
+		case WLC_E_PFN_SCAN_COMPLETE:
+			batch_event_result_dummy = WIFI_SCAN_COMPLETE;
+			wl_cfgvendor_send_async_event(wiphy, ndev,
+				GOOGLE_SCAN_COMPLETE_EVENT,
+				&batch_event_result_dummy, sizeof(int));
+			break;
 		case WLC_E_PFN_BSSID_NET_FOUND:
-			ptr = dhd_dev_hotlist_scan_found_event(ndev, data, &send_evt_bytes);
+			ptr = dhd_dev_hotlist_scan_event(ndev, data, &send_evt_bytes,
+			      HOTLIST_FOUND);
 			if (ptr) {
-				wl_cfgvendor_send_hotlist_found_event(wiphy, ndev,
-				 ptr, send_evt_bytes);
-				dhd_dev_gscan_hotlist_cache_cleanup(ndev);
+				wl_cfgvendor_send_hotlist_event(wiphy, ndev,
+				 ptr, send_evt_bytes, GOOGLE_GSCAN_GEOFENCE_FOUND_EVENT);
+				dhd_dev_gscan_hotlist_cache_cleanup(ndev, HOTLIST_FOUND);
+			}
+			break;
+		case WLC_E_PFN_BSSID_NET_LOST:
+			ptr = dhd_dev_hotlist_scan_event(ndev, data, &send_evt_bytes, HOTLIST_LOST);
+			if (ptr) {
+				wl_cfgvendor_send_hotlist_event(wiphy, ndev,
+				 ptr, send_evt_bytes, GOOGLE_GSCAN_GEOFENCE_LOST_EVENT);
+				dhd_dev_gscan_hotlist_cache_cleanup(ndev, HOTLIST_LOST);
 			}
 			break;
 		case WLC_E_PFN_GSCAN_FULL_RESULT:
@@ -8344,9 +8376,11 @@ static void wl_init_event_handler(struct wl_priv *wl)
 #endif /* PNO_SUPPORT */
 #ifdef GSCAN_SUPPORT
 	wl->evt_handler[WLC_E_PFN_BEST_BATCHING] = wl_notify_gscan_event;
+	wl->evt_handler[WLC_E_PFN_SCAN_COMPLETE] = wl_notify_gscan_event;
 	wl->evt_handler[WLC_E_PFN_GSCAN_FULL_RESULT] = wl_notify_gscan_event;
 	wl->evt_handler[WLC_E_PFN_SWC] = wl_notify_gscan_event;
 	wl->evt_handler[WLC_E_PFN_BSSID_NET_FOUND] = wl_notify_gscan_event;
+	wl->evt_handler[WLC_E_PFN_BSSID_NET_LOST] = wl_notify_gscan_event;
 #endif /* GSCAN_SUPPORT */
 #ifdef WLTDLS
 	wl->evt_handler[WLC_E_TDLS_PEER_EVENT] = wl_tdls_event_handler;

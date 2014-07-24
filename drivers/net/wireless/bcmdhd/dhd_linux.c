@@ -4137,6 +4137,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		bcopy(iov_buf, eventmask_msg, msglen);
 #ifdef GSCAN_SUPPORT
 		setbit(eventmask_msg->mask, WLC_E_PFN_GSCAN_FULL_RESULT);
+		setbit(eventmask_msg->mask, WLC_E_PFN_SCAN_COMPLETE);
 		setbit(eventmask_msg->mask, WLC_E_PFN_SWC);
 #endif /* GSCAN_SUPPORT */
 #ifdef BCMCCX_S69
@@ -5589,6 +5590,103 @@ dhd_dev_init_ioctl(struct net_device *dev)
 done:
 	return ret;
 }
+int dhd_dev_get_feature_set(struct net_device *dev)
+{
+	dhd_info_t *ptr = *(dhd_info_t **)netdev_priv(dev);
+	dhd_pub_t *dhd = (&ptr->pub);
+	int feature_set = 0;
+
+	if (!dhd)
+		return feature_set;
+
+	if (FW_SUPPORTED(dhd, sta))
+		feature_set |= WIFI_FEATURE_INFRA;
+	if (FW_SUPPORTED(dhd, dualband))
+		feature_set |= WIFI_FEATURE_INFRA_5G;
+	if (FW_SUPPORTED(dhd, p2p))
+		feature_set |= WIFI_FEATURE_P2P;
+	if (dhd->op_mode & DHD_FLAG_HOSTAP_MODE)
+		feature_set |= WIFI_FEATURE_SOFT_AP;
+	if (FW_SUPPORTED(dhd, tdls))
+		feature_set |= WIFI_FEATURE_TDLS;
+	if (FW_SUPPORTED(dhd, vsdb))
+		feature_set |= WIFI_FEATURE_TDLS_OFFCHANNEL;
+	if (FW_SUPPORTED(dhd, nan)) {
+		feature_set |= WIFI_FEATURE_NAN;
+		/* NAN is essentail for d2d rtt */
+		if (FW_SUPPORTED(dhd, rttd2d))
+			feature_set |= WIFI_FEATURE_D2D_RTT;
+	}
+	if (FW_SUPPORTED(dhd, proxd))
+		feature_set |= WIFI_FEATURE_D2AP_RTT;
+
+	/* Supports STA + STA always */
+	feature_set |= WIFI_FEATURE_ADDITIONAL_STA;
+#ifdef PNO_SUPPORT
+	if (dhd_is_pno_supported(dhd)) {
+		feature_set |= WIFI_FEATURE_PNO;
+		feature_set |= WIFI_FEATURE_BATCH_SCAN;
+#ifdef GSCAN_SUPPORT
+		feature_set |= WIFI_FEATURE_GSCAN;
+#endif /* GSCAN_SUPPORT */
+	}
+#endif /* PNO_SUPPORT */
+#ifdef WL11U
+	feature_set |= WIFI_FEATURE_HOTSPOT;
+#endif /* WL11U */
+	return feature_set;
+}
+
+int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num)
+{
+	int feature_set_full, mem_needed;
+	int *ret;
+
+	*num = 0;
+	mem_needed = sizeof(int) * MAX_FEATURE_SET_CONCURRRENT_GROUPS;
+	ret = (int *) kmalloc(mem_needed, GFP_KERNEL);
+
+	 if (!ret) {
+		DHD_ERROR(("%s: failed to allocate %d bytes\n", __FUNCTION__,
+		mem_needed));
+		return ret;
+	 }
+
+	feature_set_full = dhd_dev_get_feature_set(dev);
+
+	ret[0] = (feature_set_full & WIFI_FEATURE_INFRA) |
+	         (feature_set_full & WIFI_FEATURE_INFRA_5G) |
+	         (feature_set_full & WIFI_FEATURE_NAN) |
+	         (feature_set_full & WIFI_FEATURE_D2D_RTT) |
+	         (feature_set_full & WIFI_FEATURE_D2AP_RTT) |
+	         (feature_set_full & WIFI_FEATURE_PNO) |
+	         (feature_set_full & WIFI_FEATURE_BATCH_SCAN) |
+	         (feature_set_full & WIFI_FEATURE_GSCAN) |
+	         (feature_set_full & WIFI_FEATURE_HOTSPOT) |
+	         (feature_set_full & WIFI_FEATURE_ADDITIONAL_STA) |
+	         (feature_set_full & WIFI_FEATURE_EPR);
+
+	ret[1] = (feature_set_full & WIFI_FEATURE_INFRA) |
+	         (feature_set_full & WIFI_FEATURE_INFRA_5G) |
+	         /* Not yet verified NAN with P2P */
+	         /* (feature_set_full & WIFI_FEATURE_NAN) | */
+	         (feature_set_full & WIFI_FEATURE_P2P) |
+	         (feature_set_full & WIFI_FEATURE_D2AP_RTT) |
+	         (feature_set_full & WIFI_FEATURE_D2D_RTT) |
+	         (feature_set_full & WIFI_FEATURE_EPR);
+
+	ret[2] = (feature_set_full & WIFI_FEATURE_INFRA) |
+	         (feature_set_full & WIFI_FEATURE_INFRA_5G) |
+	         (feature_set_full & WIFI_FEATURE_NAN) |
+	         (feature_set_full & WIFI_FEATURE_D2D_RTT) |
+	         (feature_set_full & WIFI_FEATURE_D2AP_RTT) |
+	         (feature_set_full & WIFI_FEATURE_TDLS) |
+	         (feature_set_full & WIFI_FEATURE_TDLS_OFFCHANNEL) |
+	         (feature_set_full & WIFI_FEATURE_EPR);
+	*num = MAX_FEATURE_SET_CONCURRRENT_GROUPS;
+
+	return ret;
+}
 
 #ifdef PNO_SUPPORT
 /* Linux wrapper to call common dhd_pno_stop_for_ssid */
@@ -5601,7 +5699,7 @@ dhd_dev_pno_stop_for_ssid(struct net_device *dev)
 }
 /* Linux wrapper to call common dhd_pno_set_for_ssid */
 int
-dhd_dev_pno_set_for_ssid(struct net_device *dev, wlc_ssid_t* ssids_local, int nssid,
+dhd_dev_pno_set_for_ssid(struct net_device *dev, wlc_ssid_ext_t* ssids_local, int nssid,
 	uint16  scan_fr, int pno_repeat, int pno_freq_expo_max, uint16 *channel_list, int nchan)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
@@ -5671,6 +5769,14 @@ dhd_dev_pno_get_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type,
 	return (dhd_pno_get_gscan(&dhd->pub, type, info, len));
 }
 
+/* Linux wrapper to call common dhd_wait_batch_results_complete */
+void dhd_dev_wait_batch_results_complete(struct net_device *dev)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_wait_batch_results_complete(&dhd->pub));
+}
+
 /* Linux wrapper to call common dhd_pno_lock_batch_results */
 void
 dhd_dev_pno_lock_access_batch_results(struct net_device *dev)
@@ -5712,13 +5818,13 @@ void * dhd_dev_swc_scan_event(struct net_device *dev, const void  *data, int *se
 	return (dhd_handle_swc_evt(&dhd->pub, data, send_evt_bytes));
 }
 
-/* Linux wrapper to call common dhd_handle_hotlist_scan_found_evt */
-void * dhd_dev_hotlist_scan_found_event(struct net_device *dev,
-const void  *data, int *send_evt_bytes)
+/* Linux wrapper to call common dhd_handle_hotlist_scan_evt */
+void * dhd_dev_hotlist_scan_event(struct net_device *dev,
+      const void  *data, int *send_evt_bytes, hotlist_type_t type)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 
-	return (dhd_handle_hotlist_scan_evt(&dhd->pub, data, send_evt_bytes));
+	return (dhd_handle_hotlist_scan_evt(&dhd->pub, data, send_evt_bytes, type));
 }
 
 /* Linux wrapper to call common dhd_process_full_gscan_result */
@@ -5730,11 +5836,11 @@ const void  *data, int *send_evt_bytes)
 	return (dhd_process_full_gscan_result(&dhd->pub, data, send_evt_bytes));
 }
 
-void dhd_dev_gscan_hotlist_cache_cleanup(struct net_device *dev)
+void dhd_dev_gscan_hotlist_cache_cleanup(struct net_device *dev, hotlist_type_t type)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 
-	dhd_gscan_hotlist_cache_cleanup(&dhd->pub);
+	dhd_gscan_hotlist_cache_cleanup(&dhd->pub, type);
 
 	return;
 }

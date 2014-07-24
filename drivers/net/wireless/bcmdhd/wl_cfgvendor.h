@@ -94,6 +94,8 @@ enum wl_vendor_subcmd {
 	GSCAN_SUBCMD_SET_SIGNIFICANT_CHANGE_CONFIG,
 	GSCAN_SUBCMD_ENABLE_FULL_SCAN_RESULTS,
 	GSCAN_SUBCMD_GET_CHANNEL_LIST,
+	ANDR_WIFI_SUBCMD_GET_FEATURE_SET,
+	ANDR_WIFI_SUBCMD_GET_FEATURE_SET_MATRIX,
     /* Add more sub commands here */
     GSCAN_SUBCMD_MAX,
 
@@ -174,13 +176,21 @@ enum gscan_ch_attributes {
 	GSCAN_ATTRIBUTE_CH_ID_7
 };
 
-enum wl_vendor_event {
+typedef enum wl_vendor_event {
 	BRCM_VENDOR_EVENT_UNSPEC,
 	BRCM_VENDOR_EVENT_PRIV_STR,
 	GOOGLE_GSCAN_SIGNIFICANT_EVENT,
 	GOOGLE_GSCAN_GEOFENCE_FOUND_EVENT,
 	GOOGLE_GSCAN_BATCH_SCAN_EVENT,
-	GOOGLE_SCAN_FULL_RESULTS_EVENT
+	GOOGLE_SCAN_FULL_RESULTS_EVENT,
+	GOOGLE_SCAN_RTT_EVENT,
+	GOOGLE_SCAN_COMPLETE_EVENT,
+	GOOGLE_GSCAN_GEOFENCE_LOST_EVENT
+} wl_vendor_event_t;
+
+enum andr_wifi_feature_set_attr {
+    ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET,
+    ANDR_WIFI_ATTRIBUTE_FEATURE_SET
 };
 
 typedef enum wl_vendor_gscan_attribute {
@@ -206,6 +216,11 @@ typedef enum gscan_geofence_attribute {
 	ATTR_GSCAN_HOTLIST_BSSID
 } gscan_geofence_attribute_t;
 
+typedef enum gscan_complete_event {
+	WIFI_SCAN_BUFFER_FULL,
+	WIFI_SCAN_COMPLETE
+} gscan_complete_event_t;
+
 /* Capture the BRCM_VENDOR_SUBCMD_PRIV_STRINGS* here */
 #define BRCM_VENDOR_SCMD_CAPA	"cap"
 
@@ -214,8 +229,8 @@ extern int wl_cfgvendor_attach(struct wiphy *wiphy);
 extern int wl_cfgvendor_detach(struct wiphy *wiphy);
 extern int wl_cfgvendor_send_async_event(struct wiphy *wiphy,
                   struct net_device *dev, int event_id, const void  *data, int len);
-extern int wl_cfgvendor_send_hotlist_found_event(struct wiphy *wiphy,
-                struct net_device *dev, void  *data, int len);
+extern int wl_cfgvendor_send_hotlist_event(struct wiphy *wiphy,
+                struct net_device *dev, void  *data, int len, wl_vendor_event_t event);
 #endif /* (LINUX_VERSION_CODE > KERNEL_VERSION(3, 13, 0)) || defined(WL_VENDOR_EXT_SUPPORT) */
 
 #endif /* _wl_cfgvendor_h_ */

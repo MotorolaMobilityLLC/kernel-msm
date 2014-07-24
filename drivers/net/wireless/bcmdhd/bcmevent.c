@@ -29,7 +29,7 @@
 #include <proto/bcmeth.h>
 #include <proto/bcmevent.h>
 
-#if WLC_E_LAST != 136
+#if WLC_E_LAST != 139
 #error "You need to add an entry to bcmevent_names[] for the new event"
 #endif
 

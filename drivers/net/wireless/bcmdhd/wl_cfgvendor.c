@@ -124,9 +124,70 @@ static int wl_cfgvendor_send_cmd_reply(struct wiphy *wiphy,
 
 	return cfg80211_vendor_cmd_reply(skb);
 }
+
+static int wl_cfgvendor_get_feature_set(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void  *data, int len)
+{
+	int err = 0;
+	struct wl_priv *cfg = wiphy_priv(wiphy);
+	int reply;
+
+	reply = dhd_dev_get_feature_set(wl_to_prmry_ndev(cfg));
+
+	err =  wl_cfgvendor_send_cmd_reply(wiphy, wl_to_prmry_ndev(cfg),
+	        &reply, sizeof(int));
+
+	if (unlikely(err))
+		WL_ERR(("Vendor Command reply failed ret:%d \n", err));
+
+	return err;
+}
+
+static int wl_cfgvendor_get_feature_set_matrix(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void  *data, int len)
+{
+	int err = 0;
+	struct wl_priv *cfg = wiphy_priv(wiphy);
+	struct sk_buff *skb;
+	int *reply;
+	int num, mem_needed, i;
+
+	reply = dhd_dev_get_feature_set_matrix(wl_to_prmry_ndev(cfg), &num);
+
+	if (!reply) {
+		WL_ERR(("Could not get feature list matrix\n"));
+		err = -EINVAL;
+		return err;
+	}
+
+	mem_needed = VENDOR_REPLY_OVERHEAD + (ATTRIBUTE_U32_LEN * num) +
+	             ATTRIBUTE_U32_LEN;
+
+	/* Alloc the SKB for vendor_event */
+	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, mem_needed);
+	if (unlikely(!skb)) {
+		WL_ERR(("skb alloc failed"));
+		err = -ENOMEM;
+		goto exit;
+	}
+
+	nla_put_u32(skb, ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET, num);
+	for (i = 0; i < num; i++) {
+		nla_put_u32(skb, ANDR_WIFI_ATTRIBUTE_FEATURE_SET, reply[i]);
+	}
+
+	err =  cfg80211_vendor_cmd_reply(skb);
+
+	if (unlikely(err))
+		WL_ERR(("Vendor Command reply failed ret:%d \n", err));
+exit:
+	kfree(reply);
+	return err;
+}
+
 #ifdef GSCAN_SUPPORT
-int wl_cfgvendor_send_hotlist_found_event(struct wiphy *wiphy,
-	struct net_device *dev, void  *data, int len)
+int wl_cfgvendor_send_hotlist_event(struct wiphy *wiphy,
+	struct net_device *dev, void  *data, int len, wl_vendor_event_t event)
 {
 	u16 kflags;
 	const void *ptr;
@@ -147,8 +208,7 @@ int wl_cfgvendor_send_hotlist_found_event(struct wiphy *wiphy,
 		kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
 
 		/* Alloc the SKB for vendor_event */
-		skb = cfg80211_vendor_event_alloc(wiphy, malloc_len,
-		GOOGLE_GSCAN_GEOFENCE_FOUND_EVENT, kflags);
+		skb = cfg80211_vendor_event_alloc(wiphy, malloc_len, event, kflags);
 		if (!skb) {
 			WL_ERR(("skb alloc failed"));
 			return -ENOMEM;
@@ -265,6 +325,8 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	struct sk_buff *skb;
 	struct nlattr *scan_hdr;
 
+	dhd_dev_wait_batch_results_complete(wl_to_prmry_ndev(cfg));
+	dhd_dev_pno_lock_access_batch_results(wl_to_prmry_ndev(cfg));
 	results = dhd_dev_pno_get_gscan(wl_to_prmry_ndev(cfg),
 	             DHD_PNO_GET_BATCH_RESULTS, NULL, &reply_len);
 
@@ -275,6 +337,7 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 
 		if (unlikely(err))
 			WL_ERR(("Vendor Command reply failed ret:%d \n", err));
+		dhd_dev_pno_unlock_access_batch_results(wl_to_prmry_ndev(cfg));
 		return err;
 	}
 	num_scan_ids = reply_len & 0xFFFF;
@@ -296,6 +359,7 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, mem_needed);
 	if (unlikely(!skb)) {
 		WL_ERR(("skb alloc failed"));
+		dhd_dev_pno_unlock_access_batch_results(wl_to_prmry_ndev(cfg));
 		return -ENOMEM;
 	}
 	iter = results;
@@ -304,7 +368,6 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 
 	mem_needed = mem_needed - (SCAN_RESULTS_COMPLETE_FLAG_LEN + VENDOR_REPLY_OVERHEAD);
 
-	dhd_dev_pno_lock_access_batch_results(wl_to_prmry_ndev(cfg));
 	while (iter && ((mem_needed - GSCAN_BATCH_RESULT_HDR_LEN)  > 0)) {
 		scan_hdr = nla_nest_start(skb, GSCAN_ATTRIBUTE_SCAN_RESULTS);
 		nla_put_u32(skb, GSCAN_ATTRIBUTE_SCAN_ID, iter->scan_id);
@@ -499,6 +562,8 @@ static int wl_cfgvendor_hotlist_cfg(struct wiphy *wiphy,
 		return -1;
 	}
 
+	hotlist_params->lost_ap_window = GSCAN_LOST_AP_WINDOW_DEFAULT;
+
 	nla_for_each_attr(iter, data, len, tmp2) {
 		type = nla_type(iter);
 		switch (type) {
@@ -528,6 +593,9 @@ static int wl_cfgvendor_hotlist_cfg(struct wiphy *wiphy,
 				break;
 			case GSCAN_ATTRIBUTE_HOTLIST_FLUSH:
 				flush = nla_get_u8(iter);
+				break;
+			case GSCAN_ATTRIBUTE_LOST_AP_SAMPLE_SIZE:
+				hotlist_params->lost_ap_window = nla_get_u32(iter);
 				break;
 			}
 
@@ -841,6 +909,22 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = wl_cfgvendor_lstats_get_info
 	},
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = ANDR_WIFI_SUBCMD_GET_FEATURE_SET
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_get_feature_set
+	},
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = ANDR_WIFI_SUBCMD_GET_FEATURE_SET_MATRIX
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_get_feature_set_matrix
+	}
 };
 
 static const struct  nl80211_vendor_cmd_info wl_vendor_events [] = {
@@ -850,7 +934,10 @@ static const struct  nl80211_vendor_cmd_info wl_vendor_events [] = {
 		{ OUI_GOOGLE, GOOGLE_GSCAN_SIGNIFICANT_EVENT },
 		{ OUI_GOOGLE, GOOGLE_GSCAN_GEOFENCE_FOUND_EVENT },
 		{ OUI_GOOGLE, GOOGLE_GSCAN_BATCH_SCAN_EVENT },
-		{ OUI_GOOGLE, GOOGLE_SCAN_FULL_RESULTS_EVENT }
+		{ OUI_GOOGLE, GOOGLE_SCAN_FULL_RESULTS_EVENT },
+		{ OUI_GOOGLE, GOOGLE_SCAN_RTT_EVENT },
+		{ OUI_GOOGLE, GOOGLE_SCAN_COMPLETE_EVENT },
+		{ OUI_GOOGLE, GOOGLE_GSCAN_GEOFENCE_LOST_EVENT }
 #endif /* GSCAN_SUPPORT */
 };
 

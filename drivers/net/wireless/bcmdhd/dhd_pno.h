@@ -78,6 +78,8 @@
 #define GSCAN_BATCH_RETRIEVAL_COMPLETE      0
 #define GSCAN_BATCH_RETRIEVAL_IN_PROGRESS   1
 #define GSCAN_BATCH_NO_THR_SET              101
+#define GSCAN_LOST_AP_WINDOW_DEFAULT        4
+#define GSCAN_MIN_BSSID_TIMEOUT             90
 
 #define CHANNEL_BUCKET_EMPTY_INDEX                      0xFFFF
 #endif /* GSCAN_SUPPORT */
@@ -134,6 +136,11 @@ typedef enum {
     WIFI_BAND_ABG_WITH_DFS = 7,             /* 2.4 GHz + 5 GHz with DFS  */
 } gscan_wifi_band_t;
 
+typedef enum {
+	HOTLIST_LOST,
+	HOTLIST_FOUND
+} hotlist_type_t;
+
 typedef enum dhd_pno_gscan_cmd_cfg {
 	DHD_PNO_BATCH_SCAN_CFG_ID,
 	DHD_PNO_GEOFENCE_SCAN_CFG_ID,
@@ -167,6 +174,7 @@ typedef enum dhd_pno_mode {
 } dhd_pno_mode_t;
 #endif /* GSCAN_SUPPORT */
 struct dhd_pno_ssid {
+	bool		hidden;
 	uint32		SSID_len;
 	uchar		SSID[DOT11_MAX_SSID_LEN];
 	struct list_head list;
@@ -310,8 +318,10 @@ struct dhd_pno_gscan_params {
 	uint8 reason;
 	uint8 get_batch_flag;
 	uint8 send_all_results_flag;
+	uint16 max_ch_bucket_freq;
 	gscan_results_cache_t *gscan_batch_cache;
-	gscan_results_cache_t *gscan_hotlist_cache;
+	gscan_results_cache_t *gscan_hotlist_found;
+	gscan_results_cache_t *gscan_hotlist_lost;
 	uint16 nbssid_significant_change;
 	uint16 nbssid_hotlist;
 	struct dhd_pno_swc_evt_param param_significant;
@@ -338,6 +348,7 @@ struct bssid_t {
 };
 
 typedef struct gscan_hotlist_scan_params {
+	uint16 lost_ap_window; /* number of scans to declare LOST */
 	uint16 nbssid;   /* number of bssids  */
 	struct bssid_t bssid[1];  /* n bssids to follow */
 } gscan_hotlist_scan_params_t;
@@ -391,7 +402,7 @@ extern int
 dhd_dev_pno_stop_for_ssid(struct net_device *dev);
 
 extern int
-dhd_dev_pno_set_for_ssid(struct net_device *dev, wlc_ssid_t* ssids_local, int nssid,
+dhd_dev_pno_set_for_ssid(struct net_device *dev, wlc_ssid_ext_t* ssids_local, int nssid,
 	uint16 scan_fr, int pno_repeat, int pno_freq_expo_max, uint16 *channel_list, int nchan);
 
 extern int
@@ -421,17 +432,18 @@ extern int dhd_dev_pno_enable_full_scan_result(struct net_device *dev, bool real
 extern void * dhd_dev_swc_scan_event(struct net_device *dev, const void  *data,
               int *send_evt_bytes);
 int dhd_retreive_batch_scan_results(dhd_pub_t *dhd);
-extern void * dhd_dev_hotlist_scan_found_event(struct net_device *dev,
-                         const void  *data, int *send_evt_bytes);
+extern void * dhd_dev_hotlist_scan_event(struct net_device *dev,
+                         const void  *data, int *send_evt_bytes, hotlist_type_t type);
 void * dhd_dev_process_full_gscan_result(struct net_device *dev,
                                         const void  *data, int *send_evt_bytes);
 extern int dhd_dev_gscan_batch_cache_cleanup(struct net_device *dev);
-extern void dhd_dev_gscan_hotlist_cache_cleanup(struct net_device *dev);
+extern void dhd_dev_gscan_hotlist_cache_cleanup(struct net_device *dev, hotlist_type_t type);
+extern void dhd_dev_wait_batch_results_complete(struct net_device *dev);
 #endif /* GSCAN_SUPPORT */
 /* dhd pno fuctions */
 extern int dhd_pno_stop_for_ssid(dhd_pub_t *dhd);
 extern int dhd_pno_enable(dhd_pub_t *dhd, int enable);
-extern int dhd_pno_set_for_ssid(dhd_pub_t *dhd, wlc_ssid_t* ssid_list, int nssid,
+extern int dhd_pno_set_for_ssid(dhd_pub_t *dhd, wlc_ssid_ext_t* ssid_list, int nssid,
 	uint16  scan_fr, int pno_repeat, int pno_freq_expo_max, uint16 *channel_list, int nchan);
 
 extern int dhd_pno_set_for_batch(dhd_pub_t *dhd, struct dhd_pno_batch_params *batch_params);
@@ -449,6 +461,7 @@ extern int dhd_pno_stop_for_hotlist(dhd_pub_t *dhd);
 extern int dhd_pno_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data);
 extern int dhd_pno_init(dhd_pub_t *dhd);
 extern int dhd_pno_deinit(dhd_pub_t *dhd);
+extern bool dhd_is_pno_supported(dhd_pub_t *dhd);
 
 #ifdef GSCAN_SUPPORT
 extern int dhd_pno_set_cfg_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
@@ -463,10 +476,11 @@ extern int dhd_pno_cfg_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type, void 
 extern int dhd_dev_retrieve_batch_scan(struct net_device *dev);
 extern void *dhd_handle_swc_evt(dhd_pub_t *dhd, const void *event_data, int *send_evt_bytes);
 extern void *dhd_handle_hotlist_scan_evt(dhd_pub_t *dhd, const void *event_data,
-                       int *send_evt_bytes);
+                       int *send_evt_bytes, hotlist_type_t type);
 extern void *dhd_process_full_gscan_result(dhd_pub_t *dhd, const void *event_data,
                        int *send_evt_bytes);
 extern int dhd_gscan_batch_cache_cleanup(dhd_pub_t *dhd);
-extern void dhd_gscan_hotlist_cache_cleanup(dhd_pub_t *dhd);
+extern void dhd_gscan_hotlist_cache_cleanup(dhd_pub_t *dhd, hotlist_type_t type);
+extern void dhd_wait_batch_results_complete(dhd_pub_t *dhd);
 #endif /* GSCAN_SUPPORT */
 #endif /* __DHD_PNO_H__ */
