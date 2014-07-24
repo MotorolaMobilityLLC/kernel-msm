@@ -899,11 +899,15 @@ static int send_adm_cal_tx_gain(int port_id, struct acdb_cal_block *aud_cal,
 	s32 result = 0;
 	struct adm_cmd_set_pp_params_v5 *adm_params = NULL;
 
-	uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x00000b3f3};  /* b3f3 for 15db */
-	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x000007f64}; */  /* 7f64 for 12db */
-	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x000005a30}; */  /* 5a30 for 9db */
-	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x000003fd9}; */  /* 3fd9 for 6db */
-	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x000002d33}; */  /* 2d33 for 3db */
+	uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x0001fb2a};  /* 1fb2a for 24db */
+	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x0001670c}; */  /* 1670c for 21db */
+	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x0000fe2f}; */  /* fe2f for 18db */
+	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x0000fffe}; */  /* fffe for test */
+	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x0000b3f3}; */  /* b3f3 for 15db */
+	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x00007f64}; */  /* 7f64 for 12db */
+	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x00005a30}; */  /* 5a30 for 9db */
+	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x00003fd9}; */  /* 3fd9 for 6db */
+	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x00002d33}; */  /* 2d33 for 3db */
 
 	uint32_t params_length;
 	int sz, index = afe_get_port_index(port_id);
