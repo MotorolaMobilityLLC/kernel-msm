@@ -2373,39 +2373,39 @@ limIsSmeGetAssocSTAsReqValid(tpAniSirGlobal pMac, tpSirSmeGetAssocSTAsReq pGetAs
     pBuf += sizeof(tANI_U16);
 
     if (len < (tANI_S16) sizeof(tANI_U32))
-        return eSIR_FAILURE;
+        return eANI_BOOLEAN_FALSE;
 
     len -= sizeof(tANI_U32); // skip message header
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
+        return eANI_BOOLEAN_FALSE;
 
     // Extract bssId
     vos_mem_copy( (tANI_U8 *) pGetAssocSTAsReq->bssId, pBuf, sizeof(tSirMacAddr));
     pBuf += sizeof(tSirMacAddr);
     len  -= sizeof(tSirMacAddr);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
+        return eANI_BOOLEAN_FALSE;
 
     // Extract modId
     pGetAssocSTAsReq->modId = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
     len  -= sizeof(tANI_U16);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
+        return eANI_BOOLEAN_FALSE;
 
     // Extract pUsrContext
     vos_mem_copy((tANI_U8 *)pGetAssocSTAsReq->pUsrContext, pBuf, sizeof(void*));
     pBuf += sizeof(void*);
     len  -= sizeof(void*);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
+        return eANI_BOOLEAN_FALSE;
 
     // Extract pSapEventCallback
     vos_mem_copy((tANI_U8 *)pGetAssocSTAsReq->pSapEventCallback, pBuf, sizeof(void*));
     pBuf += sizeof(void*);
     len  -= sizeof(void*);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
+        return eANI_BOOLEAN_FALSE;
 
     // Extract pAssocStasArray
     vos_mem_copy((tANI_U8 *)pGetAssocSTAsReq->pAssocStasArray, pBuf, sizeof(void*));
