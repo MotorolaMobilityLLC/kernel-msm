@@ -168,10 +168,13 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 void mdss_dsi_panel_idle_mode(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 {
-	if (enable)
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
-	else
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+	if (enable) {
+		if (ctrl->idle_on_cmds.cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+	} else {
+		if (ctrl->idle_off_cmds.cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+	}
 }
 
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -226,10 +229,15 @@ disp_en_gpio_err:
 
 void mdss_dsi_panel_low_fps_mode(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 {
-	if (enable)
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->low_fps_mode_on_cmds);
-	else
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->low_fps_mode_off_cmds);
+	if (enable) {
+		if (ctrl->low_fps_mode_on_cmds.cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl,
+					&ctrl->low_fps_mode_on_cmds);
+	} else {
+		if (ctrl->low_fps_mode_off_cmds.cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl,
+					&ctrl->low_fps_mode_off_cmds);
+	}
 }
 
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
