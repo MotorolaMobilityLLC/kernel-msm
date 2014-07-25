@@ -16,3 +16,5 @@
 /* Reserve for persistent memory - bootinfo backup for last_kmsg */
 /memreserve/ 0x3eb00000 0x800;
 
+/* Reserve the 1st 1MB  memory - WA for 1st page memory corruption issue */
+/memreserve/ 0x0 0x100000;
