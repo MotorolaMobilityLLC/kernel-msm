@@ -347,6 +347,7 @@ struct mdss_panel_info {
 struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
+	void (*set_idle)(struct mdss_panel_data *pdata, int enable);
 	unsigned char *mmss_cc_base;
 
 	/**
