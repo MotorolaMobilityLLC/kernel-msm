@@ -484,8 +484,8 @@ static int Upgrade_FW_CFG(void)
 	filp_close(fw_fd,NULL);
 	filp_close(config_fd,NULL);
 	
-	if ((bufRead[5] == fw_buf[8] && bufRead[6] == fw_buf[9] && bufRead[7] == fw_buf[10] && bufRead[8] < fw_buf[11]) || 
-	(bufRead2[1] == config_buf[config_size-8] && bufRead2[2] == config_buf[config_size-7] && bufRead2[3] == config_buf[config_size-6] && bufRead2[4] < config_buf[config_size-5])){
+	if ((bufRead[5] < fw_buf[8] || bufRead[6] < fw_buf[9] || bufRead[7] < fw_buf[10] || bufRead[8] < fw_buf[11]) || 
+	(bufRead2[1] < config_buf[config_size-8] || bufRead2[2] < config_buf[config_size-7] || bufRead2[3] < config_buf[config_size-6] || bufRead2[4] < config_buf[config_size-5])){
 
 	//START UPDATE
 	disable_irq(gl_ts->client->irq);
