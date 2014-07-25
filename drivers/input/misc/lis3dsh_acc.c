@@ -520,8 +520,8 @@ static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc, in
 		acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
 		acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x78;
 		acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
-		acc->resume_state[RES_LIS3DSH_THRS2_1] = 0xE0;
-		acc->resume_state[RES_LIS3DSH_THRS1_1] = 0xF0;
+		acc->resume_state[RES_LIS3DSH_THRS2_1] = 0xE0;		//up angle
+		acc->resume_state[RES_LIS3DSH_THRS1_1] = 0x01;		//down angle
 		/* DES1 not available*/
 		acc->resume_state[RES_LIS3DSH_SA_1] = 0x80;
 		acc->resume_state[RES_LIS3DSH_MA_1] = 0x80;
