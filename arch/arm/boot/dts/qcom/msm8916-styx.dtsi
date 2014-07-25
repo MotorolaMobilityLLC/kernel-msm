@@ -51,6 +51,22 @@
 	};
 };
 
+&mot_boe_450_qhd_vid_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_boe_450_qhd_vid_v1 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_boe_450_qhd_vid_v2 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_inx_450_qhd_vid_v0 {
+	qcom,cont-splash-enabled;
+};
+
 &pm8916_l17 {
 	regulator-always-on;
 	regulator-boot-on;
