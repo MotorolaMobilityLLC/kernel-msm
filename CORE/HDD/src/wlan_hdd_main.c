@@ -3676,21 +3676,27 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
 #endif
        else if (strncmp(command, "BTCOEXMODE", 10) == 0 )
        {
-           char *bcMode;
-           bcMode = command + 11;
-           if ('1' == *bcMode)
+           char *dhcpPhase;
+           dhcpPhase = command + 11;
+           if ('1' == *dhcpPhase)
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                        FL("BTCOEXMODE %d"), *bcMode);
+                         FL("send DHCP START indication"));
 
                pHddCtx->btCoexModeSet = TRUE;
+
+               sme_DHCPStartInd(pHddCtx->hHal, pAdapter->device_mode,
+                                pAdapter->sessionId);
            }
-           else if ('2' == *bcMode)
+           else if ('2' == *dhcpPhase)
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                         FL("BTCOEXMODE %d"), *bcMode);
+                         FL("send DHCP STOP indication"));
 
                pHddCtx->btCoexModeSet = FALSE;
+
+               sme_DHCPStopInd(pHddCtx->hHal, pAdapter->device_mode,
+                               pAdapter->sessionId);
            }
        }
        else if (strncmp(command, "SCAN-ACTIVE", 11) == 0)
@@ -9719,7 +9725,31 @@ tVOS_CONCURRENCY_MODE hdd_get_concurrency_mode ( void )
     hddLog(LOGE, "%s: Invalid context", __func__);
     return VOS_STA;
 }
+v_BOOL_t
+wlan_hdd_is_GO_power_collapse_allowed (hdd_context_t* pHddCtx)
+{
+     hdd_adapter_t *pAdapter = NULL;
 
+     pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_GO);
+     if (pAdapter == NULL)
+     {
+         hddLog(VOS_TRACE_LEVEL_INFO,
+                FL("GO doesn't exist"));
+         return TRUE;
+     }
+     if (test_bit(SOFTAP_BSS_STARTED, &pAdapter->event_flags))
+     {
+          hddLog(VOS_TRACE_LEVEL_INFO,
+                 FL("GO started"));
+          return TRUE;
+     }
+     else
+          /* wait till GO changes its interface to p2p device */
+          hddLog(VOS_TRACE_LEVEL_INFO,
+                 FL("Del_bss called, avoid apps suspend"));
+          return FALSE;
+
+}
 /* Decide whether to allow/not the apps power collapse. 
  * Allow apps power collapse if we are in connected state.
  * if not, allow only if we are in IMPS  */
@@ -9739,9 +9769,13 @@ v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx)
 
     concurrent_state = hdd_get_concurrency_mode();
 
+    if ((concurrent_state == (VOS_STA | VOS_P2P_GO)) &&
+          !(wlan_hdd_is_GO_power_collapse_allowed(pHddCtx)))
+        return FALSE;
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+
     if(((concurrent_state == (VOS_STA | VOS_P2P_CLIENT)) || 
-        (concurrent_state == (VOS_STA | VOS_P2P_GO))) && 
+        (concurrent_state == (VOS_STA | VOS_P2P_GO)))&&
         (IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
         return TRUE;
 #endif
