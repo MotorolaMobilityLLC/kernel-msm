@@ -3139,6 +3139,8 @@ static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 	else if (mmc_use_core_runtime_pm(host->mmc))
 		pm_runtime_enable(&pdev->dev);
 
+	sdhci_msm_set_clock(host, 0);
+
 	/* Successful initialization */
 	goto out;
 
