@@ -22,6 +22,10 @@ Required properties:
 		rated voltage for the motor
 	- overdrive_voltage:
 		overdrive voltage for the motor
+	- disable_calibration:
+		disable boot-up calibration.The calibration data should be
+		store in OTP memory on factory. If OTP memory is not
+		programmed the driver will ignore this option.
 Example:
 
 	i2c@1a200000 {
