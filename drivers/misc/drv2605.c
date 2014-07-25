@@ -173,6 +173,7 @@ static struct drv260x {
 	int en_gpio;
 	int external_trigger;
 	int trigger_gpio;
+	int disable_calibration;
 	unsigned char default_sequence[4];
 	unsigned char rated_voltage;
 	unsigned char overdrive_voltage;
@@ -314,6 +315,8 @@ static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
 	of_property_read_u32(np, "overdrive_voltage",
 				&pdata->overdrive_voltage);
 	of_property_read_u32(np, "effects_library", &pdata->effects_library);
+	of_property_read_u32(np, "disable_calibration",
+						&pdata->disable_calibration);
 	pdata->vibrator_vdd = devm_regulator_get(&client->dev, "vibrator_vdd");
 
 	return pdata;
@@ -720,6 +723,9 @@ static int drv260x_probe(struct i2c_client *client,
 	else
 		drv260x->overdrive_voltage = ERM_OVERDRIVE_CLAMP_VOLTAGE;
 
+	if (pdata->disable_calibration)
+		drv260x->disable_calibration = pdata->disable_calibration;
+
 	if ((pdata->effects_library >= LIBRARY_A) &&
 		(pdata->effects_library <= LIBRARY_F))
 		g_effect_bank = pdata->effects_library;
@@ -763,6 +769,22 @@ static void probe_work(struct work_struct *work)
 					sizeof(ERM_autocal_sequence),
 					LIBRARY_SELECTION_REG,
 					g_effect_bank);
+
+	/* check if boot-up calibration is needed */
+	if (drv260x->disable_calibration) {
+		status = drv260x_read_reg(AUTOCAL_MEM_INTERFACE_REG);
+		if (status & AUTOCAL_OTP_STATUS) {
+			pr_info("drv260x: Boot-up calibration disabled\n");
+			drv260x_update_init_sequence(ERM_autocal_sequence,
+					sizeof(ERM_autocal_sequence),
+					MODE_REG, MODE_STANDBY);
+			drv260x_update_init_sequence(ERM_autocal_sequence,
+					sizeof(ERM_autocal_sequence),
+					GO_REG, 0);
+		} else
+			pr_warn("drv260x: OTP memory is not programmed.\n");
+	}
+
 	/* Wait 30 us */
 	udelay(30);
 
