@@ -392,6 +392,8 @@ eHalStatus csrInitChannels(tpAniSirGlobal pMac)
                  WNI_CFG_COUNTRY_CODE_LEN);
     vos_mem_copy(pMac->scan.countryCodeElected, pMac->scan.countryCodeDefault,
                  WNI_CFG_COUNTRY_CODE_LEN);
+    vos_mem_copy(pMac->scan.countryCode11d, pMac->scan.countryCodeDefault,
+                 WNI_CFG_COUNTRY_CODE_LEN);
     status = csrInitGetChannels( pMac );
     csrClearVotesForCountryInfo(pMac);
 

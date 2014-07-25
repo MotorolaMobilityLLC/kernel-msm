@@ -63,6 +63,10 @@
 #include "wlan_hdd_tdls.h"
 #endif
 
+#ifdef DEBUG_ROAM_DELAY
+#include "vos_utils.h"
+#endif
+
 /*--------------------------------------------------------------------------- 
   Preprocessor definitions and constants
   -------------------------------------------------------------------------*/ 
@@ -710,6 +714,16 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_FATAL,
               "%s: Classified as ac %d up %d", __func__, ac, up);
 #endif // HDD_WMM_DEBUG
+
+#ifdef DEBUG_ROAM_DELAY
+   vos_record_roam_event(e_HDD_FIRST_XMIT_TIME, (void *)skb, 0);
+   //Should we check below global to avoid function call each time ??
+/*
+   if(gRoamDelayMetaInfo.hdd_monitor_tx)
+   {
+   }
+ */
+#endif
 
    spin_lock(&pAdapter->wmm_tx_queue[ac].lock);
    /*CR 463598,384996*/
@@ -1512,6 +1526,10 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
       }
    }
 
+#ifdef DEBUG_ROAM_DELAY
+   vos_record_roam_event(e_TL_FIRST_XMIT_TIME, NULL, 0);
+#endif
+
    pPktMetaInfo->ucType = 0;          //FIXME Don't know what this is
    pPktMetaInfo->ucDisableFrmXtl = 0; //802.3 frame so we need to xlate
    if ( 1 < size )
@@ -1810,6 +1828,16 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
                       "STA RX DHCP");
          }
       }
+
+#ifdef DEBUG_ROAM_DELAY
+      vos_record_roam_event(e_HDD_RX_PKT_CBK_TIME, (void *)skb, 0);
+      //Should we check below global to avoid function call each time ??
+      /*
+         if(gRoamDelayMetaInfo.hdd_monitor_rx)
+         {
+         }
+       */
+#endif
 
       skb->dev = pAdapter->dev;
       skb->protocol = eth_type_trans(skb, skb->dev);
