@@ -1966,9 +1966,9 @@ static ssize_t IT7260_selftest_show(struct device *dev, struct device_attribute 
 	}
 }
 
-static DEVICE_ATTR(status, 0666, IT7260_status_show, IT7260_status_store);
-static DEVICE_ATTR(version, 0666, IT7260_version_show, IT7260_version_store);
-static DEVICE_ATTR(sleep, 0666, IT7260_sleep_show, IT7260_sleep_store);
+static DEVICE_ATTR(status, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_status_show, IT7260_status_store);
+static DEVICE_ATTR(version, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_version_show, IT7260_version_store);
+static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_sleep_show, IT7260_sleep_store);
 
 static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_status.attr,
@@ -2038,10 +2038,10 @@ static ssize_t IT7260_upgrade_store(struct device *dev, struct device_attribute 
 	return count;
 }
 
-static DEVICE_ATTR(testtp, 0666, IT7260_selftest_show, IT7260_selftest_store);
-static DEVICE_ATTR(goldensample, 0666, IT7260_tp_goldsample_show, IT7260_tp_goldsample_store);
-static DEVICE_ATTR(calibration, 0666, IT7260_calibration_show, IT7260_calibration_store);
-static DEVICE_ATTR(upgrade, 0666, IT7260_upgrade_show, IT7260_upgrade_store);
+static DEVICE_ATTR(testtp, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_selftest_show, IT7260_selftest_store);
+static DEVICE_ATTR(goldensample, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_tp_goldsample_show, IT7260_tp_goldsample_store);
+static DEVICE_ATTR(calibration, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_calibration_show, IT7260_calibration_store);
+static DEVICE_ATTR(upgrade, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_upgrade_show, IT7260_upgrade_store);
 
 static struct attribute *it7260_attributes[] = {
 	&dev_attr_calibration.attr,
