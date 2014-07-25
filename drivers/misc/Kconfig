@@ -618,6 +618,10 @@ config APQ8084_DOCKING_STATION
 	help
 	  This option enables support for the USB and Ethernet ports found on
 	  the QTI APQ8084 Docking Station.
+	  
+config ASUS_UTILITY
+     tristate "ASUS Utility for Mode Notifier"
+     depends on MODULES
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"

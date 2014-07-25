@@ -28,6 +28,8 @@
 #include <linux/slab.h>
 #include <linux/sync.h>
 #include <linux/proc_fs.h>
+#include <linux/notifier.h>
+#include <linux/asus_utility.h>
 //#include <linux/math.h>
 
 #define MAX_BUFFER_SIZE		144
@@ -2506,6 +2508,27 @@ void notify_it7260_ts_lowpowermode(int low)
 }
 //ASUS_BSP --- Cliff "Touch change status to idle in Ambient mode"
 
+static int mode_notify_sys(struct notifier_block *this,
+                            unsigned long code, void *data)
+{
+    switch (code) {
+    case 2:
+		notify_it7260_ts_lowpowermode(1);
+		break;
+    case 3:
+		notify_it7260_ts_lowpowermode(0);
+		break;
+	default:
+		break;
+	}
+	
+    return 0;
+}
+
+static struct notifier_block display_mode_notifier = {
+        .notifier_call =    mode_notify_sys,
+};
+
 static int IT7260_ts_probe(struct i2c_client *client,
 		const struct i2c_device_id *id) {
 	struct IT7260_ts_data *ts;
@@ -2949,7 +2972,8 @@ static int __init IT7260_ts_init(void) {
 	magic_key[0] = 0;
 	device_create_file(class_dev, &device_attrs[0]);
 // ASUS_BSP --- Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
-
+	
+	register_mode_notifier(&display_mode_notifier);
 
 	TS_DEBUG("=========================================\n");
 	TS_DEBUG("register IT7260 cdev, major: %d, minor: %d \n", ite7260_major, ite7260_minor);
@@ -2977,6 +3001,8 @@ static void __exit IT7260_ts_exit(void) {
 	// unregister driver handle
 	cdev_del(&ite7260_cdev);
 	unregister_chrdev_region(dev, 1);
+
+	unregister_mode_notifier(&display_mode_notifier);
 
 	i2c_del_driver(&IT7260_ts_driver);
 	if (IT7260_wq)
