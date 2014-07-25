@@ -51,6 +51,9 @@
 #include <asm/ptrace.h>
 #include <asm/edac.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/ipi.h>
+
 /*
  * as from 2.5, kernels no longer have an init_tasks structure
  * so we need some other way of telling a new secondary core
@@ -323,16 +326,28 @@ void __init smp_prepare_boot_cpu(void)
 static void (*smp_cross_call)(const struct cpumask *, unsigned int);
 DEFINE_PER_CPU(bool, pending_ipi);
 
+static const char *ipi_types[NR_IPI] = {
+#define S(x,s)	[x] = s
+	S(IPI_RESCHEDULE, "Rescheduling interrupts"),
+	S(IPI_CALL_FUNC, "Function call interrupts"),
+	S(IPI_CALL_FUNC_SINGLE, "Single function call interrupts"),
+	S(IPI_CPU_STOP, "CPU stop interrupts"),
+	S(IPI_TIMER, "Timer broadcast interrupts"),
+	S(IPI_IRQ_WORK, "IRQ work interrupts"),
+	S(IPI_WAKEUP, "CPU wakeup interrupts"),
+	S(IPI_CPU_BACKTRACE, "CPU backtrace"),
+};
+
 void smp_cross_call_common(const struct cpumask *cpumask, unsigned int func)
 {
 	unsigned int cpu;
 
+	trace_ipi_raise(cpumask, ipi_types[func]);
 	for_each_cpu(cpu, cpumask)
 		per_cpu(pending_ipi, cpu) = true;
 
 	smp_cross_call(cpumask, func);
 }
-
 
 /*
  * Enumerate the possible CPU set from the device tree and build the
@@ -516,24 +531,12 @@ void arch_irq_work_raise(void)
 }
 #endif
 
-static const char *ipi_types[NR_IPI] = {
-#define S(x,s)	[x - IPI_RESCHEDULE] = s
-	S(IPI_RESCHEDULE, "Rescheduling interrupts"),
-	S(IPI_CALL_FUNC, "Function call interrupts"),
-	S(IPI_CALL_FUNC_SINGLE, "Single function call interrupts"),
-	S(IPI_CPU_STOP, "CPU stop interrupts"),
-	S(IPI_TIMER, "Timer broadcast interrupts"),
-	S(IPI_IRQ_WORK, "IRQ work interrupts"),
-	S(IPI_WAKEUP, "CPU wakeup interrupts"),
-	S(IPI_CPU_BACKTRACE, "CPU backtrace"),
-};
-
 void show_ipi_list(struct seq_file *p, int prec)
 {
 	unsigned int cpu, i;
 
 	for (i = 0; i < NR_IPI; i++) {
-		seq_printf(p, "%*s%u:%s", prec - 1, "IPI", i + IPI_RESCHEDULE,
+		seq_printf(p, "%*s%u:%s", prec - 1, "IPI", i,
 			   prec >= 4 ? " " : "");
 		for_each_online_cpu(cpu)
 			seq_printf(p, "%10u ",
@@ -656,8 +659,10 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 	unsigned int cpu = smp_processor_id();
 	struct pt_regs *old_regs = set_irq_regs(regs);
 
-	if (ipinr >= IPI_RESCHEDULE && ipinr < IPI_RESCHEDULE + NR_IPI)
-		__inc_irq_stat(cpu, ipi_irqs[ipinr - IPI_RESCHEDULE]);
+	if ((unsigned)ipinr < NR_IPI) {
+		trace_ipi_entry(ipi_types[ipinr]);
+		__inc_irq_stat(cpu, ipi_irqs[ipinr]);
+	}
 
 	switch (ipinr) {
 	case IPI_RESCHEDULE:
@@ -709,6 +714,9 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 		break;
 	}
 	per_cpu(pending_ipi, cpu) = false;
+
+	if ((unsigned)ipinr < NR_IPI)
+		trace_ipi_exit(ipi_types[ipinr]);
 	set_irq_regs(old_regs);
 }
 
