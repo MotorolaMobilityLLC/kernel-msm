@@ -6801,8 +6801,8 @@ static int bma2x2_probe(struct i2c_client *client,
 #endif
 #endif
 
-	bma2x2_set_Int_Mode(client, 1);/*latch interrupt 250ms*/
-/*	bma2x2_set_Int_Mode(client, 7); latched*/
+/*	bma2x2_set_Int_Mode(client, 1); latch interrupt 250ms*/
+	bma2x2_set_Int_Mode(client, 7);/*latched*/
 
 	/* do not open any interrupt here  */
 	/*10,orient
