@@ -39,7 +39,8 @@ static int esdfs_create(struct inode *dir, struct dentry *dentry,
 	 * esdfs_permission().
 	 */
 	if (test_opt(ESDFS_SB(dir->i_sb), DERIVE_UNIFIED) &&
-	    ESDFS_I(dir)->tree == ESDFS_TREE_ROOT) {
+	    ESDFS_I(dir)->tree == ESDFS_TREE_ROOT &&
+	    creds->fsuid != 0) {
 		err = -EACCES;
 		goto out_unlock;
 	}
