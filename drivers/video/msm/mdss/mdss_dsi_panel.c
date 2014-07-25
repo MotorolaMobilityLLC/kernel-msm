@@ -1185,7 +1185,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-low-fps-mode-on-command", "qcom,mdss-dsi-low-fps-mode-on-command-state");
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->low_fps_mode_off_cmds,
-		"qcom,mdss-dsi-low-fps-mode-off-command", "qcom,mdss-dsi-low-fps-mocd-off-command-state");
+		"qcom,mdss-dsi-low-fps-mode-off-command", "qcom,mdss-dsi-low-fps-mode-off-command-state");
 
 	return 0;
 
