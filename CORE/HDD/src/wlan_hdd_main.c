@@ -9463,8 +9463,11 @@ static void hdd_driver_exit(void)
       vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);
 
       if (eANI_BOOLEAN_TRUE == sme_Is11dCountrycode(pHddCtx->hHal) &&
-              pHddCtx->cfg_ini->fSupplicantCountryCodeHasPriority )
+              pHddCtx->cfg_ini->fSupplicantCountryCodeHasPriority  &&
+              sme_Is11dSupported(pHddCtx->hHal))
       {
+          hddLog(VOS_TRACE_LEVEL_INFO,
+                     FL("CountryCode 00 is being set while unloading driver"));
           vos_nv_getRegDomainFromCountryCode(&regId , "00", COUNTRY_USER);
       }
 
