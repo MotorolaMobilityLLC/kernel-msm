@@ -395,6 +395,7 @@
 		default_effect = <17>;          /* Strong Click 100% */
 		rated_voltage = <0x70>;         /* 2.4v */
 		overdrive_voltage = <0x89>;     /* 3.0v */
+		disable_calibration  = <1>;     /* Disable boot-up calibration */
 	};
 
 	tfa9890@34 {
