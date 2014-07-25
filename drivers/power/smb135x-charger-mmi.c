@@ -134,6 +134,7 @@
 #define TRICK_CURR_MASK			SMB135X_MASK(7, 5)
 
 #define VFLOAT_REG			0x1E
+#define VFLOAT_MASK			SMB135X_MASK(5, 0)
 
 #define VERSION1_REG			0x2A
 #define VERSION1_MASK			SMB135X_MASK(7,	6)
@@ -413,6 +414,7 @@ struct smb135x_chg {
 	int				rate_check_count;
 	struct notifier_block		smb_reboot;
 	int				ir_comp_mv;
+	bool				invalid_battery;
 };
 
 static struct smb135x_chg *the_chip;
@@ -901,7 +903,9 @@ static int smb135x_get_prop_batt_health(struct smb135x_chg *chip)
 {
 	union power_supply_propval ret = {0, };
 
-	if (chip->batt_hot)
+	if (chip->invalid_battery)
+		ret.intval = POWER_SUPPLY_HEALTH_UNSPEC_FAILURE;
+	else if (chip->batt_hot)
 		ret.intval = POWER_SUPPLY_HEALTH_OVERHEAT;
 	else if (chip->batt_cold)
 		ret.intval = POWER_SUPPLY_HEALTH_COLD;
@@ -1219,6 +1223,9 @@ static int smb135x_temp_charging(struct smb135x_chg *chip, int enable)
 
 	pr_debug("charging enable = %d\n", enable);
 
+	if (chip->invalid_battery)
+		enable = false;
+
 	rc = smb135x_masked_write(chip, CMD_CHG_REG,
 			CMD_CHG_EN, enable ? CMD_CHG_EN : 0);
 	if (rc < 0) {
@@ -1522,6 +1529,9 @@ static int __smb135x_charging(struct smb135x_chg *chip, int enable)
 	int rc = 0;
 
 	pr_debug("charging enable = %d\n", enable);
+
+	if (chip->invalid_battery)
+		enable = false;
 
 	rc = smb135x_masked_write(chip, CMD_CHG_REG,
 			CMD_CHG_EN, enable ? CMD_CHG_EN : 0);
@@ -1984,7 +1994,7 @@ static void smb135x_external_power_changed(struct power_supply *psy)
 }
 
 #define MIN_FLOAT_MV	3600
-#define MAX_FLOAT_MV	4500
+#define MAX_FLOAT_MV	4400
 
 #define MID_RANGE_FLOAT_MV_MIN		3600
 #define MID_RANGE_FLOAT_MIN_VAL		0x05
@@ -2000,11 +2010,12 @@ static void smb135x_external_power_changed(struct power_supply *psy)
 static int smb135x_float_voltage_set(struct smb135x_chg *chip, int vfloat_mv)
 {
 	u8 temp;
+	int rc;
 
 	if ((vfloat_mv < MIN_FLOAT_MV) || (vfloat_mv > MAX_FLOAT_MV)) {
 		dev_err(chip->dev, "bad float voltage mv =%d asked to set\n",
 					vfloat_mv);
-		return -EINVAL;
+		vfloat_mv = 4350;
 	}
 
 	if (vfloat_mv <= HIGH_RANGE_FLOAT_MIN_MV) {
@@ -2024,7 +2035,19 @@ static int smb135x_float_voltage_set(struct smb135x_chg *chip, int vfloat_mv)
 				/ VHIGH_RANGE_FLOAT_STEP_MV;
 	}
 
-	return smb135x_write(chip, VFLOAT_REG, temp);
+	rc = smb135x_write(chip, VFLOAT_REG, temp);
+	if (rc < 0)
+		rc = smb135x_write(chip, VFLOAT_REG, temp);
+	temp = 0;
+	rc = smb135x_read(chip, VFLOAT_REG, &temp);
+	if ((rc >= 0) && ((temp & VFLOAT_MASK) > VHIGH_RANGE_FLOAT_MIN_VAL)) {
+		dev_err(chip->dev, "bad float voltage set mv =%d \n",
+			temp);
+		chip->invalid_battery = true;
+		smb135x_temp_charging(chip, 0);
+	}
+
+	return rc;
 }
 
 static bool elapsed_msec_greater(struct timeval *start_time,
@@ -4671,6 +4694,7 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->fake_battery_soc = -EINVAL;
 	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NONE;
 	chip->aicl_weak_detect = false;
+	chip->invalid_battery = false;
 
 	wakeup_source_init(&chip->smb_wake_source.source, "smb135x_wake");
 	INIT_DELAYED_WORK(&chip->wireless_insertion_work,
