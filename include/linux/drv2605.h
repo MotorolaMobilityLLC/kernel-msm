@@ -312,6 +312,7 @@
 */
 #define AUTOCAL_MEM_INTERFACE_REG   0x1E
 
+#define AUTOCAL_OTP_STATUS          (1 << 2)
 #define AUTOCAL_TIME_150MS          (0 << 4)
 #define AUTOCAL_TIME_250MS          (1 << 4)
 #define AUTOCAL_TIME_500MS          (2 << 4)
@@ -340,6 +341,7 @@ struct drv260x_platform_data {
 	int rated_voltage;
 	int overdrive_voltage;
 	int effects_library;
+	int disable_calibration;
 	struct regulator *vibrator_vdd;
 };
 #endif				/* __KERNEL__ */
