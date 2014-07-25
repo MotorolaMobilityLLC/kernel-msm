@@ -46,6 +46,7 @@
 			synaptics,irq-gpio = <&msmgpio 17 0x2008>;
 			synaptics,i2c-pull-up;
 			synaptics,fw-image-name = "synaptics_fw.bin";
+			synaptics,check-build;
 			synaptics,wakeup;
 			synaptics,palm-detect-threshold = <0xd>;
 			synaptics,palm-detect-keycode = <0x66>; /* KEY_HOME */
