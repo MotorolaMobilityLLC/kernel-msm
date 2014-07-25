@@ -3655,7 +3655,6 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 			IRQ2_SAFETY_TIMER_BIT
 			| IRQ2_CHG_ERR_BIT
 			| IRQ2_CHG_PHASE_CHANGE_BIT
-			| IRQ2_POWER_OK_BIT
 			| IRQ2_BATT_MISSING_BIT
 			| IRQ2_VBAT_LOW_BIT);
 
@@ -3799,7 +3798,6 @@ static int smb135x_hw_init_fac(struct smb135x_chg *chip)
 					  IRQ2_SAFETY_TIMER_BIT
 					  | IRQ2_CHG_ERR_BIT
 					  | IRQ2_CHG_PHASE_CHANGE_BIT
-					  | IRQ2_POWER_OK_BIT
 					  | IRQ2_BATT_MISSING_BIT
 					  | IRQ2_VBAT_LOW_BIT);
 
@@ -4861,8 +4859,7 @@ static int smb135x_suspend(struct device *dev)
 		dev_err(chip->dev, "Couldn't set irq_cfg rc = %d\n", rc);
 
 	rc = smb135x_write(chip, IRQ2_CFG_REG, IRQ2_BATT_MISSING_BIT
-						| IRQ2_VBAT_LOW_BIT
-						| IRQ2_POWER_OK_BIT);
+						| IRQ2_VBAT_LOW_BIT);
 	if (rc < 0)
 		dev_err(chip->dev, "Couldn't set irq2_cfg rc = %d\n", rc);
 
