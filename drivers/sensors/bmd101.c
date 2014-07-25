@@ -55,6 +55,7 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 
 #define BMD101_CS_GPIO		53
 #define BMD101_RST_GPIO		55
+#define BMD101_filter_array		20
 
 static struct regulator *pm8921_l28;
 static struct sensors_classdev bmd101_cdev = {
@@ -75,13 +76,75 @@ struct bmd101_data *sensor_data;
 
 static int bmd101_data_report(int data)
 {
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s\n", __func__, data, sensor_data->status<2?"DROP":"REPORT");
-	if(sensor_data->status<2)
-		data=0;				//report 0 bpm to set sensor status to SENSOR_STATUS_NO_CONTACT
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: (%d) \n", __func__, data);
 	input_report_abs(sensor_data->input_dev, ABS_MISC, data);
 	input_sync(sensor_data->input_dev);
 
 	return 0;
+}
+
+static void bmd101_array_sorting(int *array, int min, int max)
+{
+	int i, j, temp, pivot;
+
+	if (min < max) {
+		pivot = min;
+		i = min;
+		j = max;
+
+		while (i <j) {
+			while ((array[i] <= array[pivot]) && (i<max))
+				i++;
+			while (array[j] > array[pivot])
+				j--;
+			if (i<j) {
+				temp = array[i];
+				array[i] = array[j];
+				array[j] = temp;
+			}
+		}
+
+		temp = array[pivot];
+		array[pivot] = array[j];
+		array[j] = temp;
+		bmd101_array_sorting(array, min, j-1);
+		bmd101_array_sorting(array, j+1, max);
+	}
+}
+
+static void bmd101_data_filter(int data, int reset)
+{
+	static int count = 0;
+	static int stable = 0;
+	static int bpm[BMD101_filter_array];
+	int calc_bpm;
+
+	if(reset) {
+		sensor_debug(DEBUG_INFO, "[bmd101] %s: reset\n", __func__);
+		count = 0;
+		stable = 0;
+		return;
+	}
+
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", count);
+	if(sensor_data->status<2)
+		bmd101_data_report(0);		//report 0 bpm to set sensor status to SENSOR_STATUS_NO_CONTACT
+	else if(stable<5)
+		stable++;
+	else {
+		if(count < BMD101_filter_array)
+			bpm[count++] = data;
+		else {
+			bmd101_array_sorting(bpm, 0, BMD101_filter_array);
+			calc_bpm = (bpm[BMD101_filter_array/2] + bpm[(BMD101_filter_array/2)+1] + bpm[(BMD101_filter_array/2)-1] + bpm[(BMD101_filter_array/2)+2] + bpm[(BMD101_filter_array/2)-2])/5;
+			bmd101_data_report(calc_bpm);
+			sensor_data->bpm = calc_bpm;
+			count = 0;
+			sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) REPORT\n", __func__, calc_bpm);
+		}
+	}
+
+	return;
 }
 
 static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int enable)
@@ -101,6 +164,7 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 			pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_CS_GPIO);
 			goto gpio_cs_fail;
 		}
+
 		rc = regulator_enable(pm8921_l28);
     		if (rc) {
 			pr_err("[bmd101] %s: regulator_enable of 8921_l28 failed(%d)\n", __func__, rc);
@@ -118,10 +182,12 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		gpio_direction_output(BMD101_RST_GPIO, 1);
 		msleep(100);
 
+		bmd101_data_filter(0, 1);			//reset filter
+
 		sensors_cdev->enabled = 1;
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensors_cdev->enabled);
 	}
-	else if (!enable && sensors_cdev->enabled) {	
+	else if (!enable && sensors_cdev->enabled) {
 		rc = regulator_disable(pm8921_l28);
     		if (rc) {
 			pr_err("%s: regulator_enable of 8921_l28 failed(%d)\n", __func__, rc);
@@ -132,6 +198,8 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		gpio_free(BMD101_CS_GPIO);
 		gpio_free(BMD101_RST_GPIO);
 		sensors_cdev->enabled = 0;
+
+		bmd101_data_filter(0, 1);			//reset filter
 
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensors_cdev->enabled);
 	}
@@ -151,6 +219,20 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 
 	return rc;
 }
+
+
+static ssize_t sensors_clear_filter_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 1))
+		return -EINVAL;
+
+	bmd101_data_filter(0, 1);
+
+	return size;
+}
+static DEVICE_ATTR(clear, S_IWUSR | S_IRUGO, NULL, sensors_clear_filter_store);
 
 //ASUS_BSP +++ Maggie_Lee "Add ATD interface"
 static ssize_t sensors_status_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -209,14 +291,14 @@ static ssize_t bmd101_store_bpm(struct device *dev, struct device_attribute *att
 
 	sensor_debug(DEBUG_INFO, "[bmd101] %s (%d)\n", __func__, (int)val);
 
-	bmd101_data_report((int)val);
-	sensor_data->bpm = val;
+	bmd101_data_filter((int)val, 0);
 
 	return size;
 }
 static DEVICE_ATTR(bpm, S_IWUSR | S_IRUGO, bmd101_show_bpm, bmd101_store_bpm);
 
 static struct attribute *bmd101_attributes[] = {
+	&dev_attr_clear.attr,			//clear filter interface
 	&dev_attr_status.attr,			//atd interface
 	&dev_attr_esd.attr,				//esd interface
 	&dev_attr_bpm.attr,
@@ -227,65 +309,15 @@ static const struct attribute_group bmd101_attr_group = {
 	.attrs = bmd101_attributes,
 };
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-static void bmd101_early_suspend(struct early_suspend *h)
+void notify_ecg_sensor_lowpowermode(int low)
 {
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 0);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++: (%s)\n", __func__, low?"enter":"exit");
+	if(low)
+		bmd101_enable_set(&sensor_data->cdev, 0);
+	else
+		bmd101_enable_set(&sensor_data->cdev, 1);
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
-
-static void bmd101_late_resume(struct early_suspend *h)
-{
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 1);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
-}
-
-struct early_suspend bmd101_early_suspend_handler = {
-    .level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN, 
-    .suspend = bmd101_early_suspend,
-    .resume = bmd101_late_resume,
-};
-#elif defined(CONFIG_FB)
-static void bmd101_early_suspend(void)
-{
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 0);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
-}
-
-static void bmd101_late_resume(void)
-{
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
-	bmd101_enable_set(&sensor_data->cdev, 1);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
-}
-
-static int bmd101_fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
-{
-	struct fb_event *evdata = data;
-	static int blank_old = 0;
-	int *blank;
-
-	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
-		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK) {
-			if (blank_old == FB_BLANK_POWERDOWN) {
-				blank_old = FB_BLANK_UNBLANK;
-				bmd101_late_resume();
-			}
-		} else if (*blank == FB_BLANK_POWERDOWN) {
-			if (blank_old == 0 || blank_old == FB_BLANK_UNBLANK) {
-				blank_old = FB_BLANK_POWERDOWN;
-				bmd101_early_suspend();
-			}
-		}
-	}
-
-	return 0;
-}
-#endif
 
 static int bmd101_input_init(void)
 {
@@ -347,15 +379,6 @@ static int bmd101_probe(struct platform_device *pdev)
 		pr_err("[BMD101] init input device failed: %d\n", ret);
 		goto input_init_fail;
 	}
-	
-	#if defined(CONFIG_HAS_EARLYSUSPEND)
-	register_early_suspend(&bmd101_early_suspend_handler);
-	#elif defined(CONFIG_FB)
-	bmd101_fb_notif.notifier_call = bmd101_fb_notifier_callback;
-	ret= fb_register_client(&bmd101_fb_notif);
-	if (ret)
-		dev_err(&pdev->dev, "Unable to register fb_notifier: %d\n", ret);
-	#endif
 
 	pm8921_l28 = regulator_get(&pdev->dev, bmd101_regulator);
 	if (IS_ERR(pm8921_l28)) {
@@ -370,7 +393,6 @@ static int bmd101_probe(struct platform_device *pdev)
 		goto reg_put_LDO28;
     	}
 
-	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: enable sensor +++\n", __func__);
 	bmd101_enable_set(&sensor_data->cdev, 1);
 	
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);

@@ -878,7 +878,8 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 }
 
 extern int enable_ambient(int enable);
-extern void notify_st_sensor_lowpowermode(int low);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+extern void notify_st_sensor_lowpowermode(int low);		//ASUS_BSP +++ Maggie_Lee "register st sensor for low power mode"
+extern void notify_ecg_sensor_lowpowermode(int low);	//ASUS_BSP +++ Maggie_Lee "register ecg sensor for low power mode"
 extern void notify_it7260_ts_lowpowermode(int low);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
 
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
@@ -915,12 +916,14 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		break;
 	case FB_BLANK_ENTER_NON_INTERACTIVE:
 		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_NON_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		notify_st_sensor_lowpowermode(1);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+		notify_st_sensor_lowpowermode(1);		//ASUS_BSP +++ Maggie_Lee "register st sensor for low power mode"
+		notify_ecg_sensor_lowpowermode(1);		//ASUS_BSP +++ Maggie_Lee "register ecg sensor for low power mode"
 		notify_it7260_ts_lowpowermode(1);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
 		return 0;
 		break;
 	case FB_BLANK_ENTER_INTERACTIVE:
-		notify_st_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
+		notify_st_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register st sensor for low power mode"
+		notify_ecg_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register ecg sensor for low power mode"
 		notify_it7260_ts_lowpowermode(0);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
 		return 0;
 		break;
