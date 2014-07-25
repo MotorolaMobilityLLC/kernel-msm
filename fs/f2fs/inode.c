@@ -272,7 +272,7 @@ void f2fs_evict_inode(struct inode *inode)
 
 	if (inode->i_ino == F2FS_NODE_INO(sbi) ||
 			inode->i_ino == F2FS_META_INO(sbi))
-		goto no_delete;
+		goto out_clear;
 
 	f2fs_bug_on(get_dirty_dents(inode));
 	remove_dirty_dir_inode(inode);
@@ -292,6 +292,7 @@ void f2fs_evict_inode(struct inode *inode)
 	f2fs_unlock_op(sbi);
 
 no_delete:
-	end_writeback(inode);
 	invalidate_mapping_pages(NODE_MAPPING(sbi), inode->i_ino, inode->i_ino);
+out_clear:
+	end_writeback(inode);
 }
