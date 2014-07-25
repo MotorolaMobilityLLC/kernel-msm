@@ -697,6 +697,11 @@ int dhd_monitor_uninit(void);
 struct iw_statistics *dhd_get_wireless_stats(struct net_device *dev);
 #endif /* defined(WL_WIRELESS_EXT) */
 
+#ifdef CONFIG_PM_LOCK
+/* Global variables */
+bool g_pm_control = FALSE;
+#endif
+
 static void dhd_dpc(ulong data);
 /* forward decl */
 extern int dhd_wait_pend8021x(struct net_device *dev);
@@ -4270,7 +4275,7 @@ bool dhd_validate_chipid(dhd_pub_t *dhdp)
 	config_chipid = BCM4334_CHIP_ID;
 #elif defined(BCM4330_CHIP)
 	config_chipid = BCM4330_CHIP_ID;
-#elif defined(BCM43430_CHIP) || defined(BCM4343_CHIP)
+#elif defined(BCM43430_CHIP)
 	config_chipid = BCM43430_CHIP_ID;
 #else
 	DHD_ERROR(("%s: Unknown chip id, if you use new chipset,"
@@ -4527,7 +4532,6 @@ dhd_get_concurrent_capabilites(dhd_pub_t *dhd)
 #include <linux/ctype.h>
 
 #define strtoul(nptr, endptr, base) bcm_strtoul((nptr), (endptr), (base))
-bool PM_control = TRUE;
 
 static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 {
@@ -4537,6 +4541,7 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 	char *endptr = NULL;
 	int iolen;
 	char smbuf[WLC_IOCTL_SMLEN*2];
+	int roam_trigger[2] = {CUSTOM_ROAM_TRIGGER_SETTING, WLC_BAND_ALL};
 #ifdef ROAM_AP_ENV_DETECTION
 	int roam_env_mode = AP_ENV_INDETERMINATE;
 #endif /* ROAM_AP_ENV_DETECTION */
@@ -4546,7 +4551,7 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 		if (revstr) {
 			cspec.rev = strtoul(revstr + 1, &endptr, 10);
 			memcpy(cspec.country_abbrev, value, WLC_CNTRY_BUF_SZ);
-			cspec.country_abbrev[2] = '\0';
+			cspec.country_abbrev[(revstr - value)] = '\0';
 			memcpy(cspec.ccode, cspec.country_abbrev, WLC_CNTRY_BUF_SZ);
 		} else {
 			cspec.rev = -1;
@@ -4600,6 +4605,8 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 	} else if (!strcmp(name, "PM")) {
 		int ret = 0;
 		var_int = (int)simple_strtol(value, NULL, 0);
+
+		g_pm_control = FALSE;
 
 		ret =  dhd_wl_ioctl_cmd(dhd, WLC_SET_PM,
 			&var_int, sizeof(var_int), TRUE, 0);
@@ -4675,12 +4682,47 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 		if (ret < 0) {
 			DHD_ERROR(("%s: can't set MAC address , error=%d\n", __FUNCTION__, ret));
 			return ret;
-		}
-		else {
+		} else {
 			memcpy(dhd->mac.octet, (void *)&ea, ETHER_ADDR_LEN);
 			return ret;
 		}
-	} else {
+	}
+	else if (!strcmp(name, "lpc")) {
+		int ret = 0;
+		char buf[32];
+		uint iovlen;
+		var_int = (int)simple_strtol(value, NULL, 0);
+		if (dhd_wl_ioctl_cmd(dhd, WLC_DOWN, NULL, 0, TRUE, 0) < 0) {
+			DHD_ERROR(("%s: wl down failed\n", __FUNCTION__));
+		}
+		iovlen=bcm_mkiovar("lpc", (char *)&var_int, 4, buf, sizeof(buf));
+		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, iovlen, TRUE, 0)) < 0) {
+			DHD_ERROR(("%s Set lpc failed  %d\n", __FUNCTION__, ret));
+		}
+		if (dhd_wl_ioctl_cmd(dhd, WLC_UP, NULL, 0, TRUE, 0) < 0) {
+			DHD_ERROR(("%s: wl up failed\n", __FUNCTION__));
+		}
+		return ret;
+	}
+	else if (!strcmp(name, "vht_features")) {
+		int ret = 0;
+		char buf[32];
+		uint iovlen;
+		var_int = (int)simple_strtol(value, NULL, 0);
+
+		if (dhd_wl_ioctl_cmd(dhd, WLC_DOWN, NULL, 0, TRUE, 0) < 0) {
+			DHD_ERROR(("%s: wl down failed\n", __FUNCTION__));
+		}
+		iovlen=bcm_mkiovar("vht_features", (char *)&var_int, 4, buf, sizeof(buf));
+		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, iovlen, TRUE, 0)) < 0) {
+			DHD_ERROR(("%s Set vht_features failed  %d\n", __FUNCTION__, ret));
+		}
+		if (dhd_wl_ioctl_cmd(dhd, WLC_UP, NULL, 0, TRUE, 0) < 0) {
+			DHD_ERROR(("%s: wl up failed\n", __FUNCTION__));
+		}
+		return ret;
+	}
+	else {
 		uint iovlen;
 		char iovbuf[WLC_IOCTL_SMLEN];
 

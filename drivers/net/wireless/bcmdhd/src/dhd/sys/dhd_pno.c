@@ -736,7 +736,7 @@ _dhd_pno_add_bssid(dhd_pub_t *dhd, wl_pfn_bssid_t *p_pfn_bssid, int nbssid)
 	if (nbssid) {
 		NULL_CHECK(p_pfn_bssid, "bssid list is NULL", err);
 	}
-	err = dhd_iovar(dhd, 0, "pfn_add_bssid", (char *)&p_pfn_bssid,
+	err = dhd_iovar(dhd, 0, "pfn_add_bssid", (char *)p_pfn_bssid,
 		sizeof(wl_pfn_bssid_t) * nbssid, 1);
 	if (err < 0) {
 		DHD_ERROR(("%s : failed to execute pfn_cfg\n", __FUNCTION__));

@@ -212,6 +212,9 @@ done:
 	return ret;
 }
 
+#if defined(CUSTOMER_HW10) && defined(CONFIG_PM_LOCK)
+extern bool g_pm_control;
+#endif
 
 static int
 dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8 action)
@@ -236,8 +239,15 @@ dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8
 		return -EIO;
 	}
 
-#ifdef CUSTOMER_HW4
+#if defined(CUSTOMER_HW4) || defined(CUSTOMER_HW10)
 	if (cmd == WLC_SET_PM) {
+#if defined(CONFIG_PM_LOCK)
+		if (g_pm_control == TRUE) {
+			DHD_ERROR(("%s: SET PM ignored!(Requested:%d)\n",
+				__FUNCTION__, *(char *)buf));
+			goto done;
+		}
+#endif
 		DHD_ERROR(("%s: SET PM to %d\n", __FUNCTION__, *(char *)buf));
 	}
 #endif /* CUSTOMER_HW4 */

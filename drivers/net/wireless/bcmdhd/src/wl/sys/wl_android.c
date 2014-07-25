@@ -221,6 +221,10 @@ typedef struct android_wifi_af_params {
 
 #define CMD_ROAM_OFFLOAD			"SETROAMOFFLOAD"
 
+#if defined(CUSTOMER_HW10) && defined(CONFIG_PM_LOCK)
+#define CMD_SETPMLOCK		"SETPMLOCK"
+#endif
+
 /* miracast related definition */
 #define MIRACAST_MODE_OFF	0
 #define MIRACAST_MODE_SOURCE	1
@@ -1118,6 +1122,27 @@ int wl_android_set_okc_mode(struct net_device *dev, char *command, int total_len
 }
 #endif /* WES_SUPPORT */
 #endif /* CUSTOMER_HW4 */
+
+#if defined(CUSTOMER_HW10) && defined(CONFIG_PM_LOCK)
+extern bool g_pm_control;
+int wl_android_set_pm_lock(struct net_device *dev, char *command, int total_len)
+{
+	int lock = 0;
+
+	if (sscanf(command, "%*s %d", &lock) != 1) {
+		DHD_ERROR(("%s: Failed to set Parameter\n", __FUNCTION__));
+		return -1;
+	}
+
+	if (lock == 1) {
+		g_pm_control = TRUE;
+	} else if (lock == 0) {
+		g_pm_control = FALSE;
+	}
+
+	return 0;
+}
+#endif	/* CUSTOMER_HW10 && CONFIG_PM_LOCK */
 
 #ifdef PNO_SUPPORT
 #define PNO_PARAM_SIZE 50
@@ -2807,6 +2832,12 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	}
 #endif /* WES_SUPPORT */
 #endif /* CUSTOMER_HW4 */
+
+#if defined(CUSTOMER_HW10) && defined(CONFIG_PM_LOCK)
+	else if (strnicmp(command, CMD_SETPMLOCK, strlen(CMD_SETPMLOCK)) == 0) {
+		bytes_written = wl_android_set_pm_lock(net, command, priv_cmd.total_len);
+	}
+#endif
 
 #ifdef PNO_SUPPORT
 	else if (strnicmp(command, CMD_PNOSSIDCLR_SET, strlen(CMD_PNOSSIDCLR_SET)) == 0) {

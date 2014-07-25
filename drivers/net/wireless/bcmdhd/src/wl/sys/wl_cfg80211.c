@@ -4439,6 +4439,13 @@ wl_cfg80211_get_key(struct wiphy *wiphy, struct net_device *dev,
 			WL_DBG(("WLAN_CIPHER_SUITE_SMS4\n"));
 			break;
 #endif
+#if defined(CUSTOMER_HW10) && defined(SUPPORT_SOFTAP_WPAWPA2_MIXED)
+		/* to connect to mixed mode AP */
+		case (AES_ENABLED | TKIP_ENABLED): /* TKIP CCMP */
+			params.cipher = WLAN_CIPHER_SUITE_AES_CMAC;
+			WL_DBG(("WLAN_CIPHER_SUITE_AES_CMAC, mixed mode \n"));
+			break;
+#endif
 		default:
 			WL_ERR(("Invalid algo (0x%x)\n", wsec));
 			return -EINVAL;
@@ -6029,7 +6036,7 @@ wl_validate_opensecurity(struct net_device *dev, s32 bssidx)
 		WL_ERR(("wsec error %d\n", err));
 		return BCME_ERROR;
 	}
-#endif /* CUSTOMER_HW10 */
+#endif /* !CUSTOMER_HW10 */
 
 	/* set upper-layer auth */
 	err = wldev_iovar_setint_bsscfg(dev, "wpa_auth", WPA_AUTH_NONE, bssidx);
@@ -6578,43 +6585,68 @@ wl_cfg80211_bcn_validate_sec(
 				cfg->ap_info->security_mode = false;
 				return BCME_ERROR;
 			}
-		}
-		else
-#endif /* SUPPORT_SOFTAP_WPAWPA2_MIXED */
-		if ((ies->wpa2_ie || ies->wpa_ie) &&
-			((wl_validate_wpa2ie(dev, ies->wpa2_ie, bssidx)  < 0 ||
-			wl_validate_wpaie(dev, ies->wpa_ie, bssidx) < 0))) {
-			cfg->ap_info->security_mode = false;
-			return BCME_ERROR;
-		}
-
-		cfg->ap_info->security_mode = true;
-		if (cfg->ap_info->rsn_ie) {
-			kfree(cfg->ap_info->rsn_ie);
-			cfg->ap_info->rsn_ie = NULL;
-		}
-		if (cfg->ap_info->wpa_ie) {
-			kfree(cfg->ap_info->wpa_ie);
-			cfg->ap_info->wpa_ie = NULL;
-		}
-		if (cfg->ap_info->wps_ie) {
-			kfree(cfg->ap_info->wps_ie);
-			cfg->ap_info->wps_ie = NULL;
-		}
-		if (ies->wpa_ie != NULL) {
+#ifdef CUSTOMER_HW10
+			cfg->ap_info->security_mode = true;
+			if (cfg->ap_info->rsn_ie) {
+				kfree(cfg->ap_info->rsn_ie);
+				cfg->ap_info->rsn_ie = NULL;
+			}
+			if (cfg->ap_info->wpa_ie) {
+				kfree(cfg->ap_info->wpa_ie);
+				cfg->ap_info->wpa_ie = NULL;
+			}
+			if (cfg->ap_info->wps_ie) {
+				kfree(cfg->ap_info->wps_ie);
+				cfg->ap_info->wps_ie = NULL;
+			}
 			/* WPAIE */
-			cfg->ap_info->rsn_ie = NULL;
 			cfg->ap_info->wpa_ie = kmemdup(ies->wpa_ie,
 				ies->wpa_ie->length + WPA_RSN_IE_TAG_FIXED_LEN,
 				GFP_KERNEL);
-		} else if (ies->wpa2_ie != NULL) {
 			/* RSNIE */
-			cfg->ap_info->wpa_ie = NULL;
 			cfg->ap_info->rsn_ie = kmemdup(ies->wpa2_ie,
 				ies->wpa2_ie->len + WPA_RSN_IE_TAG_FIXED_LEN,
 				GFP_KERNEL);
+#endif	/* CUSTOMER_HW10 */
 		}
+		else {
+#endif /* SUPPORT_SOFTAP_WPAWPA2_MIXED */
+			if ((ies->wpa2_ie || ies->wpa_ie) &&
+				((wl_validate_wpa2ie(dev, ies->wpa2_ie, bssidx)  < 0 ||
+				wl_validate_wpaie(dev, ies->wpa_ie, bssidx) < 0))) {
+				cfg->ap_info->security_mode = false;
+				return BCME_ERROR;
+			}
 
+			cfg->ap_info->security_mode = true;
+			if (cfg->ap_info->rsn_ie) {
+				kfree(cfg->ap_info->rsn_ie);
+				cfg->ap_info->rsn_ie = NULL;
+			}
+			if (cfg->ap_info->wpa_ie) {
+				kfree(cfg->ap_info->wpa_ie);
+				cfg->ap_info->wpa_ie = NULL;
+			}
+			if (cfg->ap_info->wps_ie) {
+				kfree(cfg->ap_info->wps_ie);
+				cfg->ap_info->wps_ie = NULL;
+			}
+			if (ies->wpa_ie != NULL) {
+				/* WPAIE */
+				cfg->ap_info->rsn_ie = NULL;
+				cfg->ap_info->wpa_ie = kmemdup(ies->wpa_ie,
+					ies->wpa_ie->length + WPA_RSN_IE_TAG_FIXED_LEN,
+					GFP_KERNEL);
+			} else if (ies->wpa2_ie != NULL) {
+				/* RSNIE */
+				cfg->ap_info->wpa_ie = NULL;
+				cfg->ap_info->rsn_ie = kmemdup(ies->wpa2_ie,
+					ies->wpa2_ie->len + WPA_RSN_IE_TAG_FIXED_LEN,
+					GFP_KERNEL);
+			}
+#ifdef SUPPORT_SOFTAP_WPAWPA2_MIXED
+		}
+#endif
 		if (!ies->wpa2_ie && !ies->wpa_ie) {
 			wl_validate_opensecurity(dev, bssidx);
 			cfg->ap_info->security_mode = false;
@@ -10497,6 +10529,9 @@ static void wl_deinit_priv(struct bcm_cfg80211 *cfg)
 	wl_flush_eq(cfg);
 	wl_link_down(cfg);
 	del_timer_sync(&cfg->scan_timeout);
+#ifdef CUSTOMER_HW10
+	cancel_delayed_work_sync(&cfg->pm_enable_work);
+#endif /* CUSTOMER_HW10 */
 	wl_deinit_priv_mem(cfg);
 	if (wl_cfg80211_netdev_notifier_registered) {
 		wl_cfg80211_netdev_notifier_registered = FALSE;
