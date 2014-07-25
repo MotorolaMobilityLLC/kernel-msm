@@ -233,7 +233,7 @@ static bool hdcp_enable_condition_ready(void)
 	if (hdcp_context == NULL) {
 		pr_err("hdcp: hdcp_context is NULL\n");
 	} else {
-		pr_err("hdcp: condition not ready, required %d, hpd %d\n",
+		pr_debug("hdcp: condition not ready, required %d, hpd %d\n",
 			hdcp_context->is_required, hdcp_context->hpd);
 	}
 
