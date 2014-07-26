@@ -703,8 +703,7 @@ int mdss_iommu_ctrl(int enable)
 		__builtin_return_address(0), enable, mdata->iommu_ref_cnt);
 
 	if (enable) {
-
-		if (mdata->iommu_ref_cnt == 0)
+		if (!mdata->iommu_attached && !mdata->handoff_pending)
 			rc = mdss_iommu_attach(mdata);
 		mdata->iommu_ref_cnt++;
 	} else {
