@@ -919,61 +919,6 @@ static int mdss_mdp_overlay_set(struct msm_fb_data_type *mfd,
 	return ret;
 }
 
-int mdss_mdp_overlay_get_buf(struct msm_fb_data_type *mfd,
-					   struct mdss_mdp_data *data,
-					   struct msmfb_data *planes,
-					   int num_planes,
-					   u32 flags)
-{
-	int i, rc;
-
-	if ((num_planes <= 0) || (num_planes > MAX_PLANES))
-		return -EINVAL;
-
-	rc = mdss_bus_bandwidth_ctrl(1);
-	if (rc)
-		goto end;
-
-	memset(data, 0, sizeof(*data));
-	for (i = 0; i < num_planes; i++) {
-		data->p[i].flags = flags;
-		rc = mdss_mdp_get_img(&planes[i], &data->p[i]);
-		if (rc) {
-			pr_err("failed to map buf p=%d flags=%x\n", i, flags);
-			while (i > 0) {
-				i--;
-				mdss_mdp_put_img(&data->p[i]);
-			}
-			break;
-		}
-	}
-	mdss_bus_bandwidth_ctrl(0);
-
-	data->num_planes = i;
-
-end:
-	return rc;
-}
-
-int mdss_mdp_overlay_free_buf(struct mdss_mdp_data *data)
-{
-	int i;
-	int rc;
-
-	rc = mdss_bus_bandwidth_ctrl(1);
-	if (rc)
-		goto end;
-
-	for (i = 0; i < data->num_planes && data->p[i].len; i++)
-		mdss_mdp_put_img(&data->p[i]);
-	mdss_bus_bandwidth_ctrl(0);
-
-	data->num_planes = 0;
-
-end:
-	return rc;
-}
-
 /**
  * __mdss_mdp_overlay_free_list_purge() - clear free list of buffers
  * @mfd:	Msm frame buffer data structure for the associated fb
@@ -987,7 +932,7 @@ static void __mdss_mdp_overlay_free_list_purge(struct msm_fb_data_type *mfd)
 
 	pr_debug("purging fb%d free list\n", mfd->index);
 	for (i = 0; i < mdp5_data->free_list_size; i++)
-		mdss_mdp_overlay_free_buf(&mdp5_data->free_list[i]);
+		mdss_mdp_data_free(&mdp5_data->free_list[i]);
 	mdp5_data->free_list_size = 0;
 }
 
@@ -1065,10 +1010,10 @@ static void mdss_mdp_overlay_cleanup(struct msm_fb_data_type *mfd)
 		 * soon as session is closed.
 		 */
 		if (pipe->flags & MDP_SECURE_DISPLAY_OVERLAY_SESSION)
-			mdss_mdp_overlay_free_buf(&pipe->front_buf);
+			mdss_mdp_data_free(&pipe->front_buf);
 		else
 			__mdss_mdp_overlay_free_list_add(mfd, &pipe->front_buf);
-		mdss_mdp_overlay_free_buf(&pipe->back_buf);
+		mdss_mdp_data_free(&pipe->back_buf);
 		list_del_init(&pipe->list);
 		mdss_mdp_pipe_destroy(pipe);
 	}
@@ -1263,6 +1208,8 @@ static int __overlay_queue_pipes(struct msm_fb_data_type *mfd)
 
 		if (pipe->back_buf.num_planes) {
 			buf = &pipe->back_buf;
+
+			ret = mdss_mdp_data_map(buf);
 		} else if (!pipe->params_changed) {
 			continue;
 		} else if (pipe->front_buf.num_planes) {
@@ -1273,7 +1220,9 @@ static int __overlay_queue_pipes(struct msm_fb_data_type *mfd)
 			buf = NULL;
 		}
 
-		ret = mdss_mdp_pipe_queue_data(pipe, buf);
+		if (!IS_ERR_VALUE(ret))
+			ret = mdss_mdp_pipe_queue_data(pipe, buf);
+
 		if (IS_ERR_VALUE(ret)) {
 			pr_warn("Unable to queue data for pnum=%d\n",
 					pipe->num);
@@ -1350,6 +1299,15 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 		mutex_lock(ctl->shared_lock);
 
 	mutex_lock(&mdp5_data->ov_lock);
+	ret = mdss_mdp_overlay_start(mfd);
+	if (ret) {
+		pr_err("unable to start overlay %d (%d)\n", mfd->index, ret);
+		mutex_unlock(&mdp5_data->ov_lock);
+		if (ctl->shared_lock)
+			mutex_unlock(ctl->shared_lock);
+		return ret;
+	}
+
 	mutex_lock(&mdp5_data->list_lock);
 
 	/*
@@ -1469,6 +1427,7 @@ commit_fail:
 	if (ctl->shared_lock)
 		mutex_unlock(ctl->shared_lock);
 	ATRACE_END(__func__);
+
 	return ret;
 }
 
@@ -1677,13 +1636,12 @@ static int mdss_mdp_overlay_queue(struct msm_fb_data_type *mfd,
 	if (src_data->num_planes) {
 		pr_warn("dropped buffer pnum=%d play=%d addr=0x%pa\n",
 			pipe->num, pipe->play_cnt, &src_data->p[0].addr);
-		mdss_mdp_overlay_free_buf(src_data);
+		mdss_mdp_data_free(src_data);
 	}
 
-	ret = mdss_mdp_overlay_get_buf(mfd, src_data, &req->data, 1, flags);
-	if (IS_ERR_VALUE(ret)) {
+	ret = mdss_mdp_data_get(src_data, &req->data, 1, flags);
+	if (IS_ERR_VALUE(ret))
 		pr_err("src_data pmem error\n");
-	}
 
 	pipe->has_buf = !ret;
 
@@ -1707,12 +1665,6 @@ static int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
 
 	if (!mfd->panel_power_on) {
 		ret = -EPERM;
-		goto done;
-	}
-
-	ret = mdss_mdp_overlay_start(mfd);
-	if (ret) {
-		pr_err("unable to start overlay %d (%d)\n", mfd->index, ret);
 		goto done;
 	}
 

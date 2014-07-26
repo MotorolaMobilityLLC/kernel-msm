@@ -412,6 +412,7 @@ static struct mdss_mdp_wb_data *get_user_node(struct msm_fb_data_type *mfd,
 	struct mdss_mdp_wb *wb = mfd_to_wb(mfd);
 	struct mdss_mdp_wb_data *node;
 	struct mdss_mdp_img_data *buf;
+	u32 flags = 0;
 	int ret;
 
 	if (!list_empty(&wb->register_queue)) {
@@ -432,15 +433,22 @@ static struct mdss_mdp_wb_data *get_user_node(struct msm_fb_data_type *mfd,
 	}
 
 	node->user_alloc = true;
-	node->buf_data.num_planes = 1;
-	buf = &node->buf_data.p[0];
 	if (wb->is_secure)
-		buf->flags |= MDP_SECURE_OVERLAY_SESSION;
-	ret = mdss_mdp_get_img(data, buf);
+		flags |= MDP_SECURE_OVERLAY_SESSION;
+
+
+	ret = mdss_mdp_data_get(&node->buf_data, data, 1, flags);
 	if (IS_ERR_VALUE(ret)) {
 		pr_err("error getting buffer info\n");
 		goto register_fail;
 	}
+
+	ret = mdss_mdp_data_map(&node->buf_data);
+	if (IS_ERR_VALUE(ret)) {
+		pr_err("error mapping buffer\n");
+		goto register_fail;
+	}
+
 	memcpy(&node->buf_info, data, sizeof(*data));
 
 	ret = mdss_mdp_wb_register_node(wb, node);
@@ -449,7 +457,8 @@ static struct mdss_mdp_wb_data *get_user_node(struct msm_fb_data_type *mfd,
 		goto register_fail;
 	}
 
-	pr_debug("register node mem_id=%d offset=%u addr=0x%pa len=%d\n",
+	buf = &node->buf_data.p[0];
+	pr_debug("register node mem_id=%d offset=%u addr=0x%pa len=%lu\n",
 		 data->memory_id, data->offset, &buf->addr, buf->len);
 
 	return node;
@@ -470,7 +479,7 @@ static void mdss_mdp_wb_free_node(struct mdss_mdp_wb_data *node)
 				node->buf_info.offset,
 				&buf->addr);
 
-		mdss_mdp_put_img(&node->buf_data.p[0]);
+		mdss_mdp_data_free(&node->buf_data);
 		node->user_alloc = false;
 	}
 }
@@ -584,7 +593,7 @@ static int mdss_mdp_wb_dequeue(struct msm_fb_data_type *mfd,
 		memcpy(data, &node->buf_info, sizeof(*data));
 
 		buf = &node->buf_data.p[0];
-		pr_debug("found node addr=%pa len=%d\n", &buf->addr, buf->len);
+		pr_debug("found node addr=%pa len=%ld\n", &buf->addr, buf->len);
 	} else {
 		pr_debug("node is NULL, wait for next\n");
 		ret = -ENOBUFS;
@@ -756,9 +765,7 @@ int mdss_mdp_wb_ioctl_handler(struct msm_fb_data_type *mfd, u32 cmd,
 		}
 		break;
 	case MSMFB_WRITEBACK_TERMINATE:
-		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 		ret = mdss_mdp_wb_terminate(mfd);
-		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 		break;
 	case MSMFB_WRITEBACK_SET_MIRRORING_HINT:
 		if (!copy_from_user(&hint, arg, sizeof(hint))) {
