@@ -464,3 +464,16 @@ int  wpalIsWDresetInProgress(void)
    return isWDresetInProgress();
 }
 
+/*---------------------------------------------------------------------------
+    wpalIsSsrPanicOnFailure -  calls vos API isSsrPanicOnFailure()
+
+    Param:
+       NONE
+    Return:
+       STATUS
+ ---------------------------------------------------------------------------*/
+int  wpalIsSsrPanicOnFailure(void)
+{
+   return isSsrPanicOnFailure();
+}
+
