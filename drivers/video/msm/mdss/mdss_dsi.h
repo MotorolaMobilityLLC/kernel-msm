@@ -310,6 +310,8 @@ struct mdss_dsi_ctrl_pdata {
 	struct mutex cmd_mutex;
 
 	bool ulps;
+	bool core_power;
+	bool mmss_clamp;
 
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
@@ -374,7 +376,8 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
 bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
-int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl, int enable);
+void mdss_dsi_reset(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_ctrl_setup(struct mdss_panel_data *pdata);
 
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
