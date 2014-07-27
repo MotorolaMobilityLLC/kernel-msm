@@ -199,6 +199,12 @@
 #define CFG_ENABLE_IMPS_MAX                    ( 1 )
 #define CFG_ENABLE_IMPS_DEFAULT                ( 1 )
 
+//SSR = SubSytemRestart
+#define CFG_SSR_PANIC_ON_FAILURE_NAME          "gSsrPanicOnFailure"
+#define CFG_SSR_PANIC_ON_FAILURE_MIN           ( 0 )
+#define CFG_SSR_PANIC_ON_FAILURE_MAX           ( 1 )
+#define CFG_SSR_PANIC_ON_FAILURE_DEFAULT       ( 0 )
+
 #define CFG_IMPS_MINIMUM_SLEEP_TIME_NAME       "gImpsMinSleepTime" 
 #define CFG_IMPS_MINIMUM_SLEEP_TIME_MIN        ( 0 )
 #define CFG_IMPS_MINIMUM_SLEEP_TIME_MAX        ( 65535 )
@@ -2274,6 +2280,7 @@ typedef struct
    v_U8_t        nEnableSuspend;
    v_U8_t        nEnableDriverStop;
    v_BOOL_t      fIsImpsEnabled;
+   v_BOOL_t      fIsSsrPanicOnFailure;
    v_BOOL_t      fIsLogpEnabled;
    v_U8_t        btcExecutionMode;
    v_U8_t        btcConsBtSlotsToBlockDuringDhcp;

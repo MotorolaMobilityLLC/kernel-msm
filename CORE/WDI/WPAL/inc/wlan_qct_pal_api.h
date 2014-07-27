@@ -364,4 +364,14 @@ void wpalDevicePanic(void);
        STATUS
 --------------------------------------------------------------------------*/
 int  wpalIsWDresetInProgress(void);
+
+/*---------------------------------------------------------------------------
+    wpalIsSsrPanicOnFailure -  calls vos API isSsrPanicOnFailure()
+
+    Param:
+       NONE
+    Return:
+       STATUS
+--------------------------------------------------------------------------*/
+int  wpalIsSsrPanicOnFailure(void);
 #endif // __WLAN_QCT_PAL_API_H

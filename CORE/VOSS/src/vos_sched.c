@@ -637,6 +637,31 @@ v_BOOL_t isWDresetInProgress(void)
       return FALSE;
    }
 }
+
+v_BOOL_t isSsrPanicOnFailure(void)
+{
+    hdd_context_t *pHddCtx = NULL;
+    v_CONTEXT_t pVosContext = NULL;
+
+    /* Get the Global VOSS Context */
+    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+    if(!pVosContext)
+    {
+      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: Global VOS context is Null", __func__);
+      return FALSE;
+    }
+
+    /* Get the HDD context */
+    pHddCtx = (hdd_context_t *)vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
+    if((NULL == pHddCtx) || (NULL == pHddCtx->cfg_ini))
+    {
+      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: HDD context is Null", __func__);
+      return FALSE;
+    }
+
+    return (pHddCtx->cfg_ini->fIsSsrPanicOnFailure);
+}
+
 /*---------------------------------------------------------------------------
   \brief VosWdThread() - The VOSS Watchdog thread
   The \a VosWdThread() is the Watchdog thread:
@@ -790,7 +815,11 @@ VosWDThread
           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                   "%s: Failed to re-init WLAN",__func__);
           VOS_ASSERT(0);
-          goto err_reset;
+          pWdContext->isFatalError = true;
+        }
+        else
+        {
+          pWdContext->isFatalError = false;
         }
         atomic_set(&pHddCtx->isRestartInProgress, 0);
         pWdContext->resetInProgress = false;
@@ -1820,6 +1849,14 @@ VOS_STATUS vos_watchdog_wlan_shutdown(void)
 {
     v_CONTEXT_t pVosContext = NULL;
     hdd_context_t *pHddCtx = NULL;
+
+    if (gpVosWatchdogContext->isFatalError)
+    {
+       /* If we hit this, it means wlan driver is in bad state and needs
+       * driver unload and load.
+       */
+       return VOS_STATUS_E_FAILURE;
+    }
 
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
         "%s: WLAN driver is shutting down ", __func__);
