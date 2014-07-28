@@ -50,6 +50,9 @@
 #define FSA8500_RESET_CONTROL		0x15
 #define FSA8500_RESERVED_REG		0x16
 
+#define FSA8500_ACCESSORY_1		0x01
+#define FSA8500_ACCESSORY_2		0x02
+#define FSA8500_ACCESSORY_3		0x04
 
 /* Number of registers */
 
