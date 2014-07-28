@@ -465,7 +465,28 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		return -ENOTSUPP;
 	}
 
-	if (enable && !ctrl_pdata->ulps) {
+	mutex_lock(&ctrl_pdata->ulps_lock);
+
+	/*
+	 * ulps_ref_count: holds ulps states supporting nested ulps control
+	 * (initial: 1 -> ulps disabled)
+	 * 0: ulps enabled...
+	 * >= 1: ulps disabled
+	 */
+
+	if (enable && ctrl_pdata->ulps_ref_count < 1) {
+		pr_err("%s: Try to enable ulps which has not been disabled"
+			"count = %d\n", __func__, ctrl_pdata->ulps_ref_count);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	if (enable)
+		ctrl_pdata->ulps_ref_count--;
+	else
+		ctrl_pdata->ulps_ref_count++;
+
+	if (enable && ctrl_pdata->ulps_ref_count == 0) {
 		/* No need to configure ULPS mode when entering suspend state */
 		if (!pdata->panel_info.panel_power_on) {
 			pr_err("%s: panel off. returning\n", __func__);
@@ -527,7 +548,7 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
 		ctrl_pdata->ulps = true;
-	} else if (ctrl_pdata->ulps) {
+	} else if (!enable && ctrl_pdata->ulps_ref_count == 1) {
 		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
 		if (ret) {
 			pr_err("%s: Failed to enable bus clocks. rc=%d\n",
@@ -590,6 +611,9 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		lane_status, enable ? "enabled" : "disabled");
 
 error:
+
+	mutex_unlock(&ctrl_pdata->ulps_lock);
+
 	return ret;
 }
 
@@ -1275,6 +1299,9 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	}
 
 	cmd_cfg_cont_splash = mdss_panel_get_boot_cfg() ? true : false;
+
+	mutex_init(&ctrl_pdata->ulps_lock);
+	ctrl_pdata->ulps_ref_count = 1;	/* default: 1 -> ulps disable */
 
 	rc = mdss_dsi_panel_init(dsi_pan_node, ctrl_pdata, cmd_cfg_cont_splash);
 	if (rc) {
