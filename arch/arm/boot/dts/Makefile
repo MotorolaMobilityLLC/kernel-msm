@@ -95,7 +95,8 @@ dtb-$(CONFIG_MACH_DORY) += apq8026-dory-rev-11.dtb \
 	apq8026-dory-rev-b.dtb \
 	apq8026-dory-rev-a.dtb \
 	apq8026-dory-lunchbox.dtb
-dtb-$(CONFIG_MACH_LENOK) += apq8026-lenok-rev-b.dtb \
+dtb-$(CONFIG_MACH_LENOK) += apq8026-lenok-rev-10.dtb \
+	apq8026-lenok-rev-b.dtb \
 	apq8026-lenok-rev-evb2.dtb \
 	apq8026-lenok-rev-evb1.dtb
 dtb-$(CONFIG_ARCH_MVEBU) += armada-370-db.dtb \
