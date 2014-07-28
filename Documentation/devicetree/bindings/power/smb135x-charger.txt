@@ -57,6 +57,8 @@ Optional Properties:
 				Valid range 300mA to 2500mA.
 - qcom,ext-temp-volt-mv		Extended Temperature Voltage level used for Cool Range.
 - qcom,ext-temp-soc		Extended Temperature SOc level used for Warm Range.
+- qcom,low-voltage-uv		Low voltage threshold for which notification is requested.
+- qcom,max-voltage-uv		High voltage threshold for which notification is requested.
 
 Example:
 	i2c@f9967000 {
