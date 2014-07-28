@@ -26,6 +26,9 @@
 DEFINE_MSM_MUTEX(mt9v113_mut);
 static struct msm_sensor_ctrl_t MT9V113_s_ctrl;
 struct clk *mt9v113_cam_mclk[2];
+/* This is needed for factory check */
+static int mt9v113_detected;
+module_param(mt9v113_detected, int, 0444);
 
 static struct msm_sensor_power_setting MT9V113_power_setting[] = {
 	{
@@ -607,6 +610,13 @@ static int32_t MT9V113_platform_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	match = of_match_device(MT9V113_dt_match, &pdev->dev);
 	rc = msm_sensor_platform_probe(pdev, match->data);
+	if (rc) {
+		pr_err("%s: mt9v113 does not exist!\n", __func__);
+		mt9v113_detected = 0;
+	} else{
+		pr_err("%s: mt9v113 probe succeeded!\n", __func__);
+		mt9v113_detected = 1;
+	}
 	return rc;
 }
 
