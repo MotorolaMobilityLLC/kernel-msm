@@ -28,6 +28,7 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/reboot.h>
+#include <linux/qpnp/qpnp-adc.h>
 
 #define SMB135X_BITS_PER_REG	8
 
@@ -415,12 +416,20 @@ struct smb135x_chg {
 	struct notifier_block		smb_reboot;
 	int				ir_comp_mv;
 	bool				invalid_battery;
+	struct qpnp_adc_tm_btm_param	vbat_monitor_params;
+	struct qpnp_adc_tm_chip		*adc_tm_dev;
+	struct qpnp_vadc_chip		*vadc_dev;
+	unsigned int			low_voltage_uv;
+	unsigned int                    max_voltage_uv;
+	bool				shutdown_voltage_tripped;
+	bool				poll_fast;
 };
 
 static struct smb135x_chg *the_chip;
 
 static int smb135x_float_voltage_set(struct smb135x_chg *chip, int vfloat_mv);
 static int handle_usb_removal(struct smb135x_chg *chip);
+static int smb135x_setup_vbat_monitoring(struct smb135x_chg *chip);
 
 static void smb_stay_awake(struct smb_wakeup_source *source)
 {
@@ -810,6 +819,21 @@ force_apsd_err:
 	return rc;
 }
 
+static int smb135x_reset_vbat_monitoring(struct smb135x_chg *chip)
+{
+	int rc = 0;
+
+	chip->vbat_monitor_params.state_request = ADC_TM_HIGH_LOW_THR_DISABLE;
+
+	rc = qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+					 &chip->vbat_monitor_params);
+
+	if (rc)
+		dev_err(chip->dev, "tm disable failed: %d\n", rc);
+
+	return rc;
+}
+
 static int smb135x_get_prop_batt_status(struct smb135x_chg *chip)
 {
 	int rc;
@@ -851,14 +875,23 @@ static int smb135x_get_prop_batt_present(struct smb135x_chg *chip)
 {
 	int rc;
 	u8 reg;
+	bool prev_batt_status;
+
+	prev_batt_status = chip->batt_present;
 
 	rc = smb135x_read(chip, STATUS_4_REG, &reg);
 	if (rc < 0)
-		return 0;
+		chip->batt_present = false;
 
 	/* treat battery gone if less than 2V */
 	if (reg & BATT_LESS_THAN_2V)
-		return 0;
+		chip->batt_present = false;
+	else
+		chip->batt_present = true;
+
+	if ((prev_batt_status != chip->batt_present) &&
+	    (!prev_batt_status))
+		smb135x_reset_vbat_monitoring(chip);
 
 	return chip->batt_present;
 }
@@ -895,6 +928,10 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip)
 
 	if (chip->fake_battery_soc >= 0)
 		return chip->fake_battery_soc;
+
+	if (chip->shutdown_voltage_tripped)
+		return 0;
+
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, &ret);
@@ -962,7 +999,8 @@ static int smb135x_set_prop_batt_health(struct smb135x_chg *chip, int health)
 	return 0;
 }
 
-static int smb135x_get_prop_batt_voltage_now(struct smb135x_chg *chip, int *volt_mv)
+static int smb135x_get_prop_batt_voltage_now(struct smb135x_chg *chip,
+					     int *volt_mv)
 {
 	union power_supply_propval ret = {0, };
 
@@ -2046,7 +2084,7 @@ static int smb135x_float_voltage_set(struct smb135x_chg *chip, int vfloat_mv)
 	temp = 0;
 	rc = smb135x_read(chip, VFLOAT_REG, &temp);
 	if ((rc >= 0) && ((temp & VFLOAT_MASK) > VHIGH_RANGE_FLOAT_MIN_VAL)) {
-		dev_err(chip->dev, "bad float voltage set mv =%d \n",
+		dev_err(chip->dev, "bad float voltage set mv =%d\n",
 			temp);
 		chip->invalid_battery = true;
 		smb135x_temp_charging(chip, 0);
@@ -2468,9 +2506,8 @@ static void usb_insertion_work(struct work_struct *work)
 	int rc;
 
 	rc = smb135x_force_apsd(chip);
-	if (rc < 0) {
+	if (rc < 0)
 		dev_err(chip->dev, "Couldn't rerun apsd rc = %d\n", rc);
-	}
 
 	smb_relax(&chip->smb_wake_source);
 }
@@ -2504,11 +2541,20 @@ static void heartbeat_work(struct work_struct *work)
 				heartbeat_work.work);
 	int batt_health = smb135x_get_prop_batt_health(chip);
 	int batt_soc = smb135x_get_prop_batt_capacity(chip);
+	bool poll_status = chip->poll_fast;
 
 	dev_dbg(chip->dev, "HB Pound!\n");
 
 	get_monotonic_boottime(&bootup_time);
 	float_timestamp = bootup_time.tv_sec;
+
+	if (batt_soc < 20)
+		chip->poll_fast = true;
+	else
+		chip->poll_fast = false;
+
+	if (poll_status != chip->poll_fast)
+		smb135x_setup_vbat_monitoring(chip);
 
 	usb_present = is_usb_plugged_in(chip);
 
@@ -2966,6 +3012,73 @@ static int usbin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 		power_supply_set_health_state(chip->usb_psy, health);
 	}
 
+	return 0;
+}
+
+static void smb135x_notify_vbat(enum qpnp_tm_state state, void *ctx)
+{
+	struct smb135x_chg *chip = ctx;
+	struct qpnp_vadc_result result;
+	int batt_volt;
+	int rc;
+
+	pr_err("shutdown voltage tripped\n");
+
+	rc = qpnp_vadc_read(chip->vadc_dev, VSYS, &result);
+	pr_info("vbat = %lld, raw = 0x%x\n",
+		result.physical, result.adc_code);
+
+	smb135x_get_prop_batt_voltage_now(chip, &batt_volt);
+	pr_info("vbat is at %d, state is at %d\n",
+		 batt_volt, state);
+
+	if (state == ADC_TM_LOW_STATE)
+		chip->shutdown_voltage_tripped = true;
+	else
+		qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+					    &chip->vbat_monitor_params);
+
+	power_supply_changed(&chip->batt_psy);
+}
+
+static int smb135x_setup_vbat_monitoring(struct smb135x_chg *chip)
+{
+	int rc;
+
+	chip->vbat_monitor_params.low_thr = chip->low_voltage_uv;
+	chip->vbat_monitor_params.high_thr = chip->max_voltage_uv * 2;
+
+	chip->vbat_monitor_params.state_request = ADC_TM_HIGH_LOW_THR_ENABLE;
+	chip->vbat_monitor_params.channel = VSYS;
+	chip->vbat_monitor_params.btm_ctx = (void *)chip;
+
+	if (chip->poll_fast) { /* the adc polling rate is higher*/
+		chip->vbat_monitor_params.timer_interval =
+			ADC_MEAS1_INTERVAL_31P3MS;
+	} else /* adc polling rate is default*/ {
+		chip->vbat_monitor_params.timer_interval =
+			ADC_MEAS1_INTERVAL_1S;
+	}
+
+	chip->vbat_monitor_params.threshold_notification = &smb135x_notify_vbat;
+	dev_info(chip->dev, "set low thr to %d and high to %d\n",
+		 chip->vbat_monitor_params.low_thr,
+		 chip->vbat_monitor_params.high_thr);
+
+	if (!smb135x_get_prop_batt_present(chip)) {
+		pr_info("no battery inserted, vbat monitoring disabled\n");
+		chip->vbat_monitor_params.state_request =
+			ADC_TM_HIGH_LOW_THR_DISABLE;
+	} else {
+		rc = qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+						 &chip->vbat_monitor_params);
+		if (rc) {
+			dev_err(chip->dev, "tm setup failed: %d\n", rc);
+			return rc;
+		}
+	}
+
+	pr_info("vbat monitoring setup complete\n");
 	return 0;
 }
 
@@ -4130,16 +4243,31 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 	if (rc < 0)
 		chip->ir_comp_mv = -EINVAL;
 
-	rc = of_property_read_u32(node, "qcom,ext-temp-volt-mv", &chip->ext_temp_volt_mv);
+	rc = of_property_read_u32(node, "qcom,ext-temp-volt-mv",
+				  &chip->ext_temp_volt_mv);
+
+	rc = of_property_read_u32(node, "qcom,ext-temp-volt-mv",
+				  &chip->ext_temp_volt_mv);
 	if (rc < 0)
 		chip->ext_temp_volt_mv = 0;
 
-	rc = of_property_read_u32(node, "qcom,ext-temp-soc", &chip->ext_temp_soc);
+	rc = of_property_read_u32(node, "qcom,ext-temp-soc",
+				  &chip->ext_temp_soc);
 	if (rc < 0)
 		chip->ext_temp_soc = 0;
 
 	chip->aicl_disabled = of_property_read_bool(node,
 						    "qcom,aicl-disabled");
+
+	rc = of_property_read_u32(node, "qcom,low-voltage-uv",
+				  &chip->low_voltage_uv);
+	if (rc < 0)
+		chip->low_voltage_uv = 2750000;
+
+	rc = of_property_read_u32(node, "qcom,max-voltage-uv",
+				  &chip->max_voltage_uv);
+	if (rc < 0)
+		chip->max_voltage_uv = 4350000;
 
 	chip->iterm_disabled = of_property_read_bool(node,
 						"qcom,iterm-disabled");
@@ -4700,6 +4828,8 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NONE;
 	chip->aicl_weak_detect = false;
 	chip->invalid_battery = false;
+	chip->shutdown_voltage_tripped = false;
+	chip->poll_fast = false;
 
 	wakeup_source_init(&chip->smb_wake_source.source, "smb135x_wake");
 	INIT_DELAYED_WORK(&chip->wireless_insertion_work,
@@ -4739,6 +4869,24 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	}
 
 	dump_regs(chip);
+
+	chip->vadc_dev = qpnp_get_vadc(chip->dev, "smb135x");
+	if (IS_ERR(chip->vadc_dev)) {
+		rc = PTR_ERR(chip->vadc_dev);
+		if (rc == -EPROBE_DEFER)
+			pr_err("vadc not ready, defer probe\n");
+		wakeup_source_trash(&chip->smb_wake_source.source);
+		return rc;
+	}
+
+	chip->adc_tm_dev = qpnp_get_adc_tm(chip->dev, "smb135x");
+	if (IS_ERR(chip->adc_tm_dev)) {
+		rc = PTR_ERR(chip->adc_tm_dev);
+		if (rc == -EPROBE_DEFER)
+			pr_err("adc-tm not ready, defer probe\n");
+		wakeup_source_trash(&chip->smb_wake_source.source);
+		return rc;
+	}
 
 	rc = smb135x_regulator_init(chip);
 	if  (rc) {
@@ -4992,6 +5140,10 @@ static int smb135x_charger_probe(struct i2c_client *client,
 		}
 
 	}
+
+	rc = smb135x_setup_vbat_monitoring(chip);
+	if (rc < 0)
+		pr_err("failed to set up voltage notifications: %d\n", rc);
 
 	schedule_delayed_work(&chip->heartbeat_work,
 			      msecs_to_jiffies(60000));
