@@ -25,12 +25,9 @@
 #include <linux/workqueue.h>
 #include <linux/input.h>
 #include <linux/sensors.h>
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-#elif defined(CONFIG_FB)
+#ifdef CONFIG_ASUS_UTILITY
 #include <linux/notifier.h>
-#include <linux/fb.h>
-struct notifier_block bmd101_fb_notif;
+#include <linux/asus_utility.h>
 #endif
 
 #define bmd101_uart			"/dev/ttyHSL1"
@@ -319,6 +316,28 @@ void notify_ecg_sensor_lowpowermode(int low)
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
 
+#ifdef CONFIG_ASUS_UTILITY
+static int bmd101_fb_notifier_callback(struct notifier_block *this, unsigned long code, void *data)
+{
+	switch (code) {
+		case 2:
+			notify_ecg_sensor_lowpowermode(1);
+			break;
+		case 3:
+			notify_ecg_sensor_lowpowermode(0);
+			break;
+		default:
+			break;
+	}
+
+	return 0;
+}
+
+static struct notifier_block display_mode_notifier = {
+        .notifier_call =    bmd101_fb_notifier_callback,
+};
+#endif
+
 static int bmd101_input_init(void)
 {
 	int ret = 0;
@@ -379,6 +398,10 @@ static int bmd101_probe(struct platform_device *pdev)
 		pr_err("[BMD101] init input device failed: %d\n", ret);
 		goto input_init_fail;
 	}
+	
+	#ifdef CONFIG_ASUS_UTILITY
+	register_mode_notifier(&display_mode_notifier);
+	#endif
 
 	pm8921_l28 = regulator_get(&pdev->dev, bmd101_regulator);
 	if (IS_ERR(pm8921_l28)) {
@@ -414,6 +437,10 @@ static int bmd101_probe(struct platform_device *pdev)
 static int bmd101_remove(struct platform_device *pdev)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++\n", __func__);
+	#ifdef CONFIG_ASUS_UTILITY
+	unregister_mode_notifier(&display_mode_notifier);
+	#endif
+
 	return 0;
 }
 

@@ -32,12 +32,9 @@
 
 #include	<linux/input/lis3dsh.h>
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-#elif defined(CONFIG_FB)
+#ifdef CONFIG_ASUS_UTILITY
 #include <linux/notifier.h>
-#include <linux/fb.h>
-struct notifier_block lis3dsh_fb_notif;
+#include <linux/asus_utility.h>
 #endif
 
 #ifdef CONFIG_PM_8226_CHARGER
@@ -1978,6 +1975,28 @@ void notify_st_sensor_lowpowermode(int low)
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
 
+#ifdef CONFIG_ASUS_UTILITY
+static int lis3dsh_fb_notifier_callback(struct notifier_block *this, unsigned long code, void *data)
+{
+	switch (code) {
+		case 2:
+			notify_st_sensor_lowpowermode(1);
+			break;
+		case 3:
+			notify_st_sensor_lowpowermode(0);
+			break;
+		default:
+			break;
+	}
+
+	return 0;
+}
+
+static struct notifier_block display_mode_notifier = {
+        .notifier_call =    lis3dsh_fb_notifier_callback,
+};
+#endif
+
 static int lis3dsh_pwr_ctrl(struct device *dev, int en)
 {
 	int ret;
@@ -2118,6 +2137,9 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	err= fb_register_client(&lis3dsh_fb_notif);
 	if (err)
 		dev_err(&client->dev, "Unable to register fb_notifier: %d\n", err);
+	#endif
+	#ifdef CONFIG_ASUS_UTILITY
+	register_mode_notifier(&display_mode_notifier);
 	#endif
 
 	if(acc->pdata->gpio_int1 >= 0){
@@ -2288,6 +2310,10 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 	lis3dsh_acc_device_power_off(acc);
 	lis3dsh_acc_input_cleanup(acc);
 	remove_sysfs_interfaces(&client->dev);
+
+	#ifdef CONFIG_ASUS_UTILITY
+	unregister_mode_notifier(&display_mode_notifier);
+	#endif
 
 	if (acc->pdata->exit)
 		acc->pdata->exit();
