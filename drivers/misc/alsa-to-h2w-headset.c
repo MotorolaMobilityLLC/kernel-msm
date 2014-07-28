@@ -31,6 +31,8 @@
 #define H2W_HS_NO_DEVICE	0
 #define H2W_HS_HEADSET		1
 #define H2W_HS_HEADPHONE	2
+#define H2W_HS_LINEOUT		0x20
+
 
 struct alsa_to_h2w_data {
 	struct switch_dev sdev;
@@ -41,6 +43,7 @@ struct alsa_to_h2w_data {
 static char *name_headsets_with_mic = "Headset with a mic";
 static char *name_headsets_no_mic = "Headphone";
 static char *name_headsets_pull_out = "No Device";
+static char *name_headsets_line_out = "Line out";
 
 #define NAME_SIZE  20
 
@@ -69,7 +72,9 @@ static int switch_to_h2w(unsigned long switch_state)
 			return H2W_HS_HEADSET;
 		else
 			return H2W_HS_HEADPHONE;
-	}
+	} else
+		if (switch_state & (1 << SW_LINEOUT_INSERT))
+			return H2W_HS_LINEOUT;
 	return H2W_HS_NO_DEVICE;
 }
 
@@ -116,7 +121,8 @@ static void alsa_to_h2w_disconnect(struct input_handle *handle)
 static bool alsa_to_h2w_filter(struct input_handle *handle, unsigned int type,
 						unsigned int code, int value)
 {
-	if ((code == SW_HEADPHONE_INSERT) || (code == SW_MICROPHONE_INSERT))
+	if ((code == SW_HEADPHONE_INSERT) || (code == SW_MICROPHONE_INSERT) ||
+		(code == SW_LINEOUT_INSERT))
 		alsa_to_h2w_headset_report(switch_to_h2w(handle->dev->sw[0]));
 	return false;
 }
@@ -158,6 +164,9 @@ static ssize_t headset_print_name(struct switch_dev *sdev, char *buf)
 		break;
 	case 2:
 		name = name_headsets_no_mic;
+		break;
+	case 0x20:
+		name = name_headsets_line_out;
 		break;
 	default:
 		name = NULL;
