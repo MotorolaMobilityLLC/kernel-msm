@@ -362,7 +362,6 @@ struct lis3dsh_acc_data {
 	struct workqueue_struct *irq2_work_queue;
 
 	int report_event_en;
-	int tilt_status;
 
 #ifdef DEBUG
 	u8 reg_addr;
@@ -427,13 +426,13 @@ static void lis3dsh_acc_set_init_statepr1_inst(struct lis3dsh_acc_data *acc, int
 	case LIS3DSH_TILT_TO_WAKE:				//detect tilt
 		acc->resume_stmach_program1[0] = 0x09;
 		acc->resume_stmach_program1[1] = 0x71;
-		acc->resume_stmach_program1[2] = 0x88;
-		acc->resume_stmach_program1[3] = 0x33;
-		acc->resume_stmach_program1[4] = 0x08;
-		acc->resume_stmach_program1[5] = 0x62;
-		acc->resume_stmach_program1[6] = 0x88;
-		acc->resume_stmach_program1[7] = 0x44;
-		acc->resume_stmach_program1[8] = 0x11;
+		acc->resume_stmach_program1[2] = 0x33;
+		acc->resume_stmach_program1[3] = 0x08;
+		acc->resume_stmach_program1[4] = 0x62;
+		acc->resume_stmach_program1[5] = 0x88;
+		acc->resume_stmach_program1[6] = 0x44;
+		acc->resume_stmach_program1[7] = 0x11;
+		acc->resume_stmach_program1[8] = 0x00;
 		acc->resume_stmach_program1[9] = 0x00;
 		acc->resume_stmach_program1[10] = 0x00;
 		acc->resume_stmach_program1[11] = 0x00;
@@ -517,8 +516,8 @@ static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc, in
 		acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
 		acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x78;
 		acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
-		acc->resume_state[RES_LIS3DSH_THRS2_1] = 0xE0;		//up angle
-		acc->resume_state[RES_LIS3DSH_THRS1_1] = 0x01;		//down angle
+		acc->resume_state[RES_LIS3DSH_THRS2_1] = 0xE0;		//tilt angle
+		acc->resume_state[RES_LIS3DSH_THRS1_1] = 0xFF;		//flat (return) angle
 		/* DES1 not available*/
 		acc->resume_state[RES_LIS3DSH_SA_1] = 0x80;
 		acc->resume_state[RES_LIS3DSH_MA_1] = 0x80;
@@ -910,16 +909,13 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x80)) {
-			acc->tilt_status = !acc->tilt_status;
-			printk("***********************Tilt to wake event [%s]\n", acc->tilt_status?"TILT":"FLAT");
-			if (acc->tilt_status) {
-				if (atomic_read(&is_suspend)) {
-					input_report_key(acc->input_dev, KEY_POWER,1);
-					input_sync(acc->input_dev);
-					msleep(5);
-					input_report_key(acc->input_dev, KEY_POWER,0);
-					input_sync(acc->input_dev);
-				}
+			printk("***********************Tilt to wake event\n");
+			if (atomic_read(&is_suspend)) {
+				input_report_key(acc->input_dev, KEY_POWER,1);
+				input_sync(acc->input_dev);
+				msleep(5);
+				input_report_key(acc->input_dev, KEY_POWER,0);
+				input_sync(acc->input_dev);
 			}
 		}
 	}
@@ -2087,7 +2083,6 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	mutex_init(&acc->lock);
 	mutex_lock(&acc->lock);
 
-	acc->tilt_status = 1;		//init tilt status to "non-flat"
 	acc->client = client;
 	i2c_set_clientdata(client, acc);
 
