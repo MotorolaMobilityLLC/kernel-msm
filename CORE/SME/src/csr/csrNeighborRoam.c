@@ -3763,7 +3763,8 @@ VOS_STATUS  csrNeighborRoamNeighborLookupUpEvent(tpAniSirGlobal pMac)
     csrNeighborRoamDeregAllRssiIndication(pMac);
 
     /* Recheck whether the below check is needed. */
-    if (pNeighborRoamInfo->neighborRoamState != eCSR_NEIGHBOR_ROAM_STATE_CONNECTED)
+    if ((pNeighborRoamInfo->neighborRoamState != eCSR_NEIGHBOR_ROAM_STATE_CONNECTED)
+        && (pNeighborRoamInfo->neighborRoamState != eCSR_NEIGHBOR_ROAM_STATE_REASSOCIATING))
         CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CONNECTED)
 #ifdef FEATURE_WLAN_LFR
     if (!csrRoamIsFastRoamEnabled(pMac,pMac->roam.neighborRoamInfo.csrSessionId))

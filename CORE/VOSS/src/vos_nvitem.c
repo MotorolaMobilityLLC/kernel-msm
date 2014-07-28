@@ -20,11 +20,12 @@
  */
 
 /*
- * Copyright (c) 2012-2014 Qualcomm Atheros, Inc.
- * All Rights Reserved.
- * Qualcomm Atheros Confidential and Proprietary.
- *
+ * This file was originally distributed by Qualcomm Atheros, Inc.
+ * under proprietary terms before Copyright ownership was assigned
+ * to the Linux Foundation.
  */
+
+
 
 
 /*============================================================================
@@ -1222,9 +1223,9 @@ VOS_STATUS vos_nv_open(void)
         {
             pnvEFSTable->nvValidityBitmap = DEFAULT_NV_VALIDITY_BITMAP;
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                      "!!!WARNING: INVALID NV FILE, DRIVER IS USING DEFAULT CAL VALUES %d %d!!!",
+                      "Size  mismatch INVALID NV FILE %d %d!!!",
                       nvReadBufSize, bufSize);
-            return VOS_STATUS_SUCCESS;
+            return VOS_STATUS_E_FAILURE;
         }
 
         VOS_TRACE(VOS_MODULE_ID_VOSS,  VOS_TRACE_LEVEL_INFO,
@@ -3663,6 +3664,8 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
         {
            hdd_checkandupdate_phymode( pHddCtx);
         }
+        linux_reg_cc[0] =  request->alpha2[0];
+        linux_reg_cc[1] =  request->alpha2[1];
 
         complete(&pHddCtx->linux_reg_req);
     }
