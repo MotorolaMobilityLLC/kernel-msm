@@ -49,7 +49,7 @@
 #define I2C_RETRIES		5
 
 #define FSA8500_JACK_MASK (SND_JACK_HEADSET | SND_JACK_HEADPHONE| \
-				SND_JACK_UNSUPPORTED)
+				SND_JACK_LINEOUT | SND_JACK_UNSUPPORTED)
 #define FSA8500_JACK_BUTTON_MASK (SND_JACK_BTN_0)
 
 #define VDD_UA_ON_LOAD	10000
@@ -432,7 +432,11 @@ static int fsa8500_get_hs_acc_type(struct fsa8500_data *fsa8500)
 	if (fsa8500->irq_status[0] & 0x6)
 		acc_type = SND_JACK_HEADSET;
 	else
-		acc_type = SND_JACK_HEADPHONE;
+		if (fsa8500->irq_status[4] & FSA8500_ACCESSORY_3)
+			acc_type = SND_JACK_LINEOUT;
+		else
+			acc_type = SND_JACK_HEADPHONE;
+
 	pr_debug("%s: Accessory type %d\n", __func__,
 			fsa8500->irq_status[4] & 0x7);
 	return acc_type;
