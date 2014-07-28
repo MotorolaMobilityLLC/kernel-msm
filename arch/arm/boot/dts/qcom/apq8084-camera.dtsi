@@ -230,8 +230,8 @@
 };
 
 &i2c_freq_400Khz {
-	qcom,hw-thigh = <28>;
-	qcom,hw-tlow = <20>;
+	qcom,hw-thigh = <20>;
+	qcom,hw-tlow = <28>;
 	qcom,hw-tsu-sto = <21>;
 	qcom,hw-tsu-sta = <21>;
 	qcom,hw-thd-dat = <13>;
