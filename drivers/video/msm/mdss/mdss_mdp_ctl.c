@@ -1742,6 +1742,7 @@ struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 	ctl->is_video_mode = false;
 	ctl->perf_release_ctl_bw = false;
 	ctl->panel_on_locked = NULL;
+	ctl->wait4pingpong_tout = false;
 
 	switch (pdata->panel_info.type) {
 	case EDP_PANEL:
