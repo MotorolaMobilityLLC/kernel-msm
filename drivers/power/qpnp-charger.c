@@ -2557,13 +2557,6 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 				POWER_SUPPLY_PROP_CAPACITY, &ret);
 		soc = ret.intval;
 
-//ASUS_BSP don't report battery capacity 0 temporarily +++
-		if(soc == 0){
-			printk("BMS_CAP = 0, set BMS_CAP = 1\n");
-			soc = 1;
-		}
-//ASUS_BSP don't report battery capacity 0 temporarily ---
-
 		battery_status = get_prop_batt_status(chip);
 		chip->bms_psy->get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_STATUS, &ret);
