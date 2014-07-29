@@ -532,3 +532,8 @@
 		};
 	};
 };
+
+&usb3 {
+	interrupt-map = <0x0 0 &intc 0 133 0>;
+	interrupt-names = "hs_phy_irq";
+};
