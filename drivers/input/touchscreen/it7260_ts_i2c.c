@@ -2512,10 +2512,10 @@ static int mode_notify_sys(struct notifier_block *this,
                             unsigned long code, void *data)
 {
     switch (code) {
-    case 2:
+    case 0: //FB_BLANK_ENTER_NON_INTERACTIVE
 		notify_it7260_ts_lowpowermode(1);
 		break;
-    case 3:
+    case 1: //FB_BLANK_ENTER_INTERACTIVE
 		notify_it7260_ts_lowpowermode(0);
 		break;
 	default:
