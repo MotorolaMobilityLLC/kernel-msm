@@ -313,10 +313,6 @@ enum {
 
 	/* screen: blanked,   hsync: off, vsync: off */
 	FB_BLANK_POWERDOWN     = VESA_POWERDOWN + 1,
-	FB_BLANK_ENTER_NON_INTERACTIVE	= 0x10,
-	FB_BLANK_ENTER_INTERACTIVE	= 0x11,
-	FB_BLANK_AMBIENT_OFF		= 0x12,
-	FB_BLANK_AMBIENT_ON			= 0x13
 };
 
 #define FB_VBLANK_VBLANKING	0x001	/* currently in a vertical blank */

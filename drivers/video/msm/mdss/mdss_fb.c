@@ -51,6 +51,8 @@
 #include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <mach/msm_memtypes.h>
+#include <linux/notifier.h>
+#include <linux/asus_utility.h>
 
 #include "mdss_fb.h"
 
@@ -63,6 +65,7 @@
 #define MAX_FBI_LIST 32
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
+struct msm_fb_data_type *g_mfd;
 
 static u32 mdss_fb_pseudo_palette[16] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -446,6 +449,37 @@ static void mdss_fb_shutdown(struct platform_device *pdev)
 	unlock_fb_info(mfd->fbi);
 }
 
+static int interactive_notify(struct notifier_block *this,
+                            unsigned long code, void *data)
+{
+	static bool first_display_on = true;
+	
+	switch (code) {
+		case FB_BLANK_ENTER_NON_INTERACTIVE:
+			if(g_mfd != NULL)
+				mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
+			break;
+
+		case FB_BLANK_ENTER_INTERACTIVE:
+			if(first_display_on && mdss_panel_get_boot_cfg()){
+				first_display_on = false;
+			}else{
+				if(g_mfd != NULL)
+				mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
+			}
+			break;
+
+		default:
+			break;
+	}
+
+	return 0;
+}
+
+static struct notifier_block interactive_mode_notifier = {
+        .notifier_call =    interactive_notify,
+};
+
 static int mdss_fb_probe(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd = NULL;
@@ -569,6 +603,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	}
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
+	g_mfd = mfd;
+	if(register_mode_notifier(&interactive_mode_notifier))
+		pr_err("Error: fail to register ambient notifier\n");
 
 	return rc;
 }
@@ -581,7 +618,7 @@ static int mdss_fb_remove(struct platform_device *pdev)
 
 	if (!mfd)
 		return -ENODEV;
-
+	unregister_mode_notifier(&interactive_mode_notifier);
 	mdss_fb_remove_sysfs(mfd);
 
 	pm_runtime_disable(mfd->fbi->dev);
@@ -878,8 +915,6 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 }
 
 extern int enable_ambient(int enable);
-//extern void notify_st_sensor_lowpowermode(int low);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
-//extern void notify_it7260_ts_lowpowermode(int low);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
 
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
@@ -913,33 +948,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 					msecs_to_jiffies(mfd->idle_time));
 		}
 		break;
-	case FB_BLANK_ENTER_NON_INTERACTIVE:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_NON_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		//notify_st_sensor_lowpowermode(1);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
-		//notify_it7260_ts_lowpowermode(1);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
-		return 0;
-		break;
-	case FB_BLANK_ENTER_INTERACTIVE:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_ENTER_INTERACTIVE,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		//notify_st_sensor_lowpowermode(0);		//ASUS_BSP +++ Maggie_Lee "register sensor for low power mode"
-		//notify_it7260_ts_lowpowermode(0);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
-		return 0;
-		break;
-	case FB_BLANK_AMBIENT_OFF:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_OFF,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		if (mfd->panel_power_on) {
-			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
-		}
-		return 0;
-		break;
-	case FB_BLANK_AMBIENT_ON:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_AMBIENT_ON,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-		if (mfd->panel_power_on) {
-			mdss_fb_send_panel_event(mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
-		}
-		return 0;
-		break;
-
 	case FB_BLANK_VSYNC_SUSPEND:
 	case FB_BLANK_HSYNC_SUSPEND:
 	case FB_BLANK_NORMAL:
