@@ -396,6 +396,11 @@ struct smb135x_chg {
 	int				bms_check;
 	unsigned long			float_charge_start_time;
 	struct delayed_work		aicl_check_work;
+	bool				aicl_disabled;
+	bool				aicl_weak_detect;
+	int				charger_rate;
+	struct delayed_work		rate_check_work;
+	int				rate_check_count;
 };
 
 static struct smb135x_chg *the_chip;
@@ -952,33 +957,6 @@ static int smb135x_get_prop_batt_voltage_now(struct smb135x_chg *chip, int *volt
 	}
 
 	return -EINVAL;
-}
-
-static int smb135x_get_prop_charge_rate(struct smb135x_chg *chip)
-{
-	u8 reg;
-	int rc;
-
-	if (!is_usb_plugged_in(chip))
-		return POWER_SUPPLY_CHARGE_RATE_NONE;
-
-	rc = smb135x_read(chip, STATUS_0_REG, &reg);
-	if (rc < 0)
-		return POWER_SUPPLY_CHARGE_RATE_NORMAL;
-
-	if ((reg & AICL_DONE_BIT) &&
-	    ((reg & USBIN_INPUT_MASK) < 0x02))
-		return POWER_SUPPLY_CHARGE_RATE_WEAK;
-
-	rc = smb135x_read(chip, STATUS_6_REG, &reg);
-
-	if (rc < 0)
-		return POWER_SUPPLY_CHARGE_RATE_NORMAL;
-
-	if (reg & HVDCP_BIT)
-		return POWER_SUPPLY_CHARGE_RATE_TURBO;
-
-	return POWER_SUPPLY_CHARGE_RATE_NORMAL;
 }
 
 static int smb135x_enable_volatile_writes(struct smb135x_chg *chip)
@@ -1847,7 +1825,7 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 		val->intval = chip->thermal_levels;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_RATE:
-		val->intval = smb135x_get_prop_charge_rate(chip);
+		val->intval = chip->charger_rate;
 		break;
 	/* Block from Fuel Gauge */
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
@@ -2352,20 +2330,94 @@ static void wireless_insertion_work(struct work_struct *work)
 	smb135x_path_suspend(chip, DC, CURRENT, false);
 }
 
+static int drop_usbin_rate(struct smb135x_chg *chip)
+{
+	int rc;
+	u8 reg;
+
+	rc = smb135x_read(chip, CFG_C_REG, &reg);
+	if (rc < 0)
+		dev_err(chip->dev, "Failed to Read CFG C\n");
+
+	reg = reg & USBIN_INPUT_MASK;
+	if (reg > 0)
+		reg--;
+	dev_warn(chip->dev, "Input current Set 0x%x\n", reg);
+	rc = smb135x_masked_write(chip,
+				  CFG_C_REG, USBIN_INPUT_MASK,
+				  reg);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't Lower Input Rate\n");
+
+	return reg;
+}
+
 static void aicl_check_work(struct work_struct *work)
 {
 	struct smb135x_chg *chip =
 		container_of(work, struct smb135x_chg,
 				aicl_check_work.work);
-	int cr;
+	int rc;
 
-	cr = smb135x_get_prop_charge_rate(chip);
-	pr_warn("Charger Rate = %d\n", cr);
+	dev_dbg(chip->dev, "Drop Rate!\n");
 
-	if (cr > POWER_SUPPLY_CHARGE_RATE_NORMAL)
+	rc = drop_usbin_rate(chip);
+	if (!chip->aicl_weak_detect && (rc < 0x02))
+		chip->aicl_weak_detect = true;
+
+	if (!rc) {
+		dev_dbg(chip->dev, "Reached Bottom IC!\n");
+		return;
+	}
+
+	rc = smb135x_masked_write(chip,
+				  IRQ_CFG_REG,
+				  IRQ_USBIN_UV_BIT,
+				  IRQ_USBIN_UV_BIT);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't Unmask USBIN UV IRQ\n");
+}
+
+static int smb135x_get_charge_rate(struct smb135x_chg *chip)
+{
+	u8 reg;
+	int rc;
+
+	if (!is_usb_plugged_in(chip))
+		return POWER_SUPPLY_CHARGE_RATE_NONE;
+
+	if (chip->aicl_weak_detect)
+		return POWER_SUPPLY_CHARGE_RATE_WEAK;
+
+	rc = smb135x_read(chip, STATUS_6_REG, &reg);
+	if (rc < 0)
+		return POWER_SUPPLY_CHARGE_RATE_NORMAL;
+
+	if (reg & HVDCP_BIT)
+		return POWER_SUPPLY_CHARGE_RATE_TURBO;
+
+	return POWER_SUPPLY_CHARGE_RATE_NORMAL;
+}
+
+static void rate_check_work(struct work_struct *work)
+{
+	struct smb135x_chg *chip =
+		container_of(work, struct smb135x_chg,
+			     rate_check_work.work);
+
+	chip->charger_rate = smb135x_get_charge_rate(chip);
+
+	if (chip->charger_rate > POWER_SUPPLY_CHARGE_RATE_NORMAL) {
+		pr_warn("Charger Rate = %d\n", chip->charger_rate);
+		chip->rate_check_count = 0;
 		power_supply_changed(&chip->batt_psy);
+		return;
+	}
 
-	smb_relax(&chip->smb_wake_source);
+	chip->rate_check_count++;
+	if (chip->rate_check_count < 6)
+		schedule_delayed_work(&chip->rate_check_work,
+				      msecs_to_jiffies(500));
 }
 
 static void usb_insertion_work(struct work_struct *work)
@@ -2399,6 +2451,7 @@ static void toggle_usbin_aicl(struct smb135x_chg *chip)
 }
 
 #define FLOAT_CHG_TIME_SECS 1800
+#define INPUT_CURR_CHECK_THRES 0x0C /*  1100 mA */
 static void heartbeat_work(struct work_struct *work)
 {
 	u8 reg;
@@ -2429,12 +2482,31 @@ static void heartbeat_work(struct work_struct *work)
 		}
 		handle_usb_removal(chip);
 	} else if (usb_present) {
-		rc = smb135x_read(chip, STATUS_0_REG, &reg);
-		if (rc < 0) {
-			pr_info("Failed to Read Status 0x46\n");
-		} else if (!reg) {
-			dev_warn(chip->dev, "HB Caught Low Rate!\n");
-			toggle_usbin_aicl(chip);
+		if (!chip->aicl_disabled) {
+			rc = smb135x_read(chip, STATUS_0_REG, &reg);
+			if (rc < 0) {
+				pr_info("Failed to Read Status 0x46\n");
+			} else if (!reg) {
+				dev_warn(chip->dev, "HB Caught Low Rate!\n");
+				toggle_usbin_aicl(chip);
+			}
+		} else {
+			rc = smb135x_read(chip, CFG_C_REG, &reg);
+			if (rc < 0)
+				dev_err(chip->dev, "Failed to Read CFG C\n");
+
+			reg = reg & USBIN_INPUT_MASK;
+			if (reg < INPUT_CURR_CHECK_THRES) {
+				dev_warn(chip->dev, "Increase Input Rate\n");
+				rc = smb135x_masked_write(chip,
+							  IRQ_CFG_REG,
+							  IRQ_USBIN_UV_BIT,
+							  IRQ_USBIN_UV_BIT);
+				if (rc < 0)
+					dev_err(chip->dev,
+						"Failed to Write CFG Reg\n");
+				smb135x_set_appropriate_current(chip, USB);
+			}
 		}
 	}
 
@@ -2475,7 +2547,8 @@ static void heartbeat_work(struct work_struct *work)
 	schedule_delayed_work(&chip->heartbeat_work,
 			      msecs_to_jiffies(60000));
 
-	smb_relax(&chip->smb_wake_source);
+	if (!usb_present)
+		smb_relax(&chip->smb_wake_source);
 }
 
 static int hot_hard_handler(struct smb135x_chg *chip, u8 rt_stat)
@@ -2559,7 +2632,7 @@ static int aicl_done_handler(struct smb135x_chg *chip, u8 rt_stat)
 {
 	if (rt_stat & IRQ_D_AICL_DONE_BIT)
 		pr_warn("aicl done rt_stat = 0x%02x Rate = %d\n", rt_stat,
-			smb135x_get_prop_charge_rate(chip));
+			chip->charger_rate);
 
 	return 0;
 }
@@ -2666,13 +2739,26 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 	int rc;
 	cancel_delayed_work(&chip->usb_insertion_work);
 	cancel_delayed_work(&chip->aicl_check_work);
+	cancel_delayed_work(&chip->rate_check_work);
 	chip->apsd_rerun_cnt = 0;
+	chip->aicl_weak_detect = false;
+	chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 
-	/* Set AICL Glich to 20ms */
-	rc = smb135x_masked_write(chip, CFG_D_REG, AICL_GLITCH, 0);
-	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't set 20 ms AICL glitch\n");
-		return rc;
+	rc = smb135x_masked_write(chip,
+				  IRQ_CFG_REG,
+				  IRQ_USBIN_UV_BIT,
+				  IRQ_USBIN_UV_BIT);
+	if (rc < 0)
+		dev_err(chip->dev,
+			"Failed to Write CFG Reg\n");
+
+	if (!chip->aicl_disabled) {
+		/* Set AICL Glich to 20ms */
+		rc = smb135x_masked_write(chip, CFG_D_REG, AICL_GLITCH, 0);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't set 20 ms AICL glitch\n");
+			return rc;
+		}
 	}
 
 	if (chip->usb_psy) {
@@ -2717,10 +2803,15 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 
 	chip->apsd_rerun_cnt = 0;
 
-	/* Set AICL Glich to 15 us */
-	rc = smb135x_masked_write(chip, CFG_D_REG, AICL_GLITCH, AICL_GLITCH);
-	if (rc < 0)
-		dev_err(chip->dev, "Couldn't set 15 us AICL glitch\n");
+	if (!chip->aicl_disabled) {
+		/* Set AICL Glich to 15 us */
+		rc = smb135x_masked_write(chip,
+					  CFG_D_REG,
+					  AICL_GLITCH,
+					  AICL_GLITCH);
+		if (rc < 0)
+			dev_err(chip->dev, "Couldn't set 15 us AICL glitch\n");
+	}
 
 	/*
 	 * Report the charger type as UNKNOWN if the
@@ -2730,6 +2821,7 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 	if (chip->workaround_flags & WRKARND_APSD_FAIL)
 		reg = 0;
 
+	chip->aicl_weak_detect = false;
 	usb_type_name = get_usb_type_name(reg);
 	usb_supply_type = get_usb_supply_type(reg);
 	pr_debug("inserted %s, usb psy type = %d stat_5 = 0x%02x\n",
@@ -2741,9 +2833,12 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 	}
 	smb_stay_awake(&chip->smb_wake_source);
-	cancel_delayed_work(&chip->aicl_check_work);
-	schedule_delayed_work(&chip->aicl_check_work,
-			      msecs_to_jiffies(1000));
+
+	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NORMAL;
+	chip->rate_check_count = 0;
+	cancel_delayed_work(&chip->rate_check_work);
+	schedule_delayed_work(&chip->rate_check_work,
+			      msecs_to_jiffies(500));
 	return 0;
 }
 
@@ -2771,12 +2866,22 @@ static int usbin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 	}
 
 	if (is_usb_plugged_in(chip)) {
-		rc = smb135x_read(chip, STATUS_0_REG, &reg);
-		if (rc < 0)
-			pr_info("Failed to Read Status 0x46\n");
-		else if (!reg)
-			toggle_usbin_aicl(chip);
-
+		if (!chip->aicl_disabled) {
+			rc = smb135x_read(chip, STATUS_0_REG, &reg);
+			if (rc < 0)
+				pr_err("Failed to Read Status 0x46\n");
+			else if (!reg)
+				toggle_usbin_aicl(chip);
+		} else if (!usb_present) {
+			rc = smb135x_masked_write(chip,
+						  IRQ_CFG_REG,
+						  IRQ_USBIN_UV_BIT, 0);
+			if (rc < 0)
+				pr_err("Failed to Disable USBIN UV IRQ\n");
+			cancel_delayed_work(&chip->aicl_check_work);
+			schedule_delayed_work(&chip->aicl_check_work,
+					      msecs_to_jiffies(0));
+		}
 		return 0;
 	}
 
@@ -3101,7 +3206,8 @@ static irqreturn_t smb135x_chg_stat_handler(int irq, void *dev_id)
 	}
 
 	pr_debug("handler count = %d\n", handler_count);
-	if (handler_count) {
+
+	if (handler_count && !chip->aicl_disabled) {
 		pr_debug("batt psy changed\n");
 		power_supply_changed(&chip->batt_psy);
 		if (chip->usb_psy) {
@@ -3478,11 +3584,20 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 		/* this ignores APSD results */
 		reg = USE_REGISTER_FOR_CURRENT;
 
-	/* Set AICL Glich to 20 ms */
-	rc = smb135x_masked_write(chip, CFG_D_REG, AICL_GLITCH, 0);
-	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't set 20 ms AICL glitch\n");
-		return rc;
+	if (chip->aicl_disabled) {
+		/* Disable AICL */
+		rc = smb135x_masked_write(chip, CFG_D_REG, AICL_ENABLE, 0);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't Disable AICL\n");
+			return rc;
+		}
+	} else {
+		/* Set AICL Glich to 20 ms */
+		rc = smb135x_masked_write(chip, CFG_D_REG, AICL_GLITCH, 0);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't set 20 ms AICL glitch\n");
+			return rc;
+		}
 	}
 
 	rc = smb135x_masked_write(chip, CMD_INPUT_LIMIT, mask, reg);
@@ -3950,6 +4065,9 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 	rc = of_property_read_u32(node, "qcom,ext-temp-soc", &chip->ext_temp_soc);
 	if (rc < 0)
 		chip->ext_temp_soc = 0;
+
+	chip->aicl_disabled = of_property_read_bool(node,
+						    "qcom,aicl-disabled");
 
 	chip->iterm_disabled = of_property_read_bool(node,
 						"qcom,iterm-disabled");
@@ -4491,6 +4609,8 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->dev = &client->dev;
 	chip->usb_psy = usb_psy;
 	chip->fake_battery_soc = -EINVAL;
+	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NONE;
+	chip->aicl_weak_detect = false;
 
 	wakeup_source_init(&chip->smb_wake_source.source, "smb135x_wake");
 	INIT_DELAYED_WORK(&chip->wireless_insertion_work,
@@ -4501,6 +4621,8 @@ static int smb135x_charger_probe(struct i2c_client *client,
 					heartbeat_work);
 	INIT_DELAYED_WORK(&chip->aicl_check_work,
 					aicl_check_work);
+	INIT_DELAYED_WORK(&chip->rate_check_work,
+					rate_check_work);
 
 	mutex_init(&chip->path_suspend_lock);
 	mutex_init(&chip->current_change_lock);
