@@ -286,7 +286,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_err("gpio request failed\n");
 			return rc;
 		}
-		if (!pinfo->panel_power_on) {
+		if (!pinfo->cont_splash_enabled) {
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
 
@@ -379,7 +379,8 @@ int mdss_panel_check_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	u8 pwr_mode = 0;
 	struct mdss_panel_esd_pdata *esd_data = &ctrl->panel_esd_data;
 
-	if (!ctrl->panel_data.panel_info.panel_power_on) {
+	if (ctrl->panel_data.panel_info.panel_power_state !=
+		MDSS_PANEL_POWER_ON) {
 		ret = 1;
 		goto end;
 	}
@@ -658,7 +659,6 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 #define MAX_DISON_RECOVERY_CNT	2
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
-	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
 	u8 pwr_mode = 0;
@@ -670,17 +670,15 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	pinfo = &pdata->panel_info;
-
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-	mipi  = &pdata->panel_info.mipi;
+
+	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	if (pinfo->partial_update_dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
-			return 0;
+			goto end;
 	}
-
-	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	if (ctrl->panel_config.bare_board == true) {
 		pr_warn("%s: This is bare_board configuration\n", __func__);
@@ -695,7 +693,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if ((pwr_mode & 0x04) != 0x04) {
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
-
 		if (pdata->panel_info.panel_dead) {
 			pr_err("%s: Panel recovery FAILED!!. cnt =%d\n",
 						__func__, dison_recovery);
@@ -712,14 +709,13 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		dison_recovery = 0;
 
 end:
+	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
-
 	return 0;
 }
 
 static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 {
-	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
 
@@ -729,18 +725,15 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	}
 
 	pinfo = &pdata->panel_info;
-
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	if (pinfo->partial_update_dcs_cmd_by_left) {
-		if (ctrl->ndx != DSI_CTRL_LEFT)
-			return 0;
-	}
-
 	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
-	mipi  = &pdata->panel_info.mipi;
+	if (pinfo->partial_update_dcs_cmd_by_left) {
+		if (ctrl->ndx != DSI_CTRL_LEFT)
+			goto end;
+	}
 
 	if (ctrl->panel_config.bare_board == true)
 		goto end;
@@ -752,6 +745,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
 end:
+	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }

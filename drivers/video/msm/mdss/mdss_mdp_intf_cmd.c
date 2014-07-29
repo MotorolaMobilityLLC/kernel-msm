@@ -35,7 +35,7 @@ struct mdss_mdp_cmd_ctx {
 	struct completion pp_comp;
 	struct completion stop_comp;
 	struct list_head vsync_handlers;
-	int panel_on;
+	int panel_power_state;
 	atomic_t koff_cnt;
 	int clk_enabled;
 	int vsync_enabled;
@@ -53,6 +53,11 @@ struct mdss_mdp_cmd_ctx {
 struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
 
 static int mdss_mdp_cmd_do_notifier(struct mdss_mdp_cmd_ctx *ctx);
+
+static bool __mdss_mdp_cmd_panel_power_on(struct mdss_mdp_cmd_ctx *ctx)
+{
+	return (ctx->panel_power_state == MDSS_PANEL_POWER_ON);
+}
 
 static inline u32 mdss_mdp_cmd_line_count(struct mdss_mdp_ctl *ctl)
 {
@@ -193,7 +198,7 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	int irq_en;
 
-	if (!ctx->panel_on)
+	if (!__mdss_mdp_cmd_panel_power_on(ctx))
 		return;
 
 	mutex_lock(&ctx->clk_mtx);
@@ -634,16 +639,16 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 	if (sctl)
 		sctx = (struct mdss_mdp_cmd_ctx *) sctl->priv_data;
 
-	if (ctx->panel_on == 0) {
+	if (!__mdss_mdp_cmd_panel_power_on(ctx)) {
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNBLANK, NULL);
 		WARN(rc, "intf %d unblank error (%d)\n", ctl->intf_num, rc);
 
-		ctx->panel_on++;
-		if (sctx)
-			sctx->panel_on++;
-
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
+
+		ctx->panel_power_state = MDSS_PANEL_POWER_ON;
+		if (sctx)
+			sctx->panel_power_state = MDSS_PANEL_POWER_ON;
 
 		mdss_mdp_ctl_intf_event(ctl,
 			MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
@@ -760,10 +765,9 @@ int mdss_mdp_cmd_restore(struct mdss_mdp_ctl *ctl)
 	return 0;
 }
 
-int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
+int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
-	struct mdss_panel_info *pinfo;
 	unsigned long flags;
 	struct mdss_mdp_vsync_handler *tmp, *handle;
 	int need_wait = 0;
@@ -788,24 +792,14 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	}
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
-	if (need_wait)
-		if (wait_for_completion_timeout(&ctx->stop_comp, STOP_TIMEOUT)
-		    <= 0) {
-			WARN(1, "stop cmd time out\n");
-
-			if (IS_ERR_OR_NULL(ctl->panel_data)) {
-				pr_err("no panel data\n");
-			} else {
-				pinfo = &ctl->panel_data->panel_info;
-
-				if (pinfo->panel_dead) {
-					mdss_mdp_irq_disable
-						(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
-								ctx->pp_num);
-					ctx->rdptr_enabled = 0;
-				}
-			}
-		}
+	if (need_wait && (wait_for_completion_timeout(&ctx->stop_comp,
+		STOP_TIMEOUT) == 0)) {
+		WARN(1, "stop cmd time out\n");
+		mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
+			ctx->pp_num);
+		ctx->rdptr_enabled = 0;
+		atomic_set(&ctx->koff_cnt, 0);
+	}
 
 	if (cancel_work_sync(&ctx->clk_work))
 		pr_debug("no pending clk work\n");
@@ -814,29 +808,29 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 			MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 			NULL);
 
-	turn_off_panel = ctx->panel_on;
-	ctx->panel_on = 0;
+	turn_off_panel = ctx->panel_power_state;
 	mdss_mdp_cmd_clk_off(ctx);
-
 	flush_work(&ctx->pp_done_work);
+	ctx->panel_power_state = panel_power_state;
 
-
-	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_RD_PTR, ctx->pp_num,
-				   NULL, NULL);
-	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP, ctx->pp_num,
-				   NULL, NULL);
-
-	if (ctl->num == 0 && turn_off_panel) {
+	if (ctl->num == 0 && (turn_off_panel != MDSS_PANEL_POWER_OFF)) {
 		mutex_lock(&ctl->offlock);
-		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK, NULL);
+		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK,
+				(void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
 
-		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_OFF, NULL);
+		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_OFF,
+				(void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
 
 		mdss_mdp_cmd_tearcheck_setup(ctl, false);
 		mutex_unlock(&ctl->offlock);
 	}
+
+	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_RD_PTR, ctx->pp_num,
+				   NULL, NULL);
+	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP, ctx->pp_num,
+				   NULL, NULL);
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctl->priv_data = NULL;
