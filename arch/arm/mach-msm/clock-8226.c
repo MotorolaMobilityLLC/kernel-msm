@@ -3229,9 +3229,20 @@ static struct clk_lookup msm_clocks_8226[] = {
 	/* I2C Clocks nfc */
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9925000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"),
+
+	//ASUS_BSP +++ "BT porting"  
+	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f991d000.serial"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart1_apps_clk.c, "f991d000.serial"),         //BT uart clock with sr or latter hw version
+	//ASUS_BSP ---
+
 	/* lsuart-v14 Clocks */
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f991f000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart3_apps_clk.c, "f991f000.serial"),
+
+	//ASUS_BSP +++ "BT porting"  
+	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9920000.serial"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart4_apps_clk.c, "f9920000.serial"),         //BT uart clock with evb2
+	//ASUS_BSP ---
 
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f995e000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart2_apps_clk.c, "f995e000.serial"),
