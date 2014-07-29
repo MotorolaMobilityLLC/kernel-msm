@@ -28,6 +28,8 @@
 #include <linux/slab.h>
 #include <linux/sync.h>
 #include <linux/proc_fs.h>
+#include <linux/notifier.h>
+#include <linux/asus_utility.h>
 //#include <linux/math.h>
 
 #define MAX_BUFFER_SIZE		144
@@ -482,8 +484,8 @@ static int Upgrade_FW_CFG(void)
 	filp_close(fw_fd,NULL);
 	filp_close(config_fd,NULL);
 	
-	if ((bufRead[5] == fw_buf[8] && bufRead[6] == fw_buf[9] && bufRead[7] == fw_buf[10] && bufRead[8] < fw_buf[11]) || 
-	(bufRead2[1] == config_buf[config_size-8] && bufRead2[2] == config_buf[config_size-7] && bufRead2[3] == config_buf[config_size-6] && bufRead2[4] < config_buf[config_size-5])){
+	if ((bufRead[5] < fw_buf[8] || bufRead[6] < fw_buf[9] || bufRead[7] < fw_buf[10] || bufRead[8] < fw_buf[11]) || 
+	(bufRead2[1] < config_buf[config_size-8] || bufRead2[2] < config_buf[config_size-7] || bufRead2[3] < config_buf[config_size-6] || bufRead2[4] < config_buf[config_size-5])){
 
 	//START UPDATE
 	disable_irq(gl_ts->client->irq);
@@ -1966,9 +1968,9 @@ static ssize_t IT7260_selftest_show(struct device *dev, struct device_attribute 
 	}
 }
 
-static DEVICE_ATTR(status, 0666, IT7260_status_show, IT7260_status_store);
-static DEVICE_ATTR(version, 0666, IT7260_version_show, IT7260_version_store);
-static DEVICE_ATTR(sleep, 0666, IT7260_sleep_show, IT7260_sleep_store);
+static DEVICE_ATTR(status, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_status_show, IT7260_status_store);
+static DEVICE_ATTR(version, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_version_show, IT7260_version_store);
+static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_sleep_show, IT7260_sleep_store);
 
 static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_status.attr,
@@ -2038,10 +2040,10 @@ static ssize_t IT7260_upgrade_store(struct device *dev, struct device_attribute 
 	return count;
 }
 
-static DEVICE_ATTR(testtp, 0666, IT7260_selftest_show, IT7260_selftest_store);
-static DEVICE_ATTR(goldensample, 0666, IT7260_tp_goldsample_show, IT7260_tp_goldsample_store);
-static DEVICE_ATTR(calibration, 0666, IT7260_calibration_show, IT7260_calibration_store);
-static DEVICE_ATTR(upgrade, 0666, IT7260_upgrade_show, IT7260_upgrade_store);
+static DEVICE_ATTR(testtp, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_selftest_show, IT7260_selftest_store);
+static DEVICE_ATTR(goldensample, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_tp_goldsample_show, IT7260_tp_goldsample_store);
+static DEVICE_ATTR(calibration, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_calibration_show, IT7260_calibration_store);
+static DEVICE_ATTR(upgrade, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_upgrade_show, IT7260_upgrade_store);
 
 static struct attribute *it7260_attributes[] = {
 	&dev_attr_calibration.attr,
@@ -2506,6 +2508,27 @@ void notify_it7260_ts_lowpowermode(int low)
 }
 //ASUS_BSP --- Cliff "Touch change status to idle in Ambient mode"
 
+static int mode_notify_sys(struct notifier_block *this,
+                            unsigned long code, void *data)
+{
+    switch (code) {
+    case 0: //FB_BLANK_ENTER_NON_INTERACTIVE
+		notify_it7260_ts_lowpowermode(1);
+		break;
+    case 1: //FB_BLANK_ENTER_INTERACTIVE
+		notify_it7260_ts_lowpowermode(0);
+		break;
+	default:
+		break;
+	}
+	
+    return 0;
+}
+
+static struct notifier_block display_mode_notifier = {
+        .notifier_call =    mode_notify_sys,
+};
+
 static int IT7260_ts_probe(struct i2c_client *client,
 		const struct i2c_device_id *id) {
 	struct IT7260_ts_data *ts;
@@ -2949,7 +2972,8 @@ static int __init IT7260_ts_init(void) {
 	magic_key[0] = 0;
 	device_create_file(class_dev, &device_attrs[0]);
 // ASUS_BSP --- Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
-
+	
+	register_mode_notifier(&display_mode_notifier);
 
 	TS_DEBUG("=========================================\n");
 	TS_DEBUG("register IT7260 cdev, major: %d, minor: %d \n", ite7260_major, ite7260_minor);
@@ -2977,6 +3001,8 @@ static void __exit IT7260_ts_exit(void) {
 	// unregister driver handle
 	cdev_del(&ite7260_cdev);
 	unregister_chrdev_region(dev, 1);
+
+	unregister_mode_notifier(&display_mode_notifier);
 
 	i2c_del_driver(&IT7260_ts_driver);
 	if (IT7260_wq)
