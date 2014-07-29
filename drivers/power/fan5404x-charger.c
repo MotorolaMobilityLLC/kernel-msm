@@ -191,6 +191,8 @@ struct fan5404x_chg {
 	bool batt_present;
 	bool chg_done_batt_full;
 	bool charging;
+
+	struct delayed_work heartbeat_work;
 };
 
 static int __fan5404x_read(struct fan5404x_chg *chip, int reg,
@@ -495,6 +497,21 @@ static enum power_supply_property fan5404x_batt_properties[] = {
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
+	/* Block from Fuel Gauge */
+	POWER_SUPPLY_PROP_CYCLE_COUNT,
+	POWER_SUPPLY_PROP_VOLTAGE_MAX,
+	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_VOLTAGE_AVG,
+	POWER_SUPPLY_PROP_VOLTAGE_OCV,
+	POWER_SUPPLY_PROP_CHARGE_FULL,
+	POWER_SUPPLY_PROP_CHARGE_COUNTER,
+	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_CURRENT_AVG,
+	/* Notification from Fuel Gauge */
+	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 };
 
 static int fan5404x_get_prop_batt_status(struct fan5404x_chg *chip)
@@ -616,6 +633,11 @@ static int fan5404x_batt_set_property(struct power_supply *psy,
 		chip->fake_battery_soc = val->intval;
 		power_supply_changed(&chip->batt_psy);
 		break;
+	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		cancel_delayed_work(&chip->heartbeat_work);
+		schedule_delayed_work(&chip->heartbeat_work,
+			msecs_to_jiffies(0));
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -631,6 +653,7 @@ static int fan5404x_batt_is_writeable(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_CAPACITY:
+	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 		rc = 1;
 		break;
 	default:
@@ -639,6 +662,24 @@ static int fan5404x_batt_is_writeable(struct power_supply *psy,
 	}
 
 	return rc;
+}
+
+static int fan5404x_bms_get_property(struct fan5404x_chg *chip,
+				    enum power_supply_property prop)
+{
+	union power_supply_propval ret = {0, };
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	if (chip->bms_psy) {
+		chip->bms_psy->get_property(chip->bms_psy,
+				prop, &ret);
+		return ret.intval;
+	}
+
+	return -EINVAL;
 }
 
 static int fan5404x_batt_get_property(struct power_supply *psy,
@@ -667,11 +708,38 @@ static int fan5404x_batt_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
+	/* Block from Fuel Gauge */
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+	case POWER_SUPPLY_PROP_VOLTAGE_AVG:
+	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
+	case POWER_SUPPLY_PROP_TEMP:
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+	case POWER_SUPPLY_PROP_CURRENT_AVG:
+		val->intval = fan5404x_bms_get_property(chip, prop);
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		val->intval = 0;
+		break;
 	default:
 		return -EINVAL;
 	}
 
 	return 0;
+}
+
+static void heartbeat_work(struct work_struct *work)
+{
+	struct fan5404x_chg *chip =
+		container_of(work, struct fan5404x_chg,
+					heartbeat_work.work);
+
+	power_supply_changed(&chip->batt_psy);
 }
 
 static int fan5404x_of_init(struct fan5404x_chg *chip)
@@ -809,6 +877,9 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, chip);
+
+	INIT_DELAYED_WORK(&chip->heartbeat_work,
+					heartbeat_work);
 
 	chip->batt_psy.name = "battery";
 	chip->batt_psy.type = POWER_SUPPLY_TYPE_BATTERY;
