@@ -1,0 +1,3 @@
+config ASUS_POWER_UTIL
+        bool "asus utility for power module"
+        default y
