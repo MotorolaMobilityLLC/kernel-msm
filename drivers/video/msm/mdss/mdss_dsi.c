@@ -1188,6 +1188,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	u32 index;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct device_node *dsi_pan_node = NULL;
+	struct mdss_panel_info *pinfo = NULL;
 	char panel_cfg[MDSS_MAX_PANEL_LEN];
 	const char *ctrl_name;
 	bool cmd_cfg_cont_splash = true;
@@ -1287,6 +1288,11 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_err("%s: dsi panel dev reg failed\n", __func__);
 		goto error_pan_node;
 	}
+
+	pinfo = &ctrl_pdata->panel_data.panel_info;
+	if (pinfo->cont_splash_enabled)
+		mdss_dsi_op_mode_config(pinfo->mipi.mode,
+				&ctrl_pdata->panel_data);
 
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 	return 0;
