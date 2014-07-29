@@ -67,6 +67,16 @@ enum {
 };
 
 enum {
+	MDSS_PANEL_POWER_OFF = 0,
+	MDSS_PANEL_POWER_ON,
+};
+
+enum {
+	MDSS_PANEL_BLANK_BLANK = 0,
+	MDSS_PANEL_BLANK_UNBLANK,
+};
+
+enum {
 	MODE_GPIO_NOT_VALID = 0,
 	MODE_GPIO_HIGH,
 	MODE_GPIO_LOW,
@@ -334,7 +344,8 @@ struct mdss_panel_info {
 	u32 partial_update_dcs_cmd_by_left;
 	u32 partial_update_roi_merge;
 	struct ion_handle *splash_ihdl;
-	u32 panel_power_on;
+	int panel_power_state;
+	int blank_state;
 
 	uint32_t panel_dead;
 
@@ -459,6 +470,20 @@ static inline int mdss_panel_get_htotal(struct mdss_panel_info *pinfo, bool
 	return adj_xres + pinfo->lcdc.h_back_porch +
 		pinfo->lcdc.h_front_porch +
 		pinfo->lcdc.h_pulse_width;
+}
+
+/**
+ * mdss_panel_is_panel_power_on: - checks if a panel is on
+ * @pdata: pointer to the panel struct associated to the panel
+ *
+ * A panel is considered to be on as long as it can accept any commands
+ * or data. Sometimes it is posible to program the panel to be in a low
+ * power state. This function returns false only if panel has explicitly
+ * been turned off.
+ */
+static inline bool mdss_panel_is_panel_power_on(struct mdss_panel_data *pdata)
+{
+	return (pdata->panel_info.panel_power_state != MDSS_PANEL_POWER_OFF);
 }
 
 int mdss_register_panel(struct platform_device *pdev,

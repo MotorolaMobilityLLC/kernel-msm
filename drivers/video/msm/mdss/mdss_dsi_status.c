@@ -123,7 +123,7 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 	if (ctl->shared_lock)
 		mutex_unlock(ctl->shared_lock);
 
-	if ((pdsi_status->mfd->panel_power_on)) {
+	if (mfd->panel_power_state == MDSS_PANEL_POWER_ON) {
 		if (ret > 0) {
 			schedule_delayed_work(&pdsi_status->check_status,
 				msecs_to_jiffies(pdsi_status->check_interval));
