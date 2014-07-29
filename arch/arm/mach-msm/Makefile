@@ -42,7 +42,7 @@ obj-$(CONFIG_ARCH_MSM8916) += board-8916.o
 obj-$(CONFIG_ARCH_MPQ8092) += clock-8092.o clock-vcap-8092.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MSM8226) += board-8226.o board-8226-gpiomux.o
 # ASUS_BSP +++ : add for miniporting
-obj-$(CONFIG_ARCH_MSM8226) += asus_gpio_pinmux.o
+obj-$(CONFIG_ARCH_MSM8226) += asus_gpio_pinmux.o wi500q_rfkill.o
 # ASUS_BSP ---
 obj-$(CONFIG_ARCH_MSM8226) += clock-8226.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MSM8610) += board-8610.o board-8610-gpiomux.o
