@@ -13,8 +13,6 @@ int unregister_mode_notifier(struct notifier_block *nb);
 enum mode_msg{
 		FB_BLANK_ENTER_NON_INTERACTIVE,
 		FB_BLANK_ENTER_INTERACTIVE,
-		FB_BLANK_AMBIENT_ON,
-		FB_BLANK_AMBIENT_OFF,
 };
 
 #endif

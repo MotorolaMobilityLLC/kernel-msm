@@ -24,8 +24,7 @@
 
 #define MODE_PROC_MAX_BUFF_SIZE  256
 #define USER_ROOT_DIR "asus_utility"  
-#define USER_ENTRY1   "ambient"
-#define USER_ENTRY2   "interactive"
+#define USER_ENTRY   "interactive"
 /*
  * notification part
  * each driver have to use register_hs_notifier() to register a callback-function
@@ -39,7 +38,6 @@ uint32_t mode_notifier_base;
 
 static struct proc_dir_entry *mode_root;  
 
-static int ambient_status = 0;
 static int interactive_status = 0;
 static RAW_NOTIFIER_HEAD(mode_chain_head);
 
@@ -76,39 +74,6 @@ EXPORT_SYMBOL_GPL(unregister_mode_notifier);
  * =======================================================================
  */
 
-
-static int mode_write_proc_ambient (struct file *filp, const char __user *buff, size_t len, loff_t *pos)
-{
-	char msg[MODE_PROC_MAX_BUFF_SIZE];
-	if (len > MODE_PROC_MAX_BUFF_SIZE)
-		len = MODE_PROC_MAX_BUFF_SIZE;
-	
-	printk(KERN_DEBUG "[MODE] %s():\n", __func__);
-
-	if (copy_from_user(msg, buff, len))
-		return -EFAULT;
-
-	if (!strncmp(msg,"FB_BLANK_AMBIENT_ON",len-1)){
-		if (ambient_status == 0)
-		modeSendNotify(2);
-		printk ("%s", msg);
-		ambient_status = 1;
-	}
-	else if (!strncmp(msg,"FB_BLANK_AMBIENT_OFF",len-1)){
-		if (ambient_status == 1)
-		modeSendNotify(3);
-		printk ("%s", msg);
-		ambient_status = 0;
-	}
-	else {
-		printk ("%s", msg);
-		pr_err("Invalid Status\r\n");
-		ambient_status = -1;		
-	}
-	
-	return len;
-}
-
 static int mode_write_proc_interactive (struct file *filp, const char __user *buff, size_t len, loff_t *pos)
 {
 	char msg[MODE_PROC_MAX_BUFF_SIZE];
@@ -123,17 +88,17 @@ static int mode_write_proc_interactive (struct file *filp, const char __user *bu
 	if (!strncmp(msg,"FB_BLANK_ENTER_INTERACTIVE",len-1)){
 		if (interactive_status == 0)
 		modeSendNotify(1);
-		printk ("%s", msg);
+		//printk ("%s", msg);
 		interactive_status = 1;
 	}
 	else if (!strncmp(msg,"FB_BLANK_ENTER_NON_INTERACTIVE",len-1)){
 		if (interactive_status == 1)
 		modeSendNotify(0);
-		printk ("%s", msg);
+		//printk ("%s", msg);
 		interactive_status = 0;
 	}
 	else {
-		printk ("%s", msg);
+		//printk ("%s", msg);
 		pr_err("Invalid Status\r\n");
 		interactive_status = -1;		
 	}
@@ -141,14 +106,6 @@ static int mode_write_proc_interactive (struct file *filp, const char __user *bu
 	return len;
 }
 
-static int mode_proc_show_ambient(struct seq_file *seq, void *v)
-{
-	printk(KERN_DEBUG "[MODE] %s():\n", __func__);
-	
-	seq_printf(seq, "%d\n", ambient_status);
-	
-	return 0;
-}
 
 static int mode_proc_show_interactive(struct seq_file *seq, void *v)
 {
@@ -182,13 +139,6 @@ static void mode_proc_stop(struct seq_file *seq, void *v)
 
 }
 
-static const struct seq_operations mode_proc_ambient_seq = {
-	.start		= mode_proc_start,
-	.show		= mode_proc_show_ambient,
-	.next		= mode_proc_next,
-	.stop		= mode_proc_stop,
-};
-
 static const struct seq_operations mode_proc_interactive_seq = {
 	.start		= mode_proc_start,
 	.show		= mode_proc_show_interactive,
@@ -196,22 +146,10 @@ static const struct seq_operations mode_proc_interactive_seq = {
 	.stop		= mode_proc_stop,
 };
 
-static int mode_open_proc_ambient(struct inode *inode, struct file *file)
-{
-	return seq_open(file, &mode_proc_ambient_seq);
-}
-
 static int mode_open_proc_interactive(struct inode *inode, struct file *file)
 {
 	return seq_open(file, &mode_proc_interactive_seq);
 }
-
-static const struct file_operations mode_proc_ambient_fops = {
-	.owner		= THIS_MODULE,
-	.open		= mode_open_proc_ambient,
-	.read		= seq_read,
-	.write		= mode_write_proc_ambient,
-};
 
 static const struct file_operations mode_proc_interactive_fops = {
 	.owner		= THIS_MODULE,
@@ -231,23 +169,16 @@ static int init_debug_port(void)
 		return -1; 
     } 
     printk(KERN_INFO"Create dir /proc/%s\n", USER_ROOT_DIR); 
- 
-    mode = proc_create(USER_ENTRY1, 0666, mode_root, &mode_proc_ambient_fops); 
-    if (NULL == mode) 
-    { 
-        printk(KERN_ALERT"Create entry %s under /proc/%s error!\n", USER_ENTRY1,USER_ROOT_DIR); 
-        goto err_out; 
-    }
+
     
-    mode = proc_create(USER_ENTRY2, 0666, mode_root, &mode_proc_interactive_fops); 
+    mode = proc_create(USER_ENTRY, 0666, mode_root, &mode_proc_interactive_fops); 
     if (NULL == mode) 
     { 
-        printk(KERN_ALERT"Create entry %s under /proc/%s error!\n", USER_ENTRY2,USER_ROOT_DIR); 
+        printk(KERN_ALERT"Create entry %s under /proc/%s error!\n", USER_ENTRY,USER_ROOT_DIR); 
         goto err_out; 
     }
- 
-    printk(KERN_INFO"Create /proc/%s/%s\n", USER_ROOT_DIR,USER_ENTRY1);  
-    printk(KERN_INFO"Create /proc/%s/%s\n", USER_ROOT_DIR,USER_ENTRY2);
+  
+    printk(KERN_INFO"Create /proc/%s/%s\n", USER_ROOT_DIR,USER_ENTRY);
  
     return 0; 
     
@@ -258,7 +189,7 @@ err_out:
 
 static void remove_debug_port(void)
 {
-    remove_proc_entry(USER_ENTRY1,mode_root); 
+    remove_proc_entry(USER_ENTRY,mode_root); 
     remove_proc_entry(USER_ROOT_DIR,NULL);
 }
 
