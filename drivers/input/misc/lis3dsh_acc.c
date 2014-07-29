@@ -1975,10 +1975,10 @@ void notify_st_sensor_lowpowermode(int low)
 static int lis3dsh_fb_notifier_callback(struct notifier_block *this, unsigned long code, void *data)
 {
 	switch (code) {
-		case 2:
+		case 0:
 			notify_st_sensor_lowpowermode(1);
 			break;
-		case 3:
+		case 1:
 			notify_st_sensor_lowpowermode(0);
 			break;
 		default:
