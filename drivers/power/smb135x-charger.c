@@ -1299,6 +1299,17 @@ static void smb135x_set_chrg_path_temp(struct smb135x_chg *chip)
 		smb135x_temp_charging(chip, 1);
 }
 
+static bool smb135x_is_max_thermal_level(struct smb135x_chg *chip)
+{
+	if (((chip->usb_present) &&
+	     (chip->therm_lvl_sel >= (chip->thermal_levels - 1))) ||
+	    ((chip->dc_present) &&
+	     (chip->dc_therm_lvl_sel >= (chip->dc_thermal_levels - 1))))
+		return true;
+	else
+		return false;
+}
+
 static int smb135x_check_temp_range(struct smb135x_chg *chip)
 {
 	int batt_volt;
@@ -1313,7 +1324,8 @@ static int smb135x_check_temp_range(struct smb135x_chg *chip)
 	if (((chip->batt_cool) &&
 	     (batt_volt > chip->ext_temp_volt_mv)) ||
 	    ((chip->batt_warm) &&
-	     (batt_soc > chip->ext_temp_soc)))
+	     (batt_soc > chip->ext_temp_soc) &&
+	     (smb135x_is_max_thermal_level(chip))))
 		ext_high_temp = 1;
 
 	if (chip->ext_high_temp != ext_high_temp) {
