@@ -98,6 +98,12 @@
 
 extern struct security_operations *security_ops;
 
+//ASUS_BSP +++
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+extern char g_CHG_mode;
+#endif
+//ASUS_BSP ---
+
 /* SECMARK reference count */
 static atomic_t selinux_secmark_refcount = ATOMIC_INIT(0);
 
@@ -5808,6 +5814,12 @@ static __init int selinux_init(void)
 		selinux_enabled = 0;
 		return 0;
 	}
+
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+	if(g_CHG_mode){
+		selinux_enabled = 0;
+	}
+#endif
 
 	if (!selinux_enabled) {
 		printk(KERN_INFO "SELinux:  Disabled at boot.\n");
