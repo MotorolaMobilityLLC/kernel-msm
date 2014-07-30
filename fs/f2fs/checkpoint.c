@@ -69,7 +69,6 @@ repeat:
 		goto repeat;
 	}
 out:
-	mark_page_accessed(page);
 	return page;
 }
 
@@ -137,13 +136,11 @@ int ra_meta_pages(struct f2fs_sb_info *sbi, int start, int nrpages, int type)
 		if (!page)
 			continue;
 		if (PageUptodate(page)) {
-			mark_page_accessed(page);
 			f2fs_put_page(page, 1);
 			continue;
 		}
 
 		f2fs_submit_page_mbio(sbi, page, blk_addr, &fio);
-		mark_page_accessed(page);
 		f2fs_put_page(page, 0);
 	}
 out:
@@ -404,12 +401,7 @@ void remove_orphan_inode(struct f2fs_sb_info *sbi, nid_t ino)
 static void recover_orphan_inode(struct f2fs_sb_info *sbi, nid_t ino)
 {
 	struct inode *inode = f2fs_iget(sbi->sb, ino);
-	if (IS_ERR(inode)) {
-		f2fs_msg(sbi->sb, KERN_ERR, "unable to recover orphan inode %d",
-				ino);
-		f2fs_handle_error(sbi);
-		return;
-	}
+	f2fs_bug_on(IS_ERR(inode));
 	clear_nlink(inode);
 
 	/* truncate all the data during iput */
