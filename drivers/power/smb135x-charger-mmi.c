@@ -27,6 +27,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/machine.h>
+#include <linux/reboot.h>
 
 #define SMB135X_BITS_PER_REG	8
 
@@ -401,6 +402,7 @@ struct smb135x_chg {
 	int				charger_rate;
 	struct delayed_work		rate_check_work;
 	int				rate_check_count;
+	struct notifier_block		smb_reboot;
 };
 
 static struct smb135x_chg *the_chip;
@@ -4581,6 +4583,22 @@ static bool smb135x_charger_mmi_factory(void)
 	return factory;
 }
 
+static int smb135x_charger_reboot(struct notifier_block *nb,
+				unsigned long event, void *unused)
+{
+	struct smb135x_chg *chip =
+			container_of(nb, struct smb135x_chg, smb_reboot);
+	int rc = 0;
+
+	dev_dbg(chip->dev, "SMB Reboot\n");
+
+	rc = smb135x_masked_write(chip, CMD_CHG_REG, OTG_EN, 0);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't disable OTG mode rc=%d\n", rc);
+
+	return NOTIFY_DONE;
+}
+
 static int smb135x_charger_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -4732,6 +4750,13 @@ static int smb135x_charger_probe(struct i2c_client *client,
 		}
 		enable_irq_wake(client->irq);
 	}
+
+	chip->smb_reboot.notifier_call = smb135x_charger_reboot;
+	chip->smb_reboot.next = NULL;
+	chip->smb_reboot.priority = 1;
+	rc = register_reboot_notifier(&chip->smb_reboot);
+	if (rc)
+		dev_err(chip->dev, "register for reboot failed\n");
 
 	chip->debug_root = debugfs_create_dir("smb135x", NULL);
 	if (!chip->debug_root)
@@ -4929,6 +4954,7 @@ static int smb135x_charger_remove(struct i2c_client *client)
 			pr_err("Couldn't disable therm-bias rc = %d\n", rc);
 	}
 
+	unregister_reboot_notifier(&chip->smb_reboot);
 	debugfs_remove_recursive(chip->debug_root);
 
 	if (chip->dc_psy_type != -EINVAL)
