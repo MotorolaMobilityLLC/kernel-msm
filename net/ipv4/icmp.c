@@ -949,7 +949,7 @@ void icmp_err(struct sk_buff *skb, u32 info)
 	 * triggered by ICMP_ECHOREPLY which sent from kernel.
 	 */
 	if (icmph->type != ICMP_ECHOREPLY) {
-		ping_err(skb, info);
+		ping_v4_err(skb, info);
 		return;
 	}
 
