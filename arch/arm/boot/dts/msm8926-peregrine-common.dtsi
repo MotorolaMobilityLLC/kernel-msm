@@ -74,6 +74,7 @@
 	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
 	qcom,pad-drv-on = <0x2 0x2 0x2>; /* 6mA, 6mA, 6mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+	qcom,pad-drv-tune = <0x2 0x3 0x1>; /* 6mA, 8mA, 4mA */
 
 	qcom,clk-rates = <400000 23076923 50000000 100000000 120000000>;
 	qcom,bus-speed-mode = "SDR12_1p8v", "SDR25_1p8v", "SDR50_1p8v", "DDR_1p8v", "SDR104_1p8v";
