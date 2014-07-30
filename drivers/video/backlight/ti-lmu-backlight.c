@@ -42,6 +42,7 @@
 #include <linux/platform_device.h>
 #include <linux/pwm.h>
 #include <linux/slab.h>
+#include <linux/fb.h>
 
 #include "ti-lmu-backlight.h"
 
@@ -123,10 +124,16 @@ static int ti_lmu_backlight_get_brightness(struct backlight_device *bl_dev)
 	return bl_dev->props.brightness;
 }
 
+static int ti_lmu_check_fb(struct backlight_device *bd, struct fb_info *fi)
+{
+	return 0;
+}
+
 static const struct backlight_ops lmu_bl_common_ops = {
 	.options = BL_CORE_SUSPENDRESUME,
 	.update_status = ti_lmu_backlight_update_status,
 	.get_brightness = ti_lmu_backlight_get_brightness,
+	.check_fb = ti_lmu_check_fb,
 };
 
 static int ti_lmu_backlight_parse_dt(struct device *dev, struct ti_lmu *lmu)
