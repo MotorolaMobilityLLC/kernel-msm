@@ -77,11 +77,6 @@ int mdss_create_xlog_debug(struct mdss_debug_data *mdd)
 			    &mdd->logd.panic_on_err);
 	debugfs_create_bool("reg_dump", 0644, mdd->logd.xlog,
 			    &mdd->logd.enable_reg_dump);
-
-	mdd->logd.xlog_enable = 1;
-	mdd->logd.enable_reg_dump = 1;
-	mdd->logd.panic_on_err = 1;
-
 	return 0;
 }
 
@@ -188,7 +183,7 @@ void mdss_xlog_tout_handler(const char *name, ...)
 				pr_info("\n%s  :   =========%s DUMP=========\n",
 						__func__, blk_base->name);
 				mdss_dump_reg(blk_base->base,
-						blk_base->max_offset, true);
+						blk_base->max_offset);
 			}
 		}
 		if (!strcmp(blk_name, "panic"))
