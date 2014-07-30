@@ -696,6 +696,10 @@ static int mmc_sd_throttle_back(struct mmc_host *host)
 
 	mmc_claim_host(host);
 
+	if (host->ops->tune_drive_strength &&
+	    host->ops->tune_drive_strength(host) == 0)
+		goto out;
+
 	if (mmc_sd_card_uhs(host->card)) {
 		if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR104) {
 			sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR104;
@@ -715,8 +719,6 @@ static int mmc_sd_throttle_back(struct mmc_host *host)
 		speed = "legacy";
 	}
 
-	mmc_release_host(host);
-
 	if (speed)
 		pr_warning("%s: throttle back to %s\n",
 				mmc_hostname(host), speed);
@@ -725,6 +727,9 @@ static int mmc_sd_throttle_back(struct mmc_host *host)
 				mmc_hostname(host));
 		return -EINVAL;
 	}
+
+out:
+	mmc_release_host(host);
 
 	return 0;
 }
@@ -1294,6 +1299,8 @@ static int mmc_sd_resume(struct mmc_host *host)
 			printk(KERN_ERR "%s: Re-init card rc = %d "
 				"(retries = %d, delay = %lu)\n",
 				mmc_hostname(host), err, retries, delay);
+			if (err == -EILSEQ && mmc_sd_throttle_back(host) == 0)
+				continue;
 			retries--;
 			mmc_power_off(host);
 			usleep_range(delay, delay + 500);
@@ -1452,6 +1459,8 @@ int mmc_attach_sd(struct mmc_host *host)
 	while (retries) {
 		err = mmc_sd_init_card(host, host->ocr, NULL);
 		if (err) {
+			if (err == -EILSEQ && mmc_sd_throttle_back(host) == 0)
+				continue;
 			retries--;
 			mmc_power_off(host);
 			usleep_range(delay, delay + 500);

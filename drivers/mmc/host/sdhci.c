@@ -1853,6 +1853,16 @@ static int sdhci_do_get_ro(struct sdhci_host *host)
 	return 0;
 }
 
+static int sdhci_tune_drive_strength(struct mmc_host *mmc)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (host->ops && host->ops->tune_drive_strength)
+		return host->ops->tune_drive_strength(host);
+
+	return -ENOSYS;
+}
+
 static void sdhci_hw_reset(struct mmc_host *mmc)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
@@ -2334,6 +2344,7 @@ static const struct mmc_host_ops sdhci_ops = {
 	.get_ro		= sdhci_get_ro,
 	.hw_reset	= sdhci_hw_reset,
 	.enable_sdio_irq = sdhci_enable_sdio_irq,
+	.tune_drive_strength		= sdhci_tune_drive_strength,
 	.start_signal_voltage_switch	= sdhci_start_signal_voltage_switch,
 	.execute_tuning			= sdhci_execute_tuning,
 	.enable_preset_value		= sdhci_enable_preset_value,
