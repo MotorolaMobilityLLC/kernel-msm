@@ -42,8 +42,6 @@
 #define F2FS_MOUNT_INLINE_DATA		0x00000100
 #define F2FS_MOUNT_FLUSH_MERGE		0x00000200
 #define F2FS_MOUNT_NOBARRIER		0x00000400
-#define F2FS_MOUNT_ERRORS_PANIC		0x00002000
-#define F2FS_MOUNT_ERRORS_RECOVER	0x00004000
 
 #define clear_opt(sbi, option)	(sbi->mount_opt.opt &= ~F2FS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->mount_opt.opt |= F2FS_MOUNT_##option)
@@ -681,15 +679,6 @@ static inline bool f2fs_has_xattr_block(unsigned int ofs)
 	return ofs == XATTR_NODE_OFFSET;
 }
 
-static inline int f2fs_handle_error(struct f2fs_sb_info *sbi)
-{
-	if (test_opt(sbi, ERRORS_PANIC))
-		BUG();
-	if (test_opt(sbi, ERRORS_RECOVER))
-		return 1;
-	return 0;
-}
-
 static inline bool inc_valid_block_count(struct f2fs_sb_info *sbi,
 				 struct inode *inode, blkcnt_t count)
 {
@@ -714,20 +703,8 @@ static inline void dec_valid_block_count(struct f2fs_sb_info *sbi,
 						blkcnt_t count)
 {
 	spin_lock(&sbi->stat_lock);
-
-	if (sbi->total_valid_block_count < (block_t)count) {
-		pr_crit("F2FS-fs (%s): block accounting error: %u < %llu\n",
-			sbi->sb->s_id, sbi->total_valid_block_count, count);
-		f2fs_handle_error(sbi);
-		sbi->total_valid_block_count = count;
-	}
-	if (inode->i_blocks < count) {
-		pr_crit("F2FS-fs (%s): inode accounting error: %llu < %llu\n",
-			sbi->sb->s_id, inode->i_blocks, count);
-		f2fs_handle_error(sbi);
-		inode->i_blocks = count;
-	}
-
+	f2fs_bug_on(sbi->total_valid_block_count < (block_t) count);
+	f2fs_bug_on(inode->i_blocks < count);
 	inode->i_blocks -= count;
 	sbi->total_valid_block_count -= (block_t)count;
 	spin_unlock(&sbi->stat_lock);
@@ -871,24 +848,9 @@ static inline void dec_valid_node_count(struct f2fs_sb_info *sbi,
 {
 	spin_lock(&sbi->stat_lock);
 
-	if (sbi->total_valid_block_count < 1) {
-		pr_crit("F2FS-fs (%s): block accounting error: %u < %u\n",
-			sbi->sb->s_id, sbi->total_valid_block_count, 1);
-		f2fs_handle_error(sbi);
-		sbi->total_valid_block_count = 1;
-	}
-	if (sbi->total_valid_node_count < 1) {
-		pr_crit("F2FS-fs (%s): node accounting error: %u < %u\n",
-			sbi->sb->s_id, sbi->total_valid_node_count, 1);
-		f2fs_handle_error(sbi);
-		sbi->total_valid_node_count = 1;
-	}
-	if (inode->i_blocks < 1) {
-		pr_crit("F2FS-fs (%s): inode accounting error: %llu < %u\n",
-			sbi->sb->s_id, inode->i_blocks, 1);
-		f2fs_handle_error(sbi);
-		inode->i_blocks = 1;
-	}
+	f2fs_bug_on(!sbi->total_valid_block_count);
+	f2fs_bug_on(!sbi->total_valid_node_count);
+	f2fs_bug_on(!inode->i_blocks);
 
 	inode->i_blocks--;
 	sbi->total_valid_node_count--;
