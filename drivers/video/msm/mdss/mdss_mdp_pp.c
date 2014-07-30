@@ -17,6 +17,7 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_pp.h"
+#include "mdss_debug.h"
 #include <linux/uaccess.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
@@ -1244,6 +1245,10 @@ static int mdss_mdp_scale_setup(struct mdss_mdp_pipe *pipe)
 		/*program pixel extn values for the SSPP*/
 		mdss_mdp_pipe_program_pixel_extn(pipe);
 	} else {
+		MDSS_XLOG(pipe->num, init_phasex, init_phasey,
+				phasex_step, phasey_step);
+		MDSS_XLOG(chroma_shift_x, chroma_shift_y, scale_config);
+
 		if (pipe->type == MDSS_MDP_PIPE_TYPE_VIG) {
 			/*program x,y initial phase and phase step*/
 			writel_relaxed(0,

@@ -109,6 +109,48 @@ exit:
 	return cnt;
 }
 
+static inline void mdss_mdp_cmd_pp_read(struct mdss_mdp_ctl *ctl, bool isr)
+{
+	struct mdss_mdp_mixer *mixer;
+	u32 init;
+	u32 height;
+	u32 vsync;
+	u32 en;
+	u32 rptr;
+
+	if (!isr)
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
+
+	mixer = mdss_mdp_mixer_get(ctl, MDSS_MDP_MIXER_MUX_LEFT);
+	if (!mixer) {
+		mixer = mdss_mdp_mixer_get(ctl, MDSS_MDP_MIXER_MUX_RIGHT);
+		if (!mixer) {
+			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+			return;
+		}
+	}
+
+	init = mdss_mdp_pingpong_read
+		(mixer, MDSS_MDP_REG_PP_VSYNC_INIT_VAL) & 0xffff;
+
+	height = mdss_mdp_pingpong_read
+		(mixer, MDSS_MDP_REG_PP_SYNC_CONFIG_HEIGHT) & 0xffff;
+
+	vsync = mdss_mdp_pingpong_read
+		(mixer, MDSS_MDP_REG_PP_SYNC_CONFIG_VSYNC) & 0xffff;
+
+	en = mdss_mdp_pingpong_read
+		(mixer, MDSS_MDP_REG_PP_TEAR_CHECK_EN) & 0xffff;
+
+	rptr = mdss_mdp_pingpong_read
+		(mixer, MDSS_MDP_REG_PP_RD_PTR_IRQ) & 0xffff;
+
+	if(!isr)
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+
+	MDSS_XLOG(ctl->num, en, vsync, height, init, rptr);
+}
+
 
 static int mdss_mdp_cmd_tearcheck_cfg(struct mdss_mdp_ctl *ctl,
 	struct mdss_mdp_mixer *mixer, bool enable)
@@ -300,6 +342,8 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 	}
 
 	spin_unlock(&ctx->clk_lock);
+
+	mdss_mdp_cmd_pp_read(ctl, true);
 }
 
 static void mdss_mdp_cmd_underflow_recovery(void *data)
@@ -579,8 +623,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
 					rc, ctl->num);
 			mdss_dsi_debug_check_te(pdata);
-			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
-					"edp", "hdmi", "panic");
+			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1", "panic");
 		}
 		ctx->pp_timeout_report_cnt++;
 		rc = -EPERM;
@@ -800,6 +843,9 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 	mb();
 	MDSS_XLOG(ctl->num,  atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 						ctx->rdptr_enabled);
+
+	mdss_mdp_cmd_pp_read(ctl, false);
+
 	return 0;
 }
 
@@ -853,6 +899,9 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	if (need_wait && (wait_for_completion_timeout(&ctx->stop_comp,
 		STOP_TIMEOUT) == 0)) {
 		WARN(1, "stop cmd time out\n");
+		MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
+				"edp", "hdmi", "panic");
+
 		mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 			ctx->pp_num);
 		ctx->rdptr_enabled = 0;

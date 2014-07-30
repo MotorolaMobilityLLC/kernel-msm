@@ -525,16 +525,23 @@ int mdss_debugfs_remove(struct mdss_data_type *mdata)
 	return 0;
 }
 
-void mdss_dump_reg(char __iomem *base, int len)
+void mdss_dump_reg(char __iomem *base, int len, bool dump_in_memory)
 {
 	char *addr;
 	u32 x0, x4, x8, xc;
 	int i;
+	u32 *dump_addr;
 
 	addr = base;
 	if (len % 16)
 		len += 16;
 	len /= 16;
+
+	if (dump_in_memory) {
+		/* 16Byte for x0 + x4 +x8 +xc */
+		dump_addr = kzalloc(len * 16, GFP_KERNEL);
+		pr_info("start_address:%p end_address:%p\n", dump_addr, dump_addr + (u32)len*16);
+	}
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 	for (i = 0; i < len; i++) {
@@ -542,7 +549,15 @@ void mdss_dump_reg(char __iomem *base, int len)
 		x4 = readl_relaxed(addr+0x4);
 		x8 = readl_relaxed(addr+0x8);
 		xc = readl_relaxed(addr+0xc);
-		pr_info("%p : %08x %08x %08x %08x\n", addr, x0, x4, x8, xc);
+		if (!dump_in_memory) {
+			pr_info("%p : %08x %08x %08x %08x\n", addr, x0, x4, x8, xc);
+		} else {
+			dump_addr[i*4] = x0;
+			dump_addr[i*4 + 1] = x4;
+			dump_addr[i*4 + 2] = x8;
+			dump_addr[i*4 + 3] = xc;
+		}
+
 		addr += 16;
 	}
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);

@@ -78,8 +78,8 @@ void mdss_misr_crc_collect(struct mdss_data_type *mdata, int block_id);
 int mdss_create_xlog_debug(struct mdss_debug_data *mdd);
 void mdss_xlog(const char *name, ...);
 void mdss_xlog_dump(void);
-void mdss_dump_reg(char __iomem *base, int len);
 void mdss_dsi_debug_check_te(struct mdss_panel_data *pdata);
+void mdss_dump_reg(char __iomem *base, int len, bool dump_in_memory);
 void mdss_xlog_tout_handler(const char *name, ...);
 #else
 static inline int mdss_debugfs_init(struct mdss_data_type *mdata) { return 0; }
@@ -101,7 +101,7 @@ static inline void mdss_misr_crc_collect(struct mdss_data_type *mdata,
 static inline int create_xlog_debug(struct mdss_data_type *mdata) { }
 static inline void mdss_xlog(const char *name, ...) { }
 static inline void mdss_xlog_dump(void) { }
-static inline void mdss_dump_reg(char __iomem *base, int len) { }
+static inline void mdss_dump_reg(char __iomem *base, int len, bool dump_in_memory) { }
 static inline void mdss_dsi_debug_check_te(struct mdss_panel_data *pdata) { }
 static inline void mdss_xlog_tout_handler(const char *name, ...) { }
 #endif

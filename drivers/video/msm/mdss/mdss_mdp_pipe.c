@@ -19,6 +19,7 @@
 #include <linux/mutex.h>
 
 #include "mdss_mdp.h"
+#include "mdss_debug.h"
 
 #define SMP_MB_SIZE		(mdss_res->smp_mb_size)
 #define SMP_MB_CNT		(mdss_res->smp_mb_cnt)
@@ -1054,6 +1055,9 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	dst_size = (dst.h << 16) | dst.w;
 	dst_xy = (dst.y << 16) | dst.x;
 
+	MDSS_XLOG(pipe->num, src_size, src_xy, dst_size, dst_xy,
+			pipe->src_fmt->format);
+
 	ystride0 =  (pipe->src_planes.ystride[0]) |
 			(pipe->src_planes.ystride[1] << 16);
 	ystride1 =  (pipe->src_planes.ystride[2]) |
@@ -1179,6 +1183,8 @@ static int mdss_mdp_format_setup(struct mdss_mdp_pipe *pipe)
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_UNPACK_PATTERN, unpack);
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_OP_MODE, opmode);
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_ADDR_SW_STATUS, secure);
+
+	MDSS_XLOG(pipe->num, pipe->bwc_mode, src_format, unpack, opmode);
 
 	return 0;
 }
@@ -1329,8 +1335,10 @@ int mdss_mdp_pipe_queue_data(struct mdss_mdp_pipe *pipe,
 			(pipe->flags & MDP_SOLID_FILL)) {
 		pipe->params_changed = 0;
 		mdss_mdp_pipe_solidfill_setup(pipe);
+		MDSS_XLOG(pipe->num, pipe->mixer_left->num, pipe->play_cnt, 0x111);
 		goto update_nobuf;
 	}
+	MDSS_XLOG(pipe->num, pipe->mixer_left->num, pipe->play_cnt, 0x222);
 
 	if (params_changed) {
 		pipe->params_changed = 0;
