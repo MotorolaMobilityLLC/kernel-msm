@@ -211,6 +211,10 @@
 	};
 };
 
+&pma8084_l18 {
+	regulator-always-on;
+};
+
 &pma8084_l22 {
 	regulator-always-on;
 };
