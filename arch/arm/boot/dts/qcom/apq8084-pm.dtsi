@@ -317,6 +317,7 @@
 			<0xff 273>, /* oxili_mmu_cirpt[1] */
 			<0xff 274>, /* oxili_mmu_cirpt[2] */
 			<0xff 275>, /* pcie20_int_msi */
+			<0xff 276>, /* wlan_pci */
 			<0xff 286>, /* pcie20_int_pls_link_down */
 			<0xff 297>, /* lpass_irq_out_apcs[21] */
 			<0xff 298>, /* lpass_irq_out_apcs[22] */
@@ -414,7 +415,8 @@
 			<38 131>,
 			<40 139>,
 			<41 141>,
-			<42 143>;
+			<42 143>,
+			<43 146>;
 	};
 
 	qcom,pm@fe805664 {
