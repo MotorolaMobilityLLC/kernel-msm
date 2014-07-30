@@ -129,7 +129,7 @@ extern bool reportRtcReady(void);
 #define PAD_CHG_CURRENT       900
 
 #define AC_CHG_CURRENT        900
-#define AC_SUSPEND_CHG_CURRENT 1200
+#define AC_SUSPEND_CHG_CURRENT 1000
 
 #define BAT_CAP_REPLY_ERR	-1
 #define RESUME_UPDATE_TIME   600      //10 min
