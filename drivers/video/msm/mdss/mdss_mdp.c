@@ -794,6 +794,7 @@ void mdss_mdp_clk_ctrl(int enable, int isr)
 		}
 	}
 
+if (changed)
 	MDSS_XLOG(mdp_clk_cnt, changed, enable, current->pid);
 	pr_debug("%s: clk_cnt=%d changed=%d enable=%d\n",
 			__func__, mdp_clk_cnt, changed, enable);
