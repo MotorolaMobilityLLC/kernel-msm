@@ -148,6 +148,7 @@
 #define IRQ_CFG_REG			0x07
 #define IRQ_BAT_HOT_COLD_HARD_BIT	BIT(7)
 #define IRQ_BAT_HOT_COLD_SOFT_BIT	BIT(6)
+#define IRQ_OTG_OVER_CURRENT_BIT	BIT(4)
 #define IRQ_USBIN_UV_BIT		BIT(2)
 #define IRQ_INTERNAL_TEMPERATURE_BIT	BIT(0)
 
@@ -352,6 +353,7 @@ struct smb135x_chg {
 	int				dc_current_arr_size;
 	int				*dc_current_table;
 	u8				irq_cfg_mask[3];
+	int				otg_oc_count;
 
 	/* psy */
 	struct power_supply		*usb_psy;
@@ -2161,6 +2163,7 @@ static int smb135x_chg_otg_regulator_enable(struct regulator_dev *rdev)
 	 * must have executed within MAX_STEP_MS
 	 */
 	do_gettimeofday(&time_a);
+	chip->otg_oc_count = 0;
 restart_from_enable:
 	/* first step - enable otg */
 	rc = smb135x_masked_write(chip, CMD_CHG_REG, OTG_EN, OTG_EN);
@@ -2788,6 +2791,26 @@ static int power_ok_handler(struct smb135x_chg *chip, u8 rt_stat)
 	return 0;
 }
 
+#define MAX_OTG_RETRY	3
+static int otg_oc_handler(struct smb135x_chg *chip, u8 rt_stat)
+{
+	int rc;
+
+	++chip->otg_oc_count;
+	if (chip->otg_oc_count < MAX_OTG_RETRY) {
+		rc = smb135x_masked_write(chip, CMD_CHG_REG, OTG_EN, OTG_EN);
+		if (rc < 0)
+			dev_err(chip->dev, "Couldn't enable  OTG mode rc=%d\n",
+				rc);
+	} else {
+		pr_warn_ratelimited("Tried enabling OTG %d times, the USB slave is nonconformant.\n",
+			chip->otg_oc_count);
+	}
+
+	pr_debug("rt_stat = 0x%02x\n", rt_stat);
+	return 0;
+}
+
 static int handle_dc_removal(struct smb135x_chg *chip)
 {
 	if (chip->dc_psy_type == POWER_SUPPLY_TYPE_WIRELESS) {
@@ -3320,6 +3343,7 @@ static struct irq_handler_info handlers[] = {
 			},
 			{
 				.name		= "otg_oc",
+				.smb_irq	= otg_oc_handler,
 			},
 		},
 	},
@@ -4013,6 +4037,7 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 		rc = smb135x_write(chip, IRQ_CFG_REG,
 			IRQ_BAT_HOT_COLD_HARD_BIT
 			| IRQ_BAT_HOT_COLD_SOFT_BIT
+			| IRQ_OTG_OVER_CURRENT_BIT
 			| IRQ_INTERNAL_TEMPERATURE_BIT
 			| IRQ_USBIN_UV_BIT);
 
