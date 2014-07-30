@@ -423,6 +423,11 @@ eHalStatus csrInitChannelsForCC(tpAniSirGlobal pMac)
     vos_mem_copy(pMac->scan.countryCodeCurrent, pMac->scan.countryCodeDefault,
                  WNI_CFG_COUNTRY_CODE_LEN);
     status = csrInitGetChannels( pMac );
+
+    /* reset info based on new cc, and we are done */
+    csrResetCountryInformation(pMac, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_TRUE);
+    csrScanFilterResults(pMac);
+
     return status;
 }
 
