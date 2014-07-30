@@ -560,13 +560,13 @@ static void lis3dsh_acc_set_init_statepr2_param(struct lis3dsh_acc_data *acc)
 	/* Place here state machine 2 parameters */
 	/* Knock knock function */
 	acc->resume_state[RES_LIS3DSH_TIM4_2] = 0x05;
-	acc->resume_state[RES_LIS3DSH_TIM3_2] = 0x14;
-	acc->resume_state[RES_LIS3DSH_TIM2_2_L] = 0x24;
+	acc->resume_state[RES_LIS3DSH_TIM3_2] = 0x05;
+	acc->resume_state[RES_LIS3DSH_TIM2_2_L] = 0x10;
 	acc->resume_state[RES_LIS3DSH_TIM2_2_H] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x86;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_H] = 0x00;
 	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x01;
-	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x03;
+	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x0C;
 	acc->resume_state[RES_LIS3DSH_DES_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_SA_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_MA_2] = 0x03;
