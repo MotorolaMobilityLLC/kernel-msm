@@ -246,7 +246,10 @@ struct sdhci_msm_pad_drv {
 struct sdhci_msm_pad_drv_data {
 	struct sdhci_msm_pad_drv *on;
 	struct sdhci_msm_pad_drv *off;
+	struct sdhci_msm_pad_drv *tune;
 	u8 size;
+	u8 tune_size;
+	u8 tune_index;
 };
 
 struct sdhci_msm_pad_data {
@@ -1214,7 +1217,7 @@ static int sdhci_msm_dt_get_pad_drv_info(struct device *dev, int id,
 	drv_data->size = 3; /* array size for clk, cmd, data */
 
 	/* Allocate on, off configs for clk, cmd, data */
-	drv = devm_kzalloc(dev, 2 * drv_data->size *\
+	drv = devm_kzalloc(dev, 3 * drv_data->size *\
 			sizeof(struct sdhci_msm_pad_drv), GFP_KERNEL);
 	if (!drv) {
 		dev_err(dev, "No memory msm_mmc_pad_drv\n");
@@ -1223,6 +1226,7 @@ static int sdhci_msm_dt_get_pad_drv_info(struct device *dev, int id,
 	}
 	drv_data->on = drv;
 	drv_data->off = drv + drv_data->size;
+	drv_data->tune = drv + (drv_data->size * 2);
 
 	ret = sdhci_msm_dt_get_array(dev, "qcom,pad-drv-on",
 			&tmp, &len, drv_data->size);
@@ -1232,7 +1236,7 @@ static int sdhci_msm_dt_get_pad_drv_info(struct device *dev, int id,
 	for (i = 0; i < len; i++) {
 		drv_data->on[i].no = base + i;
 		drv_data->on[i].val = tmp[i];
-		dev_dbg(dev, "%s: val[%d]=0x%x\n", __func__,
+		dev_dbg(dev, "%s: on[%d]=0x%x\n", __func__,
 				i, drv_data->on[i].val);
 	}
 
@@ -1244,8 +1248,19 @@ static int sdhci_msm_dt_get_pad_drv_info(struct device *dev, int id,
 	for (i = 0; i < len; i++) {
 		drv_data->off[i].no = base + i;
 		drv_data->off[i].val = tmp[i];
-		dev_dbg(dev, "%s: val[%d]=0x%x\n", __func__,
+		dev_dbg(dev, "%s: off[%d]=0x%x\n", __func__,
 				i, drv_data->off[i].val);
+	}
+
+	if (!sdhci_msm_dt_get_array(dev, "qcom,pad-drv-tune",
+			&tmp, &len, drv_data->size)) {
+		for (i = 0; i < len; i++) {
+			drv_data->tune[i].no = base;
+			drv_data->tune[i].val = tmp[i];
+			dev_dbg(dev, "%s: tune[%d]=0x%x\n", __func__,
+					i, drv_data->tune[i].val);
+		}
+		drv_data->tune_size = len;
 	}
 
 	*pad_drv_data = drv_data;
@@ -2597,6 +2612,31 @@ static int sdhci_msm_set_uhs_signaling(struct sdhci_host *host,
 	return 0;
 }
 
+static int sdhci_msm_tune_drive_strength(struct sdhci_host *host)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+	struct sdhci_msm_pad_drv_data *drv =
+			msm_host->pdata->pin_data->pad_data->drv;
+
+	drv->tune_index++;
+	if (drv->tune_index >= drv->tune_size) {
+		pr_info("%s: no other drive strength tuning settings\n",
+			mmc_hostname(host->mmc));
+		drv->tune_index = 0;
+		return -EAGAIN;
+	}
+
+	/* Only supporting CLK for now */
+	drv->on[0].val = drv->tune[drv->tune_index].val;
+	pr_info("%s: tuning drive strength: %d\n",
+		mmc_hostname(host->mmc), drv->on[0].val);
+	msm_tlmm_set_hdrive(drv->tune[drv->tune_index].no,
+			    drv->tune[drv->tune_index].val);
+
+	return 0;
+}
+
 /*
  * Simulate a device reset by toggling power on the slot.
  */
@@ -2723,6 +2763,7 @@ static struct sdhci_ops sdhci_msm_ops = {
 	.set_clock = sdhci_msm_set_clock,
 	.get_min_clock = sdhci_msm_get_min_clock,
 	.get_max_clock = sdhci_msm_get_max_clock,
+	.tune_drive_strength = sdhci_msm_tune_drive_strength,
 	.hw_reset = sdhci_msm_hw_reset,
 	.disable_data_xfer = sdhci_msm_disable_data_xfer,
 	.enable_controller_clock = sdhci_msm_enable_controller_clock,
