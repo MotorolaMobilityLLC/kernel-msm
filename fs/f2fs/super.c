@@ -52,9 +52,6 @@ enum {
 	Opt_inline_xattr,
 	Opt_inline_data,
 	Opt_flush_merge,
-	Opt_err_continue,
-	Opt_err_panic,
-	Opt_err_recover,
 	Opt_nobarrier,
 	Opt_err,
 };
@@ -73,9 +70,6 @@ static match_table_t f2fs_tokens = {
 	{Opt_inline_xattr, "inline_xattr"},
 	{Opt_inline_data, "inline_data"},
 	{Opt_flush_merge, "flush_merge"},
-	{Opt_err_continue, "errors=continue"},
-	{Opt_err_panic, "errors=panic"},
-	{Opt_err_recover, "errors=recover"},
 	{Opt_nobarrier, "nobarrier"},
 	{Opt_err, NULL},
 };
@@ -347,17 +341,6 @@ static int parse_options(struct super_block *sb, char *options)
 		case Opt_flush_merge:
 			set_opt(sbi, FLUSH_MERGE);
 			break;
-		case Opt_err_continue:
-			clear_opt(sbi, ERRORS_RECOVER);
-			clear_opt(sbi, ERRORS_PANIC);
-			break;
-		case Opt_err_panic:
-			set_opt(sbi, ERRORS_PANIC);
-			clear_opt(sbi, ERRORS_RECOVER);
-			break;
-		case Opt_err_recover:
-			set_opt(sbi, ERRORS_RECOVER);
-			clear_opt(sbi, ERRORS_PANIC);
 		case Opt_nobarrier:
 			set_opt(sbi, NOBARRIER);
 			break;
@@ -560,12 +543,6 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 	else
 		seq_puts(seq, ",noacl");
 #endif
-	if (test_opt(sbi, ERRORS_PANIC))
-		seq_puts(seq, ",errors=panic");
-	else if (test_opt(sbi, ERRORS_RECOVER))
-		seq_puts(seq, ",errors=recover");
-	else
-		seq_puts(seq, ",errors=continue");
 	if (test_opt(sbi, DISABLE_EXT_IDENTIFY))
 		seq_puts(seq, ",disable_ext_identify");
 	if (test_opt(sbi, INLINE_DATA))
@@ -626,6 +603,8 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 	int err, active_logs;
 	bool need_restart_gc = false;
 	bool need_stop_gc = false;
+
+	sync_filesystem(sb);
 
 	/*
 	 * Save the old mount options in case we
@@ -922,7 +901,6 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	long err = -EINVAL;
 	int i;
 
-	f2fs_msg(sb, KERN_INFO, "mounting..");
 	/* allocate memory for f2fs-specific super block info */
 	sbi = kzalloc(sizeof(struct f2fs_sb_info), GFP_KERNEL);
 	if (!sbi)
@@ -1000,7 +978,6 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 		goto free_sb_buf;
 	}
 
-get_cp:
 	err = get_valid_checkpoint(sbi);
 	if (err) {
 		f2fs_msg(sb, KERN_ERR, "Failed to get valid F2FS checkpoint");
@@ -1078,6 +1055,13 @@ get_cp:
 	if (err)
 		goto free_root_inode;
 
+	if (f2fs_proc_root)
+		sbi->s_proc = proc_mkdir(sb->s_id, f2fs_proc_root);
+
+	if (sbi->s_proc)
+		proc_create_data("segment_info", S_IRUGO, sbi->s_proc,
+				 &f2fs_seq_segment_info_fops, sb);
+
 	if (test_opt(sbi, DISCARD)) {
 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
 		if (!blk_queue_discard(q))
@@ -1086,37 +1070,20 @@ get_cp:
 					"the device does not support discard");
 	}
 
-	/* recover fsynced data */
-	if (!test_opt(sbi, DISABLE_ROLL_FORWARD)) {
-		err = recover_fsync_data(sbi);
-		if (err) {
-			if (f2fs_handle_error(sbi)) {
-				set_opt(sbi, DISABLE_ROLL_FORWARD);
-				kfree(sbi->ckpt);
-				f2fs_msg(sb, KERN_ERR,
-					"reloading last checkpoint");
-				goto get_cp;
-			}
-			f2fs_msg(sb, KERN_ERR,
-				"cannot recover all fsync data errno=%ld", err);
-			/* checkpoint what we have */
-			write_checkpoint(sbi, false);
-		}
-	}
-
-	if (f2fs_proc_root)
-		sbi->s_proc = proc_mkdir(sb->s_id, f2fs_proc_root);
-
-	if (sbi->s_proc)
-		proc_create_data("segment_info", S_IRUGO, sbi->s_proc,
-				 &f2fs_seq_segment_info_fops, sb);
-
 	sbi->s_kobj.kset = f2fs_kset;
 	init_completion(&sbi->s_kobj_unregister);
 	err = kobject_init_and_add(&sbi->s_kobj, &f2fs_ktype, NULL,
 							"%s", sb->s_id);
 	if (err)
 		goto free_proc;
+
+	/* recover fsynced data */
+	if (!test_opt(sbi, DISABLE_ROLL_FORWARD)) {
+		err = recover_fsync_data(sbi);
+		if (err)
+			f2fs_msg(sb, KERN_ERR,
+				"Cannot recover all fsync data errno=%ld", err);
+	}
 
 	/*
 	 * If filesystem is not mounted as read-only then
@@ -1128,7 +1095,6 @@ get_cp:
 		if (err)
 			goto free_kobj;
 	}
-	f2fs_msg(sb, KERN_INFO, "mounted filesystem");
 	return 0;
 
 free_kobj:
@@ -1157,7 +1123,6 @@ free_sb_buf:
 	brelse(raw_super_buf);
 free_sbi:
 	kfree(sbi);
-	f2fs_msg(sb, KERN_ERR, "mount failed");
 	return err;
 }
 
