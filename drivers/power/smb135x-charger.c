@@ -442,8 +442,13 @@ static int __smb135x_read(struct smb135x_chg *chip, int reg,
 				u8 *val)
 {
 	s32 ret;
+	int i;
 
 	ret = i2c_smbus_read_byte_data(chip->client, reg);
+	for (i = 0; ((ret < 0) && (i < 5)); i++) {
+		mdelay(5);
+		ret = i2c_smbus_read_byte_data(chip->client, reg);
+	}
 	if (ret < 0) {
 		dev_err(chip->dev,
 			"i2c read fail: can't read from %02x: %d\n", reg, ret);
