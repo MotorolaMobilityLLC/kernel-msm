@@ -397,12 +397,12 @@ struct smb135x_chg {
 	int				bms_check;
 	unsigned long			float_charge_start_time;
 	struct delayed_work		aicl_check_work;
-	struct notifier_block           smb_reboot;
 	bool				aicl_disabled;
 	bool				aicl_weak_detect;
 	int				charger_rate;
 	struct delayed_work		rate_check_work;
 	int				rate_check_count;
+	struct notifier_block		smb_reboot;
 };
 
 static struct smb135x_chg *the_chip;
@@ -4592,7 +4592,7 @@ static int smb135x_charger_reboot(struct notifier_block *nb,
 
 	dev_dbg(chip->dev, "SMB Reboot\n");
 
-	smb135x_masked_write(chip, CMD_CHG_REG, OTG_EN, 0);
+	rc = smb135x_masked_write(chip, CMD_CHG_REG, OTG_EN, 0);
 	if (rc < 0)
 		dev_err(chip->dev, "Couldn't disable OTG mode rc=%d\n", rc);
 
