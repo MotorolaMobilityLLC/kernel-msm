@@ -729,7 +729,7 @@ typedef enum
 #define CFG_QOS_WMM_UAPSD_MASK_NAME                        "UapsdMask" // ACs to setup U-APSD for at assoc
 #define CFG_QOS_WMM_UAPSD_MASK_MIN                         (0x00)
 #define CFG_QOS_WMM_UAPSD_MASK_MAX                         (0xFF) 
-#define CFG_QOS_WMM_UAPSD_MASK_DEFAULT                     (0x00)   
+#define CFG_QOS_WMM_UAPSD_MASK_DEFAULT                     (0x3)
 
 #define CFG_QOS_WMM_INFRA_UAPSD_VO_SRV_INTV_NAME           "InfraUapsdVoSrvIntv"
 #define CFG_QOS_WMM_INFRA_UAPSD_VO_SRV_INTV_MIN             (0)
@@ -2242,6 +2242,79 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_MAX_CONCURRENT_CONNECTIONS_MIN        ( 1 )
 #define CFG_MAX_CONCURRENT_CONNECTIONS_MAX        ( 4 )
 
+//Enable Dynamic WMM PS support
+#define CFG_ENABLE_DYNAMIC_WMMPS_NAME        "gEnableDynamicWMMPS"
+#define CFG_ENABLE_DYNAMIC_WMM_PS_MIN        (0)
+#define CFG_ENABLE_DYNAMIC_WMM_PS_MAX        (1)
+#define CFG_ENABLE_DYNAMIC_WMM_PS_DEFAULT    (1)
+
+/*
+ * If the number of consecutive SPs for which the firmware has sent
+ * trigger frame (because more data bit was set to 1 at end of SP)
+ * when dynamic WMM PS support is enabled exceeds this value then
+ * firmware will come out of power save mode
+ */
+#define CFG_MAX_UAPSD_CONSEC_SP_NAME             "gMaxUapsdConsecSP"
+#define CFG_MAX_UAPSD_CONSEC_SP_DEFAULT          ( 10 )
+#define CFG_MAX_UAPSD_CONSEC_SP_MIN              ( 0 )
+#define CFG_MAX_UAPSD_CONSEC_SP_MAX              ( 500 )
+
+/*
+ * If the number of frames received in the "gUapsdConsecRxCntMeasWindow"
+ * exceeds this value then firmware will come out of power save mode.
+ * Comes into effect only when dynamic WMM PS is enabled.
+ */
+#define CFG_MAX_UAPSD_CONSEC_RX_CNT_NAME         "gMaxUapsdConsecRxCnt"
+#define CFG_MAX_UAPSD_CONSEC_RX_CNT_DEFAULT      ( 50 )
+#define CFG_MAX_UAPSD_CONSEC_RX_CNT_MIN          ( 0 )
+#define CFG_MAX_UAPSD_CONSEC_RX_CNT_MAX          ( 5000 )
+
+/*
+ * If the number of frames transmitted in the "gUapsdConsecTxCntMeasWindow"
+ * exceeds this value then firmware will come out of power save mode.
+ * Comes into effect only when dynamic WMM PS is enabled.
+ */
+#define CFG_MAX_UAPSD_CONSEC_TX_CNT_NAME         "gMaxUapsdConsecTxCnt"
+#define CFG_MAX_UAPSD_CONSEC_TX_CNT_DEFAULT      ( 50 )
+#define CFG_MAX_UAPSD_CONSEC_TX_CNT_MIN          ( 0 )
+#define CFG_MAX_UAPSD_CONSEC_TX_CNT_MAX          ( 5000 )
+
+// Read the description in "gMaxUapsdConsecRxCnt", the interval is in msec
+#define CFG_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW_NAME "gUapsdConsecRxCntMeasWindow"
+#define CFG_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW_DEFAULT      ( 500 )
+#define CFG_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW_MIN          ( 50 )
+#define CFG_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW_MAX          ( 50000 )
+
+// Read the description in "gMaxUapsdConsecTxCnt", the interval is in msec
+#define CFG_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW_NAME "gUapsdConsecTxCntMeasWindow"
+#define CFG_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW_DEFAULT      ( 500 )
+#define CFG_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW_MIN          ( 50 )
+#define CFG_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW_MAX          ( 50000 )
+
+/*
+ * number of PS poll frames that can be sent by the firmware to retrieve
+ * Data before the firmware comes out of power save mode for an AC
+ * which is neither Delivery or Trigger enabled when dynamic WMM PS
+ * is configured.
+ * Comes into effect only when dynamic WMM PS is enabled.
+*/
+#define CFG_UAPSD_PSPOLL_NAME          "gMaxPsPollInWmmUapsdMode"
+#define CFG_UAPSD_PSPOLL_MIN           (0)
+#define CFG_UAPSD_PSPOLL_MAX           (255)
+#define CFG_UAPSD_PSPOLL_DEFAULT       (0)
+
+/*
+ * If the number of itervals for which the firmware detects no activity
+ * on the WMM PS enabled ACs exceeds this value then the firmware will
+ * go to power save mode. The length of the interval is dynamically
+ * calculated by the firmware depending on the configured service
+ * intervals.
+ * Comes into effect only when dynamic WMM PS is enabled.
+ */
+#define CFG_MAX_UAPSD_INACT_INTVL_NAME       "gMaxUapsdInactivityIntervals"
+#define CFG_MAX_UAPSD_INACT_INTVL_MIN        (1)
+#define CFG_MAX_UAPSD_INACT_INTVL_MAX        (255)
+#define CFG_MAX_UAPSD_INACT_INTVL_DEFAULT    (10)
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2711,6 +2784,15 @@ typedef struct
    v_BOOL_t                    sendDeauthBeforeCon;
    v_BOOL_t                    fenableCHAvoidance;
    v_U8_t                      gMaxConcurrentActiveSessions;
+
+   v_U32_t                     enableDynamicWMMPS;
+   v_U32_t                     maxUapsdConsecSP;
+   v_U32_t                     maxUapsdConsecRxCnt;
+   v_U32_t                     maxUapsdConsecTxCnt;
+   v_U32_t                     uapsdConsecRxCntMeasWindow;
+   v_U32_t                     uapsdConsecTxCntMeasWindow;
+   v_U32_t                     maxPsPollInWmmUapsdMode;
+   v_U32_t                     maxUapsdInactivityIntervals;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

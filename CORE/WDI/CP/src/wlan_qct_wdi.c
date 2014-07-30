@@ -187,6 +187,7 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
 #else
     ,FEATURE_NOT_SUPPORTED          //42
 #endif
+   ,DYNAMIC_WMM_PS                 //43
 
 };
 
@@ -1366,6 +1367,10 @@ void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
 #endif
                      case MU_MIMO: snprintf(pCapStr, sizeof("MU_MIMO"), "%s", "MU_MIMO");
                           pCapStr += strlen("MU_MIMO");
+                          break;
+
+                     case DYNAMIC_WMM_PS: snprintf(pCapStr, sizeof("DYNAMIC_WMM_PS"), "%s", "DYNAMIC_WMM_PS");
+                          pCapStr += strlen("DYNAMIC_WMM_PS");
                           break;
 
                  }

@@ -4940,3 +4940,83 @@ LIM
 V    RW    NP
 LIM
 0    1    0
+
+WNI_CFG_MAX_UAPSD_CONSEC_SP    I    4    7
+V    RW    NP
+HAL
+0    100     10
+V    RW    NP
+HAL
+0    100     10
+*
+*
+
+WNI_CFG_MAX_UAPSD_CONSEC_RX_CNT    I    4    7
+V    RW    NP
+HAL
+0    100     10
+V    RW    NP
+HAL
+0    100     10
+*
+*
+
+WNI_CFG_MAX_UAPSD_CONSEC_TX_CNT    I    4    7
+V    RW    NP
+HAL
+0    100     10
+V    RW    NP
+HAL
+0    100     10
+*
+*
+
+WNI_CFG_MAX_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW    I    4    7
+V    RW    NP
+HAL
+0    100     10
+V    RW    NP
+HAL
+0    100     10
+*
+*
+
+WNI_CFG_MAX_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW    I    4    7
+V    RW    NP
+HAL
+0    100     10
+V    RW    NP
+HAL
+0    100     10
+*
+*
+
+WNI_CFG_MAX_PSPOLL_IN_WMM_UAPSD_PS_MODE    I    4    7
+V    RW    NP
+HAL
+0    255     0
+V    RW    NP
+HAL
+0    255     0
+*
+*
+
+WNI_CFG_MAX_UAPSD_INACTIVITY_INTERVALS    I    4    7
+V    RW    NP
+HAL
+0    255     20
+V    RW    NP
+HAL
+0    255     20
+*
+*
+
+WNI_CFG_ENABLE_DYNAMIC_WMMPS    I    4    7
+V    RW    NP
+HAL
+0    1     1
+V    RW    NP
+HAL
+0    1     1
+*
+*
