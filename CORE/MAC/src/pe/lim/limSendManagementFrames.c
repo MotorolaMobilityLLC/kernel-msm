@@ -893,7 +893,8 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
         }
 
         nBytes = nBytes + totalAddnIeLen;
-
+        limLog(pMac, LOG1,
+            FL("probe rsp packet size is %d "), nBytes);
         if (probeReqP2pIe)
         {
             pP2pIe = limGetP2pIEPtr(pMac, &addIE[0], totalAddnIeLen);
@@ -906,6 +907,9 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
                     total_noaLen = limBuildP2pIe(pMac, &noaIe[0], 
                                             &noaStream[0], noaLen); 
                     nBytes = nBytes + total_noaLen;
+                    limLog(pMac, LOG1,
+                        FL("p2p probe rsp packet size is  %d, noalength is %d"),
+                            nBytes, total_noaLen);
                 }
             }
         }
