@@ -2314,8 +2314,6 @@ static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
 	pr_debug("setup mixer=%d\n", mixer->num);
 	screen_state = ctl->force_screen_state;
 
-MDSS_XLOG(ctl->num, mixer->roi.h, mixer->roi.w, 0, 0);
-
 	outsize = (mixer->roi.h << 16) | mixer->roi.w;
 	mdp_mixer_write(mixer, MDSS_MDP_REG_LM_OUT_SIZE, outsize);
 
@@ -2466,7 +2464,6 @@ update_mixer:
 	mdp_mixer_write(mixer, MDSS_MDP_REG_LM_OP_MODE, mixer_op_mode);
 	off = __mdss_mdp_ctl_get_mixer_off(mixer);
 	mdss_mdp_ctl_write(ctl, off, mixercfg);
-MDSS_XLOG(mixer->num, off, mixercfg, 0, 0);
 }
 
 int mdss_mdp_mixer_addr_setup(struct mdss_data_type *mdata,
@@ -2906,7 +2903,6 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 	}
 
 	mutex_lock(&ctl->lock);
-	MDSS_XLOG(ctl->num,  ctl->play_cnt);
 	pr_debug("commit ctl=%d play_cnt=%d\n", ctl->num, ctl->play_cnt);
 
 	if (!ctl->power_on) {
@@ -3054,10 +3050,9 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 
 	if (ret)
 		pr_warn("error displaying frame\n");
-	MDSS_XLOG(ctl->num,  ctl->play_cnt);
+
 	ctl->play_cnt++;
 	ATRACE_END("flush_kickoff");
-
 
 done:
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);

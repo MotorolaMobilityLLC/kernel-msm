@@ -19,7 +19,6 @@
 #include <linux/mutex.h>
 
 #include "mdss_mdp.h"
-#include "mdss_debug.h"
 
 #define SMP_MB_SIZE		(mdss_res->smp_mb_size)
 #define SMP_MB_CNT		(mdss_res->smp_mb_cnt)
@@ -1054,8 +1053,6 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	dst_size = (dst.h << 16) | dst.w;
 	dst_xy = (dst.y << 16) | dst.x;
 
-MDSS_XLOG(pipe->num, src_size, src_xy, dst_size, dst_xy);
-
 	ystride0 =  (pipe->src_planes.ystride[0]) |
 			(pipe->src_planes.ystride[1] << 16);
 	ystride1 =  (pipe->src_planes.ystride[2]) |
@@ -1312,8 +1309,6 @@ int mdss_mdp_pipe_queue_data(struct mdss_mdp_pipe *pipe,
 		return -EINVAL;
 	}
 
-MDSS_XLOG(pipe->num, pipe->mixer_left->num, pipe->play_cnt, 0);
-
 	pr_debug("pnum=%x mixer=%d play_cnt=%u\n", pipe->num,
 		 pipe->mixer_left->num, pipe->play_cnt);
 
@@ -1443,49 +1438,11 @@ static inline void __mdss_mdp_pipe_program_pixel_extn_helper(
  */
 int mdss_mdp_pipe_program_pixel_extn(struct mdss_mdp_pipe *pipe)
 {
-	u32 reg_lr, reg_tb, reg_req;
-	u32 reg_lr1, reg_tb1, reg_req1;
-	u32 mask = 0xFF;
-	u32 src_h = pipe->src.h >> pipe->vert_deci;
 	/* Y plane pixel extn */
 	__mdss_mdp_pipe_program_pixel_extn_helper(pipe, 0, 0);
 	/* CB CR plane pixel extn */
 	__mdss_mdp_pipe_program_pixel_extn_helper(pipe, 1, 16);
 	/* Alpha plane pixel extn */
 	__mdss_mdp_pipe_program_pixel_extn_helper(pipe, 3, 32);
-
-	reg_lr = ((pipe->scale.right_ftch[0] & mask) << 24)|
-		((pipe->scale.right_rpt[0] & mask) << 16)|
-		((pipe->scale.left_ftch[0] & mask) << 8)|
-		(pipe->scale.left_rpt[0] & mask);
-
-	reg_tb = ((pipe->scale.btm_ftch[0] & mask) << 24)|
-		((pipe->scale.btm_rpt[0] & mask) << 16)|
-		((pipe->scale.top_ftch[0] & mask) << 8)|
-		(pipe->scale.top_rpt[0] & mask);
-
-	mask = 0xFFFF;
-	reg_req = (((src_h + pipe->scale.num_ext_pxls_top[0] + pipe->scale.num_ext_pxls_btm[0]) & mask) << 16) |
-		((pipe->scale.roi_w[0] + pipe->scale.num_ext_pxls_left[0] + pipe->scale.num_ext_pxls_right[0]) & mask);
-
-	mask = 0xFF;
-	reg_lr1 = ((pipe->scale.right_ftch[1] & mask) << 24)|
-		((pipe->scale.right_rpt[1] & mask) << 16)|
-		((pipe->scale.left_ftch[1] & mask) << 8)|
-		(pipe->scale.left_rpt[1] & mask);
-
-	reg_tb1 = ((pipe->scale.btm_ftch[1] & mask) << 24)|
-		((pipe->scale.btm_rpt[1] & mask) << 16)|
-		((pipe->scale.top_ftch[1] & mask) << 8)|
-		(pipe->scale.top_rpt[1] & mask);
-
-	mask = 0xFFFF;
-	src_h >>= pipe->chroma_sample_v;
-	reg_req1 = (((src_h + pipe->scale.num_ext_pxls_top[1] +
-		pipe->scale.num_ext_pxls_btm[1]) & mask) << 16) |
-		((pipe->scale.roi_w[1] + pipe->scale.num_ext_pxls_left[1] + pipe->scale.num_ext_pxls_right[1]) & mask);
-
-	MDSS_XLOG(pipe->num, reg_lr, reg_tb, reg_req, reg_lr1, reg_tb1, reg_req1);
-
 	return 0;
 }
