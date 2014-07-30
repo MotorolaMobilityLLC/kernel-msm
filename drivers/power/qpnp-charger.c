@@ -397,6 +397,7 @@ struct qpnp_chg_chip {
 	unsigned int			step_dwn_thr_mv;
 	unsigned int			ext_set_ibat_ma;
 	unsigned int			ext_set_vddmax_mv;
+	unsigned int			remainder_ibat_ma;
 };
 
 static void
@@ -2822,6 +2823,8 @@ qpnp_chg_ibatmax_set(struct qpnp_chg_chip *chip, int chg_current)
 		pr_err("bad mA=%d asked to set\n", chg_current);
 		return -EINVAL;
 	}
+
+	chip->remainder_ibat_ma = chg_current % QPNP_CHG_I_STEP_MA;
 	temp = chg_current / QPNP_CHG_I_STEP_MA;
 	return qpnp_chg_masked_write(chip, chip->chgr_base + CHGR_IBAT_MAX,
 			QPNP_CHG_I_MASK, temp, 1);
@@ -3523,7 +3526,8 @@ static void qpnp_chg_compensate_ibat_error(struct qpnp_chg_chip *chip)
 		return;
 	}
 
-	ibat_diff_ma = -1 * ibat_ma - ibat_max_ma;
+	ibat_diff_ma = -1 * ibat_ma
+			- (ibat_max_ma + chip->remainder_ibat_ma);
 
 	if (abs(ibat_diff_ma) > QPNP_CHG_I_STEP_MA * 2) {
 		pr_err("ibat diff is out of range\n");
