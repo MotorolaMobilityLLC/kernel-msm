@@ -3061,7 +3061,7 @@ static void AXC_BatteryService_resume(struct AXI_BatteryServiceFacade *bat,int d
 #endif		
 
 	schedule_delayed_work(&_this->ResumeWorker,1*HZ);
-	wake_lock_timeout(&_this->resume_wake_lock,2* HZ);
+//	wake_lock_timeout(&_this->resume_wake_lock,2* HZ);
 
 	if( false == reportRtcReady()){
 		queue_delayed_work(_this->BatteryServiceCapUpdateQueue,
