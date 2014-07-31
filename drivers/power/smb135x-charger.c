@@ -408,6 +408,7 @@ struct smb135x_chg {
 	int				bms_check;
 	unsigned long			float_charge_start_time;
 	struct delayed_work		aicl_check_work;
+	struct delayed_work		src_removal_work;
 	bool				aicl_disabled;
 	bool				aicl_weak_detect;
 	int				charger_rate;
@@ -429,6 +430,7 @@ static struct smb135x_chg *the_chip;
 
 static int smb135x_float_voltage_set(struct smb135x_chg *chip, int vfloat_mv);
 static int handle_usb_removal(struct smb135x_chg *chip);
+static int notify_usb_removal(struct smb135x_chg *chip);
 static int smb135x_setup_vbat_monitoring(struct smb135x_chg *chip);
 
 static void smb_stay_awake(struct smb_wakeup_source *source)
@@ -2455,6 +2457,9 @@ static void aicl_check_work(struct work_struct *work)
 	if (!chip->aicl_weak_detect && (rc < 0x02))
 		chip->aicl_weak_detect = true;
 
+	cancel_delayed_work(&chip->src_removal_work);
+	schedule_delayed_work(&chip->src_removal_work,
+		msecs_to_jiffies(3000));
 	if (!rc) {
 		dev_dbg(chip->dev, "Reached Bottom IC!\n");
 		return;
@@ -2466,6 +2471,23 @@ static void aicl_check_work(struct work_struct *work)
 				  IRQ_USBIN_UV_BIT);
 	if (rc < 0)
 		dev_err(chip->dev, "Couldn't Unmask USBIN UV IRQ\n");
+}
+
+static void src_removal_work(struct work_struct *work)
+{
+	struct smb135x_chg *chip =
+		container_of(work, struct smb135x_chg,
+				src_removal_work.work);
+	bool usb_present = is_usb_plugged_in(chip);
+	if (chip->usb_present && !usb_present) {
+		/* USB removed */
+		chip->usb_present = usb_present;
+		if (!usb_present && !is_dc_plugged_in(chip)) {
+			chip->chg_done_batt_full = false;
+			chip->float_charge_start_time = 0;
+		}
+		notify_usb_removal(chip);
+	}
 }
 
 static int smb135x_get_charge_rate(struct smb135x_chg *chip)
@@ -2556,6 +2578,7 @@ static void heartbeat_work(struct work_struct *work)
 	bool poll_status = chip->poll_fast;
 
 	dev_dbg(chip->dev, "HB Pound!\n");
+	cancel_delayed_work(&chip->src_removal_work);
 
 	get_monotonic_boottime(&bootup_time);
 	float_timestamp = bootup_time.tv_sec;
@@ -2578,7 +2601,7 @@ static void heartbeat_work(struct work_struct *work)
 			chip->chg_done_batt_full = false;
 			chip->float_charge_start_time = 0;
 		}
-		handle_usb_removal(chip);
+		notify_usb_removal(chip);
 	} else if (usb_present) {
 		if (!chip->aicl_disabled) {
 			rc = smb135x_read(chip, STATUS_0_REG, &reg);
@@ -2872,6 +2895,21 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 	return 0;
 }
 
+static int notify_usb_removal(struct smb135x_chg *chip)
+{
+	int rc;
+
+	rc = handle_usb_removal(chip);
+
+	if (rc >= 0) {
+		if (chip->usb_psy)
+			power_supply_changed(chip->usb_psy);
+		power_supply_changed(&chip->batt_psy);
+	}
+
+	return rc;
+}
+
 static int handle_usb_insertion(struct smb135x_chg *chip)
 {
 	u8 reg;
@@ -2990,7 +3028,7 @@ static int usbin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 			chip->chg_done_batt_full = false;
 			chip->float_charge_start_time = 0;
 		}
-		handle_usb_removal(chip);
+		notify_usb_removal(chip);
 	}
 	return 0;
 }
@@ -3015,7 +3053,7 @@ static int usbin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 	if (chip->usb_present && !usb_present) {
 		/* USB removed */
 		chip->usb_present = usb_present;
-		handle_usb_removal(chip);
+		notify_usb_removal(chip);
 	}
 
 	if (chip->usb_psy) {
@@ -3116,7 +3154,7 @@ static int src_detect_handler(struct smb135x_chg *chip, u8 rt_stat)
 		chip->usb_present = usb_present;
 		if (!is_dc_plugged_in(chip))
 			chip->chg_done_batt_full = false;
-		handle_usb_removal(chip);
+		notify_usb_removal(chip);
 	}
 
 	return 0;
@@ -4852,6 +4890,8 @@ static int smb135x_charger_probe(struct i2c_client *client,
 					heartbeat_work);
 	INIT_DELAYED_WORK(&chip->aicl_check_work,
 					aicl_check_work);
+	INIT_DELAYED_WORK(&chip->src_removal_work,
+					src_removal_work);
 	INIT_DELAYED_WORK(&chip->rate_check_work,
 					rate_check_work);
 
