@@ -1468,6 +1468,8 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case eWNI_SME_TDLS_ADD_STA_REQ:
         case eWNI_SME_TDLS_DEL_STA_REQ:
         case eWNI_SME_TDLS_LINK_ESTABLISH_REQ:
+// tdlsoffchan
+        case eWNI_SME_TDLS_CHANNEL_SWITCH_REQ:
 #endif
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eWNI_SME_TDLS_DISCOVERY_START_REQ:

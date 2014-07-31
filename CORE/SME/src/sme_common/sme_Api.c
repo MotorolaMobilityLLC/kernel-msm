@@ -1014,6 +1014,7 @@ sme_process_cmd:
                         case eSmeCommandTdlsAddPeer:
                         case eSmeCommandTdlsDelPeer:
                         case eSmeCommandTdlsLinkEstablish:
+                        case eSmeCommandTdlsChannelSwitch: // tdlsoffchan
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
                         case eSmeCommandTdlsDiscovery:
                         case eSmeCommandTdlsLinkSetup:
@@ -9796,6 +9797,38 @@ VOS_STATUS sme_SendTdlsLinkEstablishParams(tHalHandle hHal,
         sme_ReleaseGlobalLock( &pMac->sme );
     }
    return status ;
+}
+
+// tdlsoffchan
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SendTdlsChanSwitchReq
+    \brief  API to send TDLS management frames.
+
+    \param  peerMac - peer's Mac Adress.
+    \param  tdlsLinkEstablishParams - TDLS Peer Link Establishment Parameters
+    \- return VOS_STATUS_SUCCES
+    -------------------------------------------------------------------------*/
+VOS_STATUS sme_SendTdlsChanSwitchReq(tHalHandle hHal,
+                                     tANI_U8 sessionId,
+                                     tSirMacAddr peerMac,
+                                     tANI_S32 tdlsOffCh,
+                                     tANI_S32 tdlsOffChBwOffset,
+                                     tANI_U8 tdlsSwMode)
+{
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    tpAniSirGlobal      pMac      = PMAC_STRUCT(hHal);
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        status = csrTdlsSendChanSwitchReq(hHal, sessionId, peerMac,
+                                          tdlsOffCh, tdlsOffChBwOffset,
+                                          tdlsSwMode);
+    }
+    sme_ReleaseGlobalLock( &pMac->sme );
+    return status ;
 }
 
 /* ---------------------------------------------------------------------------

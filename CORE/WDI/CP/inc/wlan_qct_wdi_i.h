@@ -462,6 +462,7 @@ typedef enum
   WDI_EXTSCAN_SET_SIGNF_RSSI_CHANGE_REQ          = 99,
   WDI_EXTSCAN_RESET_SIGNF_RSSI_CHANGE_REQ        = 100,
 #endif
+
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -499,6 +500,7 @@ typedef enum
 
   /* csa channel switch req*/
   WDI_CH_SWITCH_REQ_V1,
+  WDI_TDLS_CHAN_SWITCH_REQ,
 
   /*Keep adding the indications to the max request
     such that we keep them sepparate */
@@ -861,6 +863,7 @@ typedef enum
   WDI_HAL_EXTSCAN_BSSID_HOTLIST_RESULT_IND    = WDI_HAL_IND_MIN + 24,
   WDI_HAL_EXTSCAN_SIG_RSSI_RESULT_IND         = WDI_HAL_IND_MIN + 25,
 #endif
+  WDI_TDLS_CHAN_SWITCH_REQ_RESP      = WDI_HAL_IND_MIN + 28,
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
 
@@ -2401,6 +2404,21 @@ WDI_ProcessTdlsLinkEstablishReq
 );
 
 /**
+ @brief Process tdls channel switch request
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessTdlsChanSwitchReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+/**
  @brief Process Enter IMPS Request function (called when 
         Main FSM allows it)
  
@@ -3847,6 +3865,24 @@ WDI_ProcessSetTxPowerRsp
 */
 WDI_Status
 WDI_ProcessLinkEstablishReqRsp
+(
+  WDI_ControlBlockType*          pWDICtx,
+  WDI_EventInfoType*             pEventData
+);
+
+
+  /**
+ @brief Process TDLS Chan Switch  Req Rsp function (called when a response
+        is being received over the bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessChanSwitchReqRsp
 (
   WDI_ControlBlockType*          pWDICtx,
   WDI_EventInfoType*             pEventData
