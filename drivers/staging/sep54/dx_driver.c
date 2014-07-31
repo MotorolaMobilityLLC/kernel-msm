@@ -2596,6 +2596,7 @@ static int sep_interrupt_process(struct sep_drvdata *drvdata)
 		    irq_mask & SEP_HOST_GPR_IRQ_MASK(DX_SEP_REQUEST_GPR_IDX)) {
 			dx_sep_req_handler(drvdata);
 		}
+
 		cause_reg &= ~SEP_HOST_GPR_IRQ_MASK(DX_SEP_REQUEST_GPR_IDX);
 	}
 
@@ -4144,7 +4145,6 @@ static int rpmb_agent(void *unused)
 	u8 in_buf[RPMB_FRAME_LENGTH];
 	u8 *out_buf = NULL;
 	u32 in_buf_size = RPMB_FRAME_LENGTH;
-	u32 timeout = INT_MAX;
 	/* structure to pass to the eMMC driver's RPMB API */
 	struct mmc_ioc_rpmb_req req2emmc;
 
@@ -4161,13 +4161,11 @@ static int rpmb_agent(void *unused)
 	}
 
 	while (1) {
-		/* Block until called by SEP */
-		do {
-			pr_info("RPMB AGENT BLOCKED\n");
-			ret = dx_sep_req_wait_for_request(RPMB_AGENT_ID,
-					in_buf, &in_buf_size, timeout);
-		} while (ret == -EAGAIN);
 
+		/* Block until called by SEP */
+		pr_info("RPMB AGENT BLOCKED\n");
+		ret = dx_sep_req_wait_for_request(RPMB_AGENT_ID,
+				in_buf, &in_buf_size);
 		if (ret) {
 			pr_err("WAIT FAILED %d\n", ret);
 			break;

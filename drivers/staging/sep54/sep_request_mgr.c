@@ -1,28 +1,28 @@
 /*******************************************************************
-* (c) Copyright 2011-2012 Discretix Technologies Ltd.              *
-* This software is protected by copyright, international           *
-* treaties and patents, and distributed under multiple licenses.   *
-* Any use of this Software as part of the Discretix CryptoCell or  *
-* Packet Engine products requires a commercial license.            *
-* Copies of this Software that are distributed with the Discretix  *
-* CryptoCell or Packet Engine product drivers, may be used in      *
-* accordance with a commercial license, or at the user's option,   *
-* used and redistributed under the terms and conditions of the GNU *
-* General Public License ("GPL") version 2, as published by the    *
-* Free Software Foundation.                                        *
-* This program is distributed in the hope that it will be useful,  *
-* but WITHOUT ANY LIABILITY AND WARRANTY; without even the implied *
-* warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. *
-* See the GNU General Public License version 2 for more details.   *
-* You should have received a copy of the GNU General Public        *
-* License version 2 along with this Software; if not, please write *
-* to the Free Software Foundation, Inc., 59 Temple Place - Suite   *
-* 330, Boston, MA 02111-1307, USA.                                 *
-* Any copy or reproduction of this Software, as permitted under    *
-* the GNU General Public License version 2, must include this      *
-* Copyright Notice as well as any other notices provided under     *
-* the said license.                                                *
-********************************************************************/
+ * (c) Copyright 2011-2012 Discretix Technologies Ltd.              *
+ * This software is protected by copyright, international           *
+ * treaties and patents, and distributed under multiple licenses.   *
+ * Any use of this Software as part of the Discretix CryptoCell or  *
+ * Packet Engine products requires a commercial license.            *
+ * Copies of this Software that are distributed with the Discretix  *
+ * CryptoCell or Packet Engine product drivers, may be used in      *
+ * accordance with a commercial license, or at the user's option,   *
+ * used and redistributed under the terms and conditions of the GNU *
+ * General Public License ("GPL") version 2, as published by the    *
+ * Free Software Foundation.                                        *
+ * This program is distributed in the hope that it will be useful,  *
+ * but WITHOUT ANY LIABILITY AND WARRANTY; without even the implied *
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. *
+ * See the GNU General Public License version 2 for more details.   *
+ * You should have received a copy of the GNU General Public        *
+ * License version 2 along with this Software; if not, please write *
+ * to the Free Software Foundation, Inc., 59 Temple Place - Suite   *
+ * 330, Boston, MA 02111-1307, USA.                                 *
+ * Any copy or reproduction of this Software, as permitted under    *
+ * the GNU General Public License version 2, must include this      *
+ * Copyright Notice as well as any other notices provided under     *
+ * the said license.                                                *
+ ********************************************************************/
 
 #define SEP_LOG_CUR_COMPONENT SEP_LOG_MASK_SEP_REQUEST
 
@@ -143,7 +143,7 @@ void dx_sep_req_handler(struct sep_drvdata *drvdata)
 }
 
 /**
- * dx_sep_req_register_agent() - Regsiter an agent
+ * dx_sep_req_register_agent() - Register an agent
  * @agent_id: The agent ID
  * @max_buf_size: A pointer to the max buffer size
  *
@@ -151,7 +151,7 @@ void dx_sep_req_handler(struct sep_drvdata *drvdata)
  */
 int dx_sep_req_register_agent(u8 agent_id, u32 *max_buf_size)
 {
-	pr_debug("Regsiter SeP Request agent (id=%d)\n", agent_id);
+	pr_debug("Register SeP Request agent (id=%d)\n", agent_id);
 
 	/* Validate agent ID is in range */
 	if (agent_id >= DX_SEP_REQUEST_MAX_AGENTS) {
@@ -221,18 +221,17 @@ EXPORT_SYMBOL(dx_sep_req_unregister_agent);
  * @agent_id: The agent ID
  * @sep_req_buf_p: Pointer to the incoming request buffer
  * @req_buf_size: Pointer to the incoming request size
- * @timeout: Time to wait for an incoming request in jiffies
  *
  * Returns int 0 on success
  */
 int dx_sep_req_wait_for_request(u8 agent_id, u8 *sep_req_buf_p,
-				u32 *req_buf_size, u32 timeout)
+				u32 *req_buf_size)
 {
 	u32 gpr_val;
+	int ret;
 
 	pr_debug("Wait for sep request\n");
-	pr_debug("agent_id=%d sep_req_buf_p=0x%p timeout=%d\n",
-		 agent_id, sep_req_buf_p, timeout);
+	pr_debug("agent_id=%d sep_req_buf_p=0x%p\n", agent_id, sep_req_buf_p);
 
 	/* Validate agent ID is in range */
 	if (agent_id >= DX_SEP_REQUEST_MAX_AGENTS) {
@@ -246,15 +245,9 @@ int dx_sep_req_wait_for_request(u8 agent_id, u8 *sep_req_buf_p,
 		return -EINVAL;
 	}
 
-	/* Verify SeP agent is not busy */
-	if (sep_req_state.agent_busy[agent_id] == true) {
-		pr_err("Agent is busy\n");
-		return -EBUSY;
-	}
-
 	/* Verify that another sep request is not pending */
 	if (sep_req_state.request_pending == true) {
-		pr_err("Agent is busy\n");
+		pr_err("Request pending\n");
 		return -EBUSY;
 	}
 
@@ -278,18 +271,13 @@ int dx_sep_req_wait_for_request(u8 agent_id, u8 *sep_req_buf_p,
 	}
 
 	/* Wait for incoming request */
-	if (wait_event_interruptible_timeout(
-			sep_req_state.agent_event[agent_id],
-			sep_req_state.agent_busy[agent_id] == true,
-			timeout) == 0) {
-		/* operation timed-out */
-		sep_req_state.agent_busy[agent_id] = false;
-
-		pr_err("Request wait timed-out\n");
-		return -EAGAIN;
+	ret = wait_event_interruptible(sep_req_state.agent_event[agent_id],
+			sep_req_state.agent_busy[agent_id] == true);
+	if (ret) {
+		pr_err("Wait event failed %d\n", ret);
+		return ret;
 	}
 
-	/* Set "request_pending" field to TRUE */
 	sep_req_state.request_pending = true;
 
 	gpr_val = READ_REGISTER(sep_req_state.sep_host_gpr_adr);
@@ -339,13 +327,13 @@ int dx_sep_req_send_response(u8 agent_id, u8 *host_resp_buf_p,
 	}
 
 	/* Verify SeP agent is busy */
-	if (sep_req_state.agent_busy[agent_id] == false) {
+	if (sep_req_state.agent_busy[agent_id] != true) {
 		pr_err("Agent is not busy\n");
 		return -EBUSY;
 	}
 
 	/* Verify that a sep request is pending */
-	if (sep_req_state.request_pending == false) {
+	if (sep_req_state.request_pending != true) {
 		pr_err("No requests are pending\n");
 		return -EBUSY;
 	}
@@ -375,6 +363,12 @@ int dx_sep_req_send_response(u8 agent_id, u8 *host_resp_buf_p,
 	memset(sep_req_state.host_resp_buf_p + resp_buf_size, 0,
 	       DX_SEP_REQUEST_BUF_SIZE - resp_buf_size);
 
+	/* This needs to be done before signaling Chaabi because otherwise
+	 * Chaabi is able to send next interrupt while this thread is scheduled
+	 * in wait queue */
+	sep_req_state.agent_busy[agent_id] = false;
+	sep_req_state.request_pending = false;
+
 	/* Build the new GPR3 value out of the req_counter from the state,
 	 * the response length and the DX_SEP_REQUEST_SUCCESS return code.
 	 * Place the value in GPR3. */
@@ -383,12 +377,6 @@ int dx_sep_req_send_response(u8 agent_id, u8 *host_resp_buf_p,
 	SEP_REQUEST_SET_RESP_LEN(gpr_val, resp_buf_size);
 	SEP_REQUEST_SET_RETURN_CODE(gpr_val, DX_SEP_REQUEST_SUCCESS);
 	WRITE_REGISTER(sep_req_state.host_sep_gpr_adr, gpr_val);
-
-	/* Set "agent_busy" field to TRUE */
-	sep_req_state.agent_busy[agent_id] = false;
-
-	/* Set "request_pending" field to TRUE */
-	sep_req_state.request_pending = false;
 
 	return 0;
 }

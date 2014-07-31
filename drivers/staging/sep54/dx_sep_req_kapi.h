@@ -57,12 +57,11 @@ int dx_sep_req_unregister_agent(u8 agent_id);
  * @agent_id: The agent ID
  * @sep_req_buf_p: Pointer to the incoming request buffer
  * @req_buf_size: Pointer to the incoming request size
- * @timeout: Time to wait for an incoming request in jiffies
  *
  * Returns int 0 on success
  */
 int dx_sep_req_wait_for_request(u8 agent_id, u8 *sep_req_buf_p,
-				u32 *req_buf_size, u32 timeout);
+				u32 *req_buf_size);
 
 /**
  * dx_sep_req_send_response() - Send a response to the sep
