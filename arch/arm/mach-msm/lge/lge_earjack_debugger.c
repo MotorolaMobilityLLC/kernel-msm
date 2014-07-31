@@ -33,6 +33,7 @@ enum {
 static int adc_low_threshold = 74;  /* in mV */
 static int adc_high_threshold = 91; /* in mV */
 static int adc_meas_interval = ADC_MEAS1_INTERVAL_1S;
+static bool always_enable = false;
 
 struct earjack_debugger {
 	struct device *dev;
@@ -42,7 +43,6 @@ struct earjack_debugger {
 	struct delayed_work init_adc_work;
 	bool trigger_mode;
 	bool id_adc_detect;
-	bool always_enable;
 	int connected;   /* uart connected? */
 };
 
@@ -120,7 +120,7 @@ static void earjack_debugger_enable_uart(struct earjack_debugger *earjack_dev,
 		msm_gpiomux_install(msm_console_uart_configs,
 			 ARRAY_SIZE(msm_console_uart_configs));
 	} else {
-		if (earjack_dev->always_enable)
+		if (always_enable)
 			return; /* do not disable the uart */
 
 		msm_gpiomux_install(msm_console_uart_disabled_configs,
@@ -244,10 +244,9 @@ static ssize_t earjack_debugger_always_enable_store(struct device *dev,
 		return ret;
 	}
 
-	earjack_dev->always_enable = r ? true : false;
+	always_enable = r ? true : false;
 
-	earjack_debugger_enable_uart(earjack_dev,
-			!!earjack_dev->always_enable);
+	earjack_debugger_enable_uart(earjack_dev, !!always_enable);
 
 	return size;
 }
@@ -255,9 +254,7 @@ static ssize_t earjack_debugger_always_enable_store(struct device *dev,
 static ssize_t earjack_debugger_always_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct earjack_debugger *earjack_dev = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%d\n", !!earjack_dev->always_enable);
+	return sprintf(buf, "%d\n", !!always_enable);
 }
 
 static DEVICE_ATTR(always_enable, S_IRUGO | S_IWUSR,
@@ -369,6 +366,16 @@ static void __exit earjack_debugger_exit(void)
 	if (lge_uart_console_enabled())
 		platform_driver_unregister(&earjack_debugger_driver);
 }
+
+static int __init earjack_debugger_setup(char *str)
+{
+	if (str && !strncmp(str, "always", 6))
+		always_enable = true;
+
+	return 1;
+}
+
+__setup("lge.earjack-debugger=", earjack_debugger_setup);
 
 module_init(earjack_debugger_init);
 module_exit(earjack_debugger_exit);
