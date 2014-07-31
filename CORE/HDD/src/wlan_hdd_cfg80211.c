@@ -11754,6 +11754,7 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_devic
                     rateFlag |= 2;
                 }
 
+                temp = sizeof(supported_mcs_rate) / sizeof(supported_mcs_rate[0]);
                 if (rssidx == 1 || rssidx == 2)
                 {
                     //get middle rate MCS index if rssi=1/2
@@ -11765,10 +11766,6 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_devic
                             break;
                          }
                      }
-                }
-                else
-                {
-                    temp = sizeof(supported_mcs_rate) / sizeof(supported_mcs_rate[0]);
                 }
 
                 for (i = 0; i < MCSLeng; i++)
