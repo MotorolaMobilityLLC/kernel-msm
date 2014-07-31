@@ -2623,11 +2623,11 @@ processCfgDownloadReq(tpAniSirGlobal pMac)
                 continue;
 
             pDstTest = &pMac->cfg.gCfgSBuf[index];
-            maxSavedLen = *pDstTest;
             pStrCfg = (tAniSirCfgStaticString *)cfgStatic[i].pStrData;
             pSrcTest = pStrCfg->data;
             if ((pDstTest == NULL) || (pStrCfg == NULL) || (pSrcTest == NULL))
                 continue;
+            maxSavedLen = *pDstTest;
             len = pStrCfg->length;
             if (len > maxSavedLen)
                 continue;
