@@ -442,8 +442,11 @@ static void android_bat_set_charge_time(struct android_bat_data *battery,
 		struct timespec cur_time;
 
 		get_monotonic_boottime(&cur_time);
-		/* record start time for charge timeout timer */
-		battery->charging_start_time = cur_time.tv_sec;
+		if(cur_time.tv_sec <= 0)
+			battery->charging_start_time = 1;
+		else
+			/* record start time for charge timeout timer */
+			battery->charging_start_time = cur_time.tv_sec;
 	} else if (!enable) {
 		/* clear charge timeout timer */
 		battery->charging_start_time = 0;
