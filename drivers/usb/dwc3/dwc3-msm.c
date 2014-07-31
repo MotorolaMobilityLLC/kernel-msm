@@ -2297,6 +2297,8 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 			break;
 		default:
 			mdwc->charger.chg_type = DWC3_INVALID_CHARGER;
+			/* Default power supply type to USB */
+			psy->type = POWER_SUPPLY_TYPE_USB;
 			break;
 		}
 
