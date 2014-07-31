@@ -3462,7 +3462,7 @@ typedef enum event_msgs_ext_command {
 	EVENTMSGS_SET_MASK	=	3
 } event_msgs_ext_command_t;
 
-#define EVENTMSGS_VER 1
+#define EVENTMSGS_VER 0
 #define EVENTMSGS_EXT_STRUCT_SIZE	OFFSETOF(eventmsgs_ext_t, mask[0])
 
 /* len-	for SET it would be mask size from the application to the firmware */
