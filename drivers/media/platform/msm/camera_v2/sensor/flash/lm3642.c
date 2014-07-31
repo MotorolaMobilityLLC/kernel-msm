@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/export.h>
 #include "msm_led_flash.h"
+#include <linux/reboot.h>
 
 #define FLASH_NAME "qcom,lm3642"
 
@@ -181,6 +182,20 @@ static struct msm_led_flash_ctrl_t fctrl = {
 	.func_tbl = &lm3642_func_tbl,
 };
 
+static int lm3642_notify_sys(struct notifier_block *this, unsigned long code,
+				void *unused)
+{
+	if (code == SYS_DOWN || code == SYS_HALT || code ==  SYS_POWER_OFF) {
+		msm_flash_led_off(&fctrl);
+		msm_flash_led_release(&fctrl);
+	}
+	return 0;
+}
+
+static struct notifier_block lm3642_notifier = {
+	.notifier_call = lm3642_notify_sys,
+};
+
 static int __init msm_flash_lm3642_init(void)
 {
 	int32_t rc = 0;
@@ -188,11 +203,16 @@ static int __init msm_flash_lm3642_init(void)
 		msm_flash_lm3642_platform_probe);
 	if (!rc)
 		return rc;
-	return i2c_add_driver(&lm3642_i2c_driver);
+
+	rc = i2c_add_driver(&lm3642_i2c_driver);
+	if (!rc)
+		register_reboot_notifier(&lm3642_notifier);
+	return rc;
 }
 
 static void __exit msm_flash_lm3642_exit_module(void)
 {
+	unregister_reboot_notifier(&lm3642_notifier);
 	if (fctrl.pdev)
 		platform_driver_unregister(&msm_flash_lm3642_platform_driver);
 	else
