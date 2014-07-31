@@ -1024,6 +1024,8 @@
 		rated_voltage = <0x70>;         /* 2.4v */
 		overdrive_voltage = <0x89>;     /* 3.0v */
 
+		vibrator_vdd-supply = <&vreg_5p0>;
+
 		pinctrl-names = "default";
 		pinctrl-0 = <&drv2605_en_default>;
 	};
