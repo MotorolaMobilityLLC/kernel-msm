@@ -817,11 +817,6 @@ static int stm401_fb_notifier_callback(struct notifier_block *self,
 
 	dev_dbg(&ps_stm401->client->dev, "%s+\n", __func__);
 
-	if (ps_stm401->in_reset_and_init || ps_stm401->mode == BOOTMODE) {
-		dev_warn(&ps_stm401->client->dev, "stm401 in reset or BOOTMODE...bailing\n");
-		goto exit;
-	}
-
 	/* If we aren't interested in this event, skip it immediately ... */
 	switch (event) {
 	case FB_EVENT_BLANK:
@@ -835,6 +830,18 @@ static int stm401_fb_notifier_callback(struct notifier_block *self,
 		goto exit;
 
 	blank = *(int *)evdata->data;
+
+	if (ps_stm401->in_reset_and_init || ps_stm401->mode == BOOTMODE) {
+		/* store the kernel's vote */
+		if (event == FB_EARLY_EVENT_BLANK && blank == FB_BLANK_UNBLANK)
+			stm401_store_vote_aod_enabled(ps_stm401,
+				AOD_QP_ENABLED_VOTE_KERN, false);
+		else if (event == FB_EVENT_BLANK && blank > FB_BLANK_UNBLANK)
+			stm401_store_vote_aod_enabled(ps_stm401,
+				AOD_QP_ENABLED_VOTE_KERN, true);
+		dev_warn(&ps_stm401->client->dev, "stm401 in reset or BOOTMODE...bailing\n");
+		goto exit;
+	}
 
 	mutex_lock(&ps_stm401->lock);
 
