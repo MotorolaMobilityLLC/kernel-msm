@@ -1087,10 +1087,14 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 	/* clear fsync mark to recover these blocks */
 	fsync_mark_clear(F2FS_SB(inode->i_sb), inode->i_ino);
 
-	err = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-							get_data_block);
+	trace_f2fs_direct_IO_enter(inode, offset, count, rw);
+
+	err = blockdev_direct_IO(rw, iocb, inode, iter, offset, get_data_block);
 	if (err < 0 && (rw & WRITE))
 		f2fs_write_failed(mapping, offset + count);
+
+	trace_f2fs_direct_IO_exit(inode, offset, count, rw, err);
+
 	return err;
 }
 
