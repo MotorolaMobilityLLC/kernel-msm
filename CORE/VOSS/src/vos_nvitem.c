@@ -3676,6 +3676,20 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
 
         /* first lookup the country in the local database */
 
+        if (!(pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0] == '0' &&
+             pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[1] == '0') &&
+            (vos_is_load_unload_in_progress( VOS_MODULE_ID_VOSS, NULL)))
+        {
+           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                      (" Default Country in nv is non Zero  and Driver load/unload"
+                       "is in progress; avoid updating country from kernel\n"));
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+           return;
+#else
+           return 0;
+#endif
+        }
+
         country_code[0] = request->alpha2[0];
         country_code[1] = request->alpha2[1];
 
@@ -3717,7 +3731,7 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
         if (request->alpha2[0] == '0' && request->alpha2[1] == '0')
         {
            sme_GenericChangeCountryCode(pHddCtx->hHal, country_code,
-                                        REGDOMAIN_COUNT);
+                                           REGDOMAIN_COUNT);
         }
         else
         {
