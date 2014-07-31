@@ -85,6 +85,8 @@ struct device *class_dev = NULL;
 static int it7260_status = 0; //ASUS_BSP Cliff +++ add for ATD check
 static int last_time_shot_power = 0;
 static atomic_t touch_point_num;
+static int FW_manual_upgrade = 0; 
+
 
 #ifdef DEBUG
 #define TS_DEBUG(fmt,args...)  printk( KERN_DEBUG "[it7260_i2c]: " fmt, ## args)
@@ -485,26 +487,43 @@ static int Upgrade_FW_CFG(void)
 	filp_close(fw_fd,NULL);
 	filp_close(config_fd,NULL);
 	
-	if ((bufRead[5] < fw_buf[8] || bufRead[6] < fw_buf[9] || bufRead[7] < fw_buf[10] || bufRead[8] < fw_buf[11]) || 
-	(bufRead2[1] < config_buf[config_size-8] || bufRead2[2] < config_buf[config_size-7] || bufRead2[3] < config_buf[config_size-6] || bufRead2[4] < config_buf[config_size-5])){
+	if (FW_manual_upgrade == 1){
+		
+		//MANUAL UPDATE
+		disable_irq(gl_ts->client->irq);
+		if (fnFirmwareDownload(fw_size, fw_buf, config_size, config_buf) == false){
+			//fail
+			enable_irq(gl_ts->client->irq);
+			return 1; 
+		}else{
+			//success
+			enable_irq(gl_ts->client->irq);
+			return 0;
+		}
+	}
+	else {
+	
+		if ((bufRead[5] < fw_buf[8] || bufRead[6] < fw_buf[9] || bufRead[7] < fw_buf[10] || bufRead[8] < fw_buf[11]) || 
+		(bufRead2[1] < config_buf[config_size-8] || bufRead2[2] < config_buf[config_size-7] || bufRead2[3] < config_buf[config_size-6] || bufRead2[4] < config_buf[config_size-5])){
 
-	//START UPDATE
-	disable_irq(gl_ts->client->irq);
-	if (fnFirmwareDownload(fw_size, fw_buf, config_size, config_buf) == false){
-		//fail
-		enable_irq(gl_ts->client->irq);
-		return 1; 
-	}else{
-		//success
-		enable_irq(gl_ts->client->irq);
-		return 0;
-	}
-	}
-	else
-	{
-		//stop
-		printk("You Don't Need Update FW/CFG!! \n\n");
-		return 2;
+		//START UPDATE
+		disable_irq(gl_ts->client->irq);
+		if (fnFirmwareDownload(fw_size, fw_buf, config_size, config_buf) == false){
+			//fail
+			enable_irq(gl_ts->client->irq);
+			return 1; 
+		}else{
+			//success
+			enable_irq(gl_ts->client->irq);
+			return 0;
+		}
+		}
+		else
+		{
+			//stop
+			printk("You Don't Need Update FW/CFG!! \n\n");
+			return 2;
+		}
 	}
 }
 
@@ -2036,7 +2055,14 @@ static ssize_t IT7260_upgrade_show(struct device *dev, struct device_attribute *
 
 static ssize_t IT7260_upgrade_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
+	int mode = 0;
 	printk(KERN_DEBUG "%s():\n", __func__);
+	
+	sscanf(buf, "%d", &mode);
+	if (mode == 2){
+			FW_manual_upgrade = 1;
+	}
+	
 	IT7260_upgrade_store_temp();
 	return count;
 }
