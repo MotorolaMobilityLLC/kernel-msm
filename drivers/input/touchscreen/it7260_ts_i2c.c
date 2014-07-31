@@ -84,6 +84,7 @@ static atomic_t Suspend_flag;
 struct device *class_dev = NULL;
 static int it7260_status = 0; //ASUS_BSP Cliff +++ add for ATD check
 static int last_time_shot_power = 0;
+static atomic_t touch_point_num;
 
 #ifdef DEBUG
 #define TS_DEBUG(fmt,args...)  printk( KERN_DEBUG "[it7260_i2c]: " fmt, ## args)
@@ -2111,108 +2112,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 				//ret,pucPoint[0],pucPoint[1],pucPoint[2],
 				//pucPoint[3],pucPoint[4],pucPoint[5],pucPoint[6],pucPoint[7],pucPoint[8],
 				//pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
-// ASUS_BSP +++ Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
-// Sample code for magic key detection
-#if 0
-{	
-	static unsigned long time_start_check = 0;
-	static unsigned int match_offset = 0;
-	static unsigned int match_step = 0;
-	//static unsigned char hack_code[] = {0x9,0x0,0x9,0x0,0x9,0x0,0x9,0x0,0xFF};
-
-
-	if (time_start_check && jiffies > time_start_check + 5 * HZ){
-		//printk("Magic:TIMEOUT!!!!\n");
-		time_start_check = 0;
-		match_offset = 0;
-		match_step = 0;
-	}
-
-	xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
-	yraw = ((pucPoint[3] & 0xF0) << 4) + pucPoint[4];
-	
-	//printk("Magic:x=%d, y=%d, %x, %x, %x, %x, %x, %x\n\n\n\n\n\n\n", xraw, yraw,
-	//pucPoint[0], pucPoint[1], pucPoint[2], pucPoint[3], pucPoint[4], pucPoint[5]);
-
-	if (pucPoint[0])
-	{
-		if (xraw < 80 && match_step == 0)
-		{
-			if ((yraw < (80 + match_offset*50)) && (yraw > (match_offset*50)))
-			{
-				match_offset++;
-				if (match_offset == 1){
-					time_start_check = jiffies;
-				}
-				if (match_offset > 5){
-					//step1
-					match_step++;
-				}
-			}
-		}
-		if (match_step == 2)
-		{
-			if (xraw < 120 && yraw < 80)
-			{
-				//printk("Magic:match_offset = 1\n");
-				match_offset = 1;
-			}
-			else if (match_offset == 1)
-			{
-				if (xraw > 190){
-					//printk("Magic:match_offset = 2\n");
-					match_offset = 2;
-				}
-			}
-			else if (match_offset == 2)
-			{
-				if (xraw < 120 && yraw > 260){
-// ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
-					printk("[IT7260] DEBUG KEY DETECTED !!!!\n");
-					strcpy(magic_key,"DEBUG");
-					kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
-// ASUS_BSP --- Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
-
-					time_start_check = 0;
-					match_offset = 0;
-					match_step = 0;
-				}
-			}
-		}
-	}
-	else
-	{
-		if (match_step == 1){
-			//step2
-			match_offset = 0;
-			match_step++;
-		}
-		else{
-			//reset
-			time_start_check = 0;
-			match_offset = 0;
-			match_step = 0;
-		}
-	}
-}
-#endif
-// ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
-#if 0
-{
-	static unsigned long last_time_detect_home = 0;
-	static int home_match_flag = 0;
-	if (!home_match_flag && pucPoint[0] == 0xB && (jiffies > last_time_detect_home + 3 * HZ)){
-		home_match_flag = 1;
-		printk("[IT7260] HOME KEY DETECTED !!!!\n");
-		strcpy(magic_key,"HOME");
-		kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
-		last_time_detect_home = jiffies;
-	}else{
-		home_match_flag = 0;
-	}
-}
-#endif
-// ASUS_BSP --- Tingyi "[PDK][DEBUG] Framework for asusdebugtool launch by touch"
+				
 			if (ret) {
 
 				// palm
@@ -2260,6 +2160,8 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 						input_report_key(ts->input_dev, BTN_TOUCH,0);
 						input_sync(ts->input_dev);
 						finger[0] = 0;
+						printk("[IT7260]Touch Up\n");
+						atomic_set(&touch_point_num, 0);
 					}
 		
 					if (ts->use_irq)
@@ -2275,6 +2177,18 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 					yraw = ((pucPoint[3] & 0xF0) << 4) + pucPoint[4];
 
 					pressure_point = pucPoint[5] & 0x0f;
+					
+					if (atomic_read(&touch_point_num) == 0){
+						printk("[IT7260]Touch Down x=%d y=%d\n",xraw,yraw);
+						atomic_set(&touch_point_num, atomic_read(&touch_point_num)+1);
+					}
+					else if (atomic_read(&touch_point_num) == 99) {
+						atomic_set(&touch_point_num, 0);
+					} 
+					else {
+						atomic_set(&touch_point_num, atomic_read(&touch_point_num)+1);
+					}
+					
 					//printk("=Read_Point1 x=%d y=%d p=%d=\n",xraw,yraw,pressure_point);
 
 					input_report_abs(ts->input_dev, ABS_X, xraw);
@@ -2968,6 +2882,7 @@ static int __init IT7260_ts_init(void) {
 		goto error;
 	}
 
+	atomic_set(&touch_point_num, 0);
 // ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
 	magic_key[0] = 0;
 	device_create_file(class_dev, &device_attrs[0]);
