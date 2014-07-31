@@ -13266,6 +13266,9 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
                 (tANI_U8)pProfile->uapsd_mask);
 
         status = palSendMBMessage(pMac->hHdd, pMsg );
+        /* Memory allocated to pMsg will get free'd in palSendMBMessage */
+        pMsg = NULL;
+
         if(!HAL_STATUS_SUCCESS(status))
         {
             break;
@@ -13286,6 +13289,12 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
 #endif
         }
     } while( 0 );
+
+    if (pMsg != NULL)
+    {
+        vos_mem_free( pMsg );
+    }
+
     return( status );
 }
 
