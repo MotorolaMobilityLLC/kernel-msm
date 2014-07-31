@@ -757,6 +757,18 @@
 };
 
 &pma8084_adc_tm {
+	chan@7 {
+		label = "vph_pwr";
+		reg = <0x07>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+		qcom,meas-interval-timer-idx = <0>;
+		qcom,btm-channel-number = <0x80>;
+	};
 	chan@74{
 		label = "chg_therm";
 		reg = <0x74>;
@@ -766,7 +778,7 @@
 		qcom,scale-function = <2>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <3>;
-		qcom,btm-channel-number = <0x78>;
+		qcom,btm-channel-number = <0x90>;
 		qcom,thermal-node;
 	};
 	chan@78{
@@ -778,7 +790,7 @@
 		qcom,scale-function = <2>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <3>;
-		qcom,btm-channel-number = <0x80>;
+		qcom,btm-channel-number = <0x98>;
 		qcom,thermal-node;
 	};
 };
@@ -807,6 +819,8 @@
 		reg = <0x1c>;
 		interrupt-parent = <&spmi_bus>;
 		interrupts = <0x0 0xcd 0x0>;	/* PMA8084 GPIO 14 */
+		qcom,smb135x-adc_tm = <&pma8084_adc_tm>;
+		qcom,smb135x-vadc = <&pma8084_vadc>;
 		qcom,float-voltage-mv = <4350>;
 		qcom,charging-timeout = <1536>;
 		qcom,recharge-thresh-mv = <200>;
@@ -828,6 +842,8 @@
 		qcom,max-batt-curr-ma = <2600>;
 		qcom,ext-temp-volt-mv = <4000>;
 		qcom,ext-temp-soc = <65>;
+		qcom,low-voltage-uv = <2750000>;
+		qcom,max-voltage-uv = <4350000>;
 	};
 
 	max17050: max17050-battery@36 {
