@@ -1667,81 +1667,6 @@ u32 mdp3_fb_stride(u32 fb_index, u32 xres, int bpp)
 		return xres * bpp;
 }
 
-static int mdp3_alloc(struct msm_fb_data_type *mfd)
-{
-	int ret;
-	int dom;
-	void *virt;
-	unsigned long phys;
-	u32 offsets[2];
-	size_t size;
-	struct platform_device *pdev = mfd->pdev;
-
-	mfd->fbi->screen_base = NULL;
-	mfd->fbi->fix.smem_start = 0;
-	mfd->fbi->fix.smem_len = 0;
-
-	ret = of_property_read_u32_array(pdev->dev.of_node,
-				"qcom,memblock-reserve", offsets, 2);
-
-	if (ret) {
-		pr_err("fail to parse splash memory address\n");
-		return ret;
-	}
-
-	phys = offsets[0];
-	size = PAGE_ALIGN(mfd->fbi->fix.line_length *
-		mfd->fbi->var.yres_virtual);
-
-	if (size > offsets[1]) {
-		pr_err("reserved splash memory size too small\n");
-		return -EINVAL;
-	}
-
-	virt = phys_to_virt(phys);
-	if (unlikely(!virt)) {
-		pr_err("unable to map in splash memory\n");
-		return -ENOMEM;
-	}
-
-	dom = mdp3_res->domains[MDP3_DMA_IOMMU_DOMAIN].domain_idx;
-	ret = msm_iommu_map_contig_buffer(phys, dom, 0, size, SZ_4K, 0,
-					&mfd->iova);
-
-	if (ret) {
-		pr_err("fail to map to IOMMU %d\n", ret);
-		return ret;
-	}
-	pr_info("allocating %u bytes at %p (%lx phys) for fb %d\n",
-		size, virt, phys, mfd->index);
-
-	mfd->fbi->screen_base = virt;
-	mfd->fbi->fix.smem_start = phys;
-	mfd->fbi->fix.smem_len = size;
-
-	return 0;
-}
-
-void mdp3_free(struct msm_fb_data_type *mfd)
-{
-	size_t size = 0;
-	int dom;
-
-	if (!mfd->iova || !mfd->fbi->screen_base) {
-		pr_info("no fbmem allocated\n");
-		return;
-	}
-
-	size = mfd->fbi->fix.smem_len;
-	dom = mdp3_res->domains[MDP3_DMA_IOMMU_DOMAIN].domain_idx;
-	msm_iommu_unmap_contig_buffer(mfd->iova, dom, 0, size);
-
-	mfd->fbi->screen_base = NULL;
-	mfd->fbi->fix.smem_start = 0;
-	mfd->fbi->fix.smem_len = 0;
-	mfd->iova = 0;
-}
-
 int mdp3_parse_dt_splash(struct msm_fb_data_type *mfd)
 {
 	struct platform_device *pdev = mfd->pdev;
@@ -1789,7 +1714,6 @@ void mdp3_release_splash_memory(struct msm_fb_data_type *mfd)
 {
 	/* Give back the reserved memory to the system */
 	if (mdp3_res->splash_mem_addr && !mdp3_mmi_factory_mode()) {
-		mdp3_free(mfd);
 		pr_debug("mdp3_release_splash_memory\n");
 		memblock_free(mdp3_res->splash_mem_addr,
 				mdp3_res->splash_mem_size);
@@ -2164,7 +2088,6 @@ static int mdp3_probe(struct platform_device *pdev)
 	.fb_mem_get_iommu_domain = mdp3_fb_mem_get_iommu_domain,
 	.panel_register_done = mdp3_panel_register_done,
 	.fb_stride = mdp3_fb_stride,
-	.fb_mem_alloc_fnc = mdp3_alloc,
 	};
 
 	struct mdp3_intr_cb underrun_cb = {
