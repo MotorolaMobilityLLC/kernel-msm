@@ -69,7 +69,9 @@ enum mdp_notify_event {
 	MDP_NOTIFY_FRAME_FLUSHED,
 	MDP_NOTIFY_FRAME_DONE,
 	MDP_NOTIFY_FRAME_TIMEOUT,
+	MDP_NOTIFY_FRAME_PRE_START,
 	MDP_NOTIFY_FRAME_START,
+	MDP_NOTIFY_FRAME_START_DONE,
 };
 
 struct disp_info_type_suspend {
@@ -91,6 +93,8 @@ struct msm_sync_pt_data {
 	char *fence_name;
 	u32 acq_fen_cnt;
 	struct sync_fence *acq_fen[MDP_MAX_FENCE_FD];
+	u32 temp_fen_cnt;
+	struct sync_fence *temp_fen[MDP_MAX_FENCE_FD];
 
 	struct sw_sync_timeline *timeline;
 	int timeline_value;
