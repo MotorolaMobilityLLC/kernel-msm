@@ -53,6 +53,8 @@
 #include <linux/msm-bus.h>
 #include "msm_serial_hs_hwreg.h"
 
+extern int g_audbg_enable;
+
 /*
  * There are 3 different kind of UART Core available on MSM.
  * High Speed UART (i.e. Legacy HSUART), GSBI based HSUART
@@ -1446,6 +1448,10 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 	struct msm_hsl_port *msm_hsl_port;
 	unsigned int vid;
 	int locked;
+
+	/* If audio debug is disabled, skip here */
+	if(!g_audbg_enable)
+		return;
 
 	BUG_ON(co->index < 0 || co->index >= UART_NR);
 

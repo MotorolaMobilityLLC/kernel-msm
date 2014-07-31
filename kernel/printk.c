@@ -2411,7 +2411,6 @@ void suspend_console(void)
 	console_suspended = 1;
 	up(&console_sem);
 }
-EXPORT_SYMBOL(suspend_console);
 
 void resume_console(void)
 {
@@ -2445,7 +2444,6 @@ void resume_console(void)
 	console_suspended = 0;
 	console_unlock();
 }
-EXPORT_SYMBOL(resume_console);
 
 static void __cpuinit console_flush(struct work_struct *work)
 {
