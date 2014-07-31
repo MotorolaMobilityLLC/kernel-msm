@@ -61,6 +61,7 @@
 #include <linux/reboot.h>
 #include <linux/notifier.h>
 #include <linux/power/battery_id.h>
+#include <linux/gpio.h>
 #include "pmic_ccsm.h"
 
 /* Macros */
@@ -1941,6 +1942,13 @@ static int pmic_chrgr_probe(struct platform_device *pdev)
 			chc.irq);
 		goto otg_req_failed;
 	}
+
+	retval = gpio_request(57, "SOC_5V_EN");
+	if (retval)
+		pr_info("Failed to request GPIO 57.\n");
+	retval = gpio_direction_output(57, 0);
+	if (retval)
+		pr_info("Failed to configure GPIO 57 as output low.\n");
 
 	retval = pmic_check_initial_events();
 	if (unlikely(retval)) {
