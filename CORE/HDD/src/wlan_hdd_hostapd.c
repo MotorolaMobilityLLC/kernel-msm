@@ -1310,6 +1310,7 @@ void hdd_restart_softap
    chAvoidInd->avoidFreqRange[0].endFreq =
      vos_chan_to_freq(pHostapdAdapter->sessionCtx.ap.operatingChannel);
    hdd_hostapd_ch_avoid_cb((void *)pHddCtx, (void *)chAvoidInd);
+   vos_mem_free(chAvoidInd);
 }
 /**---------------------------------------------------------------------------
 
