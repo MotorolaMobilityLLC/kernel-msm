@@ -434,21 +434,21 @@ static void ud_log_status(struct touch_area_stats *tas, bool down)
 
 	if (!down) { /* up */
 		if (ud[id].up_down == 0x10) {
-			pr_debug("%s UP[%d]\n", tas->name, id);
+			pr_debug("%s UP[%lu]\n", tas->name, id);
 			ud[id].up_down |= 1;
 			ud[id].mismatch--;
 		}
 	} else if (down) { /* down */
 		if (ud[id].up_down == 0) {
 			ud[id].up_down |= (1 << 4);
-			pr_debug("%s DOWN[%d]\n", tas->name, id);
+			pr_debug("%s DOWN[%lu]\n", tas->name, id);
 			ud[id].mismatch++;
 		} else if (ud[id].up_down == 0x10)
 			return;
 	}
 
 	if (ud[id].up_down == 0x11) {
-		pr_debug("%s CLEAR[%d]\n", tas->name, id);
+		pr_debug("%s CLEAR[%lu]\n", tas->name, id);
 		ud[id].up_down = 0;
 		ud[id].counter++;
 	}
@@ -2108,8 +2108,8 @@ static int mxt_check_reg_init(struct mxt_data *data)
 			/* Either we are in fallback mode due to wrong
 			 * config or config from a later fw version,
 			 * or the file is corrupt or hand-edited */
-			dev_warn(dev, "Discarding %u byte(s) in T%u\n",
-				 size - mxt_obj_size(object), type);
+			dev_warn(dev, "Discarding %zu byte(s) in T%u\n",
+				 (size_t)size - mxt_obj_size(object), type);
 		} else if (mxt_obj_size(object) > size) {
 			/* If firmware is upgraded, new bytes may be added to
 			 * end of objects. It is generally forward compatible
@@ -2118,8 +2118,8 @@ static int mxt_check_reg_init(struct mxt_data *data)
 			 * will force fallback mode until the configuration is
 			 * updated. We warn here but do nothing else - the
 			 * malloc has zeroed the entire configuration. */
-			dev_warn(dev, "Zeroing %u byte(s) in T%d\n",
-				 mxt_obj_size(object) - size, type);
+			dev_warn(dev, "Zeroing %zu byte(s) in T%u\n",
+				 mxt_obj_size(object) - (size_t)size, type);
 		}
 
 		if (instance >= mxt_obj_instances(object)) {
@@ -2587,7 +2587,7 @@ static int mxt_parse_object_table(struct mxt_data *data)
 		}
 
 		dev_dbg(&data->client->dev,
-			"T%-3u Start:%-4u Size:%-3u Instances:%u Report IDs:%u-%u\n",
+			"T%-3u Start:%-4u Size:%-3zu Instances:%zu Report IDs:%u-%u\n",
 			object->type, object->start_address,
 			mxt_obj_size(object), mxt_obj_instances(object),
 			min_id, max_id);
@@ -3092,7 +3092,7 @@ static int mxt_read_t100_config(struct mxt_data *data)
 			kfree(data->T100_data);
 			data->T100_data = NULL;
 		} else
-			dev_dbg(&client->dev, "T100: stored %d bytes\n",
+			dev_dbg(&client->dev, "T100: stored %zu bytes\n",
 				mxt_obj_size(object));
 	}
 
@@ -3625,7 +3625,7 @@ static int mxt_load_fw(struct device *dev)
 				frame, pos, fw->size);
 	}
 
-	dev_info(dev, "Sent %d frames, %zd bytes\n", frame, pos);
+	dev_info(dev, "Sent %d frames, %u bytes\n", frame, pos);
 	INIT_COMPLETION(data->bl_completion);
 	/* Wait for flash. */
 	ret = mxt_wait_for_completion(data, &data->bl_completion,
@@ -3860,7 +3860,7 @@ static int mxt_apply_tdat_tsett(struct mxt_data *data)
 		ret = -ENOMEM;
 		goto just_leave;
 	}
-	dev_dbg(dev, "Config memory: size %u, start_ofs %u\n",
+	dev_dbg(dev, "Config memory: size %zu, start_ofs %u\n",
 					config_mem_size, cfg_start_ofs);
 	cfg_data = data->tsett.data;
 	while (offset < data->tsett.size) {
@@ -3882,8 +3882,8 @@ static int mxt_apply_tdat_tsett(struct mxt_data *data)
 			/* Either we are in fallback mode due to wrong
 			 * config or config from a later fw version,
 			 * or the file is corrupt or hand-edited */
-			dev_warn(dev, "Discarding %u byte(s) in T%u\n",
-				 size - mxt_obj_size(object), type);
+			dev_warn(dev, "Discarding %zu byte(s) in T%u\n",
+				 (size_t)size - mxt_obj_size(object), type);
 		} else if (mxt_obj_size(object) > size) {
 			/* If firmware is upgraded, new bytes may be added to
 			 * end of objects. It is generally forward compatible
@@ -3892,8 +3892,8 @@ static int mxt_apply_tdat_tsett(struct mxt_data *data)
 			 * will force fallback mode until the configuration is
 			 * updated. We warn here but do nothing else - the
 			 * malloc has zeroed the entire configuration. */
-			dev_warn(dev, "Zeroing %u byte(s) in T%d\n",
-				 mxt_obj_size(object) - size, type);
+			dev_warn(dev, "Zeroing %zu byte(s) in T%u\n",
+				 mxt_obj_size(object) - (size_t)size, type);
 		}
 
 		if (instance >= mxt_obj_instances(object)) {
@@ -3904,7 +3904,7 @@ static int mxt_apply_tdat_tsett(struct mxt_data *data)
 
 		/* config data address in registers memory map */
 		reg = object->start_address + mxt_obj_size(object) * instance;
-		dev_dbg(dev, "T%u address: %u, instance[%u] data offset %u\n",
+		dev_dbg(dev, "T%u address: %u, instance[%u] data offset %zu\n",
 				type, object->start_address,
 				instance, mxt_obj_size(object) * instance);
 
@@ -4026,11 +4026,11 @@ static int mxt_parse_tdat_image(struct mxt_data *data)
 		length = (raw_image[offset+3] << 16) |
 			 (raw_image[offset+2] << 8) | raw_image[offset+1];
 
-		dev_dbg(dev, "Record[%d]: length %u, offset %u\n",
+		dev_dbg(dev, "Record[%zu]: length %zu, offset %zu\n",
 				ii++, length, offset);
 
 		if ((offset+length+4) > raw_size) {
-			dev_err(dev, "Data overflow at offset %u (%u)\n",
+			dev_err(dev, "Data overflow at offset %zu (%u)\n",
 				offset, raw_image[offset]);
 			return -EINVAL;
 		}
@@ -4049,7 +4049,7 @@ static int mxt_parse_tdat_image(struct mxt_data *data)
 		length = (raw_image[offset+3] << 16) |
 			 (raw_image[offset+2] << 8) | raw_image[offset+1];
 		section = (u8 *)&raw_image[offset+4];
-		dev_dbg(dev, "Section [%u], size %u\n", id, length);
+		dev_dbg(dev, "Section [%u], size %zu\n", id, length);
 
 		switch (id) {
 		case 1: /* config */
@@ -4213,7 +4213,7 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 		}
 
 		if (frame % 50 == 0)
-			dev_info(dev, "Sent %d frames, %u/%u bytes\n",
+			dev_info(dev, "Sent %d frames, %u/%zu bytes\n",
 				frame, pos, data->fw.size);
 	}
 
