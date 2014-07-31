@@ -41,4 +41,6 @@
 			atmel,revision-id = <0x32>;
 		};
 	};
+
+	/delete-node/ synaptics_dsx_i2c@3b;
 };
