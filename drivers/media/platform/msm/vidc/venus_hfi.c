@@ -1878,7 +1878,7 @@ static inline void venus_hfi_clk_gating_on(struct venus_hfi_device *device)
 	}
 	venus_hfi_clk_disable(device);
 	if (!queue_delayed_work(device->venus_pm_workq, &venus_hfi_pm_work,
-			msecs_to_jiffies(msm_vidc_pwr_collapse_delay)))
+		msecs_to_jiffies(msm_vidc_pwr_collapse_delay)))
 		dprintk(VIDC_DBG, "PM work already scheduled\n");
 already_disabled:
 	device->clocks_enabled = 0;
@@ -2719,7 +2719,9 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 		}
 		if (rc == HFI_MSG_SYS_IDLE) {
 			dprintk(VIDC_DBG, "Received HFI_MSG_SYS_IDLE\n");
-			rc = venus_hfi_try_clk_gating(device);
+			queue_delayed_work(device->venus_pm_workq,
+				&venus_hfi_pm_work,
+				msecs_to_jiffies(msm_vidc_pwr_collapse_delay));
 		} else if (rc == HFI_MSG_SYS_PC_PREP_DONE) {
 			dprintk(VIDC_DBG,
 					"Received HFI_MSG_SYS_PC_PREP_DONE\n");
