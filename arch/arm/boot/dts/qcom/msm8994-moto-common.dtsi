@@ -613,6 +613,12 @@
 };
 
 &soc {
+	vreg_5p0: vreg_5v {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_5p0";
+		gpio = <&pmi8994_gpios 6 0>;
+	};
+
 	dummy_vreg: dummy_vreg {
 		compatible = "regulator-fixed";
 		status = "ok";
@@ -1090,6 +1096,15 @@
 	};
 
 	gpio@c300 { /* GPIO 4 - WCHG_COMPLETE_N */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+	};
+
+	gpio@c500 { /* GPIO 6 - REQ_5V_BST */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
