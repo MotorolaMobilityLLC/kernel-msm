@@ -966,8 +966,6 @@ int pinctrl_select_state(struct pinctrl *p, struct pinctrl_state *state)
 					break;
 				}
 			}
-			if (!found)
-				pinmux_disable_setting(setting);
 		}
 	}
 
