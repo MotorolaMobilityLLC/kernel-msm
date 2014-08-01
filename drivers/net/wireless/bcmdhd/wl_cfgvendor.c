@@ -759,7 +759,7 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	wl_wme_cnt_t *wl_wme_cnt;
 	wl_cnt_t *wl_cnt;
 
-	WL_ERR(("%s: Enter \n", __func__));
+	WL_INFO(("%s: Enter \n", __func__));
 
 	bzero(cfg->ioctl_buf, WLC_IOCTL_MAXLEN);
 
