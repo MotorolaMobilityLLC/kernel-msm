@@ -66,17 +66,17 @@ int stml0xx_spi_sensorhub_ready(void)
 	return timeout;
 }
 
+int stml0xx_spi_sensorhub_ack(void)
+{
+	return gpio_get_value(stml0xx_misc_data->pdata->gpio_spi_data_ack);
+}
+
 /* Transfer data over SPI */
 int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len)
 {
 	struct spi_message msg;
 	struct spi_transfer transfer;
 	int rc;
-
-	/* need to move the retries up to read/write reg
-	   because read reg will need to resend the header
-	   on errors */
-	int tries = SPI_RETRIES;
 
 	if ((!tx_buf && !rx_buf) || len == 0)
 		return -EFAULT;
@@ -108,78 +108,60 @@ int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len)
 
 	spi_message_add_tail(&transfer, &msg);
 
-	while (tries--) {
-		if (stml0xx_misc_data->mode != BOOTMODE
-			&& stml0xx_g_booted) {
-			if (stml0xx_spi_sensorhub_ready() < 0) {
-				/* sensorhub is not ready
-				   continue and try again */
-				continue;
-			}
-		}
-
-		rc = spi_sync(stml0xx_misc_data->spi, &msg);
-
-		if (stml0xx_misc_data->mode != BOOTMODE
-			&& stml0xx_g_booted) {
-			if (rc >= 0) {
-				/* wait for the hub to process the message
-				   and ack/nack */
-				stml0xx_spi_sensorhub_ready();
-
-				/* check for sensorhub ack */
-				if (!gpio_get_value
-				    (stml0xx_misc_data->
-				     pdata->gpio_spi_data_ack)) {
-					rc = -EIO;
-					/* need to change this back to error
-					   when spi is stable */
-					dev_dbg(&stml0xx_misc_data->spi->dev,
-						"SPI transfer error NACK");
-				}
-			}
-		}
-
-		if (rc >= 0) {
-			/* Successful write */
-#if ENABLE_VERBOSE_LOGGING
-			int i;
-			for (i = 0; i < len; i++) {
-				if (tx_buf) {
-					dev_dbg(&stml0xx_misc_data->spi->dev,
-						"SPI Write 0x%02x, Read 0x%02x"
-						, tx_buf[i], rx_buf[i]);
-				} else {
-					dev_dbg(&stml0xx_misc_data->spi->dev,
-						"SPI ----------, Read 0x%02x",
-						rx_buf[i]);
-				}
-			}
-#endif
-
+	if (stml0xx_misc_data->mode != BOOTMODE && stml0xx_g_booted) {
+		if (stml0xx_spi_sensorhub_ready() < 0) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"SPI error STM not ready");
+			rc = -EIO;
 			goto EXIT;
 		}
-		/* need to change this back to error when spi is stable */
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"SPI transfer error [%d], retries left [%d]",
-			rc, tries);
-		msleep(SPI_RETRY_DELAY);
 	}
 
-	if (tx_buf)
-		dev_err(&stml0xx_misc_data->spi->dev,
-			"SPI write failed [%d]", rc);
-	else
-		dev_err(&stml0xx_misc_data->spi->dev,
-			"SPI read failed [%d]", rc);
+	rc = spi_sync(stml0xx_misc_data->spi, &msg);
 
+	if (stml0xx_misc_data->mode != BOOTMODE && stml0xx_g_booted) {
+		if (rc >= 0) {
+			/* wait for the hub to process the message
+			   and ack/nack */
+			stml0xx_spi_sensorhub_ready();
+
+			/* check for sensorhub ack */
+			if (!stml0xx_spi_sensorhub_ack()) {
+				rc = -EIO;
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"SPI transfer error NACK");
+			}
+		}
+	}
+
+	if (rc >= 0) {
+		/* Successful write */
+#if ENABLE_VERBOSE_LOGGING
+		int i;
+		for (i = 0; i < len; i++) {
+			if (tx_buf) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"SPI Write 0x%02x, Read 0x%02x",
+					tx_buf[i], rx_buf[i]);
+			} else {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"SPI ----------, Read 0x%02x",
+					rx_buf[i]);
+			}
+		}
+#endif
+
+		goto EXIT;
+	}
 EXIT:
 	return rc;
 }
 
 /* Write then read over SPI */
-int stml0xx_spi_write_read_no_reset(unsigned char *tx_buf, int tx_len,
-				    unsigned char *rx_buf, int rx_len)
+static int stml0xx_spi_write_read_no_reset_no_retries(unsigned char *tx_buf,
+					       int tx_len,
+					       unsigned char *rx_buf,
+					       int rx_len)
 {
 	int rc = stml0xx_spi_transfer(tx_buf, NULL, tx_len);
 	if (rc >= 0)
@@ -187,22 +169,82 @@ int stml0xx_spi_write_read_no_reset(unsigned char *tx_buf, int tx_len,
 	return rc;
 }
 
+int stml0xx_spi_write_read_no_reset(unsigned char *tx_buf, int tx_len,
+				    unsigned char *rx_buf, int rx_len)
+{
+	int tries = 0;
+	int ret = -EIO;
+
+	for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+		ret =
+		    stml0xx_spi_write_read_no_reset_no_retries(tx_buf, tx_len,
+							       rx_buf, rx_len);
+		if (ret < 0 && stml0xx_misc_data->mode == BOOTMODE)
+			msleep(SPI_RETRY_DELAY);
+	}
+
+	if (tries == SPI_RETRIES) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_spi_write_read_no_reset spi failure");
+	}
+
+	return ret;
+}
+
 /* Read bytes from SPI */
-int stml0xx_spi_read_no_reset(unsigned char *buf, int len)
+static int stml0xx_spi_read_no_reset_no_retries(unsigned char *buf, int len)
 {
 	return stml0xx_spi_transfer(NULL, buf, len);
 }
 
+int stml0xx_spi_read_no_reset(unsigned char *buf, int len)
+{
+	int tries;
+	int ret = -EIO;
+
+	for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+		ret = stml0xx_spi_read_no_reset_no_retries(buf, len);
+		if (ret < 0 && stml0xx_misc_data->mode == BOOTMODE)
+			msleep(SPI_RETRY_DELAY);
+	}
+
+	if (tries == SPI_RETRIES) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_spi_read_no_reset spi failure");
+	}
+
+	return ret;
+}
+
 /* Write bytes over SPI */
-int stml0xx_spi_write_no_reset(unsigned char *buf, int len)
+static int stml0xx_spi_write_no_reset_no_retries(unsigned char *buf, int len)
 {
 	return stml0xx_spi_transfer(buf, NULL, len);
 }
 
-int stml0xx_spi_write_read(unsigned char *tx_buf, int tx_len,
-			   unsigned char *rx_buf, int rx_len)
+int stml0xx_spi_write_no_reset(unsigned char *buf, int len)
 {
-	int tries, err = 0;
+	int tries = 0;
+	int ret = -EIO;
+
+	for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+		ret = stml0xx_spi_write_no_reset_no_retries(buf, len);
+		if (ret < 0 && stml0xx_misc_data->mode == BOOTMODE)
+			msleep(SPI_RETRY_DELAY);
+	}
+
+	if (tries == SPI_RETRIES) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_spi_write_no_reset spi failure");
+	}
+
+	return ret;
+}
+
+static int stml0xx_spi_write_read_no_retries(unsigned char *tx_buf, int tx_len,
+				      unsigned char *rx_buf, int rx_len)
+{
+	int err = 0;
 
 	if (stml0xx_misc_data->mode == BOOTMODE)
 		return -EFAULT;
@@ -210,29 +252,59 @@ int stml0xx_spi_write_read(unsigned char *tx_buf, int tx_len,
 	if (tx_buf == NULL || rx_buf == NULL || tx_len == 0 || rx_len == 0)
 		return -EFAULT;
 
-	tries = 0;
-	do {
-		err =
-		    stml0xx_spi_write_read_no_reset(tx_buf, tx_len, rx_buf,
-						    rx_len);
-		if (err < 0)
-			stml0xx_reset_and_init();
-	} while ((err < 0) && (++tries < RESET_RETRIES));
+	err = stml0xx_spi_write_read_no_reset_no_retries(tx_buf, tx_len, rx_buf,
+							 rx_len);
 
 	if (err < 0) {
-		dev_err(&stml0xx_misc_data->spi->dev, "write_read error");
+		dev_dbg(&stml0xx_misc_data->spi->dev, "write_read error");
 		err = -EIO;
 	} else {
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"write_read successful:");
+		dev_dbg(&stml0xx_misc_data->spi->dev, "write_read successful:");
 	}
 
 	return err;
 }
 
-int stml0xx_spi_read(unsigned char *buf, int len)
+int stml0xx_spi_write_read(unsigned char *tx_buf, int tx_len,
+			   unsigned char *rx_buf, int rx_len)
 {
-	int tries, err = 0;
+	int tries;
+	int reset_retries;
+	int ret = -EIO;
+
+	if (stml0xx_misc_data->mode == BOOTMODE)
+		return -EFAULT;
+
+	if (tx_buf == NULL || rx_buf == NULL || tx_len == 0 || rx_len == 0)
+		return -EFAULT;
+
+	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
+	     reset_retries++) {
+		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+			ret =
+			    stml0xx_spi_write_read_no_retries(tx_buf, tx_len,
+							      rx_buf, rx_len);
+		}
+
+		if (ret < 0) {
+			stml0xx_reset_and_init();
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"stml0xx_spi_write_read SPI transfer error [%d], retries left [%d]",
+				ret, reset_retries);
+		}
+	}
+
+	if (reset_retries == RESET_RETRIES) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_spi_write_read spi failure");
+	}
+
+	return ret;
+}
+
+static int stml0xx_spi_read_no_retries(unsigned char *buf, int len)
+{
+	int err = 0;
 
 	if (buf == NULL || len == 0)
 		return -EFAULT;
@@ -240,14 +312,10 @@ int stml0xx_spi_read(unsigned char *buf, int len)
 	if (stml0xx_misc_data->mode == BOOTMODE)
 		return -EFAULT;
 
-	tries = 0;
-	do {
-		err = stml0xx_spi_read_no_reset(buf, len);
-		if (err < 0)
-			stml0xx_reset_and_init();
-	} while ((err < 0) && (++tries < RESET_RETRIES));
+	err = stml0xx_spi_read_no_reset_no_retries(buf, len);
+
 	if (err < 0) {
-		dev_err(&stml0xx_misc_data->spi->dev, "read error");
+		dev_dbg(&stml0xx_misc_data->spi->dev, "read error");
 		err = -EIO;
 	} else {
 		dev_dbg(&stml0xx_misc_data->spi->dev, "read successful:");
@@ -255,23 +323,50 @@ int stml0xx_spi_read(unsigned char *buf, int len)
 	return err;
 }
 
-int stml0xx_spi_write(unsigned char *buf, int len)
+int stml0xx_spi_read(unsigned char *buf, int len)
 {
-	int err = 0;
-	int tries = 0;
+	int tries;
+	int reset_retries;
+	int ret = -EIO;
+
+	if (buf == NULL || len == 0)
+		return -EFAULT;
 
 	if (stml0xx_misc_data->mode == BOOTMODE)
 		return -EFAULT;
 
-	tries = 0;
-	do {
-		err = stml0xx_spi_write_no_reset(buf, len);
-		if (err < 0)
+	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
+	     reset_retries++) {
+		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++)
+			ret = stml0xx_spi_read_no_retries(buf, len);
+
+		if (ret < 0) {
 			stml0xx_reset_and_init();
-	} while ((err < 0) && (++tries < RESET_RETRIES));
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"stml0xx_spi_read SPI transfer error [%d], retries left [%d]",
+				ret, reset_retries);
+		}
+	}
+
+	if (reset_retries == RESET_RETRIES) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_spi_read spi failure");
+	}
+
+	return ret;
+}
+
+static int stml0xx_spi_write_no_retries(unsigned char *buf, int len)
+{
+	int err = 0;
+
+	if (stml0xx_misc_data->mode == BOOTMODE)
+		return -EFAULT;
+
+	err = stml0xx_spi_write_no_reset_no_retries(buf, len);
 
 	if (err < 0) {
-		dev_err(&stml0xx_misc_data->spi->dev,
+		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"write error - %x", buf[0]);
 		err = -EIO;
 	} else {
@@ -280,17 +375,48 @@ int stml0xx_spi_write(unsigned char *buf, int len)
 	return err;
 }
 
-int stml0xx_spi_send_write_reg(unsigned char reg_type,
-			       unsigned char *reg_data, int reg_data_size)
+int stml0xx_spi_write(unsigned char *buf, int len)
+{
+	int tries;
+	int reset_retries;
+	int ret = -EIO;
+
+	if (stml0xx_misc_data->mode == BOOTMODE)
+		return -EFAULT;
+
+	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
+	     reset_retries++) {
+		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++)
+			ret = stml0xx_spi_write_no_retries(buf, len);
+
+		if (ret < 0) {
+			stml0xx_reset_and_init();
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"stml0xx_spi_write SPI transfer error [%d], retries left [%d]",
+				ret, reset_retries);
+		}
+	}
+
+	if (reset_retries == RESET_RETRIES) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_spi_write spi failure");
+	}
+
+	return ret;
+}
+
+static int stml0xx_spi_send_write_reg_no_retries(unsigned char reg_type,
+					  unsigned char *reg_data,
+					  int reg_size)
 {
 
 	int data_offset = 0, data_size;
-	int remaining_data_size = reg_data_size;
+	int remaining_data_size = reg_size;
 	int ret = 0;
 
-	if (!reg_data || reg_data_size <= 0 ||
-		reg_data_size > STML0XX_MAX_REG_LEN) {
-		dev_err(&stml0xx_misc_data->spi->dev,
+	if (!reg_data || reg_size <= 0 ||
+	    reg_size > STML0XX_MAX_REG_LEN) {
+		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Invalid buffer or buffer size");
 		ret = -EFAULT;
 		goto EXIT;
@@ -327,7 +453,9 @@ int stml0xx_spi_send_write_reg(unsigned char reg_type,
 				       SPI_MSG_SIZE - SPI_CRC_LEN);
 
 		/* Write write request to SPI */
-		ret = stml0xx_spi_write(stml0xx_cmdbuff, SPI_MSG_SIZE);
+		ret =
+		    stml0xx_spi_write_no_reset_no_retries(stml0xx_cmdbuff,
+							  SPI_MSG_SIZE);
 		if (ret < 0)
 			goto EXIT;
 	}
@@ -336,16 +464,57 @@ EXIT:
 	return ret;
 }
 
-int stml0xx_spi_send_read_reg(unsigned char reg_type,
-			      unsigned char *reg_data, int reg_data_size)
+int stml0xx_spi_send_write_reg(unsigned char reg_type,
+			       unsigned char *reg_data, int reg_size)
+{
+	int tries;
+	int reset_retries;
+	int ret = -EIO;
+
+	if (!reg_data || reg_size <= 0 ||
+	    reg_size > STML0XX_MAX_REG_LEN) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"Invalid buffer or buffer size");
+		ret = -EFAULT;
+		return ret;
+	}
+
+	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
+	     reset_retries++) {
+		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+			ret =
+			    stml0xx_spi_send_write_reg_no_retries(reg_type,
+								  reg_data,
+								  reg_size);
+		}
+
+		if (ret < 0) {
+			stml0xx_reset_and_init();
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"stml0xx_spi_send_write_reg SPI transfer error [%d], retries left [%d]",
+				ret, reset_retries);
+		}
+	}
+
+	if (reset_retries == RESET_RETRIES) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_spi_send_write_reg spi failure");
+	}
+
+	return ret;
+}
+
+static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
+					 unsigned char *reg_data,
+					 int reg_size)
 {
 	unsigned short recv_crc, calc_crc;
 	int ret = 0;
 
 	/* TODO: No support for offset for now */
-	if (!reg_data || reg_data_size <= 0 ||
-		reg_data_size > SPI_MAX_PAYLOAD_LEN) {
-		dev_err(&stml0xx_misc_data->spi->dev,
+	if (!reg_data || reg_size <= 0 ||
+	    reg_size > SPI_MAX_PAYLOAD_LEN) {
+		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Invalid buffer or buffer size");
 		ret = -EFAULT;
 		goto EXIT;
@@ -360,7 +529,7 @@ int stml0xx_spi_send_read_reg(unsigned char reg_type,
 	stml0xx_cmdbuff[2] = SPI_MSG_TYPE_READ_REG;
 	stml0xx_cmdbuff[3] = reg_type;
 	stml0xx_cmdbuff[4] = 0;	/* offset */
-	stml0xx_cmdbuff[5] = reg_data_size;
+	stml0xx_cmdbuff[5] = reg_size;
 
 	/* Swap all bytes */
 	stml0xx_spi_swap_bytes(stml0xx_cmdbuff, SPI_MSG_SIZE - SPI_CRC_LEN);
@@ -369,37 +538,77 @@ int stml0xx_spi_send_read_reg(unsigned char reg_type,
 	stml0xx_spi_append_crc(stml0xx_cmdbuff, SPI_MSG_SIZE - SPI_CRC_LEN);
 
 	/* Write read request to SPI */
-	ret = stml0xx_spi_write(stml0xx_cmdbuff, SPI_MSG_SIZE);
-	if (ret < 0) {
-		dev_err(&stml0xx_misc_data->spi->dev,
-			"Failed to send read reg request");
-		goto EXIT;
-	}
+	ret =
+	    stml0xx_spi_write_no_reset_no_retries(stml0xx_cmdbuff,
+						  SPI_MSG_SIZE);
 
-	ret = stml0xx_spi_read(stml0xx_readbuff, SPI_MSG_SIZE);
-	if (ret < 0) {
-		dev_err(&stml0xx_misc_data->spi->dev,
-			"Failed to receive reg data");
-		goto EXIT;
-	}
-	/* Validate CRC */
-	recv_crc = (stml0xx_readbuff[30] << 8) | stml0xx_readbuff[31];
-	calc_crc = stml0xx_spi_calculate_crc(stml0xx_readbuff,
-					    SPI_MSG_SIZE - SPI_CRC_LEN);
-	if (recv_crc != calc_crc) {
-		dev_err(&stml0xx_misc_data->spi->dev,
-			"CRC mismatch [0x%02x/0x%02x]. Discarding data.",
-			recv_crc, calc_crc);
-		ret = -EIO;
-		goto EXIT;
-	}
-	/* Swap bytes before extracting data */
-	stml0xx_spi_swap_bytes(stml0xx_readbuff, SPI_MSG_SIZE - SPI_CRC_LEN);
+	if (ret >= 0) {
+		ret =
+		    stml0xx_spi_read_no_reset_no_retries(stml0xx_readbuff,
+							 SPI_MSG_SIZE);
 
-	/* Extract payload */
-	memcpy(reg_data, stml0xx_readbuff, reg_data_size);
+		/* Validate CRC */
+		recv_crc = (stml0xx_readbuff[30] << 8) | stml0xx_readbuff[31];
+		calc_crc = stml0xx_spi_calculate_crc(stml0xx_readbuff,
+						     SPI_MSG_SIZE -
+						     SPI_CRC_LEN);
+		if (recv_crc != calc_crc) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"CRC mismatch [0x%02x/0x%02x]. Discarding data.",
+				recv_crc, calc_crc);
+			ret = -EIO;
+			goto EXIT;
+		}
 
+		/* Swap bytes before extracting data */
+		stml0xx_spi_swap_bytes(stml0xx_readbuff,
+				       SPI_MSG_SIZE - SPI_CRC_LEN);
+
+		/* Extract payload */
+		memcpy(reg_data, stml0xx_readbuff, reg_size);
+	}
 EXIT:
+	return ret;
+}
+
+int stml0xx_spi_send_read_reg(unsigned char reg_type,
+			      unsigned char *reg_data, int reg_size)
+{
+	int tries;
+	int reset_retries;
+	int ret = -EIO;
+
+	/* TODO: No support for offset for now */
+	if (!reg_data || reg_size <= 0 ||
+	    reg_size > SPI_MAX_PAYLOAD_LEN) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"Invalid buffer or buffer size");
+		ret = -EFAULT;
+		return ret;
+	}
+
+	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
+	     reset_retries++) {
+		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+			ret =
+			    stml0xx_spi_send_read_reg_no_retries(reg_type,
+								 reg_data,
+								 reg_size);
+		}
+
+		if (ret < 0) {
+			stml0xx_reset_and_init();
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"stml0xx_spi_send_read_reg SPI transfer error [%d], retries left [%d]",
+				ret, reset_retries);
+		}
+	}
+
+	if (reset_retries == RESET_RETRIES) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_spi_send_read_reg spi failure");
+	}
+
 	return ret;
 }
 
