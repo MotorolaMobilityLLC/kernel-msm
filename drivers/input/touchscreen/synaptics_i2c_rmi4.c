@@ -201,6 +201,12 @@ static ssize_t synaptics_rmi4_flipy_store(struct device *dev,
 static ssize_t synaptics_rmi4_reg_control_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static int synaptics_rmi4_set_doze_interval(struct synaptics_rmi4_data
+						*rmi4_data, int active);
+
 static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
 
 static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
@@ -457,6 +463,8 @@ static struct device_attribute attrs[] = {
 	__ATTR(reg_control, (S_IRUGO | S_IWUSR),
 			NULL,
 			synaptics_rmi4_reg_control_store),
+	__ATTR(idle_mode, S_IWUSR, NULL,
+			synaptics_rmi4_idle_mode_store),
 };
 
 static bool need_wakeup;
@@ -814,6 +822,32 @@ static ssize_t synaptics_rmi4_reg_control_store(struct device *dev,
 	} else {
 		pr_info("state=[suspend]. we cannot use I2C, now\n");
 	}
+
+	return count;
+}
+
+static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int idle_mode;
+
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	if (!device_may_wakeup(&rmi4_data->i2c_client->dev) &&
+		rmi4_data->suspended) {
+		dev_err(dev, "Touch is suspended\n");
+		return -EPERM;
+	}
+
+	if (kstrtoint(buf, 10, &idle_mode) != 0) {
+		dev_err(dev, "Invalid parameter\n");
+		return -EINVAL;
+	}
+
+	if (idle_mode)
+		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_SLEEP);
+	else
+		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_ACTIVE);
 
 	return count;
 }
@@ -3964,8 +3998,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		return 0;
 	}
 
-	synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_SLEEP);
-
 	if (device_may_wakeup(&rmi4_data->i2c_client->dev)) {
 		need_wakeup = 1;
 		rmi4_data->suspended = true;
@@ -4055,8 +4087,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 		dev_info(dev, "Already in awake state\n");
 		return 0;
 	}
-
-	synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_ACTIVE);
 
 	if (device_may_wakeup(&rmi4_data->i2c_client->dev)) {
 		need_wakeup = 0;
