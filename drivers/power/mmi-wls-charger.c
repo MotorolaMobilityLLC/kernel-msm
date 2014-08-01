@@ -29,6 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/printk.h>
+#include <linux/interrupt.h>
 
 #define MMI_WLS_CHRG_DRV_NAME "mmi-wls-charger"
 #define MMI_WLS_CHRG_PSY_NAME "wireless"
@@ -382,6 +383,21 @@ static void mmi_wls_charger_external_power_changed(struct power_supply *psy)
 			      msecs_to_jiffies(100));
 	return;
 }
+
+static irqreturn_t pad_det_handler(int irq, void *dev_id)
+{
+
+	struct mmi_wls_chrg_chip *chip = dev_id;
+
+	if (gpio_get_value(chip->pad_det_n_gpio))
+		power_supply_changed(&chip->wl_psy);
+
+	dev_dbg(chip->dev, "pad_det_handler pad_det_n =%x\n",
+			gpio_get_value(chip->pad_det_n_gpio));
+
+	return IRQ_HANDLED;
+}
+
 static const struct of_device_id mmi_wls_chrg_of_tbl[] = {
 	{ .compatible = "mmi,wls-charger-bq51021", .data = NULL},
 	{},
@@ -483,6 +499,22 @@ static int mmi_wls_chrg_probe(struct i2c_client *client,
 		chip->pad_det_n_gpio = chip->list[0].gpio;
 		chip->charge_cmplt_n_gpio = chip->list[1].gpio;
 		chip->charge_term_gpio = chip->list[2].gpio;
+	}
+
+	if (chip->pad_det_n_gpio) {
+		int irq;
+		irq = gpio_to_irq(chip->pad_det_n_gpio);
+		if (irq < 0) {
+			dev_err(&client->dev, " gpio_to_irq failed\n");
+			ret = -ENODEV;
+			goto fail_gpios;
+		}
+		ret = devm_request_irq(&client->dev, irq, pad_det_handler,
+					IRQF_TRIGGER_RISING, "pad_det_n", chip);
+		if (ret < 0) {
+			dev_err(&client->dev, "request pad_det irq failed\n");
+			goto fail_gpios;
+		}
 	}
 
 	ret = of_property_read_u32(np, "mmi,priority",
