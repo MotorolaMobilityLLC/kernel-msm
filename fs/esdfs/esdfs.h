@@ -58,6 +58,9 @@
 #define AID_SDCARD_AV     1034
 #define AID_SDCARD_ALL    1035
 
+/* used in extra persmission check during file creation */
+#define ESDFS_MAY_CREATE	0x00001000
+
 /* derived permissions model based on tree location */
 enum {
 	ESDFS_TREE_NONE = 0,		/* permissions not derived */
