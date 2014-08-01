@@ -29,7 +29,7 @@
 #define SPI_BUFF_SIZE           1152
 #define SPI_RETRIES             5
 #define SPI_RETRY_DELAY         20
-#define SPI_SENSORHUB_TIMEOUT   1000
+#define SPI_SENSORHUB_TIMEOUT   5000
 #define SPI_BARKER_1            0xF9
 #define SPI_BARKER_2            0xAE
 #define SPI_HEADER_SIZE         6
