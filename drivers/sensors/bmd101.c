@@ -52,7 +52,7 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 
 #define BMD101_CS_GPIO		53
 #define BMD101_RST_GPIO		55
-#define BMD101_filter_array		20
+#define BMD101_filter_array		15
 
 static struct regulator *pm8921_l28;
 static struct sensors_classdev bmd101_cdev = {
@@ -80,60 +80,61 @@ static int bmd101_data_report(int data)
 	return 0;
 }
 
-static void bmd101_array_sorting(int *array, int min, int max)
-{
-	int i, j, temp, pivot;
+static void sortArray(int *nums, int total) {
+	static int x;
+	static int y;
 
-	if (min < max) {
-		pivot = min;
-		i = min;
-		j = max;
-
-		while (i <j) {
-			while ((array[i] <= array[pivot]) && (i<max))
-				i++;
-			while (array[j] > array[pivot])
-				j--;
-			if (i<j) {
-				temp = array[i];
-				array[i] = array[j];
-				array[j] = temp;
+	for(x=0; x<total; x++) {
+		for(y=0; y<total-1; y++) {
+			if(nums[y]>nums[y+1]) {
+				int temp = nums[y+1];
+				nums[y+1] = nums[y];
+				nums[y] = temp;
 			}
 		}
-
-		temp = array[pivot];
-		array[pivot] = array[j];
-		array[j] = temp;
-		bmd101_array_sorting(array, min, j-1);
-		bmd101_array_sorting(array, j+1, max);
 	}
+}
+
+static int findMode(int *nums,int total) {
+	int i, j, maxCount, modeValue;
+	int tally[total];
+
+	for (i = 0; i < total; i++) {
+		tally[nums[i]]++;
+	}
+	maxCount = 0;
+	modeValue = 0;
+	for (j = 0; j < total; j++) {
+		if (tally[j] > maxCount) {
+			maxCount = tally[j];
+			modeValue = j;
+		}
+		
+	}
+	return maxCount;
 }
 
 static void bmd101_data_filter(int data, int reset)
 {
 	static int count = 0;
-	static int stable = 0;
 	static int bpm[BMD101_filter_array];
 	int calc_bpm;
 
 	if(reset) {
 		sensor_debug(DEBUG_INFO, "[bmd101] %s: reset\n", __func__);
 		count = 0;
-		stable = 0;
 		return;
 	}
 
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", count);
 	if(sensor_data->status<2)
 		bmd101_data_report(0);		//report 0 bpm to set sensor status to SENSOR_STATUS_NO_CONTACT
-	else if(stable<5)
-		stable++;
 	else {
 		if(count < BMD101_filter_array)
 			bpm[count++] = data;
 		else {
-			bmd101_array_sorting(bpm, 0, BMD101_filter_array);
-			calc_bpm = (bpm[BMD101_filter_array/2] + bpm[(BMD101_filter_array/2)+1] + bpm[(BMD101_filter_array/2)-1] + bpm[(BMD101_filter_array/2)+2] + bpm[(BMD101_filter_array/2)-2])/5;
+			sortArray(bpm, BMD101_filter_array);
+			calc_bpm = findMode(bpm, BMD101_filter_array);
 			bmd101_data_report(calc_bpm);
 			sensor_data->bpm = calc_bpm;
 			count = 0;
