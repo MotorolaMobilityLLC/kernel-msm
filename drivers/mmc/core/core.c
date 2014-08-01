@@ -194,8 +194,12 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 #endif
 	if (host->card) {
 		mmc_update_clk_scaling(host);
-		if (err || (mrq->data && mrq->data->error))
+		if (err || (mrq->data && mrq->data->error)) {
 			host->card->request_errors++;
+			if (err == -EILSEQ ||
+			    (mrq->data && mrq->data->error == -EILSEQ))
+				host->card->crc_errors++;
+		}
 	}
 
 	if (err && cmd->retries && mmc_host_is_spi(host)) {
@@ -2684,8 +2688,11 @@ EXPORT_SYMBOL(mmc_hw_reset_check);
 
 int mmc_throttle_back(struct mmc_host *host)
 {
-	if (host->bus_ops->throttle_back)
+	if (host->bus_ops->throttle_back) {
+		if (host->card)
+			host->card->crc_errors = 0;
 		return host->bus_ops->throttle_back(host);
+	}
 
 	return -ENOSYS;
 }
