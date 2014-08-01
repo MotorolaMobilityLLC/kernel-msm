@@ -563,6 +563,8 @@ enum msm_ois_cfg_type_t {
 	CFG_OIS_SET_PANTILT_ON,
 	CFG_OIS_POWERUP,
 	CFG_OIS_I2C_WRITE_SEQ_TABLE,
+	CFG_OIS_GEA,
+	CFG_OIS_HEA,
 };
 
 enum msm_ois_i2c_operation {
@@ -719,9 +721,16 @@ enum af_camera_name {
 	ACTUATOR_WEB_CAM_2,
 };
 
+struct msm_ois_hea_t {
+	uint32_t x;
+	uint32_t y;
+};
+
 struct msm_ois_cfg_data {
 	int cfgtype;
 	uint8_t is_ois_supported;
+	uint8_t gea;
+	struct msm_ois_hea_t hea;
 	union {
 		uint8_t enable_centering_ois;
 		struct msm_ois_set_info_t set_info;

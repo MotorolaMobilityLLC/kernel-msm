@@ -31,6 +31,35 @@ DEFINE_MSM_MUTEX(msm_ois_mutex);
 static int32_t msm_ois_power_up(struct msm_ois_ctrl_t *o_ctrl);
 static int32_t msm_ois_power_down(struct msm_ois_ctrl_t *o_ctrl);
 
+static int32_t msm_ois_gea(struct msm_ois_ctrl_t *o_ctrl,
+	uint8_t *output);
+
+static int32_t msm_ois_hea(struct msm_ois_ctrl_t *o_ctrl,
+	struct msm_ois_hea_t *output);
+
+static uint16_t RunHallAcceptance(struct msm_ois_ctrl_t *o_ctrl,
+	uint8_t direction);
+static uint8_t RunGyroAcceptance(struct msm_ois_ctrl_t *o_ctrl);
+
+static void RamWrite32A(struct msm_ois_ctrl_t *o_ctrl, uint32_t addr,
+	uint32_t data);
+static void RegWriteA(struct msm_ois_ctrl_t *o_ctrl, uint32_t addr,
+	uint32_t data);
+static void RegReadA(struct msm_ois_ctrl_t *o_ctrl, uint32_t addr,
+	uint8_t *reg_data);
+static void RamReadA(struct msm_ois_ctrl_t *o_ctrl, uint32_t addr,
+	uint16_t *reg_data);
+static void RamAccessFixedMode(struct msm_ois_ctrl_t *o_ctrl,
+	uint8_t UcAccessMode);
+static void BusyWait(struct msm_ois_ctrl_t *o_ctrl, uint16_t TargetAddr,
+	uint8_t TargetData);
+static void SetSineWaveParams(struct msm_ois_ctrl_t *o_ctrl, uint8_t UcTableVal,
+	uint8_t UcMethodVal);
+static uint8_t CommandReadCheck(struct msm_ois_ctrl_t *o_ctrl);
+static void MeasureFilter(struct msm_ois_ctrl_t *o_ctrl, uint8_t mode);
+static int16_t GenMeas(struct msm_ois_ctrl_t *o_ctrl, uint16_t UsRamAddr,
+	uint8_t UcMeasMode);
+
 static struct msm_ois msm_ois_table;
 
 static struct i2c_driver msm_ois_i2c_driver;
@@ -197,6 +226,631 @@ static int32_t msm_ini_set_ois(struct msm_ois_ctrl_t *o_ctrl,
 
 	CDBG("Exit\n");
 	return rc;
+}
+
+static int32_t msm_ois_gea(struct msm_ois_ctrl_t *o_ctrl,
+	uint8_t *output)
+{
+	*output = RunGyroAcceptance(o_ctrl);
+
+	return 0;
+}
+
+static int32_t msm_ois_hea(struct msm_ois_ctrl_t *o_ctrl,
+	struct msm_ois_hea_t *output)
+{
+	output->x = RunHallAcceptance(o_ctrl, X_DIR);
+	output->y = RunHallAcceptance(o_ctrl, Y_DIR);
+
+	return 0;
+}
+
+static void MeasureFilter(struct msm_ois_ctrl_t *o_ctrl, uint8_t mode)
+{
+	if (mode == NOISE) {
+		/* Measure Filter1 Setting */
+		RamWrite32A(o_ctrl, MES1AA, 0x3CA175C0); /* 0x10F0 LPF150Hz */
+		RamWrite32A(o_ctrl, MES1AB, 0x3CA175C0); /* 0x10F1 */
+		RamWrite32A(o_ctrl, MES1AC, 0x3F75E8C0); /* 0x10F2 */
+		RamWrite32A(o_ctrl, MES1AD, 0x00000000); /* 0x10F3 */
+		RamWrite32A(o_ctrl, MES1AE, 0x00000000); /* 0x10F4 */
+		RamWrite32A(o_ctrl, MES1BA, 0x3CA175C0); /* 0x10F5 LPF150Hz */
+		RamWrite32A(o_ctrl, MES1BB, 0x3CA175C0); /* 0x10F6 */
+		RamWrite32A(o_ctrl, MES1BC, 0x3F75E8C0); /* 0x10F7 */
+		RamWrite32A(o_ctrl, MES1BD, 0x00000000); /* 0x10F8 */
+		RamWrite32A(o_ctrl, MES1BE, 0x00000000); /* 0x10F9 */
+
+		/* Measure Filter2 Setting */
+		RamWrite32A(o_ctrl, MES2AA, 0x3CA175C0); /* 0x11F0 LPF150Hz */
+		RamWrite32A(o_ctrl, MES2AB, 0x3CA175C0); /* 0x11F1 */
+		RamWrite32A(o_ctrl, MES2AC, 0x3F75E8C0); /* 0x11F2 */
+		RamWrite32A(o_ctrl, MES2AD, 0x00000000); /* 0x11F3 */
+		RamWrite32A(o_ctrl, MES2AE, 0x00000000); /* 0x11F4 */
+		RamWrite32A(o_ctrl, MES2BA, 0x3CA175C0); /* 0x11F5 LPF150Hz */
+		RamWrite32A(o_ctrl, MES2BB, 0x3CA175C0); /* 0x11F6 */
+		RamWrite32A(o_ctrl, MES2BC, 0x3F75E8C0); /* 0x11F7 */
+		RamWrite32A(o_ctrl, MES2BD, 0x00000000); /* 0x11F8 */
+		RamWrite32A(o_ctrl, MES2BE, 0x00000000); /* 0x11F9 */
+	} else if (mode == THROUGH) { /* for Through */
+		/* Measure Filter1 Setting */
+		RamWrite32A(o_ctrl, MES1AA, 0x3F800000); /* 0x10F0 Through */
+		RamWrite32A(o_ctrl, MES1AB, 0x00000000); /* 0x10F1 */
+		RamWrite32A(o_ctrl, MES1AC, 0x00000000); /* 0x10F2 */
+		RamWrite32A(o_ctrl, MES1AD, 0x00000000); /* 0x10F3 */
+		RamWrite32A(o_ctrl, MES1AE, 0x00000000); /* 0x10F4 */
+		RamWrite32A(o_ctrl, MES1BA, 0x3F800000); /* 0x10F5  Through */
+		RamWrite32A(o_ctrl, MES1BB, 0x00000000); /* 0x10F6 */
+		RamWrite32A(o_ctrl, MES1BC, 0x00000000); /* 0x10F7 */
+		RamWrite32A(o_ctrl, MES1BD, 0x00000000); /* 0x10F8 */
+		RamWrite32A(o_ctrl, MES1BE, 0x00000000); /* 0x10F9 */
+
+		/* Measure Filter2 Setting */
+		RamWrite32A(o_ctrl, MES2AA, 0x3F800000); /* 0x11F0 Through */
+		RamWrite32A(o_ctrl, MES2AB, 0x00000000); /* 0x11F1 */
+		RamWrite32A(o_ctrl, MES2AC, 0x00000000); /* 0x11F2 */
+		RamWrite32A(o_ctrl, MES2AD, 0x00000000); /* 0x11F3 */
+		RamWrite32A(o_ctrl, MES2AE, 0x00000000); /* 0x11F4 */
+		RamWrite32A(o_ctrl, MES2BA, 0x3F800000); /* 0x11F5 Through */
+		RamWrite32A(o_ctrl, MES2BB, 0x00000000); /* 0x11F6 */
+		RamWrite32A(o_ctrl, MES2BC, 0x00000000); /* 0x11F7 */
+		RamWrite32A(o_ctrl, MES2BD, 0x00000000); /* 0x11F8 */
+		RamWrite32A(o_ctrl, MES2BE, 0x00000000); /* 0x11F9 */
+	}
+
+	return;
+}
+
+static uint16_t RunHallAcceptance(struct msm_ois_ctrl_t *o_ctrl,
+	uint8_t direction)
+{
+	uint16_t MsppVal;
+
+	MeasureFilter(o_ctrl, NOISE);
+
+	if (!direction) {
+		RamWrite32A(o_ctrl, SXSIN, ACT_CHECK_LEVEL); /* 0x10D5 */
+		RamWrite32A(o_ctrl, SYSIN, 0x000000); /* 0x11D5 */
+		SetSineWaveParams(o_ctrl, 0x05, XACTTEST);
+	} else {
+		RamWrite32A(o_ctrl, SXSIN, 0x000000); /* 0x10D5 */
+		RamWrite32A(o_ctrl, SYSIN, ACT_CHECK_LEVEL); /* 0x11D5 */
+		SetSineWaveParams(o_ctrl, 0x05, YACTTEST);
+	}
+
+	if (!direction) { /* AXIS X */
+		RegWriteA(o_ctrl, WC_MES1ADD0,
+			(uint8_t)SXINZ1); /* 0x0194 */
+		/* 0x0195 */
+		RegWriteA(o_ctrl, WC_MES1ADD1,
+			(uint8_t)((SXINZ1 >> 8) & 0x0001));
+	} else { /* AXIS Y */
+		RegWriteA(o_ctrl, WC_MES1ADD0, (uint8_t)SYINZ1); /* 0x0194 */
+		/* 0x0195 */
+		RegWriteA(o_ctrl, WC_MES1ADD1,
+			(uint8_t)((SYINZ1 >> 8) & 0x0001));
+	}
+
+	RegWriteA(o_ctrl, WC_MESSINMODE, 0x00); /* 0x0191 0 cross */
+	RegWriteA(o_ctrl, WC_MESLOOP1, 0x00); /* 0x0193 */
+	RegWriteA(o_ctrl, WC_MESLOOP0, 0x02); /* 0x0192 2 Times Measure */
+	/* 0x10AE 1/CmMesLoop[15:0]/2 */
+	RamWrite32A(o_ctrl, MSMEAN, 0x3F000000);
+	RegWriteA(o_ctrl, WC_MESABS, 0x00); /* 0x0198 none ABS */
+
+	BusyWait(o_ctrl, WC_MESMODE, 0x02); /* 0x0190 Sine wave Measure */
+
+	RamAccessFixedMode(o_ctrl, ON); /* Fixed mode */
+	RamReadA(o_ctrl, MSPP1AV, &MsppVal);
+	RamAccessFixedMode(o_ctrl, OFF); /* Float mode */
+
+	if (!direction) { /* AXIS X */
+		SetSineWaveParams(o_ctrl, 0x00, XACTTEST); /* STOP */
+	} else {
+		SetSineWaveParams(o_ctrl, 0x00, YACTTEST); /* STOP */
+	}
+
+	return MsppVal;
+}
+
+/******************************************************************************
+Function Name       : ClearGyro
+Return Value        : NONE
+Argument Value      : UsClrFil - Select filter to clear.
+						If 0x0000, clears entire filter.
+						UcClrMod -
+						0x01: FRAM0 Clear,
+						0x02: FRAM1,
+						0x03: All RAM Clear
+Explanation         : Gyro RAM clear function
+History             : First edition 2013.01.09 Y.Shigeoka
+******************************************************************************/
+static void ClearGyro(struct msm_ois_ctrl_t *o_ctrl, uint16_t UsClearFilter,
+	uint8_t UcClearMode)
+{
+	uint8_t UcRamClear;
+	uint8_t count = 0;
+
+	/*Select Filter to clear*/
+	/* 0x018F FRAM Initialize Hbyte */
+	RegWriteA(o_ctrl, WC_RAMDLYMOD1, (uint8_t) (UsClearFilter >> 8));
+	/* 0x018E FRAM Initialize Lbyte */
+	RegWriteA(o_ctrl, WC_RAMDLYMOD0, (uint8_t) UsClearFilter);
+
+	/*Enable Clear*/
+	RegWriteA(o_ctrl, WC_RAMINITON, UcClearMode); /* 0x0102 */
+
+	/*Check RAM Clear complete*/
+	do {
+		RegReadA(o_ctrl, WC_RAMINITON, &UcRamClear);
+		UcRamClear &= UcClearMode;
+		if (count++ >= 100)
+			break;
+	} while (UcRamClear != 0x00);
+}
+
+/******************************************************************************
+Function Name : RunGyroAcceptance
+Return Value  : Result
+Argument Value  : NONE
+Explanation     : Gyro Examination of Acceptance
+History : First edition  2014.02.13 T.Tokoro
+******************************************************************************/
+static uint8_t RunGyroAcceptance(struct msm_ois_ctrl_t *o_ctrl)
+{
+	uint8_t   UcResult, UcCount, UcXLowCount;
+	uint8_t   UcYLowCount, UcXHighCount, UcYHighCount;
+	uint16_t  UsGxoVal[10], UsGyoVal[10], UsDiff;
+
+	UcResult = EXE_END;
+	UcXLowCount = UcYLowCount = UcXHighCount = UcYHighCount = 0;
+
+	MeasureFilter(o_ctrl, THROUGH);
+
+	for (UcCount = 0; UcCount < 10; UcCount++) {
+		/* X */
+		RegWriteA(o_ctrl, WC_MES1ADD0, 0x00); /* 0x0194 */
+		RegWriteA(o_ctrl, WC_MES1ADD1, 0x00); /* 0x0195 */
+		/* Measure Filter RAM Clear */
+		ClearGyro(o_ctrl, 0x1000, CLR_FRAM1);
+		/* GYRMON1(0x1110) <- GXADZ(0x144A) */
+		UsGxoVal[UcCount] = (uint16_t) GenMeas(o_ctrl, AD2Z, 0);
+
+		/* Y */
+		RegWriteA(o_ctrl, WC_MES1ADD0, 0x00); /* 0x0194 */
+		RegWriteA(o_ctrl, WC_MES1ADD1, 0x00); /* 0x0195 */
+		ClearGyro(o_ctrl, 0x1000, CLR_FRAM1);
+
+		/* Measure Filter RAM Clear */
+		/* GYRMON2(0x1111) <- GYADZ(0x14CA) */
+		UsGyoVal[UcCount] = (uint16_t) GenMeas(o_ctrl, AD3Z, 0);
+
+		if (UcCount > 0) {
+			if ((int16_t)UsGxoVal[0] > (int16_t)UsGxoVal[UcCount]) {
+				UsDiff = (uint16_t)((int16_t)UsGxoVal[0] -
+					(int16_t)UsGxoVal[UcCount]);
+			} else {
+				UsDiff = (uint16_t)((int16_t)UsGxoVal[UcCount] -
+					(int16_t)UsGxoVal[0]);
+			}
+
+			if (UsDiff > GEA_DIF_HIG) {
+				/* UcResult = UcRst | EXE_GXABOVE; */
+				UcXHighCount++;
+			}
+			if (UsDiff < GEA_DIF_LOW) {
+				/* UcResult = UcRst | EXE_GXBELOW; */
+				UcXLowCount++;
+			}
+
+			if ((int16_t)UsGyoVal[0] > (int16_t)UsGyoVal[UcCount]) {
+				UsDiff = (uint16_t)((int16_t)UsGyoVal[0] -
+					(int16_t)UsGyoVal[UcCount]);
+			} else {
+				UsDiff = (uint16_t)((int16_t)UsGyoVal[UcCount] -
+					(int16_t)UsGyoVal[0]);
+			}
+
+			if (UsDiff > GEA_DIF_HIG) {
+				/* UcResult = UcRst | EXE_GYABOVE; */
+				UcYHighCount++;
+			}
+			if (UsDiff < GEA_DIF_LOW) {
+				/* UcResult = UcRst | EXE_GYBELOW; */
+				UcYLowCount++;
+			}
+		}
+	}
+
+	if (UcXHighCount >= 1)
+		UcResult = UcResult | EXE_GXABOVE;
+
+	if (UcXLowCount > 8)
+		UcResult = UcResult | EXE_GXBELOW;
+
+	if (UcYHighCount >= 1)
+		UcResult = UcResult | EXE_GYABOVE;
+
+	if (UcYLowCount > 8)
+		UcResult = UcResult | EXE_GYBELOW;
+
+	return UcResult;
+}
+
+/******************************************************************************
+Function Name  : GenMeas
+Return Value   : A/D Convert Result
+Argument Value : Measure Filter Input Signal Ram Address
+Explanation    : General Measure Function
+History        : First edition  2013.01.10 Y.Shigeoka
+******************************************************************************/
+static int16_t GenMeas(struct msm_ois_ctrl_t *o_ctrl, uint16_t UsRamAddr,
+	uint8_t UcMeasMode)
+{
+	int16_t SsMesRlt;
+
+	RegWriteA(o_ctrl, WC_MES1ADD0, (uint8_t)UsRamAddr); /* 0x0194 */
+	RegWriteA(o_ctrl, WC_MES1ADD1,
+		(uint8_t)((UsRamAddr >> 8) & 0x0001)); /* 0x0195 */
+	RamWrite32A(o_ctrl, MSABS1AV, 0x00000000);  /* 0x1041 Clear */
+
+	if (!UcMeasMode) {
+		RegWriteA(o_ctrl, WC_MESLOOP1, 0x04); /* 0x0193 */
+		RegWriteA(o_ctrl, WC_MESLOOP0, 0x00); /* 0x0192 1024x Measure */
+		/* 0x1230 1/CmMesLoop[15:0] */
+		RamWrite32A(o_ctrl, MSMEAN, 0x3A7FFFF7);
+	} else {
+		RegWriteA(o_ctrl, WC_MESLOOP1, 0x00); /* 0x0193 */
+		/* 0x0192 1 Times Measure */
+		RegWriteA(o_ctrl, WC_MESLOOP0, 0x01);
+		/* 0x1230 1/CmMesLoop[15:0] */
+		RamWrite32A(o_ctrl, MSMEAN, 0x3F800000);
+	}
+
+	RegWriteA(o_ctrl, WC_MESABS, 0x00); /* 0x0198 none ABS */
+	BusyWait(o_ctrl, WC_MESMODE, 0x01); /* 0x0190 normal Measure */
+
+	RamAccessFixedMode(o_ctrl, ON); /* Fix mode */
+
+	RamReadA(o_ctrl, MSABS1AV, (uint16_t *)&SsMesRlt); /* 0x1041 */
+
+	RamAccessFixedMode(o_ctrl, OFF); /* Float mode */
+	return SsMesRlt;
+}
+
+static void RamWrite32A(struct msm_ois_ctrl_t *o_ctrl, uint32_t addr,
+	uint32_t data) {
+
+	uint8_t ram_data[4];
+
+	ram_data[0] = (data >> 24) & 0xff;
+	ram_data[1] = (data >> 16) & 0xff;
+	ram_data[2] = (data >> 8) & 0xff;
+	ram_data[3] = (data) & 0xff;
+
+	o_ctrl->i2c_client.i2c_func_tbl->i2c_write_seq(
+		&o_ctrl->i2c_client, addr, &(ram_data[0]), sizeof(ram_data));
+}
+
+static void RegReadA(struct msm_ois_ctrl_t *o_ctrl, uint32_t addr,
+	uint8_t *reg_data) {
+	o_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
+		&o_ctrl->i2c_client,
+		addr,
+		reg_data,
+		MSM_CAMERA_I2C_BYTE_DATA);
+}
+
+static void RegWriteA(struct msm_ois_ctrl_t *o_ctrl, uint32_t addr,
+	uint32_t data) {
+
+	uint8_t reg_data;
+
+	reg_data = (data) & 0xff;
+
+	o_ctrl->i2c_client.i2c_func_tbl->i2c_write_seq(
+		&o_ctrl->i2c_client, addr, &reg_data, sizeof(reg_data));
+}
+
+static void RamReadA(struct msm_ois_ctrl_t *o_ctrl, uint32_t addr,
+	uint16_t *reg_data) {
+	o_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+		&o_ctrl->i2c_client,
+		addr,
+		reg_data,
+		MSM_CAMERA_I2C_WORD_DATA);
+}
+/******************************************************************************
+Function Name  : RamAccessFixedMode
+Return Value   : NONE
+Argument Value : 0:OFF  1:ON
+Explanation    : Ram Access Fix Mode setting function
+History        : First edition  2013.05.21 Y.Shigeoka
+******************************************************************************/
+static void RamAccessFixedMode(struct msm_ois_ctrl_t *o_ctrl,
+	uint8_t UcAccessMode)
+{
+	switch (UcAccessMode) {
+	case OFF:
+		/* 0x018C GRAM Access Float32bit */
+		RegWriteA(o_ctrl, WC_RAMACCMOD, 0x00);
+		break;
+	case ON:
+		/* 0x018C GRAM Access Fixed32bit */
+		RegWriteA(o_ctrl, WC_RAMACCMOD, 0x31);
+		break;
+	}
+}
+
+/******************************************************************************
+Function Name : BusyWait
+Return Value   : NONE
+Argument Value : Trigger Register Address, Trigger Register Data
+Explanation   : Busy Wait Function
+History       : First edition  2013.01.09 Y.Shigeoka
+******************************************************************************/
+static void BusyWait(struct msm_ois_ctrl_t *o_ctrl, uint16_t TargetAddr,
+	uint8_t TargetData)
+{
+	uint8_t FlagVal;
+
+	/* Trigger Register Setting */
+	RegWriteA(o_ctrl, TargetAddr, TargetData);
+
+	FlagVal = 1;
+
+	while (FlagVal) {
+		RegReadA(o_ctrl, TargetAddr, &FlagVal);
+		FlagVal &= (TargetData & 0x0F);
+		/* Dead Lock check (response check) */
+		if (CommandReadCheck(o_ctrl) != 0)
+			break;
+	};
+}
+
+/******************************************************************************
+Function Name  : CommandReadCheck
+Return Value   : 1 : ERROR
+Argument Value : NONE
+Explanation    : Check Cver function
+******************************************************************************/
+static uint8_t CommandReadCheck(struct msm_ois_ctrl_t *o_ctrl)
+{
+	uint8_t UcTestRD;
+	uint8_t UcCount;
+
+	for (UcCount = 0; UcCount < READ_COUNT_NUM; UcCount++) {
+		RegReadA(o_ctrl, TESTRD, &UcTestRD); /* 0x027F */
+		if (UcTestRD == 0xAC)
+			return 0;
+	}
+
+	return 1;
+}
+
+/******************************************************************************
+Function Name       : SetSinWavePara
+Return Value        : NONE
+Argument Value      : NONE
+Explanation         : Sine wave Test Function
+History             : First edition 2013.01.15 Y.Shigeoka
+******************************************************************************/
+
+/********* Parameter Setting *********/
+/* Servo Sampling Clock =       23.4375kHz */
+/* Freq = CmSinFreq*Fs/65536/16 */
+/* 05 00 XX MM XX:Freq MM:Sin or Circle */
+
+const unsigned short CucFreqVal[17] = {
+	0xFFFF, /*  0:  Stop */
+	0x002C, /*  1: 0.983477Hz */
+	0x0059, /*  2: 1.989305Hz */
+	0x0086, /*  3: 2.995133Hz */
+	0x00B2, /*  4: 3.97861Hz */
+	0x00DF, /*  5: 4.984438Hz */
+	0x010C, /*  6: 5.990267Hz */
+	0x0139, /*  7: 6.996095Hz */
+	0x0165, /*  8: 7.979572Hz */
+	0x0192, /*  9: 8.9854Hz */
+	0x01BF, /*  A: 9.991229Hz */
+	0x01EC, /*  B: 10.99706Hz */
+	0x0218, /*  C: 11.98053Hz */
+	0x0245, /*  D: 12.98636Hz */
+	0x0272, /*  E: 13.99219Hz */
+	0x029F, /*  F: 14.99802Hz */
+	0x02CB  /* 10: 15.9815Hz */
+};
+/* if sine or circle movement uses a LPF, this define has to be enabled */
+#define USE_SINLPF
+
+/* sxsin(0x10D5), sysin(0x11D5) */
+
+static void SetSineWaveParams(struct msm_ois_ctrl_t *o_ctrl,
+	uint8_t UcTableVal, uint8_t UcMethodVal)
+{
+	uint16_t UsFreqDat;
+	uint8_t UcEqSwX, UcEqSwY;
+
+	if (UcTableVal > 0x10)
+		UcTableVal = 0x10; /* Limit */
+
+	UsFreqDat = CucFreqVal[UcTableVal];
+
+	if (UcMethodVal == SINEWAVE) {
+		RegWriteA(o_ctrl, WC_SINPHSX, 0x00); /* 0x0183 */
+		RegWriteA(o_ctrl, WC_SINPHSY, 0x00); /* 0x0184 */
+	} else if (UcMethodVal == CIRCWAVE) {
+		RegWriteA(o_ctrl, WC_SINPHSX, 0x00); /* 0x0183 */
+		RegWriteA(o_ctrl, WC_SINPHSY, 0x20); /* 0x0184 */
+	} else {
+		RegWriteA(o_ctrl, WC_SINPHSX, 0x00); /* 0x0183 */
+		RegWriteA(o_ctrl, WC_SINPHSY, 0x00); /* 0x0184 */
+	}
+
+#ifdef USE_SINLPF
+	if ((UcMethodVal == CIRCWAVE) || (UcMethodVal == SINEWAVE))
+		MeasureFilter(o_ctrl, NOISE); /* LPF */
+
+#endif
+
+	if (UsFreqDat == 0xFFFF) { /* Sine */
+		RegReadA(o_ctrl, WH_EQSWX, &UcEqSwX); /* 0x0170 */
+		RegReadA(o_ctrl, WH_EQSWY, &UcEqSwY); /* 0x0171 */
+		UcEqSwX &= ~EQSINSW;
+		UcEqSwY &= ~EQSINSW;
+		RegWriteA(o_ctrl, WH_EQSWX, UcEqSwX); /* 0x0170 */
+		RegWriteA(o_ctrl, WH_EQSWY, UcEqSwY); /* 0x0171 */
+
+#ifdef USE_SINLPF
+		if ((UcMethodVal == CIRCWAVE)
+			|| (UcMethodVal == SINEWAVE)
+			|| (UcMethodVal == XACTTEST)
+			|| (UcMethodVal == YACTTEST)) {
+			/* 0x0105 Data pass off */
+			RegWriteA(o_ctrl, WC_DPON, 0x00);
+
+			/* 0x01B8 output initial */
+			RegWriteA(o_ctrl, WC_DPO1ADD0, 0x00);
+
+			/* 0x01B9 output initial */
+			RegWriteA(o_ctrl, WC_DPO1ADD1, 0x00);
+
+			/* 0x01BA output initial */
+			RegWriteA(o_ctrl, WC_DPO2ADD0, 0x00);
+
+			/* 0x01BB output initial */
+			RegWriteA(o_ctrl, WC_DPO2ADD1, 0x00);
+
+			/* 0x01B0 input initial */
+			RegWriteA(o_ctrl, WC_DPI1ADD0, 0x00);
+
+			/* 0x01B1 input initial */
+			RegWriteA(o_ctrl, WC_DPI1ADD1, 0x00);
+
+			/* 0x01B2 input initial */
+			RegWriteA(o_ctrl, WC_DPI2ADD0, 0x00);
+
+			/* 0x01B3 input initial */
+			RegWriteA(o_ctrl, WC_DPI2ADD1, 0x00);
+
+			/* TODO: Is this needed?? */
+			/* Ram Access */
+			/* RamAccessFixedMode(o_ctrl, ON ); */
+
+			/* Fix mode */
+			/* 0x1461 set optical value */
+			/* RamWriteA(o_ctrl, SXOFFZ1, OPTCEN_X ); */
+			/* 0x14E1 set optical value */
+			/* RamWriteA(o_ctrl, SYOFFZ1, OPTCEN_Y ); */
+
+			/* Ram Access */
+			/* RamAccessFixedMode(OFF); */
+
+			/* Float mode */
+			RegWriteA(o_ctrl, WC_MES1ADD0,  0x00); /* 0x0194 */
+			RegWriteA(o_ctrl, WC_MES1ADD1,  0x00); /* 0x0195 */
+			RegWriteA(o_ctrl, WC_MES2ADD0,  0x00); /* 0x0196 */
+			RegWriteA(o_ctrl, WC_MES2ADD1,  0x00); /* 0x0197 */
+		}
+#endif /* USE_SINLPF */
+
+	RegWriteA(o_ctrl, WC_SINON, 0x00); /* 0x0180 Sine wave  */
+
+	} else {
+		RegReadA(o_ctrl, WH_EQSWX, &UcEqSwX); /* 0x0170 */
+		RegReadA(o_ctrl, WH_EQSWY, &UcEqSwY); /* 0x0171 */
+		if ((UcMethodVal == CIRCWAVE) || (UcMethodVal == SINEWAVE)) {
+#ifdef USE_SINLPF
+			/* 0x01B0 input Meas-Fil */
+			RegWriteA(o_ctrl, WC_DPI1ADD0, (uint8_t) MES1BZ2);
+			/* 0x01B1 input Meas-Fil */
+			RegWriteA(o_ctrl, WC_DPI1ADD1,
+				(uint8_t)((MES1BZ2 >> 8) & 0x0001));
+			RegWriteA(o_ctrl, WC_DPI2ADD0,
+				(uint8_t)MES2BZ2); /* 0x01B2 input Meas-Fil */
+			/* 0x01B3 input Meas-Fil*/
+			RegWriteA(o_ctrl, WC_DPI2ADD1,
+				(uint8_t)((MES2BZ2 >> 8) & 0x0001));
+			RegWriteA(o_ctrl, WC_DPO1ADD0,
+				(uint8_t)SXOFFZ1); /* 0x01B8 output SXOFFZ1 */
+			/* 0x01B9 output SXOFFZ1 */
+			RegWriteA(o_ctrl, WC_DPO1ADD1,
+				(uint8_t)((SXOFFZ1 >> 8) & 0x0001));
+			RegWriteA(o_ctrl, WC_DPO2ADD0,
+				(uint8_t)SYOFFZ1); /* 0x01BA output SYOFFZ1 */
+			/* 0x01BA output SYOFFZ1 */
+			RegWriteA(o_ctrl, WC_DPO2ADD1,
+				(uint8_t)((SYOFFZ1 >> 8) & 0x0001));
+			/* 0x0194 */
+			RegWriteA(o_ctrl, WC_MES1ADD0, (uint8_t)SINXZ);
+			/* 0x0195 */
+			RegWriteA(o_ctrl, WC_MES1ADD1,
+				(uint8_t)((SINXZ >> 8) & 0x0001));
+			RegWriteA(o_ctrl, WC_MES2ADD0,
+				(uint8_t)SINYZ); /* 0x0196 */
+			/* 0x0197 */
+			RegWriteA(o_ctrl, WC_MES2ADD1,
+				(uint8_t)((SINYZ >> 8) & 0x0001));
+			/* 0x0105 Data pass[1:0] on */
+			RegWriteA(o_ctrl, WC_DPON, 0x03);
+
+			UcEqSwX &= ~EQSINSW;
+			UcEqSwY &= ~EQSINSW;
+#else
+			UcEqSwX |= 0x08;
+			UcEqSwY |= 0x08;
+#endif /* USE_SINLPF */
+		} else if ((UcMethodVal == XACTTEST) ||
+			(UcMethodVal == YACTTEST)) {
+			RegWriteA(o_ctrl, WC_DPI2ADD0,
+				(uint8_t)MES2BZ2); /* 0x01B2 input Meas-Fil */
+			/*0x01B3 input Meas-Fil*/
+			RegWriteA(o_ctrl, WC_DPI2ADD1,
+				(uint8_t)((MES2BZ2 >> 8) & 0x0001));
+			if (UcMethodVal == XACTTEST) {
+				/* 0x01BA output SXOFFZ1 */
+				RegWriteA(o_ctrl, WC_DPO2ADD0,
+					(uint8_t)SXOFFZ1);
+				/* 0x01BB output SXOFFZ1 */
+				RegWriteA(o_ctrl, WC_DPO2ADD1,
+					(uint8_t)((SXOFFZ1 >> 8) & 0x0001));
+				/* 0x0196 */
+				RegWriteA(o_ctrl, WC_MES2ADD0, (uint8_t)SINXZ);
+				/* 0x0197 */
+				RegWriteA(o_ctrl, WC_MES2ADD1,
+					(uint8_t)((SINXZ >> 8) & 0x0001));
+			} else {
+				/* 0x01BA output SYOFFZ1 */
+				RegWriteA(o_ctrl, WC_DPO2ADD0,
+					(uint8_t)SYOFFZ1);
+				/* 0x01BB output SYOFFZ1 */
+				RegWriteA(o_ctrl, WC_DPO2ADD1,
+					(uint8_t)((SYOFFZ1 >> 8) & 0x0001));
+				/* 0x0196 */
+				RegWriteA(o_ctrl, WC_MES2ADD0, (uint8_t)SINYZ);
+				/* 0x0197 */
+				RegWriteA(o_ctrl, WC_MES2ADD1,
+					(uint8_t)((SINYZ >> 8) & 0x0001));
+			}
+
+		RegWriteA(o_ctrl, WC_DPON, 0x02); /* 0x0105  Data pass[1] on */
+		UcEqSwX &= ~EQSINSW;
+		UcEqSwY &= ~EQSINSW;
+		} else {
+			if (UcMethodVal == XHALWAVE)
+				UcEqSwX = 0x22; /* SW[5] */
+			else
+				UcEqSwY = 0x22; /* SW[5] */
+		}
+		/* 0x0181 Freq L */
+		RegWriteA(o_ctrl, WC_SINFRQ0, (uint8_t)UsFreqDat);
+		/* 0x0182 Freq H */
+		RegWriteA(o_ctrl, WC_SINFRQ1, (uint8_t)(UsFreqDat >> 8));
+		/*0x0191 Sine 0 cross*/
+		RegWriteA(o_ctrl, WC_MESSINMODE, 0x00);
+		RegWriteA(o_ctrl, WH_EQSWX, UcEqSwX); /* 0x0170 */
+		RegWriteA(o_ctrl, WH_EQSWY, UcEqSwY); /* 0x0171 */
+		RegWriteA(o_ctrl, WC_SINON, 0x01); /* 0x0180 Sine wave */
+	}
 }
 
 static int32_t msm_ois_enable(struct msm_ois_ctrl_t *o_ctrl,
@@ -590,6 +1244,16 @@ static int32_t msm_ois_config(struct msm_ois_ctrl_t *o_ctrl,
 		rc = msm_ois_init(o_ctrl);
 		if (rc < 0)
 			pr_err("msm_ois_init failed %d\n", rc);
+		break;
+	case CFG_OIS_GEA:
+		rc = msm_ois_gea(o_ctrl, &cdata->gea);
+		if (rc < 0)
+			pr_err("msm_ois_gea failed %d\n", rc);
+		break;
+	case CFG_OIS_HEA:
+		rc = msm_ois_hea(o_ctrl, &cdata->hea);
+		if (rc < 0)
+			pr_err("msm_ois_hea failed %d\n", rc);
 		break;
 	case CFG_GET_OIS_INFO:
 		cdata->is_ois_supported = 1;
