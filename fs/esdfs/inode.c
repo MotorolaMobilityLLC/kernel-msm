@@ -20,26 +20,23 @@ static int esdfs_create(struct inode *dir, struct dentry *dentry,
 	struct dentry *lower_parent_dentry = NULL;
 	struct path lower_path;
 	int mask;
-	const struct cred *creds =
-			esdfs_override_creds(ESDFS_SB(dir->i_sb), &mask);
+	const struct cred *creds;
+
+	/*
+	 * Need to recheck derived permissions unified mode to prevent certain
+	 * applications from creating files at the root.
+	 */
+	if (test_opt(ESDFS_SB(dir->i_sb), DERIVE_UNIFIED) &&
+	    esdfs_check_derived_permission(dir, ESDFS_MAY_CREATE) != 0)
+		return -EACCES;
+
+	creds = esdfs_override_creds(ESDFS_SB(dir->i_sb), &mask);
 	if (!creds)
 		return -ENOMEM;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
 	lower_parent_dentry = lock_parent(lower_dentry);
-
-	/*
-	 * Don't allow file creation at the root in unified mode.  Other
-	 * restrictions, including hash lookups, were done previously via
-	 * esdfs_permission().
-	 */
-	if (test_opt(ESDFS_SB(dir->i_sb), DERIVE_UNIFIED) &&
-	    ESDFS_I(dir)->tree == ESDFS_TREE_ROOT &&
-	    creds->fsuid != 0) {
-		err = -EACCES;
-		goto out;
-	}
 
 	esdfs_set_lower_mode(ESDFS_SB(dir->i_sb), &mode);
 
