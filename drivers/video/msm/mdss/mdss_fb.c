@@ -404,6 +404,33 @@ static ssize_t mdss_fb_get_panel_info(struct device *dev,
 	return ret;
 }
 
+static ssize_t mdss_fb_set_idle_mode(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	struct mdss_panel_data *pdata;
+	int rc = 0;
+	int idle_mode = 0;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	rc = kstrtoint(buf, 10, &idle_mode);
+	if (rc) {
+		pr_err("kstrtoint failed. rc=%d\n", rc);
+		return rc;
+	}
+
+	pr_debug("Idle mode = %d\n", idle_mode);
+
+	if (mfd->index == 0) {
+		if (pdata && pdata->set_idle)
+			pdata->set_idle(pdata, idle_mode);
+	}
+
+	return count;
+}
+
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO, mdss_fb_get_split, NULL);
 static DEVICE_ATTR(show_blank_event, S_IRUGO, mdss_mdp_show_blank_event, NULL);
@@ -411,6 +438,7 @@ static DEVICE_ATTR(idle_time, S_IRUGO | S_IWUSR | S_IWGRP,
 	mdss_fb_get_idle_time, mdss_fb_set_idle_time);
 static DEVICE_ATTR(idle_notify, S_IRUGO, mdss_fb_get_idle_notify, NULL);
 static DEVICE_ATTR(msm_fb_panel_info, S_IRUGO, mdss_fb_get_panel_info, NULL);
+static DEVICE_ATTR(idle_mode, S_IWUSR, NULL, mdss_fb_set_idle_mode);
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
@@ -419,6 +447,7 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_idle_time.attr,
 	&dev_attr_idle_notify.attr,
 	&dev_attr_msm_fb_panel_info.attr,
+	&dev_attr_idle_mode.attr,
 	NULL,
 };
 

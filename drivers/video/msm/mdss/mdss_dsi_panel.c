@@ -153,12 +153,25 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-void mdss_dsi_panel_idle_mode(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
+static void mdss_dsi_panel_idle_mode(struct mdss_panel_data *pdata, int enable)
 {
-	if (enable)
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
-	else
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (enable) {
+		if (ctrl->idle_on_cmds.cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+	} else {
+		if (ctrl->idle_off_cmds.cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+	}
 }
 
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -1173,6 +1186,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
+	ctrl_pdata->panel_data.set_idle = mdss_dsi_panel_idle_mode;
 
 	return 0;
 }
