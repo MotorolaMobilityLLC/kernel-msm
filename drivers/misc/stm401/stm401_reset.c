@@ -81,6 +81,12 @@ void stm401_reset(struct stm401_platform_data *pdata, unsigned char *cmdbuff)
 	gpio_set_value(pdata->gpio_reset, 1);
 	msleep(STM401_RESET_DELAY);
 	stm401_detect_lowpower_mode(cmdbuff);
+
+	if (!stm401_misc_data->in_reset_and_init) {
+		/* sending reset to slpc hal */
+		stm401_ms_data_buffer_write(stm401_misc_data, DT_RESET,
+			NULL, 0);
+	}
 }
 
 int stm401_reset_and_init(void)
