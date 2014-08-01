@@ -464,7 +464,8 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 	appid = cred->uid % PKG_APPID_PER_USER;
 
 	/* Reads, owners, and root are always granted access */
-	if (!(mask & MAY_WRITE) || cred->uid == 0 || cred->uid == inode->i_uid)
+	if (!(mask & (MAY_WRITE | ESDFS_MAY_CREATE)) ||
+	    cred->uid == 0 || cred->uid == inode->i_uid)
 		return 0;
 
 	/*
@@ -492,14 +493,17 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 
 	/*
 	 * Grant access to sdcard_rw holders, unless we are in unified mode
-	 * and we are trying to write to the protected /Android tree.
+	 * and we are trying to write to the protected /Android tree or to
+	 * create files in the root.
 	 */
 	if ((access & HAS_SDCARD_RW) &&
 	    (!test_opt(ESDFS_SB(inode->i_sb), DERIVE_UNIFIED) ||
 	     (ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_DATA &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_OBB &&
-	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_APP)))
+	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_APP &&
+	      (ESDFS_I(inode)->tree != ESDFS_TREE_ROOT ||
+	       !(mask & ESDFS_MAY_CREATE)))))
 		return 0;
 
 	pr_debug("esdfs: %s: denying access to appid: %d", __func__, appid);
