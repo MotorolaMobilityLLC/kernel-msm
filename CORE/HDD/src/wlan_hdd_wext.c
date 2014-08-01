@@ -2398,7 +2398,7 @@ void hdd_tx_per_hit_cb (void *pCallbackContext)
     unsigned char tx_fail[16];
     union iwreq_data wrqu;
 
-    if (NULL == pAdapter)
+    if (NULL == pAdapter || (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic))
     {
         hddLog(LOGE, "hdd_tx_per_hit_cb: pAdapter is NULL");
         return;
