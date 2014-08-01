@@ -1220,7 +1220,10 @@ int msm_rpm_wait_for_ack(uint32_t msg_id)
 	if (!elem)
 		return rc;
 
-	wait_for_completion(&elem->ack);
+	if (!wait_for_completion_timeout(&elem->ack, HZ)) {
+		pr_err("%s TIMEOUT msg_id %d\n", __func__, msg_id);
+	}
+
 	trace_rpm_ack_recd(0, msg_id);
 
 	rc = elem->errno;
