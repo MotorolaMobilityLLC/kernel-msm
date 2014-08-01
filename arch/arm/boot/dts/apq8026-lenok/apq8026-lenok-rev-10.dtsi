@@ -11,3 +11,12 @@
  */
 
 #include "apq8026-lenok.dtsi"
+
+&soc {
+	earjack-debugger {
+		status = "ok";
+		lge,adc-low-threshold = <810>;
+		lge,adc-high-threshold = <1000>;
+		lge,trigger-mode = "low";
+	};
+};
