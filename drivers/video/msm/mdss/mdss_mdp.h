@@ -611,9 +611,25 @@ static inline struct clk *mdss_mdp_get_clk(u32 clk_idx)
 	return NULL;
 }
 
+static inline bool mdss_mdp_ctl_is_power_off(struct mdss_mdp_ctl *ctl)
+{
+	return mdss_panel_is_power_off(ctl->power_state);
+}
+
+static inline bool mdss_mdp_ctl_is_power_on_interactive(
+	struct mdss_mdp_ctl *ctl)
+{
+	return mdss_panel_is_power_on_interactive(ctl->power_state);
+}
+
 static inline bool mdss_mdp_ctl_is_power_on(struct mdss_mdp_ctl *ctl)
 {
-	return (ctl->power_state != MDSS_PANEL_POWER_OFF);
+	return mdss_panel_is_power_on(ctl->power_state);
+}
+
+static inline bool mdss_mdp_ctl_is_power_on_lp(struct mdss_mdp_ctl *ctl)
+{
+	return mdss_panel_is_power_on_lp(ctl->power_state);
 }
 
 irqreturn_t mdss_mdp_isr(int irq, void *ptr);
