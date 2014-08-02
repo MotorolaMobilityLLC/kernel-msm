@@ -1736,7 +1736,7 @@ VOS_STATUS vos_pkt_extract_data( vos_pkt_t *pPacket,
    }
 
    // copy the data
-   memcpy(pOutputBuffer, &skb->data[pktOffset], len);
+   vos_mem_copy(pOutputBuffer, &skb->data[pktOffset], len);
 
    return VOS_STATUS_SUCCESS;
 }
@@ -1831,7 +1831,7 @@ VOS_STATUS vos_pkt_extract_data_chain( vos_pkt_t *pPacket,
          return VOS_STATUS_E_INVAL;
       }
 
-      memcpy(pOutputBuffer, skb->data, skb->len);
+      vos_mem_copy(pOutputBuffer, skb->data, skb->len);
       pOutputBuffer += skb->len;
 
       pPacket = pPacket->pNext;
@@ -2143,7 +2143,7 @@ VOS_STATUS vos_pkt_push_head( vos_pkt_t *pPacket,
    }
 
    // actually push the data
-   memcpy(skb_push(skb, dataSize), pData, dataSize);
+   vos_mem_copy(skb_push(skb, dataSize), pData, dataSize);
 
    return VOS_STATUS_SUCCESS;
 }
@@ -2389,7 +2389,7 @@ VOS_STATUS vos_pkt_pop_head( vos_pkt_t *pPacket,
    }
 
    // copy the data
-   memcpy(pData, skb->data, dataSize);
+   vos_mem_copy(pData, skb->data, dataSize);
    skb_pull(skb, dataSize);
 
    return VOS_STATUS_SUCCESS;
@@ -2535,7 +2535,7 @@ VOS_STATUS vos_pkt_push_tail( vos_pkt_t *pPacket,
    }
 
    // actually push the data
-   memcpy(skb_put(skb, dataSize), pData, dataSize);
+   vos_mem_copy(skb_put(skb, dataSize), pData, dataSize);
 
    return VOS_STATUS_SUCCESS;
 }
@@ -2691,7 +2691,7 @@ VOS_STATUS vos_pkt_pop_tail( vos_pkt_t *pPacket,
    skb->len -= dataSize;
 
    // actually push the data
-   memcpy(pData, skb_tail_pointer(skb), dataSize);
+   vos_mem_copy(pData, skb_tail_pointer(skb), dataSize);
 
    return VOS_STATUS_SUCCESS;
 }

@@ -2941,10 +2941,10 @@ VOS_STATUS  WDA_ProcessFinishScanReq(tWDA_CbContext *pWDA,
  *---------------------------------------------------------------------
  */
 /*
- * FUNCTION: WDA_JoinReqCallback
+ * FUNCTION: WDA_JoinRspCallback
  * Trigger Init SCAN callback
  */ 
-void WDA_JoinReqCallback(WDI_Status status, void* pUserData)
+void WDA_JoinRspCallback(WDI_Status status, void* pUserData)
 {
    tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData; 
    tWDA_CbContext *pWDA; 
@@ -2970,6 +2970,48 @@ void WDA_JoinReqCallback(WDI_Status status, void* pUserData)
    WDA_SendMsg(pWDA, WDA_SWITCH_CHANNEL_RSP, (void *)joinReqParam , 0) ;
    return ;
 }
+
+/*
+ * FUNCTION: WDA_JoinReqCallback
+ * Free memory and send SWITCH CHANNEL RSP back to PE.
+ * Invoked when Enter JOIN REQ failed in WDI and no RSP callback is generated.
+ */
+void WDA_JoinReqCallback(WDI_Status wdiStatus, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_CbContext *pWDA;
+   tSwitchChannelParams *joinReqParam;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+              "<------ %s, wdiStatus: %d", __func__, wdiStatus);
+
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+
+   pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
+   joinReqParam = (tSwitchChannelParams *)pWdaParams->wdaMsgParam;
+   joinReqParam->status = wdiStatus;
+
+   if(IS_WDI_STATUS_FAILURE(wdiStatus))
+   {
+      /* reset macBSSID */
+      vos_mem_set(pWDA->macBSSID, sizeof(pWDA->macBSSID),0 );
+      /* reset macSTASelf */
+      vos_mem_set(pWDA->macSTASelf, sizeof(pWDA->macSTASelf),0 );
+
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams);
+      WDA_SendMsg(pWDA, WDA_SWITCH_CHANNEL_RSP, (void *)joinReqParam , 0) ;
+   }
+
+   return;
+}
+
 /*
  * FUNCTION: WDA_ProcessJoinReq
  * Trigger Join REQ in WDI
@@ -3038,14 +3080,16 @@ VOS_STATUS WDA_ProcessJoinReq(tWDA_CbContext *pWDA,
                                         joinReqParam->secondaryChannelOffset ;
    wdiJoinReqParam->wdiReqInfo.linkState = pWDA->linkState;
    
-   wdiJoinReqParam->wdiReqStatusCB = NULL ;
+   wdiJoinReqParam->wdiReqStatusCB = WDA_JoinReqCallback;
+   wdiJoinReqParam->pUserData = pWdaParams;
+
    /* Store Init Req pointer, as this will be used for response */
    /* store Params pass it to WDI */
    pWdaParams->pWdaContext = pWDA;
    pWdaParams->wdaMsgParam = joinReqParam;
    pWdaParams->wdaWdiApiMsgParam = wdiJoinReqParam;
    status = WDI_JoinReq(wdiJoinReqParam, 
-                               (WDI_JoinRspCb )WDA_JoinReqCallback, pWdaParams) ;
+                               (WDI_JoinRspCb )WDA_JoinRspCallback, pWdaParams) ;
    if(IS_WDI_STATUS_FAILURE(status))
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,

@@ -38,6 +38,7 @@
   04/10/13    kumarpra   nv stream layer creation
 ===========================================================================*/
 
+#include "vos_memory.h"
 #include "wlan_nv_stream.h"
 
 _STREAM_BUF streamBuf;
@@ -110,7 +111,7 @@ tANI_U32 deCodeData(tANI_U8 *ipdata, tANI_U32 length, tANI_U8 *opdata,
    oplength = ipdata[0];
    oplength = oplength | (ipdata[1] << 8);
 
-   memcpy(opdata, &ipdata[sizeof(tANI_U16)], oplength);
+   vos_mem_copy(opdata, &ipdata[sizeof(tANI_U16)], oplength);
 
    *currentIndex = *currentIndex + sizeof(tANI_U16) + oplength;
 

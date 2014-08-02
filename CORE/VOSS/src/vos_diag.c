@@ -178,7 +178,7 @@ void vos_log_submit(v_VOID_t *plog_hdr_ptr)
         pBuf += sizeof(v_U32_t);
     
     
-        memcpy(pBuf, pHdr,data_len);
+        vos_mem_copy(pBuf, pHdr,data_len);
     
         if(pHddCtx->ptt_pid)
         {
@@ -259,7 +259,7 @@ void vos_event_report_payload(v_U16_t event_Id, v_U16_t length, v_VOID_t *pPaylo
     
         pBuf += sizeof(event_report_t); 
     
-        memcpy(pBuf, pPayload,length);
+        vos_mem_copy(pBuf, pPayload,length);
       
         if( ptt_sock_send_msg_to_app(wmsg, 0,
                      ANI_NL_MSG_PUMAC, pHddCtx->ptt_pid, MSG_DONTWAIT) < 0) {

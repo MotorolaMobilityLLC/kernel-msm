@@ -50,6 +50,8 @@
 #include "wlan_nv_template_api.h"
 #include "wlan_nv_template_builtin.h"
 
+extern void vos_mem_copy( void *pDst, const void *pSrc, unsigned int numBytes );
+
 #define _RECURSIVE_DATA_TABLE_PARSING
 // Recursive/iterative switch !! Default iterative
 #define _RECURSIVE_VERSION
@@ -1143,7 +1145,7 @@ static void copyDataToBuiltInFromBin(int tableIdx,int fieldId,
 
       offset = 0;
       for (i = 0; i < size1; i++) {
-         memcpy(&ptr[offset], &dptr[offset], sizeOneElem);
+         vos_mem_copy(&ptr[offset], &dptr[offset], sizeOneElem);
          offset = offset + sizeOneElem;
       }
 
@@ -1190,11 +1192,11 @@ static void copyDataToBuiltInFromBin(int tableIdx,int fieldId,
                   index = index * sizeOneElem;
                   dindex = dindex * sizeOneElem;
 
-                  memcpy(&ptr[index], &dptr[dindex], sizeOneElem);
+                  vos_mem_copy(&ptr[index], &dptr[dindex], sizeOneElem);
                }
             }
             else {
-               memcpy(&ptr[offset], &dptr[offset], sizeOneElem);
+               vos_mem_copy(&ptr[offset], &dptr[offset], sizeOneElem);
                offset = offset + sizeOneElem;
             }
          }
@@ -1285,7 +1287,7 @@ static void copyDataToBuiltInFromBin(int tableIdx,int fieldId,
                  index1 = dindex1 = j;
               }
 
-              memcpy(&ptr[(index1 + index * size2BuiltIn)*sizeOneElem],
+              vos_mem_copy(&ptr[(index1 + index * size2BuiltIn)*sizeOneElem],
                    &dptr[(dindex1+dindex*size2Bin)*sizeOneElem], sizeOneElem);
               offset = offset + sizeOneElem;
             }
@@ -1416,7 +1418,7 @@ static void copyDataToBuiltInFromBin(int tableIdx,int fieldId,
                     index2 = dindex2 = k;
                  }
 
-                 memcpy(&ptr[(index2 + (index1 * size2BuiltIn) +
+                 vos_mem_copy(&ptr[(index2 + (index1 * size2BuiltIn) +
                           (index * size3BuiltIn * size2BuiltIn)) * sizeOneElem],
                         &dptr[(dindex2 + (dindex1 * size2Bin) +
                           (dindex * size3Bin * size2Bin))*sizeOneElem],
