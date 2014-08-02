@@ -232,7 +232,7 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 		ret = mdss_dsi_panel_power_off(pdata);
 		break;
 	case MDSS_PANEL_POWER_ON:
-		if (pinfo->panel_power_state == MDSS_PANEL_POWER_DOZE)
+		if (mdss_dsi_is_panel_on_lp(pdata))
 			ret = mdss_dsi_panel_power_doze(pdata, false);
 		else
 			ret = mdss_dsi_panel_power_on(pdata);
@@ -663,7 +663,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	mipi = &pdata->panel_info.mipi;
 
-	if (MDSS_PANEL_POWER_ON == pinfo->panel_power_state) {
+	if (mdss_dsi_is_panel_on_interactive(pdata)) {
 		pr_debug("%s: panel already on\n", __func__);
 		goto end;
 	}
@@ -1189,7 +1189,7 @@ int mdss_dsi_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg)
 	int old_tx_mode;
 	int mode = DSI_MODE_BIT_LP;
 
-	if (!mdss_panel_is_panel_power_on(pdata)) {
+	if (!mdss_dsi_is_panel_on(pdata)) {
 		pr_err("%s: Panel is off\n", __func__);
 		return -EPERM;
 	}
