@@ -807,6 +807,13 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     /* HDD has initiated disconnect, do not send disconnect indication
      * to kernel as it will be handled by __cfg80211_disconnect.
      */
+    /* If only STA mode is on */
+    if((pHddCtx->concurrency_mode <= 1) &&
+       (pHddCtx->no_of_open_sessions[WLAN_HDD_INFRA_STATION] <= 1))
+    {
+        pHddCtx->isAmpAllowed = VOS_TRUE;
+    }
+
     if ( eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState )
     {
        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -814,20 +821,17 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                    " disconnect indication to kernel"));
        sendDisconInd = FALSE;
     }
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                   "%s: Set HDD connState to eConnectionState_Disconnecting",
-                   __func__);
-    hdd_connSetConnectionState( pHddStaCtx, eConnectionState_Disconnecting );
-    /* If only STA mode is on */
-    if((pHddCtx->concurrency_mode <= 1) &&
-       (pHddCtx->no_of_open_sessions[WLAN_HDD_INFRA_STATION] <= 1))
+    else if (eConnectionState_Associated == pHddStaCtx->conn_info.connState)
     {
-        pHddCtx->isAmpAllowed = VOS_TRUE;
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                   "%s: Set HDD connState to eConnectionState_Disconnecting from %d ",
+                   __func__, pHddStaCtx->conn_info.connState);
+       hdd_connSetConnectionState( pHddStaCtx, eConnectionState_Disconnecting );
+       wlan_hdd_decr_active_session(pHddCtx, pAdapter->device_mode);
     }
     hdd_clearRoamProfileIe( pAdapter );
 
     hdd_wmm_init( pAdapter );
-    wlan_hdd_decr_active_session(pHddCtx, pAdapter->device_mode);
 
     // indicate 'disconnect' status to wpa_supplicant...
     hdd_SendAssociationEvent(dev,pRoamInfo);

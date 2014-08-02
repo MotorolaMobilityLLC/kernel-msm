@@ -1144,18 +1144,21 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    /* Only fetch this station and this AC. Return VOS_STATUS_E_EMPTY if nothing there. Do not get next AC
       as the other branch does.
    */
+   spin_lock_bh( &pAdapter->staInfo_lock );
    spin_lock_bh(&pAdapter->aStaInfo[STAId].wmm_tx_queue[ac].lock);
    hdd_list_size(&pAdapter->aStaInfo[STAId].wmm_tx_queue[ac], &size);
 
    if (0 == size)
    {
       spin_unlock_bh(&pAdapter->aStaInfo[STAId].wmm_tx_queue[ac].lock);
+      spin_unlock_bh( &pAdapter->staInfo_lock );
       vos_pkt_return_packet(pVosPacket);
       return VOS_STATUS_E_EMPTY;
    }
 
    status = hdd_list_remove_front( &pAdapter->aStaInfo[STAId].wmm_tx_queue[ac], &anchor );
    spin_unlock_bh(&pAdapter->aStaInfo[STAId].wmm_tx_queue[ac].lock);
+   spin_unlock_bh( &pAdapter->staInfo_lock );
 
    VOS_TRACE( VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_INFO,
                        "%s: AC %d has packets pending", __func__, ac);
