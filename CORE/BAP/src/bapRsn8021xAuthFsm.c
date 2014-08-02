@@ -862,7 +862,7 @@ gotoStatePtkInitNegoTx(tAuthRsnFsm *fsm)
                     break;
                 }
                 groupKeyLen += ANI_SSM_AES_KEY_WRAP_BLOCK_SIZE;
-                memcpy( groupKeyBytes, wrappedKey, groupKeyLen);
+                vos_mem_copy( groupKeyBytes, wrappedKey, groupKeyLen);
                 // Free the array used to hold the wrapped key
                 if (wrappedKey) vos_mem_free( wrappedKey);
                 // IMMEDIATELY adjust the packet size to reflect the IV 

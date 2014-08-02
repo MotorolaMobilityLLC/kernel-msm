@@ -140,6 +140,8 @@ tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                             len += noaLen;
                             /* Update IE Len */
                             pP2pIe[1] += noaLen;
+                            schLog(pMac, LOG1,
+                                FL("NoA length is %d"),noaLen);
                         }
                         else
                         {
@@ -150,6 +152,8 @@ tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                 }
                 vos_mem_copy(pFrame, &addIE[0], len);
                 *nBytes = *nBytes + len;
+                schLog(pMac, LOG1,
+                    FL("Total beacon size is %d"), *nBytes);
             }
         }
     }
