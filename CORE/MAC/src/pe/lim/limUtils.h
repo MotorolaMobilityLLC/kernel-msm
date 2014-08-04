@@ -99,6 +99,19 @@ typedef union uPmfSaQueryTimerId
 } tPmfSaQueryTimerId, *tpPmfSaQueryTimerId;
 #endif
 
+typedef enum offset {
+    BW20,
+    BW40PLUS,
+    BW40MINUS,
+    BWALL
+} offset_t;
+
+typedef struct op_class_map {
+    tANI_U8 op_class;
+    tANI_U8 ch_spacing;
+    offset_t    offset;
+    tANI_U8 channels[15];
+}op_class_map_t;
 // LIM utility functions
 void limGetBssidFromPkt(tpAniSirGlobal, tANI_U8 *, tANI_U8 *, tANI_U32 *);
 char * limMlmStateStr(tLimMlmStates state);
@@ -530,4 +543,8 @@ void limSetProtectedBit(tpAniSirGlobal  pMac,
                            tSirMacAddr     peer,
                            tpSirMacMgmtHdr pMacHdr);
 #endif
+void limInitOperatingClasses(tHalHandle hHal);
+tANI_U8 limGetOPClassFromChannel(tANI_U8 *country,
+                                 tANI_U8 channel,
+                                 tANI_U8 offset);
 #endif /* __LIM_UTILS_H */
