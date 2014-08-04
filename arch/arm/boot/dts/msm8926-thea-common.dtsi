@@ -41,8 +41,16 @@
 
 &imx132 {
 	/delete-property/ gpios;
-	gpios = <&msmgpio 26 0>,
+	gpios = <&msmgpio 27 0>,
 		<&msmgpio 36 0>,
 		<&msmgpio 114 0>,
 		<&msmgpio 35 0>;
+};
+
+&imx179 {
+	/delete-property/ gpios;
+	gpios = <&msmgpio 26 0>,
+		<&msmgpio 28 0>,
+		<&msmgpio 33 0>,
+		<&msmgpio 37 0>;
 };

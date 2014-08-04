@@ -69,6 +69,39 @@
 			};
 		};
 
+		pin@fd511b0 {
+			reg = <0xfd5111b0 0x10>;	/* CAM_MCLK1 */
+			qcom,pin-num = <27>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* cam_mclk1              */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <2>;   /* 6ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* cam_mclk1              */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd511c0 {
+			reg = <0xfd5111c0 0x10>;	/* RCAM_AVDD_EN    */
+			qcom,pin-num = <28>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(28)        */
+				qcom,pull = <3>;  /* pullup                 */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(28)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
 
 	};
 };
