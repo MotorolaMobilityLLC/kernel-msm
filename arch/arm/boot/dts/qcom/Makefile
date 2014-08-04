@@ -216,6 +216,7 @@ dtb-$(CONFIG_ARCH_MSM8992) += msm8992-sim.dtb \
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-styx-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-styx-p1.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-styx-p1-1.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p1b.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
