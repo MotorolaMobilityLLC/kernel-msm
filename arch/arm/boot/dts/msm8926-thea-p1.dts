@@ -16,6 +16,45 @@
 /include/ "msm8926.dtsi"
 /include/ "msm8926-thea-common.dtsi"
 
+&imx132 {
+	/delete-property/ gpios;
+	gpios = <&msmgpio 26 0>,
+		<&msmgpio 36 0>,
+		<&msmgpio 114 0>,
+		<&msmgpio 35 0>;
+};
+
+&imx179 {
+	/delete-property/ gpios;
+	gpios = <&msmgpio 26 0>,
+		<&msmgpio 27 0>,
+		<&msmgpio 33 0>,
+		<&msmgpio 37 0>;
+};
+
+&soc {
+	gpiomux {
+		/delete-node/ pin@fd511c0; /* Remove GPIO_028 */
+
+		pin@fd511b0 {
+			reg = <0xfd5111b0 0x10>;	/* RCAM_AVDD_EN    */
+			qcom,pin-num = <27>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(27)        */
+				qcom,pull = <3>;  /* pullup                 */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(27)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+	};
+};
+
 / {
 	qcom,msm-id =   <145 0x51 0x8100>, <145 0x52 0x8100>, <145 0x53 0x8100>, <145 0x54 0x8100>, <145 0x55 0x8100>;
 };

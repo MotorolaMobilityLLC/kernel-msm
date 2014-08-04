@@ -41,7 +41,7 @@
 		qcom,cci-master = <0>;
 	};
 
-	qcom,camera@79 {
+	imx179: qcom,camera@79 {
 		compatible = "qcom,imx179";
 		reg = <0x79>;
 		qcom,slave-id = <0x20 0x0002 0x8179>;
