@@ -55,7 +55,7 @@
 };
 
 &i2c_1 {
-	lm3697@36 {
+	bd65b60@64 {
 		status = "disabled";
 	};
 };

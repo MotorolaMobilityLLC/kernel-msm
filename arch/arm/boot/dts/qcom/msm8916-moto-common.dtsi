@@ -251,6 +251,19 @@
 	status = "okay";
 };
 &tlmm_pinmux {
+	backlight-reset {
+		qcom,pins = <&gp 39>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "backlight-reset";
+
+		backlight_reset_default: default {
+			drive-strength = <2>;
+			bias-pull-down;
+			output-high;
+		};
+	};
+
 	sdhc2_cd_pin {
 		qcom,pins = <&gp 25>;
 	};
@@ -517,6 +530,7 @@
 		};
 
 		lm3697@36 {
+			status = "disabled";
 			compatible = "ti,lm3697";
 			reg = <0x36>;
 			ti,enable-gpio = <&msm_gpio 36 0>;
@@ -527,6 +541,16 @@
 					max-current-milliamp = /bits/ 8 <24>;
 				};
 			};
+		};
+
+		bd65b60@64 {
+			compatible = "rohm,bd65b60";
+			reg = <0x64>;
+			linux,name = "wled:backlight";
+			linux,default-trigger = "bkl-trigger";
+			led1-used;
+			pinctrl-names = "default";
+			pinctrl-0 = <&backlight_reset_default>;
 		};
 	};
 

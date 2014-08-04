@@ -15,18 +15,5 @@
 #include "msm8916-styx.dtsi"
 
 / {
-	qcom,board-id = <0x42 0x8100>;
-};
-
-&max17050 {
-	maxim,valrt-threshold = <0xffaf>; /* Vmin 3.5V */
-};
-
-&i2c_1 {
-	lm3697@36 {
-		status = "ok";
-	};
-	bd65b60@64 {
-		status = "disabled";
-	};
+	qcom,board-id = <0x43 0x81b0>;
 };
