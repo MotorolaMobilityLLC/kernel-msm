@@ -35,6 +35,8 @@
 &soc {
 	gpiomux {
 		/delete-node/ pin@fd511c0; /* Remove GPIO_028 */
+		/delete-node/ pin@fd51680; /* Remove GPIO_104 */
+		/delete-node/ pin@fd51700; /* Remove GPIO_112 */
 
 		pin@fd511b0 {
 			reg = <0xfd5111b0 0x10>;	/* RCAM_AVDD_EN    */
