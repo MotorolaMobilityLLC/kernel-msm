@@ -17,3 +17,12 @@
 / {
 	qcom,board-id = <0x42 0x8101>;
 };
+
+&i2c_1 {
+	lm3697@36 {
+		status = "ok";
+	};
+	bd65b60@64 {
+		status = "disabled";
+	};
+};
