@@ -60,7 +60,6 @@
 #ifdef CONFIG_PM_8226_CHARGER
 extern int pm8226_is_full(void);
 extern void pm8226_chg_enable_charging(bool enable);
-extern void pm8226_chg_usb_suspend_enable(int enable);
 #else
 extern bool smb346_IsFull(void);
 #endif
@@ -1001,7 +1000,6 @@ static void AXC_Gauge_A66_ReadVoltCurr(
 		if(!g_CHG_mode){
 #ifdef CONFIG_PM_8226_CHARGER
 			pm8226_chg_enable_charging(false);
-			pm8226_chg_usb_suspend_enable(true);
 #else
 			Smb346_Enable_Charging(false);
 			smb346_suspend_mode(true);
@@ -1040,7 +1038,6 @@ static void AXC_Gauge_A66_ReadVoltCurr(
 		if(!g_CHG_mode){
 #ifdef CONFIG_PM_8226_CHARGER
 			pm8226_chg_enable_charging(true);
-			pm8226_chg_usb_suspend_enable(false);
 #else
 			Smb346_Enable_Charging(true);
 			smb346_suspend_mode(false);
