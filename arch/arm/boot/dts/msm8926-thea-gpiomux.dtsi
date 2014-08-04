@@ -103,5 +103,38 @@
 			};
 		};
 
+		pin@fd51680 {
+			reg = <0xfd511680 0x10>;        /* TOP_AMP_BOOST_BP */
+			qcom,pin-num = <104>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(104)       */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(104)       */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+		};
+
+		pin@fd51700 {
+			reg = <0xfd511700 0x10>;	/* TOP_AMP_BOOST_EN */
+			qcom,pin-num = <112>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(112)       */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(112)       */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
 	};
 };
