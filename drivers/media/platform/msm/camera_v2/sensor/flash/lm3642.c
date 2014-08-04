@@ -76,15 +76,33 @@ static struct platform_driver msm_flash_lm3642_platform_driver = {
 	},
 };
 
+static int lm3642_notify_sys(struct notifier_block *this, unsigned long code,
+				void *unused)
+{
+	if (code == SYS_DOWN || code == SYS_HALT || code ==  SYS_POWER_OFF) {
+		msm_flash_led_off(&fctrl);
+		msm_flash_led_release(&fctrl);
+	}
+	return 0;
+}
+
+static struct notifier_block lm3642_notifier = {
+	.notifier_call = lm3642_notify_sys,
+};
+
 static int msm_flash_lm3642_i2c_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
+	int32_t rc = 0;
 	if (!id) {
 		pr_err("msm_flash_lm3642_i2c_probe: id is NULL");
 		id = lm3642_i2c_id;
 	}
 
-	return msm_flash_i2c_probe(client, id);
+	rc = msm_flash_i2c_probe(client, id);
+	if (!rc)
+		register_reboot_notifier(&lm3642_notifier);
+	return rc;
 }
 
 static struct i2c_driver lm3642_i2c_driver = {
@@ -182,20 +200,6 @@ static struct msm_led_flash_ctrl_t fctrl = {
 	.func_tbl = &lm3642_func_tbl,
 };
 
-static int lm3642_notify_sys(struct notifier_block *this, unsigned long code,
-				void *unused)
-{
-	if (code == SYS_DOWN || code == SYS_HALT || code ==  SYS_POWER_OFF) {
-		msm_flash_led_off(&fctrl);
-		msm_flash_led_release(&fctrl);
-	}
-	return 0;
-}
-
-static struct notifier_block lm3642_notifier = {
-	.notifier_call = lm3642_notify_sys,
-};
-
 static int __init msm_flash_lm3642_init(void)
 {
 	int32_t rc = 0;
@@ -205,8 +209,6 @@ static int __init msm_flash_lm3642_init(void)
 		return rc;
 
 	rc = i2c_add_driver(&lm3642_i2c_driver);
-	if (!rc)
-		register_reboot_notifier(&lm3642_notifier);
 	return rc;
 }
 
