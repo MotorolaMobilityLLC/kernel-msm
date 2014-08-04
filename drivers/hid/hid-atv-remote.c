@@ -100,6 +100,7 @@ struct fifo_packet {
 #define TIMER_STATE_AFTER_DECODE     2
 
 static int packet_counter;
+static int num_remotes;
 static int dev;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;  /* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;   /* ID for this card */
@@ -1066,29 +1067,6 @@ static int atvr_snd_initialize(struct hid_device *hdev)
 
 	snd_card_set_dev(card, &hdev->dev);
 
-#if (DEBUG_WITH_MISC_DEVICE == 1)
-	pcm_dev_node.minor = MISC_DYNAMIC_MINOR;
-	pcm_dev_node.name = "snd_atvr_pcm";
-	pcm_dev_node.fops = &pcm_fops;
-	err = misc_register(&pcm_dev_node);
-	if (err)
-		pr_err("%s: failed to create pcm misc device %d\n",
-		       __func__, err);
-	else
-		pr_info("%s: succeeded creating misc device %s\n",
-			__func__, pcm_dev_node.name);
-	adpcm_dev_node.minor = MISC_DYNAMIC_MINOR;
-	adpcm_dev_node.name = "snd_atvr_adpcm";
-	adpcm_dev_node.fops = &adpcm_fops;
-	err = misc_register(&adpcm_dev_node);
-	if (err)
-		pr_err("%s: failed to create adpcm misc device %d\n",
-		       __func__, err);
-	else
-		pr_info("%s: succeeded creating misc device %s\n",
-			__func__, adpcm_dev_node.name);
-#endif
-
 	err = snd_card_register(card);
 	if (!err)
 		return 0;
@@ -1141,9 +1119,12 @@ static int atvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 		goto err_start;
 	}
 
-	ret = atvr_snd_initialize(hdev);
-	if (ret)
-		goto err_stop;
+	if (num_remotes == 0) {
+		ret = atvr_snd_initialize(hdev);
+		if (ret)
+			goto err_stop;
+	}
+	num_remotes++;
 
 	return 0;
 err_stop:
@@ -1158,14 +1139,16 @@ static void atvr_remove(struct hid_device *hdev)
 {
 	struct snd_card *card = (struct snd_card *)hid_get_drvdata(hdev);
 
-	switch_set_state(&h2w_switch, BIT_NO_HEADSET);
+	num_remotes--;
+	if (num_remotes == 0) {
+		/* no more remotes connected, set switch state
+		 * accordingly and destroy snd card.
+		 */
+		switch_set_state(&h2w_switch, BIT_NO_HEADSET);
 
-#if (DEBUG_WITH_MISC_DEVICE == 1)
-	misc_deregister(&adpcm_dev_node);
-	misc_deregister(&pcm_dev_node);
-#endif
-	snd_card_disconnect(card);
-	snd_card_free_when_closed(card);
+		snd_card_disconnect(card);
+		snd_card_free_when_closed(card);
+	}
 	hid_hw_stop(hdev);
 }
 
@@ -1195,13 +1178,41 @@ static int atvr_init(void)
 
 	ret = hid_register_driver(&atvr_driver);
 	if (ret)
-		pr_err("can't register AndroidTV Remote driver\n");
+		pr_err("%s: can't register AndroidTV Remote driver\n", __func__);
+
+#if (DEBUG_WITH_MISC_DEVICE == 1)
+	pcm_dev_node.minor = MISC_DYNAMIC_MINOR;
+	pcm_dev_node.name = "snd_atvr_pcm";
+	pcm_dev_node.fops = &pcm_fops;
+	ret = misc_register(&pcm_dev_node);
+	if (ret)
+		pr_err("%s: failed to create pcm misc device %d\n",
+		       __func__, ret);
+	else
+		pr_info("%s: succeeded creating misc device %s\n",
+			__func__, pcm_dev_node.name);
+	adpcm_dev_node.minor = MISC_DYNAMIC_MINOR;
+	adpcm_dev_node.name = "snd_atvr_adpcm";
+	adpcm_dev_node.fops = &adpcm_fops;
+	ret = misc_register(&adpcm_dev_node);
+	if (ret)
+		pr_err("%s: failed to create adpcm misc device %d\n",
+		       __func__, ret);
+	else
+		pr_info("%s: succeeded creating misc device %s\n",
+			__func__, adpcm_dev_node.name);
+#endif
 
 	return ret;
 }
 
 static void atvr_exit(void)
 {
+#if (DEBUG_WITH_MISC_DEVICE == 1)
+	misc_deregister(&adpcm_dev_node);
+	misc_deregister(&pcm_dev_node);
+#endif
+
 	hid_unregister_driver(&atvr_driver);
 
 	switch_set_state(&h2w_switch, BIT_NO_HEADSET);
