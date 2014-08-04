@@ -144,8 +144,14 @@ static struct sysrq_key_op sysrq_crash_op = {
 	.enable_mask	= SYSRQ_ENABLE_DUMP,
 };
 
+#ifdef CONFIG_SEC_DEBUG
+extern void set_dload_mode(int on);
+#endif
 static void sysrq_handle_reboot(int key)
 {
+	#ifdef CONFIG_SEC_DEBUG
+	set_dload_mode(0);
+	#endif
 	lockdep_off();
 	local_irq_enable();
 	emergency_restart();
