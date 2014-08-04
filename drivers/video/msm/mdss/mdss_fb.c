@@ -413,6 +413,11 @@ static ssize_t mdss_fb_set_idle_mode(struct device *dev,
 	int rc = 0;
 	int idle_mode = 0;
 
+	if (mfd->shutdown_pending) {
+		pr_err("Shutdown pending. Aborting operation\n");
+		return -EPERM;
+	}
+
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 
 	rc = kstrtoint(buf, 10, &idle_mode);
