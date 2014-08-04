@@ -246,10 +246,6 @@
 	};
 };
 
-&mdss_fb0 {
-	qcom,memory-reservation-size = <0x1000000>; /* size 16MB */
-};
-
 &sdcc3 {
 	qcom,sup-voltages = <2000 2000>;
 	status = "ok";
