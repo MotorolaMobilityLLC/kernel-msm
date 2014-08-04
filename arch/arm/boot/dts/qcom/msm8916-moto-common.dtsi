@@ -326,6 +326,19 @@
 		};
 	};
 
+	spi0_mot_active {
+		/* MOSI, MISO, CLK */
+		qcom,pins = <&gp 8>, <&gp 9>, <&gp 11>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <1>;
+		label = "spi0-mot-active";
+		/* active state */
+		spi0_mot_default: default {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
 	spi5_active {
 		/* MOSI, MISO, CLK */
 		qcom,pins = <&gp 16>, <&gp 17>, <&gp 19>;
@@ -654,7 +667,9 @@
 };
 
 &spi_0 {
-	pinctrl-1 = <&spi0_default &spi0_cs0_active>;
+	spi-max-frequency = <8000000>;
+	pinctrl-0 = <&spi0_mot_default &spi0_cs0_active>;
+	pinctrl-1 = <&spi0_sleep &spi0_cs0_active>;
 
 	/delete-property/ qcom,use-bam;
 	/delete-node/ lattice,spi-usb@0;
@@ -663,7 +678,7 @@
 		compatible = "stm,stml0xx";
 		status = "okay";
 		reg = <0>;
-		spi-max-frequency = <9600000>;
+		spi-max-frequency = <8000000>;
 		gpios = <&msm_gpio 115 0>,       /* IRQ */
 			<&msm_gpio 120 0>,       /* RESET */
 			<&msm_gpio 121 0>,       /* BSLEN */
