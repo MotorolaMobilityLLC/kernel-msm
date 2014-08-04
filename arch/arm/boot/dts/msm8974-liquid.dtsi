@@ -448,10 +448,6 @@
 
 };
 
-&mdss_fb0 {
-	qcom,memory-reservation-size = <0x1000000>; /* size 16MB */
-};
-
 &uart7 {
 	status = "ok";
 	qcom,tx-gpio = <&msmgpio 41 0x00>;
