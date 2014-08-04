@@ -1121,7 +1121,9 @@ static int atvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	 * Bluedroid is unable to get the vendor/product id, we
 	 * have to filter on name
 	 */
-	if (strcmp(hdev->name, "Molly Remote")) {
+	pr_info("%s: hdev->name = %s, vendor_id = %d, product_id = %d\n", __func__,
+		hdev->name, hdev->vendor, hdev->product);
+	if (strcmp(hdev->name, "ADT-1_Remote")) {
 		ret = -ENODEV;
 		goto err_match;
 	}
