@@ -776,6 +776,7 @@ static int snd_atvr_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		large_pcm_index = 0;
 		raw_adpcm_index = 0;
 #endif
+		packet_counter = 0;
 		atvr_snd->peak_level = -32768;
 		atvr_snd->previous_jiffies = jiffies;
 		atvr_snd->timer_state = TIMER_STATE_BEFORE_DECODE;
