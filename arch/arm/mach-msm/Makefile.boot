@@ -155,6 +155,7 @@ endif
 ifeq ($(CONFIG_MMI_TITAN_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-titan.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-thea-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-thea-p2.dtb
 else ifeq ($(CONFIG_MMI_PEREGRINE_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-p1.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-p1c.dtb
