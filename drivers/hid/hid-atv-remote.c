@@ -25,17 +25,33 @@
 #include <linux/timer.h>
 #include <linux/spinlock.h>
 #include <linux/vmalloc.h>
+#include <linux/switch.h>
 #include <sound/core.h>
 #include <sound/control.h>
-#include <sound/pcm.h>
 #include <sound/info.h>
 #include <sound/initval.h>
+#include <sound/pcm.h>
 
 #include "hid-ids.h"
 
 MODULE_LICENSE("GPL v2");
 
 #define snd_atvr_log(...) pr_info("snd_atvr: " __VA_ARGS__)
+
+/* These values are copied from Android WiredAccessoryObserver */
+enum headset_state {
+	BIT_NO_HEADSET = 0,
+	BIT_HEADSET = (1 << 0),
+	BIT_HEADSET_NO_MIC = (1 << 1),
+};
+
+/* This has to be static and created at init/boot, or else Android
+ * WiredAccessoryManager won't watch for it since it only checks
+ * for it's existence once on boot.
+ */
+static struct switch_dev h2w_switch = {
+	.name = "h2w",
+};
 
 #define AUDIO_REPORT_ID 30
 
@@ -250,6 +266,7 @@ struct snd_atvr {
 	/* count frames generated so far in this period */
 	uint32_t frames_in_period;
 	int16_t *pcm_buffer;
+
 };
 
 /***************************************************************************/
@@ -1039,6 +1056,8 @@ static int atvr_snd_initialize(struct hid_device *hdev)
 		}
 	}
 
+	switch_set_state(&h2w_switch, BIT_HEADSET);
+
 	atvr_snd->pcm_hw = atvr_pcm_hardware;
 
 	strcpy(card->driver, "AndroidTV Remote Audio");
@@ -1137,6 +1156,8 @@ static void atvr_remove(struct hid_device *hdev)
 {
 	struct snd_card *card = (struct snd_card *)hid_get_drvdata(hdev);
 
+	switch_set_state(&h2w_switch, BIT_NO_HEADSET);
+
 #if (DEBUG_WITH_MISC_DEVICE == 1)
 	misc_deregister(&adpcm_dev_node);
 	misc_deregister(&pcm_dev_node);
@@ -1166,6 +1187,10 @@ static int atvr_init(void)
 {
 	int ret;
 
+	ret = switch_dev_register(&h2w_switch);
+	if (ret)
+		pr_err("%s: failed to create h2w switch\n", __func__);
+
 	ret = hid_register_driver(&atvr_driver);
 	if (ret)
 		pr_err("can't register AndroidTV Remote driver\n");
@@ -1176,6 +1201,9 @@ static int atvr_init(void)
 static void atvr_exit(void)
 {
 	hid_unregister_driver(&atvr_driver);
+
+	switch_set_state(&h2w_switch, BIT_NO_HEADSET);
+	switch_dev_unregister(&h2w_switch);
 }
 
 module_init(atvr_init);
