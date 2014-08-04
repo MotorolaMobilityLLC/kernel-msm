@@ -106,6 +106,20 @@
 				<86 512 500 800>;
 	};
 
+	factory_support {
+		compatible = "mmi,factory-support-kungpow";
+		gpios = <&msmgpio 126 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&msmgpio 146 0x1>, /* GPIOF_IN */
+			<&msmgpio 34 0x1>, /* GPIOF_IN */
+			<&msmgpio 55 0x1>, /* GPIOF_IN */
+			<&msmgpio 56 0x1>; /* GPIOF_IN */
+		gpio-names = "factory_kill_disable",
+				"factory_cable_detect",
+				"factory_warn",
+				"factory_HE_north",
+				"factory_HE_south";
+	};
+
 	bluesleep {
 		compatible = "qcom,bluesleep";
 		bt_host_wake = <&msmgpio 67 0>;
