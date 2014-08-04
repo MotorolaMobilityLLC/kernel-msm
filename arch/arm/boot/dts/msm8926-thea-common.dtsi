@@ -54,3 +54,15 @@
 		<&msmgpio 33 0>,
 		<&msmgpio 37 0>;
 };
+
+&i2c_2 {
+	bma2x2@11 {
+		/delete-property/ bma,place;
+		bma,place = <0>;
+	};
+
+	bmm050@13 {
+		/delete-property/ bmm,place;
+		bmm,place = <0>;
+	};
+};
