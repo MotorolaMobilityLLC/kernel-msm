@@ -151,7 +151,7 @@ static int pcm_dev_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int pcm_dev_read(struct file *file, char __user *buffer,
+static ssize_t pcm_dev_read(struct file *file, char __user *buffer,
 			size_t count, loff_t *ppos)
 {
 	const uint8_t *data = (const uint8_t *)large_pcm_buffer;
@@ -187,7 +187,7 @@ static int adpcm_dev_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int adpcm_dev_read(struct file *file, char __user *buffer,
+static ssize_t adpcm_dev_read(struct file *file, char __user *buffer,
 			  size_t count, loff_t *ppos)
 {
 	size_t bytes_left = raw_adpcm_index - *ppos;
