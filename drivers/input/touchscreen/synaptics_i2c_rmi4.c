@@ -870,7 +870,8 @@ static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
 
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
-	if (rmi4_data->suspended) {
+	if (!device_may_wakeup(&rmi4_data->i2c_client->dev) &&
+		rmi4_data->suspended) {
 		dev_err(dev, "Touch is suspended\n");
 		return -EPERM;
 	}
