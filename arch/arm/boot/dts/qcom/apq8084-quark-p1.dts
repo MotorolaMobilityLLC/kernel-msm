@@ -166,7 +166,7 @@
 		qcom,scale-function = <2>;
 		qcom,hw-settle-time = <15>;
 		qcom,fast-avg-setup = <3>;
-		qcom,btm-channel-number = <0x78>;
+		qcom,btm-channel-number = <0x90>;
 		qcom,thermal-node;
 	};
 	chan@78{
@@ -178,7 +178,7 @@
 		qcom,scale-function = <2>;
 		qcom,hw-settle-time = <15>;
 		qcom,fast-avg-setup = <3>;
-		qcom,btm-channel-number = <0x80>;
+		qcom,btm-channel-number = <0x98>;
 		qcom,thermal-node;
 	};
 };
