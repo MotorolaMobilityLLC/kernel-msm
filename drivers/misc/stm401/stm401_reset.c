@@ -94,7 +94,8 @@ int stm401_reset_and_init(void)
 	struct stm401_platform_data *pdata;
 	struct timespec current_time;
 	unsigned int i;
-	int err, ret_err = 0;
+	int err = 0, ret_err = 0;
+	int reset_attempts = 0;
 	unsigned char *rst_cmdbuff = kmalloc(512, GFP_KERNEL);
 	int mutex_locked = 0;
 
@@ -109,10 +110,21 @@ int stm401_reset_and_init(void)
 
 	pdata = stm401_misc_data->pdata;
 
-	stm401_reset(pdata, rst_cmdbuff);
-	stm401_i2c_retry_delay = 200;
-
 	stm401_wake(stm401_misc_data);
+
+	do {
+		stm401_reset(pdata, rst_cmdbuff);
+
+		/* check for sign of life */
+		rst_cmdbuff[0] = REV_ID;
+		err = stm401_i2c_write_read_no_reset(stm401_misc_data,
+			rst_cmdbuff, 1, 1);
+		if (err < 0)
+			dev_err(&stm401_misc_data->client->dev, "stm401 not responding after reset (%d)",
+				reset_attempts);
+	} while (reset_attempts++ < 5 && err < 0);
+
+	stm401_i2c_retry_delay = 200;
 
 	rst_cmdbuff[0] = ACCEL_UPDATE_RATE;
 	rst_cmdbuff[1] = stm401_g_acc_delay;
