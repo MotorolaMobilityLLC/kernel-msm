@@ -115,6 +115,36 @@ static struct gpiomux_setting gyro_int = {				//LIS3DSH
     .pull = GPIOMUX_PULL_NONE,
     .dir = GPIOMUX_IN,
 };
+static struct gpiomux_setting sensor_backup_int = {				//SENSOR_INT Backup
+    .func = GPIOMUX_FUNC_GPIO,
+    .drv = GPIOMUX_DRV_2MA,
+    .pull = GPIOMUX_PULL_DOWN,
+    .dir = GPIOMUX_IN,
+};
+static struct gpiomux_setting ecg_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+static struct gpiomux_setting ecg_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_OUT_LOW,
+};
+static struct gpiomux_setting ecg_uart_act_cfg = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+static struct gpiomux_setting ecg_uart_sus_cfg = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
 //ASUS_BSP --- Maggie_Lee "Sensors Porting"
 
 //ASUS_BSP +++ Cliff_Yu "Touch Porting"
