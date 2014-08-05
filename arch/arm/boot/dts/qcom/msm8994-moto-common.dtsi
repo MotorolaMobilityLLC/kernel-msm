@@ -612,6 +612,10 @@
 	};
 };
 
+&pcie0 {
+	status = "disable";
+};
+
 &soc {
 	vreg_5p0: vreg_5v {
 		compatible = "regulator-fixed";
