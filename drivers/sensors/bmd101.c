@@ -68,6 +68,7 @@ struct bmd101_data {
 	unsigned int  bpm;
 	int esd;
 	int status;
+	int enable;
 };
 struct bmd101_data *sensor_data;
 
@@ -150,7 +151,7 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor currently %s, turning sensor %s\n", __func__, sensors_cdev->enabled? "on":"off", enable ? "on":"off");
 
-	if (enable && !sensors_cdev->enabled) {
+	if (enable && !sensor_data->enable) {
 		rc = gpio_request(BMD101_RST_GPIO, "BMD101_RST");
 		if (rc) {
 			pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_RST_GPIO);
@@ -181,10 +182,10 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 
 		bmd101_data_filter(0, 1);			//reset filter
 
-		sensors_cdev->enabled = 1;
-		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensors_cdev->enabled);
+		sensor_data->enable = 1;
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->enable);
 	}
-	else if (!enable && sensors_cdev->enabled) {
+	else if (!enable && sensor_data->enable) {
 		rc = regulator_disable(pm8921_l28);
     		if (rc) {
 			pr_err("%s: regulator_enable of 8921_l28 failed(%d)\n", __func__, rc);
@@ -194,11 +195,11 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		gpio_direction_output(BMD101_RST_GPIO, 0);
 		gpio_free(BMD101_CS_GPIO);
 		gpio_free(BMD101_RST_GPIO);
-		sensors_cdev->enabled = 0;
+		sensor_data->enable = 0;
 
 		bmd101_data_filter(0, 1);			//reset filter
 
-		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensors_cdev->enabled);
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->enable);
 	}
 	else
 		pr_err("[bmd101] %s : sensor is already %s\n", __func__, enable ? "enabled":"disabled");
@@ -380,6 +381,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	}
 	sensor_data->esd = 0;
 	sensor_data->bpm = 0;
+	sensor_data->enable = 0;
 	sensor_data->cdev = bmd101_cdev;
 	sensor_data->cdev.sensors_enable = bmd101_enable_set;
 	
@@ -415,8 +417,6 @@ static int bmd101_probe(struct platform_device *pdev)
 		pr_err("%s: regulator_set_voltage of 8921_l28 failed(%d)\n", __func__, ret);
 		goto reg_put_LDO28;
     	}
-
-	bmd101_enable_set(&sensor_data->cdev, 1);
 	
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 
