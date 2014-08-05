@@ -164,7 +164,7 @@ struct ds2_device_mapping {
 	void *cal_data;
 };
 
-static struct ds2_device_mapping dev_map[NUM_DS2_ENDP_DEVICE];
+static struct ds2_device_mapping dev_map[DS2_DEVICES_ALL];
 
 struct ds2_dap_params_states_s {
 	bool use_cache;
@@ -231,7 +231,7 @@ static int msm_ds2_dap_set_vspe_vdhe(int dev_map_idx,
 				2 * DOLBY_PARAM_PAYLOAD_SIZE) *
 				sizeof(uint32_t);
 
-	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+	if (dev_map_idx < 0 || dev_map_idx >= DS2_DEVICES_ALL) {
 		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
 		rc = -EINVAL;
 		goto end;
@@ -458,7 +458,7 @@ static int set_custom_stereo_onoff(int dev_map_idx,
 	pr_debug("%s: map index %d, custom stereo %d\n", __func__, dev_map_idx,
 		 is_custom_stereo_enabled);
 
-	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+	if (dev_map_idx < 0 || dev_map_idx >= DS2_DEVICES_ALL) {
 		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
 		rc = -EINVAL;
 		goto end;
@@ -503,7 +503,7 @@ static int msm_ds2_dap_alloc_and_store_cal_data(int dev_map_idx, int path,
 	pr_debug("%s: path %d, perf_mode %d, dev_map_idx %d\n",
 		__func__, path, perf_mode, dev_map_idx);
 
-	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+	if (dev_map_idx < 0 || dev_map_idx >= DS2_DEVICES_ALL) {
 		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
 		rc = -EINVAL;
 		goto end;
@@ -547,7 +547,7 @@ static int msm_ds2_dap_free_cal_data(int dev_map_idx)
 	struct audio_rx_cal_data *aud_cal_data;
 
 	pr_debug("%s: dev_map_idx %d\n", __func__, dev_map_idx);
-	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+	if (dev_map_idx < 0 || dev_map_idx >= DS2_DEVICES_ALL) {
 		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
 		rc = -EINVAL;
 		goto end;
@@ -567,7 +567,7 @@ static int msm_ds2_dap_send_cal_data(int dev_map_idx)
 	struct audio_rx_cal_data *aud_cal_data = NULL;
 
 	pr_debug("%s: devmap index %d\n", __func__, dev_map_idx);
-	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+	if (dev_map_idx < 0 || dev_map_idx >= DS2_DEVICES_ALL) {
 		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
 		rc = -EINVAL;
 		goto end;
@@ -623,7 +623,7 @@ static int msm_ds2_dap_init_modules_in_topology(int dev_map_idx)
 	int32_t param_sz = (ADM_GET_TOPO_MODULE_LIST_LENGTH / sizeof(uint32_t));
 	int32_t *update_param_val = NULL;
 
-	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+	if (dev_map_idx < 0 || dev_map_idx >= DS2_DEVICES_ALL) {
 		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
 		rc = -EINVAL;
 		goto end;
@@ -822,7 +822,7 @@ end:
 static int msm_ds2_dap_update_dev_map_port_id(int32_t device_id, int port_id)
 {
 	int i;
-	for (i = 0; i < NUM_DS2_ENDP_DEVICE; i++) {
+	for (i = 0; i < DS2_DEVICES_ALL; i++) {
 		if (dev_map[i].device_id == device_id)
 			dev_map[i].port_id = port_id;
 	}
@@ -865,7 +865,7 @@ static int msm_ds2_dap_handle_bypass(struct dolby_param_data *dolby_data)
 		goto end;
 	}
 
-	for (i = 0; i < NUM_DS2_ENDP_DEVICE; i++) {
+	for (i = 0; i < DS2_DEVICES_ALL; i++) {
 		pr_debug("%s: active dev %d\n", __func__, dev_map[i].active);
 		if (dev_map[i].active) {
 			port_id = dev_map[i].port_id;
@@ -1036,7 +1036,7 @@ static int msm_ds2_dap_send_end_point(int dev_map_idx, int endp_idx)
 	struct ds2_dap_params_s *ds2_ap_params_obj = NULL;
 	int32_t *modified_param = NULL;
 
-	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+	if (dev_map_idx < 0 || dev_map_idx >= DS2_DEVICES_ALL) {
 		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
 		rc = -EINVAL;
 		goto end;
@@ -1108,7 +1108,7 @@ static int msm_ds2_dap_send_cached_params(int dev_map_idx,
 	struct ds2_dap_params_s *ds2_ap_params_obj = NULL;
 	int32_t *modified_param = NULL;
 
-	if (dev_map_idx < 0 || dev_map_idx >= NUM_DS2_ENDP_DEVICE) {
+	if (dev_map_idx < 0 || dev_map_idx >= DS2_DEVICES_ALL) {
 		pr_err("%s: invalid dev map index %d\n", __func__, dev_map_idx);
 		ret = -EINVAL;
 		goto end;
@@ -1224,7 +1224,7 @@ static int msm_ds2_dap_commit_params(struct dolby_param_data *dolby_data,
 	}
 	pr_debug("%s: found endp - idx %d 0x%x\n", __func__, idx,
 		ds2_dap_params_id[idx]);
-	for (i = 0; i < NUM_DS2_ENDP_DEVICE; i++) {
+	for (i = 0; i < DS2_DEVICES_ALL; i++) {
 		pr_debug("%s:dev[0x%x,0x%x],i:%d,active:%d,bypass:%d,type:%d\n",
 			__func__, dolby_data->device_id, dev_map[i].device_id,
 			i, dev_map[i].active, ds2_dap_params_states.dap_bypass,
@@ -1358,7 +1358,7 @@ static int msm_ds2_dap_set_param(u32 cmd, void *arg)
 {
 	int rc = 0, idx, i, j, off, port_id = 0, cdev = 0;
 	int32_t num_device = 0;
-	int32_t dev_arr[NUM_DS2_ENDP_DEVICE] = {0};
+	int32_t dev_arr[DS2_DSP_SUPPORTED_ENDP_DEVICE] = {0};
 	struct dolby_param_data dolby_data;
 
 	if (copy_from_user((void *)&dolby_data, (void *)arg,
@@ -1369,7 +1369,7 @@ static int msm_ds2_dap_set_param(u32 cmd, void *arg)
 	}
 
 	rc = msm_ds2_dap_update_num_devices(&dolby_data, &num_device, dev_arr,
-				   NUM_DS2_ENDP_DEVICE);
+					    DS2_DSP_SUPPORTED_ENDP_DEVICE);
 	if (num_device == 0 || rc < 0) {
 		pr_err("%s: num devices 0\n", __func__);
 		rc = -EINVAL;
@@ -1447,7 +1447,7 @@ static int msm_ds2_dap_get_param(u32 cmd, void *arg)
 		goto end;
 	}
 
-	for (i = 0; i < NUM_DS2_ENDP_DEVICE; i++) {
+	for (i = 0; i < DS2_DEVICES_ALL; i++) {
 		if ((dev_map[i].active) &&
 			(dev_map[i].device_id & dolby_data.device_id)) {
 			port_id = dev_map[i].port_id;
@@ -1534,7 +1534,7 @@ static int msm_ds2_dap_param_visualizer_control_get(u32 cmd, void *arg)
 		return -EFAULT;
 	}
 
-	for (i = 0; i < NUM_DS2_ENDP_DEVICE; i++) {
+	for (i = 0; i < DS2_DEVICES_ALL; i++) {
 		if ((dev_map[i].active))  {
 			port_id = dev_map[i].port_id;
 			cache_dev = dev_map[i].cache_dev;
@@ -1644,7 +1644,7 @@ int msm_ds2_dap_update_port_parameters(struct snd_hwdep *hw,  struct file *file,
 	ds2_dap_params_states.use_cache = 0;
 	ds2_dap_params_states.device = 0;
 	ds2_dap_params_states.custom_stereo_onoff = 0;
-	for (i = 0; i < ALL_DEVICES; i++) {
+	for (i = 0; i < DS2_DEVICES_ALL; i++) {
 		if (i == 0)
 			dev_map[i].device_id = 0;
 		else {
@@ -1719,7 +1719,7 @@ int msm_ds2_dap_init(int port_id, int channels,
 	pr_debug("%s: port id  %d\n", __func__, port_id);
 
 	if (port_id != DOLBY_INVALID_PORT_ID) {
-		for (i = 0; i < NUM_DS2_ENDP_DEVICE; i++) {
+		for (i = 0; i < DS2_DEVICES_ALL; i++) {
 			if ((dev_map[i].port_id == port_id) &&
 				/* device part of active device */
 				(dev_map[i].device_id &
@@ -1798,7 +1798,7 @@ void msm_ds2_dap_deinit(int port_id)
 	int idx = -1, i;
 	pr_debug("%s: port_id %d\n", __func__, port_id);
 	if (port_id != DOLBY_INVALID_PORT_ID) {
-		for (i = 0; i < NUM_DS2_ENDP_DEVICE; i++) {
+		for (i = 0; i < DS2_DEVICES_ALL; i++) {
 			/* Active port */
 			if ((dev_map[i].port_id == port_id) &&
 				/* device part of active device */
@@ -1847,7 +1847,7 @@ int msm_ds2_dap_set_custom_stereo_onoff(int port_id,
 	int idx = -1, rc = 0, i;
 	pr_debug("%s: port_id %d\n", __func__, port_id);
 	if (port_id != DOLBY_INVALID_PORT_ID) {
-		for (i = 0; i < NUM_DS2_ENDP_DEVICE; i++) {
+		for (i = 0; i < DS2_DEVICES_ALL; i++) {
 			if ((dev_map[i].port_id == port_id) &&
 				/* device part of active device */
 				(dev_map[i].device_id &
