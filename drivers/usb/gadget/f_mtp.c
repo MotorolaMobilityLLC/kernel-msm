@@ -863,8 +863,13 @@ static void receive_file_work(struct work_struct *data)
 			read_req = dev->rx_req[cur_buf];
 			cur_buf = (cur_buf + 1) % RX_REQ_MAX;
 
-			len = ALIGN(count, dev->ep_out->maxpacket);
-			if (len > mtp_rx_req_len)
+			/* The ALIGN macro may overflow if count is very large, so we only use it
+			 * if count <= mtp_rx_req_len.  This is safe because mtp_rx_req_len
+			 * should already be aligned.
+			 */
+			if (count <= mtp_rx_req_len)
+				len = ALIGN(count, dev->ep_out->maxpacket);
+			else
 				len = mtp_rx_req_len;
 			read_req->length = len;
 
