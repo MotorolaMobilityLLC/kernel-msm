@@ -1528,19 +1528,33 @@ qpnp_chg_vddmax_get(struct qpnp_chg_chip *chip)
 static void
 qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip)
 {
-	if (chip->bat_is_cool && !chip->out_of_temp && !chip->ext_hi_temp)
+	int rc;
+	u8 ir_comp;
+
+	if (chip->bat_is_cool && !chip->out_of_temp && !chip->ext_hi_temp) {
 		qpnp_chg_vddmax_and_trim_set(chip, chip->cool_bat_mv,
 				chip->delta_vddmax_mv);
-	else if (chip->bat_is_warm && !chip->out_of_temp && !chip->ext_hi_temp
-		 && !chip->warm_bat_soc)
+		ir_comp = 0x84;
+	} else if (chip->bat_is_warm && !chip->out_of_temp &&
+		   !chip->ext_hi_temp && !chip->warm_bat_soc) {
 		qpnp_chg_vddmax_and_trim_set(chip, chip->warm_bat_mv,
 				chip->delta_vddmax_mv);
-	else if (!chip->use_max_vdd)
+		ir_comp = 0x84;
+	} else if (!chip->use_max_vdd) {
 		qpnp_chg_vddmax_and_trim_set(chip, chip->step_charge_mv,
 				chip->delta_vddmax_mv);
-	else
+		ir_comp = 0x84;
+	} else {
 		qpnp_chg_vddmax_and_trim_set(chip, chip->max_voltage_mv,
 				chip->delta_vddmax_mv);
+		ir_comp = 0x83;
+	}
+
+	rc = qpnp_chg_masked_write(chip,
+				   chip->chgr_base + CHGR_IR_DROP_COMPEN, 0xFF,
+				   chip->ir_drop_comp ? ir_comp : 0x00, 1);
+	if (rc)
+		pr_err("failed to enable IR drop comp rc=%d\n", rc);
 }
 
 static void
