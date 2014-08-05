@@ -94,15 +94,15 @@ static struct msm_gpiomux_config wi500q_sr_msm8226_gpio_configs[] __initdata= {
 	{
 		.gpio = 20,
 		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
-			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+			[GPIOMUX_ACTIVE] = &ecg_uart_act_cfg,
+			[GPIOMUX_SUSPENDED] = &ecg_uart_sus_cfg,
 		},
 	},
 	{
 		.gpio = 21,
 		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
-			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+			[GPIOMUX_ACTIVE] = &ecg_uart_act_cfg,
+			[GPIOMUX_SUSPENDED] = &ecg_uart_sus_cfg,
 		},
 	},
 // ASUS_BSP --- Maggie_Lee "ECG sensor porting"
@@ -149,15 +149,22 @@ static struct msm_gpiomux_config wi500q_sr_msm8226_gpio_configs[] __initdata= {
 	{
 		.gpio      = 53,	/* ECG CS CPU*/
 		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
+                        [GPIOMUX_ACTIVE] = &ecg_act_cfg,
+                        [GPIOMUX_SUSPENDED] = &ecg_sus_cfg,
+		},
+	},
+	{
+		.gpio      = 54,
+		.settings = {
+                        [GPIOMUX_ACTIVE] = &sensor_backup_int,
+                        [GPIOMUX_SUSPENDED] = &sensor_backup_int,
 		},
 	},
 	{
 		.gpio      = 55,	/* ECG_RST CPU*/
 		.settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_uart_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_uart_config,
+                        [GPIOMUX_ACTIVE] = &ecg_act_cfg,
+                        [GPIOMUX_SUSPENDED] = &ecg_sus_cfg,
 		},
 	},
 // ASUS_BSP --- Maggie_Lee "ECG sensor porting"
