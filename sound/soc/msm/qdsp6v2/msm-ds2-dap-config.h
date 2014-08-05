@@ -21,8 +21,8 @@
 /* DOLBY DOLBY GUIDS */
 #define DS2_MODULE_ID			0x00010775
 
-#define NUM_DS2_ENDP_DEVICE			17
-#define ALL_DEVICES				22
+#define DS2_DSP_SUPPORTED_ENDP_DEVICE		17
+#define DS2_DEVICES_ALL				22
 
 enum {
 
