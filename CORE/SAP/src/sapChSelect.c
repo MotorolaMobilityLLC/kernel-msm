@@ -1776,6 +1776,11 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
         if((startChannelNum <= pSpectInfoParams->pSpectCh[count].chNum)&&
           ( endChannelNum >= pSpectInfoParams->pSpectCh[count].chNum))
         {
+            if (NV_CHANNEL_ENABLE !=
+                    vos_nv_getChannelEnabledState(pSpectInfoParams->pSpectCh[count].chNum))
+            {
+                continue; //skip this channel, continue to next channel
+            }
             if(bestChNum == 0)
             {
                 bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[count].chNum;
