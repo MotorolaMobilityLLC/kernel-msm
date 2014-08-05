@@ -760,6 +760,7 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 	return ret;
 }
 
+#define MAX_DISON_RECOVERY_CNT	2
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mipi_panel_info *mipi;
@@ -769,6 +770,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	u8 pwr_mode = 0;
 	char *dropbox_issue = NULL;
 	static int dropbox_count;
+	static int dison_recovery;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -812,11 +814,20 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 								__func__);
 		dropbox_issue = PWR_MODE_BLACK_DROPBOX_MSG;
 
-		if (pdata->panel_info.panel_dead)
-			pr_err("%s: Panel recovery FAILED!!\n", __func__);
-
+		if (pdata->panel_info.panel_dead) {
+			pr_err("%s: Panel recovery FAILED!!. cnt =%d\n",
+						__func__, dison_recovery);
+			if (dison_recovery >= MAX_DISON_RECOVERY_CNT) {
+				pr_err("%s: fail to recover display. cnt=%d. "
+					"Calling BUG() now !!! \n",
+					__func__, dison_recovery);
+				BUG();
+			}
+		}
 		pdata->panel_info.panel_dead = true;
-	}
+		dison_recovery++;
+	} else
+		dison_recovery = 0;
 
 end:
 	if (dropbox_issue != NULL) {
