@@ -30,6 +30,9 @@ Optional properties:
 - i2c_freq_custom: qcom,i2c_custom_mode - node can contain clock settings for
     frequencies other than 100Khz and 400Khz which is specific to usecase.
     Currently it has settings for 375Khz.
+- i2c_freq_mode: qcom,i2c_freq_mode - node should contain the i2c frequency
+    mode supported. 0 for 100KHz, 1 for 400Khz. This property is mainly
+    needed for yuv/soc cameras.
 
 [Second level nodes]
 * Qualcomm CCI clock settings
