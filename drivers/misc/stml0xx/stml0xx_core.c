@@ -749,6 +749,7 @@ static int stml0xx_probe(struct spi_device *spi)
 		goto err1;
 	}
 	ps_stml0xx->pdata = pdata;
+	spi_set_drvdata(spi, ps_stml0xx);
 
 	if (ps_stml0xx->pdata->init) {
 		err = ps_stml0xx->pdata->init();
@@ -951,8 +952,6 @@ static int stml0xx_remove(struct spi_device *spi)
 	regulator_disable(ps_stml0xx->regulator_1);
 	regulator_put(ps_stml0xx->regulator_2);
 	regulator_put(ps_stml0xx->regulator_1);
-
-	kfree(ps_stml0xx);
 
 	return 0;
 }
