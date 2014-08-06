@@ -271,7 +271,8 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 	stm401_wake(ps_stm401);
 
 	while (atomic_read(&ps_stm401->qp_enabled) &&
-	       !list_empty(&ps_stm401->quickpeek_command_list)) {
+	       !list_empty(&ps_stm401->quickpeek_command_list) &&
+	       !stm401_misc_data->in_reset_and_init) {
 		struct stm401_quickpeek_message *qp_message;
 		int ack_return = AOD_QP_ACK_SUCCESS;
 		int x = -1;
