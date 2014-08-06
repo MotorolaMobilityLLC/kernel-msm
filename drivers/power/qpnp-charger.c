@@ -443,6 +443,12 @@ static int g_EocCurBigger_value = 200;
 extern void notify_batteryService_statusFull(void);
 //ASUS_BSP Eason: fix PM8226 eoc_work change status full, but cap is 99% ---
 
+//ASUS_BSP +++
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+extern char g_CHG_mode;
+#endif
+//ASUS_BSP ---
+
 enum bpd_type {
 	BPD_TYPE_BAT_ID,
 	BPD_TYPE_BAT_THM,
@@ -5892,12 +5898,24 @@ qpnp_charger_probe(struct spmi_device *spmi)
 //ASUS_BSP +++
 	{
 		u8 reg_value;
+		int bat_vol;
 	
 		reg_value = 0x1;
 		rc = qpnp_chg_write(chip, &reg_value, 0x1055, 1); //set trickle charge phase B to 50mA
 		if (rc) {
 			printk("Unable to write reg 0x1055 rc=%d\n", rc);
 		}
+		
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+		if(g_CHG_mode){
+			bat_vol = get_prop_battery_voltage_now(chip);
+			
+			if(bat_vol < 3200000){
+				u8 chg_led = 0x1;
+				qpnp_chg_write(chip, &chg_led, 0x104D, 1);
+			}
+		}
+#endif
 	}
 //ASUS_BSP ---
 
