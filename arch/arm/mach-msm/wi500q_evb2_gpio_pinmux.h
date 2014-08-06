@@ -230,6 +230,55 @@ static struct msm_gpiomux_config wi500q_evb2_msm8226_gpio_configs[] __initdata= 
 			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
 		},
 	},
+	
+	{
+		.gpio      = 38,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 57,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 58,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 59,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 67,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 72,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 105,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 108,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
 };
 
 #endif  /* __wi500q_evb2_GPIO_PINMUX_H  */

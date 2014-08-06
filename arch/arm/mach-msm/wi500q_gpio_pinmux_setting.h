@@ -211,4 +211,10 @@ static struct gpiomux_setting pri_mi2s_en = {
 };
 //ASUS_BSP --- Ken_Cheng "MI2S porting for digital MIC"
 
+static struct gpiomux_setting gpio_nc_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 #endif
