@@ -931,7 +931,7 @@
 		gpio-names = "pad_detect_n",
 				"charge_complete_n",
 				"charge_terminate";
-		supply-names = "max170xx_battery",
+		supply-names = "battery",
 				"dc",
 				"usb";
 		mmi,priority = <1>;
