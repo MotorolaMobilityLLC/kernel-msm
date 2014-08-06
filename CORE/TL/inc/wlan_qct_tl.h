@@ -2951,4 +2951,29 @@ WLANTL_TLDebugMessage
   v_BOOL_t displaySnapshot
 );
 
+/*==========================================================================
+  FUNCTION   WLANTL_FatalError
+
+  DESCRIPTION
+    Fatal error reported in TX path, post an event to TX Thread for further
+    handling
+
+  DEPENDENCIES
+    The TL must be initialized before this gets called.
+
+  PARAMETERS
+
+    VOID
+
+  RETURN VALUE      None
+
+  SIDE EFFECTS
+
+============================================================================*/
+v_VOID_t
+WLANTL_FatalError
+(
+ v_VOID_t
+);
+
 #endif /* #ifndef WLAN_QCT_WLANTL_H */

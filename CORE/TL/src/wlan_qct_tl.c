@@ -6736,6 +6736,52 @@ WLANTL_TxThreadDebugHandler
 }
 
 /*==========================================================================
+  FUNCTION   WLANTL_FatalErrorHandler
+
+  DESCRIPTION
+    Handle Fatal errors detected on the TX path.
+    Currently issues SSR to recover from the error.
+
+  DEPENDENCIES
+    The TL must be initialized before this gets called.
+
+  PARAMETERS
+
+    IN
+    pvosGCtx:       pointer to the global vos context; a handle to TL's
+                    or WDA's control block can be extracted from its context
+
+  RETURN VALUE      None
+
+  SIDE EFFECTS
+
+============================================================================*/
+v_VOID_t
+WLANTL_FatalErrorHandler
+(
+ v_PVOID_t *pVosContext
+)
+{
+
+   TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_FATAL,
+        "WLAN TL: %s Enter ", __func__));
+
+   if ( NULL == pVosContext )
+   {
+        TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                        "%s: Global VoS Context or TL Context are NULL",
+                        __func__));
+        return;
+   }
+
+   /*
+    * Issue SSR. vos_wlanRestart has tight checks to make sure that
+    * we do not send an FIQ if previous FIQ is not processed
+    */
+   vos_wlanRestart();
+}
+
+/*==========================================================================
   FUNCTION   WLANTL_TLDebugMessage
 
   DESCRIPTION
@@ -6780,6 +6826,48 @@ WLANTL_TLDebugMessage
    return;
 }
 
+/*==========================================================================
+  FUNCTION   WLANTL_FatalError
+
+  DESCRIPTION
+    Fatal error reported in TX path, post an event to TX Thread for further
+    handling
+
+  DEPENDENCIES
+    The TL must be initialized before this gets called.
+
+  PARAMETERS
+
+    VOID
+
+  RETURN VALUE      None
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+v_VOID_t
+WLANTL_FatalError
+(
+ v_VOID_t
+)
+{
+   vos_msg_t vosMsg;
+   VOS_STATUS status;
+
+   vosMsg.reserved = 0;
+   vosMsg.bodyptr  = NULL;
+   vosMsg.type     = WLANTL_TX_FATAL_ERROR;
+
+   status = vos_tx_mq_serialize( VOS_MODULE_ID_TL, &vosMsg);
+   if(status != VOS_STATUS_SUCCESS)
+   {
+       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                        "%s: TX Msg Posting Failed with status: %d",
+                        __func__,status));
+   }
+   return;
+}
 /*============================================================================
                            TL STATE MACHINE
 ============================================================================*/
@@ -8854,6 +8942,10 @@ WLANTL_TxProcessMsg
       the DXE Dump*/
     WLANTL_TxThreadDebugHandler(pvosGCtx);
     WDA_TransportChannelDebug(NULL, VOS_TRUE, VOS_FALSE);
+    break;
+
+  case WLANTL_TX_FATAL_ERROR:
+    WLANTL_FatalErrorHandler(pvosGCtx);
     break;
 
   default:
