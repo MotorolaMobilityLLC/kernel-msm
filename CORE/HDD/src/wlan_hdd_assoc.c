@@ -1682,14 +1682,22 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
     }
 
-    if (eCSR_ROAM_ASSOCIATION_FAILURE == roamStatus ||
-        eCSR_ROAM_RESULT_ASSOCIATED == roamResult)
+    if (eCSR_ROAM_RESULT_ASSOCIATED == roamResult)
     {
         pHostapdAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_SOFTAP);
         if (pHostapdAdapter != NULL)
         {
-             hddLog(VOS_TRACE_LEVEL_INFO,"Restart Sap");
-             hdd_restart_softap(pHddCtx, pHostapdAdapter);
+             /* Restart SAP if its operating channel is different
+              * from AP channel.
+              */
+             if (pHostapdAdapter->sessionCtx.ap.operatingChannel !=
+                (int)pRoamInfo->pBssDesc->channelId)
+             {
+                hddLog(VOS_TRACE_LEVEL_INFO,"Restart Sap as SAP channel is %d "
+                       "and STA channel is %d", pHostapdAdapter->sessionCtx.ap.operatingChannel,
+                       (int)pRoamInfo->pBssDesc->channelId);
+                hdd_restart_softap(pHddCtx, pHostapdAdapter);
+             }
         }
     }
     return eHAL_STATUS_SUCCESS;
