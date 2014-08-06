@@ -2142,7 +2142,7 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_ADVERTISE_CONCURRENT_OPERATION_MAX     ( 1 )
 
 #define CFG_RA_FILTER_ENABLE_NAME               "gRAFilterEnable"
-#define CFG_RA_FILTER_ENABLE_DEFAULT            (1)
+#define CFG_RA_FILTER_ENABLE_DEFAULT            (0)
 #define CFG_RA_FILTER_ENABLE_MIN                (0)
 #define CFG_RA_FILTER_ENABLE_MAX                (1)
 
