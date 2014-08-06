@@ -1136,3 +1136,10 @@
 	};
 };
 
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,haptic@c000 {
+			status = "disabled";
+		};
+	};
+};
