@@ -157,6 +157,20 @@ static struct gpiomux_setting touch_int = {				//IT7260
 //ASUS_BSP --- Cliff_Yu "Touch Porting"
 
 // ASUS_BSP BerylHou +++ "BT config"
+static struct gpiomux_setting bt_rst_sus_cfg= { // bt_rst_suspend
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting bt_reg_sus_cfg= { // bt_reg_suspend
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
 static struct gpiomux_setting gpio_uart_config = { // BT uart
 	.func = GPIOMUX_FUNC_2,
 	.drv = GPIOMUX_DRV_8MA,

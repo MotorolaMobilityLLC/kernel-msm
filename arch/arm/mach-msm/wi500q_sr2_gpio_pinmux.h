@@ -114,6 +114,15 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 		},
 	},
 //ASUS_BSP +++ Maggie_Lee "Sensors Porting"
+
+// ASUS_BSP BerylHou +++ "BT REG_EN config"
+	{
+		.gpio      = 34,	/* BT REG_EN */
+		.settings = {
+                        [GPIOMUX_SUSPENDED] = &bt_reg_sus_cfg,
+		},
+	},
+// ASUS_BSP BerylHou ---
 	{
 		.gpio = 33,
 		.settings = {
@@ -128,6 +137,14 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 			[GPIOMUX_SUSPENDED] = &mpu_int,
 		},
 	},
+// ASUS_BSP BerylHou +++ "BT RST config"
+	{
+		.gpio      = 36,	/* BT RST */
+		.settings = {
+                        [GPIOMUX_SUSPENDED] = &bt_rst_sus_cfg,
+		},
+	},
+// ASUS_BSP BerylHou ---
 	{
 		.gpio = 37,
 		.settings = {
