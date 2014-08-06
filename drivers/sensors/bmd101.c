@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <asm/gpio.h>
 #include <asm/mach-types.h>
+#include <linux/mutex.h>
 #include <linux/tty.h>
 #include <linux/sysfs.h>
 #include <linux/syscalls.h>
@@ -69,6 +70,8 @@ struct bmd101_data {
 	int esd;
 	int status;
 	int enable;
+	int count;
+	struct mutex lock;
 };
 struct bmd101_data *sensor_data;
 
@@ -81,12 +84,12 @@ static int bmd101_data_report(int data)
 	return 0;
 }
 
-static void sortArray(int *nums, int total) {
+static void sortArray(int *nums) {
 	static int x;
 	static int y;
 
-	for(x=0; x<total; x++) {
-		for(y=0; y<total-1; y++) {
+	for(x=0; x<BMD101_filter_array; x++) {
+		for(y=0; y<BMD101_filter_array-1; y++) {
 			if(nums[y]>nums[y+1]) {
 				int temp = nums[y+1];
 				nums[y+1] = nums[y];
@@ -96,52 +99,54 @@ static void sortArray(int *nums, int total) {
 	}
 }
 
-static int findMode(int *nums,int total) {
-	int i, j, maxCount, modeValue;
-	int tally[total];
+static int findMode(int *nums) {
+	int i, maxCount, modeValue;
+	int freq[BMD101_filter_array] = {0};
+	int temp;
 
-	for (i = 0; i < total; i++) {
-		tally[nums[i]]++;
-	}
+	temp = 0;
 	maxCount = 0;
 	modeValue = 0;
-	for (j = 0; j < total; j++) {
-		if (tally[j] > maxCount) {
-			maxCount = tally[j];
-			modeValue = j;
+
+	for (i = 0; i < BMD101_filter_array; i++) {
+		if (nums[i] > maxCount)
+			maxCount = nums[i];
+		else
+			freq[i]++;
+
+		if(freq[i] > temp) {
+			temp = freq[i];
+			modeValue = nums[i];
 		}
-		
 	}
-	return maxCount;
+
+	return modeValue;
 }
 
-static void bmd101_data_filter(int data, int reset)
+static void bmd101_data_filter(int data)
 {
-	static int count = 0;
 	static int bpm[BMD101_filter_array];
 	int calc_bpm;
 
-	if(reset) {
-		sensor_debug(DEBUG_INFO, "[bmd101] %s: reset\n", __func__);
-		count = 0;
-		return;
-	}
-
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", count);
-	if(sensor_data->status<2)
+	mutex_lock(&sensor_data->lock);
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count);
+	if(sensor_data->status<2) {
 		bmd101_data_report(0);		//report 0 bpm to set sensor status to SENSOR_STATUS_NO_CONTACT
+		sensor_data->count = 0;
+	}
 	else {
-		if(count < BMD101_filter_array)
-			bpm[count++] = data;
+		if(sensor_data->count < BMD101_filter_array)
+			bpm[sensor_data->count++] = data;
 		else {
-			sortArray(bpm, BMD101_filter_array);
-			calc_bpm = findMode(bpm, BMD101_filter_array);
+			sensor_data->count = 0;
+			sortArray(bpm);
+			calc_bpm = findMode(bpm);
 			bmd101_data_report(calc_bpm);
 			sensor_data->bpm = calc_bpm;
-			count = 0;
 			sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) REPORT\n", __func__, calc_bpm);
 		}
 	}
+	mutex_unlock(&sensor_data->lock);
 
 	return;
 }
@@ -181,8 +186,6 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		gpio_direction_output(BMD101_RST_GPIO, 1);
 		msleep(100);
 
-		bmd101_data_filter(0, 1);			//reset filter
-
 		sensor_data->enable = 1;
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->enable);
 	}
@@ -197,8 +200,6 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		gpio_free(BMD101_CS_GPIO);
 		gpio_free(BMD101_RST_GPIO);
 		sensor_data->enable = 0;
-
-		bmd101_data_filter(0, 1);			//reset filter
 
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->enable);
 	}
@@ -218,20 +219,6 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 
 	return rc;
 }
-
-
-static ssize_t sensors_clear_filter_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	unsigned long val;
-
-	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 1))
-		return -EINVAL;
-
-	bmd101_data_filter(0, 1);
-
-	return size;
-}
-static DEVICE_ATTR(clear, S_IWUSR | S_IRUGO, NULL, sensors_clear_filter_store);
 
 //ASUS_BSP +++ Maggie_Lee "Add ATD interface"
 static ssize_t sensors_status_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -290,14 +277,13 @@ static ssize_t bmd101_store_bpm(struct device *dev, struct device_attribute *att
 
 	sensor_debug(DEBUG_INFO, "[bmd101] %s (%d)\n", __func__, (int)val);
 
-	bmd101_data_filter((int)val, 0);
+	bmd101_data_filter((int)val);
 
 	return size;
 }
 static DEVICE_ATTR(bpm, S_IWUSR | S_IRUGO, bmd101_show_bpm, bmd101_store_bpm);
 
 static struct attribute *bmd101_attributes[] = {
-	&dev_attr_clear.attr,			//clear filter interface
 	&dev_attr_status.attr,			//atd interface
 	&dev_attr_esd.attr,				//esd interface
 	&dev_attr_bpm.attr,
@@ -324,6 +310,8 @@ static int bmd101_fb_notifier_callback(struct notifier_block *this, unsigned lon
 	switch (code) {
 		case 0:
 			notify_ecg_sensor_lowpowermode(1);
+			sensor_data->count = 0;
+			mutex_unlock(&sensor_data->lock);
 			break;
 		case 1:
 			notify_ecg_sensor_lowpowermode(0);
@@ -385,6 +373,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	sensor_data->enable = 0;
 	sensor_data->cdev = bmd101_cdev;
 	sensor_data->cdev.sensors_enable = bmd101_enable_set;
+	mutex_init(&sensor_data->lock);
 	
 	ret = sensors_classdev_register(&pdev->dev, &sensor_data->cdev);
 	if (ret) {
