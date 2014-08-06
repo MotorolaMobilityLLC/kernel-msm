@@ -2084,6 +2084,21 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
           case eWNI_SME_COEX_IND:
                 if(pMsg->bodyptr)
                 {
+                   tSirSmeCoexInd *pSmeCoexInd = (tSirSmeCoexInd *)pMsg->bodyptr;
+
+                   if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4)
+                   {
+                       smsLog( pMac, LOG1, FL("SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4"));
+                       sme_RequestFullPower(hHal, NULL, NULL, eSME_REASON_OTHER);
+                       pMac->isCoexScoIndSet = 1;
+                   }
+                   else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4)
+                   {
+                       smsLog( pMac, LOG1, FL("SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4"));
+                       pMac->isCoexScoIndSet = 0;
+                       sme_RequestBmps(hHal, NULL, NULL);
+                   }
+
                    status = btcHandleCoexInd((void *)pMac, pMsg->bodyptr);
                    vos_mem_free(pMsg->bodyptr);
                 }
@@ -2563,7 +2578,7 @@ eHalStatus sme_ScanRequest(tHalHandle hHal, tANI_U8 sessionId, tCsrScanRequest *
     smsLog(pMac, LOG2, FL("enter"));
     do
     {
-        if(pMac->scan.fScanEnable)
+        if(pMac->scan.fScanEnable && (0 == pMac->isCoexScoIndSet))
         {
             status = sme_AcquireGlobalLock( &pMac->sme );
             if ( HAL_STATUS_SUCCESS( status ) )
@@ -2605,7 +2620,8 @@ eHalStatus sme_ScanRequest(tHalHandle hHal, tANI_U8 sessionId, tCsrScanRequest *
         } //if(pMac->scan.fScanEnable)
         else
         {
-            smsLog(pMac, LOGE, FL("fScanEnable FALSE"));
+            smsLog(pMac, LOGE, FL("fScanEnable %d isCoexScoIndSet: %d "),
+                     pMac->scan.fScanEnable, pMac->isCoexScoIndSet);
         }
     } while( 0 );
 
