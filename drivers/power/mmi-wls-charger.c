@@ -62,6 +62,7 @@ struct mmi_wls_chrg_chip {
 	int cold_temp;
 	struct dentry *debug_root;
 	u32 peek_poke_address;
+	bool force_shutdown;
 };
 
 enum mmi_wls_chrg_state {
@@ -247,6 +248,9 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		return;
 	}
 
+	if (batt_soc == 0)
+		chip->force_shutdown = true;
+
 	dev_dbg(chip->dev, "State Before = %d\n", chip->state);
 
 	switch (chip->state) {
@@ -351,6 +355,8 @@ static int mmi_wls_chrg_get_property(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = !gpio_get_value(chip->pad_det_n_gpio);
+		if (chip->force_shutdown)
+			val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		if (chip->dc_psy) {
@@ -362,7 +368,8 @@ static int mmi_wls_chrg_get_property(struct power_supply *psy,
 			       gpio_get_value(chip->charge_cmplt_n_gpio) &&
 			       !gpio_get_value(chip->charge_term_gpio));
 		}
-
+		if (chip->force_shutdown)
+			val->intval = 0;
 		break;
 	default:
 		return -EINVAL;
@@ -611,6 +618,8 @@ static int mmi_wls_chrg_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, chip);
+
+	chip->force_shutdown = false;
 
 	schedule_delayed_work(&chip->mmi_wls_chrg_work,
 			      msecs_to_jiffies(100));
