@@ -286,6 +286,13 @@ static int32_t msm_sensor_get_dt_data(struct device_node *of_node,
 		rc = -ENOMEM;
 		goto FREE_ACTUATOR_INFO;
 	}
+	if (0 > of_property_read_u32(of_node, "qcom,i2c_freq_mode",
+		&sensordata->slave_info->sensor_i2c_freq_mode)) {
+		CDBG("%s:%d Default i2c_freq_mode\n", __func__, __LINE__);
+		sensordata->slave_info->sensor_i2c_freq_mode = 0;
+	}
+	CDBG("%s:%d qcom,i2c_freq_mode %d\n", __func__,__LINE__,
+		sensordata->slave_info->sensor_i2c_freq_mode);
 
 	rc = of_property_read_u32_array(of_node, "qcom,slave-id",
 		id_info, 3);
@@ -1444,6 +1451,8 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev,
 		s_ctrl->sensordata->slave_info->sensor_slave_addr >> 1;
 	cci_client->retries = 3;
 	cci_client->id_map = 0;
+	cci_client->i2c_freq_mode =
+		s_ctrl->sensordata->slave_info->sensor_i2c_freq_mode;
 	if (!s_ctrl->func_tbl)
 		s_ctrl->func_tbl = &msm_sensor_func_tbl;
 	if (!s_ctrl->sensor_i2c_client->i2c_func_tbl)
