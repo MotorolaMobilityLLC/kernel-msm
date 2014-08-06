@@ -2570,6 +2570,7 @@ static void heartbeat_work(struct work_struct *work)
 	struct timespec bootup_time;
 	unsigned long float_timestamp;
 	bool usb_present;
+	bool dc_present;
 	struct smb135x_chg *chip =
 		container_of(work, struct smb135x_chg,
 				heartbeat_work.work);
@@ -2592,6 +2593,7 @@ static void heartbeat_work(struct work_struct *work)
 		smb135x_setup_vbat_monitoring(chip);
 
 	usb_present = is_usb_plugged_in(chip);
+	dc_present = is_dc_plugged_in(chip);
 
 	if (chip->usb_present && !usb_present) {
 		dev_warn(chip->dev, "HB Caught Removal!\n");
@@ -2629,23 +2631,23 @@ static void heartbeat_work(struct work_struct *work)
 				smb135x_set_appropriate_current(chip, USB);
 			}
 		}
-	}
 
-	if (!chip->chg_done_batt_full &&
-	    !chip->float_charge_start_time &&
-	    chip->iterm_disabled &&
-	    (batt_soc >= 100)) {
-		chip->float_charge_start_time = float_timestamp;
-		dev_warn(chip->dev, "Float Start!\n");
-	} else if (chip->float_charge_start_time &&
-		   ((float_timestamp - chip->float_charge_start_time)
-		    >= FLOAT_CHG_TIME_SECS)) {
-		chip->float_charge_start_time = 0;
-		chip->chg_done_batt_full = true;
-		dev_warn(chip->dev, "Float Done!\n");
-	} else if (chip->chg_done_batt_full && (batt_soc < 100)) {
-		chip->chg_done_batt_full = false;
-		dev_warn(chip->dev, "SOC dropped,  Charge Resume!\n");
+		if (!chip->chg_done_batt_full &&
+		    !chip->float_charge_start_time &&
+		    chip->iterm_disabled &&
+		    (batt_soc >= 100)) {
+			chip->float_charge_start_time = float_timestamp;
+			dev_warn(chip->dev, "Float Start!\n");
+		} else if (chip->float_charge_start_time &&
+			   ((float_timestamp - chip->float_charge_start_time)
+			    >= FLOAT_CHG_TIME_SECS)) {
+			chip->float_charge_start_time = 0;
+			chip->chg_done_batt_full = true;
+			dev_warn(chip->dev, "Float Done!\n");
+		} else if (chip->chg_done_batt_full && (batt_soc < 100)) {
+			chip->chg_done_batt_full = false;
+			dev_warn(chip->dev, "SOC dropped,  Charge Resume!\n");
+		}
 	}
 
 	if ((batt_health == POWER_SUPPLY_HEALTH_WARM) ||
@@ -2662,13 +2664,14 @@ static void heartbeat_work(struct work_struct *work)
 	    chip->float_charge_start_time) {
 		chip->temp_check = 0;
 		chip->bms_check = 0;
-		power_supply_changed(&chip->batt_psy);
 	}
+
+	power_supply_changed(&chip->batt_psy);
 
 	schedule_delayed_work(&chip->heartbeat_work,
 			      msecs_to_jiffies(60000));
 
-	if (!usb_present)
+	if (!usb_present && !dc_present)
 		smb_relax(&chip->smb_wake_source);
 }
 
