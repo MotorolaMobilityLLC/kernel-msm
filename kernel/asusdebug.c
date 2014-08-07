@@ -59,6 +59,10 @@ __setup("bootreason=", set_bootreason);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
+/* Enable and disable UART console */
+int g_audbg_enable = 1;
+EXPORT_SYMBOL(g_audbg_enable);
+
 /*
  *   All thread information (Refined)
  */
@@ -259,10 +263,11 @@ static void save_last_kmsg_buffer(char* filename){
     initKernelEnv();
 
 	// Save last kmsg
-	lk_file_handle = sys_open(lk_filename, O_CREAT|O_RDWR|O_SYNC, 0);
+	lk_file_handle = sys_open(lk_filename, O_CREAT|O_RDWR|O_SYNC, 0666);
 
 	if(!IS_ERR((const void *)lk_file_handle))
     {
+        sys_chown(lk_filename, 1000, 1000);
         sys_write(lk_file_handle, (unsigned char*)last_kmsg_buffer, PRINTK_PARSE_SIZE);
         sys_close(lk_file_handle);
     } else {
@@ -365,10 +370,11 @@ void save_last_shutdown_log(char* filename)
     initKernelEnv();
 
 	// Save unparsed log first, in case parser cannnot work
-	file_handle_unparsed = sys_open(messages_unparsed, O_CREAT|O_RDWR|O_SYNC, 0);
+	file_handle_unparsed = sys_open(messages_unparsed, O_CREAT|O_RDWR|O_SYNC, 0666);
 
 	if(!IS_ERR((const void *)file_handle_unparsed))
     {
+        sys_chown(messages_unparsed, 1000, 1000);
         sys_write(file_handle_unparsed, (unsigned char*)last_shutdown_log_unparsed, PRINTK_BUFFER_SLOT_SIZE);
         sys_close(file_handle_unparsed);
     } else {
@@ -453,7 +459,25 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 
 			(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
 		}
-	}else{
+	}
+    else if(strncmp(messages, "audbg_on", 8) == 0)
+	{
+		printk("[adbg] Enabling audio debug\n");
+        if(!g_audbg_enable){
+            g_audbg_enable = 1;
+        }
+		return count;
+	}
+    else if(strncmp(messages, "audbg_off", 9) == 0)
+	{
+		printk("[adbg] Disabling audio debug\n");
+        if(g_audbg_enable){
+            g_audbg_enable = 0;
+        }
+		return count;
+	}
+    else
+    {
 		printk("[adbg] %s option in asusdebug is no longer supported.\n", messages);
 		return count;
 	}
