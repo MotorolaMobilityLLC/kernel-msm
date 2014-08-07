@@ -814,47 +814,47 @@ static int stm401_fb_notifier_callback(struct notifier_block *self,
 	struct stm401_data *ps_stm401 = container_of(self, struct stm401_data,
 		fb_notif);
 	int blank;
+	bool vote = false;
 
 	dev_dbg(&ps_stm401->client->dev, "%s+\n", __func__);
 
-	/* If we aren't interested in this event, skip it immediately ... */
+	if ((event != FB_EVENT_BLANK && event != FB_EARLY_EVENT_BLANK) ||
+	    !evdata || !evdata->data)
+		goto exit;
+
+	blank = *(int *)evdata->data;
+
+	/* determine vote */
 	switch (event) {
 	case FB_EVENT_BLANK:
+		if (blank == FB_BLANK_UNBLANK)
+			goto exit; /* not interested in this event */
+		else
+			vote = true;
+		break;
 	case FB_EARLY_EVENT_BLANK:
+		if (blank == FB_BLANK_UNBLANK)
+			vote = false;
+		else
+			goto exit; /* not interested in these events */
 		break;
 	default:
 		goto exit;
 	}
 
-	if (!evdata || !evdata->data)
-		goto exit;
-
-	blank = *(int *)evdata->data;
-
 	if (ps_stm401->in_reset_and_init || ps_stm401->mode == BOOTMODE) {
 		/* store the kernel's vote */
-		if (event == FB_EARLY_EVENT_BLANK && blank == FB_BLANK_UNBLANK)
-			stm401_store_vote_aod_enabled(ps_stm401,
-				AOD_QP_ENABLED_VOTE_KERN, false);
-		else if (event == FB_EVENT_BLANK && blank > FB_BLANK_UNBLANK)
-			stm401_store_vote_aod_enabled(ps_stm401,
-				AOD_QP_ENABLED_VOTE_KERN, true);
+		stm401_store_vote_aod_enabled(ps_stm401,
+				AOD_QP_ENABLED_VOTE_KERN, vote);
 		dev_warn(&ps_stm401->client->dev, "stm401 in reset or BOOTMODE...bailing\n");
 		goto exit;
+	} else {
+		mutex_lock(&ps_stm401->lock);
+		stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN,
+			vote);
+		stm401_resolve_aod_enabled_locked(ps_stm401);
+		mutex_unlock(&ps_stm401->lock);
 	}
-
-	mutex_lock(&ps_stm401->lock);
-
-	if (event == FB_EARLY_EVENT_BLANK && blank == FB_BLANK_UNBLANK)
-		stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN,
-			false);
-	else if (event == FB_EVENT_BLANK && blank > FB_BLANK_UNBLANK)
-		stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN,
-			true);
-
-	stm401_resolve_aod_enabled_locked(ps_stm401);
-
-	mutex_unlock(&ps_stm401->lock);
 
 exit:
 	dev_dbg(&ps_stm401->client->dev, "%s-\n", __func__);
