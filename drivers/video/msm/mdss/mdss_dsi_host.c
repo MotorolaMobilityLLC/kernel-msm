@@ -1876,8 +1876,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 		mdss_dsi_set_tx_power_mode(0, &ctrl->panel_data);
 
 	if (req->flags & CMD_REQ_RX) {
-		mdss_dsi_cmdlist_rx(ctrl, req);
-		ret = ctrl->rx_buf.len;
+		ret = mdss_dsi_cmdlist_rx(ctrl, req);
 	} else
 		ret = mdss_dsi_cmdlist_tx(ctrl, req);
 
