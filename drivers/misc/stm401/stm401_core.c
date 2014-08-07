@@ -850,8 +850,8 @@ static int stm401_fb_notifier_callback(struct notifier_block *self,
 		goto exit;
 	} else {
 		mutex_lock(&ps_stm401->lock);
-		stm401_vote_aod_enabled(ps_stm401, AOD_QP_ENABLED_VOTE_KERN,
-			vote);
+		stm401_vote_aod_enabled_locked(ps_stm401,
+			AOD_QP_ENABLED_VOTE_KERN, vote);
 		stm401_resolve_aod_enabled_locked(ps_stm401);
 		mutex_unlock(&ps_stm401->lock);
 	}
