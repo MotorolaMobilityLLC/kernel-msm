@@ -767,4 +767,8 @@ v_BOOL_t vos_is_nv_country_non_zero
 (
    void
 );
+
+int vos_update_nv_table_from_wiphy_band(void *hdd_ctx,
+                                         void *wiphy,v_U8_t nBandCapability);
+
 #endif // __VOS_NVITEM_H

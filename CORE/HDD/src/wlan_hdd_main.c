@@ -2207,7 +2207,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
                     "%s: SetBandCommand Info  comm %s UL %d, TL %d", __func__, command, priv_data.used_len, priv_data.total_len);
            /* Change band request received */
            ret = hdd_setBand_helper(pAdapter->dev, ptr);
-           if(ret != 0)
+           if(ret < 0)
                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                    "%s: failed to set band ret=%d", __func__, ret);
        }

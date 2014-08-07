@@ -119,7 +119,6 @@ extern void hdd_resume_wlan(struct early_suspend *wlan_suspend);
 #define HDD_FINISH_ULA_TIME_OUT    800
 #define COUNTRY_CODE_LEN   2
 
-extern int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand);
 
 // tdlsoffchan
 #ifdef FEATURE_WLAN_TDLS
@@ -358,6 +357,18 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 
 #define WLAN_ADAPTER 0
 #define P2P_ADAPTER  1
+
+/*
+ * When supplicant sends SETBAND ioctl it queries for channels from
+ * cfg80211 layer by sending itself EVENT_CHANNEL_LIST_CHANGED command.
+ * This is not required if the return type from ioctl is
+ * DO_NOT_SEND_CHANNEL_CHANGE_EVENT as wiphy will send channel change
+ * event as part of regulatory_hint.
+ */
+enum {
+    SEND_CHANNEL_CHANGE_EVENT = 0,
+    DO_NOT_SEND_CHANNEL_CHANGE_EVENT,
+};
 
 /*MCC Configuration parameters */
 enum {
@@ -7164,6 +7175,8 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
     eCsrBand band;
     eCsrBand currBand = eCSR_BAND_MAX;
     eCsrBand connectedBand;
+    v_U8_t ret = SEND_CHANNEL_CHANGE_EVENT;
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
 
     switch(ui_band)
     {
@@ -7213,6 +7226,16 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
 
     if (currBand != band)
     {
+        /* Return failure if current country code is world regulatory domain*/
+        if( (pMac->scan.countryCodeCurrent[0] == '0' &&
+                        pMac->scan.countryCodeCurrent[1] == '0') )
+        {
+          VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+             "%s: failed to set the band value to %u as country code is 00",
+                        __func__, band);
+             return -EAGAIN;
+        }
+
         /* Change band request received.
          * Abort pending scan requests, flush the existing scan results,
          * and change the band capability
@@ -7232,7 +7255,39 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
                         __func__, band);
              return -EINVAL;
         }
-        wlan_hdd_cfg80211_update_band(pHddCtx->wiphy, (eCsrBand)band);
+        if(currBand == eCSR_BAND_24 || currBand == eCSR_BAND_5G)
+        {
+             v_COUNTRYCODE_t curr_country;
+             curr_country[0]=pMac->scan.countryCodeCurrent[0];
+             curr_country[1]=pMac->scan.countryCodeCurrent[1];
+
+             /* As currunt band is already set to 2.4Ghz/5Ghz we dont have all channel
+              * information available in NV so to get the channel information from kernel
+              * we need to send regulatory hint for the currunt country
+              * And to set the same country again we need to set the dummy country
+              * first and then the actual country.
+              */
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+             regulatory_hint_user("00", NL80211_USER_REG_HINT_USER);
+#else
+             regulatory_hint_user("00");
+#endif
+
+             pMac->roam.configParam.fEnforceCountryCode = eANI_BOOLEAN_TRUE;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+             regulatory_hint_user(curr_country, NL80211_USER_REG_HINT_USER);
+#else
+             regulatory_hint_user(curr_country);
+#endif
+             ret = DO_NOT_SEND_CHANNEL_CHANGE_EVENT;
+        }
+        else
+        {
+           vos_update_nv_table_from_wiphy_band((void *)pHddCtx,
+                     (void *)pHddCtx->wiphy, (eCsrBand)band);
+        }
+
         hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
                            eCSR_SCAN_ABORT_DUE_TO_BAND_CHANGE);
         sme_FilterScanResults(hHal, pAdapter->sessionId);
@@ -7280,7 +7335,7 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
              }
         }
     }
-    return 0;
+    return ret;
 }
 
 int hdd_setBand_helper(struct net_device *dev, const char *command)

@@ -144,7 +144,6 @@ void csrReleaseCmdSingle(tpAniSirGlobal pMac, tSmeCmd *pCommand);
 tANI_BOOLEAN csrRoamIsValidChannel( tpAniSirGlobal pMac, tANI_U8 channel );
 void csrPruneChannelListForMode( tpAniSirGlobal pMac, tCsrChannel *pChannelList );
 
-#define CSR_IS_SOCIAL_CHANNEL(channel) (((channel) == 1) || ((channel) == 6) || ((channel) == 11) )
 
 
 
@@ -6124,14 +6123,8 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                                 continue;
 
                             /* Allow scan on valid channels only.
-                             * If it is p2p scan and valid channel list doesnt contain
-                             * social channels, enforce scan on social channels because
-                             * that is the only way to find p2p peers.
-                             * This can happen only if band is set to 5Ghz mode.
                              */
-                            if((csrRoamIsValidChannel(pMac, pSrcReq->ChannelInfo.ChannelList[index])) ||
-                               ((eCSR_SCAN_P2P_DISCOVERY == pSrcReq->requestType) &&
-                                CSR_IS_SOCIAL_CHANNEL(pSrcReq->ChannelInfo.ChannelList[index])))
+                            if ( ( csrRoamIsValidChannel(pMac, pSrcReq->ChannelInfo.ChannelList[index]) ) )
                             {
                                 if( (pSrcReq->skipDfsChnlInP2pSearch && 
                                     (NV_CHANNEL_DFS == vos_nv_getChannelEnabledState(pSrcReq->ChannelInfo.ChannelList[index])) )
@@ -6171,13 +6164,15 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                       }
                         pDstReq->ChannelInfo.numOfChannels = new_index;
 #ifdef FEATURE_WLAN_LFR
-                        if ((eCSR_SCAN_HO_BG_SCAN == pSrcReq->requestType) &&
-                                (0 == pDstReq->ChannelInfo.numOfChannels))
+                        if ( ( ( eCSR_SCAN_HO_BG_SCAN == pSrcReq->requestType ) ||
+                               ( eCSR_SCAN_P2P_DISCOVERY == pSrcReq->requestType ) ) &&
+                                ( 0 == pDstReq->ChannelInfo.numOfChannels ) )
                         {
                             /*
                              * No valid channels found in the request.
                              * Only perform scan on the channels passed
-                             * pSrcReq if it is a eCSR_SCAN_HO_BG_SCAN.
+                             * pSrcReq if it is a eCSR_SCAN_HO_BG_SCAN or
+                             * eCSR_SCAN_P2P_DISCOVERY.
                              * Passing 0 to LIM will trigger a scan on 
                              * all valid channels which is not desirable.
                              */
