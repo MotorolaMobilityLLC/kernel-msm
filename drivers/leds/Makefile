@@ -60,6 +60,7 @@ obj-$(CONFIG_LEDS_MSM_TRICOLOR)		+= leds-msm-tricolor.o
 obj-$(CONFIG_LEDS_MSM_GPIO_FLASH)	+= leds-msm-gpio-flash.o
 obj-$(CONFIG_LEDS_LM3556)		+= leds-lm3556.o
 obj-$(CONFIG_LEDS_FAN5646)		+= leds-fan5646.o
+obj-$(CONFIG_LEDS_BD65B60)		+= leds-bd65b60.o
 
 # LED SPI Drivers
 obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
