@@ -63,4 +63,8 @@ void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 void msm_isp_process_axi_irq(struct vfe_device *vfe_dev,
 	uint32_t irq_status0, uint32_t irq_status1,
 	struct msm_isp_timestamp *ts);
+
+void msm_isp_epoch_notify(struct vfe_device *vfe_dev,
+	enum msm_isp_epoch_idx epoch_idx);
+
 #endif /* __MSM_ISP_AXI_UTIL_H__ */
