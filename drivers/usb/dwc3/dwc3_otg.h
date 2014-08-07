@@ -44,6 +44,7 @@ struct dwc3_otg {
 	void __iomem		*regs;
 	struct regulator	*vbus_otg;
 	struct delayed_work	sm_work;
+	struct delayed_work	phy_susp_work;
 	struct dwc3_charger	*charger;
 	struct dwc3_ext_xceiv	*ext_xceiv;
 #define ID		0
@@ -54,6 +55,7 @@ struct dwc3_otg {
 	int			host_bus_suspend;
 	int			charger_retry_count;
 	int			vbus_retry_count;
+	atomic_t		auto_susp_enabled;
 };
 
 /**
