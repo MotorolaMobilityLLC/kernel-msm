@@ -701,10 +701,12 @@ int stm401_quickpeek_status_ack(struct stm401_data *ps_stm401,
 	struct stm401_quickpeek_message *qp_message, int ack_return);
 void stm401_quickpeek_work_func(struct work_struct *work);
 void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401);
-void stm401_vote_aod_enabled(struct stm401_data *ps_stm401, int voter,
+void stm401_vote_aod_enabled_locked(struct stm401_data *ps_stm401, int voter,
 	bool enable);
 void stm401_store_vote_aod_enabled(struct stm401_data *ps_stm401, int voter,
 	bool enable);
+void stm401_store_vote_aod_enabled_locked(struct stm401_data *ps_stm401,
+	int voter, bool enable);
 int stm401_resolve_aod_enabled_locked(struct stm401_data *ps_stm401);
 int stm401_display_handle_touch_locked(struct stm401_data *ps_stm401);
 int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
