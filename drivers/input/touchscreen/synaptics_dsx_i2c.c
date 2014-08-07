@@ -34,6 +34,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
+#include <linux/pinctrl/consumer.h>
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
 #endif
@@ -908,8 +909,8 @@ static int synaptics_dsx_ic_reset(
 		retval = -ETIMEDOUT;
 	} else {
 		retval = (int)jiffies_to_msecs(jiffies-start);
-		/* delay extra 0.5 ms to ensure 1st i2c bus access succeeds */
-		udelay(500);
+		/* insert delay to ensure 1st i2c bus access succeeds */
+		udelay(1000);
 	}
 
 	free_irq(rmi4_data->irq, &reset_semaphore);
@@ -3080,6 +3081,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		const struct i2c_device_id *dev_id)
 {
 	int retval;
+	struct pinctrl *pinctrl;
 	unsigned char attr_count;
 	struct synaptics_rmi4_data *rmi4_data;
 	struct synaptics_rmi4_device_info *rmi;
@@ -3160,6 +3162,15 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 
 	mutex_init(&(rmi4_data->rmi4_io_ctrl_mutex));
 	mutex_init(&(rmi4_data->state_mutex));
+
+	pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
+		"active");
+	if (IS_ERR(pinctrl)) {
+		long int error = PTR_ERR(pinctrl);
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: pinctrl failed err %ld\n", __func__, error);
+		goto err_input_device;
+	}
 
 	if (platform_data->gpio_config)
 		retval = platform_data->gpio_config(platform_data, true);
@@ -3662,14 +3673,21 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	}
 
 	if (!rmi4_data->touch_stopped) {
+		struct pinctrl *pinctrl;
+
+		gpio_free(platform_data->reset_gpio);
+		pinctrl = devm_pinctrl_get_select_default(
+			&rmi4_data->i2c_client->dev);
+		if (IS_ERR(pinctrl))
+			dev_err(&rmi4_data->i2c_client->dev,
+				"pinctrl failed err %ld\n", PTR_ERR(pinctrl));
+
 		if (platform_data->regulator_en) {
 			regulator_disable(rmi4_data->regulator);
 			pr_debug("touch-vdd regulator is %s\n",
 				regulator_is_enabled(rmi4_data->regulator) ?
 				"on" : "off");
 		}
-
-		gpio_free(platform_data->reset_gpio);
 
 		rmi4_data->touch_stopped = true;
 	}
@@ -3696,6 +3714,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	if (rmi4_data->touch_stopped) {
 		int retval;
 		bool wait4idle = false;
+		struct pinctrl *pinctrl;
 		const struct synaptics_dsx_platform_data *platform_data =
 						rmi4_data->board;
 
@@ -3716,9 +3735,19 @@ static int synaptics_rmi4_resume(struct device *dev)
 		if (retval == 0)
 			wait4idle = true;
 
+		pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
+			"active");
+		if (IS_ERR(pinctrl)) {
+			long int error = PTR_ERR(pinctrl);
+			dev_err(&rmi4_data->i2c_client->dev,
+				"pinctrl failed err %ld\n", error);
+		}
+
 		if (gpio_request(platform_data->reset_gpio,
 						RESET_GPIO_NAME) < 0)
 			pr_err("failed to request reset gpio\n");
+
+		gpio_direction_output(platform_data->reset_gpio, 1);
 
 		rmi4_data->touch_stopped = false;
 		/*
