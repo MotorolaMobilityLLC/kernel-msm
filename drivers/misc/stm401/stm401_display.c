@@ -503,18 +503,14 @@ int stm401_resolve_aod_enabled_locked(struct stm401_data *ps_stm401)
 	return ret;
 }
 
-void stm401_vote_aod_enabled(struct stm401_data *ps_stm401, int voter,
+void stm401_vote_aod_enabled_locked(struct stm401_data *ps_stm401, int voter,
 				    bool enable)
 {
 	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
 
 	mutex_lock(&ps_stm401->aod_enabled.vote_lock);
 
-	voter &= AOD_QP_ENABLED_VOTE_MASK;
-	if (enable)
-		ps_stm401->aod_enabled.vote |= voter;
-	else
-		ps_stm401->aod_enabled.vote &= ~voter;
+	stm401_store_vote_aod_enabled_locked(ps_stm401, voter, enable);
 
 	if (ps_stm401->aod_enabled.vote == AOD_QP_ENABLED_VOTE_MASK)
 		atomic_set(&ps_stm401->qp_enabled, 1);
@@ -530,14 +526,18 @@ void stm401_store_vote_aod_enabled(struct stm401_data *ps_stm401, int voter,
 	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
 
 	mutex_lock(&ps_stm401->aod_enabled.vote_lock);
+	stm401_store_vote_aod_enabled_locked(ps_stm401, voter, enable);
+	mutex_unlock(&ps_stm401->aod_enabled.vote_lock);
+}
 
+void stm401_store_vote_aod_enabled_locked(struct stm401_data *ps_stm401,
+	int voter, bool enable)
+{
 	voter &= AOD_QP_ENABLED_VOTE_MASK;
 	if (enable)
 		ps_stm401->aod_enabled.vote |= voter;
 	else
 		ps_stm401->aod_enabled.vote &= ~voter;
-
-	mutex_unlock(&ps_stm401->aod_enabled.vote_lock);
 }
 
 unsigned short stm401_get_interrupt_status(struct stm401_data *ps_stm401,
