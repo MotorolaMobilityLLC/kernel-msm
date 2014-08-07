@@ -1,0 +1,29 @@
+ROHM leds-bd65b60 LEDs driver is used for controlling LEDs connected
+to BD65B60GWL integrated backlight driver. The IC is connected to
+Host processor via i2C bus.
+
+Required properties:
+- compatible		: string should be "rohm,leds-bd65b60"
+- reg			: interger should be I2C address of the device
+- linux,name		: name of the led that is used in led framework
+- rohm,led1-used	: boolean use LED1 terminal
+- rohm,led2-used	: boolean use LED2 terminal
+
+Optional properties:
+- linux,default-trigger	: string trigger the led from external modules such as display
+- rohm,ovp-val		: integer over voltage protection threshold, follows enum bd65b60_ovp
+- rohm,default-on	: boolean default state of the led, should be "on" or "off"
+- rohm,init-level	: integer default level applied if default state is "on"
+- rohm,pwm-on		: boolean to enable pwm input for cabc or our own pwm device
+- rohm,pwm-period	: integer pwm period in nanoseconds if we want to control pwm device
+
+Example:
+
+bd65b60@64 {
+	compatible = "rohm,leds-bd65b60";
+	reg = <0x64>;
+	status = "okay";
+	linux,name = "lcd0:lcd-backlight";
+	linux,default-trigger = "lcd-backlight";
+	rohm,default-state = "off";
+};

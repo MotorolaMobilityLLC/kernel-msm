@@ -545,6 +545,17 @@ config LEDS_AW2013
 	  This option enables support for the AW2013 RGB LED connected
 	  through I2C. Say Y to enable support for the AW2013 LED.
 
+config LEDS_BD65B60
+	tristate "LED Driver for BD65B60"
+	depends on LEDS_CLASS
+	depends on I2C
+	help
+	  If you have a LCD backlight connected to the ROHM BD65B60,
+	  say Y here to enable this driver.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called leds-bd65b60.
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
