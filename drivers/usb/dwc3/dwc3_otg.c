@@ -23,8 +23,10 @@
 #include "dwc3_otg.h"
 #include "io.h"
 #include "xhci.h"
+#include "debug.h"
 
 #define VBUS_REG_CHECK_DELAY	(msecs_to_jiffies(1000))
+#define AUTOSUSP_EN_DELAY   (msecs_to_jiffies(5))
 #define MAX_INVALID_CHRGR_RETRY 3
 static int max_chgr_retry_count = MAX_INVALID_CHRGR_RETRY;
 module_param(max_chgr_retry_count, int, S_IRUGO | S_IWUSR);
@@ -99,7 +101,13 @@ static int dwc3_otg_set_autosuspend(struct usb_phy *phy, int enable_autosuspend)
 	struct usb_otg *otg = phy->otg;
 	struct dwc3_otg *dotg = container_of(otg, struct dwc3_otg, otg);
 
-	dwc3_otg_set_hsphy_auto_suspend(dotg, enable_autosuspend);
+	atomic_set(&dotg->auto_susp_enabled, enable_autosuspend);
+
+	if (enable_autosuspend)
+		queue_delayed_work(system_nrt_wq, &dotg->phy_susp_work,
+							AUTOSUSP_EN_DELAY);
+	else
+		dwc3_otg_set_hsphy_auto_suspend(dotg, enable_autosuspend);
 
 	return 0;
 }
@@ -110,11 +118,22 @@ static void dwc3_otg_set_hsphy_auto_suspend(struct dwc3_otg *dotg, bool susp)
 	u32 reg;
 
 	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
-	if (susp)
+	if (susp) {
 		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
-	else
+		dbg_event(0xFF, "PHY Enable Autosusp", 0);
+	} else {
 		reg &= ~(DWC3_GUSB2PHYCFG_SUSPHY);
+		dbg_event(0xFF, "PHY Disable Autosusp", 0);
+	}
 	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
+}
+
+static void dwc3_otg_phy_susp_work(struct work_struct *w)
+{
+	struct dwc3_otg *dotg = container_of(w, struct dwc3_otg,
+						phy_susp_work.work);
+	dwc3_otg_set_hsphy_auto_suspend(dotg,
+				atomic_read(&dotg->auto_susp_enabled));
 }
 
 /**
@@ -1032,6 +1051,7 @@ int dwc3_otg_init(struct dwc3 *dwc)
 
 	init_completion(&dotg->dwc3_xcvr_vbus_init);
 	INIT_DELAYED_WORK(&dotg->sm_work, dwc3_otg_sm_work);
+	INIT_DELAYED_WORK(&dotg->phy_susp_work, dwc3_otg_phy_susp_work);
 
 	ret = request_irq(dotg->irq, dwc3_otg_interrupt, IRQF_SHARED,
 				"dwc3_otg", dotg);
