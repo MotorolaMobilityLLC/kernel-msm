@@ -726,10 +726,10 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 
 		if (byte)
-			stm401_vote_aod_enabled(ps_stm401,
+			stm401_vote_aod_enabled_locked(ps_stm401,
 				AOD_QP_ENABLED_VOTE_USER, true);
 		else
-			stm401_vote_aod_enabled(ps_stm401,
+			stm401_vote_aod_enabled_locked(ps_stm401,
 				AOD_QP_ENABLED_VOTE_USER, false);
 		stm401_resolve_aod_enabled_locked(ps_stm401);
 		/* the user's vote can not fail */
