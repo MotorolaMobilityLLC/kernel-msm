@@ -321,8 +321,7 @@ static int notrace ramoops_pstore_write_buf(enum pstore_type_id type,
 	/* Out of the various dmesg dump types, ramoops is currently designed
 	 * to only store crash logs, rather than storing general kernel logs.
 	 */
-	if (reason != KMSG_DUMP_OOPS &&
-	    reason != KMSG_DUMP_PANIC)
+	if (reason != KMSG_DUMP_PANIC)
 		return -EINVAL;
 
 	/* Skip Oopes when configured to do so. */
@@ -588,10 +587,10 @@ static int ramoops_parse_dt(struct platform_device *pdev,
 	if (ret < 0)
 		return ret;
 
-	ret = of_property_read_u32(np, "ramoops-annotate-size",
+	ret = ramoops_parse_dt_size(pdev, "ramoops-annotate-size",
 				&pdata->annotate_size);
 	if (ret)
-		pr_info("annotation buffer not configured");
+		return ret;
 
 	ret = of_property_read_u32(of_node, "ecc-size", &ecc_size);
 	if (ret == 0) {
@@ -603,6 +602,11 @@ static int ramoops_parse_dt(struct platform_device *pdev,
 	} else if (ret != -EINVAL) {
 		return ret;
 	}
+
+	ret = ramoops_parse_dt_size(pdev, "ramoops-record-size",
+				&pdata->record_size);
+	if (ret)
+		return ret;
 
 	return 0;
 }
