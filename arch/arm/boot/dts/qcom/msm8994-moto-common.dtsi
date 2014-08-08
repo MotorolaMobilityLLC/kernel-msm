@@ -12,7 +12,6 @@
 
 #include "msm8994.dtsi"
 #include "msm8994-pinctrl.dtsi"
-#include "msm8994-camera-sensor-cdp.dtsi"
 
 / {
 	aliases {
@@ -567,8 +566,6 @@
 	};
 };
 
-#include "dsi-panel-sharp-dualmipi0-wqxga-video.dtsi"
-#include "dsi-panel-sharp-dualmipi1-wqxga-video.dtsi"
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
@@ -578,23 +575,9 @@
 	qcom,pins = <&gp 94>;
 };
 
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_video_0>;
-	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active>;
-	pinctrl-1 = <&mdss_dsi_suspend>;
-	qcom,dsi-panel-bias-vreg;
-	qcom,platform-reset-gpio = <&msm_gpio 94 0>;
-};
-
-&mdss_dsi1 {
-	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_video_1>;
-};
-
-&dsi_dual_sharp_video_0 {
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
+&pmx_mdss_te {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 10>;
 };
 
 &i2c_2 {
@@ -796,6 +779,14 @@
 				<84 512 0 0>,
 				<84 512 500 800>;
 	};
+
+	vbat_disp_vreg: vbat_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat_disp";
+		gpio = <&msm_gpio 63 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
 };
 
 &pm8994_gpios {
@@ -870,6 +861,14 @@
 		qcom,master-en = <1>;
 	};
 
+	gpio@cd00 { /* GPIO 14 */
+		qcom,mode = <1>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <1>;     /* sel = 1 is high */
+		qcom,invert = <0>;      /* need invert = 0 */
+		qcom,master-en = <1>;
+	};
+
 	gpio@ce00 { /* GPIO 15 - DIVCLK1_CODEC */
 		qcom,mode = <1>;
 		qcom,output-type = <0>;
@@ -906,7 +905,6 @@
 		qcom,src-sel = <0>;
 		qcom,master-en = <1>;
 	};
-
 };
 
 &pm8994_mpps {
