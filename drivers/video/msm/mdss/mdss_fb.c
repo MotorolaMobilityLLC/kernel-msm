@@ -769,6 +769,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	if (mfd->mdp.splash_init_fnc)
 		mfd->mdp.splash_init_fnc(mfd);
 
+	mfd->doze_mode = true;
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
 	return rc;
