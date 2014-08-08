@@ -2729,7 +2729,11 @@ int mdss_mdp_footswitch_ctrl_idle_pc(int on, struct device *dev)
 			return rc;
 		}
 		mdss_hw_init(mdata);
-		mdss_iommu_ctrl(0);
+		rc = mdss_iommu_ctrl(0);
+		if (IS_ERR_VALUE(rc)) {
+			pr_err("iommu dettach failed ret=%d\n", rc);
+			return rc;
+		}
 		mdata->idle_pc = false;
 	} else {
 		mdata->idle_pc = true;
