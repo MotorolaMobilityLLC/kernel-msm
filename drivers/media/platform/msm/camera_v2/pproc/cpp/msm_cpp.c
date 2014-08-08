@@ -1629,6 +1629,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			kfree(event_qcmd);
 		} else {
 			pr_err("Empty command list\n");
+			mutex_unlock(&cpp_dev->mutex);
 			return -EFAULT;
 		}
 		break;
