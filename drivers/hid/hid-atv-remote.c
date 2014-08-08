@@ -17,6 +17,7 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/hid.h>
+#include <linux/hiddev.h>
 #include <linux/hardirq.h>
 #include <linux/jiffies.h>
 #include <linux/slab.h>
@@ -33,6 +34,7 @@
 #include <sound/pcm.h>
 
 #include "hid-ids.h"
+#include "sbcdec.h"
 
 MODULE_LICENSE("GPL v2");
 
@@ -53,7 +55,9 @@ static struct switch_dev h2w_switch = {
 	.name = "h2w",
 };
 
-#define AUDIO_REPORT_ID 30
+#define ADPCM_AUDIO_REPORT_ID 30
+
+#define MSBC_AUDIO_REPORT_ID 0xF7
 
 /* defaults */
 #define MAX_PCM_DEVICES     1
@@ -78,13 +82,56 @@ static struct switch_dev h2w_switch = {
 #define MAX_PERIOD_SIZE      (MAX_PCM_BUFFER_SIZE / 8)
 #define USE_FORMATS          (SNDRV_PCM_FMTBIT_S16_LE)
 
-struct fifo_packet {
-	uint8_t  num_bytes;
-	/* Expect no more than 20 bytes. But align struct size to power of 2. */
-	uint8_t  raw_data[31];
+#define PACKET_TYPE_ADPCM 0
+#define PACKET_TYPE_MSBC  1
+
+/* We support mSBC that is packetized using a H2 header with a 12-bit
+ * synchronization word and a 2-bit sequence number (SN0, SN1).
+ * The sequence number is duplicated, so each pair of bits in
+ * the sequence number shall be always 00 or 11 (see 5.7.2 of
+ * HFP_SPEC_V16)
+ *
+ *  0      70      7
+ * b100000000001XXYY - where X is SN0 repeated and Y is SN1 repeated
+ *
+ * So the sequence numbers are:
+ * b1000000000010000 - 0x01 0x08
+ * b1000000000011100 - 0x01 0x38
+ * b1000000000010011 - 0x01 0xc8
+ * b1000000000011111 - 0x01 0xf8
+ *
+ * Each mSBC frame is split over 3 BLE frames, where each BLE packet has
+ * a 20 byte payload.
+ * The first BLE packet contains the H2 header, then the two byte
+ * SBC header, and then 16 bytes of encoded audio data.
+ * The second BLE packet contains 20 bytes of encoded audio data.
+ * The third/last BLE packet contains 19 bytes of encoded audio data and one
+ * 0x00 byte of padding.
+ *
+ * The mSBC decoder works on a mSBC frame, including the two byte header,
+ * so we have to accumulate 3 BLE packets before sending it to the decoder.
+ */
+#define BYTES_PER_MSBC_FRAME (2 + 16 + 20 + 19)
+#define NUM_SEQUENCES 4
+const uint8_t mSBC_sequence_table[NUM_SEQUENCES] = {0x08, 0x38, 0xc8, 0xf8};
+#define BLE_PACKETS_PER_MSBC_FRAME 3
+const uint8_t mSBC_start_offset_in_packet[BLE_PACKETS_PER_MSBC_FRAME] = {
+	2, 0, 0
+};
+const uint8_t mSBC_start_offset_in_buffer[BLE_PACKETS_PER_MSBC_FRAME] = {
+	0, 18, 38
+};
+const uint8_t mSBC_bytes_in_packet[BLE_PACKETS_PER_MSBC_FRAME] = {
+	18, 20, 19
 };
 
-/* Actual minimum is 40 but we want a power of 2. */
+struct fifo_packet {
+	uint8_t  type;
+	uint8_t  num_bytes;
+	/* Expect no more than 20 bytes. But align struct size to power of 2. */
+	uint8_t  raw_data[30];
+};
+
 #define MAX_SAMPLES_PER_PACKET 128
 #define MIN_SAMPLES_PER_PACKET_P2  32
 #define MAX_PACKETS_PER_BUFFER  \
@@ -131,11 +178,15 @@ MODULE_PARM_DESC(pcm_substreams,
  */
 #define DEBUG_WITH_MISC_DEVICE 1
 
+/* Debug feature to trace audio packets being received */
+#define DEBUG_AUDIO_RECEPTION 1
+
+/* Debug feature to trace HID reports we see */
+#define DEBUG_HID_RAW_INPUT 0
+
 #if (DEBUG_WITH_MISC_DEVICE == 1)
 static int16_t large_pcm_buffer[1280*1024];
-static uint8_t raw_adpcm_buffer[640*1024];
 static int large_pcm_index;
-static int raw_adpcm_index;
 
 static struct miscdevice pcm_dev_node;
 static int pcm_dev_open(struct inode *inode, struct file *file)
@@ -152,7 +203,7 @@ static int pcm_dev_release(struct inode *inode, struct file *file)
 }
 
 static ssize_t pcm_dev_read(struct file *file, char __user *buffer,
-			size_t count, loff_t *ppos)
+			    size_t count, loff_t *ppos)
 {
 	const uint8_t *data = (const uint8_t *)large_pcm_buffer;
 	size_t bytes_left = large_pcm_index * sizeof(int16_t) - *ppos;
@@ -173,6 +224,8 @@ static const struct file_operations pcm_fops = {
 	.read = pcm_dev_read,
 };
 
+static uint8_t raw_adpcm_buffer[640*1024];
+static int raw_adpcm_index;
 static struct miscdevice adpcm_dev_node;
 static int adpcm_dev_open(struct inode *inode, struct file *file)
 {
@@ -206,6 +259,43 @@ static const struct file_operations adpcm_fops = {
 	.release = adpcm_dev_release,
 	.llseek = no_llseek,
 	.read = adpcm_dev_read,
+};
+
+static uint8_t raw_mSBC_buffer[640*1024];
+static int raw_mSBC_index;
+static struct miscdevice mSBC_dev_node;
+static int mSBC_dev_open(struct inode *inode, struct file *file)
+{
+	/* nothing special to do here right now. */
+	return 0;
+}
+
+static int mSBC_dev_release(struct inode *inode, struct file *file)
+{
+	/* reset for next */
+	raw_mSBC_index = 0;
+	return 0;
+}
+
+static ssize_t mSBC_dev_read(struct file *file, char __user *buffer,
+			  size_t count, loff_t *ppos)
+{
+	size_t bytes_left = raw_mSBC_index - *ppos;
+	if (count > bytes_left)
+		count = bytes_left;
+	if (copy_to_user(buffer, &raw_mSBC_buffer[*ppos], count))
+		return -EFAULT;
+
+	*ppos += count;
+	return count;
+}
+
+static const struct file_operations mSBC_fops = {
+	.owner = THIS_MODULE,
+	.open = mSBC_dev_open,
+	.release = mSBC_dev_release,
+	.llseek = no_llseek,
+	.read = mSBC_dev_read,
 };
 
 #endif
@@ -244,16 +334,20 @@ struct snd_atvr {
 	bool timer_enabled;
 	uint timer_callback_count;
 
-	/* ADPCM Decoder */
+	int16_t peak_level;
 	struct simple_atomic_fifo fifo_controller;
 	struct fifo_packet *fifo_packet_buffer;
-	int16_t audio_output[MAX_SAMPLES_PER_PACKET];
-	int16_t peak_level;
 
 	/* IMA/DVI ADPCM Decoder */
 	int pcm_value;
 	int step_index;
 	bool first_packet;
+
+	/* mSBC decoder */
+	uint8_t mSBC_frame_data[BYTES_PER_MSBC_FRAME];
+	int16_t audio_output[MAX_SAMPLES_PER_PACKET];
+	uint8_t packet_in_frame;
+	uint8_t seq_index;
 
 	/*
 	 * Write_index is the circular buffer position.
@@ -508,6 +602,118 @@ static int snd_atvr_decode_adpcm_packet(
 	return num_bytes * 2;
 }
 
+/*
+ * Decode an mSBC packet and write the PCM data into a circular buffer.
+ * mSBC is supposed to be 16KHz but this is a 8KHz variant version.
+ */
+#define BLOCKS_PER_PACKET 15
+#define NUM_BITS 26
+
+static int snd_atvr_decode_8KHz_mSBC_packet(
+			struct snd_pcm_substream *substream,
+			const uint8_t *sbc_input,
+			size_t num_bytes
+			)
+{
+	uint num_samples = 0;
+	uint remaining;
+	uint i;
+	uint32_t pos;
+	uint read_index;
+	uint write_index;
+	struct snd_atvr *atvr_snd = snd_pcm_substream_chip(substream);
+
+	/* Decode mSBC data to PCM. */
+#if (DEBUG_WITH_MISC_DEVICE == 1)
+	for (i = 0; i < num_bytes; i++) {
+		if (raw_mSBC_index < ARRAY_SIZE(raw_mSBC_buffer))
+			raw_mSBC_buffer[raw_mSBC_index++] = sbc_input[i];
+		else
+			break;
+	}
+#endif
+
+	if (atvr_snd->packet_in_frame == 0) {
+		if (sbc_input[0] != 0x01) {
+			pr_err("%s: sync word not found, got 0x%02x instead\n",
+			       __func__, sbc_input[0]);
+			return 0;
+		}
+		if (sbc_input[1] != mSBC_sequence_table[atvr_snd->seq_index]) {
+			snd_atvr_log("sequence_num err, 0x%02x != 0x%02x\n",
+				     sbc_input[1],
+				     mSBC_sequence_table[atvr_snd->seq_index]);
+			return 0;
+		}
+		atvr_snd->seq_index++;
+		if (atvr_snd->seq_index == NUM_SEQUENCES)
+			atvr_snd->seq_index = 0;
+	}
+	write_index = mSBC_start_offset_in_buffer[atvr_snd->packet_in_frame];
+	read_index = mSBC_start_offset_in_packet[atvr_snd->packet_in_frame];
+	memcpy(&atvr_snd->mSBC_frame_data[write_index],
+	       &sbc_input[read_index],
+	       mSBC_bytes_in_packet[atvr_snd->packet_in_frame]);
+	atvr_snd->packet_in_frame++;
+	if (atvr_snd->packet_in_frame < BLE_PACKETS_PER_MSBC_FRAME) {
+		/* we don't have a complete mSBC frame yet, just return */
+		return 0;
+	}
+	/* reset for next frame */
+	atvr_snd->packet_in_frame = 0;
+
+	/* we have a complete mSBC frame, send it to the decoder */
+	num_samples = sbc_decode(BLOCKS_PER_PACKET, NUM_BITS,
+				 atvr_snd->mSBC_frame_data,
+				 BYTES_PER_MSBC_FRAME,
+				 &atvr_snd->audio_output[0]);
+
+	/* Write PCM data to the buffer. */
+	pos = atvr_snd->write_index;
+	read_index = 0;
+	if ((pos + num_samples) > atvr_snd->frames_per_buffer) {
+		for (i = pos; i < atvr_snd->frames_per_buffer; i++) {
+			int16_t sample = atvr_snd->audio_output[read_index++];
+			if (sample > atvr_snd->peak_level)
+				atvr_snd->peak_level = sample;
+#if (DEBUG_WITH_MISC_DEVICE == 1)
+			if (large_pcm_index < ARRAY_SIZE(large_pcm_buffer))
+				large_pcm_buffer[large_pcm_index++] = sample;
+#endif
+			atvr_snd->pcm_buffer[i] = sample;
+		}
+
+		remaining = (pos + num_samples) - atvr_snd->frames_per_buffer;
+		for (i = 0; i < remaining; i++) {
+			int16_t sample = atvr_snd->audio_output[read_index++];
+			if (sample > atvr_snd->peak_level)
+				atvr_snd->peak_level = sample;
+#if (DEBUG_WITH_MISC_DEVICE == 1)
+			if (large_pcm_index < ARRAY_SIZE(large_pcm_buffer))
+				large_pcm_buffer[large_pcm_index++] = sample;
+#endif
+
+			atvr_snd->pcm_buffer[i] = sample;
+		}
+
+	} else {
+		for (i = 0; i < num_samples; i++) {
+			int16_t sample = atvr_snd->audio_output[read_index++];
+			if (sample > atvr_snd->peak_level)
+				atvr_snd->peak_level = sample;
+#if (DEBUG_WITH_MISC_DEVICE == 1)
+			if (large_pcm_index < ARRAY_SIZE(large_pcm_buffer))
+				large_pcm_buffer[large_pcm_index++] = sample;
+#endif
+			atvr_snd->pcm_buffer[i + pos] = sample;
+		}
+	}
+
+	snd_atvr_bump_write_index(substream, num_samples);
+
+	return num_samples;
+}
+
 /**
  * This is called by the event filter when it gets an audio packet
  * from the AndroidTV remote.  It writes the packet into a FIFO
@@ -516,7 +722,7 @@ static int snd_atvr_decode_adpcm_packet(
  * @param num_bytes how many bytes in raw_input
  * @return number of samples decoded or negative error.
  */
-static void audio_dec(const uint8_t *raw_input, size_t num_bytes)
+static void audio_dec(const uint8_t *raw_input, int type, size_t num_bytes)
 {
 	bool dropped_packet = false;
 	struct snd_pcm_substream *substream;
@@ -525,7 +731,7 @@ static void audio_dec(const uint8_t *raw_input, size_t num_bytes)
 	substream = s_substream_for_btle;
 	if (substream != NULL) {
 		struct snd_atvr *atvr_snd = snd_pcm_substream_chip(substream);
-		/* Write ADPCM data to a FIFO for decoding by the timer task. */
+		/* Write data to a FIFO for decoding by the timer task. */
 		uint writable = atomic_fifo_available_to_write(
 			&atvr_snd->fifo_controller);
 		if (writable > 0) {
@@ -533,6 +739,7 @@ static void audio_dec(const uint8_t *raw_input, size_t num_bytes)
 				&atvr_snd->fifo_controller);
 			struct fifo_packet *packet =
 				&atvr_snd->fifo_packet_buffer[fifo_index];
+			packet->type = type;
 			packet->num_bytes = (uint8_t)num_bytes;
 			memcpy(packet->raw_data, raw_input, num_bytes);
 			atomic_fifo_advance_write(
@@ -622,10 +829,17 @@ static uint snd_atvr_decode_from_fifo(struct snd_pcm_substream *substream)
 			&atvr_snd->fifo_controller);
 		struct fifo_packet *packet =
 			&atvr_snd->fifo_packet_buffer[fifo_index];
-
-		snd_atvr_decode_adpcm_packet(substream,
-					     packet->raw_data,
-					     packet->num_bytes);
+		if (packet->type == PACKET_TYPE_ADPCM) {
+			snd_atvr_decode_adpcm_packet(substream,
+						     packet->raw_data,
+						     packet->num_bytes);
+		} else if (packet->type == PACKET_TYPE_MSBC) {
+			snd_atvr_decode_8KHz_mSBC_packet(substream,
+							 packet->raw_data,
+							 packet->num_bytes);
+		} else {
+			pr_err("Unknown packet type %d\n", packet->type);
+		}
 
 		atomic_fifo_advance_read(&atvr_snd->fifo_controller, 1);
 	}
@@ -775,6 +989,7 @@ static int snd_atvr_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 #if (DEBUG_WITH_MISC_DEVICE == 1)
 		large_pcm_index = 0;
 		raw_adpcm_index = 0;
+		raw_mSBC_index = 0;
 #endif
 		packet_counter = 0;
 		atvr_snd->peak_level = -32768;
@@ -785,6 +1000,16 @@ static int snd_atvr_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		atvr_snd->step_index = 0;
 		atvr_snd->pcm_value = 0;
 		atvr_snd->first_packet = true;
+
+		/* mSBC decoder */
+		atvr_snd->packet_in_frame = 0;
+		/* unclear whether the remote is restarting the sequence
+		 * index for each session or not.  either way I seem
+		 * to see sync word errors on subsequent sessions, but
+		 * that's generally okay because it's just the first
+		 * couple of mSBC frames which is usually silence.
+		 */
+		atvr_snd->seq_index = 0;
 
 		snd_atvr_timer_start(substream);
 		 /* Enables callback from BTLE driver. */
@@ -1080,11 +1305,38 @@ __nodev:
 static int atvr_raw_event(struct hid_device *hdev, struct hid_report *report,
 	u8 *data, int size)
 {
-	if (report->id == AUDIO_REPORT_ID) {
+#if (DEBUG_HID_RAW_INPUT == 1)
+	pr_info("%s: report->id = 0x%x, size = %d\n",
+		__func__, report->id, size);
+	if (size < 20) {
+		int i;
+		for (i = 1; i < size; i++) {
+			pr_info("data[%d] = 0x%02x\n", i, data[i]);
+		}
+	}
+#endif
+	if (report->id == ADPCM_AUDIO_REPORT_ID) {
 		/* send the data, minus the report-id in data[0], to the
-		 * alsa audio decoder driver
+		 * alsa audio decoder driver for ADPCM
 		 */
-		audio_dec(&data[1], size - 1);
+#if (DEBUG_AUDIO_RECEPTION == 1)
+		if (packet_counter == 0) {
+			snd_atvr_log("first ADPCM packet received\n");
+		}
+#endif
+		audio_dec(&data[1], PACKET_TYPE_ADPCM, size - 1);
+		/* we've handled the event */
+		return 1;
+	} else if (report->id == MSBC_AUDIO_REPORT_ID) {
+		/* send the data, minus the report-id in data[0], to the
+		 * alsa audio decoder for mSBC
+		 */
+#if (DEBUG_AUDIO_RECEPTION == 1)
+		if (packet_counter == 0) {
+			snd_atvr_log("first MSBC packet received\n");
+		}
+#endif
+		audio_dec(&data[1], PACKET_TYPE_MSBC, size - 1);
 		/* we've handled the event */
 		return 1;
 	}
@@ -1102,7 +1354,8 @@ static int atvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	 */
 	pr_info("%s: hdev->name = %s, vendor_id = %d, product_id = %d\n", __func__,
 		hdev->name, hdev->vendor, hdev->product);
-	if (strcmp(hdev->name, "ADT-1_Remote")) {
+	if (strcmp(hdev->name, "ADT-1_Remote") &&
+	    strcmp(hdev->name, "Spike")) {
 		ret = -ENODEV;
 		goto err_match;
 	}
@@ -1192,6 +1445,7 @@ static int atvr_init(void)
 	else
 		pr_info("%s: succeeded creating misc device %s\n",
 			__func__, pcm_dev_node.name);
+
 	adpcm_dev_node.minor = MISC_DYNAMIC_MINOR;
 	adpcm_dev_node.name = "snd_atvr_adpcm";
 	adpcm_dev_node.fops = &adpcm_fops;
@@ -1202,6 +1456,17 @@ static int atvr_init(void)
 	else
 		pr_info("%s: succeeded creating misc device %s\n",
 			__func__, adpcm_dev_node.name);
+
+	mSBC_dev_node.minor = MISC_DYNAMIC_MINOR;
+	mSBC_dev_node.name = "snd_atvr_mSBC";
+	mSBC_dev_node.fops = &mSBC_fops;
+	ret = misc_register(&mSBC_dev_node);
+	if (ret)
+		pr_err("%s: failed to create mSBC misc device %d\n",
+		       __func__, ret);
+	else
+		pr_info("%s: succeeded creating misc device %s\n",
+			__func__, mSBC_dev_node.name);
 #endif
 
 	return ret;
@@ -1210,6 +1475,7 @@ static int atvr_init(void)
 static void atvr_exit(void)
 {
 #if (DEBUG_WITH_MISC_DEVICE == 1)
+	misc_deregister(&mSBC_dev_node);
 	misc_deregister(&adpcm_dev_node);
 	misc_deregister(&pcm_dev_node);
 #endif
