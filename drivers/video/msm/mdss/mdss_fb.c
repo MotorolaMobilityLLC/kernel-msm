@@ -359,9 +359,10 @@ static ssize_t mdss_mdp_show_blank_event(struct device *dev,
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
 	int ret;
 
-	pr_debug("fb%d panel_power_on = %d\n", mfd->index, mfd->panel_power_on);
+	pr_debug("fb%d panel_power_on = %d\n", mfd->index,
+		mfd->quickdraw_in_progress ? 0 : mfd->panel_power_on);
 	ret = scnprintf(buf, PAGE_SIZE, "panel_power_on = %d\n",
-						mfd->panel_power_on);
+		mfd->quickdraw_in_progress ? 0 : mfd->panel_power_on);
 
 	return ret;
 }
