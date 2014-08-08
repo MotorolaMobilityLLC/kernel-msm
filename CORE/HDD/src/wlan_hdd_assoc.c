@@ -814,6 +814,12 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
         pHddCtx->isAmpAllowed = VOS_TRUE;
     }
 
+    /* Need to apply spin lock before decreasing active sessions
+     * as there can be chance for double decrement if context switch
+     * Calls wlan_hdd_disconnect.
+     */
+
+    spin_lock_bh(&pAdapter->lock_for_active_session);
     if ( eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState )
     {
        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -824,11 +830,13 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     else if (eConnectionState_Associated == pHddStaCtx->conn_info.connState)
     {
        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                   "%s: Set HDD connState to eConnectionState_Disconnecting from %d ",
-                   __func__, pHddStaCtx->conn_info.connState);
+               FL(" Set HDD connState to eConnectionState_Disconnecting from %d "),
+                       pHddStaCtx->conn_info.connState);
        hdd_connSetConnectionState( pHddStaCtx, eConnectionState_Disconnecting );
        wlan_hdd_decr_active_session(pHddCtx, pAdapter->device_mode);
     }
+    spin_unlock_bh(&pAdapter->lock_for_active_session);
+
     hdd_clearRoamProfileIe( pAdapter );
 
     hdd_wmm_init( pAdapter );
