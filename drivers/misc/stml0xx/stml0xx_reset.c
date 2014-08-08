@@ -144,6 +144,10 @@ int stml0xx_reset_and_init(void)
 		ret_err = err;
 	}
 
+	err = stml0xx_led_set(stml0xx_misc_data);
+	if (err < 0)
+		ret_err =  err;
+
 	/* sending reset to slpc hal */
 	stml0xx_ms_data_buffer_write(stml0xx_misc_data, DT_RESET, NULL, 0);
 

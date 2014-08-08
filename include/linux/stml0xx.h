@@ -19,6 +19,13 @@
 #ifndef __STML0XX_H__
 #define __STML0XX_H__
 
+#include <linux/cdev.h>
+#include <linux/irq.h>
+#include <linux/leds.h>
+#include <linux/module.h>
+#include <linux/switch.h>
+#include <linux/wakelock.h>
+
 /* Log macros */
 #define ENABLE_VERBOSE_LOGGING 1
 
@@ -328,6 +335,8 @@ struct stm_response {
 
 #define AP_POSIX_TIME                   0x10
 
+#define LED_NOTIF_CONTROL               0X11
+
 #define ACCEL_UPDATE_RATE               0x16
 #define MAG_UPDATE_RATE                 0x17
 #define PRESSURE_UPDATE_RATE            0x18
@@ -595,6 +604,13 @@ struct stml0xx_data {
 
 	bool is_suspended;
 	bool pending_wake_work;
+
+	struct led_classdev led_cdev;
+	unsigned int led_rgb;
+	unsigned int led_ms_on;
+	unsigned int led_ms_off;
+	unsigned int led_ramp_up;
+	unsigned int led_ramp_down;
 };
 
 /* per algo config, request, and event registers */
@@ -611,6 +627,9 @@ struct stml0xx_algo_requst_t {
 	char size;
 	char data[ALGO_RQST_DATA_SIZE];
 };
+
+#define STML0XX_LED_NAME "rgb"
+extern struct attribute_group stml0xx_notification_attribute_group;
 
 irqreturn_t stml0xx_isr(int irq, void *dev);
 void stml0xx_irq_work_func(struct work_struct *work);
@@ -670,6 +689,8 @@ int stml0xx_boot_flash_erase(void);
 int stml0xx_get_version(struct stml0xx_data *ps_stml0xx);
 int switch_stml0xx_mode(enum stm_mode mode);
 int stml0xx_bootloadermode(struct stml0xx_data *ps_stml0xx);
+
+int stml0xx_led_set(struct stml0xx_data *ps_stml0xx);
 
 extern struct stml0xx_data *stml0xx_misc_data;
 
