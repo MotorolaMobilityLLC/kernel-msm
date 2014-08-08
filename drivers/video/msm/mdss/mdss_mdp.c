@@ -670,37 +670,6 @@ unsigned long mdss_mdp_get_clk_rate(u32 clk_idx)
 	return clk_rate;
 }
 
-int mdss_iommu_ctrl(int enable)
-{
-	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
-	int rc = 0;
-
-	mutex_lock(&mdp_iommu_lock);
-	pr_debug("%pS: enable %d mdata->iommu_ref_cnt %d\n",
-		__builtin_return_address(0), enable, mdata->iommu_ref_cnt);
-
-	if (enable) {
-
-		if (mdata->iommu_ref_cnt == 0)
-			rc = mdss_iommu_attach(mdata);
-		mdata->iommu_ref_cnt++;
-	} else {
-		if (mdata->iommu_ref_cnt) {
-			mdata->iommu_ref_cnt--;
-			if (mdata->iommu_ref_cnt == 0)
-				rc = mdss_iommu_dettach(mdata);
-		} else {
-			pr_err("unbalanced iommu ref\n");
-		}
-	}
-	mutex_unlock(&mdp_iommu_lock);
-
-	if (IS_ERR_VALUE(rc))
-		return rc;
-	else
-		return mdata->iommu_ref_cnt;
-}
-
 /**
  * mdss_bus_bandwidth_ctrl() -- place bus bandwidth request
  * @enable:	value of enable or disable
@@ -710,16 +679,27 @@ int mdss_iommu_ctrl(int enable)
  * Bus bandwidth is required by mdp.For dsi, it only requires to send
  * dcs coammnd. It returns error if bandwidth request fails.
  */
-void mdss_bus_bandwidth_ctrl(int enable)
+int mdss_bus_bandwidth_ctrl(int enable)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	static int bus_bw_cnt;
 	int changed = 0;
+	int rc = 0;
 
 	mutex_lock(&bus_bw_lock);
 	if (enable) {
-		if (bus_bw_cnt == 0)
+		if (bus_bw_cnt == 0) {
 			changed++;
+			if (!mdata->handoff_pending) {
+				rc = mdss_iommu_attach(mdata);
+				if (rc) {
+					pr_err("iommu attach failed rc=%d\n",
+									rc);
+					goto end;
+				}
+			}
+		}
+
 		bus_bw_cnt++;
 	} else {
 		if (bus_bw_cnt) {
@@ -738,6 +718,7 @@ void mdss_bus_bandwidth_ctrl(int enable)
 		if (!enable) {
 			msm_bus_scale_client_update_request(
 				mdata->bus_hdl, 0);
+			mdss_iommu_dettach(mdata);
 			pm_runtime_put(&mdata->pdev->dev);
 		} else {
 			pm_runtime_get_sync(&mdata->pdev->dev);
@@ -746,7 +727,9 @@ void mdss_bus_bandwidth_ctrl(int enable)
 		}
 	}
 
+end:
 	mutex_unlock(&bus_bw_lock);
+	return rc;
 }
 EXPORT_SYMBOL(mdss_bus_bandwidth_ctrl);
 
@@ -754,7 +737,7 @@ void mdss_mdp_clk_ctrl(int enable, int isr)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	static int mdp_clk_cnt;
-	int changed = 0;
+	int changed = 0, rc;
 
 	mutex_lock(&mdp_clk_lock);
 	if (enable) {
@@ -787,7 +770,9 @@ void mdss_mdp_clk_ctrl(int enable, int isr)
 		if (mdata->vsync_ena)
 			mdss_mdp_clk_update(MDSS_CLK_MDP_VSYNC, enable);
 
-		mdss_bus_bandwidth_ctrl(enable);
+		rc = mdss_bus_bandwidth_ctrl(enable);
+		if (rc)
+			pr_err("bus bandwidth control failed rc=%d", rc);
 
 		if (!enable)
 			pm_runtime_put(&mdata->pdev->dev);
@@ -878,6 +863,7 @@ int mdss_iommu_attach(struct mdss_data_type *mdata)
 	struct mdss_iommu_map_type *iomap;
 	int i, rc = 0;
 
+	mutex_lock(&mdp_iommu_lock);
 	MDSS_XLOG(mdata->iommu_attached);
 
 	if (mdata->iommu_attached) {
@@ -908,6 +894,8 @@ int mdss_iommu_attach(struct mdss_data_type *mdata)
 
 	mdata->iommu_attached = true;
 end:
+	mutex_unlock(&mdp_iommu_lock);
+
 	return rc;
 }
 
@@ -917,10 +905,12 @@ int mdss_iommu_dettach(struct mdss_data_type *mdata)
 	struct mdss_iommu_map_type *iomap;
 	int i;
 
+	mutex_lock(&mdp_iommu_lock);
 	MDSS_XLOG(mdata->iommu_attached);
 
 	if (!mdata->iommu_attached) {
 		pr_debug("mdp iommu already dettached\n");
+		mutex_unlock(&mdp_iommu_lock);
 		return 0;
 	}
 
@@ -937,6 +927,7 @@ int mdss_iommu_dettach(struct mdss_data_type *mdata)
 	}
 
 	mdata->iommu_attached = false;
+	mutex_unlock(&mdp_iommu_lock);
 
 	return 0;
 }
@@ -2671,6 +2662,7 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 		mdata->fs_ena = true;
 	} else {
 		pr_debug("Disable MDP FS\n");
+		mdss_iommu_dettach(mdata);
 		if (mdata->fs_ena) {
 			regulator_disable(mdata->fs);
 			if (!mdata->idle_pc) {
@@ -2700,24 +2692,20 @@ int mdss_mdp_footswitch_ctrl_idle_pc(int on, struct device *dev)
 	pr_debug("called on=%d\n", on);
 	if (on) {
 		pm_runtime_get_sync(dev);
-		rc = mdss_iommu_ctrl(1);
-		if (IS_ERR_VALUE(rc)) {
+		rc = mdss_iommu_attach(mdata);
+		if (rc) {
 			pr_err("mdss iommu attach failed rc=%d\n", rc);
-			return rc;
+			goto end;
 		}
 		mdss_hw_init(mdata);
-		rc = mdss_iommu_ctrl(0);
-		if (IS_ERR_VALUE(rc)) {
-			pr_err("iommu dettach failed ret=%d\n", rc);
-			return rc;
-		}
 		mdata->idle_pc = false;
 	} else {
 		mdata->idle_pc = true;
 		pm_runtime_put_sync(dev);
 	}
 
-	return 0;
+end:
+	return rc;
 }
 
 int mdss_mdp_secure_display_ctrl(unsigned int enable)
