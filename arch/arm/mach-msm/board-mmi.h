@@ -80,7 +80,13 @@ struct mmi_unit_info {
 	char baseband[BASEBAND_MAX_LEN+1];
 	char device[DEVICE_MAX_LEN+1];
 	uint32_t radio;
+	uint32_t pureason;
 };
+
+/* Function that sets the modem reset value in the SMEM location
+			 * where mmi_unit_info is stored.
+ */
+void mmi_set_pureason(uint32_t val);
 
 extern struct msm_camera_sensor_info msm_camera_sensor_s5k5b3g_data;
 extern struct msm_camera_sensor_info msm_camera_sensor_ov8835_data;
