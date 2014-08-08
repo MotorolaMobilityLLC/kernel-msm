@@ -2503,7 +2503,7 @@ static void ResumeCalCap(struct work_struct *dat)
 	 //Hank: need calculate capacity & temperature monitor+++
 	balance_this->NeedCalCap = true;
 	//Hank: need calculate capacity & temperature monitor--- 
-        pr_debug("[Bat][SER]%s(): queue BatteryServiceUpdateWorker with calculate capacity\n",__func__);  
+        printk("[Bat][SER]%s(): queue BatteryServiceUpdateWorker with calculate capacity\n",__func__);  
         queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
                                &balance_this->BatteryServiceUpdateWorker,\
                                0 * HZ);
@@ -2517,9 +2517,6 @@ static void ResumeCalCap(struct work_struct *dat)
 	balance_this->NeedCalCap = false;
 	  //Hank: temperature monitor only---
         pr_debug("[Bat][Ser]%s queue BatteryServiceUpdateWorker without calculate capacity\n",__func__);     
-        queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
-                               &balance_this->BatteryServiceUpdateWorker,\
-                               0 * HZ);
    }
    pr_debug("[BAT][SER]:resume queue---\n");
 //Eason resume always calculate capacity no matter if in   Pad or CableIn or BatLow---		
@@ -3060,7 +3057,7 @@ static void AXC_BatteryService_resume(struct AXI_BatteryServiceFacade *bat,int d
 	}
 #endif		
 
-	schedule_delayed_work(&_this->ResumeWorker,1*HZ);
+	schedule_delayed_work(&_this->ResumeWorker,0*HZ);
 //	wake_lock_timeout(&_this->resume_wake_lock,2* HZ);
 
 	if( false == reportRtcReady()){
