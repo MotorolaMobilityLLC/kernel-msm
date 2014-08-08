@@ -33,6 +33,8 @@
 #include "modem_notifier.h"
 #include "ramdump.h"
 #include "modem_coredump.h"
+#include "board-mmi.h"
+#include <asm/bootinfo.h>
 
 static int crash_shutdown;
 
@@ -44,6 +46,7 @@ static void log_modem_sfr(void)
 {
 	u32 size;
 	char *smem_reason, reason[MAX_SSR_REASON_LEN];
+	mmi_set_pureason(PU_REASON_MODEM_RESET);
 
 	smem_reason = smem_get_entry(SMEM_SSR_REASON_MSS0, &size);
 	if (!smem_reason || !size) {
