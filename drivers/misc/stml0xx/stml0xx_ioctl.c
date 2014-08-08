@@ -419,6 +419,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Set algo req, algo idx: %d, len: %u", algo_idx, len);
 		if (algo_idx < STML0XX_NUM_ALGOS) {
+			buf[0] = stml0xx_algo_info[algo_idx].req_register;
 			dev_dbg(&stml0xx_misc_data->spi->dev, "Register: 0x%x",
 				stml0xx_algo_info[algo_idx].req_register);
 		} else {
@@ -433,7 +434,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			err = -EFAULT;
 			break;
 		}
-		if (copy_from_user(&buf[1], argp + 2 * sizeof(unsigned char)
+		if (copy_from_user(buf, argp + 2 * sizeof(unsigned char)
 				   + sizeof(len), len)) {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Set algo req copy req info returned error");
@@ -441,7 +442,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		stml0xx_g_algo_requst[algo_idx].size = len;
-		memcpy(stml0xx_g_algo_requst[algo_idx].data, &buf[1], len);
+		memcpy(stml0xx_g_algo_requst[algo_idx].data, buf, len);
 		err =
 		    stml0xx_spi_send_write_reg(stml0xx_algo_info
 					       [algo_idx].req_register, buf,
