@@ -510,6 +510,7 @@
 			&sensor_in_default
 			&sensor_out_hi_default
 			&sensor_out_low_default
+			&bcm4356_wake_default
 		>;
 
 	cycapsense {
@@ -527,6 +528,18 @@
 		label = "bt_wakeup";
 		bt_wakeup_default: default {
 			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	/* GPIO0/GPIO1 on BCM4356, named WL_WAKEUP_SLAVE, WL_WAKEUP_HOST */
+	bcm4356_wake {
+		qcom,pins = <&gp 72 &gp 121>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <0>;
+		label = "bcm4356_wake";
+		bcm4356_wake_default: default {
+			bias-pull-down;
 			drive-strength = <2>;
 		};
 	};
