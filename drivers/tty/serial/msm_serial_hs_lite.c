@@ -1450,8 +1450,9 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 	int locked;
 
 	/* If audio debug is disabled, skip here */
-	if(!g_audbg_enable)
+	if(!g_audbg_enable){
 		return;
+    }
 
 	BUG_ON(co->index < 0 || co->index >= UART_NR);
 

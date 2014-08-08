@@ -44,6 +44,13 @@ static int panel_ambient_mode = AMBIENT_MODE_OFF;
 int is_ambient_on() {
 	return panel_ambient_mode;
 }
+int enable_ambient(int enable)
+{
+	int old = panel_ambient_mode;
+	panel_ambient_mode = enable;
+	pr_info("MDSS:%s:panel_ambient_mode = %d->%d\n",__func__, old, panel_ambient_mode);
+	return old;
+}
 
 #define DT_CMD_HDR 6
 
@@ -138,7 +145,7 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = pcmds->cmds;
 	cmdreq.cmds_cnt = pcmds->cmd_cnt;
-	// To flush MIPI cmd before suspend"			
+	// To flush MIPI cmd before suspend"
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_REQ_COMMIT;
 
 	/*Panel ON/Off commands should be sent in DSI Low Power Mode*/

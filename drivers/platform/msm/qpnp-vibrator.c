@@ -154,19 +154,9 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 			val |= QPNP_VIB_EN;
 			rc = qpnp_vib_write_u8(vib, &val,
 					QPNP_VIB_EN_CTL(vib->base));
-			#if 1
-			if (rc < 0){
-			printk(KERN_INFO "[vib]===set on fail===\n");
-				return rc;}
-			else
-			printk(KERN_INFO "[vib]===set on success===\n");
-			vib->reg_en_ctl = val;
-			
-			#else
 			if (rc < 0)
 				return rc;
 			vib->reg_en_ctl = val;
-			#endif
 		}
 	} else {
 		if (vib->mode != QPNP_VIB_MANUAL)
@@ -176,18 +166,9 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 			val &= ~QPNP_VIB_EN;
 			rc = qpnp_vib_write_u8(vib, &val,
 					QPNP_VIB_EN_CTL(vib->base));
-			#if 1
-			if (rc < 0){
-			printk(KERN_INFO "[vib]===set off fail===\n");
-				return rc;}
-			else
-			printk(KERN_INFO "[vib]===set off success===\n");
-			vib->reg_en_ctl = val;
-			#else
 			if (rc < 0)
 				return rc;
 			vib->reg_en_ctl = val;
-			#endif
 		}
 	}
 
@@ -198,22 +179,19 @@ static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 {
 	struct qpnp_vib *vib = container_of(dev, struct qpnp_vib,
 					 timed_dev);
-	int rc;
-	int rc1;
-	mutex_lock(&vib->lock);
-	rc=hrtimer_cancel(&vib->vib_timer);
 
-	if (value == 0){
-		printk(KERN_INFO "[vib]===vib enable %d ms===hrt_cancel:%d \n",value,rc);
-		vib->state = 0;}
+	mutex_lock(&vib->lock);
+	hrtimer_cancel(&vib->vib_timer);
+
+	if (value == 0)
+		vib->state = 0;
 	else {
 		value = (value > vib->timeout ?
 				 vib->timeout : value);
 		vib->state = 1;
-		rc1=hrtimer_start(&vib->vib_timer,
+		hrtimer_start(&vib->vib_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
 			      HRTIMER_MODE_REL);
-		printk(KERN_INFO "[vib]===vib enable %d ms===hrt_cancel:%d  hrt_start:%d\n",value,rc,rc1);
 	}
 	mutex_unlock(&vib->lock);
 	schedule_work(&vib->work);

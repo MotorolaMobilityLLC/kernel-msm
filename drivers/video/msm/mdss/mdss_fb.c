@@ -915,9 +915,6 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 }
 
 extern int enable_ambient(int enable);
-extern void notify_st_sensor_lowpowermode(int low);		//ASUS_BSP +++ Maggie_Lee "register st sensor for low power mode"
-extern void notify_ecg_sensor_lowpowermode(int low);	//ASUS_BSP +++ Maggie_Lee "register ecg sensor for low power mode"
-extern void notify_it7260_ts_lowpowermode(int low);		//ASUS_BSP +++ Cliff_Yu "Touch change status to idle in Ambient mode"
 
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
@@ -956,21 +953,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_NORMAL:
 	case FB_BLANK_POWERDOWN:
 	default:
-		switch (blank_mode) {
-		case FB_BLANK_VSYNC_SUSPEND:
-			printk("MDSS:%s:+++,blank_mode=FB_BLANK_VSYNC_SUSPEND,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-			break;
-		case FB_BLANK_HSYNC_SUSPEND:
-			printk("MDSS:%s:+++,blank_mode=FB_BLANK_HSYNC_SUSPEND,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-			break;
-		case FB_BLANK_NORMAL:
-			printk("MDSS:%s:+++,blank_mode=FB_BLANK_NORMAL,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-			break;
-		case FB_BLANK_POWERDOWN:
-			printk("MDSS:%s:+++,blank_mode=FB_BLANK_POWERDOWN,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
-			break;
-
-		}
 		if (mfd->panel_power_on && mfd->mdp.off_fnc) {
 			int curr_pwr_state;
 

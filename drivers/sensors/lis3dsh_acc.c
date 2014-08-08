@@ -560,13 +560,13 @@ static void lis3dsh_acc_set_init_statepr2_param(struct lis3dsh_acc_data *acc)
 	/* Place here state machine 2 parameters */
 	/* Knock knock function */
 	acc->resume_state[RES_LIS3DSH_TIM4_2] = 0x05;
-	acc->resume_state[RES_LIS3DSH_TIM3_2] = 0x05;
-	acc->resume_state[RES_LIS3DSH_TIM2_2_L] = 0x10;
+	acc->resume_state[RES_LIS3DSH_TIM3_2] = 0x14;
+	acc->resume_state[RES_LIS3DSH_TIM2_2_L] = 0x24;
 	acc->resume_state[RES_LIS3DSH_TIM2_2_H] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x86;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_H] = 0x00;
 	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x01;
-	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x0C;
+	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x03;
 	acc->resume_state[RES_LIS3DSH_DES_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_SA_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_MA_2] = 0x03;
@@ -1966,7 +1966,7 @@ void notify_st_sensor_lowpowermode(int low)
 		atomic_set(&is_suspend,0);
 		disable_irq_wake(g_acc->irq1);
 		disable_irq_wake(g_acc->irq2);
-		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_EN);
+		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_DIS);
 	}
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
@@ -2245,7 +2245,7 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 
 	lis3dsh_acc_enable(acc);			//default on
 
-	lis3dsh_acc_state_progrs_enable_control(acc, LIS3DSH_SM1_EN_SM2_EN);
+	lis3dsh_acc_state_progrs_enable_control(acc, LIS3DSH_SM1_EN_SM2_DIS);
 
 	#ifdef CONFIG_I2C_STRESS_TEST
 	i2c_add_test_case(client, "STSensorTest", ARRAY_AND_SIZE(gLIS3DSHTestCaseInfo));

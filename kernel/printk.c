@@ -50,6 +50,7 @@
 //adbg++
 #include <linux/asus_global.h>
 #include <linux/rtc.h>
+#include <linux/syscalls.h>         /* For sys_open and sys_write */
 
 static int is_rebased = 0;
 int suspend_in_progress = 0;
@@ -1060,7 +1061,7 @@ int klogcat_init(void){
     if (klogcat_initialized)
         return 0;
 
-    klogcat_fd = open(logger_dev, O_RDWR);
+    klogcat_fd = sys_open(logger_dev, O_RDWR);
 
     if (klogcat_fd < 0){
         printk("[adbg] Klogcat can not be opened.\n");
@@ -1082,7 +1083,7 @@ int klogcat_write(char * buf, int len){
         return -1;
 
     /* Write to logger */
-    ret = write(klogcat_fd, buf, len);
+    ret = sys_write(klogcat_fd, buf, len);
     return ret;
 }
 #endif
@@ -2402,8 +2403,10 @@ MODULE_PARM_DESC(console_suspend, "suspend console during suspend"
  */
 void suspend_console(void)
 {
-	ASUSEvtlog("[UTS] System Suspend");
+//adbg++
+	//ASUSEvtlog("[UTS] System Suspend");
 	suspend_in_progress = 1;
+//adbg--
 	if (!console_suspend_enabled)
 		return;
 	printk("Suspending console(s) (use no_console_suspend to debug)\n");
@@ -2414,30 +2417,10 @@ void suspend_console(void)
 
 void resume_console(void)
 {
-	int i;
+//adbg++
 	suspend_in_progress = 0;
-	ASUSEvtlog("[UTS] System Resume");
-
-	if (pm_pwrcs_ret) {
-		ASUSEvtlog("[PM] Suspended for %d.%03d secs ", pwrcs_time/100,pwrcs_time % 100);
-
-		if (qpnpint_irq != -1) {
-			ASUSEvtlog("[PM] qpnpint irq triggered: %d", qpnpint_irq);
-			qpnpint_irq = -1;
-		}
-		if (gpio_irq_cnt>0) {
-			for (i=0;i<gpio_irq_cnt;i++)
-  				ASUSEvtlog("[PM] GPIO triggered: %d", gpio_resume_irq[i]);
-			gpio_irq_cnt=0; //clear log count.
-		}
-		if (gic_irq_cnt>0) {
-			for (i=0;i<gic_irq_cnt;i++)
-				ASUSEvtlog("[PM] IRQs triggered: %d", gic_resume_irq[i]);
-			gic_irq_cnt=0;  //clear log count.
-		}
-		pm_pwrcs_ret=0;
-	}
-
+	//ASUSEvtlog("[UTS] System Resume");
+//adbg--
 	if (!console_suspend_enabled)
 		return;
 	down(&console_sem);

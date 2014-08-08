@@ -2634,7 +2634,7 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			ret = wait_for_completion_timeout(&pmic_vbus_init,
 							  VBUS_INIT_TIMEOUT);
 			if (!ret) {
-				dev_err(motg->phy.dev, "%s: timeout waiting for PMIC VBUS\n",
+				dev_dbg(motg->phy.dev, "%s: timeout waiting for PMIC VBUS\n",
 					__func__);
 				clear_bit(B_SESS_VLD, &motg->inputs);
 				pmic_vbus_init.done = 1;

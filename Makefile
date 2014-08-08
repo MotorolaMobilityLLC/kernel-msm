@@ -675,14 +675,16 @@ endif
 ifneq ($(BUILD_NUMBER),)
         KBUILD_CPPFLAGS += -DASUS_SW_VER=\"$(BUILD_NUMBER)\"
 else
-        KBUILD_CPPFLAGS += -DASUS_SW_VER=\"$(ASUS_BUILD_PROJECT)_ENG\"
+#        KBUILD_CPPFLAGS += -DASUS_SW_VER=\"$(ASUS_BUILD_PROJECT)_ENG\"
+        KBUILD_CPPFLAGS += -DASUS_SW_VER=\"WI500Q_ENG\"
 endif
 # ASUS_BSP : miniporting : jackson : add ASUS software version support ---
 
 # ASUS_BSP +++ Jason "support mutliple project build"
-ifneq ($(ASUS_BUILD_PROJECT),)
-        KBUILD_CPPFLAGS += -DASUS_$(ASUS_BUILD_PROJECT)_PROJECT=1
-endif
+#ifneq ($(ASUS_BUILD_PROJECT),)
+#       KBUILD_CPPFLAGS += -DASUS_$(ASUS_BUILD_PROJECT)_PROJECT=1
+KBUILD_CPPFLAGS += -DASUS_WI500Q_PROJECT=1
+#endif
 # ASUS_BSP --- Jason "support mutliple project build"
 # ASUS_BSP +++ Jason "factory compile option support"
 ifneq ($(ASUS_FACTORY_BUILD),)

@@ -115,14 +115,12 @@
 		reg-names = "dsi_ctrl", "dsi_phy", "mmss_misc_phys";
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
-		
 // ASUS_BSP +++ Jason2 "[ROBIN][MDSS] Control LDO7 for Panel internal usage"
 		vdd-supply = <&pm8226_l19>; 
 		vddio-supply = <&pm8226_l8>;
 		vdda-supply = <&pm8226_l4>;
 		panel-supply = <&pm8226_l7>;
 // ASUS_BSP --- Jason2 "[ROBIN][MDSS] Control LDO7 for Panel internal usage"		
-		
 		qcom,platform-reset-gpio = <&msmgpio 25 0>;
 		qcom,platform-te-gpio = <&msmgpio 24 0>;
 		qcom,platform-strength-ctrl = [ff 06];
@@ -133,7 +131,6 @@
 			00 00 00 00 0a 00 00 01 97
 			00 00 00 00 0f 00 00 01 97
 			00 c0 00 00 00 00 00 01 bb];
-			
 		qcom,platform-supply-entry1 {
 			qcom,supply-name = "vdd"; // VREG_L19_2P85V
 			qcom,supply-min-voltage = <2850000>;

@@ -57,6 +57,7 @@ struct IT7260_ts_data {
 	int use_irq;
 	struct work_struct work;
 	struct work_struct resume_work;
+	struct delayed_work palm_work;
 	#if 0 //def CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 	#endif
@@ -86,7 +87,11 @@ static int it7260_status = 0; //ASUS_BSP Cliff +++ add for ATD check
 static int last_time_shot_power = 0;
 static atomic_t touch_point_num;
 static int FW_manual_upgrade = 0; 
-
+static int palm_first_down = 0;
+static int palm_second_down = 0;
+static atomic_t palmpalm_flag;
+static atomic_t wait_second_palm;
+static atomic_t palm_num;
 
 #ifdef DEBUG
 #define TS_DEBUG(fmt,args...)  printk( KERN_DEBUG "[it7260_i2c]: " fmt, ## args)
@@ -2119,7 +2124,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 	static int y[2] = { (int) -1, (int) -1 };
 	static bool finger[2] = { 0, 0 };
 	//static int home_match_flag = 0;
-
+	
 	i2cReadFromIt7260(ts->client, 0x80, &ucQuery, 1);
 	if (ucQuery < 0) {
 		printk("=error Read_Point=\n");
@@ -2143,37 +2148,19 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 
 				// palm
 				if (pucPoint[1] & 0x01) {
-					static int palm_flag = 1;				
+					static int palm_flag = 1;
+					
+					//palm_first_down = jiffies;
+					atomic_set(&palm_num, atomic_read(&palm_num)+1);
+					
 					palm_flag = atomic_read(&Suspend_flag);		
 					if (!palm_flag){
-#ifdef ASUS_FACTORY_BUILD
-						static unsigned long last_time_detect_home = 0;
-						static int home_match_flag = 0;
-
-						if (!home_match_flag && (jiffies > last_time_detect_home + 3 * HZ)){
-							home_match_flag = 1;
-							printk("[IT7260] HOME KEY DETECTED !!!!\n\n");
-							strcpy(magic_key,"HOME");
-							kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
-							last_time_detect_home = jiffies;
-						} else {
-							home_match_flag = 0;
-						}
-
-#else
 						if (jiffies - last_time_shot_power > 2*HZ){
-							strcpy(magic_key,"PALM");
-							kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 							last_time_shot_power = jiffies;
-							printk("[IT7260] PALM!!!\n\n");
-							input_report_key(gl_ts->input_dev, KEY_SLEEP,1);
-							input_sync(gl_ts->input_dev);
-							msleep(5);
-							input_report_key(gl_ts->input_dev, KEY_SLEEP,0);
-							input_sync(gl_ts->input_dev);					
+							queue_delayed_work(IT7260_wq, &ts->palm_work, 100);				
 						}
-#endif
 					}
+					
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
 					//pr_info("pucPoint 1 is 0x01, it's a palm\n");
@@ -2190,6 +2177,33 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 						atomic_set(&touch_point_num, 0);
 					}
 		
+					if (atomic_read(&palm_num)){
+					if (!atomic_read(&wait_second_palm)){
+						if (atomic_read(&palm_num) < 10)
+						{
+							palm_first_down = jiffies;
+							printk ("\n[IT7260] palm_first_down \n\n");
+							atomic_set(&wait_second_palm, 1);
+							if (jiffies - palm_second_down > 250){
+								atomic_set(&palmpalm_flag, 0);
+							}
+						}
+					}
+					else{
+						if (atomic_read(&palm_num) < 10)
+						{
+							if (jiffies - palm_first_down < 250){
+							atomic_set(&palmpalm_flag, 1);
+							palm_second_down = jiffies;
+							printk ("\n[IT7260] palm_second_down \n\n");
+							atomic_set(&wait_second_palm, 0);
+							}
+						}
+					}
+					}
+		
+					atomic_set(&palm_num, 0);
+					
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
 					//pr_info("(pucPoint[0] & 0x08) is false, means no more data\n");
@@ -2229,6 +2243,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 			}
 		}
 	}
+	
 	if (ts->use_irq)
 		enable_irq(ts->client->irq);
 
@@ -2236,6 +2251,36 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
+
+static void IT7260_ts_palm_func(struct work_struct *work) {
+
+	if (jiffies - palm_second_down > 2*HZ)
+	{
+		atomic_set(&palmpalm_flag, 0);
+	}
+	
+	if (!atomic_read(&palmpalm_flag))
+	{
+		strcpy(magic_key,"PALM");
+		kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+		printk("[IT7260] PALM!!!\n\n");
+		input_report_key(gl_ts->input_dev, KEY_SLEEP,1);
+		input_sync(gl_ts->input_dev);
+		msleep(5);
+		input_report_key(gl_ts->input_dev, KEY_SLEEP,0);
+		input_sync(gl_ts->input_dev);
+		atomic_set(&palmpalm_flag, 0);
+		atomic_set(&wait_second_palm, 0);
+	}
+	else 
+	{
+		strcpy(magic_key,"KNOCK");
+		kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+		printk ("[IT7260] PALM! PALM!! \n\n");
+		atomic_set(&palmpalm_flag, 0);
+		atomic_set(&wait_second_palm, 0);
+	}
+}
 
 static void IT7260_ts_work_func(struct work_struct *work) {
 
@@ -2258,6 +2303,8 @@ static void IT7260_ts_work_resume_func(struct work_struct *work) {
 			input_report_key(gl_ts->input_dev, KEY_POWER,0);
 			input_sync(gl_ts->input_dev);			
 			skip_times=0;
+			atomic_set(&palmpalm_flag, 0);
+			atomic_set(&wait_second_palm, 0);
 
 		}else{
 			if (1 == skip_times)
@@ -2556,7 +2603,8 @@ static int IT7260_ts_probe(struct i2c_client *client,
 		goto err_check_functionality_failed;
 	INIT_WORK(&ts->work, IT7260_ts_work_func);
 	INIT_WORK(&ts->resume_work, IT7260_ts_work_resume_func);
-
+	INIT_DELAYED_WORK(&ts->palm_work, IT7260_ts_palm_func);
+	
     // >>> 
     init_timer(&tp_timer) ;
 
@@ -2909,6 +2957,9 @@ static int __init IT7260_ts_init(void) {
 	}
 
 	atomic_set(&touch_point_num, 0);
+	atomic_set(&palmpalm_flag, 0);
+	atomic_set(&wait_second_palm, 0);
+	atomic_set(&palm_num, 0);
 // ASUS_BSP +++ Tingyi "[ROBIN][TOUCH] Report mgaci key for HOME and DEBUG"
 	magic_key[0] = 0;
 	device_create_file(class_dev, &device_attrs[0]);

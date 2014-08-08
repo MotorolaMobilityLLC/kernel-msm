@@ -57,7 +57,6 @@
 
 #include <net/ipv6.h>
 #include <net/ip6_checksum.h>
-#include <net/ping.h>
 #include <net/protocol.h>
 #include <net/raw.h>
 #include <net/rawv6.h>
@@ -225,8 +224,7 @@ static bool opt_unrec(struct sk_buff *skb, __u32 offset)
 	return (*op & 0xC0) == 0x80;
 }
 
-int icmpv6_push_pending_frames(struct sock *sk, struct flowi6 *fl6,
-			       struct icmp6hdr *thdr, int len)
+static int icmpv6_push_pending_frames(struct sock *sk, struct flowi6 *fl6, struct icmp6hdr *thdr, int len)
 {
 	struct sk_buff *skb;
 	struct icmp6hdr *icmp6h;
@@ -309,8 +307,8 @@ static void mip6_addr_swap(struct sk_buff *skb)
 static inline void mip6_addr_swap(struct sk_buff *skb) {}
 #endif
 
-struct dst_entry *icmpv6_route_lookup(struct net *net, struct sk_buff *skb,
-				      struct sock *sk, struct flowi6 *fl6)
+static struct dst_entry *icmpv6_route_lookup(struct net *net, struct sk_buff *skb,
+					     struct sock *sk, struct flowi6 *fl6)
 {
 	struct dst_entry *dst, *dst2;
 	struct flowi6 fl2;
@@ -699,8 +697,7 @@ static int icmpv6_rcv(struct sk_buff *skb)
 		skb->csum = ~csum_unfold(csum_ipv6_magic(saddr, daddr, skb->len,
 					     IPPROTO_ICMPV6, 0));
 		if (__skb_checksum_complete(skb)) {
-			LIMIT_NETDEBUG(KERN_DEBUG
-				       "ICMPv6 checksum failed [%pI6c > %pI6c]\n",
+			LIMIT_NETDEBUG(KERN_DEBUG "ICMPv6 checksum failed [%pI6 > %pI6]\n",
 				       saddr, daddr);
 			goto csum_error;
 		}
@@ -721,7 +718,7 @@ static int icmpv6_rcv(struct sk_buff *skb)
 		break;
 
 	case ICMPV6_ECHO_REPLY:
-		ping_rcv(skb);
+		/* we couldn't care less */
 		break;
 
 	case ICMPV6_PKT_TOOBIG:
