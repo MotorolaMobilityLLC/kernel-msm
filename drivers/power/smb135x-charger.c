@@ -936,7 +936,7 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip)
 	if (chip->fake_battery_soc >= 0)
 		return chip->fake_battery_soc;
 
-	if (chip->shutdown_voltage_tripped) {
+	if (chip->shutdown_voltage_tripped && !chip->factory_mode) {
 		if (chip->usb_psy) {
 			power_supply_set_present(chip->usb_psy, false);
 			power_supply_set_online(chip->usb_psy, false);
@@ -947,7 +947,7 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip)
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, &ret);
-		if (ret.intval == 0) {
+		if ((ret.intval == 0) && !chip->factory_mode) {
 			chip->shutdown_voltage_tripped = true;
 			if (chip->usb_psy) {
 				power_supply_set_present(chip->usb_psy, false);
@@ -1998,12 +1998,12 @@ static int smb135x_dc_get_property(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = chip->dc_present;
-		if (chip->shutdown_voltage_tripped)
+		if (chip->shutdown_voltage_tripped && !chip->factory_mode)
 			val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = chip->chg_enabled ? chip->dc_present : 0;
-		if (chip->shutdown_voltage_tripped)
+		if (chip->shutdown_voltage_tripped && !chip->factory_mode)
 			val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
