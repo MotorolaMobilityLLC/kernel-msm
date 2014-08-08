@@ -213,6 +213,7 @@ struct intel_dwc_otg_pdata {
 
 #define PMIC_MAJOR_REV (0x07 << 3)
 #define PMIC_A0_MAJOR_REV 0x00
+#define PMIC_B0_MAJOR_REV 0x01
 
 /* ShardyCove register */
 #define PMIC_SCHGRIRQ1		0X4F

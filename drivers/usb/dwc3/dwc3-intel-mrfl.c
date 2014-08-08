@@ -377,9 +377,25 @@ static int enable_usb_phy(struct dwc_otg2 *otg, bool on_off)
 int dwc3_intel_platform_init(struct dwc_otg2 *otg)
 {
 	int retval;
+	u8 pmic_id;
 	struct intel_dwc_otg_pdata *data;
 
 	data = (struct intel_dwc_otg_pdata *)otg->otg_data;
+
+	/* Shadycove Ax, cant detect the vbus removal, hence USB controller
+	 * can't get disconnect interrupt which depend on vbus drop detection.
+	 * So controller will receive early suspend and suspend interrupt. But
+	 * we can detect vbus status to determine current scenario is real
+	 * suspend or vbus drop.
+	 */
+	if (!is_basin_cove(otg)) {
+		data->detect_vbus_drop = false;
+		retval = intel_scu_ipc_ioread8(0x00, &pmic_id);
+		if (retval)
+			otg_err(otg, "Fail to read PMIC ID register\n");
+		else if (((pmic_id & PMIC_MAJOR_REV) == PMIC_A0_MAJOR_REV))
+			data->detect_vbus_drop = true;
+	}
 
 	/* Init a_bus_drop callback */
 	otg->usb2_phy.a_bus_drop = dwc_a_bus_drop;
@@ -604,13 +620,6 @@ static int dwc3_intel_set_power(struct usb_phy *_otg,
 
 	data = (struct intel_dwc_otg_pdata *)otg->otg_data;
 
-	/* On ANN, due the VBUS haven't connect to internal USB PHY. So
-	 * controller can't get disconnect interrupt which depend on vbus drop
-	 * detection.
-	 * So controller will receive early suspend and suspend interrupt. But
-	 * we can detect vbus status to determine current scenario is real
-	 * suspend or vbus drop.
-	 */
 	if (data->detect_vbus_drop && ma == OTG_DEVICE_SUSPEND) {
 		if (!check_vbus_status(otg)) {
 			cap.chrg_type = otg->charging_cap.chrg_type;
