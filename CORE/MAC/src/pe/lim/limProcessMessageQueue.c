@@ -533,7 +533,7 @@ limProcessEXTScanRealTimeData(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     vos_mem_set((tANI_U8 *) &tEXTScanFullScanResult,
                 sizeof(tSirWifiFullScanResultEvent), 0);
 
-    tEXTScanFullScanResult.ap.ts = WDA_GET_RX_TIMESTAMP(pRxPacketInfo);
+    tEXTScanFullScanResult.ap.ts = vos_get_monotonic_boottime();
 
     vos_mem_copy(&tEXTScanFullScanResult.ap.bssid,
                  pHdr->bssId, sizeof(tSirMacAddr));
