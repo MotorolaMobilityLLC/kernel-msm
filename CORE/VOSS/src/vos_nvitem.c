@@ -3585,6 +3585,21 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
     return 0;
 }
 
+/* function to tell about if Default country is Non-Zero */
+v_BOOL_t vos_is_nv_country_non_zero()
+{
+    v_BOOL_t  status = VOS_FALSE;
+    if (!(pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0] == '0' &&
+        pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[1] == '0'))
+    {
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+               "Default Country is Non-Zero\n");
+        return VOS_TRUE;
+    }
+
+    return status ;
+}
+
 
 /*
  * Function: wlan_hdd_linux_reg_notifier
