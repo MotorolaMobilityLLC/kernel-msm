@@ -1481,10 +1481,20 @@ tANI_U8 *pBody;
   // Check first if the peer accepted the ADDBA Req
   if( eSIR_MAC_SUCCESS_STATUS == frmAddBARsp.Status.status )
   {
-    //if peer responded with buffer size 0 then we should pick the default.
-    if(0 == frmAddBARsp.AddBAParameterSet.bufferSize)
-        frmAddBARsp.AddBAParameterSet.bufferSize = BA_DEFAULT_TX_BUFFER_SIZE;
-
+    tANI_U32 val;
+    if (wlan_cfgGetInt(pMac, WNI_CFG_NUM_BUFF_ADVERT , &val) != eSIR_SUCCESS)
+    {
+        limLog(pMac, LOG1, FL("Unable to get WNI_CFG_NUM_BUFF_ADVERT"));
+        goto returnAfterError;
+    }
+    if (0 == frmAddBARsp.AddBAParameterSet.bufferSize)
+        frmAddBARsp.AddBAParameterSet.bufferSize = val;
+    else
+        frmAddBARsp.AddBAParameterSet.bufferSize =
+                    VOS_MIN(val, frmAddBARsp.AddBAParameterSet.bufferSize);
+        limLog( pMac, LOG1,
+            FL( "ADDBA RSP  Buffsize = %d" ),
+            frmAddBARsp.AddBAParameterSet.bufferSize);
     // Now, validate the ADDBA Rsp
     if( eSIR_MAC_SUCCESS_STATUS !=
         __limValidateAddBAParameterSet( pMac, pSta,
