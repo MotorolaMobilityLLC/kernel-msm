@@ -6235,7 +6235,12 @@ tSirMsgQ msgQ;
   msgQ.bodyval = 0;
 
   limLog( pMac, LOGW,
-      FL( "Sending WDA_ADDBA_REQ..." ));
+      FL( "Sending WDA_ADDBA_REQ... Buff size = %d , staId = %d , timeout = %d "
+          "Tid = %d, Direction = %d , Policy = %d, sessionId = %d , baSSN = %d " ),
+           pAddBAParams->baBufferSize, pAddBAParams->staIdx,
+           pAddBAParams->baTimeout, pAddBAParams->baTID,
+           pAddBAParams->baDirection, pAddBAParams->baPolicy,
+           pAddBAParams->sessionId, pAddBAParams->baSSN);
 
   //defer any other message until we get response back.
   SET_LIM_PROCESS_DEFD_MESGS(pMac, false);
