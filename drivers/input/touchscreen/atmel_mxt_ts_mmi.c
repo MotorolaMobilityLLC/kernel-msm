@@ -103,6 +103,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 #define MXT_PROCI_ACTIVE_STYLUS_T63	63
 #define MXT_PROCI_LENSEBENDING_T65	65
 #define MXT_PROCG_NOISESUPPRESSION_T72	72
+#define MXT_PROCI_TOUCHSEQUENCELOGGER_T93 93
 #define MXT_TOUCH_MULTITOUCHSCREEN_T100 100
 
 /* MXT_GEN_MESSAGE_T5 object */
@@ -127,7 +128,33 @@ static int fb_notifier_callback(struct notifier_block *self,
 struct t7_config {
 	u8 idle;
 	u8 active;
+	u8 actv2idle;
 } __packed;
+
+static struct t7_config t7_off_cfg[2] = { {0, 0, 0}, {100, 255, 10} };
+
+#define T7_MODE_LPM	0
+#define T7_MODE_GESTURE	1
+
+enum wakeup_modes {
+	WAKEUP_OFF = 0,
+	WAKEUP_ON,
+	WAKEUP_AUTO
+};
+
+static char *wakeup_mode_names[] = { "OFF", "ON", "AUTO" };
+
+static char const *mxt_wakeup_mode_name(int mode)
+{
+	int index = mode < 0 || mode > WAKEUP_AUTO ? WAKEUP_OFF : mode;
+	return wakeup_mode_names[index];
+}
+
+#define BIT_RPTEN	2
+#define BIT_ENABLE	1
+
+#define CONFIG_ONE_TOUCH	1
+#define CONFIG_DOUBLE_TAP	2
 
 #define MXT_POWER_CFG_RUN		0
 #define MXT_POWER_CFG_DEEPSLEEP		1
@@ -282,7 +309,7 @@ struct mxt_data {
 	u32 config_crc;
 	u32 info_crc;
 	u8 bootloader_addr;
-	struct t7_config t7_cfg;
+	struct t7_config t7_on_cfg;
 	u8 *msg_buf;
 	u8 t6_status;
 	bool update_input;
@@ -295,8 +322,10 @@ struct mxt_data {
 	bool poweron;
 	bool input_registered;
 	bool buttons_enabled;
-	bool one_touch_enabled;
 	bool rot;
+	u8 gesture_mode;
+	u8 suspend_config;
+	struct t7_config *t7_off_cfg;
 	bool sensor_sleep;
 	bool irq_enabled;
 	struct regulator *reg_vdd;
@@ -324,6 +353,7 @@ struct mxt_data {
 	u8 T48_reportid;
 	u8 T63_reportid_min;
 	u8 T63_reportid_max;
+	u8 T93_reportid;
 	u8 T100_reportid_min;
 	u8 T100_reportid_max;
 
@@ -1468,6 +1498,22 @@ static void mxt_proc_t42_messages(struct mxt_data *data, u8 *msg)
 		dev_info(dev, "T42 normal\n");
 }
 
+static void mxt_proc_t93_messages(struct mxt_data *data, u8 *msg)
+{
+	u8 status = msg[1];
+
+	if (status & 0x2) {
+		struct device *dev = &data->client->dev;
+		struct input_dev *input_dev = data->input_dev;
+
+		input_report_key(input_dev, KEY_POWER, 1);
+		input_report_key(input_dev, KEY_POWER, 0);
+		input_sync(input_dev);
+
+		dev_dbg(dev, "T93 status %s\n", (status & 0x2) ? "DBLTAP" : "");
+	}
+}
+
 static int mxt_proc_t48_messages(struct mxt_data *data, u8 *msg)
 {
 	struct device *dev = &data->client->dev;
@@ -1579,6 +1625,8 @@ static int mxt_proc_message(struct mxt_data *data, u8 *message)
 	} else if (report_id >= data->T15_reportid_min
 		   && report_id <= data->T15_reportid_max) {
 		mxt_proc_t15_messages(data, message);
+	} else if (report_id == data->T93_reportid) {
+		mxt_proc_t93_messages(data, message);
 	} else {
 		dump = true;
 	}
@@ -1747,7 +1795,8 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 	struct mxt_data *data = dev_id;
 	int state = mxt_get_sensor_state(data);
 
-	if (data->in_bootloader  || data->suspended ||
+	if (data->in_bootloader  ||
+		(data->suspended && !data->gesture_mode) ||
 		(state == STATE_UNKNOWN)) {
 		/* bootloader state transition completion */
 		complete(&data->bl_completion);
@@ -2191,21 +2240,21 @@ static int mxt_set_t7_power_cfg(struct mxt_data *data, u8 sleep)
 	struct device *dev = &data->client->dev;
 	int error;
 	struct t7_config *new_config;
-	struct t7_config deepsleep = { .active = 0, .idle = 0 };
 
 	if (sleep == MXT_POWER_CFG_DEEPSLEEP)
-		new_config = &deepsleep;
+		new_config = data->gesture_mode ?
+			&t7_off_cfg[T7_MODE_GESTURE] : data->t7_off_cfg;
 	else
-		new_config = &data->t7_cfg;
+		new_config = &data->t7_on_cfg;
 
 	error = __mxt_write_reg(data->client, data->T7_address,
-			sizeof(data->t7_cfg),
+			sizeof(*new_config),
 			new_config);
 	if (error)
 		return error;
 
-	dev_dbg(dev, "Set T7 ACTV:%d IDLE:%d\n",
-		new_config->active, new_config->idle);
+	dev_dbg(dev, "Set T7 ACTV:%d IDLE:%d ACTV2IDLE:%d\n",
+		new_config->active, new_config->idle, new_config->actv2idle);
 
 	return 0;
 }
@@ -2218,11 +2267,11 @@ static int mxt_init_t7_power_cfg(struct mxt_data *data)
 
 recheck:
 	error = __mxt_read_reg(data->client, data->T7_address,
-				sizeof(data->t7_cfg), &data->t7_cfg);
+			sizeof(data->t7_on_cfg), &data->t7_on_cfg);
 	if (error)
 		return error;
 
-	if (data->t7_cfg.active == 0 || data->t7_cfg.idle == 0) {
+	if (data->t7_on_cfg.active == 0 || data->t7_on_cfg.idle == 0) {
 		if (!retry) {
 			dev_info(dev, "T7 cfg zero, resetting\n");
 			mxt_soft_reset(data);
@@ -2231,13 +2280,14 @@ recheck:
 		}
 
 		dev_dbg(dev, "T7 cfg zero after reset, overriding\n");
-		data->t7_cfg.active = 20;
-		data->t7_cfg.idle = 100;
+		data->t7_on_cfg.active	= 20;
+		data->t7_on_cfg.idle	= 100;
+		data->t7_on_cfg.actv2idle = 50;
 		return mxt_set_t7_power_cfg(data, MXT_POWER_CFG_RUN);
 	}
 
 	dev_info(dev, "Initialized power cfg: ACTV %d, IDLE %d\n",
-				data->t7_cfg.active, data->t7_cfg.idle);
+				data->t7_on_cfg.active, data->t7_on_cfg.idle);
 	return 0;
 }
 
@@ -2300,7 +2350,7 @@ static void mxt_apply_patches(struct mxt_data *data)
 	}
 }
 
-static void mxt_sensor_one_touch(struct mxt_data *data, bool enable)
+static int mxt_apply_one_touch_config(struct mxt_data *data, bool enable)
 {
 	struct mxt_object *object;
 	int error;
@@ -2308,19 +2358,23 @@ static void mxt_sensor_one_touch(struct mxt_data *data, bool enable)
 
 	if (!data->T100_data) {
 		dev_dbg(&data->client->dev, "T100: data not available\n");
-		return;
+		error = -EINVAL;
+		goto failure;
 	}
 
 	object = mxt_get_object(data, MXT_TOUCH_MULTITOUCHSCREEN_T100);
-	if (!object)
-		return;
+	if (!object) {
+		error = -ENODEV;
+		goto failure;
+	}
 
 	if (enable) {
 		t100_data_ptr = kmalloc(mxt_obj_size(object), GFP_KERNEL);
 		if (!t100_data_ptr) {
 			dev_err(&data->client->dev,
 				"T100: failed to allocate buffer\n");
-			return;
+			error = -ENOMEM;
+			goto failure;
 		}
 
 		memcpy(t100_data_ptr, data->T100_data, mxt_obj_size(object));
@@ -2344,17 +2398,106 @@ static void mxt_sensor_one_touch(struct mxt_data *data, bool enable)
 
 	error = __mxt_write_reg(data->client, object->start_address,
 				mxt_obj_size(object), t100_data_ptr);
-	if (error)
-		dev_warn(&data->client->dev,
-			"Failed to %s single-touch config\n",
-			enable ? "enable" : "disable");
-	else
-		dev_dbg(&data->client->dev,
-			"Successfully %s single-touch config\n",
-			enable ? "enabled" : "disabled");
 
 	if (t100_data_ptr != data->T100_data)
 		kfree(t100_data_ptr);
+
+	if (!error) {
+		dev_dbg(&data->client->dev,
+			"Successfully %s single-touch config\n",
+			enable ? "enabled" : "disabled");
+		return 0;
+	}
+
+failure:
+	dev_warn(&data->client->dev, "Failed to %s single-touch config\n",
+			enable ? "enable" : "disable");
+	return error;
+}
+
+static int mxt_apply_double_tap_config(struct mxt_data *data, bool enable)
+{
+	struct mxt_object *t93_obj, *t100_obj;
+	u8 t93_ctrl_reg, t100_ctrl_reg;
+	int error;
+
+	t100_obj = mxt_get_object(data, MXT_TOUCH_MULTITOUCHSCREEN_T100);
+	t93_obj = mxt_get_object(data, MXT_PROCI_TOUCHSEQUENCELOGGER_T93);
+	if (!t93_obj || !t100_obj)
+		goto rw_failure;
+
+	error = __mxt_read_reg(data->client, t93_obj->start_address,
+				1, &t93_ctrl_reg);
+	if (error)
+		goto rw_failure;
+
+	error = __mxt_read_reg(data->client, t100_obj->start_address,
+				1, &t100_ctrl_reg);
+	if (error)
+		goto rw_failure;
+
+	if (enable) {
+		t100_ctrl_reg &= ~BIT_RPTEN;
+		error = __mxt_write_reg(data->client, t100_obj->start_address,
+					1, &t100_ctrl_reg);
+		if (error)
+			goto rw_failure;
+		pr_debug("disabled T100\n");
+
+		t93_ctrl_reg |= BIT_ENABLE;
+		error = __mxt_write_reg(data->client, t93_obj->start_address,
+					1, &t93_ctrl_reg);
+		if (error)
+			goto rw_failure;
+		pr_debug("enabled T93\n");
+	} else {
+		t93_ctrl_reg &= ~BIT_ENABLE;
+		error = __mxt_write_reg(data->client, t93_obj->start_address,
+					1, &t93_ctrl_reg);
+		if (error)
+			goto rw_failure;
+		pr_debug("disabled T93\n");
+
+		t100_ctrl_reg |= BIT_RPTEN;
+		error = __mxt_write_reg(data->client, t100_obj->start_address,
+					1, &t100_ctrl_reg);
+		if (error)
+			goto rw_failure;
+		pr_debug("enabled T100\n");
+	}
+
+	dev_dbg(&data->client->dev, "Successfully %s wakeup gesture config\n",
+			enable ? "enabled" : "disabled");
+	return 0;
+
+rw_failure:
+	dev_warn(&data->client->dev, "Failed to %s wakeup gesture config\n",
+			enable ? "enable" : "disable");
+	return error;
+}
+
+static void mxt_sensor_suspend_config(struct mxt_data *data, bool enable)
+{
+	u8 config = data->gesture_mode ?
+			CONFIG_DOUBLE_TAP : data->suspend_config;
+
+	if (config != data->suspend_config)
+		pr_debug("override default suspend config\n");
+
+	switch (config) {
+	case CONFIG_ONE_TOUCH:
+		mxt_apply_one_touch_config(data, enable);
+		pr_debug("single touch suspend config %s\n",
+			enable ? "enabled" : "disabled");
+			break;
+	case CONFIG_DOUBLE_TAP:
+		mxt_apply_double_tap_config(data, enable);
+		pr_debug("double tap suspend config %s\n",
+			enable ? "enabled" : "disabled");
+			break;
+	default:
+		pr_debug("no suspend config to set\n");
+	}
 }
 
 static void mxt_wait_for_idle(struct mxt_data *data)
@@ -2383,7 +2526,7 @@ static void mxt_sensor_sleep(struct mxt_data *data)
 {
 	mxt_set_t7_power_cfg(data, MXT_POWER_CFG_DEEPSLEEP);
 	data->sensor_sleep = true;
-	dev_dbg(&data->client->dev, "LPM mode\n");
+	dev_dbg(&data->client->dev, "Suspend power mode\n");
 }
 
 static void mxt_sensor_wake(struct mxt_data *data, bool calibrate)
@@ -2397,7 +2540,14 @@ static void mxt_sensor_wake(struct mxt_data *data, bool calibrate)
 	}
 
 	data->sensor_sleep = false;
-	dev_dbg(&data->client->dev, "Normal mode\n");
+	dev_dbg(&data->client->dev, "Active power mode\n");
+}
+
+static void mxt_enable_wakeup_source(struct mxt_data *data, bool enable)
+{
+	int error;
+	error = irq_set_irq_wake(data->irq, (int)enable);
+	pr_debug("%s wakeup; rc=%d\n", enable ? "enabled" : "disabled", error);
 }
 
 #define MXT_DEF(a)	(#a)
@@ -2433,19 +2583,22 @@ static void mxt_set_sensor_state(struct mxt_data *data, int state)
 			break;
 
 	case STATE_SUSPEND:
-		mxt_irq_enable(data, false);
-		data->enable_reporting = false;
+		if (data->gesture_mode == WAKEUP_OFF)
+			mxt_irq_enable(data, false);
 
-		if (data->one_touch_enabled)
-			mxt_sensor_one_touch(data, true);
+		data->enable_reporting = false;
+		mxt_sensor_suspend_config(data, true);
 			break;
 
 	case STATE_ACTIVE:
 		if (!data->use_regulator && data->sensor_sleep)
 			mxt_sensor_wake(data, false);
 
-		if (data->one_touch_enabled)
-			mxt_sensor_one_touch(data, false);
+		mxt_sensor_suspend_config(data, false);
+		if (data->gesture_mode == WAKEUP_ON) {
+			data->gesture_mode = WAKEUP_OFF;
+			mxt_enable_wakeup_source(data, false);
+		}
 
 		if (mxt_cfg_data.cfg_num)
 			mxt_apply_patches(data);
@@ -2525,6 +2678,7 @@ static void mxt_free_object_table(struct mxt_data *data)
 	data->T48_reportid = 0;
 	data->T63_reportid_min = 0;
 	data->T63_reportid_max = 0;
+	data->T93_reportid = 0;
 	data->T100_reportid_min = 0;
 	data->T100_reportid_max = 0;
 	data->max_reportid = 0;
@@ -2616,6 +2770,9 @@ static int mxt_parse_object_table(struct mxt_data *data)
 			data->T63_reportid_min = min_id;
 			data->T63_reportid_max = min_id;
 			data->num_stylusids = 1;
+			break;
+		case MXT_PROCI_TOUCHSEQUENCELOGGER_T93:
+			data->T93_reportid = min_id;
 			break;
 		case MXT_TOUCH_MULTITOUCHSCREEN_T100:
 			data->T100_reportid_min = min_id;
@@ -3119,6 +3276,8 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 				input_set_capability(input_dev, EV_KEY,
 					     data->pdata->t15_keymap[i]);
 	}
+
+	input_set_capability(input_dev, EV_KEY, KEY_POWER);
 
 	return 0;
 }
@@ -4226,6 +4385,38 @@ static ssize_t mxt_flashprog_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%d", data->in_bootloader);
 }
 
+static ssize_t mxt_tsp_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	int mode;
+
+	if (!strncmp(buf, "on", 2) || !strncmp(buf, "ON", 2))
+		mode = WAKEUP_ON;
+	else if (!strncmp(buf, "auto", 4) || !strncmp(buf, "AUTO", 4))
+		mode = WAKEUP_AUTO;
+	else if (!strncmp(buf, "off", 2) || !strncmp(buf, "OFF", 2))
+		mode = WAKEUP_OFF;
+	else
+		return -EINVAL;
+
+	if (mode != data->gesture_mode) {
+		data->gesture_mode = mode;
+		mxt_enable_wakeup_source(data, data->gesture_mode != 0);
+	}
+
+	return count;
+}
+
+static ssize_t mxt_tsp_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			mxt_wakeup_mode_name(data->gesture_mode));
+}
+
 static DEVICE_ATTR(fw_version, S_IRUGO, mxt_fw_version_show, NULL);
 static DEVICE_ATTR(hw_version, S_IRUGO, mxt_hw_version_show, NULL);
 static DEVICE_ATTR(buildid, S_IRUGO, mxt_buildid_show, NULL);
@@ -4248,6 +4439,8 @@ static DEVICE_ATTR(debug_notify, S_IRUGO, mxt_debug_notify_show, NULL);
 static DEVICE_ATTR(debug_enable, S_IWUSR | S_IRUSR, mxt_debug_enable_show,
 				mxt_debug_enable_store);
 static DEVICE_ATTR(tsi, S_IRUGO, mxt_ud_show, NULL);
+static DEVICE_ATTR(tsp, S_IWUSR | S_IWGRP | S_IRUGO,
+				mxt_tsp_show, mxt_tsp_store);
 
 static struct attribute *mxt_attrs[] = {
 	&dev_attr_fw_version.attr,
@@ -4269,6 +4462,7 @@ static struct attribute *mxt_attrs[] = {
 	&dev_attr_debug_v2_enable.attr,
 	&dev_attr_debug_notify.attr,
 	&dev_attr_tsi.attr,
+	&dev_attr_tsp.attr,
 	NULL
 };
 
@@ -4352,10 +4546,13 @@ static int mxt_parse_dt(struct mxt_data *data)
 					"atmel,suspend-method-lpm");
 	pr_info("using suspend method: %s\n", data->use_regulator ?
 					"reset" : "lpm");
-	data->one_touch_enabled = of_property_read_bool(np,
-					"atmel,one-touch-enabled");
-	if (data->one_touch_enabled)
+	if (!data->use_regulator)
+		data->t7_off_cfg = &t7_off_cfg[T7_MODE_LPM];
+
+	if (of_property_read_bool(np, "atmel,one-touch-enabled")) {
+		data->suspend_config = CONFIG_ONE_TOUCH;
 		pr_info("using single touch in suspend\n");
+	}
 
 	data->rot = of_property_read_bool(np, "atmel,touch-rotate");
 
