@@ -5,3 +5,8 @@ config ASUSTEK_PCBID
 	  Support to OEM1 SFI table parsing and pre-defined pins configuration
 	  of GPIO reading for PCB_ID layout, and export kernel APIs for
 	  querying board-specific information. (eg, hardware revision)
+
+config FUGU_WIFI_PLATFORM_DATA
+	bool "Enable Fugu WiFi platform data"
+	---help---
+	  Enables platform_fugu_wifi
