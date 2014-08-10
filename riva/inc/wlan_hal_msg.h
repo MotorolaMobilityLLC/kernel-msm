@@ -511,6 +511,8 @@ typedef enum
    WLAN_HAL_SIG_RSSI_RESULT_IND             = 287,
    WLAN_HAL_EXT_SCAN_PROGRESS_IND           = 288,
    WLAN_HAL_EXT_SCAN_RESULT_AVAILABLE_IND   = 289,
+   WLAN_HAL_TDLS_CHAN_SWITCH_REQ            = 290,
+   WLAN_HAL_TDLS_CHAN_SWITCH_RSP            = 291,
 
    WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
@@ -6994,6 +6996,44 @@ typedef PACKED_PRE struct PACKED_POST
     tHalMsgHeader header;
     tTDLSLinkEstablishedResp TDLSLinkEstablishedRespParams;
 }  tTDLSLinkEstablishedRespMsg,  *tpTDLSLinkEstablishedRespMsg;
+/*---------------------------------------------------------------------------
+   + * WLAN_HAL_TDLS_CHAN_SWITCH_REQ
+   + *-------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    /*STA Index*/
+    tANI_U16       staIdx;
+    /* if this is 1, self is initiator otherwise responder only*/
+    tANI_U8        isOffchannelInitiator;
+    /*TDLS off channel related params */
+    tANI_U8        targetOperClass;
+    tANI_U8        targetChannel;
+    tANI_U8        secondaryChannelOffset;
+    tANI_U8        reserved[32];
+}tTDLSChanSwitchReqType, *tpTDLSChanSwitchReqType;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader             header;
+    tTDLSChanSwitchReqType    tdlsChanSwitchParams;
+} tTDLSChanSwitchReqMsg, *tpTDLSChanSwitchReqMsg;
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_TDLS_CHAN_SWITCH_RSP
+ *-------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32 status;
+        /*STA Index*/
+    tANI_U16 staIdx;
+} tTDLSChanSwitchResp, *tpTDLSChanSwitchResp;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tTDLSChanSwitchResp tdlsChanSwitchRespParams;
+} tTDLSChanSwitchRespMsg, *tpTDLSChanSwitchRespMsg;
+
 
 /*---------------------------------------------------------------------------
  * WLAN_HAL_TDLS_LINK_TEARDOWN_REQ

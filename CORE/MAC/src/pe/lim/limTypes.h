@@ -741,7 +741,10 @@ tSirRetStatus limDeleteTDLSPeers(tpAniSirGlobal pMac, tpPESession psessionEntry)
 eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg, tpPESession);
 tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
            tSirMacAddr peerMac, tANI_U16 reason, tANI_U8 responder, tpPESession psessionEntry,
-           tANI_U8 *addIe, tANI_U16 addIeLen); 
+           tANI_U8 *addIe, tANI_U16 addIeLen);
+// tdlsoffchan
+tSirRetStatus limProcesSmeTdlsChanSwitchReq(tpAniSirGlobal pMac,
+                                            tANI_U32 *pMsgBuf);
 #endif
 
 // Algorithms & Link Monitoring related functions

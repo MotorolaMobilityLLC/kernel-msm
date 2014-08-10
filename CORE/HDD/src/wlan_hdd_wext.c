@@ -121,6 +121,14 @@ extern void hdd_resume_wlan(struct early_suspend *wlan_suspend);
 
 extern int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand);
 
+// tdlsoffchan
+#ifdef FEATURE_WLAN_TDLS
+static int iw_set_tdlsoffchannel(hdd_context_t *pHddCtx, int offchannel);
+static int iw_set_tdlssecoffchanneloffset(hdd_context_t *pHddCtx, int offchanoffset);
+static int iw_set_tdlsoffchannelmode(hdd_adapter_t *pAdapter, int offchanmode);
+static int tdlsOffCh = 1;
+static int tdlsOffChBwOffset = 0;
+#endif
 static int ioctl_debug;
 module_param(ioctl_debug, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -154,6 +162,12 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_SET_MAX_TX_POWER_5_0   12
 /* Private IOCTL for debug connection issues */
 #define WE_SET_DEBUG_LOG     13
+// tdlsoffchan
+#ifdef FEATURE_WLAN_TDLS
+#define WE_SET_TDLS_OFF_CHAN             14
+#define WE_SET_TDLS_SEC_OFF_CHAN_OFFSET  15
+#define WE_SET_TDLS_OFF_CHAN_MODE        16
+#endif
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_INT    (SIOCIWFIRSTPRIV + 1)
@@ -245,7 +259,6 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #else
 #define MAX_VAR_ARGS         7
 #endif
-
 
 /* Private ioctls (with no sub-ioctls) */
 /* note that they must be odd so that they have "get" semantics */
@@ -4421,6 +4434,31 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
            sme_UpdateConnectDebug(pHddCtx->hHal, set_value);
            break;
         }
+#ifdef FEATURE_WLAN_TDLS
+        case WE_SET_TDLS_OFF_CHAN:
+        {
+           hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Tdls offchannel num %d",
+                     __func__, set_value);
+           ret = iw_set_tdlsoffchannel(pHddCtx, set_value);
+           break;
+        }
+        case WE_SET_TDLS_SEC_OFF_CHAN_OFFSET:
+        {
+           hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Tdls sec offchan offset %d",
+                     __func__, set_value);
+           ret = iw_set_tdlssecoffchanneloffset(pHddCtx, set_value);
+           break;
+        }
+        case WE_SET_TDLS_OFF_CHAN_MODE:
+        {
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Tdls offchannel mode %d",
+                     __func__, set_value);
+           ret = iw_set_tdlsoffchannelmode(pAdapter, set_value);
+           break;
+        }
+#endif
 
         default:
         {
@@ -7440,6 +7478,161 @@ VOS_STATUS iw_set_power_params(struct net_device *dev, struct iw_request_info *i
   return VOS_STATUS_SUCCESS;
 }/*iw_set_power_params*/
 
+// tdlsoffchan
+#ifdef FEATURE_WLAN_TDLS
+
+static int iw_set_tdlsoffchannel(hdd_context_t *pHddCtx, int offchannel)
+{
+    if (offchannel < 0 || offchannel > 165)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "%s: Invalid tdls off channel %u",
+                  __func__, offchannel);
+        return -1;
+
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: change tdls off channel from %d to %d",
+              __func__, tdlsOffCh, offchannel);
+
+    tdlsOffCh = offchannel;
+    return 0;
+}
+
+static int iw_set_tdlssecoffchanneloffset(hdd_context_t *pHddCtx, int offchanoffset)
+{
+    if (offchanoffset ==  0)
+    {
+       tdlsOffChBwOffset = 0;
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: change tdls secondary off channel offset to %u",
+                 __func__, tdlsOffChBwOffset);
+
+       return 0;
+
+    }
+
+    if ( offchanoffset == 40 )
+    {
+       tdlsOffChBwOffset = 1;
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: change tdls secondary off channel offset to %u",
+                 __func__, tdlsOffChBwOffset);
+
+       return 0;
+
+    }
+    if (offchanoffset == -40)
+    {
+       tdlsOffChBwOffset = 3;
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: change tdls secondary off channel offset to %u",
+                 __func__, tdlsOffChBwOffset);
+
+       return 0;
+
+    }
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "%s: Invalid tdls secondary off channel offset %d",
+              __func__, offchanoffset);
+    return -1;
+}
+
+static int iw_set_tdlsoffchannelmode(hdd_adapter_t *pAdapter, int offchanmode)
+{
+    hddTdlsPeer_t *connPeer = NULL;
+    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+
+    if (offchanmode < 0 || offchanmode > 4)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Invalid tdls off channel mode %d",
+                  __func__, offchanmode);
+        return -1;
+    }
+
+    if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: tdls off channel mode req in not associated state %d",
+                  __func__, offchanmode);
+        return -1;
+    }
+
+    if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode ||
+        eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY == pHddCtx->tdls_mode)
+    {
+       /* Send TDLS Channel Switch Request to connected peer */
+       connPeer = wlan_hdd_tdls_get_first_connected_peer(pAdapter);
+       if (NULL == connPeer) {
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                     "%s: No TDLS Connected Peer", __func__);
+           return -1;
+       }
+    }
+    else
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                 "%s: TDLS Connection not supported", __func__);
+       return -1;
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              ("%s: TDLS Channel Switch in swmode=%d"),
+               __func__, offchanmode);
+
+    switch (offchanmode)
+    {
+       case 1:/*Enable*/
+       case 2:/*Disable*/
+       {
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                     "%s: change tdls off channel mode %d tdls_off_channel %d offchanoffset %d ",
+                     __func__, offchanmode, tdlsOffCh, tdlsOffChBwOffset);
+           if (TRUE == pHddCtx->cfg_ini->fEnableTDLSOffChannel)
+           {
+
+               sme_SendTdlsChanSwitchReq(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                       pAdapter->sessionId, connPeer->peerMac,
+                                       tdlsOffCh, tdlsOffChBwOffset,
+                                       offchanmode);
+           }
+           else
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                         "%s: TDLS Off Channel not supported", __func__);
+               return -1;
+           }
+           break;
+       }
+       case 3:
+       {
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                     "%s: change tdls off channel mode %d REJREQ 3 tdls_off_channel %d offchanoffset %d ",
+                     __func__, offchanmode, tdlsOffCh, tdlsOffChBwOffset);
+
+           break;
+       }
+       case 4:
+       {
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                     "%s: change tdls off channel mode %d UNSOLRESP 4 tdls_off_channel %d offchanoffset %d ",
+                     __func__, offchanmode, tdlsOffCh, tdlsOffChBwOffset);
+           break;
+       }
+       default:
+       {
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                     "%s: change tdls off channel mode %d Not SET 0 tdls_off_channel %d offchanoffset %d ",
+                     __func__, offchanmode, tdlsOffCh, tdlsOffChBwOffset);
+           break;
+       }
+
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: change tdls off channel mode to %u",
+                __func__, offchanmode);
+    return 0;
+}
+
+#endif
+
 
 // Define the Wireless Extensions to the Linux Network Device structure
 // A number of these routines are NULL (meaning they are not implemented.)
@@ -7626,6 +7819,23 @@ static const struct iw_priv_args we_private_args[] = {
     {   WE_SET_DEBUG_LOG,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         0, "setDbgLvl" },
+#ifdef FEATURE_WLAN_TDLS
+    {
+        WE_SET_TDLS_OFF_CHAN,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "tdlsoffchan" },
+    {
+        WE_SET_TDLS_SEC_OFF_CHAN_OFFSET,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "tdlsecchnoffst" },
+    {
+        WE_SET_TDLS_OFF_CHAN_MODE,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "tdlsoffchnmode" },
+#endif
 
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_NONE_GET_INT,

@@ -360,6 +360,53 @@ eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr pee
 
     return status ;
 }
+
+//tdlsoffchan
+/*
+ * TDLS request API, called from HDD to Send Channel Switch Parameters
+ */
+VOS_STATUS csrTdlsSendChanSwitchReq(tHalHandle hHal,
+                                    tANI_U8 sessionId,
+                                    tSirMacAddr peerMac,
+                                    tANI_S32 tdlsOffCh,
+                                    tANI_S32 tdlsOffChBwOffset,
+                                    tANI_U8 tdlsSwMode)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    tSmeCmd *tdlsChanSwitchCmd;
+    eHalStatus status = eHAL_STATUS_FAILURE ;
+
+    //If connected and in Infra. Only then allow this
+    if( CSR_IS_SESSION_VALID( pMac, sessionId ) &&
+        csrIsConnStateConnectedInfra( pMac, sessionId ) &&
+        (NULL != peerMac) )
+    {
+        tdlsChanSwitchCmd = csrGetCommandBuffer(pMac) ;
+
+        if(tdlsChanSwitchCmd)
+        {
+            tTdlsChanSwitchCmdInfo *tdlsChanSwitchCmdInfo =
+            &tdlsChanSwitchCmd->u.tdlsCmd.u.tdlsChanSwitchCmdInfo;
+
+            tdlsChanSwitchCmd->sessionId = sessionId;
+
+            vos_mem_copy(tdlsChanSwitchCmdInfo->peerMac,
+                         peerMac, sizeof(tSirMacAddr));
+            tdlsChanSwitchCmdInfo->tdlsOffCh = tdlsOffCh;
+            tdlsChanSwitchCmdInfo->tdlsOffChBwOffset = tdlsOffChBwOffset;
+            tdlsChanSwitchCmdInfo->tdlsSwMode = tdlsSwMode;
+
+            tdlsChanSwitchCmd->command = eSmeCommandTdlsChannelSwitch;
+            tdlsChanSwitchCmd->u.tdlsCmd.size = sizeof(tTdlsChanSwitchCmdInfo) ;
+            smePushCommand(pMac, tdlsChanSwitchCmd, FALSE) ;
+            status = eHAL_STATUS_SUCCESS ;
+        }
+    }
+
+    return status ;
+}
+
+
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 /*
  * TDLS request API, called from HDD to enable TDLS discovery request
@@ -734,6 +781,16 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
             }
         }
         break;
+// tdlsoffchan
+        case eSmeCommandTdlsChannelSwitch:
+        {
+             status = csrTdlsProcessChanSwitchReq( pMac, cmd );
+             if(HAL_STATUS_SUCCESS( status ) )
+             {
+               status = eANI_BOOLEAN_FALSE ;
+             }
+        }
+        break;
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eSmeCommandTdlsDiscovery:
         {
@@ -909,6 +966,51 @@ eHalStatus csrTdlsProcessLinkEstablish( tpAniSirGlobal pMac, tSmeCmd *cmd )
     status = tdlsSendMessage(pMac, eWNI_SME_TDLS_LINK_ESTABLISH_REQ,
                              (void *)tdlsLinkEstablishReq,
                              sizeof(tSirTdlsLinkEstablishReq));
+    if (!HAL_STATUS_SUCCESS( status ) )
+    {
+        smsLog( pMac, LOGE, FL("Failed to send request to MAC\n"));
+    }
+    return status;
+}
+
+// tdlsoffchan
+eHalStatus csrTdlsProcessChanSwitchReq( tpAniSirGlobal pMac, tSmeCmd *cmd )
+{
+    tTdlsChanSwitchCmdInfo *tdlsChanSwitchCmdInfo = &cmd->u.tdlsCmd.u.tdlsChanSwitchCmdInfo ;
+    tSirTdlsChanSwitch *tdlsChanSwitch = NULL ;
+    eHalStatus status = eHAL_STATUS_FAILURE;
+    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, cmd->sessionId );
+
+    if (NULL == pSession)
+    {
+        smsLog( pMac, LOGE, FL("pSession is NULL"));
+        return eHAL_STATUS_FAILURE;
+    }
+
+    tdlsChanSwitch = vos_mem_malloc(sizeof(tSirTdlsChanSwitch));
+    if (tdlsChanSwitch == NULL)
+    {
+        smsLog( pMac, LOGE, FL("alloc failed \n") );
+        VOS_ASSERT(0) ;
+        return status ;
+    }
+    tdlsChanSwitch->sessionId = cmd->sessionId;
+    //Using dialog as transactionId. This can be used to match response with request
+    tdlsChanSwitch->transactionId = 0;
+    vos_mem_copy( tdlsChanSwitch->peerMac,
+                  tdlsChanSwitchCmdInfo->peerMac, sizeof(tSirMacAddr));
+    vos_mem_copy(tdlsChanSwitch->bssid, pSession->pConnectBssDesc->bssId,
+                 sizeof (tSirMacAddr));
+
+    tdlsChanSwitch->tdlsOffCh = tdlsChanSwitchCmdInfo->tdlsOffCh;
+    tdlsChanSwitch->tdlsOffChBwOffset = tdlsChanSwitchCmdInfo->tdlsOffChBwOffset;
+    tdlsChanSwitch->tdlsSwMode = tdlsChanSwitchCmdInfo->tdlsSwMode;
+
+    // Send the request to PE.
+    smsLog( pMac, LOGE, "sending TDLS Channel Switch to PE \n" );
+    status = tdlsSendMessage(pMac, eWNI_SME_TDLS_CHANNEL_SWITCH_REQ,
+                             (void *)tdlsChanSwitch,
+                             sizeof(tSirTdlsChanSwitch));
     if (!HAL_STATUS_SUCCESS( status ) )
     {
         smsLog( pMac, LOGE, FL("Failed to send request to MAC\n"));
@@ -1162,6 +1264,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             csrTdlsRemoveSmeCmd(pMac, eSmeCommandTdlsLinkEstablish);
             break;
         }
+
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eWNI_SME_TDLS_DISCOVERY_START_RSP:
         {

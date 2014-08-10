@@ -4204,6 +4204,22 @@ typedef struct sSirMgmtTxCompletionInd
    tANI_U8                sessionId;     // Session ID
    tANI_U32               txCompleteStatus;
 } tSirMgmtTxCompletionInd, *tpSirMgmtTxCompletionInd;
+
+//tdlsoffchan
+/* TDLS Channel Switch struct SME-->PE */
+typedef struct
+{
+    tANI_U16            messageType;  //eWNI_SME_TDLS_CHANNEL_SWITCH_REQ
+    tANI_U16            length;
+    tANI_U8             sessionId;     // Session ID
+    tANI_U16            transactionId; // Transaction ID for cmd
+    tANI_U8             tdlsOffCh;     // Target Off Channel
+    tANI_U8             tdlsOffChBwOffset;// Target Off Channel Bandwidth offset
+    tANI_U8             tdlsSwMode;     // TDLS Off Channel Mode
+    tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
+    tSirMacAddr         peerMac;
+}tSirTdlsChanSwitch, *tpSirTdlsChanSwitch;
+
 #endif /* FEATURE_WLAN_TDLS */
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL

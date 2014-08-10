@@ -3544,7 +3544,6 @@ typedef struct
   void*             pUserData;
 }WDI_SetTDLSLinkEstablishReqParamsType;
 
-
 typedef struct
 {
   /*Result of the operation*/
@@ -3554,6 +3553,37 @@ typedef struct
   wpt_uint16 uStaIdx;
 }WDI_SetTdlsLinkEstablishReqResp;
 
+
+
+typedef struct
+{
+   /*STA Index*/
+   wpt_uint8  staIdx;
+   /* if this is 1, self is initiator otherwise responder only*/
+   wpt_uint8  isOffchannelInitiator;
+   /*TDLS off channel related params */
+   wpt_uint8  targetOperClass;
+   wpt_uint8  targetChannel;
+   wpt_uint8   secondaryChannelOffset;
+   wpt_uint8  reserved[64];
+}WDI_SetTDLSChanSwitchReqInfoType;
+
+typedef struct
+{
+  WDI_SetTDLSChanSwitchReqInfoType  wdiTDLSChanSwitchReqInfo;
+  WDI_ReqStatusCb   wdiReqStatusCB;
+  void*  pUserData;
+}WDI_SetTDLSChanSwitchReqParamsType;
+
+
+typedef struct
+{
+  /*Result of the operation*/
+  WDI_Status wdiStatus;
+
+  /*STA Idx*/
+  wpt_uint16 uStaIdx;
+}WDI_SetTdlsChanSwitchReqResp;
 /*---------------------------------------------------------------------------
   WDI_SetAddSTASelfParamsType
 ---------------------------------------------------------------------------*/
@@ -6645,6 +6675,28 @@ typedef void  (*WDI_SetTDLSLinkEstablishReqParamsRspCb)(WDI_SetTdlsLinkEstablish
                                 void*        pUserData);
 
 /*---------------------------------------------------------------------------
+   WDI_SetTDLSChanSwitchReqParamsRspCb
+
+   DESCRIPTION
+
+   This callback is invoked by DAL when it has received a TDLS Link Establish Req response from
+   the underlying device.
+
+   PARAMETERS
+
+    IN
+    wdiStatus:  response status received from HAL
+    pUserData:  user data
+
+
+
+  RETURN VALUE
+    The result code associated with performing the operation
+---------------------------------------------------------------------------*/
+typedef void  (*WDI_SetTDLSChanSwitchReqParamsRspCb)(WDI_SetTdlsChanSwitchReqResp *
+                                wdiSetTdlsChanSwitchReqRsp,
+                                void*        pUserData);
+/*---------------------------------------------------------------------------
    WDI_SetPwrSaveCfgCb
  
    DESCRIPTION   
@@ -8824,6 +8876,13 @@ WDI_SetTDLSLinkEstablishReq
   void*                            pUserData
 );
 
+WDI_Status
+WDI_SetTDLSChanSwitchReq
+(
+  WDI_SetTDLSChanSwitchReqParamsType*    pwdiTDLSChanSwitchReqParams,
+  WDI_SetTDLSChanSwitchReqParamsRspCb    wdiTDLSChanSwitchRReqRspCb,
+  void*                            pUserData
+);
 /*======================================================================== 
  
                             Power Save APIs

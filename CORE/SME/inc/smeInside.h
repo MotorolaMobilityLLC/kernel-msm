@@ -154,6 +154,16 @@ typedef struct TdlsDelStaInfo
 {
   tSirMacAddr peerMac;
 } tTdlsDelStaCmdInfo;
+
+// tdlsoffchan
+typedef struct TdlsChanSwitchInfo
+{
+  tSirMacAddr peerMac;
+  tANI_U8 tdlsOffCh;
+  tANI_U8 tdlsOffChBwOffset;
+  tANI_U8 tdlsSwMode;
+} tTdlsChanSwitchCmdInfo;
+
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 typedef struct TdlsDisReqCmdinfo
 {
@@ -190,6 +200,7 @@ typedef struct s_tdls_cmd
     tTdlsSendMgmtCmdInfo tdlsSendMgmtCmdInfo;
     tTdlsAddStaCmdInfo   tdlsAddStaCmdInfo;
     tTdlsDelStaCmdInfo   tdlsDelStaCmdInfo;
+    tTdlsChanSwitchCmdInfo tdlsChanSwitchCmdInfo; //tdlsoffchan
   }u;
 } tTdlsCmd;
 #endif  /* FEATURE_WLAN_TDLS */
@@ -306,8 +317,14 @@ eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr 
 eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
 eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac,tSmeCmd *pCommand );
 eHalStatus csrTdlsProcessLinkEstablish( tpAniSirGlobal pMac, tSmeCmd *cmd );
-eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,v_U16_t msg_type,
-                                                           void *pMsgBuf);
+eHalStatus csrTdlsProcessChanSwitchReq(tpAniSirGlobal pMac, tSmeCmd *cmd ); //tdlsoffchan
+eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,v_U16_t msg_type, void *pMsgBuf);
+VOS_STATUS csrTdlsSendChanSwitchReq(tHalHandle hHal,
+                                    tANI_U8 sessionId,
+                                    tSirMacAddr peerMac,
+                                    tANI_S32 tdlsOffCh,
+                                    tANI_S32 tdlsOffChBwOffset,
+                                    tANI_U8 tdlsSwMode);
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 eHalStatus csrTdlsDiscoveryReq(tHalHandle hHal, tANI_U8 sessionId,
                                           tCsrTdlsDisRequest *tdlsDisReq);

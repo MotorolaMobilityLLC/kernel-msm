@@ -1838,7 +1838,7 @@ static int iw_softap_set_trafficmonitor(struct net_device *dev,
         union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    int *isSetTrafficMon = (int *)wrqu->data.pointer;
+    int *isSetTrafficMon = (int *)extra;
     hdd_context_t *pHddCtx;
     int status;
 
