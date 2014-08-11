@@ -1664,6 +1664,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	struct mdss_panel_info *pinfo;
+	struct mdss_panel_config *pcfg;
 
 	if (!np || !ctrl) {
 		pr_err("%s: Invalid arguments\n", __func__);
@@ -1671,6 +1672,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	}
 
 	pinfo = &ctrl->panel_data.panel_info;
+	pcfg = &ctrl->panel_config;
 
 	pinfo->partial_update_supported = of_property_read_bool(np,
 		"qcom,partial-update-enabled");
@@ -1704,7 +1706,12 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	pinfo->panel_ack_disabled = of_property_read_bool(np,
 				"qcom,panel-ack-disabled");
 
-	mdss_dsi_parse_esd_params(np, ctrl);
+	if (pcfg->bare_board || !pcfg->esd_enable) {
+		pinfo->esd_check_enabled = false;
+		pr_info("%s: ESD check disabled by bootloader panel config, bare_board = %d, esd_enable = %d\n",
+				__func__, pcfg->bare_board, pcfg->esd_enable);
+	} else
+		mdss_dsi_parse_esd_params(np, ctrl);
 
 	if (pinfo->panel_ack_disabled && pinfo->esd_check_enabled) {
 		pr_warn("ESD should not be enabled if panel ACK is disabled\n");
