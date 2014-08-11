@@ -157,6 +157,8 @@ static struct clk *codec_clk;
 static int clk_users;
 static int ext_spk_amp_gpio = -1;
 static int ext_top_spk_amp_gpio = -1;
+static int ext_top_spk_amp_boost_bp_gpio = -1;
+static int ext_top_spk_amp_boost_en_gpio = -1;
 static int ext_bot_spk_amp_gpio = -1;
 static int ext_spk_rcv_sel_gpio = -1;
 static int vdd_spkr_gpio = -1;
@@ -313,6 +315,23 @@ static void msm8226_ext_spk_power_amp_on(u32 spk)
 		gpio_is_valid(ext_bot_spk_amp_gpio) &&
 		gpio_is_valid(ext_spk_rcv_sel_gpio)) {
 		if (spk & LO_1_SPK_AMP) {
+			if (gpio_is_valid(ext_top_spk_amp_boost_en_gpio) &&
+				gpio_is_valid(ext_top_spk_amp_boost_bp_gpio)) {
+				if (ext_top_spk_amp_boost_bp_gpio >= 0) {
+					pr_debug("%s set top spk amp boost bp",
+						__func__);
+					msm8226_ext_spk_power_amp_enable(
+						ext_top_spk_amp_boost_bp_gpio,
+						1);
+				}
+				if (ext_top_spk_amp_boost_en_gpio >= 0) {
+					pr_debug("%s enable top spk amp boost en",
+						__func__);
+					msm8226_ext_spk_power_amp_enable(
+						ext_top_spk_amp_boost_en_gpio,
+						1);
+				}
+			}
 			if (ext_top_spk_amp_gpio >= 0) {
 				pr_debug("%s enable power-TOP amp", __func__);
 				msm8226_ext_spk_power_amp_enable(
@@ -374,6 +393,23 @@ static void msm8226_ext_spk_power_amp_off(u32 spk)
 					__func__);
 				msm8226_ext_spk_power_amp_enable(
 					ext_spk_rcv_sel_gpio, 0);
+			}
+			if (gpio_is_valid(ext_top_spk_amp_boost_bp_gpio) &&
+				gpio_is_valid(ext_top_spk_amp_boost_en_gpio)) {
+				if (ext_top_spk_amp_boost_bp_gpio >= 0) {
+					pr_debug("%s set top spk amp boost bp",
+						__func__);
+					msm8226_ext_spk_power_amp_enable(
+						ext_top_spk_amp_boost_bp_gpio,
+						1);
+				}
+				if (ext_top_spk_amp_boost_en_gpio >= 0) {
+					pr_debug("%s disable top spk amp boost en",
+						__func__);
+					msm8226_ext_spk_power_amp_enable(
+						ext_top_spk_amp_boost_en_gpio,
+						0);
+				}
 			}
 		}
 		if (spk & LO_2_SPK_AMP) {
@@ -2622,6 +2658,48 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 
+	ext_top_spk_amp_boost_bp_gpio = of_get_named_gpio(pdev->dev.of_node,
+			"fih,cdc-lineout-topspkr-boost-bp-gpio", 0);
+	if (ext_top_spk_amp_boost_bp_gpio < 0) {
+		dev_err(&pdev->dev,
+			"Looking up %s property in node %s failed %d\n",
+			"fih, cdc-lineout-topspkr-boost-bp-gpio",
+			pdev->dev.of_node->full_name,
+			ext_top_spk_amp_boost_bp_gpio);
+	} else {
+		ret = gpio_request(ext_top_spk_amp_boost_bp_gpio,
+				"TAPAN_CODEC_TOP_SPKR_BOOST_BP");
+		if (ret) {
+			/* GPIO to enable TOP EXT AMP exists,
+			   but failed request */
+			dev_err(card->dev,
+				"%s: Failed to request tapan amp spkr boost bp gpio %d\n",
+				__func__, ext_top_spk_amp_boost_bp_gpio);
+			goto err_lineout_top_spkr;
+		}
+	}
+
+	ext_top_spk_amp_boost_en_gpio = of_get_named_gpio(pdev->dev.of_node,
+			"fih,cdc-lineout-topspkr-boost-en-gpio", 0);
+	if (ext_top_spk_amp_boost_en_gpio < 0) {
+		dev_err(&pdev->dev,
+			"Looking up %s property in node %s failed %d\n",
+			"fih, cdc-lineout-topspkr-boost-en-gpio",
+			pdev->dev.of_node->full_name,
+			ext_top_spk_amp_boost_en_gpio);
+	} else {
+		ret = gpio_request(ext_top_spk_amp_boost_en_gpio,
+				"TAPAN_CODEC_TOP_SPKR_BOOST_EN");
+		if (ret) {
+			/* GPIO to enable TOP EXT AMP exists,
+			   but failed request */
+			dev_err(card->dev,
+				"%s: Failed to request tapan amp spkr boost en gpio %d\n",
+				__func__, ext_top_spk_amp_boost_en_gpio);
+			goto err_lineout_top_spkr_bp;
+		}
+	}
+
 	ext_bot_spk_amp_gpio = of_get_named_gpio(pdev->dev.of_node,
 			"fih,cdc-lineout-botspkr-gpios", 0);
 	if (ext_bot_spk_amp_gpio < 0) {
@@ -2638,7 +2716,7 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 			dev_err(card->dev,
 				"%s: Failed to request tapan amp spkr gpio %d\n",
 				__func__, ext_bot_spk_amp_gpio);
-			goto err_lineout_top_spkr;
+			goto err_lineout_top_spkr_en;
 		}
 	}
 
@@ -2700,6 +2778,19 @@ err_lineout_bot_spkr:
 	if (ext_bot_spk_amp_gpio >= 0) {
 		gpio_free(ext_bot_spk_amp_gpio);
 		ext_bot_spk_amp_gpio = -1;
+	}
+
+err_lineout_top_spkr_en:
+	if (ext_top_spk_amp_boost_en_gpio >= 0) {
+		gpio_free(ext_top_spk_amp_boost_en_gpio);
+		ext_top_spk_amp_boost_en_gpio = -1;
+	}
+
+
+err_lineout_top_spkr_bp:
+	if (ext_top_spk_amp_boost_bp_gpio >= 0) {
+		gpio_free(ext_top_spk_amp_boost_bp_gpio);
+		ext_top_spk_amp_boost_bp_gpio = -1;
 	}
 
 err_lineout_top_spkr:
