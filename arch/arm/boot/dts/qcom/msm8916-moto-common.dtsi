@@ -252,7 +252,7 @@
 };
 &tlmm_pinmux {
 	backlight-reset {
-		qcom,pins = <&gp 39>;
+		qcom,pins = <&gp 36>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
 		label = "backlight-reset";
