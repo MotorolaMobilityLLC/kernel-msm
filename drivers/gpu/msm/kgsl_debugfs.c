@@ -181,39 +181,97 @@ static void print_mem_entry(struct seq_file *s, struct kgsl_mem_entry *entry)
 			usage, m->sglen);
 }
 
-static int process_mem_print(struct seq_file *s, void *unused)
+struct process_mem_entry {
+	struct kgsl_process_private *pprivate;
+	int unbound;
+};
+
+static struct kgsl_mem_entry *process_mem_seq_find(
+			struct seq_file *s, void *v, loff_t l)
 {
-	struct kgsl_mem_entry *entry;
-	struct rb_node *node;
-	struct kgsl_process_private *private = s->private;
-	int next = 0;
+	struct process_mem_entry *e = s->private;
+	struct kgsl_process_private *private = e->pprivate;
+	struct kgsl_mem_entry *entry = v;
+	struct rb_node *node = NULL;
+	int id = 0;
 
-	seq_printf(s, "%8s %8s %8s %5s %6s %10s %16s %5s\n",
-		   "gpuaddr", "useraddr", "size", "id", "flags", "type",
-		   "usage", "sglen");
-
-	/* print all entries with a GPU address */
+	l--;
 	spin_lock(&private->mem_lock);
-
-	for (node = rb_first(&private->mem_rb); node; node = rb_next(node)) {
-		entry = rb_entry(node, struct kgsl_mem_entry, node);
-		print_mem_entry(s, entry);
+	if (entry == SEQ_START_TOKEN) {
+		node = rb_first(&private->mem_rb);
+		e->unbound = 0;
+	} else if (!e->unbound) {
+		node = rb_next(&entry->node);
+	} else {
+		id = entry->id + 1;
 	}
-
-
-	/* now print all the unbound entries */
-	while (1) {
-		entry = idr_get_next(&private->mem_idr, &next);
-		if (entry == NULL)
-			break;
-		if (entry->memdesc.gpuaddr == 0)
-			print_mem_entry(s, entry);
-		next++;
+	for (; node; node = rb_next(node)) {
+		if (l-- == 0) {
+			entry = rb_entry(node, struct kgsl_mem_entry, node);
+			if (kgsl_mem_entry_get(entry)) {
+				e->unbound = 0;
+				goto found;
+			}
+			l++;
+		}
 	}
+	for (entry = idr_get_next(&private->mem_idr, &id); entry;
+			id++, entry = idr_get_next(&private->mem_idr, &id)) {
+		if (!entry->memdesc.gpuaddr && (l-- == 0)) {
+			if (kgsl_mem_entry_get(entry)) {
+				e->unbound = 1;
+				goto found;
+			}
+			l++;
+		}
+	}
+	entry = NULL;
+found:
 	spin_unlock(&private->mem_lock);
+	if (v != SEQ_START_TOKEN)
+		kgsl_mem_entry_put(v);
+	return entry;
+}
 
+static void *process_mem_seq_start(struct seq_file *s, loff_t *pos)
+{
+	loff_t l = *pos;
+
+	if (l == 0)
+		return SEQ_START_TOKEN;
+	else
+		return process_mem_seq_find(s, SEQ_START_TOKEN, l);
+}
+
+static void *process_mem_seq_next(struct seq_file *s, void *v, loff_t *pos)
+{
+	++*pos;
+	return process_mem_seq_find(s, v, 1);
+}
+
+static void process_mem_seq_stop(struct seq_file *s, void *v)
+{
+	if (v && v != SEQ_START_TOKEN)
+		kgsl_mem_entry_put(v);
+}
+
+static int process_mem_seq_show(struct seq_file *s, void *v)
+{
+	if (v == SEQ_START_TOKEN)
+		seq_printf(s, "%8s %8s %8s %5s %6s %10s %16s %5s\n",
+			"gpuaddr", "useraddr", "size", "id", "flags", "type",
+			"usage", "sglen");
+	else
+		print_mem_entry(s, v);
 	return 0;
 }
+
+static const struct seq_operations process_mem_seq_ops = {
+	.start = process_mem_seq_start,
+	.next = process_mem_seq_next,
+	.stop = process_mem_seq_stop,
+	.show = process_mem_seq_show,
+};
 
 static int process_mem_open(struct inode *inode, struct file *file)
 {
@@ -226,22 +284,29 @@ static int process_mem_open(struct inode *inode, struct file *file)
 	if (!private)
 		return -ENODEV;
 
-	ret = single_open(file, process_mem_print, private);
-	if (ret)
+	ret = seq_open_private(file, &process_mem_seq_ops,
+			sizeof(struct process_mem_entry));
+	if (ret) {
 		kgsl_process_private_put(private);
+	} else {
+		struct seq_file *s = file->private_data;
+		struct process_mem_entry *e = s->private;
+		e->pprivate = private;
+	}
 
 	return ret;
 }
 
 static int process_mem_release(struct inode *inode, struct file *file)
 {
-	struct kgsl_process_private *private =
-		((struct seq_file *)file->private_data)->private;
+	struct seq_file *s = file->private_data;
+	struct process_mem_entry *e = s->private;
+	struct kgsl_process_private *private = e->pprivate;
 
 	if (private)
 		kgsl_process_private_put(private);
 
-	return single_release(inode, file);
+	return seq_release_private(inode, file);
 }
 
 static const struct file_operations process_mem_fops = {
