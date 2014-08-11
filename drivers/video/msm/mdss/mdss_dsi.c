@@ -1020,6 +1020,16 @@ static int mdss_dsi_ctl_partial_update(struct mdss_panel_data *pdata)
 	return rc;
 }
 
+static void __mdss_mdp_ambient_on_work(struct work_struct *work)
+{
+	int rc = 0;
+
+	struct delayed_work *dw = to_delayed_work(work);
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata =container_of(dw, struct mdss_dsi_ctrl_pdata, ambient_enable_work);
+
+	rc = mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
+}
+
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 				  int event, void *arg)
 {
@@ -1091,9 +1101,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		rc = mdss_dsi_ulps_config(ctrl_pdata, (int)arg);
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_ON:
-		rc = mdss_dsi_panel_ambient_enable(pdata, 1);
+		schedule_delayed_work(&ctrl_pdata->ambient_enable_work ,msecs_to_jiffies(1000));
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_OFF:
+		cancel_delayed_work(&ctrl_pdata->ambient_enable_work);
 		rc = mdss_dsi_panel_ambient_enable(pdata, 0);
 		break;
 	default:
@@ -1300,6 +1311,8 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_err("%s: dsi panel dev reg failed\n", __func__);
 		goto error_pan_node;
 	}
+
+	INIT_DELAYED_WORK(&ctrl_pdata->ambient_enable_work, __mdss_mdp_ambient_on_work);
 
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 	return 0;
