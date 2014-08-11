@@ -1037,13 +1037,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 				schedule_delayed_work(&mfd->idle_notify_work,
 					msecs_to_jiffies(mfd->idle_time));
 		}
-
-		mutex_lock(&mfd->bl_lock);
-		if (!mfd->bl_updated) {
-			mfd->bl_updated = 1;
-			mdss_fb_set_backlight(mfd, mfd->unset_bl_level);
-		}
-		mutex_unlock(&mfd->bl_lock);
 		break;
 
 	case FB_BLANK_VSYNC_SUSPEND:
@@ -1052,7 +1045,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_POWERDOWN:
 	default:
 		if (mfd->panel_power_on && mfd->mdp.off_fnc) {
-			int curr_pwr_state;
+			int curr_pwr_state, bl_level_old;
 
 			mutex_lock(&mfd->update.lock);
 			mfd->update.type = NOTIFY_TYPE_SUSPEND;
@@ -1066,8 +1059,13 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->op_enable = false;
 			curr_pwr_state = mfd->panel_power_on;
 			mutex_lock(&mfd->bl_lock);
+			if (mfd->bl_updated)
+				bl_level_old = mfd->bl_level;
+			else
+				bl_level_old = mfd->unset_bl_level;
 			mdss_fb_set_backlight(mfd, 0);
 			mfd->panel_power_on = false;
+			mfd->unset_bl_level = bl_level_old;
 			mfd->bl_updated = 0;
 			mutex_unlock(&mfd->bl_lock);
 
