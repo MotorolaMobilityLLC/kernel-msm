@@ -341,6 +341,10 @@ eHalStatus sme_FTUpdateKey( tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo )
     switch(pMac->ft.ftSmeContext.FTState)
     {
     case eFT_SET_KEY_WAIT:
+#ifdef DEBUG_ROAM_DELAY
+    //store the PTK send event
+    vos_record_roam_event(e_HDD_SET_PTK_REQ, NULL, 0);
+#endif
     if (sme_GetFTPreAuthState (hHal) == TRUE)
       {
           status = sme_FTSendUpdateKeyInd(pMac, pFTKeyInfo);
