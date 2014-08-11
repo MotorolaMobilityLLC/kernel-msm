@@ -13,6 +13,12 @@
 
 
 &cci {
+	actuator0: qcom,actuator@20 {
+		cell-index = <1>;
+		reg = <0x18 0x0>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+	};
 	qcom,camera@20 {
 		cell-index = <0>;
 		compatible = "qcom,camera";
@@ -21,13 +27,15 @@
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
+		qcom,actuator-src = <&actuator0>;
 		qcom,sensor-name = "s5k5e2";
 		cam_vdig-supply = <&pm8916_l10>;
-		qcom,cam-vreg-name = "cam_vdig";
-		qcom,cam-vreg-type = <0>;
-		qcom,cam-vreg-min-voltage = <1800000>;
-		qcom,cam-vreg-max-voltage = <1800000>;
-		qcom,cam-vreg-op-mode = <1800000>;
+		cam_vaf-supply = <&pm8916_l17>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vaf";
+		qcom,cam-vreg-type = <0 0>;
+		qcom,cam-vreg-min-voltage = <1800000 2850000>;
+		qcom,cam-vreg-max-voltage = <1800000 2850000>;
+		qcom,cam-vreg-op-mode = <1800000 2850000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
 			&cam_sensor_rear_default>;
