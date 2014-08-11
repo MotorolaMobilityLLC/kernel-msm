@@ -6977,6 +6977,9 @@ VOS_STATUS hdd_reset_all_adapters( hdd_context_t *pHddCtx )
       pAdapter->sessionCtx.station.hdd_ReassocScenario = VOS_FALSE;
 
       hdd_deinit_tx_rx(pAdapter);
+
+      wlan_hdd_decr_active_session(pHddCtx, pAdapter->device_mode);
+
       if (test_bit(WMM_INIT_DONE, &pAdapter->event_flags))
       {
           hdd_wmm_adapter_close( pAdapter );

@@ -115,6 +115,7 @@ typedef enum {
    EXTENDED_SCAN          = 42,
 #endif
 
+   DYNAMIC_WMM_PS        = 43,
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 

@@ -3096,6 +3096,61 @@ REG_VARIABLE( CFG_EXTSCAN_ENABLE, WLAN_PARAM_Integer,
                 CFG_MAX_CONCURRENT_CONNECTIONS_DEFAULT,
                 CFG_MAX_CONCURRENT_CONNECTIONS_MIN,
                 CFG_MAX_CONCURRENT_CONNECTIONS_MAX ),
+   REG_VARIABLE( CFG_ENABLE_DYNAMIC_WMMPS_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, enableDynamicWMMPS,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_ENABLE_DYNAMIC_WMM_PS_DEFAULT,
+                CFG_ENABLE_DYNAMIC_WMM_PS_MIN,
+                CFG_ENABLE_DYNAMIC_WMM_PS_MAX ),
+
+   REG_VARIABLE( CFG_MAX_UAPSD_CONSEC_SP_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, maxUapsdConsecSP,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_MAX_UAPSD_CONSEC_SP_DEFAULT,
+                CFG_MAX_UAPSD_CONSEC_SP_MIN,
+                CFG_MAX_UAPSD_CONSEC_SP_MAX ),
+
+   REG_VARIABLE( CFG_MAX_UAPSD_CONSEC_RX_CNT_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, maxUapsdConsecRxCnt,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_MAX_UAPSD_CONSEC_RX_CNT_DEFAULT,
+                CFG_MAX_UAPSD_CONSEC_RX_CNT_MIN,
+                CFG_MAX_UAPSD_CONSEC_RX_CNT_MAX ),
+
+   REG_VARIABLE( CFG_MAX_UAPSD_CONSEC_TX_CNT_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, maxUapsdConsecTxCnt,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_MAX_UAPSD_CONSEC_TX_CNT_DEFAULT,
+                CFG_MAX_UAPSD_CONSEC_TX_CNT_MIN,
+                CFG_MAX_UAPSD_CONSEC_TX_CNT_MAX ),
+
+   REG_VARIABLE( CFG_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, uapsdConsecRxCntMeasWindow,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW_DEFAULT,
+                CFG_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW_MIN,
+                CFG_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW_MAX ),
+
+   REG_VARIABLE( CFG_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, uapsdConsecTxCntMeasWindow,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW_DEFAULT,
+                CFG_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW_MIN,
+                CFG_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW_MAX ),
+
+   REG_VARIABLE( CFG_UAPSD_PSPOLL_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, maxPsPollInWmmUapsdMode,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_UAPSD_PSPOLL_DEFAULT,
+                CFG_UAPSD_PSPOLL_MIN,
+                CFG_UAPSD_PSPOLL_MAX ),
+
+   REG_VARIABLE( CFG_MAX_UAPSD_INACT_INTVL_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, maxUapsdInactivityIntervals,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_MAX_UAPSD_INACT_INTVL_DEFAULT,
+                CFG_MAX_UAPSD_INACT_INTVL_MIN,
+                CFG_MAX_UAPSD_INACT_INTVL_MAX ),
 };
 
 /*
@@ -4885,6 +4940,69 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       hddLog(LOGE, "Could not pass on WNI_CFG_SA_QUERY_RETRY_INTERVAL to CCM");
    }
 #endif
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_MAX_UAPSD_CONSEC_SP,
+                    pConfig->maxUapsdConsecSP, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_MAX_UAPSD_CONSEC_SP");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_MAX_UAPSD_CONSEC_RX_CNT,
+                    pConfig->maxUapsdConsecRxCnt, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_MAX_UAPSD_CONSEC_RX_CNT");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_MAX_UAPSD_CONSEC_TX_CNT,
+                    pConfig->maxUapsdConsecTxCnt, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_MAX_UAPSD_CONSEC_TX_CNT");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_MAX_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW,
+                    pConfig->uapsdConsecTxCntMeasWindow, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_MAX_UAPSD_CONSEC_TX_CNT_MEAS_WINDOW");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_MAX_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW,
+                    pConfig->uapsdConsecRxCntMeasWindow, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_MAX_UAPSD_CONSEC_RX_CNT_MEAS_WINDOW");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_MAX_PSPOLL_IN_WMM_UAPSD_PS_MODE,
+                    pConfig->maxPsPollInWmmUapsdMode, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_MAX_PSPOLL_IN_WMM_UAPSD_PS_MODE");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_MAX_UAPSD_INACTIVITY_INTERVALS,
+                    pConfig->maxUapsdInactivityIntervals, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_MAX_UAPSD_INACTIVITY_INTERVALS");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_ENABLE_DYNAMIC_WMMPS,
+                    pConfig->enableDynamicWMMPS, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_DYNAMIC_WMMPS");
+   }
 
    return fStatus;
 }

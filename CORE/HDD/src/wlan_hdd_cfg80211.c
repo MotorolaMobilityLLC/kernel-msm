@@ -10500,7 +10500,6 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
 {
     int status;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev );
-    hdd_adapter_t *pHostapdAdapter = NULL;
     VOS_STATUS exitbmpsStatus = VOS_STATUS_E_INVAL;
     hdd_context_t *pHddCtx = NULL;
 
@@ -10571,20 +10570,6 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: failed to set security params",
                 __func__);
         return status;
-    }
-   /* For SAP + STA concurrency , driver only supports SCC.
-    * if SAP is ON, driver will stop it and after assoc completion,
-    * or failure, SAP will be started on STA channel to force SCC.
-    */
-    pHostapdAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_SOFTAP);
-    if (pHostapdAdapter != NULL)
-    {
-        hddLog(VOS_TRACE_LEVEL_INFO, "Close SAP until STA is connected");
-        if (test_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags))
-        {
-            WLANSAP_StopBss((WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext);
-            clear_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags);
-        }
     }
     if ( req->channel )
     {
