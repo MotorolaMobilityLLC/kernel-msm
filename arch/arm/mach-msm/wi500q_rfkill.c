@@ -25,9 +25,9 @@ static int bluetooth_set_power(void *data, bool blocked)
 		gpio_free(GPIO_BT_REGEN);
 
 	if (rc_reset || rc_reg) {
-		printk ("gpio request fail , free gpio \n");
+		printk ("rfkill: gpio request fail , free gpio \n");
 	} else if (!blocked) {
-		printk("BT power on\n");
+		printk("rfkilL: BT power on\n");
 		// BT reg_eng high
  		gpio_direction_output(GPIO_BT_REGEN, 0);
 		usleep(300);
@@ -41,7 +41,7 @@ static int bluetooth_set_power(void *data, bool blocked)
 		gpio_free(GPIO_BT_RESET);
 
 	} else {
-		printk("BT shutdown \n");
+		printk("rfkill: BT shutdown \n");
  		gpio_direction_output(GPIO_BT_REGEN, 0);
 		gpio_direction_output(GPIO_BT_RESET, 0);
 		gpio_free(GPIO_BT_REGEN);
@@ -57,9 +57,9 @@ static struct rfkill_ops bcm_rfkill_ops = {
 static int bcm_rfkill_probe(struct platform_device *pdev)
 {
 	int rc = 0;
-	bool default_state = false;  /* off */
+	bool default_state = true;  /* blocked = off */
 
-	printk("bcm_rfkill_probe\n");
+	printk("rfkill: bcm_rfkill_probe\n");
 
 
 	bluetooth_set_power(NULL, default_state);
@@ -68,16 +68,17 @@ static int bcm_rfkill_probe(struct platform_device *pdev)
 				&bcm_rfkill_ops , NULL);
 	if (!bt_rfk) {
 		rc = -ENOMEM;
-		printk("rfkill alloc fail\n");
+		printk("rfkill: rfkill alloc fail\n");
 	}
 
-	rfkill_set_states(bt_rfk, default_state, false);
+	//rfkill_set_states(bt_rfk, default_state, false);
+	rfkill_init_sw_state(bt_rfk, default_state);
 
 	/* userspace cannot take exclusive control */
 
 	rc = rfkill_register(bt_rfk);
 	if (rc) {
-		printk("rfkill register fail \n");
+		printk("rfkill: rfkill register fail \n");
 		rfkill_destroy(bt_rfk);
 	}
 
@@ -108,7 +109,7 @@ static struct platform_driver bcm_rfkill_driver = {
 
 static int __init bcm_rfkill_init(void)
 {
-	printk("bcm rfkill init");
+	printk("rfkill: bcm rfkill init");
 	return platform_driver_register(&bcm_rfkill_driver);
 }
 
