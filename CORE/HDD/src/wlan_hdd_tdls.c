@@ -43,7 +43,7 @@
 #include <net/ieee80211_radiotap.h>
 #include "wlan_hdd_tdls.h"
 #include "wlan_hdd_cfg80211.h"
-
+#include "vos_sched.h"
 
 static tANI_S32 wlan_hdd_get_tdls_discovery_peer_cnt(tdlsCtx_t *pHddTdlsCtx);
 static tANI_S32 wlan_hdd_tdls_peer_reset_discovery_processed(tdlsCtx_t *pHddTdlsCtx);
@@ -2109,7 +2109,7 @@ void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx,
     mutex_unlock(&pHddCtx->tdls_lock);
 }
 
-static void wlan_hdd_tdls_pre_setup(struct work_struct *work)
+static void __wlan_hdd_tdls_pre_setup(struct work_struct *work)
 {
     tdlsCtx_t *pHddTdlsCtx =
        container_of(work, tdlsCtx_t, implicit_setup);
@@ -2203,6 +2203,16 @@ static void wlan_hdd_tdls_pre_setup(struct work_struct *work)
 done:
     pHddTdlsCtx->curr_candidate = NULL;
     pHddTdlsCtx->magic = 0;
+    return;
+}
+
+
+static void wlan_hdd_tdls_pre_setup(struct work_struct *work)
+{
+    vos_ssr_protect(__func__);
+    __wlan_hdd_tdls_pre_setup(work);
+    vos_ssr_unprotect(__func__);
+
     return;
 }
 
