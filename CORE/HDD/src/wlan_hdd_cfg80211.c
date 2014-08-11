@@ -8950,7 +8950,7 @@ allow_suspend:
  * Go through each adapter and check if Connection is in progress
  *
  */
-v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx )
+v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx, v_BOOL_t isRoC )
 {
     hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
     hdd_station_ctx_t *pHddStaCtx = NULL;
@@ -8978,7 +8978,7 @@ v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx )
                     "%s: Adapter with device mode %s (%d) exists",
                     __func__, hdd_device_modetoString(pAdapter->device_mode),
                                                        pAdapter->device_mode);
-            if (((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+            if ((((!isRoC) && (WLAN_HDD_INFRA_STATION == pAdapter->device_mode)) ||
                  (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) ||
                  (WLAN_HDD_P2P_DEVICE == pAdapter->device_mode)) &&
                  (eConnectionState_Connecting ==
@@ -8989,7 +8989,7 @@ v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx )
                        WLAN_HDD_GET_STATION_CTX_PTR(pAdapter), pAdapter->sessionId);
                 return VOS_TRUE;
             }
-            if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+            if (((!isRoC) && (WLAN_HDD_INFRA_STATION == pAdapter->device_mode)) ||
                      (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) ||
                      (WLAN_HDD_P2P_DEVICE == pAdapter->device_mode))
             {
@@ -9170,7 +9170,7 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 
     /* Check if scan is allowed at this point of time.
      */
-    if (hdd_isConnectionInProgress(pHddCtx))
+    if (hdd_isConnectionInProgress(pHddCtx, VOS_FALSE))
     {
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Scan not allowed", __func__);
         return -EBUSY;
