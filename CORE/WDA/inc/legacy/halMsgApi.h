@@ -1353,6 +1353,17 @@ typedef struct sTdlsLinkEstablishParams
    tANI_U32  status;
 }tTdlsLinkEstablishParams, *tpTdlsLinkEstablishParams;
 
+// tdlsoffchan
+typedef struct sTdlsChanSwitchParams
+{
+   tANI_U16  staIdx;
+   tANI_U8   tdlsOffCh;        // Target Off Channel
+   tANI_U8   tdlsOffChBwOffset;// Target Off Channel Bandwidth offset
+   tANI_U8   tdlsSwMode;     // TDLS Off Channel Mode
+   tANI_U8   operClass;      //Operating class corresponding to target channel
+   tANI_U32  status;
+}tTdlsChanSwitchParams, *tpTdlsChanSwitchParams;
+
 static inline void halGetTxTSFtimer(tpAniSirGlobal pMac, 
                                                 tSirMacTimeStamp *pTime)
 {

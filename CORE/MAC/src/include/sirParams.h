@@ -675,6 +675,13 @@ typedef struct sSirMbMsgP2p
 
 #endif /* WLAN_FEATURE_EXTSCAN */
 
+#ifdef FEATURE_WLAN_TDLS
+/// PE <-> HAL TDLS messages
+// tdlsoffchan
+#define SIR_HAL_TDLS_CHAN_SWITCH_REQ          (SIR_HAL_ITC_MSG_TYPES_BEGIN + 258)
+#define SIR_HAL_TDLS_CHAN_SWITCH_REQ_RSP      (SIR_HAL_ITC_MSG_TYPES_BEGIN + 259)
+#endif
+
 #define SIR_HAL_MSG_TYPES_END              (SIR_HAL_MSG_TYPES_BEGIN + 0x1FF)
 // CFG message types
 #define SIR_CFG_MSG_TYPES_BEGIN        (SIR_CFG_MODULE_ID << 8)

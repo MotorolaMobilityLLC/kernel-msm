@@ -5851,3 +5851,118 @@ void limInitOperatingClasses( tHalHandle hHal )
 }
 
 #endif
+// tdlsoffchan
+/*
+ * Process Channel Switch from SME.
+ */
+tSirRetStatus limProcesSmeTdlsChanSwitchReq(tpAniSirGlobal pMac,
+                                            tANI_U32 *pMsgBuf)
+{
+    /* get all discovery request parameters */
+    tSirTdlsChanSwitch *pTdlsChanSwitch = (tSirTdlsChanSwitch*) pMsgBuf ;
+    tpPESession            psessionEntry;
+    tANI_U8                sessionId;
+    tpTdlsChanSwitchParams pMsgTdlsChanSwitch;
+    tSirMsgQ               msg;
+    tANI_U16               peerIdx = 0;
+    tpDphHashNode          pStaDs = NULL;
+
+    VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+             ("TDLS Channel Switch Recieved on peer:" MAC_ADDRESS_STR),
+              MAC_ADDR_ARRAY(pTdlsChanSwitch->peerMac));
+
+    psessionEntry = peFindSessionByBssid(pMac,
+                                         pTdlsChanSwitch->bssid,
+                                         &sessionId);
+    if (psessionEntry == NULL)
+    {
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                  "PE Session does not exist for given sme sessionId %d",
+                  pTdlsChanSwitch->sessionId);
+        return eSIR_FAILURE;
+    }
+
+    /* check if we are in proper state to work as TDLS client */
+    if (psessionEntry->limSystemRole != eLIM_STA_ROLE)
+    {
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                  "TDLS Channel Switch received in wrong system Role %d",
+                  psessionEntry->limSystemRole);
+        goto lim_tdls_chan_switch_error;
+    }
+
+    /*
+     * if we are still good, go ahead and check if we are in proper state to
+     * do TDLS discovery req/rsp/....frames.
+     */
+    if ((psessionEntry->limSmeState != eLIM_SME_ASSOCIATED_STATE) &&
+            (psessionEntry->limSmeState != eLIM_SME_LINK_EST_STATE))
+    {
+
+        limLog(pMac, LOGE, "TDLS Channel Switch received in invalid LIMsme state (%d)",
+               psessionEntry->limSmeState);
+        goto lim_tdls_chan_switch_error;
+    }
+
+    pStaDs = dphLookupHashEntry(pMac, pTdlsChanSwitch->peerMac, &peerIdx,
+                                &psessionEntry->dph.dphHashTable) ;
+    if ( NULL == pStaDs )
+    {
+        limLog( pMac, LOGE, FL( "pStaDs is NULL" ));
+        goto lim_tdls_chan_switch_error;
+
+    }
+    pMsgTdlsChanSwitch = vos_mem_malloc(sizeof( tTdlsChanSwitchParams ));
+    if ( NULL == pMsgTdlsChanSwitch )
+    {
+        limLog( pMac, LOGE,
+                     FL( "Unable to allocate memory TDLS Channel Switch" ));
+        return eSIR_MEM_ALLOC_FAILED;
+    }
+
+    vos_mem_set( (tANI_U8 *)pMsgTdlsChanSwitch, sizeof(tpTdlsChanSwitchParams), 0);
+
+    pMsgTdlsChanSwitch->staIdx = pStaDs->staIndex;
+    pMsgTdlsChanSwitch->tdlsOffCh = pTdlsChanSwitch->tdlsOffCh;
+    pMsgTdlsChanSwitch->tdlsOffChBwOffset = pTdlsChanSwitch->tdlsOffChBwOffset;
+    pMsgTdlsChanSwitch->tdlsSwMode = pTdlsChanSwitch->tdlsSwMode;
+    pMsgTdlsChanSwitch->operClass = limGetOPClassFromChannel(
+                                           pMac->scan.countryCodeCurrent,
+                                           pTdlsChanSwitch->tdlsOffCh,
+                                           pTdlsChanSwitch->tdlsOffChBwOffset);
+    if(pMsgTdlsChanSwitch->operClass == 0)
+    {
+
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                                   "Invalid Operating class 0 !!!");
+        goto lim_tdls_chan_switch_error;
+    }
+    else
+    {
+
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+              "%s: TDLS Channel Switch params: staIdx %d class %d ch %d bw %d mode %d",
+               __func__,
+               pMsgTdlsChanSwitch->staIdx,
+               pMsgTdlsChanSwitch->operClass,
+               pMsgTdlsChanSwitch->tdlsOffCh,
+               pMsgTdlsChanSwitch->tdlsOffChBwOffset,
+               pMsgTdlsChanSwitch->tdlsSwMode);
+    }
+
+    msg.type = WDA_SET_TDLS_CHAN_SWITCH_REQ;
+    msg.reserved = 0;
+    msg.bodyptr = pMsgTdlsChanSwitch;
+    msg.bodyval = 0;
+    if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
+    {
+        limLog(pMac, LOGE, FL("halPostMsgApi failed\n"));
+        goto lim_tdls_chan_switch_error;
+    }
+
+    return eSIR_SUCCESS;
+
+lim_tdls_chan_switch_error:
+    return eSIR_FAILURE;
+}
+
