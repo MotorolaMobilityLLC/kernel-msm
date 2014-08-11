@@ -1407,9 +1407,10 @@ static void atvr_remove(struct hid_device *hdev)
 }
 
 static const struct hid_device_id atvr_devices[] = {
-	/* TODO: the device reports vendor and product ID as 0's for now */
-	{HID_BLUETOOTH_DEVICE(HID_ANY_ID,   /* VENDOR_ID */
-			      HID_ANY_ID)}, /* PRODUCT/DEVICE ID */
+	{HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_GOOGLE,
+			      USB_DEVICE_ID_ADT1_REMOTE)},
+	{HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_GOOGLE,
+			      USB_DEVICE_ID_NEXUS_REMOTE)},
 	{ }
 };
 MODULE_DEVICE_TABLE(hid, atvr_devices);
