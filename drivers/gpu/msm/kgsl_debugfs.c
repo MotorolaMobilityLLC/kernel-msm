@@ -125,10 +125,8 @@ static char get_cacheflag(const struct kgsl_memdesc *m)
 }
 
 
-static int print_mem_entry(int id, void *ptr, void *data)
+static int print_mem_entry(struct seq_file *s, struct kgsl_mem_entry *entry)
 {
-	struct seq_file *s = data;
-	struct kgsl_mem_entry *entry = ptr;
 	char flags[9];
 	char usage[16];
 	struct kgsl_memdesc *m = &entry->memdesc;
@@ -160,20 +158,74 @@ static int print_mem_entry(int id, void *ptr, void *data)
 	return 0;
 }
 
-static int process_mem_print(struct seq_file *s, void *unused)
+
+static struct kgsl_mem_entry *process_mem_seq_find(
+			struct seq_file *s, void *v, loff_t l)
 {
 	struct kgsl_process_private *private = s->private;
+	struct kgsl_mem_entry *entry = v;
+	int id = 0;
 
-	seq_printf(s, "%16s %16s %16s %5s %9s %10s %16s %5s %16s\n",
-		   "gpuaddr", "useraddr", "size", "id", "flags", "type",
-		   "usage", "sglen", "mapsize");
-
+	l--;
 	spin_lock(&private->mem_lock);
-	idr_for_each(&private->mem_idr, print_mem_entry, s);
+	if (entry != SEQ_START_TOKEN)
+		id = entry->id + 1;
+	for (entry = idr_get_next(&private->mem_idr, &id); entry;
+			id++, entry = idr_get_next(&private->mem_idr, &id)) {
+		if (l-- == 0) {
+			if (kgsl_mem_entry_get(entry))
+				goto found;
+			l++;
+		}
+	}
+	entry = NULL;
+found:
 	spin_unlock(&private->mem_lock);
+	if (v != SEQ_START_TOKEN)
+		kgsl_mem_entry_put(v);
+	return entry;
+}
+
+static void *process_mem_seq_start(struct seq_file *s, loff_t *pos)
+{
+	loff_t l = *pos;
+
+	if (l == 0)
+		return SEQ_START_TOKEN;
+	else
+		return process_mem_seq_find(s, SEQ_START_TOKEN, l);
+}
+
+static void *process_mem_seq_next(struct seq_file *s, void *v, loff_t *pos)
+{
+	++*pos;
+	return process_mem_seq_find(s, v, 1);
+}
+
+static void process_mem_seq_stop(struct seq_file *s, void *v)
+{
+	if (v && v != SEQ_START_TOKEN)
+		kgsl_mem_entry_put(v);
+}
+
+static int process_mem_seq_show(struct seq_file *s, void *v)
+{
+	if (v == SEQ_START_TOKEN)
+		seq_printf(s, "%16s %16s %16s %5s %9s %10s %16s %5s %16s\n",
+			   "gpuaddr", "useraddr", "size", "id", "flags", "type",
+			   "usage", "sglen", "mapsize");
+	else
+		print_mem_entry(s, v);
 
 	return 0;
 }
+
+static const struct seq_operations process_mem_seq_ops = {
+	.start = process_mem_seq_start,
+	.next = process_mem_seq_next,
+	.stop = process_mem_seq_stop,
+	.show = process_mem_seq_show,
+};
 
 static int process_mem_open(struct inode *inode, struct file *file)
 {
@@ -186,9 +238,14 @@ static int process_mem_open(struct inode *inode, struct file *file)
 	if (!private)
 		return -ENODEV;
 
-	ret = single_open(file, process_mem_print, private);
-	if (ret)
+	ret = seq_open(file, &process_mem_seq_ops);
+	if (ret) {
 		kgsl_process_private_put(private);
+	} else {
+		struct seq_file *s = file->private_data;
+
+		s->private = private;
+	}
 
 	return ret;
 }
@@ -201,7 +258,7 @@ static int process_mem_release(struct inode *inode, struct file *file)
 	if (private)
 		kgsl_process_private_put(private);
 
-	return single_release(inode, file);
+	return seq_release(inode, file);
 }
 
 static const struct file_operations process_mem_fops = {
