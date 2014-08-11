@@ -1,0 +1,7 @@
+config ASUSTEK_PCBID
+	depends on X86_INTEL_MID_FUGU
+	bool "ASUSTek PCB_ID driver"
+	help
+	  Support to OEM1 SFI table parsing and pre-defined pins configuration
+	  of GPIO reading for PCB_ID layout, and export kernel APIs for
+	  querying board-specific information. (eg, hardware revision)

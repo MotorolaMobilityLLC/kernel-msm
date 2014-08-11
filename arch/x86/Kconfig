@@ -454,6 +454,17 @@ config X86_INTEL_MID
 	  nor standard legacy replacement devices/features. e.g. It does not
 	  contain i8259, i8254, HPET, legacy BIOS, most of the io ports.
 
+config X86_INTEL_MID_FUGU
+	bool "ASUSTek FUGU platform"
+	depends on X86_INTEL_MID
+	select ASUSTEK_PCBID
+	---help---
+	  ASUSTek fugu platform is powered by Moorefield plaform.
+
+menu "fugu platform selection"
+source "arch/x86/platform/intel-mid/fugu/Kconfig"
+endmenu
+
 config ATOM_SOC_POWER
 	bool "Select Atom SOC Power"
 

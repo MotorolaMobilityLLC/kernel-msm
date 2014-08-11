@@ -17,6 +17,9 @@ obj-$(CONFIG_X86_INTEL_MID) += intel_mid_scu.o
 # BOARD files
 obj-$(CONFIG_X86_INTEL_MID) += board.o
 
+# ASUSTek fugu specific files
+obj-$(CONFIG_X86_INTEL_MID_FUGU) += fugu/
+
 # PMU driver
 obj-$(CONFIG_ATOM_SOC_POWER) += intel_soc_pmu.o intel_soc_pm_debug.o intel_soc_dump.o
 obj-$(CONFIG_ATOM_SOC_POWER) += intel_soc_mrfld.o
