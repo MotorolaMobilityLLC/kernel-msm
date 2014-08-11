@@ -6676,7 +6676,7 @@ static int nl80211_vendor_cmd(struct sk_buff *skb, struct genl_info *info)
 	int i = 0, err = 0, ifindex;
 	u32 vid = 0; u32 subcmd = 0;
 	struct net_device *dev = NULL;
-	printk("%s enter\n", __FUNCTION__);
+
 	if (info->attrs[NL80211_ATTR_IFINDEX]) {
                 ifindex = nla_get_u32(info->attrs[NL80211_ATTR_IFINDEX]);
 		dev = dev_get_by_index(genl_info_net(info), ifindex);
@@ -6710,11 +6710,9 @@ static int nl80211_vendor_cmd(struct sk_buff *skb, struct genl_info *info)
 	vid = nla_get_u32(info->attrs[NL80211_ATTR_VENDOR_ID]);
 	subcmd = nla_get_u32(info->attrs[NL80211_ATTR_VENDOR_SUBCMD]);
 	for (i = 0; i < rdev->wiphy.n_vendor_commands; i++) {
-
 		const struct wiphy_vendor_command *vcmd;
 		void *data = NULL;
 		int len = 0;
-		printk("%s index :%d\n", __FUNCTION__, i);
 
 		vcmd = &rdev->wiphy.vendor_commands[i];
 		if (vcmd->info.vendor_id != vid || vcmd->info.subcmd != subcmd)
@@ -6748,11 +6746,10 @@ static int nl80211_vendor_cmd(struct sk_buff *skb, struct genl_info *info)
 		rdev->cur_cmd_info = info;
 		err = rdev->wiphy.vendor_commands[i].doit(&rdev->wiphy, wdev,
 								data, len);
-        rdev->cur_cmd_info = NULL;
-	    return err;
+		rdev->cur_cmd_info = NULL;
+		return err;
 	}
-	printk("%s leave\n", __FUNCTION__);
-       return -EOPNOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 int cfg80211_vendor_cmd_reply(struct sk_buff *skb)
