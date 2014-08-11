@@ -5652,6 +5652,7 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
       pAdapter->dev = pWlanDev;
       pAdapter->pHddCtx = pHddCtx; 
       pAdapter->magic = WLAN_HDD_ADAPTER_MAGIC;
+      spin_lock_init(&pAdapter->lock_for_active_session);
 
       init_completion(&pAdapter->session_open_comp_var);
       init_completion(&pAdapter->session_close_comp_var);
@@ -9941,7 +9942,11 @@ void wlan_hdd_decr_active_session(hdd_context_t *pHddCtx, tVOS_CON_MODE mode)
    case VOS_P2P_CLIENT_MODE:
    case VOS_P2P_GO_MODE:
    case VOS_STA_SAP_MODE:
-        pHddCtx->no_of_active_sessions[mode]--;
+        if (pHddCtx->no_of_active_sessions[mode] > 0)
+            pHddCtx->no_of_active_sessions[mode]--;
+        else
+            hddLog(VOS_TRACE_LEVEL_INFO, FL(" No.# of Active sessions"
+                                     "is already Zero"));
         break;
    default:
         hddLog(VOS_TRACE_LEVEL_INFO, FL("Not Expected Mode %d"), mode);

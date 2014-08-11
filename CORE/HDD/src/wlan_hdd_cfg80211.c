@@ -10653,18 +10653,22 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
 
     pHddCtx->isAmpAllowed = VOS_TRUE;
 
+    /* Need to apply spin lock before decreasing active sessions
+     * as there can be chance for double decrement if context switch
+     * Calls  hdd_DisConnectHandler.
+     */
+
+    spin_lock_bh(&pAdapter->lock_for_active_session);
     if (eConnectionState_Associated ==  pHddStaCtx->conn_info.connState)
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                   "%s: Set HDD connState to eConnectionState_Disconnecting",
-                   __func__);
         wlan_hdd_decr_active_session(pHddCtx, pAdapter->device_mode);
     }
+    hdd_connSetConnectionState( pHddStaCtx, eConnectionState_Disconnecting );
+    spin_unlock_bh(&pAdapter->lock_for_active_session);
 
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                   "%s: Set HDD connState to eConnectionState_Disconnecting",
-                   __func__);
-    pHddStaCtx->conn_info.connState = eConnectionState_Disconnecting;
+                  FL( "Set HDD connState to eConnectionState_Disconnecting" ));
+
     INIT_COMPLETION(pAdapter->disconnect_comp_var);
 
     /*issue disconnect*/
