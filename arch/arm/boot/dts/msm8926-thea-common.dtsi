@@ -27,6 +27,11 @@
 	spi@f9923000 {
 		/delete-node/ nmi326@0; /* Remove DTV */
 	};
+
+	sound-9302 {
+		fih,cdc-lineout-topspkr-boost-bp-gpio = <&msmgpio 104 0x1>;
+		fih,cdc-lineout-topspkr-boost-en-gpio = <&msmgpio 112 0x1>;
+	};
 };
 
 &vdd_touch_vreg {
