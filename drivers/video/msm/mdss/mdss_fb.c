@@ -99,6 +99,9 @@ static int __mdss_fb_display_thread(void *data);
 static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd);
 static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 					int event, void *arg);
+
+extern int mdss_mdp_overlay_vsync_ctrl(struct msm_fb_data_type *mfd, int en);
+
 void mdss_fb_no_update_notify_timer_cb(unsigned long data)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)data;
@@ -464,8 +467,10 @@ static int interactive_notify(struct notifier_block *this,
 			if(first_display_on && mdss_panel_get_boot_cfg()){
 				first_display_on = false;
 			}else{
-				if(g_mfd != NULL)
-				mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
+				if(g_mfd != NULL){
+					mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
+					mdss_mdp_overlay_vsync_ctrl(g_mfd,1);
+				}
 			}
 			break;
 
