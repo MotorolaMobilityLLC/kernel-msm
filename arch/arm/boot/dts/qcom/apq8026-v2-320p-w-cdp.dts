@@ -47,19 +47,6 @@
 	};
 };
 
-/* new mem map for sharedmem devices */
-&rmtfs_smem {
-	reg = <0x07f00000 0x00100000>;
-};
-
-&dsp_smem {
-	reg = <0x03260000 0x00020000>;
-};
-
-&mdm_smem {
-	reg = <0x03260000 0x00020000>;
-};
-
 &pm8x26_rtc {
 	qcom,qpnp-rtc-write = <1>;
 };
