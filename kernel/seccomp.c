@@ -228,7 +228,7 @@ static u32 seccomp_run_filters(int syscall)
 
 static inline bool seccomp_may_assign_mode(unsigned long seccomp_mode)
 {
-	BUG_ON(!spin_is_locked(&current->sighand->siglock));
+	assert_spin_locked(&current->sighand->siglock);
 
 	if (current->seccomp.mode && current->seccomp.mode != seccomp_mode)
 		return false;
@@ -239,7 +239,7 @@ static inline bool seccomp_may_assign_mode(unsigned long seccomp_mode)
 static inline void seccomp_assign_mode(struct task_struct *task,
 				       unsigned long seccomp_mode)
 {
-	BUG_ON(!spin_is_locked(&task->sighand->siglock));
+	assert_spin_locked(&task->sighand->siglock);
 
 	task->seccomp.mode = seccomp_mode;
 	/*
@@ -278,7 +278,7 @@ static inline pid_t seccomp_can_sync_threads(void)
 	struct task_struct *thread, *caller;
 
 	BUG_ON(!mutex_is_locked(&current->signal->cred_guard_mutex));
-	BUG_ON(!spin_is_locked(&current->sighand->siglock));
+	assert_spin_locked(&current->sighand->siglock);
 
 	/* Validate all threads being eligible for synchronization. */
 	caller = current;
@@ -319,7 +319,7 @@ static inline void seccomp_sync_threads(void)
 	struct task_struct *thread, *caller;
 
 	BUG_ON(!mutex_is_locked(&current->signal->cred_guard_mutex));
-	BUG_ON(!spin_is_locked(&current->sighand->siglock));
+	assert_spin_locked(&current->sighand->siglock);
 
 	/* Synchronize all threads. */
 	caller = current;
@@ -465,7 +465,7 @@ static long seccomp_attach_filter(unsigned int flags,
 	unsigned long total_insns;
 	struct seccomp_filter *walker;
 
-	BUG_ON(!spin_is_locked(&current->sighand->siglock));
+	assert_spin_locked(&current->sighand->siglock);
 
 	/* Validate resulting filter length. */
 	total_insns = filter->len;
