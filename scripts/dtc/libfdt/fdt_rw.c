@@ -415,20 +415,31 @@ static void _fdt_packblocks(const char *old, char *new,
 
 int fdt_open_into(const void *fdt, void *buf, int bufsize)
 {
-	int err;
-	int mem_rsv_size, struct_size;
-	int newsize;
+	int err = -1;
+	uint32_t mem_rsv_size;
+	int struct_size;
+	uint32_t newsize;
 	const char *fdtstart = fdt;
-	const char *fdtend = fdtstart + fdt_totalsize(fdt);
+	const char *fdtend = NULL;
 	char *tmp;
 
+	if (fdtstart + fdt_totalsize(fdt) < fdtstart) {
+		return err;
+	}
+	fdtend = fdtstart + fdt_totalsize(fdt);
 	FDT_CHECK_HEADER(fdt);
+
+	if ((fdt_num_mem_rsv(fdt)+1) > (UINT_MAX / sizeof(struct fdt_reserve_entry)))  {
+		return err;
+	}
 
 	mem_rsv_size = (fdt_num_mem_rsv(fdt)+1)
 		* sizeof(struct fdt_reserve_entry);
 
 	if (fdt_version(fdt) >= 17) {
 		struct_size = fdt_size_dt_struct(fdt);
+			if (struct_size < 0)
+				return struct_size;
 	} else {
 		struct_size = 0;
 		while (fdt_next_tag(fdt, struct_size, &struct_size) != FDT_END)
@@ -447,16 +458,22 @@ int fdt_open_into(const void *fdt, void *buf, int bufsize)
 		fdt_set_totalsize(buf, bufsize);
 		return 0;
 	}
+	if (((uint64_t)FDT_ALIGN(sizeof(struct fdt_header), 8) + (uint64_t)mem_rsv_size \
+                + (uint64_t)struct_size + (uint64_t)fdt_size_dt_strings(fdt)) > UINT_MAX) {
+		return (err = -1);
+	}
 
 	/* Need to reorder */
 	newsize = FDT_ALIGN(sizeof(struct fdt_header), 8) + mem_rsv_size
 		+ struct_size + fdt_size_dt_strings(fdt);
-
 	if (bufsize < newsize)
 		return -FDT_ERR_NOSPACE;
 
 	/* First attempt to build converted tree at beginning of buffer */
 	tmp = buf;
+	if (((tmp + newsize) < tmp) || ((buf + bufsize) < buf)) {
+		return (err = -1);
+	}
 	/* But if that overlaps with the old tree... */
 	if (((tmp + newsize) > fdtstart) && (tmp < fdtend)) {
 		/* Try right after the old tree instead */
