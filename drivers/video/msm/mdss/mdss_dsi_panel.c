@@ -478,8 +478,10 @@ void mdss_panel_set_ambient_command(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		printk("[MDSS] set V2 panel ambient command\n");
 		
 	}else{
-		command_has_set = false;
- 		printk("[MDSS] Error: unknown panel id!!, panel not support ambient mode!\n");
+		memcpy(&ctrl_pdata->idle_on_cmds ,&idle_on_cmds_V2 ,sizeof(struct dsi_panel_cmds));
+		memcpy(&ctrl_pdata->idle_off_cmds ,&idle_off_cmds_V2 ,sizeof(struct dsi_panel_cmds));
+		command_has_set = true;
+		printk("[MDSS] Error: unknown panel id!! default set V2 panel ambient command\n");
 	}
 	
 	return;
@@ -524,6 +526,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
+
+	mdss_panel_set_ambient_command(ctrl);
 
 	if (is_ambient_on()){
 		pr_info("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
