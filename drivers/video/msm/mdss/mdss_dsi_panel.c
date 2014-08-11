@@ -1787,7 +1787,7 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 	}
 
 	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
-	if (ret <= 0) {
+	if (ret != 0) {
 		pr_err("%s: Error reading %d bytes from reg 0x%02x. ret=0x%x\n",
 				__func__, size, (unsigned int) reg, ret);
 		ret = -EFAULT;
