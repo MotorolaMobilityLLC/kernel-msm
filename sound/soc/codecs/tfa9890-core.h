@@ -193,6 +193,8 @@
 #define TFA9890_N1B12_VER2_VAL		0x4c64
 #define TFA9890_N1B12_VER3_VAL		0xa000
 
+int tfa9890_stereo_sync_set_mute(int mute);
+
 struct tfa9890_regs {
 	int reg;
 	int value;
