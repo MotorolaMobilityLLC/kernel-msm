@@ -73,6 +73,18 @@ static int bq27421_read_word(struct i2c_client *client, u8 reg)
 	return ret;
 }
 
+static int bq27421_read_block(struct i2c_client *client, u8 reg,
+							u8 *buf, u8 len)
+{
+	int ret;
+
+	ret = i2c_smbus_read_i2c_block_data(client, reg, len, buf);
+	if (ret < 0)
+		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+
+	return ret;
+}
+
 static int bq27421_write_byte(struct i2c_client *client, u8 reg, u8 value)
 {
 	int ret;
@@ -216,6 +228,8 @@ static void bq27421_set_fast_hibernate(struct bq27421_chip *chip)
 	struct bq27421_platform_data *pdata = chip->pdata;
 	int checksum;
 	int i;
+	u8 update_status;
+	u8 data_block[16] = {0, };
 
 	mutex_lock(&chip->mutex);
 
@@ -267,11 +281,27 @@ static void bq27421_set_fast_hibernate(struct bq27421_chip *chip)
 		}
 	}
 
+	bq27421_write_byte(chip->client, BQ27421_ECMD_DATACLASS,
+							SUBCLASS_STATE);
+	bq27421_write_byte(chip->client, BQ27421_ECMD_DATABLK, 0x00);
+	msleep(10);
+
+	checksum = bq27421_read_byte(chip->client,
+				BQ27421_ECMD_BLKCHECKSUM);
+	bq27421_read_block(chip->client, BQ27421_ECMD_BLKDATA,
+							data_block, 16);
+
+	update_status = data_block[2];
+	data_block[2] = update_status & ~0x80;
+	checksum = checksum + update_status - data_block[2];
+
+	bq27421_write_block(chip->client, BQ27421_ECMD_BLKDATA,
+							data_block, 16);
+	bq27421_write_byte(chip->client, BQ27421_ECMD_BLKCHECKSUM,
+							(u8)checksum);
+
 	if (!bq27421_exit_cfgupdate(chip))
 		pr_err("%s: failed to exit config model\n", __func__);
-
-	if (!bq27421_ctrl_sealed(chip))
-		pr_err("%s: failed to set seal\n", __func__);
 
 	mutex_unlock(&chip->mutex);
 }
