@@ -50,7 +50,7 @@
 		compatible = "ramoops";
 		status = "ok";
 
-		android,ramoops-buffer-start = <0x3eae0000>;
+		android,ramoops-buffer-start = <0x3e9e0000>;
 		android,ramoops-buffer-size = <0x100000>;
 		android,ramoops-console-size = <0x80000>;
 		android,ramoops-record-size = <0x7F800>;
@@ -58,7 +58,7 @@
 		android,ramoops-dump-oops = <0x1>;
 		android,ramoops-hole {
 			compatible = "qcom,msm-contig-mem";
-			qcom,memblock-reserve = <0x3eae0000 0x100000>;
+			qcom,memblock-reserve = <0x3e9e0000 0x100000>;
 		};
 	};
 
@@ -320,11 +320,11 @@
 
 	qcom,wdt@f9017000 {
 		qcom,bark-time = <22000>;
-		qcom,memblock-reserve = <0x3ebe0000 0xb000>;
+		qcom,memblock-reserve = <0x3eae0000 0xb000>;
 	};
 
 	qcom,tz-log@fe805720 {
-		qcom,memblock-reserve = <0x3ebeb000 0x1000>;
+		qcom,memblock-reserve = <0x3eaeb000 0x1000>;
 	};
 
 	cci: qcom,cci@fda0C000 {
