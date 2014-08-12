@@ -365,6 +365,8 @@ struct mdss_panel_info {
 	int new_fps;
 	int panel_max_fps;
 	int panel_max_vtotal;
+	int idle_fps;
+	int idle_ms_per_frame;
 	u32 mode_gpio_state;
 	u32 xstart_pix_align;
 	u32 width_pix_align;
@@ -400,6 +402,7 @@ struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
 	void (*set_idle)(struct mdss_panel_data *pdata, int enable);
+	int (*get_idle)(struct mdss_panel_data *pdata);
 	unsigned char *mmss_cc_base;
 
 	/**
