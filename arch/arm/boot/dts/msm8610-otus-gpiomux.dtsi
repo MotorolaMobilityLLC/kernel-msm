@@ -1,0 +1,49 @@
+/* Copyright (c) 2013, Motorola Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	gpiomux {
+		pin@fd51060 {
+			reg = <0xfd511060 0x10>;    /* BLSP2_I2C_SDA */
+			qcom,pin-num = <6>;
+			qcom,active@0 {
+				qcom,func = <3>;
+				qcom,pull = <0>;  /* none 		*/
+				qcom,drv = <0>;   /* 2ma		*/
+				qcom,dir = <0>;   /* input		*/
+			};
+			qcom,suspend@1 {
+				qcom,func = <3>;
+				qcom,pull = <0>;  /* none		*/
+				qcom,drv = <0>;   /* 2ma		*/
+				qcom,dir = <0>;   /* input		*/
+			};
+		};
+
+		pin@fd51070 {
+			reg = <0xfd511070 0x10>;    /* BLSP2_I2C_SCL */
+			qcom,pin-num = <7>;
+			qcom,active@0 {
+				qcom,func = <3>;
+				qcom,pull = <0>;  /* none 		*/
+				qcom,drv = <0>;   /* 2ma		*/
+				qcom,dir = <0>;   /* input		*/
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;
+				qcom,pull = <0>;  /* none 		*/
+				qcom,drv = <0>;   /* 2ma		*/
+				qcom,dir = <0>;   /* input		*/
+			};
+		};
+	};
+};
