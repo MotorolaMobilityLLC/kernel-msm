@@ -42,6 +42,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/gpio.h>
+#include <mach/gpiomux.h>
 #include <linux/debugfs.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -54,6 +55,15 @@
 #include "msm_serial_hs_hwreg.h"
 
 extern int g_audbg_enable;
+extern int g_bootdbguart;
+#define GPIO_AUDBG_TX 8
+
+static struct gpiomux_setting uart_console_cfg_old;
+static struct gpiomux_setting uart_console_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
 
 /*
  * There are 3 different kind of UART Core available on MSM.
@@ -1716,6 +1726,14 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 		line = pdata->line;
 	else
 		line = pdev->id;
+
+    /* Disable ttyHSL0 console if aboot say so */
+    if(line == 0 && g_bootdbguart == 0){
+        ret = gpio_request(GPIO_AUDBG_TX, "console_tx");
+        msm_gpiomux_write(GPIO_AUDBG_TX, GPIOMUX_ACTIVE,
+				&uart_console_cfg, &uart_console_cfg_old);
+        gpio_free(GPIO_AUDBG_TX);
+    }
 
 	/* Use line number from device tree alias if present */
 	if (pdev->dev.of_node) {
