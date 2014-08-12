@@ -92,6 +92,7 @@ dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-victara-p1b.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-victara-p2a.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-victara-p2b.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-victara-p2bf.dtb
+dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-victara_cn-p1a.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-valocia-p0.dtb
 
 # APQ8084
