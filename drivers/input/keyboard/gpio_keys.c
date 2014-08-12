@@ -328,14 +328,14 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 {
 	const struct gpio_keys_button *button = bdata->button;
 	struct input_dev *input = bdata->input;
-	unsigned int type = button->type ?: EV_KEY;
+	unsigned int type = (button->type ?) button->type : EV_KEY;
 	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
 
 	if (type == EV_ABS) {
 		if (state)
 			input_event(input, type, button->code, button->value);
 	} else {
-		input_event(input, type, button->code, !!state);
+		//input_event(input, type, button->code, !!state);
 	}
 	input_sync(input);
 }
@@ -931,7 +931,7 @@ static int gpio_keys_resume(struct device *dev)
 	if (error)
 		return error;
 
-	gpio_keys_report_state(ddata);
+	//gpio_keys_report_state(ddata);
 	return 0;
 }
 #endif
