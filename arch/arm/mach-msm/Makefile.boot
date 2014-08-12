@@ -94,6 +94,7 @@ dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-victara-p2b.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-victara-p2bf.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-victara_cn-p1a.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-valocia-p0.dtb
+dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-orthos-p1.dtb
 
 # APQ8084
    zreladdr-$(CONFIG_ARCH_APQ8084)	:= 0x00008000
