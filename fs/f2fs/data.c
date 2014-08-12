@@ -25,23 +25,20 @@
 
 static void f2fs_read_end_io(struct bio *bio, int err)
 {
-	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
-	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
+	struct bio_vec *bvec;
+	int i;
 
-	do {
+	__bio_for_each_segment(bvec, bio, i, 0) {
 		struct page *page = bvec->bv_page;
 
-		if (--bvec >= bio->bi_io_vec)
-			prefetchw(&bvec->bv_page->flags);
-
-		if (unlikely(!uptodate)) {
+		if (!err) {
+			SetPageUptodate(page);
+		} else {
 			ClearPageUptodate(page);
 			SetPageError(page);
-		} else {
-			SetPageUptodate(page);
 		}
 		unlock_page(page);
-	} while (bvec >= bio->bi_io_vec);
+	}
 
 	bio_put(bio);
 }
@@ -50,21 +47,19 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 {
 	struct f2fs_sb_info *sbi = bio->bi_private;
 	struct bio_vec *bvec;
+	int i;
 
-	do {
+	__bio_for_each_segment(bvec, bio, i, 0) {
 		struct page *page = bvec->bv_page;
 
-		if (--bvec >= bio->bi_io_vec)
-			prefetchw(&bvec->bv_page->flags);
-
-		if (unlikely(!uptodate)) {
-			SetPageError(page);
+		if (unlikely(err)) {
+			set_page_dirty(page);
 			set_bit(AS_EIO, &page->mapping->flags);
 			f2fs_stop_checkpoint(sbi);
 		}
 		end_page_writeback(page);
 		dec_page_count(sbi, F2FS_WRITEBACK);
-	} while (bvec >= bio->bi_io_vec);
+	}
 
 	if (sbi->wait_io) {
 		complete(sbi->wait_io);
@@ -841,8 +836,17 @@ write:
 
 	/* Dentry blocks are controlled by checkpoint */
 	if (S_ISDIR(inode->i_mode)) {
+		if (unlikely(f2fs_cp_error(sbi)))
+			goto redirty_out;
 		err = do_write_data_page(page, &fio);
 		goto done;
+	}
+
+	/* we should bypass data pages to proceed the kworkder jobs */
+	if (unlikely(f2fs_cp_error(sbi))) {
+		SetPageError(page);
+		unlock_page(page);
+		return 0;
 	}
 
 	if (!wbc->for_reclaim)
