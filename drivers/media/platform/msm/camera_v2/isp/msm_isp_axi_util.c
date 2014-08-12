@@ -1382,8 +1382,6 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 
 	stream_info->request_frm_num++;
 
-	printk("%s:%d request_frm_num %d\n", __func__, __LINE__, stream_info->request_frm_num);
-
 	stream_cfg_cmd.axi_stream_handle = stream_info->stream_handle;
 	stream_cfg_cmd.frame_skip_pattern = NO_SKIP;
 	stream_cfg_cmd.init_frame_drop = 0;
