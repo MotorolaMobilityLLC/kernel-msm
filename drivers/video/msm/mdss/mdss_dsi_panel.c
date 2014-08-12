@@ -166,7 +166,8 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-static void mdss_dsi_panel_idle_mode(struct mdss_panel_data *pdata, int enable)
+static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
+		int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 
@@ -198,6 +199,21 @@ static void mdss_dsi_panel_idle_mode(struct mdss_panel_data *pdata, int enable)
 		if (ctrl->idle_off_cmds.cmd_cnt)
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
 	}
+}
+
+static int mdss_dsi_panel_get_idle_mode(struct mdss_panel_data *pdata)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return 0;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	return ctrl->idle;
 }
 
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -1198,6 +1214,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_off_cmds,
 		"qcom,mdss-dsi-idle-off-command", "qcom,mdss-dsi-idle-off-command-state");
 
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-idle-fps", &tmp);
+	pinfo->idle_fps = (!rc ? tmp : 60);
+	if (pinfo->idle_fps)
+		pinfo->idle_ms_per_frame = 1000 / pinfo->idle_fps;
+
 	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
 	if (rc) {
 		pr_err("%s: failed to parse panel features\n", __func__);
@@ -1253,7 +1274,8 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
-	ctrl_pdata->panel_data.set_idle = mdss_dsi_panel_idle_mode;
+	ctrl_pdata->panel_data.set_idle = mdss_dsi_panel_set_idle_mode;
+	ctrl_pdata->panel_data.get_idle = mdss_dsi_panel_get_idle_mode;
 
 	return 0;
 }
