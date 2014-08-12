@@ -903,7 +903,9 @@ static int send_adm_cal_tx_gain(int port_id, struct acdb_cal_block *aud_cal,
 	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x0001fb2a}; */  /* 1fb2a for 24db */
 	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x0001670c}; */  /* 1670c for 21db */
 	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x0000fe2f}; */  /* fe2f for 18db */
-	uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x0000b3f3};  /* b3f3 for 15db */
+	uint32_t params[12] = {0x00010BFE,0x00010BFF,0x00000004,0x0000b3f3,  /* Tx mic gain b3f3 for 15db */
+				0x00010C3D,0x00010C3E,0x00000004,0x00000001,  /* TX HPF enable/disable */
+				0x00010C3D,0x00010C3F,0x00000004,0x00002000}; /* TX HPF PreGain */
 	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x00007f64}; */  /* 7f64 for 12db */
 	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x00005a30}; */  /* 5a30 for 9db */
 	/* uint32_t params[4] = {0x00010BFE,0x00010BFF,0x00000004,0x00003fd9}; */  /* 3fd9 for 6db */
@@ -924,6 +926,8 @@ static int send_adm_cal_tx_gain(int port_id, struct acdb_cal_block *aud_cal,
 	pr_debug("%s: Port id %#x, index %d\n", __func__, port_id, index);
 
 	pr_debug("%s: Tx_mic_gain %#x\n", __func__, (params[3]&0xffffff));
+	pr_debug("%s: TX HPF Enabled/Disable Flag %#x\n", __func__, (params[7]&0xffffff));
+	pr_debug("%s: TX HPF PreGain %#x\n", __func__, (params[11]&0xffffff));
 
 	sz = sizeof(struct adm_cmd_set_pp_params_v5) +
 		params_length;
@@ -985,6 +989,7 @@ static int send_adm_cal_tx_gain(int port_id, struct acdb_cal_block *aud_cal,
 
 	result = 0;
 done:
+	kfree(adm_params);
 	return result;
 }
 #endif
@@ -1074,7 +1079,10 @@ static void send_adm_cal(int port_id, int path, int perf_mode)
 
 /* ASUS_BSP +++ Ken_Cheng "adjust TX MIC_GAIN" */
 #ifdef ASUS_ADJUST_AFE_TX_MIC_GAIN
-	send_adm_cal_tx_gain(port_id, &aud_cal, perf_mode);
+	if(port_id&1)  // to make sure apply calibration only the Tx path port(recording)
+	{
+		send_adm_cal_tx_gain(port_id, &aud_cal, perf_mode);
+	}
 #endif
 /* ASUS_BSP --- Ken_Cheng "adjust TX MIC_GAIN" */
 }
@@ -1359,6 +1367,15 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			open.topology_id = NULL_COPP_TOPOLOGY;
 			rate = ULL_SUPPORTED_SAMPLE_RATE;
 		}
+
+/***********************************************************************************/
+/***** Hack the topology for MONO MIC here which has HPF module in it. *************/
+		if(path == ADM_PATH_LIVE_REC)
+		{
+			open.topology_id = ADM_CMD_COPP_OPENOPOLOGY_ID_MIC_MONO_AUDIO_COPP;
+			pr_debug("%s: Hacking topology ID in record path 0x%X\n", __func__, open.topology_id);
+		}
+/***********************************************************************************/
 
 		open.dev_num_channel = channel_mode & 0x00FF;
 		open.bit_width = bits_per_sample;
