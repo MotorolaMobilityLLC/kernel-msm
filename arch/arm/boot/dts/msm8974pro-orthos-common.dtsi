@@ -1,0 +1,245 @@
+/* Copyright (c) 2013-2014 Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "dsi-panel-mot-smd-1080p-cmd.dtsi"
+
+/ {
+	model = "Motorola QC-MSM8974 Pro Orthos";
+	compatible = "qcom,msm8974-orthos",
+		     "qcom,msm8974-moto",
+		     "qcom,msm8974";
+};
+
+&vbat_disp_vreg {
+	/delete-property/ gpio;
+	regulator-boot-on;
+};
+
+&vdd_disp_vreg {
+	/delete-property/ gpio;
+	regulator-boot-on;
+};
+
+&vci_disp_vreg {
+	gpio = <&pm8941_gpios 14 0x0>;
+	regulator-boot-on;
+};
+
+&mot_smd_1080p_cmd_v1 {
+	qcom,cont-splash-enabled;
+	qcom,partial-update-enabled;
+	mmi,quickdraw-enabled;
+	mmi,partial-mode-enabled;
+};
+
+&mot_smd_1080p_cmd_v0 {
+	qcom,cont-splash-enabled;
+	qcom,partial-update-enabled;
+	mmi,quickdraw-enabled;
+	mmi,partial-mode-enabled;
+};
+
+&mdss_dsi0 {
+	mmi,mipi-d0-sel = <&msmgpio 129 0>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_1080p_cmd_v1>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&vdd_disp_vreg>;
+	vci_disp-supply = <&vci_disp_vreg>;
+};
+
+&usb3 {
+	qcom,otg-capability;
+};
+
+&cci {
+
+	qcom,camera@6e {
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
+		qcom,cam-vreg-type = <0 1>;
+		qcom,cam-vreg-min-voltage = <1225000 1800000>;
+		qcom,cam-vreg-max-voltage = <1225000 1800000>;
+		qcom,cam-vreg-op-mode = <105000 0>;
+		gpios = <&msmgpio 17 0>,
+			<&msmgpio 103 0>,
+			<&msmgpio 96 0>,
+			<&msmgpio 104 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-vdig = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+				"CAM_RESET",
+				"CAM_AVDD",
+				"CAM_VDIG";
+	};
+
+	qcom,camera@6c {
+		status = "disabled";
+	};
+};
+
+&i2c_0 {
+	status = "ok";
+
+	stm401@39 {
+		compatible = "stm,stm401";
+		reg = <0x39>;
+		gpios = <&msmgpio 14 0>,        /* IRQ */
+			<&msmgpio 145 0>,       /* RESET */
+			<&msmgpio 33 0>,        /* BSLEN */
+			<&msmgpio 95 0>,        /* WakeIRQ */
+			<&msmgpio 0 0>,         /* SH Wake */
+			<&msmgpio 1 0>;         /* SH Wake Resp */
+		lux_table = <6 70 86 1174 2800 8000>;
+		brightness_table = <12 20 25 55 80 111 165>;
+		bslen_pin_active_value = <1>;
+		ct406_detect_threshold = <0x006E>;
+		ct406_undetect_threshold = <0x0050>;
+		ct406_recalibrate_threshold = <0x0064>;
+		ct406_pulse_count = <0x04>;
+		sensor1-supply = <&pm8941_lvs1>;
+		sensor2-supply = <&pm8941_l17>;
+	};
+};
+
+&i2c_2 {
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&pm8941_gpios 20 0>;     /* RESET */
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "left";
+	};
+
+	bcm2079x@76 {
+		gpios = <&msmgpio 31 0x0>, /* NFC_WAKE */
+			<&msmgpio 34 0x0>, /* NFC_IRQ */
+			<&msmgpio 32 0x0>; /* REG_PU */
+	};
+};
+
+&soc {
+	sound {
+		qcom,quat-auxpcm-gpio-sclk = <&msmgpio 58 0>;
+		qcom,quat-auxpcm-gpio-ws =  <&msmgpio 59 0>;
+		qcom,quat-auxpcm-gpio-dout = <&msmgpio 61 0>;
+		qcom,quat-auxpcm-gpio-din = <&msmgpio 60 0>;
+		qcom,tfa9890-left-name = "tfa9890.2-0034";
+		qcom,model = "msm8974-taiko-tfa9890_codec-snd-card";
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"AIF4 MAD", "MCLK",
+			"AMIC1", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Tertiary Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Handset Mic",
+			"AMIC4", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Secondary Mic",
+			"AMIC5", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Quaternary Mic",
+			"AMIC6", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Quinary Mic";
+	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		qcom,msm-dai-q6-mi2s-quat {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <3>;
+			qcom,msm-mi2s-rx-lines = <2>;
+			qcom,msm-mi2s-tx-lines = <1>;
+		};
+	};
+
+	factory_support {
+		compatible = "mmi,factory-support-kungpow";
+		gpios = <&pm8941_gpios 36 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&pm8941_mpps 5 0x1>, /* GPIOF_IN */
+			<&pm8941_mpps 6 0x1>; /* GPIOF_IN */
+		gpio-names = "factory_kill_disable",
+				"factory_cable_detect",
+				"factory_warn";
+	};
+};
+
+&slim_msm {
+	taiko_codec {
+		qcom,cdc-reset-gpio = <&msmgpio 23 0>;
+		qcom,cdc-micbias3-ext-cap;
+		qcom,cdc-micbias-ldoh-v = <0x0>;
+		qcom,cdc-micbias-cfilt2-mv = <1800>;
+	};
+};
+
+&i2c_3 {
+	synaptics_dsx_i2c@20 {
+		status = "disabled";
+	};
+
+	atmel_mxt_ts@4a {
+		compatible = "atmel,atmel_mxt_ts";
+		reg = <0x4a>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <62 0>;
+		gpios = <&msmgpio 62 0>,        /* IRQ */
+			<&msmgpio 57 0>;        /* RESET */
+		touch_vdd-supply = <&pm8941_s3>;
+		touch_avdd-supply = <&pm8941_l23>;
+		atmel,suspend-method-lpm;
+		atmel,one-touch-enabled;
+		atmel,cfg {
+			atmel,family-id = <0xa4>;
+			atmel,variant-id = <0x7>;
+			atmel,version = <0x5>;
+			atmel,build = <0x11>;
+			atmel,revision-id = <0x32>;
+		};
+	};
+};
+
+&pm8941_l23 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
+	qcom,init-current = <100>;
+	qcom,system-load = <100000>;
+	qcom,init-ldo-mode = <1>;
+	qcom,always-send-current;
+};
+
+&spi_7 {
+	wm5110@0 {
+		status = "disabled";
+	};
+};
+
+&spmi_bus {
+	qcom,pm8941@1 {
+		qcom,leds@d000 {
+			qcom,rgb_0 {
+				linux,name = "charging";
+			};
+			/delete-node/ qcom,rgb_1;
+			/delete-node/ qcom,rgb_2;
+			/delete-node/ qcom,rgb_3;
+		};
+	};
+};
+
+&sdhc_1 {
+	qcom,bus-speed-mode = "HS400_1p8v", "HS200_1p8v", "DDR_1p8v";
+};
