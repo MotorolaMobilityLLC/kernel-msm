@@ -80,6 +80,8 @@ struct tfa9890_priv {
 
 static DEFINE_MUTEX(lr_lock);
 static int stereo_mode;
+static struct snd_soc_codec *left_codec;
+static struct snd_soc_codec *right_codec;
 
 static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 {
@@ -1337,6 +1339,48 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 	return ret;
 }
 
+/* Called from tfa9890 stereo codec stub driver to set mute
+ * on the individual codecs, this is needed to smother pops
+ * in stereo configuration.
+*/
+
+int tfa9890_stereo_sync_set_mute(int mute)
+{
+	u16 left_val;
+	u16 right_val;
+	u16 tries = 0;
+
+	if (!left_codec || !right_codec) {
+		pr_err("%s : codec instance variables not intialized\n",
+				__func__);
+		return 0;
+	}
+
+	mutex_lock(&lr_lock);
+	if (mute) {
+		tfa9890_set_mute(left_codec, TFA9890_AMP_MUTE);
+		tfa9890_set_mute(right_codec, TFA9890_AMP_MUTE);
+		do {
+			/* need to wait for amp to stop switching, to minimize
+			 * pop, else I2S clk is going away too soon interrupting
+			 * the dsp from smothering the amp pop while turning it
+			 * off, It shouldn't take more than 50 ms for the amp
+			 * switching to stop.
+			 */
+			left_val = snd_soc_read(left_codec,
+							TFA9890_SYS_STATUS_REG);
+			right_val = snd_soc_read(right_codec,
+							TFA9890_SYS_STATUS_REG);
+			if (!(left_val & TFA9890_STATUS_AMP_SWS) &&
+					!(right_val & TFA9890_STATUS_AMP_SWS))
+				break;
+			usleep_range(10000, 10001);
+		} while ((++tries < 20));
+	}
+	mutex_unlock(&lr_lock);
+	return 0;
+}
+
 /*
  * SysFS support
  */
@@ -1648,9 +1692,11 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 		if (!strncmp(tfa9890->tfa_dev, "left", 4)) {
 			val = val & (~TFA9890_I2S_CHS12);
 			val = val | TFA9890_I2S_LEFT_IN;
+			left_codec = codec;
 		} else if (!strncmp(tfa9890->tfa_dev, "right", 5)) {
 			val = val & (~TFA9890_I2S_CHS12);
 			val = val | TFA9890_I2S_RIGHT_IN;
+			right_codec = codec;
 		}
 		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 		/* set datao right channel to send gain info */
@@ -1906,6 +1952,9 @@ static struct i2c_driver tfa9890_i2c_driver = {
 	.remove =   tfa9890_i2c_remove,
 	.id_table = tfa9890_i2c_id,
 };
+
+
+
 static int __init tfa9890_modinit(void)
 {
 	int ret;
