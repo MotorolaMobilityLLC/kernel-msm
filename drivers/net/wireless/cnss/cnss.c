@@ -32,6 +32,7 @@
 #include <linux/msm-bus.h>
 #include <linux/msm-bus-board.h>
 #include <mach/gpiomux.h>
+#include <linux/spinlock.h>
 #include <linux/suspend.h>
 #include <linux/rwsem.h>
 #include <mach/msm_pcie.h>
@@ -68,6 +69,8 @@
 #define POWER_ON_DELAY		2000
 #define WLAN_ENABLE_DELAY	10000
 #define WLAN_RECOVERY_DELAY	1000
+
+static DEFINE_SPINLOCK(pci_link_down_lock);
 
 struct cnss_wlan_gpio_info {
 	char *name;
@@ -600,10 +603,44 @@ DECLARE_WORK(recovery_work, recovery_work_handler);
 
 void cnss_pci_link_down_cb(struct msm_pcie_notify *notify)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&pci_link_down_lock, flags);
+	if (penv->pcie_link_down_ind) {
+		pr_debug("PCI link down recovery is in progress, ignore!\n");
+		spin_unlock_irqrestore(&pci_link_down_lock, flags);
+		return;
+	}
 	penv->pcie_link_down_ind = true;
+	spin_unlock_irqrestore(&pci_link_down_lock, flags);
+
 	pr_err("PCI link down, schedule recovery\n");
 	schedule_work(&recovery_work);
 }
+
+void cnss_wlan_pci_link_down(void)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&pci_link_down_lock, flags);
+	if (penv->pcie_link_down_ind) {
+		pr_debug("PCI link down recovery is in progress, ignore!\n");
+		spin_unlock_irqrestore(&pci_link_down_lock, flags);
+		return;
+	}
+	penv->pcie_link_down_ind = true;
+	spin_unlock_irqrestore(&pci_link_down_lock, flags);
+
+	pr_err("PCI link down detected by host driver, schedule recovery!\n");
+	schedule_work(&recovery_work);
+}
+EXPORT_SYMBOL(cnss_wlan_pci_link_down);
+
+int cnss_pcie_shadow_control(struct pci_dev *dev, bool enable)
+{
+	return msm_pcie_shadow_control(dev, enable);
+}
+EXPORT_SYMBOL(cnss_pcie_shadow_control);
 
 int cnss_wlan_register_driver(struct cnss_wlan_driver *driver)
 {
