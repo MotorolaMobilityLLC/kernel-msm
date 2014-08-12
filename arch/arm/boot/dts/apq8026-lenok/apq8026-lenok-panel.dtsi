@@ -97,6 +97,7 @@
 					05 01 00 00 00 00 01 38 /*Idle Mode Off*/
 					];
 		qcom,mdss-dsi-idle-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-idle-fps = <30>;
 		qcom,mdss-dsi-h-sync-pulse = <1>;
 		qcom,mdss-dsi-traffic-mode = "burst_mode";
 		qcom,mdss-dsi-lane-map = "lane_map_0123";
