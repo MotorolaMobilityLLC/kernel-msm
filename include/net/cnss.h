@@ -75,6 +75,8 @@ extern int cnss_get_ramdump_mem(unsigned long *address, unsigned long *size);
 extern int cnss_set_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 ch_count);
 extern int cnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list,
 						u16 *ch_count, u16 buf_len);
+extern void cnss_wlan_pci_link_down(void);
+extern int cnss_pcie_shadow_control(struct pci_dev *dev, bool enable);
 extern int cnss_wlan_register_driver(struct cnss_wlan_driver *driver);
 extern void cnss_wlan_unregister_driver(struct cnss_wlan_driver *driver);
 extern int cnss_get_fw_files(struct cnss_fw_files *pfw_files);
