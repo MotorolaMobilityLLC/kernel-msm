@@ -186,6 +186,11 @@ static void mdss_dsi_panel_idle_mode(struct mdss_panel_data *pdata, int enable)
 
 	pr_debug("%s: enabled %d\n", __func__, enable);
 
+	if (ctrl->idle == enable)
+		return;
+
+	ctrl->idle = enable;
+
 	if (enable) {
 		if (ctrl->idle_on_cmds.cmd_cnt)
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
