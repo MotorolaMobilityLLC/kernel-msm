@@ -113,6 +113,41 @@ static const char *const h263_profile[] = {
 	"High Latency",
 };
 
+static const char *const hevc_tier_level[] = {
+	"Main Tier Level 1",
+	"Main Tier Level 2",
+	"Main Tier Level 2.1",
+	"Main Tier Level 3",
+	"Main Tier Level 3.1",
+	"Main Tier Level 4",
+	"Main Tier Level 4.1",
+	"Main Tier Level 5",
+	"Main Tier Level 5.1",
+	"Main Tier Level 5.2",
+	"Main Tier Level 6",
+	"Main Tier Level 6.1",
+	"Main Tier Level 6.2",
+	"High Tier Level 1",
+	"High Tier Level 2",
+	"High Tier Level 2.1",
+	"High Tier Level 3",
+	"High Tier Level 3.1",
+	"High Tier Level 4",
+	"High Tier Level 4.1",
+	"High Tier Level 5",
+	"High Tier Level 5.1",
+	"High Tier Level 5.2",
+	"High Tier Level 6",
+	"High Tier Level 6.1",
+	"High Tier Level 6.2",
+};
+
+static const char *const hevc_profile[] = {
+	"Main",
+	"Main10",
+	"Main Still Pic",
+};
+
 static const char *const vp8_profile_level[] = {
 	"Unused",
 	"0.0",
@@ -385,6 +420,52 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP8_VERSION_1)
 		),
 		.qmenu = vp8_profile_level,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_HEVC_PROFILE,
+		.name = "HEVC Profile",
+		.type = V4L2_CTRL_TYPE_MENU,
+		.minimum = V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN,
+		.maximum = V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN_STILL_PIC,
+		.default_value = V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN,
+		.step = 0,
+		.menu_skip_mask =  ~(
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN10) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN_STILL_PIC)
+		),
+		.qmenu = hevc_profile,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_HEVC_TIER_LEVEL,
+		.name = "HEVC Tier and Level",
+		.type = V4L2_CTRL_TYPE_MENU,
+		.minimum = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_1,
+		.maximum = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_6_2,
+		.default_value =
+			V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_1,
+		.step = 0,
+		.menu_skip_mask = ~(
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_1) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_2) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_2_1) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_3) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_3_1) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_4) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_4_1) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5_1) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_1) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_2) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_2_1) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_3) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_3_1) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_4) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_4_1) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5) |
+		(1 << V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5_1)
+		),
+		.qmenu = hevc_tier_level,
 	},
 	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_ROTATION,
@@ -820,6 +901,17 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.qmenu = NULL,
 	},
 	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_VPX_ERROR_RESILIENCE,
+		.name = "VP8 Error Resilience mode",
+		.type = V4L2_CTRL_TYPE_BOOLEAN,
+		.minimum = V4L2_MPEG_VIDC_VIDEO_VPX_ERROR_RESILIENCE_DISABLED,
+		.maximum = V4L2_MPEG_VIDC_VIDEO_VPX_ERROR_RESILIENCE_ENABLED,
+		.default_value =
+			V4L2_MPEG_VIDC_VIDEO_VPX_ERROR_RESILIENCE_DISABLED,
+		.step = 1,
+		.qmenu = NULL,
+	},
+	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_ENABLE_INITIAL_QP,
 		.name = "Enable setting initial QP",
 		.type = V4L2_CTRL_TYPE_BUTTON,
@@ -922,6 +1014,45 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.default_value = 4,
 		.step = 1,
 		.menu_skip_mask = 0,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC,
+		.name = "Enable H264 SVC NAL",
+		.type = V4L2_CTRL_TYPE_BOOLEAN,
+		.minimum = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC_DISABLED,
+		.maximum = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC_ENABLED,
+		.default_value = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC_DISABLED,
+		.step = 1,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE,
+		.name = "Set Encoder performance mode",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = V4L2_MPEG_VIDC_VIDEO_PERF_MAX_QUALITY,
+		.maximum = V4L2_MPEG_VIDC_VIDEO_PERF_POWER_SAVE,
+		.default_value = V4L2_MPEG_VIDC_VIDEO_PERF_MAX_QUALITY,
+		.step = 1,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_HIER_B_NUM_LAYERS,
+		.name = "Set Hier B num layers",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 0,
+		.maximum = 3,
+		.default_value = 0,
+		.step = 1,
+		.qmenu = NULL,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_HYBRID_HIERP_MODE,
+		.name = "Set Hybrid Hier P mode",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 0,
+		.maximum = 5,
+		.default_value = 0,
+		.step = 1,
 		.qmenu = NULL,
 	},
 };
@@ -1120,7 +1251,7 @@ static int msm_venc_queue_setup(struct vb2_queue *q,
 	return rc;
 }
 
-static int msm_venc_toggle_hier_p(struct msm_vidc_inst *inst, bool enable)
+static int msm_venc_toggle_hier_p(struct msm_vidc_inst *inst, int layers)
 {
 	int num_enh_layers = 0;
 	u32 property_id = 0;
@@ -1132,23 +1263,58 @@ static int msm_venc_toggle_hier_p(struct msm_vidc_inst *inst, bool enable)
 		return -EINVAL;
 	}
 
-	if (inst->fmts[CAPTURE_PORT]->fourcc != V4L2_PIX_FMT_VP8)
+	if ((inst->fmts[CAPTURE_PORT]->fourcc != V4L2_PIX_FMT_VP8) &&
+		(inst->fmts[CAPTURE_PORT]->fourcc != V4L2_PIX_FMT_H264))
 		return 0;
 
-	num_enh_layers = enable ? inst->capability.hier_p.max - 1 : 0;
-
+	num_enh_layers = layers ? : 0;
 	dprintk(VIDC_DBG, "%s Hier-P in firmware\n",
 			num_enh_layers ? "Enable" : "Disable");
 
 	hdev = inst->core->device;
 	property_id = HAL_PARAM_VENC_HIER_P_MAX_ENH_LAYERS;
-
 	rc = call_hfi_op(hdev, session_set_property,
 			(void *)inst->session, property_id,
 			(void *)&num_enh_layers);
 	if (rc) {
 		dprintk(VIDC_ERR,
 			"%s: failed with error = %d\n", __func__, rc);
+	}
+	return rc;
+}
+
+static int set_bitrate_for_each_layer(struct msm_vidc_inst *inst,
+				u32 num_enh_layers, u32 total_bitrate)
+{
+	u32 property_id = 0;
+	int i = 0;
+	struct hfi_device *hdev = NULL;
+	struct hal_bitrate bitrate;
+	int rc = 0;
+	int bitrate_table[3][4] = {
+		{50, 50, 0, 0},
+		{34, 33, 33, 0},
+		{25, 25, 25, 25} };
+
+	if (!inst || !inst->core || !inst->core->device) {
+		dprintk(VIDC_ERR, "%s - invalid input\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!num_enh_layers || num_enh_layers > ARRAY_SIZE(bitrate_table)) {
+		dprintk(VIDC_ERR, "%s - invalid number of enh layers: %d\n",
+				__func__, num_enh_layers);
+		return -EINVAL;
+	}
+	hdev = inst->core->device;
+
+	for (i = 0; !rc && (i <= num_enh_layers); i++) {
+		property_id = HAL_CONFIG_VENC_TARGET_BITRATE;
+		bitrate.bit_rate = (u32)((total_bitrate *
+			bitrate_table[num_enh_layers - 1][i]) / 100);
+		bitrate.layer_id = i;
+		rc = call_hfi_op(hdev, session_set_property,
+				(void *)inst->session, property_id, &bitrate);
 	}
 	return rc;
 }
@@ -1481,6 +1647,72 @@ static inline int venc_v4l2_to_hal(int id, int value)
 		default:
 			goto unknown_value;
 		}
+	case V4L2_CID_MPEG_VIDC_VIDEO_HEVC_PROFILE:
+		switch (value) {
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN:
+			return HAL_HEVC_PROFILE_MAIN;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN10:
+			return HAL_HEVC_PROFILE_MAIN10;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN_STILL_PIC:
+			return HAL_HEVC_PROFILE_MAIN_STILL_PIC;
+		default:
+			goto unknown_value;
+		}
+	case V4L2_CID_MPEG_VIDC_VIDEO_HEVC_TIER_LEVEL:
+		switch (value) {
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_1:
+			return HAL_HEVC_MAIN_TIER_LEVEL_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_2:
+			return HAL_HEVC_MAIN_TIER_LEVEL_2;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_2_1:
+			return HAL_HEVC_MAIN_TIER_LEVEL_2_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_3:
+			return HAL_HEVC_MAIN_TIER_LEVEL_3;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_3_1:
+			return HAL_HEVC_MAIN_TIER_LEVEL_3_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_4:
+			return HAL_HEVC_MAIN_TIER_LEVEL_4;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_4_1:
+			return HAL_HEVC_MAIN_TIER_LEVEL_4_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5:
+			return HAL_HEVC_MAIN_TIER_LEVEL_5;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5_1:
+			return HAL_HEVC_MAIN_TIER_LEVEL_5_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5_2:
+			return HAL_HEVC_MAIN_TIER_LEVEL_5_2;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_6:
+			return HAL_HEVC_MAIN_TIER_LEVEL_6;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_6_1:
+			return HAL_HEVC_MAIN_TIER_LEVEL_6_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_6_2:
+			return HAL_HEVC_MAIN_TIER_LEVEL_6_2;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_1:
+			return HAL_HEVC_HIGH_TIER_LEVEL_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_2:
+			return HAL_HEVC_HIGH_TIER_LEVEL_2;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_2_1:
+			return HAL_HEVC_HIGH_TIER_LEVEL_2_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_3:
+			return HAL_HEVC_HIGH_TIER_LEVEL_3;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_3_1:
+			return HAL_HEVC_HIGH_TIER_LEVEL_3_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_4:
+			return HAL_HEVC_HIGH_TIER_LEVEL_4;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_4_1:
+			return HAL_HEVC_HIGH_TIER_LEVEL_4_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5:
+			return HAL_HEVC_HIGH_TIER_LEVEL_5;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5_1:
+			return HAL_HEVC_HIGH_TIER_LEVEL_5_1;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5_2:
+			return HAL_HEVC_HIGH_TIER_LEVEL_5_2;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_6:
+			return HAL_HEVC_HIGH_TIER_LEVEL_6;
+		case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_6_1:
+			return HAL_HEVC_HIGH_TIER_LEVEL_6_1;
+		default:
+			goto unknown_value;
+		}
 	case V4L2_CID_MPEG_VIDC_VIDEO_ROTATION:
 		switch (value) {
 		case V4L2_CID_MPEG_VIDC_VIDEO_ROTATION_NONE:
@@ -1537,9 +1769,11 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	struct hfi_device *hdev;
 	struct hal_extradata_enable extra;
 	struct hal_mpeg4_time_resolution time_res;
-	struct hal_ltruse useltr;
-	struct hal_ltrmark markltr;
-	u32 hier_p_layers;
+	struct hal_ltr_use use_ltr;
+	struct hal_ltr_mark mark_ltr;
+	struct hal_hybrid_hierp hyb_hierp;
+	u32 hier_p_layers = 0, hier_b_layers = 0;
+	struct hal_venc_perf_mode venc_mode;
 
 	if (!inst || !inst->core || !inst->core->device) {
 		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
@@ -1706,12 +1940,29 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		break;
 	}
 	case V4L2_CID_MPEG_VIDEO_BITRATE:
-		property_id =
-			HAL_CONFIG_VENC_TARGET_BITRATE;
-		bitrate.bit_rate = ctrl->val;
+	{
+		struct v4l2_ctrl *hier_p = TRY_GET_CTRL(
+		   V4L2_CID_MPEG_VIDC_VIDEO_HIER_P_NUM_LAYERS);
+
 		bitrate.layer_id = 0;
-		pdata = &bitrate;
+		if (hier_p->val &&
+			inst->fmts[CAPTURE_PORT]->fourcc ==
+			V4L2_PIX_FMT_H264) {
+			rc = set_bitrate_for_each_layer(inst,
+						hier_p->val, ctrl->val);
+			if (rc) {
+				dprintk(VIDC_ERR,
+					"failed to set bitrate for multiple layers\n");
+				rc = -EINVAL;
+			}
+		} else {
+			property_id = HAL_CONFIG_VENC_TARGET_BITRATE;
+			bitrate.bit_rate = ctrl->val;
+			bitrate.layer_id = 0;
+			pdata = &bitrate;
+		}
 		break;
+	}
 	case V4L2_CID_MPEG_VIDEO_BITRATE_PEAK:
 	{
 		struct v4l2_ctrl *avg_bitrate = TRY_GET_CTRL(
@@ -1843,6 +2094,29 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 				V4L2_CID_MPEG_VIDC_VIDEO_VP8_PROFILE_LEVEL,
 				ctrl->val);
 		profile_level.level = HAL_VPX_PROFILE_UNUSED;
+		pdata = &profile_level;
+		break;
+	case V4L2_CID_MPEG_VIDC_VIDEO_HEVC_PROFILE:
+		temp_ctrl =
+			TRY_GET_CTRL(V4L2_CID_MPEG_VIDC_VIDEO_HEVC_TIER_LEVEL);
+
+		property_id = HAL_PARAM_PROFILE_LEVEL_CURRENT;
+		profile_level.profile = venc_v4l2_to_hal(ctrl->id,
+							ctrl->val);
+		profile_level.level = venc_v4l2_to_hal(
+				V4L2_CID_MPEG_VIDC_VIDEO_HEVC_TIER_LEVEL,
+				temp_ctrl->val);
+		pdata = &profile_level;
+		break;
+	case V4L2_CID_MPEG_VIDC_VIDEO_HEVC_TIER_LEVEL:
+		temp_ctrl = TRY_GET_CTRL(V4L2_CID_MPEG_VIDC_VIDEO_HEVC_PROFILE);
+
+		property_id = HAL_PARAM_PROFILE_LEVEL_CURRENT;
+		profile_level.level = venc_v4l2_to_hal(ctrl->id,
+							ctrl->val);
+		profile_level.profile = venc_v4l2_to_hal(
+				V4L2_CID_MPEG_VIDC_VIDEO_HEVC_PROFILE,
+				temp_ctrl->val);
 		pdata = &profile_level;
 		break;
 	case V4L2_CID_MPEG_VIDC_VIDEO_ROTATION:
@@ -2324,31 +2598,61 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_MPEG_VIDC_VIDEO_USELTRFRAME:
 		property_id = HAL_CONFIG_VENC_USELTRFRAME;
-		useltr.refltr = ctrl->val;
-		useltr.useconstrnt = false;
-		useltr.frames = 0;
-		pdata = &useltr;
+		use_ltr.ref_ltr = (1 << ctrl->val);
+		use_ltr.use_constraint = false;
+		use_ltr.frames = 0;
+		pdata = &use_ltr;
 		break;
 	case V4L2_CID_MPEG_VIDC_VIDEO_MARKLTRFRAME:
 		property_id = HAL_CONFIG_VENC_MARKLTRFRAME;
-		markltr.markframe = ctrl->val;
-		pdata = &markltr;
+		mark_ltr.mark_frame = ctrl->val;
+		pdata = &mark_ltr;
 		break;
 	case V4L2_CID_MPEG_VIDC_VIDEO_HIER_P_NUM_LAYERS:
 		property_id = HAL_CONFIG_VENC_HIER_P_NUM_FRAMES;
 		hier_p_layers = ctrl->val;
-		rc = msm_venc_toggle_hier_p(inst, hier_p_layers ? true : false);
+		rc = msm_venc_toggle_hier_p(inst, ctrl->val);
 		if (rc)
 			break;
-		if (hier_p_layers > (inst->capability.hier_p.max - 1)) {
+		if (hier_p_layers > inst->capability.hier_p.max) {
 			dprintk(VIDC_ERR,
 				"Error setting hier p num layers = %d max supported by f/w = %d\n",
 				hier_p_layers,
-				inst->capability.hier_p.max - 1);
+				inst->capability.hier_p.max);
 			rc = -ENOTSUPP;
 			break;
 		}
 		pdata = &hier_p_layers;
+		break;
+	case V4L2_CID_MPEG_VIDC_VIDEO_VPX_ERROR_RESILIENCE:
+		property_id = HAL_PARAM_VENC_VPX_ERROR_RESILIENCE_MODE;
+		enable.enable = ctrl->val;
+		pdata = &enable;
+		break;
+	case V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC:
+		property_id = HAL_PARAM_VENC_H264_NAL_SVC_EXT;
+		enable.enable = ctrl->val;
+		pdata = &enable;
+		break;
+	case V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE:
+		property_id = HAL_CONFIG_VENC_PERF_MODE;
+		venc_mode.mode = ctrl->val;
+		pdata = &venc_mode;
+		break;
+	case V4L2_CID_MPEG_VIDC_VIDEO_HIER_B_NUM_LAYERS:
+		if (inst->fmts[CAPTURE_PORT]->fourcc != V4L2_PIX_FMT_HEVC) {
+			dprintk(VIDC_ERR, "Hier B supported for HEVC only\n");
+			rc = -ENOTSUPP;
+			break;
+		}
+		property_id = HAL_PARAM_VENC_HIER_B_MAX_ENH_LAYERS;
+		hier_b_layers = ctrl->val;
+		pdata = &hier_b_layers;
+		break;
+	case V4L2_CID_MPEG_VIDC_VIDEO_HYBRID_HIERP_MODE:
+		property_id = HAL_PARAM_VENC_HIER_P_HYBRID_MODE;
+		hyb_hierp.layers = ctrl->val;
+		pdata = &hyb_hierp;
 		break;
 	default:
 		dprintk(VIDC_ERR, "Unsupported index: %x\n", ctrl->id);
@@ -2374,7 +2678,7 @@ static int try_set_ext_ctrl(struct msm_vidc_inst *inst,
 	int rc = 0, i;
 	struct v4l2_ext_control *control;
 	struct hfi_device *hdev;
-	struct hal_ltrmode ltrmode;
+	struct hal_ltr_mode ltr_mode;
 	struct hal_vc1e_perf_cfg_type search_range = { {0} };
 	u32 property_id = 0;
 	void *pdata = NULL;
@@ -2393,28 +2697,34 @@ static int try_set_ext_ctrl(struct msm_vidc_inst *inst,
 	for (i = 0; i < ctrl->count; i++) {
 		switch (control[i].id) {
 		case V4L2_CID_MPEG_VIDC_VIDEO_LTRMODE:
-			ltrmode.ltrmode = control[i].value;
-			ltrmode.trustmode = 1;
+			if (control[i].value !=
+				V4L2_MPEG_VIDC_VIDEO_LTR_MODE_DISABLE) {
+				rc = msm_venc_toggle_hier_p(inst, false);
+				if (rc)
+					break;
+			}
+			ltr_mode.mode = control[i].value;
+			ltr_mode.trust_mode = 1;
 			property_id = HAL_PARAM_VENC_LTRMODE;
-			pdata = &ltrmode;
+			pdata = &ltr_mode;
 			break;
 		case V4L2_CID_MPEG_VIDC_VIDEO_LTRCOUNT:
-			ltrmode.ltrcount =  control[i].value;
-			if (ltrmode.ltrcount > cap->ltr_count.max) {
+			ltr_mode.count =  control[i].value;
+			if (ltr_mode.count > cap->ltr_count.max) {
 				dprintk(VIDC_ERR,
 					"Invalid LTR count %d. Supported max: %d\n",
-					ltrmode.ltrcount,
+					ltr_mode.count,
 					cap->ltr_count.max);
 				/*
 				 * FIXME: Return an error (-EINVALID)
 				 * here once VP8 supports LTR count
 				 * capability
 				 */
-				ltrmode.ltrcount = 1;
+				ltr_mode.count = 1;
 			}
-			ltrmode.trustmode = 1;
+			ltr_mode.trust_mode = 1;
 			property_id = HAL_PARAM_VENC_LTRMODE;
-			pdata = &ltrmode;
+			pdata = &ltr_mode;
 			break;
 		case V4L2_CID_MPEG_VIDC_VIDEO_ENABLE_INITIAL_QP:
 			property_id = HAL_PARAM_VENC_ENABLE_INITIAL_QP;

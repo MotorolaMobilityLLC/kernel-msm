@@ -89,9 +89,8 @@ enum multi_stream msm_comm_get_stream_output_mode(struct msm_vidc_inst *inst)
 			return HAL_VIDEO_DECODER_SECONDARY;
 	}
 	return HAL_VIDEO_DECODER_PRIMARY;
-
-
 }
+
 static int msm_comm_get_mbs_per_sec(struct msm_vidc_inst *inst)
 {
 	int height, width;
@@ -629,6 +628,8 @@ static void handle_session_init_done(enum command_response cmd, void *data)
 			inst->capability.capability_set = true;
 			inst->capability.buffer_mode[CAPTURE_PORT] =
 				session_init_done->alloc_mode_out;
+			inst->capability.secure_output2_threshold =
+				session_init_done->secure_output2_threshold;
 		} else {
 			dprintk(VIDC_ERR,
 				"Session init response from FW : 0x%x\n",
@@ -1372,6 +1373,10 @@ static void handle_fbd(enum command_response cmd, void *data)
 		vb->v4l2_planes[0].reserved[3] = fill_buf_done->start_y_coord;
 		vb->v4l2_planes[0].reserved[4] = fill_buf_done->frame_width;
 		vb->v4l2_planes[0].reserved[5] = fill_buf_done->frame_height;
+		vb->v4l2_planes[0].reserved[6] =
+			inst->prop.width[CAPTURE_PORT];
+		vb->v4l2_planes[0].reserved[7] =
+			inst->prop.height[CAPTURE_PORT];
 		if (vb->v4l2_planes[0].data_offset > vb->v4l2_planes[0].length)
 			dprintk(VIDC_INFO,
 				"fbd:Overflow data_offset = %d; length = %d\n",
@@ -4031,6 +4036,14 @@ int msm_vidc_check_session_supported(struct msm_vidc_inst *inst)
 	capability = &inst->capability;
 	hdev = inst->core->device;
 	rc = msm_vidc_load_supported(inst);
+	if (rc) {
+		change_inst_state(inst, MSM_VIDC_CORE_INVALID);
+		msm_vidc_queue_v4l2_event(inst,
+					V4L2_EVENT_MSM_VIDC_HW_OVERLOAD);
+		dprintk(VIDC_WARN,
+			"%s: Hardware is overloaded\n", __func__);
+		return rc;
+	}
 	if (!rc && inst->capability.capability_set) {
 		rc = call_hfi_op(hdev, capability_check,
 			inst->fmts[OUTPUT_PORT]->fourcc,
@@ -4051,10 +4064,10 @@ int msm_vidc_check_session_supported(struct msm_vidc_inst *inst)
 	if (rc) {
 		change_inst_state(inst, MSM_VIDC_CORE_INVALID);
 		msm_vidc_queue_v4l2_event(inst,
-					V4L2_EVENT_MSM_VIDC_HW_OVERLOAD);
-		dprintk(VIDC_WARN,
-			"%s: Hardware is overloaded\n", __func__);
+					V4L2_EVENT_MSM_VIDC_HW_UNSUPPORTED);
 		wake_up(&inst->kernel_event_queue);
+		dprintk(VIDC_ERR,
+			"%s: Resolution unsupported\n", __func__);
 	}
 	return rc;
 }
