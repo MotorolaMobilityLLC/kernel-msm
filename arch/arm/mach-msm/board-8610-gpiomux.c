@@ -246,6 +246,22 @@ static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting backlight_reset_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct msm_gpiomux_config msm_backlight_reset_configs[] __initdata = {
+	{
+		.gpio = 57,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &backlight_reset_cfg,
+		},
+	},
+};
+
 static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	{
 		.gpio      = 2,		/* BLSP1 QUP1 I2C_SDA */
@@ -776,6 +792,8 @@ void __init msm8610_init_gpiomux(void)
 			ARRAY_SIZE(wcnss_5wire_interface));
 	msm_gpiomux_install_nowrite(msm_lcd_configs,
 				ARRAY_SIZE(msm_lcd_configs));
+	msm_gpiomux_install(msm_backlight_reset_configs,
+				ARRAY_SIZE(msm_backlight_reset_configs));
 	msm_gpiomux_install(msm_keypad_configs,
 				ARRAY_SIZE(msm_keypad_configs));
 	msm_gpiomux_install(sd_card_det, ARRAY_SIZE(sd_card_det));
