@@ -14,7 +14,99 @@
 /include/ "msm8610-v1.dtsi"
 /include/ "msm8610-moto-common.dtsi"
 /include/ "msm8610-otus-gpiomux.dtsi"
+/include/ "dsi-panel-mot-boe-450-qHD-video.dtsi"
 
 &mmi_factory {
 	/delete-property/ gpios;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_boe_450_qhd_vid_v2>;
+	lcd_vci-supply = <&pm8110_l19>;
+	vddio_disp-supply = <&pm8110_l6>;
+};
+
+&pm8110_l19 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&pm8110_l6 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mot_boe_450_qhd_vid_v2 {
+	qcom,platform-supply-entry1 {
+		qcom,supply-name = "lcd_vci";
+		qcom,supply-min-voltage = <2850000>;
+		qcom,supply-max-voltage = <2850000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <0>;
+	};
+	qcom,platform-supply-entry2 {
+		qcom,supply-name = "vddio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <1>;
+	};
+};
+
+&mot_boe_450_qhd_vid_v1 {
+	qcom,platform-supply-entry1 {
+		qcom,supply-name = "lcd_vci";
+		qcom,supply-min-voltage = <2850000>;
+		qcom,supply-max-voltage = <2850000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <0>;
+	};
+	qcom,platform-supply-entry2 {
+		qcom,supply-name = "vddio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <1>;
+	};
+};
+
+&mot_boe_450_qhd_vid_v0 {
+	qcom,platform-supply-entry1 {
+		qcom,supply-name = "lcd_vci";
+		qcom,supply-min-voltage = <2850000>;
+		qcom,supply-max-voltage = <2850000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <0>;
+	};
+	qcom,platform-supply-entry2 {
+		qcom,supply-name = "vddio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <1>;
+	};
 };
