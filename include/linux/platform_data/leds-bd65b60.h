@@ -27,8 +27,8 @@ enum bd65b60_ledsel {
 };
 
 enum bd65b60_pwm_ctrl {
-	BD65B60_PWM_DISABLE = 0x06,
-	BD65B60_PWM_ENABLE = 0x38,
+	BD65B60_PWM_DISABLE = 0x00,
+	BD65B60_PWM_ENABLE = 0x20,
 };
 
 /*
