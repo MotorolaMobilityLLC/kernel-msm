@@ -435,6 +435,9 @@ static void f2fs_put_super(struct super_block *sb)
 	if (sbi->s_dirty)
 		write_checkpoint(sbi, true);
 
+	/* EIO will skip do checkpoint, so here we need to release this */
+	release_dirty_inode(sbi);
+
 	iput(sbi->node_inode);
 	iput(sbi->meta_inode);
 
