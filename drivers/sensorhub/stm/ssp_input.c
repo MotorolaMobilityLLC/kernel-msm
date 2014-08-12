@@ -116,10 +116,22 @@ static int ssp_push_1bytes_buffer(struct iio_dev *indio_dev,
 
 void report_meta_data(struct ssp_data *data, struct sensor_value *s)
 {
-	input_report_rel(data->meta_input_dev, REL_DIAL, s->meta_data.what);
-	input_report_rel(data->meta_input_dev, REL_HWHEEL,
-		s->meta_data.sensor + 1);
-	input_sync(data->meta_input_dev);
+	if (s->meta_data.sensor == ACCELEROMETER_SENSOR) {
+		s16 accel_buf[3];
+		memset(accel_buf, 0xff, sizeof(s16) * 3);
+		ssp_push_6bytes_buffer(data->accel_indio_dev, 0, accel_buf);
+	} else if (s->meta_data.sensor == GAME_ROTATION_VECTOR) {
+		int grot_buf[5];
+		memset(grot_buf, 0xff, sizeof(int) * 5);
+		ssp_push_17bytes_buffer(data->game_rot_indio_dev, 0, grot_buf);
+	} else if (s->meta_data.sensor == STEP_DETECTOR) {
+		u8 step_buf[1] = {0xff};
+		ssp_push_1bytes_buffer(data->step_det_indio_dev, 0, step_buf);
+	} else {
+		input_report_rel(data->meta_input_dev, REL_DIAL, s->meta_data.what);
+		input_report_rel(data->meta_input_dev, REL_HWHEEL, s->meta_data.sensor + 1);
+		input_sync(data->meta_input_dev);
+	}
 }
 
 void report_acc_data(struct ssp_data *data, struct sensor_value *accdata)
