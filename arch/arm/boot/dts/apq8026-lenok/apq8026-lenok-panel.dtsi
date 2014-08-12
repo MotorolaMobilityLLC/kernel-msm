@@ -117,7 +117,7 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs_l";
 		qcom,mdss-dsi-reset-sequence = <1 50>;
-		qcom,mdss-brightness-default-level = <165>;
+		qcom,mdss-brightness-default-level = <208>;
 		qcom,cont-splash-enabled;
 		qcom,ulps-enabled;
 		qcom,blmap = /bits/ 8 <
