@@ -347,11 +347,6 @@
 	};
 
 	gpio@c200 { /* GPIO 3 */
-		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
-		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
-		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
-		qcom,master-en = <1>;
 	};
 
 	gpio@c300 { /* GPIO 4 */
