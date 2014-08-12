@@ -60,6 +60,9 @@
 		qcom,tfa9890-right-name = "tfa9890.8-0035";
 		qcom,tfa9890-earpiece-gpio = <&msmgpio 130 0>;
 	};
+	qcom,tfa9890-stereo-codec {
+		compatible = "nxp,tfa9890-stereo-codec";
+	};
 
 	qcom,msm-dai-stub {
 		compatible = "qcom,msm-dai-stub";
