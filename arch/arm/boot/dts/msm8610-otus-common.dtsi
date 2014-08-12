@@ -110,3 +110,43 @@
 		qcom,supply-post-off-sleep = <1>;
 	};
 };
+
+&i2c_3 {
+	status = "disabled";
+};
+
+&soc {
+	i2c_2: i2c@f9924000 { /* BLSP-1 QUP-2 */
+		cell-index = <2>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9924000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 96 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 6 0>;
+		qcom,scl-gpio = <&msmgpio 7 0>;
+		qcom,noise-rjct-scl = <1>;
+		qcom,noise-rjct-sda = <1>;
+		qcom,master-id = <86>;
+
+		bd65b60@64 {
+			compatible = "rohm,bd65b60";
+			reg = <0x64>;
+			linux,name = "wled:backlight";
+			linux,default-trigger = "bkl-trigger";
+			rohm,led1-used;
+		};
+	};
+};
+
+&spmi_bus {
+	qcom,pm8110@0 {
+		qcom,leds@a200 {
+			status = "disabled";
+		};
+	};
+};
