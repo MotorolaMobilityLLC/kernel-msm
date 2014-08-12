@@ -43,6 +43,10 @@
 #define	REG_PON			0x0E
 #define	REG_MAX			REG_PON
 
+#define	PWMEN_MASK		0x20
+#define	OVP_MASK		0x18
+#define	LEDSEL_MASK		0x05
+
 #define INT_DEBOUNCE_MSEC	10
 
 struct bd65b60_chip {
@@ -103,11 +107,11 @@ static int bd65b60_chip_init(struct i2c_client *client)
 
 	rval |= bd65b60_write(pchip, REG_SFTRST, 0x01);
 	/* set Cofig. register */
-	rval |= bd65b60_update(pchip, REG_CTRLSET, 0x00, pdata->pwm_ctrl);
+	rval |= bd65b60_update(pchip, REG_CTRLSET, PWMEN_MASK, pdata->pwm_ctrl);
 	/* set common settings/OVP register */
-	rval |= bd65b60_update(pchip, REG_COMSET1, 0x00, pdata->ovp_val);
+	rval |= bd65b60_update(pchip, REG_COMSET1, OVP_MASK, pdata->ovp_val);
 	/* set control */
-	rval |= bd65b60_update(pchip, REG_LEDSEL, 0x00, pdata->led_sel);
+	rval |= bd65b60_update(pchip, REG_LEDSEL, LEDSEL_MASK, pdata->led_sel);
 	/* turn on LED Driver */
 	rval |= bd65b60_write(pchip, REG_PON, 0x01);
 	if (rval < 0)
