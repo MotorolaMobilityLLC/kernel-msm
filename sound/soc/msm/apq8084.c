@@ -1024,9 +1024,9 @@ static int msm_tfa9890_routing_get(struct snd_kcontrol *kcontrol,
 
 	pr_debug("%s: widget name %s\n", __func__, widget->name);
 
-	if (!strncmp(widget->name, "TFA9890_STUB Left", 17))
+	if (!strncmp(widget->name, "BOOST_STUB Left", 15))
 		ucontrol->value.integer.value[0] = tfa9890_left_active;
-	else if (!strncmp(widget->name, "TFA9890_STUB Right", 18))
+	else if (!strncmp(widget->name, "BOOST_STUB Right", 16))
 		ucontrol->value.integer.value[0] = tfa9890_right_active;
 
 	return 0;
@@ -1043,10 +1043,12 @@ static int msm_tfa9890_routing_put(struct snd_kcontrol *kcontrol,
 	else
 		snd_soc_dapm_mixer_update_power(widget, kcontrol, 0);
 
-	pr_debug("%s: widget sname %s\n", __func__, widget->sname);
-	if (!strncmp(widget->name, "TFA9890_STUB Left", 17))
+	pr_debug("%s: widget name %s val: %ld\n", __func__,
+			widget->name, ucontrol->value.integer.value[0]);
+
+	if (!strncmp(widget->name, "BOOST_STUB Left", 15))
 		tfa9890_left_active = ucontrol->value.integer.value[0];
-	else if (!strncmp(widget->name, "TFA9890_STUB Right", 18))
+	else if (!strncmp(widget->name, "BOOST_STUB Right", 16))
 		tfa9890_right_active = ucontrol->value.integer.value[0];
 
 	return 1;
@@ -4578,22 +4580,21 @@ static struct snd_soc_dai_link  apq8084_tfa9890_dai_link[] = {
 		.be_id = MSM_BACKEND_DAI_TFA9890_STUB_RIGHT_RX,
 		.init = &msm_tfa9890_stereo_init,
 		.be_hw_params_fixup = apq8084_mi2s_rx_be_hw_params_fixup,
+		.ops = &apq8084_quad_mi2s_be_ops,
 		/* dai link has playback support */
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
 		.codec_name = "tfa9890.8-0035",
 		.codec_dai_name = "tfa9890_codec_right",
 	},
-	/* dummy QUAT MI2S RX added only for stereo configuration
-	* to avoid getting BE DAi not found error in the logs.
-	*/
+	/* QUAT MI2S RX added only for stereo configuration */
 	{
 		.name = LPASS_BE_QUAT_MI2S_RX,
 		.stream_name = "Quaternary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "tfa9890_stereo",
+		.codec_name = "tfa9890-stereo-codec",
 		.no_pcm = 1,
 		.ops = &apq8084_quad_mi2s_be_ops,
 		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
@@ -4966,6 +4967,7 @@ static int apq8084_asoc_machine_probe(struct platform_device *pdev)
 
 		card->num_links++;
 		card->dai_link = apq8084_dai_tfa9890_links;
+
 
 		/* read earpiece gpio */
 		pdata->tfa9890_earpiece_gpio =
