@@ -1336,9 +1336,6 @@ static int msm226_pri_mi2s_free_gpios(void)
 static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream)
 {
         int ret =0;
-//ASUS BSP Jessy +++ : config DMIC 1p8
-        regulator_disable(dmic_1p8);
-//ASUS BSP Jessy --- : config DMIC 1p8
         if (atomic_dec_return(&pri_mi2s_clk.mi2s_rsc_ref) == 0) {
                 pr_info("%s: free mi2s resources\n", __func__);
 
@@ -1349,6 +1346,9 @@ static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream)
                 }
                 msm226_pri_mi2s_free_gpios();
         }
+//ASUS BSP Jessy +++ : config DMIC 1p8
+        regulator_disable(dmic_1p8);
+//ASUS BSP Jessy --- : config DMIC 1p8
 }
 
 static int msm8226_configure_pri_mi2s_gpio(void)
