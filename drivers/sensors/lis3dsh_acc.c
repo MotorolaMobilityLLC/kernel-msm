@@ -23,12 +23,15 @@
 #include	<linux/i2c.h>
 #include	<linux/input.h>
 #include	<linux/uaccess.h>
+#include <linux/sysfs.h>
+#include <linux/syscalls.h>
 #include	<linux/workqueue.h>
 #include	<linux/regulator/consumer.h>
 #include	<linux/irq.h>
 #include	<linux/gpio.h>
 #include	<linux/interrupt.h>
 #include	<linux/slab.h>
+#include <linux/sensors.h>
 
 #include	<linux/input/lis3dsh.h>
 
@@ -292,8 +295,6 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 #define LIS3DSH_INT1_DIS_INT2_EN		(0x02)
 #define LIS3DSH_INT1_EN_INT2_EN			(0x03)
 
-struct lis3dsh_acc_data *g_acc;
-
 struct {
 	unsigned int cutoff_ms;
 	unsigned int mask;
@@ -329,9 +330,16 @@ module_param(int2_gpio, int, S_IRUGO);
 MODULE_PARM_DESC(int1_gpio, "integer: gpio number being assined to interrupt PIN1");
 MODULE_PARM_DESC(int2_gpio, "integer: gpio number being assined to interrupt PIN2");
 
-static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc, u8 settings);
+static struct sensors_classdev lis3dsh_cdev = {
+	.name = "lis3dsh",
+	.vendor = "STMicroelectronics",
+	.version = 1,
+	.enabled = 0,
+	.sensors_enable = NULL,
+};
 
 struct lis3dsh_acc_data {
+	struct sensors_classdev cdev;
 	struct i2c_client *client;
 	struct lis3dsh_acc_platform_data *pdata;
 
@@ -360,24 +368,15 @@ struct lis3dsh_acc_data {
 	int irq2;
 	struct work_struct irq2_work;
 	struct workqueue_struct *irq2_work_queue;
-
-	int report_event_en;
-
-#ifdef DEBUG
-	u8 reg_addr;
-#endif
 };
+static struct lis3dsh_acc_data *sensor_data;
 
 static int chip_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 static atomic_t is_suspend;
-// ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
-static struct class *lis3dsh_class = NULL;
-static int lis3dsh_major = 0;
-static int lis3dsh_minor = 0;
-static dev_t lis3dsh_dev;
-struct device *lis3dsh_class_dev = NULL;
-static char event_status[10];
-// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
+
+static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc, int *xyz);
+static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc, int *xyz);
+static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc, u8 settings);
 
 /* sets default init values to be written in registers at probe stage */
 static void lis3dsh_acc_set_init_register_values(struct lis3dsh_acc_data *acc)
@@ -893,7 +892,8 @@ static irqreturn_t lis3dsh_acc_isr2(int irq, void *dev)
 static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 {
 	int err = -1;
-	u8 rbuf[2], status;	
+	u8 rbuf[2], status;
+	int xyz[3] = { 0 };
 	struct lis3dsh_acc_data *acc;
 
 	acc = container_of(work, struct lis3dsh_acc_data, irq1_work);
@@ -908,15 +908,17 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_1;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] == 0x80)) {
-			printk("***********************Tilt to wake event\n");
+		if(rbuf[0] == 0x80) {
+			err = lis3dsh_acc_get_acceleration_data(acc, xyz);
 			if (atomic_read(&is_suspend)) {
+				printk("***********************Tilt to wake event\n");
 				input_report_key(acc->input_dev, KEY_POWER,1);
 				input_sync(acc->input_dev);
 				msleep(5);
 				input_report_key(acc->input_dev, KEY_POWER,0);
 				input_sync(acc->input_dev);
 			}
+			lis3dsh_acc_report_values(acc, xyz);
 		}
 	}
 	if(status & LIS3DSH_STAT_INTSM2_BIT) {
@@ -951,8 +953,6 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02) & !pm8226_is_ac_usb_in()) {		//do not report knock event if device is inserted into pogo
 			printk("***********************knock-knock event\n");
-			strcpy(event_status,"KNOCK");
-			kobject_uevent(&lis3dsh_class_dev->kobj, KOBJ_CHANGE);
 		}
 	}
 	enable_irq(acc->irq2);
@@ -1133,9 +1133,9 @@ static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc,
 	hw_d[1] = ((s16) ((acc_data[3] << 8) | acc_data[2]));
 	hw_d[2] = ((s16) ((acc_data[5] << 8) | acc_data[4]));
 
-	hw_d[0] = hw_d[0] * acc->sensitivity;
-	hw_d[1] = hw_d[1] * acc->sensitivity;
-	hw_d[2] = hw_d[2] * acc->sensitivity;
+	hw_d[0] = hw_d[0] * acc->sensitivity / 1000;
+	hw_d[1] = hw_d[1] * acc->sensitivity / 1000;
+	hw_d[2] = hw_d[2] * acc->sensitivity / 1000;
 
 
 	xyz[0] = ((acc->pdata->negate_x) ? (-hw_d[acc->pdata->axis_map_x])
@@ -1145,7 +1145,7 @@ static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc,
 	xyz[2] = ((acc->pdata->negate_z) ? (-hw_d[acc->pdata->axis_map_z])
 		   : (hw_d[acc->pdata->axis_map_z]));
 
-	sensor_debug(DEBUG_RAW, "[lis3dsh] %s read x=%d, y=%d, z=%d\n", __func__, xyz[0], xyz[1], xyz[2]);
+	sensor_debug(DEBUG_INFO, "[lis3dsh] %s read x=%d, y=%d, z=%d\n", __func__, xyz[0], xyz[1], xyz[2]);
 
 	return err;
 }
@@ -1159,33 +1159,28 @@ static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
 	input_sync(acc->input_dev);
 }
 
-static int lis3dsh_acc_enable(struct lis3dsh_acc_data *acc)
+static int lis3dsh_acc_enable(struct sensors_classdev *sensors_cdev, unsigned int enable)
 {
 	int err;
 
-	if (!atomic_cmpxchg(&acc->enabled, 0, 1)) {
-		sensor_debug(DEBUG_INFO, "[Sensors] %s +++ \n", __func__);
-		err = lis3dsh_acc_device_power_on(acc);
+	sensor_debug(DEBUG_INFO, "[Sensors] %s +++ %s\n", __func__, enable?"ON":"OFF");
+	if(enable && !atomic_cmpxchg(&sensor_data->enabled, 0, 1)) {
+		err = lis3dsh_acc_device_power_on(sensor_data);
 		if (err < 0) {
-			atomic_set(&acc->enabled, 0);
+			atomic_set(&sensor_data->enabled, 0);
 			return err;
 		}
-		if (acc->report_event_en)
-			schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
-		sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
+		//schedule_delayed_work(&sensor_data->input_work, msecs_to_jiffies(sensor_data->pdata->poll_interval));
+		lis3dsh_acc_state_progrs_enable_control(sensor_data, LIS3DSH_SM1_EN_SM2_DIS);
+		sensor_data->cdev.enabled = 1;
 	}
-	return 0;
-}
+	else if (!enable && atomic_cmpxchg(&sensor_data->enabled, 1, 0)) {
+		//cancel_delayed_work_sync(&sensor_data->input_work);
+		lis3dsh_acc_device_power_off(sensor_data);
+		sensor_data->cdev.enabled = 0;
+	}
+	sensor_debug(DEBUG_INFO, "[Sensors] %s --- %s\n", __func__, enable?"ON":"OFF");
 
-static int lis3dsh_acc_disable(struct lis3dsh_acc_data *acc)
-{
-	if (atomic_cmpxchg(&acc->enabled, 1, 0)) {
-		sensor_debug(DEBUG_INFO, "[Sensors] %s +++\n", __func__);
-		if (acc->report_event_en)
-			cancel_delayed_work_sync(&acc->input_work);
-		lis3dsh_acc_device_power_off(acc);
-	}
-	sensor_debug(DEBUG_INFO, "[Sensors] %s ---\n", __func__);
 	return 0;
 }
 
@@ -1213,111 +1208,6 @@ static void lis3dsh_acc_reg_dump(struct lis3dsh_acc_data *acc)
 	
 }
 
-static ssize_t attr_get_polling_rate(struct device *dev,
-					struct device_attribute *attr,
-								char *buf)
-{
-	int val;
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	mutex_lock(&acc->lock);
-	val = acc->pdata->poll_interval;
-	mutex_unlock(&acc->lock);
-	return sprintf(buf, "%d\n", val);
-}
-
-static ssize_t attr_set_polling_rate(struct device *dev,
-					struct device_attribute *attr,
-						const char *buf, size_t size)
-{
-	int err;
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	unsigned long interval_ms;
-
-	if (strict_strtoul(buf, 10, &interval_ms))
-		return -EINVAL;
-	if (!interval_ms)
-		return -EINVAL;
-	mutex_lock(&acc->lock);
-	err = lis3dsh_acc_update_odr(acc, interval_ms);
-	if(err >= 0)
-	{
-		acc->pdata->poll_interval = interval_ms;
-	}
-	mutex_unlock(&acc->lock);
-	return size;
-}
-
-static ssize_t attr_get_range(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	u8 val;
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	int range = 2;
-	mutex_lock(&acc->lock);
-	val = acc->pdata->fs_range ;
-
-	switch(val) {
-	case LIS3DSH_ACC_G_2G:
-		range = 2;
-		break;
-	case LIS3DSH_ACC_G_4G:
-		range = 4;
-		break;
-	case LIS3DSH_ACC_G_6G:
-		range = 6;
-		break;
-	case LIS3DSH_ACC_G_8G:
-		range = 8;
-		break;
-	case LIS3DSH_ACC_G_16G:
-		range = 16;
-		break;
-	}
-	mutex_unlock(&acc->lock);
-	return sprintf(buf, "%d\n", range);
-}
-
-static ssize_t attr_set_range(struct device *dev,
-				struct device_attribute *attr,
-						const char *buf, size_t size)
-{
-	int err;
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	unsigned long val;
-	u8 range;
-	if (strict_strtoul(buf, 10, &val))
-		return -EINVAL;
-
-	switch(val) {
-		case 2:
-			range = LIS3DSH_ACC_G_2G;
-			break;
-		case 4:
-			range = LIS3DSH_ACC_G_4G;
-			break;
-		case 6:
-			range = LIS3DSH_ACC_G_6G;
-			break;
-		case 8:
-			range = LIS3DSH_ACC_G_8G;
-			break;
-		case 16:
-			range = LIS3DSH_ACC_G_16G;
-			break;
-		default:
-			return -1;
-	}
-
-	mutex_lock(&acc->lock);
-	err = lis3dsh_acc_update_fs_range(acc, range);
-	if(err >= 0)
-	{
-		acc->pdata->fs_range = range;
-	}
-	mutex_unlock(&acc->lock);
-	return size;
-}
-
 static ssize_t attr_get_enable(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -1330,18 +1220,16 @@ static ssize_t attr_set_enable(struct device *dev,
 				struct device_attribute *attr,
 						const char *buf, size_t size)
 {
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
 	unsigned long val;
 
 	if (strict_strtoul(buf, 10, &val))
 		return -EINVAL;
 
-	if (val)
-		lis3dsh_acc_enable(acc);
-	else
-		lis3dsh_acc_disable(acc);
+	lis3dsh_acc_enable(&sensor_data->cdev, val);
+
 	return size;
 }
+static DEVICE_ATTR(enable, S_IWUSR|S_IWGRP|S_IRUGO, attr_get_enable, attr_set_enable);
 
 static ssize_t attr_get_acc_data(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -1362,6 +1250,15 @@ static ssize_t attr_get_acc_data(struct device *dev,
 
 	return err;
 }
+static DEVICE_ATTR(acc_data, S_IRUGO, attr_get_acc_data, NULL);
+
+static ssize_t attr_reg_dump(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
+	lis3dsh_acc_reg_dump(acc);
+	return sprintf(buf, "DONE\n");
+}
+static DEVICE_ATTR(dump, S_IRUGO, attr_reg_dump, NULL);
 
 #ifndef ASUS_USER_BUILD
 //ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
@@ -1371,14 +1268,25 @@ static ssize_t attr_get_chip_status(struct device *dev,
 	printk("[lis3dsh] read_accel_status = %d",chip_status);
 	return sprintf(buf, "%d\n", chip_status);
 }
+static DEVICE_ATTR(chip_status, S_IRUGO, attr_get_chip_status, NULL);
 //ASUS_BSP --- Maggie_Lee "Support ATD BMMI"
 
-static ssize_t attr_reg_dump(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t attr_set_poll_en(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	lis3dsh_acc_reg_dump(acc);
-	return sprintf(buf, "DONE\n");
+	unsigned long val;
+
+	if (strict_strtoul(buf, 10, &val))
+		return -EINVAL;
+
+	if(val)
+		schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
+	else
+		cancel_delayed_work_sync(&acc->input_work);
+
+	return size;
 }
+static DEVICE_ATTR(poll_en, S_IWUSR|S_IRUGO, NULL, attr_set_poll_en);
 #endif
 
 #ifdef ASUS_FACTORY_BUILD
@@ -1598,7 +1506,26 @@ static ssize_t attr_factory_test(struct device *dev,	struct device_attribute *at
 		enable_irq(acc->irq2);
 	return sprintf(buf, "FAIL\n");
 }
+static DEVICE_ATTR(factory_test, S_IRUGO, attr_factory_test, NULL);
 #endif
+
+static struct attribute *lis3dsh_attributes[] = {
+	&dev_attr_enable.attr,
+	&dev_attr_acc_data.attr,
+	&dev_attr_dump.attr,
+#ifndef ASUS_USER_BUILD
+	&dev_attr_chip_status.attr,
+	&dev_attr_poll_en.attr,
+#endif
+#ifdef ASUS_FACTORY_BUILD
+	&dev_attr_factory_test.attr,
+#endif
+	NULL
+};
+
+static const struct attribute_group lis3dsh_attr_group = {
+	.attrs = lis3dsh_attributes,
+};
 
 static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc, u8 settings)
 {
@@ -1649,138 +1576,6 @@ static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc,
 	return err;
 }
 
-static ssize_t attr_set_enable_state_prog(struct device *dev,
-		struct device_attribute *attr,	const char *buf, size_t size)
-{
-	int err = -1;
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	long val=0;
-
-	if (strict_strtoul(buf, 16, &val))
-		return -EINVAL;
-
-
-	if ( val < 0x00 || val > LIS3DSH_SM1_EN_SM2_EN){
-		pr_warn("[lis3dsh] invalid state program setting, val: %ld\n",val);
-		return -EINVAL;
-	}
-
-	mutex_lock(&acc->lock);
-	err = lis3dsh_acc_state_progrs_enable_control(acc, val);
-	mutex_unlock(&acc->lock);
-	if (err < 0)
-		return err;
-	return size;
-}
-
-static ssize_t attr_get_enable_state_prog(struct device *dev,
-		struct device_attribute *attr,	char *buf)
-{
-	u8 val;
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	mutex_lock(&acc->lock);
-	val = acc->stateprogs_enable_setting;
-	mutex_unlock(&acc->lock);
-	return sprintf(buf, "0x%02x\n", val);
-}
-
-#ifdef DEBUG
-/* PAY ATTENTION: These DEBUG funtions don't manage resume_state */
-static ssize_t attr_reg_set(struct device *dev, struct device_attribute *attr,
-				const char *buf, size_t size)
-{
-	int rc;
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	u8 x[2];
-	unsigned long val;
-
-	if (strict_strtoul(buf, 16, &val))
-		return -EINVAL;
-	mutex_lock(&acc->lock);
-	x[0] = acc->reg_addr;
-	mutex_unlock(&acc->lock);
-	x[1] = val;
-	rc = lis3dsh_acc_i2c_write(acc, x, 1);
-	/*TODO: error need to be managed */
-	return size;
-}
-
-static ssize_t attr_reg_get(struct device *dev, struct device_attribute *attr,
-				char *buf)
-{
-	ssize_t ret;
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	int rc;
-	u8 data;
-
-	mutex_lock(&acc->lock);
-	data = acc->reg_addr;
-	mutex_unlock(&acc->lock);
-	rc = lis3dsh_acc_i2c_read(acc, &data, 1);
-	/*TODO: error need to be managed */
-	ret = sprintf(buf, "0x%02x\n", data);
-	return ret;
-}
-
-static ssize_t attr_addr_set(struct device *dev, struct device_attribute *attr,
-				const char *buf, size_t size)
-{
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	unsigned long val;
-	if (strict_strtoul(buf, 16, &val))
-		return -EINVAL;
-	mutex_lock(&acc->lock);
-	acc->reg_addr = val;
-	mutex_unlock(&acc->lock);
-	return size;
-}
-#endif
-
-static struct device_attribute attributes[] = {
-
-	__ATTR(poll_period_ms, 0664, attr_get_polling_rate,
-							attr_set_polling_rate),
-	__ATTR(range, 0664, attr_get_range, attr_set_range),
-	__ATTR(enable, 0664, attr_get_enable, attr_set_enable),
-	__ATTR(enable_state_prog, 0664, attr_get_enable_state_prog,
-						attr_set_enable_state_prog),
-	__ATTR(acc_data, 0444, attr_get_acc_data, NULL),
-#ifdef DEBUG
-	__ATTR(reg_value, 0600, attr_reg_get, attr_reg_set),
-	__ATTR(reg_addr, 0200, NULL, attr_addr_set),
-#endif
-#ifndef ASUS_USER_BUILD
-	__ATTR(chip_status, 0444, attr_get_chip_status, NULL),			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
-	__ATTR(dump, 0444, attr_reg_dump, NULL),
-#endif
-#ifdef ASUS_FACTORY_BUILD
-	__ATTR(factory_test, 0444, attr_factory_test, NULL),	
-#endif
-};
-
-static int create_sysfs_interfaces(struct device *dev)
-{
-	int i;
-	for (i = 0; i < ARRAY_SIZE(attributes); i++)
-		if (device_create_file(dev, attributes + i))
-			goto error;
-	return 0;
-
-error:
-	for ( ; i >= 0; i--)
-		device_remove_file(dev, attributes + i);
-	dev_err(dev, "%s:Unable to create interface\n", __func__);
-	return -1;
-}
-
-static int remove_sysfs_interfaces(struct device *dev)
-{
-	int i;
-	for (i = 0; i < ARRAY_SIZE(attributes); i++)
-		device_remove_file(dev, attributes + i);
-	return 0;
-}
-
 static void lis3dsh_acc_input_work_func(struct work_struct *work)
 {
 	struct lis3dsh_acc_data *acc;
@@ -1800,20 +1595,6 @@ static void lis3dsh_acc_input_work_func(struct work_struct *work)
 
 	schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
 	mutex_unlock(&acc->lock);
-}
-
-int lis3dsh_acc_input_open(struct input_dev *input)
-{
-	struct lis3dsh_acc_data *acc = input_get_drvdata(input);
-
-	return lis3dsh_acc_enable(acc);
-}
-
-void lis3dsh_acc_input_close(struct input_dev *dev)
-{
-	struct lis3dsh_acc_data *acc = input_get_drvdata(dev);
-
-	lis3dsh_acc_disable(acc);
 }
 
 static int lis3dsh_acc_validate_pdata(struct lis3dsh_acc_data *acc)
@@ -1850,26 +1631,20 @@ static int lis3dsh_acc_validate_pdata(struct lis3dsh_acc_data *acc)
 
 static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 {
-	int err;
+	int ret = 0;
+//	struct input_dev *lis3dsh_dev = NULL;
 
-	acc->report_event_en = 0; 			//default report ABS event OFF
 	INIT_DELAYED_WORK(&acc->input_work, lis3dsh_acc_input_work_func);
 	acc->input_dev = input_allocate_device();
 	if (!acc->input_dev) {
-		err = -ENOMEM;
-		dev_err(&acc->client->dev, "input device allocation failed\n");
-		goto err0;
+		printk("[lis3dsh]: Failed to allocate input_data device\n");
+		return -ENOMEM;
 	}
 
-	acc->input_dev->open = lis3dsh_acc_input_open;
-	acc->input_dev->close = lis3dsh_acc_input_close;
 	acc->input_dev->name = LIS3DSH_ACC_DEV_NAME;
-
-	acc->input_dev->id.bustype = BUS_I2C;
-	acc->input_dev->dev.parent = &acc->client->dev;
-
-	input_set_drvdata(acc->input_dev, acc);
-
+	acc->input_dev->id.bustype = BUS_HOST;
+	acc->input_dev->dev.parent = &sensor_data->client->dev;
+	input_set_capability(acc->input_dev, EV_ABS, ABS_MISC);
 	set_bit(EV_ABS, acc->input_dev->evbit);
 	/*	next is used for interruptA sources data if the case */
 	set_bit(ABS_MISC, acc->input_dev->absbit);
@@ -1881,26 +1656,15 @@ static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 	input_set_abs_params(acc->input_dev, ABS_X, -G_MAX, G_MAX, 0, 0);
 	input_set_abs_params(acc->input_dev, ABS_Y, -G_MAX, G_MAX, 0, 0);
 	input_set_abs_params(acc->input_dev, ABS_Z, -G_MAX, G_MAX, 0, 0);
-	/*	next is used for interruptA sources data if the case */
-//input_set_abs_params(acc->input_dev, ABS_MISC, INT_MIN, INT_MAX, 0, 0);
-	/*	next is used for interruptB sources data if the case */
-//input_set_abs_params(acc->input_dev, ABS_WHEEL, INT_MIN, INT_MAX, 0, 0);
-
-
-	err = input_register_device(acc->input_dev);
-	if (err) {
-		dev_err(&acc->client->dev,
-				"unable to register input device %s\n",
-				acc->input_dev->name);
-		goto err1;
+	input_set_drvdata(acc->input_dev, sensor_data);
+	ret = input_register_device(acc->input_dev);
+	if (ret < 0) {
+		input_free_device(acc->input_dev);
+		return ret;
 	}
+	sensor_data->input_dev = acc->input_dev;
 
 	return 0;
-
-err1:
-	input_free_device(acc->input_dev);
-err0:
-	return err;
 }
 
 static void lis3dsh_acc_input_cleanup(struct lis3dsh_acc_data *acc)
@@ -1920,20 +1684,20 @@ static int TestLIS3DSHSensorI2C (struct i2c_client *apClient)
 
 	i2c_log_in_test_case("%s ++\n", __func__);
 
-	err = lis3dsh_acc_enable(g_acc);
+	err = lis3dsh_acc_enable(&sensor_data->cdev, 1);
 	if (err < 0) {
 		i2c_log_in_test_case("Fail to turn on sensor\n");
 		goto error;
 	}
 
 	buf[0] = LIS3DSH_WHO_AM_I;
-	err = lis3dsh_acc_i2c_read(g_acc, buf, 1);
+	err = lis3dsh_acc_i2c_read(sensor_data, buf, 1);
 	if (err < 0) {
 		i2c_log_in_test_case("Fail to read sensor ID\n");
 		goto error;
 	}
 
-	err = lis3dsh_acc_disable(g_acc);
+	lis3dsh_acc_enable(&sensor_data->cdev, 0);
 	if (err < 0) {
 		i2c_log_in_test_case("Fail to turn off sensor\n");
 		goto error;
@@ -1958,15 +1722,15 @@ void notify_st_sensor_lowpowermode(int low)
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low) {
 		atomic_set(&is_suspend,1);
-		enable_irq_wake(g_acc->irq1);
-		enable_irq_wake(g_acc->irq2);
-		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_DIS);
+		enable_irq_wake(sensor_data->irq1);
+		enable_irq_wake(sensor_data->irq2);
+		lis3dsh_acc_state_progrs_enable_control(sensor_data, LIS3DSH_SM1_EN_SM2_DIS);
 	}
 	else {
 		atomic_set(&is_suspend,0);
-		disable_irq_wake(g_acc->irq1);
-		disable_irq_wake(g_acc->irq2);
-		lis3dsh_acc_state_progrs_enable_control(g_acc, LIS3DSH_SM1_EN_SM2_DIS);
+		disable_irq_wake(sensor_data->irq1);
+		disable_irq_wake(sensor_data->irq2);
+		lis3dsh_acc_state_progrs_enable_control(sensor_data, LIS3DSH_SM1_EN_SM2_DIS);
 	}
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
@@ -2039,31 +1803,38 @@ static int lis3dsh_pwr_ctrl(struct device *dev, int en)
 		return -ret;
 }
 
-static int lis3dsh_acc_probe(struct i2c_client *client,
-		const struct i2c_device_id *id)
+static int lis3dsh_acc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct lis3dsh_acc_data *acc;
-
-	u32 smbus_func = I2C_FUNC_SMBUS_BYTE_DATA |
-			I2C_FUNC_SMBUS_WORD_DATA | I2C_FUNC_SMBUS_I2C_BLOCK ;
-
+	u32 smbus_func = I2C_FUNC_SMBUS_BYTE_DATA |I2C_FUNC_SMBUS_WORD_DATA | I2C_FUNC_SMBUS_I2C_BLOCK ;
 	int err = -1;
 
-	dev_info(&client->dev, "probe start.\n");
-
-	err = lis3dsh_pwr_ctrl(&client->dev, 1);
-	if(err)
-		goto exit_check_functionality_failed;
+	dev_info(&client->dev, "[lis3dsh] probe start.\n");
 
 	acc = kzalloc(sizeof(struct lis3dsh_acc_data), GFP_KERNEL);
 	if (acc == NULL) {
 		err = -ENOMEM;
-		dev_err(&client->dev,
-				"failed to allocate memory for module data: "
-					"%d\n", err);
+		dev_err(&client->dev,"failed to allocate memory for module data: %d\n", err);
 		goto exit_check_functionality_failed;
 	}
 
+	acc->cdev = lis3dsh_cdev;
+	acc->cdev.enabled = 0;
+	acc->cdev.sensors_enable = lis3dsh_acc_enable;
+
+	err = sensors_classdev_register(&client->dev, &acc->cdev);
+	if (err) {
+		pr_err("[lis3dsh] class device create failed: %d\n", err);
+		goto classdev_register_fail;
+	}
+
+	err = sysfs_create_group(&client->dev.kobj, &lis3dsh_attr_group);
+	if (err)
+		goto classdev_register_fail;
+
+	err = lis3dsh_pwr_ctrl(&client->dev, 1);
+	if(err)
+		goto exit_check_functionality_failed;
 	/* Support for both I2C and SMBUS adapter interfaces. */
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_warn(&client->dev, "client not i2c capable\n");
@@ -2106,13 +1877,13 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 							sizeof(*acc->pdata));
 	}
 
-	g_acc = acc;
-
 	err = lis3dsh_acc_validate_pdata(acc);
 	if (err < 0) {
 		dev_err(&client->dev, "failed to validate platform data\n");
 		goto exit_kfree_pdata;
 	}
+
+	sensor_data = acc;
 
 	if (acc->pdata->init) {
 		err = acc->pdata->init();
@@ -2122,17 +1893,6 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 		}
 	}
 
-	//lis3dsh_class = class_create(THIS_MODULE, LIS3DSH_ACC_DEV_NAME);
-	//err = kobject_set_name(&client->dev->kobj, "%s", &client->dev->name);
-
-	#if 0//defined(CONFIG_HAS_EARLYSUSPEND)
-	register_early_suspend(&lis3dsh_early_suspend_handler);
-	//#elif defined(CONFIG_FB)
-	lis3dsh_fb_notif.notifier_call = lis3dsh_fb_notifier_callback;
-	err= fb_register_client(&lis3dsh_fb_notif);
-	if (err)
-		dev_err(&client->dev, "Unable to register fb_notifier: %d\n", err);
-	#endif
 	#ifdef CONFIG_ASUS_UTILITY
 	register_mode_notifier(&display_mode_notifier);
 	#endif
@@ -2188,13 +1948,6 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 		dev_err(&client->dev, "input init failed\n");
 		goto err_power_off;
 	}
-	
-	err = create_sysfs_interfaces(&client->dev);
-	if (err < 0) {
-		dev_err(&client->dev,
-		   "[lis3dsh] device LIS3DSH_ACC_DEV_NAME sysfs register failed\n");
-		goto err_input_cleanup;
-	}
 
 	lis3dsh_acc_device_power_off(acc);	
 
@@ -2243,9 +1996,10 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	mutex_unlock(&acc->lock);
 	chip_status=1;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
-	lis3dsh_acc_enable(acc);			//default on
-
+	#ifdef ASUS_FACTORY_BUILD
+	lis3dsh_acc_enable(&sensor_data->cdev, 1);			//default on
 	lis3dsh_acc_state_progrs_enable_control(acc, LIS3DSH_SM1_EN_SM2_DIS);
+	#endif
 
 	#ifdef CONFIG_I2C_STRESS_TEST
 	i2c_add_test_case(client, "STSensorTest", ARRAY_AND_SIZE(gLIS3DSHTestCaseInfo));
@@ -2264,9 +2018,6 @@ err_destoyworkqueue1:
 	if(acc->pdata->gpio_int1 >= 0)
 		destroy_workqueue(acc->irq1_work_queue);
 err_remove_sysfs_int:
-	remove_sysfs_interfaces(&client->dev);
-err_input_cleanup:
-	lis3dsh_acc_input_cleanup(acc);
 err_power_off:
 	lis3dsh_acc_device_power_off(acc);
 err_pdata_init:
@@ -2280,6 +2031,8 @@ err_mutexunlock:
 	kfree(acc);
 exit_check_functionality_failed:
 	pr_err("[lis3dsh] %s: Driver Init failed\n", __func__);
+classdev_register_fail:
+	kfree(sensor_data);
 	return err;
 }
 
@@ -2299,12 +2052,11 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 		destroy_workqueue(acc->irq2_work_queue);
 	}
 
-	if (atomic_cmpxchg(&acc->enabled, 1, 0) && acc->report_event_en)
+	if (atomic_cmpxchg(&acc->enabled, 1, 0))
 		cancel_delayed_work_sync(&acc->input_work);
 
 	lis3dsh_acc_device_power_off(acc);
 	lis3dsh_acc_input_cleanup(acc);
-	remove_sysfs_interfaces(&client->dev);
 
 	#ifdef CONFIG_ASUS_UTILITY
 	unregister_mode_notifier(&display_mode_notifier);
@@ -2319,37 +2071,6 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 	chip_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 	return 0;
 }
-
-#ifdef CONFIG_PM
-static int lis3dsh_acc_resume(struct i2c_client *client)
-{
-	#if 0
-	struct lis3dsh_acc_data *acc = i2c_get_clientdata(client);
-
-	if (acc->on_before_suspend)
-		return lis3dsh_acc_enable(acc);
-
-	return 0;
-	#endif
-	
-	return 0;
-}
-
-static int lis3dsh_acc_suspend(struct i2c_client *client, pm_message_t mesg)
-{
-	#if 0
-	struct lis3dsh_acc_data *acc = i2c_get_clientdata(client);
-
-	acc->on_before_suspend = atomic_read(&acc->enabled);
-	return lis3dsh_acc_disable(acc);
-	#endif
-	
-	return 0;
-}
-#else
-#define lis3dsh_acc_suspend	NULL
-#define lis3dsh_acc_resume	NULL
-#endif /* CONFIG_PM */
 
 static const struct i2c_device_id lis3dsh_acc_id[]
 		= { { LIS3DSH_ACC_DEV_NAME, 0 }, { }, };
@@ -2369,63 +2090,17 @@ static struct i2c_driver lis3dsh_acc_driver = {
 		  },
 	.probe = lis3dsh_acc_probe,
 	.remove = lis3dsh_acc_remove,
-	.suspend = lis3dsh_acc_suspend,
-	.resume = lis3dsh_acc_resume,
 	.id_table = lis3dsh_acc_id,
-};
-
-// ASUS_BSP +++ Maggie_Lee "Detect uevent from gsensor for double tap"
-static ssize_t show_event_status(struct device *device, struct device_attribute *attr, char *buf)
-{
-	ssize_t ret = snprintf(buf, PAGE_SIZE, "%s\n", event_status);
-	memset(&event_status[0], 0, sizeof(event_status));
-	return ret;
-}
-// ASUS_BSP --- Maggie_Lee "Detect uevent from gsensor for double tap"
-
-static struct device_attribute lis3dsh_attrs[] = {
-	__ATTR(event_status, S_IRUGO, show_event_status, NULL),
 };
 
 static int __init lis3dsh_acc_init(void)
 {
-	dev_t dev = MKDEV(lis3dsh_major, 0);
-
-	sensor_debug(DEBUG_INFO, "%s accelerometer driver: init\n", LIS3DSH_ACC_DEV_NAME);
-
-	lis3dsh_major = MAJOR(dev);
-
-	lis3dsh_class = class_create(THIS_MODULE, LIS3DSH_ACC_DEV_NAME);
-	if(IS_ERR(lis3dsh_class)) {
-		sensor_debug(DEBUG_INFO, "Err: failed in creating class.\n");
-		goto error;
-	}
-
-	lis3dsh_dev = MKDEV(lis3dsh_major, lis3dsh_minor);
-	lis3dsh_class_dev = device_create(lis3dsh_class, NULL, lis3dsh_dev, NULL, LIS3DSH_ACC_DEV_NAME);
-	if(lis3dsh_class_dev == NULL)
-	{
-		sensor_debug(DEBUG_INFO, "Err: failed in creating device.\n");
-		goto error;
-	}
-	memset(&event_status[0], 0, sizeof(event_status));
-	device_create_file(lis3dsh_class_dev, &lis3dsh_attrs[0]);
-
 	return i2c_add_driver(&lis3dsh_acc_driver);
-
-	error:
-	return -1;
 }
 
 static void __exit lis3dsh_acc_exit(void)
 {
-	sensor_debug(DEBUG_INFO, "[maggie] %s accelerometer driver: exit\n", LIS3DSH_ACC_DEV_NAME);
-
-	// unregister class
-	device_destroy(lis3dsh_class, lis3dsh_dev);
-	class_destroy(lis3dsh_class);
-	i2c_del_driver(&lis3dsh_acc_driver);
-	return;
+	return i2c_del_driver(&lis3dsh_acc_driver);
 }
 
 module_init(lis3dsh_acc_init);

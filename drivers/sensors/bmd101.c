@@ -72,7 +72,7 @@ struct bmd101_data {
 	int count;
 	struct mutex lock;
 };
-struct bmd101_data *sensor_data;
+static struct bmd101_data *sensor_data;
 
 static int bmd101_data_report(int data)
 {
