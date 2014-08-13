@@ -517,6 +517,11 @@ struct stm_response {
 #define SIM_DATA	0
 #define STEP_DETECT	0
 
+#define STML0XX_LED_MAX_DELAY 0xFFFF
+#define STML0XX_LED_MAX_BRIGHTNESS 0x00FFFFFF
+#define STML0XX_LED_HALF_BRIGHTNESS 0x007F7F7F
+#define STML0XX_LED_OFF 0x00000000
+
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
 #define STM16_TO_HOST(x) ((short) be16_to_cpu( \
@@ -606,11 +611,6 @@ struct stml0xx_data {
 	bool pending_wake_work;
 
 	struct led_classdev led_cdev;
-	unsigned int led_rgb;
-	unsigned int led_ms_on;
-	unsigned int led_ms_off;
-	unsigned int led_ramp_up;
-	unsigned int led_ramp_down;
 };
 
 /* per algo config, request, and event registers */
@@ -690,7 +690,12 @@ int stml0xx_get_version(struct stml0xx_data *ps_stml0xx);
 int switch_stml0xx_mode(enum stm_mode mode);
 int stml0xx_bootloadermode(struct stml0xx_data *ps_stml0xx);
 
-int stml0xx_led_set(struct stml0xx_data *ps_stml0xx);
+int stml0xx_led_set(struct led_classdev *led_cdev);
+void stml0xx_brightness_set(struct led_classdev *led_cdev,
+	enum led_brightness value);
+enum led_brightness stml0xx_brightness_get(struct led_classdev *led_cdev);
+int stml0xx_blink_set(struct led_classdev *led_cdev,
+	unsigned long *delay_on, unsigned long *delay_off);
 
 extern struct stml0xx_data *stml0xx_misc_data;
 
