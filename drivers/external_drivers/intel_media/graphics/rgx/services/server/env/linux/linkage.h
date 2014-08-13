@@ -48,11 +48,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if !defined(SUPPORT_DRM)
 long PVRSRV_BridgeDispatchKM(struct file *file, unsigned int cmd, unsigned long arg);
+
+#if defined(CONFIG_COMPAT)
+long PVRSRV_BridgeCompatDispatchKM(struct file *file, unsigned int cmd, unsigned long arg);
+#endif
 #endif
 
-IMG_VOID PVRDPFInit(IMG_VOID);
-PVRSRV_ERROR PVROSFuncInit(IMG_VOID);
-IMG_VOID PVROSFuncDeInit(IMG_VOID);
+void PVRDPFInit(void);
+PVRSRV_ERROR PVROSFuncInit(void);
+void PVROSFuncDeInit(void);
 
 int PVRDebugCreateDebugFSEntries(void);
 void PVRDebugRemoveDebugFSEntries(void);

@@ -44,12 +44,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_defs.h"
 #include "pvr_bridge.h"
 #include "connection_server.h"
-#include "mutex.h"
 #include "syscommon.h"
 #include "pvr_debug.h"
 #include "pvr_debugfs.h"
 #include "private_data.h"
 #include "linkage.h"
+#include "driverlock.h"
 
 #if defined(SUPPORT_DRM)
 #include <drm/drmP.h>
@@ -91,63 +91,62 @@ static struct dentry *gpsPVRDebugFSBridgeStatsEntry = NULL;
 static struct seq_operations gsBridgeStatsReadOps;
 #endif
 
-extern PVRSRV_LINUX_MUTEX gPVRSRVLock;
-
-PVRSRV_ERROR RegisterPDUMPFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterPDUMPFunctions(void);
 #if defined(SUPPORT_DISPLAY_CLASS)
-PVRSRV_ERROR RegisterDCFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterDCFunctions(void);
 #endif
-PVRSRV_ERROR RegisterMMFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterCMMFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterPDUMPMMFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterPDUMPCMMFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterSRVCOREFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterSYNCFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterMMFunctions(void);
+PVRSRV_ERROR RegisterCMMFunctions(void);
+PVRSRV_ERROR RegisterPDUMPMMFunctions(void);
+PVRSRV_ERROR RegisterPDUMPCMMFunctions(void);
+PVRSRV_ERROR RegisterSRVCOREFunctions(void);
+PVRSRV_ERROR RegisterSYNCFunctions(void);
 #if defined(SUPPORT_INSECURE_EXPORT)
-PVRSRV_ERROR RegisterSYNCEXPORTFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterSYNCEXPORTFunctions(void);
 #endif
 #if defined(SUPPORT_SECURE_EXPORT)
-PVRSRV_ERROR RegisterSYNCSEXPORTFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterSYNCSEXPORTFunctions(void);
 #endif
 #if defined (SUPPORT_RGX)
-PVRSRV_ERROR RegisterRGXINITFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterRGXTA3DFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterRGXTQFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterRGXCMPFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterBREAKPOINTFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterDEBUGMISCFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterRGXPDUMPFunctions(IMG_VOID);
-PVRSRV_ERROR RegisterRGXHWPERFFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterRGXINITFunctions(void);
+PVRSRV_ERROR RegisterRGXTA3DFunctions(void);
+PVRSRV_ERROR RegisterRGXTQFunctions(void);
+PVRSRV_ERROR RegisterRGXCMPFunctions(void);
+PVRSRV_ERROR RegisterBREAKPOINTFunctions(void);
+PVRSRV_ERROR RegisterDEBUGMISCFunctions(void);
+PVRSRV_ERROR RegisterRGXPDUMPFunctions(void);
+PVRSRV_ERROR RegisterRGXHWPERFFunctions(void);
 #if defined(RGX_FEATURE_RAY_TRACING)
-PVRSRV_ERROR RegisterRGXRAYFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterRGXRAYFunctions(void);
 #endif /* RGX_FEATURE_RAY_TRACING */
-PVRSRV_ERROR RegisterREGCONFIGFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterREGCONFIGFunctions(void);
+PVRSRV_ERROR RegisterTIMERQUERYFunctions(void);
 #endif /* SUPPORT_RGX */
 #if (CACHEFLUSH_TYPE == CACHEFLUSH_GENERIC)
-PVRSRV_ERROR RegisterCACHEGENERICFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterCACHEGENERICFunctions(void);
 #endif
 #if defined(SUPPORT_SECURE_EXPORT)
-PVRSRV_ERROR RegisterSMMFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterSMMFunctions(void);
 #endif
 #if defined(SUPPORT_PMMIF)
-PVRSRV_ERROR RegisterPMMIFFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterPMMIFFunctions(void);
 #endif
-PVRSRV_ERROR RegisterPVRTLFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterPVRTLFunctions(void);
 #if defined(PVR_RI_DEBUG)
-PVRSRV_ERROR RegisterRIFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterRIFunctions(void);
 #endif
 #if defined(SUPPORT_ION)
-PVRSRV_ERROR RegisterIONFunctions(IMG_VOID);
+PVRSRV_ERROR RegisterDMABUFFunctions(void);
 #endif
 
 /* These and their friends above will go when full bridge gen comes in */
 PVRSRV_ERROR
-LinuxBridgeInit(IMG_VOID);
-IMG_VOID
-LinuxBridgeDeInit(IMG_VOID);
+LinuxBridgeInit(void);
+void
+LinuxBridgeDeInit(void);
 
 PVRSRV_ERROR
-LinuxBridgeInit(IMG_VOID)
+LinuxBridgeInit(void)
 {
 	PVRSRV_ERROR eError;
 #if defined(DEBUG_BRIDGE_KM)
@@ -227,7 +226,7 @@ LinuxBridgeInit(IMG_VOID)
 #endif
 
 #if defined(SUPPORT_ION)
-	eError = RegisterIONFunctions();
+	eError = RegisterDMABUFFunctions();
 	if (eError != PVRSRV_OK)
 	{
 		return eError;
@@ -335,13 +334,19 @@ LinuxBridgeInit(IMG_VOID)
 		return eError;
 	}
 
+	eError = RegisterTIMERQUERYFunctions();
+	if (eError != PVRSRV_OK)
+	{
+		return eError;
+	}
+
 #endif /* SUPPORT_RGX */
 
 	return eError;
 }
 
-IMG_VOID
-LinuxBridgeDeInit(IMG_VOID)
+void
+LinuxBridgeDeInit(void)
 {
 #if defined(DEBUG_BRIDGE_KM)
 	PVRDebugFSRemoveEntry(gpsPVRDebugFSBridgeStatsEntry);
@@ -354,7 +359,7 @@ static void *BridgeStatsSeqStart(struct seq_file *psSeqFile, loff_t *puiPosition
 {
 	PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *psDispatchTable = (PVRSRV_BRIDGE_DISPATCH_TABLE_ENTRY *)psSeqFile->private;
 
-	LinuxLockMutex(&gPVRSRVLock);
+	mutex_lock(&gPVRSRVLock);
 
 	if (psDispatchTable == NULL || (*puiPosition) > BRIDGE_DISPATCH_TABLE_ENTRY_COUNT)
 	{
@@ -374,7 +379,7 @@ static void BridgeStatsSeqStop(struct seq_file *psSeqFile, void *pvData)
 	PVR_UNREFERENCED_PARAMETER(psSeqFile);
 	PVR_UNREFERENCED_PARAMETER(pvData);
 
-	LinuxUnLockMutex(&gPVRSRVLock);
+	mutex_unlock(&gPVRSRVLock);
 }
 
 static void *BridgeStatsSeqNext(struct seq_file *psSeqFile,
@@ -457,7 +462,7 @@ PVRSRV_BridgeDispatchKM(struct file *pFile, unsigned int unref__ ioctlCmd, unsig
 	CONNECTION_DATA *psConnection = LinuxConnectionFromFile(pFile);
 	IMG_INT err = -EFAULT;
 
-	LinuxLockMutex(&gPVRSRVLock);
+	mutex_lock(&gPVRSRVLock);
 
 #if defined(SUPPORT_DRM)
 	PVR_UNREFERENCED_PARAMETER(dev);
@@ -510,6 +515,83 @@ PVRSRV_BridgeDispatchKM(struct file *pFile, unsigned int unref__ ioctlCmd, unsig
 #if !defined(SUPPORT_DRM)
 unlock_and_return:
 #endif
-	LinuxUnLockMutex(&gPVRSRVLock);
+	mutex_unlock(&gPVRSRVLock);
 	return err;
 }
+
+
+#if defined(CONFIG_COMPAT)
+#if defined(SUPPORT_DRM)
+int
+#else
+long
+#endif
+PVRSRV_BridgeCompatDispatchKM(struct file *pFile,
+			      unsigned int unref__ ioctlCmd,
+			      unsigned long arg)
+{
+	struct bridge_package_from_32
+	{
+		IMG_UINT32				bridge_id;			/*!< ioctl/drvesc index */
+		IMG_UINT32				size;				/*!< size of structure */
+		IMG_UINT32				addr_param_in;		/*!< input data buffer */ 
+		IMG_UINT32				in_buffer_size;		/*!< size of input data buffer */
+		IMG_UINT32				addr_param_out;		/*!< output data buffer */
+		IMG_UINT32				out_buffer_size;	/*!< size of output data buffer */
+	};
+
+	IMG_INT err = -EFAULT;
+	PVRSRV_BRIDGE_PACKAGE params_for_64;
+	struct bridge_package_from_32 params;
+ 	struct bridge_package_from_32 * const params_addr = &params;
+#if !defined(SUPPORT_DRM)
+	CONNECTION_DATA *psConnection = LinuxConnectionFromFile(pFile);
+#else
+	struct drm_file *file_priv = pFile->private_data;
+	CONNECTION_DATA *psConnection = LinuxConnectionFromFile(file_priv);
+#endif
+	// make sure there is no padding inserted by compiler
+	PVR_ASSERT(sizeof(struct bridge_package_from_32) == 6 * sizeof(IMG_UINT32));
+
+	mutex_lock(&gPVRSRVLock);
+
+	if(!OSAccessOK(PVR_VERIFY_READ, (void *) arg,
+				   sizeof(struct bridge_package_from_32)))
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: Received invalid pointer to function arguments",
+				 __FUNCTION__));
+
+		goto unlock_and_return;
+	}
+	
+	if(OSCopyFromUser(NULL, params_addr, (void*) arg,
+					  sizeof(struct bridge_package_from_32))
+	   != PVRSRV_OK)
+	{
+		goto unlock_and_return;
+	}
+
+	PVR_ASSERT(params_addr->size == sizeof(struct bridge_package_from_32));
+
+	params_addr->bridge_id = PVRSRV_GET_BRIDGE_ID(params_addr->bridge_id);
+
+#if defined(DEBUG_BRIDGE_KM)
+	PVR_DPF((PVR_DBG_MESSAGE, "ioctl %s -> func %s",
+		g_BridgeDispatchTable[params_addr->bridge_id].pszIOCName,
+		g_BridgeDispatchTable[params_addr->bridge_id].pszFunctionName));
+#endif
+
+	params_for_64.ui32BridgeID = params_addr->bridge_id;
+	params_for_64.ui32Size = sizeof(params_for_64);
+	params_for_64.pvParamIn = (void*) ((size_t) params_addr->addr_param_in);
+	params_for_64.pvParamOut = (void*) ((size_t) params_addr->addr_param_out);
+	params_for_64.ui32InBufferSize = params_addr->in_buffer_size;
+	params_for_64.ui32OutBufferSize = params_addr->out_buffer_size;
+
+	err = BridgedDispatchKM(psConnection, &params_for_64);
+	
+unlock_and_return:
+	mutex_unlock(&gPVRSRVLock);
+	return err;
+}
+#endif /* defined(CONFIG_COMPAT) */

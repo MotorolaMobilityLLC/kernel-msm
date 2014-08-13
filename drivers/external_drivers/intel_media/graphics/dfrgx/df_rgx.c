@@ -76,6 +76,7 @@
 #include <linux/thermal.h>
 #include <asm/errno.h>
 
+#include <linux/opp.h>
 #include <linux/devfreq.h>
 
 #include <governor.h>
@@ -123,6 +124,11 @@ extern int is_tng_a0;
 
 /* df_rgx_created_dev - Pointer to created device, if any. */
 static struct platform_device *df_rgx_created_dev;
+
+void df_rgx_init_available_freq_table(struct device *dev);
+int opp_add(struct device *dev, unsigned long freq, unsigned long u_volt);
+
+
 
 /**
  * Module parameters:
@@ -504,6 +510,19 @@ static int tcd_set_cur_state(struct thermal_cooling_device *tcd,
 	return 0;
 }
 
+
+unsigned long voltage_gfx= 0.95;
+void df_rgx_init_available_freq_table(struct device *dev)
+{
+	int i = 0;
+	if (!is_tng_a0) {
+		for(i = 0; i < NUMBER_OF_LEVELS_B0; i++)
+			opp_add(dev, a_available_state_freq[i].freq, voltage_gfx);
+	} else {
+		for(i = 0; i < NUMBER_OF_LEVELS; i++)
+			opp_add(dev, a_available_state_freq[i].freq, voltage_gfx);
+	}
+}
 /**
  * tcd_get_available_states() - thermal cooling device
  * callback get_available_states.
@@ -746,6 +765,10 @@ static int df_rgx_busfreq_probe(struct platform_device *pdev)
 	bfdata->gpudata[1].freq_limit = DFRGX_FREQ_457_MHZ;
 	bfdata->gpudata[2].freq_limit = DFRGX_FREQ_200_MHZ;
 	bfdata->gpudata[3].freq_limit = DFRGX_FREQ_200_MHZ;
+
+
+	df_rgx_init_available_freq_table(dev);
+
 
 	{
 		static const char *tcd_type = "gpu_burst";

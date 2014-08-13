@@ -50,7 +50,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "tltestdefs.h"
 
 
-#include "pvr_bridge.h"
+#include "pvr_bridge_io.h"
 
 #define PVRSRV_BRIDGE_PVRTL_CMD_FIRST			(PVRSRV_BRIDGE_PVRTL_START)
 #define PVRSRV_BRIDGE_PVRTL_TLCONNECT			PVRSRV_IOWR(PVRSRV_BRIDGE_PVRTL_CMD_FIRST+0)
@@ -71,14 +71,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 typedef struct PVRSRV_BRIDGE_IN_TLCONNECT_TAG
 {
 	 IMG_UINT32 ui32EmptyStructPlaceholder;
-} PVRSRV_BRIDGE_IN_TLCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_TLCONNECT;
 
 
 /* Bridge out structure for TLConnect */
 typedef struct PVRSRV_BRIDGE_OUT_TLCONNECT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_TLCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_TLCONNECT;
 
 /*******************************************
             TLDisconnect          
@@ -88,14 +88,14 @@ typedef struct PVRSRV_BRIDGE_OUT_TLCONNECT_TAG
 typedef struct PVRSRV_BRIDGE_IN_TLDISCONNECT_TAG
 {
 	 IMG_UINT32 ui32EmptyStructPlaceholder;
-} PVRSRV_BRIDGE_IN_TLDISCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_TLDISCONNECT;
 
 
 /* Bridge out structure for TLDisconnect */
 typedef struct PVRSRV_BRIDGE_OUT_TLDISCONNECT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_TLDISCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_TLDISCONNECT;
 
 /*******************************************
             TLOpenStream          
@@ -106,7 +106,7 @@ typedef struct PVRSRV_BRIDGE_IN_TLOPENSTREAM_TAG
 {
 	IMG_CHAR * puiName;
 	IMG_UINT32 ui32Mode;
-} PVRSRV_BRIDGE_IN_TLOPENSTREAM;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_TLOPENSTREAM;
 
 
 /* Bridge out structure for TLOpenStream */
@@ -115,7 +115,7 @@ typedef struct PVRSRV_BRIDGE_OUT_TLOPENSTREAM_TAG
 	IMG_HANDLE hSD;
 	DEVMEM_SERVER_EXPORTCOOKIE hClientBUFExportCookie;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_TLOPENSTREAM;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_TLOPENSTREAM;
 
 /*******************************************
             TLCloseStream          
@@ -125,14 +125,14 @@ typedef struct PVRSRV_BRIDGE_OUT_TLOPENSTREAM_TAG
 typedef struct PVRSRV_BRIDGE_IN_TLCLOSESTREAM_TAG
 {
 	IMG_HANDLE hSD;
-} PVRSRV_BRIDGE_IN_TLCLOSESTREAM;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_TLCLOSESTREAM;
 
 
 /* Bridge out structure for TLCloseStream */
 typedef struct PVRSRV_BRIDGE_OUT_TLCLOSESTREAM_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_TLCLOSESTREAM;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_TLCLOSESTREAM;
 
 /*******************************************
             TLAcquireData          
@@ -142,7 +142,7 @@ typedef struct PVRSRV_BRIDGE_OUT_TLCLOSESTREAM_TAG
 typedef struct PVRSRV_BRIDGE_IN_TLACQUIREDATA_TAG
 {
 	IMG_HANDLE hSD;
-} PVRSRV_BRIDGE_IN_TLACQUIREDATA;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_TLACQUIREDATA;
 
 
 /* Bridge out structure for TLAcquireData */
@@ -151,7 +151,7 @@ typedef struct PVRSRV_BRIDGE_OUT_TLACQUIREDATA_TAG
 	IMG_UINT32 ui32ReadOffset;
 	IMG_UINT32 ui32ReadLen;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_TLACQUIREDATA;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_TLACQUIREDATA;
 
 /*******************************************
             TLReleaseData          
@@ -163,14 +163,14 @@ typedef struct PVRSRV_BRIDGE_IN_TLRELEASEDATA_TAG
 	IMG_HANDLE hSD;
 	IMG_UINT32 ui32ReadOffset;
 	IMG_UINT32 ui32ReadLen;
-} PVRSRV_BRIDGE_IN_TLRELEASEDATA;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_TLRELEASEDATA;
 
 
 /* Bridge out structure for TLReleaseData */
 typedef struct PVRSRV_BRIDGE_OUT_TLRELEASEDATA_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_TLRELEASEDATA;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_TLRELEASEDATA;
 
 /*******************************************
             TLTestIoctl          
@@ -182,7 +182,7 @@ typedef struct PVRSRV_BRIDGE_IN_TLTESTIOCTL_TAG
 	IMG_UINT32 ui32Cmd;
 	IMG_BYTE * psIn1;
 	IMG_UINT32 ui32In2;
-} PVRSRV_BRIDGE_IN_TLTESTIOCTL;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_TLTESTIOCTL;
 
 
 /* Bridge out structure for TLTestIoctl */
@@ -191,6 +191,6 @@ typedef struct PVRSRV_BRIDGE_OUT_TLTESTIOCTL_TAG
 	IMG_UINT32 ui32Out1;
 	IMG_UINT32 ui32Out2;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_TLTESTIOCTL;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_TLTESTIOCTL;
 
 #endif /* COMMON_PVRTL_BRIDGE_H */

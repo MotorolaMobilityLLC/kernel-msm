@@ -62,6 +62,7 @@ extern "C" {
 #include "common_rgxray_bridge.h"
 #endif
 #include "common_regconfig_bridge.h"
+#include "common_timerquery_bridge.h"
 
 /* 
  * Bridge Cmd Ids
@@ -87,7 +88,8 @@ extern "C" {
 #define PVRSRV_BRIDGE_RGXRAY_CMD_LAST     (PVRSRV_BRIDGE_RGXRAY_START -1)
 #endif
 #define PVRSRV_BRIDGE_REGCONFIG_START  (PVRSRV_BRIDGE_RGXRAY_CMD_LAST +1)
-#define PVRSRV_BRIDGE_LAST_RGX_CMD     (PVRSRV_BRIDGE_REGCONFIG_CMD_LAST)
+#define PVRSRV_BRIDGE_TIMERQUERY_START (PVRSRV_BRIDGE_REGCONFIG_CMD_LAST + 1)
+#define PVRSRV_BRIDGE_LAST_RGX_CMD     (PVRSRV_BRIDGE_TIMERQUERY_CMD_LAST)
 
 #if defined (__cplusplus)
 }

@@ -67,10 +67,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "linuxsrv.h"
 #include "dbgdriv_ioctl.h"
-#include "dbgdrvif.h"
+#include "dbgdrvif_srv5.h"
 #include "dbgdriv.h"
 #include "hostfunc.h"
-#include "hotkey.h"
 #include "pvr_debug.h"
 #include "pvrmodule.h"
 #include "pvr_uaccess.h"
@@ -117,9 +116,9 @@ static struct file_operations dbgdrv_fops =
 
 #endif  /* defined(SUPPORT_DRM) */
 
-/* Outward temp buffer used by ICOTL handler allocated once and grows as needed.
+/* Outward temp buffer used by IOCTL handler allocated once and grows as needed.
  * This optimisation means the debug driver performs less vmallocs/vfrees
- * reducing the chance of kernel Vmalloc space exhaustion.
+ * reducing the chance of kernel vmalloc space exhaustion.
  * but is not multi-threaded optimised as it now uses a mutex to protect this
  * shared buffer serialising buffer reads. However the PDump client is not
  * multi-threaded at the moment.
@@ -271,6 +270,7 @@ long dbgdrv_ioctl(struct file *file, unsigned int ioctlCmd, unsigned long arg)
 	if (pIP->ui32Cmd == DEBUG_SERVICE_READ)
 	{
 		IMG_UINT32 *pui32BytesCopied = (IMG_UINT32 *)out;
+		DBG_OUT_READ *psReadOutParams = (DBG_OUT_READ *)out;
 		DBG_IN_READ *psReadInParams = (DBG_IN_READ *)in;
 		PDBG_STREAM psStream;
 
@@ -296,10 +296,11 @@ long dbgdrv_ioctl(struct file *file, unsigned int ioctlCmd, unsigned long arg)
 			}
 		}
 
-		*pui32BytesCopied = DBGDrivRead(psStream,
-										   psReadInParams->bReadInitBuffer,
+		psReadOutParams->ui32DataRead = DBGDrivRead(psStream,
+										   psReadInParams->ui32BufID,
 										   psReadInParams->ui32OutBufferSize,
 										   g_outTmpBuf);
+		psReadOutParams->ui32SplitMarker = DBGDrivGetMarker(psStream);
 
 		if (pvr_copy_to_user(psReadInParams->u.pui8OutBuffer,
 						g_outTmpBuf,
@@ -329,37 +330,5 @@ init_failed:
 	return -EFAULT;
 }
 
-
-/******************************************************************************
- * Function Name: RemoveHotKey
- *
- * Inputs       : -
- * Outputs      : -
- * Returns      : -
- * Globals Used : -
- *
- * Description  : Removes HotKey callbacks
- *****************************************************************************/
-IMG_VOID RemoveHotKey (IMG_UINT32 hHotKey)
-{
-	PVR_UNREFERENCED_PARAMETER(hHotKey);
-}
-
-/******************************************************************************
- * Function Name: DefineHotKey
- *
- * Inputs       : -
- * Outputs      : -
- * Returns      : -
- * Globals Used : -
- *
- * Description  : Removes HotKey callbacks
- *****************************************************************************/
-IMG_VOID DefineHotKey (IMG_UINT32 ui32ScanCode, IMG_UINT32 ui32ShiftState, PHOTKEYINFO psInfo)
-{
-	PVR_UNREFERENCED_PARAMETER(ui32ScanCode);
-	PVR_UNREFERENCED_PARAMETER(ui32ShiftState);
-	PVR_UNREFERENCED_PARAMETER(psInfo);
-}
 
 EXPORT_SYMBOL(DBGDrvGetServiceTable);

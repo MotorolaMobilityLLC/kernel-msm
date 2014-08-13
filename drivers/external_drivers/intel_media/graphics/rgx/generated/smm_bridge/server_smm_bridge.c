@@ -83,10 +83,12 @@ PMRSecureUnexportPMRResManProxy(IMG_HANDLE hResmanItem)
 	return eError;
 }
 
+
+
 /* ***************************************************************************
  * Server-side bridge entry points
  */
-
+ 
 static IMG_INT
 PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
 					 PVRSRV_BRIDGE_IN_PMRSECUREEXPORTPMR *psPMRSecureExportPMRIN,
@@ -105,6 +107,7 @@ PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
 
 
 
+	PMRLock();
 				{
 					/* Look up the address from the handle */
 					psPMRSecureExportPMROUT->eError =
@@ -114,6 +117,7 @@ PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
 											PVRSRV_HANDLE_TYPE_PHYSMEM_PMR);
 					if(psPMRSecureExportPMROUT->eError != PVRSRV_OK)
 					{
+						PMRUnlock();
 						goto PMRSecureExportPMR_exit;
 					}
 
@@ -122,6 +126,7 @@ PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
 
 					if(psPMRSecureExportPMROUT->eError != PVRSRV_OK)
 					{
+						PMRUnlock();
 						goto PMRSecureExportPMR_exit;
 					}
 				}
@@ -134,8 +139,10 @@ PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
 	/* Exit early if bridged call fails */
 	if(psPMRSecureExportPMROUT->eError != PVRSRV_OK)
 	{
+		PMRUnlock();
 		goto PMRSecureExportPMR_exit;
 	}
+	PMRUnlock();
 
 	/* Create a resman item and overwrite the handle with it */
 	hPMROutInt2 = ResManRegisterRes(psSecureConnection->hResManContext,
@@ -183,7 +190,7 @@ PVRSRVBridgePMRSecureUnexportPMR(IMG_UINT32 ui32BridgeID,
 
 
 
-
+	PMRLock();
 				{
 					/* Look up the address from the handle */
 					psPMRSecureUnexportPMROUT->eError =
@@ -193,6 +200,7 @@ PVRSRVBridgePMRSecureUnexportPMR(IMG_UINT32 ui32BridgeID,
 											PVRSRV_HANDLE_TYPE_PHYSMEM_PMR);
 					if(psPMRSecureUnexportPMROUT->eError != PVRSRV_OK)
 					{
+						PMRUnlock();
 						goto PMRSecureUnexportPMR_exit;
 					}
 
@@ -202,8 +210,10 @@ PVRSRVBridgePMRSecureUnexportPMR(IMG_UINT32 ui32BridgeID,
 	/* Exit early if bridged call fails */
 	if(psPMRSecureUnexportPMROUT->eError != PVRSRV_OK)
 	{
+		PMRUnlock();
 		goto PMRSecureUnexportPMR_exit;
 	}
+	PMRUnlock();
 
 	psPMRSecureUnexportPMROUT->eError =
 		PVRSRVReleaseHandle(psConnection->psHandleBase,
@@ -231,6 +241,7 @@ PVRSRVBridgePMRSecureImportPMR(IMG_UINT32 ui32BridgeID,
 
 
 
+	PMRLock();
 	psPMRSecureImportPMROUT->eError =
 		PMRSecureImportPMR(
 					psPMRSecureImportPMRIN->Export,
@@ -240,8 +251,10 @@ PVRSRVBridgePMRSecureImportPMR(IMG_UINT32 ui32BridgeID,
 	/* Exit early if bridged call fails */
 	if(psPMRSecureImportPMROUT->eError != PVRSRV_OK)
 	{
+		PMRUnlock();
 		goto PMRSecureImportPMR_exit;
 	}
+	PMRUnlock();
 
 	/* Create a resman item and overwrite the handle with it */
 	hPMRInt2 = ResManRegisterRes(psConnection->hResManContext,
@@ -286,111 +299,12 @@ PMRSecureImportPMR_exit:
 	return 0;
 }
 
-#ifdef CONFIG_COMPAT
 
-/* ***************************************************************************
- * Server-side bridge entry points
+
+/* *************************************************************************** 
+ * Server bridge dispatch related glue 
  */
-
-/*******************************************
-            PMRSecureExportPMR
- *******************************************/
-
-/* Bridge in structure for PMRSecureExportPMR */
-typedef struct compat_PVRSRV_BRIDGE_IN_PMRSECUREEXPORTPMR_TAG
-{
-        /* IMG_HANDLE hPMR; */
-        IMG_UINT32 hPMR;
-} compat_PVRSRV_BRIDGE_IN_PMRSECUREEXPORTPMR;
-
-static IMG_INT
-compat_PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_PMRSECUREEXPORTPMR *psPMRSecureExportPMRIN_32,
-					 PVRSRV_BRIDGE_OUT_PMRSECUREEXPORTPMR *psPMRSecureExportPMROUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_PMRSECUREEXPORTPMR sPMRSecureExportPMRIN;
-
-    sPMRSecureExportPMRIN.hPMR = (IMG_HANDLE)(IMG_UINT64)psPMRSecureExportPMRIN_32->hPMR;
-
-    return PVRSRVBridgePMRSecureExportPMR(ui32BridgeID,
-					 &sPMRSecureExportPMRIN,
-					 psPMRSecureExportPMROUT,
-					 psConnection);
-}
-
-
-/*******************************************
-            PMRSecureUnexportPMR
- *******************************************/
-
-/* Bridge in structure for PMRSecureUnexportPMR */
-typedef struct compat_PVRSRV_BRIDGE_IN_PMRSECUREUNEXPORTPMR_TAG
-{
-        /* IMG_HANDLE hPMR; */
-        IMG_UINT32 hPMR;
-} compat_PVRSRV_BRIDGE_IN_PMRSECUREUNEXPORTPMR;
-
-static IMG_INT
-compat_PVRSRVBridgePMRSecureUnexportPMR(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_PMRSECUREUNEXPORTPMR *psPMRSecureUnexportPMRIN_32,
-					 PVRSRV_BRIDGE_OUT_PMRSECUREUNEXPORTPMR *psPMRSecureUnexportPMROUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_PMRSECUREUNEXPORTPMR sPMRSecureUnexportPMRIN;
-
-    sPMRSecureUnexportPMRIN.hPMR = (IMG_HANDLE)(IMG_UINT64)psPMRSecureUnexportPMRIN_32->hPMR;
-
-    return PVRSRVBridgePMRSecureUnexportPMR(ui32BridgeID,
-					 &sPMRSecureUnexportPMRIN,
-					 psPMRSecureUnexportPMROUT,
-					 psConnection);
-}
-
-
-/*******************************************
-            PMRSecureImportPMR
- *******************************************/
-
-/* Bridge out structure for PMRSecureImportPMR */
-typedef struct compat_PVRSRV_BRIDGE_OUT_PMRSECUREIMPORTPMR_TAG
-{
-        /* IMG_HANDLE hPMR; */
-        IMG_UINT32 hPMR;
-        IMG_DEVMEM_SIZE_T uiSize;
-        IMG_DEVMEM_ALIGN_T sAlign;
-        PVRSRV_ERROR eError;
-} __attribute__ ((__packed__)) compat_PVRSRV_BRIDGE_OUT_PMRSECUREIMPORTPMR;
-
-static IMG_INT
-compat_PVRSRVBridgePMRSecureImportPMR(IMG_UINT32 ui32BridgeID,
-					 PVRSRV_BRIDGE_IN_PMRSECUREIMPORTPMR *psPMRSecureImportPMRIN,
-					 compat_PVRSRV_BRIDGE_OUT_PMRSECUREIMPORTPMR *psPMRSecureImportPMROUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-    IMG_INT ret;
-	PVRSRV_BRIDGE_OUT_PMRSECUREIMPORTPMR sPMRSecureImportPMROUT;
-
-    ret = PVRSRVBridgePMRSecureImportPMR(ui32BridgeID,
-					 psPMRSecureImportPMRIN,
-					 &sPMRSecureImportPMROUT,
-					 psConnection);
-
-	PVR_ASSERT(!((IMG_UINT64)sPMRSecureImportPMROUT.hPMR & 0xFFFFFFFF00000000ULL));
-	psPMRSecureImportPMROUT_32->hPMR = (IMG_UINT32)(IMG_UINT64)sPMRSecureImportPMROUT.hPMR;
-	psPMRSecureImportPMROUT_32->uiSize = (IMG_UINT32)(IMG_UINT64)sPMRSecureImportPMROUT.uiSize;
-	psPMRSecureImportPMROUT_32->sAlign = (IMG_UINT32)(IMG_UINT64)sPMRSecureImportPMROUT.sAlign;
-	psPMRSecureImportPMROUT_32->eError = (IMG_UINT32)(IMG_UINT64)sPMRSecureImportPMROUT.eError;
-
-	return ret;
-}
-
-#endif /* NOT CONFIG_COMPAT */
-
-/* ***************************************************************************
- * Server bridge dispatch related glue
- */
-
+ 
 PVRSRV_ERROR RegisterSMMFunctions(IMG_VOID);
 IMG_VOID UnregisterSMMFunctions(IMG_VOID);
 
@@ -399,15 +313,9 @@ IMG_VOID UnregisterSMMFunctions(IMG_VOID);
  */
 PVRSRV_ERROR RegisterSMMFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_SMM_PMRSECUREEXPORTPMR, compat_PVRSRVBridgePMRSecureExportPMR);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_SMM_PMRSECUREUNEXPORTPMR, compat_PVRSRVBridgePMRSecureUnexportPMR);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_SMM_PMRSECUREIMPORTPMR, compat_PVRSRVBridgePMRSecureImportPMR);
-#else
 	SetDispatchTableEntry(PVRSRV_BRIDGE_SMM_PMRSECUREEXPORTPMR, PVRSRVBridgePMRSecureExportPMR);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_SMM_PMRSECUREUNEXPORTPMR, PVRSRVBridgePMRSecureUnexportPMR);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_SMM_PMRSECUREIMPORTPMR, PVRSRVBridgePMRSecureImportPMR);
-#endif
 
 	return PVRSRV_OK;
 }

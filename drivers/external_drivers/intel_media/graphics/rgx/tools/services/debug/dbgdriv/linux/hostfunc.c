@@ -66,18 +66,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "pvr_debug.h"
 
-#include "dbgdrvif.h"
+#include "dbgdrvif_srv5.h"
 #include "hostfunc.h"
 #include "dbgdriv.h"
 
-#if (defined(DEBUG) || defined(PVRSRV_NEED_PVR_DPF)) && !defined(SUPPORT_DRM) 
-/* Added Call trace level to ensure  debug driver state messages appear */
-
-#if define(PVRSRV_NEED_PVR_DPF)
-IMG_UINT32      gPVRDebugLevel = (DBGPRIV_FATAL | DBGPRIV_ERROR | DBGPRIV_WARNING);
-#else
-IMG_UINT32	gPVRDebugLevel = (DBGPRIV_FATAL | DBGPRIV_ERROR | DBGPRIV_WARNING | DBGPRIV_CALLTRACE);
-#endif
+#if defined(PVRSRV_NEED_PVR_DPF) && !defined(SUPPORT_DRM)
+IMG_UINT32	gPVRDebugLevel = (DBGPRIV_FATAL | DBGPRIV_ERROR | DBGPRIV_WARNING |
+		DBGPRIV_CALLTRACE); /* Added call trace level to support PVR_LOGging of state in debug driver */
 
 #define PVR_STRING_TERMINATOR		'\0'
 #define PVR_IS_FILE_SEPARATOR(character) ( ((character) == '\\') || ((character) == '/') )
@@ -106,23 +101,21 @@ void PVRSRVDebugPrintf	(
 					)
 {
 	IMG_BOOL bTrace;
-#if !defined(__sh__)
 	IMG_CHAR *pszLeafName;
 
-	pszLeafName = (char *)strrchr (pszFileName, '\\');
+	pszLeafName = (char *)strrchr (pszFileName, '/');
 
 	if (pszLeafName)
 	{
 		pszFileName = pszLeafName;
 	}
-#endif /* __sh__ */
 
 	bTrace = (IMG_BOOL)(ui32DebugLevel & DBGPRIV_CALLTRACE) ? IMG_TRUE : IMG_FALSE;
 
 	if (gPVRDebugLevel & ui32DebugLevel)
 	{
 		va_list vaArgs;
-		static char szBuffer[256];
+		static char szBuffer[512];
 
 		va_start (vaArgs, pszFormat);
 
@@ -158,7 +151,7 @@ void PVRSRVDebugPrintf	(
 				}
 				default:
 				{
-					strcpy (szBuffer, "PVR_K:(Unknown message level)");
+					strcpy (szBuffer, "PVR_K:()");
 					break;
 				}
 			}
@@ -304,7 +297,7 @@ IMG_VOID *HostCreateMutex(IMG_VOID)
 
 	return psMutex;
 }
- 
+
 IMG_VOID HostAquireMutex(IMG_VOID * pvMutex)
 {
 	BUG_ON(in_interrupt());

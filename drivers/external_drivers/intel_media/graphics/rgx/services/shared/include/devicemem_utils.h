@@ -166,6 +166,9 @@ typedef struct _DEVMEM_CPU_IMPORT_ {
 	IMG_UINT32 ui32RefCount;		/*!< Refcount of the CPU virtual address */
 	IMG_HANDLE hOSMMapData;			/*!< CPU mapping handle */
 	POS_LOCK hLock;					/*!< Lock to protect the CPU import */
+#if !defined(__KERNEL__) && defined(SUPPORT_ION)
+	int iDmaBufFd;					/*!< >=0 if this was an imported ion allocation */
+#endif
 } DEVMEM_CPU_IMPORT;
 
 typedef struct _DEVMEM_IMPORT_ {
@@ -208,50 +211,168 @@ struct _DEVMEM_MEMDESC_ {
 #endif
 };
 
+/******************************************************************************
+@Function       _DevmemValidateParams
+@Description    Check if flags are conflicting and if align is a size multiple.
+
+@Input          uiSize      Size of the import.
+@Input          uiAlign     Alignment of the import.
+@Input          uiFlags     Flags for the import.
+@return         PVRSRV_ERROR
+******************************************************************************/
 PVRSRV_ERROR _DevmemValidateParams(IMG_DEVMEM_SIZE_T uiSize,
 								   IMG_DEVMEM_ALIGN_T uiAlign,
 								   DEVMEM_FLAGS_T uiFlags);
 
+/******************************************************************************
+@Function       _DevmemImportStructAlloc
+@Description    Allocates memory for an import struct. Does not allocate a PMR!
+                Create locks for CPU and Devmem mappings.
+
+@Input          hBridge       Bridge to use for calls from the import.
+@Input          bExportable   Is this import is exportable?
+@Input          ppsImport     The import to allocate.
+@return         PVRSRV_ERROR
+******************************************************************************/
 PVRSRV_ERROR _DevmemImportStructAlloc(IMG_HANDLE hBridge,
 									  IMG_BOOL bExportable,
 									  DEVMEM_IMPORT **ppsImport);
 
-IMG_VOID _DevmemImportStructFree(DEVMEM_IMPORT *psImport);
+/******************************************************************************
+@Function       _DevmemImportStructInit
+@Description    Initialises the import struct with the given parameters.
+                Set it's refcount to 1!
 
+@Input          psImport    The import to initialise.
+@Input          uiSize      Size of the import.
+@Input          uiAlign     Alignment of allocations in the import.
+@Input          uiMapFlags
+@Input          hPMR        Reference to the PMR of this import struct.
+******************************************************************************/
 IMG_VOID _DevmemImportStructInit(DEVMEM_IMPORT *psImport,
 								 IMG_DEVMEM_SIZE_T uiSize,
 								 IMG_DEVMEM_ALIGN_T uiAlign,
 								 PVRSRV_MEMALLOCFLAGS_T uiMapFlags,
 								 IMG_HANDLE hPMR);
 
+/******************************************************************************
+@Function       _DevmemImportStructDevMap
+@Description    NEVER call after the last _DevmemMemDescRelease()
+                Maps the PMR referenced by the import struct to the device's
+                virtual address space.
+                Does nothing but increase the cpu mapping refcount if the
+                import struct was already mapped.
+
+@Input          psHeap    The heap to map to.
+@Input          bMap      Caller can choose if the import should be really
+                          mapped in the page tables or if just a virtual range
+                          should be reserved and the refcounts increased.
+@Input          psImport  The import we want to map.
+@return         PVRSRV_ERROR
+******************************************************************************/
 PVRSRV_ERROR _DevmemImportStructDevMap(DEVMEM_HEAP *psHeap,
 									   IMG_BOOL bMap,
 									   DEVMEM_IMPORT *psImport);
 
+/******************************************************************************
+@Function       _DevmemImportStructDevUnmap
+@Description    Unmaps the PMR referenced by the import struct from the
+                device's virtual address space.
+                If this was not the last remaining CPU mapping on the import
+                struct only the cpu mapping refcount is decreased.
+******************************************************************************/
 IMG_VOID _DevmemImportStructDevUnmap(DEVMEM_IMPORT *psImport);
 
+/******************************************************************************
+@Function       _DevmemImportStructCPUMap
+@Description    NEVER call after the last _DevmemMemDescRelease()
+                Maps the PMR referenced by the import struct to the CPU's
+                virtual address space.
+                Does nothing but increase the cpu mapping refcount if the
+                import struct was already mapped.
+@return         PVRSRV_ERROR
+******************************************************************************/
 PVRSRV_ERROR _DevmemImportStructCPUMap(DEVMEM_IMPORT *psImport);
 
+/******************************************************************************
+@Function       _DevmemImportStructCPUUnmap
+@Description    Unmaps the PMR referenced by the import struct from the CPU's
+                virtual address space.
+                If this was not the last remaining CPU mapping on the import
+                struct only the cpu mapping refcount is decreased.
+******************************************************************************/
 IMG_VOID _DevmemImportStructCPUUnmap(DEVMEM_IMPORT *psImport);
 
 
-
+/******************************************************************************
+@Function       _DevmemImportStructAcquire
+@Description    Acquire an import struct by increasing it's refcount.
+******************************************************************************/
 IMG_VOID _DevmemImportStructAcquire(DEVMEM_IMPORT *psImport);
 
+/******************************************************************************
+@Function       _DevmemImportStructRelease
+@Description    Reduces the refcount of the import struct.
+                Destroys the import in the case it was the last reference.
+                Destroys underlying PMR if this import was the last reference
+                to it.
+@return         A boolean to signal if the import was destroyed. True = yes.
+******************************************************************************/
 IMG_VOID _DevmemImportStructRelease(DEVMEM_IMPORT *psImport);
 
+/******************************************************************************
+@Function       _DevmemImportDiscard
+@Description    Discard a created, but unitilised import structure.
+                This must only be called before _DevmemImportStructInit
+                after which _DevmemImportStructRelease must be used to
+                "free" the import structure.
+******************************************************************************/
 IMG_VOID _DevmemImportDiscard(DEVMEM_IMPORT *psImport);
 
+/******************************************************************************
+@Function       _DevmemMemDescAlloc
+@Description    Allocates a MemDesc and create it's various locks.
+                Zero the allocated memory.
+@return         PVRSRV_ERROR
+******************************************************************************/
 PVRSRV_ERROR _DevmemMemDescAlloc(DEVMEM_MEMDESC **ppsMemDesc);
 
+/******************************************************************************
+@Function       _DevmemMemDescInit
+@Description    Sets the given offset and import struct fields in the MemDesc.
+                Initialises refcount to 1 and other values to 0.
+
+@Input          psMemDesc    MemDesc to initialise.
+@Input          uiOffset     Offset in the import structure.
+@Input          psImport     Import the MemDesc is on.
+******************************************************************************/
 IMG_VOID _DevmemMemDescInit(DEVMEM_MEMDESC *psMemDesc,
 						  	IMG_DEVMEM_OFFSET_T uiOffset,
 						  	DEVMEM_IMPORT *psImport);
 
+/******************************************************************************
+@Function       _DevmemMemDescAcquire
+@Description    Acquires the MemDesc by increasing it's refcount.
+******************************************************************************/
 IMG_VOID _DevmemMemDescAcquire(DEVMEM_MEMDESC *psMemDesc);
 
+/******************************************************************************
+@Function       _DevmemMemDescRelease
+@Description    Releases the MemDesc by reducing it's refcount.
+                Destroy the MemDesc if it's recount is 0.
+                Destroy the import struct the MemDesc is on if that was the
+                last MemDesc on the import, probably following the destruction
+                of the underlying PMR.
+******************************************************************************/
 IMG_VOID _DevmemMemDescRelease(DEVMEM_MEMDESC *psMemDesc);
 
+/******************************************************************************
+@Function       _DevmemMemDescDiscard
+@Description    Discard a created, but unitilised MemDesc structure.
+                This must only be called before _DevmemMemDescInit
+                after which _DevmemMemDescRelease must be used to
+                "free" the MemDesc structure.
+******************************************************************************/
 IMG_VOID _DevmemMemDescDiscard(DEVMEM_MEMDESC *psMemDesc);
 
 #endif /* _DEVICEMEM_UTILS_H_ */

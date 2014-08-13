@@ -53,7 +53,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * @return 
  ******************************************************************************/
-IMG_VOID PVRMMapInit(IMG_VOID);
+void PVRMMapInit(void);
 
 
 /*!
@@ -64,7 +64,7 @@ IMG_VOID PVRMMapInit(IMG_VOID);
  *
  * @return 
  ******************************************************************************/
-IMG_VOID PVRMMapCleanup(IMG_VOID);
+void PVRMMapCleanup(void);
 
 
 /*!

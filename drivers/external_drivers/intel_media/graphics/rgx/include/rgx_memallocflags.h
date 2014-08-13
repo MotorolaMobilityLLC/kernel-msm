@@ -44,5 +44,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _RGX_MEMALLOCFLAGS_H_
 
 #define PMMETA_PROTECT		(1 << 0)	/* Memory that only the PM and Meta can access */
+#define META_CACHED		    (1 << 1)	/* Memory that is cached in META */
 
 #endif

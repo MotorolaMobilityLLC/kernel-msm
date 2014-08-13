@@ -90,7 +90,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 typedef struct {
-	IMG_VOID *token;
+	void *token;
 	IMG_UINT32 ui32Log2PageSizeBytes;
 	struct page **apsPageArray;
 	IMG_UINT64 ui64NumPages;
@@ -99,8 +99,8 @@ typedef struct {
     IMG_HANDLE hPDumpAllocInfo;
 } sTDMetaCodePageList;
 
-static IMG_VOID
-_FreeTDMetaCodePageContainer(IMG_VOID *pvPagecontainer)
+static void
+_FreeTDMetaCodePageContainer(void *pvPagecontainer)
 {
 	sTDMetaCodePageList *psPageContainer = (sTDMetaCodePageList *) pvPagecontainer;
 
@@ -147,7 +147,7 @@ PMRSysPhysAddrTDMetaCode(PMR_IMPL_PRIVDATA pvPriv,
 static PVRSRV_ERROR
 PMRFinalizeTDMetaCode(PMR_IMPL_PRIVDATA pvPriv)
 {
-	_FreeTDMetaCodePageContainer((IMG_VOID *) pvPriv);
+	_FreeTDMetaCodePageContainer((void *) pvPriv);
 	return PVRSRV_OK;
 }
 
@@ -196,12 +196,12 @@ static PVRSRV_ERROR
 PMRKernelMapTDMetaCode(PMR_IMPL_PRIVDATA pvPriv,
                        IMG_SIZE_T uiOffset,
                        IMG_SIZE_T uiSize,
-                       IMG_VOID **ppvKernelAddressOut,
+                       void **ppvKernelAddressOut,
                        IMG_HANDLE *phHandleOut,
                        PMR_FLAGS_T ulFlags)
 {
     sTDMetaCodePageList *psPageContainer;
-    IMG_VOID *pvAddress;
+    void *pvAddress;
 
     psPageContainer = pvPriv;
 
@@ -221,7 +221,7 @@ PMRKernelMapTDMetaCode(PMR_IMPL_PRIVDATA pvPriv,
     return PVRSRV_OK;
 }
 
-static IMG_VOID
+static void
 PMRKernelUnmapTDMetaCode(PMR_IMPL_PRIVDATA pvPriv,
                          IMG_HANDLE hHandle)
 {
@@ -246,7 +246,7 @@ static PVRSRV_ERROR
 _AllocTDMetaCodePageContainer(IMG_UINT64 ui64NumPages,
                               IMG_UINT32 uiLog2PageSize,
                               PHYS_HEAP *psTDMetaCodePhysHeap,
-                              IMG_VOID **ppvPageContainer)
+                              void **ppvPageContainer)
 {
 	IMG_UINT64 i;
 	PVRSRV_ERROR eStatus = PVRSRV_OK;
@@ -287,7 +287,7 @@ _AllocTDMetaCodePageContainer(IMG_UINT64 ui64NumPages,
 	return eStatus;
 
 fail:
-	_FreeTDMetaCodePageContainer((IMG_VOID *) psPageContainer);
+	_FreeTDMetaCodePageContainer((void *) psPageContainer);
 	*ppvPageContainer = IMG_NULL;
 	return eStatus;
 }
@@ -332,7 +332,7 @@ PhysmemNewTDMetaCodePMR(PVRSRV_DEVICE_NODE *psDevNode,
 	eStatus = _AllocTDMetaCodePageContainer(ui64NumPages,
 	                                        uiLog2PageSize,
 	                                        psTDMetaCodePhysHeap,
-	                                        (IMG_VOID *)&psPageContainer);
+	                                        (void *)&psPageContainer);
 	if(eStatus)
 	{
 		goto fail;
@@ -349,7 +349,7 @@ PhysmemNewTDMetaCodePMR(PVRSRV_DEVICE_NODE *psDevNode,
                            uiPMRFlags,
                            "PMRTDMETACODE",
                            &sTDMETACodePMRFuncTab,
-                           (IMG_VOID *)psPageContainer,
+                           (void *)psPageContainer,
                            ppsPMRPtr,
                            &hPDumpAllocInfo,
                            IMG_FALSE);
@@ -357,6 +357,7 @@ PhysmemNewTDMetaCodePMR(PVRSRV_DEVICE_NODE *psDevNode,
 #if defined(PVR_RI_DEBUG)
 	{
 		RIWritePMREntryKM (*ppsPMRPtr,
+						   sizeof("TD META Code"),
 					   	   "TD META Code",
 						   (ui64NumPages * uiPageSize));
 	}

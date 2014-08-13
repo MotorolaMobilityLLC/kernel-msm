@@ -246,6 +246,11 @@ extern PVRSRV_ERROR
 PMRLockSysPhysAddresses(PMR *psPMR,
                         IMG_UINT32 uiLog2DevPageSize);
 
+extern PVRSRV_ERROR
+PMRLockSysPhysAddressesNested(PMR *psPMR,
+                        IMG_UINT32 uiLog2DevPageSize,
+                        IMG_UINT32 ui32NestingLevel);
+
 /*
  * PMRUnlockSysPhysAddresses()
  *
@@ -253,6 +258,9 @@ PMRLockSysPhysAddresses(PMR *psPMR,
  */
 extern PVRSRV_ERROR
 PMRUnlockSysPhysAddresses(PMR *psPMR);
+
+IMG_VOID PMRLock(void);
+IMG_VOID PMRUnlock(void);
 
 /*
  * PhysmemPMRExport()
@@ -549,14 +557,16 @@ PMRPDumpLoadMemValue64(PMR *psPMR,
  *
  * writes the current contents of the PMR memory to the pdump PRM
  * stream, and emits some PDump code to the script stream to LDB said
- * bytes from said file
+ * bytes from said file. If bZero is IMG_TRUE then the PDump zero page
+ * is used as the source for the LDB.
  *
  */
 extern PVRSRV_ERROR
 PMRPDumpLoadMem(PMR *psPMR,
                 IMG_DEVMEM_OFFSET_T uiLogicalOffset,
                 IMG_DEVMEM_SIZE_T uiSize,
-                PDUMP_FLAGS_T uiPDumpFlags);
+                PDUMP_FLAGS_T uiPDumpFlags,
+                IMG_BOOL bZero);
 
 /*
  * PMRPDumpSaveToFile()
@@ -642,12 +652,14 @@ static INLINE PVRSRV_ERROR
 PMRPDumpLoadMem(PMR *psPMR,
                 IMG_DEVMEM_OFFSET_T uiLogicalOffset,
                 IMG_DEVMEM_SIZE_T uiSize,
-                PDUMP_FLAGS_T uiPDumpFlags)
+                PDUMP_FLAGS_T uiPDumpFlags,
+                IMG_BOOL bZero)
 {
 	PVR_UNREFERENCED_PARAMETER(psPMR);
 	PVR_UNREFERENCED_PARAMETER(uiLogicalOffset);
 	PVR_UNREFERENCED_PARAMETER(uiSize);
 	PVR_UNREFERENCED_PARAMETER(uiPDumpFlags);
+	PVR_UNREFERENCED_PARAMETER(bZero);
 	return PVRSRV_OK;
 }
 

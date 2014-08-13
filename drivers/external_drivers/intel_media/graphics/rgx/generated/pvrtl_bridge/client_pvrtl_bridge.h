@@ -45,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CLIENT_PVRTL_BRIDGE_H
 
 #include "pvr_bridge_client.h"
+#include "pvr_bridge.h"
 
 #include "common_pvrtl_bridge.h"
 

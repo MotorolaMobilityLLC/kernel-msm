@@ -165,7 +165,7 @@ DCBufferReleaseResManProxy(IMG_HANDLE hResmanItem)
 /* ***************************************************************************
  * Server-side bridge entry points
  */
-
+ 
 static IMG_INT
 PVRSRVBridgeDCDevicesQueryCount(IMG_UINT32 ui32BridgeID,
 					 PVRSRV_BRIDGE_IN_DCDEVICESQUERYCOUNT *psDCDevicesQueryCountIN,
@@ -212,7 +212,7 @@ PVRSRVBridgeDCDevicesEnumerate(IMG_UINT32 ui32BridgeID,
 		if (!pui32DeviceIndexInt)
 		{
 			psDCDevicesEnumerateOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDevicesEnumerate_exit;
 		}
 	}
@@ -225,7 +225,7 @@ PVRSRVBridgeDCDevicesEnumerate(IMG_UINT32 ui32BridgeID,
 					pui32DeviceIndexInt);
 
 
-	if ( !OSAccessOK(PVR_VERIFY_WRITE, (IMG_VOID*) psDCDevicesEnumerateOUT->pui32DeviceIndex, (psDCDevicesEnumerateOUT->ui32DeviceCount * sizeof(IMG_UINT32)))
+	if ( !OSAccessOK(PVR_VERIFY_WRITE, (IMG_VOID*) psDCDevicesEnumerateOUT->pui32DeviceIndex, (psDCDevicesEnumerateOUT->ui32DeviceCount * sizeof(IMG_UINT32))) 
 		|| (OSCopyToUser(NULL, psDCDevicesEnumerateOUT->pui32DeviceIndex, pui32DeviceIndexInt,
 		(psDCDevicesEnumerateOUT->ui32DeviceCount * sizeof(IMG_UINT32))) != PVRSRV_OK) )
 	{
@@ -474,7 +474,7 @@ PVRSRVBridgeDCPanelQuery(IMG_UINT32 ui32BridgeID,
 		if (!psPanelInfoInt)
 		{
 			psDCPanelQueryOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCPanelQuery_exit;
 		}
 	}
@@ -509,7 +509,7 @@ PVRSRVBridgeDCPanelQuery(IMG_UINT32 ui32BridgeID,
 					psPanelInfoInt);
 
 
-	if ( !OSAccessOK(PVR_VERIFY_WRITE, (IMG_VOID*) psDCPanelQueryOUT->psPanelInfo, (psDCPanelQueryOUT->ui32NumPanels * sizeof(PVRSRV_PANEL_INFO)))
+	if ( !OSAccessOK(PVR_VERIFY_WRITE, (IMG_VOID*) psDCPanelQueryOUT->psPanelInfo, (psDCPanelQueryOUT->ui32NumPanels * sizeof(PVRSRV_PANEL_INFO))) 
 		|| (OSCopyToUser(NULL, psDCPanelQueryOUT->psPanelInfo, psPanelInfoInt,
 		(psDCPanelQueryOUT->ui32NumPanels * sizeof(PVRSRV_PANEL_INFO))) != PVRSRV_OK) )
 	{
@@ -549,7 +549,7 @@ PVRSRVBridgeDCFormatQuery(IMG_UINT32 ui32BridgeID,
 		if (!psFormatInt)
 		{
 			psDCFormatQueryOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCFormatQuery_exit;
 		}
 	}
@@ -569,7 +569,7 @@ PVRSRVBridgeDCFormatQuery(IMG_UINT32 ui32BridgeID,
 		if (!pui32SupportedInt)
 		{
 			psDCFormatQueryOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCFormatQuery_exit;
 		}
 	}
@@ -604,7 +604,7 @@ PVRSRVBridgeDCFormatQuery(IMG_UINT32 ui32BridgeID,
 					pui32SupportedInt);
 
 
-	if ( !OSAccessOK(PVR_VERIFY_WRITE, (IMG_VOID*) psDCFormatQueryOUT->pui32Supported, (psDCFormatQueryIN->ui32NumFormats * sizeof(IMG_UINT32)))
+	if ( !OSAccessOK(PVR_VERIFY_WRITE, (IMG_VOID*) psDCFormatQueryOUT->pui32Supported, (psDCFormatQueryIN->ui32NumFormats * sizeof(IMG_UINT32))) 
 		|| (OSCopyToUser(NULL, psDCFormatQueryOUT->pui32Supported, pui32SupportedInt,
 		(psDCFormatQueryIN->ui32NumFormats * sizeof(IMG_UINT32))) != PVRSRV_OK) )
 	{
@@ -646,7 +646,7 @@ PVRSRVBridgeDCDimQuery(IMG_UINT32 ui32BridgeID,
 		if (!psDimInt)
 		{
 			psDCDimQueryOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDimQuery_exit;
 		}
 	}
@@ -666,7 +666,7 @@ PVRSRVBridgeDCDimQuery(IMG_UINT32 ui32BridgeID,
 		if (!pui32SupportedInt)
 		{
 			psDCDimQueryOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDimQuery_exit;
 		}
 	}
@@ -701,7 +701,7 @@ PVRSRVBridgeDCDimQuery(IMG_UINT32 ui32BridgeID,
 					pui32SupportedInt);
 
 
-	if ( !OSAccessOK(PVR_VERIFY_WRITE, (IMG_VOID*) psDCDimQueryOUT->pui32Supported, (psDCDimQueryIN->ui32NumDims * sizeof(IMG_UINT32)))
+	if ( !OSAccessOK(PVR_VERIFY_WRITE, (IMG_VOID*) psDCDimQueryOUT->pui32Supported, (psDCDimQueryIN->ui32NumDims * sizeof(IMG_UINT32))) 
 		|| (OSCopyToUser(NULL, psDCDimQueryOUT->pui32Supported, pui32SupportedInt,
 		(psDCDimQueryIN->ui32NumDims * sizeof(IMG_UINT32))) != PVRSRV_OK) )
 	{
@@ -1116,7 +1116,7 @@ PVRSRVBridgeDCDisplayContextConfigureCheck(IMG_UINT32 ui32BridgeID,
 		if (!psSurfInfoInt)
 		{
 			psDCDisplayContextConfigureCheckOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDisplayContextConfigureCheck_exit;
 		}
 	}
@@ -1136,14 +1136,14 @@ PVRSRVBridgeDCDisplayContextConfigureCheck(IMG_UINT32 ui32BridgeID,
 		if (!psBuffersInt)
 		{
 			psDCDisplayContextConfigureCheckOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDisplayContextConfigureCheck_exit;
 		}
 		hBuffersInt2 = OSAllocMem(psDCDisplayContextConfigureCheckIN->ui32PipeCount * sizeof(IMG_HANDLE));
 		if (!hBuffersInt2)
 		{
 			psDCDisplayContextConfigureCheckOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDisplayContextConfigureCheck_exit;
 		}
 	}
@@ -1189,7 +1189,7 @@ PVRSRVBridgeDCDisplayContextConfigureCheck(IMG_UINT32 ui32BridgeID,
 					psDCDisplayContextConfigureCheckOUT->eError =
 						PVRSRVLookupHandle(psConnection->psHandleBase,
 											(IMG_HANDLE *) &hBuffersInt2[i],
-											psDCDisplayContextConfigureCheckIN->phBuffers[i],
+											hBuffersInt2[i],
 											PVRSRV_HANDLE_TYPE_DC_BUFFER);
 					if(psDCDisplayContextConfigureCheckOUT->eError != PVRSRV_OK)
 					{
@@ -1253,7 +1253,7 @@ PVRSRVBridgeDCDisplayContextConfigure(IMG_UINT32 ui32BridgeID,
 		if (!psSurfInfoInt)
 		{
 			psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDisplayContextConfigure_exit;
 		}
 	}
@@ -1273,14 +1273,14 @@ PVRSRVBridgeDCDisplayContextConfigure(IMG_UINT32 ui32BridgeID,
 		if (!psBuffersInt)
 		{
 			psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDisplayContextConfigure_exit;
 		}
 		hBuffersInt2 = OSAllocMem(psDCDisplayContextConfigureIN->ui32PipeCount * sizeof(IMG_HANDLE));
 		if (!hBuffersInt2)
 		{
 			psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDisplayContextConfigure_exit;
 		}
 	}
@@ -1300,14 +1300,14 @@ PVRSRVBridgeDCDisplayContextConfigure(IMG_UINT32 ui32BridgeID,
 		if (!psSyncInt)
 		{
 			psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDisplayContextConfigure_exit;
 		}
 		hSyncInt2 = OSAllocMem(psDCDisplayContextConfigureIN->ui32SyncCount * sizeof(IMG_HANDLE));
 		if (!hSyncInt2)
 		{
 			psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDisplayContextConfigure_exit;
 		}
 	}
@@ -1327,7 +1327,7 @@ PVRSRVBridgeDCDisplayContextConfigure(IMG_UINT32 ui32BridgeID,
 		if (!bUpdateInt)
 		{
 			psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCDisplayContextConfigure_exit;
 		}
 	}
@@ -1373,7 +1373,7 @@ PVRSRVBridgeDCDisplayContextConfigure(IMG_UINT32 ui32BridgeID,
 					psDCDisplayContextConfigureOUT->eError =
 						PVRSRVLookupHandle(psConnection->psHandleBase,
 											(IMG_HANDLE *) &hBuffersInt2[i],
-											psDCDisplayContextConfigureIN->phBuffers[i],
+											hBuffersInt2[i],
 											PVRSRV_HANDLE_TYPE_DC_BUFFER);
 					if(psDCDisplayContextConfigureOUT->eError != PVRSRV_OK)
 					{
@@ -1401,7 +1401,7 @@ PVRSRVBridgeDCDisplayContextConfigure(IMG_UINT32 ui32BridgeID,
 					psDCDisplayContextConfigureOUT->eError =
 						PVRSRVLookupHandle(psConnection->psHandleBase,
 											(IMG_HANDLE *) &hSyncInt2[i],
-											psDCDisplayContextConfigureIN->phSync[i],
+											hSyncInt2[i],
 											PVRSRV_HANDLE_TYPE_SERVER_SYNC_PRIMITIVE);
 					if(psDCDisplayContextConfigureOUT->eError != PVRSRV_OK)
 					{
@@ -1448,28 +1448,6 @@ DCDisplayContextConfigure_exit:
 		OSFreeMem(hSyncInt2);
 	if (bUpdateInt)
 		OSFreeMem(bUpdateInt);
-
-	return 0;
-}
-
-static IMG_INT
-PVRSRVBridgeDCDisplayContextFlush(IMG_UINT32 ui32BridgeID,
-					 PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTFLUSH *psDCDisplayContextFlushIN,
-					 PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTFLUSH *psDCDisplayContextFlushOUT,
-					 CONNECTION_DATA *psConnection)
-
-{
-	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTFLUSH);
-
-	psDCDisplayContextFlushOUT->eError = DCDisplayContextFlush();
-
-	/* Exit early if bridged call fails */
-	if(psDCDisplayContextFlushOUT->eError != PVRSRV_OK)
-	{
-		goto DCDisplayContextFlush_exit;
-	}
-
-DCDisplayContextFlush_exit:
 
 	return 0;
 }
@@ -1637,14 +1615,14 @@ PVRSRVBridgeDCBufferImport(IMG_UINT32 ui32BridgeID,
 		if (!psImportInt)
 		{
 			psDCBufferImportOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCBufferImport_exit;
 		}
 		hImportInt2 = OSAllocMem(psDCBufferImportIN->ui32NumPlanes * sizeof(IMG_HANDLE));
 		if (!hImportInt2)
 		{
 			psDCBufferImportOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DCBufferImport_exit;
 		}
 	}
@@ -1690,7 +1668,7 @@ PVRSRVBridgeDCBufferImport(IMG_UINT32 ui32BridgeID,
 					psDCBufferImportOUT->eError =
 						PVRSRVLookupHandle(psConnection->psHandleBase,
 											(IMG_HANDLE *) &hImportInt2[i],
-											psDCBufferImportIN->phImport[i],
+											hImportInt2[i],
 											PVRSRV_HANDLE_TYPE_PHYSMEM_PMR);
 					if(psDCBufferImportOUT->eError != PVRSRV_OK)
 					{
@@ -2134,1127 +2112,12 @@ DCBufferRelease_exit:
 	return 0;
 }
 
-#ifdef CONFIG_COMPAT
-#include <linux/compat.h>
 
-/*******************************************
-            DCDevicesEnumerate
- *******************************************/
 
-/* Bridge in structure for DCDevicesEnumerate */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCDEVICESENUMERATE_TAG
-{
-	IMG_UINT32 ui32DeviceArraySize;
-	/* Output pointer pui32DeviceIndex is also an implied input */
-	/*IMG_UINT32 * pui32DeviceIndex;*/
-	IMG_UINT32 pui32DeviceIndex;
-} __attribute__ ((__packed__)) compat_PVRSRV_BRIDGE_IN_DCDEVICESENUMERATE;
-
-
-/* Bridge out structure for DCDevicesEnumerate */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCDEVICESENUMERATE_TAG
-{
-	IMG_UINT32 ui32DeviceCount;
-	/*IMG_UINT32 * pui32DeviceIndex;*/
-	IMG_UINT32 pui32DeviceIndex;
-	PVRSRV_ERROR eError;
-} __attribute__ ((__packed__)) compat_PVRSRV_BRIDGE_OUT_DCDEVICESENUMERATE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCDevicesEnumerate(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCDEVICESENUMERATE *psDCDevicesEnumerateIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCDEVICESENUMERATE *psDCDevicesEnumerateOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DCDEVICESENUMERATE sDCDevicesEnumerateIN;
-	PVRSRV_BRIDGE_OUT_DCDEVICESENUMERATE sDCDevicesEnumerateOUT;
-
-	sDCDevicesEnumerateIN.ui32DeviceArraySize = psDCDevicesEnumerateIN_32->ui32DeviceArraySize;
-	sDCDevicesEnumerateIN.pui32DeviceIndex = (IMG_UINT32 *)(IMG_UINT64)psDCDevicesEnumerateIN_32->pui32DeviceIndex;
-
-	ret = PVRSRVBridgeDCDevicesEnumerate(ui32BridgeID, &sDCDevicesEnumerateIN,
-					&sDCDevicesEnumerateOUT, psConnection);
-
-	psDCDevicesEnumerateOUT_32->eError = sDCDevicesEnumerateOUT.eError;
-	psDCDevicesEnumerateOUT_32->ui32DeviceCount = sDCDevicesEnumerateOUT.ui32DeviceCount;
-	PVR_ASSERT(!((IMG_UINT64)sDCDevicesEnumerateOUT.pui32DeviceIndex & 0xFFFFFFFF00000000ULL));
-	psDCDevicesEnumerateOUT_32->pui32DeviceIndex = (IMG_UINT32)(IMG_UINT64)sDCDevicesEnumerateOUT.pui32DeviceIndex;
-
-	return ret;
-}
-
-/*******************************************
-            DCDeviceAcquire
- *******************************************/
-
-/* Bridge out structure for DCDeviceAcquire */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCDEVICEACQUIRE_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-	IMG_UINT32 hDevice;
-	PVRSRV_ERROR eError;
-} __attribute__ ((__packed__)) compat_PVRSRV_BRIDGE_OUT_DCDEVICEACQUIRE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCDeviceAcquire(IMG_UINT32 ui32BridgeID,
-					 PVRSRV_BRIDGE_IN_DCDEVICEACQUIRE *psDCDeviceAcquireIN,
-					 compat_PVRSRV_BRIDGE_OUT_DCDEVICEACQUIRE *psDCDeviceAcquireOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_OUT_DCDEVICEACQUIRE sDCDeviceAcquireOUT;
-
-	ret = PVRSRVBridgeDCDeviceAcquire(ui32BridgeID, psDCDeviceAcquireIN,
-					&sDCDeviceAcquireOUT, psConnection);
-
-	PVR_ASSERT(!((IMG_UINT64)sDCDeviceAcquireOUT.hDevice & 0xFFFFFFFF00000000ULL));
-	psDCDeviceAcquireOUT_32->hDevice = (IMG_UINT32)(IMG_UINT64)sDCDeviceAcquireOUT.hDevice;
-	psDCDeviceAcquireOUT_32->eError= sDCDeviceAcquireOUT.eError;
-
-	return ret;
-}
-
-/*******************************************
-            DCDeviceRelease
- *******************************************/
-
-/* Bridge in structure for DCDeviceRelease */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCDEVICERELEASE_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-	IMG_UINT32 hDevice;
-} compat_PVRSRV_BRIDGE_IN_DCDEVICERELEASE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCDeviceRelease(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCDEVICERELEASE *psDCDeviceReleaseIN_32,
-					 PVRSRV_BRIDGE_OUT_DCDEVICERELEASE *psDCDeviceReleaseOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCDEVICERELEASE sDCDeviceReleaseIN;
-
-	sDCDeviceReleaseIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCDeviceReleaseIN_32->hDevice;
-
-	return PVRSRVBridgeDCDeviceRelease(ui32BridgeID, &sDCDeviceReleaseIN,
-					psDCDeviceReleaseOUT, psConnection);
-}
-
-/*******************************************
-            DCGetInfo
- *******************************************/
-
-/* Bridge in structure for DCGetInfo */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCGETINFO_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-    IMG_UINT32 hDevice;
-} compat_PVRSRV_BRIDGE_IN_DCGETINFO;
-
-static IMG_INT
-compat_PVRSRVBridgeDCGetInfo(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCGETINFO *psDCGetInfoIN_32,
-					 PVRSRV_BRIDGE_OUT_DCGETINFO *psDCGetInfoOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCGETINFO sDCGetInfoIN;
-
-	sDCGetInfoIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCGetInfoIN_32->hDevice;
-
-	return PVRSRVBridgeDCGetInfo(ui32BridgeID, &sDCGetInfoIN,
-					psDCGetInfoOUT, psConnection);
-}
-
-/*******************************************
-            DCPanelQueryCount
- *******************************************/
-
-/* Bridge in structure for DCPanelQueryCount */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCPANELQUERYCOUNT_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-    IMG_UINT32 hDevice;
-} compat_PVRSRV_BRIDGE_IN_DCPANELQUERYCOUNT;
-
-static IMG_INT
-compat_PVRSRVBridgeDCPanelQueryCount(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCPANELQUERYCOUNT *psDCPanelQueryCountIN_32,
-					 PVRSRV_BRIDGE_OUT_DCPANELQUERYCOUNT *psDCPanelQueryCountOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCPANELQUERYCOUNT sDCPanelQueryCountIN;
-
-	sDCPanelQueryCountIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCPanelQueryCountIN_32->hDevice;
-
-	return PVRSRVBridgeDCPanelQueryCount(ui32BridgeID, &sDCPanelQueryCountIN,
-					psDCPanelQueryCountOUT, psConnection);
-}
-
-/*******************************************
-            DCPanelQuery
- *******************************************/
-
-/* Bridge in structure for DCPanelQuery */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCPANELQUERY_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-    IMG_UINT32 hDevice;
-	IMG_UINT32 ui32PanelsArraySize;
-	/* Output pointer psPanelInfo is also an implied input */
-	/*PVRSRV_PANEL_INFO * psPanelInfo;*/
-	IMG_UINT32 psPanelInfo;
-} compat_PVRSRV_BRIDGE_IN_DCPANELQUERY;
-
-
-/* Bridge out structure for DCPanelQuery */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCPANELQUERY_TAG
-{
-	IMG_UINT32 ui32NumPanels;
-	/*PVRSRV_PANEL_INFO * psPanelInfo;*/
-	IMG_UINT32 psPanelInfo;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DCPANELQUERY;
-
-static IMG_INT
-compat_PVRSRVBridgeDCPanelQuery(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCPANELQUERY *psDCPanelQueryIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCPANELQUERY *psDCPanelQueryOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DCPANELQUERY sDCPanelQueryIN;
-	PVRSRV_BRIDGE_OUT_DCPANELQUERY sDCPanelQueryOUT;
-
-	sDCPanelQueryIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCPanelQueryIN_32->hDevice;
-	sDCPanelQueryIN.ui32PanelsArraySize = psDCPanelQueryIN_32->ui32PanelsArraySize;
-	sDCPanelQueryIN.psPanelInfo = (PVRSRV_PANEL_INFO *)(IMG_UINT64)psDCPanelQueryIN_32->psPanelInfo;
-
-	ret = PVRSRVBridgeDCPanelQuery(ui32BridgeID, &sDCPanelQueryIN,
-					&sDCPanelQueryOUT, psConnection);
-
-	psDCPanelQueryOUT_32->eError = sDCPanelQueryOUT.eError;
-	psDCPanelQueryOUT_32->ui32NumPanels = sDCPanelQueryOUT.ui32NumPanels;
-	PVR_ASSERT(!((IMG_UINT64)sDCPanelQueryOUT.psPanelInfo & 0xFFFFFFFF00000000ULL));
-	psDCPanelQueryOUT_32->psPanelInfo = (IMG_UINT32)(IMG_UINT64)sDCPanelQueryOUT.psPanelInfo;
-
-	return ret;
-}
-
-/*******************************************
-            DCFormatQuery
- *******************************************/
-
-/* Bridge in structure for DCFormatQuery */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCFORMATQUERY_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-	IMG_UINT32 hDevice;
-	IMG_UINT32 ui32NumFormats;
-	/*PVRSRV_SURFACE_FORMAT * psFormat;*/
-	IMG_UINT32 psFormat;
-	/* Output pointer pui32Supported is also an implied input */
-	/*IMG_UINT32 * pui32Supported;*/
-	IMG_UINT32 pui32Supported;
-} compat_PVRSRV_BRIDGE_IN_DCFORMATQUERY;
-
-
-/* Bridge out structure for DCFormatQuery */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCFORMATQUERY_TAG
-{
-	/*IMG_UINT32 * pui32Supported;*/
-	IMG_UINT32 pui32Supported;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DCFORMATQUERY;
-
-static IMG_INT
-compat_PVRSRVBridgeDCFormatQuery(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCFORMATQUERY *psDCFormatQueryIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCFORMATQUERY *psDCFormatQueryOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DCFORMATQUERY sDCFormatQueryIN;
-	PVRSRV_BRIDGE_OUT_DCFORMATQUERY sDCFormatQueryOUT;
-
-	sDCFormatQueryIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCFormatQueryIN_32->hDevice;
-	sDCFormatQueryIN.ui32NumFormats = psDCFormatQueryIN_32->ui32NumFormats;
-	sDCFormatQueryIN.psFormat = (PVRSRV_SURFACE_FORMAT *)(IMG_UINT64)psDCFormatQueryIN_32->psFormat;
-	sDCFormatQueryIN.pui32Supported = (IMG_UINT32 *)(IMG_UINT64)psDCFormatQueryIN_32->pui32Supported;
-
-	ret = PVRSRVBridgeDCFormatQuery(ui32BridgeID, &sDCFormatQueryIN,
-					&sDCFormatQueryOUT, psConnection);
-
-	psDCFormatQueryOUT_32->eError = sDCFormatQueryOUT.eError;
-	PVR_ASSERT(!((IMG_UINT64)sDCFormatQueryOUT.pui32Supported & 0xFFFFFFFF00000000ULL));
-	psDCFormatQueryOUT_32->pui32Supported = (IMG_UINT32)(IMG_UINT64)sDCFormatQueryOUT.pui32Supported;
-
-	return ret;
-}
-
-/*******************************************
-            DCDimQuery
- *******************************************/
-
-/* Bridge in structure for DCDimQuery */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCDIMQUERY_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-	IMG_UINT32 hDevice;
-	IMG_UINT32 ui32NumDims;
-	/*PVRSRV_SURFACE_DIMS * psDim;*/
-	IMG_UINT32 psDim;
-	/* Output pointer pui32Supported is also an implied input */
-	/*IMG_UINT32 * pui32Supported;*/
-	IMG_UINT32 pui32Supported;
-} compat_PVRSRV_BRIDGE_IN_DCDIMQUERY;
-
-
-/* Bridge out structure for DCDimQuery */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCDIMQUERY_TAG
-{
-	/*IMG_UINT32 * pui32Supported;*/
-	IMG_UINT32 pui32Supported;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DCDIMQUERY;
-
-
-static IMG_INT
-compat_PVRSRVBridgeDCDimQuery(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCDIMQUERY *psDCDimQueryIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCDIMQUERY *psDCDimQueryOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DCDIMQUERY sDCDimQueryIN;
-	PVRSRV_BRIDGE_OUT_DCDIMQUERY sDCDimQueryOUT;
-
-	sDCDimQueryIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCDimQueryIN_32->hDevice;
-	sDCDimQueryIN.ui32NumDims = psDCDimQueryIN_32->ui32NumDims;
-	sDCDimQueryIN.psDim = (PVRSRV_SURFACE_DIMS *)(IMG_UINT64)psDCDimQueryIN_32->psDim;
-	sDCDimQueryIN.pui32Supported = (IMG_UINT32 *)(IMG_UINT64)psDCDimQueryIN_32->pui32Supported;
-
-	ret = PVRSRVBridgeDCDimQuery(ui32BridgeID, &sDCDimQueryIN,
-					&sDCDimQueryOUT, psConnection);
-
-	psDCDimQueryOUT_32->eError = sDCDimQueryOUT.eError;
-	PVR_ASSERT(!((IMG_UINT64)sDCDimQueryOUT.pui32Supported & 0xFFFFFFFF00000000ULL));
-	psDCDimQueryOUT_32->pui32Supported = (IMG_UINT32)(IMG_UINT64)sDCDimQueryOUT.pui32Supported;
-
-	return ret;
-}
-
-/*******************************************
-            DCSetBlank
- *******************************************/
-
-/* Bridge in structure for DCSetBlank */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCSETBLANK_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-	IMG_UINT32 hDevice;
-	IMG_BOOL bEnabled;
-} compat_PVRSRV_BRIDGE_IN_DCSETBLANK;
-
-static IMG_INT
-compat_PVRSRVBridgeDCSetBlank(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCSETBLANK *psDCSetBlankIN_32,
-					 PVRSRV_BRIDGE_OUT_DCSETBLANK *psDCSetBlankOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCSETBLANK sDCSetBlankIN;
-
-	sDCSetBlankIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCSetBlankIN_32->hDevice;
-	sDCSetBlankIN.bEnabled = psDCSetBlankIN_32->bEnabled;
-
-	return PVRSRVBridgeDCSetBlank(ui32BridgeID, &sDCSetBlankIN,
-					psDCSetBlankOUT, psConnection);
-}
-
-/*******************************************
-            DCSetVSyncReporting
- *******************************************/
-
-/* Bridge in structure for DCSetVSyncReporting */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCSETVSYNCREPORTING_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-	IMG_UINT32 hDevice;
-	IMG_BOOL bEnabled;
-} compat_PVRSRV_BRIDGE_IN_DCSETVSYNCREPORTING;
-
-static IMG_INT
-compat_PVRSRVBridgeDCSetVSyncReporting(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCSETVSYNCREPORTING *psDCSetVSyncReportingIN_32,
-					 PVRSRV_BRIDGE_OUT_DCSETVSYNCREPORTING *psDCSetVSyncReportingOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCSETVSYNCREPORTING sDCSetVSyncReportingIN;
-
-	sDCSetVSyncReportingIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCSetVSyncReportingIN_32->hDevice;
-	sDCSetVSyncReportingIN.bEnabled = psDCSetVSyncReportingIN_32->bEnabled;
-
-	return PVRSRVBridgeDCSetVSyncReporting(ui32BridgeID, &sDCSetVSyncReportingIN,
-					psDCSetVSyncReportingOUT, psConnection);
-}
-
-/*******************************************
-            DCLastVSyncQuery
- *******************************************/
-
-/* Bridge in structure for DCLastVSyncQuery */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCLASTVSYNCQUERY_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-	IMG_UINT32 hDevice;
-} compat_PVRSRV_BRIDGE_IN_DCLASTVSYNCQUERY;
-
-static IMG_INT
-compat_PVRSRVBridgeDCLastVSyncQuery(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCLASTVSYNCQUERY *psDCLastVSyncQueryIN_32,
-					 PVRSRV_BRIDGE_OUT_DCLASTVSYNCQUERY *psDCLastVSyncQueryOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCLASTVSYNCQUERY sDCLastVSyncQueryIN;
-
-	sDCLastVSyncQueryIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCLastVSyncQueryIN_32->hDevice;
-
-	return PVRSRVBridgeDCLastVSyncQuery(ui32BridgeID, &sDCLastVSyncQueryIN,
-					psDCLastVSyncQueryOUT, psConnection);
-}
-
-/*******************************************
-            DCSystemBufferAcquire
- *******************************************/
-
-/* Bridge in structure for DCSystemBufferAcquire */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERACQUIRE_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-	IMG_UINT32 hDevice;
-} compat_PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERACQUIRE;
-
-
-/* Bridge out structure for DCSystemBufferAcquire */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERACQUIRE_TAG
-{
-	IMG_UINT32 ui32Stride;
-	/*IMG_HANDLE hBuffer;*/
-	IMG_UINT32 hBuffer;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERACQUIRE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCSystemBufferAcquire(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERACQUIRE *psDCSystemBufferAcquireIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERACQUIRE *psDCSystemBufferAcquireOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERACQUIRE sDCSystemBufferAcquireIN;
-	PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERACQUIRE sDCSystemBufferAcquireOUT;
-
-	sDCSystemBufferAcquireIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCSystemBufferAcquireIN_32->hDevice;
-
-	ret = PVRSRVBridgeDCSystemBufferAcquire(ui32BridgeID, &sDCSystemBufferAcquireIN,
-					&sDCSystemBufferAcquireOUT, psConnection);
-
-	psDCSystemBufferAcquireOUT_32->eError = sDCSystemBufferAcquireOUT.eError;
-	psDCSystemBufferAcquireOUT_32->ui32Stride = sDCSystemBufferAcquireOUT.ui32Stride;
-	PVR_ASSERT(!((IMG_UINT64)sDCSystemBufferAcquireOUT.hBuffer & 0xFFFFFFFF00000000ULL));
-	psDCSystemBufferAcquireOUT_32->hBuffer = (IMG_UINT32)(IMG_UINT64)sDCSystemBufferAcquireOUT.hBuffer;
-
-	return ret;
-}
-
-/*******************************************
-            DCSystemBufferRelease
- *******************************************/
-
-/* Bridge in structure for DCSystemBufferRelease */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERRELEASE_TAG
-{
-	/*IMG_HANDLE hBuffer;*/
-	IMG_UINT32 hBuffer;
-} compat_PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERRELEASE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCSystemBufferRelease(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERRELEASE *psDCSystemBufferReleaseIN_32,
-					 PVRSRV_BRIDGE_OUT_DCSYSTEMBUFFERRELEASE *psDCSystemBufferReleaseOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCSYSTEMBUFFERRELEASE sDCSystemBufferReleaseIN;
-
-	sDCSystemBufferReleaseIN.hBuffer = (IMG_HANDLE)(IMG_UINT64)psDCSystemBufferReleaseIN_32->hBuffer;
-
-	return PVRSRVBridgeDCSystemBufferRelease(ui32BridgeID, &sDCSystemBufferReleaseIN,
-					psDCSystemBufferReleaseOUT, psConnection);
-}
-
-/*******************************************
-            DCDisplayContextCreate
- *******************************************/
-
-/* Bridge in structure for DCDisplayContextCreate */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCREATE_TAG
-{
-	/*IMG_HANDLE hDevice;*/
-	IMG_UINT32 hDevice;
-} compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCREATE;
-
-
-/* Bridge out structure for DCDisplayContextCreate */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCREATE_TAG
-{
-	/*IMG_HANDLE hDisplayContext;*/
-	IMG_UINT32 hDisplayContext;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCREATE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCDisplayContextCreate(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCREATE *psDCDisplayContextCreateIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCREATE *psDCDisplayContextCreateOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCREATE sDCDisplayContextCreateIN;
-	PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCREATE sDCDisplayContextCreateOUT;
-
-	sDCDisplayContextCreateIN.hDevice = (IMG_HANDLE)(IMG_UINT64)psDCDisplayContextCreateIN_32->hDevice;
-
-	ret = PVRSRVBridgeDCDisplayContextCreate(ui32BridgeID, &sDCDisplayContextCreateIN,
-					&sDCDisplayContextCreateOUT, psConnection);
-
-	psDCDisplayContextCreateOUT_32->eError = sDCDisplayContextCreateOUT.eError;
-	PVR_ASSERT(!((IMG_UINT64)sDCDisplayContextCreateOUT.hDisplayContext & 0xFFFFFFFF00000000ULL));
-	psDCDisplayContextCreateOUT_32->hDisplayContext = (IMG_UINT32)(IMG_UINT64)sDCDisplayContextCreateOUT.hDisplayContext;
-
-	return ret;
-}
-
-/*******************************************
-            DCDisplayContextConfigureCheck
- *******************************************/
-
-/* Bridge in structure for DCDisplayContextConfigureCheck */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURECHECK_TAG
-{
-	/*IMG_HANDLE hDisplayContext;*/
-	IMG_UINT32 hDisplayContext;
-	IMG_UINT32 ui32PipeCount;
-	/*PVRSRV_SURFACE_CONFIG_INFO * psSurfInfo;*/
-	IMG_UINT32 psSurfInfo;
-	/*IMG_HANDLE * phBuffers;*/
-	IMG_UINT32 phBuffers;
-} compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURECHECK;
-
-static IMG_INT
-compat_PVRSRVBridgeDCDisplayContextConfigureCheck(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURECHECK *psDCDisplayContextConfigureCheckIN_32,
-					 PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCONFIGURECHECK *psDCDisplayContextConfigureCheckOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret = 0;
-	IMG_HANDLE __user *hBuffersInt2 = IMG_NULL;
-	IMG_UINT32 *hBuffersInt3 = IMG_NULL;
-	PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURECHECK sDCDisplayContextConfigureCheckIN;
-
-	sDCDisplayContextConfigureCheckIN.hDisplayContext = (IMG_HANDLE)(IMG_UINT64)psDCDisplayContextConfigureCheckIN_32->hDisplayContext;
-	sDCDisplayContextConfigureCheckIN.ui32PipeCount = psDCDisplayContextConfigureCheckIN_32->ui32PipeCount;
-	sDCDisplayContextConfigureCheckIN.psSurfInfo = (PVRSRV_SURFACE_CONFIG_INFO *)(IMG_UINT64)psDCDisplayContextConfigureCheckIN_32->psSurfInfo;
-	sDCDisplayContextConfigureCheckIN.phBuffers = (IMG_HANDLE)(IMG_UINT64)psDCDisplayContextConfigureCheckIN_32->phBuffers;
-
-	if (psDCDisplayContextConfigureCheckIN_32->ui32PipeCount != 0)
-	{
-		hBuffersInt2 = compat_alloc_user_space(psDCDisplayContextConfigureCheckIN_32->ui32PipeCount * sizeof(IMG_HANDLE));
-		if (!hBuffersInt2)
-		{
-			psDCDisplayContextConfigureCheckOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
-			goto DCDisplayContextConfigureCheck_exit;
-		}
-		hBuffersInt3 = OSAllocMem(psDCDisplayContextConfigureCheckIN_32->ui32PipeCount * sizeof(IMG_UINT32));
-		if (!hBuffersInt3)
-		{
-			psDCDisplayContextConfigureCheckOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
-			goto DCDisplayContextConfigureCheck_exit;
-		}
-	}
-
-	/* Copy the data over */
-	if ( !OSAccessOK(PVR_VERIFY_READ, (IMG_VOID*)(IMG_UINT64) psDCDisplayContextConfigureCheckIN_32->phBuffers, psDCDisplayContextConfigureCheckIN_32->ui32PipeCount * sizeof(IMG_UINT32))
-		|| (OSCopyFromUser(NULL, hBuffersInt3, (IMG_HANDLE *)(IMG_UINT64)psDCDisplayContextConfigureCheckIN_32->phBuffers,
-		psDCDisplayContextConfigureCheckIN_32->ui32PipeCount * sizeof(IMG_UINT32)) != PVRSRV_OK) )
-	{
-		psDCDisplayContextConfigureCheckOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-		goto DCDisplayContextConfigureCheck_exit;
-	}
-
-
-	{
-		IMG_UINT32 i;
-
-		for (i=0;i<psDCDisplayContextConfigureCheckIN_32->ui32PipeCount;i++)
-		{
-			if (!OSAccessOK(PVR_VERIFY_WRITE, &hBuffersInt2[i], sizeof(IMG_HANDLE))
-				|| __put_user((unsigned long)hBuffersInt3[i], &hBuffersInt2[i]))
-			{
-				psDCDisplayContextConfigureCheckOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-				goto DCDisplayContextConfigureCheck_exit;
-			}
-		}
-		sDCDisplayContextConfigureCheckIN.phBuffers = hBuffersInt2;
-	}
-
-	ret = PVRSRVBridgeDCDisplayContextConfigureCheck(ui32BridgeID, &sDCDisplayContextConfigureCheckIN,
-					psDCDisplayContextConfigureCheckOUT, psConnection);
-
-
-DCDisplayContextConfigureCheck_exit:
-	if (hBuffersInt3)
-		OSFreeMem(hBuffersInt3);
-
-	return ret;
-}
-
-/*******************************************
-            DCDisplayContextConfigure
- *******************************************/
-
-/* Bridge in structure for DCDisplayContextConfigure */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURE_TAG
-{
-	/*IMG_HANDLE hDisplayContext;*/
-	IMG_UINT32 hDisplayContext;
-	IMG_UINT32 ui32PipeCount;
-	/*PVRSRV_SURFACE_CONFIG_INFO * psSurfInfo;*/
-	IMG_UINT32 psSurfInfo;
-	/*IMG_HANDLE * phBuffers;*/
-	IMG_UINT32 phBuffers;
-	IMG_UINT32 ui32SyncCount;
-	/*IMG_HANDLE * phSync;*/
-	IMG_UINT32 phSync;
-	/*IMG_BOOL * pbUpdate;*/
-	IMG_UINT32 pbUpdate;
-	IMG_UINT32 ui32DisplayPeriod;
-	IMG_UINT32 ui32MaxDepth;
-	IMG_INT32 i32AcquireFd;
-} compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCDisplayContextConfigure(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURE *psDCDisplayContextConfigureIN_32,
-					 PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTCONFIGURE *psDCDisplayContextConfigureOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret = 0;
-	PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTCONFIGURE sDCDisplayContextConfigureIN;
-
-	IMG_HANDLE __user *hBuffersInt2 = IMG_NULL;
-	IMG_UINT32 *hBuffersInt3 = IMG_NULL;
-	IMG_HANDLE __user *hSyncInt2 = IMG_NULL;
-	IMG_UINT32 *hSyncInt3 = IMG_NULL;
-	IMG_UINT64 alloc_user = 0;
-
-	sDCDisplayContextConfigureIN.hDisplayContext =   (IMG_HANDLE)(IMG_UINT64)psDCDisplayContextConfigureIN_32->hDisplayContext;
-	sDCDisplayContextConfigureIN.ui32PipeCount =     psDCDisplayContextConfigureIN_32->ui32PipeCount;
-	sDCDisplayContextConfigureIN.psSurfInfo =        (PVRSRV_SURFACE_CONFIG_INFO *)(IMG_UINT64)psDCDisplayContextConfigureIN_32->psSurfInfo;
-	sDCDisplayContextConfigureIN.phBuffers =         (IMG_HANDLE)(IMG_UINT64)psDCDisplayContextConfigureIN_32->phBuffers;
-	sDCDisplayContextConfigureIN.ui32SyncCount =     psDCDisplayContextConfigureIN_32->ui32SyncCount;
-	sDCDisplayContextConfigureIN.phSync =            (IMG_HANDLE)(IMG_UINT64)psDCDisplayContextConfigureIN_32->phSync;
-	sDCDisplayContextConfigureIN.pbUpdate =          (IMG_BOOL *)(IMG_UINT64)psDCDisplayContextConfigureIN_32->pbUpdate;
-	sDCDisplayContextConfigureIN.ui32DisplayPeriod = psDCDisplayContextConfigureIN_32->ui32DisplayPeriod;
-	sDCDisplayContextConfigureIN.ui32MaxDepth =      psDCDisplayContextConfigureIN_32->ui32MaxDepth;
-	sDCDisplayContextConfigureIN.i32AcquireFd =      psDCDisplayContextConfigureIN_32->i32AcquireFd;
-
-	if (psDCDisplayContextConfigureIN_32->ui32PipeCount != 0)
-	{
-	    alloc_user = psDCDisplayContextConfigureIN_32->ui32PipeCount * sizeof(IMG_HANDLE);
-		hBuffersInt3 = OSAllocMem(psDCDisplayContextConfigureIN_32->ui32PipeCount * sizeof(IMG_UINT32));
-		if (!hBuffersInt3)
-		{
-			psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
-			goto DCDisplayContextConfigure_exit;
-		}
-	}
-
-	if ( !OSAccessOK(PVR_VERIFY_READ, (IMG_VOID*)(IMG_UINT64) psDCDisplayContextConfigureIN_32->phBuffers, psDCDisplayContextConfigureIN_32->ui32PipeCount * sizeof(IMG_UINT32))
-		|| (OSCopyFromUser(NULL, hBuffersInt3, (IMG_HANDLE *)(IMG_UINT64)psDCDisplayContextConfigureIN_32->phBuffers,
-		psDCDisplayContextConfigureIN_32->ui32PipeCount * sizeof(IMG_UINT32)) != PVRSRV_OK) )
-	{
-		psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-		goto DCDisplayContextConfigure_exit;
-	}
-
-	if (psDCDisplayContextConfigureIN_32->ui32SyncCount != 0)
-	{
-	    alloc_user += psDCDisplayContextConfigureIN_32->ui32SyncCount * sizeof(IMG_HANDLE);
-		hSyncInt3 = OSAllocMem(psDCDisplayContextConfigureIN_32->ui32SyncCount * sizeof(IMG_UINT32));
-		if (!hSyncInt3)
-		{
-			psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
-			goto DCDisplayContextConfigure_exit;
-		}
-	}
-
-	hBuffersInt2 = compat_alloc_user_space(alloc_user);
-	if (!hBuffersInt2)
-	{
-	    psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
-	    goto DCDisplayContextConfigure_exit;
-	}
-	hSyncInt2 = hBuffersInt2 + psDCDisplayContextConfigureIN_32->ui32PipeCount;
-
-	if ( !OSAccessOK(PVR_VERIFY_READ, (IMG_VOID*)(IMG_UINT64) psDCDisplayContextConfigureIN_32->phSync, psDCDisplayContextConfigureIN_32->ui32SyncCount * sizeof(IMG_UINT32))
-		|| (OSCopyFromUser(NULL, hSyncInt3, (IMG_HANDLE *)(IMG_UINT64)psDCDisplayContextConfigureIN_32->phSync,
-		psDCDisplayContextConfigureIN_32->ui32SyncCount * sizeof(IMG_UINT32)) != PVRSRV_OK) )
-	{
-		psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-		goto DCDisplayContextConfigure_exit;
-	}
-
-
-	{
-		IMG_UINT32 i;
-
-		for (i=0;i<psDCDisplayContextConfigureIN_32->ui32PipeCount;i++)
-		{
-			if (!OSAccessOK(PVR_VERIFY_WRITE, &hBuffersInt2[i], sizeof(IMG_HANDLE))
-				|| __put_user((unsigned long)hBuffersInt3[i], &hBuffersInt2[i]))
-			{
-				psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-				goto DCDisplayContextConfigure_exit;
-			}
-		}
-		sDCDisplayContextConfigureIN.phBuffers = hBuffersInt2;
-	}
-
-	{
-		IMG_UINT32 i;
-
-		for (i=0;i<psDCDisplayContextConfigureIN_32->ui32SyncCount;i++)
-		{
-			if (!OSAccessOK(PVR_VERIFY_WRITE, &hSyncInt2[i], sizeof(IMG_HANDLE))
-				|| __put_user((unsigned long)hSyncInt3[i], &hSyncInt2[i]))
-			{
-				psDCDisplayContextConfigureOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-				goto DCDisplayContextConfigure_exit;
-			}
-		}
-		sDCDisplayContextConfigureIN.phSync = hSyncInt2;
-	}
-
-	ret = PVRSRVBridgeDCDisplayContextConfigure(ui32BridgeID, &sDCDisplayContextConfigureIN,
-						psDCDisplayContextConfigureOUT, psConnection);
-
-DCDisplayContextConfigure_exit:
-	if (hBuffersInt3)
-		OSFreeMem(hBuffersInt3);
-	if (hSyncInt3)
-		OSFreeMem(hSyncInt3);
-
-	return ret;
-}
-
-/*******************************************
-            DCDisplayContextDestroy
- *******************************************/
-
-/* Bridge in structure for DCDisplayContextDestroy */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTDESTROY_TAG
-{
-	/*IMG_HANDLE hDisplayContext;*/
-	IMG_UINT32 hDisplayContext;
-} compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTDESTROY;
-
-static IMG_INT
-compat_PVRSRVBridgeDCDisplayContextDestroy(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTDESTROY *psDCDisplayContextDestroyIN_32,
-					 PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTDESTROY *psDCDisplayContextDestroyOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTDESTROY sDCDisplayContextDestroyIN;
-
-	sDCDisplayContextDestroyIN.hDisplayContext = (IMG_HANDLE)(IMG_UINT64)psDCDisplayContextDestroyIN_32->hDisplayContext;
-
-	return PVRSRVBridgeDCDisplayContextDestroy(ui32BridgeID, &sDCDisplayContextDestroyIN,
-					psDCDisplayContextDestroyOUT, psConnection);
-}
-
-typedef struct compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTFLUSH_TAG
-{
-	IMG_UINT32 ui32Empty;
-} compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTFLUSH;
-
-static IMG_INT
-compat_PVRSRVBridgeDCDisplayContextFlush(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTFLUSH *psDCDisplayContextFlushIN_32,
-					 PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTFLUSH *psDCDisplayContextFlushOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTFLUSH sDCDisplayContextFlushIN;
-
-	return PVRSRVBridgeDCDisplayContextFlush(ui32BridgeID, &sDCDisplayContextFlushIN, psDCDisplayContextFlushOUT, psConnection);
-}
-
-/*******************************************
-            DCBufferAlloc
- *******************************************/
-
-/* Bridge in structure for DCBufferAlloc */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCBUFFERALLOC_TAG
-{
-	/*IMG_HANDLE hDisplayContext;*/
-	IMG_UINT32 hDisplayContext;
-	DC_BUFFER_CREATE_INFO sSurfInfo;
-} compat_PVRSRV_BRIDGE_IN_DCBUFFERALLOC;
-
-
-/* Bridge out structure for DCBufferAlloc */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCBUFFERALLOC_TAG
-{
-	IMG_UINT32 ui32Stride;
-	/*IMG_HANDLE hBuffer;*/
-	IMG_UINT32 hBuffer;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DCBUFFERALLOC;
-
-static IMG_INT
-compat_PVRSRVBridgeDCBufferAlloc(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCBUFFERALLOC *psDCBufferAllocIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCBUFFERALLOC *psDCBufferAllocOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DCBUFFERALLOC sDCBufferAllocIN;
-	PVRSRV_BRIDGE_OUT_DCBUFFERALLOC sDCBufferAllocOUT;
-
-	sDCBufferAllocIN.hDisplayContext = (IMG_HANDLE)(IMG_UINT64)psDCBufferAllocIN_32->hDisplayContext;
-	    memcpy((void *)&sDCBufferAllocIN.sSurfInfo, (const void *)&psDCBufferAllocIN_32->sSurfInfo, sizeof(DC_BUFFER_CREATE_INFO));
-
-	ret = PVRSRVBridgeDCBufferAlloc(ui32BridgeID, &sDCBufferAllocIN,
-					&sDCBufferAllocOUT, psConnection);
-
-	psDCBufferAllocOUT_32->eError = sDCBufferAllocOUT.eError;
-	PVR_ASSERT(!((IMG_UINT64)sDCBufferAllocOUT.hBuffer & 0xFFFFFFFF00000000ULL));
-	psDCBufferAllocOUT_32->hBuffer = (IMG_UINT32)(IMG_UINT64)sDCBufferAllocOUT.hBuffer;
-	psDCBufferAllocOUT_32->ui32Stride = sDCBufferAllocOUT.ui32Stride;
-
-	return ret;
-}
-
-/*******************************************
-            DCBufferImport
- *******************************************/
-
-/* Bridge in structure for DCBufferImport */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCBUFFERIMPORT_TAG
-{
-	/*IMG_HANDLE hDisplayContext;*/
-    IMG_UINT32 hDisplayContext;
-	IMG_UINT32 ui32NumPlanes;
-	/*IMG_HANDLE * phImport;*/
-	IMG_UINT32 phImport;
-	DC_BUFFER_IMPORT_INFO sSurfAttrib;
-} compat_PVRSRV_BRIDGE_IN_DCBUFFERIMPORT;
-
-
-/* Bridge out structure for DCBufferImport */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCBUFFERIMPORT_TAG
-{
-	/*IMG_HANDLE hBuffer;*/
-    IMG_UINT32 hBuffer;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DCBUFFERIMPORT;
-
-static IMG_INT
-compat_PVRSRVBridgeDCBufferImport(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCBUFFERIMPORT *psDCBufferImportIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCBUFFERIMPORT *psDCBufferImportOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret = 0;
-	PVRSRV_BRIDGE_IN_DCBUFFERIMPORT sDCBufferImportIN;
-	PVRSRV_BRIDGE_OUT_DCBUFFERIMPORT sDCBufferImportOUT;
-
-	IMG_HANDLE __user *hImportInt2 = IMG_NULL;
-	IMG_UINT32 *hImportInt3 = IMG_NULL;
-
-	sDCBufferImportIN.hDisplayContext = (IMG_HANDLE)(IMG_UINT64)psDCBufferImportIN_32->hDisplayContext;
-	sDCBufferImportIN.ui32NumPlanes = psDCBufferImportIN_32->ui32NumPlanes;
-	sDCBufferImportIN.phImport = (IMG_HANDLE)(IMG_UINT64)psDCBufferImportIN_32->phImport;
-	memcpy((void *)&sDCBufferImportIN.sSurfAttrib, (const void *)&psDCBufferImportIN_32->sSurfAttrib, sizeof(DC_BUFFER_IMPORT_INFO));
-
-	if (psDCBufferImportIN_32->ui32NumPlanes != 0)
-	{
-		hImportInt2 = compat_alloc_user_space(psDCBufferImportIN_32->ui32NumPlanes * sizeof(IMG_HANDLE));
-		if (!hImportInt2)
-		{
-			psDCBufferImportOUT_32->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
-			goto DCBufferImport_exit;
-		}
-		hImportInt3 = OSAllocMem(psDCBufferImportIN_32->ui32NumPlanes * sizeof(IMG_UINT32));
-		if (!hImportInt3)
-		{
-			psDCBufferImportOUT_32->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
-			goto DCBufferImport_exit;
-		}
-	}
-
-	if ( !OSAccessOK(PVR_VERIFY_READ, (IMG_VOID*)(IMG_UINT64) psDCBufferImportIN_32->phImport, psDCBufferImportIN_32->ui32NumPlanes * sizeof(IMG_UINT32))
-		|| (OSCopyFromUser(NULL, hImportInt3, (IMG_HANDLE *)(IMG_UINT64)psDCBufferImportIN_32->phImport,
-		psDCBufferImportIN_32->ui32NumPlanes * sizeof(IMG_UINT32)) != PVRSRV_OK) )
-	{
-		psDCBufferImportOUT_32->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-		goto DCBufferImport_exit;
-	}
-
-	{
-		IMG_UINT32 i;
-
-		for (i=0;i<psDCBufferImportIN_32->ui32NumPlanes;i++)
-		{
-			if (!OSAccessOK(PVR_VERIFY_WRITE, &hImportInt2[i], sizeof(IMG_HANDLE))
-				|| __put_user((unsigned long)hImportInt3[i], &hImportInt2[i]))
-			{
-				psDCBufferImportOUT_32->eError = PVRSRV_ERROR_INVALID_PARAMS;
-
-				goto DCBufferImport_exit;
-			}
-		}
-		sDCBufferImportIN.phImport = hImportInt2;
-	}
-
-	ret = PVRSRVBridgeDCBufferImport(ui32BridgeID, &sDCBufferImportIN,
-				&sDCBufferImportOUT, psConnection);
-
-	PVR_ASSERT(!((IMG_UINT64)sDCBufferImportOUT.hBuffer & 0xFFFFFFFF00000000ULL));
-	psDCBufferImportOUT_32->hBuffer = (IMG_UINT32)(IMG_UINT64)sDCBufferImportOUT.hBuffer;
-	psDCBufferImportOUT_32->eError= sDCBufferImportOUT.eError;
-
-DCBufferImport_exit:
-
-	if (hImportInt3)
-		OSFreeMem(hImportInt3);
-
-	return ret;
-}
-
-
-
-/*******************************************
-            DCBufferFree
- *******************************************/
-
-/* Bridge in structure for DCBufferFree */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCBUFFERFREE_TAG
-{
-	/*IMG_HANDLE hBuffer;*/
-	IMG_UINT32 hBuffer;
-} compat_PVRSRV_BRIDGE_IN_DCBUFFERFREE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCBufferFree(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCBUFFERFREE *psDCBufferFreeIN_32,
-					 PVRSRV_BRIDGE_OUT_DCBUFFERFREE *psDCBufferFreeOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCBUFFERFREE sDCBufferFreeIN;
-
-	sDCBufferFreeIN.hBuffer = (IMG_HANDLE)(IMG_UINT64)psDCBufferFreeIN_32->hBuffer;
-
-	return PVRSRVBridgeDCBufferFree(ui32BridgeID, &sDCBufferFreeIN,
-					psDCBufferFreeOUT, psConnection);
-}
-
-
-/*******************************************
-            DCBufferUnimport
- *******************************************/
-
-/* Bridge in structure for DCBufferUnimport */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCBUFFERUNIMPORT_TAG
-{
-	/*IMG_HANDLE hBuffer;*/
-	IMG_UINT32 hBuffer;
-} compat_PVRSRV_BRIDGE_IN_DCBUFFERUNIMPORT;
-
-static IMG_INT
-compat_PVRSRVBridgeDCBufferUnimport(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCBUFFERUNIMPORT *psDCBufferUnimportIN_32,
-					 PVRSRV_BRIDGE_OUT_DCBUFFERUNIMPORT *psDCBufferUnimportOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCBUFFERUNIMPORT sDCBufferUnimportIN;
-
-	sDCBufferUnimportIN.hBuffer = (IMG_HANDLE)(IMG_UINT64)psDCBufferUnimportIN_32->hBuffer;
-
-	return PVRSRVBridgeDCBufferUnimport(ui32BridgeID, &sDCBufferUnimportIN,
-					psDCBufferUnimportOUT, psConnection);
-}
-
-
-
-/*******************************************
-            DCBufferPin
- *******************************************/
-
-/* Bridge in structure for DCBufferPin */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCBUFFERPIN_TAG
-{
-	/*IMG_HANDLE hBuffer;*/
-	IMG_UINT32 hBuffer;
-} compat_PVRSRV_BRIDGE_IN_DCBUFFERPIN;
-
-
-/* Bridge out structure for DCBufferPin */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCBUFFERPIN_TAG
-{
-	/*IMG_HANDLE hPinHandle;*/
-	IMG_UINT32 hPinHandle;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DCBUFFERPIN;
-
-static IMG_INT
-compat_PVRSRVBridgeDCBufferPin(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCBUFFERPIN *psDCBufferPinIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCBUFFERPIN *psDCBufferPinOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DCBUFFERPIN sDCBufferPinIN;
-	PVRSRV_BRIDGE_OUT_DCBUFFERPIN sDCBufferPinOUT;
-
-	sDCBufferPinIN.hBuffer = (IMG_HANDLE)(IMG_UINT64)psDCBufferPinIN_32->hBuffer;
-
-	ret = PVRSRVBridgeDCBufferPin(ui32BridgeID, &sDCBufferPinIN,
-					&sDCBufferPinOUT, psConnection);
-
-	psDCBufferPinOUT_32->eError = sDCBufferPinOUT.eError;
-	PVR_ASSERT(!((IMG_UINT64)sDCBufferPinOUT.hPinHandle & 0xFFFFFFFF00000000ULL));
-	psDCBufferPinOUT_32->hPinHandle = (IMG_UINT32)(IMG_UINT64)sDCBufferPinOUT.hPinHandle;
-
-	return ret;
-}
-
-
-
-/*******************************************
-            DCBufferUnpin
- *******************************************/
-
-/* Bridge in structure for DCBufferUnpin */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCBUFFERUNPIN_TAG
-{
-	/*IMG_HANDLE hPinHandle;*/
-	IMG_UINT32 hPinHandle;
-} compat_PVRSRV_BRIDGE_IN_DCBUFFERUNPIN;
-
-static IMG_INT
-compat_PVRSRVBridgeDCBufferUnpin(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCBUFFERUNPIN *psDCBufferUnpinIN_32,
-					 PVRSRV_BRIDGE_OUT_DCBUFFERUNPIN *psDCBufferUnpinOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCBUFFERUNPIN sDCBufferUnpinIN;
-
-	sDCBufferUnpinIN.hPinHandle = (IMG_HANDLE)(IMG_UINT64)psDCBufferUnpinIN_32->hPinHandle;
-
-	return PVRSRVBridgeDCBufferUnpin(ui32BridgeID, &sDCBufferUnpinIN,
-					psDCBufferUnpinOUT, psConnection);
-}
-
-
-/*******************************************
-            DCBufferAcquire
- *******************************************/
-
-/* Bridge in structure for DCBufferAcquire */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCBUFFERACQUIRE_TAG
-{
-	/*IMG_HANDLE hBuffer;*/
-	IMG_UINT32 hBuffer;
-} compat_PVRSRV_BRIDGE_IN_DCBUFFERACQUIRE;
-
-
-/* Bridge out structure for DCBufferAcquire */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DCBUFFERACQUIRE_TAG
-{
-	/*IMG_HANDLE hExtMem;*/
-	IMG_UINT32 hExtMem;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DCBUFFERACQUIRE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCBufferAcquire(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCBUFFERACQUIRE *psDCBufferAcquireIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_DCBUFFERACQUIRE *psDCBufferAcquireOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DCBUFFERACQUIRE sDCBufferAcquireIN;
-	PVRSRV_BRIDGE_OUT_DCBUFFERACQUIRE sDCBufferAcquireOUT;
-
-	sDCBufferAcquireIN.hBuffer = (IMG_HANDLE)(IMG_UINT64)psDCBufferAcquireIN_32->hBuffer;
-
-	ret = PVRSRVBridgeDCBufferAcquire(ui32BridgeID, &sDCBufferAcquireIN,
-					&sDCBufferAcquireOUT, psConnection);
-
-	psDCBufferAcquireOUT_32->eError = sDCBufferAcquireOUT.eError;
-	PVR_ASSERT(!((IMG_UINT64)sDCBufferAcquireOUT.hExtMem & 0xFFFFFFFF00000000ULL));
-	psDCBufferAcquireOUT_32->hExtMem = (IMG_UINT32)(IMG_UINT64)sDCBufferAcquireOUT.hExtMem;
-
-	return ret;
-}
-
-
-/*******************************************
-            DCBufferRelease
- *******************************************/
-
-/* Bridge in structure for DCBufferRelease */
-typedef struct compat_PVRSRV_BRIDGE_IN_DCBUFFERRELEASE_TAG
-{
-	/*IMG_HANDLE hExtMem;*/
-	IMG_UINT32 hExtMem;
-} compat_PVRSRV_BRIDGE_IN_DCBUFFERRELEASE;
-
-static IMG_INT
-compat_PVRSRVBridgeDCBufferRelease(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DCBUFFERRELEASE *psDCBufferReleaseIN_32,
-					 PVRSRV_BRIDGE_OUT_DCBUFFERRELEASE *psDCBufferReleaseOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DCBUFFERRELEASE sDCBufferReleaseIN;
-
-	sDCBufferReleaseIN.hExtMem = (IMG_HANDLE)(IMG_UINT64)psDCBufferReleaseIN_32->hExtMem;
-
-	return PVRSRVBridgeDCBufferRelease(ui32BridgeID, &sDCBufferReleaseIN,
-					 psDCBufferReleaseOUT, psConnection);
-}
-
-
-
-#endif
-
-/* ***************************************************************************
- * Server bridge dispatch related glue
+/* *************************************************************************** 
+ * Server bridge dispatch related glue 
  */
-
+ 
 PVRSRV_ERROR RegisterDCFunctions(IMG_VOID);
 IMG_VOID UnregisterDCFunctions(IMG_VOID);
 
@@ -3263,35 +2126,6 @@ IMG_VOID UnregisterDCFunctions(IMG_VOID);
  */
 PVRSRV_ERROR RegisterDCFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDEVICESQUERYCOUNT, PVRSRVBridgeDCDevicesQueryCount);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDEVICESENUMERATE, compat_PVRSRVBridgeDCDevicesEnumerate);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDEVICEACQUIRE, compat_PVRSRVBridgeDCDeviceAcquire);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDEVICERELEASE, compat_PVRSRVBridgeDCDeviceRelease);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCGETINFO, compat_PVRSRVBridgeDCGetInfo);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCPANELQUERYCOUNT, compat_PVRSRVBridgeDCPanelQueryCount);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCPANELQUERY, compat_PVRSRVBridgeDCPanelQuery);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCFORMATQUERY, compat_PVRSRVBridgeDCFormatQuery);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDIMQUERY, compat_PVRSRVBridgeDCDimQuery);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCSETBLANK, compat_PVRSRVBridgeDCSetBlank);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCSETVSYNCREPORTING, compat_PVRSRVBridgeDCSetVSyncReporting);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCLASTVSYNCQUERY, compat_PVRSRVBridgeDCLastVSyncQuery);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCSYSTEMBUFFERACQUIRE, compat_PVRSRVBridgeDCSystemBufferAcquire);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCSYSTEMBUFFERRELEASE, compat_PVRSRVBridgeDCSystemBufferRelease);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTCREATE, compat_PVRSRVBridgeDCDisplayContextCreate);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTCONFIGURECHECK, compat_PVRSRVBridgeDCDisplayContextConfigureCheck);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTCONFIGURE, compat_PVRSRVBridgeDCDisplayContextConfigure);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTDESTROY, compat_PVRSRVBridgeDCDisplayContextDestroy);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERALLOC, compat_PVRSRVBridgeDCBufferAlloc);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERIMPORT, compat_PVRSRVBridgeDCBufferImport);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERFREE, compat_PVRSRVBridgeDCBufferFree);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERUNIMPORT, compat_PVRSRVBridgeDCBufferUnimport);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERPIN, compat_PVRSRVBridgeDCBufferPin);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERUNPIN, compat_PVRSRVBridgeDCBufferUnpin);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERACQUIRE, compat_PVRSRVBridgeDCBufferAcquire);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERRELEASE, compat_PVRSRVBridgeDCBufferRelease);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTFLUSH, compat_PVRSRVBridgeDCDisplayContextFlush);
-#else
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDEVICESQUERYCOUNT, PVRSRVBridgeDCDevicesQueryCount);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDEVICESENUMERATE, PVRSRVBridgeDCDevicesEnumerate);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDEVICEACQUIRE, PVRSRVBridgeDCDeviceAcquire);
@@ -3318,8 +2152,7 @@ PVRSRV_ERROR RegisterDCFunctions(IMG_VOID)
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERUNPIN, PVRSRVBridgeDCBufferUnpin);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERACQUIRE, PVRSRVBridgeDCBufferAcquire);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERRELEASE, PVRSRVBridgeDCBufferRelease);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTFLUSH, PVRSRVBridgeDCDisplayContextFlush);
-#endif
+
 	return PVRSRV_OK;
 }
 

@@ -48,7 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgx_bridge.h"
 
 
-#include "pvr_bridge.h"
+#include "pvr_bridge_io.h"
 
 #define PVRSRV_BRIDGE_BREAKPOINT_CMD_FIRST			(PVRSRV_BRIDGE_BREAKPOINT_START)
 #define PVRSRV_BRIDGE_BREAKPOINT_RGXSETBREAKPOINT			PVRSRV_IOWR(PVRSRV_BRIDGE_BREAKPOINT_CMD_FIRST+0)
@@ -72,14 +72,14 @@ typedef struct PVRSRV_BRIDGE_IN_RGXSETBREAKPOINT_TAG
 	IMG_UINT32 ui32BreakpointAddr;
 	IMG_UINT32 ui32HandlerAddr;
 	IMG_UINT32 ui32DM;
-} PVRSRV_BRIDGE_IN_RGXSETBREAKPOINT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RGXSETBREAKPOINT;
 
 
 /* Bridge out structure for RGXSetBreakpoint */
 typedef struct PVRSRV_BRIDGE_OUT_RGXSETBREAKPOINT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RGXSETBREAKPOINT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RGXSETBREAKPOINT;
 
 /*******************************************
             RGXClearBreakpoint          
@@ -90,14 +90,14 @@ typedef struct PVRSRV_BRIDGE_IN_RGXCLEARBREAKPOINT_TAG
 {
 	IMG_HANDLE hDevNode;
 	IMG_HANDLE hPrivData;
-} PVRSRV_BRIDGE_IN_RGXCLEARBREAKPOINT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RGXCLEARBREAKPOINT;
 
 
 /* Bridge out structure for RGXClearBreakpoint */
 typedef struct PVRSRV_BRIDGE_OUT_RGXCLEARBREAKPOINT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RGXCLEARBREAKPOINT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RGXCLEARBREAKPOINT;
 
 /*******************************************
             RGXEnableBreakpoint          
@@ -108,14 +108,14 @@ typedef struct PVRSRV_BRIDGE_IN_RGXENABLEBREAKPOINT_TAG
 {
 	IMG_HANDLE hDevNode;
 	IMG_HANDLE hPrivData;
-} PVRSRV_BRIDGE_IN_RGXENABLEBREAKPOINT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RGXENABLEBREAKPOINT;
 
 
 /* Bridge out structure for RGXEnableBreakpoint */
 typedef struct PVRSRV_BRIDGE_OUT_RGXENABLEBREAKPOINT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RGXENABLEBREAKPOINT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RGXENABLEBREAKPOINT;
 
 /*******************************************
             RGXDisableBreakpoint          
@@ -126,14 +126,14 @@ typedef struct PVRSRV_BRIDGE_IN_RGXDISABLEBREAKPOINT_TAG
 {
 	IMG_HANDLE hDevNode;
 	IMG_HANDLE hPrivData;
-} PVRSRV_BRIDGE_IN_RGXDISABLEBREAKPOINT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RGXDISABLEBREAKPOINT;
 
 
 /* Bridge out structure for RGXDisableBreakpoint */
 typedef struct PVRSRV_BRIDGE_OUT_RGXDISABLEBREAKPOINT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RGXDISABLEBREAKPOINT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RGXDISABLEBREAKPOINT;
 
 /*******************************************
             RGXOverallocateBPRegisters          
@@ -145,13 +145,13 @@ typedef struct PVRSRV_BRIDGE_IN_RGXOVERALLOCATEBPREGISTERS_TAG
 	IMG_HANDLE hDevNode;
 	IMG_UINT32 ui32TempRegs;
 	IMG_UINT32 ui32SharedRegs;
-} PVRSRV_BRIDGE_IN_RGXOVERALLOCATEBPREGISTERS;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RGXOVERALLOCATEBPREGISTERS;
 
 
 /* Bridge out structure for RGXOverallocateBPRegisters */
 typedef struct PVRSRV_BRIDGE_OUT_RGXOVERALLOCATEBPREGISTERS_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RGXOVERALLOCATEBPREGISTERS;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RGXOVERALLOCATEBPREGISTERS;
 
 #endif /* COMMON_BREAKPOINT_BRIDGE_H */

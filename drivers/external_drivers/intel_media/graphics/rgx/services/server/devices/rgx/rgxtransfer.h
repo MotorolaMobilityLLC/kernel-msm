@@ -49,6 +49,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgxdevice.h"
 #include "rgxfwutils.h"
 #include "rgx_fwif_resetframework.h"
+#include "rgxdebug.h"
 
 #include "sync_server.h"
 #include "connection_server.h"
@@ -129,7 +130,9 @@ PVRSRV_ERROR PVRSRVRGXSubmitTransferKM(RGX_SERVER_TQ_CONTEXT	*psTransferContext,
 									IMG_INT32				*paui32FenceFDs,
 									IMG_UINT32				*paui32FWCommandSize,
 									IMG_UINT8				**papaui8FWCommand,
-									IMG_UINT32				*pui32TQPrepareFlags);
+									IMG_UINT32				*pui32TQPrepareFlags,
+									IMG_UINT32				ui32ExtJobRef,
+									IMG_UINT32				ui32IntJobRef);
 
 IMG_EXPORT
 PVRSRV_ERROR PVRSRVRGXSetTransferContextPriorityKM(CONNECTION_DATA *psConnection,
@@ -137,6 +140,20 @@ PVRSRV_ERROR PVRSRVRGXSetTransferContextPriorityKM(CONNECTION_DATA *psConnection
 												   IMG_UINT32 ui32Priority);
 
 /* Debug - check if transfer context is waiting on a fence */
-IMG_VOID CheckForStalledTransferCtxt(PVRSRV_RGXDEV_INFO *psDevInfo);
+IMG_VOID CheckForStalledTransferCtxt(PVRSRV_RGXDEV_INFO *psDevInfo,
+									 DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf);
 
+PVRSRV_ERROR PVRSRVRGXKickSyncTransferKM(RGX_SERVER_TQ_CONTEXT	*psTransferContext,
+									   IMG_UINT32				ui32ClientFenceCount,
+									   PRGXFWIF_UFO_ADDR		*pauiClientFenceUFOAddress,
+									   IMG_UINT32				*paui32ClientFenceValue,
+									   IMG_UINT32				ui32ClientUpdateCount,
+									   PRGXFWIF_UFO_ADDR		*pauiClientUpdateUFOAddress,
+									   IMG_UINT32				*paui32ClientUpdateValue,
+									   IMG_UINT32				ui32ServerSyncCount,
+									   IMG_UINT32				*pui32ServerSyncFlags,
+									   SERVER_SYNC_PRIMITIVE	**pasServerSyncs,
+									   IMG_UINT32				ui32NumFenceFDs,
+									   IMG_INT32				*paui32FenceFDs,
+									   IMG_UINT32				ui32TQPrepareFlags);
 #endif /* __RGXTRANSFER_H__ */

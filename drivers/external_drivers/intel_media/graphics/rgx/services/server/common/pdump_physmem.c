@@ -42,14 +42,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /***************************************************************************/
 
 #if defined(PDUMP)
-#include "pdump_physmem.h"
 
 #include "img_types.h"
 #include "pvr_debug.h"
 #include "pvrsrv_error.h"
 
+#include "pdump_physmem.h"
 #include "pdump_osfunc.h"
-#include "pdump_int.h"
+#include "pdump_km.h"
 
 #include "allocmem.h"
 #include "osfunc.h"
@@ -127,7 +127,7 @@ PVRSRV_ERROR PDumpPMRMalloc(const IMG_CHAR *pszDevSpace,
 	}
 
 	PDumpOSLock();
-	PDumpOSWriteString2(hScript, ui32Flags);
+	PDumpWriteScript(hScript, ui32Flags);
 	PDumpOSUnlock();
 
     psPDumpAllocationInfo->ui64Size = ui64Size;
@@ -169,7 +169,7 @@ PVRSRV_ERROR PDumpPMRFree(IMG_HANDLE hPDumpAllocationInfoHandle)
 		return eError;
 	}
 	PDumpOSLock();
-	PDumpOSWriteString2(hScript, ui32Flags);
+	PDumpWriteScript(hScript, ui32Flags);
 	PDumpOSUnlock();
 
     OSFreeMem(psPDumpAllocationInfo);
@@ -204,7 +204,7 @@ PDumpPMRWRW32(const IMG_CHAR *pszDevSpace,
 	}
 
 	PDumpOSLock();
-	PDumpOSWriteString2(hScript, uiPDumpFlags);
+	PDumpWriteScript(hScript, uiPDumpFlags);
 	PDumpOSUnlock();
 
 	return PVRSRV_OK;
@@ -237,7 +237,7 @@ PDumpPMRWRW64(const IMG_CHAR *pszDevSpace,
 	}
 
 	PDumpOSLock();
-	PDumpOSWriteString2(hScript, uiPDumpFlags);
+	PDumpWriteScript(hScript, uiPDumpFlags);
 	PDumpOSUnlock();
 
 	return PVRSRV_OK;
@@ -275,7 +275,7 @@ PDumpPMRLDB(const IMG_CHAR *pszDevSpace,
 	}
 
 	PDumpOSLock();
-	PDumpOSWriteString2(hScript, uiPDumpFlags);
+	PDumpWriteScript(hScript, uiPDumpFlags);
 	PDumpOSUnlock();
 
 	return PVRSRV_OK;
@@ -313,7 +313,7 @@ PVRSRV_ERROR PDumpPMRSAB(const IMG_CHAR *pszDevSpace,
 	}
 
 	PDumpOSLock();
-	PDumpOSWriteString2(hScript, uiPDumpFlags);
+	PDumpWriteScript(hScript, uiPDumpFlags);
 	PDumpOSUnlock();
 
 	return PVRSRV_OK;
@@ -355,7 +355,7 @@ PDumpPMRPOL(const IMG_CHAR *pszMemspaceName,
 	}
 
 	PDumpOSLock();
-	PDumpOSWriteString2(hScript, uiPDumpFlags);
+	PDumpWriteScript(hScript, uiPDumpFlags);
 	PDumpOSUnlock();
 
 	return PVRSRV_OK;
@@ -393,7 +393,7 @@ PDumpPMRCBP(const IMG_CHAR *pszMemspaceName,
 	}
 
 	PDumpOSLock();
-	PDumpOSWriteString2(hScript, uiPDumpFlags);
+	PDumpWriteScript(hScript, uiPDumpFlags);
 	PDumpOSUnlock();
 
 	return PVRSRV_OK;
@@ -408,10 +408,9 @@ PDumpWriteBuffer(IMG_UINT8 *pcBuffer,
                  PDUMP_FILEOFFSET_T *puiOffsetOut)
 {
 	PVRSRV_ERROR eError;
-    PDUMP_FILEOFFSET_T uiParamStreamOffset;
-    IMG_BOOL bStatus;
+	PVR_UNREFERENCED_PARAMETER(uiFilenameBufSz);
 
-	if (!PDumpOSJTInitialised())
+	if (!PDumpReady())
 	{
 		eError = PVRSRV_ERROR_PDUMP_NOT_AVAILABLE;
         goto e0;
@@ -420,59 +419,24 @@ PDumpWriteBuffer(IMG_UINT8 *pcBuffer,
     PVR_ASSERT(uiNumBytes > 0);
 
 	/* PRQA S 3415 1 */ /* side effects desired */
-	if (PDumpOSIsSuspended())
+	if (PDumpCtrlIsDumpSuspended())
 	{
 		return PVRSRV_OK;
 	}
 
 	PDumpOSLock();
 
-	PDumpOSCheckForSplitting(PDumpOSGetStream(PDUMP_STREAM_PARAM2),
-                             uiNumBytes,
-                             uiPDumpFlags);
-
-	uiParamStreamOffset = PDumpOSGetStreamOffset(PDUMP_STREAM_PARAM2);
-
-	bStatus = PDumpOSWriteString(PDumpOSGetStream(PDUMP_STREAM_PARAM2),
-                                 pcBuffer,
-                                 uiNumBytes,
-                                 uiPDumpFlags);
+	eError = PDumpWriteParameter(pcBuffer, uiNumBytes, uiPDumpFlags, puiOffsetOut, pszFilenameOut);
 
 	PDumpOSUnlock();
 
-    if (!bStatus)
-    {
-		eError = PVRSRV_ERROR_PDUMP_BUFFER_FULL;
-        goto e0;
-	}
-
-	if (PDumpOSGetParamFileNum() == 0)
-	{
-		eError = PDumpOSSprintf(pszFilenameOut, uiFilenameBufSz, "%%0%%.prm");
-        if (eError != PVRSRV_OK)
-        {
-            goto e0;
-        }
-	}
-	else
-	{
-		eError = PDumpOSSprintf(pszFilenameOut, uiFilenameBufSz, "%%0%%_%u.prm", PDumpOSGetParamFileNum());
-        if (eError != PVRSRV_OK)
-        {
-            goto e0;
-        }
-	}
-
-    *puiOffsetOut = uiParamStreamOffset;
+	PVR_LOGG_IF_ERROR(eError, "PDumpWriteParameter", e0);
 
 	return PVRSRV_OK;
 
-    /*
-      error exit paths follow:
-    */
-
  e0:
-    PVR_ASSERT(eError != PVRSRV_OK);
+	/* Die on debug builds */
+	PVR_ASSERT(eError != PVRSRV_OK);
     return eError;
 }
 

@@ -273,133 +273,12 @@ RGXDisableRegConfig_exit:
 	return 0;
 }
 
-#ifdef CONFIG_COMPAT
 
-/* Bridge in structure for RGXSetRegConfigPI */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXSETREGCONFIGPI_TAG
-{
-	/*IMG_HANDLE hDevNode;*/
-	IMG_UINT32 hDevNode;
-	IMG_UINT8 ui8RegPowerIsland;
-} compat_PVRSRV_BRIDGE_IN_RGXSETREGCONFIGPI;
 
-static IMG_INT
-compat_PVRSRVBridgeRGXSetRegConfigPI(IMG_UINT32 ui32BridgeID,
-					compat_PVRSRV_BRIDGE_IN_RGXSETREGCONFIGPI *psRGXSetRegConfigPIIN_32,
-					PVRSRV_BRIDGE_OUT_RGXSETREGCONFIGPI *psRGXSetRegConfigPIOUT,
-					CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXSETREGCONFIGPI sRGXSetRegConfigPIIN;
-	PVRSRV_BRIDGE_IN_RGXSETREGCONFIGPI *psRGXSetRegConfigPIIN = &sRGXSetRegConfigPIIN;
-
-	psRGXSetRegConfigPIIN->hDevNode = (IMG_HANDLE)(IMG_UINT64)psRGXSetRegConfigPIIN_32->hDevNode;
-	psRGXSetRegConfigPIIN->ui8RegPowerIsland = psRGXSetRegConfigPIIN_32->ui8RegPowerIsland;
-
-	return PVRSRVBridgeRGXSetRegConfigPI(ui32BridgeID, psRGXSetRegConfigPIIN,
-					psRGXSetRegConfigPIOUT, psConnection);
-}
-
-/* Bridge in structure for RGXAddRegconfig */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXADDREGCONFIG_TAG
-{
-	/*IMG_HANDLE hDevNode;*/
-	IMG_UINT32 hDevNode;
-	IMG_UINT32 ui32RegAddr;
-	IMG_UINT64 ui64RegValue __attribute__ ((__packed__));
-} compat_PVRSRV_BRIDGE_IN_RGXADDREGCONFIG;
-
-static IMG_INT
-compat_PVRSRVBridgeRGXAddRegconfig(IMG_UINT32 ui32BridgeID,
-					compat_PVRSRV_BRIDGE_IN_RGXADDREGCONFIG *psRGXAddRegconfigIN_32,
-					PVRSRV_BRIDGE_OUT_RGXADDREGCONFIG *psRGXAddRegconfigOUT,
-					CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXADDREGCONFIG sRGXAddRegconfigIN;
-
-	sRGXAddRegconfigIN.hDevNode = (IMG_HANDLE)(IMG_UINT64)psRGXAddRegconfigIN_32->hDevNode;
-	sRGXAddRegconfigIN.ui32RegAddr = psRGXAddRegconfigIN_32->ui32RegAddr;
-	sRGXAddRegconfigIN.ui64RegValue = psRGXAddRegconfigIN_32->ui64RegValue;
-
-	return PVRSRVBridgeRGXAddRegconfig(ui32BridgeID,
-					&sRGXAddRegconfigIN,
-					psRGXAddRegconfigOUT,
-					psConnection);
-
-}
-
-/* Bridge in structure for RGXClearRegConfig */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXCLEARREGCONFIG_TAG
-{
-	/*IMG_HANDLE hDevNode;*/
-	IMG_UINT32 hDevNode;
-} compat_PVRSRV_BRIDGE_IN_RGXCLEARREGCONFIG;
-
-static IMG_INT
-compat_PVRSRVBridgeRGXClearRegConfig(IMG_UINT32 ui32BridgeID,
-				compat_PVRSRV_BRIDGE_IN_RGXCLEARREGCONFIG *psRGXClearRegConfigIN_32,
-				PVRSRV_BRIDGE_OUT_RGXCLEARREGCONFIG *psRGXClearRegConfigOUT,
-				CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXCLEARREGCONFIG sRGXClearRegConfigIN;
-
-	sRGXClearRegConfigIN.hDevNode = (IMG_HANDLE)(IMG_UINT64)psRGXClearRegConfigIN_32->hDevNode;
-
-	return PVRSRVBridgeRGXClearRegConfig(ui32BridgeID,
-						&sRGXClearRegConfigIN,
-						psRGXClearRegConfigOUT,
-						psConnection);
-}
-
-/* Bridge in structure for RGXEnableRegConfig */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXENABLEREGCONFIG_TAG
-{
-	/*IMG_HANDLE hDevNode;*/
-	IMG_UINT32 hDevNode;
-} compat_PVRSRV_BRIDGE_IN_RGXENABLEREGCONFIG;
-
-static IMG_INT
-compat_PVRSRVBridgeRGXEnableRegConfig(IMG_UINT32 ui32BridgeID,
-					compat_PVRSRV_BRIDGE_IN_RGXENABLEREGCONFIG *psRGXEnableRegConfigIN_32,
-					PVRSRV_BRIDGE_OUT_RGXENABLEREGCONFIG *psRGXEnableRegConfigOUT,
-					CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXENABLEREGCONFIG sRGXEnableRegConfigIN;
-
-	sRGXEnableRegConfigIN.hDevNode = (IMG_HANDLE)(IMG_UINT64)psRGXEnableRegConfigIN_32->hDevNode;
-
-	return PVRSRVBridgeRGXEnableRegConfig(ui32BridgeID,
-					&sRGXEnableRegConfigIN,
-					psRGXEnableRegConfigOUT,
-					psConnection);
-}
-
-/* Bridge in structure for RGXDisableRegConfig */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXDISABLEREGCONFIG_TAG
-{
-        /*IMG_HANDLE hDevNode;*/
-	IMG_UINT32 hDevNode;
-} compat_PVRSRV_BRIDGE_IN_RGXDISABLEREGCONFIG;
-
-static IMG_INT
-compat_PVRSRVBridgeRGXDisableRegConfig(IMG_UINT32 ui32BridgeID,
-					compat_PVRSRV_BRIDGE_IN_RGXDISABLEREGCONFIG *psRGXDisableRegConfigIN_32,
-					PVRSRV_BRIDGE_OUT_RGXDISABLEREGCONFIG *psRGXDisableRegConfigOUT,
-					CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXDISABLEREGCONFIG sRGXDisableRegConfigIN;
-
-	sRGXDisableRegConfigIN.hDevNode =  (IMG_HANDLE)(IMG_UINT64)psRGXDisableRegConfigIN_32->hDevNode;
-
-	return PVRSRVBridgeRGXDisableRegConfig(ui32BridgeID, &sRGXDisableRegConfigIN,
-					psRGXDisableRegConfigOUT, psConnection);
-}
-
-#endif
-
-/* ***************************************************************************
- * Server bridge dispatch related glue
+/* *************************************************************************** 
+ * Server bridge dispatch related glue 
  */
-
+ 
 PVRSRV_ERROR RegisterREGCONFIGFunctions(IMG_VOID);
 IMG_VOID UnregisterREGCONFIGFunctions(IMG_VOID);
 
@@ -408,19 +287,11 @@ IMG_VOID UnregisterREGCONFIGFunctions(IMG_VOID);
  */
 PVRSRV_ERROR RegisterREGCONFIGFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXSETREGCONFIGPI, compat_PVRSRVBridgeRGXSetRegConfigPI);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXADDREGCONFIG, compat_PVRSRVBridgeRGXAddRegconfig);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXCLEARREGCONFIG, compat_PVRSRVBridgeRGXClearRegConfig);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXENABLEREGCONFIG, compat_PVRSRVBridgeRGXEnableRegConfig);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXDISABLEREGCONFIG, compat_PVRSRVBridgeRGXDisableRegConfig);
-#else
 	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXSETREGCONFIGPI, PVRSRVBridgeRGXSetRegConfigPI);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXADDREGCONFIG, PVRSRVBridgeRGXAddRegconfig);
-        SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXCLEARREGCONFIG, PVRSRVBridgeRGXClearRegConfig);
-        SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXENABLEREGCONFIG, PVRSRVBridgeRGXEnableRegConfig);
-        SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXDISABLEREGCONFIG, PVRSRVBridgeRGXDisableRegConfig);
-#endif
+	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXCLEARREGCONFIG, PVRSRVBridgeRGXClearRegConfig);
+	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXENABLEREGCONFIG, PVRSRVBridgeRGXEnableRegConfig);
+	SetDispatchTableEntry(PVRSRV_BRIDGE_REGCONFIG_RGXDISABLEREGCONFIG, PVRSRVBridgeRGXDisableRegConfig);
 
 	return PVRSRV_OK;
 }

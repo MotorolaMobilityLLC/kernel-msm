@@ -60,11 +60,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 typedef struct _ENV_DATA_TAG
 {
-	IMG_VOID		*pvBridgeData;
-	struct pm_dev		*psPowerDevice;
+	void			*pvBridgeData;
+	struct pm_dev	*psPowerDevice;
 } ENV_DATA;
 
-ENV_DATA *OSGetEnvData(IMG_VOID);
+ENV_DATA *OSGetEnvData(void);
 
 #endif /* _ENV_DATA_ */
 /*****************************************************************************

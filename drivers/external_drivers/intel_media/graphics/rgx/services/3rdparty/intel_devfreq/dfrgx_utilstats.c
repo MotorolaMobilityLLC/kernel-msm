@@ -69,24 +69,44 @@ static DFRGX_HWPERF_OBJ *pDFRGX_Obj = NULL;
 
 static unsigned int gpu_rgx_acquire_device(void){
 
-	PVRSRV_DEVICE_IDENTIFIER *pdevice_list = IMG_NULL;
+	PVRSRV_DEVICE_TYPE *peDeviceTypeInt = IMG_NULL;
+	PVRSRV_DEVICE_CLASS *peDeviceClassInt = IMG_NULL;
+	IMG_UINT32 *pui32DeviceIndexInt = IMG_NULL;
 	IMG_HANDLE h_dev_cookie = IMG_NULL;
 	IMG_UINT32 num_devices = 0;
 	unsigned int error = DFRGX_HWPERF_OK;
 	IMG_UINT32 rgx_index = IMG_UINT32_MAX;
 	int i = 0;
 
-	pdevice_list = kzalloc(PVRSRV_MAX_DEVICES * sizeof(PVRSRV_DEVICE_IDENTIFIER), GFP_KERNEL);
-	if (!pdevice_list) {
-		error = PVRSRV_ERROR_OUT_OF_MEMORY;
-		goto go_out;
-	}
+	if (pDFRGX_Obj) {
+		peDeviceTypeInt = kzalloc(PVRSRV_MAX_DEVICES * sizeof(PVRSRV_DEVICE_TYPE), GFP_KERNEL);
+		if (!peDeviceTypeInt)
+		{
+			error = PVRSRV_ERROR_OUT_OF_MEMORY;
+			goto go_free;
+		}
 
-	if (pDFRGX_Obj != NULL) {
+		peDeviceClassInt = kzalloc(PVRSRV_MAX_DEVICES * sizeof(PVRSRV_DEVICE_CLASS), GFP_KERNEL);
+		if (!peDeviceClassInt)
+		{
+			error = PVRSRV_ERROR_OUT_OF_MEMORY;
+			goto go_free;
+		}
+
+		pui32DeviceIndexInt = kzalloc(PVRSRV_MAX_DEVICES * sizeof(IMG_UINT32), GFP_KERNEL);
+		if (!pui32DeviceIndexInt)
+		{
+			error = PVRSRV_ERROR_OUT_OF_MEMORY;
+			goto go_free;
+		}
+
 		/* Enumerate active devices */
-		error = PVRSRVEnumerateDevicesKM(&num_devices, pdevice_list);
-		if (error || !pdevice_list) {
-
+		error = PVRSRVEnumerateDevicesKM(
+						&num_devices,
+						peDeviceTypeInt,
+						peDeviceClassInt,
+						pui32DeviceIndexInt);
+		if (error) {
 			DFRGX_DEBUG_MSG_1("%s: PVRSRVEnumarateDevicesKM failed %d\n", error);
 			goto go_free;
 		}
@@ -94,10 +114,10 @@ static unsigned int gpu_rgx_acquire_device(void){
 		DFRGX_DEBUG_MSG_1("%s: Num Devices : %d \n", num_devices);
 
 		for (i = 0; i < num_devices; i++) {
-			DFRGX_DEBUG_MSG_2("%s: Index %d:  Device %d:\n", 
-				i, pdevice_list[i].eDeviceType);
+			DFRGX_DEBUG_MSG_2("%s: Index %d:  Device %d:\n",
+				i, peDeviceTypeInt[i]);
 
-			if (pdevice_list[i].eDeviceType == PVRSRV_DEVICE_TYPE_RGX) {
+			if (peDeviceTypeInt[i] == PVRSRV_DEVICE_TYPE_RGX) {
 				rgx_index = i;
 				break;
 			}
@@ -117,7 +137,7 @@ static unsigned int gpu_rgx_acquire_device(void){
 		}
 
 		pDFRGX_Obj->pdev_node = (PVRSRV_DEVICE_NODE*)h_dev_cookie;
-		DFRGX_DEBUG_MSG_2("%s: Acquired Device node name: %s, Device type: %d \n", 
+		DFRGX_DEBUG_MSG_2("%s: Acquired Device node name: %s, Device type: %d \n",
 			pDFRGX_Obj->pdev_node->szRAName, pDFRGX_Obj->pdev_node->sDevId.eDeviceType);
 	} else {
 
@@ -126,8 +146,13 @@ static unsigned int gpu_rgx_acquire_device(void){
 	}
 
 go_free:
-	kfree(pdevice_list);
-go_out:
+	if (peDeviceTypeInt)
+		kfree(peDeviceTypeInt);
+	if (peDeviceClassInt)
+		kfree(peDeviceClassInt);
+	if (pui32DeviceIndexInt)
+		kfree(pui32DeviceIndexInt);
+
 	return error;
 }
 
@@ -158,7 +183,7 @@ EXPORT_SYMBOL(gpu_rgx_get_util_stats);
 unsigned int gpu_rgx_utilstats_init_obj(void){
 
 	unsigned int error = DFRGX_HWPERF_OK;
-	
+
 	if (pDFRGX_Obj) {
 		DFRGX_DEBUG_MSG("%s: pDFRGX Object already initialized! \n");
 		goto go_out;

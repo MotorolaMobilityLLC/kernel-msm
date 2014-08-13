@@ -42,8 +42,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _RGXCONFIG_KM_5_V_1_17_H_
 #define _RGXCONFIG_KM_5_V_1_17_H_
 
-/***** Automatically generated file (1/28/2014 3:39:54 PM): Do not edit manually ********************/
-/***** Timestamp:  (1/28/2014 3:39:54 PM)************************************************************/
+/***** Automatically generated file (6/2/2014 6:25:01 AM): Do not edit manually ********************/
+/***** Timestamp:  (6/2/2014 6:25:01 AM)************************************************************/
 
 #define RGX_BNC_KM_B 5
 #define RGX_BNC_KM_N 1
@@ -59,6 +59,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_FEATURE_NUM_CLUSTERS (1)
 #define RGX_FEATURE_VIRTUAL_ADDRESS_SPACE_BITS (40)
 #define RGX_FEATURE_SLC_BANKS (1)
+#define RGX_FEATURE_NUM_ISP_IPP_PIPES (1)
 #define RGX_FEATURE_META (MTP218)
 
 

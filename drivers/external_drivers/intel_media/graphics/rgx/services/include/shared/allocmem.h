@@ -52,11 +52,13 @@ extern "C" {
 
 IMG_PVOID OSAllocMem(IMG_UINT32 ui32Size);
 
-IMG_PVOID OSReAllocMem(IMG_PVOID pvCpuVAddr, IMG_UINT32 ui32Size);
+IMG_PVOID OSAllocMemstatMem(IMG_UINT32 ui32Size);
+IMG_PVOID OSReallocMem(IMG_PVOID pvCpuVAddr, IMG_UINT32 ui32Size);
 
 IMG_PVOID OSAllocZMem(IMG_UINT32 ui32Size);
 
 IMG_VOID OSFreeMem(IMG_PVOID pvCpuVAddr);
+IMG_VOID OSFreeMemstatMem(IMG_PVOID pvCpuVAddr);
 
 #define OSFREEMEM(_ptr) do \
 	{ OSFreeMem((_ptr)); \

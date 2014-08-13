@@ -55,7 +55,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pdump_km.h"
 #include "pmr.h"
 #include "pmr_impl.h"
-
+#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
+#include "process_stats.h"
+#endif
 
 typedef struct _PMR_LMALLOCARRAY_DATA_ {
 	PVRSRV_DEVICE_NODE *psDevNode;
@@ -319,6 +321,21 @@ _AllocLMPages(PMR_LMALLOCARRAY_DATA *psPageArrayDataPtr)
 			goto errorOnRAAlloc;
 		}
 
+#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_MEMORY_STATS_LITE)
+		PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES, uiActualSize);
+#else
+		{
+			IMG_CPU_PHYADDR sLocalCpuPAddr;
+			sLocalCpuPAddr.uiAddr = (IMG_UINT64)uiCardAddr;
+			PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES,
+									 IMG_NULL,
+									 sLocalCpuPAddr,
+									 uiActualSize,
+									 IMG_NULL);
+		}
+#endif
+#endif
 		psPageArrayDataPtr->pasDevPAddr[i].uiAddr = uiCardAddr;
 
 		if (bPoisonOnAlloc)
@@ -400,6 +417,15 @@ _FreeLMPages(PMR_LMALLOCARRAY_DATA *psPageArrayData)
 		}
 		RA_Free(psPageArrayData->psDevNode->psLocalDevMemArena,
 				psPageArrayData->pasDevPAddr[i].uiAddr);
+#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_MEMORY_STATS_LITE)
+		PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES, uiAllocSize);
+#else
+        {
+			PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES, psPageArrayData->pasDevPAddr[i].uiAddr);
+        }
+#endif
+#endif
 	}
 
 	psPageArrayData->bHasLMPages = IMG_FALSE;

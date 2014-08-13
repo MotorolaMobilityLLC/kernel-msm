@@ -68,12 +68,6 @@ typedef struct _HANDLE_IMPL_FUNCTAB_
 
 	PVRSRV_ERROR (*pfnIterateOverHandles)(HANDLE_IMPL_BASE *psHandleBase, PFN_HANDLE_ITER pfnHandleIter, IMG_VOID *pvHandleIterData);
 
-	/* Get the maximum handle value for the given handle base */
-	IMG_UINT32 (*pfnGetMaxHandle)(HANDLE_IMPL_BASE *psHandleBase);
-
-	/* Set the maximum handle value for the given handle base */
-	PVRSRV_ERROR (*pfnSetMaxHandle)(HANDLE_IMPL_BASE *psHandleBase, IMG_UINT32 ui32MaxHandle);
-
 	/* Enable handle purging on the given handle base */
 	PVRSRV_ERROR (*pfnEnableHandlePurging)(HANDLE_IMPL_BASE *psHandleBase);
 

@@ -43,50 +43,49 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <asm/io.h>
 
 #include "img_defs.h"
-#include "mutils.h"
 #include "pvr_debug.h"
 #include "mm.h"
-#include "process_stats.h"
 #include "pvrsrv_memallocflags.h"
 #include "devicemem_server_utils.h"
 
+#if defined(__arm__)
+#define ioremap_cache(x,y) ioremap_cached(x,y)
+#endif
 
-IMG_VOID *
+void *
 _IORemapWrapper(IMG_CPU_PHYADDR BasePAddr,
                IMG_UINT32 ui32Bytes,
                IMG_UINT32 ui32MappingFlags,
                IMG_CHAR *pszFileName,
                IMG_UINT32 ui32Line)
 {
-    IMG_VOID *pvIORemapCookie;
+	void *pvIORemapCookie;
 	IMG_UINT32 ui32CPUCacheMode = DevmemCPUCacheMode(ui32MappingFlags);
 
 	switch (ui32CPUCacheMode)
 	{
 		case PVRSRV_MEMALLOCFLAG_CPU_UNCACHED:
-				pvIORemapCookie = (IMG_VOID *)IOREMAP_UC(BasePAddr.uiAddr, ui32Bytes);
+				pvIORemapCookie = (void *)ioremap_nocache(BasePAddr.uiAddr, ui32Bytes);
 				break;
-
 		case PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE:
-				pvIORemapCookie = (IMG_VOID *)IOREMAP_WC(BasePAddr.uiAddr, ui32Bytes);
+#if defined(__i386__) || defined(__x86_64) || defined(__arm__) || defined(__arm64__)
+				pvIORemapCookie = (void *)ioremap_wc(BasePAddr.uiAddr, ui32Bytes);
+#else
+				pvIORemapCookie = (void *)ioremap_nocache(BasePAddr.uiAddr, ui32Bytes);
+#endif
 				break;
-
 		case PVRSRV_MEMALLOCFLAG_CPU_CACHED:
-				pvIORemapCookie = (IMG_VOID *)IOREMAP(BasePAddr.uiAddr, ui32Bytes);
+#if defined(__i386__) || defined(__x86_64) || defined(__arm__) || defined(__arm64__)
+				pvIORemapCookie = (void *)ioremap_cache(BasePAddr.uiAddr, ui32Bytes);
+#else
+				pvIORemapCookie = (void *)ioremap(BasePAddr.uiAddr, ui32Bytes);
+#endif
 				break;
-
 		default:
 				return IMG_NULL;
 				break;
 	}
 
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-	PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_IOREMAP,
-                                 pvIORemapCookie,
-                                 BasePAddr,
-                                 ui32Bytes,
-                                 IMG_NULL);
-#endif
 
     PVR_UNREFERENCED_PARAMETER(pszFileName);
     PVR_UNREFERENCED_PARAMETER(ui32Line);
@@ -95,16 +94,12 @@ _IORemapWrapper(IMG_CPU_PHYADDR BasePAddr,
 }
 
 
-IMG_VOID
-_IOUnmapWrapper(IMG_VOID *pvIORemapCookie, IMG_CHAR *pszFileName, IMG_UINT32 ui32Line)
+void
+_IOUnmapWrapper(void *pvIORemapCookie, IMG_CHAR *pszFileName, IMG_UINT32 ui32Line)
 {
     PVR_UNREFERENCED_PARAMETER(pszFileName);
     PVR_UNREFERENCED_PARAMETER(ui32Line);
 
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-	PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_IOREMAP,
-                                    pvIORemapCookie);
-#endif
 
     iounmap(pvIORemapCookie);
 }

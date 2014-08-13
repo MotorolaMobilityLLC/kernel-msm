@@ -85,24 +85,27 @@ typedef struct _RGX_GPU_DVFS_HIST_
 
 typedef struct _RGXFWIF_GPU_UTIL_STATS_
 {
-	IMG_BOOL                bValid;                                 /* If TRUE, statistics are valid.
-It might be FALSE if DVFS frequency is not provided by system layer (see RGX_TIMING_INFORMATION::ui32CoreClockSpeed)
-or if the driver couldn't acquire the PowerLock */
-	IMG_BOOL                bIncompleteData;                /* TRUE when the host couldn't find enough data to cover the whole time window, so the returned values could be wrong */
-	IMG_UINT32              ui32GpuStatActiveHigh;  /* GPU active high ratio expressed in 0,01% units */
-	IMG_UINT32              ui32GpuStatActiveLow;   /* GPU active low (i.e. TLA active only) ratio expressed in 0,01% units */
-	IMG_UINT32              ui32GpuStatBlocked;             /* GPU blocked ratio expressed in 0,01% units */
-	IMG_UINT32              ui32GpuStatIdle;                /* GPU idle ratio expressed in 0,01% units */
+	IMG_BOOL		bValid;					/* If TRUE, statistics are valid.
+											   It might be FALSE if DVFS frequency is not provided by system layer (see RGX_TIMING_INFORMATION::ui32CoreClockSpeed)
+											   or if the driver couldn't acquire the PowerLock */
+	IMG_BOOL		bIncompleteData;		/* TRUE when the host couldn't find enough data to cover the whole time window, so the returned values could be wrong */
+	IMG_UINT32		ui32GpuStatActiveHigh;	/* GPU active high ratio expressed in 0,01% units */
+	IMG_UINT32		ui32GpuStatActiveLow;	/* GPU active low (i.e. TLA active only) ratio expressed in 0,01% units */
+	IMG_UINT32		ui32GpuStatBlocked;		/* GPU blocked ratio expressed in 0,01% units */
+	IMG_UINT32		ui32GpuStatIdle;		/* GPU idle ratio expressed in 0,01% units */
 } RGXFWIF_GPU_UTIL_STATS;
 
 typedef struct _RGX_REG_CONFIG_
 {
-	IMG_BOOL		bEnabled;
+	IMG_BOOL			bEnabled;
 	RGXFWIF_PWR_EVT		ePowerIslandToPush;
 	IMG_UINT32      	ui32NumRegRecords;
 } RGX_REG_CONFIG;
 
 typedef struct _PVRSRV_STUB_PBDESC_ PVRSRV_STUB_PBDESC;
+
+/* there is a corresponding define in rgxapi.h */
+#define RGX_MAX_TIMER_QUERIES 16
 
 /*!
  ******************************************************************************
@@ -136,6 +139,7 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 
 	PVRSRV_STUB_PBDESC		*psStubPBDescListKM;
 
+    IMG_BOOL				bEnableProcessStats;
 
 	/* Firmware memory context info */
 	DEVMEM_CONTEXT			*psKernelDevmemCtx;
@@ -191,7 +195,7 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 	DEVMEM_MEMDESC			*psRGXFWIfGpuUtilFWCbCtlMemDesc;
 	RGXFWIF_GPU_UTIL_FWCB	*psRGXFWIfGpuUtilFWCb;
 
-	DEVMEM_MEMDESC			*psRGXFWIfHWPerfBufCtlMemDesc;
+	DEVMEM_MEMDESC			*psRGXFWIfHWPerfBufMemDesc;
 	IMG_BYTE				*psRGXFWIfHWPerfBuf;
 	IMG_UINT32				ui32RGXFWIfHWPerfBufSize; /* in bytes */
 	
@@ -211,13 +215,26 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 	DEVMEM_MEMDESC			*psRGXFWSig3DChecksMemDesc;	
 	IMG_UINT32				ui32Sig3DChecksSize;
 
+#if defined(RGX_FEATURE_RAY_TRACING)
+	DEVMEM_MEMDESC			*psRGXFWSigRTChecksMemDesc;
+	IMG_UINT32				ui32SigRTChecksSize;
+	
+	DEVMEM_MEMDESC			*psRGXFWSigSHChecksMemDesc;
+	IMG_UINT32				ui32SigSHChecksSize;
+#endif
+
 	IMG_VOID				*pvLISRData;
 	IMG_VOID				*pvMISRData;
+	IMG_VOID				*pvAPMISRData;
 	
-	DEVMEM_MEMDESC			*psRGXBIFFaultAddressMemDesc;
+	DEVMEM_MEMDESC			*psRGXFaultAddressMemDesc;
 
 #if defined(FIX_HW_BRN_37200)
 	DEVMEM_MEMDESC			*psRGXFWHWBRN37200MemDesc;
+#endif
+
+#if defined(RGX_FEATURE_SLC_VIVT)
+	DEVMEM_MEMDESC			*psSLC3FenceMemDesc;
 #endif
 
 #if defined (PDUMP)
@@ -254,7 +271,6 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 	PSYNC_PRIM_CONTEXT		hSyncPrimContext;
 	PVRSRV_CLIENT_SYNC_PRIM *psPowSyncPrim;
 
-	IMG_VOID				(*pfnActivePowerCheck) (PVRSRV_DEVICE_NODE *psDeviceNode);
 	IMG_UINT32				ui32ActivePMReqOk;
 	IMG_UINT32				ui32ActivePMReqDenied;
 	IMG_UINT32				ui32ActivePMReqTotal;
@@ -268,6 +284,23 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 	IMG_UINT32  ui32KCCBLastROff[RGXFWIF_DM_MAX];
 	IMG_UINT32  ui32LastGEOTimeouts;
 
+
+	/* Timer Queries */
+	IMG_UINT32     ui32ActiveQueryId;       /*!< id of the active line */
+	IMG_BOOL       bSaveStart;              /*!< save the start time of the next kick on the device*/
+	IMG_BOOL       bSaveEnd;                /*!< save the end time of the next kick on the device*/
+
+	DEVMEM_MEMDESC * psStartTimeMemDesc;    /*!< memdesc for Start Times */
+	IMG_UINT64     * pui64StartTimeById;    /*!< CPU mapping of the above */
+
+	DEVMEM_MEMDESC * psEndTimeMemDesc;      /*!< memdesc for End Timer */
+	IMG_UINT64     * pui64EndTimeById;      /*!< CPU mapping of the above */
+
+	IMG_UINT32     aui32ScheduledOnId[RGX_MAX_TIMER_QUERIES];      /*!< kicks Scheduled on QueryId */
+	DEVMEM_MEMDESC * psCompletedMemDesc;    /*!< kicks Completed on QueryId */
+	IMG_UINT32     * pui32CompletedById;    /*!< CPU mapping of the above */
+
+
 	/* GPU DVFS History and GPU Utilization stats */
 	RGX_GPU_DVFS_HIST*      psGpuDVFSHistory;
 	RGXFWIF_GPU_UTIL_STATS	(*pfnGetGpuUtilStats) (PVRSRV_DEVICE_NODE *psDeviceNode);
@@ -278,8 +311,11 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 	IMG_BOOL				bIgnoreFurtherIRQs;
 	DLLIST_NODE				sMemoryContextList;
 
-	/* lock protect for RenderCtx list to avoid node remove/add during dump*/
-	POSWR_LOCK hLockRenderList;
+	POSWR_LOCK		hRenderCtxListLock;
+	POSWR_LOCK		hComputeCtxListLock;
+	POSWR_LOCK		hTransferCtxListLock;
+	POSWR_LOCK		hRaytraceCtxListLock;
+	POSWR_LOCK		hMemoryCtxListLock;
 
 	/* Linked lists of contexts on this device */
 	DLLIST_NODE 		sRenderCtxtListHead;
@@ -287,10 +323,8 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 	DLLIST_NODE 		sTransferCtxtListHead;
 	DLLIST_NODE 		sRaytraceCtxtListHead;
 
-#if defined(RGXFW_POWMON_TEST)
-	IMG_HANDLE			hPowerMonitoringThread;	    /*!< Fatal Error Detection thread */
-	IMG_BOOL			bPowMonEnable;
-#endif
+	DLLIST_NODE 		sCommonCtxtListHead;
+	IMG_UINT32			ui32CommonCtxtCurrentID;			/*!< ID assigned to the next common context */
 } PVRSRV_RGXDEV_INFO;
 
 

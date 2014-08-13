@@ -63,8 +63,20 @@ extern "C" {
 #include "pdump.h"
 #include "pdumpdefs.h"
 
-#define PDUMP_PD_UNIQUETAG			(IMG_HANDLE)0
-#define PDUMP_PT_UNIQUETAG			(IMG_HANDLE)0
+/* Define this to enable the PDUMP_HERE trace in the server */
+#undef PDUMP_TRACE
+
+#if defined(PDUMP_TRACE)
+#define PDUMP_HERE(a)	if (ui32Flags & PDUMP_FLAGS_DEBUG) PVR_DPF((PVR_DBG_WARNING, "HERE %d", (a)))
+#define PDUMP_HEREA(a)	PVR_DPF((PVR_DBG_WARNING, "HERE ALWAYS %d", (a)))
+#else
+#define PDUMP_HERE(a)	(void)(a);
+#define PDUMP_HEREA(a)	(void)(a);
+#endif
+
+#define PDUMP_PD_UNIQUETAG	(IMG_HANDLE)0
+#define PDUMP_PT_UNIQUETAG	(IMG_HANDLE)0
+
 
 #if defined(PDUMP_DEBUG_OUTFILES)
 /* counter increments each time debug write is called */
@@ -86,13 +98,25 @@ typedef PVRSRV_ERROR (*PFN_PDUMP_TRANSITION)(IMG_PVOID *pvData, IMG_BOOL bInto, 
 	/* Shared across pdump_x files */
 	PVRSRV_ERROR PDumpInitCommon(IMG_VOID);
 	IMG_VOID PDumpDeInitCommon(IMG_VOID);
-	IMG_VOID PDumpInit(IMG_VOID);
-	IMG_VOID PDumpDeInit(IMG_VOID);
-	IMG_BOOL PDumpIsSuspended(IMG_VOID);
+	IMG_BOOL PDumpReady(IMG_VOID);
+	IMG_VOID PDumpGetParameterZeroPageInfo(PDUMP_FILEOFFSET_T *puiZeroPageOffset,
+									IMG_SIZE_T *puiZeroPageSize,
+									const IMG_CHAR **ppszZeroPageFilename);
+
+	IMG_VOID PDumpConnectionNotify(IMG_VOID);
+
 	PVRSRV_ERROR PDumpStartInitPhaseKM(IMG_VOID);
 	PVRSRV_ERROR PDumpStopInitPhaseKM(IMG_MODULE_ID eModuleID);
-	IMG_IMPORT PVRSRV_ERROR PDumpSetFrameKM(CONNECTION_DATA *psConnection, IMG_UINT32 ui32Frame);
-	IMG_IMPORT PVRSRV_ERROR PDumpCommentKM(IMG_CHAR *pszComment, IMG_UINT32 ui32Flags);
+	PVRSRV_ERROR PDumpSetFrameKM(CONNECTION_DATA *psConnection, IMG_UINT32 ui32Frame);
+	PVRSRV_ERROR PDumpGetFrameKM(CONNECTION_DATA *psConnection, IMG_UINT32* pui32Frame);
+	PVRSRV_ERROR PDumpCommentKM(IMG_CHAR *pszComment, IMG_UINT32 ui32Flags);
+
+	PVRSRV_ERROR PDumpSetDefaultCaptureParamsKM(IMG_UINT32 ui32Mode,
+	                                           IMG_UINT32 ui32Start,
+	                                           IMG_UINT32 ui32End,
+	                                           IMG_UINT32 ui32Interval,
+	                                           IMG_UINT32 ui32MaxParamFileSize);
+
 
 	PVRSRV_ERROR PDumpReg32(IMG_CHAR	*pszPDumpRegName,
 							IMG_UINT32	ui32RegAddr,
@@ -219,20 +243,68 @@ typedef PVRSRV_ERROR (*PFN_PDUMP_TRANSITION)(IMG_PVOID *pvData, IMG_BOOL bInto, 
 	                      IMG_UINT32 ui32XStride,
 	                      IMG_UINT32 ui32Flags);
 
-	IMG_VOID PDumpSuspendKM(IMG_VOID);
-	IMG_VOID PDumpResumeKM(IMG_VOID);
-
-	IMG_VOID PDumpPowerTransitionStartKM(IMG_VOID);
-	IMG_VOID PDumpPowerTransitionEndKM(IMG_VOID);
-
 	PVRSRV_ERROR PDumpCreateLockKM(IMG_VOID);
 	IMG_VOID PDumpDestroyLockKM(IMG_VOID);
 	IMG_VOID PDumpLockKM(IMG_VOID);
 	IMG_VOID PDumpUnlockKM(IMG_VOID);
 
+	/*
+	    Process persistence common API for use by common
+	    clients e.g. mmu and physmem.
+	 */
+	IMG_BOOL PDumpIsPersistent(IMG_VOID);
+	PVRSRV_ERROR PDumpAddPersistantProcess(IMG_VOID);
+
 	PVRSRV_ERROR PDumpIfKM(IMG_CHAR		*pszPDumpCond);
 	PVRSRV_ERROR PDumpElseKM(IMG_CHAR	*pszPDumpCond);
 	PVRSRV_ERROR PDumpFiKM(IMG_CHAR		*pszPDumpCond);
+
+	IMG_VOID   PDumpCtrlInit(IMG_UINT32 ui32InitCapMode);
+	IMG_VOID   PDumpCtrlSetDefaultCaptureParams(IMG_UINT32 ui32Mode, IMG_UINT32 ui32Start, IMG_UINT32 ui32End, IMG_UINT32 ui32Interval);
+	IMG_BOOL   PDumpCtrlCapModIsFramed(IMG_VOID);
+	IMG_BOOL   PDumpCtrlCapModIsContinuous(IMG_VOID);
+	IMG_UINT32 PDumpCtrlGetCurrentFrame(IMG_VOID);
+	IMG_VOID   PDumpCtrlSetCurrentFrame(IMG_UINT32 ui32Frame);
+	IMG_BOOL   PDumpCtrlCaptureOn(IMG_VOID);
+	IMG_BOOL   PDumpCtrlCaptureRangePast(IMG_VOID);
+	IMG_BOOL   PDumpCtrlCaptureRangeUnset(IMG_VOID);
+	IMG_BOOL   PDumpCtrIsLastCaptureFrame(IMG_VOID);
+	IMG_BOOL   PDumpCtrlInitPhaseComplete(IMG_VOID);
+	IMG_VOID   PDumpCtrlSetInitPhaseComplete(IMG_BOOL bIsComplete);
+	IMG_VOID   PDumpCtrlSuspend(IMG_VOID);
+	IMG_VOID   PDumpCtrlResume(IMG_VOID);
+	IMG_BOOL   PDumpCtrlIsDumpSuspended(IMG_VOID);
+	IMG_VOID   PDumpCtrlPowerTransitionStart(IMG_VOID);
+	IMG_VOID   PDumpCtrlPowerTransitionEnd(IMG_VOID);
+	IMG_BOOL   PDumpCtrlInPowerTransition(IMG_VOID);
+
+	/*!
+	 * @name	PDumpWriteParameter
+	 * @brief	General function for writing to PDump stream. Used
+	 *          mainly for memory dumps to parameter stream.
+	 * 			Usually more convenient to use PDumpWriteScript below
+	 * 			for the script stream.
+	 * @param	psui8Data - data to write
+	 * @param	ui32Size - size of write
+	 * @param	ui32Flags - PDump flags
+	 * @param   pui32FileOffset - on return contains the file offset to
+	 *                            the start of the parameter data
+	 * @param   aszFilenameStr - pointer to at least a 20 char buffer to
+	 *                           return the parameter filename
+	 * @return	error
+	 */
+	PVRSRV_ERROR PDumpWriteParameter(IMG_UINT8 *psui8Data, IMG_UINT32 ui32Size,
+			IMG_UINT32 ui32Flags, IMG_UINT32* pui32FileOffset,
+			IMG_CHAR* aszFilenameStr);
+
+	/*!
+	 * @name	PDumpWriteScript
+	 * @brief	Write an PDumpOS created string to the "script" output stream
+	 * @param	hString - PDump OS layer handle of string buffer to write
+	 * @param	ui32Flags - PDump flags
+	 * @return	IMG_TRUE on success.
+	 */
+	IMG_BOOL PDumpWriteScript(IMG_HANDLE hString, IMG_UINT32 ui32Flags);
 
     /*
       PDumpWriteShiftedMaskedValue():
@@ -300,7 +372,6 @@ extern PVRSRV_ERROR PDumpTransition(PDUMP_CONNECTION_DATA *psPDumpConnectionData
 
 	#define PDUMPINIT				PDumpInitCommon
 	#define PDUMPDEINIT				PDumpDeInitCommon
-	#define PDUMPISLASTFRAME		PDumpIsLastCaptureFrameKM
 	#define PDUMPREG32				PDumpReg32
 	#define PDUMPREG64				PDumpReg64
 	#define PDUMPREGREAD32			PDumpRegRead32
@@ -316,10 +387,9 @@ extern PVRSRV_ERROR PDumpTransition(PDUMP_CONNECTION_DATA *psPDumpConnectionData
 	#define PDUMPENDINITPHASE		PDumpStopInitPhaseKM
 	#define PDUMPIDLWITHFLAGS		PDumpIDLWithFlags
 	#define PDUMPIDL				PDumpIDL
-	#define PDUMPSUSPEND			PDumpSuspendKM
-	#define PDUMPRESUME				PDumpResumeKM
-	#define PDUMPPOWCMDSTART		PDumpPowerTransitionStartKM
-	#define PDUMPPOWCMDEND			PDumpPowerTransitionEndKM
+	#define PDUMPPOWCMDSTART		PDumpCtrlPowerTransitionStart
+	#define PDUMPPOWCMDEND			PDumpCtrlPowerTransitionEnd
+	#define PDUMPPOWCMDINTRANS		PDumpCtrlInPowerTransition
 	#define PDUMPIF					PDumpIfKM
 	#define PDUMPELSE				PDumpElseKM
 	#define PDUMPFI					PDumpFiKM
@@ -338,6 +408,16 @@ PDumpInitCommon(IMG_VOID)
 {
 	return PVRSRV_OK;
 }
+
+#ifdef INLINE_IS_PRAGMA
+#pragma inline(PDumpConnectionNotify)
+#endif
+static INLINE IMG_VOID
+PDumpConnectionNotify(IMG_VOID)
+{
+	return;
+}
+
 
 #ifdef INLINE_IS_PRAGMA
 #pragma inline(PDumpCreateLockKM)
@@ -412,6 +492,17 @@ PDumpSetFrameKM(CONNECTION_DATA *psConnection, IMG_UINT32 ui32Frame)
 }
 
 #ifdef INLINE_IS_PRAGMA
+#pragma inline(PDumpGetFrameKM)
+#endif
+static INLINE PVRSRV_ERROR
+PDumpGetFrameKM(CONNECTION_DATA *psConnection, IMG_UINT32* pui32Frame)
+{
+	PVR_UNREFERENCED_PARAMETER(psConnection);
+	PVR_UNREFERENCED_PARAMETER(pui32Frame);
+	return PVRSRV_OK;
+}
+
+#ifdef INLINE_IS_PRAGMA
 #pragma inline(PDumpCommentKM)
 #endif
 static INLINE PVRSRV_ERROR
@@ -421,6 +512,27 @@ PDumpCommentKM(IMG_CHAR *pszComment, IMG_UINT32 ui32Flags)
 	PVR_UNREFERENCED_PARAMETER(ui32Flags);
 	return PVRSRV_OK;
 }
+
+
+#ifdef INLINE_IS_PRAGMA
+#pragma inline(PDumpCommentKM)
+#endif
+static INLINE PVRSRV_ERROR
+PDumpSetDefaultCaptureParamsKM(IMG_UINT32 ui32Mode,
+                              IMG_UINT32 ui32Start,
+                              IMG_UINT32 ui32End,
+                              IMG_UINT32 ui32Interval,
+                              IMG_UINT32 ui32MaxParamFileSize)
+{
+	PVR_UNREFERENCED_PARAMETER(ui32Mode);
+	PVR_UNREFERENCED_PARAMETER(ui32Start);
+	PVR_UNREFERENCED_PARAMETER(ui32End);
+	PVR_UNREFERENCED_PARAMETER(ui32Interval);
+	PVR_UNREFERENCED_PARAMETER(ui32MaxParamFileSize);
+
+	return PVRSRV_OK;
+}
+
 
 #ifdef INLINE_IS_PRAGMA
 #pragma inline(PDumpPanic)
@@ -552,7 +664,6 @@ PVRSRV_ERROR PDumpTransition(PDUMP_CONNECTION_DATA *psPDumpConnectionData, IMG_B
 	#if defined WIN32 || defined UNDER_WDDM
 		#define PDUMPINIT			PDumpInitCommon
 		#define PDUMPDEINIT(...)		/ ## * PDUMPDEINIT(__VA_ARGS__) * ## /
-		#define PDUMPISLASTFRAME(...)		/ ## * PDUMPISLASTFRAME(__VA_ARGS__) * ## /
 		#define PDUMPREG32(...)			/ ## * PDUMPREG32(__VA_ARGS__) * ## /
 		#define PDUMPREG64(...)			/ ## * PDUMPREG64(__VA_ARGS__) * ## /
 		#define PDUMPREGREAD32(...)			/ ## * PDUMPREGREAD32(__VA_ARGS__) * ## /
@@ -578,8 +689,6 @@ PVRSRV_ERROR PDumpTransition(PDUMP_CONNECTION_DATA *psPDumpConnectionData, IMG_B
 		#define PDUMPMSVDXPOL(...)		/ ## * PDUMPMSVDXPOL(__VA_ARGS__) * ## /
 		#define PDUMPIDLWITHFLAGS(...)		/ ## * PDUMPIDLWITHFLAGS(__VA_ARGS__) * ## /
 		#define PDUMPIDL(...)			/ ## * PDUMPIDL(__VA_ARGS__) * ## /
-		#define PDUMPSUSPEND(...)		/ ## * PDUMPSUSPEND(__VA_ARGS__) * ## /
-		#define PDUMPRESUME(...)		/ ## * PDUMPRESUME(__VA_ARGS__) * ## /
 		#define PDUMPPOWCMDSTART(...)		/ ## * PDUMPPOWCMDSTART(__VA_ARGS__) * ## /
 		#define PDUMPPOWCMDEND(...)		/ ## * PDUMPPOWCMDEND(__VA_ARGS__) * ## /
 		#define PDUMP_LOCK			/ ## * PDUMP_LOCK(__VA_ARGS__) * ## /
@@ -588,7 +697,6 @@ PVRSRV_ERROR PDumpTransition(PDUMP_CONNECTION_DATA *psPDumpConnectionData, IMG_B
 		#if defined LINUX || defined GCC_IA32 || defined GCC_ARM || defined __QNXNTO__
 			#define PDUMPINIT	PDumpInitCommon
 			#define PDUMPDEINIT(args...)
-			#define PDUMPISLASTFRAME(args...)
 			#define PDUMPREG32(args...)
 			#define PDUMPREG64(args...)
 			#define PDUMPREGREAD32(args...)
@@ -607,8 +715,6 @@ PVRSRV_ERROR PDumpTransition(PDUMP_CONNECTION_DATA *psPDumpConnectionData, IMG_B
 			#define PDUMPENDINITPHASE(args...)
 			#define PDUMPIDLWITHFLAGS(args...)
 			#define PDUMPIDL(args...)
-			#define PDUMPSUSPEND(args...)
-			#define PDUMPRESUME(args...)
 			#define PDUMPPOWCMDSTART(args...)
 			#define PDUMPPOWCMDEND(args...)
 			#define PDUMP_LOCK(args...)

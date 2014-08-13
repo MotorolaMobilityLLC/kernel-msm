@@ -144,6 +144,7 @@ static IMG_BOOL _Is_Valid_DC_Buffer(DC_BUFFER_IMPORT_INFO *psBufferInfo)
 }
 #endif /* if KEEP_UNUSED_CODE */
 
+
 static IMG_BOOL _Is_Task_KThread(void)
 {
 	/* skip task from user space and work queue */
@@ -897,13 +898,14 @@ static void _Dispatch_Flip(DC_MRFLD_FLIP *psFlip)
 	if (send_wms) {
 
 		/* Ensure that *psFlip is not freed while lock is not held. */
-		psFlip->uiRefCount++;
+		if (psFlip)
+			psFlip->uiRefCount++;
 
 		mutex_unlock(&gpsDevice->sFlipQueueLock);
 		DCCBWaitForDbiFifoEmpty(gpsDevice->psDrmDevice, DC_PIPE_A);
 		mutex_lock(&gpsDevice->sFlipQueueLock);
 
-		if (--psFlip->uiRefCount == 0) {
+		if (psFlip != NULL && --psFlip->uiRefCount == 0) {
 			DCDisplayConfigurationRetired(psFlip->hConfigData);
 			/* free it */
 			free_flip(psFlip);
@@ -1465,11 +1467,11 @@ static PVRSRV_ERROR DC_MRFLD_BufferAlloc(IMG_HANDLE hDisplayContext,
 
 	/*map this buffer to gtt*/
 	DCCBgttMapMemory(psDrmDev,
-			 (unsigned int)(uintptr_t)psBuffer,
-			 psBuffer->ui32OwnerTaskID,
-			 psBuffer->psSysAddr,
-			 ulPagesNumber,
-			 (unsigned int *)&psBuffer->sDevVAddr.uiAddr);
+		(unsigned int)(uintptr_t)psBuffer,
+		psBuffer->ui32OwnerTaskID,
+		psBuffer->psSysAddr,
+		ulPagesNumber,
+		(unsigned int *)&psBuffer->sDevVAddr.uiAddr);
 
 	psBuffer->sDevVAddr.uiAddr <<= PAGE_SHIFT;
 
@@ -1604,8 +1606,8 @@ static IMG_VOID DC_MRFLD_BufferFree(IMG_HANDLE hBuffer)
 	 */
 	if (psBuffer->eSource == DCMrfldEX_BUFFER_SOURCE_ALLOC) {
 		/*make sure unmap this buffer from gtt*/
-		DCCBgttUnmapMemory(psDrmDev, (unsigned int)(uintptr_t)psBuffer,
-				   psBuffer->ui32OwnerTaskID);
+		DCCBgttUnmapMemory(psDrmDev, (unsigned int)
+			(uintptr_t)psBuffer, psBuffer->ui32OwnerTaskID);
 		kfree(psBuffer->psSysAddr);
 		vfree(psBuffer->sCPUVAddr);
 	}
@@ -2024,7 +2026,8 @@ int DC_MRFLD_Enable_Plane(int type, int index, u32 ctx)
 #if 0
 		/* power on extra power islands if required */
 		uiExtraPowerIslands = DC_ExtraPowerIslands[type][index];
-		_Enable_ExtraPowerIslands(gpsDevice, uiExtraPowerIslands);
+		_Enable_ExtraPowerIslands(gpsDevice,
+					uiExtraPowerIslands);
 #endif
 	}
 

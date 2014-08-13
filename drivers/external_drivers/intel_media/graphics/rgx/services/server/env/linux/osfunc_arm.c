@@ -62,7 +62,7 @@ static void per_cpu_cache_flush(void *arg)
 	flush_cache_all();
 }
 
-IMG_VOID OSCPUOperation(PVRSRV_CACHE_OP uiCacheOp)
+void OSCPUOperation(PVRSRV_CACHE_OP uiCacheOp)
 {
 	switch(uiCacheOp)
 	{
@@ -109,15 +109,15 @@ static inline size_t pvr_dmac_range_len(const void *pvStart, const void *pvEnd)
 }
 #endif
 
-IMG_VOID OSFlushCPUCacheRangeKM(IMG_PVOID pvVirtStart,
-								IMG_PVOID pvVirtEnd,
-								IMG_CPU_PHYADDR sCPUPhysStart,
-								IMG_CPU_PHYADDR sCPUPhysEnd)
+void OSFlushCPUCacheRangeKM(IMG_PVOID pvVirtStart,
+							IMG_PVOID pvVirtEnd,
+							IMG_CPU_PHYADDR sCPUPhysStart,
+							IMG_CPU_PHYADDR sCPUPhysEnd)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
 	arm_dma_ops.sync_single_for_device(NULL, sCPUPhysStart.uiAddr, sCPUPhysEnd.uiAddr - sCPUPhysStart.uiAddr, DMA_TO_DEVICE);
 	arm_dma_ops.sync_single_for_cpu(NULL, sCPUPhysStart.uiAddr, sCPUPhysEnd.uiAddr - sCPUPhysStart.uiAddr, DMA_FROM_DEVICE);
-#else	/* (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)) */ 
+#else	/* (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)) */
 	/* Inner cache */
 	dmac_flush_range(pvVirtStart, pvVirtEnd);
 
@@ -126,14 +126,14 @@ IMG_VOID OSFlushCPUCacheRangeKM(IMG_PVOID pvVirtStart,
 #endif	/* (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)) */
 }
 
-IMG_VOID OSCleanCPUCacheRangeKM(IMG_PVOID pvVirtStart,
-								IMG_PVOID pvVirtEnd,
-								IMG_CPU_PHYADDR sCPUPhysStart,
-								IMG_CPU_PHYADDR sCPUPhysEnd)
+void OSCleanCPUCacheRangeKM(IMG_PVOID pvVirtStart,
+							IMG_PVOID pvVirtEnd,
+							IMG_CPU_PHYADDR sCPUPhysStart,
+							IMG_CPU_PHYADDR sCPUPhysEnd)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
 	arm_dma_ops.sync_single_for_device(NULL, sCPUPhysStart.uiAddr, sCPUPhysEnd.uiAddr - sCPUPhysStart.uiAddr, DMA_TO_DEVICE);
-#else	/* (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)) */ 
+#else	/* (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)) */
 	/* Inner cache */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,34))
 	dmac_clean_range(pvVirtStart, pvVirtEnd);
@@ -146,14 +146,14 @@ IMG_VOID OSCleanCPUCacheRangeKM(IMG_PVOID pvVirtStart,
 #endif	/* (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)) */
 }
 
-IMG_VOID OSInvalidateCPUCacheRangeKM(IMG_PVOID pvVirtStart,
-									 IMG_PVOID pvVirtEnd,
-									 IMG_CPU_PHYADDR sCPUPhysStart,
-									 IMG_CPU_PHYADDR sCPUPhysEnd)
+void OSInvalidateCPUCacheRangeKM(IMG_PVOID pvVirtStart,
+								 IMG_PVOID pvVirtEnd,
+								 IMG_CPU_PHYADDR sCPUPhysStart,
+								 IMG_CPU_PHYADDR sCPUPhysEnd)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
 	arm_dma_ops.sync_single_for_cpu(NULL, sCPUPhysStart.uiAddr, sCPUPhysEnd.uiAddr - sCPUPhysStart.uiAddr, DMA_FROM_DEVICE);
-#else	/* (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)) */ 
+#else	/* (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)) */
 #if defined(PVR_LINUX_DONT_USE_RANGE_BASED_INVALIDATE)
 	OSCleanCPUCacheRangeKM(pvVirtStart, pvVirtEnd, sCPUPhysStart, sCPUPhysEnd);
 #else

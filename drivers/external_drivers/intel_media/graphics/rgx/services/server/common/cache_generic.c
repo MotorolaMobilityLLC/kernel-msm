@@ -1,6 +1,9 @@
 /*************************************************************************/ /*!
 @File
+@Title          CPU generic cache management
 @Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+@Description    Implements server side code for CPU cache management in a
+                CPU agnostic manner.
 @License        Dual MIT/GPLv2
 
 The contents of this file are subject to the MIT license as set out below.
@@ -38,11 +41,13 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
-
 #include "cache_generic.h"
+#include "cache_internal.h"
 #include "device.h"
 #include "pvr_debug.h"
 #include "pvrsrv.h"
+#include "osfunc.h"
+#include "pmr.h"
 
 PVRSRV_ERROR CacheOpQueue(PVRSRV_CACHE_OP uiCacheOp)
 {

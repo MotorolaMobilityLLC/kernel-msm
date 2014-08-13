@@ -45,9 +45,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef COMMON_CACHEGENERIC_BRIDGE_H
 #define COMMON_CACHEGENERIC_BRIDGE_H
 
+#include "cache_external.h"
 
 
-#include "pvr_bridge.h"
+#include "pvr_bridge_io.h"
 
 #define PVRSRV_BRIDGE_CACHEGENERIC_CMD_FIRST			(PVRSRV_BRIDGE_CACHEGENERIC_START)
 #define PVRSRV_BRIDGE_CACHEGENERIC_CACHEOPQUEUE			PVRSRV_IOWR(PVRSRV_BRIDGE_CACHEGENERIC_CMD_FIRST+0)
@@ -55,7 +56,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 /*******************************************
-            CacheOpQueue          
+            CacheOpQueue
  *******************************************/
 
 /* Bridge in structure for CacheOpQueue */

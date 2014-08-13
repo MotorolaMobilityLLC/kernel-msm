@@ -45,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CLIENT_PDUMPMM_BRIDGE_H
 
 #include "pvr_bridge_client.h"
+#include "pvr_bridge.h"
 
 #include "common_pdumpmm_bridge.h"
 
@@ -52,7 +53,8 @@ IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgePMRPDumpLoadMem(IMG_HANDLE hBridge,
 							     IMG_HANDLE hPMR,
 							     IMG_DEVMEM_OFFSET_T uiOffset,
 							     IMG_DEVMEM_SIZE_T uiSize,
-							     IMG_UINT32 ui32PDumpFlags);
+							     IMG_UINT32 ui32PDumpFlags,
+							     IMG_BOOL bbZero);
 
 IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgePMRPDumpLoadMemValue32(IMG_HANDLE hBridge,
 								    IMG_HANDLE hPMR,

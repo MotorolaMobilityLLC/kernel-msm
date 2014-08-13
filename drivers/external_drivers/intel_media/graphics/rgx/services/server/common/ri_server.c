@@ -317,12 +317,13 @@ IMG_VOID RIDeInitKM(IMG_VOID)
 
 ******************************************************************************/
 PVRSRV_ERROR RIWritePMREntryKM(PMR *hPMR,
-					   	       const IMG_CHAR ai8TextA[RI_MAX_TEXT_LEN+1],
+					   	       IMG_UINT32 ui32TextASize,
+					   	       const IMG_CHAR *psz8TextA,
 					   	       IMG_SIZE_T uiLogicalSize)
 {
 	IMG_UINTPTR_T hashData = 0;
 	PMR			*pPMRHashKey = hPMR;
-	IMG_PCHAR pszText = (IMG_PCHAR)ai8TextA;
+	IMG_PCHAR pszText = (IMG_PCHAR)psz8TextA;
 	RI_LIST_ENTRY *psRIEntry = IMG_NULL;
 
 
@@ -388,11 +389,14 @@ PVRSRV_ERROR RIWritePMREntryKM(PMR *hPMR,
 
 			if (pszText)
 			{
+				if (ui32TextASize > RI_MAX_TEXT_LEN)
+					ui32TextASize = RI_MAX_TEXT_LEN;
+
 				/* copy ai8TextA field data */
-				OSSNPrintf((IMG_CHAR *)psRIEntry->ai8TextA, RI_MAX_TEXT_LEN, "%s", pszText);
+				OSSNPrintf((IMG_CHAR *)psRIEntry->ai8TextA, ui32TextASize, "%s", pszText);
 
 				/* ensure string is NUL-terminated */
-				psRIEntry->ai8TextA[RI_MAX_TEXT_LEN] = '\0';
+				psRIEntry->ai8TextA[ui32TextASize] = '\0';
 			}
 			else
 			{
@@ -436,7 +440,8 @@ PVRSRV_ERROR RIWritePMREntryKM(PMR *hPMR,
 
 ******************************************************************************/
 PVRSRV_ERROR RIWriteMEMDESCEntryKM(PMR *hPMR,
-					   	   	   	   const IMG_CHAR ai8TextB[RI_MAX_TEXT_LEN+1],
+					   	   	   	   IMG_UINT32 ui32TextBSize,
+					   	   	   	   const IMG_CHAR *psz8TextB,
 					   	   	   	   IMG_SIZE_T uiOffset,
 					   	   	   	   IMG_SIZE_T uiSize,
 					   	   	   	   IMG_BOOL bIsImport,
@@ -446,7 +451,7 @@ PVRSRV_ERROR RIWriteMEMDESCEntryKM(PMR *hPMR,
 	IMG_UINTPTR_T hashData = 0;
 	PMR 		*pPMRHashKey = hPMR;
 	IMG_PID		pid;
-	IMG_PCHAR pszText = (IMG_PCHAR)ai8TextB;
+	IMG_PCHAR pszText = (IMG_PCHAR)psz8TextB;
 	RI_LIST_ENTRY *psRIEntry = IMG_NULL;
 	RI_SUBLIST_ENTRY *psRISubEntry = IMG_NULL;
 
@@ -515,10 +520,12 @@ PVRSRV_ERROR RIWriteMEMDESCEntryKM(PMR *hPMR,
 
 		psRISubEntry->pid = OSGetCurrentProcessIDKM();
 
+		if (ui32TextBSize > RI_MAX_TEXT_LEN)
+			ui32TextBSize = RI_MAX_TEXT_LEN;
 		/* copy ai8TextB field data */
-		OSSNPrintf((IMG_CHAR *)psRISubEntry->ai8TextB, RI_MAX_TEXT_LEN, "%s", pszText);
+		OSSNPrintf((IMG_CHAR *)psRISubEntry->ai8TextB, ui32TextBSize, "%s", pszText);
 		/* ensure string is NUL-terminated */
-		psRISubEntry->ai8TextB[RI_MAX_TEXT_LEN] = '\0';
+		psRISubEntry->ai8TextB[ui32TextBSize] = '\0';
 
 		psRISubEntry->uiOffset = uiOffset;
 		psRISubEntry->uiSize = uiSize;

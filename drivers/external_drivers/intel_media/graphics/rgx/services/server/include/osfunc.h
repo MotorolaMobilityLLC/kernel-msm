@@ -117,7 +117,7 @@ PVRSRV_ERROR OSThreadCreate(IMG_HANDLE *phThread,
 */ /**************************************************************************/
 PVRSRV_ERROR OSThreadDestroy(IMG_HANDLE hThread);
 
-IMG_VOID OSMemCopy(IMG_VOID *pvDst, IMG_VOID *pvSrc, IMG_SIZE_T ui32Size);
+IMG_VOID OSMemCopy(IMG_VOID *pvDst, const IMG_VOID *pvSrc, IMG_SIZE_T ui32Size);
 IMG_VOID *OSMapPhysToLin(IMG_CPU_PHYADDR BasePAddr, IMG_SIZE_T ui32Bytes, IMG_UINT32 ui32Flags);
 IMG_BOOL OSUnMapPhysToLin(IMG_VOID *pvLinAddr, IMG_SIZE_T ui32Bytes, IMG_UINT32 ui32Flags);
 
@@ -162,9 +162,10 @@ IMG_VOID OSMMUPxUnmap(PVRSRV_DEVICE_NODE *psDevNode, Px_HANDLE *psMemHandle, IMG
 PVRSRV_ERROR OSInitEnvData(IMG_VOID);
 IMG_VOID OSDeInitEnvData(IMG_VOID);
 
-IMG_CHAR* OSStringCopy(IMG_CHAR *pszDest, const IMG_CHAR *pszSrc);
+IMG_CHAR* OSStringNCopy(IMG_CHAR *pszDest, const IMG_CHAR *pszSrc, IMG_SIZE_T uSize);
 IMG_INT32 OSSNPrintf(IMG_CHAR *pStr, IMG_SIZE_T ui32Size, const IMG_CHAR *pszFormat, ...) IMG_FORMAT_PRINTF(3, 4);
 IMG_SIZE_T OSStringLength(const IMG_CHAR *pStr);
+IMG_SIZE_T OSStringNLength(const IMG_CHAR *pStr, IMG_SIZE_T uiCount);
 IMG_INT32 OSStringCompare(const IMG_CHAR *pStr1, const IMG_CHAR *pStr2);
 
 PVRSRV_ERROR OSEventObjectCreate(const IMG_CHAR *pszName,
@@ -177,6 +178,11 @@ PVRSRV_ERROR OSEventObjectOpen(IMG_HANDLE hEventObject,
 											IMG_HANDLE *phOSEvent);
 PVRSRV_ERROR OSEventObjectClose(IMG_HANDLE hOSEventKM);
 
+/* Avoid macros so we don't evaluate pszSrc twice */
+static INLINE IMG_CHAR *OSStringCopy(IMG_CHAR *pszDest, const IMG_CHAR *pszSrc)
+{
+	return OSStringNCopy(pszDest, pszSrc, OSStringLength(pszSrc) + 1);
+}
 
 /*!
 ******************************************************************************
@@ -328,7 +334,6 @@ IMG_VOID OSDumpStack(IMG_VOID);
 
 IMG_VOID OSAcquireBridgeLock(IMG_VOID);
 IMG_VOID OSReleaseBridgeLock(IMG_VOID);
-IMG_BOOL OSTryAcquireBridgeLock(IMG_VOID);
 
 
 /*

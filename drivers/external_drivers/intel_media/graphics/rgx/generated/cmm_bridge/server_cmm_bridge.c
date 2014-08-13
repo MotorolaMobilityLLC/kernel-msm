@@ -96,10 +96,12 @@ DevmemIntCtxUnexportResManProxy(IMG_HANDLE hResmanItem)
 	return eError;
 }
 
+
+
 /* ***************************************************************************
  * Server-side bridge entry points
  */
-
+ 
 static IMG_INT
 PVRSRVBridgePMRWritePMPageList(IMG_UINT32 ui32BridgeID,
 					 PVRSRV_BRIDGE_IN_PMRWRITEPMPAGELIST *psPMRWritePMPageListIN,
@@ -577,229 +579,12 @@ DevmemIntCtxImport_exit:
 	return 0;
 }
 
-#ifdef CONFIG_COMPAT
 
-/* ***************************************************************************
- * Server-side bridge entry points
+
+/* *************************************************************************** 
+ * Server bridge dispatch related glue 
  */
-
-typedef struct compat__PVRSRV_BRIDGE_IN_PMRWRITEPMPAGELIST_TAG
-{
-	/* IMG_HANDLE hPageListPMR; */
-	IMG_UINT32 hPageListPMR;
-	IMG_DEVMEM_OFFSET_T uiTableOffset;
-	IMG_DEVMEM_SIZE_T uiTableLength;
-	/* IMG_HANDLE hReferencePMR; */
-	IMG_UINT32 hReferencePMR;
-	IMG_UINT32 ui32Log2PageSize;
-} __attribute__ ((__packed__)) compat_PVRSRV_BRIDGE_IN_PMRWRITEPMPAGELIST;
-
-typedef struct compat_PVRSRV_BRIDGE_OUT_PMRWRITEPMPAGELIST_TAG
-{
-	/* IMG_HANDLE hPageList; */
-	IMG_UINT32 hPageList;
-	IMG_UINT64 ui64CheckSum;
-	PVRSRV_ERROR eError;
-} __attribute__ ((__packed__)) compat_PVRSRV_BRIDGE_OUT_PMRWRITEPMPAGELIST;
-
-static IMG_INT
-compat_PVRSRVBridgePMRWritePMPageList(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_PMRWRITEPMPAGELIST *psPMRWritePMPageListIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_PMRWRITEPMPAGELIST *psPMRWritePMPageListOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_PMRWRITEPMPAGELIST sPMRWritePMPageListIN;
-	PVRSRV_BRIDGE_OUT_PMRWRITEPMPAGELIST sPMRWritePMPageListOUT;
-	PVRSRV_BRIDGE_IN_PMRWRITEPMPAGELIST *psPMRWritePMPageListIN = &sPMRWritePMPageListIN;
-	PVRSRV_BRIDGE_OUT_PMRWRITEPMPAGELIST *psPMRWritePMPageListOUT = &sPMRWritePMPageListOUT;
-
-	psPMRWritePMPageListIN->hPageListPMR = (IMG_HANDLE)(unsigned long)psPMRWritePMPageListIN_32->hPageListPMR;
-	psPMRWritePMPageListIN->uiTableOffset = psPMRWritePMPageListIN_32->uiTableOffset;
-	psPMRWritePMPageListIN->uiTableLength = psPMRWritePMPageListIN_32->uiTableLength;
-	psPMRWritePMPageListIN->hReferencePMR = (IMG_HANDLE)(unsigned long)psPMRWritePMPageListIN_32->hReferencePMR;
-	psPMRWritePMPageListIN->ui32Log2PageSize = psPMRWritePMPageListIN_32->ui32Log2PageSize;
-
-	ret = PVRSRVBridgePMRWritePMPageList(ui32BridgeID, psPMRWritePMPageListIN,
-					psPMRWritePMPageListOUT, psConnection);
-
-	PVR_ASSERT(!((IMG_UINT64)psPMRWritePMPageListOUT->hPageList & 0xFFFFFFFF00000000ULL));
-	psPMRWritePMPageListOUT_32->hPageList = (IMG_UINT32)(IMG_UINT64)psPMRWritePMPageListOUT->hPageList;
-	psPMRWritePMPageListOUT_32->ui64CheckSum = psPMRWritePMPageListOUT->ui64CheckSum;
-	psPMRWritePMPageListOUT_32->eError = psPMRWritePMPageListOUT->eError;
-
-	return ret;
-}
-
-/* Bridge in structure for PMRWriteVFPPageList */
-typedef struct compat_PVRSRV_BRIDGE_IN_PMRWRITEVFPPAGELIST_TAG
-{
-	/* IMG_HANDLE hFreeListPMR; */
-	IMG_UINT32 hFreeListPMR;
-	IMG_DEVMEM_OFFSET_T uiTableOffset;
-	IMG_DEVMEM_SIZE_T uiTableLength;
-	IMG_UINT32 ui32TableBase;
-	IMG_UINT32 ui32Log2PageSize;
-} __attribute__ ((__packed__)) compat_PVRSRV_BRIDGE_IN_PMRWRITEVFPPAGELIST;
-
-static IMG_INT
-compat_PVRSRVBridgePMRWriteVFPPageList(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_PMRWRITEVFPPAGELIST *psPMRWriteVFPPageListIN_32,
-					 PVRSRV_BRIDGE_OUT_PMRWRITEVFPPAGELIST *psPMRWriteVFPPageListOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_PMRWRITEVFPPAGELIST sPMRWriteVFPPageListIN;
-	PVRSRV_BRIDGE_IN_PMRWRITEVFPPAGELIST *psPMRWriteVFPPageListIN = &sPMRWriteVFPPageListIN;
-
-	psPMRWriteVFPPageListIN->hFreeListPMR = (IMG_HANDLE)(unsigned long)psPMRWriteVFPPageListIN_32->hFreeListPMR;
-	psPMRWriteVFPPageListIN->uiTableOffset = psPMRWriteVFPPageListIN_32->uiTableOffset;
-	psPMRWriteVFPPageListIN->uiTableLength = psPMRWriteVFPPageListIN_32->uiTableLength;
-	psPMRWriteVFPPageListIN->ui32TableBase = psPMRWriteVFPPageListIN_32->ui32TableBase;
-	psPMRWriteVFPPageListIN->ui32Log2PageSize = psPMRWriteVFPPageListIN_32->ui32Log2PageSize;
-
-	return PVRSRVBridgePMRWriteVFPPageList(ui32BridgeID, psPMRWriteVFPPageListIN,
-					psPMRWriteVFPPageListOUT, psConnection);
-}
-
-typedef struct compat_PVRSRV_BRIDGE_IN_PMRUNWRITEPMPAGELIST_TAG
-{
-	/* IMG_HANDLE hPageList; */
-	IMG_UINT32 hPageList;
-} compat_PVRSRV_BRIDGE_IN_PMRUNWRITEPMPAGELIST;
-
-static IMG_INT
-compat_PVRSRVBridgePMRUnwritePMPageList(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_PMRUNWRITEPMPAGELIST *psPMRUnwritePMPageListIN_32,
-					 PVRSRV_BRIDGE_OUT_PMRUNWRITEPMPAGELIST *psPMRUnwritePMPageListOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_PMRUNWRITEPMPAGELIST sPMRUnwritePMPageListIN;
-	PVRSRV_BRIDGE_IN_PMRUNWRITEPMPAGELIST *psPMRUnwritePMPageListIN = &sPMRUnwritePMPageListIN;
-
-	psPMRUnwritePMPageListIN->hPageList = (IMG_HANDLE)(unsigned long)psPMRUnwritePMPageListIN_32->hPageList;
-
-	return PVRSRVBridgePMRUnwritePMPageList(ui32BridgeID, psPMRUnwritePMPageListIN,
-					psPMRUnwritePMPageListOUT, psConnection);
-}
-
-/* Bridge in structure for DevmemIntCtxExport */
-typedef struct compat_PVRSRV_BRIDGE_IN_DEVMEMINTCTXEXPORT_TAG
-{
-	/*IMG_HANDLE hDevMemServerContext;*/
-	IMG_UINT32 hDevMemServerContext;
-} compat_PVRSRV_BRIDGE_IN_DEVMEMINTCTXEXPORT;
-
-
-/* Bridge out structure for DevmemIntCtxExport */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DEVMEMINTCTXEXPORT_TAG
-{
-	/*IMG_HANDLE hDevMemIntCtxExport;*/
-	IMG_UINT32 hDevMemIntCtxExport;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DEVMEMINTCTXEXPORT;
-
-static IMG_INT
-compat_PVRSRVBridgeDevmemIntCtxExport(IMG_UINT32 ui32BridgeID,
-                                         compat_PVRSRV_BRIDGE_IN_DEVMEMINTCTXEXPORT *psDevmemIntCtxExportIN_32,
-                                         compat_PVRSRV_BRIDGE_OUT_DEVMEMINTCTXEXPORT *psDevmemIntCtxExportOUT_32,
-                                         CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DEVMEMINTCTXEXPORT sDevmemIntCtxExportIN;
-	PVRSRV_BRIDGE_OUT_DEVMEMINTCTXEXPORT sDevmemIntCtxExportOUT;
-
-	sDevmemIntCtxExportIN.hDevMemServerContext = (IMG_HANDLE)(IMG_UINT64)psDevmemIntCtxExportIN_32->hDevMemServerContext;
-
-	ret = PVRSRVBridgeDevmemIntCtxExport(ui32BridgeID, &sDevmemIntCtxExportIN,
-					&sDevmemIntCtxExportOUT, psConnection) ;
-
-	PVR_ASSERT(!((IMG_UINT64)sDevmemIntCtxExportOUT.hDevMemIntCtxExport & 0xFFFFFFFF00000000ULL));
-	psDevmemIntCtxExportOUT_32->hDevMemIntCtxExport = (IMG_UINT32)(IMG_UINT64)sDevmemIntCtxExportOUT.hDevMemIntCtxExport;
-	psDevmemIntCtxExportOUT_32->eError = sDevmemIntCtxExportOUT.eError;
-
-	return ret;
-}
-
-
-/*******************************************
-            DevmemIntCtxUnexport
- *******************************************/
-
-/* Bridge in structure for DevmemIntCtxUnexport */
-typedef struct compat_PVRSRV_BRIDGE_IN_DEVMEMINTCTXUNEXPORT_TAG
-{
-	/*IMG_HANDLE hDevMemIntCtxExport;*/
-	IMG_UINT32 hDevMemIntCtxExport;
-} compat_PVRSRV_BRIDGE_IN_DEVMEMINTCTXUNEXPORT;
-
-static IMG_INT
-compat_PVRSRVBridgeDevmemIntCtxUnexport(IMG_UINT32 ui32BridgeID,
-                                         compat_PVRSRV_BRIDGE_IN_DEVMEMINTCTXUNEXPORT *psDevmemIntCtxUnexportIN_32,
-                                         PVRSRV_BRIDGE_OUT_DEVMEMINTCTXUNEXPORT *psDevmemIntCtxUnexportOUT,
-                                         CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DEVMEMINTCTXUNEXPORT sDevmemIntCtxUnexportIN;
-
-	sDevmemIntCtxUnexportIN.hDevMemIntCtxExport = (IMG_HANDLE)(IMG_UINT64)psDevmemIntCtxUnexportIN_32->hDevMemIntCtxExport;
-
-	return PVRSRVBridgeDevmemIntCtxUnexport(ui32BridgeID, &sDevmemIntCtxUnexportIN,
-					psDevmemIntCtxUnexportOUT, psConnection);
-
-}
-
-/*******************************************
-            DevmemIntCtxImport
- *******************************************/
-
-/* Bridge in structure for DevmemIntCtxImport */
-typedef struct compat_PVRSRV_BRIDGE_IN_DEVMEMINTCTXIMPORT_TAG
-{
-	/*IMG_HANDLE hDevMemIntCtxExport;*/
-	IMG_UINT32 hDevMemIntCtxExport;
-} compat_PVRSRV_BRIDGE_IN_DEVMEMINTCTXIMPORT;
-
-
-/* Bridge out structure for DevmemIntCtxImport */
-typedef struct compat_PVRSRV_BRIDGE_OUT_DEVMEMINTCTXIMPORT_TAG
-{
-	/*IMG_HANDLE hDevMemServerContext;*/
-	IMG_UINT32 hDevMemServerContext;
-	/*IMG_HANDLE hPrivData;*/
-	IMG_UINT32 hPrivData;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_DEVMEMINTCTXIMPORT;
-
-static IMG_INT
-compat_PVRSRVBridgeDevmemIntCtxImport(IMG_UINT32 ui32BridgeID,
-                                         compat_PVRSRV_BRIDGE_IN_DEVMEMINTCTXIMPORT *psDevmemIntCtxImportIN_32,
-                                         compat_PVRSRV_BRIDGE_OUT_DEVMEMINTCTXIMPORT *psDevmemIntCtxImportOUT_32,
-                                         CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_DEVMEMINTCTXIMPORT sDevmemIntCtxImportIN;
-	PVRSRV_BRIDGE_OUT_DEVMEMINTCTXIMPORT sDevmemIntCtxImportOUT;
-
-	sDevmemIntCtxImportIN.hDevMemIntCtxExport = (IMG_HANDLE)(IMG_UINT64)psDevmemIntCtxImportIN_32->hDevMemIntCtxExport;
-
-	ret = PVRSRVBridgeDevmemIntCtxImport(ui32BridgeID, &sDevmemIntCtxImportIN,
-					&sDevmemIntCtxImportOUT, psConnection);
-
-	PVR_ASSERT(!((IMG_UINT64)sDevmemIntCtxImportOUT.hDevMemServerContext & 0xFFFFFFFF00000000ULL));
-	psDevmemIntCtxImportOUT_32->hDevMemServerContext = (IMG_UINT32)(IMG_UINT64) sDevmemIntCtxImportOUT.hDevMemServerContext;
-	PVR_ASSERT(!((IMG_UINT64)sDevmemIntCtxImportOUT.hPrivData & 0xFFFFFFFF00000000ULL));
-	psDevmemIntCtxImportOUT_32->hPrivData =  (IMG_UINT32)(IMG_UINT64)sDevmemIntCtxImportOUT.hPrivData;
-	psDevmemIntCtxImportOUT_32->eError = sDevmemIntCtxImportOUT.eError;
-
-	return ret;
-}
-
-#endif /* CONFIG_COMPAT */
-
-
-/* ***************************************************************************
- * Server bridge dispatch related glue
- */
-
+ 
 PVRSRV_ERROR RegisterCMMFunctions(IMG_VOID);
 IMG_VOID UnregisterCMMFunctions(IMG_VOID);
 
@@ -808,22 +593,12 @@ IMG_VOID UnregisterCMMFunctions(IMG_VOID);
  */
 PVRSRV_ERROR RegisterCMMFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_PMRWRITEPMPAGELIST, compat_PVRSRVBridgePMRWritePMPageList);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_PMRWRITEVFPPAGELIST, compat_PVRSRVBridgePMRWriteVFPPageList);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_PMRUNWRITEPMPAGELIST, compat_PVRSRVBridgePMRUnwritePMPageList);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_DEVMEMINTCTXEXPORT, compat_PVRSRVBridgeDevmemIntCtxExport);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_DEVMEMINTCTXUNEXPORT, compat_PVRSRVBridgeDevmemIntCtxUnexport);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_DEVMEMINTCTXIMPORT, compat_PVRSRVBridgeDevmemIntCtxImport);
-#else
-	/* WPAT FINDME */
 	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_PMRWRITEPMPAGELIST, PVRSRVBridgePMRWritePMPageList);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_PMRWRITEVFPPAGELIST, PVRSRVBridgePMRWriteVFPPageList);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_PMRUNWRITEPMPAGELIST, PVRSRVBridgePMRUnwritePMPageList);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_DEVMEMINTCTXEXPORT, PVRSRVBridgeDevmemIntCtxExport);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_DEVMEMINTCTXUNEXPORT, PVRSRVBridgeDevmemIntCtxUnexport);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_CMM_DEVMEMINTCTXIMPORT, PVRSRVBridgeDevmemIntCtxImport);
-#endif
 
 	return PVRSRV_OK;
 }

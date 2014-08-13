@@ -44,9 +44,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _LOCK_H_
 #define _LOCK_H_
 
+/* In Linux kernel mode we are using the kernel mutex implementation directly
+ * with macros. This allows us to use the kernel lockdep feature for lock
+ * debugging. */
+#include "lock_types.h"
+
+#if defined(LINUX) && defined(__KERNEL__)
+
+#include <linux/mutex.h>
+#include <linux/slab.h>
+
+#define OSLockCreate(phLock, eLockType) ({ \
+	PVRSRV_ERROR e = PVRSRV_ERROR_OUT_OF_MEMORY; \
+	*(phLock) = kmalloc(sizeof(struct mutex), GFP_KERNEL); \
+	if (*(phLock)) { mutex_init(*(phLock)); e = PVRSRV_OK; }; \
+	e;})
+#define OSLockDestroy(hLock) ({mutex_destroy((hLock)); kfree((hLock)); PVRSRV_OK;})
+
+#define OSLockAcquire(hLock) ({mutex_lock((hLock)); PVRSRV_OK;})
+#define OSLockAcquireNested(hLock, subclass) ({mutex_lock_nested((hLock), (subclass)); PVRSRV_OK;})
+#define OSLockRelease(hLock) ({mutex_unlock((hLock)); PVRSRV_OK;})
+
+#define OSLockIsLocked(hLock) ({IMG_BOOL b = ((mutex_is_locked((hLock)) == 1) ? IMG_TRUE : IMG_FALSE); b;})
+#define OSLockIsLockedByMe(hLock) ({IMG_BOOL b = ((mutex_is_locked((hLock)) == 1 && current == (hLock).owner) ? IMG_TRUE : IMG_FALSE); b;})
+
+#else /* defined(LINUX) && defined(__KERNEL__) */
+
 #include "img_types.h"
 #include "pvrsrv_error.h"
-#include "lock_types.h"
 
 IMG_INTERNAL
 PVRSRV_ERROR OSLockCreate(POS_LOCK *phLock, LOCK_TYPE eLockType);
@@ -57,6 +82,9 @@ IMG_VOID OSLockDestroy(POS_LOCK hLock);
 IMG_INTERNAL
 IMG_VOID OSLockAcquire(POS_LOCK hLock);
 
+/* Nested notation isn't used in UM or other OS's */
+#define OSLockAcquireNested(hLock, subclass) OSLockAcquire((hLock))
+
 IMG_INTERNAL
 IMG_VOID OSLockRelease(POS_LOCK hLock);
 
@@ -65,5 +93,7 @@ IMG_BOOL OSLockIsLocked(POS_LOCK hLock);
 
 IMG_INTERNAL
 IMG_BOOL OSLockIsLockedByMe(POS_LOCK hLock);
+
+#endif /* defined(LINUX) && defined(__KERNEL__) */
 
 #endif	/* _LOCK_H_ */

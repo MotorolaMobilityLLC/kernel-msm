@@ -73,6 +73,26 @@ PVRSRV_ERROR PVRSRVPDumpSignatureBufferKM(PVRSRV_DEVICE_NODE	*psDeviceNode,
 								 0,
 								 ui32PDumpFlags);
 
+#if defined(RGX_FEATURE_RAY_TRACING)
+	/* RT signatures */
+	PDumpCommentWithFlags(ui32PDumpFlags, "** Dump RTU signatures and checksums Buffer");
+	DevmemPDumpSaveToFileVirtual(psDevInfo->psRGXFWSigRTChecksMemDesc,
+								 0,
+								 psDevInfo->ui32SigRTChecksSize,
+								 "out.rtsig",
+								 0,
+								 ui32PDumpFlags);
+								 
+	/* SH signatures */
+	PDumpCommentWithFlags(ui32PDumpFlags, "** Dump SHG signatures and checksums Buffer");
+	DevmemPDumpSaveToFileVirtual(psDevInfo->psRGXFWSigSHChecksMemDesc,
+								 0,
+								 psDevInfo->ui32SigSHChecksSize,
+								 "out.shsig",
+								 0,
+								 ui32PDumpFlags);
+#endif
+
 	return PVRSRV_OK;
 }
 
@@ -96,7 +116,7 @@ PVRSRV_ERROR PVRSRVPDumpTraceBufferKM(PVRSRV_DEVICE_NODE	*psDeviceNode,
 
 	/* Dump hwperf buffer */
 	PDumpCommentWithFlags(ui32PDumpFlags, "** Dump HWPerf Buffer");
-	DevmemPDumpSaveToFileVirtual(psDevInfo->psRGXFWIfHWPerfBufCtlMemDesc,
+	DevmemPDumpSaveToFileVirtual(psDevInfo->psRGXFWIfHWPerfBufMemDesc,
 								 0,
 								 psDevInfo->ui32RGXFWIfHWPerfBufSize,
 								 "out.hwperf",

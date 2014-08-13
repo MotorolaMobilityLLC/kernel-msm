@@ -51,6 +51,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvr_debug.h"
 #include "pvrsrv_error.h"
 #include "rgx_memallocflags.h"
+#include "pdump_km.h"
 
 /*
  * Bits of PT, PD and PC not involving addresses 
@@ -162,11 +163,11 @@ static RGX_PAGESIZECONFIG gsPageSizeConfig2MB;
 
 /* Forward declaration of protection bits derivation functions, for
    the following structure */
-static IMG_UINT64 RGXDerivePCEProt8(IMG_UINT32 uiProtFlags);
+static IMG_UINT64 RGXDerivePCEProt8(IMG_UINT32 uiProtFlags, IMG_UINT8 ui8Log2PageSize);
 static IMG_UINT32 RGXDerivePCEProt4(IMG_UINT32 uiProtFlags);
-static IMG_UINT64 RGXDerivePDEProt8(IMG_UINT32 uiProtFlags);
+static IMG_UINT64 RGXDerivePDEProt8(IMG_UINT32 uiProtFlags, IMG_UINT8 ui8Log2PageSize);
 static IMG_UINT32 RGXDerivePDEProt4(IMG_UINT32 uiProtFlags);
-static IMG_UINT64 RGXDerivePTEProt8(IMG_UINT32 uiProtFlags);
+static IMG_UINT64 RGXDerivePTEProt8(IMG_UINT32 uiProtFlags, IMG_UINT8 ui8Log2PageSize);
 static IMG_UINT32 RGXDerivePTEProt4(IMG_UINT32 uiProtFlags);
 
 static PVRSRV_ERROR RGXGetPageSizeConfigCB(IMG_UINT32 uiLog2DataPageSize,
@@ -212,22 +213,22 @@ PVRSRV_ERROR RGXMMUInit_Register(PVRSRV_DEVICE_NODE *psDeviceNode)
 	/*
 	 * Setup sRGXMMUPCEConfig
 	 */
-	sRGXMMUPCEConfig.uiBytesPerEntry = 4;
-	sRGXMMUPCEConfig.uiAddrMask = 0xfffffff0;
+	sRGXMMUPCEConfig.uiBytesPerEntry = 4; /* 32 bit entries */
+	sRGXMMUPCEConfig.uiAddrMask = 0xfffffff0; /* Mask to get significant address bits of PC entry */
 
-	sRGXMMUPCEConfig.uiAddrShift = 4;
-	sRGXMMUPCEConfig.uiLog2Align = 12;
+	sRGXMMUPCEConfig.uiAddrShift = 4; /* Shift this many bits to get PD address in PC entry */
+	sRGXMMUPCEConfig.uiLog2Align = 12; /* Alignment of PD AND PC */
 
-	sRGXMMUPCEConfig.uiProtMask = RGX_MMUCTRL_PCE_PROTMASK;
-	sRGXMMUPCEConfig.uiProtShift = 0;
+	sRGXMMUPCEConfig.uiProtMask = RGX_MMUCTRL_PCE_PROTMASK; //Mask to get the status bits of the PC */
+	sRGXMMUPCEConfig.uiProtShift = 0; /* Shift this many bits to have status bits starting with bit 0 */
 
 	/*
 	 *  Setup sRGXMMUTopLevelDevVAddrConfig
 	 */
-	sRGXMMUTopLevelDevVAddrConfig.uiPCIndexMask = ~RGX_MMUCTRL_VADDR_PC_INDEX_CLRMSK;
+	sRGXMMUTopLevelDevVAddrConfig.uiPCIndexMask = ~RGX_MMUCTRL_VADDR_PC_INDEX_CLRMSK; /* Get the PC address bits from a 40 bit virt. address (in a 64bit UINT) */
 	sRGXMMUTopLevelDevVAddrConfig.uiPCIndexShift = RGX_MMUCTRL_VADDR_PC_INDEX_SHIFT;
 
-	sRGXMMUTopLevelDevVAddrConfig.uiPDIndexMask = ~RGX_MMUCTRL_VADDR_PD_INDEX_CLRMSK;
+	sRGXMMUTopLevelDevVAddrConfig.uiPDIndexMask = ~RGX_MMUCTRL_VADDR_PD_INDEX_CLRMSK; /* Get the PD address bits from a 40 bit virt. address (in a 64bit UINT) */
 	sRGXMMUTopLevelDevVAddrConfig.uiPDIndexShift = RGX_MMUCTRL_VADDR_PD_INDEX_SHIFT;
 
 /*
@@ -300,8 +301,8 @@ PVRSRV_ERROR RGXMMUInit_Register(PVRSRV_DEVICE_NODE *psDeviceNode)
 	sRGXMMUPDEConfig_16KBDP.uiBytesPerEntry = 8;
 
 	sRGXMMUPDEConfig_16KBDP.uiAddrMask = IMG_UINT64_C(0xfffffffff0);
-	sRGXMMUPDEConfig_16KBDP.uiAddrShift = 10;
-	sRGXMMUPDEConfig_16KBDP.uiLog2Align = 10;
+	sRGXMMUPDEConfig_16KBDP.uiAddrShift = 10; /* These are for a page directory ENTRY, meaning the address of a PT cropped to suit the PD */
+	sRGXMMUPDEConfig_16KBDP.uiLog2Align = 10; /* Alignment of the page tables NOT directories */
 
 	sRGXMMUPDEConfig_16KBDP.uiVarCtrlMask = IMG_UINT64_C(0x000000000e);
 	sRGXMMUPDEConfig_16KBDP.uiVarCtrlShift = 1;
@@ -315,8 +316,8 @@ PVRSRV_ERROR RGXMMUInit_Register(PVRSRV_DEVICE_NODE *psDeviceNode)
 	sRGXMMUPTEConfig_16KBDP.uiBytesPerEntry = 8;
 
 	sRGXMMUPTEConfig_16KBDP.uiAddrMask = IMG_UINT64_C(0xffffffc000);
-	sRGXMMUPTEConfig_16KBDP.uiAddrShift = 14;
-	sRGXMMUPTEConfig_16KBDP.uiLog2Align = 14;
+	sRGXMMUPTEConfig_16KBDP.uiAddrShift = 14; /* These are for a page table ENTRY, meaning the address of a PAGE cropped to suit the PD */
+	sRGXMMUPTEConfig_16KBDP.uiLog2Align = 14; /* Alignment of the pages NOT tables */
 
 	sRGXMMUPTEConfig_16KBDP.uiProtMask = RGX_MMUCTRL_PTE_PROTMASK;
 	sRGXMMUPTEConfig_16KBDP.uiProtShift = 0;
@@ -658,9 +659,11 @@ static IMG_UINT32 RGXDerivePCEProt4(IMG_UINT32 uiProtFlags)
 @Description    calculate the PCE protection flags based on an 8 byte entry
 @Return         PVRSRV_ERROR
 */ /**************************************************************************/
-static IMG_UINT64 RGXDerivePCEProt8(IMG_UINT32 uiProtFlags)
+static IMG_UINT64 RGXDerivePCEProt8(IMG_UINT32 uiProtFlags, IMG_UINT8 ui8Log2PageSize)
 {
-    PVR_UNREFERENCED_PARAMETER(uiProtFlags);
+	PVR_UNREFERENCED_PARAMETER(uiProtFlags);
+	PVR_UNREFERENCED_PARAMETER(ui8Log2PageSize);
+
 	PVR_DPF((PVR_DBG_ERROR, "8-byte PCE not supported on this device"));
 	return 0;	
 }
@@ -682,12 +685,46 @@ static IMG_UINT32 RGXDerivePDEProt4(IMG_UINT32 uiProtFlags)
 /*************************************************************************/ /*!
 @Function       RGXDerivePDEProt8
 @Description    derive the PDE protection flags based on an 8 byte entry
+
+@Input          ui8Log2PageSize The log2 of the required page size.
+                E.g, for 4KiB pages, this parameter must be 12.
+                For 2MiB pages, it must be set to 21.
+
 @Return         PVRSRV_ERROR
 */ /**************************************************************************/
-static IMG_UINT64 RGXDerivePDEProt8(IMG_UINT32 uiProtFlags)
+static IMG_UINT64 RGXDerivePDEProt8(IMG_UINT32 uiProtFlags, IMG_UINT8 ui8Log2PageSize)
 {
-	/* Need to consider varible page size */
-    return (uiProtFlags & MMU_PROTFLAGS_INVALID)?0:RGX_MMUCTRL_PD_DATA_VALID_EN;
+	IMG_UINT64 ret_value = 0; // 0 means invalid
+
+    if (! (uiProtFlags & MMU_PROTFLAGS_INVALID)) // if not invalid
+	{
+		switch (ui8Log2PageSize)
+		{
+			case 12:
+				ret_value = RGX_MMUCTRL_PD_DATA_VALID_EN | RGX_MMUCTRL_PD_DATA_PAGE_SIZE_4KB;
+				break;
+			case 14:
+				ret_value = RGX_MMUCTRL_PD_DATA_VALID_EN | RGX_MMUCTRL_PD_DATA_PAGE_SIZE_16KB;
+				break;
+			case 16:
+				ret_value = RGX_MMUCTRL_PD_DATA_VALID_EN | RGX_MMUCTRL_PD_DATA_PAGE_SIZE_64KB;
+				break;
+			case 18:
+				ret_value = RGX_MMUCTRL_PD_DATA_VALID_EN | RGX_MMUCTRL_PD_DATA_PAGE_SIZE_256KB;
+				break;
+			case 20:
+				ret_value = RGX_MMUCTRL_PD_DATA_VALID_EN | RGX_MMUCTRL_PD_DATA_PAGE_SIZE_1MB;
+				break;
+			case 21:
+				ret_value = RGX_MMUCTRL_PD_DATA_VALID_EN | RGX_MMUCTRL_PD_DATA_PAGE_SIZE_2MB;
+				break;
+			default:
+				PVR_DPF((PVR_DBG_ERROR,
+						 "%s:%d: in function<%s>: Invalid parameter log2_page_size. Expected {12, 14, 16, 18, 20, 21}. Got [%u]",
+						 __FILE__, __LINE__, __FUNCTION__, ui8Log2PageSize));
+		}
+	}
+	return ret_value;
 }
 
 
@@ -709,11 +746,11 @@ static IMG_UINT32 RGXDerivePTEProt4(IMG_UINT32 uiProtFlags)
 @Description    calculate the PTE protection flags based on an 8 byte entry
 @Return         PVRSRV_ERROR
 */ /**************************************************************************/
-static IMG_UINT64 RGXDerivePTEProt8(IMG_UINT32 uiProtFlags)
+static IMG_UINT64 RGXDerivePTEProt8(IMG_UINT32 uiProtFlags, IMG_UINT8 ui8Log2PageSize)
 {
-	IMG_UINT64 ui64MMUFlags;
+	IMG_UINT64 ui64MMUFlags=0;
 
-    ui64MMUFlags = 0;
+	PVR_UNREFERENCED_PARAMETER(ui8Log2PageSize);
 
 	if(((MMU_PROTFLAGS_READABLE|MMU_PROTFLAGS_WRITEABLE) & uiProtFlags) == (MMU_PROTFLAGS_READABLE|MMU_PROTFLAGS_WRITEABLE))
 	{

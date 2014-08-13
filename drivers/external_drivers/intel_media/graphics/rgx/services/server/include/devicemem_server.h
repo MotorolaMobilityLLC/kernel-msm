@@ -261,7 +261,7 @@ DevmemIntUnreserveRange(DEVMEMINT_RESERVATION *psDevmemReservation);
  * Schedules an SLC Flush & Invalidate on the firmware if required.
  * If the request is performed depends on the caching attributes
  * of the allocation and hence depends on the underlying PMR
-  */
+ */
 extern PVRSRV_ERROR
 DevmemSLCFlushInvalRequest(PVRSRV_DEVICE_NODE *psDeviceNode, PMR *psPmr);
 

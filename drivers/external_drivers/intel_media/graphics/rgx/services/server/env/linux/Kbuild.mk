@@ -41,12 +41,9 @@
 
 pvrsrvkm-y += \
  services/server/env/linux/event.o \
- services/server/env/linux/lock.o \
  services/server/env/linux/mm.o \
  services/server/env/linux/mmap.o \
  services/server/env/linux/module.o \
- services/server/env/linux/mutex.o \
- services/server/env/linux/mutils.o \
  services/server/env/linux/devicemem_mmap_stub.o \
  services/server/env/linux/osfunc.o \
  services/server/env/linux/allocmem.o \
@@ -84,7 +81,8 @@ pvrsrvkm-y += \
  services/shared/common/tlclient.o \
  services/server/common/tlserver.o \
  services/server/common/tlstream.o \
- services/server/common/tutils.o
+ services/server/common/tutils.o \
+ services/shared/common/uniq_key_splay_tree.o
 
 ifeq ($(SUPPORT_DISPLAY_CLASS),1)
 pvrsrvkm-y += \
@@ -111,17 +109,16 @@ endif
 
 pvrsrvkm-$(CONFIG_X86) += services/server/env/linux/osfunc_x86.o
 pvrsrvkm-$(CONFIG_ARM) += services/server/env/linux/osfunc_arm.o
+pvrsrvkm-$(CONFIG_ARM64) += services/server/env/linux/osfunc_arm64.o
 pvrsrvkm-$(CONFIG_METAG) += services/server/env/linux/osfunc_metag.o
 pvrsrvkm-$(CONFIG_MIPS) += services/server/env/linux/osfunc_mips.o
 
 pvrsrvkm-$(CONFIG_EVENT_TRACING) += services/server/env/linux/trace_events.o
 
 ifneq ($(W),1)
-CFLAGS_lock.o := -Werror
 CFLAGS_mm.o := -Werror
 CFLAGS_mmap.o := -Werror
 CFLAGS_module.o := -Werror
-CFLAGS_mutex.o := -Werror
 CFLAGS_mutils.o := -Werror
 CFLAGS_devicemem_mmap_stub.o := -Werror
 CFLAGS_osfunc.o := -Werror
@@ -202,7 +199,9 @@ pvrsrvkm-y += \
  services/server/devices/rgx/rgxbreakpoint.o \
  services/server/devices/rgx/debugmisc_server.o \
  services/shared/devices/rgx/rgx_compat_bvnc.o \
- services/server/devices/rgx/rgxregconfig.o
+ services/server/devices/rgx/rgxregconfig.o \
+ services/server/devices/rgx/rgxtimerquery.o \
+ services/server/devices/rgx/rgxsync.o
 
 ifeq ($(SUPPORT_RAY_TRACING),1)
 pvrsrvkm-y += services/server/devices/rgx/rgxray.o
@@ -227,6 +226,7 @@ CFLAGS_rgxbreakpoint.o := -Werror
 CFLAGS_debugmisc_server.o := -Werror
 CFLAGS_rgxray.o := -Werror
 CFLAGS_rgxregconfig.o := -Werror
+CFLAGS_rgxsync.o := -Werror
 endif
 
 ifeq ($(PDUMP),1)
@@ -257,7 +257,8 @@ ccflags-y += \
  -I$(bridge_base)/pvrtl_bridge \
  -I$(bridge_base)/dpvrtl_bridge \
  -I$(bridge_base)/rgxhwperf_bridge \
- -I$(bridge_base)/regconfig_bridge
+ -I$(bridge_base)/regconfig_bridge \
+ -I$(bridge_base)/timerquery_bridge
 
 ifeq ($(PVR_RI_DEBUG),1)
 ccflags-y += \
@@ -277,6 +278,8 @@ ccflags-y += \
 # Errata files
 ccflags-y += \
  -I$(TOP)/hwdefs
+
+ccflags-y += -I$(TOP)/services/include/env/linux
 
 ifeq ($(SUPPORT_DISPLAY_CLASS),1)
 ccflags-y += \
@@ -302,8 +305,7 @@ ccflags-y += -I$(bridge_base)/pmmif_bridge
 endif
 
 ifeq ($(SUPPORT_ION),1)
-ccflags-y += -I$(TOP)/services/include/env/linux
-ccflags-y += -I$(bridge_base)/ion_bridge
+ccflags-y += -I$(bridge_base)/dmabuf_bridge
 endif
 
 ifeq ($(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC),1)
@@ -332,7 +334,8 @@ pvrsrvkm-y += \
  generated/pvrtl_bridge/server_pvrtl_bridge.o \
  generated/dpvrtl_bridge/client_pvrtl_bridge.o \
  generated/rgxhwperf_bridge/server_rgxhwperf_bridge.o \
- generated/regconfig_bridge/server_regconfig_bridge.o
+ generated/regconfig_bridge/server_regconfig_bridge.o \
+ generated/timerquery_bridge/server_timerquery_bridge.o
 ifeq ($(PVR_RI_DEBUG),1)
 pvrsrvkm-y += \
  generated/ri_bridge/server_ri_bridge.o \
@@ -372,8 +375,8 @@ pvrsrvkm-y += \
 endif
 
 ifeq ($(SUPPORT_ION),1)
-pvrsrvkm-y += generated/ion_bridge/server_ion_bridge.o
-pvrsrvkm-y += services/server/env/linux/physmem_ion.o
+pvrsrvkm-y += generated/dmabuf_bridge/server_dmabuf_bridge.o
+pvrsrvkm-y += services/server/env/linux/physmem_dmabuf.o
 endif # SUPPORT_ION
 
 ifneq ($(W),1)
@@ -396,6 +399,7 @@ CFLAGS_client_pdumpmm_bridge.o := -Werror
 CFLAGS_server_pdumpcmm_bridge.o := -Werror
 CFLAGS_server_rgxray_bridge.o := -Werror
 CFLAGS_server_regconfig_bridge.o := -Werror
+CFLAGS_server_timerquery_bridge.o := -Werror
 
 ifeq ($(SUPPORT_DISPLAY_CLASS),1)
 CFLAGS_server_dc_bridge.o := -Werror
@@ -424,24 +428,28 @@ CFLAGS_server_ri_bridge.o := -Werror
 CFLAGS_client_ri_bridge.o := -Werror
 endif
 ifeq ($(SUPPORT_ION),1)
-CFLAGS_physmem_ion.o := -Werror
-CFLAGS_server_ion_bridge.o = -Werror
+CFLAGS_physmem_dmabuf.o := -Werror
+CFLAGS_server_dmabuf_bridge.o = -Werror
 endif
 endif
 
 ifeq ($(SUPPORT_DRM),1)
 pvrsrvkm-y += \
- services/server/common/scp.o \
  services/server/env/linux/pvr_drm.o \
- services/server/env/linux/pvr_drm_display.o \
  services/server/env/linux/pvr_drm_gem.o \
  services/server/env/linux/pvr_drm_prime.o
+
+ifeq ($(SUPPORT_DRM_DC_MODULE),1)
+pvrsrvkm-y += \
+ services/server/common/scp.o \
+ services/server/env/linux/pvr_drm_display.o
+
+CFLAGS_scp.o := -Werror
+endif
 
 ccflags-y += \
  -Iinclude/drm \
  -I$(TOP)/services/include/env/linux
-
-CFLAGS_scp.o := -Werror
 endif # SUPPORT_DRM
 
 include $(TOP)/services/system/$(PVR_SYSTEM)/Kbuild.mk

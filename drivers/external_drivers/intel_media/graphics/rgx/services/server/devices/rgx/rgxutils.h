@@ -49,24 +49,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*!
 ******************************************************************************
 
- @Function	RGXIsDevicePowered
-
- @Description
-
-	Whether the device is powered, for the purposes of lockup detection.
-
- @Input psDeviceNode - pointer to device node
-
- @Return   IMG_BOOL  : Whether device is powered
-
-******************************************************************************/
-IMG_IMPORT
-IMG_BOOL RGXIsDevicePowered(PVRSRV_DEVICE_NODE *psDeviceNode);
-
-
-/*!
-******************************************************************************
-
  @Function	RGXRunScript
 
  @Description Execute the commands in the script

@@ -49,7 +49,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * There are some places where this lock must not be taken, such as
  * in the mmap related deriver entry points.
  */
-extern PVRSRV_LINUX_MUTEX gPVRSRVLock;
+extern struct mutex gPVRSRVLock;
 
 #endif /* __DRIVERLOCK_H__ */
 /*****************************************************************************

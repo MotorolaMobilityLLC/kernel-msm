@@ -52,7 +52,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgx_fwif.h"
 
 
-#include "pvr_bridge.h"
+#include "pvr_bridge_io.h"
 
 #define PVRSRV_BRIDGE_RGXINIT_CMD_FIRST			(PVRSRV_BRIDGE_RGXINIT_START)
 #define PVRSRV_BRIDGE_RGXINIT_RGXINITALLOCFWIMGMEM			PVRSRV_IOWR(PVRSRV_BRIDGE_RGXINIT_CMD_FIRST+0)
@@ -73,7 +73,7 @@ typedef struct PVRSRV_BRIDGE_IN_RGXINITALLOCFWIMGMEM_TAG
 	IMG_DEVMEM_SIZE_T uiFWCodeLen;
 	IMG_DEVMEM_SIZE_T uiFWDataLen;
 	IMG_DEVMEM_SIZE_T uiFWCoremem;
-} PVRSRV_BRIDGE_IN_RGXINITALLOCFWIMGMEM;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RGXINITALLOCFWIMGMEM;
 
 
 /* Bridge out structure for RGXInitAllocFWImgMem */
@@ -87,7 +87,7 @@ typedef struct PVRSRV_BRIDGE_OUT_RGXINITALLOCFWIMGMEM_TAG
 	IMG_DEV_VIRTADDR sFWCorememDevVAddrBase;
 	RGXFWIF_DEV_VIRTADDR sFWCorememMetaVAddrBase;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RGXINITALLOCFWIMGMEM;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RGXINITALLOCFWIMGMEM;
 
 /*******************************************
             RGXInitFirmware          
@@ -109,7 +109,7 @@ typedef struct PVRSRV_BRIDGE_IN_RGXINITFIRMWARE_TAG
 	RGXFWIF_COMPCHECKS_BVNC sClientBVNC;
 	IMG_UINT32 ui32APMLatency;
 	IMG_UINT32 ui32CoreClockSpeed;
-} PVRSRV_BRIDGE_IN_RGXINITFIRMWARE;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RGXINITFIRMWARE;
 
 
 /* Bridge out structure for RGXInitFirmware */
@@ -117,7 +117,7 @@ typedef struct PVRSRV_BRIDGE_OUT_RGXINITFIRMWARE_TAG
 {
 	RGXFWIF_DEV_VIRTADDR spsRGXFwInit;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RGXINITFIRMWARE;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RGXINITFIRMWARE;
 
 /*******************************************
             RGXInitLoadFWImage          
@@ -131,14 +131,14 @@ typedef struct PVRSRV_BRIDGE_IN_RGXINITLOADFWIMAGE_TAG
 	IMG_UINT64 ui64ImgLen;
 	IMG_HANDLE hSigImport;
 	IMG_UINT64 ui64SigLen;
-} PVRSRV_BRIDGE_IN_RGXINITLOADFWIMAGE;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RGXINITLOADFWIMAGE;
 
 
 /* Bridge out structure for RGXInitLoadFWImage */
 typedef struct PVRSRV_BRIDGE_OUT_RGXINITLOADFWIMAGE_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RGXINITLOADFWIMAGE;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RGXINITLOADFWIMAGE;
 
 /*******************************************
             RGXInitDevPart2          
@@ -164,13 +164,13 @@ typedef struct PVRSRV_BRIDGE_IN_RGXINITDEVPART2_TAG
 	DEVMEM_SERVER_EXPORTCOOKIE hFWCodeAllocServerExportCookie;
 	DEVMEM_SERVER_EXPORTCOOKIE hFWDataAllocServerExportCookie;
 	DEVMEM_SERVER_EXPORTCOOKIE hFWCorememAllocServerExportCookie;
-} PVRSRV_BRIDGE_IN_RGXINITDEVPART2;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RGXINITDEVPART2;
 
 
 /* Bridge out structure for RGXInitDevPart2 */
 typedef struct PVRSRV_BRIDGE_OUT_RGXINITDEVPART2_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RGXINITDEVPART2;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RGXINITDEVPART2;
 
 #endif /* COMMON_RGXINIT_BRIDGE_H */

@@ -53,10 +53,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "devicemem_pdump.h"
 #include "osfunc.h"
 #include "rgxccb.h"
+#include "rgxhwperf.h"
+#include "rgxtimerquery.h"
 
 #include "sync_server.h"
 #include "sync_internal.h"
 #include "rgx_memallocflags.h"
+#include "rgxsync.h"
 
 struct _RGX_SERVER_COMPUTE_CONTEXT_ {
 	PVRSRV_DEVICE_NODE			*psDeviceNode;
@@ -169,7 +172,10 @@ PVRSRV_ERROR PVRSRVRGXCreateComputeContextKM(CONNECTION_DATA			*psConnection,
 
 	{
 		PVRSRV_RGXDEV_INFO			*psDevInfo = psDeviceNode->pvDevice;
+
+		OSWRLockAcquireWrite(psDevInfo->hComputeCtxListLock);
 		dllist_add_to_tail(&(psDevInfo->sComputeCtxtListHead), &(psComputeContext->sListNode));
+		OSWRLockReleaseWrite(psDevInfo->hComputeCtxListLock);
 	}
 
 	return PVRSRV_OK;
@@ -190,6 +196,7 @@ IMG_EXPORT
 PVRSRV_ERROR PVRSRVRGXDestroyComputeContextKM(RGX_SERVER_COMPUTE_CONTEXT *psComputeContext)
 {
 	PVRSRV_ERROR				eError = PVRSRV_OK;
+	PVRSRV_RGXDEV_INFO *psDevInfo = psComputeContext->psDeviceNode->pvDevice;
 
 	/* Check if the FW has finished with this resource ... */
 	eError = RGXFWRequestCommonContextCleanUp(psComputeContext->psDeviceNode,
@@ -210,7 +217,9 @@ PVRSRV_ERROR PVRSRVRGXDestroyComputeContextKM(RGX_SERVER_COMPUTE_CONTEXT *psComp
 
 	/* ... it has so we can free its resources */
 
+	OSWRLockAcquireWrite(psDevInfo->hComputeCtxListLock);
 	dllist_remove_node(&(psComputeContext->sListNode));
+	OSWRLockReleaseWrite(psDevInfo->hComputeCtxListLock);
 
 	FWCommonContextFree(psComputeContext->psServerCommonContext);
 	DevmemFwFree(psComputeContext->psFWFrameworkMemDesc);
@@ -235,7 +244,9 @@ PVRSRV_ERROR PVRSRVRGXKickCDMKM(RGX_SERVER_COMPUTE_CONTEXT	*psComputeContext,
 								SERVER_SYNC_PRIMITIVE 		**pasServerSyncs,
 								IMG_UINT32					ui32CmdSize,
 								IMG_PBYTE					pui8DMCmd,
-								IMG_BOOL					bPDumpContinuous)
+								IMG_BOOL					bPDumpContinuous,
+							    IMG_UINT32					ui32ExtJobRef,
+								IMG_UINT32					ui32IntJobRef)
 {
 	RGXFWIF_KCCB_CMD		sCmpKCCBCmd;
 	RGX_CCB_CMD_HELPER_DATA	sCmdHelperData;
@@ -243,33 +254,46 @@ PVRSRV_ERROR PVRSRVRGXKickCDMKM(RGX_SERVER_COMPUTE_CONTEXT	*psComputeContext,
 	PVRSRV_ERROR			eError;
 	PVRSRV_ERROR			eError2;
 	IMG_UINT32				i;
+
+	PRGXFWIF_TIMESTAMP_ADDR pPreAddr;
+	PRGXFWIF_TIMESTAMP_ADDR pPostAddr;
+	PRGXFWIF_UFO_ADDR       pRMWUFOAddr;
+
 	
 	/* Sanity check the server fences */
 	for (i=0;i<ui32ServerSyncPrims;i++)
 	{
 		if (!(paui32ServerSyncFlags[i] & PVRSRV_CLIENT_SYNC_PRIM_OP_CHECK))
 		{
-			PVR_DPF((PVR_DBG_ERROR, "%s: Server fence (on SH) must fence", __FUNCTION__));
+			PVR_DPF((PVR_DBG_ERROR, "%s: Server fence (on CDM) must fence", __FUNCTION__));
 			return PVRSRV_ERROR_INVALID_SYNC_PRIM_OP;
 		}
 	}
 
+	RGX_GetTimestampCmdHelper((PVRSRV_RGXDEV_INFO*) psComputeContext->psDeviceNode->pvDevice,
+	                          & pPreAddr,
+	                          & pPostAddr,
+	                          & pRMWUFOAddr);
+
 	eError = RGXCmdHelperInitCmdCCB(FWCommonContextGetClientCCB(psComputeContext->psServerCommonContext),
-									  ui32ClientFenceCount,
-									  pauiClientFenceUFOAddress,
-									  paui32ClientFenceValue,
-									  ui32ClientUpdateCount,
-									  pauiClientUpdateUFOAddress,
-									  paui32ClientUpdateValue,
-									  ui32ServerSyncPrims,
-									  paui32ServerSyncFlags,
-									  pasServerSyncs,
-									  ui32CmdSize,
-									  pui8DMCmd,
-									  RGXFWIF_CCB_CMD_TYPE_CDM,
-									  bPDumpContinuous,
-									  "Compute",
-									  &sCmdHelperData);
+	                                ui32ClientFenceCount,
+	                                pauiClientFenceUFOAddress,
+	                                paui32ClientFenceValue,
+	                                ui32ClientUpdateCount,
+	                                pauiClientUpdateUFOAddress,
+	                                paui32ClientUpdateValue,
+	                                ui32ServerSyncPrims,
+	                                paui32ServerSyncFlags,
+	                                pasServerSyncs,
+	                                ui32CmdSize,
+	                                pui8DMCmd,
+	                                & pPreAddr,
+	                                & pPostAddr,
+	                                & pRMWUFOAddr,
+	                                RGXFWIF_CCB_CMD_TYPE_CDM,
+	                                bPDumpContinuous,
+	                                "Compute",
+	                                &sCmdHelperData);
 	if (eError != PVRSRV_OK)
 	{
 		goto fail_cmdinit;
@@ -335,6 +359,13 @@ PVRSRV_ERROR PVRSRVRGXKickCDMKM(RGX_SERVER_COMPUTE_CONTEXT	*psComputeContext,
 	{
 		PVR_DPF((PVR_DBG_ERROR, "PVRSRVRGXKickCDMKM failed to schedule kernel CCB command. (0x%x)", eError));
 	}
+#if defined(SUPPORT_GPUTRACE_EVENTS)
+	else
+	{
+		RGXHWPerfFTraceGPUEnqueueEvent(psComputeContext->psDeviceNode->pvDevice,
+				ui32ExtJobRef, ui32IntJobRef, "CDM");
+	}
+#endif
 	/*
 	 * Now check eError (which may have returned an error from our earlier call
 	 * to RGXCmdHelperAcquireCmdCCB) - we needed to process any flush command first
@@ -411,7 +442,7 @@ PVRSRV_ERROR PVRSRVRGXSetComputeContextPriorityKM(CONNECTION_DATA *psConnection,
 								RGXFWIF_DM_CDM);
 	if (eError != PVRSRV_OK)
 	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to set the priority of the compute context", __FUNCTION__));
+		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to set the priority of the compute context (%s)", __FUNCTION__, PVRSRVGetErrorStringKM(eError)));
 	}
 	return eError;
 }
@@ -420,15 +451,55 @@ static IMG_BOOL CheckForStalledComputeCtxtCommand(PDLLIST_NODE psNode, IMG_PVOID
 {
 	RGX_SERVER_COMPUTE_CONTEXT 		*psCurrentServerComputeCtx = IMG_CONTAINER_OF(psNode, RGX_SERVER_COMPUTE_CONTEXT, sListNode);
 	RGX_SERVER_COMMON_CONTEXT		*psCurrentServerComputeCommonCtx = psCurrentServerComputeCtx->psServerCommonContext;
+	DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf = pvCallbackData;
 
-	DumpStalledFWCommonContext(psCurrentServerComputeCommonCtx);
+	DumpStalledFWCommonContext(psCurrentServerComputeCommonCtx, pfnDumpDebugPrintf);
 	return IMG_TRUE;
 }
-IMG_VOID CheckForStalledComputeCtxt(PVRSRV_RGXDEV_INFO *psDevInfo)
+IMG_VOID CheckForStalledComputeCtxt(PVRSRV_RGXDEV_INFO *psDevInfo,
+									DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf)
 {
-	dllist_foreach_node(&(psDevInfo->sComputeCtxtListHead), CheckForStalledComputeCtxtCommand, IMG_NULL);
+	OSWRLockAcquireRead(psDevInfo->hComputeCtxListLock);
+	dllist_foreach_node(&(psDevInfo->sComputeCtxtListHead),
+						CheckForStalledComputeCtxtCommand, pfnDumpDebugPrintf);
+	OSWRLockReleaseRead(psDevInfo->hComputeCtxListLock);
 }
 
+IMG_EXPORT PVRSRV_ERROR 
+PVRSRVRGXKickSyncCDMKM(RGX_SERVER_COMPUTE_CONTEXT  *psComputeContext,
+                       IMG_UINT32                  ui32ClientFenceCount,
+                       PRGXFWIF_UFO_ADDR           *pauiClientFenceUFOAddress,
+                       IMG_UINT32                  *paui32ClientFenceValue,
+                       IMG_UINT32                  ui32ClientUpdateCount,
+                       PRGXFWIF_UFO_ADDR           *pauiClientUpdateUFOAddress,
+                       IMG_UINT32                  *paui32ClientUpdateValue,
+                       IMG_UINT32                  ui32ServerSyncPrims,
+                       IMG_UINT32                  *paui32ServerSyncFlags,
+                       SERVER_SYNC_PRIMITIVE       **pasServerSyncs,
+					   IMG_UINT32				   ui32NumFenceFDs,
+					   IMG_INT32				   *paui32FenceFDs,
+                       IMG_BOOL                    bPDumpContinuous)
+{
+	if (ui32NumFenceFDs > 0)
+	{
+		return PVRSRV_ERROR_NOT_IMPLEMENTED;
+	}
+
+	return RGXKickSyncKM(psComputeContext->psDeviceNode,
+	                     psComputeContext->psServerCommonContext,
+	                     RGXFWIF_DM_CDM,
+						 "SyncCDM",
+	                     ui32ClientFenceCount,
+	                     pauiClientFenceUFOAddress,
+	                     paui32ClientFenceValue,
+	                     ui32ClientUpdateCount,
+	                     pauiClientUpdateUFOAddress,
+	                     paui32ClientUpdateValue,
+	                     ui32ServerSyncPrims,
+	                     paui32ServerSyncFlags,
+	                     pasServerSyncs,
+	                     bPDumpContinuous);
+}
 /******************************************************************************
  End of file (rgxcompute.c)
 ******************************************************************************/

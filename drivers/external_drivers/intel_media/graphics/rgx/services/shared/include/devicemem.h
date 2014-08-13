@@ -109,6 +109,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "pdump.h"
 
+/* Use GET and SET function to access this */
+IMG_INTERNAL extern IMG_UINT32  g_uiLog2PageSize;
+
+#define GET_LOG2_PAGESIZE() ( (const IMG_UINT32) g_uiLog2PageSize )
+#define SET_LOG2_PAGESIZE(ui32Log2PageSize) \
+	{ \
+		PVR_ASSERT( (ui32Log2PageSize > 11) && (ui32Log2PageSize < 22) ); \
+		g_uiLog2PageSize = (IMG_UINT32) ui32Log2PageSize; \
+	}
+
 typedef IMG_UINT32 DEVMEM_HEAPCFGID;
 #define DEVMEM_HEAPCFG_FORCLIENTS 0
 #define DEVMEM_HEAPCFG_META 1
@@ -519,10 +529,15 @@ DevmemGetPMRData(DEVMEM_MEMDESC *psMemDesc,
 		IMG_HANDLE *hPMR,
 		IMG_DEVMEM_OFFSET_T *puiPMROffset);
 
+IMG_INTERNAL PVRSRV_ERROR
+DevmemGetFlags(DEVMEM_MEMDESC *psMemDesc,
+				DEVMEM_FLAGS_T *puiFlags);
+
 PVRSRV_ERROR
 DevmemLocalImport(IMG_HANDLE hBridge,
 				  IMG_HANDLE hExtHandle,
 				  DEVMEM_FLAGS_T uiFlags,
 				  DEVMEM_MEMDESC **ppsMemDescPtr,
 				  IMG_DEVMEM_SIZE_T *puiSizePtr);
+
 #endif /* #ifndef SRVCLIENT_DEVICEMEM_CLIENT_H */

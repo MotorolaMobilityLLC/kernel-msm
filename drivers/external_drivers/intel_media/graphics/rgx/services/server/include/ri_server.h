@@ -53,10 +53,12 @@ PVRSRV_ERROR RIInitKM(IMG_VOID);
 IMG_VOID RIDeInitKM(IMG_VOID);
 
 PVRSRV_ERROR RIWritePMREntryKM(PMR *hPMR,
+					   	   	   IMG_UINT32 ui32TextASize,
 					   	   	   const IMG_CHAR ai8TextA[RI_MAX_TEXT_LEN+1],
 					   	   	   IMG_SIZE_T uiLogicalSize);
 
 PVRSRV_ERROR RIWriteMEMDESCEntryKM(PMR *hPMR,
+					   	   	   	   IMG_UINT32 ui32TextBSize,
 					   	   	   	   const IMG_CHAR ai8TextB[RI_MAX_TEXT_LEN+1],
 					   	   	   	   IMG_SIZE_T uiOffset,
 					   	   	   	   IMG_SIZE_T uiSize,

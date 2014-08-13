@@ -69,6 +69,18 @@ DevmemPDumpLoadMem(DEVMEM_MEMDESC *psMemDesc,
                    PDUMP_FLAGS_T uiPDumpFlags);
 
 /*
+ * DevmemPDumpZeroMem()
+ *
+ * as DevmemPDumpMem() but the PDump allocation will be populated with zeros from
+ * the zero page in the parameter stream
+ */
+extern IMG_VOID
+DevmemPDumpLoadZeroMem(DEVMEM_MEMDESC *psMemDesc,
+                   IMG_DEVMEM_OFFSET_T uiOffset,
+                   IMG_DEVMEM_SIZE_T uiSize,
+                   PDUMP_FLAGS_T uiPDumpFlags);
+
+/*
  * DevmemPDumpMemValue()
  * 
  * As above but dumps the value at a dword-aligned address in plain

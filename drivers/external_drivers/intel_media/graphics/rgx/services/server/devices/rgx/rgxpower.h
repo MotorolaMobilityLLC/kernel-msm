@@ -167,6 +167,4 @@ PVRSRV_ERROR RGXDustCountChange(IMG_HANDLE				hDevHandle,
 ******************************************************************************/
 PVRSRV_ERROR RGXActivePowerRequest(IMG_HANDLE hDevHandle);
 
-IMG_VOID RGXInitPowerRequestWQ (IMG_VOID);
-
 #endif /* __RGXPOWER_H__ */

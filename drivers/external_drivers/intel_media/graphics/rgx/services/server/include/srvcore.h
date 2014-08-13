@@ -176,11 +176,14 @@ extern PVRSRV_BRIDGE_GLOBAL_STATS g_BridgeGlobalStats;
 IMG_INT BridgedDispatchKM(CONNECTION_DATA * psConnection,
 					  PVRSRV_BRIDGE_PACKAGE   * psBridgePackageKM);
 
+
 PVRSRV_ERROR
 PVRSRVConnectKM(IMG_UINT32 ui32Flags,
 				IMG_UINT32 ui32ClientBuildOptions,
 				IMG_UINT32 ui32ClientDDKVersion,
-				IMG_UINT32 ui32ClientDDKBuild);
+				IMG_UINT32 ui32ClientDDKBuild,
+				IMG_UINT8  *pui8KernelArch,
+				IMG_UINT32 *ui32Log2PageSize);
 
 PVRSRV_ERROR
 PVRSRVDisconnectKM(IMG_VOID);
@@ -202,6 +205,10 @@ PVRSRVGetDevClockSpeedKM(PVRSRV_DEVICE_NODE *psDeviceNode,
 
 PVRSRV_ERROR
 PVRSRVHWOpTimeoutKM(IMG_VOID);
+
+/* performs a SOFT_RESET on the given device node */
+PVRSRV_ERROR
+PVRSRVSoftResetKM(PVRSRV_DEVICE_NODE *psDeviceNode, IMG_UINT64 ui64ResetValue);
 
 #if defined (__cplusplus)
 }

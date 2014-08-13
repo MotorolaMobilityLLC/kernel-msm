@@ -587,14 +587,9 @@ SyncPrimContextCreate(SYNC_BRIDGE_HANDLE hBridge,
 	*/
 
 	psContext->psSubAllocRA = RA_Create(psContext->azName,
-										/* Params for initial import */
-										0,
-										0,
-										0,
-										IMG_NULL,
-
 										/* Params for imports */
 										_Log2(sizeof(IMG_UINT32)),
+										RA_LOCKCLASS_2,
 										SyncPrimBlockImport,
 										SyncPrimBlockUnimport,
 										psContext);
@@ -615,19 +610,21 @@ SyncPrimContextCreate(SYNC_BRIDGE_HANDLE hBridge,
 		fashion
 	*/
 	psContext->psSpanRA = RA_Create(psContext->azSpanName,
-									/* Params for initial import */
-									0,
-									MAX_SYNC_MEM,
-									0,
-									IMG_NULL,
-
 									/* Params for imports */
 									0,
+									RA_LOCKCLASS_1,
 									IMG_NULL,
 									IMG_NULL,
 									IMG_NULL);
 	if (psContext->psSpanRA == IMG_NULL)
 	{
+		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+		goto fail_span;
+	}
+
+	if (!RA_Add(psContext->psSpanRA, 0, MAX_SYNC_MEM, 0, IMG_NULL))
+	{
+		RA_Delete(psContext->psSpanRA);
 		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
 		goto fail_span;
 	}
@@ -1361,9 +1358,11 @@ PVRSRV_ERROR SyncPrimOpResolve(PSYNC_OP_COOKIE psCookie,
 IMG_INTERNAL
 PVRSRV_ERROR SyncPrimServerAlloc(SYNC_BRIDGE_HANDLE hBridge,
 								 IMG_HANDLE hDeviceNode,
-								 PVRSRV_CLIENT_SYNC_PRIM **ppsSync
-								PVR_DBG_FILELINE_PARAM)
+								 PVRSRV_CLIENT_SYNC_PRIM **ppsSync,
+								 const IMG_CHAR *pszClassName
+								 PVR_DBG_FILELINE_PARAM)
 {
+	IMG_CHAR szClassName[SYNC_MAX_CLASS_NAME_LEN];
 	SYNC_PRIM *psNewSync;
 	PVRSRV_ERROR eError;
 
@@ -1378,10 +1377,24 @@ PVRSRV_ERROR SyncPrimServerAlloc(SYNC_BRIDGE_HANDLE hBridge,
 	}
 	OSMemSet(psNewSync, 0, sizeof(SYNC_PRIM));
 
+	if(pszClassName)
+	{
+		/* Copy the class name annotation into a fixed-size array */
+		OSStringNCopy(szClassName, pszClassName, SYNC_MAX_CLASS_NAME_LEN - 1);
+		szClassName[SYNC_MAX_CLASS_NAME_LEN - 1] = 0;
+	}
+	else
+	{
+		/* No class name annotation */
+		szClassName[0] = 0;
+	}
+
 	eError = BridgeServerSyncAlloc(hBridge,
 								   hDeviceNode,
 								   &psNewSync->u.sServer.hServerSync,
-								   &psNewSync->u.sServer.ui32FirmwareAddr);
+								   &psNewSync->u.sServer.ui32FirmwareAddr,
+								   OSStringNLength(szClassName, SYNC_MAX_CLASS_NAME_LEN),
+								   szClassName);
 
 	if (eError != PVRSRV_OK)
 	{

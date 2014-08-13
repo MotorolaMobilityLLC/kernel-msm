@@ -559,7 +559,7 @@ GetBufferCount(unsigned int *puiBufferCount, int id)
 
 static int
 BCVideoBridge(struct drm_device *dev, IMG_VOID * arg,
-	      struct drm_file *file_priv)
+		struct drm_file *file_priv)
 {
 	int err = -EFAULT;
 

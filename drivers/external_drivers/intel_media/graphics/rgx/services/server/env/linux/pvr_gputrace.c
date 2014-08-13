@@ -77,8 +77,8 @@ typedef struct _PVRSRV_FTRACE_JOB_
 {
 	/* Job ID calculated, no need to store it. */
 	IMG_UINT32 ui32FlagsAndID;
-	IMG_UINT32 ui32FrameNum;
-	IMG_UINT32 ui32RTData;
+	IMG_UINT32 ui32ExtJobRef;
+	IMG_UINT32 ui32IntJobRef;
 } PVRSRV_FTRACE_GPU_JOB;
 
 
@@ -101,9 +101,8 @@ typedef struct _PVRSRV_FTRACE_GPU_DATA_
 
 PVRSRV_FTRACE_GPU_DATA gsFTraceGPUData;
 
-
-static IMG_VOID CreateJob(IMG_UINT32 ui32PID, IMG_UINT32 ui32FrameNum,
-		IMG_UINT32 ui32RTData)
+static void CreateJob(IMG_UINT32 ui32PID, IMG_UINT32 ui32ExtJobRef,
+		IMG_UINT32 ui32IntJobRef)
 {
 	PVRSRV_FTRACE_GPU_CTX* psContext = IMG_NULL;
 	PVRSRV_FTRACE_GPU_JOB* psJob = IMG_NULL;
@@ -143,8 +142,8 @@ static IMG_VOID CreateJob(IMG_UINT32 ui32PID, IMG_UINT32 ui32FrameNum,
 	*/
 	psJob = &(psContext->asJobs[psContext->ui16JobWrite]);
 	PVRSRV_FTRACE_JOB_SET_ID_CLR_FLAGS(psJob, 1001+psContext->ui16JobWrite);
-	psJob->ui32FrameNum = ui32FrameNum;
-	psJob->ui32RTData = ui32RTData;
+	psJob->ui32ExtJobRef = ui32ExtJobRef;
+	psJob->ui32IntJobRef = ui32IntJobRef;
 
 	/*
 	  Advance the write position of the job CB. Overwrite oldest job
@@ -155,7 +154,7 @@ static IMG_VOID CreateJob(IMG_UINT32 ui32PID, IMG_UINT32 ui32FrameNum,
 
 
 static PVRSRV_ERROR GetCtxAndJobID(IMG_UINT32 ui32PID,
-	IMG_UINT32 ui32FrameNum, IMG_UINT32 ui32RTData,
+	IMG_UINT32 ui32ExtJobRef, IMG_UINT32 ui32IntJobRef,
 	IMG_UINT32 *pui32CtxID, PVRSRV_FTRACE_GPU_JOB** ppsJob)
 {
 	PVRSRV_FTRACE_GPU_CTX* psContext = IMG_NULL;
@@ -183,8 +182,8 @@ static PVRSRV_ERROR GetCtxAndJobID(IMG_UINT32 ui32PID,
 	/* Look for the JobID in the jobs CB */
 	for(i = 0; i < PVRSRV_KM_FTRACE_JOB_MAX; ++i)
 	{
-		if((psContext->asJobs[i].ui32FrameNum == ui32FrameNum) &&
-			(psContext->asJobs[i].ui32RTData == ui32RTData))
+		if((psContext->asJobs[i].ui32ExtJobRef == ui32ExtJobRef) &&
+			(psContext->asJobs[i].ui32IntJobRef == ui32IntJobRef))
 		{
 			/* Derive job ID from CB index: 1001..1001+PVRSRV_KM_FTRACE_JOB_MAX */
 			*ppsJob = &psContext->asJobs[i];
@@ -192,7 +191,7 @@ static PVRSRV_ERROR GetCtxAndJobID(IMG_UINT32 ui32PID,
 		}
 	}
 
-	PVR_DPF((PVR_DBG_MESSAGE,"GetCtxAndJobID: Failed to find job ID for frame %d, RTDATA %x", ui32FrameNum, ui32RTData));
+	PVR_DPF((PVR_DBG_MESSAGE,"GetCtxAndJobID: Failed to find job ID for extJobRef %d, intJobRef %x", ui32ExtJobRef, ui32IntJobRef));
 	return PVRSRV_ERROR_NOT_FOUND;
 }
 
@@ -261,7 +260,7 @@ static struct seq_operations gsGpuTracingReadOps =
 };
 
 
-static IMG_INT GpuTracingSet(const IMG_CHAR *buffer, size_t count, loff_t uiPosition, IMG_VOID *data)
+static IMG_INT GpuTracingSet(const IMG_CHAR *buffer, size_t count, loff_t uiPosition, void *data)
 {
 	IMG_CHAR cFirstChar;
 
@@ -305,10 +304,10 @@ static IMG_INT GpuTracingSet(const IMG_CHAR *buffer, size_t count, loff_t uiPosi
 ******************************************************************************/
 
 
-IMG_VOID PVRGpuTraceClientWork(
+void PVRGpuTraceClientWork(
 		const IMG_UINT32 ui32Pid,
-		const IMG_UINT32 ui32FrameNo,
-		const IMG_UINT32 ui32RTDataID,
+		const IMG_UINT32 ui32ExtJobRef,
+		const IMG_UINT32 ui32IntJobRef,
 		const IMG_CHAR* pszKickType)
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
@@ -317,9 +316,9 @@ IMG_VOID PVRGpuTraceClientWork(
 
 	PVR_ASSERT(pszKickType);
 
-	PVR_DPF((PVR_DBG_VERBOSE, "PVRGpuTraceClientKick: PID %u, frame %u, RTDATA %x", ui32Pid, ui32FrameNo, ui32RTDataID));
+	PVR_DPF((PVR_DBG_VERBOSE, "PVRGpuTraceClientKick(%s): PID %u, extJobRef %u, intJobRef %u", pszKickType, ui32Pid, ui32ExtJobRef, ui32IntJobRef));
 
-	CreateJob(ui32Pid, ui32FrameNo, ui32RTDataID);
+	CreateJob(ui32Pid, ui32ExtJobRef, ui32IntJobRef);
 
 	/*
 	  Always create jobs for client work above but only emit the enqueue
@@ -330,7 +329,7 @@ IMG_VOID PVRGpuTraceClientWork(
 	*/
 	if (PVRGpuTraceEnabled())
 	{
-		eError = GetCtxAndJobID(ui32Pid, ui32FrameNo, ui32RTDataID, &ui32CtxId,  &psJob);
+		eError = GetCtxAndJobID(ui32Pid, ui32ExtJobRef, ui32IntJobRef, &ui32CtxId,  &psJob);
 		PVR_LOGRN_IF_ERROR(eError, "GetCtxAndJobID");
 
 		trace_gpu_job_enqueue(ui32CtxId, PVRSRV_FTRACE_JOB_GET_ID(psJob), pszKickType);
@@ -340,11 +339,11 @@ IMG_VOID PVRGpuTraceClientWork(
 }
 
 
-IMG_VOID PVRGpuTraceWorkSwitch(
+void PVRGpuTraceWorkSwitch(
 		IMG_UINT64 ui64HWTimestampInOSTime,
 		const IMG_UINT32 ui32Pid,
-		const IMG_UINT32 ui32FrameNo,
-		const IMG_UINT32 ui32RTDataID,
+		const IMG_UINT32 ui32ExtJobRef,
+		const IMG_UINT32 ui32IntJobRef,
 		const IMG_CHAR* pszWorkType,
 		PVR_GPUTRACE_SWITCH_TYPE eSwType)
 {
@@ -354,7 +353,7 @@ IMG_VOID PVRGpuTraceWorkSwitch(
 
 	PVR_ASSERT(pszWorkType);
 
-	eError = GetCtxAndJobID(ui32Pid, ui32FrameNo, ui32RTDataID,	&ui32CtxId,  &psJob);
+	eError = GetCtxAndJobID(ui32Pid, ui32ExtJobRef, ui32IntJobRef,	&ui32CtxId,  &psJob);
 	PVR_LOGRN_IF_ERROR(eError, "GetCtxAndJobID");
 
 	PVR_ASSERT(psJob);
@@ -380,7 +379,7 @@ IMG_VOID PVRGpuTraceWorkSwitch(
 }
 
 
-PVRSRV_ERROR PVRGpuTraceInit(IMG_VOID)
+PVRSRV_ERROR PVRGpuTraceInit(void)
 {
 	return PVRDebugFSCreateEntry("gpu_tracing_on",
 				      NULL,
@@ -391,7 +390,7 @@ PVRSRV_ERROR PVRGpuTraceInit(IMG_VOID)
 }
 
 
-IMG_VOID PVRGpuTraceDeInit(IMG_VOID)
+void PVRGpuTraceDeInit(void)
 {
 	PVRDebugFSRemoveEntry(gpsPVRDebugFSGpuTracingOnEntry);
 	gpsPVRDebugFSGpuTracingOnEntry = NULL;

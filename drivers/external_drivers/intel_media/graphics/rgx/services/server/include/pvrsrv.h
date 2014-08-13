@@ -133,6 +133,40 @@ typedef struct PVRSRV_DBGREQ_NOTIFY_TAG
 } PVRSRV_DBGREQ_NOTIFY;
 
 /*!
+*******************************************************************************
+
+ @Description
+
+ Macro used within debug dump functions to send output either to PVR_LOG or
+ a custom function.
+
+******************************************************************************/
+#define PVR_DUMPDEBUG_LOG(x)					\
+	do											\
+	{											\
+		if (pfnDumpDebugPrintf)					\
+		{										\
+			pfnDumpDebugPrintf x;				\
+		}										\
+		else									\
+		{										\
+			PVR_LOG(x);							\
+		}										\
+	} while(0)
+
+/*!
+*******************************************************************************
+
+ @Description
+
+ Typedef for custom debug dump output functions.
+
+******************************************************************************/
+typedef void (DUMPDEBUG_PRINTF_FUNC)(const IMG_CHAR *pszFormat, ...);
+
+extern DUMPDEBUG_PRINTF_FUNC *g_pfnDumpDebugPrintf;
+
+/*!
 ******************************************************************************
 
  @Function	PVRSRVGetPVRSRVData
@@ -146,7 +180,9 @@ PVRSRV_DATA *PVRSRVGetPVRSRVData(IMG_VOID);
 
 IMG_EXPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVEnumerateDevicesKM(IMG_UINT32 *pui32NumDevices,
-											 	   PVRSRV_DEVICE_IDENTIFIER *psDevIdList);
+                                                   PVRSRV_DEVICE_TYPE *peDeviceType,
+                                                   PVRSRV_DEVICE_CLASS *peDeviceClass,
+                                                   IMG_UINT32 *pui32DeviceIndex);
 
 IMG_EXPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVAcquireDeviceDataKM (IMG_UINT32			ui32DevIndex,
@@ -218,8 +254,13 @@ IMG_IMPORT PVRSRV_ERROR IMG_CALLCONV PVRSRVWaitForValueKM(volatile IMG_UINT32	*p
  @Function	: PVRSRVSystemDebugInfo
 
  @Description	: Dump the system debug info
+
+@Input pfnDumpDebugPrintf : Used to specify the appropriate printf function.
+			     If this argument is IMG_NULL, then PVR_LOG() will
+			     be used as the default printing function.
+
 *****************************************************************************/
-PVRSRV_ERROR PVRSRVSystemDebugInfo(IMG_VOID);
+PVRSRV_ERROR PVRSRVSystemDebugInfo(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf);
 
 /*!
 *****************************************************************************
@@ -335,12 +376,17 @@ PVRSRV_ERROR PVRSRVUnregisterCmdCompleteNotify(IMG_HANDLE hNotify);
  @Function	: PVRSRVDebugRequest
 
  @Description	: Notify any registered debug request handler that a debug
-                  request has been made and at what level.
+                  request has been made and at what level. It dumps information 
+		  for all debug handlers unlike RGXDumpDebugInfo
 
  @Input ui32VerbLevel	: The maximum verbosity level to dump
 
+ @Input pfnDumpDebugPrintf : Used to specify the appropriate printf function.
+			     If this argument is IMG_NULL, then PVR_LOG() will
+			     be used as the default printing function.
+
 *****************************************************************************/
-IMG_VOID IMG_CALLCONV PVRSRVDebugRequest(IMG_UINT32 ui32VerbLevel);
+IMG_VOID IMG_CALLCONV PVRSRVDebugRequest(IMG_UINT32 ui32VerbLevel, DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf);
 
 /*!
 *****************************************************************************

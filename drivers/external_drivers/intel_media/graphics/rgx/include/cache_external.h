@@ -55,9 +55,9 @@ typedef IMG_UINT32 PVRSRV_CACHE_OP;
 
 /*
 	If we get multiple cache operations before the operation which will
-	trigger the oepration to happen then we need to make sure we do
+	trigger the operation to happen then we need to make sure we do
 	the right thing.
-	
+
 	Note: PVRSRV_CACHE_OP_INVALIDATE should never be passed into here
 */
 #ifdef INLINE_IS_PRAGMA

@@ -47,33 +47,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CREATE_TRACE_POINTS
 #include "trace_events.h"
 
-/* This is a helper that calls trace_fence_update for each fence in an
+/* This is a helper that calls trace_rogue_fence_update for each fence in an
  * array.
  */
-void trace_pvr_fence_updates(const char *dm, IMG_UINT32 ui32FWContext,
-							 IMG_UINT32 ui32Offset,
-							 IMG_UINT uCount,
-							 PRGXFWIF_UFO_ADDR *pauiAddresses,
-							 IMG_UINT32 *paui32Values)
+void trace_rogue_fence_updates(const char *dm, IMG_UINT32 ui32FWContext,
+							   IMG_UINT32 ui32Offset,
+							   IMG_UINT uCount,
+							   PRGXFWIF_UFO_ADDR *pauiAddresses,
+							   IMG_UINT32 *paui32Values)
 {
 	IMG_UINT i;
 	for (i = 0; i < uCount; i++)
 	{
-		trace_pvr_fence_update(current->comm, dm, ui32FWContext, ui32Offset,
-							   pauiAddresses[i].ui32Addr, paui32Values[i]);
+		trace_rogue_fence_update(current->comm, dm, ui32FWContext, ui32Offset,
+								 pauiAddresses[i].ui32Addr, paui32Values[i]);
 	}
 }
 
-void trace_pvr_fence_checks(const char *dm, IMG_UINT32 ui32FWContext,
-							IMG_UINT32 ui32Offset,
-							IMG_UINT uCount,
-							PRGXFWIF_UFO_ADDR *pauiAddresses,
-							IMG_UINT32 *paui32Values)
+void trace_rogue_fence_checks(const char *dm, IMG_UINT32 ui32FWContext,
+							  IMG_UINT32 ui32Offset,
+							  IMG_UINT uCount,
+							  PRGXFWIF_UFO_ADDR *pauiAddresses,
+							  IMG_UINT32 *paui32Values)
 {
 	IMG_UINT i;
 	for (i = 0; i < uCount; i++)
 	{
-		trace_pvr_fence_check(current->comm, dm, ui32FWContext, ui32Offset,
+		trace_rogue_fence_check(current->comm, dm, ui32FWContext, ui32Offset,
 							  pauiAddresses[i].ui32Addr, paui32Values[i]);
 	}
 }

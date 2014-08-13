@@ -65,12 +65,12 @@ OSMMapPMR(IMG_HANDLE hBridge,
           IMG_HANDLE hPMR,
           IMG_DEVMEM_SIZE_T uiPMRSize,
           IMG_HANDLE *phOSMMapPrivDataOut,
-          IMG_VOID **ppvMappingAddressOut,
+          void **ppvMappingAddressOut,
           IMG_SIZE_T *puiMappingLengthOut)
 {
     PVRSRV_ERROR eError;
     PMR *psPMR;
-    IMG_VOID *pvKernelAddress;
+    void *pvKernelAddress;
     IMG_SIZE_T uiLength;
     IMG_HANDLE hPriv;
 
@@ -114,11 +114,11 @@ OSMMapPMR(IMG_HANDLE hBridge,
     return eError;
 }
 
-IMG_INTERNAL IMG_VOID
+IMG_INTERNAL void
 OSMUnmapPMR(IMG_HANDLE hBridge,
             IMG_HANDLE hPMR,
             IMG_HANDLE hOSMMapPrivData,
-            IMG_VOID *pvMappingAddress,
+            void *pvMappingAddress,
             IMG_SIZE_T uiMappingLength)
 {
     PMR *psPMR;

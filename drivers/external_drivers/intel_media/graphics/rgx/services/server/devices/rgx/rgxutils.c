@@ -54,12 +54,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sync_internal.h"
 #include "rgxfwutils.h"
 
-IMG_BOOL RGXIsDevicePowered(PVRSRV_DEVICE_NODE *psDeviceNode)
-{
-	return PVRSRVIsDevicePowered(psDeviceNode->sDevId.ui32DeviceIndex);
-}
-
-
 /*
  * RGXRunScript
  */
@@ -74,7 +68,6 @@ PVRSRV_ERROR RGXRunScript(PVRSRV_RGXDEV_INFO	*psDevInfo,
 #if !defined(NO_HARDWARE)
 	IMG_UINT32 ui32LastLoopPoint = 0xFFFFFFFF;
 #endif /* NO_HARDWARE */
-
 
 	for (ui32PC = 0, psComm = psScript;
 		ui32PC < ui32NumCommands;
@@ -112,51 +105,56 @@ PVRSRV_ERROR RGXRunScript(PVRSRV_RGXDEV_INFO	*psDevInfo,
 			}
 			case RGX_INIT_OP_WRITE_HW_REG:
 			{
-				OSWriteHWReg32(psDevInfo->pvRegsBaseKM, psComm->sWriteHWReg.ui32Offset, psComm->sWriteHWReg.ui32Value);
+				if( !(ui32PdumpFlags & PDUMP_FLAGS_NOHW) )
+				{
+					OSWriteHWReg32(psDevInfo->pvRegsBaseKM, psComm->sWriteHWReg.ui32Offset, psComm->sWriteHWReg.ui32Value);
+				}
 				PDUMPCOMMENT("RGXRunScript: Write HW reg operation");
 				PDUMPREG32(RGX_PDUMPREG_NAME,
-						   psComm->sWriteHWReg.ui32Offset,
-						   psComm->sWriteHWReg.ui32Value,
-						   ui32PdumpFlags);
+						psComm->sWriteHWReg.ui32Offset,
+						psComm->sWriteHWReg.ui32Value,
+						ui32PdumpFlags);
 				break;
 			}
 			case RGX_INIT_OP_PDUMP_HW_REG:
 			{
 				PDUMPCOMMENT("RGXRunScript: Dump HW reg operation");
 				PDUMPREG32(RGX_PDUMPREG_NAME, psComm->sPDumpHWReg.ui32Offset,
-						   psComm->sPDumpHWReg.ui32Value, ui32PdumpFlags);
+						psComm->sPDumpHWReg.ui32Value, ui32PdumpFlags);
 				break;
 			}
 			case RGX_INIT_OP_COND_POLL_HW_REG:
 			{
 #if !defined(NO_HARDWARE)
 				IMG_UINT32	ui32RegVal;
-				
 
-				/* read the register used as condition */
-				ui32RegVal = OSReadHWReg32(psDevInfo->pvRegsBaseKM,  psComm->sCondPollHWReg.ui32CondOffset);
-
-				/* if the conditions succeeds, poll the register */
-				if ((ui32RegVal & psComm->sCondPollHWReg.ui32CondMask) == psComm->sCondPollHWReg.ui32CondValue)
+				if( !(ui32PdumpFlags & PDUMP_FLAGS_NOHW) )
 				{
-					if (PVRSRVPollForValueKM((IMG_UINT32 *)((IMG_UINT8*)psDevInfo->pvRegsBaseKM + psComm->sCondPollHWReg.ui32Offset),
+					/* read the register used as condition */
+					ui32RegVal = OSReadHWReg32(psDevInfo->pvRegsBaseKM,  psComm->sCondPollHWReg.ui32CondOffset);
+
+					/* if the conditions succeeds, poll the register */
+					if ((ui32RegVal & psComm->sCondPollHWReg.ui32CondMask) == psComm->sCondPollHWReg.ui32CondValue)
+					{
+						if (PVRSRVPollForValueKM((IMG_UINT32 *)((IMG_UINT8*)psDevInfo->pvRegsBaseKM + psComm->sCondPollHWReg.ui32Offset),
 								psComm->sCondPollHWReg.ui32Value,
 								psComm->sCondPollHWReg.ui32Mask) != PVRSRV_OK)
-					{
-						PVR_DPF((PVR_DBG_ERROR, "RGXRunScript: Cond Poll for Reg (0x%x) failed -> Cancel script.", psComm->sCondPollHWReg.ui32Offset));
-						return PVRSRV_ERROR_TIMEOUT;
-					}
+						{
+							PVR_DPF((PVR_DBG_ERROR, "RGXRunScript: Cond Poll for Reg (0x%x) failed -> Cancel script.", psComm->sCondPollHWReg.ui32Offset));
+							return PVRSRV_ERROR_TIMEOUT;
+						}
 
-				}
-				else
-				{
-					PVR_DPF((PVR_DBG_WARNING, 
-					   "RGXRunScript: Skipping Poll for Reg (0x%x) because the condition is not met (Reg 0x%x ANDed with mask 0x%x equal to 0x%x but value 0x%x found instead).",
-					   psComm->sCondPollHWReg.ui32Offset,
-					   psComm->sCondPollHWReg.ui32CondOffset,
-					   psComm->sCondPollHWReg.ui32CondMask,
-					   psComm->sCondPollHWReg.ui32CondValue,
-					   ui32RegVal));
+					}
+					else
+					{
+						PVR_DPF((PVR_DBG_WARNING, 
+						"RGXRunScript: Skipping Poll for Reg (0x%x) because the condition is not met (Reg 0x%x ANDed with mask 0x%x equal to 0x%x but value 0x%x found instead).",
+						psComm->sCondPollHWReg.ui32Offset,
+						psComm->sCondPollHWReg.ui32CondOffset,
+						psComm->sCondPollHWReg.ui32CondMask,
+						psComm->sCondPollHWReg.ui32CondValue,
+						ui32RegVal));
+					}
 				}
 #endif
 				break;
@@ -172,14 +170,16 @@ PVRSRV_ERROR RGXRunScript(PVRSRV_RGXDEV_INFO	*psDevInfo,
 
 				PDUMPCOMMENTWITHFLAGS(PDUMP_FLAGS_CONTINUOUS, "RGXRunScript: 64 bit HW offset: %x", psComm->sPoll64HWReg.ui32Offset);
 
-				if (PVRSRVPollForValueKM((IMG_UINT32 *)(((IMG_UINT8*)psDevInfo->pvRegsBaseKM) + psComm->sPoll64HWReg.ui32Offset + 4),
+				if( !(ui32PdumpFlags & PDUMP_FLAGS_NOHW) )
+				{
+					if (PVRSRVPollForValueKM((IMG_UINT32 *)(((IMG_UINT8*)psDevInfo->pvRegsBaseKM) + psComm->sPoll64HWReg.ui32Offset + 4),
 										 ui32UpperValue,
 										 ui32UpperMask) != PVRSRV_OK)
-				{
-					PVR_DPF((PVR_DBG_ERROR, "RGXRunScript: Poll for upper part of Reg (0x%x) failed -> Cancel script.", psComm->sPoll64HWReg.ui32Offset));
-					return PVRSRV_ERROR_TIMEOUT;
+					{
+						PVR_DPF((PVR_DBG_ERROR, "RGXRunScript: Poll for upper part of Reg (0x%x) failed -> Cancel script.", psComm->sPoll64HWReg.ui32Offset));
+						return PVRSRV_ERROR_TIMEOUT;
+					}
 				}
-				
 				PDUMPREGPOL(RGX_PDUMPREG_NAME,
 							psComm->sPoll64HWReg.ui32Offset + 4,
 							ui32UpperValue,
@@ -187,14 +187,16 @@ PVRSRV_ERROR RGXRunScript(PVRSRV_RGXDEV_INFO	*psDevInfo,
 							ui32PdumpFlags,
 							PDUMP_POLL_OPERATOR_EQUAL);
 
-				if (PVRSRVPollForValueKM((IMG_UINT32 *)((IMG_UINT8*)psDevInfo->pvRegsBaseKM + psComm->sPoll64HWReg.ui32Offset),
+				if( !(ui32PdumpFlags & PDUMP_FLAGS_NOHW) )
+				{
+					if (PVRSRVPollForValueKM((IMG_UINT32 *)((IMG_UINT8*)psDevInfo->pvRegsBaseKM + psComm->sPoll64HWReg.ui32Offset),
 										 ui32LowerValue,
 										 ui32LowerMask) != PVRSRV_OK)
-				{
-					PVR_DPF((PVR_DBG_ERROR, "RGXRunScript: Poll for lower part of Reg (0x%x) failed -> Cancel script.", psComm->sPoll64HWReg.ui32Offset));
-					return PVRSRV_ERROR_TIMEOUT;
+					{
+						PVR_DPF((PVR_DBG_ERROR, "RGXRunScript: Poll for lower part of Reg (0x%x) failed -> Cancel script.", psComm->sPoll64HWReg.ui32Offset));
+						return PVRSRV_ERROR_TIMEOUT;
+					}
 				}
-				
 				PDUMPREGPOL(RGX_PDUMPREG_NAME,
 							psComm->sPoll64HWReg.ui32Offset,
 							ui32LowerValue,
@@ -206,14 +208,16 @@ PVRSRV_ERROR RGXRunScript(PVRSRV_RGXDEV_INFO	*psDevInfo,
 			}
 			case RGX_INIT_OP_POLL_HW_REG:
 			{
-				if (PVRSRVPollForValueKM((IMG_UINT32 *)((IMG_UINT8*)psDevInfo->pvRegsBaseKM + psComm->sPollHWReg.ui32Offset),
+				if( !(ui32PdumpFlags & PDUMP_FLAGS_NOHW) )
+				{
+					if (PVRSRVPollForValueKM((IMG_UINT32 *)((IMG_UINT8*)psDevInfo->pvRegsBaseKM + psComm->sPollHWReg.ui32Offset),
 										 psComm->sPollHWReg.ui32Value,
 										 psComm->sPollHWReg.ui32Mask) != PVRSRV_OK)
-				{
-					PVR_DPF((PVR_DBG_ERROR, "RGXRunScript: Poll for Reg (0x%x) failed -> Cancel script.", psComm->sPollHWReg.ui32Offset));
-					return PVRSRV_ERROR_TIMEOUT;
+					{
+						PVR_DPF((PVR_DBG_ERROR, "RGXRunScript: Poll for Reg (0x%x) failed -> Cancel script.", psComm->sPollHWReg.ui32Offset));
+						return PVRSRV_ERROR_TIMEOUT;
+					}
 				}
-				
 				PDUMPREGPOL(RGX_PDUMPREG_NAME,
 							psComm->sPollHWReg.ui32Offset,
 							psComm->sPollHWReg.ui32Value,

@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* our exported API */
 #include "devicemem_server.h"
 #include "devicemem_utils.h"
+#include "devicemem.h"
 
 #include "device.h" /* For device node */
 #include "img_types.h"
@@ -54,6 +55,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pmr.h"
 
 #include "allocmem.h"
+#include "osfunc.h"
 
 struct _DEVMEMINT_CTX_
 {
@@ -357,8 +359,6 @@ DevmemIntMapPMR(DEVMEMINT_HEAP *psDevmemHeap,
 {
     PVRSRV_ERROR eError;
     DEVMEMINT_MAPPING *psMapping;
-    /* page-size in device MMU */
-    IMG_UINT32 uiLog2DevPageSize;
     /* number of pages (device pages) that allocation spans */
     IMG_UINT32 ui32NumDevPages;
     /* device virtual address of start of allocation */
@@ -377,13 +377,13 @@ DevmemIntMapPMR(DEVMEMINT_HEAP *psDevmemHeap,
 
     uiAllocationSize = psReservation->uiLength;
 
-    uiLog2DevPageSize = 12;
+
     ui32NumDevPages = 0xffffffffU & (((uiAllocationSize - 1)
-                                      >> uiLog2DevPageSize) + 1);
-    PVR_ASSERT(ui32NumDevPages << uiLog2DevPageSize == uiAllocationSize);
+                                      >> GET_LOG2_PAGESIZE()) + 1);
+    PVR_ASSERT(ui32NumDevPages << GET_LOG2_PAGESIZE() == uiAllocationSize);
 
     eError = PMRLockSysPhysAddresses(psPMR,
-                                     uiLog2DevPageSize);
+    		GET_LOG2_PAGESIZE());
     if (eError != PVRSRV_OK)
 	{
         goto e2;
@@ -397,13 +397,14 @@ DevmemIntMapPMR(DEVMEMINT_HEAP *psDevmemHeap,
     eError = MMU_MapPMR (psDevmemHeap->psDevmemCtx->psMMUContext,
                          sAllocationDevVAddr,
                          psPMR,
-                         ui32NumDevPages << uiLog2DevPageSize,
-                         uiMapFlags);
+                         ui32NumDevPages << GET_LOG2_PAGESIZE(),
+                         uiMapFlags,
+                         GET_LOG2_PAGESIZE());
     PVR_ASSERT(eError == PVRSRV_OK);
 
     psMapping->psReservation = psReservation;
     psMapping->uiNumPages = ui32NumDevPages;
-    psMapping->uiLog2PageSize = uiLog2DevPageSize;
+    psMapping->uiLog2PageSize = GET_LOG2_PAGESIZE();
     psMapping->psPMR = psPMR;
     /* Don't bother with refcount on reservation, as a reservation
        only ever holds one mapping, so we directly increment the
@@ -438,9 +439,11 @@ DevmemIntUnmapPMR(DEVMEMINT_MAPPING *psMapping)
     ui32NumDevPages = psMapping->uiNumPages;
     sAllocationDevVAddr = psMapping->psReservation->sBase;
 
+
     MMU_UnmapPages (psDevmemHeap->psDevmemCtx->psMMUContext,
                     sAllocationDevVAddr,
-                    ui32NumDevPages);
+                    ui32NumDevPages,
+                    GET_LOG2_PAGESIZE());
 
     eError = PMRUnlockSysPhysAddresses(psMapping->psPMR);
     PVR_ASSERT(eError == PVRSRV_OK);
@@ -477,12 +480,14 @@ DevmemIntReserveRange(DEVMEMINT_HEAP *psDevmemHeap,
     psReservation->sBase = sAllocationDevVAddr;
     psReservation->uiLength = uiAllocationSize;
 
+
     eError = MMU_Alloc (psDevmemHeap->psDevmemCtx->psMMUContext,
                         uiAllocationSize,
                         &uiAllocationSize,
                         0, /* IMG_UINT32 uiProtFlags */
                         0, /* alignment is n/a since we supply devvaddr */
-                        &sAllocationDevVAddr);
+                        &sAllocationDevVAddr,
+                        GET_LOG2_PAGESIZE());
     if (eError != PVRSRV_OK)
     {
         goto e1;
@@ -514,9 +519,11 @@ DevmemIntReserveRange(DEVMEMINT_HEAP *psDevmemHeap,
 PVRSRV_ERROR
 DevmemIntUnreserveRange(DEVMEMINT_RESERVATION *psReservation)
 {
+
     MMU_Free (psReservation->psDevmemHeap->psDevmemCtx->psMMUContext,
               psReservation->sBase,
-              psReservation->uiLength);
+              psReservation->uiLength,
+              GET_LOG2_PAGESIZE());
 
 	_DevmemIntHeapRelease(psReservation->psDevmemHeap);
 	OSFreeMem(psReservation);
@@ -661,6 +668,7 @@ DevmemSLCFlushInvalRequest(PVRSRV_DEVICE_NODE *psDeviceNode,
 
 	return PVRSRV_OK;
 }
+
 
 #if defined (PDUMP)
 IMG_UINT32 DevmemIntMMUContextID(DEVMEMINT_CTX *psDevMemContext)

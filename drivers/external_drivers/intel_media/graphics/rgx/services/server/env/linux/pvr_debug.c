@@ -57,13 +57,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvr_debug.h"
 #include "srvkm.h"
 #include "pvr_debugfs.h"
-#include "mutex.h"
 #include "linkage.h"
 #include "pvr_uaccess.h"
 #include "pvrsrv.h"
 #include "rgxdevice.h"
 #include "rgxdebug.h"
 #include "lists.h"
+#include "osfunc.h"
 
 #if defined(PVRSRV_NEED_PVR_DPF)
 
@@ -96,13 +96,13 @@ static PVRSRV_DEBUG_CCB gsDebugCCB[PVRSRV_DEBUG_CCB_MAX] = { { 0 } };
 
 static IMG_UINT giOffset = 0;
 
-static PVRSRV_LINUX_MUTEX gsDebugCCBMutex;
+static struct mutex gsDebugCCBMutex;
 
 static void
 AddToBufferCCB(const IMG_CHAR *pszFileName, IMG_UINT32 ui32Line,
 			   const IMG_CHAR *szBuffer)
 {
-	LinuxLockMutex(&gsDebugCCBMutex);
+	mutex_lock(&gsDebugCCBMutex);
 
 	gsDebugCCB[giOffset].pszFile = pszFileName;
 	gsDebugCCB[giOffset].iLine   = ui32Line;
@@ -115,14 +115,14 @@ AddToBufferCCB(const IMG_CHAR *pszFileName, IMG_UINT32 ui32Line,
 
 	giOffset = (giOffset + 1) % PVRSRV_DEBUG_CCB_MAX;
 
-	LinuxUnLockMutex(&gsDebugCCBMutex);
+	mutex_unlock(&gsDebugCCBMutex);
 }
 
-IMG_EXPORT IMG_VOID PVRSRVDebugPrintfDumpCCB(void)
+IMG_EXPORT void PVRSRVDebugPrintfDumpCCB(void)
 {
 	int i;
 
-	LinuxLockMutex(&gsDebugCCBMutex);
+	mutex_lock(&gsDebugCCBMutex);
 	
 	for (i = 0; i < PVRSRV_DEBUG_CCB_MAX; i++)
 	{
@@ -147,7 +147,7 @@ IMG_EXPORT IMG_VOID PVRSRVDebugPrintfDumpCCB(void)
 		psDebugCCBEntry->pszFile = IMG_NULL;
 	}
 
-	LinuxUnLockMutex(&gsDebugCCBMutex);
+	mutex_unlock(&gsDebugCCBMutex);
 }
 
 #else /* defined(PVRSRV_DEBUG_CCB_MAX) */
@@ -160,7 +160,7 @@ AddToBufferCCB(const IMG_CHAR *pszFileName, IMG_UINT32 ui32Line,
 	(void)ui32Line;
 }
 
-IMG_EXPORT IMG_VOID PVRSRVDebugPrintfDumpCCB(void)
+IMG_EXPORT void PVRSRVDebugPrintfDumpCCB(void)
 {
 	/* Not available */
 }
@@ -207,7 +207,7 @@ static IMG_CHAR gszBufferNonIRQ[PVR_MAX_MSG_LEN + 1];
 static IMG_CHAR gszBufferIRQ[PVR_MAX_MSG_LEN + 1];
 
 /* The lock is used to control access to gszBufferNonIRQ */
-static PVRSRV_LINUX_MUTEX gsDebugMutexNonIRQ;
+static struct mutex gsDebugMutexNonIRQ;
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,39))
 /* The lock is used to control access to gszBufferIRQ */
@@ -226,7 +226,7 @@ static inline void GetBufferLock(unsigned long *pulLockFlags)
 	}
 	else
 	{
-		LinuxLockMutex(&gsDebugMutexNonIRQ);
+		mutex_lock(&gsDebugMutexNonIRQ);
 	}
 }
 
@@ -238,7 +238,7 @@ static inline void ReleaseBufferLock(unsigned long ulLockFlags)
 	}
 	else
 	{
-		LinuxUnLockMutex(&gsDebugMutexNonIRQ);
+		mutex_unlock(&gsDebugMutexNonIRQ);
 	}
 }
 
@@ -280,11 +280,11 @@ static IMG_BOOL VBAppend(IMG_CHAR *pszBuf, IMG_UINT32 ui32BufSiz, const IMG_CHAR
 
 /* Actually required for ReleasePrintf too */
 
-IMG_VOID PVRDPFInit(IMG_VOID)
+void PVRDPFInit(void)
 {
-	LinuxInitMutex(&gsDebugMutexNonIRQ);
+	mutex_init(&gsDebugMutexNonIRQ);
 #if defined(PVRSRV_DEBUG_CCB_MAX) && defined(PVRSRV_NEED_PVR_DPF)
-	LinuxInitMutex(&gsDebugCCBMutex);
+	mutex_init(&gsDebugCCBMutex);
 #endif
 }
 
@@ -294,7 +294,7 @@ IMG_VOID PVRDPFInit(IMG_VOID)
 @Input          pszFormat   The message format string
 @Input          ...         Zero or more arguments for use by the format string
 */ /**************************************************************************/
-IMG_VOID PVRSRVReleasePrintf(const IMG_CHAR *pszFormat, ...)
+void PVRSRVReleasePrintf(const IMG_CHAR *pszFormat, ...)
 {
 	va_list vaArgs;
 	unsigned long ulLockFlags = 0;
@@ -330,7 +330,7 @@ IMG_VOID PVRSRVReleasePrintf(const IMG_CHAR *pszFormat, ...)
 @Input          pszFormat   The message format string
 @Input          ...         Zero or more arguments for use by the format string
 */ /**************************************************************************/
-IMG_VOID PVRSRVTrace(const IMG_CHAR *pszFormat, ...)
+void PVRSRVTrace(const IMG_CHAR *pszFormat, ...)
 {
 	va_list VArgs;
 	unsigned long ulLockFlags = 0;
@@ -392,7 +392,7 @@ static IMG_BOOL BAppend(IMG_CHAR *pszBuf, IMG_UINT32 ui32BufSiz, const IMG_CHAR 
 @Input          pszFormat   The message format string
 @Input          ...         Zero or more arguments for use by the format string
 */ /**************************************************************************/
-IMG_VOID PVRSRVDebugPrintf(IMG_UINT32 ui32DebugLevel,
+void PVRSRVDebugPrintf(IMG_UINT32 ui32DebugLevel,
 			   const IMG_CHAR *pszFullFileName,
 			   IMG_UINT32 ui32Line,
 			   const IMG_CHAR *pszFormat,
@@ -614,7 +614,7 @@ static const IMG_CHAR *_DebugNodesDevTypeToString(PVRSRV_DEVICE_TYPE eDeviceType
 		{
 			static IMG_CHAR text[10];
 
-			sprintf(text, "?%x", (IMG_UINT)eDeviceType);
+			OSSNPrintf(text, sizeof(text), "?%x", (IMG_UINT)eDeviceType);
 
 			return text;
 		}
@@ -641,7 +641,7 @@ static const IMG_CHAR *_DebugNodesDevClassToString(PVRSRV_DEVICE_CLASS eDeviceCl
 		{
 			static IMG_CHAR text[10];
 
-			sprintf(text, "?%x", (IMG_UINT)eDeviceClass);
+			OSSNPrintf(text, sizeof(text), "?%x", (IMG_UINT)eDeviceClass);
 			return text;
 		}
 	}
@@ -828,6 +828,9 @@ static int _DebugStatusSeqShow(struct seq_file *psSeqFile, void *pvData)
 				case PVRSRV_DEVICE_HEALTH_STATUS_OK:
 					seq_printf(psSeqFile, "Firmware Status: OK\n");
 					break;
+				case PVRSRV_DEVICE_HEALTH_STATUS_NOT_RESPONDING:
+					seq_printf(psSeqFile, "Firmware Status: NOT RESPONDING\n");
+					break;
 				case PVRSRV_DEVICE_HEALTH_STATUS_DEAD:
 					seq_printf(psSeqFile, "Firmware Status: DEAD\n");
 					break;
@@ -869,6 +872,9 @@ static int _DebugStatusSeqShow(struct seq_file *psSeqFile, void *pvData)
 			{
 				case PVRSRV_DEVICE_HEALTH_STATUS_OK:
 					seq_printf(psSeqFile, "Device %d Status: OK\n", psDeviceNode->sDevId.ui32DeviceIndex);
+					break;
+				case PVRSRV_DEVICE_HEALTH_STATUS_NOT_RESPONDING:
+					seq_printf(psSeqFile, "Device %d Status: NOT RESPONDING\n", psDeviceNode->sDevId.ui32DeviceIndex);
 					break;
 				case PVRSRV_DEVICE_HEALTH_STATUS_DEAD:
 					seq_printf(psSeqFile, "Device %d Status: DEAD\n", psDeviceNode->sDevId.ui32DeviceIndex);
@@ -989,7 +995,7 @@ static void *_DebugDumpDebugSeqNext(struct seq_file *psSeqFile,
 
 static struct seq_file *gpsDumpDebugPrintfSeqFile = IMG_NULL;
 
-static IMG_VOID _DumpDebugSeqPrintf(const IMG_CHAR *pszFormat, ...)
+static void _DumpDebugSeqPrintf(const IMG_CHAR *pszFormat, ...)
 {
 	if (gpsDumpDebugPrintfSeqFile)
 	{
@@ -1011,11 +1017,10 @@ static int _DebugDumpDebugSeqShow(struct seq_file *psSeqFile, void *pvData)
 		
 		if (psDeviceNode->pvDevice != NULL)
 		{
-			PVRSRV_RGXDEV_INFO *psDevInfo = psDeviceNode->pvDevice;
-
 			gpsDumpDebugPrintfSeqFile = psSeqFile;
-			RGXDumpDebugInfo(_DumpDebugSeqPrintf, psDevInfo);
+			PVRSRVDebugRequest(DEBUG_REQUEST_VERBOSITY_MAX, _DumpDebugSeqPrintf);
 			gpsDumpDebugPrintfSeqFile = IMG_NULL;
+			
 		}
 	}
 
@@ -1029,8 +1034,6 @@ static struct seq_operations gsDumpDebugReadOps =
 	.next  = _DebugDumpDebugSeqNext,
 	.show  = _DebugDumpDebugSeqShow,
 };
-
-
 /*************************************************************************/ /*!
  Firmware Trace DebugFS entry
 */ /**************************************************************************/
@@ -1088,7 +1091,7 @@ static void *_DebugFWTraceSeqNext(struct seq_file *psSeqFile,
 
 static struct seq_file *gpsFWTracePrintfSeqFile = IMG_NULL;
 
-static IMG_VOID _FWTraceSeqPrintf(const IMG_CHAR *pszFormat, ...)
+static void _FWTraceSeqPrintf(const IMG_CHAR *pszFormat, ...)
 {
 	if (gpsFWTracePrintfSeqFile)
 	{
@@ -1230,6 +1233,7 @@ static struct dentry *gpsVersionDebugFSEntry;
 static struct dentry *gpsNodesDebugFSEntry;
 static struct dentry *gpsStatusDebugFSEntry;
 static struct dentry *gpsDumpDebugDebugFSEntry;
+
 #if defined(PVRSRV_ENABLE_FW_TRACE_DEBUGFS)
 static struct dentry *gpsFWTraceDebugFSEntry;
 #endif

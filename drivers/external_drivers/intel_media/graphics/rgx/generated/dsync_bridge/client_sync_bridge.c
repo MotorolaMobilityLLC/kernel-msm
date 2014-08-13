@@ -137,7 +137,9 @@ IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgeServerSyncPrimSet(IMG_HANDLE hBridg
 IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgeServerSyncAlloc(IMG_HANDLE hBridge,
 							     IMG_HANDLE hDevNode,
 							     IMG_HANDLE *phSyncHandle,
-							     IMG_UINT32 *pui32SyncPrimVAddr)
+							     IMG_UINT32 *pui32SyncPrimVAddr,
+							     IMG_UINT32 ui32ClassNameSize,
+							     const IMG_CHAR *puiClassName)
 {
 	PVRSRV_ERROR eError;
 	IMG_HANDLE hDevNodeInt;
@@ -150,7 +152,9 @@ IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgeServerSyncAlloc(IMG_HANDLE hBridge,
 		PVRSRVServerSyncAllocKM(
 					hDevNodeInt,
 					&psSyncHandleInt,
-					pui32SyncPrimVAddr);
+					pui32SyncPrimVAddr,
+					ui32ClassNameSize,
+					puiClassName);
 
 	*phSyncHandle = psSyncHandleInt;
 	return eError;

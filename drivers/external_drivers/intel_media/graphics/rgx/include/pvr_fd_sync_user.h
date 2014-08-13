@@ -54,53 +54,68 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define PVR_SYNC_MAX_QUERY_FENCE_POINTS 15
 
-#define PVR_SYNC_IOC_MAGIC	'W'
+#define PVR_SYNC_IOC_MAGIC 'W'
 
 #define PVR_SYNC_IOC_CREATE_FENCE \
 	_IOWR(PVR_SYNC_IOC_MAGIC, 0, struct PVR_SYNC_CREATE_FENCE_IOCTL_DATA)
 
+#define PVR_SYNC_IOC_ENABLE_FENCING \
+	_IOWR(PVR_SYNC_IOC_MAGIC, 1, struct PVR_SYNC_ENABLE_FENCING_IOCTL_DATA)
+
 #define PVR_SYNC_IOC_DEBUG_FENCE \
-	_IOWR(PVR_SYNC_IOC_MAGIC, 1, struct PVR_SYNC_DEBUG_FENCE_IOCTL_DATA)
+	_IOWR(PVR_SYNC_IOC_MAGIC, 2, struct PVR_SYNC_DEBUG_FENCE_IOCTL_DATA)
 
 #define PVRSYNC_MODNAME "pvr_sync"
 
 struct PVR_SYNC_CREATE_FENCE_IOCTL_DATA
 {
 	/* Input */
-	IMG_CHAR	             szName[32];
+	IMG_CHAR					szName[32];
 
 	/* Output */
-	int                      iFenceFd;
-};
+	int							iFenceFd;
+	int                         bIdleFence;
+}
+__attribute__((packed, aligned(8)));
+
+struct PVR_SYNC_ENABLE_FENCING_IOCTL_DATA
+{
+	/* Input */
+	int bFencingEnabled;
+}
+__attribute__((packed, aligned(8)));
 
 typedef struct
 {
-	IMG_UINT32               ui32FWAddr;
-	IMG_UINT32               ui32Flags;
-	IMG_UINT32               ui32FenceValue;
-	IMG_UINT32               ui32UpdateValue;
-} PVR_SYNC_POINT_DATA;
+	IMG_UINT32					ui32FWAddr;
+	IMG_UINT32					ui32Flags;
+	IMG_UINT32					ui32FenceValue;
+	IMG_UINT32					ui32UpdateValue;
+}
+__attribute__((packed, aligned(8))) PVR_SYNC_POINT_DATA;
 
 typedef struct
 {
-	IMG_CHAR                 szParentName[32];
-	IMG_UINT32               ui32Id;
-	IMG_UINT32               ui32CurrOp;
-	IMG_UINT32               ui32NextOp;
-	PVR_SYNC_POINT_DATA      sData;
-} PVR_SYNC_DEBUG_SYNC_DATA;
+	IMG_CHAR					szParentName[32];
+	IMG_UINT32					ui32Id;
+	IMG_UINT32					ui32CurrOp;
+	IMG_UINT32					ui32NextOp;
+	PVR_SYNC_POINT_DATA			sData;
+}
+__attribute__((packed, aligned(8))) PVR_SYNC_DEBUG_SYNC_DATA;
 
 struct PVR_SYNC_DEBUG_FENCE_IOCTL_DATA
 {
 	/* Input */
-	int			             iFenceFd;
+	int							iFenceFd;
 
 	/* Output */
-	IMG_CHAR                 szName[32];
-	IMG_INT32                i32Status;
-	IMG_UINT32	             ui32NumSyncs;
-	PVR_SYNC_DEBUG_SYNC_DATA aPts[PVR_SYNC_MAX_QUERY_FENCE_POINTS];
-};
+	IMG_CHAR					szName[32];
+	IMG_INT32					i32Status;
+	IMG_UINT32					ui32NumSyncs;
+	PVR_SYNC_DEBUG_SYNC_DATA	aPts[PVR_SYNC_MAX_QUERY_FENCE_POINTS];
+}
+__attribute__((packed, aligned(8)));
 
 PVRSRV_ERROR PVRFDSyncOpen(int *piSyncFd);
 PVRSRV_ERROR PVRFDSyncClose(int iSyncFd);
@@ -115,7 +130,11 @@ PVRSRV_ERROR PVRFDSyncMergeFences(const char *pcszName,
 
 PVRSRV_ERROR PVRFDSyncCreateFence(int iSyncFd,
 								  const char *pcszName,
-								  int *piFenceFd);
+								  int *piFenceFd,
+								  int *pbIdleFence);
+
+PVRSRV_ERROR PVRFDSyncEnableFencing(int iSyncFd,
+									int bFencingEnabled);
 
 PVRSRV_ERROR PVRFDSyncQueryFence(int iSyncFd,
 								 int iFenceFd,

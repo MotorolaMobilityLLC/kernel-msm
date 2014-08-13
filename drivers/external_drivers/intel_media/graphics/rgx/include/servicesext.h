@@ -139,17 +139,6 @@ typedef PVRSRV_ERROR (*PFN_POST_CLOCKSPEED_CHANGE) (IMG_HANDLE				hDevHandle,
  *****************************************************************************
  * Enumeration of possible alpha types.
  *****************************************************************************/
-typedef enum _PVRSRV_ALPHA_FORMAT_ {
-	PVRSRV_ALPHA_FORMAT_UNKNOWN		=  0x00000000,  /*!< Alpha Format: Unknown */
-	PVRSRV_ALPHA_FORMAT_PRE			=  0x00000001,  /*!< Alpha Format: Pre-Alpha */
-	PVRSRV_ALPHA_FORMAT_NONPRE		=  0x00000002,  /*!< Alpha Format: Non-Pre-Alpha */
-	PVRSRV_ALPHA_FORMAT_MASK		=  0x0000000F,  /*!< Alpha Format Mask */
-} PVRSRV_ALPHA_FORMAT;
-
-/*!
- *****************************************************************************
- * Enumeration of possible alpha types.
- *****************************************************************************/
 typedef enum _PVRSRV_COLOURSPACE_FORMAT_ {
 	PVRSRV_COLOURSPACE_FORMAT_UNKNOWN		=  0x00000000,  /*!< Colourspace Format: Unknown */
 	PVRSRV_COLOURSPACE_FORMAT_LINEAR		=  0x00010000,  /*!< Colourspace Format: Linear */

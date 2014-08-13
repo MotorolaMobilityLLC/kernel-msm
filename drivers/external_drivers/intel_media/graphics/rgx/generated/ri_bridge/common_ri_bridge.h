@@ -48,7 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ri_typedefs.h"
 
 
-#include "pvr_bridge.h"
+#include "pvr_bridge_io.h"
 
 #define PVRSRV_BRIDGE_RI_CMD_FIRST			(PVRSRV_BRIDGE_RI_START)
 #define PVRSRV_BRIDGE_RI_RIWRITEPMRENTRY			PVRSRV_IOWR(PVRSRV_BRIDGE_RI_CMD_FIRST+0)
@@ -69,16 +69,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 typedef struct PVRSRV_BRIDGE_IN_RIWRITEPMRENTRY_TAG
 {
 	IMG_HANDLE hPMRHandle;
+	IMG_UINT32 ui32TextASize;
 	const IMG_CHAR * puiTextA;
 	IMG_SIZE_T uiLogicalSize;
-} PVRSRV_BRIDGE_IN_RIWRITEPMRENTRY;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RIWRITEPMRENTRY;
 
 
 /* Bridge out structure for RIWritePMREntry */
 typedef struct PVRSRV_BRIDGE_OUT_RIWRITEPMRENTRY_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RIWRITEPMRENTRY;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RIWRITEPMRENTRY;
 
 /*******************************************
             RIWriteMEMDESCEntry          
@@ -88,12 +89,13 @@ typedef struct PVRSRV_BRIDGE_OUT_RIWRITEPMRENTRY_TAG
 typedef struct PVRSRV_BRIDGE_IN_RIWRITEMEMDESCENTRY_TAG
 {
 	IMG_HANDLE hPMRHandle;
+	IMG_UINT32 ui32TextBSize;
 	const IMG_CHAR * puiTextB;
 	IMG_SIZE_T uiOffset;
 	IMG_SIZE_T uiSize;
 	IMG_BOOL bIsImport;
 	IMG_BOOL bIsExportable;
-} PVRSRV_BRIDGE_IN_RIWRITEMEMDESCENTRY;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RIWRITEMEMDESCENTRY;
 
 
 /* Bridge out structure for RIWriteMEMDESCEntry */
@@ -101,7 +103,7 @@ typedef struct PVRSRV_BRIDGE_OUT_RIWRITEMEMDESCENTRY_TAG
 {
 	IMG_HANDLE hRIHandle;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RIWRITEMEMDESCENTRY;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RIWRITEMEMDESCENTRY;
 
 /*******************************************
             RIUpdateMEMDESCAddr          
@@ -112,14 +114,14 @@ typedef struct PVRSRV_BRIDGE_IN_RIUPDATEMEMDESCADDR_TAG
 {
 	IMG_HANDLE hRIHandle;
 	IMG_DEV_VIRTADDR sAddr;
-} PVRSRV_BRIDGE_IN_RIUPDATEMEMDESCADDR;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RIUPDATEMEMDESCADDR;
 
 
 /* Bridge out structure for RIUpdateMEMDESCAddr */
 typedef struct PVRSRV_BRIDGE_OUT_RIUPDATEMEMDESCADDR_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RIUPDATEMEMDESCADDR;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RIUPDATEMEMDESCADDR;
 
 /*******************************************
             RIDeleteMEMDESCEntry          
@@ -129,14 +131,14 @@ typedef struct PVRSRV_BRIDGE_OUT_RIUPDATEMEMDESCADDR_TAG
 typedef struct PVRSRV_BRIDGE_IN_RIDELETEMEMDESCENTRY_TAG
 {
 	IMG_HANDLE hRIHandle;
-} PVRSRV_BRIDGE_IN_RIDELETEMEMDESCENTRY;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RIDELETEMEMDESCENTRY;
 
 
 /* Bridge out structure for RIDeleteMEMDESCEntry */
 typedef struct PVRSRV_BRIDGE_OUT_RIDELETEMEMDESCENTRY_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RIDELETEMEMDESCENTRY;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RIDELETEMEMDESCENTRY;
 
 /*******************************************
             RIDumpList          
@@ -146,14 +148,14 @@ typedef struct PVRSRV_BRIDGE_OUT_RIDELETEMEMDESCENTRY_TAG
 typedef struct PVRSRV_BRIDGE_IN_RIDUMPLIST_TAG
 {
 	IMG_HANDLE hPMRHandle;
-} PVRSRV_BRIDGE_IN_RIDUMPLIST;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RIDUMPLIST;
 
 
 /* Bridge out structure for RIDumpList */
 typedef struct PVRSRV_BRIDGE_OUT_RIDUMPLIST_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RIDUMPLIST;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RIDUMPLIST;
 
 /*******************************************
             RIDumpAll          
@@ -163,14 +165,14 @@ typedef struct PVRSRV_BRIDGE_OUT_RIDUMPLIST_TAG
 typedef struct PVRSRV_BRIDGE_IN_RIDUMPALL_TAG
 {
 	 IMG_UINT32 ui32EmptyStructPlaceholder;
-} PVRSRV_BRIDGE_IN_RIDUMPALL;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RIDUMPALL;
 
 
 /* Bridge out structure for RIDumpAll */
 typedef struct PVRSRV_BRIDGE_OUT_RIDUMPALL_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RIDUMPALL;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RIDUMPALL;
 
 /*******************************************
             RIDumpProcess          
@@ -180,13 +182,13 @@ typedef struct PVRSRV_BRIDGE_OUT_RIDUMPALL_TAG
 typedef struct PVRSRV_BRIDGE_IN_RIDUMPPROCESS_TAG
 {
 	IMG_PID ui32Pid;
-} PVRSRV_BRIDGE_IN_RIDUMPPROCESS;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RIDUMPPROCESS;
 
 
 /* Bridge out structure for RIDumpProcess */
 typedef struct PVRSRV_BRIDGE_OUT_RIDUMPPROCESS_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RIDUMPPROCESS;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RIDUMPPROCESS;
 
 #endif /* COMMON_RI_BRIDGE_H */

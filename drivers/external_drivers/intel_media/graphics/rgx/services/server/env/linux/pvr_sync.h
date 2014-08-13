@@ -50,15 +50,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 PVRSRV_ERROR PVRFDSyncDeviceInitKM(void);
 void PVRFDSyncDeviceDeInitKM(void);
 
-PVRSRV_ERROR PVRFDSyncQueryFencesKM(IMG_UINT32 ui32NumFDFences,
-									IMG_INT32 *ai32FDFences,
-									IMG_BOOL bUpdate,
-									IMG_UINT32 *pui32NumFenceSyncs,
-									PRGXFWIF_UFO_ADDR **ppuiFenceFWAddrs,
-									IMG_UINT32 **ppui32FenceValues,
-									IMG_UINT32 *pui32NumUpdateSyncs,
-									PRGXFWIF_UFO_ADDR **ppuiUpdateFWAddrs,
-									IMG_UINT32 **ppui32UpdateValues);
+/* to keep track of the intermediate allocations done for the FD merge */
+typedef struct _FDMERGE_DATA_
+{
+	PRGXFWIF_UFO_ADDR *pauiFenceUFOAddress;
+	IMG_UINT32        *paui32FenceValue;
+	PRGXFWIF_UFO_ADDR *pauiUpdateUFOAddress;
+	IMG_UINT32        *paui32UpdateValue;
+} FDMERGE_DATA;
+
+IMG_INTERNAL PVRSRV_ERROR 
+PVRFDSyncMergeFencesKM(IMG_UINT32        *pui32ClientFenceCountOut,
+					   PRGXFWIF_UFO_ADDR **ppauiFenceUFOAddressOut,
+					   IMG_UINT32        **ppaui32FenceValueOut,
+					   IMG_UINT32        *pui32ClientUpdateCountOut,
+					   PRGXFWIF_UFO_ADDR **ppauiUpdateUFOAddressOut,
+					   IMG_UINT32        **ppaui32UpdateValueOut,
+					   const IMG_CHAR*   pszName,
+					   const IMG_BOOL    bUpdate,
+					   const IMG_UINT32  ui32NumFDs,
+					   const IMG_INT32   *paui32FDs,
+					   FDMERGE_DATA      *psFDMergeData);
+
+IMG_INTERNAL IMG_VOID
+PVRFDSyncMergeFencesCleanupKM(FDMERGE_DATA *psFDMergeData);
 
 PVRSRV_ERROR
 PVRFDSyncNoHwUpdateFenceKM(IMG_INT32 i32FDFence);

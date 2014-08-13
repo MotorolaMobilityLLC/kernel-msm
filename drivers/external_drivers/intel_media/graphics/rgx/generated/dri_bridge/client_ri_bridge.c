@@ -48,8 +48,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "ri_server.h"
 
+
 IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgeRIWritePMREntry(IMG_HANDLE hBridge,
 							     IMG_HANDLE hPMRHandle,
+							     IMG_UINT32 ui32TextASize,
 							     const IMG_CHAR *puiTextA,
 							     IMG_SIZE_T uiLogicalSize)
 {
@@ -62,6 +64,7 @@ IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgeRIWritePMREntry(IMG_HANDLE hBridge,
 	eError =
 		RIWritePMREntryKM(
 					psPMRHandleInt,
+					ui32TextASize,
 					puiTextA,
 					uiLogicalSize);
 
@@ -70,6 +73,7 @@ IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgeRIWritePMREntry(IMG_HANDLE hBridge,
 
 IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgeRIWriteMEMDESCEntry(IMG_HANDLE hBridge,
 								 IMG_HANDLE hPMRHandle,
+								 IMG_UINT32 ui32TextBSize,
 								 const IMG_CHAR *puiTextB,
 								 IMG_SIZE_T uiOffset,
 								 IMG_SIZE_T uiSize,
@@ -87,6 +91,7 @@ IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgeRIWriteMEMDESCEntry(IMG_HANDLE hBri
 	eError =
 		RIWriteMEMDESCEntryKM(
 					psPMRHandleInt,
+					ui32TextBSize,
 					puiTextB,
 					uiOffset,
 					uiSize,
@@ -173,3 +178,4 @@ IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgeRIDumpProcess(IMG_HANDLE hBridge,
 
 	return eError;
 }
+

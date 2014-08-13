@@ -79,6 +79,7 @@ typedef struct _RGXFWIF_VRDMCTX_STATE_		*PRGXFWIF_VRDMCTX_STATE;
 typedef IMG_UINT8							*PRGXFWIF_RF_CMD;
 typedef struct _RGXFWIF_COMPCHECKS_			*PRGXFWIF_COMPCHECKS;
 typedef struct _RGX_HWPERF_CONFIG_CNTBLK_	*PRGX_HWPERF_CONFIG_CNTBLK;
+typedef IMG_UINT32                          *PRGX_HWPERF_SELECT_CUSTOM_CNTRS;
 typedef DLLIST_NODE							RGXFWIF_DLLIST_NODE;
 #else
 /* Compiling the host driver - use a firmware device virtual pointer */
@@ -104,6 +105,7 @@ typedef RGXFWIF_DEV_VIRTADDR				PRGXFWIF_COMMONCTX_STATE;
 typedef RGXFWIF_DEV_VIRTADDR				PRGXFWIF_RF_CMD;
 typedef RGXFWIF_DEV_VIRTADDR				PRGXFWIF_COMPCHECKS;
 typedef RGXFWIF_DEV_VIRTADDR				PRGX_HWPERF_CONFIG_CNTBLK;
+typedef RGXFWIF_DEV_VIRTADDR                PRGX_HWPERF_SELECT_CUSTOM_CNTRS;
 typedef struct {RGXFWIF_DEV_VIRTADDR p;
 				  RGXFWIF_DEV_VIRTADDR n;}	RGXFWIF_DLLIST_NODE;
 #endif /* RGX_FIRMWARE */
@@ -142,12 +144,9 @@ typedef struct _RGXFWIF_TACTX_STATE_
 	IMG_UINT64	RGXFW_ALIGN uTAReg_VBS_SO_PRIM1;
 	IMG_UINT64	RGXFW_ALIGN uTAReg_VBS_SO_PRIM2;
 	IMG_UINT64	RGXFW_ALIGN uTAReg_VBS_SO_PRIM3;
-	IMG_UINT64	RGXFW_ALIGN uTAReg_TE_STATE;
 
-#if defined(DEBUG)
 	/* Number of stores on this context */
 	IMG_UINT32  ui32NumStores;
-#endif
 } RGXFWIF_TACTX_STATE;
 
 
@@ -157,15 +156,13 @@ typedef struct _RGXFWIF_3DCTX_STATE_
 #if !defined(RGX_FEATURE_S7_TOP_INFRASTRUCTURE)
 	IMG_UINT32	RGXFW_ALIGN au3DReg_ISP_STORE[8];
 #else
-	IMG_UINT32	RGXFW_ALIGN au3DReg_ISP_STORE[16];
+	IMG_UINT32	RGXFW_ALIGN au3DReg_ISP_STORE[32];
 #endif
 	IMG_UINT64	RGXFW_ALIGN u3DReg_PM_DEALLOCATED_MASK_STATUS;
 	IMG_UINT64	RGXFW_ALIGN u3DReg_PM_PDS_MTILEFREE_STATUS;
 
-#if defined(DEBUG)
 	/* Number of stores on this context */
 	IMG_UINT32  ui32NumStores;
-#endif
 } RGXFWIF_3DCTX_STATE;
 
 
@@ -174,10 +171,8 @@ typedef struct _RGXFWIF_COMPUTECTX_STATE_
 {
 	IMG_UINT64	RGXFW_ALIGN	ui64Padding;
 
-#if defined(DEBUG)
 	/* Number of stores on this context */
 	IMG_UINT32  ui32NumStores;
-#endif
 } RGXFWIF_COMPUTECTX_STATE;
 
 
@@ -187,10 +182,8 @@ typedef struct _RGXFWIF_VRDMCTX_STATE_
 	IMG_UINT64	RGXFW_ALIGN uVRDMReg_VRM_CALL_STACK_POINTER;
 	IMG_UINT64	RGXFW_ALIGN uVRDMReg_VRM_BATCH;
 	
-#if defined(DEBUG)
 	/* Number of stores on this context */
 	IMG_UINT32  ui32NumStores;
-#endif
 } RGXFWIF_VRDMCTX_STATE;
 
 
@@ -202,9 +195,6 @@ typedef struct _RGXFWIF_FWCOMMONCONTEXT_
 	/* CCB details for this firmware context */
 	PRGXFWIF_CCCB_CTL		psCCBCtl;				/*!< CCB control */
 	PRGXFWIF_CCCB			psCCB;					/*!< CCB base */
-
-	/* Memory Context cleanup state */
-	RGXFWIF_CLEANUP_CTL		sCleanupState;			/*!< Cleanup information */
 
 	/*
 		Used by the bg context only
@@ -233,8 +223,8 @@ typedef struct _RGXFWIF_FWCOMMONCONTEXT_
 	IMG_UINT64		RGXFW_ALIGN 	ui64MCUFenceAddr;
 
 	/* Reference back to the Server Common Context */
-	IMG_UINT32				ui32ServerCommonContextID1;
-	IMG_UINT32				ui32ServerCommonContextID2;
+	IMG_UINT32				ui32ServerCommonContextID;
+
 } RGXFWIF_FWCOMMONCONTEXT;
 
 
@@ -320,6 +310,10 @@ typedef struct _RGXFWIF_CCB_CTL_
 #define RGXFWIF_MMUCACHEDATA_FLAGS_CTX(C)  (0x0) /* not used */
 #define RGXFWIF_MMUCACHEDATA_FLAGS_CTX_ALL (0x0) /* not used */
 
+#define RGXFWIF_PMMMUCACHEDATA_FLAGS_INVAL       (0x0) /* not used */
+#define RGXFWIF_PMMMUCACHEDATA_FLAGS_FLUSH       (0x0) /* not used */
+#define RGXFWIF_PMMMUCACHEDATA_FLAGS_FLUSHINVAL  (0x0) /* not used */
+
 #else /* RGX_FEATURE_SLC_VIVT */
 #define RGXFWIF_MMUCACHEDATA_FLAGS_PT      (0x1) /* MMU_CTRL_INVAL_PT_EN */
 #define RGXFWIF_MMUCACHEDATA_FLAGS_PD      (0x2) /* MMU_CTRL_INVAL_PD_EN */
@@ -328,6 +322,10 @@ typedef struct _RGXFWIF_CCB_CTL_
 #define RGXFWIF_MMUCACHEDATA_FLAGS_TLB     (0x0) /* not used */
 #define RGXFWIF_MMUCACHEDATA_FLAGS_CTX(C)  (C << 0x3) /* MMU_CTRL_INVAL_CONTEXT_SHIFT */
 #define RGXFWIF_MMUCACHEDATA_FLAGS_CTX_ALL (0x800) /* MMU_CTRL_INVAL_ALL_CONTEXTS_EN */
+
+#define RGXFWIF_PMMMUCACHEDATA_FLAGS_INVAL       (0x1) /* RGX_CR_SLC3_CFI_INVALIDATE_EN */
+#define RGXFWIF_PMMMUCACHEDATA_FLAGS_FLUSH       (0x2) /* RGX_CR_SLC3_CFI_FLUSH_EN */
+#define RGXFWIF_PMMMUCACHEDATA_FLAGS_FLUSHINVAL  (0x3) /* RGX_CR_SLC3_CFI_FLUSH_EN|RGX_CR_SLC3_CFI_INVALIDATE_EN */
 #endif
 
 typedef struct _RGXFWIF_MMUCACHEDATA_
@@ -454,6 +452,13 @@ typedef struct _RGXFWIF_HWPERF_CTRL_BLKS_
 } RGXFWIF_HWPERF_CTRL_BLKS;
 
 
+typedef struct _RGXFWIF_HWPERF_SELECT_CUSTOM_CNTRS_
+{
+	IMG_UINT16 ui16CustomBlock;
+	IMG_UINT16 ui16NumCounters;
+	PRGX_HWPERF_SELECT_CUSTOM_CNTRS pui32CustomCounterIDs;
+} RGXFWIF_HWPERF_SELECT_CUSTOM_CNTRS;
+
 typedef struct _RGXFWIF_ZSBUFFER_BACKING_DATA_
 {
 	IMG_UINT32				psZSBufferFWDevVAddr; 				/*!< ZS-Buffer FW address */
@@ -525,6 +530,7 @@ typedef enum _RGXFWIF_KCCB_CMD_TYPE_
 	RGXFWIF_KCCB_CMD_FREELISTS_RECONSTRUCTION_UPDATE	= 119, /*!< Freelists Reconstruction done */
 	RGXFWIF_KCCB_CMD_HEALTH_CHECK               = 120, /*!< Health check request */
 	RGXFWIF_KCCB_CMD_REGCONFIG                  = 121,
+	RGXFWIF_KCCB_CMD_HWPERF_SELECT_CUSTOM_CNTRS = 122, /*!< Configure the custom counters for HWPerf */
 } RGXFWIF_KCCB_CMD_TYPE;
 
 /* Kernel CCB command packet */
@@ -544,6 +550,7 @@ typedef struct _RGXFWIF_KCCB_CMD_
 		RGXFWIF_HWPERF_CTRL					sHWPerfCtrl;			/*!< Data for HWPerf control command */
 		RGXFWIF_HWPERF_CONFIG_ENABLE_BLKS	sHWPerfCfgEnableBlks;	/*!< Data for HWPerf configure, clear and enable performance counter block command */
 		RGXFWIF_HWPERF_CTRL_BLKS			sHWPerfCtrlBlks;		/*!< Data for HWPerf enable or disable performance counter block commands */
+		RGXFWIF_HWPERF_SELECT_CUSTOM_CNTRS  sHWPerfSelectCstmCntrs; /*!< Data for HWPerf configure the custom counters to read */
 		RGXFWIF_CORECLKSPEEDCHANGE_DATA		sCORECLKSPEEDCHANGEData;/*!< Data for CORE clock speed change */
 		RGXFWIF_ZSBUFFER_BACKING_DATA		sZSBufferBackingData;	/*!< Feedback for Z/S Buffer backing/unbacking */
 		RGXFWIF_FREELIST_GS_DATA			sFreeListGSData;		/*!< Feedback for Freelist grow/shrink */
@@ -578,8 +585,7 @@ typedef struct _RGXFWIF_FWCCB_CMD_FREELISTS_RECONSTRUCTION_DATA_
 
 typedef struct _RGXFWIF_FWCCB_CMD_CONTEXT_RESET_DATA_
 {
-	IMG_UINT32						ui32ServerCommonContextID1;	/*!< Context affected by the reset */
-	IMG_UINT32						ui32ServerCommonContextID2;	/*!< Context affected by the reset */
+	IMG_UINT32						ui32ServerCommonContextID;	/*!< Context affected by the reset */
 	RGXFWIF_CONTEXT_RESET_REASON	eResetReason;				/*!< Reason for reset */
 } RGXFWIF_FWCCB_CMD_CONTEXT_RESET_DATA;
 
@@ -592,9 +598,28 @@ typedef enum _RGXFWIF_FWCCB_CMD_TYPE_
 	RGXFWIF_FWCCB_CMD_FREELISTS_RECONSTRUCTION		= 104, 	/*!< Requests freelists reconstruction */
 	RGXFWIF_FWCCB_CMD_CONTEXT_RESET_NOTIFICATION	= 105,	/*!< Notifies host of a HWR event on a context */
 	RGXFWIF_FWCCB_CMD_DEBUG_DUMP					= 106,	/*!< Requests an on-demand debug dump */
+	RGXFWIF_FWCCB_CMD_UPDATE_STATS					= 107,	/*!< Requests an on-demand update on process stats */
 } RGXFWIF_FWCCB_CMD_TYPE;
 
+typedef enum
+{
+    RGXFWIF_INCREASE_TOTAL_NUM_PARTIAL_RENDERS=1,		/*!< PVRSRVStatsUpdateRenderContextStats should increase the value of the ui32TotalNumPartialRenders stat */
+    RGXFWIF_INCREASE_TOTAL_NUM_OUT_OF_MEMORY,			/*!< PVRSRVStatsUpdateRenderContextStats should increase the value of the ui32TotalNumOutOfMemory stat */
+    RGXFWIF_INCREASE_NUM_TA_STORES,					/*!< PVRSRVStatsUpdateRenderContextStats should increase the value of the ui32NumTAStores stat */
+    RGXFWIF_INCREASE_NUM_3D_STORES,					/*!< PVRSRVStatsUpdateRenderContextStats should increase the value of the ui32Num3DStores stat */
+    RGXFWIF_INCREASE_NUM_SH_STORES,					/*!< PVRSRVStatsUpdateRenderContextStats should increase the value of the ui32NumSHStores stat */
+    RGXFWIF_INCREASE_NUM_CDM_STORES					/*!< PVRSRVStatsUpdateRenderContextStats should increase the value of the ui32NumCDMStores stat */
+} RGXFWIF_FWCCB_CMD_UPDATE_STATS_TYPE;
+
+
 /* Firmware CCB command packet */
+
+typedef struct
+{
+    IMG_UINT32								ui32ElementToUpdate;		/*!< Element to update */
+    IMG_PID									pidOwner;					/*!< The pid of the process whose stats are being updated */
+} RGXFWIF_FWCCB_CMD_UPDATE_STATS_DATA;
+
 typedef struct _RGXFWIF_FWCCB_CMD_
 {
 	RGXFWIF_FWCCB_CMD_TYPE					eCmdType;	/*!< Command type */
@@ -604,6 +629,7 @@ typedef struct _RGXFWIF_FWCCB_CMD_
 		RGXFWIF_FWCCB_CMD_FREELIST_GS_DATA					sCmdFreeListGS;					/*!< Data for on-demand freelist grow/shrink */
 		RGXFWIF_FWCCB_CMD_FREELISTS_RECONSTRUCTION_DATA		sCmdFreeListsReconstruction;	/*!< Data for freelists reconstruction */
 		RGXFWIF_FWCCB_CMD_CONTEXT_RESET_DATA				sCmdContextResetNotification;	/*!< Data for context reset notification */
+        RGXFWIF_FWCCB_CMD_UPDATE_STATS_DATA                 sCmdUpdateStatsData;            /*!< Data for updating process stats */
 		IMG_UINT32											ui32Padding[7];					/*!< Force structure to be 8 words */
 	} uCmdData;
 } RGXFWIF_FWCCB_CMD;
@@ -627,7 +653,7 @@ typedef struct _RGXFWIF_SIGBUF_CTL_
 
 typedef struct _RGXFWIF_INIT_
 {
-	IMG_DEV_PHYADDR 		RGXFW_ALIGN sBifFaultPhysAddr;
+	IMG_DEV_PHYADDR 		RGXFW_ALIGN sFaultPhysAddr;
 
 	IMG_DEV_VIRTADDR		RGXFW_ALIGN sPDSExecBase;
 	IMG_DEV_VIRTADDR		RGXFW_ALIGN sUSCExecBase;
@@ -639,6 +665,7 @@ typedef struct _RGXFWIF_INIT_
 	IMG_BOOL				bFirstRender;
 	IMG_BOOL				bFrameworkAfterInit;
 	IMG_BOOL				bEnableHWPerf;
+	IMG_BOOL                bDisableFilterHWPerfCustomCounter;
 	IMG_UINT32				uiPowerSync;
 	IMG_UINT32				ui32FilterFlags;
 
@@ -691,15 +718,19 @@ typedef struct _RGXFWIF_INIT_
 	/* Flag to be set by the Firmware after successful start */
 	IMG_BOOL				bFirmwareStarted;
 
+	IMG_UINT32				ui32FirmwareStartedTimeStamp;
+
 	/* Compatibility checks to be populated by the Firmware */
 	RGXFWIF_COMPCHECKS		sRGXCompChecks;
 
-#if defined(RGX_FIRMWARE)
-	IMG_PBYTE               pbyCorememDataStore;
-#else
-	RGXFWIF_DEV_VIRTADDR    pbyCorememDataStore;
+	RGXFWIF_DMA_ADDR		sCorememDataStore;
+
+#if defined(RGX_FEATURE_SLC_VIVT)
+	IMG_DEV_VIRTADDR		RGXFW_ALIGN sSLC3FenceDevVAddr;
 #endif
-	
+
+    IMG_BOOL				bEnableProcessStats;
+
 } RGXFWIF_INIT;
 
 

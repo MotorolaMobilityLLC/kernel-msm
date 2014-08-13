@@ -74,7 +74,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* ***************************************************************************
  * Server-side bridge entry points
  */
-
+ 
 static IMG_INT
 PVRSRVBridgeDevmemPDumpBitmap(IMG_UINT32 ui32BridgeID,
 					 PVRSRV_BRIDGE_IN_DEVMEMPDUMPBITMAP *psDevmemPDumpBitmapIN,
@@ -91,13 +91,13 @@ PVRSRVBridgeDevmemPDumpBitmap(IMG_UINT32 ui32BridgeID,
 
 
 
-
+	
 	{
 		uiFileNameInt = OSAllocMem(PVRSRV_PDUMP_MAX_FILENAME_SIZE * sizeof(IMG_CHAR));
 		if (!uiFileNameInt)
 		{
 			psDevmemPDumpBitmapOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto DevmemPDumpBitmap_exit;
 		}
 	}
@@ -171,60 +171,8 @@ DevmemPDumpBitmap_exit:
 	return 0;
 }
 
- #ifdef CONFIG_COMPAT
-/*******************************************
-            DevmemPDumpBitmap
- *******************************************/
 
-/* Bridge in structure for DevmemPDumpBitmap */
-typedef struct compat_PVRSRV_BRIDGE_IN_DEVMEMPDUMPBITMAP_TAG
-{
-	/* IMG_HANDLE hDeviceNode; */
-	IMG_UINT32 hDeviceNode;
-	/* IMG_CHAR * puiFileName; */
-	IMG_UINT32 puiFileName;
-	IMG_UINT32 ui32FileOffset;
-	IMG_UINT32 ui32Width;
-	IMG_UINT32 ui32Height;
-	IMG_UINT32 ui32StrideInBytes;
-	IMG_DEV_VIRTADDR sDevBaseAddr __attribute__ ((__packed__));
-	/* IMG_HANDLE hDevmemCtx; */
-	IMG_UINT32 hDevmemCtx;
-	IMG_UINT32 ui32Size;
-	PDUMP_PIXEL_FORMAT ePixelFormat;
-	IMG_UINT32 ui32AddrMode;
-	IMG_UINT32 ui32PDumpFlags;
-} compat_PVRSRV_BRIDGE_IN_DEVMEMPDUMPBITMAP;
 
-static IMG_INT
-compat_PVRSRVBridgeDevmemPDumpBitmap(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_DEVMEMPDUMPBITMAP *psDevmemPDumpBitmapIN_32,
-					 PVRSRV_BRIDGE_OUT_DEVMEMPDUMPBITMAP *psDevmemPDumpBitmapOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_DEVMEMPDUMPBITMAP sDevmemPDumpBitmapIN;
-	PVRSRV_BRIDGE_IN_DEVMEMPDUMPBITMAP *psDevmemPDumpBitmapIN=&sDevmemPDumpBitmapIN;
-
-	psDevmemPDumpBitmapIN->hDeviceNode = (IMG_HANDLE)(IMG_UINT64)psDevmemPDumpBitmapIN_32->hDeviceNode;
-	psDevmemPDumpBitmapIN->puiFileName = (IMG_CHAR*)(IMG_UINT64)psDevmemPDumpBitmapIN_32->puiFileName;
-	psDevmemPDumpBitmapIN->ui32FileOffset = psDevmemPDumpBitmapIN_32->ui32FileOffset;
-	psDevmemPDumpBitmapIN->ui32Width = psDevmemPDumpBitmapIN_32->ui32Width;
-	psDevmemPDumpBitmapIN->ui32Height = psDevmemPDumpBitmapIN_32->ui32Height;
-	psDevmemPDumpBitmapIN->ui32StrideInBytes = psDevmemPDumpBitmapIN_32->ui32StrideInBytes;
-	psDevmemPDumpBitmapIN->sDevBaseAddr = psDevmemPDumpBitmapIN_32->sDevBaseAddr;
-	psDevmemPDumpBitmapIN->hDevmemCtx = (IMG_HANDLE)(IMG_UINT64)psDevmemPDumpBitmapIN_32->hDevmemCtx;
-	psDevmemPDumpBitmapIN->ui32Size = psDevmemPDumpBitmapIN_32->ui32Size;
-	psDevmemPDumpBitmapIN->ePixelFormat = psDevmemPDumpBitmapIN_32->ePixelFormat;
-	psDevmemPDumpBitmapIN->ui32AddrMode = psDevmemPDumpBitmapIN_32->ui32AddrMode;
-	psDevmemPDumpBitmapIN->ui32PDumpFlags = psDevmemPDumpBitmapIN_32->ui32PDumpFlags;
-
-	return PVRSRVBridgeDevmemPDumpBitmap(ui32BridgeID,
-					psDevmemPDumpBitmapIN,
-					psDevmemPDumpBitmapOUT,
-					psConnection);
-
-}
-#endif
 /* *************************************************************************** 
  * Server bridge dispatch related glue 
  */
@@ -237,11 +185,8 @@ IMG_VOID UnregisterPDUMPCMMFunctions(IMG_VOID);
  */
 PVRSRV_ERROR RegisterPDUMPCMMFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_PDUMPCMM_DEVMEMPDUMPBITMAP, compat_PVRSRVBridgeDevmemPDumpBitmap);
-#else
 	SetDispatchTableEntry(PVRSRV_BRIDGE_PDUMPCMM_DEVMEMPDUMPBITMAP, PVRSRVBridgeDevmemPDumpBitmap);
-#endif
+
 	return PVRSRV_OK;
 }
 

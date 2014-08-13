@@ -102,9 +102,10 @@ PVRSRVBridgeRIWritePMREntry(IMG_UINT32 ui32BridgeID,
 
 
 
-	
+
+	if (psRIWritePMREntryIN->ui32TextASize != 0)
 	{
-		uiTextAInt = OSAllocMem(RI_MAX_TEXT_LEN * sizeof(IMG_CHAR));
+		uiTextAInt = OSAllocMem(psRIWritePMREntryIN->ui32TextASize * sizeof(IMG_CHAR));
 		if (!uiTextAInt)
 		{
 			psRIWritePMREntryOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
@@ -114,9 +115,9 @@ PVRSRVBridgeRIWritePMREntry(IMG_UINT32 ui32BridgeID,
 	}
 
 			/* Copy the data over */
-			if ( !OSAccessOK(PVR_VERIFY_READ, (IMG_VOID*) psRIWritePMREntryIN->puiTextA, RI_MAX_TEXT_LEN * sizeof(IMG_CHAR))
+			if ( !OSAccessOK(PVR_VERIFY_READ, (IMG_VOID*) psRIWritePMREntryIN->puiTextA, psRIWritePMREntryIN->ui32TextASize * sizeof(IMG_CHAR))
 				|| (OSCopyFromUser(NULL, uiTextAInt, psRIWritePMREntryIN->puiTextA,
-				RI_MAX_TEXT_LEN * sizeof(IMG_CHAR)) != PVRSRV_OK) )
+				psRIWritePMREntryIN->ui32TextASize * sizeof(IMG_CHAR)) != PVRSRV_OK) )
 			{
 				psRIWritePMREntryOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
 
@@ -124,7 +125,6 @@ PVRSRVBridgeRIWritePMREntry(IMG_UINT32 ui32BridgeID,
 			}
 
 				{
-
 					/* Look up the address from the handle */
 					psRIWritePMREntryOUT->eError =
 						PVRSRVLookupHandle(psConnection->psHandleBase,
@@ -148,6 +148,7 @@ PVRSRVBridgeRIWritePMREntry(IMG_UINT32 ui32BridgeID,
 	psRIWritePMREntryOUT->eError =
 		RIWritePMREntryKM(
 					psPMRHandleInt,
+					psRIWritePMREntryIN->ui32TextASize,
 					uiTextAInt,
 					psRIWritePMREntryIN->uiLogicalSize);
 
@@ -175,9 +176,11 @@ PVRSRVBridgeRIWriteMEMDESCEntry(IMG_UINT32 ui32BridgeID,
 	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_RI_RIWRITEMEMDESCENTRY);
 
 
-	
+
+
+	if (psRIWriteMEMDESCEntryIN->ui32TextBSize != 0)
 	{
-		uiTextBInt = OSAllocMem(RI_MAX_TEXT_LEN * sizeof(IMG_CHAR));
+		uiTextBInt = OSAllocMem(psRIWriteMEMDESCEntryIN->ui32TextBSize * sizeof(IMG_CHAR));
 		if (!uiTextBInt)
 		{
 			psRIWriteMEMDESCEntryOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
@@ -187,9 +190,9 @@ PVRSRVBridgeRIWriteMEMDESCEntry(IMG_UINT32 ui32BridgeID,
 	}
 
 			/* Copy the data over */
-			if ( !OSAccessOK(PVR_VERIFY_READ, (IMG_VOID*) psRIWriteMEMDESCEntryIN->puiTextB, RI_MAX_TEXT_LEN * sizeof(IMG_CHAR))
+			if ( !OSAccessOK(PVR_VERIFY_READ, (IMG_VOID*) psRIWriteMEMDESCEntryIN->puiTextB, psRIWriteMEMDESCEntryIN->ui32TextBSize * sizeof(IMG_CHAR))
 				|| (OSCopyFromUser(NULL, uiTextBInt, psRIWriteMEMDESCEntryIN->puiTextB,
-				RI_MAX_TEXT_LEN * sizeof(IMG_CHAR)) != PVRSRV_OK) )
+				psRIWriteMEMDESCEntryIN->ui32TextBSize * sizeof(IMG_CHAR)) != PVRSRV_OK) )
 			{
 				psRIWriteMEMDESCEntryOUT->eError = PVRSRV_ERROR_INVALID_PARAMS;
 
@@ -220,6 +223,7 @@ PVRSRVBridgeRIWriteMEMDESCEntry(IMG_UINT32 ui32BridgeID,
 	psRIWriteMEMDESCEntryOUT->eError =
 		RIWriteMEMDESCEntryKM(
 					psPMRHandleInt,
+					psRIWriteMEMDESCEntryIN->ui32TextBSize,
 					uiTextBInt,
 					psRIWriteMEMDESCEntryIN->uiOffset,
 					psRIWriteMEMDESCEntryIN->uiSize,
@@ -252,7 +256,7 @@ PVRSRVBridgeRIWriteMEMDESCEntry(IMG_UINT32 ui32BridgeID,
 	{
 		goto RIWriteMEMDESCEntry_exit;
 	}
-	
+
 
 RIWriteMEMDESCEntry_exit:
 	if (psRIWriteMEMDESCEntryOUT->eError != PVRSRV_OK)
@@ -287,6 +291,7 @@ PVRSRVBridgeRIUpdateMEMDESCAddr(IMG_UINT32 ui32BridgeID,
 	IMG_HANDLE hRIHandleInt2 = IMG_NULL;
 
 	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_RI_RIUPDATEMEMDESCADDR);
+
 
 
 
@@ -337,6 +342,7 @@ PVRSRVBridgeRIDeleteMEMDESCEntry(IMG_UINT32 ui32BridgeID,
 
 
 
+
 				{
 					/* Look up the address from the handle */
 					psRIDeleteMEMDESCEntryOUT->eError =
@@ -379,6 +385,7 @@ PVRSRVBridgeRIDumpList(IMG_UINT32 ui32BridgeID,
 	IMG_HANDLE hPMRHandleInt2 = IMG_NULL;
 
 	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_RI_RIDUMPLIST);
+
 
 
 
@@ -465,162 +472,19 @@ PVRSRVBridgeRIDumpProcess(IMG_UINT32 ui32BridgeID,
 }
 
 
-#ifdef CONFIG_COMPAT
-typedef struct compat_PVRSRV_BRIDGE_IN_RIWRITEPMRENTRY_TAG
-{
-	IMG_UINT32 hPMRHandle;
-	const IMG_UINT32 puiTextA;
-	IMG_SIZE_T uiLogicalSize;
-} compat_PVRSRV_BRIDGE_IN_RIWRITEPMRENTRY;
 
-static IMG_INT
-compat_PVRSRVBridgeRIWritePMREntry(IMG_UINT32 ui32BridgeID,
-                                         compat_PVRSRV_BRIDGE_IN_RIWRITEPMRENTRY *psRIWritePMREntryIN_32,
-                                         PVRSRV_BRIDGE_OUT_RIWRITEPMRENTRY *psRIWritePMREntryOUT,
-                                         CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RIWRITEPMRENTRY sRIWritePMREntryIN;
-	PVRSRV_BRIDGE_IN_RIWRITEPMRENTRY *psRIWritePMREntryIN = &sRIWritePMREntryIN;
-	
-	psRIWritePMREntryIN->hPMRHandle = (IMG_HANDLE)(IMG_UINT64)psRIWritePMREntryIN_32->hPMRHandle;
-	psRIWritePMREntryIN->puiTextA = (IMG_CHAR*)(IMG_UINT64)psRIWritePMREntryIN_32->puiTextA;
-	psRIWritePMREntryIN->uiLogicalSize = psRIWritePMREntryIN_32->uiLogicalSize;
-	
-	return 	PVRSRVBridgeRIWritePMREntry(ui32BridgeID, psRIWritePMREntryIN, psRIWritePMREntryOUT, psConnection); 
-		
-}
-
-/*********************************************************/
-typedef struct compat_PVRSRV_BRIDGE_IN_RIWRITEMEMDESCENTRY_TAG
-{
-	IMG_UINT32 hPMRHandle;
-	const IMG_UINT32 puiTextB;
-	IMG_SIZE_T uiOffset;
-	IMG_SIZE_T uiSize;
-	IMG_BOOL bIsImport;
-	IMG_BOOL bIsExportable;
-} compat_PVRSRV_BRIDGE_IN_RIWRITEMEMDESCENTRY;
-
-typedef struct compat_PVRSRV_BRIDGE_OUT_RIWRITEMEMDESCENTRY_TAG
-{
-	IMG_UINT32 hRIHandle;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_RIWRITEMEMDESCENTRY;
-
-static IMG_INT
-compat_PVRSRVBridgeRIWriteMEMDESCEntry(IMG_UINT32 ui32BridgeID,
-                                         compat_PVRSRV_BRIDGE_IN_RIWRITEMEMDESCENTRY *psRIWriteMEMDESCEntryIN_32,
-                                         compat_PVRSRV_BRIDGE_OUT_RIWRITEMEMDESCENTRY *psRIWriteMEMDESCEntryOUT_32,
-                                         CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RIWRITEMEMDESCENTRY sRIWriteMEMDESCEntryIN; 	
-	PVRSRV_BRIDGE_IN_RIWRITEMEMDESCENTRY *psRIWriteMEMDESCEntryIN = &sRIWriteMEMDESCEntryIN;
-	PVRSRV_BRIDGE_OUT_RIWRITEMEMDESCENTRY sRIWriteMEMDESCEntryOUT;
-        PVRSRV_BRIDGE_OUT_RIWRITEMEMDESCENTRY *psRIWriteMEMDESCEntryOUT = &sRIWriteMEMDESCEntryOUT;
-	IMG_INT ret;
-
-	psRIWriteMEMDESCEntryIN->hPMRHandle = (IMG_HANDLE)(IMG_UINT64)psRIWriteMEMDESCEntryIN_32->hPMRHandle;
- 	psRIWriteMEMDESCEntryIN->puiTextB = (IMG_CHAR*)(IMG_UINT64)psRIWriteMEMDESCEntryIN_32->puiTextB;
-	psRIWriteMEMDESCEntryIN->uiOffset = psRIWriteMEMDESCEntryIN_32->uiOffset;
-	psRIWriteMEMDESCEntryIN->uiSize = psRIWriteMEMDESCEntryIN_32->uiSize;
-	psRIWriteMEMDESCEntryIN->bIsImport = psRIWriteMEMDESCEntryIN_32->bIsImport;
-	psRIWriteMEMDESCEntryIN->bIsExportable = psRIWriteMEMDESCEntryIN_32->bIsExportable;
-
-	ret = PVRSRVBridgeRIWriteMEMDESCEntry(ui32BridgeID, psRIWriteMEMDESCEntryIN, psRIWriteMEMDESCEntryOUT, psConnection);
-	
-	PVR_ASSERT(!((IMG_UINT64)psRIWriteMEMDESCEntryOUT->hRIHandle & 0xFFFFFFFF00000000ULL));
-
-	psRIWriteMEMDESCEntryOUT_32->hRIHandle = psRIWriteMEMDESCEntryOUT->hRIHandle;
-        psRIWriteMEMDESCEntryOUT_32->eError = psRIWriteMEMDESCEntryOUT->eError;
-
-	return ret;	
-}
-
-/****************************************************************/
-typedef struct compat_PVRSRV_BRIDGE_IN_RIUPDATEMEMDESCADDR_TAG
-{
-        IMG_UINT32 hRIHandle;
-        IMG_DEV_VIRTADDR sAddr;
-} compat_PVRSRV_BRIDGE_IN_RIUPDATEMEMDESCADDR;
-
-static IMG_INT
-compat_PVRSRVBridgeRIUpdateMEMDESCAddr(IMG_UINT32 ui32BridgeID,
-                                         compat_PVRSRV_BRIDGE_IN_RIUPDATEMEMDESCADDR *psRIUpdateMEMDESCAddrIN_32,
-                                         PVRSRV_BRIDGE_OUT_RIUPDATEMEMDESCADDR *psRIUpdateMEMDESCAddrOUT,
-                                         CONNECTION_DATA *psConnection)
-{	
-	PVRSRV_BRIDGE_IN_RIUPDATEMEMDESCADDR sRIUpdateMEMDESCAddrIN;
-	PVRSRV_BRIDGE_IN_RIUPDATEMEMDESCADDR *psRIUpdateMEMDESCAddrIN = &sRIUpdateMEMDESCAddrIN;
-	
-	psRIUpdateMEMDESCAddrIN->hRIHandle = (IMG_HANDLE)(IMG_UINT64)psRIUpdateMEMDESCAddrIN_32->hRIHandle;
-	psRIUpdateMEMDESCAddrIN->sAddr = psRIUpdateMEMDESCAddrIN_32->sAddr; 
-		
-	return PVRSRVBridgeRIUpdateMEMDESCAddr(ui32BridgeID, psRIUpdateMEMDESCAddrIN, psRIUpdateMEMDESCAddrOUT, psConnection); 		
-}
-
-/*****************************************************************/
-typedef struct compat_PVRSRV_BRIDGE_IN_RIDELETEMEMDESCENTRY_TAG
-{
-        IMG_UINT32 hRIHandle;
-} compat_PVRSRV_BRIDGE_IN_RIDELETEMEMDESCENTRY;
-
-static IMG_INT
-compat_PVRSRVBridgeRIDeleteMEMDESCEntry(IMG_UINT32 ui32BridgeID,
-                                        compat_PVRSRV_BRIDGE_IN_RIDELETEMEMDESCENTRY *psRIDeleteMEMDESCEntryIN_32,
-                                        PVRSRV_BRIDGE_OUT_RIDELETEMEMDESCENTRY *psRIDeleteMEMDESCEntryOUT,
-                                        CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RIDELETEMEMDESCENTRY sRIDeleteMEMDESCEntryIN;
-	PVRSRV_BRIDGE_IN_RIDELETEMEMDESCENTRY *psRIDeleteMEMDESCEntryIN = &sRIDeleteMEMDESCEntryIN;
-	
-	psRIDeleteMEMDESCEntryIN->hRIHandle = (IMG_HANDLE)(IMG_UINT64)psRIDeleteMEMDESCEntryIN_32->hRIHandle;
-	
-	return PVRSRVBridgeRIDeleteMEMDESCEntry(ui32BridgeID, psRIDeleteMEMDESCEntryIN, psRIDeleteMEMDESCEntryOUT, psConnection);
-}
-
-/*************************************************************************/
-typedef struct compat_PVRSRV_BRIDGE_IN_RIDUMPLIST_TAG
-{
-        IMG_UINT32 hPMRHandle;
-} compat_PVRSRV_BRIDGE_IN_RIDUMPLIST;
-
-static IMG_INT
-compat_PVRSRVBridgeRIDumpList(IMG_UINT32 ui32BridgeID,
-                                         compat_PVRSRV_BRIDGE_IN_RIDUMPLIST *psRIDumpListIN_32,
-                                         PVRSRV_BRIDGE_OUT_RIDUMPLIST *psRIDumpListOUT,
-                                         CONNECTION_DATA *psConnection)
-
-{
-	PVRSRV_BRIDGE_IN_RIDUMPLIST sRIDumpListIN;
-	PVRSRV_BRIDGE_IN_RIDUMPLIST *psRIDumpListIN = &sRIDumpListIN;
-
-	psRIDumpListIN->hPMRHandle = (IMG_HANDLE)(IMG_UINT64)psRIDumpListIN_32->hPMRHandle;
-	return PVRSRVBridgeRIDumpList(ui32BridgeID, psRIDumpListIN, psRIDumpListOUT, psConnection);  
-}
-#endif /*ONFIG_COMPAT*/
-
-/* ***************************************************************************
- * Server bridge dispatch related glue
+/* *************************************************************************** 
+ * Server bridge dispatch related glue 
  */
-
+ 
 PVRSRV_ERROR RegisterRIFunctions(IMG_VOID);
 IMG_VOID UnregisterRIFunctions(IMG_VOID);
-
 
 /*
  * Register all RI functions with services
  */
 PVRSRV_ERROR RegisterRIFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIWRITEPMRENTRY, compat_PVRSRVBridgeRIWritePMREntry);
-        SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIWRITEMEMDESCENTRY, compat_PVRSRVBridgeRIWriteMEMDESCEntry);
-        SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIUPDATEMEMDESCADDR, compat_PVRSRVBridgeRIUpdateMEMDESCAddr);
-        SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIDELETEMEMDESCENTRY, compat_PVRSRVBridgeRIDeleteMEMDESCEntry);
-        SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIDUMPLIST, compat_PVRSRVBridgeRIDumpList);
-        SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIDUMPALL, PVRSRVBridgeRIDumpAll);
-        SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIDUMPPROCESS, PVRSRVBridgeRIDumpProcess);	
-#else
 	SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIWRITEPMRENTRY, PVRSRVBridgeRIWritePMREntry);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIWRITEMEMDESCENTRY, PVRSRVBridgeRIWriteMEMDESCEntry);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIUPDATEMEMDESCADDR, PVRSRVBridgeRIUpdateMEMDESCAddr);
@@ -628,7 +492,7 @@ PVRSRV_ERROR RegisterRIFunctions(IMG_VOID)
 	SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIDUMPLIST, PVRSRVBridgeRIDumpList);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIDUMPALL, PVRSRVBridgeRIDumpAll);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_RI_RIDUMPPROCESS, PVRSRVBridgeRIDumpProcess);
-#endif
+
 	return PVRSRV_OK;
 }
 

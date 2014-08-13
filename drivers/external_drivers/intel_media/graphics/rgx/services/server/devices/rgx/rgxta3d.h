@@ -52,6 +52,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgx_fwif_resetframework.h"
 #include "sync_server.h"
 #include "connection_server.h"
+#include "rgxdebug.h"
 
 #if defined (__cplusplus)
 extern "C" {
@@ -90,6 +91,8 @@ struct _RGX_FREELIST_ {
 	IMG_UINT32				ui32NumGrowReqByApp;	/* Total number of grow requests by Application*/
 	IMG_UINT32				ui32NumGrowReqByFW;		/* Total Number of grow requests by Firmware */
 	IMG_UINT32				ui32NumHighPages;		/* High Mark of pages in the freelist */
+
+	IMG_PID					ownerPid;			/* Pid of the owner of the list */
 
 	/* Memory Blocks */
 	DLLIST_NODE				sMemoryBlockHead;
@@ -132,6 +135,8 @@ typedef struct {
 
 	IMG_BOOL				ui32NumReqByApp;		/* Number of Backing Requests from  Application */
 	IMG_BOOL				ui32NumReqByFW;			/* Number of Backing Requests from Firmware */
+
+	IMG_PID					owner;
 
 	DLLIST_NODE	sNode;
 
@@ -429,7 +434,35 @@ PVRSRV_ERROR PVRSRVRGXSetRenderContextPriorityKM(CONNECTION_DATA *psConnection,
 PVRSRV_ERROR PVRSRVRGXGetLastRenderContextResetReasonKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
                                                         IMG_UINT32 *peLastResetReason);
 
+PVRSRV_ERROR PVRSRVRGXGetPartialRenderCountKM(DEVMEM_MEMDESC *psHWRTDataMemDesc,
+											  IMG_UINT32 *pui32NumPartialRenders);
+
 /* Debug - check if render context is waiting on a fence */
-IMG_VOID CheckForStalledRenderCtxt(PVRSRV_RGXDEV_INFO *psDevInfo);
+IMG_VOID CheckForStalledRenderCtxt(PVRSRV_RGXDEV_INFO *psDevInfo,
+								   DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf);
+
+IMG_EXPORT PVRSRV_ERROR 
+PVRSRVRGXKickSyncTAKM(RGX_SERVER_RENDER_CONTEXT  *psRenderContext,
+                       IMG_UINT32                  ui32TAClientFenceCount,
+                       PRGXFWIF_UFO_ADDR           *pauiTAClientFenceUFOAddress,
+                       IMG_UINT32                  *paui32TAClientFenceValue,
+                       IMG_UINT32                  ui32TAClientUpdateCount,
+                       PRGXFWIF_UFO_ADDR           *pauiTAClientUpdateUFOAddress,
+                       IMG_UINT32                  *paui32TAClientUpdateValue,
+                       IMG_UINT32                  ui32TAServerSyncPrims,
+                       IMG_UINT32                  *paui32TAServerSyncFlags,
+                       SERVER_SYNC_PRIMITIVE       **pasTAServerSyncs,
+					   IMG_UINT32                  ui323DClientFenceCount,
+					   PRGXFWIF_UFO_ADDR           *paui3DClientFenceUFOAddress,
+					   IMG_UINT32                  *paui323DClientFenceValue,
+					   IMG_UINT32                  ui323DClientUpdateCount,
+					   PRGXFWIF_UFO_ADDR           *paui3DClientUpdateUFOAddress,
+					   IMG_UINT32                  *paui323DClientUpdateValue,
+					   IMG_UINT32                  ui323DServerSyncPrims,
+					   IMG_UINT32                  *paui323DServerSyncFlags,
+					   SERVER_SYNC_PRIMITIVE       **pas3DServerSyncs,
+					   IMG_UINT32				   ui32NumFenceFDs,
+					   IMG_INT32				   *paui32FenceFDs,
+                       IMG_BOOL                    bPDumpContinuous);
 
 #endif /* __RGXTA3D_H__ */

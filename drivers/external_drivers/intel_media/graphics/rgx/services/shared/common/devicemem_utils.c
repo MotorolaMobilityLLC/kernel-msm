@@ -49,6 +49,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "devicemem_utils.h"
 #include "client_mm_bridge.h"
 
+#if !defined(__KERNEL__) && defined(SUPPORT_ION)
+#include <sys/mman.h>
+#endif
+
 /*
 	The Devmem import structure is the structure we use
 	to manage memory that is "imported" (which is page
@@ -104,12 +108,6 @@ IMG_VOID _DevmemImportStructRelease(DEVMEM_IMPORT *psImport)
 	}
 }
 
-/*
-	Discard a created, but unitilised import structure.
-	This must only be called before _DevmemImportStructInit
-	after which _DevmemImportStructRelease must be used to
-	"free" the import structure
-*/
 IMG_INTERNAL
 IMG_VOID _DevmemImportDiscard(DEVMEM_IMPORT *psImport)
 {
@@ -246,12 +244,6 @@ IMG_VOID _DevmemMemDescRelease(DEVMEM_MEMDESC *psMemDesc)
 	}
 }
 
-/*
-	Discard a created, but unitilised MemDesc structure.
-	This must only be called before _DevmemMemDescInit
-	after which _DevmemMemDescRelease must be used to
-	"free" the MemDesc structure
-*/
 IMG_INTERNAL
 IMG_VOID _DevmemMemDescDiscard(DEVMEM_MEMDESC *psMemDesc)
 {
@@ -356,6 +348,10 @@ PVRSRV_ERROR _DevmemImportStructAlloc(IMG_HANDLE hBridge,
 	{
 		goto failILockAlloc;
 	}
+
+#if !defined(__KERNEL__) && defined(SUPPORT_ION)
+	psImport->sCPUImport.iDmaBufFd = -1;
+#endif
 
     *ppsImport = psImport;
     
@@ -565,17 +561,18 @@ IMG_VOID _DevmemImportStructDevUnmap(DEVMEM_IMPORT *psImport)
 	    RA_Free(psHeap->psQuantizedVMRA,
 	            psDeviceImport->sDevVAddr.uiAddr);
 
-		OSLockRelease(psDeviceImport->hLock);
+	    OSLockRelease(psDeviceImport->hLock);
 
 		_DevmemImportStructRelease(psImport);
 
 		OSLockAcquire(psHeap->hLock);
 		psHeap->uiImportCount--;
 		OSLockRelease(psHeap->hLock);
-	} else {
+	}
+	else
+	{
 		OSLockRelease(psDeviceImport->hLock);
 	}
-
 }
 
 /*
@@ -600,15 +597,45 @@ PVRSRV_ERROR _DevmemImportStructCPUMap(DEVMEM_IMPORT *psImport)
 	if (psCPUImport->ui32RefCount++ == 0)
 	{
 		_DevmemImportStructAcquire(psImport);
-		eError = OSMMapPMR(psImport->hBridge,
-						   psImport->hPMR,
-						   psImport->uiSize,
-						   &psCPUImport->hOSMMapData,
-						   &psCPUImport->pvCPUVAddr,
-						   &uiMappingLength);
-		if (eError != PVRSRV_OK)
+
+#if !defined(__KERNEL__) && defined(SUPPORT_ION)
+		if (psImport->sCPUImport.iDmaBufFd >= 0)
 		{
-			goto failMap;
+			void *pvCPUVAddr;
+
+			/* For ion imports, use the ion fd and mmap facility to map the
+			 * buffer to user space. We can bypass the services bridge in
+			 * this case and possibly save some time.
+			 *
+			 * FIXME: We should preserve the mmap flags of the original
+			 *        allocation, but the services path ignores them too.
+			 */
+			pvCPUVAddr = mmap(NULL, psImport->uiSize, PROT_READ | PROT_WRITE,
+			                  MAP_SHARED, psImport->sCPUImport.iDmaBufFd, 0);
+
+			if (pvCPUVAddr == MAP_FAILED)
+			{
+				eError = PVRSRV_ERROR_DEVICEMEM_MAP_FAILED;
+				goto failMap;
+			}
+
+			psCPUImport->hOSMMapData = pvCPUVAddr;
+			psCPUImport->pvCPUVAddr = pvCPUVAddr;
+			uiMappingLength = psImport->uiSize;
+		}
+		else
+#endif
+		{
+			eError = OSMMapPMR(psImport->hBridge,
+							   psImport->hPMR,
+							   psImport->uiSize,
+							   &psCPUImport->hOSMMapData,
+							   &psCPUImport->pvCPUVAddr,
+							   &uiMappingLength);
+			if (eError != PVRSRV_OK)
+			{
+				goto failMap;
+			}
 		}
 
 		/* There is no reason the mapping length is different to the size */
@@ -653,19 +680,30 @@ IMG_VOID _DevmemImportStructCPUUnmap(DEVMEM_IMPORT *psImport)
 #if (defined(_WIN32) && !defined(_WIN64)) || (defined(LINUX) && defined(__i386__))
 		PVR_ASSERT(psImport->uiSize<IMG_UINT32_MAX);
 #endif
-		OSMUnmapPMR(psImport->hBridge,
-					psImport->hPMR,
-					psCPUImport->hOSMMapData,
-					psCPUImport->pvCPUVAddr,
-					(IMG_SIZE_T)psImport->uiSize);
+
+#if !defined(__KERNEL__) && defined(SUPPORT_ION)
+		if (psImport->sCPUImport.iDmaBufFd >= 0)
+		{
+			munmap(psCPUImport->hOSMMapData, psImport->uiSize);
+		}
+		else
+#endif
+		{
+			OSMUnmapPMR(psImport->hBridge,
+						psImport->hPMR,
+						psCPUImport->hOSMMapData,
+						psCPUImport->pvCPUVAddr,
+						(IMG_SIZE_T)psImport->uiSize);
+		}
 
 		OSLockRelease(psCPUImport->hLock);
 
 		_DevmemImportStructRelease(psImport);
-	} else {
+	}
+	else
+	{
 		OSLockRelease(psCPUImport->hLock);
 	}
-
 }
 
 

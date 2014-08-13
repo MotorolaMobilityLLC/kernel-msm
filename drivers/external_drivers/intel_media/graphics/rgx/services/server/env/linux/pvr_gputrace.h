@@ -54,8 +54,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   The device layer of the KM driver defines these two APIs to allow a
   platform module to set and retrieve the feature's on/off state.
 */
-extern IMG_VOID PVRGpuTraceEnabledSet(IMG_BOOL bNewValue);
-extern IMG_BOOL PVRGpuTraceEnabled(IMG_VOID);
+extern void PVRGpuTraceEnabledSet(IMG_BOOL bNewValue);
+extern IMG_BOOL PVRGpuTraceEnabled(void);
 
 
 /******************************************************************************
@@ -71,26 +71,26 @@ typedef enum {
 } PVR_GPUTRACE_SWITCH_TYPE;
 
 
-IMG_VOID PVRGpuTraceClientWork(
+void PVRGpuTraceClientWork(
 		const IMG_UINT32 ui32Pid,
-		const IMG_UINT32 ui32FrameNo,
-		const IMG_UINT32 ui32RTDataID,
+		const IMG_UINT32 ui32ExtJobRef,
+		const IMG_UINT32 ui32IntJobRef,
 		const IMG_CHAR* pszKickType);
 
 
-IMG_VOID PVRGpuTraceWorkSwitch(
+void PVRGpuTraceWorkSwitch(
 		IMG_UINT64 ui64OSTimestamp,
 		const IMG_UINT32 ui32Pid,
-		const IMG_UINT32 ui32FrameNo,
-		const IMG_UINT32 ui32RTDataID,
+		const IMG_UINT32 ui32ExtJobRef,
+		const IMG_UINT32 ui32IntJobRef,
 		const IMG_CHAR* pszWorkType,
 		PVR_GPUTRACE_SWITCH_TYPE eSwType);
 
 
-PVRSRV_ERROR PVRGpuTraceInit(IMG_VOID);
+PVRSRV_ERROR PVRGpuTraceInit(void);
 
 
-IMG_VOID PVRGpuTraceDeInit(IMG_VOID);
+void PVRGpuTraceDeInit(void);
 
 
 #endif /* PVR_GPUTRACE_H_ */

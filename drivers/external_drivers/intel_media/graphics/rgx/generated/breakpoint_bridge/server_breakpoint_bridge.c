@@ -74,7 +74,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* ***************************************************************************
  * Server-side bridge entry points
  */
-
+ 
 static IMG_INT
 PVRSRVBridgeRGXSetBreakpoint(IMG_UINT32 ui32BridgeID,
 					 PVRSRV_BRIDGE_IN_RGXSETBREAKPOINT *psRGXSetBreakpointIN,
@@ -340,150 +340,12 @@ RGXOverallocateBPRegisters_exit:
 	return 0;
 }
 
-#ifdef CONFIG_COMPAT
 
-/* Bridge in structure for RGXSetBreakpoint */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXSETBREAKPOINT_TAG
-{
-	IMG_UINT32 hDevNode; /* IMG_HANDLE hDevNode; */
-	IMG_UINT32 hPrivData; /* IMG_HANDLE hPrivData; */
-	IMG_UINT32 eFWDataMaster;
-	IMG_UINT32 ui32BreakpointAddr;
-	IMG_UINT32 ui32HandlerAddr;
-	IMG_UINT32 ui32DM;
-} compat_PVRSRV_BRIDGE_IN_RGXSETBREAKPOINT;
 
-static IMG_INT
-compat_PVRSRVBridgeRGXSetBreakpoint(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_RGXSETBREAKPOINT *psRGXSetBreakpointIN_32,
-					 PVRSRV_BRIDGE_OUT_RGXSETBREAKPOINT *psRGXSetBreakpointOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXSETBREAKPOINT sRGXSetBreakpointIN;
-	PVRSRV_BRIDGE_IN_RGXSETBREAKPOINT *psRGXSetBreakpointIN = &sRGXSetBreakpointIN;
-
-	psRGXSetBreakpointIN->hDevNode =(IMG_HANDLE)(IMG_UINT64)psRGXSetBreakpointIN_32->hDevNode;
-	psRGXSetBreakpointIN->hPrivData =(IMG_HANDLE)(IMG_UINT64)psRGXSetBreakpointIN_32->hPrivData;
-	psRGXSetBreakpointIN->eFWDataMaster =psRGXSetBreakpointIN_32->eFWDataMaster;
-	psRGXSetBreakpointIN->ui32BreakpointAddr =psRGXSetBreakpointIN_32->ui32BreakpointAddr;
-	psRGXSetBreakpointIN->ui32HandlerAddr =psRGXSetBreakpointIN_32->ui32HandlerAddr;
-	psRGXSetBreakpointIN->ui32DM =psRGXSetBreakpointIN_32->ui32DM;
-
-	return PVRSRVBridgeRGXSetBreakpoint(ui32BridgeID,
-					psRGXSetBreakpointIN,
-					psRGXSetBreakpointOUT,
-					psConnection);
-
-}
-
-/* Bridge in structure for RGXClearBreakpoint */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXCLEARBREAKPOINT_TAG
-{
-	IMG_UINT32 hDevNode; /* IMG_HANDLE hDevNode; */
-	IMG_UINT32 hPrivData; /* IMG_HANDLE hPrivData; */
-} compat_PVRSRV_BRIDGE_IN_RGXCLEARBREAKPOINT;
-
-static IMG_INT
-compat_PVRSRVBridgeRGXClearBreakpoint(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_RGXCLEARBREAKPOINT *psRGXClearBreakpointIN_32,
-					 PVRSRV_BRIDGE_OUT_RGXCLEARBREAKPOINT *psRGXClearBreakpointOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXCLEARBREAKPOINT sRGXClearBreakpointIN;
-	PVRSRV_BRIDGE_IN_RGXCLEARBREAKPOINT *psRGXClearBreakpointIN = &sRGXClearBreakpointIN;
-
-	psRGXClearBreakpointIN->hDevNode = (IMG_HANDLE)(IMG_UINT64)psRGXClearBreakpointIN_32->hDevNode;
-	psRGXClearBreakpointIN->hPrivData = (IMG_HANDLE)(IMG_UINT64)psRGXClearBreakpointIN_32->hPrivData;
-
-	return PVRSRVBridgeRGXClearBreakpoint(ui32BridgeID,
-					psRGXClearBreakpointIN,
-					psRGXClearBreakpointOUT,
-					psConnection);
-}
-
-/* Bridge in structure for RGXEnableBreakpoint */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXENABLEBREAKPOINT_TAG
-{
-	IMG_UINT32 hDevNode; /* IMG_HANDLE hDevNode; */
-	IMG_UINT32 hPrivData; /* IMG_HANDLE hPrivData; */
-} compat_PVRSRV_BRIDGE_IN_RGXENABLEBREAKPOINT;
-
-static IMG_INT
-compat_PVRSRVBridgeRGXEnableBreakpoint(IMG_UINT32 ui32BridgeID,
-					compat_PVRSRV_BRIDGE_IN_RGXENABLEBREAKPOINT *psRGXEnableBreakpointIN_32,
-					PVRSRV_BRIDGE_OUT_RGXENABLEBREAKPOINT *psRGXEnableBreakpointOUT,
-					CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXENABLEBREAKPOINT sRGXEnableBreakpointIN;
-	PVRSRV_BRIDGE_IN_RGXENABLEBREAKPOINT *psRGXEnableBreakpointIN = &sRGXEnableBreakpointIN;
-
-	psRGXEnableBreakpointIN->hDevNode = (IMG_HANDLE)(IMG_UINT64)psRGXEnableBreakpointIN_32->hDevNode;
-	psRGXEnableBreakpointIN->hPrivData = (IMG_HANDLE)(IMG_UINT64)psRGXEnableBreakpointIN_32->hPrivData;
-
-	return PVRSRVBridgeRGXEnableBreakpoint(ui32BridgeID,
-					psRGXEnableBreakpointIN,
-					psRGXEnableBreakpointOUT,
-					psConnection);
-}
-
-/* Bridge in structure for RGXDisableBreakpoint */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXDISABLEBREAKPOINT_TAG
-{
-	IMG_UINT32 hDevNode; /* IMG_HANDLE hDevNode; */
-	IMG_UINT32 hPrivData; /* IMG_HANDLE hPrivData; */
-} compat_PVRSRV_BRIDGE_IN_RGXDISABLEBREAKPOINT;
-
-static IMG_INT
-compat_PVRSRVBridgeRGXDisableBreakpoint(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_RGXDISABLEBREAKPOINT *psRGXDisableBreakpointIN_32,
-					 PVRSRV_BRIDGE_OUT_RGXDISABLEBREAKPOINT *psRGXDisableBreakpointOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXDISABLEBREAKPOINT sRGXDisableBreakpointIN;
-	PVRSRV_BRIDGE_IN_RGXDISABLEBREAKPOINT *psRGXDisableBreakpointIN = &sRGXDisableBreakpointIN;
-
-	psRGXDisableBreakpointIN->hDevNode = (IMG_HANDLE)(IMG_UINT64)psRGXDisableBreakpointIN_32->hDevNode;
-	psRGXDisableBreakpointIN->hPrivData = (IMG_HANDLE)(IMG_UINT64)psRGXDisableBreakpointIN_32->hPrivData;
-
-	return PVRSRVBridgeRGXDisableBreakpoint(ui32BridgeID,
-					psRGXDisableBreakpointIN,
-					psRGXDisableBreakpointOUT,
-					psConnection);
-}
-
-/* Bridge in structure for RGXOverallocateBPRegisters */
-typedef struct compat_PVRSRV_BRIDGE_IN_RGXOVERALLOCATEBPREGISTERS_TAG
-{
-	IMG_UINT32 hDevNode; /* IMG_HANDLE hDevNode; */
-	IMG_UINT32 ui32TempRegs;
-	IMG_UINT32 ui32SharedRegs;
-} compat_PVRSRV_BRIDGE_IN_RGXOVERALLOCATEBPREGISTERS;
-
-static IMG_INT
-compat_PVRSRVBridgeRGXOverallocateBPRegisters(IMG_UINT32 ui32BridgeID,
-					compat_PVRSRV_BRIDGE_IN_RGXOVERALLOCATEBPREGISTERS *psRGXOverallocateBPRegistersIN_32,
-					PVRSRV_BRIDGE_OUT_RGXOVERALLOCATEBPREGISTERS *psRGXOverallocateBPRegistersOUT,
-					CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_RGXOVERALLOCATEBPREGISTERS sRGXOverallocateBPRegistersIN;
-	PVRSRV_BRIDGE_IN_RGXOVERALLOCATEBPREGISTERS *psRGXOverallocateBPRegistersIN = &sRGXOverallocateBPRegistersIN;
-
-	psRGXOverallocateBPRegistersIN->hDevNode = (IMG_HANDLE)(IMG_UINT64)psRGXOverallocateBPRegistersIN_32->hDevNode;
-	psRGXOverallocateBPRegistersIN->ui32TempRegs = psRGXOverallocateBPRegistersIN_32->ui32TempRegs;
-	psRGXOverallocateBPRegistersIN->ui32SharedRegs = psRGXOverallocateBPRegistersIN_32->ui32SharedRegs;
-
-	return PVRSRVBridgeRGXOverallocateBPRegisters(ui32BridgeID,
-					psRGXOverallocateBPRegistersIN,
-					psRGXOverallocateBPRegistersOUT,
-					psConnection);
-}
-
-#endif
-
-/* ***************************************************************************
- * Server bridge dispatch related glue
+/* *************************************************************************** 
+ * Server bridge dispatch related glue 
  */
-
+ 
 PVRSRV_ERROR RegisterBREAKPOINTFunctions(IMG_VOID);
 IMG_VOID UnregisterBREAKPOINTFunctions(IMG_VOID);
 
@@ -492,19 +354,11 @@ IMG_VOID UnregisterBREAKPOINTFunctions(IMG_VOID);
  */
 PVRSRV_ERROR RegisterBREAKPOINTFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXSETBREAKPOINT, compat_PVRSRVBridgeRGXSetBreakpoint);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXCLEARBREAKPOINT, compat_PVRSRVBridgeRGXClearBreakpoint);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXENABLEBREAKPOINT, compat_PVRSRVBridgeRGXEnableBreakpoint);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXDISABLEBREAKPOINT, compat_PVRSRVBridgeRGXDisableBreakpoint);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXOVERALLOCATEBPREGISTERS, compat_PVRSRVBridgeRGXOverallocateBPRegisters);
-#else
 	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXSETBREAKPOINT, PVRSRVBridgeRGXSetBreakpoint);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXCLEARBREAKPOINT, PVRSRVBridgeRGXClearBreakpoint);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXENABLEBREAKPOINT, PVRSRVBridgeRGXEnableBreakpoint);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXDISABLEBREAKPOINT, PVRSRVBridgeRGXDisableBreakpoint);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_BREAKPOINT_RGXOVERALLOCATEBPREGISTERS, PVRSRVBridgeRGXOverallocateBPRegisters);
-#endif
 
 	return PVRSRV_OK;
 }

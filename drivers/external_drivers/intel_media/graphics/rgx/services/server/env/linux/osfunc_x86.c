@@ -66,7 +66,7 @@ static void per_cpu_cache_flush(void *arg)
     wbinvd();
 }
 
-IMG_VOID OSCPUOperation(PVRSRV_CACHE_OP uiCacheOp)
+void OSCPUOperation(PVRSRV_CACHE_OP uiCacheOp)
 {
 	switch(uiCacheOp)
 	{
@@ -106,10 +106,10 @@ static void x86_flush_cache_range(const void *pvStart, const void *pvEnd)
 	mb();
 }
 
-IMG_VOID OSFlushCPUCacheRangeKM(IMG_PVOID pvVirtStart,
-								IMG_PVOID pvVirtEnd,
-								IMG_CPU_PHYADDR sCPUPhysStart,
-								IMG_CPU_PHYADDR sCPUPhysEnd)
+void OSFlushCPUCacheRangeKM(IMG_PVOID pvVirtStart,
+							IMG_PVOID pvVirtEnd,
+							IMG_CPU_PHYADDR sCPUPhysStart,
+							IMG_CPU_PHYADDR sCPUPhysEnd)
 {
 	PVR_UNREFERENCED_PARAMETER(sCPUPhysStart);
 	PVR_UNREFERENCED_PARAMETER(sCPUPhysEnd);
@@ -118,10 +118,10 @@ IMG_VOID OSFlushCPUCacheRangeKM(IMG_PVOID pvVirtStart,
 }
 
 
-IMG_VOID OSCleanCPUCacheRangeKM(IMG_PVOID pvVirtStart,
-								IMG_PVOID pvVirtEnd,
-								IMG_CPU_PHYADDR sCPUPhysStart,
-								IMG_CPU_PHYADDR sCPUPhysEnd)
+void OSCleanCPUCacheRangeKM(IMG_PVOID pvVirtStart,
+							IMG_PVOID pvVirtEnd,
+							IMG_CPU_PHYADDR sCPUPhysStart,
+							IMG_CPU_PHYADDR sCPUPhysEnd)
 {
 	PVR_UNREFERENCED_PARAMETER(sCPUPhysStart);
 	PVR_UNREFERENCED_PARAMETER(sCPUPhysEnd);
@@ -130,10 +130,10 @@ IMG_VOID OSCleanCPUCacheRangeKM(IMG_PVOID pvVirtStart,
 	x86_flush_cache_range(pvVirtStart, pvVirtEnd);
 }
 
-IMG_VOID OSInvalidateCPUCacheRangeKM(IMG_PVOID pvVirtStart,
-									 IMG_PVOID pvVirtEnd,
-									 IMG_CPU_PHYADDR sCPUPhysStart,
-									 IMG_CPU_PHYADDR sCPUPhysEnd)
+void OSInvalidateCPUCacheRangeKM(IMG_PVOID pvVirtStart,
+								 IMG_PVOID pvVirtEnd,
+								 IMG_CPU_PHYADDR sCPUPhysStart,
+								 IMG_CPU_PHYADDR sCPUPhysEnd)
 {
 	PVR_UNREFERENCED_PARAMETER(sCPUPhysStart);
 	PVR_UNREFERENCED_PARAMETER(sCPUPhysEnd);

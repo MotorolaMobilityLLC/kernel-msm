@@ -49,7 +49,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "cache_external.h"
 
 
-#include "pvr_bridge.h"
+#include "pvr_bridge_io.h"
 
 #define PVRSRV_BRIDGE_SRVCORE_CMD_FIRST			(PVRSRV_BRIDGE_SRVCORE_START)
 #define PVRSRV_BRIDGE_SRVCORE_CONNECT			PVRSRV_IOWR(PVRSRV_BRIDGE_SRVCORE_CMD_FIRST+0)
@@ -69,7 +69,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PVRSRV_BRIDGE_SRVCORE_HWOPTIMEOUT			PVRSRV_IOWR(PVRSRV_BRIDGE_SRVCORE_CMD_FIRST+14)
 #define PVRSRV_BRIDGE_SRVCORE_KICKDEVICES			PVRSRV_IOWR(PVRSRV_BRIDGE_SRVCORE_CMD_FIRST+15)
 #define PVRSRV_BRIDGE_SRVCORE_RESETHWRLOGS			PVRSRV_IOWR(PVRSRV_BRIDGE_SRVCORE_CMD_FIRST+16)
-#define PVRSRV_BRIDGE_SRVCORE_CMD_LAST			(PVRSRV_BRIDGE_SRVCORE_CMD_FIRST+16)
+#define PVRSRV_BRIDGE_SRVCORE_SOFTRESET			PVRSRV_IOWR(PVRSRV_BRIDGE_SRVCORE_CMD_FIRST+17)
+#define PVRSRV_BRIDGE_SRVCORE_CMD_LAST			(PVRSRV_BRIDGE_SRVCORE_CMD_FIRST+17)
 
 
 /*******************************************
@@ -83,14 +84,16 @@ typedef struct PVRSRV_BRIDGE_IN_CONNECT_TAG
 	IMG_UINT32 ui32ClientBuildOptions;
 	IMG_UINT32 ui32ClientDDKVersion;
 	IMG_UINT32 ui32ClientDDKBuild;
-} PVRSRV_BRIDGE_IN_CONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_CONNECT;
 
 
 /* Bridge out structure for Connect */
 typedef struct PVRSRV_BRIDGE_OUT_CONNECT_TAG
 {
+	IMG_UINT8 ui8KernelArch;
+	IMG_UINT32 ui32Log2PageSize;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_CONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_CONNECT;
 
 /*******************************************
             Disconnect          
@@ -100,14 +103,14 @@ typedef struct PVRSRV_BRIDGE_OUT_CONNECT_TAG
 typedef struct PVRSRV_BRIDGE_IN_DISCONNECT_TAG
 {
 	 IMG_UINT32 ui32EmptyStructPlaceholder;
-} PVRSRV_BRIDGE_IN_DISCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_DISCONNECT;
 
 
 /* Bridge out structure for Disconnect */
 typedef struct PVRSRV_BRIDGE_OUT_DISCONNECT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_DISCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_DISCONNECT;
 
 /*******************************************
             EnumerateDevices          
@@ -116,18 +119,24 @@ typedef struct PVRSRV_BRIDGE_OUT_DISCONNECT_TAG
 /* Bridge in structure for EnumerateDevices */
 typedef struct PVRSRV_BRIDGE_IN_ENUMERATEDEVICES_TAG
 {
-	/* Output pointer psDeviceIdentifier is also an implied input */
-	PVRSRV_DEVICE_IDENTIFIER * psDeviceIdentifier;
-} PVRSRV_BRIDGE_IN_ENUMERATEDEVICES;
+	/* Output pointer peDeviceType is also an implied input */
+	PVRSRV_DEVICE_TYPE * peDeviceType;
+	/* Output pointer peDeviceClass is also an implied input */
+	PVRSRV_DEVICE_CLASS * peDeviceClass;
+	/* Output pointer pui32DeviceIndex is also an implied input */
+	IMG_UINT32 * pui32DeviceIndex;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_ENUMERATEDEVICES;
 
 
 /* Bridge out structure for EnumerateDevices */
 typedef struct PVRSRV_BRIDGE_OUT_ENUMERATEDEVICES_TAG
 {
 	IMG_UINT32 ui32NumDevices;
-	PVRSRV_DEVICE_IDENTIFIER * psDeviceIdentifier;
+	PVRSRV_DEVICE_TYPE * peDeviceType;
+	PVRSRV_DEVICE_CLASS * peDeviceClass;
+	IMG_UINT32 * pui32DeviceIndex;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_ENUMERATEDEVICES;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_ENUMERATEDEVICES;
 
 /*******************************************
             AcquireDeviceData          
@@ -138,7 +147,7 @@ typedef struct PVRSRV_BRIDGE_IN_ACQUIREDEVICEDATA_TAG
 {
 	IMG_UINT32 ui32DevIndex;
 	PVRSRV_DEVICE_TYPE eDeviceType;
-} PVRSRV_BRIDGE_IN_ACQUIREDEVICEDATA;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_ACQUIREDEVICEDATA;
 
 
 /* Bridge out structure for AcquireDeviceData */
@@ -146,7 +155,7 @@ typedef struct PVRSRV_BRIDGE_OUT_ACQUIREDEVICEDATA_TAG
 {
 	IMG_HANDLE hDevCookie;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_ACQUIREDEVICEDATA;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_ACQUIREDEVICEDATA;
 
 /*******************************************
             ReleaseDeviceData          
@@ -156,14 +165,14 @@ typedef struct PVRSRV_BRIDGE_OUT_ACQUIREDEVICEDATA_TAG
 typedef struct PVRSRV_BRIDGE_IN_RELEASEDEVICEDATA_TAG
 {
 	IMG_HANDLE hDevCookie;
-} PVRSRV_BRIDGE_IN_RELEASEDEVICEDATA;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RELEASEDEVICEDATA;
 
 
 /* Bridge out structure for ReleaseDeviceData */
 typedef struct PVRSRV_BRIDGE_OUT_RELEASEDEVICEDATA_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RELEASEDEVICEDATA;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RELEASEDEVICEDATA;
 
 /*******************************************
             InitSrvConnect          
@@ -173,14 +182,14 @@ typedef struct PVRSRV_BRIDGE_OUT_RELEASEDEVICEDATA_TAG
 typedef struct PVRSRV_BRIDGE_IN_INITSRVCONNECT_TAG
 {
 	 IMG_UINT32 ui32EmptyStructPlaceholder;
-} PVRSRV_BRIDGE_IN_INITSRVCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_INITSRVCONNECT;
 
 
 /* Bridge out structure for InitSrvConnect */
 typedef struct PVRSRV_BRIDGE_OUT_INITSRVCONNECT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_INITSRVCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_INITSRVCONNECT;
 
 /*******************************************
             InitSrvDisconnect          
@@ -191,14 +200,14 @@ typedef struct PVRSRV_BRIDGE_IN_INITSRVDISCONNECT_TAG
 {
 	IMG_BOOL bInitSuccesful;
 	IMG_UINT32 ui32ClientBuildOptions;
-} PVRSRV_BRIDGE_IN_INITSRVDISCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_INITSRVDISCONNECT;
 
 
 /* Bridge out structure for InitSrvDisconnect */
 typedef struct PVRSRV_BRIDGE_OUT_INITSRVDISCONNECT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_INITSRVDISCONNECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_INITSRVDISCONNECT;
 
 /*******************************************
             AcquireGlobalEventObject          
@@ -208,7 +217,7 @@ typedef struct PVRSRV_BRIDGE_OUT_INITSRVDISCONNECT_TAG
 typedef struct PVRSRV_BRIDGE_IN_ACQUIREGLOBALEVENTOBJECT_TAG
 {
 	 IMG_UINT32 ui32EmptyStructPlaceholder;
-} PVRSRV_BRIDGE_IN_ACQUIREGLOBALEVENTOBJECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_ACQUIREGLOBALEVENTOBJECT;
 
 
 /* Bridge out structure for AcquireGlobalEventObject */
@@ -216,7 +225,7 @@ typedef struct PVRSRV_BRIDGE_OUT_ACQUIREGLOBALEVENTOBJECT_TAG
 {
 	IMG_HANDLE hGlobalEventObject;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_ACQUIREGLOBALEVENTOBJECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_ACQUIREGLOBALEVENTOBJECT;
 
 /*******************************************
             ReleaseGlobalEventObject          
@@ -226,14 +235,14 @@ typedef struct PVRSRV_BRIDGE_OUT_ACQUIREGLOBALEVENTOBJECT_TAG
 typedef struct PVRSRV_BRIDGE_IN_RELEASEGLOBALEVENTOBJECT_TAG
 {
 	IMG_HANDLE hGlobalEventObject;
-} PVRSRV_BRIDGE_IN_RELEASEGLOBALEVENTOBJECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RELEASEGLOBALEVENTOBJECT;
 
 
 /* Bridge out structure for ReleaseGlobalEventObject */
 typedef struct PVRSRV_BRIDGE_OUT_RELEASEGLOBALEVENTOBJECT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RELEASEGLOBALEVENTOBJECT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RELEASEGLOBALEVENTOBJECT;
 
 /*******************************************
             EventObjectOpen          
@@ -243,7 +252,7 @@ typedef struct PVRSRV_BRIDGE_OUT_RELEASEGLOBALEVENTOBJECT_TAG
 typedef struct PVRSRV_BRIDGE_IN_EVENTOBJECTOPEN_TAG
 {
 	IMG_HANDLE hEventObject;
-} PVRSRV_BRIDGE_IN_EVENTOBJECTOPEN;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_EVENTOBJECTOPEN;
 
 
 /* Bridge out structure for EventObjectOpen */
@@ -251,7 +260,7 @@ typedef struct PVRSRV_BRIDGE_OUT_EVENTOBJECTOPEN_TAG
 {
 	IMG_HANDLE hOSEvent;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_EVENTOBJECTOPEN;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_EVENTOBJECTOPEN;
 
 /*******************************************
             EventObjectWait          
@@ -261,14 +270,14 @@ typedef struct PVRSRV_BRIDGE_OUT_EVENTOBJECTOPEN_TAG
 typedef struct PVRSRV_BRIDGE_IN_EVENTOBJECTWAIT_TAG
 {
 	IMG_HANDLE hOSEventKM;
-} PVRSRV_BRIDGE_IN_EVENTOBJECTWAIT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_EVENTOBJECTWAIT;
 
 
 /* Bridge out structure for EventObjectWait */
 typedef struct PVRSRV_BRIDGE_OUT_EVENTOBJECTWAIT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_EVENTOBJECTWAIT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_EVENTOBJECTWAIT;
 
 /*******************************************
             EventObjectClose          
@@ -278,14 +287,14 @@ typedef struct PVRSRV_BRIDGE_OUT_EVENTOBJECTWAIT_TAG
 typedef struct PVRSRV_BRIDGE_IN_EVENTOBJECTCLOSE_TAG
 {
 	IMG_HANDLE hOSEventKM;
-} PVRSRV_BRIDGE_IN_EVENTOBJECTCLOSE;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_EVENTOBJECTCLOSE;
 
 
 /* Bridge out structure for EventObjectClose */
 typedef struct PVRSRV_BRIDGE_OUT_EVENTOBJECTCLOSE_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_EVENTOBJECTCLOSE;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_EVENTOBJECTCLOSE;
 
 /*******************************************
             DumpDebugInfo          
@@ -295,14 +304,14 @@ typedef struct PVRSRV_BRIDGE_OUT_EVENTOBJECTCLOSE_TAG
 typedef struct PVRSRV_BRIDGE_IN_DUMPDEBUGINFO_TAG
 {
 	IMG_UINT32 ui32ui32VerbLevel;
-} PVRSRV_BRIDGE_IN_DUMPDEBUGINFO;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_DUMPDEBUGINFO;
 
 
 /* Bridge out structure for DumpDebugInfo */
 typedef struct PVRSRV_BRIDGE_OUT_DUMPDEBUGINFO_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_DUMPDEBUGINFO;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_DUMPDEBUGINFO;
 
 /*******************************************
             GetDevClockSpeed          
@@ -312,7 +321,7 @@ typedef struct PVRSRV_BRIDGE_OUT_DUMPDEBUGINFO_TAG
 typedef struct PVRSRV_BRIDGE_IN_GETDEVCLOCKSPEED_TAG
 {
 	IMG_HANDLE hDevNode;
-} PVRSRV_BRIDGE_IN_GETDEVCLOCKSPEED;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_GETDEVCLOCKSPEED;
 
 
 /* Bridge out structure for GetDevClockSpeed */
@@ -320,7 +329,7 @@ typedef struct PVRSRV_BRIDGE_OUT_GETDEVCLOCKSPEED_TAG
 {
 	IMG_UINT32 ui32ui32RGXClockSpeed;
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_GETDEVCLOCKSPEED;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_GETDEVCLOCKSPEED;
 
 /*******************************************
             HWOpTimeout          
@@ -330,14 +339,14 @@ typedef struct PVRSRV_BRIDGE_OUT_GETDEVCLOCKSPEED_TAG
 typedef struct PVRSRV_BRIDGE_IN_HWOPTIMEOUT_TAG
 {
 	 IMG_UINT32 ui32EmptyStructPlaceholder;
-} PVRSRV_BRIDGE_IN_HWOPTIMEOUT;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_HWOPTIMEOUT;
 
 
 /* Bridge out structure for HWOpTimeout */
 typedef struct PVRSRV_BRIDGE_OUT_HWOPTIMEOUT_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_HWOPTIMEOUT;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_HWOPTIMEOUT;
 
 /*******************************************
             KickDevices          
@@ -347,14 +356,14 @@ typedef struct PVRSRV_BRIDGE_OUT_HWOPTIMEOUT_TAG
 typedef struct PVRSRV_BRIDGE_IN_KICKDEVICES_TAG
 {
 	 IMG_UINT32 ui32EmptyStructPlaceholder;
-} PVRSRV_BRIDGE_IN_KICKDEVICES;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_KICKDEVICES;
 
 
 /* Bridge out structure for KickDevices */
 typedef struct PVRSRV_BRIDGE_OUT_KICKDEVICES_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_KICKDEVICES;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_KICKDEVICES;
 
 /*******************************************
             ResetHWRLogs          
@@ -364,13 +373,31 @@ typedef struct PVRSRV_BRIDGE_OUT_KICKDEVICES_TAG
 typedef struct PVRSRV_BRIDGE_IN_RESETHWRLOGS_TAG
 {
 	IMG_HANDLE hDevNode;
-} PVRSRV_BRIDGE_IN_RESETHWRLOGS;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_RESETHWRLOGS;
 
 
 /* Bridge out structure for ResetHWRLogs */
 typedef struct PVRSRV_BRIDGE_OUT_RESETHWRLOGS_TAG
 {
 	PVRSRV_ERROR eError;
-} PVRSRV_BRIDGE_OUT_RESETHWRLOGS;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_RESETHWRLOGS;
+
+/*******************************************
+            SoftReset          
+ *******************************************/
+
+/* Bridge in structure for SoftReset */
+typedef struct PVRSRV_BRIDGE_IN_SOFTRESET_TAG
+{
+	IMG_HANDLE hDevNode;
+	IMG_UINT64 ui64ResetValue;
+} __attribute__((packed)) PVRSRV_BRIDGE_IN_SOFTRESET;
+
+
+/* Bridge out structure for SoftReset */
+typedef struct PVRSRV_BRIDGE_OUT_SOFTRESET_TAG
+{
+	PVRSRV_ERROR eError;
+} __attribute__((packed)) PVRSRV_BRIDGE_OUT_SOFTRESET;
 
 #endif /* COMMON_SRVCORE_BRIDGE_H */

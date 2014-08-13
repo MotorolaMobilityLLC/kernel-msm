@@ -55,16 +55,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ******************************************************************************/
 #if defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
 #define IORemapWrapper(BasePAddr, ui32Bytes, ui32MappingFlags) \
-    _IORemapWrapper(BasePAddr, ui32Bytes, ui32MappingFlags, __FILE__, __LINE__)
+	_IORemapWrapper(BasePAddr, ui32Bytes, ui32MappingFlags, __FILE__, __LINE__)
 #else
 #define IORemapWrapper(BasePAddr, ui32Bytes, ui32MappingFlags) \
-    _IORemapWrapper(BasePAddr, ui32Bytes, ui32MappingFlags, NULL, 0)
+	_IORemapWrapper(BasePAddr, ui32Bytes, ui32MappingFlags, NULL, 0)
 #endif
-IMG_VOID *_IORemapWrapper(IMG_CPU_PHYADDR BasePAddr,
-                          IMG_UINT32 ui32Bytes,
-                          IMG_UINT32 ui32MappingFlags,
-                          IMG_CHAR *pszFileName,
-                          IMG_UINT32 ui32Line);
+void *_IORemapWrapper(IMG_CPU_PHYADDR BasePAddr,
+					  IMG_UINT32 ui32Bytes,
+					  IMG_UINT32 ui32MappingFlags,
+					  IMG_CHAR *pszFileName,
+					  IMG_UINT32 ui32Line);
 
 /*!
  ******************************************************************************
@@ -76,12 +76,11 @@ IMG_VOID *_IORemapWrapper(IMG_CPU_PHYADDR BasePAddr,
  ******************************************************************************/
 #if defined(DEBUG_LINUX_MEMORY_ALLOCATIONS)
 #define IOUnmapWrapper(pvIORemapCookie) \
-    _IOUnmapWrapper(pvIORemapCookie, __FILE__, __LINE__)
+	_IOUnmapWrapper(pvIORemapCookie, __FILE__, __LINE__)
 #else
 #define IOUnmapWrapper(pvIORemapCookie) \
-    _IOUnmapWrapper(pvIORemapCookie, NULL, 0)
+	_IOUnmapWrapper(pvIORemapCookie, NULL, 0)
 #endif
-IMG_VOID _IOUnmapWrapper(IMG_VOID *pvIORemapCookie, IMG_CHAR *pszFileName, IMG_UINT32 ui32Line);
+void _IOUnmapWrapper(void *pvIORemapCookie, IMG_CHAR *pszFileName, IMG_UINT32 ui32Line);
 
 #endif /* __IMG_LINUX_MM_H__ */
-

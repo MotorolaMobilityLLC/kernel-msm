@@ -55,6 +55,9 @@ extern "C" {
 /******************************************************************************
  * Function prototypes 
  *****************************************************************************/
+#if(__SIZEOF_POINTER__ == 4)
+IMG_EXPORT IMG_BOOL PVRSRVIsKernel64Bit(void);
+#endif
 
 PVRSRV_ERROR OpenServices(IMG_HANDLE *phServices, IMG_UINT32 ui32SrvFlags);
 PVRSRV_ERROR CloseServices(IMG_HANDLE hServices);
@@ -73,4 +76,5 @@ PVRSRV_ERROR PVRSRVBridgeCall(IMG_HANDLE hServices,
 /******************************************************************************
  End of file (pvr_bridge_u.h)
 ******************************************************************************/
+
 

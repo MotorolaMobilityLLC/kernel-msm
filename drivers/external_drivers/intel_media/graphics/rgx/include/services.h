@@ -93,7 +93,8 @@ extern "C" {
 	Flags for Services connection.
 	Allows to define per-client policy for Services
 */
-#define SRV_FLAGS_PERSIST		0x1     /*!< persist flag */
+#define SRV_FLAGS_PERSIST		0x1U        /*!< Persist client flag */
+#define SRV_FLAGS_PDUMPCTRL     0x1U<<31    /*!< PDump Ctrl client flag */
 
 /*
 	Pdump flags which are accessible to Services clients
@@ -131,6 +132,8 @@ typedef enum
 	IMG_WEC_GPE			= 0x00000010,		/*!< WinEC-specific GPE */
 	IMG_PVRGPE			= 0x00000011,		/*!< WinEC/WinCE GPE */
 	IMG_RSCOMPUTE       = 0x00000012,       /*!< RenderScript Compute */
+	IMG_OPENRL          = 0x00000013,       /*!< OpenRL Module */
+	IMG_PDUMPCTRL		= 0x00000014,       /*!< PDump control client */
 
 } IMG_MODULE_ID;
 
@@ -328,6 +331,17 @@ PVRSRV_ERROR PVRSRVPollForValue(const PVRSRV_CONNECTION	*psConnection,
 								IMG_UINT32				ui32Waitus,
 								IMG_UINT32				ui32Tries);
 
+/* this function is almost the same as PVRSRVPollForValue. The only difference
+ * is that it now handles the interval between tries itself. Therefore it can
+ * correctly handles the differences between the different platforms.
+ */
+IMG_IMPORT
+PVRSRV_ERROR PVRSRVWaitForValue(const PVRSRV_CONNECTION	*psConnection,
+                                IMG_HANDLE				hOSEvent,
+                                volatile IMG_UINT32		*pui32LinMemAddr,
+                                IMG_UINT32				ui32Value,
+                                IMG_UINT32				ui32Mask);
+
 
 /**************************************************************************/ /*!
  @Function      PVRSRVConditionCheckCallback
@@ -449,6 +463,17 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpSetFrame(const PVRSRV_CONNECTION *psConnect
 											  IMG_UINT32 ui32Frame);
 
 /**************************************************************************/ /*!
+@Function       PVRSRVPDumpGetFrame
+@Description    Gets the current pdump frame
+@Input          psConnection    Services connection
+@Output         pui32Frame       frame id
+@Return         PVRSRV_OK on success. Otherwise, a PVRSRV_error code
+*/ /**************************************************************************/
+IMG_IMPORT
+PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpGetFrame(const PVRSRV_CONNECTION *psConnection,
+											  IMG_UINT32 *pui32Frame);
+
+/**************************************************************************/ /*!
 @Function       PVRSRVPDumpIsLastCaptureFrame
 @Description    Returns whether this is the last frame of the capture range
 @Input          psConnection    Services connection
@@ -457,6 +482,14 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpSetFrame(const PVRSRV_CONNECTION *psConnect
 */ /**************************************************************************/
 IMG_IMPORT
 IMG_BOOL IMG_CALLCONV PVRSRVPDumpIsLastCaptureFrame(const PVRSRV_CONNECTION *psConnection);
+
+/**************************************************************************/ /*!
+@Function       PVRSRVPDumpAfterRender
+@Description    Executes TraceBuffer and SignatureBuffer commands
+@Input          psDevData       Device data
+*/ /**************************************************************************/
+IMG_IMPORT
+PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpAfterRender(PVRSRV_DEV_DATA *psDevData);
 
 /**************************************************************************/ /*!
 @Function       PVRSRVPDumpComment
@@ -527,6 +560,15 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpIsCapturing(const PVRSRV_CONNECTION *psConn
  */ /**************************************************************************/
 IMG_IMPORT
 IMG_BOOL IMG_CALLCONV PVRSRVPDumpIsCapturingTest(const PVRSRV_CONNECTION *psConnection);
+
+IMG_IMPORT
+PVRSRV_ERROR IMG_CALLCONV PVRSRVPDumpSetDefaultCaptureParams(const PVRSRV_CONNECTION *psConnection,
+                                                             IMG_UINT32 ui32Mode,
+                                                             IMG_UINT32 ui32Start,
+                                                             IMG_UINT32 ui32End,
+                                                             IMG_UINT32 ui32Interval,
+                                                             IMG_UINT32 ui32MaxParamFileSize);
+
 #else	/* PDUMP */
 
 #ifdef INLINE_IS_PRAGMA
@@ -572,6 +614,19 @@ PVRSRVPDumpSetFrame(const PVRSRV_CONNECTION *psConnection,
 }
 
 #ifdef INLINE_IS_PRAGMA
+#pragma inline(PVRSRVPDumpGetFrame)
+#endif
+static INLINE PVRSRV_ERROR
+PVRSRVPDumpGetFrame(const PVRSRV_CONNECTION *psConnection,
+					IMG_UINT32 *pui32Frame)
+{
+	PVR_UNREFERENCED_PARAMETER(psConnection);
+	PVR_UNREFERENCED_PARAMETER(pui32Frame);
+	return PVRSRV_OK;
+}
+
+
+#ifdef INLINE_IS_PRAGMA
 #pragma inline(PVRSRVPDumpIsLastCaptureFrame)
 #endif
 static INLINE IMG_BOOL
@@ -579,6 +634,16 @@ PVRSRVPDumpIsLastCaptureFrame(const PVRSRV_CONNECTION *psConnection)
 {
 	PVR_UNREFERENCED_PARAMETER(psConnection);
 	return IMG_FALSE;
+}
+
+#ifdef INLINE_IS_PRAGMA
+#pragma inline(PVRSRVPDumpAfterRender)
+#endif
+static INLINE PVRSRV_ERROR
+PVRSRVPDumpAfterRender(PVRSRV_DEV_DATA *psDevData)
+{
+	PVR_UNREFERENCED_PARAMETER(psDevData);
+	return PVRSRV_OK;
 }
 
 #ifdef INLINE_IS_PRAGMA
@@ -645,6 +710,29 @@ PVRSRVPDumpIsCapturingTest(const PVRSRV_CONNECTION *psConnection)
 	PVR_UNREFERENCED_PARAMETER(psConnection);
 	return IMG_FALSE;
 }
+
+#ifdef INLINE_IS_PRAGMA
+#pragma inline(PDumpSetPidCapRange)
+#endif
+static INLINE PVRSRV_ERROR
+PVRSRVPDumpSetDefaultCaptureParams(const PVRSRV_CONNECTION *psConnection,
+                                   IMG_UINT32 ui32Mode,
+                                   IMG_UINT32 ui32Start,
+                                   IMG_UINT32 ui32End,
+                                   IMG_UINT32 ui32Interval,
+                                   IMG_UINT32 ui32MaxParamFileSize)
+{
+	PVR_UNREFERENCED_PARAMETER(psConnection);
+	PVR_UNREFERENCED_PARAMETER(ui32Mode);
+	PVR_UNREFERENCED_PARAMETER(ui32Start);
+	PVR_UNREFERENCED_PARAMETER(ui32End);
+	PVR_UNREFERENCED_PARAMETER(ui32Interval);
+	PVR_UNREFERENCED_PARAMETER(ui32MaxParamFileSize);
+
+	return PVRSRV_OK;
+}
+
+
 #endif	/* PDUMP */
 
 /**************************************************************************/ /*!
@@ -1136,6 +1224,21 @@ PVRSRVEventObjectWait(const PVRSRV_CONNECTION *psConnection,
 
 IMG_IMPORT PVRSRV_ERROR
 PVRSRVKickDevices(const PVRSRV_CONNECTION *psConnection);
+
+
+/**************************************************************************/ /*!
+@Function       RGXSoftReset
+@Description    Resets some modules of the RGX device
+@Input          psConnection    Services connection
+@Input          psDevData			Pointer to the PVRSRV_DEV_DATA context
+@Output         ui64ResetValue  a mask for which each bit set correspond
+                                to a module to reset.
+@Return         PVRSRV_ERROR
+*/ /***************************************************************************/
+IMG_IMPORT PVRSRV_ERROR
+PVRSRVSoftReset(const PVRSRV_CONNECTION *psConnection,
+				PVRSRV_DEV_DATA  *psDevData,
+				IMG_UINT64 ui64ResetValue);
 
 /*!
  Time wrapping macro

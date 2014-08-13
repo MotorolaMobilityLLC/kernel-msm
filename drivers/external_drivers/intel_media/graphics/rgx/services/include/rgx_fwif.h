@@ -123,8 +123,9 @@ typedef IMG_VOID (*PFN_RGXFW_LOG) (const IMG_CHAR* pszFmt, ...);
  *****************************************************************************/
 /* Size of the Firmware L1 HWPERF buffer in bytes (256KB). Accessed by the
  * Firmware and host driver. */
-#define RGXFW_HWPERF_L1_SIZE_MIN		(0x04000)
-#define RGXFW_HWPERF_L1_SIZE_DEFAULT    (0x40000)
+#define RGXFW_HWPERF_L1_SIZE_MIN		(0x004000)
+#define RGXFW_HWPERF_L1_SIZE_DEFAULT    (0x040000)
+#define RGXFW_HWPERF_L1_SIZE_MAX        (0xC00000)
 /* This padding value must always be greater than or equal to 
  * RGX_HWPERF_V2_MAX_PACKET_SIZE for all valid BVNCs. This is asserted in 
  * rgxsrvinit.c. This macro is defined with a constant to avoid a KM 
@@ -195,7 +196,7 @@ typedef IMG_UINT32 RGXFWIF_HWR_RECOVERYFLAGS;
 
 typedef struct _RGXFWIF_TRACEBUF_
 {
-	IMG_UINT32				ui32LogType;
+    IMG_UINT32				ui32LogType;
 	RGXFWIF_POW_STATE		ePowState;
 	RGXFWIF_TRACEBUF_SPACE	sTraceBuf[RGXFW_THREAD_NUM];
 
@@ -207,7 +208,7 @@ typedef struct _RGXFWIF_TRACEBUF_
 	RGXFWIF_DEV_VIRTADDR	apsHwrDmFWCommonContext[RGXFWIF_DM_MAX];
 
 	IMG_UINT32				aui32CrPollAddr[RGXFW_THREAD_NUM];
-	IMG_UINT32				aui32CrPollValue[RGXFW_THREAD_NUM];
+	IMG_UINT32				aui32CrPollMask[RGXFW_THREAD_NUM];
 
 	RGXFWIF_HWR_STATEFLAGS		ui32HWRStateFlags;
 	RGXFWIF_HWR_RECOVERYFLAGS	aui32HWRRecoveryFlags[RGXFWIF_HWDM_MAX];
@@ -225,65 +226,66 @@ typedef struct _RGXFWIF_TRACEBUF_
 	IMG_UINT32              ui32LastDropOrdinal; /* The ordinal of the last packet the FW dropped */
 
 	IMG_UINT32				ui32InterruptCount;
+    IMG_UINT64 RGXFW_ALIGN	ui64StartIdleTime;
 } RGXFWIF_TRACEBUF;
 
 /*!
  ******************************************************************************
  * GPU Utilization FW CB
  *****************************************************************************/
-#define RGXFWIF_GPU_STATS_WINDOW_SIZE_US                       500000                  /*!< Time window considered for active/idle/blocked statistics */
-#define RGXFWIF_GPU_STATS_STATE_CHG_PER_SEC                    1000                    /*!< Expected number of maximum GPU state changes per second */
-#define RGXFWIF_GPU_STATS_MAX_VALUE_OF_STATE           10000
+#define RGXFWIF_GPU_STATS_WINDOW_SIZE_US			500000			/*!< Time window considered for active/idle/blocked statistics */
+#define RGXFWIF_GPU_STATS_STATE_CHG_PER_SEC			1000			/*!< Expected number of maximum GPU state changes per second */
+#define RGXFWIF_GPU_STATS_MAX_VALUE_OF_STATE		10000
 
-#define RGXFWIF_GPU_UTIL_FWCB_SIZE     ((RGXFWIF_GPU_STATS_WINDOW_SIZE_US * RGXFWIF_GPU_STATS_STATE_CHG_PER_SEC) / 1000000)
+#define RGXFWIF_GPU_UTIL_FWCB_SIZE	((RGXFWIF_GPU_STATS_WINDOW_SIZE_US * RGXFWIF_GPU_STATS_STATE_CHG_PER_SEC) / 1000000)
 
-#define RGXFWIF_GPU_UTIL_FWCB_TYPE_CRTIME              IMG_UINT64_C(0x0)
-#define RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_ON            IMG_UINT64_C(0x1)
-#define RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_OFF   IMG_UINT64_C(0x2)
-#define RGXFWIF_GPU_UTIL_FWCB_TYPE_END_CRTIME  IMG_UINT64_C(0x3)
-#define RGXFWIF_GPU_UTIL_FWCB_TYPE_MASK                        IMG_UINT64_C(0xC000000000000000)
-#define RGXFWIF_GPU_UTIL_FWCB_TYPE_SHIFT               (62)
+#define RGXFWIF_GPU_UTIL_FWCB_TYPE_CRTIME		IMG_UINT64_C(0x0)
+#define RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_ON		IMG_UINT64_C(0x1)
+#define RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_OFF	IMG_UINT64_C(0x2)
+#define RGXFWIF_GPU_UTIL_FWCB_TYPE_END_CRTIME	IMG_UINT64_C(0x3)
+#define RGXFWIF_GPU_UTIL_FWCB_TYPE_MASK			IMG_UINT64_C(0xC000000000000000)
+#define RGXFWIF_GPU_UTIL_FWCB_TYPE_SHIFT		(62)
 
-#define RGXFWIF_GPU_UTIL_FWCB_STATE_ACTIVE_LOW IMG_UINT64_C(0x0)
+#define RGXFWIF_GPU_UTIL_FWCB_STATE_ACTIVE_LOW	IMG_UINT64_C(0x0)
 #define RGXFWIF_GPU_UTIL_FWCB_STATE_IDLE		IMG_UINT64_C(0x1)
-#define RGXFWIF_GPU_UTIL_FWCB_STATE_ACTIVE_HIGH		IMG_UINT64_C(0x2)
+#define RGXFWIF_GPU_UTIL_FWCB_STATE_ACTIVE_HIGH	IMG_UINT64_C(0x2)
 #define RGXFWIF_GPU_UTIL_FWCB_STATE_BLOCKED		IMG_UINT64_C(0x3)
-#define RGXFWIF_GPU_UTIL_FWCB_STATE_MASK               IMG_UINT64_C(0x3000000000000000)
-#define RGXFWIF_GPU_UTIL_FWCB_STATE_SHIFT              (60)
+#define RGXFWIF_GPU_UTIL_FWCB_STATE_MASK		IMG_UINT64_C(0x3000000000000000)
+#define RGXFWIF_GPU_UTIL_FWCB_STATE_SHIFT		(60)
 
-#define RGXFWIF_GPU_UTIL_FWCB_ID_MASK                  IMG_UINT64_C(0x0FFF000000000000)
+#define RGXFWIF_GPU_UTIL_FWCB_ID_MASK			IMG_UINT64_C(0x0FFF000000000000)
 #define RGXFWIF_GPU_UTIL_FWCB_ID_SHIFT			(48)
 
-#define RGXFWIF_GPU_UTIL_FWCB_CR_TIMER_MASK            IMG_UINT64_C(0x0000FFFFFFFFFFFF)
-#define RGXFWIF_GPU_UTIL_FWCB_OS_TIMER_MASK            IMG_UINT64_C(0x0FFFFFFFFFFFFFFF)
-#define RGXFWIF_GPU_UTIL_FWCB_TIMER_SHIFT              (0)
+#define RGXFWIF_GPU_UTIL_FWCB_CR_TIMER_MASK		IMG_UINT64_C(0x0000FFFFFFFFFFFF)
+#define RGXFWIF_GPU_UTIL_FWCB_OS_TIMER_MASK		IMG_UINT64_C(0x0FFFFFFFFFFFFFFF)
+#define RGXFWIF_GPU_UTIL_FWCB_TIMER_SHIFT		(0)
 
-#define RGXFWIF_GPU_UTIL_FWCB_ENTRY_TYPE(entry)                (((entry)&RGXFWIF_GPU_UTIL_FWCB_TYPE_MASK)>>RGXFWIF_GPU_UTIL_FWCB_TYPE_SHIFT)
+#define RGXFWIF_GPU_UTIL_FWCB_ENTRY_TYPE(entry)		(((entry)&RGXFWIF_GPU_UTIL_FWCB_TYPE_MASK)>>RGXFWIF_GPU_UTIL_FWCB_TYPE_SHIFT)
 #define RGXFWIF_GPU_UTIL_FWCB_ENTRY_STATE(entry)	(((entry)&RGXFWIF_GPU_UTIL_FWCB_STATE_MASK)>>RGXFWIF_GPU_UTIL_FWCB_STATE_SHIFT)
 #define RGXFWIF_GPU_UTIL_FWCB_ENTRY_ID(entry)		(((entry)&RGXFWIF_GPU_UTIL_FWCB_ID_MASK)>>RGXFWIF_GPU_UTIL_FWCB_ID_SHIFT)
-#define RGXFWIF_GPU_UTIL_FWCB_ENTRY_CR_TIMER(entry)    (((entry)&RGXFWIF_GPU_UTIL_FWCB_CR_TIMER_MASK)>>RGXFWIF_GPU_UTIL_FWCB_TIMER_SHIFT)
-#define RGXFWIF_GPU_UTIL_FWCB_ENTRY_OS_TIMER(entry)    (((entry)&RGXFWIF_GPU_UTIL_FWCB_OS_TIMER_MASK)>>RGXFWIF_GPU_UTIL_FWCB_TIMER_SHIFT)
+#define RGXFWIF_GPU_UTIL_FWCB_ENTRY_CR_TIMER(entry)	(((entry)&RGXFWIF_GPU_UTIL_FWCB_CR_TIMER_MASK)>>RGXFWIF_GPU_UTIL_FWCB_TIMER_SHIFT)
+#define RGXFWIF_GPU_UTIL_FWCB_ENTRY_OS_TIMER(entry)	(((entry)&RGXFWIF_GPU_UTIL_FWCB_OS_TIMER_MASK)>>RGXFWIF_GPU_UTIL_FWCB_TIMER_SHIFT)
 
 /* It can never happen that the GPU is reported as powered off and active at the same time,
  * use this combination to mark the entry as reserved */
-#define RGXFWIF_GPU_UTIL_FWCB_RESERVED \
-       ( (RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_OFF <<  RGXFWIF_GPU_UTIL_FWCB_TYPE_SHIFT) | \
-         (RGXFWIF_GPU_UTIL_FWCB_STATE_ACTIVE_LOW << RGXFWIF_GPU_UTIL_FWCB_STATE_SHIFT) )
+#define RGXFWIF_GPU_UTIL_FWCB_RESERVED	\
+	( (RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_OFF <<  RGXFWIF_GPU_UTIL_FWCB_TYPE_SHIFT) |	\
+	  (RGXFWIF_GPU_UTIL_FWCB_STATE_ACTIVE_LOW << RGXFWIF_GPU_UTIL_FWCB_STATE_SHIFT) )
 
 #define RGXFWIF_GPU_UTIL_FWCB_ENTRY_ADD(cb, crtimer, state) do {														\
 		/* Combine all the information about current state transition into a single 64-bit word */						\
-               (cb)->aui64CB[(cb)->ui32WriteOffset] =                                                                                          \
-                       (((IMG_UINT64)(crtimer) << RGXFWIF_GPU_UTIL_FWCB_TIMER_SHIFT) & RGXFWIF_GPU_UTIL_FWCB_CR_TIMER_MASK) |          \
+		(cb)->aui64CB[(cb)->ui32WriteOffset] =												\
+			(((IMG_UINT64)(crtimer) << RGXFWIF_GPU_UTIL_FWCB_TIMER_SHIFT) & RGXFWIF_GPU_UTIL_FWCB_CR_TIMER_MASK) |		\
 			(((IMG_UINT64)(state) << RGXFWIF_GPU_UTIL_FWCB_STATE_SHIFT) & RGXFWIF_GPU_UTIL_FWCB_STATE_MASK) |			\
 			(((IMG_UINT64)(cb)->ui32CurrentDVFSId << RGXFWIF_GPU_UTIL_FWCB_ID_SHIFT) & RGXFWIF_GPU_UTIL_FWCB_ID_MASK);	\
 		/* Make sure the value is written to the memory before advancing write offset */								\
 		RGXFW_MEM_FENCE();																								\
 		/* Advance the CB write offset */																				\
 		(cb)->ui32WriteOffset++;																						\
-                if((cb)->ui32WriteOffset >= RGXFWIF_GPU_UTIL_FWCB_SIZE)                                                                                                                 \
-                {                                                                                                                                                                                                                               \
-                       (cb)->ui32WriteOffset = 0;                                                                                                                                                                          \
-                }                                                                                                                                                                                                                               \
+		if((cb)->ui32WriteOffset >= RGXFWIF_GPU_UTIL_FWCB_SIZE)															\
+		{																												\
+			(cb)->ui32WriteOffset = 0;																					\
+		}																												\
 		/* Cache current transition in cached memory */																	\
 		(cb)->ui32LastGpuUtilState = (state);																			\
 	} while (0)
@@ -292,9 +294,10 @@ typedef IMG_UINT64 RGXFWIF_GPU_UTIL_FWCB_ENTRY;
 
 typedef struct _RGXFWIF_GPU_UTIL_FWCB_
 {
-	IMG_UINT32	ui32WriteOffset;
-	IMG_UINT32	ui32LastGpuUtilState;
-	IMG_UINT32	ui32CurrentDVFSId;
+	RGXFWIF_TIME_CORR	sTimeCorr;
+	IMG_UINT32			ui32WriteOffset;
+	IMG_UINT32			ui32LastGpuUtilState;
+	IMG_UINT32			ui32CurrentDVFSId;
 	RGXFWIF_GPU_UTIL_FWCB_ENTRY	RGXFW_ALIGN aui64CB[RGXFWIF_GPU_UTIL_FWCB_SIZE];
 } RGXFWIF_GPU_UTIL_FWCB;
 
@@ -304,14 +307,21 @@ typedef enum _RGX_HWRTYPE_
 	RGX_HWRTYPE_UNKNOWNFAILURE 	= 0,
 	RGX_HWRTYPE_OVERRUN 		= 1,
 	RGX_HWRTYPE_POLLFAILURE 	= 2,
-	RGX_HWRTYPE_BIF0FAILURE 	= 3,
-	RGX_HWRTYPE_BIF1FAILURE 	= 4,
+#if !defined(RGX_FEATURE_S7_TOP_INFRASTRUCTURE)
+	RGX_HWRTYPE_BIF0FAULT	 	= 3,
+	RGX_HWRTYPE_BIF1FAULT	 	= 4,
+#else
+	RGX_HWRTYPE_MMUFAULT	 	= 5,
+	RGX_HWRTYPE_MMUMETAFAULT	= 6,
+#endif
 } RGX_HWRTYPE;
 
 #define RGXFWIF_BIFFAULTBIT_GET(ui32BIFMMUStatus) \
 		((ui32BIFMMUStatus & ~RGX_CR_BIF_FAULT_BANK0_MMU_STATUS_FAULT_CLRMSK) >> RGX_CR_BIF_FAULT_BANK0_MMU_STATUS_FAULT_SHIFT)
+#define RGXFWIF_MMUFAULTBIT_GET(ui32BIFMMUStatus) \
+		((ui32BIFMMUStatus & ~RGX_CR_MMU_FAULT_STATUS_FAULT_CLRMSK) >> RGX_CR_MMU_FAULT_STATUS_FAULT_SHIFT)
 
-#define RGXFWIF_HWRTYPE_BIF_BANK_GET(eHWRType) ((eHWRType == RGX_HWRTYPE_BIF0FAILURE) ? 0 : 1 )
+#define RGXFWIF_HWRTYPE_BIF_BANK_GET(eHWRType) ((eHWRType == RGX_HWRTYPE_BIF0FAULT) ? 0 : 1 )
 
 typedef struct _RGX_BIFINFO_
 {
@@ -319,11 +329,16 @@ typedef struct _RGX_BIFINFO_
 	IMG_UINT64	RGXFW_ALIGN		ui64BIFMMUStatus;
 } RGX_BIFINFO;
 
+typedef struct _RGX_MMUINFO_
+{
+	IMG_UINT64	RGXFW_ALIGN		ui64MMUStatus;
+} RGX_MMUINFO;
+
 typedef struct _RGX_POLLINFO_
 {
 	IMG_UINT32	ui32ThreadNum;
 	IMG_UINT32 	ui32CrPollAddr;
-	IMG_UINT32 	ui32CrPollValue;
+	IMG_UINT32 	ui32CrPollMask;
 } RGX_POLLINFO;
 
 typedef struct _RGX_HWRINFO_
@@ -331,6 +346,7 @@ typedef struct _RGX_HWRINFO_
 	union
 	{
 		RGX_BIFINFO		sBIFInfo;
+		RGX_MMUINFO		sMMUInfo;
 		RGX_POLLINFO	sPollInfo;
 	} uHWRData;
 
@@ -355,7 +371,7 @@ typedef struct _RGXFWIF_HWRINFOBUF_
 	RGX_HWRINFO sHWRInfo[RGXFWIF_HWINFO_MAX];
 
 	IMG_UINT32	ui32FirstCrPollAddr[RGXFW_THREAD_NUM];
-	IMG_UINT32	ui32FirstCrPollValue[RGXFW_THREAD_NUM];
+	IMG_UINT32	ui32FirstCrPollMask[RGXFW_THREAD_NUM];
 	IMG_UINT32	ui32WriteIndex;
 	IMG_BOOL	bDDReqIssued;
 } RGXFWIF_HWRINFOBUF;
@@ -381,7 +397,9 @@ typedef struct _RGXFWIF_HWRINFOBUF_
 #define RGXFWIF_INICFG_SHG_BYPASS_EN		(0x1 << 14)
 #define RGXFWIF_INICFG_RTU_BYPASS_EN		(0x1 << 15)
 #define RGXFWIF_INICFG_REGCONFIG_EN		(0x1 << 16)
-#define RGXFWIF_INICFG_ALL					(0x0001FFDFU)
+#define RGXFWIF_INICFG_ASSERT_ON_OUTOFMEMORY	(0x1 << 17)
+#define RGXFWIF_INICFG_HWP_DISABLE_FILTER  (0x1 << 18)
+#define RGXFWIF_INICFG_ALL					(0x0007FFDFU)
 #define RGXFWIF_SRVCFG_DISABLE_PDP_EN 		(0x1 << 31)
 #define RGXFWIF_SRVCFG_ALL					(0x80000000U)
 #define RGXFWIF_FILTCFG_TRUNCATE_HALF		(0x1 << 3)
@@ -413,6 +431,7 @@ typedef enum
 */
 #define RGX_CORE_CLOCK_SPEED_DEFAULT		(400000000)
 
+
 /*!
  ******************************************************************************
  * Querying DM state
@@ -424,6 +443,14 @@ typedef enum _RGXFWIF_DM_STATE_
 	RGXFWIF_DM_STATE_LOCKEDUP		= 1,
 
 } RGXFWIF_DM_STATE;
+
+typedef struct
+{
+	IMG_UINT16  ui16RegNum;				/*!< Register number */
+	IMG_UINT16  ui16IndirectRegNum;		/*!< Indirect register number (or 0 if not used) */
+	IMG_UINT16  ui16IndirectStartVal;	/*!< Start value for indirect register */
+	IMG_UINT16  ui16IndirectEndVal;		/*!< End value for indirect register */
+} RGXFW_REGISTER_LIST;
 
 #endif /*  __RGX_FWIF_H__ */
 

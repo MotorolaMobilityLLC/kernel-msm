@@ -199,8 +199,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define __func__ __FUNCTION__
 #endif
 
-
-
+#if defined(__cplusplus)
+/* C++ Specific:
+ * Disallow use of copy and assignment operator within a class.
+ * Should be placed under private. */
+#define IMG_DISALLOW_COPY_AND_ASSIGN(C) \
+	C(const C&); \
+	void operator=(const C&)
+#endif
 
 #if defined(SUPPORT_PVR_VALGRIND)
 	#if !defined(__METAG)

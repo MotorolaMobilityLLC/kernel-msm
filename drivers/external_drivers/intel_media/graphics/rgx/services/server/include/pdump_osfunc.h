@@ -117,21 +117,21 @@ extern "C" {
 	IMG_UINT32	ui32MaxLen;						\
 	PVRSRV_ERROR eErrorPDump;						\
 	eErrorPDump = PDumpOSGetScriptString(&hScript, &ui32MaxLen);\
-	if(eErrorPDump != PVRSRV_OK) return eErrorPDump;
+	PVR_LOGR_IF_ERROR(eErrorPDump, "PDumpOSGetScriptString");
 
 #define PDUMP_GET_MSG_STRING()					\
 	IMG_CHAR *pszMsg;							\
 	IMG_UINT32	ui32MaxLen;						\
 	PVRSRV_ERROR eErrorPDump;						\
 	eErrorPDump = PDumpOSGetMessageString(&pszMsg, &ui32MaxLen);\
-	if(eErrorPDump != PVRSRV_OK) return eErrorPDump;
+	PVR_LOGR_IF_ERROR(eErrorPDump, "PDumpOSGetMessageString");
 
 #define PDUMP_GET_FILE_STRING()				\
 	IMG_CHAR *pszFileName;					\
 	IMG_UINT32	ui32MaxLen;					\
-	PVRSRV_ERROR eErrorPDump;					\
+	PVRSRV_ERROR eErrorPDump;				\
 	eErrorPDump = PDumpOSGetFilenameString(&pszFileName, &ui32MaxLen);\
-	if(eErrorPDump != PVRSRV_OK) return eErrorPDump;
+	PVR_LOGR_IF_ERROR(eErrorPDump, "PDumpOSGetFilenameString");
 
 #define PDUMP_GET_SCRIPT_AND_FILE_STRING()		\
 	IMG_HANDLE hScript;							\
@@ -140,9 +140,9 @@ extern "C" {
 	IMG_UINT32	ui32MaxLenFileName;				\
 	PVRSRV_ERROR eErrorPDump;						\
 	eErrorPDump = PDumpOSGetScriptString(&hScript, &ui32MaxLenScript);\
-	if(eErrorPDump != PVRSRV_OK) return eErrorPDump;		\
+	PVR_LOGR_IF_ERROR(eErrorPDump, "PDumpOSGetScriptString");\
 	eErrorPDump = PDumpOSGetFilenameString(&pszFileName, &ui32MaxLenFileName);\
-	if(eErrorPDump != PVRSRV_OK) return eErrorPDump;
+	PVR_LOGR_IF_ERROR(eErrorPDump, "PDumpOSGetFilenameString");
 
 	/*!
 	 * @name	PDumpOSGetScriptString
@@ -177,11 +177,38 @@ extern "C" {
 #endif /* __QNXNTO__ */
 #endif /* WIN32 */
 
+
 /*
- * PDump streams (common to all OSes)
+ * PDump streams, channels, init and deinit routines (common to all OSes)
  */
-#define PDUMP_STREAM_PARAM2			0
-#define PDUMP_STREAM_SCRIPT2		1
+
+typedef struct
+{
+	IMG_HANDLE hInit;        /*!< Driver initialisation PDump stream */
+	IMG_HANDLE hMain;        /*!< App framed PDump stream */
+	IMG_HANDLE hDeinit;      /*!< Driver/HW de-initialisation PDump stream */
+} PDUMP_CHANNEL;
+
+PVRSRV_ERROR PDumpOSInit(PDUMP_CHANNEL* psParam, PDUMP_CHANNEL* psScript,
+		IMG_UINT32* pui32InitCapMode, IMG_CHAR** ppszEnvComment);
+
+IMG_VOID PDumpOSDeInit(PDUMP_CHANNEL* psParam, PDUMP_CHANNEL* psScript);
+
+/*!
+ * @name	PDumpOSSetSplitMarker
+ * @brief	Inform the PDump client to start a new file at the given marker.
+ * @param	hStream - stream
+ * @param   ui32Marker - byte file position
+ */
+IMG_BOOL PDumpOSSetSplitMarker(IMG_HANDLE hStream, IMG_UINT32 ui32Marker);
+
+/*
+	PDumpOSDebugDriverWrite - ENV layer write entry point from COMMON layer
+	                          A call back down the PDump software layer
+ */
+IMG_UINT32 PDumpOSDebugDriverWrite(IMG_HANDLE psStream,
+                                   IMG_UINT8 *pui8Data,
+                                   IMG_UINT32 ui32BCount);
 
 /*
  * Define macro for processing variable args list in OS-independent
@@ -191,74 +218,6 @@ extern "C" {
 #define PDUMP_va_start	va_start
 #define PDUMP_va_end	va_end
 
-
-/*!
- * @name	PDumpOSGetStream
- * @brief	Get a handle to the labelled stream (cast the handle to PDBG_STREAM to use it)
- * @param	ePDumpStream - stream label
- */
-IMG_HANDLE PDumpOSGetStream(IMG_UINT32 ePDumpStream);
-
-/*!
- * @name	PDumpOSGetStreamOffset
- * @brief	Return current offset within the labelled stream
- * @param	ePDumpStream - stream label
- */
-IMG_UINT32 PDumpOSGetStreamOffset(IMG_UINT32 ePDumpStream);
-
-/*!
- * @name	PDumpOSGetParamFileNum
- * @brief	Return file number of the 'script' stream, in the case that the file was split
- * @param	ePDumpStream - stream label
- */
-IMG_UINT32 PDumpOSGetParamFileNum(IMG_VOID);
-
-/*!
- * @name	PDumpOSCheckForSplitting
- * @brief	Check if the requested pdump params are too large for a single file
- * @param	hStream - pdump stream
- * @param	ui32Size - size of params to dump (bytes)
- * @param	ui32Flags - pdump flags
- */
-IMG_VOID PDumpOSCheckForSplitting(IMG_HANDLE hStream, IMG_UINT32 ui32Size, IMG_UINT32 ui32Flags);
-
-/*!
- * @name	PDumpOSIsSuspended
- * @brief	Is the pdump stream busy?
- * @return	IMG_BOOL
- */
-IMG_BOOL PDumpOSIsSuspended(IMG_VOID);
-
-/*!
- * @name	PDumpOSIsSuspended
- * @brief	Is the pdump jump table initialised?
- * @return	IMG_BOOL
- */
-IMG_BOOL PDumpOSJTInitialised(IMG_VOID);
-
-/*!
- * @name	PDumpOSWriteString
- * @brief	General function for writing to pdump stream.
- * 			Usually more convenient to use PDumpOSWriteString2 below.
- * @param	hDbgStream - pdump stream handle
- * @param	psui8Data - data to write
- * @param	ui32Size - size of write
- * @param	ui32Flags - pdump flags
- * @return	error
- */
-IMG_BOOL PDumpOSWriteString(IMG_HANDLE hDbgStream,
-		IMG_UINT8 *psui8Data,
-		IMG_UINT32 ui32Size,
-		IMG_UINT32 ui32Flags);
-
-/*!
- * @name	PDumpOSWriteString2
- * @brief	Write a string to the "script" output stream
- * @param	pszScript - buffer to write
- * @param	ui32Flags - pdump flags
- * @return	error
- */
-IMG_BOOL PDumpOSWriteString2(IMG_HANDLE	hScript, IMG_UINT32 ui32Flags);
 
 /*!
  * @name	PDumpOSBufprintf
@@ -352,24 +311,6 @@ IMG_VOID PDumpOSCPUVAddrToPhysPages(IMG_HANDLE hOSMemHandle,
 IMG_VOID PDumpOSReleaseExecution(IMG_VOID);
 
 /*!
- * @name	PDumpOSIsCaptureFrameKM
- * @brief	Is the current frame a capture frame?
- */
-IMG_BOOL PDumpOSIsCaptureFrameKM(IMG_VOID);
-
-/*!
- * @name	PDumpOSIsInitPhaseKM
- * @brief	Is the initialisation phase currently active?
- */
-IMG_BOOL PDumpOSIsInitPhaseKM(IMG_VOID);
-
-/*!
- * @name	PDumpOSSetFrameKM
- * @brief	Set frame counter
- */
-PVRSRV_ERROR PDumpOSSetFrameKM(IMG_UINT32 ui32Frame);
-
-/*!
  * @name	PDumpOSCreateLock
  * @brief	Create the global pdump lock
  */
@@ -397,8 +338,20 @@ IMG_VOID PDumpOSUnlock(IMG_VOID);
  * @name	PDumpOSGetCtrlState
  * @brief	Retrieve some state from the debug driver or debug driver stream
  */
-IMG_UINT32 PDumpOSGetCtrlState(IMG_HANDLE hDbgStream,
-		IMG_UINT32 ui32StateID);
+IMG_UINT32 PDumpOSGetCtrlState(IMG_HANDLE hDbgStream, IMG_UINT32 ui32StateID);
+
+/*!
+ * @name	PDumpOSSetFrame
+ * @brief	Set the current frame value mirrored in the debug driver
+ */
+IMG_VOID PDumpOSSetFrame(IMG_UINT32 ui32Frame);
+
+/*!
+ * @name	PDumpOSAllowInitPhaseToComplete
+ * @brief	Some platforms wish to control when the init phase is marked as
+ *          complete depending on who is instructing it so.
+ */
+IMG_BOOL PDumpOSAllowInitPhaseToComplete(IMG_UINT32 eModuleID);
 
 
 #if defined (__cplusplus)

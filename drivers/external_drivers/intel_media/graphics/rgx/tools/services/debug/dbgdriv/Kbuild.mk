@@ -46,6 +46,5 @@ dbgdrv-y += \
 	tools/services/debug/dbgdriv/common/dbgdriv.o \
 	tools/services/debug/dbgdriv/common/ioctl.o \
 	tools/services/debug/dbgdriv/common/handle.o \
-	tools/services/debug/dbgdriv/common/hotkey.o \
 	tools/services/debug/dbgdriv/linux/main.o \
 	tools/services/debug/dbgdriv/linux/hostfunc.o

@@ -134,27 +134,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * Return the parent of a handle in *phParent, or IMG_NULL if the handle has
  * no parent.
- *
- * PVRSRV_ERROR PVRSRVSetMaxHandle(PVRSRV_HANDLE_BASE *psBase,
- * 	IMG_UINT32 ui32MaxHandle)
- * Set the maximum handle number.  This is intended to restrict the
- * handle range so that it will fit within a given field width.  For
- * example, setting the maximum handle number to 0x7fffffff, would
- * ensure the handles would fit within a 31 bit width field.  This
- * facility should be used with caution, as it restricts the number of
- * handles that can be allocated.
- *
- * IMG_UINT32 PVRSRVGetMaxHandle(PVRSRV_HANDLE_BASE *psBase)
- * Return the maximum handle number, or 0 if the setting of a limit
- * is not supported.
- *
- * PVRSRV_ERROR PVRSRVEnableHandlePurging(PVRSRV_HANDLE_BASE *psBase)
- * Allows unused handle space to be reclaimed, by calling
- * PVRSRVPurgeHandles.  Note that allocating handles may have a
- * higher overhead if purging is enabled.
- *
- * PVRSRV_ERROR PVRSRVPurgeHandles((PVRSRV_HANDLE_BASE *psBase)
- * Purge handles for a handle base that has purging enabled.
  */
 
 #if defined (__cplusplus)
@@ -266,12 +245,6 @@ PVRSRV_ERROR PVRSRVLookupAndReleaseHandle(PVRSRV_HANDLE_BASE *psBase, IMG_PVOID 
 
 PVRSRV_ERROR PVRSRVReleaseHandle(PVRSRV_HANDLE_BASE *psBase, IMG_HANDLE hHandle, PVRSRV_HANDLE_TYPE eType);
 
-PVRSRV_ERROR PVRSRVSetMaxHandle(PVRSRV_HANDLE_BASE *psBase, IMG_UINT32 ui32MaxHandle);
-
-IMG_UINT32 PVRSRVGetMaxHandle(PVRSRV_HANDLE_BASE *psBase);
-
-PVRSRV_ERROR PVRSRVEnableHandlePurging(PVRSRV_HANDLE_BASE *psBase);
-
 PVRSRV_ERROR PVRSRVPurgeHandles(PVRSRV_HANDLE_BASE *psBase);
 
 PVRSRV_ERROR PVRSRVAllocHandleBase(PVRSRV_HANDLE_BASE **ppsBase);
@@ -281,6 +254,9 @@ PVRSRV_ERROR PVRSRVFreeHandleBase(PVRSRV_HANDLE_BASE *psBase);
 PVRSRV_ERROR PVRSRVHandleInit(IMG_VOID);
 
 PVRSRV_ERROR PVRSRVHandleDeInit(IMG_VOID);
+
+IMG_VOID LockHandle(IMG_VOID);
+IMG_VOID UnlockHandle(IMG_VOID);
 
 #else /* defined(PVR_SECURE_HANDLES) */
 
@@ -408,40 +384,6 @@ PVRSRV_ERROR PVRSRVReleaseHandle(PVRSRV_HANDLE_BASE *psBase, IMG_HANDLE hHandle,
 {
 	PVR_UNREFERENCED_PARAMETER(hHandle);
 	PVR_UNREFERENCED_PARAMETER(eType);
-	PVR_UNREFERENCED_PARAMETER(psBase);
-
-	return PVRSRV_OK;
-}
-
-#ifdef INLINE_IS_PRAGMA
-#pragma inline(PVRSRVSetMaxHandle)
-#endif
-static INLINE
-PVRSRV_ERROR PVRSRVSetMaxHandle(PVRSRV_HANDLE_BASE *psBase, IMG_UINT32 ui32MaxHandle)
-{
-	PVR_UNREFERENCED_PARAMETER(psBase);
-	PVR_UNREFERENCED_PARAMETER(ui32MaxHandle);
-
-	return PVRSRV_ERROR_NOT_SUPPORTED;
-}
-
-#ifdef INLINE_IS_PRAGMA
-#pragma inline(PVRSRVGetMaxHandle)
-#endif
-static INLINE
-IMG_UINT32 PVRSRVGetMaxHandle(PVRSRV_HANDLE_BASE *psBase)
-{
-	PVR_UNREFERENCED_PARAMETER(psBase);
-
-	return 0;
-}
-
-#ifdef INLINE_IS_PRAGMA
-#pragma inline(PVRSRVEnableHandlePurging)
-#endif
-static INLINE
-PVRSRV_ERROR PVRSRVEnableHandlePurging(PVRSRV_HANDLE_BASE *psBase)
-{
 	PVR_UNREFERENCED_PARAMETER(psBase);
 
 	return PVRSRV_OK;

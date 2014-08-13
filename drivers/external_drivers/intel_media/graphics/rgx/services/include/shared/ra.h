@@ -77,6 +77,11 @@ typedef IMG_UINT64 RA_LENGTH_T;
 #define RA_ALIGN_FMTSPEC "0x%llx"
 #define RA_LENGTH_FMTSPEC "0x%llx"
 
+/* Lock classes: describes the level of nesting between different arenas. */
+#define RA_LOCKCLASS_0 0
+#define RA_LOCKCLASS_1 1
+#define RA_LOCKCLASS_2 2
+
 /*
  * Flags in an "import" must much the flags for an allocation
  */
@@ -98,26 +103,18 @@ typedef struct _RA_SEGMENT_DETAILS_ RA_SEGMENT_DETAILS;
  *  To create a resource arena.
  *
  *  @Input name - the name of the arena for diagnostic purposes.
- *  @Input base - the base of an initial resource span or 0.
- *  @Input uSize - the size of an initial resource span or 0.
- *  @Input pRef - the reference to return for the initial resource or 0.
  *  @Input uQuantum - the arena allocation quantum.
+ *  @Input ui32LockClass - the lock class level this arena uses.
  *  @Input alloc - a resource allocation callback or 0.
  *  @Input free - a resource de-allocation callback or 0.
- *  @Input import_handle - handle passed to alloc and free or 0.
- *  @Return arena handle, or IMG_NULL.
+ *  @Input per_arena_handle - user private handle passed to alloc and free or 0.
+ *  @Return pointer to arena, or IMG_NULL.
  */
 RA_ARENA *
 RA_Create (IMG_CHAR *name,
-
-           /* "initial" import */
-           RA_BASE_T base,
-           RA_LENGTH_T uSize,
-           RA_FLAGS_T uFlags,
-           IMG_HANDLE hPriv,
-
            /* subsequent imports: */
-           RA_LOG2QUANTUM_T uLog2Quantum, 
+           RA_LOG2QUANTUM_T uLog2Quantum,
+		   IMG_UINT32 ui32LockClass,
            IMG_BOOL (*imp_alloc)(RA_PERARENA_HANDLE _h,
                                  RA_LENGTH_T uSize,
                                  RA_FLAGS_T uFlags,
@@ -127,7 +124,7 @@ RA_Create (IMG_CHAR *name,
            IMG_VOID (*imp_free) (RA_PERARENA_HANDLE,
                                  RA_BASE_T,
                                  RA_PERISPAN_HANDLE),
-           RA_PERARENA_HANDLE import_handle);
+           RA_PERARENA_HANDLE per_arena_handle);
 
 /**
  *  @Function   RA_Delete
@@ -154,10 +151,15 @@ RA_Delete (RA_ARENA *pArena);
  *  @Input pArena - the arena to add a span into.
  *  @Input base - the base of the span.
  *  @Input uSize - the extent of the span.
+ *  @Input hPriv - handle associated to the span (reserved to user uses)
  *  @Return IMG_TRUE - success, IMG_FALSE - failure
  */
 IMG_BOOL
-RA_Add (RA_ARENA *pArena, RA_BASE_T base, RA_LENGTH_T uSize, RA_FLAGS_T uFlags);
+RA_Add (RA_ARENA *pArena,
+		RA_BASE_T base,
+		RA_LENGTH_T uSize,
+		RA_FLAGS_T uFlags,
+		RA_PERISPAN_HANDLE hPriv);
 
 /**
  *  @Function   RA_Alloc

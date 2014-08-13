@@ -42,8 +42,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _RGXCONFIG_KM_1_V_4_5_H_
 #define _RGXCONFIG_KM_1_V_4_5_H_
 
-/***** Automatically generated file (1/28/2014 4:13:43 PM): Do not edit manually ********************/
-/***** Timestamp:  (1/28/2014 4:13:43 PM)************************************************************/
+/***** Automatically generated file (6/4/2014 4:41:36 AM): Do not edit manually ********************/
+/***** Timestamp:  (6/4/2014 4:41:36 AM)************************************************************/
 
 #define RGX_BNC_KM_B 1
 #define RGX_BNC_KM_N 4
@@ -57,6 +57,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_FEATURE_PHYS_BUS_WIDTH (40)
 #define RGX_FEATURE_SLC_CACHE_LINE_SIZE_BITS (512)
 #define RGX_FEATURE_VIRTUAL_ADDRESS_SPACE_BITS (40)
+#define RGX_FEATURE_NUM_ISP_IPP_PIPES (3)
 #define RGX_FEATURE_META (MTP218)
 
 

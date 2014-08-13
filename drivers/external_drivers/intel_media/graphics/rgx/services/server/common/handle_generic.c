@@ -738,6 +738,10 @@ static PVRSRV_ERROR GetHandleData(HANDLE_IMPL_BASE *psBase,
 	}
 
 	psHandleData = INDEX_TO_HANDLE_DATA(psBase, ui32Index);
+	if (psHandleData == IMG_NULL  ||  psHandleData->pvData == IMG_NULL)
+	{
+		return PVRSRV_ERROR_HANDLE_NOT_ALLOCATED;
+	}
 
 	*ppvData = psHandleData->pvData;
 
@@ -777,78 +781,6 @@ static PVRSRV_ERROR IterateOverHandles(HANDLE_IMPL_BASE *psBase, PFN_HANDLE_ITER
 	}
 
 	return eError;
-}
-
-/*!
-******************************************************************************
-
- @Function	GetMaxHandle
-
- @Description	Get maximum handle number for given handle base
-
- @Input 	psBase - Pointer to handle base structure
-
- @Return	Maximum handle number or 0 if handle limits not supported.
-
-******************************************************************************/
-static IMG_UINT32 GetMaxHandle(HANDLE_IMPL_BASE *psBase)
-{
-	PVR_ASSERT(psBase);
-
-	return psBase->ui32MaxHandleValue;
-}
-
-/*!
-******************************************************************************
-
- @Function	SetMaxHandle
-
- @Description	Set maximum handle number for given handle base
-
- @Input 	psBase - Pointer to handle base
-		ui32MaxHandle - Maximum handle number
-
- @Return	Error code or PVRSRV_OK
-
-******************************************************************************/
-static PVRSRV_ERROR SetMaxHandle(HANDLE_IMPL_BASE *psBase, 
-				 IMG_UINT32 ui32MaxHandle)
-{
-	IMG_UINT32 ui32MaxHandleRounded;
-
-	PVR_ASSERT(psBase);
-
-	/* Validate the limit */
-	if (ui32MaxHandle < HANDLE_VALUE_MIN || ui32MaxHandle > HANDLE_VALUE_MAX)
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: Limit must be between %u and %u (inclusive)", 
-			 __FUNCTION__, HANDLE_VALUE_MIN, HANDLE_VALUE_MAX));
-
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	/* The limit can only be set if no handles have been allocated */
-	if (psBase->ui32TotalHandCount != 0)
-	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: Limit cannot be set because handles have already been allocated", 
-			 __FUNCTION__));
-
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	ui32MaxHandleRounded = ROUND_DOWN_TO_MULTIPLE_OF_BLOCK_SIZE(ui32MaxHandle);
-
-	/* Allow the maximum number of handles to be reduced but never to zero */
-	if (ui32MaxHandleRounded >= HANDLE_VALUE_MIN && ui32MaxHandleRounded < psBase->ui32MaxHandleValue)
-	{
-		psBase->ui32MaxHandleValue = ui32MaxHandleRounded;
-	}
-
-	PVR_ASSERT(psBase->ui32MaxHandleValue >= HANDLE_VALUE_MIN);
-	PVR_ASSERT(psBase->ui32MaxHandleValue <= HANDLE_VALUE_MAX);
-	PVR_ASSERT((BASE_TO_TOTAL_INDICES(psBase) & HANDLE_BLOCK_SIZE) == 0);
-
-	return PVRSRV_OK;
 }
 
 /*!
@@ -1040,12 +972,6 @@ static const HANDLE_IMPL_FUNCTAB g_sHandleFuncTab =
 
 	/* pfnIterateOverHandles */
 	&IterateOverHandles,
-
-	/* pfnGetMaxHandle */
-	&GetMaxHandle,
-
-	/* pfnSetMaxHandle */
-	&SetMaxHandle,
 
 	/* pfnEnableHandlePurging */
 	&EnableHandlePurging,

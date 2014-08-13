@@ -39,19 +39,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
-#ifndef _IOCTL_
-#define _IOCTL_
+#ifndef _DBGDRIV_IOCTL_H_
+#define _DBGDRIV_IOCTL_H_
+
+#include "dbgdrvif_srv5.h"
+
+
+/* Share this debug driver global with the OS layer so that IOCTL calls
+ * coming from the OS enter the common table of entry points.
+ */
+extern IMG_UINT32 (*g_DBGDrivProc[DEBUG_SERVICE_MAX_API])(IMG_VOID *, IMG_VOID *);
+
+
+#endif /* _DBGDRIV_IOCTL_H_ */
 
 /*****************************************************************************
- Global vars
-*****************************************************************************/
-
-#define MAX_DBGVXD_W32_API 25
-
-extern IMG_UINT32 (*g_DBGDrivProc[MAX_DBGVXD_W32_API])(IMG_VOID *, IMG_VOID *);
-
-#endif
-
-/*****************************************************************************
- End of file (IOCTL.H)
-*****************************************************************************/
+ End of file
+ *****************************************************************************/

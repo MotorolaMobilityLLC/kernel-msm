@@ -24,6 +24,7 @@
  *
  ******************************************************************************/
 
+#include <linux/version.h>
 #include <drm/drmP.h>
 #include <drm/drm.h>
 

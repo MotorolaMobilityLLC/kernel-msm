@@ -64,10 +64,8 @@ typedef enum _PVRSRV_DEVICE_TYPE_
 	PVRSRV_DEVICE_TYPE_VGX				= 8,  /*!< VGX */
 	PVRSRV_DEVICE_TYPE_EXT				= 9,  /*!< 3rd party devices take ext type */
 	PVRSRV_DEVICE_TYPE_RGX				= 10, /*!< RGX */
-	PVRSRV_DEVICE_TYPE_TOPAZ                        = 11, /*!< TOPAZ */
 
-
-    PVRSRV_DEVICE_TYPE_LAST             = 11, /*!< Last device type */
+    PVRSRV_DEVICE_TYPE_LAST             = 10, /*!< Last device type */
 
 	PVRSRV_DEVICE_TYPE_FORCE_I32		= 0x7fffffff /*!< Force enum to be 32-bit width */
 

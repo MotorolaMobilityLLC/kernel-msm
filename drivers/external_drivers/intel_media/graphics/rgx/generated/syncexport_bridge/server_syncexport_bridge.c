@@ -87,7 +87,7 @@ SyncPrimServerUnexportResManProxy(IMG_HANDLE hResmanItem)
 /* ***************************************************************************
  * Server-side bridge entry points
  */
-
+ 
 static IMG_INT
 PVRSRVBridgeSyncPrimServerExport(IMG_UINT32 ui32BridgeID,
 					 PVRSRV_BRIDGE_IN_SYNCPRIMSERVEREXPORT *psSyncPrimServerExportIN,
@@ -337,115 +337,12 @@ SyncPrimServerImport_exit:
 	return 0;
 }
 
-#ifdef CONFIG_COMPAT
-/* ***************************************************************************
- * Server-side bridge entry points
+
+
+/* *************************************************************************** 
+ * Server bridge dispatch related glue 
  */
-typedef struct compat_PVRSRV_BRIDGE_IN_SYNCPRIMSERVEREXPORT_TAG
-{
-	/* IMG_HANDLE hSyncHandle; */
-	IMG_UINT32 hSyncHandle;
-} compat_PVRSRV_BRIDGE_IN_SYNCPRIMSERVEREXPORT;
-
-/* Bridge out structure for SyncPrimServerExport */
-typedef struct compat_PVRSRV_BRIDGE_OUT_SYNCPRIMSERVEREXPORT_TAG
-{
-	/* IMG_HANDLE hExport; */
-	IMG_UINT32 hExport;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_SYNCPRIMSERVEREXPORT;
-
-static IMG_INT
-compat_PVRSRVBridgeSyncPrimServerExport(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_SYNCPRIMSERVEREXPORT *psSyncPrimServerExportIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_SYNCPRIMSERVEREXPORT *psSyncPrimServerExportOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_SYNCPRIMSERVEREXPORT sSyncPrimServerExportIN;
-	PVRSRV_BRIDGE_OUT_SYNCPRIMSERVEREXPORT sSyncPrimServerExportOUT;
-	PVRSRV_BRIDGE_IN_SYNCPRIMSERVEREXPORT *psSyncPrimServerExportIN = &sSyncPrimServerExportIN;
-	PVRSRV_BRIDGE_OUT_SYNCPRIMSERVEREXPORT *psSyncPrimServerExportOUT = &sSyncPrimServerExportOUT;
-
-	psSyncPrimServerExportIN->hSyncHandle = (IMG_HANDLE)(unsigned long)psSyncPrimServerExportIN_32->hSyncHandle;
-
-	ret = PVRSRVBridgeSyncPrimServerExport(ui32BridgeID, psSyncPrimServerExportIN,
-					psSyncPrimServerExportOUT, psConnection);
-
-	/* Assign out structures */
-	PVR_ASSERT(!((IMG_UINT64)psSyncPrimServerExportOUT->hExport & 0xFFFFFFFF00000000ULL));
-	psSyncPrimServerExportOUT_32->hExport = (IMG_UINT32)(IMG_UINT64)psSyncPrimServerExportOUT->hExport;
-	psSyncPrimServerExportOUT_32->eError = psSyncPrimServerExportOUT->eError;
-
-	return ret;
-}
-
-typedef struct compat_PVRSRV_BRIDGE_IN_SYNCPRIMSERVERUNEXPORT_TAG
-{
-	/* IMG_HANDLE hExport; */
-	IMG_UINT32 hExport;
-} compat_PVRSRV_BRIDGE_IN_SYNCPRIMSERVERUNEXPORT;
-
-static IMG_INT
-compat_PVRSRVBridgeSyncPrimServerUnexport(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_SYNCPRIMSERVERUNEXPORT *psSyncPrimServerUnexportIN_32,
-					 PVRSRV_BRIDGE_OUT_SYNCPRIMSERVERUNEXPORT *psSyncPrimServerUnexportOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_SYNCPRIMSERVERUNEXPORT sSyncPrimServerUnexportIN;
-	PVRSRV_BRIDGE_IN_SYNCPRIMSERVERUNEXPORT *psSyncPrimServerUnexportIN = &sSyncPrimServerUnexportIN;
-
-	psSyncPrimServerUnexportIN->hExport = (IMG_HANDLE)(unsigned long)psSyncPrimServerUnexportIN_32->hExport;
-
-	return PVRSRVBridgeSyncPrimServerUnexport(ui32BridgeID, psSyncPrimServerUnexportIN,
-					psSyncPrimServerUnexportOUT, psConnection);
-}
-
-typedef struct compat_PVRSRV_BRIDGE_IN_SYNCPRIMSERVERIMPORT_TAG
-{
-	/* IMG_HANDLE hImport; */
-	IMG_UINT32 hImport;
-} compat_PVRSRV_BRIDGE_IN_SYNCPRIMSERVERIMPORT;
-
-typedef struct compat_PVRSRV_BRIDGE_OUT_SYNCPRIMSERVERIMPORT_TAG
-{
-	/* IMG_HANDLE hSyncHandle; */
-	IMG_UINT32 hSyncHandle;
-	IMG_UINT32 ui32SyncPrimVAddr;
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_SYNCPRIMSERVERIMPORT;
-
-static IMG_INT
-compat_PVRSRVBridgeSyncPrimServerImport(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_SYNCPRIMSERVERIMPORT *psSyncPrimServerImportIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_SYNCPRIMSERVERIMPORT *psSyncPrimServerImportOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_SYNCPRIMSERVERIMPORT sSyncPrimServerImportIN;
-	PVRSRV_BRIDGE_OUT_SYNCPRIMSERVERIMPORT sSyncPrimServerImportOUT;
-	PVRSRV_BRIDGE_IN_SYNCPRIMSERVERIMPORT *psSyncPrimServerImportIN = &sSyncPrimServerImportIN;
-	PVRSRV_BRIDGE_OUT_SYNCPRIMSERVERIMPORT *psSyncPrimServerImportOUT = &sSyncPrimServerImportOUT;
-
-	psSyncPrimServerImportIN->hImport = (IMG_HANDLE)(unsigned long)psSyncPrimServerImportIN_32->hImport;
-
-	ret = PVRSRVBridgeSyncPrimServerImport(ui32BridgeID, psSyncPrimServerImportIN,
-					psSyncPrimServerImportOUT, psConnection);
-
-	/* Assign out structures */
-	PVR_ASSERT(!((IMG_UINT64)psSyncPrimServerImportOUT->hSyncHandle & 0xFFFFFFFF00000000ULL));
-	psSyncPrimServerImportOUT_32->hSyncHandle = (IMG_UINT32)(IMG_UINT64)psSyncPrimServerImportOUT->hSyncHandle;
-	psSyncPrimServerImportOUT_32->ui32SyncPrimVAddr = psSyncPrimServerImportOUT->ui32SyncPrimVAddr;
-	psSyncPrimServerImportOUT_32->eError = psSyncPrimServerImportOUT->eError;
-
-	return ret;
-}
-#endif /* CONFIG_COMPAT */
-
-/* ***************************************************************************
- * Server bridge dispatch related glue
- */
-
+ 
 PVRSRV_ERROR RegisterSYNCEXPORTFunctions(IMG_VOID);
 IMG_VOID UnregisterSYNCEXPORTFunctions(IMG_VOID);
 
@@ -454,15 +351,9 @@ IMG_VOID UnregisterSYNCEXPORTFunctions(IMG_VOID);
  */
 PVRSRV_ERROR RegisterSYNCEXPORTFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_SYNCEXPORT_SYNCPRIMSERVEREXPORT, compat_PVRSRVBridgeSyncPrimServerExport);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_SYNCEXPORT_SYNCPRIMSERVERUNEXPORT, compat_PVRSRVBridgeSyncPrimServerUnexport);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_SYNCEXPORT_SYNCPRIMSERVERIMPORT, compat_PVRSRVBridgeSyncPrimServerImport);
-#else
 	SetDispatchTableEntry(PVRSRV_BRIDGE_SYNCEXPORT_SYNCPRIMSERVEREXPORT, PVRSRVBridgeSyncPrimServerExport);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_SYNCEXPORT_SYNCPRIMSERVERUNEXPORT, PVRSRVBridgeSyncPrimServerUnexport);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_SYNCEXPORT_SYNCPRIMSERVERIMPORT, PVRSRVBridgeSyncPrimServerImport);
-#endif
 
 	return PVRSRV_OK;
 }

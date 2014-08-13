@@ -47,7 +47,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvrsrv_error.h"
 #include "img_types.h"
 #include "device.h"
+#include "pvrsrv.h"
 #include "rgxdevice.h"
+
 
 /*!
 *******************************************************************************
@@ -66,9 +68,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************/
 IMG_VOID RGXPanic(PVRSRV_RGXDEV_INFO	*psDevInfo);
 
-
-typedef IMG_VOID (DUMPDEBUG_PRINTF_FUNC)(const IMG_CHAR *pszFormat, ...);
-
 /*!
 *******************************************************************************
 
@@ -76,7 +75,8 @@ typedef IMG_VOID (DUMPDEBUG_PRINTF_FUNC)(const IMG_CHAR *pszFormat, ...);
 
  @Description
 
- Dump useful debugging info
+ Dump useful debugging info. Dumps lesser information than PVRSRVDebugRequest.
+ Does not dump debugging information for all requester types.(SysDebug, ServerSync info)
 
  @Input pfnDumpDebugPrintf  - Optional replacement print function
  @Input psDevInfo	        - RGX device info

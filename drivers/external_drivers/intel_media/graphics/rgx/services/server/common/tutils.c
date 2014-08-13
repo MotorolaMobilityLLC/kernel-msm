@@ -77,6 +77,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgxdevice.h"
 #include "lists.h"
 #include "rgxdefs_km.h"
+#include "rgxfwutils.h"
 
 #include "tlintern.h"
 #include "tlstream.h"
@@ -92,6 +93,13 @@ TLServerTestIoctlKM(IMG_UINT32  uiCmd,
 			 		IMG_UINT32  uiIn2,
 	   			  	IMG_UINT32	*puiOut1,
 			   	  	IMG_UINT32	*puiOut2);
+
+PVRSRV_ERROR
+PowMonTestIoctlKM(IMG_UINT32 uiCmd,
+ 				  IMG_UINT32 uiIn1,
+			 	  IMG_UINT32 uiIn2,
+	   			  IMG_UINT32 *puiOut1,
+	   	  		  IMG_UINT32 *puiOut2);
 
 /*****************************************************************************/
 
@@ -156,6 +164,17 @@ static IMG_VOID StartTimerFuncCB(IMG_VOID* p);
 static IMG_VOID SourceTimerFuncCB(IMG_VOID* p);
 static IMG_VOID SourceWriteFunc(IMG_VOID* p, IMG_UINT16 uiPacketSizeInBytes);
 static IMG_VOID SourceWriteFunc2(IMG_VOID* p, IMG_UINT16 uiPacketSizeInBytes);
+
+/******************************************************************************
+ *
+ * Power Monitoring variables
+ */
+
+static IMG_HANDLE g_hPowerMonitoringThread;
+static IMG_BOOL   g_bPowMonEnable;
+static IMG_UINT32 g_ui32PowMonLatencyms;
+static IMG_UINT32 g_PowMonEstimate;
+static IMG_UINT32 g_PowMonState;
 
 /******************************************************************************
  *
@@ -777,12 +796,12 @@ static PVRSRV_ERROR TLTestCMD_SignalPE (IMG_UINT32* psIn1)
 
 	/* ensure the registers goes through before continuing */
 	OSMemoryBarrier();
-#if !defined(RGXFW_POWMON_TIMERCTL)
-	/* ack the output from the FW */
+
+	/* ack the output from the FW (using the event_status this way could lead to corrupted event_status, 
+	   as there is a race condition, but there is no other way to check the behaviour, so use this) */
 	ui32Tmp = OSReadHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_EVENT_STATUS);
 	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_EVENT_STATUS, ui32Tmp|RGX_CR_EVENT_STATUS_GPIO_ACK_EN);
 	OSMemoryBarrier();
-#endif
 
 #if defined(NO_HARDWARE)
 	PVR_DPF((PVR_DBG_WARNING, "TLTestCMD_SignalPwrEst is a no-op on NO_HARDWARE!"));
@@ -833,7 +852,7 @@ static PVRSRV_ERROR RegisterCleanupAction(TLT_OP eOp, IMG_VOID *pvParam1)
 
 /* Called at driver unloaded/shutdown.
  */
-PVRSRV_ERROR TLDeInitialiseCleanupTestThread (IMG_VOID)
+static PVRSRV_ERROR TLDeInitialiseCleanupTestThread (IMG_VOID)
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
 	TLT_THREAD*	 psThreadData;
@@ -1198,7 +1217,6 @@ TLServerTestIoctlKM(IMG_UINT32 	uiCmd,
 	PVRSRV_ERROR eError = PVRSRV_OK;
 	PVR_DPF_ENTERED;
 
-	PVR_UNREFERENCED_PARAMETER(puiOut1);
 	PVR_UNREFERENCED_PARAMETER(puiOut2);
 
 	PVR_DPF((PVR_DBG_MESSAGE, "--- Processing Test IOCTL command %d", uiCmd));
@@ -1299,7 +1317,279 @@ TLServerTestIoctlKM(IMG_UINT32 	uiCmd,
 	PVR_DPF_RETURN_RC(eError);
 }
 
+PVRSRV_ERROR
+PowMonTestIoctlKM(IMG_UINT32  uiCmd,
+				  IMG_UINT32  uiIn1,
+				  IMG_UINT32  uiIn2,
+				  IMG_UINT32  *puiOut1,
+				  IMG_UINT32  *puiOut2)
+{
+	PVR_DPF_ENTERED;
+	PVR_UNREFERENCED_PARAMETER(uiIn2);
+
+	switch (uiCmd)
+	{
+		case 1:
+		{
+			if ((puiOut1 == IMG_NULL) || (puiOut2 == IMG_NULL))
+			{
+				PVR_DPF_RETURN_RC(PVRSRV_ERROR_INVALID_PARAMS);
+			}
+
+			/* retrieve last measurement */
+			*puiOut1 = g_PowMonEstimate;
+			*puiOut2 = g_PowMonState;
+			break;
+		}
+		case 2:
+		{
+			if (uiIn1 == 0x0)
+			{
+				PVR_DPF_RETURN_RC(PVRSRV_ERROR_INVALID_PARAMS);
+			}
+
+			/* set new delay between measurement requests */
+			g_ui32PowMonLatencyms = uiIn1;
+			break;
+		}
+		default:
+		{
+			PVR_DPF_RETURN_RC(PVRSRV_ERROR_INVALID_PARAMS);
+		}
+	}
+
+	PVR_DPF_RETURN_RC(PVRSRV_OK);
+}
+
+static PVRSRV_ERROR PowMonEstimateRequest(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_UINT32 *pui32PowEstValue, IMG_UINT32 *pui32PowEstState)
+{
+	IMG_UINT64 ui64Timer;
+	PVRSRV_ERROR eError;
+
+	/* read timer */
+	ui64Timer = RGXReadHWTimerReg(psDevInfo);
+
+	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, 0x6320U, 0x1);
+
+	/* send gpio_input req */
+#if !defined (SUPPORT_POWMON_WO_GPIO_PIN)
+	/* potentially dangerous to write directly to this reg */
+	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_EVENT_STATUS, 0x1000); 
 #else
+	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, 0x140U, 0x00000080);
+	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_MTS_SCHEDULE, 0x20);
+#endif
+
+	/* poll on input req to be cleared */
+
+	/* Poll on RGX_CR_GPIO_OUTPUT_REQ[0] = 1 */
+	eError = 
+	   PVRSRVPollForValueKM((IMG_UINT32*) (((IMG_UINT8*) psDevInfo->pvRegsBaseKM) + 0x148U), 0x1, 0x1);
+	if (eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR, 
+		         "PowMonEstimateRequest: Poll gpio output req failed (rc_timer 0x%llx) e:%d", 
+				 ui64Timer, 
+				 g_bPowMonEnable));
+		return eError;
+	}
+
+	/* read gpio_output_data */
+	*pui32PowEstState = OSReadHWReg32(psDevInfo->pvRegsBaseKM, 0x140U);
+
+	/* read power estimate result */
+	*pui32PowEstValue = OSReadHWReg32(psDevInfo->pvRegsBaseKM, 0x6328U);
+
+#if !defined (SUPPORT_POWMON_WO_GPIO_PIN)
+	/* Set RGX_CR_EVENT_STATUS[13] at MMADR offset 0x100130 to acknowledge the power estimation status and result have been absorbed. */
+	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, RGX_CR_EVENT_STATUS, 0x2000);
+#else
+	OSWriteHWReg32(psDevInfo->pvRegsBaseKM, 0x140U, 0x0);
+#endif
+
+	/* POLL on output ack  to be cleared */
+	eError = 
+#if !defined (SUPPORT_POWMON_WO_GPIO_PIN)
+	  PVRSRVPollForValueKM((IMG_UINT32*)(((IMG_UINT8*)psDevInfo->pvRegsBaseKM) + RGX_CR_EVENT_STATUS), 0x0, 0x2000);
+#else		
+	  PVRSRVPollForValueKM((IMG_UINT32*)(((IMG_UINT8*)psDevInfo->pvRegsBaseKM) + 0x148U), 0x0, 0x1);
+#endif			
+	if (eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR, 
+					"PowMonEstimateRequest: Poll on output ack failed (rgx_timer 0x%llx, value %x, state %d). e:%d", 
+					ui64Timer,
+					*pui32PowEstValue,
+					*pui32PowEstState,
+					g_bPowMonEnable));
+		return eError;
+	}
+
+	return PVRSRV_OK;
+}
+
+static IMG_VOID PowMonTestThread(IMG_PVOID pvData)
+{
+	PVRSRV_RGXDEV_INFO *psDevInfo = pvData;
+	PVRSRV_ERROR       eError;
+	IMG_UINT32         ui32DeviceIndex = psDevInfo->psDeviceNode->sDevId.ui32DeviceIndex;
+
+#if defined(NO_HARDWARE)
+	PVR_LOG(("No Hardware driver has no Power Monitoring testing functionality"));
+	return;
+#endif
+
+#if defined(SUPPORT_POWMON_WO_GPIO_PIN)
+	PVR_LOG(("PowMon with SUPPORT_POWMON_WO_GPIO_PIN"));
+#endif
+
+	PVR_LOG(("PowMonTestThread Wait to start"));
+
+	/* Wait for FW to start */
+	for (;;)
+	{
+		if (psDevInfo->bFirmwareInitialised)
+		{
+			break;
+		}
+
+		if (!g_bPowMonEnable)
+		{
+			PVR_LOG(("PowMonTestThread exit"));
+			return;
+		}
+
+		OSSleepms(500);
+	}
+
+	PVR_LOG(("PowMonTestThread Running"));
+	while (g_bPowMonEnable)
+	{
+		PVRSRV_DEV_POWER_STATE ePowerState;
+
+		OSSleepms(g_ui32PowMonLatencyms);
+
+		eError = PVRSRVPowerLock();
+		if (eError != PVRSRV_OK)
+		{
+			PVR_LOG_ERROR(eError, "PVRSRVPowerLock");
+			continue;
+		}
+
+		PVRSRVGetDevicePowerState(ui32DeviceIndex, &ePowerState);
+
+		if (ePowerState == PVRSRV_DEV_POWER_STATE_ON)
+		{
+			/* Request a power monitoring estimate */
+			eError = PowMonEstimateRequest(psDevInfo, &g_PowMonEstimate, &g_PowMonState);
+
+			/* reset on invalid */
+			if (g_PowMonState == 0x3)
+			{
+				g_PowMonEstimate = 0x0;
+			}
+			else if ((g_PowMonState != 0x1) && (g_PowMonState != 0x2))
+			{
+				PVR_DPF((PVR_DBG_ERROR, "PowMonEstimateRequest returned an invalid PowMonEstState: %d", g_PowMonState));
+				g_bPowMonEnable = IMG_FALSE;
+			}
+		}
+		else
+		{
+			g_PowMonEstimate = 0x0;
+			g_PowMonState = 0x0;
+
+		}
+
+		PVRSRVPowerUnlock();
+	}
+
+	PVR_LOG(("PowMonTestThread Stopped"));
+}
+
+static PVRSRV_ERROR
+PowMonInit(IMG_VOID)
+{
+	PVRSRV_ERROR eError;
+	PVRSRV_DEVICE_NODE *psDeviceNode;
+
+	/* find RGX specific device data */
+	eError = PVRSRVAcquireDeviceDataKM(0, PVRSRV_DEVICE_TYPE_RGX, (IMG_HANDLE*) &psDeviceNode);
+	PVR_LOGR_IF_ERROR(eError, "PVRSRVAcquireDeviceDataKM");
+	
+	/* initial state */
+	g_bPowMonEnable = IMG_TRUE;
+	g_ui32PowMonLatencyms = 1;
+	g_PowMonEstimate = 0;
+	g_PowMonState = 0x0;
+
+	/* Create a thread which is used to test power monitoring */
+	eError = OSThreadCreate(&g_hPowerMonitoringThread,
+							"pvr_powmon_test",
+							PowMonTestThread,
+							psDeviceNode->pvDevice);
+	PVR_LOGR_IF_ERROR(eError, "OSThreadCreate");
+
+	return PVRSRV_OK;
+}
+
+static PVRSRV_ERROR
+PowMonDeinit(IMG_VOID)
+{
+	if (g_hPowerMonitoringThread)
+	{
+		g_bPowMonEnable = IMG_FALSE;
+		OSThreadDestroy(g_hPowerMonitoringThread);
+	}
+
+	return PVRSRV_OK;
+}
+
+static PVRSRV_ERROR
+TLSourceDeInit (IMG_VOID)
+{
+	PVRSRV_ERROR eError = PVRSRV_OK;
+	PVR_TL_TEST_CMD_SOURCE_STOP_IN sStopParams;
+	
+	/*
+	 * Stop and close all the streams that may have been started, but stopped
+	 */
+	
+	/* To call TLTestCMD_SourceStop with no stream-name so as to stop the streams in stackwise order of creation */
+	memset (&sStopParams, 0x00, sizeof (sStopParams));	
+
+	do
+	{
+		PVR_LOG_IF_ERROR (eError, "TLTestCMD_SourceStop");
+		eError = TLTestCMD_SourceStop (&sStopParams);
+	} while (eError != PVRSRV_ERROR_NOT_FOUND);	/* PVRSRV_ERROR_NOT_FOUND implies there are no more streams in sourceStack */
+
+	return PVRSRV_OK;
+}
+
+PVRSRV_ERROR
+TUtilsInit(IMG_VOID)
+{
+
+	PowMonInit();
+
+	PVR_DPF_RETURN_OK;
+}
+
+PVRSRV_ERROR
+TUtilsDeinit(IMG_VOID)
+{
+	PowMonDeinit();
+	
+	TLDeInitialiseCleanupTestThread();
+	
+	TLSourceDeInit ();
+	
+	PVR_DPF_RETURN_OK;
+}
+	
+
+#else /* PVR_TESTING_UTILS */
 
 PVRSRV_ERROR
 TLServerTestIoctlKM(IMG_UINT32  uiCmd,
@@ -1318,8 +1608,22 @@ TLServerTestIoctlKM(IMG_UINT32  uiCmd,
 
 	PVR_DPF_RETURN_RC(PVRSRV_ERROR_NOT_SUPPORTED);
 }
-#endif
 
-/******************************************************************************
- End of file
-******************************************************************************/
+PVRSRV_ERROR
+PowMonTestIoctlKM(IMG_UINT32 uiCmd,
+ 				  IMG_UINT32 uiIn1,
+			 	  IMG_UINT32 uiIn2,
+	   			  IMG_UINT32 *puiOut1,
+	   	  		  IMG_UINT32 *puiOut2)
+{
+	PVR_DPF_ENTERED;
+
+	PVR_UNREFERENCED_PARAMETER(uiCmd);
+	PVR_UNREFERENCED_PARAMETER(uiIn1);
+	PVR_UNREFERENCED_PARAMETER(uiIn2);
+	PVR_UNREFERENCED_PARAMETER(puiOut1);
+	PVR_UNREFERENCED_PARAMETER(puiOut2);
+
+	PVR_DPF_RETURN_RC(PVRSRV_ERROR_NOT_SUPPORTED);
+}
+#endif

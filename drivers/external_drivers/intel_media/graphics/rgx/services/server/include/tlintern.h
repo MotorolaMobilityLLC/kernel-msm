@@ -196,7 +196,8 @@ IMG_BOOL TLStreamEOS(PTL_STREAM psStream);
 /*
  * Test related functions
  */
-PVRSRV_ERROR TLDeInitialiseCleanupTestThread (IMG_VOID);
+PVRSRV_ERROR TUtilsInit (IMG_VOID);
+PVRSRV_ERROR TUtilsDeinit (IMG_VOID);
 
 #if defined (__cplusplus)
 }

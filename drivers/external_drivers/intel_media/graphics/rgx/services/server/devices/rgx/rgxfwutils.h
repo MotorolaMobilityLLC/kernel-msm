@@ -142,12 +142,36 @@ static INLINE IMG_VOID DevmemFwFree(DEVMEM_MEMDESC *psMemDesc)
 }
 
 /*
+ * This function returns the value of the hardware register RGX_CR_TIMER
+ * which is a timer counting in ticks.
+ */
+
+static INLINE IMG_UINT64 RGXReadHWTimerReg(PVRSRV_RGXDEV_INFO *psDevInfo)
+{
+    IMG_UINT64  ui64Time = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_TIMER);
+
+    /*
+     *  In order to avoid having to issue three 32-bit reads to detect the
+     *  lower 32-bits wrapping, the MSB of the low 32-bit word is duplicated
+     *  in the MSB of the high 32-bit word. If the wrap happens, we just read
+     *  the register again (it will not wrap again so soon).
+     */
+    if ((ui64Time ^ (ui64Time << 32)) & ~RGX_CR_TIMER_BIT31_CLRMSK)
+    {
+        ui64Time = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_TIMER);
+    }
+
+    return ((ui64Time & ~RGX_CR_TIMER_VALUE_CLRMSK)	>> RGX_CR_TIMER_VALUE_SHIFT);
+}
+
+/*
  * This FW Common Context is only mapped into kernel for initialisation and cleanup purposes.
  * Otherwise this allocation is only used by the FW.
  * Therefore the GPU cache doesn't need coherency,
  * and write-combine is suffice on the CPU side (WC buffer will be flushed at the first kick)
  */
 #define RGX_FWCOMCTX_ALLOCFLAGS	(PVRSRV_MEMALLOCFLAG_DEVICE_FLAG(PMMETA_PROTECT) | \
+                                 PVRSRV_MEMALLOCFLAG_DEVICE_FLAG(META_CACHED) | \
 								 PVRSRV_MEMALLOCFLAG_GPU_READABLE | \
 								 PVRSRV_MEMALLOCFLAG_GPU_WRITEABLE | \
 								 PVRSRV_MEMALLOCFLAG_GPU_CACHE_INCOHERENT | \
@@ -163,7 +187,6 @@ static INLINE IMG_VOID DevmemFwFree(DEVMEM_MEMDESC *psMemDesc)
 #define RFW_FWADDR_FLAG_NONE		(0)			/*!< Void flag */
 #define RFW_FWADDR_NOREF_FLAG		(1U << 0)	/*!< It is safe to immediately release the reference to the pointer, 
 												  otherwise RGXUnsetFirmwareAddress() must be call when finished. */
-#define RFW_FWADDR_METACACHED_FLAG	(1U << 1)	/*!< The addr returned uses the meta dcache */
 
 
 PVRSRV_ERROR RGXSetupFirmware(PVRSRV_DEVICE_NODE	*psDeviceNode, 
@@ -200,6 +223,26 @@ IMG_VOID RGXSetFirmwareAddress(RGXFWIF_DEV_VIRTADDR	*ppDest,
 							   DEVMEM_MEMDESC		*psSrc,
 							   IMG_UINT32			uiOffset,
 							   IMG_UINT32			ui32Flags);
+
+#if defined(RGX_FEATURE_DMA)
+/*************************************************************************/ /*!
+@Function       RGXSetDMAAddress
+
+@Description    Fills a firmware data structure used for DMA with two
+                pointers to the same data, one on 40 bit and one on 32 bit
+                (pointer in the FW memory space).
+
+@Input          ppDest		 	Address of the structure to set
+@Input          psSrcMemDesc	MemDesc describing the pointer
+@Input			psSrcFWDevVAddr Firmware memory space pointer
+
+@Return			IMG_VOID
+*/ /**************************************************************************/
+IMG_VOID RGXSetDMAAddress(RGXFWIF_DMA_ADDR		*psDest,
+                          DEVMEM_MEMDESC		*psSrcMemDesc,
+                          RGXFWIF_DEV_VIRTADDR	*psSrcFWDevVAddr,
+                          IMG_UINT32			uiOffset);
+#endif
 
 /*************************************************************************/ /*!
 @Function       RGXUnsetFirmwareAddress
@@ -571,7 +614,8 @@ PVRSRV_ERROR RGXUpdateHealthStatus(PVRSRV_DEVICE_NODE* psDevNode,
                                    IMG_BOOL bCheckAfterTimePassed);
 
 
-IMG_VOID DumpStalledFWCommonContext(RGX_SERVER_COMMON_CONTEXT *psCurrentServerCommonContext);
+IMG_VOID DumpStalledFWCommonContext(RGX_SERVER_COMMON_CONTEXT *psCurrentServerCommonContext,
+									DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf);
 
 /*!
 ******************************************************************************

@@ -59,22 +59,19 @@ extern IMG_VOID *	g_pvAPIMutex;
  Internal debug driver core functions
 *****************************************************************************/
 /* Called by WDDM debug driver win7/hostfunc.c */
-IMG_VOID * IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *pszName, IMG_UINT32 ii32CapMode, IMG_UINT32 ui32OutMode, IMG_UINT32 ui32Flags, IMG_UINT32 ui32Pages);
+IMG_BOOL IMG_CALLCONV DBGDrivCreateStream(IMG_CHAR *pszName, IMG_UINT32 ui32Flags, IMG_UINT32 ui32Pages,
+											IMG_HANDLE* phInit, IMG_HANDLE* phMain, IMG_HANDLE* phDeinit);
 
 /* Called by Linux debug driver main.c to allow the API mutex lock to be used
- * to protect the common ICOTL read buffer while avoiding deadlock in the Ext
+ * to protect the common IOCTL read buffer while avoiding deadlock in the Ext
  * layer
  */
-IMG_UINT32 IMG_CALLCONV DBGDrivRead(PDBG_STREAM psMainStream, IMG_BOOL bReadInitBuffer, IMG_UINT32 ui32OutBuffSize,IMG_UINT8 * pui8OutBuf);
-
-/* Called by WDDM debug driver win7/hostfunc.c */
-IMG_VOID   IMG_CALLCONV DBGDrivSetDebugLevel(PDBG_STREAM psStream,IMG_UINT32 ui32DebugLevel);
-
-/* Used by debug drvier hotkey.c */
-IMG_UINT32 IMG_CALLCONV DBGDrivGetFrame(PDBG_STREAM psStream);
+IMG_UINT32 IMG_CALLCONV DBGDrivRead(PDBG_STREAM psStream, IMG_UINT32 ui32BufID,
+									IMG_UINT32 ui32OutBufferSize,IMG_UINT8 *pui8OutBuf);
+IMG_UINT32 IMG_CALLCONV DBGDrivGetMarker(PDBG_STREAM psStream);
 
 /* Used in ioctl.c in DBGDIOCDrivGetServiceTable() which is called in WDDM PDump files */
-IMG_PVOID  IMG_CALLCONV DBGDrivGetServiceTable(IMG_VOID);
+IMG_PVOID IMG_CALLCONV DBGDrivGetServiceTable(IMG_VOID);
 
 /* Used in WDDM version of debug driver win7/main.c */
 IMG_VOID DestroyAllStreams(IMG_VOID);
@@ -86,7 +83,6 @@ IMG_UINT32 AtoI(IMG_CHAR *szIn);
 
 IMG_VOID HostMemSet(IMG_VOID *pvDest,IMG_UINT8 ui8Value,IMG_UINT32 ui32Size);
 IMG_VOID HostMemCopy(IMG_VOID *pvDest,IMG_VOID *pvSrc,IMG_UINT32 ui32Size);
-IMG_VOID MonoOut(IMG_CHAR * pszString,IMG_BOOL bNewLine);
 
 /*****************************************************************************
  Secure handle Function prototypes
@@ -99,38 +95,17 @@ IMG_BOOL RemoveSIDEntry(PDBG_STREAM psStream);
 /*****************************************************************************
  Declarations for IOCTL Service table and KM table entry points
 *****************************************************************************/
-IMG_VOID * IMG_CALLCONV ExtDBGDrivCreateStream(IMG_CHAR *	pszName, IMG_UINT32 ui32CapMode, IMG_UINT32	ui32OutMode, IMG_UINT32 ui32Flags, IMG_UINT32 ui32Size);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivDestroyStream(PDBG_STREAM psStream);
+IMG_BOOL   IMG_CALLCONV ExtDBGDrivCreateStream(IMG_CHAR *pszName, IMG_UINT32 ui32Flags, IMG_UINT32 ui32Size, IMG_HANDLE* phInit, IMG_HANDLE* phMain, IMG_HANDLE* phDeinit);
+IMG_VOID   IMG_CALLCONV ExtDBGDrivDestroyStream(IMG_HANDLE hInit, IMG_HANDLE hMain, IMG_HANDLE hDeinit);
 IMG_VOID * IMG_CALLCONV ExtDBGDrivFindStream(IMG_CHAR * pszName, IMG_BOOL bResetStream);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivWriteString(PDBG_STREAM psStream,IMG_CHAR * pszString,IMG_UINT32 ui32Level);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivReadString(PDBG_STREAM psStream,IMG_CHAR * pszString,IMG_UINT32 ui32Limit);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivWrite(PDBG_STREAM psStream,IMG_UINT8 *pui8InBuf,IMG_UINT32 ui32InBuffSize,IMG_UINT32 ui32Level);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivRead(PDBG_STREAM psStream, IMG_BOOL bReadInitBuffer, IMG_UINT32 ui32OutBuffSize,IMG_UINT8 *pui8OutBuf);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivSetCaptureMode(PDBG_STREAM psStream,IMG_UINT32 ui32Mode,IMG_UINT32 ui32Start,IMG_UINT32 ui32End,IMG_UINT32 ui32SampleRate);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivSetOutputMode(PDBG_STREAM psStream,IMG_UINT32 ui32OutMode);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivSetDebugLevel(PDBG_STREAM psStream,IMG_UINT32 ui32DebugLevel);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivSetFrame(PDBG_STREAM psStream,IMG_UINT32 ui32Frame);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivGetFrame(PDBG_STREAM psStream);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivOverrideMode(PDBG_STREAM psStream,IMG_UINT32 ui32Mode);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivDefaultMode(PDBG_STREAM psStream);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivWrite2(PDBG_STREAM psStream,IMG_UINT8 *pui8InBuf,IMG_UINT32 ui32InBuffSize,IMG_UINT32 ui32Level);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivWriteStringCM(PDBG_STREAM psStream,IMG_CHAR * pszString,IMG_UINT32 ui32Level);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivWriteCM(PDBG_STREAM psStream,IMG_UINT8 *pui8InBuf,IMG_UINT32 ui32InBuffSize,IMG_UINT32 ui32Level);
+IMG_UINT32 IMG_CALLCONV ExtDBGDrivRead(PDBG_STREAM psStream, IMG_UINT32 ui32BufID, IMG_UINT32 ui32OutBuffSize,IMG_UINT8 *pui8OutBuf);
+IMG_UINT32 IMG_CALLCONV ExtDBGDrivWrite2(PDBG_STREAM psStream,IMG_UINT8 *pui8InBuf,IMG_UINT32 ui32InBuffSize);
 IMG_VOID   IMG_CALLCONV ExtDBGDrivSetMarker(PDBG_STREAM psStream, IMG_UINT32 ui32Marker);
 IMG_UINT32 IMG_CALLCONV ExtDBGDrivGetMarker(PDBG_STREAM psStream);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivStartInitPhase(PDBG_STREAM psStream);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivStopInitPhase(PDBG_STREAM psStream, IMG_BOOL bTakeMutex);
-IMG_BOOL   IMG_CALLCONV ExtDBGDrivIsInitPhase(PDBG_STREAM psStream);
-IMG_BOOL   IMG_CALLCONV ExtDBGDrivIsCaptureFrame(PDBG_STREAM psStream, IMG_BOOL bCheckPreviousFrame);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivWriteLF(PDBG_STREAM psStream, IMG_UINT8 *pui8InBuf, IMG_UINT32 ui32InBuffSize, IMG_UINT32 ui32Level, IMG_UINT32 ui32Flags);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivReadLF(PDBG_STREAM psStream, IMG_UINT32 ui32OutBuffSize, IMG_UINT8 *pui8OutBuf);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivGetStreamOffset(PDBG_STREAM psStream);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivSetStreamOffset(PDBG_STREAM psStream, IMG_UINT32 ui32StreamOffset);
-IMG_BOOL   IMG_CALLCONV ExtDBGDrivIsLastCaptureFrame(PDBG_STREAM psStream);
 IMG_VOID   IMG_CALLCONV ExtDBGDrivWaitForEvent(DBG_EVENT eEvent);
-IMG_VOID   IMG_CALLCONV ExtDBGDrivSetConnectNotifier(DBGKM_CONNECT_NOTIFIER fn_notifier);
-IMG_UINT32 IMG_CALLCONV ExtDBGDrivWritePersist(PDBG_STREAM psStream,IMG_UINT8 *pui8InBuf,IMG_UINT32 ui32InBuffSize,IMG_UINT32 ui32Level);
 IMG_UINT32 IMG_CALLCONV ExtDBGDrivGetCtrlState(PDBG_STREAM psStream, IMG_UINT32 ui32StateID);
+IMG_UINT32 IMG_CALLCONV ExtDBGDrivGetFrame(void);
+IMG_VOID   IMG_CALLCONV ExtDBGDrivSetFrame(IMG_UINT32 ui32Frame);
 
 #endif
 

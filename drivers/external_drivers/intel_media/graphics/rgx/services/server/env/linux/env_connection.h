@@ -96,7 +96,7 @@ static inline struct ion_client *EnvDataIonClientAcquire(ENV_CONNECTION_DATA *ps
 	return psEnvData->psIonData->psIonClient;
 }
 
-static inline IMG_VOID EnvDataIonClientRelease(ENV_ION_CONNECTION_DATA *psIonData)
+static inline void EnvDataIonClientRelease(ENV_ION_CONNECTION_DATA *psIonData)
 {
 	PVR_ASSERT(psIonData != IMG_NULL);
 	PVR_ASSERT(psIonData->psIonClient != IMG_NULL);

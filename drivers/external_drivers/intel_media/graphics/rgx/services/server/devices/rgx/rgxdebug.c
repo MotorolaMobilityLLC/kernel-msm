@@ -87,23 +87,63 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	RGX_CR_BIF_CAT_BASE0 + \
 	((RGX_CR_BIF_CAT_BASE1 - RGX_CR_BIF_CAT_BASE0) * n)
 
+
+#define RGXDBG_BIF_IDS \
+	X(BIF0)\
+	X(BIF1)\
+	X(TEXAS_BIF)
+
+#define RGXDBG_SIDEBAND_TYPES \
+	X(META)\
+	X(TLA)\
+	X(VDMM)\
+	X(CDM)\
+	X(IPP)\
+	X(PM)\
+	X(TILING)\
+	X(MCU)\
+	X(PDS)\
+	X(PBE)\
+	X(VDMS)\
+	X(IPF)\
+	X(ISP)\
+	X(TPF)\
+	X(USCS)\
+	X(PPP)\
+	X(VCE)\
+	X(FBCDC)
+
+typedef enum
+{
+#define X(NAME) RGXDBG_##NAME,
+	RGXDBG_BIF_IDS
+#undef X
+} RGXDBG_BIF_ID;
+
+typedef enum
+{
+#define X(NAME) RGXDBG_##NAME,
+	RGXDBG_SIDEBAND_TYPES
+#undef X
+} RGXDBG_SIDEBAND_TYPE;
+
+
 IMG_CHAR* pszPowStateName [] = {
 #define X(NAME)	#NAME,
 	RGXFWIF_POW_STATES
 #undef X
 };
 
+IMG_CHAR* pszBIFNames [] = {
+#define X(NAME)	#NAME,
+	RGXDBG_BIF_IDS
+#undef X
+};
 
 extern IMG_UINT32 g_ui32HostSampleIRQCount;
 
 
-/*
- *  This macro is used as a convenient way to switch between PVR_LOG and 
- *  a custom supplied printf function. 
- */
-#define PVR_DUMPDEBUG_LOG(x)  do { if (pfnDumpDebugPrintf) {pfnDumpDebugPrintf x;} else {PVR_LOG(x);} } while(0)
-
-
+#if !defined(RGX_FEATURE_S7_TOP_INFRASTRUCTURE)
 /*!
 *******************************************************************************
 
@@ -144,8 +184,9 @@ static IMG_CHAR* _RGXDecodePMPC(IMG_UINT32 ui32PC)
 
  @Description
 
- Decode the BIF Tag ID and SideBand data fields from BIF_FAULT_BANK_REQ_STATUS regs
+ Decode the BIF Tag ID and sideband data fields from BIF_FAULT_BANK_REQ_STATUS regs
 
+ @Input eBankID	 			- BIF identifier
  @Input ui32TagID           - Tag ID value
  @Input ui32TagSB           - Tag Sideband data
  @Output ppszTagID          - Decoded string from the Tag ID
@@ -156,7 +197,8 @@ static IMG_CHAR* _RGXDecodePMPC(IMG_UINT32 ui32PC)
  @Return   IMG_VOID
 
 ******************************************************************************/
-static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID, 
+static IMG_VOID _RGXDecodeBIFReqTags(RGXDBG_BIF_ID	eBankID,
+									 IMG_UINT32		ui32TagID, 
 									 IMG_UINT32		ui32TagSB, 
 									 IMG_CHAR		**ppszTagID, 
 									 IMG_CHAR		**ppszTagSB,
@@ -167,16 +209,31 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 	IMG_CHAR *pszTagID = "-";
 	IMG_CHAR *pszTagSB = "-";
 
+	PVR_ASSERT(ppszTagID != IMG_NULL);
+	PVR_ASSERT(ppszTagSB != IMG_NULL);
+
 	switch (ui32TagID)
 	{
 		case 0x0:
 		{
 			pszTagID = "MMU";
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "Table"; break;
+				case 0x1: pszTagSB = "Directory"; break;
+				case 0x2: pszTagSB = "Catalogue"; break;
+			}
 			break;
 		}
 		case 0x1:
 		{
 			pszTagID = "TLA";
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "Pixel data"; break;
+				case 0x1: pszTagSB = "Command stream data"; break;
+				case 0x2: pszTagSB = "Fence or flush"; break;
+			}
 			break;
 		}
 		case 0x2:
@@ -189,16 +246,23 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 			pszTagID = "META";
 			switch (ui32TagSB)
 			{
-				case 0x0: pszTagSB = "dcache"; break;
-				case 0x1: pszTagSB = "icache"; break;
-				case 0x2: pszTagSB = "jtag"; break;
-				case 0x3: pszTagSB = "slave bus"; break;
+				case 0x0: pszTagSB = "DCache - Thread 0"; break;
+				case 0x1: pszTagSB = "ICache - Thread 0"; break;
+				case 0x2: pszTagSB = "JTag - Thread 0"; break;
+				case 0x3: pszTagSB = "Slave bus - Thread 0"; break;
+				case 0x4: pszTagSB = "DCache - Thread "; break;
+				case 0x5: pszTagSB = "ICache - Thread 1"; break;
+				case 0x6: pszTagSB = "JTag - Thread 1"; break;
+				case 0x7: pszTagSB = "Slave bus - Thread 1"; break;
 			}
 			break;
 		}
 		case 0x4:
 		{
 			pszTagID = "USC";
+			OSSNPrintf(pszScratchBuf, ui32ScratchBufSize,
+			           "Cache line %d", (ui32TagSB & 0x3f));
+			pszTagSB = pszScratchBuf;
 			break;
 		}
 		case 0x5:
@@ -209,10 +273,71 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 		case 0x6:
 		{
 			pszTagID = "ISP";
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "Tile Start"; break;
+				case 0x1: pszTagSB = "Tile End"; break;
+				case 0x2: pszTagSB = "Macrotile id"; break;
+				case 0x3: pszTagSB = "First in macrotile"; break;
+				case 0x4: pszTagSB = "Last in macrotile"; break;
+				case 0x5: pszTagSB = "End of render"; break;
+				case 0x6: pszTagSB = "Tile empty"; break;
+				case 0x7: pszTagSB = "Pass type"; break;
+				case 0x8: pszTagSB = "Flush before object"; break;
+				case 0x9: pszTagSB = "Flush after object"; break;
+				case 0x10: pszTagSB = "Index_abc"; break;
+				case 0x11: pszTagSB = "object_type"; break;
+				case 0x12: pszTagSB = "Backface"; break;
+				case 0x13: pszTagSB = "Primitive id"; break;
+				case 0x14: pszTagSB = "Angle"; break;
+				case 0x15: pszTagSB = "ISP state size"; break;
+				case 0x16: pszTagSB = "Primitive block pointer"; break;
+				case 0x17: pszTagSB = "Prim total"; break;
+				case 0x18: pszTagSB = "tsp_comp_fmt_size"; break;
+				case 0x19: pszTagSB = "tsp_comp_vtx_size"; break;
+				case 0x20: pszTagSB = "tsp_comp_table_size"; break;
+				case 0x21: pszTagSB = "isp_comp_header"; break;
+				case 0x22: pszTagSB = "dbias_enable"; break;
+				case 0x23: pszTagSB = "prim_id_pres"; break;
+				case 0x24: pszTagSB = "vertex_clipped"; break;
+				case 0x25: pszTagSB = "vertex_total"; break;
+				case 0x26: pszTagSB = "depth_bias_index"; break;
+				case 0x27: pszTagSB = "ptid"; break;
+				case 0x28: pszTagSB = "iicc"; break;
+				case 0x29: pszTagSB = "tile_id"; break;
+			}
 			break;
 		}
 		case 0x7:
 		{
+#if defined(RGX_FEATURE_XT_TOP_INFRASTRUCTURE)
+			if (eBankID == RGXDBG_TEXAS_BIF)
+			{
+				pszTagID = "IPF";
+				switch (ui32TagSB)
+				{
+					case 0x0: pszTagSB = "CPF"; break;
+					case 0x1: pszTagSB = "DBSC"; break;
+					case 0x2:
+					case 0x4:
+					case 0x6:
+					case 0x8: pszTagSB = "Control Stream"; break;
+					case 0x3:
+					case 0x5:
+					case 0x7:
+					case 0x9: pszTagSB = "Primitive Block"; break;
+				}
+			}
+			else
+			{
+				pszTagID = "IPP";
+				switch (ui32TagSB)
+				{
+					case 0x0: pszTagSB = "Macrotile Header"; break;
+					case 0x1: pszTagSB = "Region Header"; break;
+				}
+			}
+#else
 			pszTagID = "IPF";
 			switch (ui32TagSB)
 			{
@@ -227,6 +352,7 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 				case 0x7:
 				case 0x9: pszTagSB = "Primitive Block"; break;
 			}
+#endif
 			break;
 		}
 		case 0x8:
@@ -300,12 +426,32 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 				case 0x5: pszTagSB = "TE Render Target Cache"; break;
 				case 0x6: pszTagSB = "TEAC Render Target Cache"; break;
 				case 0x7: pszTagSB = "VCE Render Target Cache"; break;
+				case 0x8: pszTagSB = "PPP Context State"; break;
 			}
 			break;
 		}
 		case 0xC:
 		{
 			pszTagID = "TPF";
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "TPF0: Primitive Block"; break;
+				case 0x1: pszTagSB = "TPF0: Depth Bias"; break;
+				case 0x2: pszTagSB = "TPF0: Per Primitive IDs"; break;
+				case 0x3: pszTagSB = "CPF - Tables"; break;
+				case 0x4: pszTagSB = "TPF1: Primitive Block"; break;
+				case 0x5: pszTagSB = "TPF1: Depth Bias"; break;
+				case 0x6: pszTagSB = "TPF1: Per Primitive IDs"; break;
+				case 0x7: pszTagSB = "CPF - Data: Pipe 0"; break;
+				case 0x8: pszTagSB = "TPF2: Primitive Block"; break;
+				case 0x9: pszTagSB = "TPF2: Depth Bias"; break;
+				case 0xA: pszTagSB = "TPF2: Per Primitive IDs"; break;
+				case 0xB: pszTagSB = "CPF - Data: Pipe 1"; break;
+				case 0xC: pszTagSB = "TPF3: Primitive Block"; break;
+				case 0xD: pszTagSB = "TPF3: Depth Bias"; break;
+				case 0xE: pszTagSB = "TPF3: Per Primitive IDs"; break;
+				case 0xF: pszTagSB = "CPF - Data: Pipe 2"; break;
+			}
 			break;
 		}
 		case 0xD:
@@ -319,7 +465,7 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 			{
 				IMG_UINT32 ui32Burst = (ui32TagSB >> 5) & 0x7;
 				IMG_UINT32 ui32GroupEnc = (ui32TagSB >> 2) & 0x7;
-				IMG_UINT32 ui32Group = ui32TagSB & 0x2;
+				IMG_UINT32 ui32Group = ui32TagSB & 0x3;
 
 				IMG_CHAR* pszBurst = "";
 				IMG_CHAR* pszGroupEnc = "";
@@ -327,15 +473,22 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 
 				switch (ui32Burst)
 				{
+					case 0x0:
+					case 0x1: pszBurst = "128bit word within the Lower 256bits"; break;
+					case 0x2:
+					case 0x3: pszBurst = "128bit word within the Upper 256bits"; break;
 					case 0x4: pszBurst = "Lower 256bits"; break;
 					case 0x5: pszBurst = "Upper 256bits"; break;
 					case 0x6: pszBurst = "512 bits"; break;
-					default:  pszBurst = (ui32Burst & 0x2)?
-								"128bit word within the Lower 256bits":
-								"128bit word within the Upper 256bits"; break;
 				}
 				switch (ui32GroupEnc)
 				{
+#if defined(RGX_FEATURE_XT_TOP_INFRASTRUCTURE)
+					case 0x0: pszGroupEnc = "PDS_REQ"; break;
+					case 0x1: pszGroupEnc = "USC_REQ"; break;
+					case 0x2: pszGroupEnc = "MADD_REQ"; break;
+					case 0x3: pszGroupEnc = "USCB_USC"; break;
+#else
 					case 0x0: pszGroupEnc = "TPUA_USC"; break;
 					case 0x1: pszGroupEnc = "TPUB_USC"; break;
 					case 0x2: pszGroupEnc = "USCA_USC"; break;
@@ -347,6 +500,7 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 					case 0x5: pszGroupEnc = "UPUC_USC"; break;
 					case 0x6: pszGroupEnc = "TPUC_USC"; break;
 					case 0x7: pszGroupEnc = "PDSRW"; break;
+#endif
 #endif
 				}
 				switch (ui32Group)
@@ -392,7 +546,361 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 	*ppszTagID = pszTagID;
 	*ppszTagSB = pszTagSB;
 }
+#endif
 
+
+#if defined(RGX_FEATURE_S7_TOP_INFRASTRUCTURE)
+/*!
+*******************************************************************************
+
+ @Function	_RGXDecodeMMULevel
+
+ @Description
+
+ Return the name for the MMU level that faulted.
+
+ @Input ui32MMULevel	 - MMU level
+
+ @Return   IMG_CHAR* to the sting describing the MMU level that faulted.
+
+******************************************************************************/
+static IMG_CHAR* _RGXDecodeMMULevel(IMG_UINT32 ui32MMULevel)
+{
+	IMG_CHAR* pszMMULevel = "";
+
+	switch (ui32MMULevel)
+	{
+		case 0x0: pszMMULevel = " (Page Table)"; break;
+		case 0x1: pszMMULevel = " (Page Directory)"; break;
+		case 0x2: pszMMULevel = " (Page Catalog)"; break;
+		case 0x3: pszMMULevel = " (Cat Base)"; break;
+	}
+
+	return pszMMULevel;
+}
+
+
+/*!
+*******************************************************************************
+
+ @Function	_RGXDecodeMMUReqTags
+
+ @Description
+
+ Decodes the MMU Tag ID and Sideband data fields from RGX_CR_MMU_FAULT_META_STATUS and
+ RGX_CR_MMU_FAULT_STATUS regs.
+
+ @Input ui32TagID           - Tag ID value
+ @Input ui32TagSB           - Tag Sideband data
+ @Output ppszTagID          - Decoded string from the Tag ID
+ @Output ppszTagSB          - Decoded string from the Tag SB
+ @Output pszScratchBuf      - Buffer provided to the function to generate the debug strings
+ @Input ui32ScratchBufSize  - Size of the provided buffer
+
+ @Return   IMG_VOID
+
+******************************************************************************/
+static IMG_VOID _RGXDecodeMMUReqTags(IMG_UINT32  ui32TagID, 
+									 IMG_UINT32  ui32TagSB, 
+                                     IMG_CHAR    **ppszTagID, 
+									 IMG_CHAR    **ppszTagSB,
+									 IMG_CHAR    *pszScratchBuf,
+									 IMG_UINT32  ui32ScratchBufSize)
+{
+	IMG_INT32  i32SideBandType = -1;
+	IMG_CHAR   *pszTagID = "-";
+	IMG_CHAR   *pszTagSB = "-";
+
+	PVR_ASSERT(ppszTagID != IMG_NULL);
+	PVR_ASSERT(ppszTagSB != IMG_NULL);
+
+	switch (ui32TagID)
+	{
+		case  0: pszTagID = "META (Jones)"; i32SideBandType = RGXDBG_META; break;
+		case  1: pszTagID = "TLA (Jones)"; i32SideBandType = RGXDBG_TLA; break;
+		case  3: pszTagID = "VDMM (Jones)"; i32SideBandType = RGXDBG_VDMM; break;
+		case  4: pszTagID = "CDM (Jones)"; i32SideBandType = RGXDBG_CDM; break;
+		case  5: pszTagID = "IPP (Jones)"; i32SideBandType = RGXDBG_IPP; break;
+		case  6: pszTagID = "PM (Jones)"; i32SideBandType = RGXDBG_PM; break;
+		case  7: pszTagID = "Tiling (Jones)"; i32SideBandType = RGXDBG_TILING; break;
+		case  8: pszTagID = "MCU (Texas 0)"; i32SideBandType = RGXDBG_MCU; break;
+		case  9: pszTagID = "PDS (Texas 0)"; i32SideBandType = RGXDBG_PDS; break;
+		case 10: pszTagID = "PBE0 (Texas 0)"; i32SideBandType = RGXDBG_PBE; break;
+		case 11: pszTagID = "PBE1 (Texas 0)"; i32SideBandType = RGXDBG_PBE; break;
+		case 12: pszTagID = "VDMS (Black Pearl 0)"; i32SideBandType = RGXDBG_VDMS; break;
+		case 13: pszTagID = "IPF (Black Pearl 0)"; i32SideBandType = RGXDBG_IPF; break;
+		case 14: pszTagID = "ISP (Black Pearl 0)"; i32SideBandType = RGXDBG_ISP; break;
+		case 15: pszTagID = "TPF (Black Pearl 0)"; i32SideBandType = RGXDBG_TPF; break;
+		case 16: pszTagID = "USCS (Black Pearl 0)"; i32SideBandType = RGXDBG_USCS; break;
+		case 17: pszTagID = "PPP (Black Pearl 0)"; i32SideBandType = RGXDBG_PPP; break;
+		case 18: pszTagID = "VCE (Black Pearl 0)"; i32SideBandType = RGXDBG_VCE; break;
+		case 19: pszTagID = "FBCDC (Black Pearl 0)"; i32SideBandType = RGXDBG_FBCDC; break;
+		case 20: pszTagID = "MCU (Texas 1)"; i32SideBandType = RGXDBG_MCU; break;
+		case 21: pszTagID = "PDS (Texas 1)"; i32SideBandType = RGXDBG_PDS; break;
+		case 22: pszTagID = "PBE0 (Texas 1)"; i32SideBandType = RGXDBG_PBE; break;
+		case 23: pszTagID = "PBE1 (Texas 1)"; i32SideBandType = RGXDBG_PBE; break;
+		case 24: pszTagID = "MCU (Texas 2)"; i32SideBandType = RGXDBG_MCU; break;
+		case 25: pszTagID = "PDS (Texas 2)"; i32SideBandType = RGXDBG_PDS; break;
+		case 26: pszTagID = "PBE0 (Texas 2)"; i32SideBandType = RGXDBG_PBE; break;
+		case 27: pszTagID = "PBE1 (Texas 2)"; i32SideBandType = RGXDBG_PBE; break;
+		case 28: pszTagID = "VDMS (Black Pearl 1)"; i32SideBandType = RGXDBG_VDMS; break;
+		case 29: pszTagID = "IPF (Black Pearl 1)"; i32SideBandType = RGXDBG_IPF; break;
+		case 30: pszTagID = "ISP (Black Pearl 1)"; i32SideBandType = RGXDBG_ISP; break;
+		case 31: pszTagID = "TPF (Black Pearl 1)"; i32SideBandType = RGXDBG_TPF; break;
+		case 32: pszTagID = "USCS (Black Pearl 1)"; i32SideBandType = RGXDBG_USCS; break;
+		case 33: pszTagID = "PPP (Black Pearl 1)"; i32SideBandType = RGXDBG_PPP; break;
+		case 34: pszTagID = "VCE (Black Pearl 1)"; i32SideBandType = RGXDBG_VCE; break;
+		case 35: pszTagID = "FBCDC (Black Pearl 1)"; i32SideBandType = RGXDBG_FBCDC; break;
+		case 36: pszTagID = "MCU (Texas 3)"; i32SideBandType = RGXDBG_MCU; break;
+		case 37: pszTagID = "PDS (Texas 3)"; i32SideBandType = RGXDBG_PDS; break;
+		case 38: pszTagID = "PBE0 (Texas 3)"; i32SideBandType = RGXDBG_PBE; break;
+		case 39: pszTagID = "PBE1 (Texas 3)"; i32SideBandType = RGXDBG_PBE; break;
+	}
+	
+	switch (i32SideBandType)
+	{
+		case RGXDBG_META:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "DCache - Thread 0"; break;
+				case 0x1: pszTagSB = "ICache - Thread 0"; break;
+				case 0x2: pszTagSB = "JTag - Thread 0"; break;
+				case 0x3: pszTagSB = "Slave bus - Thread 0"; break;
+				case 0x4: pszTagSB = "DCache - Thread 1"; break;
+				case 0x5: pszTagSB = "ICache - Thread 1"; break;
+				case 0x6: pszTagSB = "JTag - Thread 1"; break;
+				case 0x7: pszTagSB = "Slave bus - Thread 1"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_TLA:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "Pixel data"; break;
+				case 0x1: pszTagSB = "Command stream data"; break;
+				case 0x2: pszTagSB = "Fence or flush"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_VDMM:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "Control Stream - Read Only"; break;
+				case 0x1: pszTagSB = "PPP State - Read Only"; break;
+				case 0x2: pszTagSB = "Indices - Read Only"; break;
+				case 0x4: pszTagSB = "Call Stack - Read/Write"; break;
+				case 0x6: pszTagSB = "DrawIndirect - Read Only"; break;
+				case 0xA: pszTagSB = "Context State - Write Only"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_CDM:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "Control Stream"; break;
+				case 0x1: pszTagSB = "Indirect Data"; break;
+				case 0x2: pszTagSB = "Event Write"; break;
+				case 0x3: pszTagSB = "Context State"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_IPP:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "Macrotile Header"; break;
+				case 0x1: pszTagSB = "Region Header"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_PM:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "PMA_TAFSTACK"; break;
+				case 0x1: pszTagSB = "PMA_TAMLIST"; break;
+				case 0x2: pszTagSB = "PMA_3DFSTACK"; break;
+				case 0x3: pszTagSB = "PMA_3DMLIST"; break;
+				case 0x4: pszTagSB = "PMA_PMCTX0"; break;
+				case 0x5: pszTagSB = "PMA_PMCTX1"; break;
+				case 0x6: pszTagSB = "PMA_MAVP"; break;
+				case 0x7: pszTagSB = "PMA_UFSTACK"; break;
+				case 0x8: pszTagSB = "PMD_TAFSTACK"; break;
+				case 0x9: pszTagSB = "PMD_TAMLIST"; break;
+				case 0xA: pszTagSB = "PMD_3DFSTACK"; break;
+				case 0xB: pszTagSB = "PMD_3DMLIST"; break;
+				case 0xC: pszTagSB = "PMD_PMCTX0"; break;
+				case 0xD: pszTagSB = "PMD_PMCTX1"; break;
+				case 0xF: pszTagSB = "PMD_UFSTACK"; break;
+				case 0x10: pszTagSB = "PMA_TAMMUSTACK"; break;
+				case 0x11: pszTagSB = "PMA_3DMMUSTACK"; break;
+				case 0x12: pszTagSB = "PMD_TAMMUSTACK"; break;
+				case 0x13: pszTagSB = "PMD_3DMMUSTACK"; break;
+				case 0x14: pszTagSB = "PMA_TAUFSTACK"; break;
+				case 0x15: pszTagSB = "PMA_3DUFSTACK"; break;
+				case 0x16: pszTagSB = "PMD_TAUFSTACK"; break;
+				case 0x17: pszTagSB = "PMD_3DUFSTACK"; break;
+				case 0x18: pszTagSB = "PMA_TAVFP"; break;
+				case 0x19: pszTagSB = "PMD_3DVFP"; break;
+				case 0x1A: pszTagSB = "PMD_TAVFP"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_TILING:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "PSG Control Stream TP0"; break;
+				case 0x1: pszTagSB = "TPC TP0"; break;
+				case 0x2: pszTagSB = "VCE0"; break;
+				case 0x3: pszTagSB = "VCE1"; break;
+				case 0x4: pszTagSB = "PSG Control Stream TP1"; break;
+				case 0x5: pszTagSB = "TPC TP1"; break;
+				case 0x8: pszTagSB = "PSG Region Header TP0"; break;
+				case 0xC: pszTagSB = "PSG Region Header TP1"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_VDMS:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "Context State - Write Only"; break;
+			}
+			break;
+		}
+		
+		case RGXDBG_IPF:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x00:
+				case 0x20: pszTagSB = "CPF"; break;
+				case 0x01: pszTagSB = "DBSC"; break;
+				case 0x02:
+				case 0x04:
+				case 0x06:
+				case 0x08:
+				case 0x0A:
+				case 0x0C:
+				case 0x0E:
+				case 0x10: pszTagSB = "Control Stream"; break;
+				case 0x03:
+				case 0x05:
+				case 0x07:
+				case 0x09:
+				case 0x0B:
+				case 0x0D:
+				case 0x0F:
+				case 0x11: pszTagSB = "Primitive Block"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_ISP:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x00: pszTagSB = "ZLS read/write"; break;
+				case 0x20: pszTagSB = "Occlusion query read/write"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_TPF:
+		{
+			switch (ui32TagSB)
+			{
+				case 0x0: pszTagSB = "TPF0: Primitive Block"; break;
+				case 0x1: pszTagSB = "TPF0: Depth Bias"; break;
+				case 0x2: pszTagSB = "TPF0: Per Primitive IDs"; break;
+				case 0x3: pszTagSB = "CPF - Tables"; break;
+				case 0x4: pszTagSB = "TPF1: Primitive Block"; break;
+				case 0x5: pszTagSB = "TPF1: Depth Bias"; break;
+				case 0x6: pszTagSB = "TPF1: Per Primitive IDs"; break;
+				case 0x7: pszTagSB = "CPF - Data: Pipe 0"; break;
+				case 0x8: pszTagSB = "TPF2: Primitive Block"; break;
+				case 0x9: pszTagSB = "TPF2: Depth Bias"; break;
+				case 0xA: pszTagSB = "TPF2: Per Primitive IDs"; break;
+				case 0xB: pszTagSB = "CPF - Data: Pipe 1"; break;
+				case 0xC: pszTagSB = "TPF3: Primitive Block"; break;
+				case 0xD: pszTagSB = "TPF3: Depth Bias"; break;
+				case 0xE: pszTagSB = "TPF3: Per Primitive IDs"; break;
+				case 0xF: pszTagSB = "CPF - Data: Pipe 2"; break;
+			}
+			break;
+		}
+
+		case RGXDBG_FBCDC:
+		{
+			IMG_UINT32 ui32Req = (ui32TagSB >> 2) & 0x3;
+			IMG_UINT32 ui32MCUSB = ui32TagSB & 0x3;
+
+			IMG_CHAR* pszReqId = (ui32TagSB & 0x10)?"FBDC":"FBC";
+			IMG_CHAR* pszOrig = "";
+
+			switch (ui32Req)
+			{
+				case 0x0: pszOrig = "ZLS"; break;
+				case 0x1: pszOrig = (ui32TagSB & 0x10)?"MCU":"PBE"; break;
+				case 0x2: pszOrig = "Host"; break;
+				case 0x3: pszOrig = "TLA"; break;
+			}
+			OSSNPrintf(pszScratchBuf, ui32ScratchBufSize,
+						"%s Request, originator %s, MCU sideband 0x%X",
+						pszReqId, pszOrig, ui32MCUSB);
+			pszTagSB = pszScratchBuf;
+			break;
+		}
+
+		case RGXDBG_MCU:
+		{
+			IMG_UINT32 ui32SetNumber = (ui32TagSB >> 5) & 0x7;
+			IMG_UINT32 ui32WayNumber = (ui32TagSB >> 2) & 0x7;
+			IMG_UINT32 ui32Group     = ui32TagSB & 0x3;
+
+			IMG_CHAR* pszGroup = "";
+
+			switch (ui32Group)
+			{
+				case 0x0: pszGroup = "Banks 0-1"; break;
+				case 0x1: pszGroup = "Banks 2-3"; break;
+				case 0x2: pszGroup = "Banks 4-5"; break;
+				case 0x3: pszGroup = "Banks 6-7"; break;
+			}
+
+			OSSNPrintf(pszScratchBuf, ui32ScratchBufSize,
+			           "Set=%d, Way=%d, %s", ui32SetNumber, ui32WayNumber, pszGroup);
+			pszTagSB = pszScratchBuf;
+			break;
+		}
+
+		default:
+		{
+			OSSNPrintf(pszScratchBuf, ui32ScratchBufSize, "SB=0x%02x", ui32TagSB);
+			pszTagSB = pszScratchBuf;
+			break;
+		}
+	}
+
+	*ppszTagID = pszTagID;
+	*ppszTagSB = pszTagSB;
+}
+#endif
+
+
+#if !defined(RGX_FEATURE_S7_TOP_INFRASTRUCTURE)
 /*!
 *******************************************************************************
 
@@ -403,7 +911,7 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
  Dump BIF Bank state in human readable form.
 
  @Input psDevInfo				- RGX device info
- @Input ui32BankID	 			- BIF Bank identification number
+ @Input eBankID	 				- BIF identifier
  @Input ui64MMUStatus			- MMU Status register value
  @Input ui64ReqStatus			- BIF request Status register value
  @Input bBIFSummary				- Flag to check whether the function is called
@@ -414,7 +922,7 @@ static IMG_VOID _RGXDecodeBIFReqTags(IMG_UINT32		ui32TagID,
 ******************************************************************************/
 static IMG_VOID _RGXDumpRGXBIFBank(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
                                    PVRSRV_RGXDEV_INFO	*psDevInfo,
-                                   IMG_UINT32			ui32BankID,
+                                   RGXDBG_BIF_ID 		eBankID,
                                    IMG_UINT64			ui64MMUStatus,
                                    IMG_UINT64			ui64ReqStatus,
                                    IMG_BOOL				bBIFSummary)
@@ -422,14 +930,14 @@ static IMG_VOID _RGXDumpRGXBIFBank(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 
 	if (ui64MMUStatus == 0x0)
 	{
-		PVR_DUMPDEBUG_LOG(("BIF%d - OK", ui32BankID));
+		PVR_DUMPDEBUG_LOG(("%s - OK", pszBIFNames[eBankID]));
 	}
 	else
 	{
 		/* Bank 0 & 1 share the same fields */
-		PVR_DUMPDEBUG_LOG(("%sBIF%d - FAULT:",
+		PVR_DUMPDEBUG_LOG(("%s%s - FAULT:",
 						  (bBIFSummary)?"":"    ",
-						  ui32BankID));
+						  pszBIFNames[eBankID]));
 
 		/* MMU Status */
 		{
@@ -474,7 +982,7 @@ static IMG_VOID _RGXDumpRGXBIFBank(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 							RGX_CR_BIF_FAULT_BANK0_REQ_STATUS_TAG_ID_SHIFT;
 			IMG_UINT64 ui64Addr = (ui64ReqStatus & ~RGX_CR_BIF_FAULT_BANK0_REQ_STATUS_ADDRESS_CLRMSK);
 
-			_RGXDecodeBIFReqTags(ui32TagID, ui32TagSB, &pszTagID, &pszTagSB, &aszScratch[0], RGX_DEBUG_STR_SIZE);
+			_RGXDecodeBIFReqTags(eBankID, ui32TagID, ui32TagSB, &pszTagID, &pszTagSB, &aszScratch[0], RGX_DEBUG_STR_SIZE);
 
 			PVR_DUMPDEBUG_LOG(("%s  * Request (0x%016llX): %s (%s), %s 0x%010llX.",
 							  (bBIFSummary)?"":"    ",
@@ -502,6 +1010,143 @@ static IMG_VOID _RGXDumpRGXBIFBank(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	}
 
 }
+#endif
+
+
+#if defined(RGX_FEATURE_S7_TOP_INFRASTRUCTURE)
+/*!
+*******************************************************************************
+
+ @Function	_RGXDumpRGXMMUFaultStatus
+
+ @Description
+
+ Dump MMU Fault status in human readable form.
+
+ @Input psDevInfo				- RGX device info
+ @Input ui64MMUStatus			- MMU Status register value
+ @Input bSummary				- Flag to check whether the function is called
+ 	 	 	 	 	 	 	 	  as a part of the debug dump summary or
+								  as a part of a HWR log
+ @Return   IMG_VOID
+
+******************************************************************************/
+static IMG_VOID _RGXDumpRGXMMUFaultStatus(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
+                                          PVRSRV_RGXDEV_INFO    *psDevInfo,
+                                          IMG_UINT64            ui64MMUStatus,
+                                          IMG_BOOL              bSummary)
+{
+	if (ui64MMUStatus == 0x0)
+	{
+		PVR_DUMPDEBUG_LOG(("MMU (Core) - OK"));
+	}
+	else
+	{
+		IMG_UINT32 ui32PC        = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_CONTEXT_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_CONTEXT_SHIFT;
+		IMG_UINT64 ui64Addr      = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_ADDRESS_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_ADDRESS_SHIFT;
+		IMG_UINT32 ui32Requester = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_REQ_ID_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_REQ_ID_SHIFT;
+		IMG_UINT32 ui32SideBand  = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_TAG_SB_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_TAG_SB_SHIFT;
+		IMG_UINT32 ui32MMULevel  = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_LEVEL_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_LEVEL_SHIFT;
+		IMG_BOOL bRead           = (ui64MMUStatus & RGX_CR_MMU_FAULT_STATUS_RNW_EN) != 0;
+		IMG_BOOL bFault          = (ui64MMUStatus & RGX_CR_MMU_FAULT_STATUS_FAULT_EN) != 0;
+		IMG_BOOL bROFault        = ((ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_TYPE_CLRMSK) >>
+		                            RGX_CR_MMU_FAULT_STATUS_TYPE_SHIFT) == 0x2;
+		IMG_BOOL bProtFault      = ((ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_TYPE_CLRMSK) >>
+		                            RGX_CR_MMU_FAULT_STATUS_TYPE_SHIFT) == 0x3;
+		IMG_CHAR aszScratch[RGX_DEBUG_STR_SIZE];
+		IMG_CHAR *pszTagID;
+		IMG_CHAR *pszTagSB;
+
+		_RGXDecodeMMUReqTags(ui32Requester, ui32SideBand, &pszTagID, &pszTagSB, aszScratch, RGX_DEBUG_STR_SIZE);
+
+		PVR_DUMPDEBUG_LOG(("%sMMU (Core) - FAULT:",  (bSummary)?"":"    "));
+		PVR_DUMPDEBUG_LOG(("%s  * MMU status (0x%016llX): PC = %d, %s 0x%010llX, %s (%s)%s%s%s%s.",
+						  (bSummary)?"":"    ",
+						  ui64MMUStatus,
+						  ui32PC,
+		                  (bRead)?"Reading from":"Writing to",
+						  ui64Addr,
+						  pszTagID,
+						  pszTagSB,
+						  (bFault)?", Fault":"",
+						  (bROFault)?", Read Only fault":"",
+						  (bProtFault)?", PM/META protection fault":"",
+						  _RGXDecodeMMULevel(ui32MMULevel)));
+	}
+}
+
+
+/*!
+*******************************************************************************
+
+ @Function	_RGXDumpRGXMMUMetaFaultStatus
+
+ @Description
+
+ Dump MMU Meta Fault state in human readable form.
+
+ @Input psDevInfo				- RGX device info
+ @Input ui64MMUStatus			- MMU Status register value
+ @Input bSummary				- Flag to check whether the function is called
+ 	 	 	 	 	 	 	 	  as a part of the debug dump summary or
+								  as a part of a HWR log
+ @Return   IMG_VOID
+
+******************************************************************************/
+static IMG_VOID _RGXDumpRGXMMUMetaFaultStatus(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
+                                              PVRSRV_RGXDEV_INFO    *psDevInfo,
+                                              IMG_UINT64            ui64MMUStatus,
+                                              IMG_BOOL              bSummary)
+{
+	if (ui64MMUStatus == 0x0)
+	{
+		PVR_DUMPDEBUG_LOG(("MMU (Meta) - OK"));
+	}
+	else
+	{
+		IMG_UINT32 ui32PC        = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_META_CONTEXT_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_META_CONTEXT_SHIFT;
+		IMG_UINT64 ui64Addr      = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_META_ADDRESS_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_META_ADDRESS_SHIFT;
+		IMG_UINT32 ui32SideBand  = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_META_TAG_SB_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_META_TAG_SB_SHIFT;
+		IMG_UINT32 ui32Requester = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_META_REQ_ID_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_META_REQ_ID_SHIFT;
+		IMG_UINT32 ui32MMULevel  = (ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_META_LEVEL_CLRMSK) >>
+		                           RGX_CR_MMU_FAULT_STATUS_META_LEVEL_SHIFT;
+		IMG_BOOL bRead           = (ui64MMUStatus & RGX_CR_MMU_FAULT_STATUS_META_RNW_EN) != 0;
+		IMG_BOOL bFault          = (ui64MMUStatus & RGX_CR_MMU_FAULT_STATUS_META_FAULT_EN) != 0;
+		IMG_BOOL bROFault        = ((ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_META_TYPE_CLRMSK) >>
+		                            RGX_CR_MMU_FAULT_STATUS_META_TYPE_SHIFT) == 0x2;
+		IMG_BOOL bProtFault      = ((ui64MMUStatus & ~RGX_CR_MMU_FAULT_STATUS_META_TYPE_CLRMSK) >>
+		                            RGX_CR_MMU_FAULT_STATUS_META_TYPE_SHIFT) == 0x3;
+		IMG_CHAR aszScratch[RGX_DEBUG_STR_SIZE];
+		IMG_CHAR *pszTagID;
+		IMG_CHAR *pszTagSB;
+
+		_RGXDecodeMMUReqTags(ui32Requester, ui32SideBand, &pszTagID, &pszTagSB, aszScratch, RGX_DEBUG_STR_SIZE);
+
+		PVR_DUMPDEBUG_LOG(("%sMMU (Meta) - FAULT:",  (bSummary)?"":"    "));
+		PVR_DUMPDEBUG_LOG(("%s  * MMU status (0x%016llX): PC = %d, %s 0x%010llX, %s (%s)%s%s%s%s.",
+						  (bSummary)?"":"    ",
+						  ui64MMUStatus,
+						  ui32PC,
+		                  (bRead)?"Reading from":"Writing to",
+						  ui64Addr,
+						  pszTagID,
+						  pszTagSB,
+						  (bFault)?", Fault":"",
+						  (bROFault)?", Read Only fault":"",
+						  (bProtFault)?", PM/META protection fault":"",
+						  _RGXDecodeMMULevel(ui32MMULevel)));
+	}
+}
+#endif
 
 
 /*!
@@ -549,11 +1194,11 @@ static IMG_VOID _RGXDumpFWPoll(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 	{
 		if (psRGXFWIfTraceBufCtl->aui32CrPollAddr[i])
 		{
-			PVR_DUMPDEBUG_LOG(("T%u polling %s (reg:0x%08X val:0x%08X)",
+			PVR_DUMPDEBUG_LOG(("T%u polling %s (reg:0x%08X mask:0x%08X)",
 			                  i,
 			                  ((psRGXFWIfTraceBufCtl->aui32CrPollAddr[i] & RGXFW_POLL_TYPE_SET)?("set"):("unset")), 
 			                  psRGXFWIfTraceBufCtl->aui32CrPollAddr[i] & ~RGXFW_POLL_TYPE_SET, 
-			                  psRGXFWIfTraceBufCtl->aui32CrPollValue[i]));
+			                  psRGXFWIfTraceBufCtl->aui32CrPollMask[i]));
 		}
 	}
 
@@ -678,8 +1323,9 @@ static IMG_VOID _RGXDumpFWHWRInfo(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 
 				switch(psHWRInfo->eHWRType)
 				{
-					case RGX_HWRTYPE_BIF0FAILURE:
-					case RGX_HWRTYPE_BIF1FAILURE:
+#if !defined(RGX_FEATURE_S7_TOP_INFRASTRUCTURE)
+					case RGX_HWRTYPE_BIF0FAULT:
+					case RGX_HWRTYPE_BIF1FAULT:
 					{
 						_RGXDumpRGXBIFBank(pfnDumpDebugPrintf, psDevInfo, RGXFWIF_HWRTYPE_BIF_BANK_GET(psHWRInfo->eHWRType),
 										psHWRInfo->uHWRData.sBIFInfo.ui64BIFMMUStatus,
@@ -687,14 +1333,31 @@ static IMG_VOID _RGXDumpFWHWRInfo(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 										IMG_FALSE);
 					}
 					break;
+#else
+					case RGX_HWRTYPE_MMUFAULT:
+					{
+						_RGXDumpRGXMMUFaultStatus(pfnDumpDebugPrintf, psDevInfo,
+						                          psHWRInfo->uHWRData.sMMUInfo.ui64MMUStatus,
+						                          IMG_FALSE);
+					}
+					break;
+
+					case RGX_HWRTYPE_MMUMETAFAULT:
+					{
+						_RGXDumpRGXMMUMetaFaultStatus(pfnDumpDebugPrintf, psDevInfo,
+						                              psHWRInfo->uHWRData.sMMUInfo.ui64MMUStatus,
+						                              IMG_FALSE);
+					}
+					break;
+#endif
 
 					case RGX_HWRTYPE_POLLFAILURE:
 					{
-						PVR_DUMPDEBUG_LOG(("    T%u polling %s (reg:0x%08X val:0x%08X)",
+						PVR_DUMPDEBUG_LOG(("    T%u polling %s (reg:0x%08X mask:0x%08X)",
 										  psHWRInfo->uHWRData.sPollInfo.ui32ThreadNum,
 										  ((psHWRInfo->uHWRData.sPollInfo.ui32CrPollAddr & RGXFW_POLL_TYPE_SET)?("set"):("unset")),
 										  psHWRInfo->uHWRData.sPollInfo.ui32CrPollAddr & ~RGXFW_POLL_TYPE_SET,
-										  psHWRInfo->uHWRData.sPollInfo.ui32CrPollValue));
+										  psHWRInfo->uHWRData.sPollInfo.ui32CrPollMask));
 					}
 					break;
 
@@ -743,17 +1406,51 @@ static IMG_VOID _RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrint
 
 	if (bRGXPoweredON)
 	{
+#if defined(RGX_FEATURE_S7_TOP_INFRASTRUCTURE)
+		IMG_UINT64	ui64RegValMMUStatus;
+
+		ui64RegValMMUStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_MMU_FAULT_STATUS);
+		_RGXDumpRGXMMUFaultStatus(pfnDumpDebugPrintf, psDevInfo, ui64RegValMMUStatus, IMG_TRUE);
+
+		ui64RegValMMUStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_MMU_FAULT_STATUS_META);
+		_RGXDumpRGXMMUMetaFaultStatus(pfnDumpDebugPrintf, psDevInfo, ui64RegValMMUStatus, IMG_TRUE);
+#else
 		IMG_UINT64	ui64RegValMMUStatus, ui64RegValREQStatus;
 
 		ui64RegValMMUStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_BIF_FAULT_BANK0_MMU_STATUS);
 		ui64RegValREQStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_BIF_FAULT_BANK0_REQ_STATUS);
 
-		_RGXDumpRGXBIFBank(pfnDumpDebugPrintf, psDevInfo, 0, ui64RegValMMUStatus, ui64RegValREQStatus, IMG_TRUE);
+		_RGXDumpRGXBIFBank(pfnDumpDebugPrintf, psDevInfo, RGXDBG_BIF0, ui64RegValMMUStatus, ui64RegValREQStatus, IMG_TRUE);
 
 		ui64RegValMMUStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_BIF_FAULT_BANK1_MMU_STATUS);
 		ui64RegValREQStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_BIF_FAULT_BANK1_REQ_STATUS);
 
-		_RGXDumpRGXBIFBank(pfnDumpDebugPrintf, psDevInfo, 1, ui64RegValMMUStatus, ui64RegValREQStatus, IMG_TRUE);
+		_RGXDumpRGXBIFBank(pfnDumpDebugPrintf, psDevInfo, RGXDBG_BIF1, ui64RegValMMUStatus, ui64RegValREQStatus, IMG_TRUE);
+
+#if defined(RGX_FEATURE_CLUSTER_GROUPING)
+#if defined(RGX_NUM_PHANTOMS)
+		{
+			IMG_UINT32  ui32Phantom;
+			
+			for (ui32Phantom = 0;  ui32Phantom < RGX_NUM_PHANTOMS;  ui32Phantom++)
+			{
+				/* This can't be done as it may interfere with the FW... */
+				/*OSWriteHWReg64(RGX_CR_TEXAS_INDIRECT, ui32Phantom);*/
+				
+				ui64RegValMMUStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_TEXAS_BIF_FAULT_BANK0_MMU_STATUS);
+				ui64RegValREQStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_TEXAS_BIF_FAULT_BANK0_REQ_STATUS);
+
+				_RGXDumpRGXBIFBank(pfnDumpDebugPrintf, psDevInfo, RGXDBG_TEXAS, ui64RegValMMUStatus, ui64RegValREQStatus, IMG_TRUE);
+			}
+		}
+#else
+		ui64RegValMMUStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_TEXAS_BIF_FAULT_BANK0_MMU_STATUS);
+		ui64RegValREQStatus = OSReadHWReg64(psDevInfo->pvRegsBaseKM, RGX_CR_TEXAS_BIF_FAULT_BANK0_REQ_STATUS);
+
+		_RGXDumpRGXBIFBank(pfnDumpDebugPrintf, psDevInfo, RGXDBG_TEXAS_BIF, ui64RegValMMUStatus, ui64RegValREQStatus, IMG_TRUE);
+#endif
+#endif
+#endif
 	}
 
 	/* Firmware state */
@@ -789,7 +1486,7 @@ static IMG_VOID _RGXDumpRGXDebugSummary(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrint
 	PVR_DUMPDEBUG_LOG(("RGX FW State: %s (HWRState 0x%08x)", pszState, psRGXFWIfTraceBuf->ui32HWRStateFlags));
 	PVR_DUMPDEBUG_LOG(("RGX FW Power State: %s (APM %s: %d ok, %d denied, %d other, %d total)", 
 	                  pszPowStateName[psRGXFWIfTraceBuf->ePowState],
-	                  (psDevInfo->pfnActivePowerCheck)?"enabled":"disabled",
+	                  (psDevInfo->pvAPMISRData)?"enabled":"disabled",
 	                  psDevInfo->ui32ActivePMReqOk,
 	                  psDevInfo->ui32ActivePMReqDenied,
 	                  psDevInfo->ui32ActivePMReqTotal - psDevInfo->ui32ActivePMReqOk - psDevInfo->ui32ActivePMReqDenied,
@@ -874,19 +1571,11 @@ IMG_VOID RGXDumpDebugInfo(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
                           PVRSRV_RGXDEV_INFO	*psDevInfo)
 {
 	IMG_UINT32 i;
-	PVRSRV_ERROR eError;
-	eError = PVRSRVPowerLock();
-	if (eError != PVRSRV_OK)
-	{
-		PVR_DPF((PVR_DBG_ERROR,"RGXDumpDebugInfo: Failed to acquire power lock"));
-		return;
-	}
 
 	for(i=0;i<=DEBUG_REQUEST_VERBOSITY_MAX;i++)
 	{
 		RGXDebugRequestProcess(pfnDumpDebugPrintf, psDevInfo, i);
 	}
-	PVRSRVPowerUnlock();
 }
 
 
@@ -1278,6 +1967,7 @@ IMG_VOID RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 					
 					PVR_DUMPDEBUG_LOG(("------[ RGX FW thread %d trace START ]------", tid));
 					PVR_DUMPDEBUG_LOG(("FWT[traceptr]: %X", psRGXFWIfTraceBufCtl->sTraceBuf[tid].ui32TracePointer));
+					PVR_DUMPDEBUG_LOG(("FWT[tracebufsize]: %X", RGXFW_TRACE_BUFFER_SIZE));
 		
 					for (i = 0; i < RGXFW_TRACE_BUFFER_SIZE; i += RGXFW_TRACE_BUFFER_LINESIZE)
 					{
@@ -1331,23 +2021,19 @@ IMG_VOID RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 		
 					OSFreeMem(pszLine);
 				}
+			}
 
-				{
-					PVR_DUMPDEBUG_LOG(("------[ Stalled FWCtxs ]------"));
+			{
+				PVR_DUMPDEBUG_LOG(("------[ Stalled FWCtxs ]------"));
 
-					if (psDevInfo)
-					{
-						CheckForStalledTransferCtxt(psDevInfo);
-						CheckForStalledRenderCtxt(psDevInfo);
+				CheckForStalledTransferCtxt(psDevInfo, pfnDumpDebugPrintf);
+				CheckForStalledRenderCtxt(psDevInfo, pfnDumpDebugPrintf);
 #if !defined(UNDER_WDDM)
-						CheckForStalledComputeCtxt(psDevInfo);
+				CheckForStalledComputeCtxt(psDevInfo, pfnDumpDebugPrintf);
 #endif
 #if defined(RGX_FEATURE_RAY_TRACING)
-						CheckForStalledRayCtxt(psDevInfo);
+				CheckForStalledRayCtxt(psDevInfo, pfnDumpDebugPrintf);
 #endif
-					}
-				}
-
 			}
 			break;
 		}
@@ -1394,7 +2080,7 @@ IMG_VOID RGXDebugRequestProcess(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
 IMG_VOID RGXPanic(PVRSRV_RGXDEV_INFO	*psDevInfo)
 {
 	PVR_LOG(("RGX panic"));
-	PVRSRVDebugRequest(DEBUG_REQUEST_VERBOSITY_MAX);
+	PVRSRVDebugRequest(DEBUG_REQUEST_VERBOSITY_MAX, IMG_NULL);
 	OSPanic();
 }
 

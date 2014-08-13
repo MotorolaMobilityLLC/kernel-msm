@@ -154,58 +154,7 @@ PDumpSignatureBuffer_exit:
 
 	return 0;
 }
-#ifdef CONFIG_COMPAT
-typedef struct compat_PVRSRV_BRIDGE_IN_PDUMPTRACEBUFFER_TAG
-{
-	//IMG_HANDLE hDeviceNode;
-	IMG_UINT32 hDeviceNode;
-	IMG_UINT32 ui32PDumpFlags;
-} compat_PVRSRV_BRIDGE_IN_PDUMPTRACEBUFFER;
-static IMG_INT
-compat_PVRSRVBridgePDumpTraceBuffer(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_PDUMPTRACEBUFFER *psPDumpTraceBufferIN_32,
-					 PVRSRV_BRIDGE_OUT_PDUMPTRACEBUFFER *psPDumpTraceBufferOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_PDUMPTRACEBUFFER sPDumpTraceBufferIN;
-	PVRSRV_BRIDGE_IN_PDUMPTRACEBUFFER *psPDumpTraceBufferIN = &sPDumpTraceBufferIN;
 
-	psPDumpTraceBufferIN->hDeviceNode = (IMG_HANDLE)(IMG_UINT64)psPDumpTraceBufferIN_32->hDeviceNode;
-	psPDumpTraceBufferIN->ui32PDumpFlags = psPDumpTraceBufferIN_32->ui32PDumpFlags;
-
-	return PVRSRVBridgePDumpTraceBuffer(ui32BridgeID,
-					psPDumpTraceBufferIN,
-					psPDumpTraceBufferOUT,
-					psConnection);
-}
-
-/* Bridge in structure for PDumpSignatureBuffer */
-typedef struct compat_PVRSRV_BRIDGE_IN_PDUMPSIGNATUREBUFFER_TAG
-{
-	//IMG_HANDLE hDeviceNode;
-	IMG_UINT32 hDeviceNode;
-	IMG_UINT32 ui32PDumpFlags;
-} compat_PVRSRV_BRIDGE_IN_PDUMPSIGNATUREBUFFER;
-
-static IMG_INT
-compat_PVRSRVBridgePDumpSignatureBuffer(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_PDUMPSIGNATUREBUFFER *psPDumpSignatureBufferIN_32,
-					 PVRSRV_BRIDGE_OUT_PDUMPSIGNATUREBUFFER *psPDumpSignatureBufferOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_PDUMPSIGNATUREBUFFER sPDumpSignatureBufferIN;
-	PVRSRV_BRIDGE_IN_PDUMPSIGNATUREBUFFER *psPDumpSignatureBufferIN = &sPDumpSignatureBufferIN;
-
-	psPDumpSignatureBufferIN->hDeviceNode = (IMG_HANDLE)(IMG_UINT64)psPDumpSignatureBufferIN_32->hDeviceNode;
-	psPDumpSignatureBufferIN->ui32PDumpFlags = psPDumpSignatureBufferIN_32->ui32PDumpFlags;
-
-	return PVRSRVBridgePDumpSignatureBuffer(ui32BridgeID,
-					psPDumpSignatureBufferIN,
-					psPDumpSignatureBufferOUT,
-					psConnection);
-
-}
-#endif
 
 
 /* *************************************************************************** 
@@ -220,14 +169,9 @@ IMG_VOID UnregisterRGXPDUMPFunctions(IMG_VOID);
  */
 PVRSRV_ERROR RegisterRGXPDUMPFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_RGXPDUMP_PDUMPTRACEBUFFER, compat_PVRSRVBridgePDumpTraceBuffer);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_RGXPDUMP_PDUMPSIGNATUREBUFFER, compat_PVRSRVBridgePDumpSignatureBuffer);
-#else
 	SetDispatchTableEntry(PVRSRV_BRIDGE_RGXPDUMP_PDUMPTRACEBUFFER, PVRSRVBridgePDumpTraceBuffer);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_RGXPDUMP_PDUMPSIGNATUREBUFFER, PVRSRVBridgePDumpSignatureBuffer);
 
-#endif
 	return PVRSRV_OK;
 }
 

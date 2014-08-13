@@ -127,15 +127,15 @@ typedef struct _MMU_DEVICEATTRIBS_
 	const struct _MMU_DEVVADDR_CONFIG_ *psTopLevelDevVAddrConfig;
 
 	/*! Callback for creating protection bits for the page catalogue entry with 8 byte entry */
-	IMG_UINT64 (*pfnDerivePCEProt8)(IMG_UINT32);
+	IMG_UINT64 (*pfnDerivePCEProt8)(IMG_UINT32, IMG_UINT8);
 	/*! Callback for creating protection bits for the page catalogue entry with 4 byte entry */
 	IMG_UINT32 (*pfnDerivePCEProt4)(IMG_UINT32);
 	/*! Callback for creating protection bits for the page directory entry with 8 byte entry */
-	IMG_UINT64 (*pfnDerivePDEProt8)(IMG_UINT32);
+	IMG_UINT64 (*pfnDerivePDEProt8)(IMG_UINT32, IMG_UINT8);
 	/*! Callback for creating protection bits for the page directory entry with 4 byte entry */
 	IMG_UINT32 (*pfnDerivePDEProt4)(IMG_UINT32);
 	/*! Callback for creating protection bits for the page table entry with 8 byte entry */
-	IMG_UINT64 (*pfnDerivePTEProt8)(IMG_UINT32);
+	IMG_UINT64 (*pfnDerivePTEProt8)(IMG_UINT32, IMG_UINT8);
 	/*! Callback for creating protection bits for the page table entry with 4 byte entry */
 	IMG_UINT32 (*pfnDerivePTEProt4)(IMG_UINT32);
 
@@ -298,11 +298,12 @@ MMU_ContextDestroy (MMU_CONTEXT *psMMUContext);
 /*****************************************************************************/
 extern PVRSRV_ERROR
 MMU_Alloc (MMU_CONTEXT *psMMUContext,
-		   IMG_DEVMEM_SIZE_T uSize,
-		   IMG_DEVMEM_SIZE_T *puActualSize,
+           IMG_DEVMEM_SIZE_T uSize,
+           IMG_DEVMEM_SIZE_T *puActualSize,
            IMG_UINT32 uiProtFlags,
-		   IMG_DEVMEM_SIZE_T uDevVAddrAlignment,
-		   IMG_DEV_VIRTADDR *psDevVAddr);
+           IMG_DEVMEM_SIZE_T uDevVAddrAlignment,
+           IMG_DEV_VIRTADDR *psDevVAddr,
+           IMG_UINT8 uiLog2PageSize);
 
 
 /*************************************************************************/ /*!
@@ -321,7 +322,10 @@ MMU_Alloc (MMU_CONTEXT *psMMUContext,
 */
 /*****************************************************************************/
 extern IMG_VOID
-MMU_Free (MMU_CONTEXT *psMMUContext, IMG_DEV_VIRTADDR sDevVAddr, IMG_DEVMEM_SIZE_T uiSize);
+MMU_Free (MMU_CONTEXT *psMMUContext,
+          IMG_DEV_VIRTADDR sDevVAddr,
+          IMG_DEVMEM_SIZE_T uiSize,
+          IMG_UINT8 uiLog2PageSize);
 
 /*************************************************************************/ /*!
 @Function       MMU_UnmapPages
@@ -339,8 +343,9 @@ MMU_Free (MMU_CONTEXT *psMMUContext, IMG_DEV_VIRTADDR sDevVAddr, IMG_DEVMEM_SIZE
 /*****************************************************************************/
 extern IMG_VOID
 MMU_UnmapPages (MMU_CONTEXT *psMMUContext,
-                               IMG_DEV_VIRTADDR sDevVAddr,
-                               IMG_UINT32 ui32PageCount);
+                IMG_DEV_VIRTADDR sDevVAddr,
+                IMG_UINT32 ui32PageCount,
+                IMG_UINT8 uiLog2PageSize);
 
 /*************************************************************************/ /*!
 @Function       MMU_MapPMR
@@ -366,7 +371,8 @@ MMU_MapPMR (MMU_CONTEXT *psMMUContext,
             IMG_DEV_VIRTADDR sDevVAddr,
             const PMR *psPMR,
             IMG_DEVMEM_SIZE_T uiSizeBytes,
-            PVRSRV_MEMALLOCFLAGS_T uiMappingFlags);
+            PVRSRV_MEMALLOCFLAGS_T uiMappingFlags,
+            IMG_UINT8 uiLog2PageSize);
 
 /*************************************************************************/ /*!
 @Function       MMU_AcquireBaseAddr

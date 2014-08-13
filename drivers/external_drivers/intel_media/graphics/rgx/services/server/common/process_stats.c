@@ -54,11 +54,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "process_stats.h"
 #include "ri_server.h"
 
-
+#define DBGTIMEDIFF(T0, T1)  ((IMG_UINT64) ( (T0) <= (T1) ? (T1) - (T0): IMG_UINT64_MAX - (T0) + (T1) ))
+#define MEAN_TIME(A, B)     ( ((3*(A))/4) + ((1 * (B))/4) )
 /*
  *  Maximum history of process statistics that will be kept.
  */
 #define MAX_DEAD_LIST_PROCESSES  (10)
+
+void *pvOSPowerStatsEntryData=NULL;
 
 
 /*
@@ -78,6 +81,7 @@ typedef enum
     PVRSRV_PROCESS_STAT_TYPE_RC_TA_STORES,
     PVRSRV_PROCESS_STAT_TYPE_RC_3D_STORES,
     PVRSRV_PROCESS_STAT_TYPE_RC_SH_STORES,
+    PVRSRV_PROCESS_STAT_TYPE_RC_CDM_STORES,
     PVRSRV_PROCESS_STAT_TYPE_ZSBUFFER_REQS_BY_APP,
     PVRSRV_PROCESS_STAT_TYPE_ZSBUFFER_REQS_BY_FW,
     PVRSRV_PROCESS_STAT_TYPE_FREELIST_GROW_REQS_BY_APP,
@@ -88,45 +92,82 @@ typedef enum
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
     PVRSRV_PROCESS_STAT_TYPE_KMALLOC,
     PVRSRV_PROCESS_STAT_TYPE_MAX_KMALLOC,
-    PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES,
-    PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_PAGES,
-    PVRSRV_PROCESS_STAT_TYPE_IOREMAP,
-    PVRSRV_PROCESS_STAT_TYPE_MAX_IOREMAP,
-    PVRSRV_PROCESS_STAT_TYPE_VMAP,
-    PVRSRV_PROCESS_STAT_TYPE_MAX_VMAP,
+    PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA,
+    PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_PAGES_PT_UMA,
+    PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA,
+    PVRSRV_PROCESS_STAT_TYPE_MAX_VMAP_PT_UMA,
+    PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA,
+    PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_PAGES_PT_LMA,
+    PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA,
+    PVRSRV_PROCESS_STAT_TYPE_MAX_IOREMAP_PT_LMA,
+    PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES,
+    PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_LMA_PAGES,
+    PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES,
+    PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_UMA_PAGES,
+    PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES,
+    PVRSRV_PROCESS_STAT_TYPE_MAX_MAP_UMA_LMA_PAGES,
 #endif
 	
 	/* Must be the last enum...*/
 	PVRSRV_PROCESS_STAT_TYPE_COUNT
 } PVRSRV_PROCESS_STAT_TYPE;
 
-static IMG_CHAR*  pszProcessStatFmt[PVRSRV_PROCESS_STAT_TYPE_COUNT] = {
-	"Connections                     %10d\n", /* PVRSRV_STAT_TYPE_CONNECTIONS */
-	"ConnectionsMax                  %10d\n", /* PVRSRV_STAT_TYPE_MAXCONNECTIONS */
 
-    "RenderContextOutOfMemoryEvents  %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_OOMS */
-    "RenderContextPartialRenders     %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_PRS */
-    "RenderContextGrows              %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_GROWS */
-    "RenderContextPushGrows          %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_PUSH_GROWS */
-    "RenderContextTAStores           %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_TA_STORES */
-    "RenderContext3DStores           %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_3D_STORES */
-    "RenderContextSHStores           %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_SH_STORES */
-    "ZSBufferRequestsByApp           %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_ZSBUFFER_REQS_BY_APP */
-    "ZSBufferRequestsByFirmware      %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_ZSBUFFER_REQS_BY_FW */
-    "FreeListGrowRequestsByApp       %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_FREELIST_GROW_REQS_BY_APP */
-    "FreeListGrowRequestsByFirmware  %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_FREELIST_GROW_REQS_BY_FW */
-    "FreeListInitialPages            %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_FREELIST_PAGES_INIT */
-    "FreeListMaxPages                %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_FREELIST_MAX_PAGES */
+typedef enum
+{
+    PVRSRV_POWER_TIMING_STAT_FORCED_POWER_TRANSITION=0,
+    PVRSRV_POWER_TIMING_STAT_PRE_DEVICE,
+    PVRSRV_POWER_TIMING_STAT_PRE_SYSTEM,
+    PVRSRV_POWER_TIMING_STAT_POST_DEVICE,
+    PVRSRV_POWER_TIMING_STAT_POST_SYSTEM,
+    PVRSRV_POWER_TIMING_STAT_NEWLINE1,
+    PVRSRV_POWER_TIMING_STAT_NOT_FORCED_POWER_TRANSITION,
+    PVRSRV_POWER_TIMING_STAT_NON_PRE_DEVICE,
+    PVRSRV_POWER_TIMING_STAT_NON_PRE_SYSTEM,
+    PVRSRV_POWER_TIMING_STAT_NON_POST_DEVICE,
+    PVRSRV_POWER_TIMING_STAT_NON_POST_SYSTEM,
+    PVRSRV_POWER_TIMING_STAT_NEWLINE2,
+    PVRSRV_POWER_TIMING_STAT_FW_BOOTUP_TIME,
+    PVRSRV_POWER_TIMING_STAT_HOST_ACK
+} PVR_SRV_OTHER_STAT_TYPE;
+
+
+static IMG_CHAR*  pszProcessStatFmt[PVRSRV_PROCESS_STAT_TYPE_COUNT] = {
+	"Connections                       %10d\n", /* PVRSRV_STAT_TYPE_CONNECTIONS */
+	"ConnectionsMax                    %10d\n", /* PVRSRV_STAT_TYPE_MAXCONNECTIONS */
+
+    "RenderContextOutOfMemoryEvents    %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_OOMS */
+    "RenderContextPartialRenders       %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_PRS */
+    "RenderContextGrows                %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_GROWS */
+    "RenderContextPushGrows            %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_PUSH_GROWS */
+    "RenderContextTAStores             %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_TA_STORES */
+    "RenderContext3DStores             %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_3D_STORES */
+    "RenderContextSHStores             %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_SH_STORES */
+    "RenderContextCDMStores            %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_RC_CDM_STORES */
+    "ZSBufferRequestsByApp             %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_ZSBUFFER_REQS_BY_APP */
+    "ZSBufferRequestsByFirmware        %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_ZSBUFFER_REQS_BY_FW */
+    "FreeListGrowRequestsByApp         %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_FREELIST_GROW_REQS_BY_APP */
+    "FreeListGrowRequestsByFirmware    %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_FREELIST_GROW_REQS_BY_FW */
+    "FreeListInitialPages              %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_FREELIST_PAGES_INIT */
+    "FreeListMaxPages                  %10d\n", /* PVRSRV_PROCESS_STAT_TYPE_FREELIST_MAX_PAGES */
 
 #if defined(PVRSRV_ENABLE_MEMORY_STATS)
-    "MemoryUsageKMalloc              %10d\n", /* PVRSRV_STAT_TYPE_KMALLOC */
-    "MemoryUsageKMallocMax           %10d\n", /* PVRSRV_STAT_TYPE_MAX_KMALLOC */
-    "MemoryUsageAllocPageMemory      %10d\n", /* PVRSRV_STAT_TYPE_ALLOC_PAGES */
-    "MemoryUsageAllocPageMemoryMax   %10d\n", /* PVRSRV_STAT_TYPE_MAX_ALLOC_PAGES */
-    "MemoryUsageIORemap              %10d\n", /* PVRSRV_STAT_TYPE_IOREMAP */
-    "MemoryUsageIORemapMax           %10d\n", /* PVRSRV_STAT_TYPE_MAX_IOREMAP */
-    "MemoryUsageVMap                 %10d\n", /* PVRSRV_STAT_TYPE_VMAP */
-    "MemoryUsageVMapMax              %10d\n"  /* PVRSRV_STAT_TYPE_MAX_VMAP */
+    "MemoryUsageKMalloc                %10d\n", /* PVRSRV_STAT_TYPE_KMALLOC */
+    "MemoryUsageKMallocMax             %10d\n", /* PVRSRV_STAT_TYPE_MAX_KMALLOC */
+    "MemoryUsageAllocPTMemoryUMA       %10d\n", /* PVRSRV_STAT_TYPE_ALLOC_PAGES_PT_UMA */
+    "MemoryUsageAllocPTMemoryUMAMax    %10d\n", /* PVRSRV_STAT_TYPE_MAX_ALLOC_PAGES_PT_UMA */
+    "MemoryUsageVMapPTUMA              %10d\n", /* PVRSRV_STAT_TYPE_VMAP_PT_UMA */
+    "MemoryUsageVMapPTUMAMax           %10d\n", /* PVRSRV_STAT_TYPE_MAX_VMAP_PT_UMA */
+    "MemoryUsageAllocPTMemoryLMA       %10d\n", /* PVRSRV_STAT_TYPE_ALLOC_PAGES_PT_LMA */
+    "MemoryUsageAllocPTMemoryLMAMax    %10d\n", /* PVRSRV_STAT_TYPE_MAX_ALLOC_PAGES_PT_LMA */
+    "MemoryUsageIORemapPTLMA           %10d\n", /* PVRSRV_STAT_TYPE_IOREMAP_PT_LMA */
+    "MemoryUsageIORemapPTLMAMax        %10d\n", /* PVRSRV_STAT_TYPE_MAX_IOREMAP_PT_LMA */
+    "MemoryUsageAllocGPUMemLMA         %10d\n", /* PVRSRV_STAT_TYPE_ALLOC_LMA_PAGES */
+    "MemoryUsageAllocGPUMemLMAMax      %10d\n", /* PVRSRV_STAT_TYPE_MAX_ALLOC_LMA_PAGES */
+    "MemoryUsageAllocGPUMemUMA         %10d\n", /* PVRSRV_STAT_TYPE_ALLOC_UMA_PAGES */
+    "MemoryUsageAllocGPUMemUMAMax      %10d\n", /* PVRSRV_STAT_TYPE_MAX_ALLOC_UMA_PAGES */
+    "MemoryUsageMappedGPUMemUMA/LMA    %10d\n", /* PVRSRV_STAT_TYPE_MAP_UMA_LMA_PAGES */
+    "MemoryUsageMappedGPUMemUMA/LMAMax %10d\n", /* PVRSRV_STAT_TYPE_MAX_MAP_UMA_LMA_PAGES */
 #endif
 };
 
@@ -144,7 +185,8 @@ typedef enum
 	PVRSRV_STAT_STRUCTURE_PROCESS = 1,
 	PVRSRV_STAT_STRUCTURE_RENDER_CONTEXT = 2,
 	PVRSRV_STAT_STRUCTURE_MEMORY = 3,
-	PVRSRV_STAT_STRUCTURE_RIMEMORY = 4
+	PVRSRV_STAT_STRUCTURE_RIMEMORY = 4,
+	PVRSRV_STAT_STRUCTURE_POWER=5
 } PVRSRV_STAT_STRUCTURE_TYPE;
 
 #define MAX_PROC_NAME_LENGTH   (32)
@@ -197,6 +239,7 @@ typedef struct _PVRSRV_RENDER_STATS_ {
 typedef struct _PVRSRV_MEM_ALLOC_REC_
 {
     PVRSRV_MEM_ALLOC_TYPE  eAllocType;
+    IMG_UINT64			ui64Key;
     IMG_VOID               *pvCpuVAddr;
     IMG_CPU_PHYADDR        sCpuPAddr;
 	IMG_SIZE_T			   uiBytes;
@@ -235,7 +278,7 @@ typedef struct _PVRSRV_RI_MEMORY_STATS_ {
 	IMG_PVOID                   pvOSRIMemEntryData;
 } PVRSRV_RI_MEMORY_STATS;
 
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_MEMORY_STATS) && !defined(PVRSRV_MEMORY_STATS_LITE)
 static IMPLEMENT_LIST_INSERT(PVRSRV_MEM_ALLOC_REC)
 static IMPLEMENT_LIST_REMOVE(PVRSRV_MEM_ALLOC_REC)
 #endif
@@ -263,6 +306,58 @@ POS_LOCK  psLinkedListLock = IMG_NULL;
 IMG_CHAR*  pszOSPidFolderName = "pid";
 IMG_PVOID  pvOSPidFolder      = IMG_NULL;
 
+/*Power Statistics List */
+
+static IMG_UINT64 ui64TotalForcedEntries=0,ui64TotalNotForcedEntries=0;
+
+static IMG_UINT64 ui64ForcedPreDevice=0, ui64ForcedPreSystem=0, ui64ForcedPostDevice=0, ui64ForcedPostSystem=0;
+static IMG_UINT64 ui64NotForcedPreDevice=0, ui64NotForcedPreSystem=0, ui64NotForcedPostDevice=0, ui64NotForcedPostSystem=0;
+
+IMG_VOID InsertPowerTimeStatistic(PVRSRV_POWER_ENTRY_TYPE bType,
+		IMG_INT32 i32CurrentState, IMG_INT32 i32NextState,
+        IMG_UINT64 ui64SysStartTime, IMG_UINT64 ui64SysEndTime,
+		IMG_UINT64 ui64DevStartTime, IMG_UINT64 ui64DevEndTime,
+		IMG_BOOL bForced)
+{
+    IMG_UINT64 ui64Device;
+    IMG_UINT64 ui64System;
+
+	if (i32CurrentState==i32NextState) return ;
+
+    ui64Device=ui64DevEndTime-ui64DevStartTime;
+    ui64System=ui64SysEndTime-ui64SysStartTime;
+
+    if (bForced)
+    {
+        ui64TotalForcedEntries++;
+        if (bType==PVRSRV_POWER_ENTRY_TYPE_POST)
+        {
+            ui64ForcedPostDevice+=ui64Device;
+            ui64ForcedPostSystem+=ui64System;
+        }
+        else
+        {
+            ui64ForcedPreDevice+=ui64Device;
+            ui64ForcedPreSystem+=ui64System;
+        }
+    }
+    else
+    {
+        ui64TotalNotForcedEntries++;
+        if (bType==PVRSRV_POWER_ENTRY_TYPE_POST)
+        {
+            ui64NotForcedPostDevice+=ui64Device;
+            ui64NotForcedPostSystem+=ui64System;
+        }
+        else
+        {
+            ui64NotForcedPreDevice+=ui64Device;
+            ui64NotForcedPreSystem+=ui64System;
+        }
+    }
+
+	return;
+}
 
 /*************************************************************************/ /*!
 @Function       _RemoveRenderStatsFromList
@@ -512,7 +607,7 @@ _DestoryProcessStat(PVRSRV_PROCESS_STATS* psProcessStats)
 #if defined(PVR_RI_DEBUG)
 	OSRemoveStatisticEntry(psProcessStats->psRIMemoryStats->pvOSRIMemEntryData);
 #endif
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_MEMORY_STATS) && !defined(PVRSRV_MEMORY_STATS_LITE)
 	OSRemoveStatisticEntry(psProcessStats->psMemoryStats->pvOSMemEntryData);
 #endif
 	OSRemoveStatisticEntry(psProcessStats->pvOSPidEntryData);
@@ -536,7 +631,7 @@ _DestoryProcessStat(PVRSRV_PROCESS_STATS* psProcessStats)
 	}
 
 	/* Free the memory statistics... */
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_MEMORY_STATS) && !defined(PVRSRV_MEMORY_STATS_LITE)
 	while (psProcessStats->psMemoryStats->psMemoryRecords)
 	{
 		List_PVRSRV_MEM_ALLOC_REC_Remove(psProcessStats->psMemoryStats->psMemoryRecords);
@@ -648,6 +743,12 @@ PVRSRVStatsDestroy(IMG_VOID)
 {
 	PVR_ASSERT(bProcessStatsInitialised == IMG_TRUE);
 
+	if (pvOSPowerStatsEntryData!=NULL)
+	{
+		OSRemoveStatisticEntry(pvOSPowerStatsEntryData);
+		pvOSPowerStatsEntryData=NULL;
+	}
+
 	/* Stop monitoring memory allocations... */
 	bProcessStatsInitialised = IMG_FALSE;
 
@@ -741,7 +842,7 @@ PVRSRVStatsRegisterProcess(IMG_HANDLE* phProcessStats)
 	psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_CONNECTIONS]     = 1;
 	psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_CONNECTIONS] = 1;
 
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_MEMORY_STATS) && !defined(PVRSRV_MEMORY_STATS_LITE)
 	psProcessStats->psMemoryStats = OSAllocMem(sizeof(PVRSRV_MEMORY_STATS));
 	if (psProcessStats->psMemoryStats == IMG_NULL)
 	{
@@ -784,7 +885,15 @@ PVRSRVStatsRegisterProcess(IMG_HANDLE* phProcessStats)
 	                                                           PVRSRVStatsObtainElement,
 	                                                           (IMG_PVOID) psProcessStats);
 
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+	if (pvOSPowerStatsEntryData==NULL)
+	{
+        pvOSPowerStatsEntryData  = OSCreateStatisticEntry("power_timings_stats",
+													NULL,
+													PVRSRVPowerStatsObtainElement,
+		                                            (IMG_PVOID) psProcessStats);
+	}
+
+#if defined(PVRSRV_ENABLE_MEMORY_STATS) && !defined(PVRSRV_MEMORY_STATS_LITE)
 	psProcessStats->psMemoryStats->pvOSMemEntryData = OSCreateStatisticEntry("mem_area",
 	                                                           psProcessStats->pvOSPidFolderData,
 	                                                           PVRSRVStatsObtainElement,
@@ -844,7 +953,7 @@ PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
                              IMG_SIZE_T uiBytes,
                              IMG_PVOID pvPrivateData)
 {
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_MEMORY_STATS) && !defined(PVRSRV_MEMORY_STATS_LITE)
 	IMG_PID                currentPid = OSGetCurrentProcessIDKM();
     PVRSRV_MEM_ALLOC_REC*  psRecord   = IMG_NULL;
     PVRSRV_PROCESS_STATS*  psProcessStats;
@@ -861,11 +970,9 @@ PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 	 *  which come from our own OSAllocMem() as that would just call
 	 *  OSAllocMem() again!!! Instead we just update the usage counter.
 	 */
-	if (eAllocType != PVRSRV_MEM_ALLOC_TYPE_KMALLOC  ||
-	    uiBytes != sizeof(PVRSRV_MEM_ALLOC_REC))
-	{
+
 		/* Allocate the memory record... */
-		psRecord = OSAllocMem(sizeof(PVRSRV_MEM_ALLOC_REC));
+	psRecord = OSAllocMemstatMem(sizeof(PVRSRV_MEM_ALLOC_REC));
 		if (psRecord == IMG_NULL)
 		{
 			return;
@@ -877,7 +984,6 @@ PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		psRecord->sCpuPAddr.uiAddr = sCpuPAddr.uiAddr;
 		psRecord->uiBytes          = uiBytes;
 		psRecord->pvPrivateData    = pvPrivateData;
-	}
 
 	/* Lock while we find the correct process... */
 	OSLockAcquire(psLinkedListLock);
@@ -888,7 +994,7 @@ PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 		OSLockRelease(psLinkedListLock);
 		if (psRecord != IMG_NULL)
 		{
-			OSFreeMem(psRecord);
+			OSFreeMemstatMem(psRecord);
 		}
 		return;
 	}
@@ -907,36 +1013,116 @@ PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 	{
 		case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
 		{
+			if (psRecord != IMG_NULL)
+			{
+				if (pvCpuVAddr == IMG_NULL)
+				{
+					return;
+				}
+				psRecord->ui64Key = (IMG_UINT64)(IMG_UINTPTR_T)pvCpuVAddr;
+			}
 			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] += uiBytes;
 			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_KMALLOC],
 							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC]);
 		}
 		break;
 		
-		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES:
+		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:
 		{
-			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES] += uiBytes;
-			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_PAGES],
-							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES]);
+			if (psRecord != IMG_NULL)
+			{
+				if (pvCpuVAddr == IMG_NULL)
+				{
+					return;
+				}
+				psRecord->ui64Key = (IMG_UINT64)(IMG_UINTPTR_T)pvCpuVAddr;
+			}
+			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] += uiBytes;
+			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_PAGES_PT_UMA],
+							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA]);
 		}
 		break;
 		
-		case PVRSRV_MEM_ALLOC_TYPE_IOREMAP:
+		case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:
 		{
-			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP] += uiBytes;
-			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_IOREMAP],
-							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP]);
+			if (psRecord != IMG_NULL)
+			{
+				if (pvCpuVAddr == IMG_NULL)
+				{
+					return;
+				}
+				psRecord->ui64Key = (IMG_UINT64)(IMG_UINTPTR_T)pvCpuVAddr;
+			}
+			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] += uiBytes;
+			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_VMAP_PT_UMA],
+							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA]);
+		}
+		break;
+		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:
+		{
+			if (psRecord != IMG_NULL)
+			{
+				psRecord->ui64Key = sCpuPAddr.uiAddr;
+			}
+			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] += uiBytes;
+			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_PAGES_PT_LMA],
+							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA]);
+		}
+		break;
+		case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:
+		{
+			if (psRecord != IMG_NULL)
+			{
+				if (pvCpuVAddr == IMG_NULL)
+				{
+					return;
+				}
+				psRecord->ui64Key = (IMG_UINT64)(IMG_UINTPTR_T)pvCpuVAddr;
+			}
+			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] += uiBytes;
+			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_IOREMAP_PT_LMA],
+							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA]);
 		}
 		break;
 		
-		case PVRSRV_MEM_ALLOC_TYPE_VMAP:
+		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES:
 		{
-			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP] += uiBytes;
-			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_VMAP],
-							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP]);
+			if (psRecord != IMG_NULL)
+			{
+				psRecord->ui64Key = sCpuPAddr.uiAddr;
+			}
+			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] += uiBytes;
+			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_LMA_PAGES],
+							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES]);
 		}
 		break;
 		
+		case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES:
+		{
+			if (psRecord != IMG_NULL)
+			{
+				psRecord->ui64Key = sCpuPAddr.uiAddr;
+			}
+			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] += uiBytes;
+			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_UMA_PAGES],
+							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES]);
+		}
+		break;
+		case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES:
+		{
+			if (psRecord != IMG_NULL)
+			{
+				if (pvCpuVAddr == IMG_NULL)
+				{
+					return;
+				}
+				psRecord->ui64Key = (IMG_UINT64)(IMG_UINTPTR_T)pvCpuVAddr;
+			}
+			psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] += uiBytes;
+			UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_MAP_UMA_LMA_PAGES],
+							 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES]);
+		}
+		break;
 		default:
 		{
 			PVR_ASSERT(0);
@@ -957,12 +1143,14 @@ PVR_UNREFERENCED_PARAMETER(pvPrivateData);
 
 IMG_VOID
 PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
-                                IMG_VOID *pvCpuVAddr)
+								IMG_UINT64 ui64Key)
 {
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
-	IMG_PID                currentPid = OSGetCurrentProcessIDKM();
-	PVRSRV_MEM_ALLOC_REC*  psRecord   = IMG_NULL;
-    PVRSRV_PROCESS_STATS*  psProcessStats;
+#if defined(PVRSRV_ENABLE_MEMORY_STATS) && !defined(PVRSRV_MEMORY_STATS_LITE)
+	IMG_PID                currentPid     = OSGetCurrentProcessIDKM();
+    PVRSRV_PROCESS_STATS*  psProcessStats = IMG_NULL;
+	PVRSRV_MEMORY_STATS*   psMemoryStats  = IMG_NULL;
+	PVRSRV_MEM_ALLOC_REC*  psRecord       = IMG_NULL;
+    IMG_BOOL               bFound         = IMG_FALSE;
 
     /* Don't do anything if we are not initialised or we are shutting down! */
     if (!bProcessStatsInitialised)
@@ -973,100 +1161,208 @@ PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 	/* Lock while we find the correct process and remove this record... */
 	OSLockAcquire(psLinkedListLock);
 
+	/* First look for the record in the current PID... */
     psProcessStats = _FindProcessStats(currentPid);
     if (psProcessStats != IMG_NULL)
     {
-		PVRSRV_MEMORY_STATS*   psMemoryStats = psProcessStats->psMemoryStats;
-
-		psRecord = psMemoryStats->psMemoryRecords;
+		psMemoryStats = psProcessStats->psMemoryStats;
+		psRecord      = psMemoryStats->psMemoryRecords;
 		while (psRecord != IMG_NULL)
 		{
-			if (psRecord->pvCpuVAddr == pvCpuVAddr  &&  psRecord->eAllocType == eAllocType)
+			if (psRecord->ui64Key == ui64Key  &&  psRecord->eAllocType == eAllocType)
 			{
-				/* Update the watermark and remove this record...*/
-				switch (eAllocType)
-				{
-					case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
-					{
-						if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] >= psRecord->uiBytes)
-						{
-							psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] -= psRecord->uiBytes;
-						}
-						else
-						{
-							psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] = 0;
-						}
-					}
-					break;
-					
-					case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES:
-					{
-						if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES] >= psRecord->uiBytes)
-						{
-							psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES] -= psRecord->uiBytes;
-						}
-						else
-						{
-							psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES] = 0;
-						}
-					}
-					break;
-					
-					case PVRSRV_MEM_ALLOC_TYPE_IOREMAP:
-					{
-						if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP] >= psRecord->uiBytes)
-						{
-							psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP] -= psRecord->uiBytes;
-						}
-						else
-						{
-							psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP] = 0;
-						}
-					}
-					break;
-					
-					case PVRSRV_MEM_ALLOC_TYPE_VMAP:
-					{
-						if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP] >= psRecord->uiBytes)
-						{
-							psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP] -= psRecord->uiBytes;
-						}
-						else
-						{
-							psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP] = 0;
-						}
-					}
-					break;
-					
-					default:
-					{
-						PVR_ASSERT(0);
-					}
-					break;
-				}
-
-				psMemoryStats->ui32LastStatNumberRequested = 0;
-				psMemoryStats->psLastStatMemoryRecordFound = IMG_NULL;
-				List_PVRSRV_MEM_ALLOC_REC_Remove(psRecord);
+				bFound = IMG_TRUE;
 				break;
 			}
 
 			psRecord = psRecord->psNext;
 		}
-		
-		if (psRecord == IMG_NULL  &&
-		    eAllocType == PVRSRV_MEM_ALLOC_TYPE_KMALLOC)
+	}
+
+	/* If not found, we need to do a full search in case it was allocated to a different PID... */
+	if (!bFound)
+	{
+		PVRSRV_PROCESS_STATS*  psProcessStatsAlreadyChecked = psProcessStats;
+
+		/* Search all live lists first... */
+		psProcessStats = psLiveList;
+		while (psProcessStats != IMG_NULL)
 		{
-			/* Most likely this is one of our own data structures... */
-			if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] >= sizeof(PVRSRV_MEM_ALLOC_REC))
+			if (psProcessStats != psProcessStatsAlreadyChecked)
 			{
-				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] -= sizeof(PVRSRV_MEM_ALLOC_REC);
+				psMemoryStats = psProcessStats->psMemoryStats;
+				psRecord      = psMemoryStats->psMemoryRecords;
+				while (psRecord != IMG_NULL)
+				{
+					if (psRecord->ui64Key == ui64Key  &&  psRecord->eAllocType == eAllocType)
+					{
+						bFound = IMG_TRUE;
+						break;
+					}
+
+					psRecord = psRecord->psNext;
+				}
 			}
-			else
+			
+			if (bFound)
 			{
-				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] = 0;
+				break;
+			}
+
+			psProcessStats = psProcessStats->psNext;
+		}
+
+		/* If not found, then search all dead lists next... */
+		if (!bFound)
+		{
+			psProcessStats = psDeadList;
+			while (psProcessStats != IMG_NULL)
+			{
+				if (psProcessStats != psProcessStatsAlreadyChecked)
+				{
+					psMemoryStats = psProcessStats->psMemoryStats;
+					psRecord      = psMemoryStats->psMemoryRecords;
+					while (psRecord != IMG_NULL)
+					{
+						if (psRecord->ui64Key == ui64Key  &&  psRecord->eAllocType == eAllocType)
+						{
+							bFound = IMG_TRUE;
+							break;
+						}
+
+						psRecord = psRecord->psNext;
+					}
+				}
+				
+				if (bFound)
+				{
+					break;
+				}
+
+				psProcessStats = psProcessStats->psNext;
 			}
 		}
+	}
+
+	/* Update the watermark and remove this record...*/
+	if (bFound)
+	{
+		switch (eAllocType)
+		{
+			case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] >= psRecord->uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] -= psRecord->uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] = 0;
+				}
+			}
+			break;
+					
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] >= psRecord->uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] -= psRecord->uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] = 0;
+				}
+			}
+			break;
+					
+			case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] >= psRecord->uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] -= psRecord->uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] >= psRecord->uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] -= psRecord->uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] >= psRecord->uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] -= psRecord->uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] >= psRecord->uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] -= psRecord->uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] >= psRecord->uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] -= psRecord->uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] >= psRecord->uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] -= psRecord->uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] = 0;
+				}
+			}
+			break;
+
+			default:
+			{
+				PVR_ASSERT(0);
+			}
+			break;
+		}
+
+		psMemoryStats->ui32LastStatNumberRequested = 0;
+		psMemoryStats->psLastStatMemoryRecordFound = IMG_NULL;
+		List_PVRSRV_MEM_ALLOC_REC_Remove(psRecord);
 	}
 
 	OSLockRelease(psLinkedListLock);
@@ -1077,13 +1373,247 @@ PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 	 */
 	if (psRecord != IMG_NULL)
 	{
-		OSFreeMem(psRecord);
+		OSFreeMemstatMem(psRecord);
 	}
 #else
 PVR_UNREFERENCED_PARAMETER(eAllocType);
-PVR_UNREFERENCED_PARAMETER(pvCpuVAddr);
+PVR_UNREFERENCED_PARAMETER(ui64Key);
 #endif
 } /* PVRSRVStatsRemoveMemAllocRecord */
+
+IMG_VOID
+PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
+        							IMG_SIZE_T uiBytes)
+{
+#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+	IMG_PID                currentPid = OSGetCurrentProcessIDKM();
+    PVRSRV_PROCESS_STATS*  psProcessStats;
+
+    /* Don't do anything if we are not initialised or we are shutting down! */
+    if (!bProcessStatsInitialised)
+    {
+		return;
+	}
+
+    psProcessStats = _FindProcessStats(currentPid);
+    if (psProcessStats != IMG_NULL)
+    {
+		/* Update the memory watermarks... */
+		switch (eAllocType)
+		{
+			case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
+			{
+				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] += uiBytes;
+				UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_KMALLOC],
+								 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC]);
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:
+			{
+				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] += uiBytes;
+				UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_PAGES_PT_UMA],
+								 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA]);
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:
+			{
+				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] += uiBytes;
+				UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_VMAP_PT_UMA],
+								 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA]);
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:
+			{
+				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] += uiBytes;
+				UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_PAGES_PT_LMA],
+								 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA]);
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:
+			{
+				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] += uiBytes;
+				UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_IOREMAP_PT_LMA],
+								 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA]);
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES:
+			{
+				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] += uiBytes;
+				UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_LMA_PAGES],
+								 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES]);
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES:
+			{
+				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] += uiBytes;
+				UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_ALLOC_UMA_PAGES],
+								 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES]);
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES:
+			{
+				psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] += uiBytes;
+				UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAX_MAP_UMA_LMA_PAGES],
+								 psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES]);
+			}
+			break;
+
+			default:
+			{
+				PVR_ASSERT(0);
+			}
+			break;
+		}
+    }
+#else
+	PVR_UNREFERENCED_PARAMETER(eAllocType);
+	PVR_UNREFERENCED_PARAMETER(uiBytes);
+#endif
+}
+
+IMG_VOID
+PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
+        							IMG_SIZE_T uiBytes)
+{
+#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+	IMG_PID                currentPid = OSGetCurrentProcessIDKM();
+    PVRSRV_PROCESS_STATS*  psProcessStats;
+
+    /* Don't do anything if we are not initialised or we are shutting down! */
+    if (!bProcessStatsInitialised)
+    {
+		return;
+	}
+
+    psProcessStats = _FindProcessStats(currentPid);
+    if (psProcessStats != IMG_NULL)
+    {
+		/* Update the memory watermarks... */
+		switch (eAllocType)
+		{
+			case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] >= uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] -= uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_KMALLOC] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] >= uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] -= uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_UMA] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] >= uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] -= uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_VMAP_PT_UMA] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] >= uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] -= uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_PAGES_PT_LMA] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] >= uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] -= uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_IOREMAP_PT_LMA] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] >= uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] -= uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_LMA_PAGES] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] >= uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] -= uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_ALLOC_UMA_PAGES] = 0;
+				}
+			}
+			break;
+
+			case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES:
+			{
+				if (psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] >= uiBytes)
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] -= uiBytes;
+				}
+				else
+				{
+					psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_MAP_UMA_LMA_PAGES] = 0;
+				}
+			}
+			break;
+
+			default:
+			{
+				PVR_ASSERT(0);
+			}
+			break;
+	}
+	}
+#else
+	PVR_UNREFERENCED_PARAMETER(eAllocType);
+	PVR_UNREFERENCED_PARAMETER(uiBytes);
+#endif
+}
 
 
 IMG_VOID
@@ -1091,9 +1621,13 @@ PVRSRVStatsUpdateRenderContextStats(IMG_UINT32 ui32TotalNumPartialRenders,
                                     IMG_UINT32 ui32TotalNumOutOfMemory,
                                     IMG_UINT32 ui32NumTAStores,
                                     IMG_UINT32 ui32Num3DStores,
-                                    IMG_UINT32 ui32NumSHStores)
+                                    IMG_UINT32 ui32NumSHStores,
+                                    IMG_UINT32 ui32NumCDMStores,
+                                    IMG_PID pidOwner)
 {
-	IMG_PID                currentPid = OSGetCurrentProcessIDKM();
+	//IMG_PID                currentPid = OSGetCurrentProcessIDKM();
+	IMG_PID	pidCurrent=pidOwner;
+
     PVRSRV_PROCESS_STATS*  psProcessStats;
 
     /* Don't do anything if we are not initialised or we are shutting down! */
@@ -1105,7 +1639,7 @@ PVRSRVStatsUpdateRenderContextStats(IMG_UINT32 ui32TotalNumPartialRenders,
 	/* Lock while we find the correct process and update the record... */
 	OSLockAcquire(psLinkedListLock);
 
-    psProcessStats = _FindProcessStats(currentPid);
+    psProcessStats = _FindProcessStats(pidCurrent);
     if (psProcessStats != IMG_NULL)
     {
 		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_PRS]       += ui32TotalNumPartialRenders;
@@ -1113,7 +1647,12 @@ PVRSRVStatsUpdateRenderContextStats(IMG_UINT32 ui32TotalNumPartialRenders,
 		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_TA_STORES] += ui32NumTAStores;
 		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_3D_STORES] += ui32Num3DStores;
 		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_SH_STORES] += ui32NumSHStores;
+		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_RC_CDM_STORES]+= ui32NumCDMStores;
 	}
+    else
+    {
+    	PVR_DPF((PVR_DBG_WARNING, "PVRSRVStatsUpdateRenderContextStats: Null process. Pid=%d", pidCurrent));
+    }
 
 	OSLockRelease(psLinkedListLock);
 } /* PVRSRVStatsUpdateRenderContextStats */
@@ -1121,10 +1660,12 @@ PVRSRVStatsUpdateRenderContextStats(IMG_UINT32 ui32TotalNumPartialRenders,
 
 IMG_VOID
 PVRSRVStatsUpdateZSBufferStats(IMG_UINT32 ui32NumReqByApp,
-                               IMG_UINT32 ui32NumReqByFW)
+                               IMG_UINT32 ui32NumReqByFW,
+                               IMG_PID owner)
 {
-	IMG_PID                currentPid = OSGetCurrentProcessIDKM();
+	IMG_PID                currentPid = (owner==0)?OSGetCurrentProcessIDKM():owner;
     PVRSRV_PROCESS_STATS*  psProcessStats;
+
 
     /* Don't do anything if we are not initialised or we are shutting down! */
     if (!bProcessStatsInitialised)
@@ -1150,9 +1691,10 @@ IMG_VOID
 PVRSRVStatsUpdateFreelistStats(IMG_UINT32 ui32NumGrowReqByApp,
                                IMG_UINT32 ui32NumGrowReqByFW,
                                IMG_UINT32 ui32InitFLPages,
-                               IMG_UINT32 ui32NumHighPages)
+                               IMG_UINT32 ui32NumHighPages,
+                               IMG_PID ownerPid)
 {
-	IMG_PID                currentPid = OSGetCurrentProcessIDKM();
+	IMG_PID                currentPid = (ownerPid!=0)?ownerPid:OSGetCurrentProcessIDKM();
     PVRSRV_PROCESS_STATS*  psProcessStats;
 
     /* Don't do anything if we are not initialised or we are shutting down! */
@@ -1164,15 +1706,31 @@ PVRSRVStatsUpdateFreelistStats(IMG_UINT32 ui32NumGrowReqByApp,
 	/* Lock while we find the correct process and update the record... */
 	OSLockAcquire(psLinkedListLock);
 
-    psProcessStats = _FindProcessStats(currentPid);
+	psProcessStats = _FindProcessStats(currentPid);
+
     if (psProcessStats != IMG_NULL)
     {
+		/* Avoid signed / unsigned mismatch which is flagged by some compilers */
+		IMG_INT32 a, b;
+
 		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_GROW_REQS_BY_APP] += ui32NumGrowReqByApp;
 		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_GROW_REQS_BY_FW]  += ui32NumGrowReqByFW;
-		UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_PAGES_INIT],
-		                 ui32InitFLPages);
-		UPDATE_MAX_VALUE(psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_MAX_PAGES],
-		                 ui32NumHighPages);
+		
+		a=psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_PAGES_INIT];
+		b=(IMG_INT32)(ui32InitFLPages);
+		UPDATE_MAX_VALUE(a, b);
+
+		
+		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_PAGES_INIT]=a;
+		ui32InitFLPages=(IMG_UINT32)b;
+
+		a=psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_MAX_PAGES];
+		b=(IMG_INT32)ui32NumHighPages;
+
+		UPDATE_MAX_VALUE(a, b);
+		psProcessStats->i32StatValue[PVRSRV_PROCESS_STAT_TYPE_FREELIST_PAGES_INIT]=a;
+		ui32InitFLPages=(IMG_UINT32)b;
+
 	}
 
 	OSLockRelease(psLinkedListLock);
@@ -1215,7 +1773,7 @@ _ObtainProcessStatistic(PVRSRV_PROCESS_STATS* psProcessStats,
 } /* _ObtainProcessStatistic */
 
 
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_MEMORY_STATS) && !defined(PVRSRV_MEMORY_STATS_LITE)
 /*************************************************************************/ /*!
 @Function       _ObtainMemoryStatistic
 @Description    Returns a specific statistic number for a memory area.
@@ -1257,7 +1815,7 @@ _ObtainMemoryStatistic(PVRSRV_MEMORY_STATS* psMemoryStats,
 		if (ui32ItemNumber == 0)
 		{
 			*pi32StatData    = 0;
-			*ppszStatFmtText = "Type         ";
+			*ppszStatFmtText = "Type                ";
 		}
 		else if (ui32ItemNumber-1 < ui32VAddrFields)
 		{
@@ -1313,11 +1871,15 @@ _ObtainMemoryStatistic(PVRSRV_MEMORY_STATS* psMemoryStats,
 			*pi32StatData    = 0;
 			switch (psRecord->eAllocType)
 			{
-				case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:      *ppszStatFmtText = "KMALLOC      "; break;
-				case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES:  *ppszStatFmtText = "ALLOC_PAGES  "; break;
-				case PVRSRV_MEM_ALLOC_TYPE_IOREMAP:      *ppszStatFmtText = "IOREMAP      "; break;
-				case PVRSRV_MEM_ALLOC_TYPE_VMAP:         *ppszStatFmtText = "VMAP         "; break;
-				default:                                 *ppszStatFmtText = "INVALID      "; break;
+				case PVRSRV_MEM_ALLOC_TYPE_KMALLOC:      		*ppszStatFmtText = "KMALLOC             "; break;
+				case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA:  *ppszStatFmtText = "ALLOC_PAGES_PT_LMA  "; break;
+				case PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA:  *ppszStatFmtText = "ALLOC_PAGES_PT_UMA  "; break;
+				case PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA:      *ppszStatFmtText = "IOREMAP_PT_LMA      "; break;
+				case PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA:         *ppszStatFmtText = "VMAP_PT_UMA         "; break;
+				case PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES: 	*ppszStatFmtText = "ALLOC_LMA_PAGES     "; break;
+				case PVRSRV_MEM_ALLOC_TYPE_ALLOC_UMA_PAGES: *ppszStatFmtText = "ALLOC_UMA_PAGES    "; break;
+				case PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES: *ppszStatFmtText = "MAP_UMA_LMA_PAGES   "; break;
+				default:                                 		*ppszStatFmtText = "INVALID             "; break;
 			}
 		}
 		else if (ui32ItemNumber-1 < ui32VAddrFields)
@@ -1419,7 +1981,7 @@ PVRSRVStatsObtainElement(IMG_PVOID pvStatPtr, IMG_UINT32 ui32StatNumber,
 		return _ObtainProcessStatistic(psProcessStats, ui32StatNumber,
 									   pi32StatData, ppszStatFmtText);
 	}
-#if defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_MEMORY_STATS) && !defined(PVRSRV_MEMORY_STATS_LITE)
 	else if (*peStructureType == PVRSRV_STAT_STRUCTURE_MEMORY)
 	{
 		PVRSRV_MEMORY_STATS*  psMemoryStats = (PVRSRV_MEMORY_STATS*) pvStatPtr;
@@ -1444,4 +2006,133 @@ PVRSRVStatsObtainElement(IMG_PVOID pvStatPtr, IMG_UINT32 ui32StatNumber,
 	return IMG_FALSE;
 } /* PVRSRVStatsObtainElement */
 
+static IMG_UINT32	ui32FirmwareStartTimestamp=0;
+static IMG_UINT64	ui64FirmwareIdleDuration=0;
 
+/* Averaging each new value with the previous accumulated knowledge. There are many coefficients for that
+ * (e.g.) 50 / 50 but i chose 75 / 25 meaning that previous knowledge affects the weighted average more
+ * than any new knowledge. As time goes by though eventually the number converges to the most commonly used
+ */
+
+IMG_VOID SetFirmwareStartTime(IMG_UINT32 ui32Time)
+{
+    if (ui32FirmwareStartTimestamp > 0)
+    {
+        ui32FirmwareStartTimestamp=MEAN_TIME(ui32FirmwareStartTimestamp, ui32Time);
+    }
+    else
+    {
+        ui32FirmwareStartTimestamp = ui32Time;
+    }
+}
+
+IMG_VOID SetFirmwareHandshakeIdleTime(IMG_UINT64 ui64Duration)
+{
+    if (ui64FirmwareIdleDuration > 0)
+	{
+        ui64FirmwareIdleDuration=MEAN_TIME(ui64FirmwareIdleDuration, ui64Duration);
+	}
+	else
+	{
+		ui64FirmwareIdleDuration = ui64Duration;
+	}
+}
+
+
+IMG_BOOL PVRSRVPowerStatsObtainElement(IMG_PVOID pvStatPtr, IMG_UINT32 ui32StatNumber,
+                         IMG_INT32* pi32StatData, IMG_CHAR** ppszStatFmtText)
+{
+	PVRSRV_STAT_STRUCTURE_TYPE*  peStructureType = (PVRSRV_STAT_STRUCTURE_TYPE*) pvStatPtr;
+
+    if (peStructureType == IMG_NULL  ||  pi32StatData == IMG_NULL)
+	{
+		/* Stat type not handled probably indicates bad pointers... */
+		PVR_ASSERT(IMG_FALSE);
+		return IMG_FALSE;
+	}
+
+    switch(ui32StatNumber)
+    {
+        case PVRSRV_POWER_TIMING_STAT_FORCED_POWER_TRANSITION:
+        {
+            (*ppszStatFmtText)="Forced Power Transition (nanoseconds):\n\n";
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_PRE_DEVICE:
+        {
+            (*ppszStatFmtText)="Pre-Device: %u\n";
+            (*pi32StatData)= ((IMG_UINT32)(ui64ForcedPreDevice)/(IMG_UINT32) ui64TotalForcedEntries);
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_PRE_SYSTEM:
+        {
+            (*ppszStatFmtText)="Pre-System: %u\n";
+            (*pi32StatData)=((IMG_UINT32)(ui64ForcedPreSystem)/(IMG_UINT32) ui64TotalForcedEntries);
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_POST_DEVICE:
+        {
+            (*ppszStatFmtText)="Post-Device: %u\n";
+            (*pi32StatData)=((IMG_UINT32)(ui64ForcedPostDevice)/(IMG_UINT32) ui64TotalForcedEntries);
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_POST_SYSTEM:
+        {
+            (*ppszStatFmtText)="Post-System: %u\n";
+            (*pi32StatData)=((IMG_UINT32)(ui64ForcedPostSystem)/(IMG_UINT32) ui64TotalForcedEntries);
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_NEWLINE1:
+        case PVRSRV_POWER_TIMING_STAT_NEWLINE2:
+        {
+            (*ppszStatFmtText)="\n\n\n\n";
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_NOT_FORCED_POWER_TRANSITION:
+        {
+            (*ppszStatFmtText)="Not Forced Power Transition (nanoseconds):\n\n";
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_NON_PRE_DEVICE:
+        {
+            (*ppszStatFmtText)="Pre-Device: %u\n";
+            (*pi32StatData)=((IMG_UINT32)(ui64NotForcedPreDevice)/(IMG_UINT32) ui64TotalNotForcedEntries);
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_NON_PRE_SYSTEM:
+        {
+            (*ppszStatFmtText)="Pre-System: %u\n";
+            (*pi32StatData)=((IMG_UINT32)(ui64NotForcedPreSystem)/(IMG_UINT32) ui64TotalNotForcedEntries);
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_NON_POST_DEVICE:
+        {
+            (*ppszStatFmtText)="Post-Device: %u\n";
+            (*pi32StatData)= ((IMG_UINT32)(ui64NotForcedPostDevice)/(IMG_UINT32) ui64TotalNotForcedEntries);
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_NON_POST_SYSTEM:
+        {
+            (*ppszStatFmtText)="Post-System: %u\n";
+            (*pi32StatData)=((IMG_UINT32)(ui64NotForcedPostSystem)/(IMG_UINT32) ui64TotalNotForcedEntries);
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_FW_BOOTUP_TIME:
+        {
+            (*ppszStatFmtText)="FW bootup time (timer tics): %u\n";
+            (*pi32StatData)=ui32FirmwareStartTimestamp;
+            break;
+        }
+        case PVRSRV_POWER_TIMING_STAT_HOST_ACK:
+        {
+            (*ppszStatFmtText)="Host Acknowledge Time for FW Idle Signal (timer tics): %u\n";
+            (*pi32StatData)=(IMG_UINT32)(ui64FirmwareIdleDuration);
+            break;
+        }
+        default:
+        {
+            return IMG_FALSE;
+        }
+    }
+    return IMG_TRUE;
+}

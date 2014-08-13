@@ -43,7 +43,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifndef __IMG_TYPES_H__
 #define __IMG_TYPES_H__
-
+#if defined (__cplusplus)
+extern "C" {
+#endif
 /* number of bits in the units returned by sizeof */
 #define IMG_CHAR_BIT 8
 
@@ -64,13 +66,8 @@ typedef IMG_CHAR const				*IMG_PCCHAR;
 
 typedef unsigned short	IMG_UINT16,	*IMG_PUINT16;
 typedef signed short	IMG_INT16,	*IMG_PINT16;
-#if !defined(IMG_UINT32_IS_ULONG)
 typedef unsigned int	IMG_UINT32,	*IMG_PUINT32;
 typedef signed int		IMG_INT32,	*IMG_PINT32;
-#else
-typedef unsigned long	IMG_UINT32,	*IMG_PUINT32;
-typedef signed long		IMG_INT32,	*IMG_PINT32;
-#endif
 #if !defined(IMG_UINT32_MAX)
 	#define IMG_UINT32_MAX 0xFFFFFFFFUL
 #endif
@@ -103,6 +100,9 @@ typedef __int64			IMG_INT64,  *IMG_PINT64;
 		#error("define an OS")
 	#endif
 #endif
+#if !defined(IMG_UINT64_MAX)
+	#define IMG_UINT64_MAX 0xFFFFFFFFFFFFFFFFULL
+#endif
 
 #if !(defined(LINUX) && defined (__KERNEL__))
 /* Linux kernel mode does not use floating point */
@@ -117,10 +117,7 @@ typedef union _IMG_UINT32_FLOAT_
 
 #endif
 
-
-#if defined(SUPPORT_SECURE_EXPORT)
 typedef int				IMG_SECURE_TYPE;
-#endif
 
 typedef	enum tag_img_bool
 {
@@ -128,6 +125,7 @@ typedef	enum tag_img_bool
 	IMG_TRUE		= 1,
 	IMG_FORCE_ALIGN = 0x7FFFFFFF
 } IMG_BOOL, *IMG_PBOOL;
+typedef IMG_BOOL const* IMG_PCBOOL;
 
 typedef void            IMG_VOID, *IMG_PVOID;
 typedef IMG_VOID const* IMG_PCVOID;
@@ -279,6 +277,9 @@ typedef struct _IMG_RECT_16_
 	IMG_INT16	y1;
 }IMG_RECT_16;
 
+#if defined (__cplusplus)
+}
+#endif
 
 #include "img_defs.h"
 

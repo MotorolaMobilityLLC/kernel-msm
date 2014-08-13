@@ -51,14 +51,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ossecure_export.h"
 #include "env_connection.h"
 #include "private_data.h"
-#include "mutex.h"
 #include "pvr_debug.h"
+#include "driverlock.h"
 
 #if defined(SUPPORT_DRM)
 #include "pvr_drm.h"
 #endif
-
-extern PVRSRV_LINUX_MUTEX gPVRSRVLock;
 
 PVRSRV_ERROR OSSecureExport(CONNECTION_DATA *psConnection,
 							IMG_PVOID pvData,
@@ -102,7 +100,7 @@ PVRSRV_ERROR OSSecureExport(CONNECTION_DATA *psConnection,
 		FIXME: Release the "master" lock as the open below will trigger the 
 		lock to be taken again.
 	*/
-	LinuxUnLockMutex(&gPVRSRVLock);
+	mutex_unlock(&gPVRSRVLock);
 
 	/* Open our device (using the file information from our current connection) */
 	secure_file = dentry_open(
@@ -115,7 +113,7 @@ PVRSRV_ERROR OSSecureExport(CONNECTION_DATA *psConnection,
 					  connection_file->f_flags,
 					  current_cred());
 
-	LinuxLockMutex(&gPVRSRVLock);
+	mutex_lock(&gPVRSRVLock);
 
 	/* Bail if the open failed */
 	if (IS_ERR(secure_file))

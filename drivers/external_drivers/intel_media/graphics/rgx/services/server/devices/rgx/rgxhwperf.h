@@ -84,6 +84,12 @@ PVRSRV_ERROR PVRSRVRGXCtrlHWPerfCountersKM(
 	    IMG_UINT32 				ui32ArrayLen,
 	    IMG_UINT8*				psBlockIDs);
 
+PVRSRV_ERROR PVRSRVRGXConfigCustomCountersKM(
+		PVRSRV_DEVICE_NODE*     psDeviceNode,
+		IMG_UINT16              ui16CustomBlockID,
+		IMG_UINT16              ui16NumCustomCounters,
+		IMG_UINT32*             pui32CustomCounterIDs);
+
 /******************************************************************************
  * RGX HW Performance To FTrace Profiling API(s)
  *****************************************************************************/
@@ -94,7 +100,7 @@ PVRSRV_ERROR RGXHWPerfFTraceGPUInit(PVRSRV_RGXDEV_INFO *psDevInfo);
 IMG_VOID RGXHWPerfFTraceGPUDeInit(PVRSRV_RGXDEV_INFO *psDevInfo);
 
 IMG_VOID RGXHWPerfFTraceGPUEnqueueEvent(PVRSRV_RGXDEV_INFO *psDevInfo,
-		IMG_UINT32 ui32FrameNum, IMG_UINT32 ui32RTData,
+		IMG_UINT32 ui32ExternalJobRef, IMG_UINT32 ui32InternalJobRef,
 		const IMG_CHAR* pszJobType);
 
 IMG_VOID RGXHWPerfFTraceGPUEventsEnabledSet(IMG_BOOL bNewValue);

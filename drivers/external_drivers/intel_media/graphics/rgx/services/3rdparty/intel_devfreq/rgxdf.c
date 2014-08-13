@@ -64,38 +64,65 @@ static PVRSRV_DEVICE_NODE* RGXGetDeviceNode(void)
 {
 	if(pDevNode == IMG_NULL)
 	{
-		PVRSRV_DEVICE_IDENTIFIER *pDeviceList = IMG_NULL;
+		PVRSRV_DEVICE_TYPE *peDeviceTypeInt = IMG_NULL;
+		PVRSRV_DEVICE_CLASS *peDeviceClassInt = IMG_NULL;
+		IMG_UINT32 *pui32DeviceIndexInt = IMG_NULL;
 		IMG_HANDLE hDevCookie = IMG_NULL;
 		IMG_UINT32 numDevices = 0;
 		IMG_UINT32 i = 0;
 		IMG_UINT32 rgxIndex = IMG_UINT32_MAX;
 		IMG_UINT32 error = 0;
 
-		pDeviceList = OSAllocMem(PVRSRV_MAX_DEVICES * sizeof(PVRSRV_DEVICE_IDENTIFIER));
-		if (pDeviceList)
+		peDeviceTypeInt = kzalloc(PVRSRV_MAX_DEVICES * sizeof(PVRSRV_DEVICE_TYPE), GFP_KERNEL);
+		if (!peDeviceTypeInt)
 		{
+			error = PVRSRV_ERROR_OUT_OF_MEMORY;
+			goto EnumerateDevices_exit;
+		}
 
-			/* Enumerate active devices */
-			error = PVRSRVEnumerateDevicesKM(&numDevices, pDeviceList);
-			if(!error && pDeviceList){
-				for(i =0; i < numDevices; i++){
-					if(  pDeviceList[i].eDeviceType == PVRSRV_DEVICE_TYPE_RGX){
-					rgxIndex = i;
-					}
+		peDeviceClassInt = kzalloc(PVRSRV_MAX_DEVICES * sizeof(PVRSRV_DEVICE_CLASS), GFP_KERNEL);
+		if (!peDeviceClassInt)
+		{
+			error = PVRSRV_ERROR_OUT_OF_MEMORY;
+			goto EnumerateDevices_exit;
+		}
+
+		pui32DeviceIndexInt = kzalloc(PVRSRV_MAX_DEVICES * sizeof(IMG_UINT32), GFP_KERNEL);
+		if (!pui32DeviceIndexInt)
+		{
+			error = PVRSRV_ERROR_OUT_OF_MEMORY;
+			goto EnumerateDevices_exit;
+		}
+
+		/* Enumerate active devices */
+		error = PVRSRVEnumerateDevicesKM(
+						&numDevices,
+						peDeviceTypeInt,
+						peDeviceClassInt,
+						pui32DeviceIndexInt);
+		if (error == 0){
+			for(i =0; i < numDevices; i++){
+				if (peDeviceTypeInt[i] == PVRSRV_DEVICE_TYPE_RGX){
+					rgxIndex = pui32DeviceIndexInt[i];
 				}
-
-				if(rgxIndex != IMG_UINT32_MAX){
-					/* Now we have to acquire the node to work with, RGX device required*/
-					error = PVRSRVAcquireDeviceDataKM (rgxIndex, PVRSRV_DEVICE_TYPE_RGX, &hDevCookie);
-
-					if(!error)
-						pDevNode = (PVRSRV_DEVICE_NODE*)hDevCookie;
-				}
-
 			}
 
-			OSFreeMem(pDeviceList);
+			if(rgxIndex != IMG_UINT32_MAX){
+				/* Now we have to acquire the node to work with, RGX device required*/
+				error = PVRSRVAcquireDeviceDataKM (rgxIndex, PVRSRV_DEVICE_TYPE_RGX, &hDevCookie);
+
+				if (error == 0)
+					pDevNode = (PVRSRV_DEVICE_NODE*)hDevCookie;
+			}
 		}
+
+EnumerateDevices_exit:
+		if (peDeviceTypeInt)
+			kfree(peDeviceTypeInt);
+		if (peDeviceClassInt)
+			kfree(peDeviceClassInt);
+		if (pui32DeviceIndexInt)
+			kfree(pui32DeviceIndexInt);
 	}
 
 	return pDevNode;

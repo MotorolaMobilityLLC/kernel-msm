@@ -60,12 +60,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_BIF_TILING_HEAP_3_ID				7 				/*!< RGX BIF Tiling Heap 3 ID */
 #define RGX_BIF_TILING_HEAP_4_ID				8 				/*!< RGX BIF Tiling Heap 4 ID */
 #define RGX_HWBRN37200_HEAP_ID					9				/*!< RGX HWBRN37200 */
-#define RGX_DOPPLER_HEAP_ID					14				/*!< Doppler Heap ID */
+#define RGX_DOPPLER_HEAP_ID						10				/*!< Doppler Heap ID */
+#define RGX_DOPPLER_OVERFLOW_HEAP_ID			11				/*!< Doppler Overflow Heap ID */
 
 /* FIXME: work out what this ought to be.  In the old days it was
    typically bigger than it needed to be.  Is the correct thing
    "max + 1" ?? */
-#define RGX_MAX_HEAP_ID     	(RGX_DOPPLER_HEAP_ID + 1)		/*!< Max Valid Heap ID */
+#define RGX_MAX_HEAP_ID     	(RGX_DOPPLER_OVERFLOW_HEAP_ID + 1)		/*!< Max Valid Heap ID */
 
 /*
   Identify heaps by their names
@@ -79,6 +80,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_BIF_TILING_HEAP_3_IDENT	    "BIF Tiling Heap 3"	    /*!< RGX BIF Tiling Heap 3 identifier */
 #define RGX_BIF_TILING_HEAP_4_IDENT	    "BIF Tiling Heap 4"	    /*!< RGX BIF Tiling Heap 4 identifier */
 #define RGX_DOPPLER_HEAP_IDENT			"Doppler"				/*!< Doppler Heap Identifier */
+#define RGX_DOPPLER_OVERFLOW_HEAP_IDENT	"Doppler Overflow"				/*!< Doppler Heap Identifier */
 
 #endif /* __RGX_HEAPS_H__ */
 

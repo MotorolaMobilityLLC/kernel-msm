@@ -218,7 +218,7 @@ TLStreamCreate(IMG_HANDLE *phStream,
 	eError = DevmemAllocateExportable( IMG_NULL,
 									   (IMG_HANDLE) TLGetGlobalRgxDevice(),
 									   (IMG_DEVMEM_SIZE_T)psTmp->ui32Size,
-									   4096,
+									   (IMG_DEVMEM_ALIGN_T) OSGetPageSize(),
 									   uiMemFlags | PVRSRV_MEMALLOCFLAG_KERNEL_CPU_MAPPABLE,
 									   pszBufferLabel,
 									   &psTmp->psStreamMemDesc);
@@ -671,7 +671,7 @@ TLStreamWrite(IMG_HANDLE hStream, IMG_UINT8 *pui8Src, IMG_UINT32 ui32Size)
 IMG_VOID TLStreamInfo(PTL_STREAM_INFO psInfo)
 {
  	IMG_DEVMEM_SIZE_T actual_req_size;
-	IMG_DEVMEM_ALIGN_T align = 4;
+	IMG_DEVMEM_ALIGN_T align = 4; /* Low dummy value so the real value can be obtained */
 
  	actual_req_size = 2; 
 	DevmemExportalignAdjustSizeAndAlign(IMG_NULL, &actual_req_size, &align);

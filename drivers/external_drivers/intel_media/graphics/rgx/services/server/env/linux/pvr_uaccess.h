@@ -65,8 +65,25 @@ static inline unsigned long pvr_copy_to_user(void __user *pvTo, const void *pvFr
 #endif
 }
 
+
+#if defined(__KLOCWORK__)
+	/* this part is only to tell Klocwork not to report false positive because
+	   it doesn't understand that pvr_copy_from_user will initialise the memory
+	   pointed to by pvTo */
+#include <linux/string.h> /* get the memset prototype */
 static inline unsigned long pvr_copy_from_user(void *pvTo, const void __user *pvFrom, unsigned long ulBytes)
 {
+	if (pvTo != NULL)
+	{
+		memset(pvTo, 0xAA, ulBytes);
+	}
+}
+	
+#else /* real implementation */
+
+static inline unsigned long pvr_copy_from_user(void *pvTo, const void __user *pvFrom, unsigned long ulBytes)
+{
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33))
     /*
      * The compile time correctness checking introduced for copy_from_user in
@@ -81,6 +98,7 @@ static inline unsigned long pvr_copy_from_user(void *pvTo, const void __user *pv
     return copy_from_user(pvTo, pvFrom, ulBytes);
 #endif
 }
+#endif /* klocworks */ 
 
 #endif /* __PVR_UACCESS_H__ */
 

@@ -55,9 +55,6 @@ extern "C" {
 #include "common_dc_bridge.h"
 #endif
 #include "common_mm_bridge.h"
-#if defined(SUPPORT_MMPLAT_BRIDGE)
-#include "common_mmplat_bridge.h"
-#endif
 #if defined(UNDER_CE)
 #include "common_mmpmr_bridge.h"
 #endif
@@ -71,7 +68,7 @@ extern "C" {
 #include "common_pmmif_bridge.h"
 #endif
 #if defined(SUPPORT_ION)
-#include "common_ion_bridge.h"
+#include "common_dmabuf_bridge.h"
 #endif
 #include "common_pdump_bridge.h"
 #include "common_srvcore_bridge.h"
@@ -92,42 +89,11 @@ extern "C" {
 #if defined(PVR_RI_DEBUG)
 #include "common_ri_bridge.h"
 #endif
+
+#include "pvr_bridge_io.h"
 /* 
  * Bridge Cmd Ids
  */
-
-
-/* FIXME remove anything OS-specific from this file */
-
-#ifdef __linux__
-
-		#include <linux/ioctl.h>
-    /*!< Nov 2006: according to ioctl-number.txt 'g' wasn't in use. */
-    #define PVRSRV_IOC_GID      'g'
-    #define PVRSRV_IO(INDEX)    _IO(PVRSRV_IOC_GID, INDEX, PVRSRV_BRIDGE_PACKAGE)
-    #define PVRSRV_IOW(INDEX)   _IOW(PVRSRV_IOC_GID, INDEX, PVRSRV_BRIDGE_PACKAGE)
-    #define PVRSRV_IOR(INDEX)   _IOR(PVRSRV_IOC_GID, INDEX, PVRSRV_BRIDGE_PACKAGE)
-    #define PVRSRV_IOWR(INDEX)  _IOWR(PVRSRV_IOC_GID, INDEX, PVRSRV_BRIDGE_PACKAGE)
-
-#else /* __linux__ */
-
-	#if defined(UNDER_CE) || defined(UNDER_WDDM)
-		#define PVRSRV_IOC_GID          (0x800UL)			/*!< (see ioctldef.h for details) */
-	#else
-        #if defined(__QNXNTO__)
-            #define PVRSRV_IOC_GID      (0x0UL)
-        #else
-		#error Unknown platform: Cannot define ioctls
-	#endif
-	#endif
-
-	#define PVRSRV_IO(INDEX)    (PVRSRV_IOC_GID + (INDEX))
-	#define PVRSRV_IOW(INDEX)   (PVRSRV_IOC_GID + (INDEX))
-	#define PVRSRV_IOR(INDEX)   (PVRSRV_IOC_GID + (INDEX))
-	#define PVRSRV_IOWR(INDEX)  (PVRSRV_IOC_GID + (INDEX))
-
-	#define PVRSRV_BRIDGE_BASE                  PVRSRV_IOC_GID
-#endif /* __linux__ */
 
 
 /* Note: The pattern
@@ -180,13 +146,13 @@ extern "C" {
 #if !defined(SUPPORT_PMMIF)
 #define PVRSRV_BRIDGE_PMMIF_CMD_LAST		(PVRSRV_BRIDGE_PMMIF_START - 1)
 #endif
-#define PVRSRV_BRIDGE_ION_START				(PVRSRV_BRIDGE_PMMIF_CMD_LAST + 1)
+#define PVRSRV_BRIDGE_DMABUF_START			(PVRSRV_BRIDGE_PMMIF_CMD_LAST + 1)
 #if !defined(SUPPORT_ION)
-#define PVRSRV_BRIDGE_ION_CMD_LAST			(PVRSRV_BRIDGE_ION_START - 1)
+#define PVRSRV_BRIDGE_DMABUF_CMD_LAST		(PVRSRV_BRIDGE_DMABUF_START - 1)
 #endif
 
 /* Display Class */
-#define PVRSRV_BRIDGE_DC_START				(PVRSRV_BRIDGE_ION_CMD_LAST + 1)
+#define PVRSRV_BRIDGE_DC_START				(PVRSRV_BRIDGE_DMABUF_CMD_LAST + 1)
 #if !defined(SUPPORT_DISPLAY_CLASS)
 #define PVRSRV_BRIDGE_DC_CMD_LAST			(PVRSRV_BRIDGE_DC_START - 1)
 #endif

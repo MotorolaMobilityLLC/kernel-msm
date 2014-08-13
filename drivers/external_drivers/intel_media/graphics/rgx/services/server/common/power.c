@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "lists.h"
 #include "pvrsrv.h"
 #include "pvr_debug.h"
+#include "process_stats.h"
 
 static IMG_BOOL gbInitServerRunning = IMG_FALSE;
 static IMG_BOOL gbInitServerRan = IMG_FALSE;
@@ -243,6 +244,7 @@ static PVRSRV_ERROR PVRSRVDevicePrePowerStateKM_AnyVaCb(PVRSRV_POWER_DEV *psPowe
 	IMG_UINT32				ui32DeviceIndex;
 	PVRSRV_DEV_POWER_STATE	eNewPowerState;
 	IMG_BOOL				bForced;
+	IMG_UINT64				ui32SysTimer1=0, ui32SysTimer2=0, ui32DevTimer1=0, ui32DevTimer2=0;
 
 	/*WARNING! if types were not aligned to 4 bytes, this could be dangerous!!!*/
 	bAllDevices = va_arg(va, IMG_BOOL);
@@ -260,10 +262,16 @@ static PVRSRV_ERROR PVRSRVDevicePrePowerStateKM_AnyVaCb(PVRSRV_POWER_DEV *psPowe
 			if (psPowerDevice->pfnDevicePrePower != IMG_NULL)
 			{
 				/* Call the device's power callback. */
+
+				ui32DevTimer1=OSClockns64();
+
 				eError = psPowerDevice->pfnDevicePrePower(psPowerDevice->hDevCookie,
 															eNewDevicePowerState,
 															psPowerDevice->eCurrentPowerState,
 															bForced);
+
+				ui32DevTimer2=OSClockns64();
+
 				if (eError != PVRSRV_OK)
 				{
 					return eError;
@@ -273,9 +281,15 @@ static PVRSRV_ERROR PVRSRVDevicePrePowerStateKM_AnyVaCb(PVRSRV_POWER_DEV *psPowe
 			/* Do any required system-layer processing. */
 			if (psPowerDevice->pfnSystemPrePower != IMG_NULL)
 			{
+
+				ui32SysTimer1=OSClockus();
+
 				eError = psPowerDevice->pfnSystemPrePower(eNewDevicePowerState,
 														  psPowerDevice->eCurrentPowerState,
 														  bForced);
+
+				ui32SysTimer2=OSClockus();
+
 				if (eError != PVRSRV_OK)
 				{
 					return eError;
@@ -283,6 +297,14 @@ static PVRSRV_ERROR PVRSRVDevicePrePowerStateKM_AnyVaCb(PVRSRV_POWER_DEV *psPowe
 			}
 		}
 	}
+
+
+    InsertPowerTimeStatistic(PVRSRV_POWER_ENTRY_TYPE_PRE,
+			psPowerDevice->eCurrentPowerState, eNewPowerState,
+            ui32SysTimer1,ui32SysTimer2,
+			ui32DevTimer1,ui32DevTimer2,
+			bForced);
+
 
 	return  PVRSRV_OK;
 }
@@ -354,6 +376,7 @@ static PVRSRV_ERROR PVRSRVDevicePostPowerStateKM_AnyVaCb(PVRSRV_POWER_DEV *psPow
 	IMG_UINT32				ui32DeviceIndex;
 	PVRSRV_DEV_POWER_STATE	eNewPowerState;
 	IMG_BOOL				bForced;
+	IMG_UINT64				ui32SysTimer1=0, ui32SysTimer2=0, ui32DevTimer1=0, ui32DevTimer2=0;
 
 	/*WARNING! if types were not aligned to 4 bytes, this could be dangerous!!!*/
 	bAllDevices = va_arg(va, IMG_BOOL);
@@ -371,9 +394,15 @@ static PVRSRV_ERROR PVRSRVDevicePostPowerStateKM_AnyVaCb(PVRSRV_POWER_DEV *psPow
 			/* Do any required system-layer processing. */
 			if (psPowerDevice->pfnSystemPostPower != IMG_NULL)
 			{
+
+				ui32SysTimer1=OSClockns64();
+
 				eError = psPowerDevice->pfnSystemPostPower(eNewDevicePowerState,
 														   psPowerDevice->eCurrentPowerState,
 														   bForced);
+
+				ui32SysTimer2=OSClockns64();
+
 				if (eError != PVRSRV_OK)
 				{
 					return eError;
@@ -383,10 +412,16 @@ static PVRSRV_ERROR PVRSRVDevicePostPowerStateKM_AnyVaCb(PVRSRV_POWER_DEV *psPow
 			if (psPowerDevice->pfnDevicePostPower != IMG_NULL)
 			{
 				/* Call the device's power callback. */
+
+				ui32DevTimer1=OSClockus();
+
 				eError = psPowerDevice->pfnDevicePostPower(psPowerDevice->hDevCookie,
 														   eNewDevicePowerState,
 														   psPowerDevice->eCurrentPowerState,
 														   bForced);
+
+				ui32DevTimer2=OSClockus();
+
 				if (eError != PVRSRV_OK)
 				{
 					return eError;
@@ -396,6 +431,15 @@ static PVRSRV_ERROR PVRSRVDevicePostPowerStateKM_AnyVaCb(PVRSRV_POWER_DEV *psPow
 			psPowerDevice->eCurrentPowerState = eNewDevicePowerState;
 		}
 	}
+
+
+    InsertPowerTimeStatistic(PVRSRV_POWER_ENTRY_TYPE_POST,
+							psPowerDevice->eCurrentPowerState, eNewPowerState,
+                            ui32SysTimer1,ui32SysTimer2,
+							ui32DevTimer1,ui32DevTimer2,
+							bForced);
+
+
 	return PVRSRV_OK;
 }
 
@@ -436,7 +480,6 @@ PVRSRV_ERROR PVRSRVDevicePostPowerStateKM(IMG_BOOL					bAllDevices,
 	return eError;
 }
 
-#define DEVICES_WATCHDOG_POWER_OFF_SLEEP_TIMEOUT (3600000)
 
 /*!
 ******************************************************************************
@@ -457,73 +500,15 @@ PVRSRV_ERROR PVRSRVSetDevicePowerStateKM(IMG_UINT32				ui32DeviceIndex,
 										 PVRSRV_DEV_POWER_STATE	eNewPowerState,
 										 IMG_BOOL				bForced)
 {
-	PVRSRV_DATA*    psPVRSRVData = PVRSRVGetPVRSRVData();
 	PVRSRV_ERROR	eError;
-	PVRSRV_DEV_POWER_STATE eOldPowerState;
-
-	eError = PVRSRVGetDevicePowerState(ui32DeviceIndex, &eOldPowerState);
-	if (eError != PVRSRV_OK)
-	{
-		PVR_DPF((PVR_DBG_WARNING, "PVRSRVSetDevicePowerStateKM: Couldn't read power state."));
-		eOldPowerState = PVRSRV_DEV_POWER_STATE_DEFAULT;
-	}
-
-	#if defined(PDUMP)
-	if (eNewPowerState == PVRSRV_DEV_POWER_STATE_DEFAULT)
-	{
-		/*
-			Pdump a power-up regardless of the default state.
-			Then disable pdump and transition to the default power state.
-			This ensures that a power-up is always present in the pdump when necessary.
-		*/
-		eError = PVRSRVDevicePrePowerStateKM(IMG_FALSE, ui32DeviceIndex, PVRSRV_DEV_POWER_STATE_ON, bForced);
-		if(eError != PVRSRV_OK)
-		{
-			goto Exit;
-		}
-
-		eError = PVRSRVDevicePostPowerStateKM(IMG_FALSE, ui32DeviceIndex, PVRSRV_DEV_POWER_STATE_ON, bForced);
-
-		if (eError != PVRSRV_OK)
-		{
-			goto Exit;
-		}
-
-		PDUMPPOWCMDSTART();
-	}
-	#endif /* PDUMP */
 
 	eError = PVRSRVDevicePrePowerStateKM(IMG_FALSE, ui32DeviceIndex, eNewPowerState, bForced);
 	if(eError != PVRSRV_OK)
 	{
-		if (eNewPowerState == PVRSRV_DEV_POWER_STATE_DEFAULT)
-		{
-			PDUMPPOWCMDEND();
-		}
 		goto Exit;
 	}
 
 	eError = PVRSRVDevicePostPowerStateKM(IMG_FALSE, ui32DeviceIndex, eNewPowerState, bForced);
-
-	if (eNewPowerState == PVRSRV_DEV_POWER_STATE_DEFAULT)
-	{
-		PDUMPPOWCMDEND();
-	}
-
-	/* Signal Device Watchdog Thread about power mode change. */
-	if (eOldPowerState != eNewPowerState && eNewPowerState == PVRSRV_DEV_POWER_STATE_ON)
-	{
-		psPVRSRVData->ui32DevicesWatchdogPwrTrans++;
-
-		if (psPVRSRVData->ui32DevicesWatchdogTimeout == DEVICES_WATCHDOG_POWER_OFF_SLEEP_TIMEOUT)
-		{
-			if (psPVRSRVData->hDevicesWatchdogEvObj)
-			{
-				eError = OSEventObjectSignal(psPVRSRVData->hDevicesWatchdogEvObj);
-				PVR_LOG_IF_ERROR(eError, "OSEventObjectSignal");
-			}
-		}
-	}
 
 Exit:
 
@@ -634,7 +619,7 @@ ErrorExit:
 			"PVRSRVSetPowerStateKM: Transition from %d to %d FAILED (%s) at stage %d, forced: %d. Dumping debug info.",
 			psPVRSRVData->eCurrentPowerState, eNewSysPowerState, PVRSRVGetErrorStringKM(eError), uiStage, bForced));
 
-	PVRSRVDebugRequest(DEBUG_REQUEST_VERBOSITY_MAX);
+	PVRSRVDebugRequest(DEBUG_REQUEST_VERBOSITY_MAX, IMG_NULL);
 
 	return eError;
 }
@@ -825,7 +810,6 @@ PVRSRV_ERROR PVRSRVDevicePreClockSpeedChange(IMG_UINT32	ui32DeviceIndex,
 
 	do
 	{
-
 		/* This mutex is released in PVRSRVDevicePostClockSpeedChange. */
 		eError = PVRSRVPowerLock();
 		if (eError != PVRSRV_OK)
@@ -852,10 +836,13 @@ PVRSRV_ERROR PVRSRVDevicePreClockSpeedChange(IMG_UINT32	ui32DeviceIndex,
 						"PVRSRVDevicePreClockSpeedChange : Device %u denied transition to IDLE",
 						ui32DeviceIndex));
 		
-
 				PVRSRVPowerUnlock();
 				OSSleepms(1);
 			}
+		}
+		else
+		{
+			/* In the case of no pfnPostClockSpeedChange call being made, eError remains PVRSRV_OK... */
 		}
 	}
 	while (eError == PVRSRV_ERROR_DEVICE_POWER_CHANGE_DENIED);
@@ -893,7 +880,7 @@ IMG_VOID PVRSRVDevicePostClockSpeedChange(IMG_UINT32	ui32DeviceIndex,
 	PVRSRV_DATA			*psPVRSRVData = PVRSRVGetPVRSRVData();
 	PVRSRV_POWER_DEV	*psPowerDevice;
 
-	PVR_UNREFERENCED_PARAMETER(pvInfo);
+    PVR_UNREFERENCED_PARAMETER(pvInfo);
 
 	/*search the device and then do the post clock speed change*/
 	psPowerDevice = (PVRSRV_POWER_DEV*)
@@ -917,7 +904,6 @@ IMG_VOID PVRSRVDevicePostClockSpeedChange(IMG_UINT32	ui32DeviceIndex,
 
 	/* This mutex was acquired in PVRSRVDevicePreClockSpeedChange. */
 	PVRSRVPowerUnlock();
-
 }
 
 /******************************************************************************

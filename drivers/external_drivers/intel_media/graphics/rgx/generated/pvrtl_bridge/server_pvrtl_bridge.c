@@ -87,7 +87,7 @@ TLCloseStreamResManProxy(IMG_HANDLE hResmanItem)
 /* ***************************************************************************
  * Server-side bridge entry points
  */
-
+ 
 static IMG_INT
 PVRSRVBridgeTLConnect(IMG_UINT32 ui32BridgeID,
 					 PVRSRV_BRIDGE_IN_TLCONNECT *psTLConnectIN,
@@ -153,13 +153,13 @@ PVRSRVBridgeTLOpenStream(IMG_UINT32 ui32BridgeID,
 
 	psTLOpenStreamOUT->hSD = IMG_NULL;
 
-
+	
 	{
 		uiNameInt = OSAllocMem(PRVSRVTL_MAX_STREAM_NAME_SIZE * sizeof(IMG_CHAR));
 		if (!uiNameInt)
 		{
 			psTLOpenStreamOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto TLOpenStream_exit;
 		}
 	}
@@ -406,13 +406,13 @@ PVRSRVBridgeTLTestIoctl(IMG_UINT32 ui32BridgeID,
 
 
 
-
+	
 	{
 		psIn1Int = OSAllocMem(PVR_TL_TEST_PARAM_MAX_SIZE * sizeof(IMG_BYTE));
 		if (!psIn1Int)
 		{
 			psTLTestIoctlOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
-
+	
 			goto TLTestIoctl_exit;
 		}
 	}
@@ -444,161 +444,12 @@ TLTestIoctl_exit:
 	return 0;
 }
 
-#ifdef CONFIG_COMPAT
-/* Bridge in structure for TLOpenStream */
-typedef struct compat_PVRSRV_BRIDGE_IN_TLOPENSTREAM_TAG
-{
-	IMG_UINT32 puiName; /* IMG_CHAR * puiName; */
-	IMG_UINT32 ui32Mode;
-} compat_PVRSRV_BRIDGE_IN_TLOPENSTREAM;
-
-/* Bridge out structure for TLOpenStream */
-typedef struct compat_PVRSRV_BRIDGE_OUT_TLOPENSTREAM_TAG
-{
-	IMG_UINT32 hSD; /* IMG_HANDLE hSD; */
-	IMG_UINT32 hClientBUFExportCookie; /* DEVMEM_SERVER_EXPORTCOOKIE hClientBUFExportCookie; */
-	PVRSRV_ERROR eError;
-} compat_PVRSRV_BRIDGE_OUT_TLOPENSTREAM;
-
-static IMG_INT
-compat_PVRSRVBridgeTLOpenStream(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_TLOPENSTREAM *psTLOpenStreamIN_32,
-					 compat_PVRSRV_BRIDGE_OUT_TLOPENSTREAM *psTLOpenStreamOUT_32,
-					 CONNECTION_DATA *psConnection)
-{
-	IMG_INT ret;
-	PVRSRV_BRIDGE_IN_TLOPENSTREAM sTLOpenStreamIN;
-	PVRSRV_BRIDGE_IN_TLOPENSTREAM *psTLOpenStreamIN = &sTLOpenStreamIN;
-	PVRSRV_BRIDGE_OUT_TLOPENSTREAM sTLOpenStreamOUT;
-	PVRSRV_BRIDGE_OUT_TLOPENSTREAM *psTLOpenStreamOUT = &sTLOpenStreamOUT;
-
-	psTLOpenStreamIN->puiName = (IMG_CHAR *)(IMG_UINT64)psTLOpenStreamIN_32->puiName;
-	psTLOpenStreamIN->ui32Mode = psTLOpenStreamIN_32->ui32Mode;
-
-	ret = PVRSRVBridgeTLOpenStream(ui32BridgeID,
-					psTLOpenStreamIN,
-					psTLOpenStreamOUT,
-					psConnection);
-
-	PVR_ASSERT(!((IMG_UINT64)psTLOpenStreamOUT->hSD & 0xFFFFFFFF00000000ULL));
-	psTLOpenStreamOUT_32->hSD = (IMG_UINT32)(IMG_UINT64)psTLOpenStreamOUT->hSD;
-	PVR_ASSERT(!((IMG_UINT64)psTLOpenStreamOUT->hClientBUFExportCookie & 0xFFFFFFFF00000000ULL));
-	psTLOpenStreamOUT_32->hClientBUFExportCookie= (IMG_UINT32)(IMG_UINT64)psTLOpenStreamOUT->hClientBUFExportCookie;
-	psTLOpenStreamOUT_32->eError=psTLOpenStreamOUT->eError;
-
-	return ret;
-}
-
-/* Bridge in structure for TLCloseStream */
-typedef struct compat_PVRSRV_BRIDGE_IN_TLCLOSESTREAM_TAG
-{
-	IMG_UINT32 hSD;/* IMG_HANDLE hSD; */
-} compat_PVRSRV_BRIDGE_IN_TLCLOSESTREAM;
-
-static IMG_INT
-compat_PVRSRVBridgeTLCloseStream(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_TLCLOSESTREAM *psTLCloseStreamIN_32,
-					 PVRSRV_BRIDGE_OUT_TLCLOSESTREAM *psTLCloseStreamOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_TLCLOSESTREAM	sTLCloseStreamIN;
-	PVRSRV_BRIDGE_IN_TLCLOSESTREAM	*psTLCloseStreamIN = &sTLCloseStreamIN;
-
-	psTLCloseStreamIN->hSD = (IMG_HANDLE)(IMG_UINT64)psTLCloseStreamIN_32->hSD;
-
-	return PVRSRVBridgeTLCloseStream(ui32BridgeID,
-					 psTLCloseStreamIN,
-					 psTLCloseStreamOUT,
-					 psConnection);
-}
-
-/* Bridge in structure for TLAcquireData */
-typedef struct compat_PVRSRV_BRIDGE_IN_TLACQUIREDATA_TAG
-{
-	IMG_UINT32 hSD;/* IMG_HANDLE hSD; */
-} compat_PVRSRV_BRIDGE_IN_TLACQUIREDATA;
 
 
-static IMG_INT
-compat_PVRSRVBridgeTLAcquireData(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_TLACQUIREDATA *psTLAcquireDataIN_32,
-					 PVRSRV_BRIDGE_OUT_TLACQUIREDATA *psTLAcquireDataOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_TLACQUIREDATA sTLAcquireDataIN;
-	PVRSRV_BRIDGE_IN_TLACQUIREDATA *psTLAcquireDataIN = &sTLAcquireDataIN;
-
-	psTLAcquireDataIN->hSD = (IMG_HANDLE)(IMG_UINT64)psTLAcquireDataIN_32->hSD;
-
-	return PVRSRVBridgeTLAcquireData(ui32BridgeID,
-					psTLAcquireDataIN,
-					psTLAcquireDataOUT,
-					psConnection);
-}
-
-/* Bridge in structure for TLReleaseData */
-typedef struct compat_PVRSRV_BRIDGE_IN_TLRELEASEDATA_TAG
-{
-	IMG_UINT32 hSD; /* IMG_HANDLE hSD; */
-	IMG_UINT32 ui32ReadOffset;
-	IMG_UINT32 ui32ReadLen;
-} compat_PVRSRV_BRIDGE_IN_TLRELEASEDATA;
-
-static IMG_INT
-compat_PVRSRVBridgeTLReleaseData(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_TLRELEASEDATA *psTLReleaseDataIN_32,
-					 PVRSRV_BRIDGE_OUT_TLRELEASEDATA *psTLReleaseDataOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_TLRELEASEDATA sTLReleaseDataIN;
-	PVRSRV_BRIDGE_IN_TLRELEASEDATA *psTLReleaseDataIN = &sTLReleaseDataIN;
-
-	psTLReleaseDataIN->hSD = (IMG_HANDLE)(IMG_UINT64)psTLReleaseDataIN_32->hSD;
-	psTLReleaseDataIN->ui32ReadOffset= psTLReleaseDataIN_32->ui32ReadOffset;
-	psTLReleaseDataIN->ui32ReadLen= psTLReleaseDataIN_32->ui32ReadLen;
-
-	return PVRSRVBridgeTLReleaseData(ui32BridgeID,
-					psTLReleaseDataIN,
-					psTLReleaseDataOUT,
-					psConnection);
-}
-
-/* Bridge in structure for TLTestIoctl */
-typedef struct compat_PVRSRV_BRIDGE_IN_TLTESTIOCTL_TAG
-{
-	IMG_UINT32 ui32Cmd;
-	IMG_UINT32 psIn1;/* IMG_BYTE * psIn1; */
-	IMG_UINT32 ui32In2;
-} compat_PVRSRV_BRIDGE_IN_TLTESTIOCTL;
-
-static IMG_INT
-compat_PVRSRVBridgeTLTestIoctl(IMG_UINT32 ui32BridgeID,
-					 compat_PVRSRV_BRIDGE_IN_TLTESTIOCTL *psTLTestIoctlIN_32,
-					 PVRSRV_BRIDGE_OUT_TLTESTIOCTL *psTLTestIoctlOUT,
-					 CONNECTION_DATA *psConnection)
-{
-	PVRSRV_BRIDGE_IN_TLTESTIOCTL sTLTestIoctlIN;
-	PVRSRV_BRIDGE_IN_TLTESTIOCTL *psTLTestIoctlIN = &sTLTestIoctlIN;
-
-	psTLTestIoctlIN->ui32Cmd = psTLTestIoctlIN_32->ui32Cmd;
-	psTLTestIoctlIN->psIn1 = (IMG_BYTE*)(IMG_UINT64)psTLTestIoctlIN_32->psIn1;
-	psTLTestIoctlIN->ui32In2 = psTLTestIoctlIN_32->ui32In2;
-
-	return PVRSRVBridgeTLTestIoctl(ui32BridgeID,
-					psTLTestIoctlIN,
-					psTLTestIoctlOUT,
-					psConnection);
-}
-
-
-
-#endif
-
-
-/* ***************************************************************************
- * Server bridge dispatch related glue
+/* *************************************************************************** 
+ * Server bridge dispatch related glue 
  */
-
+ 
 PVRSRV_ERROR RegisterPVRTLFunctions(IMG_VOID);
 IMG_VOID UnregisterPVRTLFunctions(IMG_VOID);
 
@@ -607,15 +458,6 @@ IMG_VOID UnregisterPVRTLFunctions(IMG_VOID);
  */
 PVRSRV_ERROR RegisterPVRTLFunctions(IMG_VOID)
 {
-#ifdef CONFIG_COMPAT
-	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLCONNECT, PVRSRVBridgeTLConnect);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLDISCONNECT, PVRSRVBridgeTLDisconnect);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLOPENSTREAM, compat_PVRSRVBridgeTLOpenStream);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLCLOSESTREAM, compat_PVRSRVBridgeTLCloseStream);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLACQUIREDATA, compat_PVRSRVBridgeTLAcquireData);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLRELEASEDATA, compat_PVRSRVBridgeTLReleaseData);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLTESTIOCTL, compat_PVRSRVBridgeTLTestIoctl);
-#else
 	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLCONNECT, PVRSRVBridgeTLConnect);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLDISCONNECT, PVRSRVBridgeTLDisconnect);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLOPENSTREAM, PVRSRVBridgeTLOpenStream);
@@ -623,7 +465,7 @@ PVRSRV_ERROR RegisterPVRTLFunctions(IMG_VOID)
 	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLACQUIREDATA, PVRSRVBridgeTLAcquireData);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLRELEASEDATA, PVRSRVBridgeTLReleaseData);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_PVRTL_TLTESTIOCTL, PVRSRVBridgeTLTestIoctl);
-#endif
+
 	return PVRSRV_OK;
 }
 

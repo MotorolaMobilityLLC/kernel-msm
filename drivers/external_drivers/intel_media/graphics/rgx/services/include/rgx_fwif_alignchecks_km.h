@@ -54,7 +54,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define RGXFW_ALIGN_CHECKS_INIT_KM							\
 		sizeof(RGXFWIF_INIT),								\
-		offsetof(RGXFWIF_INIT, sBifFaultPhysAddr),			\
+		offsetof(RGXFWIF_INIT, sFaultPhysAddr),			\
 		offsetof(RGXFWIF_INIT, sPDSExecBase),				\
 		offsetof(RGXFWIF_INIT, sUSCExecBase),				\
 		offsetof(RGXFWIF_INIT, psKernelCCBCtl),				\
@@ -75,7 +75,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 		offsetof(RGXFWIF_FWCOMMONCONTEXT, psFWMemContext),	\
 		offsetof(RGXFWIF_FWCOMMONCONTEXT, sRunNode),		\
 		offsetof(RGXFWIF_FWCOMMONCONTEXT, psCCB),			\
-		offsetof(RGXFWIF_FWCOMMONCONTEXT, sCleanupState),	\
 		offsetof(RGXFWIF_FWCOMMONCONTEXT, ui64MCUFenceAddr)
 
 #endif /*  __RGX_FWIF_ALIGNCHECKS_KM_H__ */

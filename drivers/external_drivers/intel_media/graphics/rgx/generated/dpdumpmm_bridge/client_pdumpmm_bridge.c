@@ -58,7 +58,8 @@ IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgePMRPDumpLoadMem(IMG_HANDLE hBridge,
 							     IMG_HANDLE hPMR,
 							     IMG_DEVMEM_OFFSET_T uiOffset,
 							     IMG_DEVMEM_SIZE_T uiSize,
-							     IMG_UINT32 ui32PDumpFlags)
+							     IMG_UINT32 ui32PDumpFlags,
+							     IMG_BOOL bbZero)
 {
 	PVRSRV_ERROR eError;
 	PMR * psPMRInt;
@@ -71,7 +72,8 @@ IMG_INTERNAL PVRSRV_ERROR IMG_CALLCONV BridgePMRPDumpLoadMem(IMG_HANDLE hBridge,
 					psPMRInt,
 					uiOffset,
 					uiSize,
-					ui32PDumpFlags);
+					ui32PDumpFlags,
+					bbZero);
 
 	return eError;
 }

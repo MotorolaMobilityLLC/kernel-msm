@@ -44,7 +44,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _LOCK_TYPES_H_
 #define _LOCK_TYPES_H_
 
+/* In Linux kernel mode we are using the kernel mutex implementation directly
+ * with macros. This allows us to use the kernel lockdep feature for lock
+ * debugging. */
+#if defined(LINUX) && defined(__KERNEL__)
+
+#include <linux/mutex.h>
+/* The mutex is defined as a pointer to be compatible with the other code. This
+ * isn't ideal and usually you wouldn't do that in kernel code. */
+typedef struct mutex *POS_LOCK;
+
+#else /* defined(LINUX) && defined(__KERNEL__) */
+
 typedef struct _OS_LOCK_ *POS_LOCK;
+
+#endif /* defined(LINUX) && defined(__KERNEL__) */
 
 typedef enum
 {
