@@ -548,7 +548,7 @@
 			reg = <0x64>;
 			linux,name = "wled:backlight";
 			linux,default-trigger = "bkl-trigger";
-			led1-used;
+			rohm,led1-used;
 			pinctrl-names = "default";
 			pinctrl-0 = <&backlight_reset_default>;
 		};
