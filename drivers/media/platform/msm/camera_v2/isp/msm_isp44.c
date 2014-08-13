@@ -293,10 +293,8 @@ static void msm_vfe44_process_camif_irq(struct vfe_device *vfe_dev,
 	}
 	if (irq_status0 & (1 << 1))
 		ISP_DBG("%s: EOF IRQ\n", __func__);
-	if (irq_status0 & (1 << 2)) {
+	if (irq_status0 & (1 << 2))
 		ISP_DBG("%s: EPOCH0 IRQ\n", __func__);
-		msm_isp_epoch_notify(vfe_dev, ISP_EPOCH_0);
-	}
 	if (irq_status0 & (1 << 3))
 		ISP_DBG("%s: EPOCH1 IRQ\n", __func__);
 }
@@ -744,12 +742,6 @@ static void msm_vfe44_cfg_camif(struct vfe_device *vfe_dev,
 			__func__, pix_cfg->input_mux);
 		break;
 	}
-
-	/* Configure epoch to half of active frame */
-	val = msm_camera_io_r(vfe_dev->vfe_base + 0x318);
-	val &= ~0x3fff3fff;
-	val |= ((camif_cfg->epoch_line0 << 16) | camif_cfg->epoch_line1);
-	msm_camera_io_w(val, vfe_dev->vfe_base + 0x318);
 }
 
 static void msm_vfe44_update_camif_state(struct vfe_device *vfe_dev,

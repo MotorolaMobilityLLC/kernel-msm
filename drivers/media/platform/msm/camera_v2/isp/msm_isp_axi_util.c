@@ -484,18 +484,6 @@ void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 	msm_isp_send_event(vfe_dev, ISP_EVENT_SOF + frame_src, &sof_event);
 }
 
-void msm_isp_epoch_notify(struct vfe_device *vfe_dev,
-	enum msm_isp_epoch_idx epoch_idx)
-{
-	struct msm_isp_event_data epoch_event;
-	memset(&epoch_event, 0, sizeof(epoch_event));
-
-	epoch_event.frame_id =
-		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
-	epoch_event.u.epoch.epoch_idx = epoch_idx;
-	msm_isp_send_event(vfe_dev, ISP_EVENT_EPOCH0_IRQ, &epoch_event);
-}
-
 void msm_isp_calculate_framedrop(
 	struct msm_vfe_axi_shared_data *axi_data,
 	struct msm_vfe_axi_stream_request_cmd *stream_cfg_cmd)

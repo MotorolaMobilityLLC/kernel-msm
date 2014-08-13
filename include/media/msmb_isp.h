@@ -359,15 +359,8 @@ enum msm_isp_event_idx {
 	ISP_WM_BUS_OVERFLOW = 4,
 	ISP_STATS_OVERFLOW  = 5,
 	ISP_CAMIF_ERROR     = 6,
-	ISP_EPOCH0_IRQ      = 7,
 	ISP_BUF_DONE        = 9,
 	ISP_EVENT_MAX       = 10
-};
-
-enum msm_isp_epoch_idx {
-	ISP_EPOCH_0   = 0,
-	ISP_EPOCH_1   = 1,
-	ISP_EPOCH_MAX = 2
 };
 
 #define ISP_EVENT_OFFSET          8
@@ -383,7 +376,6 @@ enum msm_isp_epoch_idx {
 #define ISP_EVENT_WM_BUS_OVERFLOW (ISP_EVENT_BASE + ISP_WM_BUS_OVERFLOW)
 #define ISP_EVENT_STATS_OVERFLOW  (ISP_EVENT_BASE + ISP_STATS_OVERFLOW)
 #define ISP_EVENT_CAMIF_ERROR     (ISP_EVENT_BASE + ISP_CAMIF_ERROR)
-#define ISP_EVENT_EPOCH0_IRQ      (ISP_EVENT_BASE + ISP_EPOCH0_IRQ)
 #define ISP_EVENT_SOF             (ISP_SOF_EVENT_BASE)
 #define ISP_EVENT_EOF             (ISP_EOF_EVENT_BASE)
 #define ISP_EVENT_BUF_DONE        (ISP_EVENT_BASE + ISP_BUF_DONE)
@@ -417,10 +409,6 @@ struct msm_isp_error_info {
 	uint32_t error_mask;
 };
 
-struct msm_isp_epoch_event {
-	enum msm_isp_epoch_idx epoch_idx;
-};
-
 struct msm_isp_event_data {
 	/*Wall clock except for buffer divert events
 	 *which use monotonic clock
@@ -434,7 +422,6 @@ struct msm_isp_event_data {
 		struct msm_isp_stats_event stats;
 		struct msm_isp_buf_event buf_done;
 		struct msm_isp_error_info error_info;
-		struct msm_isp_epoch_event epoch;
 	} u; /* union can have max 52 bytes */
 };
 
