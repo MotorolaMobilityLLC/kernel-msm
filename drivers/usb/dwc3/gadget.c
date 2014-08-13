@@ -2255,10 +2255,10 @@ static int dwc3_gadget_start(struct usb_gadget *g,
 
 err1:
 	spin_unlock_irqrestore(&dwc->lock, flags);
-	pm_runtime_put(dwc->dev);
+	free_irq(irq, dwc);
 
 err0:
-	free_irq(irq, dwc);
+	pm_runtime_put(dwc->dev);
 
 	return ret;
 }
