@@ -734,6 +734,57 @@ static int msm_actuator_init(struct msm_actuator_ctrl_t *a_ctrl)
 	return rc;
 }
 
+static int32_t msm_actuator_direct_i2c_write(
+		struct msm_actuator_ctrl_t *a_ctrl,
+		struct msm_actuator_i2c_table *i2c_table)
+{
+	int32_t rc = -1;
+	int32_t i = 0;
+
+	if (NULL == i2c_table || NULL == a_ctrl) {
+		pr_err("%s: NULL pointer: i2c_table:%p, a_ctrl:%p\n",
+				__func__, i2c_table, a_ctrl);
+		return rc;
+	}
+
+	if (i2c_table->size > MSM_ACTUATOR_I2C_MAX_TABLE_SIZE) {
+		pr_err("%s: i2c table size exceeds the maximum allowed size.\n",
+				__func__);
+		pr_err("%s: size:%d, max size:%d\n",
+				__func__,
+				i2c_table->size,
+				MSM_ACTUATOR_I2C_MAX_TABLE_SIZE);
+		return rc;
+	}
+
+	for (i = 0; i < i2c_table->size; i++) {
+		uint16_t addr = i2c_table->data[i].addr;
+		uint8_t data = i2c_table->data[i].value;
+		uint32_t wait_time = i2c_table->data[i].wait_time;
+
+		if (a_ctrl->i2c_client.i2c_func_tbl->i2c_write) {
+			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+					&a_ctrl->i2c_client,
+					addr,
+					data,
+					MSM_CAMERA_I2C_BYTE_DATA
+			);
+			if (rc < 0) {
+				pr_err("%s: msm_camera_i2c_write failed.\n",
+						__func__);
+				break;
+			}
+		} else {
+			pr_err("%s(%d): i2c_write is null", __func__, __LINE__);
+		}
+
+		if (wait_time)
+			usleep_range(wait_time, wait_time + 1000);
+	}
+
+	return rc;
+}
+
 static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 	void __user *argp)
 {
@@ -790,6 +841,14 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 		rc = msm_actuator_power_up(a_ctrl);
 		if (rc < 0)
 			pr_err("Failed actuator power up%d\n", rc);
+		break;
+
+	case CFG_DIRECT_I2C_WRITE:
+		rc = msm_actuator_direct_i2c_write(a_ctrl,
+			&cdata->cfg.i2c_table);
+		if (rc < 0)
+			pr_err("%s CFG_DIRECT_I2C_WRITE failed %d\n",
+				__func__, rc);
 		break;
 
 	default:
