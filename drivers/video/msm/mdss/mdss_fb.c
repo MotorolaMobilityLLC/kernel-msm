@@ -919,8 +919,6 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	}
 }
 
-extern int enable_ambient(int enable);
-
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
@@ -958,6 +956,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_NORMAL:
 	case FB_BLANK_POWERDOWN:
 	default:
+		printk("MDSS:%s:+++,blank_mode=%d,mfd->panel_power_on=%d\n",__func__,blank_mode,mfd->panel_power_on);
 		if (mfd->panel_power_on && mfd->mdp.off_fnc) {
 			int curr_pwr_state;
 

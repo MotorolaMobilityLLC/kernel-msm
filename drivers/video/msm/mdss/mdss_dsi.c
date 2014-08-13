@@ -1028,6 +1028,8 @@ static void __mdss_mdp_ambient_on_work(struct work_struct *work)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata =container_of(dw, struct mdss_dsi_ctrl_pdata, ambient_enable_work);
 
 	rc = mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
+	ctrl_pdata->ambient_on_queued = false;
+	pr_debug("MDSS:__mdss_mdp_ambient_on_work---\n");
 }
 
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
@@ -1058,6 +1060,12 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			rc = mdss_dsi_unblank(pdata);
 		break;
 	case MDSS_EVENT_BLANK:
+
+		if (ctrl_pdata->ambient_on_queued){
+			cancel_delayed_work(&ctrl_pdata->ambient_enable_work);
+			mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
+		}
+
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_blank(pdata);
 		break;
@@ -1102,10 +1110,13 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_ON:
 		schedule_delayed_work(&ctrl_pdata->ambient_enable_work ,msecs_to_jiffies(1000));
+		ctrl_pdata->ambient_on_queued = true;
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_OFF:
-		cancel_delayed_work(&ctrl_pdata->ambient_enable_work);
-		rc = mdss_dsi_panel_ambient_enable(pdata, 0);
+		if (is_ambient_on())
+			rc = mdss_dsi_panel_ambient_enable(pdata, 0);
+		else
+			rc = 0;
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
@@ -1313,6 +1324,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	}
 
 	INIT_DELAYED_WORK(&ctrl_pdata->ambient_enable_work, __mdss_mdp_ambient_on_work);
+	ctrl_pdata->ambient_on_queued = false;
 
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 	return 0;
