@@ -3195,7 +3195,6 @@ static char* get_next_line(char* str)
   }
   else
   {
-    *str = '\0';
     return (str+1);
   }
 
@@ -3295,7 +3294,7 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
       goto config_exit;
    }
 
-   hddLog(LOG1, "%s: qcom_cfg.ini Size %zu", __func__, fw->size);
+   hddLog(LOGE, "%s: qcom_cfg.ini Size %zu", __func__, fw->size);
 
    buffer = (char*)vos_mem_malloc(fw->size);
 
@@ -3311,7 +3310,26 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
 
    while (buffer != NULL)
    {
+      /*
+       * get_next_line function used to modify the \n and \r delimiter
+       * to \0 before returning, without checking if it is over parsing the
+       * source buffer. So changed the function not to modify the buffer
+       * passed to it and letting the calling/caller function to take
+       * care of the return pointer validation and modification of the buffer.
+       * So validating if the return pointer is not greater than the end
+       * buffer address and modifying the buffer value.
+       */
       line = get_next_line(buffer);
+      if(line > (pTemp + fw->size)) {
+         hddLog(VOS_TRACE_LEVEL_FATAL, "%s: INI file seems to be corrupted",
+                  __func__);
+         vos_status = VOS_STATUS_E_FAILURE;
+         goto config_exit;
+      }
+      else if(line) {
+         *(line - 1) = '\0';
+      }
+
       buffer = i_trim(buffer);
 
       hddLog(LOG1, "%s: item", buffer);
