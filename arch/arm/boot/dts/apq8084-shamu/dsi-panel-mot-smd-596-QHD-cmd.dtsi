@@ -99,6 +99,7 @@
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 
 		qcom,panel-esd-power-mode-chk = <0x94>;
+		qcom,ulps-enabled;
 	};
 
 	mot_smd_596_QHD_1_cmd_v0: qcom,mdss_dsi_mot_smd_596_QHD_dualmipi1_cmd_v0 {
@@ -152,5 +153,6 @@
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
+		qcom,ulps-enabled;
 	};
 };
