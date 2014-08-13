@@ -34,7 +34,7 @@
 		status = "ok";
 		qcom,usbid-adc_tm = <&pm8226_adc_tm>;
 		qcom,usbid-vadc = <&pm8226_vadc>;
-		lge,adc-low-threshold = <70>;
-		lge,adc-high-threshold = <91>;
+		lge,adc-low-threshold = <65>;
+		lge,adc-high-threshold = <95>;
 	};
 };
