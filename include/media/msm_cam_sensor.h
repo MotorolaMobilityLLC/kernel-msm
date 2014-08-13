@@ -421,6 +421,7 @@ enum msm_actuator_cfg_type_t {
 	CFG_ACTUATOR_POWERDOWN,
 	CFG_ACTUATOR_POWERUP,
 	CFG_ACTUATOR_INIT,
+	CFG_DIRECT_I2C_WRITE, /*to support non-trivial actuators*/
 };
 
 enum msm_ois_cfg_type_t {
@@ -541,6 +542,18 @@ struct msm_actuator_set_position_t {
 	uint16_t delay[MAX_NUMBER_OF_STEPS];
 };
 
+struct msm_actuator_i2c {
+	uint16_t addr;
+	uint16_t value;
+	uint32_t wait_time;
+};
+
+#define MSM_ACTUATOR_I2C_MAX_TABLE_SIZE (8)
+struct msm_actuator_i2c_table {
+	struct msm_actuator_i2c data[MSM_ACTUATOR_I2C_MAX_TABLE_SIZE];
+	uint32_t size;
+};
+
 struct msm_actuator_cfg_data {
 	int cfgtype;
 	uint8_t is_af_supported;
@@ -550,6 +563,7 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_get_info_t get_info;
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
+		struct msm_actuator_i2c_table i2c_table;
 	} cfg;
 };
 
