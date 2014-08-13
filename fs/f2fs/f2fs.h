@@ -24,7 +24,7 @@
 #define f2fs_bug_on(condition)	BUG_ON(condition)
 #define f2fs_down_write(x, y)	down_write(x)
 #else
-#define f2fs_bug_on(condition)
+#define f2fs_bug_on(condition)	WARN_ON(condition)
 #define f2fs_down_write(x, y)	down_write(x)
 #endif
 
