@@ -841,7 +841,8 @@ static int smb135x_reset_vbat_monitoring(struct smb135x_chg *chip)
 	return rc;
 }
 
-static int smb135x_get_prop_batt_status(struct smb135x_chg *chip)
+static int smb135x_get_prop_batt_status(struct smb135x_chg *chip,
+					int *batt_stat)
 {
 	int rc;
 	int status = POWER_SUPPLY_STATUS_DISCHARGING;
@@ -849,13 +850,16 @@ static int smb135x_get_prop_batt_status(struct smb135x_chg *chip)
 	u8 chg_type;
 
 	if ((is_usb_plugged_in(chip) || is_dc_plugged_in(chip)) &&
-	    (chip->chg_done_batt_full || chip->float_charge_start_time))
-		return POWER_SUPPLY_STATUS_FULL;
+	    (chip->chg_done_batt_full || chip->float_charge_start_time)) {
+		*batt_stat = POWER_SUPPLY_STATUS_FULL;
+		return 0;
+	}
 
 	rc = smb135x_read(chip, STATUS_4_REG, &reg);
 	if (rc < 0) {
 		dev_err(chip->dev, "Unable to read STATUS_4_REG rc = %d\n", rc);
-		return POWER_SUPPLY_STATUS_UNKNOWN;
+		*batt_stat = POWER_SUPPLY_STATUS_UNKNOWN;
+		return rc;
 	}
 
 	if (reg & CHG_HOLD_OFF_BIT) {
@@ -875,7 +879,8 @@ static int smb135x_get_prop_batt_status(struct smb135x_chg *chip)
 		status = POWER_SUPPLY_STATUS_CHARGING;
 out:
 	pr_debug("STATUS_4_REG=%x\n", reg);
-	return status;
+	*batt_stat = status;
+	return 0;
 }
 
 static int smb135x_get_prop_batt_present(struct smb135x_chg *chip)
@@ -888,7 +893,7 @@ static int smb135x_get_prop_batt_present(struct smb135x_chg *chip)
 
 	rc = smb135x_read(chip, STATUS_4_REG, &reg);
 	if (rc < 0)
-		chip->batt_present = false;
+		return chip->batt_present;
 
 	/* treat battery gone if less than 2V */
 	if (reg & BATT_LESS_THAN_2V)
@@ -903,81 +908,93 @@ static int smb135x_get_prop_batt_present(struct smb135x_chg *chip)
 	return chip->batt_present;
 }
 
-static int smb135x_get_prop_charge_type(struct smb135x_chg *chip)
+static int smb135x_get_prop_charge_type(struct smb135x_chg *chip,
+					int *charge_type)
 {
 	int rc;
 	u8 reg;
 	u8 chg_type;
 
 	rc = smb135x_read(chip, STATUS_4_REG, &reg);
-	if (rc < 0)
-		return POWER_SUPPLY_CHARGE_TYPE_UNKNOWN;
+	if (rc < 0) {
+		*charge_type = POWER_SUPPLY_CHARGE_TYPE_UNKNOWN;
+		return rc;
+	}
 
 	chg_type = (reg & CHG_TYPE_MASK) >> CHG_TYPE_SHIFT;
 	if (chg_type == BATT_NOT_CHG_VAL)
-		return POWER_SUPPLY_CHARGE_TYPE_NONE;
+		*charge_type = POWER_SUPPLY_CHARGE_TYPE_NONE;
 	else if (chg_type == BATT_FAST_CHG_VAL)
-		return POWER_SUPPLY_CHARGE_TYPE_FAST;
+		*charge_type = POWER_SUPPLY_CHARGE_TYPE_FAST;
 	else if (chg_type == BATT_PRE_CHG_VAL)
-		return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
+		*charge_type = POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
 
-	return POWER_SUPPLY_CHARGE_TYPE_NONE;
+	*charge_type = POWER_SUPPLY_CHARGE_TYPE_NONE;
+	return 0;
 }
 
 #define DEFAULT_BATT_CAPACITY	50
-static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip)
+static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip,
+					  int *batt_cap)
 {
+	int rc = 0;
 	union power_supply_propval ret = {0, };
 
 	if (!chip->bms_psy && chip->bms_psy_name)
 		chip->bms_psy =
 			power_supply_get_by_name((char *)chip->bms_psy_name);
 
-	if (chip->fake_battery_soc >= 0)
-		return chip->fake_battery_soc;
+	if (chip->fake_battery_soc >= 0) {
+		*batt_cap = chip->fake_battery_soc;
+		return rc;
+	}
 
 	if (chip->shutdown_voltage_tripped && !chip->factory_mode) {
 		if (chip->usb_psy) {
 			power_supply_set_present(chip->usb_psy, false);
 			power_supply_set_online(chip->usb_psy, false);
 		}
-		return 0;
+		*batt_cap = 0;
+		return rc;
 	}
 
 	if (chip->bms_psy) {
-		chip->bms_psy->get_property(chip->bms_psy,
+		rc = chip->bms_psy->get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, &ret);
-		if ((ret.intval == 0) && !chip->factory_mode) {
+		if (rc < 0)
+			ret.intval = DEFAULT_BATT_CAPACITY;
+
+		if ((rc == 0) && (ret.intval == 0) && !chip->factory_mode) {
 			chip->shutdown_voltage_tripped = true;
 			if (chip->usb_psy) {
 				power_supply_set_present(chip->usb_psy, false);
 				power_supply_set_online(chip->usb_psy, false);
 			}
 		}
-		return ret.intval;
+		*batt_cap = ret.intval;
+		return rc;
 	}
-
-	return DEFAULT_BATT_CAPACITY;
+	*batt_cap = DEFAULT_BATT_CAPACITY;
+	return rc;
 }
 
-static int smb135x_get_prop_batt_health(struct smb135x_chg *chip)
+static int smb135x_get_prop_batt_health(struct smb135x_chg *chip,
+					int *batt_health)
 {
-	union power_supply_propval ret = {0, };
-
 	if (chip->invalid_battery)
-		ret.intval = POWER_SUPPLY_HEALTH_UNSPEC_FAILURE;
+		*batt_health = POWER_SUPPLY_HEALTH_UNSPEC_FAILURE;
 	else if (chip->batt_hot)
-		ret.intval = POWER_SUPPLY_HEALTH_OVERHEAT;
+		*batt_health = POWER_SUPPLY_HEALTH_OVERHEAT;
 	else if (chip->batt_cold)
-		ret.intval = POWER_SUPPLY_HEALTH_COLD;
+		*batt_health = POWER_SUPPLY_HEALTH_COLD;
 	else if (chip->batt_warm)
-		ret.intval = POWER_SUPPLY_HEALTH_WARM;
+		*batt_health = POWER_SUPPLY_HEALTH_WARM;
 	else if (chip->batt_cool)
-		ret.intval = POWER_SUPPLY_HEALTH_COOL;
+		*batt_health = POWER_SUPPLY_HEALTH_COOL;
 	else
-		ret.intval = POWER_SUPPLY_HEALTH_GOOD;
+		*batt_health = POWER_SUPPLY_HEALTH_GOOD;
 
-	return ret.intval;
+	return 0;
 }
 
 static int smb135x_set_prop_batt_health(struct smb135x_chg *chip, int health)
@@ -1018,9 +1035,11 @@ static int smb135x_set_prop_batt_health(struct smb135x_chg *chip, int health)
 	return 0;
 }
 
+#define DEFAULT_BATT_VOLT_MV	4000
 static int smb135x_get_prop_batt_voltage_now(struct smb135x_chg *chip,
 					     int *volt_mv)
 {
+	int rc = 0;
 	union power_supply_propval ret = {0, };
 
 	if (!chip->bms_psy && chip->bms_psy_name)
@@ -1028,12 +1047,17 @@ static int smb135x_get_prop_batt_voltage_now(struct smb135x_chg *chip,
 			power_supply_get_by_name((char *)chip->bms_psy_name);
 
 	if (chip->bms_psy) {
-		chip->bms_psy->get_property(chip->bms_psy,
+		rc = chip->bms_psy->get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_VOLTAGE_NOW, &ret);
+		if (rc < 0) {
+			*volt_mv = DEFAULT_BATT_VOLT_MV;
+			return rc;
+		}
+
 		*volt_mv = ret.intval / 1000;
 		return 0;
 	}
-
+	*volt_mv = DEFAULT_BATT_VOLT_MV;
 	return -EINVAL;
 }
 
@@ -1338,7 +1362,8 @@ static int smb135x_check_temp_range(struct smb135x_chg *chip)
 	if (smb135x_get_prop_batt_voltage_now(chip, &batt_volt))
 		return 0;
 
-	batt_soc = smb135x_get_prop_batt_capacity(chip);
+	if (smb135x_get_prop_batt_capacity(chip, &batt_soc))
+		return 0;
 
 	if (((chip->batt_cool) &&
 	     (batt_volt > chip->ext_temp_volt_mv)) ||
@@ -1868,8 +1893,10 @@ static int smb135x_battery_is_writeable(struct power_supply *psy,
 }
 
 static int smb135x_bms_get_property(struct smb135x_chg *chip,
-				    enum power_supply_property prop)
+				    enum power_supply_property prop,
+				    int *bms_prop)
 {
+	int rc;
 	union power_supply_propval ret = {0, };
 
 	if (!chip->bms_psy && chip->bms_psy_name)
@@ -1877,9 +1904,10 @@ static int smb135x_bms_get_property(struct smb135x_chg *chip,
 			power_supply_get_by_name((char *)chip->bms_psy_name);
 
 	if (chip->bms_psy) {
-		chip->bms_psy->get_property(chip->bms_psy,
-				prop, &ret);
-		return ret.intval;
+		rc = chip->bms_psy->get_property(chip->bms_psy,
+						 prop, &ret);
+		*bms_prop = ret.intval;
+		return rc;
 	}
 
 	return -EINVAL;
@@ -1889,12 +1917,17 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 				       enum power_supply_property prop,
 				       union power_supply_propval *val)
 {
+	int stat_val;
+	int rc;
 	struct smb135x_chg *chip = container_of(psy,
 				struct smb135x_chg, batt_psy);
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_STATUS:
-		val->intval = smb135x_get_prop_batt_status(chip);
+		rc = smb135x_get_prop_batt_status(chip, &stat_val);
+		val->intval = stat_val;
+		if (rc < 0)
+			return rc;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = smb135x_get_prop_batt_present(chip);
@@ -1903,13 +1936,22 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 		val->intval = chip->chg_enabled;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
-		val->intval = smb135x_get_prop_charge_type(chip);
+		rc = smb135x_get_prop_charge_type(chip, &stat_val);
+		val->intval = stat_val;
+		if (rc < 0)
+			return rc;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = smb135x_get_prop_batt_capacity(chip);
+		rc = smb135x_get_prop_batt_capacity(chip, &stat_val);
+		val->intval = stat_val;
+		if (rc < 0)
+			return rc;
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
-		val->intval = smb135x_get_prop_batt_health(chip);
+		rc = smb135x_get_prop_batt_health(chip, &stat_val);
+		val->intval = stat_val;
+		if (rc < 0)
+			return rc;
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -1936,7 +1978,10 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
-		val->intval = smb135x_bms_get_property(chip, prop);
+		rc = smb135x_bms_get_property(chip, prop, &stat_val);
+		val->intval = stat_val;
+		if (rc < 0)
+			return rc;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 		val->intval = 0;
@@ -2606,12 +2651,19 @@ static void heartbeat_work(struct work_struct *work)
 	unsigned long float_timestamp;
 	bool usb_present;
 	bool dc_present;
+	int batt_health;
+	int batt_soc;
 	struct smb135x_chg *chip =
 		container_of(work, struct smb135x_chg,
 				heartbeat_work.work);
-	int batt_health = smb135x_get_prop_batt_health(chip);
-	int batt_soc = smb135x_get_prop_batt_capacity(chip);
 	bool poll_status = chip->poll_fast;
+
+	if (smb135x_get_prop_batt_capacity(chip, &batt_soc) ||
+	    smb135x_get_prop_batt_health(chip, &batt_health)) {
+		schedule_delayed_work(&chip->heartbeat_work,
+				      msecs_to_jiffies(1000));
+		return;
+	}
 
 	dev_dbg(chip->dev, "HB Pound!\n");
 	cancel_delayed_work(&chip->src_removal_work);
