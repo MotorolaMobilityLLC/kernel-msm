@@ -144,7 +144,7 @@ int stml0xx_reset_and_init(void)
 		ret_err = err;
 	}
 
-	err = stml0xx_led_set(stml0xx_misc_data);
+	err = stml0xx_led_set(&stml0xx_misc_data->led_cdev);
 	if (err < 0)
 		ret_err =  err;
 
