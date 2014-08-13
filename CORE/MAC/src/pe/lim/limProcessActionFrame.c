@@ -1281,11 +1281,11 @@ __limProcessAddBAReq( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
     }
 #endif //WLAN_SOFTAP_VSTA_FEATURE
 
-    if (wlan_cfgGetInt(pMac, WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC, &val) !=
+    if (wlan_cfgGetInt(pMac, WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC, &val) !=
                     eSIR_SUCCESS)
     {
         limLog(pMac, LOGE,
-               FL("Unable to get WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC"));
+               FL("Unable to get WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC"));
         val = 0;
     }
     if ((SIR_BAND_2_4_GHZ == limGetRFBand(psessionEntry->currentOperChannel)) &&
