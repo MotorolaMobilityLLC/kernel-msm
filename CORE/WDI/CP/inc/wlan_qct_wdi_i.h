@@ -864,6 +864,7 @@ typedef enum
   WDI_HAL_EXTSCAN_SIG_RSSI_RESULT_IND         = WDI_HAL_IND_MIN + 25,
 #endif
   WDI_TDLS_CHAN_SWITCH_REQ_RESP      = WDI_HAL_IND_MIN + 28,
+  WDI_HAL_DEL_BA_IND                 = WDI_HAL_IND_MIN + 29,
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
 
@@ -6052,6 +6053,13 @@ WDI_ProcessLinkLayerStatsResultsInd
 );
 
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
+WDI_Status
+WDI_delBaInd
+(
+   WDI_ControlBlockType*  pWDICtx,
+   WDI_EventInfoType*     pEventData
+);
 
 #endif /*WLAN_QCT_WDI_I_H*/
 

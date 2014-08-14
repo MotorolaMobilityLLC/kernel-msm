@@ -4461,46 +4461,25 @@ void limProcessMlmHalBADeleteInd( tpAniSirGlobal pMac,
         FL( "Received unexpected BA Delete IND when STA BA state is %d" ),
         curBaState );
         goto returnAfterCleanup;
-    }
+  }
 
-  // Validate if a BA is active for the requested TID
-  // AND in that desired direction
-  if( eBA_INITIATOR == pBADeleteParams->baDirection )
+  // Post DELBA REQ to MLME...
+  if( eSIR_SUCCESS !=
+     (status = limPostMlmDelBAReq( pMac,
+                                   pSta,
+                                   pBADeleteParams->baDirection,
+                                   pBADeleteParams->baTID,
+                                   eSIR_MAC_UNSPEC_FAILURE_REASON,psessionEntry )))
   {
-    if( 0 == pSta->tcCfg[pBADeleteParams->baTID].fUseBATx )
-      status = eSIR_FAILURE;
+     limLog( pMac, LOGE,
+        FL( "Attempt to post LIM_MLM_DELBA_REQ failed with status %d" ), status);
   }
   else
   {
-    if( 0 == pSta->tcCfg[pBADeleteParams->baTID].fUseBARx )
-      status = eSIR_FAILURE;
-  }
-    if( eSIR_FAILURE == status )
-    {
-        limLog( pMac, LOGW,
-        FL("Received an INVALID DELBA Delete Ind for TID %d..."),
-        pBADeleteParams->baTID );
-    }
-    else
-    {
-        // Post DELBA REQ to MLME...
-        if( eSIR_SUCCESS !=
-        (status = limPostMlmDelBAReq( pMac,
-                                      pSta,
-                                      pBADeleteParams->baDirection,
-                                      pBADeleteParams->baTID,
-                                      eSIR_MAC_UNSPEC_FAILURE_REASON,psessionEntry )))
-        {
-            limLog( pMac, LOGE,
-            FL( "Attempt to post LIM_MLM_DELBA_REQ failed with status %d" ), status);
-    }
-    else
-    {
-      limLog( pMac, LOGE,
-          FL( "BA Delete - Reason 0x%08x. Attempting to delete BA session for TID %d with peer STA "  ),
-          pBADeleteParams->reasonCode, pBADeleteParams->baTID );
-            limPrintMacAddr( pMac, pSta->staAddr, LOGE );
-        }
+     limLog( pMac, LOGE,
+         FL( "BA Delete - Reason 0x%08x. Attempting to delete BA session for TID %d with peer STA "  ),
+         pBADeleteParams->reasonCode, pBADeleteParams->baTID );
+         limPrintMacAddr( pMac, pSta->staAddr, LOGE );
   }
 returnAfterCleanup:
   // Free the memory allocated for SIR_LIM_DEL_BA_IND

@@ -793,6 +793,7 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 #else
   NULL,
 #endif
+  WDI_delBaInd,                             /* WDI_HAL_DEL_BA_IND*/
 };
 
 
@@ -23943,6 +23944,8 @@ HAL_2_WDI_RSP_TYPE
     return WDI_HAL_P2P_NOA_ATTR_IND;
   case WLAN_HAL_P2P_NOA_START_IND:
     return WDI_HAL_P2P_NOA_START_IND;
+  case WLAN_HAL_DEL_BA_IND:
+    return WDI_HAL_DEL_BA_IND;
   case WLAN_HAL_TX_PER_HIT_IND:
     return WDI_HAL_TX_PER_HIT_IND;
   case WLAN_HAL_SET_MAX_TX_POWER_RSP:
@@ -30828,6 +30831,68 @@ WDI_printRegInfo
    }
 
    return WDI_STATUS_SUCCESS;
+}
+
+/*
+ * FUNCTION: WDI_delBaInd
+ * send the delBA to peer.
+ */
+
+WDI_Status
+WDI_delBaInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+
+)
+{
+  tHalWlanDelBaIndMsg    halDelBaInd;
+  WDI_LowLevelIndType    wdiInd;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /*-------------------------------------------------------------------------
+        Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData))
+  {
+       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                  "%s: Invalid parameters", __func__);
+       WDI_ASSERT(0);
+       return WDI_STATUS_E_FAILURE;
+  }
+
+  /*-------------------------------------------------------------------------
+        Extract indication and send it to UMAC
+  -------------------------------------------------------------------------*/
+
+  /* Parameters need to be unpacked according to HAL struct*/
+  wpalMemoryCopy( &halDelBaInd,
+                  pEventData->pEventData,
+                  sizeof(halDelBaInd));
+
+  /*Fill in the indication parameters*/
+  wdiInd.wdiIndicationType = WDI_DEL_BA_IND;
+
+  wdiInd.wdiIndicationData.wdiDeleteBAInd.staIdx = halDelBaInd.staIdx;
+  wpalMemoryCopy(wdiInd.wdiIndicationData.wdiDeleteBAInd.peerMacAddr,
+                            halDelBaInd.peerMacAddr, WDI_MAC_ADDR_LEN);
+
+  wdiInd.wdiIndicationData.wdiDeleteBAInd.baTID = halDelBaInd.baTID;
+  wdiInd.wdiIndicationData.wdiDeleteBAInd.baDirection = halDelBaInd.baDirection;
+  wdiInd.wdiIndicationData.wdiDeleteBAInd.reasonCode = halDelBaInd.reasonCode;
+
+  wpalMemoryCopy(wdiInd.wdiIndicationData.wdiDeleteBAInd.bssId,
+                            halDelBaInd.bssId, WDI_MAC_ADDR_LEN);
+  if ( pWDICtx->wdiLowLevelIndCB )
+  {
+        /*Notify UMAC*/
+        pWDICtx->wdiLowLevelIndCB( &wdiInd, pWDICtx->pIndUserData );
+  }
+
+  return WDI_STATUS_SUCCESS;
+
+
 }
 
 /*

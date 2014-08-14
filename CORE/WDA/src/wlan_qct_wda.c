@@ -13966,6 +13966,38 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
          break;
      }
 #endif /* WLAN_FEATURE_EXTSCAN */
+      case WDI_DEL_BA_IND:
+      {
+         tpBADeleteParams  pDelBAInd =
+           (tpBADeleteParams)vos_mem_malloc(sizeof(tpBADeleteParams));
+
+         VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                  "Received WDI_DEL_BA_IND from WDI ");
+         if(NULL == pDelBAInd)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                  "%s: VOS MEM Alloc Failure", __func__);
+            break;
+         }
+         vos_mem_copy(pDelBAInd->peerMacAddr,
+             wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.peerMacAddr,
+             sizeof(tSirMacAddr));
+         vos_mem_copy(pDelBAInd->bssId,
+             wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.bssId,
+             sizeof(tSirMacAddr));
+         pDelBAInd->staIdx  =
+          wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.staIdx;
+         pDelBAInd->baTID  =
+          wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.baTID;
+         pDelBAInd->baDirection  =
+          wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.baDirection;
+         pDelBAInd->reasonCode   =
+          wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.reasonCode;
+
+         WDA_SendMsg(pWDA, SIR_LIM_DEL_BA_IND,
+                               (void *)pDelBAInd , 0) ;
+         break;
+      }
 
       default:
       {
