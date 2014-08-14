@@ -1183,14 +1183,16 @@ static int tpa6165_poll_acc_state(struct snd_kcontrol *kcontrol,
 
 	pr_debug("tpa6165 polling enabled: %d", value);
 	mutex_lock(&tpa6165->lock);
-	if (value == 1) {
-		tpa6165->polling_state = 1;
-		queue_delayed_work(tpa6165->wq, &tpa6165->poll_work, 0);
-	} else {
-		cancel_delayed_work_sync(&tpa6165->poll_work);
-		tpa6165->polling_state = 0;
-	}
+
+	tpa6165->polling_state = value ? 1 : 0;
+
 	mutex_unlock(&tpa6165->lock);
+
+	if (tpa6165->polling_state)
+		queue_delayed_work(tpa6165->wq, &tpa6165->poll_work, 0);
+	else
+		cancel_delayed_work_sync(&tpa6165->poll_work);
+
 	return 1;
 }
 
