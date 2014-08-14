@@ -153,12 +153,6 @@ error:
 	return ret;
 }
 
-static int mdss_dsi_panel_power_doze(struct mdss_panel_data *pdata, int enable)
-{
-	/* Panel power control when entering/exiting doze mode */
-	return 0;
-}
-
 static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	int power_state)
 {
@@ -184,13 +178,7 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 		ret = mdss_dsi_panel_power_off(pdata);
 		break;
 	case MDSS_PANEL_POWER_ON:
-		if (pinfo->panel_power_state == MDSS_PANEL_POWER_DOZE)
-			ret = mdss_dsi_panel_power_doze(pdata, false);
-		else
-			ret = mdss_dsi_panel_power_on(pdata);
-		break;
-	case MDSS_PANEL_POWER_DOZE:
-		ret = mdss_dsi_panel_power_doze(pdata, true);
+		ret = mdss_dsi_panel_power_on(pdata);
 		break;
 	default:
 		pr_err("%s: unknown panel power state requested (%d)\n",
@@ -433,11 +421,6 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 		goto end;
 	}
 
-	if (power_state != MDSS_PANEL_POWER_OFF) {
-		pr_debug("%s: dsi_off with panel always on\n", __func__);
-		goto panel_power_ctrl;
-	}
-
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
@@ -449,7 +432,6 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
-panel_power_ctrl:
 	ret = mdss_dsi_panel_power_ctrl(pdata, power_state);
 	if (ret) {
 		pr_err("%s: Panel power off failed\n", __func__);
@@ -597,11 +579,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		return ret;
 	}
 
-	if (cur_power_state != MDSS_PANEL_POWER_OFF) {
-		pr_debug("%s: dsi_on from panel low power state\n", __func__);
-		goto end;
-	}
-
 	/*
 	 * Enable DSI clocks.
 	 * This is also enable the DSI core power block and reset/setup
@@ -656,13 +633,6 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
-	if (pdata->panel_info.blank_state == MDSS_PANEL_BLANK_LOW_POWER) {
-		pr_debug("%s: dsi_unblank with panel always on\n", __func__);
-		if (ctrl_pdata->low_power_config)
-			ret = ctrl_pdata->low_power_config(pdata, false);
-		goto error;
-	}
-
 	if (!(ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT)) {
 		ret = ctrl_pdata->on(pdata);
 		if (ret) {
@@ -706,13 +676,6 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 		__func__, ctrl_pdata, ctrl_pdata->ndx, power_state);
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-
-	if (power_state == MDSS_PANEL_POWER_DOZE) {
-		pr_debug("%s: low power state requested\n", __func__);
-		if (ctrl_pdata->low_power_config)
-			ret = ctrl_pdata->low_power_config(pdata, true);
-		goto error;
-	}
 
 	if (pdata->panel_info.type == MIPI_VIDEO_PANEL &&
 			ctrl_pdata->off_cmds.link_state == DSI_LP_MODE) {
