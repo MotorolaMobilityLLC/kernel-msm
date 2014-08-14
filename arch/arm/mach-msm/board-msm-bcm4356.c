@@ -249,6 +249,7 @@ static struct cntry_locales_custom brcm_wlan_translate_custom_table[] = {
 	{"CH", "CH", 0},
 	{"TR", "TR", 0},
 	{"NO", "NO", 0},
+	{"IN", "IN", 4},
 	{"KR", "XY", 3},
 	{"AU", "XY", 3},
 	{"CN", "XY", 3},  /* input ISO "CN" to : XY regrev 03 */
