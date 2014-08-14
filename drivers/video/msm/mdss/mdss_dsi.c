@@ -1115,8 +1115,14 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_AMBIENT_MODE_OFF:
 		if (is_ambient_on())
 			rc = mdss_dsi_panel_ambient_enable(pdata, 0);
-		else
+		else{
+			if (ctrl_pdata->ambient_on_queued){
+				cancel_delayed_work(&ctrl_pdata->ambient_enable_work);
+				ctrl_pdata->ambient_on_queued = false;
+			}
+
 			rc = 0;
+		}
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
