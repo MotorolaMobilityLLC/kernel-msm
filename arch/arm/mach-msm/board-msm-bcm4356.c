@@ -296,10 +296,20 @@ static int __init brcm_mac_addr_setup(char *str)
 			break;
 		res = kstrtoul(token, 0x10, &val);
 		if (res < 0)
-			return 0;
+			break;
 		brcm_mac_addr[i++] = (u8)val;
 	}
-	return 1;
+
+	if (i < IFHWADDRLEN && strlen(macstr)==IFHWADDRLEN*2) {
+		/* try again with wrong format (sans colons) */
+		u64 mac;
+		if (kstrtoull(macstr, 0x10, &mac) < 0)
+			return 0;
+		for (i=0; i<IFHWADDRLEN; i++)
+			brcm_mac_addr[IFHWADDRLEN-1-i] = (u8)((0xFF)&(mac>>(i*8)));
+	}
+
+	return i==IFHWADDRLEN ? 1:0;
 }
 
 __setup("androidboot.wifimacaddr=", brcm_mac_addr_setup);
