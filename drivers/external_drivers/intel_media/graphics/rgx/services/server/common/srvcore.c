@@ -274,6 +274,9 @@ PVRSRVHWOpTimeoutKM(IMG_VOID)
 #endif
 	PVR_LOG(("HW operation timeout, dump server info"));
 	PVRSRVDebugRequest(DEBUG_REQUEST_VERBOSITY_LOW,IMG_NULL);
+#ifndef CONFIG_MOOREFIELD
+	panic("HW operation timeout\n");
+#endif
 	return PVRSRV_OK;
 }
 

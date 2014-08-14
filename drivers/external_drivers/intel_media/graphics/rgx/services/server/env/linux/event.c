@@ -90,8 +90,16 @@ typedef struct PVRSRV_LINUX_EVENT_OBJECT_TAG
 #endif
 	wait_queue_head_t sWait;
 	struct list_head sList;
+	struct list_head sTSList;
 	PVRSRV_LINUX_EVENT_OBJECT_LIST *psLinuxEventObjectList;
+	rwlock_t sLock;
 } PVRSRV_LINUX_EVENT_OBJECT;
+typedef struct PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP_TAG
+{
+	IMG_UINT32 ui32TimeStampPrevious;
+	IMG_UINT32 ui32PID;
+	struct list_head sList;
+} PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP;
 
 /*!
 ******************************************************************************
@@ -176,6 +184,8 @@ PVRSRV_ERROR LinuxEventObjectListDestroy(IMG_HANDLE hEventObjectList)
 ******************************************************************************/
 PVRSRV_ERROR LinuxEventObjectDelete(IMG_HANDLE hOSEventObject)
 {
+	struct list_head *psListEntry, *psListEntryTemp, *psList;
+	PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP *psLinuxEventObjectTimeStamp;
 	if(hOSEventObject)
 	{
 		PVRSRV_LINUX_EVENT_OBJECT *psLinuxEventObject = (PVRSRV_LINUX_EVENT_OBJECT *)hOSEventObject;
@@ -189,6 +199,13 @@ PVRSRV_ERROR LinuxEventObjectDelete(IMG_HANDLE hOSEventObject)
 //		PVR_DPF((PVR_DBG_MESSAGE, "LinuxEventObjectDelete: Event object waits: %u", psLinuxEventObject->ui32Stats));
 #endif
 
+		psList = &psLinuxEventObject->sTSList;
+		list_for_each_safe(psListEntry, psListEntryTemp, psList)
+		{
+
+			psLinuxEventObjectTimeStamp = (PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP *)list_entry(psListEntry, PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP, sList);
+			OSFreeMem(psLinuxEventObjectTimeStamp);
+		}
 		OSFreeMem(psLinuxEventObject);
 		/*not nulling pointer, copy on stack*/
 
@@ -216,7 +233,7 @@ PVRSRV_ERROR LinuxEventObjectAdd(IMG_HANDLE hOSEventObjectList, IMG_HANDLE *phOS
  {
 	PVRSRV_LINUX_EVENT_OBJECT *psLinuxEventObject;
 	PVRSRV_LINUX_EVENT_OBJECT_LIST *psLinuxEventObjectList = (PVRSRV_LINUX_EVENT_OBJECT_LIST*)hOSEventObjectList;
-
+	PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP *psLinuxEventObjectTimeStamp;
 	/* allocate completion variable */
 	psLinuxEventObject = OSAllocMem(sizeof(PVRSRV_LINUX_EVENT_OBJECT));
 	if (psLinuxEventObject == IMG_NULL)
@@ -224,12 +241,22 @@ PVRSRV_ERROR LinuxEventObjectAdd(IMG_HANDLE hOSEventObjectList, IMG_HANDLE *phOS
 		PVR_DPF((PVR_DBG_ERROR, "LinuxEventObjectAdd: failed to allocate memory "));
 		return PVRSRV_ERROR_OUT_OF_MEMORY;
 	}
+	psLinuxEventObjectTimeStamp = OSAllocMem(sizeof(PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP));
+	if (psLinuxEventObjectTimeStamp == IMG_NULL)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "LinuxEventObjectAdd: failed to allocate memory "));
+		return PVRSRV_ERROR_OUT_OF_MEMORY;
+	}
 
 	INIT_LIST_HEAD(&psLinuxEventObject->sList);
+	INIT_LIST_HEAD(&psLinuxEventObject->sTSList);
 
 	atomic_set(&psLinuxEventObject->sTimeStamp, 0);
 	psLinuxEventObject->ui32TimeStampPrevious = 0;
-
+	psLinuxEventObjectTimeStamp->ui32TimeStampPrevious = 0;
+	psLinuxEventObjectTimeStamp->ui32PID = current->pid;
+	rwlock_init(&psLinuxEventObject->sLock);
+	list_add(&psLinuxEventObjectTimeStamp->sList, &psLinuxEventObject->sTSList);
 #if defined(DEBUG)
 	psLinuxEventObject->ui32Stats = 0;
 #endif
@@ -274,7 +301,7 @@ PVRSRV_ERROR LinuxEventObjectSignal(IMG_HANDLE hOSEventObjectList)
 		psLinuxEventObject = (PVRSRV_LINUX_EVENT_OBJECT *)list_entry(psListEntry, PVRSRV_LINUX_EVENT_OBJECT, sList);
 
 		atomic_inc(&psLinuxEventObject->sTimeStamp);
-		wake_up_interruptible(&psLinuxEventObject->sWait);
+		wake_up(&psLinuxEventObject->sWait);
 	}
 	read_unlock_bh(&psLinuxEventObjectList->sLock);
 
@@ -301,14 +328,15 @@ PVRSRV_ERROR LinuxEventObjectSignal(IMG_HANDLE hOSEventObjectList)
 PVRSRV_ERROR LinuxEventObjectWait(IMG_HANDLE hOSEventObject, IMG_UINT32 ui32MSTimeout)
 {
 	IMG_UINT32 ui32TimeStamp;
-	IMG_BOOL bReleasePVRLock;
+	IMG_BOOL bReleasePVRLock, bFound;
+	struct list_head *psListEntry, *psListEntryTemp, *psList;
+	PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP *psLinuxEventObjectTimeStamp;
 	PVRSRV_DATA *psPVRSRVData = PVRSRVGetPVRSRVData();
 	DEFINE_WAIT(sWait);
 
 	PVRSRV_LINUX_EVENT_OBJECT *psLinuxEventObject = (PVRSRV_LINUX_EVENT_OBJECT *) hOSEventObject;
 
 	IMG_UINT32 ui32TimeOutJiffies = msecs_to_jiffies(ui32MSTimeout);
-
 	/* Check if the driver is good shape */
 	if (psPVRSRVData->eServicesState != PVRSRV_SERVICES_STATE_OK)
 	{
@@ -317,11 +345,40 @@ PVRSRV_ERROR LinuxEventObjectWait(IMG_HANDLE hOSEventObject, IMG_UINT32 ui32MSTi
 
 	do
 	{
-		prepare_to_wait(&psLinuxEventObject->sWait, &sWait, TASK_INTERRUPTIBLE);
+		prepare_to_wait(&psLinuxEventObject->sWait, &sWait, TASK_UNINTERRUPTIBLE);
 		ui32TimeStamp = (IMG_UINT32)atomic_read(&psLinuxEventObject->sTimeStamp);
 
-		if(psLinuxEventObject->ui32TimeStampPrevious != ui32TimeStamp)
+		
+		psList = &psLinuxEventObject->sTSList;
+		bFound = IMG_FALSE;
+		list_for_each_safe(psListEntry, psListEntryTemp, psList)
 		{
+
+			psLinuxEventObjectTimeStamp = (PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP *)list_entry(psListEntry, PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP, sList);
+			if (psLinuxEventObjectTimeStamp->ui32PID == current->pid)
+			{
+				bFound = IMG_TRUE;
+				break;
+			}
+				
+		}
+		if (bFound == IMG_TRUE)
+		{
+			if(psLinuxEventObjectTimeStamp->ui32TimeStampPrevious != ui32TimeStamp) break;
+		}
+		else
+		{
+			psLinuxEventObjectTimeStamp = OSAllocMem(sizeof(PVRSRV_LINUX_EVENT_OBJECT_TIMESTAMP));
+			if (psLinuxEventObjectTimeStamp == IMG_NULL)
+			{
+				PVR_DPF((PVR_DBG_ERROR, "LinuxEventObjectWait: failed to allocate memory "));
+				return PVRSRV_ERROR_OUT_OF_MEMORY;
+			}
+			psLinuxEventObjectTimeStamp->ui32TimeStampPrevious = 0;
+			psLinuxEventObjectTimeStamp->ui32PID = current->pid;
+			write_lock_bh(&psLinuxEventObject->sLock);
+			list_add(&psLinuxEventObjectTimeStamp->sList, &psLinuxEventObject->sTSList);
+			write_unlock_bh(&psLinuxEventObject->sLock);
 			break;
 		}
 
@@ -346,12 +403,11 @@ PVRSRV_ERROR LinuxEventObjectWait(IMG_HANDLE hOSEventObject, IMG_UINT32 ui32MSTi
 		psLinuxEventObject->ui32Stats++;
 #endif
 
-
 	} while (ui32TimeOutJiffies);
 
 	finish_wait(&psLinuxEventObject->sWait, &sWait);
 
-	psLinuxEventObject->ui32TimeStampPrevious = ui32TimeStamp;
+	psLinuxEventObjectTimeStamp->ui32TimeStampPrevious = ui32TimeStamp;
 
 	return ui32TimeOutJiffies ? PVRSRV_OK : PVRSRV_ERROR_TIMEOUT;
 

@@ -105,6 +105,8 @@ PVRSRV_ERROR DCSystemBufferRelease(DC_BUFFER *psBuffer);
 PVRSRV_ERROR DCDisplayContextCreate(DC_DEVICE *psDevice,
 									DC_DISPLAY_CONTEXT **ppsDisplayContext);
 
+PVRSRV_ERROR DCDisplayContextFlush(IMG_VOID);
+
 PVRSRV_ERROR DCDisplayContextConfigureCheck(DC_DISPLAY_CONTEXT *psDisplayContext,
 											IMG_UINT32 ui32PipeCount,
 											PVRSRV_SURFACE_CONFIG_INFO *pasSurfAttrib,

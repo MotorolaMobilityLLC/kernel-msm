@@ -895,7 +895,7 @@ static void _Dispatch_Flip(DC_MRFLD_FLIP *psFlip)
 	}
 
 #ifdef CONFIG_SUPPORT_MIPI
-	if (send_wms) {
+	if (send_wms && psFlip) {
 
 		/* Ensure that *psFlip is not freed while lock is not held. */
 		if (psFlip)

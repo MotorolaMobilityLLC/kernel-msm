@@ -431,6 +431,7 @@ IMG_VOID _SCPCommandDo(SCP_COMMAND *psCommand)
 static IMG_VOID _SCPDumpCommand(SCP_COMMAND *psCommand)
 {
 	IMG_UINT32 i;
+        SCP_SYNC_DATA *psSCPSyncData;
 
 	PVR_LOG(("\tCommand type = %d (@%p)", psCommand->ui32CmdType, psCommand));
 
@@ -438,12 +439,17 @@ static IMG_VOID _SCPDumpCommand(SCP_COMMAND *psCommand)
 	{
 		for (i = 0; i < psCommand->ui32SyncCount; i++)
 		{
-			SCP_SYNC_DATA *psSCPSyncData = &psCommand->pasSCPSyncData[i];
+			if (!psCommand->pasSCPSyncData)
+			        continue;
+
+			psSCPSyncData = &psCommand->pasSCPSyncData[i];
 		   
 			/*
 				Only dump this sync if there is a fence operation on it
 			*/
-			if (psSCPSyncData->ui32Flags & SCP_SYNC_DATA_FENCE)
+			if (psSCPSyncData &&
+			                (psSCPSyncData->ui32Flags & SCP_SYNC_DATA_FENCE) &&
+			                (psSCPSyncData->psSync))
 			{
 				PVR_LOG(("\t\tFenced on 0x%08x = 0x%08x (?= 0x%08x)",
 						ServerSyncGetFWAddr(psSCPSyncData->psSync),
@@ -715,6 +721,7 @@ IMG_EXPORT
 PVRSRV_ERROR SCPRun(SCP_CONTEXT *psContext)
 {
 	SCP_COMMAND *psCommand;
+	PVRSRV_ERROR eError = PVRSRV_OK;
 
 	if (psContext == IMG_NULL)
 	{
@@ -724,8 +731,6 @@ PVRSRV_ERROR SCPRun(SCP_CONTEXT *psContext)
 	OSLockAcquire(psContext->hLock);
 	while (psContext->ui32DepOffset != psContext->ui32WriteOffset)
 	{
-		PVRSRV_ERROR eError;
-
 		psCommand = (SCP_COMMAND *)((IMG_UINT8 *)psContext->pvCCB +
 		            psContext->ui32DepOffset);
 
@@ -753,7 +758,7 @@ PVRSRV_ERROR SCPRun(SCP_CONTEXT *psContext)
 	}
 	OSLockRelease(psContext->hLock);
 
-	return PVRSRV_OK;
+	return eError;
 }
 
 IMG_EXPORT
@@ -842,6 +847,9 @@ IMG_EXPORT IMG_BOOL SCPHasPendingCommand(SCP_CONTEXT *psContext)
 IMG_EXPORT
 IMG_VOID IMG_CALLCONV SCPDumpStatus(SCP_CONTEXT *psContext)
 {
+	if (psContext == IMG_NULL)
+	        return;
+
 	/*
 		Acquire the lock to ensure that the SCP isn't run while
 		while we're dumping info
@@ -856,11 +864,22 @@ IMG_VOID IMG_CALLCONV SCPDumpStatus(SCP_CONTEXT *psContext)
 	else
 	{
 		SCP_COMMAND *psCommand;
+		IMG_UINT32 ui32DepOffset = psContext->ui32DepOffset;
 
-		/* Dump the command we're pending on */
-		psCommand = (SCP_COMMAND *)((IMG_UINT8 *)psContext->pvCCB +
-		            psContext->ui32DepOffset);
-		_SCPDumpCommand(psCommand);
+		while (ui32DepOffset != psContext->ui32WriteOffset)
+		{
+		        /* Dump the command we're pending on */
+		        psCommand = (SCP_COMMAND *)((IMG_UINT8 *)psContext->pvCCB +
+		                ui32DepOffset);
+
+		        _SCPDumpCommand(psCommand);
+
+		        /* processed cmd so update queue */
+		        UPDATE_CCB_OFFSET(ui32DepOffset,
+		                                          psCommand->ui32CmdSize,
+		                                          psContext->ui32CCBSize);
+
+		}
 	}
 	
 	PVR_LOG(("Active command(s):"));

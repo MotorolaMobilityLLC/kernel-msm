@@ -268,7 +268,6 @@ PVRSRV_ERROR PVRSRVRGXCreateTransferContextKM(CONNECTION_DATA		*psConnection,
 	}
 
 	OSMemSet(psTransferContext, 0, sizeof(*psTransferContext));
-	*ppsTransferContext = psTransferContext;
 
 	psTransferContext->psDeviceNode = psDeviceNode;
 
@@ -339,6 +338,7 @@ PVRSRV_ERROR PVRSRVRGXCreateTransferContextKM(CONNECTION_DATA		*psConnection,
 		OSWRLockAcquireWrite(psDevInfo->hTransferCtxListLock);
 		dllist_add_to_tail(&(psDevInfo->sTransferCtxtListHead), &(psTransferContext->sListNode));
 		OSWRLockReleaseWrite(psDevInfo->hTransferCtxListLock);
+		*ppsTransferContext = psTransferContext;
 	}
 
 	return PVRSRV_OK;
@@ -355,6 +355,7 @@ fail_frameworkcreate:
 fail_syncalloc:
 	OSFreeMem(psTransferContext);
 	PVR_ASSERT(eError != PVRSRV_OK);
+	psTransferContext = IMG_NULL;
 	return eError;
 }
 

@@ -385,6 +385,10 @@ static void PVRSyncValueStr(struct sync_pt *psPt,
 {
 	struct PVR_SYNC_PT *psPVRPt = (struct PVR_SYNC_PT *)psPt;
 
+	if (!psPVRPt->psSyncData) {
+	        return;
+	}
+
 	/* This output is very compressed cause in the systrace case we just have
 	 * 32 chars and when printing it to /d/sync there are only 64 chars
 	 * available. Prints:
@@ -596,7 +600,14 @@ PVRSyncReleaseSyncPrim(struct PVR_SYNC_KERNEL_SYNC_PRIM *psSyncKernel)
 		return IMG_TRUE;
 	}
 
-	OSAcquireBridgeLock();
+	/*
+	 * we try to acquire bridge lock, but not wait for it because of deadlock
+	 * between bridge_lock and notify_rwsema
+	 */
+	if (!OSTryAcquireBridgeLock()) {
+	        PVRSyncAddToDeferFreeList(psSyncKernel);
+	        return IMG_TRUE;
+	}
 
 	if (   !ServerSyncFenceIsMet(psSyncKernel->psSync, psSyncKernel->ui32SyncValue)
 		|| (psSyncKernel->psCleanUpSync && !ServerSyncFenceIsMet(psSyncKernel->psCleanUpSync, psSyncKernel->ui32CleanUpValue)))
@@ -636,13 +647,16 @@ static void PVRSyncFreeSync(struct sync_pt *psPt)
 		_debugInfoPt(psPt));
 
     /* Only free on the last reference */
-    if (atomic_dec_return(&psPVRPt->psSyncData->sRefCount) != 0)
-        return;
+	if (psPVRPt->psSyncData) {
+		if (atomic_dec_return(&psPVRPt->psSyncData->sRefCount) != 0)
+		    return;
 
-	if (   psPVRPt->psSyncData->psSyncKernel
-	    && PVRSyncReleaseSyncPrim(psPVRPt->psSyncData->psSyncKernel))
-		queue_work(gsPVRSync.psWorkQueue, &gsPVRSync.sWork);
-	OSFreeMem(psPVRPt->psSyncData);
+		if (   psPVRPt->psSyncData->psSyncKernel
+			&& PVRSyncReleaseSyncPrim(psPVRPt->psSyncData->psSyncKernel))
+			queue_work(gsPVRSync.psWorkQueue, &gsPVRSync.sWork);
+		OSFreeMem(psPVRPt->psSyncData);
+		psPVRPt->psSyncData = IMG_NULL;
+	}
 }
 
 static struct sync_timeline_ops gsPVR_SYNC_TIMELINE_ops =
@@ -1308,8 +1322,9 @@ PVRSyncIOCTLCreateFence(struct PVR_SYNC_TIMELINE *psPVRTl, void __user *pvData)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to create a fence (%d)",
 								__func__, iFd));
+		sync_pt_free(psPt);
 		err = -ENOMEM;
-		goto err_sync_free;
+		goto err_put_fd;
 	}
 
 	sData.iFenceFd = iFd;
@@ -1333,8 +1348,6 @@ err_out:
 
 err_put_fence:
 	sync_fence_put(psFence);
-err_sync_free:
-	sync_pt_free(psPt);
 err_put_fd:
 	put_unused_fd(iFd);
 	goto err_out;
