@@ -74,7 +74,7 @@ enum mdp_notify_event {
 
 struct disp_info_type_suspend {
 	int op_enable;
-	int panel_power_state;
+	int panel_power_on;
 };
 
 struct disp_info_notify {
@@ -183,7 +183,7 @@ struct msm_fb_data_type {
 	int panel_reconfig;
 
 	u32 dst_format;
-	int panel_power_state;
+	int panel_power_on;
 	struct disp_info_type_suspend suspend;
 
 	struct ion_handle *ihdl;
@@ -261,11 +261,6 @@ static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
 		add_timer(&mfd->no_update.timer);
 		mutex_unlock(&mfd->no_update.lock);
 	}
-}
-
-static inline bool mdss_fb_is_panel_power_on(struct msm_fb_data_type *mfd)
-{
-	return (mfd->panel_power_state != MDSS_PANEL_POWER_OFF);
 }
 
 int mdss_fb_get_phys_info(dma_addr_t *start, unsigned long *len, int fb_num);

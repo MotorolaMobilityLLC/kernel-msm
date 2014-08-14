@@ -759,7 +759,7 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 		 * collapse use-case. Issue a phy software reset only when
 		 * unblanking the panel.
 		 */
-		if (pdata->panel_info.blank_state == MDSS_PANEL_BLANK_BLANK)
+		if (!pdata->panel_info.panel_power_on)
 			mdss_dsi_phy_sw_reset(ctrl->ctrl_base);
 		mdss_dsi_phy_init(pdata);
 
@@ -792,7 +792,7 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 		}
 	} else {
 		/* Enable DSI clamps only if entering idle power collapse */
-		if (pdata->panel_info.blank_state != MDSS_PANEL_BLANK_BLANK) {
+		if (ctrl->panel_data.panel_info.panel_power_on) {
 			rc = mdss_dsi_clamp_ctrl(ctrl, 1);
 			if (rc)
 				pr_err("%s: Failed to enable dsi clamps. rc=%d\n",
@@ -918,8 +918,7 @@ static int mdss_dsi_clk_ctrl_sub(struct mdss_dsi_ctrl_pdata *ctrl,
 			 * while blanking the panel.
 			 */
 			if ((mdss_dsi_ulps_feature_enabled(pdata)) &&
-				(pdata->panel_info.blank_state !=
-				 MDSS_PANEL_BLANK_BLANK))
+				(pdata->panel_info.panel_power_on))
 				mdss_dsi_ulps_config(ctrl, 1);
 			mdss_dsi_link_clk_stop(ctrl);
 		}

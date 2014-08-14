@@ -974,7 +974,7 @@ static int mdp3_overlay_play(struct msm_fb_data_type *mfd,
 
 	mutex_lock(&mdp3_session->lock);
 
-	if (mdss_fb_is_panel_power_on(mfd))
+	if (mfd->panel_power_on)
 		rc = mdp3_overlay_queue_buffer(mfd, req);
 	else
 		rc = -EPERM;
