@@ -330,9 +330,6 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
 
-	int mipi_d0_sel;
-	bool partial_mode_enabled;
-
 	unsigned long dma_size;
 	dma_addr_t dma_addr;
 	bool cmd_cfg_restore;
