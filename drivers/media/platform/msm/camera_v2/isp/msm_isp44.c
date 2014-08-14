@@ -720,6 +720,11 @@ static void msm_vfe44_cfg_camif(struct vfe_device *vfe_dev,
 	val &= ~0x3fff0000;
 	val |= (camif_cfg->lines_per_frame / 2) << 16;
 	msm_camera_io_w(val, vfe_dev->vfe_base + 0x318);
+
+	/* Configure epoch irq in epoch mask */
+	val = msm_camera_io_r(vfe_dev->vfe_base + 0x28);
+	val |= (1 << 2);
+	msm_camera_io_w(val, vfe_dev->vfe_base + 0x28);
 }
 
 static void msm_vfe44_update_camif_state(struct vfe_device *vfe_dev,
@@ -743,6 +748,8 @@ static void msm_vfe44_update_camif_state(struct vfe_device *vfe_dev,
 		msm_camera_io_w(val, vfe_dev->vfe_base + 0x2F8);
 		msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x2F4);
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 1;
+		val = msm_camera_io_r(vfe_dev->vfe_base + 0x28);
+		pr_err("%s:%d irq_mask %x\n", __func__, __LINE__, val);
 	} else if (update_state == DISABLE_CAMIF) {
 		msm_camera_io_w_mb(0x0, vfe_dev->vfe_base + 0x2F4);
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 0;
