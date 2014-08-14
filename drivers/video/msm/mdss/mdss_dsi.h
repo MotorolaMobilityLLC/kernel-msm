@@ -253,6 +253,8 @@ enum {
 
 #define DSI_CTRL_LEFT		DSI_CTRL_0
 #define DSI_CTRL_RIGHT		DSI_CTRL_1
+#define DSI_CTRL_CLK_SLAVE	DSI_CTRL_RIGHT
+#define DSI_CTRL_CLK_MASTER	DSI_CTRL_LEFT
 
 #define DSI_BUS_CLKS	BIT(0)
 #define DSI_LINK_CLKS	BIT(1)
@@ -446,6 +448,16 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool active);
 
+static inline bool mdss_dsi_split_display_enabled(void)
+{
+	/*
+	 * currently the only supported mode is split display.
+	 * So, if both controllers are initialized, then assume that
+	 * split display mode is enabled.
+	 */
+	return ctrl_list[DSI_CTRL_LEFT] && ctrl_list[DSI_CTRL_RIGHT];
+}
+
 static inline bool mdss_dsi_sync_wait_enable(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	return ctrl->cmd_sync_wait_broadcast;
@@ -472,6 +484,22 @@ static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl_by_index(int ndx)
 		return NULL;
 
 	return ctrl_list[ndx];
+}
+
+static inline bool mdss_dsi_is_ctrl_clk_slave(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	return mdss_dsi_split_display_enabled() &&
+		(ctrl->ndx == DSI_CTRL_CLK_SLAVE);
+}
+
+static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl_clk_master(void)
+{
+	return ctrl_list[DSI_CTRL_CLK_MASTER];
+}
+
+static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl_clk_slave(void)
+{
+	return ctrl_list[DSI_CTRL_CLK_SLAVE];
 }
 
 static inline bool mdss_dsi_is_panel_off(struct mdss_panel_data *pdata)
