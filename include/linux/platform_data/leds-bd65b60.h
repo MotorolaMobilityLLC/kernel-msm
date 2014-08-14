@@ -42,6 +42,7 @@ struct bd65b60_platform_data {
 
 	/* led config.  */
 	int init_level;
+	bool no_reset;
 	enum bd65b60_ledsel led_sel;
 	enum bd65b60_ovp ovp_val;
 	const char *name;

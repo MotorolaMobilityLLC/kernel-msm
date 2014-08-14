@@ -105,9 +105,8 @@ static int bd65b60_chip_init(struct i2c_client *client)
 	struct bd65b60_chip *pchip = i2c_get_clientdata(client);
 	struct bd65b60_platform_data *pdata = pchip->pdata;
 
-	rval |= bd65b60_write(pchip, REG_SFTRST, 0x01);
-	/* set Cofig. register */
-	rval |= bd65b60_update(pchip, REG_CTRLSET, PWMEN_MASK, pdata->pwm_ctrl);
+	if (!pdata->no_reset)
+		rval |= bd65b60_write(pchip, REG_SFTRST, 0x01);
 	/* set common settings/OVP register */
 	rval |= bd65b60_update(pchip, REG_COMSET1, OVP_MASK, pdata->ovp_val);
 	/* set control */
@@ -138,12 +137,19 @@ static void bd65b60_brightness_set(struct work_struct *work)
 		struct bd65b60_chip, ledwork);
 	unsigned int level = pchip->cdev.brightness;
 	static int old_level = -1;
+	struct bd65b60_platform_data *pdata = pchip->pdata;
+
+	/* set configure pwm input on first brightness command */
+	if (old_level == -1 && pdata->pwm_on) {
+		dev_info(pchip->dev, "Enabling CABC");
+		bd65b60_update(pchip, REG_CTRLSET, PWMEN_MASK, pdata->pwm_ctrl);
+	}
 
 	if (level != old_level && old_level == 0) {
-		dev_err(pchip->dev, "backlight on");
+		dev_info(pchip->dev, "backlight on");
 		bd65b60_write(pchip, REG_PON, 0x01);
 	} else if (level == 0 && old_level != 0)
-		dev_err(pchip->dev, "backlight off");
+		dev_info(pchip->dev, "backlight off");
 	old_level = level;
 
 	if (pchip->pdata->pwm_period != 0)
@@ -207,6 +213,8 @@ static int bd65b60_dt_init(struct i2c_client *client,
 		pdata->led_sel |= BD65B60_LED1SEL;
 	if (of_property_read_bool(np, "rohm,led2-used"))
 		pdata->led_sel |= BD65B60_LED2SEL;
+
+	pdata->no_reset = of_property_read_bool(np, "rohm,no-reset");
 
 	pdata->default_on = of_property_read_bool(np, "rohm,default-on");
 	pdata->init_level = BD65B60_DEFAULT_BRIGHTNESS;
