@@ -349,7 +349,7 @@ void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl,
 				int enable);
 void mdss_dsi_controller_cfg(int enable,
 				struct mdss_panel_data *pdata);
-void mdss_dsi_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl, bool restore);
+void mdss_dsi_sw_reset(struct mdss_panel_data *pdata);
 
 irqreturn_t mdss_dsi_isr(int irq, void *ptr);
 void mdss_dsi_irq_handler_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
@@ -364,6 +364,8 @@ int mdss_dsi_enable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 void mdss_dsi_disable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable);
 void mdss_dsi_phy_disable(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_phy_init(struct mdss_panel_data *pdata);
+void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base);
 void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_video_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl);
@@ -375,7 +377,8 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
 bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
-void mdss_dsi_ctrl_setup(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_reset(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_ctrl_setup(struct mdss_panel_data *pdata);
 void mdss_dsi_dln0_phy_err(struct mdss_dsi_ctrl_pdata *ctrl);
 
 int mdss_dsi_panel_init(struct device_node *node,
