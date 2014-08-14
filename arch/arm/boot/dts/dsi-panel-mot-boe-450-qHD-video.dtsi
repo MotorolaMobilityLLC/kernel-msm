@@ -95,7 +95,9 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-		qcom,mdss-dsi-reset-sequence = <1 2>, <0 1>, <1 21>;
+		qcom,mdss-dsi-lane-map = "lane_map_3012";
+		qcom,panel-en-reset-sequence = <1 2>, <0 1>, <1 21> ;
+		qcom,panel-dis-reset-sequence = <0 1>;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-tx-eot-append;
 	};
@@ -178,7 +180,9 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-		qcom,mdss-dsi-reset-sequence = <1 2>, <0 1>, <1 21>;
+		qcom,mdss-dsi-lane-map = "lane_map_3012";
+		qcom,panel-en-reset-sequence = <1 2>, <0 1>, <1 21> ;
+		qcom,panel-dis-reset-sequence = <0 1>;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-tx-eot-append;
 	};
@@ -292,7 +296,9 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-		qcom,mdss-dsi-reset-sequence = <1 2>, <0 1>, <1 21>;
+		qcom,mdss-dsi-lane-map = "lane_map_3012";
+		qcom,panel-en-reset-sequence = <1 2>, <0 1>, <1 21> ;
+		qcom,panel-dis-reset-sequence = <0 1>;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-tx-eot-append;
 	};
