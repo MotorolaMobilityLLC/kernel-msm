@@ -429,6 +429,7 @@ struct smb135x_chg {
 	unsigned int                    max_voltage_uv;
 	bool				shutdown_voltage_tripped;
 	bool				poll_fast;
+	bool				accy_powerup;
 };
 
 static struct smb135x_chg *the_chip;
@@ -950,7 +951,7 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip,
 	}
 
 	if (chip->shutdown_voltage_tripped && !chip->factory_mode) {
-		if (chip->usb_psy) {
+		if ((chip->usb_psy) && (!chip->accy_powerup)) {
 			power_supply_set_present(chip->usb_psy, false);
 			power_supply_set_online(chip->usb_psy, false);
 		}
@@ -966,7 +967,7 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip,
 
 		if ((rc == 0) && (ret.intval == 0) && !chip->factory_mode) {
 			chip->shutdown_voltage_tripped = true;
-			if (chip->usb_psy) {
+			if ((chip->usb_psy) && (!chip->accy_powerup)) {
 				power_supply_set_present(chip->usb_psy, false);
 				power_supply_set_online(chip->usb_psy, false);
 			}
@@ -2970,6 +2971,9 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 	chip->aicl_weak_detect = false;
 	chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 
+	if (chip->accy_powerup)
+		chip->accy_powerup = false;
+
 	rc = smb135x_masked_write(chip,
 				  IRQ_CFG_REG,
 				  IRQ_USBIN_UV_BIT,
@@ -3840,10 +3844,13 @@ static int determine_initial_status(struct smb135x_chg *chip)
 				&& !(reg & IRQ_E_USB_UV_BIT);
 	chip->dc_present = !(reg & IRQ_E_DC_OV_BIT) && !(reg & IRQ_E_DC_UV_BIT);
 
-	if (chip->usb_present)
+	if (chip->usb_present) {
+		chip->accy_powerup = true;
 		handle_usb_insertion(chip);
-	else
+	} else {
+		chip->accy_powerup = false;
 		handle_usb_removal(chip);
+	}
 
 	if (chip->dc_psy_type != -EINVAL) {
 		if (chip->dc_psy_type == POWER_SUPPLY_TYPE_WIRELESS) {
