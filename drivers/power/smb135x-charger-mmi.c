@@ -4962,6 +4962,12 @@ static int smb135x_charger_reboot(struct notifier_block *nb,
 	if (rc < 0)
 		dev_err(chip->dev, "Couldn't disable OTG mode rc=%d\n", rc);
 
+	/* force usb/dc shutdown on halt */
+	if (event == SYS_HALT) {
+		__smb135x_usb_suspend(chip, true);
+		__smb135x_dc_suspend(chip, true);
+	}
+
 	return NOTIFY_DONE;
 }
 
@@ -5019,10 +5025,16 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	mutex_init(&chip->current_change_lock);
 	mutex_init(&chip->read_write_lock);
 	/* probe the device to check if its actually connected */
-	rc = smb135x_read(chip, CFG_4_REG, &reg);
+	rc = smb135x_read(chip, CMD_INPUT_LIMIT, &reg);
 	if (rc) {
 		pr_err("Failed to detect SMB135x, device may be absent\n");
 		return -ENODEV;
+	} else {
+		dev_info(&client->dev, " CMD_IL=%x\n", reg);
+		if (reg & USB_SHUTDOWN_BIT)
+			chip->usb_suspended = 0x1; /* USER bit */
+		if (reg & DC_SHUTDOWN_BIT)
+			chip->dc_suspended = 0x1; /* USER bit */
 	}
 
 	rc = smb_parse_dt(chip);
