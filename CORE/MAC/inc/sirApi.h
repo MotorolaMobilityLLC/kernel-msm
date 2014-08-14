@@ -4220,6 +4220,16 @@ typedef struct
     tSirMacAddr         peerMac;
 }tSirTdlsChanSwitch, *tpSirTdlsChanSwitch;
 
+/* TDLS Resp struct */
+typedef struct
+{
+    tANI_U16            messageType;   // eWNI_SME_TDLS_CHANNEL_SWITCH_RSP
+    tANI_U16            length;
+    tANI_U8             sessionId;     // Session ID
+    tANI_U16            transactionId; // Transaction ID for cmd
+    tSirResultCodes        statusCode;
+    tSirMacAddr            peerMac;
+}tSirTdlsChanSwitchReqRsp, *tpSirTdlsChanSwitchReqRsp;
 #endif /* FEATURE_WLAN_TDLS */
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL

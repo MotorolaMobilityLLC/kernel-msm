@@ -7541,14 +7541,20 @@ void WDA_SetTDLSChanSwitchReqParamsCallback(WDI_SetTdlsChanSwitchReqResp *wdiSet
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
               "%s: pWdaParams received NULL", __func__);
-      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
       VOS_ASSERT(0) ;
       return ;
    }
    pWDA = (tWDA_CbContext *) pWdaParams->pWdaContext;
 
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
    pTdlsChanSwitchParams = (tTdlsChanSwitchParams *)pWdaParams->wdaMsgParam ;
-   if( NULL == pTdlsChanSwitchParams || pWDA == NULL )
+   if( NULL == pTdlsChanSwitchParams )
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                                           "%s: pTdlsChanSwitchParams "
@@ -7560,11 +7566,10 @@ void WDA_SetTDLSChanSwitchReqParamsCallback(WDI_SetTdlsChanSwitchReqResp *wdiSet
    }
    pTdlsChanSwitchParams->status = CONVERT_WDI2SIR_STATUS(
                                                wdiSetTdlsChanSwitchReqRsp->wdiStatus);
-   vos_mem_free(pTdlsChanSwitchParams) ;
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
    vos_mem_free(pWdaParams);
-   /* send response to UMAC
-   WDA_SendMsg(pWDA, WDA_SET_TDLS_CHAN_SWITCH_REQ_RSP, pTdlsChanSwitchParams, 0) ;*/
+   /* send response to UMAC*/
+   WDA_SendMsg(pWDA, WDA_SET_TDLS_CHAN_SWITCH_REQ_RSP, pTdlsChanSwitchParams, 0) ;
 
    return ;
 }

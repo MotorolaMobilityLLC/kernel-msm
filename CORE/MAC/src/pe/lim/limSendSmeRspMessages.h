@@ -115,6 +115,9 @@ void limSendSmeTdlsTeardownRsp(tpAniSirGlobal pMac, tSirResultCodes statusCode, 
 void limSendSmeTdlsLinkEstablishReqRsp(tpAniSirGlobal pMac,
                                        tANI_U8 sessionId, tSirMacAddr peerMac, tDphHashNode   *pStaDs,
                                        tANI_U8 status);
+void limSendSmeTdlsChanSwitchReqRsp(tpAniSirGlobal pMac,
+                                    tANI_U8 sessionId, tSirMacAddr peerMac, tDphHashNode   *pStaDs,
+                                    tANI_U8 status);
 #endif
 
 #endif /* __LIM_SEND_SME_RSP_H */
