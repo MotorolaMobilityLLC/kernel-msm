@@ -740,6 +740,9 @@ static void heartbeat_work(struct work_struct *work)
 					heartbeat_work.work);
 
 	power_supply_changed(&chip->batt_psy);
+
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(60000));
 }
 
 static int fan5404x_of_init(struct fan5404x_chg *chip)
@@ -926,6 +929,9 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 		}
 		enable_irq_wake(client->irq);
 	}
+
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(60000));
 
 	dev_dbg(&client->dev, "FAN5404X batt=%d usb=%d done=%d\n",
 			chip->batt_present, chip->usb_present,
