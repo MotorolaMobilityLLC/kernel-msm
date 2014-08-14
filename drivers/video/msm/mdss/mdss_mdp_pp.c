@@ -1719,7 +1719,7 @@ int mdss_mdp_pp_setup(struct mdss_mdp_ctl *ctl)
 	/* TODO: have some sort of reader/writer lock to prevent unclocked
 	 * access while display power is toggled */
 	mutex_lock(&ctl->lock);
-	if (!mdss_mdp_ctl_is_power_on(ctl)) {
+	if (!ctl->power_on) {
 		ret = -EPERM;
 		goto error;
 	}
@@ -3987,7 +3987,7 @@ static struct msm_fb_data_type *mdss_get_mfd_from_index(int index)
 
 	for (i = 0; i < mdata->nctl; i++) {
 		ctl = mdata->ctl_off + i;
-		if ((mdss_mdp_ctl_is_power_on(ctl)) && (ctl->mfd)
+		if ((ctl->power_on) && (ctl->mfd)
 				&& (ctl->mfd->index == index))
 			out = ctl->mfd;
 	}
