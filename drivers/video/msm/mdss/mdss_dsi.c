@@ -1067,9 +1067,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_BLANK:
 
 		if (ctrl_pdata->ambient_on_queued){
-			cancel_delayed_work(&ctrl_pdata->ambient_enable_work);
+			if (!cancel_delayed_work_sync(&ctrl_pdata->ambient_enable_work))
+				mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
 			ctrl_pdata->ambient_on_queued = false;
-			mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
+
 		}
 
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
@@ -1120,7 +1121,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_OFF:
 		if (ctrl_pdata->ambient_on_queued){
-			cancel_delayed_work(&ctrl_pdata->ambient_enable_work);
+			cancel_delayed_work_sync(&ctrl_pdata->ambient_enable_work);
 			ctrl_pdata->ambient_on_queued = false;
 		}
 		if (is_ambient_on()){
