@@ -796,6 +796,11 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 			return ret;
 		}
 		ctrl_pdata->ctrl_state |= CTRL_STATE_PANEL_INIT;
+
+		if (ctrl_pdata->ambient_off_queued){
+			mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 0);
+			ctrl_pdata->ambient_off_queued = false;
+		}
 	}
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL) {
@@ -1029,7 +1034,7 @@ static void __mdss_mdp_ambient_on_work(struct work_struct *work)
 
 	rc = mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
 	ctrl_pdata->ambient_on_queued = false;
-	pr_debug("MDSS:__mdss_mdp_ambient_on_work---\n");
+	printk("MDSS:__mdss_mdp_ambient_on_work---\n");
 }
 
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
@@ -1063,6 +1068,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 
 		if (ctrl_pdata->ambient_on_queued){
 			cancel_delayed_work(&ctrl_pdata->ambient_enable_work);
+			ctrl_pdata->ambient_on_queued = false;
 			mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
 		}
 
@@ -1113,16 +1119,15 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		ctrl_pdata->ambient_on_queued = true;
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_OFF:
-		if (is_ambient_on())
-			rc = mdss_dsi_panel_ambient_enable(pdata, 0);
-		else{
-			if (ctrl_pdata->ambient_on_queued){
-				cancel_delayed_work(&ctrl_pdata->ambient_enable_work);
-				ctrl_pdata->ambient_on_queued = false;
-			}
-
-			rc = 0;
+		if (ctrl_pdata->ambient_on_queued){
+			cancel_delayed_work(&ctrl_pdata->ambient_enable_work);
+			ctrl_pdata->ambient_on_queued = false;
 		}
+		if (is_ambient_on()){
+			if (-EBUSY == mdss_dsi_panel_ambient_enable(pdata, 0))
+				ctrl_pdata->ambient_off_queued = true;
+		}
+		rc = 0;
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
@@ -1331,6 +1336,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&ctrl_pdata->ambient_enable_work, __mdss_mdp_ambient_on_work);
 	ctrl_pdata->ambient_on_queued = false;
+	ctrl_pdata->ambient_off_queued = false;
 
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 	return 0;

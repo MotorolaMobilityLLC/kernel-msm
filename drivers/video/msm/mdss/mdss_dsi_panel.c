@@ -35,7 +35,6 @@ struct dsi_panel_cmds idle_off_cmds_V2;
 enum PANEL_AMBIENT_MODE{
 	AMBIENT_MODE_OFF = 0,
 	AMBIENT_MODE_ON = 1,
-	AMBIENT_MODE_ON_TO_OFF = 2,
 };
 
 /* Lock backlight of ambient mode to 28nits */
@@ -44,7 +43,8 @@ static int backup_bl_level = 0;
 
 static int panel_ambient_mode = AMBIENT_MODE_OFF;
 int is_ambient_on() {
-	return (panel_ambient_mode != AMBIENT_MODE_OFF)? true : false;
+	pr_debug("MDSS: panel_ambient_mode = %d\n",panel_ambient_mode);
+	return (panel_ambient_mode == AMBIENT_MODE_ON)? true : false;
 }
 
 #define DT_CMD_HDR 6
@@ -498,10 +498,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
-	if (AMBIENT_MODE_ON == panel_ambient_mode){
+	if (is_ambient_on()){
 		printk("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
-	}else if (AMBIENT_MODE_ON_TO_OFF == panel_ambient_mode){
-		mdss_dsi_panel_ambient_enable(pdata,false);
 	}else{
 		if (ctrl->on_cmds.cmd_cnt)
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
@@ -557,14 +555,14 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 
 	if (!ctrl->ctrl_state & CTRL_STATE_PANEL_INIT){
 		printk("MDSS:%s:skip due to DSI has shutdown!!\n",__func__);
-		if (!on)
-			panel_ambient_mode = AMBIENT_MODE_ON_TO_OFF;
-		return 0;
+		return -EBUSY;
 	}
 	
 	/* set ambient command by panel id */
 	mdss_panel_set_ambient_command(ctrl);
 	
+	mutex_lock(&ctrl->ambientcmd_mutex);
+
 	if (on){
 		if (ctrl->idle_on_cmds.cmd_cnt){
 			mdss_dsi_panel_bl_ctrl(pdata,AMBIENT_BL_LEVEL);
@@ -583,7 +581,9 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 		}
 	}
 
-	pr_debug("MDSS:%s:---\n", __func__);
+	mutex_unlock(&ctrl->ambientcmd_mutex);
+
+	printk("MDSS:%s:---\n", __func__);
 	return 0;
 }
 
