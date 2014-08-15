@@ -1690,7 +1690,7 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 	if (!rc)
 		rmi4_pdata->palm_detect_threshold = temp_val;
 
-	rmi4_pdata->palm_detect_keycode = KEY_HOME;
+	rmi4_pdata->palm_detect_keycode = KEY_SLEEP;
 	rc = of_property_read_u32(np, "synaptics,palm-detect-keycode", &temp_val);
 	if (!rc)
 		rmi4_pdata->palm_detect_keycode = temp_val;
