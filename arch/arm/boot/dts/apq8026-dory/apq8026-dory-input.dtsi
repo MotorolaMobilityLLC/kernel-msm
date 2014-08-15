@@ -48,7 +48,7 @@
 			synaptics,fw-image-name = "synaptics_fw.bin";
 			synaptics,wakeup;
 			synaptics,palm-detect-threshold = <0xd>;
-			synaptics,palm-detect-keycode = <0x66>; /* KEY_HOME */
+			synaptics,palm-detect-keycode = <0x8e>; /* KEY_SLEEP */
 			synaptics,doze-interval-active = <3>; /* 30ms */
 			synaptics,doze-interval-sleep = <5>; /* 50ms */
 			status = "disabled";
