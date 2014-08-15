@@ -2525,16 +2525,9 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 		memset(plbestnet, 0, PNO_BESTNET_LEN);
 		err = dhd_iovar(dhd, 0, "pfnlbest", (char *)plbestnet, PNO_BESTNET_LEN, 0);
 		if (err < 0) {
-			if (err == BCME_EPERM) {
-				DHD_ERROR(("we cannot get the batching data "
-					"during scanning in firmware, try again\n,"));
-				msleep(500);
-				continue;
-			} else {
-				DHD_ERROR(("%s : failed to execute pfnlbest (err :%d)\n",
-					__FUNCTION__, err));
-				goto exit_mutex_unlock;
-			}
+			DHD_ERROR(("%s : Cannot get all the batch results, err :%d\n",
+				__FUNCTION__, err));
+			goto exit_mutex_unlock;
 		}
 		DHD_PNO(("ver %d, status : %d, count %d\n", plbestnet->version,
 			plbestnet->status, plbestnet->count));
