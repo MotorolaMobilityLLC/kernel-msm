@@ -10,3 +10,9 @@ config FUGU_WIFI_PLATFORM_DATA
 	bool "Enable Fugu WiFi platform data"
 	---help---
 	  Enables platform_fugu_wifi
+
+config FUGU_LED
+	depends on X86_INTEL_MID_FUGU
+	bool "fugu led driver"
+	help
+	  This driver provides the access to control fugu led.
