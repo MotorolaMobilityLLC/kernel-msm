@@ -125,7 +125,30 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
 			: "cc");
 			isb();
 		}
+
+		__asm__ __volatile__(
+		    "mrc    p15, 7, %0, c15, c0, 5\n"
+		    : "=r" (tmp)
+		    :
+		    : "cc");
+		tmp |= 0x1;
+		__asm__ __volatile__(
+		    "mcr    p15, 7, %0, c15, c0, 5\n"
+		    :
+		    : "r" (tmp)
+		    : "cc");
+		isb();
+
 		wfe();
+
+		tmp &= ~(0x1);
+		__asm__ __volatile__(
+		    "mcr   p15, 7, %0, c15, c0, 5\n"
+		    :
+		    : "r" (tmp)
+		    : "cc");
+		isb();
+
 		if (msm_krait_need_wfe_fixup) {
 			tmp |= 0x10000;
 			__asm__ __volatile__(
