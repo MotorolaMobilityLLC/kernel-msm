@@ -452,7 +452,7 @@ void android_hdmi_driver_setup(struct drm_device *dev)
 	dev_priv->hdmi_priv = (void *)hdmi_priv;
 
 	/* Register hdmi switch_dev */
-	hdmi_priv->sdev.name = "hdmi";
+	hdmi_priv->sdev.name = "hdmi_audio";
 	if (switch_dev_register(&hdmi_priv->sdev) < 0) {
 		pr_err("%s: Hdmi switch registration failed\n", __func__);
 		goto free;
