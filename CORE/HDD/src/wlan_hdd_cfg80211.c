@@ -10659,8 +10659,16 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
 
     INIT_COMPLETION(pAdapter->disconnect_comp_var);
 
-    /*issue disconnect*/
+    /*
+     * stop tx queues before deleting STA/BSS context from the firmware.
+     * tx has to be disabled because the firmware can get busy dropping
+     * the tx frames after BSS/STA has been deleted and will not send
+     * back a response resulting in WDI timeout
+     */
+    netif_tx_disable(pAdapter->dev);
+    netif_carrier_off(pAdapter->dev);
 
+    /*issue disconnect*/
     status = sme_RoamDisconnect( WLAN_HDD_GET_HAL_CTX(pAdapter),
                                  pAdapter->sessionId, reason);
      if(eHAL_STATUS_CMD_NOT_QUEUED == status)
@@ -10696,9 +10704,6 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
               FL("Set HDD connState to eConnectionState_NotConnected"));
     pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
 
-    /*stop tx queues*/
-    netif_tx_disable(pAdapter->dev);
-    netif_carrier_off(pAdapter->dev);
     return 0;
 }
 
