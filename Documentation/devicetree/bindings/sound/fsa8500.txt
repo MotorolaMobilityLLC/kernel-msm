@@ -15,7 +15,8 @@ Required properties:
 Optional properties:
 
 -fsa8500-always-on-micbias: Keep bias always on.
-
+-fsa8500-keymap         : headset keys code map.
+			  Default :1-BTN with key code 0xE2 - KEY_MEDIA
 
 Example:
 
@@ -28,5 +29,19 @@ Example:
 		hs_det_micvdd-supply = <&pma8084_l18>;
 		fsa8500-init-regs = <0x0C 0xA1>,
 				    <0x0F 0xF9>;
+				/* SND_JACK_BTN_0 - KEY_MEDIA */
+		fsa8500-keymap = <0x4000000 0xE2>,
+				/* SND_JACK_BTN_1 - KEY_MEDIA */
+				 <0x2000000 0xE2>,
+				/* SND_JACK_BTN_2 - KEY_MEDIA */
+				 <0x1000000 0xE2>,
+				/* SND_JACK_BTN_3 - KEY_MEDIA */
+				 <0x0800000 0xE2>,
+				/* SND_JACK_BTN_4 - KEY_SEARCH */
+				 <0x0400000 0xD9>,
+				/* SND_JACK_BTN_5 - KEY_VOLUMEDOWN */
+				 <0x0200000 0x72>,
+				/* SND_JACK_BTN_6 - KEY_VOLUMEUP */
+				 <0x0100000 0x73>;
 	};
 };
