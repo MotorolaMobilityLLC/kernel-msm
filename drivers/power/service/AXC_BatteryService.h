@@ -78,6 +78,7 @@ typedef struct AXC_BatteryService {
     struct delayed_work UpdatePadWorker;
     struct delayed_work Less5MinDoBalanceWorker;//Eason: use queue doBalanceMode in less 5min forceResume
     struct delayed_work CheckGaugeRomModeWorker;//Hank in rom mode show "?", bootup	check Rom mode queue 
+    struct delayed_work ReadBatteryCapacityWorker;
     AXI_Charging_FSM_Callback fsmCallback;
     AXC_Charging_FSM *fsm;
     AXE_Charging_State fsmState;

@@ -298,6 +298,9 @@ extern void IDTP9023_RxTurnOffTx(void);
 #endif
 //Eason : Wireless PMA spec Rx turn off Tx ---
 
+bool g_already_read_bat_cap = false;
+static void read_bat_cap_work(struct work_struct *work);
+
 //Hank: when update gauge need to disable charge+++
 extern bool DisChg;
 void UpGaugeSetChg(bool enabled)
@@ -2682,6 +2685,7 @@ static void BatteryService_InitWoker(AXC_BatteryService *_this)
 #endif
 	//Hank in rom mode show "?" : bootUp check Rom mode queue---
 
+	INIT_DELAYED_WORK(&_this->ReadBatteryCapacityWorker, read_bat_cap_work);
 }
 
 static AXE_BAT_CHARGING_STATUS  AXC_BatteryService_getChargingStatus(struct AXI_BatteryServiceFacade * bat)
@@ -3569,6 +3573,117 @@ extern int g_gauge_df_version;
 #define NO_RESERVE_DF_MAP_NUM	100
 //check df version do Cap remapping---
 
+
+static int init_battery_capacity(void)
+{
+	struct file *fd;
+	mm_segment_t mmseg_fs;
+	int FileLength = 0;
+	char bat_cap_str[14];
+	int bat_cap_int = -1;
+	unsigned long bat_cap_save_time = 0;
+	struct timespec mtNow;
+
+	mmseg_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	fd = filp_open("/data/data/bat_cap", O_RDONLY,0);
+	if (IS_ERR(fd))
+	{
+		pr_err( "[BAT][Ser] can not open battery capacity file\n");
+		set_fs(mmseg_fs);
+		return -1;
+	}
+
+	FileLength = fd->f_op->read(fd, bat_cap_str, 13, &fd->f_pos);
+	if (13 == FileLength) {
+		
+		if(bat_cap_str[1] == 0x20){
+			char bat_cap_int_temp = bat_cap_str[2];
+			bat_cap_int = (int)simple_strtol(&bat_cap_int_temp, NULL, 10);
+		}
+		else if(bat_cap_str[0] == 0x20){
+			char bat_cap_int_temp[2];
+			memcpy(bat_cap_int_temp, bat_cap_str+1, 2);
+			bat_cap_int = (int)simple_strtol(bat_cap_int_temp, NULL, 10);
+		}
+		else{
+			bat_cap_int = 100;
+		}
+
+		bat_cap_save_time = simple_strtoul(bat_cap_str+3, NULL, 10);
+		mtNow = current_kernel_time();
+		
+		printk("[BAT][ser] init_battery_capacity bat_cap_int = %d\n", bat_cap_int);
+		printk("[BAT][ser] init_battery_capacity bat_cap_save_time = %ld\n", bat_cap_save_time);
+		
+		if(bat_cap_int <= 2){
+			bat_cap_int = 3;
+		}
+
+		if(mtNow.tv_sec - bat_cap_save_time < 259200){
+			if(bat_cap_int-10 > balance_this->A66_capacity){
+				balance_this->A66_capacity = bat_cap_int - 10;
+			}
+			else if(bat_cap_int+10 < balance_this->A66_capacity){
+				balance_this->A66_capacity = bat_cap_int + 10;
+			}
+			else{
+				balance_this->A66_capacity = bat_cap_int;
+			}
+			
+			printk("[BAT][ser] init_battery_capacity set battery capacity to %d\n", balance_this->A66_capacity);
+		}
+	}
+	else {
+		printk("[BAT][Ser] error init_battery_capacity, FileLength = %d\n", FileLength);
+	}
+
+	if (filp_close(fd, NULL)){
+		pr_err("[BAT][Ser]fail to close battery capacity file in %s\n", __func__);
+	}
+	
+	set_fs(mmseg_fs);
+	
+	g_already_read_bat_cap = true;
+  	return 0;
+}
+
+static void read_bat_cap_work(struct work_struct *work)
+{
+	init_battery_capacity();
+
+	g_already_read_bat_cap = true;
+	return;		
+}
+
+static void write_battery_capacity(int cap)
+{
+	struct file *cfile;
+	mm_segment_t orgfs;
+	char bat_cap_str[14];
+	struct timespec mtNow;
+
+	mtNow = current_kernel_time();
+
+	orgfs = get_fs();
+	set_fs(KERNEL_DS);
+
+	cfile = filp_open("/data/data/bat_cap", O_CREAT | O_RDWR | O_SYNC, 0666);
+	if (!IS_ERR(cfile)){	
+		sprintf(bat_cap_str, "%3d%10ld", cap, mtNow.tv_sec);
+		printk("[BAT][Ser]save bat_cap: %s\n", bat_cap_str);
+		cfile->f_op->write(cfile, bat_cap_str, 13, &cfile->f_pos);
+		
+		if(filp_close(cfile, NULL)){
+			pr_err("[BAT][Ser] fail to close bat_cap cali file in %s()\n", __func__);	
+		}
+	}
+
+	set_fs (orgfs);
+	return;
+}
+
 //ASUS_BSP Eason read PM8226 register value+++
 extern int pm8226_qpnp_chg_read_register(u16 addr);
 //ASUS_BSP Eason read PM8226 register value---
@@ -3905,6 +4020,16 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 
 	mutex_unlock(&_this->filter_lock);
 
+	if(!g_already_read_bat_cap){
+		if (init_battery_capacity() < 0) {
+			printk("[BAT][Ser] cannot read battery capacity from file, maybe file system not ready, try again!\n");
+			schedule_delayed_work(&balance_this->ReadBatteryCapacityWorker, 20*HZ);
+		}
+	}
+	
+	if(g_already_read_bat_cap == true){
+		write_battery_capacity(A66_capacity);
+	}
 }
 static int BatteryServiceGauge_OnCapacityReply(struct AXI_Gauge *gauge, struct AXI_Gauge_Callback *gaugeCb, int batCap, int result)
 {   
