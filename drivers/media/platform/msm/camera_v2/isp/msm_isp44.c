@@ -472,10 +472,21 @@ static void msm_vfe44_reg_update(struct vfe_device *vfe_dev)
 	msm_camera_io_w_mb(0xF, vfe_dev->vfe_base + 0x378);
 }
 
-static long msm_vfe44_reset_hardware(struct vfe_device *vfe_dev)
+static long msm_vfe44_hard_reset_hardware(struct vfe_device *vfe_dev)
 {
 	init_completion(&vfe_dev->reset_complete);
 	msm_camera_io_w_mb(0x1FF, vfe_dev->vfe_base + 0xC);
+	return wait_for_completion_interruptible_timeout(
+		&vfe_dev->reset_complete, msecs_to_jiffies(50));
+}
+
+static long msm_vfe44_soft_reset_hardware(struct vfe_device *vfe_dev)
+{
+	init_completion(&vfe_dev->reset_complete);
+	msm_camera_io_w_mb(0x1EF, vfe_dev->vfe_base + 0xC);
+	msm_camera_io_w(0x7FFFFFFF, vfe_dev->vfe_base + 0x30);
+	msm_camera_io_w(0xFEFFFEFF, vfe_dev->vfe_base + 0x34);
+	msm_camera_io_w(0x1, vfe_dev->vfe_base + 0x24);
 	return wait_for_completion_interruptible_timeout(
 		&vfe_dev->reset_complete, msecs_to_jiffies(50));
 }
@@ -757,7 +768,7 @@ static void msm_vfe44_update_camif_state(struct vfe_device *vfe_dev,
 		vfe_dev->ignore_error = 1;
 		vfe_dev->hw_info->vfe_ops.axi_ops.halt(vfe_dev);
 		msm_camera_io_w_mb(0x6, vfe_dev->vfe_base + 0x2F4);
-		vfe_dev->hw_info->vfe_ops.core_ops.reset_hw(vfe_dev);
+		vfe_dev->hw_info->vfe_ops.core_ops.soft_reset_hw(vfe_dev);
 		vfe_dev->hw_info->vfe_ops.core_ops.init_hw_reg(vfe_dev);
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 0;
 		vfe_dev->ignore_error = 0;
@@ -1445,7 +1456,8 @@ struct msm_vfe_hardware_info vfe44_hw_info = {
 			.cfg_camif = msm_vfe44_cfg_camif,
 			.update_camif_state = msm_vfe44_update_camif_state,
 			.cfg_rdi_reg = msm_vfe44_cfg_rdi_reg,
-			.reset_hw = msm_vfe44_reset_hardware,
+			.reset_hw = msm_vfe44_hard_reset_hardware,
+			.soft_reset_hw = msm_vfe44_soft_reset_hardware,
 			.init_hw = msm_vfe44_init_hardware,
 			.init_hw_reg = msm_vfe44_init_hardware_reg,
 			.release_hw = msm_vfe44_release_hardware,
