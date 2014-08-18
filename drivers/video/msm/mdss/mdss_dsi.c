@@ -456,6 +456,11 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 			mdss_dsi_ulps_config(ctrl_pdata, 1, 1);
 			mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 		} else {
+			if (ctrl_pdata->partial_mode_enabled &&
+					mdss_dsi_is_panel_dead(pdata))
+				pr_warn("%s: Panel is dead, turn off panel regulators\n",
+					__func__);
+
 			mdss_dsi_panel_reset(pdata, 0);
 			ret = mdss_dsi_panel_power_panel_on(pdata, 0);
 			if (ret) {
@@ -468,6 +473,10 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 
 	if (!ctrl_pdata->partial_mode_enabled ||
 					mdss_dsi_is_panel_dead(pdata)) {
+		if (ctrl_pdata->partial_mode_enabled
+			&& mdss_dsi_is_panel_dead(pdata))
+			pr_warn("%s: Panel is dead, shut down DSI\n", __func__);
+
 		/* disable DSI controller */
 		mdss_dsi_controller_cfg(0, pdata);
 
@@ -783,6 +792,10 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 		mdss_dsi_ulps_config(ctrl_pdata, 0, 1);
 	} else {
+		if (ctrl_pdata->partial_mode_enabled
+			&& mdss_dsi_is_panel_dead(pdata))
+			pr_warn("%s: Panel is dead, bring up DSI\n", __func__);
+
 		ret = mdss_dsi_panel_power_on(pdata, 1);
 		if (ret) {
 			pr_err("%s:DSI power on failed. rc=%d\n",
@@ -825,6 +838,11 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 			if (gpio_is_valid(ctrl_pdata->mipi_d0_sel))
 				gpio_set_value(ctrl_pdata->mipi_d0_sel, 0);
 		} else {
+			if (ctrl_pdata->partial_mode_enabled &&
+					mdss_dsi_is_panel_dead(pdata))
+				pr_warn("%s: Panel is dead, turn on panel regulators\n",
+					__func__);
+
 			mdss_dsi_panel_power_panel_on(pdata, 1);
 			mdss_dsi_panel_reset(pdata, 1);
 		}
