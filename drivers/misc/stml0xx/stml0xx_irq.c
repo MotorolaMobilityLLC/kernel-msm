@@ -101,6 +101,22 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			STM16_TO_HOST(ACCEL_RD_X), STM16_TO_HOST(ACCEL_RD_Y),
 			STM16_TO_HOST(ACCEL_RD_Z));
 	}
+	if (irq_status & M_ACCEL2) {
+		/* read 2nd accelerometer values from STML0XX */
+		err = stml0xx_spi_send_read_reg(ACCEL2_X, buf, 6);
+		if (err < 0) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Reading 2nd Accel from stml0xx failed");
+			goto EXIT;
+		}
+
+		stml0xx_as_data_buffer_write(ps_stml0xx, DT_ACCEL2, buf, 6, 0);
+
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Sending acc2(x,y,z)values:x=%d,y=%d,z=%d",
+			STM16_TO_HOST(ACCEL_RD_X), STM16_TO_HOST(ACCEL_RD_Y),
+			STM16_TO_HOST(ACCEL_RD_Z));
+	}
 	if (irq_status & M_LIN_ACCEL) {
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"Invalid M_LIN_ACCEL bit set. irq_status = 0x%06x",
@@ -198,39 +214,6 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			STM16_TO_HOST(MAG_Z), STM16_TO_HOST(MAG_UNCALIB_X),
 			STM16_TO_HOST(MAG_UNCALIB_Y),
 			STM16_TO_HOST(MAG_UNCALIB_Z));
-	}
-	if (irq_status & M_STEP_COUNTER) {
-		err = stml0xx_spi_send_read_reg(STEP_COUNTER, buf, 8);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading step counter failed");
-			goto EXIT;
-		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_STEP_COUNTER,
-					     buf, 8, 0);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending step counter %X %X %X %X",
-			STM16_TO_HOST(STEP64_DATA), STM16_TO_HOST(STEP32_DATA),
-			STM16_TO_HOST(STEP16_DATA), STM16_TO_HOST(STEP8_DATA));
-	}
-	if (irq_status & M_STEP_DETECTOR) {
-		unsigned short detected_steps = 0;
-		err = stml0xx_spi_send_read_reg(STEP_DETECTOR, buf, 1);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading step detector failed");
-			goto EXIT;
-		}
-		detected_steps = buf[STEP_DETECT];
-		while (detected_steps-- != 0) {
-			stml0xx_as_data_buffer_write(ps_stml0xx,
-						     DT_STEP_DETECTOR, buf, 1,
-						     0);
-
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Sending step detector");
-		}
 	}
 	if (irq_status & M_ALS) {
 		err = stml0xx_spi_send_read_reg(ALS_LUX, buf, 2);
