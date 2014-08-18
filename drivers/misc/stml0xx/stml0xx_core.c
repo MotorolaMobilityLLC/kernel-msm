@@ -61,12 +61,10 @@ unsigned short stml0xx_spi_retry_delay = 10;
 
 /* Remember the sensor state */
 unsigned short stml0xx_g_acc_delay;
+unsigned short stml0xx_g_acc2_delay;
 unsigned short stml0xx_g_mag_delay;
 unsigned short stml0xx_g_gyro_delay;
 unsigned short stml0xx_g_baro_delay;
-unsigned short stml0xx_g_step_counter_delay;
-unsigned short stml0xx_g_ir_gesture_delay;
-unsigned short stml0xx_g_ir_raw_delay;
 unsigned long stml0xx_g_nonwake_sensor_state;
 unsigned short stml0xx_g_wake_sensor_state;
 unsigned short stml0xx_g_algo_state;
@@ -75,8 +73,6 @@ unsigned char stml0xx_g_zmotion_dur;
 unsigned char stml0xx_g_control_reg[STML0XX_CONTROL_REG_SIZE];
 unsigned char stml0xx_g_mag_cal[STML0XX_MAG_CAL_SIZE];
 unsigned short stml0xx_g_control_reg_restore;
-unsigned char stml0xx_g_ir_config_reg[STML0XX_IR_CONFIG_REG_SIZE];
-bool stml0xx_g_ir_config_reg_restore;
 bool stml0xx_g_booted;
 
 /* Store error message */
