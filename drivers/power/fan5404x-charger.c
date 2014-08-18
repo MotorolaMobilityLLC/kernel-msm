@@ -191,6 +191,10 @@ struct fan5404x_chg {
 	bool batt_present;
 	bool chg_done_batt_full;
 	bool charging;
+	bool batt_hot;
+	bool batt_cold;
+	bool batt_warm;
+	bool batt_cool;
 
 	struct delayed_work heartbeat_work;
 };
@@ -512,6 +516,7 @@ static enum power_supply_property fan5404x_batt_properties[] = {
 	POWER_SUPPLY_PROP_CURRENT_AVG,
 	/* Notification from Fuel Gauge */
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
+	POWER_SUPPLY_PROP_HEALTH,
 };
 
 static int fan5404x_get_prop_batt_status(struct fan5404x_chg *chip)
@@ -618,6 +623,62 @@ static int fan5404x_get_prop_batt_capacity(struct fan5404x_chg *chip)
 	return cap;
 }
 
+static int fan5404x_get_prop_batt_health(struct fan5404x_chg *chip)
+{
+	int batt_health = POWER_SUPPLY_HEALTH_UNKNOWN;
+
+	if (chip->batt_hot)
+		batt_health = POWER_SUPPLY_HEALTH_OVERHEAT;
+	else if (chip->batt_cold)
+		batt_health = POWER_SUPPLY_HEALTH_COLD;
+	else if (chip->batt_warm)
+		batt_health = POWER_SUPPLY_HEALTH_WARM;
+	else if (chip->batt_cool)
+		batt_health = POWER_SUPPLY_HEALTH_COOL;
+	else
+		batt_health = POWER_SUPPLY_HEALTH_GOOD;
+
+	return batt_health;
+}
+
+static int fan5404x_set_prop_batt_health(struct fan5404x_chg *chip, int health)
+{
+	switch (health) {
+	case POWER_SUPPLY_HEALTH_OVERHEAT:
+		chip->batt_hot = true;
+		chip->batt_cold = false;
+		chip->batt_warm = false;
+		chip->batt_cool = false;
+		break;
+	case POWER_SUPPLY_HEALTH_COLD:
+		chip->batt_cold = true;
+		chip->batt_hot = false;
+		chip->batt_warm = false;
+		chip->batt_cool = false;
+		break;
+	case POWER_SUPPLY_HEALTH_WARM:
+		chip->batt_warm = true;
+		chip->batt_hot = false;
+		chip->batt_cold = false;
+		chip->batt_cool = false;
+		break;
+	case POWER_SUPPLY_HEALTH_COOL:
+		chip->batt_cool = true;
+		chip->batt_hot = false;
+		chip->batt_cold = false;
+		chip->batt_warm = false;
+		break;
+	case POWER_SUPPLY_HEALTH_GOOD:
+	default:
+		chip->batt_hot = false;
+		chip->batt_cold = false;
+		chip->batt_warm = false;
+		chip->batt_cool = false;
+	}
+
+	return 0;
+}
+
 static int fan5404x_batt_set_property(struct power_supply *psy,
 					enum power_supply_property prop,
 					const union power_supply_propval *val)
@@ -638,6 +699,9 @@ static int fan5404x_batt_set_property(struct power_supply *psy,
 		schedule_delayed_work(&chip->heartbeat_work,
 			msecs_to_jiffies(0));
 		break;
+	case POWER_SUPPLY_PROP_HEALTH:
+		fan5404x_set_prop_batt_health(chip, val->intval);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -654,6 +718,7 @@ static int fan5404x_batt_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_CAPACITY:
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+	case POWER_SUPPLY_PROP_HEALTH:
 		rc = 1;
 		break;
 	default:
@@ -704,6 +769,9 @@ static int fan5404x_batt_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = fan5404x_get_prop_batt_capacity(chip);
+		break;
+	case POWER_SUPPLY_PROP_HEALTH:
+		val->intval = fan5404x_get_prop_batt_health(chip);
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
