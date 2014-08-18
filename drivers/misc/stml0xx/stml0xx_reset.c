@@ -82,6 +82,11 @@ int stml0xx_reset_and_init(void)
 	if (err < 0)
 		ret_err = err;
 
+	buf[0] = stml0xx_g_acc2_delay;
+	err = stml0xx_spi_send_write_reg(ACCEL2_UPDATE_RATE, buf, 1);
+	if (err < 0)
+		ret_err = err;
+
 	stml0xx_spi_retry_delay = 10;
 
 	buf[0] = stml0xx_g_nonwake_sensor_state & 0xFF;
