@@ -135,108 +135,153 @@
 &pm8226_gpios {
 	gpio@c000 { /* GPIO 1 */    /* PMIC_AUDIO_REF_CLK */
 		/* XO_PMIC_CDC_MCLK enable for tapan codec */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;	/* CMOS logic */
-		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO*/
-		qcom,vin-sel = <3>;		/* QPNP_PIN_VIN2 */
+		qcom,mode = <1>;        /* Digital output */
+		qcom,output-type = <0>; /* CMOS logic */
+		qcom,pull = <5>;        /* QPNP_PIN_PULL_NO*/
+		qcom,vin-sel = <3>;     /* QPNP_PIN_VIN2 */
 		qcom,out-strength = <3>;/* QPNP_PIN_OUT_STRENGTH_HIGH */
-		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
-		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,src-sel = <2>;     /* QPNP_PIN_SEL_FUNC_1 */
+		qcom,master-en = <1>;   /* Enable GPIO */
 	};
 
-	gpio@c100 { /* GPIO 2 */		/* EXT_OVP_CTRL */
+	gpio@c100 { /* GPIO 2 */    /* NC config */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>; /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <4>;        /* QPNP_PIN_PULL_DN */
+		qcom,vin-sel = <0>;     /* QPNP_PIN_VIN0 */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,out-strength = <1>;/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <0>;   /* Disable GPIO */
 	};
 
-	gpio@c200 { /* GPIO 3 */		/* NFC_CLK_REQ */
-		qcom,mode = <0>;			/* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <4>;			/* QPNP_PIN_PULL_DN - Not Fixed */
-		qcom,vin-sel = <3>;			/* QPNP_PIN_VIN2 */
-		qcom,src-sel = <2>;			/* QPNP_PIN_SEL_FUNC_1 */
+	gpio@c200 { /* GPIO 3 */    /* NC config */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>; /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <4>;        /* QPNP_PIN_PULL_DN */
+		qcom,vin-sel = <0>;     /* QPNP_PIN_VIN0 */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,out-strength = <1>;/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <0>;   /* Disable GPIO */
 	};
 
-	gpio@c300 { /* GPIO 4 */		/* BATT_UIM_ALARM - TBD */
+	gpio@c300 { /* GPIO 4 */    /* NC config */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>; /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <4>;        /* QPNP_PIN_PULL_DN */
+		qcom,vin-sel = <0>;     /* QPNP_PIN_VIN0 */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,out-strength = <1>;/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <0>;   /* Disable GPIO */
 	};
 
-	gpio@c400 { /* GPIO 5 */		/* FLASH_STROBE_TRIG */
+	gpio@c400 { /* GPIO 5 */    /* NC config */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>; /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <4>;        /* QPNP_PIN_PULL_DN */
+		qcom,vin-sel = <0>;     /* QPNP_PIN_VIN0 */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,out-strength = <1>;/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <0>;   /* Disable GPIO */
 	};
 
-	gpio@c500 { /* GPIO 6 */		/* CABC_WLED_PM */
+	gpio@c500 { /* GPIO 6 */    /* NC config */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>; /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <4>;        /* QPNP_PIN_PULL_DN */
+		qcom,vin-sel = <0>;     /* QPNP_PIN_VIN0 */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,out-strength = <1>;/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <0>;   /* Disable GPIO */
 	};
 
-	gpio@c600 { /* GPIO 7 */		/* TX_GTR_THRES */
+	gpio@c600 { /* GPIO 7 */    /* NC config */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>; /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <4>;        /* QPNP_PIN_PULL_DN */
+		qcom,vin-sel = <0>;     /* QPNP_PIN_VIN0 */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,out-strength = <1>;/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <0>;   /* Disable GPIO */
 	};
 
-	gpio@c700 { /* GPIO 8 */		/* BOOST_BYP_BYP */
-		qcom,mode = <1>;			/* QPNP_PIN_MODE_DIG_OUT */
-		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
-		qcom,pull = <5>;			/* QPNP_PIN_PULL_NO */
-		qcom,vin-sel = <3>;			/* QPNP_PIN_VIN2 */
-		qcom,invert = <1>;			/* QPNP_PIN_INVERT_ENABLE */
-		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
-		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT */
-		qcom,master-en = <1>;		/* Enable GPIO */
+	gpio@c700 { /* GPIO 8 */    /* BOOST_BYP_BYP */
+		qcom,mode = <1>;        /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>; /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;        /* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <3>;     /* QPNP_PIN_VIN2 */
+		qcom,invert = <1>;      /* QPNP_PIN_INVERT_ENABLE */
+		qcom,out-strength = <2>;/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;   /* Enable GPIO */
 	};
 };
 
 &pm8226_mpps {
-	mpp@a000 { /* MPP 1 */			/* VREF_MSM_PX */
-		qcom,mode = <5>;			/* QPNP_PIN_MODE_AOUT */
-		qcom,aout-ref = <0>;		/* QPNP_PIN_AOUT_1V25 - Not Fixed */
-		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
-		qcom,master-en = <1>;		/* Enable MPP */
+	mpp@a000 { /* MPP 1 */      /* VREF_MSM_PX */
+		qcom,mode = <5>;        /* QPNP_PIN_MODE_AOUT */
+		qcom,aout-ref = <0>;    /* QPNP_PIN_AOUT_1V25 - Not Fixed */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,master-en = <1>;   /* Enable MPP */
 	};
 
-	mpp@a100 { /* MPP 2 */			/* HR_LED_SINK */
-		qcom,mode = <6>;			/* QPNP_PIN_MODE_SINK */
-		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
-		qcom,cs-out = <7>;			/* QPNP_PIN_CS_OUT_40MA */
-		qcom,master-en = <1>;		/* Enable MPP */
+	mpp@a100 { /* MPP 2 */      /* NC config */
+		qcom,mode = <6>;        /* QPNP_PIN_MODE_SINK */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,cs-out = <0>;      /* QPNP_PIN_CS_OUT_5MA */
+		qcom,master-en = <0>;   /* DISABLE MPP */
 	};
 
-	mpp@a200 { /* MPP 3 */			/* VREF_LDO */
-		qcom,mode = <5>;			/* QPNP_PIN_MODE_AOUT */
-		qcom,aout-ref = <0>;		/* QPNP_PIN_AOUT_1V25 */
-		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
-		qcom,master-en = <1>;		/* Enable MPP */
+	mpp@a200 { /* MPP 3 */     /* VREF_LDO */
+		qcom,mode = <5>;        /* QPNP_PIN_MODE_AOUT */
+		qcom,aout-ref = <0>;    /* QPNP_PIN_AOUT_1V25 */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,master-en = <1>;   /* Enable MPP */
 	};
 
-	mpp@a300 { /* MPP 4 */			/* LED1_SINK */
-		qcom,mode = <6>;			/* QPNP_PIN_MODE_SINK */
-		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
-		qcom,cs-out = <2>;			/* QPNP_PIN_CS_OUT_15MA */
-		qcom,master-en = <1>;		/* Enable MPP */
+	mpp@a300 { /* MPP 4 */      /* NC config */
+		qcom,mode = <6>;        /* QPNP_PIN_MODE_SINK */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,cs-out = <0>;      /* QPNP_PIN_CS_OUT_5MA */
+		qcom,master-en = <0>;   /* DISABLE MPP */
 	};
 
-	mpp@a400 { /* MPP 5 */			/* PA_THERM0 */
-		/* PA_THERM0 config */
-		qcom,mode = <4>; /* AIN input */
-		qcom,invert = <1>; /* Enable MPP */
-		qcom,ain-route = <0>; /* AMUX 5 */
-		qcom,master-en = <1>;
-		qcom,src-sel = <0>; /* Function constant */
+	mpp@a400 { /* MPP 5 */      /* NC config */
+		qcom,mode = <6>;        /* QPNP_PIN_MODE_SINK */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,cs-out = <0>;      /* QPNP_PIN_CS_OUT_5MA */
+		qcom,master-en = <0>;   /* DISABLE MPP */
 	};
 
-	mpp@a500 { /* MPP 6 */			/* LED2_SINK */
-		qcom,mode = <6>;			/* QPNP_PIN_MODE_SINK */
-		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
-		qcom,cs-out = <2>;			/* QPNP_PIN_CS_OUT_15MA */
-		qcom,master-en = <1>;		/* Enable MPP */
+	mpp@a500 { /* MPP 6 */      /* NC config */
+		qcom,mode = <6>;        /* QPNP_PIN_MODE_SINK */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,cs-out = <0>;      /* QPNP_PIN_CS_OUT_5MA */
+		qcom,master-en = <0>;   /* DISABLE MPP */
 	};
 
-	mpp@a600 { /* MPP 7 */			/* BOARD_ID */
-		qcom,mode = <4>;			/* AIN input */
-		qcom,ain-route = <2>;		/* QPNP_PIN_AIN_AMUX_CH7 */
-		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT */
-		qcom,master-en = <1>;		/* Enable MPP */
+	mpp@a600 { /* MPP 7 */      /* BOARD_ID */
+		qcom,mode = <4>;        /* AIN input */
+		qcom,ain-route = <2>;   /* QPNP_PIN_AIN_AMUX_CH7 */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;   /* Enable MPP */
 	};
 
-	mpp@a700 { /* MPP 8 */
-		/* PA_THERM1 config */
-		qcom,mode = <4>; /* AIN input */
-		qcom,invert = <1>; /* Enable MPP */
-		qcom,ain-route = <3>; /* AMUX 8 */
-		qcom,master-en = <1>;
-		qcom,src-sel = <0>; /* Function constant */
+	mpp@a700 { /* MPP 8 */      /* NC config */
+		qcom,mode = <6>;        /* QPNP_PIN_MODE_SINK */
+		qcom,invert = <0>;      /* QPNP_PIN_INVERT_DISABLE */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,cs-out = <0>;      /* QPNP_PIN_CS_OUT_5MA */
+		qcom,master-en = <0>;   /* DISABLE MPP */
 	};
 };
 

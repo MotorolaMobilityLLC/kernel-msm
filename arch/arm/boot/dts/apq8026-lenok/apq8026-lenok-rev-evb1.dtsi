@@ -22,3 +22,13 @@
 		};
 	};
 };
+
+&pm8226_gpios {
+	gpio@c200 { /* GPIO 3 */     /* NFC_CLK_REQ */
+		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <4>;         /* QPNP_PIN_PULL_DN - Not Fixed */
+		qcom,vin-sel = <3>;      /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <2>;      /* QPNP_PIN_SEL_FUNC_1 */
+		qcom,master-en = <1>;    /* Enable GPIO */
+	};
+};
