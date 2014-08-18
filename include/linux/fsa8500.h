@@ -23,11 +23,17 @@ struct fsa8500_regs {
 	u8 reg;
 	u8 value;
 };
+struct fsa8500_keymap {
+	u32 soc_btn;
+	u32 keycode;
+};
 struct fsa8500_platform_data {
 	int irq_gpio;
 	int alwayson_micbias;
 	int init_regs_num;
 	struct fsa8500_regs *init_regs;
+	int num_keys;
+	struct fsa8500_keymap *keymap;
 };
 
 #endif  /* __FSA8500_H__ */
