@@ -84,6 +84,7 @@ when           who        what, where, why
 #define WLANDXE_CCU_DXE_INT_SELECT_STAT   0x2050e0
 #define WLANDXE_CCU_ASIC_INT_ENABLE       0x2050e4
 #define WLANDXE_CCU_SOFT_RESET            0x204010
+#define WLANDXE_BMU_AVAILABLE_BD_PDU_LOCAL 0x80260
 #else
 #define WLANDXE_CCU_DXE_INT_SELECT        0x200b10
 #define WLANDXE_CCU_DXE_INT_SELECT_STAT   0x200b14
