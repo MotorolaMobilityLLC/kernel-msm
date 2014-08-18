@@ -459,6 +459,12 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 				ps[i].seq_val = SENSOR_GPIO_STANDBY;
 			else if (!strcmp(seq_name, "sensor_gpio_vdig"))
 				ps[i].seq_val = SENSOR_GPIO_VDIG;
+			else if (!strcmp(seq_name, "sensor_gpio_vana"))
+				ps[i].seq_val = SENSOR_GPIO_VANA;
+			else if (!strcmp(seq_name, "sensor_gpio_vaf"))
+				ps[i].seq_val = SENSOR_GPIO_VAF;
+			else if (!strcmp(seq_name, "sensor_gpio_vio"))
+				ps[i].seq_val = SENSOR_GPIO_VIO;
 			else
 				rc = -EILSEQ;
 			break;
@@ -481,7 +487,7 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 			break;
 		}
 		if (rc < 0) {
-			CDBG("%s: unrecognized seq-val\n", __func__);
+			pr_err("%s: unrecognized seq-val\n", __func__);
 			goto ERROR1;
 		}
 	}
