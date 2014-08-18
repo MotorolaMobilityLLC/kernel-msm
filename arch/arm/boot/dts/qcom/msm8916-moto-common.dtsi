@@ -673,6 +673,11 @@
 		>;
 		maxim,enable_por_init;
 		maxim,batt_undervoltage_zero_soc;
+		maxim,batt-psy-name = "battery";
+		maxim,warm-temp-c = <45>;
+		maxim,hot-temp-c = <60>;
+		maxim,cool-temp-c = <0>;
+		maxim,cold-temp-c = <(-20)>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&cc_alert_default>;
