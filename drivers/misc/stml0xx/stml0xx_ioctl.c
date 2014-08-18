@@ -158,7 +158,19 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		stml0xx_g_acc_delay = delay;
 		err = stml0xx_spi_send_write_reg(ACCEL_UPDATE_RATE, buf, 1);
 		break;
-
+	case STML0XX_IOCTL_SET_ACC2_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_ACC2_DELAY");
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy acc2 delay returned error");
+			err = -EFAULT;
+			break;
+		}
+		buf[0] = delay;
+		stml0xx_g_acc2_delay = delay;
+		err = stml0xx_spi_send_write_reg(ACCEL2_UPDATE_RATE, buf, 1);
+		break;
 	case STML0XX_IOCTL_SET_MAG_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_MAG_DELAY");
@@ -186,21 +198,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		buf[0] = delay;
 		stml0xx_g_gyro_delay = delay;
 		err = stml0xx_spi_send_write_reg(GYRO_UPDATE_RATE, buf, 1);
-		break;
-	case STML0XX_IOCTL_SET_STEP_COUNTER_DELAY:
-		delay = 0;
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy step counter delay returned error");
-			err = -EFAULT;
-			break;
-		}
-		buf[0] = (delay >> 8);
-		buf[1] = delay;
-		stml0xx_g_step_counter_delay = delay;
-		err =
-		    stml0xx_spi_send_write_reg(STEP_COUNTER_UPDATE_RATE, buf,
-					       2);
 		break;
 	case STML0XX_IOCTL_SET_PRES_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
