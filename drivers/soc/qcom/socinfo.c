@@ -842,6 +842,17 @@ msm_select_image(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+// asus pcb id
+static ssize_t
+asus_get_pcbid_status(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+
+	return snprintf(buf, PAGE_SIZE, "0x%x\n",
+			get_hardware_id() );
+}
+
 
 static struct device_attribute msm_soc_attr_raw_version =
 	__ATTR(raw_version, S_IRUGO, msm_get_raw_version,  NULL);
@@ -906,6 +917,11 @@ static struct device_attribute select_image =
 	__ATTR(select_image, S_IRUGO | S_IWUSR,
 			msm_get_image_number, msm_select_image);
 
+// asus pcb id
+static struct device_attribute asus_pcbid_status =
+	__ATTR(pcbid_status, S_IRUGO,
+			asus_get_pcbid_status, NULL);
+
 static void * __init setup_dummy_socinfo(void)
 {
 	if (early_machine_is_mpq8092()) {
@@ -948,6 +964,8 @@ static void __init populate_soc_sysfs_files(struct device *msm_soc_device)
 	device_create_file(msm_soc_device, &image_variant);
 	device_create_file(msm_soc_device, &image_crm_version);
 	device_create_file(msm_soc_device, &select_image);
+	// asus pcb id
+	device_create_file(msm_soc_device, &asus_pcbid_status);
 
 	switch (legacy_format) {
 	case 9:

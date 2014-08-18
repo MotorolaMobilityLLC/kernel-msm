@@ -31,6 +31,8 @@ enum DEVICE_HWID
 };
 
 extern enum DEVICE_HWID g_ASUS_hwID;
+const enum DEVICE_HWID get_hardware_id(void);
+
 extern int g_user_dbg_mode;//wendy4_wang@asus.com
 // --- ASUS_BSP : add for miniporting
 

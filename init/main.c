@@ -140,6 +140,11 @@ char hwid_info[16]={0};
 
 EXPORT_SYMBOL(g_ASUS_hwID);
 
+const enum DEVICE_HWID get_hardware_id(void)
+{
+	return g_ASUS_hwID;
+}
+
 static int set_hardware_id(char *str)
 {
 
