@@ -300,10 +300,12 @@ static void sel_netnode_flush(void)
 
 static int sel_netnode_avc_callback(u32 event)
 {
+	printk(KERN_DEBUG "[ASUS]sel_netnode_avc_callback DEBUG begin \n");
 	if (event == AVC_CALLBACK_RESET) {
 		sel_netnode_flush();
 		synchronize_net();
 	}
+	printk(KERN_DEBUG "[ASUS]sel_netnode_avc_callback DEBUG end \n");
 	return 0;
 }
 

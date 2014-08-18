@@ -641,6 +641,7 @@ int avc_ss_reset(u32 seqno)
 
 	avc_flush();
 
+	printk(KERN_DEBUG "[ASUS]avc_ss_reset DEBUG begin \n");
 	for (c = avc_callbacks; c; c = c->next) {
 		if (c->events & AVC_CALLBACK_RESET) {
 			tmprc = c->callback(AVC_CALLBACK_RESET);
@@ -650,6 +651,7 @@ int avc_ss_reset(u32 seqno)
 				rc = tmprc;
 		}
 	}
+	printk(KERN_DEBUG "[ASUS]avc_ss_reset DEBUG end \n");
 
 	avc_latest_notif_update(seqno, 0);
 	return rc;
