@@ -1869,6 +1869,10 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 	dpst_init(dev, 5, 1);
 
 	mdfld_dsi_dsr_enable(dev_priv->dsi_configs[0]);
+#else
+	/* power down islands turned on by firmware */
+	power_island_put(OSPM_DISPLAY_A |
+			OSPM_DISPLAY_C | OSPM_DISPLAY_MIO);
 #endif
 
 	return PVRSRVDrmLoad(dev, chipset);

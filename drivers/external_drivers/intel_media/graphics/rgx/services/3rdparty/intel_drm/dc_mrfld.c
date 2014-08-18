@@ -80,6 +80,7 @@ static uint32_t DC_MRFLD_PixelFormat_Mapping[] = {
 };
 #endif
 
+#ifdef CONFIG_SUPPORT_MIPI
 static uint32_t DC_ExtraPowerIslands[DC_PLANE_MAX][MAX_PLANE_INDEX] = {
 	{ 0,              0,              0},
 #ifdef CONFIG_MOOREFIELD
@@ -90,6 +91,14 @@ static uint32_t DC_ExtraPowerIslands[DC_PLANE_MAX][MAX_PLANE_INDEX] = {
 	{ 0,              OSPM_DISPLAY_C, 0},
 	{ 0,              0,              0},
 };
+#else
+static uint32_t DC_ExtraPowerIslands[DC_PLANE_MAX][MAX_PLANE_INDEX] = {
+	{ 0,              0,              0},
+	{ OSPM_DISPLAY_A, 0,              0},
+	{ OSPM_DISPLAY_A, OSPM_DISPLAY_C, 0},
+	{ 0,              0,              0},
+};
+#endif
 
 static inline IMG_UINT32 _Align_To(IMG_UINT32 ulValue,
 				IMG_UINT32 ulAlignment)
