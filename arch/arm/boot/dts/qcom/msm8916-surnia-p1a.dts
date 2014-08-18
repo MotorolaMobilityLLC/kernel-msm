@@ -15,7 +15,7 @@
 #include "msm8916-styx.dtsi"
 
 / {
-	qcom,board-id = <0x42 0x8101>;
+	qcom,board-id = <0x42 0x81a0>;
 };
 
 &i2c_1 {
