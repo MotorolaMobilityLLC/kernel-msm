@@ -215,7 +215,7 @@ dtb-$(CONFIG_ARCH_MSM8992) += msm8992-sim.dtb \
 # Motorola 8916 Devices
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-styx-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-styx-p1.dtb
-dtb-$(CONFIG_ARCH_MSM8916) += msm8916-styx-p1-1.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p1a.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p1b.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
