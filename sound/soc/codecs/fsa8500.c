@@ -50,9 +50,13 @@
 
 #define FSA8500_JACK_MASK (SND_JACK_HEADSET | SND_JACK_HEADPHONE| \
 				SND_JACK_LINEOUT | SND_JACK_UNSUPPORTED)
-#define FSA8500_JACK_BUTTON_MASK (SND_JACK_BTN_0)
+#define FSA8500_JACK_BUTTON_MASK (SND_JACK_BTN_0 | SND_JACK_BTN_1 | \
+				SND_JACK_BTN_2 | SND_JACK_BTN_3 | \
+				SND_JACK_BTN_4 | SND_JACK_BTN_5 | \
+				SND_JACK_BTN_6 | SND_JACK_BTN_7)
 
 #define VDD_UA_ON_LOAD	10000
+#define	SND_JACK_BTN_SHIFT	20
 
 static struct snd_soc_jack hs_jack;
 static struct snd_soc_jack button_jack;
@@ -78,6 +82,7 @@ struct fsa8500_data {
 	struct wake_lock wake_lock;
 	struct work_struct work_det;
 	struct workqueue_struct *wq;
+	struct fsa8500_platform_data *pdata;
 };
 
 /* I2C Read/Write Functions */
@@ -444,6 +449,7 @@ static int fsa8500_get_hs_acc_type(struct fsa8500_data *fsa8500)
 
 static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 {
+	unsigned int status;
 	if ((fsa8500->button_jack == NULL) || (fsa8500->hs_jack == NULL)) {
 		pr_err("fsa8500: Something plugged in, report it later\n");
 		return -EINVAL;
@@ -481,28 +487,36 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 
 	/* Key Short press */
 	if (fsa8500->irq_status[1] & 0x7F) {
-		pr_debug("%s:report short button press & release\n", __func__);
+		status = fsa8500->irq_status[1] & 0x7F;
+		pr_debug("%s:report key 0x%x short press & release\n",
+					__func__, status);
 		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
-			SND_JACK_BTN_0, fsa8500->button_jack->jack->type);
+					status<<SND_JACK_BTN_SHIFT,
+					status<<SND_JACK_BTN_SHIFT);
 
 		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
-			0, fsa8500->button_jack->jack->type);
+					0, status<<SND_JACK_BTN_SHIFT);
 	}
 
 	/* Key Long press */
 	if (fsa8500->irq_status[2] & 0x7F) {
-		pr_debug("%s:report long button press\n", __func__);
+		status = fsa8500->irq_status[2] & 0x7F;
+		pr_debug("%s:report key 0x%x long press\n", __func__, status);
 		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
-			SND_JACK_BTN_0, fsa8500->button_jack->jack->type);
-		fsa8500->button_pressed = 1;
+					status<<SND_JACK_BTN_SHIFT,
+					status<<SND_JACK_BTN_SHIFT);
+
+		fsa8500->button_pressed |= status;
 	}
 
 	/* Key Long release */
 	if (fsa8500->irq_status[3] & 0x7F) {
-		pr_debug("%s:report long button release\n", __func__);
+		status = fsa8500->irq_status[3] & 0x7F;
+		pr_debug("%s:report key %d release\n", __func__, status);
 		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
-			0, fsa8500->button_jack->jack->type);
-		fsa8500->button_pressed = 0;
+					0, status<<SND_JACK_BTN_SHIFT);
+
+		fsa8500->button_pressed &= ~status;
 	}
 
 	return 0;
@@ -510,7 +524,8 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 
 int fsa8500_hs_detect(struct snd_soc_codec *codec)
 {
-	int ret = -EINVAL;
+	int ret = -EINVAL, i;
+	struct fsa8500_platform_data *pdata;
 	struct fsa8500_data *fsa8500;
 
 	if (fsa8500_client == NULL)
@@ -520,6 +535,8 @@ int fsa8500_hs_detect(struct snd_soc_codec *codec)
 
 	if (fsa8500 == NULL)
 		return ret;
+
+	pdata = fsa8500->pdata;
 
 	if (fsa8500->hs_jack == NULL) {
 		ret = snd_soc_jack_new(codec, "Headset Jack",
@@ -541,12 +558,25 @@ int fsa8500_hs_detect(struct snd_soc_codec *codec)
 		fsa8500->button_jack = &button_jack;
 	}
 
-	ret = snd_jack_set_key(fsa8500->button_jack->jack,
+	if (pdata->num_keys && pdata->keymap) {
+		for (i = 0; i < pdata->num_keys; i++) {
+			ret = snd_jack_set_key(fsa8500->button_jack->jack,
+					pdata->keymap[i].soc_btn,
+					pdata->keymap[i].keycode);
+			if (ret) {
+				pr_err("%s: Failed to set code for 0x%x -- 0x%x\n",
+					__func__, pdata->keymap[i].soc_btn,
+					pdata->keymap[i].keycode);
+				return ret;
+			}
+		}
+	} else {
+		ret = snd_jack_set_key(fsa8500->button_jack->jack,
 					SND_JACK_BTN_0, KEY_MEDIA);
-
-	if (ret) {
-		pr_err("%s: Failed to set code for btn-0\n", __func__);
-		return ret;
+		if (ret) {
+			pr_err("%s: Failed to set code for btn-0\n", __func__);
+			return ret;
+		}
 	}
 
 	mutex_lock(&fsa8500->lock);
@@ -586,7 +616,6 @@ static void fsa8500_det_thread(struct work_struct *work)
 	struct fsa8500_data *irq_data =
 				i2c_get_clientdata(fsa8500_client);
 
-
 	mutex_lock(&irq_data->lock);
 	wake_lock(&irq_data->wake_lock);
 
@@ -604,9 +633,6 @@ static int fsa8500_parse_dt_regs_array(const u32 *arr,
 	u32 len = 0, reg, val;
 	int i;
 
-	if (!arr)
-		return 0;
-
 	for (i = 0; i < count*2; i += 2) {
 		reg = be32_to_cpu(arr[i]);
 		val = be32_to_cpu(arr[i + 1]);
@@ -621,13 +647,36 @@ static int fsa8500_parse_dt_regs_array(const u32 *arr,
 	return len;
 }
 
+static int fsa8500_parse_dt_keymap(const u32 *arr,
+	struct fsa8500_keymap *keymap, int count)
+{
+	u32 len = 0, btn, code;
+	int i;
+
+	if (!arr)
+		return 0;
+
+	for (i = 0; i < count*2; i += 2) {
+		btn = be32_to_cpu(arr[i]);
+		code = be32_to_cpu(arr[i + 1]);
+		if (btn & 0xff00000) {
+			keymap->soc_btn = btn;
+			keymap->keycode = code;
+			len++;
+			pr_debug("%s: key: 0x%x=0x%x\n", __func__, btn, code);
+			keymap++;
+		}
+	}
+	return len;
+}
+
 static struct fsa8500_platform_data *
 fsa8500_of_init(struct i2c_client *client)
 {
 	struct fsa8500_platform_data *pdata;
 	struct device_node *np = client->dev.of_node;
-	const u32 *regs_arr;
-	int regs_len;
+	const u32 *regs_arr, *keymap;
+	int regs_len, keymap_len;
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
 		dev_err(&client->dev, "pdata allocation failure\n");
@@ -643,19 +692,44 @@ fsa8500_of_init(struct i2c_client *client)
 	if (!regs_arr || (regs_len & 1)) {
 		pr_warn("fsa8500: No init registers setting\n");
 		regs_len = 0;
-	}
-
-	regs_len /= 2 * sizeof(u32);
-	if (regs_len > FSA8500_MAX_REGISTER_VAL)
+	} else {
+		regs_len /= 2 * sizeof(u32);
+		if (regs_len > FSA8500_MAX_REGISTER_VAL)
 			regs_len = FSA8500_MAX_REGISTER_VAL;
 
-	pdata->init_regs = devm_kzalloc(&client->dev,
+		pdata->init_regs = devm_kzalloc(&client->dev,
 					sizeof(struct fsa8500_regs) * regs_len,
 					GFP_KERNEL);
-	if (!pdata->init_regs)
-		return NULL;
-	pdata->init_regs_num = fsa8500_parse_dt_regs_array(regs_arr,
-					pdata->init_regs, regs_len);
+
+		if (!pdata->init_regs) {
+			pr_warn("fsa8500: init_regs allocation failure\n");
+			return pdata;
+		}
+		pdata->init_regs_num = fsa8500_parse_dt_regs_array(regs_arr,
+						pdata->init_regs, regs_len);
+	}
+
+	keymap = of_get_property(np, "fsa8500-keymap",
+			&keymap_len);
+	if (!keymap || (keymap_len & 1)) {
+		pr_warn("fsa8500: No keymap setting\n");
+		keymap_len = 0;
+	} else {
+		keymap_len /= 2 * sizeof(u32);
+		if (keymap_len > FSA8500_NUM_KEYS)
+			keymap_len = FSA8500_NUM_KEYS;
+
+		pdata->keymap = devm_kzalloc(&client->dev,
+				sizeof(struct fsa8500_keymap) * keymap_len,
+				GFP_KERNEL);
+		if (!pdata->keymap) {
+			pr_warn("fsa8500: keymap allocation failure\n");
+			return pdata;
+		}
+		pdata->num_keys = fsa8500_parse_dt_keymap(keymap,
+						pdata->keymap, keymap_len);
+	}
+
 	return pdata;
 }
 #else
@@ -712,6 +786,7 @@ static int fsa8500_probe(struct i2c_client *client,
 	fsa8500->button_pressed = 0;
 	fsa8500->button_jack = NULL;
 	fsa8500->hs_jack = NULL;
+	fsa8500->pdata = fsa8500_pdata;
 	/* This flag is used to indicate that mic bias should be always
 	 * on when headset is inserted, needed for always on voice
 	 * operations and noise estimate.
