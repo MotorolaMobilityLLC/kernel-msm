@@ -146,16 +146,24 @@ static struct dsi_cmd_desc backlight_cmd2 = {
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct dcs_cmd_req cmdreq;
+	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
+	unsigned char new_level = level;
 
 	pr_debug("%s: level=%d\n", __func__, level);
+	if (pinfo->blmap && pinfo->blmap_size) {
+		if (level >= pinfo->blmap_size)
+			level = pinfo->blmap_size - 1;
+		new_level = pinfo->blmap[level];
+		pr_debug("%s: adjusted level=%d\n", __func__, (int)new_level);
+	}
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 
 	if (ctrl->bklt_ctrl == BL_DCS_L_CMD) {
-		led_pwm2[1] = (unsigned char)level;
+		led_pwm2[1] = new_level;
 		cmdreq.cmds = &backlight_cmd2;
 	} else {
-		led_pwm1[1] = (unsigned char)level;
+		led_pwm1[1] = new_level;
 		cmdreq.cmds = &backlight_cmd1;
 	}
 	cmdreq.cmds_cnt = 1;
