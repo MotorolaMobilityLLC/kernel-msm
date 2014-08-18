@@ -45,7 +45,7 @@
 #define DMP_PRECISION                   1000
 #define DMP_MAX_DIVIDER                 4
 #define DMP_MAX_MIN_TAPS                4
-#define DMP_IMAGE_CRC_VALUE             0x77a5148f
+#define DMP_IMAGE_CRC_VALUE             0xa7e2110d
 
 /*--- Test parameters defaults --- */
 #define DEF_OLDEST_SUPP_PROD_REV        8
@@ -823,6 +823,7 @@ static int inv_check_6500_gyro_self_test(struct inv_mpu_state *st,
 		 st->hw->name, st_shift_cust[0], st_shift_cust[1],
 		 st_shift_cust[2]);
 
+#if 0
 	if (ret_val == 0) {
 		/* Self Test Pass/Fail Criteria C */
 		for (i = 0; i < 3; i++)
@@ -831,7 +832,7 @@ static int inv_check_6500_gyro_self_test(struct inv_mpu_state *st,
 						DEF_ST_PRECISION)
 				ret_val = 1;
 	}
-
+#endif
 	return ret_val;
 }
 

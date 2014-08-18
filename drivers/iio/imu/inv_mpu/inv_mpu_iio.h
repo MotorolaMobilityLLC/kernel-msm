@@ -282,7 +282,7 @@
 #define CRC_FIRMWARE_SEED        0
 #define SELF_TEST_SUCCESS        1
 #define MS_PER_DMP_TICK          20
-#define DMP_IMAGE_SIZE           2950
+#define DMP_IMAGE_SIZE           2943
 
 /* init parameters */
 #define INIT_FIFO_RATE           50
