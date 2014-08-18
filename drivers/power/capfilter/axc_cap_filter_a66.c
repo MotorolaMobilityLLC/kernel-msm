@@ -138,42 +138,24 @@ static int eval_bat_life_when_discharging(
 			//max_predict_drop_val = (maxMah*100/batCapMah)*interval/SECOND_OF_HOUR;
 			max_predict_drop_val = formula_of_discharge(maxMah, batCapMah, interval);
 			pred_discharge_after_dot = formula_of_discharge_dot(maxMah, batCapMah, interval);
-				
-			if(10 != maxMah)
-			{
-				//Eason:A80 slowly drop+++
-				//if(g_ASUS_hwID >= A90_EVB0)
-				if(1)
-				{
-					if(nowCap<=OCV_PER_SPEEDUP_UPDATE_14P){
-						if(g_current_now>1400){
-							fasterLeverage_drop_val = formula_of_discharge(g_current_now, batCapMah, interval);
-							fast_discharge_after_dot = formula_of_discharge_dot(g_current_now, batCapMah, interval);
-						}
-						else{
-							fasterLeverage_drop_val = formula_of_discharge(1400, batCapMah, interval);
-							fast_discharge_after_dot = formula_of_discharge_dot(1400, batCapMah, interval);
-						}
+
+			if(10 != maxMah){
+				if(nowCap<=OCV_PER_SPEEDUP_UPDATE_14P){
+					if(g_current_now>1400){
+						fasterLeverage_drop_val = formula_of_discharge(g_current_now, batCapMah, interval);
+						fast_discharge_after_dot = formula_of_discharge_dot(g_current_now, batCapMah, interval);
 					}
 					else{
-						if(g_current_now>900){
-							fasterLeverage_drop_val = formula_of_discharge(g_current_now, batCapMah, interval);
-							fast_discharge_after_dot = formula_of_discharge_dot(g_current_now, batCapMah, interval);
-						}
-						else{
-							fasterLeverage_drop_val = formula_of_discharge(900, batCapMah, interval);
-							fast_discharge_after_dot = formula_of_discharge_dot(900, batCapMah, interval);
-						}
-					}
-				}
-				else
-				//Eason:A80 slowly drop---
-				{
-					if(nowCap<10)
-					{
 						fasterLeverage_drop_val = formula_of_discharge(1400, batCapMah, interval);
 						fast_discharge_after_dot = formula_of_discharge_dot(1400, batCapMah, interval);
-					}else{
+					}
+				}
+				else{
+					if(g_current_now>900){
+						fasterLeverage_drop_val = formula_of_discharge(g_current_now, batCapMah, interval);
+						fast_discharge_after_dot = formula_of_discharge_dot(g_current_now, batCapMah, interval);
+					}
+					else{
 						fasterLeverage_drop_val = formula_of_discharge(900, batCapMah, interval);
 						fast_discharge_after_dot = formula_of_discharge_dot(900, batCapMah, interval);
 					}
@@ -181,8 +163,7 @@ static int eval_bat_life_when_discharging(
 			}
 			//Eason :when  low bat Cap draw large current  ---
 			//Eason:prevent in unattend mode mass drop+++
-			if(10==maxMah)
-			{
+			if(10==maxMah){
 				//Eason:In  phone call suspend, use 200mA do fasterLeverage+++
 				/*
 				*	extern int g_flag_csvoice_fe_connected, 
@@ -230,27 +211,23 @@ static int eval_bat_life_when_discharging(
 			}
 			//Eason:prevent in unattend mode mass drop---
 
-	             //Eason add fasterLeverage judge+++  
-				if((drop_val > max_predict_drop_val) && (g_do_fasterLeverage_count < 3)){
-					g_do_fasterLeverage_count++; 
-				}
-				else if((drop_val <= max_predict_drop_val) && (g_do_fasterLeverage_count > 0)){
-					g_do_fasterLeverage_count--;
-				}
+			//Eason add fasterLeverage judge+++  
+			if((drop_val > max_predict_drop_val) && (g_do_fasterLeverage_count < 3)){
+				g_do_fasterLeverage_count++; 
+			}
+			else if((drop_val <= max_predict_drop_val) && (g_do_fasterLeverage_count > 0)){
+				g_do_fasterLeverage_count--;
+			}
 
-			//Hank:A86 slowly drop+++
-			if( nowCap<=OCV_PER_SPEEDUP_UPDATE_14P )
-			{
+			if( nowCap<=OCV_PER_SPEEDUP_UPDATE_14P ){
 				finetune_max_predict_drop_val = fasterLeverage_drop_val;
 				//Eason: more accuracy for discharge after dot+++
 				g_discharge_after_dot += fast_discharge_after_dot;
 				printk("[BAT][Fil]formula:%d.%d\n",fasterLeverage_drop_val,fast_discharge_after_dot);
 				finetune_max_predict_drop_val += discharge_dot_need_plus();
 				//Eason: more accuracy for discharge after dot---
-			}	
-			//Hank:A86 slowly drop---
-			else if( (2<=g_do_fasterLeverage_count)&&(nowCap<10) )
-			{
+			}
+			else if( (2<=g_do_fasterLeverage_count)&&(nowCap<10) ){
 				finetune_max_predict_drop_val = fasterLeverage_drop_val;
 				//Eason: more accuracy for discharge after dot+++
 				g_discharge_after_dot += fast_discharge_after_dot;
@@ -272,7 +249,7 @@ static int eval_bat_life_when_discharging(
 				printk("[BAT][Fil]formula:%d.%d\n",max_predict_drop_val,pred_discharge_after_dot);
 				max_predict_drop_val += discharge_dot_need_plus();
 				//Eason: more accuracy for discharge after dot---
-					
+				
 				//Eason: remember last BMS Cap to filter+++
 				if(gDiff_BMS >=0)//when discharge BMS drop value >=0
 				{
@@ -292,19 +269,18 @@ static int eval_bat_life_when_discharging(
 						//Eason: add BMS absolute value judge value---
 				}
 				//Eason: remember last BMS Cap to filter---
-	              }
+			}
 
 			if(finetune_max_predict_drop_val<0)
 			{
 				finetune_max_predict_drop_val = -finetune_max_predict_drop_val;
 				printk("[BAT][Fil]Error: finetune_max_predict_drop_val over float\n");
 			}
-	            //Eason add fasterLeverage judge---
+			//Eason add fasterLeverage judge---
             
 			bat_life = lastCap - min(drop_val, finetune_max_predict_drop_val);
-		} 
-		else 
-		{
+		}
+		else {
 			//bat_life = lastCap - drop_val;
 			bat_life = lastCap;
 			printk( "[BAT][Fil]Error!!! %s(), interval < 0\n",
@@ -324,58 +300,15 @@ static int eval_bat_life_when_discharging(
 			g_current_now,
 			g_discharge_after_dot);
 
-	} 
-	else 
-	{
-		 int max_predict_drop_val = 0;
- 		 int MinOfBmsPd = 0; 
+	}
+	else {
+		bat_life = lastCap; // without cablein capacity rise, do not  change capacity
 
-		 //Hank:A86 slowly drop+++
-		//if(g_ASUS_hwID >= A90_EVB0)
-		if(1)
-		{
-			bat_life = lastCap; // without cablein capacity rise, do not  change capacity
+		if(g_do_fasterLeverage_count > 0){
+			g_do_fasterLeverage_count--;
 		}
-		//Hank: A86 slowly drop---
-		//Hank: A86 no use+++ CONFIG_BMS_ASUS
-		else
-		{
-			//Eason: add BMS absolute value judge value+++
-			if (interval > 0) 
-			{
-				max_predict_drop_val = (maxMah*100*100/batCapMah)*interval/SECOND_OF_HOUR/100;//fix  suspend  (10*100/2100)will be 0
-				if(gDiff_BMS <= 0)
-				{
-					bat_life = lastCap;
-				}
-				else
-				{
-					MinOfBmsPd = min(abs(gDiff_BMS),abs(max_predict_drop_val));
-					if( abs(drop_val)==min(abs(MinOfBmsPd),abs(drop_val)) )
-					{
-						bat_life = lastCap;
-					}
-					else
-					{
-						bat_life = lastCap - MinOfBmsPd;
-					}
-				}
-					
-			}
-			else
-			{
-				bat_life = lastCap;
-			}	
-			//Eason: add BMS absolute value judge value---
-		}
-		//Hank: A86 no use--- CONFIG_BMS_ASUS
-        	if(g_do_fasterLeverage_count > 0)
-        	{
-            		g_do_fasterLeverage_count--;
-        	}
-                
-		if (drop_val < 0) 
-		{
+
+		if (drop_val < 0) {
 			pr_info( "[BAT][Fil] Error!!! %s(), drop val less than 0. count:%d\n", __func__,g_do_fasterLeverage_count);
 		}
 	}
@@ -397,12 +330,10 @@ static int eval_bat_life_when_charging(
 	/* g_bat_life_after_dot - remain battery life after dot, used for more accuracy */
 	static int max_bat_life_rise_after_dot = 0;
 
-	if (rise_val > 0) 
-	{
+	if (rise_val > 0) {
 		unsigned long max_bat_life_rise_val = 0;
 
-		if (interval > 0) 
-		{
+		if (interval > 0) {
 			/* if interval is more than 108sec, max_predict_drop_val will be more than 1 */
 			max_bat_life_rise_val = (maxMah*100/batCapMah)*interval/SECOND_OF_HOUR;
 
@@ -411,8 +342,7 @@ static int eval_bat_life_when_charging(
 			max_bat_life_rise_after_dot += tmp_val_after_dot;
 			pr_debug( "[BAT][Fil]%s(), tmp_val_after_dot:%d, max_bat_life_rise_after_dot:%d\n",__func__,tmp_val_after_dot,max_bat_life_rise_after_dot);
 			
-			if ((max_bat_life_rise_after_dot/100) >= 1) 
-			{
+			if ((max_bat_life_rise_after_dot/100) >= 1) {
 				pr_debug( "[BAT][Fil]%s(), max_bat_life_rise_after_dot:%d\n",__func__,max_bat_life_rise_after_dot);
 				max_bat_life_rise_val += (max_bat_life_rise_after_dot/100);
 				max_bat_life_rise_after_dot = max_bat_life_rise_after_dot%100;
@@ -420,8 +350,7 @@ static int eval_bat_life_when_charging(
 			bat_life = lastCap + min(rise_val, (int)max_bat_life_rise_val);
             //TO DO ...if interval is too big...will get a negative value for capacity returned...
 		} 
-		else 
-		{
+		else {
 			bat_life = lastCap + rise_val;
 			pr_err("[BAT][Fil]Error!!! %s(), interval < 0\n",
 					__func__);
@@ -434,13 +363,11 @@ static int eval_bat_life_when_charging(
 			(int)max_bat_life_rise_val,
 			bat_life);
 	} 
-	else 
-	{
+	else {
 		bat_life = lastCap;
 		pr_debug( "[BAT][Fil]%s(), keep the same bat_life:%d as before\n",__func__,bat_life);
 
-		if (rise_val < 0) 
-		{
+		if (rise_val < 0) {
 			pr_err("[BAT][Fil] Error!!! %s(), rise val less than 0.\n", __func__);
 		}
 	}
@@ -529,7 +456,7 @@ int AXC_Cap_Filter_A66_FilterCapacity(struct AXI_Cap_Filter *apCapFilter, int no
 		pr_info("[BAT][Fil]%s(), bat low and cap <= 3, shutdown!! \n", __func__);
 		return BAT_LIFE_TO_SHUTDOWN;
 	}
-	
+
 #ifndef ASUS_FACTORY_BUILD
 	if ((nowCap <= 0) && (lastCap <= 3)
 #ifdef ASUS_CHARGING_MODE
@@ -551,11 +478,11 @@ int AXC_Cap_Filter_A66_FilterCapacity(struct AXI_Cap_Filter *apCapFilter, int no
 	//Eason: if BatLow keep 15 min, shutdown devices---
 
 	if (EnableBATLifeRise) // enable capacity rise
-	{	
+	{
 		bat_life = eval_bat_life_when_charging(nowCap, lastCap, maxMah, interval, this->capMah);
 	} 
 	else // disable capacity rise 
-	{	
+	{
 		bat_life = eval_bat_life_when_discharging(nowCap, lastCap, maxMah, interval, this->capMah);
 	}
 
