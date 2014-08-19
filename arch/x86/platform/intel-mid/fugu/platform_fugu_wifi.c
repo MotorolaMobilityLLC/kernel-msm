@@ -136,7 +136,8 @@ static int check_mac(char *str)
 	int i;
 
 	if (strlen(str) != 12) {
-		pr_err("%s: bad mac address file len %d < 12\n", __func__, strlen(str));
+		pr_err("%s: bad mac address file len %zu < 12\n",
+				__func__, strlen(str));
 		return -1;
 	}
 	for (i = 0; i < strlen(str); i++) {
