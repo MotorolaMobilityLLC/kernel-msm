@@ -1137,6 +1137,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 				bl_level_old = mfd->unset_bl_level;
 			if (mdss_panel_is_power_off(req_power_state)) {
 				mdss_fb_set_backlight(mfd, 0);
+				mfd->unset_bl_level = bl_level_old;
 				mfd->bl_updated = 0;
 			}
 			mfd->panel_power_state = req_power_state;
