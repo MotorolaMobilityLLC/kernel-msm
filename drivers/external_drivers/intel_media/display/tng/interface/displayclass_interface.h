@@ -74,5 +74,6 @@ int DC_MRFLD_Disable_Plane(int type, int index, uint32_t ctx);
 bool DC_MRFLD_Is_Plane_Disabled(int type, int index, uint32_t ctx);
 void DCLockMutex(void);
 void DCUnLockMutex(void);
+int DCUpdateCursorPos(uint32_t pipe, uint32_t pos);
 
 #endif				/* __DC_INTERFACE_H__ */

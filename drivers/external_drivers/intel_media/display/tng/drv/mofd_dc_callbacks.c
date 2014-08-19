@@ -474,6 +474,36 @@ void DCCBFlipPrimary(struct drm_device *dev,
 #endif
 }
 
+void DCCBFlipCursor(struct drm_device *dev,
+			struct intel_dc_cursor_ctx *ctx)
+{
+	struct drm_psb_private *dev_priv;
+	u32 reg_offset = 0;
+
+	if (!dev || !ctx)
+		return;
+
+	dev_priv = (struct drm_psb_private *)dev->dev_private;
+
+	user_mode_start(dev_priv);
+
+	switch (ctx->pipe) {
+	case 0:
+		reg_offset = 0;
+		break;
+	case 1:
+		reg_offset = 0x40;
+		break;
+	case 2:
+		reg_offset = 0x60;
+		break;
+	}
+
+	PSB_WVDC32(ctx->cntr, CURACNTR + reg_offset);
+	PSB_WVDC32(ctx->pos, CURAPOS + reg_offset);
+	PSB_WVDC32(ctx->surf, CURABASE + reg_offset);
+}
+
 void DCCBSetupZorder(struct drm_device *dev,
 			struct intel_dc_plane_zorder *zorder,
 			int pipe)
@@ -777,6 +807,34 @@ int DCCBPrimaryEnable(struct drm_device *dev, u32 ctx,
 	return 0;
 }
 
+int DCCBCursorDisable(struct drm_device *dev, int index)
+{
+	u32 reg_offset;
+
+	if (index < 0 || index > 2) {
+		DRM_ERROR("Invalid cursor index %d\n", index);
+		return -EINVAL;
+	}
+
+	switch (index) {
+	case 0:
+		reg_offset = 0;
+		break;
+	case 1:
+		reg_offset = 0x40;
+		break;
+	case 2:
+		reg_offset = 0x60;
+		break;
+	}
+
+	PSB_WVDC32(0, CURACNTR + reg_offset);
+	PSB_WVDC32(0, CURAPOS + reg_offset);
+	PSB_WVDC32(0, CURABASE + reg_offset);
+
+	return 0;
+}
+
 int DCCBUpdateDbiPanel(struct drm_device *dev, int pipe)
 {
 #ifdef CONFIG_SUPPORT_MIPI
@@ -980,3 +1038,37 @@ void DCCBDsrAllow(struct drm_device *dev, int pipe)
 	mdfld_dsi_dsr_allow(dsi_config);
 #endif
 }
+
+int DCCBUpdateCursorPos(struct drm_device *dev, int pipe, uint32_t pos)
+{
+	u32 power_island = 0;
+	u32 reg_offset = 0;
+
+	switch (pipe) {
+	case 0:
+		power_island = OSPM_DISPLAY_A;
+		reg_offset = 0;
+		break;
+	case 1:
+		power_island = OSPM_DISPLAY_B;
+		reg_offset = 0x40;
+		break;
+	case 2:
+		power_island = OSPM_DISPLAY_C;
+		reg_offset = 0x60;
+		break;
+	default:
+		DRM_ERROR("%s: invalid pipe %d\n", __func__, pipe);
+		return -1;
+	}
+
+	if (!power_island_get(power_island)) {
+		DRM_ERROR("%s: failed to get power island for pipe %d\n", __func__, pipe);
+		return -1;
+	}
+
+	PSB_WVDC32(pos, CURAPOS + reg_offset);
+	power_island_put(power_island);
+	return 0;
+}
+

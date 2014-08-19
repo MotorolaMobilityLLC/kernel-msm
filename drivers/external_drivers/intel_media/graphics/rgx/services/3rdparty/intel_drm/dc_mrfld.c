@@ -267,6 +267,14 @@ static void _Flip_Primary(DC_MRFLD_DEVICE *psDevice,
 		DCCBFlipPrimary(psDevice->psDrmDevice, psContext);
 }
 
+static void _Flip_Cursor(DC_MRFLD_DEVICE *psDevice,
+			DC_MRFLD_CURSOR_CONTEXT *psContext,
+			IMG_INT iPipe)
+{
+	if ((iPipe && psContext->pipe) || (!iPipe && !psContext->pipe))
+		DCCBFlipCursor(psDevice->psDrmDevice, psContext);
+}
+
 static void _Setup_ZOrder(DC_MRFLD_DEVICE *psDevice,
 			DC_MRFLD_DC_PLANE_ZORDER *psZorder,
 			IMG_INT iPipe)
@@ -345,6 +353,9 @@ static void disable_plane(struct plane_state *pstate)
 		break;
 	case DC_PRIMARY_PLANE:
 		DCCBPrimaryEnable(gpsDevice->psDrmDevice, ctx, index, 0);
+		break;
+	case DC_CURSOR_PLANE:
+		DCCBCursorDisable(gpsDevice->psDrmDevice, index);
 		break;
 	default:
 		DRM_ERROR("unsupport plane type (%d %d)\n", type, index);
@@ -641,6 +652,10 @@ static IMG_BOOL _Do_Flip(DC_MRFLD_FLIP *psFlip, int iPipe)
 			_Flip_Overlay(gpsDevice,
 					&plane->flip_ctx->ctx.ov_ctx, iPipe);
 			break;
+		case DC_CURSOR_PLANE:
+			_Flip_Cursor(gpsDevice,
+					&plane->flip_ctx->ctx.cs_ctx, iPipe);
+			break;
 		}
 	}
 
@@ -788,6 +803,10 @@ static void _Dispatch_Flip(DC_MRFLD_FLIP *psFlip)
 			case DC_OVERLAY_PLANE:
 				index = psSurfCustom->ctx.ov_ctx.index;
 				pipe = psSurfCustom->ctx.ov_ctx.pipe;
+				break;
+			case DC_CURSOR_PLANE:
+				index = psSurfCustom->ctx.cs_ctx.index;
+				pipe = psSurfCustom->ctx.cs_ctx.pipe;
 				break;
 			default:
 				DRM_ERROR("Unknown plane type %d\n",
@@ -1872,6 +1891,22 @@ void DCUnLockMutex()
 	mutex_unlock(&gpsDevice->sFlipQueueLock);
 }
 
+int DCUpdateCursorPos(uint32_t pipe, uint32_t pos)
+{
+	int ret = 0;
+
+	if (!gpsDevice || !gpsDevice->psDrmDevice)
+		return -1;
+
+	/* TODO: check flip queue state */
+	/* if queue is not empty pending flip should be updated directly */
+	DCLockMutex();
+	ret = DCCBUpdateCursorPos(gpsDevice->psDrmDevice, (int)pipe, pos);
+	DCUnLockMutex();
+
+	return ret;
+}
+
 void DCAttachPipe(uint32_t iPipe)
 {
 	if (!gpsDevice)
@@ -1987,6 +2022,16 @@ void DC_MRFLD_onPowerOn(uint32_t iPipe)
 	/* keep primary on and flip to black screen */
 	for (j = 0; j < MAX_PLANE_INDEX; j++) {
 		pstate = &gpsDevice->plane_states[DC_PRIMARY_PLANE][j];
+
+		/* primary plane is fixed to pipe */
+		if (j != iPipe)
+			continue;
+
+		disable_plane(pstate);
+	}
+
+	for (j = 0; j < MAX_PLANE_INDEX; j++) {
+		pstate = &gpsDevice->plane_states[DC_CURSOR_PLANE][j];
 
 		/* primary plane is fixed to pipe */
 		if (j != iPipe)
