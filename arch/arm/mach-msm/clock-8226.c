@@ -1992,7 +1992,7 @@ static struct rcg_clk mclk0_clk_src = {
 	},
 };
 
-static struct rcg_clk mclk1_clk_src = {
+struct rcg_clk mclk1_clk_src = {
 	.cmd_rcgr_reg = MCLK1_CMD_RCGR,
 	.set_rate = set_rate_mnd,
 	.freq_tbl = ftbl_camss_mclk0_1_clk,
@@ -2362,7 +2362,7 @@ static struct branch_clk camss_mclk0_clk = {
 	},
 };
 
-static struct branch_clk camss_mclk1_clk = {
+struct branch_clk camss_mclk1_clk = {
 	.cbcr_reg = CAMSS_MCLK1_CBCR,
 	.has_sibling = 0,
 	.base = &virt_bases[MMSS_BASE],
