@@ -2430,13 +2430,6 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 	return POWER_SUPPLY_CHARGE_TYPE_NONE;
 }
 
-//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
-#ifdef CONFIG_PM_8226_CHARGER	
-extern int pm8226_getCapacity(void);
-static int asus_soc;
-#endif
-//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue---
-
 #define DEFAULT_CAPACITY	50
 #ifndef CONFIG_PM_8226_CHARGER
 static int
@@ -2544,6 +2537,13 @@ get_prop_charge_full(struct qpnp_chg_chip *chip)
 
 	return 0;
 }
+
+//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
+#ifdef CONFIG_PM_8226_CHARGER	
+extern int pm8226_getCapacity(void);
+static int asus_soc;
+#endif
+//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue---
 
 static int
 get_prop_capacity(struct qpnp_chg_chip *chip)
