@@ -27,6 +27,7 @@
 #include <trace/events/power.h>
 #include <mach/clk-provider.h>
 #include "clock.h"
+#include "mmi-clock.h"
 
 struct handoff_clk {
 	struct list_head list;
@@ -798,6 +799,8 @@ int __init msm_clock_init(struct clock_init_data *data)
 
 	if (data->pre_init)
 		data->pre_init();
+
+	mmi_msm_clock_init(data);
 
 	mutex_lock(&msm_clock_init_lock);
 	if (data->late_init)
