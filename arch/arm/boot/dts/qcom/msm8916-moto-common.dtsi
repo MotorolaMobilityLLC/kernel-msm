@@ -19,7 +19,7 @@
 / {
 	aliases {
 		serial0 = &blsp1_ls_uart1;
-		spi5 = &spi_5; /* SPI0 controller device */
+		spi5 = &spi_5; /* SPI5 controller device */
 		i2c1 = &i2c_1;
 	};
 };
@@ -359,6 +359,19 @@
 		};
 	};
 
+	spi0_mot_cs0_suspend {
+		/* CS */
+		qcom,pins = <&gp 10>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "spi0-mot-cs0-suspend";
+		spi0_mot_cs0_sleep: cs0_sleep {
+			drive-strength = <2>;
+			bias-disable = <0>;
+			output-high;
+		};
+	};
+
 	spi5_active {
 		/* MOSI, MISO, CLK */
 		qcom,pins = <&gp 16>, <&gp 17>, <&gp 19>;
@@ -564,7 +577,7 @@
 		interrupt-names = "spi_irq", "spi_bam_irq";
 		interrupts = <0 99 0>, <0 238 0>;
 		spi-max-frequency = <19200000>;
-		pinctrl-names = "default", "sleep", "cs0_active", "cs0_sleep";
+		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&spi5_default &spi5_cs0_active>;
 		pinctrl-1 = <&spi5_sleep &spi5_cs0_sleep>;
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
@@ -743,7 +756,7 @@
 &spi_0 {
 	spi-max-frequency = <8000000>;
 	pinctrl-0 = <&spi0_mot_default &spi0_cs0_active>;
-	pinctrl-1 = <&spi0_sleep &spi0_cs0_active>;
+	pinctrl-1 = <&spi0_sleep &spi0_mot_cs0_sleep>;
 
 	/delete-property/ qcom,use-bam;
 	/delete-node/ lattice,spi-usb@0;
