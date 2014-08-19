@@ -3157,6 +3157,14 @@ config MMI_MSM_PINMUX
 	  Provides capability for reading an OF DT node to provide initial
 	  configuration of GPIO MUX settings on MSM chip families.
 
+config MMI_MSM_CLOCK
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility MSM OF DTS Clock Driver"
+	help
+	  Provides capability for reading an OF DT node to override Clock
+	  specific to MMI product on MSM chip families.
+
 config PM_DEBUG_WAKEUP
 	depends on PM_DEBUG
     default n
