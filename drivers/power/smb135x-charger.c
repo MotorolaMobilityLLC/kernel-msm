@@ -2108,7 +2108,7 @@ static void smb135x_external_power_changed(struct power_supply *psy)
 	if (chip->usb_present && chip->chg_enabled && chip->usb_psy_ma != 0) {
 		if (prop.intval == 0)
 			rc = power_supply_set_online(chip->usb_psy, true);
-	} else {
+	} else if (!(chip->usb_present && chip->chg_done_batt_full)) {
 		if (prop.intval == 1)
 			rc = power_supply_set_online(chip->usb_psy, false);
 	}
