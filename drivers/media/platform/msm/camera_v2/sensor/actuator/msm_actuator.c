@@ -245,6 +245,11 @@ static int32_t msm_actuator_move_focus(
 	if (dest_step_pos == a_ctrl->curr_step_pos)
 		return rc;
 
+	if (dest_step_pos >= a_ctrl->total_steps) {
+		CDBG("Step pos greater than total steps = %d\n", dest_step_pos);
+		return -EFAULT;
+	}
+
 	curr_lens_pos = a_ctrl->step_position_table[a_ctrl->curr_step_pos];
 	a_ctrl->i2c_tbl_index = 0;
 	CDBG("curr_step_pos =%d dest_step_pos =%d curr_lens_pos=%d\n",
