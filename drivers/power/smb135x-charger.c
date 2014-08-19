@@ -2097,24 +2097,6 @@ static void smb135x_external_power_changed(struct power_supply *psy)
 			dev_err(chip->dev, "Couldn't set usb current rc = %d\n",
 					rc);
 	}
-
-	rc = chip->usb_psy->get_property(chip->usb_psy,
-			POWER_SUPPLY_PROP_ONLINE, &prop);
-	if (rc < 0)
-		dev_err(chip->dev,
-			"could not read USB ONLINE property, rc=%d\n", rc);
-
-	/* update online property */
-	rc = 0;
-	if (chip->usb_present && chip->chg_enabled && chip->usb_psy_ma != 0) {
-		if (prop.intval == 0)
-			rc = power_supply_set_online(chip->usb_psy, true);
-	} else {
-		if (prop.intval == 1)
-			rc = power_supply_set_online(chip->usb_psy, false);
-	}
-	if (rc < 0)
-		dev_err(chip->dev, "could not set usb online, rc=%d\n", rc);
 }
 
 #define MIN_FLOAT_MV	3600
