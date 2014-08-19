@@ -39,6 +39,9 @@ config VIDEOMODE_HELPERS
 config HDMI
 	bool
 
+config ITE_HDMI_CEC
+	bool "Enable ITE HDMI CEC"
+
 menuconfig FB
 	tristate "Support for frame buffer devices"
 	---help---

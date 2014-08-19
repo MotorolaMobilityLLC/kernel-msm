@@ -140,6 +140,8 @@ struct devs_id __initconst device_ids[] = {
 	{"pn544", SFI_DEV_TYPE_I2C, 0, &pn544_platform_data, NULL},
 	{"MNZX8000", SFI_DEV_TYPE_I2C, 0, &no_platform_data, NULL},
 	{"pca953x", SFI_DEV_TYPE_I2C, 0, &nxp_pca9574_platform_data, NULL},
+	{"it8566_hdmi_cec", SFI_DEV_TYPE_I2C, 1, &no_platform_data, NULL},
+	{"it8566_flash_mod", SFI_DEV_TYPE_I2C, 1, &no_platform_data, NULL},
 
 	/* MSIC subdevices */
 	{"msic_adc", SFI_DEV_TYPE_IPC, 1, &msic_adc_platform_data,
