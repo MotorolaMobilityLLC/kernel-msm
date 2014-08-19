@@ -34,11 +34,6 @@
 	gpio = <&msmgpio 69 0x0>;
 };
 
-&vddio_disp_vreg {
-	/delete-property/ gpio;
-	gpio = <&msmgpio 114 0x0>;
-};
-
 &imx132 {
 	/delete-property/ gpios;
 	gpios = <&msmgpio 27 0>,
@@ -64,5 +59,11 @@
 	bmm050@13 {
 		/delete-property/ bmm,place;
 		bmm,place = <0>;
+	};
+};
+
+/ {
+	chosen {
+		mmi,clock_override = <0x01>;
 	};
 };
