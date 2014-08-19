@@ -471,12 +471,12 @@
 			qcom,tchg-mins = <150>;
 			qcom,chg-vadc = <&pm8941_vadc>;
 			qcom,chg-adc_tm = <&pm8941_adc_tm>;
-			qcom,ibatmax-warm-ma = <2000>;
+			qcom,ibatmax-warm-ma = <2600>;
 			qcom,warm-bat-decidegc = <450>;
 			qcom,warm-bat-mv = <4000>;
 			qcom,cool-bat-decidegc = <10>;
 			qcom,cool-bat-mv = <4000>;
-			qcom,ibatmax-cool-ma = <2000>;
+			qcom,ibatmax-cool-ma = <2600>;
 			qcom,batt-hot-percentage = <25>;
 			qcom,batt-cold-percentage = <80>;
 			qcom,ir-comp = <1>;
@@ -678,8 +678,8 @@
 	qcom,warm-bat-soc = <65>;
 	qcom,resume-delta-soc = <2>;
 	qcom,cool-bat-mv = <4000>;
-	qcom,ibatmax-warm-ma = <2000>;
-	qcom,ibatmax-cool-ma = <2000>;
+	qcom,ibatmax-warm-ma = <2600>;
+	qcom,ibatmax-cool-ma = <2600>;
 	qcom,batt-hot-percentage = <25>;
 	qcom,batt-cold-percentage = <80>;
 	qcom,step-charge-voltage = <4200>;
