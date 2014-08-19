@@ -119,7 +119,7 @@ static int eval_bat_life_when_discharging(
 	int fast_discharge_after_dot = 0;   //fastleverage discharger cap after dot
 	//Eason: more accuracy for discharge after dot---
 
-	pr_info( "[BAT][Fil]%s(), drop_val:%d\n",__func__,drop_val);
+	printk( "[BAT][Fil]%s(), drop_val:%d\n",__func__,drop_val);
 
 	//Hank:A86 slowly drop+++
 	//if(g_ASUS_hwID >= A90_EVB0)
@@ -330,6 +330,8 @@ static int eval_bat_life_when_charging(
 	/* g_bat_life_after_dot - remain battery life after dot, used for more accuracy */
 	static int max_bat_life_rise_after_dot = 0;
 
+	printk( "[BAT][Fil]%s(), rise_val:%d\n",__func__,rise_val);
+
 	if (rise_val > 0) {
 		unsigned long max_bat_life_rise_val = 0;
 
@@ -394,6 +396,7 @@ static int update_bat_info_for_speical_case(
 	}
 
 	if (bat_life >= BAT_LIFE_FULL) {
+#if 0
 		if(false == isBatFull)
 		//if(this->mpCharger->IsCharging(this->mpCharger))
 		{
@@ -404,6 +407,10 @@ static int update_bat_info_for_speical_case(
 			final_bat_life = BAT_LIFE_FULL;
 			return final_bat_life;
 		}
+#else
+		final_bat_life = BAT_LIFE_FULL;
+		return final_bat_life;
+#endif
 	} 
 
 

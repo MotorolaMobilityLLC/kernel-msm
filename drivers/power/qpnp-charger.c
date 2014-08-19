@@ -449,6 +449,7 @@ extern char g_CHG_mode;
 #endif
 //ASUS_BSP ---
 
+
 enum bpd_type {
 	BPD_TYPE_BAT_ID,
 	BPD_TYPE_BAT_THM,
@@ -2429,7 +2430,15 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 	return POWER_SUPPLY_CHARGE_TYPE_NONE;
 }
 
+//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
+#ifdef CONFIG_PM_8226_CHARGER	
+extern int pm8226_getCapacity(void);
+static int asus_soc;
+#endif
+//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue---
+
 #define DEFAULT_CAPACITY	50
+#ifndef CONFIG_PM_8226_CHARGER
 static int
 get_batt_capacity(struct qpnp_chg_chip *chip)
 {
@@ -2446,6 +2455,7 @@ get_batt_capacity(struct qpnp_chg_chip *chip)
 	}
 	return DEFAULT_CAPACITY;
 }
+#endif
 
 static int
 get_prop_batt_status(struct qpnp_chg_chip *chip)
@@ -2475,12 +2485,14 @@ get_prop_batt_status(struct qpnp_chg_chip *chip)
 	if (chgr_sts & FAST_CHG_ON_IRQ && bat_if_sts & BAT_FET_ON_IRQ)
 		return POWER_SUPPLY_STATUS_CHARGING;
 
+#ifndef CONFIG_PM_8226_CHARGER
 	/* report full if state of charge is 100 and a charger is connected */
 	if ((qpnp_chg_is_usb_chg_plugged_in(chip) ||
 		qpnp_chg_is_dc_chg_plugged_in(chip))
 			&& get_batt_capacity(chip) == 100) {
 		return POWER_SUPPLY_STATUS_FULL;
 	}
+#endif
 
 	return POWER_SUPPLY_STATUS_DISCHARGING;
 }
@@ -2532,13 +2544,6 @@ get_prop_charge_full(struct qpnp_chg_chip *chip)
 
 	return 0;
 }
-
-//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
-#ifdef CONFIG_PM_8226_CHARGER	
-extern int pm8226_getCapacity(void);
-static int asus_soc;
-#endif
-//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue---
 
 static int
 get_prop_capacity(struct qpnp_chg_chip *chip)
@@ -5159,49 +5164,41 @@ void pm8226_chg_enable_charging(bool enable)
 		pr_err("Failed to control charging %d\n", rc);
 	}
 }
-//EXPORT_SYMBOL(pm8226_chg_enable_charging);
 
 int pm8226_is_ac_usb_in(void)
 {	
 	return qpnp_chg_is_usb_chg_plugged_in(g_qpnp_chg_chip);
 }
-//EXPORT_SYMBOL(pm8226_is_ac_usb_in);
 
 int pm8226_is_usb_in(void)
 {	
 	return qpnp_chg_is_usb_chg_plugged_in(g_qpnp_chg_chip);
 }
-//EXPORT_SYMBOL(pm8226_is_usb_in);
 
 int pm8226_is_dc_usb_in(void)
 {	
 	return ( qpnp_chg_is_usb_chg_plugged_in(g_qpnp_chg_chip)||qpnp_chg_is_dc_chg_plugged_in(g_qpnp_chg_chip) );
 }
-//EXPORT_SYMBOL(pm8226_is_dc_usb_in);
 
 void pm8226_chg_usb_suspend_enable(int enable)
 {
 	qpnp_chg_usb_suspend_enable(g_qpnp_chg_chip, enable);
 }
-//EXPORT_SYMBOL(pm8226_chg_usb_suspend_enable);
 
 int pm8226_get_prop_batt_status(void)
 {
 	return get_prop_batt_status(g_qpnp_chg_chip);
 }
-//EXPORT_SYMBOL(pm8226_get_prop_batt_status);
 
 int pm8226_get_prop_batt_temp(void)
 {
 	return get_prop_batt_temp(g_qpnp_chg_chip);
 }
-//EXPORT_SYMBOL(pm8226_get_prop_batt_temp);
 
 int pm8226_get_prop_battery_voltage_now(void)
 {
 	return get_prop_battery_voltage_now(g_qpnp_chg_chip);
 }
-//EXPORT_SYMBOL(pm8226_get_prop_battery_voltage_now);
 
 bool pm8226_is_full(void)
 {
@@ -5213,7 +5210,6 @@ bool pm8226_is_full(void)
 		return false;
 	}
 }
-//EXPORT_SYMBOL(pm8226_is_full);
 
 int pm8226_qpnp_chg_read_register(u16 addr)
 {

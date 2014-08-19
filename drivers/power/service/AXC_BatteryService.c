@@ -2420,39 +2420,39 @@ static int BatteryService_ChooseMaxMah(AXC_BatteryService  *_this, bool MahDrop)
 
 static void CheckEoc(struct work_struct *dat)
 {
-    AXC_BatteryService *_this = container_of(dat,AXC_BatteryService,BatEocWorker.work);
+	AXC_BatteryService *_this = container_of(dat,AXC_BatteryService,BatEocWorker.work);
 
-    static int count = 0;
+	static int count = 0;
     
-    if(NO_CHARGER_TYPE >= gpCharger->GetChargerStatus(gpCharger) ||!gpCharger->IsCharging(gpCharger))//if no charger && not being charging
-    {
-        count = 0;
-        return;
-    }
+	if(NO_CHARGER_TYPE >= gpCharger->GetChargerStatus(gpCharger) ||!gpCharger->IsCharging(gpCharger))//if no charger && not being charging
+	{
+		count = 0;
+		return;
+	}
 
-    if(count < 3)//recursive check
-    {
-	        int nCurrent =  _this->callback->getIBAT(_this->callback);
-	        if(0 >= nCurrent &&  -90 < nCurrent && _this->A66_capacity >= 94)
-		 {
-	            count ++;
-	            if(!delayed_work_pending(&_this->BatEocWorker))
-		     {
-		     		//why 10*Hz?
-	                    queue_delayed_work(_this->BatteryServiceCapUpdateQueue, &_this->BatEocWorker,10 * HZ);
-	            }
+	if(count < 3)//recursive check
+	{
+		int nCurrent =  _this->callback->getIBAT(_this->callback);
+		if(0 >= nCurrent &&  -35 < nCurrent && _this->A66_capacity >= 94)
+		{
+			count ++;
+			if(!delayed_work_pending(&_this->BatEocWorker))
+			{
+				//why 10*Hz?
+				queue_delayed_work(_this->BatteryServiceCapUpdateQueue, &_this->BatEocWorker,10 * HZ);
+			}
 
-	        }
-		 else
-		 {
-	            count = 0;
-	            return;
-	        }
-     }
-	
-    printk("[BAT][Ser]%s:chg done\n",__FUNCTION__);
-    _this->isMainBatteryChargingDone = true;
-    return;
+		}
+		else
+		{
+			count = 0;
+			return;
+		}
+	}
+
+	printk("[BAT][Ser]%s:chg done\n",__FUNCTION__);
+	_this->isMainBatteryChargingDone = true;
+	return;
 }
 
 static void ResumeCalCap(struct work_struct *dat)
@@ -3412,7 +3412,7 @@ static void DecideIsFull(struct AXC_BatteryService *_this,int nowGaugeCap,bool h
 
 	if(chgStatus){//charging
 		if(!_this->isMainBatteryChargingDone){// if still charging....
-			if(nowGaugeCap >= 94 && 0 >= nCurrent && -90 < nCurrent && !delayed_work_pending(&_this->BatEocWorker)){
+			if(nowGaugeCap >= 94 && 0 >= nCurrent && -35 < nCurrent && !delayed_work_pending(&_this->BatEocWorker)){
 				printk("[BAT][Ser]start eoc worker\n");
 				queue_delayed_work(_this->BatteryServiceCapUpdateQueue, &_this->BatEocWorker,10 * HZ);
 			}
@@ -3422,7 +3422,7 @@ static void DecideIsFull(struct AXC_BatteryService *_this,int nowGaugeCap,bool h
 		}
 	}
 	else{//no charging
-		if( 0 >= nCurrent && -90 < nCurrent){
+		if( 0 >= nCurrent && -35 < nCurrent){
 			chgStatus = false;
 		}
 		else if( 100 == balance_this->A66_capacity){
@@ -3632,6 +3632,7 @@ static int init_battery_capacity(void)
 				balance_this->A66_capacity = bat_cap_int;
 			}
 			
+			g_SWgauge_lastCapacity = balance_this->A66_capacity;
 			printk("[BAT][ser] init_battery_capacity set battery capacity to %d\n", balance_this->A66_capacity);
 		}
 	}
