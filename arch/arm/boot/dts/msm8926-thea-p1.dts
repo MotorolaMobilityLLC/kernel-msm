@@ -70,5 +70,11 @@
 };
 
 / {
+	chosen {
+		/delete-property/ mmi,clock_override;
+	};
+};
+
+/ {
 	qcom,msm-id =   <145 0x51 0x8100>, <145 0x52 0x8100>, <145 0x53 0x8100>, <145 0x54 0x8100>, <145 0x55 0x8100>;
 };
