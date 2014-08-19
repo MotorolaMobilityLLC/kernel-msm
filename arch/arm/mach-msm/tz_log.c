@@ -61,24 +61,6 @@
  * Length of descriptive name associated with Interrupt
  */
 #define TZBSP_MAX_INT_DESC 16
-
-#ifdef CONFIG_MSM_TZ_LOG_WDOG_DUMP
-/*
- * TZBSP Diag Magic number
- */
-#define TZBSP_DIAG_MAGIC_NUM	0x747A6461
-
-/*
- * Diagnostic area Version number
- */
-#define TZBSP_DIAG_MAJOR_VERSION	3
-#define TZBSP_DIAG_MINOR_VERSION	0
-#define TZBSP_DIAG_VERSION		\
-		((((TZBSP_DIAG_MAJOR_VERSION) & 0xFFFF) << 16) | \
-		((TZBSP_DIAG_MINOR_VERSION) & 0xFFFF))
-
-#endif /* CONFIG_MSM_TZ_LOG_WDOG_DUMP */
-
 /*
  * VMID Table
  */
@@ -698,46 +680,6 @@ static void tzdbgfs_exit(struct platform_device *pdev)
 
 #ifdef CONFIG_MSM_TZ_LOG_WDOG_DUMP
 
-static int get_vmid_info_off(int cpu_count)
-{
-	return offsetof(struct tzdbg_t, vmid_info);
-}
-
-static int get_boot_info_off(int cpu_count)
-{
-	return offsetof(struct tzdbg_t, boot_info);
-}
-
-static int get_reset_info_off(int cpu_count)
-{
-	if (cpu_count == TZBSP_CPU_COUNT)
-		return offsetof(struct tzdbg_t, reset_info);
-	else
-		return get_boot_info_off(cpu_count) +
-			(sizeof(struct tzdbg_boot_info_t) * cpu_count);
-}
-
-static int get_int_info_off(int cpu_count)
-{
-	if (cpu_count == TZBSP_CPU_COUNT)
-		return offsetof(struct tzdbg_t, int_info);
-	else
-		return get_reset_info_off(cpu_count) + sizeof(uint32_t) +
-			(sizeof(struct tzdbg_reset_info_t) * cpu_count);
-}
-static int get_ring_off(int cpu_count)
-{
-	if (cpu_count == TZBSP_CPU_COUNT) {
-		return offsetof(struct tzdbg_t, ring_buffer.log_buf);
-	} else {
-		int tzdbg_int_size = sizeof(struct tzdbg_int_t) +
-			((cpu_count - TZBSP_CPU_COUNT) * sizeof(uint64_t));
-		return get_int_info_off(cpu_count) +
-			(tzdbg_int_size * TZBSP_DIAG_INT_NUM) +
-			offsetof(struct tzdbg_log_t, log_buf);
-	}
-}
-
 #define MSMWDTD(fmt, args...) persistent_ram_annotation_append(fmt, ##args)
 
 static void tzlog_bck_show_boot_info(struct tzdbg_t *diag_buf)
@@ -766,6 +708,10 @@ static void tzlog_bck_show_log(struct tzdbg_t *diag_buf)
 {
 	struct tzdbg_log_t *log_ptr;
 	const char *log_buf, *p, *start;
+
+	if (TZBSP_DIAG_MAJOR_VERSION_LEGACY >=
+				(tzdbg.diag_buf->version >> 16))
+		return;
 
 	log_buf = (const char *)diag_buf + diag_buf->ring_off;
 	log_ptr = (struct tzdbg_log_t *)(log_buf -
@@ -796,25 +742,16 @@ static void tzlog_bck_show_log(struct tzdbg_t *diag_buf)
 static void tzlog_bck_show(unsigned long phys)
 {
 	struct tzdbg_t *diag_buf;
-	int cpu_count;
 
 	diag_buf = persistent_ram_map(phys, DEBUG_MAX_RW_BUF);
 	if (!diag_buf) {
 		pr_err("%s: cannot remap buffer: %08lX\n", __func__, phys);
 		return;
 	}
-	cpu_count = get_core_count();
+	memcpy_fromio((void *)tzdbg.diag_buf, tzdbg.virt_iobase,
+						DEBUG_MAX_RW_BUF);
 	if ((bi_powerup_reason() != PU_REASON_WDOG_AP_RESET) ||
-		(diag_buf->magic_num != TZBSP_DIAG_MAGIC_NUM) ||
-		(diag_buf->version != TZBSP_DIAG_VERSION) ||
-		(diag_buf->cpu_count != cpu_count) ||
-		(diag_buf->vmid_info_off != get_vmid_info_off(cpu_count)) ||
-		(diag_buf->boot_info_off != get_boot_info_off(cpu_count)) ||
-		(diag_buf->reset_info_off != get_reset_info_off(cpu_count)) ||
-		(diag_buf->num_interrupts != TZBSP_DIAG_INT_NUM) ||
-		(diag_buf->int_info_off != get_int_info_off(cpu_count)) ||
-		(diag_buf->ring_off != get_ring_off(cpu_count)) ||
-		(diag_buf->ring_len + diag_buf->ring_off != DEBUG_MAX_RW_BUF))
+		memcmp(diag_buf, tzdbg.diag_buf, tzdbg.diag_buf->vmid_info_off))
 		goto reset;
 	tzlog_bck_show_boot_info(diag_buf);
 	tzlog_bck_show_log(diag_buf);
