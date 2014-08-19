@@ -37,6 +37,7 @@
 };
 
 &mot_boe_450_qhd_vid_v2 {
+	qcom,cont-splash-enabled;
 	qcom,platform-supply-entry1 {
 		qcom,supply-name = "lcd_vci";
 		qcom,supply-min-voltage = <2850000>;
@@ -62,6 +63,7 @@
 };
 
 &mot_boe_450_qhd_vid_v1 {
+	qcom,cont-splash-enabled;
 	qcom,platform-supply-entry1 {
 		qcom,supply-name = "lcd_vci";
 		qcom,supply-min-voltage = <2850000>;
@@ -87,6 +89,7 @@
 };
 
 &mot_boe_450_qhd_vid_v0 {
+	qcom,cont-splash-enabled;
 	qcom,platform-supply-entry1 {
 		qcom,supply-name = "lcd_vci";
 		qcom,supply-min-voltage = <2850000>;
