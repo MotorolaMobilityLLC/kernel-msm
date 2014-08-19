@@ -108,6 +108,11 @@
 
 #define MAX17042_CHRG_CONV_FCTR         500
 
+struct max17042_wakeup_source {
+	struct wakeup_source    source;
+	unsigned long           disabled;
+};
+
 struct max17042_chip {
 	struct i2c_client *client;
 	struct power_supply battery;
@@ -125,7 +130,25 @@ struct max17042_chip {
 	struct power_supply *batt_psy;
 	int temp_state;
 	int hotspot_temp;
+	struct delayed_work iterm_work;
+	struct max17042_wakeup_source max17042_wake_source;
 };
+
+static void max17042_stay_awake(struct max17042_wakeup_source *source)
+{
+	if (__test_and_clear_bit(0, &source->disabled)) {
+		__pm_stay_awake(&source->source);
+		pr_debug("enabled source %s\n", source->source.name);
+	}
+}
+
+static void max17042_relax(struct max17042_wakeup_source *source)
+{
+	if (!__test_and_set_bit(0, &source->disabled)) {
+		__pm_relax(&source->source);
+		pr_debug("disabled source %s\n", source->source.name);
+	}
+}
 
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
 {
@@ -1618,6 +1641,127 @@ err_debugfs:
 }
 #endif
 
+static void iterm_work(struct work_struct *work)
+{
+	int ret = 0;
+	int repsoc;
+	int repcap, fullcap;
+	int socvf, fullsocthr;
+	int curr_avg, curr_inst, iterm_max, iterm_min;
+	int resch_time = 60000;
+	struct max17042_chip *chip =
+		container_of(work, struct max17042_chip,
+				iterm_work.work);
+
+	max17042_stay_awake(&chip->max17042_wake_source);
+	if (!chip->init_complete)
+		goto iterm_fail;
+
+	/* check to see if Already Full */
+	ret = max17042_read_reg(chip->client, MAX17042_RepSOC);
+	if (ret < 0)
+		goto iterm_fail;
+
+	repsoc = (ret >> 8) & 0xFF;
+	dev_dbg(&chip->client->dev, "ITERM RepSOC %d!\n", repsoc);
+
+	if (repsoc >= 100)
+		goto iterm_fail;
+
+	ret = max17042_read_reg(chip->client, MAX17042_Current);
+	if (ret < 0)
+		goto iterm_fail;
+
+	/* check for discharging */
+	if (ret & 0x8000) {
+		dev_dbg(&chip->client->dev, "ITERM Curr Inst Discharge!\n");
+		goto iterm_fail;
+	}
+
+	curr_inst = ret & 0xFFFF;
+	dev_dbg(&chip->client->dev, "ITERM Curr Inst %d uA!\n",
+		 (curr_inst * 1562500) / chip->pdata->r_sns);
+
+	ret = max17042_read_reg(chip->client, MAX17042_AvgCurrent);
+	if (ret < 0)
+		goto iterm_fail;
+
+	/* check for discharging */
+	if (ret & 0x8000) {
+		dev_dbg(&chip->client->dev, "ITERM Curr Avg Discharge!\n");
+		goto iterm_fail;
+	}
+
+	/* No Discharge so Monitor Faster */
+	resch_time = 10000;
+
+	curr_avg = ret & 0xFFFF;
+	dev_dbg(&chip->client->dev, "ITERM Curr Avg %d uA!\n",
+		 (curr_inst * 1562500) / chip->pdata->r_sns);
+
+	ret = max17042_read_reg(chip->client, MAX17042_ICHGTerm);
+	if (ret < 0)
+		goto iterm_fail;
+
+	iterm_min = ret & 0xFFFF;
+	iterm_min = (iterm_min >> 2) & 0xFFFF;
+
+	iterm_max = (ret & 0xFFFF) + iterm_min;
+
+	iterm_min = (iterm_min >> 1) & 0xFFFF;
+
+	if ((curr_inst <= iterm_min) || (curr_inst >= iterm_max) ||
+	    (curr_avg <= iterm_min) || (curr_avg >= iterm_max))
+		goto iterm_fail;
+
+	ret = max17042_read_reg(chip->client, MAX17042_RepCap);
+	if (ret < 0)
+		goto iterm_fail;
+
+	repcap = ret & 0xFFFF;
+	dev_dbg(&chip->client->dev, "ITERM RepCap %d uAhr!\n",
+		 (repcap * 1000) / 2);
+
+	ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
+	if (ret < 0)
+		goto iterm_fail;
+
+	fullcap = ret & 0xFFFF;
+	dev_dbg(&chip->client->dev, "ITERM FullCap %d uAhr!\n",
+		 (fullcap * 1000) / 2);
+
+	if (repcap >= fullcap)
+		goto iterm_fail;
+
+	ret = max17042_read_reg(chip->client, MAX17042_VFSOC);
+	if (ret < 0)
+		goto iterm_fail;
+
+	socvf = (ret >> 8) & 0xFF;
+
+	ret = max17042_read_reg(chip->client, MAX17047_FullSOCThr);
+	if (ret < 0)
+		goto iterm_fail;
+
+	fullsocthr = (ret >> 8) & 0xFF;
+
+	dev_dbg(&chip->client->dev, "ITERM VFSOC %d!\n", socvf);
+	dev_dbg(&chip->client->dev, "ITERM FullSOCThr %d!\n", fullsocthr);
+	if (socvf <= fullsocthr)
+		goto iterm_fail;
+
+	dev_warn(&chip->client->dev, "Taper Reached!\n");
+	ret = max17042_write_reg(chip->client, MAX17042_FullCAP, repcap);
+	if (ret < 0)
+		dev_err(&chip->client->dev, "Can't update Full Cap!\n");
+
+iterm_fail:
+	schedule_delayed_work(&chip->iterm_work,
+			      msecs_to_jiffies(resch_time));
+	max17042_relax(&chip->max17042_wake_source);
+	return;
+}
+
 static int max17042_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -1761,6 +1905,13 @@ static int max17042_probe(struct i2c_client *client,
 		return ret;
 	}
 #endif
+	wakeup_source_init(&chip->max17042_wake_source.source,
+			   "max17042_wake");
+	INIT_DELAYED_WORK(&chip->iterm_work,
+			  iterm_work);
+
+	schedule_delayed_work(&chip->iterm_work,
+			      msecs_to_jiffies(10000));
 
 	return 0;
 }
@@ -1780,6 +1931,7 @@ static int max17042_remove(struct i2c_client *client)
 		free_irq(client->irq, chip);
 	gpio_free_array(chip->pdata->gpio_list, chip->pdata->num_gpio_list);
 	power_supply_unregister(&chip->battery);
+	wakeup_source_trash(&chip->max17042_wake_source.source);
 	return 0;
 }
 
