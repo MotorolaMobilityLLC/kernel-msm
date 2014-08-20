@@ -37,7 +37,7 @@
 
 #define PCIE_MSI_NR_IRQS 256
 
-#define PCIE_LOG_PAGES (50)
+#define PCIE_LOG_PAGES (100)
 
 #define PCIE_DBG(dev, fmt, arg...) do {			 \
 	if ((dev) && (dev)->ipc_log)   \
