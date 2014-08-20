@@ -26446,9 +26446,7 @@ WDI_ProcessUpdateChannelParamsReq
       return WDI_STATUS_E_FAILURE;
    }
    num_channels = pwdiUpdateChanListParams->wdiUpdateChanParams.numchan;
-   usUpdateChanParamSize =  (sizeof(tUpdateChannelReqType) -
-           ((WLAN_HAL_ROAM_SCAN_MAX_CHANNELS - num_channels) *
-           sizeof(tUpdateChannelParam)));
+   usUpdateChanParamSize =  sizeof(tUpdateChannelReqType);
 
    /*-----------------------------------------------------------------------
      Get message buffer

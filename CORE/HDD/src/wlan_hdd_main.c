@@ -9100,7 +9100,8 @@ int hdd_wlan_startup(struct device *dev )
    /*SME must send channel update configuration to RIVA*/
    sme_UpdateChannelConfig(pHddCtx->hHal);
 #endif
-
+   /* Send the update default channel list to the FW*/
+   sme_UpdateChannelList(pHddCtx->hHal);
 #ifndef CONFIG_ENABLE_LINUX_REG
    /*updating wiphy so that regulatory user hints can be processed*/
    if (wiphy)

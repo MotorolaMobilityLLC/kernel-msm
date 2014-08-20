@@ -598,16 +598,6 @@ eHalStatus csrStart(tpAniSirGlobal pMac)
            smsLog(pMac, LOGW, " csrStart: Couldn't Init HO control blk ");
            break;
         }
-#ifdef QCA_WIFI_2_0
-        if (pMac->fScanOffload)
-        {
-            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                    "Scan offload is enabled, update default chan list");
-            status = csrUpdateChannelList(pMac);
-        }
-#else
-        status = csrUpdateChannelList(pMac);
-#endif
 
     }while(0);
 #if defined(ANI_LOGDUMP)

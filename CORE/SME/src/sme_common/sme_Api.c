@@ -1346,6 +1346,21 @@ eHalStatus sme_UpdateChannelConfig(tHalHandle hHal)
 }
 #endif // FEATURE_WLAN_SCAN_PNLO
 
+eHalStatus sme_UpdateChannelList(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+
+    status = csrUpdateChannelList(pMac);
+
+    if (eHAL_STATUS_SUCCESS != status)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "failed to update the supported channel list");
+    }
+    return status;
+}
+
 /*--------------------------------------------------------------------------
 
   \brief sme_UpdateConfig() - Change configurations for all SME moduels
