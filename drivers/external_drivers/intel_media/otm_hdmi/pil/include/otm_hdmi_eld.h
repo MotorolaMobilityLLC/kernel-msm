@@ -66,6 +66,45 @@
 #include <linux/types.h>
 #define OTM_HDMI_ELD_SIZE 84
 
+/*
+ * CEA Short Audio Descriptor
+ */
+typedef struct {
+#pragma pack(1)
+        union {
+                uint8_t byte1;
+                struct {
+                        uint8_t max_channels:3; // Bits[0-2]
+                        uint8_t audio_format_code:4;    // Bits[3-6], see AUDIO_FORMAT_CODES
+                        uint8_t b1reserved:1;   // Bit[7] - reserved
+                };
+        };
+        union {
+                uint8_t byte2;
+                struct {
+                        uint8_t sp_rate_32kHz:1;        // Bit[0] sample rate = 32kHz
+                        uint8_t sp_rate_44kHz:1;        // Bit[1] sample rate = 44kHz
+                        uint8_t sp_rate_48kHz:1;        // Bit[2] sample rate = 48kHz
+                        uint8_t sp_rate_88kHz:1;        // Bit[3] sample rate = 88kHz
+                        uint8_t sp_rate_96kHz:1;        // Bit[4] sample rate = 96kHz
+                        uint8_t sp_rate_176kHz:1;       // Bit[5] sample rate = 176kHz
+                        uint8_t sp_rate_192kHz:1;       // Bit[6] sample rate = 192kHz
+                        uint8_t sp_rate_b2reserved:1;   // Bit[7] - reserved
+                };
+        };
+        union {
+                uint8_t byte3;  // maximum bit rate divided by 8kHz
+                // following is the format of 3rd byte for uncompressed(LPCM) audio
+                struct {
+                        uint8_t bit_rate_16bit:1;       // Bit[0]
+                        uint8_t bit_rate_20bit:1;       // Bit[1]
+                        uint8_t bit_rate_24bit:1;       // Bit[2]
+                        uint8_t bit_rate_b3reserved:5;  // Bits[3-7]
+                };
+        };
+#pragma pack()
+} otm_hdmi_sad_t;
+
 typedef union {
 	uint8_t eld_data[OTM_HDMI_ELD_SIZE];
 	#pragma pack(1)

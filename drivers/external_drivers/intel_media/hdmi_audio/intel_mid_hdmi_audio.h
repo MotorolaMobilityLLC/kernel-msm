@@ -573,6 +573,7 @@ struct snd_intelhad {
 	bool		hw_silence;
 	struct had_ops	*ops;
 	struct had_debugfs debugfs;
+	int		audio_mode_to_query;
 };
 
 struct had_ops {
