@@ -114,6 +114,7 @@
 #include "msm8916-iommu-domains.dtsi"
 #include "msm8916-bus.dtsi"
 #include "msm8916-camera.dtsi"
+#include "msm8916-drm.dtsi"
 
 &soc {
 	#address-cells = <1>;
