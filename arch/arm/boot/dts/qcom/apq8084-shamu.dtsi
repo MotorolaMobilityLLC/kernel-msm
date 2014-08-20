@@ -496,10 +496,6 @@
 			&blsp1_uart6_default
 			&c55_ap_int_default
 			&c55_c55_int_default
-			&fps_miso_default
-			&fps_mosi_default
-			&fps_sleep_default
-			&fps_drdy_default
 			&blsp_i2c_default
 			&blsp_uart_default
 			&blsp_uart_weak_default
