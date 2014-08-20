@@ -450,9 +450,9 @@ int cal_SWgauge_capacity(void)
 			&curr);
 
 #ifdef CONFIG_PM_8226_CHARGER
-	if( (curr < -100) && (1==getIfonline()) && (false==pm8226_is_full()) )
+	if( (curr < -3) && (1==getIfonline()) && (false==pm8226_is_full()) )
 #else
-	if( (curr < -100) && (1==getIfonline()) && (false==smb346_IsFull()) )
+	if( (curr < -3) && (1==getIfonline()) && (false==smb346_IsFull()) )
 #endif
 	{
 		printk("[BAT][vf][SWgauge]beforeVF: V:%d,C:%d\n",volt,curr);
@@ -513,9 +513,9 @@ static void cal_bat_capacity_work(struct work_struct *work)
 
 	printk("[BAT][Gau]:volt = %d curr = %d \n",volt,curr);
 #ifdef CONFIG_PM_8226_CHARGER
-	if( (curr < -100) && (1==getIfonline()) && (false==pm8226_is_full()) )
+	if( (curr < -3) && (1==getIfonline()) && (false==pm8226_is_full()) )
 #else
-	if( (curr < -100) && (1==getIfonline()) && (false==smb346_IsFull()) )
+	if( (curr < -3) && (1==getIfonline()) && (false==smb346_IsFull()) )
 #endif
 	{
 		pr_debug("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
@@ -528,9 +528,9 @@ static void cal_bat_capacity_work(struct work_struct *work)
 		//ASUS_BSP Eason_Chang add event log ---
 	}
 #ifdef CONFIG_PM_8226_CHARGER        
-	else if((true == WhenBootUpDoVf) && (curr < -100) && (false==pm8226_is_full()))//Eason: Do VF with Cable when boot up+++
+	else if((true == WhenBootUpDoVf) && (curr < -3) && (false==pm8226_is_full()))//Eason: Do VF with Cable when boot up+++
 #else
-	else if((true == WhenBootUpDoVf) && (curr < -100) && (false==smb346_IsFull()))//Eason: Do VF with Cable when boot up+++
+	else if((true == WhenBootUpDoVf) && (curr < -3) && (false==smb346_IsFull()))//Eason: Do VF with Cable when boot up+++
 #endif
 	{
 		online = getIfonline();
