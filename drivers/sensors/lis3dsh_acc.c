@@ -901,6 +901,7 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		 ie:lis3dsh_acc_get_int_source(acc); */
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: IRQ1 triggered\n", __func__);
 	/*  */
+    	err = lis3dsh_acc_get_acceleration_data(acc, xyz);
 	rbuf[0] = LIS3DSH_INTERR_STAT;
 	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 	status = rbuf[0];
@@ -909,8 +910,7 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if(rbuf[0] == 0x80) {
-			err = lis3dsh_acc_get_acceleration_data(acc, xyz);
-			if (atomic_read(&is_suspend)) {
+			if (atomic_read(&is_suspend) && xyz[2] < 0) {       //only trigger wake when watch face is facing upwards
 				printk("***********************Tilt to wake event\n");
 				input_report_key(acc->input_dev, KEY_POWER,1);
 				input_sync(acc->input_dev);
@@ -1145,7 +1145,7 @@ static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc,
 	xyz[2] = ((acc->pdata->negate_z) ? (-hw_d[acc->pdata->axis_map_z])
 		   : (hw_d[acc->pdata->axis_map_z]));
 
-	sensor_debug(DEBUG_INFO, "[lis3dsh] %s read x=%d, y=%d, z=%d\n", __func__, xyz[0], xyz[1], xyz[2]);
+	sensor_debug(DEBUG_RAW, "[lis3dsh] %s read x=%d, y=%d, z=%d\n", __func__, xyz[0], xyz[1], xyz[2]);
 
 	return err;
 }
