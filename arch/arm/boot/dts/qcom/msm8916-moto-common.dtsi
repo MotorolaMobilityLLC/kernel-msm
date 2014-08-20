@@ -30,9 +30,15 @@
 		status = "ok";
 
 		android,ramoops-buffer-start = <0xaf000000>;
-		android,ramoops-buffer-size = <0x40000>;
-		android,ramoops-console-size = <0x20000>;
+		android,ramoops-buffer-size = <0x80000>;
+		android,ramoops-console-size = <0x40000>;
+		android,ramoops-record-size = <0x3F800>;
 		android,ramoops-annotate-size = <0x800>;
+		android,ramoops-dump-oops = <0x1>;
+		android,ramoops-hole {
+			compatible = "qcom,msm-mem-hole";
+			qcom,memblock-reserve = <0xaf000000 0x80000>;
+		};
 	};
 
 	hob_ram {
