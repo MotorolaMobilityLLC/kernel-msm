@@ -1688,22 +1688,31 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 	if (stereo_mode) {
 		val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
 		pr_info("%s : val 0x%x\n", tfa9890->tfa_dev, val);
-		/* select right/left channel input for I2S */
+		/* select right/left channel input for I2S and Gain*/
 		if (!strncmp(tfa9890->tfa_dev, "left", 4)) {
 			val = val & (~TFA9890_I2S_CHS12);
 			val = val | TFA9890_I2S_LEFT_IN;
+			snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
+
+			/* set datao right channel to send gain info */
+			val = snd_soc_read(codec, TFA9890_SYS_CTL2_REG);
+			val = val & (~TFA9890_DORS_DATAO);
+			val = val | TFA9890_DORS_GAIN;
+			snd_soc_write(codec, TFA9890_SYS_CTL2_REG, val);
 			left_codec = codec;
 		} else if (!strncmp(tfa9890->tfa_dev, "right", 5)) {
 			val = val & (~TFA9890_I2S_CHS12);
 			val = val | TFA9890_I2S_RIGHT_IN;
+			val = val | TFA9890_GAIN_IN;
+			snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
+
+			/* set datao left channel to send gain info */
+			val = snd_soc_read(codec, TFA9890_SYS_CTL2_REG);
+			val = val & (~TFA9890_DOLS_DATAO);
+			val = val | TFA9890_DOLS_GAIN;
+			snd_soc_write(codec, TFA9890_SYS_CTL2_REG, val);
 			right_codec = codec;
 		}
-		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
-		/* set datao right channel to send gain info */
-		val = snd_soc_read(codec, TFA9890_SYS_CTL2_REG);
-		val = val & (~TFA9890_DORS_DATAO);
-		val = val | TFA9890_DORS_GAIN;
-		snd_soc_write(codec, TFA9890_SYS_CTL2_REG, val);
 	}
 	snd_soc_dapm_new_widgets(&codec->dapm);
 	snd_soc_dapm_sync(&codec->dapm);
