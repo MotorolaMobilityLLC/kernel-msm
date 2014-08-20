@@ -1013,12 +1013,11 @@ void adreno_profile_init(struct kgsl_device *device)
 
 	/* allocate shared_buffer, which includes pre_ib and post_ib */
 	profile->shared_size = ADRENO_PROFILE_SHARED_BUF_SIZE_DWORDS;
-	ret = kgsl_allocate_global(device, &profile->shared_buffer,
-			profile->shared_size * sizeof(unsigned int), 0);
-
+	ret = kgsl_allocate_contiguous(device, &profile->shared_buffer,
+			profile->shared_size * sizeof(unsigned int));
 	if (ret) {
+		profile->shared_buffer.hostptr = NULL;
 		profile->shared_size = 0;
-		return;
 	}
 
 	INIT_LIST_HEAD(&profile->assignments_list);
@@ -1051,7 +1050,8 @@ void adreno_profile_close(struct kgsl_device *device)
 	profile->log_tail = NULL;
 	profile->shared_head = 0;
 	profile->shared_tail = 0;
-	kgsl_free_global(&profile->shared_buffer);
+	kgsl_sharedmem_free(&profile->shared_buffer);
+	profile->shared_buffer.hostptr = NULL;
 	profile->shared_size = 0;
 
 	profile->assignment_count = 0;

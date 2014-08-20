@@ -245,11 +245,13 @@ int adreno_a3xx_pwron_fixup_init(struct adreno_device *adreno_dev)
 	if (test_bit(ADRENO_DEVICE_PWRON_FIXUP, &adreno_dev->priv))
 		return 0;
 
-	ret = kgsl_allocate_global(&adreno_dev->dev,
-		&adreno_dev->pwron_fixup, PAGE_SIZE, KGSL_MEMFLAGS_GPUREADONLY);
+	ret = kgsl_allocate_contiguous(&adreno_dev->dev,
+				&adreno_dev->pwron_fixup, PAGE_SIZE);
 
 	if (ret)
 		return ret;
+
+	adreno_dev->pwron_fixup.flags |= KGSL_MEMFLAGS_GPUREADONLY;
 
 	cmds = adreno_dev->pwron_fixup.hostptr;
 
