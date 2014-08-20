@@ -3453,8 +3453,9 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	msm_uport->rx.buffer_pending = NONE_PENDING;
 	MSM_HS_DBG("%s(): tx, rx events complete", __func__);
 	msm_hs_clock_unvote(msm_uport);
-	if (msm_uport->clk_state != MSM_HS_CLK_OFF) {
+	if (atomic_read(&msm_uport->clk_count) > 0) {
 		/* to balance clk_state */
+		atomic_set(&msm_uport->clk_count, 1);
 		msm_hs_clock_unvote(msm_uport);
 	}
 
