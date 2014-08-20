@@ -311,12 +311,39 @@ static int32_t imx179_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 	return 0;
 }
 
+static int32_t imx179_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	uint16_t chipid = 0;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client,
+			s_ctrl->sensordata->slave_info->sensor_id_reg_addr,
+			&chipid,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: Unable to read chip id!\n", __func__);
+		return rc;
+	}
+
+	/* consider only 12 bits of the device id register as a valid device id */
+	if ((chipid & 0x0FFF) != s_ctrl->sensordata->slave_info->sensor_id) {
+		pr_err("%s: chip id %x does not match expected %x\n", __func__,
+				chipid, s_ctrl->sensordata->
+				slave_info->sensor_id);
+		return -ENODEV;
+	}
+	return rc;
+}
+
 static struct msm_sensor_fn_t imx179_func_tbl = {
 	.sensor_config = msm_sensor_config,
 	.sensor_power_up = msm_sensor_power_up,
 	.sensor_power_down = msm_sensor_power_down,
 	.sensor_get_module_info = imx179_get_module_info,
 	.sensor_read_otp_info = imx179_read_otp_info,
+	.sensor_match_id = imx179_sensor_match_id,
 };
 
 static struct msm_sensor_ctrl_t imx179_s_ctrl = {
