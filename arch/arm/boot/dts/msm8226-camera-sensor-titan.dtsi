@@ -44,7 +44,7 @@
 	qcom,camera@79 {
 		compatible = "qcom,imx179";
 		reg = <0x79>;
-		qcom,slave-id = <0x20 0x0002 0x8179>;
+		qcom,slave-id = <0x20 0x0002 0x0179>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,led-flash-src = <&led_flash1>;
