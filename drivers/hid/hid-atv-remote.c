@@ -1137,6 +1137,11 @@ static int snd_atvr_pcm_open(struct snd_pcm_substream *substream)
 static int snd_atvr_pcm_close(struct snd_pcm_substream *substream)
 {
 	struct snd_atvr *atvr_snd = snd_pcm_substream_chip(substream);
+
+	/* Make sure the timer is not running */
+	if (atvr_snd->timer_enabled)
+		snd_atvr_timer_stop(substream);
+
 	if (atvr_snd->timer_callback_count > 0)
 		snd_atvr_log("processed %d packets in %d timer callbacks\n",
 			packet_counter, atvr_snd->timer_callback_count);
