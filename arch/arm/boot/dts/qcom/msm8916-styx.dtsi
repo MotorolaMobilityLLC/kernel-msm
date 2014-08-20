@@ -10,7 +10,6 @@
 * GNU General Public License for more details.
 */
 
-#include "msm8916-moto-reserve.dtsi"
 #include "msm8916-moto-common.dtsi"
 #include "dsi-panel-mot-boe-450-qHD-video.dtsi"
 #include "dsi-panel-mot-inx-450-qHD-video.dtsi"
