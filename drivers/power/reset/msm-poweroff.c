@@ -219,7 +219,7 @@ static void msm_restart_prepare(const char *cmd)
 #endif
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
+	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0') || in_panic)
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
