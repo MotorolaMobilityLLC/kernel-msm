@@ -94,7 +94,7 @@ static hdmi_context_t *g_context = NULL;
 #define PS_MSIC_PCI_DEVICE_ID 0x11A6
 
 #define PS_MSIC_HPD_GPIO_PIN 16
-#define PS_MSIC_LS_EN_GPIO_PIN 177
+#define PS_MSIC_LS_EN_GPIO_PIN 67
 #define PS_MSIC_HPD_GPIO_PIN_NAME "HDMI_HPD"
 #define PS_MSIC_LS_EN_GPIO_PIN_NAME "HDMI_LS_EN"
 
@@ -181,8 +181,12 @@ otm_hdmi_ret_t ps_hdmi_pci_dev_init(void *context, struct pci_dev *pdev)
 				PS_MSIC_HPD_GPIO_PIN);
 	}
 
-	/* PRh uses GPIO pin 177 for Level shifter HDMI_LS_EN */
-	ctx->gpio_ls_en_pin = PS_MSIC_LS_EN_GPIO_PIN;
+	ctx->gpio_ls_en_pin = get_gpio_by_name(PS_MSIC_LS_EN_GPIO_PIN_NAME);
+	if (-1 == ctx->gpio_ls_en_pin) {
+		pr_debug("get_gpio_by_name failed! Use default pin %d\n",
+				PS_MSIC_LS_EN_GPIO_PIN);
+		ctx->gpio_ls_en_pin = PS_MSIC_LS_EN_GPIO_PIN;
+	}
 
 	if (gpio_request(ctx->gpio_ls_en_pin, "HDMI_LS_EN")) {
 		pr_err("%s: Unable to request gpio %d\n", __func__,
@@ -198,6 +202,11 @@ otm_hdmi_ret_t ps_hdmi_pci_dev_init(void *context, struct pci_dev *pdev)
 		goto exit;
 	}
 
+	if (gpio_direction_output(ctx->gpio_ls_en_pin, 0)) {
+		pr_err("%s: Failed to set GPIO %d as output\n",
+			 __func__, ctx->gpio_ls_en_pin);
+		goto exit;
+	}
 	/* Set the GPIO based on cable status */
 	__ps_gpio_configure_edid_read();
 exit:
