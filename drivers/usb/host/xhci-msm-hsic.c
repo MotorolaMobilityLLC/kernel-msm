@@ -318,6 +318,9 @@ static int mxhci_hsic_reboot(struct notifier_block *nb,
 	writel_relaxed(reg & 0xfdffffff, TLMM_GPIO_HSIC_DATA_PAD_CTL);
 
 	mb();
+	mxhci->xhci_shutdown_flag = true;
+	wake_up(&mxhci->phy_in_lpm_wq);
+
 	return NOTIFY_DONE;
 }
 
