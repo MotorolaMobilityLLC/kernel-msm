@@ -491,30 +491,30 @@ struct cntry_locales_custom {
 static struct cntry_locales_custom wifi_translate_custom_table[] = {
 /* Table should be filled out based on custom platform regulatory requirement */
 	{"",   "XV", 17},	/* Universal if Country code is unknown or empty */
-	{"IR", "XV", 16},	/* Universal if Country code is IRAN, (ISLAMIC REPUBLIC OF) */
-	{"SD", "XV", 16},	/* Universal if Country code is SUDAN */
-	{"SY", "XV", 16},	/* Universal if Country code is SYRIAN ARAB REPUBLIC */
-	{"GL", "XV", 16},	/* Universal if Country code is GREENLAND */
-	{"PS", "XV", 16},	/* Universal if Country code is PALESTINIAN TERRITORY, OCCUPIED */
-	{"TL", "XV", 16},	/* Universal if Country code is TIMOR-LESTE (EAST TIMOR) */
-	{"MH", "XV", 16},	/* Universal if Country code is MARSHALL ISLANDS */
-	{"PK", "XV", 16},	/* Universal if Country code is PAKISTAN */
-	{"CK", "XV", 16},	/* Universal if Country code is Cook Island (13.4.27)*/
-	{"CU", "XV", 16},	/* Universal if Country code is Cuba (13.4.27)*/
-	{"FK", "XV", 16},	/* Universal if Country code is Falkland Island (13.4.27)*/
-	{"FO", "XV", 16},	/* Universal if Country code is Faroe Island (13.4.27)*/
-	{"GI", "XV", 16},	/* Universal if Country code is Gibraltar (13.4.27)*/
-	{"IM", "XV", 16},	/* Universal if Country code is Isle of Man (13.4.27)*/
-	{"CI", "XV", 16},	/* Universal if Country code is Ivory Coast (13.4.27)*/
-	{"JE", "XV", 16},	/* Universal if Country code is Jersey (13.4.27)*/
-	{"KP", "XV", 16},	/* Universal if Country code is North Korea (13.4.27)*/
-	{"FM", "XV", 16},	/* Universal if Country code is Micronesia (13.4.27)*/
-	{"MM", "XV", 16},	/* Universal if Country code is Myanmar (13.4.27)*/
-	{"NU", "XV", 16},	/* Universal if Country code is Niue (13.4.27)*/
-	{"NF", "XV", 16},	/* Universal if Country code is Norfolk Island (13.4.27)*/
-	{"PN", "XV", 16},	/* Universal if Country code is Pitcairn Islands (13.4.27)*/
-	{"PM", "XV", 16},	/* Universal if Country code is Saint Pierre and Miquelon (13.4.27)*/
-	{"SS", "XV", 16},	/* Universal if Country code is South_Sudan (13.4.27)*/
+	{"IR", "XV", 17},	/* Universal if Country code is IRAN, (ISLAMIC REPUBLIC OF) */
+	{"SD", "XV", 17},	/* Universal if Country code is SUDAN */
+	{"SY", "XV", 17},	/* Universal if Country code is SYRIAN ARAB REPUBLIC */
+	{"GL", "XV", 17},	/* Universal if Country code is GREENLAND */
+	{"PS", "XV", 17},	/* Universal if Country code is PALESTINE */
+	{"TL", "XV", 17},	/* Universal if Country code is TIMOR-LESTE (EAST TIMOR) */
+	{"MH", "XV", 17},	/* Universal if Country code is MARSHALL ISLANDS */
+	{"PK", "XV", 17},	/* Universal if Country code is PAKISTAN */
+	{"CK", "XV", 17},	/* Universal if Country code is Cook Island (13.4.27)*/
+	{"CU", "XV", 17},	/* Universal if Country code is Cuba (13.4.27)*/
+	{"FK", "XV", 17},	/* Universal if Country code is Falkland Island (13.4.27)*/
+	{"FO", "XV", 17},	/* Universal if Country code is Faroe Island (13.4.27)*/
+	{"GI", "XV", 17},	/* Universal if Country code is Gibraltar (13.4.27)*/
+	{"IM", "XV", 17},	/* Universal if Country code is Isle of Man (13.4.27)*/
+	{"CI", "XV", 17},	/* Universal if Country code is Ivory Coast (13.4.27)*/
+	{"JE", "XV", 17},	/* Universal if Country code is Jersey (13.4.27)*/
+	{"KP", "XV", 17},	/* Universal if Country code is North Korea (13.4.27)*/
+	{"FM", "XV", 17},	/* Universal if Country code is Micronesia (13.4.27)*/
+	{"MM", "XV", 17},	/* Universal if Country code is Myanmar (13.4.27)*/
+	{"NU", "XV", 17},	/* Universal if Country code is Niue (13.4.27)*/
+	{"NF", "XV", 17},	/* Universal if Country code is Norfolk Island (13.4.27)*/
+	{"PN", "XV", 17},	/* Universal if Country code is Pitcairn Islands (13.4.27)*/
+	{"PM", "XV", 17},	/* Universal if Country code is Saint Pierre and Miquelon (13.4.27)*/
+	{"SS", "XV", 17},	/* Universal if Country code is South_Sudan (13.4.27)*/
 	{"AL", "AL", 2},
 	{"DZ", "DZ", 1},
 	{"AS", "AS", 12},	/* changed 2 -> 12*/
@@ -636,7 +636,7 @@ static struct cntry_locales_custom wifi_translate_custom_table[] = {
 	{"GT", "GT", 1},
 	{"MN", "MN", 1},
 	{"NI", "NI", 2},
-	{"US", "US", 118},
+	{"US", "Q2", 57},
 };
 
 static void *bcm_wifi_get_country_code(char *ccode)
