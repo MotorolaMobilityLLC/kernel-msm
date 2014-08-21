@@ -60,7 +60,7 @@
 
 		qcom,mdss-dsi-reset-sequence = <1 11>;
 		qcom,mdss-dsi-dis-reset-sequence = <0 3>;
-/*		qcom,mdss-dsi-lp11-init; */
+		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-t-clk-post = <0x03>;
 		qcom,mdss-dsi-t-clk-pre = <0x29>;
 		qcom,mdss-dsi-bl-max-level = <255>;
@@ -154,7 +154,7 @@
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-dsi-panel-timings = [DB 34 22 00 62 66 28 36 2B 03
 									04 00];
-/*		qcom,mdss-dsi-lp11-init; */
+		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-t-clk-post = <0x03>;
 		qcom,mdss-dsi-t-clk-pre = <0x29>;
 		qcom,mdss-dsi-bl-max-level = <255>;
@@ -217,7 +217,7 @@
 
 		qcom,mdss-dsi-reset-sequence = <1 11>;
 		qcom,mdss-dsi-dis-reset-sequence = <0 3>;
-/*		qcom,mdss-dsi-lp11-init; */
+		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-t-clk-post = <0x03>;
 		qcom,mdss-dsi-t-clk-pre = <0x29>;
 		qcom,mdss-dsi-bl-max-level = <255>;
@@ -306,7 +306,7 @@
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-dsi-panel-timings = [DB 34 22 00 62 66 28 36 2B 03
 									04 00];
-/*		qcom,mdss-dsi-lp11-init; */
+		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-t-clk-post = <0x03>;
 		qcom,mdss-dsi-t-clk-pre = <0x29>;
 		qcom,mdss-dsi-bl-max-level = <255>;
