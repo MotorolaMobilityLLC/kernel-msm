@@ -43,9 +43,7 @@
 					39 01 00 00 00 00 02 36 40
 					15 01 00 00 00 00 02 53 20
 					15 01 00 00 00 00 02 B0 AC
-					15 01 00 00 00 00 02 5C 34 /* Contrast, Color Management ON, S curve */
-					39 01 00 00 00 00 05 E5
-					00 00 18 18 /* Contrast */
+					15 01 00 00 00 00 02 5C 24 /* Color Management ON, S curve ON */
 					39 01 00 00 00 00 02 5E 0B /* Color Management offset */
 					39 01 00 00 00 00 31 5F
 					80 80 80 80 80 80
@@ -59,15 +57,15 @@
 					39 01 00 00 00 00 11 E1
 					3E 3A 46 4E 4E 46
 					3A 32 00 FC F0 E4
-					E4 F8 1F 38 /* digital gamma( S curve) R */
+					E4 F8 1C 38 /* digital gamma( S curve) R */
 					39 01 00 00 00 00 11 E2
 					3E 3A 46 4E 4E 46
 					3A 32 00 FC F0 E4
-					E4 F8 1F 38 /* digital gamma( S curve) G */
+					E4 F8 1C 38 /* digital gamma( S curve) G */
 					39 01 00 00 00 00 11 E3
 					3E 3A 46 4E 4E 46
 					3A 32 00 FC F0 E4
-					E4 F8 1F 38 /* digital gamma( S curve) B */
+					E4 F8 1C 38 /* digital gamma( S curve) B */
 					05 01 00 00 00 00 01 35
 					05 01 00 00 00 00 01 29];
 		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 01 28
@@ -78,14 +76,14 @@
 					39 00 00 00 00 00 03 51 00 00 /*DBV Setting*/
 					15 00 00 00 00 00 02 B0 AC /*MCS Access Code*/
 					39 00 00 00 00 00 18 DB
-					00 29 F0 93 E7 77
+					00 A9 80 93 FF 11
 					1C 34 43 2F 84 85
 					40 65 27 28 12 12
 					12 00 00 29 10 /*40nit_60hz*/
 					05 00 00 00 00 00 01 39 /*Idle Mode On*/
 					05 01 00 00 40 00 01 29 /*Display On*/
 					39 01 00 00 00 00 18 DB
-					01 29 F0 93 E7 77
+					01 A9 80 93 FF 11
 					1C 34 43 2F 84 85
 					40 65 27 28 12 12
 					12 00 00 29 10 /*40nit_30hz*/
