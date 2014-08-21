@@ -554,7 +554,7 @@ static int mdss_mdp_get_img(struct msmfb_data *img,
 	if (img->flags & MDP_BLIT_SRC_GEM) {
 		data->srcp_file = NULL;
 		ret = kgsl_gem_obj_addr(img->memory_id, (int) img->priv,
-					start, len);
+					(unsigned long *)start, len);
 	} else if (img->flags & MDP_MEMORY_ID_TYPE_FB) {
 		file = fget_light(img->memory_id, &data->p_need);
 		if (file == NULL) {
