@@ -70,7 +70,11 @@ static ssize_t notification_store_control(struct device *dev,
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct stml0xx_data *ps_stml0xx =
 		container_of(led_cdev, struct stml0xx_data, led_cdev);
-	unsigned rgb = 0, ms_on = 0, ms_off = 0, rup = 0, rdown = 0;
+	unsigned rgb = 0;
+	unsigned ms_on = 1000;
+	unsigned ms_off = 0;
+	unsigned rup = 0;
+	unsigned rdown = 0;
 
 	if (len == 0)
 		return 0;
