@@ -677,16 +677,33 @@ static void pp_iface_stat_header(struct seq_file *m)
 static void pp_iface_stat_line(struct seq_file *m,
 			       struct iface_stat *iface_entry)
 {
+	struct rtnl_link_stats64 dev_stats, *stats;
+	__u64 rx_pkts, tx_pkts, rx_bytes, tx_bytes;
 	struct data_counters *cnts;
 	int cnt_set = 0;   /* We only use one set for the device */
 	cnts = &iface_entry->totals_via_skb;
+	if (iface_entry->active) {
+		stats = dev_get_stats(iface_entry->net_dev, &dev_stats);
+		rx_bytes = iface_entry->totals_via_dev[IFS_RX].bytes
+				+ stats->rx_bytes;
+		rx_pkts = iface_entry->totals_via_dev[IFS_RX].packets
+				+ stats->rx_packets;
+		tx_bytes = iface_entry->totals_via_dev[IFS_TX].bytes
+				+ stats->tx_bytes;
+		tx_pkts = iface_entry->totals_via_dev[IFS_TX].packets
+				+ stats->tx_packets;
+	} else {
+		rx_bytes = iface_entry->totals_via_dev[IFS_RX].bytes;
+		rx_pkts = iface_entry->totals_via_dev[IFS_RX].packets;
+		tx_bytes = iface_entry->totals_via_dev[IFS_TX].bytes;
+		tx_pkts = iface_entry->totals_via_dev[IFS_TX].packets;
+	}
+
 	seq_printf(m, "%s %llu %llu %llu %llu %llu %llu %llu %llu "
 		   "%llu %llu %llu %llu %llu %llu %llu %llu\n",
 		   iface_entry->ifname,
-		   dc_sum_bytes(cnts, cnt_set, IFS_RX),
-		   dc_sum_packets(cnts, cnt_set, IFS_RX),
-		   dc_sum_bytes(cnts, cnt_set, IFS_TX),
-		   dc_sum_packets(cnts, cnt_set, IFS_TX),
+		   rx_bytes, rx_pkts,
+		   tx_bytes, tx_pkts,
 		   cnts->bpc[cnt_set][IFS_RX][IFS_TCP].bytes,
 		   cnts->bpc[cnt_set][IFS_RX][IFS_TCP].packets,
 		   cnts->bpc[cnt_set][IFS_RX][IFS_UDP].bytes,
