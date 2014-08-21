@@ -197,8 +197,8 @@ int MMapPMR(struct file *pFile, struct vm_area_struct *ps_vma)
 	 * and ResManFindPrivateDataByPtr is going to be removed.
 	 *  This change was necessary to solve the lockdep issues related with the MMapPMR
 	 */
+	mutex_lock(&gPVRSRVLock);
 	mutex_lock(&g_sMMapMutex);
-	PMRLock();
 
 #if defined(SUPPORT_DRM_DC_MODULE)
 	psPMR = PVRSRVGEMMMapLookupPMR(pFile, ps_vma);
@@ -230,7 +230,7 @@ int MMapPMR(struct file *pFile, struct vm_area_struct *ps_vma)
 	 */
 	PMRRefPMR(psPMR);
 
-	PMRUnlock();
+	mutex_unlock(&gPVRSRVLock);
 
 	eError = PMRLockSysPhysAddresses(psPMR, PAGE_SHIFT);
 	if (eError != PVRSRV_OK)
@@ -455,7 +455,7 @@ int MMapPMR(struct file *pFile, struct vm_area_struct *ps_vma)
 	goto em1;
  e0:
     PVR_DPF((PVR_DBG_ERROR, "Error in MMapPMR critical section"));
-	PMRUnlock();
+	mutex_unlock(&gPVRSRVLock);
  em1:
     PVR_ASSERT(eError != PVRSRV_OK);
     PVR_DPF((PVR_DBG_ERROR, "unable to translate error %d", eError));

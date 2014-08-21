@@ -107,7 +107,6 @@ PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
 
 
 
-	PMRLock();
 				{
 					/* Look up the address from the handle */
 					psPMRSecureExportPMROUT->eError =
@@ -117,7 +116,6 @@ PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
 											PVRSRV_HANDLE_TYPE_PHYSMEM_PMR);
 					if(psPMRSecureExportPMROUT->eError != PVRSRV_OK)
 					{
-						PMRUnlock();
 						goto PMRSecureExportPMR_exit;
 					}
 
@@ -126,7 +124,6 @@ PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
 
 					if(psPMRSecureExportPMROUT->eError != PVRSRV_OK)
 					{
-						PMRUnlock();
 						goto PMRSecureExportPMR_exit;
 					}
 				}
@@ -139,10 +136,8 @@ PVRSRVBridgePMRSecureExportPMR(IMG_UINT32 ui32BridgeID,
 	/* Exit early if bridged call fails */
 	if(psPMRSecureExportPMROUT->eError != PVRSRV_OK)
 	{
-		PMRUnlock();
 		goto PMRSecureExportPMR_exit;
 	}
-	PMRUnlock();
 
 	/* Create a resman item and overwrite the handle with it */
 	hPMROutInt2 = ResManRegisterRes(psSecureConnection->hResManContext,
@@ -190,7 +185,7 @@ PVRSRVBridgePMRSecureUnexportPMR(IMG_UINT32 ui32BridgeID,
 
 
 
-	PMRLock();
+
 				{
 					/* Look up the address from the handle */
 					psPMRSecureUnexportPMROUT->eError =
@@ -200,7 +195,6 @@ PVRSRVBridgePMRSecureUnexportPMR(IMG_UINT32 ui32BridgeID,
 											PVRSRV_HANDLE_TYPE_PHYSMEM_PMR);
 					if(psPMRSecureUnexportPMROUT->eError != PVRSRV_OK)
 					{
-						PMRUnlock();
 						goto PMRSecureUnexportPMR_exit;
 					}
 
@@ -210,10 +204,8 @@ PVRSRVBridgePMRSecureUnexportPMR(IMG_UINT32 ui32BridgeID,
 	/* Exit early if bridged call fails */
 	if(psPMRSecureUnexportPMROUT->eError != PVRSRV_OK)
 	{
-		PMRUnlock();
 		goto PMRSecureUnexportPMR_exit;
 	}
-	PMRUnlock();
 
 	psPMRSecureUnexportPMROUT->eError =
 		PVRSRVReleaseHandle(psConnection->psHandleBase,
@@ -241,7 +233,6 @@ PVRSRVBridgePMRSecureImportPMR(IMG_UINT32 ui32BridgeID,
 
 
 
-	PMRLock();
 	psPMRSecureImportPMROUT->eError =
 		PMRSecureImportPMR(
 					psPMRSecureImportPMRIN->Export,
@@ -251,10 +242,8 @@ PVRSRVBridgePMRSecureImportPMR(IMG_UINT32 ui32BridgeID,
 	/* Exit early if bridged call fails */
 	if(psPMRSecureImportPMROUT->eError != PVRSRV_OK)
 	{
-		PMRUnlock();
 		goto PMRSecureImportPMR_exit;
 	}
-	PMRUnlock();
 
 	/* Create a resman item and overwrite the handle with it */
 	hPMRInt2 = ResManRegisterRes(psConnection->hResManContext,
