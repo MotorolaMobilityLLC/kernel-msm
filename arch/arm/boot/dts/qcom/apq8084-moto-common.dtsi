@@ -994,17 +994,26 @@
 			<&msmgpio 97 0>;        /* RESET */
 		touch_vdd-supply = <&pma8084_s4>;
 		touch_avdd-supply = <&pma8084_l19>;
-		atmel,key-buttons = <59 61 60 0 0 0 0 0>; /* KEY_F1,F2,F3 */
-		atmel,suspend-method-lpm;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_irq_default &touch_reset_default>;
 		pinctrl-1 = <&touch_irq_active &touch_reset_active>;
+
 		atmel,cfg {
 			atmel,family-id = <0xa4>;
 			atmel,variant-id = <0x7>;
 			atmel,version = <0x5>;
 			atmel,build = <0x11>;
 			atmel,revision-id = <0x32>;
+		};
+
+		touchstate_modes {
+			touchmode-default = <&default_active &default_suspended>;
+		};
+		default_active: touchstate_default_active {
+			patch-data = "";
+		};
+		default_suspended: touchstate_aod_suspended {
+			patch-data = "T100@3=0,6=1,47=32,49=32;T7@0=0,1=0,2=0;";
 		};
 	};
 
