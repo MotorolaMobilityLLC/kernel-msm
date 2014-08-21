@@ -2,7 +2,7 @@
 obj-y += platform_sst_audio.o
 obj-y += platform_mrfl_regulator.o
 obj-y += platform_soc_thermal.o
-obj-$(subst m,y,$(CONFIG_SND_MOOR_MACHINE)) += platform_mrfld_audio.o
+obj-$(subst m,y,$(CONFIG_SND_MOOR_PLATFORM)) += platform_mrfld_audio.o
 obj-y += platform_ipc.o
 obj-y += platform_i2c_gpio.o
 obj-y += platform_msic.o

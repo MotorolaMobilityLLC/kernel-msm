@@ -1,6 +1,7 @@
 config SND_MOOR_MACHINE
 	tristate "SOC Machine Audio driver for Intel Moorefield MID platform"
 	depends on INTEL_SCU_IPC && X86
+	select SND_MOOR_PLATFORM
 	select SND_SOC_WM8994
 	select MFD_CORE
 	select MFD_WM8994
@@ -15,6 +16,13 @@ config SND_MOOR_MACHINE
           used as alsa device in audio substream in Intel(R) MID devices
           Say Y if you have such a device
           If unsure select "N".
+
+config SND_MOOR_PLATFORM
+	tristate "Intel Moorefield MID platform"
+	default n
+	help
+	  This option selects base functionality for ASoC machine driver for Intel
+	  Moorefield platform
 
 config SND_MOOR_DPCM
 	bool "Use DPCM for Intel Moorefield MID platform"
