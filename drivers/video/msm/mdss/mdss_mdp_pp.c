@@ -1801,15 +1801,17 @@ int mdss_mdp_pp_resume(struct mdss_mdp_ctl *ctl, u32 dspp_num)
 	u32 flags = 0, disp_num, bl, ret = 0;
 	struct pp_sts_type pp_sts;
 	struct mdss_ad_info *ad;
-	struct mdss_data_type *mdata = ctl->mdata;
+	struct mdss_data_type *mdata;
 
-	if (!mdata)
+	if (!ctl || !ctl->mdata || !ctl->mfd)
 		return -EPERM;
 
+	mdata = ctl->mdata;
 	if (dspp_num >= mdata->nmixers_intf) {
 		pr_warn("invalid dspp_num");
 		return -EINVAL;
 	}
+
 	disp_num = ctl->mfd->index;
 
 	if (dspp_num < mdata->nad_cfgs) {
