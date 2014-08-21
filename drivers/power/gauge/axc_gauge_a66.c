@@ -60,6 +60,7 @@
 #ifdef CONFIG_PM_8226_CHARGER
 extern int pm8226_is_full(void);
 extern void pm8226_chg_enable_charging(bool enable);
+extern int pm8226_is_ac_usb_in(void);
 #else
 extern bool smb346_IsFull(void);
 #endif
@@ -518,11 +519,11 @@ static void cal_bat_capacity_work(struct work_struct *work)
 	if( (curr < -3) && (1==getIfonline()) && (false==smb346_IsFull()) )
 #endif
 	{
-		pr_debug("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
+		printk("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
 
 		doAdcVfModify(&volt,&curr);
 
-		pr_debug("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
+		printk("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
 		//ASUS_BSP Eason_Chang add event log +++
 		ASUSEvtlog("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
 		//ASUS_BSP Eason_Chang add event log ---
@@ -834,6 +835,7 @@ int findMin(int* Array)
 /* AXC_Gauge_A66_ReadVoltCurrWithoutCali - To read voltage and current without
  * calibration for several times.
  */
+int judge_robin_current_zero = 0;
 static void AXC_Gauge_A66_ReadVoltCurrWithoutCali(
 	AXI_Gauge *apGauge,
 	unsigned int anTimes,
@@ -960,10 +962,28 @@ static void AXC_Gauge_A66_ReadVoltCurrWithoutCali(
     //Eason takeoff ADC read max & min---
 	//Eason print VC ---
 
-   //Eason if doesn't get correct ADC Vol&Curr at first update Cap show unknow status +++ 
-   g_adc_get_correct_VolCurr = true;
-   //Eason if doesn't get correct ADC Vol&Curr at first update Cap show unknow status ---    
+	//Eason if doesn't get correct ADC Vol&Curr at first update Cap show unknow status +++ 
+	g_adc_get_correct_VolCurr = true;
+	//Eason if doesn't get correct ADC Vol&Curr at first update Cap show unknow status ---    
 
+	if(judge_robin_current_zero <= 1){
+		printk("[BAT][Gau] enter AXC_Gauge_A66_ReadVoltCurr robin_current_zero = %d\n", judge_robin_current_zero);
+		judge_robin_current_zero++;
+
+		if(*curr == 0){
+			printk("[BAT][Gau] current = 0, need to modify current\n");
+			
+			if(pm8226_is_ac_usb_in()){
+				printk("[BAT][Gau] set current to -110\n");
+				*curr = -110;
+			}
+			else{
+				printk("[BAT][Gau] set current to 540\n");
+				*curr = 540;
+			}
+		}
+	}
+	
 	return;
 }
 
@@ -971,7 +991,6 @@ static void AXC_Gauge_A66_ReadVoltCurrWithoutCali(
 /* AXC_Gauge_A66_ReadVoltCurr - To read voltage and current with
  * calibration for several times.
  */
-bool IsFirstReadVoltCurr =true;
 extern void Smb346_Enable_Charging(bool enabled);
 extern void pm8226_chg_enable_charging(bool enable);
 static void AXC_Gauge_A66_ReadVoltCurr(
@@ -985,74 +1004,9 @@ static void AXC_Gauge_A66_ReadVoltCurr(
 		AXC_Gauge_A66,
 		msParentGauge);
     */
-	int i=0;
-	int j=0;
-	int voltage_test[10][2];
-	int current_test[10][2];
-	int voltage_temp=0;
-	int current_temp=0;
-	if( IsFirstReadVoltCurr ==true)
-	{
-		printk("[BAT][Gau] enter AXC_Gauge_A66_ReadVoltCurr IsFirstReadVoltCurr\n");
-		IsFirstReadVoltCurr =false;
 
-#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
-		if(!g_CHG_mode){
-#ifdef CONFIG_PM_8226_CHARGER
-			pm8226_chg_enable_charging(false);
-#else
-			Smb346_Enable_Charging(false);
-			smb346_suspend_mode(true);
-#endif
-			msleep(500);
-		}
-#endif
-
-		for(i=0;i<10;i++)
-		{
-			AXC_Gauge_A66_ReadVoltCurrWithoutCali(apGauge, anTimes, volt, curr);
-			voltage_test[i][0]=*volt;
-			current_test[i][0]=*curr;
-			AXC_Gauge_A66_ReadVoltCurrWithoutCali(apGauge, anTimes, volt, curr);
-			voltage_test[i][1]=*volt;
-			current_test[i][1]=*curr;
-			if (abs(voltage_test[i][0]-voltage_test[i][1])<=5)
-				{
-					break;
-				}
-		}
-		if(i==10)
-		{
-			printk("[BAT][Gau] i =10\n");
-			for(j=0;j<10;j++)
-				{
-				voltage_temp +=voltage_test[j][0]+voltage_test[j][1];
-				current_temp +=current_test[j][0]+current_test[j][1];
-				}
-			*volt = voltage_temp/20;
-			*curr = current_temp/20;
-		}
-		printk("[BAT][Gau] AXC_Gauge_A66_ReadVoltCurr volt = %d , curr = %d \n",*volt,*curr);
-
-#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
-		if(!g_CHG_mode){
-#ifdef CONFIG_PM_8226_CHARGER
-			pm8226_chg_enable_charging(true);
-#else
-			Smb346_Enable_Charging(true);
-			smb346_suspend_mode(false);
-#endif
-		}
-#endif
-
-	}
-	else
-	{
-		AXC_Gauge_A66_ReadVoltCurrWithoutCali(apGauge, anTimes, volt, curr);
-	}
-	//*volt += this->mnVoltageCalibration;
-	//*curr += this->mnCurrentCalibration;
-
+	AXC_Gauge_A66_ReadVoltCurrWithoutCali(apGauge, anTimes, volt, curr);
+	
 	return;
 }
 
