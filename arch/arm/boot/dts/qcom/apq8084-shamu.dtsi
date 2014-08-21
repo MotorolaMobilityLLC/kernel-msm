@@ -420,7 +420,12 @@
 	/delete-node/ synaptics_dsx_i2c@20;
 
 	atmel_mxt_ts@4a {
-		/delete-property/ atmel,key-buttons;
+		touchstate_modes {
+			touchmode-alternate = <&default_active &alternate_suspended>;
+		};
+		alternate_suspended: touchstate_dbltap_suspended {
+			patch-data = "T100@0=8d;T93@0=f;T7@0=64,1=ff,2=a;";
+		};
 	};
 };
 
