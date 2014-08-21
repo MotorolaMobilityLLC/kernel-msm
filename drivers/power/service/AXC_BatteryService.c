@@ -2076,70 +2076,64 @@ static void checkCalCapTime(void)
 
 	nowKeep5MinInterval = nowTime - balance_this->Keep5MinSavedTime;
 	//Hank: Interval overflow handling+++	
-      if(nowKeep5MinInterval <0)
-      {
-    		printk("[BAT][SER]%s():NowKeep5MinInterval overflow set interval KEEP_CAPACITY_TIME!\n",__func__);
+	if(nowKeep5MinInterval <0){
+		printk("[BAT][SER]%s():NowKeep5MinInterval overflow set interval KEEP_CAPACITY_TIME!\n",__func__);
 		nowKeep5MinInterval = KEEP_CAPACITY_TIME;
-      }
-      //Hank: Interval overflow handling---
+	}
+	//Hank: Interval overflow handling---
 
 	nowKeepInterval = nowTime - balance_this->savedTime;
 	//Hank: Interval overflow handling+++	
-      if(nowKeepInterval <0)
-      {
-    		printk("[BAT][SER]%s():NowKeepInterval overflow set interval DEFAULT_POLLING_INTERVAL!\n",__func__);
+	if(nowKeepInterval <0){
+		printk("[BAT][SER]%s():NowKeepInterval overflow set interval DEFAULT_POLLING_INTERVAL!\n",__func__);
 		nowKeepInterval = DEFAULT_POLLING_INTERVAL;
-      }
-      //Hank: Interval overflow handling---
+	}
+	//Hank: Interval overflow handling---
 	
-       pr_debug("[BAT][SER]%s()+++\n",__func__);      
-       //Hank: if need keep 5Min check the interval if not check default interval+++
-       if(balance_this->NeedKeep5Min)
-       {
-           printk("[BAT][SER]:Need keep 5Min \n");
-		   if(nowKeep5MinInterval >= KEEP_CAPACITY_TIME){
-			   balance_this->NeedCalCap = true;
-			   balance_this->NeedKeep5Min = false;
-			   printk("[BAT][SER]%s():already keep 5Min \n",__func__);
-		   }else
-			   pr_debug("[BAT][SER]%s():not already keep 5Min \n",__func__);
-			
-	  }
-	  else
-	  {
-	  	   if(balance_this->test.ifFixedPollingInterval(&balance_this->test))
-    		   {
-        		   //Hank: test interval+++
-			   if(!(balance_this->NeedCalCap) && (nowKeepInterval >= (balance_this->test.pollingInterval*3))){
-				   balance_this->NeedCalCap = true;
-				   printk("[BAT][SER]%s(): nowTime = %d, savedTime = %d, nowKeepInterval = %d \n default calculate capacity polling interval \n",__func__,(int)nowTime,(int)balance_this->savedTime,(int)nowKeepInterval);
-			   }//Hank: default 3Min calculate capacity---
-			   //Hank: capacity < 14% every 1Min calculate capacity+++
-			   else if(!(balance_this->NeedCalCap) && (nowKeepInterval >= balance_this->test.pollingInterval) && balance_this-> A66_capacity < 14){
-				   balance_this->NeedCalCap = true;
-				   printk("[BAT][SER]%s():capacity < 14 calculate capacity every 1Min \n",__func__);
-			   }
-			   //Hank: test interval---
-    		   }
-		   else
-		   {
-			   //Hank: default 3Min calculate capacity+++
-			   if(!(balance_this->NeedCalCap) && (nowKeepInterval >= DEFAULT_POLLING_INTERVAL)){
-				   balance_this->NeedCalCap = true;
-				   printk("[BAT][SER]%s(): nowTime = %d, savedTime = %d, nowKeepInterval = %d \n default calculate capacity polling interval \n",__func__,(int)nowTime,(int)balance_this->savedTime,(int)nowKeepInterval);
-			   }//Hank: default 3Min calculate capacity---
-			   //Hank: capacity < 14% every 1Min calculate capacity+++
-			   else if(!(balance_this->NeedCalCap) && (nowKeepInterval >= DEFAULT_MONITOR_INTERVAL) && balance_this-> A66_capacity < 14){
-				   balance_this->NeedCalCap = true;
-				   printk("[BAT][SER]%s():capacity < 14 calculate capacity every 1Min \n",__func__);
-			   }
-			   //Hank: capacity < 14% every 1Min calculate capacity---
-		   }
-		   
-		   
-	   }
-	   pr_debug("[BAT][SER]%s---\n",__func__);     
-	   //Hank: if need keep 5Min check the interval if not check default interval---
+	pr_debug("[BAT][SER]%s()+++\n",__func__);      
+	//Hank: if need keep 5Min check the interval if not check default interval+++
+	if(balance_this->NeedKeep5Min)
+	{
+		printk("[BAT][SER]:Need keep 5Min \n");
+		if(nowKeep5MinInterval >= KEEP_CAPACITY_TIME){
+			balance_this->NeedCalCap = true;
+			balance_this->NeedKeep5Min = false;
+			printk("[BAT][SER]%s():already keep 5Min \n",__func__);
+		}
+		else{
+			pr_debug("[BAT][SER]%s():not already keep 5Min \n",__func__);
+		}
+	}
+	else{
+		if(balance_this->test.ifFixedPollingInterval(&balance_this->test)){
+			//Hank: test interval+++
+			if(!(balance_this->NeedCalCap) && (nowKeepInterval >= (balance_this->test.pollingInterval*3))){
+				balance_this->NeedCalCap = true;
+				printk("[BAT][SER]%s(): nowTime = %d, savedTime = %d, nowKeepInterval = %d \n default calculate capacity polling interval \n",__func__,(int)nowTime,(int)balance_this->savedTime,(int)nowKeepInterval);
+			}//Hank: default 3Min calculate capacity---
+			//Hank: capacity < 14% every 1Min calculate capacity+++
+			else if(!(balance_this->NeedCalCap) && (nowKeepInterval >= balance_this->test.pollingInterval) && balance_this-> A66_capacity < 14){
+				balance_this->NeedCalCap = true;
+				printk("[BAT][SER]%s():capacity < 14 calculate capacity every 1Min \n",__func__);
+			}
+			//Hank: test interval---
+		}
+		else{
+			//Hank: default 3Min calculate capacity+++
+			if(!(balance_this->NeedCalCap) && (nowKeepInterval >= DEFAULT_POLLING_INTERVAL)){
+				balance_this->NeedCalCap = true;
+				printk("[BAT][SER]%s(): nowTime = %d, savedTime = %d, nowKeepInterval = %d \n default calculate capacity polling interval \n",__func__,(int)nowTime,(int)balance_this->savedTime,(int)nowKeepInterval);
+			}//Hank: default 3Min calculate capacity---
+			//Hank: capacity < 14% every 1Min calculate capacity+++
+			else if(!(balance_this->NeedCalCap) && (nowKeepInterval >= DEFAULT_MONITOR_INTERVAL) && balance_this-> A66_capacity < 14){
+				balance_this->NeedCalCap = true;
+				printk("[BAT][SER]%s():capacity < 14 calculate capacity every 1Min \n",__func__);
+			}
+			//Hank: capacity < 14% every 1Min calculate capacity---
+		}
+	}
+	pr_debug("[BAT][SER]%s---\n",__func__);     
+	//Hank: if need keep 5Min check the interval if not check default interval---
 }
 
 static inline int AXC_BatteryService_getNextPollingInterval(struct AXC_BatteryService *_this)
@@ -2149,37 +2143,29 @@ static inline int AXC_BatteryService_getNextPollingInterval(struct AXC_BatterySe
 *   In AXC_BatteryService_getNextPollingInterval() plug DEFAULT_CAP_QUEUE_INTERVAL_PLUGGED.
 */
 
-    if(_this->test.ifFixedPollingInterval(&_this->test))
-    {
-        //return _this->test.pollingInterval;
-        return (_this->test.pollingInterval+DEFAULT_CAP_QUEUE_INTERVAL_PLUGGED);//Eason:cap queue  interval plugs a small value, prevent less than target interval. 
-    }
-    else
-    {
-        //Hank: has cable or capacity < 14% return 1Min+++	
-        //return _this->gauge->getNextPollingInterval(_this->gauge);
-        if(_this->BatteryService_IsCable || _this-> A66_capacity < 14)
-        	//return DEFAULT_MONITOR_INTERVAL;
-        	return (DEFAULT_MONITOR_INTERVAL + DEFAULT_CAP_QUEUE_INTERVAL_PLUGGED);
-	else
-		//return DEFAULT_MONITOR_INTERVAL;
-		return (DEFAULT_MONITOR_INTERVAL + DEFAULT_CAP_QUEUE_INTERVAL_PLUGGED);
-        //Hank: has cable or capacity < 14% return 1Min---
-    }
-
+	if(_this->test.ifFixedPollingInterval(&_this->test)){
+		return (_this->test.pollingInterval+DEFAULT_CAP_QUEUE_INTERVAL_PLUGGED);//Eason:cap queue  interval plugs a small value, prevent less than target interval. 
+	}
+	else{
+		if(_this->BatteryService_IsCable || _this-> A66_capacity < 14){
+			return (DEFAULT_MONITOR_INTERVAL + DEFAULT_CAP_QUEUE_INTERVAL_PLUGGED);
+		}
+		else{
+			return (DEFAULT_MONITOR_INTERVAL + DEFAULT_CAP_QUEUE_INTERVAL_PLUGGED);
+		}
+	}
 }
 //Hank: Tigauge Temperature Monitor---
 static int BatteryServiceGauge_OnCapacityReply(struct AXI_Gauge *gauge, struct AXI_Gauge_Callback *gaugeCb, int batCap, int result);
 
 static void BatteryServiceCapSample(struct work_struct *dat)
 {
-       AXC_BatteryService *_this = container_of(dat,AXC_BatteryService,BatteryServiceUpdateWorker.work);
-       wake_lock(&_this->cap_wake_lock);
+	AXC_BatteryService *_this = container_of(dat,AXC_BatteryService,BatteryServiceUpdateWorker.work);
+	wake_lock(&_this->cap_wake_lock);
 	pr_debug("[BAT][SER]:%s+++ \n",__func__);
 
 	//Hank: FirstForceResume do not need check Timing+++
-	if(_this->IsFirstForceResume)
-	{
+	if(_this->IsFirstForceResume){
 		printk("[BAT][SER]%s():_this->IsFirstForceResume = true, set _this->IsFirstForceResume = false\n",__func__);
 		//Hank first calculate capacity read battery id+++
 		read_battery_id();
@@ -2187,29 +2173,26 @@ static void BatteryServiceCapSample(struct work_struct *dat)
 
 		_this->IsFirstForceResume = false;
 	}
-	else
-	{
+	else{
 		pr_debug("[BAT][SER]%s():_this->IsFirstForceResume = false, do checkCalCapTime()\n",__func__);
-       	checkCalCapTime();
+		checkCalCapTime();
 	}
-       //Hank: FirstForceResume do not need check Timing---
+	//Hank: FirstForceResume do not need check Timing---
        
-       if(_this->NeedCalCap)
-       {
-		 pr_debug("[BAT][SER]%s(): Need Calculate Capacity +++\n",__func__);
-		 _this->IsCalculateCapOngoing = true;
+	if(_this->NeedCalCap){
+		pr_debug("[BAT][SER]%s(): Need Calculate Capacity +++\n",__func__);
+		_this->IsCalculateCapOngoing = true;
 
-		 //ASUS_BSP Eason_Chang 1120 porting +++
+		//ASUS_BSP Eason_Chang 1120 porting +++
 #ifdef CONFIG_EEPROM_NUVOTON  
-		if(1==AX_MicroP_IsP01Connected())
-		{
+		if(1==AX_MicroP_IsP01Connected()){
 			_this->P02gauge->askCapacity(_this->P02gauge);
 		}
 		else{
 			_this->gauge->askCapacity(_this->gauge);
 		}
 #else //#else CONFIG_EEPROM_NUVOTON  
-			_this->gauge->askCapacity(_this->gauge);
+		_this->gauge->askCapacity(_this->gauge);
 #endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---
 			
 		_this->NeedCalCap = false;
@@ -2457,71 +2440,70 @@ static void CheckEoc(struct work_struct *dat)
 
 static void ResumeCalCap(struct work_struct *dat)
 {
-    time_t nowResumeTime;
-    time_t nowResumeInterval;
-    bool needDoResume=false;
+	time_t nowResumeTime;
+	time_t nowResumeInterval;
+	bool needDoResume=false;
 
-    nowResumeTime = updateNowTime(balance_this);
-    nowResumeInterval = nowResumeTime - balance_this->savedTime;
-    //Hank: Interval overflow handling+++	
-    if(nowResumeInterval <0)
-    {
-    		printk("[BAT][SER]%s():Interval overflow set interval RESUME_UPDATE_TIME!\n",__func__);
+	nowResumeTime = updateNowTime(balance_this);
+	nowResumeInterval = nowResumeTime - balance_this->savedTime;
+	//Hank: Interval overflow handling+++	
+	if(nowResumeInterval <0){
+		printk("[BAT][SER]%s():Interval overflow set interval RESUME_UPDATE_TIME!\n",__func__);
 		nowResumeInterval = RESUME_UPDATE_TIME;
-    }
+	}
     //Hank: Interval overflow handling---
 
-    pr_debug("[BAT][SER]:resume queue+++\n");
+	pr_debug("[BAT][SER]:resume queue+++\n");
 
-    if(true == balance_this->BatteryService_IsBatLow 
-        && nowResumeInterval > RESUME_UPDATE_TIMEwhenBATlow)
-    {
-           needDoResume = true; 
-    }    
-    else if(balance_this->A66_capacity <= CapChangeRTCInterval 
-        && nowResumeInterval > RESUME_UPDATE_TIMEwhenCapLess20)
-    {
-           needDoResume = true;                
-    }else if(nowResumeInterval > RESUME_UPDATE_TIME){
-           needDoResume = true;
-    }
-    printk("[BAT][SER]:ResumeCalCap()===:%ld,%ld,%ld,A66:%d\n"
-            ,nowResumeTime,balance_this->savedTime,nowResumeInterval,balance_this->A66_capacity);
+	if(true == balance_this->BatteryService_IsBatLow 
+		&& nowResumeInterval > RESUME_UPDATE_TIMEwhenBATlow)
+	{
+		needDoResume = true; 
+	}
+	else if(balance_this->A66_capacity <= CapChangeRTCInterval 
+		&& nowResumeInterval > RESUME_UPDATE_TIMEwhenCapLess20)
+	{
+		needDoResume = true;                
+	}else if(nowResumeInterval > RESUME_UPDATE_TIME){
+		needDoResume = true;
+	}
+	printk("[BAT][SER]:ResumeCalCap()===:%ld,%ld,%ld,A66:%d\n"
+		,nowResumeTime,balance_this->savedTime,nowResumeInterval,balance_this->A66_capacity);
 
-    //ReportTime();
+	//ReportTime();
 
 //Eason resume always calculate capacity no matter if in   Pad or CableIn or BatLow+++
-   if(true==needDoResume)
-   {
-   	  //Eason set these flag when true==needDoResume+++
-         balance_this->IsResumeUpdate = true;
-         balance_this->IsResumeMahUpdate = true;
-         balance_this->P02_IsResumeUpdate = true;
-	  //Eason set these flag when true==needDoResume---	
-	
-        if(delayed_work_pending(&balance_this->BatteryServiceUpdateWorker))
-        {
-            cancel_delayed_work_sync(&balance_this->BatteryServiceUpdateWorker); 
-        }
-	 //Hank: need calculate capacity & temperature monitor+++
-	balance_this->NeedCalCap = true;
-	//Hank: need calculate capacity & temperature monitor--- 
-        printk("[Bat][SER]%s(): queue BatteryServiceUpdateWorker with calculate capacity\n",__func__);  
-        queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
-                               &balance_this->BatteryServiceUpdateWorker,\
-                               0 * HZ);
-    }
-   else{
-   	if(delayed_work_pending(&balance_this->BatteryServiceUpdateWorker))
+	if(true==needDoResume)
 	{
-	            cancel_delayed_work_sync(&balance_this->BatteryServiceUpdateWorker);           
-	 }
-	  //Hank: temperature monitor only+++
-	balance_this->NeedCalCap = false;
-	  //Hank: temperature monitor only---
-        pr_debug("[Bat][Ser]%s queue BatteryServiceUpdateWorker without calculate capacity\n",__func__);     
-   }
-   pr_debug("[BAT][SER]:resume queue---\n");
+		//Eason set these flag when true==needDoResume+++
+		balance_this->IsResumeUpdate = true;
+		balance_this->IsResumeMahUpdate = true;
+		balance_this->P02_IsResumeUpdate = true;
+		//Eason set these flag when true==needDoResume---	
+	
+		if(delayed_work_pending(&balance_this->BatteryServiceUpdateWorker))
+		{
+			cancel_delayed_work_sync(&balance_this->BatteryServiceUpdateWorker); 
+		}
+		//Hank: need calculate capacity & temperature monitor+++
+		balance_this->NeedCalCap = true;
+		//Hank: need calculate capacity & temperature monitor--- 
+		printk("[Bat][SER]%s(): queue BatteryServiceUpdateWorker with calculate capacity\n",__func__);  
+		queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
+							&balance_this->BatteryServiceUpdateWorker,\
+							0 * HZ);
+	}
+	else{
+		if(delayed_work_pending(&balance_this->BatteryServiceUpdateWorker))
+		{
+			cancel_delayed_work_sync(&balance_this->BatteryServiceUpdateWorker);           
+		}
+		//Hank: temperature monitor only+++
+		balance_this->NeedCalCap = false;
+		//Hank: temperature monitor only---
+		pr_debug("[Bat][Ser]%s queue BatteryServiceUpdateWorker without calculate capacity\n",__func__);     
+	}
+	pr_debug("[BAT][SER]:resume queue---\n");
 //Eason resume always calculate capacity no matter if in   Pad or CableIn or BatLow---		
 }
 
