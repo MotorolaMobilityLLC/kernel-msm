@@ -753,6 +753,10 @@
 	status = "disabled";
 };
 
+&i2c_6 {
+	status = "disabled";
+};
+
 &spi_0 {
 	spi-max-frequency = <8000000>;
 	pinctrl-0 = <&spi0_mot_default &spi0_cs0_active>;
