@@ -27,6 +27,11 @@
 #include "mdss_dsi.h"
 #include "mdss_panel.h"
 
+// ASUS_BSP +++ Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
+#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
+#include "mdss_asus_debug.h"
+#endif
+// ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
 #define VSYNC_PERIOD 17
 
 struct mdss_dsi_ctrl_pdata *ctrl_list[DSI_CTRL_MAX];
@@ -688,6 +693,7 @@ static int mdss_dsi_cmds2buf_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct dsi_cmd_desc *cm;
 	struct dsi_ctrl_hdr *dchdr;
 	int len, wait, tot = 0;
+	int idx=0;
 
 	tp = &ctrl->tx_buf;
 	mdss_dsi_buf_init(tp);
@@ -696,6 +702,13 @@ static int mdss_dsi_cmds2buf_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	while (cnt--) {
 		dchdr = &cm->dchdr;
 		mdss_dsi_buf_reserve(tp, len);
+		printk("======== mipi command========\n");
+		printk("type 0x%x\n",cm->dchdr.dtype);
+		printk("dlen 0x%x\n",cm->dchdr.dlen);
+		for(idx=0; idx<cm->dchdr.dlen ;idx++){
+		printk("0x%x\n",*(cm->payload+idx));
+		}
+		printk("================\n");
 		len = mdss_dsi_cmd_dma_add(tp, cm);
 		if (!len) {
 			pr_err("%s: failed to add cmd = 0x%x\n",
@@ -1026,6 +1039,11 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	len = ALIGN(tp->len, 4);
 	size = ALIGN(tp->len, SZ_4K);
 
+// ASUS_BSP +++ Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
+#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
+	notify_amdu_dsi_cmd_dma_tx(tp);
+#endif
+// ASUS_BSP --- Tingyi "[8226][MDSS] ASUS MDSS DEBUG UTILITY (AMDU) support."
 
 	if (is_mdss_iommu_attached()) {
 		int ret = msm_iommu_map_contig_buffer(tp->dmap,
