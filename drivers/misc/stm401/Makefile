@@ -6,4 +6,5 @@ stm401-objs := stm401_core.o \
 		stm401_reset.o \
 		stm401_wake_irq.o \
 		stm401_display.o
+obj-$(CONFIG_MMI_HALL_NOTIFICATIONS) += stm401_mmi_notifications.o
 obj-$(CONFIG_SENSORS_STM401) += stm401.o
