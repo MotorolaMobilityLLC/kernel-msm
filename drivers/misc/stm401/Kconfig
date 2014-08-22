@@ -5,3 +5,10 @@ config SENSORS_STM401
         help
           Say yes here if you wish to include the STM
           STM401 Sensor processor driver.
+
+config MMI_HALL_NOTIFICATIONS
+        bool "Enable hall effect sensor notifier"
+        default n
+        depends on SENSORS_STM401
+        help
+          Support for hall effect sensor notifications.

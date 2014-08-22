@@ -1127,6 +1127,8 @@ static int stm401_probe(struct i2c_client *client,
 
 	mutex_unlock(&ps_stm401->lock);
 
+	ps_stm401->hall_data = mmi_hall_init();
+
 	dev_info(&client->dev, "probed finished\n");
 
 	return 0;
