@@ -485,6 +485,9 @@ struct stm_response {
 #define STML0XX_LED_HALF_BRIGHTNESS 0x007F7F7F
 #define STML0XX_LED_OFF 0x00000000
 
+#define RESET_ALLOWED 1
+#define RESET_NOT_ALLOWED 0
+
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
 #define STM16_TO_HOST(x) ((short) be16_to_cpu( \
@@ -629,8 +632,14 @@ int stml0xx_spi_write(unsigned char *buf, int len);
 int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len);
 int stml0xx_spi_send_write_reg(unsigned char reg_type,
 			       unsigned char *reg_data, int reg_data_size);
+int stml0xx_spi_send_write_reg_reset(unsigned char reg_type,
+			       unsigned char *reg_data, int reg_data_size,
+			       uint8_t reset_allowed);
 int stml0xx_spi_send_read_reg(unsigned char reg_type,
 			      unsigned char *reg_data, int reg_data_size);
+int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
+			      unsigned char *reg_data, int reg_data_size,
+			      uint8_t reset_allowed);
 void stml0xx_spi_swap_bytes(unsigned char *data, int size);
 unsigned short stml0xx_spi_calculate_crc(unsigned char *data, int len);
 void stml0xx_spi_append_crc(unsigned char *data, int len);
@@ -653,6 +662,7 @@ int switch_stml0xx_mode(enum stm_mode mode);
 int stml0xx_bootloadermode(struct stml0xx_data *ps_stml0xx);
 
 int stml0xx_led_set(struct led_classdev *led_cdev);
+int stml0xx_led_set_reset(struct led_classdev *led_cdev, uint8_t allow_reset);
 void stml0xx_brightness_set(struct led_classdev *led_cdev,
 	enum led_brightness value);
 enum led_brightness stml0xx_brightness_get(struct led_classdev *led_cdev);

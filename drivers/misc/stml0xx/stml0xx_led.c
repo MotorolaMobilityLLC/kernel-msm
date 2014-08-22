@@ -25,6 +25,11 @@
 
 int stml0xx_led_set(struct led_classdev *led_cdev)
 {
+	return stml0xx_led_set_reset(led_cdev, RESET_ALLOWED);
+}
+
+int stml0xx_led_set_reset(struct led_classdev *led_cdev, uint8_t allow_reset)
+{
 	unsigned char buf[SPI_MSG_SIZE];
 	int err;
 
@@ -43,7 +48,8 @@ int stml0xx_led_set(struct led_classdev *led_cdev)
 	buf[10] = (led_cdev->blink_delay_off >> 8) & 0xFF;
 	buf[11] = led_cdev->blink_delay_off & 0xFF;
 
-	err = stml0xx_spi_send_write_reg(LED_NOTIF_CONTROL, buf, 12);
+	err = stml0xx_spi_send_write_reg_reset(LED_NOTIF_CONTROL, buf, 12,
+		allow_reset);
 	if (err < 0)
 		return err;
 
