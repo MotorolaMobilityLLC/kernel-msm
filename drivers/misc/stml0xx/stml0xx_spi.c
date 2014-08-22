@@ -467,6 +467,14 @@ EXIT:
 int stml0xx_spi_send_write_reg(unsigned char reg_type,
 			       unsigned char *reg_data, int reg_size)
 {
+	return stml0xx_spi_send_write_reg_reset(reg_type, reg_data,
+	    reg_size, RESET_ALLOWED);
+}
+
+int stml0xx_spi_send_write_reg_reset(unsigned char reg_type,
+			       unsigned char *reg_data, int reg_size,
+			       uint8_t reset_allowed)
+{
 	int tries;
 	int reset_retries;
 	int ret = -EIO;
@@ -489,16 +497,19 @@ int stml0xx_spi_send_write_reg(unsigned char reg_type,
 		}
 
 		if (ret < 0) {
-			stml0xx_reset_and_init();
 			dev_err(&stml0xx_misc_data->spi->dev,
-				"stml0xx_spi_send_write_reg SPI transfer error [%d], retries left [%d]",
+				"stml0xx_spi_send_write_reg_reset SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
+			if (reset_allowed)
+				stml0xx_reset_and_init();
+			else
+				break;
 		}
 	}
 
 	if (reset_retries == RESET_RETRIES) {
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_send_write_reg spi failure");
+			"stml0xx_spi_send_write_reg_reset spi failure");
 	}
 
 	return ret;
@@ -574,6 +585,14 @@ EXIT:
 int stml0xx_spi_send_read_reg(unsigned char reg_type,
 			      unsigned char *reg_data, int reg_size)
 {
+	return stml0xx_spi_send_read_reg_reset(reg_type, reg_data,
+	    reg_size, RESET_ALLOWED);
+}
+
+int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
+			      unsigned char *reg_data, int reg_size,
+			      uint8_t reset_allowed)
+{
 	int tries;
 	int reset_retries;
 	int ret = -EIO;
@@ -597,16 +616,19 @@ int stml0xx_spi_send_read_reg(unsigned char reg_type,
 		}
 
 		if (ret < 0) {
-			stml0xx_reset_and_init();
 			dev_err(&stml0xx_misc_data->spi->dev,
-				"stml0xx_spi_send_read_reg SPI transfer error [%d], retries left [%d]",
+				"stml0xx_spi_send_read_reg_reset SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
+			if (reset_allowed)
+				stml0xx_reset_and_init();
+			else
+				break;
 		}
 	}
 
 	if (reset_retries == RESET_RETRIES) {
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_send_read_reg spi failure");
+			"stml0xx_spi_send_read_reg_reset spi failure");
 	}
 
 	return ret;
