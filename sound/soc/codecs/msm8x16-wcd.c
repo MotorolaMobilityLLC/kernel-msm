@@ -5191,14 +5191,17 @@ static int msm8x16_wcd_device_down(struct snd_soc_codec *codec)
 
 static int msm8x16_wcd_device_up(struct snd_soc_codec *codec)
 {
+#ifndef CONFIG_SND_SOC_FSA8500
 	struct msm8x16_wcd_priv *msm8x16_wcd_priv =
 		snd_soc_codec_get_drvdata(codec);
-	int ret = 0;
+#endif
 	dev_dbg(codec->dev, "%s: device up!\n", __func__);
 
 	mutex_lock(&codec->mutex);
 
+#ifndef CONFIG_SND_SOC_FSA8500
 	clear_bit(BUS_DOWN, &msm8x16_wcd_priv->status_mask);
+#endif
 	snd_soc_card_change_online_state(codec->card, 1);
 	/* delay is required to make sure sound card state updated */
 	usleep_range(5000, 5100);
@@ -5224,6 +5227,7 @@ static int msm8x16_wcd_device_up(struct snd_soc_codec *codec)
 		msm8x16_wcd_bypass_on(codec);
 
 	msm8x16_wcd_configure_cap(codec, false, false);
+#ifndef CONFIG_SND_SOC_FSA8500
 	wcd_mbhc_stop(&msm8x16_wcd_priv->mbhc);
 	wcd_mbhc_deinit(&msm8x16_wcd_priv->mbhc);
 	ret = wcd_mbhc_init(&msm8x16_wcd_priv->mbhc, codec, &mbhc_cb, &intr_ids,
@@ -5234,6 +5238,7 @@ static int msm8x16_wcd_device_up(struct snd_soc_codec *codec)
 	else
 	wcd_mbhc_start(&msm8x16_wcd_priv->mbhc,
 			msm8x16_wcd_priv->mbhc.mbhc_cfg);
+#endif
 
 	mutex_unlock(&codec->mutex);
 
