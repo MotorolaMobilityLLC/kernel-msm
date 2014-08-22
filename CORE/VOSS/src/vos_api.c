@@ -70,6 +70,8 @@
 #include <linux/vmalloc.h>
 #include "wlan_hdd_cfg80211.h"
 
+#include <linux/wcnss_wlan.h>
+
 #include "sapApi.h"
 #include "vos_trace.h"
 
@@ -2195,4 +2197,11 @@ v_VOID_t vos_fwDumpReq(tANI_U32 cmd, tANI_U32 arg1, tANI_U32 arg2,
                         tANI_U32 arg3, tANI_U32 arg4)
 {
    WDA_HALDumpCmdReq(NULL, cmd, arg1, arg2, arg3, arg4, NULL);
+}
+
+v_U64_t vos_get_monotonic_boottime(void)
+{
+    struct timespec ts;
+    wcnss_get_monotonic_boottime(&ts);
+    return (((v_U64_t)ts.tv_sec * 1000000) + (ts.tv_nsec / 1000));
 }
