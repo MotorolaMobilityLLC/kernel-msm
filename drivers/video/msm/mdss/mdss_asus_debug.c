@@ -454,8 +454,8 @@ int create_amdu_debugfs(struct dentry *parent)
 		printk("[AMDU] debugfs_create_file: cmd fail !!\n");
 		return -EINVAL;
 	}
-printk("[AMDU] debugfs_create_file: cmd success !!\n");
-	mdss_debug_watch_dog_init();
+
+	//mdss_debug_watch_dog_init();
 
 	return 0;
 }

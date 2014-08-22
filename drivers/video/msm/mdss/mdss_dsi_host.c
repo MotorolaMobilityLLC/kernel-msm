@@ -693,7 +693,6 @@ static int mdss_dsi_cmds2buf_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct dsi_cmd_desc *cm;
 	struct dsi_ctrl_hdr *dchdr;
 	int len, wait, tot = 0;
-	int idx=0;
 
 	tp = &ctrl->tx_buf;
 	mdss_dsi_buf_init(tp);
@@ -702,13 +701,6 @@ static int mdss_dsi_cmds2buf_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	while (cnt--) {
 		dchdr = &cm->dchdr;
 		mdss_dsi_buf_reserve(tp, len);
-		printk("======== mipi command========\n");
-		printk("type 0x%x\n",cm->dchdr.dtype);
-		printk("dlen 0x%x\n",cm->dchdr.dlen);
-		for(idx=0; idx<cm->dchdr.dlen ;idx++){
-		printk("0x%x\n",*(cm->payload+idx));
-		}
-		printk("================\n");
 		len = mdss_dsi_cmd_dma_add(tp, cm);
 		if (!len) {
 			pr_err("%s: failed to add cmd = 0x%x\n",
