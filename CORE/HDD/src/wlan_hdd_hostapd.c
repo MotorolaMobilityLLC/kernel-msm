@@ -1244,6 +1244,13 @@ void hdd_hostapd_update_unsafe_channel_list(hdd_context_t *pHddCtx,
    }
    else
    {
+      if (unsafeChannelCount > NUM_20MHZ_RF_CHANNELS)
+      {
+          VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                    FL("unsafeChannelCount%hd greater than %d"),
+                        unsafeChannelCount, NUM_20MHZ_RF_CHANNELS);
+          unsafeChannelCount = NUM_20MHZ_RF_CHANNELS;
+      }
       vos_mem_copy((void *)pHddCtx->unsafeChannelList,
                    unsafeChannelList,
                    unsafeChannelCount * sizeof(tANI_U16));
@@ -1387,12 +1394,19 @@ void hdd_hostapd_ch_avoid_cb
          }
          if (dupCheck == unsafeChannelCount)
          {
-            unsafeChannelList[unsafeChannelCount] = channelLoop;
-            unsafeChannelCount++;
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                      "%s : unsafe channel %d, count %d",
-                      __func__,
-                      channelLoop, unsafeChannelCount);
+             int ii;
+             for(ii=0; ii<NUM_20MHZ_RF_CHANNELS; ii++)
+             {
+                 if (channelLoop == safeChannels[ii].channelNumber)
+                 {
+                     unsafeChannelList[unsafeChannelCount] = channelLoop;
+                     unsafeChannelCount++;
+                     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                           "%s : unsafe channel %d, count %d",
+                           __func__,
+                           channelLoop, unsafeChannelCount);
+                 }
+             }
          }
          else
          {
