@@ -1949,7 +1949,7 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
      {
          if (pMac->roam.configParam.disableAggWithBtc)
          {
-             ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC, 1,
+             ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC, 1,
                              NULL, eANI_BOOLEAN_FALSE);
              pMac->btc.btcBssfordisableaggr[0] = pSmeCoexInd->coexIndData[0] & 0xFF;
              pMac->btc.btcBssfordisableaggr[1] = pSmeCoexInd->coexIndData[0] >> 8;
@@ -1967,7 +1967,7 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
      {
          if (pMac->roam.configParam.disableAggWithBtc)
          {
-             ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC, 0,
+             ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC, 0,
                              NULL, eANI_BOOLEAN_FALSE);
              smsLog(pMac, LOGW,
              "Coex indication in %s(), type - SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4",

@@ -3466,7 +3466,7 @@ LIM
 * Delete all Rx BA sessions in 2.4 GHz
 * when BTC requests to disable agg.
 *
-WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC I    4    7
+WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC I    4    7
 V    RW    NP
 LIM
 0    1    0

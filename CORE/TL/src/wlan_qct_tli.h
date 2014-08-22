@@ -271,6 +271,9 @@ typedef enum
   /* Serialized Snapshot request indication */
   WLANTL_TX_SNAPSHOT = 6,
 
+  /* Detected a fatal error issue SSR */
+  WLANTL_TX_FATAL_ERROR = 7,
+
   WLANTL_TX_MAX
 }WLANTL_TxSignalsType;
 

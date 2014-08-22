@@ -595,13 +595,13 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         pMac->lim.gLimAssocStaLimit = (tANI_U16)val1;
         break;
 
-    case WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC:
+    case WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC:
         if (wlan_cfgGetInt
-           (pMac, WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC, &val1) !=
+           (pMac, WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC, &val1) !=
                  eSIR_SUCCESS)
         {
             limLog(pMac, LOGE,
-                 FL( "Unable to get WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC"));
+                 FL( "Unable to get WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC"));
             break;
         }
         if (val1)
@@ -613,7 +613,7 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         else
         {
             limLog(pMac, LOGW,
-                FL("Resetting the WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC"));
+                FL("Resetting the WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC"));
         }
         break;
 

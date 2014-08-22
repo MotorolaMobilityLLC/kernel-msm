@@ -5728,7 +5728,7 @@ void limDelPerBssBASessionsBtc(tpAniSirGlobal pMac)
     {
         PELOGW(limLog(pMac, LOGW,
         "Deleting the BA for session %d as host got BTC event", sessionId);)
-        limDeleteBASessions(pMac, pSessionEntry, BA_RECIPIENT,
+        limDeleteBASessions(pMac, pSessionEntry, BA_BOTH_DIRECTIONS,
                             eSIR_MAC_PEER_TIMEDOUT_REASON);
     }
 }

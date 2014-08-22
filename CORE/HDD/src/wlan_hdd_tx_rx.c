@@ -959,7 +959,7 @@ void hdd_tx_timeout(struct net_device *dev)
        VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
                  "%s: Cannot recover from Data stall Issue SSR",
                    __func__);
-       subsystem_restart("wcnss");
+       WLANTL_FatalError();
        return;
    }
 
