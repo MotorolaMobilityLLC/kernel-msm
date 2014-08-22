@@ -155,9 +155,26 @@
 	qcom,platform-enable-gpio = <&msmgpio 108 0>;
 	vdd-supply = <&pm8226_l18>;
 	qcom,platform-supply-entry1 {
-		qcom,supply-name = "vdd";
-		qcom,supply-min-voltage = <3000000>;
-		qcom,supply-max-voltage = <3300000>;
+			qcom,supply-name = "vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <20>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <20>;
+			qcom,supply-post-off-sleep = <0>;
+	};
+	qcom,platform-supply-entry2 {
+			qcom,supply-name = "vdd";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3300000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <20>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <200>;
 	};
 };
 
