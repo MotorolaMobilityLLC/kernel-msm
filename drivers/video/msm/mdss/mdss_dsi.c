@@ -798,7 +798,7 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 		ctrl_pdata->ctrl_state |= CTRL_STATE_PANEL_INIT;
 
 		if (ctrl_pdata->ambient_off_queued){
-			pr_debug("MDSS:AMB:mdss_dsi_unblank:exec mdss_dsi_panel_ambient_enable due to ambient_off_queued!\n");
+			printk("MDSS:AMB:mdss_dsi_unblank:exec mdss_dsi_panel_ambient_enable due to ambient_off_queued!\n");
 			mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 0);
 			ctrl_pdata->ambient_off_queued = false;
 		}
@@ -1070,11 +1070,11 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 
 		if (ctrl_pdata->ambient_on_queued){
 			cancel_delayed_work_sync(&ctrl_pdata->ambient_enable_work);
-			pr_debug("MDSS:AMB:MDSS_EVENT_BLANK:flush mdss_dsi_panel_ambient_enable() due to ambient_on_queued\n");
+			printk("MDSS:AMB:MDSS_EVENT_BLANK:flush mdss_dsi_panel_ambient_enable() due to ambient_on_queued\n");
 			mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
 			ctrl_pdata->ambient_on_queued = false;
 		}else{
-			pr_debug("MDSS:AMB:MDSS_EVENT_BLANK:ambient_enable_work not queued..\n");
+			printk("MDSS:AMB:MDSS_EVENT_BLANK:ambient_enable_work not queued..\n");
 		}
 
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
@@ -1120,19 +1120,19 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		rc = mdss_dsi_ulps_config(ctrl_pdata, (int)arg);
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_ON:
-		pr_debug("MDSS:AMB:schedule ambient_enable_work due to MDSS_EVENT_AMBIENT_MODE_ON\n");
+		printk("MDSS:AMB:schedule ambient_enable_work due to MDSS_EVENT_AMBIENT_MODE_ON\n");
 		schedule_delayed_work(&ctrl_pdata->ambient_enable_work ,msecs_to_jiffies(1000));
 		ctrl_pdata->ambient_on_queued = true;
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_OFF:
 		if (ctrl_pdata->ambient_on_queued){
-			pr_debug("MDSS:AMB:cancel ambient_enable_work due to MDSS_EVENT_AMBIENT_MODE_OFF\n");
+			printk("MDSS:AMB:cancel ambient_enable_work due to MDSS_EVENT_AMBIENT_MODE_OFF\n");
 			cancel_delayed_work_sync(&ctrl_pdata->ambient_enable_work);
 			ctrl_pdata->ambient_on_queued = false;
 		}
 		if (is_ambient_on()){
 			if (-EBUSY == mdss_dsi_panel_ambient_enable(pdata, 0)){
-				pr_debug("MDSS:AMB:MDSS_EVENT_AMBIENT_MODE_OFF:set ambient_off_queued = true for EBUSY = mdss_dsi_panel_ambient_enable()\n");
+				printk("MDSS:AMB:MDSS_EVENT_AMBIENT_MODE_OFF:set ambient_off_queued = true for EBUSY = mdss_dsi_panel_ambient_enable()\n");
 				ctrl_pdata->ambient_off_queued = true;
 			}
 		}
