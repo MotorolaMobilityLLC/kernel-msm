@@ -5131,6 +5131,20 @@ void limUpdateStaRunTimeHTSwitchChnlParams( tpAniSirGlobal   pMac,
         return;
     }
 
+    /*
+     * Do not try to switch channel if RoC is in progress. RoC code path uses
+     * pMac->lim.gpLimRemainOnChanReq to notify the upper layers that the device
+     * has started listening on the channel requested as part of RoC, if we set
+     * pMac->lim.gpLimRemainOnChanReq to NULL as we do below then the
+     * upper layers will think that the channel change is not successful and the
+     * RoC from the upper layer perspective will never end...
+     */
+    if (pMac->lim.gpLimRemainOnChanReq)
+    {
+        limLog( pMac, LOGE, FL( "RoC is in progress"));
+        return;
+    }
+
     if ( psessionEntry->htSecondaryChannelOffset != ( tANI_U8 ) pHTInfo->secondaryChannelOffset ||
          psessionEntry->htRecommendedTxWidthSet  != ( tANI_U8 ) pHTInfo->recommendedTxWidthSet )
     {
