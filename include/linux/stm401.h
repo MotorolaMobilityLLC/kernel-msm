@@ -19,6 +19,8 @@
 #ifndef __STM401_H__
 #define __STM401_H__
 
+#include <mach/mmi_hall_notifier.h>
+
 /** The following define the IOCTL command values via the ioctl macros */
 #define STM401_IOCTL_BASE		77
 #define STM401_IOCTL_BOOTLOADERMODE	\
@@ -634,6 +636,7 @@ struct stm401_data {
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
 #endif
+	struct mmi_hall_data *hall_data;
 };
 
 /* per algo config, request, and event registers */
