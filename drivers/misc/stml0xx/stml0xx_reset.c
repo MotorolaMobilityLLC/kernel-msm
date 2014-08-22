@@ -78,7 +78,8 @@ int stml0xx_reset_and_init(void)
 	stml0xx_wake(stml0xx_misc_data);
 
 	buf[0] = stml0xx_g_acc_delay;
-	err = stml0xx_spi_send_write_reg(ACCEL_UPDATE_RATE, buf, 1);
+	err = stml0xx_spi_send_write_reg_reset(ACCEL_UPDATE_RATE, buf,
+			1, RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err = err;
 
@@ -92,29 +93,34 @@ int stml0xx_reset_and_init(void)
 	buf[0] = stml0xx_g_nonwake_sensor_state & 0xFF;
 	buf[1] = (stml0xx_g_nonwake_sensor_state >> 8) & 0xFF;
 	buf[2] = stml0xx_g_nonwake_sensor_state >> 16;
-	err = stml0xx_spi_send_write_reg(NONWAKESENSOR_CONFIG, buf, 3);
+	err = stml0xx_spi_send_write_reg_reset(NONWAKESENSOR_CONFIG, buf,
+			3, RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err = err;
 
 	buf[0] = stml0xx_g_wake_sensor_state & 0xFF;
 	buf[1] = stml0xx_g_wake_sensor_state >> 8;
-	err = stml0xx_spi_send_write_reg(WAKESENSOR_CONFIG, buf, 2);
+	err = stml0xx_spi_send_write_reg_reset(WAKESENSOR_CONFIG, buf,
+			2, RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err = err;
 
 	buf[0] = stml0xx_g_algo_state & 0xFF;
 	buf[1] = stml0xx_g_algo_state >> 8;
-	err = stml0xx_spi_send_write_reg(ALGO_CONFIG, buf, 2);
+	err = stml0xx_spi_send_write_reg_reset(ALGO_CONFIG, buf, 2,
+			RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err = err;
 
 	buf[0] = stml0xx_g_motion_dur;
-	err = stml0xx_spi_send_write_reg(MOTION_DUR, buf, 1);
+	err = stml0xx_spi_send_write_reg_reset(MOTION_DUR, buf,
+			1, RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err = err;
 
 	buf[0] = stml0xx_g_zmotion_dur;
-	err = stml0xx_spi_send_write_reg(ZRMOTION_DUR, buf, 1);
+	err = stml0xx_spi_send_write_reg_reset(ZRMOTION_DUR, buf,
+			1, RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err = err;
 
@@ -124,16 +130,20 @@ int stml0xx_reset_and_init(void)
 			       stml0xx_g_algo_requst[i].data,
 			       stml0xx_g_algo_requst[i].size);
 			err =
-			    stml0xx_spi_send_write_reg(stml0xx_algo_info
+			    stml0xx_spi_send_write_reg_reset(
+						       stml0xx_algo_info
 						       [i].req_register, buf,
 						       stml0xx_g_algo_requst
-						       [i].size);
+						       [i].size,
+						       RESET_NOT_ALLOWED);
 			if (err < 0)
 				ret_err = err;
 		}
 	}
-	err = stml0xx_spi_send_read_reg(INTERRUPT_STATUS, buf, 3);
-	err = stml0xx_spi_send_read_reg(WAKESENSOR_STATUS, buf, 2);
+	err = stml0xx_spi_send_read_reg_reset(INTERRUPT_STATUS, buf,
+			3, RESET_NOT_ALLOWED);
+	err = stml0xx_spi_send_read_reg_reset(WAKESENSOR_STATUS, buf,
+			2, RESET_NOT_ALLOWED);
 
 	buf[0] = (pdata->ct406_detect_threshold >> 8) & 0xff;
 	buf[1] = pdata->ct406_detect_threshold & 0xff;
@@ -142,14 +152,16 @@ int stml0xx_reset_and_init(void)
 	buf[4] = (pdata->ct406_recalibrate_threshold >> 8) & 0xff;
 	buf[5] = pdata->ct406_recalibrate_threshold & 0xff;
 	buf[6] = pdata->ct406_pulse_count & 0xff;
-	err = stml0xx_spi_send_write_reg(PROX_SETTINGS, buf, 7);
+	err = stml0xx_spi_send_write_reg_reset(PROX_SETTINGS, buf,
+			7, RESET_NOT_ALLOWED);
 	if (err < 0) {
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"unable to write proximity settings %d", err);
 		ret_err = err;
 	}
 
-	err = stml0xx_led_set(&stml0xx_misc_data->led_cdev);
+	err = stml0xx_led_set_reset(&stml0xx_misc_data->led_cdev,
+			RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err =  err;
 
