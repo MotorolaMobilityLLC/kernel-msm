@@ -74,14 +74,12 @@
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-idle-on-command = [
 					39 00 00 00 00 00 03 51 00 00 /*DBV Setting*/
-					15 00 00 00 00 00 02 B0 AC /*MCS Access Code*/
 					39 00 00 00 00 00 18 DB
-					00 A9 80 93 FF 11
+					00 A9 30 93 FF 11
 					1C 34 43 2F 84 85
 					40 65 27 28 12 12
 					12 00 00 29 10 /*40nit_60hz*/
-					05 00 00 00 00 00 01 39 /*Idle Mode On*/
-					05 01 00 00 40 00 01 29 /*Display On*/
+					05 01 00 00 80 00 01 39 /*Idle Mode On*/
 					39 01 00 00 00 00 18 DB
 					01 A9 80 93 FF 11
 					1C 34 43 2F 84 85
@@ -90,9 +88,9 @@
 					];
 		qcom,mdss-dsi-idle-on-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-idle-off-command = [
-					15 00 00 00 00 00 02 B0 AC /*MCS Access Code*/
-					39 00 00 00 00 00 03 51 60 00 /*DBV Setting(40nit)*/
 					05 01 00 00 00 00 01 38 /*Idle Mode Off*/
+					39 01 00 00 00 00 03 51 00 00
+					39 01 00 00 00 00 03 51 0A 00 /*DBV Setting*/
 					];
 		qcom,mdss-dsi-idle-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-idle-fps = <30>;
