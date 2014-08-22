@@ -222,6 +222,9 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		if (state > 0)
 			state = 1;
 
+		/* notify subscribers of cover state change */
+		mmi_hall_notify(MMI_HALL_FOLIO, state);
+
 		input_report_switch(ps_stm401->input_dev, SW_LID, state);
 		input_sync(ps_stm401->input_dev);
 
