@@ -417,6 +417,8 @@ static int max17042_get_property(struct power_supply *psy,
 			return ret;
 
 		ret >>= 8;
+		if (ret > 100)
+			ret = 100;
 
 		if (ret == 0 &&
 			chip->pdata->batt_undervoltage_zero_soc) {
