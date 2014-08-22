@@ -707,9 +707,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	} else
 		dison_recovery = 0;
 
+	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
-	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 	return 0;
 }
 
