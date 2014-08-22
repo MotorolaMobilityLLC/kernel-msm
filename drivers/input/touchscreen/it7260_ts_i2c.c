@@ -77,6 +77,7 @@ static atomic_t touch_point_num;
 static int FW_manual_upgrade = 0; 
 static int palm_first_down = 0;
 static int palm_second_down = 0;
+static int palm_after = 0;
 static atomic_t palmpalm_flag;
 static atomic_t wait_second_palm;
 static atomic_t palm_num;
@@ -1978,7 +1979,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 					if (!palm_flag){
 						if (jiffies - last_time_shot_power > 50){
 							last_time_shot_power = jiffies;
-							queue_delayed_work(IT7260_wq, &ts->palm_work, 50);	
+							queue_delayed_work(IT7260_wq, &ts->palm_work, 25);	
 							printk ("[IT7260] Ready to PALM.....\n");	
 							atomic_set(&wait_second_palm, 0);		
 						}
@@ -2002,6 +2003,8 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 							}
 					}
 					}
+					palm_after = jiffies;
+					
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
 					//pr_info("pucPoint 1 is 0x01, it's a palm\n");
@@ -2022,11 +2025,13 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 					if (!atomic_read(&wait_second_palm)){
 						if (atomic_read(&palm_num) < 20)
 						{
+							if (jiffies - palm_second_down > 50){
 							palm_first_down = jiffies;
 							printk ("\n[IT7260] palm_first_down \n\n");
 							atomic_set(&wait_second_palm, 1);
 							if (jiffies - palm_second_down > 50){
 								atomic_set(&palmpalm_flag, 0);
+							}
 							}
 						}
 					}
@@ -2048,6 +2053,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 
 					pressure_point = pucPoint[5] & 0x0f;
 					
+					if (jiffies - palm_after > 50){
 					if (atomic_read(&touch_point_num) == 0){
 						printk("[IT7260]Touch Down x=%d y=%d\n",xraw,yraw);
 						atomic_set(&touch_point_num, atomic_read(&touch_point_num)+1);
@@ -2058,11 +2064,13 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 					else {
 						atomic_set(&touch_point_num, atomic_read(&touch_point_num)+1);
 					}
+					}
 					
 					input_report_abs(ts->input_dev, ABS_X, xraw);
 					input_report_abs(ts->input_dev, ABS_Y, yraw);
 					input_report_key(ts->input_dev, BTN_TOUCH,1);
-					if (atomic_read(&palm_num) == 0){
+					
+					if (jiffies - palm_after > 50){
 					input_sync(ts->input_dev);
 					}
 					x[0] = xraw;
@@ -2134,7 +2142,7 @@ static irqreturn_t IT7260_ts_irq_handler(int irq, void *dev_id) {
 	if (atomic_read(&Suspend_flag))
 	{
 		disable_irq_nosync(gl_ts->client->irq);
-		queue_work(IT7260_wq, &ts->resume_work);			
+		queue_work(IT7260_wq, &ts->resume_work);
 	}
 	else 
 	{
