@@ -17,6 +17,8 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	mot_boe_450_qhd_vid_v2: qcom,mdss_dsi_mot_boe_450_qhd_video_v2 {
+		qcom,panel-esd-power-mode-chk = <0x9C>;
+
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_boe_qhd_450_v2";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
@@ -103,6 +105,8 @@
 	};
 
 	mot_boe_450_qhd_vid_v1: qcom,mdss_dsi_mot_boe_450_qhd_video_v1 {
+		qcom,panel-esd-power-mode-chk = <0x9C>;
+
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_boe_qhd_450_v1";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
@@ -188,6 +192,8 @@
 	};
 
 	mot_boe_450_qhd_vid_v0: qcom,mdss_dsi_mot_boe_450_qhd_video_v0 {
+		qcom,panel-esd-power-mode-chk = <0x9C>;
+
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_boe_qhd_450_v0";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
