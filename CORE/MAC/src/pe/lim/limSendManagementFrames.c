@@ -3003,6 +3003,9 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     }
 
 
+    // Enable TL cahching in case of roaming
+    WLANTL_EnableCaching(psessionEntry->staId);
+
     MTRACE(macTrace(pMac, TRACE_CODE_TX_MGMT,
            psessionEntry->peSessionId,
            pMacHdr->fc.subType));
