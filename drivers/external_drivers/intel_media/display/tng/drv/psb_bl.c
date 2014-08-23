@@ -129,6 +129,7 @@ const struct backlight_ops psb_ops = {
 	.update_status = psb_set_brightness,
 };
 
+#ifdef CONFIG_BACKLIGHT_CLASS_DEVICE
 static int device_backlight_init(struct drm_device *dev)
 {
 	struct drm_psb_private *dev_priv =
@@ -139,6 +140,7 @@ static int device_backlight_init(struct drm_device *dev)
 
 	return 0;
 }
+#endif
 
 int psb_backlight_init(struct drm_device *dev)
 {

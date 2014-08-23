@@ -2425,12 +2425,14 @@ static int psb_dpst_bl_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_psb_private *dev_priv = psb_priv(dev);
 	uint32_t *arg = data;
-	struct backlight_device bd;
 	dev_priv->blc_adj2 = *arg;
 
 #ifdef CONFIG_BACKLIGHT_CLASS_DEVICE
-	bd.props.brightness = psb_get_brightness(&bd);
-	psb_set_brightness(&bd);
+	{
+		struct backlight_device bd;
+		bd.props.brightness = psb_get_brightness(&bd);
+		psb_set_brightness(&bd);
+	}
 #endif
 	return 0;
 }
@@ -2441,12 +2443,14 @@ static int psb_adb_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_psb_private *dev_priv = psb_priv(dev);
 	uint32_t *arg = data;
-	struct backlight_device bd;
 	dev_priv->blc_adj1 = *arg;
 
 #ifdef CONFIG_BACKLIGHT_CLASS_DEVICE
-	bd.props.brightness = psb_get_brightness(&bd);
-	psb_set_brightness(&bd);
+	{
+		struct backlight_device bd;
+		bd.props.brightness = psb_get_brightness(&bd);
+		psb_set_brightness(&bd);
+	}
 #endif
 	return 0;
 }

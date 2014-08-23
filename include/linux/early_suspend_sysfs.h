@@ -17,6 +17,7 @@
 #define EARLY_SUSPEND_ON  "1"
 #define EARLY_SUSPEND_OFF "0"
 
+struct device;
 int register_early_suspend_device(struct device *dev);
 void unregister_early_suspend_device(struct device *dev);
 #endif
