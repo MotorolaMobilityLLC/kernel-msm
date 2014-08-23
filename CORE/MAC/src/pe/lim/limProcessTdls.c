@@ -5318,6 +5318,37 @@ void limSendSmeTdlsLinkEstablishReqRsp(tpAniSirGlobal pMac,
 }
 
 /*
+ * Send Response to Chan Switch Request to SME
+ */
+void limSendSmeTdlsChanSwitchReqRsp(tpAniSirGlobal pMac,
+                    tANI_U8 sessionId, tSirMacAddr peerMac, tDphHashNode   *pStaDs,
+                    tANI_U8 status)
+{
+    tSirMsgQ  mmhMsg = {0} ;
+
+    tSirTdlsChanSwitchReqRsp *pTdlsChanSwitchReqRsp = NULL ;
+
+    pTdlsChanSwitchReqRsp = vos_mem_malloc(sizeof(tSirTdlsChanSwitchReqRsp));
+    if ( NULL == pTdlsChanSwitchReqRsp )
+    {
+        PELOGE(limLog(pMac, LOGE, FL("Failed to allocate memory"));)
+        return ;
+    }
+    pTdlsChanSwitchReqRsp->statusCode = status ;
+    if ( peerMac )
+    {
+        vos_mem_copy(pTdlsChanSwitchReqRsp->peerMac, peerMac, sizeof(tSirMacAddr));
+    }
+    pTdlsChanSwitchReqRsp->sessionId = sessionId;
+    mmhMsg.type = eWNI_SME_TDLS_CHANNEL_SWITCH_RSP ;
+    mmhMsg.bodyptr = pTdlsChanSwitchReqRsp;
+    mmhMsg.bodyval = 0;
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+    return ;
+
+
+}
+/*
  * Once link is teardown, send Del Peer Ind to SME
  */
 static eHalStatus limSendSmeTdlsDelStaRsp(tpAniSirGlobal pMac, 
@@ -5879,6 +5910,9 @@ tSirRetStatus limProcesSmeTdlsChanSwitchReq(tpAniSirGlobal pMac,
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
                   "PE Session does not exist for given sme sessionId %d",
                   pTdlsChanSwitch->sessionId);
+        limSendSmeTdlsChanSwitchReqRsp(pMac, pTdlsChanSwitch->sessionId,
+                                       pTdlsChanSwitch->peerMac,
+                                       NULL, eSIR_FAILURE) ;
         return eSIR_FAILURE;
     }
 
@@ -5963,6 +5997,9 @@ tSirRetStatus limProcesSmeTdlsChanSwitchReq(tpAniSirGlobal pMac,
     return eSIR_SUCCESS;
 
 lim_tdls_chan_switch_error:
+    limSendSmeTdlsChanSwitchReqRsp(pMac, pTdlsChanSwitch->sessionId,
+                                   pTdlsChanSwitch->peerMac,
+                                   NULL, eSIR_FAILURE);
     return eSIR_FAILURE;
 }
 

@@ -338,6 +338,7 @@ enum eWniMsgTypes
     eWNI_SME_TDLS_LINK_ESTABLISH_RSP,
 // tdlsoffchan
     eWNI_SME_TDLS_CHANNEL_SWITCH_REQ,
+    eWNI_SME_TDLS_CHANNEL_SWITCH_RSP,
 #endif
     //NOTE: If you are planning to add more mesages, please make sure that 
     //SIR_LIM_ITC_MSG_TYPES_BEGIN is moved appropriately. It is set as

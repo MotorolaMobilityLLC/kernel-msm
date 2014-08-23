@@ -1265,6 +1265,23 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             break;
         }
 
+        case eWNI_SME_TDLS_CHANNEL_SWITCH_RSP:
+        {
+#if 0
+            tSirTdlsChanSwitchReqRsp *ChanSwitchReqRsp = (tSirTdlsChanSwitchReqRsp *) pMsgBuf ;
+            tCsrRoamInfo roamInfo = {0} ;
+            vos_mem_copy(&roamInfo.peerMac, delStaRsp->peerMac,
+                                         sizeof(tSirMacAddr)) ;
+            roamInfo.staId = delStaRsp->staId ;
+            roamInfo.statusCode = delStaRsp->statusCode ;
+            csrRoamCallCallback(pMac, ChanSwitchReqRsp->sessionId, &roamInfo, 0,
+                                eCSR_ROAM_TDLS_STATUS_UPDATE,
+                                eCSR_ROAM_RESULT_LINK_ESTABLISH_REQ_RSP);
+#endif
+            /* remove pending eSmeCommandTdlsChanSwitch command */
+            csrTdlsRemoveSmeCmd(pMac, eSmeCommandTdlsChannelSwitch);
+            break;
+        }
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eWNI_SME_TDLS_DISCOVERY_START_RSP:
         {
