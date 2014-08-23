@@ -3342,62 +3342,27 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
    return VOS_STATUS_SUCCESS;
 }
 
-/* create_linux_regulatory_entry to populate internal structures from wiphy */
-static int create_linux_regulatory_entry(struct wiphy *wiphy,
-                struct regulatory_request *request,
-                v_U8_t nBandCapability)
+int vos_update_nv_table_from_wiphy_band(void *hdd_ctx,
+                      void *pwiphy,v_U8_t nBandCapability)
 {
-    int i, j, m;
-    int k = 0, n = 0;
+   int i, j, m;
+   int k = 0, n = 0;
+   const struct ieee80211_reg_rule *reg_rule;
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0))
-    int err;
+   int err;
 #endif
-    const struct ieee80211_reg_rule *reg_rule;
-    v_CONTEXT_t pVosContext = NULL;
-    hdd_context_t *pHddCtx = NULL;
+   hdd_context_t *pHddCtx = (hdd_context_t *)hdd_ctx;
+   struct wiphy *wiphy = (struct wiphy *)pwiphy;
 
-    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
-
-    if (NULL != pVosContext)
-    {
-        pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
-        if (NULL == pHddCtx)
-        {
-           VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                       ("Invalid pHddCtx pointer") );
-        }
-        else
-        {
-           pHddCtx->isVHT80Allowed = 0;
-        }
-    }
-    else
-    {
-       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                  ("Invalid pVosContext pointer") );
-    }
-
-    /* 20MHz channels */
-    if (nBandCapability == eCSR_BAND_24)
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                  "BandCapability is set to 2G only");
-
-    for (i = 0, m = 0; i<IEEE80211_NUM_BANDS; i++)
-    {
-        /* 5G only */
-        if (i == IEEE80211_BAND_2GHZ && nBandCapability == eCSR_BAND_5G)
-            continue;
-
-        /* 2G only */
-        else if (i == IEEE80211_BAND_5GHZ && nBandCapability == eCSR_BAND_24)
-            continue;
+   for (i = 0, m = 0; i<IEEE80211_NUM_BANDS; i++)
+   {
 
         if (wiphy->bands[i] == NULL)
         {
 
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                       "error: wiphy->bands is NULL, i = %d", i);
-            return -1;
+            continue;
         }
 
         /* internal channels[] is one continous array for both 2G and 5G bands
@@ -3410,6 +3375,11 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
 
         for (j = 0; j < wiphy->bands[i]->n_channels; j++)
         {
+             if (IEEE80211_BAND_2GHZ == i && eCSR_BAND_5G == nBandCapability)
+                  wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+             else if (IEEE80211_BAND_5GHZ == i && eCSR_BAND_24 == nBandCapability)
+                  wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+
             /* k = (m + j) is internal current channel index for 20MHz channel
               n is internal channel index for corresponding 40MHz channel */
 
@@ -3583,6 +3553,44 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
        return -1;
 
     return 0;
+}
+
+/* create_linux_regulatory_entry to populate internal structures from wiphy */
+static int create_linux_regulatory_entry(struct wiphy *wiphy,
+                struct regulatory_request *request,
+                v_U8_t nBandCapability)
+{
+    v_CONTEXT_t pVosContext = NULL;
+    hdd_context_t *pHddCtx = NULL;
+
+    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+
+    if (NULL != pVosContext)
+    {
+        pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
+        if (NULL == pHddCtx)
+        {
+           VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                       ("Invalid pHddCtx pointer") );
+        }
+        else
+        {
+           pHddCtx->isVHT80Allowed = 0;
+        }
+    }
+    else
+    {
+       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                  ("Invalid pVosContext pointer") );
+    }
+
+    /* 20MHz channels */
+    if (nBandCapability == eCSR_BAND_24)
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                  "BandCapability is set to 2G only");
+    return vos_update_nv_table_from_wiphy_band(pHddCtx, wiphy, nBandCapability);
+
+
 }
 
 /* function to tell about if Default country is Non-Zero */

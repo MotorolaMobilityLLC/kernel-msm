@@ -7584,7 +7584,8 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
      */
     if (pMac->roam.configParam.Is11dSupportEnabledOriginal == true)
     {
-        if ((!is11dCountry) && (!pMac->roam.configParam.fSupplicantCountryCodeHasPriority))
+        if ((!is11dCountry) && (!pMac->roam.configParam.fSupplicantCountryCodeHasPriority)&&
+                           (!pMac->roam.configParam.fEnforceCountryCode) )
         {
 
             smsLog( pMac, LOGW, FL(" incorrect country being set, nullify this request"));
@@ -7597,6 +7598,7 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
             return eHAL_STATUS_FAILURE;
         }
     }
+    pMac->roam.configParam.fEnforceCountryCode = eANI_BOOLEAN_FALSE;
     /* if Supplicant country code has priority, disable 11d */
     if (!is11dCountry && pMac->roam.configParam.fSupplicantCountryCodeHasPriority)
     {
