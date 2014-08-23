@@ -414,6 +414,8 @@ typedef enum
   WDI_EXTSCAN_BSSID_HOTLIST_RESULT_IND,
   WDI_EXTSCAN_SIGN_RSSI_RESULT_IND,
 #endif
+  /*Delete BA Ind*/
+  WDI_DEL_BA_IND,
 
   WDI_MAX_IND
 }WDI_LowLevelIndEnumType;
@@ -833,6 +835,26 @@ typedef struct
 }  WDI_LinkLayerStatsResults;
 
 #endif
+
+typedef struct
+{
+    /*STA Index*/
+    wpt_uint16    staIdx;
+
+    /*Peer MAC*/
+    wpt_macAddr   peerMacAddr;
+
+    // TID for which a BA session timeout is being triggered
+    wpt_uint8 baTID;
+       // DELBA direction
+       // 1 - Originator
+       // 0 - Recipient
+    wpt_uint8 baDirection;
+    wpt_uint32 reasonCode;
+    /*MAC ADDR of STA*/
+    wpt_macAddr  bssId;   // TO SUPPORT BT-AMP
+}  WDI_DeleteBAIndType;
+
 /*---------------------------------------------------------------------------
   WDI_LowLevelIndType
     Inidcation type and information about the indication being carried
@@ -910,6 +932,7 @@ typedef struct
     /*EXTSCAN Results from FW*/
     void *pEXTScanIndData;
 #endif
+    WDI_DeleteBAIndType         wdiDeleteBAInd;
   }  wdiIndicationData;
 }WDI_LowLevelIndType;
 

@@ -12244,7 +12244,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
                                 after the packet gets completed(packet freed once)*/
 
       /* TX MGMT fail with COMP timeout, try to detect DXE stall */
-      WDA_TransportChannelDebug(pMac, 1, WPAL_DEBUG_TX_DESC_RESYNC);
+      WDA_TransportChannelDebug(pMac, 1, 0);
 
       /*Tag Frame as timed out for later deletion*/
       vos_pkt_set_user_data_ptr( (vos_pkt_t *)pFrmBuf, VOS_PKT_USER_DATA_ID_WDA, 
@@ -13966,6 +13966,38 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
          break;
      }
 #endif /* WLAN_FEATURE_EXTSCAN */
+      case WDI_DEL_BA_IND:
+      {
+         tpBADeleteParams  pDelBAInd =
+           (tpBADeleteParams)vos_mem_malloc(sizeof(tpBADeleteParams));
+
+         VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                  "Received WDI_DEL_BA_IND from WDI ");
+         if(NULL == pDelBAInd)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                  "%s: VOS MEM Alloc Failure", __func__);
+            break;
+         }
+         vos_mem_copy(pDelBAInd->peerMacAddr,
+             wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.peerMacAddr,
+             sizeof(tSirMacAddr));
+         vos_mem_copy(pDelBAInd->bssId,
+             wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.bssId,
+             sizeof(tSirMacAddr));
+         pDelBAInd->staIdx  =
+          wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.staIdx;
+         pDelBAInd->baTID  =
+          wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.baTID;
+         pDelBAInd->baDirection  =
+          wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.baDirection;
+         pDelBAInd->reasonCode   =
+          wdiLowLevelInd->wdiIndicationData.wdiDeleteBAInd.reasonCode;
+
+         WDA_SendMsg(pWDA, SIR_LIM_DEL_BA_IND,
+                               (void *)pDelBAInd , 0) ;
+         break;
+      }
 
       default:
       {
