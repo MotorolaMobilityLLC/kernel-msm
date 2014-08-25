@@ -3408,8 +3408,14 @@ int vos_update_nv_table_from_wiphy_band(void *hdd_ctx,
             if (0 == err)
 #endif
             {
-                if  (wiphy->flags & WIPHY_FLAG_CUSTOM_REGULATORY) {
+                /* When Country code in nv.bin file is Non Zero  and Reg Domain
+                 * is world; it's neither CUSTOM nor STRICT. In this Case
+                 * if country code is Non-Zero and domain is world; driver
+                 * will not change channel to active.
+                 */
 
+                if  (!(wiphy->flags & WIPHY_FLAG_STRICT_REGULATORY ))
+                {
                     if (!(reg_rule->flags & NL80211_RRF_PASSIVE_SCAN))
                     {
                         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
