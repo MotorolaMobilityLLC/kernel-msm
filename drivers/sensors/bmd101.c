@@ -26,6 +26,7 @@
 #include <linux/workqueue.h>
 #include <linux/input.h>
 #include <linux/sensors.h>
+#include <mach/gpiomux.h>
 #ifdef CONFIG_ASUS_UTILITY
 #include <linux/notifier.h>
 #include <linux/asus_utility.h>
@@ -73,6 +74,14 @@ struct bmd101_data {
 	struct mutex lock;
 };
 static struct bmd101_data *sensor_data;
+
+static struct gpiomux_setting gpio_act_cfg;
+static struct gpiomux_setting gpio_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
 
 static int bmd101_data_report(int data)
 {
@@ -157,23 +166,15 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor currently %s, turning sensor %s\n", __func__, sensor_data->cdev.enabled? "on":"off", enable ? "on":"off");
 
 	if (enable && !sensor_data->cdev.enabled) {
-		rc = gpio_request(BMD101_RST_GPIO, "BMD101_RST");
-		if (rc) {
-			pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_RST_GPIO);
-			goto gpio_rst_fail;
-		}
-		rc = gpio_request(BMD101_CS_GPIO, "BMD101_CS");
-		if (rc) {
-			pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_CS_GPIO);
-			goto gpio_cs_fail;
-		}
-
 		rc = regulator_enable(pm8921_l28);
     		if (rc) {
 			pr_err("[bmd101] %s: regulator_enable of 8921_l28 failed(%d)\n", __func__, rc);
 			goto reg_put_LDO28;
     		}
 		msleep(100);
+
+              msm_gpiomux_write(BMD101_CS_GPIO, GPIOMUX_ACTIVE, &gpio_act_cfg, &gpio_sus_cfg);
+              msm_gpiomux_write(BMD101_RST_GPIO, GPIOMUX_ACTIVE, &gpio_act_cfg, &gpio_sus_cfg);
 
 		gpio_direction_output(BMD101_CS_GPIO, 0);
 		usleep(300);
@@ -189,15 +190,15 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->cdev.enabled);
 	}
 	else if (!enable && sensor_data->cdev.enabled) {
+              msm_gpiomux_write(BMD101_CS_GPIO, GPIOMUX_ACTIVE, &gpio_sus_cfg, &gpio_act_cfg);
+              msm_gpiomux_write(BMD101_RST_GPIO, GPIOMUX_ACTIVE, &gpio_sus_cfg, &gpio_act_cfg);
 		rc = regulator_disable(pm8921_l28);
     		if (rc) {
 			pr_err("%s: regulator_enable of 8921_l28 failed(%d)\n", __func__, rc);
 			goto reg_put_LDO28;
     		}
-		gpio_direction_output(BMD101_CS_GPIO, 0);
-		gpio_direction_output(BMD101_RST_GPIO, 0);
-		gpio_free(BMD101_CS_GPIO);
-		gpio_free(BMD101_RST_GPIO);
+		//gpio_direction_output(BMD101_CS_GPIO, 0);
+		//gpio_direction_output(BMD101_RST_GPIO, 0);
 		sensor_data->cdev.enabled = 0;
 
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->cdev.enabled);
@@ -209,12 +210,8 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 
 	return 0;
 
-	gpio_rst_fail:
-		gpio_free(BMD101_RST_GPIO);
-	gpio_cs_fail:
-		gpio_free(BMD101_CS_GPIO);
 	reg_put_LDO28:
-		regulator_put(pm8921_l28);
+	regulator_put(pm8921_l28);
 
 	return rc;
 }
@@ -393,6 +390,17 @@ static int bmd101_probe(struct platform_device *pdev)
 	#ifdef CONFIG_ASUS_UTILITY
 	register_mode_notifier(&display_mode_notifier);
 	#endif
+    
+	ret = gpio_request(BMD101_RST_GPIO, "BMD101_RST");
+	if (ret) {
+	    pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_RST_GPIO);
+	    goto gpio_rst_fail;
+	}
+	ret = gpio_request(BMD101_CS_GPIO, "BMD101_CS");
+	if (ret) {
+	    pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_CS_GPIO);
+	    goto gpio_cs_fail;
+	}
 
 	pm8921_l28 = regulator_get(&pdev->dev, bmd101_regulator);
 	if (IS_ERR(pm8921_l28)) {
@@ -415,6 +423,10 @@ static int bmd101_probe(struct platform_device *pdev)
 	regulator_put(pm8921_l28);
 	regulator_get_fail:
 	sensors_classdev_unregister(&sensor_data->cdev);
+	gpio_rst_fail:
+	gpio_free(BMD101_RST_GPIO);
+	gpio_cs_fail:
+	gpio_free(BMD101_CS_GPIO);
 	input_init_fail:
 	classdev_register_fail:
 	kfree(sensor_data);
@@ -429,6 +441,8 @@ static int bmd101_remove(struct platform_device *pdev)
 	#ifdef CONFIG_ASUS_UTILITY
 	unregister_mode_notifier(&display_mode_notifier);
 	#endif
+	gpio_free(BMD101_CS_GPIO);
+	gpio_free(BMD101_RST_GPIO);
 
 	return 0;
 }
