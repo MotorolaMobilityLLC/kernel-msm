@@ -1331,11 +1331,13 @@ sdioh_start(sdioh_info_t *sd, int stage)
 		   2.6.27. The implementation prior to that is buggy, and needs broadcom's
 		   patch for it
 		*/
+		/*
 		if ((ret = sdio_reset_comm(sd->func[0]->card))) {
 			sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
 			return ret;
 		}
 		else {
+		*/
 			sd->num_funcs = 2;
 			sd->sd_blockmode = TRUE;
 			sd->use_client_ints = TRUE;
@@ -1372,7 +1374,7 @@ sdioh_start(sdioh_info_t *sd, int stage)
 			}
 
 			sdioh_sdmmc_card_enablefuncs(sd);
-			}
+			/*	}*/
 		} else {
 #if !defined(OOB_INTR_ONLY)
 			sdio_claim_host(sd->func[0]);
