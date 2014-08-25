@@ -57,7 +57,7 @@ int stml0xx_spi_sensorhub_ready(void)
 	}
 
 	if (timeout <= 0)
-		dev_err(&stml0xx_misc_data->spi->dev,
+		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"data ready timeout: %d", timeout);
 	else
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -109,8 +109,8 @@ int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len)
 	spi_message_add_tail(&transfer, &msg);
 
 	if (stml0xx_misc_data->mode != BOOTMODE && stml0xx_g_booted) {
-		if (stml0xx_spi_sensorhub_ready() < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
+		if (stml0xx_spi_sensorhub_ready() <= 0) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"SPI error STM not ready");
 			rc = -EIO;
 			goto EXIT;
@@ -128,7 +128,7 @@ int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len)
 			/* check for sensorhub ack */
 			if (!stml0xx_spi_sensorhub_ack()) {
 				rc = -EIO;
-				dev_err(&stml0xx_misc_data->spi->dev,
+				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"SPI transfer error NACK");
 			}
 		}
