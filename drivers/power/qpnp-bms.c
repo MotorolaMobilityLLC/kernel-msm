@@ -4698,6 +4698,7 @@ static int bms_suspend(struct device *dev)
 
 static int bms_resume(struct device *dev)
 {
+#if 0
 	int rc;
 	int soc_calc_period;
 	int time_until_next_recalc = 0;
@@ -4722,6 +4723,7 @@ static int bms_resume(struct device *dev)
 	schedule_delayed_work(&chip->calculate_soc_delayed_work,
 		round_jiffies_relative(msecs_to_jiffies
 		(time_until_next_recalc)));
+#endif
 	return 0;
 }
 
