@@ -109,6 +109,10 @@
 				<86 512 500 800>;
 	};
 
+	pwmleds {
+		status = "disabled";
+	};
+
 	bluesleep {
 		compatible = "qcom,bluesleep";
 		bt_host_wake = <&msmgpio 67 0>;
