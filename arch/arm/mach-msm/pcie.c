@@ -51,9 +51,9 @@
 #define PCIE20_PARF_PHY_CTRL           0x40
 #define PCIE20_PARF_PHY_REFCLK         0x4C
 #define PCIE20_PARF_CONFIG_BITS        0x50
-#define PCIE20_PARF_TEST_BUS           0xE4
 #define PCIE20_PARF_DBI_BASE_ADDR      0x168
 #define PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT   0x178
+
 #define PCIE20_ELBI_VERSION            0x00
 #define PCIE20_ELBI_SYS_CTRL           0x04
 #define PCIE20_ELBI_SYS_STTS	       0x08
@@ -122,8 +122,6 @@ struct pcie_drv_sta {
 	bool vreg_on;
 	struct mutex drv_lock;
 } pcie_drv;
-
-void msm_pcie_dump_regs(struct msm_pcie_dev_t *dev);
 
 /* msm pcie device data */
 static struct msm_pcie_dev_t msm_pcie_dev[MAX_RC_NUM];
@@ -386,12 +384,6 @@ static inline int msm_pcie_oper_conf(struct pci_bus *bus, u32 devfn, int oper,
 		PCIE_DBG(dev,
 			"RC%d %d:0x%02x + 0x%04x[%d] -> 0x%08x; rd 0x%08x\n",
 			rc_idx, bus->number, devfn, where, size, *val, rd_val);
-		if ((dev->rc_idx == 0) /* RC0 */
-			&& bus->number /* EP */
-			&& (where == 0x44) /* PM STAT reg */
-			&& (rd_val  == PCIE_LINK_DOWN)) { /* invalid read */
-				msm_pcie_dump_regs(dev);
-			}
 	} else {
 		wr_val = (rd_val & ~mask) |
 				((*val << (8 * byte_offset)) & mask);
@@ -1317,7 +1309,6 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 	dev->link_status = MSM_PCIE_LINK_ENABLED;
 	dev->power_on = true;
 	dev->suspending = false;
-
 	goto out;
 
 link_fail:
@@ -2198,45 +2189,6 @@ int msm_pcie_recover_config(struct pci_dev *dev)
 	return ret;
 }
 EXPORT_SYMBOL(msm_pcie_recover_config);
-
-extern void pcie_dump_phy_reg(struct msm_pcie_dev_t *dev);
-void msm_pcie_dump_regs(struct msm_pcie_dev_t *dev)
-{
-	int i = 0;
-
-	if (dev->link_status != MSM_PCIE_LINK_ENABLED) {
-		PCIE_DBG(dev, "Acess to RC%d is denied because link is down\n",
-			dev->rc_idx);
-	}
-	PCIE_DBG(dev, "Dumping PARF Registers for RC%d\n", dev->rc_idx);
-	for (i = 0; i <= 0x17B; i += 32) {
-		PCIE_DBG(dev, "0x%04x %08x %08x %08x %08x %08x %08x %08x %08x\n",
-			i, readl_relaxed(dev->parf + i),
-			readl_relaxed(dev->parf + (i+4)),
-			readl_relaxed(dev->parf + (i+8)),
-			readl_relaxed(dev->parf + (i+12)),
-			readl_relaxed(dev->parf + (i+16)),
-			readl_relaxed(dev->parf + (i+20)),
-			readl_relaxed(dev->parf + (i+24)),
-			readl_relaxed(dev->parf + (i+28)));
-	}
-
-	for (i = 1; i <= 0x1A; i++) {
-		msm_pcie_write_mask(dev->parf + PCIE20_PARF_SYS_CTRL,
-					0xFF0000, i<<16);
-		PCIE_DBG(dev, "TestBus [0x%04x] Val[0x%08x] SYS_CTRL [0x%08x]\n",
-			i, readl_relaxed(dev->parf + PCIE20_PARF_TEST_BUS),
-			readl_relaxed(dev->parf + PCIE20_PARF_SYS_CTRL));
-	}
-	msm_pcie_write_mask(dev->parf + PCIE20_PARF_SYS_CTRL,
-					0xFF0000, 0<<16);
-	/* Dump phy regs */
-	pcie_dump_phy_reg(dev);
-
-	/* LTSSM Status */
-	PCIE_DBG(dev, "ELBI_SYS_STTS=%08x\n",
-		readl_relaxed(dev->elbi + PCIE20_ELBI_SYS_STTS));
-}
 
 int msm_pcie_shadow_control(struct pci_dev *dev, bool enable)
 {
