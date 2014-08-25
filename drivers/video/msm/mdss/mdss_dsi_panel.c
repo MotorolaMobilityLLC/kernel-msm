@@ -511,16 +511,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (is_ambient_on()){
 		printk("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
 	}else{
-#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
-	// Log DSI commands for LK porting
-	notify_amdu_panel_on_cmds_start(ctrl);
-#endif
 		if (ctrl->on_cmds.cmd_cnt)
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 	}
-#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
-	notify_amdu_panel_on_cmds_stop();
-#endif
 
 	pr_debug("%s:-\n", __func__);
 	return 0;
@@ -1324,6 +1317,8 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
-
+#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
+	notify_amdu_panel_on_cmds_start(ctrl_pdata);
+#endif
 	return 0;
 }
