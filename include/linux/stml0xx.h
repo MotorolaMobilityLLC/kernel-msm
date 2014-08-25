@@ -34,7 +34,7 @@
 /* SPI */
 #define SPI_DMA_ENABLED         true
 #define SPI_FLASH_CLK_SPD_HZ    4000000
-#define SPI_NORMAL_CLK_SPD_HZ    8000000
+#define SPI_NORMAL_CLK_SPD_HZ    4000000
 #define SPI_BUFF_SIZE           1152
 #define SPI_RETRIES             5
 #define SPI_RETRY_DELAY         20
