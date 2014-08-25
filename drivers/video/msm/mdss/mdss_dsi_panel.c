@@ -26,6 +26,7 @@
 
 #include "mdss_dsi.h"
 #include "mdss_fb.h"
+#include "mdss_dropbox.h"
 
 #define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
 #define MDSS_PANEL_UNKNOWN_NAME "unknown"
@@ -700,6 +701,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
 	u8 pwr_mode = 0;
+	char *dropbox_issue = NULL;
+	static int dropbox_count;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -726,12 +729,20 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, DSI_MODE_BIT_LP);
-	if ((pwr_mode & 0x04) != 0x04)
+	if ((pwr_mode & 0x04) != 0x04) {
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
+		dropbox_issue = MDSS_DROPBOX_MSG_PWR_MODE_BLACK;
+	}
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
+	if (dropbox_issue != NULL) {
+		dropbox_count++;
+		mdss_dropbox_report_event(dropbox_issue, dropbox_count);
+	} else
+		dropbox_count = 0;
+
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 	return 0;
 }
