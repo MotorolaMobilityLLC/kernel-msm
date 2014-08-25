@@ -570,7 +570,8 @@ typedef struct tagCsrConfig
     //code", or the doamin of the country code doesn't match the default domain, the Ap is
     //not acceptable.
     tANI_BOOLEAN fEnforceDefaultDomain;
-
+    //When set, It enforece country code even if 11doriginal is true
+    tANI_BOOLEAN fEnforceCountryCode;
     tANI_U16 vccRssiThreshold;
     tANI_U32 vccUlMacLossThreshold;
 
