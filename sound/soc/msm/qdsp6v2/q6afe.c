@@ -219,7 +219,7 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 			break;
 		}
 		default:
-			pr_err("%s: default case 0x%x\n", __func__, port_id);
+			pr_debug("%s: default case 0x%x\n", __func__, port_id);
 			break;
 		}
 	}
