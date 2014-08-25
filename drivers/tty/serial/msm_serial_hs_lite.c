@@ -57,12 +57,32 @@
 extern int g_audbg_enable;
 extern int g_bootdbguart;
 #define GPIO_AUDBG_TX 8
+#define GPIO_AUDBG_RX 9
+#define GPIO_AUDBG_SEL 32
 
 static struct gpiomux_setting uart_console_cfg_old;
+static struct gpiomux_setting uart_console_cfg_rx_old;
+static struct gpiomux_setting uart_console_cfg_sel_old;
+
 static struct gpiomux_setting uart_console_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting uart_console_cfg_rx = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting uart_console_cfg_sel = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
 };
 
 /*
@@ -1729,10 +1749,23 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 
     /* Disable ttyHSL0 console if aboot say so */
     if(line == 0 && g_bootdbguart == 0){
+        /* Pull down GPIO 8 */
         ret = gpio_request(GPIO_AUDBG_TX, "console_tx");
         msm_gpiomux_write(GPIO_AUDBG_TX, GPIOMUX_ACTIVE,
 				&uart_console_cfg, &uart_console_cfg_old);
         gpio_free(GPIO_AUDBG_TX);
+
+        /* Pull down GPIO 9 */
+        ret = gpio_request(GPIO_AUDBG_RX, "console_rx");
+        msm_gpiomux_write(GPIO_AUDBG_RX, GPIOMUX_ACTIVE,
+				&uart_console_cfg_rx, &uart_console_cfg_rx_old);
+        gpio_free(GPIO_AUDBG_RX);
+
+        /* Pull down GPIO 32 */
+        ret = gpio_request(GPIO_AUDBG_SEL, "console_sel");
+        msm_gpiomux_write(GPIO_AUDBG_SEL, GPIOMUX_ACTIVE,
+				&uart_console_cfg_sel, &uart_console_cfg_sel_old);
+        gpio_free(GPIO_AUDBG_SEL);
     }
 
 	/* Use line number from device tree alias if present */
