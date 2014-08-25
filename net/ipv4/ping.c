@@ -45,7 +45,7 @@
 #include <net/inet_common.h>
 #include <net/checksum.h>
 
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 #include <linux/in6.h>
 #include <linux/icmpv6.h>
 #include <net/addrconf.h>
@@ -55,6 +55,8 @@
 
 
 struct ping_table ping_table;
+struct pingv6_ops pingv6_ops;
+EXPORT_SYMBOL_GPL(pingv6_ops);
 
 static u16 ping_port_rover;
 
@@ -65,6 +67,7 @@ static inline int ping_hashfn(struct net *net, unsigned int num, unsigned int ma
 	pr_debug("hash(%d) = %d\n", num, res);
 	return res;
 }
+EXPORT_SYMBOL_GPL(ping_hash);
 
 static inline struct hlist_nulls_head *ping_hashslot(struct ping_table *table,
 					     struct net *net, unsigned int num)
@@ -136,6 +139,7 @@ fail:
 	write_unlock_bh(&ping_table.lock);
 	return 1;
 }
+EXPORT_SYMBOL_GPL(ping_get_port);
 
 void ping_hash(struct sock *sk)
 {
@@ -157,6 +161,7 @@ void ping_unhash(struct sock *sk)
 		write_unlock_bh(&ping_table.lock);
 	}
 }
+EXPORT_SYMBOL_GPL(ping_unhash);
 
 static struct sock *ping_lookup(struct net *net, struct sk_buff *skb, u16 ident)
 {
@@ -169,7 +174,7 @@ static struct sock *ping_lookup(struct net *net, struct sk_buff *skb, u16 ident)
 	if (skb->protocol == htons(ETH_P_IP)) {
 		pr_debug("try to find: num = %d, daddr = %pI4, dif = %d\n",
 			 (int)ident, &ip_hdr(skb)->daddr, dif);
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 	} else if (skb->protocol == htons(ETH_P_IPV6)) {
 		pr_debug("try to find: num = %d, daddr = %pI6c, dif = %d\n",
 			 (int)ident, &ipv6_hdr(skb)->daddr, dif);
@@ -194,7 +199,7 @@ static struct sock *ping_lookup(struct net *net, struct sk_buff *skb, u16 ident)
 			if (isk->inet_rcv_saddr &&
 			    isk->inet_rcv_saddr != ip_hdr(skb)->daddr)
 				continue;
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 		} else if (skb->protocol == htons(ETH_P_IPV6) &&
 			   sk->sk_family == AF_INET6) {
 			struct ipv6_pinfo *np = inet6_sk(sk);
@@ -272,6 +277,7 @@ out_release_group:
 	put_group_info(group_info);
 	return ret;
 }
+EXPORT_SYMBOL_GPL(ping_init_sock);
 
 void ping_close(struct sock *sk, long timeout)
 {
@@ -281,6 +287,7 @@ void ping_close(struct sock *sk, long timeout)
 
 	sk_common_release(sk);
 }
+EXPORT_SYMBOL_GPL(ping_close);
 
 /* Checks the bind address and possibly modifies sk->sk_bound_dev_if. */
 int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
@@ -308,7 +315,7 @@ int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 		    chk_addr_ret == RTN_BROADCAST)
 			return -EADDRNOTAVAIL;
 
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 	} else if (sk->sk_family == AF_INET6) {
 		struct sockaddr_in6 *addr = (struct sockaddr_in6 *) uaddr;
 		int addr_type, scoped, has_addr;
@@ -335,7 +342,8 @@ int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 				return -ENODEV;
 			}
 		}
-		has_addr = ipv6_chk_addr(net, &addr->sin6_addr, dev, scoped);
+		has_addr = pingv6_ops.ipv6_chk_addr(net, &addr->sin6_addr, dev,
+						    scoped);
 		rcu_read_unlock();
 
 		if (!(isk->freebind || isk->transparent || has_addr ||
@@ -357,7 +365,7 @@ void ping_set_saddr(struct sock *sk, struct sockaddr *saddr)
 		struct inet_sock *isk = inet_sk(sk);
 		struct sockaddr_in *addr = (struct sockaddr_in *) saddr;
 		isk->inet_rcv_saddr = isk->inet_saddr = addr->sin_addr.s_addr;
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 	} else if (saddr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *addr = (struct sockaddr_in6 *) saddr;
 		struct ipv6_pinfo *np = inet6_sk(sk);
@@ -372,10 +380,11 @@ void ping_clear_saddr(struct sock *sk, int dif)
 	if (sk->sk_family == AF_INET) {
 		struct inet_sock *isk = inet_sk(sk);
 		isk->inet_rcv_saddr = isk->inet_saddr = 0;
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 	} else if (sk->sk_family == AF_INET6) {
 		struct ipv6_pinfo *np = inet6_sk(sk);
-		np->rcv_saddr = np->saddr = in6addr_any;
+		memset(&np->rcv_saddr, 0, sizeof(np->rcv_saddr));
+		memset(&np->saddr, 0, sizeof(np->saddr));
 #endif
 	}
 }
@@ -425,9 +434,9 @@ int ping_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 	isk->inet_daddr = 0;
 	isk->inet_dport = 0;
 
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 	if (sk->sk_family == AF_INET6)
-		inet6_sk(sk)->daddr = in6addr_any;
+		memset(&inet6_sk(sk)->daddr, 0, sizeof(inet6_sk(sk)->daddr));
 #endif
 
 	sk_dst_reset(sk);
@@ -436,6 +445,7 @@ out:
 	pr_debug("ping_v4_bind -> %d\n", err);
 	return err;
 }
+EXPORT_SYMBOL_GPL(ping_bind);
 
 /*
  * Is this a supported type of ICMP message?
@@ -536,9 +546,9 @@ void ping_err(struct sk_buff *skb, int offset, u32 info)
 			err = EREMOTEIO;
 			break;
 		}
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 	} else if (skb->protocol == htons(ETH_P_IPV6)) {
-		harderr = icmpv6_err_convert(type, code, &err);
+		harderr = pingv6_ops.icmpv6_err_convert(type, code, &err);
 #endif
 	}
 
@@ -554,10 +564,10 @@ void ping_err(struct sk_buff *skb, int offset, u32 info)
 		if (family == AF_INET) {
 			ip_icmp_error(sk, skb, err, 0 /* no remote port */,
 				      info, (u8 *)icmph);
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 		} else if (family == AF_INET6) {
-			ipv6_icmp_error(sk, skb, err, 0 /* no remote port */,
-					info, (u8 *)icmph);
+			pingv6_ops.ipv6_icmp_error(sk, skb, err, 0,
+						   info, (u8 *)icmph);
 #endif
 		}
 	}
@@ -566,6 +576,7 @@ void ping_err(struct sk_buff *skb, int offset, u32 info)
 out:
 	sock_put(sk);
 }
+EXPORT_SYMBOL_GPL(ping_err);
 
 /*
  *	Copy and checksum an ICMP Echo packet from user space into a buffer
@@ -593,7 +604,7 @@ int ping_getfrag(void *from, char *to,
 			return -EFAULT;
 	}
 
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 	/* For IPv6, checksum each skb as we go along, as expected by
 	 * icmpv6_push_pending_frames. For IPv4, accumulate the checksum in
 	 * wcheck, it will be finalized in ping_v4_push_pending_frames.
@@ -607,6 +618,7 @@ int ping_getfrag(void *from, char *to,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ping_getfrag);
 
 static int ping_v4_push_pending_frames(struct sock *sk, struct pingfakehdr *pfh,
 				       struct flowi4 *fl4)
@@ -646,7 +658,7 @@ int ping_common_sendmsg(int family, struct msghdr *msg, size_t len,
 	if (family == AF_INET) {
 		type = ((struct icmphdr *) user_icmph)->type;
 		code = ((struct icmphdr *) user_icmph)->code;
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 	} else if (family == AF_INET6) {
 		type = ((struct icmp6hdr *) user_icmph)->icmp6_type;
 		code = ((struct icmp6hdr *) user_icmph)->icmp6_code;
@@ -660,6 +672,7 @@ int ping_common_sendmsg(int family, struct msghdr *msg, size_t len,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ping_common_sendmsg);
 
 int ping_v4_sendmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 		    size_t len)
@@ -843,9 +856,9 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 	if (flags & MSG_ERRQUEUE) {
 		if (family == AF_INET) {
 			return ip_recv_error(sk, msg, len);
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 		} else if (family == AF_INET6) {
-			return ipv6_recv_error(sk, msg, len);
+			return pingv6_ops.ipv6_recv_error(sk, msg, len);
 #endif
 		}
 	}
@@ -870,32 +883,36 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 	/* Copy the address and add cmsg data. */
 	if (family == AF_INET) {
 		sin = (struct sockaddr_in *) msg->msg_name;
-		sin->sin_family = AF_INET;
-		sin->sin_port = 0 /* skb->h.uh->source */;
-		sin->sin_addr.s_addr = ip_hdr(skb)->saddr;
-		memset(sin->sin_zero, 0, sizeof(sin->sin_zero));
+		if (sin) {
+			sin->sin_family = AF_INET;
+			sin->sin_port = 0 /* skb->h.uh->source */;
+			sin->sin_addr.s_addr = ip_hdr(skb)->saddr;
+			memset(sin->sin_zero, 0, sizeof(sin->sin_zero));
+		}
 
 		if (isk->cmsg_flags)
 			ip_cmsg_recv(msg, skb);
 
-#ifdef CONFIG_IPV6
+#if IS_ENABLED(CONFIG_IPV6)
 	} else if (family == AF_INET6) {
 		struct ipv6_pinfo *np = inet6_sk(sk);
 		struct ipv6hdr *ip6 = ipv6_hdr(skb);
 		sin6 = (struct sockaddr_in6 *) msg->msg_name;
-		sin6->sin6_family = AF_INET6;
-		sin6->sin6_port = 0;
-		sin6->sin6_addr = ip6->saddr;
 
-		sin6->sin6_flowinfo = 0;
-		if (np->sndflow)
-			sin6->sin6_flowinfo = ip6_flowinfo(ip6);
-
-		sin6->sin6_scope_id = ipv6_iface_scope_id(&sin6->sin6_addr,
-							  IP6CB(skb)->iif);
+		if (sin6) {
+			sin6->sin6_family = AF_INET6;
+			sin6->sin6_port = 0;
+			sin6->sin6_addr = ip6->saddr;
+			sin6->sin6_flowinfo = 0;
+			if (np->sndflow)
+				sin6->sin6_flowinfo = ip6_flowinfo(ip6);
+			sin6->sin6_scope_id =
+				ipv6_iface_scope_id(&sin6->sin6_addr,
+						    IP6CB(skb)->iif);
+		}
 
 		if (inet6_sk(sk)->rxopt.all)
-			ip6_datagram_recv_ctl(sk, msg, skb);
+			pingv6_ops.ip6_datagram_recv_ctl(sk, msg, skb);
 #endif
 	} else {
 		BUG();
@@ -909,6 +926,7 @@ out:
 	pr_debug("ping_recvmsg -> %d\n", err);
 	return err;
 }
+EXPORT_SYMBOL_GPL(ping_recvmsg);
 
 int ping_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 {
@@ -921,6 +939,7 @@ int ping_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	}
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ping_queue_rcv_skb);
 
 
 /*
@@ -952,6 +971,7 @@ void ping_rcv(struct sk_buff *skb)
 
 	/* We're called from icmp_rcv(). kfree_skb() is done there. */
 }
+EXPORT_SYMBOL_GPL(ping_rcv);
 
 struct proto ping_prot = {
 	.name =		"PING",

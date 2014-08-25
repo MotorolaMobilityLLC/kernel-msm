@@ -1,6 +1,7 @@
 ccflags-y += -I$(src)			# needed for trace events
 
 obj-y					+= ion/
+obj-$(CONFIG_FIQ_DEBUGGER)		+= fiq_debugger/
 
 obj-$(CONFIG_ANDROID_BINDER_IPC)	+= binder.o
 ifeq ($(CONFIG_X86_64),y)

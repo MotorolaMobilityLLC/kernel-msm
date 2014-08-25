@@ -2,6 +2,8 @@
  * Copyright (C) 2013 Google, Inc.
  * adf_modeinfo_{set_name,set_vrefresh} modified from
  * drivers/gpu/drm/drm_modes.c
+ * adf_format_validate_yuv modified from framebuffer_check in
+ * drivers/gpu/drm/drm_crtc.c
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -492,6 +494,7 @@ static void adf_obj_destroy(struct adf_obj *obj, struct idr *idr)
 		struct adf_event_refcount *refcount =
 				container_of(node, struct adf_event_refcount,
 						node);
+		rb_erase(&refcount->node, &obj->event_refcount);
 		kfree(refcount);
 		node = rb_first(&obj->event_refcount);
 	}
@@ -610,6 +613,10 @@ void adf_device_destroy(struct adf_device *dev)
 	}
 	mutex_destroy(&dev->post_lock);
 	mutex_destroy(&dev->client_lock);
+
+	if (dev->timeline)
+		sync_timeline_destroy(&dev->timeline->obj);
+
 	adf_obj_destroy(&dev->base, &adf_devices);
 }
 EXPORT_SYMBOL(adf_device_destroy);
@@ -920,6 +927,7 @@ done:
 
 	return ret;
 }
+EXPORT_SYMBOL(adf_attachment_allow);
 
 /**
  * adf_obj_type_str - string representation of an adf_obj_type
@@ -1070,6 +1078,7 @@ int adf_format_validate_yuv(struct adf_device *dev, struct adf_buffer *buf,
 		u32 width = buf->w / (i != 0 ? hsub : 1);
 		u32 height = buf->h / (i != 0 ? vsub : 1);
 		u8 cpp = adf_format_plane_cpp(buf->format, i);
+		u32 last_line_size;
 
 		if (buf->pitch[i] < (u64) width * cpp) {
 			dev_err(&dev->base.dev, "plane %u pitch is shorter than buffer width (pitch = %u, width = %u, bpp = %u)\n",
@@ -1077,8 +1086,21 @@ int adf_format_validate_yuv(struct adf_device *dev, struct adf_buffer *buf,
 			return -EINVAL;
 		}
 
-		if ((u64) height * buf->pitch[i] + buf->offset[i] >
-				buf->dma_bufs[i]->size) {
+		switch (dev->ops->quirks.buffer_padding) {
+		case ADF_BUFFER_PADDED_TO_PITCH:
+			last_line_size = buf->pitch[i];
+			break;
+
+		case ADF_BUFFER_UNPADDED:
+			last_line_size = width * cpp;
+			break;
+
+		default:
+			BUG();
+		}
+
+		if ((u64) (height - 1) * buf->pitch[i] + last_line_size +
+				buf->offset[i] > buf->dma_bufs[i]->size) {
 			dev_err(&dev->base.dev, "plane %u buffer too small (height = %u, pitch = %u, offset = %u, size = %zu)\n",
 					i, height, buf->pitch[i],
 					buf->offset[i], buf->dma_bufs[i]->size);

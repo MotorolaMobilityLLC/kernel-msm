@@ -17,3 +17,5 @@ obj-$(CONFIG_CONSOLE_EARLYSUSPEND)	+= consoleearlysuspend.o
 obj-$(CONFIG_FB_EARLYSUSPEND)	+= fbearlysuspend.o
 
 obj-$(CONFIG_MAGIC_SYSRQ)	+= poweroff.o
+
+obj-$(CONFIG_SUSPEND)	+= wakeup_reason.o
