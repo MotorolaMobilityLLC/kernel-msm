@@ -37,6 +37,8 @@
 #define DSI_CMD_SLPOUT "sleepout"
 #define DSI_CMD_DISPOFF "dispoff"
 #define DSI_CMD_DISPON "dispon"
+#define DSI_CMD_INVOFF "invoff"
+#define DSI_CMD_INVON "invon"
 
 // exported functions
 int create_amdu_debugfs(struct dentry *parent);

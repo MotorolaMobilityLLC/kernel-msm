@@ -148,7 +148,19 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 		printk("echo 'write:05 01 00 00 00 00 01 29' > /d/mdp/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 29");
 	}
+	else if (!strncmp(DSI_CMD_INVOFF,cmd_buf,strlen(DSI_CMD_INVOFF))){
 
+		// 20 invert off
+		printk("echo 'write:05 01 00 00 00 00 01 20' > /d/mdp/amdu_cmd\n");
+		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 20");
+	}
+	else if (!strncmp(DSI_CMD_INVON,cmd_buf,strlen(DSI_CMD_INVON))){
+
+		// 21 invert on
+		printk("echo 'write:05 01 00 00 00 00 01 21' > /d/mdp/amdu_cmd\n");
+		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 21");
+	}
+	
 	// Write/Read DSI
 	if (!strncmp(DSICHECKSTATUS,cmd_buf,strlen(DSICHECKSTATUS))){
 		printk("MDSS:[mdss_debug.c]:%s:FUNC(%s) envoked!! \n", __func__,DSICHECKSTATUS);
