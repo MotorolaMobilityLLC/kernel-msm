@@ -469,6 +469,21 @@ eHalStatus sme_UpdateChannelConfig(tHalHandle hHal);
 
 #endif // FEATURE_WLAN_SCAN_PNLO
 /*--------------------------------------------------------------------------
+
+  \brief sme_UpdateChannelList() - Update channel List in FW.
+
+
+  \param hHal - The handle returned by macOpen.
+
+  \return eHAL_STATUS_SUCCESS - SME update the channel config successfully.
+
+          Other status means SME is failed to update the channel config.
+  \sa
+
+  --------------------------------------------------------------------------*/
+eHalStatus sme_UpdateChannelList(tHalHandle hHal);
+
+/*--------------------------------------------------------------------------
   
   \brief sme_set11dinfo() - Set the 11d information about valid channels
    and there power using information from nvRAM 
