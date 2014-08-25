@@ -19,6 +19,14 @@
 #include <linux/security.h>
 #include "fat.h"
 
+static ssize_t fat_write(struct file *file, const char __user *buf,
+			    size_t count, loff_t *ppos)
+{
+	if (__mnt_is_readonly(file->f_path.mnt))
+		return -EROFS;
+	return do_sync_write(file, buf, count, ppos);
+}
+
 static int fat_ioctl_get_attributes(struct inode *inode, u32 __user *user_attr)
 {
 	u32 attr;
@@ -164,7 +172,7 @@ int fat_file_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
 const struct file_operations fat_file_operations = {
 	.llseek		= generic_file_llseek,
 	.read		= do_sync_read,
-	.write		= do_sync_write,
+	.write		= fat_write,
 	.aio_read	= generic_file_aio_read,
 	.aio_write	= generic_file_aio_write,
 	.mmap		= generic_file_mmap,
