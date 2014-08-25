@@ -54,7 +54,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sync_internal.h"
 #include "lock.h"
 #include "pvr_debug.h"
-/* FIXME */
+
 #if defined(__KERNEL__)
 #include "pvrsrv.h"
 #endif
@@ -300,10 +300,7 @@ static INLINE IMG_UINT32 SyncPrimGetOffset(SYNC_PRIM *psSyncInt)
 	
 	PVR_ASSERT(psSyncInt->eType == SYNC_PRIM_TYPE_LOCAL);
 
-	/* FIXME: Subtracting a 64-bit address from another and then implicit
-	 * cast to 32-bit number. Need to review all call sequences that use this
-	 * function, added explicit casting for now.
-	 */
+	
 	ui64Temp =  psSyncInt->u.sLocal.uiSpanAddr - psSyncInt->u.sLocal.psSyncBlock->uiSpanBase;
 	PVR_ASSERT(ui64Temp<IMG_UINT32_MAX);
 	return (IMG_UINT32)ui64Temp;
@@ -648,7 +645,7 @@ IMG_INTERNAL IMG_VOID SyncPrimContextDestroy(PSYNC_PRIM_CONTEXT hSyncPrimContext
 	SYNC_PRIM_CONTEXT *psContext = hSyncPrimContext;
 	IMG_BOOL bDoRefCheck = IMG_TRUE;
 
-/* FIXME */
+
 #if defined(__KERNEL__)
 	PVRSRV_DATA *psPVRSRVData = PVRSRVGetPVRSRVData();
 	if (psPVRSRVData->eServicesState != PVRSRV_SERVICES_STATE_OK)
@@ -1696,12 +1693,7 @@ IMG_INTERNAL IMG_VOID SyncPrimPDumpCBP(PVRSRV_CLIENT_SYNC_PRIM *psSync,
 	psSyncBlock = psSyncInt->u.sLocal.psSyncBlock;
 	psContext = psSyncBlock->psContext;
 
-	/* FIXME: uiWriteOffset, uiPacketSize, uiBufferSize were changed to
-	 * 64-bit quantities to resolve WDDM compiler warnings.
-	 * However the bridge is only 32-bit hence compiler warnings
-	 * of implicit cast and loss of data.
-	 * Added explicit cast and assert to remove warning.
-	 */
+	
 #if (defined(_WIN32) && !defined(_WIN64)) || (defined(LINUX) && defined(__i386__))
 	PVR_ASSERT(uiWriteOffset<IMG_UINT32_MAX);
 	PVR_ASSERT(uiPacketSize<IMG_UINT32_MAX);

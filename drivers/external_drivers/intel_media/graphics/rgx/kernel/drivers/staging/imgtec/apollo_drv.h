@@ -52,7 +52,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include PVR_ANDROID_ION_HEADER
 
-/* FIXME: This is currently copied in buffer_generic. */
+/* These heap defines must match buffer_generic.c */
 #define ION_HEAP_APOLLO_ROGUE	(ION_HEAP_TYPE_CUSTOM+1)
 #define ION_HEAP_APOLLO_PDP	(ION_HEAP_TYPE_CUSTOM+2)
 

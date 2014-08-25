@@ -173,7 +173,7 @@ PVRSRV_ERROR PVRSRVRGXCreateComputeContextKM(CONNECTION_DATA			*psConnection,
 	{
 		PVRSRV_RGXDEV_INFO			*psDevInfo = psDeviceNode->pvDevice;
 
-		OSWRLockAcquireWrite(psDevInfo->hComputeCtxListLock);
+		OSWRLockAcquireWrite(psDevInfo->hComputeCtxListLock, DEVINFO_COMPUTELIST);
 		dllist_add_to_tail(&(psDevInfo->sComputeCtxtListHead), &(psComputeContext->sListNode));
 		OSWRLockReleaseWrite(psDevInfo->hComputeCtxListLock);
 	}
@@ -217,7 +217,7 @@ PVRSRV_ERROR PVRSRVRGXDestroyComputeContextKM(RGX_SERVER_COMPUTE_CONTEXT *psComp
 
 	/* ... it has so we can free its resources */
 
-	OSWRLockAcquireWrite(psDevInfo->hComputeCtxListLock);
+	OSWRLockAcquireWrite(psDevInfo->hComputeCtxListLock, DEVINFO_COMPUTELIST);
 	dllist_remove_node(&(psComputeContext->sListNode));
 	OSWRLockReleaseWrite(psDevInfo->hComputeCtxListLock);
 
@@ -459,7 +459,7 @@ static IMG_BOOL CheckForStalledComputeCtxtCommand(PDLLIST_NODE psNode, IMG_PVOID
 IMG_VOID CheckForStalledComputeCtxt(PVRSRV_RGXDEV_INFO *psDevInfo,
 									DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf)
 {
-	OSWRLockAcquireRead(psDevInfo->hComputeCtxListLock);
+	OSWRLockAcquireRead(psDevInfo->hComputeCtxListLock, DEVINFO_COMPUTELIST);
 	dllist_foreach_node(&(psDevInfo->sComputeCtxtListHead),
 						CheckForStalledComputeCtxtCommand, pfnDumpDebugPrintf);
 	OSWRLockReleaseRead(psDevInfo->hComputeCtxListLock);

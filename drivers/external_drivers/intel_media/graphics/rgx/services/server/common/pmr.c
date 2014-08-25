@@ -259,23 +259,6 @@ struct _PMR_PAGELIST_
 	struct _PMR_ *psReferencePMR;
 };
 
-/*
- * This Lock is used to protect the sequence of operation used in MMapPMR and in
- * the memory management bridge. This should make possible avoid the use of the bridge
- * lock in mmap.c avoiding regressions.
- */
-POS_LOCK gGlobalLookupPMRLock;
-
-IMG_VOID PMRLock()
-{
-	OSLockAcquire(gGlobalLookupPMRLock);
-}
-
-IMG_VOID PMRUnlock()
-{
-	OSLockRelease(gGlobalLookupPMRLock);
-}
-
 #define MIN3(a,b,c)	(((a) < (b)) ? (((a) < (c)) ? (a):(c)) : (((b) < (c)) ? (b):(c)))
 
 static PVRSRV_ERROR
@@ -713,7 +696,7 @@ PMRUnmakeServerExportClientExport(PMR_EXPORT *psPMRExport)
 PVRSRV_ERROR
 PMRUnexportPMR(PMR_EXPORT *psPMRExport)
 {
-    /* FIXME: probably shouldn't be assertions? */
+    
     PVR_ASSERT(psPMRExport != IMG_NULL);
     PVR_ASSERT(psPMRExport->psPMR != IMG_NULL);
     PVR_ASSERT(psPMRExport->psPMR->uiRefCount > 0);
@@ -735,7 +718,7 @@ PMRImportPMR(PMR_EXPORT *psPMRExport,
 {
     PMR *psPMR;
 
-    /* FIXME: probably shouldn't be assertions? */
+    
     PVR_ASSERT(psPMRExport != IMG_NULL);
     PVR_ASSERT(psPMRExport->psPMR != IMG_NULL);
     PVR_ASSERT(psPMRExport->psPMR->uiRefCount > 0);
@@ -1000,9 +983,7 @@ _PMRLogicalOffsetToPhysicalOffset(const PMR *psPMR,
 	{
 		ui64ChunkIndex = OSDivide64(
 				uiLogicalOffset, 
-				/* FIXME: Really ought to change OSDivide64 so divisor 
-				   arg is 64-bits, (rather than casting to 32-bits), but 
-				   this is an OSFunc, so don't want to touch right now */
+				
 				TRUNCATE_64BITS_TO_32BITS(psMappingTable->uiChunkSize), 
 				&ui32Remain);
 	
@@ -1282,7 +1263,7 @@ PMR_WriteBytes(PMR *psPMR,
     IMG_DEVMEM_OFFSET_T uiPhysicalOffset;
     IMG_SIZE_T uiBytesCopied = 0;
 
-	/* FIXME: When we honour CPU mapping flags remove the #if 0*/
+	
 	#if 0
 	/* Check that writes are allowed */
 	PMR_Flags(psPMR, &uiFlags);
@@ -1861,9 +1842,7 @@ PMRPDumpSaveToFile(const PMR *psPMR,
 }
 #endif	/* PDUMP */
 
-/*
-   FIXME: Find a better way to do this
- */
+
 
 IMG_VOID *PMRGetPrivateDataHack(const PMR *psPMR,
                                 const PMR_IMPL_FUNCTAB *psFuncTab)
@@ -1910,7 +1889,7 @@ PMRWritePMPageList(/* Target PMR, offset, and length */
     IMG_VOID *pvKernAddr = IMG_NULL;
     IMG_UINT32 *pui32DataPtr;
 #endif
-    /* FIXME: should this be configurable? */
+    
     uiWordSize = 4;
 
     /* check we're being asked to write the same number of 4-byte units as there are pages */
@@ -2116,7 +2095,7 @@ PMRWritePMPageList(/* Target PMR, offset, and length */
 }
 
 
-PVRSRV_ERROR /* FIXME: should be IMG_VOID */
+PVRSRV_ERROR 
 PMRUnwritePMPageList(PMR_PAGELIST *psPageList)
 {
     PVRSRV_ERROR eError2;
@@ -2530,12 +2509,6 @@ PMRInit()
 		return eError;
 	}
 
-	eError = OSLockCreate(&gGlobalLookupPMRLock, LOCK_TYPE_PASSIVE);
-	if (eError != PVRSRV_OK)
-	{
-		return eError;
-	}
-
     _gsSingletonPMRContext.uiNextSerialNum = 1;
 
     _gsSingletonPMRContext.uiNextKey = 0x8300f001 * (IMG_UINTPTR_T)&_gsSingletonPMRContext;
@@ -2573,15 +2546,10 @@ PMRDeInit()
     }
 
 	OSLockDestroy(_gsSingletonPMRContext.hLock);
-	OSLockDestroy(gGlobalLookupPMRLock);
 
     _gsSingletonPMRContext.bModuleInitialised = IMG_FALSE;
 
-    /*
-      FIXME:
-
-      should deinitialise the mutex here
-    */
+    
 
     return PVRSRV_OK;
 }

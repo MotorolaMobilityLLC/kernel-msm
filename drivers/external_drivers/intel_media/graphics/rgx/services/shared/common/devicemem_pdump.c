@@ -149,7 +149,7 @@ DevmemPDumpLoadMemValue64(DEVMEM_MEMDESC *psMemDesc,
     PVR_ASSERT(eError == PVRSRV_OK);
 }
 
-/* FIXME: This should be server side only */
+
 IMG_INTERNAL PVRSRV_ERROR
 DevmemPDumpPageCatBaseToSAddr(DEVMEM_MEMDESC		*psMemDesc,
 							  IMG_DEVMEM_OFFSET_T	*puiMemOffset,
@@ -209,7 +209,7 @@ DevmemPDumpSaveToFile(DEVMEM_MEMDESC *psMemDesc,
     PVR_ASSERT(eError == PVRSRV_OK);
 }
 
-/* FIXME: Remove? */
+
 IMG_INTERNAL IMG_VOID
 DevmemPDumpSaveToFileVirtual(DEVMEM_MEMDESC *psMemDesc,
                              IMG_DEVMEM_OFFSET_T uiOffset,

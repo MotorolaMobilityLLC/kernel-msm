@@ -54,10 +54,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sync_internal.h"
 #include "connection_server.h"
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 typedef struct _RGX_SERVER_COMPUTE_CONTEXT_ RGX_SERVER_COMPUTE_CONTEXT;
 
 /*!

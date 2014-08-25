@@ -78,7 +78,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ri_server.h"
 #endif
 
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
 #include "process_stats.h"
 #endif
 /*! Wait 100ms before retrying deferred clean-up again */
@@ -368,6 +368,7 @@ static IMG_VOID CleanupThread(IMG_PVOID pvData)
 	IMG_BOOL     bRetryCleanup = IMG_FALSE;
 	IMG_HANDLE	 hOSEvent;
 	PVRSRV_ERROR eRc;
+	IMG_UINT64   ui64TimesliceLimit;
 
 	PVR_DPF((CLEANUP_DPFL, "CleanupThread: thread starting... "));
 
@@ -377,21 +378,12 @@ static IMG_VOID CleanupThread(IMG_PVOID pvData)
 	eRc = OSEventObjectOpen(psPVRSRVData->hCleanupEventObject, &hOSEvent);
 	PVR_ASSERT(eRc == PVRSRV_OK);
 
-	/* Acquire the bridge lock to ensure our clean up does not occur at the
-	 * same time as processing client calls.
-	 */
-	OSAcquireBridgeLock();
-
 	/* While the driver is in a good state and is not being unloaded
 	 * try to free any deferred items when RESMAN signals
 	 */
 	while ((psPVRSRVData->eServicesState == PVRSRV_SERVICES_STATE_OK) && 
 			(!psPVRSRVData->bUnload))
 	{
-		/* We don't want to hold the bridge lock while we are
-		 * descheduled in the EO wait call */
-		OSSetReleasePVRLock();
-
 		/* Wait until RESMAN signals for deferred clean up OR wait for a
 		 * short period if the previous deferred clean up was not able
 		 * to release all the resources before trying again.
@@ -413,15 +405,26 @@ static IMG_VOID CleanupThread(IMG_PVOID pvData)
 			PVR_DPF((PVR_DBG_ERROR, "CleanupThread: wait error %d", eRc));
 		}
 
+		/* Acquire the bridge lock to protect the flush of the deferred contexts
+		 * and to guarantee the consistency of the deferred contexts list.
+		 * In order to avoid to block the system during the cleanup the lock is
+		 * released periodically every time a specific time expires.
+		 */
+		OSAcquireBridgeLock();
+
+		/* Estimate the time limit as soon as we acquire the global lock */
+		ui64TimesliceLimit = OSClockns64() + RESMAN_DEFERRED_CLEANUP_TIMESLICE_NS;
+
 		/* Attempt to clean up all deferred contexts that may exist. If
 		 * resources still need cleanup on exit bRetryCleanup set to true.
 		 */
 		bRetryCleanup = PVRSRVResManFlushDeferContext(
-				psPVRSRVData->hResManDeferContext);
-	}
+				psPVRSRVData->hResManDeferContext,
+				ui64TimesliceLimit);
 
-	/* Thread about to exit -release our hold of the bridge lock and clean up */
-	OSReleaseBridgeLock();
+		/* Release the bridge lock after the cleanup of the defer context */
+		OSReleaseBridgeLock();
+	}
 
 	eRc = OSEventObjectClose(hOSEvent);
 	PVR_LOG_IF_ERROR(eRc, "OSEventObjectClose");
@@ -480,13 +483,19 @@ static IMG_VOID DevicesWatchdogThread(IMG_PVOID pvData)
 		}
 
 		eError = PVRSRVPowerLock();
-		if (eError != PVRSRV_OK)
+		if (eError == PVRSRV_ERROR_RETRY)
 		{
-			PVR_DPF((PVR_DBG_ERROR,"DevicesWatchdogThread: Failed to acquire power lock"));
+			/* power lock cannot be acquired at this time (sys power is off) */
+			ui32Timeout = psPVRSRVData->ui32DevicesWatchdogTimeout = DEVICES_WATCHDOG_POWER_OFF_SLEEP_TIMEOUT;
+		}
+		else if (eError != PVRSRV_OK)
+		{
+			/* any other error is unexpected */
+			PVR_DPF((PVR_DBG_ERROR,"DevicesWatchdogThread: Failed to acquire power lock (%s)", PVRSRVGetErrorStringKM(eError)));
 		}
 		else
 		{
-			/* Check if at lease one of the devices is on. */
+			/* Check if at least one of the devices is on. */
 			for (i = 0; i < psPVRSRVData->ui32RegisteredDevices && !bPwrIsOn; i++)
 			{
 				if (PVRSRVGetDevicePowerState(i, &ePowerState) == PVRSRV_OK)
@@ -571,7 +580,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVInit(IMG_VOID)
 	IMG_UINT32 i;
 
 #if defined (SUPPORT_RGX)
-	/* FIXME find a way to do this without device-specific code here */
+	
 	sRegisterDevice[PVRSRV_DEVICE_TYPE_RGX] = RGXRegisterDevice;
 #endif
 
@@ -739,7 +748,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVInit(IMG_VOID)
 	{
 		if (PVRSRVRegisterDevice(&psSysConfig->pasDevices[i]) != PVRSRV_OK)
 		{
-			/* FIXME: We should unregister devices if we fail */
+			
 			return eError;
 		}
 
@@ -766,11 +775,14 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVInit(IMG_VOID)
 
 	g_ui32InitFlags |= INIT_GLOBAL_RESMAN;
 
-	/* Create a thread which is used to do the deferred cleanup */
-	eError = OSThreadCreate(&gpsPVRSRVData->hCleanupThread,
+	/* Create a thread which is used to do the deferred cleanup running with the
+	 * lowest priority */
+	eError = OSThreadCreatePriority(&gpsPVRSRVData->hCleanupThread,
 							"pvr_defer_free",
 							CleanupThread,
-							gpsPVRSRVData);
+							gpsPVRSRVData,
+							LOWEST_PRIORITY);
+
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR,"PVRSRVInit: Failed to create deferred cleanup thread"));
@@ -1048,8 +1060,9 @@ PVRSRV_ERROR LMA_MMUPxAlloc(PVRSRV_DEVICE_NODE *psDevNode, IMG_SIZE_T uiSize,
 
 	if (bSuccess)
 	{
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
+	/* Allocation is done a page at a time */
 	PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA, OSGetPageSize());
 #else
 		IMG_CPU_PHYADDR	sCpuPAddr;
@@ -1070,8 +1083,10 @@ PVRSRV_ERROR LMA_MMUPxAlloc(PVRSRV_DEVICE_NODE *psDevNode, IMG_SIZE_T uiSize,
 IMG_VOID LMA_MMUPxFree(PVRSRV_DEVICE_NODE *psDevNode, Px_HANDLE *psMemHandle)
 {
 	RA_BASE_T uiCardAddr = (RA_BASE_T) psMemHandle->u.ui64Handle;
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
+	/* Allocation is done a page at a time */
 	PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA, OSGetPageSize());
 #else
 		PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA, (IMG_UINT64)uiCardAddr);
@@ -1099,8 +1114,9 @@ PVRSRV_ERROR LMA_MMUPxMap(PVRSRV_DEVICE_NODE *psDevNode, Px_HANDLE *psMemHandle,
 	}
 	else
 	{
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
+		/* Mapping is done a page at a time */
 		PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA, OSGetPageSize());
 #else
 		{
@@ -1121,8 +1137,10 @@ IMG_VOID LMA_MMUPxUnmap(PVRSRV_DEVICE_NODE *psDevNode, Px_HANDLE *psMemHandle,
 {
 	PVR_UNREFERENCED_PARAMETER(psMemHandle);
 	PVR_UNREFERENCED_PARAMETER(psDevNode);
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
+		/* Mapping is done a page at a time */
 		PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA, OSGetPageSize());
 #else
 	PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_IOREMAP_PT_LMA, (IMG_UINT64)(IMG_UINTPTR_T)pvPtr);
@@ -1273,12 +1291,7 @@ static PVRSRV_ERROR IMG_CALLCONV PVRSRVRegisterDevice(PVRSRV_DEVICE_CONFIG *psDe
 		psDeviceNode->pfnCreateRamBackedPMR[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL] = PhysmemNewOSRamBackedPMR;
 	}
 
-	/*
-		FIXME: We might want PT memory to come from a different heap so it
-		would make sense to specify the HeapID for it, but need to think
-		if/how this would affect how we do the CPU <> Dev physical address
-		translation.
-	*/
+	
 	psDeviceNode->pszMMUPxPDumpMemSpaceName = PhysHeapPDumpMemspaceName(psDeviceNode->apsPhysHeap[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL]);
 	psDeviceNode->uiMMUPxLog2AllocGran = OSGetPageShift();
 
@@ -1295,7 +1308,6 @@ static PVRSRV_ERROR IMG_CALLCONV PVRSRVRegisterDevice(PVRSRV_DEVICE_CONFIG *psDe
 	eError = sRegisterDevice[psDevConfig->eDeviceType](psDeviceNode);
 	if (eError != PVRSRV_OK)
 	{
-		OSFreeMem(psDeviceNode);
 		/*not nulling pointer, out of scope*/
 		PVR_DPF((PVR_DBG_ERROR,"PVRSRVRegisterDevice : Failed to register device"));
 		eError = PVRSRV_ERROR_DEVICE_REGISTER_FAILED;
@@ -1961,7 +1973,7 @@ IMG_VOID IMG_CALLCONV PVRSRVCheckStatus(PVRSRV_CMDCOMP_HANDLE hCmdCompCallerHand
 
 	/* notify any registered device to check if block work items can now proceed */
 #if !defined(NO_HARDWARE)
-	OSWRLockAcquireRead(hNotifyLock);
+	OSWRLockAcquireRead(hNotifyLock, GLOBAL_NOTIFY);
 	dllist_foreach_node(&sCmdCompNotifyHead, _CheckStatus, hCmdCompCallerHandle);
 	OSWRLockReleaseRead(hNotifyLock);
 #endif
@@ -2118,7 +2130,7 @@ PVRSRV_ERROR PVRSRVRegisterCmdCompleteNotify(IMG_HANDLE *phNotify, PFN_CMDCOMP_N
 	psNotify->pfnCmdCompleteNotify = pfnCmdCompleteNotify;
 
 	/* Add it to the list of Notify functions */
-	OSWRLockAcquireWrite(hNotifyLock);
+	OSWRLockAcquireWrite(hNotifyLock, GLOBAL_NOTIFY);
 	dllist_add_to_tail(&sCmdCompNotifyHead, &psNotify->sListNode);
 	OSWRLockReleaseWrite(hNotifyLock);
 
@@ -2141,7 +2153,7 @@ PVRSRV_ERROR PVRSRVUnregisterCmdCompleteNotify(IMG_HANDLE hNotify)
 	}
 
 	/* remove the node from the list */
-	OSWRLockAcquireWrite(hNotifyLock);
+	OSWRLockAcquireWrite(hNotifyLock, GLOBAL_NOTIFY);
 	dllist_remove_node(&psNotify->sListNode);
 	OSWRLockReleaseWrite(hNotifyLock);
 
@@ -2238,7 +2250,7 @@ IMG_VOID IMG_CALLCONV PVRSRVDebugRequest(IMG_UINT32 ui32VerbLevel, DUMPDEBUG_PRI
 
 	/* notify any registered device to check if block work items can now proceed */
 	/* Lock the lists */
-	OSWRLockAcquireRead(g_hDbgNotifyLock);
+	OSWRLockAcquireRead(g_hDbgNotifyLock, GLOBAL_DBGNOTIFY);
 
 	PVR_DUMPDEBUG_LOG(("------------[ PVR DBG: START ]------------"));
 
@@ -2288,7 +2300,7 @@ PVRSRV_ERROR PVRSRVRegisterDbgRequestNotify(IMG_HANDLE *phNotify, PFN_DBGREQ_NOT
 	psNotify->ui32RequesterID = ui32RequesterID;
 
 	/* Lock down all the lists */
-	OSWRLockAcquireWrite(g_hDbgNotifyLock);
+	OSWRLockAcquireWrite(g_hDbgNotifyLock, GLOBAL_DBGNOTIFY);
 
 	/* Find which list to add it to */
 	for (i=0;i<g_psDebugTable->ui32RequestCount;i++)
@@ -2338,7 +2350,7 @@ PVRSRV_ERROR PVRSRVUnregisterDbgRequestNotify(IMG_HANDLE hNotify)
 	}
 
 	/* remove the node from the list */
-	OSWRLockAcquireWrite(g_hDbgNotifyLock);
+	OSWRLockAcquireWrite(g_hDbgNotifyLock, GLOBAL_DBGNOTIFY);
 	dllist_remove_node(&psNotify->sListNode);
 	OSWRLockReleaseWrite(g_hDbgNotifyLock);
 

@@ -48,10 +48,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "servicesext.h"
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 
 /*!
 ******************************************************************************
@@ -152,6 +148,29 @@ PVRSRV_ERROR RGXPostClockSpeedChange(IMG_HANDLE				hDevHandle,
 ******************************************************************************/
 PVRSRV_ERROR RGXDustCountChange(IMG_HANDLE				hDevHandle,
 								IMG_UINT32				ui32NumberOfDusts);
+/*!
+******************************************************************************
+
+ @Function	RGXAPMLatencyChange
+
+ @Description
+
+	Changes the wait duration used before firmware indicates IDLE.
+	Reducing this value will cause the firmware to shut off faster and
+	more often but may increase bubbles in GPU scheduling due to the added
+	power management activity. If bPersistent is NOT set, APM latency will
+	return back to system default on power up.
+
+ @Input	   hDevHandle : RGX Device Node
+ @Input	   ui32ActivePMLatencyms : Number of milliseconds to wait
+ @Input	   bPersistent : Set to ensure new value is not reset
+
+ @Return   PVRSRV_ERROR :
+
+******************************************************************************/
+PVRSRV_ERROR RGXAPMLatencyChange(IMG_HANDLE				hDevHandle,
+				IMG_UINT32				ui32ActivePMLatencyms,
+				IMG_BOOL				bPersistent);
 
 /*!
 ******************************************************************************

@@ -336,7 +336,7 @@ PVRSRV_ERROR PVRSRVRGXCreateTransferContextKM(CONNECTION_DATA		*psConnection,
 	{
 		PVRSRV_RGXDEV_INFO			*psDevInfo = psDeviceNode->pvDevice;
 
-		OSWRLockAcquireWrite(psDevInfo->hTransferCtxListLock);
+		OSWRLockAcquireWrite(psDevInfo->hTransferCtxListLock, DEVINFO_TRANSFERLIST);
 		dllist_add_to_tail(&(psDevInfo->sTransferCtxtListHead), &(psTransferContext->sListNode));
 		OSWRLockReleaseWrite(psDevInfo->hTransferCtxListLock);
 	}
@@ -390,7 +390,7 @@ PVRSRV_ERROR PVRSRVRGXDestroyTransferContextKM(RGX_SERVER_TQ_CONTEXT *psTransfer
 		psTransferContext->ui32Flags &= ~RGX_SERVER_TQ_CONTEXT_FLAGS_3D;
 	}
 
-	OSWRLockAcquireWrite(psDevInfo->hTransferCtxListLock);
+	OSWRLockAcquireWrite(psDevInfo->hTransferCtxListLock, DEVINFO_TRANSFERLIST);
 	dllist_remove_node(&(psTransferContext->sListNode));
 	OSWRLockReleaseWrite(psDevInfo->hTransferCtxListLock);
 
@@ -913,7 +913,7 @@ static IMG_BOOL CheckForStalledTransferCtxtCommand(PDLLIST_NODE psNode, IMG_PVOI
 IMG_VOID CheckForStalledTransferCtxt(PVRSRV_RGXDEV_INFO *psDevInfo,
 									 DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf)
 {
-	OSWRLockAcquireRead(psDevInfo->hTransferCtxListLock);
+	OSWRLockAcquireRead(psDevInfo->hTransferCtxListLock, DEVINFO_TRANSFERLIST);
 	dllist_foreach_node(&(psDevInfo->sTransferCtxtListHead),
 						CheckForStalledTransferCtxtCommand, pfnDumpDebugPrintf);
 	OSWRLockReleaseRead(psDevInfo->hTransferCtxListLock);

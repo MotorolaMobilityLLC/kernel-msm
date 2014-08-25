@@ -47,7 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "pvrsrv_error.h"
 
-/* FIXME: Find a better way of defining _PVRSRV_DEVICE_NODE_ */
+
 struct _PVRSRV_DEVICE_NODE_;
 
 /*

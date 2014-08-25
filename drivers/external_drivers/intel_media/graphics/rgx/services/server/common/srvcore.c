@@ -53,7 +53,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pdump_km.h"
 
 #if defined LINUX
-#include "env_data.h" /* FIXME when this is removed, -Werror should be re-enabled for this file */ 
+#include "env_data.h"  
 #endif
 
 #include "srvkm.h"
@@ -81,7 +81,7 @@ PVRSRV_BRIDGE_GLOBAL_STATS g_BridgeGlobalStats;
 #endif
 
 
-/* FIXME: Why do we need psConnection? It's not used here or in OSCopyX */
+
 #if defined(DEBUG_BRIDGE_KM)
 PVRSRV_ERROR
 CopyFromUserWrapper(CONNECTION_DATA *psConnection,
@@ -524,8 +524,7 @@ IMG_INT BridgedDispatchKM(CONNECTION_DATA * psConnection,
 				/* Only certain operations are allowed */
 				switch(ui32BridgeID)
 				{
-					/* FIXME: Bridge defines should never be used outside auto generated code,
-					          we need to rethink this */
+					
 					case PVRSRV_GET_BRIDGE_ID(PVRSRV_BRIDGE_SRVCORE_CONNECT):
 					case PVRSRV_GET_BRIDGE_ID(PVRSRV_BRIDGE_SRVCORE_DISCONNECT):
 					case PVRSRV_GET_BRIDGE_ID(PVRSRV_BRIDGE_SRVCORE_ACQUIREGLOBALEVENTOBJECT):
@@ -546,7 +545,7 @@ IMG_INT BridgedDispatchKM(CONNECTION_DATA * psConnection,
 
 #if defined(__linux__)
 	{
-		/* FIXME: This should be moved into the linux specific code */
+		
 		ENV_DATA *psEnvData = OSGetEnvData();
 
 		/* We have already set up some static buffers to store our ioctl data... */
@@ -618,7 +617,7 @@ IMG_INT BridgedDispatchKM(CONNECTION_DATA * psConnection,
 	*/
 	if(psBridgePackageKM->ui32OutBufferSize > 0)
 	{
-		/* FIXME: This should be moved into the linux specific code */
+		
 		if(CopyToUserWrapper(psConnection,
 							 ui32BridgeID,
 							 psBridgePackageKM->pvParamOut,

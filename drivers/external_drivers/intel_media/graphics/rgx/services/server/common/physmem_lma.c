@@ -55,7 +55,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pdump_km.h"
 #include "pmr.h"
 #include "pmr_impl.h"
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
 #include "process_stats.h"
 #endif
 
@@ -321,8 +321,9 @@ _AllocLMPages(PMR_LMALLOCARRAY_DATA *psPageArrayDataPtr)
 			goto errorOnRAAlloc;
 		}
 
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
+		/* Allocation is done a page at a time */
 		PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES, uiActualSize);
 #else
 		{
@@ -417,8 +418,10 @@ _FreeLMPages(PMR_LMALLOCARRAY_DATA *psPageArrayData)
 		}
 		RA_Free(psPageArrayData->psDevNode->psLocalDevMemArena,
 				psPageArrayData->pasDevPAddr[i].uiAddr);
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
+		/* Allocation is done a page at a time */
 		PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_ALLOC_LMA_PAGES, uiAllocSize);
 #else
         {

@@ -48,7 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* Share this debug driver global with the OS layer so that IOCTL calls
  * coming from the OS enter the common table of entry points.
  */
-extern IMG_UINT32 (*g_DBGDrivProc[DEBUG_SERVICE_MAX_API])(IMG_VOID *, IMG_VOID *);
+extern IMG_UINT32 (*g_DBGDrivProc[DEBUG_SERVICE_MAX_API])(IMG_VOID *, IMG_VOID *, IMG_BOOL);
 
 
 #endif /* _DBGDRIV_IOCTL_H_ */

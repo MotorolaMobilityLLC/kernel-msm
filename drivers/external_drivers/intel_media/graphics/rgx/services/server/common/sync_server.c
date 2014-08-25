@@ -634,7 +634,7 @@ e0:
 	return eError;
 }
 
-/* FIXME: This is the same as the non-secure version. */
+
 PVRSRV_ERROR
 PVRSRVSyncPrimServerSecureUnexportKM(SERVER_SYNC_EXPORT *psExport)
 {

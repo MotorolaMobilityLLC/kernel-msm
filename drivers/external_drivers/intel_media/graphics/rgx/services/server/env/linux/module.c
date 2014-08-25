@@ -889,9 +889,7 @@ check_auth_exit:
 
 *****************************************************************************/
 
-/* FIXME: This is declared here to save creating a new header which
-          should be removed soon anyway as bridge gen should be providing
-          this interface */
+
 PVRSRV_ERROR LinuxBridgeInit(void);
 void LinuxBridgeDeInit(void);
 

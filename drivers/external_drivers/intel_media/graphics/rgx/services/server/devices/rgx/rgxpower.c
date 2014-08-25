@@ -509,8 +509,6 @@ static PVRSRV_ERROR RGXStart(PVRSRV_RGXDEV_INFO	*psDevInfo, PVRSRV_DEVICE_CONFIG
 		return eError;
 	}
 
-	psRGXFWInit->bEnableProcessStats=psDevInfo->bEnableProcessStats;
-
 	if (PVRSRVPollForValueKM((IMG_UINT32 *)&psRGXFWInit->bFirmwareStarted,
 							 IMG_TRUE,
 							 0xFFFFFFFF) != PVRSRV_OK)
@@ -1120,6 +1118,39 @@ PVRSRV_ERROR RGXDustCountChange(IMG_HANDLE				hDevHandle,
 					PDUMP_POLL_OPERATOR_EQUAL,
 					0);
 #endif
+
+	return PVRSRV_OK;
+}
+/*
+ @Function	RGXAPMLatencyChange
+*/
+PVRSRV_ERROR RGXAPMLatencyChange(IMG_HANDLE				hDevHandle,
+				IMG_UINT32				ui32ActivePMLatencyms,
+				IMG_BOOL				bPersistent)
+{
+
+	PVRSRV_DEVICE_NODE	*psDeviceNode = hDevHandle;
+	PVRSRV_ERROR		eError;
+	RGXFWIF_KCCB_CMD	sActivePMLatencyChange;
+
+	sActivePMLatencyChange.eCmdType = RGXFWIF_KCCB_CMD_POW;
+	sActivePMLatencyChange.uCmdData.sPowData.ePowType = RGXFWIF_POW_APM_LATENCY_CHANGE;
+	sActivePMLatencyChange.uCmdData.sPowData.uPoweReqData.sActivePMLatency.ui32ActivePMLatencyms = ui32ActivePMLatencyms;
+	sActivePMLatencyChange.uCmdData.sPowData.uPoweReqData.sActivePMLatency.bPersistent = bPersistent;
+
+	PDUMPCOMMENT("Scheduling command to change APM latency to %u", ui32ActivePMLatencyms);
+	eError = RGXScheduleCommand(psDeviceNode->pvDevice,
+				RGXFWIF_DM_GP,
+				&sActivePMLatencyChange,
+				sizeof(sActivePMLatencyChange),
+				0);
+
+	if (eError != PVRSRV_OK)
+	{
+		PDUMPCOMMENT("Scheduling command to change APM latency failed. Error:%u", eError);
+		PVR_DPF((PVR_DBG_ERROR, "RGXAPMLatencyChange: Scheduling KCCB to change APM latency failed. Error:%u", eError));
+		return eError;
+	}
 
 	return PVRSRV_OK;
 }

@@ -49,7 +49,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "mmu_common.h"
 #include "rgxdevice.h"
 
-/* FIXME: SyncPrim should be stored on the memory context */
+
 IMG_VOID RGXMMUSyncPrimAlloc(PVRSRV_DEVICE_NODE *psDeviceNode);
 IMG_VOID RGXMMUSyncPrimFree(IMG_VOID);
 

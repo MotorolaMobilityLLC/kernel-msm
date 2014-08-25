@@ -346,7 +346,10 @@ static void pdp_mode_to_drm_mode(struct adf_pdp_device *pdp, int mode_id,
 	drm_mode->vrefresh = pdp_mode->v_refresh;
 
 #if 0
-	/* FIXME: Calculate correct pdp->gtf modeline conversion? */
+	/* We only currently set the bare-minimum of the drm_mode required
+	 * by adf. We internally manage the timings etc. keyed on the 
+	 * height/width/refresh of the mode, so we don't need to set
+	 * the following. */
 	drm_mode->hsync_start = pdp_mode->h_front_porch;
 	drm_mode->hsync_end = pdp_mode->h_total;
 	drm_mode->htotal = pdp_mode->h_total;
@@ -518,7 +521,8 @@ static void pdp_post(struct adf_device *adf_dev, struct adf_post *cfg,
 	if (atomic_read(&pdp->vsync_state)) {
 		if (wait_event_timeout(pdp->vsync_wait_queue,
 			pdp_vsync_triggered(pdp), timeout) == 0) {
-			/* FIXME: What to do at timeout? */
+			/* Timeout - continue as if vsync was triggered, as
+			 * possible tearing is better than wedging */
 			dev_err(&pdp->pdev->dev, "Post VSync wait timeout");
 		}
 	}
@@ -665,7 +669,7 @@ static int pdp_modeset(struct adf_interface *intf,
 
 	if (pdp_read_reg(pdp, TCF_RGBPDP_PVR_TCF_RGBPDP_STRCTRL)
 		!= 0x0000C010) {
-		/* Buffer request threshhold */
+		/* Buffer request threshold */
 		pdp_write_reg(pdp, TCF_RGBPDP_PVR_TCF_RGBPDP_STRCTRL,
 			0x00001C10);
 	}

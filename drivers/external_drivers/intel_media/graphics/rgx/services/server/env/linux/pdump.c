@@ -189,7 +189,7 @@ void PDumpOSDebugPrintf(IMG_CHAR* pszFormat, ...)
 {
 	PVR_UNREFERENCED_PARAMETER(pszFormat);
 
-	/* FIXME: Implement using services PVR_DBG or otherwise with kprintf */
+	
 }
 
 /*!

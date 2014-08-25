@@ -920,7 +920,7 @@ IMG_VOID RGXProcessRequestFreelistsReconstruction(PVRSRV_RGXDEV_INFO *psDevInfo,
 /* Create HWRTDataSet */
 IMG_EXPORT
 PVRSRV_ERROR RGXCreateHWRTData(PVRSRV_DEVICE_NODE	*psDeviceNode,
-							   IMG_UINT32			psRenderTarget, /* FIXME this should not be IMG_UINT32 */
+							   IMG_UINT32			psRenderTarget, 
 							   IMG_DEV_VIRTADDR		psPMMListDevVAddr,
 							   IMG_DEV_VIRTADDR		psVFPPageTableAddr,
 							   RGX_FREELIST			*apsFreeLists[RGXFW_MAX_FREELISTS],
@@ -1013,8 +1013,7 @@ PVRSRV_ERROR RGXCreateHWRTData(PVRSRV_DEVICE_NODE	*psDeviceNode,
 
 	DevmemAcquireCpuVirtAddr(*ppsMemDesc, (IMG_VOID **)&psHWRTData);
 
-	/* FIXME: MList is something that that PM writes physical addresses to,
-	 * so ideally its best allocated in kernel */
+	
 	psHWRTData->psPMMListDevVAddr = psPMMListDevVAddr;
 	psHWRTData->psParentRenderTarget.ui32Addr = psRenderTarget;
 	#if defined(SUPPORT_VFP)
@@ -1044,7 +1043,7 @@ PVRSRV_ERROR RGXCreateHWRTData(PVRSRV_DEVICE_NODE	*psDeviceNode,
 	{
 		psTmpCleanup->apsFreeLists[ui32Loop] = apsFreeLists[ui32Loop];
 		psTmpCleanup->apsFreeLists[ui32Loop]->ui32RefCount++;
-		psHWRTData->apsFreeLists[ui32Loop] = *((PRGXFWIF_FREELIST *)&(psTmpCleanup->apsFreeLists[ui32Loop]->sFreeListFWDevVAddr.ui32Addr)); /* FIXME: Fix pointer type casting */
+		psHWRTData->apsFreeLists[ui32Loop] = *((PRGXFWIF_FREELIST *)&(psTmpCleanup->apsFreeLists[ui32Loop]->sFreeListFWDevVAddr.ui32Addr)); 
 		/* invalid initial snapshot value, the snapshot is always taken during first kick
 		 * and hence the value get replaced during the first kick anyway. So its safe to set it 0.
 		*/
@@ -2424,7 +2423,7 @@ PVRSRV_ERROR PVRSRVRGXCreateRenderContextKM(CONNECTION_DATA				*psConnection,
 	{
 		PVRSRV_RGXDEV_INFO			*psDevInfo = psDeviceNode->pvDevice;
 
-		OSWRLockAcquireWrite(psDevInfo->hRenderCtxListLock);
+		OSWRLockAcquireWrite(psDevInfo->hRenderCtxListLock, DEVINFO_RENDERLIST);
 		dllist_add_to_tail(&(psDevInfo->sRenderCtxtListHead), &(psRenderContext->sListNode));
 		OSWRLockReleaseWrite(psDevInfo->hRenderCtxListLock);
 	}
@@ -2498,7 +2497,7 @@ PVRSRV_ERROR PVRSRVRGXDestroyRenderContextKM(RGX_SERVER_RENDER_CONTEXT *psRender
 		RGXFWIF_FWRENDERCONTEXT	*psFWRenderContext;
 		PVRSRV_RGXDEV_INFO 	*psDevInfo = psRenderContext->psDeviceNode->pvDevice;
 
-		OSWRLockAcquireWrite(psDevInfo->hRenderCtxListLock);
+		OSWRLockAcquireWrite(psDevInfo->hRenderCtxListLock, DEVINFO_RENDERLIST);
 		dllist_remove_node(&(psRenderContext->sListNode));
 		OSWRLockReleaseWrite(psDevInfo->hRenderCtxListLock);
 
@@ -2534,9 +2533,7 @@ e0:
 }
 
 
-/* TODO !!! this was local on the stack, and we managed to blow the stack for the kernel. 
- * THIS - 46 argument function needs to be sorted out.
- */
+
 /* 1 command for the TA */
 static RGX_CCB_CMD_HELPER_DATA sTACmdHelperData;
 /* Up to 3 commands for the 3D (partial render fence, partial reader, and render) */
@@ -2799,7 +2796,7 @@ PVRSRV_ERROR PVRSRVRGXKickTA3DKM(RGX_SERVER_RENDER_CONTEXT	*psRenderContext,
 										0,
 										IMG_NULL,
 										IMG_NULL,
-										ui32Server3DSyncPrims,
+										(bKick3D ? ui32Server3DSyncPrims : 0),
 										paui32Server3DSyncFlagsPR,
 										pasServer3DSyncs,
 										sizeof(sPRUFO),
@@ -3223,7 +3220,7 @@ static IMG_BOOL CheckForStalledRenderCtxtCommand(PDLLIST_NODE psNode, IMG_PVOID 
 IMG_VOID CheckForStalledRenderCtxt(PVRSRV_RGXDEV_INFO *psDevInfo,
 								   DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf)
 {
-	OSWRLockAcquireRead(psDevInfo->hRenderCtxListLock);
+	OSWRLockAcquireRead(psDevInfo->hRenderCtxListLock, DEVINFO_RENDERLIST);
 	dllist_foreach_node(&(psDevInfo->sRenderCtxtListHead),
 						CheckForStalledRenderCtxtCommand, pfnDumpDebugPrintf);
 	OSWRLockReleaseRead(psDevInfo->hRenderCtxListLock);
@@ -3253,7 +3250,7 @@ PVRSRVRGXKickSyncTAKM(RGX_SERVER_RENDER_CONTEXT  *psRenderContext,
 					   IMG_INT32				   *paui32FenceFDs,
                        IMG_BOOL                    bPDumpContinuous)
 {
-	PVRSRV_ERROR eError;
+	PVRSRV_ERROR eError = PVRSRV_OK;
 
 #if defined(PVR_ANDROID_NATIVE_WINDOW_HAS_SYNC)
 	/* Android fd sync update info */

@@ -86,7 +86,7 @@ typedef struct PVRSRV_DATA_TAG
 	IMG_UINT32					ui32GEOConsecutiveTimeouts;	/*!< OS Global Event Object Timeouts */
 	
 	PVRSRV_CACHE_OP				uiCacheOp;					/*!< Pending cache operations in the system */
-	PRESMAN_DEFER_CONTEXT		hResManDeferContext;		/*!< Device driver global defer resman context */
+	PRESMAN_DEFER_CONTEXTS_LIST	hResManDeferContext;		/*!< Device driver global deferred resman contexts list */
 
 	IMG_HANDLE					hCleanupThread;				/*!< Cleanup thread */
 	IMG_HANDLE					hCleanupEventObject;		/*!< Event object to drive cleanup thread */

@@ -50,10 +50,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "device.h"
 #include "rgxdevice.h"
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 
 /*!
 *******************************************************************************

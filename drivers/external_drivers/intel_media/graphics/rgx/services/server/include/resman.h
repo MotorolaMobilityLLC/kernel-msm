@@ -128,11 +128,14 @@ enum {
 #define RESMAN_CRITERIA_RESTYPE			0x00000001	/*!< match by criteria type */
 #define RESMAN_CRITERIA_PVOID_PARAM		0x00000002	/*!< match by criteria param1 */
 
+/* Set the maximum time the freeing of the resources can keep the lock */
+#define RESMAN_DEFERRED_CLEANUP_TIMESLICE_NS 3000*1000 /* 3ms */
+
 typedef PVRSRV_ERROR (*RESMAN_FREE_FN)(IMG_PVOID pvParam); 
 
 typedef struct _RESMAN_ITEM_ *PRESMAN_ITEM;
 typedef struct _RESMAN_CONTEXT_ *PRESMAN_CONTEXT;
-typedef struct _RESMAN_DEFER_CONTEXT_ *PRESMAN_DEFER_CONTEXT;
+typedef struct _RESMAN_DEFER_CONTEXTS_LIST_ *PRESMAN_DEFER_CONTEXTS_LIST;
 
 /******************************************************************************
  * resman functions 
@@ -164,28 +167,24 @@ ResManFindPrivateDataByPtr(
                            IMG_PVOID *ppvParam1
                            );
 
-PVRSRV_ERROR ResManFreeResByCriteria(PRESMAN_CONTEXT	hResManContext,
-									 IMG_UINT32			ui32SearchCriteria, 
-									 IMG_UINT32			ui32ResType, 
-									 IMG_PVOID			pvParam);
-
 PVRSRV_ERROR ResManDissociateRes(PRESMAN_ITEM		psResItem,
 							 PRESMAN_CONTEXT	psNewResManContext);
 
 PVRSRV_ERROR ResManFindResourceByPtr(PRESMAN_CONTEXT	hResManContext,
 									 PRESMAN_ITEM		psItem);
 
-PVRSRV_ERROR PVRSRVResManConnect(PRESMAN_DEFER_CONTEXT hDeferContext,
+PVRSRV_ERROR PVRSRVResManConnect(PRESMAN_DEFER_CONTEXTS_LIST hDeferContext,
 								 PRESMAN_CONTEXT *phResManContext);
 
 IMG_VOID PVRSRVResManDisconnect(PRESMAN_CONTEXT hResManContext);
 
 PVRSRV_ERROR PVRSRVResManCreateDeferContext(IMG_HANDLE hEventObj,
-										    PRESMAN_DEFER_CONTEXT *phDeferContext);
+										    PRESMAN_DEFER_CONTEXTS_LIST *phDeferContext);
 
-IMG_BOOL PVRSRVResManFlushDeferContext(PRESMAN_DEFER_CONTEXT hDeferContext);
+IMG_BOOL PVRSRVResManFlushDeferContext(PRESMAN_DEFER_CONTEXTS_LIST hDeferContext,
+                                       IMG_UINT64 ui64TimesliceLimit);
 
-IMG_VOID PVRSRVResManDestroyDeferContext(PRESMAN_DEFER_CONTEXT hDeferContext);
+IMG_VOID PVRSRVResManDestroyDeferContext(PRESMAN_DEFER_CONTEXTS_LIST hDeferContext);
 
 #if defined (__cplusplus)
 }

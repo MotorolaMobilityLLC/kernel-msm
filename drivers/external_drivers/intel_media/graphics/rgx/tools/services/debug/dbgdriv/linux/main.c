@@ -89,6 +89,7 @@ static struct class *psDbgDrvClass;
 static int AssignedMajorNumber = 0;
 
 long dbgdrv_ioctl(struct file *, unsigned int, unsigned long);
+long dbgdrv_ioctl_compat(struct file *, unsigned int, unsigned long);
 
 static int dbgdrv_open(struct inode unref__ * pInode, struct file unref__ * pFile)
 {
@@ -109,6 +110,7 @@ static struct file_operations dbgdrv_fops =
 {
 	.owner          = THIS_MODULE,
 	.unlocked_ioctl = dbgdrv_ioctl,
+	.compat_ioctl   = dbgdrv_ioctl_compat,
 	.open           = dbgdrv_open,
 	.release        = dbgdrv_release,
 	.mmap           = dbgdrv_mmap,
@@ -233,15 +235,12 @@ ErrDestroyClass:
 #endif /* !defined(SUPPORT_DRM) */
 }
 
-#if defined(SUPPORT_DRM)
-int dbgdrv_ioctl(struct drm_device *dev, IMG_VOID *arg, struct drm_file *pFile)
-#else
-long dbgdrv_ioctl(struct file *file, unsigned int ioctlCmd, unsigned long arg)
-#endif
+static IMG_INT dbgdrv_ioctl_work(IMG_VOID *arg, IMG_BOOL bCompat)
 {
 	IOCTL_PACKAGE *pIP = (IOCTL_PACKAGE *) arg;
 	char *buffer, *in, *out;
 	unsigned int cmd;
+	IMG_VOID *pBufferIn, *pBufferOut;
 
 	if ((pIP->ui32InBufferSize > (PAGE_SIZE >> 1) ) || (pIP->ui32OutBufferSize > (PAGE_SIZE >> 1)))
 	{
@@ -259,7 +258,10 @@ long dbgdrv_ioctl(struct file *file, unsigned int ioctlCmd, unsigned long arg)
 	in = buffer;
 	out = buffer + (PAGE_SIZE >>1);
 
-	if (pvr_copy_from_user(in, pIP->pInBuffer, pIP->ui32InBufferSize) != 0)
+	pBufferIn = WIDEPTR_GET_PTR(pIP->pInBuffer, bCompat);
+	pBufferOut = WIDEPTR_GET_PTR(pIP->pOutBuffer, bCompat);
+
+	if (pvr_copy_from_user(in, pBufferIn, pIP->ui32InBufferSize) != 0)
 	{
 		goto init_failed;
 	}
@@ -272,6 +274,7 @@ long dbgdrv_ioctl(struct file *file, unsigned int ioctlCmd, unsigned long arg)
 		IMG_UINT32 *pui32BytesCopied = (IMG_UINT32 *)out;
 		DBG_OUT_READ *psReadOutParams = (DBG_OUT_READ *)out;
 		DBG_IN_READ *psReadInParams = (DBG_IN_READ *)in;
+		IMG_VOID *pvOutBuffer;
 		PDBG_STREAM psStream;
 
 		psStream = SID2PStream(psReadInParams->hStream);
@@ -302,7 +305,9 @@ long dbgdrv_ioctl(struct file *file, unsigned int ioctlCmd, unsigned long arg)
 										   g_outTmpBuf);
 		psReadOutParams->ui32SplitMarker = DBGDrivGetMarker(psStream);
 
-		if (pvr_copy_to_user(psReadInParams->u.pui8OutBuffer,
+		pvOutBuffer = WIDEPTR_GET_PTR(psReadInParams->pui8OutBuffer, bCompat);
+
+		if (pvr_copy_to_user(pvOutBuffer,
 						g_outTmpBuf,
 						*pui32BytesCopied) != 0)
 		{
@@ -314,10 +319,10 @@ long dbgdrv_ioctl(struct file *file, unsigned int ioctlCmd, unsigned long arg)
 	}
 	else
 	{
-		(g_DBGDrivProc[cmd])(in, out);
+		(g_DBGDrivProc[cmd])(in, out, bCompat);
 	}
 
-	if (copy_to_user(pIP->pOutBuffer, out, pIP->ui32OutBufferSize) != 0)
+	if (copy_to_user(pBufferOut, out, pIP->ui32OutBufferSize) != 0)
 	{
 		goto init_failed;
 	}
@@ -329,6 +334,25 @@ init_failed:
 	HostPageablePageFree((IMG_VOID *)buffer);
 	return -EFAULT;
 }
+
+#if defined(SUPPORT_DRM)
+int dbgdrv_ioctl(struct drm_device *dev, IMG_VOID *arg, struct drm_file *pFile)
+#else
+long dbgdrv_ioctl(struct file *file, unsigned int ioctlCmd, unsigned long arg)
+#endif
+{
+	return dbgdrv_ioctl_work((IMG_VOID *) arg, IMG_FALSE);
+}
+
+#if defined(SUPPORT_DRM)
+int dbgdrv_ioctl_compat(struct drm_device *dev, IMG_VOID *arg, struct drm_file *pFile)
+#else
+long dbgdrv_ioctl_compat(struct file *file, unsigned int ioctlCmd, unsigned long arg)
+#endif
+{
+	return dbgdrv_ioctl_work((IMG_VOID *) arg, IMG_TRUE);
+}
+
 
 
 EXPORT_SYMBOL(DBGDrvGetServiceTable);

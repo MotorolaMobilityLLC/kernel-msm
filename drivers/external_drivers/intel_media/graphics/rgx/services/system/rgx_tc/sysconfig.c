@@ -454,7 +454,7 @@ static PVRSRV_ERROR ApolloHardReset(SYS_DATA *psSysData)
 	{
 		IMG_UINT32 ui32DUTResets;
 		IMG_UINT32 ui32DUTGPIO1;
-		IMG_UINT32 ui32PLLStatus;
+		IMG_UINT32 ui32PLLStatus = 0;
 
 		/* Un-bypass the PLL on the DUT */
 		SPI_Write(psSysData->pvSystemRegCpuVBase, 0x1, 0x0);
@@ -487,9 +487,9 @@ static PVRSRV_ERROR ApolloHardReset(SYS_DATA *psSysData)
 
 	while (!bAlignmentOK && resetAttempts < 10)
 	{
-		IMG_UINT32 ui32Eyes;
-		IMG_UINT32 ui32ClkTaps;
-		IMG_UINT32 ui32TrainAck;
+		IMG_UINT32 ui32Eyes     = 0;
+		IMG_UINT32 ui32ClkTaps  = 0;
+		IMG_UINT32 ui32TrainAck = 0;
 
 		IMG_INT bank;
 

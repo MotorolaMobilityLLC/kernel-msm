@@ -79,7 +79,7 @@ static struct mutex g_sMMapMutex;
 
 #include "pmr.h"
 
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
 #include "process_stats.h"
 #endif
 static void MMapPMROpen(struct vm_area_struct* ps_vma)
@@ -97,8 +97,9 @@ static void MMapPMRClose(struct vm_area_struct *ps_vma)
     psPMR = ps_vma->vm_private_data;
     while (vAddr < ps_vma->vm_end)
     {
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+    /* USER MAPPING */
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
     PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES, PAGE_SIZE);
 #else
 	PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES, (IMG_UINT64)vAddr);
@@ -273,13 +274,13 @@ int MMapPMR(struct file *pFile, struct vm_area_struct *ps_vma)
 
 	ps_vma->vm_flags = ulNewFlags;
 
-#if defined (__aarch64__)
+#if defined (CONFIG_ARM64)
 	sPageProt = __pgprot_modify(ps_vma->vm_page_prot, 0, vm_get_page_prot(ulNewFlags));
-#elif defined(__arm__)
+#elif defined(CONFIG_ARM)
 	sPageProt = __pgprot_modify(ps_vma->vm_page_prot, L_PTE_MT_MASK, vm_get_page_prot(ulNewFlags));
-#elif defined(__i386__) || defined(__x86_64)
+#elif defined(CONFIG_X86)
 	sPageProt = pgprot_modify(ps_vma->vm_page_prot, vm_get_page_prot(ulNewFlags));
-#elif defined(__metag__) || defined(__mips__)
+#elif defined(CONFIG_METAG) || defined(CONFIG_MIPS)
 	sPageProt = vm_get_page_prot(ulNewFlags);
 #else
 #error Please add pgprot_modify equivalent for your system
@@ -419,8 +420,10 @@ int MMapPMR(struct file *pFile, struct vm_area_struct *ps_vma)
 	
 	            goto e2;
 	        }
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+    /* USER MAPPING*/
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
 	    PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES, PAGE_SIZE);
 #else
     	PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_MAP_UMA_LMA_PAGES,

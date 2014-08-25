@@ -69,7 +69,7 @@ IMG_VOID RGXHWPerfDeinit(void);
 
 PVRSRV_ERROR PVRSRVRGXCtrlHWPerfKM(
 		PVRSRV_DEVICE_NODE*	psDeviceNode,
-		IMG_BOOL			bEnable,
+		IMG_BOOL			bToggle,
 		IMG_UINT64 			ui64Mask);
 
 

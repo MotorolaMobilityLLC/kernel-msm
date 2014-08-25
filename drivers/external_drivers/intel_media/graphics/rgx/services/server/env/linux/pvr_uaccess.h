@@ -76,7 +76,9 @@ static inline unsigned long pvr_copy_from_user(void *pvTo, const void __user *pv
 	if (pvTo != NULL)
 	{
 		memset(pvTo, 0xAA, ulBytes);
+		return 0;
 	}
+	return 1;
 }
 	
 #else /* real implementation */
@@ -87,7 +89,7 @@ static inline unsigned long pvr_copy_from_user(void *pvTo, const void __user *pv
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33))
     /*
      * The compile time correctness checking introduced for copy_from_user in
-     * Linux 2.6.33 isn't fully comaptible with our usage of the function.
+     * Linux 2.6.33 isn't fully compatible with our usage of the function.
      */
     if (access_ok(VERIFY_READ, pvFrom, ulBytes))
     {

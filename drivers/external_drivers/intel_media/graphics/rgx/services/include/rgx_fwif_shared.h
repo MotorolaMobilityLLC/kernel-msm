@@ -122,7 +122,7 @@ typedef RGXFWIF_DEV_VIRTADDR	PRGXFWIF_CLEANUP_CTL;
 #endif /* RGX_FIRMWARE */
 
 
-/* FIXME PRGXFWIF_UFO_ADDR and RGXFWIF_UFO should move back into rgx_fwif_client.h */
+
 typedef struct _RGXFWIF_UFO_
 {
 	PRGXFWIF_UFO_ADDR	puiAddrUFO;
@@ -185,14 +185,11 @@ typedef enum
 {
 	RGXFW_LOCAL_FREELIST = 0,
 	RGXFW_GLOBAL_FREELIST = 1,
-	RGXFW_MMU_FREELIST = 2,
-} RGXFW_FREELIST_TYPE;
-
 #if defined(SUPPORT_MMU_FREELIST)
-#define RGXFW_MAX_FREELISTS		(3)
-#else
-#define RGXFW_MAX_FREELISTS		(2)
+	RGXFW_MMU_FREELIST = 2,
 #endif
+	RGXFW_MAX_FREELISTS
+} RGXFW_FREELIST_TYPE;
 
 typedef struct _RGXFWIF_RTA_CTL_
 {

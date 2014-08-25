@@ -106,7 +106,7 @@ PVRSRVBridgeRGXCtrlHWPerf(IMG_UINT32 ui32BridgeID,
 	psRGXCtrlHWPerfOUT->eError =
 		PVRSRVRGXCtrlHWPerfKM(
 					hDevNodeInt,
-					psRGXCtrlHWPerfIN->bEnable,
+					psRGXCtrlHWPerfIN->bToggle,
 					psRGXCtrlHWPerfIN->ui64Mask);
 
 

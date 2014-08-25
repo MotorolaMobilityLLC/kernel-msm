@@ -484,9 +484,7 @@ PVRSRV_BridgeDispatchKM(struct file *pFile, unsigned int unref__ ioctlCmd, unsig
 		goto unlock_and_return;
 	}
 	
-	/* FIXME - Currently the CopyFromUserWrapper which collects stats about
-	 * how much data is shifted to/from userspace isn't available to us
-	 * here. */
+	
 	if(OSCopyFromUser(IMG_NULL,
 					  psBridgePackageKM,
 					  psBridgePackageUM,

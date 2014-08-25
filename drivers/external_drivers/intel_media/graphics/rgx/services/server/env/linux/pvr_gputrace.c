@@ -115,7 +115,7 @@ static void CreateJob(IMG_UINT32 ui32PID, IMG_UINT32 ui32ExtJobRef,
 		{
 			psContext = &(gsFTraceGPUData.asFTraceContext[i]);
 			break;
-		} /* */
+		} 
 	}
 
 	/* If not present in the CB history, create it */
@@ -284,6 +284,7 @@ static IMG_INT GpuTracingSet(const IMG_CHAR *buffer, size_t count, loff_t uiPosi
 		case 'N':
 		{
 			PVRGpuTraceEnabledSet(IMG_FALSE);
+			PVR_TRACE(("DISABLED GPU FTrace"));
 			break;
 		}
 		case '1':
@@ -291,6 +292,7 @@ static IMG_INT GpuTracingSet(const IMG_CHAR *buffer, size_t count, loff_t uiPosi
 		case 'Y':
 		{
 			PVRGpuTraceEnabledSet(IMG_TRUE);
+			PVR_TRACE(("ENABLED GPU FTrace"));
 			break;
 		}
 	}
@@ -392,9 +394,12 @@ PVRSRV_ERROR PVRGpuTraceInit(void)
 
 void PVRGpuTraceDeInit(void)
 {
-	PVRDebugFSRemoveEntry(gpsPVRDebugFSGpuTracingOnEntry);
-	gpsPVRDebugFSGpuTracingOnEntry = NULL;
-
+	/* Can be NULL if driver startup failed */
+	if (gpsPVRDebugFSGpuTracingOnEntry)
+	{
+		PVRDebugFSRemoveEntry(gpsPVRDebugFSGpuTracingOnEntry);
+		gpsPVRDebugFSGpuTracingOnEntry = NULL;
+	}
 }
 
 

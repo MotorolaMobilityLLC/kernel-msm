@@ -56,7 +56,7 @@ typedef struct _DEVMEM_MEMDESC_ DEVMEM_MEMDESC;     /*!< Convenience typedef for
 typedef struct _DEVMEM_PAGELIST_ DEVMEM_PAGELIST;	/*!< Convenience typedef for struct _DEVMEM_PAGELIST_ */
 typedef PVRSRV_MEMALLOCFLAGS_T DEVMEM_FLAGS_T;      /*!< Conveneince typedef for PVRSRV_MEMALLOCFLAGS_T */
 
-typedef IMG_HANDLE /* FIXME: should be a SID */ DEVMEM_EXPORTHANDLE; /*!< Typedef for DeviceMem Export Handle */
+typedef IMG_HANDLE /* */ DEVMEM_EXPORTHANDLE; /*!< Typedef for DeviceMem Export Handle */
 typedef IMG_UINT64 DEVMEM_EXPORTKEY;                                /*!< Typedef for DeviceMem Export Key */
 typedef IMG_DEVMEM_SIZE_T DEVMEM_SIZE_T;                            /*!< Typedef for DeviceMem SIZE_T */
 typedef IMG_DEVMEM_LOG2ALIGN_T DEVMEM_LOG2ALIGN_T;                  /*!< Typdef for DeviceMem LOG2 Alignment */
@@ -64,9 +64,8 @@ typedef IMG_DEVMEM_LOG2ALIGN_T DEVMEM_LOG2ALIGN_T;                  /*!< Typdef 
 /*! calling code needs all the info in this struct, to be able to pass it around */
 typedef struct
 {
-    /*! A handle to the PMR.  Should be a SID.  FIXME: decide whether
-       this is right... as the PMR would have to be a cross-process
-       handle */
+    /*! A handle to the PMR.  Should be a SID.  
+*/
     IMG_HANDLE hPMRExportHandle;
     /*! The "key" to prove we have authorization to use this PMR */
     IMG_UINT64 uiPMRExportPassword;

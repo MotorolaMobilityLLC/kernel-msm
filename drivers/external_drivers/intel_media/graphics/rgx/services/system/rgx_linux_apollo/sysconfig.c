@@ -272,7 +272,7 @@ struct _SYS_DATA_
 
 static IMG_CHAR *GetSystemInfoString(SYS_DATA *psSysData)
 {
-	/* FIXME: Implement system info string */
+	
 	return NULL;
 }
 
@@ -288,7 +288,7 @@ PVRSRV_ERROR IonInit(void *pvPrivateData)
 	if (IS_ERR(psSysData->ion_client))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to create ION client (%ld)", __func__, PTR_ERR(psSysData->ion_client)));
-		/* FIXME: Find a better matching error code */
+		
 		eError = PVRSRV_ERROR_PCI_CALL_FAILED;
 		goto err_out;
 	}
@@ -297,7 +297,7 @@ PVRSRV_ERROR IonInit(void *pvPrivateData)
 	if (IS_ERR(psSysData->ion_rogue_allocation))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to allocate ION rogue buffer (%ld)", __func__, PTR_ERR(psSysData->ion_rogue_allocation)));
-		/* FIXME: Find a better matching error code */
+		
 		eError = PVRSRV_ERROR_PCI_CALL_FAILED;
 		goto err_destroy_client;
 
@@ -351,8 +351,8 @@ void IonDevRelease(struct ion_device *ion_device)
 IMG_UINT32 IonPhysHeapID(void)
 {
 	/* This seems to be the services heap that ION allocations should be mapped into
-	 * FIXME: This may depend on the allocation? Eg. if allocations can come
-	 * from more than one heap?*/
+	 * 
+*/
 	return 1;
 }
 
@@ -379,7 +379,7 @@ static PVRSRV_ERROR PCIInitDev(SYS_DATA *psSysData)
 	}
 
 
-	/* FIXME: Use ion_phys on the allocation? */
+	
 	gsPhysHeapConfig[0].uiSize =
 		psSysData->pdata->rogue_heap_memory_size;
 

@@ -69,7 +69,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DRV_NAME "apollo"
 
 /* How much memory to allocate to ION (used for pdp buffers). */
-/* FIXME: Put this config option somewhere more sensible? */
 #define APOLLO_PDP_MEM_SIZE		(384*1024*1024)
 
 /* Apparently, the last 1mb of the apollo memory is broken somehow */
@@ -511,7 +510,8 @@ static int apollo_hard_reset(struct apollo_device *apollo)
 			spi_read(apollo, bank_base + 0x6, &train_ack);
 
 			if (!is_interface_aligned(eyes, clk_taps, train_ack)) {
-				aligned = 1;
+				dev_warn(&apollo->pdev->dev, "Alignment check failed, retrying\n");
+				aligned = 0;
 				break;
 			}
 
@@ -523,7 +523,8 @@ static int apollo_hard_reset(struct apollo_device *apollo)
 			train_ack = sai_read(apollo, bank_base + 0x6);
 
 			if (!is_interface_aligned(eyes, clk_taps, train_ack)) {
-				aligned = 1;
+				dev_warn(&apollo->pdev->dev, "Alignment check failed, retrying\n");
+				aligned = 0;
 				break;
 			}
 		}
@@ -620,7 +621,8 @@ static int iopol32(u32 val, u32 mask, void __iomem *addr)
 	for (polnum = 0; polnum < 500; polnum++) {
 		if ((ioread32(addr) & mask) == val)
 			break;
-		/* FIXME: Apparently msleep() < 20 ms 'may' sleep up to 20ms */
+		/* Apparently msleep() < 20 ms 'may' sleep up to 20ms, but that should
+		 * be fine as sleeping longer should have no issues here */
 		msleep(1);
 	}
 	if (polnum == 500) {
@@ -872,7 +874,8 @@ static void apollo_hard_reset(struct apollo_device *apollo)
 	reg |= (0x1 << DUT_DCM_RESETN_SHIFT);
 	iowrite32(reg, apollo->tcf_registers + TCF_CLK_CTRL_CLK_AND_RST_CTRL);
 
-	/* FIXME: Apparently msleep() < 20 ms 'may' sleep up to 20ms */
+	/* Apparently msleep() < 20 ms 'may' sleep up to 20ms, but that should
+	 * be fine as sleeping longer should have no issues here */
 	msleep(4);
 	iopol32(0x7, DCM_LOCK_STATUS_MASK,
 		apollo->tcf_registers + TCF_CLK_CTRL_DCM_LOCK_STATUS);

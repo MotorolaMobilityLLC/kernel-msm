@@ -77,7 +77,7 @@ typedef struct _RESMAN_CONTEXT_
 {
 
 	IMG_UINT32					ui32Signature;
-	PRESMAN_DEFER_CONTEXT		psDeferContext;	/*!< Defer context to which the the DeferResManContext should be added */
+	PRESMAN_DEFER_CONTEXTS_LIST	psDeferContext; /*!< Defer context to which the the DeferResManContext should be added */
 
 	struct	_RESMAN_CONTEXT_	**ppsThis;/*!< list navigation */
 	struct	_RESMAN_CONTEXT_	*psNext;/*!< list navigation */
@@ -86,13 +86,14 @@ typedef struct _RESMAN_CONTEXT_
 
 } RESMAN_CONTEXT;
 
-typedef struct _RESMAN_DEFER_CONTEXT_
+typedef struct _RESMAN_DEFER_CONTEXTS_LIST_
 {
 	IMG_UINT32					ui32Signature;
 	IMG_HANDLE					hCleanupEventObject;      /*!< used to trigger deferred clean-up when it is required */
+	IMG_UINT64					ui64TimesliceLimit;
 
 	RESMAN_CONTEXT				*psDeferResManContextList; /*!< list of contexts for deferred clean-up */
-} RESMAN_DEFER_CONTEXT;
+} RESMAN_DEFER_CONTEXTS_LIST;
 
 /* resman list structure */
 typedef struct
@@ -120,11 +121,10 @@ static PVRSRV_ERROR FreeResourceByPtr(RESMAN_ITEM *psItem);
 static PVRSRV_ERROR FreeResourceByCriteria(PRESMAN_CONTEXT	psContext,
 										   IMG_UINT32		ui32SearchCriteria,
 										   IMG_UINT32		ui32ResType,
-										   IMG_PVOID		pvParam,
-										   IMG_BOOL			bDefer);
+										   IMG_PVOID		pvParam);
 
-static IMG_VOID ResManFreeResources(PRESMAN_CONTEXT psResManContext,
-									IMG_BOOL bDefer);
+static IMG_VOID ResManFreeResources(PRESMAN_CONTEXT psResManContext);
+static IMG_VOID ResManDeferResources(PRESMAN_CONTEXT psResManContext);
 
 /*!
 ******************************************************************************
@@ -169,7 +169,7 @@ IMG_VOID ResManDeInit(IMG_VOID)
  @Return    error code or PVRSRV_OK
 
 ******************************************************************************/
-PVRSRV_ERROR PVRSRVResManConnect(PRESMAN_DEFER_CONTEXT psDeferContext,
+PVRSRV_ERROR PVRSRVResManConnect(PRESMAN_DEFER_CONTEXTS_LIST psDeferContext,
 								 PRESMAN_CONTEXT *phResManContext)
 {
 	PRESMAN_CONTEXT	psResManContext;
@@ -212,32 +212,23 @@ PVRSRV_ERROR PVRSRVResManConnect(PRESMAN_DEFER_CONTEXT psDeferContext,
 ******************************************************************************/
 IMG_VOID PVRSRVResManDisconnect(PRESMAN_CONTEXT psResManContext)
 {
-	IMG_BOOL bDefer = IMG_FALSE;
-
-	/* If we have a deferred resman context then allow freeing to be deferred */
-	if (psResManContext->psDeferContext)
-	{
-		bDefer = IMG_TRUE;
-	}
 
 	/* Acquire resource list sync object */
 	ACQUIRE_SYNC_OBJ;
 
-	/* Free or defer all the resources */
-	ResManFreeResources(psResManContext, bDefer);
-
-	/* Ensure that there are no resources left */
-	if (psResManContext->psResItemList != IMG_NULL)
-	{
-		PVR_ASSERT(psResManContext->psDeferContext);
-		PVR_DPF((PVR_DBG_WARNING, "PVRSRVResManDisconnect: Resman context (%p) disconnect deferred", psResManContext));
-	}
-	else
+	/* Free the ResMan context when it is empty */
+	if (psResManContext->psResItemList == IMG_NULL)
 	{
 		/* Free the context struct */
 		OSFreeMem(psResManContext);
+		PVR_DPF((PVR_DBG_MESSAGE, "PVRSRVResManDisconnect: ResManContext (%p) freed", psResManContext));
 	}
-
+	else
+	{
+		/* defer the freeing of this context */
+		ResManDeferResources(psResManContext);
+		PVR_DPF((PVR_DBG_MESSAGE, "PVRSRVResManDisconnect: Resman context (%p) disconnect deferred", psResManContext));
+	}
 	/* Release resource list sync object */
 	RELEASE_SYNC_OBJ;
 }
@@ -258,13 +249,13 @@ IMG_VOID PVRSRVResManDisconnect(PRESMAN_CONTEXT psResManContext)
 
 ******************************************************************************/
 PVRSRV_ERROR PVRSRVResManCreateDeferContext(IMG_HANDLE hCleanupEventObject,
-		PRESMAN_DEFER_CONTEXT *phDeferContext)
+		PRESMAN_DEFER_CONTEXTS_LIST *phDeferContext)
 {
-	PRESMAN_DEFER_CONTEXT psDeferContext;
+	PRESMAN_DEFER_CONTEXTS_LIST psDeferContext;
 
 	PVR_ASSERT(hCleanupEventObject);
 
-	psDeferContext = OSAllocMem(sizeof(RESMAN_DEFER_CONTEXT));
+	psDeferContext = OSAllocMem(sizeof(RESMAN_DEFER_CONTEXTS_LIST));
 	if (psDeferContext == IMG_NULL)
 	{
 		return PVRSRV_ERROR_OUT_OF_MEMORY;
@@ -290,7 +281,7 @@ static IMG_VOID FlushDeferResManContext(PRESMAN_CONTEXT psResManContext)
 	if (psResManContext->psResItemList)
 	{
 		/* Free what we can */
-		ResManFreeResources(psResManContext, IMG_FALSE);
+		ResManFreeResources(psResManContext);
 	}
 
 	/*
@@ -299,9 +290,9 @@ static IMG_VOID FlushDeferResManContext(PRESMAN_CONTEXT psResManContext)
 	*/
 	if (!psResManContext->psResItemList)
 	{
-		PVR_DPF((PVR_DBG_WARNING, "PVRSRVResManDisconnect: Resman context (%p) deferred free finished", psResManContext));
 		List_RESMAN_CONTEXT_Remove(psResManContext);
-		PVRSRVResManDisconnect(psResManContext);
+		OSFreeMem(psResManContext);
+		PVR_DPF((PVR_DBG_MESSAGE, "PVRSRVResManDisconnect: ResManContext (%p) freed", psResManContext));
 	}
 	else
 	{
@@ -322,16 +313,24 @@ static IMG_VOID FlushDeferResManContext(PRESMAN_CONTEXT psResManContext)
             Try to free resources on resman contexts that have been moved to
             this defer context
 
- @input 	psResManDeferContext - Defer context
+ @input     psResManDeferContext - Defer context
+ @input     ui64TimesliceLimit   - Limit for the time slice used to free the resman Items.
+                                   When this function is called  by thread which is NOT holding
+                                   the bridge lock (e.g. deinit), this value HAS TO BE zero.
 
- @Return	IMG_BOOL - true when resources still need deferred cleanup
-                       false otherwise, the deferred context list is empty
+ @Return    IMG_BOOL             - true when resources still need deferred cleanup
+                                   false otherwise, the deferred context list is empty
 
 ******************************************************************************/
-IMG_BOOL PVRSRVResManFlushDeferContext(PRESMAN_DEFER_CONTEXT psDeferContext)
+IMG_BOOL PVRSRVResManFlushDeferContext(PRESMAN_DEFER_CONTEXTS_LIST psDeferContext, IMG_UINT64 ui64TimesliceLimit)
 {
 	/* Acquire resource list sync object */
 	ACQUIRE_SYNC_OBJ;
+
+	/* Set the timeout to release the bridge lock */
+	psDeferContext->ui64TimesliceLimit = ui64TimesliceLimit;
+	PVR_DPF((PVR_DBG_MESSAGE, "PVRSRVResManFlushDeferContext: Flush time slice limit set to %llu",
+	         psDeferContext->ui64TimesliceLimit));
 
 	/* Go through checking all resman contexts on this defer context */
 	List_RESMAN_CONTEXT_ForEachSafe(psDeferContext->psDeferResManContextList, FlushDeferResManContext);
@@ -354,7 +353,7 @@ IMG_BOOL PVRSRVResManFlushDeferContext(PRESMAN_DEFER_CONTEXT psDeferContext)
  @Return	IMG_VOID
 
 ******************************************************************************/
-IMG_VOID PVRSRVResManDestroyDeferContext(PRESMAN_DEFER_CONTEXT psDeferContext)
+IMG_VOID PVRSRVResManDestroyDeferContext(PRESMAN_DEFER_CONTEXTS_LIST psDeferContext)
 {
 	/*
 	  If there are still items waiting on the defer list then we must try
@@ -377,7 +376,9 @@ IMG_VOID PVRSRVResManDestroyDeferContext(PRESMAN_DEFER_CONTEXT psDeferContext)
 		/* Attempt to free more resources... */
 		LOOP_UNTIL_TIMEOUT(MAX_HW_TIME_US)
 		{
-			PVRSRVResManFlushDeferContext(psDeferContext);
+			/* Set timer to 0 because we don't need to release the global lock
+			 * during the deinit phase. */
+			PVRSRVResManFlushDeferContext(psDeferContext, 0);
 			
 			/* If the driver is not in a okay state then don't try again... */
 			if (PVRSRVGetPVRSRVData()->eServicesState != PVRSRV_SERVICES_STATE_OK)
@@ -395,7 +396,7 @@ IMG_VOID PVRSRVResManDestroyDeferContext(PRESMAN_DEFER_CONTEXT psDeferContext)
 		} END_LOOP_UNTIL_TIMEOUT();
 
 		/* Once more for luck and then force the issue... */
-		PVRSRVResManFlushDeferContext(psDeferContext);
+		PVRSRVResManFlushDeferContext(psDeferContext, 0);
 		if (psDeferContext->psDeferResManContextList != IMG_NULL)
 		{
 			ui32DeferedCount = 0;
@@ -568,50 +569,6 @@ ResManFindPrivateDataByPtr(
 
 	return PVRSRV_OK;
 }
-
-
-/*!
-******************************************************************************
- @Function	 	ResManFreeResByCriteria
-
- @Description   frees a resource by matching on criteria
-
- @inputs	 	hResManContext - handle for resman context
- @inputs        ui32SearchCriteria - indicates which parameters should be
- 				used in search for resources to free
- @inputs        ui32ResType - identify what kind of resource to free
- @inputs        pvParam - address of resource to be free
- @inputs        ui32Param - size of resource to be free
-
- @Return   		PVRSRV_ERROR
-**************************************************************************/
-PVRSRV_ERROR ResManFreeResByCriteria(PRESMAN_CONTEXT	psResManContext,
-									 IMG_UINT32			ui32SearchCriteria,
-									 IMG_UINT32			ui32ResType,
-									 IMG_PVOID			pvParam)
-{
-	PVRSRV_ERROR	eError;
-
-	PVR_ASSERT(psResManContext != IMG_NULL);
-
-	/* Acquire resource list sync object */
-	ACQUIRE_SYNC_OBJ;
-
-	PVR_DPF((PVR_DBG_MESSAGE, "ResManFreeResByCriteria: "
-			"Context %p, Criteria 0x%x, Type 0x%x, Addr %p",
-			psResManContext, ui32SearchCriteria, ui32ResType,
-			pvParam));
-
-	/* Free resources by criteria for this context */
-	eError = FreeResourceByCriteria(psResManContext, ui32SearchCriteria,
-									ui32ResType, pvParam, IMG_FALSE);
-
-	/* Release resource list sync object */
-	RELEASE_SYNC_OBJ;
-
-	return eError;
-}
-
 
 /*!
 ******************************************************************************
@@ -882,88 +839,68 @@ static IMG_VOID* FreeResourceByCriteria_AnyVaCb(RESMAN_ITEM *psCurItem, va_list 
  @inputs        search for resources to free
  @inputs        ui32ResType - identify what kind of resource to free
  @inputs        pvParam - address of resource to be free
- @inputs        bDefer - If the free fails defer the resource free from this process
 
  @Return   		PVRSRV_ERROR
 **************************************************************************/
 static PVRSRV_ERROR FreeResourceByCriteria(PRESMAN_CONTEXT	psResManContext,
 										   IMG_UINT32		ui32SearchCriteria,
 										   IMG_UINT32		ui32ResType,
-										   IMG_PVOID		pvParam,
-										   IMG_BOOL			bDefer)
+										   IMG_PVOID		pvParam)
 {
 	PRESMAN_ITEM	psCurItem;
 	PVRSRV_ERROR	eError = PVRSRV_OK;
-	IMG_BOOL		bContinue = IMG_TRUE;
-	IMG_BOOL		bRetry = IMG_FALSE;
+	IMG_UINT32		iu32ItemsCounter = 0;
 
 	/* Search resource items starting at after the first dummy item */
 	/*while we get a match and not an error*/
 	while((psCurItem = (PRESMAN_ITEM)
-				List_RESMAN_ITEM_Any_va(psResManContext->psResItemList,
-										&FreeResourceByCriteria_AnyVaCb,
-										ui32SearchCriteria,
-										ui32ResType,
-						 				pvParam)) != IMG_NULL
-		  	&& bContinue)
+	                   List_RESMAN_ITEM_Any_va(psResManContext->psResItemList,
+	                   &FreeResourceByCriteria_AnyVaCb,
+	                   ui32SearchCriteria,
+	                   ui32ResType,
+	                   pvParam)) != IMG_NULL
+	       && eError == PVRSRV_OK)
 	{
+		/* Attempt the free of at least one resman Item */
 		eError = FreeResourceByPtr(psCurItem);
 
-		/*
-			We failed to free the resource, if we got a retry and this process
-			disconnect time then defer the free until later.
-		*/
-		if ((eError == PVRSRV_ERROR_RETRY) && bDefer)
+		if (eError == PVRSRV_OK)
 		{
-			PVRSRV_ERROR ret;
-
-			PVR_ASSERT(psResManContext->psDeferContext);
-			PVR_DPF((PVR_DBG_WARNING, "FreeResourceByCriteria: Resource %p (type %d) returned retry. Moving resman context to defer context", psCurItem, ui32ResType));
-
-			/*
-				Due to the fact the not all resources are refcounted against each
-				other then as soon as we get a retry from one resource free we
-				have to assume that we can't free any further resources.
-
-				Insert this resman context into the defer context so we can free
-				items at our leisure and then bail out.
-			*/
-			List_RESMAN_CONTEXT_Insert(&psResManContext->psDeferContext->psDeferResManContextList, psResManContext);
-			bContinue = IMG_FALSE;
-
-			/* Now signal clean up thread */
-			ret = OSEventObjectSignal(psResManContext->psDeferContext->hCleanupEventObject);
-			PVR_LOG_IF_ERROR(ret, "OSEventObjectSignal");
+			iu32ItemsCounter++;
 		}
 		else
 		{
-			/*
-				Regardless of error or retry continue trying to free other
-				resources of this type as this is safe.
-				However, if any resource did return a retry error then we must
-				report that back so we don't continue down the resource list
-				trying to free resources which the busy resource might be dependant
-				on.
-			*/
-
 			if (eError == PVRSRV_ERROR_RETRY)
 			{
-				PVR_DPF((PVR_DBG_MESSAGE, "FreeResourceByCriteria: Got retry on resource %p", psCurItem));
-				bRetry = IMG_TRUE;
-				bContinue = IMG_FALSE;
+				PVR_DPF((PVR_DBG_WARNING, "FreeResourceByCriteria: Resource %p (type %d) returned retry.", psCurItem, ui32ResType));
 			}
-			else if (eError != PVRSRV_OK)
+			else
 			{
-				PVR_DPF((PVR_DBG_ERROR, "FreeResourceByCriteria: Error freeing resource %p (%s)", psCurItem, PVRSRVGetErrorStringKM(eError)));
-				bContinue = IMG_FALSE;
+				PVR_DPF((PVR_DBG_ERROR, "FreeResourceByCriteria: Error freeing resource %p (%s)",
+			             psCurItem, PVRSRVGetErrorStringKM(eError)));
 			}
+			return eError;
+		}
+
+		if (psResManContext->psDeferContext->ui64TimesliceLimit != 0
+		    && OSClockns64() > psResManContext->psDeferContext->ui64TimesliceLimit)
+		{
+			PVR_DPF((PVR_DBG_MESSAGE, "FreeResourceByCriteria: Lock timeout (timeout: %llu / delay: %llu). ResItems freed %d",
+			            psResManContext->psDeferContext->ui64TimesliceLimit,
+			            OSClockns64() - psResManContext->psDeferContext->ui64TimesliceLimit,
+			            iu32ItemsCounter));
+			OSReleaseBridgeLock();
+			/* Invoke the scheduler to check if other processes are waiting for the lock */
+			OSReleaseThreadQuanta();
+			OSAcquireBridgeLock();
+			/* Set again lock timeout and reset itemcounts */
+			psResManContext->psDeferContext->ui64TimesliceLimit = OSClockns64() + RESMAN_DEFERRED_CLEANUP_TIMESLICE_NS;
+			iu32ItemsCounter = 0;
+			PVR_DPF((PVR_DBG_MESSAGE, "FreeResourceByCriteria: Lock acquired again. New timeout %llu",
+			            psResManContext->psDeferContext->ui64TimesliceLimit));
 		}
 	}
 
-	if (bRetry)
-	{
-		return PVRSRV_ERROR_RETRY;
-	}
 	return eError;
 }
 
@@ -1030,6 +967,42 @@ static IMG_UINT32 g_ui32OrderedFreeList [] = {
 
 /*!
 ******************************************************************************
+ @Function      ResManDeferResources
+
+ @Description   Defer the freeing of all resources on this context.
+                The resman context will be freed by the cleanup thread.
+
+ @inputs        psResManContext - pointer to resman context.
+
+ @Return        None
+**************************************************************************/
+static IMG_VOID ResManDeferResources(PRESMAN_CONTEXT psResManContext)
+{
+	PVRSRV_ERROR eError;
+
+	/* If the ResManContext doesn't contain any ResItem we can skip it */
+	if (psResManContext->psResItemList == IMG_NULL)
+	{
+		PVR_DPF((PVR_DBG_MESSAGE, "ResManDeferResources: ResManContext (%p) is empty", psResManContext));
+		return;
+	}
+
+	/* Defer the freeing of the ResManContext always when possible */
+	PVR_ASSERT(psResManContext->psDeferContext);
+	PVR_DPF((PVR_DBG_MESSAGE, "ResManDeferResources: ResManContext (%p) freeing deferred", psResManContext));
+
+	/* Insert this resman context into the defer context so we can defer to free
+	 * its items.
+	 */
+	List_RESMAN_CONTEXT_Insert(&psResManContext->psDeferContext->psDeferResManContextList, psResManContext);
+
+	/* Now signal clean up thread */
+	eError = OSEventObjectSignal(psResManContext->psDeferContext->hCleanupEventObject);
+	PVR_LOG_IF_ERROR(eError, "OSEventObjectSignal");
+}
+
+/*!
+******************************************************************************
  @Function	 	ResManFreeResources
 
  @Description
@@ -1038,19 +1011,24 @@ static IMG_UINT32 g_ui32OrderedFreeList [] = {
                 list sync object held
 
  @inputs        psResManContext - pointer to resman context
- @inputs        bDefer - Defer the free if we can't free the resource now
 
  @Return   		None
 **************************************************************************/
-static IMG_VOID ResManFreeResources(PRESMAN_CONTEXT psResManContext,
-									IMG_BOOL bDefer)
+static IMG_VOID ResManFreeResources(PRESMAN_CONTEXT psResManContext)
 {
 	IMG_UINT32 i;
 	PVRSRV_ERROR eError;
 
-	for (i=0;i<(sizeof(g_ui32OrderedFreeList)/sizeof(g_ui32OrderedFreeList[0]));i++)
+	/* If the ResManContext doesn't contain any ResItem we can skip it */
+	if (psResManContext->psResItemList == IMG_NULL)
 	{
-		eError = FreeResourceByCriteria(psResManContext, RESMAN_CRITERIA_RESTYPE, g_ui32OrderedFreeList[i], IMG_NULL, bDefer);
+		PVR_DPF((PVR_DBG_WARNING, "ResManFreeResources: ResManContext (%p) is empty", psResManContext));
+		return;
+	}
+
+	for (i = 0; i < (sizeof(g_ui32OrderedFreeList) / sizeof(g_ui32OrderedFreeList[0])); i++)
+	{
+		eError = FreeResourceByCriteria(psResManContext, RESMAN_CRITERIA_RESTYPE, g_ui32OrderedFreeList[i], IMG_NULL);
 		if (eError != PVRSRV_OK)
 		{
 			/* Bail on error */

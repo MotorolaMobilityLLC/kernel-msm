@@ -129,7 +129,7 @@ typedef struct _PVRSRV_RGXDEV_INFO_
 	/* Kernel mode linear address of device registers */
 	IMG_PVOID				pvRegsBaseKM;
 
-	/* FIXME: The alloc for this should go through OSAllocMem in future */
+	
 	IMG_HANDLE				hRegMapping;
 
 	/* System physical address of device registers*/

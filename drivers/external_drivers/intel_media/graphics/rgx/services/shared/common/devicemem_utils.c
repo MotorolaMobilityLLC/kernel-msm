@@ -280,7 +280,7 @@ PVRSRV_ERROR _DevmemValidateParams(IMG_DEVMEM_SIZE_T uiSize,
     }
 
     /* Verify that size is a positive integer multiple of alignment */
-#if 0 // FIXME
+#if 0 // 
     if (uiSize & (uiAlign-1))
     {
         /* Size not a multiple of alignment */
@@ -607,9 +607,8 @@ PVRSRV_ERROR _DevmemImportStructCPUMap(DEVMEM_IMPORT *psImport)
 			 * buffer to user space. We can bypass the services bridge in
 			 * this case and possibly save some time.
 			 *
-			 * FIXME: We should preserve the mmap flags of the original
-			 *        allocation, but the services path ignores them too.
-			 */
+			 * 
+*/
 			pvCPUVAddr = mmap(NULL, psImport->uiSize, PROT_READ | PROT_WRITE,
 			                  MAP_SHARED, psImport->sCPUImport.iDmaBufFd, 0);
 
@@ -672,11 +671,7 @@ IMG_VOID _DevmemImportStructCPUUnmap(DEVMEM_IMPORT *psImport)
 
 	if (--psCPUImport->ui32RefCount == 0)
 	{
-		/* FIXME: psImport->uiSize is a 64-bit quantity where as the 5th
-		 * argument to OSUnmapPMR is a 32-bit quantity on 32-bit systems
-		 * hence a compiler warning of implicit cast and loss of data.
-		 * Added explicit cast and assert to remove warning.
-		 */
+		
 #if (defined(_WIN32) && !defined(_WIN64)) || (defined(LINUX) && defined(__i386__))
 		PVR_ASSERT(psImport->uiSize<IMG_UINT32_MAX);
 #endif

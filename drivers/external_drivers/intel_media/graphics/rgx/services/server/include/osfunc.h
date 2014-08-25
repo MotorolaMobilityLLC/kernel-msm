@@ -93,7 +93,8 @@ PVRSRV_ERROR OSScheduleMISR(IMG_HANDLE hMISRData);
 @Description    Creates a kernel thread and starts it running. The caller
                 is responsible for informing the thread that it must finish
                 and return from the pfnThread function. It is not possible
-                to kill or terminate it.
+                to kill or terminate it. The new thread runs with the default
+                priority provided by the Operating System.
 @Output         phThread       Returned handle to the thread.
 @Input          pszThreadName  Name to assign to the thread.
 @Input          pfnThread      Thread entry point function.
@@ -104,6 +105,38 @@ PVRSRV_ERROR OSThreadCreate(IMG_HANDLE *phThread,
 							IMG_CHAR *pszThreadName,
 							PFN_THREAD pfnThread,
 							IMG_VOID *hData);
+
+/*! Available priority levels for the creation of a new Kernel Thread. */
+typedef enum priority_levels
+{
+	HIGHEST_PRIORITY = 0,
+	HIGH_PRIRIOTY,
+	NORMAL_PRIORITY,
+	LOW_PRIORITY,
+	LOWEST_PRIORITY,
+	NOSET_PRIORITY,   /* With this option the priority level is is the default for the given OS */
+	LAST_PRIORITY     /* This must be always the last entry */
+} OS_THREAD_LEVEL;
+
+/*************************************************************************/ /*!
+@Function       OSThreadCreatePriority
+@Description    As OSThreadCreate, this function creates a kernel thread and
+                starts it running. The difference is that with this function
+                is possible to specify the priority used to schedule the new
+                thread.
+
+@Output         phThread        Returned handle to the thread.
+@Input          pszThreadName   Name to assign to the thread.
+@Input          pfnThread       Thread entry point function.
+@Input          hData           Thread specific data pointer for pfnThread().
+@Input          eThreadPriority Priority level to assign to the new thread.
+@Return         Standard PVRSRV_ERROR error code.
+*/ /**************************************************************************/
+PVRSRV_ERROR OSThreadCreatePriority(IMG_HANDLE *phThread,
+							IMG_CHAR *pszThreadName,
+							PFN_THREAD pfnThread,
+							IMG_VOID *hData,
+							OS_THREAD_LEVEL eThreadPriority);
 
 /*************************************************************************/ /*!
 @Function       OSThreadDestroy
@@ -285,13 +318,46 @@ IMG_BOOL OSGetReleasePVRLock(IMG_VOID);
 typedef struct _OSWR_LOCK_ *POSWR_LOCK;
 
 #if defined(__linux__) || (UNDER_CE) || defined(__QNXNTO__)
+
 PVRSRV_ERROR OSWRLockCreate(POSWR_LOCK *ppsLock);
 IMG_VOID OSWRLockDestroy(POSWR_LOCK psLock);
-IMG_VOID OSWRLockAcquireRead(POSWR_LOCK psLock);
+
+/* Linux kernel requires these functions defined as macros to avoid
+ * lockdep issues */
+#if defined(__linux__) && defined(__KERNEL__)
+
+struct _OSWR_LOCK_
+{
+	struct rw_semaphore sRWLock;
+};
+
+/* Lock classes used for each rw semaphore */
+typedef enum RWLockClasses
+{
+	GLOBAL_DBGNOTIFY = 0,
+	GLOBAL_NOTIFY,
+	DEVINFO_RENDERLIST,
+	DEVINFO_COMPUTELIST,
+	DEVINFO_TRANSFERLIST,
+	DEVINFO_RAYTRACELIST,
+	DEVINFO_MEMORYLIST
+} RWLOCKCLASSES;
+
+#define OSWRLockAcquireRead(psLock, ui32class)   ({down_read_nested(&psLock->sRWLock, ui32class); PVRSRV_OK;})
+#define OSWRLockReleaseRead(psLock)              ({up_read(&psLock->sRWLock); PVRSRV_OK;})
+#define OSWRLockAcquireWrite(psLock, ui32class)  ({down_write_nested(&psLock->sRWLock, ui32class); PVRSRV_OK;})
+#define OSWRLockReleaseWrite(psLock)             ({up_write(&psLock->sRWLock); PVRSRV_OK;})
+
+#else /* defined(__linux__) && defined(__KERNEL__) */
+
+IMG_VOID OSWRLockAcquireRead(POSWR_LOCK psLock, IMG_UINT32 ui32class);
 IMG_VOID OSWRLockReleaseRead(POSWR_LOCK psLock);
-IMG_VOID OSWRLockAcquireWrite(POSWR_LOCK psLock);
+IMG_VOID OSWRLockAcquireWrite(POSWR_LOCK psLock, IMG_UINT32 ui32class);
 IMG_VOID OSWRLockReleaseWrite(POSWR_LOCK psLock);
-#else
+
+#endif /* defined(__linux__) && defined(__KERNEL__) */
+
+#else /* defined(__linux__) || (UNDER_CE) || defined(__QNXNTO__) */
 struct _OSWR_LOCK_ {
 	IMG_UINT32 ui32Dummy;
 };
@@ -325,7 +391,7 @@ static INLINE IMG_VOID OSWRLockReleaseWrite(POSWR_LOCK psLock)
 {
 	PVR_UNREFERENCED_PARAMETER(psLock);
 }
-#endif
+#endif /* defined(__linux__) || (UNDER_CE) || defined(__QNXNTO__) */
 
 IMG_UINT64 OSDivide64r64(IMG_UINT64 ui64Divident, IMG_UINT32 ui32Divisor, IMG_UINT32 *pui32Remainder);
 IMG_UINT32 OSDivide64(IMG_UINT64 ui64Divident, IMG_UINT32 ui32Divisor, IMG_UINT32 *pui32Remainder);

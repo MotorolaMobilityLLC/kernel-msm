@@ -54,10 +54,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "connection_server.h"
 #include "rgxdebug.h"
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 typedef struct _RGX_SERVER_RENDER_CONTEXT_ RGX_SERVER_RENDER_CONTEXT;
 typedef struct _RGX_FREELIST_ RGX_FREELIST;
 typedef struct _RGX_PMR_NODE_ RGX_PMR_NODE;

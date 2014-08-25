@@ -400,8 +400,15 @@ typedef enum _RGXFWIF_POWER_TYPE_
 {
 	RGXFWIF_POW_OFF_REQ = 1,
 	RGXFWIF_POW_FORCED_IDLE_REQ,
-	RGXFWIF_POW_NUMDUST_CHANGE
+	RGXFWIF_POW_NUMDUST_CHANGE,
+	RGXFWIF_POW_APM_LATENCY_CHANGE
 } RGXFWIF_POWER_TYPE;
+
+typedef struct _RGXFWIF_APM_LATENCY_
+{
+	IMG_UINT32	ui32ActivePMLatencyms;
+	IMG_BOOL	bPersistent;
+} RGXFWIF_APM_LATENCY;
 
 typedef struct _RGXFWIF_POWER_REQUEST_
 {
@@ -411,6 +418,7 @@ typedef struct _RGXFWIF_POWER_REQUEST_
 		IMG_UINT32					ui32NumOfDusts;			/*!< Number of active Dusts */
 		IMG_BOOL					bForced;				/*!< If the operation is mandatory */
 		IMG_BOOL					bCancelForcedIdle;		/*!< If the operation is to cancel previously forced idle */
+		RGXFWIF_APM_LATENCY				sActivePMLatency;		/* Number of milliseconds to set APM latency */
 	} uPoweReqData;
 } RGXFWIF_POWER_REQUEST;
 
@@ -423,7 +431,7 @@ typedef struct _RGXFWIF_SLCFLUSHINVALDATA_
 
 typedef struct _RGXFWIF_HWPERF_CTRL_
 {
-	IMG_BOOL	 			bEnable; 	/*!< Enable/disable the generation of all HWPerf events */
+	IMG_BOOL	 			bToggle; 	/*!< Toggle masked bits or apply full mask? */
 	IMG_UINT64	RGXFW_ALIGN	ui64Mask;   /*!< Mask of events to toggle */
 } RGXFWIF_HWPERF_CTRL;
 
@@ -728,8 +736,6 @@ typedef struct _RGXFWIF_INIT_
 #if defined(RGX_FEATURE_SLC_VIVT)
 	IMG_DEV_VIRTADDR		RGXFW_ALIGN sSLC3FenceDevVAddr;
 #endif
-
-    IMG_BOOL				bEnableProcessStats;
 
 } RGXFWIF_INIT;
 

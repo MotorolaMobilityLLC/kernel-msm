@@ -61,3 +61,20 @@ adf_img_ioctl(struct adf_obj *obj, unsigned int cmd, unsigned long arg);
 int
 adf_img_validate_simple(struct adf_device *dev, struct adf_post *cfg,
 	void **driver_state);
+
+/* This does a quick sanity check of the supplied buffer, returns true if it
+ * passes the sanity checks.
+ * The calling driver must still do any device-specific validation
+ * of the buffer arguments.
+ */
+bool
+adf_img_buffer_sanity_check(const struct adf_interface *intf,
+	const struct adf_buffer *buf,
+	const struct adf_buffer_config_ext *buf_ext);
+
+
+/* Returns true if the two clip rects intersect
+ */
+bool
+adf_img_rects_intersect(const struct drm_clip_rect *rect1,
+	const struct drm_clip_rect *rect2);

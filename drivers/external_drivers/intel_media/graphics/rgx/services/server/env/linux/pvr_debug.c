@@ -1217,7 +1217,7 @@ static IMG_INT DebugLevelSet(const char __user *pcBuffer,
 		return -EINVAL;
 	}
 
-	if (sscanf(acDataBuffer, "%i", &gPVRDebugLevel) == 0)
+	if (sscanf(acDataBuffer, "%u", &gPVRDebugLevel) == 0)
 	{
 		return -EINVAL;
 	}

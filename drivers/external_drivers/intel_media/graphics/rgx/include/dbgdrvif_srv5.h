@@ -121,6 +121,50 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DBGDRV_WINCE_DEVICE_NAME			L"DBD1:"
 #endif
 
+#ifdef __GNUC__
+#define DBG_ALIGN(n) __attribute__ ((aligned (n)))
+#else
+#define DBG_ALIGN(n)
+#endif
+
+/* A pointer type which is at least 64 bits wide. The fixed width ensures
+ * consistency in structures between 32 and 64-bit code.
+ * The UM code (be it 32 or 64 bit) can simply write to the native pointer type (pvPtr).
+ * 64-bit KM code must read ui32Ptr if in the case of a 32-bit client, otherwise it can
+ * just read pvPtr if the client is also 64-bit
+ *
+ * ui64Ptr ensures the union is 64-bits wide in a 32-bit client.
+ *
+ * The union is explicitly 64-bit aligned as it was found gcc on x32 only
+ * aligns it to 32-bit, as the ABI permits aligning 64-bit types to a 32-bit
+ * boundary.
+ */
+typedef union
+{
+	/* native pointer type for UM to write to */
+	IMG_VOID *pvPtr;
+	/* the pointer written by a 32-bit client */
+	IMG_UINT32 ui32Ptr;
+	/* force the union width */
+	IMG_UINT64 ui64Ptr;
+} DBG_WIDEPTR DBG_ALIGN(8);
+
+/* Helper macro for dbgdriv (KM) to get the pointer value from the WIDEPTR type,
+ * depending on whether the client is 32 or 64-bit.
+ *
+ * note: double cast is required to avoid
+ * 'cast to pointer from integer of different size' warning.
+ * this is solved by first casting to an integer type.
+ */
+
+#if defined(CONFIG_COMPAT)
+#define WIDEPTR_GET_PTR(p, bCompat) (bCompat ? \
+					(IMG_VOID *) (IMG_UINTPTR_T) (p).ui32Ptr : \
+					(p).pvPtr)
+#else
+#define WIDEPTR_GET_PTR(p, bCompat) (p).pvPtr
+#endif
+
 typedef enum _DBG_EVENT_
 {
 	DBG_EVENT_STREAM_DATA = 1
@@ -153,11 +197,7 @@ typedef struct _DBG_OUT_CREATESTREAM_
 
 typedef struct _DBG_IN_FINDSTREAM_
 {
-	union
-	{
-		IMG_CHAR *pszName;
-		IMG_UINT64 ui64Name;
-	}u;
+	DBG_WIDEPTR pszName;
 	IMG_BOOL bResetStream;
 }DBG_IN_FINDSTREAM, *PDBG_IN_FINDSTREAM;
 
@@ -167,11 +207,7 @@ typedef struct _DBG_IN_FINDSTREAM_
 
 typedef struct _DBG_IN_READ_
 {
-	union
-	{
-		IMG_UINT8 *pui8OutBuffer;
-		IMG_UINT64 ui64OutBuffer;
-	} u;
+	DBG_WIDEPTR pui8OutBuffer;
 	IMG_SID hStream;
 	IMG_UINT32 ui32BufID;
 	IMG_UINT32 ui32OutBufferSize;

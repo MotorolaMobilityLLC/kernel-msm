@@ -139,7 +139,7 @@ static PVRSRV_ERROR DmaBufPhysAddrAcquire(PMR_DMA_BUF_DATA *psPrivData, int fd)
 		goto exitFailMap;
 	}
 
-	pasDevPhysAddr = kmalloc(sizeof(IMG_DEV_PHYADDR)*ui32PageCount, GFP_KERNEL);
+	pasDevPhysAddr = OSAllocMem(sizeof(IMG_DEV_PHYADDR)*ui32PageCount);
 	if (!pasDevPhysAddr)
 	{
 		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
@@ -183,7 +183,7 @@ static void DmaBufPhysAddrRelease(PMR_DMA_BUF_DATA *psPrivData)
 
 	dma_buf_unmap_attachment(psAttachment, psSgTable, DMA_NONE);
 
-	kfree(psPrivData->pasDevPhysAddr);
+	OSFreeMem(psPrivData->pasDevPhysAddr);
 }
 
 static IMG_BOOL _DmaBufKeyCompare(IMG_SIZE_T uKeySize, void *pKey1, void *pKey2)
@@ -276,7 +276,7 @@ static PVRSRV_ERROR PMRFinalizeDmaBuf(PMR_IMPL_PRIVDATA pvPriv)
 	dma_buf_detach(psPrivData->psDmaBuf, psPrivData->psAttachment);
 	dma_buf_put(psPrivData->psDmaBuf);
 	PhysHeapRelease(psPrivData->psPhysHeap);
-	kfree(psPrivData);
+	OSFreeMem(psPrivData);
 
 	return PVRSRV_OK;
 }
@@ -453,7 +453,7 @@ PhysmemImportDmaBuf(CONNECTION_DATA *psConnection,
 		goto fail_params;
 	}
 
-	psPrivData = kmalloc(sizeof(*psPrivData), GFP_KERNEL);
+	psPrivData = OSAllocMem(sizeof(*psPrivData));
 	if (psPrivData == NULL)
 	{
 		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
@@ -540,7 +540,7 @@ PhysmemImportDmaBuf(CONNECTION_DATA *psConnection,
 			dma_buf_detach(psPrivData->psDmaBuf, psPrivData->psAttachment);
 			dma_buf_put(psPrivData->psDmaBuf);
 			PhysHeapRelease(psPrivData->psPhysHeap);
-			kfree(psPrivData);
+			OSFreeMem(psPrivData);
 			
 			/* Reuse the PMR we already created */
 			PMRRefPMR(psPMR);
@@ -654,7 +654,7 @@ fail_attach:
 fail_dma_buf_get:
 	PhysHeapRelease(psPrivData->psPhysHeap);
 fail_physheap:
-	kfree(psPrivData);
+	OSFreeMem(psPrivData);
 
 fail_privalloc:
 fail_params:

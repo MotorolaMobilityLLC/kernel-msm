@@ -38,7 +38,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### ###########################################################################
 
-modules := adf_fbdev adf_pdp apollo
+modules := adf_fbdev adf_pdp apollo adf_sunxi
 
 adf_fbdev_type := kernel_module
 adf_fbdev_target := adf_fbdev.ko
@@ -51,3 +51,7 @@ adf_pdp_makefile := $(THIS_DIR)/Kbuild.mk
 apollo_type := kernel_module
 apollo_target := apollo.ko
 apollo_makefile := $(THIS_DIR)/Kbuild.mk
+
+adf_sunxi_type := kernel_module
+adf_sunxi_target := adf_sunxi.ko
+adf_sunxi_makefile := $(THIS_DIR)/Kbuild.mk

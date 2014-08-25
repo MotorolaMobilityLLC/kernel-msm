@@ -221,8 +221,7 @@ PVRSRV_ERROR RGXCreateCCB(PVRSRV_DEVICE_NODE	*psDeviceNode,
 								PVRSRV_MEMALLOCFLAG_GPU_READABLE |
 								PVRSRV_MEMALLOCFLAG_GPU_WRITEABLE |
 								PVRSRV_MEMALLOCFLAG_CPU_READABLE |
-								/* FIXME: Client CCB Ctl should be read-only for the CPU 
-									(it is not because for now we initialize it from the host) */
+								
 								PVRSRV_MEMALLOCFLAG_CPU_WRITEABLE | 
 								PVRSRV_MEMALLOCFLAG_UNCACHED |
 								PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC |

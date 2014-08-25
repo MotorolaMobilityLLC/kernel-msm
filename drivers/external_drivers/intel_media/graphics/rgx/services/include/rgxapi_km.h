@@ -97,13 +97,13 @@ PVRSRV_ERROR RGXHWPerfDisconnect(
 @Description    Enable or disable the generation of RGX HWPerf event packets.
                  See RGXCtrlHWPerf().
 @Input          hDevData         Handle to connection object
-@Input          bEnable          Switch to enable/disable event generation
+@Input          bToggle          Switch to toggle or apply mask.
 @Input          ui64Mask         Mask of events to control.
 @Return         PVRSRV_ERROR:    for system error codes
 */ /***************************************************************************/
 PVRSRV_ERROR IMG_CALLCONV RGXHWPerfControl(
 		IMG_HANDLE  hDevData,
-		IMG_BOOL    bEnable,
+		IMG_BOOL    bToggle,
 		IMG_UINT64  ui64Mask);
 
 

@@ -80,7 +80,7 @@ typedef struct _PDUMP_MMU_ATTRIB_HEAP_
 
 typedef struct _PDUMP_MMU_ATTRIB_
 {
-    /* FIXME: would these be better as pointers rather than copies? */
+    
     struct _PDUMP_MMU_ATTRIB_DEVICE_ sDevice;
     struct _PDUMP_MMU_ATTRIB_CONTEXT_ sContext;
     struct _PDUMP_MMU_ATTRIB_HEAP_ sHeap;
@@ -136,7 +136,7 @@ typedef struct _PDUMP_MMU_ATTRIB_
 												IMG_UINT32 uiRegAddr,
 												const IMG_CHAR *pszPDumpPCSymbolicName);
 
-	/* FIXME: split to separate file... (debatable whether this is anything to do with MMU) */
+	
 extern PVRSRV_ERROR
 PDumpMMUSAB(const IMG_CHAR *pszPDumpMemNamespace,
                IMG_UINT32 uiPDumpMMUCtx,

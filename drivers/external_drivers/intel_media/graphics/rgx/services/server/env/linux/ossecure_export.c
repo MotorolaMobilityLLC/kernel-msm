@@ -96,10 +96,7 @@ PVRSRV_ERROR OSSecureExport(CONNECTION_DATA *psConnection,
 	secure_mnt = mntget(connection_file->f_vfsmnt);
 #endif
 
-	/*
-		FIXME: Release the "master" lock as the open below will trigger the 
-		lock to be taken again.
-	*/
+	
 	mutex_unlock(&gPVRSRVLock);
 
 	/* Open our device (using the file information from our current connection) */

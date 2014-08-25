@@ -275,36 +275,8 @@ static IMG_VOID _RGXDecodeBIFReqTags(RGXDBG_BIF_ID	eBankID,
 			pszTagID = "ISP";
 			switch (ui32TagSB)
 			{
-				case 0x0: pszTagSB = "Tile Start"; break;
-				case 0x1: pszTagSB = "Tile End"; break;
-				case 0x2: pszTagSB = "Macrotile id"; break;
-				case 0x3: pszTagSB = "First in macrotile"; break;
-				case 0x4: pszTagSB = "Last in macrotile"; break;
-				case 0x5: pszTagSB = "End of render"; break;
-				case 0x6: pszTagSB = "Tile empty"; break;
-				case 0x7: pszTagSB = "Pass type"; break;
-				case 0x8: pszTagSB = "Flush before object"; break;
-				case 0x9: pszTagSB = "Flush after object"; break;
-				case 0x10: pszTagSB = "Index_abc"; break;
-				case 0x11: pszTagSB = "object_type"; break;
-				case 0x12: pszTagSB = "Backface"; break;
-				case 0x13: pszTagSB = "Primitive id"; break;
-				case 0x14: pszTagSB = "Angle"; break;
-				case 0x15: pszTagSB = "ISP state size"; break;
-				case 0x16: pszTagSB = "Primitive block pointer"; break;
-				case 0x17: pszTagSB = "Prim total"; break;
-				case 0x18: pszTagSB = "tsp_comp_fmt_size"; break;
-				case 0x19: pszTagSB = "tsp_comp_vtx_size"; break;
-				case 0x20: pszTagSB = "tsp_comp_table_size"; break;
-				case 0x21: pszTagSB = "isp_comp_header"; break;
-				case 0x22: pszTagSB = "dbias_enable"; break;
-				case 0x23: pszTagSB = "prim_id_pres"; break;
-				case 0x24: pszTagSB = "vertex_clipped"; break;
-				case 0x25: pszTagSB = "vertex_total"; break;
-				case 0x26: pszTagSB = "depth_bias_index"; break;
-				case 0x27: pszTagSB = "ptid"; break;
-				case 0x28: pszTagSB = "iicc"; break;
-				case 0x29: pszTagSB = "tile_id"; break;
+				case 0x00: pszTagSB = "ZLS"; break;
+				case 0x20: pszTagSB = "Occlusion Query"; break;
 			}
 			break;
 		}

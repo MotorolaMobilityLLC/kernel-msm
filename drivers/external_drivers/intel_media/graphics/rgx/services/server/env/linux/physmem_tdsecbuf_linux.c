@@ -50,6 +50,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvrsrv_memallocflags.h"
 
 /* services/server/include/ */
+#include "allocmem.h"
 #include "osfunc.h"
 #include "pdump_physmem.h"
 #include "pdump_km.h"
@@ -119,14 +120,14 @@ _FreeTDSecureBufPageContainer(void *pvPagecontainer)
 				__free_page(psPageContainer->apsPageArray[i]);
 			}
 		}
-		kfree(psPageContainer->apsPageArray);
+		OSFreeMem(psPageContainer->apsPageArray);
 	}
 
 	PhysHeapRelease(psPageContainer->psTDSecureBufPhysHeap);
 
     PDumpPMRFree(psPageContainer->hPDumpAllocInfo);
 
-	kfree(psPageContainer);
+    OSFreeMem(psPageContainer);
 }
 
 static PVRSRV_ERROR
@@ -252,7 +253,7 @@ _AllocTDSecureBufPageContainer(IMG_UINT64 ui64NumPages,
 	PVRSRV_ERROR eStatus = PVRSRV_OK;
 	sTDSecureBufPageList *psPageContainer;
 
-	psPageContainer = kmalloc(sizeof(sTDSecureBufPageList), GFP_KERNEL);
+	psPageContainer = OSAllocMem(sizeof(sTDSecureBufPageList));
 	if(!psPageContainer)
 	{
 		eStatus = PVRSRV_ERROR_OUT_OF_MEMORY;
@@ -261,8 +262,7 @@ _AllocTDSecureBufPageContainer(IMG_UINT64 ui64NumPages,
 	psPageContainer->ui32Log2PageSizeBytes = uiLog2PageSize;
 	psPageContainer->ui64NumPages = ui64NumPages;
 	psPageContainer->psTDSecureBufPhysHeap = psTDSecureBufPhysHeap;
-	psPageContainer->apsPageArray = kmalloc(ui64NumPages * sizeof(psPageContainer->apsPageArray[0]),
-	                                        GFP_KERNEL);
+	psPageContainer->apsPageArray = OSAllocMem(ui64NumPages * sizeof(psPageContainer->apsPageArray[0]));
 	if(!psPageContainer->apsPageArray)
 	{
 		eStatus = PVRSRV_ERROR_OUT_OF_MEMORY;

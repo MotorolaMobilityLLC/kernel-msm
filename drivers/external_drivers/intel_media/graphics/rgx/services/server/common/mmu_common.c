@@ -994,7 +994,7 @@ static PVRSRV_ERROR _SetupPxE(MMU_CONTEXT *psMMUContext,
 							<< psConfig->uiAddrShift /* Shift back to fit address in the Px entry */
 							& psConfig->uiAddrMask; /* Delete unused bits */
 
-			ui64PxE64 |= pfnDerivePxEProt4(uiProtFlags);
+			ui64PxE64 |= (IMG_UINT64)pfnDerivePxEProt4(uiProtFlags);
 			/* assert that the result fits into 32 bits before writing
 			   it into the 32-bit array with a cast */
 			PVR_ASSERT(ui64PxE64 == (ui64PxE64 & 0xffffffffU));

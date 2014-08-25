@@ -63,9 +63,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RGX_DOPPLER_HEAP_ID						10				/*!< Doppler Heap ID */
 #define RGX_DOPPLER_OVERFLOW_HEAP_ID			11				/*!< Doppler Overflow Heap ID */
 
-/* FIXME: work out what this ought to be.  In the old days it was
-   typically bigger than it needed to be.  Is the correct thing
-   "max + 1" ?? */
+/* 
+*/
 #define RGX_MAX_HEAP_ID     	(RGX_DOPPLER_OVERFLOW_HEAP_ID + 1)		/*!< Max Valid Heap ID */
 
 /*

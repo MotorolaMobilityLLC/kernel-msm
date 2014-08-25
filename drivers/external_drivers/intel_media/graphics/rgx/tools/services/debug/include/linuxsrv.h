@@ -43,14 +43,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _LINUXSRV_H__
 #define _LINUXSRV_H__
 
+#include "dbgdrvif_srv5.h"
+
 typedef struct tagIOCTL_PACKAGE
 {
 	IMG_UINT32 ui32Cmd;              // ioctl command
 	IMG_UINT32 ui32Size;			   // needs to be correctly set
-	IMG_VOID 	*pInBuffer;          // input data buffer
+	DBG_WIDEPTR	pInBuffer;          // input data buffer
 	IMG_UINT32  ui32InBufferSize;     // size of input data buffer
-	IMG_VOID    *pOutBuffer;         // output data buffer
+	DBG_WIDEPTR    pOutBuffer;         // output data buffer
 	IMG_UINT32  ui32OutBufferSize;    // size of output data buffer
+#if defined(SUPPORT_DRM)
+	IMG_UINT32 ui32PtrSize;
+#endif
 } IOCTL_PACKAGE;
 
 IMG_UINT32 DeviceIoControl(IMG_UINT32 hDevice,		

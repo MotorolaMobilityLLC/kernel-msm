@@ -84,7 +84,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvr_uaccess.h"
 #include "pvr_debug.h"
 #include "driverlock.h"
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
 #include "process_stats.h"
 #endif
 #if defined(SUPPORT_SYSTEM_INTERRUPT_HANDLING)
@@ -197,7 +197,7 @@ PVRSRV_ERROR OSMMUPxAlloc(PVRSRV_DEVICE_NODE *psDevNode, IMG_SIZE_T uiSize,
 		}
 	}
 #endif
-#if defined(__arm__) || defined(__arm64__) || defined (__metag__)
+#if defined(CONFIG_ARM) || defined(CONFIG_ARM64) || defined (CONFIG_METAG)
 	{
 		IMG_CPU_PHYADDR sCPUPhysAddrStart, sCPUPhysAddrEnd;
 		IMG_PVOID pvPageVAddr = kmap(psPage);
@@ -217,8 +217,8 @@ PVRSRV_ERROR OSMMUPxAlloc(PVRSRV_DEVICE_NODE *psDevNode, IMG_SIZE_T uiSize,
 
 	PhysHeapCpuPAddrToDevPAddr(psDevNode->apsPhysHeap[PVRSRV_DEVICE_PHYS_HEAP_CPU_LOCAL], psDevPAddr, &sCpuPAddr);
 
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
 	    PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA, PAGE_SIZE);
 #else
 	PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA,
@@ -236,8 +236,8 @@ void OSMMUPxFree(PVRSRV_DEVICE_NODE *psDevNode, Px_HANDLE *psMemHandle)
 {
 	struct page *psPage = (struct page*) psMemHandle->u.pvHandle;
 
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
 	    PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA, PAGE_SIZE);
 #else
 	PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA, (IMG_UINT64)(IMG_UINTPTR_T)psPage);
@@ -311,8 +311,9 @@ PVRSRV_ERROR OSMMUPxMap(PVRSRV_DEVICE_NODE *psDevNode, Px_HANDLE *psMemHandle,
 	*pvPtr = (void *) ((uiCPUVAddr & (~OSGetPageMask())) |
 							((IMG_UINTPTR_T) (psDevPAddr->uiAddr & OSGetPageMask())));
 
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
+	/* Mapping is done a page at a time */
 	PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA, PAGE_SIZE);
 #else
 	{
@@ -336,8 +337,9 @@ void OSMMUPxUnmap(PVRSRV_DEVICE_NODE *psDevNode, Px_HANDLE *psMemHandle, void *p
 	PVR_UNREFERENCED_PARAMETER(psDevNode);
 	PVR_UNREFERENCED_PARAMETER(psMemHandle);
 
-#if defined(PVRSRV_ENABLE_PROCESS_STATS) && defined(PVRSRV_ENABLE_MEMORY_STATS)
-#if defined(PVRSRV_MEMORY_STATS_LITE)
+#if defined(PVRSRV_ENABLE_PROCESS_STATS)
+#if !defined(PVRSRV_ENABLE_MEMORY_STATS)
+	/* Mapping is done a page at a time */
 	PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA, PAGE_SIZE);
 #else
 	PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA, (IMG_UINT64)(IMG_UINTPTR_T)pvPtr);
@@ -1037,15 +1039,29 @@ PVRSRV_ERROR OSScheduleMISR(IMG_HANDLE hMISRData)
 #endif /* #if defined(PVR_LINUX_MISR_USING_WORKQUEUE) */
 #endif /* #if defined(PVR_LINUX_MISR_USING_PRIVATE_WORKQUEUE) */
 
+/* OS specific values for thread priority */
+const IMG_INT32 ai32OSPriorityValues[LAST_PRIORITY] = { -20, /* HIGHEST_PRIORITY */
+                                                        -10, /* HIGH_PRIRIOTY */
+                                                          0, /* NORMAL_PRIORITY */
+                                                          9, /* LOW_PRIORITY */
+                                                         19, /* LOWEST_PRIORITY */
+                                                        -22};/* NOSET_PRIORITY */
+
 typedef struct {
 	struct task_struct *kthread;
 	PFN_THREAD pfnThread;
 	void *hData;
+	OS_THREAD_LEVEL eThreadPriority;
 } OSThreadData;
 
 static int OSThreadRun(void *data)
 {
 	OSThreadData *psOSThreadData = data;
+
+	/* If i32NiceValue is acceptable, set the nice value for the new thread */
+	if (psOSThreadData->eThreadPriority != NOSET_PRIORITY &&
+			psOSThreadData->eThreadPriority < LAST_PRIORITY)
+		set_user_nice(current, ai32OSPriorityValues[psOSThreadData->eThreadPriority]);
 
 	/* Call the client's kernel thread with the client's data pointer */
 	psOSThreadData->pfnThread(psOSThreadData->hData);
@@ -1064,6 +1080,16 @@ PVRSRV_ERROR OSThreadCreate(IMG_HANDLE *phThread,
 							PFN_THREAD pfnThread,
 							void *hData)
 {
+	/* Call OSThreadCreatePriority with an invalid nice value */
+	return OSThreadCreatePriority(phThread, pszThreadName, pfnThread, hData, NOSET_PRIORITY);
+}
+
+PVRSRV_ERROR OSThreadCreatePriority(IMG_HANDLE *phThread,
+							IMG_CHAR *pszThreadName,
+							PFN_THREAD pfnThread,
+							void *hData,
+							OS_THREAD_LEVEL eThreadPriority)
+{
 	OSThreadData *psOSThreadData;
 	PVRSRV_ERROR eError;
 
@@ -1076,6 +1102,7 @@ PVRSRV_ERROR OSThreadCreate(IMG_HANDLE *phThread,
 
 	psOSThreadData->pfnThread = pfnThread;
 	psOSThreadData->hData = hData;
+	psOSThreadData->eThreadPriority= eThreadPriority;
 	psOSThreadData->kthread = kthread_run(OSThreadRun, psOSThreadData, pszThreadName);
 
 	if (IS_ERR(psOSThreadData->kthread))
@@ -1170,7 +1197,7 @@ IMG_UINT8 OSReadHWReg8(IMG_PVOID	pvLinRegBaseAddr,
 #if !defined(NO_HARDWARE)
 	return (IMG_UINT8) readb((IMG_PBYTE)pvLinRegBaseAddr+ui32Offset);
 #else
-	return 0x4e;	/* FIXME: OSReadHWReg should not exist in no hardware builds */
+	return 0x4e;	
 #endif
 }
 
@@ -1183,7 +1210,7 @@ IMG_UINT16 OSReadHWReg16(IMG_PVOID	pvLinRegBaseAddr,
 #if !defined(NO_HARDWARE)
 	return (IMG_UINT16) readw((IMG_PBYTE)pvLinRegBaseAddr+ui32Offset);
 #else
-	return 0x3a4e;	/* FIXME: OSReadHWReg should not exist in no hardware builds */
+	return 0x3a4e;	
 #endif
 }
 
@@ -1196,7 +1223,7 @@ IMG_UINT32 OSReadHWReg32(IMG_PVOID	pvLinRegBaseAddr,
 #if !defined(NO_HARDWARE)
 	return (IMG_UINT32) readl((IMG_PBYTE)pvLinRegBaseAddr+ui32Offset);
 #else
-	return 0x30f73a4e;	/* FIXME: OSReadHWReg should not exist in no hardware builds */
+	return 0x30f73a4e;	
 #endif
 }
 
@@ -1211,7 +1238,7 @@ IMG_UINT64 OSReadHWReg64(IMG_PVOID	pvLinRegBaseAddr,
 
 	ui64Result = OSReadHWReg32(pvLinRegBaseAddr, ui32Offset + 4);
 	ui64Result <<= 32;
-	ui64Result |= OSReadHWReg32(pvLinRegBaseAddr, ui32Offset);
+	ui64Result |= (IMG_UINT64)OSReadHWReg32(pvLinRegBaseAddr, ui32Offset);
 
 	return ui64Result;
 }
@@ -1227,7 +1254,7 @@ IMG_DEVMEM_SIZE_T OSReadHWRegBank(IMG_PVOID pvLinRegBaseAddr,
 #if !defined(NO_HARDWARE)
 	IMG_DEVMEM_SIZE_T uiCounter;
 
-	/* FIXME: optimize this */
+	
 
 	for(uiCounter = 0; uiCounter < uiDstBufLen; uiCounter++) {
 		*(pui8DstBuf + uiCounter) =
@@ -1303,7 +1330,7 @@ IMG_DEVMEM_SIZE_T OSWriteHWRegBank(void *pvLinRegBaseAddr,
 #if !defined(NO_HARDWARE)
 	IMG_DEVMEM_SIZE_T uiCounter;
 
-	/* FIXME: optimize this */
+	
 
 	for(uiCounter = 0; uiCounter < uiSrcBufLen; uiCounter++) {
 		writeb(*(pui8SrcBuf + uiCounter),
@@ -1830,11 +1857,6 @@ void OSMemoryBarrier(void)
 	mb();
 }
 
-struct _OSWR_LOCK_
-{
-	struct rw_semaphore sRWLock;
-};
-
 PVRSRV_ERROR OSWRLockCreate(POSWR_LOCK *ppsLock)
 {
 	POSWR_LOCK psLock;
@@ -1854,26 +1876,6 @@ PVRSRV_ERROR OSWRLockCreate(POSWR_LOCK *ppsLock)
 void OSWRLockDestroy(POSWR_LOCK psLock)
 {
 	kfree(psLock);
-}
-
-void OSWRLockAcquireRead(POSWR_LOCK psLock)
-{
-	down_read(&psLock->sRWLock);
-}
-
-void OSWRLockReleaseRead(POSWR_LOCK psLock)
-{
-	up_read(&psLock->sRWLock);
-}
-
-void OSWRLockAcquireWrite(POSWR_LOCK psLock)
-{
-	down_write(&psLock->sRWLock);
-}
-
-void OSWRLockReleaseWrite(POSWR_LOCK psLock)
-{
-	up_write(&psLock->sRWLock);
 }
 
 IMG_UINT64 OSDivide64r64(IMG_UINT64 ui64Divident, IMG_UINT32 ui32Divisor, IMG_UINT32 *pui32Remainder)

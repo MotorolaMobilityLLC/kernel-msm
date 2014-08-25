@@ -435,7 +435,6 @@ adf_fbdev_set_event(struct adf_obj *obj, enum adf_event_type type,
 	switch (type) {
 	case ADF_EVENT_VSYNC:
 	case ADF_EVENT_HOTPLUG:
-		/* Hmm */
 		break;
 	default:
 		BUG();
@@ -592,6 +591,8 @@ static bool adf_fbdev_flip_possible(struct fb_info *fb_info)
 	if (fb_info->fix.smem_len < fb_info->fix.line_length *
 				    var.yres_virtual) {
 		pr_err("'fix' not re-allocated with sufficient buffer space.\n");
+		pr_err("Check NUM_PREFERRED_BUFFERS (%u) is as intended.\n",
+		       NUM_PREFERRED_BUFFERS);
 		return false;
 	}
 
@@ -725,7 +726,7 @@ static int __init init_adf_fbdev(void)
 
 	/* Framebuffer drivers aren't always very good at filling out their
 	 * mode information, so fake up anything that's missing so we don't
-	 * need to accomodate it in userspace.
+	 * need to accommodate it in userspace.
 	 */
 
 	if (!mode->hdisplay)

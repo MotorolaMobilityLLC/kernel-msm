@@ -169,12 +169,6 @@ struct PVR_SYNC_DATA
 	/* The timeline update value for this sync point. */
 	IMG_UINT32            ui32TlUpdateValue;
 
-	/* Has this sync point signaled? */
-	atomic_t              sSignaled;
-
-	/* Was this sync used for "update" already */
-	atomic_t              sUpdated;
-
 	/* This refcount is incremented at create and dup time, and decremented
 	 * at free time. It ensures the object doesn't start the defer-free
 	 * process until it is no longer referenced.
@@ -245,7 +239,7 @@ static char* _debugInfoTl(struct sync_timeline *tl)
 
 	szInfo[0] = '\0';
 
-	snprintf(szInfo, sizeof(szInfo), "id=%u n='%s' id=%u fw=%08x tv=%u tv_next=%u",
+	snprintf(szInfo, sizeof(szInfo), "id=%u n='%s' id=%u fw=%08x tl_curr=%u tl_next=%u",
 			 psPVRTl->ui32Id,
 			 tl->name,
 			 psPVRTl->ui32TlSyncId,
@@ -269,25 +263,28 @@ static char* _debugInfoPt(struct sync_pt *pt)
 	{
 		if (psPVRPt->psSyncData->psSyncKernel->psCleanUpSync)
 		{
-			snprintf(szInfo1, sizeof(szInfo1), " # cleanup: fw=%08x v=%u",
+			snprintf(szInfo1, sizeof(szInfo1), " # cleanup: fw=%08x curr=%u next=%u",
 					 psPVRPt->psSyncData->psSyncKernel->ui32CleanUpVAddr,
-					 psPVRPt->psSyncData->psSyncKernel->ui32CleanUpValue);
+					 ServerSyncGetValue(psPVRPt->psSyncData->psSyncKernel->psCleanUpSync),
+					 ServerSyncGetNextValue(psPVRPt->psSyncData->psSyncKernel->psCleanUpSync));
 		}
 
-		snprintf(szInfo, sizeof(szInfo), "sync(%llu): id=%u%s tv=%u # fw=%08x v=%u r=%d%s p: %s",
+		snprintf(szInfo, sizeof(szInfo), "sync(%llu): status=%d id=%u tl_taken=%u # fw=%08x curr=%u next=%u ref=%d%s p: %s",
 				 psPVRPt->psSyncData->ui64Stamp,
+				 pt->status,
 				 psPVRPt->psSyncData->psSyncKernel->ui32SyncId,
-				 atomic_read(&psPVRPt->psSyncData->sSignaled) ? "* " : " ",
 				 psPVRPt->psSyncData->ui32TlUpdateValue,
 				 psPVRPt->psSyncData->psSyncKernel->ui32SyncVAddr,
+				 ServerSyncGetValue(psPVRPt->psSyncData->psSyncKernel->psSync),
 				 psPVRPt->psSyncData->psSyncKernel->ui32SyncValue,
 				 atomic_read(&psPVRPt->psSyncData->sRefCount),
 				 szInfo1,
 				 _debugInfoTl(pt->parent));
 	} else
 	{
-		snprintf(szInfo, sizeof(szInfo), "sync(%llu): tv=%u # idle",
+		snprintf(szInfo, sizeof(szInfo), "sync(%llu): status=%d tv=%u # idle",
 				 psPVRPt->psSyncData->ui64Stamp,
+				 pt->status,
 				 psPVRPt->psSyncData->ui32TlUpdateValue);
 	}
 
@@ -324,15 +321,15 @@ static int PVRSyncHasSignaled(struct sync_pt *sync_pt)
 {
     struct PVR_SYNC_PT *psPVRPt = (struct PVR_SYNC_PT *)sync_pt;
 
-	if (  !atomic_read(&psPVRPt->psSyncData->sSignaled)
-		&& ServerSyncFenceIsMet(psPVRPt->psSyncData->psSyncKernel->psSync,
-								 psPVRPt->psSyncData->psSyncKernel->ui32SyncValue))
-		atomic_set(&psPVRPt->psSyncData->sSignaled, 1);
+	DPF("%s: # %s", __func__,
+		_debugInfoPt(sync_pt));
 
-	DPF("%s: r: %d # %s", __func__,
-		atomic_read(&psPVRPt->psSyncData->sSignaled), _debugInfoPt(sync_pt));
+	/* Idle syncs are always signaled */
+	if (!psPVRPt->psSyncData->psSyncKernel)
+		return 1;
 
-	return atomic_read(&psPVRPt->psSyncData->sSignaled);
+	return ServerSyncFenceIsMet(psPVRPt->psSyncData->psSyncKernel->psSync,
+								psPVRPt->psSyncData->psSyncKernel->ui32SyncValue);
 }
 
 static int PVRSyncCompare(struct sync_pt *a, struct sync_pt *b)
@@ -450,9 +447,6 @@ PVRSyncCreateSync(struct PVR_SYNC_TIMELINE *psPVRTl, int *pbIdleFence)
 	if (   psPVRTl->bFencingEnabled
 		|| ui32CurrOp < ui32NextOp)
 	{
-		atomic_set(&psSyncData->sUpdated, 0);
-		atomic_set(&psSyncData->sSignaled, 0);
-
 		psSyncData->psSyncKernel = OSAllocMem(sizeof(struct PVR_SYNC_KERNEL_SYNC_PRIM));
 		if (!psSyncData->psSyncKernel)
 		{
@@ -511,9 +505,6 @@ PVRSyncCreateSync(struct PVR_SYNC_TIMELINE *psPVRTl, int *pbIdleFence)
 		/* We set the pt's fence/update values to the previous one. */
 		psSyncData->ui32TlFenceValue  = ui32CurrOp;
 		psSyncData->ui32TlUpdateValue = ui32CurrOp;
-		atomic_set(&psSyncData->sUpdated, 1);
-		/* This is an idle fence. Immediately mark it signaled. */
-		atomic_set(&psSyncData->sSignaled, 1);
 
 		/* Return 1 here, so that the caller doesn't try to insert this into an
 		 * OpenGL ES stream. */
@@ -537,7 +528,7 @@ PVRSyncCreateSync(struct PVR_SYNC_TIMELINE *psPVRTl, int *pbIdleFence)
 	psPVRTl->bFencingEnabled = 0;
 
 	/* If this is a idle fence we need to signal the timeline immediately. */
-	if (atomic_read(&psPVRPt->psSyncData->sSignaled))
+	if (*pbIdleFence == 1)
 		sync_timeline_signal((struct sync_timeline *)psPVRTl);
 
 err_out:
@@ -970,26 +961,13 @@ PVRSRV_ERROR PVRSyncQueryFenceKM(IMG_INT32 i32FDFence,
 				*pui32NumSyncs,
 				_debugInfoPt(psPt));
 
-#if 0
-			/* Actually the following can happen. E.g. when the CCB is full
-			 * (happens with PDUMP=1) a KickTA3D could return RETRY even when
-			 * PVRSyncQueryFenceKM was called already before. In this case
-			 * the sync prim wasn't put onto the FW for update, so its allowed
-			 * to be here again. I keep this for now, so we can turn on this
-			 * check for debugging other scenarios. */
-			if (   bUpdate
-				&& atomic_read(&psPVRPt->psSyncData->sUpdated))
-			{
-				PVR_DPF((PVR_DBG_ERROR, "%s: sync point used for update more than once!",
-						 __func__));
-			}
-#endif
-
 			/* If this is an request for CHECK and the sync point is already
 			 * signalled, don't return it to the caller. The operation is
 			 * already fulfilled in this case and needs no waiting on. */
-			if (   !bUpdate
-				&&  atomic_read(&psPVRPt->psSyncData->sSignaled))
+			if (!bUpdate &&
+				(!psPVRPt->psSyncData->psSyncKernel ||
+				 ServerSyncFenceIsMet(psPVRPt->psSyncData->psSyncKernel->psSync,
+									  psPVRPt->psSyncData->psSyncKernel->ui32SyncValue)))
 				continue;
 
 			/* Must not be NULL, cause idle syncs are always signaled. */
@@ -1068,8 +1046,6 @@ PVRSRV_ERROR PVRSyncQueryFenceKM(IMG_INT32 i32FDFence,
 				aPts[*pui32NumSyncs].ui32FenceValue  = psPVRPt->psSyncData->ui32TlFenceValue;
 				aPts[*pui32NumSyncs].ui32UpdateValue = psPVRPt->psSyncData->ui32TlUpdateValue;
 				++*pui32NumSyncs;
-
-				atomic_set(&psPVRPt->psSyncData->sUpdated, 1);
 			}
 		}
 	}
@@ -1186,23 +1162,9 @@ static int PVRSyncOpen(struct inode *inode, struct file *file)
 	PVRSRV_ERROR eError;
 	int err = -ENOMEM;
 
-	task_lock(current);
-	rcu_read_lock();
-	if (strncmp(current->group_leader->comm, current->comm, TASK_COMM_LEN) == 0)
-	{
-		snprintf(name, sizeof(name),
-				 "%.24s-%d",
-				 current->group_leader->comm, current->pid);
-	}
-	else
-	{
-		snprintf(name, sizeof(name),
-				 "%.15s-%.10s-%d",
-				 current->group_leader->comm, current->comm,
-				 current->pid);
-	}
-	rcu_read_unlock();
-	task_unlock(current);
+	snprintf(name, sizeof(name),
+			 "%.24s-%d",
+			 current->comm, current->pid);
 
     psPVRTl = (struct PVR_SYNC_TIMELINE *)
 		sync_timeline_create(&gsPVR_SYNC_TIMELINE_ops,
@@ -1555,8 +1517,7 @@ void PVRSyncUpdateAllTimelines(PVRSRV_CMDCOMP_HANDLE hCmdCompHandle)
 
 			/* Check for any points which weren't signaled before, but are now.
 			 * If so, mark it for signaling and stop processing this timeline. */
-			if (   !atomic_read(&((struct PVR_SYNC_PT *)psPt)->psSyncData->sSignaled)
-				&& PVRSyncHasSignaled(psPt))
+			if (psPt->status == 0)
 			{
 				DPF("%s: signal # %s", __func__,
 					_debugInfoPt(psPt));

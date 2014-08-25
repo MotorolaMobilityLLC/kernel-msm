@@ -188,9 +188,17 @@ IMG_IMPORT IMG_VOID IMG_CALLCONV PVRSRVDebugAssertFail(const IMG_CHAR *pszFile,
 
 
 #else  /* defined(PVRSRV_NEED_PVR_ASSERT) */
+    /* Unfortunately the klocworks static analysis checker doesn't understand our
+     * ASSERT macros. Thus it reports lots of false positive. Defining our Assert
+     * macros in a special way when the code is analysed by klocworks avoids
+     * them. */
+    #if defined(__KLOCWORK__) 
+        #define PVR_ASSERT(EXPR) do { if (!(EXPR)) abort(); } while (0)
+    #else
+        #define PVR_ASSERT(EXPR) (IMG_VOID)(EXPR) /*!< Null Implementation of PVR_ASSERT (does nothing) */
+    #endif
 
-	#define PVR_ASSERT(EXPR) (IMG_VOID)(EXPR) /*!< Null Implementation of PVR_ASSERT (does nothing) */
-	#define PVR_DBG_BREAK    /*!< Null Implementation of PVR_DBG_BREAK (does nothing) */
+    #define PVR_DBG_BREAK    /*!< Null Implementation of PVR_DBG_BREAK (does nothing) */
 
 #endif /* defined(PVRSRV_NEED_PVR_ASSERT) */
 

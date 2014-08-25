@@ -101,7 +101,7 @@ static PVRSRV_ERROR RGXSoftReset(PVRSRV_DEVICE_NODE *psDeviceNode, IMG_UINT64  u
 
 #define VAR(x) #x
 
-/* FIXME: This is a workaround due to having 2 inits but only 1 deinit */
+
 static IMG_BOOL g_bDevInit2Done = IMG_FALSE;
 
 
@@ -194,7 +194,7 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 	RGXFWIF_GPU_UTIL_FWCB	*psUtilFWCb = psDevInfo->psRGXFWIfGpuUtilFWCb;
 	IMG_UINT32				ui32StatActiveLow = 0, ui32StatActiveHigh = 0, ui32StatBlocked = 0, ui32StatIdle = 0;
 	IMG_UINT32				ui32StatCumulative = 0;
-	IMG_UINT32				ui32WOffSample;
+	IMG_UINT32				ui32WOffSample, ui32PrevWOffSample, ui32PriorWOffSample;
 	IMG_UINT32				ui32WOffSampleSaved;
 	IMG_UINT64				ui64CurrentTimer;
 	IMG_UINT32				ui32Remainder;
@@ -222,6 +222,15 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 		return sRet;
 	}
 
+	/* write offset is incremented after writing to FWCB, so subtract 1 */
+	ui32WOffSample = psUtilFWCb->ui32WriteOffset;
+	if(ui32WOffSample == 0)
+	{
+		ui32WOffSample = RGXFWIF_GPU_UTIL_FWCB_SIZE;
+	}
+	ui32WOffSample--;
+	ui32WOffSampleSaved = ui32PrevWOffSample = ui32PriorWOffSample = ui32WOffSample;
+
 	PVRSRVGetDevicePowerState(psDeviceNode->sDevId.ui32DeviceIndex, &ePowerState);
 	if (ePowerState != PVRSRV_DEV_POWER_STATE_ON)	/* GPU powered off */
 	{
@@ -234,15 +243,6 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 		ui32NextType = RGXFWIF_GPU_UTIL_FWCB_TYPE_CRTIME;
 	}
 	PVRSRVPowerUnlock();
-
-	/* write offset is incremented after writing to FWCB, so subtract 1 */
-	ui32WOffSample = psUtilFWCb->ui32WriteOffset;
-	if(ui32WOffSample == 0)
-	{
-		ui32WOffSample = RGXFWIF_GPU_UTIL_FWCB_SIZE;
-	}
-	ui32WOffSample--;
-	ui32WOffSampleSaved = ui32WOffSample;
 
 	do
 	{
@@ -267,16 +267,6 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 								system layer doesn't define core clock frequency */
 						ui32StatCumulative = 0;
 
-						goto gpuutilstats_endloop;
-					}
-
-					if ( (RGXFWIF_GPU_UTIL_FWCB_ENTRY_CR_TIMER(ui64FWCbEntryCurrent) > ui64CurrentTimer) ||
-						 (ui32NextType == RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_ON) ||
-						 (ui32NextType == RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_OFF) )
-					{
-						/* CR timer value of current FW CB entry should always be smaller than in the next entry in the CB.
-						 * Also, a regular CRTIME entry should be followed by another CRTIME entry or by an END_CRTIME entry.
-						 * If these are not the cases, then we have a FW CB overlap. */
 						goto gpuutilstats_endloop;
 					}
 
@@ -323,6 +313,7 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 					ui32NextType = ui32Type;
 
 					continue;
+
 				default:
 					PVR_DPF((PVR_DBG_WARNING,"RGXGetGpuUtilStats: Wrong type: %8.8X\n", ui32Type));
 					break;
@@ -362,6 +353,8 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 		}
 
 		/* Move to next-previous state transition */
+		ui32PriorWOffSample = ui32PrevWOffSample;
+		ui32PrevWOffSample = ui32WOffSample;
 		if(ui32WOffSample == 0)
 		{
 			ui32WOffSample = RGXFWIF_GPU_UTIL_FWCB_SIZE;
@@ -370,9 +363,15 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 
 		/* Remember the next-previous entry type */
 		ui32NextType = ui32Type;
+
+		ui32WOffSampleSaved = psUtilFWCb->ui32WriteOffset;
 	}
-	/* break if we wrapped up the CB or we have already calculated the whole window */
-	while ((ui32WOffSample != ui32WOffSampleSaved) && (ui32StatCumulative < RGXFWIF_GPU_STATS_WINDOW_SIZE_US));
+	/* break if the FW or the Host wrote something to the CB while we were reading it
+	 * or if we have already calculated the whole window */
+	while ((ui32WOffSample != ui32WOffSampleSaved) && 
+		   (ui32PrevWOffSample != ui32WOffSampleSaved) && 
+		   (ui32PriorWOffSample != ui32WOffSampleSaved) && 
+		   (ui32StatCumulative < RGXFWIF_GPU_STATS_WINDOW_SIZE_US));
 
 gpuutilstats_endloop:
 
@@ -786,8 +785,7 @@ PVRSRV_ERROR PVRSRVRGXInitAllocFWImgMemKM(PVRSRV_DEVICE_NODE	*psDeviceNode,
 	}
 	
 	eError = DevmemFindHeapByName(psDevInfo->psKernelDevmemCtx,
-								  "Firmware", /* FIXME: We need to create an IDENT macro for this string.
-								                 Make sure the IDENT macro is not accessible to userland */
+								  "Firmware", 
 								  &psDevInfo->psFirmwareHeap);
 	if (eError != PVRSRV_OK)
 	{
@@ -1389,7 +1387,7 @@ PVRSRV_ERROR DevDeInitRGX (PVRSRV_DEVICE_NODE *psDeviceNode)
 	if (psDevInfo->psKernelDevmemCtx)
 	{
 		eError = DevmemDestroyContext(psDevInfo->psKernelDevmemCtx);
-		/* FIXME - this should return void */
+		
 		PVR_ASSERT(eError == PVRSRV_OK);
 	}
 
@@ -1452,7 +1450,7 @@ static PVRSRV_ERROR RGX_InitHeaps(DEVICE_MEMORY_INFO *psNewMemoryInfo)
 {
     DEVMEM_HEAP_BLUEPRINT *psDeviceMemoryHeapCursor;
 
-    /* FIXME - consider whether this ought not to be on the device node itself */
+    
 	psNewMemoryInfo->psDeviceMemoryHeap = OSAllocMem(sizeof(DEVMEM_HEAP_BLUEPRINT) * RGX_MAX_HEAP_ID);
     if(psNewMemoryInfo->psDeviceMemoryHeap == IMG_NULL)
 	{
@@ -1614,16 +1612,7 @@ PVRSRV_ERROR RGXRegisterDevice (PVRSRV_DEVICE_NODE *psDeviceNode)
 	psDeviceNode->sDevId.eDeviceClass		= DEV_DEVICE_CLASS;
 #if defined(PDUMP)
 	psDeviceNode->sDevId.pszPDumpRegName	= RGX_PDUMPREG_NAME;
-	/*
-		FIXME: This should not be required as PMR's should give the memspace
-		name. However, due to limitations within PDump we need a memspace name
-		when dpumping with MMU context with virtual address in which case we
-		don't have a PMR to get the name from.
-		
-		There is also the issue obtaining a namespace name for the catbase which
-		is required when we PDump the write of the physical catbase into the FW
-		structure
-	*/
+	
 	psDeviceNode->sDevId.pszPDumpDevName	= PhysHeapPDumpMemspaceName(psDeviceNode->apsPhysHeap[PVRSRV_DEVICE_PHYS_HEAP_GPU_LOCAL]);
 	psDeviceNode->pfnPDumpInitDevice = &RGXResetPDump;
 #endif /* PDUMP */
@@ -1744,8 +1733,8 @@ PVRSRV_ERROR RGXRegisterDevice (PVRSRV_DEVICE_NODE *psDeviceNode)
 	psDevInfo->psScripts = OSAllocMem(sizeof(*psDevInfo->psScripts));
 	if (!psDevInfo->psScripts)
 	{
-		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to allocate memory for scripts", __func__));
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
+		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+		PVR_LOGG_IF_ERROR(PVRSRV_ERROR_OUT_OF_MEMORY, "OSAllocMem", e5);
 	}
 
 	/* Setup static data and callbacks on the device specific device info */
@@ -1763,11 +1752,14 @@ PVRSRV_ERROR RGXRegisterDevice (PVRSRV_DEVICE_NODE *psDeviceNode)
 	eError = RGX_InitHeaps(psDevMemoryInfo);
 	if (eError != PVRSRV_OK)
 	{
-		goto e5;
+		PVR_LOGG_IF_ERROR(eError, "RGX_InitHeaps", e6);
 	}
 
 	return PVRSRV_OK;
 
+e6:
+	OSFreeMem(psDevInfo->psScripts);
+	psDevInfo->psScripts = NULL;
 e5:
 	OSWRLockDestroy(psDevInfo->hMemoryCtxListLock);
 e4:
@@ -1779,6 +1771,8 @@ e2:
 e1:
 	OSWRLockDestroy(psDevInfo->hRenderCtxListLock);
 e0:
+	psDeviceNode->pvDevice = NULL;
+	OSFreeMem(psDevInfo);
 	PVR_ASSERT(eError != PVRSRV_OK);
 	return eError;
 }

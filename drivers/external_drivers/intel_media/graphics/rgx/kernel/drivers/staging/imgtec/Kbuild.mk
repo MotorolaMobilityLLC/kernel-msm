@@ -54,3 +54,7 @@ adf_pdp-y += \
 apollo-y += \
  kernel/drivers/staging/imgtec/apollo.o \
  kernel/drivers/staging/imgtec/ion_lma_heap.o
+
+adf_sunxi-y += \
+ kernel/drivers/staging/imgtec/adf_sunxi.o \
+ kernel/drivers/staging/imgtec/adf_common.o

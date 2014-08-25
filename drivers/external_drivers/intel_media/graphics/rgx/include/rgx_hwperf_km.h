@@ -90,6 +90,7 @@ typedef enum
 	RGX_HWPERF_HW_TAFINISHED		= 0x09,
 
 	RGX_HWPERF_HW_3DTQKICK			= 0x0A,
+	RGX_HWPERF_HW_3DTQFINISHED		= 0x17,
 	RGX_HWPERF_HW_3DSPMKICK			= 0x11,
 	RGX_HWPERF_HW_3DKICK			= 0x0B,
 	RGX_HWPERF_HW_3DFINISHED		= 0x0C,
@@ -107,6 +108,7 @@ typedef enum
 
 	RGX_HWPERF_HW_SHGKICK			= 0x15,
 	RGX_HWPERF_HW_SHGFINISHED		= 0x16,
+	/* in use, see above			= 0x17 */
 
 	/* other types 0x1A..0x1F */
 	RGX_HWPERF_CLKS_CHG				= 0x1A,
@@ -271,6 +273,21 @@ RGX_FW_STRUCT_SIZE_ASSERT(RGX_HWPERF_HW_DATA_FIELDS)
 /******************************************************************************
  * 	API Types
  *****************************************************************************/
+
+
+/*! Mask macros for use with RGXCtrlHWPerf() API.
+ * RGX_HWPERF_EVENT_ALL is obsolete, use RGX_HWPERF_EVENT_MASK_ALL
+ */
+#define RGX_HWPERF_EVENT_MASK_NONE          (IMG_UINT64_C(0x0000000000000000))
+#define RGX_HWPERF_EVENT_MASK_ALL           (IMG_UINT64_C(0xFFFFFFFFFFFFFFFF))
+#define RGX_HWPERF_EVENT_MASK_ALL_FW        (IMG_UINT64_C(0x000000000000007E))
+#define RGX_HWPERF_EVENT_MASK_HW_KICKFINISH (IMG_UINT64_C(0x0000000000FBFF00))
+#define RGX_HWPERF_EVENT_MASK_HW_PERIODIC   (IMG_UINT64_C(0x0000000000040000))
+#define RGX_HWPERF_EVENT_MASK_ALL_HW        (RGX_HWPERF_EVENT_MASK_HW_KICKFINISH \
+                                            | RGX_HWPERF_EVENT_MASK_HW_PERIODIC)
+#define RGX_HWPERF_EVENT_MASK_ALL_PWR_EST   (IMG_UINT64_C(0X0000000700000000))
+#define RGX_HWPERF_EVENT_MASK_ALL_PWR       (IMG_UINT64_C(0X0000000800000000))
+#define RGX_HWPERF_EVENT_MASK_VALUE(e)      (((IMG_UINT64)1)<<(e))
 
 /*! Type used in the RGX API RGXConfigureAndEnableHWPerfCounters()
  * It is used to configure the performance counter module in a layout

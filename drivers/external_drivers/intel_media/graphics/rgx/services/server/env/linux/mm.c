@@ -48,7 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pvrsrv_memallocflags.h"
 #include "devicemem_server_utils.h"
 
-#if defined(__arm__)
+#if defined(CONFIG_ARM)
 #define ioremap_cache(x,y) ioremap_cached(x,y)
 #endif
 
@@ -68,14 +68,14 @@ _IORemapWrapper(IMG_CPU_PHYADDR BasePAddr,
 				pvIORemapCookie = (void *)ioremap_nocache(BasePAddr.uiAddr, ui32Bytes);
 				break;
 		case PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE:
-#if defined(__i386__) || defined(__x86_64) || defined(__arm__) || defined(__arm64__)
+#if defined(CONFIG_X86) || defined(CONFIG_ARM) || defined(CONFIG_ARM64)
 				pvIORemapCookie = (void *)ioremap_wc(BasePAddr.uiAddr, ui32Bytes);
 #else
 				pvIORemapCookie = (void *)ioremap_nocache(BasePAddr.uiAddr, ui32Bytes);
 #endif
 				break;
 		case PVRSRV_MEMALLOCFLAG_CPU_CACHED:
-#if defined(__i386__) || defined(__x86_64) || defined(__arm__) || defined(__arm64__)
+#if defined(CONFIG_X86) || defined(CONFIG_ARM)
 				pvIORemapCookie = (void *)ioremap_cache(BasePAddr.uiAddr, ui32Bytes);
 #else
 				pvIORemapCookie = (void *)ioremap(BasePAddr.uiAddr, ui32Bytes);

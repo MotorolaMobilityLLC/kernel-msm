@@ -169,6 +169,10 @@ CFLAGS_pvr_gputrace.o := -Werror
 endif
 endif
 
+# With certain build configurations, e.g., ARM, Werror, we get a build 
+# failure in the ftrace Linux kernel header.  So disable the relevant check.
+CFLAGS_trace_events.o := -Wno-missing-prototypes
+
 ifeq ($(PDUMP),1)
 pvrsrvkm-y += \
  services/server/common/pdump_common.o \

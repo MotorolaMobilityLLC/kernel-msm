@@ -46,12 +46,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <drm/drm.h>
 
-#define ADF_BUFFER_TRANSFORM_NONE_EXT		0
-#define ADF_BUFFER_TRANSFORM_FLIP_H_EXT		(1 << 1)
-#define ADF_BUFFER_TRANSFORM_FLIP_V_EXT		(1 << 2)
-#define ADF_BUFFER_TRANSFORM_ROT_90_EXT		(1 << 3)
-#define ADF_BUFFER_TRANSFORM_ROT_180_EXT	((1 << 1) + (1 << 2))
-#define ADF_BUFFER_TRANSFORM_ROT_270_EXT	((1 << 1) + (1 << 2) + (1 << 3))
+#define ADF_BUFFER_TRANSFORM_NONE_EXT		(0 << 0)
+#define ADF_BUFFER_TRANSFORM_FLIP_H_EXT		(1 << 0)
+#define ADF_BUFFER_TRANSFORM_FLIP_V_EXT		(1 << 1)
+#define ADF_BUFFER_TRANSFORM_ROT_90_EXT		(1 << 2)
+#define ADF_BUFFER_TRANSFORM_ROT_180_EXT	((1 << 0) + (1 << 1))
+#define ADF_BUFFER_TRANSFORM_ROT_270_EXT	((1 << 0) + (1 << 1) + (1 << 2))
 
 #define ADF_BUFFER_BLENDING_NONE_EXT		0
 #define ADF_BUFFER_BLENDING_PREMULT_EXT		1
@@ -75,15 +75,19 @@ struct adf_buffer_config_ext {
 	__u8			reserved[3];
 } __attribute__((packed, aligned(8)));
 
-#define ADF_MAX_BUFFERS_EXT (4096 / sizeof(struct adf_buffer_config_ext))
+struct adf_post_ext {
+	__u32	post_id;
+	struct adf_buffer_config_ext bufs_ext[];
+} __attribute__((packed, aligned(8)));
 
 struct adf_validate_config_ext {
 	__u32 n_interfaces;
 	__u32 __user *interfaces;
 
 	__u32 n_bufs;
+
 	struct adf_buffer_config __user *bufs;
-	struct adf_buffer_config_ext __user *bufs_ext;
+	struct adf_post_ext __user *post_ext;
 } __attribute__((packed, aligned(8)));
 
 /* These shouldn't be stripped by the uapi process in the bionic headers,

@@ -60,6 +60,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 typedef enum {
     PVRSRV_MEM_ALLOC_TYPE_KMALLOC,
+    PVRSRV_MEM_ALLOC_TYPE_VMALLOC,
     PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_UMA,	/* pages allocated from UMA to hold page table information */
     PVRSRV_MEM_ALLOC_TYPE_VMAP_PT_UMA,			/* ALLOC_PAGES_PT_UMA mapped to kernel address space */
     PVRSRV_MEM_ALLOC_TYPE_ALLOC_PAGES_PT_LMA,	/* pages allocated from LMA to hold page table information */
@@ -97,10 +98,28 @@ IMG_VOID  PVRSRVStatsAddMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 
 IMG_VOID  PVRSRVStatsRemoveMemAllocRecord(PVRSRV_MEM_ALLOC_TYPE eAllocType,
 										  IMG_UINT64 ui64Key);
+
 IMG_VOID PVRSRVStatsIncrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
         							IMG_SIZE_T uiBytes);
+
+/*
+ * Increases the memory stat for eAllocType. Tracks the allocation size value
+ * by inserting a value into a hash table with uiCpuVAddr as key.
+ * Pair with PVRSRVStatsDecrMemAllocStatAndUntrack().
+ */
+IMG_VOID PVRSRVStatsIncrMemAllocStatAndTrack(PVRSRV_MEM_ALLOC_TYPE eAllocType,
+        							IMG_SIZE_T uiBytes,
+        							IMG_UINT64 uiCpuVAddr);
+
 IMG_VOID PVRSRVStatsDecrMemAllocStat(PVRSRV_MEM_ALLOC_TYPE eAllocType,
         							IMG_SIZE_T uiBytes);
+
+/*
+ * Decrease the memory stat for eAllocType. Takes the allocation size value from the
+ * hash table with uiCpuVAddr as key. Pair with PVRSRVStatsIncrMemAllocStatAndTrack().
+ */
+IMG_VOID PVRSRVStatsDecrMemAllocStatAndUntrack(PVRSRV_MEM_ALLOC_TYPE eAllocType,
+        							IMG_UINT64 uiCpuVAddr);
 
 IMG_VOID  PVRSRVStatsUpdateRenderContextStats(IMG_UINT32 ui32TotalNumPartialRenders,
                                               IMG_UINT32 ui32TotalNumOutOfMemory,

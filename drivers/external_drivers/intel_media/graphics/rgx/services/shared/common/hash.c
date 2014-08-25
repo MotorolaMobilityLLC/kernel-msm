@@ -377,15 +377,18 @@ HASH_Delete (HASH_TABLE *pHash)
 	IMG_BOOL bDoCheck = IMG_TRUE;
 #if defined(__KERNEL__) && !defined(__QNXNTO__)
 	PVRSRV_DATA *psPVRSRVData = PVRSRVGetPVRSRVData();
-	if (psPVRSRVData->eServicesState != PVRSRV_SERVICES_STATE_OK)
+
+	if (psPVRSRVData != IMG_NULL)
 	{
-		bDoCheck = IMG_FALSE;
+		if (psPVRSRVData->eServicesState != PVRSRV_SERVICES_STATE_OK)
+		{
+			bDoCheck = IMG_FALSE;
+		}
 	}
+
 #endif
 	if (pHash != IMG_NULL)
     {
-		PVR_DPF ((PVR_DBG_MESSAGE, "HASH_Delete"));
-
 		if (bDoCheck)
 		{
 			PVR_ASSERT (pHash->uCount==0);

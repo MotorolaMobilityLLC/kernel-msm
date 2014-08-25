@@ -55,14 +55,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sync_internal.h"
 #include "rgx_memallocflags.h"
 
-/*
-	FIXME:
-	For now just get global state, but what we really want is to do
-	this per memory context
-*/
+
 static IMG_UINT32 ui32CacheOpps = 0;
 static IMG_UINT32 ui32CacheOpSequence = 0;
-/* FIXME: End */
+
 
 #define SERVER_MMU_CONTEXT_MAX_NAME 40
 typedef struct _SERVER_MMU_CONTEXT_ {
@@ -243,14 +239,14 @@ IMG_VOID RGXUnregisterMemoryContext(IMG_HANDLE hPrivData)
 	SERVER_MMU_CONTEXT *psServerMMUContext = hPrivData;
 	PVRSRV_RGXDEV_INFO *psDevInfo = psServerMMUContext->psDevInfo;
 
-	OSWRLockAcquireWrite(psDevInfo->hMemoryCtxListLock);
+	OSWRLockAcquireWrite(psDevInfo->hMemoryCtxListLock, DEVINFO_MEMORYLIST);
 	dllist_remove_node(&psServerMMUContext->sNode);
 	OSWRLockReleaseWrite(psDevInfo->hMemoryCtxListLock);
 
 	/*
 	 * Release the page catalogue address acquired in RGXRegisterMemoryContext().
 	 */
-	MMU_ReleaseBaseAddr(IMG_NULL /* FIXME */);
+	MMU_ReleaseBaseAddr(IMG_NULL );
 	
 	/*
 	 * Free the firmware memory context.
@@ -315,7 +311,7 @@ PVRSRV_ERROR RGXRegisterMemoryContext(PVRSRV_DEVICE_NODE	*psDeviceNode,
 			application.
 		*/
 		PDUMPCOMMENT("Allocate RGX firmware memory context");
-		/* FIXME: why cache-consistent? */
+		
 		eError = DevmemFwAllocate(psDevInfo,
 								sizeof(*psFWMemContext),
 								uiFWMemContextMemAllocFlags,
@@ -429,7 +425,7 @@ PVRSRV_ERROR RGXRegisterMemoryContext(PVRSRV_DEVICE_NODE	*psDeviceNode,
 			psServerMMUContext->szProcessName[SERVER_MMU_CONTEXT_MAX_NAME-1] = '\0';
 		}
 
-		OSWRLockAcquireWrite(psDevInfo->hMemoryCtxListLock);
+		OSWRLockAcquireWrite(psDevInfo->hMemoryCtxListLock, DEVINFO_MEMORYLIST);
 		dllist_add_to_tail(&psDevInfo->sMemoryContextList, &psServerMMUContext->sNode);
 		OSWRLockReleaseWrite(psDevInfo->hMemoryCtxListLock);
 
@@ -498,7 +494,7 @@ IMG_VOID RGXCheckFaultAddress(PVRSRV_RGXDEV_INFO *psDevInfo, IMG_DEV_VIRTADDR *p
 	sFaultData.psDevVAddr = psDevVAddr;
 	sFaultData.psDevPAddr = psDevPAddr;
 
-	OSWRLockAcquireRead(psDevInfo->hMemoryCtxListLock);
+	OSWRLockAcquireRead(psDevInfo->hMemoryCtxListLock, DEVINFO_MEMORYLIST);
 
 	dllist_foreach_node(&psDevInfo->sMemoryContextList,
 						_RGXCheckFaultAddress,

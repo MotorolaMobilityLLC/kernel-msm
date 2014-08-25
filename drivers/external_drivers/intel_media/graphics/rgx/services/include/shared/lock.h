@@ -66,7 +66,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define OSLockRelease(hLock) ({mutex_unlock((hLock)); PVRSRV_OK;})
 
 #define OSLockIsLocked(hLock) ({IMG_BOOL b = ((mutex_is_locked((hLock)) == 1) ? IMG_TRUE : IMG_FALSE); b;})
-#define OSLockIsLockedByMe(hLock) ({IMG_BOOL b = ((mutex_is_locked((hLock)) == 1 && current == (hLock).owner) ? IMG_TRUE : IMG_FALSE); b;})
+#define OSTryLockAcquire(hLock) ({IMG_BOOL b = ((mutex_trylock(hLock) == 1) ? IMG_TRUE : IMG_FALSE); b;})
+
+#if defined(CONFIG_DEBUG_MUTEXES) || defined(CONFIG_SMP)
+#define OSLockIsLockedByMe(hLock) ({IMG_BOOL b = ( ((mutex_is_locked(hLock) == 1) && (current == (hLock)->owner)) ? IMG_TRUE : IMG_FALSE); b;})
+#endif
 
 #else /* defined(LINUX) && defined(__KERNEL__) */
 

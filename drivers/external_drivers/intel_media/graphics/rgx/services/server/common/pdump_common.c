@@ -1227,9 +1227,10 @@ static PVRSRV_ERROR _PDumpSetFrameKM(CONNECTION_DATA *psConnection, IMG_UINT32 u
 	}
 	else
 	{
-		/* Same frame number as last time, commonly happens with some clients */
-		PVR_ASSERT(!psPDumpConnectionData->bLastTransitionFailed);
-		goto success;
+		/* New frame is the same as the last fame set and the last
+		 * transition succeeded, no need to perform another transition.
+		 */
+		return PVRSRV_OK;
 	}
 
 	if (!bWasInCaptureRange && bIsInCaptureRange)
@@ -1254,7 +1255,6 @@ static PVRSRV_ERROR _PDumpSetFrameKM(CONNECTION_DATA *psConnection, IMG_UINT32 u
 		/* Should never reach here due to the above goto success */
 	}
 
-success:
 	psPDumpConnectionData->bLastTransitionFailed = IMG_FALSE;
 	return PVRSRV_OK;
 

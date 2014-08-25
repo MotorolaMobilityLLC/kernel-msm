@@ -61,6 +61,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined(__KERNEL__)
 #include "pvrsrv.h"
+#if defined(LINUX)
+#include "linux/kernel.h"
+#endif
 #endif
 
 /* Storing the page size here so we do not have to hard code it in the code anymore
@@ -1065,6 +1068,7 @@ DevmemAllocate(DEVMEM_HEAP *psHeap,
 
 	/* zero the memory */
 	if (uiFlags & PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC)
+
 	{
 		IMG_VOID		*pvAddr;
 		PVRSRV_ERROR	eError;
@@ -1075,22 +1079,32 @@ DevmemAllocate(DEVMEM_HEAP *psHeap,
 			goto failZero;
 		}
 
-		/* FIXME: uiSize is a 64-bit quantity whereas the 3rd argument
-		 * to OSMemSet is a 32-bit quantity on 32-bit systems
-		 * hence a compiler warning of implicit cast and loss of data.
-		 * Added explicit cast and assert to remove warning.
-		 */
+		
 #if (defined(_WIN32) && !defined(_WIN64)) || (defined(LINUX) && defined(__i386__))
 		PVR_ASSERT(uiSize<IMG_UINT32_MAX);
 #endif
-		OSMemSet(pvAddr, 0x0, (IMG_SIZE_T)uiSize);
 
+#if defined(CONFIG_ARM64) || defined(__arm64__) || defined(__aarch64__)
+		{
+			IMG_UINT32 i;
+			IMG_BYTE * pbyPtr;
+
+			pbyPtr = (IMG_BYTE*) pvAddr;
+			for (i = 0; i < uiSize; i++)
+				*pbyPtr++ = 0;
+		}
+
+#else
+		OSMemSet(pvAddr, 0x0, (IMG_SIZE_T) uiSize);
+#endif
+	    
 		DevmemReleaseCpuVirtAddr(psMemDesc);
 
 #if defined(PDUMP)
 		DevmemPDumpLoadZeroMem(psMemDesc, 0, uiSize, PDUMP_FLAGS_CONTINUOUS);
 #endif
 	}
+
 
 #if defined(PVR_RI_DEBUG)
 	{
@@ -1120,6 +1134,7 @@ DevmemAllocate(DEVMEM_HEAP *psHeap,
     /*
       error exit paths follow
     */
+
 failZero:
 	_DevmemMemDescRelease(psMemDesc);
 	psMemDesc = IMG_NULL;	/* Make sure we don't do a discard after the release */

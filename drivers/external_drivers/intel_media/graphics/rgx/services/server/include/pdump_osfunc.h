@@ -51,16 +51,7 @@ extern "C" {
 #endif
 
 
-/* FIXME
- * Some OSes (WinXP,CE) allocate the string on the stack, but some
- * (Linux) use a global variable/lock instead.
- * Would be good to use the same across all OSes.
- *
- * A handle is returned which represents IMG_CHAR* type on all OSes.
- *
- * The allocated buffer length is also returned on OSes where it's
- * supported (e.g. Linux).
- */
+
 #define MAX_PDUMP_STRING_LENGTH (256)
 #if defined(WIN32)
 #define PDUMP_GET_SCRIPT_STRING()	\
@@ -149,9 +140,8 @@ extern "C" {
 	 * @brief	Get the "script" buffer
 	 * @param	phScript - buffer handle for pdump script
 	 * @param	pui32MaxLen - max length of the script buffer
-	 * 			FIXME: the max length should be internal to the OS-specific code
-	 * @return	error (always PVRSRV_OK on some OSes)
-	 */
+	 * 			
+*/
 	PVRSRV_ERROR PDumpOSGetScriptString(IMG_HANDLE *phScript, IMG_UINT32 *pui32MaxLen);
 
 	/*!
@@ -159,9 +149,8 @@ extern "C" {
 	 * @brief	Get the "message" buffer
 	 * @param	pszMsg - buffer pointer for pdump messages
 	 * @param	pui32MaxLen - max length of the message buffer
-	 * 			FIXME: the max length should be internal to the OS-specific code
-	 * @return	error (always PVRSRV_OK on some OSes)
-	 */
+	 * 			
+*/
 	PVRSRV_ERROR PDumpOSGetMessageString(IMG_CHAR **ppszMsg, IMG_UINT32 *pui32MaxLen);
 
 	/*!
@@ -169,9 +158,8 @@ extern "C" {
 	 * @brief	Get the "filename" buffer
 	 * @param	ppszFile - buffer pointer for filename
 	 * @param	pui32MaxLen - max length of the filename buffer
-	 * 			FIXME: the max length should be internal to the OS-specific code
-	 * @return	error (always PVRSRV_OK on some OSes)
-	 */
+	 * 			
+*/
 	PVRSRV_ERROR PDumpOSGetFilenameString(IMG_CHAR **ppszFile, IMG_UINT32 *pui32MaxLen);
 
 #endif /* __QNXNTO__ */

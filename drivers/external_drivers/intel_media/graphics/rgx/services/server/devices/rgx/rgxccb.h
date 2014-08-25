@@ -52,10 +52,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgx_fwif_shared.h"
 #include "rgxdebug.h"
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #define MAX_CLIENT_CCB_NAME	30
 
 typedef struct _RGX_CLIENT_CCB_ RGX_CLIENT_CCB;

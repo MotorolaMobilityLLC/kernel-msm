@@ -970,7 +970,7 @@ IMG_VOID * IMG_CALLCONV DBGDrivFindStream(IMG_CHAR * pszName, IMG_BOOL bResetStr
 
 		if (strlen(psThis->szName) == strlen(pszName))
 		{
-			while ((psThis->szName[ui32Off] != 0) && (pszName[ui32Off] != 0) && (ui32Off < DBG_STREAM_NAME_MAX) && bAreSame)
+			while ((ui32Off < DBG_STREAM_NAME_MAX) && (psThis->szName[ui32Off] != 0) && (pszName[ui32Off] != 0) && bAreSame)
 			{
 				if (psThis->szName[ui32Off] != pszName[ui32Off])
 				{
