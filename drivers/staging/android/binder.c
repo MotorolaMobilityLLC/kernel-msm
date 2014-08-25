@@ -76,11 +76,11 @@ BINDER_DEBUG_ENTRY(proc);
 
 /* This is only defined in include/asm-arm/sizes.h */
 #ifndef SZ_1K
-#define SZ_1K		0x400
+#define SZ_1K                               0x400
 #endif
 
 #ifndef SZ_4M
-#define SZ_4M		0x400000
+#define SZ_4M                               0x400000
 #endif
 
 #define FORBIDDEN_MMAP_FLAGS                (VM_WRITE)
@@ -660,8 +660,8 @@ static struct binder_buffer *binder_alloc_buf(struct binder_proc *proc,
 		return NULL;
 	}
 
-	size = ALIGN(data_size, sizeof(binder_ptr)) +
-		ALIGN(offsets_size, sizeof(binder_ptr));
+	size = ALIGN(data_size, sizeof(void *)) +
+		ALIGN(offsets_size, sizeof(void *));
 
 	if (size < data_size || size < offsets_size) {
 		binder_user_error("%d: got transaction with invalid size %zd-%zd\n",
@@ -671,8 +671,9 @@ static struct binder_buffer *binder_alloc_buf(struct binder_proc *proc,
 
 	if (is_async &&
 	    proc->free_async_space < size + sizeof(struct binder_buffer)) {
-		pr_err("%d: binder_alloc_buf size %zd failed, no async space left\n",
-		       proc->pid, size);
+		binder_debug(BINDER_DEBUG_BUFFER_ALLOC,
+			     "%d: binder_alloc_buf size %zd failed, no async space left\n",
+			      proc->pid, size);
 		return NULL;
 	}
 
@@ -808,8 +809,8 @@ static void binder_free_buf(struct binder_proc *proc,
 
 	buffer_size = binder_buffer_size(proc, buffer);
 
-	size = ALIGN(buffer->data_size, sizeof(binder_ptr)) +
-		ALIGN(buffer->offsets_size, sizeof(binder_ptr));
+	size = ALIGN(buffer->data_size, sizeof(void *)) +
+		ALIGN(buffer->offsets_size, sizeof(void *));
 
 	binder_debug(BINDER_DEBUG_BUFFER_ALLOC,
 		     "%d: binder_free_buf %p size %zd buffer_size %zd\n",
@@ -1244,8 +1245,7 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 	if (failed_at)
 		off_end = failed_at;
 	else
-		off_end = offp + buffer->offsets_size / sizeof(*offp);
-
+		off_end = (void *)offp + buffer->offsets_size;
 	for (; offp < off_end; offp++) {
 		struct flat_binder_object *fp;
 		if (*offp > buffer->data_size - sizeof(*fp) ||
@@ -1279,7 +1279,7 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 				break;
 			}
 			binder_debug(BINDER_DEBUG_TRANSACTION,
-			     "        ref %d desc %d (node %d)\n",
+				     "        ref %d desc %d (node %d)\n",
 				     ref->debug_id, ref->desc, ref->node->debug_id);
 			binder_dec_ref(ref, fp->type == BINDER_TYPE_HANDLE);
 		} break;
@@ -1572,7 +1572,7 @@ static void binder_transaction(struct binder_proc *proc,
 			if (ref == NULL) {
 				binder_user_error("%d:%d got transaction with invalid handle, %d\n",
 						proc->pid,
-						thread->pid, BINDER_LONG fp->handle);
+						thread->pid, fp->handle);
 				return_error = BR_FAILED_REPLY;
 				goto err_binder_get_ref_failed;
 			}
@@ -1585,8 +1585,8 @@ static void binder_transaction(struct binder_proc *proc,
 					fp->type = BINDER_TYPE_BINDER;
 				else
 					fp->type = BINDER_TYPE_WEAK_BINDER;
-				fp->binder = UADDR_TO_BINDER_PTR(ref->node->ptr);
-				fp->cookie = UADDR_TO_BINDER_PTR(ref->node->cookie);
+				fp->binder = ref->node->ptr;
+				fp->cookie = ref->node->cookie;
 				binder_inc_node(ref->node, fp->type == BINDER_TYPE_BINDER, 0, NULL);
 				trace_binder_transaction_ref_to_node(t, ref);
 				binder_debug(BINDER_DEBUG_TRANSACTION,
@@ -1874,7 +1874,7 @@ int binder_thread_write(struct binder_proc *proc, struct binder_thread *thread,
 				return -EFAULT;
 			ptr += sizeof(binder_uintptr_t);
 
-			buffer = binder_buffer_lookup(proc, BINDER_PTR data_ptr);
+			buffer = binder_buffer_lookup(proc, data_ptr);
 			if (buffer == NULL) {
 				binder_user_error("%d:%d BC_FREE_BUFFER u%016llx no match\n",
 					proc->pid, thread->pid, (u64)data_ptr);
@@ -2049,7 +2049,7 @@ int binder_thread_write(struct binder_proc *proc, struct binder_thread *thread,
 			if (get_user(cookie, (binder_uintptr_t __user *)ptr))
 				return -EFAULT;
 
-			ptr += sizeof(binder_ptr);
+			ptr += sizeof(void *);
 			list_for_each_entry(w, &proc->delivered_death, entry) {
 				struct binder_ref_death *tmp_death = container_of(w, struct binder_ref_death, work);
 				if (tmp_death->cookie == cookie) {
@@ -2083,7 +2083,7 @@ int binder_thread_write(struct binder_proc *proc, struct binder_thread *thread,
 			       proc->pid, thread->pid, cmd);
 			return -EINVAL;
 		}
-		*consumed = (uint64_t)ptr - (uint64_t)buffer;
+		*consumed = ptr - buffer;
 	}
 	return 0;
 }
@@ -2204,7 +2204,7 @@ retry:
 		else if (!list_empty(&proc->todo) && wait_for_proc_work)
 			w = list_first_entry(&proc->todo, struct binder_work, entry);
 		else {
-			if ((uint64_t)ptr - (uint64_t)buffer == 4 && !(thread->looper & BINDER_LOOPER_STATE_NEED_RETURN)) /* no data added */
+			if (ptr - buffer == 4 && !(thread->looper & BINDER_LOOPER_STATE_NEED_RETURN)) /* no data added */
 				goto retry;
 			break;
 		}
@@ -2339,8 +2339,8 @@ retry:
 		BUG_ON(t->buffer == NULL);
 		if (t->buffer->target_node) {
 			struct binder_node *target_node = t->buffer->target_node;
-			tr.target.ptr = UADDR_TO_BINDER_PTR(target_node->ptr);
-			tr.cookie =  UADDR_TO_BINDER_PTR(target_node->cookie);
+			tr.target.ptr = target_node->ptr;
+			tr.cookie =  target_node->cookie;
 			t->saved_priority = task_nice(current);
 			if (t->priority < target_node->min_priority &&
 			    !(t->flags & TF_ONE_WAY))
@@ -2373,7 +2373,7 @@ retry:
 					proc->user_buffer_offset);
 		tr.data.ptr.offsets = tr.data.ptr.buffer +
 					ALIGN(t->buffer->data_size,
-					    sizeof(binder_ptr));
+					    sizeof(void *));
 
 		if (put_user(cmd, (uint32_t __user *)ptr))
 			return -EFAULT;
@@ -2410,7 +2410,7 @@ retry:
 
 done:
 
-	*consumed = (uint64_t)ptr - (uint64_t)buffer;
+	*consumed = ptr - buffer;
 	if (proc->requested_threads + proc->ready_threads == 0 &&
 	    proc->requested_threads_started < proc->max_threads &&
 	    (thread->looper & (BINDER_LOOPER_STATE_REGISTERED |
@@ -2679,7 +2679,7 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				ret = -EPERM;
 				goto err;
 			}
-		} else {
+		} else
 			binder_context_mgr_uid = current->cred->euid;
 		binder_context_mgr_node = binder_new_node(proc, 0, 0);
 		if (binder_context_mgr_node == NULL) {

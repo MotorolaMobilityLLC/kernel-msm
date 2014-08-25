@@ -289,6 +289,21 @@ void ping_close(struct sock *sk, long timeout)
 }
 EXPORT_SYMBOL_GPL(ping_close);
 
+void ping_set_saddr(struct sock *sk, struct sockaddr *saddr)
+{
+	if (saddr->sa_family == AF_INET) {
+		struct inet_sock *isk = inet_sk(sk);
+		struct sockaddr_in *addr = (struct sockaddr_in *) saddr;
+		isk->inet_rcv_saddr = isk->inet_saddr = addr->sin_addr.s_addr;
+#if IS_ENABLED(CONFIG_IPV6)
+	} else if (saddr->sa_family == AF_INET6) {
+		struct sockaddr_in6 *addr = (struct sockaddr_in6 *) saddr;
+		struct ipv6_pinfo *np = inet6_sk(sk);
+		np->rcv_saddr = np->saddr = addr->sin6_addr;
+#endif
+	}
+}
+
 /* Checks the bind address and possibly modifies sk->sk_bound_dev_if. */
 int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 			 struct sockaddr *uaddr, int addr_len) {
@@ -342,8 +357,7 @@ int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 				return -ENODEV;
 			}
 		}
-		has_addr = pingv6_ops.ipv6_chk_addr(net, &addr->sin6_addr, dev,
-						    scoped);
+		has_addr = ipv6_chk_addr(net, &addr->sin6_addr, dev, scoped);
 		rcu_read_unlock();
 
 		if (!(isk->freebind || isk->transparent || has_addr ||
@@ -357,21 +371,6 @@ int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 		return -EAFNOSUPPORT;
 	}
 	return 0;
-}
-
-void ping_set_saddr(struct sock *sk, struct sockaddr *saddr)
-{
-	if (saddr->sa_family == AF_INET) {
-		struct inet_sock *isk = inet_sk(sk);
-		struct sockaddr_in *addr = (struct sockaddr_in *) saddr;
-		isk->inet_rcv_saddr = isk->inet_saddr = addr->sin_addr.s_addr;
-#if IS_ENABLED(CONFIG_IPV6)
-	} else if (saddr->sa_family == AF_INET6) {
-		struct sockaddr_in6 *addr = (struct sockaddr_in6 *) saddr;
-		struct ipv6_pinfo *np = inet6_sk(sk);
-		np->rcv_saddr = np->saddr = addr->sin6_addr;
-#endif
-	}
 }
 
 void ping_clear_saddr(struct sock *sk, int dif)

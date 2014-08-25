@@ -241,7 +241,7 @@ void cfg80211_stop_p2p_device(struct cfg80211_registered_device *rdev,
 		WARN_ON(!busy);
 
 		rdev->scan_req->aborted = true;
-		___cfg80211_scan_done(rdev);
+		___cfg80211_scan_done(rdev, !busy);
 	}
 }
 
@@ -787,7 +787,7 @@ static void wdev_cleanup_work(struct work_struct *work)
 
 	if (WARN_ON(rdev->scan_req && rdev->scan_req->wdev == wdev)) {
 		rdev->scan_req->aborted = true;
-		___cfg80211_scan_done(rdev);
+		___cfg80211_scan_done(rdev, true);
 	}
 
 	if (WARN_ON(rdev->sched_scan_req &&
@@ -876,7 +876,6 @@ void cfg80211_leave(struct cfg80211_registered_device *rdev,
 		cfg80211_leave_mesh(rdev, dev);
 		break;
 	case NL80211_IFTYPE_AP:
-	case NL80211_IFTYPE_P2P_GO:
 		cfg80211_stop_ap(rdev, dev);
 		break;
 	default:

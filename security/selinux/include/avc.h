@@ -106,11 +106,6 @@ int slow_avc_audit(u32 ssid, u32 tsid, u16 tclass,
 		   struct common_audit_data *a,
 		   unsigned flags);
 
-int internal_slow_avc_audit(u32 ssid, u32 tsid, u16 tclass,
-			u32 requested, u32 audited, u32 denied,
-			struct common_audit_data *a,
-			unsigned flags, int result);
-
 /**
  * avc_audit - Audit the granting or denial of permissions.
  * @ssid: source security identifier

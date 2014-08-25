@@ -429,6 +429,10 @@ static void cpufreq_interactive_timer(unsigned long data)
 		}
 	} else {
 		new_freq = choose_freq(pcpu, loadadjfreq);
+		if (now < tunables->touchboostpulse_endtime) {
+			if (new_freq < tunables->touchboost_freq)
+				new_freq = tunables->touchboost_freq;
+			}
 		if (new_freq > tunables->hispeed_freq &&
 				pcpu->target_freq < tunables->hispeed_freq)
 			new_freq = tunables->hispeed_freq;
@@ -1278,19 +1282,6 @@ static int cpufreq_interactive_idle_notifier(struct notifier_block *nb,
 static struct notifier_block cpufreq_interactive_idle_nb = {
 	.notifier_call = cpufreq_interactive_idle_notifier,
 };
-
-/*
- * hack copied from cpufreq_govenor to get this hacked implemenation to compile
- * after updating against Nov 13 2013 merge with common.git/android-3.10
- */
-static struct kobject *get_governor_parent_kobj(struct cpufreq_policy *policy)
-{
-	if (have_governor_per_policy())
-		return &policy->kobj;
-	else
-		return cpufreq_global_kobject;
-}
-
 
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		unsigned int event)

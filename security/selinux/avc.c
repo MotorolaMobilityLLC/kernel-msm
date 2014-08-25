@@ -456,16 +456,6 @@ noinline int slow_avc_audit(u32 ssid, u32 tsid, u16 tclass,
 		struct common_audit_data *a,
 		unsigned flags)
 {
-	return internal_slow_avc_audit(ssid, tsid, tclass, requested, audited, denied,
-				a, flags, 0);
-}
-
-/* This is the internal slow part of avc audit with big stack footprint */
-noinline int internal_slow_avc_audit(u32 ssid, u32 tsid, u16 tclass,
-		u32 requested, u32 audited, u32 denied,
-		struct common_audit_data *a,
-		unsigned flags, int result)
-{
 	struct common_audit_data stack_data;
 	struct selinux_audit_data sad;
 

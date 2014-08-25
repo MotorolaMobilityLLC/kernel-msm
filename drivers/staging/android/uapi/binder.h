@@ -20,51 +20,11 @@
 #ifndef _UAPI_LINUX_BINDER_H
 #define _UAPI_LINUX_BINDER_H
 
-#ifdef CONFIG_COMPAT
-#include <linux/compat.h>
-#endif
-
 #include <linux/ioctl.h>
 
 #define B_PACK_CHARS(c1, c2, c3, c4) \
 	((((c1)<<24)) | (((c2)<<16)) | (((c3)<<8)) | (c4))
 #define B_TYPE_LARGE 0x85
-
-#ifndef CONFIG_ANDROID_BINDER_IPC_COMPAT_32
-/*
- * Define strong types (and sizes) for the user-space structure elements.
- */
-typedef signed long    binder_long;
-typedef unsigned long  binder_ulong;
-typedef size_t         binder_size_t;
-typedef void           *binder_ptr;
-typedef const void     *binder_const_ptr;
-#else /* CONFIG_ANDROID_BINDER_IPC_COMPAT_32 */
-/*
- * compatibility definitions for running a 32-bit user-space
- * process with a 64-bit kernel. Does not work with 64-bit processes.
- */
-typedef signed int     binder_long;
-typedef unsigned int   binder_ulong;
-typedef unsigned int   binder_size_t;
-typedef unsigned int   binder_ptr;
-typedef unsigned int   binder_const_ptr;
-#endif /* CONFIG_ANDROID_BINDER_IPC_COMPAT_32 */
-
-/*
- * These defines are used to provide casting when converting from the
- * associated types (mostly) for printing. This allows us to eliminate
- * ifdefs as well as type conversion warnings.
- * If you use these for anything other than printk's... be certain that
- * you are doing the right thing.
- */
-#define BINDER_LONG    (signed long)
-#define BINDER_ULONG   (unsigned long)
-#define BINDER_SIZE_T  (size_t)
-#define BINDER_PTR     (void *)(unsigned long)
-#define BINDER_CONST_PTR (const void *)(unsigned long)
-#define UADDR_TO_BINDER_PTR(UADDR)  \
-       ((binder_ptr)(binder_ulong)(unsigned long)(UADDR))
 
 enum {
 	BINDER_TYPE_BINDER	= B_PACK_CHARS('s', 'b', '*', B_TYPE_LARGE),
@@ -260,16 +220,16 @@ enum binder_driver_return_protocol {
 	BR_RELEASE = _IOR('r', 9, struct binder_ptr_cookie),
 	BR_DECREFS = _IOR('r', 10, struct binder_ptr_cookie),
 	/*
-	 * binder_ptr:	ptr to binder
-	 * binder_ptr: cookie for binder
+	 * void *:	ptr to binder
+	 * void *: cookie for binder
 	 */
 
 	BR_ATTEMPT_ACQUIRE = _IOR('r', 11, struct binder_pri_ptr_cookie),
 	/*
 	 * not currently supported
 	 * int:	priority
-	 * binder_ptr ptr to binder
-	 * binder_ptr: cookie for binder
+	 * void *: ptr to binder
+	 * void *: cookie for binder
 	 */
 
 	BR_NOOP = _IO('r', 12),
