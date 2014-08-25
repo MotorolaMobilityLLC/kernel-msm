@@ -3763,6 +3763,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            //Filtertype value should be either 0-Disabled, 1-Source, 2-sink
            pHddCtx->drvr_miracast = filterType;
            hdd_tx_rx_pkt_cnt_stat_timer_handler(pHddCtx);
+           sme_SetMiracastMode(pHddCtx->hHal, pHddCtx->drvr_miracast);
         }
        else if (strncmp(command, "SETMCRATE", 9) == 0)
        {

@@ -6119,8 +6119,8 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                       * result pMac->scan.nextScanID is equal to ONE for the
                       * first scan.
                       */
-                     if (pMac->roam.configParam.initialScanSkipDFSCh &&
-                              1 == pMac->scan.nextScanID )
+                     if ((pMac->roam.configParam.initialScanSkipDFSCh &&
+                              1 == pMac->scan.nextScanID) ||(pMac->miracast_mode))
                      {
                        smsLog(pMac, LOG1,
                               FL("Initial scan, scan only non-DFS channels"));
