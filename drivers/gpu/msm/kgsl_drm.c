@@ -1420,8 +1420,10 @@ kgsl_drm_irq_preinstall(struct drm_device *dev)
 	DRM_DEBUG("%s\n", __func__);
 
 	for (i = 0; i < DRM_KGSL_CRTC_MAX; i++) {
-		atomic_set(&dev_priv->vblank_cnt[i], 0);
-		mdp_drm_intr_mask |= dev_priv->irq_mask[i];
+		if ( i != DRM_KGSL_CRTC_FAKE ) {
+			atomic_set(&dev_priv->vblank_cnt[i], 0);
+			mdp_drm_intr_mask |= dev_priv->irq_mask[i];
+		}
 	}
 
 	dev->irq_enabled = 0;
