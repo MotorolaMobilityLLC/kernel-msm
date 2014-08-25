@@ -120,6 +120,10 @@
 				"factory_HE_south";
 	};
 
+	pwmleds {
+		status = "disabled";
+	};
+
 	bluesleep {
 		compatible = "qcom,bluesleep";
 		bt_host_wake = <&msmgpio 67 0>;
