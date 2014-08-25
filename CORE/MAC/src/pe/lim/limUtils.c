@@ -5305,6 +5305,7 @@ tSirRetStatus limProcessHalIndMessages(tpAniSirGlobal pMac, tANI_U32 msgId, void
     case SIR_LIM_DEL_BA_ALL_IND:
     case SIR_LIM_DELETE_STA_CONTEXT_IND:        
     case SIR_LIM_BEACON_GEN_IND:
+    case SIR_LIM_DEL_BA_IND:
       msg.type = (tANI_U16) msgId;
       msg.bodyptr = msgParam;
       msg.bodyval = 0;
