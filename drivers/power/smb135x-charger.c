@@ -3133,7 +3133,7 @@ static int usbin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 	bool usb_present = !rt_stat;
 	int health;
 
-	pr_debug("chip->usb_present = %d usb_present = %d\n",
+	pr_info("chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 
 	if (ignore_disconnect) {
@@ -3141,9 +3141,17 @@ static int usbin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 		return 0;
 	}
 
-	if (chip->usb_present && !usb_present) {
+	if (is_usb_plugged_in(chip) && !chip->usb_present && usb_present) {
+		/* USB inserted */
+		chip->usb_present = usb_present;
+		handle_usb_insertion(chip);
+	} else if (chip->usb_present && !usb_present) {
 		/* USB removed */
 		chip->usb_present = usb_present;
+		if (!is_dc_plugged_in(chip)) {
+			chip->chg_done_batt_full = false;
+			chip->float_charge_start_time = 0;
+		}
 		notify_usb_removal(chip);
 	}
 
