@@ -29,7 +29,7 @@
 #define CYCLES_PER_MICRO_SEC 4915
 #define CCI_MAX_DELAY 10000
 
-#define CCI_TIMEOUT msecs_to_jiffies(100)
+#define CCI_TIMEOUT msecs_to_jiffies(200)
 
 /* TODO move this somewhere else */
 #define MSM_CCI_DRV_NAME "msm_cci"
@@ -100,35 +100,29 @@ static void msm_cci_set_clk_param(struct cci_device *cci_dev,
 static void msm_cci_flush_queue(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master)
 {
-	int32_t rc = 0;
+	unsigned long rc = 0;
 
 	msm_camera_io_w(1 << master, cci_dev->base + CCI_HALT_REQ_ADDR);
-	rc = wait_for_completion_interruptible_timeout(
+	rc = wait_for_completion_timeout(
 		&cci_dev->cci_master_info[master].reset_complete, CCI_TIMEOUT);
-	if (rc < 0) {
-		pr_err("%s:%d wait failed\n", __func__, __LINE__);
-	} else if (rc == 0) {
-		pr_err("%s:%d wait timeout\n", __func__, __LINE__);
+	CDBG("%s:%d return %ld", __func__, __LINE__, rc);
 
-		/* Set reset pending flag to TRUE */
-		cci_dev->cci_master_info[master].reset_pending = TRUE;
+	/* Set reset pending flag to TRUE */
+	cci_dev->cci_master_info[master].reset_pending = TRUE;
 
-		/* Set proper mask to RESET CMD address based on MASTER */
-		if (master == MASTER_0)
-			msm_camera_io_w(CCI_M0_RESET_RMSK,
-				cci_dev->base + CCI_RESET_CMD_ADDR);
-		else
-			msm_camera_io_w(CCI_M1_RESET_RMSK,
-				cci_dev->base + CCI_RESET_CMD_ADDR);
+	/* Set proper mask to RESET CMD address based on MASTER */
+	if (master == MASTER_0)
+		msm_camera_io_w(CCI_M0_RESET_RMSK,
+			cci_dev->base + CCI_RESET_CMD_ADDR);
+	else
+		msm_camera_io_w(CCI_M1_RESET_RMSK,
+			cci_dev->base + CCI_RESET_CMD_ADDR);
 
-		/* wait for reset done irq */
-		rc = wait_for_completion_interruptible_timeout(
-			&cci_dev->cci_master_info[master].reset_complete,
-			CCI_TIMEOUT);
-		if (rc <= 0)
-			pr_err("%s:%d wait failed %d\n", __func__, __LINE__,
-				rc);
-	}
+	/* wait for reset done irq */
+	rc = wait_for_completion_timeout(
+		&cci_dev->cci_master_info[master].reset_complete,
+		CCI_TIMEOUT);
+	CDBG("%s:%d return %ld", __func__, __LINE__, rc);
 	return;
 }
 
@@ -163,15 +157,13 @@ static int32_t msm_cci_validate_queue(struct cci_device *cci_dev,
 		msm_camera_io_w(reg_val, cci_dev->base + CCI_QUEUE_START_ADDR);
 		CDBG("%s line %d wait_for_completion_interruptible\n",
 			__func__, __LINE__);
-		rc = wait_for_completion_interruptible_timeout(&cci_dev->
-			cci_master_info[master].reset_complete, CCI_TIMEOUT);
-		if (rc <= 0) {
-			pr_err("%s: wait_for_completion_interruptible_timeout %d\n",
+
+		if (wait_for_completion_timeout(&cci_dev->
+			cci_master_info[master].reset_complete, CCI_TIMEOUT) == 0) {
+			pr_err("%s:%d wait_for_completion_timeout\n",
 				 __func__, __LINE__);
-			if (rc == 0)
-				rc = -ETIMEDOUT;
 			msm_cci_flush_queue(cci_dev, master);
-			return rc;
+			return -ETIMEDOUT;
 		}
 		rc = cci_dev->cci_master_info[master].status;
 		if (rc < 0)
@@ -408,19 +400,18 @@ static int32_t msm_cci_i2c_read(struct v4l2_subdev *sd,
 	msm_camera_io_w(val, cci_dev->base + CCI_QUEUE_START_ADDR);
 	CDBG("%s:%d E wait_for_completion_interruptible_timeout\n", __func__,
 		__LINE__);
-	rc = wait_for_completion_interruptible_timeout(&cci_dev->
-		cci_master_info[master].reset_complete, CCI_TIMEOUT);
-	if (rc <= 0) {
-		pr_err("%s: wait_for_completion_interruptible_timeout %d\n",
+	if (wait_for_completion_timeout(&cci_dev->
+		cci_master_info[master].reset_complete, CCI_TIMEOUT) == 0) {
+		pr_err("%s:%d wait_for_completion_timeout\n",
 			 __func__, __LINE__);
-		if (rc == 0)
-			rc = -ETIMEDOUT;
+
+		rc = -ETIMEDOUT;
 		msm_cci_flush_queue(cci_dev, master);
 		goto ERROR;
 	} else {
 		rc = 0;
 	}
-	CDBG("%s:%d E wait_for_completion_interruptible_timeout\n", __func__,
+	CDBG("%s:%d E wait_for_completion_timeout\n", __func__,
 		__LINE__);
 
 	read_words = msm_camera_io_r(cci_dev->base +
@@ -613,13 +604,12 @@ static int32_t msm_cci_i2c_write(struct v4l2_subdev *sd,
 
 	CDBG("%s:%d E wait_for_completion_interruptible\n",
 		__func__, __LINE__);
-	rc = wait_for_completion_interruptible_timeout(&cci_dev->
-		cci_master_info[master].reset_complete, CCI_TIMEOUT);
-	if (rc <= 0) {
-		pr_err("%s: wait_for_completion_interruptible_timeout %d\n",
+	if (wait_for_completion_timeout(&cci_dev->
+		cci_master_info[master].reset_complete, CCI_TIMEOUT) == 0) {
+		pr_err("%s:%d wait_for_completion_timeout\n",
 			 __func__, __LINE__);
-		if (rc == 0)
-			rc = -ETIMEDOUT;
+
+		rc = -ETIMEDOUT;
 		msm_cci_flush_queue(cci_dev, master);
 		goto ERROR;
 	} else {
