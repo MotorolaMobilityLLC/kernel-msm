@@ -2728,6 +2728,10 @@ static int  AXC_BatteryService_getCapacity(struct AXI_BatteryServiceFacade * bat
 #endif
 	{
 #if USE_SW_GAUGE //report capacity by SW gauge
+		if( (true==_this->BatteryService_IsFULL)&&(_this->A66_capacity>=99) ) {
+			printk("[BAT][Ser]more than 99p & FULL flag, show 100\n");
+			_this->A66_capacity = 100;
+		}
 		return _this->A66_capacity;
 #else //report capacity by BMS
 		if(gBMS_Cap <= 1){
