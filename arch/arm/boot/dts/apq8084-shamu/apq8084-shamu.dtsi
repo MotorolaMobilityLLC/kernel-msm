@@ -117,6 +117,10 @@
 		interrupts = <67 0>;
 		interrupt-names = "host_wake";
 	};
+
+	mmi_sar_ctrl {
+		compatible = "mmi,mmi_sar_ctrl";
+	};
 };
 
 &pma8084_gpios {
