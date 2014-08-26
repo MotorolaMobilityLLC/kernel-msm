@@ -2158,6 +2158,7 @@ static inline int AXC_BatteryService_getNextPollingInterval(struct AXC_BatterySe
 //Hank: Tigauge Temperature Monitor---
 static int BatteryServiceGauge_OnCapacityReply(struct AXI_Gauge *gauge, struct AXI_Gauge_Callback *gaugeCb, int batCap, int result);
 
+bool g_call_update_cap_work_by_resume = false;
 static void BatteryServiceCapSample(struct work_struct *dat)
 {
 	AXC_BatteryService *_this = container_of(dat,AXC_BatteryService,BatteryServiceUpdateWorker.work);
@@ -2175,10 +2176,14 @@ static void BatteryServiceCapSample(struct work_struct *dat)
 	}
 	else{
 		pr_debug("[BAT][SER]%s():_this->IsFirstForceResume = false, do checkCalCapTime()\n",__func__);
-		checkCalCapTime();
+		if(!g_call_update_cap_work_by_resume){
+			checkCalCapTime();
+		}
 	}
 	//Hank: FirstForceResume do not need check Timing---
-       
+	
+	g_call_update_cap_work_by_resume = false;
+	
 	if(_this->NeedCalCap){
 		pr_debug("[BAT][SER]%s(): Need Calculate Capacity +++\n",__func__);
 		_this->IsCalculateCapOngoing = true;
@@ -2455,7 +2460,7 @@ static void ResumeCalCap(struct work_struct *dat)
 
 	pr_debug("[BAT][SER]:resume queue+++\n");
 
-	if(true == balance_this->BatteryService_IsBatLow 
+	if(balance_this->A66_capacity < 14 
 		&& nowResumeInterval > RESUME_UPDATE_TIMEwhenBATlow)
 	{
 		needDoResume = true; 
@@ -2473,6 +2478,7 @@ static void ResumeCalCap(struct work_struct *dat)
 	//ReportTime();
 
 //Eason resume always calculate capacity no matter if in   Pad or CableIn or BatLow+++
+	g_call_update_cap_work_by_resume = true;
 	if(true==needDoResume)
 	{
 		//Eason set these flag when true==needDoResume+++
@@ -2502,6 +2508,9 @@ static void ResumeCalCap(struct work_struct *dat)
 		balance_this->NeedCalCap = false;
 		//Hank: temperature monitor only---
 		pr_debug("[Bat][Ser]%s queue BatteryServiceUpdateWorker without calculate capacity\n",__func__);     
+		queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
+							&balance_this->BatteryServiceUpdateWorker,\
+							0 * HZ);
 	}
 	pr_debug("[BAT][SER]:resume queue---\n");
 //Eason resume always calculate capacity no matter if in   Pad or CableIn or BatLow---		
@@ -2991,8 +3000,6 @@ static void AXC_BatteryService_suspend(struct AXI_BatteryServiceFacade *bat)
 {
 	AXC_BatteryService  *_this = container_of(bat, AXC_BatteryService, miParent);
 
-	printk("[BAT][Ser]:suspend()+++\n");
-
 	_this->HasCableBeforeSuspend = _this->BatteryService_IsCable;
 
 #ifdef CONFIG_EEPROM_NUVOTON
@@ -3018,8 +3025,6 @@ static void AXC_BatteryService_suspend(struct AXI_BatteryServiceFacade *bat)
 	#endif
 #endif	//CONFIG_EEPROM_NUVOTON
 	//Eason: A68 new balance mode ---
-
-	printk("[BAT][Ser]:suspend()---\n");
 }
 
 #ifndef ASUS_FACTORY_BUILD	
@@ -3033,8 +3038,6 @@ static void AXC_BatteryService_resume(struct AXI_BatteryServiceFacade *bat,int d
 {
 	AXC_BatteryService  *_this=
 		container_of(bat, AXC_BatteryService, miParent);
-
-	printk("[BAT][Ser]:resume()+++\n");
 
 #ifdef CONFIG_EEPROM_NUVOTON
 	if(1==AX_MicroP_IsP01Connected())
@@ -3055,8 +3058,6 @@ static void AXC_BatteryService_resume(struct AXI_BatteryServiceFacade *bat,int d
 			&_this->BatRtcReadyWorker,
 			RTC_READY_DELAY_TIME * HZ);
 	}
-
-	printk("[BAT][Ser]:resume()---\n");
 }
 //Eason resume always calculate capacity no matter if in   Pad or CableIn or BatLow---
 
