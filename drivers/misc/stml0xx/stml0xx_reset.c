@@ -61,12 +61,10 @@ int stml0xx_reset_and_init(void)
 	int err, ret_err = 0;
 	unsigned char *rst_cmdbuff = stml0xx_misc_data->spi_tx_buf;
 	unsigned char buf[SPI_MSG_SIZE];
-	dev_dbg(&stml0xx_misc_data->spi->dev, "stml0xx_reset_and_init");
+	dev_err(&stml0xx_misc_data->spi->dev, "stml0xx_reset_and_init");
 
 	if (rst_cmdbuff == NULL)
 		return -ENOMEM;
-
-	stml0xx_reset(stml0xx_misc_data->pdata, rst_cmdbuff);
 
 	wake_lock(&stml0xx_misc_data->reset_wakelock);
 

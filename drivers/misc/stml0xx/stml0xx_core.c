@@ -103,12 +103,10 @@ struct stml0xx_data *stml0xx_misc_data;
 void stml0xx_wake(struct stml0xx_data *ps_stml0xx)
 {
 	if (ps_stml0xx != NULL && ps_stml0xx->pdata != NULL) {
-		if (!(ps_stml0xx->sh_lowpower_enabled))
-			return;
-
 		mutex_lock(&ps_stml0xx->sh_wakeup_lock);
 
-		if (ps_stml0xx->sh_wakeup_count == 0)
+		if (ps_stml0xx->sh_wakeup_count == 0 &&
+				ps_stml0xx->sh_lowpower_enabled)
 			gpio_set_value(ps_stml0xx->pdata->gpio_sh_wake, 1);
 
 		ps_stml0xx->sh_wakeup_count++;
@@ -120,14 +118,12 @@ void stml0xx_wake(struct stml0xx_data *ps_stml0xx)
 void stml0xx_sleep(struct stml0xx_data *ps_stml0xx)
 {
 	if (ps_stml0xx != NULL && ps_stml0xx->pdata != NULL) {
-		if (!(ps_stml0xx->sh_lowpower_enabled))
-			return;
-
 		mutex_lock(&ps_stml0xx->sh_wakeup_lock);
 
 		if (ps_stml0xx->sh_wakeup_count > 0) {
 			ps_stml0xx->sh_wakeup_count--;
-			if (ps_stml0xx->sh_wakeup_count == 0) {
+			if (ps_stml0xx->sh_wakeup_count == 0 &&
+					ps_stml0xx->sh_lowpower_enabled) {
 				gpio_set_value(ps_stml0xx->pdata->gpio_sh_wake,
 					       0);
 			}
@@ -144,7 +140,7 @@ void stml0xx_sleep(struct stml0xx_data *ps_stml0xx)
 void stml0xx_detect_lowpower_mode(unsigned char *cmdbuff)
 {
 	int err;
-	uint8_t buf[2];
+	uint8_t buf[STML0XX_POWER_REG_SIZE] = {0};
 
 	if (stml0xx_misc_data->pdata->gpio_sh_wake >= 0) {
 		mutex_lock(&stml0xx_misc_data->sh_wakeup_lock);
@@ -154,7 +150,8 @@ void stml0xx_detect_lowpower_mode(unsigned char *cmdbuff)
 		gpio_set_value(stml0xx_misc_data->pdata->gpio_sh_wake, 1);
 
 		/* detect whether lowpower mode is supported */
-		err = stml0xx_spi_send_read_reg(LOWPOWER_REG, buf, 2);
+		err = stml0xx_spi_send_read_reg_reset(LOWPOWER_REG, buf,
+				STML0XX_POWER_REG_SIZE, RESET_NOT_ALLOWED);
 
 		if (err >= 0) {
 			if ((int)buf[1] == 1)
@@ -169,12 +166,13 @@ void stml0xx_detect_lowpower_mode(unsigned char *cmdbuff)
 			if (stml0xx_misc_data->sh_lowpower_enabled) {
 				/* send back to the hub the kernel
 				 * supports low power mode */
-				cmdbuff[0] =
-				    stml0xx_misc_data->sh_lowpower_enabled;
+				memset(buf, 0x01, STML0XX_POWER_REG_SIZE);
 				err =
-				    stml0xx_spi_send_write_reg(LOWPOWER_REG,
-							       cmdbuff, 1);
-
+					stml0xx_spi_send_write_reg_reset(
+							LOWPOWER_REG,
+							buf,
+							STML0XX_POWER_REG_SIZE,
+							RESET_NOT_ALLOWED);
 				if (err < 0) {
 					/* if we failed to let the sensorhub
 					 * know we support lowpower mode
@@ -312,8 +310,6 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 		pdata->gpio_sh_wake = -1;
 		stml0xx_misc_data->sh_lowpower_enabled = 0;
 	}
-
-	stml0xx_misc_data->sh_wakeup_count = 0;
 
 	if (of_get_property(np, "lux_table", &len) == NULL) {
 		dev_err(&stml0xx_misc_data->spi->dev,
