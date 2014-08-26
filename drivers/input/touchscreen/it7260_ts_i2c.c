@@ -1962,9 +1962,9 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 
 			ret = i2cReadFromIt7260(ts->client, 0xE0, pucPoint, 14);
 			//printk("=Read_Point read ret[%d]--point[%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]=\n",
-			//	ret,pucPoint[0],pucPoint[1],pucPoint[2],
-			//	pucPoint[3],pucPoint[4],pucPoint[5],pucPoint[6],pucPoint[7],pucPoint[8],
-			//	pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
+				//ret,pucPoint[0],pucPoint[1],pucPoint[2],
+				//pucPoint[3],pucPoint[4],pucPoint[5],pucPoint[6],pucPoint[7],pucPoint[8],
+				//pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
 				
 			if (ret) {
 
@@ -2066,6 +2066,12 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 					}
 					}
 					
+					if (atomic_read(&Suspend_flag)){
+						if (jiffies - palm_after > 2000) {
+						atomic_set(&palm_num, 0);
+					}
+					}
+					
 					input_report_abs(ts->input_dev, ABS_X, xraw);
 					input_report_abs(ts->input_dev, ABS_Y, yraw);
 					input_report_key(ts->input_dev, BTN_TOUCH,1);
@@ -2111,6 +2117,9 @@ static void IT7260_ts_work_func(struct work_struct *work) {
 
 static void IT7260_ts_work_resume_func(struct work_struct *work) {
 	
+	printk("====================== \n");
+	printk("[IT7260] touch to wake \n");
+	printk("====================== \n");
 	if (atomic_read(&Suspend_flag)){
 		static int skip_times=0;
 		last_time_shot_power = 0;
@@ -2138,8 +2147,8 @@ static void IT7260_ts_work_resume_func(struct work_struct *work) {
 int delayCount = 1;
 static irqreturn_t IT7260_ts_irq_handler(int irq, void *dev_id) {
 	struct IT7260_ts_data *ts = dev_id;
-
-	if (atomic_read(&Suspend_flag))
+	
+	if (atomic_read(&Suspend_flag) && (atomic_read(&palm_num) == 0))
 	{
 		disable_irq_nosync(gl_ts->client->irq);
 		queue_work(IT7260_wq, &ts->resume_work);
@@ -2386,7 +2395,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 	gl_ts = ts;
 	it7260_status = 1;
 	
-	pr_info("=end IT7260_ts_probe=\n");
+	pr_info("=end IT7260_ts_probe_20140826=\n");
 
 	i2cWriteToIt7260(ts->client, 0x20, cmdbuf, 1);
 	mdelay(10);
