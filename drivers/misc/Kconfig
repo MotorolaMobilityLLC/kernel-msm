@@ -633,6 +633,14 @@ config MMI_FACTORY
 	  say no here.
 	default n
 
+config MMI_SAR
+	tristate "Motorola Mobility SAR driver"
+	help
+	  This option enables MMI-SAR device driver that provides interface
+	  to control max TX power and sends notifications to other kernel
+	  components when SAR cutback has to be applied.
+	default n
+
 config ALSA_TO_H2W
 	tristate "ALSA to H2W wired headset detection converter"
 	help
