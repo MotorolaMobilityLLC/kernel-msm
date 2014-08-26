@@ -336,29 +336,6 @@ static unsigned long msm_cpp_fetch_buffer_info(struct cpp_device *cpp_dev,
 	return phy_addr;
 }
 
-static int32_t msm_cpp_enqueue_buff_info_list(struct cpp_device *cpp_dev,
-	struct msm_cpp_stream_buff_info_t *stream_buff_info)
-{
-	uint32_t j;
-	struct msm_cpp_buff_queue_info_t *buff_queue_info;
-
-	buff_queue_info = msm_cpp_get_buff_queue_entry(cpp_dev,
-			(stream_buff_info->identity >> 16) & 0xFFFF,
-			stream_buff_info->identity & 0xFFFF);
-	if (buff_queue_info == NULL) {
-		pr_err("error finding buffer queue entry for sessid:%d strmid:%d\n",
-			(stream_buff_info->identity >> 16) & 0xFFFF,
-			stream_buff_info->identity & 0xFFFF);
-		return -EINVAL;
-	}
-
-	for (j = 0; j < stream_buff_info->num_buffs; j++) {
-		msm_cpp_queue_buffer_info(cpp_dev, buff_queue_info,
-		&stream_buff_info->buffer_info[j]);
-	}
-	return 0;
-}
-
 static int32_t msm_cpp_dequeue_buff_info_list(struct cpp_device *cpp_dev,
 	struct msm_cpp_buff_queue_info_t *buff_queue_info)
 {
@@ -373,6 +350,28 @@ static int32_t msm_cpp_dequeue_buff_info_list(struct cpp_device *cpp_dev,
 	buff_head = &buff_queue_info->vb2_buff_head;
 	list_for_each_entry_safe(buff, save, buff_head, entry) {
 		msm_cpp_dequeue_buffer_info(cpp_dev, buff);
+	}
+
+	return 0;
+}
+
+static int32_t msm_cpp_dequeue_buff(struct cpp_device *cpp_dev,
+	struct msm_cpp_buff_queue_info_t *buff_queue_info, uint32_t buff_index,
+	uint8_t native_buff)
+{
+	struct msm_cpp_buffer_map_list_t *buff, *save;
+	struct list_head *buff_head;
+
+	if (native_buff)
+		buff_head = &buff_queue_info->native_buff_head;
+	else
+		buff_head = &buff_queue_info->vb2_buff_head;
+
+	list_for_each_entry_safe(buff, save, buff_head, entry) {
+		if (buff->map_info.buff_info.index == buff_index) {
+			msm_cpp_dequeue_buffer_info(cpp_dev, buff);
+			break;
+		}
 	}
 
 	return 0;
@@ -1286,6 +1285,8 @@ static int msm_cpp_flush_frames(struct cpp_device *cpp_dev)
 	return 0;
 }
 
+#define MSM_CPP_MAX_MSG_LENGTH 2048
+
 static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 	struct msm_camera_v4l2_ioctl_t *ioctl_ptr)
 {
@@ -1319,7 +1320,7 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 	}
 
 	if ((new_frame->msg_len == 0) ||
-		(new_frame->msg_len > MSM_CPP_MAX_FRAME_LENGTH)) {
+		(new_frame->msg_len > MSM_CPP_MAX_MSG_LENGTH)) {
 		pr_err("%s:%d: Invalid frame len:%d\n", __func__,
 			__LINE__, new_frame->msg_len);
 		rc = -EINVAL;
@@ -1570,10 +1571,13 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		CPP_DBG("VIDIOC_MSM_CPP_FLUSH_QUEUE\n");
 		rc = msm_cpp_flush_frames(cpp_dev);
 		break;
+	case VIDIOC_MSM_CPP_DELETE_STREAM_BUFF:
 	case VIDIOC_MSM_CPP_APPEND_STREAM_BUFF_INFO:
 	case VIDIOC_MSM_CPP_ENQUEUE_STREAM_BUFF_INFO: {
+		uint32_t j;
 		struct msm_cpp_stream_buff_info_t *u_stream_buff_info;
 		struct msm_cpp_stream_buff_info_t k_stream_buff_info;
+		struct msm_cpp_buff_queue_info_t *buff_queue_info;
 		CPP_DBG("VIDIOC_MSM_CPP_ENQUEUE_STREAM_BUFF_INFO\n");
 		if (sizeof(struct msm_cpp_stream_buff_info_t) !=
 			ioctl_ptr->len) {
@@ -1638,22 +1642,45 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			mutex_unlock(&cpp_dev->mutex);
 			return -EINVAL;
 		}
-		if (cmd != VIDIOC_MSM_CPP_APPEND_STREAM_BUFF_INFO) {
+		if (cmd == VIDIOC_MSM_CPP_ENQUEUE_STREAM_BUFF_INFO) {
 			rc = msm_cpp_add_buff_queue_entry(cpp_dev,
 				((k_stream_buff_info.identity >> 16) & 0xFFFF),
 				(k_stream_buff_info.identity & 0xFFFF));
 		}
-		if (!rc)
-			rc = msm_cpp_enqueue_buff_info_list(cpp_dev,
-				&k_stream_buff_info);
+
+		if (!rc) {
+			buff_queue_info = msm_cpp_get_buff_queue_entry(cpp_dev,
+				((k_stream_buff_info.identity >> 16) & 0xFFFF),
+				(k_stream_buff_info.identity & 0xFFFF));
+			if (buff_queue_info == NULL) {
+				pr_err("error finding buffer queue entry identity:%d\n",
+					k_stream_buff_info.identity);
+				kfree(k_stream_buff_info.buffer_info);
+				kfree(u_stream_buff_info);
+				mutex_unlock(&cpp_dev->mutex);
+				return -EINVAL;
+			}
+			if (VIDIOC_MSM_CPP_DELETE_STREAM_BUFF == cmd) {
+				for (j = 0; j < k_stream_buff_info.num_buffs; j++) {
+					msm_cpp_dequeue_buff(cpp_dev, buff_queue_info,
+					k_stream_buff_info.buffer_info[j].index,
+					k_stream_buff_info.buffer_info[j].native_buff);
+				}
+			} else {
+				for (j = 0; j < k_stream_buff_info.num_buffs; j++) {
+					msm_cpp_queue_buffer_info(cpp_dev, buff_queue_info,
+						&k_stream_buff_info.buffer_info[j]);
+				}
+				if (cmd == VIDIOC_MSM_CPP_ENQUEUE_STREAM_BUFF_INFO) {
+					cpp_dev->stream_cnt++;
+					pr_err("stream_cnt:%d\n", cpp_dev->stream_cnt);
+				}
+			}
+		}
 
 		kfree(k_stream_buff_info.buffer_info);
 		kfree(u_stream_buff_info);
 
-		if (cmd != VIDIOC_MSM_CPP_APPEND_STREAM_BUFF_INFO) {
-			cpp_dev->stream_cnt++;
-			pr_err("stream_cnt:%d\n", cpp_dev->stream_cnt);
-		}
 		break;
 	}
 	case VIDIOC_MSM_CPP_DEQUEUE_STREAM_BUFF_INFO: {
@@ -1683,6 +1710,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			mutex_unlock(&cpp_dev->mutex);
 			return -EINVAL;
 		}
+
 
 		msm_cpp_dequeue_buff_info_list(cpp_dev, buff_queue_info);
 		rc = msm_cpp_free_buff_queue_entry(cpp_dev,
