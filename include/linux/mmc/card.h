@@ -429,6 +429,8 @@ struct mmc_card {
 #define MMC_ERROR_FORGIVE_RATIO	10		/* forgive cards with enough successes/failures */
 	unsigned int		failures;	/* number of recent request failures */
 	unsigned int		successes;	/* successful requests since 1st recorded failure  */
+#define MMC_ERROR_MAX_TIME_MS	10000LL		/* give up after 10 seconds of trouble */
+	ktime_t			failure_time;	/* time of the first failure */
 #define MMC_THROTTLE_BACK_THRESHOLD 2
 	unsigned int		crc_errors;	/* number of CRC errors seen at this speed */
 };
