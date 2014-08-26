@@ -88,8 +88,8 @@ static int do_read_inode(struct inode *inode)
 	ri = F2FS_INODE(node_page);
 
 	inode->i_mode = le16_to_cpu(ri->i_mode);
-	inode->i_uid  = le32_to_cpu(ri->i_uid);
-	inode->i_gid  = le32_to_cpu(ri->i_gid);
+	inode->i_uid = le32_to_cpu(ri->i_uid);
+	inode->i_gid = le32_to_cpu(ri->i_gid);
 	set_nlink(inode, le32_to_cpu(ri->i_links));
 	inode->i_size = le64_to_cpu(ri->i_size);
 	inode->i_blocks = le64_to_cpu(ri->i_blocks);

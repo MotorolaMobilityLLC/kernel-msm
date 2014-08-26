@@ -62,7 +62,7 @@ static unsigned char f2fs_type_by_mode[S_IFMT >> S_SHIFT] = {
 
 static void set_de_type(struct f2fs_dir_entry *de, struct inode *inode)
 {
-	mode_t mode = inode->i_mode;
+	umode_t mode = inode->i_mode;
 	de->file_type = f2fs_type_by_mode[(mode & S_IFMT) >> S_SHIFT];
 }
 
@@ -110,7 +110,6 @@ static struct f2fs_dir_entry *find_in_block(struct page *dentry_page,
 			bit_pos++;
 			continue;
 		}
-
 		de = &dentry_blk->dentry[bit_pos];
 		if (flags & LOOKUP_NOCASE) {
 			if ((le16_to_cpu(de->name_len) == name->len) &&
@@ -683,11 +682,11 @@ bool f2fs_empty_dir(struct inode *dir)
 static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 {
 	unsigned long pos = file->f_pos;
-	struct inode *inode = file->f_dentry->d_inode;
-	unsigned long npages = dir_blocks(inode);
 	unsigned char *types = NULL;
 	unsigned int bit_pos = 0, start_bit_pos = 0;
 	int over = 0;
+	struct inode *inode = file_inode(file);
+	unsigned long npages = dir_blocks(inode);
 	struct f2fs_dentry_block *dentry_blk = NULL;
 	struct f2fs_dir_entry *de = NULL;
 	struct page *dentry_page = NULL;
@@ -731,7 +730,7 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 					le32_to_cpu(de->ino), d_type);
 			if (over) {
 				file->f_pos += bit_pos - start_bit_pos;
-				goto success;
+				goto stop;
 			}
 			slots = GET_DENTRY_SLOTS(le16_to_cpu(de->name_len));
 			bit_pos += slots;
@@ -742,7 +741,7 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 		f2fs_put_page(dentry_page, 1);
 		dentry_page = NULL;
 	}
-success:
+stop:
 	if (dentry_page && !IS_ERR(dentry_page)) {
 		kunmap(dentry_page);
 		f2fs_put_page(dentry_page, 1);

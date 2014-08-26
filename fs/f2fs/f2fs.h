@@ -31,6 +31,7 @@
 /*
  * For mount options
  */
+#define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
 #define F2FS_MOUNT_BG_GC		0x00000001
 #define F2FS_MOUNT_DISABLE_ROLL_FORWARD	0x00000002
 #define F2FS_MOUNT_DISCARD		0x00000004
@@ -41,8 +42,6 @@
 #define F2FS_MOUNT_INLINE_XATTR		0x00000080
 #define F2FS_MOUNT_INLINE_DATA		0x00000100
 #define F2FS_MOUNT_ANDROID_EMU		0x00001000
-#define F2FS_MOUNT_ERRORS_PANIC		0x00002000
-#define F2FS_MOUNT_ERRORS_RECOVER	0x00004000
 #define F2FS_MOUNT_FLUSH_MERGE		0x00000200
 #define F2FS_MOUNT_NOBARRIER		0x00000400
 
@@ -690,15 +689,6 @@ static inline int F2FS_HAS_BLOCKS(struct inode *inode)
 		return inode->i_blocks > F2FS_DEFAULT_ALLOCATED_BLOCKS;
 }
 
-static inline int f2fs_handle_error(struct f2fs_sb_info *sbi)
-{
-	if (test_opt(sbi, ERRORS_PANIC))
-		BUG();
-	if (test_opt(sbi, ERRORS_RECOVER))
-		return 1;
-	return 0;
-}
-
 static inline bool f2fs_has_xattr_block(unsigned int ofs)
 {
 	return ofs == XATTR_NODE_OFFSET;
@@ -728,20 +718,8 @@ static inline void dec_valid_block_count(struct f2fs_sb_info *sbi,
 						blkcnt_t count)
 {
 	spin_lock(&sbi->stat_lock);
-
-	if (sbi->total_valid_block_count < (block_t)count) {
-		pr_crit("F2FS-fs (%s): block accounting error: %u < %llu\n",
-			sbi->sb->s_id, sbi->total_valid_block_count, count);
-		f2fs_handle_error(sbi);
-		sbi->total_valid_block_count = count;
-	}
-	if (inode->i_blocks < count) {
-		pr_crit("F2FS-fs (%s): inode accounting error: %llu < %llu\n",
-			sbi->sb->s_id, inode->i_blocks, count);
-		f2fs_handle_error(sbi);
-		inode->i_blocks = count;
-	}
-
+	f2fs_bug_on(sbi->total_valid_block_count < (block_t) count);
+	f2fs_bug_on(inode->i_blocks < count);
 	inode->i_blocks -= count;
 	sbi->total_valid_block_count -= (block_t)count;
 	spin_unlock(&sbi->stat_lock);
@@ -871,6 +849,7 @@ static inline bool inc_valid_node_count(struct f2fs_sb_info *sbi,
 
 	if (inode)
 		inode->i_blocks++;
+
 	sbi->alloc_valid_block_count++;
 	sbi->total_valid_node_count++;
 	sbi->total_valid_block_count++;
@@ -884,24 +863,9 @@ static inline void dec_valid_node_count(struct f2fs_sb_info *sbi,
 {
 	spin_lock(&sbi->stat_lock);
 
-	if (!sbi->total_valid_block_count) {
-		pr_crit("F2FS-fs (%s): block accounting error: %u\n",
-			sbi->sb->s_id, sbi->total_valid_block_count);
-		f2fs_handle_error(sbi);
-		sbi->total_valid_block_count = 1;
-	}
-	if (!sbi->total_valid_node_count) {
-		pr_crit("F2FS-fs (%s): node accounting error: %u\n",
-			sbi->sb->s_id, sbi->total_valid_node_count);
-		f2fs_handle_error(sbi);
-		sbi->total_valid_node_count = 1;
-	}
-	if (!inode->i_blocks) {
-		pr_crit("F2FS-fs (%s): inode accounting error: %llu\n",
-			sbi->sb->s_id, inode->i_blocks);
-		f2fs_handle_error(sbi);
-		inode->i_blocks = 1;
-	}
+	f2fs_bug_on(!sbi->total_valid_block_count);
+	f2fs_bug_on(!sbi->total_valid_node_count);
+	f2fs_bug_on(!inode->i_blocks);
 
 	inode->i_blocks--;
 	sbi->total_valid_node_count--;
@@ -1165,6 +1129,15 @@ static inline void f2fs_stop_checkpoint(struct f2fs_sb_info *sbi)
 	set_ckpt_flags(sbi->ckpt, CP_ERROR_FLAG);
 	sbi->sb->s_flags |= MS_RDONLY;
 }
+
+static inline struct inode *file_inode(struct file *f)
+{
+	return f->f_path.dentry->d_inode;
+}
+
+#define get_inode_mode(i) \
+	((is_inode_flag_set(F2FS_I(i), FI_ACL_MODE)) ? \
+	 (F2FS_I(i)->i_acl_mode) : ((i)->i_mode))
 
 /* get offset of first page in next direct node */
 #define PGOFS_OF_NEXT_DNODE(pgofs, fi)				\
