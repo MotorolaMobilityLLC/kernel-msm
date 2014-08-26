@@ -26,6 +26,7 @@ static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
 
 #define MSM_ISP_MIN_AB 300000000
 #define MSM_ISP_MIN_IB 450000000
+#define AVTIMER_TICK_RES_PER_USEC 27
 
 #define VFE_AVTIMER_LSW 0
 #define VFE_AVTIMER_MSW 4
@@ -223,8 +224,11 @@ static inline void msm_isp_get_timestamp(struct msm_isp_timestamp *time_stamp)
 static inline void msm_isp_get_vt_tstamp(struct vfe_device *vfe_dev,
 	struct msm_isp_timestamp *time_stamp)
 {
-	uint32_t avtimer_msw_1st = 0, avtimer_lsw = 0;
-	uint32_t avtimer_msw_2nd = 0;
+	uint64_t avtimer_msw_1st = 0, avtimer_lsw = 0;
+	uint64_t avtimer_msw_2nd = 0;
+	uint64_t avtimer_usec = 0;
+	uint64_t avtimer_sec = 0;
+	uint64_t vt_timestamp;
 	uint8_t iter = 0;
 	if (!vfe_dev->vfe_avtimer_base) {
 		pr_err("%s: ioremap failed\n", __func__);
@@ -243,8 +247,13 @@ static inline void msm_isp_get_vt_tstamp(struct vfe_device *vfe_dev,
 		pr_err("%s: AVTimer MSW TS did not converge !!!\n", __func__);
 		return;
 	}
-	time_stamp->vt_time.tv_sec = avtimer_msw_1st;
-	time_stamp->vt_time.tv_usec = avtimer_lsw;
+	vt_timestamp = avtimer_msw_1st << 32 | avtimer_lsw;
+	avtimer_usec = do_div(vt_timestamp, USEC_PER_SEC *
+		AVTIMER_TICK_RES_PER_USEC);
+	avtimer_sec =  vt_timestamp;
+	do_div(avtimer_usec, AVTIMER_TICK_RES_PER_USEC);
+	time_stamp->vt_time.tv_sec = (uint32_t)avtimer_sec;
+	time_stamp->vt_time.tv_usec = (uint32_t)avtimer_usec;
 }
 
 int msm_isp_subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
