@@ -19,6 +19,7 @@
 #include <mach/scm-io.h>
 #include <linux/irqreturn.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/wakelock.h>
 
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
@@ -280,6 +281,7 @@ struct mdss_dsi_ctrl_pdata {
 	int new_fps;
 	int pwm_enabled;
 	int idle;
+	bool bklt_off;
 	bool blanked;
 	struct pwm_device *pwm_bl;
 	struct dsi_drv_cm_data shared_pdata;
@@ -319,6 +321,9 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_buf rx_buf;
 
 	struct dsi_pinctrl_res pin_res;
+
+	struct work_struct idle_on_work;
+	struct wake_lock idle_on_wakelock;
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,

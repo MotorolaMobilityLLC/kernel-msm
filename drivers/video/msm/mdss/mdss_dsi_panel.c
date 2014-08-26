@@ -131,21 +131,34 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
+static char led_pwm1[2] = {0x51, 0x0}; /* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd1 = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
 	led_pwm1
 };
 
-static char led_pwm2[3] = {0x51, 0x0, 0x0};	/* DTYPE_DCS_LWRITE */
+static char led_pwm2[3] = {0x51, 0x0, 0x0}; /* DTYPE_DCS_LWRITE */
 static struct dsi_cmd_desc backlight_cmd2 = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm2)},
 	led_pwm2
 };
 
+static char display_off[1] = {0x28}; /* DTYPE_DCS_WRITE */
+static struct dsi_cmd_desc backlight_off_cmd = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(display_off)},
+	display_off
+};
+
+static char display_on[1] = {0x29}; /* DTYPE_DCS_WRITE */
+static struct dsi_cmd_desc backlight_on_cmd = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(display_on)},
+	display_on
+};
+
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct dcs_cmd_req cmdreq;
+	struct dsi_cmd_desc cmds[2];
 	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
 	unsigned char new_level = level;
 
@@ -159,19 +172,85 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 
-	if (ctrl->bklt_ctrl == BL_DCS_L_CMD) {
-		led_pwm2[1] = new_level;
-		cmdreq.cmds = &backlight_cmd2;
-	} else {
-		led_pwm1[1] = new_level;
-		cmdreq.cmds = &backlight_cmd1;
-	}
-	cmdreq.cmds_cnt = 1;
-	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
-	cmdreq.rlen = 0;
-	cmdreq.cb = NULL;
+	if (new_level) {
+		/* backlight on */
+		if (ctrl->bklt_off) {
+			ctrl->bklt_off = false;
+			memcpy(&cmds[cmdreq.cmds_cnt], &backlight_on_cmd,
+					sizeof(struct dsi_cmd_desc));
+			cmdreq.cmds_cnt++;
+		}
 
-	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+		/* set backlight level */
+		if (ctrl->bklt_ctrl == BL_DCS_L_CMD) {
+			led_pwm2[1] = new_level;
+			memcpy(&cmds[cmdreq.cmds_cnt], &backlight_cmd2,
+				sizeof(struct dsi_cmd_desc));
+			cmdreq.cmds_cnt++;
+		} else {
+			led_pwm1[1] = new_level;
+			memcpy(&cmds[cmdreq.cmds_cnt], &backlight_cmd1,
+				sizeof(struct dsi_cmd_desc));
+			cmdreq.cmds_cnt++;
+		}
+	} else {
+		/* backlight off */
+		if (!ctrl->bklt_off) {
+			memcpy(&cmds[cmdreq.cmds_cnt], &backlight_off_cmd,
+				sizeof(struct dsi_cmd_desc));
+			cmdreq.cmds_cnt++;
+			ctrl->bklt_off = true;
+		}
+	}
+
+	if (cmdreq.cmds_cnt) {
+		cmdreq.cmds = cmds;
+		cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
+		cmdreq.rlen = 0;
+		cmdreq.cb = NULL;
+
+		mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	}
+}
+
+static void idle_on_work(struct work_struct *work)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl =
+		container_of(work, struct mdss_dsi_ctrl_pdata, idle_on_work);
+
+	struct dsi_panel_cmds single_cmd;
+	struct dsi_panel_cmds *idle_cmd;
+	int i = 0;
+	int cnt;
+	int delay;
+
+	idle_cmd = &ctrl->idle_on_cmds;
+
+	wake_lock(&ctrl->idle_on_wakelock);
+
+	do {
+		single_cmd.cmds = idle_cmd->cmds+i;
+		cnt = 1;
+
+		while ((idle_cmd->cmds+i)->dchdr.last != 1 &&
+			i < idle_cmd->cmd_cnt - 1) {
+			cnt++;
+			i++;
+		}
+
+		single_cmd.cmd_cnt = cnt;
+		delay = (idle_cmd->cmds+i)->dchdr.wait;
+		(idle_cmd->cmds+i)->dchdr.wait = 0;
+		mdss_dsi_panel_cmds_send(ctrl, &single_cmd);
+
+		if (delay) {
+			usleep(delay*1000);
+			(idle_cmd->cmds+i)->dchdr.wait = delay;
+		}
+
+	} while (++i < idle_cmd->cmd_cnt);
+
+	wake_unlock(&ctrl->idle_on_wakelock);
 }
 
 static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
@@ -202,10 +281,12 @@ static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 
 	if (enable) {
 		if (ctrl->idle_on_cmds.cmd_cnt)
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+			schedule_work(&ctrl->idle_on_work);
 	} else {
-		if (ctrl->idle_off_cmds.cmd_cnt)
+		if (ctrl->idle_off_cmds.cmd_cnt) {
+			cancel_work_sync(&ctrl->idle_on_work);
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+		}
 	}
 }
 
@@ -1284,6 +1365,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->panel_data.set_idle = mdss_dsi_panel_set_idle_mode;
 	ctrl_pdata->panel_data.get_idle = mdss_dsi_panel_get_idle_mode;
+
+	INIT_WORK(&ctrl_pdata->idle_on_work, idle_on_work);
+	wake_lock_init(&ctrl_pdata->idle_on_wakelock, WAKE_LOCK_SUSPEND,
+							"IDLE_ON_WAKELOCK");
 
 	return 0;
 }
