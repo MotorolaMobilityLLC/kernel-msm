@@ -430,6 +430,7 @@ struct smb135x_chg {
 	bool				shutdown_voltage_tripped;
 	bool				poll_fast;
 	bool				accy_powerup;
+	int				prev_batt_health;
 };
 
 static struct smb135x_chg *the_chip;
@@ -1362,6 +1363,7 @@ static int smb135x_check_temp_range(struct smb135x_chg *chip)
 {
 	int batt_volt;
 	int batt_soc;
+	int batt_health;
 	int ext_high_temp = 0;
 
 	if (smb135x_get_prop_batt_voltage_now(chip, &batt_volt))
@@ -1370,12 +1372,22 @@ static int smb135x_check_temp_range(struct smb135x_chg *chip)
 	if (smb135x_get_prop_batt_capacity(chip, &batt_soc))
 		return 0;
 
+	if (smb135x_get_prop_batt_health(chip, &batt_health))
+		return 0;
+
 	if (((chip->batt_cool) &&
 	     (batt_volt > chip->ext_temp_volt_mv)) ||
 	    ((chip->batt_warm) &&
 	     (batt_soc > chip->ext_temp_soc) &&
 	     (smb135x_is_max_thermal_level(chip))))
 		ext_high_temp = 1;
+
+	if ((chip->prev_batt_health == POWER_SUPPLY_HEALTH_COOL) &&
+	    (batt_health == POWER_SUPPLY_HEALTH_COOL) &&
+	    !chip->ext_high_temp)
+		ext_high_temp = 0;
+
+	chip->prev_batt_health = batt_health;
 
 	if (chip->ext_high_temp != ext_high_temp) {
 		chip->ext_high_temp = ext_high_temp;
@@ -4998,6 +5010,7 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->invalid_battery = false;
 	chip->shutdown_voltage_tripped = false;
 	chip->poll_fast = false;
+	chip->prev_batt_health = POWER_SUPPLY_HEALTH_GOOD;
 
 	wakeup_source_init(&chip->smb_wake_source.source, "smb135x_wake");
 	INIT_DELAYED_WORK(&chip->wireless_insertion_work,
