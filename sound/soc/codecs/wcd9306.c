@@ -399,6 +399,15 @@ static unsigned short tx_digital_gain_reg[] = {
 	TAPAN_A_CDC_TX4_VOL_CTL_GAIN,
 };
 
+/* registers which should be restored after SSR */
+#define NUM_SSR_RESTORE_REGS          4
+static unsigned int ssr_restore_reg[NUM_SSR_RESTORE_REGS] = {
+	TAPAN_A_CDC_CONN_TX_B1_CTL,    // TX1 MUX
+	TAPAN_A_CDC_CONN_TX_SB_B1_CTL, // DEC1 MUX
+	TAPAN_A_CDC_TX1_VOL_CTL_GAIN,  // DEC1 Volume
+	TAPAN_A_TX_1_EN                // TX channels & ADC1 volume
+};
+
 static int spkr_drv_wrnd_param_set(const char *val,
 				   const struct kernel_param *kp)
 {
@@ -5704,6 +5713,8 @@ static int tapan_post_reset_cb(struct wcd9xxx *wcd9xxx)
 	int rco_clk_rate;
 	struct snd_soc_codec *codec;
 	struct tapan_priv *tapan;
+	u8 saved[NUM_SSR_RESTORE_REGS] = {0, };
+	int i;
 
 	codec = (struct snd_soc_codec *)(wcd9xxx->ssr_priv);
 	tapan = snd_soc_codec_get_drvdata(codec);
@@ -5711,6 +5722,16 @@ static int tapan_post_reset_cb(struct wcd9xxx *wcd9xxx)
 	snd_soc_card_change_online_state(codec->card, 1);
 
 	mutex_lock(&codec->mutex);
+	for (i = 0; i < NUM_SSR_RESTORE_REGS; i++) {
+		ret = snd_soc_read(codec, ssr_restore_reg[i]);
+		if (ret < 0) {
+			pr_err("%s: SoC read failed\n", __func__);
+			mutex_unlock(&codec->mutex);
+			return ret;
+		}
+		saved[i] = (u8)ret;
+	}
+
 	if (codec->reg_def_copy) {
 		pr_debug("%s: Update ASOC cache", __func__);
 		kfree(codec->reg_cache);
@@ -5757,6 +5778,10 @@ static int tapan_post_reset_cb(struct wcd9xxx *wcd9xxx)
 	ret = tapan_setup_irqs(tapan);
 	if (ret)
 		pr_err("%s: Failed to setup irq: %d\n", __func__, ret);
+
+	for (i = 0; i < NUM_SSR_RESTORE_REGS; i++)
+		snd_soc_update_bits(codec, ssr_restore_reg[i],
+				saved[i], saved[i]);
 
 	tapan->machine_codec_event_cb(codec, WCD9XXX_CODEC_EVENT_CODEC_UP);
 
