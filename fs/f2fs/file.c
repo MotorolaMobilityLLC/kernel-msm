@@ -32,17 +32,13 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
 						struct vm_fault *vmf)
 {
 	struct page *page = vmf->page;
-	struct inode *inode = vma->vm_file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(vma->vm_file);
 	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
 	struct dnode_of_data dn;
 	int err;
 
 	f2fs_balance_fs(sbi);
 
-	/* Wait if fs is frozen. This is racy so we check again later on
-	 * and retry if the fs has been frozen after the page lock has
-	 * been acquired
-	 */
 	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
 
 	/* force to convert with normal data indices */
@@ -92,8 +88,8 @@ out:
 }
 
 static const struct vm_operations_struct f2fs_file_vm_ops = {
-	.fault        = filemap_fault,
-	.page_mkwrite = f2fs_vm_page_mkwrite,
+	.fault		= filemap_fault,
+	.page_mkwrite	= f2fs_vm_page_mkwrite,
 };
 
 static int get_parent_ino(struct inode *inode, nid_t *pino)
@@ -766,7 +762,7 @@ noalloc:
 static long f2fs_fallocate(struct file *file, int mode,
 				loff_t offset, loff_t len)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	long ret;
 
 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
@@ -805,7 +801,7 @@ static inline __u32 f2fs_mask_flags(umode_t mode, __u32 flags)
 
 long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	struct inode *inode = filp->f_dentry->d_inode;
+	struct inode *inode = file_inode(filp);
 	struct f2fs_inode_info *fi = F2FS_I(inode);
 	unsigned int flags;
 	int ret;
@@ -818,7 +814,7 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	{
 		unsigned int oldflags;
 
-		ret = mnt_want_write(filp->f_path.mnt);
+		ret = mnt_want_write_file(filp);
 		if (ret)
 			return ret;
 
@@ -855,7 +851,7 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		inode->i_ctime = CURRENT_TIME;
 		mark_inode_dirty(inode);
 out:
-		mnt_drop_write(filp->f_path.mnt);
+		mnt_drop_write_file(filp);
 		return ret;
 	}
 	default:

@@ -52,9 +52,6 @@ enum {
 	Opt_inline_xattr,
 	Opt_inline_data,
 	Opt_android_emu,
-	Opt_err_continue,
-	Opt_err_panic,
-	Opt_err_recover,
 	Opt_flush_merge,
 	Opt_nobarrier,
 	Opt_err,
@@ -74,9 +71,6 @@ static match_table_t f2fs_tokens = {
 	{Opt_inline_xattr, "inline_xattr"},
 	{Opt_inline_data, "inline_data"},
 	{Opt_android_emu, "android_emu=%s"},
-	{Opt_err_continue, "errors=continue"},
-	{Opt_err_panic, "errors=panic"},
-	{Opt_err_recover, "errors=recover"},
 	{Opt_flush_merge, "flush_merge"},
 	{Opt_nobarrier, "nobarrier"},
 	{Opt_err, NULL},
@@ -380,18 +374,6 @@ static int parse_options(struct super_block *sb, char *options)
 		case Opt_inline_data:
 			set_opt(sbi, INLINE_DATA);
 			break;
-		case Opt_err_continue:
-			clear_opt(sbi, ERRORS_RECOVER);
-			clear_opt(sbi, ERRORS_PANIC);
-			break;
-		case Opt_err_panic:
-			set_opt(sbi, ERRORS_PANIC);
-			clear_opt(sbi, ERRORS_RECOVER);
-			break;
-		case Opt_err_recover:
-			set_opt(sbi, ERRORS_RECOVER);
-			clear_opt(sbi, ERRORS_PANIC);
-			break;
 		case Opt_android_emu:
 			if (args->from) {
 				int ret;
@@ -543,6 +525,22 @@ int f2fs_sync_fs(struct super_block *sb, int sync)
 	return 0;
 }
 
+static int f2fs_freeze(struct super_block *sb)
+{
+	int err;
+
+	if (f2fs_readonly(sb))
+		return 0;
+
+	err = f2fs_sync_fs(sb, 1);
+	return err;
+}
+
+static int f2fs_unfreeze(struct super_block *sb)
+{
+	return 0;
+}
+
 static int f2fs_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
 	struct super_block *sb = dentry->d_sb;
@@ -599,12 +597,6 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 	else
 		seq_puts(seq, ",noacl");
 #endif
-	if (test_opt(sbi, ERRORS_PANIC))
-		seq_puts(seq, ",errors=panic");
-	else if (test_opt(sbi, ERRORS_RECOVER))
-		seq_puts(seq, ",errors=recover");
-	else
-		seq_puts(seq, ",errors=continue");
 	if (test_opt(sbi, DISABLE_EXT_IDENTIFY))
 		seq_puts(seq, ",disable_ext_identify");
 	if (test_opt(sbi, INLINE_DATA))
@@ -617,7 +609,6 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 				(sbi->android_emu_flags &
 					F2FS_ANDROID_EMU_NOCASE) ?
 						":nocase" : "");
-
 	if (!f2fs_readonly(sbi->sb) && test_opt(sbi, FLUSH_MERGE))
 		seq_puts(seq, ",flush_merge");
 	if (test_opt(sbi, NOBARRIER))
@@ -656,8 +647,7 @@ static int segment_info_seq_show(struct seq_file *seq, void *offset)
 
 static int segment_info_open_fs(struct inode *inode, struct file *file)
 {
-	return single_open(file, segment_info_seq_show,
-					PROC_I(inode)->pde->data);
+	return single_open(file, segment_info_seq_show, PDE(inode)->data);
 }
 
 static const struct file_operations f2fs_seq_segment_info_fops = {
@@ -675,6 +665,8 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 	int err, active_logs;
 	bool need_restart_gc = false;
 	bool need_stop_gc = false;
+
+	sync_filesystem(sb);
 
 	/*
 	 * Save the old mount options in case we
@@ -753,6 +745,8 @@ static struct super_operations f2fs_sops = {
 	.evict_inode	= f2fs_evict_inode,
 	.put_super	= f2fs_put_super,
 	.sync_fs	= f2fs_sync_fs,
+	.freeze_fs	= f2fs_freeze,
+	.unfreeze_fs	= f2fs_unfreeze,
 	.statfs		= f2fs_statfs,
 	.remount_fs	= f2fs_remount,
 };

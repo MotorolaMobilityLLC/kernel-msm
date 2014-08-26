@@ -12,6 +12,7 @@
 #include <linux/f2fs_fs.h>
 #include <linux/buffer_head.h>
 #include <linux/mpage.h>
+#include <linux/aio.h>
 #include <linux/writeback.h>
 #include <linux/backing-dev.h>
 #include <linux/blkdev.h>
@@ -39,7 +40,6 @@ static void f2fs_read_end_io(struct bio *bio, int err)
 		}
 		unlock_page(page);
 	}
-
 	bio_put(bio);
 }
 
@@ -1071,14 +1071,16 @@ static int check_direct_IO(struct inode *inode, int rw,
 	if (offset & blocksize_mask)
 		return -EINVAL;
 
-	for (i = 0; i < nr_segs; i++)
-		if (iov[i].iov_len & blocksize_mask)
-			return -EINVAL;
+       for (i = 0; i < nr_segs; i++)
+               if (iov[i].iov_len & blocksize_mask)
+                       return -EINVAL;
+
 	return 0;
 }
 
 static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
-		const struct iovec *iov, loff_t offset, unsigned long nr_segs)
+				const struct iovec *iov, loff_t offset,
+				unsigned long nr_segs)
 {
 	struct file *file = iocb->ki_filp;
 	struct address_space *mapping = file->f_mapping;
@@ -1097,6 +1099,7 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 	fsync_mark_clear(F2FS_SB(inode->i_sb), inode->i_ino);
 
 	trace_f2fs_direct_IO_enter(inode, offset, count, rw);
+
 	err = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
 							get_data_block);
 	if (err < 0 && (rw & WRITE))

@@ -224,6 +224,7 @@ retry:
 		 * So, reinitialize it with new information.
 		 */
 		e->ni = *ni;
+		f2fs_bug_on(ni->blk_addr != NULL_ADDR);
 	}
 
 	/* sanity check */
@@ -508,12 +509,7 @@ static void truncate_node(struct dnode_of_data *dn)
 
 	get_node_info(sbi, dn->nid, &ni);
 	if (dn->inode->i_blocks == 0) {
-		if (ni.blk_addr != NULL_ADDR) {
-			f2fs_msg(sbi->sb, KERN_ERR,
-					"empty node still has block address %u ",
-					ni.blk_addr);
-			f2fs_handle_error(sbi);
-		}
+		f2fs_bug_on(ni.blk_addr != NULL_ADDR);
 		goto invalidate;
 	}
 	f2fs_bug_on(ni.blk_addr == NULL_ADDR);
@@ -989,7 +985,6 @@ repeat:
 		goto repeat;
 	}
 got_it:
-	mark_page_accessed(page);
 	return page;
 }
 
@@ -1044,7 +1039,6 @@ page_hit:
 		f2fs_put_page(page, 1);
 		return ERR_PTR(-EIO);
 	}
-	mark_page_accessed(page);
 	return page;
 }
 
@@ -1624,7 +1618,6 @@ int recover_inode_page(struct f2fs_sb_info *sbi, struct page *page)
 	nid_t ino = ino_of_node(page);
 	struct node_info old_ni, new_ni;
 	struct page *ipage;
-	int err;
 
 	get_node_info(sbi, ino, &old_ni);
 
@@ -1660,7 +1653,7 @@ int recover_inode_page(struct f2fs_sb_info *sbi, struct page *page)
 	inc_valid_inode_count(sbi);
 	set_page_dirty(ipage);
 	f2fs_put_page(ipage, 1);
-	return err;
+	return 0;
 }
 
 /*

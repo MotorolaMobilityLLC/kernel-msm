@@ -45,6 +45,11 @@ static int gc_thread_func(void *data)
 		if (kthread_should_stop())
 			break;
 
+		if (sbi->sb->s_frozen >= SB_FREEZE_WRITE) {
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
+			continue;
+		}
+
 		/*
 		 * [GC triggering condition]
 		 * 0. GC is not conducted currently.
