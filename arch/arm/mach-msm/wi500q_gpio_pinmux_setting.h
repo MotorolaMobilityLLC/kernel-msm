@@ -131,7 +131,7 @@ static struct gpiomux_setting ecg_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
-	.dir = GPIOMUX_OUT_LOW,
+	.dir = GPIOMUX_IN,
 };
 static struct gpiomux_setting ecg_uart_act_cfg = {
 	.func = GPIOMUX_FUNC_2,
