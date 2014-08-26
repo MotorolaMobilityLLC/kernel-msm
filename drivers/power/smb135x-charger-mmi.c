@@ -951,9 +951,11 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip,
 	}
 
 	if (chip->shutdown_voltage_tripped && !chip->factory_mode) {
-		if ((chip->usb_psy) && (!chip->accy_powerup)) {
+		if ((chip->usb_psy) && (!chip->accy_powerup) &&
+		    chip->usb_present) {
 			power_supply_set_present(chip->usb_psy, false);
 			power_supply_set_online(chip->usb_psy, false);
+			chip->usb_present = false;
 		}
 		*batt_cap = 0;
 		return rc;
@@ -967,9 +969,11 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip,
 
 		if ((rc == 0) && (ret.intval == 0) && !chip->factory_mode) {
 			chip->shutdown_voltage_tripped = true;
-			if ((chip->usb_psy) && (!chip->accy_powerup)) {
+			if ((chip->usb_psy) && (!chip->accy_powerup) &&
+			    chip->usb_present) {
 				power_supply_set_present(chip->usb_psy, false);
 				power_supply_set_online(chip->usb_psy, false);
+				chip->usb_present = false;
 			}
 		}
 		*batt_cap = ret.intval;
