@@ -4410,7 +4410,7 @@ static struct snd_soc_dai_link apq8084_taiko_be_dai_links[] = {
 		.cpu_dai_name = "msm-dai-q6-dev.16385",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "taiko_codec",
-		.codec_dai_name	= "taiko_tx1",
+		.codec_dai_name = "taiko_tx2",
 		.no_pcm = 1,
 		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE
 			| ASYNC_DPCM_SND_SOC_HW_PARAMS,
