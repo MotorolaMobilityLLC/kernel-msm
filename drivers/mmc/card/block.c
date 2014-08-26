@@ -1456,6 +1456,7 @@ static int mmc_blk_reset(struct mmc_blk_data *md, struct mmc_host *host,
 {
 	struct mmc_card *card = host->card;
 	int result = 0;
+	s64 msec = 0;
 	int err;
 
 	/*
@@ -1471,15 +1472,23 @@ static int mmc_blk_reset(struct mmc_blk_data *md, struct mmc_host *host,
 
 		/*
 		 * Keep track of removable cards that are not stable and drop
-		 * them if the failure-to-success ratio is too high or the
-		 * total number of failures during the period is 10x the ratio.
+		 * them if the failure-to-success ratio is too high, the total
+		 * number of failures during the period is 10x the ratio, or the
+		 * card has been repeatedly failing for too long.
 		 */
+		if (card->failures == 0)
+			card->failure_time = ktime_get();
+		else
+			msec = ktime_to_ms(ktime_sub(ktime_get(),
+					   card->failure_time));
 		card->failures++;
+
 		if (card->failures >= (card->successes + 1) *
 				      md->failure_ratio ||
-		    card->failures >= md->failure_ratio * 10) {
-			pr_warning("%s: giving up on card (%u/%u, %llu/%llu)\n",
-				   mmc_hostname(host),
+		    card->failures >= md->failure_ratio * 10 ||
+		    msec > MMC_ERROR_MAX_TIME_MS) {
+			pr_warning("%s: giving up on card after %lld ms (%u/%u, %llu/%llu)\n",
+				   mmc_hostname(host), msec,
 				   card->failures, card->successes,
 				   host->request_errors, host->requests);
 			host->card_bad = 1;
@@ -1533,6 +1542,7 @@ static inline void mmc_blk_reset_success(struct mmc_blk_data *md,
 				host->request_errors, host->requests);
 			card->failures = 0;
 			card->successes = 0;
+			card->failure_time = ktime_set(0, 0);
 		}
 	}
 }
