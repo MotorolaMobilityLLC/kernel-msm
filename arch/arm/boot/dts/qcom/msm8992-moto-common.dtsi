@@ -800,6 +800,10 @@
 };
 
 &soc {
+	qcom,wdt@f9017000 {
+		qcom,bark-time = <22000>;
+	};
+
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
 	};

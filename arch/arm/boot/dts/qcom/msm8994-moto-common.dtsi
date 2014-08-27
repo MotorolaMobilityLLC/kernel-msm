@@ -692,6 +692,10 @@
 };
 
 &soc {
+	qcom,wdt@f9017000 {
+		qcom,bark-time = <22000>;
+	};
+
 	qcom,msm-thermal {
 		qcom,hotplug-temp = <95>;
 		qcom,hotplug-temp-hysteresis = <30>;
