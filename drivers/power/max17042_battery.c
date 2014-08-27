@@ -132,6 +132,7 @@ struct max17042_chip {
 	int hotspot_temp;
 	struct delayed_work iterm_work;
 	struct max17042_wakeup_source max17042_wake_source;
+	int charge_full_des;
 };
 
 static void max17042_stay_awake(struct max17042_wakeup_source *source)
@@ -365,11 +366,12 @@ static int max17042_get_property(struct power_supply *psy,
 			val->intval = 1;
 		break;
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
-		ret = max17042_read_reg(chip->client, MAX17042_Cycles);
-		if (ret < 0)
+		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
+		if ((ret < 0) || (!chip->charge_full_des))
 			return ret;
-
-		val->intval = ret;
+		val->intval = ret * MAX17042_CHRG_CONV_FCTR;
+		val->intval *= 100;
+		val->intval /= chip->charge_full_des;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		ret = max17042_read_reg(chip->client, MAX17042_MinMaxVolt);
@@ -1786,6 +1788,8 @@ static int max17042_probe(struct i2c_client *client,
 		dev_err(&client->dev, "no platform data provided\n");
 		return -EINVAL;
 	}
+
+	chip->charge_full_des = (chip->pdata->config_data->design_cap / 2) * 1000;
 
 	i2c_set_clientdata(client, chip);
 
