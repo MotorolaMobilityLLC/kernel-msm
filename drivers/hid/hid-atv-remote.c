@@ -57,7 +57,13 @@ static struct switch_dev h2w_switch = {
 
 #define ADPCM_AUDIO_REPORT_ID 30
 
-#define MSBC_AUDIO_REPORT_ID 0xF7
+#define MSBC_AUDIO1_REPORT_ID 0xF7
+#define MSBC_AUDIO2_REPORT_ID 0xFA
+#define MSBC_AUDIO3_REPORT_ID 0xFB
+
+#define INPUT_REPORT_ID 2
+
+#define KEYCODE_PRESENT_IN_AUDIO_PACKET_FLAG 0x80
 
 /* defaults */
 #define MAX_PCM_DEVICES     1
@@ -85,6 +91,7 @@ static struct switch_dev h2w_switch = {
 #define PACKET_TYPE_ADPCM 0
 #define PACKET_TYPE_MSBC  1
 
+
 /* We support mSBC that is packetized using a H2 header with a 12-bit
  * synchronization word and a 2-bit sequence number (SN0, SN1).
  * The sequence number is duplicated, so each pair of bits in
@@ -102,27 +109,39 @@ static struct switch_dev h2w_switch = {
  *
  * Each mSBC frame is split over 3 BLE frames, where each BLE packet has
  * a 20 byte payload.
- * The first BLE packet contains the H2 header, then the two byte
- * SBC header, and then 16 bytes of encoded audio data.
- * The second BLE packet contains 20 bytes of encoded audio data.
- * The third/last BLE packet contains 19 bytes of encoded audio data and one
- * 0x00 byte of padding.
+ * The first BLE packet has the format:
+ * byte 0: keycode LSB
+ * byte 1: keycode MSB, with most significant bit 0 for no key
+ *         code active and 1 if keycode is active
+ * byte 2: sequence number, starts at 0 for a new audio session
+ * bytes 3-19: two byte H2 header, then four byte SBC header, then 11
+ *             bytes of audio data
  *
- * The mSBC decoder works on a mSBC frame, including the two byte header,
+ * The second and third packet are purely 20 bytes of audio
+ * data.  Second packet arrives on report 0xFA and third packet
+ * arrives on report 0xFB.
+ *
+ * The mSBC decoder works on a mSBC frame, including the four byte SBC header,
  * so we have to accumulate 3 BLE packets before sending it to the decoder.
  */
-#define BYTES_PER_MSBC_FRAME (2 + 16 + 20 + 19)
+#define BYTES_PER_MSBC_FRAME (15 + 20 + 20)
 #define NUM_SEQUENCES 4
 const uint8_t mSBC_sequence_table[NUM_SEQUENCES] = {0x08, 0x38, 0xc8, 0xf8};
 #define BLE_PACKETS_PER_MSBC_FRAME 3
 const uint8_t mSBC_start_offset_in_packet[BLE_PACKETS_PER_MSBC_FRAME] = {
-	2, 0, 0
+	3, /* SBC header starts 1 byte sequence num and 2 byte H2 header */
+	0,
+	0
 };
 const uint8_t mSBC_start_offset_in_buffer[BLE_PACKETS_PER_MSBC_FRAME] = {
-	0, 18, 38
+	0,
+	15,
+	35
 };
 const uint8_t mSBC_bytes_in_packet[BLE_PACKETS_PER_MSBC_FRAME] = {
-	18, 20, 19
+	15, /* includes the SBC header but not the sequence num or H2 header */
+	20,
+	20
 };
 
 struct fifo_packet {
@@ -348,6 +367,7 @@ struct snd_atvr {
 	int16_t audio_output[MAX_SAMPLES_PER_PACKET];
 	uint8_t packet_in_frame;
 	uint8_t seq_index;
+	uint8_t expected_next_seq_num;
 
 	/*
 	 * Write_index is the circular buffer position.
@@ -632,14 +652,21 @@ static int snd_atvr_decode_8KHz_mSBC_packet(
 			break;
 	}
 #endif
-
 	if (atvr_snd->packet_in_frame == 0) {
-		if (sbc_input[0] != 0x01) {
+		if (sbc_input[0] != atvr_snd->expected_next_seq_num) {
+			/* don't make this fatal.  we sometimes appear
+			 * to get out of sync, but that's okay it seems.
+			 */
+			pr_warn("%s: seq num %d does not match expected %d\n",
+			       __func__, sbc_input[0],
+				atvr_snd->expected_next_seq_num);
+		}
+		if (sbc_input[1] != 0x01) {
 			pr_err("%s: sync word not found, got 0x%02x instead\n",
 			       __func__, sbc_input[0]);
 			return 0;
 		}
-		if (sbc_input[1] != mSBC_sequence_table[atvr_snd->seq_index]) {
+		if (sbc_input[2] != mSBC_sequence_table[atvr_snd->seq_index]) {
 			snd_atvr_log("sequence_num err, 0x%02x != 0x%02x\n",
 				     sbc_input[1],
 				     mSBC_sequence_table[atvr_snd->seq_index]);
@@ -648,6 +675,15 @@ static int snd_atvr_decode_8KHz_mSBC_packet(
 		atvr_snd->seq_index++;
 		if (atvr_snd->seq_index == NUM_SEQUENCES)
 			atvr_snd->seq_index = 0;
+
+		/* subtract the sequence number and H2 header */
+		num_bytes -= 3;
+	}
+	if (num_bytes != mSBC_bytes_in_packet[atvr_snd->packet_in_frame]) {
+		pr_err("%s: received %zd audio bytes but expected %d bytes\n",
+		       __func__, num_bytes,
+		       mSBC_bytes_in_packet[atvr_snd->packet_in_frame]);
+		return 0;
 	}
 	write_index = mSBC_start_offset_in_buffer[atvr_snd->packet_in_frame];
 	read_index = mSBC_start_offset_in_packet[atvr_snd->packet_in_frame];
@@ -659,8 +695,9 @@ static int snd_atvr_decode_8KHz_mSBC_packet(
 		/* we don't have a complete mSBC frame yet, just return */
 		return 0;
 	}
-	/* reset for next frame */
+	/* reset for next mSBC frame */
 	atvr_snd->packet_in_frame = 0;
+	atvr_snd->expected_next_seq_num++;
 
 	/* we have a complete mSBC frame, send it to the decoder */
 	num_samples = sbc_decode(BLOCKS_PER_PACKET, NUM_BITS,
@@ -1003,13 +1040,8 @@ static int snd_atvr_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 		/* mSBC decoder */
 		atvr_snd->packet_in_frame = 0;
-		/* unclear whether the remote is restarting the sequence
-		 * index for each session or not.  either way I seem
-		 * to see sync word errors on subsequent sessions, but
-		 * that's generally okay because it's just the first
-		 * couple of mSBC frames which is usually silence.
-		 */
 		atvr_snd->seq_index = 0;
+		atvr_snd->expected_next_seq_num = 0;
 
 		snd_atvr_timer_start(substream);
 		 /* Enables callback from BTLE driver. */
@@ -1332,15 +1364,39 @@ static int atvr_raw_event(struct hid_device *hdev, struct hid_report *report,
 		audio_dec(&data[1], PACKET_TYPE_ADPCM, size - 1);
 		/* we've handled the event */
 		return 1;
-	} else if (report->id == MSBC_AUDIO_REPORT_ID) {
-		/* send the data, minus the report-id in data[0], to the
-		 * alsa audio decoder for mSBC
+	} else if (report->id == MSBC_AUDIO1_REPORT_ID) {
+		/* first do special case check if there is any
+		 * keyCode active in this report.  if so, we
+		 * generate the same keyCode but on report 2, which
+		 * is where normal keys are reported.  the keycode
+		 * is being sent in the audio packet to save packets
+		 * and over the air bandwidth.
 		 */
+		if (data[2] & KEYCODE_PRESENT_IN_AUDIO_PACKET_FLAG) {
+			u8 key_data[3];
+			key_data[0] = INPUT_REPORT_ID;
+			key_data[1] = data[1]; /* low byte */
+			key_data[2] = data[2]; /* high byte */
+			key_data[2] &= ~KEYCODE_PRESENT_IN_AUDIO_PACKET_FLAG;
+			hid_report_raw_event(hdev, 0, key_data,
+					     sizeof(key_data), 0);
+			pr_info("%s: generated hid keycode 0x%02x%02x\n",
+				__func__, key_data[2], key_data[1]);
+		}
+
+		/* send the audio part to the alsa audio decoder for mSBC */
 #if (DEBUG_AUDIO_RECEPTION == 1)
 		if (packet_counter == 0) {
 			snd_atvr_log("first MSBC packet received\n");
 		}
 #endif
+		/* strip the one byte report id and two byte keycode field */
+		audio_dec(&data[1 + 2], PACKET_TYPE_MSBC, size - 1 - 2);
+		/* we've handled the event */
+		return 1;
+	} else if ((report->id == MSBC_AUDIO2_REPORT_ID) ||
+		   (report->id == MSBC_AUDIO3_REPORT_ID)) {
+		/* strip the one byte report id */
 		audio_dec(&data[1], PACKET_TYPE_MSBC, size - 1);
 		/* we've handled the event */
 		return 1;
