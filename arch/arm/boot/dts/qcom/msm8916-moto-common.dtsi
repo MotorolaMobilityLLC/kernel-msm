@@ -70,6 +70,10 @@
 		pinctrl-0 = <&cdc_pdm_lines_act>;
 		pinctrl-1 = <&cdc_pdm_lines_sus>;
 	};
+
+	qcom,wdt@b017000 {
+		qcom,bark-time = <22000>;
+	};
 };
 
 &soc {
