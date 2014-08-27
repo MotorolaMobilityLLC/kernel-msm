@@ -1800,6 +1800,18 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 		return ret;
 	}
 
+	/* One shut code to prevent dark red panel issue */
+	{
+		static int has_shot = false;
+		if (!has_shot){
+			printk("MDSS:AMB:Force blank/unblank panel after bootup.\n");
+			has_shot = true;
+			mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);
+			mdss_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
+		}
+	}
+
+
 	mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
 	if (info->fix.xpanstep)
 		info->var.xoffset =
