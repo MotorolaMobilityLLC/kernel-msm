@@ -422,9 +422,9 @@ static int start_charging(struct fan5404x_chg *chip)
 	if (rc)
 		return rc;
 
-	/* Set CE# Low, TE High */
+	/* Set CE# Low (enable), TE Low (disable) */
 	rc = fan5404x_masked_write(chip, REG_CONTROL1,
-				CONTROL1_TE | CONTROL1_CE_N, CONTROL1_TE);
+				CONTROL1_TE | CONTROL1_CE_N, 0);
 	if (rc) {
 		dev_err(chip->dev, "start-charge: Failed to set TE/CE_N\n");
 		return rc;
