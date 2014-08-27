@@ -149,7 +149,11 @@ u32 DISP_PLANEB_STATUS = ~DISPLAY_PLANE_ENABLE;
 int drm_psb_msvdx_tiling = 1;
 int drm_msvdx_bottom_half;
 int drm_hdmi_hpd_auto;
+#ifdef CONFIG_SUPPORT_MIPI
 int default_hdmi_scaling_mode = DRM_MODE_SCALE_CENTER;
+#else
+int default_hdmi_scaling_mode = DRM_MODE_SCALE_ASPECT;
+#endif
 int drm_vsp_burst = 1;
 int drm_vsp_force_up_freq = 0;
 int drm_vsp_force_down_freq = 0;

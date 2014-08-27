@@ -469,8 +469,8 @@ static int psbfb_create(struct psb_fbdev *fbdev,
 		mode_cmd.width = fixed_mode->hdisplay;
 	mode_cmd.height = fixed_mode->vdisplay;
 #else
-	mode_cmd.width = sizes->fb_width;
-	mode_cmd.height = sizes->fb_height;
+	mode_cmd.width = PSB_DEFAULT_HDMI_FB_WIDTH;
+	mode_cmd.height = PSB_DEFAULT_HDMI_FB_HEIGHT;
 	DRM_INFO("sizes fb [%d, %d], surface [%d %d]\n",
 				sizes->fb_width, sizes->fb_height,
 				sizes->surface_width, sizes->surface_height);
@@ -541,7 +541,7 @@ static int psbfb_create(struct psb_fbdev *fbdev,
 				       fixed_mode->hdisplay, fixed_mode->vdisplay);
 #else
 		drm_fb_helper_fill_var(info, &fbdev->psb_fb_helper,
-				       sizes->fb_width, sizes->fb_height);
+				       mode_cmd.width, mode_cmd.height);
 #endif
 
 	info->fix.mmio_start = pci_resource_start(dev->pdev, 0);

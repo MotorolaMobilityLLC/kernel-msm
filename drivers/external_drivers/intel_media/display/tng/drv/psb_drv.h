@@ -1444,6 +1444,9 @@ extern int drm_vec_force_down_freq;
 
 extern int drm_decode_flag;
 
+#define PSB_DEFAULT_HDMI_FB_WIDTH  1920
+#define PSB_DEFAULT_HDMI_FB_HEIGHT 1080
+
 extern char HDMI_EDID[20];
 extern int hdmi_state;
 extern int drm_vsp_vpp_batch_cmd;
