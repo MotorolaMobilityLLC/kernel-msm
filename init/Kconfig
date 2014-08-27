@@ -2326,6 +2326,16 @@ config TRIM_UNUSED_KSYMS
 
 	  If unsure, or if you need to build out-of-tree modules, say N.
 
+config MODULE_EXTRA_COPY
+	bool "Keep an extra copy of a module while it is loading"
+	help
+	  Keep an extra copy of the module code while the module is loading.
+	  This extra copy contains the raw, unlinked code.  It is freed after
+	  the module's initialization function has finished loading.  This
+	  option is useful if you want to make a self-contained
+	  FIPS-140-compliant module which must check its own integrity.
+
+	  If unsure, say N.
 endif # MODULES
 
 config MODULES_TREE_LOOKUP
