@@ -93,5 +93,11 @@
 &spi_0 {
 	stml0xx@0 {
 		stml0xx_fw_version = "_p0";
+		gpios = <&msm_gpio 115 0>,       /* IRQ */
+			<&msm_gpio 120 0>,       /* RESET */
+			<&msm_gpio 121 0>,       /* BSLEN */
+			<&msm_gpio 113 0>,       /* WakeIRQ */
+			<&msm_gpio 4 0>,         /* SPI Ready for Receive */
+			<&msm_gpio 38 0>;        /* SPI Data Ack */
 	};
 };
