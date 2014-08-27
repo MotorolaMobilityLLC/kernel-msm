@@ -57,5 +57,6 @@
 		interrupt-parent = <&msmgpio>;
 		interrupts = <48 0>;
 		interrupt-names = "host_wake";
+		tx-timer-interval = <1>;
 	};
 };
