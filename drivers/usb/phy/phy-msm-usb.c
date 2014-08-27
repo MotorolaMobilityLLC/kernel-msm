@@ -3566,7 +3566,7 @@ static void msm_otg_set_vbus_state(int online)
 		init = true;
 		complete(&pmic_vbus_init);
 		pr_debug("PMIC: BSV init complete\n");
-		return;
+		//return;
 	}
 
 	if (test_bit(MHL, &motg->inputs) ||
