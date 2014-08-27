@@ -127,6 +127,10 @@ struct max17042_chip {
 	struct power_supply *batt_psy;
 	int temp_state;
 	int hotspot_temp;
+
+	struct delayed_work iterm_work;
+	struct max17042_wakeup_source max17042_wake_source;
+	int charge_full_des;
 };
 
 static enum power_supply_property max17042_battery_props[] = {
@@ -317,11 +321,14 @@ static int max17042_get_property(struct power_supply *psy,
 			val->intval = 1;
 		break;
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
-		ret = regmap_read(map, MAX17042_Cycles, &data);
+		ret = max17042_read_reg(chip->client, MAX17042_FullCAP, &data);
 		if (ret < 0)
 			return ret;
-
-		val->intval = data;
+		if (!chip->charge_full_des)
+			return data;
+		val->intval = data * MAX17042_CHRG_CONV_FCTR;
+		val->intval *= 100;
+		val->intval /= chip->charge_full_des;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		ret = regmap_read(map, MAX17042_MinMaxVolt, &data);
@@ -1631,6 +1638,8 @@ static int max17042_probe(struct i2c_client *client,
 		dev_err(&client->dev, "no platform data provided\n");
 		return -EINVAL;
 	}
+
+	chip->charge_full_des = (chip->pdata->config_data->design_cap / 2) * 1000;
 
 	i2c_set_clientdata(client, chip);
 
