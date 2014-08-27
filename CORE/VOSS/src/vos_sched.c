@@ -1850,22 +1850,25 @@ VOS_STATUS vos_watchdog_wlan_shutdown(void)
     v_CONTEXT_t pVosContext = NULL;
     hdd_context_t *pHddCtx = NULL;
 
-    if (gpVosWatchdogContext->isFatalError)
-    {
-       /* If we hit this, it means wlan driver is in bad state and needs
-       * driver unload and load.
-       */
-       return VOS_STATUS_E_FAILURE;
-    }
-
-    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-        "%s: WLAN driver is shutting down ", __func__);
     if (NULL == gpVosWatchdogContext)
     {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
            "%s: Watchdog not enabled. LOGP ignored.", __func__);
        return VOS_STATUS_E_FAILURE;
     }
+
+    if (gpVosWatchdogContext->isFatalError)
+    {
+       /* If we hit this, it means wlan driver is in bad state and needs
+       * driver unload and load.
+       */
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+           "%s: Driver in bad state and need unload and load", __func__);
+       return VOS_STATUS_E_FAILURE;
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+        "%s: WLAN driver is shutting down ", __func__);
 
     pVosContext = vos_get_global_context(VOS_MODULE_ID_HDD, NULL);
     pHddCtx = (hdd_context_t *)vos_get_context(VOS_MODULE_ID_HDD, pVosContext );
