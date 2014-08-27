@@ -76,6 +76,7 @@ struct tfa9890_priv {
 	char const *tfa_dev;
 	char const *fw_path;
 	char const *fw_name;
+	int is_spkr_prot_en;
 };
 
 static DEFINE_MUTEX(lr_lock);
@@ -537,6 +538,84 @@ static int tfa9890_put_mode(struct snd_kcontrol *kcontrol,
 }
 
 
+static int tfa9890_dsp_bypass_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
+	u16 val;
+
+	mutex_lock(&lr_lock);
+	if (ucontrol->value.integer.value[0]) {
+		/* Set CHSA to bypass DSP */
+		val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
+		val &= ~(TFA9890_I2SREG_CHSA_MSK);
+		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
+
+		/* Set DCDC compensation to off and set impedance as 8ohm */
+		val = snd_soc_read(codec, TFA9890_SYS_CTL2_REG);
+		val &= ~(TFA9890_SYS_CTRL2_REG_DCFG_MSK);
+		val |= TFA9890_SYS_CTRL2_REG_SPKR_MSK;
+		snd_soc_write(codec, TFA9890_SYS_CTL2_REG, val);
+
+		/* Set DCDC to follower mode and disable coolflux  */
+		val = snd_soc_read(codec, TFA9890_SYS_CTL1_REG);
+		val &= ~(TFA9890_SYS_CTRL_DCA_MSK);
+		val &= ~(TFA9890_SYS_CTRL_CFE_MSK);
+		snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
+
+		/* Bypass battery safeguard */
+		val = snd_soc_read(codec, TFA9890_BATT_CTL_REG);
+		val |= TFA9890_BAT_CTL_BSSBY_MSK;
+		snd_soc_write(codec, TFA9890_BATT_CTL_REG, val);
+
+		tfa9890->is_spkr_prot_en = 1;
+		pr_debug("%s: codec dsp bypassed %d\n", codec->name,
+			tfa9890->is_spkr_prot_en);
+	} else {
+		/* Set CHSA to enable DSP */
+		val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
+		val |= (TFA9890_I2SREG_CHSA_VAL);
+		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
+
+		/* Set DCDC compensation to default 100% and
+		 * Set impedance to be defined by DSP
+		 */
+		val = snd_soc_read(codec, TFA9890_SYS_CTL2_REG);
+		val |= (TFA9890_SYS_CTRL2_REG_DCFG_VAL);
+		val &= ~TFA9890_SYS_CTRL2_REG_SPKR_MSK;
+		snd_soc_write(codec, TFA9890_SYS_CTL2_REG, val);
+
+		/* Set DCDC to active mode and enable Coolflux */
+		val = snd_soc_read(codec, TFA9890_SYS_CTL1_REG);
+		val |= (TFA9890_SYS_CTRL_DCA_MSK);
+		val |= (TFA9890_SYS_CTRL_CFE_MSK);
+		snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
+
+		/* Enable battery safeguard */
+		val = snd_soc_read(codec, TFA9890_BATT_CTL_REG);
+		val &= ~(TFA9890_BAT_CTL_BSSBY_MSK);
+		snd_soc_write(codec, TFA9890_BATT_CTL_REG, val);
+
+		tfa9890->is_spkr_prot_en = 0;
+		pr_debug("%s: codec dsp unbypassed %d\n", codec->name,
+			tfa9890->is_spkr_prot_en);
+	}
+	mutex_unlock(&lr_lock);
+	return 1;
+}
+
+static int tfa9890_dsp_bypass_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = tfa9890->is_spkr_prot_en;
+
+	return 0;
+}
+
 static const struct soc_enum tfa9890_mode_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, tfa9890_mode),
 };
@@ -550,6 +629,9 @@ static const struct snd_kcontrol_new tfa9890_left_snd_controls[] = {
 	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
 	SOC_SINGLE("BOOST Left Ch Select", TFA9890_I2S_CTL_REG,
 			3, 0x3, 0),
+	SOC_SINGLE_EXT("BOOST ENABLE Spkr Left Prot", 0 , 0, 1,
+				 0, tfa9890_dsp_bypass_get,
+					tfa9890_dsp_bypass_put),
 };
 
 /* bit 6,7 : 01 - DSP bypassed, 10 - DSP used */
@@ -579,6 +661,9 @@ static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
 	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
 	SOC_SINGLE("BOOST Right Ch Select", TFA9890_I2S_CTL_REG,
 			3, 0x3, 0),
+	SOC_SINGLE_EXT("BOOST ENABLE Spkr Right Prot", 0, 0, 1,
+				 0, tfa9890_dsp_bypass_get,
+					tfa9890_dsp_bypass_put),
 };
 
 /* bit 6,7 : 01 - DSP bypassed, 10 - DSP used */
