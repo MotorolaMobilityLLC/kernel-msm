@@ -2391,8 +2391,17 @@ static void mxt_apply_patchset(struct mxt_data *data, struct mxt_patch *patch)
 	}
 }
 
+static void mxt_enable_wakeup_source(struct mxt_data *data, bool enable)
+{
+	int error;
+	error = irq_set_irq_wake(data->irq, (int)enable);
+	pr_debug("%s wakeup; rc=%d\n", enable ? "enabled" : "disabled", error);
+}
+
 static void mxt_sensor_state_config(struct mxt_data *data, int state)
 {
+	if (data->mode_is_wakeable)
+		mxt_enable_wakeup_source(data, true);
 	mxt_apply_patchset(data, &data->current_mode->patch_data[state]);
 	pr_debug("applying  %s in mode %s\n",
 		state == ACTIVE_IDX ? "ACTIVE" : "SUSPEND",
@@ -2421,13 +2430,6 @@ static void mxt_wait_for_idle(struct mxt_data *data)
 			jiffies_to_msecs(jiffies - start_wait_jiffies));
 }
 
-static void mxt_enable_wakeup_source(struct mxt_data *data, bool enable)
-{
-	int error;
-	error = irq_set_irq_wake(data->irq, (int)enable);
-	pr_debug("%s wakeup; rc=%d\n", enable ? "enabled" : "disabled", error);
-}
-
 static inline void mxt_set_alternate_mode(struct mxt_data *data,
 	struct mxt_patchset *mode, bool wakeable, bool persistent)
 {
@@ -2436,7 +2438,6 @@ static inline void mxt_set_alternate_mode(struct mxt_data *data,
 	data->current_mode = mode;
 	if (wakeable)
 		mxt_enable_wakeup_source(data, true);
-	pr_debug("\n");
 }
 
 static inline void mxt_restore_default_mode(struct mxt_data *data)
@@ -2446,7 +2447,6 @@ static inline void mxt_restore_default_mode(struct mxt_data *data)
 	data->mode_is_wakeable = false;
 	data->mode_is_persistent = true;
 	data->current_mode = data->default_mode;
-	pr_debug("\n");
 }
 
 static const char * const mxt_state_names[] = { "UNKNOWN", "ACTIVE", "SUSPEND",
@@ -4553,8 +4553,8 @@ static int mxt_parse_dt(struct mxt_data *data)
 
 	error = mxt_dt_parse_mode(data, "alternate", data->alternate_mode);
 	if (error) {
-		pr_err("failed to load alternate mode\n");
-		goto exit_parser;
+		pr_warn("alternate mode not found; using default instead\n");
+		data->alternate_mode = data->default_mode;
 	}
 
 	pdata->common_vdd_supply = of_property_read_bool(np,
