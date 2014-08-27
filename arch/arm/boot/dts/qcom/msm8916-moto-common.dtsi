@@ -788,7 +788,8 @@
 			<&msm_gpio 121 0>,       /* BSLEN */
 			<&msm_gpio 113 0>,       /* WakeIRQ */
 			<&msm_gpio 4 0>,         /* SPI Ready for Receive */
-			<&msm_gpio 38 0>;        /* SPI Data Ack */
+			<&msm_gpio 38 0>,        /* SPI Data Ack */
+			<&msm_gpio 110 0>;       /* Wake Up Sensor Hub */
 		lux_table = <5 50 100 1500 3000 8000>;
 		brightness_table = <9 14 18 46 67 93 140>;
 		bslen_pin_active_value = <1>;
