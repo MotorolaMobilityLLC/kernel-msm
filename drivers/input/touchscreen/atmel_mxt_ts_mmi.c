@@ -129,9 +129,11 @@ struct t7_config {
 	u8 idle;
 	u8 active;
 	u8 actv2idle;
+	u8 cfg;
+	u8 cfg2;
 } __packed;
 
-static struct t7_config t7_off_cfg[2] = { {0, 0, 0}, {100, 255, 10} };
+static struct t7_config t7_off_cfg[2] = { {0, 0, 0, 194, 0}, {100, 50, 10, 194, 1} };
 
 #define T7_MODE_LPM	0
 #define T7_MODE_GESTURE	1
