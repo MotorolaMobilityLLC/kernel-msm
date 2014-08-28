@@ -356,6 +356,11 @@
 	qcom,init-voltage = <1000000>;
 };
 
+/* VDD_P5 always on */
+&pma8084_l9 {
+	regulator-always-on;
+};
+
 &pma8084_l17 {
 	regulator-always-on;
 };
