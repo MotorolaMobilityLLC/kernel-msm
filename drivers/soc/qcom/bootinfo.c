@@ -267,7 +267,7 @@ int __init bootinfo_bootreason_init(char *s)
 	strlcpy(bootreason, s, BOOTREASON_MAX_LEN);
 	return 1;
 }
-__setup("bootreason=", bootinfo_bootreason_init);
+__setup("androidboot.bootreason=", bootinfo_bootreason_init);
 
 const char *bi_bootreason(void)
 {
