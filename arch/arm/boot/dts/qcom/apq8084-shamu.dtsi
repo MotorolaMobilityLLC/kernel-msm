@@ -74,7 +74,6 @@
 	};
 
 	/delete-node/ qcom,cnss@0d400000;
-	/delete-node/ qca,qca1530;
 	/delete-node/ wlan_vreg;
 
 	qcom,pcie@fc520000 {
@@ -276,11 +275,6 @@
 };
 
 &pma8084_lvs4 {
-	regulator-always-on;
-};
-
-/* VDD_P5 always on */
-&pma8084_l9 {
 	regulator-always-on;
 };
 
