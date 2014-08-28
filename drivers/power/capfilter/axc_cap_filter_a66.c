@@ -141,23 +141,23 @@ static int eval_bat_life_when_discharging(
 
 			if(10 != maxMah){
 				if(nowCap<=OCV_PER_SPEEDUP_UPDATE_14P){
-					if(g_current_now>1400){
+					if(g_current_now>600){
 						fasterLeverage_drop_val = formula_of_discharge(g_current_now, batCapMah, interval);
 						fast_discharge_after_dot = formula_of_discharge_dot(g_current_now, batCapMah, interval);
 					}
 					else{
-						fasterLeverage_drop_val = formula_of_discharge(1400, batCapMah, interval);
-						fast_discharge_after_dot = formula_of_discharge_dot(1400, batCapMah, interval);
+						fasterLeverage_drop_val = formula_of_discharge(600, batCapMah, interval);
+						fast_discharge_after_dot = formula_of_discharge_dot(600, batCapMah, interval);
 					}
 				}
 				else{
-					if(g_current_now>900){
+					if(g_current_now>300){
 						fasterLeverage_drop_val = formula_of_discharge(g_current_now, batCapMah, interval);
 						fast_discharge_after_dot = formula_of_discharge_dot(g_current_now, batCapMah, interval);
 					}
 					else{
-						fasterLeverage_drop_val = formula_of_discharge(900, batCapMah, interval);
-						fast_discharge_after_dot = formula_of_discharge_dot(900, batCapMah, interval);
+						fasterLeverage_drop_val = formula_of_discharge(300, batCapMah, interval);
+						fast_discharge_after_dot = formula_of_discharge_dot(300, batCapMah, interval);
 					}
 				}
 			}
