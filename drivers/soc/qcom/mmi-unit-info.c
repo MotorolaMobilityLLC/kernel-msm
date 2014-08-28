@@ -73,6 +73,16 @@ int __init setup_androidboot_radio_init(char *s)
 }
 __setup("androidboot.radio=", setup_androidboot_radio_init);
 
+static struct mmi_unit_info *mui;
+void mmi_set_pureason(uint32_t val)
+{
+	if (mui) {
+		mui->powerup_reason = val;
+		pr_debug("%s: Set modem PU reason value in SMEM to %d\n",
+				__func__, mui->powerup_reason);
+	}
+}
+
 static char msm_hw[MSMHW_MAX_LEN+1];
 
 void mach_cpuinfo_show(struct seq_file *m, void *v)
@@ -125,7 +135,6 @@ static void __init mmi_of_populate_setup(void)
 
 static int __init mmi_unit_info_init(void)
 {
-	struct mmi_unit_info *mui;
 
 	mmi_of_populate_setup();
 
@@ -156,12 +165,14 @@ static int __init mmi_unit_info_init(void)
 	pr_info("mmi_unit_info (SMEM) for modem: version = 0x%02x,"
 		" device = '%s', radio = %d, system_rev = 0x%04x,"
 		" system_serial = 0x%08x%08x, machine = '%s',"
-		" barcode = '%s', baseband = '%s', carrier = '%s'\n",
+		" barcode = '%s', baseband = '%s', carrier = '%s'"
+		" pu_reason = 0x%08x\n",
 		mui->version,
 		mui->device, mui->radio, mui->system_rev,
 		mui->system_serial_high, mui->system_serial_low,
 		mui->machine, mui->barcode,
-		mui->baseband, mui->carrier);
+		mui->baseband, mui->carrier,
+		mui->powerup_reason);
 
 	return 0;
 }
