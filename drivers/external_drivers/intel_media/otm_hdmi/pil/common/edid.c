@@ -1143,23 +1143,38 @@ static otm_hdmi_ret_t __find_and_declare_basic_audio_support(edid_info_t *edid)
 		.ss_bitrate = OTM_HDMI_AUDIO_SS_16,
 	};
 
-	/* Try to find basic audio functionality among declared capabilities */
+	/*
+	 * A speaker allocation map may not be present with basic audio
+	 * hence always add a FL/FR pair in the speaker allocation map
+	 */
+	edid->speaker_map |= 0x01;
+
+	/*
+	 * SADs are optional with basic audio as well. Search the SADs to
+	 * find a "basic audio like" mode. If none is found, create one in
+	 * audio_caps anyways since basic audio implies such a mode is
+	 * available
+	 */
 	for (i = 0; i < edid->num_caps; i++) {
 		if ((caps[i].format == cap.format)
 		    && (caps[i].max_channels >= cap.max_channels)
 		    && (caps[i].ss_bitrate & cap.ss_bitrate)
 		    && ((caps[i].fs & cap.fs) == cap.fs)) {
-			goto exit;
+			/* Found matching mode so do nothing */
+			return OTM_HDMI_SUCCESS;
 		}
 	}
 
-	/* Add RLRF pair to the speaker allocation map */
-	edid->speaker_map |= 0x01;
-
-	/* Add basic audio capability to the list of capabilities */
+	/*
+	 * Basic audio like mode not found, add it to the caps if we have
+	 * space
+	 */
+	if (edid->num_caps >= MAX_CAPS) {
+		LOG_PRINT(LOG_LEVEL_ERROR,
+		    "No place to add basic audio mode in audio_caps\n");
+		return OTM_HDMI_ERR_NO_MEMORY;
+	}
 	memcpy(&caps[edid->num_caps++], &cap, sizeof(cap));
-
-exit:
 	return OTM_HDMI_SUCCESS;
 }
 
