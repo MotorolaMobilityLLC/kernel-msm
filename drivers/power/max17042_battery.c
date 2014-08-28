@@ -63,9 +63,14 @@ CONFIG_TS_BIT_ENBL | CONFIG_SS_BIT_ENBL)
 #define MODEL_LOCK1		0X0000
 #define MODEL_LOCK2		0X0000
 
-#define dQ_ACC_DIV	0x4
-#define dP_ACC_100	0x1900
-#define dP_ACC_200	0x3200
+#define MAX17042_INIT_NUM_CYCLES	160
+#define MAX17047_INIT_NUM_CYCLES	96
+
+#define MAX17042_dQ_ACC_DIV	4
+#define MAX17047_dQ_ACC_DIV	16
+
+#define MAX17042_dP_ACC_200	0x3200
+#define MAX17047_dP_ACC_200	0x0C80
 
 #define MAX17042_IC_VERSION	0x0092
 #define MAX17047_IC_VERSION	0x00AC	/* same for max17050 */
@@ -566,10 +571,21 @@ static void max17042_reset_vfsoc0_reg(struct max17042_chip *chip)
 	max17042_write_reg(chip->client, MAX17042_VFSOC0Enable, VFSOC0_LOCK);
 }
 
+static void max17042_advance_to_coulomb_counter_mode(struct max17042_chip *chip)
+{
+	u16 value = (chip->chip_type == MAX17042 ?
+			MAX17042_INIT_NUM_CYCLES : MAX17047_INIT_NUM_CYCLES);
+	max17042_write_verify_reg(chip->client, MAX17042_Cycles, value);
+}
+
 static void max17042_load_new_capacity_params(struct max17042_chip *chip)
 {
 	u16 rep_cap, dq_acc, vfSoc;
 	u32 rem_cap;
+	u16 dQ_ACC_DIV = (chip->chip_type == MAX17042 ?
+				MAX17042_dQ_ACC_DIV : MAX17047_dQ_ACC_DIV);
+	u16 dP_ACC_200 = (chip->chip_type == MAX17042 ?
+				MAX17042_dP_ACC_200 : MAX17047_dP_ACC_200);
 
 	struct max17042_config_data *config = chip->pdata->config_data;
 
@@ -699,6 +715,9 @@ static int max17042_init_chip(struct max17042_chip *chip)
 
 	/* reset vfsoc0 reg */
 	max17042_reset_vfsoc0_reg(chip);
+
+	/* advance to coulomb-counter mode */
+	max17042_advance_to_coulomb_counter_mode(chip);
 
 	/* load new capacity params */
 	max17042_load_new_capacity_params(chip);
