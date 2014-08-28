@@ -8510,8 +8510,8 @@ struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,
 
     if (NULL != roamProfile.pBssDesc)
     {
-        bss = wlan_hdd_cfg80211_inform_bss(pAdapter,
-                &roamProfile);
+        bss = wlan_hdd_cfg80211_inform_bss_frame(pAdapter,
+                roamProfile.pBssDesc);
 
         if (NULL == bss)
         {
