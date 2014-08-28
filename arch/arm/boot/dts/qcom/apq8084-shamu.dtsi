@@ -422,7 +422,7 @@
 			touchmode-alternate = <&default_active &alternate_suspended>;
 		};
 		alternate_suspended: touchstate_dbltap_suspended {
-			patch-data = "T100@0=8d;T93@0=f;T7@0=64,1=ff,2=a;";
+			patch-data = "T100@0=8d;T93@0=f;T7@0=64,1=32,2=a,4=1;";
 		};
 	};
 };
