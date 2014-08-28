@@ -92,20 +92,25 @@ static struct switch_dev h2w_switch = {
 #define PACKET_TYPE_MSBC  1
 
 
-/* We support mSBC that is packetized using a H2 header with a 12-bit
- * synchronization word and a 2-bit sequence number (SN0, SN1).
- * The sequence number is duplicated, so each pair of bits in
- * the sequence number shall be always 00 or 11 (see 5.7.2 of
- * HFP_SPEC_V16)
+/* Normally SBC has a H2 header but because we want
+ * to embed keycode support while audio is active without
+ * incuring an additional packet in the connection interval,
+ * we only use half the H2 header.  A normal H2 header has
+ * a 12-bit synchronization word and a 2-bit sequence number
+ * (SN0, SN1).  The sequence number is duplicated, so each
+ * pair of bits in the sequence number shall be always 00
+ * or 11 (see 5.7.2 of HFP_SPEC_V16).  We only receive
+ * the second byte of the H2 header that has the latter part
+ * of the sync word and the entire sequence number.
  *
  *  0      70      7
  * b100000000001XXYY - where X is SN0 repeated and Y is SN1 repeated
  *
  * So the sequence numbers are:
- * b1000000000010000 - 0x01 0x08
- * b1000000000011100 - 0x01 0x38
- * b1000000000010011 - 0x01 0xc8
- * b1000000000011111 - 0x01 0xf8
+ * b1000000000010000 - 0x01 0x08  - only the 0x08 is received
+ * b1000000000011100 - 0x01 0x38  - only the 0x38 is received
+ * b1000000000010011 - 0x01 0xc8  - only the 0xc8 is received
+ * b1000000000011111 - 0x01 0xf8  - only the 0xf8 is received
  *
  * Each mSBC frame is split over 3 BLE frames, where each BLE packet has
  * a 20 byte payload.
@@ -113,9 +118,8 @@ static struct switch_dev h2w_switch = {
  * byte 0: keycode LSB
  * byte 1: keycode MSB, with most significant bit 0 for no key
  *         code active and 1 if keycode is active
- * byte 2: sequence number, starts at 0 for a new audio session
- * bytes 3-19: two byte H2 header, then four byte SBC header, then 11
- *             bytes of audio data
+ * byte 2: Second byte of H2
+ * bytes 3-19: then four byte SBC header, then 13 bytes of audio data
  *
  * The second and third packet are purely 20 bytes of audio
  * data.  Second packet arrives on report 0xFA and third packet
@@ -124,22 +128,22 @@ static struct switch_dev h2w_switch = {
  * The mSBC decoder works on a mSBC frame, including the four byte SBC header,
  * so we have to accumulate 3 BLE packets before sending it to the decoder.
  */
-#define BYTES_PER_MSBC_FRAME (15 + 20 + 20)
+#define BYTES_PER_MSBC_FRAME (17 + 20 + 20)
 #define NUM_SEQUENCES 4
 const uint8_t mSBC_sequence_table[NUM_SEQUENCES] = {0x08, 0x38, 0xc8, 0xf8};
 #define BLE_PACKETS_PER_MSBC_FRAME 3
 const uint8_t mSBC_start_offset_in_packet[BLE_PACKETS_PER_MSBC_FRAME] = {
-	3, /* SBC header starts 1 byte sequence num and 2 byte H2 header */
+	1, /* SBC header starts after 1 byte sequence num portion of H2 */
 	0,
 	0
 };
 const uint8_t mSBC_start_offset_in_buffer[BLE_PACKETS_PER_MSBC_FRAME] = {
 	0,
-	15,
-	35
+	17,
+	37
 };
 const uint8_t mSBC_bytes_in_packet[BLE_PACKETS_PER_MSBC_FRAME] = {
-	15, /* includes the SBC header but not the sequence num or H2 header */
+	17, /* includes the SBC header but not the sequence num or keycode */
 	20,
 	20
 };
@@ -367,7 +371,6 @@ struct snd_atvr {
 	int16_t audio_output[MAX_SAMPLES_PER_PACKET];
 	uint8_t packet_in_frame;
 	uint8_t seq_index;
-	uint8_t expected_next_seq_num;
 
 	/*
 	 * Write_index is the circular buffer position.
@@ -653,20 +656,7 @@ static int snd_atvr_decode_8KHz_mSBC_packet(
 	}
 #endif
 	if (atvr_snd->packet_in_frame == 0) {
-		if (sbc_input[0] != atvr_snd->expected_next_seq_num) {
-			/* don't make this fatal.  we sometimes appear
-			 * to get out of sync, but that's okay it seems.
-			 */
-			pr_warn("%s: seq num %d does not match expected %d\n",
-			       __func__, sbc_input[0],
-				atvr_snd->expected_next_seq_num);
-		}
-		if (sbc_input[1] != 0x01) {
-			pr_err("%s: sync word not found, got 0x%02x instead\n",
-			       __func__, sbc_input[0]);
-			return 0;
-		}
-		if (sbc_input[2] != mSBC_sequence_table[atvr_snd->seq_index]) {
+		if (sbc_input[0] != mSBC_sequence_table[atvr_snd->seq_index]) {
 			snd_atvr_log("sequence_num err, 0x%02x != 0x%02x\n",
 				     sbc_input[1],
 				     mSBC_sequence_table[atvr_snd->seq_index]);
@@ -676,8 +666,8 @@ static int snd_atvr_decode_8KHz_mSBC_packet(
 		if (atvr_snd->seq_index == NUM_SEQUENCES)
 			atvr_snd->seq_index = 0;
 
-		/* subtract the sequence number and H2 header */
-		num_bytes -= 3;
+		/* subtract the sequence number */
+		num_bytes--;
 	}
 	if (num_bytes != mSBC_bytes_in_packet[atvr_snd->packet_in_frame]) {
 		pr_err("%s: received %zd audio bytes but expected %d bytes\n",
@@ -697,7 +687,6 @@ static int snd_atvr_decode_8KHz_mSBC_packet(
 	}
 	/* reset for next mSBC frame */
 	atvr_snd->packet_in_frame = 0;
-	atvr_snd->expected_next_seq_num++;
 
 	/* we have a complete mSBC frame, send it to the decoder */
 	num_samples = sbc_decode(BLOCKS_PER_PACKET, NUM_BITS,
@@ -1041,7 +1030,6 @@ static int snd_atvr_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		/* mSBC decoder */
 		atvr_snd->packet_in_frame = 0;
 		atvr_snd->seq_index = 0;
-		atvr_snd->expected_next_seq_num = 0;
 
 		snd_atvr_timer_start(substream);
 		 /* Enables callback from BTLE driver. */
