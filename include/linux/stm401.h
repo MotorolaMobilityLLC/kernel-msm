@@ -522,6 +522,9 @@ struct stm_response {
 #define STM16_TO_HOST(x) ((short) be16_to_cpu(*((u16 *) (stm401_readbuff+(x)))))
 #define STM32_TO_HOST(x) ((short) be32_to_cpu(*((u32 *) (stm401_readbuff+(x)))))
 
+#define STM401_HALL_SOUTH 1
+#define STM401_HALL_NORTH 2
+
 enum stm_quickpeek_state {
 	QP_IDLE,
 	QP_AWAKE,
