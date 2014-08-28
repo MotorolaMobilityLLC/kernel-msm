@@ -9692,6 +9692,52 @@ VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddres
 
 /**---------------------------------------------------------------------------
 
+  \brief hdd_del_all_sta() - function
+
+  This function removes all the stations associated on stopping AP/P2P GO.
+
+  \param  - pAdapter - Pointer to the HDD
+
+  \return - None
+
+  --------------------------------------------------------------------------*/
+
+int hdd_del_all_sta(hdd_adapter_t *pAdapter)
+{
+    v_U16_t i;
+    VOS_STATUS vos_status;
+
+    ENTER();
+
+    hddLog(VOS_TRACE_LEVEL_INFO,
+           "%s: Delete all STAs associated.",__func__);
+    if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
+     || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
+       )
+    {
+        for(i = 0; i < WLAN_MAX_STA_COUNT; i++)
+        {
+            if ((pAdapter->aStaInfo[i].isUsed) &&
+                (!pAdapter->aStaInfo[i].isDeauthInProgress))
+            {
+                u8 *macAddr = pAdapter->aStaInfo[i].macAddrSTA.bytes;
+                hddLog(VOS_TRACE_LEVEL_ERROR,
+                       "%s: Delete STA with staid = %d and MAC::"
+                        MAC_ADDRESS_STR,
+                        __func__, i, MAC_ADDR_ARRAY(macAddr));
+                vos_status = hdd_softap_sta_deauth(pAdapter, macAddr);
+                if (VOS_IS_STATUS_SUCCESS(vos_status))
+                    pAdapter->aStaInfo[i].isDeauthInProgress = TRUE;
+            }
+        }
+    }
+
+    EXIT();
+    return 0;
+}
+
+/**---------------------------------------------------------------------------
+
   \brief hdd_softap_sta_disassoc() - function
 
   This to take counter measure to handle deauth req from HDD

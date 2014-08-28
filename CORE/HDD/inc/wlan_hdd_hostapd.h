@@ -97,4 +97,5 @@ void hdd_restart_softap (hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter);
 #ifdef FEATURE_WLAN_CH_AVOID
 void hdd_hostapd_ch_avoid_cb(void *pAdapter, void *indParam);
 #endif /* FEATURE_WLAN_CH_AVOID */
+int hdd_del_all_sta(hdd_adapter_t *pAdapter);
 #endif    // end #if !defined( WLAN_HDD_HOSTAPD_H )

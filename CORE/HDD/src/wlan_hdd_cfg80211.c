@@ -6329,6 +6329,8 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
         VOS_ASSERT(pScanInfo->mScanPending);
     }
 
+    /* Delete all associated STAs before stopping AP/P2P GO */
+    hdd_del_all_sta(pAdapter);
     hdd_hostapd_stop(dev);
 
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
