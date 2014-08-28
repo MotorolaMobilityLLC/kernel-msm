@@ -228,7 +228,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		input_report_switch(ps_stm401->input_dev, SW_LID, state);
 		input_sync(ps_stm401->input_dev);
 
-		dev_dbg(&ps_stm401->client->dev, "Cover status: %d\n", state);
+		dev_err(&ps_stm401->client->dev, "Cover status: %d\n", state);
 	}
 	if (irq_status & M_FLATUP) {
 		stm401_cmdbuff[0] = FLAT_DATA;
