@@ -33,6 +33,7 @@
 #include <asm/i8259.h>
 #include <asm/intel_scu_ipc.h>
 #include <asm/intel_mid_rpmsg.h>
+#include <linux/platform_data/intel_mid_remoteproc.h>
 #include <asm/apb_timer.h>
 #include <asm/reboot.h>
 #include <asm/proto.h>
@@ -79,30 +80,45 @@ static void intel_mid_power_off(void)
 	pmu_power_off();
 };
 
+#define RSTC_IO_PORT_ADDR 0xcf9
+#define RSTC_COLD_BOOT    0x8
+#define RSTC_COLD_RESET   0x4
+
 static void intel_mid_reboot(void)
 {
 	if (intel_scu_ipc_fw_update()) {
 		pr_debug("intel_scu_fw_update: IFWI upgrade failed...\n");
 	}
 
-	if (reboot_force) {
-		if (force_cold_boot)
-			rpmsg_send_generic_simple_command(IPCMSG_COLD_BOOT, 0);
-		else
-			rpmsg_send_generic_simple_command(IPCMSG_COLD_RESET, 0);
-	} else {
+	if (!reboot_force) {
 		/* system_state is SYSTEM_RESTART now,
 		 * polling to wait for SCU not busy.
 		 */
 		while (intel_scu_ipc_check_status())
 			udelay(10);
+	}
 
-		if (force_cold_boot)
-			intel_scu_ipc_raw_cmd(IPCMSG_COLD_BOOT,
-				0, NULL, 0, NULL, 0, 0, 0);
-		else
-			intel_scu_ipc_raw_cmd(IPCMSG_COLD_RESET,
-				0, NULL, 0, NULL, 0, 0, 0);
+	if (force_cold_boot)
+		outb(RSTC_COLD_BOOT, RSTC_IO_PORT_ADDR);
+	else {
+		switch (reboot_force) {
+		case REBOOT_FORCE_OFF:
+			/*  this will cause context execution error when rebooting */
+			/*  in panic, but this is the very last action we take     */
+			rpmsg_send_generic_simple_command(RP_COLD_OFF, 0);
+			break;
+		case REBOOT_FORCE_ON:
+			pr_debug("reboot requested but forced to keep system on\n");
+			break;
+		case REBOOT_FORCE_COLD_RESET:
+			outb(RSTC_COLD_RESET, RSTC_IO_PORT_ADDR);
+			break;
+		case REBOOT_FORCE_COLD_BOOT:
+			outb(RSTC_COLD_BOOT, RSTC_IO_PORT_ADDR);
+			break;
+		default:
+			outb(RSTC_COLD_RESET, RSTC_IO_PORT_ADDR);
+		}
 	}
 }
 
