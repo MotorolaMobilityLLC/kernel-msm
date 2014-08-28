@@ -1766,6 +1766,7 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
         msm_gpiomux_write(GPIO_AUDBG_SEL, GPIOMUX_ACTIVE,
 				&uart_console_cfg_sel, &uart_console_cfg_sel_old);
         gpio_free(GPIO_AUDBG_SEL);
+        return ret;
     }
 
 	/* Use line number from device tree alias if present */
@@ -1939,6 +1940,12 @@ static int msm_serial_hsl_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
+
+    /* Skip here if we didn't support console */
+	if (g_bootdbguart == 0){
+        return 0;
+    }
+
 	port = get_port_from_line(get_line(pdev));
 
 	if (port) {
@@ -1958,6 +1965,12 @@ static int msm_serial_hsl_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
+
+    /* Skip here if we didn't support console */
+	if (g_bootdbguart == 0){
+        return 0;
+    }
+
 	port = get_port_from_line(get_line(pdev));
 
 	if (port) {
