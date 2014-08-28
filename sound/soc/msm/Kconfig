@@ -245,7 +245,6 @@ config SND_SOC_MSM8X10
 	select SND_SOC_MSM_HOSTLESS_PCM
 	select SND_SOC_MSM8X10_WCD
 	select SND_DYNAMIC_MINORS
-	select SND_SOC_TPA6165A2
 	help
 	 To add support for SoC audio on MSM8X10.
 	 This will enable sound soc drivers which
