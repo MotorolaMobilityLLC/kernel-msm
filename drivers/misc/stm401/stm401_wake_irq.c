@@ -218,9 +218,10 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		state = stm401_readbuff[COVER_STATE];
-		if (state > 0)
+		if (stm401_readbuff[COVER_STATE] == STM401_HALL_NORTH)
 			state = 1;
+		else
+			state = 0;
 
 		/* notify subscribers of cover state change */
 		mmi_hall_notify(MMI_HALL_FOLIO, state);
