@@ -17,6 +17,7 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	mot_boe_450_qhd_vid_v2: qcom,mdss_dsi_mot_boe_450_qhd_video_v2 {
+		compatible = "qcom,mdss-dsi-panel";
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_boe_qhd_450_v2";
 		qcom,mdss-dsi-panel-supplier = "boe";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
@@ -30,6 +31,7 @@
 		qcom,mdss-pan-physical-width-dimension = <55>;
 		qcom,mdss-pan-physical-height-dimension = <99>;
 
+		qcom,mdss-dsi-panel-clockrate = <0>;
 		qcom,mdss-dsi-h-front-porch = <24>;
 		qcom,mdss-dsi-h-back-porch = <40>;
 		qcom,mdss-dsi-h-pulse-width = <4>;
@@ -108,6 +110,7 @@
 	};
 
 	mot_boe_450_qhd_vid_v1: qcom,mdss_dsi_mot_boe_450_qhd_video_v1 {
+		compatible = "qcom,mdss-dsi-panel";
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_boe_qhd_450_v1";
 		qcom,mdss-dsi-panel-supplier = "boe";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
@@ -121,6 +124,7 @@
 		qcom,mdss-pan-physical-width-dimension = <55>;
 		qcom,mdss-pan-physical-height-dimension = <99>;
 
+		qcom,mdss-dsi-panel-clockrate = <0>;
 		qcom,mdss-dsi-h-front-porch = <24>;
 		qcom,mdss-dsi-h-back-porch = <40>;
 		qcom,mdss-dsi-h-pulse-width = <4>;
@@ -198,6 +202,7 @@
 	};
 
 	mot_boe_450_qhd_vid_v0: qcom,mdss_dsi_mot_boe_450_qhd_video_v0 {
+		compatible = "qcom,mdss-dsi-panel";
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_boe_qhd_450_v0";
 		qcom,mdss-dsi-panel-supplier = "boe";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
@@ -211,6 +216,7 @@
 		qcom,mdss-pan-physical-width-dimension = <55>;
 		qcom,mdss-pan-physical-height-dimension = <99>;
 
+		qcom,mdss-dsi-panel-clockrate = <0>;
 		qcom,mdss-dsi-h-front-porch = <24>;
 		qcom,mdss-dsi-h-back-porch = <40>;
 		qcom,mdss-dsi-h-pulse-width = <4>;
