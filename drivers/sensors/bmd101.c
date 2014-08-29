@@ -73,6 +73,7 @@ struct bmd101_data {
 	int esd;
 	int status;
 	int count;
+	int timeout_delay;
 	struct mutex lock;
 	struct delayed_work timeout_work;
 	struct workqueue_struct *bmd101_work_queue;
@@ -216,11 +217,12 @@ static void bmd101_data_filter(int data)
 	int calc_bpm;
 
 	mutex_lock(&sensor_data->lock);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count);
-	if(sensor_data->status > 2) {
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d timeout_delay=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count, sensor_data->timeout_delay);
+	if(sensor_data->status > 1) {
+		sensor_data->timeout_delay = 0;
 		if(delayed_work_pending(&sensor_data->timeout_work)) {
-			printk("[bmd101] timeout cancelled.\n");
-			cancel_delayed_work(&sensor_data->timeout_work);
+			sensor_debug(DEBUG_INFO, "[bmd101] timeout cancelled.\n");
+			cancel_delayed_work_sync(&sensor_data->timeout_work);
 		}
 		if(sensor_data->count < BMD101_filter_array)
 			bpm[sensor_data->count++] = data;
@@ -233,6 +235,8 @@ static void bmd101_data_filter(int data)
 			sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) REPORT\n", __func__, calc_bpm);
 		}
 	}
+	else
+		queue_delayed_work(sensor_data->bmd101_work_queue, &sensor_data->timeout_work, sensor_data->timeout_delay);		//queue timeout delay first time: @3s in between measurements: @1s
 	mutex_unlock(&sensor_data->lock);
 
 	return;
@@ -244,7 +248,8 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 	if (enable && !sensor_data->cdev.enabled) {
 		if (!sensor_data->hw_enabled)
 			bmd101_hw_enable(1);
-		queue_delayed_work(sensor_data->bmd101_work_queue, &sensor_data->timeout_work, 300);		//queue timeout @5s	
+
+		sensor_data->timeout_delay = 300;
 		sensor_data->cdev.enabled = 1;
 		
 		sensor_debug(DEBUG_INFO, "[bmd101] %s: bmd101_enable(%d)\n", __func__, sensor_data->cdev.enabled);
@@ -258,6 +263,8 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		sensor_data->cdev.enabled = 0;
 		sensor_data->status = 0;
 		sensor_data->count = 0;
+		sensor_data->timeout_delay = 300;
+
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bmd101_enable(%d)\n", __func__, sensor_data->cdev.enabled);
 	}
 	else
@@ -450,6 +457,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	sensor_data->esd = 0;
 	sensor_data->bpm = 0;
 	sensor_data->hw_enabled = 0;
+	sensor_data->timeout_delay = 300;
 	sensor_data->cdev = bmd101_cdev;
 	sensor_data->cdev.enabled = 0;
 	sensor_data->cdev.sensors_enable = bmd101_enable_set;
