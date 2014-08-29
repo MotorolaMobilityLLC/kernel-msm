@@ -101,6 +101,8 @@
 			39 01 00 00 00 00 05 2a 00 00 05 9f
 			/* normal row */
 			39 01 00 00 00 00 05 2b 00 00 09 ff
+			/* normal mode */
+			05 01 00 00 00 00 02 13 00
 			/* display on */
 			29 01 00 00 00 00 02 29 00];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
@@ -255,6 +257,8 @@
 			39 01 00 00 00 00 05 2a 00 00 05 9f
 			/* normal row */
 			39 01 00 00 00 00 05 2b 00 00 09 ff
+			/* normal mode */
+			05 01 00 00 00 00 02 13 00
 			/* display on */
 			29 01 00 00 00 00 02 29 00];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
