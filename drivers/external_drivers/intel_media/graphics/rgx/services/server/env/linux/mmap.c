@@ -181,6 +181,11 @@ int MMapPMR(struct file *pFile, struct vm_area_struct *ps_vma)
 	IMG_UINT32 ui32CPUCacheFlags;
 	unsigned long ulNewFlags = 0;
 	pgprot_t sPageProt;
+
+#if defined(PVR_MMAP_USE_VM_INSERT)
+	IMG_BOOL bMixedMap = IMG_FALSE;
+#endif
+
 #if defined(SUPPORT_DRM)
 	CONNECTION_DATA *psConnection = LinuxConnectionFromFile(PVR_DRM_FILE_FROM_FILE(pFile));
 #else
@@ -321,8 +326,6 @@ int MMapPMR(struct file *pFile, struct vm_area_struct *ps_vma)
 
 #if defined(PVR_MMAP_USE_VM_INSERT)
 	{
-		IMG_BOOL bMixedMap = IMG_FALSE;
-
 		/* Scan the map range for pfns without struct page* handling. If we find
 		 * one, this is a mixed map, and we can't use vm_insert_page().
 		 */
@@ -385,7 +388,7 @@ int MMapPMR(struct file *pFile, struct vm_area_struct *ps_vma)
 	        PVR_ASSERT(((IMG_UINT64)uiPFN << PAGE_SHIFT) == sCpuPAddr.uiAddr);
 
 #if defined(PVR_MMAP_USE_VM_INSERT)
-			if (ps_vma->vm_flags & VM_MIXEDMAP)
+			if (bMixedMap)
 			{
 				/* This path is just for debugging. It should be equivalent
 				 * to the remap_pfn_range() path.
