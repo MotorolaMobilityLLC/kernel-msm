@@ -1842,9 +1842,6 @@ static ssize_t IT7260_calibration_show(struct device *dev, struct device_attribu
 {
 	printk(KERN_DEBUG "%s():\n", __func__);
 	
-
-	
-	
 	return IT7260_calibration_show_temp(buf);
 }
 
@@ -1901,16 +1898,44 @@ static ssize_t IT7260_upgrade_store(struct device *dev, struct device_attribute 
 	return count;
 }
 
+static ssize_t IT7260_point_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	unsigned char pucPoint[14];
+	int ret = 0;
+	
+	printk(KERN_DEBUG "%s():\n", __func__);
+	ret = i2cReadFromIt7260(gl_ts->client, 0xE0, pucPoint, 14);
+	printk("=point_show read ret[%d]--point[%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]=\n",
+		ret,pucPoint[0],pucPoint[1],pucPoint[2],
+		pucPoint[3],pucPoint[4],pucPoint[5],pucPoint[6],pucPoint[7],pucPoint[8],
+		pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
+	
+	return sprintf(buf, "=point_show read ret[%d]--point[%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]=\n",
+		ret,pucPoint[0],pucPoint[1],pucPoint[2],
+		pucPoint[3],pucPoint[4],pucPoint[5],pucPoint[6],pucPoint[7],pucPoint[8],
+		pucPoint[9],pucPoint[10],pucPoint[11],pucPoint[12],pucPoint[13]);
+}
+
+static ssize_t IT7260_point_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	printk(KERN_DEBUG "%s():\n", __func__);
+
+	return count;
+}
+
 static DEVICE_ATTR(testtp, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_selftest_show, IT7260_selftest_store);
 static DEVICE_ATTR(goldensample, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_tp_goldsample_show, IT7260_tp_goldsample_store);
 static DEVICE_ATTR(calibration, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_calibration_show, IT7260_calibration_store);
 static DEVICE_ATTR(upgrade, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_upgrade_show, IT7260_upgrade_store);
+static DEVICE_ATTR(point, S_IRUGO|S_IWUSR|S_IWGRP, IT7260_point_show, IT7260_point_store);
+
 
 static struct attribute *it7260_attributes[] = {
 	&dev_attr_calibration.attr,
 	&dev_attr_goldensample.attr,
 	&dev_attr_upgrade.attr,
 	&dev_attr_testtp.attr,
+	&dev_attr_point.attr,
 	NULL
 };
 
