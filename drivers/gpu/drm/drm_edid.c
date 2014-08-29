@@ -83,6 +83,8 @@ struct detailed_mode_closure {
 #define LEVEL_GTF2	2
 #define LEVEL_CVT	3
 
+#define DEBUG_RAW_EDID
+
 static struct edid_quirk {
 	char vendor[4];
 	int product_id;
@@ -974,6 +976,13 @@ bool drm_edid_block_valid(u8 *raw_edid, int block, bool print_bad_edid)
 
 	if (WARN_ON(!raw_edid))
 		return false;
+
+#ifdef DEBUG_RAW_EDID
+	pr_info("*********** Print EDID block %d start **********\n", block);
+	print_hex_dump(KERN_INFO, "", DUMP_PREFIX_NONE, 16, 1,
+			raw_edid, EDID_LENGTH, false);
+	pr_info("*********** Print EDID block %d end ************\n", block);
+#endif
 
 	if (edid_fixup > 8 || edid_fixup < 0)
 		edid_fixup = 6;
