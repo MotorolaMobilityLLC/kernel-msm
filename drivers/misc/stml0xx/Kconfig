@@ -1,0 +1,7 @@
+config SENSORS_STML0XX
+	tristate "STML0XX Sensor Processor"
+	default n
+	depends on SPI
+	help
+	  Say yes here if you wish to include the STM
+	  STML0XX Sensor processor driver.
