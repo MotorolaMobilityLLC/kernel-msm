@@ -1722,14 +1722,18 @@ void notify_st_sensor_lowpowermode(int low)
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low) {
 		atomic_set(&is_suspend,1);
-		enable_irq_wake(sensor_data->irq1);
-		enable_irq_wake(sensor_data->irq2);
+		if(device_may_wakeup(&sensor_data->client->dev)) {
+			enable_irq_wake(sensor_data->irq1);
+			enable_irq_wake(sensor_data->irq2);
+		}
 		lis3dsh_acc_state_progrs_enable_control(sensor_data, LIS3DSH_SM1_EN_SM2_DIS);
 	}
 	else {
 		atomic_set(&is_suspend,0);
-		disable_irq_wake(sensor_data->irq1);
-		disable_irq_wake(sensor_data->irq2);
+		if(device_may_wakeup(&sensor_data->client->dev)) {
+			disable_irq_wake(sensor_data->irq1);
+			disable_irq_wake(sensor_data->irq2);
+		}
 		lis3dsh_acc_state_progrs_enable_control(sensor_data, LIS3DSH_SM1_EN_SM2_DIS);
 	}
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
