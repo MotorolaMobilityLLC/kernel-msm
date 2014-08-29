@@ -416,7 +416,7 @@ static void bms_relax(struct bms_wakeup_source *source)
 static void enable_bms_irq(struct bms_irq *irq)
 {
 	if (irq->ready && __test_and_clear_bit(0, &irq->disabled)) {
-		enable_irq(irq->irq);
+		disable_irq(irq->irq); //ASUS_BSP +
 		pr_debug("enabled irq %d\n", irq->irq);
 	}
 }
@@ -3948,10 +3948,10 @@ static int bms_request_irqs(struct qpnp_bms_chip *chip)
 
 	SPMI_REQUEST_IRQ(chip, rc, sw_cc_thr);
 	disable_bms_irq(&chip->sw_cc_thr_irq);
-	enable_irq_wake(chip->sw_cc_thr_irq.irq);
+	//enable_irq_wake(chip->sw_cc_thr_irq.irq); //ASUS_BSP +
 	SPMI_REQUEST_IRQ(chip, rc, ocv_thr);
 	disable_bms_irq(&chip->ocv_thr_irq);
-	enable_irq_wake(chip->ocv_thr_irq.irq);
+	//enable_irq_wake(chip->ocv_thr_irq.irq); //ASUS_BSP +
 	return 0;
 }
 
