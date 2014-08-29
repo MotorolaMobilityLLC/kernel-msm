@@ -172,6 +172,47 @@
 			rohm,led1-used;
 		};
 	};
+	spi_3: spi@f9925000 { /* BLSP1 QUP3 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical";
+		reg = <0xf9925000 0x1000>;
+		interrupt-names = "spi_irq";
+		interrupts = <0 97 0>;
+		spi-max-frequency = <8000000>;
+
+		qcom,gpio-mosi = <&msmgpio 8 0>;
+		qcom,gpio-miso = <&msmgpio 9 0>;
+		qcom,gpio-clk  = <&msmgpio 11 0>;
+		qcom,gpio-cs0  = <&msmgpio 10 0>;
+
+		qcom,infinite-mode = <0>;
+		qcom,ver-reg-exists;
+		qcom,master-id = <86>;
+
+		stml0xx@0 {
+			compatible = "stm,stml0xx";
+			reg = <0>;
+			spi-max-frequency = <8000000>;
+			gpios = <&msmgpio 81 0>,       /* IRQ */
+				<&msmgpio 71 0>,       /* RESET */
+				<&msmgpio 74 0>,       /* BSLEN */
+				<&msmgpio 80 0>,       /* WakeIRQ */
+				<&msmgpio 4 0>,        /* SPI Ready for Receive */
+				<&msmgpio 19 0>;       /* SPI Data Ack */
+			lux_table = <5 50 100 1500 3000 8000>;
+			brightness_table = <9 14 18 46 67 93 140>;
+			bslen_pin_active_value = <1>;
+			ct406_detect_threshold = <0x006E>;
+			ct406_undetect_threshold = <0x0050>;
+			ct406_recalibrate_threshold = <0x0064>;
+			ct406_pulse_count = <0x04>;
+			sensor1-supply = <&pm8110_l6>;
+			sensor2-supply = <&pm8110_l14>;
+			sensor3-supply = <&pm8110_l19>;
+		};
+	};
 };
 
 &spmi_bus {
