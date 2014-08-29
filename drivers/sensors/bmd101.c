@@ -26,6 +26,7 @@
 #include <linux/workqueue.h>
 #include <linux/input.h>
 #include <linux/sensors.h>
+#include <linux/workqueue.h>
 #include <mach/gpiomux.h>
 #ifdef CONFIG_ASUS_UTILITY
 #include <linux/notifier.h>
@@ -67,11 +68,14 @@ static struct sensors_classdev bmd101_cdev = {
 struct bmd101_data {
 	struct sensors_classdev cdev;
 	struct input_dev		*input_dev;			/* Pointer to input device */
+	int hw_enabled;
 	unsigned int  bpm;
 	int esd;
 	int status;
 	int count;
 	struct mutex lock;
+	struct delayed_work timeout_work;
+	struct workqueue_struct *bmd101_work_queue;
 };
 static struct bmd101_data *sensor_data;
 
@@ -131,41 +135,12 @@ static int findMode(int *nums) {
 	return modeValue;
 }
 
-static void bmd101_data_filter(int data)
-{
-	static int bpm[BMD101_filter_array];
-	int calc_bpm;
-
-	mutex_lock(&sensor_data->lock);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count);
-	if(sensor_data->status<2) {
-		bmd101_data_report(0);		//report 0 bpm to set sensor status to SENSOR_STATUS_NO_CONTACT
-		sensor_data->count = 0;
-	}
-	else {
-		if(sensor_data->count < BMD101_filter_array)
-			bpm[sensor_data->count++] = data;
-		else {
-			sensor_data->count = 0;
-			sortArray(bpm);
-			calc_bpm = findMode(bpm);
-			bmd101_data_report(calc_bpm);
-			sensor_data->bpm = calc_bpm;
-			sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) REPORT\n", __func__, calc_bpm);
-		}
-	}
-	mutex_unlock(&sensor_data->lock);
-
-	return;
-}
-
-static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int enable)
-{
+static void bmd101_hw_enable(int enable) {
 	int rc;
 
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor currently %s, turning sensor %s\n", __func__, sensor_data->cdev.enabled? "on":"off", enable ? "on":"off");
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor hw currently %s turning sensor hw %s\n", __func__, sensor_data->hw_enabled? "on":"off", enable ? "on":"off");
 
-	if (enable && !sensor_data->cdev.enabled) {
+	if (enable && !sensor_data->hw_enabled) {
 		rc = regulator_enable(pm8921_l28);
     		if (rc) {
 			pr_err("[bmd101] %s: regulator_enable of 8921_l28 failed(%d)\n", __func__, rc);
@@ -197,8 +172,9 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		gpio_direction_output(BMD101_RST_GPIO, 1);
 		msleep(100);
 
-		sensor_data->cdev.enabled = 1;
-		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->cdev.enabled);
+		sensor_data->hw_enabled = 1;
+		
+		sensor_debug(DEBUG_INFO, "[bmd101] %s: gpio %d and %d pulled hig, sensor hw(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->hw_enabled);
 	}
 	else if (!enable && sensor_data->cdev.enabled) {
               msm_gpiomux_write(BMD101_CS_GPIO, GPIOMUX_ACTIVE, &gpio_sus_cfg, &gpio_act_cfg);
@@ -213,15 +189,15 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		gpio_free(BMD101_RST_GPIO);
 		gpio_free(BMD101_CS_GPIO);
 
-		sensor_data->cdev.enabled = 0;
-		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, bmd101_enable(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->cdev.enabled);
+		sensor_data->hw_enabled = 0;
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, sensor hw(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->hw_enabled);
 	}
 	else
-		pr_err("[bmd101] %s : sensor is already %s\n", __func__, enable ? "enabled":"disabled");
+		pr_err("[bmd101] %s : sensor hw is already %s\n", __func__, enable ? "enabled":"disabled");
 
 	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s ---\n", __func__);
 
-	return 0;
+	return;
 
 	gpio_rst_fail:
 	gpio_free(BMD101_RST_GPIO);
@@ -230,7 +206,72 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 	reg_put_LDO28:
 	regulator_put(pm8921_l28);
 
-	return rc;
+	return;
+	
+}
+
+static void bmd101_data_filter(int data)
+{
+	static int bpm[BMD101_filter_array];
+	int calc_bpm;
+
+	mutex_lock(&sensor_data->lock);
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count);
+	if(sensor_data->status > 2) {
+		if(delayed_work_pending(&sensor_data->timeout_work)) {
+			printk("[bmd101] timeout cancelled.\n");
+			cancel_delayed_work(&sensor_data->timeout_work);
+		}
+		if(sensor_data->count < BMD101_filter_array)
+			bpm[sensor_data->count++] = data;
+		else {
+			sensor_data->count = 0;
+			sortArray(bpm);
+			calc_bpm = findMode(bpm);
+			bmd101_data_report(calc_bpm);
+			sensor_data->bpm = calc_bpm;
+			sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) REPORT\n", __func__, calc_bpm);
+		}
+	}
+	mutex_unlock(&sensor_data->lock);
+
+	return;
+}
+
+static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int enable)
+{
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor currently %s, turning sensor %s\n", __func__, sensor_data->cdev.enabled? "on":"off", enable ? "on":"off");
+	if (enable && !sensor_data->cdev.enabled) {
+		if (!sensor_data->hw_enabled)
+			bmd101_hw_enable(1);
+		queue_delayed_work(sensor_data->bmd101_work_queue, &sensor_data->timeout_work, 300);		//queue timeout @5s	
+		sensor_data->cdev.enabled = 1;
+		
+		sensor_debug(DEBUG_INFO, "[bmd101] %s: bmd101_enable(%d)\n", __func__, sensor_data->cdev.enabled);
+	}
+	else if (!enable && sensor_data->cdev.enabled) {
+		if(delayed_work_pending(&sensor_data->timeout_work)) {
+			printk("[bmd101] timeout cancelled.\n");
+			cancel_delayed_work(&sensor_data->timeout_work);
+		}
+			
+		sensor_data->cdev.enabled = 0;
+		sensor_data->status = 0;
+		sensor_data->count = 0;
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bmd101_enable(%d)\n", __func__, sensor_data->cdev.enabled);
+	}
+	else
+		pr_err("[bmd101] %s : sensor is already %s\n", __func__, enable ? "enabled":"disabled");
+
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s ---\n", __func__);
+
+	return 0;
+}
+
+static void bmd101_timeout_work(struct work_struct *work) {
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: no contact detected. TIMEOUT!! \n", __func__);
+	bmd101_data_report(-1);
+	sensor_data->count = 0;
 }
 
 //ASUS_BSP +++ Maggie_Lee "Add ATD interface"
@@ -288,7 +329,7 @@ static ssize_t bmd101_store_bpm(struct device *dev, struct device_attribute *att
 	if ((strict_strtoul(buf, 10, &val) < 0))
 		return -EINVAL;
 
-	sensor_debug(DEBUG_INFO, "[bmd101] %s (%d)\n", __func__, (int)val);
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s (%d)\n", __func__, (int)val);
 
 	bmd101_data_filter((int)val);
 
@@ -296,10 +337,35 @@ static ssize_t bmd101_store_bpm(struct device *dev, struct device_attribute *att
 }
 static DEVICE_ATTR(bpm, S_IWUSR | S_IRUGO, bmd101_show_bpm, bmd101_store_bpm);
 
+static int bmd101_show_hw_enable (struct device *dev, struct device_attribute *attr, char *buf)
+{
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] sensor hw_enabled = %d\n",sensor_data->hw_enabled);
+	return sprintf(buf, "%d\n", sensor_data->hw_enabled);
+}
+
+static ssize_t bmd101_store_hw_enable(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if ((strict_strtoul(buf, 10, &val) < 0) ||(val > 1))
+		return -EINVAL;
+
+	sensor_debug(DEBUG_INFO, "[bmd101] %s (%d)\n", __func__, (int)val);
+
+	bmd101_hw_enable((int)val);
+
+	return size;
+}
+static DEVICE_ATTR(hw_enable, S_IWUSR | S_IRUGO, bmd101_show_hw_enable, bmd101_store_hw_enable);
+
 static struct attribute *bmd101_attributes[] = {
 	&dev_attr_status.attr,			//atd interface
-	&dev_attr_esd.attr,				//esd interface
 	&dev_attr_bpm.attr,
+	#ifndef ASUS_USER_BUILD
+	&dev_attr_esd.attr,				//esd interface
+	&dev_attr_hw_enable.attr,		//sensor hw enable/disable interface
+	#endif
+
 	NULL
 };
 
@@ -311,9 +377,9 @@ void notify_ecg_sensor_lowpowermode(int low)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low)
-		bmd101_enable_set(&sensor_data->cdev, 0);
+		bmd101_hw_enable(0);
 	else
-		bmd101_enable_set(&sensor_data->cdev, 1);
+		bmd101_hw_enable(1);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: --- : (%s)\n", __func__, low?"enter":"exit");
 }
 
@@ -383,10 +449,14 @@ static int bmd101_probe(struct platform_device *pdev)
 	}
 	sensor_data->esd = 0;
 	sensor_data->bpm = 0;
+	sensor_data->hw_enabled = 0;
 	sensor_data->cdev = bmd101_cdev;
 	sensor_data->cdev.enabled = 0;
 	sensor_data->cdev.sensors_enable = bmd101_enable_set;
 	mutex_init(&sensor_data->lock);
+	
+   	sensor_data->bmd101_work_queue = create_workqueue("BMD101_wq");
+	INIT_DELAYED_WORK(&sensor_data->timeout_work, bmd101_timeout_work);
 	
 	ret = sensors_classdev_register(&pdev->dev, &sensor_data->cdev);
 	if (ret) {
@@ -420,7 +490,7 @@ static int bmd101_probe(struct platform_device *pdev)
 		pr_err("%s: regulator_set_voltage of 8921_l28 failed(%d)\n", __func__, ret);
 		goto reg_put_LDO28;
     	}
-	
+
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 
 	return 0;
