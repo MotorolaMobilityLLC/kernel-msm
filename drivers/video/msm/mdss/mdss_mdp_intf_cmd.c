@@ -510,6 +510,8 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
 						rc, ctl->num);
 			rc = -EPERM;
+			mdss_mdp_ctl_intf_event(ctl,
+					MDSS_EVENT_PANEL_RESET, NULL);
 			mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);
 		} else {
 			rc = 0;

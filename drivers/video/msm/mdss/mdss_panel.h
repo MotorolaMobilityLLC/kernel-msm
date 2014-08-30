@@ -132,6 +132,7 @@ struct mdss_panel_recovery {
  *				event arguments can have one of these values:
  *				- 0: Disable ULPS mode
  *				- 1: Enable ULPS mode
+ * @MDSS_EVENT_PANEL_RESET:	Event to reset the display panel
  */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -151,6 +152,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_CMDLIST_KOFF,
 	MDSS_EVENT_ENABLE_PARTIAL_UPDATE,
 	MDSS_EVENT_DSI_ULPS_CTRL,
+	MDSS_EVENT_PANEL_RESET,
 };
 
 struct lcd_panel_info {

@@ -301,6 +301,8 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds low_fps_mode_on_cmds;
 	struct dsi_panel_cmds low_fps_mode_off_cmds;
 
+	struct dsi_panel_cmds panel_reset_cmds;
+
 	struct dcs_cmd_list cmdlist;
 	struct completion dma_comp;
 	struct completion mdp_comp;
@@ -363,6 +365,7 @@ void mdss_dsi_clk_deinit(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_dsi_enable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 void mdss_dsi_disable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable);
+void mdss_dsi_panel_reset_esd(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_phy_disable(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_phy_init(struct mdss_panel_data *pdata);
 void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base);
