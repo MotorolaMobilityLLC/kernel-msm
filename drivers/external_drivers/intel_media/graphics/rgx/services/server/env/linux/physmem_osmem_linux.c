@@ -149,7 +149,6 @@ _FreeOSPage(IMG_UINT32 ui32CPUCacheFlags,
 			IMG_BOOL bUnsetMemoryType,
 			IMG_BOOL bFreeToOS,
 			struct page *psPage);
- 
 typedef	struct
 {
 	/* Linkage for page pool LRU list */
@@ -638,7 +637,13 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
 			 IMG_BOOL bFlush,
 			 IMG_UINT32 uiOrder,
 			 IMG_BOOL *pbUnsetMemoryType,
-			 struct page **ppsPage)
+			 struct page **ppsPage
+#if defined (CONFIG_X86)
+			 ,
+			 struct page ***ppsPagesCacheChange,
+			 IMG_UINT32 *pAddrIndex
+#endif
+             )
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
 	IMG_BOOL bFromPagePool = IMG_FALSE;
@@ -676,49 +681,8 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
         EnableOOMKiller();
 
 #if defined (CONFIG_X86)
-		if (psPage != IMG_NULL)
-		{
-			/*
-				On X86 if we already have a mapping we need to change the mode of
-				current mapping before we map it ourselves
-			*/
-			pvPageVAddr = page_address(psPage);
-			if (pvPageVAddr != NULL)
-			{
-				int ret;
-
-				switch (ui32CPUCacheFlags)
-				{
-					case PVRSRV_MEMALLOCFLAG_CPU_UNCACHED:
-							ret = set_memory_uc((unsigned long)pvPageVAddr, 1);
-							if (ret)
-							{
-								eError = PVRSRV_ERROR_UNABLE_TO_SET_CACHE_MODE;
-								 __free_pages(psPage, uiOrder);
-								 psPage = IMG_NULL;
-							}
-							*pbUnsetMemoryType = IMG_TRUE;
-							break;
-
-					case PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE:
-							ret = set_memory_wc((unsigned long)pvPageVAddr, 1);
-							if (ret)
-							{
-								eError = PVRSRV_ERROR_UNABLE_TO_SET_CACHE_MODE;
-								 __free_pages(psPage, uiOrder);
-								psPage = IMG_NULL;
-							}
-							*pbUnsetMemoryType = IMG_TRUE;
-							break;
-
-					case PVRSRV_MEMALLOCFLAG_CPU_CACHED:
-							break;
-
-					default:
-							break;
-				}
-			}
-		}
+        (*ppsPagesCacheChange)[*pAddrIndex] = psPage;
+        (*pAddrIndex)++;
 #endif
 #if defined (CONFIG_ARM) || defined(CONFIG_ARM64) || defined (CONFIG_METAG)
 		/*
@@ -876,6 +840,12 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
     struct _PMR_OSPAGEARRAY_DATA_ *psPageArrayData = *ppsPageArrayDataPtr;
     struct page **ppsPageArray = psPageArrayData->pagearray;
 
+#if defined(CONFIG_X86)
+    struct page **ppsPagesCacheChange = kmalloc(sizeof(struct page *) * psPageArrayData->uiNumPages, GFP_KERNEL);
+    IMG_UINT32 addrIndex = 0;
+    int ret = 0;
+#endif
+
     unsigned int gfp_flags;
 
     PVR_ASSERT(!psPageArrayData->bHasOSPages);
@@ -923,7 +893,13 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
 							  psPageArrayData->bZero,
 							  uiOrder,
 							  &psPageArrayData->bUnsetMemoryType,
-							  &ppsPageArray[uiPageIndex]);
+							  &ppsPageArray[uiPageIndex]
+#if defined(CONFIG_X86)
+							  ,
+							  &ppsPagesCacheChange,
+							  &addrIndex
+#endif
+		                      );
 
         if (eError != PVRSRV_OK)
         {
@@ -973,6 +949,54 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
 #endif
     }
 
+
+#if defined(CONFIG_X86)
+	switch (ui32CPUCacheFlags)
+	{
+		case PVRSRV_MEMALLOCFLAG_CPU_UNCACHED:
+				ret = set_pages_array_uc(ppsPagesCacheChange, addrIndex);
+				if (ret)
+				{
+					eError = PVRSRV_ERROR_UNABLE_TO_SET_CACHE_MODE;
+					PVR_DPF((PVR_DBG_ERROR, "Setting Linux page caching mode to UC failed, returned %d", ret));
+				}
+				psPageArrayData->bUnsetMemoryType = IMG_TRUE;
+				break;
+
+		case PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE:
+				ret = set_pages_array_wc(ppsPagesCacheChange, addrIndex);
+				if (ret)
+				{
+					eError = PVRSRV_ERROR_UNABLE_TO_SET_CACHE_MODE;
+					PVR_DPF((PVR_DBG_ERROR, "Setting Linux page caching mode to WC failed, returned %d", ret));
+				}
+				psPageArrayData->bUnsetMemoryType = IMG_TRUE;
+				break;
+
+		case PVRSRV_MEMALLOCFLAG_CPU_CACHED:
+				break;
+
+		default:
+				break;
+	}
+
+	kfree(ppsPagesCacheChange);
+
+	if (ret)
+	{
+        for(uiPageIndex = 0;uiPageIndex < psPageArrayData->uiNumPages; uiPageIndex++)
+        {
+			_FreeOSPage(ui32CPUCacheFlags,
+						uiOrder,
+						psPageArrayData->bUnsetMemoryType,
+						IMG_FALSE,
+						ppsPageArray[uiPageIndex]);
+        }
+        goto e_freed_pages;
+	}
+
+#endif
+
     /* OS Pages have been allocated */
     psPageArrayData->bHasOSPages = IMG_TRUE;
 
@@ -1008,6 +1032,12 @@ _FreeOSPages(struct _PMR_OSPAGEARRAY_DATA_ *psPageArrayData)
     IMG_UINT32 uiOrder;
     IMG_UINT32 uiPageIndex;
     struct page **ppsPageArray;
+	IMG_BOOL bAddedToPool = IMG_FALSE;
+
+#if defined (CONFIG_X86)
+	IMG_UINT32 uiIndexPagesCacheChange = 0;
+	struct page **ppsPagesCacheChange = kmalloc(sizeof(struct page *) * psPageArrayData->uiNumPages, GFP_KERNEL);
+#endif
 
 	PVR_ASSERT(psPageArrayData->bHasOSPages);
 	g_ui32LiveAllocs--;
@@ -1043,13 +1073,61 @@ _FreeOSPages(struct _PMR_OSPAGEARRAY_DATA_ *psPageArrayData)
 #endif
 #endif
 
-		_FreeOSPage(psPageArrayData->ui32CPUCacheFlags,
-					uiOrder,
-					psPageArrayData->bUnsetMemoryType,
-					IMG_FALSE,
-					ppsPageArray[uiPageIndex]);
+		/* Only zero order pages can be managed in the pool */
+		if ((uiOrder == 0))
+		{
+			_PagePoolLock();
+			bAddedToPool = g_ui32PagePoolEntryCount < g_ui32PagePoolMaxEntries;
+			_PagePoolUnlock();
+
+			if (bAddedToPool)
+			{
+				if (!_AddEntryToPool(ppsPageArray[uiPageIndex], psPageArrayData->ui32CPUCacheFlags))
+				{
+					bAddedToPool = IMG_FALSE;
+				}
+			}
+		}
+
+		if (!bAddedToPool)
+		{
+#if defined(CONFIG_X86)
+			if (psPageArrayData->bUnsetMemoryType == IMG_TRUE)
+			{
+				/* Keeping track of the pages for which the caching needs to change */
+				ppsPagesCacheChange[uiIndexPagesCacheChange] = ppsPageArray[uiPageIndex];
+				uiIndexPagesCacheChange++;
+			}
+			else
+#endif
+			{
+				__free_pages(ppsPageArray[uiPageIndex], uiOrder);
+			}
+		}
 	}
 
+#if defined(CONFIG_X86)
+	if (uiIndexPagesCacheChange != 0)
+	{
+		int ret;
+		ret = set_pages_array_wb(ppsPagesCacheChange, uiIndexPagesCacheChange);
+
+		if (ret)
+		{
+			PVR_DPF((PVR_DBG_ERROR, "%s: Failed to reset page attribute", __FUNCTION__));
+		}
+
+		for (uiPageIndex = 0;
+			uiPageIndex < uiIndexPagesCacheChange;
+			uiPageIndex++)
+		{
+			__free_pages(ppsPagesCacheChange[uiPageIndex], uiOrder);
+		}
+	}
+
+	kfree(ppsPagesCacheChange);
+#endif
+ 
     eError = PVRSRV_OK;
 
     psPageArrayData->bHasOSPages = IMG_FALSE;
