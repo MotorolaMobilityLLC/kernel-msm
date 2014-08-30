@@ -541,6 +541,13 @@
 			status = "okay";
 		};
 	};
+	rpm-regulator-ldoa8{
+		status = "okay";
+		pm8226_l8: regulator-l8 {
+			regulator-always-on;
+			status="okay";
+		};
+	};
 	rpm-regulator-ldoa15 {
 		status = "okay";
 		pm8226_l15: regulator-l15 {
