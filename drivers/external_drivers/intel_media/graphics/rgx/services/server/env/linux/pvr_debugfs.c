@@ -362,16 +362,13 @@ int PVRDebugFSCreateEntry(const char *pszName,
 */ /**************************************************************************/
 void PVRDebugFSRemoveEntry(struct dentry *psEntry)
 {
-	if (psEntry)
+	/* Free any private data that was provided to debugfs_create_file() */
+	if (psEntry->d_inode->i_private != NULL)
 	{
-		/* Free any private data that was provided to debugfs_create_file() */
-		if (psEntry->d_inode->i_private != NULL)
-		{
-			kfree(psEntry->d_inode->i_private);
-		}
-
-		debugfs_remove(psEntry);
+		kfree(psEntry->d_inode->i_private);
 	}
+
+	debugfs_remove(psEntry);
 }
 
 /*************************************************************************/ /*!

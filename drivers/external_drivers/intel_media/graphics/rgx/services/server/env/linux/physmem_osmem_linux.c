@@ -47,8 +47,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "img_types.h"
 #include "pvr_debug.h"
 #include "pvrsrv_error.h"
-#include "dc_server.h"
-#include "dc_mrfld.h"
 #include "pvrsrv_memallocflags.h"
 
 /* services/server/include/ */
@@ -155,7 +153,6 @@ typedef	struct
 {
 	/* Linkage for page pool LRU list */
 	struct list_head sPagePoolItem;
-	IMG_BOOL bPageZero;
 
 	struct page *psPage;
 } LinuxPagePoolEntry;
@@ -164,11 +161,6 @@ typedef	struct
 static IMG_UINT32 g_ui32PagePoolEntryCount = 0;
 static IMG_UINT32 g_ui32PagePoolMaxEntries = PVR_LINUX_PYSMEM_MAX_POOL_PAGES;
 static IMG_UINT32 g_ui32LiveAllocs = 0;
-
-/* infomation about zeroed pages */
-static IMG_UINT32 g_ui32ZeroPageEntries = 0;
-/* this is a experience value, need adjust for performance */
-#define _PAGE_NEED_CLEAR ((g_ui32ZeroPageEntries & 3) == 0)
 
 /* Global structures we use to manage the page pool */
 static struct kmem_cache *g_psLinuxPagePoolCache = IMG_NULL;
@@ -231,20 +223,16 @@ _LinuxPagePoolEntryFree(LinuxPagePoolEntry *psPagePoolEntry)
 	kmem_cache_free(g_psLinuxPagePoolCache, psPagePoolEntry);
 }
 
-static IMG_VOID
-_ClearPage(LinuxPagePoolEntry *psPagePoolEntry)
-{
-        if (psPagePoolEntry->psPage) {
-                clear_highpage(psPagePoolEntry->psPage);
-                psPagePoolEntry->bPageZero = IMG_TRUE;
-        }
-}
-
 static inline IMG_BOOL
 _AddEntryToPool(struct page *psPage, IMG_UINT32 ui32CPUCacheFlags)
 {
 	LinuxPagePoolEntry *psEntry;
 	struct list_head *psPoolHead = IMG_NULL;
+
+	if (!_GetPoolListHead(ui32CPUCacheFlags, &psPoolHead))
+	{
+		return IMG_FALSE;
+	}
 
 	psEntry = _LinuxPagePoolEntryAlloc();
 	if (psEntry == NULL)
@@ -253,29 +241,8 @@ _AddEntryToPool(struct page *psPage, IMG_UINT32 ui32CPUCacheFlags)
 	}
 
 	psEntry->psPage = psPage;
-
-	/* select some pages to be cleared*/
-	if (_PAGE_NEED_CLEAR) {
-	        _ClearPage(psEntry);
-	}
-
 	_PagePoolLock();
-
-	if (!_GetPoolListHead(ui32CPUCacheFlags, &psPoolHead))
-	{
-		_PagePoolUnlock();
-		_LinuxPagePoolEntryFree(psEntry);
-		return IMG_FALSE;
-	}
-
-	/* zero pages locate at the begin, others at the end */
-	if (psEntry->bPageZero) {
-	        list_add(&psEntry->sPagePoolItem, psPoolHead);
-	        g_ui32ZeroPageEntries++;
-	} else {
-	        list_add_tail(&psEntry->sPagePoolItem, psPoolHead);
-	}
-
+	list_add_tail(&psEntry->sPagePoolItem, psPoolHead);
 	g_ui32PagePoolEntryCount++;
 	_PagePoolUnlock();
 
@@ -286,51 +253,35 @@ static inline void
 _RemoveEntryFromPoolUnlocked(LinuxPagePoolEntry *psPagePoolEntry)
 {
 	list_del(&psPagePoolEntry->sPagePoolItem);
-
-	if (psPagePoolEntry->bPageZero) {
-	        g_ui32ZeroPageEntries--;
-	}
-
 	g_ui32PagePoolEntryCount--;
 }
 
 static inline struct page *
-_RemoveFirstEntryFromPool(IMG_UINT32 ui32CPUCacheFlags, IMG_BOOL bFlush)
+_RemoveFirstEntryFromPool(IMG_UINT32 ui32CPUCacheFlags)
 {
 	LinuxPagePoolEntry *psPagePoolEntry;
-	struct page *psPage = NULL;
+	struct page *psPage;
 	struct list_head *psPoolHead = IMG_NULL;
-
-	_PagePoolLock();
 
 	if (!_GetPoolListHead(ui32CPUCacheFlags, &psPoolHead))
 	{
-		goto unlock_exit;
+		return NULL;
 	}
 
-	if (list_empty(psPoolHead) ||
-	        (bFlush && g_ui32ZeroPageEntries == 0))
+	_PagePoolLock();
+	if (list_empty(psPoolHead))
 	{
-		goto unlock_exit;
+		_PagePoolUnlock();
+		return NULL;
 	}
 
 	PVR_ASSERT(g_ui32PagePoolEntryCount > 0);
-	if (bFlush) {
-		psPagePoolEntry = list_first_entry(psPoolHead, LinuxPagePoolEntry, sPagePoolItem);
-		if (!psPagePoolEntry->bPageZero) {
-			/* we don't have zero pages at this list */
-			goto unlock_exit;
-		}
-	} else {
-	        psPagePoolEntry = list_entry(psPoolHead->prev, LinuxPagePoolEntry, sPagePoolItem);
-	}
-
+	psPagePoolEntry = list_first_entry(psPoolHead, LinuxPagePoolEntry, sPagePoolItem);
 	_RemoveEntryFromPoolUnlocked(psPagePoolEntry);
 	psPage = psPagePoolEntry->psPage;
 	_LinuxPagePoolEntryFree(psPagePoolEntry);
-
-unlock_exit:
 	_PagePoolUnlock();
+
 	return psPage;
 }
 
@@ -476,62 +427,7 @@ static void DisableOOMKiller(void)
 	current->flags |= PF_DUMPCORE;
 }
 
-static void _ResolveBufferPoolSize(void)
-{
-	IMG_UINT32 ui32DcDeviceCount = 0;
-	IMG_UINT32 ui32DcDeviceIndex = 0;
-	DC_DEVICE* psDcDevice = NULL;
-	IMG_UINT32 ui32NumPanels = 0;
-	PVRSRV_PANEL_INFO asPanelInfo;
-
-	// enum and retrieve primary DC.
-	if (PVRSRV_OK != DCDevicesEnumerate(1, &ui32DcDeviceCount, &ui32DcDeviceIndex))
-		return;
-
-	// acquire primary DC device.
-	if (PVRSRV_OK != DCDeviceAcquire(ui32DcDeviceIndex, &psDcDevice))
-		return;
-
-	if (PVRSRV_OK == DCPanelQuery(psDcDevice, 1, &ui32NumPanels, &asPanelInfo)){
-		IMG_UINT32 ui32Width = asPanelInfo.sSurfaceInfo.sDims.ui32Width;
-		IMG_UINT32 ui32Height = asPanelInfo.sSurfaceInfo.sDims.ui32Height;
-		IMG_UINT32 ui32Format = asPanelInfo.sSurfaceInfo.sFormat.ePixFormat;
-		IMG_UINT32 k = 10;
-		IMG_UINT32 ui32Bpp = 0;
-		IMG_UINT32 ui32SizeInPages = 0;
-
-		/*
-		 * refer to DC_MRFLD_Supported_PixelFormats[]
-		 */
-		switch (ui32Format) {
-		case IMG_PIXFMT_B5G6R5_UNORM:
-		case IMG_PIXFMT_YUV420_2PLANE:
-			ui32Bpp = 2;
-			break;
-		case IMG_PIXFMT_B8G8R8A8_UNORM:
-		default:
-			ui32Bpp = 4;
-			break;
-		}
-
-		/*
-		 * BufferPoolSizeInPage = k * w * h * Bpp / PAGE_SIZE
-		 * For example, a 1920x1080x32bpp screen will get:
-		 * 10 * 1920 * 1080 * 4 / 4096 = 20250 pages (~80M)
-		 */
-		ui32SizeInPages = k*ui32Width*ui32Height*ui32Bpp/PAGE_SIZE;
-		if (g_ui32PagePoolMaxEntries < ui32SizeInPages)
-			g_ui32PagePoolMaxEntries = ui32SizeInPages;
-
-		PVR_DPF((PVR_DBG_MESSAGE,
-				 "%s: ui32Width(%d), ui32Height(%d), ui32Bpp(%d), g_ui32PagePoolMaxEntries(%d).",
-				 __func__, ui32Width, ui32Height, ui32Bpp, g_ui32PagePoolMaxEntries));
-	}
-
-	DCDeviceRelease(psDcDevice);
-}
-
-static IMG_VOID _InitPagePool(IMG_VOID)
+static void _InitPagePool(void)
 {
 	IMG_UINT32 ui32Flags = 0;
 
@@ -539,9 +435,6 @@ static IMG_VOID _InitPagePool(IMG_VOID)
 #if defined(DEBUG_LINUX_SLAB_ALLOCATIONS)
 	ui32Flags |= SLAB_POISON|SLAB_RED_ZONE;
 #endif
-
-	// resolve buffer pool size dynamically.
-	_ResolveBufferPoolSize();
 	g_psLinuxPagePoolCache = kmem_cache_create("img-pp", sizeof(LinuxPagePoolEntry), 0, ui32Flags, NULL);
 
 #if defined(PHYSMEM_SUPPORTS_SHRINKER)
@@ -744,6 +637,7 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
 			 unsigned int gfp_flags,
 			 IMG_BOOL bFlush,
 			 IMG_UINT32 uiOrder,
+			 IMG_BOOL *pbUnsetMemoryType,
 			 struct page **ppsPage)
 {
 	PVRSRV_ERROR eError = PVRSRV_OK;
@@ -751,11 +645,12 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
 	IMG_PVOID pvPageVAddr;
 	struct page *psPage = IMG_NULL;
 
+	*pbUnsetMemoryType = IMG_FALSE;
 
 	/* Does the requested page contiguity match the CPU page size? */
 	if (uiOrder == 0)
 	{
-		psPage = _RemoveFirstEntryFromPool(ui32CPUCacheFlags, bFlush);
+		psPage = _RemoveFirstEntryFromPool(ui32CPUCacheFlags);
 		if (psPage != IMG_NULL)
 		{
 			bFromPagePool = IMG_TRUE;
@@ -765,6 +660,7 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
 				it, we _must_ unset it in the case where the page pool was full
 				and thus we have to give the page back to the OS.
 			*/
+			*pbUnsetMemoryType = IMG_TRUE;
 		}
 	}
 
@@ -801,6 +697,7 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
 								 __free_pages(psPage, uiOrder);
 								 psPage = IMG_NULL;
 							}
+							*pbUnsetMemoryType = IMG_TRUE;
 							break;
 
 					case PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE:
@@ -811,6 +708,7 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
 								 __free_pages(psPage, uiOrder);
 								psPage = IMG_NULL;
 							}
+							*pbUnsetMemoryType = IMG_TRUE;
 							break;
 
 					case PVRSRV_MEMALLOCFLAG_CPU_CACHED:
@@ -820,11 +718,6 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
 							break;
 				}
 			}
-		}
-		else
-		{
-		        PVR_DPF((PVR_DBG_ERROR,"physmem_osmem_linux.c: OS refused the memory allocation for the pages.  Did you ask for too much?"));
-		        eError = PVRSRV_ERROR_PMR_FAILED_TO_ALLOC_PAGES;
 		}
 #endif
 #if defined (__arm__) || defined(__arm64__) || defined (__metag__)
@@ -868,15 +761,8 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
 			}
 			kunmap(psPage);
 		}
-		else
-		{
-		        PVR_DPF((PVR_DBG_ERROR, "physmem_osmem_linux.c: OS refused the memory allocation for the pages.  Did you ask for too much?"));
-		        eError = PVRSRV_ERROR_PMR_FAILED_TO_ALLOC_PAGES;
-		}
-
 #endif
 	}
-#if 0
 	else
 	{
 		/*
@@ -916,7 +802,6 @@ _AllocOSPage(IMG_UINT32 ui32CPUCacheFlags,
 			kunmap(psPage);
 		}
 	}
-#endif
 
 	if(IMG_NULL == (*ppsPage = psPage)){
 		return PVRSRV_ERROR_OUT_OF_MEMORY; 
@@ -963,7 +848,7 @@ _FreeOSPage(IMG_UINT32 ui32CPUCacheFlags,
 	{
 #if defined(CONFIG_X86)
 		pvPageVAddr = page_address(psPage);
-		if (pvPageVAddr && (bUnsetMemoryType == IMG_TRUE))
+		if (bUnsetMemoryType == IMG_TRUE)
 		{
 			int ret;
 
@@ -1006,7 +891,7 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
 
     gfp_flags = GFP_KERNEL | __GFP_NOWARN | __GFP_NOMEMALLOC;
 
-#if defined(CONFIG_X86_64)
+#if defined(CONFIG_X86)
     gfp_flags |= __GFP_DMA32;
 #else
     gfp_flags |= __GFP_HIGHMEM;
@@ -1015,13 +900,6 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
     if (psPageArrayData->bZero)
     {
         gfp_flags |= __GFP_ZERO;
-    }
-
-    psPageArrayData->bUnsetMemoryType = IMG_FALSE;
-    if(ui32CPUCacheFlags == PVRSRV_MEMALLOCFLAG_CPU_UNCACHED
-		||ui32CPUCacheFlags == PVRSRV_MEMALLOCFLAG_CPU_WRITE_COMBINE)
-    {
-         psPageArrayData->bUnsetMemoryType = IMG_TRUE;
     }
 
     /* Allocate pages one at a time.  Note that the _device_ memory
@@ -1044,6 +922,7 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
 							  gfp_flags,
 							  psPageArrayData->bZero,
 							  uiOrder,
+							  &psPageArrayData->bUnsetMemoryType,
 							  &ppsPageArray[uiPageIndex]);
 
         if (eError != PVRSRV_OK)
@@ -1053,7 +932,7 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
                      uiPageIndex,
                      psPageArrayData->uiNumPages,
                      PVRSRVGetErrorStringKM(eError)));
-            for(--uiPageIndex;(IMG_INT32)uiPageIndex >= 0;--uiPageIndex)
+            for(--uiPageIndex;uiPageIndex < psPageArrayData->uiNumPages;--uiPageIndex)
             {
 				_FreeOSPage(ui32CPUCacheFlags,
 							uiOrder,

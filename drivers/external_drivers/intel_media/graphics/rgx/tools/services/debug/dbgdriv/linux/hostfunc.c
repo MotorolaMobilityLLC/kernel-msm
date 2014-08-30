@@ -70,15 +70,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "hostfunc.h"
 #include "dbgdriv.h"
 
-#if (defined(DEBUG) || defined(PVRSRV_NEED_PVR_DPF)) && !defined(SUPPORT_DRM) 
-/* Added Call trace level to ensure  debug driver state messages appear */
-
-#if define(PVRSRV_NEED_PVR_DPF)
-IMG_UINT32      gPVRDebugLevel = (DBGPRIV_FATAL | DBGPRIV_ERROR | DBGPRIV_WARNING);
-#else
-IMG_UINT32	gPVRDebugLevel = (DBGPRIV_FATAL | DBGPRIV_ERROR | DBGPRIV_WARNING | DBGPRIV_CALLTRACE);
-/* Added call trace level to support PVR_LOGging of state in debug driver */
-#endif
+#if defined(PVRSRV_NEED_PVR_DPF) && !defined(SUPPORT_DRM)
+IMG_UINT32	gPVRDebugLevel = (DBGPRIV_FATAL | DBGPRIV_ERROR | DBGPRIV_WARNING |
+		DBGPRIV_CALLTRACE); /* Added call trace level to support PVR_LOGging of state in debug driver */
 
 #define PVR_STRING_TERMINATOR		'\0'
 #define PVR_IS_FILE_SEPARATOR(character) ( ((character) == '\\') || ((character) == '/') )

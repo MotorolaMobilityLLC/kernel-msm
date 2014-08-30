@@ -88,10 +88,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * a day to check for any missed clean-up. */
 #define CLEANUP_THREAD_WAIT_SLEEP_TIMEOUT 0x01B77400
 
-/*! Sleep time (1h) for Devices Watchdog thread when GPU is in power off state */
-#define DEVICES_WATCHDOG_POWER_OFF_SLEEP_TIMEOUT 60 * 60 * 1000
-
-#define DEVICES_WATCHDOG_POWER_ON_SLEEP_TIMEOUT  (10000)
 
 typedef struct DEBUG_REQUEST_ENTRY_TAG
 {

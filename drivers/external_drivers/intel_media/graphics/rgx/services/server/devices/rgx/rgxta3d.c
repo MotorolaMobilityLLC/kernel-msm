@@ -1366,11 +1366,6 @@ PVRSRV_ERROR RGXCreateFreeList(PVRSRV_DEVICE_NODE	*psDeviceNode,
 	/* Error handling */
 
 ErrorAllocBlock:
-	/* Remove freelists from list  */
-	OSLockAcquire(psDevInfo->hLockFreeList);
-	dllist_remove_node(&psFreeList->sNode);
-	OSLockRelease(psDevInfo->hLockFreeList);
-
 	RGXUnsetFirmwareAddress(psFWFreelistMemDesc);
 	DevmemFwFree(psFWFreelistMemDesc);
 

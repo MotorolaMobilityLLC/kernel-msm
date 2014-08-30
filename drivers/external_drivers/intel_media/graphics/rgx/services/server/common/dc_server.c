@@ -68,10 +68,6 @@ struct _DC_DISPLAY_CONTEXT_
 	IMG_UINT32		ui32ConfigsInFlight;
 	IMG_UINT32		ui32RefCount;
 	POS_LOCK		hLock;
-	/* mutual exclusion for the 3rd party Configure function which may
-	 * otherwise be called from MISR and the SCPFlush
-	 */ 
-	POS_LOCK		hConfigureLock;
 	IMG_UINT32		ui32TokenOut;
 	IMG_UINT32		ui32TokenIn;
 
@@ -81,9 +77,6 @@ struct _DC_DISPLAY_CONTEXT_
 	IMG_HANDLE		hMISR;
 	IMG_HANDLE		hDebugNotify;
 	IMG_PVOID		hTimer;
-	
-	IMG_BOOL		bPauseMISR;
-	DLLIST_NODE		sListNode;
 };
 
 struct _DC_DEVICE_
@@ -155,7 +148,6 @@ typedef struct _DC_CMD_COMP_DATA_
 	IMG_UINT32			ui32BufferCount;
 	DC_BUFFER			**apsBuffer;
 	IMG_UINT32			ui32Token;
-	IMG_BOOL			bDirectNullFlip;
 } DC_CMD_COMP_DATA;
 
 typedef struct _DC_BUFFER_PMR_DATA_
@@ -176,8 +168,6 @@ POS_LOCK g_hDCListLock;
 DC_DEVICE *g_psDCDeviceList;
 IMG_UINT32 g_ui32DCDeviceCount;
 IMG_UINT32 g_ui32DCNextIndex;
-static DLLIST_NODE g_sDisplayContextsList;
-
 
 #if defined(DC_DEBUG) && defined(REFCOUNT_DEBUG)
 #define DC_REFCOUNT_PRINT(fmt, ...)		\
@@ -274,9 +264,6 @@ static IMG_VOID _DCDisplayContextReleaseRef(DC_DISPLAY_CONTEXT *psDisplayContext
 		DC_DEVICE *psDevice = psDisplayContext->psDevice;
 
 		PVRSRVUnregisterDbgRequestNotify(psDisplayContext->hDebugNotify);
-	
-		dllist_remove_node(&psDisplayContext->sListNode);
-		PVR_DPF((PVR_DBG_ERROR, "_DCDisplayContextReleaseRef: %p", psDisplayContext));
 
 		/* unregister the device from cmd complete notifications */
 		PVRSRVUnregisterCmdCompleteNotify(psDisplayContext->hCmdCompNotify);
@@ -286,7 +273,6 @@ static IMG_VOID _DCDisplayContextReleaseRef(DC_DISPLAY_CONTEXT *psDisplayContext
 		SCPDestroy(psDisplayContext->psSCPContext);
 		psDevice->psFuncTable->pfnContextDestroy(psDisplayContext->hDisplayContext);
 		_DCDeviceReleaseRef(psDevice);
-		OSLockDestroy(psDisplayContext->hConfigureLock);
 		OSLockDestroy(psDisplayContext->hLock);
 		OSFreeMem(psDisplayContext);
 	}
@@ -520,12 +506,6 @@ static IMG_VOID _DCDisplayContextConfigure(IMG_PVOID hReadyData,
 	}
 #endif /* DC_DEBUG */
 
-	/* 
-	 * Note: A risk exists that _DCDisplayContextConfigure may be called simultaneously
-	 *       from both SCPRun (MISR context) and DCDisplayContextFlush.
-	 *       This lock ensures no concurrent calls are made to pfnContextConfigure.
-	 */
-	OSLockAcquire(psDisplayContext->hConfigureLock);
 	/*
 		Note: We've already done all the acquire refs at
 		      DCDisplayContextConfigure time.
@@ -536,7 +516,6 @@ static IMG_VOID _DCDisplayContextConfigure(IMG_PVOID hReadyData,
 											   psReadyData->pahBuffer,
 											   psReadyData->ui32DisplayPeriod,
 											   hCompleteData);
-	OSLockRelease(psDisplayContext->hConfigureLock);
 }
 
 /*
@@ -558,10 +537,7 @@ static IMG_VOID _DCDisplayContextMISR(IMG_VOID *pvData)
 {
 	DC_DISPLAY_CONTEXT *psDisplayContext = pvData;
 
-	if ( !psDisplayContext->bPauseMISR )
-	{
-		SCPRun(psDisplayContext->psSCPContext);
-	}
+	SCPRun(psDisplayContext->psSCPContext);
 }
 
 /*
@@ -1216,7 +1192,6 @@ PVRSRV_ERROR DCDisplayContextCreate(DC_DEVICE *psDevice,
 	{
 		return PVRSRV_ERROR_OUT_OF_MEMORY;
 	}
-	PVR_DPF((PVR_DBG_ERROR, "DCDisplayContextCreate: %p", psDisplayContext));
 	psDisplayContext->psDevice = psDevice;
 	psDisplayContext->hDisplayContext = IMG_NULL;
 	psDisplayContext->ui32TokenOut = 0;
@@ -1225,18 +1200,11 @@ PVRSRV_ERROR DCDisplayContextCreate(DC_DEVICE *psDevice,
 	psDisplayContext->ui32ConfigsInFlight = 0;
 	psDisplayContext->bIssuedNullFlip = IMG_FALSE;
 	psDisplayContext->hTimer = IMG_NULL;
-	psDisplayContext->bPauseMISR = IMG_FALSE;
 
 	eError = OSLockCreate(&psDisplayContext->hLock, LOCK_TYPE_NONE);
 	if (eError != PVRSRV_OK)
 	{
 		goto FailLock;
-	}
-
-	eError = OSLockCreate(&psDisplayContext->hConfigureLock, LOCK_TYPE_NONE);
-	if(eError != PVRSRV_OK)
-	{
-		goto FailLock2;
 	}
 
 	/* Create a Software Command Processor with 4K CCB size. 
@@ -1292,9 +1260,6 @@ PVRSRV_ERROR DCDisplayContextCreate(DC_DEVICE *psDevice,
 	}
 
 	*ppsDisplayContext = psDisplayContext;
-	
-	/* store pointer to first/only display context, required for DCDisplayContextFlush */
-	dllist_add_to_tail(&g_sDisplayContextsList, &psDisplayContext->sListNode);
 
 	return PVRSRV_OK;
 
@@ -1304,12 +1269,9 @@ FailRegisterCmdComplete:
 	OSUninstallMISR(psDisplayContext->hMISR);
 FailMISR:
 	_DCDeviceReleaseRef(psDevice);
-	psDevice->psFuncTable->pfnContextDestroy(psDisplayContext->hDisplayContext);
 FailDCDeviceContext:
 	SCPDestroy(psDisplayContext->psSCPContext);
 FailSCP:
-	OSLockDestroy(psDisplayContext->hConfigureLock);
-FailLock2:
 	OSLockDestroy(psDisplayContext->hLock);
 FailLock:
 	OSFreeMem(psDisplayContext);
@@ -1362,148 +1324,6 @@ FailBufferArrayCreate:
 	PVR_ASSERT(eError != PVRSRV_OK);
 	return eError;
 }
-
-
-static IMG_BOOL _DCDisplayContextFlush( PDLLIST_NODE psNode, IMG_PVOID pvCallbackData )
-{
-	DC_CMD_RDY_DATA sReadyData;
-	DC_CMD_COMP_DATA sCompleteData;
-	
-	PVRSRV_ERROR eError = PVRSRV_OK;
-	PVRSRV_DATA *psData;
-	IMG_UINT32 ui32NumConfigsInSCP, ui32GoodRuns, ui32LoopCount;
-	
-	DC_DISPLAY_CONTEXT * psDisplayContext = IMG_CONTAINER_OF(psNode, DC_DISPLAY_CONTEXT, sListNode);
-	
-	PVR_UNREFERENCED_PARAMETER(pvCallbackData);
-
-	PVR_DPF((PVR_DBG_ERROR, "_DCDisplayContextFlush: Display Context: %p", psDisplayContext));
-
-	/* Make the NULL flip command data */
-	sReadyData.psDisplayContext = psDisplayContext;
-	sReadyData.ui32DisplayPeriod = 0;
-	sReadyData.ui32BufferCount = 0;
-	sReadyData.pasSurfAttrib = IMG_NULL;
-	sReadyData.pahBuffer = IMG_NULL;
-
-	sCompleteData.psDisplayContext = psDisplayContext;
-	sCompleteData.ui32BufferCount = 0;
-	sCompleteData.ui32Token = 0;
-	sCompleteData.bDirectNullFlip = IMG_TRUE;
-	
-	
-	/* Stop the MISR to stop the SCP from running outside of our control */
-	psDisplayContext->bPauseMISR = IMG_TRUE;
-
-	/* 
-	 * Flush loop control:
-	 * take the total number of Configs owned by the SCP including those 
-	 * "in-flight" with the DC, then multiply by 2 to account for any padding 
-	 * commands in the SCP buffer
-	 */
-	ui32NumConfigsInSCP = psDisplayContext->ui32TokenOut - psDisplayContext->ui32TokenIn;
-	ui32NumConfigsInSCP *= 2;
-	ui32GoodRuns = 0;
-	ui32LoopCount = 0;
-		
-	/* 
-	 * Calling SCPRun first, ensures that any call to SCPRun from the MISR
-	 * context completes before we insert any NULL flush direct to the DC.
-	 * SCPRun returns PVRSRV_OK if the run command (Configure) executes OR there
-	 * is no work to do OR it consumes a padding command.
-	 * By counting a "good" SCPRun for each of the ui32NumConfigsInSCP we ensure
-	 * that all Configs currently in the SCP are flushed to the DC.
-	 *
-	 * In the case where we fail dependencies (PVRSRV_ERROR_FAILED_DEPENDENCIES)
-	 * but there are outstanding ui32ConfigsInFlight that may satisfy them,
-	 * we just loop and try again.
-	 * In the case where there is still work to do but the DC is full
-	 * (PVRSRV_ERROR_NOT_READY) we just loop and try again
-	 * 
-	 * During a flush, NULL flips may be inserted if waiting for the 3D (not
-	 * actually deadlocked), but this should be benign
-	 */
-	while ( ui32GoodRuns < ui32NumConfigsInSCP && ui32LoopCount < 500 )
-	{
-		PVR_DPF((PVR_DBG_ERROR, "ui32GoodRuns: %u, ui32NumConfigsInSCP: %u, ui32ConfigsInFlight: %u ui32LoopCount: %u",
-										ui32GoodRuns,
-										ui32NumConfigsInSCP,
-										psDisplayContext->ui32ConfigsInFlight,
-										ui32LoopCount));
-		eError = SCPRun( psDisplayContext->psSCPContext );
-
-		PVR_DPF((PVR_DBG_ERROR, "SCPRun returned %u", eError));
-		
-		if ( 0 == ui32LoopCount && PVRSRV_ERROR_FAILED_DEPENDENCIES != eError && 1 != psDisplayContext->ui32ConfigsInFlight )
-		{
-			PVR_DPF((PVR_DBG_ERROR, "DCDisplayContextFlush: called when not required"));
-		}
-		
-		if ( PVRSRV_OK == eError )
-		{
-			ui32GoodRuns++;
-		}
-		else if ( PVRSRV_ERROR_FAILED_DEPENDENCIES == eError && 1 == psDisplayContext->ui32ConfigsInFlight )
-		{
-			PVR_DPF((PVR_DBG_ERROR, "DCDisplayContextFlush: inserting NULL flip"));
-
-			/* Check if we need to do any CPU cache operations before sending the NULL flip */
-			psData = PVRSRVGetPVRSRVData();
-			OSCPUOperation(psData->uiCacheOp);
-			psData->uiCacheOp = PVRSRV_CACHE_OP_NONE;
-			
-			/* The next Config may be dependent on the single Config currently in the DC */
-			/* Issue a NULL flip to free it */
-			_DCDisplayContextAcquireRef(psDisplayContext);
-			_DCDisplayContextConfigure( (IMG_PVOID)&sReadyData, (IMG_PVOID)&sCompleteData );			
-		}
-		
-		/* Give up the timeslice to let something happen */
-		OSSleepms(1);
-		ui32LoopCount++;
-	}
-	
-	if ( ui32LoopCount >= 500 )
-	{
-		PVR_DPF((PVR_DBG_ERROR, "DCDisplayContextFlush: Failed to flush after > 500 milliseconds"));
-	}
-
-	PVR_DPF((PVR_DBG_ERROR, "DCDisplayContextFlush: inserting NULL flip"));
-	
-	/* Check if we need to do any CPU cache operations before sending the NULL flip */
-	psData = PVRSRVGetPVRSRVData();
-	OSCPUOperation(psData->uiCacheOp);
-	psData->uiCacheOp = PVRSRV_CACHE_OP_NONE;
-
-	/* The next Config may be dependent on the single Config currently in the DC */
-	/* Issue a NULL flip to free it */
-	_DCDisplayContextAcquireRef(psDisplayContext);
-	_DCDisplayContextConfigure( (IMG_PVOID)&sReadyData, (IMG_PVOID)&sCompleteData );
-
-	/* re-enable the MISR/SCP */
-	psDisplayContext->bPauseMISR = IMG_FALSE;
-	
-	return IMG_TRUE;
-}
-
-
-PVRSRV_ERROR DCDisplayContextFlush( IMG_VOID )
-{	
-	PVRSRV_ERROR eError = PVRSRV_OK;
-	
-	if ( !dllist_is_empty(&g_sDisplayContextsList) )
-	{
-		dllist_foreach_node(&g_sDisplayContextsList, _DCDisplayContextFlush, IMG_NULL);
-	}
-	else
-	{
-		PVR_DPF((PVR_DBG_ERROR, "DCDisplayContextFlush: No display contexts found"));
-		eError = PVRSRV_ERROR_INVALID_PARAMS;
-	}
-		
-	return eError;
-}
-
 
 PVRSRV_ERROR DCDisplayContextConfigure(DC_DISPLAY_CONTEXT *psDisplayContext,
 									   IMG_UINT32 ui32PipeCount,
@@ -1562,6 +1382,20 @@ PVRSRV_ERROR DCDisplayContextConfigure(DC_DISPLAY_CONTEXT *psDisplayContext,
 		if (eError != PVRSRV_OK)
 		{
 			goto FailBufferArrayCreate;
+		}
+	
+		/* Do we need to check if this is valid config? */
+		if (psDevice->psFuncTable->pfnContextConfigureCheck)
+		{
+	
+			eError = psDevice->psFuncTable->pfnContextConfigureCheck(psDisplayContext->hDisplayContext,
+																	ui32PipeCount,
+																	pasSurfAttrib,
+																	ahBuffers);
+			if (eError != PVRSRV_OK)
+			{
+				goto FailConfigCheck;
+			}
 		}
 	
 		/* Map all the buffers that are going to be used */
@@ -1628,20 +1462,6 @@ PVRSRV_ERROR DCDisplayContextConfigure(DC_DISPLAY_CONTEXT *psDisplayContext,
 	/* Copy over device buffer handle buffer array */
 	if (ui32PipeCount != 0)
 	{
-		/* Do we need to check if this is valid config? */
-		if (psDevice->psFuncTable->pfnContextConfigureCheck)
-		{
-	
-			eError = psDevice->psFuncTable->pfnContextConfigureCheck(psDisplayContext->hDisplayContext,
-																	ui32PipeCount,
-																	pasSurfAttrib,
-																	ahBuffers);
-			if (eError != PVRSRV_OK)
-			{
-				goto FailConfigCheck;
-			}
-		}
-	
 		psReadyData->pahBuffer = (IMG_HANDLE)pui8ReadyData;
 		ui32CopySize = sizeof(IMG_HANDLE) * ui32PipeCount;
 		OSMemCopy(psReadyData->pahBuffer, ahBuffers, ui32CopySize);
@@ -1660,7 +1480,6 @@ PVRSRV_ERROR DCDisplayContextConfigure(DC_DISPLAY_CONTEXT *psDisplayContext,
 	psCompleteData->psDisplayContext = psDisplayContext;
 	psCompleteData->ui32Token = psDisplayContext->ui32TokenOut++;
 	psCompleteData->ui32BufferCount = ui32PipeCount;
-	psCompleteData->bDirectNullFlip = IMG_FALSE;
 
 	if (ui32PipeCount != 0)
 	{
@@ -1692,7 +1511,6 @@ PVRSRV_ERROR DCDisplayContextConfigure(DC_DISPLAY_CONTEXT *psDisplayContext,
 
 	return PVRSRV_OK;
 
-FailConfigCheck:
 FailCommandAlloc:
 FailMapBuffer:
 	if (ui32PipeCount != 0)
@@ -1701,6 +1519,10 @@ FailMapBuffer:
 		{
 			_DCBufferUnmap(papsBuffers[i]);
 		}
+	}
+FailConfigCheck:
+	if (ui32PipeCount != 0)
+	{
 		_DCDeviceBufferArrayDestroy(ahBuffers);
 	}
 FailBufferArrayCreate:
@@ -2150,7 +1972,7 @@ IMG_VOID DCDisplayConfigurationRetired(IMG_HANDLE hConfigData)
 
 	DC_DEBUG_PRINT("DCDisplayConfigurationRetired: Command (%d) received", psData->ui32Token);
 	/* Sanity check */
-	if (!psData->bDirectNullFlip && psData->ui32Token != psDisplayContext->ui32TokenIn)
+	if (psData->ui32Token != psDisplayContext->ui32TokenIn)
 	{
 		PVR_DPF((PVR_DBG_ERROR,
 				"Display config retired in unexpected order (was %d, expecting %d)",
@@ -2159,10 +1981,7 @@ IMG_VOID DCDisplayConfigurationRetired(IMG_HANDLE hConfigData)
 	}
 
 	OSLockAcquire(psDisplayContext->hLock);
-	if ( !psData->bDirectNullFlip )
-	{
-		psDisplayContext->ui32TokenIn++;
-	}
+	psDisplayContext->ui32TokenIn++;
 
 #if defined SUPPORT_DC_COMPLETE_TIMEOUT_DEBUG
 	if (psDisplayContext->hTimer)
@@ -2293,7 +2112,6 @@ PVRSRV_ERROR DCInit()
 {
 	g_psDCDeviceList = IMG_NULL;
 	g_ui32DCNextIndex = 0;
-	dllist_init(&g_sDisplayContextsList);
 	return OSLockCreate(&g_hDCListLock, LOCK_TYPE_NONE);
 }
 

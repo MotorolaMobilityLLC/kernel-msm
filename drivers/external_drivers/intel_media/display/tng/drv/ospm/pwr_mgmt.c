@@ -585,7 +585,7 @@ void ospm_power_init(struct drm_device *dev)
 	intel_media_early_suspend_init(dev);
 #endif
 	intel_media_early_suspend_sysfs_init(dev);
-	//dc_maxfifo_init(dev);
+	dc_maxfifo_init(dev);
 	rtpm_init(dev);
 out_err:
 	return;

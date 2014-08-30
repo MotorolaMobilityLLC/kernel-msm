@@ -58,7 +58,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgxapi_km.h"
 
 #include "process_stats.h"
-#include "dfrgx_interface.h"
 
 extern IMG_UINT32 g_ui32HostSampleIRQCount;
 
@@ -436,7 +435,7 @@ static PVRSRV_ERROR RGXStart(PVRSRV_RGXDEV_INFO	*psDevInfo, PVRSRV_DEVICE_CONFIG
 	 * Initialise SLC.
 	 */
 #if !defined(SUPPORT_SHARED_SLC)	
-	//RGX_INIT_SLC(psDevInfo);
+	RGX_INIT_SLC(psDevInfo);
 #endif
 
 #if !defined(SUPPORT_META_SLAVE_BOOT)
@@ -569,7 +568,6 @@ static PVRSRV_ERROR RGXStop(PVRSRV_RGXDEV_INFO	*psDevInfo)
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR,"RGXStop: RGXRunScript failed (%d)", eError));
-		panic("RGXStop() fiailed");
 		return eError;
 	}
 
@@ -758,8 +756,6 @@ PVRSRV_ERROR RGXPrePowerState (IMG_HANDLE				hDevHandle,
 					IMG_UINT64 ui64CRTimeStamp = RGXReadHWTimerReg(psDevInfo);
 					IMG_UINT64 ui64OSTimeStamp = OSClockus64();
 
-					psDevInfo->bIgnoreFurtherIRQs = IMG_TRUE;
-
 					/* Add two entries to the GPU utilisation FWCB (current CR timestamp and current OS timestamp)
 					 * so that RGXGetGpuUtilStats() can link a power-on period to a previous power-off period (this one) */
 					_RGXFWCBEntryAdd(psDeviceNode, ui64CRTimeStamp, RGXFWIF_GPU_UTIL_FWCB_TYPE_END_CRTIME);
@@ -771,9 +767,7 @@ PVRSRV_ERROR RGXPrePowerState (IMG_HANDLE				hDevHandle,
 						PVR_DPF((PVR_DBG_ERROR,"RGXPrePowerState: RGXStop failed (%s)", PVRSRVGetErrorStringKM(eError)));
 						eError = PVRSRV_ERROR_DEVICE_POWER_CHANGE_FAILURE;
 					}
-
-					/*Report dfrgx We have the device OFF*/
-					dfrgx_interface_power_state_set(0);
+					psDevInfo->bIgnoreFurtherIRQs = IMG_TRUE;
 				}
 			}
 			else
@@ -835,15 +829,11 @@ PVRSRV_ERROR RGXPostPowerState (IMG_HANDLE				hDevHandle,
 			if (eError != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR,"RGXPostPowerState: RGXStart failed"));
-				panic("RGXStart() failed");
 				return eError;
 			}
 
 			/* Coming up from off, re-allow RGX interrupts.  */
 			psDevInfo->bIgnoreFurtherIRQs = IMG_FALSE;
-
-			/*Report dfrgx We have the device back ON*/
-			dfrgx_interface_power_state_set(1);
 
 		}
 	}
@@ -967,8 +957,6 @@ PVRSRV_ERROR RGXPreClockSpeedChange (IMG_HANDLE				hDevHandle,
 			/* Populate DVFS history entry */
 			psDevInfo->psGpuDVFSHistory->aui32DVFSClockCB[psDevInfo->psGpuDVFSHistory->ui32CurrentDVFSId] = 0;
 		}
-	} else {
-	        eError = PVRSRV_ERROR_UNKNOWN_POWER_STATE;
 	}
 
 	return eError;

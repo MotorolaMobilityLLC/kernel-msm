@@ -1453,32 +1453,6 @@ DCDisplayContextConfigure_exit:
 }
 
 static IMG_INT
-PVRSRVBridgeDCDisplayContextFlush(IMG_UINT32 ui32BridgeID,
-					 PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTFLUSH *psDCDisplayContextFlushIN,
-					 PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTFLUSH *psDCDisplayContextFlushOUT,
-					 CONNECTION_DATA *psConnection)
-
-{
-#if 0
-	IMG_HANDLE hDisplayContextInt2 = IMG_NULL;
-#endif
-
-	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTFLUSH);
-
-	psDCDisplayContextFlushOUT->eError = DCDisplayContextFlush();
-
-	/* Exit early if bridged call fails */
-	if(psDCDisplayContextFlushOUT->eError != PVRSRV_OK)
-	{
-		goto DCDisplayContextFlush_exit;
-	}
-
-DCDisplayContextFlush_exit:
-
-	return 0;
-}
-
-static IMG_INT
 PVRSRVBridgeDCDisplayContextDestroy(IMG_UINT32 ui32BridgeID,
 					 PVRSRV_BRIDGE_IN_DCDISPLAYCONTEXTDESTROY *psDCDisplayContextDestroyIN,
 					 PVRSRV_BRIDGE_OUT_DCDISPLAYCONTEXTDESTROY *psDCDisplayContextDestroyOUT,
@@ -2139,6 +2113,7 @@ DCBufferRelease_exit:
 }
 
 
+
 /* *************************************************************************** 
  * Server bridge dispatch related glue 
  */
@@ -2177,7 +2152,7 @@ PVRSRV_ERROR RegisterDCFunctions(IMG_VOID)
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERUNPIN, PVRSRVBridgeDCBufferUnpin);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERACQUIRE, PVRSRVBridgeDCBufferAcquire);
 	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCBUFFERRELEASE, PVRSRVBridgeDCBufferRelease);
-	SetDispatchTableEntry(PVRSRV_BRIDGE_DC_DCDISPLAYCONTEXTFLUSH, PVRSRVBridgeDCDisplayContextFlush);
+
 	return PVRSRV_OK;
 }
 

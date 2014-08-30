@@ -133,12 +133,6 @@ static void init_pvr_pool(void)
 	/* Reserve space in the vmalloc vm range */
 	tmp_area = __get_vm_area(POOL_SIZE, VM_ALLOC,
 			VMALLOC_START, VMALLOC_END);
-	if (!tmp_area) {
-	        printk(KERN_ERR "%s:get vm area failed\n",
-	                        __func__);
-	        return ;
-	}
-
 	pool_start = tmp_area->addr;
 
 	if (!pool_start) {
@@ -680,7 +674,7 @@ IMG_CHAR *OSGetCurrentProcessNameKM(void)
 @Description    Returns ID for current thread
 @Return         ID of current thread
 *****************************************************************************/
-IMG_PID OSGetCurrentThreadIDKM(IMG_VOID)
+IMG_UINTPTR_T OSGetCurrentThreadIDKM(void)
 {
 	if (in_interrupt())
 	{
@@ -1957,12 +1951,6 @@ void OSAcquireBridgeLock(void)
 void OSReleaseBridgeLock(void)
 {
 	mutex_unlock(&gPVRSRVLock);
-}
-
-IMG_BOOL
-OSTryAcquireBridgeLock(IMG_VOID)
-{
-        return mutex_trylock(&gPVRSRVLock);
 }
 
 

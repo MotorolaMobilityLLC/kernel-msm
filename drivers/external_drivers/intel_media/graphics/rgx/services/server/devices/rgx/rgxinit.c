@@ -77,7 +77,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "rgxta3d.h"
 #include "debug_request_ids.h"
-#include "pwr_mgmt.h"
 
 static PVRSRV_ERROR RGXDevInitCompatCheck(PVRSRV_DEVICE_NODE *psDeviceNode, IMG_UINT32 ui32ClientBuildOptions);
 static PVRSRV_ERROR RGXDevVersionString(PVRSRV_DEVICE_NODE *psDeviceNode, IMG_CHAR **ppszVersionString);
@@ -125,9 +124,6 @@ static IMG_BOOL RGX_LISRHandler (IMG_VOID *pvData)
 	PVRSRV_RGXDEV_INFO *psDevInfo;
 	IMG_UINT32 ui32IRQStatus;
 	IMG_BOOL bInterruptProcessed = IMG_FALSE;
-
-	if (!ospm_power_is_hw_on(OSPM_GRAPHICS_ISLAND))
-		return bInterruptProcessed;
 
 	psDeviceNode = pvData;
 	psDevConfig = psDeviceNode->psDevConfig;
@@ -204,6 +200,7 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 	IMG_UINT32				ui32Remainder;
 	RGXFWIF_GPU_UTIL_STATS	sRet;
 	PVRSRV_DEV_POWER_STATE  ePowerState;
+	PVRSRV_ERROR            eError;
 	IMG_UINT32 				ui32Type;
 	IMG_UINT32				ui32NextType;
 	
@@ -219,8 +216,11 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 	sRet.bIncompleteData	   = IMG_FALSE;
 
 	/* take the power lock as we might issue an OSReadHWReg64 below */
-	PVRSRVForcedPowerLock();
-
+	eError = PVRSRVPowerLock();
+	if (eError != PVRSRV_OK)
+	{
+		return sRet;
+	}
 
 	PVRSRVGetDevicePowerState(psDeviceNode->sDevId.ui32DeviceIndex, &ePowerState);
 	if (ePowerState != PVRSRV_DEV_POWER_STATE_ON)	/* GPU powered off */
@@ -277,7 +277,6 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 						/* CR timer value of current FW CB entry should always be smaller than in the next entry in the CB.
 						 * Also, a regular CRTIME entry should be followed by another CRTIME entry or by an END_CRTIME entry.
 						 * If these are not the cases, then we have a FW CB overlap. */
-						PVR_DPF((PVR_DBG_ERROR,"RGXGetGpuUtilStats: CB overlap\n"));
 						goto gpuutilstats_endloop;
 					}
 
@@ -295,29 +294,13 @@ static RGXFWIF_GPU_UTIL_STATS RGXGetGpuUtilStats(PVRSRV_DEVICE_NODE *psDeviceNod
 
 				case RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_OFF:
 
-					if(ui32NextType != RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_ON)
-					{
-					        /* CB overlap: The host has started the power-off sequence while still computing the GPU utilisation */
-					        PVR_DPF((PVR_DBG_ERROR,"RGXGetGpuUtilStats: CB overlap\n"));
-					        goto gpuutilstats_endloop;
-					}
-
 					/* Calculate the difference between OS timers at power-on/power-off transitions */
 					ui64Period = ui64CurrentTimer - RGXFWIF_GPU_UTIL_FWCB_ENTRY_OS_TIMER(ui64FWCbEntryCurrent);
 
 					break;
 
-				case RGXFWIF_GPU_UTIL_FWCB_TYPE_END_CRTIME:
-
-				        if(ui32NextType != RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_OFF)
-				        {
-				                /* CB overlap: The host has started the power-off sequence while still computing the GPU utilisation */
-				                PVR_DPF((PVR_DBG_ERROR,"RGXGetGpuUtilStats: CB overlap\n"));
-				                goto gpuutilstats_endloop;
-				        }
-				        /* 'break;' missing on purpose */
-
 				case RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_ON:
+				case RGXFWIF_GPU_UTIL_FWCB_TYPE_END_CRTIME:
 
 					/* Update "now" to the Timer of current entry */
 					if(ui32Type == RGXFWIF_GPU_UTIL_FWCB_TYPE_POWER_ON)
@@ -579,8 +562,6 @@ PVRSRV_ERROR PVRSRVRGXInitDevPart2KM (PVRSRV_DEVICE_NODE	*psDeviceNode,
 
 	/* Allocate DVFS History */
 	psDevInfo->psGpuDVFSHistory = OSAllocZMem(sizeof(*(psDevInfo->psGpuDVFSHistory)));
-	if (psDevInfo->psGpuDVFSHistory == IMG_NULL)
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
 
 	/* Reset DVFS history */
 	psDevInfo->psGpuDVFSHistory->ui32CurrentDVFSId = 0;

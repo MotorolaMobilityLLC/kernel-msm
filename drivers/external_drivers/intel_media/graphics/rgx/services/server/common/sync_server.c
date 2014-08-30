@@ -345,9 +345,9 @@ e4:
 	DevmemUnexport(psNewSyncBlk->psMemDesc, &psNewSyncBlk->sExportCookie);
 
 e3:
-	DevmemReleaseCpuVirtAddr(psNewSyncBlk->psMemDesc);
-e2:
 	psDevNode->pfnFreeUFOBlock(psDevNode, psNewSyncBlk->psMemDesc);
+e2:
+	DevmemReleaseCpuVirtAddr(psNewSyncBlk->psMemDesc);
 e1:
 	OSFreeMem(psNewSyncBlk);
 e0:

@@ -44,6 +44,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if !defined(__SYSINFO_H__)
 #define __SYSINFO_H__
 
+/*! Sleep time (1h) for Devices Watchdog thread when GPU is in power off state */
+#define DEVICES_WATCHDOG_POWER_OFF_SLEEP_TIMEOUT 60 * 60 * 1000
+#define DEVICES_WATCHDOG_POWER_ON_SLEEP_TIMEOUT  (10000)
+
 /*!< System specific poll/timeout details */
 #define MAX_HW_TIME_US                 (500000)
 #define FATAL_ERROR_DETECTION_POLL_MS  (10000)

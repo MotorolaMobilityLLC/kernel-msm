@@ -1571,19 +1571,11 @@ IMG_VOID RGXDumpDebugInfo(DUMPDEBUG_PRINTF_FUNC *pfnDumpDebugPrintf,
                           PVRSRV_RGXDEV_INFO	*psDevInfo)
 {
 	IMG_UINT32 i;
-	PVRSRV_ERROR eError;
-	eError = PVRSRVPowerLock();
-	if (eError != PVRSRV_OK)
-	{
-	        PVR_DPF((PVR_DBG_ERROR,"RGXDumpDebugInfo: Failed to acquire power lock"));
-	        return;
-	}
 
 	for(i=0;i<=DEBUG_REQUEST_VERBOSITY_MAX;i++)
 	{
 		RGXDebugRequestProcess(pfnDumpDebugPrintf, psDevInfo, i);
 	}
-	PVRSRVPowerUnlock();
 }
 
 

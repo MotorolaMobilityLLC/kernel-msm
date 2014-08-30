@@ -495,8 +495,6 @@ PVRSRV_ERROR PVRSRVDevicePostPowerStateKM(IMG_BOOL					bAllDevices,
  @Return	PVRSRV_ERROR
 
 ******************************************************************************/
-#define DEVICES_WATCHDOG_POWER_OFF_SLEEP_TIMEOUT 60 * 60 * 1000
-
 IMG_EXPORT
 PVRSRV_ERROR PVRSRVSetDevicePowerStateKM(IMG_UINT32				ui32DeviceIndex,
 										 PVRSRV_DEV_POWER_STATE	eNewPowerState,
