@@ -251,9 +251,13 @@ static void msm_restart_prepare(const char *cmd)
 			code = kstrtoul(cmd + 4, 16, &result) & 0xff;
 			printk("[msm_restart_prepare]: code: %lu, result: %lu\n",code,result);
 			__raw_writel(0x6f656d00 | result, restart_reason);
-		} else if (!strncmp(cmd, "edl", 3)) {
+		} 
+		#ifndef ASUS_USER_BUILD
+		else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
-		} else {
+		} 
+		#endif
+		else {
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
