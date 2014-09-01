@@ -1287,11 +1287,6 @@ typedef enum
 #define CFG_NEIGHBOR_INITIAL_FORCED_ROAM_TO_5GH_ENABLE_MAX       (1)
 #define CFG_NEIGHBOR_INITIAL_FORCED_ROAM_TO_5GH_ENABLE_DEFAULT   (0)
 
-#define CFG_NEIGHBOR_INITIAL_FORCED_ROAM_TO_5GH_RSSI_THRESHOLD_NAME      "gNeighborInitialForcedRoamTo5GhRssiDiff"
-#define CFG_NEIGHBOR_INITIAL_FORCED_ROAM_TO_5GH_RSSI_THRESHOLD_MIN       (5)
-#define CFG_NEIGHBOR_INITIAL_FORCED_ROAM_TO_5GH_RSSI_THRESHOLD_MAX       (50)
-#define CFG_NEIGHBOR_INITIAL_FORCED_ROAM_TO_5GH_RSSI_THRESHOLD_DEFAULT   (10)
-
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */
 
 #define CFG_QOS_WMM_BURST_SIZE_DEFN_NAME                        "burstSizeDefinition" 
@@ -2467,7 +2462,6 @@ typedef struct
    v_U16_t       nNeighborResultsRefreshPeriod;
    v_U16_t       nEmptyScanRefreshPeriod;
    v_U8_t        nNeighborInitialForcedRoamTo5GhEnable;
-   v_U8_t        nNeighborInitialForcedRoamTo5GhRssiDiff;
 #endif
 
    //Additional Handoff params

@@ -515,8 +515,7 @@ typedef struct tagCsrNeighborRoamConfig
     tANI_U8        nMaxNeighborRetries;
     tANI_U16       nNeighborResultsRefreshPeriod;
     tANI_U16       nEmptyScanRefreshPeriod;
-    tANI_U8        nNeighborInitialForcedRoamTo5GhEnable;//below RssiDiff will be meaningful only when enable is set to 1
-    tANI_U8        nNeighborInitialForcedRoamTo5GhRssiDiff;
+    tANI_U8        nNeighborInitialForcedRoamTo5GhEnable;
 }tCsrNeighborRoamConfig;
 #endif
 
