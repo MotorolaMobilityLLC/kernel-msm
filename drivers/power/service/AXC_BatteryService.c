@@ -2814,12 +2814,14 @@ static void AXC_BatteryService_onCableInOut(struct AXI_BatteryServiceFacade *bat
 			_this->gauge->notifyCableInOut(_this->gauge,false);
 			_this->BatteryService_IsCable = false ;
 
+#if 0
 			//Eason :when  low bat Cap draw large current  +++	 
 			if(10 <= _this->A66_capacity )
 			{
 				schedule_delayed_work(&_this->CableOffWorker,1*HZ);//keep 100% 5 min
 			}
 			//Eason :when  low bat Cap draw large current  ---
+#endif
 
 			//Eason cable in set alarm +++
 			spin_lock_irqsave(&cableIn_alarm_slock, cableInFlags);
