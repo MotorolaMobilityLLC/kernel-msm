@@ -511,7 +511,7 @@ static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc, in
 		/* Tilt to wake function */
 		acc->resume_state[RES_LIS3DSH_TIM4_1] = 0x00;
 		acc->resume_state[RES_LIS3DSH_TIM3_1] = 0x00;
-		acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0xC8;
+		acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0x32;
 		acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
 		acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x78;
 		acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
