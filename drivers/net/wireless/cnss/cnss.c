@@ -1571,6 +1571,8 @@ int cnss_get_sha_hash(const u8 *data, u32 data_len, u8 *hash_idx, u8 *out)
 	}
 
 	sg_init_one(&sg, data, data_len);
+	pr_err("QCOM:data_len:%d; sg_len:%d\n", data_len, sg.length);
+
 	ret = crypto_hash_digest(&desc, &sg, sg.length, out);
 	crypto_free_hash(desc.tfm);
 end:
