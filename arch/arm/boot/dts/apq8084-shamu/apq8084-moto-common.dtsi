@@ -669,6 +669,12 @@
 	};
 
 	mpp@a400 { /* MPP 5 */
+		/* BCM NFC WAKE */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,vin-sel = <2>;		/* PMA8084 S4 = 1.8V > 1.6V */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
 	mpp@a500 { /* MPP 6 */
