@@ -15,6 +15,8 @@
 #include "msm8226-memory.dtsi"
 #include "msm8226-qseecom.dtsi"
 #include "msm8226-720p-mtp.dtsi"
+/include/ "dsi-panel-mot-auo-720p-video.dtsi"
+/include/ "dsi-panel-mot-cmi-720p-video.dtsi"
 
 / {
 	model = "Motorola MSM 8226 Bigfoot";
@@ -34,4 +36,26 @@
 
 &sdhc_1 {
 	qcom,bus-speed-mode = "DDR_1p8v";
+};
+
+&mot_auo_720p_vid_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_cmi_720p_vid_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_cmi_720p_vid_v1 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_cmi_720p_vid_v2 {
+	qcom,cont-splash-enabled;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_auo_720p_vid_v0>;
+	/* vddio_disp-supply = <&vddio_disp_vreg>;
+	lcdbias-supply = <&tps65132>;*/
 };
