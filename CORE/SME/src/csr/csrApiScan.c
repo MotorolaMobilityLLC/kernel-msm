@@ -1651,7 +1651,7 @@ eHalStatus csrScanHandleSearchForSSID(tpAniSirGlobal pMac, tSmeCmd *pCommand)
             //notify LFR state m/c
             if(eHAL_STATUS_SUCCESS != csrNeighborRoamSssidScanDone(pMac, eHAL_STATUS_SUCCESS))
             {
-                csrNeighborRoamStartLfrScan(pMac);
+                csrNeighborRoamStartLfrScan(pMac, REASON_OS_REQUESTED_ROAMING_NOW);
             }
             status = eHAL_STATUS_SUCCESS;
             break;
@@ -1739,7 +1739,7 @@ eHalStatus csrScanHandleSearchForSSIDFailure(tpAniSirGlobal pMac, tSmeCmd *pComm
         //notify LFR state m/c
         if(eHAL_STATUS_SUCCESS != csrNeighborRoamSssidScanDone(pMac, eHAL_STATUS_FAILURE))
         {
-            csrNeighborRoamStartLfrScan(pMac);
+            csrNeighborRoamStartLfrScan(pMac, REASON_OS_REQUESTED_ROAMING_NOW);
         }
         return eHAL_STATUS_SUCCESS;
     }
@@ -2391,6 +2391,38 @@ eHalStatus csrScanFlushResult(tpAniSirGlobal pMac)
     csrLLScanPurgeResult( pMac, &pMac->scan.tempScanResults );
     csrLLScanPurgeResult( pMac, &pMac->scan.scanResultList );
     return( status );
+}
+
+eHalStatus csrScanFlushSelectiveResultForBand(tpAniSirGlobal pMac, v_BOOL_t flushP2P, tSirRFBand band)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tListElem *pEntry,*pFreeElem;
+    tCsrScanResult *pBssDesc;
+    tDblLinkList *pList = &pMac->scan.scanResultList;
+
+    csrLLLock(pList);
+
+    pEntry = csrLLPeekHead( pList, LL_ACCESS_NOLOCK );
+    while( pEntry != NULL)
+    {
+        pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+        if( (flushP2P == vos_mem_compare( pBssDesc->Result.ssId.ssId,
+                                         "DIRECT-", 7)) &&
+            (GetRFBand(pBssDesc->Result.BssDescriptor.channelId) == band)
+          )
+        {
+            pFreeElem = pEntry;
+            pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+            csrLLRemoveEntry(pList, pFreeElem, LL_ACCESS_NOLOCK);
+            csrFreeScanResultEntry( pMac, pBssDesc );
+            continue;
+        }
+        pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+    }
+
+    csrLLUnlock(pList);
+
+    return (status);
 }
 
 eHalStatus csrScanFlushSelectiveResult(tpAniSirGlobal pMac, v_BOOL_t flushP2P)

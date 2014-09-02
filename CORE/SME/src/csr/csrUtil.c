@@ -1435,10 +1435,13 @@ tANI_BOOLEAN csrIsSessionClientAndConnected(tpAniSirGlobal pMac, tANI_U8 session
     if ( CSR_IS_SESSION_VALID( pMac, sessionId) && csrIsConnStateInfra( pMac, sessionId))
     {
         pSession = CSR_GET_SESSION( pMac, sessionId);
-        if ((pSession->pCurRoamProfile->csrPersona == VOS_STA_MODE) ||
-           (pSession->pCurRoamProfile->csrPersona == VOS_P2P_CLIENT_MODE))
+        if (NULL != pSession->pCurRoamProfile)
         {
-           return TRUE;
+            if ((pSession->pCurRoamProfile->csrPersona == VOS_STA_MODE) ||
+                (pSession->pCurRoamProfile->csrPersona == VOS_P2P_CLIENT_MODE))
+            {
+                return TRUE;
+            }
         }
     }
     return FALSE;

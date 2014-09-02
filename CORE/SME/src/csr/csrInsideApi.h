@@ -487,6 +487,9 @@ eHalStatus csrScanFlushResult(tpAniSirGlobal);
 eHalStatus csrScanFilterResults(tpAniSirGlobal pMac);
 
 eHalStatus csrScanFlushSelectiveResult(tpAniSirGlobal, v_BOOL_t flushP2P);
+
+eHalStatus csrScanFlushSelectiveResultForBand(tpAniSirGlobal, v_BOOL_t flushP2P, tSirRFBand band);
+
 /* ---------------------------------------------------------------------------
     \fn csrScanBGScanGetParam
     \brief Returns the current background scan settings.
