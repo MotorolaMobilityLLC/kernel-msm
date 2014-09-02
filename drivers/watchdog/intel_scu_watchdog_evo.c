@@ -424,7 +424,7 @@ static long intel_scu_ioctl(struct file *file, unsigned int cmd,
 		watchdog_keepalive();
 		return 0;
 	case WDIOC_SETPRETIMEOUT:
-		pr_warn("%s: SetPreTimeout ioctl\n", __func__);
+		pr_warn("%s: SetPreTimeout ioctl is deprecated\n", __func__);
 
 		if (watchdog_device.started)
 			return -EBUSY;
@@ -438,13 +438,19 @@ static long intel_scu_ioctl(struct file *file, unsigned int cmd,
 	case WDIOC_SETTIMEOUT:
 		pr_warn("%s: SetTimeout ioctl\n", __func__);
 
-		if (watchdog_device.started)
-			return -EBUSY;
-
 		if (get_user(val, p))
 			return -EFAULT;
 
 		timeout = val;
+
+		if (check_timeouts(pre_timeout, timeout)) {
+			pr_warn("%s: Invalid thresholds\n",
+				__func__);
+			return -EINVAL;
+		}
+		if (watchdog_config_and_start(timeout, pre_timeout))
+			return -EINVAL;
+
 		return 0;
 	case WDIOC_GETTIMEOUT:
 		return put_user(timeout, p);
