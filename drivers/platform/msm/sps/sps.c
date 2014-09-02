@@ -519,7 +519,7 @@ const struct file_operations sps_bam_addr_ops = {
 
 static void sps_debugfs_init(void)
 {
-	debugfs_record_enabled = false;
+	debugfs_record_enabled = true;
 	logging_option = 0;
 	debug_level_option = 0;
 	print_limit_option = 0;
@@ -527,7 +527,7 @@ static void sps_debugfs_init(void)
 	testbus_sel = 0;
 	bam_pipe_sel = 0;
 	desc_option = 0;
-	debugfs_buf_size = 0;
+	debugfs_buf_size = PAGE_SIZE<<2;
 	debugfs_buf_used = 0;
 	wraparound = false;
 
@@ -603,6 +603,11 @@ static void sps_debugfs_init(void)
 		pr_err("sps:fail to create the file for debug_fs "
 			"bam_addr.\n");
 		goto bam_addr_err;
+	}
+	if (debugfs_record_enabled) {
+		debugfs_buf = kzalloc(sizeof(char) * debugfs_buf_size, GFP_KERNEL);
+		if (debugfs_buf == NULL)
+			debugfs_buf_size = 0;
 	}
 
 	return;
