@@ -501,6 +501,19 @@
 							"usbin-valid";
 			};
 		};
+
+		qcom,leds@1000 {
+			status = "ok";
+			reg = <0x1000 0x100>;
+			compatible = "qcom,leds-qpnp";
+			qcom,led_atc {
+				label = "atc";
+				linux,name = "charging";
+				qcom,max-current = <40>;
+				qcom,id = <9>;
+				qcom,mode = <2>;
+			};
+		};
 	};
 	qcom,pm8916@1 {
 		qcom,vibrator@c000 {
