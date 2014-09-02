@@ -300,6 +300,9 @@ extern void IDTP9023_RxTurnOffTx(void);
 
 bool g_already_read_bat_cap = false;
 static void read_bat_cap_work(struct work_struct *work);
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+extern int g_asus_CHG_mode;
+#endif
 
 //Hank: when update gauge need to disable charge+++
 extern bool DisChg;
@@ -3562,6 +3565,32 @@ extern int g_gauge_df_version;
 #define NO_RESERVE_DF_MAP_NUM	100
 //check df version do Cap remapping---
 
+static void write_battery_capacity(int cap)
+{
+	struct file *cfile;
+	mm_segment_t orgfs;
+	char bat_cap_str[14];
+	struct timespec mtNow;
+
+	mtNow = current_kernel_time();
+
+	orgfs = get_fs();
+	set_fs(KERNEL_DS);
+
+	cfile = filp_open("/data/data/bat_cap", O_CREAT | O_RDWR | O_SYNC, 0666);
+	if (!IS_ERR(cfile)){	
+		sprintf(bat_cap_str, "%3d%10ld", cap, mtNow.tv_sec);
+		printk("[BAT][Ser]save bat_cap: %s\n", bat_cap_str);
+		cfile->f_op->write(cfile, bat_cap_str, 13, &cfile->f_pos);
+		
+		if(filp_close(cfile, NULL)){
+			pr_err("[BAT][Ser] fail to close bat_cap cali file in %s()\n", __func__);	
+		}
+	}
+
+	set_fs (orgfs);
+	return;
+}
 
 static int init_battery_capacity(void)
 {
@@ -3584,9 +3613,22 @@ static int init_battery_capacity(void)
 		return -1;
 	}
 
+	if(g_asus_CHG_mode){
+		printk("[BAT][Ser] g_asus_CHG_mode = 1, don't read bat_cap\n");
+
+		if (filp_close(fd, NULL)){
+			pr_err("[BAT][Ser]fail to close battery capacity file in %s\n", __func__);
+		}
+	
+		write_battery_capacity(balance_this->A66_capacity);
+
+		set_fs(mmseg_fs);
+		g_already_read_bat_cap = true;
+		return 0;
+	}
+	
 	FileLength = fd->f_op->read(fd, bat_cap_str, 13, &fd->f_pos);
 	if (13 == FileLength) {
-		
 		if(bat_cap_str[1] == 0x20){
 			char bat_cap_int_temp = bat_cap_str[2];
 			bat_cap_int = (int)simple_strtol(&bat_cap_int_temp, NULL, 10);
@@ -3611,7 +3653,12 @@ static int init_battery_capacity(void)
 		}
 
 		if(mtNow.tv_sec - bat_cap_save_time < 259200){
-			if(bat_cap_int-10 > balance_this->A66_capacity){
+			if( (bat_cap_int-30 > balance_this->A66_capacity)
+				|| (bat_cap_int+30 < balance_this->A66_capacity))
+			{
+				printk("[BAT][ser] the difference is more than 30, don't apply bat_cap\n");
+			}
+			else if(bat_cap_int-10 > balance_this->A66_capacity){
 				balance_this->A66_capacity = bat_cap_int - 10;
 			}
 			else if(bat_cap_int+10 < balance_this->A66_capacity){
@@ -3645,33 +3692,6 @@ static void read_bat_cap_work(struct work_struct *work)
 
 	g_already_read_bat_cap = true;
 	return;		
-}
-
-static void write_battery_capacity(int cap)
-{
-	struct file *cfile;
-	mm_segment_t orgfs;
-	char bat_cap_str[14];
-	struct timespec mtNow;
-
-	mtNow = current_kernel_time();
-
-	orgfs = get_fs();
-	set_fs(KERNEL_DS);
-
-	cfile = filp_open("/data/data/bat_cap", O_CREAT | O_RDWR | O_SYNC, 0666);
-	if (!IS_ERR(cfile)){	
-		sprintf(bat_cap_str, "%3d%10ld", cap, mtNow.tv_sec);
-		printk("[BAT][Ser]save bat_cap: %s\n", bat_cap_str);
-		cfile->f_op->write(cfile, bat_cap_str, 13, &cfile->f_pos);
-		
-		if(filp_close(cfile, NULL)){
-			pr_err("[BAT][Ser] fail to close bat_cap cali file in %s()\n", __func__);	
-		}
-	}
-
-	set_fs (orgfs);
-	return;
 }
 
 //ASUS_BSP Eason read PM8226 register value+++

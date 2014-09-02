@@ -232,6 +232,7 @@ __setup("serialno=", set_serialno);
 //ASUS_BSP porting charger mode +++
 #if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
 int g_CHG_mode=0;
+int g_asus_CHG_mode = 0;
 static int set_chg_mode(char *str)
 {
        if ( strcmp("charger", str) == 0 )
@@ -242,7 +243,18 @@ static int set_chg_mode(char *str)
        {
                g_CHG_mode = 0;
        }
-       printk("JB charger mode = %d\n", g_CHG_mode);
+       printk("charger mode = %d\n", g_CHG_mode);
+       
+       if ( strcmp("asus_charger_mode", str) == 0 )
+       {
+               g_asus_CHG_mode = 1;
+       }
+       else
+       {
+               g_asus_CHG_mode = 0;
+       }
+       printk("g_asus_CHG_mode = %d\n", g_asus_CHG_mode);
+       
        return 0;
 }
 __setup("androidboot.mode=", set_chg_mode);
