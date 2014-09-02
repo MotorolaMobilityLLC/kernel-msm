@@ -475,7 +475,18 @@ static void log_store(int facility, int level,
 	else
 		lk_size += asus_print_time(local_clock(), lk_buf);
 
-    lk_size += snprintf(lk_buf + lk_size, max_record_size - lk_size, text);
+    /*  Put text in lk_buf, make sure the space is sufficient */
+    if (max_record_size - lk_size > text_len + 1){
+        memcpy(lk_buf + lk_size, text, text_len);
+        lk_size += text_len;
+        memcpy(lk_buf + lk_size, "\n", 1);
+        lk_size += 1;
+    } else {
+        memcpy(lk_buf + lk_size, text, max_record_size - lk_size - 1);
+        lk_size += max_record_size - lk_size - 1;
+        memcpy(lk_buf + lk_size, "\n", 1);
+        lk_size += 1;
+    }
 
     /* If there is no sufficient space for new record, wrap it around */
     if(lk_log_next_idx + lk_size > lk_log_buf_len)
