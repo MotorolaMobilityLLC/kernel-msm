@@ -168,7 +168,7 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 	}
 	else if (!strncmp(DSI_WRITE_CMD,cmd_buf,strlen(DSI_WRITE_CMD)))
 	{
-		char cmd_data[10];
+		char cmd_data[20];
 		unsigned int tmp1,tmp2;
 		int i;
 		int offset=0;
