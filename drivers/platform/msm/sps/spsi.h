@@ -22,7 +22,7 @@
 #include <linux/kernel.h>	/* pr_info() */
 #include <linux/compiler.h>
 #include <linux/ratelimit.h>
-
+#include <linux/sched.h>
 #include <mach/sps.h>
 
 #include "sps_map.h"
@@ -60,7 +60,7 @@ extern u8 print_limit_option;
 
 #define SPS_DEBUGFS(msg, args...) do {					\
 		char buf[MAX_MSG_LEN];		\
-		snprintf(buf, MAX_MSG_LEN, msg"\n", ##args);	\
+		snprintf(buf, MAX_MSG_LEN, "%llu:"msg"\n", sched_clock(), ##args); \
 		sps_debugfs_record(buf);	\
 	} while (0)
 #define SPS_ERR(msg, args...) do {					\

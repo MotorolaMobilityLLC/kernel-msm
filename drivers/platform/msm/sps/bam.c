@@ -594,9 +594,11 @@ enum bam_nonsecure_reset {
  */
 static inline u32 bam_read_reg(void *base, u32 offset)
 {
-	u32 val = ioread32(base + offset);
-	SPS_DBG("sps:bam 0x%x(va) read reg 0x%x r_val 0x%x.\n",
-			(u32) base, offset, val);
+	u32 val;
+	u64 time = sched_clock();
+	val = ioread32(base + offset);
+	SPS_DBG("sps:bam 0x%p(va) read reg 0x%x r_val 0x%x. time:%llu\n",
+		base, offset, val, time);
 	return val;
 }
 
@@ -612,11 +614,13 @@ static inline u32 bam_read_reg(void *base, u32 offset)
 static inline u32 bam_read_reg_field(void *base, u32 offset, const u32 mask)
 {
 	u32 shift = find_first_bit((void *)&mask, 32);
-	u32 val = ioread32(base + offset);
+	u64 time = sched_clock();
+	u32 val;
+	val = ioread32(base + offset);
 	val &= mask;		/* clear other bits */
 	val >>= shift;
-	SPS_DBG("sps:bam 0x%x(va) read reg 0x%x mask 0x%x r_val 0x%x.\n",
-			(u32) base, offset, mask, val);
+	SPS_DBG("sps:bam 0x%p(va) read reg 0x%x mask 0x%x r_val 0x%x.. time:%llu\n",
+		base, offset, mask, val, time);
 	return val;
 }
 
@@ -631,9 +635,10 @@ static inline u32 bam_read_reg_field(void *base, u32 offset, const u32 mask)
  */
 static inline void bam_write_reg(void *base, u32 offset, u32 val)
 {
+	u64 time = sched_clock();
 	iowrite32(val, base + offset);
-	SPS_DBG("sps:bam 0x%x(va) write reg 0x%x w_val 0x%x.\n",
-			(u32) base, offset, val);
+	SPS_DBG("sps:bam 0x%p(va) write reg 0x%x w_val 0x%x. time:%llu\n",
+		base, offset, val, time);
 }
 
 /**
@@ -649,13 +654,16 @@ static inline void bam_write_reg_field(void *base, u32 offset,
 				       const u32 mask, u32 val)
 {
 	u32 shift = find_first_bit((void *)&mask, 32);
-	u32 tmp = ioread32(base + offset);
+	u64 time = sched_clock();
+	u32 tmp;
+
+	tmp = ioread32(base + offset);
 
 	tmp &= ~mask;		/* clear written bits */
 	val = tmp | (val << shift);
 	iowrite32(val, base + offset);
-	SPS_DBG("sps:bam 0x%x(va) write reg 0x%x w_val 0x%x.\n",
-			(u32) base, offset, val);
+	SPS_DBG("sps:bam 0x%p(va) write reg 0x%x w_val 0x%x. time:%llu\n",
+		base, offset, val, time);
 }
 
 /**
