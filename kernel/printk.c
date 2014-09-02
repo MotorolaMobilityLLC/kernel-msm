@@ -2414,7 +2414,7 @@ MODULE_PARM_DESC(console_suspend, "suspend console during suspend"
  */
 void suspend_console(void)
 {
-	ASUSEvtlog("[UTS] System Suspend");
+	//ASUSEvtlog("[UTS] System Suspend");
 	suspend_in_progress = 1;
 	if (!console_suspend_enabled)
 		return;
@@ -2428,7 +2428,7 @@ void resume_console(void)
 {
 	int i;
 	suspend_in_progress = 0;
-	ASUSEvtlog("[UTS] System Resume");
+	//ASUSEvtlog("[UTS] System Resume");
 
 	if (pm_pwrcs_ret) {
 		ASUSEvtlog("[PM] Suspended for %d.%03d secs ", pwrcs_time/100,pwrcs_time % 100);
@@ -2441,11 +2441,6 @@ void resume_console(void)
 			for (i=0;i<gpio_irq_cnt;i++)
   				ASUSEvtlog("[PM] GPIO triggered: %d", gpio_resume_irq[i]);
 			gpio_irq_cnt=0; //clear log count.
-		}
-		if (gic_irq_cnt>0) {
-			for (i=0;i<gic_irq_cnt;i++)
-				ASUSEvtlog("[PM] IRQs triggered: %d", gic_resume_irq[i]);
-			gic_irq_cnt=0;  //clear log count.
 		}
 		pm_pwrcs_ret=0;
 	}
