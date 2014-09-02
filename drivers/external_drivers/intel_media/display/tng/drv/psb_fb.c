@@ -630,6 +630,7 @@ int psb_fbdev_destroy(struct drm_device *dev, struct psb_fbdev *fbdev)
 	if (fbdev->psb_fb_helper.fbdev) {
 		info = fbdev->psb_fb_helper.fbdev;
 		unregister_framebuffer(info);
+		memset(info->screen_base, 0x0, info->screen_size);
 		iounmap(info->screen_base);
 		framebuffer_release(info);
 	}
