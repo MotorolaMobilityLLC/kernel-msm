@@ -199,6 +199,8 @@ struct fan5404x_chg {
 	struct delayed_work heartbeat_work;
 };
 
+static struct fan5404x_chg *the_chip;
+
 static int __fan5404x_read(struct fan5404x_chg *chip, int reg,
 				uint8_t *val)
 {
@@ -271,6 +273,48 @@ out:
 	mutex_unlock(&chip->read_write_lock);
 	return rc;
 }
+
+static int __fan5404x_write_fac(struct fan5404x_chg *chip, int reg,
+				uint8_t val)
+{
+	int ret;
+
+	ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+	if (ret < 0) {
+		dev_err(chip->dev,
+			"i2c write fail: can't write %02x to %02x: %d\n",
+			val, reg, ret);
+		return ret;
+	}
+
+	dev_dbg(chip->dev, "Writing 0x%02x=0x%02x\n", reg, val);
+	return 0;
+}
+
+static int fan5404x_masked_write_fac(struct fan5404x_chg *chip, int reg,
+				     uint8_t mask, uint8_t val)
+{
+	int rc;
+	uint8_t temp;
+
+	mutex_lock(&chip->read_write_lock);
+	rc = __fan5404x_read(chip, reg, &temp);
+	if (rc < 0) {
+		dev_err(chip->dev, "read failed: reg=%03X, rc=%d\n", reg, rc);
+		goto out;
+	}
+	temp &= ~mask;
+	temp |= val & mask;
+	rc = __fan5404x_write_fac(chip, reg, temp);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"write failed: reg=%03X, rc=%d\n", reg, rc);
+	}
+out:
+	mutex_unlock(&chip->read_write_lock);
+	return rc;
+}
+
 
 static int fan5404x_stat_read(struct fan5404x_chg *chip)
 {
@@ -896,6 +940,346 @@ static int fan5404x_read_chip_id(struct fan5404x_chg *chip, uint8_t *val)
 	return 0;
 }
 
+
+#define CHG_SHOW_MAX_SIZE 50
+#define USB_SUSPEND_BIT BIT(4)
+static ssize_t force_chg_usb_suspend_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid usb suspend mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = fan5404x_masked_write_fac(the_chip, REG_CONTROL1,
+				      CONTROL1_HZ_MODE,
+				      mode ? CONTROL1_HZ_MODE : 0);
+
+	return r ? r : count;
+}
+
+#define USB_SUSPEND_STATUS_BIT BIT(3)
+static ssize_t force_chg_usb_suspend_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	ret = fan5404x_read(the_chip, REG_CONTROL1, &value);
+	if (ret) {
+		pr_err("USB_SUSPEND_STATUS_BIT failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = (CONTROL1_HZ_MODE & value) ? 1 : 0;
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_usb_suspend, 0664,
+		force_chg_usb_suspend_show,
+		force_chg_usb_suspend_store);
+
+static ssize_t force_chg_fail_clear_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid chg fail mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	/* do nothing for fan5404x */
+	r = 0;
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_fail_clear_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	/* do nothing for fan5404x */
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "0\n");
+}
+
+static DEVICE_ATTR(force_chg_fail_clear, 0664,
+		force_chg_fail_clear_show,
+		force_chg_fail_clear_store);
+
+static ssize_t force_chg_auto_enable_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid chrg enable value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = fan5404x_masked_write_fac(the_chip, REG_VBUS_CONTROL,
+				      VBUS_IO_LEVEL, 0);
+	if (r) {
+		dev_err(the_chip->dev, "auto_enable: Couldn't clear IOLEVEL\n");
+		return r;
+	}
+
+	r = fan5404x_masked_write_fac(the_chip, REG_CONTROL1,
+				      CONTROL1_CE_N, mode ? 0 : CONTROL1_CE_N);
+	if (r < 0) {
+		dev_err(the_chip->dev,
+			"Couldn't set CHG_ENABLE_BIT enable = %d r = %d\n",
+			(int)mode, (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_auto_enable_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = fan5404x_read(the_chip, REG_CONTROL1, &value);
+	if (ret) {
+		pr_err("CHG_EN_BIT failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = (CONTROL1_CE_N & value) ? 0 : 1;
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_auto_enable, 0664,
+		force_chg_auto_enable_show,
+		force_chg_auto_enable_store);
+
+#define MAX_IBATT_LEVELS 31
+static ssize_t force_chg_ibatt_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long chg_current;
+	int i;
+
+	r = kstrtoul(buf, 0, &chg_current);
+	if (r) {
+		pr_err("Invalid ibatt value = %lu\n", chg_current);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	for (i = IBAT_IOCHARGE_STEPS; i >= 0; i--)
+		if (chg_current >= IBAT_STEP_CURRENT(i))
+			break;
+
+	if (i < 0)
+		return -EINVAL;
+
+	/* Need to keep RESET low... */
+	r = fan5404x_masked_write_fac(the_chip, REG_IBAT,
+				      IBAT_IOCHARGE | IBAT_RESET,
+				      i << IBAT_IOCHARGE_SHIFT);
+	if (r) {
+		dev_err(the_chip->dev,
+			"Couldn't set Fast Charge Current = %d r = %d\n",
+			(int)chg_current, (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_ibatt_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = fan5404x_read(the_chip, REG_IBAT, &value);
+
+	if (ret) {
+		pr_err("Fast Charge Current failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	value = ((value & IBAT_IOCHARGE) >> IBAT_IOCHARGE_SHIFT);
+
+	if (value > (IBAT_IOCHARGE_STEPS - 1))
+		value = IBAT_IOCHARGE_STEPS;
+
+	state = IBAT_STEP_CURRENT(value);
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_ibatt, 0664,
+		force_chg_ibatt_show,
+		force_chg_ibatt_store);
+
+static ssize_t force_chg_iusb_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long usb_curr;
+	int i;
+
+	r = kstrtoul(buf, 0, &usb_curr);
+	if (r) {
+		pr_err("Invalid iusb value = %lu\n", usb_curr);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	for (i = ARRAY_SIZE(ibuslim_vals) - 1; i >= 0; i--)
+		if (usb_curr >= ibuslim_vals[i])
+			break;
+
+	if (i < 0)
+		return -EINVAL;
+
+	r = fan5404x_masked_write_fac(the_chip, REG_CONTROL1,
+				      CONTROL1_IBUSLIM,
+				      i << CONTROL1_IBUSLIM_SHIFT);
+	if (r) {
+		dev_err(the_chip->dev,
+			"Couldn't set USBIN Current = %d r = %d\n",
+			(int)usb_curr, (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+#define CONTROL1_IBUSLIM_SHIFT_MASK 0x03
+static ssize_t force_chg_iusb_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		ret = -ENODEV;
+		goto end;
+	}
+
+	ret = fan5404x_read(the_chip, REG_CONTROL1, &value);
+	if (ret) {
+		pr_err("USBIN Current failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	value = value >> CONTROL1_IBUSLIM_SHIFT;
+	value &= CONTROL1_IBUSLIM_SHIFT_MASK;
+
+	state = ibuslim_vals[value];
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_iusb, 0664,
+		force_chg_iusb_show,
+		force_chg_iusb_store);
+
+static ssize_t force_chg_itrick_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid itrick value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	/* do nothing for fan5404x */
+	r = 0;
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_itrick_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	/* do nothing for fan5404x */
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "340\n");
+}
+
+static DEVICE_ATTR(force_chg_itrick, 0664,
+		   force_chg_itrick_show,
+		   force_chg_itrick_store);
+
 static bool fan5404x_charger_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
@@ -996,6 +1380,53 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 			goto unregister_batt_psy;
 		}
 		enable_irq_wake(client->irq);
+	}
+
+	the_chip = chip;
+
+	if (chip->factory_mode) {
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_usb_suspend);
+		if (rc) {
+			pr_err("couldn't create force_chg_usb_suspend\n");
+			goto unregister_batt_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_fail_clear);
+		if (rc) {
+			pr_err("couldn't create force_chg_fail_clear\n");
+			goto unregister_batt_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_auto_enable);
+		if (rc) {
+			pr_err("couldn't create force_chg_auto_enable\n");
+			goto unregister_batt_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+				&dev_attr_force_chg_ibatt);
+		if (rc) {
+			pr_err("couldn't create force_chg_ibatt\n");
+			goto unregister_batt_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_iusb);
+		if (rc) {
+			pr_err("couldn't create force_chg_iusb\n");
+			goto unregister_batt_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_itrick);
+		if (rc) {
+			pr_err("couldn't create force_chg_itrick\n");
+			goto unregister_batt_psy;
+		}
+
 	}
 
 	schedule_delayed_work(&chip->heartbeat_work,
