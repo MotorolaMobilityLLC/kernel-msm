@@ -423,6 +423,7 @@ struct mdss_panel_info {
 	bool dynamic_switch_pending;
 	bool is_lpm_mode;
 	bool is_split_display;
+	char supplier[8];
 
 	bool is_prim_panel;
 
