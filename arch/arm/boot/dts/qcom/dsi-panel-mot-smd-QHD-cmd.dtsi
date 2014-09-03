@@ -100,7 +100,6 @@
 			39 01 00 00 00 00 05 2a 00 00 05 9f
 			/* normal row */
 			39 01 00 00 00 00 05 2b 00 00 09 ff
-			29 01 00 00 00 00 02 35 00 /*hack.. enable TE */
 			/* display on */
 			05 01 00 00 00 00 01 29];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
