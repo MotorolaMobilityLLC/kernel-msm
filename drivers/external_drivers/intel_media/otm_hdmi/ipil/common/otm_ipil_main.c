@@ -300,7 +300,6 @@ otm_hdmi_ret_t ipil_hdmi_crtc_mode_set_program_dspregs(hdmi_device_t *dev,
 	int sprite_pos_x = 0, sprite_pos_y = 0;
 	int sprite_width = 0, sprite_height = 0;
 	int src_image_hor = 0, src_image_vert = 0;
-	float aspect_ratio_hor = 0.0, aspect_ratio_vert = 0.0;
 	int wa;
 
 	pr_debug("Enter %s\n", __func__);
@@ -356,8 +355,6 @@ otm_hdmi_ret_t ipil_hdmi_crtc_mode_set_program_dspregs(hdmi_device_t *dev,
 		sprite_width = fb_width;
 		src_image_hor = fb_width;
 		src_image_vert = fb_height;
-		aspect_ratio_hor = fb_width*1.0/(adjusted_mode->width*1.0);
-		aspect_ratio_vert = fb_height*1.0/(adjusted_mode->height*1.0);
 
 		/* Use panel fitting when the display does not match
 		 * with the framebuffer size */
@@ -368,21 +365,12 @@ otm_hdmi_ret_t ipil_hdmi_crtc_mode_set_program_dspregs(hdmi_device_t *dev,
 				/* Landscape mode */
 				pr_debug("Landscape mode...\n");
 
-				/* Landscape mode: program ratios is
-				 * used because 480p does not work with
-				 * auto */
-				if (adjusted_mode->height == 480 ||
-				    aspect_ratio_hor >= 1.5 ||
-				    aspect_ratio_vert >= 1.5)
-					pfit_landscape(sprite_width,
+				/* use programmed pfit instead of auto
+				 * for uneven hratio and vratio */
+				pfit_landscape(sprite_width,
 						sprite_height,
 						adjusted_mode->width,
 						adjusted_mode->height);
-				else
-					hdmi_write32(IPIL_PFIT_CONTROL,
-						IPIL_PFIT_ENABLE |
-						IPIL_PFIT_PIPE_SELECT_B |
-						IPIL_PFIT_SCALING_AUTO);
 			} else {
 				/* Portrait mode */
 				pr_debug("Portrait mode...\n");
