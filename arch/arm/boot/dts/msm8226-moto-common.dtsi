@@ -217,7 +217,7 @@
 
 		/include/ "batterydata-ed30-temp.dtsi"
 		/include/ "batterydata-ed30-sony.dtsi"
-		/include/ "batterydata-ed30-lishen.dtsi"
+		/include/ "batterydata-ed30-sony-alt.dtsi"
 		/include/ "batterydata-ed30-lg.dtsi"
 	};
 };
