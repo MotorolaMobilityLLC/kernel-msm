@@ -1401,8 +1401,8 @@ static int atvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	 * Bluedroid is unable to get the vendor/product id, we
 	 * have to filter on name
 	 */
-	pr_info("%s: hdev->name = %s, vendor_id = %d, product_id = %d\n", __func__,
-		hdev->name, hdev->vendor, hdev->product);
+	pr_info("%s: hdev->name = %s, vendor_id = %d, product_id = %d, num %d\n",
+		__func__, hdev->name, hdev->vendor, hdev->product, num_remotes);
 	if (strcmp(hdev->name, "ADT-1_Remote") &&
 	    strcmp(hdev->name, "Spike")) {
 		ret = -ENODEV;
@@ -1427,6 +1427,7 @@ static int atvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 		if (ret)
 			goto err_stop;
 	}
+	pr_info("%s: num_remotes %d->%d\n", __func__, num_remotes, num_remotes + 1);
 	num_remotes++;
 
 	return 0;
@@ -1442,6 +1443,8 @@ static void atvr_remove(struct hid_device *hdev)
 {
 	struct snd_card *card = (struct snd_card *)hid_get_drvdata(hdev);
 
+	pr_info("%s: hdev->name = %s removed, num %d->%d\n",
+		__func__, hdev->name, num_remotes, num_remotes - 1);
 	num_remotes--;
 	if (num_remotes == 0) {
 		/* no more remotes connected, set switch state
@@ -1449,8 +1452,10 @@ static void atvr_remove(struct hid_device *hdev)
 		 */
 		switch_set_state(&h2w_switch, BIT_NO_HEADSET);
 
-		snd_card_disconnect(card);
-		snd_card_free_when_closed(card);
+		if (card) {
+			snd_card_disconnect(card);
+			snd_card_free_when_closed(card);
+		}
 	}
 	hid_hw_stop(hdev);
 }
