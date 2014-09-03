@@ -154,6 +154,9 @@ int default_hdmi_scaling_mode = DRM_MODE_SCALE_CENTER;
 #else
 int default_hdmi_scaling_mode = DRM_MODE_SCALE_ASPECT;
 #endif
+#ifdef CONFIG_ITE_HDMI_CEC
+int hdmi_edid_src_phy_addr = 0;
+#endif
 int drm_vsp_burst = 1;
 int drm_vsp_force_up_freq = 0;
 int drm_vsp_force_down_freq = 0;
@@ -201,6 +204,9 @@ MODULE_PARM_DESC(ved_pm, "Power on/off the Msvdx");
 MODULE_PARM_DESC(vec_pm, "Power on/off the Topaz");
 MODULE_PARM_DESC(hdmi_hpd_auto, "HDMI hot-plug auto test flag");
 MODULE_PARM_DESC(default_hdmi_scaling_mode, "Default HDMI scaling mode");
+#ifdef CONFIG_ITE_HDMI_CEC
+MODULE_PARM_DESC(hdmi_edid_src_phy_addr, "HDMI edid for HDMI CEC HAL");
+#endif
 MODULE_PARM_DESC(vsp_burst, "VSP burst mode enable");
 MODULE_PARM_DESC(vsp_force_up_freq, "force VSP running at certain freq");
 MODULE_PARM_DESC(vsp_force_down_freq, "force VSP power down at certain freq");
@@ -248,6 +254,9 @@ module_param_named(decode_flag, drm_decode_flag, int, 0600);
 module_param_named(hdmi_hpd_auto, drm_hdmi_hpd_auto, int, 0600);
 module_param_named(default_hdmi_scaling_mode, default_hdmi_scaling_mode,
 					int, 0600);
+#ifdef CONFIG_ITE_HDMI_CEC
+module_param_named(hdmi_edid_src_phy_addr, hdmi_edid_src_phy_addr, int, 0600);
+#endif
 module_param_named(vsp_burst, drm_vsp_burst, int, 0600);
 module_param_named(vsp_force_up_freq, drm_vsp_force_up_freq, int, 0600);
 module_param_named(vsp_force_down_freq, drm_vsp_force_down_freq, int, 0600);

@@ -95,6 +95,11 @@ extern int hdmi_state;
 /* External default scaling mode dependency */
 extern int default_hdmi_scaling_mode;
 
+#ifdef CONFIG_ITE_HDMI_CEC
+/* External EDID Source Physical Address*/
+extern int hdmi_edid_src_phy_addr;
+#endif
+
 static const struct {
 	int width, height, htotal, vtotal, dclk, vrefr, vic, par;
 } vic_formats[12] = {
@@ -1003,9 +1008,15 @@ int android_hdmi_get_modes(struct drm_connector *connector)
 	struct drm_device *dev = connector->dev;
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct android_hdmi_priv *hdmi_priv = dev_priv->hdmi_priv;
+#ifdef CONFIG_ITE_HDMI_CEC
+	hdmi_context_t *ctx = hdmi_priv->context;
+#endif
 	struct edid *edid = NULL;
 	/* Edid address in HDMI context */
 	struct edid *ctx_edid = NULL;
+#ifdef CONFIG_ITE_HDMI_CEC
+	edid_info_t *edid_info;
+#endif
 	struct drm_display_mode *mode, *t;
 	int i = 0, j = 0, ret = 0;
 	int refresh_rate = 0;
@@ -1070,6 +1081,10 @@ edid_is_ready:
 	 */
 	if (otm_hdmi_edid_extension_parse(hdmi_priv->context, ctx_edid,
 			adapter) == OTM_HDMI_SUCCESS) {
+#ifdef CONFIG_ITE_HDMI_CEC
+		edid_info = &ctx->edid_int;
+		hdmi_edid_src_phy_addr = edid_info->spa;
+#endif
 		ret += android_hdmi_add_cea_edid_modes(hdmi_priv->context,
 						connector);
 	}
