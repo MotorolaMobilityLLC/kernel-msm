@@ -457,6 +457,9 @@ static ssize_t autosleep_show(struct kobject *kobj,
 #endif
 }
 
+//Add a timer to trigger wakelock debug
+extern struct timer_list unattended_timer;
+
 static ssize_t autosleep_store(struct kobject *kobj,
 			       struct kobj_attribute *attr,
 			       const char *buf, size_t n)
@@ -464,10 +467,16 @@ static ssize_t autosleep_store(struct kobject *kobj,
 	suspend_state_t state = decode_state(buf, n);
 	int error;
 
-	ASUSEvtlog("[PM]request_suspend_state: (%d->%d)\n", old_state, state);
 	if (state == PM_SUSPEND_ON
 	    && strcmp(buf, "off") && strcmp(buf, "off\n"))
 		return -EINVAL;
+
+	ASUSEvtlog("[PM]request_suspend_state: (%d->%d)\n", old_state, state);
+ 	if (state != PM_SUSPEND_ON) {
+ 	 	//Add a timer to trigger wakelock debug
+ 	 	pr_info("[PM]unattended_timer: mod_timer (suspend)\n");
+ 	 	mod_timer(&unattended_timer, jiffies + msecs_to_jiffies(PM_UNATTENDED_TIMEOUT));
+ 	}
 
 	error = pm_autosleep_set_state(state);
 	old_state=state;

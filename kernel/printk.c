@@ -2431,7 +2431,7 @@ void resume_console(void)
 	//ASUSEvtlog("[UTS] System Resume");
 
 	if (pm_pwrcs_ret) {
-		ASUSEvtlog("[PM] Suspended for %d.%03d secs ", pwrcs_time/100,pwrcs_time % 100);
+		ASUSEvtlog("[PM] Suspended for %d.%02d secs ", pwrcs_time/100,pwrcs_time % 100);
 
 		if (qpnpint_irq != -1) {
 			ASUSEvtlog("[PM] qpnpint irq triggered: %d", qpnpint_irq);
