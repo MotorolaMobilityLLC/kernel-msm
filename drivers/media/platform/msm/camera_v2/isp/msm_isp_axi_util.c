@@ -405,9 +405,9 @@ void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 	struct msm_isp_event_data sof_event;
 	switch (frame_src) {
 	case VFE_PIX_0:
+		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id++;
 		ISP_DBG("%s: PIX0 frame id: %u\n", __func__,
 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id);
-		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id++;
 		if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id == 0)
 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id = 1;
 		break;
@@ -743,17 +743,18 @@ static void msm_isp_reload_ping_pong_offset(struct vfe_device *vfe_dev,
 	}
 }
 
-void msm_isp_axi_cfg_update(struct vfe_device *vfe_dev)
+void msm_isp_axi_cfg_update(struct vfe_device *vfe_dev,
+	enum msm_vfe_input_src frame_src, struct msm_isp_timestamp *ts)
 {
 	int i, j;
 	uint32_t update_state;
 	unsigned long flags;
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
 	struct msm_vfe_axi_stream *stream_info;
+	struct msm_isp_event_data event_data;
 	for (i = 0; i < MAX_NUM_STREAM; i++) {
 		stream_info = &axi_data->stream_info[i];
-		if (stream_info->stream_type == BURST_STREAM ||
-			stream_info->state == AVALIABLE)
+		if (stream_info->state == AVALIABLE)
 			continue;
 		spin_lock_irqsave(&stream_info->lock, flags);
 		if (stream_info->state == PAUSING) {
@@ -777,6 +778,14 @@ void msm_isp_axi_cfg_update(struct vfe_device *vfe_dev)
 	}
 
 	update_state = atomic_dec_return(&axi_data->axi_cfg_update);
+	if (update_state == NO_AXI_CFG_UPDATE) {
+		event_data.input_intf = frame_src;
+		event_data.frame_id = vfe_dev->axi_data.src_info[frame_src].frame_id;
+		event_data.timestamp = ts->event_time;
+		event_data.mono_timestamp = ts->buf_time;
+		msm_isp_send_event(vfe_dev, ISP_EVENT_UPDATE_AXI_DONE +
+			frame_src, &event_data);
+	}
 }
 
 static void msm_isp_cfg_pong_address(struct vfe_device *vfe_dev,
@@ -1510,8 +1519,11 @@ int msm_isp_update_axi_stream(struct vfe_device *vfe_dev, void *arg)
 		stream_info = &axi_data->stream_info[
 				HANDLE_TO_IDX(update_info->stream_handle)];
 		if (stream_info->state != ACTIVE &&
-			stream_info->state != INACTIVE) {
-			pr_err("%s: Invalid stream state\n", __func__);
+			stream_info->state != INACTIVE &&
+			update_cmd->update_type !=
+			UPDATE_STREAM_REQUEST_FRAMES) {
+			pr_err("%s: Invalid stream state %d\n", __func__,
+				stream_info->state);
 			return -EINVAL;
 		}
 	}

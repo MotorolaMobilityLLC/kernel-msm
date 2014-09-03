@@ -365,7 +365,8 @@ enum msm_isp_event_idx {
 	ISP_CAMIF_ERROR     = 6,
 	ISP_EPOCH0_IRQ      = 7,
 	ISP_BUF_DONE        = 9,
-	ISP_EVENT_MAX       = 10
+	ISP_UPDATE_AXI_DONE = 10,
+	ISP_EVENT_MAX       = 11
 };
 
 enum msm_isp_epoch_idx {
@@ -388,6 +389,7 @@ enum msm_isp_epoch_idx {
 #define ISP_EVENT_STATS_OVERFLOW  (ISP_EVENT_BASE + ISP_STATS_OVERFLOW)
 #define ISP_EVENT_CAMIF_ERROR     (ISP_EVENT_BASE + ISP_CAMIF_ERROR)
 #define ISP_EVENT_EPOCH0_IRQ      (ISP_EVENT_BASE + ISP_EPOCH0_IRQ)
+#define ISP_EVENT_UPDATE_AXI_DONE (ISP_EVENT_BASE + ISP_UPDATE_AXI_DONE)
 #define ISP_EVENT_SOF             (ISP_SOF_EVENT_BASE)
 #define ISP_EVENT_EOF             (ISP_EOF_EVENT_BASE)
 #define ISP_EVENT_BUF_DONE        (ISP_EVENT_BASE + ISP_BUF_DONE)
