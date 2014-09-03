@@ -72,7 +72,7 @@
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
 
-struct sys_panelinfo panelinfo = {NULL, NULL};
+struct sys_panelinfo panelinfo = {NULL, NULL, NULL};
 
 static u32 mdss_fb_pseudo_palette[16] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -731,6 +731,12 @@ static ssize_t panel_ver_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "0x%016llx\n", *panelinfo.panel_ver);
 }
 
+static ssize_t panel_supplier_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%s\n", panelinfo.panel_supplier);
+}
+
 static ssize_t panel_man_id_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -757,6 +763,8 @@ static DEVICE_ATTR(panel_name, S_IRUGO,
 					panel_name_show, NULL);
 static DEVICE_ATTR(panel_ver, S_IRUGO,
 					panel_ver_show, NULL);
+static DEVICE_ATTR(panel_supplier, S_IRUGO,
+					panel_supplier_show, NULL);
 static DEVICE_ATTR(man_id, S_IRUGO,
 					panel_man_id_show, NULL);
 static DEVICE_ATTR(controller_ver, S_IRUGO,
@@ -766,6 +774,7 @@ static DEVICE_ATTR(controller_drv_ver, S_IRUGO,
 static struct attribute *panel_id_attrs[] = {
 	&dev_attr_panel_name.attr,
 	&dev_attr_panel_ver.attr,
+	&dev_attr_panel_supplier.attr,
 	&dev_attr_man_id.attr,
 	&dev_attr_controller_ver.attr,
 	&dev_attr_controller_drv_ver.attr,

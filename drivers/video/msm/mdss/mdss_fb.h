@@ -297,6 +297,7 @@ struct msm_fb_data_type {
 
 struct sys_panelinfo {
 	char *panel_name;
+	char *panel_supplier;
 	u64 *panel_ver;
 };
 
