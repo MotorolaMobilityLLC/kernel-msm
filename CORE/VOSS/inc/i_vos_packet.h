@@ -96,6 +96,9 @@
 // dereferenced is really referencing a struct vos_pkt_t
 #define VPKT_MAGIC_NUMBER 0x56504B54  /* VPKT in ASCII */
 
+// while allocating the skb->data is cache aligned, so the memory allocated
+// is more than VPKT_SIZE_BUFFER
+#define VPKT_SIZE_BUFFER_ALIGNED SKB_DATA_ALIGN(VPKT_SIZE_BUFFER)
 /*--------------------------------------------------------------------------
   Type declarations
   ------------------------------------------------------------------------*/
