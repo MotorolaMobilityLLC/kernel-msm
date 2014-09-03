@@ -1148,6 +1148,9 @@ try_onemore:
 	if (err)
 		goto free_proc;
 
+	if (!retry)
+		sbi->need_fsck = true;
+
 	/* recover fsynced data */
 	if (!test_opt(sbi, DISABLE_ROLL_FORWARD)) {
 		err = recover_fsync_data(sbi);
