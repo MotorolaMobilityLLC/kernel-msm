@@ -1229,6 +1229,30 @@ static int stm401_resume(struct device *dev)
 	return 0;
 }
 
+static int stm401_resume_early(struct device *dev)
+{
+	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	dev_dbg(dev, "%s\n", __func__);
+
+	mutex_lock(&ps_stm401->lock);
+
+	ps_stm401->ignore_wakeable_interrupts = false;
+
+	/* If we received wakeable interrupts between suspend_late and
+	   suspend_noirq, we need to reschedule the irq work to be handled now
+	   that interrupts have been re-enabled. */
+	if (ps_stm401->ignored_interrupts) {
+		ps_stm401->ignored_interrupts = 0;
+		wake_lock_timeout(&ps_stm401->wakelock, HZ);
+		queue_work(ps_stm401->irq_work_queue,
+			&ps_stm401->irq_wake_work);
+	}
+
+	mutex_unlock(&ps_stm401->lock);
+
+	return 0;
+}
+
 static int stm401_suspend(struct device *dev)
 {
 	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
@@ -1241,6 +1265,27 @@ static int stm401_suspend(struct device *dev)
 	return 0;
 }
 
+static int stm401_suspend_late(struct device *dev)
+{
+	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	int ret = 0;
+
+	dev_dbg(dev, "%s\n", __func__);
+
+	mutex_lock(&ps_stm401->lock);
+
+	if (ps_stm401->quickpeek_state == QP_IDLE)
+		ps_stm401->ignore_wakeable_interrupts = true;
+	else {
+		dev_dbg(&ps_stm401->client->dev, "Wait for quickpeek to finish!\n");
+		ret = -EBUSY;
+	}
+
+	mutex_unlock(&ps_stm401->lock);
+
+	return ret;
+}
+
 static int stm401_suspend_noirq(struct device *dev)
 {
 	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
@@ -1251,20 +1296,15 @@ static int stm401_suspend_noirq(struct device *dev)
 	mutex_lock(&ps_stm401->lock);
 
 	/* If we received wakeable interrupts between finishing a quickwake and
-	   now, return an error and reschedule the work so we will resume to
-	   process it instead of dropping into suspend and interrupting it */
+	   now, return an error so we will resume to process it instead of
+	   dropping into suspend */
 	if (ps_stm401->ignored_interrupts) {
 		dev_info(dev,
 			"Force system resume to handle deferred interrupts [%d]\n",
 			ps_stm401->ignored_interrupts);
-		wake_lock_timeout(&ps_stm401->wakelock, HZ);
-		queue_work(ps_stm401->irq_work_queue,
-			&ps_stm401->irq_wake_work);
 		ret = -EBUSY;
 	}
 
-	ps_stm401->ignore_wakeable_interrupts = false;
-	ps_stm401->ignored_interrupts = 0;
 	ps_stm401->quickpeek_occurred = false;
 
 	/* Init this here, because there is the unlikely posibility that an
@@ -1281,7 +1321,9 @@ static int stm401_suspend_noirq(struct device *dev)
 
 static const struct dev_pm_ops stm401_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(stm401_suspend, stm401_resume)
+	.suspend_late = stm401_suspend_late,
 	.suspend_noirq = stm401_suspend_noirq,
+	.resume_early = stm401_resume_early,
 };
 
 static const struct i2c_device_id stm401_id[] = {
