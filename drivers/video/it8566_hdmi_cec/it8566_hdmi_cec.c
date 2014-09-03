@@ -30,6 +30,7 @@
 #include <linux/interrupt.h>
 #include <linux/miscdevice.h>
 #include "it8566_hdmi_cec_ioctl.h"
+#include "it8566_hdmi_cec.h"
 
 #define CEC_DEV_NAME		"it8566_hdmi_cec"
 #define CEC_IRQ_GPIO_PIN	55
@@ -334,12 +335,16 @@ static ssize_t dbg_cec_tx_write(struct file *file,
 	if (user_opcode == 0)
 		user_data_len = user_data_len - 1;
 
-	/* 1. check if rx busy */
+	/* 1. check if rx busy or bus err*/
 	ck_st = check_it8566_status();
 	if ((ck_st & RESULT_RX_BUSY) == RESULT_RX_BUSY) {
 		dev_err(&cec_client->dev, "check it8566 rx busy, abort cec tx\n");
 		return buf_size;
+	} else if ((ck_st & RESULT_CEC_BUS_ERR) == RESULT_CEC_BUS_ERR) {
+		dev_err(&cec_client->dev, "check it8566 tx bus err, abort cec tx\n");
+		return buf_size;
 	}
+
 	/* 2. cec tx */
 	cec_i2c_write(user_header, user_opcode, &user_data[3], user_data_len);
 	/* 3. check tx busy */
@@ -483,11 +488,15 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd,
 		if (body_len > 1)
 			body_operads = &cec_msg.body[1];
 
-		/* 1. check if rx busy */
+		/* 1. check if rx busy or bus err*/
 		ck_st = check_it8566_status();
 		if ((ck_st & RESULT_RX_BUSY) == RESULT_RX_BUSY) {
 			dev_err(&cec_client->dev, "check it8566 rx busy, abort cec tx\n");
 			cec_msg.result = RESULT_RX_BUSY;
+			goto end;
+		} else if ((ck_st & RESULT_CEC_BUS_ERR) == RESULT_CEC_BUS_ERR) {
+			dev_err(&cec_client->dev, "check it8566 tx bus err, abort cec tx\n");
+			cec_msg.result = RESULT_CEC_BUS_ERR;
 			goto end;
 		}
 
@@ -527,7 +536,7 @@ end:
 			return -EFAULT;
 		}
 		break;
-			}
+	}
 	case IT8566_HDMI_CEC_IOCTL_RCEV_MESSAGE:
 	{
 		struct it8566_cec_msg cec_msg;
@@ -582,6 +591,24 @@ end:
 		err = set_logical_address(logical_addr);
 		if (err < 0)
 			return -EBUSY;
+		break;
+	}
+	case IT8566_HDMI_CEC_IOCTL_FW_UPDATE_IF_NEEDED:
+	{
+		int err;
+
+		/* no need to update: err > 0,
+		 * update success: err = 0,
+		 * update fail: err < 0 */
+		mutex_lock(&it8566_fw_lock);
+		err = it8566_fw_update(0);
+		mutex_unlock(&it8566_fw_lock);
+
+		if (copy_to_user((void __user *)arg, &err,
+				sizeof(int))) {
+			dev_err(&cec_client->dev, "pass arg fail\n");
+			return -EFAULT;
+		}
 		break;
 	}
 	default:

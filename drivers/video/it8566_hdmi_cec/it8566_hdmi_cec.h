@@ -17,4 +17,6 @@
 #define _IT8566_HDMI_CEC_H
 extern struct i2c_client *it8566_get_cec_client(void);
 extern struct dentry *it8566_get_debugfs_dir(void);
+extern int it8566_fw_update(int force);
+extern struct mutex it8566_fw_lock;
 #endif

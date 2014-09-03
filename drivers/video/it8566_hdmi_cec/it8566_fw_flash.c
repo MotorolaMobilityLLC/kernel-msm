@@ -28,6 +28,7 @@
 
 #define DEV_NAME_FLASH "it8566_flash_mod"
 static struct i2c_client        *flash_mode_client;
+struct mutex it8566_fw_lock;
 /* fw update ++ */
 static char *fw_bin_path = "/system/etc/firmware/IT8566_CEC.BIN";
 static char *fw_bin_path_2 = "/sdcard/IT8566_CEC.BIN";
@@ -75,7 +76,6 @@ static int load_fw_bin_to_buffer(char *path)
 			result = -2;
 		}
 		set_fs(old_fs);
-		filp_close(fp, NULL);
 	} else if (PTR_ERR(fp) == -ENOENT) {
 		dev_err(&flash_mode_client->dev, "fw file not found error\n");
 		result = -3;
@@ -83,6 +83,9 @@ static int load_fw_bin_to_buffer(char *path)
 		dev_err(&flash_mode_client->dev, "fw file open error\n");
 		result = -4;
 	}
+
+	if (fp)
+		filp_close(fp, NULL);
 
 	return result;
 }
@@ -447,6 +450,40 @@ static int get_ec_ver(char *ec_ver)
 	return err;
 }
 
+static int check_ec_has_been_flash(char *ec_ver)
+{
+	unsigned char addr_18, addr_19;
+
+	if (get_ec_ver(ec_ver) < 0) {
+		/* may flash fw fail before or ec
+		   has not been flash fw yet */
+		addr_18 = i2ec_readbyte(0x18);
+		addr_19 = i2ec_readbyte(0x19);
+
+		dev_info(&flash_mode_client->dev,
+			"%s:SRAM(0x18h)=0x%x, SRAM(0x19h)=0x%x\n",
+			__func__, addr_18, addr_19);
+
+		if ((addr_18 == 0xBB) && (addr_19 == 0xBB)) {
+			/* has been flash fw, but fail before */
+			/* no need enter flash mode*/
+			return 0;
+		} else if ((addr_18 == 0xEC) && (addr_19 == 0xEC)) {
+			/* has been flash fw, but fail before */
+			/* need enter flash mode*/
+			return 1;
+		} else {
+			/* has not been flash fw yet */
+			/* no need enter flash mode*/
+			return -1;
+		}
+	} else {
+		/* means ec has valid fw*/
+		/* need enter flash mode*/
+		return 2;
+	}
+}
+
 static void cmd_erase_all_sector(void)
 {
 	int address;
@@ -637,19 +674,20 @@ static void do_reset(void)
 	i2ec_writebyte(0x1F01, tmp1);
 }
 
-static int load_fw_and_set_flash_region(void)
+static int load_fw_and_set_flash_region(int force)
 {
 	unsigned char ec_version[8];
-	int load_err;
+	unsigned char bin_version[2];
+	int err, i;
 
-	load_err = load_fw_bin_to_buffer(fw_bin_path);
-	if (load_err < 0) {
+	err = load_fw_bin_to_buffer(fw_bin_path);
+	if (err < 0) {
 		dev_err(&flash_mode_client->dev,
 			"%s: load %s fail, try %s\n", __func__,
 			fw_bin_path, fw_bin_path_2);
 
-		load_err = load_fw_bin_to_buffer(fw_bin_path_2);
-		if (load_err < 0) {
+		err = load_fw_bin_to_buffer(fw_bin_path_2);
+		if (err < 0) {
 			dev_err(&flash_mode_client->dev,
 				"%s: load %s fail, abort\n", __func__,
 				fw_bin_path_2);
@@ -657,8 +695,56 @@ static int load_fw_and_set_flash_region(void)
 		}
 	}
 
-	if (get_ec_ver(ec_version) < 0) {
-		dev_info(&flash_mode_client->dev, "No fw version\n");
+	err = check_ec_has_been_flash(ec_version);
+
+	if (!force) {
+		if (err < 0) {
+			/* err < 0 means no fw in ic yet, do not
+			   do update since it may brick the ic
+			   if shutdown during flash */
+			dev_err(&flash_mode_client->dev,
+				"it8566 has no fw, abort\n");
+			return 1;
+		}
+
+		if (err < 2) {
+			/* err == 0, 1 means ic has fw flash fail before,
+			   continue to do fw update */
+			dev_info(&flash_mode_client->dev,
+				"it8566 has fw flash fail before\n");
+		} else {
+			/* err == 2 means ic has valid fw inside,
+			   futhur check fw version to see if need
+			   to update */
+			for (i = 0; i < 2; i++)
+				bin_version[i] = gbuffer[0x7f20 + i];
+
+			dev_info(&flash_mode_client->dev,
+					"Check bin ver: %x.%x, current fw ver: %x.%x\n",
+					bin_version[0], bin_version[1],
+					ec_version[0], ec_version[1]);
+
+			if (ec_version[0] == bin_version[0] &&
+					ec_version[1] == bin_version[1]) {
+				dev_info(&flash_mode_client->dev,
+						"no need to update\n");
+				return 1;
+			}
+		}
+	} else {
+		if (err < 0)
+			dev_info(&flash_mode_client->dev,
+			"it8566 has no fw, do full flash\n");
+		else if (err < 2)
+			dev_info(&flash_mode_client->dev,
+			"it8566 fail to flash fw before, do partial flash\n");
+		else
+			dev_info(&flash_mode_client->dev,
+			"it8566 has fw, do partial flash. Current fw version: %x.%x\n",
+			ec_version[0], ec_version[1]);
+	}
+
+	if (err < 0) {
 		start = 0x0;
 		end = 0x10000; /*65536*/
 
@@ -672,13 +758,14 @@ static int load_fw_and_set_flash_region(void)
 			return -1;
 		}
 	} else {
-		dev_info(&flash_mode_client->dev,
-			"Current fw version: %x.%x\n",
-			ec_version[0], ec_version[1]);
 		start = 0x2000; /*8192*/
 		end = 0xFC00; /*64512*/
-		cmd_enter_flash_mode();
-		msleep(20);/*wait for enter flash mode*/
+
+		if (err > 0) {
+			cmd_enter_flash_mode();
+			msleep(20);/*wait for enter flash mode*/
+		}
+
 		/*double check if get flash id ok*/
 		get_flash_id();
 		if ((flash_id[0] != 0xFF) ||
@@ -693,15 +780,17 @@ static int load_fw_and_set_flash_region(void)
 	return 0;
 }
 
-static void fw_update(void)
+int it8566_fw_update(int force)
 {
 	int err;
 	unsigned char ec_version[8];
 
 	dev_info(&flash_mode_client->dev, "Update fw...\n");
-	err = load_fw_and_set_flash_region();
+	err = load_fw_and_set_flash_region(force);
 	if (err < 0)
 		goto exit_func;
+	else if (err > 0)
+		goto exit_func_2;
 
 	do_erase_all();
 	if (do_check()) {
@@ -717,18 +806,22 @@ static void fw_update(void)
 	if (get_ec_ver(ec_version) < 0) {
 		dev_err(&flash_mode_client->dev,
 			"can't get fw version, fw update fail...");
+		err = -1;
 		goto exit_func;
 	}
 
 	dev_info(&flash_mode_client->dev,
 		"Update fw Success!, Current fw ver: %x.%x\n",
 		ec_version[0], ec_version[1]);
-	return;
+
+	return err;
 
 exit_func:
+	dev_err(&flash_mode_client->dev, "Update fw Fail...\n");
+exit_func_2:
 	kfree(gbuffer);
 	gbuffer = NULL;
-	dev_err(&flash_mode_client->dev, "Update fw Fail...\n");
+	return err;
 }
 /* fw update -- */
 
@@ -749,12 +842,13 @@ static ssize_t dbg_fw_update_write(struct file *file,
 	dev_dbg(&flash_mode_client->dev,
 		"char_buf=%s, int_buf=%d\n", char_buf, int_buf);
 
+	mutex_lock(&it8566_fw_lock);
 	if (!strcmp(char_buf, "force")) {
-		fw_update();
+		it8566_fw_update(1);
 	} else if (!strcmp(char_buf, "step")) {
 		switch (int_buf) {
 		case 1:
-			load_fw_and_set_flash_region();
+			load_fw_and_set_flash_region(1);
 			break;
 		case 2:
 			do_erase_all();
@@ -775,6 +869,7 @@ static ssize_t dbg_fw_update_write(struct file *file,
 			dev_info(&flash_mode_client->dev, "do nothing");
 		}
 	}
+	mutex_unlock(&it8566_fw_lock);
 
 	return buf_size;
 }
@@ -857,6 +952,7 @@ static int it8566_flash_probe(struct i2c_client *client,
 	}
 
 	flash_mode_client = client;
+	mutex_init(&it8566_fw_lock);
 
 	add_debugfs();
 
@@ -865,6 +961,7 @@ static int it8566_flash_probe(struct i2c_client *client,
 
 static int it8566_flash_remove(struct i2c_client *client)
 {
+	mutex_destroy(&it8566_fw_lock);
 	return 0;
 }
 

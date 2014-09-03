@@ -45,6 +45,8 @@ struct it8566_cec_msg {
 	_IOR('\x66', 2, struct it8566_cec_msg)
 #define IT8566_HDMI_CEC_IOCTL_SET_LA \
 	_IOW('\x66', 3, unsigned char)
+#define IT8566_HDMI_CEC_IOCTL_FW_UPDATE_IF_NEEDED \
+	_IOR('\x66', 4, int)
 
 /*for it8566 status*/
 #define RESULT_CEC_BUS_ERR	0x1
