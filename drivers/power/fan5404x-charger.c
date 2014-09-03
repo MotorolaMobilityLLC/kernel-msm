@@ -436,6 +436,15 @@ static int start_charging(struct fan5404x_chg *chip)
 
 	dev_dbg(chip->dev, "starting to charge...\n");
 
+	/* Set TMR_RST */
+	rc = fan5404x_masked_write(chip, REG_CONTROL0,
+				   CONTROL0_TMR_RST,
+				   CONTROL0_TMR_RST);
+	if (rc) {
+		dev_err(chip->dev, "start-charge: Couldn't set TMR_RST\n");
+		return rc;
+	}
+
 	rc = chip->usb_psy->get_property(chip->usb_psy,
 				POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
 	if (rc < 0) {
@@ -465,6 +474,14 @@ static int start_charging(struct fan5404x_chg *chip)
 	rc = fan5404x_set_oreg(chip, 4200);
 	if (rc)
 		return rc;
+
+	/* Disable T32 */
+	rc = fan5404x_masked_write(chip, REG_WD_CONTROL, WD_CONTROL_WD_DIS,
+							WD_CONTROL_WD_DIS);
+	if (rc) {
+		dev_err(chip->dev, "start-charge: couldn't disable T32\n");
+		return rc;
+	}
 
 	/* Set CE# Low (enable), TE Low (disable) */
 	rc = fan5404x_masked_write(chip, REG_CONTROL1,
