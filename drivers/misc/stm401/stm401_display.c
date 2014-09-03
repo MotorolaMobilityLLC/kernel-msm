@@ -75,7 +75,7 @@ int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
 
 	if (ps_stm401->quickpeek_state == QP_IDLE)
-		ps_stm401->quickpeek_state = QP_AWAKE;
+		ps_stm401->quickpeek_state = QP_PENDING;
 
 	ps_stm401->quickpeek_occurred = true;
 
@@ -285,7 +285,7 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 
 		switch (qp_message->message) {
 		case AOD_WAKEUP_REASON_QP_PREPARE:
-			if (ps_stm401->quickpeek_state != QP_AWAKE) {
+			if (ps_stm401->quickpeek_state != QP_PENDING) {
 				dev_err(&ps_stm401->client->dev,
 					"%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
 					__func__, ps_stm401->quickpeek_state,
@@ -374,7 +374,7 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 				ack_return = AOD_QP_ACK_BAD_MSG_ORDER;
 				break;
 			}
-			ps_stm401->quickpeek_state = QP_AWAKE;
+			ps_stm401->quickpeek_state = QP_COMPLETED;
 			ret = fb_quickdraw_cleanup();
 			if (ret) {
 				dev_err(&ps_stm401->client->dev,
@@ -395,7 +395,7 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 		kfree(qp_message);
 	}
 
-	if (ps_stm401->quickpeek_state == QP_AWAKE) {
+	if (ps_stm401->quickpeek_state == QP_COMPLETED) {
 		if (ps_stm401->qw_in_progress) {
 			ps_stm401->ignored_interrupts = 0;
 			ps_stm401->ignore_wakeable_interrupts = true;
