@@ -128,10 +128,16 @@ static struct switch_dev h2w_switch = {
  * The mSBC decoder works on a mSBC frame, including the four byte SBC header,
  * so we have to accumulate 3 BLE packets before sending it to the decoder.
  */
-#define BYTES_PER_MSBC_FRAME (17 + 20 + 20)
 #define NUM_SEQUENCES 4
 const uint8_t mSBC_sequence_table[NUM_SEQUENCES] = {0x08, 0x38, 0xc8, 0xf8};
 #define BLE_PACKETS_PER_MSBC_FRAME 3
+#define MSBC_PACKET1_BYTES 17
+#define MSBC_PACKET2_BYTES 20
+#define MSBC_PACKET3_BYTES 20
+
+#define BYTES_PER_MSBC_FRAME \
+      (MSBC_PACKET1_BYTES + MSBC_PACKET2_BYTES + MSBC_PACKET3_BYTES)
+
 const uint8_t mSBC_start_offset_in_packet[BLE_PACKETS_PER_MSBC_FRAME] = {
 	1, /* SBC header starts after 1 byte sequence num portion of H2 */
 	0,
@@ -139,13 +145,13 @@ const uint8_t mSBC_start_offset_in_packet[BLE_PACKETS_PER_MSBC_FRAME] = {
 };
 const uint8_t mSBC_start_offset_in_buffer[BLE_PACKETS_PER_MSBC_FRAME] = {
 	0,
-	17,
-	37
+	MSBC_PACKET1_BYTES,
+	MSBC_PACKET1_BYTES + MSBC_PACKET2_BYTES
 };
 const uint8_t mSBC_bytes_in_packet[BLE_PACKETS_PER_MSBC_FRAME] = {
-	17, /* includes the SBC header but not the sequence num or keycode */
-	20,
-	20
+	MSBC_PACKET1_BYTES, /* includes the SBC header but not the sequence num or keycode */
+	MSBC_PACKET2_BYTES,
+	MSBC_PACKET3_BYTES
 };
 
 struct fifo_packet {
