@@ -173,6 +173,15 @@
 					39 01 00 00 00 00 03 51 0A 00 /*DBV Setting*/
 					];
 		qcom,mdss-dsi-idle-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-panel-reset-command =[
+					05 01 00 00 80 00 01 10
+					15 01 00 00 00 00 02 36 40
+					15 01 00 00 00 00 02 53 20
+					39 01 00 00 00 00 03 51 FE 00
+					05 01 00 00 80 00 01 11
+					05 01 00 00 00 00 01 35
+					05 01 00 00 00 00 01 29
+					];
 		qcom,mdss-dsi-idle-fps = <30>;
 		qcom,mdss-dsi-h-sync-pulse = <1>;
 		qcom,mdss-dsi-traffic-mode = "burst_mode";
