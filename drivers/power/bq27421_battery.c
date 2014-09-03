@@ -73,18 +73,6 @@ static int bq27421_read_word(struct i2c_client *client, u8 reg)
 	return ret;
 }
 
-static int bq27421_read_block(struct i2c_client *client, u8 reg,
-							u8 *buf, u8 len)
-{
-	int ret;
-
-	ret = i2c_smbus_read_i2c_block_data(client, reg, len, buf);
-	if (ret < 0)
-		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
-
-	return ret;
-}
-
 static int bq27421_write_byte(struct i2c_client *client, u8 reg, u8 value)
 {
 	int ret;
@@ -107,18 +95,6 @@ static int bq27421_write_word(struct i2c_client *client, u8 reg, u16 value)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 
 	pr_debug("%s: [%x]=%x\n", __func__, reg, value);
-
-	return ret;
-}
-
-static int bq27421_write_block(struct i2c_client *client, u8 reg,
-							u8 *buf, u8 len)
-{
-	int ret;
-
-	ret = i2c_smbus_write_i2c_block_data(client, reg, len, buf);
-	if (ret < 0)
-		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 
 	return ret;
 }
@@ -223,14 +199,40 @@ static bool bq27421_exit_cfgupdate(struct bq27421_chip *chip)
 	return false;
 }
 
-static void bq27421_set_fast_hibernate(struct bq27421_chip *chip)
+/* Must call in config update mode */
+static void bq27421_data_mem_write_byte(struct i2c_client *client,
+					u8 dclass, u8 block, u8 offset,
+					u8 mask, u8 value)
 {
-	struct bq27421_platform_data *pdata = chip->pdata;
 	int checksum;
-	int i;
-	u8 update_status;
-	u8 data_block[16] = {0, };
+	int read_block;
+	u8 prev_value;
 
+	bq27421_write_byte(client, BQ27421_ECMD_DATACLASS, dclass);
+	bq27421_write_byte(client, BQ27421_ECMD_DATABLK, block);
+
+	msleep(10);
+
+	checksum = bq27421_read_byte(client, BQ27421_ECMD_BLKCHECKSUM);
+	if (checksum < 0)
+		return;
+
+	read_block = bq27421_read_byte(client, BQ27421_ECMD_BLKDATA + offset);
+	if (read_block < 0)
+		return;
+
+	prev_value = read_block;
+	read_block &= ~mask;
+	read_block |= value & mask;
+	checksum = checksum + prev_value - read_block;
+
+	bq27421_write_byte(client, BQ27421_ECMD_BLKDATA + offset,
+							(u8)read_block);
+	bq27421_write_byte(client, BQ27421_ECMD_BLKCHECKSUM, (u8)checksum);
+}
+
+static void bq27421_set_pwr_off_data(struct bq27421_chip *chip)
+{
 	mutex_lock(&chip->mutex);
 
 	if (!bq27421_ctrl_unsealed(chip)) {
@@ -246,59 +248,12 @@ static void bq27421_set_fast_hibernate(struct bq27421_chip *chip)
 	}
 
 	bq27421_write_byte(chip->client, BQ27421_ECMD_BLKCTRL, 0x00);
-	for (i = 0; i < pdata->num_fast_hib_data; i++) {
-		bq27421_write_byte(chip->client, BQ27421_ECMD_DATACLASS,
-					pdata->fast_hib_data[i].data_class);
-		bq27421_write_byte(chip->client, BQ27421_ECMD_DATABLK,
-					pdata->fast_hib_data[i].data_block);
-		msleep(10);
-
-		bq27421_write_block(chip->client,
-				pdata->fast_hib_data[i].data[0][0],
-				&pdata->fast_hib_data[i].data[0][1], 16);
-		bq27421_write_block(chip->client,
-				pdata->fast_hib_data[i].data[1][0],
-				&pdata->fast_hib_data[i].data[1][1], 16);
-		bq27421_write_byte(chip->client, BQ27421_ECMD_BLKCHECKSUM,
-					pdata->fast_hib_data[i].checksum);
-		msleep(10);
-
-		bq27421_write_byte(chip->client, BQ27421_ECMD_DATACLASS,
-						pdata->fast_hib_data[i].data_class);
-		bq27421_write_byte(chip->client, BQ27421_ECMD_DATABLK,
-						pdata->fast_hib_data[i].data_block);
-		msleep(10);
-
-		checksum = bq27421_read_byte(chip->client,
-					BQ27421_ECMD_BLKCHECKSUM);
-		if (checksum == (int)pdata->fast_hib_data[i].checksum) {
-			pr_debug("%s: successed to set ramdata[%d]\n",
-							__func__,  i);
-		} else {
-			pr_err("%s: failed to set ramdata [%d]\n",
-							__func__,  i);
-			break;
-		}
-	}
-
-	bq27421_write_byte(chip->client, BQ27421_ECMD_DATACLASS,
-							SUBCLASS_STATE);
-	bq27421_write_byte(chip->client, BQ27421_ECMD_DATABLK, 0x00);
-	msleep(10);
-
-	checksum = bq27421_read_byte(chip->client,
-				BQ27421_ECMD_BLKCHECKSUM);
-	bq27421_read_block(chip->client, BQ27421_ECMD_BLKDATA,
-							data_block, 16);
-
-	update_status = data_block[2];
-	data_block[2] = update_status & ~0x80;
-	checksum = checksum + update_status - data_block[2];
-
-	bq27421_write_block(chip->client, BQ27421_ECMD_BLKDATA,
-							data_block, 16);
-	bq27421_write_byte(chip->client, BQ27421_ECMD_BLKCHECKSUM,
-							(u8)checksum);
+	/* Disable wake comparator in sleep to reduce leakage current */
+	bq27421_data_mem_write_byte(chip->client, SUBCLASS_REGISTERS,
+					0x00, OFFSET_OPCONFIG, 0x05, 0x00);
+	/* Keep unseal state after exiting config mode */
+	bq27421_data_mem_write_byte(chip->client, SUBCLASS_STATE,
+					0x00, OFFSET_UPDATESTAT, 0x80, 0x00);
 
 	if (!bq27421_exit_cfgupdate(chip))
 		pr_err("%s: failed to exit config model\n", __func__);
@@ -396,8 +351,6 @@ static struct bq27421_platform_data *bq27421_get_pdata(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
 	struct bq27421_platform_data *pdata;
-	int len;
-	const u8 *data;
 
 	if (!np)
 		return dev->platform_data;
@@ -408,15 +361,6 @@ static struct bq27421_platform_data *bq27421_get_pdata(struct device *dev)
 
 	pdata->ext_batt_psy =
 			of_property_read_bool(np, "ti,ext_batt_psy");
-
-	data = of_get_property(np, "ti,fast-hib-data", &len);
-	if (data && len) {
-		pdata->num_fast_hib_data =
-				len / sizeof(struct bq27421_dataram);
-		pdata->fast_hib_data = (struct bq27421_dataram *)data;
-	} else {
-		return NULL;
-	}
 
 	return pdata;
 }
@@ -507,8 +451,8 @@ static void bq27421_shutdown(struct i2c_client *client)
 {
 	struct bq27421_chip *chip = i2c_get_clientdata(client);
 
-	/* Set fast hibernate mode to prevent leakage */
-	bq27421_set_fast_hibernate(chip);
+	/* Set params for device shutdown */
+	bq27421_set_pwr_off_data(chip);
 }
 
 static int bq27421_pm_prepare(struct device *dev)

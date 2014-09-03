@@ -30,8 +30,6 @@ struct bq27421_dataram {
 
 struct bq27421_platform_data {
 	bool ext_batt_psy;
-	struct bq27421_dataram *fast_hib_data;
-	u8 num_fast_hib_data;
 };
 
 /* Standard data commands */
@@ -73,4 +71,7 @@ struct bq27421_platform_data {
 /* Data flash subclass ID */
 #define SUBCLASS_REGISTERS		0x40
 #define SUBCLASS_STATE			0x52
+
+#define OFFSET_OPCONFIG		0x00
+#define OFFSET_UPDATESTAT		0x02
 #endif
