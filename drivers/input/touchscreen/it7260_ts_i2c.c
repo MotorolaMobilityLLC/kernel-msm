@@ -2281,19 +2281,15 @@ void notify_it7260_ts_lowpowermode(int low)
 	if (it7260_status){
 	printk("[IT7260] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low) {
-		if(device_may_wakeup(&gl_ts->client->dev)) {
-			atomic_set(&Suspend_flag,1);
-			atomic_set(&palmpalm_flag, 0);
-			atomic_set(&wait_second_palm, 0);
-			enable_irq_wake(gl_ts->client->irq);
-		}
+		atomic_set(&Suspend_flag,1);
+		atomic_set(&palmpalm_flag, 0);
+		atomic_set(&wait_second_palm, 0);
+		enable_irq_wake(gl_ts->client->irq);
 		i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf, 3);
 	}
 	else {
-		if(device_may_wakeup(&gl_ts->client->dev)) {
-			atomic_set(&Suspend_flag,0);
-			disable_irq_wake(gl_ts->client->irq);
-		}
+		atomic_set(&Suspend_flag,0);
+		disable_irq_wake(gl_ts->client->irq);
 		i2cReadFromIt7260(gl_ts->client, 0x80, &ucQuery, 1);
 	}
 	printk("[IT7260] %s: ---: (%s)\n", __func__, low?"enter":"exit");
@@ -2424,7 +2420,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 	gl_ts = ts;
 	it7260_status = 1;
 	
-	pr_info("=end IT7260_ts_probe_20140903=\n");
+	pr_info("=end IT7260_ts_probe_20140826=\n");
 
 	i2cWriteToIt7260(ts->client, 0x20, cmdbuf, 1);
 	mdelay(10);
