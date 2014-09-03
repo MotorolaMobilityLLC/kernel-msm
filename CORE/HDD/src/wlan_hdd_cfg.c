@@ -5070,7 +5070,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "%s smeConfig allocation failed",__func__);
        return eHAL_STATUS_FAILED_ALLOC;
    }
-   vos_mem_zero( smeConfig, sizeof( smeConfig ) );
+   vos_mem_zero( smeConfig, sizeof( tSmeConfigParams ) );
 
    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
               "%s bWmmIsEnabled=%d 802_11e_enabled=%d dot11Mode=%d", __func__,

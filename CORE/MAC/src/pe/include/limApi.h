@@ -86,6 +86,9 @@
 #define LIM_SET_RADAR_DETECTED(pMac, val)   (pMac->lim.gLimSpecMgmt.fRadarDetCurOperChan = val)
 #define LIM_MIN_BCN_PR_LENGTH  12
 #define LIM_BCN_PR_CAPABILITY_OFFSET 10
+#define DEFAULT_MIN_CHAN_TIME_DURING_MIRACAST 20
+#define DEFAULT_MAX_CHAN_TIME_DURING_MIRACAST 20
+
 typedef enum eMgmtFrmDropReason
 {
     eMGMT_DROP_NO_DROP,

@@ -1072,7 +1072,7 @@ typedef struct sAniSirGlobal
 #endif
 
     v_BOOL_t isCoexScoIndSet;
-
+    v_U8_t miracast_mode;
 } tAniSirGlobal;
 
 #ifdef FEATURE_WLAN_TDLS

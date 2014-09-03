@@ -3437,4 +3437,5 @@ VOS_STATUS sme_SendTdlsChanSwitchReq(tHalHandle hHal,
                                      tANI_S32 tdlsOffChBwOffset,
                                      tANI_U8 tdlsSwMode);
 
+void sme_SetMiracastMode (tHalHandle hHal,tANI_U8 mode);
 #endif //#if !defined( __SME_API_H )
