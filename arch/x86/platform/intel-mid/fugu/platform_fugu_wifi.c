@@ -151,7 +151,7 @@ static int check_mac(char *str)
 
 static void string_to_mac(char *str, unsigned char *buf)
 {
-	char temp[2];
+	char temp[3]="\0";
 	int mac[6];
 	int i;
 
