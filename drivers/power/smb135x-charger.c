@@ -2590,6 +2590,7 @@ static int smb135x_get_charge_rate(struct smb135x_chg *chip)
 	return POWER_SUPPLY_CHARGE_RATE_NORMAL;
 }
 
+#define HVDCP_INPUT_CURRENT_MAX 1600
 static void rate_check_work(struct work_struct *work)
 {
 	struct smb135x_chg *chip =
@@ -2600,6 +2601,15 @@ static void rate_check_work(struct work_struct *work)
 
 	if (chip->charger_rate > POWER_SUPPLY_CHARGE_RATE_NORMAL) {
 		pr_warn("Charger Rate = %d\n", chip->charger_rate);
+
+		if (chip->charger_rate ==
+		    POWER_SUPPLY_CHARGE_RATE_TURBO) {
+			mutex_lock(&chip->current_change_lock);
+			chip->usb_psy_ma = HVDCP_INPUT_CURRENT_MAX;
+			smb135x_set_appropriate_current(chip, USB);
+			mutex_unlock(&chip->current_change_lock);
+		}
+
 		chip->rate_check_count = 0;
 		power_supply_changed(&chip->batt_psy);
 		return;
