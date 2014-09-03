@@ -1771,6 +1771,15 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_dfps_config(np, ctrl_pdata);
 
+	data = of_get_property(np, "qcom,mdss-dsi-panel-supplier", NULL);
+	if (!data)
+		memset(pinfo->supplier, '\0', sizeof(pinfo->supplier));
+	else if (strlcpy(pinfo->supplier, data, sizeof(pinfo->supplier)) >=
+		sizeof(pinfo->supplier)) {
+		pr_err("%s: Panel supplier name too large\n", __func__);
+	}
+	panelinfo.panel_supplier = pinfo->supplier;
+
 	return 0;
 
 error:
