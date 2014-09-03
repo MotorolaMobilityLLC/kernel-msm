@@ -527,8 +527,9 @@ struct stm_response {
 
 enum stm_quickpeek_state {
 	QP_IDLE,
-	QP_AWAKE,
-	QP_PREPARED
+	QP_PENDING,
+	QP_PREPARED,
+	QP_COMPLETED
 };
 
 struct stm401_quickpeek_message {
