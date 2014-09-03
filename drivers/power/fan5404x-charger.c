@@ -470,8 +470,8 @@ static int start_charging(struct fan5404x_chg *chip)
 		return rc;
 	}
 
-	/* Set OREG to 4.2V */
-	rc = fan5404x_set_oreg(chip, 4200);
+	/* Set OREG to 4.35V */
+	rc = fan5404x_set_oreg(chip, 4350);
 	if (rc)
 		return rc;
 
