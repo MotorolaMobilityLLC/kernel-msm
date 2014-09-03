@@ -12,6 +12,7 @@
 
 #include "msm8994.dtsi"
 #include "msm8994-pinctrl.dtsi"
+#include "msm8994-mot-camera-sensor.dtsi"
 
 / {
 	aliases {
