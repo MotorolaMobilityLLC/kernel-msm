@@ -392,10 +392,10 @@ struct smb135x_chg {
 	struct delayed_work		wireless_insertion_work;
 	struct delayed_work		usb_insertion_work;
 
-	unsigned int			thermal_levels;
-	unsigned int                    dc_thermal_levels;
-	unsigned int			therm_lvl_sel;
-	unsigned int                    dc_therm_lvl_sel;
+	int				thermal_levels;
+	int				dc_thermal_levels;
+	int				therm_lvl_sel;
+	int				dc_therm_lvl_sel;
 	unsigned int			*thermal_mitigation;
 	unsigned int			*dc_thermal_mitigation;
 	struct mutex			current_change_lock;
@@ -1350,10 +1350,14 @@ static void smb135x_set_chrg_path_temp(struct smb135x_chg *chip)
 
 static bool smb135x_is_max_thermal_level(struct smb135x_chg *chip)
 {
-	if (((chip->usb_present) &&
-	     (chip->therm_lvl_sel >= (chip->thermal_levels - 1))) ||
-	    ((chip->dc_present) &&
-	     (chip->dc_therm_lvl_sel >= (chip->dc_thermal_levels - 1))))
+	if (((chip->thermal_levels > 0) &&
+	     ((chip->usb_present) &&
+	      ((chip->therm_lvl_sel >= (chip->thermal_levels - 1)) ||
+	       (chip->therm_lvl_sel == -EINVAL)))) ||
+	    ((chip->dc_thermal_levels > 0) &&
+	     (chip->dc_present) &&
+	     ((chip->dc_therm_lvl_sel >= (chip->dc_thermal_levels - 1)) ||
+	      (chip->dc_therm_lvl_sel == -EINVAL))))
 		return true;
 	else
 		return false;
@@ -1564,6 +1568,7 @@ static int smb135x_set_appropriate_current(struct smb135x_chg *chip,
 	}
 
 	if ((path == DC) &&
+	    (chip->dc_thermal_mitigation) &&
 	    (chip->dc_therm_lvl_sel > 0) &&
 	    (chip->dc_therm_lvl_sel < chip->dc_thermal_levels))
 		/*
@@ -4494,7 +4499,8 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 			pr_err("Couldn't read threm limits rc = %d\n", rc);
 			return rc;
 		}
-	}
+	} else
+		chip->thermal_levels = 0;
 
 	if (of_find_property(node, "qcom,dc-thermal-mitigation",
 					&chip->dc_thermal_levels)) {
@@ -4516,7 +4522,8 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 			pr_err("Couldn't read DC therm limits rc = %d\n", rc);
 			return rc;
 		}
-	}
+	} else
+		chip->dc_thermal_levels = 0;
 
 	return 0;
 }
@@ -5021,6 +5028,9 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->shutdown_voltage_tripped = false;
 	chip->poll_fast = false;
 	chip->prev_batt_health = POWER_SUPPLY_HEALTH_GOOD;
+	chip->therm_lvl_sel = -EINVAL;
+	chip->dc_therm_lvl_sel = -EINVAL;
+
 
 	wakeup_source_init(&chip->smb_wake_source.source, "smb135x_wake");
 	INIT_DELAYED_WORK(&chip->wireless_insertion_work,
