@@ -1495,6 +1495,9 @@ void hdd_hostapd_ch_avoid_cb
             /* current operating channel is un-safe channel
              * restart driver */
             hdd_hostapd_stop(pHostapdAdapter->dev);
+            /* On LE, this event is handled by wlan-services to restart SAP.
+               On android, this event would be ignored. */
+            wlan_hdd_send_svc_nlink_msg(WLAN_SVC_SAP_RESTART_IND, NULL, 0);
             break;
          }
       }
