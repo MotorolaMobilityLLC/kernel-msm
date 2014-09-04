@@ -650,8 +650,12 @@ static int cpp_init_hardware(struct cpp_device *cpp_dev)
 			pr_err("Regulator cpp vdd get failed %ld\n",
 				PTR_ERR(cpp_dev->fs_cpp));
 			cpp_dev->fs_cpp = NULL;
+			rc = -EINVAL;
 			goto fs_failed;
-		} else if (regulator_enable(cpp_dev->fs_cpp)) {
+		}
+
+		rc = regulator_enable(cpp_dev->fs_cpp);
+		if (rc != 0) {
 			pr_err("Regulator cpp vdd enable failed\n");
 			regulator_put(cpp_dev->fs_cpp);
 			cpp_dev->fs_cpp = NULL;
