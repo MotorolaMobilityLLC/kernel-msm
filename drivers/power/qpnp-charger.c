@@ -1712,8 +1712,11 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 	if (chip->usb_present ^ usb_present) {
 		chip->usb_present = usb_present;
 		if (!usb_present) {
-			qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
-			
+//ASUS_BSP +++
+			qpnp_chg_write(chip, &chg_led, 0x104D, 1);
+			qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
+			qpnp_chg_irq_wake_disable(&chip->chg_vbatdet_lo);
+//ASUS_BSP ---
 			/* when a valid charger inserted, and increase the
 			 *  charger voltage to OVP threshold, then
 			 *  usb_in_valid falling edge interrupt triggers.
@@ -2077,6 +2080,7 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 		}
 	}
 
+	qpnp_chg_irq_wake_enable(&chip->chg_vbatdet_lo); //ASUS_BSP +
 	qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
 
 	return IRQ_HANDLED;
