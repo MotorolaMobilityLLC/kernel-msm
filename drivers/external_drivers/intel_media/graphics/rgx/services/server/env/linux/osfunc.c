@@ -127,12 +127,19 @@ static void init_pvr_pool(void)
 	pvrsrv_pool_writecombine = gen_pool_create(PAGE_SHIFT, -1);
 	if (!pvrsrv_pool_writecombine) {
 		printk(KERN_ERR "%s: create pvrsrv_pool failed\n", __func__);
-		return ;
+		return;
 	}
 
 	/* Reserve space in the vmalloc vm range */
 	tmp_area = __get_vm_area(POOL_SIZE, VM_ALLOC,
 			VMALLOC_START, VMALLOC_END);
+	if (!tmp_area) {
+		printk(KERN_ERR "%s: __get_vm_area failed\n", __func__);
+		gen_pool_destroy(pvrsrv_pool_writecombine);
+		pvrsrv_pool_writecombine = NULL;
+		return;
+	}
+
 	pool_start = tmp_area->addr;
 
 	if (!pool_start) {
@@ -140,7 +147,7 @@ static void init_pvr_pool(void)
 				__func__);
 		gen_pool_destroy(pvrsrv_pool_writecombine);
 		pvrsrv_pool_writecombine = NULL;
-		return ;
+		return;
 	} else {
 		/* Add our reserved space into the pool */
 		ret = gen_pool_add(pvrsrv_pool_writecombine,
@@ -150,8 +157,8 @@ static void init_pvr_pool(void)
 					__func__);
 			deinit_pvr_pool();
 			return;
-			}
 		}
+	}
 	return;
 }
 

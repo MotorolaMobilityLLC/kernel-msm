@@ -1465,9 +1465,11 @@ PVRSRV_ERROR SyncPrimServerGetStatus(IMG_UINT32 ui32SyncCount,
 									   pui32FWAddr,
 									   pui32CurrentOp,
 									   pui32NextOp);
+	OSFreeMem(pahServerHandle);
+
 	if (eError != PVRSRV_OK)
 	{
-		goto e1;
+		goto e0;
 	}
 	return PVRSRV_OK;
 

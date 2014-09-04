@@ -182,15 +182,14 @@ int MMapPMR(struct file *pFile, struct vm_area_struct *ps_vma)
 	IMG_UINT32 ui32CPUCacheFlags;
 	unsigned long ulNewFlags = 0;
 	pgprot_t sPageProt;
-
-#if defined(PVR_MMAP_USE_VM_INSERT)
-	IMG_BOOL bMixedMap = IMG_FALSE;
-#endif
-
 #if defined(SUPPORT_DRM)
 	CONNECTION_DATA *psConnection = LinuxConnectionFromFile(PVR_DRM_FILE_FROM_FILE(pFile));
 #else
 	CONNECTION_DATA *psConnection = LinuxConnectionFromFile(pFile);
+#endif
+
+#if defined(PVR_MMAP_USE_VM_INSERT)
+	IMG_BOOL bMixedMap = IMG_FALSE;
 #endif
 	/*
 	 * The bridge lock used here to protect Both PVRSRVLookupHandle and ResManFindPrivateDataByPtr

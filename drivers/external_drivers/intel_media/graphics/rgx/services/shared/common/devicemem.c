@@ -1004,6 +1004,7 @@ DevmemAllocate(DEVMEM_HEAP *psHeap,
     DEVMEM_MEMDESC *psMemDesc = IMG_NULL;
 	IMG_DEVMEM_OFFSET_T uiOffset = 0;
 	DEVMEM_IMPORT *psImport;
+	IMG_VOID      *pvAddr;
 
 	if (uiFlags & PVRSRV_MEMALLOCFLAG_NO_OSPAGES_ON_ALLOC)
 	{
@@ -1068,11 +1069,7 @@ DevmemAllocate(DEVMEM_HEAP *psHeap,
 
 	/* zero the memory */
 	if (uiFlags & PVRSRV_MEMALLOCFLAG_ZERO_ON_ALLOC)
-
 	{
-		IMG_VOID		*pvAddr;
-		PVRSRV_ERROR	eError;
-
 		eError = DevmemAcquireCpuVirtAddr(psMemDesc, &pvAddr);
 		if (eError != PVRSRV_OK)
 		{

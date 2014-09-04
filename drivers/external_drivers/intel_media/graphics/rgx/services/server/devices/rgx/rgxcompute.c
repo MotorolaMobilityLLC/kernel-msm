@@ -87,6 +87,7 @@ PVRSRV_ERROR PVRSRVRGXCreateComputeContextKM(CONNECTION_DATA			*psConnection,
 	PVRSRV_ERROR				eError = PVRSRV_OK;
 
 	/* Prepare cleanup struct */
+	*ppsComputeContext = IMG_NULL;
 	psComputeContext = OSAllocMem(sizeof(*psComputeContext));
 	if (psComputeContext == IMG_NULL)
 	{
@@ -94,7 +95,6 @@ PVRSRV_ERROR PVRSRVRGXCreateComputeContextKM(CONNECTION_DATA			*psConnection,
 	}
 
 	OSMemSet(psComputeContext, 0, sizeof(*psComputeContext));
-	*ppsComputeContext = psComputeContext;
 
 	psComputeContext->psDeviceNode = psDeviceNode;
 
@@ -178,6 +178,7 @@ PVRSRV_ERROR PVRSRVRGXCreateComputeContextKM(CONNECTION_DATA			*psConnection,
 		OSWRLockReleaseWrite(psDevInfo->hComputeCtxListLock);
 	}
 
+	*ppsComputeContext = psComputeContext;
 	return PVRSRV_OK;
 
 fail_contextalloc:

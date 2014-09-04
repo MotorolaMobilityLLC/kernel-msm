@@ -261,6 +261,7 @@ PVRSRV_ERROR PVRSRVRGXCreateTransferContextKM(CONNECTION_DATA		*psConnection,
 	PVRSRV_ERROR			eError = PVRSRV_OK;
 
 	/* Allocate the server side structure */
+	*ppsTransferContext = IMG_NULL;
 	psTransferContext = OSAllocMem(sizeof(*psTransferContext));
 	if (psTransferContext == IMG_NULL)
 	{
@@ -268,7 +269,6 @@ PVRSRV_ERROR PVRSRVRGXCreateTransferContextKM(CONNECTION_DATA		*psConnection,
 	}
 
 	OSMemSet(psTransferContext, 0, sizeof(*psTransferContext));
-	*ppsTransferContext = psTransferContext;
 
 	psTransferContext->psDeviceNode = psDeviceNode;
 
@@ -341,6 +341,7 @@ PVRSRV_ERROR PVRSRVRGXCreateTransferContextKM(CONNECTION_DATA		*psConnection,
 		OSWRLockReleaseWrite(psDevInfo->hTransferCtxListLock);
 	}
 
+	*ppsTransferContext = psTransferContext;
 	return PVRSRV_OK;
 
 fail_2dtransfercontext:
@@ -355,6 +356,7 @@ fail_frameworkcreate:
 fail_syncalloc:
 	OSFreeMem(psTransferContext);
 	PVR_ASSERT(eError != PVRSRV_OK);
+	*ppsTransferContext = IMG_NULL;
 	return eError;
 }
 

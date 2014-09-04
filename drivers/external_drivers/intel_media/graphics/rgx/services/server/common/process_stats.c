@@ -795,17 +795,27 @@ _CompressMemoryUsage(IMG_VOID)
 } /* _CompressMemoryUsage */
 
 
+/* These functions move the process stats from the living to the dead list.
+ * _MoveProcessToDeadList moves the entry in the global lists and
+ * it needs to be protected by psLinkedListLock.
+ * _MoveProcessToDeadListDebugFS performs the OS calls and it
+ * shouldn't be used under psLinkedListLock because this could generate a
+ * lockdep warning. */
 static IMG_VOID
-_MoveProcessFromLiveListToDeadList(PVRSRV_PROCESS_STATS* psProcessStats)
+_MoveProcessToDeadList(PVRSRV_PROCESS_STATS* psProcessStats)
 {
 	/* Take the element out of the live list and append to the dead list... */
 	_RemoveProcessStatsFromList(psProcessStats);
 	_AddProcessStatsToFrontOfDeadList(psProcessStats);
-	
+} /* _MoveProcessToDeadList */
+
+static IMG_VOID
+_MoveProcessToDeadListDebugFS(PVRSRV_PROCESS_STATS* psProcessStats)
+{
 	/* Transfer the OS entries to the folder for dead processes... */
 	_RemoveOSStatisticEntries(psProcessStats);
 	_CreateOSStatisticEntries(psProcessStats, pvOSDeadPidFolder);
-} /* _MoveProcessFromLiveListToDeadList */
+} /* _MoveProcessToDeadListDebugFS */
 
 
 /*************************************************************************/ /*!
@@ -1223,6 +1233,8 @@ PVRSRVStatsRegisterProcess(IMG_HANDLE* phProcessStats)
 IMG_VOID
 PVRSRVStatsDeregisterProcess(IMG_HANDLE hProcessStats)
 {
+	IMG_BOOL    bMoveProcess = IMG_FALSE;
+
 	if (hProcessStats != 0)
 	{
 		PVRSRV_PROCESS_STATS*  psProcessStats = (PVRSRV_PROCESS_STATS*) hProcessStats;
@@ -1236,10 +1248,17 @@ PVRSRVStatsDeregisterProcess(IMG_HANDLE hProcessStats)
 
 			if (psProcessStats->ui32RefCount == 0)
 			{
-				_MoveProcessFromLiveListToDeadList(psProcessStats);
+				_MoveProcessToDeadList(psProcessStats);
+				bMoveProcess = IMG_TRUE;
 			}
 		}
 		OSLockRelease(psLinkedListLock);
+
+		/* The OS calls need to be performed without psLinkedListLock */
+		if (bMoveProcess == IMG_TRUE)
+		{
+			_MoveProcessToDeadListDebugFS(psProcessStats);
+		}
 
 		/* Check if the dead list needs to be reduced */
 		_CompressMemoryUsage();

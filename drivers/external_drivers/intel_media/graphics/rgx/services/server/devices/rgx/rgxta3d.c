@@ -1011,7 +1011,8 @@ PVRSRV_ERROR RGXCreateHWRTData(PVRSRV_DEVICE_NODE	*psDeviceNode,
 
 	*puiHWRTData = pFirmwareAddr.ui32Addr;
 
-	DevmemAcquireCpuVirtAddr(*ppsMemDesc, (IMG_VOID **)&psHWRTData);
+	eError = DevmemAcquireCpuVirtAddr(*ppsMemDesc, (IMG_VOID **)&psHWRTData);
+	PVR_LOGG_IF_ERROR(eError, "Devmem AcquireCpuVirtAddr", FWRTDataCpuMapError);
 
 	
 	psHWRTData->psPMMListDevVAddr = psPMMListDevVAddr;
@@ -1074,7 +1075,8 @@ PVRSRV_ERROR RGXCreateHWRTData(PVRSRV_DEVICE_NODE	*psDeviceNode,
 								   *ppsRTACtlMemDesc,
 								   0, RFW_FWADDR_FLAG_NONE);
 	
-	DevmemAcquireCpuVirtAddr(*ppsRTACtlMemDesc, (IMG_VOID **)&psRTACtl);
+	eError = DevmemAcquireCpuVirtAddr(*ppsRTACtlMemDesc, (IMG_VOID **)&psRTACtl);
+	PVR_LOGG_IF_ERROR(eError, "Devmem AcquireCpuVirtAddr", FWRTACpuMapError);
 	psRTACtl->ui32RenderTargetIndex = 0;
 	psRTACtl->ui32ActiveRenderTargets = 0;
 
@@ -1121,9 +1123,13 @@ PVRSRV_ERROR RGXCreateHWRTData(PVRSRV_DEVICE_NODE	*psDeviceNode,
 
 	DevmemFwFree(psTmpCleanup->psRTArrayMemDesc);
 FWAllocateRTArryError:
+	DevmemReleaseCpuVirtAddr(*ppsRTACtlMemDesc);
+FWRTACpuMapError:
 	RGXUnsetFirmwareAddress(*ppsRTACtlMemDesc);
 	DevmemFwFree(*ppsRTACtlMemDesc);
 FWRTAAllocateError:
+	DevmemReleaseCpuVirtAddr(*ppsMemDesc);
+FWRTDataCpuMapError:
 	RGXUnsetFirmwareAddress(*ppsMemDesc);
 	DevmemFwFree(*ppsMemDesc);
 FWRTDataAllocateError:
@@ -1296,7 +1302,8 @@ PVRSRV_ERROR RGXCreateFreeList(PVRSRV_DEVICE_NODE	*psDeviceNode,
 
 
 	/* Initialise FW data structure */
-	DevmemAcquireCpuVirtAddr(psFreeList->psFWFreelistMemDesc, (IMG_VOID **)&psFWFreeList);
+	eError = DevmemAcquireCpuVirtAddr(psFreeList->psFWFreelistMemDesc, (IMG_VOID **)&psFWFreeList);
+	PVR_LOGG_IF_ERROR(eError, "Devmem AcquireCpuVirtAddr", FWFreeListCpuMap);
 	psFWFreeList->ui32MaxPages = ui32MaxFLPages;
 	psFWFreeList->ui32CurrentPages = ui32InitFLPages;
 	psFWFreeList->ui32GrowPages = ui32GrowFLPages;
@@ -1365,6 +1372,14 @@ PVRSRV_ERROR RGXCreateFreeList(PVRSRV_DEVICE_NODE	*psDeviceNode,
 	/* Error handling */
 
 ErrorAllocBlock:
+	DevmemReleaseCpuVirtAddr(psFreeList->psFWFreelistMemDesc);
+
+FWFreeListCpuMap:
+	/* Remove freelists from list  */
+	OSLockAcquire(psDevInfo->hLockFreeList);
+	dllist_remove_node(&psFreeList->sNode);
+	OSLockRelease(psDevInfo->hLockFreeList);
+
 	RGXUnsetFirmwareAddress(psFWFreelistMemDesc);
 	DevmemFwFree(psFWFreelistMemDesc);
 
@@ -1583,7 +1598,9 @@ PVRSRV_ERROR RGXCreateRenderTarget(PVRSRV_DEVICE_NODE	*psDeviceNode,
 	RGXSetFirmwareAddress(&pFirmwareAddr, psCleanupData->psRenderTargetMemDesc, 0, RFW_FWADDR_FLAG_NONE);
 	*sRenderTargetFWDevVAddr = pFirmwareAddr.ui32Addr;
 
-	DevmemAcquireCpuVirtAddr(psCleanupData->psRenderTargetMemDesc, (IMG_VOID **)&psRenderTarget);
+	eError = DevmemAcquireCpuVirtAddr(psCleanupData->psRenderTargetMemDesc, (IMG_VOID **)&psRenderTarget);
+	PVR_LOGG_IF_ERROR(eError, "Devmem AcquireCpuVirtAddr", err_fwalloc);
+
 	psRenderTarget->psVHeapTableDevVAddr = psVHeapTableDevVAddr;
 	psRenderTarget->bTACachesNeedZeroing = IMG_FALSE;
 	PDUMPCOMMENT("Dump RenderTarget");
@@ -1598,6 +1615,11 @@ err_out:
 err_free:
 	OSFreeMem(psCleanupData);
 	goto err_out;
+
+err_fwalloc:
+	DevmemFwFree(psCleanupData->psRenderTargetMemDesc);
+	goto err_free;
+
 }
 
 
@@ -2321,6 +2343,7 @@ PVRSRV_ERROR PVRSRVRGXCreateRenderContextKM(CONNECTION_DATA				*psConnection,
 	RGX_COMMON_CONTEXT_INFO		sInfo;
 
 	/* Prepare cleanup structure */
+	*ppsRenderContext = IMG_NULL;
 	psRenderContext = OSAllocMem(sizeof(*psRenderContext));
 	if (psRenderContext == IMG_NULL)
 	{
@@ -2329,7 +2352,6 @@ PVRSRV_ERROR PVRSRVRGXCreateRenderContextKM(CONNECTION_DATA				*psConnection,
 
 	OSMemSet(psRenderContext, 0, sizeof(*psRenderContext));
 	psRenderContext->psDeviceNode = psDeviceNode;
-	*ppsRenderContext= psRenderContext;
 
 	/*
 		Create the FW render context, this has the TA and 3D FW common
@@ -2428,6 +2450,7 @@ PVRSRV_ERROR PVRSRVRGXCreateRenderContextKM(CONNECTION_DATA				*psConnection,
 		OSWRLockReleaseWrite(psDevInfo->hRenderCtxListLock);
 	}
 
+	*ppsRenderContext= psRenderContext;
 	return PVRSRV_OK;
 
 fail_3dcontext:

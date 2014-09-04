@@ -561,6 +561,11 @@ PVRSRV_ERROR PVRSRVRGXInitDevPart2KM (PVRSRV_DEVICE_NODE	*psDeviceNode,
 
 	/* Allocate DVFS History */
 	psDevInfo->psGpuDVFSHistory = OSAllocZMem(sizeof(*(psDevInfo->psGpuDVFSHistory)));
+	if (psDevInfo->psGpuDVFSHistory == IMG_NULL)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVRGXInitDevPart2KM: failed to allocate gpu dvfs history storage"));
+		return PVRSRV_ERROR_OUT_OF_MEMORY;
+	}
 
 	/* Reset DVFS history */
 	psDevInfo->psGpuDVFSHistory->ui32CurrentDVFSId = 0;
