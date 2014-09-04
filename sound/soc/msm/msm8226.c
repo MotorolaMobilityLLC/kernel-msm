@@ -1337,7 +1337,7 @@ static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream)
 {
         int ret =0;
         if (atomic_dec_return(&pri_mi2s_clk.mi2s_rsc_ref) == 0) {
-                pr_info("%s: free mi2s resources\n", __func__);
+                pr_debug("%s: free mi2s resources\n", __func__);
 
                 ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX, &lpass_mi2s_disable);
                 if (ret < 0) {
@@ -1360,7 +1360,7 @@ static int msm8226_configure_pri_mi2s_gpio(void)
                 rtn = gpio_request(pri_mi2s_gpio[i].gpio_no,
                                 pri_mi2s_gpio[i].gpio_name);
 
-                pr_info("%s: gpio = %d, gpio name = %s, rtn = %d\n", __func__,
+                pr_debug("%s: gpio = %d, gpio name = %s, rtn = %d\n", __func__,
                 pri_mi2s_gpio[i].gpio_no, pri_mi2s_gpio[i].gpio_name, rtn);
                 if (rtn) {
                         pr_err("%s: Failed to request gpio %d\n",
@@ -1374,7 +1374,6 @@ static int msm8226_configure_pri_mi2s_gpio(void)
                 }
         }
         gpio_direction_output(60, 1);
-        printk("msm8226_configure_pri_mi2s_gpio: done");
 
         return rtn;
 }
@@ -1384,7 +1383,7 @@ static int msm8226_mi2s_startup(struct snd_pcm_substream *substream)
         struct snd_soc_pcm_runtime *rtd = substream->private_data;
         struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 
-        pr_info("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+        pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
 
 //ASUS BSP Jessy +++ : config DMIC 1p8
         ret = regulator_enable(dmic_1p8);
@@ -1395,10 +1394,9 @@ static int msm8226_mi2s_startup(struct snd_pcm_substream *substream)
 //ASUS BSP Jessy --- : config DMIC 1p8
 
 	if (atomic_inc_return(&pri_mi2s_clk.mi2s_rsc_ref) == 1) {
-                pr_info("%s: acquire mi2s resources\n", __func__);
+                pr_debug("%s: acquire mi2s resources\n", __func__);
                 msm8226_configure_pri_mi2s_gpio();
                 ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX, &lpass_mi2s_enable);
-                printk("afe_set_lpass_clock: for AFE_PORT_ID_PRIMARY_MI2S_TX done\n");
                 if (ret < 0) {
                         pr_err("%s: afe_set_lpass_clock failed\n", __func__);
                         return ret;
@@ -1408,11 +1406,9 @@ static int msm8226_mi2s_startup(struct snd_pcm_substream *substream)
                 if (ret < 0) {
                         dev_err(cpu_dai->dev, "set format for CPU dai"
                                 " failed\n");
-                        printk("msm8226_mi2s_startup: set format for CPU dai failed\n");
                 }
-                printk("msm8226_mi2s_startup: snd_soc_dai_set_fmt for cpu_dai done\n");
         }
-        printk("msm8226_mi2s_startup: done\n");
+
         return ret;
 }
 
