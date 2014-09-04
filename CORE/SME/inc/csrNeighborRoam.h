@@ -70,6 +70,8 @@ typedef struct sCsrNeighborRoamCfgParams
     tANI_U32        maxChannelScanTime;
     tANI_U16        neighborResultsRefreshPeriod;
     tANI_U16        emptyScanRefreshPeriod;
+    tANI_U8         neighborInitialForcedRoamTo5GhEnable;
+    tANI_U8         neighborInitialForcedRoamTo5GhRssiDiff;
 } tCsrNeighborRoamCfgParams, *tpCsrNeighborRoamCfgParams;
 
 #define CSR_NEIGHBOR_ROAM_INVALID_CHANNEL_INDEX    255
@@ -95,6 +97,7 @@ typedef struct sCsrNeighborRoamBSSInfo
 #define MAX_NUM_PREAUTH_FAIL_LIST_ADDRESS       10 //Max number of MAC addresses with which the pre-auth was failed
 #define MAX_BSS_IN_NEIGHBOR_RPT                 15
 #define CSR_NEIGHBOR_ROAM_MAX_NUM_PREAUTH_RETRIES 3
+#define INITIAL_FORCED_ROAM_TO_5G_TIMER_PERIOD    5000 //in msecs
 
 /* Black listed APs. List of MAC Addresses with which the Preauthentication was failed. */
 typedef struct sCsrPreauthFailListInfo
@@ -202,6 +205,8 @@ typedef struct sCsrNeighborRoamControlInfo
 #endif
     tSmeFastRoamTrigger         cfgRoamEn;
     tSirMacAddr                 cfgRoambssId;
+    vos_timer_t                 forcedInitialRoamTo5GHTimer;
+    tANI_U8                     isForcedInitialRoamTo5GH;
 } tCsrNeighborRoamControlInfo, *tpCsrNeighborRoamControlInfo;
 
 
@@ -229,12 +234,13 @@ tANI_BOOLEAN csrNeighborMiddleOfRoaming(tHalHandle hHal);
 VOS_STATUS csrNeighborRoamSetLookupRssiThreshold(tpAniSirGlobal pMac, v_U8_t neighborLookupRssiThreshold);
 VOS_STATUS csrNeighborRoamUpdateFastRoamingEnabled(tpAniSirGlobal pMac, const v_BOOL_t fastRoamEnabled);
 VOS_STATUS csrNeighborRoamUpdateEseModeEnabled(tpAniSirGlobal pMac, const v_BOOL_t eseMode);
-VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
+VOS_STATUS csrNeighborRoamChannelsFilterByBand(
                       tpAniSirGlobal pMac,
                       tANI_U8*  pInputChannelList,
                       tANI_U8   inputNumOfChannels,
                       tANI_U8*  pOutputChannelList,
-                      tANI_U8*  pMergedOutputNumOfChannels
+                      tANI_U8*  pMergedOutputNumOfChannels,
+                      tSirRFBand band
                       );
 VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
                                              v_U8_t trafficStatus,
@@ -270,12 +276,13 @@ VOS_STATUS csrNeighborRoamMergeChannelLists(tpAniSirGlobal pMac,
 #define REASON_OS_REQUESTED_ROAMING_NOW             15
 #define REASON_SCAN_CH_TIME_CHANGED                 16
 #define REASON_SCAN_HOME_TIME_CHANGED               17
+#define REASON_INITIAL_FORCED_ROAM_TO_5G            18
 eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reason);
 eHalStatus csrNeighborRoamCandidateFoundIndHdlr(tpAniSirGlobal pMac, void* pMsg);
 eHalStatus csrNeighborRoamHandoffReqHdlr(tpAniSirGlobal pMac, void* pMsg);
 eHalStatus csrNeighborRoamProceedWithHandoffReq(tpAniSirGlobal pMac);
 eHalStatus csrNeighborRoamSssidScanDone(tpAniSirGlobal pMac, eHalStatus status);
-eHalStatus csrNeighborRoamStartLfrScan(tpAniSirGlobal pMac);
+eHalStatus csrNeighborRoamStartLfrScan(tpAniSirGlobal pMac, tANI_U8 OffloadCmdStopReason);
 #endif
 
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
