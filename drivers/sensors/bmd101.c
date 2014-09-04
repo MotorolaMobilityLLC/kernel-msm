@@ -55,7 +55,15 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 
 #define BMD101_CS_GPIO		53
 #define BMD101_RST_GPIO		55
-#define BMD101_filter_array		15
+
+#define BMD101_stable_time		10
+#define BMD101_setup_time		3
+
+#define SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT		-1
+#define SENSOR_HEART_RATE_CONFIDENCE_UNRELIABLE		0
+#define SENSOR_HEART_RATE_CONFIDENCE_LOW			1
+#define SENSOR_HEART_RATE_CONFIDENCE_MEDIUM			2
+#define SENSOR_HEART_RATE_CONFIDENCE_HIGH			3
 
 static struct regulator *pm8921_l28;
 static struct sensors_classdev bmd101_cdev = {
@@ -73,6 +81,7 @@ struct bmd101_data {
 	int esd;
 	int status;
 	int count;
+	int accuracy;
 	int timeout_delay;
 	struct mutex lock;
 	struct delayed_work timeout_work;
@@ -88,52 +97,32 @@ static struct gpiomux_setting gpio_sus_cfg = {
 	.dir = GPIOMUX_IN,
 };
 
-static int bmd101_data_report(int data)
+static int bmd101_data_report(int data, int accuracy)
 {
-	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: (%d) \n", __func__, data);
-	input_report_abs(sensor_data->input_dev, ABS_MISC, data);
+	int report_data;
+
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bpm(%d) accuracy(%d)\n", __func__, data, accuracy);
+
+	switch(accuracy) {
+		case SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT:
+			report_data = -1;
+			break;
+		case SENSOR_HEART_RATE_CONFIDENCE_LOW:
+			report_data = data + 1000;
+			break;
+		case SENSOR_HEART_RATE_CONFIDENCE_MEDIUM:
+			report_data = data + 2000;
+			break;
+		case SENSOR_HEART_RATE_CONFIDENCE_HIGH:
+			report_data = data;
+			break;
+		default:
+			report_data = 0;
+	}
+	input_report_abs(sensor_data->input_dev, ABS_MISC, report_data);
 	input_sync(sensor_data->input_dev);
 
 	return 0;
-}
-
-static void sortArray(int *nums) {
-	static int x;
-	static int y;
-
-	for(x=0; x<BMD101_filter_array; x++) {
-		for(y=0; y<BMD101_filter_array-1; y++) {
-			if(nums[y]>nums[y+1]) {
-				int temp = nums[y+1];
-				nums[y+1] = nums[y];
-				nums[y] = temp;
-			}
-		}
-	}
-}
-
-static int findMode(int *nums) {
-	int i, maxCount, modeValue;
-	int freq[BMD101_filter_array] = {0};
-	int temp;
-
-	temp = 0;
-	maxCount = 0;
-	modeValue = 0;
-
-	for (i = 0; i < BMD101_filter_array; i++) {
-		if (nums[i] > maxCount)
-			maxCount = nums[i];
-		else
-			freq[i]++;
-
-		if(freq[i] > temp) {
-			temp = freq[i];
-			modeValue = nums[i];
-		}
-	}
-
-	return modeValue;
 }
 
 static void bmd101_hw_enable(int enable) {
@@ -213,27 +202,27 @@ static void bmd101_hw_enable(int enable) {
 
 static void bmd101_data_filter(int data)
 {
-	static int bpm[BMD101_filter_array];
-	int calc_bpm;
-
 	mutex_lock(&sensor_data->lock);
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d timeout_delay=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count, sensor_data->timeout_delay);
-	if(sensor_data->status > 1) {
+	if(sensor_data->status >= 2) {
 		sensor_data->timeout_delay = 0;
 		if(delayed_work_pending(&sensor_data->timeout_work)) {
 			sensor_debug(DEBUG_INFO, "[bmd101] timeout cancelled.\n");
 			cancel_delayed_work_sync(&sensor_data->timeout_work);
 		}
-		if(sensor_data->count < BMD101_filter_array)
-			bpm[sensor_data->count++] = data;
+		if(sensor_data->count <= BMD101_stable_time) {
+			sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_LOW;
+			sensor_data->bpm = data;
+			sensor_data->count++;
+		}
 		else {
 			sensor_data->count = 0;
-			sortArray(bpm);
-			calc_bpm = findMode(bpm);
-			bmd101_data_report(calc_bpm);
-			sensor_data->bpm = calc_bpm;
-			sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) REPORT\n", __func__, calc_bpm);
+			sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_HIGH;
+			printk("[bmd101] previous=%d current=%d avg=%d\n", sensor_data->bpm, data, (sensor_data->bpm+data)/2);
+			sensor_data->bpm = (sensor_data->bpm+data)/2;
 		}
+		bmd101_data_report(data, sensor_data->accuracy);
+		sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) REPORT with accuracy (%d)\n", __func__, sensor_data->bpm, sensor_data->accuracy);
 	}
 	else
 		queue_delayed_work(sensor_data->bmd101_work_queue, &sensor_data->timeout_work, sensor_data->timeout_delay);		//queue timeout delay first time: @3s in between measurements: @1s
@@ -277,7 +266,7 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 
 static void bmd101_timeout_work(struct work_struct *work) {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: no contact detected. TIMEOUT!! \n", __func__);
-	bmd101_data_report(-1);
+	bmd101_data_report(-1, -1);
 	sensor_data->count = 0;
 }
 
@@ -456,6 +445,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	}
 	sensor_data->esd = 0;
 	sensor_data->bpm = 0;
+	sensor_data->accuracy = 0;
 	sensor_data->hw_enabled = 0;
 	sensor_data->timeout_delay = 300;
 	sensor_data->cdev = bmd101_cdev;
