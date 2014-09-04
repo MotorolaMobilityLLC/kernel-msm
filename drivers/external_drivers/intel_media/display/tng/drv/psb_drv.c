@@ -98,12 +98,10 @@ static void power_up(int pm_reg, u32 pm_mask) {
 	u32 pwr_mask = 0;
 
 	pwr_mask = intel_mid_msgbus_read32(0x04, pm_reg);
-	printk ("\nHACK - pwr_mask read: reg=0x%x pwr_mask=0x%x \n", pm_reg, pwr_mask);
 	// pwr_mask &= ~pm_mask;
 	pwr_mask =0;
 
 	intel_mid_msgbus_write32(0x04, pm_reg, pwr_mask);
-	printk ("\nHACK - pwr_mask read modify write: reg=0x%x pwr_mask=0x%x \n", pm_reg, pwr_mask);
 	udelay(10);
 }
 /* Hack to Turn GFX islands up - END */
@@ -1501,7 +1499,6 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 	if (IS_MOFD(dev)) {
 		pm_reg = 0x3f;
 		pm_mask = intel_mid_msgbus_read32(0x04, pm_reg);
-		printk ("\nHACK - Before PWR ON - pwr_mask read: reg=0x%x pwr_mask=0x%x \n", pm_reg, pm_mask);
 
 		pm_mask = 0x0;
 		pm_reg = 0x30; //GFXSS
@@ -1516,7 +1513,6 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 		pm_reg = 0x3f;
 		pm_mask = intel_mid_msgbus_read32(0x04, pm_reg);
-		printk ("\nHACK - PR: After PWR ON - pwr_mask read: reg=0x%x pwr_mask=0x%x \n", pm_reg, pm_mask);
 	}
 
 	DRM_INFO("psb - %s\n", PSB_PACKAGE_VERSION);
