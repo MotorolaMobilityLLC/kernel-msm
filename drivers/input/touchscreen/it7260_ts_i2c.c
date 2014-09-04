@@ -81,6 +81,7 @@ static int palm_after = 0;
 static atomic_t palmpalm_flag;
 static atomic_t wait_second_palm;
 static atomic_t palm_num;
+static int firstlowpow = 1;
 
 #ifdef DEBUG
 #define TS_DEBUG(fmt,args...)  printk( KERN_DEBUG "[it7260_i2c]: " fmt, ## args)
@@ -2184,7 +2185,6 @@ static irqreturn_t IT7260_ts_irq_handler(int irq, void *dev_id) {
 		queue_work(IT7260_wq, &ts->work);
 
 	}
-	
 	return IRQ_HANDLED;
 }
 
@@ -2276,21 +2276,38 @@ static int IdentifyCapSensor(struct IT7260_ts_data *ts) {
 void notify_it7260_ts_lowpowermode(int low)
 {
 	unsigned char ucQuery;
+	int allow_irq_wake = !(atomic_read(&Suspend_flag));
 	u8 cmdbuf[] = { 0x04, 0x00, 0x01 };
+	u8 pucBuffer[2];
+	pucBuffer[0] = 0x6F;
 	
 	if (it7260_status){
 	printk("[IT7260] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low) {
-		atomic_set(&Suspend_flag,1);
-		atomic_set(&palmpalm_flag, 0);
-		atomic_set(&wait_second_palm, 0);
-		enable_irq_wake(gl_ts->client->irq);
+		if (allow_irq_wake){
+			printk ("[IT7260] not triggered by touch\n");
+			atomic_set(&Suspend_flag,1);
+			atomic_set(&palmpalm_flag, 0);
+			atomic_set(&wait_second_palm, 0);
+			enable_irq_wake(gl_ts->client->irq);
+		}
 		i2cWriteToIt7260(gl_ts->client, 0x20, cmdbuf, 3);
 	}
-	else {
-		atomic_set(&Suspend_flag,0);
-		disable_irq_wake(gl_ts->client->irq);
+	else if (!low) {
+		if (!allow_irq_wake){
+			printk ("[IT7260] not triggered by touch\n");
+			atomic_set(&Suspend_flag,0);
+			disable_irq_wake(gl_ts->client->irq);
+		}
 		i2cReadFromIt7260(gl_ts->client, 0x80, &ucQuery, 1);
+		
+		if (firstlowpow == 1)
+		{
+			printk ("[IT7260] Reset touch\n");
+			i2cWriteToIt7260(gl_ts->client, 0x20, pucBuffer, 1);
+			msleep(10);
+			firstlowpow = 0;
+		}
 	}
 	printk("[IT7260] %s: ---: (%s)\n", __func__, low?"enter":"exit");
 }
@@ -2420,7 +2437,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 	gl_ts = ts;
 	it7260_status = 1;
 	
-	pr_info("=end IT7260_ts_probe_20140826=\n");
+	pr_info("=end IT7260_ts_probe_20140904=\n");
 
 	i2cWriteToIt7260(ts->client, 0x20, cmdbuf, 1);
 	mdelay(10);
