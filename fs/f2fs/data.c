@@ -1068,9 +1068,9 @@ static int check_direct_IO(struct inode *inode, int rw,
 	if (offset & blocksize_mask)
 		return -EINVAL;
 
-       for (i = 0; i < nr_segs; i++)
-               if (iov[i].iov_len & blocksize_mask)
-                       return -EINVAL;
+	for (i = 0; i < nr_segs; i++)
+		if (iov[i].iov_len & blocksize_mask)
+			return -EINVAL;
 
 	return 0;
 }

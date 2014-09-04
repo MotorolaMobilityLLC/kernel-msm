@@ -47,7 +47,6 @@
 #define F2FS_MOUNT_DISABLE_EXT_IDENTIFY	0x00000040
 #define F2FS_MOUNT_INLINE_XATTR		0x00000080
 #define F2FS_MOUNT_INLINE_DATA		0x00000100
-#define F2FS_MOUNT_ANDROID_EMU		0x00001000
 #define F2FS_MOUNT_FLUSH_MERGE		0x00000200
 #define F2FS_MOUNT_NOBARRIER		0x00000400
 
@@ -215,8 +214,6 @@ struct extent_info {
  */
 #define FADVISE_COLD_BIT	0x01
 #define FADVISE_LOST_PINO_BIT	0x02
-#define FADVISE_ANDROID_EMU	0x10
-#define FADVISE_ANDROID_EMU_ROOT 0x20
 
 #define DEF_DIR_LEVEL		0
 
@@ -430,10 +427,6 @@ struct f2fs_io_info {
 };
 
 #define is_read_io(rw)	(((rw) & 1) == READ)
-/*
- * Android sdcard emulation flags
- */
-#define F2FS_ANDROID_EMU_NOCASE		0x00000001
 
 struct f2fs_bio_info {
 	struct f2fs_sb_info *sbi;	/* f2fs superblock */
@@ -540,12 +533,6 @@ struct f2fs_sb_info {
 	/* For sysfs suppport */
 	struct kobject s_kobj;
 	struct completion s_kobj_unregister;
-
-	/* For Android sdcard emulation */
-	u32 android_emu_uid;
-	u32 android_emu_gid;
-	umode_t android_emu_mode;
-	int android_emu_flags;
 };
 
 /*
@@ -1069,14 +1056,6 @@ static inline int cond_clear_inode_flag(struct f2fs_inode_info *fi, int flag)
 	}
 	return 0;
 }
-
-int f2fs_android_emu(struct f2fs_sb_info *, struct inode *, u32 *, u32 *,
-		umode_t *);
-
-#define IS_ANDROID_EMU(sbi, fi, pfi)					\
-	(test_opt((sbi), ANDROID_EMU) &&				\
-	 (((fi)->i_advise & FADVISE_ANDROID_EMU) ||			\
-	  ((pfi)->i_advise & FADVISE_ANDROID_EMU)))
 
 static inline void get_inline_info(struct f2fs_inode_info *fi,
 					struct f2fs_inode *ri)

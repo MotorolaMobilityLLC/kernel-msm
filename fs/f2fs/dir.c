@@ -158,7 +158,6 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	unsigned int bidx, end_block;
 	struct page *dentry_page;
 	struct f2fs_dir_entry *de = NULL;
-	struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
 	bool room = false;
 	int max_slots = 0;
 
@@ -178,11 +177,6 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 			room = true;
 			continue;
 		}
-
-		if (test_opt(sbi, ANDROID_EMU) &&
-		    (sbi->android_emu_flags & F2FS_ANDROID_EMU_NOCASE) &&
-		    F2FS_I(dir)->i_advise & FADVISE_ANDROID_EMU)
-			flags |= LOOKUP_NOCASE;
 
 		de = find_in_block(dentry_page, name, &max_slots,
 					namehash, res_page, flags);
