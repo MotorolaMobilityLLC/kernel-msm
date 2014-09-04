@@ -194,12 +194,6 @@ static VOS_STATUS wlan_hdd_init_channels_for_cc(hdd_context_t *pHddCtx);
  */
 #define WLAN_MAX_BUF_SIZE 1024
 #define WLAN_PRIV_DATA_MAX_LEN    8192
-/*
- * Driver miracast parameters 0-Disabled
- * 1-Source, 2-Sink
- */
-#define WLAN_HDD_DRIVER_MIRACAST_CFG_MIN_VAL 0
-#define WLAN_HDD_DRIVER_MIRACAST_CFG_MAX_VAL 2
 
 //wait time for beacon miss rate.
 #define BCN_MISS_RATE_TIME 500

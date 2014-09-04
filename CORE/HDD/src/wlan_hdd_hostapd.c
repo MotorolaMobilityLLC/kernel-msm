@@ -326,6 +326,39 @@ static int hdd_hostapd_driver_command(hdd_adapter_t *pAdapter,
 
       ret = sapSetPreferredChannel(command);
    }
+   else if ( strncasecmp(command, "MIRACAST", 8) == 0 )
+   {
+       hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+       tANI_U8 filterType = 0;
+       tANI_U8 *value;
+       value = command + 9;
+
+       /* Convert the value from ascii to integer */
+       ret = kstrtou8(value, 10, &filterType);
+       if (ret < 0)
+       {
+           /* If the input value is greater than max value of datatype,
+            * then also kstrtou8 fails
+            */
+           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: kstrtou8 failed range ", __func__);
+           ret = -EINVAL;
+           goto exit;
+       }
+       if ((filterType < WLAN_HDD_DRIVER_MIRACAST_CFG_MIN_VAL ) ||
+               (filterType > WLAN_HDD_DRIVER_MIRACAST_CFG_MAX_VAL))
+       {
+           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: Accepted Values are 0 to 2. 0-Disabled, 1-Source,"
+                   " 2-Sink ", __func__);
+           ret = -EINVAL;
+           goto exit;
+       }
+       //Filtertype value should be either 0-Disabled, 1-Source, 2-sink
+       pHddCtx->drvr_miracast = filterType;
+       hdd_tx_rx_pkt_cnt_stat_timer_handler(pHddCtx);
+       sme_SetMiracastMode(pHddCtx->hHal, pHddCtx->drvr_miracast);
+   }
 
 exit:
    if (command)
