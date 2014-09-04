@@ -2422,9 +2422,6 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
     else if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode ||
         eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY == pHddCtx->tdls_mode)
     {
-        /* disable implicit trigger logic & tdls operatoin */
-        wlan_hdd_tdls_set_mode(pHddCtx, eTDLS_SUPPORT_DISABLED, FALSE);
-        /* indicate the teardown all connected to peer */
         connectedTdlsPeers = wlan_hdd_tdlsConnectedPeers(pAdapter);
 
         /* check the TDLS link and Scan coexistance Capability */
@@ -2479,6 +2476,8 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
                     pHddCtx->cfg_ini->fEnableTDLSScanCoexSupport,
                     sme_IsFeatureSupportedByFW(TDLS_SCAN_COEXISTENCE));
 
+        /* disable implicit trigger logic & tdls operatoin */
+        wlan_hdd_tdls_set_mode(pHddCtx, eTDLS_SUPPORT_DISABLED, FALSE);
         /* fall back to the implementation of teardown the peers on the scan
          * when the number of connected peers are more than one. TDLS Scan
          * coexistance feature is exercised only when a single peer is
