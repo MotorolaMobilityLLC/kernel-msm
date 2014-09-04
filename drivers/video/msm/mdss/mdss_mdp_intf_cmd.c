@@ -679,7 +679,7 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 				MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 				(void *)&ctx->recovery);
 
-		ctx->intf_stopped = 0;
+		atomic_set(&ctx->intf_stopped, 0);
 	} else {
 		pr_err("%s: Panel already on\n", __func__);
 	}
@@ -945,7 +945,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			 * get turned on when the first update comes.
 			 */
 			pr_debug("%s: reset intf_stopped flag.\n", __func__);
-			ctx->intf_stopped = 0;
+			atomic_set(&ctx->intf_stopped, 0);
 			goto end;
 		}
 	}
