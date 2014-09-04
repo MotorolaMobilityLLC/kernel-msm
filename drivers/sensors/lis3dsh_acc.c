@@ -2029,12 +2029,10 @@ exit_kfree_pdata:
 	kfree(acc->pdata);
 err_mutexunlock:
 	mutex_unlock(&acc->lock);
-//err_freedata:
-	kfree(acc);
 exit_check_functionality_failed:
 	pr_err("[lis3dsh] %s: Driver Init failed\n", __func__);
 classdev_register_fail:
-	kfree(sensor_data);
+	kfree(acc);
 	return err;
 }
 
