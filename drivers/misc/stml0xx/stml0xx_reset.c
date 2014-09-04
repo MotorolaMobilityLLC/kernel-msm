@@ -82,7 +82,8 @@ int stml0xx_reset_and_init(void)
 		ret_err = err;
 
 	buf[0] = stml0xx_g_acc2_delay;
-	err = stml0xx_spi_send_write_reg(ACCEL2_UPDATE_RATE, buf, 1);
+	err = stml0xx_spi_send_write_reg_reset(ACCEL2_UPDATE_RATE, buf,
+			1, RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err = err;
 
