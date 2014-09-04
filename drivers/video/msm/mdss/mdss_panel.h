@@ -347,6 +347,7 @@ struct mdss_panel_info {
 	bool hbm_state;
 	bool dynamic_cabc_enabled;
 	enum cabc_mode cabc_mode;
+	char supplier[8];
 
 	uint32_t panel_dead;
 
