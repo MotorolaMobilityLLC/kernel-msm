@@ -293,6 +293,11 @@ enum stm_commands {
 	CRC_CHECK
 };
 
+enum {
+	RESET_NOT_ALLOWED,
+	RESET_ALLOWED
+};
+
 struct stm_response {
 	/* 0x0080 */
 	unsigned short header;
@@ -485,9 +490,6 @@ struct stm_response {
 #define STML0XX_LED_MAX_BRIGHTNESS 0x00FFFFFF
 #define STML0XX_LED_HALF_BRIGHTNESS 0x007F7F7F
 #define STML0XX_LED_OFF 0x00000000
-
-#define RESET_ALLOWED 1
-#define RESET_NOT_ALLOWED 0
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
