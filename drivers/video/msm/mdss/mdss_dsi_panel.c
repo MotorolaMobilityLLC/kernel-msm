@@ -388,6 +388,10 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+	/* avoid MURA effect */
+	if (bl_level > 0 && bl_level < 40)
+		bl_level = 40;
+
 	mutex_lock(&ctrl_pdata->blcmd_mutex);
 
 	/* Lock backlight of ambient mode to 28nits */
