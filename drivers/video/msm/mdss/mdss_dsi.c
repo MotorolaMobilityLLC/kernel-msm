@@ -308,6 +308,11 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *panel_info = NULL;
+	struct mipi_panel_info *pinfo = NULL;
+	u32 lane_status = 0;
+	u32 active_lanes = 0;
+
+	printk("MDSS:AMB:== DSI OFF ==\n");
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -318,6 +323,8 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 		pr_warn("%s:%d Panel already off.\n", __func__, __LINE__);
 		return 0;
 	}
+
+	pinfo = &pdata->panel_info.mipi;
 
 	pdata->panel_info.panel_power_on = 0;
 
@@ -330,6 +337,30 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+
+	/*
+	 * ULPS Entry Request.
+	 * Wait for a short duration to ensure that the lanes
+	 * enter ULP state.
+	 */
+	MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x01F);
+	usleep(100);
+
+	/* Check to make sure that all active data lanes are in ULPS */
+	if (pinfo->data_lane3)
+		active_lanes |= BIT(11);
+	if (pinfo->data_lane2)
+		active_lanes |= BIT(10);
+	if (pinfo->data_lane1)
+		active_lanes |= BIT(9);
+	if (pinfo->data_lane0)
+		active_lanes |= BIT(8);
+	active_lanes |= BIT(12); /* clock lane */
+	lane_status = MIPI_INP(ctrl_pdata->ctrl_base + 0xA8);
+	if (lane_status & active_lanes) {
+		pr_err("%s: ULPS entry req failed. Lane status=0x%08x\n",
+			__func__, lane_status);
+	}
 
 	/* disable DSI controller */
 	mdss_dsi_controller_cfg(0, pdata);
@@ -639,6 +670,8 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	struct mdss_panel_info *pinfo;
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	printk("MDSS:AMB:== DSI ON ==\n");
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
