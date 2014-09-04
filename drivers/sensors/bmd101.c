@@ -177,7 +177,7 @@ static void bmd101_hw_enable(int enable) {
 		
 		sensor_debug(DEBUG_INFO, "[bmd101] %s: gpio %d and %d pulled hig, sensor hw(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->hw_enabled);
 	}
-	else if (!enable && sensor_data->cdev.enabled) {
+	else if (!enable && sensor_data->hw_enabled) {
               msm_gpiomux_write(BMD101_CS_GPIO, GPIOMUX_ACTIVE, &gpio_sus_cfg, &gpio_act_cfg);
               msm_gpiomux_write(BMD101_RST_GPIO, GPIOMUX_ACTIVE, &gpio_sus_cfg, &gpio_act_cfg);
 
