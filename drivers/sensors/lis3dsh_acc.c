@@ -812,6 +812,9 @@ static void lis3dsh_acc_device_power_off(struct lis3dsh_acc_data *acc)
 {
 	int err;
 
+	if (acc == NULL)
+			return;
+
 	err = lis3dsh_acc_i2c_update(acc, LIS3DSH_CTRL_REG4,
 					LIS3DSH_ODR_MASK, LIS3DSH_PM_OFF);
 	if (err < 0)
@@ -838,6 +841,9 @@ static void lis3dsh_acc_device_power_off(struct lis3dsh_acc_data *acc)
 static int lis3dsh_acc_device_power_on(struct lis3dsh_acc_data *acc)
 {
 	int err = -1;
+
+	if (acc == NULL)
+			return err;
 
 	if (acc->pdata->power_on) {
 		err = acc->pdata->power_on();
