@@ -362,7 +362,10 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665501, restart_reason);
 		}
 	} else if (in_panic == 1) {
+		__raw_writel(0x77665505, restart_reason);
 		qpnp_pon_store_extra_reset_info(RESET_EXTRA_PANIC_REASON, 0xFF);
+	} else {
+		__raw_writel(0x77665501, restart_reason);
 	}
 
 	flush_cache_all();
