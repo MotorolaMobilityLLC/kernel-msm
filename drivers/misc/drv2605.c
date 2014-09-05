@@ -344,8 +344,11 @@ static void drv260x_write_reg_val(const unsigned char *data, unsigned int size)
 							data[i], data[i + 1]);
 			if (!ret)
 				break;
-			dev_err(&drv260x->client->dev,
-				"drv2605: i2c write retry %d\n", tries+1);
+			else if (tries == I2C_RETRIES-1) {
+				dev_err(&drv260x->client->dev,
+					"i2c write to 0x%x failed\n", data[i]);
+				return;
+			}
 			msleep_interruptible(I2C_RETRY_DELAY);
 		}
 		i += 2;
