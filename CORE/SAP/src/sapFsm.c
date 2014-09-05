@@ -1371,23 +1371,28 @@ static VOS_STATUS sapGetChannelList(ptSapContext sapContext,
 
         switch(operatingBand)
         {
-        case RF_SUBBAND_2_4_GHZ:
+        case eSAP_RF_SUBBAND_2_4_GHZ:
             bandStartChannel = RF_CHAN_1;
             bandEndChannel = RF_CHAN_14;
             break;
 
-        case RF_SUBBAND_5_LOW_GHZ:
+        case eSAP_RF_SUBBAND_5_LOW_GHZ:
             bandStartChannel = RF_CHAN_36;
             bandEndChannel = RF_CHAN_64;
             break;
 
-        case RF_SUBBAND_5_MID_GHZ:
+        case eSAP_RF_SUBBAND_5_MID_GHZ:
             bandStartChannel = RF_CHAN_100;
             bandEndChannel = RF_CHAN_140;
             break;
 
-        case RF_SUBBAND_5_HIGH_GHZ:
+        case eSAP_RF_SUBBAND_5_HIGH_GHZ:
             bandStartChannel = RF_CHAN_149;
+            bandEndChannel = RF_CHAN_165;
+            break;
+
+        case eSAP_RF_SUBBAND_5_ALL_GHZ:
+            bandStartChannel = RF_CHAN_36;
             bandEndChannel = RF_CHAN_165;
             break;
 

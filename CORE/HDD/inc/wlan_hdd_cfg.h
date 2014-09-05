@@ -488,7 +488,7 @@ typedef enum
 
 #define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND "gAPChannelSelectOperatingBand"
 #define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_MIN       (0)
-#define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_MAX               (0x4)
+#define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_MAX               (0x5)
 #define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_DEFAULT           (0)
 
 #define CFG_DISABLE_PACKET_FILTER "gDisablePacketFilter"

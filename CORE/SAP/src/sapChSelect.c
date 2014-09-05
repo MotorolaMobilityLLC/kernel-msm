@@ -1574,7 +1574,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
                         break;
                     }
                 }
-                else if(operatingBand == RF_SUBBAND_2_4_GHZ)
+                else if(operatingBand == eSAP_RF_SUBBAND_2_4_GHZ)
                 {
                      sapInterferenceRssiCount(pSpectCh);
                 }
@@ -1777,7 +1777,7 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
         case eCSR_BAND_24:
             startChannelNum = rfChannels[RF_CHAN_1].channelNum;
             endChannelNum = rfChannels[RF_CHAN_14].channelNum;
-            operatingBand = RF_SUBBAND_2_4_GHZ;
+            operatingBand = eSAP_RF_SUBBAND_2_4_GHZ;
             break;
 
         case eCSR_BAND_5G:

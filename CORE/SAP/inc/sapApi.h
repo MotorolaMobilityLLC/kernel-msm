@@ -234,6 +234,15 @@ typedef enum  {
     eSAP_WPSPBC_ONE_WPSPBC_PROBE_REQ_IN120S,    /* One WPS probe request in 120 second  */
 }eWPSPBCOverlap;
 
+typedef enum {
+        eSAP_RF_SUBBAND_2_4_GHZ      = 0,
+        eSAP_RF_SUBBAND_5_LOW_GHZ    = 1,    //Low & Mid U-NII
+        eSAP_RF_SUBBAND_5_MID_GHZ    = 2,    //ETSI
+        eSAP_RF_SUBBAND_5_HIGH_GHZ   = 3,    //High U-NII
+        eSAP_RF_SUBBAND_4_9_GHZ      = 4,
+        eSAP_RF_SUBBAND_5_ALL_GHZ    = 5,    //All 5 GHZ,
+}eSapOperatingBand;
+
 /*----------------------------------------------------------------------------
  *  Typedefs
  * -------------------------------------------------------------------------*/
@@ -1051,7 +1060,7 @@ WLANSAP_DeauthSta
 ============================================================================*/
 VOS_STATUS
 WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel, 
-                              v_U8_t operatingBand);
+                              eSapOperatingBand operatingBand);
 
 /*==========================================================================
   FUNCTION    WLANSAP_SetKeySta

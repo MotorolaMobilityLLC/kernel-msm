@@ -1324,7 +1324,7 @@ WLANSAP_DeauthSta
 ============================================================================*/
 VOS_STATUS
 WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
-                              v_U8_t operatingBand)
+                              eSapOperatingBand operatingBand)
 {
 
     v_U8_t    validChannelFlag =0;
