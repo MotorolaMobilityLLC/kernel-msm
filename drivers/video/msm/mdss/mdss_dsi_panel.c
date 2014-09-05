@@ -389,8 +389,8 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 				panel_data);
 
 	/* avoid MURA effect */
-	if (bl_level > 0 && bl_level < 40)
-		bl_level = 40;
+	if (bl_level > 0 && bl_level < 45)
+		bl_level = 45;
 
 	mutex_lock(&ctrl_pdata->blcmd_mutex);
 
