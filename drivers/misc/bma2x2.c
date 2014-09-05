@@ -5910,8 +5910,8 @@ static int bma2x2_set_en_disp_rotation_store(struct bma2x2_data *bma2x2, int en)
 		if (en) {
 			err = bma2x2_set_mode(bma2x2->bma2x2_client,
 						BMA2X2_MODE_NORMAL);
-			err = bma2x2_set_Int_Enable(client, 10, 1);
 			err = bma2x2_set_Int_Enable(client, 11, 1);
+			err = bma2x2_set_Int_Enable(client, 10, 1);
 		} else {
 			err = bma2x2_set_Int_Enable(client, 10, 0);
 			err = bma2x2_set_Int_Enable(client, 11, 0);
@@ -5935,6 +5935,16 @@ static ssize_t bma2x2_en_disp_rotation_store(struct device *dev,
 	error = kstrtoul(buf, 10, &data);
 	if (error)
 		return error;
+
+	if (data == 1) {
+		if (bma2x2->flip_value == 0) {
+			input_event(bma2x2->dev_for_interrupt,
+					EV_MSC, MSC_RAW, bma2x2->orient_value);
+			input_sync(bma2x2->dev_for_interrupt);
+		} else {
+			bma2x2->flip_value = 0;
+		}
+	}
 
 	if ((data == 0) || (data == 1))
 		bma2x2_set_en_disp_rotation_store(bma2x2, data);
@@ -6401,6 +6411,15 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 			input_sync(bma2x2->dev_for_interrupt);
 			bma2x2->flip_value = 1;
 		} else {
+			if (bma2x2->flip_value == 0) {
+				bma2x2_get_orient_status(bma2x2->bma2x2_client,
+						&first_value);
+				if (bma2x2->orient_value != first_value) {
+					bma2x2->orient_value = first_value;
+					bma2x2_set_orient_mode(
+						bma2x2->bma2x2_client, 0);
+				}
+			}
 			bma2x2->flip_value = 0;
 			input_event(bma2x2->dev_for_interrupt,
 				EV_MSC, MSC_RAW, bma2x2->orient_value);
