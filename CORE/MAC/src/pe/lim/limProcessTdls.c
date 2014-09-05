@@ -1044,8 +1044,10 @@ static void PopulateDot11fTdlsHtVhtCap(tpAniSirGlobal pMac, uint32 selfDot11Mode
  * Send TDLS discovery response frame on direct link.
  */
 
-static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac, 
-                     tSirMacAddr peerMac, tANI_U8 dialog, tpPESession psessionEntry)
+static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
+                     tSirMacAddr peerMac, tANI_U8 dialog,
+                     tpPESession psessionEntry, tANI_U8 *addIe,
+                     tANI_U16 addIeLen)
 {
     tDot11fTDLSDisRsp   tdlsDisRsp ;
     tANI_U16            caps = 0 ;            
@@ -1098,6 +1100,12 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
     /* Populate extended supported rates */
     PopulateDot11fExtSuppRates( pMac, POPULATE_DOT11F_RATES_OPERATIONAL,
                                 &tdlsDisRsp.ExtSuppRates, psessionEntry );
+    /* Populate RSN Information element */
+    PopulateDot11fRsnIEs(pMac, &tdlsDisRsp.RSN, addIe, addIeLen);
+
+    /* Populate Timeout interval IE */
+    PopulateDot11fTimeoutIEs(pMac, &tdlsDisRsp.TimeoutInterval,
+                             (&addIe[22]), (addIeLen - 22));
 
     /* Populate extended supported rates */
     PopulateDot11fTdlsExtCapability( pMac, &tdlsDisRsp.ExtCap );
@@ -3230,7 +3238,8 @@ static tSirRetStatus limProcessTdlsDisReqFrame(tpAniSirGlobal pMac,
         else
         {
             peerInfo->delStaNeeded = false ;
-            limSendTdlsDisRspFrame(pMac, peerInfo->peerMac, peerInfo->dialog, psessionEntry) ;
+            limSendTdlsDisRspFrame(pMac, peerInfo->peerMac, peerInfo->dialog,
+                                   psessionEntry, NULL, 0);
             peerInfo->tdlsPeerState = TDLS_DIS_RSP_SENT_WAIT_STATE ;
         }
 
@@ -4974,7 +4983,8 @@ eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg,
              * is rolling.., once discovery response is get Acked, we will 
              * send response to SME based on TxComplete callback results
              */ 
-            limSendTdlsDisRspFrame(pMac, peerInfo->peerMac, peerInfo->dialog, psessionEntry) ;
+            limSendTdlsDisRspFrame(pMac, peerInfo->peerMac, peerInfo->dialog,
+                                   psessionEntry, NULL, 0);
             peerInfo->tdlsPeerState = TDLS_DIS_RSP_SENT_WAIT_STATE ;
         }
     } while(0) ;
@@ -5222,7 +5232,9 @@ tSirRetStatus limProcessSmeTdlsMgmtSendReq(tpAniSirGlobal pMac,
             {
                 //Send a response mgmt action frame
                 limSendTdlsDisRspFrame(pMac, pSendMgmtReq->peerMac,
-                        pSendMgmtReq->dialog, psessionEntry) ;
+                        pSendMgmtReq->dialog, psessionEntry,
+                        &pSendMgmtReq->addIe[0],
+                        (pSendMgmtReq->length - sizeof(tSirTdlsSendMgmtReq)));
                 resultCode = eSIR_SME_SUCCESS;
             }
             break;

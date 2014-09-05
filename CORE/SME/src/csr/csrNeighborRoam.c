@@ -1496,16 +1496,22 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
                 continue;
             }
 
-            if( abs(CurrAPRssi) - abs(pScanResult->BssDescriptor.rssi)
-               < pNeighborRoamInfo->cfgParams.neighborInitialForcedRoamTo5GhRssiDiff)
+            //rssi's are -ve value, so if abs of rssi is greater
+            //means new ap is poor then currently connected ap.
+            //Check it is only poor within nSelect5GHzMargin value.
+            if (abs(pScanResult->BssDescriptor.rssi) > abs(CurrAPRssi) &&
+               ((abs(pScanResult->BssDescriptor.rssi) - abs(CurrAPRssi))
+                > pMac->roam.configParam.nSelect5GHzMargin)
+               )
             {
                 VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                      "%s: Forced Roam to 5G Current AP rssi=%d new ap rssi=%d not good enough, 5GhRssiDiff=%d", __func__,
+                      "%s: Forced Roam to 5G Current AP rssi=%d new ap rssi=%d not good enough, nSelect5GHzMargin=%d", __func__,
                       CurrAPRssi,
                       (int)pScanResult->BssDescriptor.rssi * (-1),
-                      pNeighborRoamInfo->cfgParams.neighborInitialForcedRoamTo5GhRssiDiff);
+                      pMac->roam.configParam.nSelect5GHzMargin);
                 continue;
             }
+
        }
 #endif
 #endif
@@ -2375,6 +2381,10 @@ static eHalStatus csrNeighborRoamForceRoamTo5GhScanCb(tHalHandle halHandle,
 
     NEIGHBOR_ROAM_DEBUG(pMac, LOGW, "%s: process scan results", __func__);
     hstatus = csrNeighborRoamProcessScanComplete(pMac);
+
+    //Clear off the isForcedInitialRoamTo5GH
+    pNeighborRoamInfo->isForcedInitialRoamTo5GH = 0;
+
     if (eHAL_STATUS_SUCCESS != hstatus)
     {
         smsLog(pMac, LOGE, FL("Force Roam To 5GhScanCb failed with status %d"), hstatus);
@@ -4703,8 +4713,6 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac)
     pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod = pMac->roam.configParam.neighborRoamConfig.nNeighborResultsRefreshPeriod;
     pNeighborRoamInfo->cfgParams.emptyScanRefreshPeriod = pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod;
     pNeighborRoamInfo->cfgParams.neighborInitialForcedRoamTo5GhEnable = pMac->roam.configParam.neighborRoamConfig.nNeighborInitialForcedRoamTo5GhEnable;
-    pNeighborRoamInfo->cfgParams.neighborInitialForcedRoamTo5GhRssiDiff = pMac->roam.configParam.neighborRoamConfig.nNeighborInitialForcedRoamTo5GhRssiDiff;
-
 
     pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels   =
                         pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.numChannels;
