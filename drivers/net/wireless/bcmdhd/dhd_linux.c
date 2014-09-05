@@ -4666,6 +4666,8 @@ int dhd_get_fw_mode(dhd_info_t *dhdinfo)
 	return DHD_FLAG_STA_MODE;
 }
 
+extern char *get_nvram_path(void);
+
 bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 {
 	int fw_len;
@@ -4714,6 +4716,9 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
 		fw = firmware_path;
 	if (nvram_path[0] != '\0')
 		nv = nvram_path;
+
+	// Update nvram patch
+	nv = get_nvram_path();
 
 	if (fw && fw[0] != '\0') {
 		fw_len = strlen(fw);

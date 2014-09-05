@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/fs.h>
+#include <linux/board_asustek.h>
 #include "../device_libs/pci/platform_sdhci_pci.h"
 #include "platform_fugu_wifi.h"
 
@@ -218,3 +219,28 @@ random_mac:
 	filp_close(fp, NULL);
 	return 0;
 }
+
+const char *get_nvram_path(void)
+{
+	const char *fugu_sr2_wifi_nv = "/etc/wifi/bcmdhd_sr2.cal";
+	const char *fugu_wifi_nv = "/etc/wifi/bcmdhd.cal";
+	hw_rev revision;
+	struct file *fp;
+
+	revision = asustek_get_hw_rev();
+
+	switch (revision) {
+	case HW_REV_A:
+	case HW_REV_B:
+		fp = filp_open(fugu_sr2_wifi_nv, O_RDONLY, 0);
+		if (IS_ERR(fp))
+			return fugu_wifi_nv;
+
+		filp_close(fp, NULL);
+		return fugu_sr2_wifi_nv;
+	break;
+	default:
+		return fugu_wifi_nv;
+	}
+}
+EXPORT_SYMBOL(get_nvram_path);
