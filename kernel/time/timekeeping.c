@@ -33,7 +33,6 @@ static struct timekeeper shadow_timekeeper;
 
 //ASUS_BSP Lenter +++
 static bool IsRtcReady = false;
-bool g_RTC_update = false;
 //ASUS_BSP Lenter ---
 
 /* flag for if timekeeping is suspended */
@@ -523,7 +522,6 @@ int do_settimeofday(const struct timespec *tv)
 
 	//ASUS_BSP Lenter +++
 	IsRtcReady = true;
-	g_RTC_update = true;
 	//ASUS_BSP Lenter ---
     
 	return 0;

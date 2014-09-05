@@ -214,10 +214,6 @@ extern void Pad_AC_PowerSupplyChange(void);
 //Eason boot up in BatLow situation, take off cable can shutdown+++
 extern bool g_BootUp_IsBatLow;
 //Eason boot up in BatLow situation, take off cable can shutdown---
-//Eason : In suspend have same cap don't update savedTime +++
-bool SameCapDontUpdateSavedTime = false;
-extern bool g_RTC_update;
-//Eason : In suspend have same cap don't update savedTime ---
 //Eason : prevent thermal too hot, limit charging current in phone call+++
 extern bool g_audio_limit;
 static bool IsPhoneOn = false;
@@ -2309,10 +2305,6 @@ static time_t BatteryService_getIntervalSinceLastUpdate(AXC_BatteryService  *_th
 
 static int BatteryService_ChooseMaxMah(AXC_BatteryService  *_this, bool MahDrop)
 {
-    //Eason : In suspend have same cap don't update savedTime +++
-    SameCapDontUpdateSavedTime = false;
-    //Eason : In suspend have same cap don't update savedTime ---
-
     //Eason : if last time is 10mA +++
     if ( (NO_CHARGER_TYPE==_this->chargerType)||((NOTDEFINE_TYPE==_this->chargerType)) )
     {
@@ -2335,9 +2327,7 @@ static int BatteryService_ChooseMaxMah(AXC_BatteryService  *_this, bool MahDrop)
              if(false == _this->HasCableBeforeSuspend && true==_this->IsResumeMahUpdate)
 	      {
                 	_this->IsResumeMahUpdate = false;
-                	//Eason : In suspend have same cap don't update savedTime +++
-                	SameCapDontUpdateSavedTime = true;
-                	//Eason : In suspend have same cap don't update savedTime ---
+                	
 			//Eason : if last time is 10mA +++
 			IsLastTimeMah10mA = true;
 			//Eason : if last time is 10mA ---
@@ -2387,9 +2377,7 @@ static int BatteryService_ChooseMaxMah(AXC_BatteryService  *_this, bool MahDrop)
              if(true==_this->IsResumeMahUpdate)
 	      {
                 	_this->IsResumeMahUpdate = false;
-                	//Eason : In suspend have same cap don't update savedTime +++
-                	SameCapDontUpdateSavedTime = true;
-                	//Eason : In suspend have same cap don't update savedTime ---
+                	
 			//Eason : if last time is 10mA +++
 			IsLastTimeMah10mA = true;
 			//Eason : if last time is 10mA ---
@@ -4052,11 +4040,6 @@ static int BatteryServiceGauge_OnCapacityReply(struct AXI_Gauge *gauge, struct A
     //int BMS_diff_SWgauge;
     //ASUS BSP: Eason check correct BMS RUC---
 
-    //Eason : In suspend have same cap don't update savedTime +++
-    int A66_LastTime_capacity;
-    A66_LastTime_capacity = _this->A66_capacity;
-    //Eason : In suspend have same cap don't update savedTime ---
-
     pr_debug("[BAT][SER]%s() +++ \n",__func__);		
     mutex_lock(&_this->main_lock);
 
@@ -4120,19 +4103,11 @@ static int BatteryServiceGauge_OnCapacityReply(struct AXI_Gauge *gauge, struct A
 		}	
 		//Eason: choose Capacity type SWGauge/BMS ---	
 		
-		//Eason : In suspend have same cap don't update savedTime +++
-		if( (A66_LastTime_capacity == _this->A66_capacity)&&(true==SameCapDontUpdateSavedTime)&&(false==g_RTC_update) ){
-			printk("[BAT][Ser]:In suspend have same Cap dont update savedTime\n");
-		}
-		else{
-			g_RTC_update = false;
-			_this->savedTime=updateNowTime(_this);
-			//Eason:fix Cap drop too slowly in unattended mode+++
-			filRealSusT = 0;
-			//Eason:fix Cap drop too slowly in unattended mode---
-		}
-		//Eason : In suspend have same cap don't update savedTime ---
-
+		_this->savedTime=updateNowTime(_this);
+		//Eason:fix Cap drop too slowly in unattended mode+++
+		filRealSusT = 0;
+		//Eason:fix Cap drop too slowly in unattended mode---
+		
 		//Eason: when change MaxMah clear interval+++
 		_this->ForceSavedTime = updateNowTime(_this);//for A68 will always update no matter if change MaxMAh
 		//Eason: when change MaxMah clear interval---
