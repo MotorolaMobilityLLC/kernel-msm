@@ -27,6 +27,53 @@
 static struct kmem_cache *discard_entry_slab;
 static struct kmem_cache *sit_entry_set_slab;
 
+/**
+ * Copied from latest lib/llist.c
+ * llist_for_each_entry_safe - iterate over some deleted entries of
+ *                             lock-less list of given type
+ *			       safe against removal of list entry
+ * @pos:	the type * to use as a loop cursor.
+ * @n:		another type * to use as temporary storage
+ * @node:	the first entry of deleted list entries.
+ * @member:	the name of the llist_node with the struct.
+ *
+ * In general, some entries of the lock-less list can be traversed
+ * safely only after being removed from list, so start with an entry
+ * instead of list head.
+ *
+ * If being used on entries deleted from lock-less list directly, the
+ * traverse order is from the newest to the oldest added entry.  If
+ * you want to traverse from the oldest to the newest, you must
+ * reverse the order by yourself before traversing.
+ */
+#define llist_for_each_entry_safe(pos, n, node, member)			       \
+	for (pos = llist_entry((node), typeof(*pos), member);		       \
+		&pos->member != NULL &&					       \
+		(n = llist_entry(pos->member.next, typeof(*n), member), true); \
+		pos = n)
+
+/**
+ * Copied from latest lib/llist.c
+ * llist_reverse_order - reverse order of a llist chain
+ * @head:	first item of the list to be reversed
+ *
+ * Reverse the order of a chain of llist entries and return the
+ * new first entry.
+ */
+struct llist_node *llist_reverse_order(struct llist_node *head)
+{
+	struct llist_node *new_head = NULL;
+
+	while (head) {
+		struct llist_node *tmp = head;
+		head = head->next;
+		tmp->next = new_head;
+		new_head = tmp;
+	}
+
+	return new_head;
+}
+
 /*
  * __reverse_ffs is copied from include/asm-generic/bitops/__ffs.h since
  * MSB and LSB are reversed in a byte by f2fs_set_bit.
@@ -233,24 +280,20 @@ repeat:
 	if (kthread_should_stop())
 		return 0;
 
-	spin_lock(&fcc->issue_lock);
-	if (fcc->issue_list) {
-		fcc->dispatch_list = fcc->issue_list;
-		fcc->issue_list = fcc->issue_tail = NULL;
-	}
-	spin_unlock(&fcc->issue_lock);
-
-	if (fcc->dispatch_list) {
+	if (!llist_empty(&fcc->issue_list)) {
 		struct bio *bio = bio_alloc(GFP_NOIO, 0);
 		struct flush_cmd *cmd, *next;
 		int ret;
 
+		fcc->dispatch_list = llist_del_all(&fcc->issue_list);
+		fcc->dispatch_list = llist_reverse_order(fcc->dispatch_list);
+
 		bio->bi_bdev = sbi->sb->s_bdev;
 		ret = __submit_bio_wait(WRITE_FLUSH, bio);
 
-		for (cmd = fcc->dispatch_list; cmd; cmd = next) {
+		llist_for_each_entry_safe(cmd, next,
+					  fcc->dispatch_list, llnode) {
 			cmd->ret = ret;
-			next = cmd->next;
 			complete(&cmd->wait);
 		}
 		bio_put(bio);
@@ -258,7 +301,7 @@ repeat:
 	}
 
 	wait_event_interruptible(*q,
-			kthread_should_stop() || fcc->issue_list);
+		kthread_should_stop() || !llist_empty(&fcc->issue_list));
 	goto repeat;
 }
 
@@ -277,15 +320,8 @@ int f2fs_issue_flush(struct f2fs_sb_info *sbi)
 		return blkdev_issue_flush(sbi->sb->s_bdev, GFP_KERNEL, NULL);
 
 	init_completion(&cmd.wait);
-	cmd.next = NULL;
 
-	spin_lock(&fcc->issue_lock);
-	if (fcc->issue_list)
-		fcc->issue_tail->next = &cmd;
-	else
-		fcc->issue_list = &cmd;
-	fcc->issue_tail = &cmd;
-	spin_unlock(&fcc->issue_lock);
+	llist_add(&cmd.llnode, &fcc->issue_list);
 
 	if (!fcc->dispatch_list)
 		wake_up(&fcc->flush_wait_queue);
@@ -304,8 +340,8 @@ int create_flush_cmd_control(struct f2fs_sb_info *sbi)
 	fcc = kzalloc(sizeof(struct flush_cmd_control), GFP_KERNEL);
 	if (!fcc)
 		return -ENOMEM;
-	spin_lock_init(&fcc->issue_lock);
 	init_waitqueue_head(&fcc->flush_wait_queue);
+	init_llist_head(&fcc->issue_list);
 	SM_I(sbi)->cmd_control_info = fcc;
 	fcc->f2fs_issue_flush = kthread_run(issue_flush_thread, sbi,
 				"f2fs_flush-%u:%u", MAJOR(dev), MINOR(dev));
