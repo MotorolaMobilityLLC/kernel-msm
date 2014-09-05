@@ -2096,6 +2096,18 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 						atomic_set(&touch_point_num, atomic_read(&touch_point_num)+1);
 					}
 					}
+					else{
+						//printk ("[IT7260] palm_num = %d\n", atomic_read(&palm_num));
+						if (atomic_read(&palm_num) < 6){
+							if (atomic_read(&wait_second_palm) == 0){
+							cancel_delayed_work(&ts->palm_work);
+							atomic_set(&palmpalm_flag, 0);
+							atomic_set(&wait_second_palm, 0);
+							//printk ("[IT7260] say goodbye to palm :( \n\n");
+							}
+						}
+					}
+					
 					
 					if (atomic_read(&Suspend_flag)){
 						if (jiffies - palm_after > 2000) {
