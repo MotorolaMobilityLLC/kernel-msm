@@ -2484,11 +2484,13 @@ static void mxt_set_sensor_state(struct mxt_data *data, int state)
 		if (!data->mode_is_wakeable)
 			mxt_irq_enable(data, false);
 		data->enable_reporting = false;
-		mxt_sensor_state_config(data, SUSPEND_IDX);
+		if (!data->in_bootloader)
+			mxt_sensor_state_config(data, SUSPEND_IDX);
 			break;
 
 	case STATE_ACTIVE:
-		mxt_sensor_state_config(data, ACTIVE_IDX);
+		if (!data->in_bootloader)
+			mxt_sensor_state_config(data, ACTIVE_IDX);
 		mxt_irq_enable(data, true);
 		data->enable_reporting = true;
 
@@ -4097,7 +4099,8 @@ static int mxt_parse_tdat_image(struct mxt_data *data)
 	}
 
 	if (revision_id != data->revision_id) {
-		dev_err(dev, "Incorrect firmware\n");
+		dev_err(dev, "Incorrect firmware (revision id %x <-> %x\n",
+				revision_id, data->revision_id);
 		return -EINVAL;
 	}
 
@@ -4426,7 +4429,7 @@ static int mxt_input_open(struct input_dev *dev)
 	if (data->use_regulator) {
 		mxt_regulator_enable(data);
 		mxt_acquire_irq(data);
-	} else
+	} else if (!data->in_bootloader)
 		mxt_hw_reset(hw);
 
 	mutex_unlock(&data->crit_section_lock);
@@ -4543,7 +4546,7 @@ static int mxt_parse_dt(struct mxt_data *data)
 	struct mxt_platform_data *pdata = data->pdata;
 	int error = 0;
 	u32 value;
-	struct device_node *temp, *config, *np = dev->of_node;
+	struct device_node *config, *np = dev->of_node;
 
 	error = mxt_dt_parse_mode(data, "default", data->default_mode);
 	if (error) {
@@ -4614,42 +4617,40 @@ static int mxt_parse_dt(struct mxt_data *data)
 		goto exit_parser;
 	}
 
-	for_each_child_of_node(config, temp) {
-		error = of_property_read_u32(temp, "atmel,family-id", &value);
-		if (error) {
-			dev_err(dev, "Unable to read family id\n");
-			goto exit_parser;
-		}
-		pdata->dt_info.family_id = (u8)value;
-
-		error = of_property_read_u32(temp, "atmel,variant-id", &value);
-		if (error) {
-			dev_err(dev, "Unable to read variant id\n");
-			goto exit_parser;
-		}
-		pdata->dt_info.variant_id = (u8)value;
-
-		error = of_property_read_u32(temp, "atmel,version", &value);
-		if (error) {
-			dev_err(dev, "Unable to read controller version\n");
-			goto exit_parser;
-		}
-		pdata->dt_info.version = (u8)value;
-
-		error = of_property_read_u32(temp, "atmel,build", &value);
-		if (error) {
-			dev_err(dev, "Unable to read build id\n");
-			goto exit_parser;
-		}
-		pdata->dt_info.build = (u8)value;
-
-		error = of_property_read_u32(temp, "atmel,revision-id", &value);
-		if (error) {
-			dev_err(dev, "Unable to read revision id\n");
-			goto exit_parser;
-		}
-		data->revision_id = (u8)value;
+	error = of_property_read_u32(config, "atmel,family-id", &value);
+	if (error) {
+		dev_err(dev, "Unable to read family id\n");
+		goto exit_parser;
 	}
+	pdata->dt_info.family_id = (u8)value;
+
+	error = of_property_read_u32(config, "atmel,variant-id", &value);
+	if (error) {
+		dev_err(dev, "Unable to read variant id\n");
+		goto exit_parser;
+	}
+	pdata->dt_info.variant_id = (u8)value;
+
+	error = of_property_read_u32(config, "atmel,version", &value);
+	if (error) {
+		dev_err(dev, "Unable to read controller version\n");
+		goto exit_parser;
+	}
+	pdata->dt_info.version = (u8)value;
+
+	error = of_property_read_u32(config, "atmel,build", &value);
+	if (error) {
+		dev_err(dev, "Unable to read build id\n");
+		goto exit_parser;
+	}
+	pdata->dt_info.build = (u8)value;
+
+	error = of_property_read_u32(config, "atmel,revision-id", &value);
+	if (error) {
+		dev_err(dev, "Unable to read revision id\n");
+		goto exit_parser;
+	}
+	data->revision_id = (u8)value;
 
 exit_parser:
 	if (!error)
@@ -4995,7 +4996,7 @@ static int mxt_resume(struct device *dev)
 		if (data->use_regulator) {
 			mxt_regulator_enable(data);
 			mxt_acquire_irq(data);
-		} else
+		} else if (!data->in_bootloader)
 			mxt_hw_reset(data);
 
 		mutex_unlock(&data->crit_section_lock);
