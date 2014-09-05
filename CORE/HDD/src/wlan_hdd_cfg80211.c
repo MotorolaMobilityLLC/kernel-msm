@@ -12713,7 +12713,7 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
                   "%s: HAL context  is Null!!!", __func__);
         return -EINVAL;
     }
-
+    sme_ScanFlushResult(hHal, pAdapter->sessionId);
     ret = wlan_hdd_scan_abort(pAdapter);
     if (ret < 0)
     {
