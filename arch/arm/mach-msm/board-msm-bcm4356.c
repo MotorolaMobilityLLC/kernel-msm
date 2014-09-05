@@ -258,23 +258,47 @@ static struct cntry_locales_custom brcm_wlan_translate_custom_table[] = {
 	{"MX", "XY", 3}
 };
 
+struct cntry_locales_custom brcm_wlan_translate_nodfs_table[] = {
+	{"",   "XZ", 40},  /* Universal if Country code is unknown or empty */
+	{"US", "US", 172},
+	{"AU", "AU", 37},
+	{"BR", "BR", 18},
+	{"CA", "US", 172},
+	{"EU", "E0", 26},
+	{"HK", "SG", 17},
+	{"KR", "KR", 79},
+	{"IN", "IN", 27},
+	{"JP", "JP", 83},
+	{"MX", "US", 172},
+	{"MY", "MY", 15},
+	{"SG", "SG", 17},
+	{"TH", "TH", 9},
+	{"TW", "TW", 60 },
+};
+
 static void *brcm_wlan_get_country_code(char *ccode, u32 flags)
 {
-	int size = ARRAY_SIZE(brcm_wlan_translate_custom_table);
+	struct cntry_locales_custom *locales;
+	int size;
 	int i;
 
 	if (!ccode)
 		return NULL;
 
-	if (flags & WLAN_PLAT_NODFS_FLAG)
-		pr_info("%s: Using non-DFS locales\n", __func__);
+	if (flags & WLAN_PLAT_NODFS_FLAG) {
+		locales = brcm_wlan_translate_nodfs_table;
+		size = ARRAY_SIZE(brcm_wlan_translate_nodfs_table);
+	} else {
+		locales = brcm_wlan_translate_custom_table;
+		size = ARRAY_SIZE(brcm_wlan_translate_custom_table);
+	}
 
 	for (i = 0; i < size; i++)
-		if (strcmp(ccode,
-		brcm_wlan_translate_custom_table[i].iso_abbrev) == 0)
-			return &brcm_wlan_translate_custom_table[i];
-	return &brcm_wlan_translate_custom_table[0];
+		if (strcmp(ccode, locales[i].iso_abbrev) == 0)
+			return &locales[i];
+	return &locales[0];
 }
+
 static unsigned char brcm_mac_addr[IFHWADDRLEN] = { 0, 0x90, 0x4c, 0, 0, 0 };
 
 static int __init brcm_mac_addr_setup(char *str)
