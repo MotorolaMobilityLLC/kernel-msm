@@ -592,6 +592,7 @@ WLANSAP_StartBss
 
         /* Channel selection is auto or configured */
         pSapCtx->channel = pConfig->channel;
+        pSapCtx->scanBandPreference = pConfig->scanBandPreference;
         pSapCtx->pUsrContext = pUsrContext;
 
         //Set the BSSID to your "self MAC Addr" read the mac address from Configuation ITEM received from HDD
