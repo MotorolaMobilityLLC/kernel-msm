@@ -135,7 +135,9 @@ static int inv_send_compass_data(struct inv_mpu_state *st)
 	curr_ts = get_time_ns();
 	if (curr_ts - slave->prev_ts > slave->min_read_time) {
 		result = slave->read_data(st, sen);
-		if (!result)
+		if (result)
+			inv_push_marker_to_buffer(st, COMPASS_HDR_2);
+		else
 			inv_push_8bytes_buffer(st, COMPASS_HDR,
 						st->last_ts, sen);
 		slave->prev_ts = curr_ts;
