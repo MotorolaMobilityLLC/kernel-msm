@@ -1998,16 +1998,20 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 				if (pucPoint[1] & 0x01) {
 					static int palm_flag = 1;
 					
+					//printk ("[IT7260] touch_point_num = %d\n", atomic_read(&touch_point_num));	
 					atomic_set(&palm_num, atomic_read(&palm_num)+1);
 					
 					if (atomic_read(&palm_num) < 30){
+					if (atomic_read(&touch_point_num) < 2){
 					palm_flag = atomic_read(&Suspend_flag);		
 					if (!palm_flag){
 						if (jiffies - last_time_shot_power > 50){
+							if (atomic_read(&wait_second_palm) != 1){
 							last_time_shot_power = jiffies;
 							queue_delayed_work(IT7260_wq, &ts->palm_work, 25);	
 							printk ("[IT7260] Ready to PALM.....\n");	
-							atomic_set(&wait_second_palm, 0);		
+							atomic_set(&wait_second_palm, 0);
+							}
 						}
 					}
 					
@@ -2016,7 +2020,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 							cancel_delayed_work(&ts->palm_work);
 							atomic_set(&palmpalm_flag, 1);
 							palm_second_down = jiffies;
-							printk ("\n[IT7260] palm_second_down \n\n");
+							printk ("[IT7260] palm_second_down \n\n");
 							atomic_set(&wait_second_palm, 0);
 							strcpy(magic_key,"KNOCK");
 							kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
@@ -2025,11 +2029,12 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 							else{
 								atomic_set(&palmpalm_flag, 0);
 								atomic_set(&wait_second_palm, 0);
-								printk ("\n[IT7260] palm_second not come, skip :( \n\n");
+								printk ("[IT7260] palm_second not come, skip :( \n\n");
 							}
 					}
 					}
 					palm_after = jiffies;
+					}
 					
 					if (ts->use_irq)
 						enable_irq(ts->client->irq);
@@ -2053,7 +2058,7 @@ static void Read_Point(struct IT7260_ts_data *ts) {
 						{
 							if (jiffies - palm_second_down > 50){
 							palm_first_down = jiffies;
-							printk ("\n[IT7260] palm_first_down \n\n");
+							printk ("[IT7260] palm_first_down \n\n");
 							atomic_set(&wait_second_palm, 1);
 							if (jiffies - palm_second_down > 50){
 								atomic_set(&palmpalm_flag, 0);
@@ -2437,7 +2442,7 @@ static int IT7260_ts_probe(struct i2c_client *client,
 	gl_ts = ts;
 	it7260_status = 1;
 	
-	pr_info("=end IT7260_ts_probe_20140904=\n");
+	pr_info("=end IT7260_ts_probe_20140905=\n");
 
 	i2cWriteToIt7260(ts->client, 0x20, cmdbuf, 1);
 	mdelay(10);
