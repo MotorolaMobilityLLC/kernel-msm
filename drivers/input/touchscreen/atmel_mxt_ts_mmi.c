@@ -4983,7 +4983,9 @@ static int fb_notifier_callback(struct notifier_block *self,
 	if (evdata && evdata->data && event == FB_EVENT_BLANK && mxt_dev_data &&
 			mxt_dev_data->client) {
 		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK) {
+		if (*blank == FB_BLANK_UNBLANK ||
+				(*blank == FB_BLANK_VSYNC_SUSPEND &&
+				mxt_dev_data->suspended)) {
 			mxt_resume(&mxt_dev_data->client->dev);
 			dev_dbg(&mxt_dev_data->client->dev, "DISPLAY-ON\n");
 		} else if (*blank == FB_BLANK_POWERDOWN) {
