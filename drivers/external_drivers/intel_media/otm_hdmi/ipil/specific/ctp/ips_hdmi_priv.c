@@ -304,6 +304,23 @@ otm_hdmi_ret_t __ips_hdmi_get_adjusted_clk(unsigned long clk,
 }
 
 /**
+ * Description: gets dpll clocks
+ *
+ * @dev:	hdmi_device_t
+ * @dclk:	refresh rate dot clock in kHz of current mode
+ *
+ * Returns:	OTM_HDMI_SUCCESS on success
+ *		OTM_HDMI_ERR_INVAL on NULL input arguments
+ */
+otm_hdmi_ret_t	ips_hdmi_crtc_mode_get_program_dpll(hdmi_device_t *dev,
+							unsigned long dclk)
+{
+	pr_debug("enter %s\n", __func__);
+
+	return OTM_HDMI_SUCCESS;
+}
+
+/**
  * Description: programs dpll clocks, enables dpll and waits
  *		till it locks with DSI PLL
  *

@@ -129,6 +129,19 @@ otm_hdmi_ret_t ipil_hdmi_crtc_mode_set_program_timings(hdmi_device_t *dev,
 					otm_hdmi_timing_t *adjusted_mode);
 
 /**
+ * Description: gets dpll clocks
+ *
+ * @dev:	hdmi_device_t
+ * @dclk:	refresh rate dot clock in kHz of current mode
+ *
+ * Returns:	OTM_HDMI_SUCCESS on success
+ *		OTM_HDMI_ERR_INVAL on NULL input arguments
+ */
+otm_hdmi_ret_t	ipil_hdmi_crtc_mode_get_program_dpll(hdmi_device_t *dev,
+							unsigned long dclk);
+
+
+/**
  * Description: programs dpll clocks, enables dpll and waits
  *		till it locks with DSI PLL
  *

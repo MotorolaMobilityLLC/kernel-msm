@@ -234,6 +234,18 @@ otm_hdmi_ret_t ips_get_pixel_clock_range(unsigned int *pc_min,
 bool ips_hdmi_is_preferred_mode(int hdisplay, int vdisplay, int refresh);
 
 /**
+ * Description: gets dpll clocks
+ *
+ * @dev:	hdmi_device_t
+ * @dclk:	refresh rate dot clock in kHz of current mode
+ *
+ * Returns:	OTM_HDMI_SUCCESS on success
+ *		OTM_HDMI_ERR_INVAL on NULL input arguments
+ */
+otm_hdmi_ret_t	ips_hdmi_crtc_mode_get_program_dpll(hdmi_device_t *dev,
+							unsigned long dclk);
+
+/**
  * Description: programs dpll clocks, enables dpll and waits
  *		till it locks with DSI PLL
  *

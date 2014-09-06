@@ -352,6 +352,22 @@ otm_hdmi_ret_t otm_hdmi_crtc_set_scaling(void *context,
 			int fb_width, int fb_height);
 
 /*
+ * Description: crtc pll get function for hdmi.
+ *
+ * @context:		hdmi_context
+ * @adjusted_mode:	adjusted mode
+ * @pclk_khz:		tmds clk value for the best pll and is needed for audio.
+ *			This field has to be moved into OTM audio
+ *			interfaces when implemented
+ *
+ * Returns:	OTM_HDMI_SUCCESS on success
+ *		OTM_HDMI_ERR_INVAL on NULL input arguments
+ */
+otm_hdmi_ret_t otm_hdmi_crtc_pll_get(void *context,
+                                otm_hdmi_timing_t *adjusted_mode,
+                                uint32_t *pclock_khz);
+
+/*
  * Description: crtc mode set function for hdmi.
  *
  * @context:		hdmi_context

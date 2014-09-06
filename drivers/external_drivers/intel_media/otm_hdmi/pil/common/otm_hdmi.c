@@ -1581,6 +1581,38 @@ otm_hdmi_ret_t otm_hdmi_crtc_set_scaling(void *context,
 }
 
 /**
+ * Description: crtc pll clk get function for hdmi.
+ *
+ * @context		:hdmi_context
+ * @adjusted_mode	:adjusted mode
+ * @pclk_khz:		tmds clk value for the best pll and is needed for audio.
+ *			This field has to be moved into OTM audio
+ *			interfaces when implemented
+ *
+ * Returns:	OTM_HDMI_SUCCESS on success
+ *		OTM_HDMI_ERR_INVAL on NULL input arguments
+ */
+otm_hdmi_ret_t otm_hdmi_crtc_pll_get(void *context,
+				otm_hdmi_timing_t *adjusted_mode,
+				uint32_t *pclk_khz)
+{
+	otm_hdmi_ret_t rc = OTM_HDMI_SUCCESS;
+	hdmi_context_t *ctx = (hdmi_context_t *)context;
+
+	/* program hdmi mode timing registers */
+	rc = ipil_hdmi_crtc_mode_get_program_dpll(&ctx->dev,
+						adjusted_mode->dclk);
+	if (rc != OTM_HDMI_SUCCESS) {
+		pr_debug("\nfailed to program dpll\n");
+		return rc;
+	}
+
+	*pclk_khz = ctx->dev.clock_khz;
+
+	return rc;
+}
+
+/**
  * Description: crtc mode set function for hdmi.
  *
  * @context		:hdmi_context

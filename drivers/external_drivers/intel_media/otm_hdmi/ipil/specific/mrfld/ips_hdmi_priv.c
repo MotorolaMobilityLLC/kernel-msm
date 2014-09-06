@@ -520,6 +520,31 @@ static void __ips_hdmi_set_program_dpll(int n, int p1, int p2, int m1, int m2)
 }
 
 /**
+ * Description: gets dpll clocks
+ *
+ * @dev:	hdmi_device_t
+ * @dclk:	refresh rate dot clock in kHz of current mode
+ *
+ * Returns:	OTM_HDMI_SUCCESS on success
+ *		OTM_HDMI_ERR_INVAL on NULL input arguments
+ */
+otm_hdmi_ret_t	ips_hdmi_crtc_mode_get_program_dpll(hdmi_device_t *dev,
+							unsigned long dclk)
+{
+	int n, p1, p2, m1, m2;
+	uint32_t target_dclk;
+
+	pr_debug("enter %s\n", __func__);
+
+	if (__ips_hdmi_get_divider_selector(dclk,
+			&target_dclk, &m1, &m2, &n, &p1, &p2)) {
+		dev->clock_khz = 3840 * m1 * m2 / (p1 * p2);
+		return OTM_HDMI_SUCCESS;
+	} else
+		return OTM_HDMI_ERR_INVAL;
+}
+
+/**
  * Description: programs dpll clocks, enables dpll and waits
  *		till it locks with DSI PLL
  *
