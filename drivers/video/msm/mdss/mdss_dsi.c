@@ -534,7 +534,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	 * DSI phy
 	 */
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-	pdata->panel_info.panel_power_on = 1;
 
 	/*
 	 * Issue hardware reset line after enabling the DSI clocks and data
@@ -543,6 +542,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	if (mipi->lp11_init)
 		mdss_dsi_panel_reset(pdata, 1);
 
+	pdata->panel_info.panel_power_on = 1;
 	if (mipi->init_delay)
 		usleep(mipi->init_delay);
 
