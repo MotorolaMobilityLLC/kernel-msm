@@ -36,6 +36,18 @@ static struct msm_camera_i2c_reg_array lm3646_init_array[] = {
 	{0x09, 0x30},
 };
 
+static struct msm_camera_i2c_reg_array lm3646_init_array_no_strobe[] = {
+	{0x01, 0xA8},
+	{0x02, 0x24},
+	{0x03, 0x20},
+	{0x04, 0x42},
+	{0x05, 0x5F},
+	{0x06, 0x3F},
+	{0x07, 0xAF},
+	{0x08, 0x00},
+	{0x09, 0x30},
+};
+
 static struct msm_camera_i2c_reg_array lm3646_release_array[] = {
 	{0x01, 0xA8},
 	{0x06, 0x3F},
@@ -122,6 +134,14 @@ static struct msm_camera_i2c_reg_setting lm3646_init_setting = {
 	.delay = 0,
 };
 
+static struct msm_camera_i2c_reg_setting lm3646_init_setting_no_strobe = {
+	.reg_setting = lm3646_init_array_no_strobe,
+	.size = ARRAY_SIZE(lm3646_init_array_no_strobe),
+	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
+	.data_type = MSM_CAMERA_I2C_BYTE_DATA,
+	.delay = 0,
+};
+
 static struct msm_camera_i2c_reg_setting lm3646_release_setting = {
 	.reg_setting = lm3646_release_array,
 	.size = ARRAY_SIZE(lm3646_release_array),
@@ -144,10 +164,17 @@ static struct msm_led_flash_reg_t lm3646_regs = {
 	.release_setting = &lm3646_release_setting,
 };
 
+static int lm3646_led_init(struct msm_led_flash_ctrl_t *fctrl)
+{
+	if (fctrl && fctrl->flashtype != STROBE_FLASH)
+		lm3646_regs.init_setting = &lm3646_init_setting_no_strobe;
+	return msm_flash_led_init(fctrl);
+}
+
 static struct msm_flash_fn_t lm3646_func_tbl = {
 	.flash_get_subdev_id = msm_led_i2c_trigger_get_subdev_id,
 	.flash_led_config = msm_led_i2c_trigger_config,
-	.flash_led_init = msm_flash_led_init,
+	.flash_led_init = lm3646_led_init,
 	.flash_led_release = msm_flash_led_release,
 	.flash_led_off = msm_flash_led_off,
 	.flash_led_low = msm_flash_led_low,
