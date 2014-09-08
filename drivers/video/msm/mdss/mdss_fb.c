@@ -112,6 +112,8 @@ static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 static void mdss_fb_set_mdp_sync_pt_threshold(struct msm_fb_data_type *mfd);
 static void mdss_panelinfo_to_fb_var(struct mdss_panel_info *pinfo,
 					struct fb_var_screeninfo *var);
+static void mdss_fb_scale_bl(struct msm_fb_data_type *mfd, u32 *bl_lvl);
+
 void mdss_fb_no_update_notify_timer_cb(unsigned long data)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)data;
@@ -874,6 +876,18 @@ static int mdss_fb_probe(struct platform_device *pdev)
 			else
 				mfd->fb_imgType = MDP_RGBA_8888;
 		}
+	}
+
+	if (mfd->panel_info->cont_splash_enabled) {
+		mfd->bl_updated = true;
+		MDSS_BRIGHT_TO_BL(mfd->bl_level,
+				mfd->panel_info->brightness_max,
+				mfd->panel_info->bl_max,
+				mfd->panel_info->brightness_max);
+
+		mfd->bl_level_scaled = mfd->bl_level;
+		if (!IS_CALIB_MODE_BL(mfd))
+			mdss_fb_scale_bl(mfd, &mfd->bl_level_scaled);
 	}
 
 	mfd->pdev = pdev;
