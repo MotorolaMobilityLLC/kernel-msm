@@ -575,6 +575,7 @@ struct stml0xx_data {
 
 	struct regulator *regulator_1;
 	struct regulator *regulator_2;
+	struct regulator *regulator_3;
 
 	bool is_suspended;
 	bool pending_wake_work;
