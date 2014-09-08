@@ -29,7 +29,6 @@
 extern int32_t msm_led_torch_create_classdev(
 				struct platform_device *pdev, void *data);
 
-static enum flash_type flashtype;
 static struct msm_led_flash_ctrl_t fctrl;
 
 static int32_t msm_led_trigger_get_subdev_id(struct msm_led_flash_ctrl_t *fctrl,
@@ -161,11 +160,12 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 	CDBG("pdev id %d\n", pdev->id);
 
 	rc = of_property_read_u32(of_node,
-			"qcom,flash-type", &flashtype);
+			"qcom,flash-type", &fctrl.flashtype);
 	if (rc < 0) {
 		pr_err("flash-type: read failed\n");
 		return -EINVAL;
 	}
+	CDBG("flashtype: %d\n", fctrl.flashtype);
 
 	if (of_get_property(of_node, "qcom,flash-source", &count)) {
 		count /= sizeof(uint32_t);
@@ -195,7 +195,7 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 			CDBG("default trigger %s\n",
 				fctrl.flash_trigger_name[i]);
 
-			if (flashtype == GPIO_FLASH) {
+			if (fctrl.flashtype == GPIO_FLASH) {
 				/* use fake current */
 				fctrl.flash_op_current[i] = LED_FULL;
 			} else {
@@ -220,7 +220,7 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 			led_trigger_register_simple(fctrl.flash_trigger_name[i],
 				&fctrl.flash_trigger[i]);
 
-			if (flashtype == GPIO_FLASH)
+			if (fctrl.flashtype == GPIO_FLASH)
 				if (fctrl.flash_trigger[i])
 					temp = fctrl.flash_trigger[i];
 		}
@@ -240,7 +240,7 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 			CDBG("default trigger %s\n",
 				fctrl.torch_trigger_name);
 
-			if (flashtype == GPIO_FLASH) {
+			if (fctrl.flashtype == GPIO_FLASH) {
 				/* use fake current */
 				fctrl.torch_op_current = LED_FULL;
 				if (temp)
