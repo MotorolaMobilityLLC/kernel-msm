@@ -708,6 +708,21 @@ static int stml0xx_probe(struct spi_device *spi)
 		goto err_regulator;
 	}
 
+	/* not all products have 3 sensor supplies */
+	ps_stml0xx->regulator_3 = regulator_get(&spi->dev, "sensor3");
+
+	if (!IS_ERR(ps_stml0xx->regulator_3)) {
+		if (regulator_enable(ps_stml0xx->regulator_3)) {
+			dev_err(&spi->dev, "Failed to enable Sensor 3 regulator");
+			regulator_disable(ps_stml0xx->regulator_2);
+			regulator_disable(ps_stml0xx->regulator_1);
+			regulator_put(ps_stml0xx->regulator_3);
+			regulator_put(ps_stml0xx->regulator_2);
+			regulator_put(ps_stml0xx->regulator_1);
+			goto err_regulator;
+		}
+	}
+
 	err = stml0xx_gpio_init(pdata, spi);
 	if (err) {
 		dev_err(&spi->dev, "stml0xx gpio init failed");
@@ -921,6 +936,10 @@ err1:
 	wake_lock_destroy(&ps_stml0xx->reset_wakelock);
 	stml0xx_gpio_free(pdata);
 err_gpio_init:
+	if (!IS_ERR(ps_stml0xx->regulator_3)) {
+		regulator_disable(ps_stml0xx->regulator_3);
+		regulator_put(ps_stml0xx->regulator_3);
+	}
 	regulator_disable(ps_stml0xx->regulator_2);
 	regulator_disable(ps_stml0xx->regulator_1);
 	regulator_put(ps_stml0xx->regulator_2);
@@ -967,6 +986,10 @@ static int stml0xx_remove(struct spi_device *spi)
 	wake_lock_destroy(&ps_stml0xx->reset_wakelock);
 	disable_irq_wake(ps_stml0xx->irq);
 
+	if (!IS_ERR(ps_stml0xx->regulator_3)) {
+		regulator_disable(ps_stml0xx->regulator_3);
+		regulator_put(ps_stml0xx->regulator_3);
+	}
 	regulator_disable(ps_stml0xx->regulator_2);
 	regulator_disable(ps_stml0xx->regulator_1);
 	regulator_put(ps_stml0xx->regulator_2);
