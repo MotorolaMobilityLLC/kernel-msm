@@ -5845,9 +5845,11 @@ int __iw_set_var_ints_getnone(struct net_device *dev,
     int apps_args[MAX_VAR_ARGS] = {0};
     int num_args;
     hdd_station_ctx_t *pStaCtx = NULL ;
+    hdd_context_t *pHddCtx = NULL;
     hdd_ap_ctx_t  *pAPCtx = NULL;
     int cmd = 0;
     int staId = 0;
+    int ret = 0;
     struct iw_point s_priv_data;
 
     /* helper function to get iwreq_data with compat handling. */
@@ -5866,11 +5868,13 @@ int __iw_set_var_ints_getnone(struct net_device *dev,
 
     hddLog(LOG1, "%s: Received length %d", __func__, s_priv_data.length);
 
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                                  "%s:LOGP in Progress. Ignore!!!", __func__);
-        return -EBUSY;
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    "%s: HDD context is Null", __func__);
+        return ret;
     }
 
     if (num_args > MAX_VAR_ARGS)
