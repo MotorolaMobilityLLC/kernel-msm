@@ -331,7 +331,7 @@ struct mdss_panel_info {
 
 	u32 cont_splash_enabled;
 	u32 partial_update_enabled;
-	u32 partial_update_dcs_cmd_by_left;
+	u32 dcs_cmd_by_left;
 	u32 partial_update_roi_merge;
 	struct ion_handle *splash_ihdl;
 	u32 panel_power_on;
