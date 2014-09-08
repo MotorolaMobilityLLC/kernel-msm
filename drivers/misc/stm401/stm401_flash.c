@@ -420,9 +420,9 @@ RETRY_ID:
 				!(bslen_pin_active_value));
 		dev_dbg(&stm401_misc_data->client->dev,
 			"Switching to normal mode\n");
-		/* init only if booted at least once and not in the factory
+		/* init only if not in the factory
 			- stm401_irq_disable indicates factory test ongoing */
-		if (stm401_g_booted && !stm401_irq_disable)
+		if (!stm401_irq_disable)
 			stm401_reset_and_init();
 		else
 			stm401_reset(pdata, stm401_cmdbuff);
