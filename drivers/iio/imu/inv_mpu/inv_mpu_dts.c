@@ -11,9 +11,10 @@
 int inv_mpu_power_on(struct mpu_platform_data *pdata)
 {
 	int err ;
-
-	err = regulator_enable(pdata->vdd_ana);
-	err = regulator_enable(pdata->vdd_i2c);
+	if(!regulator_is_enabled(pdata->vdd_ana))
+		err = regulator_enable(pdata->vdd_ana);
+	if(!regulator_is_enabled(pdata->vdd_i2c))
+		err = regulator_enable(pdata->vdd_i2c);
 	pr_debug(KERN_INFO "inv_mpu_power_on call");
 
 	return err ;
