@@ -362,6 +362,14 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 		goto ERROR1;
 	}
 
+	rc = of_property_read_u32(of_node,
+			"qcom,flash-type", &fctrl->flashtype);
+	if (rc < 0) {
+		pr_err("flash-type: read failed\n");
+		return -EINVAL;
+	}
+	CDBG("flashtype: %d\n", fctrl->flashtype);
+
 	rc = of_property_read_u32(of_node, "qcom,cci-master",
 		&fctrl->cci_i2c_master);
 	CDBG("%s qcom,cci-master %d, rc %d\n", __func__, fctrl->cci_i2c_master,
