@@ -30,7 +30,7 @@
 		compatible = "qcom,lm3646";
 		qcom,flash-name = "lm3646";
 		label = "lm3646";
-		qcom,flash-type = <1>;
+		qcom,flash-type = <2>;
 		qcom,gpio-no-mux = <0>;
 		gpios = <&msmgpio 144 0>,
 			<&msmgpio 23 0>;
