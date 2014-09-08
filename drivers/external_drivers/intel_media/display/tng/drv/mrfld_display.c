@@ -490,48 +490,55 @@ static void mrfld_crtc_dpms(struct drm_crtc *crtc, int mode)
 		/* Disable the VGA plane that we never use */
 		REG_WRITE(VGACNTRL, VGA_DISP_DISABLE);
 
-		if (!(pipe == 1 && dev_priv->hdmi_first_boot)) {
-			/* Disable display plane */
-			temp = REG_READ(dspcntr_reg);
-			if ((temp & DISPLAY_PLANE_ENABLE) != 0) {
-				REG_WRITE(dspcntr_reg, temp & ~DISPLAY_PLANE_ENABLE);
-				/* Flush the plane changes */
-				REG_WRITE(dspbase_reg, REG_READ(dspbase_reg));
-				REG_READ(dspbase_reg);
-			}
-
-			/* Next, disable display pipes */
-			temp = REG_READ(pipeconf_reg);
-			if ((temp & PIPEACONF_ENABLE) != 0) {
-				temp &= ~PIPEACONF_ENABLE;
-				temp |= PIPECONF_PLANE_OFF | PIPECONF_CURSOR_OFF;
-				REG_WRITE(pipeconf_reg, temp);
-				REG_READ(pipeconf_reg);
-
-				/* Wait for for the pipe disable to take effect. */
-				mdfldWaitForPipeDisable(dev, pipe);
-			}
-
-			temp = REG_READ(dpll_reg);
-			if (temp & DPLL_VCO_ENABLE) {
-				if (((pipe != 1)
-				&& !((REG_READ(PIPEACONF) | REG_READ(PIPECCONF)) &
-								PIPEACONF_ENABLE))
-						|| (pipe == 1)) {
-					temp &= ~(DPLL_VCO_ENABLE);
-					REG_WRITE(dpll_reg, temp);
-					REG_READ(dpll_reg);
-					/* Wait for the clocks to turn off. */
-					/* FIXME_MDFLD PO may need more delay */
-					udelay(500);
-				}
-			}
-
-			drm_handle_vblank(dev, pipe);
-
-			/* Turn off vsync interrupt. */
-			drm_vblank_off(dev, pipe);
+		/* Disable display plane */
+		temp = REG_READ(dspcntr_reg);
+		if ((temp & DISPLAY_PLANE_ENABLE) != 0) {
+			REG_WRITE(dspcntr_reg, temp & ~DISPLAY_PLANE_ENABLE);
+			/* Flush the plane changes */
+			REG_WRITE(dspbase_reg, REG_READ(dspbase_reg));
+			REG_READ(dspbase_reg);
 		}
+
+		/* Next, disable display pipes */
+		temp = REG_READ(pipeconf_reg);
+		if ((temp & PIPEACONF_ENABLE) != 0) {
+			temp &= ~PIPEACONF_ENABLE;
+			temp |= PIPECONF_PLANE_OFF | PIPECONF_CURSOR_OFF;
+			REG_WRITE(pipeconf_reg, temp);
+			REG_READ(pipeconf_reg);
+
+			/* Wait for for the pipe disable to take effect. */
+			mdfldWaitForPipeDisable(dev, pipe);
+		}
+
+		temp = REG_READ(dpll_reg);
+		if (temp & DPLL_VCO_ENABLE) {
+			if (((pipe != 1)
+			     && !((REG_READ(PIPEACONF) | REG_READ(PIPECCONF)) &
+				  PIPEACONF_ENABLE))
+			    || (pipe == 1)) {
+				temp &= ~(DPLL_VCO_ENABLE);
+				REG_WRITE(dpll_reg, temp);
+				REG_READ(dpll_reg);
+				/* Wait for the clocks to turn off. */
+				/* FIXME_MDFLD PO may need more delay */
+				udelay(500);
+#if 0				/* FIXME_MDFLD Check if we need to power gate the PLL */
+				if (!(temp & MDFLD_PWR_GATE_EN)) {
+					/* gating power of DPLL */
+					REG_WRITE(dpll_reg,
+						  temp | MDFLD_PWR_GATE_EN);
+					/* FIXME_MDFLD PO - change 500 to 1 after PO */
+					udelay(5000);
+				}
+#endif
+			}
+		}
+
+		drm_handle_vblank(dev, pipe);
+
+		/* Turn off vsync interrupt. */
+		drm_vblank_off(dev, pipe);
 
 		if ((pipe == 1) && hdmi_priv)
 			hdmi_priv->hdmi_suspended = true;
@@ -559,9 +566,9 @@ static int mrfld_crtc_mode_set(struct drm_crtc *crtc,
 {
 	struct drm_device *dev = crtc->dev;
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
+#ifdef CONFIG_SUPPORT_MIPI
 	struct drm_psb_private *dev_priv =
 		(struct drm_psb_private *)dev->dev_private;
-#ifdef CONFIG_SUPPORT_MIPI
 	struct mdfld_dsi_config *dsi_config = NULL;
 #endif
 	int pipe = psb_intel_crtc->pipe;
@@ -607,10 +614,8 @@ static int mrfld_crtc_mode_set(struct drm_crtc *crtc,
 	if (pipe == 1) {
 		if (IS_ANN(dev))
 			mofd_update_fifo_size(dev, true);
-
-		if (!dev_priv->hdmi_first_boot)
-			android_hdmi_crtc_mode_set(crtc, mode, adjusted_mode,
-					x, y, old_fb);
+		android_hdmi_crtc_mode_set(crtc, mode, adjusted_mode,
+				x, y, old_fb);
 	}
 	return 0;
 #endif

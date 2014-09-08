@@ -659,8 +659,6 @@ struct drm_psb_private {
 	/* first boot phase */
 	bool first_boot;
 
-	bool hdmi_first_boot;
-
 	bool is_mipi_on;
 
 	/* DSI clock */

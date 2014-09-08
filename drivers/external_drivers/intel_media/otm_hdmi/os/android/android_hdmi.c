@@ -992,38 +992,6 @@ static int calculate_refresh_rate(struct drm_display_mode *mode)
 }
 
 /**
- * Query HDMI setting from FW when first boot up
- * @hdisplay	:  hactive timing set by FW
- * @vdisplay	:  vactive timing set by FW
- *
- * Returns ture on success and false else
- */
-static bool query_fw_hdmi_setting(struct drm_device *dev,
-				  uint32_t *hdisplay,
-				  uint32_t *vdisplay)
-{
-	uint32_t htotal, vtotal;
-
-	if (!ospm_power_using_hw_begin(OSPM_DISPLAY_ISLAND,
-				OSPM_UHB_FORCE_POWER_ON))
-		return false;
-
-	htotal = REG_READ(HTOTAL_B);
-	vtotal = REG_READ(VTOTAL_B);
-
-	if (htotal != 0 && vtotal != 0) {
-		*hdisplay = ((htotal + 1) << 16) >> 16;
-		*vdisplay = ((vtotal + 1) << 16) >> 16;
-	        pr_info("%s:fw set htotal=0x%x vtotal=0x%x!\n",
-				__func__, htotal, vtotal);
-	}
-
-	ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-
-	return true;
-}
-
-/**
  * DRM get modes helper routine
  * @connector	: handle to drm_connector
  *
@@ -1059,9 +1027,6 @@ int android_hdmi_get_modes(struct drm_connector *connector)
 	struct drm_display_mode *dup_mode, *user_mode;
 	int mode_present = 0
 #endif
-	struct drm_display_mode *pref_mode = NULL;
-	uint32_t hdisplay = 0;
-	uint32_t vdisplay = 0;
 
 	debug_modes_count = 0;
 	pr_debug("Enter %s\n", __func__);
@@ -1241,26 +1206,6 @@ edid_is_ready:
 
 	if (pref_mode_found == false && pref_mode_assigned == NULL)
 		pr_err("Preferred mode is not indicated or assigned.\n");
-
-	/* check if to skip mode setting for first time */
-	if (pref_mode_found)
-		pref_mode = mode;
-	else if (pref_mode_assigned)
-		pref_mode = pref_mode_assigned;
-
-	if (dev_priv->hdmi_first_boot && pref_mode) {
-	        pr_info("%s: prefer mode h=%d v=%d!\n",
-			__func__, pref_mode->hdisplay, pref_mode->vdisplay);
-
-		query_fw_hdmi_setting(dev, &hdisplay, &vdisplay);
-
-		// continue first time mode setting if different as FW
-		if (hdisplay != pref_mode->hdisplay ||
-		    vdisplay != pref_mode->vdisplay)
-			dev_priv->hdmi_first_boot = false;
-		else
-			pr_info("%s: skip first boot !\n", __func__);
-	}
 
 	pr_debug("Exit %s (%d)\n", __func__, (ret - i));
 
@@ -1627,14 +1572,12 @@ void android_hdmi_enc_mode_set(struct drm_encoder *encoder,
 	__android_hdmi_drm_mode_to_otm_timing(&otm_adjusted_mode,
 						adjusted_mode);
 
-	if (!dev_priv->hdmi_first_boot) {
-		if (otm_hdmi_enc_mode_set(hdmi_priv->context, &otm_mode,
-					&otm_adjusted_mode)) {
-			pr_err("%s: failed to perform hdmi enc mode set",
+	if (otm_hdmi_enc_mode_set(hdmi_priv->context, &otm_mode,
+				&otm_adjusted_mode)) {
+		pr_err("%s: failed to perform hdmi enc mode set",
 					__func__);
-			ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
-			return;
-		}
+		ospm_power_using_hw_end(OSPM_DISPLAY_ISLAND);
+		return;
 	}
 
 	/*save current set mode*/
@@ -2487,9 +2430,9 @@ void android_hdmi_connector_dpms(struct drm_connector *connector, int mode)
 	struct drm_device *dev = connector->dev;
 	bool hdmi_audio_busy = false;
 	u32 dspcntr_val;
-	struct drm_psb_private *dev_priv = dev->dev_private;
 #if (defined CONFIG_PM_RUNTIME) && (!defined MERRIFIELD) \
 	&& (defined CONFIG_SUPPORT_MIPI)
+	struct drm_psb_private *dev_priv = dev->dev_private;
 	bool panel_on = false, panel_on2 = false;
 	struct mdfld_dsi_config **dsi_configs;
 #endif
@@ -2510,11 +2453,9 @@ void android_hdmi_connector_dpms(struct drm_connector *connector, int mode)
 		connector->dpms = mode;
 
 		if (mode != DRM_MODE_DPMS_ON) {
-			if (!dev_priv->hdmi_first_boot) {
-				REG_WRITE(DSPBCNTR, dspcntr_val &
-						~DISPLAY_PLANE_ENABLE);
-				DISP_PLANEB_STATUS = DISPLAY_PLANE_DISABLE;
-			}
+			REG_WRITE(DSPBCNTR, dspcntr_val &
+							~DISPLAY_PLANE_ENABLE);
+			DISP_PLANEB_STATUS = DISPLAY_PLANE_DISABLE;
 		} else {
 			REG_WRITE(DSPBCNTR, dspcntr_val |
 							DISPLAY_PLANE_ENABLE);
@@ -2617,16 +2558,14 @@ void android_hdmi_encoder_dpms(struct drm_encoder *encoder, int mode)
 		if (is_monitor_hdmi && (hdmip_enabled != 0))
 			mid_hdmi_audio_signal_event(dev, HAD_EVENT_HOT_UNPLUG);
 
-		if (!dev_priv->hdmi_first_boot) {
-			REG_WRITE(hdmi_priv->hdmib_reg,
-					hdmib & ~HDMIB_PORT_EN & ~HDMIB_AUDIO_ENABLE);
-			otm_hdmi_vblank_control(dev, false);
-			REG_WRITE(HDMIPHYMISCCTL, hdmi_phy_misc | HDMI_PHY_POWER_DOWN);
-			rc = otm_hdmi_disable_all_infoframes(hdmi_priv->context);
-			if (rc != OTM_HDMI_SUCCESS)
-				pr_err("%s: failed to disable all infoframes\n",
-						__func__);
-		}
+		REG_WRITE(hdmi_priv->hdmib_reg,
+			hdmib & ~HDMIB_PORT_EN & ~HDMIB_AUDIO_ENABLE);
+		otm_hdmi_vblank_control(dev, false);
+		REG_WRITE(HDMIPHYMISCCTL, hdmi_phy_misc | HDMI_PHY_POWER_DOWN);
+		rc = otm_hdmi_disable_all_infoframes(hdmi_priv->context);
+		if (rc != OTM_HDMI_SUCCESS)
+			pr_err("%s: failed to disable all infoframes\n",
+				__func__);
 
 	} else {
 		REG_WRITE(HDMIPHYMISCCTL, hdmi_phy_misc & ~HDMI_PHY_POWER_DOWN);
