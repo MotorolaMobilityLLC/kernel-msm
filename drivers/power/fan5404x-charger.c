@@ -27,8 +27,8 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/machine.h>
-
-
+#include <linux/reboot.h>
+#include <linux/qpnp/qpnp-adc.h>
 
 /* Mask/Bit helpers */
 #define GENMASK(u, l) (((1 << ((u) - (l) + 1)) - 1) << (l))
@@ -217,6 +217,8 @@ struct fan5404x_chg {
 	bool batt_cool;
 
 	struct delayed_work heartbeat_work;
+	struct notifier_block notifier;
+	struct qpnp_vadc_chip	*vadc_dev;
 	struct dentry	    *debug_root;
 	u32    peek_poke_address;
 };
@@ -271,6 +273,9 @@ static int fan5404x_read(struct fan5404x_chg *chip, int reg,
 
 	return rc;
 }
+
+static int fan5404x_charging_reboot(struct notifier_block *, unsigned long,
+				void *);
 
 static int fan5404x_masked_write(struct fan5404x_chg *chip, int reg,
 						uint8_t mask, uint8_t val)
@@ -540,6 +545,16 @@ static irqreturn_t fan5404x_chg_stat_handler(int irq, void *dev_id)
 	struct fan5404x_chg *chip = dev_id;
 	int stat;
 	int fault;
+	int rc;
+	uint8_t ctrl;
+
+	if (chip->factory_mode) {
+		rc = fan5404x_read(chip, REG_VBUS_CONTROL, &ctrl);
+		if (rc < 0)
+			pr_err("Unable to read VBUS_CONTROL rc = %d\n", rc);
+		else if (chip->usb_psy && !(ctrl & VBUS_VBUS_CON))
+			power_supply_changed(chip->usb_psy);
+	}
 
 	stat = fan5404x_stat_read(chip);
 	fault = fan5404x_fault_read(chip);
@@ -575,6 +590,15 @@ static void fan5404x_external_power_changed(struct power_supply *psy)
 	else
 		stop_charging(chip);
 
+	if (chip->factory_mode && chip->usb_psy) {
+		rc = chip->usb_psy->get_property(chip->usb_psy,
+			POWER_SUPPLY_PROP_ONLINE, &prop);
+		if (!rc && (prop.intval == 0) && !chip->usb_present) {
+			pr_err("External Power Changed: UsbOnline=%d\n",
+							prop.intval);
+			kernel_power_off();
+		}
+	}
 }
 
 static enum power_supply_property fan5404x_batt_properties[] = {
@@ -902,7 +926,7 @@ static int fan5404x_of_init(struct fan5404x_chg *chip)
 	struct device_node *node = chip->dev->of_node;
 
 	rc = of_property_read_string(node, "fairchild,bms-psy-name",
-						&chip->bms_psy_name);
+				&chip->bms_psy_name);
 	if (rc)
 		chip->bms_psy_name = NULL;
 
@@ -922,6 +946,49 @@ static int fan5404x_hw_init(struct fan5404x_chg *chip)
 	}
 
 	return 0;
+}
+
+static int fan5404x_charging_reboot(struct notifier_block *nb,
+				unsigned long event, void *unused)
+{
+	#define VBUS_OFF_THRESHOLD 2000000
+	struct qpnp_vadc_result result;
+
+	/*
+	 * Hack to power down when both VBUS and BPLUS are present.
+	 * This targets factory environment, where we need to power down
+	 * units with non-removable batteries between stations so that we
+	 * do not drain batteries to death.
+	 * Poll for VBUS to got away (controlled by external supply)
+	 * before proceeding with shutdown.
+	 */
+	switch (event) {
+	case SYS_POWER_OFF:
+		if (!the_chip) {
+			pr_err("called before fan5404x charging init\n");
+			break;
+		}
+
+		if (!the_chip->factory_mode)
+			break;
+		do {
+			if (qpnp_vadc_read(the_chip->vadc_dev,
+				USBIN, &result)) {
+				pr_err("VBUS ADC read err\n");
+				break;
+			} else
+				pr_info("VBUS:= %lld mV\n", result.physical);
+			mdelay(100);
+		} while (result.physical > VBUS_OFF_THRESHOLD);
+		break;
+	default:
+		break;
+	}
+
+	if (the_chip->factory_mode)
+		pr_info("Reboot Notification: FACTORY MODE VBUS missing!!\n");
+
+	return NOTIFY_DONE;
 }
 
 static int determine_initial_status(struct fan5404x_chg *chip)
@@ -1480,6 +1547,13 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 		goto unregister_batt_psy;
 	}
 
+	chip->vadc_dev = qpnp_get_vadc(chip->dev, "fan5404x");
+	if (IS_ERR(chip->vadc_dev)) {
+		rc = PTR_ERR(chip->vadc_dev);
+		if (rc == -EPROBE_DEFER)
+			pr_err("vadc not ready, defer probe\n");
+		goto unregister_batt_psy;
+	}
 	fan5404x_hw_init(chip);
 
 	determine_initial_status(chip);
@@ -1500,6 +1574,7 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 		enable_irq_wake(client->irq);
 	}
 
+	chip->notifier.notifier_call = &fan5404x_charging_reboot;
 	the_chip = chip;
 
 	chip->debug_root = debugfs_create_dir("fan5404x", NULL);
@@ -1578,8 +1653,14 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 
 	}
 
+	fan5404x_chg_stat_handler(client->irq, chip);
+
+	rc = register_reboot_notifier(&chip->notifier);
+	if (rc)
+		pr_err("%s can't register reboot notifier\n", __func__);
+
 	schedule_delayed_work(&chip->heartbeat_work,
-			      msecs_to_jiffies(60000));
+				msecs_to_jiffies(60000));
 
 	dev_dbg(&client->dev, "FAN5404X batt=%d usb=%d done=%d\n",
 			chip->batt_present, chip->usb_present,
@@ -1589,7 +1670,8 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 
 unregister_batt_psy:
 	power_supply_unregister(&chip->batt_psy);
-
+	devm_kfree(chip->dev, chip);
+	the_chip = NULL;
 	return rc;
 }
 
@@ -1597,8 +1679,11 @@ static int fan5404x_charger_remove(struct i2c_client *client)
 {
 	struct fan5404x_chg *chip = i2c_get_clientdata(client);
 
+	unregister_reboot_notifier(&chip->notifier);
 	debugfs_remove_recursive(chip->debug_root);
 	power_supply_unregister(&chip->batt_psy);
+	devm_kfree(chip->dev, chip);
+	the_chip = NULL;
 
 	return 0;
 }
