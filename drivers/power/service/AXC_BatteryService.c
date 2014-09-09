@@ -3601,6 +3601,7 @@ static int init_battery_capacity(void)
 		return -1;
 	}
 
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
 	if(g_asus_CHG_mode){
 		printk("[BAT][Ser] g_asus_CHG_mode = 1, don't read bat_cap\n");
 
@@ -3614,6 +3615,7 @@ static int init_battery_capacity(void)
 		g_already_read_bat_cap = true;
 		return 0;
 	}
+#endif
 	
 	FileLength = fd->f_op->read(fd, bat_cap_str, 13, &fd->f_pos);
 	if (13 == FileLength) {
