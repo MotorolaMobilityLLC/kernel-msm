@@ -14,6 +14,7 @@
 
 #include <linux/esoc_ctrl.h>
 #include <linux/notifier.h>
+#include <linux/device.h>
 
 /*
  * struct esoc_desc: Describes an external soc
