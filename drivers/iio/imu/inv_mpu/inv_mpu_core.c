@@ -2990,6 +2990,7 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 {
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 	int result;
+	int counter;
 
 	if (st->chip_config.dmp_on &&
 		st->chip_config.enable &&
@@ -2999,12 +3000,24 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 		result = inv_set_interrupt_on_gesture_event(st, suspend);
 		if (result)
 			return result;
+		if (suspend)
+			counter = INT_MAX;
+		else
+			counter = st->batch.counter;
+		result = write_be32_key_to_mem(st, counter, KEY_BM_BATCH_THLD);
+		if (result)
+			return result;
 	}
 
 	return 0;
 }
 
 #ifdef CONFIG_PM
+
+/* Uncomment to utilize suspend_noirq.
+   It is platform dependent whether or not suspend_irq is called */
+#define USE_SUSPEND_NOIRQ
+
 /*
  * inv_mpu_resume(): resume method for this driver.
  *    This method can be modified according to the request of different
@@ -3020,6 +3033,9 @@ static int inv_mpu_resume(struct device *dev)
 	/* add code according to different request Start */
 	pr_debug("%s inv_mpu_resume\n", st->hw->name);
 	mutex_lock(&indio_dev->mlock);
+#ifndef USE_SUSPEND_NOIRQ
+	st->suspend_state = false;
+#endif
 
 	result = 0;
 	if (st->chip_config.dmp_on && st->chip_config.enable) {
@@ -3079,17 +3095,32 @@ static int inv_mpu_suspend(struct device *dev)
 		/* in non DMP case, just turn off the power */
 		result |= st->set_power_state(st, false);
 	}
-	/* add code according to different request End */
 	st->suspend_state = true;
-	msleep(100);
+	/* add code according to different request End */
+#ifndef USE_SUSPEND_NOIRQ
+	mutex_lock(&st->suspend_resume_lock);
+#endif
+
+	return 0;
+}
+
+#ifdef USE_SUSPEND_NOIRQ
+static int inv_mpu_suspend_noirq(struct device *dev)
+{
+	struct iio_dev *indio_dev = i2c_get_clientdata(to_i2c_client(dev));
+	struct inv_mpu_state *st = iio_priv(indio_dev);
+
 	mutex_lock(&st->suspend_resume_lock);
 	st->suspend_state = false;
 
 	return 0;
 }
-
+#endif
 static const struct dev_pm_ops inv_mpu_pmops = {
 	.suspend       = inv_mpu_suspend,
+#ifdef USE_SUSPEND_NOIRQ
+	.suspend_noirq = inv_mpu_suspend_noirq,
+#endif
 	.resume        = inv_mpu_resume,
 };
 #define INV_MPU_PMOPS (&inv_mpu_pmops)

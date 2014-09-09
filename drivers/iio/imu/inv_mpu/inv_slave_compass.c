@@ -123,6 +123,7 @@ static int inv_setup_compass_akm(struct inv_mpu_state *st)
 	result = inv_secondary_write(mode, cmd);
 	if (result)
 		return result;
+	msleep(1);
 	result = inv_secondary_read(sens, THREE_AXIS,
 						st->chip_info.compass_sens);
 	if (result)
