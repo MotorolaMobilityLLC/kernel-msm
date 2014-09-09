@@ -231,6 +231,14 @@
 	qcom,pins = <&gp 78>;
 };
 
+&usb_otg {
+	qcom,hsusb-otg-mode = <3>;
+	qcom,usbid-gpio = <&msm_gpio 91 0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&usbid_default>;
+	vbus_otg-supply = <&fan54046>;
+};
+
 &pm8916_chg {
 	status = "ok";
 };
@@ -361,6 +369,10 @@
 			bias-disable;	      /* No PULL */
 		};
 	};
+
+        usb-id-pin {
+                qcom,pins = <&gp 91>;
+        };
 
 	spi0_mot_active {
 		/* MOSI, MISO, CLK */
@@ -698,6 +710,7 @@
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <62 0x0>;
 		qcom,fan5404x-vadc = <&pm8916_vadc>;
+		regulator-name = "fan54046_otg_vreg";
 
 		fairchild,bms-psy-name = "max170xx_battery";
 
