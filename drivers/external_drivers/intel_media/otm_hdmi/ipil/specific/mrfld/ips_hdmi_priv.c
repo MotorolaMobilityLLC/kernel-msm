@@ -540,7 +540,7 @@ otm_hdmi_ret_t	ips_hdmi_crtc_mode_set_program_dpll(hdmi_device_t *dev,
 	if (__ips_hdmi_get_divider_selector(dclk,
 			&target_dclk, &m1, &m2, &n, &p1, &p2)) {
 		__ips_hdmi_set_program_dpll(n, p1, p2, m1, m2);
-		dev->clock_khz = target_dclk;
+		dev->clock_khz = 3840 * m1 * m2 / (p1 * p2);
 		return OTM_HDMI_SUCCESS;
 	} else
 		return OTM_HDMI_ERR_INVAL;
