@@ -1397,6 +1397,9 @@ struct task_struct {
 #endif
 
 	struct list_head tasks;
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+	struct rb_node adj_node;
+#endif
 #ifdef CONFIG_SMP
 	struct plist_node pushable_tasks;
 	struct rb_node pushable_dl_tasks;
