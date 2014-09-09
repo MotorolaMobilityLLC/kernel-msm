@@ -309,8 +309,10 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *panel_info = NULL;
 	struct mipi_panel_info *pinfo = NULL;
+#ifdef MDSS_ULPS_BEFORE_PANEL_OFF
 	u32 lane_status = 0;
 	u32 active_lanes = 0;
+#endif
 
 	printk("MDSS:AMB:== DSI OFF ==\n");
 
@@ -338,7 +340,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
-
+#ifdef MDSS_ULPS_BEFORE_PANEL_OFF
 if (!is_ambient_on())
 {
 
@@ -370,6 +372,7 @@ if (!is_ambient_on())
 }else{
 	printk("MDSS:AMB:Skip ULPS..\n");
 }
+#endif
 
 	/* disable DSI controller */
 	mdss_dsi_controller_cfg(0, pdata);
