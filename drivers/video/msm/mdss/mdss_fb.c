@@ -1002,6 +1002,18 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 			mfd->suspend.panel_power_on = false;
 		return 0;
 	}
+
+	/* One shut code to prevent dark red panel issue */
+	{
+		static int has_shot = false;
+		if (!has_shot && FB_BLANK_UNBLANK == blank_mode){
+			printk("MDSS:AMB:Force blank/unblank panel after bootup.\n");
+			has_shot = true;
+			mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);
+			mdss_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
+		}
+	}
+
 	return mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
 }
 
@@ -1799,18 +1811,6 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 		pr_err("Shutdown pending. Aborting operation\n");
 		return ret;
 	}
-
-	/* One shut code to prevent dark red panel issue */
-	{
-		static int has_shot = false;
-		if (!has_shot){
-			printk("MDSS:AMB:Force blank/unblank panel after bootup.\n");
-			has_shot = true;
-			mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);
-			mdss_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
-		}
-	}
-
 
 	mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
 	if (info->fix.xpanstep)
