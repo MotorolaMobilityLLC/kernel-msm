@@ -44,7 +44,23 @@ static void deinitKernelEnv(void);
 unsigned int PRINTK_BUFFER = 0x11F80000;
 
 extern struct timezone sys_tz;
+
+struct mutex fake_mutex;
+struct completion fake_completion;
+struct rt_mutex fake_rtmutex;
 static struct workqueue_struct *ASUSEvtlog_workQueue;
+
+int asus_rtc_read_time(struct rtc_time *tm)
+{
+    struct timespec ts;
+
+    getnstimeofday(&ts);
+    ts.tv_sec -= sys_tz.tz_minuteswest * 60;
+    rtc_time_to_tm(ts.tv_sec, tm);
+    printk("[adbg] now %04d%02d%02d-%02d%02d%02d, tz=%d\r\n", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, sys_tz.tz_minuteswest);
+    return 0;
+}
+EXPORT_SYMBOL(asus_rtc_read_time);
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #if ASUS_LAST_KMSG
@@ -89,6 +105,629 @@ int save_log(const char *f, ...)
     g_iPtr = PHONE_HANG_LOG_SIZE;
     return -1;
 }
+
+static char *task_state_array[] = {
+    "RUNNING",      	/*  0 */
+    "INTERRUPTIBLE",	/*  1 */
+    "UNINTERRUPTIB",   	/*  2 */
+    "STOPPED",      	/*  4 */
+    "TRACED", 			/*  8 */
+    "EXIT ZOMBIE",		/* 16 */
+    "EXIT DEAD",      	/* 32 */
+    "DEAD",      		/* 64 */
+    "WAKEKILL",      	/* 128 */
+    "WAKING"      		/* 256 */
+};
+struct thread_info_save;
+struct thread_info_save
+{
+    struct task_struct *pts;
+    pid_t pid;
+    u64 sum_exec_runtime;
+    u64 vruntime;
+    struct thread_info_save* pnext;
+};
+static char * print_state(long state)
+{
+    int i;
+    if(state == 0)
+        return task_state_array[0];
+    for(i = 1; i <= 16; i++)
+    {
+        if(1<<(i-1) & state)
+            return task_state_array[i];
+    }
+    return "NOTFOUND";
+}
+
+/*
+ * Ease the printing of nsec fields:
+ */
+static long long nsec_high(unsigned long long nsec)
+{
+    if ((long long)nsec < 0) {
+        nsec = -nsec;
+        do_div(nsec, 1000000);
+        return -nsec;
+    }
+    do_div(nsec, 1000000);
+
+    return nsec;
+}
+
+static unsigned long nsec_low(unsigned long long nsec)
+{
+    unsigned long long nsec1;
+    if ((long long)nsec < 0)
+        nsec = -nsec;
+
+    nsec1 =  do_div(nsec, 1000000);
+    return do_div(nsec1, 1000000);
+}
+#define MAX_STACK_TRACE_DEPTH   64
+struct stack_trace {
+    unsigned int nr_entries, max_entries;
+    unsigned long *entries;
+    int skip;   /* input argument: How many entries to skip */
+};
+
+void save_stack_trace_asus(struct task_struct *tsk, struct stack_trace *trace);
+void show_stack1(struct task_struct *p1, void *p2)
+{
+    struct stack_trace trace;
+    unsigned long *entries;
+    int i;
+
+    entries = kmalloc(MAX_STACK_TRACE_DEPTH * sizeof(*entries), GFP_KERNEL);
+    if (!entries)
+    {
+        printk("[adbg] entries malloc failure\n");
+        return;
+    }
+    trace.nr_entries    = 0;
+    trace.max_entries   = MAX_STACK_TRACE_DEPTH;
+    trace.entries       = entries;
+    trace.skip      = 0;
+    save_stack_trace_asus(p1, &trace);
+
+    for (i = 0; i < trace.nr_entries; i++)
+    {
+        save_log("[<%p>] %pS\n", (void *)entries[i], (void *)entries[i]);
+    }
+    kfree(entries);
+}
+
+
+#define SPLIT_NS(x) nsec_high(x), nsec_low(x)
+void print_all_thread_info(void)
+{
+    struct task_struct *pts;
+    struct thread_info *pti;
+    struct rtc_time tm;
+    asus_rtc_read_time(&tm);
+
+    g_phonehang_log = (char*)PHONE_HANG_LOG_BUFFER;//phys_to_virt(PHONE_HANG_LOG_BUFFER);
+    g_iPtr = 0;
+    memset(g_phonehang_log, 0, PHONE_HANG_LOG_SIZE);
+
+    save_log("PhoneHang-%04d%02d%02d-%02d%02d%02d.txt  ---  ASUS_SW_VER : %s----------------------------------------------\r\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ASUS_SW_VER);
+    save_log(" pID----ppID----NAME----------------SumTime---vruntime--SPri-NPri-State----------PmpCnt-Binder----Waiting\r\n");
+
+    for_each_process(pts)
+    {
+        pti = (struct thread_info *)((int)(pts->stack)  & ~(THREAD_SIZE - 1));
+        save_log("-----------------------------------------------------\r\n");
+        save_log(" %-7d", pts->pid);
+
+        if(pts->parent)
+            save_log("%-8d", pts->parent->pid);
+        else
+            save_log("%-8d", 0);
+
+        save_log("%-20s", pts->comm);
+        save_log("%lld.%06ld", SPLIT_NS(pts->se.sum_exec_runtime));
+        save_log("     %lld.%06ld     ", SPLIT_NS(pts->se.vruntime));
+        save_log("%-5d", pts->static_prio);
+        save_log("%-5d", pts->normal_prio);
+        save_log("%-15s", print_state((pts->state & TASK_REPORT) | pts->exit_state));
+        save_log("%-6d", pti->preempt_count);
+
+        if(pti->pWaitingMutex != &fake_mutex && pti->pWaitingMutex != NULL)
+        {
+			if (pti->pWaitingMutex->name)
+			{
+				save_log("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+				printk("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+			}
+			else
+				printk("pti->pWaitingMutex->name == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug)
+			{
+				save_log(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+				printk(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug->comm)
+			{
+				save_log(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+				printk(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug->comm == NULL\r\n");
+		}
+
+		if(pti->pWaitingCompletion != &fake_completion && pti->pWaitingCompletion!=NULL)
+		{
+			if (pti->pWaitingCompletion->name)
+	            save_log("    Completion:wait_for_completion %s", pti->pWaitingCompletion->name );
+	        else
+				printk("pti->pWaitingCompletion->name == NULL\r\n");
+		}
+
+        if(pti->pWaitingRTMutex != &fake_rtmutex && pti->pWaitingRTMutex != NULL)
+        {
+			struct task_struct *temp = rt_mutex_owner(pti->pWaitingRTMutex);
+			if (temp)
+				save_log("    RTMutex: Owned by pID(%d)", temp->pid);
+            else
+				printk("pti->pWaitingRTMutex->temp == NULL\r\n");
+			if (temp->comm)
+				save_log(" %s", temp->pid, temp->comm);
+			else
+				printk("pti->pWaitingRTMutex->temp->comm == NULL\r\n");
+		}
+
+	    save_log("\r\n");
+        show_stack1(pts, NULL);
+
+        save_log("\r\n");
+
+        if(!thread_group_empty(pts))
+        {
+            struct task_struct *p1 = next_thread(pts);
+            do
+            {
+                pti = (struct thread_info *)((int)(p1->stack)  & ~(THREAD_SIZE - 1));
+                save_log(" %-7d", p1->pid);
+
+                if(pts->parent)
+                    save_log("%-8d", p1->parent->pid);
+                else
+                    save_log("%-8d", 0);
+
+                save_log("%-20s", p1->comm);
+                save_log("%lld.%06ld", SPLIT_NS(p1->se.sum_exec_runtime));
+                save_log("     %lld.%06ld     ", SPLIT_NS(p1->se.vruntime));
+                save_log("%-5d", p1->static_prio);
+                save_log("%-5d", p1->normal_prio);
+                save_log("%-15s", print_state((p1->state & TASK_REPORT) | p1->exit_state));
+                save_log("%-6d", pti->preempt_count);
+
+        if(pti->pWaitingMutex != &fake_mutex && pti->pWaitingMutex != NULL)
+        {
+			if (pti->pWaitingMutex->name)
+			{
+				save_log("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+				printk("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+			}
+			else
+				printk("pti->pWaitingMutex->name == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug)
+			{
+				save_log(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+				printk(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug->comm)
+			{
+				save_log(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+				printk(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug->comm == NULL\r\n");
+		}
+
+		if(pti->pWaitingCompletion != &fake_completion && pti->pWaitingCompletion!=NULL)
+		{
+			if (pti->pWaitingCompletion->name)
+	            save_log("    Completion:wait_for_completion %s", pti->pWaitingCompletion->name );
+	        else
+				printk("pti->pWaitingCompletion->name == NULL\r\n");
+		}
+
+        if(pti->pWaitingRTMutex != &fake_rtmutex && pti->pWaitingRTMutex != NULL)
+        {
+			struct task_struct *temp = rt_mutex_owner(pti->pWaitingRTMutex);
+			if (temp)
+				save_log("    RTMutex: Owned by pID(%d)", temp->pid);
+            else
+				printk("pti->pWaitingRTMutex->temp == NULL\r\n");
+			if (temp->comm)
+				save_log(" %s", temp->pid, temp->comm);
+			else
+				printk("pti->pWaitingRTMutex->temp->comm == NULL\r\n");
+		}
+                save_log("\r\n");
+                show_stack1(p1, NULL);
+
+                save_log("\r\n");
+                p1 = next_thread(p1);
+            }while(p1 != pts);
+        }
+        save_log("-----------------------------------------------------\r\n\r\n\r\n");
+
+    }
+    save_log("\r\n\r\n\r\n\r\n");
+}
+
+struct thread_info_save *ptis_head = NULL;
+int find_thread_info(struct task_struct *pts, int force)
+{
+    struct thread_info *pti;
+    struct thread_info_save *ptis, *ptis_ptr;
+    u64 vruntime = 0, sum_exec_runtime;
+
+    if(ptis_head != NULL)
+    {
+        ptis = ptis_head->pnext;
+        ptis_ptr = NULL;
+        while(ptis)
+        {
+            if(ptis->pid == pts->pid && ptis->pts == pts)
+            {
+                ptis_ptr = ptis;
+                break;
+            }
+            ptis = ptis->pnext;
+        }
+        if(ptis_ptr)
+        {
+            sum_exec_runtime = pts->se.sum_exec_runtime - ptis->sum_exec_runtime;
+        }
+        else
+        {
+            sum_exec_runtime = pts->se.sum_exec_runtime;
+        }
+        if(sum_exec_runtime > 0 || force)
+        {
+            pti = (struct thread_info *)((int)(pts->stack)  & ~(THREAD_SIZE - 1));
+            save_log(" %-7d", pts->pid);
+
+            if(pts->parent)
+                save_log("%-8d", pts->parent->pid);
+            else
+                save_log("%-8d", 0);
+
+            save_log("%-20s", pts->comm);
+            save_log("%lld.%06ld", SPLIT_NS(sum_exec_runtime));
+            if(nsec_high(sum_exec_runtime) > 1000)
+                save_log(" ******");
+            save_log("     %lld.%06ld     ", SPLIT_NS(vruntime));
+            save_log("%-5d", pts->static_prio);
+            save_log("%-5d", pts->normal_prio);
+            save_log("%-15s", print_state(pts->state));
+            save_log("%-6d", pti->preempt_count);
+
+        if(pti->pWaitingMutex != &fake_mutex && pti->pWaitingMutex != NULL)
+        {
+			if (pti->pWaitingMutex->name)
+			{
+				save_log("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+				printk("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+			}
+			else
+				printk("pti->pWaitingMutex->name == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug)
+			{
+				save_log(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+				printk(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug->comm)
+			{
+				save_log(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+				printk(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug->comm == NULL\r\n");
+		}
+
+        if(pti->pWaitingCompletion != &fake_completion && pti->pWaitingCompletion!=NULL)
+		{
+			if (pti->pWaitingCompletion->name)
+				save_log("    Completion:wait_for_completion %s", pti->pWaitingCompletion->name );
+			else
+				printk("pti->pWaitingCompletion->name == NULL\r\n");
+		}
+
+        if(pti->pWaitingRTMutex != &fake_rtmutex && pti->pWaitingRTMutex != NULL)
+        {
+			struct task_struct *temp = rt_mutex_owner(pti->pWaitingRTMutex);
+			if (temp)
+				save_log("    RTMutex: Owned by pID(%d)", temp->pid);
+            else
+				printk("pti->pWaitingRTMutex->temp == NULL\r\n");
+			if (temp->comm)
+				save_log(" %s", temp->pid, temp->comm);
+			else
+				printk("pti->pWaitingRTMutex->temp->comm == NULL\r\n");
+		}
+
+            save_log("\r\n");
+            show_stack1(pts, NULL);
+            save_log("\r\n");
+        }
+        else
+            return 0;
+    }
+    return 1;
+
+}
+
+void save_all_thread_info(void)
+{
+    struct task_struct *pts;
+    struct thread_info *pti;
+    struct thread_info_save *ptis = NULL, *ptis_ptr = NULL;
+    struct rtc_time tm;
+
+    asus_rtc_read_time(&tm);
+
+    g_phonehang_log = (char*)PHONE_HANG_LOG_BUFFER;
+    g_iPtr = 0;
+    memset(g_phonehang_log, 0, PHONE_HANG_LOG_SIZE);
+
+    save_log("ASUSSlowg-%04d%02d%02d-%02d%02d%02d.txt  ---  ASUS_SW_VER : %s----------------------------------------------\r\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ASUS_SW_VER);
+    save_log(" pID----ppID----NAME----------------SumTime---vruntime--SPri-NPri-State----------PmpCnt-binder----Waiting\r\n");
+
+    if(ptis_head != NULL)
+    {
+        struct thread_info_save *ptis_next = ptis_head->pnext;
+        struct thread_info_save *ptis_next_next;
+        while(ptis_next)
+        {
+            ptis_next_next = ptis_next->pnext;
+            kfree(ptis_next);
+            ptis_next = ptis_next_next;
+        }
+        kfree(ptis_head);
+        ptis_head = NULL;
+    }
+
+    if(ptis_head == NULL)
+    {
+        ptis_ptr = ptis_head = kmalloc(sizeof( struct thread_info_save), GFP_KERNEL);
+        if(!ptis_head)
+        {
+            printk("[adbg] kmalloc ptis_head failure\n");
+            return;
+        }
+        memset(ptis_head, 0, sizeof( struct thread_info_save));
+    }
+
+    for_each_process(pts)
+    {
+        pti = (struct thread_info *)((int)(pts->stack)  & ~(THREAD_SIZE - 1));
+        ptis = kmalloc(sizeof( struct thread_info_save), GFP_KERNEL);
+        if(!ptis)
+        {
+            printk("[adbg] kmalloc ptis failure\n");
+            return;
+        }
+        memset(ptis, 0, sizeof( struct thread_info_save));
+
+        save_log("-----------------------------------------------------\r\n");
+        save_log(" %-7d", pts->pid);
+        if(pts->parent)
+            save_log("%-8d", pts->parent->pid);
+        else
+            save_log("%-8d", 0);
+
+        save_log("%-20s", pts->comm);
+        save_log("%lld.%06ld", SPLIT_NS(pts->se.sum_exec_runtime));
+        save_log("     %lld.%06ld     ", SPLIT_NS(pts->se.vruntime));
+        save_log("%-5d", pts->static_prio);
+        save_log("%-5d", pts->normal_prio);
+        save_log("%-15s", print_state((pts->state & TASK_REPORT) | pts->exit_state));
+        save_log("%-6d", pti->preempt_count);
+
+        if(pti->pWaitingMutex != &fake_mutex && pti->pWaitingMutex != NULL)
+        {
+			if (pti->pWaitingMutex->name)
+			{
+				save_log("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+				printk("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+			}
+			else
+				printk("pti->pWaitingMutex->name == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug)
+			{
+				save_log(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+				printk(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug->comm)
+			{
+				save_log(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+				printk(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug->comm == NULL\r\n");
+		}
+	if(pti->pWaitingCompletion != &fake_completion && pti->pWaitingCompletion!=NULL)
+	{
+		if (pti->pWaitingCompletion->name)
+			save_log("    Completion:wait_for_completion %s", pti->pWaitingCompletion->name );
+		else
+			printk("pti->pWaitingCompletion->name == NULL\r\n");
+	}
+
+        if(pti->pWaitingRTMutex != &fake_rtmutex && pti->pWaitingRTMutex != NULL)
+        {
+			struct task_struct *temp = rt_mutex_owner(pti->pWaitingRTMutex);
+			if (temp)
+				save_log("    RTMutex: Owned by pID(%d)", temp->pid);
+            else
+				printk("pti->pWaitingRTMutex->temp == NULL\r\n");
+			if (temp->comm)
+				save_log(" %s", temp->pid, temp->comm);
+			else
+				printk("pti->pWaitingRTMutex->temp->comm == NULL\r\n");
+		}
+
+        save_log("\r\n");
+        show_stack1(pts, NULL);
+
+        save_log("\r\n");
+
+        ptis->pid = pts->pid;
+        ptis->pts = pts;
+        ptis->sum_exec_runtime = pts->se.sum_exec_runtime;
+        ptis->vruntime = pts->se.vruntime;
+        ptis_ptr->pnext = ptis;
+        ptis_ptr = ptis;
+
+        if(!thread_group_empty(pts))
+        {
+            struct task_struct *p1 = next_thread(pts);
+            do
+            {
+                pti = (struct thread_info *)((int)(p1->stack)  & ~(THREAD_SIZE - 1));
+                ptis = kmalloc(sizeof( struct thread_info_save), GFP_KERNEL);
+                if(!ptis)
+                {
+                    printk("[adbg] kmalloc ptis 2 failure\n");
+                    return;
+                }
+                memset(ptis, 0, sizeof( struct thread_info_save));
+
+                ptis->pid = p1->pid;
+                ptis->pts = p1;
+                ptis->sum_exec_runtime = p1->se.sum_exec_runtime;
+                ptis->vruntime = p1->se.vruntime;
+
+                ptis_ptr->pnext = ptis;
+                ptis_ptr = ptis;
+                save_log(" %-7d", p1->pid);
+
+                if(pts->parent)
+                    save_log("%-8d", p1->parent->pid);
+                else
+                    save_log("%-8d", 0);
+
+                save_log("%-20s", p1->comm);
+                save_log("%lld.%06ld", SPLIT_NS(p1->se.sum_exec_runtime));
+                save_log("     %lld.%06ld     ", SPLIT_NS(p1->se.vruntime));
+                save_log("%-5d", p1->static_prio);
+                save_log("%-5d", p1->normal_prio);
+                save_log("%-15s", print_state((p1->state & TASK_REPORT) | p1->exit_state));
+                save_log("%-6d", pti->preempt_count);
+
+        if(pti->pWaitingMutex != &fake_mutex && pti->pWaitingMutex != NULL)
+        {
+			if (pti->pWaitingMutex->name)
+			{
+				save_log("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+				printk("    Mutex:%s,", pti->pWaitingMutex->name + 1);
+			}
+			else
+				printk("pti->pWaitingMutex->name == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug)
+			{
+				save_log(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+				printk(" Owned by pID(%d)", pti->pWaitingMutex->mutex_owner_asusdebug->pid);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug == NULL\r\n");
+
+			if (pti->pWaitingMutex->mutex_owner_asusdebug->comm)
+			{
+				save_log(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+				printk(" %s",pti->pWaitingMutex->mutex_owner_asusdebug->comm);
+			}
+			else
+				printk("pti->pWaitingMutex->mutex_owner_asusdebug->comm == NULL\r\n");
+
+		}
+
+		if(pti->pWaitingCompletion != &fake_completion && pti->pWaitingCompletion!=NULL)
+		{
+			if (pti->pWaitingCompletion->name)
+	            save_log("    Completion:wait_for_completion %s", pti->pWaitingCompletion->name );
+	        else
+				printk("pti->pWaitingCompletion->name == NULL\r\n");
+		}
+
+        if(pti->pWaitingRTMutex != &fake_rtmutex && pti->pWaitingRTMutex != NULL)
+        {
+			struct task_struct *temp = rt_mutex_owner(pti->pWaitingRTMutex);
+			if (temp)
+				save_log("    RTMutex: Owned by pID(%d)", temp->pid);
+            else
+				printk("pti->pWaitingRTMutex->temp == NULL\r\n");
+			if (temp->comm)
+				save_log(" %s", temp->pid, temp->comm);
+			else
+				printk("pti->pWaitingRTMutex->temp->comm == NULL\r\n");
+		}
+            save_log("\r\n");
+            show_stack1(p1, NULL);
+
+            save_log("\r\n");
+
+            p1 = next_thread(p1);
+            }while(p1 != pts);
+        }
+    }
+}
+
+EXPORT_SYMBOL(save_all_thread_info);
+
+void delta_all_thread_info(void)
+{
+    struct task_struct *pts;
+    int ret = 0, ret2 = 0;
+
+    pr_info("%s()++\n", __func__);
+
+    save_log("\r\nDELTA INFO----------------------------------------------------------------------------------------------\r\n");
+    save_log(" pID----ppID----NAME----------------SumTime---vruntime--SPri-NPri-State----------PmpCnt----Waiting\r\n");
+    for_each_process(pts)
+    {
+        ret = find_thread_info(pts, 0);
+        if(!thread_group_empty(pts))
+        {
+            struct task_struct *p1 = next_thread(pts);
+            ret2 = 0;
+            do
+            {
+                ret2 += find_thread_info(p1, 0);
+                p1 = next_thread(p1);
+            }while(p1 != pts);
+            if(ret2 && !ret)
+                find_thread_info(pts, 1);
+        }
+        if(ret || ret2)
+            save_log("-----------------------------------------------------\r\n\r\n-----------------------------------------------------\r\n");
+    }
+    save_log("\r\n\r\n\r\n\r\n");
+
+    pr_info("%s()--\n", __func__);
+}
+EXPORT_SYMBOL(delta_all_thread_info);
 
 /*
  *   Printk and Last kmsg
@@ -341,6 +980,44 @@ void print_log_to_console(unsigned char* buf, int len){
     }
 }
 
+void save_phone_hang_log(void)
+{
+    int file_handle;
+    int ret;
+
+    pr_info("%s()++\n", __func__);
+
+    g_phonehang_log = (char*)PHONE_HANG_LOG_BUFFER;// phys_to_virt(PHONE_HANG_LOG_BUFFER);
+    printk("[adbg] save_phone_hang_log PRINTK_BUFFER=%x, PRINTK_BUFFER=PHONE_HANG_LOG_BUFFE=%x \n", PRINTK_BUFFER, PHONE_HANG_LOG_BUFFER);
+
+    if(g_phonehang_log && ((strncmp(g_phonehang_log, "PhoneHang", 9) == 0) || (strncmp(g_phonehang_log, "ASUSSlowg", 9) == 0)) )
+    {
+        printk("[adbg] save_phone_hang_log-1\n");
+        initKernelEnv();
+        memset(messages, 0, sizeof(messages));
+        strcpy(messages, "/asdf/");
+        strncat(messages, g_phonehang_log, 29);
+        file_handle = sys_open(messages, O_CREAT|O_WRONLY|O_SYNC, 0);
+        printk("[adbg] save_phone_hang_log-2 file_handle %d, name=%s\n", file_handle, messages);
+        if(!IS_ERR((const void *)file_handle))
+        {
+            ret = sys_write(file_handle, (unsigned char*)g_phonehang_log, strlen(g_phonehang_log));
+            sys_close(file_handle);
+        }else {
+            printk("[adbg] /asdf is not mounted yet, print to console.\n");
+            print_log_to_console((unsigned char*)g_phonehang_log, strlen(g_phonehang_log));
+        }
+        deinitKernelEnv();
+    }
+    if(g_phonehang_log)
+    {
+        g_phonehang_log[0] = 0;
+    }
+
+    pr_info("%s()--\n", __func__);
+}
+EXPORT_SYMBOL(save_phone_hang_log);
+
 void save_last_shutdown_log(char* filename)
 {
 	char *last_shutdown_log_unparsed;
@@ -434,7 +1111,14 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
     }
     else if(strncmp(messages, "slowlog", 7) == 0)
 	{
-		printk("[adbg] slowlog is currently disabled.\n");
+		printk("[adbg] start to gi chk, line:%d\n", __LINE__);
+		save_all_thread_info();
+
+		msleep(5 * 1000);
+
+		printk("[adbg] start to gi delta, line:%d\n", __LINE__);
+		delta_all_thread_info();
+		save_phone_hang_log();
 		return count;
 	}
 	else if(strncmp(messages, "panic", 5) == 0)
@@ -704,6 +1388,12 @@ static int __init proc_asusdebug_init(void)
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
     PRINTK_BUFFER = (unsigned int)ioremap(PRINTK_BUFFER, PRINTK_BUFFER_SIZE);
     mutex_init(&mA);
+    fake_mutex.owner = current;
+    fake_mutex.mutex_owner_asusdebug = current;
+    fake_mutex.name = " fake_mutex";
+    strcpy(fake_completion.name," fake_completion");
+    fake_rtmutex.owner = current;
+
     ASUSEvtlog_workQueue  = create_singlethread_workqueue("ASUSEVTLOG_WORKQUEUE");
 
     return 0;
