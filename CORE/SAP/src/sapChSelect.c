@@ -1771,6 +1771,18 @@ void sapSortChlWeightHT80(tSapChSelSpectInfo *pSpectInfoParams)
             pSpectInfo[j+2].weight = ACS_WEIGHT_MAX;
             pSpectInfo[j+3].weight = ACS_WEIGHT_MAX;
         }
+        else
+        {
+            /* some channels does not exist in pSectInfo array,
+               skip this channel and those in the same HT80 width*/
+            pSpectInfo[j].weight = ACS_WEIGHT_MAX;
+            if ((pSpectInfo[j].chNum +4) == pSpectInfo[j+1].chNum)
+                pSpectInfo[j+1].weight = ACS_WEIGHT_MAX;
+            if ((pSpectInfo[j].chNum +8) == pSpectInfo[j+2].chNum)
+                pSpectInfo[j+2].weight = ACS_WEIGHT_MAX;
+            if ((pSpectInfo[j].chNum +12) == pSpectInfo[j+3].chNum)
+                pSpectInfo[j+3].weight = ACS_WEIGHT_MAX;
+        }
     }
 
     pSpectInfo = pSpectInfoParams->pSpectCh;
@@ -1781,6 +1793,15 @@ void sapSortChlWeightHT80(tSapChSelSpectInfo *pSpectInfoParams)
             pSpectInfo[j].weight = ACS_WEIGHT_MAX;
             break;
         }
+    }
+
+    pSpectInfo = pSpectInfoParams->pSpectCh;
+    for (j = 0; j < (pSpectInfoParams->numSpectChans); j++) {
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                    "In %s, Channel=%d Weight= %d rssi=%d bssCount=%d",
+                    __func__, pSpectInfo->chNum, pSpectInfo->weight,
+                    pSpectInfo->rssiAgr, pSpectInfo->bssCount);
+        pSpectInfo++;
     }
 
     sapSortChlWeight(pSpectInfoParams);
@@ -1831,6 +1852,8 @@ void sapSortChlWeightHT40(tSapChSelSpectInfo *pSpectInfoParams)
                that it will be sorted to the bottom */
             pSpectInfo[j+1].weight = ACS_WEIGHT_MAX;
         }
+        else
+           pSpectInfo[j].weight = ACS_WEIGHT_MAX;
     }
 
     /* avoid channel 165 by setting its weight to max */
