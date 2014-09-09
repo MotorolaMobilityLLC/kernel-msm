@@ -69,3 +69,30 @@
 	vdd_disp-supply = <&pm8226_l28>;
 	vddio_disp-supply = <&vddio_disp_vreg>;
 };
+
+&i2c_5 {
+	/delete-node/ synaptics@20;
+
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <17 0>;
+		gpios = <&msmgpio 17 0>, /* IRQ */
+			<&msmgpio 16 0>; /* RESET */
+		touch_vdd-supply = <&pm8226_l28>;
+		synaptics,normal-mode = <1>;
+		synaptics,gpio-config;
+	};
+};
+
+&pm8226_l28 {
+        regulator-max-microvolt = <3400000>;
+        qcom,init-voltage = <3100000>;
+        regulator-boot-on;
+        regulator-always-on;
+};
+
+&pm8226_lvs1 {
+        regulator-always-on;
+};
