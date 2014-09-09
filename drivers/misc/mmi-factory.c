@@ -140,14 +140,14 @@ static struct mmi_factory_info *mmi_parse_of(struct platform_device *pdev)
 
 	if (!np) {
 		dev_err(&pdev->dev, "No OF DT node found.\n");
-		return NULL;
+		return ERR_PTR(-ENODEV);
 	}
 
 	gpio_count = of_gpio_count(np);
 
 	if (!gpio_count) {
 		dev_err(&pdev->dev, "No GPIOS defined.\n");
-		return NULL;
+		return ERR_PTR(-EINVAL);
 	}
 
 	/* Make sure number of GPIOs defined matches the supplied number of
@@ -155,22 +155,28 @@ static struct mmi_factory_info *mmi_parse_of(struct platform_device *pdev)
 	 */
 	if (gpio_count != of_property_count_strings(np, "gpio-names")) {
 		dev_err(&pdev->dev, "GPIO info and name mismatch\n");
-		return NULL;
+		return ERR_PTR(-EINVAL);
 	}
 
 	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
 	if (!info)
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 
 	info->list = devm_kzalloc(&pdev->dev,
 				sizeof(struct gpio) * gpio_count,
 				GFP_KERNEL);
 	if (!info->list)
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 
 	info->num_gpios = gpio_count;
 	for (i = 0; i < gpio_count; i++) {
-		info->list[i].gpio = of_get_gpio_flags(np, i, &flags);
+		int gpio = of_get_gpio_flags(np, i, &flags);
+
+		/* Handle the error conditions in case need to defer */
+		if (gpio < 0)
+			return ERR_PTR(gpio);
+
+		info->list[i].gpio = gpio;
 		info->list[i].flags = flags;
 		of_property_read_string_index(np, "gpio-names", i,
 						&info->list[i].label);
@@ -209,9 +215,9 @@ static int mmi_factory_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "Using %s\n", match->compatible);
 
 	info = mmi_parse_of(pdev);
-	if (!info) {
+	if (IS_ERR(info)) {
 		dev_err(&pdev->dev, "failed to parse node\n");
-		return -ENODEV;
+		return PTR_ERR(info);
 	}
 
 	ret = gpio_request_array(info->list, info->num_gpios);
