@@ -12,6 +12,23 @@
  */
 
 &cci {
+	/* skywork81296 */
+	led_flash0: qcom,sky81296@6e {
+		cell-index = <0>;
+		qcom,slave-id = <0x6e 0x00 0x11>;
+		compatible = "qcom,sky81296";
+		label = "flash";
+		qcom,flash-name = "sky81296";
+		qcom,flash-type = <1>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msm_gpio 93 0>;
+		qcom,gpio-flash-en = <0>;
+		qcom,gpio-req-tbl-num = <0 >;
+		qcom,gpio-req-tbl-flags = <0>;
+		qcom,gpio-req-tbl-label = "cam_led_enable";
+		qcom,cci-master = <0>;
+	};
+
 	/* IMX220 */
 	qcom,camera@0 {
 		cell-index = <0>;
@@ -21,7 +38,7 @@
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
 		/* qcom,actuator-src = <&actuator0>; */
-		/* qcom,led-flash-src = <&led_flash0>; */
+		qcom,led-flash-src = <&led_flash0>;
 		cam_vdig-supply = <&pm8994_l27>;
 		cam_vio-supply = <&pm8994_lvs1>;
 		cam_vana-supply = <&pm8994_l17>;
