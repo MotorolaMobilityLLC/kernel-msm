@@ -132,6 +132,38 @@ void sapCleanupChannelList(void)
     pSapCtx->SapChnlList.channelList = NULL;
 }
 
+typedef struct
+{
+    v_U16_t chStartNum;
+    v_U32_t weight;
+} sapAcsChannelInfo;
+
+#define ACS_WEIGHT_MAX     4444
+
+sapAcsChannelInfo acsHT40Channels[ ] = {
+    {36,   ACS_WEIGHT_MAX},
+    {44,   ACS_WEIGHT_MAX},
+    {52,   ACS_WEIGHT_MAX},
+    {60,   ACS_WEIGHT_MAX},
+    {100,  ACS_WEIGHT_MAX},
+    {108,  ACS_WEIGHT_MAX},
+    {116,  ACS_WEIGHT_MAX},
+    {124,  ACS_WEIGHT_MAX},
+    {132,  ACS_WEIGHT_MAX},
+    {140,  ACS_WEIGHT_MAX},
+    {149,  ACS_WEIGHT_MAX},
+    {157,  ACS_WEIGHT_MAX},
+};
+
+sapAcsChannelInfo acsHT80Channels[ ] = {
+    {36,   ACS_WEIGHT_MAX},
+    {52,   ACS_WEIGHT_MAX},
+    {100,  ACS_WEIGHT_MAX},
+    {116,  ACS_WEIGHT_MAX},
+    {132,  ACS_WEIGHT_MAX},
+    {149,  ACS_WEIGHT_MAX},
+};
+
 /*==========================================================================
   FUNCTION    sapSetPreferredChannel
 
@@ -1673,8 +1705,6 @@ void sapSortChlWeight(tSapChSelSpectInfo *pSpectInfoParams)
     v_U32_t i = 0, j = 0, minWeightIndex = 0;
 
     pSpectCh = pSpectInfoParams->pSpectCh;
-#ifdef SOFTAP_CHANNEL_RANGE
-    // Sorting the channels as per weights
     for (i = 0; i < pSpectInfoParams->numSpectChans; i++) {
         minWeightIndex = i;
         for( j = i + 1; j < pSpectInfoParams->numSpectChans; j++) {
@@ -1688,8 +1718,181 @@ void sapSortChlWeight(tSapChSelSpectInfo *pSpectInfoParams)
             vos_mem_copy(&pSpectCh[i], &temp, sizeof(*pSpectCh));
         }
     }
+}
+
+/*==========================================================================
+  FUNCTION    sapSortChlWeightHT80
+
+  DESCRIPTION
+    Funtion to sort the channels with the least weight first for HT80 channels
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    pSpectInfoParams       : Pointer to the tSapChSelSpectInfo structure
+
+  RETURN VALUE
+    void     : NULL
+
+  SIDE EFFECTS
+============================================================================*/
+void sapSortChlWeightHT80(tSapChSelSpectInfo *pSpectInfoParams)
+{
+    v_U8_t i, j;
+    tSapSpectChInfo *pSpectInfo;
+
+    pSpectInfo = pSpectInfoParams->pSpectCh;
+    /* for each HT40 channel, calculate the combined weight of the
+       two 20MHz weight */
+    for (i = 0; i < ARRAY_SIZE(acsHT80Channels); i++)
+    {
+        for (j = 0; j < pSpectInfoParams->numSpectChans; j++)
+        {
+            if ( pSpectInfo[j].chNum == acsHT80Channels[i].chStartNum )
+                break;
+        }
+
+        /*found the channel, add the 4 adjacent channels' weight*/
+        if (((pSpectInfo[j].chNum +4) == pSpectInfo[j+1].chNum) &&
+             ((pSpectInfo[j].chNum +8) == pSpectInfo[j+2].chNum) &&
+             ((pSpectInfo[j].chNum +12) == pSpectInfo[j+3].chNum))
+        {
+            acsHT80Channels[i].weight = pSpectInfo[j].weight +
+                                           pSpectInfo[j+1].weight +
+                                           pSpectInfo[j+2].weight +
+                                           pSpectInfo[j+3].weight;
+            pSpectInfo[j].weight = acsHT80Channels[i].weight;
+            /*mark the adjacent channel's weight as max value so
+              that it will be sorted to the bottom */
+            pSpectInfo[j+1].weight = ACS_WEIGHT_MAX;
+            pSpectInfo[j+2].weight = ACS_WEIGHT_MAX;
+            pSpectInfo[j+3].weight = ACS_WEIGHT_MAX;
+        }
+    }
+
+    pSpectInfo = pSpectInfoParams->pSpectCh;
+    for (j = 0; j < pSpectInfoParams->numSpectChans; j++)
+    {
+        if ( RF_CHAN_165 == pSpectInfo[j].chNum )
+        {
+            pSpectInfo[j].weight = ACS_WEIGHT_MAX;
+            break;
+        }
+    }
+
+    sapSortChlWeight(pSpectInfoParams);
+}
+
+/*==========================================================================
+  FUNCTION    sapSortChlWeightHT40
+
+  DESCRIPTION
+    Funtion to sort the channels with the least weight first for 20MHz channels
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    pSpectInfoParams       : Pointer to the tSapChSelSpectInfo structure
+
+  RETURN VALUE
+    void     : NULL
+
+  SIDE EFFECTS
+============================================================================*/
+void sapSortChlWeightHT40(tSapChSelSpectInfo *pSpectInfoParams)
+{
+    v_U8_t i, j;
+    tSapSpectChInfo *pSpectInfo;
+
+    pSpectInfo = pSpectInfoParams->pSpectCh;
+    /*for each HT40 channel, calculate the combined weight of the
+      two 20MHz weight */
+    for (i = 0; i < ARRAY_SIZE(acsHT40Channels); i++)
+    {
+        for (j = 0; j < pSpectInfoParams->numSpectChans; j++)
+        {
+            if ( pSpectInfo[j].chNum == acsHT40Channels[i].chStartNum )
+                break;
+        }
+
+        /* found the channel, add the two adjacent channels' weight */
+        if ( (pSpectInfo[j].chNum +4) == pSpectInfo[j+1].chNum)
+        {
+            acsHT40Channels[i].weight = pSpectInfo[j].weight +
+                                           pSpectInfo[j+1].weight;
+            pSpectInfo[j].weight = acsHT40Channels[i].weight;
+            /* mark the adjacent channel's weight as max value so
+               that it will be sorted to the bottom */
+            pSpectInfo[j+1].weight = ACS_WEIGHT_MAX;
+        }
+    }
+
+    /* avoid channel 165 by setting its weight to max */
+    pSpectInfo = pSpectInfoParams->pSpectCh;
+    for (j = 0; j < pSpectInfoParams->numSpectChans; j++)
+    {
+        if ( RF_CHAN_165  == pSpectInfo[j].chNum )
+        {
+            pSpectInfo[j].weight = ACS_WEIGHT_MAX;
+            break;
+        }
+    }
+
+    sapSortChlWeight(pSpectInfoParams);
+}
+
+/*==========================================================================
+  FUNCTION    sapSortChlWeightAll
+
+  DESCRIPTION
+    Funtion to sort the channels with the least weight first
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    ptSapContext           : Pointer to the ptSapContext structure
+    pSpectInfoParams       : Pointer to the tSapChSelSpectInfo structure
+
+  RETURN VALUE
+    void     : NULL
+
+  SIDE EFFECTS
+============================================================================*/
+void sapSortChlWeightAll(ptSapContext pSapCtx,
+                                    tSapChSelSpectInfo *pSpectInfoParams)
+{
+    tSapSpectChInfo *pSpectCh = NULL;
+    v_U32_t j = 0;
+#ifndef  SOFTAP_CHANNEL_RANGE
+    v_U32_t i = 0;
+#endif
+
+    pSpectCh = pSpectInfoParams->pSpectCh;
+#ifdef SOFTAP_CHANNEL_RANGE
+
+    if (pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11n ||
+        pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11n_ONLY) {
+        sapSortChlWeightHT40(pSpectInfoParams);
+    }
+    else if (pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11ac ||
+        pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11ac_ONLY) {
+        sapSortChlWeightHT80(pSpectInfoParams);
+    }
+    else {
+        /* Sorting the channels as per weights as 20MHz channels */
+        sapSortChlWeight(pSpectInfoParams);
+    }
 #else
-    // Sorting the channels as per weights
+    /* Sorting the channels as per weights */
     for (i = 0; i < SPECT_24GHZ_CH_COUNT; i++) {
         minWeightIndex = i;
         for( j = i + 1; j < SPECT_24GHZ_CH_COUNT; j++) {
@@ -1699,18 +1902,22 @@ void sapSortChlWeight(tSapChSelSpectInfo *pSpectInfoParams)
         }
         if(minWeightIndex != i) {
             vos_mem_copy(&temp, &pSpectCh[minWeightIndex], sizeof(*pSpectCh));
-            vos_mem_copy(&pSpectCh[minWeightIndex], &pSpectCh[i], sizeof(*pSpectCh));
+            vos_mem_copy(&pSpectCh[minWeightIndex], &pSpectCh[i],
+                                                    sizeof(*pSpectCh));
             vos_mem_copy(&pSpectCh[i], &temp, sizeof(*pSpectCh));
         }
     }
 #endif
 
     /* For testing */
-    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Sorted Spectrum Channels Weight", __func__);
+    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                    "In %s, Sorted Spectrum Channels Weight", __func__);
     pSpectCh = pSpectInfoParams->pSpectCh;
     for (j = 0; j < (pSpectInfoParams->numSpectChans); j++) {
-        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Channel=%d Weight= %d rssi=%d bssCount=%d",
-                    __func__, pSpectCh->chNum, pSpectCh->weight, pSpectCh->rssiAgr, pSpectCh->bssCount);
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                    "In %s, Channel=%d Weight= %d rssi=%d bssCount=%d",
+                    __func__, pSpectCh->chNum, pSpectCh->weight,
+                    pSpectCh->rssiAgr, pSpectCh->bssCount);
         pSpectCh++;
     }
 
@@ -1768,8 +1975,8 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     // Compute the weight of the entire spectrum in the operating band
     sapComputeSpectWeight( pSpectInfoParams, halHandle, pScanResult);
 
-    // Sort the 20M channel list as per the computed weights, lesser weight first.
-    sapSortChlWeight(pSpectInfoParams);
+    // Sort the channel list as per the computed weights, lesser weight first.
+    sapSortChlWeightAll(pSapCtx, pSpectInfoParams);
 
 #ifdef SOFTAP_CHANNEL_RANGE
     if (eCSR_BAND_ALL == pSapCtx->scanBandPreference)
