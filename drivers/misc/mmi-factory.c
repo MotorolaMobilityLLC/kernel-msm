@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2013 Motorola Mobility LLC
+ * Copyright (C) 2012-2014 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,6 +16,8 @@
  * 02111-1307, USA
  */
 #include <linux/gpio.h>
+#include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
