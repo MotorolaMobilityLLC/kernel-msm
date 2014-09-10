@@ -1410,7 +1410,8 @@ static int atvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	pr_info("%s: hdev->name = %s, vendor_id = %d, product_id = %d, num %d\n",
 		__func__, hdev->name, hdev->vendor, hdev->product, num_remotes);
 	if (strcmp(hdev->name, "ADT-1_Remote") &&
-	    strcmp(hdev->name, "Spike")) {
+	    strcmp(hdev->name, "Spike") &&
+	    strcmp(hdev->name, "Nexus Remote")) {
 		ret = -ENODEV;
 		goto err_match;
 	}
