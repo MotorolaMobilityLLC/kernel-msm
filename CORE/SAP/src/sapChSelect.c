@@ -1752,8 +1752,12 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
 #endif
     VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Running SAP Ch Select", __func__);
 
-    // Set to zero tSapChSelParams
-    //vos_mem_zero(&sapChSelParams, sizeof(sapChSelParams));
+    if (NULL == pScanResult)
+    {
+        //scan is successfull, but no AP is present, select the first channel is channel range
+        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL, &startChannelNum);
+        return startChannelNum;
+    }
 
     // Initialize the structure pointed by pSpectInfoParams
     if(sapChanSelInit( halHandle, pSpectInfoParams) != eSAP_TRUE ) {
