@@ -270,16 +270,18 @@ void ips_hdmi_save_display_registers(hdmi_device_t *dev)
 	dev->reg_state.saveDSPBCNTR = hdmi_read32(IPS_DSPBCNTR);
 	dev->reg_state.saveDSPBSTATUS = hdmi_read32(IPS_DSPBSTAT);
 
-	/*save palette (gamma) */
-	for (i = 0; i < 256; i++)
-		dev->reg_state.save_palette_b[i] =
-			hdmi_read32(IPS_PALETTE_B + (i<<2));
-
 	dev->reg_state.savePFIT_CONTROL = hdmi_read32(IPS_PFIT_CONTROL);
 	dev->reg_state.savePFIT_PGM_RATIOS = hdmi_read32(IPS_PFIT_PGM_RATIOS);
 	dev->reg_state.saveHDMIPHYMISCCTL = hdmi_read32(IPS_HDMIPHYMISCCTL);
 	dev->reg_state.saveHDMIB_CONTROL = hdmi_read32(IPS_HDMIB_CONTROL);
 	dev->reg_state.saveHDMIB_DATALANES = hdmi_read32(IPS_HDMIB_LANES02);
+
+	/*save palette (gamma) */
+	for (i = 0; i < 256; i++) {
+		dev->reg_state.save_palette_b[i] =
+			hdmi_read32(IPS_PALETTE_B + (i<<2));
+		udelay(2);
+	}
 
 	dev->reg_state.valid = true;
 }
