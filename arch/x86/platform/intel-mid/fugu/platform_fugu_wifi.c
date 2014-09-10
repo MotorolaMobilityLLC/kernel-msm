@@ -24,9 +24,11 @@
 #include "platform_fugu_wifi.h"
 
 static int fugu_wifi_get_mac_addr(unsigned char *buf);
+static void *fugu_wifi_get_country_code(char *ccode, u32 flags);
 
 static struct wifi_platform_data fugu_wifi_control = {
 	.get_mac_addr	= fugu_wifi_get_mac_addr,
+	.get_country_code = fugu_wifi_get_country_code,
 };
 
 static struct resource wifi_res[] = {
@@ -244,3 +246,120 @@ const char *get_nvram_path(void)
 	}
 }
 EXPORT_SYMBOL(get_nvram_path);
+
+#define WLAN_PLAT_NODFS_FLAG	0x01
+#define COUNTRY_BUF_SZ	4
+#define DEFAULT_CCODE	"/factory/country"
+
+struct cntry_locales_custom {
+	char iso_abbrev[COUNTRY_BUF_SZ];
+	char custom_locale[COUNTRY_BUF_SZ];
+	int custom_locale_rev;
+};
+
+/* Customized Locale table (DFS band enabled) */
+static struct cntry_locales_custom translate_custom_dfs_table[] = {
+/* Table should be filled out based on custom platform regulatory requirement */
+	{"",   "XZ", 11},	/* Universal if Country code is unknown or empty */
+	{"US", "CA", 2},
+	{"CA", "CA", 2},
+	{"MX", "CA", 2},
+	{"DK", "GB", 6},
+	{"FI", "GB", 6},
+	{"NO", "GB", 6},
+	{"SE", "GB", 6},
+	{"AT", "GB", 6},
+	{"CH", "GB", 6},
+	{"DE", "GB", 6},
+	{"FR", "GB", 6},
+	{"IT", "GB", 6},
+	{"ES", "GB", 6},
+	{"PT", "GB", 6},
+	{"NL", "GB", 6},
+	{"BE", "GB", 6},
+	{"GB", "GB", 6},
+	{"IE", "GB", 6},
+	{"TW", "TW", 1},
+	{"HK", "SG", 12},
+	{"SG", "SG", 12},
+	{"KR", "KR", 57},
+	{"IN", "IN", 3},
+	{"TH", "TH", 5},
+	{"MY", "MY", 3},
+	{"RU", "RU", 13},
+	{"JP", "JP", 45},
+	{"AU", "AU", 6},
+	{"NZ", "NZ", 4},
+	{"BR", "BR", 4},
+	{"ID", "ID", 1},
+};
+
+/* Customized Locale table (DFS band disabled) */
+static struct cntry_locales_custom translate_custom_nodfs_table[] = {
+/* Table should be filled out based on custom platform regulatory requirement */
+	{"",   "XZ", 40},	/* Universal if Country code is unknown or empty */
+	{"US", "CA", 53},
+	{"CA", "CA", 53},
+	{"MX", "CA", 53},
+	{"DK", "GB", 22},
+	{"FI", "GB", 22},
+	{"NO", "GB", 22},
+	{"SE", "GB", 22},
+	{"AT", "GB", 22},
+	{"CH", "GB", 22},
+	{"DE", "GB", 22},
+	{"FR", "GB", 22},
+	{"IT", "GB", 22},
+	{"ES", "GB", 22},
+	{"PT", "GB", 22},
+	{"NL", "GB", 22},
+	{"BE", "GB", 22},
+	{"GB", "GB", 22},
+	{"IE", "GB", 22},
+	{"TW", "TW", 60},
+	{"HK", "SG", 17},
+	{"SG", "SG", 17},
+	{"KR", "KR", 79},
+	{"IN", "IN", 27},
+	{"TH", "TH", 9},
+	{"MY", "MY", 15},
+	{"RU", "RU", 20},
+	{"JP", "JP", 83},
+	{"AU", "AU", 37},
+	{"NZ", "TH", 9},
+	{"BR", "BR", 18},
+	{"ID", "ID", 1},
+};
+
+static void *fugu_wifi_get_country_code(char *ccode, u32 flags)
+{
+	int size, i;
+	struct file *fp;
+	static struct cntry_locales_custom* wifi_translate_custom_table;
+
+	if (flags & WLAN_PLAT_NODFS_FLAG) {
+		wifi_translate_custom_table = translate_custom_nodfs_table;
+		size = ARRAY_SIZE(translate_custom_nodfs_table);
+	} else {
+		wifi_translate_custom_table = translate_custom_dfs_table;
+		size = ARRAY_SIZE(translate_custom_dfs_table);
+	}
+
+	if ((size == 0) || (ccode == NULL))
+		return NULL;
+
+	if (!strcmp(ccode, "")){
+		fp = filp_open(DEFAULT_CCODE, O_RDONLY, 0);
+		if (!IS_ERR(fp)) {
+			memset(ccode, 0, COUNTRY_BUF_SZ);
+			kernel_read(fp, fp->f_pos, ccode, 2);
+			filp_close(fp, NULL);
+		}
+	}
+
+	for (i = 0; i < size; i++) {
+		if (!strcmp(ccode, wifi_translate_custom_table[i].iso_abbrev))
+			return &wifi_translate_custom_table[i];
+	}
+	return &wifi_translate_custom_table[0];
+}

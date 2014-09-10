@@ -5345,6 +5345,11 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 
 	DHD_ERROR(("Firmware up: op_mode=0x%04x, MAC="MACDBG"\n",
 		dhd->op_mode, MAC2STRDBG(dhd->mac.octet)));
+#ifdef CUSTOM_COUNTRY_CODE
+	get_customized_country_code(dhd->info->adapter,
+		dhd->dhd_cspec.country_abbrev, &dhd->dhd_cspec,
+		dhd->dhd_cflags);
+#endif /* CUSTOM_COUNTRY_CODE */
 	/* Set Country code  */
 	if (dhd->dhd_cspec.ccode[0] != 0) {
 		bcm_mkiovar("country", (char *)&dhd->dhd_cspec,
