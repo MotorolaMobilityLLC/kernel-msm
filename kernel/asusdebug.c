@@ -778,10 +778,10 @@ int fetch_last_kmsg_size(char* buf, int buflen, int option){
     int ret;
 
     /* 
-     * Following situaion is not allowed 
+     * Following situaions are not allowed
      * 1. buf and buflen is not legal
      * 2. option is set to 1, which means debug mode
-     * 3. we already fetech lk, skip here
+     * 3. we already fetch lk, skip here
      */
     if(!buf || !buflen || option == 1 || g_lk_fetched)
         return 0;
@@ -888,10 +888,6 @@ static void save_last_kmsg_buffer(char* filename){
     char lk_filename[256];
 	int lk_file_handle;
 
-    /* If LK is rebased, we skip here */
-    if(is_lk_rebased)
-        return;
-
 	// Address setting
     last_kmsg_buffer = (char*)LAST_KMSG_BUFFER;
     if(filename)
@@ -913,7 +909,9 @@ static void save_last_kmsg_buffer(char* filename){
         printk("[adbg] last kmsg save failed: [%d]\n", lk_file_handle);
     }
 
-    fetch_last_kmsg_size(last_kmsg_buffer, PRINTK_PARSE_SIZE, 0);
+    /* If LK is rebased, we skip here */
+    if(!is_lk_rebased)
+        fetch_last_kmsg_size(last_kmsg_buffer, PRINTK_PARSE_SIZE, 0);
 
     deinitKernelEnv();
 }
