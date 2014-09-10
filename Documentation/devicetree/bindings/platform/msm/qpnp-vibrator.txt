@@ -17,6 +17,10 @@ Optional Properties:
 		"manual", "dtest1", "dtest2" and "dtest3"
  - qcom,active-low: boolean to specify if the dtestx is operated
 		in active low or high
+ - qcom,vib-haptic-threshold-ms: haptic threshold, in ms.  Default 60 ms
+ - qcom,vib-vtg-level-mV-haptic: voltage level for haptic, in mV.
+		Default vib-vtg-level-mV
+ - qcom,vib-boot-up-vibe-ms: boot up vibration, in ms.  Default 0 ms
 
 Required Properties for "dtestx" mode:
  - qcom,pwm-channel: pwm channel number
