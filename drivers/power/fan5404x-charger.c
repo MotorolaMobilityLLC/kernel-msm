@@ -173,6 +173,26 @@ static char *version_str[] = {
 
 };
 
+struct fan5404x_reg {
+	char *regname;
+	u8   regaddress;
+};
+
+static struct fan5404x_reg fan_regs[] = {
+	{"CONTROL0",   REG_CONTROL0},
+	{"CONTROL1",   REG_CONTROL1},
+	{"OREG",       REG_OREG},
+	{"IC INFO",    REG_IC_INFO},
+	{"IBAT",       REG_IBAT},
+	{"VBUS CONTROL", REG_VBUS_CONTROL},
+	{"SAFETY",     REG_SAFETY},
+	{"POST CHARGING", REG_POST_CHARGING},
+	{"MONITOR0",   REG_MONITOR0},
+	{"MONITOR1",   REG_MONITOR1},
+	{"NTC",        REG_NTC},
+	{"WD CONTROL", REG_WD_CONTROL},
+};
+
 struct fan5404x_chg {
 	struct i2c_client *client;
 	struct device *dev;
@@ -197,6 +217,8 @@ struct fan5404x_chg {
 	bool batt_cool;
 
 	struct delayed_work heartbeat_work;
+	struct dentry	    *debug_root;
+	u32    peek_poke_address;
 };
 
 static struct fan5404x_chg *the_chip;
@@ -1297,6 +1319,85 @@ static DEVICE_ATTR(force_chg_itrick, 0664,
 		   force_chg_itrick_show,
 		   force_chg_itrick_store);
 
+static int get_reg(void *data, u64 *val)
+{
+	int rc;
+	u8 temp;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	rc = fan5404x_read(the_chip, the_chip->peek_poke_address, &temp);
+	if (rc < 0) {
+		dev_err(the_chip->dev,
+			"Couldn't read reg %x rc = %d\n",
+			the_chip->peek_poke_address, rc);
+		return -EAGAIN;
+	}
+	*val = temp;
+	return 0;
+}
+
+static int set_reg(void *data, u64 val)
+{
+	int rc;
+	u8 temp;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	temp = (u8) val;
+	rc = __fan5404x_write_fac(the_chip, the_chip->peek_poke_address, temp);
+	if (rc < 0) {
+		dev_err(the_chip->dev,
+			"Couldn't write 0x%02x to 0x%02x rc= %d\n",
+			the_chip->peek_poke_address, temp, rc);
+		return -EAGAIN;
+	}
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(poke_poke_debug_ops, get_reg, set_reg, "0x%02llx\n");
+
+static int show_registers(struct seq_file *m, void *data)
+{
+	int rc, i;
+	u8 reg;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(fan_regs); i++) {
+		rc = fan5404x_read(the_chip, fan_regs[i].regaddress, &reg);
+		if (!rc)
+			seq_printf(m, "%s - 0x%02x = 0x%02x\n",
+					fan_regs[i].regname,
+					fan_regs[i].regaddress,
+					reg);
+	}
+
+	return 0;
+}
+
+static int registers_debugfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, show_registers, the_chip);
+}
+
+static const struct file_operations registers_debugfs_ops = {
+	.owner          = THIS_MODULE,
+	.open           = registers_debugfs_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
+
 static bool fan5404x_charger_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
@@ -1401,6 +1502,37 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 
 	the_chip = chip;
 
+	chip->debug_root = debugfs_create_dir("fan5404x", NULL);
+	if (!chip->debug_root)
+		dev_err(chip->dev, "Couldn't create debug dir\n");
+	else {
+		struct dentry *ent;
+
+		ent = debugfs_create_x32("address", S_IFREG | S_IWUSR | S_IRUGO,
+					chip->debug_root,
+					&(chip->peek_poke_address));
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create address debug file rc = %d\n",
+				rc);
+
+		ent = debugfs_create_file("data", S_IFREG | S_IWUSR | S_IRUGO,
+					chip->debug_root, chip,
+					&poke_poke_debug_ops);
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create data debug file rc = %d\n",
+				rc);
+
+		ent = debugfs_create_file("registers", S_IFREG | S_IRUGO,
+					chip->debug_root, chip,
+					&registers_debugfs_ops);
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create regs debug file rc = %d\n",
+				rc);
+	}
+
 	if (chip->factory_mode) {
 		rc = device_create_file(chip->dev,
 					&dev_attr_force_chg_usb_suspend);
@@ -1465,6 +1597,7 @@ static int fan5404x_charger_remove(struct i2c_client *client)
 {
 	struct fan5404x_chg *chip = i2c_get_clientdata(client);
 
+	debugfs_remove_recursive(chip->debug_root);
 	power_supply_unregister(&chip->batt_psy);
 
 	return 0;
