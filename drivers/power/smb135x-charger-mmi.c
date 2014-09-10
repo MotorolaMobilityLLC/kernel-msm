@@ -429,7 +429,7 @@ struct smb135x_chg {
 	unsigned int                    max_voltage_uv;
 	bool				shutdown_voltage_tripped;
 	bool				poll_fast;
-	bool				accy_powerup;
+	bool				hvdcp_powerup;
 	int				prev_batt_health;
 };
 
@@ -952,7 +952,7 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip,
 	}
 
 	if (chip->shutdown_voltage_tripped && !chip->factory_mode) {
-		if ((chip->usb_psy) && (!chip->accy_powerup) &&
+		if ((chip->usb_psy) && (!chip->hvdcp_powerup) &&
 		    chip->usb_present) {
 			power_supply_set_present(chip->usb_psy, false);
 			power_supply_set_online(chip->usb_psy, false);
@@ -970,7 +970,7 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip,
 
 		if ((rc == 0) && (ret.intval == 0) && !chip->factory_mode) {
 			chip->shutdown_voltage_tripped = true;
-			if ((chip->usb_psy) && (!chip->accy_powerup) &&
+			if ((chip->usb_psy) && (!chip->hvdcp_powerup) &&
 			    chip->usb_present) {
 				power_supply_set_present(chip->usb_psy, false);
 				power_supply_set_online(chip->usb_psy, false);
@@ -2984,8 +2984,8 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 	chip->aicl_weak_detect = false;
 	chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 
-	if (chip->accy_powerup)
-		chip->accy_powerup = false;
+	if (chip->hvdcp_powerup)
+		chip->hvdcp_powerup = false;
 
 	rc = smb135x_masked_write(chip,
 				  IRQ_CFG_REG,
@@ -3866,12 +3866,12 @@ static int determine_initial_status(struct smb135x_chg *chip)
 	chip->dc_present = !(reg & IRQ_E_DC_OV_BIT) && !(reg & IRQ_E_DC_UV_BIT);
 
 	if (chip->usb_present) {
-		chip->accy_powerup = true;
 		handle_usb_insertion(chip);
-	} else {
-		chip->accy_powerup = false;
+		if (smb135x_get_charge_rate(chip) ==
+		    POWER_SUPPLY_CHARGE_RATE_TURBO)
+			chip->hvdcp_powerup = true;
+	} else
 		handle_usb_removal(chip);
-	}
 
 	if (chip->dc_psy_type != -EINVAL) {
 		if (chip->dc_psy_type == POWER_SUPPLY_TYPE_WIRELESS) {
@@ -5030,6 +5030,7 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->prev_batt_health = POWER_SUPPLY_HEALTH_GOOD;
 	chip->therm_lvl_sel = -EINVAL;
 	chip->dc_therm_lvl_sel = -EINVAL;
+	chip->hvdcp_powerup = false;
 
 
 	wakeup_source_init(&chip->smb_wake_source.source, "smb135x_wake");
