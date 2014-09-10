@@ -20,6 +20,14 @@
 
 typedef enum {
 	HW_REV_INVALID = -1,
+	HW_REV_A = 0,
+	HW_REV_B = 1,
+	HW_REV_C = 2,
+	HW_REV_D = 3,
+	HW_REV_E = 4,
+	HW_REV_F = 5,
+	HW_REV_G = 6,
+	HW_REV_H = 7,
 	HW_REV_MAX = 8
 } hw_rev;
 
