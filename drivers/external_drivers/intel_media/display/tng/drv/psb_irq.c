@@ -369,6 +369,8 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 	uint32_t pipe_enable = dev_priv->pipestat[pipe];
 	uint32_t pipe_status = dev_priv->pipestat[pipe] >> 16;
 	unsigned long irq_flags;
+	uint32_t read_count = 0;
+
 #ifdef CONFIG_SUPPORT_MIPI
 	uint32_t i = 0;
 	uint32_t mipi_intr_stat_val = 0;
@@ -415,8 +417,9 @@ static void mid_pipe_event_handler(struct drm_device *dev, uint32_t pipe)
 #endif
 	pipe_stat_val = PSB_RVDC32(pipe_stat_reg);
 	/* Sometimes We read 0 from HW - keep reading until we get non-zero */
-	if (!pipe_stat_val) {
+	while ((!pipe_stat_val) && (read_count < 1000)) {
 		pipe_stat_val = REG_READ(pipe_stat_reg);
+		read_count ++;
 	}
 
 #ifdef CONFIG_SUPPORT_MIPI
