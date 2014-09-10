@@ -42,9 +42,9 @@
 
 #define TIMES_FOR_GENERAL_READ_ADC		15
 
-#define DEFAULT_DEVICE_RESISTOR_VALUE_ROBIN   200
+#define DEFAULT_DEVICE_RESISTOR_VALUE_ROBIN   250
 
-#define RESISTOR_MAX_VAL	200
+#define RESISTOR_MAX_VAL	250
 #define RESISTOR_MIN_VAL		100
 
 #define DEFAULT_DEVICE_RESISTOR_VALUE (150) 
@@ -85,8 +85,8 @@ int Robin_SrcOCVtoPerTbl[OCV_TBL_SIZE]={
 	3895, 3902, 3909, 3916, 3924, 3932, 3940, 3946, 3953, 3961,
 	3968, 3976, 3985, 3995, 4004, 4011, 4017, 4024, 4033, 4045,
 	4052, 4063, 4075, 4084, 4093, 4105, 4113, 4124, 4136, 4148, 
-	4161, 4174, 4187, 4200, 4214, 4227, 4241, 4255, 4269, 4283, 
-	4300
+	4161, 4174, 4187, 4200, 4214, 4227, 4241, 4255, 4266, 4277, 
+	4288
 };
 
 
@@ -334,7 +334,7 @@ static int decideCurrSec(int curr)
 
 static int decideVf37(int voltSec)
 {
-	int Vf37TableSec[20] = {38,38,38,38,38,43,37,42,43,43,46,43,42,43,42,46,44,45,46,46};
+	int Vf37TableSec[20] = {38,38,38,38,38,43,37,42,43,43,46,43,42,43,42,46,44,48,53,56};
 							//3447 to 4340	interval:47 mV, total:20
 	if(voltSec > 19){                      
 		return Vf37TableSec[19];
@@ -345,7 +345,7 @@ static int decideVf37(int voltSec)
 
 static int decideVf185(int voltSec)
 {
-	int Vf185TableSec[20] = {87,87,87,87,87,87,86,85,92,89,92,98,92,90,100,99,100,105,105,106};
+	int Vf185TableSec[20] = {87,87,87,87,87,87,86,85,92,89,92,98,92,90,100,99,100,113,121,130};
 							//3447 to 4340	interval:47 mV, total:20
 	if(voltSec > 19){                      
 		return Vf185TableSec[19];
