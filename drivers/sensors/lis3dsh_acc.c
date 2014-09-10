@@ -2044,6 +2044,9 @@ err_mutexunlock:
 exit_check_functionality_failed:
 	pr_err("[lis3dsh] %s: Driver Init failed\n", __func__);
 classdev_register_fail:
+#ifdef CONFIG_ASUS_UTILITY
+	unregister_mode_notifier(&display_mode_notifier);
+#endif
 	kfree(acc);
 	return err;
 }
