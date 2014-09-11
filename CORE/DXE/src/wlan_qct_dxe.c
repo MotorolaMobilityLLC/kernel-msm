@@ -5766,7 +5766,7 @@ void WLANDXE_ChannelDebug
 {
    wpt_msg                  *channelDebugMsg;
    wpt_msg                  *txDescReSyncMsg ;
-   wpt_uint32                regValue;
+   wpt_uint32                regValue, regValueLocal = 0;
    wpt_status                status = eWLAN_PAL_STATUS_SUCCESS;
 
    /* Debug Type 1, Display current snapshot */
@@ -5780,10 +5780,13 @@ void WLANDXE_ChannelDebug
       /* Get free BD count */
       wpalSleep(10);
       wpalReadRegister(WLANDXE_BMU_AVAILABLE_BD_PDU, &regValue);
+#ifdef WCN_PRONTO
+      wpalReadRegister(WLANDXE_BMU_AVAILABLE_BD_PDU_LOCAL, &regValueLocal);
+#endif
       HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
-               "===== DXE Dump Start HPS %d, FWS %d, TX PFC %d, ABD %d =====",
+               "===== DXE Dump Start HPS %d, FWS %d, TX PFC %d, ABD %d, ABD LOCAL %d =====",
                tempDxeCtrlBlk->hostPowerState, tempDxeCtrlBlk->rivaPowerState,
-               tempDxeCtrlBlk->txCompletedFrames, regValue);
+               tempDxeCtrlBlk->txCompletedFrames, regValue, regValueLocal);
 
       wpalPacketStallUpdateInfo((wpt_uint32 *)&tempDxeCtrlBlk->rivaPowerState,
                                 &regValue,
