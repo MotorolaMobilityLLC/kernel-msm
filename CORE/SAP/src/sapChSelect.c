@@ -1942,6 +1942,8 @@ void sapSortChlWeightHT40_24G(tSapChSelSpectInfo *pSpectInfoParams)
         else
             pSpectInfo[j].weight = ACS_WEIGHT_MAX;
     }
+
+    sapSortChlWeight(pSpectInfoParams);
 }
 
 
