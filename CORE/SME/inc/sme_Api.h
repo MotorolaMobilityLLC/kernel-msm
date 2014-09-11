@@ -3438,4 +3438,7 @@ VOS_STATUS sme_SendTdlsChanSwitchReq(tHalHandle hHal,
                                      tANI_U8 tdlsSwMode);
 
 void sme_SetMiracastMode (tHalHandle hHal,tANI_U8 mode);
+
+void sme_resetCoexEevent(tHalHandle hHal);
+
 #endif //#if !defined( __SME_API_H )

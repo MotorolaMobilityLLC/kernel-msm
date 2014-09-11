@@ -11489,3 +11489,26 @@ void sme_SetMiracastMode (tHalHandle hHal,tANI_U8 mode)
     pMac->miracast_mode = mode;
 }
 #endif /* WLAN_FEATURE_EXTSCAN */
+
+void sme_resetCoexEevent(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+
+    if (pMac == NULL)
+    {
+        printk("btc: %s pMac is NULL \n",__func__);
+        return;
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+              FL("isCoexScoIndSet: %d"), pMac->isCoexScoIndSet);
+
+    if (pMac->isCoexScoIndSet)
+    {
+        pMac->isCoexScoIndSet = 0;
+        ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC, 0,
+                             NULL, eANI_BOOLEAN_FALSE);
+    }
+
+    return;
+}
