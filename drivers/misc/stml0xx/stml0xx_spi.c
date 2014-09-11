@@ -287,7 +287,8 @@ int stml0xx_spi_write_read(unsigned char *tx_buf, int tx_len,
 		}
 
 		if (ret < 0) {
-			stml0xx_reset_and_init();
+			stml0xx_reset(stml0xx_misc_data->pdata,
+				stml0xx_cmdbuff);
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"stml0xx_spi_write_read SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
@@ -341,7 +342,8 @@ int stml0xx_spi_read(unsigned char *buf, int len)
 			ret = stml0xx_spi_read_no_retries(buf, len);
 
 		if (ret < 0) {
-			stml0xx_reset_and_init();
+			stml0xx_reset(stml0xx_misc_data->pdata,
+				stml0xx_cmdbuff);
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"stml0xx_spi_read SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
@@ -390,7 +392,8 @@ int stml0xx_spi_write(unsigned char *buf, int len)
 			ret = stml0xx_spi_write_no_retries(buf, len);
 
 		if (ret < 0) {
-			stml0xx_reset_and_init();
+			stml0xx_reset(stml0xx_misc_data->pdata,
+				stml0xx_cmdbuff);
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"stml0xx_spi_write SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
@@ -501,7 +504,8 @@ int stml0xx_spi_send_write_reg_reset(unsigned char reg_type,
 				"stml0xx_spi_send_write_reg_reset SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
 			if (reset_allowed)
-				stml0xx_reset_and_init();
+				stml0xx_reset(stml0xx_misc_data->pdata,
+					stml0xx_cmdbuff);
 			else
 				break;
 		}
@@ -620,7 +624,8 @@ int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
 				"stml0xx_spi_send_read_reg_reset SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
 			if (reset_allowed)
-				stml0xx_reset_and_init();
+				stml0xx_reset(stml0xx_misc_data->pdata,
+					stml0xx_cmdbuff);
 			else
 				break;
 		}
