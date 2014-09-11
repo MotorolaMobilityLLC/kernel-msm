@@ -173,6 +173,11 @@ static char *version_str[] = {
 
 };
 
+struct fan5404x_regulator {
+	struct regulator_desc	rdesc;
+	struct regulator_dev	*rdev;
+};
+
 struct fan5404x_reg {
 	char *regname;
 	u8   regaddress;
@@ -215,12 +220,14 @@ struct fan5404x_chg {
 	bool batt_cold;
 	bool batt_warm;
 	bool batt_cool;
+	uint8_t	prev_hz_opa;
 
 	struct delayed_work heartbeat_work;
 	struct notifier_block notifier;
 	struct qpnp_vadc_chip	*vadc_dev;
 	struct dentry	    *debug_root;
 	u32    peek_poke_address;
+	struct fan5404x_regulator	otg_vreg;
 };
 
 static struct fan5404x_chg *the_chip;
@@ -1478,6 +1485,162 @@ static bool fan5404x_charger_mmi_factory(void)
 	return factory;
 }
 
+static int fan5404x_chg_otg_regulator_is_enable(struct regulator_dev *rdev)
+{
+	int rc = 0;
+	u8 reg = 0;
+	struct fan5404x_chg *chip = rdev_get_drvdata(rdev);
+
+	dev_dbg(chip->dev, "fan5404x_chg_otg_regulator_is_enable\n");
+	rc = fan5404x_read(chip, REG_CONTROL0, &reg);
+	if (rc < 0) {
+		dev_err(chip->dev,
+				"Couldn't read OTG enable bit rc=%d\n", rc);
+		return rc;
+	}
+
+	return  (reg & CONTROL0_BOOST) ? 1 : 0;
+}
+
+static int fan5404x_chg_otg_regulator_enable(struct regulator_dev *rdev)
+{
+	struct fan5404x_chg *chip = rdev_get_drvdata(rdev);
+	int rc = 0;
+	uint8_t reg = 0;
+
+	dev_dbg(chip->dev, "fan5404x_chg_otg_regulator_enable\n");
+	if (fan5404x_chg_otg_regulator_is_enable(chip->otg_vreg.rdev) == 1)
+		return rc;
+
+	/* save current HZ and OPA */
+	rc = fan5404x_read(chip, REG_CONTROL1, &reg);
+	if (rc == 0)
+		chip->prev_hz_opa = reg &
+				(CONTROL1_HZ_MODE | CONTROL1_OPA_MODE);
+	else
+		chip->prev_hz_opa = 0;
+
+	/* reset T32 timer */
+	rc = fan5404x_masked_write(chip, REG_CONTROL0,
+				CONTROL0_TMR_RST, CONTROL0_TMR_RST);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't reset T32 timer, rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = fan5404x_masked_write(chip, REG_CONTROL1,
+		CONTROL1_HZ_MODE | CONTROL1_OPA_MODE, CONTROL1_OPA_MODE);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't enable regulator, rc=%d\n",
+			rc);
+		return rc;
+	}
+	/* Writing CONTROL1_OPA_MODE once may not work, this is workaround */
+	msleep(200);
+
+	if (fan5404x_chg_otg_regulator_is_enable(chip->otg_vreg.rdev) != 1) {
+		dev_dbg(chip->dev, "workaround trying to enable again\n");
+		rc = fan5404x_masked_write(chip, REG_CONTROL1,
+			CONTROL1_HZ_MODE | CONTROL1_OPA_MODE,
+			CONTROL1_OPA_MODE);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't enable regulator, rc%d\n",
+						 rc);
+			return rc;
+		}
+	}
+
+	/* disable the T32 watchdog timer */
+	rc = fan5404x_masked_write(chip, REG_WD_CONTROL,
+				WD_CONTROL_WD_DIS, WD_CONTROL_WD_DIS);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't disable WD timer, rc=%d\n", rc);
+
+	return rc;
+}
+
+static int fan5404x_chg_otg_regulator_disable(struct regulator_dev *rdev)
+{
+	int rc = 0;
+	struct fan5404x_chg *chip = rdev_get_drvdata(rdev);
+
+	dev_dbg(chip->dev, "fan5404x_chg_otg_regulator_disable\n");
+
+	rc = fan5404x_masked_write(chip, REG_CONTROL0, CONTROL0_TMR_RST, 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't reset T32 timer, rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = fan5404x_masked_write(chip, REG_WD_CONTROL,
+				WD_CONTROL_WD_DIS, 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't enable regulator, rc=%d\n",
+			rc);
+		return rc;
+	}
+
+	rc = fan5404x_masked_write(chip, REG_CONTROL1,
+		CONTROL1_HZ_MODE | CONTROL1_OPA_MODE, chip->prev_hz_opa);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't disable OTG mode rc=%d\n", rc);
+
+	return rc;
+}
+
+static struct regulator_ops fan5404x_chg_otg_reg_ops = {
+	.enable		= fan5404x_chg_otg_regulator_enable,
+	.disable	= fan5404x_chg_otg_regulator_disable,
+	.is_enabled	= fan5404x_chg_otg_regulator_is_enable,
+};
+
+static int fan5404x_regulator_init(struct fan5404x_chg *chip)
+{
+	int rc = 0;
+	struct regulator_init_data *init_data;
+	struct regulator_config cfg = {};
+
+	init_data = of_get_regulator_init_data(chip->dev, chip->dev->of_node);
+	if (!init_data) {
+		dev_err(chip->dev, "Unable to allocate memory\n");
+		return -ENOMEM;
+	}
+
+	if (init_data->constraints.name) {
+		chip->otg_vreg.rdesc.owner = THIS_MODULE;
+		chip->otg_vreg.rdesc.type = REGULATOR_VOLTAGE;
+		chip->otg_vreg.rdesc.ops = &fan5404x_chg_otg_reg_ops;
+		chip->otg_vreg.rdesc.name = init_data->constraints.name;
+
+		cfg.dev = chip->dev;
+		cfg.init_data = init_data;
+		cfg.driver_data = chip;
+		cfg.of_node = chip->dev->of_node;
+
+		init_data->constraints.valid_ops_mask
+			|= REGULATOR_CHANGE_STATUS;
+
+		chip->otg_vreg.rdev = regulator_register(
+						&chip->otg_vreg.rdesc, &cfg);
+		if (IS_ERR(chip->otg_vreg.rdev)) {
+			rc = PTR_ERR(chip->otg_vreg.rdev);
+			chip->otg_vreg.rdev = NULL;
+			if (rc != -EPROBE_DEFER)
+				dev_err(chip->dev,
+					"OTG reg failed, rc=%d\n", rc);
+		}
+	}
+
+	return rc;
+}
+
+static void fan5404x_regulator_deinit(struct fan5404x_chg *chip)
+{
+	dev_dbg(chip->dev, "fan5404x_regulator_deinit\n");
+	if (chip->otg_vreg.rdev)
+		regulator_unregister(chip->otg_vreg.rdev);
+}
+
 static struct of_device_id fan5404x_match_table[] = {
 	{ .compatible = "fairchild,fan54046-charger", },
 	{ },
@@ -1534,6 +1697,13 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	if (rc < 0) {
 		dev_err(&client->dev,
 			"Unable to register batt_psy rc = %d\n", rc);
+		return rc;
+	}
+
+	rc = fan5404x_regulator_init(chip);
+	if  (rc) {
+		dev_err(&client->dev,
+			"Couldn't initialize fan5404x regulator rc=%d\n", rc);
 		return rc;
 	}
 
@@ -1670,8 +1840,10 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 
 unregister_batt_psy:
 	power_supply_unregister(&chip->batt_psy);
+	fan5404x_regulator_deinit(chip);
 	devm_kfree(chip->dev, chip);
 	the_chip = NULL;
+
 	return rc;
 }
 
@@ -1682,6 +1854,7 @@ static int fan5404x_charger_remove(struct i2c_client *client)
 	unregister_reboot_notifier(&chip->notifier);
 	debugfs_remove_recursive(chip->debug_root);
 	power_supply_unregister(&chip->batt_psy);
+	fan5404x_regulator_deinit(chip);
 	devm_kfree(chip->dev, chip);
 	the_chip = NULL;
 
