@@ -5821,7 +5821,7 @@ eHalStatus csrProcessScanCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
             {
                 len = pCommand->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels;
                 //allocate twice the channel
-                newChannelInfo.ChannelList = (tANI_U8 *)vos_mem_malloc(newChannelInfo.numOfChannels * 2);
+                newChannelInfo.ChannelList = (tANI_U8 *)vos_mem_malloc(len * 2);
                 pChannel = pCommand->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList;
             }
             else
@@ -6119,8 +6119,8 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                       * result pMac->scan.nextScanID is equal to ONE for the
                       * first scan.
                       */
-                     if (pMac->roam.configParam.initialScanSkipDFSCh &&
-                              1 == pMac->scan.nextScanID )
+                     if ((pMac->roam.configParam.initialScanSkipDFSCh &&
+                              1 == pMac->scan.nextScanID) ||(pMac->miracast_mode))
                      {
                        smsLog(pMac, LOG1,
                               FL("Initial scan, scan only non-DFS channels"));

@@ -1429,8 +1429,17 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
           pMlmScanReq->scanType = pScanReq->scanType;
           pMlmScanReq->backgroundScanMode = pScanReq->backgroundScanMode;
-          pMlmScanReq->minChannelTime = pScanReq->minChannelTime;
-          pMlmScanReq->maxChannelTime = pScanReq->maxChannelTime;
+          if (pMac->miracast_mode)
+          {
+              pMlmScanReq->minChannelTime = DEFAULT_MIN_CHAN_TIME_DURING_MIRACAST;
+              pMlmScanReq->maxChannelTime = DEFAULT_MAX_CHAN_TIME_DURING_MIRACAST;
+          }
+          else
+          {
+              pMlmScanReq->minChannelTime = pScanReq->minChannelTime;
+              pMlmScanReq->maxChannelTime = pScanReq->maxChannelTime;
+          }
+
           pMlmScanReq->minChannelTimeBtc = pScanReq->minChannelTimeBtc;
           pMlmScanReq->maxChannelTimeBtc = pScanReq->maxChannelTimeBtc;
           pMlmScanReq->dot11mode = pScanReq->dot11mode;
@@ -5037,7 +5046,10 @@ tANI_U32 limCalculateNOADuration(tpAniSirGlobal pMac, tANI_U16 msgType,
             for (i = 0; i < pScanReq->channelList.numChannels; i++) {
                 tANI_U8 channelNum = pScanReq->channelList.channelNumber[i];
 
-                if (isPassiveScan || !limActiveScanAllowed(pMac, channelNum)) {
+                if (pMac->miracast_mode) {
+                    noaDuration += DEFAULT_MIN_CHAN_TIME_DURING_MIRACAST +
+                        DEFAULT_MAX_CHAN_TIME_DURING_MIRACAST;
+                } else if (isPassiveScan || !limActiveScanAllowed(pMac, channelNum)) {
                     /* using the value from WNI_CFG_PASSIVE_MINIMUM_CHANNEL_TIME as is done in
                      * void limContinuePostChannelScan(tpAniSirGlobal pMac)
                      */

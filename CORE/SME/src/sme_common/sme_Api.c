@@ -11482,4 +11482,10 @@ eHalStatus sme_EXTScanRegisterCallback (tHalHandle hHal,
     return(status);
 }
 
+void sme_SetMiracastMode (tHalHandle hHal,tANI_U8 mode)
+{
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+
+    pMac->miracast_mode = mode;
+}
 #endif /* WLAN_FEATURE_EXTSCAN */

@@ -538,7 +538,13 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
         }
         else
         {
-            if (wlan_cfgGetInt(pMac, WNI_CFG_PASSIVE_MAXIMUM_CHANNEL_TIME,    
+            tANI_U32 val1 = 0;
+            if (pMac->miracast_mode)
+            {
+                val = DEFAULT_MIN_CHAN_TIME_DURING_MIRACAST +
+                    DEFAULT_MAX_CHAN_TIME_DURING_MIRACAST;
+            }
+            else if (wlan_cfgGetInt(pMac, WNI_CFG_PASSIVE_MAXIMUM_CHANNEL_TIME,
                           &val) != eSIR_SUCCESS)
             {
                 /**
@@ -548,46 +554,41 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
                 limLog(pMac, LOGP, FL("could not retrieve passive max channel value"));
                 return;
             }
+
+            val = SYS_MS_TO_TICKS(val);
+            //TODO: consider sessions.
+#if 0
+            // If a background was triggered via Quiet BSS,
+            // then we need to adjust the MIN and MAX channel
+            // timer's accordingly to the Quiet duration that
+            // was specified
+            if( eLIM_QUIET_RUNNING == pMac->lim.gLimSpecMgmt.quietState &&
+                    pMac->lim.gLimTriggerBackgroundScanDuringQuietBss )
+            {
+                // gLimQuietDuration is already cached in units of
+                // system ticks. No conversion is reqd...
+                val1 = pMac->lim.gLimSpecMgmt.quietDuration;
+            }
             else
             {
-                tANI_U32 val1 = 0;
-
-                val = SYS_MS_TO_TICKS(val);
-                //TODO: consider sessions.
-#if 0
-                // If a background was triggered via Quiet BSS,
-                // then we need to adjust the MIN and MAX channel
-                // timer's accordingly to the Quiet duration that
-                // was specified
-                if( eLIM_QUIET_RUNNING == pMac->lim.gLimSpecMgmt.quietState &&
-                    pMac->lim.gLimTriggerBackgroundScanDuringQuietBss )
-                {
-                    // gLimQuietDuration is already cached in units of
-                    // system ticks. No conversion is reqd...
-                    val1 = pMac->lim.gLimSpecMgmt.quietDuration;
-                }
-                else
-                {
-                    val1 = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->maxChannelTime);
-                }
+                val1 = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->maxChannelTime);
+            }
 #endif
-                //Pick the longer stay time
-                val = (val > val1) ? val : val1;
-                MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, NO_SESSION, eLIM_MAX_CHANNEL_TIMER));
-                if (tx_timer_change(&pMac->lim.limTimers.gLimMaxChannelTimer,
-                                val, 0) != TX_SUCCESS)
-                {
-                    // Could not change max channel timer.
-                    // Log error
-                    limLog(pMac, LOGP, FL("Unable to change max channel timer"));
-                    return;
-                }
-                else if (tx_timer_activate(&pMac->lim.limTimers.gLimMaxChannelTimer) != TX_SUCCESS)
-                {
-                    limLog(pMac, LOGP, FL("could not start max channel timer"));
-                    return;
-                }
-          
+            //Pick the longer stay time
+            val = (val > val1) ? val : val1;
+            MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, NO_SESSION, eLIM_MAX_CHANNEL_TIMER));
+            if (tx_timer_change(&pMac->lim.limTimers.gLimMaxChannelTimer,
+                        val, 0) != TX_SUCCESS)
+            {
+                // Could not change max channel timer.
+                // Log error
+                limLog(pMac, LOGP, FL("Unable to change max channel timer"));
+                return;
+            }
+            else if (tx_timer_activate(&pMac->lim.limTimers.gLimMaxChannelTimer) != TX_SUCCESS)
+            {
+                limLog(pMac, LOGP, FL("could not start max channel timer"));
+                return;
             }
         }
         // Wait for Beacons to arrive
@@ -2012,7 +2013,10 @@ limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         for (i = 0; i < pMac->lim.gpLimMlmScanReq->channelList.numChannels; i++) {
             tANI_U8 channelNum = pMac->lim.gpLimMlmScanReq->channelList.channelNumber[i];
 
-            if (limActiveScanAllowed(pMac, channelNum)) {
+            if (pMac->miracast_mode) {
+                pMac->lim.gTotalScanDuration += (DEFAULT_MIN_CHAN_TIME_DURING_MIRACAST +
+                        DEFAULT_MAX_CHAN_TIME_DURING_MIRACAST);
+            } else if (limActiveScanAllowed(pMac, channelNum)) {
                 /* Use min + max channel time to calculate the total duration of scan */
                 pMac->lim.gTotalScanDuration += pMac->lim.gpLimMlmScanReq->minChannelTime + pMac->lim.gpLimMlmScanReq->maxChannelTime;
             } else {
