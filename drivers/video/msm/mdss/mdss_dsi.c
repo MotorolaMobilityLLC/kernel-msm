@@ -1612,7 +1612,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		}
 		stream += 2;
 
-		pan = strnchr(stream, strlen(stream), ':');
+		pan = strnchr(stream, strlen(stream), ';');
 		if (!pan) {
 			strlcpy(panel_name, stream, MDSS_MAX_PANEL_LEN);
 		} else {
