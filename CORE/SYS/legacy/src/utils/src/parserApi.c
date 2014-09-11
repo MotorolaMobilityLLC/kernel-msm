@@ -477,6 +477,36 @@ PopulateDot11fERPInfo(tpAniSirGlobal    pMac,
     return eSIR_SUCCESS;
 } // End PopulateDot11fERPInfo.
 
+void PopulateDot11fTimeoutIEs(tpAniSirGlobal pMac,
+                              tDot11fIETimeoutInterval *pDot11f,
+                              tANI_U8 *addIe, tANI_U16 addIeLen)
+{
+    if (0 == addIeLen || NULL == addIe)
+    {
+        return;
+    }
+    pDot11f->present = 1;
+    pDot11f->timeoutType = addIe[2];
+    vos_mem_copy(&pDot11f->timeoutValue, &addIe[3], 4);
+}
+
+void PopulateDot11fRsnIEs(tpAniSirGlobal pMac,  tDot11fIERSN *pDot11f,
+                          tANI_U8 *addIe, tANI_U16 addIeLen)
+{
+    if (0 == addIeLen || NULL == addIe)
+    {
+        return;
+    }
+    pDot11f->present = 1;
+    pDot11f->version = *(short int *)&addIe[2];
+    vos_mem_copy(pDot11f->gp_cipher_suite, &addIe[4], 4);
+    pDot11f->pwise_cipher_suite_count = *(short int *)&addIe[8];
+    vos_mem_copy(pDot11f->pwise_cipher_suites, &addIe[10], 4);
+    pDot11f->akm_suite_count = *(short int *)&addIe[14];
+    vos_mem_copy(pDot11f->akm_suites, &addIe[16], 4);
+    vos_mem_copy(pDot11f->RSN_Cap, &addIe[21], 2);
+}
+
 tSirRetStatus
 PopulateDot11fExtSuppRates(tpAniSirGlobal pMac, tANI_U8 nChannelNum,
                            tDot11fIEExtSuppRates *pDot11f, 
