@@ -44,7 +44,9 @@ enum PANEL_AMBIENT_MODE{
 };
 
 /* Lock backlight of ambient mode to 28nits */
-#define AMBIENT_BL_LEVEL	(86)
+#define AMBIENT_BL_LEVEL_V1	(86)
+#define AMBIENT_BL_LEVEL_V2	(95)
+static int ambient_bl_level = AMBIENT_BL_LEVEL_V2;
 static int backup_bl_level = 0;
 
 static int panel_ambient_mode = AMBIENT_MODE_OFF;
@@ -475,20 +477,20 @@ void mdss_panel_set_ambient_command(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		//set V1 panel
 		memcpy(&ctrl_pdata->idle_on_cmds ,&idle_on_cmds_V1 ,sizeof(struct dsi_panel_cmds));
 		memcpy(&ctrl_pdata->idle_off_cmds ,&idle_off_cmds_V1 ,sizeof(struct dsi_panel_cmds));
+		ambient_bl_level = AMBIENT_BL_LEVEL_V1;
 		command_has_set = true;
 		printk("[MDSS] set V1 panel ambient command\n");
-		
 	}else if(panel_id == 0x01){
-	
 		//set V2 panel
 		memcpy(&ctrl_pdata->idle_on_cmds ,&idle_on_cmds_V2 ,sizeof(struct dsi_panel_cmds));
 		memcpy(&ctrl_pdata->idle_off_cmds ,&idle_off_cmds_V2 ,sizeof(struct dsi_panel_cmds));
+		ambient_bl_level = AMBIENT_BL_LEVEL_V2;
 		command_has_set = true;
 		printk("[MDSS] set V2 panel ambient command\n");
-		
 	}else{
 		memcpy(&ctrl_pdata->idle_on_cmds ,&idle_on_cmds_V2 ,sizeof(struct dsi_panel_cmds));
 		memcpy(&ctrl_pdata->idle_off_cmds ,&idle_off_cmds_V2 ,sizeof(struct dsi_panel_cmds));
+		ambient_bl_level = AMBIENT_BL_LEVEL_V2;
 		command_has_set = true;
 		printk("[MDSS] Error: unknown panel id!! default set V2 panel ambient command\n");
 	}
@@ -582,7 +584,7 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 			printk("MDSS:AMB:skip ambient on cmd due to panel_ambient_mode = AMBIENT_MODE_ON\n");
 		}else if (ctrl->idle_on_cmds.cmd_cnt){
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
-			mdss_dsi_panel_bl_ctrl(pdata,AMBIENT_BL_LEVEL);
+			mdss_dsi_panel_bl_ctrl(pdata,ambient_bl_level);
 			panel_ambient_mode = AMBIENT_MODE_ON;
 		}else{
 			printk("MDSS:AMB: idle ON command is not set!\n");
