@@ -3342,7 +3342,7 @@ void limProcessSmeGetAssocSTAsInfo(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     {
         limLog(pMac, LOGE,
                         FL("received invalid eWNI_SME_GET_ASSOC_STAS_REQ message"));
-        goto limAssocStaEnd;
+        return;
     }
 
     switch (getAssocSTAsReq.modId)
@@ -3462,7 +3462,7 @@ void limProcessSmeGetWPSPBCSessions(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     {
         limLog(pMac, LOGE,
                         FL("received invalid eWNI_SME_GET_ASSOC_STAS_REQ message"));
-        goto limGetWPSPBCSessionsEnd;
+        return;
     }
 
     // Get Associated stations from PE
