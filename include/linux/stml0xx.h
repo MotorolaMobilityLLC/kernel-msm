@@ -188,6 +188,7 @@
 #define M_PROXIMITY		0x000002
 #define M_TOUCH			0x000004
 #define M_COVER			0x000008
+#define M_INIT_COMPLETE         0x000040
 #define M_HUB_RESET		0x000080
 
 #define M_FLATUP		0x000100
@@ -528,6 +529,7 @@ struct stml0xx_data {
 	struct work_struct irq_work;
 	struct work_struct irq_wake_work;
 	struct work_struct clear_interrupt_status_work;
+	struct work_struct initialize_work;
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
 	struct wake_lock reset_wakelock;
@@ -610,7 +612,8 @@ void stml0xx_irq_wake_work_func(struct work_struct *work);
 long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 
 void stml0xx_reset(struct stml0xx_platform_data *pdata, unsigned char *cmdbuff);
-int stml0xx_reset_and_init(void);
+void stml0xx_initialize_work_func(struct work_struct *work);
+
 
 int stml0xx_as_data_buffer_write(struct stml0xx_data *ps_stml0xx,
 				 unsigned char type, unsigned char *data,

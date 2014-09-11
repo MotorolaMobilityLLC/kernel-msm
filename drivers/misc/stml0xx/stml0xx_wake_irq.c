@@ -138,7 +138,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_RESET, &status, 1,
 					     0);
 
-		stml0xx_reset_and_init();
+		stml0xx_reset(stml0xx_misc_data->pdata, stml0xx_cmdbuff);
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"STML0XX requested a reset");
 		goto EXIT;
@@ -197,6 +197,12 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Cover status: %d", state);
+	}
+	if (irq_status & M_INIT_COMPLETE) {
+		queue_work(ps_stml0xx->irq_work_queue,
+			&ps_stml0xx->initialize_work);
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"Sensor Hub reports reset");
 	}
 	if (irq_status & M_FLATUP) {
 		err = stml0xx_spi_send_read_reg(FLAT_DATA, buf, 1);
