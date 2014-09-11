@@ -1304,6 +1304,15 @@ int inv_enable_pedometer(struct inv_mpu_state *st, bool en)
 
 	return mem_w_key(KEY_CFG_PED_ENABLE, ARRAY_SIZE(d), d);
 }
+int inv_set_step_buffer_time(struct inv_mpu_state *st, u16 value)
+{
+                int result;
+
+                //d = 75;   // Pedometer executes at 50Hz so 1.5 seconds is 20ms * 75
+
+                result = inv_write_2bytes(st, KEY_D_PEDSTD_SB_TIME, value);
+                return result;
+}
 
 int inv_get_pedometer_steps(struct inv_mpu_state *st, u32 *steps)
 {

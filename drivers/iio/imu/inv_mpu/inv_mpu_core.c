@@ -799,6 +799,10 @@ static ssize_t _dmp_mem_store(struct device *dev,
 		if (result)
 			goto dmp_mem_store_fail;
 		st->ped.on = !!data;
+		result = inv_set_step_buffer_time(st, 75);//50Hz(20ms)*75=1.5 sec
+		if (result)
+			goto dmp_mem_store_fail;
+
 		break;
 	}
 	case ATTR_DMP_PED_STEP_THRESH:
