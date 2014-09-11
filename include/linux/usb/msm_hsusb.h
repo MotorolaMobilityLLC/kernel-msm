@@ -414,7 +414,7 @@ struct msm_otg {
 	atomic_t in_lpm;
 	atomic_t set_fpr_with_lpm_exit;
 	int async_int;
-	unsigned cur_power;
+	int cur_power;
 	struct delayed_work chg_work;
 	struct delayed_work pmic_id_status_work;
 	struct delayed_work suspend_work;
