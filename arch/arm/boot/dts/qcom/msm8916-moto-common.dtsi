@@ -697,6 +697,7 @@
 
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <62 0x0>;
+		qcom,fan5404x-vadc = <&pm8916_vadc>;
 
 		fairchild,bms-psy-name = "max170xx_battery";
 
@@ -859,6 +860,16 @@
 };
 
 &pm8916_vadc {
+	chan@0 {
+		label = "usb_in";
+		reg = <0>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <4>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
 	chan@13 {
 		label = "msm_therm";
 		reg = <0x13>;
