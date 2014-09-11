@@ -1415,7 +1415,7 @@ static int msm_otg_notify_power_supply(struct msm_otg *motg, unsigned mA)
 			goto psy_error;
 		if (power_supply_set_current_limit(psy, 1000*mA))
 			goto psy_error;
-	} else if (motg->cur_power > 0 && (mA == 0 || mA == 2)) {
+	} else if (mA == 0 || mA == 2) {
 		/* Disable charging */
 		if (power_supply_set_online(psy, false))
 			goto psy_error;
@@ -4841,6 +4841,7 @@ static int msm_otg_probe(struct platform_device *pdev)
 	}
 
 	motg->current_max = IDEV_CHG_MIN * 1000;
+	motg->cur_power = -EINVAL;
 
 	motg->usb_psy.name = "usb";
 	motg->usb_psy.type = POWER_SUPPLY_TYPE_USB;
