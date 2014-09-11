@@ -188,7 +188,7 @@ static int __init cpubw_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	df = devfreq_add_device(dev, &cpubw_profile, "msm_cpufreq", NULL);
+	df = devfreq_add_device(dev, &cpubw_profile, "cpubw_hwmon", NULL);
 	if (IS_ERR(df)) {
 		msm_bus_scale_unregister_client(bus_client);
 		return PTR_ERR(df);
