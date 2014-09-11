@@ -444,7 +444,6 @@ exit:
 	return rc;
 }
 
-
 /**
 * prepare hdmi eld packet and copy it to the given buffer
 * @ctx: hdmi context
@@ -488,7 +487,16 @@ otm_hdmi_ret_t otm_hdmi_get_eld(void *ctx, otm_hdmi_eld_t *eld)
 	/* 00b - indicate HDMI connection type */
 	eld->connection_type = 0;
 	/* number of Short Audio Descriptors  (SAD) */
-	eld->sadc = edid_int->short_audio_descriptor_count;
+	if (edid_int->short_audio_descriptor_count > OTM_HDMI_MAX_SAD_COUNT) {
+		pr_warn("ELD supports a maximum of %d SADs. ",
+				OTM_HDMI_MAX_SAD_COUNT);
+		pr_warn("Limiting SAD count to %d. ",
+				OTM_HDMI_MAX_SAD_COUNT);
+		pr_warn("Some SADs will be lost!\n");
+		eld->sadc = OTM_HDMI_MAX_SAD_COUNT;
+	} else {
+		eld->sadc = edid_int->short_audio_descriptor_count;
+	}
 
 	/* delay of video compared to audio in terms of units of 2ms */
 	eld->audio_synch_delay = 0;

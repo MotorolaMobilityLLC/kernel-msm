@@ -542,14 +542,25 @@ static void decode_video_data_block(unsigned char *e, int n, edid_info_t *edid)
  */
 static void decode_audio_data_block(unsigned char *e, int n, edid_info_t *edid)
 {
-	int ne = n / 3;
+	int ne = n / SAD_SIZE;
+	void *sad_offset;
 	otm_hdmi_audio_cap_t *adb = (otm_hdmi_audio_cap_t *) &edid->audio_caps;
 
+	VERIFY_QUICK(ne > 0, exit);
 	LOG_PRINT(LOG_LEVEL_DETAIL, "[audio data block... %d entries]\n", ne);
 
-	edid->short_audio_descriptor_count = ne;
-	if (ne > 0)
-		memcpy(edid->short_audio_descriptor_data, e, n);
+	/* Do we have enough space in SAD table? */
+	if (edid->short_audio_descriptor_count + ne > MAX_CAPS) {
+		LOG_PRINT(LOG_LEVEL_ERROR,
+			"Too many SADs in EDID. Not adding %d SADs\n", ne);
+		return;
+	}
+
+	sad_offset = edid->short_audio_descriptor_data +
+			edid->short_audio_descriptor_count * SAD_SIZE;
+	memcpy(sad_offset, e, n);
+
+	edid->short_audio_descriptor_count += ne;
 
 	while (ne-- > 0) {
 		/* Do we have room for another capability? */
@@ -562,8 +573,11 @@ static void decode_audio_data_block(unsigned char *e, int n, edid_info_t *edid)
 			edid->num_caps++;
 		}
 		/* Go to the next entry of the block */
-		e += 3;
+		e += SAD_SIZE;
 	}
+
+exit:
+	pr_debug("exit %s\n", __func__);
 }
 
 /*

@@ -65,6 +65,7 @@
 
 #include <linux/types.h>
 #define OTM_HDMI_ELD_SIZE 84
+#define OTM_HDMI_MAX_SAD_COUNT 15
 
 /*
  * CEA Short Audio Descriptor

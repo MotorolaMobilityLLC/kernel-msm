@@ -74,7 +74,8 @@
 #define MAX_CAPS 30
 #define SEGMENT_SIZE 128
 #define MAX_EDID_BLOCKS 5
-#define MAX_DATA_BLOCK_SIZE 32
+#define SAD_SIZE 3
+#define MAX_DATA_BLOCK_SIZE (MAX_CAPS * SAD_SIZE)
 
 /**
  * Different types representing pointers to a function
