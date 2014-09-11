@@ -119,9 +119,9 @@ extern void asus_bat_update_PadAcOnline(void);
 extern bool reportRtcReady(void);
 
 #define SUSPEND_DISCHG_CURRENT 10
-#define MAX_DISCHG_CURRENT    700
+#define MAX_DISCHG_CURRENT    300
 #define USB_CHG_CURRENT       500
-#define A91_ILLEGAL_CHG_CURRENT       500
+#define ROBIN_MAX_CHG_CURRENT	200
 #define USB3p0_ILLEGAL_CURRENT		900
 #ifdef CONFIG_IDTP9023_CHARGER  
 #define WIRELESS_CHG_CURRENT        700
@@ -2347,18 +2347,18 @@ static int BatteryService_ChooseMaxMah(AXC_BatteryService  *_this, bool MahDrop)
 		  
 		case ILLEGAL_CHARGER_TYPE:
 			if(false == MahDrop){
-				return A91_ILLEGAL_CHG_CURRENT;//Eason: PM8941 illegal charger can only draw 500mA
+				return ROBIN_MAX_CHG_CURRENT;
 			}
 			else{
-				return MAX_DISCHG_CURRENT-USB_CHG_CURRENT;
+				return MAX_DISCHG_CURRENT;
 			}
   
         case LOW_CURRENT_CHARGER_TYPE:
              if(false == MahDrop){
-					return USB_CHG_CURRENT;//Eason: PM8941 usb can only draw 500mA
+					return ROBIN_MAX_CHG_CURRENT;
 				}
 				else{
-					return MAX_DISCHG_CURRENT-USB_CHG_CURRENT;
+					return MAX_DISCHG_CURRENT;
              }
 
 #ifdef CONFIG_IDTP9023_CHARGER    
@@ -2367,10 +2367,10 @@ static int BatteryService_ChooseMaxMah(AXC_BatteryService  *_this, bool MahDrop)
 #endif  							
 		  
         case NORMAL_CURRENT_CHARGER_TYPE:
-                return PAD_CHG_CURRENT;
+                return ROBIN_MAX_CHG_CURRENT;
   
         case HIGH_CURRENT_CHARGER_TYPE:
-             return AC_SUSPEND_CHG_CURRENT;
+             return ROBIN_MAX_CHG_CURRENT;
 			 
         default:
              printk("[BAT][Ser]:%s():NO mapping\n",__FUNCTION__);
