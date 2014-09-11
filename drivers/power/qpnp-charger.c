@@ -4488,6 +4488,8 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 
 			qpnp_chg_irq_wake_enable(&chip->usbin_valid);
 			qpnp_chg_irq_wake_enable(&chip->chg_gone);
+			qpnp_chg_disable_irq(chip, &chip->usbin_valid);
+			qpnp_chg_disable_irq(chip, &chip->chg_gone);
 			break;
 		case SMBB_DC_CHGPTH_SUBTYPE:
 			chip->dcin_valid.irq = spmi_get_irq_byname(spmi,
@@ -4507,6 +4509,7 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 			}
 
 			qpnp_chg_irq_wake_enable(&chip->dcin_valid);
+			qpnp_chg_disable_irq(chip, &chip->dcin_valid);
 			break;
 		}
 	}
@@ -5396,7 +5399,14 @@ qpnp_charger_probe(struct spmi_device *spmi)
 
 	qpnp_chg_usb_chg_gone_irq_handler(chip->chg_gone.irq, chip);
 	qpnp_chg_usb_usbin_valid_irq_handler(chip->usbin_valid.irq, chip);
-	qpnp_chg_dc_dcin_valid_irq_handler(chip->dcin_valid.irq, chip);
+	if (chip->dc_chgpth_base)
+		qpnp_chg_dc_dcin_valid_irq_handler(chip->dcin_valid.irq, chip);
+
+	qpnp_chg_enable_irq(chip, &chip->chg_gone);
+	qpnp_chg_enable_irq(chip, &chip->usbin_valid);
+	if (chip->dc_chgpth_base)
+		qpnp_chg_enable_irq(chip, &chip->dcin_valid);
+
 	power_supply_set_present(chip->usb_psy,
 			qpnp_chg_is_usb_chg_plugged_in(chip));
 
