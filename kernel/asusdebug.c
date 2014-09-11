@@ -49,6 +49,32 @@ struct mutex fake_mutex;
 struct completion fake_completion;
 struct rt_mutex fake_rtmutex;
 static struct workqueue_struct *ASUSEvtlog_workQueue;
+static struct workqueue_struct *Kernellog_workQueue;
+static void do_kernel_log_worker(struct work_struct *work);
+static DECLARE_WORK(kernellog_Work, do_kernel_log_worker);
+
+static void do_kernel_log_worker(struct work_struct *work){
+    char property_filename[256];
+    int property_handle;
+    char property_value[1] = {'1'};
+
+    printk("[adbg] Receive ROBIN loguploader request, enable logwrapper.\n");
+
+    sprintf(property_filename, "/data/property/persist.sys.asus.kernellog");
+
+    initKernelEnv();
+
+    property_handle = sys_open(property_filename, O_CREAT|O_RDWR|O_SYNC, 0600);
+    if(!IS_ERR((const void *)property_handle))
+    {
+        sys_write(property_handle, property_value, 1);
+        sys_close(property_handle);
+    } else {
+        printk("[adbg] Cannot open property file: [%d]\n", property_handle);
+    }
+
+    deinitKernelEnv();
+}
 
 int asus_rtc_read_time(struct rtc_time *tm)
 {
@@ -932,6 +958,7 @@ static int asusdebug_release(struct inode * inode, struct file * file)
 static ssize_t asusdebug_read(struct file *file, char __user *buf,
              size_t count, loff_t *ppos)
 {
+    queue_work(Kernellog_workQueue, &kernellog_Work);
     return 0;
 }
 
@@ -1393,6 +1420,7 @@ static int __init proc_asusdebug_init(void)
     fake_rtmutex.owner = current;
 
     ASUSEvtlog_workQueue  = create_singlethread_workqueue("ASUSEVTLOG_WORKQUEUE");
+    Kernellog_workQueue  = create_singlethread_workqueue("KERNELLOG_WORKQUEUE");
 
     return 0;
 }
