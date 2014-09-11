@@ -53,6 +53,10 @@ static LIST_HEAD(wakeup_sources);
 
 static DECLARE_WAIT_QUEUE_HEAD(wakeup_count_wait_queue);
 
+static struct timer_list unattended_timer;
+static void unattended_timer_expired(unsigned long data);
+static DEFINE_TIMER(unattended_timer, unattended_timer_expired, 0, 0);
+
 /**
  * wakeup_source_prepare - Prepare a new wakeup source for initialization.
  * @ws: Wakeup source to prepare.
@@ -525,8 +529,10 @@ static void wakeup_source_deactivate(struct wakeup_source *ws)
 	trace_wakeup_source_deactivate(ws->name, cec);
 
 	split_counters(&cnt, &inpr);
-	if (!inpr && waitqueue_active(&wakeup_count_wait_queue))
+	if (!inpr && waitqueue_active(&wakeup_count_wait_queue)) {
+		pr_info("[PM]%s: ws->name=%s\n",__func__,ws->name);
 		wake_up(&wakeup_count_wait_queue);
+	}
 }
 
 /**
@@ -713,6 +719,13 @@ bool pm_wakeup_pending(void)
 	return ret;
 }
 
+static void unattended_timer_expired(unsigned long data)
+{
+    print_active_wakeup_sources();
+    ASUSEvtlog("[PM]unattended_timer_expired\n");
+    mod_timer(&unattended_timer, jiffies + msecs_to_jiffies(PM_UNATTENDED_TIMEOUT));
+}
+
 /**
  * pm_get_wakeup_count - Read the number of registered wakeup events.
  * @count: Address to store the value at.
@@ -736,12 +749,15 @@ bool pm_get_wakeup_count(unsigned int *count, bool block)
 			prepare_to_wait(&wakeup_count_wait_queue, &wait,
 					TASK_INTERRUPTIBLE);
 			split_counters(&cnt, &inpr);
+			if (inpr == 0) {
+				pr_info("[PM]unattended_timer: del_timer\n");
+				del_timer(&unattended_timer);
+			}
 			if (inpr == 0 || signal_pending(current))
 				break;
-			//ASUS_Allen1: Debug blocking wake_locks.
 			if (inpr != 0) {
-				print_active_wakeup_sources();
-				printk("%s: inpr(blocking wakelock count) = %d\n",__func__,inpr);
+				pr_info("[PM]unattended_timer: mod_timer\n");
+				mod_timer(&unattended_timer, jiffies + msecs_to_jiffies(PM_UNATTENDED_TIMEOUT));
 			}
 
 			schedule();

@@ -30,9 +30,6 @@
 
 #include "power.h"
 
-//Add a timer to trigger wakelock debug
-#include <linux/wakelock.h>
-
 const char *const pm_states[PM_SUSPEND_MAX] = {
 	[PM_SUSPEND_FREEZE]	= "freeze",
 	[PM_SUSPEND_STANDBY]	= "standby",
@@ -250,16 +247,6 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 	return error;
 }
 
-//Add a timer to trigger wakelock debug
-void unattended_timer_expired(unsigned long data);
-DEFINE_TIMER(unattended_timer, unattended_timer_expired, 0, 0);
-
-void unattended_timer_expired(unsigned long data)
-{
-    ASUSEvtlog("[PM]unattended_timer_expired\n");
-    mod_timer(&unattended_timer, jiffies + msecs_to_jiffies(PM_UNATTENDED_TIMEOUT));
-}
-
 /**
  * suspend_devices_and_enter - Suspend devices and enter system sleep state.
  * @state: System sleep state to enter.
@@ -278,10 +265,6 @@ int suspend_devices_and_enter(suspend_state_t state)
 		if (error)
 			goto Close;
 	}
-
-	//Add a timer to trigger wakelock debug
-	pr_info("[PM]unattended_timer: del_timer\n");
-	del_timer ( &unattended_timer );
 
 	suspend_console();
 	ftrace_stop();
