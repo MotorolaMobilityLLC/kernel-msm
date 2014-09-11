@@ -355,12 +355,8 @@ RETRY_GET_ID:
 		gpio_set_value(pdata->gpio_bslen, !(bslen_pin_active_value));
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Switching to normal mode");
-		/* init only if booted at least once and not in the factory
-		   - stml0xx_irq_disable indicates factory test ongoing */
-		if (stml0xx_g_booted && !stml0xx_irq_disable)
-			stml0xx_reset_and_init();
-		else
-			stml0xx_reset(pdata, stml0xx_cmdbuff);
+
+		stml0xx_reset(pdata, stml0xx_cmdbuff);
 	}
 	return rc;
 }
