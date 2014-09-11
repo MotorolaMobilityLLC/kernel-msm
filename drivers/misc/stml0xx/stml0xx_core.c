@@ -747,6 +747,7 @@ static int stml0xx_probe(struct spi_device *spi)
 	INIT_WORK(&ps_stml0xx->irq_wake_work, stml0xx_irq_wake_work_func);
 	INIT_WORK(&ps_stml0xx->clear_interrupt_status_work,
 		  clear_interrupt_status_work_func);
+	INIT_WORK(&ps_stml0xx->initialize_work, stml0xx_initialize_work_func);
 
 	ps_stml0xx->irq_work_queue =
 	    create_singlethread_workqueue("stml0xx_wq");
