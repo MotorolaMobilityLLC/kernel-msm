@@ -54,26 +54,29 @@ void stml0xx_reset(struct stml0xx_platform_data *pdata, unsigned char *cmdbuff)
 	stml0xx_detect_lowpower_mode(cmdbuff);
 }
 
-int stml0xx_reset_and_init(void)
+void stml0xx_initialize_work_func(struct work_struct *work)
 {
+	struct stml0xx_data *ps_stml0xx = container_of(work,
+		struct stml0xx_data, initialize_work);
+
 	struct stml0xx_platform_data *pdata;
-	unsigned int i;
-	int err, ret_err = 0;
-	unsigned char *rst_cmdbuff = stml0xx_misc_data->spi_tx_buf;
+	unsigned char *rst_cmdbuff;
 	unsigned char buf[SPI_MSG_SIZE];
-	dev_err(&stml0xx_misc_data->spi->dev, "stml0xx_reset_and_init");
+	unsigned int i;
+	int err;
+	int ret_err = 0;
+
+	pdata = ps_stml0xx->pdata;
+	rst_cmdbuff = ps_stml0xx->spi_tx_buf;
 
 	if (rst_cmdbuff == NULL)
-		return -ENOMEM;
+		return;
 
-	wake_lock(&stml0xx_misc_data->reset_wakelock);
+	wake_lock(&ps_stml0xx->reset_wakelock);
 
-	pdata = stml0xx_misc_data->pdata;
-
-	stml0xx_reset(pdata, rst_cmdbuff);
 	stml0xx_spi_retry_delay = 200;
 
-	stml0xx_wake(stml0xx_misc_data);
+	stml0xx_wake(ps_stml0xx);
 
 	buf[0] = stml0xx_g_acc_delay;
 	err = stml0xx_spi_send_write_reg_reset(ACCEL_UPDATE_RATE, buf,
@@ -139,10 +142,6 @@ int stml0xx_reset_and_init(void)
 				ret_err = err;
 		}
 	}
-	err = stml0xx_spi_send_read_reg_reset(INTERRUPT_STATUS, buf,
-			3, RESET_NOT_ALLOWED);
-	err = stml0xx_spi_send_read_reg_reset(WAKESENSOR_STATUS, buf,
-			2, RESET_NOT_ALLOWED);
 
 	buf[0] = (pdata->ct406_detect_threshold >> 8) & 0xff;
 	buf[1] = pdata->ct406_detect_threshold & 0xff;
@@ -154,21 +153,25 @@ int stml0xx_reset_and_init(void)
 	err = stml0xx_spi_send_write_reg_reset(PROX_SETTINGS, buf,
 			7, RESET_NOT_ALLOWED);
 	if (err < 0) {
-		dev_err(&stml0xx_misc_data->spi->dev,
+		dev_err(&ps_stml0xx->spi->dev,
 			"unable to write proximity settings %d", err);
 		ret_err = err;
 	}
 
-	err = stml0xx_led_set_reset(&stml0xx_misc_data->led_cdev,
+	err = stml0xx_led_set_reset(&ps_stml0xx->led_cdev,
 			RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err =  err;
 
 	/* sending reset to slpc hal */
-	stml0xx_ms_data_buffer_write(stml0xx_misc_data, DT_RESET, NULL, 0);
+	stml0xx_ms_data_buffer_write(ps_stml0xx, DT_RESET, NULL, 0);
 
-	stml0xx_sleep(stml0xx_misc_data);
-	wake_unlock(&stml0xx_misc_data->reset_wakelock);
+	stml0xx_sleep(ps_stml0xx);
+	wake_unlock(&ps_stml0xx->reset_wakelock);
 
-	return ret_err;
+	if (ret_err >= 0)
+		dev_err(&ps_stml0xx->spi->dev, "Sensor Hub initialization successful");
+	else
+		dev_err(&ps_stml0xx->spi->dev, "Sensor Hub initialization failed");
+
 }
