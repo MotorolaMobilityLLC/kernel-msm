@@ -943,7 +943,7 @@ hddTdlsPeer_t *wlan_hdd_tdls_get_peer(hdd_adapter_t *pAdapter, u8 *mac)
 
     if (NULL == pHddTdlsCtx)
     {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                  FL("pHddTdlsCtx is NULL"));
         vos_mem_free(peer);
         mutex_unlock(&pHddCtx->tdls_lock);
@@ -1315,8 +1315,8 @@ int wlan_hdd_tdls_increment_pkt_count(hdd_adapter_t *pAdapter, u8 *mac, u8 tx)
     curr_peer = wlan_hdd_tdls_get_peer(pAdapter, mac);
     if (curr_peer == NULL)
     {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 "%s: curr_peer is NULL", __func__);
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                 FL("curr_peer is NULL"));
         return -1;
     }
 
@@ -2422,9 +2422,6 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
     else if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode ||
         eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY == pHddCtx->tdls_mode)
     {
-        /* disable implicit trigger logic & tdls operatoin */
-        wlan_hdd_tdls_set_mode(pHddCtx, eTDLS_SUPPORT_DISABLED, FALSE);
-        /* indicate the teardown all connected to peer */
         connectedTdlsPeers = wlan_hdd_tdlsConnectedPeers(pAdapter);
 
         /* check the TDLS link and Scan coexistance Capability */
@@ -2479,6 +2476,8 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
                     pHddCtx->cfg_ini->fEnableTDLSScanCoexSupport,
                     sme_IsFeatureSupportedByFW(TDLS_SCAN_COEXISTENCE));
 
+        /* disable implicit trigger logic & tdls operatoin */
+        wlan_hdd_tdls_set_mode(pHddCtx, eTDLS_SUPPORT_DISABLED, FALSE);
         /* fall back to the implementation of teardown the peers on the scan
          * when the number of connected peers are more than one. TDLS Scan
          * coexistance feature is exercised only when a single peer is
