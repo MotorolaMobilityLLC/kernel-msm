@@ -194,12 +194,6 @@ static VOS_STATUS wlan_hdd_init_channels_for_cc(hdd_context_t *pHddCtx);
  */
 #define WLAN_MAX_BUF_SIZE 1024
 #define WLAN_PRIV_DATA_MAX_LEN    8192
-/*
- * Driver miracast parameters 0-Disabled
- * 1-Source, 2-Sink
- */
-#define WLAN_HDD_DRIVER_MIRACAST_CFG_MIN_VAL 0
-#define WLAN_HDD_DRIVER_MIRACAST_CFG_MAX_VAL 2
 
 //wait time for beacon miss rate.
 #define BCN_MISS_RATE_TIME 500
@@ -9688,6 +9682,52 @@ VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddres
 
     EXIT();
     return vosStatus;
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief hdd_del_all_sta() - function
+
+  This function removes all the stations associated on stopping AP/P2P GO.
+
+  \param  - pAdapter - Pointer to the HDD
+
+  \return - None
+
+  --------------------------------------------------------------------------*/
+
+int hdd_del_all_sta(hdd_adapter_t *pAdapter)
+{
+    v_U16_t i;
+    VOS_STATUS vos_status;
+
+    ENTER();
+
+    hddLog(VOS_TRACE_LEVEL_INFO,
+           "%s: Delete all STAs associated.",__func__);
+    if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
+     || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
+       )
+    {
+        for(i = 0; i < WLAN_MAX_STA_COUNT; i++)
+        {
+            if ((pAdapter->aStaInfo[i].isUsed) &&
+                (!pAdapter->aStaInfo[i].isDeauthInProgress))
+            {
+                u8 *macAddr = pAdapter->aStaInfo[i].macAddrSTA.bytes;
+                hddLog(VOS_TRACE_LEVEL_ERROR,
+                       "%s: Delete STA with staid = %d and MAC::"
+                        MAC_ADDRESS_STR,
+                        __func__, i, MAC_ADDR_ARRAY(macAddr));
+                vos_status = hdd_softap_sta_deauth(pAdapter, macAddr);
+                if (VOS_IS_STATUS_SUCCESS(vos_status))
+                    pAdapter->aStaInfo[i].isDeauthInProgress = TRUE;
+            }
+        }
+    }
+
+    EXIT();
+    return 0;
 }
 
 /**---------------------------------------------------------------------------
