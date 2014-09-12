@@ -635,8 +635,10 @@
 		qcom,bam-consumer-pipe-index = <12>;
 		qcom,bam-producer-pipe-index = <13>;
 		qcom,master-id = <86>;
+		status = "disabled";
 
 		nmi326@0 {
+			status = "disabled";
 			compatible = "nmi,nmi326";
 			reg = <0>;
 			spi-max-frequency = <9600000>;
