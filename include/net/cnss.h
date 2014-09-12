@@ -24,6 +24,8 @@
 
 #define CNSS_MAX_FILE_NAME	  20
 
+#define MAX_FIRMWARE_SIZE (512 * 1024)
+
 enum cnss_bus_width_type {
 	CNSS_BUS_WIDTH_NONE,
 	CNSS_BUS_WIDTH_LOW,
@@ -88,6 +90,7 @@ extern void cnss_get_monotonic_boottime(struct timespec *ts);
 extern int cnss_request_bus_bandwidth(int bandwidth);
 extern int cnss_get_sha_hash(const u8 *data, u32 data_len,
 					u8 *hash_idx, u8 *out);
+extern void *cnss_get_fw_ptr(void);
 
 extern void cnss_pm_wake_lock_init(struct wakeup_source *ws, const char *name);
 extern void cnss_pm_wake_lock(struct wakeup_source *ws);
