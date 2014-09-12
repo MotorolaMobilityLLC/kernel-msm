@@ -15,5 +15,32 @@
 #include "msm8916-styx.dtsi"
 
 / {
-	qcom,board-id = <0x43 0x81b0>;
+	qcom,board-id = <0x42 0x81ad>;
+};
+
+&i2c_1 {
+	lm3697@36 {
+		status = "ok";
+	};
+	bd65b60@64 {
+		status = "disabled";
+	};
+};
+
+&spi_0 {
+	stml0xx@0 {
+		gpios = <&msm_gpio 115 0>,       /* IRQ */
+			<&msm_gpio 120 0>,       /* RESET */
+			<&msm_gpio 121 0>,       /* BSLEN */
+			<&msm_gpio 113 0>,       /* WakeIRQ */
+			<&msm_gpio 4 0>,         /* SPI Ready for Receive */
+			<&msm_gpio 38 0>;        /* SPI Data Ack */
+	};
+};
+
+&spi_5 {
+	status = "ok";
+	nmi326@0 {
+		status = "ok";
+	};
 };
