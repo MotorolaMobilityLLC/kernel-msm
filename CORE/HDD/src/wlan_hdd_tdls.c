@@ -2625,7 +2625,7 @@ void wlan_hdd_tdls_indicate_teardown(hdd_adapter_t *pAdapter,
 
     wlan_hdd_tdls_set_peer_link_status(curr_peer,
                                        eTDLS_LINK_TEARING,
-                                       eTDLS_LINK_DROPPED_BY_REMOTE);
+                                       eTDLS_LINK_UNSPECIFIED);
     cfg80211_tdls_oper_request(pAdapter->dev,
                                curr_peer->peerMac,
                                NL80211_TDLS_TEARDOWN,

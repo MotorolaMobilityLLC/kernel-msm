@@ -13580,6 +13580,12 @@ static int __wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device 
                 {
                     long status;
 
+
+                    wlan_hdd_tdls_set_peer_link_status(pTdlsPeer,
+                              eTDLS_LINK_TEARING,
+                              (pTdlsPeer->link_status == eTDLS_LINK_TEARING)?
+                              eTDLS_LINK_UNSPECIFIED:
+                              eTDLS_LINK_DROPPED_BY_REMOTE);
                     INIT_COMPLETION(pAdapter->tdls_del_station_comp);
 
                     sme_DeleteTdlsPeerSta( WLAN_HDD_GET_HAL_CTX(pAdapter),
@@ -13587,19 +13593,18 @@ static int __wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device 
 
                     status = wait_for_completion_interruptible_timeout(&pAdapter->tdls_del_station_comp,
                               msecs_to_jiffies(WAIT_TIME_TDLS_DEL_STA));
+                    wlan_hdd_tdls_set_peer_link_status(pTdlsPeer,
+                              eTDLS_LINK_IDLE,
+                              (pTdlsPeer->link_status == eTDLS_LINK_TEARING)?
+                              eTDLS_LINK_UNSPECIFIED:
+                              eTDLS_LINK_DROPPED_BY_REMOTE);
                     if (status <= 0)
                     {
-                        wlan_hdd_tdls_set_peer_link_status(pTdlsPeer,
-                                                           eTDLS_LINK_IDLE,
-                                                           eTDLS_LINK_UNSPECIFIED);
                         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                                   "%s: Del station failed status %ld",
                                   __func__, status);
                         return -EPERM;
                     }
-                    wlan_hdd_tdls_set_peer_link_status(pTdlsPeer,
-                                                       eTDLS_LINK_IDLE,
-                                                       eTDLS_LINK_UNSPECIFIED);
                 }
                 else
                 {
