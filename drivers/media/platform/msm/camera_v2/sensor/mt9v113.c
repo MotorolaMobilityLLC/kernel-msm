@@ -123,10 +123,10 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	/* RESET */
 	{0x001A, 0x0011,}, /* RESET_AND_MISC_CONTROL */
 	{0x001A, 0x0010,}, /* RESET_AND_MISC_CONTROL */
-	/* PLL  settings 24MHz */
+	/* PLL  settings 23.88MHz */
 	{0x0014, 0x0001, MSM_CAMERA_I2C_SET_WORD_MASK,}, /* PLL_CONTROL */
 	{0x0014, 0x0002, MSM_CAMERA_I2C_UNSET_WORD_MASK,}, /* PLL_CONTROL */
-	{0x0010, 0x0112,}, /* PLL Dividers=540 //M=18,N=1 */
+	{0x0010, 0x042E,}, /* PLL Dividers=540 //M=46,N=4 */
 	{0x0012, 0x0000,}, /* PLL P Dividers=0 */
 	{0x0014, 0x244B,},/* PLL control: TEST_BYPASS on=9291 */
 	{0x0014, 0x8000, MSM_CAMERA_I2C_UNSET_WORD_MASK,
@@ -184,7 +184,7 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0x271D,}, /* sensor_fine_IT_max_margin (A)*/
 	{0x0990, 0x006B,}, /* =107                         */
 	{0x098C, 0x271F,}, /* Frame Lines (A)              */
-	{0x0990, 0x0216,}, /* =554                         */
+	{0x0990, 0x021F,}, /* =543                         */
 	{0x098C, 0x2721,}, /* Line Length (A)              */
 	{0x0990, 0x034A,}, /* =842                         */
 	{0x098C, 0x2723,}, /* Row Start (B)                */
@@ -206,7 +206,7 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0x2733,}, /* sensor_fine_IT_max_margin (B)*/
 	{0x0990, 0x006B,}, /* =107                         */
 	{0x098C, 0x2735,}, /* Frame Lines (B)              */
-	{0x0990, 0x0216,}, /* =1135                        */
+	{0x0990, 0x021F,}, /* =543                        */
 	{0x098C, 0x2737,}, /* Line Length (B)              */
 	{0x0990, 0x034A,}, /* =842                         */
 	{0x098C, 0x2739,}, /* Crop_X0 (A) */
@@ -226,23 +226,23 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0x274D,}, /* Crop_Y1 (B) */
 	{0x0990, 0x01DF,}, /* =479        */
 	{0x098C, 0x222D,}, /* R9 Step        */
-	{0x0990, 0x0086,}, /* =139           */
+	{0x0990, 0x0088,}, /* =136           */
 	{0x098C, 0xA408,}, /* search_f1_50   */
-	{0x0990, 0x0020,}, /* =33            */
+	{0x0990, 0x0021,}, /* =33            */
 	{0x098C, 0xA409,}, /* search_f2_50   */
-	{0x0990, 0x0022,}, /* =35            */
+	{0x0990, 0x0023,}, /* =35            */
 	{0x098C, 0xA40A,}, /* search_f1_60   */
 	{0x0990, 0x0027,}, /* =40            */
 	{0x098C, 0xA40B,}, /* search_f2_60   */
 	{0x0990, 0x0029,}, /* =42            */
 	{0x098C, 0x2411,}, /* R9_Step_60 (A) */
-	{0x0990, 0x0086,}, /* =139           */
+	{0x0990, 0x0088,}, /* =136           */
 	{0x098C, 0x2413,}, /* R9_Step_50 (A) */
-	{0x0990, 0x00A0,}, /* =166           */
+	{0x0990, 0x00A3,}, /* =163           */
 	{0x098C, 0x2415,}, /* R9_Step_60 (B) */
-	{0x0990, 0x0086,}, /* =139           */
+	{0x0990, 0x0088,}, /* =136           */
 	{0x098C, 0x2417,}, /* R9_Step_50 (B) */
-	{0x0990, 0x00A0,}, /* =166           */
+	{0x0990, 0x00A3,}, /* =163           */
 	{0x098C, 0xA404,}, /* FD Mode        */
 	{0x0990, 0x0010,}, /* =16            */
 	{0x098C, 0xA40D,}, /* Stat_min       */
@@ -252,159 +252,167 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0xA410,}, /* Min_amplitude  */
 	{0x0990, 0x000A,}, /* =10            */
 	/* Lens Shading */
-	/* 85% LSC */
-	{0x3210, 0x09B0,}, /* COLOR_PIPELINE_CONTROL */
-	{0x364E, 0x0210,}, /* P_GR_P0Q0 */
-	{0x3650, 0x0CCA,}, /* P_GR_P0Q1 */
-	{0x3652, 0x2D12,}, /* P_GR_P0Q2 */
-	{0x3654, 0xCD0C,}, /* P_GR_P0Q3 */
-	{0x3656, 0xC632,}, /* P_GR_P0Q4 */
+	/* [Lens Correction 75% from 6 modules] */
+	{0x364E, 0x00D0,}, /* P_GR_P0Q0 */
+	{0x3650, 0x9109,}, /* P_GR_P0Q1 */
+	{0x3652, 0x0272,}, /* P_GR_P0Q2 */
+	{0x3654, 0xBCCF,}, /* P_GR_P0Q3 */
+	{0x3656, 0x8732,}, /* P_GR_P0Q4 */
 	{0x3658, 0x00D0,}, /* P_RD_P0Q0 */
-	{0x365A, 0x60AA,}, /* P_RD_P0Q1 */
-	{0x365C, 0x7272,}, /* P_RD_P0Q2 */
-	{0x365E, 0xFE09,}, /* P_RD_P0Q3 */
-	{0x3660, 0xAD72,}, /* P_RD_P0Q4 */
-	{0x3662, 0x0170,}, /* P_BL_P0Q0 */
-	{0x3664, 0x5DCB,}, /* P_BL_P0Q1 */
-	{0x3666, 0x27D2,}, /* P_BL_P0Q2 */
-	{0x3668, 0xCE4D,}, /* P_BL_P0Q3 */
-	{0x366A, 0x9DB3,}, /* P_BL_P0Q4 */
-	{0x366C, 0x0150,}, /* P_GB_P0Q0 */
-	{0x366E, 0xB809,}, /* P_GB_P0Q1 */
-	{0x3670, 0x30B2,}, /* P_GB_P0Q2 */
-	{0x3672, 0x82AD,}, /* P_GB_P0Q3 */
-	{0x3674, 0xC1D2,}, /* P_GB_P0Q4 */
-	{0x3676, 0xC4CD,}, /* P_GR_P1Q0 */
-	{0x3678, 0xBE47,}, /* P_GR_P1Q1 */
-	{0x367A, 0x5E4F,}, /* P_GR_P1Q2 */
-	{0x367C, 0x9F10,}, /* P_GR_P1Q3 */
-	{0x367E, 0xEC30,}, /* P_GR_P1Q4 */
-	{0x3680, 0x914D,}, /* P_RD_P1Q0 */
-	{0x3682, 0x846A,}, /* P_RD_P1Q1 */
-	{0x3684, 0x66AB,}, /* P_RD_P1Q2 */
-	{0x3686, 0x20D0,}, /* P_RD_P1Q3 */
-	{0x3688, 0x1714,}, /* P_RD_P1Q4 */
-	{0x368A, 0x99AC,}, /* P_BL_P1Q0 */
-	{0x368C, 0x5CED,}, /* P_BL_P1Q1 */
-	{0x368E, 0x00B1,}, /* P_BL_P1Q2 */
-	{0x3690, 0x716C,}, /* P_BL_P1Q3 */
-	{0x3692, 0x9594,}, /* P_BL_P1Q4 */
-	{0x3694, 0xA22D,}, /* P_GB_P1Q0 */
-	{0x3696, 0xB88A,}, /* P_GB_P1Q1 */
-	{0x3698, 0x02B0,}, /* P_GB_P1Q2 */
-	{0x369A, 0xC38F,}, /* P_GB_P1Q3 */
-	{0x369C, 0x2B30,}, /* P_GB_P1Q4 */
-	{0x369E, 0x6B32,}, /* P_GR_P2Q0 */
-	{0x36A0, 0x128C,}, /* P_GR_P2Q1 */
-	{0x36A2, 0x2574,}, /* P_GR_P2Q2 */
-	{0x36A4, 0xD1B3,}, /* P_GR_P2Q3 */
-	{0x36A6, 0xC2B8,}, /* P_GR_P2Q4 */
-	{0x36A8, 0x1893,}, /* P_RD_P2Q0 */
-	{0x36AA, 0x8DB0,}, /* P_RD_P2Q1 */
-	{0x36AC, 0x2134,}, /* P_RD_P2Q2 */
-	{0x36AE, 0x9014,}, /* P_RD_P2Q3 */
-	{0x36B0, 0xFC57,}, /* P_RD_P2Q4 */
-	{0x36B2, 0x2DB2,}, /* P_BL_P2Q0 */
-	{0x36B4, 0x8FB1,}, /* P_BL_P2Q1 */
-	{0x36B6, 0x9832,}, /* P_BL_P2Q2 */
-	{0x36B8, 0x1CD4,}, /* P_BL_P2Q3 */
-	{0x36BA, 0xE437,}, /* P_BL_P2Q4 */
-	{0x36BC, 0x5992,}, /* P_GB_P2Q0 */
-	{0x36BE, 0x99AF,}, /* P_GB_P2Q1 */
-	{0x36C0, 0x0F54,}, /* P_GB_P2Q2 */
-	{0x36C2, 0x9A52,}, /* P_GB_P2Q3 */
-	{0x36C4, 0xB358,}, /* P_GB_P2Q4 */
-	{0x36C6, 0xC3EE,}, /* P_GR_P3Q0 */
-	{0x36C8, 0xC3F1,}, /* P_GR_P3Q1 */
-	{0x36CA, 0x94D2,}, /* P_GR_P3Q2 */
-	{0x36CC, 0x4175,}, /* P_GR_P3Q3 */
-	{0x36CE, 0x4EB7,}, /* P_GR_P3Q4 */
-	{0x36D0, 0xF310,}, /* P_RD_P3Q0 */
-	{0x36D2, 0x0C51,}, /* P_RD_P3Q1 */
-	{0x36D4, 0x6C75,}, /* P_RD_P3Q2 */
-	{0x36D6, 0xDA96,}, /* P_RD_P3Q3 */
-	{0x36D8, 0x8FF9,}, /* P_RD_P3Q4 */
-	{0x36DA, 0x9C10,}, /* P_BL_P3Q0 */
-	{0x36DC, 0x99B2,}, /* P_BL_P3Q1 */
-	{0x36DE, 0xFCD4,}, /* P_BL_P3Q2 */
-	{0x36E0, 0x6CD5,}, /* P_BL_P3Q3 */
-	{0x36E2, 0x7E98,}, /* P_BL_P3Q4 */
-	{0x36E4, 0xE64E,}, /* P_GB_P3Q0 */
-	{0x36E6, 0x8E72,}, /* P_GB_P3Q1 */
-	{0x36E8, 0x38D2,}, /* P_GB_P3Q2 */
-	{0x36EA, 0x4935,}, /* P_GB_P3Q3 */
-	{0x36EC, 0xBCB6,}, /* P_GB_P3Q4 */
-	{0x36EE, 0xB5F3,}, /* P_GR_P4Q0 */
-	{0x36F0, 0xBAD4,}, /* P_GR_P4Q1 */
-	{0x36F2, 0x8E39,}, /* P_GR_P4Q2 */
-	{0x36F4, 0x1FF8,}, /* P_GR_P4Q3 */
-	{0x36F6, 0x1D3C,}, /* P_GR_P4Q4 */
-	{0x36F8, 0x8CB3,}, /* P_RD_P4Q0 */
-	{0x36FA, 0x8834,}, /* P_RD_P4Q1 */
-	{0x36FC, 0xBF58,}, /* P_RD_P4Q2 */
-	{0x36FE, 0x4239,}, /* P_RD_P4Q3 */
-	{0x3700, 0x19F9,}, /* P_RD_P4Q4 */
-	{0x3702, 0x770D,}, /* P_BL_P4Q0 */
-	{0x3704, 0x7234,}, /* P_BL_P4Q1 */
-	{0x3706, 0xCB98,}, /* P_BL_P4Q2 */
-	{0x3708, 0x84B9,}, /* P_BL_P4Q3 */
-	{0x370A, 0x33FC,}, /* P_BL_P4Q4 */
-	{0x370C, 0xA1D2,}, /* P_GB_P4Q0 */
-	{0x370E, 0xAE33,}, /* P_GB_P4Q1 */
-	{0x3710, 0x8E79,}, /* P_GB_P4Q2 */
-	{0x3712, 0x4AB8,}, /* P_GB_P4Q3 */
-	{0x3714, 0x2D1C,}, /* P_GB_P4Q4 */
-	{0x3644, 0x013C,}, /* POLY_ORIGIN_C */
-	{0x3642, 0x00E8,}, /* POLY_ORIGIN_R */
+	{0x365A, 0xC669,}, /* P_RD_P0Q1 */
+	{0x365C, 0x4FB2,}, /* P_RD_P0Q2 */
+	{0x365E, 0x8350,}, /* P_RD_P0Q3 */
+	{0x3660, 0xC611,}, /* P_RD_P0Q4 */
+	{0x3662, 0x00F0,}, /* P_BL_P0Q0 */
+	{0x3664, 0x4007,}, /* P_BL_P0Q1 */
+	{0x3666, 0x0152,}, /* P_BL_P0Q2 */
+	{0x3668, 0x9490,}, /* P_BL_P0Q3 */
+	{0x366A, 0xB8B3,}, /* P_BL_P0Q4 */
+	{0x366C, 0x00B0,}, /* P_GB_P0Q0 */
+	{0x366E, 0xEF4A,}, /* P_GB_P0Q1 */
+	{0x3670, 0x07B2,}, /* P_GB_P0Q2 */
+	{0x3672, 0x976F,}, /* P_GB_P0Q3 */
+	{0x3674, 0x9A52,}, /* P_GB_P0Q4 */
+	{0x3676, 0xED0B,}, /* P_GR_P1Q0 */
+	{0x3678, 0x9B2D,}, /* P_GR_P1Q1 */
+	{0x367A, 0x1291,}, /* P_GR_P1Q2 */
+	{0x367C, 0xF68F,}, /* P_GR_P1Q3 */
+	{0x367E, 0x9474,}, /* P_GR_P1Q4 */
+	{0x3680, 0x9B4B,}, /* P_RD_P1Q0 */
+	{0x3682, 0xE9EC,}, /* P_RD_P1Q1 */
+	{0x3684, 0x00F1,}, /* P_RD_P1Q2 */
+	{0x3686, 0xC691,}, /* P_RD_P1Q3 */
+	{0x3688, 0xC113,}, /* P_RD_P1Q4 */
+	{0x368A, 0x978C,}, /* P_BL_P1Q0 */
+	{0x368C, 0xA0AB,}, /* P_BL_P1Q1 */
+	{0x368E, 0x6A10,}, /* P_BL_P1Q2 */
+	{0x3690, 0xD1EF,}, /* P_BL_P1Q3 */
+	{0x3692, 0x94D4,}, /* P_BL_P1Q4 */
+	{0x3694, 0xCD0B,}, /* P_GB_P1Q0 */
+	{0x3696, 0xB56D,}, /* P_GB_P1Q1 */
+	{0x3698, 0x2171,}, /* P_GB_P1Q2 */
+	{0x369A, 0x976F,}, /* P_GB_P1Q3 */
+	{0x369C, 0x9C74,}, /* P_GB_P1Q4 */
+	{0x369E, 0x25B2,}, /* P_GR_P2Q0 */
+	{0x36A0, 0x47EC,}, /* P_GR_P2Q1 */
+	{0x36A2, 0x5475,}, /* P_GR_P2Q2 */
+	{0x36A4, 0xD494,}, /* P_GR_P2Q3 */
+	{0x36A6, 0xC039,}, /* P_GR_P2Q4 */
+	{0x36A8, 0x7212,}, /* P_RD_P2Q0 */
+	{0x36AA, 0x268F,}, /* P_RD_P2Q1 */
+	{0x36AC, 0x1676,}, /* P_RD_P2Q2 */
+	{0x36AE, 0xB155,}, /* P_RD_P2Q3 */
+	{0x36B0, 0xD459,}, /* P_RD_P2Q4 */
+	{0x36B2, 0x09D2,}, /* P_BL_P2Q0 */
+	{0x36B4, 0x454F,}, /* P_BL_P2Q1 */
+	{0x36B6, 0x4AF4,}, /* P_BL_P2Q2 */
+	{0x36B8, 0x8C95,}, /* P_BL_P2Q3 */
+	{0x36BA, 0xFCF8,}, /* P_BL_P2Q4 */
+	{0x36BC, 0x1C92,}, /* P_GB_P2Q0 */
+	{0x36BE, 0x06CE,}, /* P_GB_P2Q1 */
+	{0x36C0, 0x4A15,}, /* P_GB_P2Q2 */
+	{0x36C2, 0xCFB4,}, /* P_GB_P2Q3 */
+	{0x36C4, 0xB8F9,}, /* P_GB_P2Q4 */
+	{0x36C6, 0x0F4F,}, /* P_GR_P3Q0 */
+	{0x36C8, 0xC1EE,}, /* P_GR_P3Q1 */
+	{0x36CA, 0xC5F5,}, /* P_GR_P3Q2 */
+	{0x36CC, 0x3E95,}, /* P_GR_P3Q3 */
+	{0x36CE, 0x58D8,}, /* P_GR_P3Q4 */
+	{0x36D0, 0x304E,}, /* P_RD_P3Q0 */
+	{0x36D2, 0xAF31,}, /* P_RD_P3Q1 */
+	{0x36D4, 0xB634,}, /* P_RD_P3Q2 */
+	{0x36D6, 0x65D6,}, /* P_RD_P3Q3 */
+	{0x36D8, 0x0298,}, /* P_RD_P3Q4 */
+	{0x36DA, 0x3B10,}, /* P_BL_P3Q0 */
+	{0x36DC, 0xF8F0,}, /* P_BL_P3Q1 */
+	{0x36DE, 0xD5D5,}, /* P_BL_P3Q2 */
+	{0x36E0, 0x1756,}, /* P_BL_P3Q3 */
+	{0x36E2, 0x1619,}, /* P_BL_P3Q4 */
+	{0x36E4, 0x1A4F,}, /* P_GB_P3Q0 */
+	{0x36E6, 0xAC4F,}, /* P_GB_P3Q1 */
+	{0x36E8, 0xD075,}, /* P_GB_P3Q2 */
+	{0x36EA, 0x3A95,}, /* P_GB_P3Q3 */
+	{0x36EC, 0x64D8,}, /* P_GB_P3Q4 */
+	{0x36EE, 0x5353,}, /* P_GR_P4Q0 */
+	{0x36F0, 0xA8B4,}, /* P_GR_P4Q1 */
+	{0x36F2, 0xA59A,}, /* P_GR_P4Q2 */
+	{0x36F4, 0x0E79,}, /* P_GR_P4Q3 */
+	{0x36F6, 0x379D,}, /* P_GR_P4Q4 */
+	{0x36F8, 0x3E94,}, /* P_RD_P4Q0 */
+	{0x36FA, 0xC375,}, /* P_RD_P4Q1 */
+	{0x36FC, 0xBFFA,}, /* P_RD_P4Q2 */
+	{0x36FE, 0x129A,}, /* P_RD_P4Q3 */
+	{0x3700, 0x337D,}, /* P_RD_P4Q4 */
+	{0x3702, 0x4AF2,}, /* P_BL_P4Q0 */
+	{0x3704, 0x9A35,}, /* P_BL_P4Q1 */
+	{0x3706, 0xFC39,}, /* P_BL_P4Q2 */
+	{0x3708, 0x60F9,}, /* P_BL_P4Q3 */
+	{0x370A, 0x159D,}, /* P_BL_P4Q4 */
+	{0x370C, 0x0494,}, /* P_GB_P4Q0 */
+	{0x370E, 0xE434,}, /* P_GB_P4Q1 */
+	{0x3710, 0x9C3A,}, /* P_GB_P4Q2 */
+	{0x3712, 0x2E99,}, /* P_GB_P4Q3 */
+	{0x3714, 0x28FD,}, /* P_GB_P4Q4 */
+	{0x3644, 0x0148,}, /* POLY_ORIGIN_C */
+	{0x3642, 0x00FC,}, /* POLY_ORIGIN_R */
 	{0x3210, 0x09B8,}, /* COLOR_PIPELINE_CONTROL */
 	{0x0018, 0x0028,},/* STANDBY_CONTROL */
 	{0x0018, 0x4000, MSM_CAMERA_I2C_UNSET_WORD_MASK,
 		MSM_CAMERA_I2C_CMD_POLL},
+	{0x098C, 0xA103,}, /* MCU_ADDRESS  */
+	{0x0990, 0x0005,}, /* MCU_DATA_0 */
+	{0x098C, 0xA103,},
+	{0x0990, 0xFFFF, MSM_CAMERA_I2C_UNSET_WORD_MASK,
+		MSM_CAMERA_I2C_CMD_POLL},
 
-	{0x098C, 0x2306,}, /* MCU_ADDRESS [AWB_CCM_L_0]             */
-	{0x0990, 0x0315,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2308,}, /* MCU_ADDRESS [AWB_CCM_L_1]             */
-	{0x0990, 0xFDDC,}, /* MCU_DATA_0                            */
-	{0x098C, 0x230A,}, /* MCU_ADDRESS [AWB_CCM_L_2]             */
-	{0x0990, 0x003A,}, /* MCU_DATA_0                            */
-	{0x098C, 0x230C,}, /* MCU_ADDRESS [AWB_CCM_L_3]             */
-	{0x0990, 0xFF58,}, /* MCU_DATA_0                            */
-	{0x098C, 0x230E,}, /* MCU_ADDRESS [AWB_CCM_L_4]             */
-	{0x0990, 0x02B7,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2310,}, /* MCU_ADDRESS [AWB_CCM_L_5]             */
-	{0x0990, 0xFF31,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2312,}, /* MCU_ADDRESS [AWB_CCM_L_6]             */
-	{0x0990, 0xFF4C,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2314,}, /* MCU_ADDRESS [AWB_CCM_L_7]             */
-	{0x0990, 0xFE4C,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2316,}, /* MCU_ADDRESS [AWB_CCM_L_8]             */
-	{0x0990, 0x039E,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2318,}, /* MCU_ADDRESS [AWB_CCM_L_9]             */
-	{0x0990, 0x001C,}, /* MCU_DATA_0                            */
-	{0x098C, 0x231A,}, /* MCU_ADDRESS [AWB_CCM_L_10]            */
-	{0x0990, 0x0039,}, /* MCU_DATA_0                            */
-	{0x098C, 0x231C,}, /* MCU_ADDRESS [AWB_CCM_RL_0]            */
-	{0x0990, 0x007F,}, /* MCU_DATA_0                            */
-	{0x098C, 0x231E,}, /* MCU_ADDRESS [AWB_CCM_RL_1]            */
-	{0x0990, 0xFF77,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2320,}, /* MCU_ADDRESS [AWB_CCM_RL_2]            */
-	{0x0990, 0x000A,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2322,}, /* MCU_ADDRESS [AWB_CCM_RL_3]            */
-	{0x0990, 0x0020,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2324,}, /* MCU_ADDRESS [AWB_CCM_RL_4]            */
-	{0x0990, 0x001B,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2326,}, /* MCU_ADDRESS [AWB_CCM_RL_5]            */
-	{0x0990, 0xFFC6,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2328,}, /* MCU_ADDRESS [AWB_CCM_RL_6]            */
-	{0x0990, 0x0086,}, /* MCU_DATA_0                            */
-	{0x098C, 0x232A,}, /* MCU_ADDRESS [AWB_CCM_RL_7]            */
-	{0x0990, 0x00B5,}, /* MCU_DATA_0                            */
-	{0x098C, 0x232C,}, /* MCU_ADDRESS [AWB_CCM_RL_8]            */
-	{0x0990, 0xFEC3,}, /* MCU_DATA_0                            */
-	{0x098C, 0x232E,}, /* MCU_ADDRESS [AWB_CCM_RL_9]            */
-	{0x0990, 0x0001,}, /* MCU_DATA_0                            */
-	{0x098C, 0x2330,}, /* MCU_ADDRESS [AWB_CCM_RL_10]           */
-	{0x0990, 0xFFEF,}, /* MCU_DATA_0                            */
+	{0x098C, 0x2306,}, /* MCU_ADDRESS [AWB_CCM_L_0]           */
+	{0x0990, 0x0203,}, /* MCU_DATA_0           */
+	{0x098C, 0x231C,}, /* MCU_ADDRESS [AWB_CCM_RL_0]           */
+	{0x0990, 0x0092,}, /* MCU_DATA_0           */
+	{0x098C, 0x2308,}, /* MCU_ADDRESS [AWB_CCM_L_1]           */
+	{0x0990, 0xFF96,}, /* MCU_DATA_0           */
+	{0x098C, 0x231E,}, /* MCU_ADDRESS [AWB_CCM_RL_1]           */
+	{0x0990, 0xFF57,}, /* MCU_DATA_0           */
+	{0x098C, 0x230A,}, /* MCU_ADDRESS [AWB_CCM_L_2]           */
+	{0x0990, 0xFF6B,}, /* MCU_DATA_0           */
+	{0x098C, 0x2320,}, /* MCU_ADDRESS [AWB_CCM_RL_2]           */
+	{0x0990, 0x0019,}, /* MCU_DATA_0           */
+	{0x098C, 0x230C,}, /* MCU_ADDRESS [AWB_CCM_L_3]           */
+	{0x0990, 0xFF6B,}, /* MCU_DATA_0           */
+	{0x098C, 0x2322,}, /* MCU_ADDRESS [AWB_CCM_RL_3]           */
+	{0x0990, 0x000F,}, /* MCU_DATA_0           */
+	{0x098C, 0x230E,}, /* MCU_ADDRESS [AWB_CCM_L_4]           */
+	{0x0990, 0x01C7,}, /* MCU_DATA_0           */
+	{0x098C, 0x2324,}, /* MCU_ADDRESS [AWB_CCM_RL_4]           */
+	{0x0990, 0x002B,}, /* MCU_DATA_0           */
+	{0x098C, 0x2310,}, /* MCU_ADDRESS [AWB_CCM_L_5]           */
+	{0x0990, 0xFFD2,}, /* MCU_DATA_0           */
+	{0x098C, 0x2326,}, /* MCU_ADDRESS [AWB_CCM_RL_5]           */
+	{0x0990, 0xFFC6,}, /* MCU_DATA_0           */
+	{0x098C, 0x2312,}, /* MCU_ADDRESS [AWB_CCM_L_6]           */
+	{0x0990, 0xFF9B,}, /* MCU_DATA_0           */
+	{0x098C, 0x2328,}, /* MCU_ADDRESS [AWB_CCM_RL_6]           */
+	{0x0990, 0x001F,}, /* MCU_DATA_0           */
+	{0x098C, 0x2314,}, /* MCU_ADDRESS [AWB_CCM_L_7]           */
+	{0x0990, 0xFE81,}, /* MCU_DATA_0           */
+	{0x098C, 0x232A,}, /* MCU_ADDRESS [AWB_CCM_RL_7]           */
+	{0x0990, 0x0073,}, /* MCU_DATA_0           */
+	{0x098C, 0x2316,}, /* MCU_ADDRESS [AWB_CCM_L_8]           */
+	{0x0990, 0x02E8,}, /* MCU_DATA_0           */
+	{0x098C, 0x232C,}, /* MCU_ADDRESS [AWB_CCM_RL_8]           */
+	{0x0990, 0xFF6F,}, /* MCU_DATA_0           */
+	{0x098C, 0x2318,}, /* MCU_ADDRESS [AWB_CCM_L_9]           */
+	{0x0990, 0x001E,}, /* MCU_DATA_0           */
+	{0x098C, 0x231A,}, /* MCU_ADDRESS [AWB_CCM_L_10]           */
+	{0x0990, 0x0035,}, /* MCU_DATA_0           */
+	{0x098C, 0x232E,}, /* MCU_ADDRESS [AWB_CCM_RL_9]           */
+	{0x0990, 0x0007,}, /* MCU_DATA_0           */
+	{0x098C, 0x2330,}, /* MCU_ADDRESS [AWB_CCM_RL_10]          */
+	{0x0990, 0xFFF3,}, /* MCU_DATA_0           */
+	{0x098C, 0xA366,}, /* MCU_ADDRESS [AWB_KR_L]          */
+	{0x0990, 0x00A0,}, /* MCU_DATA_0           */
+	{0x098C, 0xA367,}, /* MCU_ADDRESS [AWB_KG_L]          */
+	{0x0990, 0x00A0,}, /* MCU_DATA_0           */
 	{0x098C, 0xA348,}, /* MCU_ADDRESS [AWB_GAIN_BUFFER_SPEED]   */
 	{0x0990, 0x0008,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA349,}, /* MCU_ADDRESS [AWB_JUMP_DIVISOR]        */
@@ -414,7 +422,7 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0xA34B,}, /* MCU_ADDRESS [AWB_GAIN_MAX]            */
 	{0x0990, 0x00FF,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA34C,}, /* MCU_ADDRESS [AWB_GAINMIN_B]           */
-	{0x0990, 0x0075,}, /* MCU_DATA_0                            */
+	{0x0990, 0x0060,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA34D,}, /* MCU_ADDRESS [AWB_GAINMAX_B]           */
 	{0x0990, 0x00EF,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA351,}, /* MCU_ADDRESS [AWB_CCM_POSITION_MIN]    */
@@ -443,8 +451,6 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x0990, 0x0000,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA303,}, /* MCU_ADDRESS [AWB_WINDOW_SIZE]         */
 	{0x0990, 0x00EF,}, /* MCU_DATA_0                            */
-	{0x098C, 0xAB20,}, /* MCU_ADDRESS [HG_LL_SAT1]              */
-	{0x0990, 0x0024,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA353,}, /* MCU_ADDRESS [AWB_CCM_POSITION]*/
 	{0x0990, 0x0020,}, /* MCU_DATA_0*/
 	{0x098C, 0xA34E,}, /* MCU_ADDRESS [AWB_GAIN_R]*/
@@ -453,109 +459,148 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x0990, 0x0080,}, /* MCU_DATA_0*/
 	{0x098C, 0xA350,}, /* MCU_ADDRESS [AWB_GAIN_B]*/
 	{0x0990, 0x0082,}, /* MCU_DATA_0*/
-	{0x098C, 0x274F,}, /* MCU_ADDRESS [RESERVED_MODE_4F]*/
-	{0x0990, 0x0004,}, /* MCU_DATA_0*/
-	{0x098C, 0x2741,}, /* MCU_ADDRESS [RESERVED_MODE_41]*/
-	{0x0990, 0x0004,}, /* MCU_DATA_0*/
-	{0x098C, 0x275F,}, /* MCU_ADDRESS [RESERVED_MODE_5F]*/
-	{0x0990, 0x0594,}, /* MCU_DATA_0*/
-	{0x098C, 0x2761,}, /* MCU_ADDRESS [RESERVED_MODE_61]*/
-	{0x0990, 0x0094,}, /* MCU_DATA_0*/
+	/* AE Related Tuning */
+	{0x098C, 0xA202,}, /* MCU_ADDRESS [AE_WINDOW_POS]*/
+	{0x0990, 0x0033,}, /* MCU_DATA_0*/
+	{0x098C, 0xA203,}, /* MCU_ADDRESS [AE_WINDOW_SIZE]*/
+	{0x0990, 0x0099,}, /* MCU_DATA_0*/
+	{0x098C, 0xA207,}, /* MCU_ADDRESS [AE_GATE]*/
+	{0x0990, 0x0006,}, /* MCU_DATA_0*/
+	{0x098C, 0xA208,}, /* MCU_ADDRESS [AE_SKIP_FRAMES] */
+	{0x0990, 0x0001,}, /* MCU_DATA_0 */
+	{0x098C, 0xA20E,}, /* MCU_ADDRESS [AE_MAX_VIRTGAIN] */
+	{0x0990, 0x0082,}, /* MCU_DATA_0 */
+	{0x098C, 0x2212,}, /* MCU_ADDRESS [AE_MAX_DGAIN_AE1] */
+	{0x0990, 0x0140,}, /* MCU_DATA_0 */
+	{0x098C, 0xA215,}, /* MCU_ADDRESS [AE_INDEX_TH23] */
+	{0x0990, 0x0005,}, /* MCU_DATA_0 */
+	{0x098C, 0xA216,}, /* MCU_ADDRESS [AE_MAXGAIN23] */
+	{0x0990, 0x0082,}, /* MCU_DATA_0 */
+	{0x098C, 0xA24F,}, /* MCU_ADDRESS [AE_BASETARGET]*/
+	{0x0990, 0x0040,}, /* MCU_DATA_0*/
+	/* LL Setting and Fine tuning setting */
+	{0x098C, 0x274F,}, /* MCU_ADDRESS [MODE_DEC_CTRL_B]*/
+	{0x0990, 0x0004,}, /* MCU_DATA_0 */
+	{0x098C, 0x2741,}, /* MCU_ADDRESS [MODE_DEC_CTRL_A]*/
+	{0x0990, 0x0004,}, /* MCU_DATA_0 */
+	{0x098C, 0x275F,}, /* MCU_ADDRESS [MODESETTINGS_BRIGHT_COLOR_KILL]*/
+	{0x0990, 0x0594,}, /* MCU_DATA_0 */
+	{0x098C, 0x2761,}, /* MCU_ADDRESS [MODESETTINGS_DARK_COLOR_KILL]*/
+	{0x0990, 0x00AA,}, /* MCU_DATA_0 */
 	{0x098C, 0xAB1F,}, /* MCU_ADDRESS [HG_LLMODE]*/
 	{0x0990, 0x00C7,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB31,}, /* MCU_ADDRESS [HG_NR_STOP_G]*/
 	{0x0990, 0x001E,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB20,}, /* MCU_ADDRESS [HG_LL_SAT1]*/
-	{0x0990, 0x0054,}, /* MCU_DATA_0*/
+	{0x0990, 0x0068,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB21,}, /* MCU_ADDRESS [HG_LL_INTERPTHRESH1]*/
 	{0x0990, 0x0016,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB22,}, /* MCU_ADDRESS [HG_LL_APCORR1]*/
 	{0x0990, 0x0002,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB23,}, /* MCU_ADDRESS [HG_LL_APTHRESH1]*/
+	{0x0990, 0x0005,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB24,}, /* MCU_ADDRESS [HG_LL_SAT2]*/
 	{0x0990, 0x0005,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB25,}, /* MCU_ADDRESS [HG_LL_INTERPTHRESH2]*/
-	{0x0990, 0x0034,}, /* MCU_DATA_0*/
+	{0x0990, 0x0028,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB26,}, /* MCU_ADDRESS [HG_LL_APCORR2]*/
+	{0x0990, 0x0002,}, /* MCU_DATA_0*/
 	{0x098C, 0x2B28,}, /* MCU_ADDRESS [HG_LL_BRIGHTNESSSTART]*/
-	{0x0990, 0x170C,}, /* MCU_DATA_0*/
+	{0x0990, 0x0898,}, /* MCU_DATA_0*/
 	{0x098C, 0x2B2A,}, /* MCU_ADDRESS [HG_LL_BRIGHTNESSSTOP]*/
-	{0x0990, 0x3E80,}, /* MCU_DATA_0*/
-	/* AE Setting Fr ame rate 7.5fps ~ 30fps*/
-	#if 0
-	/*keep it for reference till we eneble AE configuration*/
-	{0x098C, 0xA20C,}, /* MCU_ADDRESS                           */
-	{0x0990, 0x0004,}, /* AE_MAX_INDEX                          */
-	{0x098C, 0xA215,}, /* MCU_ADDRESS                           */
-	{0x0990, 0x0004,}, /* AE_INDEX_TH23                         */
-	{0x098C, 0xA20D,}, /* MCU_ADDRESS [AE_MIN_VIRTGAIN]         */
-	{0x0990, 0x0030,}, /* MCU_DATA_0                            */
-	{0x098C, 0xA20E,}, /* MCU_ADDRESS [AE_MAX_VIRTGAIN]         */
-	{0x0990, 0x0080,}, /* MCU_DATA_0                            */
-	#endif
-	/* Sharpness */
-	{0x098C, 0xAB22,}, /* MCU_ADDRESS [HG_LL_APCORR1]           */
-	{0x0990, 0x0001,}, /* MCU_DATA_0                            */
-	/* AE Gate */
-	{0x098C, 0xA207,}, /* MCU_ADDRESS [AE_GATE] */
-	{0x0990, 0x0006,}, /* MCU_DATA_0            */
-	/* AE Target */
-	{0x098C, 0xA24F,}, /* MCU_ADDRESS [AE_BASETARGET]      */
-	{0x0990, 0x0044,}, /* MCU_DATA_0                       */
+	{0x0990, 0x16A8,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB34,}, /* MCU_ADDRESS [HG_NR_GAINSTART]*/
+	{0x0990, 0x0028,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB36,}, /* MCU_ADDRESS [HG_CLUSTERDC_TH]*/
+	{0x0990, 0x0008,}, /* MCU_DATA_0*/
+	/* Gamma Setting */
+	{0x098C, 0xAB37,}, /* MCU_ADDRESS [HG_GAMMA_MORPH_CTRL] */
+	{0x0990, 0x0003,}, /* MCU_DATA_0 */
+	{0x098C, 0x2B38,}, /* MCU_ADDRESS [HG_GAMMASTARTMORPH] */
+	{0x0990, 0x1580,}, /* MCU_DATA_0 */
+	{0x098C, 0x2B3A,}, /* MCU_ADDRESS [HG_GAMMASTOPMORPH] */
+	{0x0990, 0x1680,}, /* MCU_DATA_0 */
 	{0x098C, 0xAB3C,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_0] */
 	{0x0990, 0x0000,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB3D,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_1] */
-	{0x0990, 0x0007,}, /* MCU_DATA_0                       */
+	{0x0990, 0x000F,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB3E,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_2] */
-	{0x0990, 0x0016,}, /* MCU_DATA_0                       */
+	{0x0990, 0x0020,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB3F,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_3] */
-	{0x0990, 0x0039,}, /* MCU_DATA_0                       */
+	{0x0990, 0x0035,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB40,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_4] */
-	{0x0990, 0x005F,}, /* MCU_DATA_0                       */
+	{0x0990, 0x0054,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB41,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_5] */
-	{0x0990, 0x007A,}, /* MCU_DATA_0                       */
+	{0x0990, 0x0070,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB42,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_6] */
-	{0x0990, 0x008F,}, /* MCU_DATA_0                       */
+	{0x0990, 0x008A,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB43,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_7] */
-	{0x0990, 0x00A1,}, /* MCU_DATA_0                       */
+	{0x0990, 0x009F,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB44,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_8] */
 	{0x0990, 0x00AF,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB45,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_9] */
-	{0x0990, 0x00BB,}, /* MCU_DATA_0                       */
+	{0x0990, 0x00BD,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB46,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_10]*/
-	{0x0990, 0x00C6,}, /* MCU_DATA_0                       */
+	{0x0990, 0x00C8,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB47,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_11]*/
-	{0x0990, 0x00CF,}, /* MCU_DATA_0                       */
+	{0x0990, 0x00D2,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB48,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_12]*/
-	{0x0990, 0x00D8,}, /* MCU_DATA_0                       */
+	{0x0990, 0x00DB,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB49,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_13]*/
-	{0x0990, 0x00E0,}, /* MCU_DATA_0                       */
+	{0x0990, 0x00E2,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB4A,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_14]*/
-	{0x0990, 0x00E7,}, /* MCU_DATA_0                       */
+	{0x0990, 0x00E9,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB4B,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_15]*/
-	{0x0990, 0x00EE,}, /* MCU_DATA_0                       */
+	{0x0990, 0x00EF,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB4C,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_16]*/
-	{0x0990, 0x00F4,}, /* MCU_DATA_0                       */
+	{0x0990, 0x00F5,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB4D,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_17]*/
 	{0x0990, 0x00FA,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB4E,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_A_18]*/
 	{0x0990, 0x00FF,}, /* MCU_DATA_0                       */
-	/* saturation */
-	#if 0
-	/*keep it for reference till we eneble AE configuration*/
-	{0x098C, 0xAB20,}, /* MCU_ADDRESS [HG_LL_SAT1]*/
-	{0x0990, 0x0045,}, /* MCU_DATA_0              */
-	{0x098C, 0xAB24,}, /* MCU_ADDRESS [HG_LL_SAT2]*/
-	{0x0990, 0x0034,}, /* MCU_DATA_0              */
-	{0x098C, 0xA20C,}, /* MCU_ADDRESS             */
-	{0x0990, 0x0018,}, /* AE_MAX_INDEX            */
-	{0x098C, 0xA215,}, /* MCU_ADDRESS             */
-	{0x0990, 0x0008,}, /* AE_INDEX_TH23           */
-	{0x098C, 0xA20C,}, /* MCU_ADDRESS             */
-	{0x0990, 0x0018,}, /* AE_MAX_INDEX            */
-	{0x098C, 0xA215,}, /* MCU_ADDRESS             */
-	{0x0990, 0x0018,}, /* AE_INDEX_TH23           */
-	{0x098C, 0xA34A,}, /* MCU_ADDRESS             */
-	{0x0990, 0x007A,}, /* MCU_DATA_0              */
-	#endif
+	{0x098C, 0xAB4F,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_0]*/
+	{0x0990, 0x0000,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB50,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_1]*/
+	{0x0990, 0x0009,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB51,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_2]*/
+	{0x0990, 0x001A,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB52,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_3]*/
+	{0x0990, 0x0034,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB53,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_4]*/
+	{0x0990, 0x0054,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB54,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_5]*/
+	{0x0990, 0x006F,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB55,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_6]*/
+	{0x0990, 0x0087,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB56,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_7]*/
+	{0x0990, 0x009B,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB57,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_8]*/
+	{0x0990, 0x00AB,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB58,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_9]*/
+	{0x0990, 0x00B8,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB59,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_10]*/
+	{0x0990, 0x00C4,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB5A,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_11]*/
+	{0x0990, 0x00CE,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB5B,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_12]*/
+	{0x0990, 0x00D7,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB5C,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_13]*/
+	{0x0990, 0x00DF,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB5D,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_14]*/
+	{0x0990, 0x00E7,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB5E,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_15]*/
+	{0x0990, 0x00EE,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB5F,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_16]*/
+	{0x0990, 0x00F4,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB60,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_17]*/
+	{0x0990, 0x00FA,}, /* MCU_DATA_0*/
+	{0x098C, 0xAB61,}, /* MCU_ADDRESS [HG_GAMMA_TABLE_B_18]*/
+	{0x0990, 0x00FF,}, /* MCU_DATA_0*/
+	{0x098C, 0xA75D,}, /* MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]*/
+	{0x0990, 0x0002,}, /* MCU_DATA_0*/
+	{0x098C, 0xA75E,}, /* MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]*/
+	{0x0990, 0x0002,}, /* MCU_DATA_0*/
+
 	/* Refresh */
 	{0x098C, 0xA103,}, /* MCU_ADDRESS             */
 	{0x0990, 0x0006,}, /* MCU_DATA_0 */
