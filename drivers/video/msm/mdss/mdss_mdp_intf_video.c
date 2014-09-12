@@ -334,6 +334,8 @@ static int mdss_mdp_video_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 				frame_rate = 24;
 			msleep((1000/frame_rate) + 1);
 		}
+
+		mdss_iommu_ctrl(0);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 		ctx->timegen_en = false;
 
@@ -721,6 +723,12 @@ static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 			!ctl->mfd->splash_info.splash_logo_enabled) {
 			rc = wait_for_completion_timeout(&ctx->vsync_comp,
 					usecs_to_jiffies(VSYNC_TIMEOUT_US));
+		}
+
+		rc = mdss_iommu_ctrl(1);
+		if (IS_ERR_VALUE(rc)) {
+			pr_err("IOMMU attach failed\n");
+			return rc;
 		}
 
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);

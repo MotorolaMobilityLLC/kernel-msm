@@ -560,6 +560,7 @@ static int mdss_mdp_wb_wait4comp(struct mdss_mdp_ctl *ctl, void *arg)
 	if (ctl->traffic_shaper_enabled)
 		mdss_mdp_traffic_shaper(ctl, ctx, false);
 
+	mdss_iommu_ctrl(0);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false); /* clock off */
 
 	/* Set flag to release Controller Bandwidth */
@@ -640,6 +641,11 @@ static int mdss_mdp_writeback_display(struct mdss_mdp_ctl *ctl, void *arg)
 	INIT_COMPLETION(ctx->wb_comp);
 	mdss_mdp_irq_enable(ctx->intr_type, ctx->intf_num);
 
+	ret = mdss_iommu_ctrl(1);
+	if (IS_ERR_VALUE(ret)) {
+		pr_err("IOMMU attach failed\n");
+		return ret;
+	}
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 	ctx->start_time = ktime_get();
 	mdss_bus_bandwidth_ctrl(true);
