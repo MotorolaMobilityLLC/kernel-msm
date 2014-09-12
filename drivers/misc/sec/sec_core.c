@@ -167,10 +167,12 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 	long ret_val = SEC_KM_FAIL;
 	u32 ctr;
 
-	if (sec_alloc_buffer() == false)
-		return SEC_KM_FAIL;
-
 	mutex_lock(&sec_core_lock);
+
+	if (sec_alloc_buffer() == false) {
+		mutex_unlock(&sec_core_lock);
+		return SEC_KM_FAIL;
+	}
 
 	switch (ioctl_num) {
 
@@ -290,9 +292,9 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 	if (ret_val != SEC_KM_SUCCESS)
 		sec_failures++;
 
-	mutex_unlock(&sec_core_lock);
 
 	kfree(sec_shared_mem);
+	mutex_unlock(&sec_core_lock);
 
 	return ret_val;
 }
