@@ -18,6 +18,7 @@
 
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <linux/reboot.h>
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #define ASUS_LAST_KMSG	1
@@ -64,16 +65,30 @@ static void do_kernel_log_worker(struct work_struct *work){
 
     initKernelEnv();
 
+    /* Check if file exist */
+    property_handle = sys_open(property_filename, O_RDWR|O_SYNC, 0);
+    if (property_handle > 0) {
+        printk("[adbg] Property is already exist, no action here.\n");
+        sys_close(property_handle);
+        deinitKernelEnv();
+        return;
+    }
+
+    /* Create new file*/
     property_handle = sys_open(property_filename, O_CREAT|O_RDWR|O_SYNC, 0600);
     if(!IS_ERR((const void *)property_handle))
     {
         sys_write(property_handle, property_value, 1);
         sys_close(property_handle);
+        printk("[adbg] Property set succeed.\n");
     } else {
         printk("[adbg] Cannot open property file: [%d]\n", property_handle);
     }
 
     deinitKernelEnv();
+
+    /* Reboot device to apply change */
+    kernel_restart(NULL);
 }
 
 int asus_rtc_read_time(struct rtc_time *tm)
