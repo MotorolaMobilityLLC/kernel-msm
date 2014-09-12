@@ -102,8 +102,10 @@ static struct intel_dwc_otg_pdata *get_otg_platform_data(struct pci_dev *pdev)
 		if (dwc_otg_pdata.usb2_phy_type == USB2_PHY_ULPI) {
 			dwc_otg_pdata.charger_detect_enable = 1;
 			dwc_otg_pdata.using_vusbphy = 0;
-		} else
+		} else {
 			dwc_otg_pdata.using_vusbphy = 1;
+			dwc_otg_pdata.utmi_eye_calibration = 0x51801;
+		}
 		return &dwc_otg_pdata;
 	default:
 		break;
