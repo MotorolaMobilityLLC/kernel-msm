@@ -2007,25 +2007,25 @@ static int max17042_probe(struct i2c_client *client,
 		}
 	}
 
+	regmap_read(chip->regmap, MAX17042_STATUS, &val);
 	regmap_read(chip->regmap, MAX17050_CFG_REV_REG, &val2);
 	val2 &= MAX17050_CFG_REV_MASK;
-	if (val2 != chip->pdata->config_data->revision) {
-		dev_warn(&client->dev, "Revision Change, Forcing POR!\n");
-		max17042_write_reg(client, MAX17042_VFSOC0Enable,
-				   MAX17050_FORCE_POR);
-		msleep(20);
-	}
 
-	regmap_read(chip->regmap, MAX17042_STATUS, &val);
+	INIT_WORK(&chip->work, max17042_init_worker);
+
 	if (val & STATUS_POR_BIT) {
 		dev_warn(&client->dev, "POR Detected, Loading Config\n");
+		INIT_WORK(&chip->work, max17042_init_worker);
+		schedule_work(&chip->work);
+	} else if (val2 != chip->pdata->config_data->revision) {
+		dev_warn(&client->dev, "Revision Change, Loading Config\n");
 		INIT_WORK(&chip->work, max17042_init_worker);
 		schedule_work(&chip->work);
 	} else {
 		config = chip->pdata->config_data;
 		if (chip->chip_type == MAX17047)
-			max17042_write_reg(chip->client, MAX17047_FullSOCThr,
-					   config->full_soc_thresh);
+			regmap_write(chip->regmap, MAX17047_FullSOCThr,
+				     config->full_soc_thresh);
 		chip->init_complete = 1;
 	}
 
