@@ -36,6 +36,9 @@ struct dsi_panel_cmds idle_off_cmds_V1;
 struct dsi_panel_cmds idle_on_cmds_V2;
 struct dsi_panel_cmds idle_off_cmds_V2;
 
+struct dsi_panel_cmds on_cmds_V2;
+struct dsi_panel_cmds on_cmds_V3;
+
 /* ASUS extend for panel low power mode */
 /* ASUS extend for panel low power mode */
 enum PANEL_AMBIENT_MODE{
@@ -453,7 +456,7 @@ char mdss_panel_get_version(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	while(retry > 0){
 		mdss_dsi_panel_cmd_read(ctrl_pdata, 0xDA, 0x00, NULL, &id, 0);
 		printk("[MDSS] get panel version = 0x%x\n",id);
-		if(id == 0x01 || id == 0xfe)
+		if(id == 0x02  ||id == 0x01 || id == 0xfe)
 			break;
 		else
 			retry--;
@@ -461,6 +464,40 @@ char mdss_panel_get_version(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	
 	return id;
 }
+
+void mdss_panel_set_panel_on_command(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	char panel_id;
+	static bool command_has_set = false;
+
+	if(command_has_set)
+		return;
+
+	panel_id = mdss_panel_get_version(ctrl_pdata);
+	
+	if(panel_id == 0xFE ||panel_id == 0x01){
+		
+		//for V1 V2 panel
+		memcpy(&ctrl_pdata->on_cmds,&on_cmds_V2 ,sizeof(struct dsi_panel_cmds));
+		command_has_set = true;
+		printk("[MDSS] set V2 panel on command\n");
+		
+	}else if(panel_id == 0x02){
+	
+		//for V3 panel
+		memcpy(&ctrl_pdata->on_cmds,&on_cmds_V3 ,sizeof(struct dsi_panel_cmds));
+		command_has_set = true;
+		printk("[MDSS] set V3 panel on command\n");
+		
+	}else{
+		memcpy(&ctrl_pdata->on_cmds,&on_cmds_V3 ,sizeof(struct dsi_panel_cmds));
+		command_has_set = true;
+		printk("[MDSS] Error: unknown panel id!! default set V3 panel on command\n");
+	}
+	
+	return;
+}
+
 
 void mdss_panel_set_ambient_command(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -480,7 +517,9 @@ void mdss_panel_set_ambient_command(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		ambient_bl_level = AMBIENT_BL_LEVEL_V1;
 		command_has_set = true;
 		printk("[MDSS] set V1 panel ambient command\n");
-	}else if(panel_id == 0x01){
+		
+	}else if(panel_id == 0x01 || panel_id == 0x02){
+
 		//set V2 panel
 		memcpy(&ctrl_pdata->idle_on_cmds ,&idle_on_cmds_V2 ,sizeof(struct dsi_panel_cmds));
 		memcpy(&ctrl_pdata->idle_off_cmds ,&idle_off_cmds_V2 ,sizeof(struct dsi_panel_cmds));
@@ -512,6 +551,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
+	mdss_panel_set_panel_on_command(ctrl);
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	if (is_ambient_on()){
@@ -539,6 +579,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 				panel_data);
 
 	mdss_panel_set_ambient_command(ctrl);
+	mdss_panel_set_panel_on_command(ctrl);
 
 	if (is_ambient_on()){
 		pr_info("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
@@ -1258,8 +1299,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_reset_seq(np, pinfo->rst_seq, &(pinfo->rst_seq_len),
 		"qcom,mdss-dsi-reset-sequence");
 
-	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->on_cmds,
-		"qcom,mdss-dsi-on-command", "qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &on_cmds_V2,
+		"qcom,mdss-dsi-on-command-V2", "qcom,mdss-dsi-on-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &on_cmds_V3,
+		"qcom,mdss-dsi-on-command-V3", "qcom,mdss-dsi-on-command-state");
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->off_cmds,
 		"qcom,mdss-dsi-off-command", "qcom,mdss-dsi-off-command-state");
