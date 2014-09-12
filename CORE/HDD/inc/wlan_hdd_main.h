@@ -1472,6 +1472,7 @@ int hdd_handle_batch_scan_ioctl
 void hdd_deinit_batch_scan(hdd_adapter_t *pAdapter);
 
 #endif /*End of FEATURE_WLAN_BATCH_SCAN*/
+void wlan_hdd_send_svc_nlink_msg(int type, void *data, int len);
 
 boolean hdd_is_5g_supported(hdd_context_t * pHddCtx);
 

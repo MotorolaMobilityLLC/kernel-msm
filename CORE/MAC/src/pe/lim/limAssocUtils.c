@@ -898,17 +898,24 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
         //If there is a failure during rest of the assoc sequence, this context needs to be cleaned up.
         tANI_U8         smesessionId;
         tANI_U16        smetransactionId;
+        tLimSmeStates   tempLimSmeState = eLIM_SME_IDLE_STATE;
 
         smesessionId = psessionEntry->smeSessionId;
         smetransactionId = psessionEntry->transactionId;
 
+        tempLimSmeState = psessionEntry->limSmeState;
         psessionEntry->limSmeState = eLIM_SME_JOIN_FAILURE_STATE;
         MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, psessionEntry->limSmeState));
 
         //if it is a reassoc failure to join new AP
+        //eSIR_SME_JOIN_DEAUTH_FROM_AP_DURING_ADD_STA result code is used
+        //during assoc and reassoc, so sme state req to distinguish them
         if((mlmStaContext.resultCode == eSIR_SME_FT_REASSOC_TIMEOUT_FAILURE) ||
            (mlmStaContext.resultCode == eSIR_SME_FT_REASSOC_FAILURE) ||
-           (mlmStaContext.resultCode == eSIR_SME_REASSOC_TIMEOUT_RESULT_CODE))
+           (mlmStaContext.resultCode == eSIR_SME_REASSOC_TIMEOUT_RESULT_CODE) ||
+           (mlmStaContext.resultCode == eSIR_SME_JOIN_DEAUTH_FROM_AP_DURING_ADD_STA
+            && tempLimSmeState == eLIM_SME_WT_REASSOC_STATE)
+          )
         {
             if(mlmStaContext.resultCode != eSIR_SME_SUCCESS )
             {

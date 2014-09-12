@@ -625,6 +625,103 @@ fail:
    kfree_skb(skb);
    return NETDEV_TX_OK;
 }
+
+/**============================================================================
+  @brief hdd_dhcp_pkt_info() -
+               Function to log DHCP pkt info
+
+  @param skb      : [in]  pointer to OS packet (sk_buff)
+  @return         : None
+  ===========================================================================*/
+
+void hdd_dhcp_pkt_info(struct sk_buff *skb)
+{
+    /* port no 67 (0x43) or 68 (0x44) */
+
+    if (*((u8*)skb->data + BOOTP_MSG_OFFSET) == BOOTP_REQUEST_MSG)
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Request"));
+    else if (*((u8*)skb->data + BOOTP_MSG_OFFSET) == BOOTP_RESPONSE_MSG)
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Response"));
+    else
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("DHCP invalid"));
+
+    hddLog(VOS_TRACE_LEVEL_INFO,
+            FL("DHCP Dest Addr: %pM Src Addr %pM "
+                " source port : %d, dest port : %d"),
+            skb->data, (skb->data + 6),
+            ntohs(*((u16*)((u8*)skb->data + UDP_SRC_PORT_OFFSET))),
+            ntohs(*((u16*)((u8*)skb->data + UDP_DEST_PORT_OFFSET))));
+
+    if ((skb->data[DHCP_OPTION53_OFFSET] == DHCP_OPTION53) &&
+        (skb->data[DHCP_OPTION53_LENGTH_OFFSET] == DHCP_OPTION53_LENGTH)) {
+
+        switch (skb->data[DHCP_OPTION53_STATUS_OFFSET]) {
+        case DHCPDISCOVER:
+            hddLog(VOS_TRACE_LEVEL_INFO,FL("DHCP DISCOVER"));
+            break;
+        case DHCPREQUEST:
+            hddLog(VOS_TRACE_LEVEL_INFO,FL("DHCP REQUEST"));
+            break;
+        case DHCPOFFER:
+            hddLog(VOS_TRACE_LEVEL_INFO,FL("DHCP OFFER"));
+            break;
+        case DHCPACK:
+            hddLog(VOS_TRACE_LEVEL_INFO,FL("DHCP ACK"));
+            break;
+        case DHCPNAK:
+            hddLog(VOS_TRACE_LEVEL_INFO,FL("DHCP NACK"));
+            break;
+        case DHCPRELEASE:
+            hddLog(VOS_TRACE_LEVEL_INFO,FL("DHCP RELEASE"));
+            break;
+        case DHCPINFORM:
+            hddLog(VOS_TRACE_LEVEL_INFO,FL("DHCP INFORM"));
+            break;
+
+        default:
+            hddLog(VOS_TRACE_LEVEL_INFO,
+                    "%s: DHCP Not Defined OPTION53 : %d", __func__,
+                    skb->data[DHCP_OPTION53_STATUS_OFFSET]);
+        }
+    }
+}
+
+/**============================================================================
+  @brief hdd_dump_dhcp_pkt() -
+               Function to dump DHCP packets in TX and RX path.
+
+  @param skb      : [in]  pointer to OS packet (sk_buff)
+  @param path     : [in]  bool indicating TX/RX path
+  @return         : None
+  ===========================================================================*/
+void hdd_dump_dhcp_pkt(struct sk_buff *skb, int path)
+{
+
+    if ((ntohs(*((u16*)((u8*)skb->data + ETH_TYPE_OFFSET)))
+                == ETH_TYPE_IP_PKT) ||
+            (ntohs(*((u8*)skb->data + PROTOCOL_OFFSET)) == UDP_PROTOCOL)) {
+
+        /* IP protocol 12 bytes of mac addresses in 802.3 header */
+        if ( ntohs(*((u16*)((u8*)skb->data + UDP_DEST_PORT_OFFSET))) ==
+                BOOTP_SERVER_PORT  ||
+                ntohs(*((u16*)((u8*)skb->data + UDP_DEST_PORT_OFFSET))) ==
+                BOOTP_CLIENT_PORT  ||
+                ntohs(*((u16*)((u8*)skb->data + UDP_SRC_PORT_OFFSET))) ==
+                BOOTP_SERVER_PORT  ||
+                ntohs(*((u16*)((u8*)skb->data + UDP_SRC_PORT_OFFSET))) ==
+                BOOTP_CLIENT_PORT ) {
+
+            if (path == TX_PATH) {
+                hddLog(VOS_TRACE_LEVEL_INFO, FL("DHCP TX PATH"));
+            } else {
+                hddLog(VOS_TRACE_LEVEL_INFO, FL("DHCP RX PATH"));
+            }
+
+            hdd_dhcp_pkt_info(skb);
+        }
+    }
+}
+
 /**============================================================================
   @brief hdd_hard_start_xmit() - Function registered with the Linux OS for
   transmitting packets. There are 2 versions of this function. One that uses
@@ -649,6 +746,7 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    v_BOOL_t granted;
    v_U8_t STAId = WLAN_MAX_STA_COUNT;
    hdd_station_ctx_t *pHddStaCtx = &pAdapter->sessionCtx.station;
+   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
    v_BOOL_t txSuspended = VOS_FALSE;
 
    ++pAdapter->hdd_stats.hddTxRxStats.txXmitCalled;
@@ -777,6 +875,12 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    }
 
    spin_unlock(&pAdapter->wmm_tx_queue[ac].lock);
+
+   if ( ( NULL != pHddCtx ) && pHddCtx->cfg_ini->enableDhcpDebug )
+   {
+       hdd_dump_dhcp_pkt(skb, TX_PATH);
+   }
+
    if (VOS_TRUE == txSuspended)
    {
        VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
@@ -1838,6 +1942,10 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
          }
        */
 #endif
+      if ( pHddCtx->cfg_ini->enableDhcpDebug )
+      {
+          hdd_dump_dhcp_pkt(skb, RX_PATH);
+      }
 
       skb->dev = pAdapter->dev;
       skb->protocol = eth_type_trans(skb, skb->dev);
