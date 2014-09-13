@@ -349,6 +349,18 @@ otm_hdmi_ret_t ipil_hdmi_crtc_mode_set_program_dspregs(hdmi_device_t *dev,
 		break;
 
 	case OTM_HDMI_SCALE_ASPECT:
+		if (fb_width / (float)adjusted_mode->width > 1.5 ||
+			fb_height / (float)adjusted_mode->height > 1.5) {
+			/* panel fitter does not support scaling greater than 1.5 */
+			src_image_hor = sprite_width;
+			src_image_vert = sprite_height;
+
+			hdmi_write32(IPIL_PFIT_CONTROL,
+					hdmi_read32(IPIL_PFIT_CONTROL) &
+							~IPIL_PFIT_ENABLE);
+			break;
+		}
+
 		sprite_pos_x = 0;
 		sprite_pos_y = 0;
 		sprite_height = fb_height;
