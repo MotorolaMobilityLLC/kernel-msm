@@ -1814,9 +1814,6 @@ void pmcDoEnterWowlCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
    /* Call Wowl callback routine. */
    if (pMac->pmc.enterWowlCallbackRoutine != NULL)
       pMac->pmc.enterWowlCallbackRoutine(pMac->pmc.enterWowlCallbackContext, callbackStatus);
-
-   pMac->pmc.enterWowlCallbackRoutine = NULL;
-   pMac->pmc.enterWowlCallbackContext = NULL;
 }
 
 

@@ -4429,7 +4429,7 @@ static int __iw_setint_getnone(struct net_device *dev,
            switch (set_value)
            {
               case 0x00:
-                 hdd_exit_wowl(pAdapter);
+                 hdd_exit_wowl(pAdapter, eWOWL_EXIT_USER);
                  break;
               case 0x01:
               case 0x02:

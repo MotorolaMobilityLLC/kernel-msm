@@ -407,7 +407,11 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
 
-                        if (curr_peer->discovery_attempt++ <
+                        /* Ignore discovery attempt if External Control is enabled, that
+                         * is, peer is forced. In that case, continue discovery attempt
+                         * regardless attempt count
+                         */
+                        if (curr_peer->isForcedPeer || curr_peer->discovery_attempt++ <
                                  pHddTdlsCtx->threshold_config.discovery_tries_n) {
                             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "TDLS UNKNOWN discover ");
 #ifdef CONFIG_TDLS_IMPLICIT
@@ -1140,6 +1144,13 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
             "Rssi Threshold not met: "MAC_ADDRESS_STR" rssi = %d threshold = %d ",
             MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->rssi,
             pHddTdlsCtx->threshold_config.rssi_trigger_threshold);
+
+            /* if RSSI threshold is not met then allow further discovery
+             * attempts by decrementing count for the last attempt
+             */
+            if (curr_peer->discovery_attempt)
+                curr_peer->discovery_attempt--;
+
             wlan_hdd_tdls_set_peer_link_status(curr_peer,
                                                eTDLS_LINK_IDLE,
                                                eTDLS_LINK_UNSPECIFIED);

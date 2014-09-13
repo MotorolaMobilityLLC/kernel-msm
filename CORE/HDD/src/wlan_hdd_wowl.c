@@ -93,7 +93,7 @@ static void hdd_wowl_wakeIndication_callback( void *pContext,
 {
   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Wake Reason %d",
       __func__, pWakeReasonInd->ulReason );
-  hdd_exit_wowl((hdd_adapter_t *)pContext);
+  hdd_exit_wowl( (hdd_adapter_t *)pContext, eWOWL_EXIT_WAKEIND );
 }
 #endif
 
@@ -572,15 +572,17 @@ v_BOOL_t hdd_enter_wowl (hdd_adapter_t *pAdapter, v_BOOL_t enable_mp, v_BOOL_t e
 /**============================================================================
   @brief hdd_exit_wowl() - Function which will disable WoWL
 
+  @param wowlExitSrc: To know is wowl exiting because of wakeup pkt or user
+                      explicitly disabling WoWL
   @return           : FALSE if any errors encountered
                     : TRUE otherwise
   ===========================================================================*/
-v_BOOL_t hdd_exit_wowl (hdd_adapter_t*pAdapter) 
+v_BOOL_t hdd_exit_wowl (hdd_adapter_t*pAdapter, tWowlExitSource wowlExitSrc)
 {
   tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
   eHalStatus halStatus;
 
-  halStatus = sme_ExitWowl( hHal );
+  halStatus = sme_ExitWowl( hHal, wowlExitSrc );
   if ( !HAL_STATUS_SUCCESS( halStatus ) )
   {
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,

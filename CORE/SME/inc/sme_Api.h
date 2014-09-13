@@ -1499,7 +1499,7 @@ extern eHalStatus sme_EnterWowl (
                                   not even completed.
             eHAL_STATUS_SUCCESS  Request accepted to exit WoWLAN mode. 
   ---------------------------------------------------------------------------*/
-extern eHalStatus sme_ExitWowl (tHalHandle hHal);
+extern eHalStatus sme_ExitWowl (tHalHandle hHal, tWowlExitSource wowlExitSrc);
 
 /* ---------------------------------------------------------------------------
 
@@ -3438,4 +3438,7 @@ VOS_STATUS sme_SendTdlsChanSwitchReq(tHalHandle hHal,
                                      tANI_U8 tdlsSwMode);
 
 void sme_SetMiracastMode (tHalHandle hHal,tANI_U8 mode);
+
+void sme_resetCoexEevent(tHalHandle hHal);
+
 #endif //#if !defined( __SME_API_H )
