@@ -3159,6 +3159,14 @@ REG_VARIABLE( CFG_EXTSCAN_ENABLE, WLAN_PARAM_Integer,
                 CFG_MAX_UAPSD_INACT_INTVL_DEFAULT,
                 CFG_MAX_UAPSD_INACT_INTVL_MIN,
                 CFG_MAX_UAPSD_INACT_INTVL_MAX ),
+
+   REG_VARIABLE( CFG_DEBUG_DHCP, WLAN_PARAM_Integer,
+                  hdd_config_t, enableDhcpDebug,
+                  VAR_FLAGS_OPTIONAL |
+                  VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                  CFG_DEBUG_DHCP_DEFAULT,
+                  CFG_DEBUG_DHCP_DISABLE,
+                  CFG_DEBUG_DHCP_ENABLE ),
 };
 
 /*

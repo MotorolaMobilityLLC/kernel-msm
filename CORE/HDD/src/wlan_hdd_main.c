@@ -8249,6 +8249,48 @@ void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx)
    } while (0);
 
 }
+void wlan_hdd_send_svc_nlink_msg(int type, void *data, int len)
+{
+       struct sk_buff *skb;
+       struct nlmsghdr *nlh;
+       tAniMsgHdr *ani_hdr;
+
+       skb = alloc_skb(NLMSG_SPACE(WLAN_NL_MAX_PAYLOAD), GFP_KERNEL);
+
+       if(skb == NULL) {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                               "%s: alloc_skb failed", __func__);
+               return;
+       }
+
+       nlh = (struct nlmsghdr *)skb->data;
+       nlh->nlmsg_pid = 0;  /* from kernel */
+       nlh->nlmsg_flags = 0;
+       nlh->nlmsg_seq = 0;
+       nlh->nlmsg_type = WLAN_NL_MSG_SVC;
+
+       ani_hdr = NLMSG_DATA(nlh);
+       ani_hdr->type = type;
+
+       switch(type) {
+               case WLAN_SVC_SAP_RESTART_IND:
+                       ani_hdr->length = 0;
+                       nlh->nlmsg_len = NLMSG_LENGTH((sizeof(tAniMsgHdr)));
+                       skb_put(skb, NLMSG_SPACE(sizeof(tAniMsgHdr)));
+                       break;
+               default:
+                       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                       "Attempt to send unknown nlink message %d", type);
+                       kfree_skb(skb);
+                       return;
+       }
+
+    nl_srv_bcast(skb);
+
+    return;
+}
+
+
 
 /**---------------------------------------------------------------------------
 
