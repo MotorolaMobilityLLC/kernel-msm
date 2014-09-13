@@ -1300,7 +1300,7 @@ static int samsung_dsi_panel_event_handler(int event)
 		}
 		break;
 	default:
-		pr_err("%s : unknown event (%d)\n", __func__, event);
+		pr_debug("%s : unknown event (%d)\n", __func__, event);
 		break;
 	}
 
