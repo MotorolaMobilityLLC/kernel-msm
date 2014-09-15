@@ -909,11 +909,10 @@ static void snd_atvr_timer_callback(unsigned long data)
 			 * Fall through into next state. */
 		} else if ((jiffies - atvr_snd->previous_jiffies) >
 			   atvr_snd->timeout_jiffies) {
-			atvr_snd->timer_state = TIMER_STATE_AFTER_DECODE;
-			/* Disable BTLE thread. */
-			s_substream_for_btle = NULL;
 			snd_atvr_log("audio UNDERFLOW detected\n");
-			/* Fall through into next state. */
+			/*  Not fatal.  Reset timeout. */
+			atvr_snd->previous_jiffies = jiffies;
+			break;
 		} else
 			break;
 
