@@ -644,7 +644,7 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 
 	mutex_unlock(&ctrl->ambientcmd_mutex);
 
-	printk("MDSS:%s:---\n", __func__);
+	//printk("MDSS:%s:---\n", __func__);
 	return 0;
 }
 

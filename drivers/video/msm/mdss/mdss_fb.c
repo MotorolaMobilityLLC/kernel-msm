@@ -933,7 +933,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
-		printk("MDSS:%s:+++,blank_mode=FB_BLANK_UNBLANK,mfd->panel_power_on=%d\n",__func__,mfd->panel_power_on);
+		printk("MDSS:FB:blank_mode=%d,mfd->pwr=%d\n",blank_mode,mfd->panel_power_on);
 		if (!mfd->panel_power_on && mfd->mdp.on_fnc) {
 			ret = mfd->mdp.on_fnc(mfd);
 			if (ret == 0) {
@@ -956,7 +956,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_NORMAL:
 	case FB_BLANK_POWERDOWN:
 	default:
-		printk("MDSS:%s:+++,blank_mode=%d,mfd->panel_power_on=%d\n",__func__,blank_mode,mfd->panel_power_on);
+		printk("MDSS:FB:blank_mode=%d,pwr=%d\n",blank_mode,mfd->panel_power_on);
 		if (mfd->panel_power_on && mfd->mdp.off_fnc) {
 			int curr_pwr_state;
 
