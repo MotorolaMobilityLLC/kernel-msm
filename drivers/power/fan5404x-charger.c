@@ -198,6 +198,11 @@ static struct fan5404x_reg fan_regs[] = {
 	{"WD CONTROL", REG_WD_CONTROL},
 };
 
+struct fan_wakeup_source {
+	struct wakeup_source	source;
+	unsigned long	disabled;
+};
+
 struct fan5404x_chg {
 	struct i2c_client *client;
 	struct device *dev;
@@ -229,9 +234,34 @@ struct fan5404x_chg {
 	struct dentry	    *debug_root;
 	u32    peek_poke_address;
 	struct fan5404x_regulator	otg_vreg;
+	int ext_temp_volt_mv;
+	int ext_temp_soc;
+	int ext_high_temp;
+	int temp_check;
+	int bms_check;
+	int voreg_mv;
+	struct fan_wakeup_source fan_wake_source;
 };
 
 static struct fan5404x_chg *the_chip;
+static void fan5404x_set_chrg_path_temp(struct fan5404x_chg *chip);
+static int fan5404x_check_temp_range(struct fan5404x_chg *chip);
+
+static void fan_stay_awake(struct fan_wakeup_source *source)
+{
+	if (__test_and_clear_bit(0, &source->disabled)) {
+		__pm_stay_awake(&source->source);
+		pr_debug("enabled source %s\n", source->source.name);
+	}
+}
+
+static void fan_relax(struct fan_wakeup_source *source)
+{
+	if (!__test_and_set_bit(0, &source->disabled)) {
+		__pm_relax(&source->source);
+		pr_debug("disabled source %s\n", source->source.name);
+	}
+}
 
 static int __fan5404x_read(struct fan5404x_chg *chip, int reg,
 				uint8_t *val)
@@ -506,7 +536,7 @@ static int start_charging(struct fan5404x_chg *chip)
 	}
 
 	/* Set OREG to 4.35V */
-	rc = fan5404x_set_oreg(chip, 4350);
+	rc = fan5404x_set_oreg(chip, chip->voreg_mv);
 	if (rc)
 		return rc;
 
@@ -518,15 +548,23 @@ static int start_charging(struct fan5404x_chg *chip)
 		return rc;
 	}
 
-	/* Set CE# Low (enable), TE Low (disable) */
-	rc = fan5404x_masked_write(chip, REG_CONTROL1,
-				CONTROL1_TE | CONTROL1_CE_N, 0);
-	if (rc) {
-		dev_err(chip->dev, "start-charge: Failed to set TE/CE_N\n");
-		return rc;
-	}
+	/* Check battery charging temp thresholds */
+	chip->temp_check = fan5404x_check_temp_range(chip);
 
-	chip->charging = true;
+	if (chip->temp_check || chip->ext_high_temp)
+		fan5404x_set_chrg_path_temp(chip);
+	else {
+		/* Set CE# Low (enable), TE Low (disable) */
+		rc = fan5404x_masked_write(chip, REG_CONTROL1,
+				CONTROL1_TE | CONTROL1_CE_N, 0);
+		if (rc) {
+			dev_err(chip->dev,
+				"start-charge: Failed to set TE/CE_N\n");
+			return rc;
+		}
+
+		chip->charging = true;
+	}
 
 	return 0;
 }
@@ -738,6 +776,96 @@ static int fan5404x_get_prop_batt_capacity(struct fan5404x_chg *chip)
 	return cap;
 }
 
+#define DEFAULT_BATT_VOLT_MV	4000
+static int fan5404x_get_prop_batt_voltage_now(struct fan5404x_chg *chip,
+						int *volt_mv)
+{
+	int rc = 0;
+	union power_supply_propval ret = {0, };
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	if (chip->bms_psy) {
+		rc = chip->bms_psy->get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_VOLTAGE_NOW, &ret);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't get batt voltage\n");
+			*volt_mv = DEFAULT_BATT_VOLT_MV;
+			return rc;
+		}
+
+		*volt_mv = ret.intval / 1000;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int fan5404x_temp_charging(struct fan5404x_chg *chip, int enable)
+{
+	int rc = 0;
+
+	pr_debug("charging enable = %d\n", enable);
+
+	rc = fan5404x_masked_write(chip, REG_CONTROL1, CONTROL1_CE_N,
+				enable ? 0 : CONTROL1_CE_N);
+	if (rc) {
+		dev_err(chip->dev, "start-charge: Failed to set CE_N\n");
+		return rc;
+	}
+
+	chip->charging = enable;
+
+	return 0;
+}
+
+static void fan5404x_set_chrg_path_temp(struct fan5404x_chg *chip)
+{
+	if (chip->batt_cool && !chip->ext_high_temp)
+		fan5404x_set_oreg(chip, chip->ext_temp_volt_mv);
+	else
+		fan5404x_set_oreg(chip, chip->voreg_mv);
+
+	if (chip->ext_high_temp ||
+		chip->batt_cold ||
+		chip->batt_hot ||
+		chip->chg_done_batt_full)
+		fan5404x_temp_charging(chip, 0);
+	else
+		fan5404x_temp_charging(chip, 1);
+}
+
+static int fan5404x_check_temp_range(struct fan5404x_chg *chip)
+{
+	int batt_volt;
+	int batt_soc;
+	int ext_high_temp = 0;
+
+	if (fan5404x_get_prop_batt_voltage_now(chip, &batt_volt))
+		return 0;
+
+	batt_soc = fan5404x_get_prop_batt_capacity(chip);
+
+	if (((chip->batt_cool) &&
+		(batt_volt > chip->ext_temp_volt_mv)) ||
+		((chip->batt_warm) &&
+		(batt_soc > chip->ext_temp_soc)))
+			ext_high_temp = 1;
+
+	if (chip->ext_high_temp != ext_high_temp) {
+		chip->ext_high_temp = ext_high_temp;
+
+		dev_warn(chip->dev, "Ext High = %s\n",
+			chip->ext_high_temp ? "High" : "Low");
+
+		return 1;
+	}
+
+	return 0;
+}
+
 static int fan5404x_get_prop_batt_health(struct fan5404x_chg *chip)
 {
 	int batt_health = POWER_SUPPLY_HEALTH_UNKNOWN;
@@ -810,12 +938,19 @@ static int fan5404x_batt_set_property(struct power_supply *psy,
 		power_supply_changed(&chip->batt_psy);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		fan_stay_awake(&chip->fan_wake_source);
 		cancel_delayed_work(&chip->heartbeat_work);
 		schedule_delayed_work(&chip->heartbeat_work,
 			msecs_to_jiffies(0));
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
+		fan_stay_awake(&chip->fan_wake_source);
 		fan5404x_set_prop_batt_health(chip, val->intval);
+		fan5404x_check_temp_range(chip);
+		fan5404x_set_chrg_path_temp(chip);
+		cancel_delayed_work(&chip->heartbeat_work);
+		schedule_delayed_work(&chip->heartbeat_work,
+			msecs_to_jiffies(0));
 		break;
 	default:
 		return -EINVAL;
@@ -922,10 +1057,22 @@ static void heartbeat_work(struct work_struct *work)
 		container_of(work, struct fan5404x_chg,
 					heartbeat_work.work);
 
-	power_supply_changed(&chip->batt_psy);
+	int batt_health = fan5404x_get_prop_batt_health(chip);
 
+	dev_dbg(chip->dev, "HB Pound!\n");
+
+	if ((batt_health == POWER_SUPPLY_HEALTH_WARM) ||
+	    (batt_health == POWER_SUPPLY_HEALTH_COOL) ||
+	    (batt_health == POWER_SUPPLY_HEALTH_OVERHEAT) ||
+	    (batt_health == POWER_SUPPLY_HEALTH_COLD))
+		fan5404x_check_temp_range(chip);
+
+	fan5404x_set_chrg_path_temp(chip);
+
+	power_supply_changed(&chip->batt_psy);
 	schedule_delayed_work(&chip->heartbeat_work,
 			      msecs_to_jiffies(60000));
+	fan_relax(&chip->fan_wake_source);
 }
 
 static int fan5404x_of_init(struct fan5404x_chg *chip)
@@ -937,6 +1084,21 @@ static int fan5404x_of_init(struct fan5404x_chg *chip)
 				&chip->bms_psy_name);
 	if (rc)
 		chip->bms_psy_name = NULL;
+
+	rc = of_property_read_u32(node, "fairchild,ext-temp-volt-mv",
+						&chip->ext_temp_volt_mv);
+	if (rc < 0)
+		chip->ext_temp_volt_mv = 0;
+
+	rc = of_property_read_u32(node, "fairchild,ext-temp-soc",
+						&chip->ext_temp_soc);
+	if (rc < 0)
+		chip->ext_temp_soc = 0;
+
+	rc = of_property_read_u32(node, "fairchild,oreg-voltage-mv",
+						&chip->voreg_mv);
+	if (rc < 0)
+		chip->voreg_mv = 4350;
 
 	return 0;
 }
@@ -1696,6 +1858,8 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
+	wakeup_source_init(&chip->fan_wake_source.source, "fan5404x_wake");
+
 	INIT_DELAYED_WORK(&chip->heartbeat_work,
 					heartbeat_work);
 
@@ -1856,6 +2020,7 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 unregister_batt_psy:
 	power_supply_unregister(&chip->batt_psy);
 	fan5404x_regulator_deinit(chip);
+	wakeup_source_trash(&chip->fan_wake_source.source);
 	devm_kfree(chip->dev, chip);
 	the_chip = NULL;
 
@@ -1870,6 +2035,7 @@ static int fan5404x_charger_remove(struct i2c_client *client)
 	debugfs_remove_recursive(chip->debug_root);
 	power_supply_unregister(&chip->batt_psy);
 	fan5404x_regulator_deinit(chip);
+	wakeup_source_trash(&chip->fan_wake_source.source);
 	devm_kfree(chip->dev, chip);
 	the_chip = NULL;
 
