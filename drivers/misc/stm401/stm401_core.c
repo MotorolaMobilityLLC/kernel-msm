@@ -1206,12 +1206,36 @@ static int stm401_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void stm401_process_ignored_interrupts_locked(
+						struct stm401_data *ps_stm401)
+{
+	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
+
+	ps_stm401->ignore_wakeable_interrupts = false;
+
+	if (ps_stm401->ignored_interrupts) {
+		ps_stm401->ignored_interrupts = 0;
+		wake_lock_timeout(&ps_stm401->wakelock, HZ);
+		queue_work(ps_stm401->irq_work_queue,
+			&ps_stm401->irq_wake_work);
+	}
+}
+
 static int stm401_resume(struct device *dev)
 {
 	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
 	dev_dbg(dev, "%s\n", __func__);
 
 	mutex_lock(&ps_stm401->lock);
+
+	/* During a quickwake interrupts will be set as ignored at the end of
+	   quickpeek_work_func while the system is being re-suspended.  It is
+	   possible for the quickwake suspend process to fail and the system to
+	   be immediately resumed.  Since resume_early was already called before
+	   the quickwake started (and therefore before quickpeek_work_func
+	   disabled interrupts) we must re-enable interrupts here. */
+	stm401_process_ignored_interrupts_locked(ps_stm401);
+
 	ps_stm401->is_suspended = false;
 
 	if (ps_stm401->pending_wake_work) {
@@ -1236,17 +1260,10 @@ static int stm401_resume_early(struct device *dev)
 
 	mutex_lock(&ps_stm401->lock);
 
-	ps_stm401->ignore_wakeable_interrupts = false;
-
 	/* If we received wakeable interrupts between suspend_late and
 	   suspend_noirq, we need to reschedule the irq work to be handled now
 	   that interrupts have been re-enabled. */
-	if (ps_stm401->ignored_interrupts) {
-		ps_stm401->ignored_interrupts = 0;
-		wake_lock_timeout(&ps_stm401->wakelock, HZ);
-		queue_work(ps_stm401->irq_work_queue,
-			&ps_stm401->irq_wake_work);
-	}
+	stm401_process_ignored_interrupts_locked(ps_stm401);
 
 	mutex_unlock(&ps_stm401->lock);
 
