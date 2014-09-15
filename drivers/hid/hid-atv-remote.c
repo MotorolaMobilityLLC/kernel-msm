@@ -224,13 +224,6 @@ static int pcm_dev_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int pcm_dev_release(struct inode *inode, struct file *file)
-{
-	/* reset for next */
-	large_pcm_index = 0;
-	return 0;
-}
-
 static ssize_t pcm_dev_read(struct file *file, char __user *buffer,
 			    size_t count, loff_t *ppos)
 {
@@ -248,7 +241,6 @@ static ssize_t pcm_dev_read(struct file *file, char __user *buffer,
 static const struct file_operations pcm_fops = {
 	.owner = THIS_MODULE,
 	.open = pcm_dev_open,
-	.release = pcm_dev_release,
 	.llseek = no_llseek,
 	.read = pcm_dev_read,
 };
@@ -259,13 +251,6 @@ static struct miscdevice adpcm_dev_node;
 static int adpcm_dev_open(struct inode *inode, struct file *file)
 {
 	/* nothing special to do here right now. */
-	return 0;
-}
-
-static int adpcm_dev_release(struct inode *inode, struct file *file)
-{
-	/* reset for next */
-	raw_adpcm_index = 0;
 	return 0;
 }
 
@@ -285,7 +270,6 @@ static ssize_t adpcm_dev_read(struct file *file, char __user *buffer,
 static const struct file_operations adpcm_fops = {
 	.owner = THIS_MODULE,
 	.open = adpcm_dev_open,
-	.release = adpcm_dev_release,
 	.llseek = no_llseek,
 	.read = adpcm_dev_read,
 };
@@ -296,13 +280,6 @@ static struct miscdevice mSBC_dev_node;
 static int mSBC_dev_open(struct inode *inode, struct file *file)
 {
 	/* nothing special to do here right now. */
-	return 0;
-}
-
-static int mSBC_dev_release(struct inode *inode, struct file *file)
-{
-	/* reset for next */
-	raw_mSBC_index = 0;
 	return 0;
 }
 
@@ -322,7 +299,6 @@ static ssize_t mSBC_dev_read(struct file *file, char __user *buffer,
 static const struct file_operations mSBC_fops = {
 	.owner = THIS_MODULE,
 	.open = mSBC_dev_open,
-	.release = mSBC_dev_release,
 	.llseek = no_llseek,
 	.read = mSBC_dev_read,
 };
