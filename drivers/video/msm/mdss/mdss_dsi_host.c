@@ -1354,13 +1354,6 @@ void mdss_dsi_debug_check_te(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	if (!gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
-		if (!ctrl_pdata->ndx)
-			pr_err("%s:%d, Disp_te gpio not specified\n",
-							__func__, __LINE__);
-		return;
-	}
-
 	pr_info(" ============ start waiting for TE ============\n");
 	for (te_count = 0; te_count < te_max; te_count++) {
 		rc = gpio_get_value(ctrl_pdata->disp_te_gpio);
