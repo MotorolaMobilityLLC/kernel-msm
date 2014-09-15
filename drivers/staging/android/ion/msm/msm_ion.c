@@ -101,6 +101,10 @@ static struct ion_heap_desc ion_heap_meta[] = {
 	{
 		.id	= ION_ADSP_HEAP_ID,
 		.name	= ION_ADSP_HEAP_NAME,
+	},
+	{
+		.id	= ION_MMNS_HEAP_ID,
+		.name	= ION_MMNS_HEAP_NAME,
 	}
 };
 #endif
