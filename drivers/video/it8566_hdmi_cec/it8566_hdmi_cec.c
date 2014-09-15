@@ -36,6 +36,7 @@
 #define CEC_IRQ_GPIO_PIN	55
 /*debug*/
 /*#define CEC_REV_WORK*/
+/*#define DEBUG*/
 
 #define CEC_WRITE_DATA_LEN	17
 #define CEC_READ_DATA_LEN	17
@@ -44,6 +45,8 @@
 #define CEC_LA_CMD		0x92
 #define CEC_CHECK_STATUS_CMD	0x93
 #define CEC_GET_VERSION_CMD	0x94
+
+#define NUM_CHECK_TX_BUSY	25
 
 static struct i2c_client	*cec_client;
 static struct miscdevice hdmi_cec_device;
@@ -60,15 +63,16 @@ static void cec_rev_worker(struct work_struct *work)
 #ifndef CEC_REV_WORK
 	char *envp[2] = { "CEC_MSG_RCEV=1", NULL };
 	/*send event to user*/
-	dev_info(&cec_client->dev, "%s:send CEC_MSG_RCEV uevent\n", __func__);
+	dev_dbg(&cec_client->dev, "%s:send CEC_MSG_RCEV uevent\n", __func__);
 	kobject_uevent_env(&hdmi_cec_device.this_device->kobj
 			, KOBJ_CHANGE, envp);
 #else
-	unsigned char header, opcode, op_len;
+	unsigned char header, opcode;
+	int op_len;
 	unsigned char data[14] = {0};
 	int i, result;
 
-	dev_dbg(&cec_client->dev, "%s\n", __func__);
+	dev_info(&cec_client->dev, "%s\n", __func__);
 
 	result = cec_i2c_read(&header, &opcode, data, &op_len);
 	if (result < 0) {
@@ -125,6 +129,26 @@ static inline int it8566_setup_irq(void)
 }
 
 /*cec transmit/receive ++*/
+static unsigned char check_it8566_status(void)
+{
+	int st = 0;
+
+	if (!cec_client) {
+		dev_err(&cec_client->dev, "no cec_client\n");
+		return 0;
+	}
+
+	st = i2c_smbus_read_byte_data(cec_client, CEC_CHECK_STATUS_CMD);
+
+	if (st < 0) {
+		dev_err(&cec_client->dev,
+			"%s:i2c transfer FAIL: err=%d\n", __func__, st);
+		return RESULT_CEC_BUS_ERR;
+	}
+	dev_dbg(&cec_client->dev, "%s:status=0x%x\n", __func__, st);
+	return (unsigned char)st;
+}
+
 static int cec_i2c_write(unsigned char header, unsigned char opcode,
 		unsigned char opds[], int opds_len)
 {
@@ -164,6 +188,63 @@ static int cec_i2c_write(unsigned char header, unsigned char opcode,
 	return 0;
 }
 
+static unsigned char cec_i2c_write_with_status_check(unsigned char header,
+		unsigned char opcode, unsigned char *body_operads,
+		int body_operads_len)
+{
+		unsigned char ck_st;
+		int chk_tx_busy_cnt = 0;
+		int err;
+		bool is_broadcast, nak;
+
+		/* 1. check if rx busy or bus err*/
+		ck_st = check_it8566_status();
+		if ((ck_st & RESULT_RX_BUSY) == RESULT_RX_BUSY) {
+			dev_info(&cec_client->dev, "check it8566 rx busy, abort cec tx\n");
+			return RESULT_RX_BUSY;
+		} else if ((ck_st & RESULT_CEC_BUS_ERR) == RESULT_CEC_BUS_ERR) {
+			dev_info(&cec_client->dev, "check it8566 tx bus err, abort cec tx\n");
+			return RESULT_CEC_BUS_ERR;
+		}
+
+		/* 2. cec tx */
+		err = cec_i2c_write(header, opcode,
+				body_operads, body_operads_len);
+		if (err < 0)
+			return RESULT_CEC_BUS_ERR;
+
+		/* 3. check tx busy, wait for it8566 done cec transfer */
+		do {
+			/* at least start bit + header */
+			/*about 4.5 + 10*2.4 = 28.5ms */
+			usleep_range(20000, 20500);
+			ck_st = check_it8566_status();
+			chk_tx_busy_cnt++;
+		} while ((ck_st & RESULT_TX_BUSY) == RESULT_TX_BUSY &&
+			  chk_tx_busy_cnt < NUM_CHECK_TX_BUSY);
+
+		/* 4. check cec transfer result */
+		is_broadcast = (header & 0xF) == 0xF;
+		nak = (ck_st & RESULT_CEC_NACK) == RESULT_CEC_NACK;
+		if ((ck_st & RESULT_TX_BUSY) == RESULT_TX_BUSY) {
+			dev_err(&cec_client->dev, "cec tx busy\n");
+			return RESULT_CEC_BUS_ERR;
+		} else if ((ck_st & RESULT_CEC_BUS_ERR) == RESULT_CEC_BUS_ERR) {
+			dev_info(&cec_client->dev, "cec tx bus err\n");
+			return RESULT_CEC_BUS_ERR;
+		} else if ((!is_broadcast && nak) || (is_broadcast && !nak)) {
+			/* For broadcast messages the sense of
+			   the ACK bit is inverted:
+			   A ‘0’ read by the Initiator indicates that
+			   one or more devices have rejected the message */
+			dev_info(&cec_client->dev, "cec tx direct nack / bcst reject\n");
+			return RESULT_CEC_NACK;
+		} else {
+			dev_dbg(&cec_client->dev, "cec tx success\n");
+			return RESULT_TX_SUCCESS;
+		}
+}
+
 /*
    number of elements of to_data[] passed in must be 14
 */
@@ -186,7 +267,7 @@ static int cec_i2c_read(unsigned char *to_header, unsigned char *to_opcode,
 		return -1;
 	}
 
-	for (i = 0; i < rx_data[0]; i++)
+	for (i = 0; i < rx_data[0] + 1; i++)
 		dev_dbg(&cec_client->dev, "rx_data[%d]= 0x%x\n", i, rx_data[i]);
 
 	/*may only receive header*/
@@ -199,26 +280,6 @@ static int cec_i2c_read(unsigned char *to_header, unsigned char *to_opcode,
 		to_data[i] = rx_data[i+3];
 
 	return 0;
-}
-
-static unsigned char check_it8566_status(void)
-{
-	int st = 0;
-
-	if (!cec_client) {
-		dev_err(&cec_client->dev, "no cec_client\n");
-		return 0;
-	}
-
-	st = i2c_smbus_read_byte_data(cec_client, CEC_CHECK_STATUS_CMD);
-
-	if (st < 0) {
-		dev_err(&cec_client->dev,
-			"%s:i2c transfer FAIL: err=%d\n", __func__, st);
-		return RESULT_CEC_BUS_ERR;
-	}
-	dev_dbg(&cec_client->dev, "%s:status=0x%x\n", __func__, st);
-	return (unsigned char)st;
 }
 /*cec transmit/receive --*/
 
@@ -245,7 +306,6 @@ static int set_logical_address(unsigned char la)
 	return 0;
 }
 
-#ifdef DEBUG
 static int get_logical_address(unsigned char *to_la)
 {
 	int la;
@@ -266,35 +326,7 @@ static int get_logical_address(unsigned char *to_la)
 	*to_la = (unsigned char)la;
 	return 0;
 }
-#endif
 /* set/get LA -- */
-
-#ifdef DEBUG
-static int get_cec_version(unsigned char ver[])
-{
-	unsigned char rx_buf[8] = {0};
-	int err;
-
-	if (!cec_client) {
-		dev_err(&cec_client->dev, "no cec_client\n");
-		return -1;
-	}
-
-	err = i2c_smbus_read_i2c_block_data(cec_client,
-			CEC_GET_VERSION_CMD, 8, rx_buf);
-	if (err < 0) {
-		dev_err(&cec_client->dev,
-			"%s:i2c_transfer FAIL...: err=%d\n", __func__, err);
-		return -1;
-	}
-
-	dev_dbg(&cec_client->dev, "%s:get ver=%s --\n", __func__, rx_buf);
-
-	memcpy(ver, rx_buf, sizeof(rx_buf));
-
-	return 0;
-}
-#endif
 
 /* dbg_cec_tx ++ */
 static ssize_t dbg_cec_tx_write(struct file *file,
@@ -308,7 +340,6 @@ static ssize_t dbg_cec_tx_write(struct file *file,
 
 	unsigned char user_header = 0, user_opcode = 0;
 	int user_data_len = 0;
-	unsigned char ck_st = 0;
 
 	size_t buf_size = min(count, sizeof(buf)-1);
 
@@ -328,39 +359,16 @@ static ssize_t dbg_cec_tx_write(struct file *file,
 	user_opcode = user_data[1];
 	user_data_len = user_data[2];
 
+	if (user_opcode == 0)
+		user_data_len = user_data_len - 1;
+
 	dev_info(&cec_client->dev,
 		"user_header=0x%x, user_opcode=0x%x, user_data_len=%d\n",
 		user_header, user_opcode, user_data_len);
 
-	if (user_opcode == 0)
-		user_data_len = user_data_len - 1;
 
-	/* 1. check if rx busy or bus err*/
-	ck_st = check_it8566_status();
-	if ((ck_st & RESULT_RX_BUSY) == RESULT_RX_BUSY) {
-		dev_err(&cec_client->dev, "check it8566 rx busy, abort cec tx\n");
-		return buf_size;
-	} else if ((ck_st & RESULT_CEC_BUS_ERR) == RESULT_CEC_BUS_ERR) {
-		dev_err(&cec_client->dev, "check it8566 tx bus err, abort cec tx\n");
-		return buf_size;
-	}
-
-	/* 2. cec tx */
-	cec_i2c_write(user_header, user_opcode, &user_data[3], user_data_len);
-	/* 3. check tx busy */
-	do {
-		/* at least start bit + header */
-		/*about 4.5 + 10*2.4 = 28.5ms */
-		usleep_range(20000, 20500);
-		ck_st = check_it8566_status();
-	} while ((ck_st & RESULT_TX_BUSY) == RESULT_TX_BUSY);
-
-	if ((ck_st & (RESULT_CEC_BUS_ERR | RESULT_CEC_NACK)) == 0)
-		dev_info(&cec_client->dev, "cec tx success\n");
-	else if ((ck_st & RESULT_CEC_BUS_ERR) == RESULT_CEC_BUS_ERR)
-		dev_info(&cec_client->dev, "cec tx bus err\n");
-	else if ((ck_st & RESULT_CEC_NACK) == RESULT_CEC_NACK)
-		dev_info(&cec_client->dev, "cec tx nack\n");
+	cec_i2c_write_with_status_check(user_header, user_opcode,
+			&user_data[3], user_data_len);
 
 	return buf_size;
 }
@@ -384,7 +392,7 @@ static ssize_t dbg_cec_rx_read(struct file *file,
 	if (result < 0)
 		goto err;
 
-	dev_info(&cec_client->dev, "%s: header=0x%x, opcode=0x%x, len=0x%x,"
+	dev_dbg(&cec_client->dev, "%s: header=0x%x, opcode=0x%x, len=0x%x,"
 		"data1=0x%x, data2=0x%x, data3=0x%x\n",
 		__func__, header, opcode, len, data[0], data[1], data[3]);
 	snprintf(buf, 64,
@@ -405,15 +413,12 @@ static const struct file_operations dbg_cec_rx_fops = {
 };
 /* dbg_cec_rx -- */
 
-/* dbg_cec_set_la ++ */
-static ssize_t dbg_cec_set_la_write(struct file *file,
+/* dbg_cec_la ++ */
+static ssize_t dbg_cec_la_write(struct file *file,
 		const char __user *user_buf, size_t count, loff_t *ppos)
 {
 	char buf[32];
 	unsigned char la;
-#ifdef DEBUG
-	unsigned char get_la;
-#endif
 	int result;
 
 	size_t buf_size = min(count, sizeof(buf)-1);
@@ -430,21 +435,34 @@ static ssize_t dbg_cec_set_la_write(struct file *file,
 	result = set_logical_address(la);
 	if (result < 0)
 		dev_err(&cec_client->dev, "set la fail\n");
-#ifdef DEBUG
+	return buf_size;
+}
+
+static ssize_t dbg_cec_la_read(struct file *file,
+		char __user *user_buf, size_t count, loff_t *ppos)
+{
+	unsigned char get_la = 0xf;
+	char buf[32];
+	int result;
+
 	result = get_logical_address(&get_la);
 	if (result < 0)
 		dev_err(&cec_client->dev, "get la fail\n");
 
 	dev_info(&cec_client->dev, "get la:0x%x\n", get_la);
-#endif
-	return buf_size;
+
+	snprintf(buf, 32, "%d\n", get_la);
+
+	return simple_read_from_buffer(user_buf, count, ppos,
+			buf, strlen(buf));
 }
 
-static const struct file_operations dbg_cec_set_la_fops = {
+static const struct file_operations dbg_cec_la_fops = {
 	.open           = simple_open,
-	.write           = dbg_cec_set_la_write,
+	.write           = dbg_cec_la_write,
+	.read            = dbg_cec_la_read,
 };
-/* dbg_cec_set_la -- */
+/* dbg_cec_la -- */
 
 /* ioctl ++ */
 static long hdmi_cec_ioctl(struct file *file, unsigned int cmd,
@@ -455,11 +473,10 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd,
 	case IT8566_HDMI_CEC_IOCTL_SEND_MESSAGE:
 	{
 		struct it8566_cec_msg cec_msg;
-		int err;
+		int rst;
 #ifdef DEBUG
 		int i;
 #endif
-		unsigned char ck_st = 0;
 		unsigned char header = 0, opcode = 0, body_len = 0;
 		unsigned char *body_operads;
 
@@ -469,14 +486,14 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd,
 			return -EFAULT;
 		}
 #ifdef DEBUG
-		dev_dbg(&cec_client->dev, "from user: init:0x%x, dest:0x%x, len:0x%x\n",
+		dev_info(&cec_client->dev, "from user: init:0x%x, dest:0x%x, len:0x%x\n",
 				cec_msg.initiator,
 				cec_msg.destination,
 				cec_msg.length);
 		for (i = 0; i < cec_msg.length; i++)
-			dev_dbg(&cec_client->dev,
+			dev_info(&cec_client->dev,
 				", body[%d]= 0x%x", i, cec_msg.body[i]);
-		dev_dbg(&cec_client->dev, "\n");
+		dev_info(&cec_client->dev, "\n");
 #endif
 		header = (cec_msg.initiator & 0xF) << 4 |
 			(cec_msg.destination & 0xF);
@@ -488,48 +505,10 @@ static long hdmi_cec_ioctl(struct file *file, unsigned int cmd,
 		if (body_len > 1)
 			body_operads = &cec_msg.body[1];
 
-		/* 1. check if rx busy or bus err*/
-		ck_st = check_it8566_status();
-		if ((ck_st & RESULT_RX_BUSY) == RESULT_RX_BUSY) {
-			dev_err(&cec_client->dev, "check it8566 rx busy, abort cec tx\n");
-			cec_msg.result = RESULT_RX_BUSY;
-			goto end;
-		} else if ((ck_st & RESULT_CEC_BUS_ERR) == RESULT_CEC_BUS_ERR) {
-			dev_err(&cec_client->dev, "check it8566 tx bus err, abort cec tx\n");
-			cec_msg.result = RESULT_CEC_BUS_ERR;
-			goto end;
-		}
+		rst = cec_i2c_write_with_status_check(header, opcode,
+				body_operads, body_len - 1);
+		cec_msg.result = rst;
 
-		/* 2. cec tx */
-		err = cec_i2c_write(header, opcode,
-				body_operads, body_len-1);
-		if (err < 0)
-			return -EBUSY;
-
-		/* 3. check tx busy, wait for it8566 done cec transfer */
-		do {
-			/* at least start bit + header */
-			/*about 4.5 + 10*2.4 = 28.5ms */
-			usleep_range(20000, 20500);
-			ck_st = check_it8566_status();
-		} while ((ck_st & RESULT_TX_BUSY) == RESULT_TX_BUSY);
-
-		/* 4. check cec transfer result */
-		if ((ck_st & (RESULT_CEC_BUS_ERR | RESULT_CEC_NACK)) == 0) {
-			dev_dbg(&cec_client->dev, "cec tx cec success\n");
-			cec_msg.result = RESULT_TX_SUCCESS;
-			goto end;
-		} else if ((ck_st & RESULT_CEC_BUS_ERR) == RESULT_CEC_BUS_ERR) {
-			dev_dbg(&cec_client->dev, "cec tx bus err\n");
-			cec_msg.result = RESULT_CEC_BUS_ERR;
-			goto end;
-		} else if ((ck_st & RESULT_CEC_NACK) == RESULT_CEC_NACK) {
-			dev_dbg(&cec_client->dev, "cec tx cec nack\n");
-			cec_msg.result = RESULT_CEC_NACK;
-			goto end;
-		}
-
-end:
 		if (copy_to_user((void __user *)arg, &cec_msg,
 				sizeof(cec_msg))) {
 			dev_err(&cec_client->dev, "pass arg fail\n");
@@ -559,14 +538,14 @@ end:
 		for (i = 0; i < body_operads_len; i++)
 			cec_msg.body[i+1] = body_operads[i];
 #ifdef DEBUG
-		dev_dbg(&cec_client->dev, "to user: init:0x%x, dest:0x%x, len:0x%x\n",
+		dev_info(&cec_client->dev, "to user: init:0x%x, dest:0x%x, len:0x%x\n",
 				cec_msg.initiator,
 				cec_msg.destination,
 				cec_msg.length);
 		for (i = 0; i < cec_msg.length; i++)
-			dev_dbg(&cec_client->dev,
+			dev_info(&cec_client->dev,
 				", body[%d]= 0x%x", i, cec_msg.body[i]);
-		dev_dbg(&cec_client->dev, "\n");
+		dev_info(&cec_client->dev, "\n");
 #endif
 		if (copy_to_user((void __user *)arg, &cec_msg,
 				sizeof(cec_msg))) {
@@ -677,8 +656,8 @@ static void add_debugfs(void)
 		dev_err(&cec_client->dev, "can not create debugfs cec_rx\n");
 		return;
 	}
-	d = debugfs_create_file("cec_set_la", S_IWUSR , cecdir,
-			NULL, &dbg_cec_set_la_fops);
+	d = debugfs_create_file("cec_la", S_IWUSR , cecdir,
+			NULL, &dbg_cec_la_fops);
 	if (!d) {
 		dev_err(&cec_client->dev, "can not create debugfs cec_rx\n");
 		return;
