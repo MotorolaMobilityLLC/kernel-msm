@@ -20,6 +20,16 @@
 	compatible = "qcom,apq8084-quark",
 		   "qcom,apq8084-moto",
 		   "qcom,apq8084";
+
+	memory {
+		mmns_mem: mmns_region@0 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0 0 0 0xc800000>;
+			label = "mmns_mem";
+		};
+	};
 };
 
 &pcie0 {
@@ -193,6 +203,16 @@
 &soc {
 	sound {
 		qcom,ext_hs_detect = "tpa6165";
+	};
+
+	qcom,ion {
+		qcom,ion-heap@30 { /* MMNS HEAP */
+			compatible = "qcom,msm-ion-reserve";
+			reg = <30>;
+			qcom,heap-align = <0x1000>;
+			linux,contiguous-region = <&mmns_mem>;
+			qcom,ion-heap-type = "CARVEOUT";
+		};
 	};
 };
 
