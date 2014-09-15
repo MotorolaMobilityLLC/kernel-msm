@@ -1248,7 +1248,7 @@
 		qcom,gpio-mosi = <&msmgpio 0 0>;
 		qcom,gpio-miso = <&msmgpio 1 0>;
 		qcom,gpio-clk  = <&msmgpio 3 0>;
-		qcom,gpio-cs0  = <&msmgpio 22 0>;
+		qcom,gpio-cs0  = <&msmgpio 2 0>;
 
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;
