@@ -207,17 +207,10 @@ ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
 endif
 
 # MSM8610 Motorola Devices
-dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1b.dtb
-dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1b-v2.dtb
-dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1c.dtb
-dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1c-v2.dtb
-dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1d.dtb
-dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1d-v2.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p2.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p2a1.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p2b.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p2b1.dtb
-dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-otus-p1.dtb
 
 # MSMSAMARIUM
    zreladdr-$(CONFIG_ARCH_MSMSAMARIUM)	:= 0x00008000
