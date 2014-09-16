@@ -356,6 +356,7 @@ struct mdss_panel_info {
 	int blank_state;
 	bool hbm_feature_enabled;
 	bool hbm_state;
+	bool is_split_display;
 
 	uint32_t panel_dead;
 
