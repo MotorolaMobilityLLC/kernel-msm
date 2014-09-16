@@ -1,27 +1,19 @@
 /*
- * Copyright (C) 2013 Intel Finland Oy
- * All Rights Reserved.
+ * Copyright (C) 2013  Intel Corporation. All rights reserved.
  *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * The above copyright notice and this permission notice (including the
- * next paragraph) shall be included in all copies or substantial
- * portions of the Software.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE COPYRIGHT OWNER(S) AND/OR ITS SUPPLIERS BE
- * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the
+ * Free Software Foundation, Inc.,
+ * 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #include <linux/kernel.h>
@@ -718,8 +710,6 @@ static int compat_sep_ioctl_sep_rpc(struct file *filp, unsigned int cmd,
 		return -EFAULT;
 
 	ret = sep_ioctl(filp, cmd, (unsigned long)user_params);
-	if (ret)
-		return ret;
 
 	if (__get_user(up32.error_info, &user_params->error_info))
 		return -EFAULT;
@@ -728,7 +718,7 @@ static int compat_sep_ioctl_sep_rpc(struct file *filp, unsigned int cmd,
 		       &((struct sep_rpc_params_32 *)arg)->error_info))
 		return -EFAULT;
 
-	return 0;
+	return ret;
 }
 
 #pragma pack(push)
@@ -797,6 +787,8 @@ static int compat_sep_ioctl_alloc_mem4dma(struct file *filp, unsigned int cmd,
 		return -EFAULT;
 
 	ret = sep_ioctl(filp, cmd, (unsigned long)user_params);
+	if (ret)
+		return ret;
 
 	if (__get_user(up32.memref_id, &user_params->memref_id))
 		return -EFAULT;
@@ -804,7 +796,7 @@ static int compat_sep_ioctl_alloc_mem4dma(struct file *filp, unsigned int cmd,
 	if (copy_to_user((void __user *)arg, &up32, sizeof(up32)))
 		return -EFAULT;
 
-	return 0;
+	return ret;
 }
 
 #pragma pack(push)
@@ -885,7 +877,7 @@ static int compat_sep_ioctl_get_iv(struct file *filp, unsigned int cmd,
 	if (copy_to_user((void __user *)arg, &up32, sizeof(up32)))
 		return -EFAULT;
 
-	return 0;
+	return ret;
 }
 
 #pragma pack(push)
@@ -959,6 +951,7 @@ static int compat_sep_ioctl_sepapp_session_close(struct file *filp,
 #pragma pack(push)
 #pragma pack(4)
 struct sepapp_command_invoke_params_32 {
+	u8 app_uuid[DXDI_SEPAPP_UUID_SIZE]; /*[in] */
 	int session_id; /*[in] */
 	u32 command_id; /*[in] */
 	struct dxdi_sepapp_params command_params; /*[in/out] */
@@ -982,7 +975,10 @@ static int compat_sep_ioctl_sepapp_command_invoke(struct file *filp,
 	if (!access_ok(VERIFY_WRITE, user_params, sizeof(*user_params)))
 		return -EFAULT;
 
-	if (__put_user(up32.session_id, &user_params->session_id)
+	if (copy_to_user(&user_params->app_uuid,
+			 &up32.app_uuid,
+			 DXDI_SEPAPP_UUID_SIZE)
+	    || __put_user(up32.session_id, &user_params->session_id)
 	    || __put_user(up32.command_id, &user_params->command_id)
 	    || copy_to_user(&user_params->command_params,
 			    &up32.command_params,
@@ -990,6 +986,8 @@ static int compat_sep_ioctl_sepapp_command_invoke(struct file *filp,
 		return -EFAULT;
 
 	ret = sep_ioctl(filp, cmd, (unsigned long)user_params);
+	if (ret)
+		return ret;
 
 
 	if (__get_user(up32.sep_ret_origin, &user_params->sep_ret_origin)
@@ -1002,7 +1000,7 @@ static int compat_sep_ioctl_sepapp_command_invoke(struct file *filp,
 	if (copy_to_user((void __user *)arg, &up32, sizeof(up32)))
 		return -EFAULT;
 
-	return 0;
+	return ret;
 }
 
 static sep_ioctl_compat_t *sep_compat_ioctls[] = {

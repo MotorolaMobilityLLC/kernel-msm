@@ -644,6 +644,7 @@ struct dxdi_sepapp_session_close_params {
 };
 
 struct dxdi_sepapp_command_invoke_params {
+	u8 app_uuid[DXDI_SEPAPP_UUID_SIZE];	/*[in] */
 	int session_id;	/*[in] */
 	u32 command_id;	/*[in] */
 	struct dxdi_sepapp_params command_params;	/*[in/out] */

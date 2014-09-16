@@ -16,20 +16,16 @@
  * 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-
-#ifndef __SEP_COMPAT_IOCTL_H__
-#define __SEP_COMPAT_IOCTL_H__
-
-#include <linux/fs.h>
+/* When defined in a policy for the command ID this will lock down access to the
+   entire TA by restricting who can open a session to the TA. */
+#define RESTRICT_OPEN -666
 
 /**
- * \brief drm_compat_ioctl
- *
- * \param filp
- * \param cmd
- * \param arg
- * \return 0 on success or a negtive number on failure
+ * Determine if the currently connected client is allowed to access the
+ * TA, using the specified command
+ * @uuid The TA that is being connected to
+ * @cmd_id The command that is being invoked in the TA,
+ * RESTRICT_OPEN if it is an Open command
+ * return true if access is allowed
  */
-long sep_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
-
-#endif
+bool is_permitted(const u8 *uuid, int cmd_id);

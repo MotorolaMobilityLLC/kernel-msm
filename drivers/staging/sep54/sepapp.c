@@ -36,6 +36,7 @@
 #include "sep_power.h"
 #include "crypto_api.h"
 #include "sepapp.h"
+#include "sepfs.h"
 
 /* Global drvdata to be used by kernel clients via dx_sepapp_ API */
 static struct sep_drvdata *kapps_drvdata;
@@ -702,6 +703,10 @@ int sep_ioctl_sepapp_session_open(struct sep_client_ctx *client_ctx,
 		return -EFAULT;
 	}
 
+	/* Check the MAC ACL to see if this client is allow to open a session */
+	if (!is_permitted(params.app_uuid, -666))
+		return -EPERM;
+
 	op_ctx_init(&op_ctx, client_ctx);
 	rc = sepapp_session_open(&op_ctx,
 				 params.app_uuid, params.auth_method,
@@ -825,6 +830,10 @@ int sep_ioctl_sepapp_command_invoke(struct sep_client_ctx *client_ctx,
 		pr_err("Failed reading input parameters");
 		return -EFAULT;
 	}
+
+	/* Check the MAC ACL to see if this client is allow to invoke command */
+	if (!is_permitted(params.app_uuid, params.command_id))
+		return -EPERM;
 
 	op_ctx_init(&op_ctx, client_ctx);
 	rc = sepapp_command_invoke(&op_ctx,
