@@ -694,6 +694,17 @@
 &spmi_bus {
 	qcom,pm8950@0 {
 		/delete-node/ qcom,leds@a300;
+		qcom,power-on@800 {
+			qcom,pon_1 {
+				qcom,pon-type = <0>;
+				qcom,support-reset = <1>;
+				qcom,pull-up = <1>;
+				qcom,s1-timer = <6720>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <8>;
+				linux,code = <116>;
+			};
+		};
 	};
 
 	qcom,pmi8950@2 {
