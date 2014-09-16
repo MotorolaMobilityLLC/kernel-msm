@@ -1133,6 +1133,9 @@ fail:
 	slab_unlock(page);
 	spin_unlock_irqrestore(&n->list_lock, *flags);
 	slab_fix(s, "Object at 0x%p not freed", object);
+#ifdef CONFIG_SLUB_DEBUG_ON
+	BUG();
+#endif
 	return NULL;
 }
 
