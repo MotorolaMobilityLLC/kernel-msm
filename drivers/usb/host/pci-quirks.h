@@ -18,5 +18,7 @@ static inline void usb_amd_dev_put(void) {}
 static inline void usb_disable_xhci_ports(struct pci_dev *xhci_pdev) {}
 #endif  /* CONFIG_PCI */
 int usb_quirk_ignore_comp_plc(void __iomem *ptr, int ports);
+int quirk_intel_xhci_pr_init(bool init);
+int quirk_intel_xhci_port_reset(struct device *dev, bool post);
 
 #endif  /*  __LINUX_USB_PCI_QUIRKS_H  */

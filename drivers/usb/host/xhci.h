@@ -1550,6 +1550,7 @@ struct xhci_hcd {
 #define XHCI_LPM_DISABLE_QUIRK	(1 << 18)
 #define XHCI_COMP_PLC_QUIRK		(1 << 19)
 #define XHCI_RESET		(1 << 20)
+#define XHCI_PORT_RESET		(1 << 21)
 	unsigned int		num_active_eps;
 	unsigned int		limit_active_eps;
 	/* There are two roothubs to keep track of bus suspend info for */

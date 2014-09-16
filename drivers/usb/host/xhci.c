@@ -538,6 +538,10 @@ int xhci_init(struct usb_hcd *hcd)
 		compliance_mode_recovery_timer_init(xhci);
 	}
 
+	/* initialize port reset environment */
+	if (xhci->quirks & XHCI_PORT_RESET)
+		quirk_intel_xhci_pr_init(true);
+
 	return retval;
 }
 
@@ -758,6 +762,9 @@ void xhci_stop(struct usb_hcd *hcd)
 		xhci_dbg(xhci, "%s: compliance mode recovery timer deleted\n",
 				__func__);
 	}
+
+	if (xhci->quirks & XHCI_PORT_RESET)
+		quirk_intel_xhci_pr_init(false);
 
 	if (xhci->quirks & XHCI_AMD_PLL_FIX)
 		usb_amd_dev_put();

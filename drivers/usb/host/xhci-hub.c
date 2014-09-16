@@ -24,6 +24,7 @@
 #include <asm/unaligned.h>
 
 #include "xhci.h"
+#include "pci-quirks.h"
 
 #define	PORT_WAKE_BITS	(PORT_WKOC_E | PORT_WKDISC_E | PORT_WKCONN_E)
 #define	PORT_RWC_BITS	(PORT_CSC | PORT_PEC | PORT_WRC | PORT_OCC | \
@@ -859,11 +860,24 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			spin_lock_irqsave(&xhci->lock, flags);
 			break;
 		case USB_PORT_FEAT_RESET:
+			if (xhci->quirks & XHCI_PORT_RESET)
+				quirk_intel_xhci_port_reset(hcd->self.controller, false);
+
 			temp = (temp | PORT_RESET);
 			xhci_writel(xhci, temp, port_array[wIndex]);
 
 			temp = xhci_readl(xhci, port_array[wIndex]);
 			xhci_dbg(xhci, "set port reset, actual port %d status  = 0x%x\n", wIndex, temp);
+			if (xhci->quirks & XHCI_PORT_RESET) {
+				int delay_time;
+				for (delay_time = 0; delay_time < 800; delay_time += 10) {
+					if (!(temp & PORT_RESET))
+						break;
+					mdelay(2);
+					temp = xhci_readl(xhci, port_array[wIndex]);
+				}
+				quirk_intel_xhci_port_reset(hcd->self.controller, true);
+			}
 			break;
 		case USB_PORT_FEAT_REMOTE_WAKE_MASK:
 			xhci_set_remote_wake_mask(xhci, port_array,
