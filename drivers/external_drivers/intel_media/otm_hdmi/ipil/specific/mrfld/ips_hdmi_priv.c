@@ -643,7 +643,8 @@ void ips_hdmi_restore_and_enable_display(hdmi_device_t *dev)
 	hdmi_write32(IPS_VBLANK_B, dev->reg_state.saveVBLANK_B);
 	hdmi_write32(IPS_VSYNC_B, dev->reg_state.saveVSYNC_B);
 	hdmi_write32(IPS_PIPEBSRC, dev->reg_state.savePIPEBSRC);
-	hdmi_write32(IPS_DSPBSTAT, dev->reg_state.saveDSPBSTATUS);
+	/* Don't restore pipestat as it will override register set during DPMS on */
+	/* hdmi_write32(IPS_DSPBSTAT, dev->reg_state.saveDSPBSTATUS);*/
 
 	/*set up the plane*/
 	hdmi_write32(IPS_DSPBSTRIDE, dev->reg_state.saveDSPBSTRIDE);
