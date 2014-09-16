@@ -850,8 +850,6 @@ int fetch_last_kmsg_size(char* buf, int buflen, int option){
     if(ret)
         printk("[adbg] Fill LK content failed %d\n", ret);
 
-    printk("[adbg] Fetch last kmsg finished with size %d\n", last_kmsg_length);
-
     return size;
 }
 
@@ -875,8 +873,6 @@ static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
 
    	if (g_cat_amount_left == 0){
         /* Start print bootreason and reset read head */
-        printk("[adbg] Read LK: Start print bootreason, len left %d\n", length);
-        
         reason_size = snprintf(reason, 100, 
             "\n\nNo errors detected\nBoot info:\nLast boot reason: %s\n", bootreason);
         if(reason_size < length){
@@ -887,8 +883,6 @@ static ssize_t asuslastkmsg_read(struct file *file, char __user *buf,
                 length--;
    	        }
         }
-
-        printk("%s", reason);
         
 		g_cat_read_pos = 0;
 		g_cat_amount_left = last_kmsg_length;
@@ -1076,7 +1070,6 @@ void save_last_shutdown_log(char* filename)
 
     // File name setting
 	sprintf(messages_unparsed, "/asdf/LastShutdown_%lu.%06lu_unparsed.txt", (unsigned long) t, nanosec_rem / 1000);
-	printk("[adbg] %s(), messages_unparsed: %s\n", __func__, messages_unparsed);
 
     sprintf(messages, "/asdf/LastShutdown_%lu.%06lu.txt", (unsigned long) t, nanosec_rem / 1000);
 
@@ -1098,9 +1091,7 @@ void save_last_shutdown_log(char* filename)
         printk("[adbg] [ASDF] save_last_shutdown_error: [%d]\n", file_handle_unparsed);
     }
     
-    deinitKernelEnv();          
-
-    pr_info("[adbg] %s()--\n", __func__);
+    deinitKernelEnv();
 }
 
 void get_last_shutdown_log(void)
@@ -1109,9 +1100,6 @@ void get_last_shutdown_log(void)
 
     last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER +
         (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
-
-    printk("[adbg] get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n",
-        (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #if ASUS_LAST_KMSG
@@ -1168,18 +1156,14 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 	}
 	else if(strncmp(messages, "get_asdf_log", strlen("get_asdf_log")) == 0)
 	{
-		printk(KERN_WARNING "[ASDF] Now dumping ASDF last shutdown log\n");
 		last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + 
 		    (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
-		printk(KERN_WARNING "[ASDF] last_shutdown_log_addr=0x%08x, value=0x%08x\n", 
-		    (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
 
 		if(!asus_asdf_set)
 		{
 			asus_asdf_set = 1;
 			get_last_shutdown_log();
-			printk(KERN_WARNING "[ASDF] get_last_shutdown_log: last_shutdown_log_addr=0x%08x, value=0x%08x\n", 
-			    (unsigned int)last_shutdown_log_addr, *last_shutdown_log_addr);
+			printk(KERN_WARNING "[adbg] Get ASDF log if any\n");
 
 			(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
 		}
@@ -1229,12 +1213,11 @@ static struct mutex mA;
 static void do_write_event_worker(struct work_struct *work)
 {
     char buffer[256];
-    
+
     while(first == 0 || suspend_in_progress)
     {
-        printk("[adbg] waiting first\n");
         msleep(1000);
-    }   
+    }
     
     if(IS_ERR((const void*)g_hfileEvtlog))
     {
@@ -1257,7 +1240,6 @@ static void do_write_event_worker(struct work_struct *work)
                     printk("[adbg] 1. open %s failed during renaming old one, err:%d\n", ASUS_EVTLOG_PATH".txt", g_hfileEvtlog);
             }    
             sprintf(buffer, "\n\n---------------System Boot----%s---------\n", ASUS_SW_VER);
-            printk("\n[adbg]------------System Boot----%s---------\n", ASUS_SW_VER);
 
             sys_write(g_hfileEvtlog, buffer, strlen(buffer));
             sys_close(g_hfileEvtlog);
@@ -1302,7 +1284,6 @@ static void do_write_event_worker(struct work_struct *work)
             }
             while(suspend_in_progress)
             {
-                printk("[adbg] waiting for resume\n");
                 msleep(1000);
             }    
             sys_write(g_hfileEvtlog, pchar, strlen(pchar));
