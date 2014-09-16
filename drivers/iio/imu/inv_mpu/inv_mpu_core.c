@@ -3020,7 +3020,7 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 
 /* Uncomment to utilize suspend_noirq.
    It is platform dependent whether or not suspend_irq is called */
-#define USE_SUSPEND_NOIRQ
+// #define USE_SUSPEND_NOIRQ
 
 /*
  * inv_mpu_resume(): resume method for this driver.
