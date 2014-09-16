@@ -477,7 +477,7 @@ static long msm_vfe46_reset_hardware(struct vfe_device *vfe_dev)
 {
 	init_completion(&vfe_dev->reset_complete);
 	msm_camera_io_w_mb(0x1FF, vfe_dev->vfe_base + 0x18);
-	return wait_for_completion_interruptible_timeout(
+	return wait_for_completion_timeout(
 		&vfe_dev->reset_complete, msecs_to_jiffies(50));
 }
 
@@ -977,7 +977,7 @@ static long msm_vfe46_axi_halt(struct vfe_device *vfe_dev)
 	msm_camera_io_w_mb(halt_mask, vfe_dev->vfe_base + 0x60);
 	init_completion(&vfe_dev->halt_complete);
 	msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x374);
-	return wait_for_completion_interruptible_timeout(
+	return wait_for_completion_timeout(
 		&vfe_dev->halt_complete, msecs_to_jiffies(500));
 }
 
