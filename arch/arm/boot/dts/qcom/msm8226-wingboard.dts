@@ -1,0 +1,98 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+#include "msm8226-v1.dtsi"
+#include "msm8226-memory.dtsi"
+#include "msm8226-qseecom.dtsi"
+#include "msm8226-720p-mtp.dtsi"
+/include/ "dsi-panel-mot-cmi-720p-video.dtsi"
+/include/ "dsi-panel-mot-lgd-720p-video.dtsi"
+
+/ {
+	model = "Motorola MSM 8226 Falcon";
+	compatible = "qcom,msm8226-mtp", "qcom,msm8226", "qcom,mtp";
+	qcom,msm-id = <0x91 0x42 0x283B0>;  /* Wingboard */
+};
+
+&soc {
+	qcom,msm-thermal {
+		status = "disabled";
+	};
+
+	qcom,wcnss-wlan@fb000000 {
+		status = "disabled";
+	};
+
+	vddio_disp_vreg: vddio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vddio_disp";
+		gpio = <&msmgpio 34 0x0>;
+		parent-supply = <&pm8226_l8>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+};
+
+&sdhc_1 {
+	qcom,bus-speed-mode = "DDR_1p8v";
+};
+
+&mot_cmi_720p_vid_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_cmi_720p_vid_v1 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_cmi_720p_vid_v2 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_lgd_720p_vid_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_cmi_720p_vid_v1>;
+	vdd_disp-supply = <&pm8226_l28>;
+	vddio_disp-supply = <&vddio_disp_vreg>;
+};
+
+&i2c_5 {
+	/delete-node/ synaptics@20;
+
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <17 0>;
+		gpios = <&msmgpio 17 0>, /* IRQ */
+			<&msmgpio 16 0>; /* RESET */
+		touch_vdd-supply = <&pm8226_l28>;
+		synaptics,normal-mode = <1>;
+		synaptics,gpio-config;
+	};
+};
+
+&pm8226_l28 {
+        regulator-max-microvolt = <3400000>;
+        qcom,init-voltage = <3100000>;
+        regulator-boot-on;
+        regulator-always-on;
+};
+
+&pm8226_lvs1 {
+        regulator-always-on;
+};
