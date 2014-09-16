@@ -117,6 +117,7 @@
 
 	spi@f9923000 {
 		ethernet-switch@3 {
+			status = "disabled";
 			compatible = "micrel,ks8851";
 			reg = <3>;
 			interrupt-parent = <&msmgpio>;
