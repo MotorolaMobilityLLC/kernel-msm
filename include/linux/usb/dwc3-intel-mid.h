@@ -64,6 +64,9 @@ struct intel_dwc_otg_pdata {
 
 	/* WA for PMIC can't detect VBUS drop. */
 	int detect_vbus_drop;
+
+	/* Enable UTMI PHY WA for FS device detection issue */
+	int utmi_fs_det_wa;
 };
 
 /* timeout for disconnect from a suspended host */

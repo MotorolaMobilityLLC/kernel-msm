@@ -104,6 +104,7 @@ static struct intel_dwc_otg_pdata *get_otg_platform_data(struct pci_dev *pdev)
 			dwc_otg_pdata.using_vusbphy = 0;
 		} else {
 			dwc_otg_pdata.using_vusbphy = 1;
+			dwc_otg_pdata.utmi_fs_det_wa = 1;
 			dwc_otg_pdata.utmi_eye_calibration = 0x51801;
 		}
 		return &dwc_otg_pdata;

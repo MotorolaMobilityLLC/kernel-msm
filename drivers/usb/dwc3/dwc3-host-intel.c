@@ -58,6 +58,17 @@ static struct dwc3_xhci_hcd {
 
 static void dwc3_host_quirks(struct device *dev, struct xhci_hcd *xhci)
 {
+	struct dwc_otg2 *otg = dwc3_get_otg();
+	struct intel_dwc_otg_pdata *data = NULL;
+
+	data = (struct intel_dwc_otg_pdata *)otg->otg_data;
+
+	if (otg && otg->otg_data)
+		data = (struct intel_dwc_otg_pdata *)otg->otg_data;
+
+	if (data && data->utmi_fs_det_wa)
+		xhci->quirks |= XHCI_PORT_RESET;
+
 	/*
 	 * As of now platform drivers don't provide MSI support so we ensure
 	 * here that the generic code does not try to make a pci_dev from our
