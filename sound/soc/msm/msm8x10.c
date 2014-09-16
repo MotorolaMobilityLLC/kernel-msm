@@ -31,6 +31,9 @@
 #include <linux/module.h>
 #include <mach/gpiomux.h>
 #include "../codecs/msm8x10-wcd.h"
+#ifdef CONFIG_SND_SOC_FSA8500
+#include "../codecs/fsa8500-core.h"
+#endif
 #define DRV_NAME "msm8x10-asoc-wcd"
 #ifdef CONFIG_SND_SOC_TPA6165A2
 #include "../codecs/tpa6165a2-core.h"
@@ -87,7 +90,7 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 }
 
 
-#ifndef CONFIG_SND_SOC_TPA6165A2
+#if !defined(CONFIG_SND_SOC_FSA8500) && !defined(CONFIG_SND_SOC_TPA6165A2)
 static void *def_msm8x10_wcd_mbhc_cal(void);
 #endif
 static int msm8x10_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
@@ -177,6 +180,39 @@ static const struct snd_soc_dapm_widget msm8x10_dapm_widgets[] = {
 static const struct snd_soc_dapm_route msm8x10_spk_map[] = {
 	{"Lineout amp", NULL, "SPK_OUT"},
 };
+
+#ifdef CONFIG_SND_SOC_FSA8500
+static int msm_ext_hp_event(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *kcontrol, int event)
+{
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		fsa8500_hp_event(1);
+	else
+		fsa8500_hp_event(0);
+	return 0;
+}
+
+static int msm_ext_mic_event(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *kcontrol, int event)
+{
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		fsa8500_mic_event(1);
+	else
+		fsa8500_mic_event(0);
+	return 0;
+}
+
+static const struct snd_soc_dapm_widget fsa8500_dapm_widgets[] = {
+	SND_SOC_DAPM_MIC("FSA8500 Headset Mic", msm_ext_mic_event),
+	SND_SOC_DAPM_HP("FSA8500 Headphone", msm_ext_hp_event),
+};
+
+static const struct snd_soc_dapm_route fsa8500_hp_map[] = {
+	{"FSA8500 Headphone", NULL, "HEADPHONE"},
+	{"MIC BIAS Internal2", NULL, "FSA8500 Headset Mic"},
+};
+#endif
+
 #ifdef CONFIG_SND_SOC_TPA6165A2
 static int msm_ext_hp_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
@@ -584,20 +620,6 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	pr_debug("%s(),dev_name%s\n", __func__, dev_name(cpu_dai->dev));
 	msm8x10_ext_spk_power_amp_init();
 
-#ifndef CONFIG_SND_SOC_TPA6165A2
-	mbhc_cfg.calibration = def_msm8x10_wcd_mbhc_cal();
-	if (mbhc_cfg.calibration) {
-		ret = msm8x10_wcd_hs_detect(codec, &mbhc_cfg);
-		if (ret) {
-			pr_err("%s: msm8x10_wcd_hs_detect failed\n", __func__);
-			goto exit;
-		}
-	} else {
-		ret = -ENOMEM;
-		goto exit;
-	}
-#endif
-
 	snd_soc_dapm_new_controls(dapm, msm8x10_dapm_widgets,
 				ARRAY_SIZE(msm8x10_dapm_widgets));
 
@@ -612,7 +634,24 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
-#ifdef CONFIG_SND_SOC_TPA6165A2
+#ifdef CONFIG_SND_SOC_FSA8500
+	ret = fsa8500_hs_detect(codec);
+	if (!ret) {
+		pr_debug("%s:fsa8500 hs det mechanism is used", __func__);
+		/* dapm controls for fsa8500 */
+		snd_soc_dapm_new_controls(dapm, fsa8500_dapm_widgets,
+				ARRAY_SIZE(fsa8500_dapm_widgets));
+
+		snd_soc_dapm_add_routes(dapm, fsa8500_hp_map,
+				ARRAY_SIZE(fsa8500_hp_map));
+
+		snd_soc_dapm_enable_pin(dapm, "FSA8500 Headphone");
+		snd_soc_dapm_enable_pin(dapm, "FSA8500 Headset Mic");
+		snd_soc_dapm_sync(dapm);
+	}
+
+	return ret;
+#elif defined CONFIG_SND_SOC_TPA6165A2
 	ret = tpa6165_hs_detect(codec);
 	if (!ret) {
 		pr_info("%s:tpa6165 hs det mechanism is used", __func__);
@@ -629,9 +668,19 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 	return ret;
-#endif
+#else
+	mbhc_cfg.calibration = def_msm8x10_wcd_mbhc_cal();
+	if (mbhc_cfg.calibration) {
+		ret = msm8x10_wcd_hs_detect(codec, &mbhc_cfg);
+		if (ret) {
+			pr_err("%s: msm8x10_wcd_hs_detect failed\n", __func__);
+			goto exit;
+		}
+	} else {
+		ret = -ENOMEM;
+		goto exit;
+	}
 
-#ifndef CONFIG_SND_SOC_TPA6165A2
 exit:
 	if (gpio_is_valid(ext_spk_amp_gpio))
 		gpio_free(ext_spk_amp_gpio);
@@ -640,7 +689,7 @@ exit:
 #endif
 }
 
-#ifndef CONFIG_SND_SOC_TPA6165A2
+#if !defined(CONFIG_SND_SOC_FSA8500) && !defined(CONFIG_SND_SOC_TPA6165A2)
 static void *def_msm8x10_wcd_mbhc_cal(void)
 {
 	void *msm8x10_wcd_cal;
