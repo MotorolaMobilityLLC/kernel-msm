@@ -1467,6 +1467,7 @@ static int32_t msm_ois_power_up(struct msm_ois_ctrl_t *o_ctrl)
 			gpio_direction_output(o_ctrl->ois_pwd, 1);
 		}
 	}
+	o_ctrl->ois_state = OIS_POWER_UP;
 	CDBG("Exit\n");
 	return rc;
 }
@@ -1559,6 +1560,7 @@ static int32_t msm_ois_i2c_probe(struct i2c_client *client,
 	ois_ctrl_t->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_OIS;
 	ois_ctrl_t->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x2;
 	msm_sd_register(&ois_ctrl_t->msm_sd);
+	ois_ctrl_t->ois_state = OIS_POWER_DOWN;
 	pr_info("msm_ois_i2c_probe: succeeded\n");
 	CDBG("Exit\n");
 
@@ -1647,6 +1649,7 @@ static int32_t msm_ois_platform_probe(struct platform_device *pdev)
 	msm_ois_t->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_OIS;
 	msm_ois_t->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x2;
 	msm_sd_register(&msm_ois_t->msm_sd);
+	msm_ois_t->ois_state = OIS_POWER_DOWN;
 	CDBG("Exit\n");
 	return rc;
 }
