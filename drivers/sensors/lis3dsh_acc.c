@@ -31,6 +31,7 @@
 #include	<linux/gpio.h>
 #include	<linux/interrupt.h>
 #include	<linux/slab.h>
+#include <linux/wakelock.h>
 #include <linux/sensors.h>
 
 #include	<linux/input/lis3dsh.h>
@@ -368,6 +369,8 @@ struct lis3dsh_acc_data {
 	int irq2;
 	struct work_struct irq2_work;
 	struct workqueue_struct *irq2_work_queue;
+	
+	struct wake_lock tilt_wakelock;
 };
 static struct lis3dsh_acc_data *sensor_data;
 
@@ -921,15 +924,9 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_1;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if(rbuf[0] == 0x80) {
-			if (atomic_read(&is_suspend) && xyz[2] < 0) {       //only trigger wake when watch face is facing upwards
-				printk("***********************Tilt to wake event\n");
-				input_report_key(acc->input_dev, KEY_POWER,1);
-				input_sync(acc->input_dev);
-				msleep(5);
-				input_report_key(acc->input_dev, KEY_POWER,0);
-				input_sync(acc->input_dev);
-			}
+		if((rbuf[0] == 0x80) && (xyz[2] < 0)) {       //only trigger wake when watch face is facing upwards
+			printk("***********************Tilt to wake event\n");
+			wake_lock_timeout(&acc->tilt_wakelock, (HZ/2));		//keep system awake to ensure tilt event receiver can obtain sensor event
 			lis3dsh_acc_report_values(acc, xyz);
 		}
 	}
@@ -1870,6 +1867,8 @@ static int lis3dsh_acc_probe(struct i2c_client *client, const struct i2c_device_
 
 	acc->client = client;
 	i2c_set_clientdata(client, acc);
+	
+	wake_lock_init(&acc->tilt_wakelock, WAKE_LOCK_SUSPEND, "tilt detect");
 
 	acc->pdata = kmalloc(sizeof(*acc->pdata), GFP_KERNEL);
 	if (acc->pdata == NULL) {
@@ -2040,6 +2039,7 @@ err_pdata_init:
 exit_kfree_pdata:
 	kfree(acc->pdata);
 err_mutexunlock:
+	wake_lock_destroy(&acc->tilt_wakelock);
 	mutex_unlock(&acc->lock);
 exit_check_functionality_failed:
 	pr_err("[lis3dsh] %s: Driver Init failed\n", __func__);
@@ -2081,6 +2081,7 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 		acc->pdata->exit();
 
 	kfree(acc->pdata);
+	wake_lock_destroy(&acc->tilt_wakelock);
 	kfree(acc);
 
 	chip_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
