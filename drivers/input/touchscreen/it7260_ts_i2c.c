@@ -411,6 +411,7 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 
 static void chipLowPowerMode(bool low)
 {
+	int allow_irq_wake = !(isDeviceSleeping);
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
 	uint8_t dummy;
 
@@ -418,18 +419,20 @@ static void chipLowPowerMode(bool low)
 		LOGI("low power %s\n", low ? "enter" : "exit");
 
 		if (low) {
-			if (device_may_wakeup(&gl_ts->client->dev)) {
-				isDeviceSleeping = true;
+			//if (device_may_wakeup(&gl_ts->client->dev)) {
+			if (allow_irq_wake){
 				smp_wmb();
 				enable_irq_wake(gl_ts->client->irq);
 			}
+			isDeviceSleeping = true;
 			i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
 		} else {
-			if (device_may_wakeup(&gl_ts->client->dev)) {
-				isDeviceSleeping = false;
+			//if (device_may_wakeup(&gl_ts->client->dev)) {
+			if (!allow_irq_wake){
 				smp_wmb();
 				disable_irq_wake(gl_ts->client->irq);
 			}
+			isDeviceSleeping = false;
 			i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
 		}
 	}
@@ -748,8 +751,8 @@ static uint64_t timeSubtractGuranteedPositive(uint64_t from, uint64_t what)
 
 static void sendPalmDownEvt(void)
 {
-	magic_key = MAGIC_KEY_PALM;
-	kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+	//magic_key = MAGIC_KEY_PALM;
+	//kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 	input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
 	input_sync(gl_ts->input_dev);
 }
@@ -766,6 +769,15 @@ static void sendWakeEvt(void)
 	input_sync(gl_ts->input_dev);
 	input_report_key(gl_ts->input_dev, KEY_WAKEUP, 0);
 	input_sync(gl_ts->input_dev);
+}
+
+static void sendPowerEvt(void)
+{
+	input_report_key(gl_ts->input_dev, KEY_POWER,1);
+	input_sync(gl_ts->input_dev);
+	msleep(5);
+	input_report_key(gl_ts->input_dev, KEY_POWER,0);
+	input_sync(gl_ts->input_dev);		
 }
 
 /* contrary to the name this code does not just read data - lots of processing happens */
@@ -790,8 +802,6 @@ static void readTouchDataPoint(void)
 		LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
 		return;
 	}
-
-	//LOGE("[IT7260] pointData.palm = %d\n",pointData.palm);
 	
 	if ((pointData.palm & PD_PALM_FLAG_BIT) && !hadPalmDown) {
 		hadPalmDown = true;
@@ -848,7 +858,7 @@ static void readTouchDataPoint(void)
 			hadFingerDown = true;
 
 		readFingerData(&x, &y, &pressure, pointData.fd);
-		if (!hadPalmDown){
+		if (!hadPalmDown && y > 14){
 			input_report_abs(gl_ts->input_dev, ABS_X, x);
 			input_report_abs(gl_ts->input_dev, ABS_Y, y);
 			input_report_key(gl_ts->input_dev, BTN_TOUCH, 1);
@@ -882,6 +892,7 @@ static irqreturn_t IT7260_ts_threaded_handler(int irq, void *devid)
 	smp_rmb();
 	if (isDeviceSleeping) {
 		isDeviceSleeping = false;
+		sendPowerEvt();
 		smp_wmb();
 		/* XXX: call readTouchDataPoint() here maybe ? */
 	} else {
@@ -990,6 +1001,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	set_bit(BTN_TOUCH, input_dev->keybit);
 	set_bit(KEY_SLEEP,input_dev->keybit);
 	set_bit(KEY_WAKEUP,input_dev->keybit);
+	set_bit(KEY_POWER,input_dev->keybit);
 	input_set_abs_params(input_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
 	input_set_abs_params(input_dev, ABS_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
 
