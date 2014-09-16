@@ -27,7 +27,7 @@
 #include <sound/jack.h>
 #include <sound/q6afe-v2.h>
 
-#include <qdsp6v2/msm-pcm-routing-v2.h>
+#include "qdsp6v2/msm-pcm-routing-v2.h"
 #include "qdsp6v2/q6core.h"
 #include "../codecs/wcd9xxx-common.h"
 #include "../codecs/wcd9306.h"

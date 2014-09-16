@@ -4,7 +4,7 @@
 */
 #ifndef __AXC_BATTERY_SERVICE_H__
 #define __AXC_BATTERY_SERVICE_H__
-#include <AXI_BatteryServiceFacade.h>
+#include "AXI_BatteryServiceFacade.h"
 #include "../fsm/AXC_Charging_FSM.h"
 #include "../gauge/axi_gauge.h"
 #include <linux/workqueue.h>
