@@ -5050,14 +5050,26 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
 {
     int ret,sub_cmd;
     unsigned int length;
-    char *pointer,*param;
+    char *param;
     VOS_STATUS status;
     hdd_adapter_t *pAdapter;
+    struct iw_point s_priv_data;
 
     ret =0;
-    pointer = wrqu->data.pointer;
-    length = wrqu->data.length;
-    sub_cmd = wrqu->data.flags;
+    /* helper function to get iwreq_data with compat handling. */
+    if (hdd_priv_get_data(&s_priv_data, wrqu))
+    {
+       return -EINVAL;
+    }
+
+    /* make sure all params are correctly passed to function */
+    if ((NULL == s_priv_data.pointer) || (0 == s_priv_data.length))
+    {
+       return -EINVAL;
+    }
+
+    sub_cmd = s_priv_data.flags;
+    length = s_priv_data.length;
     pAdapter = (hdd_adapter_t *)netdev_priv(dev);
 
     /* we cannot use iotctl_private_iw_point in kernel to allocate memory
@@ -5069,7 +5081,7 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
     if (!param)
         return -EINVAL;
 
-    if (copy_from_user(param, pointer, length))
+    if (copy_from_user(param, s_priv_data.pointer, length))
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
               "%s:Failed to get user data %s", __func__, param);
@@ -5079,10 +5091,7 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
     }
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-              "%s: Received length %d", __func__, length);
-
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-              "%s: Received parameters %s", __func__,param);
+              "%s: Received length %d, parameters: %s", __func__, length, param);
 
     switch(sub_cmd)
     {
