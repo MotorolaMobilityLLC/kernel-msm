@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Motorola Mobility LLC
+ * Copyright (C) 2013-2014 Motorola Mobility LLC
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -135,14 +135,17 @@ static int c55_ctrl_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	cdata->mclk = devm_clk_get(&pdev->dev, "adc_mclk");
+	if (!of_property_read_bool(pdev->dev.of_node, "ti,mclk-absent")) {
+		cdata->mclk = devm_clk_get(&pdev->dev, "adc_mclk");
 
-	if (IS_ERR(cdata->mclk)) {
-		dev_err(&pdev->dev, "%s: devm_clk_get failed.\n", __func__);
-		return PTR_ERR(cdata->mclk);
+		if (IS_ERR(cdata->mclk)) {
+			dev_err(&pdev->dev, "%s: devm_clk_get failed.\n",
+					__func__);
+			return PTR_ERR(cdata->mclk);
+		}
+
+		clk_prepare_enable(cdata->mclk);
 	}
-
-	clk_prepare_enable(cdata->mclk);
 
 	ret = c55_ctrl_gpio_setup(cdata, &pdev->dev);
 
