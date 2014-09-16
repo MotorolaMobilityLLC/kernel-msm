@@ -713,9 +713,7 @@
 		interrupts = <12 0x0>;
 		gpios = <&msm_gpio 12 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
 		gpio-names = "cc-alert";
-		maxim,regs-init-data = <
-			0x01 0xff97 /* VALRT, VMAX = 5.1 V and VMIN = 3.02 V */
-		>;
+
 		maxim,enable_por_init;
 		maxim,batt_undervoltage_zero_soc;
 		maxim,batt-psy-name = "battery";
@@ -723,6 +721,8 @@
 		maxim,hot-temp-c = <60>;
 		maxim,cool-temp-c = <0>;
 		maxim,cold-temp-c = <(-20)>;
+
+		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&cc_alert_default>;
