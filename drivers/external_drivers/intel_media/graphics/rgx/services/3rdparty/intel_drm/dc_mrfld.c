@@ -677,7 +677,7 @@ static IMG_BOOL _Do_Flip(DC_MRFLD_FLIP *psFlip, int iPipe)
 
 #ifndef ENABLE_HW_REPEAT_FRAME
 	/* maxfifo is only enabled in mipi only mode */
-	if (iPipe == DC_PIPE_A)
+	if (iPipe == DC_PIPE_A && !hdmi_state)
 		maxfifo_timer_start(gpsDevice->psDrmDevice);
 #endif
 err_out:

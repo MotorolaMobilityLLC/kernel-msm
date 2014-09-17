@@ -614,7 +614,6 @@ PMRUnlockSysPhysAddresses(PMR *psPMR)
 	OSLockAcquire(psPMR->hLock);
 	PVR_ASSERT(psPMR->uiLockCount > 0);
 	uiLockCount = --psPMR->uiLockCount;
-	OSLockRelease(psPMR->hLock);
 
     if (uiLockCount == 0)
     {
@@ -627,6 +626,7 @@ PMRUnlockSysPhysAddresses(PMR *psPMR)
             PVR_ASSERT(eError2 == PVRSRV_OK);
         }
     }
+	OSLockRelease(psPMR->hLock);
 
     /* We also count the locks as references, so that the PMR is not
        freed while someone is using a physical address. */

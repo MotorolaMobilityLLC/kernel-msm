@@ -1270,8 +1270,9 @@ PVRSyncIOCTLCreateFence(struct PVR_SYNC_TIMELINE *psPVRTl, void __user *pvData)
 	{
 		PVR_DPF((PVR_DBG_ERROR, "%s: Failed to create a fence (%d)",
 								__func__, iFd));
+		sync_pt_free(psPt);
 		err = -ENOMEM;
-		goto err_sync_free;
+		goto err_put_fd;
 	}
 
 	sData.iFenceFd = iFd;
@@ -1295,8 +1296,6 @@ err_out:
 
 err_put_fence:
 	sync_fence_put(psFence);
-err_sync_free:
-	sync_pt_free(psPt);
 err_put_fd:
 	put_unused_fd(iFd);
 	goto err_out;

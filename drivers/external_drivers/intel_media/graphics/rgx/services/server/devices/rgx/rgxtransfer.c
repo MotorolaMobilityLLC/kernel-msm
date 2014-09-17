@@ -339,6 +339,7 @@ PVRSRV_ERROR PVRSRVRGXCreateTransferContextKM(CONNECTION_DATA		*psConnection,
 		OSWRLockAcquireWrite(psDevInfo->hTransferCtxListLock, DEVINFO_TRANSFERLIST);
 		dllist_add_to_tail(&(psDevInfo->sTransferCtxtListHead), &(psTransferContext->sListNode));
 		OSWRLockReleaseWrite(psDevInfo->hTransferCtxListLock);
+		*ppsTransferContext = psTransferContext;
 	}
 
 	*ppsTransferContext = psTransferContext;
@@ -357,6 +358,7 @@ fail_syncalloc:
 	OSFreeMem(psTransferContext);
 	PVR_ASSERT(eError != PVRSRV_OK);
 	*ppsTransferContext = IMG_NULL;
+	psTransferContext = IMG_NULL;
 	return eError;
 }
 

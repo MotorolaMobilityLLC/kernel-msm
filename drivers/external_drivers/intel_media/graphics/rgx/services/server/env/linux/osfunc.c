@@ -683,7 +683,7 @@ IMG_CHAR *OSGetCurrentProcessNameKM(void)
 @Description    Returns ID for current thread
 @Return         ID of current thread
 *****************************************************************************/
-IMG_UINTPTR_T OSGetCurrentThreadIDKM(void)
+IMG_PID OSGetCurrentThreadIDKM(IMG_VOID)
 {
 	if (in_interrupt())
 	{

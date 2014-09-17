@@ -58,6 +58,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rgxapi_km.h"
 
 #include "process_stats.h"
+#include "dfrgx_interface.h"
 
 extern IMG_UINT32 g_ui32HostSampleIRQCount;
 
@@ -566,6 +567,7 @@ static PVRSRV_ERROR RGXStop(PVRSRV_RGXDEV_INFO	*psDevInfo)
 	if (eError != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR,"RGXStop: RGXRunScript failed (%d)", eError));
+		panic("RGXStop() fiailed");
 		return eError;
 	}
 
@@ -766,6 +768,9 @@ PVRSRV_ERROR RGXPrePowerState (IMG_HANDLE				hDevHandle,
 						eError = PVRSRV_ERROR_DEVICE_POWER_CHANGE_FAILURE;
 					}
 					psDevInfo->bIgnoreFurtherIRQs = IMG_TRUE;
+
+					/*Report dfrgx We have the device OFF*/
+					dfrgx_interface_power_state_set(0);
 				}
 			}
 			else
@@ -827,11 +832,15 @@ PVRSRV_ERROR RGXPostPowerState (IMG_HANDLE				hDevHandle,
 			if (eError != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR,"RGXPostPowerState: RGXStart failed"));
+				panic("RGXStart() failed");
 				return eError;
 			}
 
 			/* Coming up from off, re-allow RGX interrupts.  */
 			psDevInfo->bIgnoreFurtherIRQs = IMG_FALSE;
+
+			/*Report dfrgx We have the device back ON*/
+			dfrgx_interface_power_state_set(1);
 
 		}
 	}
@@ -955,6 +964,8 @@ PVRSRV_ERROR RGXPreClockSpeedChange (IMG_HANDLE				hDevHandle,
 			/* Populate DVFS history entry */
 			psDevInfo->psGpuDVFSHistory->aui32DVFSClockCB[psDevInfo->psGpuDVFSHistory->ui32CurrentDVFSId] = 0;
 		}
+	} else {
+	        eError = PVRSRV_ERROR_UNKNOWN_POWER_STATE;
 	}
 
 	return eError;

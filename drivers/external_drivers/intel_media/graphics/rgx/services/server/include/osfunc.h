@@ -176,7 +176,7 @@ IMG_VOID OSInvalidateCPUCacheRangeKM(IMG_PVOID pvVirtStart,
 
 IMG_PID OSGetCurrentProcessIDKM(IMG_VOID);
 IMG_CHAR *OSGetCurrentProcessNameKM(IMG_VOID);
-IMG_UINTPTR_T OSGetCurrentThreadIDKM(IMG_VOID);
+IMG_PID OSGetCurrentThreadIDKM(IMG_VOID);
 IMG_VOID OSMemSet(IMG_VOID *pvDest, IMG_UINT8 ui8Value, IMG_SIZE_T ui32Size);
 IMG_INT OSMemCmp(IMG_VOID *pvBufA, IMG_VOID *pvBufB, IMG_SIZE_T uiLen);
 
