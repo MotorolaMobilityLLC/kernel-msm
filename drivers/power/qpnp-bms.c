@@ -1642,7 +1642,7 @@ static void calculate_soc_params(struct qpnp_bms_chip *chip,
 	//Eason don't calculate BMS actively, only read---
 
 	//ASUS_BSP Eason add BMS log+++
-	printk("[BAT][BMS]FCC:%d, OCV:%d, CC:%d, UUC:%d, temp:%d, rbatt:%d\n"
+	pr_debug("[BAT][BMS]FCC:%d, OCV:%d, CC:%d, UUC:%d, temp:%d, rbatt:%d\n"
 			,params->fcc_uah, params->ocv_charge_uah, params->cc_uah, params->uuc_uah, batt_temp, params->rbatt_mohm);
 	//ASUS_BSP Eason add BMS log---
 }

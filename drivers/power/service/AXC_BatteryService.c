@@ -333,7 +333,7 @@ void asus_fsm_chargingstart(void)
 	if(false == charger_limit_enable)
 	#endif	
 	{
-		printk("[BAT]%s\n",__FUNCTION__);
+		pr_debug("[BAT]%s\n",__FUNCTION__);
 		
 		if(balance_this != NULL){
 			if(balance_this->mbInit){
@@ -762,12 +762,12 @@ static void judgeThermalCurrentLimit(void)
 		 {
 	             g_thermal_limit = 1;
 	        }
-	        printk("[BAT][SER][Thermal]:judge g_thermal_limit true\n");    
+	        pr_debug("[BAT][SER][Thermal]:judge g_thermal_limit true\n");    
     }
     else
     {
 	        g_thermal_limit = 0;
-	        printk("[BAT][SER][Thermal]:judge g_thermal_limit false\n");
+	        pr_debug("[BAT][SER][Thermal]:judge g_thermal_limit false\n");
 
     }
     if(1==getIfonline())
@@ -2108,12 +2108,12 @@ static void checkCalCapTime(void)
 			//Hank: test interval+++
 			if(!(balance_this->NeedCalCap) && (nowKeepInterval >= (balance_this->test.pollingInterval*3))){
 				balance_this->NeedCalCap = true;
-				printk("[BAT][SER]%s(): nowTime = %d, savedTime = %d, nowKeepInterval = %d \n default calculate capacity polling interval \n",__func__,(int)nowTime,(int)balance_this->savedTime,(int)nowKeepInterval);
+				pr_debug("[BAT][SER]%s(): nowTime = %d, savedTime = %d, nowKeepInterval = %d \n default calculate capacity polling interval \n",__func__,(int)nowTime,(int)balance_this->savedTime,(int)nowKeepInterval);
 			}//Hank: default 3Min calculate capacity---
 			//Hank: capacity < 14% every 1Min calculate capacity+++
 			else if(!(balance_this->NeedCalCap) && (nowKeepInterval >= balance_this->test.pollingInterval) && balance_this-> A66_capacity < 14){
 				balance_this->NeedCalCap = true;
-				printk("[BAT][SER]%s():capacity < 14 calculate capacity every 1Min \n",__func__);
+				pr_debug("[BAT][SER]%s():capacity < 14 calculate capacity every 1Min \n",__func__);
 			}
 			//Hank: test interval---
 		}
@@ -2121,12 +2121,12 @@ static void checkCalCapTime(void)
 			//Hank: default 3Min calculate capacity+++
 			if(!(balance_this->NeedCalCap) && (nowKeepInterval >= DEFAULT_POLLING_INTERVAL)){
 				balance_this->NeedCalCap = true;
-				printk("[BAT][SER]%s(): nowTime = %d, savedTime = %d, nowKeepInterval = %d \n default calculate capacity polling interval \n",__func__,(int)nowTime,(int)balance_this->savedTime,(int)nowKeepInterval);
+				pr_debug("[BAT][SER]%s(): nowTime = %d, savedTime = %d, nowKeepInterval = %d \n default calculate capacity polling interval \n",__func__,(int)nowTime,(int)balance_this->savedTime,(int)nowKeepInterval);
 			}//Hank: default 3Min calculate capacity---
 			//Hank: capacity < 14% every 1Min calculate capacity+++
 			else if(!(balance_this->NeedCalCap) && (nowKeepInterval >= DEFAULT_MONITOR_INTERVAL) && balance_this-> A66_capacity < 14){
 				balance_this->NeedCalCap = true;
-				printk("[BAT][SER]%s():capacity < 14 calculate capacity every 1Min \n",__func__);
+				pr_debug("[BAT][SER]%s():capacity < 14 calculate capacity every 1Min \n",__func__);
 			}
 			//Hank: capacity < 14% every 1Min calculate capacity---
 		}
@@ -2729,7 +2729,7 @@ static int  AXC_BatteryService_getCapacity(struct AXI_BatteryServiceFacade * bat
 	{
 #if USE_SW_GAUGE //report capacity by SW gauge
 		if( (true==_this->BatteryService_IsFULL)&&(_this->A66_capacity>=99) ) {
-			printk("[BAT][Ser]more than 99p & FULL flag, show 100\n");
+			pr_debug("[BAT][Ser]more than 99p & FULL flag, show 100\n");
 			_this->A66_capacity = 100;
 		}
 		return _this->A66_capacity;
@@ -3388,7 +3388,7 @@ static void DecideIsFull(struct AXC_BatteryService *_this,int nowGaugeCap,bool h
 
 	chgStatus = gpCharger->IsCharging(gpCharger);
 
-	printk("[BAT][SER]%s():Charging Status:%d, Battery Current:%d\n",__func__,chgStatus,nCurrent);
+	pr_debug("[BAT][SER]%s():Charging Status:%d, Battery Current:%d\n",__func__,chgStatus,nCurrent);
 
 	if(chgStatus){//charging
 		if(!_this->isMainBatteryChargingDone){// if still charging....
@@ -3568,7 +3568,7 @@ static void write_battery_capacity(int cap)
 	cfile = filp_open("/data/data/bat_cap", O_CREAT | O_RDWR | O_SYNC, 0666);
 	if (!IS_ERR(cfile)){	
 		sprintf(bat_cap_str, "%3d%10ld", cap, mtNow.tv_sec);
-		printk("[BAT][Ser]save bat_cap: %s\n", bat_cap_str);
+		pr_debug("[BAT][Ser]save bat_cap: %s\n", bat_cap_str);
 		cfile->f_op->write(cfile, bat_cap_str, 13, &cfile->f_pos);
 		
 		if(filp_close(cfile, NULL)){
@@ -3847,7 +3847,7 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 										maxMah,
 										intervalSinceLastUpdate);
 
-    printk("[BAT][Ser]report Capacity:%d,%d,%d,%d,%d,%d,%d,%d,%ld==>%d\n",
+    pr_debug("[BAT][Ser]report Capacity:%d,%d,%d,%d,%d,%d,%d,%d,%ld==>%d\n",
                                     refcapacity,
                                     lastCapacity,
                                       hasCable,
@@ -3873,6 +3873,7 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 	//ASUS_BSP Eason read PM8226 register value---		
 	pmicTemp = pm8226_get_prop_batt_temp();
 
+#if 0
 	ASUSEvtlog("[BAT][Ser]report Capacity:%d,%d,%d,%d,%d,%d,%d,%d,%ld==>%d  ,BMS:%d, Cur:%d, Temp:%d, 0x105B:0x%x, 0x1040:0x%x, 0x1054:0x%x, 0x1049:0x%x, 0x1344:0x%x, 0x1010:0x%x, 0x1210:0x%x, 0x1044:0x%x, 0x105D:0x%x\n",
                                     refcapacity,
                                     lastCapacity,
@@ -3896,7 +3897,22 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
                                       pm8226_0x1210_value,
                                       pm8226_0x1044_value,
                                       pm8226_0x105D_value);
-
+#else
+	ASUSEvtlog("[BAT][Ser]report Capacity:%d,%d,%d,%d,%d,%d,%d,%d,%ld==>%d  ,BMS:%d, Cur:%d, Temp:%d\n",
+                                    refcapacity,
+                                    lastCapacity,
+                                      hasCable,
+                                      EnableBATLifeRise,
+                                      _this->BatteryService_IsCharging,
+                                      _this->BatteryService_IsFULL,
+                                      IsBatLowtoFilter,
+                                      maxMah,
+                                      intervalSinceLastUpdate,
+                                      A66_capacity,
+                                      gBMS_Cap,
+                                      g_current_now,
+                                      pmicTemp);
+#endif
 	//ASUS_BSP --- Eason_Chang add event log ---   
 
 	//Eason: remember last BMS Cap to filter+++

@@ -1372,9 +1372,9 @@ qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 	if (!chip->charging_disabled && (chg_sts & FAST_CHG_ON_IRQ)) {
 		schedule_delayed_work(&chip->eoc_work,
 			msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
-		printk("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
+		pr_debug("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
 		pm_stay_awake(chip->dev);
-		printk("[BAT][PM8226][pm_stay_awake]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_stay_awake
+		pr_debug("[BAT][PM8226][pm_stay_awake]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_stay_awake
 	}
 	qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
 
@@ -2580,7 +2580,7 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 
 //ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
 #ifdef CONFIG_PM_8226_CHARGER
-		printk("[BAT] batS:%d, bmsS:%d, chg_in:%d, cool:%d, warm:%d, resuChg:%d, ChgDis:%d, asus_soc:%d, socRL:%d, BMS_soc:%d\n"
+		pr_debug("[BAT] batS:%d, bmsS:%d, chg_in:%d, cool:%d, warm:%d, resuChg:%d, ChgDis:%d, asus_soc:%d, socRL:%d, BMS_soc:%d\n"
 			,battery_status
 			,bms_status
 			,charger_in
@@ -3708,9 +3708,9 @@ qpnp_eoc_work(struct work_struct *work)
 	bool vbat_lower_than_vbatdet;
 
 	pm_stay_awake(chip->dev);
-	printk("[BAT][PM8226][pm_stay_awake]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_stay_awake
+	pr_debug("[BAT][PM8226][pm_stay_awake]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_stay_awake
 	qpnp_chg_charge_en(chip, !chip->charging_disabled);
-	printk("[BAT][PM8226][CHG_EN][1]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
+	pr_debug("[BAT][PM8226][CHG_EN][1]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
 
 	rc = qpnp_chg_read(chip, &batt_sts, INT_RT_STS(chip->bat_if_base), 1);
 	if (rc) {
@@ -3749,7 +3749,7 @@ qpnp_eoc_work(struct work_struct *work)
 		pr_debug("ibat_ma = %d vbat_mv = %d term_current_ma = %d\n",
 				ibat_ma, vbat_mv, chip->term_current);
 #else
-		printk("[BAT][PM8226]ibat_ma = %d vbat_mv = %d term_current_ma = %d\n",
+		pr_debug("[BAT][PM8226]ibat_ma = %d vbat_mv = %d term_current_ma = %d\n",
 				ibat_ma, vbat_mv, chip->term_current);
 #endif
 //ASUS_BSP Eason_Chang: show term_current ---
@@ -3788,10 +3788,10 @@ qpnp_eoc_work(struct work_struct *work)
 			count = 0;
 #else
 		} else if (((ibat_ma * -1) > chip->term_current) && (false == g_EocCurBigger_switch) ){
-			printk("[BAT][PM8226]Not at EOC, bat cur too high, sw:%d\n",g_EocCurBigger_switch);
+			pr_debug("[BAT][PM8226]Not at EOC, bat cur too high, sw:%d\n",g_EocCurBigger_switch);
 			count = 0;
 		} else if (((ibat_ma * -1) > g_EocCurBigger_value) && (true == g_EocCurBigger_switch) ){
-			printk("[BAT][PM8226]Not at EOC, bat cur too high, sw:%d, cur:%d\n",g_EocCurBigger_switch, g_EocCurBigger_value);
+			pr_debug("[BAT][PM8226]Not at EOC, bat cur too high, sw:%d, cur:%d\n",g_EocCurBigger_switch, g_EocCurBigger_value);
 			count = 0;
 #endif		
 //ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter---
@@ -3812,12 +3812,12 @@ qpnp_eoc_work(struct work_struct *work)
 				chip->delta_vddmax_mv = 0;
 				qpnp_chg_set_appropriate_vddmax(chip);
 				qpnp_chg_charge_en(chip, 0);
-				printk("[BAT][PM8226][CHG_EN][2]%s:0\n",__FUNCTION__);//ASUS_BSP Eason: check CHG_EN
+				pr_debug("[BAT][PM8226][CHG_EN][2]%s:0\n",__FUNCTION__);//ASUS_BSP Eason: check CHG_EN
 				/* sleep for a second before enabling */
 				msleep(2000);
 				qpnp_chg_charge_en(chip,
 						!chip->charging_disabled);
-				printk("[BAT][PM8226][CHG_EN][3]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
+				pr_debug("[BAT][PM8226][CHG_EN][3]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
 				pr_debug("psy changed batt_psy\n");
 				power_supply_changed(&chip->batt_psy);
 				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
@@ -3835,14 +3835,14 @@ qpnp_eoc_work(struct work_struct *work)
 check_again_later:
 	schedule_delayed_work(&chip->eoc_work,
 		msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
-	printk("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
+	pr_debug("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
 	return;
 
 stop_eoc:
 	vbat_low_count = 0;
 	count = 0;
 	pm_relax(chip->dev);
-	printk("[BAT][PM8226][pm_relax]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_relax
+	pr_debug("[BAT][PM8226][pm_relax]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_relax
 }
 
 static void

@@ -1663,7 +1663,7 @@ static int asus_getCapacity(void)
 //Eason: prevent charger mode get capacity at qpnp-charger.c before asus_bat.c ready---
 
 	cap = loService->getCapacity(loService);
-	printk("[BAT]Cap:%d\n", cap);
+	pr_debug("[BAT]Cap:%d\n", cap);
 
 	return cap;
 }
@@ -2614,7 +2614,7 @@ void static asus_bat_charge_status_create_proc_file(void)
 
 static int asus_battery_suspend(struct device *dev)
 {
-    printk("[BAT]suspend\r\n");
+    //printk("[BAT]suspend\r\n");
    
     asus_onBatterySuspend();
     return 0;

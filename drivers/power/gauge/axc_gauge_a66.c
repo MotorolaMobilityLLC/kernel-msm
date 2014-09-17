@@ -267,7 +267,7 @@ static int cal_ocv_percent_when_discharging(
 	percent = map_per_with_ocv(ocv);
 	/*printk( "[BAT][Gau]ocv per=%d, ocv=%d, v=%d, c=%d, r=%d\n",
 		 percent, ocv, volt, curr, resistor);*/
-    printk( "[BAT][Gau]ocv per=%d, ocv=%d, r=%d\n",
+    pr_debug( "[BAT][Gau]ocv per=%d, ocv=%d, r=%d\n",
 		 percent, ocv, resistor);
     
     //ASUS_BSP Eason_Chang add event log +++
@@ -456,11 +456,11 @@ int cal_SWgauge_capacity(void)
 	if( (curr < -3) && (1==getIfonline()) && (false==smb346_IsFull()) )
 #endif
 	{
-		printk("[BAT][vf][SWgauge]beforeVF: V:%d,C:%d\n",volt,curr);
+		pr_debug("[BAT][vf][SWgauge]beforeVF: V:%d,C:%d\n",volt,curr);
 
 		doAdcVfModify(&volt,&curr);
 
-		printk("[BAT][vf][SWgauge]afterVF: V:%d,C:%d\n",volt,curr);
+		pr_debug("[BAT][vf][SWgauge]afterVF: V:%d,C:%d\n",volt,curr);
 	}
 
 	ocv_percent = cal_ocv_percent_when_discharging(SW_this, volt, curr);
@@ -512,20 +512,20 @@ static void cal_bat_capacity_work(struct work_struct *work)
 			&volt,
 			&curr);
 
-	printk("[BAT][Gau]:volt = %d curr = %d \n",volt,curr);
+	pr_debug("[BAT][Gau]:volt = %d curr = %d \n",volt,curr);
 #ifdef CONFIG_PM_8226_CHARGER
 	if( (curr < -3) && (1==getIfonline()) && (false==pm8226_is_full()) )
 #else
 	if( (curr < -3) && (1==getIfonline()) && (false==smb346_IsFull()) )
 #endif
 	{
-		printk("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
+		pr_debug("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
 
 		doAdcVfModify(&volt,&curr);
 
-		printk("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
+		pr_debug("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
 		//ASUS_BSP Eason_Chang add event log +++
-		ASUSEvtlog("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
+		//ASUSEvtlog("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
 		//ASUS_BSP Eason_Chang add event log ---
 	}
 #ifdef CONFIG_PM_8226_CHARGER        
@@ -538,11 +538,11 @@ static void cal_bat_capacity_work(struct work_struct *work)
 
 		if( 1==online )
 		{
-			printk("[BAT][vf]:Do VF with Cable when boot up\n");
-			printk("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
+			pr_debug("[BAT][vf]:Do VF with Cable when boot up\n");
+			pr_debug("[BAT][vf]beforeVF: V:%d,C:%d\n",volt,curr);
 
 			doAdcVfModify(&volt,&curr);
-			printk("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
+			pr_debug("[BAT][vf]afterVF: V:%d,C:%d\n",volt,curr);
 		} 
 	}//Eason: Do VF with Cable when boot up---
 
@@ -952,11 +952,13 @@ static void AXC_Gauge_A66_ReadVoltCurrWithoutCali(
 		pr_debug("\n");
 		//Eason ADC read 15times---
 		
-		printk("[BAT][Gau][A66]:Vmax:%d,Vmin:%d,avgV:%d,Cmax:%d,Cmin:%d,avgC:%d\n",volArray[volMax],volArray[volMin],*volt,
+		pr_debug("[BAT][Gau][A66]:Vmax:%d,Vmin:%d,avgV:%d,Cmax:%d,Cmin:%d,avgC:%d\n",volArray[volMax],volArray[volMin],*volt,
             currArray[currMax],currArray[currMin],*curr);
         //ASUS_BSP Eason_Chang add event log +++
+#if 0
         ASUSEvtlog("[BAT][Gau][A66]:Vmax:%d,Vmin:%d,avgV:%d,Cmax:%d,Cmin:%d,avgC:%d\n",volArray[volMax],volArray[volMin],*volt,
             currArray[currMax],currArray[currMin],*curr);
+#endif
         //ASUS_BSP Eason_Chang add event log ---
 	}
     //Eason takeoff ADC read max & min---

@@ -728,10 +728,10 @@ static bool AXC_PM8226_Charger_IsCharging(AXI_Charger *apCharger)
 	int status = pm8226_get_prop_batt_status();
 	
 	if (status == POWER_SUPPLY_STATUS_CHARGING) {
-		printk(KERN_INFO "[BAT]%s, charging now\r\n", __func__);
+		pr_debug(KERN_INFO "[BAT]%s, charging now\r\n", __func__);
 		return true;
 	} else {
-		printk(KERN_INFO "[BAT]%s, not charging now, status=%d\r\n", __func__, status);
+		pr_debug(KERN_INFO "[BAT]%s, not charging now, status=%d\r\n", __func__, status);
 		return false;
 	}
 }

@@ -389,7 +389,7 @@ static void A66_Charging_FSM_onCableInOut(struct AXC_Charging_FSM *_this, AXE_Ch
 }
 static void A66_Charging_FSM_onChargingStop(struct AXC_Charging_FSM *_this,AXE_Charging_Error_Reason reason)
 {
-    CHARGING_FSM_STRESS_TEST_DEBUG_JUST_FUN_NAME();    
+    //CHARGING_FSM_STRESS_TEST_DEBUG_JUST_FUN_NAME();    
 
     if(reason == CHARGING_DONE){
 
@@ -413,7 +413,7 @@ static void A66_Charging_FSM_onChargingStop(struct AXC_Charging_FSM *_this,AXE_C
 static void A66_Charging_FSM_onChargingStart(struct AXC_Charging_FSM *_this)
 {
 
-    CHARGING_FSM_STRESS_TEST_DEBUG_JUST_FUN_NAME();    
+    //CHARGING_FSM_STRESS_TEST_DEBUG_JUST_FUN_NAME();    
 
     _this->statePointerList[_this->currentState]->handle(
         _this->statePointerList[_this->currentState],

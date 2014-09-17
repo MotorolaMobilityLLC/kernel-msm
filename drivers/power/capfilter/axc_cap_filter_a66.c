@@ -330,7 +330,7 @@ static int eval_bat_life_when_charging(
 	/* g_bat_life_after_dot - remain battery life after dot, used for more accuracy */
 	static int max_bat_life_rise_after_dot = 0;
 
-	printk( "[BAT][Fil]%s(), rise_val:%d\n",__func__,rise_val);
+	pr_debug( "[BAT][Fil]%s(), rise_val:%d\n",__func__,rise_val);
 
 	if (rise_val > 0) {
 		unsigned long max_bat_life_rise_val = 0;
