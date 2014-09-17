@@ -149,7 +149,11 @@ endif
 
 # MSM8226 Motorola Devices
 ifeq ($(CONFIG_MMI_TITAN_DTB),y)
-dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-titan.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-titan-4b.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-titan-4c.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-titan-4d.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-titan-4e.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-titan-4f.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-thea-p1a.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-thea-p1c.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-thea-p2a.dtb
