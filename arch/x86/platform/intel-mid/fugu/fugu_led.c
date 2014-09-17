@@ -231,20 +231,6 @@ static struct led_classdev fugu_white_led = {
 	.brightness_get		= fugu_led_brightness_get,
 };
 
-void led_init(void)
-{
-	/* LED is software controll and enabled */
-	intel_scu_ipc_iowrite8(CHRLEDCTRL_REG, 3);
-
-	/* LED lighting effect: Breathing varies Duty Cycle */
-	intel_scu_ipc_iowrite8(CHRLEDFSM_REG, 6);
-
-	/* LED PWM: 256/256. There are a total of 256 duty cycle steps */
-	intel_scu_ipc_iowrite8(CHRLEDPWM_REG, 0xFF);
-
-	fugu_led_brightness_set(&fugu_white_led, 0xFF);
-}
-
 static int fugu_led_probe(struct rpmsg_channel *rpdev)
 {
 	int ret = 0;
@@ -284,8 +270,7 @@ static int fugu_led_probe(struct rpmsg_channel *rpdev)
 	if (ret)
 		dev_err(&rpdev->dev, "failed device_create_file(led_lighting_effect)\n");
 
-	/* Initialize led */
-	led_init();
+	/* led initialization is done either by IAFW or init.rc */
 out:
 	return ret;
 }
