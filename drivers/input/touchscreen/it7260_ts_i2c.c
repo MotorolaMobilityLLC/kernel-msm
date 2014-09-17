@@ -145,6 +145,8 @@ struct ioctl_cmd168 {
 struct IT7260_ts_data {
 	struct i2c_client *client;
 	struct input_dev *input_dev;
+	struct delayed_work palmdown_work;
+	struct delayed_work palmup_work;
 };
 
 struct ite7260_perfile_data {
@@ -164,8 +166,8 @@ static bool hadPalmDown = false;
 static uint64_t lastPalmDownTime = 0;
 static uint64_t lastPalmUpTime = 0;
 static bool lastPalmKnockCand = false;
-static struct timer_list palmDownTimer;
-static struct timer_list palmUpTimer;
+//static struct timer_list palmDownTimer;
+//static struct timer_list palmUpTimer;
 static bool isDeviceSleeping = false;
 static uint8_t magic_key = MAGIC_KEY_NONE;
 static int ite7260_major = 0;
@@ -180,8 +182,7 @@ static struct IT7260_ts_data *gl_ts;
 #define LOGE(...)	pr_err(DEVICE_NAME ": " __VA_ARGS__)
 #define LOGI(...)	printk(DEVICE_NAME ": " __VA_ARGS__)
 
-
-
+static struct workqueue_struct *IT7260_wq;
 
 /* internal use func - does not make sure chip is ready before read */
 static bool i2cReadNoReadyCheck(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
@@ -465,6 +466,23 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 	chipGetVersions(verFw, verCfg, true);
 
 	/* this code to check versions is reproduced as was written, but it does not quite make sense. Something here *IS* wrong */
+	fwUploadResult = SYSFS_RESULT_NOT_DONE;
+	if (fwLen && cfgLen) {
+		if (manualUpgrade || (verFw[5] < fw->data[8] || verFw[6] < fw->data[9] || verFw[7] < fw->data[10] || verFw[8] < fw->data[11]) || 
+		(verCfg[1] < cfg->data[cfgLen - 8] || verCfg[2] < cfg->data[cfgLen - 7] || verCfg[3] < cfg->data[cfgLen - 6] || verCfg[4] < cfg->data[cfgLen - 5])){
+			LOGI("firmware/config will be upgraded\n");
+			disable_irq(gl_ts->client->irq);
+			success = chipFirmwareUpload(fwLen, fw->data, cfgLen, cfg->data);
+			enable_irq(gl_ts->client->irq);
+
+			fwUploadResult = success ? SYSFS_RESULT_SUCCESS : SYSFS_RESULT_FAIL;
+			LOGI("upload %s\n", success ? "success" : "failed");
+		}
+		else {
+			LOGI("firmware/config upgrade not needed\n");
+		}
+	}
+	/*
 	if (fwLen) {
 		if (manualUpgrade || verFw[5] < fw->data[8] || verFw[6] < fw->data[9] || verFw[7] < fw->data[10] || verFw[8] < fw->data[11])
 			LOGI("firmware will be upgraded\n");
@@ -494,7 +512,7 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 		fwUploadResult = success ? SYSFS_RESULT_SUCCESS : SYSFS_RESULT_FAIL;
 		LOGI("upload %s\n", success ? "success" : "failed");
 	}
-
+	*/
 	if (fwLen)
 		release_firmware(fw);
 
@@ -749,18 +767,19 @@ static uint64_t timeSubtractGuranteedPositive(uint64_t from, uint64_t what)
 	return what >= from ? 1 : from - what;
 }
 
-static void sendPalmDownEvt(void)
+static void sendPalmDownEvt(struct work_struct *work) 
 {
-	//magic_key = MAGIC_KEY_PALM;
-	//kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 	input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
 	input_sync(gl_ts->input_dev);
 }
 
-static void sendPalmUpEvt(void)
-{
+static void sendPalmUpEvt(struct work_struct *work) {
+	input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
+	input_sync(gl_ts->input_dev);
 	input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
 	input_sync(gl_ts->input_dev);
+	magic_key = MAGIC_KEY_PALM;
+	kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 }
 
 static void sendWakeEvt(void)
@@ -807,10 +826,13 @@ static void readTouchDataPoint(void)
 		hadPalmDown = true;
 		lastPalmDownTime = getMsTime();
 
-		if (!del_timer_sync(&palmUpTimer)) /* we already sent palm event - this is not a knock candidate anymoe */
+		/* we already sent palm event - this is not a knock candidate anymoe */
+		//if (!del_timer_sync(&palmUpTimer))
+		if (!cancel_delayed_work(&gl_ts->palmup_work))
 			lastPalmKnockCand = false;
 		
-		mod_timer(&palmDownTimer, jiffies + msecs_to_jiffies(MS_BETWEEN_FOR_KNOCK_EVT + 2 * MS_PALM_FOR_KNOCK_EVT));
+		//mod_timer(&palmDownTimer, jiffies + msecs_to_jiffies(MS_BETWEEN_FOR_KNOCK_EVT + 2 * MS_PALM_FOR_KNOCK_EVT));
+		queue_delayed_work(IT7260_wq, &gl_ts->palmdown_work, 25);
 
 	} else if ((!(pointData.palm & PD_PALM_FLAG_BIT)) && hadPalmDown) {
 		uint64_t curPalmUpTime = getMsTime();
@@ -820,8 +842,12 @@ static void readTouchDataPoint(void)
 		hadPalmDown = false;
 
 		/* if timer already fired (and sent the palm down event), send palm up event */
-		if (!del_timer_sync(&palmDownTimer)) {
-			sendPalmUpEvt();
+		//if (!del_timer_sync(&palmDownTimer)) {
+		if (!cancel_delayed_work(&gl_ts->palmdown_work)) {
+			input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
+			input_sync(gl_ts->input_dev);
+			magic_key = MAGIC_KEY_PALM;
+			kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 			lastPalmKnockCand = false;
 		} else if (timeSinceDown <= MS_PALM_FOR_KNOCK_EVT) {
 
@@ -837,13 +863,18 @@ static void readTouchDataPoint(void)
 
 			/* set timer for sending palm if no knock candidate found soon */
 			if (lastPalmKnockCand){
-				mod_timer(&palmUpTimer, jiffies + msecs_to_jiffies(MS_BETWEEN_FOR_KNOCK_EVT + MS_PALM_FOR_KNOCK_EVT));
+				//mod_timer(&palmUpTimer, jiffies + msecs_to_jiffies(MS_BETWEEN_FOR_KNOCK_EVT + MS_PALM_FOR_KNOCK_EVT));
+				queue_delayed_work(IT7260_wq, &gl_ts->palmup_work, 25);
 			}
 		} else {
 			/* too long to be part of a knock but too short to have sent an event via timer - send it here */
 			lastPalmKnockCand = false;
-			sendPalmDownEvt();
-			sendPalmUpEvt();
+			input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
+			input_sync(gl_ts->input_dev);
+			input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
+			input_sync(gl_ts->input_dev);
+			magic_key = MAGIC_KEY_PALM;
+			kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 		}
 		lastPalmUpTime = curPalmUpTime;
 	}
@@ -874,18 +905,21 @@ static void readTouchDataPoint(void)
 }
 
 /* fired once palm has been down long enough to not be part of a knock */
+/* if we got here, this is a simple palm gesture, send it */
+/*
 static void palmDownTimerFn(unsigned long unused)
 {
-	/* if we got here, this is a simple palm gesture, send it */
 	sendPalmDownEvt();
 }
-
+*/
 /* fired once palm has been up long enough to not be a knock */
+/*
 static void palmUpTimerFn(unsigned long unused)
 {
 	sendPalmDownEvt();
 	sendPalmUpEvt();
 }
+*/
 
 static irqreturn_t IT7260_ts_threaded_handler(int irq, void *devid)
 {
@@ -1005,6 +1039,13 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	input_set_abs_params(input_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
 	input_set_abs_params(input_dev, ABS_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
 
+	IT7260_wq = create_workqueue("IT7260_wq");
+	if (!IT7260_wq)
+		goto err_check_functionality_failed;
+		
+	INIT_DELAYED_WORK(&gl_ts->palmdown_work, sendPalmDownEvt);
+	INIT_DELAYED_WORK(&gl_ts->palmup_work, sendPalmUpEvt);
+	
 	if (input_register_device(input_dev)) {
 		LOGE("failed to register input device\n");
 		goto err_input_register;
@@ -1027,8 +1068,8 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	i2cReadNoReadyCheck(BUF_RESPONSE, rsp, sizeof(rsp));
 	mdelay(10);
 
-	setup_timer(&palmDownTimer, palmDownTimerFn, 0);
-	setup_timer(&palmUpTimer, palmUpTimerFn, 0);
+	//setup_timer(&palmDownTimer, palmDownTimerFn, 0);
+	//setup_timer(&palmUpTimer, palmUpTimerFn, 0);
 
 	return 0;
 
@@ -1049,12 +1090,17 @@ err_ident_fail_or_input_alloc:
 err_sysfs_grp_create_1:
 	kfree(gl_ts);
 
+err_check_functionality_failed:
+	if (IT7260_wq)
+		destroy_workqueue(IT7260_wq);
+
 err_out:
 	return ret;
 }
 
 static int IT7260_ts_remove(struct i2c_client *client)
 {
+	destroy_workqueue(IT7260_wq);
 	devicePresent = false;
 	return 0;
 }
@@ -1289,6 +1335,8 @@ static void __exit IT7260_ts_exit(void)
 	class_destroy(ite7260_class);
 	cdev_del(&ite7260_cdev);
 	unregister_chrdev_region(dev, 1);
+	if (IT7260_wq)
+		destroy_workqueue(IT7260_wq);
 }
 
 module_init(IT7260_ts_init);
