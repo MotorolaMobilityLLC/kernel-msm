@@ -1565,14 +1565,17 @@ err_debugfs:
 }
 #endif
 
+#define MAX_TAPER_RETRY 5
 static void iterm_work(struct work_struct *work)
 {
 	int ret = 0;
 	int repsoc;
 	int repcap, fullcap;
+	int repcap_p, i;
 	int socvf, fullsocthr;
 	int curr_avg, curr_inst, iterm_max, iterm_min;
 	int resch_time = 60000;
+	int cfd_max;
 	struct max17042_chip *chip =
 		container_of(work, struct max17042_chip,
 				iterm_work.work);
@@ -1674,12 +1677,90 @@ static void iterm_work(struct work_struct *work)
 	if (socvf <= fullsocthr)
 		goto iterm_fail;
 
+	/* Check that RepCap or FullCap */
+	/* is not less then half of Design Capacity */
+	if (((repcap * 1000) < chip->charge_full_des) ||
+	    ((fullcap * 1000) < chip->charge_full_des)) {
+		dev_warn(&chip->client->dev, "Error repcap too small!\n");
+		dev_warn(&chip->client->dev,
+			 "RepCap %d mAhr FullCap %d mAhr\n",
+			 repcap / 2, fullcap / 2);
+		repcap = (chip->charge_full_des * 2) / 1000;
+		ret = max17042_write_reg(chip->client,
+					 MAX17042_RepCap, repcap);
+		if (ret < 0)
+			dev_err(&chip->client->dev,
+				"Can't update Rep Cap!\n");
+	}
+
+	cfd_max =
+		(chip->charge_full_des + ((chip->charge_full_des * 3) / 100));
+	/* Catch Increasing FullCap*/
+	if (((fullcap * 1000) / 2) > cfd_max) {
+		dev_warn(&chip->client->dev, "Error fullcap too big!\n");
+		dev_warn(&chip->client->dev,
+			 "RepCap %d mAhr FullCap %d mAhr\n",
+			 repcap / 2, fullcap / 2);
+		repcap = (cfd_max * 2) / 1000;
+		fullcap = repcap;
+		ret = max17042_write_reg(chip->client,
+					 MAX17042_RepCap, repcap);
+		if (ret < 0)
+			dev_err(&chip->client->dev,
+				"Can't update Rep Cap!\n");
+	}
+
+
 	dev_warn(&chip->client->dev, "Taper Reached!\n");
+	dev_warn(&chip->client->dev, "RepCap %d mAhr FullCap %d mAhr\n",
+		 repcap / 2, fullcap / 2);
+
+	repcap_p = repcap;
+
 	ret = max17042_write_reg(chip->client, MAX17042_FullCAP, repcap);
 	if (ret < 0)
 		dev_err(&chip->client->dev, "Can't update Full Cap!\n");
 
+	for (i = 0; i < MAX_TAPER_RETRY; i++) {
+		ret = max17042_read_reg(chip->client, MAX17042_RepCap);
+		if (ret < 0)
+			goto iterm_fail;
+
+		repcap = ret & 0xFFFF;
+
+		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
+		if (ret < 0)
+			goto iterm_fail;
+
+		fullcap = ret & 0xFFFF;
+		dev_warn(&chip->client->dev,
+			 "Checking RepCap %d mAhr FullCap %d mAhr\n",
+			 repcap / 2, fullcap / 2);
+		if ((repcap > (repcap_p + 2)) || (repcap < (repcap_p - 2)) ||
+		    (fullcap != repcap_p)) {
+			dev_warn(&chip->client->dev,
+				 "ITERM values don't match rewrite!\n");
+			dev_warn(&chip->client->dev,
+				 "RepCap %d mAhr FullCap %d mAhr\n",
+				 repcap / 2, fullcap / 2);
+			ret = max17042_write_reg(chip->client,
+						 MAX17042_FullCAP, repcap_p);
+			if (ret < 0)
+				dev_err(&chip->client->dev,
+					"Can't update Full Cap!\n");
+			ret = max17042_write_reg(chip->client,
+						 MAX17042_RepCap, repcap_p);
+			if (ret < 0)
+				dev_err(&chip->client->dev,
+					"Can't update Rep Cap!\n");
+		} else
+			break;
+	}
+
+
 iterm_fail:
+	dev_dbg(&chip->client->dev,
+		"SW ITERM Done!\n");
 	schedule_delayed_work(&chip->iterm_work,
 			      msecs_to_jiffies(resch_time));
 	max17042_relax(&chip->max17042_wake_source);
@@ -1691,6 +1772,7 @@ static int max17042_probe(struct i2c_client *client,
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct max17042_chip *chip;
+	struct max17042_config_data *config;
 	int ret;
 	int reg;
 	int reg2;
@@ -1816,6 +1898,10 @@ static int max17042_probe(struct i2c_client *client,
 		INIT_WORK(&chip->work, max17042_init_worker);
 		schedule_work(&chip->work);
 	} else {
+		config = chip->pdata->config_data;
+		if (chip->chip_type == MAX17047)
+			max17042_write_reg(chip->client, MAX17047_FullSOCThr,
+					   config->full_soc_thresh);
 		chip->init_complete = 1;
 	}
 
