@@ -658,6 +658,15 @@ int android_hdmi_mode_valid(struct drm_connector *connector,
 		goto err;
 	}
 
+	if (!(((mode->hdisplay == 1920) && (mode->vdisplay == 1080)) ||
+	    ((mode->hdisplay == 1280) && (mode->vdisplay == 720)) ||
+	    ((mode->hdisplay == 720) && (mode->vdisplay == 576)) ||
+	    ((mode->hdisplay == 720) && (mode->vdisplay == 480)) ||
+	    ((mode->hdisplay == 640) && (mode->vdisplay == 480)))) {
+		ret = MODE_BAD_VVALUE;
+		goto err;
+	}
+
 	/* Restricting modes within the supported pixel clock */
 	if (OTM_HDMI_SUCCESS == otm_hdmi_get_pixel_clock_range(
 					&pc_min, &pc_max)) {
