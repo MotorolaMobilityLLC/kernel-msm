@@ -27,6 +27,11 @@
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
 
+#ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
+static int mdss_dsi_ulps_for_suspend(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+	int enable);
+#endif
+
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -309,12 +314,8 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *panel_info = NULL;
 	struct mipi_panel_info *pinfo = NULL;
-#ifdef MDSS_ULPS_BEFORE_PANEL_OFF
-	u32 lane_status = 0;
-	u32 active_lanes = 0;
-#endif
 
-	//printk("MDSS:AMB:== DSI OFF ==\n");
+	printk("MDSS:AMB:== DSI OFF ==\n");
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -340,37 +341,10 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
-#ifdef MDSS_ULPS_BEFORE_PANEL_OFF
+#ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
 if (!is_ambient_on())
 {
-
-	printk("MDSS:AMB:Enter ULPS..\n");
-
-	/*
-	 * ULPS Entry Request.
-	 * Wait for a short duration to ensure that the lanes
-	 * enter ULP state.
-	 */
-	MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x01F);
-	usleep(100);
-
-	/* Check to make sure that all active data lanes are in ULPS */
-	if (pinfo->data_lane3)
-		active_lanes |= BIT(11);
-	if (pinfo->data_lane2)
-		active_lanes |= BIT(10);
-	if (pinfo->data_lane1)
-		active_lanes |= BIT(9);
-	if (pinfo->data_lane0)
-		active_lanes |= BIT(8);
-	active_lanes |= BIT(12); /* clock lane */
-	lane_status = MIPI_INP(ctrl_pdata->ctrl_base + 0xA8);
-	if (lane_status & active_lanes) {
-		pr_err("%s: ULPS entry req failed. Lane status=0x%08x\n",
-			__func__, lane_status);
-	}
-}else{
-	printk("MDSS:AMB:Skip ULPS..\n");
+	mdss_dsi_ulps_for_suspend(ctrl_pdata,1);
 }
 #endif
 
@@ -488,6 +462,153 @@ static inline bool __mdss_dsi_ulps_feature_enabled(
 {
 	return pdata->panel_info.ulps_feature_enabled;
 }
+
+#ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
+static int mdss_dsi_ulps_for_suspend(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+	int enable)
+{
+	int ret = 0;
+	struct mdss_panel_data *pdata = NULL;
+	struct mipi_panel_info *pinfo = NULL;
+	u32 lane_status = 0;
+	u32 active_lanes = 0;
+
+	if (!ctrl_pdata) {
+		pr_err("%s: invalid input\n", __func__);
+		return -EINVAL;
+	}
+
+	pdata = &ctrl_pdata->panel_data;
+	if (!pdata) {
+		pr_err("%s: Invalid panel data\n", __func__);
+		return -EINVAL;
+	}
+	pinfo = &pdata->panel_info.mipi;
+
+	if (enable && !ctrl_pdata->dis_off_with_ulps) {
+
+
+		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+		if (ret) {
+			pr_err("%s: Failed to enable clocks. rc=%d\n",
+				__func__, ret);
+			goto error;
+		}
+
+		printk("MDSS:AMB:Enter ULPS..\n");
+
+		/*
+		 * ULPS Entry Request.
+		 * Wait for a short duration to ensure that the lanes
+		 * enter ULP state.
+		 */
+		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x01F);
+		usleep(100);
+
+		/* Check to make sure that all active data lanes are in ULPS */
+		if (pinfo->data_lane3)
+			active_lanes |= BIT(11);
+		if (pinfo->data_lane2)
+			active_lanes |= BIT(10);
+		if (pinfo->data_lane1)
+			active_lanes |= BIT(9);
+		if (pinfo->data_lane0)
+			active_lanes |= BIT(8);
+		active_lanes |= BIT(12); /* clock lane */
+		lane_status = MIPI_INP(ctrl_pdata->ctrl_base + 0xA8);
+		if (lane_status & active_lanes) {
+			pr_err("%s: ULPS entry req failed. Lane status=0x%08x\n",
+				__func__, lane_status);
+			ret = -EINVAL;
+			mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+			goto error;
+		}
+
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 0);
+
+		/* Enable MMSS DSI Clamps */
+		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x3FF);
+		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x83FF);
+
+		wmb();
+
+		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x108, 0x1);
+		/* disable DSI controller */
+		mdss_dsi_controller_cfg(0, pdata);
+
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
+		ctrl_pdata->dis_off_with_ulps = true;
+
+	} else if (ctrl_pdata->dis_off_with_ulps) {
+		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
+		if (ret) {
+			pr_err("%s: Failed to enable bus clocks. rc=%d\n",
+				__func__, ret);
+			goto error;
+		}
+
+		printk("MDSS:AMB:Exit ULPS..\n");
+
+		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x108, 0x0);
+		mdss_dsi_phy_init(pdata);
+
+		__mdss_dsi_ctrl_setup(pdata);
+		mdss_dsi_sw_reset(pdata);
+		mdss_dsi_host_init(pdata);
+		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
+			pdata);
+
+		/*
+		 * ULPS Entry Request. This is needed because, after power
+		 * collapse and reset, the DSI controller resets back to
+		 * idle state and not ULPS.
+		 * Wait for a short duration to ensure that the lanes
+		 * enter ULP state.
+		 */
+		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x01F);
+		usleep(100);
+
+		/* Disable MMSS DSI Clamps */
+		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x3FF);
+		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x0);
+
+		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 1);
+		if (ret) {
+			pr_err("%s: Failed to enable link clocks. rc=%d\n",
+				__func__, ret);
+			mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
+			goto error;
+		}
+
+		/*
+		 * ULPS Exit Request
+		 * Hardware requirement is to wait for at least 1ms
+		 */
+		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x1F00);
+		usleep(1000);
+		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x0);
+
+		/*
+		 * Wait for a short duration before enabling
+		 * data transmission
+		 */
+		usleep(100);
+
+		lane_status = MIPI_INP(ctrl_pdata->ctrl_base + 0xA8);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 0);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
+
+		ctrl_pdata->dis_off_with_ulps = false;
+
+	}
+
+	pr_debug("%s: DSI lane status = 0x%08x. Ulps %s\n", __func__,
+		lane_status, enable ? "enabled" : "disabled");
+
+error:
+	return ret;
+}
+#endif
 
 static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	int enable)
@@ -683,7 +804,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
-	//printk("MDSS:AMB:== DSI ON ==\n");
+	printk("MDSS:AMB:== DSI ON ==\n");
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -698,11 +819,16 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	pr_debug("%s+: ctrl=%p ndx=%d\n",
+	printk("%s+: ctrl=%p ndx=%d\n",
 				__func__, ctrl_pdata, ctrl_pdata->ndx);
 
 	pinfo = &pdata->panel_info;
 	mipi = &pdata->panel_info.mipi;
+
+#ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
+	if (ctrl_pdata->dis_off_with_ulps)
+		mdss_dsi_ulps_for_suspend(ctrl_pdata,0);
+#endif
 
 	ret = mdss_dsi_panel_power_on(pdata, 1);
 	if (ret) {
@@ -1081,7 +1207,7 @@ static void __mdss_mdp_ambient_on_work(struct work_struct *work)
 	pr_debug("MDSS:AMB:__mdss_mdp_ambient_on_work:exec ...\n");
 	rc = mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
 	ctrl_pdata->ambient_on_queued = false;
-	printk("MDSS:ambient work done\n");
+	printk("MDSS:__mdss_mdp_ambient_on_work---\n");
 }
 
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
@@ -1115,11 +1241,11 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 
 		if (ctrl_pdata->ambient_on_queued){
 			cancel_delayed_work_sync(&ctrl_pdata->ambient_enable_work);
-			printk("MDSS:AMB:BLANK:flush mdss_dsi_panel_ambient_enable() due to ambient_on_queued\n");
+			printk("MDSS:AMB:MDSS_EVENT_BLANK:flush mdss_dsi_panel_ambient_enable() due to ambient_on_queued\n");
 			mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
 			ctrl_pdata->ambient_on_queued = false;
 		}else{
-			printk("MDSS:AMB:BLANK:ambient work not queued..\n");
+			printk("MDSS:AMB:MDSS_EVENT_BLANK:ambient_enable_work not queued..\n");
 		}
 
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
@@ -1165,13 +1291,13 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		rc = mdss_dsi_ulps_config(ctrl_pdata, (int)arg);
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_ON:
-		printk("MDSS:AMB:schedule ambient work \n");
+		printk("MDSS:AMB:schedule ambient_enable_work due to MDSS_EVENT_AMBIENT_MODE_ON\n");
 		schedule_delayed_work(&ctrl_pdata->ambient_enable_work ,msecs_to_jiffies(1000));
 		ctrl_pdata->ambient_on_queued = true;
 		break;
 	case MDSS_EVENT_AMBIENT_MODE_OFF:
 		if (ctrl_pdata->ambient_on_queued){
-			printk("MDSS:AMB:cancel ambient work \n");
+			printk("MDSS:AMB:cancel ambient_enable_work due to MDSS_EVENT_AMBIENT_MODE_OFF\n");
 			cancel_delayed_work_sync(&ctrl_pdata->ambient_enable_work);
 			ctrl_pdata->ambient_on_queued = false;
 		}
@@ -1391,6 +1517,9 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&ctrl_pdata->ambient_enable_work, __mdss_mdp_ambient_on_work);
 	ctrl_pdata->ambient_on_queued = false;
 	ctrl_pdata->ambient_off_queued = false;
+#ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
+	ctrl_pdata->dis_off_with_ulps = false;
+#endif
 
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 	return 0;

@@ -316,6 +316,9 @@ struct mdss_dsi_ctrl_pdata {
 	struct delayed_work ambient_enable_work;
 	int ambient_on_queued;
 	int ambient_off_queued;
+#ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
+	int dis_off_with_ulps;
+#endif
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,
