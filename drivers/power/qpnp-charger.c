@@ -5398,18 +5398,15 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	if (chip->dc_chgpth_base)
 		qpnp_chg_dc_dcin_valid_irq_handler(chip->dcin_valid.irq, chip);
 
+	/* Set USB psy online to avoid userspace from shutting down if battery
+	 * capacity is at zero and no chargers online. */
+	if (chip->usb_present)
+		power_supply_set_online(chip->usb_psy, 1);
+
 	qpnp_chg_enable_irq(chip, &chip->chg_gone);
 	qpnp_chg_enable_irq(chip, &chip->usbin_valid);
 	if (chip->dc_chgpth_base)
 		qpnp_chg_enable_irq(chip, &chip->dcin_valid);
-
-	power_supply_set_present(chip->usb_psy,
-			qpnp_chg_is_usb_chg_plugged_in(chip));
-
-	/* Set USB psy online to avoid userspace from shutting down if battery
-	 * capacity is at zero and no chargers online. */
-	if (qpnp_chg_is_usb_chg_plugged_in(chip))
-		power_supply_set_online(chip->usb_psy, 1);
 
 	schedule_delayed_work(&chip->aicl_check_work,
 		msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
