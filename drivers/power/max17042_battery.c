@@ -1117,6 +1117,23 @@ static int max17042_debugfs_write_data(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(data_fops, max17042_debugfs_read_data,
 			max17042_debugfs_write_data, "0x%02llx\n");
 
+static int max17042_debugfs_read_capacity(void *data, u64 *val)
+{
+	struct max17042_chip *chip = (struct max17042_chip *)data;
+	*val = chip->debugfs_capacity;
+	return 0;
+}
+
+static int max17042_debugfs_write_capacity(void *data, u64 val)
+{
+	struct max17042_chip *chip = (struct max17042_chip *)data;
+	chip->debugfs_capacity = val;
+	power_supply_changed(&chip->battery);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(capacity_fops, max17042_debugfs_read_capacity,
+			max17042_debugfs_write_capacity, "%llu\n");
+
 static int max17042_debugfs_create(struct max17042_chip *chip)
 {
 	chip->debugfs_root = debugfs_create_dir(dev_name(&chip->client->dev),
@@ -1133,8 +1150,8 @@ static int max17042_debugfs_create(struct max17042_chip *chip)
 		goto err_debugfs;
 
 	chip->debugfs_capacity = 0xFF;
-	if (!debugfs_create_u8("capacity", S_IRUGO | S_IWUSR,
-			       chip->debugfs_root, &chip->debugfs_capacity))
+	if (!debugfs_create_file("capacity", S_IRUGO | S_IWUSR,
+				 chip->debugfs_root, chip, &capacity_fops))
 		goto err_debugfs;
 
 	return 0;
