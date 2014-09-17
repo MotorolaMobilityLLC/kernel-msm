@@ -240,3 +240,15 @@
 		coff		= /bits/ 16 <0xFFF9>; /* -2.18 * 3.125 */
 	};
 };
+
+&rpm_bus {
+	rpm-regulator-ldoa15 {
+		status = "okay";
+		regulator-l15 {
+			regulator-min-microvolt = <1275000>;
+			regulator-max-microvolt = <1275000>;
+			qcom,init-voltage = <1275000>;
+			status = "okay";
+		};
+	};
+};
