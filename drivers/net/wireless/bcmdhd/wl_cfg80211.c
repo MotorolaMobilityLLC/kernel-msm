@@ -6876,6 +6876,15 @@ wl_cfg80211_start_ap(
 	if (dev == bcmcfg_to_prmry_ndev(cfg)) {
 		WL_DBG(("Start AP req on primary iface: Softap\n"));
 		dev_role = NL80211_IFTYPE_AP;
+		if (!cfg->ap_info) {
+			if ((cfg->ap_info = kzalloc(sizeof(struct ap_info), GFP_KERNEL))) {
+				WL_ERR(("%s: struct ap_info re-allocated\n", __FUNCTION__));
+			} else {
+				WL_ERR(("%s: struct ap_info re-allocation failed\n", __FUNCTION__));
+				err = -ENOMEM;
+				goto fail;
+			}
+		}
 	}
 #if defined(WL_ENABLE_P2P_IF)
 	else if (dev == cfg->p2p_net) {
@@ -8771,6 +8780,9 @@ wl_bss_roaming_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 #endif
 	printk("wl_bss_roaming_done succeeded to " MACDBG "\n",
 		MAC2STRDBG((u8*)(&e->addr)));
+#ifdef PCIE_FULL_DONGLE
+	wl_roam_flowring_cleanup(cfg);
+#endif /* PCIE_FULL_DONGLE */
 
 	cfg80211_roamed(ndev,
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39))
@@ -9477,6 +9489,9 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		}
 
 		wl_set_drv_status(cfg, SCANNING, ndev);
+#ifdef CUSTOM_SET_SHORT_DWELL_TIME
+		net_set_short_dwell_time(ndev, FALSE);
+#endif
 #if FULL_ESCAN_ON_PFN_NET_FOUND
 		WL_PNO((">>> Doing Full ESCAN on PNO event\n"));
 		err = wl_do_escan(cfg, wiphy, ndev, NULL);
