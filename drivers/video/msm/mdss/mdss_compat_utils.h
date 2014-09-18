@@ -54,6 +54,13 @@ struct fb_cursor32 {
 	struct fb_image32 image;
 };
 
+struct msmfb_reg_access32 {
+	uint8_t address;
+	uint8_t use_hs_mode;
+	uint32_t buffer_size;
+	compat_caddr_t buffer;
+};
+
 struct mdp_ccs32 {
 };
 
