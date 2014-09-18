@@ -1325,11 +1325,6 @@ VOS_STATUS vos_watchdog_close ( v_PVOID_t pVosContext )
     return VOS_STATUS_SUCCESS;
 } /* vos_watchdog_close() */
 
-VOS_STATUS vos_watchdog_chip_reset ( vos_chip_reset_reason_type  reason )
-{
-    return VOS_STATUS_SUCCESS;
-} /* vos_watchdog_chip_reset() */
-
 /*---------------------------------------------------------------------------
   \brief vos_sched_init_mqs: Initialize the vOSS Scheduler message queues
   The \a vos_sched_init_mqs() function initializes the vOSS Scheduler

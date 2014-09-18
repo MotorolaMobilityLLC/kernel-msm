@@ -66,7 +66,6 @@
 #include <wlan_hdd_includes.h>
 #include <vos_api.h>
 #include <vos_sched.h>
-#include <vos_power.h>
 #include <linux/etherdevice.h>
 #include <linux/firmware.h>
 #ifdef ANI_BUS_TYPE_PLATFORM
@@ -8003,16 +8002,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
    }
 
-   //Assert Deep sleep signal now to put Libra HW in lowest power state
-   vosStatus = vos_chipAssertDeepSleep( NULL, NULL, NULL );
-   VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-
-   //Vote off any PMIC voltage supplies
-   vos_chipPowerDown(NULL, NULL, NULL);
-
-   vos_chipVoteOffXOBuffer(NULL, NULL, NULL);
-
-
    //This requires pMac access, Call this before vos_close().
    hdd_unregister_mcast_bcast_filter(pHddCtx);
 
@@ -8068,19 +8057,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    nl_srv_exit();
 #endif /* WLAN_KD_READY_NOTIFIER */
 
-
-   /* Cancel the vote for XO Core ON. 
-    * This is done here to ensure there is no race condition since MC, TX and WD threads have
-    * exited at this point
-    */
-   hddLog(VOS_TRACE_LEVEL_WARN, "In module exit: Cancel the vote for XO Core ON"
-                                    " when WLAN is turned OFF");
-   if (vos_chipVoteXOCore(NULL, NULL, NULL, VOS_FALSE) != VOS_STATUS_SUCCESS)
-   {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "Could not cancel the vote for XO Core ON." 
-                                        " Not returning failure."
-                                        " Power consumed will be high");
-   }  
 
    hdd_close_all_adapters( pHddCtx );
 
@@ -8786,13 +8762,6 @@ int hdd_wlan_startup(struct device *dev )
    pHddCtx->isLogpInProgress = FALSE;
    vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, FALSE);
 
-   status = vos_chipVoteOnXOBuffer(NULL, NULL, NULL);
-   if(!VOS_IS_STATUS_SUCCESS(status))
-   {
-      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Failed to configure 19.2 MHz Clock", __func__);
-      goto err_wdclose;
-   }
-
 #ifdef CONFIG_ENABLE_LINUX_REG
    /* initialize the NV module. This is required so that
       we can initialize the channel information in wiphy
@@ -8805,7 +8774,7 @@ int hdd_wlan_startup(struct device *dev )
        /* NV module cannot be initialized */
        hddLog( VOS_TRACE_LEVEL_FATAL,
                 "%s: vos_nv_open failed", __func__);
-       goto err_clkvote;
+       goto err_wdclose;
    }
 
    status = vos_init_wiphy_from_nv_bin();
@@ -9364,9 +9333,7 @@ err_vos_nv_close:
 #ifdef CONFIG_ENABLE_LINUX_REG
    vos_nv_close();
 
-err_clkvote:
 #endif
-   vos_chipVoteOffXOBuffer(NULL, NULL, NULL);
 
 err_wdclose:
    if(pHddCtx->cfg_ini->fIsLogpEnabled)
@@ -9432,23 +9399,6 @@ static int hdd_driver_init( void)
    hddTraceInit();
    pr_info("%s: loading driver v%s\n", WLAN_MODULE_NAME,
            QWLAN_VERSIONSTR TIMER_MANAGER_STR MEMORY_DEBUG_STR);
-
-   //Power Up Libra WLAN card first if not already powered up
-   status = vos_chipPowerUp(NULL,NULL,NULL);
-   if (!VOS_IS_STATUS_SUCCESS(status))
-   {
-      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Libra WLAN not Powered Up. "
-          "exiting", __func__);
-#ifdef WLAN_OPEN_SOURCE
-      wake_lock_destroy(&wlan_wake_lock);
-#endif
-
-#ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
-      wlan_logging_sock_deinit_svc();
-#endif
-
-      return -EIO;
-   }
 
 #ifdef ANI_BUS_TYPE_PCI
 
@@ -9518,28 +9468,10 @@ static int hdd_driver_init( void)
          break;
       }
 
-      /* Cancel the vote for XO Core ON
-       * This is done here for safety purposes in case we re-initialize without turning
-       * it OFF in any error scenario.
-       */
-      hddLog(VOS_TRACE_LEVEL_INFO, "In module init: Ensure Force XO Core is OFF"
-                                       " when  WLAN is turned ON so Core toggles"
-                                       " unless we enter PSD");
-      if (vos_chipVoteXOCore(NULL, NULL, NULL, VOS_FALSE) != VOS_STATUS_SUCCESS)
-      {
-          hddLog(VOS_TRACE_LEVEL_ERROR, "Could not cancel XO Core ON vote. Not returning failure."
-                                            " Power consumed will be high");
-      }
    } while (0);
 
    if (0 != ret_status)
    {
-      //Assert Deep sleep signal now to put Libra HW in lowest power state
-      status = vos_chipAssertDeepSleep( NULL, NULL, NULL );
-      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status) );
-
-      //Vote off any PMIC voltage supplies
-      vos_chipPowerDown(NULL, NULL, NULL);
 #ifdef TIMER_MANAGER
       vos_timer_exit();
 #endif
