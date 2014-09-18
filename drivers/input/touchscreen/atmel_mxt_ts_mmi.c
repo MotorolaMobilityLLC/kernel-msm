@@ -744,9 +744,8 @@ static bool mxt_object_readable(unsigned int type)
 static void mxt_dump_message(struct mxt_data *data, u8 *message)
 {
 	if (!throttle_dbgout(&mxt_dump_message_dbg, 20, 300000))
-		print_hex_dump(KERN_DEBUG, "atmel_mxt_ts_mmi: MXT MSG:",
-			DUMP_PREFIX_NONE, 16, 1,
-			message, data->T5_msg_size, false);
+		print_hex_dump_bytes("atmel_mxt_ts_mmi: MXT MSG:",
+			DUMP_PREFIX_NONE, message, data->T5_msg_size);
 }
 
 static void mxt_debug_msg_enable(struct mxt_data *data)
