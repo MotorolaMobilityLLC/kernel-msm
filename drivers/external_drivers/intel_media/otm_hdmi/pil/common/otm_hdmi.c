@@ -1685,8 +1685,12 @@ otm_hdmi_ret_t otm_hdmi_crtc_mode_set(void *context, otm_hdmi_timing_t *mode,
 
 	/* program hdmi mode timing registers */
 	rc = ipil_hdmi_crtc_mode_set_program_pipeconf(&ctx->dev);
-	if (rc != OTM_HDMI_SUCCESS)
+	if (rc != OTM_HDMI_SUCCESS) {
 		pr_debug("\nfailed to program pipeconf\n");
+	} else {
+		/* destroy saved HDMI data after mode set */
+		ipil_hdmi_destroy_saved_data(&ctx->dev);
+	}
 
 	pr_debug("Exit%s\n", __func__);
 
