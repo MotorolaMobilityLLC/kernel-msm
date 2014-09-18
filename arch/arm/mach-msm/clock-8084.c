@@ -2536,7 +2536,7 @@ static struct local_vote_clk gcc_ce2_clk = {
 	.en_mask = BIT(2),
 	.base = &virt_bases[GCC_BASE],
 	.c = {
-		.parent = &branch_ce2_clk_src.c,
+		.parent = &ce2_clk_src.c,
 		.dbg_name = "gcc_ce2_clk",
 		.ops = &clk_ops_vote,
 		CLK_INIT(gcc_ce2_clk.c),
@@ -5398,7 +5398,7 @@ static DEFINE_CLK_VOTER(branch_ce1_clk_src,  &ce1_clk_src.c,  50000000);
 
 static DEFINE_CLK_VOTER(qseecom_ce2_clk_src, &ce2_clk_src.c, 100000000);
 static DEFINE_CLK_VOTER(qcedev_ce2_clk_src,  &ce2_clk_src.c, 100000000);
-static DEFINE_CLK_VOTER(qcrypto_ce2_clk_src, &ce2_clk_src.c, 100000000);
+static DEFINE_CLK_VOTER(qcrypto_ce2_clk_src, &ce2_clk_src.c, 171430000);
 static DEFINE_CLK_VOTER(branch_ce2_clk_src,  &ce2_clk_src.c,  50000000);
 
 static DEFINE_CLK_MEASURE(l2_m_clk);
