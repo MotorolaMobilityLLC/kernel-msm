@@ -16,7 +16,6 @@
 #define MT9V113_SENSOR_NAME "mt9v113"
 #define PLATFORM_DRIVER_NAME "msm_camera_mt9v113"
 #define mt9v113_obj mt9v113_##obj
-#include "media/msm_cam_sensor.h"
 /*#define CONFIG_MSMB_CAMERA_DEBUG */
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
 #undef pr_info
@@ -116,6 +115,20 @@ static struct msm_sensor_power_setting MT9V113_power_setting[] = {
 		.config_val = 0,
 		.delay = 0,
 	}
+};
+
+static struct msm_camera_i2c_reg_conf mt9v113_refresh_settings[] = {
+	/* REFRESH */
+	{0x098C, 0xA103,}, /* MCU_ADDRESS */
+	{0x0990, 0x0006,}, /* MCU_DATA_0 */
+	{0x098C, 0xA103,},
+	{0x0990, 0xFFFF, MSM_CAMERA_I2C_UNSET_WORD_MASK,
+		MSM_CAMERA_I2C_CMD_POLL},
+	{0x098C, 0xA103,}, /* MCU_ADDRESS */
+	{0x0990, 0x0005,}, /* MCU_DATA_0 */
+	{0x098C, 0xA103,},
+	{0x0990, 0xFFFF, MSM_CAMERA_I2C_UNSET_WORD_MASK,
+		MSM_CAMERA_I2C_CMD_POLL},
 };
 
 static struct msm_camera_i2c_reg_conf mt9v113_start_settings[] = {
@@ -606,18 +619,6 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x0990, 0x0002,}, /* MCU_DATA_0*/
 	{0x098C, 0xA75E,}, /* MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]*/
 	{0x0990, 0x0002,}, /* MCU_DATA_0*/
-
-	/* Refresh */
-	{0x098C, 0xA103,}, /* MCU_ADDRESS             */
-	{0x0990, 0x0006,}, /* MCU_DATA_0 */
-	{0x098C, 0xA103,},
-	{0x0990, 0xFFFF, MSM_CAMERA_I2C_UNSET_WORD_MASK,
-		MSM_CAMERA_I2C_CMD_POLL},
-	{0x098C, 0xA103,}, /* MCU_ADDRESS  */
-	{0x0990, 0x0005,}, /* MCU_DATA_0 */
-	{0x098C, 0xA103,},
-	{0x0990, 0xFFFF, MSM_CAMERA_I2C_UNSET_WORD_MASK,
-		MSM_CAMERA_I2C_CMD_POLL},
 	{0x3400, 0x7a26,},
 };
 
@@ -716,7 +717,7 @@ static void __exit MT9V113_exit_module(void)
 	return;
 }
 
-static int32_t mt9m114_set_gamma(struct msm_sensor_ctrl_t *s_ctrl,
+static int32_t mt9v113_set_gamma(struct msm_sensor_ctrl_t *s_ctrl,
 		uint8_t unity)
 {
 	int32_t rc;
@@ -751,7 +752,7 @@ static int32_t mt9m114_set_gamma(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
-static int32_t mt9m114_set_sharpening(struct msm_sensor_ctrl_t *s_ctrl,
+static int32_t mt9v113_set_sharpening(struct msm_sensor_ctrl_t *s_ctrl,
 		uint8_t sharpening)
 {
 	int32_t rc;
@@ -810,7 +811,7 @@ static int32_t mt9m114_set_sharpening(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
-static int32_t mt9m114_set_lens_shading(struct msm_sensor_ctrl_t *s_ctrl,
+static int32_t mt9v113_set_lens_shading(struct msm_sensor_ctrl_t *s_ctrl,
 		uint8_t enable)
 {
 	int32_t rc;
@@ -845,7 +846,7 @@ static int32_t mt9m114_set_lens_shading(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
-static int32_t mt9m114_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
+static int32_t mt9v113_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 		int8_t target_exposure)
 {
 	int32_t rc;
@@ -876,6 +877,84 @@ static int32_t mt9m114_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 
 	return rc;
 }
+
+static struct msm_camera_i2c_reg_conf mt9v113_15_15_fps_settings[] = {
+	{0x098C, 0x271F,}, /*MCU_ADDRESS [MODE_SENSOR_FRAME_LENGTH_A]*/
+	{0x0990, 0x042C,}, /*MCU_DATA_0*/
+	{0x098C, 0xA20C,}, /*MCU_ADDRESS [AE_MAX_INDEX]*/
+	{0x0990, 0x0008,}, /*MCU_DATA_0*/
+	{0x098C, 0xA215,}, /*MCU_ADDRESS [AE_INDEX_TH23]*/
+	{0x0990, 0x0008,}, /*MCU_DATA_0*/
+};
+
+static struct msm_camera_i2c_reg_conf mt9v113_15_30_fps_settings[] = {
+	{0x098C, 0x271F,}, /*MCU_ADDRESS [MODE_SENSOR_FRAME_LENGTH_A]*/
+	{0x0990, 0x021F,}, /*MCU_DATA_0*/
+	{0x098C, 0xA20C,}, /*MCU_ADDRESS [AE_MAX_INDEX]*/
+	{0x0990, 0x0008,}, /*MCU_DATA_0*/
+	{0x098C, 0xA215,}, /*MCU_ADDRESS [AE_INDEX_TH23]*/
+	{0x0990, 0x0005,}, /*MCU_DATA_0*/
+};
+
+static struct msm_camera_i2c_reg_conf mt9v113_5_30_fps_settings[] = {
+	{0x098C, 0x271F,}, /*MCU_ADDRESS [MODE_SENSOR_FRAME_LENGTH_A]*/
+	{0x0990, 0x021F,}, /*MCU_DATA_0*/
+	{0x098C, 0xA20C,}, /*MCU_ADDRESS [AE_MAX_INDEX]*/
+	{0x0990, 0x0018,}, /*MCU_DATA_0*/
+	{0x098C, 0xA215,}, /*MCU_ADDRESS [AE_INDEX_TH23]*/
+	{0x0990, 0x0005,}, /*MCU_DATA_0*/
+};
+
+static int32_t mt9v113_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
+	struct var_fps_range_t *fps_range)
+{
+	int32_t rc = 0;
+	static bool fps_5_30 = true;
+	if (fps_range->min_fps == 5 && fps_range->max_fps == 30) {
+		if (fps_5_30)
+			return rc;
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+			i2c_write_conf_tbl(
+					s_ctrl->sensor_i2c_client,
+					mt9v113_5_30_fps_settings,
+					ARRAY_SIZE(mt9v113_5_30_fps_settings),
+					MSM_CAMERA_I2C_WORD_DATA);
+		fps_5_30 = true;
+	} else if (fps_range->min_fps == 15 && fps_range->max_fps == 30) {
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+			i2c_write_conf_tbl(
+					s_ctrl->sensor_i2c_client,
+					mt9v113_15_30_fps_settings,
+					ARRAY_SIZE(mt9v113_15_30_fps_settings),
+					MSM_CAMERA_I2C_WORD_DATA);
+		fps_5_30 = false;
+	} else if (fps_range->min_fps == 15 && fps_range->max_fps == 15) {
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+			i2c_write_conf_tbl(
+					s_ctrl->sensor_i2c_client,
+					mt9v113_15_15_fps_settings,
+					ARRAY_SIZE(mt9v113_15_15_fps_settings),
+					MSM_CAMERA_I2C_WORD_DATA);
+		fps_5_30 = false;
+	} else {
+		pr_err("%s: Invalid frame rate range (%u, %u)\n", __func__,
+				fps_range->min_fps, fps_range->max_fps);
+		return -EINVAL;
+	}
+
+	if (rc) {
+		pr_err("%s: failed to set frame rate range (%d)\n",
+				__func__, rc);
+		return rc;
+	}
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
+		s_ctrl->sensor_i2c_client, mt9v113_refresh_settings,
+		ARRAY_SIZE(mt9v113_refresh_settings),
+		MSM_CAMERA_I2C_WORD_DATA);
+	return rc;
+}
+
 int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	void __user *argp)
 {
@@ -911,6 +990,12 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			i2c_write_conf_tbl(
 			s_ctrl->sensor_i2c_client, mt9v113_init_tbl,
 			ARRAY_SIZE(mt9v113_init_tbl),
+			MSM_CAMERA_I2C_WORD_DATA);
+
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+			i2c_write_conf_tbl(
+			s_ctrl->sensor_i2c_client, mt9v113_refresh_settings,
+			ARRAY_SIZE(mt9v113_refresh_settings),
 			MSM_CAMERA_I2C_WORD_DATA);
 		break;
 	case CFG_SET_RESOLUTION:
@@ -1149,7 +1234,7 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		pr_debug("%s:%d CFG_SET_GAMMA %d\n", __func__,
 				__LINE__, gamma);
-		rc = mt9m114_set_gamma(s_ctrl, (uint8_t)gamma);
+		rc = mt9v113_set_gamma(s_ctrl, (uint8_t)gamma);
 		break;
 		}
 	case CFG_SET_SHARPNESS: {
@@ -1161,7 +1246,7 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			break;
 		}
 		pr_debug("%s: Sharpness Value is %d", __func__, shp_lev);
-		rc = mt9m114_set_sharpening(s_ctrl, (uint8_t)shp_lev);
+		rc = mt9v113_set_sharpening(s_ctrl, (uint8_t)shp_lev);
 		break;
 		}
 	case CFG_SET_LENS_SHADING: {
@@ -1175,7 +1260,7 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		pr_debug("%s:%d CFG_SET_LENS_SHADING %d\n", __func__,
 			__LINE__, lens);
-		rc = mt9m114_set_lens_shading(s_ctrl, (uint8_t)lens);
+		rc = mt9v113_set_lens_shading(s_ctrl, (uint8_t)lens);
 		break;
 		}
 	case CFG_SET_TARGET_EXPOSURE: {
@@ -1189,7 +1274,7 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		pr_debug("%s:%d CFG_SET_TARGET_EXPOSURE %d\n", __func__,
 			__LINE__, expo);
-		rc = mt9m114_set_target_exposure(s_ctrl, (int8_t)expo);
+		rc = mt9v113_set_target_exposure(s_ctrl, (int8_t)expo);
 		break;
 		}
 	case CFG_SET_AUTOFOCUS: {
@@ -1202,6 +1287,21 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		pr_debug("%s: Cancelling Auto Focus", __func__);
 		break;
 		}
+	case CFG_SET_FPS_RANGE: {
+		struct  var_fps_range_t data;
+		memset(&data, 0, sizeof(struct var_fps_range_t));
+		if (copy_from_user(&data,
+			(void *)cdata->cfg.setting,
+				sizeof(data))) {
+				pr_err("%s:%d failed\n", __func__, __LINE__);
+				rc = -EFAULT;
+				break;
+		}
+		pr_debug("%s:%d CFG_SET_FPS_RANGE %u,%u\n", __func__,
+				__LINE__, data.min_fps, data.max_fps);
+		rc = mt9v113_set_frame_rate_range(s_ctrl, &data);
+		break;
+	}
 	default:
 		rc = -EFAULT;
 		break;
