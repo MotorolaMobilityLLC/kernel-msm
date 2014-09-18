@@ -4952,6 +4952,7 @@ static int __iw_setnone_getint(struct net_device *dev,
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     int *value = (int *)extra;
     int ret = 0; /* success */
 
@@ -4999,6 +5000,36 @@ static int __iw_setnone_getint(struct net_device *dev,
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                       FL("failed to get ini parameter, WNI_CFG_ASSOC_STA_LIMIT"));
                 ret = -EIO;
+            }
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+            if (pHddCtx->cfg_ini->fEnableVSTASupport)
+            {
+                if (*value > VSTA_NUM_ASSOC_STA)
+                {
+                    *value = VSTA_NUM_ASSOC_STA;
+                }
+                if ((pHddCtx->hddAdapters.count > VSTA_NUM_RESV_SELFSTA) &&
+                    (*value > (VSTA_NUM_ASSOC_STA -
+                             (pHddCtx->hddAdapters.count - VSTA_NUM_RESV_SELFSTA))))
+                {
+                    *value = (VSTA_NUM_ASSOC_STA -
+                             (pHddCtx->hddAdapters.count - VSTA_NUM_RESV_SELFSTA));
+                }
+            }
+            else
+#endif
+            {
+                if (*value > NUM_ASSOC_STA)
+                {
+                    *value = NUM_ASSOC_STA;
+                }
+                if ((pHddCtx->hddAdapters.count > NUM_RESV_SELFSTA) &&
+                    (*value > (NUM_ASSOC_STA -
+                              (pHddCtx->hddAdapters.count - NUM_RESV_SELFSTA))))
+                {
+                    *value = (NUM_ASSOC_STA -
+                             (pHddCtx->hddAdapters.count - NUM_RESV_SELFSTA));
+                }
             }
             break;
         }

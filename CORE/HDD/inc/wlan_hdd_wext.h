@@ -70,6 +70,30 @@
 /* 012345678 */
 #define WLAN_HDD_UI_SET_BAND_VALUE_OFFSET              8
 
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+/* 41 - STA support with Virtual STA feature
+ * 1  - Broadcast STA
+ * 4  - reserved Self STA: ap_self_sta, wlan_self_sta,
+ *      wlan_peer_sta, p2p_self_sta
+ * 4  - General Purpose Stations to support Virtual STAs
+ */
+#define VSTA_NUM_STA           41
+#define VSTA_NUM_RESV_SELFSTA  4
+#define VSTA_NUM_BC_STA        1
+#define VSTA_NUM_GPSTA         4
+#define VSTA_NUM_ASSOC_STA     (VSTA_NUM_STA - VSTA_NUM_RESV_SELFSTA -\
+                                VSTA_NUM_BC_STA - VSTA_NUM_GPSTA )
+#endif
+
+/* 12 - STA support without Virtual STA feature
+ * 1  - Broadcast STA
+ * 1  - reserved Self STA: ap_self_sta or wlan_self_sta,
+ */
+#define NUM_STA           12
+#define NUM_RESV_SELFSTA  1
+#define NUM_BC_STA        1
+#define NUM_ASSOC_STA     (NUM_STA - NUM_RESV_SELFSTA - NUM_BC_STA)
+
 typedef enum
 {
    HDD_WLAN_WMM_DIRECTION_UPSTREAM      = 0,
