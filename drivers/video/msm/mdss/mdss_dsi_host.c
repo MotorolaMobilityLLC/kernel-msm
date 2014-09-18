@@ -2504,6 +2504,11 @@ int mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 				(req->flags & CMD_REQ_DMA_TPG));
 		memcpy(req->rbuf, rp->data, rp->len);
 		ctrl->rx_len = len;
+		if (len != req->rlen) {
+			pr_err("%s: Tried to read %d bytes, actually read %d "
+					"bytes\n", __func__, req->rlen, len);
+			len = 0;
+		}
 	} else {
 		pr_err("%s: No rx buffer provided\n", __func__);
 	}
