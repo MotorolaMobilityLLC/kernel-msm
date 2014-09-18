@@ -26,6 +26,8 @@
 #include <linux/irqdomain.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
+#include <linux/of_gpio.h>
+
 #include "pcie.h"
 
 /* Any address will do here, as it won't be dereferenced */
@@ -551,7 +553,10 @@ int32_t msm_pcie_wake_irq_init(struct msm_pcie_dev_t *dev)
 {
 	int rc;
 	struct device *pdev = &dev->pdev->dev;
-
+#ifdef CONFIG_BCM4356
+	int gpio_wlan_host_wake;
+	struct device_node *np = of_find_compatible_node(NULL, NULL, "bcm,bcm4356");
+#endif
 	PCIE_DBG(dev, "RC%d\n", dev->rc_idx);
 
 	INIT_WORK(&dev->handle_wake_work, handle_wake_func);
@@ -572,7 +577,25 @@ int32_t msm_pcie_wake_irq_init(struct msm_pcie_dev_t *dev)
 			dev->rc_idx);
 		return rc;
 	}
-
+#ifdef CONFIG_BCM4356
+	if (np) {
+		gpio_wlan_host_wake = of_get_named_gpio(np, "wl_host_wake", 0);
+		rc = devm_request_irq(pdev,
+			gpio_to_irq(gpio_wlan_host_wake), handle_wake_irq,
+			IRQF_TRIGGER_RISING, "msm_pcie_host_wake", dev);
+		if (rc) {
+			PCIE_ERR(dev, "PCIe: RC%d: Unable to request wake interrupt\n",
+				dev->rc_idx);
+			return rc;
+		}
+		rc = enable_irq_wake(gpio_to_irq(gpio_wlan_host_wake));
+		if (rc) {
+			PCIE_ERR(dev, "PCIe: RC%d: Unable to enable wake interrupt\n",
+				dev->rc_idx);
+			return rc;
+		}
+	}
+#endif
 	return 0;
 }
 
