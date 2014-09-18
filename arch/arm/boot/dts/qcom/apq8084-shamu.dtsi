@@ -26,6 +26,7 @@
 	wifi_bcm4356 {
 		compatible = "bcm,bcm4356";
 		wl_reg_on = <&msmgpio 82 0>;
+		wl_host_wake = <&msmgpio 121 0>;
 	};
 
 	cycapsense_prog {
