@@ -1138,7 +1138,7 @@ static struct gpiomux_setting gpio_pcie_pwaken_config[] = {
     {
         .func = GPIOMUX_FUNC_GPIO,
         .drv = GPIOMUX_DRV_2MA,
-        .pull = GPIOMUX_PULL_UP,
+        .pull = GPIOMUX_PULL_NONE,
         .dir = GPIOMUX_IN,
     },
 };
