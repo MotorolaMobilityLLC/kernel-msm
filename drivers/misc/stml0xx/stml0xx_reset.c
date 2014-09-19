@@ -46,12 +46,12 @@
 void stml0xx_reset(struct stml0xx_platform_data *pdata, unsigned char *cmdbuff)
 {
 	dev_err(&stml0xx_misc_data->spi->dev, "stml0xx_reset");
+	stml0xx_g_booted = 0;
 	msleep(stml0xx_spi_retry_delay);
 	gpio_set_value(pdata->gpio_reset, 0);
 	msleep(stml0xx_spi_retry_delay);
 	gpio_set_value(pdata->gpio_reset, 1);
 	msleep(STML0XX_RESET_DELAY);
-	stml0xx_detect_lowpower_mode(cmdbuff);
 }
 
 void stml0xx_initialize_work_func(struct work_struct *work)
@@ -77,6 +77,8 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 	stml0xx_spi_retry_delay = 200;
 
 	stml0xx_wake(ps_stml0xx);
+
+	stml0xx_detect_lowpower_mode();
 
 	buf[0] = stml0xx_g_acc_delay;
 	err = stml0xx_spi_send_write_reg_reset(ACCEL_UPDATE_RATE, buf,
