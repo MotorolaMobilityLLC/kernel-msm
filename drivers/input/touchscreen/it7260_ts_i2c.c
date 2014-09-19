@@ -182,6 +182,7 @@ static int suspend_touch_down = 0;
 static int suspend_touch_up = 0;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
+static int longPalm = false;
 
 #define LOGE(...)	pr_err(DEVICE_NAME ": " __VA_ARGS__)
 #define LOGI(...)	printk(DEVICE_NAME ": " __VA_ARGS__)
@@ -441,6 +442,7 @@ static void chipLowPowerMode(bool low)
 			isDeviceSleeping = false;
 			isDeviceSuspend = false;
 			hadPalmDown = false;
+			longPalm = false;
 			wake_unlock(&touch_lock);
 			i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
 		}
@@ -752,6 +754,7 @@ static void sendPalmDownEvt(struct work_struct *work)
 	kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
 	input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
 	input_sync(gl_ts->input_dev);
+	longPalm = true;
 }
 
 static void sendPalmUpEvt(struct work_struct *work) {
@@ -925,7 +928,11 @@ static void readTouchDataPoint_Ambient(void)
 	
 	}else if (isDeviceSuspend){
 		msleep(10);
-		wake_lock(&touch_lock);
+		if (longPalm){
+			longPalm = false;
+		} else {
+			wake_lock(&touch_lock);
+		}
 		isDeviceSuspend = false;
 		suspend_touch_down = getMsTime();
 		readTouchDataPoint_Ambient();
