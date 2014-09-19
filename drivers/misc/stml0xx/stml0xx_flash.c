@@ -281,10 +281,6 @@ int stml0xx_get_version(struct stml0xx_data *ps_stml0xx)
 		rc = (int)fw_ver;
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"STML0XX version %02x", fw_ver);
-		if (fw_ver > 0)
-			stml0xx_g_booted = 1;
-		else
-			stml0xx_g_booted = 0;
 	}
 	stml0xx_sleep(ps_stml0xx);
 	return rc;
@@ -304,6 +300,7 @@ int switch_stml0xx_mode(enum stm_mode mode)
 	if (mode == BOOTMODE) {
 		/* Set boot pin */
 		gpio_set_value(pdata->gpio_bslen, (bslen_pin_active_value));
+		stml0xx_g_booted = 0;
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Switching to boot mode");
 		msleep(stml0xx_spi_retry_delay);
