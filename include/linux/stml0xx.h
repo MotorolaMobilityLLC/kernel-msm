@@ -654,7 +654,7 @@ void stml0xx_spi_append_crc(unsigned char *data, int len);
 int stml0xx_enable(void);
 void stml0xx_wake(struct stml0xx_data *ps_stml0xx);
 void stml0xx_sleep(struct stml0xx_data *ps_stml0xx);
-void stml0xx_detect_lowpower_mode(unsigned char *cmdbuff);
+void stml0xx_detect_lowpower_mode(void);
 
 int stml0xx_load_brightness_table(void);
 
