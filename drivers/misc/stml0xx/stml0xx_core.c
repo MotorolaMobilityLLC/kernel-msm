@@ -137,7 +137,7 @@ void stml0xx_sleep(struct stml0xx_data *ps_stml0xx)
 	}
 }
 
-void stml0xx_detect_lowpower_mode(unsigned char *cmdbuff)
+void stml0xx_detect_lowpower_mode(void)
 {
 	int err;
 	uint8_t buf[STML0XX_POWER_REG_SIZE] = {0};
