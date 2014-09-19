@@ -131,7 +131,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_GET_VERSION:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_VERSION");
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted)
 			err = stml0xx_get_version(ps_stml0xx);
 		else
 			err = -EBUSY;
@@ -145,11 +145,12 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			err = -EFAULT;
 			break;
 		}
-		buf[0] = delay;
 		stml0xx_g_acc_delay = delay;
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted) {
+			buf[0] = delay;
 			err = stml0xx_spi_send_write_reg(ACCEL_UPDATE_RATE,
 							buf, 1);
+		}
 		break;
 	case STML0XX_IOCTL_SET_ACC2_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -160,11 +161,12 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			err = -EFAULT;
 			break;
 		}
-		buf[0] = delay;
 		stml0xx_g_acc2_delay = delay;
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted) {
+			buf[0] = delay;
 			err = stml0xx_spi_send_write_reg(ACCEL2_UPDATE_RATE,
 							buf, 1);
+		}
 		break;
 	case STML0XX_IOCTL_SET_MAG_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -176,11 +178,12 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			err = -EFAULT;
 			break;
 		}
-		buf[0] = delay;
 		stml0xx_g_mag_delay = delay;
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted) {
+			buf[0] = delay;
 			err = stml0xx_spi_send_write_reg(MAG_UPDATE_RATE,
 							buf, 1);
+		}
 		break;
 	case STML0XX_IOCTL_SET_GYRO_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -192,11 +195,12 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			err = -EFAULT;
 			break;
 		}
-		buf[0] = delay;
 		stml0xx_g_gyro_delay = delay;
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted) {
+			buf[0] = delay;
 			err = stml0xx_spi_send_write_reg(GYRO_UPDATE_RATE,
 							buf, 1);
+		}
 		break;
 	case STML0XX_IOCTL_SET_PRES_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -208,11 +212,12 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			err = -EFAULT;
 			break;
 		}
-		buf[0] = delay;
 		stml0xx_g_baro_delay = delay;
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted) {
+			buf[0] = delay;
 			err = stml0xx_spi_send_write_reg(PRESSURE_UPDATE_RATE,
 							buf, 1);
+		}
 		break;
 	case STML0XX_IOCTL_SET_SENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -225,7 +230,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		stml0xx_g_nonwake_sensor_state = (buf[2] << 16)
 		    | (buf[1] << 8) | buf[0];
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(NONWAKESENSOR_CONFIG,
 							 buf, 3);
 		dev_dbg(&stml0xx_misc_data->spi->dev, "Sensor enable = 0x%lx",
@@ -234,7 +239,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_GET_SENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_SENSORS");
-		if (ps_stml0xx->mode != BOOTMODE) {
+		if (stml0xx_g_booted) {
 			err = stml0xx_spi_send_read_reg(NONWAKESENSOR_CONFIG,
 							buf, 3);
 			if (err < 0) {
@@ -260,7 +265,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		stml0xx_g_wake_sensor_state = (buf[1] << 8) | buf[0];
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(WAKESENSOR_CONFIG,
 							 buf, 2);
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -269,7 +274,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_GET_WAKESENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_WAKESENSORS");
-		if (ps_stml0xx->mode != BOOTMODE) {
+		if (stml0xx_g_booted) {
 			err = stml0xx_spi_send_read_reg(WAKESENSOR_CONFIG,
 							 buf, 2);
 			if (err < 0) {
@@ -296,14 +301,14 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		stml0xx_g_algo_state = (buf[1] << 8) | buf[0];
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Set algos config: 0x%x", stml0xx_g_algo_state);
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(ALGO_CONFIG,
 							buf, 2);
 		break;
 	case STML0XX_IOCTL_GET_ALGOS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_ALGOS");
-		if (ps_stml0xx->mode != BOOTMODE) {
+		if (stml0xx_g_booted) {
 			err = stml0xx_spi_send_read_reg(ALGO_CONFIG,
 							buf, 2);
 			if (err < 0) {
@@ -323,7 +328,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_GET_MAG_CAL:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_MAG_CAL");
-		if (ps_stml0xx->mode != BOOTMODE) {
+		if (stml0xx_g_booted) {
 			err = stml0xx_spi_send_read_reg(MAG_CAL, buf,
 					      STML0XX_MAG_CAL_SIZE);
 			if (err < 0) {
@@ -348,7 +353,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		memcpy(stml0xx_g_mag_cal, buf, STML0XX_MAG_CAL_SIZE);
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(MAG_CAL, buf,
 					       STML0XX_MAG_CAL_SIZE);
 		break;
@@ -363,7 +368,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		buf[0] = duration & 0xFF;
 		stml0xx_g_motion_dur = buf[0];
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(MOTION_DUR,
 							buf, 1);
 		break;
@@ -378,14 +383,14 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		buf[0] = duration & 0xFF;
 		stml0xx_g_zmotion_dur = buf[0];
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(ZRMOTION_DUR,
 							 buf, 1);
 		break;
 	case STML0XX_IOCTL_GET_DOCK_STATUS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_DOCK_STATUS");
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_read_reg(DOCK_DATA,
 							buf, 1);
 		else
@@ -396,7 +401,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_TEST_READ:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_TEST_READ");
-		if (ps_stml0xx->mode != BOOTMODE) {
+		if (stml0xx_g_booted) {
 			err = stml0xx_spi_read(buf, 1);
 			/* stml0xx_spi_read will return num of bytes
 				read or error */
@@ -407,8 +412,10 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_TEST_WRITE:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_TEST_WRITE");
-		if (ps_stml0xx->mode == BOOTMODE)
+		if (!stml0xx_g_booted) {
+			err = -EBUSY;
 			break;
+		}
 		if (copy_from_user(buf, argp, sizeof(unsigned char))) {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Copy test write returned error");
@@ -420,8 +427,10 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_SET_POSIX_TIME:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_POSIX_TIME");
-		if (ps_stml0xx->mode == BOOTMODE)
+		if (!stml0xx_g_booted) {
+			err = -EBUSY;
 			break;
+		}
 		if (copy_from_user(&current_posix_time, argp,
 				   sizeof(current_posix_time))) {
 			dev_err(&stml0xx_misc_data->spi->dev,
@@ -485,14 +494,14 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		stml0xx_g_algo_requst[algo_idx].size = len;
 		memcpy(stml0xx_g_algo_requst[algo_idx].data, buf, len);
-		if (ps_stml0xx->mode != BOOTMODE)
+		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(stml0xx_algo_info
 					       [algo_idx].req_register, buf,
 					       len);
 		break;
 	case STML0XX_IOCTL_GET_ALGO_EVT:
 		dev_dbg(&stml0xx_misc_data->spi->dev, "STML0XX_IOCTL_GET_ALGO_EVT");
-		if (ps_stml0xx->mode == BOOTMODE) {
+		if (!stml0xx_g_booted) {
 			err = -EFAULT;
 			break;
 		}
@@ -533,7 +542,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_WRITE_REG:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_WRITE_REG");
-		if (ps_stml0xx->mode == BOOTMODE) {
+		if (!stml0xx_g_booted) {
 			err = -EFAULT;
 			break;
 		}
@@ -574,7 +583,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_READ_REG:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_READ_REG");
-		if (ps_stml0xx->mode == BOOTMODE) {
+		if (!stml0xx_g_booted) {
 			err = -EFAULT;
 			break;
 		}
@@ -614,7 +623,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_SET_LOWPOWER_MODE:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_LOWPOWER_MODE");
-		if (ps_stml0xx->mode == BOOTMODE) {
+		if (!stml0xx_g_booted) {
 			err = -EBUSY;
 			break;
 		}
