@@ -46,6 +46,8 @@
 #endif
 #include "mdfld_output.h"
 
+#include <linux/compat.h>
+
 static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb);
 static int psb_user_framebuffer_create_handle(struct drm_framebuffer *fb,
 					      struct drm_file *file_priv,
@@ -302,6 +304,26 @@ static int fb_blank_void(int blank_mode, struct fb_info *info)
 	return 0;
 }
 
+#define FBIO_PSB_SET_RGBX	_IOWR('F', 0x42, struct fb_var_screeninfo)
+
+static int psb_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
+{
+	struct psb_fbdev *fbdev = info->par;
+	struct psb_framebuffer *psbfb = fbdev->pfb;
+	struct drm_device *dev = psbfb->base.dev;
+
+	switch(cmd) {
+		case FBIO_PSB_SET_RGBX:
+			REG_WRITE(DSPBCNTR, REG_READ(DSPBCNTR)|0xb8000000);
+			REG_WRITE(DSPBSURF, REG_READ(DSPBSURF));
+			break;
+		default:
+			return -ENOTTY;
+	}
+
+	return 0;
+}
+
 static struct fb_ops psbfb_ops = {
 	.owner = THIS_MODULE,
 	.fb_check_var = drm_fb_helper_check_var,
@@ -312,6 +334,10 @@ static struct fb_ops psbfb_ops = {
 	.fb_copyarea = cfb_copyarea,
 	.fb_imageblit = cfb_imageblit,
 	.fb_mmap = psbfb_mmap,
+	.fb_ioctl = psb_fb_ioctl,
+#ifdef CONFIG_COMPAT
+	.fb_compat_ioctl = psb_fb_ioctl,
+#endif
 };
 
 static struct drm_framebuffer *psb_framebuffer_create(struct drm_device *dev,
