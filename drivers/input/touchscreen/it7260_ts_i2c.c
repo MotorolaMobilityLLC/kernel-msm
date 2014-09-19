@@ -43,6 +43,7 @@
 #include <linux/proc_fs.h>
 #include <linux/notifier.h>
 #include <linux/asus_utility.h>
+#include <linux/wakelock.h>
 
 #define MAX_BUFFER_SIZE			144
 #define DEVICE_NAME			"IT7260"
@@ -177,7 +178,10 @@ static struct class *ite7260_class = NULL;
 static dev_t ite7260_dev;
 static struct input_dev *input_dev;
 static struct device *class_dev = NULL;
+static int suspend_touch_down = 0;
+static int suspend_touch_up = 0;
 static struct IT7260_ts_data *gl_ts;
+static struct wake_lock touch_lock;
 
 #define LOGE(...)	pr_err(DEVICE_NAME ": " __VA_ARGS__)
 #define LOGI(...)	printk(DEVICE_NAME ": " __VA_ARGS__)
@@ -427,6 +431,7 @@ static void chipLowPowerMode(bool low)
 				enable_irq_wake(gl_ts->client->irq);
 			}
 			isDeviceSleeping = true;
+			wake_unlock(&touch_lock);
 			i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
 		} else {
 			if (!allow_irq_wake){
@@ -436,6 +441,7 @@ static void chipLowPowerMode(bool low)
 			isDeviceSleeping = false;
 			isDeviceSuspend = false;
 			hadPalmDown = false;
+			wake_unlock(&touch_lock);
 			i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
 		}
 	}
@@ -768,15 +774,6 @@ static void sendWakeEvt(void)
 	input_sync(gl_ts->input_dev);
 }
 
-static void sendPowerEvt(void)
-{
-	input_report_key(gl_ts->input_dev, KEY_POWER,1);
-	input_sync(gl_ts->input_dev);
-	msleep(5);
-	input_report_key(gl_ts->input_dev, KEY_POWER,0);
-	input_sync(gl_ts->input_dev);
-}
-
 /* contrary to the name this code does not just read data - lots of processing happens */
 static void readTouchDataPoint(void)
 {
@@ -880,12 +877,66 @@ static void readTouchDataPoint(void)
 
 }
 
+static void readTouchDataPoint_Ambient(void)
+{
+	struct PointData pointData;
+	uint8_t devStatus;
+	uint8_t pressure = FD_PRESSURE_NONE;
+	uint16_t x, y;
+	
+	if (!isDeviceSuspend){
+	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
+	if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
+		LOGE("readTouchDataPoint() called when no data available (0x%02X)\n", devStatus);
+		return;
+	}
+	if (!i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData))) {
+		LOGE("readTouchDataPoint() failed to read point data buffer\n");
+		return;
+	}
+	if ((pointData.flags & PD_FLAGS_DATA_TYPE_BITS) != PD_FLAGS_DATA_TYPE_TOUCH) {
+		LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
+		return;
+	}
+	
+	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
+		readFingerData(&x, &y, &pressure, pointData.fd);
+	
+	if (pressure >= FD_PRESSURE_LIGHT) {
+
+		if (!hadFingerDown) 
+			hadFingerDown = true;
+
+		readFingerData(&x, &y, &pressure, pointData.fd);
+	} else if (hadFingerDown) {
+		hadFingerDown = false;
+		suspend_touch_up = getMsTime();
+		
+		if (suspend_touch_up - suspend_touch_down < 1000){
+			input_report_key(gl_ts->input_dev, BTN_TOUCH, 1);
+			input_sync(gl_ts->input_dev);
+			input_report_key(gl_ts->input_dev, BTN_TOUCH, 0);
+			input_sync(gl_ts->input_dev);	
+		}else {
+			isDeviceSuspend = true;
+		}
+		wake_unlock(&touch_lock);
+	}
+	
+	}else if (isDeviceSuspend){
+		msleep(10);
+		wake_lock(&touch_lock);
+		isDeviceSuspend = false;
+		suspend_touch_down = getMsTime();
+		readTouchDataPoint_Ambient();
+	}
+}
+
 static irqreturn_t IT7260_ts_threaded_handler(int irq, void *devid)
 {
 	smp_rmb();
 	if (isDeviceSleeping) {
-		isDeviceSleeping = false;
-		sendPowerEvt();
+		readTouchDataPoint_Ambient();
 		smp_wmb();
 		/* XXX: call readTouchDataPoint() here maybe ? */
 	} else {
@@ -1019,6 +1070,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		dev_err(&client->dev, "failed to register sysfs #2\n");
 		goto err_sysfs_grp_create_2;
 	}
+	wake_lock_init(&touch_lock, WAKE_LOCK_SUSPEND, "touch-lock");
 	
 	devicePresent = true;
 
@@ -1304,6 +1356,7 @@ static void __exit IT7260_ts_exit(void)
 	class_destroy(ite7260_class);
 	cdev_del(&ite7260_cdev);
 	unregister_chrdev_region(dev, 1);
+	wake_lock_destroy(&touch_lock);
 	if (IT7260_wq)
 		destroy_workqueue(IT7260_wq);
 }
