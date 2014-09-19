@@ -3612,6 +3612,7 @@ typedef struct sSirSmeDelStaSelfRsp
 #define SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4 (5)
 #define SIR_COEX_IND_TYPE_ENABLE_UAPSD (6)
 #define SIR_COEX_IND_TYPE_DISABLE_UAPSD (7)
+#define SIR_COEX_IND_TYPE_CXM_FEATURES_NOTIFICATION (8)
 
 typedef struct sSirSmeCoexInd
 {
