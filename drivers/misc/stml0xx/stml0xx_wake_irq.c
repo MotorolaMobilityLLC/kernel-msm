@@ -203,6 +203,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			&ps_stml0xx->initialize_work);
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"Sensor Hub reports reset");
+		stml0xx_g_booted = 1;
 	}
 	if (irq_status & M_FLATUP) {
 		err = stml0xx_spi_send_read_reg(FLAT_DATA, buf, 1);
