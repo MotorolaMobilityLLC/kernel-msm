@@ -54,6 +54,7 @@
 			39 01 00 00 00 00 04 D3 00 00 00
 			39 01 00 00 00 00 02 C7 40
 			39 01 00 00 00 00 06 F0 55 AA 52 08 02
+			15 01 00 00 00 00 02 EB 02
 			15 01 00 00 00 00 02 F5 10
 			39 01 00 00 00 00 09 ED 48 00 E0 13 08 00 0C 00
 			39 01 00 00 00 00 09 C7 0F 05 00 0F 43 00 88 22
@@ -96,6 +97,7 @@
 			39 01 00 00 00 00 04 D3 00 00 00
 			39 01 00 00 00 00 02 C7 40
 			39 01 00 00 00 00 06 F0 55 AA 52 08 02
+			15 01 00 00 00 00 02 EB 02
 			15 01 00 00 00 00 02 F5 10
 			39 01 00 00 00 00 09 ED 48 00 E0 13 08 00 0C 00
 			39 01 00 00 00 00 09 C7 0F 05 00 0F 43 00 88 22
@@ -174,7 +176,7 @@
 		qcom,mdss-dsi-te-using-te-pin;
 
 		// By AUO's suggestion: MIPI Clock rate = ~290Mbps.
-		qcom,mdss-dsi-panel-timings = [5D 12 0C 00 32 36 10 16 0F 03 04 00]; // 290Mbps, panel_info->clk_rate=
+		qcom,mdss-dsi-panel-timings = [5D 12 0C 00 32 38 0E 16 0F 03 04 00]; // 290Mbps, panel_info->clk_rate=
 
 		
 		qcom,mdss-dsi-t-clk-post = <0x04>;
