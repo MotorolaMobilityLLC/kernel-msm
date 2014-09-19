@@ -690,6 +690,31 @@ static void print_active_wakeup_sources(void)
 	rcu_read_unlock();
 }
 
+static void print_active_wakeup_sources_in_ASUSEvtlog(void)
+{
+	struct wakeup_source *ws;
+	int active = 0;
+	struct wakeup_source *last_activity_ws = NULL;
+
+	rcu_read_lock();
+	list_for_each_entry_rcu(ws, &wakeup_sources, entry) {
+		if (ws->active) {
+			ASUSEvtlog("active wakeup source: %s\n", ws->name);
+			active = 1;
+		} else if (!active &&
+			   (!last_activity_ws ||
+			    ktime_to_ns(ws->last_time) >
+			    ktime_to_ns(last_activity_ws->last_time))) {
+			last_activity_ws = ws;
+		}
+	}
+
+	if (!active && last_activity_ws)
+		ASUSEvtlog("last active wakeup source: %s\n",
+			last_activity_ws->name);
+	rcu_read_unlock();
+}
+
 /**
  * pm_wakeup_pending - Check if power transition in progress should be aborted.
  *
@@ -721,7 +746,7 @@ bool pm_wakeup_pending(void)
 
 static void unattended_timer_expired(unsigned long data)
 {
-    print_active_wakeup_sources();
+    print_active_wakeup_sources_in_ASUSEvtlog();
     ASUSEvtlog("[PM]unattended_timer_expired\n");
     mod_timer(&unattended_timer, jiffies + msecs_to_jiffies(PM_UNATTENDED_TIMEOUT));
 }
