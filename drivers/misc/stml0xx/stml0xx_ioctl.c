@@ -49,7 +49,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	static int lowpower_mode = 1;
-	int err = -ENOTTY;
+	int err = 0;
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
 	unsigned int addr, duration, algo_idx;
 	unsigned short delay;
@@ -128,22 +128,13 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		else
 			err = 0;
 		break;
-	default:
-		if (ps_stml0xx->mode == BOOTMODE) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Attempted normal mode ioctl in boot");
-			stml0xx_sleep(ps_stml0xx);
-			mutex_unlock(&ps_stml0xx->lock);
-			return -EBUSY;
-		}
-	}
-
-	/* Commands accepted in normal/factory mode only */
-	switch (cmd) {
 	case STML0XX_IOCTL_GET_VERSION:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_VERSION");
-		err = stml0xx_get_version(ps_stml0xx);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_get_version(ps_stml0xx);
+		else
+			err = -EBUSY;
 		break;
 	case STML0XX_IOCTL_SET_ACC_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -156,7 +147,9 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		buf[0] = delay;
 		stml0xx_g_acc_delay = delay;
-		err = stml0xx_spi_send_write_reg(ACCEL_UPDATE_RATE, buf, 1);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(ACCEL_UPDATE_RATE,
+							buf, 1);
 		break;
 	case STML0XX_IOCTL_SET_ACC2_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -169,7 +162,9 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		buf[0] = delay;
 		stml0xx_g_acc2_delay = delay;
-		err = stml0xx_spi_send_write_reg(ACCEL2_UPDATE_RATE, buf, 1);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(ACCEL2_UPDATE_RATE,
+							buf, 1);
 		break;
 	case STML0XX_IOCTL_SET_MAG_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -183,7 +178,9 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		buf[0] = delay;
 		stml0xx_g_mag_delay = delay;
-		err = stml0xx_spi_send_write_reg(MAG_UPDATE_RATE, buf, 1);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(MAG_UPDATE_RATE,
+							buf, 1);
 		break;
 	case STML0XX_IOCTL_SET_GYRO_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -197,7 +194,9 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		buf[0] = delay;
 		stml0xx_g_gyro_delay = delay;
-		err = stml0xx_spi_send_write_reg(GYRO_UPDATE_RATE, buf, 1);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(GYRO_UPDATE_RATE,
+							buf, 1);
 		break;
 	case STML0XX_IOCTL_SET_PRES_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -211,7 +210,9 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		buf[0] = delay;
 		stml0xx_g_baro_delay = delay;
-		err = stml0xx_spi_send_write_reg(PRESSURE_UPDATE_RATE, buf, 1);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(PRESSURE_UPDATE_RATE,
+							buf, 1);
 		break;
 	case STML0XX_IOCTL_SET_SENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -224,18 +225,27 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		stml0xx_g_nonwake_sensor_state = (buf[2] << 16)
 		    | (buf[1] << 8) | buf[0];
-		err = stml0xx_spi_send_write_reg(NONWAKESENSOR_CONFIG, buf, 3);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(NONWAKESENSOR_CONFIG,
+							 buf, 3);
 		dev_dbg(&stml0xx_misc_data->spi->dev, "Sensor enable = 0x%lx",
 			stml0xx_g_nonwake_sensor_state);
 		break;
 	case STML0XX_IOCTL_GET_SENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_SENSORS");
-		err = stml0xx_spi_send_read_reg(NONWAKESENSOR_CONFIG, buf, 3);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading get sensors failed");
-			break;
+		if (ps_stml0xx->mode != BOOTMODE) {
+			err = stml0xx_spi_send_read_reg(NONWAKESENSOR_CONFIG,
+							buf, 3);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Reading get sensors failed");
+				break;
+			}
+		} else {
+			buf[0] = stml0xx_g_nonwake_sensor_state & 0xFF;
+			buf[1] = (stml0xx_g_nonwake_sensor_state >> 8) & 0xFF;
+			buf[2] = (stml0xx_g_nonwake_sensor_state >> 16) & 0xFF;
 		}
 		if (copy_to_user(argp, buf, 3 * sizeof(unsigned char)))
 			err = -EFAULT;
@@ -250,18 +260,26 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		stml0xx_g_wake_sensor_state = (buf[1] << 8) | buf[0];
-		err = stml0xx_spi_send_write_reg(WAKESENSOR_CONFIG, buf, 2);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(WAKESENSOR_CONFIG,
+							 buf, 2);
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sensor enable = 0x%02X", stml0xx_g_wake_sensor_state);
 		break;
 	case STML0XX_IOCTL_GET_WAKESENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_WAKESENSORS");
-		err = stml0xx_spi_send_read_reg(WAKESENSOR_CONFIG, buf, 2);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading get sensors failed");
-			break;
+		if (ps_stml0xx->mode != BOOTMODE) {
+			err = stml0xx_spi_send_read_reg(WAKESENSOR_CONFIG,
+							 buf, 2);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Reading get sensors failed");
+				break;
+			}
+		} else {
+			buf[0] = stml0xx_g_wake_sensor_state & 0xFF;
+			buf[1] = (stml0xx_g_wake_sensor_state >> 8) & 0xFF;
 		}
 		if (copy_to_user(argp, buf, 2 * sizeof(unsigned char)))
 			err = -EFAULT;
@@ -278,16 +296,24 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		stml0xx_g_algo_state = (buf[1] << 8) | buf[0];
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Set algos config: 0x%x", stml0xx_g_algo_state);
-		err = stml0xx_spi_send_write_reg(ALGO_CONFIG, buf, 2);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(ALGO_CONFIG,
+							buf, 2);
 		break;
 	case STML0XX_IOCTL_GET_ALGOS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_ALGOS");
-		err = stml0xx_spi_send_read_reg(ALGO_CONFIG, buf, 2);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading get algos failed");
-			break;
+		if (ps_stml0xx->mode != BOOTMODE) {
+			err = stml0xx_spi_send_read_reg(ALGO_CONFIG,
+							buf, 2);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Reading get algos failed");
+				break;
+			}
+		} else {
+			buf[0] = stml0xx_g_algo_state & 0xFF;
+			buf[1] = (stml0xx_g_algo_state >> 8) & 0xFF;
 		}
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Get algos config: 0x%x", (buf[1] << 8) | buf[0]);
@@ -297,13 +323,17 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_GET_MAG_CAL:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_MAG_CAL");
-		err =
-		    stml0xx_spi_send_read_reg(MAG_CAL, buf,
+		if (ps_stml0xx->mode != BOOTMODE) {
+			err = stml0xx_spi_send_read_reg(MAG_CAL, buf,
 					      STML0XX_MAG_CAL_SIZE);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading get mag cal failed");
-			break;
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Reading get mag cal failed");
+				break;
+			}
+		} else {
+			memcpy(buf, stml0xx_g_mag_cal,
+				STML0XX_MAG_CAL_SIZE);
 		}
 		if (copy_to_user(argp, buf, STML0XX_MAG_CAL_SIZE))
 			err = -EFAULT;
@@ -318,8 +348,8 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		memcpy(stml0xx_g_mag_cal, buf, STML0XX_MAG_CAL_SIZE);
-		err =
-		    stml0xx_spi_send_write_reg(MAG_CAL, buf,
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(MAG_CAL, buf,
 					       STML0XX_MAG_CAL_SIZE);
 		break;
 	case STML0XX_IOCTL_SET_MOTION_DUR:
@@ -333,7 +363,9 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		buf[0] = duration & 0xFF;
 		stml0xx_g_motion_dur = buf[0];
-		err = stml0xx_spi_send_write_reg(MOTION_DUR, buf, 1);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(MOTION_DUR,
+							buf, 1);
 		break;
 	case STML0XX_IOCTL_SET_ZRMOTION_DUR:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -346,26 +378,37 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		buf[0] = duration & 0xFF;
 		stml0xx_g_zmotion_dur = buf[0];
-		err = stml0xx_spi_send_write_reg(ZRMOTION_DUR, buf, 1);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(ZRMOTION_DUR,
+							 buf, 1);
 		break;
 	case STML0XX_IOCTL_GET_DOCK_STATUS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_DOCK_STATUS");
-		err = stml0xx_spi_send_read_reg(DOCK_DATA, buf, 1);
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_read_reg(DOCK_DATA,
+							buf, 1);
+		else
+			buf[0] = 0;
 		if (copy_to_user(argp, buf, sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
 	case STML0XX_IOCTL_TEST_READ:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_TEST_READ");
-		err = stml0xx_spi_read(buf, 1);
-		/* stml0xx_spi_read will return num of bytes read or error */
-		if (err > 0)
-			err = buf[0];
+		if (ps_stml0xx->mode != BOOTMODE) {
+			err = stml0xx_spi_read(buf, 1);
+			/* stml0xx_spi_read will return num of bytes
+				read or error */
+			if (err > 0)
+				err = buf[0];
+		}
 		break;
 	case STML0XX_IOCTL_TEST_WRITE:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_TEST_WRITE");
+		if (ps_stml0xx->mode == BOOTMODE)
+			break;
 		if (copy_from_user(buf, argp, sizeof(unsigned char))) {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Copy test write returned error");
@@ -377,7 +420,8 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_SET_POSIX_TIME:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_POSIX_TIME");
-
+		if (ps_stml0xx->mode == BOOTMODE)
+			break;
 		if (copy_from_user(&current_posix_time, argp,
 				   sizeof(current_posix_time))) {
 			dev_err(&stml0xx_misc_data->spi->dev,
@@ -391,7 +435,8 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		buf[1] = (unsigned char)((current_posix_time >> 16) & 0xff);
 		buf[2] = (unsigned char)((current_posix_time >> 8) & 0xff);
 		buf[3] = (unsigned char)((current_posix_time) & 0xff);
-		err = stml0xx_spi_send_write_reg(AP_POSIX_TIME, buf, 4);
+		err = stml0xx_spi_send_write_reg(AP_POSIX_TIME,
+				buf, 4);
 		break;
 	case STML0XX_IOCTL_SET_ALGO_REQ:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -440,13 +485,17 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		stml0xx_g_algo_requst[algo_idx].size = len;
 		memcpy(stml0xx_g_algo_requst[algo_idx].data, buf, len);
-		err =
-		    stml0xx_spi_send_write_reg(stml0xx_algo_info
+		if (ps_stml0xx->mode != BOOTMODE)
+			err = stml0xx_spi_send_write_reg(stml0xx_algo_info
 					       [algo_idx].req_register, buf,
 					       len);
 		break;
 	case STML0XX_IOCTL_GET_ALGO_EVT:
 		dev_dbg(&stml0xx_misc_data->spi->dev, "STML0XX_IOCTL_GET_ALGO_EVT");
+		if (ps_stml0xx->mode == BOOTMODE) {
+			err = -EFAULT;
+			break;
+		}
 		/* copy algo index */
 		if (copy_from_user(buf, argp, 2 * sizeof(unsigned char))) {
 			dev_err(&stml0xx_misc_data->spi->dev,
@@ -484,7 +533,10 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_WRITE_REG:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_WRITE_REG");
-
+		if (ps_stml0xx->mode == BOOTMODE) {
+			err = -EFAULT;
+			break;
+		}
 		/* copy addr and size */
 		if (copy_from_user(buf, argp, 4)) {
 			dev_err(&stml0xx_misc_data->spi->dev,
@@ -522,7 +574,10 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_READ_REG:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_READ_REG");
-
+		if (ps_stml0xx->mode == BOOTMODE) {
+			err = -EFAULT;
+			break;
+		}
 		/* copy addr and size */
 		if (copy_from_user(buf, argp, 4)) {
 			dev_err(&stml0xx_misc_data->spi->dev,
@@ -559,6 +614,10 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_SET_LOWPOWER_MODE:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_LOWPOWER_MODE");
+		if (ps_stml0xx->mode == BOOTMODE) {
+			err = -EBUSY;
+			break;
+		}
 		if (copy_from_user(buf, argp, 1)) {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Copy size from user returned error");
@@ -577,9 +636,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			lowpower_mode = buf[0];
 		}
 		break;
-
-		/* No default here since previous switch could have
-		   handled the command and cannot over write that */
 	}
 
 	stml0xx_sleep(ps_stml0xx);
