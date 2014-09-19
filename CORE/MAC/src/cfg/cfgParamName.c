@@ -370,6 +370,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"BTC_DYN_A2DP_TX_QUEUE_THOLD",
     (unsigned char *)"BTC_DYN_OPP_TX_QUEUE_THOLD",
     (unsigned char *)"TDLS_WMM_MODE_ENABLED",
+    (unsigned char *)"BURST_MODE_BE_TXOP_VALUE",
 };
 
 
