@@ -56,9 +56,8 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 #define BMD101_CS_GPIO		53
 #define BMD101_RST_GPIO		55
 
-#define BMD101_stable_time		10
-#define BMD101_setup_time		3
-
+#define BMD101_filter_array          10
+#define BMD101_setup_time		5
 #define SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT		-1
 #define SENSOR_HEART_RATE_CONFIDENCE_UNRELIABLE		0
 #define SENSOR_HEART_RATE_CONFIDENCE_LOW			1
@@ -101,8 +100,7 @@ static int bmd101_data_report(int data, int accuracy)
 {
 	int report_data;
 
-	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bpm(%d) accuracy(%d)\n", __func__, data, accuracy);
-
+	sensor_debug(DEBUG_INFO, "[bmd101] %s: bpm(%d) accuracy(%d)\n", __func__, data, accuracy);
 	switch(accuracy) {
 		case SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT:
 			report_data = -1;
@@ -128,7 +126,7 @@ static int bmd101_data_report(int data, int accuracy)
 static void bmd101_hw_enable(int enable) {
 	int rc;
 
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor hw currently %s turning sensor hw %s\n", __func__, sensor_data->hw_enabled? "on":"off", enable ? "on":"off");
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: sensor hw currently %s turning sensor hw %s\n", __func__, sensor_data->hw_enabled? "on":"off", enable ? "on":"off");
 
 	if (enable && !sensor_data->hw_enabled) {
 		rc = regulator_enable(pm8921_l28);
@@ -200,29 +198,98 @@ static void bmd101_hw_enable(int enable) {
 	
 }
 
+static void sortArray(int *nums) {
+	static int x;
+	static int y;
+
+	for(x=0; x<BMD101_filter_array; x++) {
+		for(y=0; y<BMD101_filter_array-1; y++) {
+			if(nums[y]>nums[y+1]) {
+				int temp = nums[y+1];
+				nums[y+1] = nums[y];
+				nums[y] = temp;
+			}
+		}
+	}
+}
+
+static int findMode(int *nums) {
+	int i, maxCount, modeValue;
+	int freq[BMD101_filter_array] = {0};
+	int temp;
+
+	temp = 0;
+	maxCount = 0;
+	modeValue = 0;
+
+	for (i = 0; i < BMD101_filter_array; i++) {
+		if (nums[i] > maxCount)
+			maxCount = nums[i];
+		else {
+			if (freq[i-1] > 0)
+				freq[i] = freq[i-1]+1;
+			else
+				freq[i]++;
+		}
+
+		if(freq[i] > temp) {
+			temp = freq[i];
+			modeValue = nums[i];
+		}
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bpm(%d) freq(%d)\n", __func__, nums[i], freq[i]);
+	}
+
+	if(temp==0)
+		return -1;
+	else
+		return modeValue;
+}
+
 static void bmd101_data_filter(int data)
 {
+	static int bpm[BMD101_filter_array];
+	static int setup_complete = 0;
+
 	mutex_lock(&sensor_data->lock);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d timeout_delay=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count, sensor_data->timeout_delay);
 	if(sensor_data->status >= 2) {
 		sensor_data->timeout_delay = 0;
 		if(delayed_work_pending(&sensor_data->timeout_work)) {
 			sensor_debug(DEBUG_INFO, "[bmd101] timeout cancelled.\n");
 			cancel_delayed_work_sync(&sensor_data->timeout_work);
 		}
-		if(sensor_data->count <= BMD101_stable_time) {
-			sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_LOW;
+
+		if((sensor_data->count <= BMD101_setup_time) && !setup_complete) {
+			if(sensor_data->count == BMD101_setup_time) {
+				sensor_data->count = 0;
+				setup_complete = 1;
+			}
+			else
+				sensor_data->count++;
+			sensor_data->bpm = 0;
+			mutex_unlock(&sensor_data->lock);
+			return;
+		}
+
+		sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d timeout_delay=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count, sensor_data->timeout_delay);
+		if(sensor_data->count < BMD101_filter_array) {
+			bpm[sensor_data->count++] = data;
 			sensor_data->bpm = data;
-			sensor_data->count++;
+			sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_LOW;
 		}
 		else {
+			setup_complete = 0;
 			sensor_data->count = 0;
-			sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_HIGH;
-			printk("[bmd101] previous=%d current=%d avg=%d\n", sensor_data->bpm, data, (sensor_data->bpm+data)/2);
-			sensor_data->bpm = (sensor_data->bpm+data)/2;
+			sortArray(bpm);
+			sensor_data->bpm = findMode(bpm);
+			if(sensor_data->bpm == -1) {
+				sensor_debug(DEBUG_INFO, "[bmd101] %s: bad contact, request user retest\n", __func__);
+				sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT;
+			}
+			else
+				sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_HIGH;
 		}
-		bmd101_data_report(data, sensor_data->accuracy);
-		sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) REPORT with accuracy (%d)\n", __func__, sensor_data->bpm, sensor_data->accuracy);
+
+		bmd101_data_report(sensor_data->bpm, sensor_data->accuracy);
 	}
 	else
 		queue_delayed_work(sensor_data->bmd101_work_queue, &sensor_data->timeout_work, sensor_data->timeout_delay);		//queue timeout delay first time: @3s in between measurements: @1s
@@ -240,8 +307,6 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 
 		sensor_data->timeout_delay = 300;
 		sensor_data->cdev.enabled = 1;
-		
-		sensor_debug(DEBUG_INFO, "[bmd101] %s: bmd101_enable(%d)\n", __func__, sensor_data->cdev.enabled);
 	}
 	else if (!enable && sensor_data->cdev.enabled) {
 		if(delayed_work_pending(&sensor_data->timeout_work)) {
@@ -371,12 +436,11 @@ static const struct attribute_group bmd101_attr_group = {
 
 void notify_ecg_sensor_lowpowermode(int low)
 {
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: +++: (%s)\n", __func__, low?"enter":"exit");
 	if(low)
 		bmd101_hw_enable(0);
 	else
 		bmd101_hw_enable(1);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s: --- : (%s)\n", __func__, low?"enter":"exit");
+	sensor_debug(DEBUG_INFO, "[bmd101] %s low power mode\n", low?"enter":"exit");
 }
 
 #ifdef CONFIG_ASUS_UTILITY
