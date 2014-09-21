@@ -1782,7 +1782,7 @@ PVRSRV_ERROR OSEventObjectSignal(IMG_HANDLE hEventObject)
 */ /**************************************************************************/
 IMG_BOOL OSProcHasPrivSrvInit(void)
 {
-	return capable(CAP_SYS_MODULE) != 0;
+	return capable(CAP_SYS_ADMIN) != 0;
 }
 
 /*************************************************************************/ /*!
