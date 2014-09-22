@@ -14,6 +14,7 @@
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/crc32.h>
+#include <linux/platform_data/i2c-nomadik.h>
 #include "msm_sd.h"
 #include "msm_cci.h"
 #include "msm_eeprom.h"
@@ -994,6 +995,7 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 	cci_client->sid = eb_info->i2c_slaveaddr >> 1;
 	cci_client->retries = 3;
 	cci_client->id_map = 0;
+	cci_client->i2c_freq_mode = I2C_FREQ_MODE_FAST;
 
 	rc = of_property_read_string(of_node, "qcom,eeprom-name",
 		&eb_info->eeprom_name);
