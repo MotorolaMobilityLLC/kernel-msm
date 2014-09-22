@@ -878,7 +878,7 @@
 		label = "usb_in";
 		reg = <0>;
 		qcom,decimation = <0>;
-		qcom,pre-div-channel-scaling = <4>;
+		qcom,pre-div-channel-scaling = <7>;
 		qcom,calibration-type = "absolute";
 		qcom,scale-function = <0>;
 		qcom,hw-settle-time = <0>;
