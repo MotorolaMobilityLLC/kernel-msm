@@ -211,6 +211,7 @@ struct fan5404x_chg {
 	int fake_battery_soc;
 
 	bool factory_mode;
+	bool factory_present;
 	bool chg_enabled;
 	bool usb_present;
 	bool batt_present;
@@ -597,7 +598,7 @@ static void fan5404x_external_power_changed(struct power_supply *psy)
 	else
 		stop_charging(chip);
 
-	if (chip->factory_mode && chip->usb_psy) {
+	if (chip->factory_mode && chip->usb_psy && chip->factory_present) {
 		rc = chip->usb_psy->get_property(chip->usb_psy,
 			POWER_SUPPLY_PROP_ONLINE, &prop);
 		if (!rc && (prop.intval == 0) && !chip->usb_present) {
@@ -955,10 +956,10 @@ static int fan5404x_hw_init(struct fan5404x_chg *chip)
 	return 0;
 }
 
+#define VBUS_OFF_THRESHOLD 2000000
 static int fan5404x_charging_reboot(struct notifier_block *nb,
 				unsigned long event, void *unused)
 {
-	#define VBUS_OFF_THRESHOLD 2000000
 	struct qpnp_vadc_result result;
 
 	/*
@@ -998,8 +999,10 @@ static int fan5404x_charging_reboot(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+#define VBUS_POWERUP_THRESHOLD 4000000
 static int determine_initial_status(struct fan5404x_chg *chip)
 {
+	struct qpnp_vadc_result result;
 	int rc;
 	union power_supply_propval prop = {0,};
 	uint8_t reg;
@@ -1016,6 +1019,16 @@ static int determine_initial_status(struct fan5404x_chg *chip)
 
 	if (fan5404x_stat_read(chip) == STAT_CHARGE_DONE)
 		chip->chg_done_batt_full = true;
+
+	if (chip->factory_mode) {
+		if (qpnp_vadc_read(chip->vadc_dev, USBIN, &result))
+			pr_err("VBUS ADC read err\n");
+		else {
+			pr_info("VBUS:= %lld mV\n", result.physical);
+			if (result.physical > VBUS_POWERUP_THRESHOLD)
+				chip->factory_present = true;
+		}
+	}
 
 	rc = chip->usb_psy->get_property(chip->usb_psy,
 				POWER_SUPPLY_PROP_PRESENT, &prop);
@@ -1670,6 +1683,8 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	chip->dev = &client->dev;
 	chip->usb_psy = usb_psy;
 	chip->fake_battery_soc = -EINVAL;
+	chip->factory_mode = false;
+	chip->factory_present = false;
 
 	mutex_init(&chip->read_write_lock);
 
