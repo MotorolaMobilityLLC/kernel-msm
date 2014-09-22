@@ -11,12 +11,10 @@
  */
 
 /dts-v1/;
-#include "qcom/msm8226-v1.dtsi"
-#include "qcom/msm8226-memory.dtsi"
-#include "qcom/msm8226-qseecom.dtsi"
-#include "qcom/msm8226-720p-mtp.dtsi"
-/include/ "qcom/dsi-panel-mot-auo-720p-video.dtsi"
-/include/ "qcom/dsi-panel-mot-cmi-720p-video.dtsi"
+#include "qcom/msm8226.dtsi"
+#include "qcom/apq8026-v1.dtsi"
+#include "qcom/msm8226-w-memory.dtsi"
+#include "qcom/msm8226-w-qseecom.dtsi"
 
 / {
 	model = "Motorola APQ 8026 Smelt";
@@ -26,6 +24,39 @@
 };
 
 &soc {
+
+	/* BLSP2: I2C */
+	i2c@f9924000 { /* BLSP-1 QUP-2 */
+		cell-index = <4>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9924000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 96 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,scl-gpio = <&msmgpio 6 0>;
+		qcom,sda-gpio = <&msmgpio 7 0>;
+	};
+
+	/* BLSP3: UART (DBG) + I2C */
+	i2c@f9925000 { /* BLSP1 QUP3 */
+		cell-index = <2>;
+		compatible = "qcom,i2c-qup";
+		reg = <0Xf9925000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 97 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <50000000>;
+		qcom,scl-gpio = <&msmgpio 11 0>;
+		qcom,sda-gpio = <&msmgpio 10 0>;
+	};
+
 	qcom,msm-thermal {
 		status = "disabled";
 	};
