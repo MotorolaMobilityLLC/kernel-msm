@@ -843,6 +843,11 @@ static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
 		return -EINVAL;
 	}
 
+	if (rmi4_data->idle_mode == idle_mode)
+		return count;
+
+	rmi4_data->idle_mode = idle_mode;
+
 	if (idle_mode)
 		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_SLEEP);
 	else
@@ -1243,6 +1248,17 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 
 		if (palm_detected) {
+			/*
+			 * don't need to report the palm detection
+			 * in the idle mode (ambient mode). just ignore it
+			 */
+			if (rmi4_data->idle_mode) {
+				dev_dbg(&rmi4_data->i2c_client->dev,
+					"palm detect in idle is ignored\n");
+				rmi4_data->palm_detected = true;
+				return 1;
+			}
+
 			for (finger = 0; finger < fingers_to_process; finger++) {
 				input_mt_slot(rmi4_data->input_dev, finger);
 				input_mt_report_slot_state(rmi4_data->input_dev,
@@ -1540,9 +1556,9 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	if (retval < 0)
 		return retval;
 
-	if (rmi4_data->suspended && !device_may_wakeup(&rmi4_data->i2c_client->dev)) {
+	if (rmi4_data->suspended &&
+			!device_may_wakeup(&rmi4_data->i2c_client->dev))
 		return 0;
-	}
 
 	/* Checking ESD damage */
 	if (intr[0] & INTERRUPT_MASK_FLASH) {
@@ -3476,8 +3492,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	}
 
 	device_init_wakeup(&client->dev, rmi4_data->board->wakeup);
-	if (rmi4_data->board->wakeup)
-		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_TOUCHPAD_TOGGLE);
 
 	return retval;
 
