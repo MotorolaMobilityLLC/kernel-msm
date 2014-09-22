@@ -203,6 +203,7 @@ struct synaptics_rmi4_device_info {
  * @i2c_read: pointer to i2c read function
  * @i2c_write: pointer to i2c write function
  * @irq_enable: pointer to irq enable function
+ * @idle_mode: idle mode
  */
 struct synaptics_rmi4_data {
 	struct i2c_client *i2c_client;
@@ -271,6 +272,7 @@ struct synaptics_rmi4_data {
 	struct pinctrl *ts_pinctrl;
 	struct pinctrl_state *gpio_state_active;
 	struct pinctrl_state *gpio_state_suspend;
+	int idle_mode;
 };
 
 enum exp_fn {
