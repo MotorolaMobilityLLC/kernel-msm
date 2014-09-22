@@ -21,5 +21,6 @@
 
 	dwc3@f9200000 {
 		no-set-vbus-power;
+		maximum-speed="high";
 	};
 };
