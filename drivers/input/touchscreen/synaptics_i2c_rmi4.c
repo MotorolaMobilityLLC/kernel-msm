@@ -504,7 +504,6 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_idle_mode_store),
 };
 
-static bool need_wakeup;
 static bool exp_fn_inited;
 static struct mutex exp_fn_list_mutex;
 static struct list_head exp_fn_list;
@@ -880,6 +879,11 @@ static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
 		dev_err(dev, "Invalid parameter\n");
 		return -EINVAL;
 	}
+
+	if (rmi4_data->idle_mode == idle_mode)
+		return count;
+
+	rmi4_data->idle_mode = idle_mode;
 
 	if (idle_mode)
 		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_SLEEP);
@@ -1281,6 +1285,17 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 
 		if (palm_detected) {
+			/*
+			 * don't need to report the palm detection
+			 * in the idle mode (ambient mode). just ignore it
+			 */
+			if (rmi4_data->idle_mode) {
+				dev_dbg(&rmi4_data->i2c_client->dev,
+					"palm detect in idle is ignored\n");
+				rmi4_data->palm_detected = true;
+				return 1;
+			}
+
 			for (finger = 0; finger < fingers_to_process; finger++) {
 				input_mt_slot(rmi4_data->input_dev, finger);
 				input_mt_report_slot_state(rmi4_data->input_dev,
@@ -1546,15 +1561,6 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
-	if (need_wakeup) {
-		/* Wake up the system by sending power key down/up events */
-		need_wakeup = 0;
-		input_report_key(rmi4_data->input_dev, KEY_TOUCHPAD_TOGGLE, 1);
-		input_sync(rmi4_data->input_dev);
-		input_report_key(rmi4_data->input_dev, KEY_TOUCHPAD_TOGGLE, 0);
-		input_sync(rmi4_data->input_dev);
-	}
-
 	/* Check device status */
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_data_base_addr,
@@ -1587,9 +1593,9 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	if (retval < 0)
 		return retval;
 
-	if (rmi4_data->suspended) {
+	if (rmi4_data->suspended &&
+			!device_may_wakeup(&rmi4_data->i2c_client->dev))
 		return 0;
-	}
 
 	/* Checking ESD damage */
 	if (intr[0] & INTERRUPT_MASK_FLASH) {
@@ -3557,8 +3563,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	}
 
 	device_init_wakeup(&client->dev, rmi4_data->board->wakeup);
-	if (rmi4_data->board->wakeup)
-		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_TOUCHPAD_TOGGLE);
 
 	return retval;
 
@@ -4070,7 +4074,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	}
 
 	if (device_may_wakeup(&rmi4_data->i2c_client->dev)) {
-		need_wakeup = 1;
 		rmi4_data->suspended = true;
 		enable_irq_wake(rmi4_data->irq);
 		return 0;
@@ -4160,7 +4163,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	if (device_may_wakeup(&rmi4_data->i2c_client->dev)) {
-		need_wakeup = 0;
 		rmi4_data->suspended = 0;
 		disable_irq_wake(rmi4_data->irq);
 		return 0;
