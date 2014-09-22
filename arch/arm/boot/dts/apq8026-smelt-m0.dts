@@ -1,0 +1,40 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+#include "qcom/msm8226-v1.dtsi"
+#include "qcom/msm8226-memory.dtsi"
+#include "qcom/msm8226-qseecom.dtsi"
+#include "qcom/msm8226-720p-mtp.dtsi"
+/include/ "qcom/dsi-panel-mot-auo-720p-video.dtsi"
+/include/ "qcom/dsi-panel-mot-cmi-720p-video.dtsi"
+
+/ {
+	model = "Motorola APQ 8026 Smelt";
+	compatible = "qcom,apq8026", "qcom,msm8226", "qcom,mtp";
+	/* TODO: fix these values */
+	qcom,msm-id = <199 0x41 0x8100>;
+};
+
+&soc {
+	qcom,msm-thermal {
+		status = "disabled";
+	};
+
+	qcom,wcnss-wlan@fb000000 {
+		status = "disabled";
+	};
+};
+
+&sdhc_1 {
+	qcom,bus-speed-mode = "DDR_1p8v";
+};
