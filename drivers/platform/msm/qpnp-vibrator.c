@@ -209,6 +209,7 @@ static void qpnp_vib_update(struct work_struct *work)
 {
 	struct qpnp_vib *vib = container_of(work, struct qpnp_vib,
 					 work);
+	qpnp_vibrator_config(vib);
 	qpnp_vib_set(vib, vib->state);
 }
 
