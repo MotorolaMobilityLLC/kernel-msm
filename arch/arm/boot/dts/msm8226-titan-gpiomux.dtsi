@@ -255,6 +255,23 @@
 			};
 		};
 
+		pin@fd51260 {
+			reg = <0xfd511260 0x10>;	/* SD_CARD_DET_N */
+			qcom,pin-num = <38>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(38)        */
+				qcom,pull = <3>;  /* up                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(38)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
 		pin@fd51320 {
 			reg = <0xfd511320 0x10>;	/* TOP_SPK_AMP_EN   */
 			qcom,pin-num = <50>;
