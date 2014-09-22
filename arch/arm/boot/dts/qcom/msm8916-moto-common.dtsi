@@ -606,6 +606,7 @@
 			linux,default-trigger = "bkl-trigger";
 			rohm,no-reset;
 			rohm,led1-used;
+			rohm,pwm-on;
 			pinctrl-names = "default";
 			pinctrl-0 = <&backlight_reset_default>;
 		};
