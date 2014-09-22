@@ -332,6 +332,112 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	},
 };
 
+/* FIXME: place holder now for real configuration */
+static struct gpiomux_setting gpio_uart1_config = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_spi4_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_uart6_config = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config msm_smelt_blsp_configs[] __initdata = {
+	{
+		.gpio      = 0,		/* BLSP1 QUP1 uart 1 tx */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart1_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart1_config,
+		},
+	},
+	{
+		.gpio      = 1,		/* BLSP1 QUP1 uart 1 rx */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart1_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart1_config,
+		},
+	},
+	{
+		.gpio      = 2,		/* BLSP1 QUP1 uart 1 cts */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart1_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart1_config,
+		},
+	},
+	{
+		.gpio      = 3,		/* BLSP1 QUP1 uart 1 rts */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart1_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart1_config,
+		},
+	},
+	{
+		.gpio      = 12,	/* BLSP1 QUP4 spi 4 mosi */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_spi4_config,
+			[GPIOMUX_SUSPENDED] = &gpio_spi4_config,
+		},
+	},
+	{
+		.gpio      = 13,	/* BLSP1 QUP4 spi 4 miso */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_spi4_config,
+			[GPIOMUX_SUSPENDED] = &gpio_spi4_config,
+		},
+	},
+	{
+		.gpio      = 14,	/* BLSP1 QUP4 spi 4 cs */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_spi4_config,
+			[GPIOMUX_SUSPENDED] = &gpio_spi4_config,
+		},
+	},
+	{
+		.gpio      = 15,	/* BLSP1 QUP4 spi 4 clk */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_spi4_config,
+			[GPIOMUX_SUSPENDED] = &gpio_spi4_config,
+		},
+	},
+	{
+		.gpio      = 20,	/* BLSP1 QUP6 uart 6 tx */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart6_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart6_config,
+		},
+	},
+	{
+		.gpio      = 21,	/* BLSP1 QUP6 uart 6 rx */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart6_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart6_config,
+		},
+	},
+	{
+		.gpio      = 22,	/* BLSP1 QUP6 uart 6 cts */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart6_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart6_config,
+		},
+	},
+	{
+		.gpio      = 23,	/* BLSP1 QUP6 uart 6 rts */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart6_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart6_config,
+		},
+	},
+};
+
 static struct msm_gpiomux_config msm_blsp_spi_cs_config[] __initdata = {
 	{
 		.gpio      = 2,		/* BLSP1 QUP1 SPI_CS1 */
@@ -926,4 +1032,8 @@ void __init msm8226_init_gpiomux(void)
 	if (machine_is_msm8926() && of_board_is_mtp())
 		msm_gpiomux_install(smsc_hub_configs,
 			ARRAY_SIZE(smsc_hub_configs));
+
+	if (of_machine_is_compatible("moto,smelt"))
+		msm_gpiomux_install(msm_smelt_blsp_configs,
+			ARRAY_SIZE(msm_smelt_blsp_configs));
 }
