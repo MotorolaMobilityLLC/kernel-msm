@@ -18,15 +18,45 @@
 
 / {
 	model = "Motorola APQ 8026 Smelt";
-	compatible = "qcom,apq8026", "qcom,msm8226", "qcom,mtp";
+	compatible = "qcom,apq8026", "qcom,msm8226", "qcom,mtp", "moto,smelt";
 	/* TODO: fix these values */
 	qcom,msm-id = <199 0x41 0x8100>;
+
+	aliases {
+		/delete-property/ spi0;
+	};
+
 };
 
 &soc {
+	/* BLSP1: UART */
+	/delete-node/ spi@f9923000;
+	uart1: uart@f991d000 { /* BLSP1 UART1 */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf991d000 0x01000>,
+		      <0xf9904000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupts = <0 107 0>, <0 238 0>;
+		interrupt-names = "core_irq", "bam_irq";
+
+		qcom,tx-gpio = <&msmgpio 0 0x00>;
+		qcom,rx-gpio = <&msmgpio 1 0x00>;
+		qcom,cts-gpio = <&msmgpio 2 0x00>;
+		qcom,rfr-gpio = <&msmgpio 3 0x00>;
+
+		qcom,bam-tx-ep-pipe-index = <0>; /* BAM Consumer Pipe */
+		qcom,bam-rx-ep-pipe-index = <1>; /* BAM Producer Pipe */
+		qcom,msm-bus,name = "uart1";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+
+		qcom,msm-bus,vectors-KBps =
+			<86 512 0 0>,
+			<86 512 500 800>;
+	};
 
 	/* BLSP2: I2C */
-	i2c@f9924000 { /* BLSP-1 QUP-2 */
+	i2c_2: i2c@f9924000 { /* BLSP-1 QUP-2 */
 		cell-index = <4>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9924000 0x1000>;
@@ -41,20 +71,55 @@
 		qcom,sda-gpio = <&msmgpio 7 0>;
 	};
 
-	/* BLSP3: UART (DBG) + I2C */
-	i2c@f9925000 { /* BLSP1 QUP3 */
-		cell-index = <2>;
-		compatible = "qcom,i2c-qup";
-		reg = <0Xf9925000 0x1000>;
+	/* BLSP4: [spi_4] (C55) */
+	/delete-node/ i2c@f9926000;
+	spi_4: spi@f9926000 { /* BLSP1 SPI4 */
+		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 97 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <400000>;
-		qcom,i2c-src-freq = <50000000>;
-		qcom,scl-gpio = <&msmgpio 11 0>;
-		qcom,sda-gpio = <&msmgpio 10 0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xf9926000 0x1000>,
+		      <0xf9904000 0x19000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 98 0>, <0 238 0>;
+		spi-max-frequency = <19200000>;
+
+		qcom,gpio-mosi = <&msmgpio 12 0>;
+		qcom,gpio-miso = <&msmgpio 13 0>;
+		qcom,gpio-clk  = <&msmgpio 15 0>;
+		qcom,gpio-cs0  = <&msmgpio 14 0>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <18>;
+		qcom,bam-producer-pipe-index = <19>;
+		qcom,master-id = <86>;
+	};
+
+	/* BLSP6: [uart] BT */
+	uart6: uart@f9922000 { /* BLSP1 UART6 */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf9922000 0x01000>,
+		      <0xf9904000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupts = <0 112 0>, <0 238 0>;
+		interrupt-names = "core_irq", "bam_irq";
+
+		qcom,tx-gpio = <&msmgpio 20 0x00>;
+		qcom,rx-gpio = <&msmgpio 21 0x00>;
+		qcom,cts-gpio = <&msmgpio 22 0x00>;
+		qcom,rfr-gpio = <&msmgpio 23 0x00>;
+
+		qcom,bam-tx-ep-pipe-index = <10>; /* BAM Consumer Pipe */
+		qcom,bam-rx-ep-pipe-index = <11>; /* BAM Producer Pipe */
+		qcom,msm-bus,name = "uart6";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+
+		qcom,msm-bus,vectors-KBps =
+			<86 512 0 0>,
+			<86 512 500 800>;
 	};
 
 	qcom,msm-thermal {
@@ -68,4 +133,32 @@
 
 &sdhc_1 {
 	qcom,bus-speed-mode = "DDR_1p8v";
+};
+
+&i2c_2 {
+	status = "ok";
+};
+
+&i2c_3 {
+	qcom,scl-gpio = <&msmgpio 11 0>;
+	qcom,sda-gpio = <&msmgpio 10 0>;
+	status = "ok";
+	/* drivers here */
+};
+
+&i2c_5 {
+	status = "ok";
+	/* drivers here */
+};
+
+&spi_4 {
+	status = "ok";
+};
+
+&uart1 {
+	status = "ok";
+};
+
+&uart6 {
+	status = "ok";
 };
