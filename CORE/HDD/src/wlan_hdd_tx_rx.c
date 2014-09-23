@@ -58,7 +58,7 @@
 #include <net/cfg80211.h>
 #include <net/ieee80211_radiotap.h>
 #include "sapApi.h"
-
+#include <vos_sched.h>
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
 #endif
@@ -996,14 +996,12 @@ VOS_STATUS hdd_Ibss_GetStaId(hdd_station_ctx_t *pHddStaCtx, v_MACADDR_t *pMacAdd
 }
 
 /**============================================================================
-  @brief hdd_tx_timeout() - Function called by OS if there is any
-  timeout during transmission. Since HDD simply enqueues packet
-  and returns control to OS right away, this would never be invoked
+  @brief __hdd_tx_timeout() - Function handles timeout during transmission.
 
-  @param dev : [in] pointer to Libra network device
+  @param dev : [in] pointer to network device
   @return    : None
   ===========================================================================*/
-void hdd_tx_timeout(struct net_device *dev)
+void __hdd_tx_timeout(struct net_device *dev)
 {
    hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
    struct netdev_queue *txq;
@@ -1081,6 +1079,20 @@ void hdd_tx_timeout(struct net_device *dev)
 
 }
 
+/**============================================================================
+  @brief hdd_tx_timeout() - Function called by OS if there is any
+  timeout during transmission. Since HDD simply enqueues packet
+  and returns control to OS right away, this would never be invoked
+
+  @param dev : [in] pointer to network device
+  @return    : None
+  ===========================================================================*/
+void hdd_tx_timeout(struct net_device *dev)
+{
+    vos_ssr_protect(__func__);
+    __hdd_tx_timeout(dev);
+    vos_ssr_unprotect(__func__);
+}
 
 /**============================================================================
   @brief hdd_stats() - Function registered with the Linux OS for 
