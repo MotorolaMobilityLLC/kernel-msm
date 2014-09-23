@@ -195,8 +195,9 @@ _dhd_pno_gscan_cfg(dhd_pub_t *dhd, wl_pfn_gscan_cfg_t *pfncfg_gscan_param, int s
 exit:
 	return err;
 }
+
 static bool
-is_batch_retreival_complete(struct dhd_pno_gscan_params *gscan_params)
+is_batch_retrieval_complete(struct dhd_pno_gscan_params *gscan_params)
 {
 	smp_rmb();
 	return (gscan_params->get_batch_flag == GSCAN_BATCH_RETRIEVAL_COMPLETE);
@@ -1537,7 +1538,7 @@ void dhd_wait_batch_results_complete(dhd_pub_t *dhd)
 	if (_params->params_gscan.get_batch_flag == GSCAN_BATCH_RETRIEVAL_IN_PROGRESS) {
 		DHD_PNO(("%s: Waiting to complete retrieval..\n", __FUNCTION__));
 		wait_event_interruptible_timeout(_pno_state->batch_get_wait,
-		     is_batch_retreival_complete(&_params->params_gscan),
+		     is_batch_retrieval_complete(&_params->params_gscan),
 		     msecs_to_jiffies(GSCAN_BATCH_GET_MAX_WAIT));
 	} else { /* GSCAN_BATCH_RETRIEVAL_COMPLETE */
 		gscan_results_cache_t *iter;
@@ -1560,7 +1561,7 @@ void dhd_wait_batch_results_complete(dhd_pub_t *dhd)
 			err = dhd_retreive_batch_scan_results(dhd);
 			if (err == BCME_OK) {
 				wait_event_interruptible_timeout(_pno_state->batch_get_wait,
-				  is_batch_retreival_complete(&_params->params_gscan),
+				  is_batch_retrieval_complete(&_params->params_gscan),
 				  msecs_to_jiffies(GSCAN_BATCH_GET_MAX_WAIT));
 			}
 		}
@@ -2942,7 +2943,7 @@ dhd_pno_get_for_batch(dhd_pub_t *dhd, char *buf, int bufsize, int reason)
 		err = dhd_retreive_batch_scan_results(dhd);
 		if (err == BCME_OK) {
 			wait_event_interruptible_timeout(_pno_state->batch_get_wait,
-			     is_batch_retreival_complete(gscan_params),
+			     is_batch_retrieval_complete(gscan_params),
 			     msecs_to_jiffies(GSCAN_BATCH_GET_MAX_WAIT));
 		}
 	} else
