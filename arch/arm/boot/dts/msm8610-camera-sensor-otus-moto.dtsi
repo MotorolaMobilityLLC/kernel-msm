@@ -12,12 +12,19 @@
  */
 
 &i2c {
+	actuator0: qcom,actuator@6c {
+		cell-index = <1>;
+		reg = <0x18 0x0>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+	};
 	qcom,camera@20 {
 		compatible = "qcom,s5k5e2";
 		reg = <0x20>;
 		qcom,slave-id = <0x20 0x0000 0x5e20>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
+		qcom,actuator-src = <&actuator0>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "s5k5e2";
 		cam_vdig-supply = <&pm8110_l6>;
