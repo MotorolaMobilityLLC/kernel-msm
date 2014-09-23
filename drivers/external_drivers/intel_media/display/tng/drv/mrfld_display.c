@@ -242,9 +242,10 @@ void mofd_update_fifo_size(struct drm_device *dev, bool hdmi_on)
 	REG_WRITE(DDL3, 0x86);
 	REG_WRITE(DDL4, 0x8686);
 
-	/* with hdmi, 24KB for plane B D */
+	/* FIXME: tune for HDMI only device */
+	/* with hdmi, 16KB for plane A B D */
 	REG_WRITE(DSPARB2, 0xc0300);
-	REG_WRITE(DSPARB, 0x18060000);
+	REG_WRITE(DSPARB, 0x20080100);
 	DRM_INFO("setting fifo size, arb2:0x%x, arb: 0x%x\n",
 			REG_READ(DSPARB2), REG_READ(DSPARB));
 #endif
