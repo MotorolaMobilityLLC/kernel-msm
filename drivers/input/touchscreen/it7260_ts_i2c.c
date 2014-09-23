@@ -432,6 +432,7 @@ static void chipLowPowerMode(bool low)
 				enable_irq_wake(gl_ts->client->irq);
 			}
 			isDeviceSleeping = true;
+			isDeviceSuspend = true;
 			wake_unlock(&touch_lock);
 			i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
 		} else {
@@ -865,7 +866,7 @@ static void readTouchDataPoint(void)
 
 		readFingerData(&x, &y, &pressure, pointData.fd);
 		/* filter points when palming or touching screen edge */
-		if (!hadPalmDown && !isDeviceSuspend && y > 13 && y < 311 && x > 9 && x < 311){
+		if (!hadPalmDown && !isDeviceSuspend && y > 13 && y < 311 && x > 4 && x < 316){
 			input_report_abs(gl_ts->input_dev, ABS_X, x);
 			input_report_abs(gl_ts->input_dev, ABS_Y, y);
 			input_report_key(gl_ts->input_dev, BTN_TOUCH, 1);
@@ -886,6 +887,7 @@ static void readTouchDataPoint_Ambient(void)
 	uint8_t devStatus;
 	uint8_t pressure = FD_PRESSURE_NONE;
 	uint16_t x, y;
+	
 	
 	if (!isDeviceSuspend){
 	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
