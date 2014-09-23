@@ -1655,12 +1655,6 @@ static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 	acc->input_dev->dev.parent = &sensor_data->client->dev;
 	input_set_capability(acc->input_dev, EV_ABS, ABS_MISC);
 	set_bit(EV_ABS, acc->input_dev->evbit);
-	/*	next is used for interruptA sources data if the case */
-	set_bit(ABS_MISC, acc->input_dev->absbit);
-	/*	next is used for interruptB sources data if the case */
-	set_bit(ABS_WHEEL, acc->input_dev->absbit);
-	set_bit(EV_KEY, acc->input_dev->evbit);
-	set_bit(KEY_POWER, acc->input_dev->keybit);
 
 	input_set_abs_params(acc->input_dev, ABS_X, -G_MAX, G_MAX, 0, 0);
 	input_set_abs_params(acc->input_dev, ABS_Y, -G_MAX, G_MAX, 0, 0);
