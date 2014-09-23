@@ -532,11 +532,6 @@ tSirRetStatus
 PopulateDot11fExtSuppRates(tpAniSirGlobal      pMac,
                            tANI_U8  nChannelNum, tDot11fIEExtSuppRates *pDot11f,
                            tpPESession psessionEntry);
-void PopulateDot11fRsnIEs(tpAniSirGlobal pMac,  tDot11fIERSN *pDot11f,
-                          tANI_U8 *addIe, tANI_U16 addIeLen);
-void PopulateDot11fTimeoutIEs(tpAniSirGlobal pMac,
-                              tDot11fIETimeoutInterval *pDot11f,
-                              tANI_U8 *addIe, tANI_U16 addIeLen);
 
 #if defined WLAN_FEATURE_VOWIFI
 tSirRetStatus 
