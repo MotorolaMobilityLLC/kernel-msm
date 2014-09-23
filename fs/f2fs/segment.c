@@ -550,10 +550,9 @@ static void set_prefree_as_free_segments(struct f2fs_sb_info *sbi)
 {
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
 	unsigned int segno;
-	unsigned int total_segs = TOTAL_SEGS(sbi);
 
 	mutex_lock(&dirty_i->seglist_lock);
-	for_each_set_bit(segno, dirty_i->dirty_segmap[PRE], total_segs)
+	for_each_set_bit(segno, dirty_i->dirty_segmap[PRE], MAIN_SEGS(sbi))
 		__set_test_and_free(sbi, segno);
 	mutex_unlock(&dirty_i->seglist_lock);
 }
@@ -564,17 +563,17 @@ void clear_prefree_segments(struct f2fs_sb_info *sbi)
 	struct discard_entry *entry, *this;
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
 	unsigned long *prefree_map = dirty_i->dirty_segmap[PRE];
-	unsigned int total_segs = TOTAL_SEGS(sbi);
 	unsigned int start = 0, end = -1;
 
 	mutex_lock(&dirty_i->seglist_lock);
 
 	while (1) {
 		int i;
-		start = find_next_bit(prefree_map, total_segs, end + 1);
-		if (start >= total_segs)
+		start = find_next_bit(prefree_map, MAIN_SEGS(sbi), end + 1);
+		if (start >= MAIN_SEGS(sbi))
 			break;
-		end = find_next_zero_bit(prefree_map, total_segs, start + 1);
+		end = find_next_zero_bit(prefree_map, MAIN_SEGS(sbi),
+								start + 1);
 
 		for (i = start; i < end; i++)
 			clear_bit(i, prefree_map);
@@ -749,7 +748,7 @@ static int is_next_segment_free(struct f2fs_sb_info *sbi, int type)
 	unsigned int segno = curseg->segno + 1;
 	struct free_segmap_info *free_i = FREE_I(sbi);
 
-	if (segno < TOTAL_SEGS(sbi) && segno % sbi->segs_per_sec)
+	if (segno < MAIN_SEGS(sbi) && segno % sbi->segs_per_sec)
 		return !test_bit(segno, free_i->free_segmap);
 	return 0;
 }
@@ -763,7 +762,7 @@ static void get_new_segment(struct f2fs_sb_info *sbi,
 {
 	struct free_segmap_info *free_i = FREE_I(sbi);
 	unsigned int segno, secno, zoneno;
-	unsigned int total_zones = TOTAL_SECS(sbi) / sbi->secs_per_zone;
+	unsigned int total_zones = MAIN_SECS(sbi) / sbi->secs_per_zone;
 	unsigned int hint = *newseg / sbi->segs_per_sec;
 	unsigned int old_zoneno = GET_ZONENO_FROM_SEGNO(sbi, *newseg);
 	unsigned int left_start = hint;
@@ -775,18 +774,18 @@ static void get_new_segment(struct f2fs_sb_info *sbi,
 
 	if (!new_sec && ((*newseg + 1) % sbi->segs_per_sec)) {
 		segno = find_next_zero_bit(free_i->free_segmap,
-					TOTAL_SEGS(sbi), *newseg + 1);
+					MAIN_SEGS(sbi), *newseg + 1);
 		if (segno - *newseg < sbi->segs_per_sec -
 					(*newseg % sbi->segs_per_sec))
 			goto got_it;
 	}
 find_other_zone:
-	secno = find_next_zero_bit(free_i->free_secmap, TOTAL_SECS(sbi), hint);
-	if (secno >= TOTAL_SECS(sbi)) {
+	secno = find_next_zero_bit(free_i->free_secmap, MAIN_SECS(sbi), hint);
+	if (secno >= MAIN_SECS(sbi)) {
 		if (dir == ALLOC_RIGHT) {
 			secno = find_next_zero_bit(free_i->free_secmap,
-							TOTAL_SECS(sbi), 0);
-			f2fs_bug_on(sbi, secno >= TOTAL_SECS(sbi));
+							MAIN_SECS(sbi), 0);
+			f2fs_bug_on(sbi, secno >= MAIN_SECS(sbi));
 		} else {
 			go_left = 1;
 			left_start = hint - 1;
@@ -801,8 +800,8 @@ find_other_zone:
 			continue;
 		}
 		left_start = find_next_zero_bit(free_i->free_secmap,
-							TOTAL_SECS(sbi), 0);
-		f2fs_bug_on(sbi, left_start >= TOTAL_SECS(sbi));
+							MAIN_SECS(sbi), 0);
+		f2fs_bug_on(sbi, left_start >= MAIN_SECS(sbi));
 		break;
 	}
 	secno = left_start;
@@ -1015,26 +1014,22 @@ static const struct segment_allocation default_salloc_ops = {
 
 int f2fs_trim_fs(struct f2fs_sb_info *sbi, struct fstrim_range *range)
 {
-	block_t start_addr = SM_I(sbi)->main_blkaddr;
 	__u64 start = range->start >> sbi->log_blocksize;
 	__u64 end = start + (range->len >> sbi->log_blocksize) - 1;
-	__u64 segment = 1 << (sbi->log_blocksize + sbi->log_blocks_per_seg);
 	unsigned int start_segno, end_segno;
 	struct cp_control cpc;
 
-	if (range->minlen > segment ||
-			start >= SM_I(sbi)->seg0_blkaddr + TOTAL_BLKS(sbi) ||
-			range->len < sbi->blocksize)
+	if (range->minlen > SEGMENT_SIZE(sbi) || start >= MAX_BLKADDR(sbi) ||
+						range->len < sbi->blocksize)
 		return -EINVAL;
 
-	if (end <= start_addr)
+	if (end <= MAIN_BLKADDR(sbi))
 		goto out;
 
 	/* start/end segment number in main_area */
-	start_segno = (start <= start_addr) ? 0 : GET_SEGNO(sbi, start);
-	end_segno = (end >= SM_I(sbi)->seg0_blkaddr + TOTAL_BLKS(sbi)) ?
-				TOTAL_SEGS(sbi) - 1 : GET_SEGNO(sbi, end);
-
+	start_segno = (start <= MAIN_BLKADDR(sbi)) ? 0 : GET_SEGNO(sbi, start);
+	end_segno = (end >= MAX_BLKADDR(sbi)) ? MAIN_SEGS(sbi) - 1 :
+						GET_SEGNO(sbi, end);
 	cpc.reason = CP_DISCARD;
 	cpc.trim_start = start_segno;
 	cpc.trim_end = end_segno;
@@ -1645,10 +1640,9 @@ static void add_sits_in_set(struct f2fs_sb_info *sbi)
 	struct f2fs_sm_info *sm_info = SM_I(sbi);
 	struct list_head *set_list = &sm_info->sit_entry_set;
 	unsigned long *bitmap = SIT_I(sbi)->dirty_sentries_bitmap;
-	unsigned long nsegs = TOTAL_SEGS(sbi);
 	unsigned int segno;
 
-	for_each_set_bit(segno, bitmap, nsegs)
+	for_each_set_bit(segno, bitmap, MAIN_SEGS(sbi))
 		add_sit_entry(segno, set_list);
 }
 
@@ -1683,7 +1677,6 @@ void flush_sit_entries(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	struct f2fs_summary_block *sum = curseg->sum_blk;
 	struct sit_entry_set *ses, *tmp;
 	struct list_head *head = &SM_I(sbi)->sit_entry_set;
-	unsigned long nsegs = TOTAL_SEGS(sbi);
 	bool to_journal = true;
 	struct seg_entry *se;
 
@@ -1717,7 +1710,7 @@ void flush_sit_entries(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 		struct f2fs_sit_block *raw_sit = NULL;
 		unsigned int start_segno = ses->start_segno;
 		unsigned int end = min(start_segno + SIT_ENTRY_PER_BLOCK,
-								nsegs);
+						(unsigned long)MAIN_SEGS(sbi));
 		unsigned int segno = start_segno;
 
 		if (to_journal &&
@@ -1796,16 +1789,16 @@ static int build_sit_info(struct f2fs_sb_info *sbi)
 
 	SM_I(sbi)->sit_info = sit_i;
 
-	sit_i->sentries = vzalloc(TOTAL_SEGS(sbi) * sizeof(struct seg_entry));
+	sit_i->sentries = vzalloc(MAIN_SEGS(sbi) * sizeof(struct seg_entry));
 	if (!sit_i->sentries)
 		return -ENOMEM;
 
-	bitmap_size = f2fs_bitmap_size(TOTAL_SEGS(sbi));
+	bitmap_size = f2fs_bitmap_size(MAIN_SEGS(sbi));
 	sit_i->dirty_sentries_bitmap = kzalloc(bitmap_size, GFP_KERNEL);
 	if (!sit_i->dirty_sentries_bitmap)
 		return -ENOMEM;
 
-	for (start = 0; start < TOTAL_SEGS(sbi); start++) {
+	for (start = 0; start < MAIN_SEGS(sbi); start++) {
 		sit_i->sentries[start].cur_valid_map
 			= kzalloc(SIT_VBLOCK_MAP_SIZE, GFP_KERNEL);
 		sit_i->sentries[start].ckpt_valid_map
@@ -1816,7 +1809,7 @@ static int build_sit_info(struct f2fs_sb_info *sbi)
 	}
 
 	if (sbi->segs_per_sec > 1) {
-		sit_i->sec_entries = vzalloc(TOTAL_SECS(sbi) *
+		sit_i->sec_entries = vzalloc(MAIN_SECS(sbi) *
 					sizeof(struct sec_entry));
 		if (!sit_i->sec_entries)
 			return -ENOMEM;
@@ -1851,7 +1844,6 @@ static int build_sit_info(struct f2fs_sb_info *sbi)
 
 static int build_free_segmap(struct f2fs_sb_info *sbi)
 {
-	struct f2fs_sm_info *sm_info = SM_I(sbi);
 	struct free_segmap_info *free_i;
 	unsigned int bitmap_size, sec_bitmap_size;
 
@@ -1862,12 +1854,12 @@ static int build_free_segmap(struct f2fs_sb_info *sbi)
 
 	SM_I(sbi)->free_info = free_i;
 
-	bitmap_size = f2fs_bitmap_size(TOTAL_SEGS(sbi));
+	bitmap_size = f2fs_bitmap_size(MAIN_SEGS(sbi));
 	free_i->free_segmap = kmalloc(bitmap_size, GFP_KERNEL);
 	if (!free_i->free_segmap)
 		return -ENOMEM;
 
-	sec_bitmap_size = f2fs_bitmap_size(TOTAL_SECS(sbi));
+	sec_bitmap_size = f2fs_bitmap_size(MAIN_SECS(sbi));
 	free_i->free_secmap = kmalloc(sec_bitmap_size, GFP_KERNEL);
 	if (!free_i->free_secmap)
 		return -ENOMEM;
@@ -1877,8 +1869,7 @@ static int build_free_segmap(struct f2fs_sb_info *sbi)
 	memset(free_i->free_secmap, 0xff, sec_bitmap_size);
 
 	/* init free segmap information */
-	free_i->start_segno =
-		(unsigned int) GET_SEGNO_FROM_SEG0(sbi, sm_info->main_blkaddr);
+	free_i->start_segno = GET_SEGNO_FROM_SEG0(sbi, MAIN_BLKADDR(sbi));
 	free_i->free_segments = 0;
 	free_i->free_sections = 0;
 	rwlock_init(&free_i->segmap_lock);
@@ -1923,7 +1914,7 @@ static void build_sit_entries(struct f2fs_sb_info *sbi)
 		start = start_blk * sit_i->sents_per_block;
 		end = (start_blk + readed) * sit_i->sents_per_block;
 
-		for (; start < end && start < TOTAL_SEGS(sbi); start++) {
+		for (; start < end && start < MAIN_SEGS(sbi); start++) {
 			struct seg_entry *se = &sit_i->sentries[start];
 			struct f2fs_sit_block *sit_blk;
 			struct f2fs_sit_entry sit;
@@ -1961,7 +1952,7 @@ static void init_free_segmap(struct f2fs_sb_info *sbi)
 	unsigned int start;
 	int type;
 
-	for (start = 0; start < TOTAL_SEGS(sbi); start++) {
+	for (start = 0; start < MAIN_SEGS(sbi); start++) {
 		struct seg_entry *sentry = get_seg_entry(sbi, start);
 		if (!sentry->valid_blocks)
 			__set_free(sbi, start);
@@ -1978,13 +1969,13 @@ static void init_dirty_segmap(struct f2fs_sb_info *sbi)
 {
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
 	struct free_segmap_info *free_i = FREE_I(sbi);
-	unsigned int segno = 0, offset = 0, total_segs = TOTAL_SEGS(sbi);
+	unsigned int segno = 0, offset = 0;
 	unsigned short valid_blocks;
 
 	while (1) {
 		/* find dirty segment based on free segmap */
-		segno = find_next_inuse(free_i, total_segs, offset);
-		if (segno >= total_segs)
+		segno = find_next_inuse(free_i, MAIN_SEGS(sbi), offset);
+		if (segno >= MAIN_SEGS(sbi))
 			break;
 		offset = segno + 1;
 		valid_blocks = get_valid_blocks(sbi, segno, 0);
@@ -2003,7 +1994,7 @@ static void init_dirty_segmap(struct f2fs_sb_info *sbi)
 static int init_victim_secmap(struct f2fs_sb_info *sbi)
 {
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
-	unsigned int bitmap_size = f2fs_bitmap_size(TOTAL_SECS(sbi));
+	unsigned int bitmap_size = f2fs_bitmap_size(MAIN_SECS(sbi));
 
 	dirty_i->victim_secmap = kzalloc(bitmap_size, GFP_KERNEL);
 	if (!dirty_i->victim_secmap)
@@ -2024,7 +2015,7 @@ static int build_dirty_segmap(struct f2fs_sb_info *sbi)
 	SM_I(sbi)->dirty_info = dirty_i;
 	mutex_init(&dirty_i->seglist_lock);
 
-	bitmap_size = f2fs_bitmap_size(TOTAL_SEGS(sbi));
+	bitmap_size = f2fs_bitmap_size(MAIN_SEGS(sbi));
 
 	for (i = 0; i < NR_DIRTY_TYPE; i++) {
 		dirty_i->dirty_segmap[i] = kzalloc(bitmap_size, GFP_KERNEL);
@@ -2048,7 +2039,7 @@ static void init_min_max_mtime(struct f2fs_sb_info *sbi)
 
 	sit_i->min_mtime = LLONG_MAX;
 
-	for (segno = 0; segno < TOTAL_SEGS(sbi); segno += sbi->segs_per_sec) {
+	for (segno = 0; segno < MAIN_SEGS(sbi); segno += sbi->segs_per_sec) {
 		unsigned int i;
 		unsigned long long mtime = 0;
 
@@ -2191,7 +2182,7 @@ static void destroy_sit_info(struct f2fs_sb_info *sbi)
 		return;
 
 	if (sit_i->sentries) {
-		for (start = 0; start < TOTAL_SEGS(sbi); start++) {
+		for (start = 0; start < MAIN_SEGS(sbi); start++) {
 			kfree(sit_i->sentries[start].cur_valid_map);
 			kfree(sit_i->sentries[start].ckpt_valid_map);
 		}
