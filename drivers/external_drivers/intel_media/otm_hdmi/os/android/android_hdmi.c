@@ -667,6 +667,11 @@ int android_hdmi_mode_valid(struct drm_connector *connector,
 		goto err;
 	}
 
+	if (mode->vrefresh > 60) {
+		ret = MODE_BAD_VVALUE;
+		goto err;
+	}
+
 	/* Restricting modes within the supported pixel clock */
 	if (OTM_HDMI_SUCCESS == otm_hdmi_get_pixel_clock_range(
 					&pc_min, &pc_max)) {
