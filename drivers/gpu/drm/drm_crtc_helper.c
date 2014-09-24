@@ -980,10 +980,11 @@ EXPORT_SYMBOL(drm_helper_resume_force_mode);
 
 void drm_kms_helper_hotplug_event(struct drm_device *dev)
 {
-	/* send a uevent + call fbdev */
-	drm_sysfs_hotplug_event(dev);
+	/* call fbdev then send a uevent*/
 	if (dev->mode_config.funcs->output_poll_changed)
 		dev->mode_config.funcs->output_poll_changed(dev);
+
+	drm_sysfs_hotplug_event(dev);
 }
 EXPORT_SYMBOL(drm_kms_helper_hotplug_event);
 
