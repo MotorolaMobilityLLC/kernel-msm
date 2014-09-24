@@ -205,7 +205,7 @@ MODULE_PARM_DESC(pcm_substreams,
  * It will record the last session only and only up to the buffer size.
  * The recording is cleared on read.
  */
-#define DEBUG_WITH_MISC_DEVICE 1
+#define DEBUG_WITH_MISC_DEVICE 0
 
 /* Debug feature to trace audio packets being received */
 #define DEBUG_AUDIO_RECEPTION 1
