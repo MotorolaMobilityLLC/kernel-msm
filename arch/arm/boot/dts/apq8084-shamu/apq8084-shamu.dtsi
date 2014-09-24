@@ -30,6 +30,7 @@
 	};
 
 	cycapsense_prog {
+			fw_rev_offset = <0x3ffe>;
 			gpios = <&msmgpio 119 0>, /* RESET */
 				<&msmgpio 74 0>, /* programming SCLK */
 				<&msmgpio 73 0>; /* programming SDAT */
