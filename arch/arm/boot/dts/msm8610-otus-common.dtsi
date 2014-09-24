@@ -142,6 +142,15 @@
 	};
 };
 
+&mmi_batterydata {
+	/delete-node/ mmi,el40-lishen-batterydata;
+	/delete-node/ mmi,el40-sony-batterydata;
+	/delete-node/ mmi,el40-atl-batterydata;
+
+	/include/ "batterydata-ft40-lg.dtsi"
+	/include/ "batterydata-ft40-sony.dtsi"
+};
+
 &i2c_3 {
 	status = "disabled";
 };
