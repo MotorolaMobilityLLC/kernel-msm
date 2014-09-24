@@ -64,6 +64,9 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 #define SENSOR_HEART_RATE_CONFIDENCE_MEDIUM			2
 #define SENSOR_HEART_RATE_CONFIDENCE_HIGH			3
 
+#define LOW_POWER_MODE_EXIT		1
+#define LOW_POWER_MODE_ENTER		0
+
 static struct regulator *pm8921_l28;
 static struct sensors_classdev bmd101_cdev = {
 	.name = "bmd101",
@@ -82,8 +85,10 @@ struct bmd101_data {
 	int count;
 	int accuracy;
 	int timeout_delay;
+	int low_power_mode;
 	struct mutex lock;
 	struct delayed_work timeout_work;
+	struct delayed_work suspend_resume_work;
 	struct workqueue_struct *bmd101_work_queue;
 };
 static struct bmd101_data *sensor_data;
@@ -162,7 +167,7 @@ static void bmd101_hw_enable(int enable) {
 
 		sensor_data->hw_enabled = 1;
 		
-		sensor_debug(DEBUG_INFO, "[bmd101] %s: gpio %d and %d pulled hig, sensor hw(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->hw_enabled);
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, sensor hw(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->hw_enabled);
 	}
 	else if (!enable && sensor_data->hw_enabled) {
               msm_gpiomux_write(BMD101_CS_GPIO, GPIOMUX_ACTIVE, &gpio_sus_cfg, &gpio_act_cfg);
@@ -329,6 +334,18 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 	return 0;
 }
 
+static void bmd101_suspend_resume_work(struct work_struct *work) {
+	if(sensor_data->low_power_mode) {
+		sensor_data->count = 0;
+		mutex_unlock(&sensor_data->lock);
+		bmd101_hw_enable(0);
+	}
+	else
+		bmd101_hw_enable(1);
+
+	sensor_debug(DEBUG_INFO, "[bmd101] %s low power mode\n", sensor_data->low_power_mode?"enter":"exit");
+}
+
 static void bmd101_timeout_work(struct work_struct *work) {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: no contact detected. TIMEOUT!! \n", __func__);
 	bmd101_data_report(-1, -1);
@@ -434,30 +451,27 @@ static const struct attribute_group bmd101_attr_group = {
 	.attrs = bmd101_attributes,
 };
 
-void notify_ecg_sensor_lowpowermode(int low)
-{
-	if(low)
-		bmd101_hw_enable(0);
-	else
-		bmd101_hw_enable(1);
-	sensor_debug(DEBUG_INFO, "[bmd101] %s low power mode\n", low?"enter":"exit");
-}
-
 #ifdef CONFIG_ASUS_UTILITY
 static int bmd101_fb_notifier_callback(struct notifier_block *this, unsigned long code, void *data)
 {
+	int err = 0;
+
 	switch (code) {
-		case 0:
-			notify_ecg_sensor_lowpowermode(1);
-			sensor_data->count = 0;
-			mutex_unlock(&sensor_data->lock);
+		case LOW_POWER_MODE_ENTER:
+			sensor_data->low_power_mode = 1;
 			break;
-		case 1:
-			notify_ecg_sensor_lowpowermode(0);
+		case LOW_POWER_MODE_EXIT:
+			sensor_data->low_power_mode = 0;
 			break;
 		default:
+			err = -1;
 			break;
 	}
+
+	if (err < 0)
+		pr_err("[BMD101] ERROR!! unknown low power mode call back code (%lu)\n", code);
+	else
+		queue_delayed_work(sensor_data->bmd101_work_queue, &sensor_data->suspend_resume_work, 0);
 
 	return 0;
 }
@@ -519,6 +533,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	
    	sensor_data->bmd101_work_queue = create_workqueue("BMD101_wq");
 	INIT_DELAYED_WORK(&sensor_data->timeout_work, bmd101_timeout_work);
+	INIT_DELAYED_WORK(&sensor_data->suspend_resume_work, bmd101_suspend_resume_work);
 	
 	ret = sensors_classdev_register(&pdev->dev, &sensor_data->cdev);
 	if (ret) {
