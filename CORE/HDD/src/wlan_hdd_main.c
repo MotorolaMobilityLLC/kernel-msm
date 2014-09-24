@@ -4076,6 +4076,55 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            }
            ret = len;
        }
+#ifdef FEATURE_WLAN_TDLS
+       else if (strncmp(command, "TDLSSECONDARYCHANNELOFFSET", 26) == 0) {
+           tANI_U8 *value = command;
+           int set_value;
+           /* Move pointer to ahead of TDLSOFFCH*/
+           value += 26;
+           sscanf(value, "%d", &set_value);
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                     "%s: Tdls offchannel offset:%d",
+                     __func__, set_value);
+           ret = iw_set_tdlssecoffchanneloffset(pHddCtx, set_value);
+           if (ret < 0)
+           {
+               ret = -EINVAL;
+               goto exit;
+           }
+
+       } else if (strncmp(command, "TDLSOFFCHANNELMODE", 18) == 0) {
+           tANI_U8 *value = command;
+           int set_value;
+           /* Move pointer to ahead of tdlsoffchnmode*/
+           value += 18;
+           sscanf(value, "%d", &set_value);
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                     "%s: Tdls offchannel mode:%d",
+                     __func__, set_value);
+           ret = iw_set_tdlsoffchannelmode(pAdapter, set_value);
+           if (ret < 0)
+           {
+               ret = -EINVAL;
+               goto exit;
+           }
+       } else if (strncmp(command, "TDLSOFFCHANNEL", 14) == 0) {
+           tANI_U8 *value = command;
+           int set_value;
+           /* Move pointer to ahead of TDLSOFFCH*/
+           value += 14;
+           sscanf(value, "%d", &set_value);
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                     "%s: Tdls offchannel num: %d",
+                     __func__, set_value);
+           ret = iw_set_tdlsoffchannel(pHddCtx, set_value);
+           if (ret < 0)
+           {
+               ret = -EINVAL;
+               goto exit;
+           }
+       }
+#endif
        else {
            MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                             TRACE_CODE_HDD_UNSUPPORTED_IOCTL,
