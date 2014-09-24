@@ -206,10 +206,11 @@ static void pfit_landscape(int hsrc_sz, int vsrc_sz,
 {
 	int hmsb, vmsb, hratio, vratio;
 
+	/* IPIL_PFIT_COEFF_MEDIAN_VALUE for fugu 720p */
 	hdmi_write32(IPIL_PFIT_CONTROL,
 			IPIL_PFIT_ENABLE |
 			IPIL_PFIT_PIPE_SELECT_B |
-			IPIL_PFIT_SCALING_PROGRAM);
+			IPIL_PFIT_SCALING_PROGRAM | IPIL_PFIT_COEFF_MEDIAN_VALUE);
 
 	/* handling scaling up and down */
 	if (hsrc_sz >= hdst_sz) {
