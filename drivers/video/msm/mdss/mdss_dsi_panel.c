@@ -147,16 +147,18 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	return 0;
 }
 
-static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
-			struct dsi_panel_cmds *pcmds)
+
+static void _mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds, int sync)
 {
 	struct dcs_cmd_req cmdreq;
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = pcmds->cmds;
 	cmdreq.cmds_cnt = pcmds->cmd_cnt;
-	// To flush MIPI cmd before suspend"
-	cmdreq.flags = CMD_REQ_COMMIT | CMD_REQ_COMMIT;
+
+	if (sync)
+		cmdreq.flags = CMD_REQ_COMMIT ;
 
 	/*Panel ON/Off commands should be sent in DSI Low Power Mode*/
 	if (pcmds->link_state == DSI_LP_MODE)
@@ -167,6 +169,19 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
+
+static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds)
+{
+	return _mdss_dsi_panel_cmds_send(ctrl,pcmds, 1 /*sync*/);
+}
+
+static void mdss_dsi_panel_cmds_send_async(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds)
+{
+	return _mdss_dsi_panel_cmds_send(ctrl,pcmds, 0 /*async*/);
+}
+
 
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd = {
@@ -635,7 +650,7 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 			printk("MDSS:AMB:skip ambient off cmd due to panel_ambient_mode = AMBIENT_MODE_OFF\n");
 		}else if (ctrl->idle_off_cmds.cmd_cnt){
 			mdss_dsi_panel_bl_ctrl(pdata,backup_bl_level);
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+			mdss_dsi_panel_cmds_send_async(ctrl, &ctrl->idle_off_cmds);
 			panel_ambient_mode = AMBIENT_MODE_OFF;
 		}else{
 			printk("MDSS:DSI: idle OFF command is not set!\n");
