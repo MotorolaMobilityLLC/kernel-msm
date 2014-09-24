@@ -549,7 +549,8 @@ limProcessEXTScanRealTimeData(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         rxChannelInBD = limUnmapChannel(rxChannelInBD);
     }
 
-    tEXTScanFullScanResult.ap.channel = rxChannelInBD;
+    tEXTScanFullScanResult.ap.channel =
+            (tANI_U32)vos_chan_to_freq(rxChannelInBD);
     tEXTScanFullScanResult.ap.rssi = WDA_GET_RX_RSSI_DB(pRxPacketInfo);
 
     if (fc.subType == SIR_MAC_MGMT_BEACON)
