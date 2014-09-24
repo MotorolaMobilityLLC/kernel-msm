@@ -11022,55 +11022,33 @@ static eCsrCfgDot11Mode csrRoamGetPhyModeBandForBss( tpAniSirGlobal pMac, tCsrRo
                 break;
 #endif
             case eCSR_CFG_DOT11_MODE_AUTO:
-                eBand = pMac->roam.configParam.eBand;
-                if (eCSR_BAND_24 == eBand)
-                {
-                    // WiFi tests require IBSS networks to start in 11b mode
-                    // without any change to the default parameter settings
-                    // on the adapter.  We use ACU to start an IBSS through
-                    // creation of a startIBSS profile. This startIBSS profile
-                    // has Auto MACProtocol and the adapter property setting
-                    // for dot11Mode is also AUTO.   So in this case, let's
-                    // start the IBSS network in 11b mode instead of 11g mode.
-                    // So this is for Auto=profile->MacProtocol && Auto=Global.
-                    // dot11Mode && profile->channel is < 14, then start the IBSS
-                    // in b mode.
-                    //
-                    // Note:  we used to have this start as an 11g IBSS for best
-                    // performance... now to specify that the user will have to
-                    // set the do11Mode in the property page to 11g to force it.
-                    cfgDot11Mode = eCSR_CFG_DOT11_MODE_11B;
-                }
-                else
-                {
 #ifdef WLAN_FEATURE_11AC
-                    if (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
+                if (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
+                {
+                    /* If the operating channel is in 2.4 GHz band, check for
+                     * INI item to disable VHT operation in 2.4 GHz band
+                     */
+                    if (CSR_IS_CHANNEL_24GHZ(operationChn) &&
+                         !pMac->roam.configParam.enableVhtFor24GHz)
                     {
-                       /* If the operating channel is in 2.4 GHz band, check for
-                        * INI item to disable VHT operation in 2.4 GHz band
-                        */
-                       if (CSR_IS_CHANNEL_24GHZ(operationChn) &&
-                           !pMac->roam.configParam.enableVhtFor24GHz)
-                       {
-                          /* Disable 11AC operation */
-                          cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
-                       }
-                       else
-                       {
-                          cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
-                       }
-                       eBand = CSR_IS_CHANNEL_24GHZ(operationChn) ? eCSR_BAND_24 : eCSR_BAND_5G;
+                       /* Disable 11AC operation */
+                       cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
                     }
                     else
                     {
+                       cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
+                    }
+                    eBand = CSR_IS_CHANNEL_24GHZ(operationChn) ? eCSR_BAND_24 : eCSR_BAND_5G;
+                }
+                else
+                {
                         cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
                         eBand = CSR_IS_CHANNEL_24GHZ(operationChn) ? eCSR_BAND_24 : eCSR_BAND_5G;
-                    }
-#else
-                    cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
-                    eBand = CSR_IS_CHANNEL_24GHZ(operationChn) ? eCSR_BAND_24 : eCSR_BAND_5G;
-#endif
                 }
+#else
+                cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
+                eBand = CSR_IS_CHANNEL_24GHZ(operationChn) ? eCSR_BAND_24 : eCSR_BAND_5G;
+#endif
                 break;
             default:
                 // Global dot11 Mode setting is 11a/b/g.
