@@ -1402,6 +1402,10 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                                          (int)pRoamInfo->pBssDesc->channelId);
                         hddLog(LOG1, "assocReqlen %d assocRsplen %d", assocReqlen,
                                          assocRsplen);
+#ifdef DEBUG_ROAM_DELAY
+                        //HACK we are using the buff len as Auth Type
+                        vos_record_roam_event(e_HDD_SEND_REASSOC_RSP, NULL, 0);
+#endif
                         cfg80211_roamed(dev,chan, pRoamInfo->bssid,
                                     pFTAssocReq, assocReqlen, pFTAssocRsp, assocRsplen,
                                     GFP_KERNEL);
