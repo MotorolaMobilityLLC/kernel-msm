@@ -54,6 +54,7 @@ int intel_mid_dw_i2c_abort(int busnum)
 		pins = &dw_i2c_pin_cfgs[BOARD_VTB][busnum];
 		break;
 	case INTEL_MID_CPU_CHIP_TANGIER:
+	case INTEL_MID_CPU_CHIP_ANNIEDALE:
 		pins = &dw_i2c_pin_cfgs[BOARD_SALTBAY][busnum];
 		break;
 	default:
