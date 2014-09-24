@@ -450,7 +450,51 @@ static bool cycapsense_issp_verify_block(const struct issp_data *d, int block)
 
 	return ret;
 }
+int cycapsense_issp_get_fw_rev(const struct issp_data *d, unsigned int *fw_rev)
+{
+	unsigned long flags;
+	int block;
+	unsigned char addr, val;
 
+	block = d->fw_rev_offset / d->block_size;
+	/* 7-bit only, to have them in MSB will be incremented by 2 */
+	addr = (d->fw_rev_offset % d->block_size) * 2;
+
+	if (!cycapsense_issp_verify_setup(d, block))
+		return -EIO;
+
+	local_irq_save(flags);
+
+	cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, rw_setup, rw_setup_len);
+
+	gpio_direction_output(d->d_gpio, 1);
+
+	SEND_PART_BYTE(rd_start, d->c_gpio, d->d_gpio, rd_start_len);
+	SEND_PART_BYTE(addr, d->c_gpio, d->d_gpio, 7);
+	cycapsense_issp_w2r(d->c_gpio);
+	gpio_direction_input(d->d_gpio);
+	val = GET_BYTE(d->c_gpio, d->d_gpio);
+	cycapsense_issp_r2w(d->c_gpio);
+	gpio_direction_output(d->d_gpio, 1);
+	SEND_PART_BYTE(rd_end, d->c_gpio, d->d_gpio, rd_end_len);
+	*fw_rev = val<<8;
+
+	addr += 2;
+	SEND_PART_BYTE(rd_start, d->c_gpio, d->d_gpio, rd_start_len);
+	SEND_PART_BYTE(addr, d->c_gpio, d->d_gpio, 7);
+	cycapsense_issp_w2r(d->c_gpio);
+	gpio_direction_input(d->d_gpio);
+	val = GET_BYTE(d->c_gpio, d->d_gpio);
+	cycapsense_issp_r2w(d->c_gpio);
+	gpio_direction_output(d->d_gpio, 1);
+	SEND_PART_BYTE(rd_end, d->c_gpio, d->d_gpio, rd_end_len);
+	*fw_rev |= val;
+
+	cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, sync_dis, sync_dis_len);
+	local_irq_restore(flags);
+
+	return 0;
+}
 static bool cycapsense_issp_flash_security(const struct issp_data *d)
 {
 	unsigned long flags;
@@ -716,6 +760,10 @@ int cycapsense_issp_parse_hex(struct issp_data *d, const u8 *src, int len)
 			break;
 		}
 	}
+	/* Set firmwate revision */
+	if (d->fw_rev_offset)
+		d->inf.fw_rev = *(d->inf.data + d->fw_rev_offset)<<8 |
+				*(d->inf.data + d->fw_rev_offset+1);
 	return 0;
 parse_hex_end_err:
 	pr_err("%s: HEX format error.\n", __func__);
@@ -844,7 +892,8 @@ int cycapsense_issp_dnld(const struct issp_data *d)
 	if (cycapsense_issp_get_cs(d, &chks) < 0)
 		return -EIO;
 	if (chks != d->inf.cs) {
-		pr_err("%s: Flashing failed. Checksum not match\n", __func__);
+		pr_err("%s: Flashing failed. Checksum not match 0x%x : 0x%x\n",
+			__func__, chks, d->inf.cs);
 		return -EIO;
 	}
 

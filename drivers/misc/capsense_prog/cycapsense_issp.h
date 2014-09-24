@@ -23,6 +23,7 @@ struct hex_info {
 	u8 *data;
 	u8 *s_data;
 	u16 cs;
+	u16 fw_rev;
 };
 struct issp_data {
 	struct hex_info inf;
@@ -34,6 +35,7 @@ struct issp_data {
 	int c_gpio;
 	int d_gpio;
 	int rst_gpio;
+	int fw_rev_offset;
 };
 int cycapsense_issp_parse_hex(struct issp_data *d, const u8 *src, int len);
 
@@ -45,4 +47,5 @@ int cycapsense_issp_erase(const struct issp_data *d);
 
 int cycapsense_issp_dnld(const struct issp_data *d);
 
+int cycapsense_issp_get_fw_rev(const struct issp_data *d, unsigned int *fw_rev);
 #endif /* __CYCAPSENSE_ISSP_H__ */

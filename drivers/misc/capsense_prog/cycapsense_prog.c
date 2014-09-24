@@ -41,7 +41,7 @@ int cycapsense_fw_update(void)
 {
 	const struct firmware *fw = NULL;
 	char *fw_name = NULL;
-	unsigned int chs;
+	unsigned int chs, fw_rev;
 	struct hex_info *inf;
 	int error = 0;
 
@@ -90,17 +90,28 @@ int cycapsense_fw_update(void)
 	error = cycapsense_issp_get_cs(&ctrl_data->issp_d, &chs);
 	if (error)
 		goto fw_upd_end;
+	if (chs && (chs != inf->cs) && inf->fw_rev) {
+		cycapsense_issp_get_fw_rev(&ctrl_data->issp_d, &fw_rev);
+		dev_dbg(ctrl_data->dev,
+			"Device checksum 0x%x ,Firmware rev. 0x%x\n",
+					chs, fw_rev);
+		/* Skip FW update if FW revision is matching */
+		if (fw_rev == inf->fw_rev)
+			chs = inf->cs;
+	}
 
 	if (inf->fw_name != NULL || chs != inf->cs) {
 		/* force update regardless check sum, if user requested */
-		dev_info(ctrl_data->dev, "Flashing firmware %s\n", fw_name);
+		dev_info(ctrl_data->dev,
+			"Flashing firmware %s,cs 0x%x, rev 0x%x\n",
+					fw_name, inf->cs, inf->fw_rev);
 		error = cycapsense_issp_dnld(&ctrl_data->issp_d);
 		if (!error)
 			dev_info(ctrl_data->dev, "%s flashed successful\n",
 						fw_name);
 	} else
 		dev_info(ctrl_data->dev,
-				"Checksum is matching. No firmware upgrade.\n");
+			"Firmware revision is matching,No upgrade.\n");
 
 fw_upd_end:
 	if (inf->data != NULL) {
@@ -256,6 +267,16 @@ static int cycapsense_prog_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Error reading node secure_bytes\n");
 		return error;
 	}
+	error = of_property_read_u32(np, "fw_rev_offset",
+		&ctrl_data->issp_d.fw_rev_offset);
+	if (error) {
+		dev_err(&pdev->dev, "Firmware revision offset isn't set\n");
+	} else
+		if ((ctrl_data->issp_d.fw_rev_offset < 0) ||
+			(ctrl_data->issp_d.fw_rev_offset >
+			ctrl_data->issp_d.num_of_blocks *
+			ctrl_data->issp_d.block_size))
+				ctrl_data->issp_d.fw_rev_offset = 0;
 
 	error = device_create_file(&pdev->dev, &dev_attr_cycapsense_fw);
 	if (error < 0) {

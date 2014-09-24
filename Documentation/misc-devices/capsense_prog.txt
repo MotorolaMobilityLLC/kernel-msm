@@ -33,6 +33,7 @@ num_of_blocks - Number of flash memory blocks.
 secure_bytes  - Each block has 2 bits in flash memory for protection attributes;
 gpios         - Three interface gpio pins. Index 0 is reset line,
 				index 1 - clock line, index 2 - data line.
+fw_rev_offset - Firmware revision location.Optional.
 
 
 Using the driver
