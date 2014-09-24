@@ -55,6 +55,18 @@
 		<&msmgpio 37 0>;
 };
 
+&mmi_batterydata {
+	qcom,default-kohm = <20>;
+
+	/delete-node/ mmi,ed30-temp-batterydata;
+	/delete-node/ mmi,ed30-sony-batterydata;
+	/delete-node/ mmi,ed30-sony-batterydata-alt;
+	/delete-node/ mmi,ed30-lg-batterydata;
+
+	/include/ "batterydata-ft40-lg.dtsi"
+	/include/ "batterydata-ft40-sony.dtsi"
+};
+
 &i2c_2 {
 	bma2x2@11 {
 		/delete-property/ bma,place;
