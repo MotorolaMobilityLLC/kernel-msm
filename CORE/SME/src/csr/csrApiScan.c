@@ -304,6 +304,10 @@ static void csrSetDefaultScanTiming( tpAniSirGlobal pMac, tSirScanType scanType,
 #ifdef WLAN_AP_STA_CONCURRENCY
     if(csrIsAnySessionConnected(pMac))
     {
+        //Reset passive scan time as per ini parameter.
+        ccmCfgSetInt(pMac->hHdd,WNI_CFG_PASSIVE_MAXIMUM_CHANNEL_TIME,
+                     pMac->roam.configParam.nPassiveMaxChnTimeConc,
+                     NULL,eANI_BOOLEAN_FALSE);
         //If multi-session, use the appropriate default scan times 
         if(scanType == eSIR_ACTIVE_SCAN)
         {
