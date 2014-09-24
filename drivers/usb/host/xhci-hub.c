@@ -870,12 +870,14 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			xhci_dbg(xhci, "set port reset, actual port %d status  = 0x%x\n", wIndex, temp);
 			if (xhci->quirks & XHCI_PORT_RESET) {
 				int delay_time;
+				spin_unlock_irqrestore(&xhci->lock, flags);
 				for (delay_time = 0; delay_time < 800; delay_time += 10) {
 					if (!(temp & PORT_RESET))
 						break;
 					mdelay(2);
 					temp = xhci_readl(xhci, port_array[wIndex]);
 				}
+				spin_lock_irqsave(&xhci->lock, flags);
 				quirk_intel_xhci_port_reset(hcd->self.controller, true);
 			}
 			break;
