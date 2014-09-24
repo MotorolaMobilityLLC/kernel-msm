@@ -211,10 +211,6 @@ int stm401_reset_and_init(void)
 				ret_err = err;
 		}
 	}
-	rst_cmdbuff[0] = INTERRUPT_STATUS;
-	stm401_i2c_write_read_no_reset(stm401_misc_data, rst_cmdbuff, 1, 3);
-	rst_cmdbuff[0] = WAKESENSOR_STATUS;
-	stm401_i2c_write_read_no_reset(stm401_misc_data, rst_cmdbuff, 1, 2);
 
 	rst_cmdbuff[0] = PROX_SETTINGS;
 	rst_cmdbuff[1]
