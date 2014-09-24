@@ -412,7 +412,6 @@
 };
 
 &i2c_1 {
-	/delete-node/ drv2605@5a;
 	/delete-node/ synaptics_dsx_i2c@20;
 
 	atmel_mxt_ts@4a {
@@ -446,19 +445,6 @@
 				 <0x0400000 0xD9>, /* SND_JACK_BTN_4 - KEY_SEARCH */
 				 <0x0200000 0x72>, /* SND_JACK_BTN_5 - KEY_VOLUMEDOWN */
 				 <0x0100000 0x73>; /* SND_JACK_BTN_6 - KEY_VOLUMEUP */
-	};
-
-	/* TI drv2605 */
-	drv2605@5a {
-		compatible = "ti,drv2605";
-		reg = <0x5A>;
-		gpios = <&msmgpio 75 0>,        /* EN_GPIO */
-			<&msmgpio 74 0>;        /* Trigger */
-		external_trigger = <1>;
-		default_effect = <17>;          /* Strong Click 100% */
-		rated_voltage = <0x70>;         /* 2.4v */
-		overdrive_voltage = <0x89>;     /* 3.0v */
-		disable_calibration  = <1>;     /* Disable boot-up calibration */
 	};
 
 	tfa9890@34 {
