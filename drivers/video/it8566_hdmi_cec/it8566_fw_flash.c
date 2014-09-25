@@ -643,6 +643,7 @@ static int do_verify(void)
 	dev_info(&flash_mode_client->dev,
 		"start=0x%x, end=0x%x: check if all values are equal to fw file...\n",
 		start, end);
+
 	for (i = start; i < end; i++) {
 		if (buffer[i] != gbuffer[i]) {
 			dev_err(&flash_mode_client->dev,
@@ -677,7 +678,7 @@ static void do_reset(void)
 static int load_fw_and_set_flash_region(int force)
 {
 	unsigned char ec_version[8];
-	unsigned char bin_version[2];
+	unsigned char bin_version[3];
 	int err, i;
 
 	err = load_fw_bin_to_buffer(fw_bin_path);
@@ -716,16 +717,17 @@ static int load_fw_and_set_flash_region(int force)
 			/* err == 2 means ic has valid fw inside,
 			   futhur check fw version to see if need
 			   to update */
-			for (i = 0; i < 2; i++)
+			for (i = 0; i < 3; i++)
 				bin_version[i] = gbuffer[0x7f20 + i];
 
 			dev_info(&flash_mode_client->dev,
-					"Check bin ver: %x.%x, current fw ver: %x.%x\n",
-					bin_version[0], bin_version[1],
-					ec_version[0], ec_version[1]);
+				"Check bin ver: %x.%x.%x, current fw ver: %x.%x.%x\n",
+				bin_version[0], bin_version[1], bin_version[2],
+				ec_version[0], ec_version[1], ec_version[2]);
 
 			if (ec_version[0] == bin_version[0] &&
-					ec_version[1] == bin_version[1]) {
+			    ec_version[1] == bin_version[1] &&
+			    ec_version[2] == bin_version[2]) {
 				dev_info(&flash_mode_client->dev,
 						"no need to update\n");
 				return 1;
@@ -740,8 +742,8 @@ static int load_fw_and_set_flash_region(int force)
 			"it8566 fail to flash fw before, do partial flash\n");
 		else
 			dev_info(&flash_mode_client->dev,
-			"it8566 has fw, do partial flash. Current fw version: %x.%x\n",
-			ec_version[0], ec_version[1]);
+			"it8566 has fw, do partial flash. Current fw ver: %x.%x.%x\n",
+			ec_version[0], ec_version[1], ec_version[2]);
 	}
 
 	if (err < 0) {
@@ -780,39 +782,55 @@ static int load_fw_and_set_flash_region(int force)
 	return 0;
 }
 
+#define NUM_FW_UPDATE_RETRY 2
 int it8566_fw_update(int force)
 {
-	int err;
+	int err = 0;
+	int retry = -1;
 	unsigned char ec_version[8];
 
-	dev_info(&flash_mode_client->dev, "Update fw...\n");
+retry:
+	retry++;
+	if (retry > NUM_FW_UPDATE_RETRY)
+		goto exit_func;
+
+	dev_info(&flash_mode_client->dev, "Update fw..., retry=%d\n", retry);
+
 	err = load_fw_and_set_flash_region(force);
 	if (err < 0)
-		goto exit_func;
+		goto retry;
 	else if (err > 0)
 		goto exit_func_2;
 
 	do_erase_all();
-	if (do_check()) {
+	err = do_check();
+	if (err < 0) {
 		dev_err(&flash_mode_client->dev,
-		"%s:do_check fail...\n", __func__);
-		/*goto err;*/
+		"%s:check erase fail...\n", __func__);
+		goto retry;
 	}
 
 	do_program();
-	do_verify();
+	err = do_verify();
+	if (err < 0) {
+		dev_err(&flash_mode_client->dev,
+		"%s:verify program fail...\n", __func__);
+		goto retry;
+	}
+
 	do_reset();
 	msleep(2000);
-	if (get_ec_ver(ec_version) < 0) {
+
+	err = get_ec_ver(ec_version);
+	if (err < 0) {
 		dev_err(&flash_mode_client->dev,
-			"can't get fw version, fw update fail...");
-		err = -1;
-		goto exit_func;
+			"%s:get fw version fail...\n", __func__);
+		goto retry;
 	}
 
 	dev_info(&flash_mode_client->dev,
-		"Update fw Success!, Current fw ver: %x.%x\n",
-		ec_version[0], ec_version[1]);
+		"Update fw Success!, Current fw ver: %x.%x.%x\n",
+		ec_version[0], ec_version[1], ec_version[2]);
 
 	return err;
 
@@ -896,7 +914,7 @@ static ssize_t dbg_ec_ver_read(struct file *file,
 		return simple_read_from_buffer(user_buf, count, ppos,
 				buf, strlen(buf));
 	}
-	snprintf(buf, 32, "%x.%x\n", v[0], v[1]);
+	snprintf(buf, 32, "%x.%x.%x\n", v[0], v[1], v[2]);
 	return simple_read_from_buffer(user_buf, count, ppos,
 			buf, strlen(buf));
 }

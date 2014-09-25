@@ -47,6 +47,7 @@
 #define CEC_GET_VERSION_CMD	0x94
 
 #define NUM_CHECK_TX_BUSY	25
+#define NUM_I2C_READ_RETRY	5
 
 static struct i2c_client	*cec_client;
 static struct miscdevice hdmi_cec_device;
@@ -253,18 +254,27 @@ static int cec_i2c_read(unsigned char *to_header, unsigned char *to_opcode,
 {
 	unsigned char rx_data[CEC_READ_DATA_LEN] = {0};
 	int i, err;
+	int retry = 0;
 
 	if (!cec_client) {
 		dev_err(&cec_client->dev, "no cec_client\n");
 		return -1;
 	}
 
+read_retry:
+	if (retry > NUM_I2C_READ_RETRY) {
+		dev_err(&cec_client->dev, "cec read fail\n");
+		return -1;
+	}
+
 	err = i2c_smbus_read_i2c_block_data(cec_client, CEC_READ_CMD,
-		CEC_READ_DATA_LEN, rx_data);
+			CEC_READ_DATA_LEN, rx_data);
 	if (err < 0) {
 		dev_err(&cec_client->dev,
-			"%s:i2c transfer FAIL: err=%d\n", __func__, err);
-		return -1;
+		"%s:i2c transfer FAIL: err=%d, retry=%d\n",
+		__func__, err, retry);
+		retry++;
+		goto read_retry;
 	}
 
 	for (i = 0; i < rx_data[0] + 1; i++)
@@ -274,7 +284,9 @@ static int cec_i2c_read(unsigned char *to_header, unsigned char *to_opcode,
 	*to_opds_len = rx_data[0] - 2; /*rx_data[0] region: 1~16*/
 
 	*to_header = rx_data[1];
-	*to_opcode = rx_data[2];
+
+	if (*to_opds_len >= 0)
+		*to_opcode = rx_data[2];
 
 	for (i = 0; i < *to_opds_len; i++)
 		to_data[i] = rx_data[i+3];
