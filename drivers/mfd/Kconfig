@@ -601,6 +601,12 @@ config MFD_DB8500_PRCMU
 	  system controller running an XP70 microprocessor, which is accessed
 	  through a register map.
 
+config MFD_M4SENSORHUB
+        tristate "Support for M4 Sensor Hub"
+        depends on I2C
+        help
+         Say yes here if you want to include drivers for the M4 sensor hub.
+
 config MFD_STMPE
 	bool "STMicroelectronics STMPE"
 	depends on (I2C=y || SPI_MASTER=y)
