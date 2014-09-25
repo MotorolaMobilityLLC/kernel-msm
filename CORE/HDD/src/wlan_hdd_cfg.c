@@ -3175,6 +3175,12 @@ REG_VARIABLE( CFG_EXTSCAN_ENABLE, WLAN_PARAM_Integer,
                   CFG_BURST_MODE_BE_TXOP_VALUE_DEFAULT,
                   CFG_BURST_MODE_BE_TXOP_VALUE_MIN,
                   CFG_BURST_MODE_BE_TXOP_VALUE_MAX ),
+   REG_VARIABLE( CFG_SAP_SCAN_BAND_PREFERENCE, WLAN_PARAM_Integer,
+                  hdd_config_t, acsScanBandPreference,
+                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK,
+                  CFG_SAP_SCAN_BAND_PREFERENCE_DEFAULT,
+                  CFG_SAP_SCAN_BAND_PREFERENCE_MIN,
+                  CFG_SAP_SCAN_BAND_PREFERENCE_MAX ),
 };
 
 /*
@@ -3576,6 +3582,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAsdRTTRssiHystThreshold]Value = [%u]",pHddCtx->cfg_ini->gAsdRTTRssiHystThreshold);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gRoamtoDFSChannel] Value = [%u] ",pHddCtx->cfg_ini->allowDFSChannelRoam);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gMaxConcurrentActiveSessions] Value = [%u] ", pHddCtx->cfg_ini->gMaxConcurrentActiveSessions);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAcsScanBandPreference] Value = [%u] ",pHddCtx->cfg_ini->acsScanBandPreference);
 }
 
 
@@ -5290,7 +5297,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    /* Update the Directed scan offload setting */
    smeConfig->fScanOffload =  pHddCtx->cfg_ini->fScanOffload;
 
-   smeConfig->csrConfig.scanBandPreference = eCSR_BAND_ALL;
+   smeConfig->csrConfig.scanBandPreference =
+                     pHddCtx->cfg_ini->acsScanBandPreference;
 
    smeConfig->fEnableDebugLog = pHddCtx->cfg_ini->gEnableDebugLog;
    smeConfig->csrConfig.sendDeauthBeforeCon = pConfig->sendDeauthBeforeCon;

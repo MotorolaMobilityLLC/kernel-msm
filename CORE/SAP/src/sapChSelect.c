@@ -1766,31 +1766,27 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     sapSortChlWeight(pSpectInfoParams);
 
 #ifdef SOFTAP_CHANNEL_RANGE
-    switch (pSapCtx->scanBandPreference)
+    if (eCSR_BAND_ALL == pSapCtx->scanBandPreference)
     {
-        case eCSR_BAND_ALL:
-            ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL, &startChannelNum);
-            ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL, &endChannelNum);
-            ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND, &operatingBand);
-            break;
-
-        case eCSR_BAND_24:
+        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL, &startChannelNum);
+        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL, &endChannelNum);
+        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND, &operatingBand);
+    }
+    else
+    {
+        if (eCSR_BAND_24 == pSapCtx->currentPreferredBand)
+        {
             startChannelNum = rfChannels[RF_CHAN_1].channelNum;
             endChannelNum = rfChannels[RF_CHAN_14].channelNum;
             operatingBand = eSAP_RF_SUBBAND_2_4_GHZ;
-            break;
-
-        case eCSR_BAND_5G:
+        }
+        else
+        {
             startChannelNum = rfChannels[RF_CHAN_36].channelNum;
             endChannelNum = rfChannels[RF_CHAN_165].channelNum;
             operatingBand = RF_BAND_5_GHZ;
-            break;
-
-        default:
-            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                      "%s : Invalid scanBandPreference value %d",
-                      __func__, pSapCtx->scanBandPreference);
-    }
+        }
+     }
 
     /*Loop till get the best channel in the given range */
     for(count=0; count < pSpectInfoParams->numSpectChans ; count++)
