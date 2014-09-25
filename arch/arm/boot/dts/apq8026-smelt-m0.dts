@@ -28,6 +28,10 @@
 		uart6 = &uart6;
 	};
 
+	bt_qca6174 {
+		compatible = "qca,qca6174";
+		qca,bt-reset-gpio = <&msmgpio 26 0>; /* BT_ENABLE */
+	};
 };
 
 &soc {
