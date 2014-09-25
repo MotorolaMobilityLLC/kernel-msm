@@ -438,6 +438,58 @@ static struct msm_gpiomux_config msm_smelt_blsp_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting gpio_bcm4343s_out_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting gpio_bcm4343s_wake_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm_smelt_bcm4343s_configs[] __initdata = {
+	{
+		.gpio      = 26,	/* BT_ENABLE */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_bcm4343s_out_config,
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4343s_out_config,
+		},
+	},
+	{
+		.gpio      = 27,	/* BT_HOST_WAKE_IN */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_bcm4343s_wake_config,
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4343s_wake_config,
+		},
+	},
+	{
+		.gpio      = 28,	/* WLAN_ENABLE */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_bcm4343s_out_config,
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4343s_out_config,
+		},
+	},
+	{
+		.gpio      = 29,	/* WL_HOST_WAKE_IN */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_bcm4343s_wake_config,
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4343s_wake_config,
+		},
+	},
+	{
+		.gpio      = 30,	/* BT_SLAVE_WAKE_OUT */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_bcm4343s_out_config,
+			[GPIOMUX_SUSPENDED] = &gpio_bcm4343s_out_config,
+		},
+	},
+	/* Enable CONFIG_MMC_MSM_SDC3_SUPPORT to configure WLAN data lines */
+};
+
 static struct msm_gpiomux_config msm_blsp_spi_cs_config[] __initdata = {
 	{
 		.gpio      = 2,		/* BLSP1 QUP1 SPI_CS1 */
@@ -1033,7 +1085,10 @@ void __init msm8226_init_gpiomux(void)
 		msm_gpiomux_install(smsc_hub_configs,
 			ARRAY_SIZE(smsc_hub_configs));
 
-	if (of_machine_is_compatible("moto,smelt"))
+	if (of_machine_is_compatible("moto,smelt")) {
 		msm_gpiomux_install(msm_smelt_blsp_configs,
 			ARRAY_SIZE(msm_smelt_blsp_configs));
+		msm_gpiomux_install(msm_smelt_bcm4343s_configs,
+			ARRAY_SIZE(msm_smelt_bcm4343s_configs));
+	}
 }
