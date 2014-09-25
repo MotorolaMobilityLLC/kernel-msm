@@ -72,8 +72,6 @@
 #define POLARITY_LOW 0
 #define POLARITY_HIGH 1
 
-#define BT_PORT_ID	0
-
 /* enable/disable wake-on-bluetooth */
 #define BT_ENABLE_IRQ_WAKE 1
 
@@ -97,6 +95,7 @@ struct bluesleep_info {
 	struct wake_lock wake_lock;
 	int irq_polarity;
 	int has_ext_wake;
+	int port_id;
 };
 
 /* work function */
@@ -504,6 +503,12 @@ static int bluesleep_populate_dt_pinfo(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	int tmp;
 
+	tmp = of_property_read_u32(np, "bt_port_id", &bsi->port_id);
+	if (tmp) {
+		BT_ERR("couldn't find port ID");
+		return -ENODEV;
+	}
+
 	tmp = of_get_named_gpio(np, "bt_host_wake", 0);
 	if (tmp < 0) {
 		BT_ERR("couldn't find host_wake gpio");
@@ -520,7 +525,8 @@ static int bluesleep_populate_dt_pinfo(struct platform_device *pdev)
 	if (bsi->has_ext_wake)
 		bsi->ext_wake = tmp;
 
-	BT_INFO("bt_host_wake %d, bt_ext_wake %d",
+	BT_INFO("bt_port_id %d, bt_host_wake %d, bt_ext_wake %d",
+			bsi->port_id,
 			bsi->host_wake,
 			bsi->ext_wake);
 	return 0;
@@ -759,7 +765,7 @@ static ssize_t bluesleep_proc_write(struct file *file, const char *buf,
 			/* HCI_DEV_REG */
 			if (!has_lpm_enabled) {
 				has_lpm_enabled = true;
-				bsi->uport = msm_hs_get_uart_port(BT_PORT_ID);
+				bsi->uport = msm_hs_get_uart_port(bsi->port_id);
 				/* if bluetooth started, start bluesleep*/
 				bluesleep_start();
 			}
