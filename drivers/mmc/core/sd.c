@@ -701,6 +701,7 @@ static int mmc_sd_throttle_back(struct mmc_host *host)
 {
 	struct sd_switch_caps *sw_caps = &host->card->sw_caps;
 	char *speed = NULL;
+	int err = 0;
 
 	mmc_claim_host(host);
 
@@ -733,13 +734,13 @@ static int mmc_sd_throttle_back(struct mmc_host *host)
 	else {
 		pr_err("%s: unable to throttle back further\n",
 				mmc_hostname(host));
-		return -EINVAL;
+		err = -EINVAL;
 	}
 
 out:
 	mmc_release_host(host);
 
-	return 0;
+	return err;
 }
 
 /*
