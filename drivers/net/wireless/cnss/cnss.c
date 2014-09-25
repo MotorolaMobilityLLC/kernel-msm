@@ -124,8 +124,10 @@ static struct cnss_data {
 	struct wakeup_source ws;
 	uint32_t recovery_count;
 	enum cnss_driver_status driver_status;
+#ifdef CONFIG_CNSS_SECURE_FW
+	void *fw_mem;
+#endif
 } *penv;
-
 
 static int cnss_wlan_vreg_on(struct cnss_wlan_vreg_info *vreg_info)
 {
@@ -471,6 +473,20 @@ int cnss_get_fw_files(struct cnss_fw_files *pfw_files)
 }
 EXPORT_SYMBOL(cnss_get_fw_files);
 
+#ifdef CONFIG_CNSS_SECURE_FW
+static void cnss_wlan_fw_mem_alloc(struct pci_dev *pdev)
+{
+	penv->fw_mem = devm_kzalloc(&pdev->dev, MAX_FIRMWARE_SIZE, GFP_KERNEL);
+
+	if (!penv->fw_mem)
+		pr_debug("Memory not available for Secure FW\n");
+}
+#else
+static void cnss_wlan_fw_mem_alloc(struct pci_dev *pdev)
+{
+}
+#endif
+
 static int cnss_wlan_pci_probe(struct pci_dev *pdev,
 			       const struct pci_device_id *id)
 {
@@ -507,8 +523,12 @@ static int cnss_wlan_pci_probe(struct pci_dev *pdev,
 	cnss_wlan_gpio_set(gpio_info, WLAN_EN_LOW);
 	ret = cnss_wlan_vreg_set(vreg_info, VREG_OFF);
 
-	if (ret)
+	if (ret) {
 		pr_err("can't turn off wlan vreg\n");
+		goto err_pcie_suspend;
+	}
+
+	cnss_wlan_fw_mem_alloc(pdev);
 
 err_pcie_suspend:
 
@@ -1529,6 +1549,7 @@ void cnss_set_driver_status(enum cnss_driver_status driver_status)
 }
 EXPORT_SYMBOL(cnss_set_driver_status);
 
+#ifdef CONFIG_CNSS_SECURE_FW
 int cnss_get_sha_hash(const u8 *data, u32 data_len, u8 *hash_idx, u8 *out)
 {
 	struct scatterlist sg;
@@ -1556,6 +1577,16 @@ end:
 	return ret;
 }
 EXPORT_SYMBOL(cnss_get_sha_hash);
+
+void *cnss_get_fw_ptr(void)
+{
+	if (!penv)
+		return NULL;
+
+	return penv->fw_mem;
+}
+EXPORT_SYMBOL(cnss_get_fw_ptr);
+#endif
 
 module_init(cnss_initialize);
 module_exit(cnss_exit);
