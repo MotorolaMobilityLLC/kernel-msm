@@ -68,7 +68,9 @@ tANI_U8 csrRSNOui[][ CSR_RSN_OUI_SIZE ] = {
     { 0x00, 0x0F, 0xAC, 0x04 }, // AES-CCMP
     { 0x00, 0x0F, 0xAC, 0x05 }, // WEP-104
     { 0x00, 0x40, 0x96, 0x00 }, // CCKM
-    { 0x00, 0x0F, 0xAC, 0x06 }  // BIP (encryption type) or RSN-PSK-SHA256 (authentication type)
+    { 0x00, 0x0F, 0xAC, 0x06 },  // BIP (encryption type) or RSN-PSK-SHA256 (authentication type)
+    /* RSN-8021X-SHA256 (authentication type) */
+    { 0x00, 0x0F, 0xAC, 0x05 }
 };
 
 #ifdef FEATURE_WLAN_WAPI
@@ -2717,6 +2719,7 @@ tANI_BOOLEAN csrIsProfileRSN( tCsrRoamProfile *pProfile )
 #endif 
 #ifdef WLAN_FEATURE_11W
         case eCSR_AUTH_TYPE_RSN_PSK_SHA256:
+        case eCSR_AUTH_TYPE_RSN_8021X_SHA256:
 #endif
             fRSNProfile = TRUE;
             break;
@@ -3455,6 +3458,13 @@ static tANI_BOOLEAN csrIsAuthRSNPskSha256( tpAniSirGlobal pMac, tANI_U8 AllSuite
 {
     return csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[07], Oui );
 }
+static tANI_BOOLEAN csrIsAuthRSN8021xSha256(tpAniSirGlobal pMac,
+                                            tANI_U8 AllSuites[][CSR_RSN_OUI_SIZE],
+                                            tANI_U8 cAllSuites,
+                                            tANI_U8 Oui[] )
+{
+    return csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[8], Oui );
+}
 #endif
 
 static tANI_BOOLEAN csrIsAuthWpa( tpAniSirGlobal pMac, tANI_U8 AllSuites[][CSR_WPA_OUI_SIZE],
@@ -3672,6 +3682,13 @@ tANI_BOOLEAN csrGetRSNInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eCs
                 {
                     if (eCSR_AUTH_TYPE_RSN_PSK_SHA256 == pAuthType->authType[i])
                         negAuthType = eCSR_AUTH_TYPE_RSN_PSK_SHA256;
+                }
+                if ((negAuthType == eCSR_AUTH_TYPE_UNKNOWN) &&
+                    csrIsAuthRSN8021xSha256(pMac, AuthSuites,
+                                             cAuthSuites, Authentication)) {
+                    if (eCSR_AUTH_TYPE_RSN_8021X_SHA256 ==
+                                                     pAuthType->authType[i])
+                        negAuthType = eCSR_AUTH_TYPE_RSN_8021X_SHA256;
                 }
 #endif
 
