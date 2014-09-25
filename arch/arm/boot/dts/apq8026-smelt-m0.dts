@@ -135,6 +135,16 @@
 	qcom,wcnss-wlan@fb000000 {
 		status = "disabled";
 	};
+
+	bluesleep {
+		compatible = "qcom,bluesleep";
+		bt_port_id = <6>;
+		bt_host_wake = <&msmgpio 27 0>;
+		bt_ext_wake = <&msmgpio 30 0>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <27 0>;
+		interrupt-names = "host_wake";
+	};
 };
 
 &pm8226_chg {
