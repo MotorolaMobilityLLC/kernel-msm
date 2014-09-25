@@ -160,6 +160,29 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 		ret_err = err;
 	}
 
+	buf[0] = (pdata->headset_insertion_debounce >> 8) & 0xff;
+	buf[1] = pdata->headset_insertion_debounce & 0xff;
+	buf[2] = (pdata->headset_removal_debounce >> 8) & 0xff;
+	buf[3] = pdata->headset_removal_debounce & 0xff;
+	buf[4] = (pdata->headset_button_down_debounce >> 8) & 0xff;
+	buf[5] = pdata->headset_button_down_debounce & 0xff;
+	buf[6] = (pdata->headset_button_up_debounce >> 8) & 0xff;
+	buf[7] = pdata->headset_button_up_debounce & 0xff;
+	buf[8] = (pdata->headset_button_0_1_threshold >> 8) & 0xff;
+	buf[9] = pdata->headset_button_0_1_threshold & 0xff;
+	buf[10] = (pdata->headset_button_1_2_threshold >> 8) & 0xff;
+	buf[11] = pdata->headset_button_1_2_threshold & 0xff;
+	buf[12] = (pdata->headset_button_2_3_threshold >> 8) & 0xff;
+	buf[13] = pdata->headset_button_2_3_threshold & 0xff;
+	buf[14] = (pdata->headset_button_3_upper_threshold >> 8) & 0xff;
+	buf[15] = pdata->headset_button_3_upper_threshold & 0xff;
+	err = stml0xx_spi_send_write_reg_reset(HEADSET_SETTINGS, buf,
+			16, RESET_NOT_ALLOWED);
+	if (err < 0) {
+		dev_err(&ps_stml0xx->spi->dev,
+			"unable to write headset settings %d", err);
+		ret_err = err;
+	}
 	err = stml0xx_led_set_reset(&ps_stml0xx->led_cdev,
 			RESET_NOT_ALLOWED);
 	if (err < 0)
