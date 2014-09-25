@@ -251,7 +251,7 @@
 #define INIT_ST_MPU6050_SAMPLES  600
 #define INIT_ST_THRESHOLD        50
 #define INIT_PED_INT_THRESH      2
-#define INIT_PED_THRESH          9
+#define INIT_PED_THRESH          13
 #define ST_THRESHOLD_MULTIPLIER  10
 #define ST_MAX_SAMPLES           500
 #define ST_MAX_THRESHOLD         100
