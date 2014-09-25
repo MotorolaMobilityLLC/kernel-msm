@@ -2639,6 +2639,8 @@ static int sdhci_msm_tune_drive_strength(struct sdhci_host *host)
 	struct sdhci_msm_pad_drv_data *drv =
 			msm_host->pdata->pin_data->pad_data->drv;
 
+	if (drv->tune_size == 0)
+		return -ENOSYS;
 	drv->tune_index++;
 	if (drv->tune_index >= drv->tune_size) {
 		pr_info("%s: no other drive strength tuning settings\n",
