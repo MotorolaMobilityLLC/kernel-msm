@@ -836,6 +836,14 @@
 		ct406_undetect_threshold = <0x0050>;
 		ct406_recalibrate_threshold = <0x0064>;
 		ct406_pulse_count = <0x04>;
+		headset_insertion_debounce = <0x01F4>;
+		headset_removal_debounce = <0x001E>;
+		headset_button_down_debounce = <0x0032>;
+		headset_button_up_debounce = <0x0032>;
+		headset_button_0-1_threshold = <0x0096>;
+		headset_button_1-2_threshold = <0x012C>;
+		headset_button_2-3_threshold = <0x01C2>;
+		headset_button_3-upper_threshold = <0x02EE>;
 		sensor1-supply = <&pm8916_l6>;
 		sensor2-supply = <&pm8916_l17>;
 	};
