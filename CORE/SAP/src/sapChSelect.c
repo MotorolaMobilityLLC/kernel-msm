@@ -140,7 +140,7 @@ typedef struct
 
 #define ACS_WEIGHT_MAX     4444
 
-sapAcsChannelInfo acsHT40Channels[ ] = {
+sapAcsChannelInfo acsHT40Channels5G[ ] = {
     {36,   ACS_WEIGHT_MAX},
     {44,   ACS_WEIGHT_MAX},
     {52,   ACS_WEIGHT_MAX},
@@ -163,6 +163,14 @@ sapAcsChannelInfo acsHT80Channels[ ] = {
     {132,  ACS_WEIGHT_MAX},
     {149,  ACS_WEIGHT_MAX},
 };
+
+typedef enum {
+    CHWIDTH_HT20,
+    CHWIDTH_HT40,
+    CHWIDTH_HT80,
+} eChannelWidthInfo;
+
+#define CHANNEL_165  165
 
 /*==========================================================================
   FUNCTION    sapSetPreferredChannel
@@ -1754,6 +1762,8 @@ void sapSortChlWeightHT80(tSapChSelSpectInfo *pSpectInfoParams)
             if ( pSpectInfo[j].chNum == acsHT80Channels[i].chStartNum )
                 break;
         }
+        if (j == pSpectInfoParams->numSpectChans)
+            continue;
 
         /*found the channel, add the 4 adjacent channels' weight*/
         if (((pSpectInfo[j].chNum +4) == pSpectInfo[j+1].chNum) &&
@@ -1788,7 +1798,7 @@ void sapSortChlWeightHT80(tSapChSelSpectInfo *pSpectInfoParams)
     pSpectInfo = pSpectInfoParams->pSpectCh;
     for (j = 0; j < pSpectInfoParams->numSpectChans; j++)
     {
-        if ( RF_CHAN_165 == pSpectInfo[j].chNum )
+        if ( CHANNEL_165 == pSpectInfo[j].chNum )
         {
             pSpectInfo[j].weight = ACS_WEIGHT_MAX;
             break;
@@ -1826,7 +1836,8 @@ void sapSortChlWeightHT80(tSapChSelSpectInfo *pSpectInfoParams)
 
   SIDE EFFECTS
 ============================================================================*/
-void sapSortChlWeightHT40(tSapChSelSpectInfo *pSpectInfoParams)
+void sapSortChlWeightHT40(tSapChSelSpectInfo *pSpectInfoParams,
+                                         v_U32_t operatingBand)
 {
     v_U8_t i, j;
     tSapSpectChInfo *pSpectInfo;
@@ -1834,20 +1845,22 @@ void sapSortChlWeightHT40(tSapChSelSpectInfo *pSpectInfoParams)
     pSpectInfo = pSpectInfoParams->pSpectCh;
     /*for each HT40 channel, calculate the combined weight of the
       two 20MHz weight */
-    for (i = 0; i < ARRAY_SIZE(acsHT40Channels); i++)
+    for (i = 0; i < ARRAY_SIZE(acsHT40Channels5G); i++)
     {
         for (j = 0; j < pSpectInfoParams->numSpectChans; j++)
         {
-            if ( pSpectInfo[j].chNum == acsHT40Channels[i].chStartNum )
+            if (pSpectInfo[j].chNum == acsHT40Channels5G[i].chStartNum)
                 break;
         }
+        if (j == pSpectInfoParams->numSpectChans)
+            continue;
 
         /* found the channel, add the two adjacent channels' weight */
         if ( (pSpectInfo[j].chNum +4) == pSpectInfo[j+1].chNum)
         {
-            acsHT40Channels[i].weight = pSpectInfo[j].weight +
+            acsHT40Channels5G[i].weight = pSpectInfo[j].weight +
                                            pSpectInfo[j+1].weight;
-            pSpectInfo[j].weight = acsHT40Channels[i].weight;
+            pSpectInfo[j].weight = acsHT40Channels5G[i].weight;
             /* mark the adjacent channel's weight as max value so
                that it will be sorted to the bottom */
             pSpectInfo[j+1].weight = ACS_WEIGHT_MAX;
@@ -1860,11 +1873,20 @@ void sapSortChlWeightHT40(tSapChSelSpectInfo *pSpectInfoParams)
     pSpectInfo = pSpectInfoParams->pSpectCh;
     for (j = 0; j < pSpectInfoParams->numSpectChans; j++)
     {
-        if ( RF_CHAN_165  == pSpectInfo[j].chNum )
+        if ( CHANNEL_165  == pSpectInfo[j].chNum )
         {
             pSpectInfo[j].weight = ACS_WEIGHT_MAX;
             break;
         }
+    }
+
+    pSpectInfo = pSpectInfoParams->pSpectCh;
+    for (j = 0; j < (pSpectInfoParams->numSpectChans); j++) {
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                    "In %s, Channel=%d Weight= %d rssi=%d bssCount=%d",
+                    __func__, pSpectInfo->chNum, pSpectInfo->weight,
+                    pSpectInfo->rssiAgr, pSpectInfo->bssCount);
+        pSpectInfo++;
     }
 
     sapSortChlWeight(pSpectInfoParams);
@@ -1891,7 +1913,9 @@ void sapSortChlWeightHT40(tSapChSelSpectInfo *pSpectInfoParams)
   SIDE EFFECTS
 ============================================================================*/
 void sapSortChlWeightAll(ptSapContext pSapCtx,
-                                    tSapChSelSpectInfo *pSpectInfoParams)
+                           tSapChSelSpectInfo *pSpectInfoParams,
+                           eChannelWidthInfo chWidth,
+                           v_U32_t operatingBand)
 {
     tSapSpectChInfo *pSpectCh = NULL;
     v_U32_t j = 0;
@@ -1902,18 +1926,22 @@ void sapSortChlWeightAll(ptSapContext pSapCtx,
     pSpectCh = pSpectInfoParams->pSpectCh;
 #ifdef SOFTAP_CHANNEL_RANGE
 
-    if (pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11n ||
-        pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11n_ONLY) {
-        sapSortChlWeightHT40(pSpectInfoParams);
-    }
-    else if (pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11ac ||
-        pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11ac_ONLY) {
+    switch (chWidth)
+    {
+    case CHWIDTH_HT40:
+        sapSortChlWeightHT40(pSpectInfoParams, operatingBand);
+        break;
+
+    case CHWIDTH_HT80:
         sapSortChlWeightHT80(pSpectInfoParams);
-    }
-    else {
+        break;
+
+    case CHWIDTH_HT20:
+    default:
         /* Sorting the channels as per weights as 20MHz channels */
         sapSortChlWeight(pSpectInfoParams);
     }
+
 #else
     /* Sorting the channels as per weights */
     for (i = 0; i < SPECT_24GHZ_CH_COUNT; i++) {
@@ -1946,6 +1974,36 @@ void sapSortChlWeightAll(ptSapContext pSapCtx,
 
 }
 
+eChannelWidthInfo sapGetChannelWidthInfo(tHalHandle halHandle, ptSapContext pSapCtx,
+                                 v_U32_t operatingBand, eSapPhyMode phyMode)
+{
+    v_U32_t cbMode;
+    eChannelWidthInfo chWidth = CHWIDTH_HT20;
+
+    if (eSAP_RF_SUBBAND_2_4_GHZ == operatingBand)
+        cbMode = sme_GetChannelBondingMode24G(halHandle);
+    else
+        cbMode = sme_GetChannelBondingMode5G(halHandle);
+
+    if (phyMode == eSAP_DOT11_MODE_11n ||
+        phyMode == eSAP_DOT11_MODE_11n_ONLY)
+    {
+        if (cbMode)
+            chWidth = CHWIDTH_HT40;
+        else
+            chWidth = CHWIDTH_HT20;
+    }
+    else if (pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11ac ||
+        pSapCtx->csrRoamProfile.phyMode == eSAP_DOT11_MODE_11ac_ONLY) {
+        chWidth = CHWIDTH_HT80;
+    }
+    else {
+        /* Sorting the channels as per weights as 20MHz channels */
+        chWidth = CHWIDTH_HT20;
+    }
+
+    return chWidth;
+}
 /*==========================================================================
   FUNCTION    sapSelectChannel
 
@@ -1979,6 +2037,7 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     v_U32_t operatingBand = 0;
     v_U32_t tmpChNum;
     v_U8_t  count;
+    eChannelWidthInfo chWidth;
 #endif
     VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Running SAP Ch Select", __func__);
 
@@ -1997,9 +2056,6 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
 
     // Compute the weight of the entire spectrum in the operating band
     sapComputeSpectWeight( pSpectInfoParams, halHandle, pScanResult);
-
-    // Sort the channel list as per the computed weights, lesser weight first.
-    sapSortChlWeightAll(pSapCtx, pSpectInfoParams);
 
 #ifdef SOFTAP_CHANNEL_RANGE
     if (eCSR_BAND_ALL == pSapCtx->scanBandPreference)
@@ -2029,6 +2085,13 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
 
     pSapCtx->acsBestChannelInfo.channelNum = 0;
     pSapCtx->acsBestChannelInfo.weight = CFG_ACS_BAND_SWITCH_THRESHOLD_MAX;
+    /* find the channel width info */
+    chWidth = sapGetChannelWidthInfo(halHandle, pSapCtx, operatingBand, pSapCtx->csrRoamProfile.phyMode);
+    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+               "In %s, chWidth=%u", __func__, chWidth);
+
+    /* Sort the channel list as per the computed weights, lesser weight first.*/
+    sapSortChlWeightAll(pSapCtx, pSpectInfoParams, chWidth, operatingBand);
 
     /*Loop till get the best channel in the given range */
     for(count=0; count < pSpectInfoParams->numSpectChans ; count++)
@@ -2114,6 +2177,8 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
          }
       }
 #else
+    // Sort the channel list as per the computed weights, lesser weight first.
+    sapSortChlWeightAll(pSapCtx, halHandle, pSpectInfoParams);
     // Get the first channel in sorted array as best 20M Channel
     bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[0].chNum;
     //Select Best Channel from Channel List if Configured
