@@ -1044,6 +1044,7 @@ int inv_enable_pedometer_interrupt(struct inv_mpu_state *st, bool en);
 int inv_read_pedometer_counter(struct inv_mpu_state *st);
 int inv_enable_pedometer(struct inv_mpu_state *st, bool en);
 int inv_set_step_buffer_time(struct inv_mpu_state *st, u16 value);
+int inv_set_step_threshold(struct inv_mpu_state *st, u16 value);
 int inv_get_pedometer_steps(struct inv_mpu_state *st, u32 *steps);
 int inv_get_pedometer_time(struct inv_mpu_state *st, u32 *time);
 int inv_reset_fifo(struct iio_dev *indio_dev);

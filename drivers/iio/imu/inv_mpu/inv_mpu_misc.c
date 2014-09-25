@@ -1297,8 +1297,11 @@ int inv_enable_pedometer(struct inv_mpu_state *st, bool en)
 {
 	u8 d[1];
 
-	if (en)
+	if (en) {
+		inv_set_step_buffer_time(st, 75);
+		inv_set_step_threshold(st, st->ped.step_thresh);
 		d[0] = 0xf1;
+	}
 	else
 		d[0] = 0xff;
 
@@ -1311,6 +1314,14 @@ int inv_set_step_buffer_time(struct inv_mpu_state *st, u16 value)
                 //d = 75;   // Pedometer executes at 50Hz so 1.5 seconds is 20ms * 75
 
                 result = inv_write_2bytes(st, KEY_D_PEDSTD_SB_TIME, value);
+                return result;
+}
+
+int inv_set_step_threshold(struct inv_mpu_state *st, u16 value)
+{
+                int result;
+
+                result = inv_write_2bytes(st, KEY_D_PEDSTD_SB, value);
                 return result;
 }
 
