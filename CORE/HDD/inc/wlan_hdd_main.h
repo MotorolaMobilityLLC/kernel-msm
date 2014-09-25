@@ -278,9 +278,6 @@ extern spinlock_t hdd_context_lock;
 #define SNR_CONTEXT_MAGIC   0x534E5200   //SNR
 #define BCN_MISS_RATE_CONTEXT_MAGIC 0x513F5753
 
-/* Max PMKSAIDS available in cache */
-#define MAX_PMKSAIDS_IN_CACHE 8
-
 /*
  * Driver miracast parameters 0-Disabled
  * 1-Source, 2-Sink
@@ -673,9 +670,6 @@ struct hdd_station_ctx
 
    v_BOOL_t hdd_ReassocScenario;
 
-   /* PMKID Cache */
-   tPmkidCacheInfo PMKIDCache[MAX_PMKSAIDS_IN_CACHE];
-   tANI_U32 PMKIDCacheIndex;
 };
 
 #define BSS_STOP    0 

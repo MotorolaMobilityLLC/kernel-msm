@@ -12385,16 +12385,12 @@ static int wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
 static int __wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *dev,
             struct cfg80211_pmksa *pmksa)
 {
-    tANI_U32 j=0;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    hdd_station_ctx_t *pHddStaCtx;
     tHalHandle halHandle;
     eHalStatus result;
     int status;
-    tANI_U8  BSSIDMatched = 0;
     hdd_context_t *pHddCtx;
-    hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: set PMKSA for " MAC_ADDRESS_STR,
-           __func__, MAC_ADDR_ARRAY(pmksa->bssid));
+    tPmkidCacheInfo pmk_id;
 
     // Validate pAdapter
     if ( NULL == pAdapter )
@@ -12402,6 +12398,20 @@ static int __wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device 
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid Adapter" ,__func__);
         return -EINVAL;
     }
+
+    if (!pmksa) {
+        hddLog(LOGE, FL("pmksa is NULL"));
+        return -EINVAL;
+    }
+
+    if (!pmksa->bssid || !pmksa->pmkid) {
+       hddLog(LOGE, FL("pmksa->bssid(%p) or pmksa->pmkid(%p) is NULL"),
+              pmksa->bssid, pmksa->pmkid);
+       return -EINVAL;
+    }
+
+    hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: set PMKSA for " MAC_ADDRESS_STR,
+           __func__, MAC_ADDR_ARRAY(pmksa->bssid));
 
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     status = wlan_hdd_validate_context(pHddCtx);
@@ -12415,64 +12425,19 @@ static int __wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device 
 
     // Retrieve halHandle
     halHandle = WLAN_HDD_GET_HAL_CTX(pAdapter);
-    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
 
-    for (j = 0; j < pHddStaCtx->PMKIDCacheIndex; j++)
-    {
-        if (vos_mem_compare(pHddStaCtx->PMKIDCache[j].BSSID,
-                    pmksa->bssid, WNI_CFG_BSSID_LEN))
-        {
-            /* BSSID matched previous entry.  Overwrite it. */
-            BSSIDMatched = 1;
-            vos_mem_copy(pHddStaCtx->PMKIDCache[j].BSSID,
-                    pmksa->bssid, WNI_CFG_BSSID_LEN);
-            vos_mem_copy(pHddStaCtx->PMKIDCache[j].PMKID,
-                    pmksa->pmkid,
-                    CSR_RSN_PMKID_SIZE);
-            hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Reusing cache entry %d.",
-                    __func__, j );
-            dump_bssid(pmksa->bssid);
-            dump_pmkid(halHandle, pmksa->pmkid);
-            break;
-        }
-    }
+    vos_mem_copy(pmk_id.BSSID, pmksa->bssid, ETHER_ADDR_LEN);
+    vos_mem_copy(pmk_id.PMKID, pmksa->pmkid, CSR_RSN_PMKID_SIZE);
 
-    /* Check we compared all entries,if then take the first slot now */
-    if (j == MAX_PMKSAIDS_IN_CACHE) pHddStaCtx->PMKIDCacheIndex=0;
-
-    if (!BSSIDMatched)
-    {
-        // Now, we DON'T have a BSSID match, so take a new entry in the cache.
-        vos_mem_copy(pHddStaCtx->PMKIDCache[pHddStaCtx->PMKIDCacheIndex].BSSID,
-                pmksa->bssid, ETHER_ADDR_LEN);
-        vos_mem_copy(pHddStaCtx->PMKIDCache[pHddStaCtx->PMKIDCacheIndex].PMKID,
-                pmksa->pmkid,
-                CSR_RSN_PMKID_SIZE);
-        hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: Adding a new cache entry %d.",
-                __func__, pHddStaCtx->PMKIDCacheIndex );
-        dump_bssid(pmksa->bssid);
-        dump_pmkid(halHandle, pmksa->pmkid);
-        // Increment the HDD Local Cache index
-        // The "i=0" doesn't work for the call to sme_RoamSetPMKIDCache() - LFR FIXME
-        if (pHddStaCtx->PMKIDCacheIndex <= (MAX_PMKSAIDS_IN_CACHE-1))
-            pHddStaCtx->PMKIDCacheIndex++;
-        else
-            pHddStaCtx->PMKIDCacheIndex = 0;
-    }
-
-
-    // Calling csrRoamSetPMKIDCache to configure the PMKIDs into the cache
-    hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: Calling csrRoamSetPMKIDCache with %d cache entries.",
-            __func__, pHddStaCtx->PMKIDCacheIndex );
-
-    // Finally set the PMKSA ID Cache in CSR
+    /* Add to the PMKSA ID Cache in CSR */
     result = sme_RoamSetPMKIDCache(halHandle,pAdapter->sessionId,
-                                    pHddStaCtx->PMKIDCache,
-                                    pHddStaCtx->PMKIDCacheIndex);
+                                   &pmk_id, 1, FALSE);
+
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_CFG80211_SET_PMKSA,
                      pAdapter->sessionId, result));
-    return 0;
+
+    return HAL_STATUS_SUCCESS(result) ? 0 : -EINVAL;
 }
 
 static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *dev,
@@ -12491,11 +12456,8 @@ static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *d
 static int __wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device *dev,
              struct cfg80211_pmksa *pmksa)
 {
-    tANI_U32 j=0;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    hdd_station_ctx_t *pHddStaCtx;
     tHalHandle halHandle;
-    tANI_U8  BSSIDMatched = 0;
     hdd_context_t *pHddCtx;
     int status = 0;
 
@@ -12506,6 +12468,16 @@ static int __wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device 
     if (NULL == pAdapter)
     {
        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid Adapter" ,__func__);
+       return -EINVAL;
+    }
+
+    if (!pmksa) {
+        hddLog(LOGE, FL("pmksa is NULL"));
+        return -EINVAL;
+    }
+
+    if (!pmksa->bssid) {
+       hddLog(LOGE, FL("pmksa->bssid is NULL"));
        return -EINVAL;
     }
 
@@ -12521,70 +12493,16 @@ static int __wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device 
 
     /*Retrieve halHandle*/
     halHandle = WLAN_HDD_GET_HAL_CTX(pAdapter);
-    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
 
-    /*in case index is 0,no entry to delete*/
-    if (0 == pHddStaCtx->PMKIDCacheIndex)
-    {
-       hddLog(VOS_TRACE_LEVEL_INFO, FL("No entries to flush"));
-       return 0;
+    /* Delete the PMKID CSR cache */
+    if (eHAL_STATUS_SUCCESS !=
+        sme_RoamDelPMKIDfromCache(halHandle,
+                                  pAdapter->sessionId, pmksa->bssid, FALSE)) {
+        hddLog(LOGE, FL("Failed to delete PMKSA for "MAC_ADDRESS_STR),
+                     MAC_ADDR_ARRAY(pmksa->bssid));
+        status = -EINVAL;
     }
 
-    /*find the matching PMKSA entry from j=0 to (index-1),
-     * and delete the matched one
-     */
-    for (j = 0; j < pHddStaCtx->PMKIDCacheIndex; j++)
-    {
-          if (vos_mem_compare(pHddStaCtx->PMKIDCache[j].BSSID,
-                             pmksa->bssid,
-                             WNI_CFG_BSSID_LEN))
-          {
-             /* BSSID matched entry */
-             BSSIDMatched = 1;
-             if (j < pHddStaCtx->PMKIDCacheIndex-1)
-             {
-                 /*replace the matching entry with the last entry in HDD local cache*/
-                 vos_mem_copy(pHddStaCtx->PMKIDCache[j].BSSID,
-                      pHddStaCtx->PMKIDCache[pHddStaCtx->PMKIDCacheIndex-1].BSSID,
-                      VOS_MAC_ADDR_SIZE);
-                 vos_mem_copy(pHddStaCtx->PMKIDCache[j].PMKID,
-                      pHddStaCtx->PMKIDCache[pHddStaCtx->PMKIDCacheIndex-1].PMKID,
-                      CSR_RSN_PMKID_SIZE);
-             }
-
-             /*clear the last entry in HDD cache ---[index-1]*/
-             vos_mem_zero(pHddStaCtx->PMKIDCache[pHddStaCtx->PMKIDCacheIndex-1].BSSID,
-                          VOS_MAC_ADDR_SIZE);
-             vos_mem_zero(pHddStaCtx->PMKIDCache[pHddStaCtx->PMKIDCacheIndex-1].PMKID,
-                          CSR_RSN_PMKID_SIZE);
-             /*reduce the PMKID array index*/
-             pHddStaCtx->PMKIDCacheIndex--;
-             /*delete the last PMKID cache in CSR*/
-             if (eHAL_STATUS_SUCCESS !=
-                 sme_RoamDelPMKIDfromCache(halHandle, pAdapter->sessionId, pmksa->bssid))
-             {
-                hddLog(VOS_TRACE_LEVEL_ERROR,"%s: cannot delete PMKSA %d CONTENT.",
-                          __func__, pHddStaCtx->PMKIDCacheIndex);
-                status = -EINVAL;
-             }
-
-             dump_bssid(pmksa->bssid);
-             dump_pmkid(halHandle,pmksa->pmkid);
-
-             break;
-          }
-    }
-
-    /* we compare all entries,but cannot find matching entry */
-    if (j == MAX_PMKSAIDS_IN_CACHE && !BSSIDMatched)
-    {
-       hddLog(VOS_TRACE_LEVEL_FATAL,
-              "%s: No such PMKSA entry existed " MAC_ADDRESS_STR,
-              __func__, MAC_ADDR_ARRAY(pmksa->bssid));
-       dump_bssid(pmksa->bssid);
-       dump_pmkid(halHandle, pmksa->pmkid);
-       return -EINVAL;
-    }
    return status;
 }
 
@@ -12604,12 +12522,9 @@ static int wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device *d
 
 static int __wlan_hdd_cfg80211_flush_pmksa(struct wiphy *wiphy, struct net_device *dev)
 {
-    tANI_U32 j=0;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    hdd_station_ctx_t *pHddStaCtx;
     tHalHandle halHandle;
     hdd_context_t *pHddCtx;
-    tANI_U8 *pBSSId;
     int status = 0;
 
     hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: flushing PMKSA ",__func__);
@@ -12634,33 +12549,14 @@ static int __wlan_hdd_cfg80211_flush_pmksa(struct wiphy *wiphy, struct net_devic
 
     /*Retrieve halHandle*/
     halHandle = WLAN_HDD_GET_HAL_CTX(pAdapter);
-    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
 
-    /*in case index is 0,no entry to delete*/
-    if (0 == pHddStaCtx->PMKIDCacheIndex)
-    {
-       hddLog(VOS_TRACE_LEVEL_ERROR, FL("No entries to flush"));
-       return 0;
+    /* Flush the PMKID cache in CSR */
+    if (eHAL_STATUS_SUCCESS !=
+        sme_RoamDelPMKIDfromCache(halHandle, pAdapter->sessionId, NULL, TRUE)) {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("Cannot flush PMKIDCache"));
+        status = -EINVAL;
     }
 
-    /*delete all the PMKSA one by one */
-    for (j = 0; j < pHddStaCtx->PMKIDCacheIndex; j++)
-    {
-          pBSSId =(tANI_U8 *)(pHddStaCtx->PMKIDCache[j].BSSID);
-          /*delete the PMKID in CSR*/
-          if (eHAL_STATUS_SUCCESS !=
-              sme_RoamDelPMKIDfromCache(halHandle, pAdapter->sessionId, pBSSId))
-          {
-             hddLog(VOS_TRACE_LEVEL_ERROR ,"%s cannot flush PMKIDCache %d.",
-                    __func__,j);
-             status = -EINVAL;
-          }
-          /*clear the entry in HDD cache 0--index-1 */
-          vos_mem_zero(pHddStaCtx->PMKIDCache[j].BSSID, VOS_MAC_ADDR_SIZE);
-          vos_mem_zero(pHddStaCtx->PMKIDCache[j].PMKID, CSR_RSN_PMKID_SIZE);
-    }
-
-    pHddStaCtx->PMKIDCacheIndex = 0;
     return status;
 }
 
