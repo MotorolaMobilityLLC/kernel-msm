@@ -456,6 +456,7 @@ typedef struct sap_Config {
     v_BOOL_t        mfpCapable;
 #endif
     eCsrBand        scanBandPreference;
+    v_U16_t         acsBandSwitchThreshold;
 
 } tsap_Config_t;
 

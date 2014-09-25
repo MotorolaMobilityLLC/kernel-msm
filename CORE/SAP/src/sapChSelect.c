@@ -66,6 +66,7 @@
 #ifdef ANI_OS_TYPE_QNX
 #include "stdio.h"
 #endif
+#include "wlan_hdd_main.h"
 
 /*--------------------------------------------------------------------------
   Function definitions
@@ -1741,13 +1742,14 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     // DFS param object holding all the data req by the algo
     tSapChSelSpectInfo oSpectInfoParams = {NULL,0}; 
     tSapChSelSpectInfo *pSpectInfoParams = &oSpectInfoParams; // Memory? NB    
-    v_U8_t bestChNum = 0;
+    v_U8_t bestChNum = SAP_CHANNEL_NOT_SELECTED;
 #ifdef SOFTAP_CHANNEL_RANGE
     v_U32_t startChannelNum;
     v_U32_t endChannelNum;
     v_U32_t operatingBand = 0;
-    v_U8_t  count = 0;
-#endif    
+    v_U32_t tmpChNum;
+    v_U8_t  count;
+#endif
     VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Running SAP Ch Select", __func__);
 
     // Set to zero tSapChSelParams
@@ -1768,9 +1770,12 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
 #ifdef SOFTAP_CHANNEL_RANGE
     if (eCSR_BAND_ALL == pSapCtx->scanBandPreference)
     {
-        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL, &startChannelNum);
-        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL, &endChannelNum);
-        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND, &operatingBand);
+        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL,
+                                                        &startChannelNum);
+        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL,
+                                                          &endChannelNum);
+        ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND,
+                                                          &operatingBand);
     }
     else
     {
@@ -1788,6 +1793,9 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
         }
      }
 
+    pSapCtx->acsBestChannelInfo.channelNum = 0;
+    pSapCtx->acsBestChannelInfo.weight = CFG_ACS_BAND_SWITCH_THRESHOLD_MAX;
+
     /*Loop till get the best channel in the given range */
     for(count=0; count < pSpectInfoParams->numSpectChans ; count++)
     {
@@ -1799,9 +1807,51 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
             {
                 continue; //skip this channel, continue to next channel
             }
-            if(bestChNum == 0)
+            if(bestChNum == SAP_CHANNEL_NOT_SELECTED)
             {
-                bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[count].chNum;
+                bestChNum = pSpectInfoParams->pSpectCh[count].chNum;
+                /* check if bestChNum is in preferred channel list */
+                bestChNum = sapSelectPreferredChannelFromChannelList(
+                        bestChNum, pSapCtx, pSpectInfoParams);
+                if (bestChNum == SAP_CHANNEL_NOT_SELECTED)
+                {
+                    /* not in preferred channel list, go to next best channel*/
+                    continue;
+                }
+
+                if (pSpectInfoParams->pSpectCh[count].weight >
+                        pSapCtx->acsBandSwitchThreshold)
+                {
+                    /* the best channel exceeds the threshold
+                       check if need to scan next band */
+                    if ((eCSR_BAND_ALL !=  pSapCtx->scanBandPreference) &&
+                            !pSapCtx->allBandScanned)
+                    {
+                        /* store best channel for later comparison */
+                        pSapCtx->acsBestChannelInfo.channelNum = bestChNum;
+                        pSapCtx->acsBestChannelInfo.weight =
+                            pSpectInfoParams->pSpectCh[count].weight;
+                        bestChNum = SAP_CHANNEL_NOT_SELECTED;
+                        break;
+                    }
+                    else
+                    {
+                        /* all bands are scanned, compare current best channel
+                           with channel scanned previously */
+                        if ( pSpectInfoParams->pSpectCh[count].weight >
+                                pSapCtx->acsBestChannelInfo.weight)
+                        {
+                            /* previous stored channel is better */
+                            bestChNum = pSapCtx->acsBestChannelInfo.channelNum;
+                        }
+                        else
+                        {
+                            pSapCtx->acsBestChannelInfo.channelNum = bestChNum;
+                            pSapCtx->acsBestChannelInfo.weight =
+                                pSpectInfoParams->pSpectCh[count].weight;
+                        }
+                    }
+                }
             }
             else
             {
@@ -1809,13 +1859,22 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
                 {
                     /* Give preference to Non-overlap channels */
                     if(((pSpectInfoParams->pSpectCh[count].chNum == CHANNEL_1) ||
-                      (pSpectInfoParams->pSpectCh[count].chNum == CHANNEL_6) ||
-                      (pSpectInfoParams->pSpectCh[count].chNum == CHANNEL_11))&&
-                      (pSpectInfoParams->pSpectCh[count].weight == 0))
-                      {
-                           bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[count].chNum;
-                           break;
-                      }
+                                (pSpectInfoParams->pSpectCh[count].chNum == CHANNEL_6) ||
+                                (pSpectInfoParams->pSpectCh[count].chNum == CHANNEL_11))&&
+                            (pSpectInfoParams->pSpectCh[count].weight ==
+                             pSapCtx->acsBestChannelInfo.weight))
+                    {
+                        tmpChNum = pSpectInfoParams->pSpectCh[count].chNum;
+                        tmpChNum =
+                            sapSelectPreferredChannelFromChannelList(tmpChNum,
+                                    pSapCtx, pSpectInfoParams);
+                        if ( tmpChNum != SAP_CHANNEL_NOT_SELECTED)
+                        {
+                            bestChNum = tmpChNum;
+                            break;
+                        }
+
+                    }
                 }
             }
          }
@@ -1823,10 +1882,10 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
 #else
     // Get the first channel in sorted array as best 20M Channel
     bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[0].chNum;
-#endif
-
     //Select Best Channel from Channel List if Configured
-    bestChNum = sapSelectPreferredChannelFromChannelList(bestChNum, pSapCtx, pSpectInfoParams);
+    bestChNum = sapSelectPreferredChannelFromChannelList(bestChNum,
+                                                  pSapCtx, pSpectInfoParams);
+#endif
 
     // Free all the allocated memory
     sapChanSelExit(pSpectInfoParams);
