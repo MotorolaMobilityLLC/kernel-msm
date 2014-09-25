@@ -48,10 +48,15 @@
 
 #include <linux/compat.h>
 
+#include "android_hdmi.h"
+
 static void psb_user_framebuffer_destroy(struct drm_framebuffer *fb);
 static int psb_user_framebuffer_create_handle(struct drm_framebuffer *fb,
-					      struct drm_file *file_priv,
-					      unsigned int *handle);
+					struct drm_file *file_priv,
+					unsigned int *handle);
+
+static int psbfb_set_recovery_mode_hdmi(struct fb_info *info,
+					struct psb_fbdev *fbdev);
 
 static const struct drm_framebuffer_funcs psb_fb_funcs = {
 	.destroy = psb_user_framebuffer_destroy,
@@ -304,24 +309,31 @@ static int fb_blank_void(int blank_mode, struct fb_info *info)
 	return 0;
 }
 
+#define FB_MIN_WIDTH            1280
 #define FBIO_PSB_SET_RGBX	_IOWR('F', 0x42, struct fb_var_screeninfo)
+#define FBIO_PSB_SET_RMODE      _IOWR('F', 0x43, struct fb_var_screeninfo)
 
 static int psb_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 {
 	struct psb_fbdev *fbdev = info->par;
 	struct psb_framebuffer *psbfb = fbdev->pfb;
 	struct drm_device *dev = psbfb->base.dev;
+	int ret = 0;
 
 	switch(cmd) {
 		case FBIO_PSB_SET_RGBX:
 			REG_WRITE(DSPBCNTR, REG_READ(DSPBCNTR)|0xb8000000);
 			REG_WRITE(DSPBSURF, REG_READ(DSPBSURF));
 			break;
+		case FBIO_PSB_SET_RMODE:
+			/* set recovery mode if below 1280 */
+			ret = psbfb_set_recovery_mode_hdmi(info, fbdev);
+			break;
 		default:
 			return -ENOTTY;
 	}
 
-	return 0;
+	return ret;
 }
 
 static struct fb_ops psbfb_ops = {
@@ -452,6 +464,63 @@ static struct drm_framebuffer *psb_user_framebuffer_create(
 
 	return fb;
 }
+
+static int psbfb_set_recovery_mode_hdmi(struct fb_info *info, struct psb_fbdev *fbdev)
+{
+	struct drm_device *dev = fbdev->psb_fb_helper.dev;
+	struct drm_psb_private *dev_priv =
+		(struct drm_psb_private *)dev->dev_private;
+	int ret = 0;
+	int i;
+	struct drm_fb_helper *psb_fb_helper = (struct drm_fb_helper *)fbdev;
+	struct drm_fb_helper_crtc *fb_crtc;
+	struct drm_display_mode *desired_mode = NULL;
+	struct drm_crtc *crtc;
+	struct fb_var_screeninfo var;
+
+	crtc = dev_priv->pipe_to_crtc_mapping[1];
+	for (i = 0; i < psb_fb_helper->crtc_count; i++) {
+		fb_crtc = &psb_fb_helper->crtc_info[i];
+		if (fb_crtc != NULL ) {
+			desired_mode = psb_fb_helper->crtc_info[i].desired_mode;
+			if (desired_mode) {
+				DRM_ERROR("crtc %d, width %d, heigth %d\n",
+					i, desired_mode->hdisplay, desired_mode->vdisplay);
+				ret = 0; /* prev loop iteration could have changed */
+				break;
+			} else {
+				DRM_ERROR("crtc %d, no desired mode\n", i);
+				ret = -ENODEV;
+			}
+		} else {
+			DRM_ERROR("crtc - no modes\n");
+			ret = -ENODEV;
+		}
+	}
+
+	if (ret != 0 )
+		return ret;
+
+	if (desired_mode && desired_mode->hdisplay >= FB_MIN_WIDTH)
+		return ret;
+
+	if (desired_mode ) {
+		memcpy(&var, &info->var, sizeof(struct fb_var_screeninfo));
+		var.xres = desired_mode->hdisplay;
+		var.yres = desired_mode->vdisplay;
+		fb_set_var(info, &var);
+		info->fix.line_length = ALIGN(var.xres * (var.bits_per_pixel / 8), 64);
+		info->screen_size = ALIGN(var.yres * info->fix.line_length, PAGE_SIZE);
+		info->fix.smem_len = info->screen_size;
+		REG_WRITE(DSPBSTRIDE, info->fix.line_length);
+		ret = 0;
+	}
+	else
+		ret = -ENOTTY;
+
+	return ret;
+}
+
 
 static int psbfb_create(struct psb_fbdev *fbdev,
 			struct drm_fb_helper_surface_size *sizes)
