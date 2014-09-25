@@ -11582,3 +11582,11 @@ void sme_resetCoexEevent(tHalHandle hHal)
 
     return;
 }
+
+void sme_disable_dfs_channel(tHalHandle hHal, bool disbale_dfs)
+{
+    tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+    pMac->scan.fEnableDFSChnlScan = !disbale_dfs;
+    csrDisableDfsChannel(pMac);
+
+}

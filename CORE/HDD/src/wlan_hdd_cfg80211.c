@@ -4408,6 +4408,56 @@ nla_put_failure:
     return -EINVAL;
 }
 
+static const struct nla_policy
+wlan_hdd_set_no_dfs_flag_config_policy[QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG_MAX
+ +1] =
+{
+    [QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG] = {.type = NLA_U32 },
+};
+
+static int wlan_hdd_cfg80211_disable_dfs_channels(struct wiphy *wiphy,
+                                            struct wireless_dev *wdev,
+                                            void *data,
+                                            int data_len)
+{
+    struct net_device *dev                     = wdev->netdev;
+    hdd_adapter_t *pAdapter                    = WLAN_HDD_GET_PRIV_PTR(dev);
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    hdd_context_t *pHddCtx                     = wiphy_priv(wiphy);
+    struct nlattr *tb[QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG_MAX + 1];
+    eHalStatus status;
+    u32 dfsFlag = 0;
+
+    status = wlan_hdd_validate_context(pHddCtx);
+    if (0 != status) {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               FL("HDD context is not valid"));
+        return -EINVAL;
+    }
+    if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG_MAX,
+                    data, data_len,
+                    wlan_hdd_set_no_dfs_flag_config_policy)) {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("Invalid ATTR"));
+        return -EINVAL;
+    }
+
+    /* Parse and fetch required bandwidth kbps */
+    if (!tb[QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG]) {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("attr dfs flag failed"));
+        return -EINVAL;
+    }
+
+    dfsFlag = nla_get_u32(
+        tb[QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG]);
+    hddLog(VOS_TRACE_LEVEL_INFO, FL(" DFS flag (%d)"),
+                                     dfsFlag);
+
+    pHddCtx->disable_dfs_flag = dfsFlag;
+
+    sme_disable_dfs_channel(hHal, dfsFlag);
+    sme_FilterScanResults(hHal, pAdapter->sessionId);
+    return 0;
+}
 
 const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
 {
@@ -4543,7 +4593,13 @@ const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
                  WIPHY_VENDOR_CMD_NEED_NETDEV,
         .doit = wlan_hdd_cfg80211_get_supported_features
     },
-
+    {
+        .info.vendor_id = QCA_NL80211_VENDOR_ID,
+        .info.subcmd = QCA_NL80211_VENDOR_SUBCMD_NO_DFS_FLAG,
+        .flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+                 WIPHY_VENDOR_CMD_NEED_NETDEV,
+        .doit = wlan_hdd_cfg80211_disable_dfs_channels
+    },
     {
         .info.vendor_id = QCA_NL80211_VENDOR_ID,
         .info.subcmd = QCA_NL80211_VENDOR_SUBCMD_MAC_OUI,

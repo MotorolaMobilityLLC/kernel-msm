@@ -667,7 +667,8 @@ void hdd_checkandupdate_dfssetting( hdd_adapter_t *pAdapter, char *country_code)
         return ;
     }
 
-    if (NULL != strstr(cfg_param->listOfNonDfsCountryCode, country_code))
+    if (NULL != strstr(cfg_param->listOfNonDfsCountryCode, country_code) ||
+        pHddCtx->disable_dfs_flag == TRUE)
     {
        /*New country doesn't support DFS */
        sme_UpdateDfsSetting(WLAN_HDD_GET_HAL_CTX(pAdapter), 0);
