@@ -446,6 +446,7 @@ typedef struct sap_Config {
     v_BOOL_t        mfpRequired;
     v_BOOL_t        mfpCapable;
 #endif
+    eCsrBand        scanBandPreference;
 
 } tsap_Config_t;
 
