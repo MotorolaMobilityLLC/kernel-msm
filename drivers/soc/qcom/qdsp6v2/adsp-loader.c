@@ -20,16 +20,10 @@
 #include <linux/qdsp6v2/apr.h>
 #include <linux/of_device.h>
 #include <linux/sysfs.h>
-#include <linux/ktime.h>
-#include <linux/workqueue.h>
 #include <soc/qcom/subsystem_restart.h>
 
 #define Q6_PIL_GET_DELAY_MS 100
 #define BOOT_CMD 1
-
-#define ADSP_LOADER_AFTER_TIME 3000
-static void adsp_loader_work_func(struct work_struct *work);
-static DECLARE_DELAYED_WORK(adsp_loader_work, adsp_loader_work_func);
 
 static ssize_t adsp_boot_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
@@ -148,10 +142,6 @@ fail:
 	return;
 }
 
-static void adsp_loader_work_func(struct work_struct *work)
-{
-	adsp_loader_do(adsp_private);
-}
 
 static ssize_t adsp_boot_store(struct kobject *kobj,
 	struct kobj_attribute *attr,
@@ -159,21 +149,11 @@ static ssize_t adsp_boot_store(struct kobject *kobj,
 	size_t count)
 {
 	int boot = 0;
-	unsigned long delay;
-	ktime_t now;
-
 	sscanf(buf, "%du", &boot);
 
 	if (boot == BOOT_CMD) {
 		pr_debug("%s:going to call adsp_loader_do", __func__);
-		now = ktime_get_boottime();
-		delay = ktime_to_ms(now);
-		if (delay < ADSP_LOADER_AFTER_TIME)
-			delay = ADSP_LOADER_AFTER_TIME - delay;
-		else
-			delay = 0;
-		schedule_delayed_work(&adsp_loader_work,
-				msecs_to_jiffies(delay));
+		adsp_loader_do(adsp_private);
 	}
 	return count;
 }
