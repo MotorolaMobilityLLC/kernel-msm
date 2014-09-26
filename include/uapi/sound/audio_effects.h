@@ -280,4 +280,32 @@ struct eq_params {
 	uint32_t freq_millihertz;
 };
 
+#define MMIFX_EQ_MODULE		0x00005000
+#define MMIFX_EQ_ENABLE			0x00005001
+#define MMIFX_EQ_PRESET			0x00005020
+#define MMIFX_EQ_DEVICE			0x00005300
+
+
+
+#define MMIFX_ENABLE_PARAM_LEN 1
+#define MMIFX_ENABLE_PARAM_SZ	\
+			(MMIFX_ENABLE_PARAM_LEN*sizeof(uint32_t))
+#define MMIFX_PARAM_LEN 1
+#define MMIFX_PRESET_PARAM_SZ	\
+			(MMIFX_PARAM_LEN*sizeof(uint32_t))
+#define MMIFX_PARAM_TABLE_LEN 2000
+#define MMIFX_PARAM_TABLE_SZ	\
+			(MMIFX_PARAM_TABLE_LEN*sizeof(uint16_t))
+#define MMIFX_DEVICE_PARAM_SZ	\
+			(MMIFX_PARAM_LEN*sizeof(uint32_t))
+
+
+struct mmi_eq_params {
+	uint32_t device;
+	uint32_t enable_flag;
+	uint32_t preset;
+};
+
+
 #endif /*_MSM_AUDIO_EFFECTS_H*/
+

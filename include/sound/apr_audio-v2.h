@@ -5045,6 +5045,21 @@ struct Audio_AigParam {
 
 } __packed;
 
+#define AUDPROC_MODULE_ID_MMIFX				(0x1000E0B0)
+#define AUDPROC_PARAM_ID_MMIFX_ENABLE (0x1000E3B0)
+#define AUDPROC_PARAM_ID_MMIFX_PRESET (0x1000E3A0)
+#define AUDPROC_PARAM_ID_MMIFX_TABLE (0x1000E300)
+#define AUDPROC_PARAM_ID_MMIFX_DEVICE (0x1000E310)
+
+struct asm_mmfx_enable_config {
+	struct apr_hdr	hdr;
+	struct asm_stream_cmd_set_pp_params_v2 param;
+	struct asm_stream_param_data_v2 data;
+	uint32_t                  enable_flag;
+/*< Specifies whether mmfx eq is disabled (0) or enabled (nonzero).*/
+
+} __packed;
+
 
 #define ADM_MODULE_ID_EANS                            0x00010C4A
 #define ADM_PARAM_ID_EANS_ENABLE                      0x00010C4B

@@ -62,6 +62,8 @@ struct msm_audio_eq_stream_config {
 
 struct msm_audio_eq_stream_config	eq_data[MAX_EQ_SESSIONS];
 
+static uint32_t mmfx_enable[MAX_EQ_SESSIONS];
+
 static void msm_qti_pp_send_eq_values_(int eq_idx)
 {
 	int result;
@@ -80,6 +82,32 @@ static void msm_qti_pp_send_eq_values_(int eq_idx)
 	}
 
 	result = q6asm_equalizer(ac, &eq_data[eq_idx]);
+
+	if (result < 0)
+		pr_err("%s: Call to ASM equalizer failed, returned = %d\n",
+		      __func__, result);
+done:
+	return;
+}
+
+static void msm_pcm_mmfx_enable_send(int eq_idx)
+{
+	int result;
+	struct msm_pcm_routing_fdai_data fe_dai;
+	int fe_dai_perf_mode;
+	struct audio_client *ac = NULL;
+
+	msm_pcm_routing_get_fedai_info(eq_idx, SESSION_TYPE_RX, &fe_dai,
+				       &fe_dai_perf_mode);
+	ac = q6asm_get_audio_client(fe_dai.strm_id);
+
+	if (ac == NULL) {
+		pr_err("%s: Could not get audio client for session: %d\n",
+		      __func__, fe_dai.strm_id);
+		goto done;
+	}
+
+	result = q6asm_mmfxeq(ac, mmfx_enable[eq_idx]);
 
 	if (result < 0)
 		pr_err("%s: Call to ASM equalizer failed, returned = %d\n",
@@ -116,8 +144,47 @@ static int msm_qti_pp_put_eq_enable_mixer(struct snd_kcontrol *kcontrol,
 	pr_debug("%s: EQ #%d enable %d\n", __func__,
 		eq_idx, value);
 	eq_data[eq_idx].enable = value;
+
 	msm_pcm_routing_acquire_lock();
-	msm_qti_pp_send_eq_values_(eq_idx);
+	msm_pcm_mmfx_enable_send(eq_idx);
+	msm_pcm_routing_release_lock();
+	return 0;
+}
+
+static int msm_qti_pp_get_mmfx_eq_enable_mixer(struct snd_kcontrol *kcontrol,
+					  struct snd_ctl_elem_value *ucontrol)
+{
+	int eq_idx = ((struct soc_multi_mixer_control *)
+					kcontrol->private_value)->shift;
+
+	if ((eq_idx < 0) || (eq_idx >= MAX_EQ_SESSIONS)) {
+		pr_debug("%s : return einval\n", __func__);
+		return -EINVAL;
+	}
+
+	ucontrol->value.integer.value[0] = mmfx_enable[eq_idx];
+
+	pr_debug("%s: EQ #%d enable %d\n", __func__,
+		eq_idx, mmfx_enable[eq_idx]);
+	return 0;
+}
+
+static int msm_qti_pp_put_mmfx_eq_enable_mixer(struct snd_kcontrol *kcontrol,
+					  struct snd_ctl_elem_value *ucontrol)
+{
+	int eq_idx = ((struct soc_multi_mixer_control *)
+					kcontrol->private_value)->shift;
+	int value = ucontrol->value.integer.value[0];
+	pr_debug("%s: enter EQ #%d enable %d\n", __func__,
+		eq_idx, value);
+	if ((eq_idx < 0) || (eq_idx >= MAX_EQ_SESSIONS))
+		return -EINVAL;
+	pr_debug("%s: EQ #%d enable %d\n", __func__,
+		eq_idx, value);
+	mmfx_enable[eq_idx] = value;
+	msm_pcm_routing_acquire_lock();
+	msm_pcm_mmfx_enable_send(eq_idx);
+
 	msm_pcm_routing_release_lock();
 	return 0;
 }
@@ -217,6 +284,13 @@ static int msm_qti_pp_put_eq_band_audio_mixer(struct snd_kcontrol *kcontrol,
 }
 
 void msm_qti_pp_send_eq_values(int fedai_id)
+{
+	if (eq_data[fedai_id].enable)
+		msm_qti_pp_send_eq_values_(fedai_id);
+}
+
+
+void msm_qti_pp_mmfx_eq_send_eq_values(int fedai_id)
 {
 	if (eq_data[fedai_id].enable)
 		msm_qti_pp_send_eq_values_(fedai_id);
@@ -510,6 +584,19 @@ static const struct snd_kcontrol_new eq_enable_mixer_controls[] = {
 	msm_qti_pp_put_eq_enable_mixer),
 };
 
+
+static const struct snd_kcontrol_new mmfx_eq_enable_mixer_controls[] = {
+	SOC_SINGLE_EXT("MMFX MultiMedia1 EQ Enable", SND_SOC_NOPM,
+	MSM_FRONTEND_DAI_MULTIMEDIA1, 1, 0, msm_qti_pp_get_mmfx_eq_enable_mixer,
+	msm_qti_pp_put_mmfx_eq_enable_mixer),
+	SOC_SINGLE_EXT("MMFX MultiMedia2 EQ Enable", SND_SOC_NOPM,
+	MSM_FRONTEND_DAI_MULTIMEDIA2, 1, 0, msm_qti_pp_get_mmfx_eq_enable_mixer,
+	msm_qti_pp_put_mmfx_eq_enable_mixer),
+	SOC_SINGLE_EXT("MMFX MultiMedia3 EQ Enable", SND_SOC_NOPM,
+	MSM_FRONTEND_DAI_MULTIMEDIA3, 1, 0, msm_qti_pp_get_mmfx_eq_enable_mixer,
+	msm_qti_pp_put_mmfx_eq_enable_mixer),
+};
+
 static const struct snd_kcontrol_new eq_band_mixer_controls[] = {
 	SOC_SINGLE_EXT("MultiMedia1 EQ Band Count", SND_SOC_NOPM,
 	MSM_FRONTEND_DAI_MULTIMEDIA1, 11, 0,
@@ -656,6 +743,10 @@ void msm_qti_pp_add_controls(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, eq_enable_mixer_controls,
 			ARRAY_SIZE(eq_enable_mixer_controls));
+
+
+	snd_soc_add_platform_controls(platform, mmfx_eq_enable_mixer_controls,
+			ARRAY_SIZE(mmfx_eq_enable_mixer_controls));
 
 	snd_soc_add_platform_controls(platform, eq_band_mixer_controls,
 			ARRAY_SIZE(eq_band_mixer_controls));

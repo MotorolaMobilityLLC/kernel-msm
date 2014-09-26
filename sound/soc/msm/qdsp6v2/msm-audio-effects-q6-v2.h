@@ -30,4 +30,9 @@ int msm_audio_effects_virtualizer_handler(struct audio_client *ac,
 int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 					 struct eq_params *eq,
 					 long *values);
+int msm_audio_effects_mmifx_eq_handler(struct audio_client *ac,
+					struct mmi_eq_params *mmifx,
+					long *values);
+int msm_audio_effects_mmifx_send_eq_params(struct audio_client *ac,
+					struct mmi_eq_params *mmifx, uint32_t cmds);
 #endif /*_MSM_AUDIO_EFFECTS_H*/
