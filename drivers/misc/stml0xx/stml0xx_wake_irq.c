@@ -199,6 +199,11 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			"Cover status: %d", state);
 	}
 	if (irq_status & M_INIT_COMPLETE) {
+		/* set the init complete register, */
+		/* to let the hub know it was received */
+		buf[0] = 0x01;
+		err = stml0xx_spi_send_write_reg(INIT_COMPLETE_REG, buf, 1);
+
 		queue_work(ps_stml0xx->irq_work_queue,
 			&ps_stml0xx->initialize_work);
 		dev_err(&stml0xx_misc_data->spi->dev,
@@ -290,6 +295,10 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
+
+		/* read motion data reg to clear movement interrupt */
+		err = stml0xx_spi_send_read_reg(MOTION_DATA, buf, 2);
+
 		/* Client recieving action will be upper 2 most significant */
 		/* bits of the least significant byte of status. */
 		status = (irq2_status & STML0XX_CLIENT_MASK) | M_MMOVEME;
@@ -300,6 +309,10 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	}
 	if (irq2_status & M_NOMMOVE) {
 		unsigned char status;
+
+		/* read motion data reg to clear movement interrupt */
+		err = stml0xx_spi_send_read_reg(MOTION_DATA, buf, 2);
+
 		/* Client recieving action will be upper 2 most significant */
 		/* bits of the least significant byte of status. */
 		status = (irq2_status & STML0XX_CLIENT_MASK) | M_NOMMOVE;
