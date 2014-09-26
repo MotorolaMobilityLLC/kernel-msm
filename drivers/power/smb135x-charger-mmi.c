@@ -2897,6 +2897,8 @@ static int handle_dc_removal(struct smb135x_chg *chip)
 
 	if (chip->dc_psy_type != -EINVAL)
 		power_supply_set_online(&chip->dc_psy, chip->dc_present);
+
+	smb_relax(&chip->smb_wake_source);
 	return 0;
 }
 
@@ -2910,6 +2912,7 @@ static int handle_dc_insertion(struct smb135x_chg *chip)
 		power_supply_set_online(&chip->dc_psy,
 						chip->dc_present);
 
+	smb_stay_awake(&chip->smb_wake_source);
 	return 0;
 }
 /**
