@@ -268,6 +268,10 @@ void f2fs_evict_inode(struct inode *inode)
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	nid_t xnid = F2FS_I(inode)->i_xattr_nid;
 
+	/* some remained atomic pages should discarded */
+	if (is_inode_flag_set(F2FS_I(inode), FI_ATOMIC_FILE))
+		commit_atomic_pages(inode, true);
+
 	trace_f2fs_evict_inode(inode);
 	truncate_inode_pages(&inode->i_data, 0);
 

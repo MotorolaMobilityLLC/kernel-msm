@@ -14,6 +14,7 @@
 #include <linux/mpage.h>
 #include <linux/aio.h>
 #include <linux/writeback.h>
+#include <linux/mount.h>
 #include <linux/backing-dev.h>
 #include <linux/blkdev.h>
 #include <linux/bio.h>
@@ -1052,7 +1053,10 @@ static int f2fs_write_end(struct file *file,
 
 	trace_f2fs_write_end(inode, pos, len, copied);
 
-	set_page_dirty(page);
+	if (is_inode_flag_set(F2FS_I(inode), FI_ATOMIC_FILE))
+		register_atomic_page(inode, page);
+	else
+		set_page_dirty(page);
 
 	if (pos + copied > i_size_read(inode)) {
 		i_size_write(inode, pos + copied);
@@ -1118,6 +1122,9 @@ static void f2fs_invalidate_data_page(struct page *page, unsigned long offset)
 
 	if (offset % PAGE_CACHE_SIZE)
 		return;
+
+	if (is_inode_flag_set(F2FS_I(inode), FI_ATOMIC_FILE))
+		invalidate_atomic_page(inode, page);
 
 	if (PageDirty(page))
 		inode_dec_dirty_pages(inode);
