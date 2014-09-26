@@ -83,6 +83,7 @@ typedef enum {
    TDLS = 6,
    P2P_GO_NOA_DECOUPLE_INIT_SCAN = 7,
    WLANACTIVE_OFFLOAD = 8,
+   RTT = 20,
    WOW = 22,
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
    WLAN_ROAM_SCAN_OFFLOAD = 23,
@@ -103,6 +104,9 @@ typedef enum {
    UPDATE_CHANNEL_LIST    = 35,
    WLAN_MCADDR_FLT        = 36,
    WLAN_CH144             = 37,
+#ifdef WLAN_FEATURE_NAN
+   NAN = 38,
+#endif
 #ifdef FEATURE_WLAN_TDLS
    TDLS_SCAN_COEXISTENCE  = 39,
 #endif
