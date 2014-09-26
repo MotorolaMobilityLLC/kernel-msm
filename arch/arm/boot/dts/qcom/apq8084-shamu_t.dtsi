@@ -19,7 +19,7 @@
 
 / {
 	model = "Motorola APQ 8084 Xplay_China";
-	compatible = "qcom,apq8084-az",
+	compatible = "qcom,apq8084-shamu_t",
 		   "qcom,apq8084-moto",
 		   "qcom,apq8084";
 
