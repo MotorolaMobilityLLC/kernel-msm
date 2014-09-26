@@ -14,7 +14,7 @@
 /dts-v1/;
 
 #include "apq8084.dtsi"
-#include "apq8084-az.dtsi"
+#include "apq8084-shamu_t.dtsi"
 
 / {
 	qcom,msm-id = <178 0x4D 0x8100>;
