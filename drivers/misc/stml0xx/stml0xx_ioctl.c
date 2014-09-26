@@ -62,6 +62,8 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	if (!stml0xx_misc_data)
 		stml0xx_misc_data = file->private_data;
 
+	wake_lock(&ps_stml0xx->wakelock);
+
 	mutex_lock(&ps_stml0xx->lock);
 
 	stml0xx_wake(ps_stml0xx);
@@ -649,5 +651,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	stml0xx_sleep(ps_stml0xx);
 	mutex_unlock(&ps_stml0xx->lock);
+	wake_unlock(&ps_stml0xx->wakelock);
 	return err;
 }

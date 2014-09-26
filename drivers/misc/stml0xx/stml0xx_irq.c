@@ -50,6 +50,8 @@ irqreturn_t stml0xx_isr(int irq, void *dev)
 	if (stml0xx_irq_disable)
 		return IRQ_HANDLED;
 
+	wake_lock(&ps_stml0xx->wakelock);
+
 	queue_work(ps_stml0xx->irq_work_queue, &ps_stml0xx->irq_work);
 	if (ps_stml0xx->irq_wake == -1)
 		queue_work(ps_stml0xx->irq_work_queue,
@@ -308,4 +310,5 @@ EXIT:
 	stml0xx_sleep(ps_stml0xx);
 	/* For now HAE needs events even if the activity is still */
 	mutex_unlock(&ps_stml0xx->lock);
+	wake_unlock(&ps_stml0xx->wakelock);
 }
