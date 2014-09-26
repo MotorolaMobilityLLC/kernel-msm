@@ -1429,6 +1429,13 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			} else
 				this_adm.topology[index] = open.topology_id;
 
+		if (this_adm.port_none_topo == port_id &&
+			this_adm.port_none_topo != AFE_PORT_INVALID) {
+			open.topology_id = NULL_COPP_TOPOLOGY;
+			this_adm.topology[index] = NULL_COPP_TOPOLOGY;
+			pr_debug("set topology none for port 0X%x\n", port_id);
+		}
+
 			open.dev_num_channel = channel_mode & 0xFF;
 			open.bit_width = bits_per_sample;
 			WARN_ON(perf_mode == ULTRA_LOW_LATENCY_PCM_MODE &&
@@ -1532,11 +1539,7 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			goto fail_cmd;
 		}
 	}
-	if (this_adm.port_none_topo == port_id &&
-		this_adm.port_none_topo != AFE_PORT_INVALID) {
-		open.topology_id = NULL_COPP_TOPOLOGY;
-		pr_debug("set topology none for port 0X%x\n", port_id);
-	}
+
 	if (perf_mode == ULTRA_LOW_LATENCY_PCM_MODE ||
 			perf_mode == LOW_LATENCY_PCM_MODE) {
 		atomic_inc(&this_adm.copp_low_latency_cnt[index]);
