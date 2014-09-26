@@ -318,6 +318,7 @@ struct stm_response {
 #define REV_ID                          0x01
 #define ERROR_STATUS                    0x02
 #define LOWPOWER_REG                    0x03
+#define INIT_COMPLETE_REG               0x04
 
 #define STML0XX_PEEKDATA_REG             0x09
 #define STML0XX_PEEKSTATUS_REG           0x0A
