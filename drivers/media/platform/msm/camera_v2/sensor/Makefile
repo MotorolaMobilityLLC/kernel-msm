@@ -27,3 +27,4 @@ obj-$(CONFIG_AR0261) += ar0261.o
 obj-$(CONFIG_OV660) += ov660.o
 obj-$(CONFIG_OV10820) += ov10820.o
 obj-$(CONFIG_S5K5E2) += s5k5e2.o
+obj-$(CONFIG_MT9V113) += mt9v113.o
