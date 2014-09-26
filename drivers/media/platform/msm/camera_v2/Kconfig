@@ -135,6 +135,15 @@ config S5K5E2
 		2 mipi lanes, preview config = 2560 x 1920 at 30 fps,
 		snapshot config = 2560 x 1920 at 30 fps
 
+config MT9V113
+        bool "Sensor MT9V113 (YUV .3MP)"
+        depends on MSMB_CAMERA
+        ---help---
+                MT9V113 is Aptina YUV sensor. It supports .3 MP preview
+                and snapshot. The preview and snapshot resolution shall be
+                640 * 480. It does not support auto focus. It supports
+                few special effects like saturation.
+
 config IMX134
 	bool "Sensor IMX134 (BAYER 8M)"
 	depends on MSMB_CAMERA
