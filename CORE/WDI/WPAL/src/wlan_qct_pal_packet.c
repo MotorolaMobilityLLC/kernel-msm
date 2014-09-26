@@ -867,6 +867,19 @@ wpt_status wpalGetNumRxRawPacket(wpt_uint32 *numRxResource)
 }
 
 /*---------------------------------------------------------------------------
+   wpalGetNumRxPacketAllocFailures   Get number of times packet alloc failed
+       numRxResource  pointer of queried value
+
+   return:
+       eWLAN_PAL_STATUS_SUCCESS
+---------------------------------------------------------------------------*/
+wpt_status wpalGetNumRxPacketAllocFailures(wpt_uint32 *numRxResource)
+{
+   *numRxResource = (wpt_uint32)vos_pkt_get_num_of_rx_pkt_alloc_failures();
+
+   return eWLAN_PAL_STATUS_SUCCESS;
+}
+/*---------------------------------------------------------------------------
    wpalGetNumRxFreePacket   Query available RX Free buffer count
    param:
        numRxResource  pointer of queried value

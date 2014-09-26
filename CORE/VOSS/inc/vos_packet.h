@@ -1118,6 +1118,19 @@ VOS_STATUS vos_pkt_get_available_buffer_pool
 */
 v_SIZE_t vos_pkt_get_num_of_rx_raw_pkts(void);
 
+/**
+  @brief vos_pkt_get_num_of_rx_pkt_alloc_failures() - Get the number of times
+         skb allocation failed while replenishing packets
+
+
+  @param
+       NONE
+  @return
+       v_SIZE_t the number of times packet allocation failed
+
+*/
+v_SIZE_t vos_pkt_get_num_of_rx_pkt_alloc_failures(void);
+
 v_U8_t vos_pkt_get_proto_type
 (
    void  *pskb,
