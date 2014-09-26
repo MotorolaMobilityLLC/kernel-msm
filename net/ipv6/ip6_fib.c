@@ -1434,6 +1434,8 @@ skip:
 			if (fn == w->root)
 				return 0;
 			pn = fn->parent;
+			if (!pn)
+				return 0;
 			w->node = pn;
 #ifdef CONFIG_IPV6_SUBTREES
 			if (FIB6_SUBTREE(pn) == fn) {
