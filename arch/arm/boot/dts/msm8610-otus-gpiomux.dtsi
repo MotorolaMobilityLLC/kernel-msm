@@ -136,6 +136,24 @@
 			};
 		};
 
+		pin@fd510E0 {
+			reg = <0xfd5110E0 0x10>;        /* CAM_MCLK1 */
+			qcom,pin-num = <14>;
+			qcom,pin-keep-state;
+			qcom,active@0 {
+				qcom,func = <1>;  /* CAM_MCLK1    */
+				qcom,pull = <0>;  /* none         */
+				qcom,drv =  <2>;  /* 6ma          */
+				qcom,dir =  <1>;  /* output high  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* gpio         */
+				qcom,pull = <0>;  /* none         */
+				qcom,drv =  <0>;  /* 2ma          */
+				qcom,dir =  <0>;  /* input        */
+			};
+		};
+
 		pin@fd51130 {
 			reg = <0xfd511130 0x10>;	/* STML0XX: SPI Data ACK */
 			qcom,pin-num = <19>;
