@@ -68,6 +68,11 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 #define LOW_POWER_MODE_ENTER		0
 
 static struct regulator *pm8921_l28;
+struct bpm_array{
+	int bpm;
+	int weight;
+	int freq;
+};
 static struct sensors_classdev bmd101_cdev = {
 	.name = "bmd101",
 	.vendor = "NeuroSky",
@@ -203,48 +208,56 @@ static void bmd101_hw_enable(int enable) {
 	
 }
 
-static void sortArray(int *nums) {
+static void sortArray(struct bpm_array *array) {
 	static int x;
 	static int y;
 
 	for(x=0; x<BMD101_filter_array; x++) {
 		for(y=0; y<BMD101_filter_array-1; y++) {
-			if(nums[y]>nums[y+1]) {
-				int temp = nums[y+1];
-				nums[y+1] = nums[y];
-				nums[y] = temp;
+			if(array[y].bpm>array[y+1].bpm) {
+				int temp = array[y+1].bpm;
+				array[y+1].bpm = array[y].bpm;
+				array[y].bpm = temp;
+				temp = array[y+1].weight;
+				array[y+1].weight = array[y].weight;
+				array[y].weight = temp;
 			}
 		}
 	}
 }
 
-static int findMode(int *nums) {
+static int findMode(struct bpm_array *array) {
 	int i, maxCount, modeValue;
-	int freq[BMD101_filter_array] = {0};
-	int temp;
+	int maxFreq, maxWeight;
 
-	temp = 0;
+	maxFreq = 0;
 	maxCount = 0;
 	modeValue = 0;
 
 	for (i = 0; i < BMD101_filter_array; i++) {
-		if (nums[i] > maxCount)
-			maxCount = nums[i];
+		if (array[i].bpm > maxCount)
+			maxCount = array[i].bpm;
 		else {
-			if (freq[i-1] > 0)
-				freq[i] = freq[i-1]+1;
+			if (array[i-1].freq > 0)
+				array[i].freq = array[i-1].freq+1;
 			else
-				freq[i]++;
+				array[i].freq++;
 		}
 
-		if(freq[i] > temp) {
-			temp = freq[i];
-			modeValue = nums[i];
+		if(array[i].freq> maxFreq) {
+			maxFreq = array[i].freq;
+			modeValue = array[i].bpm;
 		}
-		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bpm(%d) freq(%d)\n", __func__, nums[i], freq[i]);
+		else if (array[i].freq == maxFreq) {
+			if (array[i].weight > maxWeight) {
+				maxWeight = array[i].weight;
+				modeValue = array[i].bpm;
+			}
+		}
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bpm(%d) freq(%d) weight(%d)\n", __func__, array[i].bpm, array[i].freq, array[i].weight);
 	}
 
-	if(temp==0)
+	if(maxFreq==0)
 		return -1;
 	else
 		return modeValue;
@@ -252,8 +265,9 @@ static int findMode(int *nums) {
 
 static void bmd101_data_filter(int data)
 {
-	static int bpm[BMD101_filter_array];
+	static struct bpm_array input[BMD101_filter_array];
 	static int setup_complete = 0;
+	int i=0;
 
 	mutex_lock(&sensor_data->lock);
 	if(sensor_data->status >= 2) {
@@ -267,6 +281,11 @@ static void bmd101_data_filter(int data)
 			if(sensor_data->count == BMD101_setup_time) {
 				sensor_data->count = 0;
 				setup_complete = 1;
+				for(i=0; i<BMD101_filter_array; i++) {
+					input[i].bpm = 0;
+					input[i].weight = 0;
+					input[i].freq = 0;
+				}
 			}
 			else
 				sensor_data->count++;
@@ -277,15 +296,17 @@ static void bmd101_data_filter(int data)
 
 		sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d timeout_delay=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count, sensor_data->timeout_delay);
 		if(sensor_data->count < BMD101_filter_array) {
-			bpm[sensor_data->count++] = data;
+			input[sensor_data->count].bpm = data;
+			input[sensor_data->count].weight = sensor_data->count;
+			sensor_data->count++;
 			sensor_data->bpm = data;
 			sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_LOW;
 		}
 		else {
 			setup_complete = 0;
 			sensor_data->count = 0;
-			sortArray(bpm);
-			sensor_data->bpm = findMode(bpm);
+			sortArray(input);
+			sensor_data->bpm = findMode(input);
 			if(sensor_data->bpm == -1) {
 				sensor_debug(DEBUG_INFO, "[bmd101] %s: bad contact, request user retest\n", __func__);
 				sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT;
@@ -296,8 +317,11 @@ static void bmd101_data_filter(int data)
 
 		bmd101_data_report(sensor_data->bpm, sensor_data->accuracy);
 	}
-	else
+	else {
+		sensor_data->count = 0;
+		setup_complete = 0;
 		queue_delayed_work(sensor_data->bmd101_work_queue, &sensor_data->timeout_work, sensor_data->timeout_delay);		//queue timeout delay first time: @3s in between measurements: @1s
+	}
 	mutex_unlock(&sensor_data->lock);
 
 	return;
