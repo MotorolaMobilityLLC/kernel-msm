@@ -18,6 +18,12 @@
 /include/ "dsi-panel-mot-boe-450-qHD-video.dtsi"
 /include/ "dsi-panel-mot-inx-450-qHD-video.dtsi"
 
+/ {
+	chosen {
+		mmi,no-factory-kill-ic;
+	};
+};
+
 &mmi_factory {
 	/delete-property/ gpios;
 };
