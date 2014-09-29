@@ -1100,12 +1100,6 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
     /* Populate extended supported rates */
     PopulateDot11fExtSuppRates( pMac, POPULATE_DOT11F_RATES_OPERATIONAL,
                                 &tdlsDisRsp.ExtSuppRates, psessionEntry );
-    /* Populate RSN Information element */
-    PopulateDot11fRsnIEs(pMac, &tdlsDisRsp.RSN, addIe, addIeLen);
-
-    /* Populate Timeout interval IE */
-    PopulateDot11fTimeoutIEs(pMac, &tdlsDisRsp.TimeoutInterval,
-                             (&addIe[22]), (addIeLen - 22));
 
     /* Populate extended supported rates */
     PopulateDot11fTdlsExtCapability( pMac, &tdlsDisRsp.ExtCap );
@@ -1145,7 +1139,7 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
      */ 
 
 
-    nBytes = nPayload + sizeof( tSirMacMgmtHdr ) ;
+    nBytes = nPayload + sizeof( tSirMacMgmtHdr ) + addIeLen;
 
     /* Ok-- try to allocate memory from MGMT PKT pool */
 
@@ -1226,6 +1220,13 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
         }
     }
 #endif
+    if (0 != addIeLen)
+    {
+        LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                     ("Copy Additional Ie Len = %d"), addIeLen ));
+        vos_mem_copy(pFrame + sizeof(tSirMacMgmtHdr) + nPayload, addIe,
+                                                              addIeLen);
+    }
     VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, 
                  ("transmitting Discovery response on direct link")) ;
 

@@ -3535,9 +3535,14 @@ static void
 __limCounterMeasures(tpAniSirGlobal pMac, tpPESession psessionEntry)
 {
     tSirMacAddr mac = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    if ( (psessionEntry->limSystemRole == eLIM_AP_ROLE) || (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)
-        || (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) )
-         
+    /* If PMF is enabled then don't send broadcast disassociation */
+    if ( ( (psessionEntry->limSystemRole == eLIM_AP_ROLE) ||
+           (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE) ||
+           (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))
+#ifdef WLAN_FEATURE_11W
+        && !psessionEntry->limRmfEnabled
+#endif
+       )
         limSendDisassocMgmtFrame(pMac, eSIR_MAC_MIC_FAILURE_REASON, mac, psessionEntry, FALSE);
 
 };
@@ -3643,8 +3648,14 @@ __limHandleSmeStopBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     psessionEntry->smeSessionId = smesessionId;
     psessionEntry->transactionId = smetransactionId;
 
-    /* BTAMP_STA and STA_IN_IBSS should NOT send Disassoc frame */
-    if ( (eLIM_STA_IN_IBSS_ROLE != psessionEntry->limSystemRole) && (eLIM_BT_AMP_STA_ROLE != psessionEntry->limSystemRole) )
+    /* BTAMP_STA and STA_IN_IBSS should NOT send Disassoc frame.
+     * If PMF is enabled then don't send broadcast disassociation */
+    if ( ( (eLIM_STA_IN_IBSS_ROLE != psessionEntry->limSystemRole) &&
+           (eLIM_BT_AMP_STA_ROLE != psessionEntry->limSystemRole) )
+#ifdef WLAN_FEATURE_11W
+        && !psessionEntry->limRmfEnabled
+#endif
+       )
     {
         tSirMacAddr   bcAddr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
         if ((stopBssReq.reasonCode == eSIR_SME_MIC_COUNTER_MEASURES))

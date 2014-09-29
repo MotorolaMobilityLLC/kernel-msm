@@ -797,6 +797,7 @@ typedef struct tagCsrScanStruct
     tANI_S8     inScanResultBestAPRssi;
 
     csrScanCompleteCallback callback11dScanDone;
+    eCsrBand  scanBandPreference;  //This defines the band perference for scan
 }tCsrScanStruct;
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL

@@ -167,6 +167,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_SET_TDLS_SEC_OFF_CHAN_OFFSET  15
 #define WE_SET_TDLS_OFF_CHAN_MODE        16
 #endif
+#define  WE_SET_SCAN_BAND_PREFERENCE     17
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_INT    (SIOCIWFIRSTPRIV + 1)
@@ -178,6 +179,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_GET_WDI_DBG       7
 #define WE_GET_SAP_AUTO_CHANNEL_SELECTION 8
 #define WE_GET_CONCURRENCY_MODE 9
+#define WE_GET_SCAN_BAND_PREFERENCE     10
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_INT_GET_INT     (SIOCIWFIRSTPRIV + 2)
 
@@ -4795,6 +4797,32 @@ static int __iw_setint_getnone(struct net_device *dev,
            break;
         }
 #endif
+        case WE_SET_SCAN_BAND_PREFERENCE:
+        {
+            tSmeConfigParams smeConfig;
+            memset(&smeConfig, 0x00, sizeof(smeConfig));
+            if(pAdapter->device_mode != WLAN_HDD_INFRA_STATION) {
+                ret = -EINVAL;
+                break;
+            }
+            hddLog(LOG1, "WE_SET_BAND_PREFERRENCE val %d ", set_value);
+
+            if (eCSR_BAND_ALL == set_value ||
+                    eCSR_BAND_24 == set_value || eCSR_BAND_5G == set_value) {
+                sme_GetConfigParam(hHal, &smeConfig);
+                smeConfig.csrConfig.scanBandPreference = set_value;
+
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                        "set band scan preference = %d\n",
+                        smeConfig.csrConfig.scanBandPreference);
+
+                sme_UpdateConfig(hHal, &smeConfig);
+            }
+            else {
+                ret = -EINVAL;
+            }
+            break;
+        }
 
         default:
         {
@@ -4952,8 +4980,10 @@ static int __iw_setnone_getint(struct net_device *dev,
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     int *value = (int *)extra;
     int ret = 0; /* success */
+    tSmeConfigParams smeConfig;
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
@@ -5000,6 +5030,36 @@ static int __iw_setnone_getint(struct net_device *dev,
                       FL("failed to get ini parameter, WNI_CFG_ASSOC_STA_LIMIT"));
                 ret = -EIO;
             }
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+            if (pHddCtx->cfg_ini->fEnableVSTASupport)
+            {
+                if (*value > VSTA_NUM_ASSOC_STA)
+                {
+                    *value = VSTA_NUM_ASSOC_STA;
+                }
+                if ((pHddCtx->hddAdapters.count > VSTA_NUM_RESV_SELFSTA) &&
+                    (*value > (VSTA_NUM_ASSOC_STA -
+                             (pHddCtx->hddAdapters.count - VSTA_NUM_RESV_SELFSTA))))
+                {
+                    *value = (VSTA_NUM_ASSOC_STA -
+                             (pHddCtx->hddAdapters.count - VSTA_NUM_RESV_SELFSTA));
+                }
+            }
+            else
+#endif
+            {
+                if (*value > NUM_ASSOC_STA)
+                {
+                    *value = NUM_ASSOC_STA;
+                }
+                if ((pHddCtx->hddAdapters.count > NUM_RESV_SELFSTA) &&
+                    (*value > (NUM_ASSOC_STA -
+                              (pHddCtx->hddAdapters.count - NUM_RESV_SELFSTA))))
+                {
+                    *value = (NUM_ASSOC_STA -
+                             (pHddCtx->hddAdapters.count - NUM_RESV_SELFSTA));
+                }
+            }
             break;
         }
 
@@ -5021,6 +5081,16 @@ static int __iw_setnone_getint(struct net_device *dev,
 
            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, ("concurrency mode=%d"),*value);
            break;
+        }
+
+        case WE_GET_SCAN_BAND_PREFERENCE:
+        {
+            sme_GetConfigParam(hHal, &smeConfig);
+            *value = smeConfig.csrConfig.scanBandPreference;
+
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      "scanBandPreference = %d\n", *value);
+            break;
         }
 
         default:
@@ -5743,7 +5813,6 @@ static int __iw_setnone_getnone(struct net_device *dev,
             break;
         }
 #endif
-
         case WE_ENABLE_DXE_STALL_DETECT:
         {
             tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
@@ -8313,7 +8382,6 @@ static int iw_set_tdlsoffchannelmode(hdd_adapter_t *pAdapter, int offchanmode)
                 __func__, offchanmode);
     return 0;
 }
-
 #endif
 
 
@@ -8520,6 +8588,10 @@ static const struct iw_priv_args we_private_args[] = {
         "tdlsoffchnmode" },
 #endif
 
+    {   WE_SET_SCAN_BAND_PREFERENCE,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+        0, "set_scan_pref" },
+
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_NONE_GET_INT,
         0,
@@ -8566,6 +8638,11 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         "getconcurrency" },
+
+    {   WE_GET_SCAN_BAND_PREFERENCE,
+        0,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+        "get_scan_pref"},
 
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_CHAR_GET_NONE,

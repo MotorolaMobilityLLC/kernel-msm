@@ -5290,6 +5290,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    /* Update the Directed scan offload setting */
    smeConfig->fScanOffload =  pHddCtx->cfg_ini->fScanOffload;
 
+   smeConfig->csrConfig.scanBandPreference = eCSR_BAND_ALL;
+
    smeConfig->fEnableDebugLog = pHddCtx->cfg_ini->gEnableDebugLog;
    smeConfig->csrConfig.sendDeauthBeforeCon = pConfig->sendDeauthBeforeCon;
 

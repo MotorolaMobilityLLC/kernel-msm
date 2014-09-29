@@ -1818,6 +1818,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->scan.scanResultCfgAgingTime = pParam->scanCfgAgingTime;
         pMac->roam.configParam.fScanTwice = pParam->fScanTwice;
         pMac->scan.fFirstScanOnly2GChnl = pParam->fFirstScanOnly2GChnl;
+        pMac->scan.scanBandPreference = pParam->scanBandPreference;
         /* This parameter is not available in cfg and not passed from upper layers. Instead it is initialized here
          * This paramtere is used in concurrency to determine if there are concurrent active sessions.
          * Is used as a temporary fix to disconnect all active sessions when BMPS enabled so the active session if Infra STA
@@ -1922,7 +1923,7 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->fEnableMCCMode = pMac->roam.configParam.fenableMCCMode;
         pParam->fAllowMCCGODiffBI = pMac->roam.configParam.fAllowMCCGODiffBI;
         pParam->scanCfgAgingTime = pMac->scan.scanResultCfgAgingTime;
-
+        pParam->scanBandPreference = pMac->scan.scanBandPreference;
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
         vos_mem_copy(&pParam->neighborRoamConfig,
                      &pMac->roam.configParam.neighborRoamConfig,
