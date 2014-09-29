@@ -68,6 +68,27 @@ when        who    what, where, why
 ===========================================================================*/
 #include "wlan_qct_tl.h" 
 
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+/*==========================================================================
+
+   FUNCTION
+
+   DESCRIPTION
+
+   PARAMETERS
+
+   RETURN VALUE
+
+============================================================================*/
+VOS_STATUS WLANTL_HSGetDataRSSI
+(
+   v_PVOID_t        pAdapter,
+   v_PVOID_t        pBDHeader,
+   v_U8_t           STAid,
+   v_S7_t          *currentAvgRSSI
+);
+#endif
+
 #if defined WLAN_FEATURE_NEIGHBOR_ROAMING
 /*----------------------------------------------------------------------------
  * Include Files

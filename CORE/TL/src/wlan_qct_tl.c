@@ -170,6 +170,11 @@ static v_U8_t WLANTL_AIRONET_SNAP_HEADER[] =  {0xAA, 0xAA, 0x03, 0x00, 0x40, 0x9
 /*BT-AMP packet LLC OUI value*/
 const v_U8_t WLANTL_BT_AMP_OUI[] =  {0x00, 0x19, 0x58 };
 
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+extern const v_U8_t  WLANTL_TID_2_AC[WLAN_MAX_TID];
+
+#endif
+
 #define WLANTL_MAX_SNR_DATA_SAMPLES 20
 
 #ifdef VOLANS_PERF
@@ -193,6 +198,11 @@ int bdPduInterruptGetThreshold = WLANTL_BD_PDU_INTERRUPT_GET_THRESHOLD;
 
 #define WLANTL_IS_MGMT_FRAME(_type_sub)                                     \
                      ( WLANTL_MGMT_FRAME_TYPE == ( (_type_sub) & 0x30 ))
+
+#define WLANTL_IS_MGMT_ACTION_FRAME(_type_sub)                                \
+    (( WLANTL_MGMT_FRAME_TYPE == ( (_type_sub) & 0x30 )) &&    \
+     ( ( WLANTL_80211_MGMT_ACTION_SUBTYPE == ( (_type_sub) & 0xF )) || \
+       ( WLANTL_80211_MGMT_ACTION_NO_ACK_SUBTYPE == ( (_type_sub) & 0xF ))))
 
 #define WLANTL_IS_CTRL_FRAME(_type_sub)                                     \
                      ( WLANTL_CTRL_FRAME_TYPE == ( (_type_sub) & 0x30 ))
@@ -1387,6 +1397,13 @@ WLANTL_RegisterSTAClient
 #else
     pClientSTA->rssiAlpha = WLANTL_HO_DEFAULT_ALPHA;
 #endif /* FEATURE_WLAN_TDLS */
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+  pClientSTA->rssiDataAlpha = WLANTL_HO_DEFAULT_ALPHA;
+  pClientSTA->interfaceStats.accessCategoryStats[0].ac = WLANTL_AC_BK;
+  pClientSTA->interfaceStats.accessCategoryStats[1].ac = WLANTL_AC_BE;
+  pClientSTA->interfaceStats.accessCategoryStats[2].ac = WLANTL_AC_VI;
+  pClientSTA->interfaceStats.accessCategoryStats[3].ac = WLANTL_AC_VO;
+#endif
 
   /*Tx not suspended and station fully registered*/
   vos_atomic_set_U8(
@@ -5552,6 +5569,11 @@ WLANTL_RxFrames
   v_U16_t             usEtherType = 0;
 #endif
   v_BOOL_t            bForwardIAPPwithLLC = VOS_FALSE;
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+  v_S7_t              currentAvgRSSI = 0;
+  v_U8_t              ac;
+
+#endif
 
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
@@ -5716,6 +5738,18 @@ WLANTL_RxFrames
           TLLOGW(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
                             FL("Failed to Read SNR")));
         }
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+        pClientSTA = pTLCb->atlSTAClients[ucSTAId];
+        if ( NULL != pClientSTA)
+        {
+            pClientSTA->interfaceStats.mgmtRx++;
+            if (WLANTL_IS_MGMT_ACTION_FRAME(ucFrmType))
+            {
+                pClientSTA->interfaceStats.mgmtActionRx++;
+
+            }
+        }
+#endif
       }
 
       pTLCb->tlMgmtFrmClient.pfnTlMgmtFrmRx( pvosGCtx, vosTempBuff); 
@@ -5724,6 +5758,9 @@ WLANTL_RxFrames
     {
       ucSTAId = (v_U8_t)WDA_GET_RX_STAID( pvBDHeader );
       ucTid   = (v_U8_t)WDA_GET_RX_TID( pvBDHeader );
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+      ac = WLANTL_TID_2_AC[ucTid];
+#endif
 
       TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
                  "WLAN TL:Data packet received for STA %d", ucSTAId));
@@ -5737,7 +5774,6 @@ WLANTL_RxFrames
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
         "WLAN TL:TL rx Bcast frame - sending to last registered station"));
         broadcast = VOS_TRUE;
-        
         /*-------------------------------------------------------------------
           If Addr1 is b/mcast, but Addr3 is our own self MAC, it is a b/mcast
           pkt we sent  looping back to us. To be dropped if we are non BTAMP  
@@ -5958,6 +5994,29 @@ WLANTL_RxFrames
            * continue;
            */
         }
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+        pClientSTA = pTLCb->atlSTAClients[ucSTAId];
+        if ( NULL != pClientSTA)
+        {
+            tpSirMacMgmtHdr pMacHeader = WDA_GET_RX_MAC_HEADER( pvBDHeader );
+            if( !WDA_IS_RX_BCAST(pvBDHeader) && ( pMacHeader->da[0] & 0x1))
+            {
+                pClientSTA->interfaceStats.accessCategoryStats[ac].rxMcast++;
+            }
+
+            WLANTL_HSGetDataRSSI(pvosGCtx, pvBDHeader, ucSTAId,
+                    &currentAvgRSSI);
+            pClientSTA->interfaceStats.rssiData = currentAvgRSSI;
+
+            pClientSTA->interfaceStats.accessCategoryStats[ac].rxMpdu++;
+            if (WDA_IS_RX_AN_AMPDU (pvBDHeader))
+            {
+                pClientSTA->interfaceStats.accessCategoryStats[ac].rxAmpdu++;
+            }
+        }
+
+
+#endif
         vosStatus = WLANTL_ReadSNR(pvosGCtx, pvBDHeader, ucSTAId);
 
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -5986,6 +6045,76 @@ WLANTL_RxFrames
   return VOS_STATUS_SUCCESS;
 }/* WLANTL_RxFrames */
 
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+/*==========================================================================
+
+  FUNCTION    WLANTL_CollectInterfaceStats
+
+  DESCRIPTION
+    Utility function used by TL to send the statitics
+
+  DEPENDENCIES
+
+
+  PARAMETERS
+
+    IN
+
+    ucSTAId:    station for which the statistics need to collected
+
+    vosDataBuff: it will contain the pointer to the corresponding
+                structure
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_INVAL:   Input parameters are invalid
+    VOS_STATUS_SUCCESS:   Everything is good :)
+
+  SIDE EFFECTS
+
+============================================================================*/
+VOS_STATUS
+WLANTL_CollectInterfaceStats
+(
+  v_PVOID_t       pvosGCtx,
+  v_U8_t          ucSTAId,
+  WLANTL_InterfaceStatsType    *vosDataBuff
+)
+{
+  WLANTL_CbType*  pTLCb = NULL;
+  /*------------------------------------------------------------------------
+    Sanity check
+   ------------------------------------------------------------------------*/
+  if ( WLANTL_STA_ID_INVALID( ucSTAId ) )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+           "WLAN TL:Invalid station id requested on WLANTL_CollectStats"));
+    return VOS_STATUS_E_FAULT;
+  }
+  /*------------------------------------------------------------------------
+    Extract TL control block
+   ------------------------------------------------------------------------*/
+  pTLCb = VOS_GET_TL_CB(pvosGCtx);
+  if ( NULL == pTLCb )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+       "WLAN TL:Invalid TL pointer from pvosGCtx on WLANTL_CollectStats"));
+    return VOS_STATUS_E_FAULT;
+  }
+
+  if ( NULL == pTLCb->atlSTAClients[ucSTAId] )
+  {
+      TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+          "WLAN TL:Client Memory was not allocated on %s", __func__));
+      return VOS_STATUS_E_FAILURE;
+  }
+  vos_mem_copy(vosDataBuff, &pTLCb->atlSTAClients[ucSTAId]->interfaceStats,
+          sizeof(WLANTL_InterfaceStatsType));
+  return VOS_STATUS_SUCCESS;
+}
+
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
 /*==========================================================================
 

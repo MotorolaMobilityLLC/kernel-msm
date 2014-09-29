@@ -4143,7 +4143,7 @@ static int hdd_driver_ioctl(hdd_adapter_t *pAdapter, struct ifreq *ifr)
    return ret;
 }
 
-int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
+int __hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
    hdd_adapter_t *pAdapter;
    hdd_context_t *pHddCtx;
@@ -4192,6 +4192,17 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
    }
  exit:
    return ret;
+}
+
+int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __hdd_ioctl(dev, ifr, cmd);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
 }
 
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
@@ -5019,16 +5030,14 @@ v_BOOL_t hdd_is_valid_mac_address(const tANI_U8 *pMacAddr)
 
 /**---------------------------------------------------------------------------
 
-  \brief hdd_open() - HDD Open function
-
-  This is called in response to ifconfig up
+  \brief __hdd_open() - HDD Open function
 
   \param  - dev Pointer to net_device structure
 
   \return - 0 for success non-zero for failure
 
   --------------------------------------------------------------------------*/
-int hdd_open (struct net_device *dev)
+int __hdd_open(struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    hdd_context_t *pHddCtx;
@@ -5092,6 +5101,28 @@ int hdd_open (struct net_device *dev)
    return 0;
 }
 
+/**---------------------------------------------------------------------------
+
+  \brief hdd_open() - Wrapper function for __hdd_open to protect it from SSR
+
+  This is called in response to ifconfig up
+
+  \param  - dev Pointer to net_device structure
+
+  \return - 0 for success non-zero for failure
+
+  --------------------------------------------------------------------------*/
+int hdd_open(struct net_device *dev)
+{
+   int ret;
+
+   vos_ssr_protect(__func__);
+   ret = __hdd_open(dev);
+   vos_ssr_unprotect(__func__);
+
+   return ret;
+}
+
 int hdd_mon_open (struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
@@ -5108,9 +5139,7 @@ int hdd_mon_open (struct net_device *dev)
 }
 /**---------------------------------------------------------------------------
 
-  \brief hdd_stop() - HDD stop function
-
-  This is called in response to ifconfig down
+  \brief __hdd_stop() - HDD stop function
 
   \param  - dev Pointer to net_device structure
 
@@ -5118,7 +5147,7 @@ int hdd_mon_open (struct net_device *dev)
 
   --------------------------------------------------------------------------*/
 
-int hdd_stop (struct net_device *dev)
+int __hdd_stop (struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    hdd_context_t *pHddCtx;
@@ -5227,17 +5256,35 @@ int hdd_stop (struct net_device *dev)
 
 /**---------------------------------------------------------------------------
 
-  \brief hdd_uninit() - HDD uninit function
+  \brief hdd_stop() - wrapper_function for __hdd_stop to protect it from SSR
 
-  This is called during the netdev unregister to uninitialize all data
-associated with the device
+  This is called in response to ifconfig down
+
+  \param  - dev Pointer to net_device structure
+
+  \return - 0 for success non-zero for failure
+-----------------------------------------------------------------------------*/
+int hdd_stop (struct net_device *dev)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __hdd_stop(dev);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief __hdd_uninit() - HDD uninit function
 
   \param  - dev Pointer to net_device structure
 
   \return - void
 
   --------------------------------------------------------------------------*/
-static void hdd_uninit (struct net_device *dev)
+static void __hdd_uninit (struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
 
@@ -5281,6 +5328,25 @@ static void hdd_uninit (struct net_device *dev)
    } while (0);
 
    EXIT();
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief hdd_uninit() - Wrapper function to protect __hdd_uninit from SSR
+
+  This is called during the netdev unregister to uninitialize all data
+associated with the device
+
+  \param  - dev Pointer to net_device structure
+
+  \return - void
+
+  --------------------------------------------------------------------------*/
+static void hdd_uninit (struct net_device *dev)
+{
+   vos_ssr_protect(__func__);
+   __hdd_uninit(dev);
+   vos_ssr_unprotect(__func__);
 }
 
 /**---------------------------------------------------------------------------
@@ -5532,7 +5598,7 @@ VOS_STATUS hdd_read_cfg_file(v_VOID_t *pCtx, char *pFileName,
 
 /**---------------------------------------------------------------------------
 
-  \brief hdd_set_mac_address() -
+  \brief __hdd_set_mac_address() -
 
    This function sets the user specified mac address using
    the command ifconfig wlanX hw ether <mac adress>.
@@ -5543,7 +5609,7 @@ VOS_STATUS hdd_read_cfg_file(v_VOID_t *pCtx, char *pFileName,
 
   --------------------------------------------------------------------------*/
 
-static int hdd_set_mac_address(struct net_device *dev, void *addr)
+static int __hdd_set_mac_address(struct net_device *dev, void *addr)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    struct sockaddr *psta_mac_addr = addr;
@@ -5556,6 +5622,28 @@ static int hdd_set_mac_address(struct net_device *dev, void *addr)
 
    EXIT();
    return halStatus;
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief hdd_set_mac_address() -
+
+   Wrapper function to protect __hdd_set_mac_address() function from ssr
+
+  \param  - dev - Pointer to the net device.
+              - addr - Pointer to the sockaddr.
+  \return - 0 for success, non zero for failure
+
+  --------------------------------------------------------------------------*/
+static int hdd_set_mac_address(struct net_device *dev, void *addr)
+{
+   int ret;
+
+   vos_ssr_protect(__func__);
+   ret = __hdd_set_mac_address(dev, addr);
+   vos_ssr_unprotect(__func__);
+
+   return ret;
 }
 
 tANI_U8* wlan_hdd_get_intf_addr(hdd_context_t* pHddCtx)
@@ -7431,7 +7519,7 @@ void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAd
 }
 /**---------------------------------------------------------------------------
   
-  \brief hdd_select_queue() - 
+  \brief hdd_get_operating_channel() -
 
    This API returns the operating channel of the requested device mode 
    

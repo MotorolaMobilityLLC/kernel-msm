@@ -5103,11 +5103,11 @@ typedef PACKED_PRE struct PACKED_POST
     // action frames transmit count
     tANI_U32            mgmtActionTx;
     // access Point Beacon and Management frames RSSI (averaged)
-    tANI_U32            rssiMgmt;
+    tANI_S32            rssiMgmt;
     // access Point Data Frames RSSI (averaged) from connected AP
-    tANI_U32            rssiData;
+    tANI_S32            rssiData;
     // access Point ACK RSSI (averaged) from connected AP
-    tANI_U32            rssiAck;
+    tANI_S32            rssiAck;
     // per ac data packet statistics
     tSirWifiWmmAcStat    AccessclassStats[WIFI_AC_MAX];
 } tSirWifiIfaceStat, *tpSirWifiIfaceStat;
