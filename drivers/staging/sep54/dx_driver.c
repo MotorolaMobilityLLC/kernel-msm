@@ -4163,7 +4163,7 @@ static int rpmb_agent(void *unused)
 	while (1) {
 
 		/* Block until called by SEP */
-		pr_info("RPMB AGENT BLOCKED\n");
+		pr_debug("RPMB AGENT BLOCKED\n");
 		ret = dx_sep_req_wait_for_request(RPMB_AGENT_ID,
 				in_buf, &in_buf_size);
 		if (ret) {
@@ -4171,7 +4171,7 @@ static int rpmb_agent(void *unused)
 			break;
 		}
 
-		pr_info("RPMB AGENT UNBLOCKED\n");
+		pr_debug("RPMB AGENT UNBLOCKED\n");
 
 		/* Process request */
 		memset(&req2emmc, 0x00, sizeof(struct mmc_ioc_rpmb_req));
@@ -4204,7 +4204,7 @@ static int rpmb_agent(void *unused)
 		memset(out_buf, 0, RPMB_FRAME_LENGTH);
 
 		if (req2emmc.type == AUTH_DAT_RD_REQ) {
-			pr_info("READ OPERATION RETURN\n");
+			pr_debug("READ OPERATION RETURN\n");
 			memcpy(out_buf+RPMB_DATA_OFFSET,
 					req2emmc.data,  RPMB_DATA_LENGTH);
 			memcpy(out_buf+RPMB_NONCE_OFFSET,
@@ -4213,7 +4213,7 @@ static int rpmb_agent(void *unused)
 			out_buf[RPMB_BLKCNT_OFFSET]   = req2emmc.blk_cnt >> 8;
 			out_buf[RPMB_BLKCNT_OFFSET+1] = req2emmc.blk_cnt;
 		} else {
-			pr_info("WRITE OPERATION RETURN\n");
+			pr_debug("WRITE OPERATION RETURN\n");
 			memcpy(&tmp, req2emmc.wc, RPMB_COUNTER_LENGTH);
 			tmp = cpu_to_be32(tmp);
 			memcpy(out_buf+RPMB_COUNTER_OFFSET,
