@@ -31,6 +31,8 @@
 
 #define CMD_RPMB_ENABLE          1
 #define CMD_IMAGE_VERIFY         3
+#define CMD_DRM_ENABLE_IED       0x9000
+#define CMD_DRM_DISABLE_IED      0x9001
 #define HDCP_RX_HDMI_STATUS 0x80000080
 
 #endif /* _SEP_APPLETS_H_ */

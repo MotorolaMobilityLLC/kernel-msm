@@ -35,6 +35,7 @@
 #include "sep_applets.h"
 #include "sep_power.h"
 #include "crypto_api.h"
+#include "sepapp.h"
 
 /* Global drvdata to be used by kernel clients via dx_sepapp_ API */
 static struct sep_drvdata *kapps_drvdata;
@@ -1121,3 +1122,46 @@ failed:
 	return rc;
 }
 EXPORT_SYMBOL(sepapp_hdmi_status);
+
+int sepapp_drm_playback(bool ied_status)
+{
+	int ses_id = 0;
+	enum dxdi_sep_module ret_origin;
+	struct sep_client_ctx *sctx = NULL;
+	u8 uuid[16] = DEFAULT_APP_UUID;
+	int rc = 0;
+	int command;
+
+	pr_debug("Requesting IED status change %s\n", ied_status ? "ON" : "OFF");
+
+	if (ied_status)
+		command = CMD_DRM_ENABLE_IED;
+	else
+		command = CMD_DRM_DISABLE_IED;
+
+	sctx = dx_sepapp_context_alloc();
+	if (unlikely(!sctx))
+		return -ENOMEM;
+
+#ifdef SEP_RUNTIME_PM
+	dx_sep_pm_runtime_get();
+#endif
+
+	rc = dx_sepapp_session_open(sctx, uuid, 0, NULL, NULL, &ses_id,
+				    &ret_origin);
+	if (unlikely(rc != 0))
+		goto failed;
+
+	rc = dx_sepapp_command_invoke(sctx, ses_id, command, NULL, &ret_origin);
+
+	dx_sepapp_session_close(sctx, ses_id);
+
+failed:
+#ifdef SEP_RUNTIME_PM
+	dx_sep_pm_runtime_put();
+#endif
+
+	dx_sepapp_context_free(sctx);
+	return rc;
+}
+EXPORT_SYMBOL(sepapp_drm_playback);

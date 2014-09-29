@@ -47,4 +47,7 @@ int sepapp_session_close(struct sep_op_ctx *op_ctx, int session_id);
 int sepapp_image_verify(u8 *addr, ssize_t size, u32 key_index, u32 magic_num);
 
 int sepapp_hdmi_status(u8 status, u8 bksv[5]);
+
+int sepapp_drm_playback(bool ied_status);
+
 #endif /*_SEPAPP_H_*/
