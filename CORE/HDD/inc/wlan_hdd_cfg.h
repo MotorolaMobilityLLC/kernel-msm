@@ -488,7 +488,7 @@ typedef enum
 
 #define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND "gAPChannelSelectOperatingBand"
 #define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_MIN       (0)
-#define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_MAX               (0x4)
+#define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_MAX               (0x5)
 #define CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_DEFAULT           (0)
 
 #define CFG_DISABLE_PACKET_FILTER "gDisablePacketFilter"
@@ -1599,6 +1599,21 @@ static __inline tANI_U32 defHddRateToDefCfgRate( tANI_U32 defRateIndex )
 #define CFG_SAP_AUTO_CHANNEL_SELECTION_MIN        ( 0 )
 #define CFG_SAP_AUTO_CHANNEL_SELECTION_MAX        ( 1 )
 #define CFG_SAP_AUTO_CHANNEL_SELECTION_DEFAULT    ( 0 )
+
+/* ACS Scan band preference
+ * 0 -- No preference
+ * 1 -- Scan 2.4G first
+ * 2 -- Scan 5G first
+*/
+#define CFG_SAP_SCAN_BAND_PREFERENCE              "gAcsScanBandPreference"
+#define CFG_SAP_SCAN_BAND_PREFERENCE_MIN          (0)
+#define CFG_SAP_SCAN_BAND_PREFERENCE_MAX          (2)
+#define CFG_SAP_SCAN_BAND_PREFERENCE_DEFAULT      (0)
+#define CFG_ACS_BAND_SWITCH_THRESHOLD             "gACSBandSwitchThreshold"
+#define CFG_ACS_BAND_SWITCH_THRESHOLD_MIN         (0)
+#define CFG_ACS_BAND_SWITCH_THRESHOLD_MAX         (4444)
+/* 2 BSS, maximus RSSI -90 */
+#define CFG_ACS_BAND_SWITCH_THRESHOLD_DEFAULT     (296)
 
 /*BMPS Logic
  * Notes:
@@ -2817,6 +2832,8 @@ typedef struct
    v_U32_t                     maxUapsdInactivityIntervals;
    v_U8_t                      enableDhcpDebug; /* Enable/Disable dhcp debug */
    v_U32_t                     burstModeTXOPValue;
+   v_U8_t                      acsScanBandPreference;
+   v_U16_t                     acsBandSwitchThreshold;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

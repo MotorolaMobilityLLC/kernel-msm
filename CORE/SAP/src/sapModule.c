@@ -593,6 +593,7 @@ WLANSAP_StartBss
         /* Channel selection is auto or configured */
         pSapCtx->channel = pConfig->channel;
         pSapCtx->scanBandPreference = pConfig->scanBandPreference;
+        pSapCtx->acsBandSwitchThreshold = pConfig->acsBandSwitchThreshold;
         pSapCtx->pUsrContext = pUsrContext;
 
         //Set the BSSID to your "self MAC Addr" read the mac address from Configuation ITEM received from HDD
@@ -1324,7 +1325,7 @@ WLANSAP_DeauthSta
 ============================================================================*/
 VOS_STATUS
 WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
-                              v_U8_t operatingBand)
+                              eSapOperatingBand operatingBand)
 {
 
     v_U8_t    validChannelFlag =0;

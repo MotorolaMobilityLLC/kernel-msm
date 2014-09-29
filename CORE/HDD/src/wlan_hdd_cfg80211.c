@@ -6171,6 +6171,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
         pConfig->scanBandPreference = psmeConfig->csrConfig.scanBandPreference;
         vos_mem_free(psmeConfig);
     }
+    pConfig->acsBandSwitchThreshold = iniConfig->acsBandSwitchThreshold;
 
     pSapEventCallback = hdd_hostapd_SAPEventCB;
     if(WLANSAP_StartBss(pVosContext, pSapEventCallback, pConfig,
