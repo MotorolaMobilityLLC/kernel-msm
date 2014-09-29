@@ -168,10 +168,11 @@ WLANSAP_ScanCallback
             // Get scan results, Run channel selection algorithm, select channel and keep in pSapContext->Channel
             scanGetResultStatus = sme_ScanGetResult(halHandle, 0, NULL, &pResult);
 
-            if ((NULL == pResult) || (scanGetResultStatus != eHAL_STATUS_SUCCESS))
+            if ((scanGetResultStatus != eHAL_STATUS_SUCCESS)&& (scanGetResultStatus != eHAL_STATUS_E_NULL_VALUE))
             {
                 // No scan results
-                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, sme_ScanGetResult = NULL", __func__);
+                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, Get scan result failed! ret = %d",
+                                __func__, scanGetResultStatus);
                 break;
             }
 
