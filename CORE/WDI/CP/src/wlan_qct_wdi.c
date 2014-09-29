@@ -21185,6 +21185,8 @@ WDI_ProcessTdlsInd
   wdiInd.wdiIndicationData.wdiTdlsIndInfo.reasonCode
                           = halTdlsIndMsg.tdlsIndParams.reasonCode;
 
+  wdiInd.wdiIndicationData.wdiTdlsIndInfo.assocId
+                          = halTdlsIndMsg.tdlsIndParams.assocId;
   /*Notify UMAC*/
   pWDICtx->wdiLowLevelIndCB( &wdiInd, pWDICtx->pIndUserData );
 
