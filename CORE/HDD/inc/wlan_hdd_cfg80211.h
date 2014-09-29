@@ -154,6 +154,7 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_TDLS_DISABLE = 35,
     QCA_NL80211_VENDOR_SUBCMD_TDLS_GET_STATUS = 36,
     QCA_NL80211_VENDOR_SUBCMD_TDLS_STATE = 37,
+    QCA_NL80211_VENDOR_SUBCMD_MAC_OUI = 39
 };
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -779,6 +780,14 @@ enum qca_wlan_vendor_attr_extscan_results
 };
 
 #endif /* WLAN_FEATURE_EXTSCAN */
+enum qca_wlan_vendor_attr_set_scanning_mac_oui{
+    QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI_INVALID = 0,
+    QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI = 1,
+    /* keep last */
+    QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI_AFTER_LAST,
+    QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI_MAX =
+        QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI_AFTER_LAST - 1,
+};
 
 /* Vendor id to be used in vendor specific command and events
  * to user space. Use QCA OUI 00:13:74 to match with define in
