@@ -38,6 +38,8 @@ Optional subnodes:
    measurements.
 
 Required "maxim,configuration" node properties :
+ - version: version of the configuration data. Update revision to force
+   device being reprogramed without POR event.
  - config : CONFIG register value (u16) specific to the device application.
  - full_soc_thresh : FullSOCThr register value (u16). The appnote has a
    recommended value.
