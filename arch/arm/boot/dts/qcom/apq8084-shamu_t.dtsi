@@ -55,6 +55,10 @@
 	sound {
 		qcom,model = "apq8084-taiko-tfa9890_stereo_codec-snd-card";
 		qcom,ext_hs_detect = "fsa8500";
+		qcom,tfa9890-stereo;
+		qcom,tfa9890-left-name = "tfa9890.8-0034";
+		qcom,tfa9890-right-name = "tfa9890.8-0035";
+		qcom,tfa9890-earpiece-gpio = <&msmgpio 130 0>;
 	};
 
 	qcom,msm-dai-stub {
@@ -495,6 +499,7 @@
 			&disp_v1_en_default
 			&ter_auxpcm_default
 			&bt_wakeup_default
+			&tfa9890_earpiece_default
 			&bcm4356_wake_default
 		>;
 
@@ -525,6 +530,18 @@
 		label = "bcm4356_wake";
 		bcm4356_wake_default: default {
 			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
+	/* tfa9890 earpiece */
+	tfa9890_earpiece_en {
+		qcom,pins = <&gp 130>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "tfa9890_earpiece";
+		tfa9890_earpiece_default: default {
+			bias-disable;
 			drive-strength = <2>;
 		};
 	};
