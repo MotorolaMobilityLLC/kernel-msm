@@ -744,10 +744,15 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				/* Has charger been detected? If no detect it */
 				switch (charger->chg_type) {
 				case DWC3_DCP_CHARGER:
-				case DWC3_PROPRIETARY_CHARGER:
 					dev_dbg(phy->dev, "lpm, DCP charger\n");
 					dwc3_otg_set_power(phy,
 							DWC3_IDEV_CHG_MAX);
+					pm_runtime_put_sync(phy->dev);
+					break;
+				case DWC3_PROPRIETARY_CHARGER:
+					dev_dbg(phy->dev, "lpm, Prop charger\n");
+					dwc3_otg_set_power(phy,
+							DWC3_IDEV_CHG_PROP);
 					pm_runtime_put_sync(phy->dev);
 					break;
 				case DWC3_CDP_CHARGER:
@@ -835,7 +840,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			dwc3_otg_start_peripheral(&dotg->otg, 0);
 			phy->state = OTG_STATE_B_IDLE;
 			if (charger)
-				charger->chg_type = DWC3_DCP_CHARGER;
+				charger->chg_type = DWC3_PROPRIETARY_CHARGER;
 			clear_bit(B_FALSE_SDP, &dotg->inputs);
 			work = 1;
 		} else if (!test_bit(B_SESS_VLD, &dotg->inputs) ||
