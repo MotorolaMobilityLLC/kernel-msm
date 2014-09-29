@@ -188,8 +188,10 @@
 #define M_PROXIMITY		0x000002
 #define M_TOUCH			0x000004
 #define M_COVER			0x000008
+#define M_HEADSET               0x000020
 #define M_INIT_COMPLETE         0x000040
 #define M_HUB_RESET		0x000080
+
 
 #define M_FLATUP		0x000100
 #define M_FLATDOWN		0x000200
@@ -352,6 +354,8 @@ struct stm_response {
 
 #define MOTION_DATA                     0x2D
 
+#define HEADSET_DATA                    0x2F
+
 #define PROX_SETTINGS                   0x33
 
 #define LUX_TABLE_VALUES                0x34
@@ -453,6 +457,7 @@ struct stm_response {
 #define DOCK_STATE	0
 #define PROX_DISTANCE	0
 #define COVER_STATE	0
+#define HEADSET_STATE   0
 #define TOUCH_REASON	1
 #define FLAT_UP		0
 #define FLAT_DOWN	0
