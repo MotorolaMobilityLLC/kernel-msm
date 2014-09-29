@@ -198,6 +198,20 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Cover status: %d", state);
 	}
+	if (irq_status & M_HEADSET) {
+		int state;
+		err = stml0xx_spi_send_read_reg(HEADSET_DATA, buf, 1);
+		if (err < 0) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Reading Headset state failed");
+			goto EXIT;
+		}
+
+		state = buf[HEADSET_STATE];
+
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Headset state: 0x%02x", state);
+	}
 	if (irq_status & M_INIT_COMPLETE) {
 		/* set the init complete register, */
 		/* to let the hub know it was received */
