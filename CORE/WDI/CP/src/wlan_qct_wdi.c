@@ -189,6 +189,8 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
 #endif
    ,DYNAMIC_WMM_PS                 //43
 
+   ,MAC_SPOOFED_SCAN               //44
+
 };
 
 /*-------------------------------------------------------------------------- 
@@ -451,6 +453,7 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
   NULL,
   NULL,
 #endif /* WLAN_FEATURE_EXTSCAN */
+  WDI_ProcessSpoofMacAddrReq,       /* WDI_SPOOF_MAC_ADDR_REQ */
   /*-------------------------------------------------------------------------
     Indications
   -------------------------------------------------------------------------*/
@@ -710,6 +713,7 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
     NULL,
     NULL,
 #endif /* WLAN_FEATURE_EXTSCAN */
+    WDI_ProcessSpoofMacAddrRsp,                /* WDI_SPOOF_MAC_ADDR_RSP */
   /*---------------------------------------------------------------------
     Indications
   ---------------------------------------------------------------------*/
@@ -1127,6 +1131,7 @@ static char *WDI_getReqMsgString(wpt_uint16 wdiReqMsgId)
     CASE_RETURN_STRING( WDI_EXTSCAN_SET_SIGNF_RSSI_CHANGE_REQ);
     CASE_RETURN_STRING( WDI_EXTSCAN_RESET_SIGNF_RSSI_CHANGE_REQ);
 #endif /* WLAN_FEATURE_EXTSCAN */
+    CASE_RETURN_STRING( WDI_SPOOF_MAC_ADDR_REQ);
     default:
         return "Unknown WDI MessageId";
   }
@@ -1384,6 +1389,10 @@ void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
 
                      case DYNAMIC_WMM_PS: snprintf(pCapStr, sizeof("DYNAMIC_WMM_PS"), "%s", "DYNAMIC_WMM_PS");
                           pCapStr += strlen("DYNAMIC_WMM_PS");
+                          break;
+
+                     case MAC_SPOOFED_SCAN: snprintf(pCapStr, sizeof("MAC_SPOOFED_SCAN"), "%s", "MAC_SPOOFED_SCAN");
+                          pCapStr += strlen("MAC_SPOOFED_SCAN");
                           break;
 
                  }
@@ -23840,6 +23849,8 @@ WDI_2_HAL_REQ_TYPE
   case WDI_EXTSCAN_RESET_SIGNF_RSSI_CHANGE_REQ:
        return WLAN_HAL_SIG_RSSI_RESET_REQ;
 #endif /* WLAN_FEATURE_EXTSCAN */
+  case WDI_SPOOF_MAC_ADDR_REQ:
+       return WLAN_HAL_MAC_SPOOFED_SCAN_REQ;
   default:
     return WLAN_HAL_MSG_MAX;
   }
@@ -24151,6 +24162,8 @@ case WLAN_HAL_DEL_STA_SELF_RSP:
   case WLAN_HAL_SIG_RSSI_RESULT_IND:
        return WDI_HAL_EXTSCAN_SIG_RSSI_RESULT_IND;
 #endif /* WLAN_FEATURE_EXTSCAN */
+  case WLAN_HAL_MAC_SPOOFED_SCAN_RSP:
+       return WDI_SPOOF_MAC_ADDR_RSP;
 
   default:
     return eDRIVER_TYPE_MAX;
@@ -25167,6 +25180,10 @@ WDI_ExtractRequestCBFromEvent
     break;
 #endif
 
+  case WDI_SPOOF_MAC_ADDR_REQ:
+    *ppfnReqCB   =  ((WDI_GtkOffloadGetInfoReqMsg*)pEvent->pEventData)->wdiReqStatusCB;
+    *ppUserData  =  ((WDI_GtkOffloadGetInfoReqMsg*)pEvent->pEventData)->pUserData;
+    break;
   default:
     *ppfnReqCB   =  NULL;
     *ppUserData  =  NULL;
@@ -33275,3 +33292,172 @@ WDI_ProcessEXTScanResetSignfRSSIChangeRsp
   return WDI_STATUS_SUCCESS;
 }
 #endif /* WLAN_FEATURE_EXTSCAN */
+
+/**
+ @brief WDI_SetSpoofMacAddrReq: Send Spoof Mac Addr request to FW
+
+ @param None
+
+ @see
+
+ @return Status of the request
+*/
+WDI_Status
+WDI_SetSpoofMacAddrReq
+(
+  WDI_SpoofMacAddrInfoType*      pWdiReq,
+  WDI_SetSpoofMacAddrRspCb       spoofMacAddrRspCb,
+  void*                          pUserData)
+{
+    WDI_EventInfoType      wdiEventData;
+
+    /*-------------------------------------------------------------------------
+      Sanity Check
+      ------------------------------------------------------------------------*/
+    if (eWLAN_PAL_FALSE == gWDIInitialized)
+    {
+        WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                "WDI API call before module is initialized - Fail request!");
+
+        return WDI_STATUS_E_NOT_ALLOWED;
+    }
+
+    /*-------------------------------------------------------------------------
+      Fill in Event data and post to the Main FSM
+      ------------------------------------------------------------------------*/
+    wdiEventData.wdiRequest      = WDI_SPOOF_MAC_ADDR_REQ;
+    wdiEventData.pEventData      = pWdiReq;
+    wdiEventData.uEventDataSize  = sizeof(WDI_SpoofMacAddrInfoType);
+    wdiEventData.pCBfnc          = spoofMacAddrRspCb;
+    wdiEventData.pUserData       = pUserData;
+
+    return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+/**
+ @brief Process SpoofMacAddr Request
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessSpoofMacAddrReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+    WDI_SpoofMacAddrInfoType*      wdiSpoofMacAddr;
+    wpt_uint8*                     pSendBuffer  = NULL;
+    wpt_uint16                     usDataOffset = 0;
+    wpt_uint16                     usSendSize   = 0;
+    WDI_Status                     wdiStatus;
+    tMacSpoofedScanReqMsg          halWlanSpoofMacAddr;
+    WDI_SetSpoofMacAddrRspCb       wdiMacAddrSpoofCb;
+
+
+    VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+            "%s: %d Enter",__func__, __LINE__);
+
+    /*-------------------------------------------------------------------------
+      Sanity check
+      -------------------------------------------------------------------------*/
+    if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+            ( NULL == pEventData->pEventData))
+    {
+        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                "%s: Invalid parameters", __func__);
+        WDI_ASSERT(0);
+        return WDI_STATUS_E_FAILURE;
+    }
+    wdiSpoofMacAddr = (WDI_SpoofMacAddrInfoType *)pEventData->pEventData;
+
+    /*-----------------------------------------------------------------------
+      Get message buffer
+      -----------------------------------------------------------------------*/
+    if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx,
+                    WDI_SPOOF_MAC_ADDR_REQ,
+                    sizeof(halWlanSpoofMacAddr.tMacSpoofedScanReqParams),
+                    &pSendBuffer, &usDataOffset, &usSendSize))||
+            (usSendSize < (usDataOffset +
+            sizeof(halWlanSpoofMacAddr.tMacSpoofedScanReqParams))))
+    {
+        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
+                "Unable to get send buffer in Process Spoof Mac Addr Req");
+        WDI_ASSERT(0);
+        return WDI_STATUS_E_FAILURE;
+    }
+
+    wpalMemoryCopy(halWlanSpoofMacAddr.tMacSpoofedScanReqParams.macAddr,
+            wdiSpoofMacAddr->macAddr,
+            sizeof(halWlanSpoofMacAddr.tMacSpoofedScanReqParams.macAddr));
+
+    wdiMacAddrSpoofCb   = (WDI_SetSpoofMacAddrRspCb)pEventData->pCBfnc;
+
+    wpalMemoryCopy( pSendBuffer+usDataOffset,
+        &halWlanSpoofMacAddr.tMacSpoofedScanReqParams,
+        sizeof(halWlanSpoofMacAddr.tMacSpoofedScanReqParams));
+
+    /*-------------------------------------------------------------------------
+      Send Suspend Request to HAL
+      -------------------------------------------------------------------------*/
+    wdiStatus = WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
+    wdiMacAddrSpoofCb, pEventData->pUserData, WDI_SPOOF_MAC_ADDR_RSP);
+
+    return  wdiStatus;
+}
+
+/**
+ @brief Process Spoof Mac Address Rsp function
+        (called when a response is being received over the bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessSpoofMacAddrRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  tMacSpoofedScanResp          halRsp;
+  WDI_SetSpoofMacAddrRspCb     wdiSpoofMacAddrRspCb;
+  WDI_SpoofMacAddrRspParamType wdiSpoofMacAddrRsp;
+
+  VOS_TRACE( VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_INFO,
+                  "%s: %d Enter",__func__, __LINE__);
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+  wdiSpoofMacAddrRspCb = (WDI_SetSpoofMacAddrRspCb)pWDICtx->pfncRspCB;
+
+  /*-------------------------------------------------------------------------
+    Extract response and send it to UMAC
+  -------------------------------------------------------------------------*/
+  wpalMemoryCopy( &halRsp,
+                  pEventData->pEventData, sizeof(halRsp));
+
+  wdiSpoofMacAddrRsp.wdiStatus = WDI_HAL_2_WDI_STATUS(halRsp.status);
+
+  /*Notify UMAC*/
+  wdiSpoofMacAddrRspCb(
+          &wdiSpoofMacAddrRsp, pWDICtx->pRspCBUserData);
+
+  return WDI_STATUS_SUCCESS;
+}

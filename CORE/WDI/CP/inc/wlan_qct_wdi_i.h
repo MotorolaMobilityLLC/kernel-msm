@@ -463,6 +463,8 @@ typedef enum
   WDI_EXTSCAN_RESET_SIGNF_RSSI_CHANGE_REQ        = 100,
 #endif
 
+  WDI_SPOOF_MAC_ADDR_REQ                         = 101,
+
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -787,6 +789,7 @@ typedef enum
   WDI_EXTSCAN_SET_SIGNF_RSSI_CHANGE_RSP          = 99,
   WDI_EXTSCAN_RESET_SIGNF_RSSI_CHANGE_RSP        = 100,
 #endif
+  WDI_SPOOF_MAC_ADDR_RSP                         = 101,
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
@@ -6059,6 +6062,19 @@ WDI_delBaInd
 (
    WDI_ControlBlockType*  pWDICtx,
    WDI_EventInfoType*     pEventData
+);
+
+WDI_Status
+WDI_ProcessSpoofMacAddrReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+WDI_Status
+WDI_ProcessSpoofMacAddrRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
 );
 
 #endif /*WLAN_QCT_WDI_I_H*/

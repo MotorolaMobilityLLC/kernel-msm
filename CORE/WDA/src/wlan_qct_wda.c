@@ -4983,6 +4983,41 @@ void WDA_RemoveBssKeyReqCallback(WDI_Status status, void* pUserData)
    WDA_SendMsg(pWDA, WDA_REMOVE_BSSKEY_RSP, (void *)removeBssKeyParams , 0) ;
    return ;
 }
+
+/*
+ * FUNCTION: WDA_SpoofMacAddrRspCallback
+ * recieves spoof mac addr response from FW
+ */
+void WDA_SpoofMacAddrRspCallback(WDI_SpoofMacAddrRspParamType* wdiRsp, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_CbContext *pWDA;
+   tSirSpoofMacAddrReq *spoofMacAddrReq;
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "<------ %s " ,__func__);
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+
+   pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
+   spoofMacAddrReq = (tSirSpoofMacAddrReq *)pWdaParams->wdaMsgParam ;
+
+   if(wdiRsp->wdiStatus != WDI_STATUS_SUCCESS )
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: Unable to set Random Mac Addr in FW", __func__);
+   }
+
+   vos_mem_free(spoofMacAddrReq);
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   vos_mem_free(pWdaParams);
+   return ;
+}
+
 /*
  * FUNCTION: WDA_ProcessRemoveBssKeyReq
  * Request to WDI to remove the BSS key( key for broadcast/multicast 
@@ -12377,6 +12412,63 @@ static VOS_STATUS WDA_ProcessDHCPStartInd (tWDA_CbContext *pWDA,
  }
 
 /*
+ * FUNCTION: WDA_ProcessSetSpoofMacAddrReq
+ *
+ * DESCRIPTION: This function sends Spoof Mac Addr Req to WDI
+ *
+ * PARAM:
+ * pWDA: pointer to WDA context
+ * pReq: pointer to stop batch scan request
+ */
+VOS_STATUS WDA_ProcessSetSpoofMacAddrReq(tWDA_CbContext *pWDA,
+                               tpSpoofMacAddrReqParams pReq)
+{
+    WDI_Status wdiStatus;
+    WDI_SpoofMacAddrInfoType *WDI_SpoofMacAddrInfoParams;
+    tWDA_ReqParams *pWdaParams;
+
+    WDI_SpoofMacAddrInfoParams = (WDI_SpoofMacAddrInfoType *)vos_mem_malloc(
+        sizeof(WDI_SpoofMacAddrInfoType));
+    if(NULL == WDI_SpoofMacAddrInfoParams) {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure in Spoof Req", __func__);
+        VOS_ASSERT(0);
+        return VOS_STATUS_E_NOMEM;
+    }
+    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
+    if(NULL == pWdaParams) {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+        VOS_ASSERT(0);
+        return VOS_STATUS_E_NOMEM;
+    }
+
+    vos_mem_copy(WDI_SpoofMacAddrInfoParams->macAddr,
+        pReq->macAddr, VOS_MAC_ADDRESS_LEN);
+
+    pWdaParams->pWdaContext = pWDA;
+    /* Store Upper layer req pointer, as this will be used for response */
+    pWdaParams->wdaMsgParam = (void *)pReq ;
+    /* store Params pass it to WDI */
+    pWdaParams->wdaWdiApiMsgParam = (void *)WDI_SpoofMacAddrInfoParams ;
+
+    wdiStatus = WDI_SetSpoofMacAddrReq(WDI_SpoofMacAddrInfoParams,
+        (WDI_SetSpoofMacAddrRspCb) WDA_SpoofMacAddrRspCallback,
+        pWdaParams );
+
+    if(IS_WDI_STATUS_FAILURE(wdiStatus))
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+         "Failure in SetSpoofMacAddrReq Params WDI API, free all the memory " );
+        vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
+        vos_mem_free(pWdaParams->wdaMsgParam);
+        vos_mem_free(pWdaParams);
+    }
+
+    return CONVERT_WDI2VOS_STATUS(wdiStatus) ;
+}
+
+/*
  * FUNCTION: WDA_McProcessMsg
  * Trigger DAL-AL to start CFG download 
  */ 
@@ -13186,6 +13278,11 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
           break;
       }
 #endif
+      case WDA_SPOOF_MAC_ADDR_REQ:
+      {
+          WDA_ProcessSetSpoofMacAddrReq(pWDA, (tpSpoofMacAddrReqParams)pMsg->bodyptr);
+          break;
+      }
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
