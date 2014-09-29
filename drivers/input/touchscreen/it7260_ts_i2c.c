@@ -149,6 +149,7 @@ struct IT7260_ts_data {
 	struct input_dev *input_dev;
 	struct delayed_work palmdown_work;
 	struct delayed_work palmup_work;
+	struct delayed_work afterpalm_work;
 };
 
 struct ite7260_perfile_data {
@@ -767,6 +768,13 @@ static void sendPalmUpEvt(struct work_struct *work) {
 	input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
 	input_sync(gl_ts->input_dev);
 	isDeviceSuspend = true;
+	queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
+}
+
+static void waitNotifyEvt(struct work_struct *work) {
+	if (!isDeviceSleeping){
+		isDeviceSuspend = false;
+	}
 }
 
 static void sendWakeEvt(void)
@@ -823,6 +831,7 @@ static void readTouchDataPoint(void)
 			input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
 			input_sync(gl_ts->input_dev);
 			isDeviceSuspend = true;
+			queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
 			lastPalmKnockCand = false;
 		} else if (timeSinceDown <= MS_PALM_FOR_KNOCK_EVT) {
 
@@ -851,6 +860,7 @@ static void readTouchDataPoint(void)
 			input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
 			input_sync(gl_ts->input_dev);
 			isDeviceSuspend = true;
+			queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
 		}
 		lastPalmUpTime = curPalmUpTime;
 	}
@@ -906,7 +916,7 @@ static void readTouchDataPoint_Ambient(void)
 	
 	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
 		readFingerData(&x, &y, &pressure, pointData.fd);
-	
+
 	if (pressure >= FD_PRESSURE_LIGHT) {
 
 		if (!hadFingerDown) 
@@ -926,15 +936,14 @@ static void readTouchDataPoint_Ambient(void)
 			isDeviceSuspend = true;
 		}
 		wake_unlock(&touch_lock);
+	} else if (pressure == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
+		isDeviceSuspend = true;
+		wake_unlock(&touch_lock);
 	}
 	
 	}else if (isDeviceSuspend){
 		msleep(10);
-		if (longPalm){
-			longPalm = false;
-		} else {
-			wake_lock(&touch_lock);
-		}
+		wake_lock(&touch_lock);
 		isDeviceSuspend = false;
 		suspend_touch_down = getMsTime();
 		readTouchDataPoint_Ambient();
@@ -1064,6 +1073,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		
 	INIT_DELAYED_WORK(&gl_ts->palmdown_work, sendPalmDownEvt);
 	INIT_DELAYED_WORK(&gl_ts->palmup_work, sendPalmUpEvt);
+	INIT_DELAYED_WORK(&gl_ts->afterpalm_work, waitNotifyEvt);
 	
 	if (input_register_device(input_dev)) {
 		LOGE("failed to register input device\n");
