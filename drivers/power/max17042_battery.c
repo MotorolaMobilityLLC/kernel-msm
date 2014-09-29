@@ -73,6 +73,7 @@ CONFIG_TS_BIT_ENBL | CONFIG_SS_BIT_ENBL)
 
 #define INIT_DATA_PROPERTY		"maxim,regs-init-data"
 #define CONFIG_NODE			"maxim,configuration"
+#define VERSION_PROPERTY		"version"
 #define CONFIG_PROPERTY			"config"
 #define FULL_SOC_THRESH_PROPERTY	"full_soc_thresh"
 #define DESIGN_CAP_PROPERTY		"design_cap"
@@ -787,6 +788,9 @@ static void max17042_init_worker(struct work_struct *work)
 	}
 
 	chip->init_complete = 1;
+	if (chip->chip_type == MAX17047)
+		max17042_write_reg(chip->client, MAX17047_Config_Ver,
+					chip->pdata->config_data->version);
 }
 
 #ifdef CONFIG_OF
@@ -895,6 +899,10 @@ static int max17042_cfg_rqrd_prop(struct device *dev,
 				  struct device_node *np,
 				  struct max17042_config_data *config_data)
 {
+	if (of_property_read_u16(np, VERSION_PROPERTY,
+				 &config_data->version))
+		return -EINVAL;
+
 	if (of_property_read_u16(np, CONFIG_PROPERTY,
 				 &config_data->config))
 		return -EINVAL;
@@ -1198,6 +1206,20 @@ static struct attribute_group max17042_attr_group = {
 	.attrs = max17042_attrs,
 };
 
+static bool max17042_new_config_data(struct max17042_chip *chip)
+{
+	int ret;
+
+	if (chip->chip_type != MAX17047)
+		return false;
+
+	ret = max17042_read_reg(chip->client, MAX17047_Config_Ver);
+	if (ret < 0)
+		return false;
+
+	return (chip->pdata->config_data->version != ret);
+}
+
 static int max17042_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -1287,7 +1309,7 @@ static int max17042_probe(struct i2c_client *client,
 	}
 
 	reg = max17042_read_reg(chip->client, MAX17042_STATUS);
-	if (reg & STATUS_POR_BIT) {
+	if (reg & STATUS_POR_BIT || max17042_new_config_data(chip)) {
 		INIT_WORK(&chip->work, max17042_init_worker);
 		schedule_work(&chip->work);
 	} else {

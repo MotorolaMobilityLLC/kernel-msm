@@ -120,6 +120,7 @@ enum max17042_register {
 enum max17047_register {
 	MAX17047_QRTbl00	= 0x12,
 	MAX17047_FullSOCThr	= 0x13,
+	MAX17047_Config_Ver	= 0x20,	/* Reserved register */
 	MAX17047_QRTbl10	= 0x22,
 	MAX17047_QRTbl20	= 0x32,
 	MAX17047_V_empty	= 0x3A,
@@ -139,6 +140,8 @@ struct max17042_reg_data {
 };
 
 struct max17042_config_data {
+	/* Increment version for new config data to be programed */
+	u16 version;
 	/* External current sense resistor value in milli-ohms */
 	u32	cur_sense_val;
 
