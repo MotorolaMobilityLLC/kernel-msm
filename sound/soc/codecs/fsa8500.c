@@ -36,6 +36,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/uaccess.h>
+#include <linux/console.h>
 #include <linux/fsa8500.h>
 #include <sound/soc.h>
 #include <sound/jack.h>
@@ -188,6 +189,15 @@ error:
 	return retval;
 }
 
+static int fsa8500_check_console(void)
+{
+	struct console *con;
+	for_each_console(con)
+		if (!strncmp(con->name, "tty", 3))
+			return 1;
+	return 0;
+}
+
 static void fsa8500_initialize(struct fsa8500_platform_data *pdata,
 				struct fsa8500_data *fsa8500)
 {
@@ -204,7 +214,15 @@ static void fsa8500_initialize(struct fsa8500_platform_data *pdata,
 		if (retval != 0)
 			goto error;
 	}
+	/* Disable UART detection if console is not configured
+		to help with TTY detection */
 
+	if (!fsa8500_check_console()) {
+		pr_debug("%s: Console isn't set. Disable UART detection.\n",
+				__func__);
+		fsa8500_reg_write(fsa8500, FSA8500_CONTROL2,
+					FSA8500_UART_OFF, FSA8500_UART_OFF);
+	}
 	pr_info("fsa8500_initialize success\n");
 error:
 	return;
