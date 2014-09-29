@@ -11,7 +11,7 @@
  */
 
 &soc {
-	vibrator@fd8C3420 {
+	vibrator: vibrator@fd8C3420 {
 		status = "ok";
 		compatible = "msm,pwm_vibrator";
 		reg = <0xfd8C3420 0x400>;

@@ -13,6 +13,8 @@
 &spmi_bus {
 	qcom,pm8226@0 {
 		qcom,power-on@800 {
+			qcom,external-vibrator = <&vibrator>;
+			qcom,longkey-warn-time = <6000>;
 			qcom,pon_2 {
 				status = "disabled";
 			};
