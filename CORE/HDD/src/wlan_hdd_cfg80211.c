@@ -823,11 +823,15 @@ static v_BOOL_t put_wifi_interface_info(tpSirWifiInterfaceInfo stats,
     return TRUE;
 }
 
-static v_BOOL_t put_wifi_iface_stats(tpSirWifiIfaceStat pWifiIfaceStat,
+static v_BOOL_t put_wifi_iface_stats(hdd_adapter_t *pAdapter,
+                            tpSirWifiIfaceStat pWifiIfaceStat,
                                  struct sk_buff *vendor_event)
 {
     int i = 0;
     struct nlattr *wmmInfo;
+    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    WLANTL_InterfaceStatsType *pWifiIfaceStatTL = NULL;
+
     if (FALSE == put_wifi_interface_info(
                                 &pWifiIfaceStat->info,
                                 vendor_event))
@@ -837,6 +841,80 @@ static v_BOOL_t put_wifi_iface_stats(tpSirWifiIfaceStat pWifiIfaceStat,
         return FALSE;
 
     }
+    pWifiIfaceStatTL = (WLANTL_InterfaceStatsType *)
+                             vos_mem_malloc(sizeof(WLANTL_InterfaceStatsType));
+    if (NULL == pWifiIfaceStatTL)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("vos_mem_malloc failed"));
+        return FALSE;
+    }
+
+
+    if ( pWifiIfaceStat->info.state == WIFI_ASSOCIATED)
+    {
+        if (VOS_STATUS_SUCCESS ==
+         WLANTL_CollectInterfaceStats((WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
+                    pHddStaCtx->conn_info.staId[0], pWifiIfaceStatTL))
+        {
+            /* mgmtRx, MgmtActionRx, rxMcast, rxMpdu, rxAmpdu, rssiData are
+             * obtained from TL structure
+             */
+
+            pWifiIfaceStat->mgmtRx = pWifiIfaceStat->beaconRx +
+                pWifiIfaceStatTL->mgmtRx;
+            pWifiIfaceStat->mgmtActionRx = pWifiIfaceStatTL->mgmtActionRx;
+            pWifiIfaceStat->mgmtActionTx = pWifiIfaceStatTL->mgmtActionTx;
+            pWifiIfaceStat->rssiData = pWifiIfaceStatTL->rssiData;
+
+            vos_mem_copy(
+                  (void *) &pWifiIfaceStat->AccessclassStats[WIFI_AC_VO],
+                  (void *) &pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VO],
+                  sizeof(WLANTL_AccessCategoryStatsType));
+
+            vos_mem_copy(
+                  (void *) &pWifiIfaceStat->AccessclassStats[WIFI_AC_VI],
+                  (void *) &pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VI],
+                  sizeof(WLANTL_AccessCategoryStatsType));
+
+            vos_mem_copy(
+                  (void *) &pWifiIfaceStat->AccessclassStats[WIFI_AC_BE],
+                  (void *) &pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BE],
+                  sizeof(WLANTL_AccessCategoryStatsType));
+
+            vos_mem_copy(
+                  (void *) &pWifiIfaceStat->AccessclassStats[WIFI_AC_BK],
+                  (void *) &pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BK],
+                  sizeof(WLANTL_AccessCategoryStatsType));
+        }
+        else
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR, FL("Error in getting stats from TL"));
+        }
+
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_VO].txMpdu =
+            pAdapter->hdd_stats.hddTxRxStats.txFetchedAC[WLANTL_AC_VO];
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_VI].txMpdu =
+            pAdapter->hdd_stats.hddTxRxStats.txFetchedAC[WLANTL_AC_VI];
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_BE].txMpdu =
+            pAdapter->hdd_stats.hddTxRxStats.txFetchedAC[WLANTL_AC_BE];
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_BK].txMpdu =
+            pAdapter->hdd_stats.hddTxRxStats.txFetchedAC[WLANTL_AC_BK];
+
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_VO].txMcast =
+            pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_VO];
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_VI].txMcast =
+            pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_VI];
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_BE].txMcast =
+            pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_BE];
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_BK].txMcast =
+            pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_BK];
+    }
+    else
+    {
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Interface not Associated"));
+    }
+
+
 
     if (nla_put_u32(vendor_event,
                     QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_BEACON_RX,
@@ -850,18 +928,19 @@ static v_BOOL_t put_wifi_iface_stats(tpSirWifiIfaceStat pWifiIfaceStat,
         nla_put_u32(vendor_event,
                     QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_MGMT_ACTION_TX,
                     pWifiIfaceStat->mgmtActionTx) ||
-        nla_put_u32(vendor_event,
+        nla_put_s32(vendor_event,
                     QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_RSSI_MGMT,
                     pWifiIfaceStat->rssiMgmt) ||
-        nla_put_u32(vendor_event,
+        nla_put_s32(vendor_event,
                     QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_RSSI_DATA,
                     pWifiIfaceStat->rssiData) ||
-        nla_put_u32(vendor_event,
+        nla_put_s32(vendor_event,
                     QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_RSSI_ACK,
                     pWifiIfaceStat->rssiAck))
     {
         hddLog(VOS_TRACE_LEVEL_ERROR,
                 FL("QCA_WLAN_VENDOR_ATTR put fail"));
+        vos_mem_free(pWifiIfaceStatTL);
         return FALSE;
     }
 
@@ -877,12 +956,14 @@ static v_BOOL_t put_wifi_iface_stats(tpSirWifiIfaceStat pWifiIfaceStat,
         {
             hddLog(VOS_TRACE_LEVEL_ERROR,
                     FL("QCA_WLAN_VENDOR_ATTR put Fail"));
+            vos_mem_free(pWifiIfaceStatTL);
             return FALSE;
         }
 
         nla_nest_end(vendor_event, wmmStats);
     }
     nla_nest_end(vendor_event, wmmInfo);
+    vos_mem_free(pWifiIfaceStatTL);
     return TRUE;
 }
 
@@ -1153,6 +1234,25 @@ static v_VOID_t hdd_link_layer_process_iface_stats(hdd_adapter_t *pAdapter,
 
     pWifiIfaceStat = (tpSirWifiIfaceStat) pData;
 
+
+    if (FALSE == hdd_get_interface_info( pAdapter,
+                                        &pWifiIfaceStat->info))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               FL("hdd_get_interface_info get fail") );
+        kfree_skb(vendor_event);
+        return;
+    }
+
+    if (FALSE == put_wifi_iface_stats( pAdapter, pWifiIfaceStat,
+                                       vendor_event))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               FL("put_wifi_iface_stats fail") );
+        kfree_skb(vendor_event);
+        return;
+    }
+
     hddLog(VOS_TRACE_LEVEL_INFO,
            "WMI_LINK_STATS_IFACE Data");
 
@@ -1191,9 +1291,9 @@ static v_VOID_t hdd_link_layer_process_iface_stats(hdd_adapter_t *pAdapter,
            " mgmtRx %u "
            " mgmtActionRx  %u "
            " mgmtActionTx %u "
-           " rssiMgmt %u "
-           " rssiData %u "
-           " rssiAck  %u",
+           " rssiMgmt %d "
+           " rssiData %d "
+           " rssiAck  %d",
            pWifiIfaceStat->beaconRx,
            pWifiIfaceStat->mgmtRx,
            pWifiIfaceStat->mgmtActionRx,
@@ -1243,23 +1343,6 @@ static v_VOID_t hdd_link_layer_process_iface_stats(hdd_adapter_t *pAdapter,
         }
     }
 
-    if (FALSE == hdd_get_interface_info( pAdapter,
-                                        &pWifiIfaceStat->info))
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR,
-               FL("hdd_get_interface_info get fail") );
-        kfree_skb(vendor_event);
-        return;
-    }
-
-    if (FALSE == put_wifi_iface_stats( pWifiIfaceStat,
-                                       vendor_event))
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR,
-               FL("put_wifi_iface_stats fail") );
-        kfree_skb(vendor_event);
-        return;
-    }
     cfg80211_vendor_event(vendor_event, GFP_KERNEL);
 }
 

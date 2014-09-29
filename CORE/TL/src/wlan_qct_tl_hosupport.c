@@ -882,13 +882,99 @@ VOS_STATUS WLANTL_HSGetRSSI
    return status;
 }
 
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+
+/*==========================================================================
+
+   FUNCTION WLANTL_HSGetDataRSSI
+
+   DESCRIPTION
+
+   PARAMETERS
+
+   RETURN VALUE
+
+============================================================================*/
+VOS_STATUS WLANTL_HSGetDataRSSI
+(
+   v_PVOID_t        pAdapter,
+   v_PVOID_t        pBDHeader,
+   v_U8_t           STAid,
+   v_S7_t          *currentAvgRSSI
+)
+{
+   WLANTL_CbType   *tlCtxt = VOS_GET_TL_CB(pAdapter);
+   VOS_STATUS       status = VOS_STATUS_SUCCESS;
+   v_S7_t           currentRSSI, currentRSSI0, currentRSSI1;
+   WLANTL_CURRENT_HO_STATE_TYPE *currentHO = NULL;
+
+
+   if(NULL == tlCtxt)
+   {
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                  "Invalid TL handle"));
+      return VOS_STATUS_E_INVAL;
+   }
+
+   if ( NULL == tlCtxt->atlSTAClients[STAid] )
+   {
+       TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+           "WLAN TL:Client Memory was not allocated on %s", __func__));
+       return VOS_STATUS_E_FAILURE;
+   }
+
+   /*
+    * Compute RSSI only for the last MPDU of an AMPDU.
+    * Only last MPDU carries the Phy Stats Values
+    */
+    if (WDA_IS_RX_AN_AMPDU (pBDHeader)) {
+       if (!WDA_IS_RX_LAST_MPDU(pBDHeader)) {
+           return VOS_STATUS_E_FAILURE;
+          }
+    }
+
+   currentHO = &tlCtxt->hoSupport.currentHOState;
+
+   currentRSSI0 = WLANTL_GETRSSI0(pBDHeader);
+   currentRSSI1 = WLANTL_GETRSSI0(pBDHeader);
+   currentRSSI  = (currentRSSI0 > currentRSSI1) ? currentRSSI0 : currentRSSI1;
+
+   if (0 == currentRSSI)
+      return VOS_STATUS_E_INVAL;
+
+#ifdef WLANTL_HO_UTEST
+   TLHS_UtestHandleNewRSSI(&currentRSSI, pAdapter);
+#endif /* WLANTL_HO_UTEST */
+
+   if(0 == tlCtxt->atlSTAClients[STAid]->rssiDataAvg)
+   {
+      *currentAvgRSSI = currentRSSI;
+   }
+   else
+   {
+      *currentAvgRSSI = ((tlCtxt->atlSTAClients[STAid]->rssiDataAvg  *
+                          tlCtxt->atlSTAClients[STAid]->rssiDataAlpha) +
+                         (currentRSSI *
+                     (10 - tlCtxt->atlSTAClients[STAid]->rssiDataAlpha))) / 10;
+   }
+
+
+   tlCtxt->atlSTAClients[STAid]->rssiDataAvg = *currentAvgRSSI;
+
+   TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
+          "Current new Data RSSI is %d, averaged Data RSSI is %d",
+          currentRSSI, *currentAvgRSSI));
+   return status;
+}
+#endif
+
 /*==========================================================================
 
    FUNCTION
 
-   DESCRIPTION 
-    
-   PARAMETERS 
+   DESCRIPTION
+
+   PARAMETERS
 
    RETURN VALUE
 

@@ -172,12 +172,15 @@ when        who    what, where, why
 #define WLANTL_80211_DATA_TYPE         0x02
 #define WLANTL_80211_DATA_QOS_SUBTYPE  0x08
 #define WLANTL_80211_NULL_QOS_SUBTYPE  0x0C
+#define WLANTL_80211_MGMT_ACTION_SUBTYPE  0x0D
+#define WLANTL_80211_MGMT_ACTION_NO_ACK_SUBTYPE  0x0E
 
 /*Defines for internal utility functions */
 #define WLANTL_FRAME_TYPE_BCAST 0xff
 #define WLANTL_FRAME_TYPE_MCAST 0x01
 #define WLANTL_FRAME_TYPE_UCAST 0x00
 
+#define WLANTL_FRAME_TYPESUBTYPE_MASK 0x3F
 
 /*-------------------------------------------------------------------------
   BT-AMP related definition - !!! should probably be moved to BT-AMP header
@@ -492,6 +495,7 @@ typedef struct
   v_TIME_t              cacheClearTime;
 }WLANTL_CacheInfoType;
 
+
 /*---------------------------------------------------------------------------
   STA Client type
 ---------------------------------------------------------------------------*/
@@ -673,6 +677,20 @@ typedef struct
   v_U8_t ptkInstalled;
 
   v_U32_t       linkCapacity;
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+
+  /* Value of the averaged Data RSSI for this station */
+  v_S7_t                        rssiDataAvg;
+
+  /* Value of the averaged Data RSSI for this station in BMPS */
+  v_S7_t                        rssiDataAvgBmps;
+
+  /* Value of the Alpha to calculate Data RSSI average */
+  v_S7_t                        rssiDataAlpha;
+
+  WLANTL_InterfaceStatsType         interfaceStats;
+#endif
 }WLANTL_STAClientType;
 
 /*---------------------------------------------------------------------------

@@ -325,6 +325,9 @@ typedef struct hdd_tx_rx_stats_s
    __u32    rxRefused;
    __u32    pkt_tx_count; //TX pkt Counter used for dynamic splitscan
    __u32    pkt_rx_count; //RX pkt Counter used for dynamic splitscan
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+   __u32    txMcast[WIFI_AC_MAX];
+#endif
    // tx timeout stats
    __u32    txTimeoutCount;
    __u32    continuousTxTimeoutCount;
