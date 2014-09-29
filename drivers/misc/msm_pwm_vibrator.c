@@ -37,6 +37,7 @@
 #include <mach/msm_iomap.h>
 
 #include "../staging/android/timed_output.h"
+#include <linux/platform_data/msm_pwm_vibrator.h>
 
 #define ANDROID_VIBRATOR_USE_WORKQUEUE
 
@@ -72,33 +73,6 @@ enum {
 	VIB_STAT_WARMUP,
 	VIB_STAT_RUNNING,
 	VIB_STAT_MAX,
-};
-
-struct timed_vibrator_data {
-	struct timed_output_dev dev;
-	struct hrtimer timer;
-	spinlock_t spinlock;
-	struct mutex lock;
-	int max_timeout;
-	int min_timeout;
-	int ms_time;            /* vibrator duration */
-	int status;             /* vibe status */
-	int gain;               /* default max gain(amp) */
-	int pwm;                /* n-value */
-	int braking_gain;
-	int braking_ms;
-	int clk_flag;
-	int haptic_en_gpio;
-	int motor_pwm_gpio;
-	int motor_pwm_func;
-	int warmup_ms;
-	int driving_ms;
-	ktime_t last_time;     /* time stamp */
-	struct delayed_work work_vibrator_off;
-	struct delayed_work work_vibrator_on;
-	bool use_vdd_supply;
-	struct regulator *vdd_reg;
-	const char *clk_name;
 };
 
 static struct clk *cam_clk;
