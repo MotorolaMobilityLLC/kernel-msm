@@ -442,8 +442,9 @@
 		hs_det_micvdd-supply = <&pma8084_l18>;
 		fsa8500-init-regs = <0x0C 0xA1>,
 				    <0x0F 0xF9>,
-				    <0x13 0xAF>,
-				    <0x14 0x79>;
+				    <0x11 0x84>,
+				    <0x13 0xBF>,
+				    <0x14 0x69>;
 
 		fsa8500-keymap = <0x4000000 0xE2>, /* SND_JACK_BTN_0 - KEY_MEDIA */
 				 <0x0400000 0x246>, /* SND_JACK_BTN_4 - KEY_VOICECOMMAND */
