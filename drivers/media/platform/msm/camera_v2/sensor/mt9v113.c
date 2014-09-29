@@ -846,7 +846,7 @@ static int32_t mt9v113_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensor_i2c_client,
 			MT9V113_MCU_VARIABLE_ADDRESS,
 			MT9V113_EXPOSURE_TARGET_REGISTER,
-			MSM_CAMERA_I2C_BYTE_DATA);
+			MSM_CAMERA_I2C_WORD_DATA);
 
 	if (rc < 0) {
 		pr_err("%s: Write AE_BASETARGET register failed\n",
@@ -858,7 +858,7 @@ static int32_t mt9v113_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensor_i2c_client,
 			MT9V113_MCU_VARIABLE_DATA0,
 			target_exposure,
-			MSM_CAMERA_I2C_BYTE_DATA);
+			MSM_CAMERA_I2C_WORD_DATA);
 
 	if (rc < 0) {
 		pr_err("%s: Write target_exposure Value failed\n",
