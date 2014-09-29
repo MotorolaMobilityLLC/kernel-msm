@@ -5467,6 +5467,38 @@ __limProcessSmeResetApCapsChange(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     return;
 }
 
+static void
+__limProcessSmeSpoofMacAddrRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+   tSirMsgQ msg;
+   tpSpoofMacAddrReqParams pSpoofMacAddrParams;
+   tpSirSpoofMacAddrReq pSmeReq = (tpSirSpoofMacAddrReq) pMsgBuf;
+
+   pSpoofMacAddrParams = vos_mem_malloc(sizeof( tSpoofMacAddrReqParams));
+   if ( NULL == pSpoofMacAddrParams )
+   {
+      limLog( pMac, LOGP, FL("Unable to allocate memory for tDelStaSelfParams") );
+      return;
+   }
+
+   vos_mem_copy( pSpoofMacAddrParams->macAddr, pSmeReq->macAddr, sizeof(tSirMacAddr) );
+
+   msg.type = WDA_SPOOF_MAC_ADDR_REQ;
+   msg.reserved = 0;
+   msg.bodyptr =  pSpoofMacAddrParams;
+   msg.bodyval = 0;
+
+   limLog(pMac, LOG1, FL("sending SIR_HAL_SPOOF_MAC_ADDR_REQ msg to HAL"));
+   MTRACE(macTraceMsgTx(pMac, NO_SESSION, msg.type));
+
+   if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
+   {
+      limLog(pMac, LOGP, FL("wdaPostCtrlMsg failed for SIR_HAL_SPOOF_MAC_ADDR_REQ"));
+      vos_mem_free(pSpoofMacAddrParams);
+   }
+   return;
+}
+
 /**
  * limProcessSmeReqMessages()
  *
@@ -5800,6 +5832,10 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
         case eWNI_SME_SET_TX_POWER_REQ:
             limSendSetTxPowerReq(pMac,  pMsgBuf);
+            break ;
+
+        case eWNI_SME_MAC_SPOOF_ADDR_IND:
+            __limProcessSmeSpoofMacAddrRequest(pMac,  pMsgBuf);
             break ;
 
         default:

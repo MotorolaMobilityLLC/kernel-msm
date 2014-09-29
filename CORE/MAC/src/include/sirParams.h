@@ -116,6 +116,8 @@ typedef enum {
 #endif
 
    DYNAMIC_WMM_PS        = 43,
+
+   MAC_SPOOFED_SCAN      = 44,
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 
@@ -681,6 +683,7 @@ typedef struct sSirMbMsgP2p
 #define SIR_HAL_TDLS_CHAN_SWITCH_REQ          (SIR_HAL_ITC_MSG_TYPES_BEGIN + 258)
 #define SIR_HAL_TDLS_CHAN_SWITCH_REQ_RSP      (SIR_HAL_ITC_MSG_TYPES_BEGIN + 259)
 #endif
+#define SIR_HAL_SPOOF_MAC_ADDR_REQ            (SIR_HAL_ITC_MSG_TYPES_BEGIN + 260)
 
 #define SIR_HAL_MSG_TYPES_END              (SIR_HAL_MSG_TYPES_BEGIN + 0x1FF)
 // CFG message types
