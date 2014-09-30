@@ -195,7 +195,7 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0x2715,}, /* Row Speed (A)    */
 	{0x0990, 0x0001,}, /* =1               */
 	{0x098C, 0x2717,}, /* Read Mode (A)    */
-	{0x0990, 0x0026,}, /* =36              */
+	{0x0990, 0x0025,}, /* =37              */
 	{0x098C, 0x2719,}, /* sensor_fine_correction (A) */
 	{0x0990, 0x001A,}, /* =26                        */
 	{0x098C, 0x271B,}, /* sensor_fine_IT_min (A)     */
@@ -217,7 +217,7 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0x272B,}, /* Row Speed (B)                */
 	{0x0990, 0x0001,}, /* =1                           */
 	{0x098C, 0x272D,}, /* Read Mode (B)                */
-	{0x0990, 0x0026,}, /* =36                          */
+	{0x0990, 0x0025,}, /* =37                          */
 	{0x098C, 0x272F,}, /* sensor_fine_correction (B)   */
 	{0x0990, 0x001A,}, /* =26                          */
 	{0x098C, 0x2731,}, /* sensor_fine_IT_min (B)       */
