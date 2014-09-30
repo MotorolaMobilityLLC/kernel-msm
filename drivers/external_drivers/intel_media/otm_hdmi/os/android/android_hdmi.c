@@ -1255,8 +1255,11 @@ edid_is_ready:
 	j = 0;
 	list_for_each_entry_safe(mode, t, &connector->probed_modes, head) {
 		refresh_rate = calculate_refresh_rate(mode);
+		if (mode->vrefresh == 0) {
+			mode->vrefresh = refresh_rate;
+		}
 		pr_debug("Mode %02d: %s %dHz\t Clk: %dKHz H/V: %c,%c"
-			"flags: 0x%08x",
+			"flags: 0x%08x\n",
 			j, mode->name, refresh_rate, mode->clock,
 			(mode->flags & DRM_MODE_FLAG_PHSYNC) ? '+' : '-',
 			(mode->flags & DRM_MODE_FLAG_PVSYNC) ? '+' : '-',
