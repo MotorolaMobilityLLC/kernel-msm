@@ -400,6 +400,7 @@ IMG_VOID OSDumpStack(IMG_VOID);
 
 IMG_VOID OSAcquireBridgeLock(IMG_VOID);
 IMG_VOID OSReleaseBridgeLock(IMG_VOID);
+IMG_BOOL OSIsBridgeLockedByMe(IMG_VOID);
 
 
 /*

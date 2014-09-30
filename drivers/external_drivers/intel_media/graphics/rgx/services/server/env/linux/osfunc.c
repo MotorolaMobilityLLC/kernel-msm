@@ -1962,6 +1962,10 @@ void OSReleaseBridgeLock(void)
 	mutex_unlock(&gPVRSRVLock);
 }
 
+IMG_BOOL OSIsBridgeLockedByMe()
+{
+	return (mutex_is_locked(&gPVRSRVLock) && current == gPVRSRVLock.owner);
+}
 
 /*************************************************************************/ /*!
 @Function       OSCreateStatisticEntry
