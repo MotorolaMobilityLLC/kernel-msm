@@ -2452,7 +2452,9 @@ static void msm_otg_chg_check_timer_func(unsigned long data)
 		dev_dbg(otg->phy->dev, "DCP is detected as SDP\n");
 		set_bit(B_FALSE_SDP, &motg->inputs);
 		queue_work(motg->otg_wq, &motg->sm_work);
+		return;
 	}
+	mod_timer(&motg->chg_check_timer, CHG_RECHECK_DELAY);
 }
 
 static bool msm_chg_aca_detect(struct msm_otg *motg)
