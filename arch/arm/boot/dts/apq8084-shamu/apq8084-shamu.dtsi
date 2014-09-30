@@ -468,6 +468,7 @@
 		rated_voltage = <0x70>;         /* 2.4v */
 		overdrive_voltage = <0x89>;     /* 3.0v */
 		disable_calibration  = <1>;     /* Disable boot-up calibration */
+		static-vdd-supply = <&hdmi_vreg>;
 	};
 
 	tfa9890@34 {
