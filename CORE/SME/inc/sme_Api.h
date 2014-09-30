@@ -3441,4 +3441,7 @@ void sme_SetMiracastMode (tHalHandle hHal,tANI_U8 mode);
 
 void sme_resetCoexEevent(tHalHandle hHal);
 
+tANI_U32 sme_GetChannelBondingMode5G(tHalHandle hHal);
+tANI_U32 sme_GetChannelBondingMode24G(tHalHandle hHal);
+
 #endif //#if !defined( __SME_API_H )

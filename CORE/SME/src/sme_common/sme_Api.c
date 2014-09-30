@@ -2929,6 +2929,39 @@ eCsrPhyMode sme_GetPhyMode(tHalHandle hHal)
 }
 
 /* ---------------------------------------------------------------------------
+    \fn sme_GetChannelBondingMode5G
+    \brief get the channel bonding mode for 5G band
+    \param hHal - HAL handle
+    \return channel bonding mode for 5G
+  ---------------------------------------------------------------------------*/
+tANI_U32 sme_GetChannelBondingMode5G(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    tSmeConfigParams  smeConfig;
+
+    sme_GetConfigParam(pMac, &smeConfig);
+
+    return smeConfig.csrConfig.channelBondingMode5GHz;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_GetChannelBondingMode24G
+    \brief get the channel bonding mode for 2.4G band
+    \param hHal - HAL handle
+    \return channel bonding mode for 2.4G
+  ---------------------------------------------------------------------------*/
+tANI_U32 sme_GetChannelBondingMode24G(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    tSmeConfigParams  smeConfig;
+
+    sme_GetConfigParam(pMac, &smeConfig);
+
+    return smeConfig.csrConfig.channelBondingMode24GHz;
+}
+
+
+/* ---------------------------------------------------------------------------
     \fn sme_RoamConnect
     \brief a wrapper function to request CSR to inititiate an association
     This is an asynchronous call.
