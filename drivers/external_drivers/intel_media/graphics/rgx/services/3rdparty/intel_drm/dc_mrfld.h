@@ -51,6 +51,10 @@ typedef enum {
 	DC_MRFLD_FLIP_CONTEXT,
 } DC_MRFLD_FLIP_OP;
 
+/* ied session clean-up */
+#define MAX_IED_SESSIONS    8
+extern int sepapp_drm_playback(bool ied_status);
+
 /* max count of plane contexts which share the same buffer*/
 #define MAX_CONTEXT_COUNT   3
 

@@ -1541,6 +1541,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 	hdmi_state = 0;
 	dev_priv->ied_enabled = false;
+	dev_priv->ied_force_clean = false;
 	dev_priv->ied_context = NULL;
 
 	drm_hdmi_hpd_auto = 0;
@@ -4195,6 +4196,13 @@ int psb_release(struct inode *inode, struct file *filp)
 	tfile = psb_fpriv(file_priv)->tfile;
 	msvdx_priv = (struct msvdx_private *)dev_priv->msvdx_private;
 
+	/* Set flag to clean-up platform IED state as
+		user space component might have died*/
+	if ((dev_priv->ied_context == file_priv->filp) &&
+					dev_priv->ied_enabled) {
+		dev_priv->ied_force_clean = true;
+		dev_priv->ied_context = NULL;
+	}
 #if 0
 	/*cleanup for msvdx */
 	if (msvdx_priv->tfile == BCVideoGetPriv(file_priv)->tfile) {

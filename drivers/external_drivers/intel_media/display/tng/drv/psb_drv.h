@@ -1071,13 +1071,14 @@ struct drm_psb_private {
 	char buf[256];
 
 	/*
-	 * HDMI config data 
-	 */
+	 * HDMI config data
+	*/
 	void *hdmi_priv;
 
 	/* indicate whether IED session is active */
 	/* Maximum one active IED session at any given time */
 	bool ied_enabled;
+	bool ied_force_clean;
 	/* indicate which source sets ied_enabled flag */
 	struct file *ied_context;
 

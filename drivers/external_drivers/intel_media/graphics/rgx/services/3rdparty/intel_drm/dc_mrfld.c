@@ -453,6 +453,33 @@ static bool disable_unused_planes(int pipe)
 	return ret;
 }
 
+static void disable_ied_session(struct drm_device *dev)
+{
+	struct drm_psb_private *dev_priv = dev->dev_private;
+
+	/* Make sure overlay planes are in-active prior to turning off IED */
+	if (dev_priv->ied_force_clean) {
+		struct plane_state *oa_state =
+			&gpsDevice->plane_states[DC_OVERLAY_PLANE][0];
+		struct plane_state *oc_state =
+			&gpsDevice->plane_states[DC_OVERLAY_PLANE][1];
+		uint32_t ret = 0;
+		if ((oa_state->active == false) &&
+			(oc_state->active == false)) {
+			uint8_t i = MAX_IED_SESSIONS;
+			do {
+				ret = sepapp_drm_playback(false);
+				if (ret) {
+					DRM_ERROR("sepapp_drm_playback failed\
+						IED clean-up: 0x%x\n", ret);
+					break;
+				}
+			} while (i--);
+			dev_priv->ied_enabled = false;
+			dev_priv->ied_force_clean = false;
+		}
+	}
+}
 static void free_flip_states_on_pipe(struct drm_device *psDrmDev, int pipe)
 {
 	struct list_head *psFlipQueue;
@@ -663,6 +690,8 @@ static IMG_BOOL _Do_Flip(DC_MRFLD_FLIP *psFlip, int iPipe)
 
 	if (zorder)
 		_Setup_ZOrder(gpsDevice, zorder, iPipe);
+
+	disable_ied_session(gpsDevice->psDrmDevice);
 
 	disable_unused_planes(iPipe);
 
