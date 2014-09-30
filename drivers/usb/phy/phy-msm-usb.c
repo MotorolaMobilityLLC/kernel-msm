@@ -123,6 +123,7 @@ static struct regulator *vbus_otg;
 static struct regulator *mhl_usb_hs_switch;
 static struct power_supply *psy;
 
+static bool ta_charger_detected;
 static bool aca_id_turned_on;
 static bool legacy_power_supply;
 static inline bool aca_enabled(void)
@@ -3291,8 +3292,12 @@ static void msm_otg_sm_work(struct work_struct *w)
 				case USB_DCP_CHARGER:
 					/* fall through */
 				case USB_PROPRIETARY_CHARGER:
-					msm_otg_notify_charger(motg,
-							IDEV_CHG_MAX);
+					if (ta_charger_detected)
+						msm_otg_notify_charger(motg,
+								IDEV_CHG_TA);
+					else
+						msm_otg_notify_charger(motg,
+						IDEV_CHG_MAX);
 					otg->phy->state =
 						OTG_STATE_B_CHARGER;
 					work = 0;
@@ -3368,6 +3373,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 			pr_debug("chg_work cancel");
 			msm_otg_dbg_log_event(&motg->phy, "CHG_WORK CANCEL",
 					motg->inputs, otg->phy->state);
+			ta_charger_detected = false;
 			del_timer_sync(&motg->chg_check_timer);
 			clear_bit(B_FALSE_SDP, &motg->inputs);
 			clear_bit(A_BUS_REQ, &motg->inputs);
@@ -3454,9 +3460,10 @@ static void msm_otg_sm_work(struct work_struct *w)
 	case OTG_STATE_B_PERIPHERAL:
 		if (test_bit(B_SESS_VLD, &motg->inputs) &&
 				test_bit(B_FALSE_SDP, &motg->inputs)) {
-			pr_debug("B_FALSE_SDP\n");
+			pr_info("B_FALSE_SDP - Might be a TA Charger\n");
 			msm_otg_dbg_log_event(&motg->phy, "B_FALSE_SDP",
 					motg->inputs, otg->phy->state);
+			ta_charger_detected = true;
 			msm_otg_start_peripheral(otg, 0);
 			motg->chg_type = USB_DCP_CHARGER;
 			clear_bit(B_FALSE_SDP, &motg->inputs);
@@ -6106,6 +6113,7 @@ static int msm_otg_remove(struct platform_device *pdev)
 	cancel_delayed_work_sync(&motg->suspend_work);
 	cancel_work_sync(&motg->sm_work);
 	destroy_workqueue(motg->otg_wq);
+	ta_charger_detected = false;
 
 	pm_runtime_resume(&pdev->dev);
 
