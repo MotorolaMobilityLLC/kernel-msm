@@ -177,6 +177,7 @@ struct fifo_packet {
 
 static int packet_counter;
 static int num_remotes;
+static bool card_created = false;
 static int dev;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;  /* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;   /* ID for this card */
@@ -1289,7 +1290,6 @@ static int atvr_snd_initialize(struct hid_device *hdev)
 		}
 	}
 
-	switch_set_state(&h2w_switch, BIT_HEADSET);
 
 	atvr_snd->pcm_hw = atvr_pcm_hardware;
 
@@ -1404,10 +1404,15 @@ static int atvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 		goto err_start;
 	}
 
-	if (num_remotes == 0) {
+	// Lazy-creation of the soundcard, and enable the wired headset only then
+	// to avoid race conditions on subsequent connections.
+	// AudioService.java delays enabling the output
+	if (!card_created) {
 		ret = atvr_snd_initialize(hdev);
 		if (ret)
 			goto err_stop;
+		card_created = true;
+		switch_set_state(&h2w_switch, BIT_HEADSET);
 	}
 	pr_info("%s: num_remotes %d->%d\n", __func__, num_remotes, num_remotes + 1);
 	num_remotes++;
@@ -1423,22 +1428,9 @@ err_match:
 
 static void atvr_remove(struct hid_device *hdev)
 {
-	struct snd_card *card = (struct snd_card *)hid_get_drvdata(hdev);
-
 	pr_info("%s: hdev->name = %s removed, num %d->%d\n",
 		__func__, hdev->name, num_remotes, num_remotes - 1);
 	num_remotes--;
-	if (num_remotes == 0) {
-		/* no more remotes connected, set switch state
-		 * accordingly and destroy snd card.
-		 */
-		switch_set_state(&h2w_switch, BIT_NO_HEADSET);
-
-		if (card) {
-			snd_card_disconnect(card);
-			snd_card_free_when_closed(card);
-		}
-	}
 	hid_hw_stop(hdev);
 }
 
