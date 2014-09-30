@@ -501,6 +501,13 @@ int adm_get_params(int port_id, uint32_t module_id, uint32_t param_id,
 		rc = -EINVAL;
 		goto adm_get_param_return;
 	}
+
+	if (adm_get_parameters[0] < 0) {
+		pr_err("%s: Size is invalid %d\n", __func__,
+			adm_get_parameters[0]);
+		rc = -EINVAL;
+		goto adm_get_param_return;
+	}
 	if ((params_data) && (adm_get_parameters[0] <
 		ARRAY_SIZE(adm_get_parameters))) {
 		for (i = 0; i < adm_get_parameters[0]; i++)
@@ -705,18 +712,26 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 					data->payload_size))
 				break;
 
-			/* payload[3] is the param size, check if payload */
-			/* is big enough and has a valid param size */
-			if ((data->payload_size > (4 * sizeof(uint32_t))) &&
-				(payload[3] <= ADM_GET_PARAMETER_LENGTH) &&
-				(adm_get_parameters[0] <
-				ARRAY_SIZE(adm_get_parameters))) {
-				adm_get_parameters[0] = payload[3];
-				pr_debug("GET_PP PARAM:received parameter length: %x\n",
-						adm_get_parameters[0]);
-				/* storing param size then params */
-				for (i = 0; i < payload[3]; i++)
-					adm_get_parameters[1+i] = payload[4+i];
+			if (payload[0] == 0) {
+				/* payload[3] is the param size, check if payload */
+				/* is big enough and has a valid param size */
+				if ((data->payload_size >
+					(4 * sizeof(uint32_t))) &&
+					(payload[3] <=
+					ADM_GET_PARAMETER_LENGTH) &&
+					(adm_get_parameters[0] <
+					ARRAY_SIZE(adm_get_parameters))) {
+					adm_get_parameters[0] = payload[3];
+					pr_debug("GET_PP PARAM:received parameter length: 0x%x\n",
+							adm_get_parameters[0]);
+					/* storing param size then params */
+					for (i = 0; i < payload[3]; i++)
+						adm_get_parameters[1+i] = payload[4+i];
+				}
+			} else {
+				adm_get_parameters[0] = -1;
+				pr_err("%s: GET_PP_PARAMS failed, setting size to %d\n",
+					__func__, adm_get_parameters[0]);
 			}
 			atomic_set(&this_adm.copp_stat[index], 1);
 			wake_up(&this_adm.wait[index]);
