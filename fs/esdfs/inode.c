@@ -389,22 +389,33 @@ out_err:
 static int esdfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
 		 struct kstat *stat)
 {
-	struct dentry *lower_dentry;
-	struct inode *inode;
-	struct inode *lower_inode;
+	int err;
 	struct path lower_path;
-
-	inode = dentry->d_inode;
+	struct vfsmount *lower_mount;
+	struct dentry *lower_dentry;
+	struct kstat lower_stat;
+	struct inode *lower_inode;
+	struct inode *inode = dentry->d_inode;
 
 	esdfs_get_lower_path(dentry, &lower_path);
+	lower_mount = lower_path.mnt;
 	lower_dentry = lower_path.dentry;
+
+	/* We need the lower getattr to calculate stat->blocks for us. */
+	err = vfs_getattr(lower_mount, lower_dentry, &lower_stat);
+	if (err)
+		goto out;
+
 	lower_inode = esdfs_lower_inode(inode);
-
 	esdfs_copy_attr(inode, lower_inode);
-
+	fsstack_copy_inode_size(inode, lower_inode);
 	generic_fillattr(inode, stat);
+
+	stat->blocks = lower_stat.blocks;
+
+out:
 	esdfs_put_lower_path(dentry, &lower_path);
-	return 0;
+	return err;
 }
 
 const struct inode_operations esdfs_symlink_iops = {
