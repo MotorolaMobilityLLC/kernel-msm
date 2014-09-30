@@ -356,6 +356,8 @@ struct stm_response {
 
 #define HEADSET_DATA                    0x2F
 
+#define HEADSET_SETTINGS                0x2E
+
 #define PROX_SETTINGS                   0x33
 
 #define LUX_TABLE_VALUES                0x34
