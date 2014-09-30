@@ -33,6 +33,7 @@
 #define SW_OVERRIDE_MASK	BIT(2)
 #define HW_CONTROL_MASK		BIT(1)
 #define SW_COLLAPSE_MASK	BIT(0)
+#define MMSS_GX_DOMAIN_MISC     0xFD8C4300
 
 /* Wait 2^n CXO cycles between all states. Here, n=2 (4 cycles). */
 #define EN_REST_WAIT_VAL	(0x2 << 20)
@@ -68,6 +69,8 @@ static int gdsc_enable(struct regulator_dev *rdev)
 	struct gdsc *sc = rdev_get_drvdata(rdev);
 	uint32_t regval;
 	int i, ret;
+	void __iomem *gx_domain_misc_io_map;
+	u32 gx_domain_misc_val;
 
 	if (sc->toggle_logic) {
 		regval = readl_relaxed(sc->gdscr);
@@ -78,6 +81,16 @@ static int gdsc_enable(struct regulator_dev *rdev)
 		}
 
 		regval &= ~SW_COLLAPSE_MASK;
+
+		if (!strcmp(sc->rdesc.name, "gdsc_oxili_gx")) {
+			/*save MMSS_GX_DOMAIN_MISC to verify state of GFX rail*/
+			gx_domain_misc_io_map = ioremap(MMSS_GX_DOMAIN_MISC,
+						0x04);
+			gx_domain_misc_val =
+					readl_relaxed(gx_domain_misc_io_map);
+			iounmap(gx_domain_misc_io_map);
+		}
+
 		writel_relaxed(regval, sc->gdscr);
 
 		ret = readl_tight_poll_timeout(sc->gdscr, regval,
@@ -85,6 +98,9 @@ static int gdsc_enable(struct regulator_dev *rdev)
 		if (ret) {
 			dev_err(&rdev->dev, "%s enable timed out: 0x%x\n",
 				sc->rdesc.name, regval);
+			if (!strcmp(sc->rdesc.name, "gdsc_oxili_gx"))
+				dev_err(&rdev->dev, "%s MMSS_GX_DOMAIN_MISC: 0x%x\n",
+					sc->rdesc.name, gx_domain_misc_val);
 			udelay(TIMEOUT_US);
 			regval = readl_relaxed(sc->gdscr);
 			dev_err(&rdev->dev, "%s final state: 0x%x (%d us after timeout)\n",
