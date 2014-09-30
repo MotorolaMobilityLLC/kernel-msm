@@ -405,28 +405,50 @@ eHalStatus csrInitChannels(tpAniSirGlobal pMac)
     return status;
 }
 
-eHalStatus csrInitChannelsForCC(tpAniSirGlobal pMac)
+eHalStatus csrInitChannelsForCC(tpAniSirGlobal pMac, driver_load_type init)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     v_REGDOMAIN_t regId = REGDOMAIN_WORLD;
+    tANI_U8 cc[WNI_CFG_COUNTRY_CODE_LEN];
 
-    if (!('0' == pMac->scan.countryCodeDefault[0] &&
-        '0' == pMac->scan.countryCodeDefault[1]))
+    /* In case of driver load ; driver need to get channel
+     * list with default Countrycode.
+     * In case of SSR; driver need to get channel list
+     * with old country code. 0 is for init and
+     * 1 is for reinit
+     */
+    switch (init)
     {
-        csrGetRegulatoryDomainForCountry(pMac, pMac->scan.countryCodeDefault,
-                                           &regId, COUNTRY_NV);
-
-    }
-    else
-    {
-        return status;
+        case INIT:
+            vos_mem_copy(cc, pMac->scan.countryCodeDefault,
+                            WNI_CFG_COUNTRY_CODE_LEN);
+            if (!('0' == cc[0] &&
+                   '0' == cc[1]))
+            {
+                csrGetRegulatoryDomainForCountry(pMac, cc,
+                                               &regId, COUNTRY_NV);
+            }
+            else
+            {
+                return status;
+            }
+            pMac->scan.domainIdDefault = regId;
+            break;
+        case REINIT:
+            vos_getCurrentCountryCode(&cc[0]);
+            status = csrGetRegulatoryDomainForCountry(pMac,
+                     cc, &regId, COUNTRY_QUERY);
+            break;
     }
     WDA_SetRegDomain(pMac, regId, eSIR_TRUE);
-    pMac->scan.domainIdDefault = regId;
-    pMac->scan.domainIdCurrent = pMac->scan.domainIdDefault;
-    vos_mem_copy(pMac->scan.countryCodeCurrent, pMac->scan.countryCodeDefault,
+    pMac->scan.domainIdCurrent = regId;
+    vos_mem_copy(pMac->scan.countryCodeCurrent, cc,
                  WNI_CFG_COUNTRY_CODE_LEN);
     status = csrInitGetChannels( pMac );
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+              FL("Current Country is %c%c "), pMac->scan.countryCodeCurrent[0],
+                                              pMac->scan.countryCodeCurrent[1]);
 
     /* reset info based on new cc, and we are done */
     csrResetCountryInformation(pMac, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_TRUE);
