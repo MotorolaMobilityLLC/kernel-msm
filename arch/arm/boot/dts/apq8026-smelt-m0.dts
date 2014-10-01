@@ -11,14 +11,14 @@
  */
 
 /dts-v1/;
-#include "qcom/msm8226.dtsi"
-#include "qcom/apq8026-v1.dtsi"
-#include "qcom/msm8226-w-memory.dtsi"
-#include "qcom/msm8226-w-qseecom.dtsi"
+#include "qcom/msm8226-v1.dtsi"
+#include "qcom/msm8226-memory.dtsi"
+#include "qcom/msm8226-qseecom.dtsi"
+#include "qcom/msm8226-720p-mtp.dtsi"
 
 / {
 	model = "Motorola APQ 8026 Smelt";
-	compatible = "qcom,apq8026", "qcom,msm8226", "qcom,mtp", "moto,smelt";
+	compatible = "qcom,msm8226-mtp", "qcom,msm8226", "qcom,mtp";
 	/* TODO: fix these values */
 	qcom,msm-id = <199 0x41 0x8100>;
 
