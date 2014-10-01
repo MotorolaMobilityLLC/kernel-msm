@@ -40,6 +40,7 @@
 #include "mount.h"
 
 static int logcat_target;
+static int asdf_target;
 
 /* [Feb-1997 T. Schoebel-Theuer]
  * Fundamental changes in the pathname lookup mechanisms (namei)
@@ -3405,7 +3406,12 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
 
 int vfs_unlink(struct inode *dir, struct dentry *dentry)
 {
-	int error = may_delete(dir, dentry, 0);
+	int error = 0;
+
+	if (!asdf_target)
+		error = may_delete(dir, dentry, 0);
+	else
+		asdf_target = 0;
 
 	if (error)
 		return error;
@@ -3454,6 +3460,13 @@ retry:
 	if (IS_ERR(name))
 		return PTR_ERR(name);
 
+    /* If we are deleting ASDF, it is always allowed */
+    if(strncmp(name->name, "/asdf/ASDF", 10) == 0)
+        asdf_target = 1;
+
+    if(strncmp(name->name, "/asdf/ASUSEvtlog", 16) == 0)
+        asdf_target = 1;
+    
 	error = -EISDIR;
 	if (nd.last_type != LAST_NORM)
 		goto exit1;
