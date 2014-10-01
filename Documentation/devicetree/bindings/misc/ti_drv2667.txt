@@ -3,10 +3,9 @@ and can operate in two modes - analog and digital.
 
 Required properties:
 
--compatible	: should be "ti,drv2667".
--reg		: i2c address to be used.
--vdd-supply	: regulator to power the chip.
--vdd-i2c-supply	: regulator to power i2c bus.
+-compatible		: should be "ti,drv2667".
+-reg			: i2c address to be used.
+-vibrator_vdd-supply	: phandle for regulator to power the chip.
 
 Optional properties:
 
@@ -20,6 +19,7 @@ Optional properties:
 -ti,idle-timeout-ms	: Idle timeout in ms to be programmed for the chip to go into
 				low power mode after finishing its operation.
 -ti,max-runtime-ms	: Maximum time in ms for which chip can drive haptics.
+-static-vdd-supply	: phandle for static chip regulator to be turned on all the time
 
 Example:
 	i2c@f9967000 {
