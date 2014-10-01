@@ -136,6 +136,24 @@
 			};
 		};
 
+		pin@fd510C0 {
+			reg = <0xfd5110C0 0x10>;	/* STML0XX: Wake Up */
+			qcom,pin-num = <12>;
+			qcom,pin-keep-state;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out  */
+				qcom,pull = <0>;  /* none         */
+				qcom,drv =  <0>;  /* 2ma          */
+				qcom,dir =  <1>;  /* output high  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out  */
+				qcom,pull = <0>;  /* none         */
+				qcom,drv =  <0>;  /* 2ma          */
+				qcom,dir =  <1>;  /* output high  */
+			};
+		};
+
 		pin@fd510E0 {
 			reg = <0xfd5110E0 0x10>;        /* CAM_MCLK1 */
 			qcom,pin-num = <14>;
