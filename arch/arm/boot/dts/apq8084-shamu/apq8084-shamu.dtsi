@@ -127,6 +127,25 @@
 	mmi_sar_ctrl {
 		compatible = "mmi,mmi_sar_ctrl";
 	};
+
+	gpio_keys {
+		he_north {
+			label = "he_north";
+			gpios = <&msmgpio 55 1>;
+			linux,input-type = <5>;
+			linux,code = <0>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+		he_south {
+			label = "he_south";
+			gpios = <&msmgpio 56 1>;
+			linux,input-type = <5>;
+			linux,code = <0>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
 };
 
 &pma8084_gpios {
@@ -518,6 +537,7 @@
 			&sensor_out_hi_default
 			&sensor_out_low_default
 			&bcm4356_wake_default
+			&hall_sensor_default
 		>;
 
 	cycapsense {
@@ -593,6 +613,17 @@
 		qcom,pin-func = <0>;
 		label = "sensor_in";
 		sensor_in_default: default {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	hall_sensor {
+		qcom,pins = <&gp 55 &gp 56>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <0>;
+		label = "hall_sensor";
+		hall_sensor_default: default {
 			bias-disable;
 			drive-strength = <2>;
 		};
