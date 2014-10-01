@@ -51,9 +51,11 @@ enum {
 #ifdef CONFIG_FB
 #include <linux/notifier.h>
 #include <linux/fb.h>
+#include <linux/workqueue.h>
 
 static int fb_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data);
+static void mxt_queued_resume(struct work_struct *w);
 #endif
 
 #define DRIVER_NAME "atmel_mxt_ts"
@@ -375,6 +377,7 @@ struct mxt_data {
 
 #ifdef CONFIG_FB
 	struct notifier_block fb_notif;
+	struct work_struct resume_work;
 #endif
 	struct mutex crit_section_lock;
 	const struct firmware *tdat;
@@ -4824,6 +4827,7 @@ static int mxt_probe(struct i2c_client *client,
 	if (error)
 		dev_err(&client->dev, "Error registering fb_notifier: %d\n",
 			error);
+	INIT_WORK(&data->resume_work, mxt_queued_resume);
 #endif
 	error = sysfs_create_group(&client->dev.kobj, &mxt_attr_group);
 	if (error) {
@@ -4950,6 +4954,14 @@ static int mxt_resume(struct device *dev)
 }
 
 #ifdef CONFIG_FB
+static void mxt_queued_resume(struct work_struct *w)
+{
+	struct mxt_data *mxt_dev_data =
+			container_of(w, struct mxt_data, resume_work);
+	mxt_resume(&mxt_dev_data->client->dev);
+	dev_dbg(&mxt_dev_data->client->dev, "DISPLAY-ON\n");
+}
+
 static int fb_notifier_callback(struct notifier_block *self,
 				 unsigned long event, void *data)
 {
@@ -4964,9 +4976,12 @@ static int fb_notifier_callback(struct notifier_block *self,
 		if (*blank == FB_BLANK_UNBLANK ||
 				(*blank == FB_BLANK_VSYNC_SUSPEND &&
 				mxt_dev_data->suspended)) {
-			mxt_resume(&mxt_dev_data->client->dev);
-			dev_dbg(&mxt_dev_data->client->dev, "DISPLAY-ON\n");
+			queue_work(system_wq, &mxt_dev_data->resume_work);
+			dev_dbg(&mxt_dev_data->client->dev, "queued RESUME\n");
 		} else if (*blank == FB_BLANK_POWERDOWN) {
+			/* ensure no work left in queue */
+			cancel_work_sync(&mxt_dev_data->resume_work);
+
 			mxt_suspend(&mxt_dev_data->client->dev);
 			dev_dbg(&mxt_dev_data->client->dev, "DISPLAY-OFF\n");
 		}
