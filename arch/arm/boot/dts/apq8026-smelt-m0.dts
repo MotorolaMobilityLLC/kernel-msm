@@ -18,7 +18,7 @@
 
 / {
 	model = "Motorola APQ 8026 Smelt";
-	compatible = "qcom,msm8226-mtp", "qcom,msm8226", "qcom,mtp";
+	compatible = "qcom,apq8026", "qcom,msm8226", "qcom,mtp", "moto,smelt";
 	/* TODO: fix these values */
 	qcom,msm-id = <199 0x41 0x8100>;
 
