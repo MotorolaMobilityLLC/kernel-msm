@@ -131,6 +131,10 @@
 	};
 };
 
+&pm8226_chg {
+	status = "disabled";
+};
+
 &sdhc_1 {
 	qcom,bus-speed-mode = "DDR_1p8v";
 };
