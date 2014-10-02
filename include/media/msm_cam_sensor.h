@@ -355,19 +355,10 @@ struct csi_lane_params_t {
 	uint8_t csi_phy_sel;
 };
 
-enum camb_position_t {
-	BACK_CAMERA_B,
-	FRONT_CAMERA_B,
-};
-
 struct msm_sensor_info_t {
 	char sensor_name[MAX_SENSOR_NAME];
 	int32_t    session_id;
 	int32_t     subdev_id[SUB_MODULE_MAX];
-	uint8_t  is_mount_angle_valid;
-	uint32_t sensor_mount_angle;
-	int modes_supported;
-	enum camb_position_t position;
 };
 
 struct msm_camera_gpio_num_info {
@@ -381,6 +372,11 @@ struct camera_vreg_t {
 	int max_voltage;
 	int op_mode;
 	uint32_t delay;
+};
+
+enum camb_position_t {
+	BACK_CAMERA_B,
+	FRONT_CAMERA_B,
 };
 
 enum camerab_mode_t {
