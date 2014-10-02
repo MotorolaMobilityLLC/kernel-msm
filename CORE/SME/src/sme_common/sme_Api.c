@@ -2594,7 +2594,8 @@ eHalStatus sme_ScanRequest(tHalHandle hHal, tANI_U8 sessionId, tCsrScanRequest *
     smsLog(pMac, LOG2, FL("enter"));
     do
     {
-        if(pMac->scan.fScanEnable && (0 == pMac->isCoexScoIndSet))
+        if(pMac->scan.fScanEnable &&
+           ((FALSE == pMac->isCoexScoIndSet) || (TRUE == pscanReq->p2pSearch)))
         {
             status = sme_AcquireGlobalLock( &pMac->sme );
             if ( HAL_STATUS_SUCCESS( status ) )
