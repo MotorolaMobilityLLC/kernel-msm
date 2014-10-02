@@ -193,6 +193,34 @@ void stml0xx_detect_lowpower_mode(void)
 	}
 }
 
+uint8_t stml0xx_set_lowpower_mode(enum lowpower_mode lp_type,
+		enum reset_option reset)
+{
+	uint8_t lp_buf[STML0XX_POWER_REG_SIZE] = {0};
+	uint8_t err = 0;
+
+	err = stml0xx_spi_send_read_reg_reset(LOWPOWER_REG, lp_buf,
+			STML0XX_POWER_REG_SIZE, reset);
+	if (err < 0) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_set_lowpower_mode: read_reg");
+		err = -EFAULT;
+		goto EXIT;
+	}
+
+	lp_buf[0] = lp_type;
+	err = stml0xx_spi_send_write_reg_reset(LOWPOWER_REG, lp_buf,
+			STML0XX_POWER_REG_SIZE, reset);
+	if (err < 0) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_set_lowpower_mode: write_reg");
+		err = -EFAULT;
+		goto EXIT;
+	}
+EXIT:
+	return err;
+}
+
 static int stml0xx_hw_init(struct stml0xx_data *ps_stml0xx)
 {
 	int err = 0;
