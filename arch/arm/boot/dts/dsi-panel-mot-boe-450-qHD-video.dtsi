@@ -32,12 +32,13 @@
 		qcom,mdss-pan-physical-width-dimension = <55>;
 		qcom,mdss-pan-physical-height-dimension = <99>;
 
-		qcom,mdss-dsi-h-front-porch = <24>;
-		qcom,mdss-dsi-h-back-porch = <40>;
+		qcom,mdss-dsi-panel-clockrate = <513976320>;
+		qcom,mdss-dsi-h-front-porch = <80>;
+		qcom,mdss-dsi-h-back-porch = <80>;
 		qcom,mdss-dsi-h-pulse-width = <4>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
-		qcom,mdss-dsi-v-back-porch = <16>;
-		qcom,mdss-dsi-v-front-porch = <16>;
+		qcom,mdss-dsi-v-back-porch = <19>;
+		qcom,mdss-dsi-v-front-porch = <33>;
 		qcom,mdss-dsi-v-pulse-width = <2>;
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <0>;
@@ -90,9 +91,9 @@
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,mdss-dsi-lane-0-state;
 		qcom,mdss-dsi-lane-1-state;
-		qcom,mdss-dsi-panel-timings = [82 1c 12 00 40 42 16 1e 14 03 04 00];
+		qcom,mdss-dsi-panel-timings = [8e 20 15 00 47 50 1a 24 24 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x04>;
-		qcom,mdss-dsi-t-clk-pre = <0x1a>;
+		qcom,mdss-dsi-t-clk-pre = <0x1e>;
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
@@ -121,12 +122,13 @@
 		qcom,mdss-pan-physical-width-dimension = <55>;
 		qcom,mdss-pan-physical-height-dimension = <99>;
 
-		qcom,mdss-dsi-h-front-porch = <24>;
-		qcom,mdss-dsi-h-back-porch = <40>;
+		qcom,mdss-dsi-panel-clockrate = <513976320>;
+		qcom,mdss-dsi-h-front-porch = <80>;
+		qcom,mdss-dsi-h-back-porch = <80>;
 		qcom,mdss-dsi-h-pulse-width = <4>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
-		qcom,mdss-dsi-v-back-porch = <16>;
-		qcom,mdss-dsi-v-front-porch = <16>;
+		qcom,mdss-dsi-v-back-porch = <19>;
+		qcom,mdss-dsi-v-front-porch = <33>;
 		qcom,mdss-dsi-v-pulse-width = <2>;
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <0>;
@@ -178,9 +180,9 @@
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,mdss-dsi-lane-0-state;
 		qcom,mdss-dsi-lane-1-state;
-		qcom,mdss-dsi-panel-timings = [82 1c 12 00 40 42 16 1e 14 03 04 00];
+		qcom,mdss-dsi-panel-timings = [8e 20 15 00 47 50 1a 24 24 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x04>;
-		qcom,mdss-dsi-t-clk-pre = <0x1a>;
+		qcom,mdss-dsi-t-clk-pre = <0x1e>;
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
@@ -209,12 +211,13 @@
 		qcom,mdss-pan-physical-width-dimension = <55>;
 		qcom,mdss-pan-physical-height-dimension = <99>;
 
-		qcom,mdss-dsi-h-front-porch = <24>;
-		qcom,mdss-dsi-h-back-porch = <40>;
+		qcom,mdss-dsi-panel-clockrate = <513976320>;
+		qcom,mdss-dsi-h-front-porch = <80>;
+		qcom,mdss-dsi-h-back-porch = <80>;
 		qcom,mdss-dsi-h-pulse-width = <4>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
-		qcom,mdss-dsi-v-back-porch = <16>;
-		qcom,mdss-dsi-v-front-porch = <16>;
+		qcom,mdss-dsi-v-back-porch = <19>;
+		qcom,mdss-dsi-v-front-porch = <33>;
 		qcom,mdss-dsi-v-pulse-width = <2>;
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <0>;
@@ -297,9 +300,9 @@
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,mdss-dsi-lane-0-state;
 		qcom,mdss-dsi-lane-1-state;
-		qcom,mdss-dsi-panel-timings = [82 1c 12 00 40 42 16 1e 14 03 04 00];
+		qcom,mdss-dsi-panel-timings = [8e 20 15 00 47 50 1a 24 24 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x04>;
-		qcom,mdss-dsi-t-clk-pre = <0x1a>;
+		qcom,mdss-dsi-t-clk-pre = <0x1e>;
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
