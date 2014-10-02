@@ -296,9 +296,14 @@ enum stm_commands {
 	CRC_CHECK
 };
 
-enum {
+enum reset_option {
 	RESET_NOT_ALLOWED,
 	RESET_ALLOWED
+};
+
+enum lowpower_mode {
+	LOWPOWER_DISABLED,
+	LOWPOWER_ENABLED
 };
 
 struct stm_response {
@@ -691,6 +696,8 @@ void stml0xx_brightness_set(struct led_classdev *led_cdev,
 enum led_brightness stml0xx_brightness_get(struct led_classdev *led_cdev);
 int stml0xx_blink_set(struct led_classdev *led_cdev,
 	unsigned long *delay_on, unsigned long *delay_off);
+uint8_t stml0xx_set_lowpower_mode(enum lowpower_mode lp_type,
+		enum reset_option reset);
 
 extern struct stml0xx_data *stml0xx_misc_data;
 
