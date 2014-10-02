@@ -154,12 +154,12 @@ kgsl_get_pagetable(unsigned long name)
 static struct kgsl_pagetable *
 _get_pt_from_kobj(struct kobject *kobj)
 {
-	unsigned int ptname;
+	unsigned long ptname;
 
 	if (!kobj)
 		return NULL;
 
-	if (kstrtou32(kobj->name, 0, &ptname))
+	if (sscanf(kobj->name, "%ld", &ptname) != 1)
 		return NULL;
 
 	return kgsl_get_pagetable(ptname);
