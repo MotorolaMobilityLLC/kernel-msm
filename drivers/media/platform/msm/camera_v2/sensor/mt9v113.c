@@ -895,10 +895,6 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		for (i = 0; i < SUB_MODULE_MAX; i++)
 			cdata->cfg.sensor_info.subdev_id[i] =
 				s_ctrl->sensordata->sensor_info->subdev_id[i];
-		cdata->cfg.sensor_info.is_mount_angle_valid =
-			s_ctrl->sensordata->sensor_info->is_mount_angle_valid;
-		cdata->cfg.sensor_info.sensor_mount_angle =
-			s_ctrl->sensordata->sensor_info->sensor_mount_angle;
 		pr_info("%s:%d sensor name %s\n", __func__, __LINE__,
 			cdata->cfg.sensor_info.sensor_name);
 		pr_info("%s:%d session id %d\n", __func__, __LINE__,
@@ -907,11 +903,6 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			pr_info("%s:%d subdev_id[%d] %d\n", __func__,
 				__LINE__, i,
 				cdata->cfg.sensor_info.subdev_id[i]);
-		pr_info("%s:%d mount angle valid %d value %d\n",
-			__func__, __LINE__,
-			cdata->cfg.sensor_info.is_mount_angle_valid,
-			cdata->cfg.sensor_info.sensor_mount_angle);
-
 		break;
 	case CFG_SET_INIT_SETTING:
 		/* 1. Write Recommend settings */
@@ -935,12 +926,8 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			MSM_CAMERA_I2C_WORD_DATA);
 		break;
 	case CFG_GET_SENSOR_INIT_PARAMS:
-		cdata->cfg.sensor_init_params.modes_supported =
-			s_ctrl->sensordata->sensor_info->modes_supported;
-		cdata->cfg.sensor_init_params.position =
-			s_ctrl->sensordata->sensor_info->position;
-		cdata->cfg.sensor_init_params.sensor_mount_angle =
-			s_ctrl->sensordata->sensor_info->sensor_mount_angle;
+		cdata->cfg.sensor_init_params =
+			*s_ctrl->sensordata->sensor_init_params;
 		pr_info("%s:%d init params mode %d pos %d mount %d\n", __func__,
 			__LINE__,
 			cdata->cfg.sensor_init_params.modes_supported,
