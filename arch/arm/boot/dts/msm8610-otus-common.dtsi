@@ -282,3 +282,24 @@
 		};
 	};
 };
+
+&pm8110_mpps {
+	mpp@a200 { /* MPP 3 */
+		qcom,mode = <4>;      /* QPNP_PIN_MODE_AIN */
+		qcom,ain-route = <2>; /* QPNP_PIN_AIN_AMUX_CH7 */
+		qcom,master-en = <1>; /* Enable MPP */
+	};
+};
+
+&pm8110_vadc {
+	chan@13 {
+		label = "msm_therm";
+		reg = <0x13>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
