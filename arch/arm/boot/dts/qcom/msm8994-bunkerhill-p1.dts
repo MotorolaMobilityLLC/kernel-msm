@@ -18,39 +18,3 @@
 / {
 	qcom,board-id = <0x41 0x8100>;
 };
-
-&pm8994_l22 {
-	regulator-min-microvolt = <3300000>;
-	regulator-max-microvolt = <3300000>;
-	qcom,init-voltage = <3300000>;
-	qcom,init-current = <100>;
-	qcom,system-load = <100000>;
-	qcom,init-ldo-mode = <1>;
-	qcom,always-send-current;
-};
-
-&i2c_2 {
-	atmel_mxt_ts@4a {
-		compatible = "atmel,atmel_mxt_ts";
-		reg = <0x4a>;
-		interrupt-parent = <&msm_gpio>;
-		interrupts = <40 0>;
-		gpios = <&msm_gpio 40 0>, /* IRQ */
-			<&msm_gpio 39 0>; /* RESET */
-		touch_vdd-supply = <&pm8994_l14>;
-		touch_avdd-supply = <&pm8994_l22>;
-		atmel,suspend-method-lpm;
-		pinctrl-names = "default", "active";
-		pinctrl-0 = <&touch_reset_default &touch_int_default>;
-		pinctrl-1 = <&touch_reset_default &touch_int_default>;
-		atmel,cfg {
-			atmel,family-id = <0xa4>;
-			atmel,variant-id = <0x7>;
-			atmel,version = <0x5>;
-			atmel,build = <0x11>;
-			atmel,revision-id = <0x32>;
-		};
-	};
-
-	/delete-node/ synaptics_dsx_i2c@3b;
-};
