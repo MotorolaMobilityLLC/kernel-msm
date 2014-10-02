@@ -278,6 +278,7 @@ endif # CONFIG_MMI_DEVICE_DTBS
 
 # Motorola DTB definitions
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-bunkerhill-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8994) += msm8994-bunkerhill-p2.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
