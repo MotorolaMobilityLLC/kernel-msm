@@ -638,10 +638,16 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		err = 0;
 		if (buf[0] != 0 && lowpower_mode == 0) {
+			stml0xx_set_lowpower_mode(LOWPOWER_ENABLED,
+					RESET_ALLOWED);
+
 			/* allow sensorhub to sleep */
 			stml0xx_sleep(ps_stml0xx);
 			lowpower_mode = buf[0];
 		} else if (buf[0] == 0 && lowpower_mode == 1) {
+			stml0xx_set_lowpower_mode(LOWPOWER_DISABLED,
+					RESET_ALLOWED);
+
 			/* keep sensorhub awake */
 			stml0xx_wake(ps_stml0xx);
 			lowpower_mode = buf[0];
