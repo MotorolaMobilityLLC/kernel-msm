@@ -682,13 +682,15 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	mipi = &pdata->panel_info.mipi;
 
+	mutex_lock(&ctrl_pdata->ulps_lock);
+
 	ret = mdss_dsi_panel_power_on(pdata, 1);
 	if (ret) {
 		pr_err("%s:Panel power on failed. rc=%d\n", __func__, ret);
-		return ret;
+		goto exit;
 	}
 
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
+	ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
 	if (ret) {
 		pr_err("%s: failed to enable bus clocks. rc=%d\n", __func__,
 			ret);
@@ -696,10 +698,10 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		if (ret) {
 			pr_err("%s: Panel reset failed. rc=%d\n",
 					__func__, ret);
-			return ret;
+			goto exit;
 		}
 		pdata->panel_info.panel_power_on = 0;
-		return ret;
+		goto exit;
 	}
 	pdata->panel_info.panel_power_on = 1;
 
@@ -735,8 +737,11 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
+exit:
+	mutex_unlock(&ctrl_pdata->ulps_lock);
+
 	pr_debug("%s-:\n", __func__);
-	return 0;
+	return ret;
 }
 
 static int mdss_dsi_pinctrl_set_state(
