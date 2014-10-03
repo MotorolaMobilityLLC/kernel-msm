@@ -356,7 +356,7 @@ static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
 		/* Turn Off ALPM Mode */
 		mipi_samsung_disp_send_cmd(PANEL_ALPM_OFF, true);
 
-	pr_info("[ALPM_DEBUG] %s: Send ALPM %s cmds\n",
+	pr_info("[ALPM_DEBUG]: Send ALPM %s cmds\n",
 			mode ? "on" : "off");
 
 	pdata->panel_info.alpm_event(STORE_CURRENT_STATUS);
