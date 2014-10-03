@@ -143,6 +143,7 @@ WLANSAP_ScanCallback
     void *pTempHddCtx;
     tWLAN_SAPEvent sapEvent; /* State machine event */
     v_U8_t operChannel = 0;
+    v_U8_t i = 0;
     VOS_STATUS sapstatus;
     v_U32_t event;
 
@@ -186,7 +187,7 @@ WLANSAP_ScanCallback
             event = eSAP_CHANNEL_SELECTION_FAILED;
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, CSR scanStatus = %s (%d)", __func__, "eCSR_SCAN_ABORT/FAILURE", scanStatus);
     }
-    
+
     if (operChannel == SAP_CHANNEL_NOT_SELECTED)
 #ifdef SOFTAP_CHANNEL_RANGE
     {
@@ -198,7 +199,16 @@ WLANSAP_ScanCallback
         {
             if(psapContext->channelList != NULL)
             {
-                psapContext->channel = psapContext->channelList[0];
+                 psapContext->channel = SAP_DEFAULT_CHANNEL;
+                 for ( i = 0 ; i < psapContext->numofChannel ; i++)
+                 {
+                    if (NV_CHANNEL_ENABLE ==
+                        vos_nv_getChannelEnabledState(psapContext->channelList[i]))
+                    {
+                        psapContext->channel = psapContext->channelList[i];
+                        break;
+                    }
+                 }
             }
             else
             {

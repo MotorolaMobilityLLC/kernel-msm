@@ -329,4 +329,6 @@ v_VOID_t vos_fwDumpReq(tANI_U32 cmd, tANI_U32 arg1, tANI_U32 arg2,
 
 v_U64_t vos_get_monotonic_boottime(void);
 
+VOS_STATUS vos_randomize_n_bytes(void *mac_addr, tANI_U32 n);
+
 #endif // if !defined __VOS_NVITEM_H

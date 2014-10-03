@@ -3972,6 +3972,72 @@ wlan_hdd_tdls_config_get_status_policy[
     [QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_REASON] = {.type = NLA_S32 },
 
 };
+
+static const struct nla_policy
+wlan_hdd_mac_config[QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI_MAX+1] =
+{
+    [QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI] = {.type = NLA_UNSPEC },
+};
+
+static int wlan_hdd_cfg80211_set_spoofed_mac_oui(struct wiphy *wiphy,
+        struct wireless_dev *wdev,
+        void *data,
+        int data_len)
+{
+
+    hdd_context_t *pHddCtx      = wiphy_priv(wiphy);
+    struct nlattr *tb[QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI_MAX + 1];
+
+    if (0 != wlan_hdd_validate_context(pHddCtx)){
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("hdd Ctx invalid while spoof macAddr"));
+        return -EINVAL;
+    }
+    if (FALSE == pHddCtx->cfg_ini->enableMacSpoofing) {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("MAC_SPOOFED_SCAN disabled in ini"));
+        return -ENOTSUPP;
+     }
+    if (TRUE != sme_IsFeatureSupportedByFW(MAC_SPOOFED_SCAN)){
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("MAC_SPOOFED_SCAN not supported by FW"));
+        return -ENOTSUPP;
+    }
+
+    if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI_MAX,
+                data, data_len, wlan_hdd_mac_config)) {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("Invalid ATTR"));
+        return -EINVAL;
+    }
+
+    /* Parse and fetch mac address */
+    if (!tb[QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI]) {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("attr mac addr failed"));
+        return -EINVAL;
+    }
+
+    memcpy(pHddCtx->spoofMacAddr.randomMacAddr.bytes, nla_data(
+                tb[QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI]),
+            VOS_MAC_ADDR_LAST_3_BYTES);
+
+    vos_trace_hex_dump( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,nla_data(
+            tb[QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI]),
+            VOS_MAC_ADDR_FIRST_3_BYTES);
+
+    if (VOS_STATUS_SUCCESS != vos_randomize_n_bytes(
+        (void *)(&pHddCtx->spoofMacAddr.randomMacAddr.bytes[3]),
+        VOS_MAC_ADDR_LAST_3_BYTES)) {
+        hddLog(LOGE, FL("Failed to generate random Mac Addr"));
+    }
+    vos_trace_hex_dump( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+        pHddCtx->spoofMacAddr.randomMacAddr.bytes,
+            VOS_MAC_ADDR_SIZE);
+
+    if (eHAL_STATUS_SUCCESS != sme_SpoofMacAddrReq(pHddCtx->hHal,
+                &pHddCtx->spoofMacAddr.randomMacAddr)) {
+        hddLog(LOGE, FL("Failed to send Spoof Mac Addr to FW"));
+    }
+
+    return 0;
+}
+
 static int wlan_hdd_cfg80211_exttdls_get_status(struct wiphy *wiphy,
                                                 struct wireless_dev *wdev,
                                                 void *data,
@@ -4358,6 +4424,13 @@ const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
         .doit = wlan_hdd_cfg80211_exttdls_get_status
     },
 
+    {
+        .info.vendor_id = QCA_NL80211_VENDOR_ID,
+        .info.subcmd = QCA_NL80211_VENDOR_SUBCMD_MAC_OUI,
+        .flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+                 WIPHY_VENDOR_CMD_NEED_NETDEV,
+        .doit = wlan_hdd_cfg80211_set_spoofed_mac_oui
+    },
 };
 
 /* vendor specific events */
@@ -9860,11 +9933,14 @@ static int wlan_hdd_set_akm_suite( hdd_adapter_t *pAdapter,
 {
     hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     ENTER();
-
+    /* Should be in ieee802_11_defs.h */
+#define WLAN_AKM_SUITE_8021X_SHA256 0x000FAC05
+#define WLAN_AKM_SUITE_PSK_SHA256   0x000FAC06
     /*set key mgmt type*/
     switch(key_mgmt)
     {
         case WLAN_AKM_SUITE_PSK:
+        case WLAN_AKM_SUITE_PSK_SHA256:
 #ifdef WLAN_FEATURE_VOWIFI_11R
         case WLAN_AKM_SUITE_FT_PSK:
 #endif
@@ -9874,6 +9950,7 @@ static int wlan_hdd_set_akm_suite( hdd_adapter_t *pAdapter,
             break;
 
         case WLAN_AKM_SUITE_8021X:
+        case WLAN_AKM_SUITE_8021X_SHA256:
 #ifdef WLAN_FEATURE_VOWIFI_11R
         case WLAN_AKM_SUITE_FT_8021X:
 #endif

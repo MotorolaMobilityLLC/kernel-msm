@@ -513,6 +513,8 @@ typedef enum
    WLAN_HAL_EXT_SCAN_RESULT_AVAILABLE_IND   = 289,
    WLAN_HAL_TDLS_CHAN_SWITCH_REQ            = 290,
    WLAN_HAL_TDLS_CHAN_SWITCH_RSP            = 291,
+   WLAN_HAL_MAC_SPOOFED_SCAN_REQ            = 292,
+   WLAN_HAL_MAC_SPOOFED_SCAN_RSP            = 293,
 
    WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
@@ -6543,6 +6545,7 @@ typedef enum {
     MU_MIMO                = 41,
     EXTENDED_SCAN          = 42,
     DYNAMIC_WMM_PS         = 43,
+    MAC_SPOOFED_SCAN       = 44,
     MAX_FEATURE_SUPPORTED  = 128,
 } placeHolderInCapBitmap;
 
@@ -6568,6 +6571,7 @@ typedef PACKED_PRE struct PACKED_POST{
 #define IS_CH_SWITCH_V1_SUPPORTED_BY_HOST ((!!(halMsg_GetHostWlanFeatCaps(CH_SWITCH_V1))))
 #define IS_TDLS_SCAN_COEXISTENCE_SUPPORTED_BY_HOST ((!!(halMsg_GetHostWlanFeatCaps(TDLS_SCAN_COEXISTENCE))))
 #define IS_DYNAMIC_WMM_PS_SUPPORTED_BY_HOST ((!!(halMsg_GetHostWlanFeatCaps(DYNAMIC_WMM_PS))))
+#define IS_MAC_SPOOF_SCAN_SUPPORTED_BY_HOST ((!!(halMsg_GetHostWlanFeatCaps(MAC_SPOOFED_SCAN))))
 
 tANI_U8 halMsg_GetHostWlanFeatCaps(tANI_U8 feat_enum_value);
 
@@ -8235,6 +8239,39 @@ typedef PACKED_PRE struct PACKED_POST
    tANI_BOOLEAN moreData;
    tANI_U8 bssHotlist[1];
 }tHalHotlistResultIndMsg, *tpHalHotlistResultIndMsg;
+
+
+/*---------------------------------------------------------------------------
+  *WLAN_HAL_MAC_SPOOFED_SCAN_REQ
+  *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U8        macAddr[6];
+    tANI_U32       reserved1;
+    tANI_U32       reserved2;
+}tMacSpoofedScanReqType, * tpMacSpoofedScanReqType;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader               header;
+    tMacSpoofedScanReqType tMacSpoofedScanReqParams;
+} tMacSpoofedScanReqMsg, * tpMacSpoofedScanReqMsg;
+
+/*---------------------------------------------------------------------------
+* WLAN_HAL_MAC_SPOOFED_SCAN_RSP
+*-------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32   status;
+    tANI_U32   reserved1;
+} tMacSpoofedScanResp, * tpMacSpoofedScanResp;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader         header;
+    tMacSpoofedScanResp tMacSpoofedScanRespParams;
+}  tMacSpoofedScanRespMsg,  * tpMacSpoofedScanRespMsg;
 
 #if defined(__ANI_COMPILER_PRAGMA_PACK_STACK)
 #pragma pack(pop)

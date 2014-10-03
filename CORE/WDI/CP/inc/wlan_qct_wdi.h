@@ -2625,6 +2625,18 @@ typedef struct
 }WDI_AddBASessionRspParamsType;
 
 /*---------------------------------------------------------------------------
+  WDI_SpoofMacAddrRspParamType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /* wdi status */
+  wpt_uint32   wdiStatus;
+
+  /* Reserved Field */
+  wpt_uint32    reserved;
+
+}WDI_SpoofMacAddrRspParamType;
+/*---------------------------------------------------------------------------
   WDI_AddBAReqinfoType
 ---------------------------------------------------------------------------*/
 typedef struct
@@ -5864,6 +5876,18 @@ typedef struct
 
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
+/*---------------------------------------------------------------------------
+  WDI_SPOOF_MAC_ADDR_REQ
+---------------------------------------------------------------------------*/
+typedef struct
+{
+   /* Spoof MAC Address for FW  */
+   wpt_macAddr macAddr;
+
+   /* Reserved Params/fields */
+   wpt_uint32 params;
+   wpt_uint32 reserved;
+} WDI_SpoofMacAddrInfoType;
 
 /*----------------------------------------------------------------------------
  *   WDI callback types
@@ -6177,14 +6201,12 @@ typedef void  (*WDI_RemoveBSSKeyRspCb)(WDI_Status   wdiStatus,
     pUserData:  user data  
   
     
-  
   RETURN VALUE 
     The result code associated with performing the operation
 ---------------------------------------------------------------------------*/
 typedef void  (*WDI_SetSTAKeyRspCb)(WDI_Status   wdiStatus,
                                     void*        pUserData);
 
- 
 /*---------------------------------------------------------------------------
    WDI_StartRspCb
  
@@ -6199,8 +6221,7 @@ typedef void  (*WDI_SetSTAKeyRspCb)(WDI_Status   wdiStatus,
     wdiStatus:  response status received from HAL
     pUserData:  user data  
 
-    
-  
+
   RETURN VALUE 
     The result code associated with performing the operation
 ---------------------------------------------------------------------------*/
@@ -7772,6 +7793,9 @@ typedef void  (*WDI_LLStatsGetRspCb)(void *pEventData,
 typedef void  (*WDI_LLStatsClearRspCb)(void *pEventData,
                                        void *pUserData);
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
+typedef void  (*WDI_SetSpoofMacAddrRspCb)(
+                        WDI_SpoofMacAddrRspParamType* wdiRsp, void *pUserData);
 /*========================================================================
  *     Function Declarations and Documentation
  ==========================================================================*/
@@ -11126,6 +11150,13 @@ WDI_Status WDI_GetBcnMissRate( void *pUserData,
                                 WDI_GetBcnMissRateCb wdiGetBcnMissRateCb,
                                 wpt_uint8   *bssid
                              );
+WDI_Status
+WDI_SetSpoofMacAddrReq
+(
+WDI_SpoofMacAddrInfoType *pWdiReq,
+  WDI_SetSpoofMacAddrRspCb          setSpoofMacAddrRspCb,
+  void*                          pUserData
+);
 
 #ifdef __cplusplus
  }

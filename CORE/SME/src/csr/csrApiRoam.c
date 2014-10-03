@@ -133,6 +133,9 @@ int diagAuthTypeFromCSRType(eCsrAuthType authType)
         n = AUTH_WPA_PSK;
         break;
     case eCSR_AUTH_TYPE_RSN:
+#ifdef WLAN_FEATURE_11W
+    case eCSR_AUTH_TYPE_RSN_8021X_SHA256:
+#endif
         n = AUTH_WPA2_EAP;
         break;
     case eCSR_AUTH_TYPE_RSN_PSK:
@@ -4902,7 +4905,8 @@ static eHalStatus csrRoamSaveSecurityRspIE(tpAniSirGlobal pMac, tANI_U32 session
 #endif /* FEATURE_WLAN_WAPI */
 #ifdef WLAN_FEATURE_11W
       ||
-       (eCSR_AUTH_TYPE_RSN_PSK_SHA256 == authType)
+       (eCSR_AUTH_TYPE_RSN_PSK_SHA256 == authType) ||
+       (eCSR_AUTH_TYPE_RSN_8021X_SHA256 == authType)
 #endif /* FEATURE_WLAN_WAPI */
         )
     {
@@ -4921,6 +4925,7 @@ static eHalStatus csrRoamSaveSecurityRspIE(tpAniSirGlobal pMac, tANI_U32 session
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 #if defined WLAN_FEATURE_11W
                 (eCSR_AUTH_TYPE_RSN_PSK_SHA256 == authType) ||
+                (eCSR_AUTH_TYPE_RSN_8021X_SHA256 == authType) ||
 #endif
                 (eCSR_AUTH_TYPE_RSN_PSK == authType))
             {
