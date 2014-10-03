@@ -24,6 +24,8 @@
 
 	aliases {
 		/delete-property/ spi0;
+		uart1 = &uart1;
+		uart6 = &uart6;
 	};
 
 };
