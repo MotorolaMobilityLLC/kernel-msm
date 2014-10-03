@@ -32,6 +32,8 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <320>;
 		qcom,mdss-dsi-panel-height = <320>;
+		qcom,mdss-pan-physical-width-dimension = <30>;
+		qcom,mdss-pan-physical-height-dimension = <30>;
 		qcom,mdss-dsi-h-front-porch = <4>;
 		qcom,mdss-dsi-h-back-porch = <5>;
 		qcom,mdss-dsi-h-pulse-width = <10>;
@@ -111,8 +113,8 @@
 
 		samsung,panel-candella-mapping-table-300 = <
 		/*	<idx> <from>  <till> <candella> */
-			0 	2 	51	30
-			1 	52	68	40
+			0	2	51	30
+			1	52	68	40
 			2	69	85	50
 			3	86	102	60
 
