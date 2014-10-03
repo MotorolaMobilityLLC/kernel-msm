@@ -1016,7 +1016,7 @@
 			touchmode-default = <&default_active &default_suspended>;
 		};
 		default_active: touchstate_default_active {
-			patch-data = "";
+			patch-data = "T100@11=1,12=0,15=17,16=1f,23=3,26=16,27=3a;T111@6=a,21=1c;";
 		};
 		default_suspended: touchstate_aod_suspended {
 			patch-data = "T100@3=0,6=1,47=32,49=32;T7@0=0,1=0,2=0;";
