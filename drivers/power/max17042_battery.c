@@ -397,12 +397,17 @@ static int max17042_get_property(struct power_supply *psy,
 		if (ret < 0)
 			return ret;
 
-		data >>= 8;
+		if ((data & 0xFF) != 0) {
+			data >>= 8;
+			data++; /* Round up */
+		} else
+			data >>= 8;
+
 		if (data > 100)
 			data = 100;
 
 		if (data == 0 &&
-			chip->pdata->batt_undervoltage_zero_soc) {
+		    chip->pdata->batt_undervoltage_zero_soc) {
 			if (chip->batt_undervoltage)
 				val->intval = 0;
 			else
@@ -1661,6 +1666,9 @@ static void iterm_work(struct work_struct *work)
 		goto iterm_fail;
 
 	repsoc = (ret >> 8) & 0xFF;
+	if ((ret & 0xFF) != 0)
+		repsoc++; /* Round up */
+
 	dev_dbg(&chip->client->dev, "ITERM RepSOC %d!\n", repsoc);
 
 	cfd_max =
