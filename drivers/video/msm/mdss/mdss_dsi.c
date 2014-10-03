@@ -477,8 +477,8 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	if (enable && ctrl_pdata->ulps_ref_count < 1) {
 		pr_err("%s: Try to enable ulps which has not been disabled"
 			"count = %d\n", __func__, ctrl_pdata->ulps_ref_count);
-		ret = -EINVAL;
-		goto error;
+		mutex_unlock(&ctrl_pdata->ulps_lock);
+		return -EINVAL;
 	}
 
 	if (enable)
@@ -489,8 +489,9 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	if (enable && ctrl_pdata->ulps_ref_count == 0) {
 		/* No need to configure ULPS mode when entering suspend state */
 		if (!pdata->panel_info.panel_power_on) {
-			pr_err("%s: panel off. returning\n", __func__);
-			goto error;
+			pr_warn("%s: panel off. returning\n", __func__);
+			mutex_unlock(&ctrl_pdata->ulps_lock);
+			return 0;
 		}
 
 		if (__mdss_dsi_clk_enabled(ctrl_pdata, DSI_LINK_CLKS)) {
@@ -610,7 +611,14 @@ static int mdss_dsi_ulps_config_sub(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	pr_debug("%s: DSI lane status = 0x%08x. Ulps %s\n", __func__,
 		lane_status, enable ? "enabled" : "disabled");
 
+	mutex_unlock(&ctrl_pdata->ulps_lock);
+	return 0;
+
 error:
+	if (enable)
+		ctrl_pdata->ulps_ref_count++;
+	else
+		ctrl_pdata->ulps_ref_count--;
 
 	mutex_unlock(&ctrl_pdata->ulps_lock);
 
