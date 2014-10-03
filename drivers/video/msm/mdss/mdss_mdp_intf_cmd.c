@@ -590,6 +590,7 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
+	struct mdss_panel_info *pinfo;
 	unsigned long flags;
 	int need_wait = 0;
 
@@ -598,6 +599,8 @@ int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
 		pr_err("invalid ctx\n");
 		return -ENODEV;
 	}
+
+	pinfo = &ctl->panel_data->panel_info;
 
 	pr_debug("%s: clk_enabled=%d\n", __func__, ctx->clk_enabled);
 
@@ -609,7 +612,17 @@ int mdss_mdp_cmd_off_pan_on(struct mdss_mdp_ctl *ctl)
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
 	if (need_wait) {
-		if (wait_for_completion_timeout(&ctx->stop_comp, STOP_TIMEOUT)
+		int idle = 0;
+		unsigned long timeout = STOP_TIMEOUT;
+
+		if (ctl->panel_data->get_idle)
+			idle = ctl->panel_data->get_idle(ctl->panel_data);
+
+		if (idle)
+			timeout = msecs_to_jiffies(pinfo->idle_ms_per_frame *
+					(VSYNC_EXPIRE_TICK + 2));
+
+		if (wait_for_completion_timeout(&ctx->stop_comp, timeout)
 		    <= 0) {
 			pr_debug("%s: stop cmd time out\n", __func__);
 			mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
