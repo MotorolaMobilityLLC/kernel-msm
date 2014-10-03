@@ -108,7 +108,8 @@ static void intel_mid_reboot(void)
 			rpmsg_send_generic_simple_command(RP_COLD_OFF, 0);
 			break;
 		case REBOOT_FORCE_ON:
-			pr_debug("reboot requested but forced to keep system on\n");
+			pr_info("***** INFO: reboot requested but forced to keep system on *****\n");
+			while(1); /* halt */
 			break;
 		case REBOOT_FORCE_COLD_RESET:
 			outb(RSTC_COLD_RESET, RSTC_IO_PORT_ADDR);
