@@ -51,9 +51,15 @@ struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
 
 static int mdss_mdp_cmd_do_notifier(struct mdss_mdp_cmd_ctx *ctx);
 
-static bool __mdss_mdp_cmd_panel_power_off(struct mdss_mdp_cmd_ctx *ctx)
+static bool __mdss_mdp_cmd_is_panel_power_off(struct mdss_mdp_cmd_ctx *ctx)
 {
 	return mdss_panel_is_power_off(ctx->panel_power_state);
+}
+
+static bool __mdss_mdp_cmd_is_panel_power_on_interactive(
+		struct mdss_mdp_cmd_ctx *ctx)
+{
+	return mdss_panel_is_power_on_interactive(ctx->panel_power_state);
 }
 
 static inline u32 mdss_mdp_cmd_line_count(struct mdss_mdp_ctl *ctl)
@@ -195,7 +201,7 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	int irq_en, rc;
 
-	if (__mdss_mdp_cmd_panel_power_off(ctx))
+	if (__mdss_mdp_cmd_is_panel_power_off(ctx))
 		return;
 
 	mutex_lock(&ctx->clk_mtx);
@@ -626,7 +632,7 @@ static int mdss_mdp_cmd_set_stream_size(struct mdss_mdp_ctl *ctl)
 	return rc;
 }
 
-static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
+static int mdss_mdp_cmd_panel_on_sub(struct mdss_mdp_ctl *ctl,
 	struct mdss_mdp_ctl *sctl)
 {
 	struct mdss_mdp_cmd_ctx *ctx, *sctx = NULL;
@@ -641,7 +647,7 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 	if (sctl)
 		sctx = (struct mdss_mdp_cmd_ctx *) sctl->priv_data;
 
-	if (__mdss_mdp_cmd_panel_power_off(ctx)) {
+	if (!__mdss_mdp_cmd_is_panel_power_on_interactive(ctx)) {
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNBLANK, NULL);
 		WARN(rc, "intf %d unblank error (%d)\n", ctl->intf_num, rc);
 
@@ -655,6 +661,24 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 		mdss_mdp_ctl_intf_event(ctl,
 			MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 			(void *)&ctx->recovery);
+	}
+
+	return rc;
+}
+
+static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl)
+{
+	int rc;
+	struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);
+
+	if (ctl->panel_data->panel_info.partial_update_enabled &&
+		ctl->panel_data->panel_info.partial_update_dcs_cmd_by_left &&
+		ctl->main_ctl) {
+		pr_debug("%s: call panel_on on primary ctl instead of split\n",
+			__func__);
+		rc = mdss_mdp_cmd_panel_on_sub(ctl->main_ctl, ctl);
+	} else {
+		rc = mdss_mdp_cmd_panel_on_sub(ctl, sctl);
 	}
 
 	return rc;
@@ -677,7 +701,6 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 	struct mdss_mdp_ctl *sctl = NULL;
 	struct mdss_mdp_cmd_ctx *ctx, *sctx = NULL;
 	unsigned long flags;
-	int rc;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -702,14 +725,13 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 			PERF_HW_MDP_STATE, PERF_STATUS_BUSY);
 	}
 
-	if (ctl->panel_data->panel_info.partial_update_enabled &&
-		ctl->panel_data->panel_info.partial_update_dcs_cmd_by_left &&
-		ctl->main_ctl) {
-		pr_debug("%s: call panel_on on primary ctl instead of split\n",
-			__func__);
-		rc = mdss_mdp_cmd_panel_on(ctl->main_ctl, ctl);
-	} else
-		rc = mdss_mdp_cmd_panel_on(ctl, sctl);
+	/*
+	 * Turn on the panel, if not already. This is because the panel is
+	 * turned on only when we send the first frame and not during cmd
+	 * start. This is to ensure that no artifacts are seen on the panel.
+	 */
+	if (__mdss_mdp_cmd_is_panel_power_off(ctx))
+		mdss_mdp_cmd_panel_on(ctl);
 
 	MDSS_XLOG(ctl->num, ctl->roi.x, ctl->roi.y, ctl->roi.w,
 						ctl->roi.h);
@@ -782,6 +804,15 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		return -ENODEV;
 	}
 
+	turn_off_panel = ctx->panel_power_state;
+
+	/*
+	 * If the panel will be left on, then we do not need to turn off
+	 * interface clocks since we may continue to get display updates.
+	 */
+	if (mdss_panel_is_power_on(panel_power_state))
+		goto send_panel_cmds;
+
 	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list)
 		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
@@ -810,9 +841,11 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 			NULL);
 
-	turn_off_panel = ctx->panel_power_state;
 	mdss_mdp_cmd_clk_off(ctx);
 	flush_work(&ctx->pp_done_work);
+	mdss_mdp_cmd_tearcheck_setup(ctl, false);
+
+send_panel_cmds:
 	ctx->panel_power_state = panel_power_state;
 
 	if (ctl->num == 0 && (turn_off_panel != MDSS_PANEL_POWER_OFF)) {
@@ -824,13 +857,10 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_OFF,
 				(void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
-
-		if (panel_power_state != MDSS_PANEL_POWER_DOZE)
-			mdss_mdp_cmd_tearcheck_setup(ctl, false);
 		mutex_unlock(&ctl->offlock);
 	}
 
-	if (panel_power_state != MDSS_PANEL_POWER_OFF) {
+	if (mdss_panel_is_power_on(panel_power_state)) {
 		pr_debug("%s: cmd_off with panel always on\n", __func__);
 		goto end;
 	}
@@ -861,7 +891,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
 	struct mdss_mdp_mixer *mixer;
-	int i, ret;
+	int i, ret = 0;
 
 	pr_debug("%s:+\n", __func__);
 
@@ -869,7 +899,8 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 		return -EINVAL;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
-	if (ctx && (ctx->panel_power_state != MDSS_PANEL_POWER_OFF)) {
+
+	if (ctx && mdss_panel_is_power_on(ctx->panel_power_state)) {
 		pr_debug("%s: cmd_start with panel always on\n",
 			__func__);
 		/*
@@ -880,7 +911,10 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 		 * enable tearcheck logic.
 		 */
 		mdss_mdp_cmd_restore(ctl);
-		return 0;
+
+		/* Turn on the panel so that it can exit low power mode */
+		ret = mdss_mdp_cmd_panel_on(ctl);
+		goto end;
 	}
 
 	mixer = mdss_mdp_mixer_get(ctl, MDSS_MDP_MIXER_MUX_LEFT);
@@ -946,8 +980,10 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
 	ctl->restore_fnc = mdss_mdp_cmd_restore;
+
+end:
 	pr_debug("%s:-\n", __func__);
 
-	return 0;
+	return ret;
 }
 
