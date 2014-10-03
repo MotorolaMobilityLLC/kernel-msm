@@ -116,10 +116,6 @@ __setup("bootreason=", set_bootreason);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
-/* Enable and disable UART console */
-int g_audbg_enable = 1;
-EXPORT_SYMBOL(g_audbg_enable);
-
 /*
  *   All thread information (Refined)
  */
@@ -1167,22 +1163,6 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 
 			(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
 		}
-	}
-    else if(strncmp(messages, "audbg_on", 8) == 0)
-	{
-		printk("[adbg] Enabling audio debug\n");
-        if(!g_audbg_enable){
-            g_audbg_enable = 1;
-        }
-		return count;
-	}
-    else if(strncmp(messages, "audbg_off", 9) == 0)
-	{
-		printk("[adbg] Disabling audio debug\n");
-        if(g_audbg_enable){
-            g_audbg_enable = 0;
-        }
-		return count;
 	}
     else
     {

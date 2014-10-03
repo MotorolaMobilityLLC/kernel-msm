@@ -67,6 +67,13 @@ struct qpnp_vib {
 	struct mutex lock;
 };
 
+// ASUS_BSP Tingy: Enable RX feature of audio debug
+#define ASUS_ENABLE_RX_AUDBG 1
+
+#if ASUS_ENABLE_RX_AUDBG
+struct qpnp_vib *g_vib = 0;
+#endif
+
 static int qpnp_vib_read_u8(struct qpnp_vib *vib, u8 *data, u16 reg)
 {
 	int rc;
@@ -196,6 +203,30 @@ static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 	mutex_unlock(&vib->lock);
 	schedule_work(&vib->work);
 }
+
+#if ASUS_ENABLE_RX_AUDBG
+void vibrator_enable(int value)
+{
+	struct qpnp_vib *vib = g_vib;
+
+	if (!vib)
+		return;
+
+	mutex_lock(&vib->lock);
+	hrtimer_cancel(&vib->vib_timer);
+
+	if (value == 0)
+		vib->state = 0;
+	else {
+		vib->state = 1;
+		hrtimer_start(&vib->vib_timer,
+			      ktime_set(value / 1000, (value % 1000) * 1000000),
+			      HRTIMER_MODE_REL);
+	}
+	mutex_unlock(&vib->lock);
+	schedule_work(&vib->work);
+}
+#endif
 
 static void qpnp_vib_update(struct work_struct *work)
 {
@@ -371,6 +402,10 @@ static int qpnp_vibrator_probe(struct spmi_device *spmi)
 	rc = timed_output_dev_register(&vib->timed_dev);
 	if (rc < 0)
 		return rc;
+
+#if ASUS_ENABLE_RX_AUDBG
+	g_vib = vib;
+#endif
 
 	return rc;
 }
