@@ -746,7 +746,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				case DWC3_DCP_CHARGER:
 					dev_dbg(phy->dev, "lpm, DCP charger\n");
 					dwc3_otg_set_power(phy,
-							DWC3_IDEV_CHG_DCP);
+							DWC3_IDEV_CHG_MAX);
 					pm_runtime_put_sync(phy->dev);
 					break;
 				case DWC3_PROPRIETARY_CHARGER:
