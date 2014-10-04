@@ -75,6 +75,7 @@ struct tfa9890_priv {
 	int mode;
 	int mode_switched;
 	int curr_mode;
+	int cfg_mode;
 	int vol_idx;
 	int curr_vol_idx;
 	int ic_version;
@@ -82,7 +83,8 @@ struct tfa9890_priv {
 	char const *fw_path;
 	char const *fw_name;
 	int is_spkr_prot_en;
-	int update_cfg_eq;
+	int update_eq;
+	int update_cfg;
 };
 
 static DEFINE_MUTEX(lr_lock);
@@ -492,6 +494,70 @@ static int tfa9890_get_mode(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int tfa9890_set_config_right(struct tfa9890_priv *tfa9890)
+{
+	int ret;
+
+	if (tfa9890->dsp_init == TFA9890_DSP_INIT_FAIL) {
+		pr_err("%s: firmware loading failed!!", __func__);
+		return -EIO;
+	}
+
+	if (!right_fw_config[tfa9890->cfg_mode] ||
+				((right_fw_config[tfa9890->cfg_mode])->size !=
+				TFA9890_CFG_FW_SIZE)) {
+			pr_err("tfa9890: Data size check failed cfg file\n");
+			return -EIO;
+	}
+
+	ret = tfa9890_dsp_transfer(tfa9890->codec,
+				TFA9890_DSP_MOD_SPEAKERBOOST,
+				TFA9890_PARAM_SET_CONFIG,
+				right_fw_config[tfa9890->cfg_mode]->data,
+				right_fw_config[tfa9890->cfg_mode]->size,
+				TFA9890_DSP_WRITE, 0);
+	if (ret < 0) {
+		pr_err("tfa9890: Failed to load cfg for mode %d\n",
+			tfa9890->cfg_mode);
+		return ret;
+	}
+
+	tfa9890->update_cfg = 0;
+	return ret;
+
+}
+
+static int tfa9890_set_config_left(struct tfa9890_priv *tfa9890)
+{
+	int ret;
+	if (tfa9890->dsp_init == TFA9890_DSP_INIT_FAIL) {
+		pr_err("%s: firmware loading failed!!", __func__);
+		return -EIO;
+	}
+
+	if (!left_fw_config[tfa9890->cfg_mode] ||
+				((left_fw_config[tfa9890->cfg_mode])->size !=
+				TFA9890_CFG_FW_SIZE)) {
+			pr_err("tfa9890: Data size check failed cfg file\n");
+			return -EIO;
+	}
+
+	ret = tfa9890_dsp_transfer(tfa9890->codec,
+				TFA9890_DSP_MOD_SPEAKERBOOST,
+				TFA9890_PARAM_SET_CONFIG,
+				left_fw_config[tfa9890->cfg_mode]->data,
+				left_fw_config[tfa9890->cfg_mode]->size,
+				TFA9890_DSP_WRITE, 0);
+	if (ret < 0) {
+		pr_err("tfa9890: Failed to load cfg for mode %d\n",
+			tfa9890->cfg_mode);
+		return ret;
+	}
+	tfa9890->update_cfg = 0;
+	return ret;
+}
+
+
 static int tfa9890_set_mode_right(struct tfa9890_priv *tfa9890)
 {
 	int ret;
@@ -523,27 +589,12 @@ static int tfa9890_set_mode_right(struct tfa9890_priv *tfa9890)
 	tfa9890->curr_mode = tfa9890->mode;
 	tfa9890->curr_vol_idx = tfa9890->vol_idx;
 
-	if (tfa9890->update_cfg_eq) {
+	if (tfa9890->update_eq) {
 		if (!right_fw_eq[tfa9890->mode] ||
-				!right_fw_config[tfa9890->mode] ||
 			((right_fw_eq[tfa9890->mode])->size !=
-				TFA9890_COEFF_FW_SIZE) ||
-				((right_fw_config[tfa9890->mode])->size !=
-				TFA9890_CFG_FW_SIZE)) {
-			pr_err("tfa9890: Data size check failed cfg and eq file");
+				TFA9890_COEFF_FW_SIZE)) {
+			pr_err("tfa9890: Data size check failed eq file\n");
 			return -EIO;
-		}
-
-		ret = tfa9890_dsp_transfer(tfa9890->codec,
-			TFA9890_DSP_MOD_SPEAKERBOOST,
-			TFA9890_PARAM_SET_CONFIG,
-			right_fw_config[tfa9890->mode]->data,
-			right_fw_config[tfa9890->mode]->size,
-			TFA9890_DSP_WRITE, 0);
-		if (ret < 0) {
-			pr_err("tfa9890: Failed to load cfg for mode %s\n",
-				tfa9890_mode[tfa9890->mode]);
-			return ret;
 		}
 
 		ret = tfa9890_dsp_transfer(tfa9890->codec,
@@ -556,11 +607,11 @@ static int tfa9890_set_mode_right(struct tfa9890_priv *tfa9890)
 				tfa9890_mode[tfa9890->mode]);
 			return ret;
 		}
-		pr_debug("tfa9890: switching cfg and eq file to mode %s\n",
+		pr_debug("tfa9890: switching eq file to mode %s\n",
 			tfa9890_mode[tfa9890->mode]);
 	}
 
-	tfa9890->update_cfg_eq = 0;
+	tfa9890->update_eq = 0;
 	return ret;
 }
 
@@ -595,27 +646,12 @@ static int tfa9890_set_mode_left(struct tfa9890_priv *tfa9890)
 	tfa9890->curr_mode = tfa9890->mode;
 	tfa9890->curr_vol_idx = tfa9890->vol_idx;
 
-	if (tfa9890->update_cfg_eq) {
+	if (tfa9890->update_eq) {
 		if (!left_fw_eq[tfa9890->mode] ||
-			!left_fw_config[tfa9890->mode] ||
 			((left_fw_eq[tfa9890->mode])->size
-			!= TFA9890_COEFF_FW_SIZE)
-			|| ((left_fw_config[tfa9890->mode])->size !=
-				TFA9890_CFG_FW_SIZE)) {
-			pr_err("tfa9890: Data size check failed cfg and eq file");
+			!= TFA9890_COEFF_FW_SIZE)) {
+			pr_err("tfa9890: Data size check failed eq file\n");
 			return -EIO;
-		}
-
-		ret = tfa9890_dsp_transfer(tfa9890->codec,
-			TFA9890_DSP_MOD_SPEAKERBOOST,
-			TFA9890_PARAM_SET_CONFIG,
-			left_fw_config[tfa9890->mode]->data,
-			left_fw_config[tfa9890->mode]->size,
-			TFA9890_DSP_WRITE, 0);
-		if (ret < 0) {
-			pr_err("tfa9890: Failed to load cfg for mode %s\n",
-				tfa9890_mode[tfa9890->mode]);
-			return ret;
 		}
 
 		ret = tfa9890_dsp_transfer(tfa9890->codec,
@@ -628,11 +664,11 @@ static int tfa9890_set_mode_left(struct tfa9890_priv *tfa9890)
 				tfa9890_mode[tfa9890->mode]);
 			return ret;
 		}
-		pr_debug("tfa9890: switching cfg and eq file to mode %s\n",
+		pr_debug("tfa9890: switching eq file to mode %s\n",
 			tfa9890_mode[tfa9890->mode]);
 	}
 
-	tfa9890->update_cfg_eq = 0;
+	tfa9890->update_eq = 0;
 	return ret;
 }
 
@@ -666,7 +702,7 @@ static int tfa9890_put_mode(struct snd_kcontrol *kcontrol,
 
 	/* update config/eq based on mode change */
 	if (tfa9890->curr_mode != mode_value)
-		tfa9890->update_cfg_eq = 1;
+		tfa9890->update_eq = 1;
 
 	if (tfa9890->curr_mode != mode_value ||
 			tfa9890->curr_vol_idx != vol_value) {
@@ -766,6 +802,60 @@ static int tfa9890_dsp_bypass_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int tfa9890_put_ch_sel(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
+	u16 val;
+	u16 ch_sel;
+
+	mutex_lock(&lr_lock);
+	pr_debug("%s: value %ld\n", __func__, ucontrol->value.integer.value[0]);
+
+	val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
+	ch_sel = (TFA9890_I2S_CHS12 & val) >> 3;
+
+	if (ucontrol->value.integer.value[0] != 0x3)
+		tfa9890->cfg_mode = 0;
+	else
+		tfa9890->cfg_mode = 1;
+
+	/* check if config file need to switched */
+	if (ch_sel != ucontrol->value.integer.value[0]) {
+		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+		if ((val & TFA9890_STATUS_UP_MASK) == TFA9890_STATUS_UP_MASK) {
+			if (!strncmp("left", tfa9890->tfa_dev, 4))
+				tfa9890_set_config_left(tfa9890);
+			else
+				tfa9890_set_config_right(tfa9890);
+		} else
+			tfa9890->update_cfg = 1;
+
+		val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
+		val = val & (~TFA9890_I2S_CHS12);
+		val = val | (ucontrol->value.integer.value[0] << 3);
+		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
+	}
+	mutex_unlock(&lr_lock);
+	return 0;
+}
+
+static int tfa9890_get_ch_sel(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	u16 ch_sel;
+	u16 val;
+
+	mutex_lock(&lr_lock);
+	val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
+	ch_sel = TFA9890_I2S_CHS12 & val;
+	ucontrol->value.integer.value[0] = ch_sel;
+	mutex_unlock(&lr_lock);
+	return 0;
+}
+
 static const struct soc_enum tfa9890_mode_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, tfa9890_mode),
 };
@@ -777,8 +867,9 @@ static const struct snd_kcontrol_new tfa9890_left_snd_controls[] = {
 				 0, 2, tfa9890_get_mode,
 				 tfa9890_put_mode),
 	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
-	SOC_SINGLE("BOOST Left Ch Select", TFA9890_I2S_CTL_REG,
-			3, 0x3, 0),
+	SOC_SINGLE_EXT("BOOST Left Ch Select", TFA9890_I2S_CTL_REG,
+			3, 0x3, 0, tfa9890_get_ch_sel,
+					tfa9890_put_ch_sel),
 	SOC_SINGLE_EXT("BOOST ENABLE Spkr Left Prot", 0 , 0, 1,
 				 0, tfa9890_dsp_bypass_get,
 					tfa9890_dsp_bypass_put),
@@ -809,8 +900,9 @@ static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
 				 0, 2, tfa9890_get_mode,
 				 tfa9890_put_mode),
 	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
-	SOC_SINGLE("BOOST Right Ch Select", TFA9890_I2S_CTL_REG,
-			3, 0x3, 0),
+	SOC_SINGLE_EXT("BOOST Right Ch Select", TFA9890_I2S_CTL_REG,
+			3, 0x3, 0, tfa9890_get_ch_sel,
+						tfa9890_put_ch_sel),
 	SOC_SINGLE_EXT("BOOST ENABLE Spkr Right Prot", 0, 0, 1,
 				 0, tfa9890_dsp_bypass_get,
 					tfa9890_dsp_bypass_put),
@@ -1091,8 +1183,14 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 		ret = tfa9890_set_mode_left(tfa9890);
 		if (ret < 0)
 			goto out;
+		ret = tfa9890_set_config_left(tfa9890);
+		if (ret < 0)
+			goto out;
 	} else {
 		ret = tfa9890_set_mode_right(tfa9890);
+		if (ret < 0)
+			goto out;
+		ret = tfa9890_set_config_right(tfa9890);
 		if (ret < 0)
 			goto out;
 	}
@@ -1163,10 +1261,18 @@ static void tfa9890_work_mode(struct work_struct *work)
 	ret = tfa9890_wait_pll_sync(tfa9890);
 	if (ret < 0)
 		goto out;
-	if (!strncmp("left", tfa9890->tfa_dev, 4))
-		tfa9890_set_mode_left(tfa9890);
-	else
-		tfa9890_set_mode_right(tfa9890);
+
+	if (!strncmp("left", tfa9890->tfa_dev, 4)) {
+		if (tfa9890->mode_switched)
+			tfa9890_set_mode_left(tfa9890);
+		if (tfa9890->update_cfg)
+			tfa9890_set_config_left(tfa9890);
+	} else {
+		if (tfa9890->mode_switched)
+			tfa9890_set_mode_right(tfa9890);
+		if (tfa9890->update_cfg)
+			tfa9890_set_config_right(tfa9890);
+	}
 out:
 	mutex_unlock(&tfa9890->dsp_init_lock);
 	mutex_unlock(&lr_lock);
@@ -1605,7 +1711,8 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 		 * will be read from sysfs and validated.
 		 */
 		else if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE) {
-			if (tfa9890->mode_switched == 1)
+			if ((tfa9890->mode_switched == 1) ||
+					(tfa9890->update_cfg == 1))
 				queue_work(tfa9890->tfa9890_wq,
 					&tfa9890->mode_work);
 			if (tfa9890->speaker_imp == 0)
@@ -2111,7 +2218,7 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 	tfa9890->sysclk = SYS_CLK_DEFAULT;
 	tfa9890->fw_path = pdata->fw_path;
 	tfa9890->fw_name = pdata->fw_name;
-	tfa9890->update_cfg_eq = 1;
+	tfa9890->update_eq = 1;
 	i2c_set_clientdata(i2c, tfa9890);
 	mutex_init(&tfa9890->dsp_init_lock);
 	mutex_init(&tfa9890->i2c_rw_lock);
