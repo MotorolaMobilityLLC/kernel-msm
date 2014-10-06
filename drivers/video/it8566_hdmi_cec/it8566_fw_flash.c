@@ -31,7 +31,6 @@ static struct i2c_client        *flash_mode_client;
 struct mutex it8566_fw_lock;
 /* fw update ++ */
 static char *fw_bin_path = "/system/etc/firmware/IT8566_CEC.BIN";
-static char *fw_bin_path_2 = "/sdcard/IT8566_CEC.BIN";
 #define FW_FILE_SIZE 65536
 unsigned char *gbuffer;
 unsigned char flash_id[3];
@@ -684,16 +683,9 @@ static int load_fw_and_set_flash_region(int force)
 	err = load_fw_bin_to_buffer(fw_bin_path);
 	if (err < 0) {
 		dev_err(&flash_mode_client->dev,
-			"%s: load %s fail, try %s\n", __func__,
-			fw_bin_path, fw_bin_path_2);
-
-		err = load_fw_bin_to_buffer(fw_bin_path_2);
-		if (err < 0) {
-			dev_err(&flash_mode_client->dev,
-				"%s: load %s fail, abort\n", __func__,
-				fw_bin_path_2);
-			return -1;
-		}
+			"%s: load %s fail, abort\n",
+			__func__, fw_bin_path);
+		return -1;
 	}
 
 	err = check_ec_has_been_flash(ec_version);
@@ -792,7 +784,7 @@ int it8566_fw_update(int force)
 retry:
 	retry++;
 	if (retry > NUM_FW_UPDATE_RETRY)
-		goto exit_func;
+		goto update_fail;
 
 	dev_info(&flash_mode_client->dev, "Update fw..., retry=%d\n", retry);
 
@@ -800,7 +792,7 @@ retry:
 	if (err < 0)
 		goto retry;
 	else if (err > 0)
-		goto exit_func_2;
+		goto update_none;
 
 	do_erase_all();
 	err = do_check();
@@ -832,14 +824,20 @@ retry:
 		"Update fw Success!, Current fw ver: %x.%x.%x\n",
 		ec_version[0], ec_version[1], ec_version[2]);
 
-	return err;
+	/*update success*/
+	return 0;
 
-exit_func:
+update_fail:
 	dev_err(&flash_mode_client->dev, "Update fw Fail...\n");
-exit_func_2:
 	kfree(gbuffer);
 	gbuffer = NULL;
-	return err;
+	/*update fail*/
+	return -1;
+update_none:
+	kfree(gbuffer);
+	gbuffer = NULL;
+	/*no need to update*/
+	return 1;
 }
 /* fw update -- */
 
