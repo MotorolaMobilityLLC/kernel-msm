@@ -7300,7 +7300,14 @@ eHalStatus csrRoamSaveConnectedInfomation(tpAniSirGlobal pMac, tANI_U32 sessionI
 #ifdef FEATURE_WLAN_ESE
     if ((csrIsProfileESE(pProfile) ||
          ((pIesTemp->ESEVersion.present)
-          && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM))))
+          && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM)
+               || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)
+               || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK)
+               || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN)
+#ifdef WLAN_FEATURE_11W
+               || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK_SHA256)
+#endif
+               || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK))))
         && (pMac->roam.configParam.isEseIniFeatureEnabled))
     {
         pConnectProfile->isESEAssoc = 1;
@@ -13140,7 +13147,14 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
          */
         if ((csrIsProfileESE(pProfile) ||
                   ((pIes->ESEVersion.present)
-                   && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM))))
+                   && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM)
+                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)
+                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK)
+                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN)
+#ifdef WLAN_FEATURE_11W
+                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK_SHA256)
+#endif
+                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK))))
                  && (pMac->roam.configParam.isEseIniFeatureEnabled))
         {
             // isESEconnection;
@@ -13169,7 +13183,14 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         {
         if ((csrIsProfileESE(pProfile) ||
              ((pIes->ESEVersion.present)
-              && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM))))
+              && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM)
+                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)
+                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK)
+                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN)
+#ifdef WLAN_FEATURE_11W
+                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK_SHA256)
+#endif
+                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK))))
             && (pMac->roam.configParam.isEseIniFeatureEnabled))
         {
            tESETspecInfo eseTspec;
