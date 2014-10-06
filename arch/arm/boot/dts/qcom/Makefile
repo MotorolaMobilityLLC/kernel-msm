@@ -219,7 +219,8 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p1a.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p1b.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p1ad.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p1bd.dtb
-dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p2.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p2a.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p2ad.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
