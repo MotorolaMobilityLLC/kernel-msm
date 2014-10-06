@@ -1735,6 +1735,8 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 
 int tfa9890_stereo_sync_set_mute(int mute)
 {
+	struct tfa9890_priv *tfa9890_left = snd_soc_codec_get_drvdata(left_codec);
+	struct tfa9890_priv *tfa9890_right = snd_soc_codec_get_drvdata(right_codec);
 	u16 left_val;
 	u16 right_val;
 	u16 tries = 0;
@@ -1743,6 +1745,11 @@ int tfa9890_stereo_sync_set_mute(int mute)
 		pr_err("%s : codec instance variables not intialized\n",
 				__func__);
 		return 0;
+	}
+
+	if (mute) {
+		cancel_delayed_work_sync(&tfa9890_left->delay_work);
+		cancel_delayed_work_sync(&tfa9890_right->delay_work);
 	}
 
 	mutex_lock(&lr_lock);
