@@ -4955,24 +4955,44 @@ static ssize_t dpdm_pulldown_enable_store(struct device *dev,
 static DEVICE_ATTR(dpdm_pulldown_enable, S_IRUGO | S_IWUSR,
 		dpdm_pulldown_enable_show, dpdm_pulldown_enable_store);
 
+static bool msm_otg_mmi_factory(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
 struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
 	struct msm_otg_platform_data *pdata;
 	int len = 0;
 	int res_gpio;
+	bool factory_cable = msm_otg_mmi_factory();
+	char *phy_init_node;
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
 		pr_err("unable to allocate platform data\n");
 		return NULL;
 	}
-	of_get_property(node, "qcom,hsusb-otg-phy-init-seq", &len);
+	if (factory_cable)
+		phy_init_node = "qcom,hsusb-otg-factory-phy-init-seq";
+	else
+		phy_init_node = "qcom,hsusb-otg-phy-init-seq";
+
+	of_get_property(node, phy_init_node, &len);
 	if (len) {
 		pdata->phy_init_seq = devm_kzalloc(&pdev->dev, len, GFP_KERNEL);
 		if (!pdata->phy_init_seq)
 			return NULL;
-		of_property_read_u32_array(node, "qcom,hsusb-otg-phy-init-seq",
+		of_property_read_u32_array(node, phy_init_node,
 				pdata->phy_init_seq,
 				len/sizeof(*pdata->phy_init_seq));
 	}
