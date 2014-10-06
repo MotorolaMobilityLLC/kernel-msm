@@ -78,3 +78,119 @@
 	regulator-always-on;
 	regulator-boot-on;
 };
+
+&i2c_4 {
+	smb1360_otg_supply: smb1360-chg-fg@14 {
+		status = "disabled";
+		compatible = "qcom,smb1360-chg-fg";
+		reg = <0x14>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <62 8>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&smb_int_default>;
+		regulator-name = "smb1360_otg_vreg";
+
+		qcom,chg-inhibit-disabled;
+		qcom,float-voltage-mv = <4200>;
+		qcom,iterm-ma = <100>;
+		qcom,charging-disabled;
+		qcom,recharge-thresh-mv = <100>;
+		qcom,thermal-mitigation = <1500 700 600 0>;
+	};
+
+	fan54046: fan54046-charger@6b {
+		compatible = "fairchild,fan54046-charger";
+		reg = <0x6b>;
+
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <62 0x0>;
+		qcom,fan5404x-vadc = <&pm8916_vadc>;
+		regulator-name = "fan54046_otg_vreg";
+
+		fairchild,bms-psy-name = "max170xx_battery";
+		fairchild,ext-temp-volt-mv = <4000>;
+		fairchild,ext-temp-soc = <65>;
+		fairchild,oreg-voltage-mv = <4350>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&fan5404x_int_default>;
+	};
+
+	max17050: max17050-battery@36 {
+		compatible = "maxim,max17050";
+		reg = <0x36>;
+		maxim,rsns-microohm = <10000>;
+
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <12 0x0>;
+		gpios = <&msm_gpio 12 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpio-names = "cc-alert";
+
+		maxim,enable_por_init;
+		maxim,batt_undervoltage_zero_soc;
+		maxim,batt-psy-name = "battery";
+		maxim,warm-temp-c = <45>;
+		maxim,hot-temp-c = <60>;
+		maxim,cool-temp-c = <0>;
+		maxim,cold-temp-c = <(-20)>;
+
+		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cc_alert_default>;
+
+		maxim,configuration {
+			/* Required properties */
+			/* Table from Maxim for FT40 LG 2360 mAhr Battery */
+			config		= /bits/ 16 <0x0254>;
+			full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
+			design_cap	= /bits/ 16 <4720>;	/* mAh times 2 */
+			ichgt_term	= /bits/ 16 <0x0280>;	/* battery attribute */
+			learn_cfg	= /bits/ 16 <0x2606>;	/* app note constant */
+			filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
+			relax_cfg	= /bits/ 16 <0x203B>;
+			fullcap		= /bits/ 16 <4720>;	/* mAh times 2 */
+			fullcapnom	= /bits/ 16 <4720>;	/* mAh times 2 */
+			qrtbl00		= /bits/ 16 <0x4100>;	/* battery attribute */
+			qrtbl10		= /bits/ 16 <0x1F00>;	/* battery attribute */
+			qrtbl20		= /bits/ 16 <0x0D82>;	/* battery attribute */
+			qrtbl30		= /bits/ 16 <0x0B05>;	/* battery attribute */
+			rcomp0 		= /bits/ 16 <0x0081>;	/* battery attribute */
+			tcompc0		= /bits/ 16 <0x3056>;	/* battery attribute */
+			maxim,cell-char-tbl = /bits/ 16 <	/* battery attribute */
+				0xa300 0xb6a0 0xb900 0xbc00 0xbc60 0xbd10
+				0xbda0 0xbe60 0xbed0 0xc090 0xc210 0xc720
+				0xcaa0 0xcce0 0xcfb0 0xd7b0 0x0170 0x0f00
+				0x0c00 0x2a20 0x1b00 0x2000 0x1670 0x1990
+				0x10e0 0x08e0 0x0a70 0x0750 0x08c0 0x07d0
+				0x06f0 0x06f0 0x0100 0x0100 0x0100 0x0100
+				0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+				0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+			>;
+			/* Optional properties */
+			tgain		= /bits/ 16 <0xE71C>;	/* thermistor attribute */
+			toff		= /bits/ 16 <0x251A>;	/* thermistor attribute */
+			cgain		= /bits/ 16 <0x4000>;	/* current sense attribute */
+			misc_cfg	= /bits/ 16 <0x0170>;
+			rev		= /bits/ 16 <0x0001>;
+		};
+
+		maxim,temp-conv {
+			start	= /bits/ 16 <(-20)>;	/* in degrees C */
+			result	= /bits/ 16 <
+				/* 1/10th C "real" temps corresponding start, start + 1, etc. fuel gauge temps in C */
+				(-302) (-271) (-246) (-222) (-202) (-180) (-162) (-147) (-129) (-114)	/* -20 C ... -11 C */
+				(-101) (-86)  (-72)  (-59)  (-48)  (-35)  (-23)  (-12)  (-2)   10	/* -10 C ... -1  C */
+				22     32     42     51     62     72     82     91     99     110	/*  0  C ...  9  C */
+				120    129    138    146    156    165    175    184    192    200	/*  10 C ...  19 C */
+				210    220    230    238    247    256    266    275    285    294	/*  20 C ...  29 C */
+				303    313    324    333    343    353    364    375    385    395	/*  30 C ...  39 C */
+				407    419    430    441    453    466    479    492    505    520	/*  40 C ...  49 C */
+				534    548    565    581    597    616    635    654    676    697	/*  50 C ...  59 C */
+				721    747    775    800						/*  60 C ...  63 C */
+			>;
+		};
+	};
+};
+
+
