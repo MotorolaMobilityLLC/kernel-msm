@@ -238,6 +238,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&usbid_default>;
 	vbus_otg-supply = <&fan54046>;
+	qcom,hsusb-otg-factory-phy-init-seq =
+		<0x00 0x80 0x29 0x81 0x36 0x82 0x3C 0x83 0xffffffff>;
 };
 
 &pm8916_chg {
