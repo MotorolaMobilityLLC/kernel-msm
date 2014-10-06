@@ -11,3 +11,4 @@ obj-y	+= sfi/
 obj-y	+= ts5500/
 obj-y	+= visws/
 obj-y	+= uv/
+obj-y	+= fugu/

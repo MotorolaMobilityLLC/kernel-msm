@@ -20,7 +20,7 @@
 #include <linux/platform_device.h>
 #include <linux/fs.h>
 #include <linux/board_asustek.h>
-#include "../device_libs/pci/platform_sdhci_pci.h"
+#include "../intel-mid/device_libs/pci/platform_sdhci_pci.h"
 #include "platform_fugu_wifi.h"
 
 static int fugu_wifi_get_mac_addr(unsigned char *buf);
