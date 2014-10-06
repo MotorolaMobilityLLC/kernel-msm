@@ -878,41 +878,6 @@ out:
 	return ret;
 }
 
-static int f2fs_ioc_open_atomic_file(struct file *filp)
-{
-	struct inode *inode = file_inode(filp);
-	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
-
-	if (!inode_owner_or_capable(inode))
-		return -EACCES;
-
-	f2fs_balance_fs(sbi);
-
-	set_inode_flag(F2FS_I(inode), FI_ATOMIC_FILE);
-
-	return f2fs_convert_inline_data(inode, MAX_INLINE_DATA + 1, NULL);
-}
-
-static int f2fs_ioc_atomic_commit(struct file *filp)
-{
-	struct inode *inode = file_inode(filp);
-	int ret;
-
-	if (!inode_owner_or_capable(inode))
-		return -EACCES;
-
-	ret = mnt_want_write_file(filp);
-	if (ret)
-		return ret;
-
-	if (is_inode_flag_set(F2FS_I(inode), FI_ATOMIC_FILE))
-		commit_atomic_pages(inode, false);
-
-	ret = f2fs_sync_file(filp, 0, LONG_MAX, 0);
-	mnt_drop_write_file(filp);
-	return ret;
-}
-
 static int f2fs_ioc_fitrim(struct file *filp, unsigned long arg)
 {
 	struct inode *inode = file_inode(filp);
@@ -950,10 +915,6 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return f2fs_ioc_getflags(filp, arg);
 	case F2FS_IOC_SETFLAGS:
 		return f2fs_ioc_setflags(filp, arg);
-	case F2FS_IOC_ATOMIC_OPEN:
-		return f2fs_ioc_open_atomic_file(filp);
-	case F2FS_IOC_ATOMIC_COMMIT:
-		return f2fs_ioc_atomic_commit(filp);
 	case FITRIM:
 		return f2fs_ioc_fitrim(filp, arg);
 	default:
