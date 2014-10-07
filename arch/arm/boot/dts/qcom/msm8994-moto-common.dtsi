@@ -1160,6 +1160,10 @@
 
 &spmi_bus {
 	qcom,pmi8994@3 {
+		qcom,leds@d800 {
+			status = "disabled";
+		};
+
 		qcom,haptic@c000 {
 			status = "disabled";
 		};
