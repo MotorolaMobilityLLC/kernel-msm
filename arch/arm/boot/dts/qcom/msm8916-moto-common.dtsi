@@ -19,6 +19,7 @@
 / {
 	aliases {
 		serial0 = &blsp1_ls_uart1;
+		spi4 = &spi_4; /* SPI4 controller device */
 		spi5 = &spi_5; /* SPI5 controller device */
 		i2c1 = &i2c_1;
 	};
@@ -400,6 +401,57 @@
 		};
 	};
 
+	spi4_active {
+		/* MOSI, MISO, CLK */
+		qcom,pins = <&gp 12>, <&gp 13>, <&gp 15>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <1>;
+		label = "spi4-active";
+		/* active state */
+		spi4_default: default {
+			drive-strength = <12>; /* 12 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
+	spi4_suspend {
+		/* MOSI, MISO, CLK */
+		qcom,pins = <&gp 12>, <&gp 13>, <&gp 15>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <0>;
+		label = "spi4-suspend";
+		/* suspended state */
+		spi4_sleep: sleep {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
+	spi4_cs0_active {
+		/* CS */
+		qcom,pins = <&gp 14>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "spi4-cs0-active";
+		spi4_cs0_active: cs0_active {
+			drive-strength = <2>;
+			bias-disable = <0>;
+		};
+	};
+
+
+	spi4_cs0_suspend {
+		/* CS */
+		qcom,pins = <&gp 14>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "spi4-cs0-suspend";
+		spi4_cs0_sleep: cs0_sleep {
+			drive-strength = <2>;
+			bias-disable = <0>;
+		};
+	};
+
 	spi5_active {
 		/* MOSI, MISO, CLK */
 		qcom,pins = <&gp 16>, <&gp 17>, <&gp 19>;
@@ -611,6 +663,32 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&backlight_reset_default>;
 		};
+	};
+
+	spi_4: spi@78b8000 { /* BLSP1 QUP4 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x78b8000 0x600>,
+		      <0x7884000 0x23000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 98 0>, <0 238 0>;
+		spi-max-frequency = <19200000>;
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&spi4_default &spi4_cs0_active>;
+		pinctrl-1 = <&spi4_sleep &spi4_cs0_sleep>;
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup4_spi_apps_clk>;
+		clock-names = "iface_clk", "core_clk";
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,use-pinctrl;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <10>;
+		qcom,bam-producer-pipe-index = <11>;
+		qcom,master-id = <86>;
+		status = "disabled";
 	};
 
 	spi_5: spi@78b9000 { /* BLSP1 QUP5 */
