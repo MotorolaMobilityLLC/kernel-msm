@@ -716,7 +716,7 @@
 		qcom,master-id = <86>;
 		status = "disabled";
 
-		nmi326@0 {
+		nmi326_dtv: nmi326@0 {
 			status = "disabled";
 			compatible = "nmi,nmi326";
 			reg = <0>;
