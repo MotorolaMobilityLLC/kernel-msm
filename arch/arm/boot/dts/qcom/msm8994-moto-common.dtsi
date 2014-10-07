@@ -1163,5 +1163,18 @@
 		qcom,haptic@c000 {
 			status = "disabled";
 		};
+
+		qcom,leds@d000 {
+			qcom,rgb_0 {
+				/delete-property/ linux,default-trigger;
+			};
+			qcom,rgb_1 {
+				/delete-property/ linux,default-trigger;
+			};
+		};
+
+		qcom,leds@d300 {
+			status = "disabled";
+		};
 	};
 };
