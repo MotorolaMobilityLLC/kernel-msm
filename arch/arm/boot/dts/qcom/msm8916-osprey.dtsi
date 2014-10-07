@@ -25,6 +25,14 @@
 	nmi326_enable_reset {
 		qcom,pins = <&gp 37>, <&gp 80>;
 	};
+
+	stml0xx_inputs {
+		qcom,pins = <&gp 51>, <&gp 52>, <&gp 38>, <&gp 4>;
+	};
+
+	stml0xx_wakeup {
+		qcom,pins = <&gp 116>;
+	};
 };
 
 &spi_4 {
@@ -186,4 +194,14 @@
 &nmi326_dtv {
 	reset-gpio = <&msm_gpio 80 0>;
 	enable-gpio = <&msm_gpio 37 0>;
+};
+
+&stml0xx {
+	gpios = <&msm_gpio 51 0>,        /* IRQ */
+		<&msm_gpio 120 0>,       /* RESET */
+		<&msm_gpio 121 0>,       /* BSLEN */
+		<&msm_gpio 52 0>,        /* WakeIRQ */
+		<&msm_gpio 4 0>,         /* SPI Ready for Receive */
+		<&msm_gpio 38 0>,        /* SPI Data Ack */
+		<&msm_gpio 116 0>;       /* Wake Up Sensor Hub */
 };
