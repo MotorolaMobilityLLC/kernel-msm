@@ -2373,6 +2373,7 @@ limAddSta(
     pAddStaParams->wmmEnabled = pStaDs->qosMode;
     pAddStaParams->listenInterval = pStaDs->mlmStaContext.listenInterval;
     pAddStaParams->shortPreambleSupported = pStaDs->shortPreambleEnabled;
+    pAddStaParams->currentOperChan = psessionEntry->currentOperChannel;
     if((limGetSystemRole(psessionEntry) == eLIM_AP_ROLE) && (pStaDs->mlmStaContext.subType == LIM_REASSOC))
     {
         /* TBD - need to remove this REASSOC check after fixinf rmmod issue */
@@ -2843,7 +2844,7 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
     pAddStaParams->staType = STA_ENTRY_SELF;
     pAddStaParams->status = eHAL_STATUS_SUCCESS;
     pAddStaParams->respReqd = 1;
-
+    pAddStaParams->currentOperChan = psessionEntry->currentOperChannel;
     /* Update  PE session ID */
     pAddStaParams->sessionId = psessionEntry->peSessionId;
     
