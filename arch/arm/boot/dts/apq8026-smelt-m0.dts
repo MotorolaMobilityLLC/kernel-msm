@@ -151,8 +151,75 @@
 	status = "disabled";
 };
 
+&tlmm_pinmux {
+	sdhc3_clk_on {
+		qcom,pins = <&gp 44>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <2>;
+		label = "sdhc3-clk-on";
+		sdhc3_clk_on: clk_on {
+			bias-disable;
+			drive-strength = <8>;
+		};
+	};
+
+	sdhc3_cmd_data_on {
+		qcom,pins = <&gp 39 &gp 40 &gp 41 &gp 42 &gp 43>;
+		qcom,num-grp-pins = <5>;
+		qcom,pin-func = <2>;
+		label = "sdhc3-cmd-data-on";
+		sdhc3_cmd_data_on: cmd_data_on {
+			bias-pull-up;
+			drive-strength = <8>;
+		};
+	};
+
+	sdhc3_off {
+		qcom,pins = <&gp 39 &gp 40 &gp 41 &gp 42 &gp 43 &gp 44>;
+		qcom,num-grp-pins = <6>;
+		qcom,pin-func = <0>;
+		label = "sdhc3-off";
+		sdhc3_off: off {
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
+	sdhc3_wake {
+		qcom,pins = <&gp 29>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "sdhc3-wake";
+		sdhc3_wake: default {
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+};
+
 &sdhc_1 {
-	qcom,bus-speed-mode = "DDR_1p8v";
+	qcom,vdd-always-on;
+	qcom,vdd-lpm-sup;
+};
+
+&sdhc_2 {
+	status = "disabled";
+};
+
+&sdhc_3 {
+	vdd-io-supply = <&pm8226_l6>;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <250 154000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdhc3_clk_on &sdhc3_cmd_data_on &sdhc3_wake>;
+	pinctrl-1 = <&sdhc3_off &sdhc3_wake>;
+
+	interrupt-map = <0 &intc 0 127 0
+			 1 &intc 0 224 0
+			 2 &msmgpio 29 0x8>;
+
+	status = "ok";
 };
 
 &i2c_2 {
