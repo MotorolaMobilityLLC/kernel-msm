@@ -252,38 +252,6 @@ static const struct snd_soc_dapm_widget msm8x16_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic2", NULL),
 };
 
-#ifdef CONFIG_SND_SOC_FSA8500
-static int msm_ext_hp_event(struct snd_soc_dapm_widget *w,
-		struct snd_kcontrol *kcontrol, int event)
-{
-	if (SND_SOC_DAPM_EVENT_ON(event))
-		fsa8500_hp_event(1);
-	else
-		fsa8500_hp_event(0);
-	return 0;
-}
-
-static int msm_ext_mic_event(struct snd_soc_dapm_widget *w,
-		struct snd_kcontrol *kcontrol, int event)
-{
-	if (SND_SOC_DAPM_EVENT_ON(event))
-		fsa8500_mic_event(1);
-	else
-		fsa8500_mic_event(0);
-	return 0;
-}
-
-static const struct snd_soc_dapm_widget fsa8500_dapm_widgets[] = {
-	SND_SOC_DAPM_MIC("FSA8500 Headset Mic", msm_ext_mic_event),
-	SND_SOC_DAPM_HP("FSA8500 Headphone", msm_ext_hp_event),
-};
-
-static const struct snd_soc_dapm_route fsa8500_hp_map[] = {
-	{"FSA8500 Headphone", NULL, "HEADPHONE"},
-	{"MIC BIAS Internal2", NULL, "FSA8500 Headset Mic"},
-};
-#endif
-
 static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE"};
 static const char *const ter_mi2s_tx_ch_text[] = {"One", "Two"};
 static const char *const loopback_mclk_text[] = {"DISABLE", "ENABLE"};
@@ -1171,16 +1139,6 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	ret = fsa8500_hs_detect(codec);
 	if (!ret) {
 		pr_debug("%s:fsa8500 hs det mechanism is used", __func__);
-		/* dapm controls for fsa8500 */
-		snd_soc_dapm_new_controls(dapm, fsa8500_dapm_widgets,
-				ARRAY_SIZE(fsa8500_dapm_widgets));
-
-		snd_soc_dapm_add_routes(dapm, fsa8500_hp_map,
-				ARRAY_SIZE(fsa8500_hp_map));
-
-		snd_soc_dapm_enable_pin(dapm, "FSA8500 Headphone");
-		snd_soc_dapm_enable_pin(dapm, "FSA8500 Headset Mic");
-		snd_soc_dapm_sync(dapm);
 	}
 #else
 	mbhc_cfg.calibration = def_msm8x16_wcd_mbhc_cal();
