@@ -43,6 +43,18 @@
 
 #include <linux/stml0xx.h>
 
+enum headset_state_t {
+	SH_HEADSET_REMOVED,
+	SH_HEADPHONE_INSERTED,
+	SH_HEADSET_INSERTED,
+	SH_HEADSET_BUTTON_1,
+	SH_HEADSET_BUTTON_2,
+	SH_HEADSET_BUTTON_3,
+	SH_HEADSET_BUTTON_4
+};
+
+enum headset_state_t Headset_State = SH_HEADSET_REMOVED;
+
 irqreturn_t stml0xx_wake_isr(int irq, void *dev)
 {
 	struct stml0xx_data *ps_stml0xx = dev;
@@ -199,18 +211,91 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			"Cover status: %d", state);
 	}
 	if (irq_status & M_HEADSET) {
-		int state;
+		uint8_t new_state;
+
 		err = stml0xx_spi_send_read_reg(HEADSET_DATA, buf, 1);
 		if (err < 0) {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Reading Headset state failed");
 			goto EXIT;
 		}
+		new_state = buf[HEADSET_STATE];
 
-		state = buf[HEADSET_STATE];
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Headset state: 0x%02x", state);
+		switch (Headset_State) {
+		case SH_HEADSET_BUTTON_1:
+			if (!(new_state & SH_HEADSET_BUTTON_1_DOWN)) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset button 1 released");
+				Headset_State = SH_HEADSET_INSERTED;
+			}
+			break;
+		case SH_HEADSET_BUTTON_2:
+			if (!(new_state & SH_HEADSET_BUTTON_2_DOWN)) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset button 2 released");
+				Headset_State = SH_HEADSET_INSERTED;
+			}
+			break;
+		case SH_HEADSET_BUTTON_3:
+			if (!(new_state & SH_HEADSET_BUTTON_3_DOWN)) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset button 3 released");
+				Headset_State = SH_HEADSET_INSERTED;
+			}
+			break;
+		case SH_HEADSET_BUTTON_4:
+			if (!(new_state & SH_HEADSET_BUTTON_4_DOWN)) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset button 4 released");
+				Headset_State = SH_HEADSET_INSERTED;
+			}
+			break;
+		default:
+			break;
+		}
+		if (Headset_State == SH_HEADPHONE_INSERTED) {
+			if (!(new_state & SH_HEADPHONE_DETECTED)) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headphone removed");
+				Headset_State = SH_HEADSET_REMOVED;
+			}
+		} else if (Headset_State ==  SH_HEADSET_INSERTED) {
+			if (!(new_state & SH_HEADSET_DETECTED)) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset removed");
+				Headset_State = SH_HEADSET_REMOVED;
+			}
+		}
+		if (Headset_State == SH_HEADSET_REMOVED) {
+			if (new_state & SH_HEADPHONE_DETECTED) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headphone inserted");
+				Headset_State = SH_HEADPHONE_INSERTED;
+			} else if (new_state & SH_HEADSET_DETECTED) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset inserted");
+				Headset_State = SH_HEADSET_INSERTED;
+			}
+		}
+		if (Headset_State == SH_HEADSET_INSERTED) {
+			if (new_state & SH_HEADSET_BUTTON_1_DOWN) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset button 1 pressed");
+				Headset_State = SH_HEADSET_BUTTON_1;
+			} else if (new_state & SH_HEADSET_BUTTON_2_DOWN) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset button 2 pressed");
+				Headset_State = SH_HEADSET_BUTTON_2;
+			} else if (new_state & SH_HEADSET_BUTTON_3_DOWN) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset button 3 pressed");
+				Headset_State = SH_HEADSET_BUTTON_3;
+			} else if (new_state & SH_HEADSET_BUTTON_4_DOWN) {
+				dev_dbg(&stml0xx_misc_data->spi->dev,
+					"Headset button 4 pressed");
+				Headset_State = SH_HEADSET_BUTTON_4;
+			}
+		}
 	}
 	if (irq_status & M_INIT_COMPLETE) {
 		/* set the init complete register, */
