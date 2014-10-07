@@ -28,6 +28,34 @@
 };
 
 &i2c_1 {
+	tps65132@3e {
+		compatible = "ti,tps65132";
+		reg = <0x3e>;
+		ti,en-gpio-lpm;
+
+		regulators {
+			tps65132_pos: pos-boost {
+				regulator-name = "tps65132-pos";
+				regulator-min-microvolt = <5400000>;
+				regulator-max-microvolt = <5600000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <200000>;
+				ti,en-gpio = <&pm8916_gpios 3 0>;
+			};
+
+			tps65132_neg: neg-boost {
+				regulator-name = "tps65132-neg";
+				regulator-min-microvolt = <5400000>;
+				regulator-max-microvolt = <5600000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <40000>;
+				ti,en-gpio = <&pm8916_gpios 4 0>;
+			};
+		};
+	};
+
 	fan54046: fan54046-charger@6b {
 		compatible = "fairchild,fan54046-charger";
 		reg = <0x6b>;
@@ -120,5 +148,25 @@
 				721    747    775    800						/*  60 C ...  63 C */
 			>;
 		};
+	};
+};
+
+&pm8916_gpios {
+	gpio@c200 { /* GPIO 3 - DISP_VSP_EN */
+		status = "okay";
+		qcom,mode = <1>;	/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,pull = <5>;	/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;	/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;	/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@c300 { /* GPIO 4 - DISP_VSN_EN */
+		status = "okay";
+		qcom,mode = <1>;	/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,pull = <5>;	/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;	/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;	/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 };
