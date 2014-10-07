@@ -55,6 +55,9 @@
 };
 
 &i2c_1 {
+	fsa8500@23 {
+		status = "ok";
+	};
 	bd65b60@64 {
 		status = "disabled";
 	};
