@@ -21,6 +21,10 @@
 	cc_alert {
 		qcom,pins = <&gp 49>;
 	};
+
+	nmi326_enable_reset {
+		qcom,pins = <&gp 37>, <&gp 80>;
+	};
 };
 
 &spi_4 {
@@ -177,4 +181,9 @@
 		qcom,src-sel = <0>;	/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
+};
+
+&nmi326_dtv {
+	reset-gpio = <&msm_gpio 80 0>;
+	enable-gpio = <&msm_gpio 37 0>;
 };
