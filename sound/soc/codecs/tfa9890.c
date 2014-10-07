@@ -62,7 +62,7 @@ struct tfa9890_priv {
 	struct workqueue_struct *tfa9890_wq;
 	struct work_struct init_work;
 	struct work_struct calib_work;
-	struct work_struct mode_work;
+	struct delayed_work mode_work;
 	struct work_struct load_preset;
 	struct delayed_work delay_work;
 	struct mutex dsp_init_lock;
@@ -553,6 +553,7 @@ static int tfa9890_set_config_left(struct tfa9890_priv *tfa9890)
 			tfa9890->cfg_mode);
 		return ret;
 	}
+
 	tfa9890->update_cfg = 0;
 	return ret;
 }
@@ -1252,7 +1253,9 @@ static void tfa9890_work_read_imp(struct work_struct *work)
 static void tfa9890_work_mode(struct work_struct *work)
 {
 	struct tfa9890_priv *tfa9890 =
-			container_of(work, struct tfa9890_priv, mode_work);
+		container_of(work, struct tfa9890_priv,
+				mode_work.work);
+
 	int ret;
 
 	mutex_lock(&lr_lock);
@@ -1273,7 +1276,12 @@ static void tfa9890_work_mode(struct work_struct *work)
 		if (tfa9890->update_cfg)
 			tfa9890_set_config_right(tfa9890);
 	}
+	mutex_unlock(&tfa9890->dsp_init_lock);
+	mutex_unlock(&lr_lock);
+	return;
 out:
+	queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->mode_work,
+						msecs_to_jiffies(100));
 	mutex_unlock(&tfa9890->dsp_init_lock);
 	mutex_unlock(&lr_lock);
 }
@@ -1608,8 +1616,10 @@ static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 	u16 val;
 	u16 tries = 0;
 
-	if (mute)
+	if (mute) {
 		cancel_delayed_work_sync(&tfa9890->delay_work);
+		cancel_delayed_work_sync(&tfa9890->mode_work);
+	}
 
 	mutex_lock(&tfa9890->dsp_init_lock);
 	if (mute) {
@@ -1713,8 +1723,8 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 		else if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE) {
 			if ((tfa9890->mode_switched == 1) ||
 					(tfa9890->update_cfg == 1))
-				queue_work(tfa9890->tfa9890_wq,
-					&tfa9890->mode_work);
+				queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->mode_work,
+						0);
 			if (tfa9890->speaker_imp == 0)
 				queue_work(tfa9890->tfa9890_wq,
 					&tfa9890->calib_work);
@@ -1757,6 +1767,8 @@ int tfa9890_stereo_sync_set_mute(int mute)
 	if (mute) {
 		cancel_delayed_work_sync(&tfa9890_left->delay_work);
 		cancel_delayed_work_sync(&tfa9890_right->delay_work);
+		cancel_delayed_work_sync(&tfa9890_left->mode_work);
+		cancel_delayed_work_sync(&tfa9890_right->mode_work);
 	}
 
 	mutex_lock(&lr_lock);
@@ -2253,7 +2265,7 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 
 	INIT_WORK(&tfa9890->init_work, tfa9890_dsp_init);
 	INIT_WORK(&tfa9890->calib_work, tfa9890_work_read_imp);
-	INIT_WORK(&tfa9890->mode_work, tfa9890_work_mode);
+	INIT_DELAYED_WORK(&tfa9890->mode_work, tfa9890_work_mode);
 	INIT_WORK(&tfa9890->load_preset, tfa9890_load_preset);
 	INIT_DELAYED_WORK(&tfa9890->delay_work, tfa9890_monitor);
 
