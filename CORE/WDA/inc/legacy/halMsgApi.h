@@ -1322,6 +1322,11 @@ typedef struct sDelStaSelfParams
    tANI_U32 status;
 }tDelStaSelfParams, *tpDelStaSelfParams;
 
+typedef struct
+{
+    tSirMacAddr macAddr;
+} tSpoofMacAddrReqParams, *tpSpoofMacAddrReqParams;
+
 typedef struct sP2pPsParams
 {
    tANI_U8   opp_ps;

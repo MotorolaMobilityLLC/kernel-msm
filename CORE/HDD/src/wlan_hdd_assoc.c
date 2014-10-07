@@ -97,6 +97,8 @@ v_U8_t ccpRSNOui06[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x40, 0x96, 0x00 }; // CCKM
 #endif /* FEATURE_WLAN_ESE */
 #ifdef WLAN_FEATURE_11W
 v_U8_t ccpRSNOui07[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x06 }; // RSN-PSK-SHA256
+/* RSN-8021X-SHA256 */
+v_U8_t ccpRSNOui08[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x05 };
 #endif
 
 #if defined(WLAN_FEATURE_VOWIFI_11R)
@@ -3057,6 +3059,10 @@ eCsrAuthType hdd_TranslateRSNToCsrAuthType( u_int8_t auth_suite[4])
     {
         auth_type = eCSR_AUTH_TYPE_RSN_PSK_SHA256;
     } else
+    if (memcmp(auth_suite , ccpRSNOui08, 4) == 0)
+    {
+        auth_type = eCSR_AUTH_TYPE_RSN_8021X_SHA256;
+    } else
 #endif
     {
         auth_type = eCSR_AUTH_TYPE_UNKNOWN;
@@ -3455,6 +3461,10 @@ int hdd_set_csr_auth_type ( hdd_adapter_t  *pAdapter, eCsrAuthType RSNAuthType)
 #ifdef WLAN_FEATURE_11W
             if (RSNAuthType == eCSR_AUTH_TYPE_RSN_PSK_SHA256) {
                 pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_RSN_PSK_SHA256;
+            } else
+            if (RSNAuthType == eCSR_AUTH_TYPE_RSN_8021X_SHA256) {
+                pRoamProfile->AuthType.authType[0] =
+                                            eCSR_AUTH_TYPE_RSN_8021X_SHA256;
             } else
 #endif
 
@@ -3992,6 +4002,7 @@ int iw_get_auth(struct net_device *dev,struct iw_request_info *info,
          case eCSR_AUTH_TYPE_RSN_PSK:
 #ifdef WLAN_FEATURE_11W
          case eCSR_AUTH_TYPE_RSN_PSK_SHA256:
+         case eCSR_AUTH_TYPE_RSN_8021X_SHA256:
 #endif
              hddLog(LOG1,"%s called with RSN PSK auth type", __func__);
              wrqu->param.value = IW_AUTH_ALG_OPEN_SYSTEM;

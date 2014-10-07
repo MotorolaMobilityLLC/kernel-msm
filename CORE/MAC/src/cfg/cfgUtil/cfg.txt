@@ -4854,10 +4854,10 @@ NONE
 WNI_CFG_PMF_SA_QUERY_RETRY_INTERVAL    I    4    1
 V    RW   NP RESTART
 NONE
-0    2000 200
+10    2000 200
 V    RW   NP RESTART
 NONE
-0    2000 200
+10    2000 200
 
 * RA filter enable/disable
 *

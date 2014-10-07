@@ -2205,3 +2205,26 @@ v_U64_t vos_get_monotonic_boottime(void)
     wcnss_get_monotonic_boottime(&ts);
     return (((v_U64_t)ts.tv_sec * 1000000) + (ts.tv_nsec / 1000));
 }
+
+/**---------------------------------------------------------------------------
+
+  \brief vos_randomize_n_bytes() - HDD Random Mac Addr Generator
+
+  This generates the random mac address for WLAN interface
+
+  \param  - mac_addr - pointer to Mac address
+
+  \return -  0 for success, < 0 for failure
+
+  --------------------------------------------------------------------------*/
+
+VOS_STATUS  vos_randomize_n_bytes(void *start_addr, tANI_U32 n)
+{
+
+    if (start_addr == NULL )
+        return VOS_STATUS_E_FAILURE;
+
+    get_random_bytes( start_addr, n);
+
+    return eHAL_STATUS_SUCCESS;
+}

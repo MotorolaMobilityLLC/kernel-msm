@@ -5483,4 +5483,11 @@ typedef PACKED_PRE struct PACKED_POST
 
 #endif /* WLAN_FEATURE_EXTSCAN */
 
+typedef struct
+{
+    tANI_U16       messageType;
+    tANI_U16       length;
+    tSirMacAddr    macAddr;
+} tSirSpoofMacAddrReq, *tpSirSpoofMacAddrReq;
+
 #endif /* __SIR_API_H */

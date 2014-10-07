@@ -657,6 +657,7 @@ hdd_IsAuthTypeRSN( tHalHandle halHandle, eCsrAuthType authType)
         case eCSR_AUTH_TYPE_RSN_PSK:
 #ifdef WLAN_FEATURE_11W
         case eCSR_AUTH_TYPE_RSN_PSK_SHA256:
+        case eCSR_AUTH_TYPE_RSN_8021X_SHA256:
 #endif
             rsnType = eANI_BOOLEAN_TRUE;
             break;

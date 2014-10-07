@@ -11026,6 +11026,36 @@ tANI_BOOLEAN  sme_Is11dCountrycode(tHalHandle hHal)
     }
 }
 
+tANI_BOOLEAN  sme_SpoofMacAddrReq(tHalHandle hHal, v_MACADDR_t *macaddr)
+{
+    eHalStatus status   = eHAL_STATUS_SUCCESS;
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    tANI_U16 len;
+
+    if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme ) ) )
+    {
+        tpSirSpoofMacAddrReq pMsg;
+
+        /* Create the message and send to lim */
+        len = sizeof(tSirSpoofMacAddrReq);
+        pMsg = vos_mem_malloc(len);
+        if ( NULL == pMsg )
+           status = eHAL_STATUS_FAILURE;
+        else
+        {
+            vos_mem_set(pMsg, sizeof(tSirSpoofMacAddrReq), 0);
+            pMsg->messageType     = eWNI_SME_MAC_SPOOF_ADDR_IND;
+            pMsg->length          = len;
+            /* Data starts from here */
+            vos_mem_copy(pMsg->macAddr, macaddr->bytes, VOS_MAC_ADDRESS_LEN);
+
+            status = palSendMBMessage(pMac->hHdd, pMsg);
+        }
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+    return status;
+}
+
 #ifdef WLAN_FEATURE_EXTSCAN
 /* ---------------------------------------------------------------------------
     \fn sme_GetValidChannelsByBand

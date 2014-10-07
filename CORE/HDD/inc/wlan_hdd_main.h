@@ -1119,6 +1119,11 @@ typedef struct
    tANI_U32 magic;
 }bcnMissRateContext_t;
 
+typedef struct
+{
+   v_MACADDR_t randomMacAddr;
+}macAddrSpoof_t;
+
 /** Adapter stucture definition */
 
 struct hdd_context_s
@@ -1324,6 +1329,7 @@ struct hdd_context_s
 
     v_BOOL_t btCoexModeSet;
     v_BOOL_t isPnoEnable;
+    macAddrSpoof_t spoofMacAddr;
 };
 
 

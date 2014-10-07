@@ -235,6 +235,8 @@ sapGotoChannelSel
 
         scanRequest.requestType = eCSR_SCAN_SOFTAP_CHANNEL_RANGE;
 
+        sapContext->numofChannel = numOfChannels;
+
         sapContext->channelList = channelList;
 
 #endif

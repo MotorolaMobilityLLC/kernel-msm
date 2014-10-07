@@ -213,6 +213,7 @@ typedef struct sSapContext {
     v_U32_t           nStaAddIeLength;
     v_U8_t            pStaAddIE[MAX_ASSOC_IND_IE_LEN]; 
     v_U8_t            *channelList;
+    v_U8_t            numofChannel;
     tSapChannelListInfo SapChnlList;
 
     tANI_BOOLEAN       allBandScanned;
