@@ -381,6 +381,20 @@ static struct msm_gpiomux_config msm_smelt_blsp_configs[] __initdata = {
 		},
 	},
 	{
+		.gpio      = 6,		/* BLSP1 QUP2 I2C_SDA */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
+	{
+		.gpio      = 7,		/* BLSP1 QUP2 I2C_SCL */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
+	{
 		.gpio      = 12,	/* BLSP1 QUP4 spi 4 mosi */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_spi4_config,
