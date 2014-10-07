@@ -23,6 +23,10 @@
 	};
 };
 
+&spi_4 {
+	status = "okay";
+};
+
 &i2c_6 {
 	status = "okay";
 };
