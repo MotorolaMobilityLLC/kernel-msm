@@ -18,6 +18,12 @@
 	qcom,board-id = <0x43 0x82ad>;
 };
 
+&i2c_1 {
+	fsa8500@23 {
+		status = "ok";
+	};
+};
+
 &spi_5 {
 	status = "ok";
 	nmi326@0 {

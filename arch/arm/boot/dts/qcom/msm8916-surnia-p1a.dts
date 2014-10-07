@@ -19,6 +19,9 @@
 };
 
 &i2c_1 {
+	fsa8500@23 {
+		status = "ok";
+	};
 	lm3697@36 {
 		status = "ok";
 	};
