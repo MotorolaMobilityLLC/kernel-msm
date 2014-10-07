@@ -56,6 +56,7 @@
 #define STATUS_INTR_VMIN_BIT	(1 << 8)
 #define STATUS_INTR_TEMPMIN_BIT	(1 << 9)
 #define STATUS_INTR_SOCMIN_BIT	(1 << 10)
+#define STATUS_INTR_VMAX_BIT	(1 << 12)
 #define STATUS_INTR_TEMP_BIT	(1 << 13)
 #define STATUS_INTR_SOCMAX_BIT	(1 << 14)
 
@@ -774,6 +775,7 @@ static void max17042_load_new_capacity_params(struct max17042_chip *chip)
  * This function MUST be called before the POR initialization proceedure
  * specified by maxim.
  */
+#define POR_VALRT_THRESHOLD 0xAA00
 static inline void max17042_override_por_values(struct max17042_chip *chip)
 {
 	struct i2c_client *client = chip->client;
@@ -784,7 +786,7 @@ static inline void max17042_override_por_values(struct max17042_chip *chip)
 	max17042_override_por(client, MAX17042_CGAIN, config->cgain);
 	max17042_override_por(client, MAX17042_COFF, config->coff);
 
-	max17042_override_por(client, MAX17042_VALRT_Th, config->valrt_thresh);
+	max17042_override_por(client, MAX17042_VALRT_Th, POR_VALRT_THRESHOLD);
 	max17042_override_por(client, MAX17042_TALRT_Th, config->talrt_thresh);
 	max17042_override_por(client, MAX17042_SALRT_Th,
 			config->soc_alrt_thresh);
@@ -1039,6 +1041,7 @@ static int max17042_check_temp(struct max17042_chip *chip)
 	return ret;
 }
 
+#define ZERO_PERC_SOC_THRESHOLD 0x0100
 static void max17042_set_soc_threshold(struct max17042_chip *chip, u16 off)
 {
 	u16 soc, soc_tr;
@@ -1047,9 +1050,14 @@ static void max17042_set_soc_threshold(struct max17042_chip *chip, u16 off)
 	 * get interrupt for every 'off' perc change in the soc
 	 */
 	soc = max17042_read_reg(chip->client, MAX17042_RepSOC) >> 8;
-	soc_tr = (soc + off) << 8;
-	soc_tr |= (soc - off);
-	max17042_write_reg(chip->client, MAX17042_SALRT_Th, soc_tr);
+	if (soc <= 0)
+		max17042_write_reg(chip->client, MAX17042_SALRT_Th,
+				   ZERO_PERC_SOC_THRESHOLD);
+	else {
+		soc_tr = (soc + off) << 8;
+		soc_tr |= (soc - off);
+		max17042_write_reg(chip->client, MAX17042_SALRT_Th, soc_tr);
+	}
 }
 
 static irqreturn_t max17042_thread_handler(int id, void *dev)
@@ -1075,6 +1083,10 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 	if (val & STATUS_INTR_VMIN_BIT) {
 		dev_info(&chip->client->dev, "Battery undervoltage INTR\n");
 		chip->batt_undervoltage = true;
+	} else if (val & STATUS_INTR_VMAX_BIT) {
+		dev_info(&chip->client->dev, "Battery overvoltage INTR\n");
+		max17042_write_reg(chip->client, MAX17042_VALRT_Th,
+				   chip->pdata->config_data->valrt_thresh);
 	}
 
 	if ((val & STATUS_INTR_TEMP_BIT) ||
