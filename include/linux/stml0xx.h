@@ -226,6 +226,14 @@
 #define STML0XX_EVT_SZ_ACCUM_STATE  2
 #define STML0XX_EVT_SZ_ACCUM_MVMT   4
 
+#define SH_HEADSET_EMPTY          0x00
+#define SH_HEADPHONE_DETECTED     0x01
+#define SH_HEADSET_DETECTED       0x02
+#define SH_HEADSET_BUTTON_1_DOWN  0x04
+#define SH_HEADSET_BUTTON_2_DOWN  0x08
+#define SH_HEADSET_BUTTON_3_DOWN  0x10
+#define SH_HEADSET_BUTTON_4_DOWN  0x20
+
 struct stml0xx_android_sensor_data {
 	int64_t timestamp;
 	unsigned char type;
@@ -356,6 +364,8 @@ struct stm_response {
 #define ALGO_CONFIG                     0x26
 #define ALGO_INT_STATUS                 0x27
 #define GENERIC_INT_STATUS              0x28
+
+#define HEADSET_CONTROL                 0x2C
 
 #define MOTION_DATA                     0x2D
 
