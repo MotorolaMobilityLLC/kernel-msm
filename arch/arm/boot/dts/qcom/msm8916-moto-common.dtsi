@@ -834,7 +834,7 @@
 	/delete-property/ qcom,use-bam;
 	/delete-node/ lattice,spi-usb@0;
 
-	stml0xx@0 {
+	stml0xx: stml0xx@0 {
 		compatible = "stm,stml0xx";
 		status = "okay";
 		reg = <0>;
