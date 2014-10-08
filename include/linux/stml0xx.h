@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2010-2014 Motorola, Inc.
  *
@@ -369,6 +370,8 @@ struct stm_response {
 
 #define MOTION_DATA                     0x2D
 
+#define HEADSET_SETTINGS                0x2E
+
 #define HEADSET_DATA                    0x2F
 
 #define PROX_SETTINGS                   0x33
@@ -540,6 +543,14 @@ struct stml0xx_platform_data {
 	int ct406_undetect_threshold;
 	int ct406_recalibrate_threshold;
 	int ct406_pulse_count;
+	int headset_insertion_debounce;
+	int headset_removal_debounce;
+	int headset_button_down_debounce;
+	int headset_button_up_debounce;
+	int headset_button_0_1_threshold;
+	int headset_button_1_2_threshold;
+	int headset_button_2_3_threshold;
+	int headset_button_3_upper_threshold;
 };
 
 struct stml0xx_data {
