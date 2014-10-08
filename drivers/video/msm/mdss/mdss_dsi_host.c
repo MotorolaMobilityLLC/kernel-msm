@@ -1043,11 +1043,13 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	 * by the panel. Success value is greater than zero and failure
 	 * case returns zero.
 	 */
-	if (ret > 0) {
+	if (ret == ctrl_pdata->status_cmds_rlen) {
 		ret = ctrl_pdata->check_read_status(ctrl_pdata);
 		*reg_val = ctrl_pdata->status_buf.data[0];
 	} else {
-		pr_err("%s: Read status register returned error\n", __func__);
+		pr_err("%s: Read status register returned error, ret = %d\n",
+			__func__, ret);
+		ret = 0;
 	}
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
