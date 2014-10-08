@@ -38,6 +38,7 @@
 			<&msm_gpio 113 0>,       /* WakeIRQ */
 			<&msm_gpio 4 0>,         /* SPI Ready for Receive */
 			<&msm_gpio 38 0>;        /* SPI Data Ack */
+		headset_detect_enable = <0>;
 	};
 };
 
