@@ -13,6 +13,23 @@ if INPUT_TOUCHSCREEN
 
 source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
 
+config TOUCHSCREEN_ATMXT
+	tristate "Atmel mXT Touchscreen Driver"
+	depends on I2C
+	help
+	  Say Y here if you have an Atmel mXT touchscreen.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_DEBUG
+	tristate "Atmel mXT Touchscreen Driver Debug"
+	depends on I2C
+	depends on TOUCHSCREEN_ATMXT
+	help
+	  Say Y here if you have an Atmel mXT touchscreen.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
 	depends on MFD_88PM860X
