@@ -9,7 +9,7 @@
 #include <linux/tty_driver.h>
 #include <linux/tty_flip.h>
 
-#include <mach/tty_diag.h>
+#include <linux/usb/tty_diag.h>
 
 #define DIAG_MAJOR 185
 #define DIAG_TTY_MINOR_COUNT 3
@@ -50,10 +50,6 @@ static int diag_tty_open(struct tty_struct *tty, struct file *f)
 
 	if (n < 0 || n >= DIAG_TTY_MINOR_COUNT)
 		return -ENODEV;
-
-	/* Diag kernel driver not ready */
-	if (!(legacy_ch.priv))
-		return -EAGAIN;
 
 	if (tty_data->open_count >= 1)
 		return -EBUSY;
