@@ -717,9 +717,12 @@ static int load_fw_and_set_flash_region(int force)
 				bin_version[0], bin_version[1], bin_version[2],
 				ec_version[0], ec_version[1], ec_version[2]);
 
-			if (ec_version[0] == bin_version[0] &&
-			    ec_version[1] == bin_version[1] &&
-			    ec_version[2] == bin_version[2]) {
+			if (ec_version[0] > bin_version[0] ||
+			    (ec_version[0] == bin_version[0] &&
+			     ec_version[1] > bin_version[1]) ||
+			    (ec_version[0] == bin_version[0] &&
+			     ec_version[1] == bin_version[1] &&
+			     ec_version[2] >= bin_version[2])) {
 				dev_info(&flash_mode_client->dev,
 						"no need to update\n");
 				return 1;
