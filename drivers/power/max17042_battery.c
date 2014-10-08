@@ -1652,8 +1652,36 @@ static void iterm_work(struct work_struct *work)
 	repsoc = (ret >> 8) & 0xFF;
 	dev_dbg(&chip->client->dev, "ITERM RepSOC %d!\n", repsoc);
 
-	if (repsoc >= 100)
+	cfd_max =
+		(chip->charge_full_des + ((chip->charge_full_des * 3) / 100));
+
+	if (repsoc >= 100) {
+		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
+		if (ret < 0)
+			goto iterm_fail;
+
+		fullcap = ret & 0xFFFF;
+
+		/* Catch Increasing FullCap*/
+		if (((fullcap * 1000) / 2) > cfd_max) {
+			dev_warn(&chip->client->dev,
+				 "Error fullcap too big! %d mAhr\n",
+				 fullcap / 2);
+			fullcap = (cfd_max * 2) / 1000;
+			ret = max17042_write_reg(chip->client,
+						 MAX17042_RepCap, fullcap);
+			if (ret < 0)
+				dev_err(&chip->client->dev,
+					"Can't update Rep Cap!\n");
+			ret = max17042_write_reg(chip->client,
+						 MAX17042_FullCAP, fullcap);
+			if (ret < 0)
+				dev_err(&chip->client->dev,
+					"Can't update Full Cap!\n");
+		}
+
 		goto iterm_fail;
+	}
 
 	ret = max17042_read_reg(chip->client, MAX17042_Current);
 	if (ret < 0)
@@ -1736,6 +1764,36 @@ static void iterm_work(struct work_struct *work)
 	dev_dbg(&chip->client->dev, "ITERM FullSOCThr %d!\n", fullsocthr);
 	if (socvf <= fullsocthr)
 		goto iterm_fail;
+
+	/* Check that RepCap or FullCap */
+	/* is not less then half of Design Capacity */
+	if (((repcap * 1000) < chip->charge_full_des) ||
+	    ((fullcap * 1000) < chip->charge_full_des)) {
+		dev_warn(&chip->client->dev, "Error repcap too small!\n");
+		dev_warn(&chip->client->dev,
+			 "RepCap %d mAhr FullCap %d mAhr\n",
+			 repcap / 2, fullcap / 2);
+		repcap = (chip->charge_full_des * 2) / 1000;
+
+		ret = regmap_write(map, MAX17042_RepSOC, repcap);
+		if (ret < 0)
+			dev_err(&chip->client->dev,
+				"Can't update Rep Cap!\n");
+	}
+
+	/* Catch Increasing FullCap*/
+	if (((fullcap * 1000) / 2) > cfd_max) {
+		dev_warn(&chip->client->dev, "Error fullcap too big!\n");
+		dev_warn(&chip->client->dev,
+			 "RepCap %d mAhr FullCap %d mAhr\n",
+			 repcap / 2, fullcap / 2);
+		repcap = (cfd_max * 2) / 1000;
+		fullcap = repcap;
+		ret = regmap_write(map, MAX17042_RepSOC, repcap);
+		if (ret < 0)
+			dev_err(&chip->client->dev,
+				"Can't update Rep Cap!\n");
+	}
 
 	dev_warn(&chip->client->dev, "Taper Reached!\n");
 	ret = max17042_write_reg(chip->client, MAX17042_FullCAP, repcap);
