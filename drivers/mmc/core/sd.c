@@ -699,16 +699,22 @@ out:
 
 static int mmc_sd_throttle_back(struct mmc_host *host)
 {
-	struct sd_switch_caps *sw_caps = &host->card->sw_caps;
+	struct sd_switch_caps *sw_caps;
 	char *speed = NULL;
 	int err = 0;
 
 	mmc_claim_host(host);
 
+	if (!host->card) {
+		err = -ENODEV;
+		goto out;
+	}
+
 	if (host->ops->tune_drive_strength &&
 	    host->ops->tune_drive_strength(host) == 0)
 		goto out;
 
+	sw_caps = &host->card->sw_caps;
 	if (mmc_sd_card_uhs(host->card)) {
 		if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR104) {
 			sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR104;
