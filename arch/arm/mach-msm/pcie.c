@@ -880,12 +880,12 @@ static void msm_pcie_config_l1ss(struct msm_pcie_dev_t *dev)
 		msm_pcie_write_mask(dev->dm_core + PCIE20_L1SUB_CONTROL1,
 					BIT(3)|BIT(2)|BIT(1)|BIT(0), 0);
 		/* EP: Set L1ss control 2 register(0x24c) */
-		/* TPOWERON : 120us */
+		/* TPOWERON : 80us */
 		msm_pcie_write_mask(dev->conf + PCIE20_L1SUB_CONTROL2_BRCM,
-			0xFF, BIT(6)|BIT(5)|BIT(0));
-		/* RC: TPOWERON : 120us */
+			0xFF, BIT(6)|BIT(0));
+		/* RC: TPOWERON : 80us */
 		msm_pcie_write_mask(dev->dm_core + PCIE20_L1SUB_CONTROL2,
-			0xFF, BIT(6)|BIT(5)|BIT(0));
+			0xFF, BIT(6)|BIT(0));
 
 		/* EP: Set L1ss control 1 register(0x248) - Enable L1ss */
 		/* L12Threshold : 2.5 ms */
