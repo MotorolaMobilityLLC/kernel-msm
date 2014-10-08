@@ -170,7 +170,32 @@
 &i2c_5 {
 	status = "ok";
 	/* drivers here */
+	atmxt@4a {
+		compatible = "atmel,atmxt-ts";
+		reg = <0x4a>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <17 0>;
+		wakeup-source;
+		gpios = <&msmgpio 17 0>, /* IRQ */
+			<&msmgpio 16 0>; /* RESET */
+		touch_vdd-supply = <&pm8226_l28>;
+		atmel,atmxt-tdat-filename = "atmxt-r2.tdat", "atmxt-r3.tdat";
+		support-snowflake = <1>;
+	};
 };
+
+&pm8226_l28 {
+        regulator-max-microvolt = <3400000>;
+        qcom,init-voltage = <3100000>;
+        regulator-boot-on;
+        regulator-always-on;
+};
+
+&pm8226_l8 {
+        regulator-boot-on;
+        regulator-always-on;
+};
+
 
 &spi_4 {
 	status = "ok";
