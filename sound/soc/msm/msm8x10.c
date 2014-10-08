@@ -583,6 +583,9 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+#ifdef CONFIG_SND_SOC_FSA8500
+	struct snd_soc_jack hs_jack;
+#endif
 	int ret = 0;
 
 	pr_debug("%s(),dev_name%s\n", __func__, dev_name(cpu_dai->dev));
@@ -605,7 +608,15 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 #ifdef CONFIG_SND_SOC_FSA8500
 	ret = fsa8500_hs_detect(codec);
 	if (!ret) {
-		pr_debug("%s:fsa8500 hs det mechanism is used", __func__);
+		pr_info("%s:fsa8500 hs det mechanism is used", __func__);
+	}
+	if (ret < 0) {
+		ret = snd_soc_jack_new(codec, "Headset Jack",
+				SND_JACK_HEADSET | SND_JACK_HEADPHONE |
+				SND_JACK_LINEOUT | SND_JACK_UNSUPPORTED,
+				&hs_jack);
+		if (ret)
+			pr_err("%s: Failed to create new jack\n", __func__);
 	}
 
 	return ret;
