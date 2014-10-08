@@ -222,6 +222,7 @@ dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p2a1.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p2b.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p2b1.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-otus-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-otus-p2.dtb
 
 # MSMSAMARIUM
    zreladdr-$(CONFIG_ARCH_MSMSAMARIUM)	:= 0x00008000
