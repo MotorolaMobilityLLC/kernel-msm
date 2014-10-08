@@ -364,24 +364,19 @@ static int max17042_get_property(struct power_supply *psy,
 		val->intval = data * 625 / 8;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		if (chip->pdata->batt_undervoltage_zero_soc &&
-		    chip->batt_undervoltage) {
-			val->intval = 0;
-			break;
-		}
-
 		ret = regmap_read(map, MAX17042_RepSOC, &data);
 		if (ret < 0)
 			return ret;
 
 		data >>= 8;
 		if (data == 0 &&
-		    chip->pdata->batt_undervoltage_zero_soc &&
-		    !chip->batt_undervoltage)
-			val->intval = 1;
-		else
+			chip->pdata->batt_undervoltage_zero_soc) {
+			if (chip->batt_undervoltage)
+				val->intval = 0;
+			else
+				val->intval = 1;
+		} else
 			val->intval = data;
-
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		ret = regmap_read(map, MAX17042_FullCAP, &data);
