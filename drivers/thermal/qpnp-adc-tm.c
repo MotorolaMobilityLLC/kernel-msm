@@ -1960,6 +1960,8 @@ int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 	uint32_t channel, dt_index = 0, scale_type = 0;
 	int rc = 0, i = 0;
 	bool chan_found = false;
+	int timer_select;
+	struct device_node *node, *child;
 
 	if (qpnp_adc_tm_is_valid(chip)) {
 		pr_err("chip not valid\n");
@@ -1972,6 +1974,7 @@ int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 	}
 
 	mutex_lock(&chip->adc->adc_lock);
+	node = chip->adc->spmi->dev.of_node;
 
 	channel = param->channel;
 	while (i < chip->max_channels_available) {
@@ -2021,6 +2024,15 @@ int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 				chip->sensor[dt_index].btm_channel_num;
 	chip->adc->amux_prop->chan_prop->state_request =
 					param->state_request;
+
+	for_each_child_of_node(node, child) {
+		rc = of_property_read_u32(child,
+		"qcom,meas-interval-timer-idx", &timer_select);
+		if (!rc && timer_select == ADC_MEAS_TIMER_SELECT1)
+			chip->sensor[dt_index].meas_interval =
+			param->timer_interval;
+	}
+
 	rc = qpnp_adc_tm_configure(chip, chip->adc->amux_prop);
 	if (rc) {
 		pr_err("adc-tm configure failed with %d\n", rc);
