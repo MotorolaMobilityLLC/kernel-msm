@@ -26,6 +26,12 @@
 	};
 };
 
+&spi_0 {
+	stml0xx@0 {
+		headset_detect_enable = <0>;
+	};
+};
+
 &spi_5 {
 	status = "ok";
 	nmi326@0 {
