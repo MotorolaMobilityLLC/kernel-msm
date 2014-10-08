@@ -1829,7 +1829,7 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 	}
 
 	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
-	if (ret != 0) {
+	if (ret != size) {
 		pr_err("%s: Error reading %zu bytes from reg 0x%02x. ret=0x%x\n",
 				__func__, size, (unsigned int) reg, ret);
 		ret = -EFAULT;
@@ -1881,11 +1881,12 @@ static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata,
 	cmdreq.cb = NULL;
 
 	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
-	if (ret != 0) {
+	if (ret <= 0) {
 		pr_err("%s: Failed writing %zu bytes to 0x%02x. Ret=0x%x\n",
 					__func__, size, buffer[0], ret);
 		ret = -EFAULT;
-	}
+	} else
+		ret = 0;
 
 	return ret;
 }
