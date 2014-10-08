@@ -227,6 +227,9 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset button 1 released");
 				Headset_State = SH_HEADSET_INSERTED;
+				input_report_key(ps_stml0xx->input_dev,
+					KEY_MEDIA, 0);
+				input_sync(ps_stml0xx->input_dev);
 			}
 			break;
 		case SH_HEADSET_BUTTON_2:
@@ -258,12 +261,20 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headphone removed");
 				Headset_State = SH_HEADSET_REMOVED;
+				input_report_switch(ps_stml0xx->input_dev,
+						SW_HEADPHONE_INSERT, 0);
+				input_sync(ps_stml0xx->input_dev);
 			}
 		} else if (Headset_State ==  SH_HEADSET_INSERTED) {
 			if (!(new_state & SH_HEADSET_DETECTED)) {
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset removed");
 				Headset_State = SH_HEADSET_REMOVED;
+				input_report_switch(ps_stml0xx->input_dev,
+						SW_HEADPHONE_INSERT,  0);
+				input_report_switch(ps_stml0xx->input_dev,
+						SW_MICROPHONE_INSERT, 0);
+				input_sync(ps_stml0xx->input_dev);
 			}
 		}
 		if (Headset_State == SH_HEADSET_REMOVED) {
@@ -271,10 +282,18 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headphone inserted");
 				Headset_State = SH_HEADPHONE_INSERTED;
+				input_report_switch(ps_stml0xx->input_dev,
+						SW_HEADPHONE_INSERT, 1);
+				input_sync(ps_stml0xx->input_dev);
 			} else if (new_state & SH_HEADSET_DETECTED) {
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset inserted");
 				Headset_State = SH_HEADSET_INSERTED;
+				input_report_switch(ps_stml0xx->input_dev,
+						SW_HEADPHONE_INSERT,  1);
+				input_report_switch(ps_stml0xx->input_dev,
+						SW_MICROPHONE_INSERT, 1);
+				input_sync(ps_stml0xx->input_dev);
 			}
 		}
 		if (Headset_State == SH_HEADSET_INSERTED) {
@@ -282,6 +301,9 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset button 1 pressed");
 				Headset_State = SH_HEADSET_BUTTON_1;
+				input_report_key(ps_stml0xx->input_dev,
+					KEY_MEDIA, 1);
+				input_sync(ps_stml0xx->input_dev);
 			} else if (new_state & SH_HEADSET_BUTTON_2_DOWN) {
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset button 2 pressed");
