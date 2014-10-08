@@ -2930,7 +2930,7 @@ void wlan_hdd_cfg80211_extscan_callback(void *ctx, const tANI_U16 evType,
     hdd_context_t *pHddCtx = (hdd_context_t *)ctx;
 
     if (wlan_hdd_validate_context(pHddCtx)) {
-        hddLog(VOS_TRACE_LEVEL_ERROR, FL("HDD context is not valid"));
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("HDD context is not valid"));
         return;
     }
 
