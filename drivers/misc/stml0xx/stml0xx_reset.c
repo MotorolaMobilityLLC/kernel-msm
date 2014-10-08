@@ -182,7 +182,17 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 		dev_err(&ps_stml0xx->spi->dev,
 			"unable to write headset settings %d", err);
 		ret_err = err;
+	} else {
+		buf[0] = pdata->headset_detect_enable & 0xFF;
+		err = stml0xx_spi_send_write_reg_reset(HEADSET_CONTROL, buf,
+			1, RESET_NOT_ALLOWED);
+		if (err < 0) {
+			dev_err(&ps_stml0xx->spi->dev,
+				"Unable to wrie headset detect enable");
+			ret_err = err;
+		}
 	}
+
 	err = stml0xx_led_set_reset(&ps_stml0xx->led_cdev,
 			RESET_NOT_ALLOWED);
 	if (err < 0)
