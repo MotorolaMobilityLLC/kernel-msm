@@ -56,7 +56,6 @@
 
 #define MAGIC_KEY_NONE			0
 #define MAGIC_KEY_PALM			1
-#define MAGIC_KEY_KNOCK			2
 
 #define BUF_COMMAND			0x20 /* all commands writes go to this idx */
 #define BUF_SYS_COMMAND			0x40
@@ -93,9 +92,6 @@
 #define SYSFS_RESULT_NOT_DONE		0
 #define SYSFS_RESULT_SUCCESS		1
 #define DEVICE_READY_MAX_WAIT		500
-#define MS_BETWEEN_FOR_KNOCK_EVT	200	/* how long between palm events for knock event (max) */
-#define MS_PALM_FOR_KNOCK_EVT		150	/* how long palm must be held for know event to work  (max) */
-
 
 //result of reading with BUF_QUERY bits
 #define CMD_STATUS_BITS			0x07
@@ -147,8 +143,6 @@ struct ioctl_cmd168 {
 struct IT7260_ts_data {
 	struct i2c_client *client;
 	struct input_dev *input_dev;
-	struct delayed_work palmdown_work;
-	struct delayed_work palmup_work;
 	struct delayed_work afterpalm_work;
 };
 
@@ -165,10 +159,6 @@ static bool devicePresent = false;
 static DEFINE_MUTEX(sleepModeMutex);
 static bool chipAwake = true;
 static bool hadFingerDown = false;
-static bool hadPalmDown = false;
-static uint64_t lastPalmDownTime = 0;
-static uint64_t lastPalmUpTime = 0;
-static bool lastPalmKnockCand = false;
 static bool isDeviceSleeping = false;
 static bool isDeviceSuspend = false;
 static uint8_t magic_key = MAGIC_KEY_NONE;
@@ -183,7 +173,6 @@ static int suspend_touch_down = 0;
 static int suspend_touch_up = 0;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
-static int longPalm = false;
 
 #define LOGE(...)	pr_err(DEVICE_NAME ": " __VA_ARGS__)
 #define LOGI(...)	printk(DEVICE_NAME ": " __VA_ARGS__)
@@ -443,8 +432,6 @@ static void chipLowPowerMode(bool low)
 			}
 			isDeviceSleeping = false;
 			isDeviceSuspend = false;
-			hadPalmDown = false;
-			longPalm = false;
 			wake_unlock(&touch_lock);
 			i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
 		}
@@ -744,45 +731,20 @@ static uint64_t getMsTime(void)
 	return ret + ts.tv_sec * 1000ULL;
 }
 
-//getnstimeofday can flow backwards near sleep events. this guarantees that when we know one event is after another we generate a "1" instead of a huge negative
-static uint64_t timeSubtractGuranteedPositive(uint64_t from, uint64_t what)
-{
-	return what >= from ? 1 : from - what;
-}
-
-static void sendPalmDownEvt(struct work_struct *work) 
-{
-	magic_key = MAGIC_KEY_PALM;
-	kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
-	input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
-	input_sync(gl_ts->input_dev);
-	longPalm = true;
-}
-
-static void sendPalmUpEvt(struct work_struct *work) {
-	magic_key = MAGIC_KEY_PALM;
-	kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
-	input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
-	input_sync(gl_ts->input_dev);
-	msleep(5);
-	input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
-	input_sync(gl_ts->input_dev);
-	isDeviceSuspend = true;
-	queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
-}
-
 static void waitNotifyEvt(struct work_struct *work) {
 	if (!isDeviceSleeping){
 		isDeviceSuspend = false;
 	}
 }
 
-static void sendWakeEvt(void)
+static void sendPalmEvt(void)
 {
-	input_report_key(gl_ts->input_dev, KEY_WAKEUP, 1);
+	magic_key = MAGIC_KEY_PALM;
+	kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
+	input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
 	input_sync(gl_ts->input_dev);
 	msleep(5);
-	input_report_key(gl_ts->input_dev, KEY_WAKEUP, 0);
+	input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
 	input_sync(gl_ts->input_dev);
 }
 
@@ -808,62 +770,12 @@ static void readTouchDataPoint(void)
 		LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
 		return;
 	}
-	if ((pointData.palm & PD_PALM_FLAG_BIT) && !hadPalmDown) {
-		hadPalmDown = true;
-		lastPalmDownTime = getMsTime();
-
-		/* using delay_work to trigger palm for avoiding invalid context warning message */
-		/* we already sent palm event - this is not a knock candidate anymoe */
-		if (!cancel_delayed_work(&gl_ts->palmup_work))
-			lastPalmKnockCand = false;
-		
-		queue_delayed_work(IT7260_wq, &gl_ts->palmdown_work, 25);
-
-	} else if ((!(pointData.palm & PD_PALM_FLAG_BIT)) && hadPalmDown) {
-		uint64_t curPalmUpTime = getMsTime();
-		uint64_t timeSinceDown = timeSubtractGuranteedPositive(curPalmUpTime, lastPalmDownTime);
-		uint64_t timeSinceLastUp = timeSubtractGuranteedPositive(lastPalmDownTime, lastPalmUpTime);
-
-		hadPalmDown = false;
-
-		/* if timer already fired (and sent the palm down event), send palm up event */
-		if (!cancel_delayed_work(&gl_ts->palmdown_work)) {
-			input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
-			input_sync(gl_ts->input_dev);
-			isDeviceSuspend = true;
-			queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
-			lastPalmKnockCand = false;
-		} else if (timeSinceDown <= MS_PALM_FOR_KNOCK_EVT) {
-
-			/* add KEY_WAKEUP for Tap-Tap */
-			/* short enough -> might be part of a knock */
-			if (lastPalmKnockCand && timeSinceLastUp < MS_BETWEEN_FOR_KNOCK_EVT) {
-				sendWakeEvt();
-				magic_key = MAGIC_KEY_KNOCK;
-				kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
-				lastPalmKnockCand = false;
-			} else if (!lastPalmKnockCand) {
-				lastPalmKnockCand = true;
-			}
-
-			/* set timer for sending palm if no knock candidate found soon */
-			if (lastPalmKnockCand){
-				queue_delayed_work(IT7260_wq, &gl_ts->palmup_work, 25);
-			}
-		} else {
-			/* too long to be part of a knock but too short to have sent an event via timer - send it here */
-			lastPalmKnockCand = false;
-			magic_key = MAGIC_KEY_PALM;
-			kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
-			input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
-			input_sync(gl_ts->input_dev);
-			input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
-			input_sync(gl_ts->input_dev);
-			isDeviceSuspend = true;
-			queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
-		}
-		lastPalmUpTime = curPalmUpTime;
-	}
+	
+	if ((pointData.palm & PD_PALM_FLAG_BIT) && !isDeviceSuspend) {
+		isDeviceSuspend = true;
+		sendPalmEvt();
+		queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
+	} 
 
 	/* this check may look stupid, but it is here for when MT arrives to this driver. for now just check finger 0 */
 	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
@@ -876,13 +788,13 @@ static void readTouchDataPoint(void)
 
 		readFingerData(&x, &y, &pressure, pointData.fd);
 		/* filter points when palming or touching screen edge */
-		if (!hadPalmDown && !isDeviceSuspend && y > 13 && y < 311 && x > 4 && x < 316){
+		if (!isDeviceSuspend && y > 13 && y < 311 && x > 4 && x < 316){
 			input_report_abs(gl_ts->input_dev, ABS_X, x);
 			input_report_abs(gl_ts->input_dev, ABS_Y, y);
 			input_report_key(gl_ts->input_dev, BTN_TOUCH, 1);
 			input_sync(gl_ts->input_dev);
 		}
-	} else if (hadFingerDown) {
+	} else if (hadFingerDown && (!(pointData.palm & PD_PALM_FLAG_BIT))) {
 		hadFingerDown = false;
 
 		input_report_key(gl_ts->input_dev, BTN_TOUCH, 0);
@@ -1070,11 +982,9 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	IT7260_wq = create_workqueue("IT7260_wq");
 	if (!IT7260_wq)
 		goto err_check_functionality_failed;
-		
-	INIT_DELAYED_WORK(&gl_ts->palmdown_work, sendPalmDownEvt);
-	INIT_DELAYED_WORK(&gl_ts->palmup_work, sendPalmUpEvt);
-	INIT_DELAYED_WORK(&gl_ts->afterpalm_work, waitNotifyEvt);
 	
+	INIT_DELAYED_WORK(&gl_ts->afterpalm_work, waitNotifyEvt);
+
 	if (input_register_device(input_dev)) {
 		LOGE("failed to register input device\n");
 		goto err_input_register;
@@ -1243,9 +1153,6 @@ static ssize_t show_magic_key(struct device *device, struct device_attribute *at
 		break;
 	case MAGIC_KEY_PALM:
 		strcpy(buf, "PALM");
-		break;
-	case MAGIC_KEY_KNOCK:
-		strcpy(buf, "KNOCK");
 		break;
 	default:
 		strcpy(buf, "UNKNOWN");
