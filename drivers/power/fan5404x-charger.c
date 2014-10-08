@@ -241,8 +241,13 @@ struct fan5404x_chg {
 	int ext_high_temp;
 	int temp_check;
 	int bms_check;
-	int voreg_mv;
+	unsigned int voreg_mv;
+	unsigned int low_voltage_uv;
 	struct fan_wakeup_source fan_wake_source;
+	struct qpnp_adc_tm_chip		*adc_tm_dev;
+	struct qpnp_adc_tm_btm_param	vbat_monitor_params;
+	bool poll_fast;
+	bool shutdown_voltage_tripped;
 };
 
 static struct fan5404x_chg *the_chip;
@@ -678,6 +683,20 @@ static enum power_supply_property fan5404x_batt_properties[] = {
 	POWER_SUPPLY_PROP_HEALTH,
 };
 
+static int fan5404x_reset_vbat_monitoring(struct fan5404x_chg *chip)
+{
+	int rc = 0;
+	chip->vbat_monitor_params.state_request = ADC_TM_HIGH_LOW_THR_DISABLE;
+
+	rc = qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+					 &chip->vbat_monitor_params);
+
+	if (rc)
+		dev_err(chip->dev, "tm disable failed: %d\n", rc);
+
+	return rc;
+}
+
 static int fan5404x_get_prop_batt_status(struct fan5404x_chg *chip)
 {
 	int rc;
@@ -709,6 +728,9 @@ static int fan5404x_get_prop_batt_present(struct fan5404x_chg *chip)
 {
 	int rc;
 	uint8_t reg;
+	bool prev_batt_status;
+
+	prev_batt_status = chip->batt_present;
 
 	rc = fan5404x_read(chip, REG_MONITOR1, &reg);
 	if (rc < 0) {
@@ -717,9 +739,15 @@ static int fan5404x_get_prop_batt_present(struct fan5404x_chg *chip)
 	}
 
 	if (reg & MONITOR1_NOBAT)
-		return 0;
+		chip->batt_present = 0;
+	else
+		chip->batt_present = 1;
 
-	return 1;
+	if ((prev_batt_status != chip->batt_present)
+		&& (!prev_batt_status))
+		fan5404x_reset_vbat_monitoring(chip);
+
+	return chip->batt_present;
 }
 
 static int fan5404x_get_prop_charge_type(struct fan5404x_chg *chip)
@@ -770,13 +798,33 @@ static int fan5404x_get_prop_batt_capacity(struct fan5404x_chg *chip)
 		chip->bms_psy =
 			power_supply_get_by_name((char *)chip->bms_psy_name);
 
+	if (chip->shutdown_voltage_tripped && !chip->factory_mode) {
+		if ((chip->usb_psy) && chip->usb_present) {
+			power_supply_set_present(chip->usb_psy, false);
+			power_supply_set_online(chip->usb_psy, false);
+			chip->usb_present = false;
+		}
+		return 0;
+	}
+
 	if (chip->bms_psy) {
 		rc = chip->bms_psy->get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, &ret);
 		if (rc)
 			dev_err(chip->dev, "Couldn't get batt capacity\n");
-		else
+		else {
+			if (!ret.intval	&& !chip->factory_mode) {
+				chip->shutdown_voltage_tripped = true;
+				if ((chip->usb_psy) && chip->usb_present) {
+					power_supply_set_present(chip->usb_psy,
+									false);
+					power_supply_set_online(chip->usb_psy,
+									false);
+					chip->usb_present = false;
+				}
+			}
 			cap = ret.intval;
+		}
 	}
 
 	return cap;
@@ -807,6 +855,74 @@ static int fan5404x_get_prop_batt_voltage_now(struct fan5404x_chg *chip,
 	}
 
 	return -EINVAL;
+}
+
+static void fan5404x_notify_vbat(enum qpnp_tm_state state, void *ctx)
+{
+	struct fan5404x_chg *chip = ctx;
+	struct qpnp_vadc_result result;
+	int batt_volt;
+	int rc;
+
+	pr_err("shutdown voltage tripped\n");
+
+	if (chip->vadc_dev) {
+		rc = qpnp_vadc_read(chip->vadc_dev, VBAT_SNS, &result);
+		pr_info("vbat = %lld, raw = 0x%x\n", result.physical,
+							result.adc_code);
+	}
+
+	fan5404x_get_prop_batt_voltage_now(chip, &batt_volt);
+	pr_info("vbat is at %d, state is at %d\n", batt_volt, state);
+
+	if (state == ADC_TM_LOW_STATE)
+		chip->shutdown_voltage_tripped = 1;
+	else
+		qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+				&chip->vbat_monitor_params);
+
+	power_supply_changed(&chip->batt_psy);
+}
+
+static int fan5404x_setup_vbat_monitoring(struct fan5404x_chg *chip)
+{
+	int rc;
+
+	chip->vbat_monitor_params.low_thr = chip->low_voltage_uv;
+	chip->vbat_monitor_params.high_thr = (chip->voreg_mv * 1000) * 2;
+	chip->vbat_monitor_params.state_request = ADC_TM_HIGH_LOW_THR_ENABLE;
+	chip->vbat_monitor_params.channel = VBAT_SNS;
+	chip->vbat_monitor_params.btm_ctx = (void *)chip;
+
+	if (chip->poll_fast) { /* the adc polling rate is higher*/
+		chip->vbat_monitor_params.timer_interval =
+			ADC_MEAS1_INTERVAL_31P3MS;
+	} else /* adc polling rate is default*/ {
+		chip->vbat_monitor_params.timer_interval =
+			ADC_MEAS1_INTERVAL_1S;
+	}
+
+	chip->vbat_monitor_params.threshold_notification =
+					&fan5404x_notify_vbat;
+	pr_debug("set low thr to %d and high to %d\n",
+		chip->vbat_monitor_params.low_thr,
+			chip->vbat_monitor_params.high_thr);
+
+	if (!fan5404x_get_prop_batt_present(chip)) {
+		pr_info("no battery inserted,vbat monitoring disabled\n");
+		chip->vbat_monitor_params.state_request =
+						ADC_TM_HIGH_LOW_THR_DISABLE;
+	} else {
+		rc = qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+			&chip->vbat_monitor_params);
+		if (rc) {
+			pr_err("tm setup failed: %d\n", rc);
+			return rc;
+		}
+	}
+
+	pr_debug("vbat monitoring setup complete\n");
+	return 0;
 }
 
 static int fan5404x_temp_charging(struct fan5404x_chg *chip, int enable)
@@ -1063,9 +1179,19 @@ static void heartbeat_work(struct work_struct *work)
 		container_of(work, struct fan5404x_chg,
 					heartbeat_work.work);
 
+	bool poll_status = chip->poll_fast;
+	int batt_soc = fan5404x_get_prop_batt_capacity(chip);
 	int batt_health = fan5404x_get_prop_batt_health(chip);
 
 	dev_dbg(chip->dev, "HB Pound!\n");
+
+	if (batt_soc < 20)
+		chip->poll_fast = true;
+	else
+		chip->poll_fast = false;
+
+	if (poll_status != chip->poll_fast)
+		fan5404x_setup_vbat_monitoring(chip);
 
 	if ((batt_health == POWER_SUPPLY_HEALTH_WARM) ||
 	    (batt_health == POWER_SUPPLY_HEALTH_COOL) ||
@@ -1106,6 +1232,10 @@ static int fan5404x_of_init(struct fan5404x_chg *chip)
 	if (rc < 0)
 		chip->voreg_mv = 4350;
 
+	rc = of_property_read_u32(node, "fairchild,low-voltage-uv",
+						&chip->low_voltage_uv);
+	if (rc < 0)
+		chip->low_voltage_uv = 3200000;
 	return 0;
 }
 
@@ -1853,6 +1983,8 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	chip->fake_battery_soc = -EINVAL;
 	chip->factory_mode = false;
 	chip->factory_present = false;
+	chip->poll_fast = false;
+	chip->shutdown_voltage_tripped = false;
 
 	mutex_init(&chip->read_write_lock);
 
@@ -1909,6 +2041,15 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 			pr_err("vadc not ready, defer probe\n");
 		goto unregister_batt_psy;
 	}
+
+	chip->adc_tm_dev = qpnp_get_adc_tm(chip->dev, "fan5404x");
+	if (IS_ERR(chip->adc_tm_dev)) {
+		rc = PTR_ERR(chip->adc_tm_dev);
+		if (rc == -EPROBE_DEFER)
+			pr_err("adc_tm not ready, defer probe\n");
+		goto unregister_batt_psy;
+	}
+
 	fan5404x_hw_init(chip);
 
 	determine_initial_status(chip);
@@ -2013,6 +2154,10 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	rc = register_reboot_notifier(&chip->notifier);
 	if (rc)
 		pr_err("%s can't register reboot notifier\n", __func__);
+
+	rc = fan5404x_setup_vbat_monitoring(chip);
+	if (rc < 0)
+		pr_err("failed to set up voltage notifications: %d\n", rc);
 
 	schedule_delayed_work(&chip->heartbeat_work,
 				msecs_to_jiffies(60000));
