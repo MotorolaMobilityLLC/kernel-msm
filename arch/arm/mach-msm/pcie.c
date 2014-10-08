@@ -80,16 +80,6 @@
 #define PCIE20_PLR_IATU_LTAR           0x918
 #define PCIE20_PLR_IATU_UTAR           0x91c
 
-#ifdef CONFIG_BCM4356
-#define PCIE20_L1SUB_CONTROL2                   0x15C
-#define PCIE20_CAP_LINKCTRLSTATUS_BRCM          0xBC
-#define PCIE20_CAP_L1SUB_CAP					0x244
-#define PCIE20_L1SUB_CONTROL1_BRCM              0x248
-#define PCIE20_L1SUB_CONTROL2_BRCM              0x24C
-#define PCIE20_DEVICE_CONTROL2_STATUS2_BRCM     0xD4
-#define PCIE20_LTR_MAX_SNOOP_LATENCY_BRCM       0x1B4
-#define BCM4356_CHIP_ID							0x43ec
-#endif
 #define RD 0
 #define WR 1
 
@@ -865,61 +855,6 @@ static void msm_pcie_config_l1ss(struct msm_pcie_dev_t *dev)
 	PCIE_DBG(dev, "RC's DEVICE_CONTROL2_STATUS2:0x%x\n",
 		readl_relaxed(dev->dm_core + PCIE20_DEVICE_CONTROL2_STATUS2));
 
-#ifdef CONFIG_BCM4356
-	if (!dev->rc_idx) {
-		/* EP: disable ASPM(0xbc) */
-		msm_pcie_write_mask(dev->conf + PCIE20_CAP_LINKCTRLSTATUS_BRCM,
-			BIT(1)|BIT(0), 0);
-		/* EP: disable L1SS */
-		msm_pcie_write_mask(dev->conf + PCIE20_L1SUB_CONTROL1_BRCM,
-			BIT(3)|BIT(2)|BIT(1)|BIT(0), 0);
-		/* RC: disable ASPM  */
-		msm_pcie_write_mask(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS,
-					BIT(1)|BIT(0), 0);
-		/* RC: disable L1SS */
-		msm_pcie_write_mask(dev->dm_core + PCIE20_L1SUB_CONTROL1,
-					BIT(3)|BIT(2)|BIT(1)|BIT(0), 0);
-		/* EP: Set L1ss control 2 register(0x24c) */
-		/* TPOWERON : 80us */
-		msm_pcie_write_mask(dev->conf + PCIE20_L1SUB_CONTROL2_BRCM,
-			0xFF, BIT(6)|BIT(0));
-		/* RC: TPOWERON : 80us */
-		msm_pcie_write_mask(dev->dm_core + PCIE20_L1SUB_CONTROL2,
-			0xFF, BIT(6)|BIT(0));
-
-		/* EP: Set L1ss control 1 register(0x248) - Enable L1ss */
-		/* L12Threshold : 2.5 ms */
-		msm_pcie_write_mask(dev->conf + PCIE20_L1SUB_CONTROL1_BRCM, 0,
-			BIT(30)|BIT(23)|BIT(21)|BIT(3)|BIT(2)|BIT(1)|BIT(0));
-		/* RC: Set L1SS and L12Threshold : 2.5ms */
-		msm_pcie_write_mask(dev->dm_core + PCIE20_L1SUB_CONTROL1, 0,
-			BIT(30)|BIT(23)|BIT(21)|BIT(3)|BIT(2)|BIT(1)|BIT(0));
-
-		/* EP: Set ASPM(0xbc) */
-		msm_pcie_write_mask(dev->conf + PCIE20_CAP_LINKCTRLSTATUS_BRCM, 0,
-			BIT(8)|BIT(6)|BIT(1)|BIT(0));
-		/* RC: Set ASPM and ComClkConfig */
-		msm_pcie_write_mask(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS, 0,
-			BIT(6)|BIT(1)|BIT(0));
-
-		/* EP: Set LTR Latency (0x1B4) */
-		msm_pcie_write_mask(dev->conf + PCIE20_LTR_MAX_SNOOP_LATENCY_BRCM, 0,
-			BIT(28)|BIT(17)|BIT(16)|BIT(12)|BIT(1)|BIT(0));
-		/* EP: Toggle LTR Enable(0xd4) */
-		msm_pcie_write_mask(dev->conf + PCIE20_DEVICE_CONTROL2_STATUS2_BRCM, 0, BIT(10));
-
-		PCIE_DBG(dev, "EP's CAP_LINKCTRLSTATUS:0x%x\n",
-			readl_relaxed(dev->conf + PCIE20_CAP_LINKCTRLSTATUS_BRCM));
-		PCIE_DBG(dev, "EP's L1SUB_CONTROL1:0x%x\n",
-			readl_relaxed(dev->conf + PCIE20_L1SUB_CONTROL1_BRCM));
-		PCIE_DBG(dev, "EP's L1SUB_CONTROL2:0x%x\n",
-			readl_relaxed(dev->conf + PCIE20_L1SUB_CONTROL2_BRCM));
-		PCIE_DBG(dev, "EP's DEVICE_CONTROL2_STATUS2:0x%x\n",
-			readl_relaxed(dev->conf + PCIE20_DEVICE_CONTROL2_STATUS2_BRCM));
-		PCIE_DBG(dev, "EP's PCIE20_LTR_MAX_SNOOP_LATENCY:0x%x\n",
-			readl_relaxed(dev->conf + PCIE20_LTR_MAX_SNOOP_LATENCY_BRCM));
-	} else {
-#endif
 	/* Enable L1SS on EP */
 	msm_pcie_write_mask(dev->conf + PCIE20_CAP_LINKCTRLSTATUS, 0,
 					BIT(1)|BIT(0));
@@ -945,9 +880,6 @@ static void msm_pcie_config_l1ss(struct msm_pcie_dev_t *dev)
 					offset));
 	PCIE_DBG(dev, "EP's DEVICE_CONTROL2_STATUS2:0x%x\n",
 		readl_relaxed(dev->conf + PCIE20_DEVICE_CONTROL2_STATUS2));
-#ifdef CONFIG_BCM4356
-	}
-#endif
 }
 
 static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
