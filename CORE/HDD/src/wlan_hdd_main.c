@@ -9600,8 +9600,10 @@ static void hdd_driver_exit(void)
          }
        }
 
+      rtnl_lock();
       pHddCtx->isLoadUnloadInProgress = WLAN_HDD_UNLOAD_IN_PROGRESS;
       vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+      rtnl_unlock();
 
       /* Driver Need to send country code 00 in below condition
        * 1) If gCountryCodePriority is set to 1; and last country

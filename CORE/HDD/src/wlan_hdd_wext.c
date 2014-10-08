@@ -7970,7 +7970,6 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
             hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter)) &&
             (connectedBand != band))
         {
-             hdd_station_ctx_t *pHddStaCtx = &(pAdapter)->sessionCtx.station;
              eHalStatus status = eHAL_STATUS_SUCCESS;
              long lrc;
 
@@ -7979,10 +7978,8 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
 
              hddLog(VOS_TRACE_LEVEL_INFO,
                      "%s STA connected in band %u, Changing band to %u, Issuing Disconnect."
-                     " Set HDD connState to eConnectionState_NotConnected",
-                        __func__, csrGetCurrentBand(hHal), band);
+                       , __func__, csrGetCurrentBand(hHal), band);
 
-             pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
              INIT_COMPLETION(pAdapter->disconnect_comp_var);
 
              status = sme_RoamDisconnect( WLAN_HDD_GET_HAL_CTX(pAdapter),
