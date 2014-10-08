@@ -407,6 +407,31 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 	of_property_read_u32(np, "ct406_pulse_count",
 			     &pdata->ct406_pulse_count);
 
+	pdata->headset_insertion_debounce = 0x01F4;
+	pdata->headset_removal_debounce = 0x001E;
+	pdata->headset_button_down_debounce = 0x0032;
+	pdata->headset_button_up_debounce = 0x0032;
+	pdata->headset_button_0_1_threshold = 0x0096;
+	pdata->headset_button_1_2_threshold = 0x012C;
+	pdata->headset_button_2_3_threshold = 0x01C2;
+	pdata->headset_button_3_upper_threshold = 0x02EE;
+	of_property_read_u32(np, "headset_insertion_debounce",
+			     &pdata->headset_insertion_debounce);
+	of_property_read_u32(np, "headset_removal_debounce",
+			     &pdata->headset_removal_debounce);
+	of_property_read_u32(np, "headset_button_down_debounce",
+			     &pdata->headset_button_down_debounce);
+	of_property_read_u32(np, "headset_button_up_debounce",
+			     &pdata->headset_button_up_debounce);
+	of_property_read_u32(np, "headset_button_0_1_threshold",
+			     &pdata->headset_button_0_1_threshold);
+	of_property_read_u32(np, "headset_button_1_2_threshold",
+			     &pdata->headset_button_1_2_threshold);
+	of_property_read_u32(np, "headset_button_2_3_threshold",
+			     &pdata->headset_button_2_3_threshold);
+	of_property_read_u32(np, "headset_button_3_upper_threshold",
+			     &pdata->headset_button_3_upper_threshold);
+
 	return pdata;
 }
 #else
