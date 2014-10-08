@@ -219,6 +219,7 @@
 			linux,default-trigger = "bkl-trigger";
 			rohm,led1-used;
 			rohm,pwm-on;
+			rohm,no-reset;
 		};
 	};
 	spi_3: spi@f9925000 { /* BLSP1 QUP3 */
