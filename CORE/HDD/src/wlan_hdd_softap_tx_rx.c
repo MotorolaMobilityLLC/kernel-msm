@@ -1410,8 +1410,10 @@ VOS_STATUS hdd_softap_rx_packet_cbk( v_VOID_t *vosContext,
    }
 
    pAdapter = pHddCtx->sta_to_adapter[staId];
-   if( NULL == pAdapter )
+   if( (NULL == pAdapter) || (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic) )
    {
+      VOS_TRACE(VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_ERROR,
+          "%s: invalid adapter or adapter has invalid magic",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAILURE;
    }

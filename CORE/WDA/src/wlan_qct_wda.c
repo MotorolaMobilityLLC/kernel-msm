@@ -3799,7 +3799,8 @@ void WDA_AddStaReqCallback(WDI_ConfigSTARspParamsType *wdiConfigStaRsp,
                                                     wdiConfigStaRsp->ucBssIdx;
          pWDA->wdaStaInfo[addStaReqParam->staIdx].ucValidStaIndex = 
                                                          WDA_VALID_STA_INDEX ;
-         pWDA->wdaStaInfo[addStaReqParam->staIdx].currentOperChan = 0;
+         pWDA->wdaStaInfo[addStaReqParam->staIdx].currentOperChan =
+                                             addStaReqParam->currentOperChan;
       }
       if(WDI_DS_AddSTAMemPool(pWDA->pWdiContext, wdiConfigStaRsp->ucSTAIdx))
       {

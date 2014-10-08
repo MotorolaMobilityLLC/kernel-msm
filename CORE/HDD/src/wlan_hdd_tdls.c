@@ -2691,16 +2691,31 @@ int wlan_hdd_tdls_get_status(hdd_adapter_t *pAdapter,
 {
 
     hddTdlsPeer_t *curr_peer;
-
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     curr_peer = wlan_hdd_tdls_find_peer(pAdapter, mac, TRUE);
     if (curr_peer == NULL)
     {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                  FL("curr_peer is NULL"));
-       return -EINVAL;
-    }
 
-    wlan_hdd_tdls_get_wifi_hal_state(curr_peer, state, reason);
+        *state = WIFI_TDLS_DISABLED;
+        *reason = eTDLS_LINK_UNSPECIFIED;
+    }
+    else
+    {
+        if (pHddCtx->cfg_ini->fTDLSExternalControl &&
+           (FALSE == curr_peer->isForcedPeer))
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      FL("curr_peer is not Forced"));
+            *state = WIFI_TDLS_DISABLED;
+            *reason = eTDLS_LINK_UNSPECIFIED;
+        }
+        else
+        {
+            wlan_hdd_tdls_get_wifi_hal_state(curr_peer, state, reason);
+        }
+    }
     return (0);
 }
 
