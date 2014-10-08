@@ -23,3 +23,9 @@
 		status = "ok";
 	};
 };
+
+&spi_0 {
+	stml0xx@0 {
+		headset_detect_enable = <0>;
+	};
+};
