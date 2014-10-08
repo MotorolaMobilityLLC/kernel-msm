@@ -135,6 +135,7 @@ typedef enum
 #define IS_FW_IN_TX_PATH_FEATURE_ENABLE ((WDI_getHostWlanFeatCaps(FW_IN_TX_PATH)) & (WDA_getFwWlanFeatCaps(FW_IN_TX_PATH)))
 #define IS_MUMIMO_BFORMEE_CAPABLE ((WDI_getHostWlanFeatCaps(MU_MIMO)) & (WDA_getFwWlanFeatCaps(MU_MIMO)))
 #define IS_FEATURE_BCN_FLT_DELTA_ENABLE ((WDI_getHostWlanFeatCaps(BCN_IE_FLT_DELTA)) & (WDA_getFwWlanFeatCaps(BCN_IE_FLT_DELTA)))
+#define IS_FEATURE_FW_STATS_ENABLE ((WDI_getHostWlanFeatCaps(FW_STATS)) & (WDA_getFwWlanFeatCaps(FW_STATS)))
 /*--------------------------------------------------------------------------
   Utilities
  --------------------------------------------------------------------------*/
@@ -1222,6 +1223,8 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_SET_TDLS_CHAN_SWITCH_REQ           SIR_HAL_TDLS_CHAN_SWITCH_REQ
 #define WDA_SET_TDLS_CHAN_SWITCH_REQ_RSP       SIR_HAL_TDLS_CHAN_SWITCH_REQ_RSP
 #endif
+
+#define WDA_FW_STATS_GET_REQ                   SIR_HAL_FW_STATS_GET_REQ
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
 eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
