@@ -395,7 +395,7 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	fsynr1 = KGSL_IOMMU_GET_CTX_REG(iommu, iommu_unit,
 		iommu_dev->ctx_id, FSYNR1);
 
-	if (!msm_soc_version_supports_iommu_v1())
+	if (msm_soc_version_supports_iommu_v1())
 		write = ((fsynr1 & (KGSL_IOMMU_FSYNR1_AWRITE_MASK <<
 			KGSL_IOMMU_FSYNR1_AWRITE_SHIFT)) ? 1 : 0);
 	else
@@ -1632,7 +1632,6 @@ static void kgsl_iommu_lock_rb_in_tlb(struct kgsl_mmu *mmu)
 
 static int kgsl_iommu_start(struct kgsl_mmu *mmu)
 {
-	struct kgsl_device *device = mmu->device;
 	int status;
 	struct kgsl_iommu *iommu = mmu->priv;
 	int i, j;
@@ -1646,11 +1645,6 @@ static int kgsl_iommu_start(struct kgsl_mmu *mmu)
 		status = kgsl_iommu_setup_defaultpagetable(mmu);
 		if (status)
 			return -ENOMEM;
-
-		/* Initialize the sync lock between GPU and CPU */
-		if (msm_soc_version_supports_iommu_v1() &&
-			(device->id == KGSL_DEVICE_3D0))
-				kgsl_iommu_init_sync_lock(mmu);
 	}
 	status = kgsl_iommu_start_sync_lock(mmu);
 	if (status)
