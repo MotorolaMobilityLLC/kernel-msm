@@ -36,7 +36,7 @@
                 qcom,mdss-dsi-h-back-porch = <64>;
                 qcom,mdss-dsi-h-pulse-width = <8>;
                 qcom,mdss-dsi-h-sync-skew = <0>;
-                qcom,mdss-dsi-v-back-porch = <1>;
+                qcom,mdss-dsi-v-back-porch = <7>;
                 qcom,mdss-dsi-v-front-porch = <6>;
                 qcom,mdss-dsi-v-pulse-width = <1>;
                 qcom,mdss-dsi-h-left-border = <0>;
@@ -60,7 +60,7 @@
 			29 01 00 00 00 00 02 4c 00
 			29 01 00 00 00 00 02 fb 01
 			29 01 00 00 00 00 02 ff 00
-			29 01 00 00 00 00 04 3b 03 01 03
+			29 01 00 00 00 00 04 3b 03 04 03
 			29 01 00 00 00 00 02 fb 01
 			29 01 00 00 78 00 02 11 00      /* exit sleep */
 			29 01 00 00 00 00 02 51 ff      /* led_pwm1 */
@@ -143,7 +143,7 @@
 		qcom,mdss-dsi-h-back-porch = <64>;
 		qcom,mdss-dsi-h-pulse-width = <8>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
-		qcom,mdss-dsi-v-back-porch = <1>;
+		qcom,mdss-dsi-v-back-porch = <7>;
 		qcom,mdss-dsi-v-front-porch = <6>;
 		qcom,mdss-dsi-v-pulse-width = <1>;
 		qcom,mdss-dsi-h-left-border = <0>;
@@ -201,7 +201,7 @@
 			29 01 00 00 00 00 02 4c 00
 			29 01 00 00 00 00 02 fb 01
 			29 01 00 00 00 00 02 ff 00
-			29 01 00 00 00 00 04 3b 03 01 03
+			29 01 00 00 00 00 04 3b 03 04 03
 			29 01 00 00 00 00 02 fb 01
 			29 01 00 00 78 00 02 11 00      /* exit sleep */
 			29 01 00 00 00 00 02 ff 04
@@ -287,7 +287,7 @@
 		qcom,mdss-dsi-h-back-porch = <64>;
 		qcom,mdss-dsi-h-pulse-width = <8>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
-		qcom,mdss-dsi-v-back-porch = <1>;
+		qcom,mdss-dsi-v-back-porch = <7>;
 		qcom,mdss-dsi-v-front-porch = <6>;
 		qcom,mdss-dsi-v-pulse-width = <1>;
 		qcom,mdss-dsi-h-left-border = <0>;
