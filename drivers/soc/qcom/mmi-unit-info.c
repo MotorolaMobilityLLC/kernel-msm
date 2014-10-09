@@ -151,7 +151,11 @@ static int __init mmi_unit_info_init(void)
 	mui->system_rev = system_rev;
 	mui->system_serial_low = system_serial_low;
 	mui->system_serial_high = system_serial_high;
+#ifndef CONFIG_ARM64
 	strlcpy(mui->machine, machine_desc->name, MACHINE_MAX_LEN);
+#else
+	strlcpy(mui->machine, "", MACHINE_MAX_LEN);
+#endif
 	strlcpy(mui->barcode, serialno, BARCODE_MAX_LEN);
 	strlcpy(mui->baseband, extended_baseband, BASEBAND_MAX_LEN);
 	strlcpy(mui->carrier, carrier, CARRIER_MAX_LEN);
