@@ -1298,7 +1298,7 @@ int mdss_dsi_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg)
 	int old_tx_mode;
 	int mode = DSI_MODE_BIT_LP;
 
-	if (!pdata->panel_info.panel_power_on) {
+	if (mdss_panel_is_power_off(pdata->panel_info.panel_power_state)) {
 		pr_err("%s: Panel is off\n", __func__);
 		return -EPERM;
 	}
