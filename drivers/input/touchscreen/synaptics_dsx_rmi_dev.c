@@ -124,7 +124,7 @@ static ssize_t rmidev_sysfs_data_show(struct file *data_file,
 
 	if (count < data_length) {
 		dev_err(&rmidev->rmi4_data->i2c_client->dev,
-				"%s: Not enough space (%d bytes) in buffer\n",
+				"%s: Not enough space (%zu bytes) in buffer\n",
 				__func__, count);
 		return -EINVAL;
 	}
@@ -496,7 +496,7 @@ static void rmidev_device_cleanup(struct rmidev_data *dev_data)
 	return;
 }
 
-static char *rmi_char_devnode(struct device *dev, mode_t *mode)
+static char *rmi_char_devnode(struct device *dev, umode_t *mode)
 {
 	if (!mode)
 		return NULL;

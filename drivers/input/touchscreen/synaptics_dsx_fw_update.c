@@ -1096,7 +1096,7 @@ static bool fwu_tdat_image_format(const unsigned char *fw_image)
 }
 
 static void fwu_tdat_config_set(const unsigned char *data, size_t size,
-		const unsigned char **image, size_t *image_size)
+		const unsigned char **image, unsigned int *image_size)
 {
 	unsigned short id;
 	size_t length, offset;
@@ -1112,7 +1112,7 @@ static void fwu_tdat_config_set(const unsigned char *data, size_t size,
 }
 
 static void fwu_tdat_section_offset(
-		const unsigned char **image, size_t *image_size)
+		const unsigned char **image, unsigned int *image_size)
 {
 	size_t offset;
 	offset = (*image)[0] + 1;
@@ -1135,12 +1135,12 @@ static int fwu_parse_tdat_image(struct image_header *header,
 			 (data[offset+2] << 8) | data[offset+1];
 
 		dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-				"Record[%d]: length %u, offset %u\n",
+				"Record[%d]: length %zu, offset %zu\n",
 				ii++, length, offset);
 
 		if ((offset+length+4) > fw_size) {
 			dev_err(&fwu->rmi4_data->i2c_client->dev,
-					"Data overflow at offset %u (%u)\n",
+					"Data overflow at offset %zu (%u)\n",
 					offset, data[offset]);
 			return -EINVAL;
 		}
@@ -1161,7 +1161,7 @@ static int fwu_parse_tdat_image(struct image_header *header,
 		switch (id) {
 		case 1: /* config */
 			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Config record %d, size %d\n",
+				"%s: Config record %d, size %zu\n",
 				__func__, id, length);
 
 			fwu_tdat_config_set(section, length,
@@ -1176,7 +1176,7 @@ static int fwu_parse_tdat_image(struct image_header *header,
 
 		case 2: /* firmware */
 			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Firmware record %d, size %d\n",
+				"%s: Firmware record %d, size %zu\n",
 				__func__,
 				id,
 				length);
@@ -1246,7 +1246,7 @@ static int fwu_start_reflash(void)
 		}
 
 		dev_dbg(&i2c_client->dev,
-				"%s: Firmware image size = %d\n",
+				"%s: Firmware image size = %zu\n",
 				__func__, fw_entry->size);
 
 		fw_image = fw_entry->data;
@@ -1573,7 +1573,7 @@ static ssize_t fwu_sysfs_show_image(struct file *data_file,
 
 	if (count < fwu->config_size) {
 		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: Not enough space (%d bytes) in buffer\n",
+				"%s: Not enough space (%zu bytes) in buffer\n",
 				__func__, count);
 		return -EINVAL;
 	}
