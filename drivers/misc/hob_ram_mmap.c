@@ -196,7 +196,7 @@ static int hob_ram_probe(struct platform_device *pdev)
 {
 	int ret;
 	unsigned int smem_size;
-	unsigned int shob_base_addr = 0;
+	void *shob_base_addr = 0;
 	unsigned int phys_addr;
 
 	if (!pdev->dev.of_node) {
@@ -217,27 +217,27 @@ static int hob_ram_probe(struct platform_device *pdev)
 
 	if (hob_dev->dynamic_smem) {
 		/* Get HOB shared memory pointer */
-		shob_base_addr = (unsigned int)smem_get_entry(
+		shob_base_addr = smem_get_entry(
 					SMEM_HOB_RESERVE,
 					&smem_size,
 					0,
 					SMEM_ANY_HOST_FLAG);
 		dev_dbg(&pdev->dev,
-			"HOB region SMEM address 0x%08X, size 0x%0X",
+			"HOB region SMEM address 0x%p, size 0x%0X",
 			shob_base_addr, smem_size);
 
 		if (!shob_base_addr) {
 			dev_err(&pdev->dev, "modem: ERROR: HOB SMEM address NOT FOUND");
 			return -EINVAL;
-		} else if (IS_ERR((void *)shob_base_addr)) {
+		} else if (IS_ERR(shob_base_addr)) {
 			dev_err(&pdev->dev, "smem returned errord\n");
-			return PTR_ERR((void *)shob_base_addr);
+			return PTR_ERR(shob_base_addr);
 		}
 		/* reduce the size as it was increased
 			for alignment purpose */
 		smem_size -= (1 << PAGE_SHIFT);
 
-		phys_addr = smem_virt_to_phys((void *)shob_base_addr);
+		phys_addr = smem_virt_to_phys(shob_base_addr);
 		dev_dbg(&pdev->dev,
 			"HOB physical SMEM address 0x%08X", phys_addr);
 		hob_dev->dhob_size = smem_size & DHOB_SIZE_MASK;
@@ -264,7 +264,8 @@ static int hob_ram_probe(struct platform_device *pdev)
 				- hob_dev->shob->start + 1;
 			dev_dbg(&pdev->dev,
 				"SHOB resource addr 0x%0X, size 0x%0X",
-				hob_dev->shob->start, hob_dev->shob_size);
+				(unsigned int)hob_dev->shob->start,
+				hob_dev->shob_size);
 		}
 
 		hob_dev->dhob = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -276,7 +277,8 @@ static int hob_ram_probe(struct platform_device *pdev)
 				- hob_dev->dhob->start + 1;
 			dev_dbg(&pdev->dev,
 				"DHOB resource addr 0x%0X, size 0x%0X",
-				hob_dev->dhob->start, hob_dev->dhob_size);
+				(unsigned int)hob_dev->dhob->start,
+				hob_dev->dhob_size);
 		}
 
 		if (hob_ram_protect(hob_dev))
@@ -312,7 +314,9 @@ static struct of_device_id hob_ram_match_table[] = {
 	{ .compatible = HOB_RAM_MISC_DEV_NAME },
 	{ /* NULL */ },
 };
+#ifdef EXPORT_COMPAT
 EXPORT_COMPAT(HOB_RAM_MISC_DEV_NAME);
+#endif
 
 
 static struct platform_driver hob_driver = {
