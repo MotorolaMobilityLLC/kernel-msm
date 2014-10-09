@@ -13,10 +13,7 @@
 
 #include <linux/module.h>
 #include <linux/seq_file.h>
-#include <asm/mach-types.h>
-#include <asm/mach/arch.h>
 #include <asm/setup.h>
-#include <asm/system_info.h>
 #include <soc/qcom/bootinfo.h>
 
 #include <soc/qcom/smem.h>
