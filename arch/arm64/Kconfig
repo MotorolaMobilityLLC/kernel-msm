@@ -260,6 +260,14 @@ config ARCH_MSM8992
 	  Enable kernel support for the MSM8992 chipset. If you don't
 	  know what this is, you can safely say 'N' here.
 
+config MMI_DEVICE_DTBS
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility Device DTBs"
+	help
+	  Only include Motorola device specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config ARCH_XGENE
 	bool "AppliedMicro X-Gene SOC Family"
 	help
