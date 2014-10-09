@@ -591,9 +591,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		mdss_dsi_panel_reset(pdata, 1);
 	}
 
-#if 0
 	pdata->panel_info.panel_power_on = 1;
-#endif
 
 	if (mipi->init_delay)
 		usleep(mipi->init_delay);
@@ -1300,12 +1298,10 @@ int mdss_dsi_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg)
 	int old_tx_mode;
 	int mode = DSI_MODE_BIT_LP;
 
-#if 0
 	if (!pdata->panel_info.panel_power_on) {
 		pr_err("%s: Panel is off\n", __func__);
 		return -EPERM;
 	}
-#endif
 
 	if (copy_from_user(&reg_access, arg, sizeof(reg_access)))
 		return -EFAULT;
