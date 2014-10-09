@@ -549,6 +549,58 @@
 			bias-pull-up; /* pull up */
 		};
 	};
+
+	/* IRQ, WakeIRQ, SPI Data Ack, SPI Ready for Receive */
+	stml0xx_inputs {
+		qcom,pins = <&gp 115>, <&gp 113>, <&gp 38>, <&gp 4>;
+		qcom,num-grp-pins = <4>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-inputs";
+
+		stml0xx_inputs_default: stml0xx-inputs {
+			bias-disable;         /* no pull */
+			drive-strength = <2>;
+		};
+	};
+
+	stml0xx_wakeup {
+		qcom,pins = <&gp 110>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-wakeup";
+
+		stml0xx_wakeup_default: stml0xx-wakeup {
+			bias-disable;         /* no pull */
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	stml0xx_reset {
+		qcom,pins = <&gp 120>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-reset";
+
+		stml0xx_reset_default: stml0xx-reset {
+			bias-disable;         /* no pull */
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	stml0xx_flash_en {
+		qcom,pins = <&gp 121>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-flash-en";
+
+		stml0xx_flash_en_default: stml0xx-flash-en {
+			bias-disable;         /* no pull */
+			drive-strength = <2>;
+			output-low;
+		};
+	};
 };
 
 &spmi_bus {
@@ -812,6 +864,12 @@
 		headset_button_3-upper_threshold = <0x02EE>;
 		sensor1-supply = <&pm8916_l6>;
 		sensor2-supply = <&pm8916_l17>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&stml0xx_inputs_default
+			     &stml0xx_wakeup_default
+			     &stml0xx_reset_default
+			     &stml0xx_flash_en_default>;
 	};
 };
 
