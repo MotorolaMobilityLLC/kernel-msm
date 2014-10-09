@@ -591,8 +591,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		mdss_dsi_panel_reset(pdata, 1);
 	}
 
-	pdata->panel_info.panel_power_on = 1;
-
 	if (mipi->init_delay)
 		usleep(mipi->init_delay);
 
