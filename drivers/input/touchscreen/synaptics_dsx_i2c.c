@@ -482,7 +482,7 @@ static int synaptics_rmi4_write_packet_reg(
 			}
 		} else {
 			retval = -EINVAL;
-			pr_err("bad subpacket or register greater %d bytes\n",
+			pr_err("bad subpacket or register greater %zu bytes\n",
 					sizeof(data));
 			goto out;
 		}
