@@ -12,7 +12,6 @@
  *
  */
 
-#include <asm/mach-types.h>
 #include <asm/page.h>
 #include <linux/export.h>
 #include <linux/kobject.h>
@@ -117,7 +116,7 @@ static void dropbox_queue_event(char *name, void *data, size_t size, int flags)
 	}
 
 	if (!data || !size) {
-		pr_err("%s: invalid arguments [%s][%p][%d]\n", __func__, name,
+		pr_err("%s: invalid arguments [%s][%p][%zu]\n", __func__, name,
 			data, size);
 		return;
 	}
