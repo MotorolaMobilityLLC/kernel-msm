@@ -510,7 +510,7 @@ static struct utag *load_utags(const char *partition_name)
 
 	data = kmalloc(block_size, GFP_KERNEL);
 	if (!data) {
-		pr_err("%s ERR file (%s) out of memory size %d\n", __func__,
+		pr_err("%s ERR file (%s) out of memory size %zu\n", __func__,
 		       partition_name, block_size);
 		goto close_block;
 	}
@@ -602,7 +602,7 @@ flash_partition(const char *partition_name, const struct utag *tags)
 
 	written = filep->f_op->write(filep, datap, tags_size, &filep->f_pos);
 	if (written < tags_size) {
-		pr_err("%s ERROR writing file (%s) ret %d\n", __func__,
+		pr_err("%s ERROR writing file (%s) ret %zu\n", __func__,
 		       utags_blkdev, written);
 		status = UTAG_ERR_PARTITION_WRITE_ERR;
 	}
@@ -688,7 +688,7 @@ write_utag(struct file *file, const char __user *buffer,
 	}
 
 	if (MAX_UTAG_SIZE < count) {
-		pr_err("%s error utag too big %d\n", __func__, count);
+		pr_err("%s error utag too big %zu\n", __func__, count);
 		return count;
 	}
 
@@ -739,7 +739,7 @@ new_utag(struct file *file, const char __user *buffer,
 	struct proc_dir_entry *dir;
 
 	if ((MAX_UTAG_NAME < count) || (0 == count)) {
-		pr_err("%s invalid utag name %d\n", __func__, count);
+		pr_err("%s invalid utag name %zu\n", __func__, count);
 		return count;
 	}
 
