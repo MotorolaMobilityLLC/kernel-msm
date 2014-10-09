@@ -26,12 +26,22 @@
 #include <linux/string.h>
 #include <linux/ctype.h>
 #include <asm/setup.h>
-#include <asm/system.h>
 #include <soc/qcom/bootinfo.h>
 #include <linux/seq_file.h>
 #include <linux/apanic_mmc.h>
 #include <linux/pstore.h>
 
+#ifdef CONFIG_ARM64
+/* these are defined in kernel/setup.c for "arm" targets */
+unsigned int system_rev;
+EXPORT_SYMBOL(system_rev);
+
+unsigned int system_serial_low;
+EXPORT_SYMBOL(system_serial_low);
+
+unsigned int system_serial_high;
+EXPORT_SYMBOL(system_serial_high);
+#endif
 
 /*
  * EMIT_BOOTINFO and EMIT_BOOTINFO_STR are used to emit the bootinfo
