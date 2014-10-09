@@ -73,9 +73,9 @@ static void __init mmi_msm_annotate_socinfo(void)
 static ssize_t mmi_acpu_proc_read(struct file *file, char __user *buf,
 				size_t count, loff_t *ppos)
 {
-	int data = (int)PDE_DATA(file_inode(file));
+	void *data = PDE_DATA(file_inode(file));
 	char local_buf[8];
-	int len = snprintf(local_buf, 2, "%1x", data);
+	int len = snprintf(local_buf, 2, "%1p", data);
 
 	return simple_read_from_buffer(buf, count, ppos, local_buf, len);
 }
@@ -124,7 +124,7 @@ static void __init mmi_msm_acpu_bin_export(void)
 	if (mmi_msm_bin_info.pvs != MMI_MSM_BIN_INVAL) {
 		proc = proc_create_data("cpu/msm_acpu_pvs",
 			(S_IFREG | S_IRUGO), NULL,
-			&mmi_acpu_proc_fops, (void *)mmi_msm_bin_info.pvs);
+			&mmi_acpu_proc_fops, (void *)(uintptr_t)mmi_msm_bin_info.pvs);
 		if (!proc)
 			pr_err("Failed to create /proc/cpu/msm_acpu_pvs.\n");
 		else
