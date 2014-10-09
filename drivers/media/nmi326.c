@@ -63,11 +63,11 @@ struct nmi326_data {
 
 static struct nmi326_data *s_nmi326;
 
-static int nmi326_spi_read(struct spi_device *spi, u8 *buf, size_t len)
+static ssize_t nmi326_spi_read(struct spi_device *spi, u8 *buf, size_t len)
 {
 	struct spi_message msg;
 	struct spi_transfer transfer;
-	int rc;
+	ssize_t rc;
 
 	memset(&transfer, 0, sizeof(transfer));
 	spi_message_init(&msg);
@@ -87,11 +87,11 @@ static int nmi326_spi_read(struct spi_device *spi, u8 *buf, size_t len)
 	return len;
 }
 
-static int nmi326_spi_write(struct spi_device *spi, u8 *buf, size_t len)
+static ssize_t nmi326_spi_write(struct spi_device *spi, u8 *buf, size_t len)
 {
 	struct spi_message msg;
 	struct spi_transfer transfer;
-	int rc;
+	ssize_t rc;
 
 	memset(&transfer, 0, sizeof(transfer));
 	spi_message_init(&msg);
@@ -123,7 +123,7 @@ static unsigned long nmi326_spi_read_chip_id(struct spi_device *spi)
 	size_t len;
 	unsigned char sta = 0;
 	unsigned long val = 0;
-	int ret_size;
+	ssize_t ret_size;
 
 	b[0] = WORD_ACCESS;
 	b[1] = 0x00;
@@ -154,7 +154,7 @@ static unsigned long nmi326_spi_read_chip_id(struct spi_device *spi)
 
 			dev_notice(&spi->dev, "NMI326 Chip ID = 0x%lx\n", val);
 		} else
-			dev_err(&spi->dev, "NMI326 Error bad count %d\n", len);
+			dev_err(&spi->dev, "NMI326 Error bad count %zu\n", len);
 	} else
 		dev_err(&spi->dev, "NMI326 Error, SPI bus, not complete\n");
 
@@ -190,9 +190,9 @@ static int isdbt_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-static int isdbt_read(struct file *filp, char *buf, size_t count, loff_t *f_pos)
+static ssize_t isdbt_read(struct file *filp, char *buf, size_t count, loff_t *f_pos)
 {
-	int rc;
+	ssize_t rc;
 	struct nmi326_data *pdata = (struct nmi326_data *)(filp->private_data);
 
 	mutex_lock(&pdata->access_mutex);
@@ -206,11 +206,11 @@ static int isdbt_read(struct file *filp, char *buf, size_t count, loff_t *f_pos)
 	return rc;
 }
 
-static int isdbt_write(struct file *filp, const char *buf, size_t count,
+static ssize_t isdbt_write(struct file *filp, const char *buf, size_t count,
 		loff_t *f_pos)
 {
 	struct nmi326_data *pdata = (struct nmi326_data *)(filp->private_data);
-	int rc;
+	ssize_t rc;
 
 	mutex_lock(&pdata->access_mutex);
 
