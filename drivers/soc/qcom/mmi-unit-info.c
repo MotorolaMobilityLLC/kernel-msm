@@ -21,6 +21,7 @@
 
 #include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/slab.h>
 
 static u32 prod_id;
 
@@ -132,50 +133,68 @@ static void __init mmi_of_populate_setup(void)
 
 static int __init mmi_unit_info_init(void)
 {
+	int ret = 0;
+	struct mmi_unit_info *mui_copy;
 
 	mmi_of_populate_setup();
 
 	#define SMEM_KERNEL_RESERVE_SIZE 1024
-	mui = (struct mmi_unit_info *) smem_alloc(SMEM_KERNEL_RESERVE,
-		SMEM_KERNEL_RESERVE_SIZE, 0, SMEM_ANY_HOST_FLAG);
-
-	if (!mui) {
-		pr_err("%s: failed to allocate mmi_unit_info in SMEM\n",
+	mui_copy = kzalloc(SMEM_KERNEL_RESERVE_SIZE, GFP_KERNEL);
+	if (!mui_copy) {
+		pr_err("%s: failed to allocate space for mmi_unit_info\n",
 			__func__);
-		return 1;
-	} else if (PTR_ERR(mui) == -EPROBE_DEFER) {
-		pr_err("%s: SMEM not yet initialized\n", __func__);
+		ret = 1;
+		goto err;
 	}
 
-	mui->version = MMI_UNIT_INFO_VER;
-	mui->system_rev = system_rev;
-	mui->system_serial_low = system_serial_low;
-	mui->system_serial_high = system_serial_high;
+	mui_copy->version = MMI_UNIT_INFO_VER;
+	mui_copy->system_rev = system_rev;
+	mui_copy->system_serial_low = system_serial_low;
+	mui_copy->system_serial_high = system_serial_high;
 #ifndef CONFIG_ARM64
-	strlcpy(mui->machine, machine_desc->name, MACHINE_MAX_LEN);
+	strlcpy(mui_copy->machine, machine_desc->name, MACHINE_MAX_LEN);
 #else
-	strlcpy(mui->machine, "", MACHINE_MAX_LEN);
+	strlcpy(mui_copy->machine, "", MACHINE_MAX_LEN);
 #endif
-	strlcpy(mui->barcode, serialno, BARCODE_MAX_LEN);
-	strlcpy(mui->baseband, extended_baseband, BASEBAND_MAX_LEN);
-	strlcpy(mui->carrier, carrier, CARRIER_MAX_LEN);
-	strlcpy(mui->device, androidboot_device, DEVICE_MAX_LEN);
-	mui->radio = androidboot_radio;
-	mui->powerup_reason = bi_powerup_reason();
+	strlcpy(mui_copy->barcode, serialno, BARCODE_MAX_LEN);
+	strlcpy(mui_copy->baseband, extended_baseband, BASEBAND_MAX_LEN);
+	strlcpy(mui_copy->carrier, carrier, CARRIER_MAX_LEN);
+	strlcpy(mui_copy->device, androidboot_device, DEVICE_MAX_LEN);
+	mui_copy->radio = androidboot_radio;
+	mui_copy->powerup_reason = bi_powerup_reason();
 
 	pr_info("mmi_unit_info (SMEM) for modem: version = 0x%02x,"
 		" device = '%s', radio = %d, system_rev = 0x%04x,"
 		" system_serial = 0x%08x%08x, machine = '%s',"
 		" barcode = '%s', baseband = '%s', carrier = '%s'"
 		" pu_reason = 0x%08x\n",
-		mui->version,
-		mui->device, mui->radio, mui->system_rev,
-		mui->system_serial_high, mui->system_serial_low,
-		mui->machine, mui->barcode,
-		mui->baseband, mui->carrier,
-		mui->powerup_reason);
+		mui_copy->version,
+		mui_copy->device, mui_copy->radio, mui_copy->system_rev,
+		mui_copy->system_serial_high, mui_copy->system_serial_low,
+		mui_copy->machine, mui_copy->barcode,
+		mui_copy->baseband, mui_copy->carrier,
+		mui_copy->powerup_reason);
 
-	return 0;
+	mui = (struct mmi_unit_info *) smem_alloc(SMEM_KERNEL_RESERVE,
+		SMEM_KERNEL_RESERVE_SIZE, 0, SMEM_ANY_HOST_FLAG);
+
+	if (!mui) {
+		pr_err("%s: failed to allocate mmi_unit_info in SMEM\n",
+			__func__);
+		ret = 1;
+		goto err_free;
+	} else if (PTR_ERR(mui_copy) == -EPROBE_DEFER) {
+		pr_err("%s: SMEM not yet initialized\n", __func__);
+		ret = 1;
+		goto err_free;
+	}
+
+	memcpy(mui, mui_copy, SMEM_KERNEL_RESERVE_SIZE);
+
+err_free:
+	kfree(mui_copy);
+err:
+	return ret;
 }
 
 module_init(mmi_unit_info_init);
