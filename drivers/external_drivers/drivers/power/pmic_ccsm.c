@@ -87,6 +87,9 @@
 /* 100mA value definition for setting the inlimit in bq24261 */
 #define USBINPUTICC100VAL	100
 
+#define SOC_ACOK 179
+static struct workqueue_struct *soc_acok_wq;
+
 /* Type definitions */
 static void pmic_bat_zone_changed(void);
 static void pmic_battery_overheat_handler(bool);
@@ -1398,6 +1401,47 @@ static void handle_level1_interrupt(u8 int_reg, u8 stat_reg)
 	return;
 }
 
+static irqreturn_t soc_acok_isr(int irq, void *dev_id)
+{
+	pr_info("%s, SOC_ACOK = %d\n", __func__,
+		gpio_get_value(SOC_ACOK) ? 1 : 0);
+
+	if ((gpio_get_value(SOC_ACOK) ? 1 : 0))
+		queue_delayed_work(soc_acok_wq, &chc.acok_irq_work, 0.5 * HZ);
+
+	return IRQ_HANDLED;
+}
+
+static void acok_irq_work_function(struct work_struct *work)
+{
+	pmic_handle_low_supply();
+}
+
+static int soc_acok_init(struct platform_device *pdev)
+{
+	int err = 0;
+	unsigned gpio = SOC_ACOK;
+	unsigned irq_num = gpio_to_irq(gpio);
+
+	soc_acok_wq = create_singlethread_workqueue("soc_acok_wq");
+	INIT_DELAYED_WORK(&chc.acok_irq_work, acok_irq_work_function);
+
+	err = gpio_request(gpio, "soc_acok");
+	if (err)
+		pr_info("Fail to request GPIO %d.\n", gpio);
+
+	err = gpio_direction_input(gpio);
+	if (err)
+		pr_info("Fail to configure GPIO %d as input.\n", gpio);
+
+	err = request_irq(irq_num, soc_acok_isr,
+		IRQF_TRIGGER_RISING | IRQF_SHARED, "soc_acok", pdev);
+	if (err < 0)
+		pr_info("Fail to request IRQ %d.\n", irq_num);
+
+	return 0;
+}
+
 static void pmic_event_worker(struct work_struct *work)
 {
 	struct pmic_event *evt, *tmp;
@@ -1982,6 +2026,8 @@ static int pmic_chrgr_probe(struct platform_device *pdev)
 #ifdef CONFIG_DEBUG_FS
 	pmic_debugfs_init();
 #endif
+
+	soc_acok_init(pdev);
 	return 0;
 
 unmask_irq_failed:

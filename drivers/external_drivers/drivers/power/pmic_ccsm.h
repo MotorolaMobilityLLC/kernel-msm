@@ -361,6 +361,7 @@ struct pmic_chrgr_drv_context {
 	struct usb_phy *otg;
 	struct list_head evt_queue;
 	struct work_struct evt_work;
+	struct delayed_work acok_irq_work;
 	struct mutex evt_queue_lock;
 	struct wake_lock wakelock;
 	struct wake_lock otg_wa_wakelock;
