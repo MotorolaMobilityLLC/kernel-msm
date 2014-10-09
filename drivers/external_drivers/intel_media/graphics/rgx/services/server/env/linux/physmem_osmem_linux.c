@@ -939,6 +939,8 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
     struct _PMR_OSPAGEARRAY_DATA_ *psPageArrayData = *ppsPageArrayDataPtr;
     struct page **ppsPageArray = psPageArrayData->pagearray;
 
+    unsigned int gfp_flags;
+
 #if defined (CONFIG_X86)
     /* On x86 we might have to change the page cache attributes.
      * We do this by storing references to all the changed pages that are not
@@ -948,9 +950,16 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
     struct page **apsUnsetPages = OSAllocMem(sizeof(struct page*) * psPageArrayData->uiNumPages);
     IMG_UINT32 uiUnsetPagesIndex = 0;
 
+    if (apsUnsetPages == NULL)
+    {
+       PVR_DPF((PVR_DBG_ERROR, "physmem_osmem_linux.c: Could not allocate temporary structure, system probably OOM"));
+       eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+       goto e_exit;
+    }
+
 #endif
 
-    unsigned int gfp_flags;
+
 
     PVR_ASSERT(!psPageArrayData->bHasOSPages);
 
@@ -1106,8 +1115,6 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
 				break;
 		}
 
-		OSFreeMem(apsUnsetPages);
-
 		if (ret)
 		{
 			for(uiPageIndex = 0;uiPageIndex < psPageArrayData->uiNumPages; uiPageIndex++)
@@ -1124,6 +1131,7 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
 
 	}
 
+	OSFreeMem(apsUnsetPages);
 #endif
 
 
@@ -1140,6 +1148,10 @@ _AllocOSPages(struct _PMR_OSPAGEARRAY_DATA_ **ppsPageArrayDataPtr)
     */
 
 e_freed_pages:
+#if defined (CONFIG_X86)
+	OSFreeMem(apsUnsetPages);
+e_exit:
+#endif
     PVR_ASSERT(eError != PVRSRV_OK);
     return eError;
 }
@@ -1167,6 +1179,14 @@ _FreeOSPages(struct _PMR_OSPAGEARRAY_DATA_ *psPageArrayData)
 #if defined (CONFIG_X86)
 	IMG_UINT32 uiUnsetPagesIndex = 0;
 	struct page **apsUnsetPages = OSAllocMem(sizeof(struct page *) * psPageArrayData->uiNumPages);
+
+	if (apsUnsetPages == NULL)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: Could not allocate temporary structure, "
+				"system probably OOM. Cannot free pages now.", __FUNCTION__));
+		eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+		goto e_exit;
+	}
 #endif
 
 	PVR_ASSERT(psPageArrayData->bHasOSPages);
@@ -1267,7 +1287,9 @@ _FreeOSPages(struct _PMR_OSPAGEARRAY_DATA_ *psPageArrayData)
 	{
 		_DeinitPagePool();
 	}
-
+#if defined(CONFIG_X86)
+e_exit:
+#endif
     return eError;
 }
 
