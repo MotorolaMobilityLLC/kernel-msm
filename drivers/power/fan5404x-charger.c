@@ -30,8 +30,10 @@
 #include <linux/reboot.h>
 #include <linux/qpnp/qpnp-adc.h>
 
+#ifndef GENMASK
 /* Mask/Bit helpers */
 #define GENMASK(u, l) (((1 << ((u) - (l) + 1)) - 1) << (l))
+#endif
 
 /* CONTROL0 Register */
 #define REG_CONTROL0         0x00
