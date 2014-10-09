@@ -5002,30 +5002,31 @@ void WDA_SpoofMacAddrRspCallback(WDI_SpoofMacAddrRspParamType* wdiRsp, void* pUs
 {
    tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
    tWDA_CbContext *pWDA;
-   tSirSpoofMacAddrReq *spoofMacAddrReq;
+
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
+
    if(NULL == pWdaParams)
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
               "%s: pWdaParams received NULL", __func__);
-      VOS_ASSERT(0) ;
+      VOS_ASSERT(0);
       return ;
    }
-
    pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
-   spoofMacAddrReq = (tSirSpoofMacAddrReq *)pWdaParams->wdaMsgParam ;
 
-   if(wdiRsp->wdiStatus != WDI_STATUS_SUCCESS )
-   {
+   if (wdiRsp->wdiStatus != WDI_STATUS_SUCCESS) {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-              "%s: Unable to set Random Mac Addr in FW", __func__);
+              "%s:Spoofing with rsp status %d", __func__, wdiRsp->wdiStatus);
    }
+   WDA_SendMsg(pWDA, WDA_SPOOF_MAC_ADDR_RSP, NULL,
+                              CONVERT_WDI2SIR_STATUS(wdiRsp->wdiStatus));
 
-   vos_mem_free(spoofMacAddrReq);
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   vos_mem_free(pWdaParams->wdaMsgParam);
    vos_mem_free(pWdaParams);
-   return ;
+
+   return;
 }
 
 /*
@@ -12459,6 +12460,7 @@ VOS_STATUS WDA_ProcessSetSpoofMacAddrReq(tWDA_CbContext *pWDA,
     if(NULL == pWdaParams) {
         VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                            "%s: VOS MEM Alloc Failure", __func__);
+        vos_mem_free(WDI_SpoofMacAddrInfoParams);
         VOS_ASSERT(0);
         return VOS_STATUS_E_NOMEM;
     }
@@ -12468,13 +12470,17 @@ VOS_STATUS WDA_ProcessSetSpoofMacAddrReq(tWDA_CbContext *pWDA,
 
     pWdaParams->pWdaContext = pWDA;
     /* Store Upper layer req pointer, as this will be used for response */
-    pWdaParams->wdaMsgParam = (void *)pReq ;
+    pWdaParams->wdaMsgParam = (void *)pReq;
+
+    VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO, WDA_MAC_ADDRESS_STR,
+               WDA_MAC_ADDR_ARRAY(WDI_SpoofMacAddrInfoParams->macAddr));
+
     /* store Params pass it to WDI */
     pWdaParams->wdaWdiApiMsgParam = (void *)WDI_SpoofMacAddrInfoParams ;
 
     wdiStatus = WDI_SetSpoofMacAddrReq(WDI_SpoofMacAddrInfoParams,
-        (WDI_SetSpoofMacAddrRspCb) WDA_SpoofMacAddrRspCallback,
-        pWdaParams );
+                    (WDI_SetSpoofMacAddrRspCb) WDA_SpoofMacAddrRspCallback,
+                                                        pWdaParams );
 
     if(IS_WDI_STATUS_FAILURE(wdiStatus))
     {
