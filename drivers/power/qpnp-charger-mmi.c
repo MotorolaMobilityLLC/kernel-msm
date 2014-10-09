@@ -385,6 +385,7 @@ struct qpnp_chg_chip {
 	unsigned int			cold_batt_p;
 	int				warm_bat_decidegc;
 	int				cool_bat_decidegc;
+	int				batt_therm_offset;
 	int				fake_battery_soc;
 	unsigned int			safe_current;
 	unsigned int			revision;
@@ -2576,7 +2577,7 @@ get_prop_batt_temp(struct qpnp_chg_chip *chip)
 	pr_debug("get_bat_temp %d, %lld\n",
 		results.adc_code, results.physical);
 
-	return (int)results.physical;
+	return (int)results.physical + chip->batt_therm_offset;
 }
 
 static int get_prop_cycle_count(struct qpnp_chg_chip *chip)
@@ -5371,6 +5372,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	OF_PROP_READ(chip, maxinput_usb_ma, "maxinput-usb-ma", rc, 1);
 	OF_PROP_READ(chip, warm_bat_decidegc, "warm-bat-decidegc", rc, 1);
 	OF_PROP_READ(chip, cool_bat_decidegc, "cool-bat-decidegc", rc, 1);
+	OF_PROP_READ(chip, batt_therm_offset, "batt-therm-offset", rc, 1);
 	OF_PROP_READ(chip, tchg_mins, "tchg-mins", rc, 1);
 	OF_PROP_READ(chip, hot_batt_p, "batt-hot-percentage", rc, 1);
 	OF_PROP_READ(chip, cold_batt_p, "batt-cold-percentage", rc, 1);
