@@ -435,14 +435,23 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
         pMac->lim.probeCounter++;
         do
         {
+            tSirMacAddr         gSelfMacAddr;
             /* Prepare and send Probe Request frame for all the SSIDs present in the saved MLM 
                     */
-       
+            if ((pMac->lim.isSpoofingEnabled != TRUE) &&
+                (TRUE == vos_is_macaddr_zero((v_MACADDR_t *)&pMac->lim.spoofMacAddr))) {
+                vos_mem_copy(gSelfMacAddr, pMac->lim.gSelfMacAddr, VOS_MAC_ADDRESS_LEN);
+            } else {
+                vos_mem_copy(gSelfMacAddr, pMac->lim.spoofMacAddr, VOS_MAC_ADDRESS_LEN);
+            }
+            limLog( pMac, LOG1, FL("Mac Addr used in Probe Req is :"MAC_ADDRESS_STR),
+                                   MAC_ADDR_ARRAY(gSelfMacAddr));
+
             PELOGE(limLog(pMac, LOG1, FL("sending ProbeReq number %d, for SSID %s on channel: %d"),
                                                 i, pMac->lim.gpLimMlmScanReq->ssId[i].ssId, channelNum);)
             // include additional IE if there is
             status = limSendProbeReqMgmtFrame( pMac, &pMac->lim.gpLimMlmScanReq->ssId[i],
-               pMac->lim.gpLimMlmScanReq->bssId, channelNum, pMac->lim.gSelfMacAddr, 
+               pMac->lim.gpLimMlmScanReq->bssId, channelNum, gSelfMacAddr,
                pMac->lim.gpLimMlmScanReq->dot11mode,
                pMac->lim.gpLimMlmScanReq->uIEFieldLen,
                (tANI_U8 *)(pMac->lim.gpLimMlmScanReq)+pMac->lim.gpLimMlmScanReq->uIEFieldOffset);
@@ -4000,10 +4009,20 @@ limProcessPeriodicProbeReqTimer(tpAniSirGlobal pMac)
         channelNum = limGetCurrentScanChannel(pMac);
         do
         {
+            tSirMacAddr         gSelfMacAddr;
+
             /* Prepare and send Probe Request frame for all the SSIDs
              * present in the saved MLM
              */
-             
+            if ((pMac->lim.isSpoofingEnabled != TRUE) &&
+               (TRUE == vos_is_macaddr_zero((v_MACADDR_t *)&pMac->lim.spoofMacAddr))) {
+                vos_mem_copy(gSelfMacAddr, pMac->lim.gSelfMacAddr, VOS_MAC_ADDRESS_LEN);
+            } else {
+                vos_mem_copy(gSelfMacAddr, pMac->lim.spoofMacAddr, VOS_MAC_ADDRESS_LEN);
+            }
+            limLog( pMac, LOG1, FL("Mac Addr used in Probe Req is :"MAC_ADDRESS_STR),
+                                   MAC_ADDR_ARRAY(gSelfMacAddr));
+
             /*
              * PELOGE(limLog(pMac, LOGW, FL("sending ProbeReq number %d,"
              *                            " for SSID %s on channel: %d"),
@@ -4011,7 +4030,7 @@ limProcessPeriodicProbeReqTimer(tpAniSirGlobal pMac)
              *                                                channelNum);)
              */
             status = limSendProbeReqMgmtFrame( pMac, &pLimMlmScanReq->ssId[i],
-                     pLimMlmScanReq->bssId, channelNum, pMac->lim.gSelfMacAddr,
+                     pLimMlmScanReq->bssId, channelNum, gSelfMacAddr,
                      pLimMlmScanReq->dot11mode, pLimMlmScanReq->uIEFieldLen,
                (tANI_U8 *)(pLimMlmScanReq) + pLimMlmScanReq->uIEFieldOffset);
 
