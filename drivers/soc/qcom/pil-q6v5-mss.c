@@ -68,7 +68,7 @@ static void log_modem_sfr(void)
 		return;
 	}
 
-	strlcpy(pil_ssr_reason, smem_reason, min(size, sizeof(pil_ssr_reason)));
+	strlcpy(pil_ssr_reason, smem_reason, min((size_t)size, sizeof(pil_ssr_reason)));
 	pr_err("modem subsystem failure reason: %s.\n", pil_ssr_reason);
 
 	smem_reason[0] = '\0';
