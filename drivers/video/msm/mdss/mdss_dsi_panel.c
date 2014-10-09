@@ -1774,13 +1774,13 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 	}
 
 	if (size > MDSS_DSI_LEN) {
-		pr_warn("%s: size %d, max rx length is %d.\n", __func__,
+		pr_warn("%s: size %zu, max rx length is %d.\n", __func__,
 							size, MDSS_DSI_LEN);
 		return -EINVAL;
 	}
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
-	pr_debug("%s: Reading %d bytes from 0x%02x\n", __func__, size, reg);
+	pr_debug("%s: Reading %zu bytes from 0x%02x\n", __func__, size, reg);
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &reg_read_cmd;
@@ -1796,7 +1796,7 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 
 	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 	if (ret != 0) {
-		pr_err("%s: Error reading %d bytes from reg 0x%02x. ret=0x%x\n",
+		pr_err("%s: Error reading %zu bytes from reg 0x%02x. ret=0x%x\n",
 				__func__, size, (unsigned int) reg, ret);
 		ret = -EFAULT;
 	} else {
@@ -1832,13 +1832,13 @@ static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata,
 
 	/* Limit size to 32 to match with disp_util size checking */
 	if (size > 32) {
-		pr_err("%s: size is larger than 32 bytes. size=%d\n",
+		pr_err("%s: size is larger than 32 bytes. size=%zu\n",
 							__func__, size);
 		return -EINVAL;
 	}
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
-	pr_debug("%s: Writing %d bytes to 0x%02x\n", __func__, size, buffer[0]);
+	pr_debug("%s: Writing %zu bytes to 0x%02x\n", __func__, size, buffer[0]);
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &reg_write_cmd;
 	cmdreq.cmds_cnt = 1;
@@ -1848,7 +1848,7 @@ static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata,
 
 	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 	if (ret != 0) {
-		pr_err("%s: Failed writing %d bytes to 0x%02x. Ret=0x%x\n",
+		pr_err("%s: Failed writing %zu bytes to 0x%02x. Ret=0x%x\n",
 					__func__, size, buffer[0], ret);
 		ret = -EFAULT;
 	}
