@@ -34,6 +34,7 @@
 #include <linux/kernel_stat.h>
 #include <linux/rpmsg.h>
 #include <linux/nmi.h>
+#include <linux/rtc.h>
 #include <asm/intel_scu_ipcutil.h>
 #include <asm/intel_mid_rpmsg.h>
 #include <asm/intel-mid.h>
@@ -232,8 +233,16 @@ static int watchdog_set_appropriate_timeouts(void)
 static int watchdog_keepalive(void)
 {
 	int ret, error = 0;
+    struct timespec ts;
+    struct rtc_time tm;
 
-	pr_info("%s\n", __func__);
+    getnstimeofday(&ts);
+    rtc_time_to_tm(ts.tv_sec, &tm);
+    pr_info("%s: at %lld " "(%d-%02d-%02d %02d:%02d:%02d.%09lu UTC)\n",
+            __func__,
+            ktime_to_ns(ktime_get()),
+            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+            tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 
 	if (unlikely(!kicking_active)) {
 		/* Close our eyes */
