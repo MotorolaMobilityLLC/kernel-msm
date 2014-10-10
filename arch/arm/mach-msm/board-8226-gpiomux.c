@@ -462,7 +462,7 @@ static struct gpiomux_setting gpio_bcm4343s_out_config = {
 static struct gpiomux_setting gpio_bcm4343s_wake_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.pull = GPIOMUX_PULL_UP,
 };
 
 static struct msm_gpiomux_config msm_smelt_bcm4343s_configs[] __initdata = {
@@ -501,7 +501,6 @@ static struct msm_gpiomux_config msm_smelt_bcm4343s_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_bcm4343s_out_config,
 		},
 	},
-	/* Enable CONFIG_MMC_MSM_SDC3_SUPPORT to configure WLAN data lines */
 };
 
 static struct msm_gpiomux_config msm_blsp_spi_cs_config[] __initdata = {
