@@ -120,6 +120,7 @@ Parent node optional properties:
                                         which are above a certain Voltage threshold
 - qcom,ir-comp                          Indicates support for Fast charge / Turbo feature where
                                         IR compensaton is needed.
+- qcom,battery-model-sysfs              Indicates if battery model sysfs is required to be updated
 
 Sub node required structure:
 - A qcom,chg node must be a child of an SPMI node that has specified
