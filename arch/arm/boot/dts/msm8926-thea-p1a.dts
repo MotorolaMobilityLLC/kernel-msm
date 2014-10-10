@@ -57,6 +57,10 @@
 	};
 };
 
+&pm8226_chg {
+	qcom,batt-therm-offset = <(-50)>;
+};
+
 &i2c_2 {
 	bma2x2@11 {
 		/delete-property/ bma,place;
