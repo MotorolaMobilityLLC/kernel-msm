@@ -55,6 +55,10 @@
 		<&msmgpio 37 0>;
 };
 
+&pm8226_chg {
+	qcom,batt-therm-offset = <(-20)>;
+};
+
 &mmi_batterydata {
 	qcom,default-kohm = <20>;
 
