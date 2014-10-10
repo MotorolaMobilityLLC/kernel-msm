@@ -127,6 +127,7 @@ struct bms_battery_data {
 	int			iterm_ua;
 	int			batt_id_kohm;
 	int			max_current_ma;
+	char			name[255];
 };
 
 #if defined(CONFIG_PM8921_BMS) || \
