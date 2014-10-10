@@ -35,6 +35,13 @@
 };
 
 &soc {
+	usb_detect {
+		compatible = "qcom,qpnp-usbdetect";
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <0x0 0x13 0x01>;
+		interrupt-names = "vbus_det_irq";
+	};
+
 	/* BLSP1: UART */
 	/delete-node/ spi@f9923000;
 	uart1: uart@f991d000 { /* BLSP1 UART1 */
@@ -287,4 +294,8 @@
 
 &uart6 {
 	status = "ok";
+};
+
+&usb_otg {
+	qcom,hsusb-otg-mode = <1>;         /* USB_PERIPHERAL           */
 };
