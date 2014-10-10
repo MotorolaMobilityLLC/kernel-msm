@@ -4990,8 +4990,8 @@ static int smb135x_charger_reboot(struct notifier_block *nb,
 
 	/* force usb/dc shutdown on halt */
 	if (event == SYS_HALT) {
-		__smb135x_usb_suspend(chip, true);
-		__smb135x_dc_suspend(chip, true);
+		smb135x_path_suspend(chip, USB, USER, true);
+		smb135x_path_suspend(chip, DC, USER, true);
 	}
 
 	return NOTIFY_DONE;
