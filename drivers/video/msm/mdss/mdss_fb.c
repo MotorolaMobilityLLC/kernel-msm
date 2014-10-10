@@ -1677,15 +1677,6 @@ static int mdss_fb_release_all(struct fb_info *info, struct file *file)
 			mfd->disp_thread = NULL;
 		}
 
-		if (mfd->mdp.release_fnc) {
-			ret = mfd->mdp.release_fnc(mfd, true);
-			if (ret)
-				pr_err("error fb%d release process %s pid=%d\n",
-					mfd->index, task->comm, pid);
-		}
-
-		mdss_fb_free_fb_ion_memory(mfd);
-
 		/*
 		 * Turn off back light of video panel to make possible artifacts
 		 * caused by blank/unblank invisible.
@@ -1711,6 +1702,15 @@ static int mdss_fb_release_all(struct fb_info *info, struct file *file)
 		if (!mfd->unset_bl_level)
 			mfd->unset_bl_level = mfd->bl_level_old;
 		mutex_unlock(&mfd->bl_lock);
+
+		if (mfd->mdp.release_fnc) {
+			ret = mfd->mdp.release_fnc(mfd, true);
+			if (ret)
+				pr_err("error fb%d release process %s pid=%d\n",
+					mfd->index, task->comm, pid);
+		}
+
+		mdss_fb_free_fb_ion_memory(mfd);
 	}
 
 	return ret;
