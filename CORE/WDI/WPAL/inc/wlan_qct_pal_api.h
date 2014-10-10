@@ -329,6 +329,16 @@ void wpalWlanReload(void);
 void wpalWcnssResetIntr(void);
 
 /*---------------------------------------------------------------------------
+    wpalWcnssIsProntoHwVer3 -  Check for Pronto ver3 HW
+
+    Param:
+       None
+    Return:
+       TRUE if Ponto Hw Ver 3
+       Therefore use WQ6 instead of WQ23 for TX Low/High Priority Channel
+---------------------------------------------------------------------------*/
+int wpalWcnssIsProntoHwVer3(void);
+/*---------------------------------------------------------------------------
     wpalFwDumpReq -  Trigger the dump commands to Firmware
 
     Param:
