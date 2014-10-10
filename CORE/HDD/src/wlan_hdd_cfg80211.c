@@ -13854,10 +13854,8 @@ static int __wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device 
                     status = wait_for_completion_interruptible_timeout(&pAdapter->tdls_del_station_comp,
                               msecs_to_jiffies(WAIT_TIME_TDLS_DEL_STA));
                     wlan_hdd_tdls_set_peer_link_status(pTdlsPeer,
-                              eTDLS_LINK_IDLE,
-                              (pTdlsPeer->link_status == eTDLS_LINK_TEARING)?
-                              eTDLS_LINK_UNSPECIFIED:
-                              eTDLS_LINK_DROPPED_BY_REMOTE);
+                                                       eTDLS_LINK_IDLE,
+                                                       eTDLS_LINK_UNSPECIFIED);
                     if (status <= 0)
                     {
                         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
