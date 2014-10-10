@@ -34,6 +34,7 @@
 #include <linux/spinlock.h>
 #include <linux/batterydata-lib.h>
 #include <linux/usb/msm_ext_chg.h>
+#include <linux/ctype.h>
 
 /* Interrupt offsets */
 #define INT_RT_STS(base)			(base + 0x10)
@@ -305,6 +306,9 @@ struct qpnp_chg_regulator {
  * @ hv_chg_attached            Indicates that a HV Charger is attached.
  * @ usb_limit_ma               Current Limit Sent from USB.
  * @ weak_check_work            Work for Detecting Weak Charger.
+ * @ battery_model_sysfs        Indicates if battery model sysfs is required to
+ *                              be updated
+ * @ battery_info               buff to hold battery make and model info
  *
  */
 struct qpnp_chg_chip {
@@ -455,6 +459,8 @@ struct qpnp_chg_chip {
 	bool				hv_chg_attached;
 	int				usb_limit_ma;
 	struct delayed_work		weak_check_work;
+	bool				battery_model_sysfs;
+	char				battery_info[255];
 };
 
 static struct of_device_id qpnp_charger_match_table[] = {
@@ -2192,6 +2198,7 @@ static enum power_supply_property msm_batt_power_props[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
+	POWER_SUPPLY_PROP_VOLTAGE_EMPTY,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
@@ -2211,6 +2218,7 @@ static enum power_supply_property msm_batt_power_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_OCV,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_CHARGE_RATE,
+	POWER_SUPPLY_PROP_MODEL_NAME,
 };
 
 static char *pm_power_supplied_to[] = {
@@ -2778,6 +2786,12 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
 		val->intval = chip->min_voltage_mv * 1000;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_EMPTY:
+		val->intval = chip->cutoff_mv * 1000;
+		break;
+	case POWER_SUPPLY_PROP_MODEL_NAME:
+		val->strval = chip->battery_info;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = get_prop_battery_voltage_now(chip);
@@ -4972,6 +4986,40 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 	return rc;
 }
 
+static void get_battery_make_info(const char *name, char *model)
+{
+	int i = 0, count = 0;
+	char *key = NULL;
+
+	if (NULL == name) {
+		pr_err("battery name is NULL\n");
+		return;
+	}
+
+	key = strnchr(name, strlen(name) - 1, ',');
+
+	if (NULL == key) {
+		pr_err("battery name key is NULL\n");
+		return;
+	}
+	/* copy batt model and make info from
+	 * string "mmi,ey30-lg-batterydata"
+	 * the output string would be "EY30-LG"
+	 */
+	key++;
+	do {
+		if (*key == '-')
+			count++;
+		if (count == 2)
+			break;
+		model[i++] = toupper(*key++);
+
+	} while (*key != '\0');
+	model[i--] = '\0';
+
+	return;
+}
+
 static int
 qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 {
@@ -5004,8 +5052,15 @@ qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 			kfree(chip->pc_temp_ocv_lut);
 			chip->pc_temp_ocv_lut =
 				palladium_1500_data.pc_temp_ocv_lut;
+			if (chip->battery_model_sysfs)
+				strlcpy(chip->battery_info, "PALLADIUM_1500",
+						sizeof(chip->battery_info));
+			chip->cutoff_mv = 3400;
 			return 0;
 		}
+		if (chip->battery_model_sysfs)
+			get_battery_make_info(batt_data.name,
+						chip->battery_info);
 
 		pr_info("batt_id = %d uV, max_voltage = %d uV, term_curr = %d uA\n",
 			(int)result.physical,
@@ -5428,6 +5483,10 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 			return rc;
 	}
 
+	chip->battery_model_sysfs =
+			of_property_read_bool(chip->spmi->dev.of_node,
+					"qcom,battery-model-sysfs");
+
 	/* Get the use-external-rsense property */
 	chip->use_external_rsense = of_property_read_bool(
 			chip->spmi->dev.of_node,
@@ -5579,6 +5638,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	chip->float_timer_start = false;
 	chip->bat_hotspot_thrs = 50000;
 
+	strlcpy(chip->battery_info, "UNKNOWN", sizeof(chip->battery_info));
 	chip->usb_psy = power_supply_get_by_name("usb");
 	if (!chip->usb_psy) {
 		pr_err("usb supply not found deferring probe\n");
