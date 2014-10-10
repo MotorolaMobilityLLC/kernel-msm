@@ -243,6 +243,8 @@ static int of_batterydata_load_battery_data(struct device_node *node,
 			"max-current-ma", node, rc, true);
 
 	batt_data->batt_id_kohm = best_id_kohm;
+	/* copy battery model name */
+	strlcpy(batt_data->name, node->name, sizeof(batt_data->name));
 
 	return rc;
 }
