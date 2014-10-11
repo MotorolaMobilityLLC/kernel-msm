@@ -1662,6 +1662,76 @@ static int mdss_mdp_overlay_queue(struct msm_fb_data_type *mfd,
 	return ret;
 }
 
+#define MAX_FD 8
+
+static struct rotator_secure {
+	bool used;
+	int fd;
+	struct ion_handle *ihdl;
+} rot_sec_mapping[MAX_FD];
+
+static int mdss_mdp_set_secure_cfg(struct msm_fb_data_type *mfd,
+		struct msmfb_secure_config sec_cfg)
+{
+	struct ion_client *ionclient = mdss_get_ionclient();
+	int i;
+	int ret = 0;
+
+	if (sec_cfg.enable) {
+		for (i = 0; i < MAX_FD; i++) {
+			if (!(rot_sec_mapping[i].used))
+				break;
+		}
+
+		if (i >= MAX_FD) {
+			pr_err("Exceeded max allowable fds\n");
+			return -EOVERFLOW;
+		}
+
+		rot_sec_mapping[i].fd = sec_cfg.fd;
+		rot_sec_mapping[i].ihdl =
+			ion_import_dma_buf(ionclient, rot_sec_mapping[i].fd);
+
+		if (IS_ERR_OR_NULL(rot_sec_mapping[i].ihdl)) {
+			pr_err("ion import fd  error\n");
+			ret = PTR_ERR(rot_sec_mapping[i].ihdl);
+			rot_sec_mapping[i].fd = 0;
+			return ret;
+		}
+
+		ret = msm_ion_secure_buffer(ionclient, rot_sec_mapping[i].ihdl,
+				0x2, 0);
+		if (IS_ERR_VALUE(ret)) {
+			ion_free(ionclient, rot_sec_mapping[i].ihdl);
+			pr_err("failed to secure handle (%d)\n", ret);
+			rot_sec_mapping[i].ihdl = NULL;
+			rot_sec_mapping[i].fd = 0;
+			return ret;
+		}
+
+		rot_sec_mapping[i].used = true;
+	} else {
+		for (i = 0; i < MAX_FD; i++) {
+			if ((sec_cfg.fd == rot_sec_mapping[i].fd) &&
+					rot_sec_mapping[i].used)
+				break;
+		}
+
+		if (i >= MAX_FD) {
+			pr_err("unable to find in mapped fd\n");
+			return -EINVAL;
+		}
+
+		msm_ion_unsecure_buffer(ionclient, rot_sec_mapping[i].ihdl);
+		ion_free(ionclient, rot_sec_mapping[i].ihdl);
+		rot_sec_mapping[i].ihdl = NULL;
+		rot_sec_mapping[i].used = false;
+		rot_sec_mapping[i].fd = 0;
+	}
+
+	return ret;
+}
+
 static int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
 				 struct msmfb_overlay_data *req)
 {
@@ -3185,6 +3255,7 @@ static int mdss_mdp_overlay_ioctl_handler(struct msm_fb_data_type *mfd,
 	int val, ret = -ENOSYS;
 	struct msmfb_metadata metadata;
 	struct mdss_panel_data *pdata;
+	struct msmfb_secure_config sec_cfg;
 
 	switch (cmd) {
 	case MSMFB_MDP_PP:
@@ -3303,6 +3374,15 @@ static int mdss_mdp_overlay_ioctl_handler(struct msm_fb_data_type *mfd,
 		break;
 	case MSMFB_OVERLAY_PREPARE:
 		ret = __handle_ioctl_overlay_prepare(mfd, argp);
+		break;
+	case MSMFB_SECURE:
+		ret = copy_from_user(&sec_cfg, argp, sizeof(sec_cfg));
+		if (ret)
+			return ret;
+
+		ret = mdss_mdp_set_secure_cfg(mfd, sec_cfg);
+		if (ret)
+			pr_err("Secure cfg ioctl failed\n");
 		break;
 	default:
 		if (mfd->panel.type == WRITEBACK_PANEL)
