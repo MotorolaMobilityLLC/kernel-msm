@@ -503,7 +503,7 @@ VOS_STATUS WDA_start(v_PVOID_t pVosContext)
                     __func__, status);
       }
       vos_mem_free(wdiStartParam.pConfigBuffer);
-      return VOS_STATUS_E_FAILURE;
+      return status;
    }
    /* WDI_Start() has completed so we can resume our work */
    /* we no longer need the config TLV */
