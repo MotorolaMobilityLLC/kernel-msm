@@ -12127,19 +12127,22 @@ tANI_U32 csrRoamGetNumBKIDCache(tpAniSirGlobal pMac, tANI_U32 sessionId)
 }
 #endif /* FEATURE_WLAN_WAPI */
 eHalStatus csrRoamSetPMKIDCache( tpAniSirGlobal pMac, tANI_U32 sessionId,
-                                 tPmkidCacheInfo *pPMKIDCache, tANI_U32 numItems )
+                                 tPmkidCacheInfo *pPMKIDCache,
+                                 tANI_U32 numItems,
+                                 tANI_BOOLEAN update_entire_cache )
 {
     eHalStatus status = eHAL_STATUS_INVALID_PARAMETER;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
-    
-    if(!pSession)
+
+    if (!pSession)
     {
         smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
         return eHAL_STATUS_FAILURE;
     }
-    
+
     smsLog(pMac, LOGW, "csrRoamSetPMKIDCache called, numItems = %d", numItems);
-    if(numItems <= CSR_MAX_PMKID_ALLOWED)
+
+    if (numItems <= CSR_MAX_PMKID_ALLOWED)
     {
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_CSR
         {
@@ -12158,51 +12161,102 @@ eHalStatus csrRoamSetPMKIDCache( tpAniSirGlobal pMac, tANI_U32 sessionId,
         }
 #endif//FEATURE_WLAN_DIAG_SUPPORT_CSR
         status = eHAL_STATUS_SUCCESS;
-        //numItems may be 0 to clear the cache
-        pSession->NumPmkidCache = (tANI_U16)numItems;
-        if(numItems && pPMKIDCache)
-        {
-            vos_mem_copy(pSession->PmkidCacheInfo, pPMKIDCache,
-                         sizeof(tPmkidCacheInfo) * numItems);
-            status = eHAL_STATUS_SUCCESS;
+        if (update_entire_cache) {
+            pSession->NumPmkidCache = (tANI_U16)numItems;
+            if (numItems && pPMKIDCache)
+            {
+                vos_mem_copy(pSession->PmkidCacheInfo, pPMKIDCache,
+                             sizeof(tPmkidCacheInfo) * numItems);
+            }
+        } else {
+            tANI_U32 i = 0, j = 0;
+            tANI_U8 BSSIDMatched = 0;
+            tPmkidCacheInfo *pmksa;
+
+            for (i = 0; i < numItems; i++) {
+                pmksa = &pPMKIDCache[i];
+                for (j = 0; j < CSR_MAX_PMKID_ALLOWED; j++) {
+                    if (vos_mem_compare(pSession->PmkidCacheInfo[j].BSSID,
+                        pmksa->BSSID, VOS_MAC_ADDR_SIZE)) {
+                        /* If a matching BSSID found, update it */
+                        BSSIDMatched = 1;
+                        vos_mem_copy(pSession->PmkidCacheInfo[j].PMKID,
+                                     pmksa->PMKID, CSR_RSN_PMKID_SIZE);
+                        break;
+                    }
+                }
+
+                if (!BSSIDMatched) {
+                    vos_mem_copy(
+                       pSession->PmkidCacheInfo[pSession->NumPmkidCache].BSSID,
+                       pmksa->BSSID, VOS_MAC_ADDR_SIZE);
+                    vos_mem_copy(
+                       pSession->PmkidCacheInfo[pSession->NumPmkidCache].PMKID,
+                       pmksa->PMKID, CSR_RSN_PMKID_SIZE);
+                    /* Increment the CSR local cache index */
+                    if (pSession->NumPmkidCache < (CSR_MAX_PMKID_ALLOWED - 1))
+                        pSession->NumPmkidCache++;
+                    else
+                        pSession->NumPmkidCache = 0;
+                }
+                BSSIDMatched = 0;
+            }
         }
     }
     return (status);
 }
 
 eHalStatus csrRoamDelPMKIDfromCache( tpAniSirGlobal pMac, tANI_U32 sessionId,
-                                 tANI_U8 *pBSSId )
+                                     tANI_U8 *pBSSId,
+                                     tANI_BOOLEAN flush_cache )
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
     tANI_BOOLEAN fMatchFound = FALSE;
     tANI_U32 Index;
+
     if(!pSession)
     {
         smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
         return eHAL_STATUS_FAILURE;
     }
-    do
-    {
-        for( Index=0; Index < pSession->NumPmkidCache; Index++ )
-        {
-            smsLog(pMac, LOGW, "Delete PMKID for "
-                   MAC_ADDRESS_STR, MAC_ADDR_ARRAY(pBSSId));
-            if( vos_mem_compare( pBSSId, pSession->PmkidCacheInfo[Index].BSSID, sizeof(tCsrBssid) ) )
-            {
-                fMatchFound = TRUE;
+
+    /* Check if there are no entries to delete */
+    if (0 == pSession->NumPmkidCache) {
+        smsLog(pMac, LOG1, FL("No entries to delete/Flush"));
+        return eHAL_STATUS_SUCCESS;
+    }
+
+    if (!flush_cache) {
+        for (Index = 0; Index < CSR_MAX_PMKID_ALLOWED; Index++) {
+            if (vos_mem_compare(pSession->PmkidCacheInfo[Index].BSSID,
+                pBSSId, VOS_MAC_ADDR_SIZE)) {
+                fMatchFound = 1;
+
+                /* Clear this - the matched entry */
+                vos_mem_zero(&pSession->PmkidCacheInfo[Index],
+                             sizeof(tPmkidCacheInfo));
+                status = eHAL_STATUS_SUCCESS;
                 break;
             }
         }
-        if( !fMatchFound ) break;
-        vos_mem_set(pSession->PmkidCacheInfo[Index].BSSID, sizeof(tCsrBssid), 0);
-        status = eHAL_STATUS_SUCCESS;
+
+        if (Index == CSR_MAX_PMKID_ALLOWED && !fMatchFound) {
+            smsLog(pMac, LOG1, FL("No such PMKSA entry exists "MAC_ADDRESS_STR),
+                   MAC_ADDR_ARRAY(pBSSId));
+            return status;
+        }
+
+        return status;
+    } else {
+        /* Flush the entire cache */
+        vos_mem_zero(pSession->PmkidCacheInfo,
+                     sizeof(tPmkidCacheInfo) * CSR_MAX_PMKID_ALLOWED);
+        pSession->NumPmkidCache = 0;
+        return eHAL_STATUS_SUCCESS;
     }
-    while( 0 );
-    smsLog(pMac, LOGW, "csrDelPMKID called return match = %d Status = %d",
-        fMatchFound, status);
-    return status;
 }
+
 tANI_U32 csrRoamGetNumPMKIDCache(tpAniSirGlobal pMac, tANI_U32 sessionId)
 {
     return (pMac->roam.roamSession[sessionId].NumPmkidCache);

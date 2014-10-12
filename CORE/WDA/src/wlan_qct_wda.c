@@ -3546,6 +3546,8 @@ void WDA_ConfigBssReqCallback(WDI_ConfigBSSRspParamsType *wdiConfigBssRsp
                                                     wdiConfigBssRsp->ucBSSIdx;
          pWDA->wdaStaInfo[staConfigBssParam->staIdx].ucValidStaIndex = 
                                                          WDA_VALID_STA_INDEX ;
+         pWDA->wdaStaInfo[staConfigBssParam->staIdx].currentOperChan =
+                                        configBssReqParam->currentOperChannel;
       }
       if(WDI_DS_SetStaIdxPerBssIdx(pWDA->pWdiContext,
                                    wdiConfigBssRsp->ucBSSIdx,
@@ -3797,6 +3799,7 @@ void WDA_AddStaReqCallback(WDI_ConfigSTARspParamsType *wdiConfigStaRsp,
                                                     wdiConfigStaRsp->ucBssIdx;
          pWDA->wdaStaInfo[addStaReqParam->staIdx].ucValidStaIndex = 
                                                          WDA_VALID_STA_INDEX ;
+         pWDA->wdaStaInfo[addStaReqParam->staIdx].currentOperChan = 0;
       }
       if(WDI_DS_AddSTAMemPool(pWDA->pWdiContext, wdiConfigStaRsp->ucSTAIdx))
       {
@@ -3924,6 +3927,7 @@ void WDA_DelBSSReqCallback(WDI_DelBSSRspParamsType *wdiDelBssRsp,
       {
          pWDA->wdaStaInfo[staIdx].ucValidStaIndex = WDA_INVALID_STA_INDEX;
          pWDA->wdaStaInfo[staIdx].ucUseBaBitmap = 0;
+         pWDA->wdaStaInfo[staIdx].currentOperChan = 0;
          /* Reset framesTxed counters here */
          for(tid = 0; tid < STACFG_MAX_TC; tid++)
          {
@@ -4025,7 +4029,7 @@ void WDA_DelSTAReqCallback(WDI_DelSTARspParamsType *wdiDelStaRsp,
    pWDA->wdaStaInfo[wdiDelStaRsp->ucSTAIdx].ucValidStaIndex = 
                                                       WDA_INVALID_STA_INDEX;
    pWDA->wdaStaInfo[wdiDelStaRsp->ucSTAIdx].ucUseBaBitmap = 0;
-   
+   pWDA->wdaStaInfo[wdiDelStaRsp->ucSTAIdx].currentOperChan = 0;
    WDA_SendMsg(pWDA, WDA_DELETE_STA_RSP, (void *)delStaReqParam , 0) ;
    return ;
 }
@@ -14343,8 +14347,10 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
    tANI_U8 size = 0 ;
    tANI_U8 baCandidateCount = 0 ;
    tANI_U8 newBaCandidate = 0 ;
+   tANI_U32 val;
    WDI_TriggerBAReqCandidateType baCandidate[WDA_MAX_STA] = {{0}} ;
-   
+   tpAniSirGlobal pMac;
+
    if(NULL == pWDA)
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -14357,19 +14363,37 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                               "Inconsistent STA entries in WDA");
       VOS_ASSERT(0) ;
-   }  
+   }
+   if(NULL == pWDA->pVosContext)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                          "%s: pVosContext is NULL",__func__);
+      VOS_ASSERT(0);
+      return ;
+   }
+   pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
+   if (wlan_cfgGetInt(pMac,
+           WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC, &val) !=
+                                                      eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+            "Unable to get WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC");
+      val = 0;
+   }
+
    /* walk through all STA entries and find out TX packet count */ 
    for(curSta = 0 ; curSta < pWDA->wdaMaxSta ; curSta++)
    {
+      tANI_U32 currentOperChan = pWDA->wdaStaInfo[curSta].currentOperChan;
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
-        // We can only do BA on "hard" STAs.  
-         if (!(IS_HWSTA_IDX(curSta)))
-         {
-             continue;
-         }
+      // We can only do BA on "hard" STAs.
+      if (!(IS_HWSTA_IDX(curSta)))
+      {
+          continue;
+      }
 #endif //WLAN_SOFTAP_VSTA_FEATURE
-    for(tid = 0 ; tid < STACFG_MAX_TC ; tid++)
-    {
+      for(tid = 0 ; tid < STACFG_MAX_TC ; tid++)
+      {
          WLANTL_STAStateType tlSTAState ;
          tANI_U32 txPktCount = 0 ;
          tANI_U8 validStaIndex = pWDA->wdaStaInfo[curSta].ucValidStaIndex ;
@@ -14384,7 +14408,14 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
              "************* %d:%d, %d ",curSta, txPktCount,
                                     pWDA->wdaStaInfo[curSta].framesTxed[tid]);
 #endif
-            if(!WDA_GET_BA_TXFLAG(pWDA, curSta, tid) 
+            if(val && ( (currentOperChan >= SIR_11B_CHANNEL_BEGIN) &&
+                                (currentOperChan <= SIR_11B_CHANNEL_END)))
+            {
+                 VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                        "%s: BTC disabled aggregation - dont start "
+                         "TX ADDBA req",__func__);
+            }
+            else if(!WDA_GET_BA_TXFLAG(pWDA, curSta, tid)
                    && (WLANTL_STA_AUTHENTICATED == tlSTAState)
                    && (txPktCount >= WDA_LAST_POLLED_THRESHOLD(pWDA, 
                                                                curSta, tid)))

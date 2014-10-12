@@ -201,7 +201,7 @@ typedef enum
 #define CSR_SCAN_TIME_DEFAULT       0
 #define CSR_VALUE_IGNORED           0xFFFFFFFF
 #define CSR_RSN_PMKID_SIZE          16
-#define CSR_MAX_PMKID_ALLOWED       16
+#define CSR_MAX_PMKID_ALLOWED       32
 #define CSR_WEP40_KEY_LEN       5
 #define CSR_WEP104_KEY_LEN      13
 #define CSR_TKIP_KEY_LEN        32

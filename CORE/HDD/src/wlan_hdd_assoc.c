@@ -3276,7 +3276,8 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
             // Finally set the PMKSA ID Cache in CSR
             result = sme_RoamSetPMKIDCache(halHandle,pAdapter->sessionId,
                                            PMKIDCache,
-                                           dot11RSNIE.pmkid_count );
+                                           dot11RSNIE.pmkid_count,
+                                           FALSE);
         }
     }
     else if (gen_ie[0] == DOT11F_EID_WPA)

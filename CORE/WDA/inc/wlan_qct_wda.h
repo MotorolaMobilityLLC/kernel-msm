@@ -385,6 +385,7 @@ typedef struct
     */
    tANI_U8    ucUseBaBitmap ;
    tANI_U8    bssIdx;
+   tANI_U32   currentOperChan;
    tANI_U32   framesTxed[STACFG_MAX_TC];
 }tWdaStaInfo, *tpWdaStaInfo ;
 
