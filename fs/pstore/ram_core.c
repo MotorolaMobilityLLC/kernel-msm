@@ -639,6 +639,8 @@ static int persistent_ram_buffer_map(phys_addr_t start, phys_addr_t size,
 
 	prz->buffer = prz->vaddr + offset_in_page(start);
 	prz->buffer_size = size - sizeof(struct persistent_ram_buffer);
+	pr_info("persistent_ram: paddr: %p, vaddr: %p, buf size = 0x%zx\n",
+		(void *)prz->paddr, (void *)prz->vaddr, prz->buffer_size);
 
 	return 0;
 }
