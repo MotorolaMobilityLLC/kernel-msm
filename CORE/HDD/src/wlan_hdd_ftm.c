@@ -1779,7 +1779,7 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
        return VOS_STATUS_E_FAILURE;
     }
 
-    vStatus = vos_wait_single_event(&(pVosContext->wdaCompleteEvent), 1000);
+    vStatus = vos_wait_single_event(&(pVosContext->wdaCompleteEvent), 1000 * 30);
 
     if ( vStatus != VOS_STATUS_SUCCESS )
     {

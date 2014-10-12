@@ -566,6 +566,9 @@ static int rssiMcsTbl[][10] =
 };
 
 extern struct net_device_ops net_ops_struct;
+#ifdef FEATURE_WLAN_SCAN_PNO
+static eHalStatus wlan_hdd_is_pno_allowed(hdd_adapter_t *pAdapter);
+#endif
 
 #ifdef WLAN_NL80211_TESTMODE
 enum wlan_hdd_tm_attr
@@ -4295,6 +4298,116 @@ static int wlan_hdd_cfg80211_exttdls_disable(struct wiphy *wiphy,
     return (wlan_hdd_tdls_extctrl_deconfig_peer(pAdapter, peer));
 }
 
+static int
+wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
+                                         struct wireless_dev *wdev,
+                                         void *data, int data_len)
+{
+    struct net_device *dev                     = wdev->netdev;
+    hdd_adapter_t *pAdapter                    = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_context_t *pHddCtx      = wiphy_priv(wiphy);
+    struct sk_buff *skb         = NULL;
+    tANI_U32       fset         = 0;
+
+    if (wiphy->interface_modes & BIT(NL80211_IFTYPE_STATION)) {
+        hddLog(LOG1, FL("Infra Station mode is supported by driver"));
+        fset |= WIFI_FEATURE_INFRA;
+    }
+
+    if (TRUE == hdd_is_5g_supported(pHddCtx)) {
+        hddLog(LOG1, FL("INFRA_5G is supported by firmware"));
+        fset |= WIFI_FEATURE_INFRA_5G;
+    }
+
+#ifdef WLAN_FEATURE_P2P
+    if ((wiphy->interface_modes & BIT(NL80211_IFTYPE_P2P_CLIENT)) &&
+        (wiphy->interface_modes & BIT(NL80211_IFTYPE_P2P_GO))) {
+        hddLog(LOG1, FL("WiFi-Direct is supported by driver"));
+        fset |= WIFI_FEATURE_P2P;
+    }
+#endif
+
+    /* Soft-AP is supported currently by default */
+    fset |= WIFI_FEATURE_SOFT_AP;
+
+#ifdef WLAN_FEATURE_EXTSCAN
+    if ((TRUE == pHddCtx->cfg_ini->fEnableEXTScan) &&
+            sme_IsFeatureSupportedByFW(EXTENDED_SCAN)) {
+        hddLog(LOG1, FL("EXTScan is supported by firmware"));
+        fset |= WIFI_FEATURE_EXTSCAN;
+    }
+#endif
+
+#ifdef WLAN_FEATURE_NAN
+    if (sme_IsFeatureSupportedByFW(NAN)) {
+        hddLog(LOG1, FL("NAN is supported by firmware"));
+        fset |= WIFI_FEATURE_NAN;
+    }
+#endif
+
+    /* D2D RTT is not supported currently by default */
+    if (sme_IsFeatureSupportedByFW(RTT)) {
+        hddLog(LOG1, FL("RTT is supported by firmware"));
+        fset |= WIFI_FEATURE_D2AP_RTT;
+    }
+
+#ifdef FEATURE_WLAN_BATCH_SCAN
+    if (fset & WIFI_FEATURE_EXTSCAN) {
+        hddLog(LOG1, FL("Batch scan is supported as extscan is supported"));
+        fset &= ~WIFI_FEATURE_BATCH_SCAN;
+    } else if (sme_IsFeatureSupportedByFW(BATCH_SCAN)) {
+        hddLog(LOG1, FL("Batch scan is supported by firmware"));
+        fset |= WIFI_FEATURE_BATCH_SCAN;
+    }
+#endif
+
+#ifdef FEATURE_WLAN_SCAN_PNO
+    if (pHddCtx->cfg_ini->configPNOScanSupport &&
+        (eHAL_STATUS_SUCCESS == wlan_hdd_is_pno_allowed(pAdapter))) {
+        hddLog(LOG1, FL("PNO is supported by firmware"));
+        fset |= WIFI_FEATURE_PNO;
+    }
+#endif
+
+    /* STA+STA is supported currently by default */
+    fset |= WIFI_FEATURE_ADDITIONAL_STA;
+
+#ifdef FEATURE_WLAN_TDLS
+    if ((TRUE == pHddCtx->cfg_ini->fEnableTDLSSupport) &&
+        sme_IsFeatureSupportedByFW(TDLS)) {
+        hddLog(LOG1, FL("TDLS is supported by firmware"));
+        fset |= WIFI_FEATURE_TDLS;
+    }
+
+    /* TDLS_OFFCHANNEL is not supported currently by default */
+#endif
+
+#ifdef WLAN_AP_STA_CONCURRENCY
+    /* AP+STA concurrency is supported currently by default */
+    fset |= WIFI_FEATURE_AP_STA;
+#endif
+
+    skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, sizeof(fset) +
+                                              NLMSG_HDRLEN);
+
+    if (!skb) {
+        hddLog(LOGE, FL("cfg80211_vendor_cmd_alloc_reply_skb failed"));
+        return -EINVAL;
+    }
+    hddLog(LOG1, FL("Supported Features : 0x%x"), fset);
+
+    if (nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_FEATURE_SET, fset)) {
+        hddLog(LOGE, FL("nla put fail"));
+        goto nla_put_failure;
+    }
+
+    return cfg80211_vendor_cmd_reply(skb);
+
+nla_put_failure:
+    kfree_skb(skb);
+    return -EINVAL;
+}
+
 
 const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
 {
@@ -4422,6 +4535,13 @@ const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
         .flags = WIPHY_VENDOR_CMD_NEED_WDEV |
                  WIPHY_VENDOR_CMD_NEED_NETDEV,
         .doit = wlan_hdd_cfg80211_exttdls_get_status
+    },
+    {
+        .info.vendor_id = QCA_NL80211_VENDOR_ID,
+        .info.subcmd = QCA_NL80211_VENDOR_SUBCMD_GET_SUPPORTED_FEATURES,
+        .flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+                 WIPHY_VENDOR_CMD_NEED_NETDEV,
+        .doit = wlan_hdd_cfg80211_get_supported_features
     },
 
     {

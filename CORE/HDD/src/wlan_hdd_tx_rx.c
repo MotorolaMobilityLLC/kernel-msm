@@ -1866,9 +1866,10 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
    }
 
    pAdapter = pHddCtx->sta_to_adapter[staId];
-   if( NULL == pAdapter )
+   if( (NULL == pAdapter)  || (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic) )
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,"%s: pAdapter is Null for staId %u",
+      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pAdapter is Null or adapter has invalid magic for staId %u",
                  __func__, staId);
       return VOS_STATUS_E_FAILURE;
    }

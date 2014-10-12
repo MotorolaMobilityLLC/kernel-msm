@@ -278,7 +278,7 @@ typedef struct
 
     /*if this is a P2P Capable Sta*/
     tANI_U8     p2pCapableSta;
-
+    tANI_U32    currentOperChan;
 #ifdef WLAN_FEATURE_11AC
     tANI_U8    vhtCapable;
     tANI_U8    vhtTxChannelWidthSet;
