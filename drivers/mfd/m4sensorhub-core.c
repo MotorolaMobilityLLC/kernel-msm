@@ -217,16 +217,6 @@ static int m4sensorhub_hw_init(struct m4sensorhub_data *m4sensorhub,
 	gpio_direction_output(gpio, 0);
 	m4sensorhub->hwconfig.reset_gpio = gpio;
 
-	gpio = of_get_named_gpio_flags(node, "mot,wake-gpio", 0, NULL);
-	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-wake");
-	if (err) {
-		pr_err("Failed acquiring M4 Sensor Hub Wake GPIO-%d (%d)\n",
-			gpio, err);
-		goto error_wake;
-	}
-	gpio_direction_output(gpio, 0);
-	m4sensorhub->hwconfig.wake_gpio = gpio;
-
 	gpio = of_get_named_gpio_flags(node, "mot,boot0-gpio", 0, NULL);
 	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-boot0");
 	if (err) {
@@ -258,7 +248,6 @@ static int m4sensorhub_hw_init(struct m4sensorhub_data *m4sensorhub,
 	m4sensorhub->hwconfig.mpu_9150_en_gpio = gpio;
 
 	return 0;
-
 error_enable:
 	gpio_free(m4sensorhub->hwconfig.boot1_gpio);
 	m4sensorhub->hwconfig.boot1_gpio = -1;
@@ -266,9 +255,6 @@ error_boot1:
 	gpio_free(m4sensorhub->hwconfig.boot0_gpio);
 	m4sensorhub->hwconfig.boot0_gpio = -1;
 error_boot0:
-	gpio_free(m4sensorhub->hwconfig.wake_gpio);
-	m4sensorhub->hwconfig.wake_gpio = -1;
-error_wake:
 	gpio_free(m4sensorhub->hwconfig.reset_gpio);
 	m4sensorhub->hwconfig.reset_gpio = -1;
 error_reset:
@@ -296,11 +282,6 @@ static void m4sensorhub_hw_free(struct m4sensorhub_data *m4sensorhub)
 	if (m4sensorhub->hwconfig.reset_gpio >= 0) {
 		gpio_free(m4sensorhub->hwconfig.reset_gpio);
 		m4sensorhub->hwconfig.reset_gpio = -1;
-	}
-
-	if (m4sensorhub->hwconfig.wake_gpio >= 0) {
-		gpio_free(m4sensorhub->hwconfig.wake_gpio);
-		m4sensorhub->hwconfig.wake_gpio = -1;
 	}
 
 	if (m4sensorhub->hwconfig.boot0_gpio >= 0) {
