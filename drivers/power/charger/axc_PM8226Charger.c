@@ -288,10 +288,16 @@ static void limitPM8226chg300(void)
 #endif
 #endif
 
+static void limitPM8226chg200(void)
+{
+	gpCharger->usb_current_max = 200*1000;
+	asus_usbPath_chg_current_set(200);
+}
+
 static void defaultPM8226chgSetting(void)
 {
-	gpCharger->usb_current_max = 500*1000;// default:500mA
-	asus_usbPath_chg_current_set(500);
+	gpCharger->usb_current_max = 200*1000;// default:200mA
+	asus_usbPath_chg_current_set(200);
 }
 
 #ifndef ASUS_FACTORY_BUILD
@@ -403,14 +409,18 @@ void setChgDrawCurrent_pm8226(void)
 #ifndef ASUS_FACTORY_BUILD
 	if(true == g_chgTypeBeenSet)//Eason : prevent setChgDrawCurrent_pm8226 before get chgType
 	{
-		if(NORMAL_CURRENT_CHARGER_TYPE==gpCharger->type){
+		if(ILLEGAL_CHARGER_TYPE==gpCharger->type){
+			limitPM8226chg200();
+			printk("[BAT][CHG][Illegal]: limit chgCur,  darw 200\n");
+		}
+		else if(NORMAL_CURRENT_CHARGER_TYPE==gpCharger->type){
 #ifdef CONFIG_EEPROM_NUVOTON
 			setChgLimitThermalRuleDrawCurrent_pm8226(false);
 #endif
 		}
 		else if(NOTDEFINE_TYPE==gpCharger->type || NO_CHARGER_TYPE==gpCharger->type){
 			defaultPM8226chgSetting();
-			printk("[BAT][CHG]:default 500mA\n");
+			printk("[BAT][CHG]:default 200mA\n");
 		}
 		else if( (3==g_thermal_limit)||(true==g_audio_limit) ){
 			limitPM8226chg500();
@@ -429,9 +439,9 @@ void setChgDrawCurrent_pm8226(void)
 			printk("[BAT][CHG]:limit charging current 900mA\n");
 		}
 		else{
-			if(LOW_CURRENT_CHARGER_TYPE==gpCharger->type || ILLEGAL_CHARGER_TYPE==gpCharger->type){
+			if(LOW_CURRENT_CHARGER_TYPE==gpCharger->type){
 				limitPM8226chg500();
-				printk("[BAT][CHG][LowIllegal]: limit chgCur,  darw 500\n");
+				printk("[BAT][CHG][Low]: limit chgCur,  darw 500\n");
 			}
 			else if(HIGH_CURRENT_CHARGER_TYPE==gpCharger->type){
 				limitPM8226chg1000();
@@ -567,7 +577,7 @@ static void AXC_PM8226_Charger_Init(AXI_Charger *apCharger)
 		
 		//create_charger_proc_file();
 		gpCharger = this;
-		gpCharger->usb_current_max = 500*1000;
+		gpCharger->usb_current_max = 200*1000;
 
 		//Eason: schedule work to check cable status later+++
 		INIT_DELAYED_WORK(&DetectChgWorker,detectChg); 
