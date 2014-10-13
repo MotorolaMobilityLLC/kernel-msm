@@ -50,6 +50,11 @@ static struct msm_camera_i2c_reg_array lm3642_high_array[] = {
 	{0x0A, 0x03},
 };
 
+/* Flash High mode settings to Enable the Strobe Line */
+static struct msm_camera_i2c_reg_array lm3642_high_smode_array[] = {
+	{0x0A, 0x63},
+};
+
 static void __exit msm_flash_lm3642_i2c_remove(void)
 {
 	i2c_del_driver(&lm3642_i2c_driver);
@@ -132,6 +137,21 @@ static int32_t msm_flash_lm3642_platform_probe(struct platform_device *pdev)
 	return rc;
 }
 
+int lm3642_flash_led_high_smode(struct msm_led_flash_ctrl_t *fctrl)
+{
+	int32_t rc = 0;
+
+	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
+		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
+			fctrl->flash_i2c_client,
+			fctrl->reg_setting->high_smode_setting);
+		if (rc < 0)
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+	}
+
+	return rc;
+}
+
 static struct msm_camera_i2c_client lm3642_i2c_client = {
 	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
 };
@@ -176,12 +196,21 @@ static struct msm_camera_i2c_reg_setting lm3642_high_setting = {
 	.delay = 0,
 };
 
+static struct msm_camera_i2c_reg_setting lm3642_high_smode_setting = {
+	.reg_setting = lm3642_high_smode_array,
+	.size = ARRAY_SIZE(lm3642_high_smode_array),
+	.addr_type = MSM_CAMERA_I2C_BYTE_ADDR,
+	.data_type = MSM_CAMERA_I2C_BYTE_DATA,
+	.delay = 0,
+};
+
 static struct msm_led_flash_reg_t lm3642_regs = {
 	.init_setting = &lm3642_init_setting,
 	.off_setting = &lm3642_off_setting,
 	.low_setting = &lm3642_low_setting,
 	.high_setting = &lm3642_high_setting,
 	.release_setting = &lm3642_release_setting,
+	.high_smode_setting = &lm3642_high_smode_setting,
 };
 
 static struct msm_flash_fn_t lm3642_func_tbl = {
@@ -192,6 +221,7 @@ static struct msm_flash_fn_t lm3642_func_tbl = {
 	.flash_led_off = msm_flash_led_off,
 	.flash_led_low = msm_flash_led_low,
 	.flash_led_high = msm_flash_led_high,
+	.flash_led_high_smode = lm3642_flash_led_high_smode,
 };
 
 static struct msm_led_flash_ctrl_t fctrl = {
