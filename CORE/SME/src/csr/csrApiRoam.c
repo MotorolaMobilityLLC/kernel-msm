@@ -527,13 +527,24 @@ eHalStatus csrUpdateChannelList(tpAniSirGlobal pMac)
 {
     tSirUpdateChanList *pChanList;
     tCsrScanStruct *pScan = &pMac->scan;
-    tANI_U8 numChan = pScan->base20MHzChannels.numChannels;
-    tANI_U32 bufLen = sizeof(tSirUpdateChanList) +
-        (sizeof(tSirUpdateChanParam) * (numChan - 1));
+    tANI_U32 numChan = 0;
+    tANI_U32 bufLen ;
     vos_msg_t msg;
     tANI_U8 i;
 
     limInitOperatingClasses((tHalHandle)pMac);
+    numChan = sizeof(pMac->roam.validChannelList);
+
+    if ( !HAL_STATUS_SUCCESS(csrGetCfgValidChannels(pMac,
+                   (tANI_U8 *)pMac->roam.validChannelList, &numChan)))
+    {
+        smsLog( pMac, LOGE, "Failed to get Channel list from CFG");
+        return  eHAL_STATUS_FAILED_ALLOC;
+    }
+
+    bufLen = sizeof(tSirUpdateChanList) +
+        (sizeof(tSirUpdateChanParam) * (numChan - 1));
+
     pChanList = (tSirUpdateChanList *) vos_mem_malloc(bufLen);
     if (!pChanList)
     {
@@ -548,7 +559,7 @@ eHalStatus csrUpdateChannelList(tpAniSirGlobal pMac)
     pChanList->numChan = numChan;
     for (i = 0; i < pChanList->numChan; i++)
     {
-        pChanList->chanParam[i].chanId = pScan->defaultPowerTable[i].chanId;
+        pChanList->chanParam[i].chanId = pMac->roam.validChannelList[i];
         pChanList->chanParam[i].pwr = cfgGetRegulatoryMaxTransmitPower(pMac,
                 pScan->defaultPowerTable[i].chanId);
         if (vos_nv_getChannelEnabledState(pChanList->chanParam[i].chanId) ==
@@ -556,6 +567,8 @@ eHalStatus csrUpdateChannelList(tpAniSirGlobal pMac)
             pChanList->chanParam[i].dfsSet = VOS_TRUE;
         else
             pChanList->chanParam[i].dfsSet = VOS_FALSE;
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+             "%s Supported Channel: %d\n", __func__, pChanList->chanParam[i].chanId);
     }
 
     if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
@@ -17661,3 +17674,15 @@ VOS_STATUS csrRoamReadTSF(tpAniSirGlobal pMac, tANI_U8 *pTimestamp)
 
 #endif /*FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
 
+/* ---------------------------------------------------------------------------
+    \fn csrDisableDfsChannel
+    \brief  This function will call csrApplyChannelPowerCountryInfo to
+    \ to trim the list on basis of NO_DFS flag.
+    \param  pMac - pMac global structure
+    \- return void
+    -------------------------------------------------------------------------*/
+void csrDisableDfsChannel(tpAniSirGlobal pMac)
+{
+     csrApplyChannelPowerCountryInfo( pMac, &pMac->scan.base20MHzChannels,
+                  pMac->scan.countryCodeCurrent, eANI_BOOLEAN_TRUE);
+}

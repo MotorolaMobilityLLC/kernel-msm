@@ -3453,4 +3453,6 @@ void sme_resetCoexEevent(tHalHandle hHal);
 tANI_U32 sme_GetChannelBondingMode5G(tHalHandle hHal);
 tANI_U32 sme_GetChannelBondingMode24G(tHalHandle hHal);
 
+void sme_disable_dfs_channel(tHalHandle hHal, bool disable_dfs);
+
 #endif //#if !defined( __SME_API_H )
