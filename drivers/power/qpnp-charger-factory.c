@@ -941,6 +941,10 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			chip->chg_done = false;
 			chip->prev_usb_max_ma = -EINVAL;
 		} else {
+			if (chip->no_factory_kill_ic
+				&& !chip->factory_cable_present)
+				chip->factory_cable_present = true;
+
 			schedule_delayed_work(&chip->eoc_work,
 				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 		}
