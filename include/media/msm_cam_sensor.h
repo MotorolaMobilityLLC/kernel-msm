@@ -654,6 +654,7 @@ enum msm_camera_led_config_t {
 	MSM_CAMERA_LED_HIGH,
 	MSM_CAMERA_LED_INIT,
 	MSM_CAMERA_LED_RELEASE,
+	MSM_CAMERA_LED_HIGH_SMODE,
 };
 
 struct msm_camera_led_cfg_t {
