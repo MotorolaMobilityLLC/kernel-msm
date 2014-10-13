@@ -1324,6 +1324,8 @@ struct hdd_context_s
     v_BOOL_t btCoexModeSet;
     v_BOOL_t isPnoEnable;
     macAddrSpoof_t spoofMacAddr;
+    /* flag to decide if driver need to scan DFS channels or not */
+    v_BOOL_t  disable_dfs_flag;
 };
 
 

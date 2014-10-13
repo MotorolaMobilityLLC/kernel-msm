@@ -393,7 +393,6 @@ VOSS_OBJS :=    $(VOSS_SRC_DIR)/vos_api.o \
 		$(VOSS_SRC_DIR)/vos_mq.o \
 		$(VOSS_SRC_DIR)/vos_nvitem.o \
 		$(VOSS_SRC_DIR)/vos_packet.o \
-		$(VOSS_SRC_DIR)/vos_power.o \
 		$(VOSS_SRC_DIR)/vos_sched.o \
 		$(VOSS_SRC_DIR)/vos_threads.o \
 		$(VOSS_SRC_DIR)/vos_timer.o \

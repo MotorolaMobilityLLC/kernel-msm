@@ -82,7 +82,6 @@
 #endif
 #include "wlan_hdd_power.h"
 #include "qwlan_version.h"
-#include <vos_power.h>
 #include "wlan_hdd_host_offload.h"
 #include "wlan_hdd_keep_alive.h"
 #ifdef WLAN_FEATURE_PACKET_FILTERING
@@ -122,9 +121,6 @@ extern void hdd_resume_wlan(struct early_suspend *wlan_suspend);
 
 // tdlsoffchan
 #ifdef FEATURE_WLAN_TDLS
-static int iw_set_tdlsoffchannel(hdd_context_t *pHddCtx, int offchannel);
-static int iw_set_tdlssecoffchanneloffset(hdd_context_t *pHddCtx, int offchanoffset);
-static int iw_set_tdlsoffchannelmode(hdd_adapter_t *pAdapter, int offchanmode);
 static int tdlsOffCh = 1;
 static int tdlsOffChBwOffset = 0;
 #endif
@@ -4588,9 +4584,6 @@ static int __iw_setint_getnone(struct net_device *dev,
 #endif
                  break;
 #endif
-              case  14://reset wlan (power down/power up)
-                 vos_chipReset(NULL, VOS_FALSE, NULL, NULL, VOS_CHIP_RESET_UNKNOWN_EXCEPTION);
-                 break;
               default:
                  hddLog(LOGE, "Invalid arg  %d in WE_SET_POWER IOCTL", set_value);
                  ret = -EINVAL;
@@ -8231,7 +8224,7 @@ VOS_STATUS iw_set_power_params(struct net_device *dev, struct iw_request_info *i
 // tdlsoffchan
 #ifdef FEATURE_WLAN_TDLS
 
-static int iw_set_tdlsoffchannel(hdd_context_t *pHddCtx, int offchannel)
+int iw_set_tdlsoffchannel(hdd_context_t *pHddCtx, int offchannel)
 {
     if (offchannel < 0 || offchannel > 165)
     {
@@ -8248,7 +8241,7 @@ static int iw_set_tdlsoffchannel(hdd_context_t *pHddCtx, int offchannel)
     return 0;
 }
 
-static int iw_set_tdlssecoffchanneloffset(hdd_context_t *pHddCtx, int offchanoffset)
+int iw_set_tdlssecoffchanneloffset(hdd_context_t *pHddCtx, int offchanoffset)
 {
     if (offchanoffset ==  0)
     {
@@ -8283,7 +8276,7 @@ static int iw_set_tdlssecoffchanneloffset(hdd_context_t *pHddCtx, int offchanoff
     return -1;
 }
 
-static int iw_set_tdlsoffchannelmode(hdd_adapter_t *pAdapter, int offchanmode)
+int iw_set_tdlsoffchannelmode(hdd_adapter_t *pAdapter, int offchanmode)
 {
     hddTdlsPeer_t *connPeer = NULL;
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);

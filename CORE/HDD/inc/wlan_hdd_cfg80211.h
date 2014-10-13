@@ -156,7 +156,9 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_TDLS_STATE = 37,
     /* Get supported features */
     QCA_NL80211_VENDOR_SUBCMD_GET_SUPPORTED_FEATURES = 38,
-    QCA_NL80211_VENDOR_SUBCMD_MAC_OUI = 39
+    QCA_NL80211_VENDOR_SUBCMD_MAC_OUI = 39,
+    /* Set nodfs_flag */
+    QCA_NL80211_VENDOR_SUBCMD_NO_DFS_FLAG = 40,
 };
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -823,6 +825,17 @@ enum qca_wlan_vendor_attr_get_supported_features {
 #define WIFI_FEATURE_AP_STA             0x8000   /* Support for AP STA
                                                     Concurrency */
 /* Add more features here */
+enum qca_wlan_vendor_attr_set_no_dfs_flag
+{
+    QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG_INVALID = 0,
+    /* Unsigned 32-bit value */
+    QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG = 1,
+    /* keep last */
+    QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG_AFTER_LAST,
+    QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG_MAX =
+        QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG_AFTER_LAST - 1,
+};
+
 
 /* Vendor id to be used in vendor specific command and events
  * to user space. Use QCA OUI 00:13:74 to match with define in
