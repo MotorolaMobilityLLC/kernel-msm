@@ -2490,7 +2490,7 @@ static void wlan_hdd_cfg80211_extscan_cached_results_ind(void *ctx,
                     hddLog(VOS_TRACE_LEVEL_ERROR, FL("put fail"));
                     goto fail;
                 }
-                if (nla_put_u32(skb,
+                if (nla_put_s32(skb,
                         QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_RSSI,
                         pSirWifiScanResult->rssi) )
                 {
@@ -2793,7 +2793,7 @@ static void wlan_hdd_cfg80211_extscan_full_scan_result_event(void *ctx,
         nla_put_u32(skb,
             QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_CHANNEL,
             pData->ap.channel) ||
-        nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_RSSI,
+        nla_put_s32(skb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_RSSI,
             pData->ap.rssi) ||
         nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_SCAN_RESULT_RTT,
             pData->ap.rtt) ||
@@ -2930,7 +2930,7 @@ void wlan_hdd_cfg80211_extscan_callback(void *ctx, const tANI_U16 evType,
     hdd_context_t *pHddCtx = (hdd_context_t *)ctx;
 
     if (wlan_hdd_validate_context(pHddCtx)) {
-        hddLog(VOS_TRACE_LEVEL_ERROR, FL("HDD context is not valid"));
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("HDD context is not valid"));
         return;
     }
 
