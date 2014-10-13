@@ -6344,7 +6344,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
          */
         if (((AUTO_CHANNEL_SELECT != pConfig->channel && pConfig->channel <= SIR_11B_CHANNEL_END)
                     || (AUTO_CHANNEL_SELECT == pConfig->channel &&
-            operatingBand == RF_SUBBAND_2_4_GHZ)) &&
+            operatingBand == eSAP_RF_SUBBAND_2_4_GHZ)) &&
                 iniConfig->enableVhtFor24GHzBand == FALSE)
         {
             hddLog(LOGW, FL("Setting hwmode to 11n, operatingBand = %d, Channel = %d"),
