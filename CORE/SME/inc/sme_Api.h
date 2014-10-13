@@ -2785,6 +2785,21 @@ eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal,
         const v_BOOL_t isFastRoamIniFeatureEnabled);
 
 /*--------------------------------------------------------------------------
+  \brief sme_ConfigFwrRoaming() - enable/disable LFR support at runtime
+  When Supplicant issue enabled / disable fwr based roaming on the basis
+  of the Bssid modification in network block ( e.g. AutoJoin mody N/W block)
+
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME (enabled/disabled) offload scan successfully.
+          Other status means SME is failed to (enabled/disabled) offload scan.
+  \sa
+  --------------------------------------------------------------------------*/
+
+eHalStatus sme_ConfigFwrRoaming(tHalHandle hHal,
+        const v_BOOL_t isFastRoamEnabled);
+
+/*--------------------------------------------------------------------------
   \brief sme_UpdateIsMAWCIniFeatureEnabled() -
   Enable/disable LFR MAWC support at runtime
   It is used at in the REG_DYNAMIC_VARIABLE macro definition of
