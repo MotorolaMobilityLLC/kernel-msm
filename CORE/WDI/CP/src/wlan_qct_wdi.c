@@ -8579,7 +8579,7 @@ WDI_ProcessConfigBSSReq
 
   pWDICtx->wdiReqStatusCB     = pwdiConfigBSSParams->wdiReqStatusCB;
   pWDICtx->pReqStatusUserData = pwdiConfigBSSParams->pUserData;
-
+  wpalMemoryZero(&halConfigBssReqMsg, sizeof(halConfigBssReqMsg));
   /*-------------------------------------------------------------------------
     Send Config BSS Request to HAL
   -------------------------------------------------------------------------*/
@@ -8925,6 +8925,7 @@ WDI_ProcessPostAssocReq
                   pwdiPostAssocParams,
                   sizeof(pWDICtx->wdiCachedPostAssocReq));
 
+  wpalMemoryZero(&halPostAssocReqMsg, sizeof(halPostAssocReqMsg));
   /*-------------------------------------------------------------------------
     Send Post Assoc Request to HAL
   -------------------------------------------------------------------------*/
@@ -9482,7 +9483,7 @@ WDI_ProcessSetStaKeyReq
 
   pWDICtx->wdiReqStatusCB     = pwdiSetSTAKeyParams->wdiReqStatusCB;
   pWDICtx->pReqStatusUserData = pwdiSetSTAKeyParams->pUserData;
-
+  wpalMemoryZero(&halSetStaKeyReqMsg, sizeof(halSetStaKeyReqMsg));
   /*-------------------------------------------------------------------------
     Send Set STA Key Request to HAL
   -------------------------------------------------------------------------*/

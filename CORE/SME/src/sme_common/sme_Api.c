@@ -2285,6 +2285,8 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                 if (pMsg->bodyptr)
                 {
                     sme_ProcessGetGtkInfoRsp(pMac, pMsg->bodyptr);
+                    vos_mem_zero(pMsg->bodyptr,
+                                  sizeof(tSirGtkOffloadGetInfoRspParams));
                     vos_mem_free(pMsg->bodyptr);
                 }
                 else
