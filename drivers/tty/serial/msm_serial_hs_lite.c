@@ -74,7 +74,11 @@ static int uart_mode = UMODE_OUTPUT;
 static atomic_t tx_ref = ATOMIC_INIT(0);
 static struct workqueue_struct *enter_input_mode_workQueue;
 static struct workqueue_struct *exit_input_mode_workQueue;
+static struct workqueue_struct *wait_tx_empty_workQueue;
 static struct tty_struct *g_tty;
+static struct uart_port *g_port;
+static int is_waiting_tx_empty = 0;
+static unsigned int g_vid;
 extern void vibrator_enable(int value);
 
 static void enter_input_mode_func(struct work_struct *data)
@@ -101,8 +105,10 @@ static void exit_input_mode_func(struct work_struct *data)
 	tty_flip_buffer_push(g_tty->port);
 }
 
+static void wait_tx_empty_func(struct work_struct *data);
 static DECLARE_WORK(exit_input_mode_work, exit_input_mode_func);
 static DECLARE_WORK(enter_input_mode_work, enter_input_mode_func);
+static DECLARE_WORK(wait_tx_empty_work, wait_tx_empty_func);
 #endif
 
 extern int g_bootdbguart;
@@ -708,7 +714,8 @@ static void handle_rx(struct uart_port *port, unsigned int misr)
 			if (count == 1 && c == 0x0d){
 				if (uart_mode == UMODE_INPUT){
 					output_mode_request = 1;
-					printk(DEBUG_TAG "M:Enter sent, going UMODE_OUTPUT\n");
+					printk(DEBUG_TAG "M:Enter sent, going UMODE_OUTPUT, sysrq is now %ld\n",
+						port->sysrq);
 					queue_work(exit_input_mode_workQueue, &exit_input_mode_work);
 				}
 			} else if ((count == 1 && c == 0x1b) || (count == 2 && c == 0x1b1b)){
@@ -1592,6 +1599,25 @@ static void msm_hsl_console_putchar(struct uart_port *port, int ch)
 #endif
 }
 
+#if ASUS_ENABLE_RX_AUDBG
+/* Wait for tx empty and set GPIO back to RX_DIR */
+static void wait_tx_empty_func(struct work_struct *data)
+{
+	if (!g_port)
+		return;
+
+	is_waiting_tx_empty = 1;
+	while (!(msm_hsl_read(g_port, regmap[g_vid][UARTDM_SR]) & UARTDM_SR_TXEMT_BMSK))
+	{
+		udelay(50);
+	}
+
+	gpio_set_value(GPIO_AUDBG_SEL, RX_DIR);
+
+	is_waiting_tx_empty = 0;
+}
+#endif
+
 static void msm_hsl_console_write(struct console *co, const char *s,
 				  unsigned int count)
 {
@@ -1611,7 +1637,7 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 		}
 	}
 
-	if (strstr(s,DEBUG_TAG))
+	if (strstr(s, DEBUG_TAG))
 		return;
 #endif
 
@@ -1631,26 +1657,21 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 
 #if ASUS_ENABLE_RX_AUDBG
 	atomic_add(1, &tx_ref);
-	gpio_set_value(GPIO_AUDBG_SEL,TX_DIR);
+	gpio_set_value(GPIO_AUDBG_SEL, TX_DIR);
 #endif
 
 	msm_hsl_write(port, 0, regmap[vid][UARTDM_IMR]);
 	uart_console_write(port, s, count, msm_hsl_console_putchar);
 	msm_hsl_write(port, msm_hsl_port->imr, regmap[vid][UARTDM_IMR]);
 
-
 #if ASUS_ENABLE_RX_AUDBG
 	atomic_add(-1, &tx_ref);
 	if (atomic_read(&tx_ref) == 0)
 	{
-		int wait_retry = 100;
-        /* Wait for tx empty and set GPIO back to RX_DIR */
-		while (wait_retry && ! (msm_hsl_read(port, regmap[vid][UARTDM_SR]) & UARTDM_SR_TXEMT_BMSK) )
-		{
-			udelay(100);
-			wait_retry --;
-		}
-		gpio_set_value(GPIO_AUDBG_SEL,RX_DIR);
+		g_port = port;
+		g_vid = vid;
+		if (!is_waiting_tx_empty)
+			queue_work(wait_tx_empty_workQueue, &wait_tx_empty_work);
 	}
 #endif
 
@@ -1925,8 +1946,9 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 
 #if ASUS_ENABLE_RX_AUDBG
     if(line == 0 && g_bootdbguart == 1){
-        enter_input_mode_workQueue  = create_singlethread_workqueue("ENTERINPUT_WQ");
-        exit_input_mode_workQueue  = create_singlethread_workqueue("EXITINPUT_WQ");
+		enter_input_mode_workQueue = create_singlethread_workqueue("ENTERINPUT_WQ");
+		exit_input_mode_workQueue = create_singlethread_workqueue("EXITINPUT_WQ");
+		wait_tx_empty_workQueue = create_singlethread_workqueue("WAITTX_WQ");
     }
 #endif
 
