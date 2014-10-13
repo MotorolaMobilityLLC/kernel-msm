@@ -592,7 +592,7 @@ static int ramoops_probe(struct platform_device *pdev)
 		pdata->ftrace_size = rounddown_pow_of_two(pdata->ftrace_size);
 	if (pdata->pmsg_size && !is_power_of_2(pdata->pmsg_size))
 		pdata->pmsg_size = rounddown_pow_of_two(pdata->pmsg_size);
-	if (!is_power_of_2(pdata->annotate_size))
+	if (pdata->annotate_size && !is_power_of_2(pdata->annotate_size))
 		pdata->annotate_size =
 			rounddown_pow_of_two(pdata->annotate_size);
 
