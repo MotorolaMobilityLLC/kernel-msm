@@ -20,55 +20,9 @@
 #include <linux/firmware.h>
 #include <linux/m4sensorhub.h>
 #include <linux/slab.h>
-/* --------------- Global Declarations -------------- */
-
-/* ------------ Local Function Prototypes ----------- */
-static int m4sensorhub_bl_ack(struct m4sensorhub_data *m4sensorhub);
-static int m4sensorhub_bl_rm(struct m4sensorhub_data *m4sensorhub,
-	int start_address, u8 *data, int len);
-static int m4sensorhub_bl_go(struct m4sensorhub_data *m4sensorhub,
-	int start_address);
-static int m4sensorhub_bl_wm(struct m4sensorhub_data *m4sensorhub,
-	int start_address, u8 *data, int len);
-static int m4sensorhub_bl_erase_fw(struct m4sensorhub_data *m4sensorhub);
-static int m4sensorhub_jump_to_user(struct m4sensorhub_data *m4sensorhub);
+#include <linux/m4sensorhub_stm32_bl_cmds.h>
 
 /* --------------- Local Declarations -------------- */
-
-#define ACK		((uint8_t) (0x79))
-#define NACK	((uint8_t) (0x1F))
-#define BUSY    ((uint8_t) (0x76))
-
-/* LIST OF OPCODES FOR BOOTLOADER */
-/* opcode_get */
-#define OPC_GET	((uint8_t) (0x00))
-/* opcode_get_version */
-#define OPC_GV	((uint8_t) (0x01))
-/* opcode_get_id */
-#define OPC_GID	((uint8_t) (0x02))
-/* opcode_read_memory */
-#define OPC_RM	((uint8_t) (0x11))
-/* opcode_go */
-#define OPC_GO	((uint8_t) (0x21))
-/* opcode_write_memory */
-#define OPC_WM	((uint8_t) (0x31))
-/* opcode_no_stretch_write_memory */
-#define OPC_NO_STRETCH_WM	((uint8_t) (0x32))
-/* opcode_erase */
-#define OPC_ER	((uint8_t) (0x44))
-/* opcode_no_stretch_erase */
-#define OPC_NO_STRETCH_ER	((uint8_t) (0x45))
-/* opcode_write_protect */
-#define OPC_WP	((uint8_t) (0x63))
-/* opcode_write_unprotect */
-#define OPC_WU	((uint8_t) (0x73))
-/* opcode_readout_protect */
-#define OPC_RP	((uint8_t) (0x82))
-/* opcode_readout_unprotect */
-#define OPC_RU	((uint8_t) (0x92))
-/* opcode_no_stretch_readout_unprotect */
-#define OPC_NO_STRETCH_RU	((uint8_t) (0x93))
-
 /* We flash code in sector 6 and sector 7 */
 #define USER_FLASH_FIRST_PAGE_ADDRESS	0x08040000
 #define VERSION_OFFSET  0x200
@@ -99,17 +53,46 @@ static int m4sensorhub_jump_to_user(struct m4sensorhub_data *m4sensorhub);
 /* Transfer is done in 256 bytes, or if data is less than 256 bytes, then
 data is 16 bit aligned and sent out */
 #define MAX_TRANSFER_SIZE	256 /* bytes */
-/* If M4 returns back BUSY, then we give it 60 chances to execute the command
-each attempt to check status is delayed by 100 ms, thus 60 attempts give it a
-window of about 6 seconds. */
-#define MAX_ATTEMPTS 60
 /* We are flashing/erasing 2 sectors */
 #define NUM_FLASH_TO_ERASE 2
 #define SECTOR_TO_ERASE_1 6
 #define SECTOR_TO_ERASE_2 7
 int page_to_erase[2] = {SECTOR_TO_ERASE_1, SECTOR_TO_ERASE_2};
-/* -------------- Local Data Structures ------------- */
+/* -------------- Local Functions ------------- */
 
+static int m4sensorhub_bl_jump_to_user(struct m4sensorhub_data *m4sensorhub)
+{
+	int ret = -1;
+	u32 barker_read_from_device = 0;
+
+	if (m4sensorhub_bl_rm(m4sensorhub, BARKER_ADDRESS,
+			      (u8 *)&barker_read_from_device, 4) != 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : error reading from device\n",
+		       __func__, __LINE__);
+		KDEBUG(M4SH_ERROR, "*** Not executing M4 code ***\n");
+		return -EIO;
+	}
+
+	if (barker_read_from_device == BARKER_NUMBER) {
+		m4sensorhub_bl_go(m4sensorhub, USER_FLASH_FIRST_PAGE_ADDRESS);
+		KDEBUG(M4SH_NOTICE, "Waiting for M4 setup\n");
+		msleep(100);
+		KDEBUG(M4SH_NOTICE, "Executing M4 code\n");
+		ret = 0;
+	} else {
+		KDEBUG(M4SH_ERROR, "Wrong Barker Number read 0x%8x\n",
+		       barker_read_from_device);
+		KDEBUG(M4SH_ERROR, "*** Not executing M4 code ***\n");
+	}
+
+	return ret;
+}
+
+static int m4sensorhub_bl_erase_fw(struct m4sensorhub_data *m4sensorhub)
+{
+	return m4sensorhub_bl_erase_sectors(m4sensorhub,
+				page_to_erase, NUM_FLASH_TO_ERASE);
+}
 
 /* -------------- Global Functions ----------------- */
 
@@ -241,7 +224,7 @@ int m4sensorhub_401_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	if (m4sensorhub_preflash_callbacks_exist()) {
 		KDEBUG(M4SH_ERROR, "%s: Booting M4 to execute callbacks...\n",
 			__func__); /* Not an error (see similar above) */
-		ret = m4sensorhub_jump_to_user(m4sensorhub);
+		ret = m4sensorhub_bl_jump_to_user(m4sensorhub);
 		if (ret < 0) {
 			KDEBUG(M4SH_ERROR, "%s: %s %s %d.\n", __func__,
 				"Failed to boot M4 for callbacks",
@@ -323,7 +306,7 @@ done:
 	m4sensorhub->fw_version = fw_version_file;
 
 	/* If ret is invalid, then we don't try to jump to user code */
-	if (ret >= 0 && m4sensorhub_jump_to_user(m4sensorhub) < 0)
+	if (ret >= 0 && m4sensorhub_bl_jump_to_user(m4sensorhub) < 0)
 		/* If jump to user code fails, return failure */
 		ret = -EINVAL;
 
@@ -349,11 +332,11 @@ int m4sensorhub_test_m4_reboot(struct m4sensorhub_data *m4, bool reboot_first)
 	for (i = 0; i < 3; i++) {
 		if ((i > 0) || (reboot_first)) {
 			m4sensorhub_hw_reset(m4);
-			err = m4sensorhub_jump_to_user(m4);
+			err = m4sensorhub_bl_jump_to_user(m4);
 			if (err < 0) {
 				KDEBUG(M4SH_ERROR,
-					"%s: M4 reboot failed (retries=%d)\n",
-					__func__, i);
+					   "%s: M4 reboot failed (retries=%d)\n",
+					   __func__, i);
 				continue;
 			}
 		}
@@ -368,7 +351,7 @@ int m4sensorhub_test_m4_reboot(struct m4sensorhub_data *m4, bool reboot_first)
 		err = m4sensorhub_i2c_write_read(m4, &(buf[0]), 2, 1);
 		if (err < 0) {
 			KDEBUG(M4SH_ERROR, "%s: %s (retries=%d).\n", __func__,
-				"Failed initial I2C read", i);
+				   "Failed initial I2C read", i);
 			continue;
 		} else {
 			/* No failure so break loop */
@@ -384,410 +367,3 @@ m4sensorhub_test_m4_reboot_exit:
 	return err;
 }
 EXPORT_SYMBOL_GPL(m4sensorhub_test_m4_reboot);
-
-/* -------------- Local Functions ----------------- */
-/* m4sensorhub_bl_ack()
-
-   Receive next byte from M4 and wait to get either NACK or ACK.
-   if M4 sent back ACK, then return 1, else return 0.
-
-     m4sensorhub - pointer to the main m4sensorhub data struct
-*/
-static int m4sensorhub_bl_ack(struct m4sensorhub_data *m4sensorhub)
-{
-	u8 buf_ack = 0;
-	int ret = 0;
-	int timeout = 0;
-
-	for (timeout = 0; timeout <= MAX_ATTEMPTS; timeout++) {
-		if (m4sensorhub_i2c_write_read(m4sensorhub,
-				&buf_ack, 0, 1) < 0) {
-			KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-				__func__, __LINE__);
-			break;
-		}
-		/* Poll for ACK or NACK if M4 says its BUSY */
-		if (buf_ack == BUSY) {
-			KDEBUG(M4SH_DEBUG, "%s : %d : got BUSY from M4\n",
-				__func__, __LINE__);
-			msleep(100);
-		} else if (buf_ack == ACK) {
-			KDEBUG(M4SH_DEBUG, "%s : %d : got ACK from M4\n",
-				__func__, __LINE__);
-			ret = 1;
-			break;
-		} else if (buf_ack == NACK) {
-			break;
-		} else {
-			KDEBUG(M4SH_ERROR, "%s : %d : unexpected response\n",
-				__func__, __LINE__);
-			break;
-		}
-	}
-
-	return ret;
-}
-
-/* m4sensorhub_bl_rm()
-
-   Read data from M4 FLASH.
-
-   Returns 0 on success or negative error code on failure
-
-     m4sensorhub - pointer to the main m4sensorhub data struct
-     start_address - address to read data from
-     data - pointer of buffer to write read data
-     len - length of data to read
-*/
-static int m4sensorhub_bl_rm(struct m4sensorhub_data *m4sensorhub,
-	int start_address, u8 *data, int len)
-{
-	u8 buf[5] = {0};
-	int num_bytes = 0;
-
-	if ((data == NULL) || (len < 0) || (len > MAX_TRANSFER_SIZE)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : Invalid inputs\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	buf[num_bytes++] = OPC_RM;
-	buf[num_bytes++] = ~(OPC_RM);
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	num_bytes = 0;
-	buf[num_bytes++] = (start_address >> 24) & 0xFF;
-	buf[num_bytes++] = (start_address >> 16) & 0xFF;
-	buf[num_bytes++] = (start_address >> 8) & 0xFF;
-	buf[num_bytes++] = start_address & 0xFF;
-	buf[num_bytes++] = buf[0] ^ buf[1] ^ buf[2] ^ buf[3];
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, address invalid\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	num_bytes = 0;
-	buf[num_bytes++] = (len - 1);
-	buf[num_bytes++] = (len - 1) ^ 0xFF;
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, data, 0, len) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	return 0;
-}
-
-/* m4sensorhub_bl_go()
-
-   Cause M4 to jump to new address and start execution fresh.
-
-   Returns 0 on success or negative error code on failure
-
-     m4sensorhub - pointer to the main m4sensorhub data struct
-     start_address - address to jump M4 code to
-*/
-static int m4sensorhub_bl_go(struct m4sensorhub_data *m4sensorhub,
-	int start_address)
-{
-	u8 buf[5] = {0};
-	int num_bytes = 0;
-
-	buf[num_bytes++] = OPC_GO;
-	buf[num_bytes++] = ~(OPC_GO);
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	num_bytes = 0;
-	buf[num_bytes++] = (start_address >> 24) & 0xFF;
-	buf[num_bytes++] = (start_address >> 16) & 0xFF;
-	buf[num_bytes++] = (start_address >> 8) & 0xFF;
-	buf[num_bytes++] = start_address & 0xFF;
-	buf[num_bytes++] = buf[0] ^ buf[1] ^ buf[2] ^ buf[3];
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, address invalid\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	return 0;
-}
-
-/* m4sensorhub_bl_wm()
-
-   Write data to M4 FLASH.
-
-   Returns 0 on success or negative error code on failure
-
-     m4sensorhub - pointer to the main m4sensorhub data struct
-     start_address - address to write data to
-     data - pointer of data to write
-     len - length of data to write, must be 16-bit aligned
-*/
-static int m4sensorhub_bl_wm(struct m4sensorhub_data *m4sensorhub,
-	int start_address, u8 *data, int len)
-{
-	u8 buf[5] = {0};
-	u8 *temp_buf = NULL;
-	u8 checksum = 0;
-	int i, retval = -1;
-	int malloc_size = 0;
-	int num_bytes = 0;
-
-	if ((data == NULL) || (len < 0) || (len > MAX_TRANSFER_SIZE)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : Invalid inputs\n",
-			__func__, __LINE__);
-		goto done;
-	}
-
-	/* add 2 bytes for data, one for length and last for checksum
-	as per spec, data is 16 bit aligned, padding of 0xFF if needed */
-	if (len % 2)
-		malloc_size = len + 1 + 2;
-	else
-		malloc_size = len + 2;
-
-
-	temp_buf = kzalloc(malloc_size, GFP_KERNEL);
-	if (!temp_buf) {
-		pr_err("Can't allocate memory %s\n", __func__);
-		retval = -ENOMEM;
-		goto done;
-	}
-
-	buf[num_bytes++] = OPC_NO_STRETCH_WM;
-	buf[num_bytes++] = ~(OPC_NO_STRETCH_WM);
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		goto done;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
-			__func__, __LINE__);
-		goto done;
-	}
-
-	num_bytes = 0;
-	checksum = 0;
-
-	buf[num_bytes++] = (start_address >> 24) & 0xFF;
-	checksum = checksum ^ ((start_address >> 24) & 0xFF);
-	buf[num_bytes++] = (start_address >> 16) & 0xFF;
-	checksum = checksum ^ ((start_address >> 16) & 0xFF);
-	buf[num_bytes++] = (start_address >> 8) & 0xFF;
-	checksum = checksum ^ ((start_address >> 8) & 0xFF);
-	buf[num_bytes++] = start_address & 0xFF;
-	checksum = checksum ^ ((start_address) & 0xFF);
-	buf[num_bytes++] = checksum;
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		goto done;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, address invalid\n",
-			__func__, __LINE__);
-		goto done;
-	}
-
-
-	checksum = 0;
-	num_bytes = 0;
-	/* (malloc_size -2 - 1) is the number of data bytes -1 to be sent */
-	checksum = checksum ^ (malloc_size - 2 - 1);
-	/* Calculate checksum of data */
-	for (i = 0; i < len; i++)
-		checksum ^= data[i];
-
-	if (len % 2)
-		checksum ^= 0xFF;
-
-	temp_buf[num_bytes++] = malloc_size - 2 - 1;
-	memcpy(&temp_buf[num_bytes], data, len);
-	if (len % 2)
-		temp_buf[len + 1] = 0xFF;
-	temp_buf[malloc_size-1] = checksum;
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, temp_buf,
-			malloc_size, 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		goto done;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, data invalid\n",
-			__func__, __LINE__);
-		goto done;
-	}
-
-	retval = 0;
-
-done:
-	kfree(temp_buf);
-
-	return retval;
-}
-
-/* m4sensorhub_bl_erase_fw()
-
-   Erases the M4 FLASH that is to be used for the firmware.
-
-   Returns 0 on success or negative error code on failure
-
-     m4sensorhub - pointer to the main m4sensorhub data struct
-*/
-static int m4sensorhub_bl_erase_fw(struct m4sensorhub_data *m4sensorhub)
-{
-	u8 buf[2*NUM_FLASH_TO_ERASE + 1] = {0};
-	u8 checksum = 0;
-	int i;
-	int num_bytes = 0;
-
-	buf[num_bytes++] = OPC_NO_STRETCH_ER;
-	buf[num_bytes++] = ~(OPC_NO_STRETCH_ER);
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	num_bytes = 0;
-	buf[num_bytes++] = ((NUM_FLASH_TO_ERASE - 1) >> 8) & 0xFF;
-	buf[num_bytes++] = ((NUM_FLASH_TO_ERASE - 1) & 0xFF);
-	buf[num_bytes++] = buf[0] ^ buf[1];
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes,
-			0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	checksum = 0;
-	for (i = 0; i < NUM_FLASH_TO_ERASE; i++) {
-		buf[2*i] = (page_to_erase[i] >> 8) & 0xFF;
-		buf[2*i+1] = page_to_erase[i] & 0xFF;
-		checksum ^= buf[2*i];
-		checksum ^= buf[2*i+1];
-	}
-	buf[2*NUM_FLASH_TO_ERASE] = checksum;
-
-	if (m4sensorhub_i2c_write_read(m4sensorhub, buf,
-			(2*NUM_FLASH_TO_ERASE + 1), 0) < 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	if (!m4sensorhub_bl_ack(m4sensorhub)) {
-		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
-			__func__, __LINE__);
-		return -1;
-	}
-
-	return 0;
-}
-
-/* m4sensorhub_jump_to_user()
-
-   Jump to user code loaded in M4 FLASH.
-
-   Returns 0 on success or negative error code on failure
-
-     m4sensorhub - pointer to the main m4sensorhub data struct
-*/
-static int m4sensorhub_jump_to_user(struct m4sensorhub_data *m4sensorhub)
-{
-	int ret = -1;
-	u32 barker_read_from_device = 0;
-
-	if (m4sensorhub_bl_rm(m4sensorhub, BARKER_ADDRESS,
-	    (u8 *)&barker_read_from_device, 4) != 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : error reading from device\n",
-		       __func__, __LINE__);
-		KDEBUG(M4SH_ERROR, "*** Not executing M4 code ***\n");
-		return -EIO;
-	}
-
-	if (barker_read_from_device == BARKER_NUMBER) {
-		m4sensorhub_bl_go(m4sensorhub, USER_FLASH_FIRST_PAGE_ADDRESS);
-		KDEBUG(M4SH_NOTICE, "Waiting for M4 setup\n");
-		msleep(100);
-		KDEBUG(M4SH_NOTICE, "Executing M4 code\n");
-		ret = 0;
-	} else {
-		KDEBUG(M4SH_ERROR, "Wrong Barker Number read 0x%8x\n",
-		       barker_read_from_device);
-		KDEBUG(M4SH_ERROR, "*** Not executing M4 code ***\n");
-	}
-
-	return ret;
-}
