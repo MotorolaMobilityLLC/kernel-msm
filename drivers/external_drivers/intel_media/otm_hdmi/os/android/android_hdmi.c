@@ -1161,10 +1161,6 @@ int android_hdmi_get_modes(struct drm_connector *connector)
 	struct drm_display_mode *dup_mode, *user_mode;
 	int mode_present = 0
 #endif
-	struct drm_display_mode *pref_mode = NULL;
-	otm_hdmi_timing_t otm_mode;
-	uint32_t hdisplay = 0;
-	uint32_t vdisplay = 0;
 
 	debug_modes_count = 0;
 	pr_debug("Enter %s\n", __func__);
@@ -1347,32 +1343,6 @@ edid_is_ready:
 
 	if (pref_mode_found == false && pref_mode_assigned == NULL)
 		pr_err("Preferred mode is not indicated or assigned.\n");
-
-	/* check if to skip mode setting for first time */
-	if (pref_mode_found)
-		pref_mode = mode;
-	else if (pref_mode_assigned)
-		pref_mode = pref_mode_assigned;
-
-	if (dev_priv->hdmi_first_boot && pref_mode) {
-	        pr_info("%s: prefer mode h=%d v=%d!\n",
-			__func__, pref_mode->hdisplay, pref_mode->vdisplay);
-
-		query_fw_hdmi_setting(dev, &hdisplay, &vdisplay);
-		__android_hdmi_drm_mode_to_otm_timing(&otm_mode, pref_mode);
-
-		// continue first time mode setting if different as FW
-		if (hdisplay != pref_mode->hdisplay ||
-		    vdisplay != pref_mode->vdisplay) {
-			// FW only supports below three timing
-			if (otm_mode.metadata != 1 &&
-			    otm_mode.metadata != 4 &&
-			    otm_mode.metadata != 16)
-				dev_priv->hdmi_first_boot = false;
-		} else {
-			pr_info("%s: skip first boot !\n", __func__);
-		}
-	}
 
 	pr_debug("Exit %s (%d)\n", __func__, (ret - i));
 
@@ -2038,7 +2008,36 @@ bool android_hdmi_mode_fixup(struct drm_encoder *encoder,
 		const struct drm_display_mode *mode,
 		struct drm_display_mode *adjusted_mode)
 {
-	pr_debug("%s: Nothing be done here\n", __func__);
+	struct drm_device *dev = encoder->dev;
+	struct drm_psb_private *dev_priv = dev->dev_private;
+	otm_hdmi_timing_t otm_mode;
+	uint32_t hdisplay = 0;
+	uint32_t vdisplay = 0;
+
+	if (dev_priv->hdmi_first_boot) {
+		query_fw_hdmi_setting(dev, &hdisplay, &vdisplay);
+		__android_hdmi_drm_mode_to_otm_timing(&otm_mode, (struct drm_display_mode *)mode);
+
+		if (mode->hdisplay == 640 &&
+			mode->vdisplay == 480) {
+			/*
+			 *  FW uses panel fitter for downscaling if preferred mode is 640x480.
+			 *  in kernel, overlay is used for downscaling hence panel fitter needs
+			 *  to be disabled, a simple solution is to reset mode.
+			 */
+			dev_priv->hdmi_first_boot = false;
+		} else if (hdisplay == mode->hdisplay &&
+					vdisplay == mode->vdisplay &&
+					(otm_mode.metadata == 4 || otm_mode.metadata == 16)) {
+			/* FW only supports 640x480p@60Hz, 720p@60Hz and 1080p@60Hz */
+			pr_info("%s: skip first boot !\n", __func__);
+			dev_priv->hdmi_first_boot = true;
+		} else {
+			/* need mode setting */
+			dev_priv->hdmi_first_boot = false;
+		}
+	}
+
 	return true;
 }
 
