@@ -835,14 +835,14 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
                 pMac->lim.gLimNumAssocReqDropInvldState++;
 #endif
                 limLog(pMac, LOG1, FL("received Assoc req in state "
-                   "%X from "), pStaDs->mlmStaContext.mlmState);
+                   "%d from "), pStaDs->mlmStaContext.mlmState);
             }
             else
             {     
 #ifdef WLAN_DEBUG    
                 pMac->lim.gLimNumReassocReqDropInvldState++;
 #endif
-                limLog(pMac, LOG1, FL("received ReAssoc req in state %X"
+                limLog(pMac, LOG1, FL("received ReAssoc req in state %d"
                             " from "), pStaDs->mlmStaContext.mlmState);
             }
             limPrintMacAddr(pMac, pHdr->sa, LOG1);
@@ -912,7 +912,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
                                           sizeof(tSirMacCapabilityInfo)))&&
                                          (subType == LIM_ASSOC))
         {
-            limLog(pMac, LOGE, FL(" Received Assoc req in state %X STAid=%d"),
+            limLog(pMac, LOGE, FL(" Received Assoc req in state %d STAid=%d"),
                                        pStaDs->mlmStaContext.mlmState,peerIdx);
             goto error;
         }

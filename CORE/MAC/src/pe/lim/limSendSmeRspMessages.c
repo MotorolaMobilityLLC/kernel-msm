@@ -1866,7 +1866,7 @@ limSendSmeWmStatusChangeNtf(tpAniSirGlobal pMac, tSirSmeStatusChangeCode statusC
             vos_mem_copy( (tANI_U8 *)&pSirSmeWmStatusChangeNtf->statusChangeInfo,
                           (tANI_U8 *)pStatusChangeInfo, infoLen);
         }
-        limLog(pMac, LOGE, FL("***---*** StatusChg: code 0x%x, length %d ***---***"),
+        limLog(pMac, LOGE, FL("***---*** StatusChg: code %d, length %d ***---***"),
                statusChangeCode, infoLen);
         break;
     }
