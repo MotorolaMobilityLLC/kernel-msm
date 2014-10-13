@@ -32,6 +32,14 @@
 		compatible = "qca,qca6174";
 		qca,bt-reset-gpio = <&msmgpio 26 0>; /* BT_ENABLE */
 	};
+
+	m4sensor {
+		compatible = "simple-bus";
+
+		mpu9150 {
+			compatible = "mot,m4mpu9150";
+		};
+	};
 };
 
 &soc {
