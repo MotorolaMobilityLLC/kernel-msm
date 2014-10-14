@@ -835,6 +835,11 @@
 			"factory_cable_detect",
 			"factory_warn";
 	};
+
+	hob_ram {
+		compatible = "mmi,hob_ram";
+		mmi,allocation-type-smem;
+	};
 };
 
 &pm8994_gpios {
