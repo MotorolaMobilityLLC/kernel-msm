@@ -12399,8 +12399,14 @@ static int wlan_hdd_set_txq_params(struct wiphy *wiphy,
 }
 #endif //LINUX_VERSION_CODE
 
+#ifdef CFG80211_DEL_STA_V2
+static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
+                                         struct net_device *dev,
+                                         struct station_del_parameters *param)
+#else
 static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                          struct net_device *dev, u8 *mac)
+#endif
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx;
@@ -12502,13 +12508,24 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
 
     return 0;
 }
+
+#ifdef CFG80211_DEL_STA_V2
+static int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
+                                         struct net_device *dev,
+                                         struct station_del_parameters *param)
+#else
 static int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                          struct net_device *dev, u8 *mac)
+#endif
 {
     int ret;
 
     vos_ssr_protect(__func__);
+#ifdef CFG80211_DEL_STA_V2
+    ret = __wlan_hdd_cfg80211_del_station(wiphy, dev, param);
+#else
     ret = __wlan_hdd_cfg80211_del_station(wiphy, dev, mac);
+#endif
     vos_ssr_unprotect(__func__);
 
     return ret;
