@@ -1243,8 +1243,10 @@ struct dentry *f2fs_get_parent(struct dentry *child);
  * dir.c
  */
 extern unsigned char f2fs_filetype_table[F2FS_FT_MAX];
-bool early_match_name(size_t, f2fs_hash_t, struct f2fs_dir_entry *);
 void set_de_type(struct f2fs_dir_entry *, struct inode *);
+struct f2fs_dir_entry *find_target_dentry(struct qstr *, int *, const void *,
+			struct f2fs_dir_entry *, __u8 (*)[F2FS_SLOT_LEN],
+			unsigned int);
 struct page *init_inode_metadata(struct inode *, struct inode *,
 							const struct qstr *);
 void update_parent_metadata(struct inode *, struct inode *, unsigned int);
@@ -1553,7 +1555,7 @@ int f2fs_write_inline_data(struct inode *, struct page *, unsigned int);
 void truncate_inline_data(struct inode *, u64);
 bool recover_inline_data(struct inode *, struct page *);
 struct f2fs_dir_entry *find_in_inline_dir(struct inode *, struct qstr *,
-							struct page **);
+						struct page **, unsigned int);
 struct f2fs_dir_entry *f2fs_parent_inline_dir(struct inode *, struct page **);
 int make_empty_inline_dir(struct inode *inode, struct inode *, struct page *);
 int f2fs_add_inline_entry(struct inode *, const struct qstr *, struct inode *);
