@@ -14388,6 +14388,14 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
       return ;
    }
    pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
+   if(NULL == pMac)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                          "%s: pMac is NULL",__func__);
+      VOS_ASSERT(0);
+      return ;
+   }
+
    if (wlan_cfgGetInt(pMac,
            WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC, &val) !=
                                                       eSIR_SUCCESS)
