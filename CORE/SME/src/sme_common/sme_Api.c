@@ -7497,6 +7497,15 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
            status = eHAL_STATUS_FAILURE;
            return status;
        }
+       /* Update the 11d country to default country from NV bin so that when
+        * callback is received for this default country, driver will not
+        * disable the 11d taking it as valid country by user.
+        */
+       smsLog(pMac, LOG1,
+         FL("Set default country code (%c%c) from NV as invalid country received"),
+         pMsg->countryCode[0],pMsg->countryCode[1]);
+       vos_mem_copy(pMac->scan.countryCode11d, pMsg->countryCode,
+                                 WNI_CFG_COUNTRY_CODE_LEN);
    }
    else
    {
