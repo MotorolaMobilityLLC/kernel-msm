@@ -374,8 +374,8 @@ static int make_empty_dir(struct inode *inode,
 	return 0;
 }
 
-struct page *init_inode_metadata(struct inode *inode,
-		struct inode *dir, const struct qstr *name)
+struct page *init_inode_metadata(struct inode *inode, struct inode *dir,
+			const struct qstr *name, struct page *dpage)
 {
 	struct page *page;
 	int err;
@@ -391,7 +391,7 @@ struct page *init_inode_metadata(struct inode *inode,
 				goto error;
 		}
 
-		err = f2fs_init_acl(inode, dir, page);
+		err = f2fs_init_acl(inode, dir, page, dpage);
 		if (err)
 			goto put_error;
 
@@ -552,7 +552,7 @@ add_dentry:
 	f2fs_wait_on_page_writeback(dentry_page, DATA);
 
 	down_write(&F2FS_I(inode)->i_sem);
-	page = init_inode_metadata(inode, dir, name);
+	page = init_inode_metadata(inode, dir, name, NULL);
 	if (IS_ERR(page)) {
 		err = PTR_ERR(page);
 		goto fail;
@@ -591,7 +591,7 @@ int f2fs_do_tmpfile(struct inode *inode, struct inode *dir)
 	int err = 0;
 
 	down_write(&F2FS_I(inode)->i_sem);
-	page = init_inode_metadata(inode, dir, NULL);
+	page = init_inode_metadata(inode, dir, NULL, NULL);
 	if (IS_ERR(page)) {
 		err = PTR_ERR(page);
 		goto fail;
