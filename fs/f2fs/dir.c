@@ -78,7 +78,7 @@ static unsigned long dir_block_index(unsigned int level,
 	return bidx;
 }
 
-bool early_match_name(size_t namelen, f2fs_hash_t namehash,
+static bool early_match_name(size_t namelen, f2fs_hash_t namehash,
 				struct f2fs_dir_entry *de)
 {
 	if (le16_to_cpu(de->name_len) != namelen)
@@ -91,57 +91,76 @@ bool early_match_name(size_t namelen, f2fs_hash_t namehash,
 }
 
 static struct f2fs_dir_entry *find_in_block(struct page *dentry_page,
-			struct qstr *name, int *max_slots,
-			f2fs_hash_t namehash, struct page **res_page,
-			unsigned int flags)
+				struct qstr *name, int *max_slots,
+				struct page **res_page,
+				unsigned int flags)
+{
+	struct f2fs_dentry_block *dentry_blk;
+	struct f2fs_dir_entry *de;
+
+	*max_slots = NR_DENTRY_IN_BLOCK;
+
+	dentry_blk = (struct f2fs_dentry_block *)kmap(dentry_page);
+	de = find_target_dentry(name, max_slots, &dentry_blk->dentry_bitmap,
+						dentry_blk->dentry,
+						dentry_blk->filename,
+						flags);
+	if (de)
+		*res_page = dentry_page;
+	else
+		kunmap(dentry_page);
+
+	/*
+	 * For the most part, it should be a bug when name_len is zero.
+	 * We stop here for figuring out where the bugs has occurred.
+	 */
+	f2fs_bug_on(F2FS_P_SB(dentry_page), *max_slots < 0);
+	return de;
+}
+
+struct f2fs_dir_entry *find_target_dentry(struct qstr *name, int *max_slots,
+			const void *bitmap, struct f2fs_dir_entry *dentry,
+			__u8 (*filenames)[F2FS_SLOT_LEN], unsigned int flags)
 {
 	struct f2fs_dir_entry *de;
 	unsigned long bit_pos = 0;
-	struct f2fs_dentry_block *dentry_blk = kmap(dentry_page);
-	const void *dentry_bits = &dentry_blk->dentry_bitmap;
+	f2fs_hash_t namehash = f2fs_dentry_hash(name);
+	int max_bits = *max_slots;
 	int max_len = 0;
 
-	while (bit_pos < NR_DENTRY_IN_BLOCK) {
-		if (!test_bit_le(bit_pos, dentry_bits)) {
+	*max_slots = 0;
+	while (bit_pos < max_bits) {
+		if (!test_bit_le(bit_pos, bitmap)) {
 			if (bit_pos == 0)
 				max_len = 1;
-			else if (!test_bit_le(bit_pos - 1, dentry_bits))
+			else if (!test_bit_le(bit_pos - 1, bitmap))
 				max_len++;
 			bit_pos++;
 			continue;
 		}
-		de = &dentry_blk->dentry[bit_pos];
+		de = &dentry[bit_pos];
 		if (flags & LOOKUP_NOCASE) {
 			if ((le16_to_cpu(de->name_len) == name->len) &&
-			    !strncasecmp(dentry_blk->filename[bit_pos],
-					    name->name, name->len)) {
-				*res_page = dentry_page;
+				!strncasecmp(filenames[bit_pos],
+					    name->name, name->len))
 				goto found;
-			}
-		} else if (early_match_name(name->len, namehash, de)) {
-			if (!memcmp(dentry_blk->filename[bit_pos],
-							name->name,
-							name->len)) {
-				*res_page = dentry_page;
-				goto found;
-			}
+		} else if (early_match_name(name->len, namehash, de) &&
+			!memcmp(filenames[bit_pos], name->name, name->len)) {
+			goto found;
 		}
-		if (max_len > *max_slots) {
+		if (*max_slots >= 0 && max_len > *max_slots) {
 			*max_slots = max_len;
 			max_len = 0;
 		}
 
-		/*
-		 * For the most part, it should be a bug when name_len is zero.
-		 * We stop here for figuring out where the bugs has occurred.
-		 */
-		f2fs_bug_on(F2FS_P_SB(dentry_page), !de->name_len);
+		/* remain bug on condition */
+		if (unlikely(!de->name_len))
+			*max_slots = -1;
 
 		bit_pos += GET_DENTRY_SLOTS(le16_to_cpu(de->name_len));
 	}
 
 	de = NULL;
-	kunmap(dentry_page);
 found:
 	if (max_len > *max_slots)
 		*max_slots = max_len;
@@ -159,7 +178,7 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	struct page *dentry_page;
 	struct f2fs_dir_entry *de = NULL;
 	bool room = false;
-	int max_slots = 0;
+	int max_slots;
 
 	f2fs_bug_on(F2FS_I_SB(dir), level > MAX_DIR_HASH_DEPTH);
 
@@ -179,7 +198,7 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 		}
 
 		de = find_in_block(dentry_page, name, &max_slots,
-					namehash, res_page, flags);
+					res_page, flags);
 		if (de)
 			break;
 
@@ -212,7 +231,7 @@ struct f2fs_dir_entry *f2fs_find_entry(struct inode *dir, struct qstr *child,
 	unsigned int level;
 
 	if (f2fs_has_inline_dentry(dir))
-		return find_in_inline_dir(dir, child, res_page);
+		return find_in_inline_dir(dir, child, res_page, flags);
 
 	if (npages == 0)
 		return NULL;
