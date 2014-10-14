@@ -455,6 +455,7 @@ static void drv260x_vreg_control(bool vdd_supply_enable)
 
 static void drv260x_change_mode(char mode)
 {
+	unsigned char wakeup[] = {MODE_REG, 0};
 	unsigned char tmp[] = {
 #ifdef RTP_CLOSED_LOOP_ENABLE
 		Control3_REG, NG_Thresh_2,
@@ -468,6 +469,7 @@ static void drv260x_change_mode(char mode)
 	/* POR may occur after enable,add time to stabilize the part before
 	   the I2C accesses */
 	udelay(850);
+	drv260x_write_reg_val(wakeup, sizeof(wakeup));
 	drv260x_write_reg_val(reinit_sequence, sizeof(reinit_sequence));
 
 #ifdef RTP_CLOSED_LOOP_ENABLE
