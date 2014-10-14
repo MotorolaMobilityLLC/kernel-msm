@@ -562,6 +562,7 @@ struct f2fs_sb_info {
 	unsigned int block_count[2];		/* # of allocated blocks */
 	int total_hit_ext, read_hit_ext;	/* extent cache hit ratio */
 	int inline_inode;			/* # of inline_data inodes */
+	int inline_dir;				/* # of inline_dentry inodes */
 	int bg_gc;				/* background gc calls */
 	unsigned int n_dirty_dirs;		/* # of dir inodes */
 #endif
@@ -1442,7 +1443,7 @@ struct f2fs_stat_info {
 	int ndirty_node, ndirty_dent, ndirty_dirs, ndirty_meta;
 	int nats, sits, fnids;
 	int total_count, utilization;
-	int bg_gc, inline_inode;
+	int bg_gc, inline_inode, inline_dir;
 	unsigned int valid_count, valid_node_count, valid_inode_count;
 	unsigned int bimodal, avg_vblocks;
 	int util_free, util_valid, util_invalid;
@@ -1482,7 +1483,16 @@ static inline struct f2fs_stat_info *F2FS_STAT(struct f2fs_sb_info *sbi)
 		if (f2fs_has_inline_data(inode))			\
 			((F2FS_I_SB(inode))->inline_inode--);		\
 	} while (0)
-
+#define stat_inc_inline_dir(inode)					\
+	do {								\
+		if (f2fs_has_inline_dentry(inode))			\
+			((F2FS_I_SB(inode))->inline_dir++);		\
+	} while (0)
+#define stat_dec_inline_dir(inode)					\
+	do {								\
+		if (f2fs_has_inline_dentry(inode))			\
+			((F2FS_I_SB(inode))->inline_dir--);		\
+	} while (0)
 #define stat_inc_seg_type(sbi, curseg)					\
 		((sbi)->segment_count[(curseg)->alloc_type]++)
 #define stat_inc_block_count(sbi, curseg)				\
@@ -1529,6 +1539,8 @@ void f2fs_destroy_root_stats(void);
 #define stat_inc_read_hit(sb)
 #define stat_inc_inline_inode(inode)
 #define stat_dec_inline_inode(inode)
+#define stat_inc_inline_dir(inode)
+#define stat_dec_inline_dir(inode)
 #define stat_inc_seg_type(sbi, curseg)
 #define stat_inc_block_count(sbi, curseg)
 #define stat_inc_seg_count(si, type)
