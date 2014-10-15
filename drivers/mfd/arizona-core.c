@@ -1,4 +1,3 @@
-#define DEBUG
 /*
  * Arizona core driver
  *
@@ -505,6 +504,9 @@ static int arizona_runtime_resume(struct device *dev)
 	int ret;
 
 	dev_dbg(arizona->dev, "Leaving AoD mode\n");
+	/* this is causing the arizona to be reset while FLL
+	   is trying to lock so take it out for now */
+	return 0;
 
 	switch (arizona->type) {
 	case WM5110:
@@ -606,10 +608,16 @@ err:
 static int arizona_runtime_suspend(struct device *dev)
 {
 	struct arizona *arizona = dev_get_drvdata(dev);
+#if 0
 	int ret;
+#endif
 
 	dev_dbg(arizona->dev, "Entering AoD mode\n");
+	/* this is causing the arizona to be reset while FLL
+	   is trying to lock so take it out for now */
+	return 0;
 
+#if 0
 	if (arizona->external_dcvdd) {
 		ret = regmap_update_bits(arizona->regmap,
 					 ARIZONA_ISOLATION_CONTROL,
@@ -645,6 +653,7 @@ static int arizona_runtime_suspend(struct device *dev)
 	regulator_disable(arizona->dcvdd);
 
 	return 0;
+#endif
 }
 #endif
 
@@ -952,6 +961,9 @@ static int arizona_of_get_core_pdata(struct arizona *arizona)
 	memset(&out_mono, 0, sizeof(out_mono));
 
 	pdata->reset = arizona_of_get_named_gpio(arizona, "wlf,reset", true);
+	/* We need to be able to see the GPIO as well as interrupt
+	   so register with gpio mechanism */
+	pdata->irq_gpio = arizona_of_get_named_gpio(arizona, "wlf,irq", true);
 
 	arizona_of_get_micd_ranges(arizona, "wlf,micd-ranges");
 	arizona_of_get_micd_configs(arizona, "wlf,micd-configs");
@@ -1018,9 +1030,6 @@ static struct mfd_cell wm5102_devs[] = {
 
 static struct mfd_cell florida_devs[] = {
 	{ .name = "arizona-micsupp" },
-	{ .name = "arizona-extcon" },
-	{ .name = "arizona-gpio" },
-	{ .name = "arizona-haptics" },
 	{ .name = "arizona-pwm" },
 	{ .name = "florida-codec" },
 };
