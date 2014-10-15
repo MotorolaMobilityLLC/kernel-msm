@@ -174,9 +174,10 @@ int f2fs_write_inline_data(struct inode *inode,
 	memcpy(dst_addr, src_addr, size);
 	kunmap(page);
 
-	/* Release the first data block if it is allocated */
+	/* Release any data block if it is allocated */
 	if (!f2fs_has_inline_data(inode)) {
-		truncate_data_blocks_range(&dn, 1);
+		int count = ADDRS_PER_PAGE(dn.node_page, F2FS_I(inode));
+		truncate_data_blocks_range(&dn, count);
 		set_inode_flag(F2FS_I(inode), FI_INLINE_DATA);
 		stat_inc_inline_inode(inode);
 	}
