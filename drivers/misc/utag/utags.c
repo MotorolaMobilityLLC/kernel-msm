@@ -338,7 +338,8 @@ static struct utag *thaw_tags(size_t block_size, void *buf,
 			break;
 		}
 
-		next_ptr = ptr + UTAG_MIN_TAG_SIZE + ROUNDUP(cur->size, 4);
+		next_ptr = ptr + UTAG_MIN_TAG_SIZE
+				+ ROUNDUP(cur->size, sizeof(long));
 
 		/*
 		 * Ensure there is enough space in the buffer for both the
@@ -405,7 +406,8 @@ static void *freeze_tags(size_t block_size, const struct utag *tags,
 	 * for the frozen tags.
 	 */
 	while (cur) {
-		frozen_size += ROUNDUP(cur->size, 4) + UTAG_MIN_TAG_SIZE;
+		frozen_size += ROUNDUP(cur->size, sizeof(long))
+					+ UTAG_MIN_TAG_SIZE;
 		if (!strncmp(cur->name, UTAG_TAIL, MAX_UTAG_NAME))
 			break;
 		cur = cur->next;
@@ -446,7 +448,7 @@ static void *freeze_tags(size_t block_size, const struct utag *tags,
 		}
 
 		/* pad with zeros if needed */
-		zeros = ROUNDUP(cur->size, 4) - cur->size;
+		zeros = ROUNDUP(cur->size, sizeof(long)) - cur->size;
 		if (zeros) {
 			memset(ptr, 0, zeros);
 			ptr += zeros;
