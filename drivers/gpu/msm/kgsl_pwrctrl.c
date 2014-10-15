@@ -510,7 +510,7 @@ static ssize_t kgsl_pwrctrl_idle_timer_show(struct device *dev,
 		device->pwrctrl.interval_timeout * mul);
 }
 
-static ssize_t kgsl_pwrctrl_pmqos_latency_store(struct device *dev,
+static ssize_t kgsl_pwrctrl_pmqos_active_latency_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
 {
@@ -526,13 +526,13 @@ static ssize_t kgsl_pwrctrl_pmqos_latency_store(struct device *dev,
 		return ret;
 
 	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
-	device->pwrctrl.pm_qos_latency = val;
+	device->pwrctrl.pm_qos_active_latency = val;
 	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 
 	return count;
 }
 
-static ssize_t kgsl_pwrctrl_pmqos_latency_show(struct device *dev,
+static ssize_t kgsl_pwrctrl_pmqos_active_latency_show(struct device *dev,
 					   struct device_attribute *attr,
 					   char *buf)
 {
@@ -540,7 +540,7 @@ static ssize_t kgsl_pwrctrl_pmqos_latency_show(struct device *dev,
 	if (device == NULL)
 		return 0;
 	return snprintf(buf, PAGE_SIZE, "%d\n",
-		device->pwrctrl.pm_qos_latency);
+		device->pwrctrl.pm_qos_active_latency);
 }
 
 static ssize_t kgsl_pwrctrl_gpubusy_show(struct device *dev,
@@ -820,9 +820,9 @@ static DEVICE_ATTR(thermal_pwrlevel, 0644,
 static DEVICE_ATTR(num_pwrlevels, 0444,
 	kgsl_pwrctrl_num_pwrlevels_show,
 	NULL);
-static DEVICE_ATTR(pmqos_latency, 0644,
-	kgsl_pwrctrl_pmqos_latency_show,
-	kgsl_pwrctrl_pmqos_latency_store);
+static DEVICE_ATTR(pmqos_active_latency, 0644,
+	kgsl_pwrctrl_pmqos_active_latency_show,
+	kgsl_pwrctrl_pmqos_active_latency_store);
 static DEVICE_ATTR(reset_count, 0444,
 	kgsl_pwrctrl_reset_count_show,
 	NULL);
@@ -853,7 +853,7 @@ static const struct device_attribute *pwrctrl_attr_list[] = {
 	&dev_attr_min_pwrlevel,
 	&dev_attr_thermal_pwrlevel,
 	&dev_attr_num_pwrlevels,
-	&dev_attr_pmqos_latency,
+	&dev_attr_pmqos_active_latency,
 	&dev_attr_reset_count,
 	&dev_attr_force_clk_on,
 	&dev_attr_force_bus_on,
@@ -1130,7 +1130,8 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	pwr->interval_timeout = pdata->idle_timeout;
 	pwr->strtstp_sleepwake = pdata->strtstp_sleepwake;
 
-	pwr->pm_qos_latency = pdata->pm_qos_latency;
+	pwr->pm_qos_active_latency = pdata->pm_qos_active_latency;
+	pwr->pm_qos_wakeup_latency = pdata->pm_qos_wakeup_latency;
 
 	pm_runtime_enable(device->parentdev);
 
@@ -1545,8 +1546,6 @@ int kgsl_pwrctrl_wake(struct kgsl_device *device, int priority)
 		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_ON);
 		mod_timer(&device->idle_timer, jiffies +
 				device->pwrctrl.interval_timeout);
-		pm_qos_update_request(&device->pwrctrl.pm_qos_req_dma,
-				device->pwrctrl.pm_qos_latency);
 	case KGSL_STATE_ACTIVE:
 		kgsl_pwrctrl_request_state(device, KGSL_STATE_NONE);
 		break;
