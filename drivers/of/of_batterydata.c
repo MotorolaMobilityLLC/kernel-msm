@@ -15,6 +15,7 @@
 #include <linux/of.h>
 #include <linux/slab.h>
 #include <linux/module.h>
+#include <linux/string.h>
 #include <linux/types.h>
 #include <linux/batterydata-lib.h>
 
@@ -272,15 +273,17 @@ static int64_t of_batterydata_convert_battery_id_kohm(int batt_id_uv,
 
 int of_batterydata_read_data(struct device_node *batterydata_container_node,
 				struct bms_battery_data *batt_data,
-				int batt_id_uv)
+			     int batt_id_uv,
+			     const char *battid_sn)
 {
-	struct device_node *node, *best_node, *df_node;
+	struct device_node *node, *best_node, *df_node, *sn_node;
 	struct batt_id_rng id_range;
 	size_t sz = sizeof(struct batt_id_rng) / sizeof(int);
 	struct batt_ids batt_ids;
 	int delta, best_delta, batt_id_kohm, rpull_up_kohm,
 		vadc_vdd_uv, best_id_kohm, i, rc = 0;
 	int default_kohm;
+	const char *battid_sn_buf;
 
 	node = batterydata_container_node;
 	OF_PROP_READ(rpull_up_kohm, "rpull-up-kohm", node, rc, false);
@@ -297,6 +300,7 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 	best_node = NULL;
 	best_delta = 0;
 	best_id_kohm = 0;
+	sn_node = NULL;
 
 	/*
 	 * Find the battery data with a battery id resistor closest to this one
@@ -307,6 +311,12 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 						&batt_ids);
 		if (rc)
 			continue;
+		rc = of_property_read_string(node, "qcom,batt-id-sn",
+					     &battid_sn_buf);
+		if (!rc && battid_sn_buf && battid_sn)
+			if (strnstr(battid_sn, battid_sn_buf, 32))
+				sn_node = node;
+
 		for (i = 0; i < batt_ids.num; i++) {
 			delta = abs(batt_ids.kohm[i] - batt_id_kohm);
 			if (delta < best_delta || !best_node) {
@@ -335,7 +345,11 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 	}
 
 	if (best_node == NULL) {
-		if ((default_kohm != -EINVAL) && df_node) {
+		if (battid_sn && sn_node) {
+			pr_err("No HW batt ID match using Serial Number!\n");
+			best_node = sn_node;
+			best_id_kohm = 0;
+		} else if ((default_kohm != -EINVAL) && df_node) {
 			pr_err("No battery data found using Default\n");
 			best_node = df_node;
 			best_id_kohm = default_kohm;
