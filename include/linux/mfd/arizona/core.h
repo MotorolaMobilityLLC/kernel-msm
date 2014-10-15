@@ -17,6 +17,7 @@
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/mfd/arizona/pdata.h>
+#include <linux/slimbus/slimbus.h>
 
 #define ARIZONA_MAX_CORE_SUPPLIES 2
 
