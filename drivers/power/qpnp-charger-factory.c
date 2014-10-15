@@ -2673,7 +2673,8 @@ qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 		}
 
 		rc = of_batterydata_read_data(node,
-				&batt_data, result.physical);
+					      &batt_data, result.physical,
+					      NULL);
 		if (rc) {
 			pr_err("failed to read battery data: %d\n", rc);
 			return 0;

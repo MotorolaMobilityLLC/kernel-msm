@@ -3751,6 +3751,28 @@ static irqreturn_t bms_sw_cc_thr_irq_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+static const char *qpnp_bms_mmi_battid(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *battid_buf;
+	int retval;
+	pr_err("BMS Reading Battid at powerup!\n");
+	if (np)
+		retval = of_property_read_string(np, "mmi,battid",
+						 &battid_buf);
+
+	if ((retval == -EINVAL) || !battid_buf) {
+		pr_err("Battid unused\n");
+		of_node_put(np);
+		return NULL;
+	} else
+		pr_err("Battid = %s\n", battid_buf);
+
+	of_node_put(np);
+
+	return battid_buf;
+}
+
 static int64_t read_battery_id(struct qpnp_bms_chip *chip)
 {
 	int rc;
@@ -3823,7 +3845,8 @@ static int set_battery_data(struct qpnp_bms_chip *chip)
 		 * if the alloced luts are 0s, of_batterydata_read_data ignores
 		 * them.
 		 */
-		rc = of_batterydata_read_data(node, batt_data, battery_id);
+		rc = of_batterydata_read_data(node, batt_data, battery_id,
+					      qpnp_bms_mmi_battid());
 		if (rc == 0 && batt_data->fcc_temp_lut
 				&& batt_data->pc_temp_ocv_lut
 				&& batt_data->rbatt_sf_lut) {
