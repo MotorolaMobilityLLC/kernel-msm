@@ -80,6 +80,7 @@ struct tfa9890_priv {
 	int is_spkr_prot_en;
 	int update_eq;
 	int update_cfg;
+	int is_pcm_triggered;
 };
 
 static DEFINE_MUTEX(lr_lock);
@@ -825,8 +826,13 @@ static int tfa9890_put_ch_sel(struct snd_kcontrol *kcontrol,
 				tfa9890_set_config_left(tfa9890);
 			else
 				tfa9890_set_config_right(tfa9890);
-		} else
+		} else {
 			tfa9890->update_cfg = 1;
+			/* if pcm is already triggered, schedule cfg update work */
+			if (tfa9890->is_pcm_triggered)
+				queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->mode_work,
+						100);
+		}
 
 		val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
 		val = val & (~TFA9890_I2S_CHS12);
@@ -1694,12 +1700,13 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 {
 	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(dai->codec);
 	int ret = 0;
+
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
+		tfa9890->is_pcm_triggered = 1;
 		/* if in bypass mode dont't do anything */
 		if (tfa9890->is_spkr_prot_en)
 			break;
-
 		/* To initialize dsp all the I2S signals should be bought up,
 		 * so that the DSP's internal PLL can sync up and memory becomes
 		 * accessible. Trigger callback is called when pcm write starts,
@@ -1728,9 +1735,11 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 		break;
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+		tfa9890->is_pcm_triggered = 0;
 		break;
 	default:
 		ret = -EINVAL;
