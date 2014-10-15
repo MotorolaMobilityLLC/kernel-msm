@@ -27,6 +27,7 @@ Profile data node required properties:
 			module when the ID resistance of some battery modules goes across
 			several ranges.
 - qcom,max-current-ma : The maximum current of the battery
+- qcom,batt-id-sn : The Serial number of the Battery Pack
 
 qcom,battery-data node optional properties:
 qcom,batt-id-limits :  If defined this will be used as a hard range limit on
