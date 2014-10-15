@@ -204,7 +204,7 @@
 
 	pmx_spi_7 {
 		qcom,pins = <&gp 41 &gp 42 &gp 43 &gp 44>;
-		qcom,num-grp-pins = <1>;
+		qcom,num-grp-pins = <4>;
 		qcom,pin-func = <1>;
 		label = "spi_7";
 
@@ -342,6 +342,27 @@
 		label = "stm401_in";
 		stm401_in_default: default {
 			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+	pmx_florida_irq {
+		qcom,pins = <&gp 72>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "florida_irq";
+		florida_irq_default: default {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+	pmx_florida_reset {
+		qcom,pins = <&gp 68>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "florida_reset";
+		florida_reset_default: default {
+			output-high;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 	};
@@ -721,23 +742,16 @@
 			 <&clock_gcc clk_gcc_blsp1_qup6_spi_apps_clk>;
 	};
 
-	spi_7: spi@f9929000 { /* BLSP2 QUP1 */
+	spi_7: spi@f9963000 { /* BLSP2 QUP1 */
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		reg-names = "spi_physical", "spi_bam_physical";
-		reg = <0xf9929000 0x1000>,
-		      <0xf9904000 0x19000>;
-		interrupt-names = "spi_irq", "spi_bam_irq";
-		interrupts = <0 101 0>, <0 238 0>;
+		reg-names = "spi_physical";
+		reg = <0xf9963000 0x1000>;
+		interrupt-names = "spi_irq";
+		interrupts = <0 101 0>;
 		spi-max-frequency = <19200000>;
-
-		qcom,infinite-mode = <0>;
-		qcom,use-bam;
-		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <24>;
-		qcom,bam-producer-pipe-index = <25>;
-		qcom,master-id = <86>;
+		qcom,master-id = <84>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
 		pinctrl-0 = <&spi_7_active>;
@@ -997,6 +1011,41 @@
 	status = "okay";
 };
 
+&spi_7 {
+	florida@0 {
+		compatible = "wlf,wm8280";
+		spi-max-frequency = <9600000>;
+		spi-cs-high;
+		reg = <0x0>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <72 0>;
+		irq-base = <800>;
+		gpio-base = <200>;
+		reset = <&msm_gpio 68 0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&florida_irq_default &florida_reset_default>;
+
+		AVDD-supply = <&pm8994_s4>;
+		DCVDD-supply = <&pm8994_l11>;
+		DBVDD1-supply = <&pm8994_s4>;
+		DBVDD2-supply = <&pm8994_s4>;
+		DBVDD3-supply = <&pm8994_s4>;
+		CPVDD-supply = <&pm8994_s4>;
+		SPKVDDL-supply = <&dummy_vreg>;
+		SPKVDDR-supply = <&dummy_vreg>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		gpio-defaults = <0x00002102
+				0xffffffff
+				0x00010000
+				0x00000004
+				0xffffffff>;
+
+	};
+};
 
 &i2c_11 {
 	fsa8500@23 {
