@@ -346,7 +346,7 @@
 		};
 	};
 	pmx_florida_irq {
-		qcom,pins = <&gp 72>;
+		qcom,pins = <&gp 67>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
 		label = "florida_irq";
@@ -714,6 +714,14 @@
 		};
 	};
 
+	slim_msm: slim@fe12f000 {
+		/delete-node/ tomtom_codec;
+		wolfson_codec {
+			compatible = "wlf,florida-slim-audio";
+			elemental-addr = [00 7F 10 51 2F 01];
+		};
+	};
+
 	spi_6: spi@f9928000 { /* BLSP1 QUP6 */
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
@@ -1018,10 +1026,11 @@
 		spi-cs-high;
 		reg = <0x0>;
 		interrupt-parent = <&msm_gpio>;
-		interrupts = <72 0>;
+		interrupts = <67 0>;
 		irq-base = <800>;
 		gpio-base = <200>;
-		reset = <&msm_gpio 68 0>;
+		wlf,reset = <&msm_gpio 68 0>;
+		wlf,irq = <&msm_gpio 67 0>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&florida_irq_default &florida_reset_default>;
