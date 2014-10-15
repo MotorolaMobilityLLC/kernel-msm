@@ -8,6 +8,7 @@ mmi,ft40-lg-batterydata {
 	qcom,chg-term-ua = <186000>;
 	qcom,batt-id-kohm = <20>;
 	qcom,batt-id-range = <380578 424195>;
+	qcom,batt-id-sn = "SNN5955";
 
 	qcom,fcc-temp-lut {
 		qcom,lut-col-legend = <(-10) 0 23 60>;

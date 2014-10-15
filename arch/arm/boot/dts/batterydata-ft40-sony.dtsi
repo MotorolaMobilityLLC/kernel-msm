@@ -8,6 +8,7 @@ mmi,ft40-sony-batterydata {
 	qcom,chg-term-ua = <197000>;
 	qcom,batt-id-kohm = <32>;
 	qcom,batt-id-range = <535984 589380>;
+	qcom,batt-id-sn = "SNN5956";
 
 	qcom,fcc-temp-lut {
 		qcom,lut-col-legend = <(-10) 0 23 60>;
