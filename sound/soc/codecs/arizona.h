@@ -63,6 +63,10 @@
 #define ARIZONA_MAX_DAI  10
 #define ARIZONA_MAX_ADSP 4
 
+#define ARIZONA_SLIM1 4
+#define ARIZONA_SLIM2 5
+#define ARIZONA_SLIM3 6
+
 struct arizona;
 struct wm_adsp;
 struct arizona_jd_state;
@@ -249,11 +253,19 @@ extern int arizona_anc_ev(struct snd_soc_dapm_widget *w,
 extern int arizona_put_sample_rate_enum(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol);
 
+extern int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
+			     struct snd_kcontrol *kcontrol,
+			     int event);
+extern int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
+			     struct snd_kcontrol *kcontrol,
+			     int event);
+
 extern int arizona_set_sysclk(struct snd_soc_codec *codec, int clk_id,
 			      int source, unsigned int freq, int dir);
 
 extern const struct snd_soc_dai_ops arizona_dai_ops;
 extern const struct snd_soc_dai_ops arizona_simple_dai_ops;
+extern const struct snd_soc_dai_ops arizona_slim_dai_ops;
 
 #define ARIZONA_FLL_NAME_LEN 20
 
