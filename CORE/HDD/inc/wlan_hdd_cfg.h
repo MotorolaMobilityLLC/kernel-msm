@@ -729,7 +729,9 @@ typedef enum
 #define CFG_QOS_WMM_UAPSD_MASK_NAME                        "UapsdMask" // ACs to setup U-APSD for at assoc
 #define CFG_QOS_WMM_UAPSD_MASK_MIN                         (0x00)
 #define CFG_QOS_WMM_UAPSD_MASK_MAX                         (0xFF) 
-#define CFG_QOS_WMM_UAPSD_MASK_DEFAULT                     (0x3)
+#define CFG_QOS_WMM_UAPSD_MASK_DEFAULT                     (0xaa)
+#define CFG_QOS_WMM_UAPSD_MASK_DYMANIC_WMM_PS_DEFAULT      (0x3)
+#define CFG_QOS_WMM_UAPSD_MASK_LEGACY_WMM_PS_DEFAULT       (0x0)
 
 #define CFG_QOS_WMM_INFRA_UAPSD_VO_SRV_INTV_NAME           "InfraUapsdVoSrvIntv"
 #define CFG_QOS_WMM_INFRA_UAPSD_VO_SRV_INTV_MIN             (0)

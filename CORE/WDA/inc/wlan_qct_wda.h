@@ -159,6 +159,8 @@ typedef enum
 #define IS_ROAM_SCAN_OFFLOAD_FEATURE_ENABLE 0
 #endif
 
+#define IS_DYNAMIC_WMM_PS_ENABLED ((WDI_getHostWlanFeatCaps(DYNAMIC_WMM_PS)) & (WDA_getFwWlanFeatCaps(DYNAMIC_WMM_PS)))
+
 /* Check if heartbeat offload is enabled */
 #define IS_IBSS_HEARTBEAT_OFFLOAD_FEATURE_ENABLE ((WDI_getHostWlanFeatCaps(IBSS_HEARTBEAT_OFFLOAD)) & (WDA_getFwWlanFeatCaps(IBSS_HEARTBEAT_OFFLOAD)))
 

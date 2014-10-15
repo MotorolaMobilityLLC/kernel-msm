@@ -9119,6 +9119,30 @@ int hdd_wlan_startup(struct device *dev )
 
 #endif //WLAN_BTAMP_FEATURE
 
+   /*
+    * UapsdMask is 0xf if U-APSD is enbaled for all AC's...
+    * The value of CFG_QOS_WMM_UAPSD_MASK_DEFAULT is 0xaa(Magic Value)
+    * which is greater than 0xf. So the below check is safe to make
+    * sure that there is no entry for UapsdMask in the ini
+    */
+   if (CFG_QOS_WMM_UAPSD_MASK_DEFAULT == pHddCtx->cfg_ini->UapsdMask)
+   {
+       if(IS_DYNAMIC_WMM_PS_ENABLED)
+       {
+           hddLog(VOS_TRACE_LEVEL_DEBUG,"%s: Enable UAPSD for VI & VO",
+                     __func__);
+           pHddCtx->cfg_ini->UapsdMask =
+                   CFG_QOS_WMM_UAPSD_MASK_DYMANIC_WMM_PS_DEFAULT;
+       }
+       else
+       {
+           hddLog(VOS_TRACE_LEVEL_DEBUG,"%s: Do not enable UAPSD",
+                     __func__);
+           pHddCtx->cfg_ini->UapsdMask =
+                   CFG_QOS_WMM_UAPSD_MASK_LEGACY_WMM_PS_DEFAULT;
+       }
+   }
+
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
    if(!(IS_ROAM_SCAN_OFFLOAD_FEATURE_ENABLE))
    {
