@@ -518,6 +518,8 @@ qpnp_chg_vbatdet_set(struct qpnp_chg_chip *chip, int vbatdet_mv);
 static void
 qpnp_chg_weak_check(struct qpnp_chg_chip *chip);
 
+static const char *qpnp_charger_mmi_battid(void);
+
 static inline int
 get_bpd(const char *name)
 {
@@ -4995,7 +4997,8 @@ qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 		batt_data.iterm_ua = -1;
 		batt_data.max_current_ma = -1;
 		rc = of_batterydata_read_data(node,
-				&batt_data, result.physical);
+					      &batt_data, result.physical,
+					      qpnp_charger_mmi_battid());
 		if (rc) {
 			pr_err("battery not found, using palladium 1500\n");
 			kfree(chip->pc_temp_ocv_lut);
@@ -5512,21 +5515,26 @@ static bool __devinit qpnp_charger_mmi_factory(void)
 	return factory;
 }
 
-static void __devinit qpnp_charger_mmi_battid(void)
+static const char *qpnp_charger_mmi_battid(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
 	const char *battid_buf;
 	int retval;
-	pr_err("Reading Battid at powerup!\n");
+	pr_err("Charger Reading Battid at powerup!\n");
 	if (np)
-		retval = of_property_read_string(np, "mmi,battid", &battid_buf);
+		retval = of_property_read_string(np, "mmi,battid",
+						 &battid_buf);
 
-	if ((retval == -EINVAL) || !battid_buf)
+	if ((retval == -EINVAL) || !battid_buf) {
 		pr_err("Battid unused\n");
-	else
+		of_node_put(np);
+		return NULL;
+	} else
 		pr_err("Battid = %s\n", battid_buf);
 
 	of_node_put(np);
+
+	return battid_buf;
 }
 
 static int __devinit
@@ -5570,7 +5578,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	chip->maint_chrg = false;
 	chip->float_timer_start = false;
 	chip->bat_hotspot_thrs = 50000;
-	qpnp_charger_mmi_battid();
+
 	chip->usb_psy = power_supply_get_by_name("usb");
 	if (!chip->usb_psy) {
 		pr_err("usb supply not found deferring probe\n");
