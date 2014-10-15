@@ -87,6 +87,7 @@ header-y += cn_proc.h
 header-y += coda.h
 header-y += coda_psdev.h
 header-y += coff.h
+header-y += compat.h
 header-y += connector.h
 header-y += const.h
 header-y += coresight-stm.h
