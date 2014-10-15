@@ -282,8 +282,6 @@ int arizona_init_gpio(struct snd_soc_codec *codec)
 	struct arizona *arizona = priv->arizona;
 	int i;
 
-	mutex_lock(&codec->card->dapm_mutex);
-
 	switch (arizona->type) {
 	case WM8280:
 	case WM5110:
@@ -309,8 +307,6 @@ int arizona_init_gpio(struct snd_soc_codec *codec)
 			break;
 		}
 	}
-
-	mutex_unlock(&codec->card->dapm_mutex);
 
 	return 0;
 }
@@ -2521,19 +2517,12 @@ EXPORT_SYMBOL_GPL(arizona_simple_dai_ops);
 static int arizona_slim_startup(struct snd_pcm_substream *substream,
 				struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec *codec = dai->codec;
-	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
-
-	return pm_runtime_get_sync(priv->arizona->dev->parent);
+	return 0;
 }
 
 static void arizona_slim_shutdown(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec *codec = dai->codec;
-	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
-
-	pm_runtime_put_autosuspend(priv->arizona->dev->parent);
 }
 
 const struct snd_soc_dai_ops arizona_slim_dai_ops = {
