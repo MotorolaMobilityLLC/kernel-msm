@@ -687,6 +687,7 @@
 	qcom,step-charge-current = <1500>;
 	qcom,float-charge-timer = <1800>;
 	qcom,ir-comp = <1>;
+	qcom,battery-model-sysfs = <1>;
 
 	qcom,chgr@1000 {
 		status = "ok";
