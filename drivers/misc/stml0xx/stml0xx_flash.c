@@ -585,5 +585,8 @@ const struct file_operations stml0xx_misc_fops = {
 	.owner = THIS_MODULE,
 	.open = stml0xx_misc_open,
 	.unlocked_ioctl = stml0xx_misc_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = stml0xx_misc_ioctl,
+#endif
 	.write = stml0xx_misc_write,
 };
