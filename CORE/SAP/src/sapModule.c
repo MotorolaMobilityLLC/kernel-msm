@@ -1364,17 +1364,17 @@ WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
     }
     switch(operatingBand)
     {
-       case RF_SUBBAND_2_4_GHZ:
+       case eSAP_RF_SUBBAND_2_4_GHZ:
           bandStartChannel = RF_CHAN_1;
           bandEndChannel = RF_CHAN_14;
           break;
 
-       case RF_SUBBAND_5_LOW_GHZ:
+       case eSAP_RF_SUBBAND_5_LOW_GHZ:
           bandStartChannel = RF_CHAN_36;
           bandEndChannel = RF_CHAN_64;
           break;
 
-       case RF_SUBBAND_5_MID_GHZ:
+       case eSAP_RF_SUBBAND_5_MID_GHZ:
           bandStartChannel = RF_CHAN_100;
 #ifndef FEATURE_WLAN_CH144
           bandEndChannel = RF_CHAN_140;
@@ -1383,8 +1383,13 @@ WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
 #endif /* FEATURE_WLAN_CH144 */
           break;
 
-       case RF_SUBBAND_5_HIGH_GHZ:
+       case eSAP_RF_SUBBAND_5_HIGH_GHZ:
           bandStartChannel = RF_CHAN_149;
+          bandEndChannel = RF_CHAN_165;
+          break;
+
+       case eSAP_RF_SUBBAND_5_ALL_GHZ:
+          bandStartChannel = RF_CHAN_36;
           bandEndChannel = RF_CHAN_165;
           break;
 
