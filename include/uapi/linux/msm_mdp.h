@@ -1167,8 +1167,8 @@ struct msmfb_mixer_info_req {
 struct msmfb_reg_access {
 	uint8_t address;
 	uint8_t use_hs_mode;
-	size_t buffer_size;
-	void __user *buffer;
+	uint32_t buffer_size;
+	uint8_t __user *buffer;
 };
 
 enum {
