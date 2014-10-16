@@ -19,6 +19,7 @@ static int esdfs_create(struct inode *dir, struct dentry *dentry,
 	struct dentry *lower_dentry;
 	struct dentry *lower_parent_dentry = NULL;
 	struct path lower_path;
+	struct inode *lower_inode;
 	int mask;
 	const struct cred *creds;
 
@@ -40,8 +41,8 @@ static int esdfs_create(struct inode *dir, struct dentry *dentry,
 
 	esdfs_set_lower_mode(ESDFS_SB(dir->i_sb), &mode);
 
-	err = vfs_create(lower_parent_dentry->d_inode, lower_dentry, mode,
-			 want_excl);
+	lower_inode = esdfs_lower_inode(dir);
+	err = vfs_create(lower_inode, lower_dentry, mode, want_excl);
 	if (err)
 		goto out;
 
@@ -278,11 +279,15 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 	struct inode *lower_inode;
 	struct path lower_path;
 	struct iattr lower_ia;
+	const struct cred *creds =
+		esdfs_override_creds(ESDFS_SB(dentry->d_inode->i_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	/* We don't allow chmod or chown, so skip those */
 	ia->ia_valid &= ~(ATTR_UID | ATTR_GID | ATTR_MODE);
 	if (!ia->ia_valid)
-		return 0;
+		goto out_err;
 
 	inode = dentry->d_inode;
 
@@ -349,6 +354,7 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 out:
 	esdfs_put_lower_path(dentry, &lower_path);
 out_err:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -360,6 +366,10 @@ static int esdfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
 	struct kstat lower_stat;
 	struct inode *lower_inode;
 	struct inode *inode = dentry->d_inode;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(inode->i_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 
@@ -377,6 +387,7 @@ static int esdfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
 
 out:
 	esdfs_put_lower_path(dentry, &lower_path);
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
