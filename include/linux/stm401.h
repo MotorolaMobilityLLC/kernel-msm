@@ -174,6 +174,7 @@
 #define M_CAMERA_ACT		0x000800
 #define M_NFC			0x001000
 #define M_SIM			0x002000
+#define M_CHOPCHOP		0x004000
 #define M_LOG_MSG		0x008000
 
 #define M_IR_WAKE_GESTURE	0x200000
@@ -253,6 +254,7 @@ enum STM401_data_types {
 	DT_STEP_DETECTOR,
 	DT_UNCALIB_GYRO,
 	DT_UNCALIB_MAG,
+	DT_CHOPCHOP,
 };
 
 enum {
@@ -375,6 +377,7 @@ struct stm_response {
 #define CAMERA                          0x4C
 #define NFC                             0x4D
 #define SIM                             0x4E
+#define CHOPCHOP                        0x4F
 
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
@@ -513,6 +516,7 @@ struct stm_response {
 #define STEP64_DATA	6
 #define SIM_DATA	0
 #define STEP_DETECT	0
+#define CHOPCHOP_DATA   0
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
