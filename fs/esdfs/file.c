@@ -18,6 +18,10 @@ static ssize_t esdfs_read(struct file *file, char __user *buf,
 	int err;
 	struct file *lower_file;
 	struct dentry *dentry = file->f_path.dentry;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(dentry->d_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	lower_file = esdfs_lower_file(file);
 	err = vfs_read(lower_file, buf, count, ppos);
@@ -26,6 +30,7 @@ static ssize_t esdfs_read(struct file *file, char __user *buf,
 		fsstack_copy_attr_atime(dentry->d_inode,
 					lower_file->f_path.dentry->d_inode);
 
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -35,6 +40,10 @@ static ssize_t esdfs_write(struct file *file, const char __user *buf,
 	int err = 0;
 	struct file *lower_file;
 	struct dentry *dentry = file->f_path.dentry;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(dentry->d_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	lower_file = esdfs_lower_file(file);
 	err = vfs_write(lower_file, buf, count, ppos);
@@ -46,6 +55,7 @@ static ssize_t esdfs_write(struct file *file, const char __user *buf,
 				lower_file->f_path.dentry->d_inode);
 	}
 
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -54,6 +64,10 @@ static int esdfs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	int err = 0;
 	struct file *lower_file = NULL;
 	struct dentry *dentry = file->f_path.dentry;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(dentry->d_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	lower_file = esdfs_lower_file(file);
 	err = vfs_readdir(lower_file, filldir, dirent);
@@ -61,6 +75,7 @@ static int esdfs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	if (err >= 0)		/* copy the atime */
 		fsstack_copy_attr_atime(dentry->d_inode,
 					lower_file->f_path.dentry->d_inode);
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -169,6 +184,10 @@ static int esdfs_open(struct inode *inode, struct file *file)
 	int err = 0;
 	struct file *lower_file = NULL;
 	struct path lower_path;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(inode->i_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	/* don't open unhashed/deleted files */
 	if (d_unhashed(file->f_path.dentry)) {
@@ -203,6 +222,7 @@ static int esdfs_open(struct inode *inode, struct file *file)
 	else
 		esdfs_copy_attr(inode, esdfs_lower_inode(inode));
 out_err:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -240,6 +260,10 @@ static int esdfs_fsync(struct file *file, loff_t start, loff_t end,
 	struct file *lower_file;
 	struct path lower_path;
 	struct dentry *dentry = file->f_path.dentry;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(dentry->d_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	err = generic_file_fsync(file, start, end, datasync);
 	if (err)
@@ -249,6 +273,7 @@ static int esdfs_fsync(struct file *file, loff_t start, loff_t end,
 	err = vfs_fsync_range(lower_file, start, end, datasync);
 	esdfs_put_lower_path(dentry, &lower_path);
 out:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
