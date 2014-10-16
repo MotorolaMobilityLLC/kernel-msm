@@ -69,6 +69,22 @@ module_param(pbl_mba_boot_timeout_ms, int, S_IRUGO | S_IWUSR);
 static int modem_auth_timeout_ms = 10000;
 module_param(modem_auth_timeout_ms, int, S_IRUGO | S_IWUSR);
 
+static void modem_log_rmb_regs(void __iomem *base)
+{
+	pr_err("RMB_MBA_IMAGE: %08x\n", readl_relaxed(base + RMB_MBA_IMAGE));
+	pr_err("RMB_PBL_STATUS: %08x\n", readl_relaxed(base + RMB_PBL_STATUS));
+	pr_err("RMB_MBA_COMMAND: %08x\n",
+				readl_relaxed(base + RMB_MBA_COMMAND));
+	pr_err("RMB_MBA_STATUS: %08x\n", readl_relaxed(base + RMB_MBA_STATUS));
+	pr_err("RMB_PMI_META_DATA: %08x\n",
+				readl_relaxed(base + RMB_PMI_META_DATA));
+	pr_err("RMB_PMI_CODE_START: %08x\n",
+				readl_relaxed(base + RMB_PMI_CODE_START));
+	pr_err("RMB_PMI_CODE_LENGTH: %08x\n",
+				readl_relaxed(base + RMB_PMI_CODE_LENGTH));
+
+}
+
 static int pil_mss_power_up(struct q6v5_data *drv)
 {
 	int ret = 0;
@@ -186,6 +202,13 @@ int pil_mss_shutdown(struct pil_desc *pil)
 			drv->axi_halt_base + MSS_NC_HALT_BASE);
 	}
 
+	if (drv->axi_halt_q6)
+		pil_q6v5_halt_axi_port(pil, drv->axi_halt_q6);
+	if (drv->axi_halt_mss)
+		pil_q6v5_halt_axi_port(pil, drv->axi_halt_mss);
+	if (drv->axi_halt_nc)
+		pil_q6v5_halt_axi_port(pil, drv->axi_halt_nc);
+
 	if (drv->restart_reg)
 		writel_relaxed(1, drv->restart_reg);
 
@@ -292,11 +315,13 @@ static int pil_mss_reset(struct pil_desc *pil)
 			goto err_q6v5_reset;
 	}
 
+	pr_info("pil: MBA boot done\n");
 	drv->is_booted = true;
 
 	return 0;
 
 err_q6v5_reset:
+	modem_log_rmb_regs(drv->rmb_base);
 	pil_mss_disable_clks(drv);
 err_clks:
 	if (drv->restart_reg)
@@ -310,6 +335,7 @@ err_power:
 int pil_mss_reset_load_mba(struct pil_desc *pil)
 {
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
+	struct modem_data *md = dev_get_drvdata(pil->dev);
 	const struct firmware *fw;
 	char fw_name_legacy[10] = "mba.b00";
 	char fw_name[10] = "mba.mbn";
@@ -328,7 +354,9 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 		return ret;
 	}
 
-	mba_virt = dma_alloc_coherent(pil->dev, MBA_SIZE, &mba_phys,
+	md->mba_mem_dev.coherent_dma_mask =
+		DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
+	mba_virt = dma_alloc_coherent(&md->mba_mem_dev, MBA_SIZE, &mba_phys,
 					GFP_KERNEL);
 	if (!mba_virt) {
 		dev_err(pil->dev, "MBA metadata buffer allocation failed\n");
@@ -356,7 +384,8 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	return 0;
 
 err_mss_reset:
-	dma_free_coherent(pil->dev, MBA_SIZE, drv->mba_virt, drv->mba_phys);
+	dma_free_coherent(&md->mba_mem_dev, MBA_SIZE, drv->mba_virt,
+				drv->mba_phys);
 err_dma_alloc:
 	release_firmware(fw);
 	return ret;
@@ -371,8 +400,10 @@ static int pil_msa_auth_modem_mdt(struct pil_desc *pil, const u8 *metadata,
 	s32 status;
 	int ret;
 
+	drv->mba_mem_dev.coherent_dma_mask =
+		DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
 	/* Make metadata physically contiguous and 4K aligned. */
-	mdata_virt = dma_alloc_coherent(pil->dev, size, &mdata_phys,
+	mdata_virt = dma_alloc_coherent(&drv->mba_mem_dev, size, &mdata_phys,
 					GFP_KERNEL);
 	if (!mdata_virt) {
 		dev_err(pil->dev, "MBA metadata buffer allocation failed\n");
@@ -399,7 +430,13 @@ static int pil_msa_auth_modem_mdt(struct pil_desc *pil, const u8 *metadata,
 		ret = -EINVAL;
 	}
 
-	dma_free_coherent(pil->dev, size, mdata_virt, mdata_phys);
+	dma_free_coherent(&drv->mba_mem_dev, size, mdata_virt, mdata_phys);
+
+	if (ret) {
+		modem_log_rmb_regs(drv->rmb_base);
+		if (drv->q6)
+			pil_mss_shutdown(pil);
+	}
 	return ret;
 }
 
@@ -434,6 +471,7 @@ static int pil_msa_mba_verify_blob(struct pil_desc *pil, phys_addr_t phy_addr,
 	status = readl_relaxed(drv->rmb_base + RMB_MBA_STATUS);
 	if (status < 0) {
 		dev_err(pil->dev, "MBA returned error %d\n", status);
+		modem_log_rmb_regs(drv->rmb_base);
 		return -EINVAL;
 	}
 
@@ -459,8 +497,10 @@ static int pil_msa_mba_auth(struct pil_desc *pil)
 
 	if (drv->q6 && drv->q6->mba_virt)
 		/* Reclaim MBA memory. */
-		dma_free_coherent(pil->dev, MBA_SIZE, drv->q6->mba_virt,
-							drv->q6->mba_phys);
+		dma_free_coherent(&drv->mba_mem_dev, MBA_SIZE,
+					drv->q6->mba_virt, drv->q6->mba_phys);
+	if (ret)
+		modem_log_rmb_regs(drv->rmb_base);
 	return ret;
 }
 
@@ -486,6 +526,7 @@ struct pil_reset_ops pil_msa_mss_ops_selfauth = {
 	.proxy_unvote = pil_mss_remove_proxy_votes,
 	.verify_blob = pil_msa_mba_verify_blob,
 	.auth_and_reset = pil_msa_mba_auth,
+	.deinit_image = pil_mss_shutdown,
 	.shutdown = pil_mss_shutdown,
 };
 

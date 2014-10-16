@@ -16,6 +16,7 @@
 #include "msm8226-memory.dtsi"
 #include "msm8226-qseecom.dtsi"
 #include "msm8226-1080p-mtp.dtsi"
+#include "msm8x26w-gpu.dts"
 
 / {
 	model = "Qualcomm APQ 8026v2 MTP";

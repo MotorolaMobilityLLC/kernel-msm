@@ -2454,12 +2454,10 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 	if (!mfd)
 		return -EINVAL;
 
-	atomic_inc(&mfd->ioctl_ref_cnt);
-	if (mfd->shutdown_pending) {
-		ret = -EPERM;
-		goto exit;
-	}
+	if (mfd->shutdown_pending)
+		return -EPERM;
 
+	atomic_inc(&mfd->ioctl_ref_cnt);
 
 	mdss_fb_power_setting_idle(mfd);
 
