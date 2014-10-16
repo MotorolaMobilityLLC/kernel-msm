@@ -1,0 +1,49 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+maxim,ft40-sony-batterydata {
+	/* Required properties */
+	serialnum	= "SNN5956";
+
+	/* Table from Maxim for FT40 Sony 2403 mAhr Battery */
+	config		= /bits/ 16 <0x0254>;
+	full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
+	design_cap	= /bits/ 16 <4806>;	/* mAh times 2 */
+	ichgt_term	= /bits/ 16 <0x0280>;	/* battery attribute */
+	learn_cfg	= /bits/ 16 <0x2606>;	/* app note constant */
+	filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
+	relax_cfg	= /bits/ 16 <0x203B>;
+	fullcap		= /bits/ 16 <4806>;	/* mAh times 2 */
+	fullcapnom	= /bits/ 16 <4806>;	/* mAh times 2 */
+	qrtbl00		= /bits/ 16 <0x2A81>;	/* battery attribute */
+	qrtbl10		= /bits/ 16 <0x1500>;	/* battery attribute */
+	qrtbl20		= /bits/ 16 <0x0A03>;	/* battery attribute */
+	qrtbl30		= /bits/ 16 <0x0904>;	/* battery attribute */
+	rcomp0 		= /bits/ 16 <0x007A>;	/* battery attribute */
+	tcompc0		= /bits/ 16 <0x3141>;	/* battery attribute */
+	maxim,cell-char-tbl = /bits/ 16 <	/* battery attribute */
+		0x95c0 0xb660 0xb880 0xbae0 0xbc00 0xbd30
+		0xbdf0 0xbed0 0xc0a0 0xc170 0xc2f0 0xc790
+		0xcbc0 0xced0 0xd1e0 0xd7c0 0x00b0 0x0f00
+		0x0db0 0x1410 0x1810 0x1570 0x1700 0x12b0
+		0x0af0 0x0de0 0x08b0 0x0970 0x0740 0x06f0
+		0x06b0 0x06b0 0x0100 0x0100 0x0100 0x0100
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+	>;
+	/* Optional properties */
+	tgain		= /bits/ 16 <0xE71C>;	/* thermistor attribute */
+	toff		= /bits/ 16 <0x251A>;	/* thermistor attribute */
+	cgain		= /bits/ 16 <0x4000>;	/* current sense attribute */
+	misc_cfg	= /bits/ 16 <0x0170>;
+	rev		= /bits/ 16 <0x0002>;
+};
