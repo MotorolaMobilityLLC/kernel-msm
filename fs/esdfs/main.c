@@ -13,6 +13,7 @@
 #include "esdfs.h"
 #include <linux/module.h>
 #include <linux/parser.h>
+#include <linux/security.h>
 
 /*
  * Derived from first generation "ANDROID_EMU" glue in modifed F2FS driver.
@@ -256,7 +257,11 @@ static int esdfs_read_super(struct super_block *sb, const char *dev_name,
 
 	/* set the lower dentries for s_root */
 	esdfs_set_lower_path(sb->s_root, &lower_path);
-
+#ifdef CONFIG_SECURITY_SELINUX
+	security_secctx_to_secid(ESDFS_LOWER_SECCTX,
+				 strlen(ESDFS_LOWER_SECCTX),
+				 &sbi->lower_secid);
+#endif
 	/*
 	 * No need to call interpose because we already have a positive
 	 * dentry, which was instantiated by d_make_root.  Just need to
