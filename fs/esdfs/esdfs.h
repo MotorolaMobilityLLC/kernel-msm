@@ -154,6 +154,7 @@ struct esdfs_dentry_info {
 /* esdfs super-block data in memory */
 struct esdfs_sb_info {
 	struct super_block *lower_sb;
+	u32 lower_secid;
 	struct esdfs_perms lower_perms;
 	struct esdfs_perms upper_perms;	/* root in derived mode */
 	struct dentry *obb_parent;	/* pinned dentry for obb link parent */
@@ -419,6 +420,37 @@ static inline void esdfs_copy_attr(struct inode *dest, const struct inode *src)
 	esdfs_set_perms(dest);
 }
 
+#ifdef CONFIG_SECURITY_SELINUX
+/*
+ * Hard-code the lower source context to prevent anyone with mount permissions
+ * from doing something nasty.
+ */
+#define ESDFS_LOWER_SECCTX "u:r:sdcardd:s0"
+
+/*
+ * Hack to be able to poke at the SID.  The Linux Security API does not provide
+ * a way to change just the SID in the creds (probably on purpose).
+ */
+struct task_security_struct {
+	u32 osid;		/* SID prior to last execve */
+	u32 sid;		/* current SID */
+	u32 exec_sid;		/* exec SID */
+	u32 create_sid;		/* fscreate SID */
+	u32 keycreate_sid;	/* keycreate SID */
+	u32 sockcreate_sid;	/* fscreate SID */
+};
+static inline void esdfs_override_secid(struct esdfs_sb_info *sbi,
+					struct cred *creds)
+{
+	struct task_security_struct *tsec = creds->security;
+
+	if (sbi->lower_secid)
+		tsec->sid = sbi->lower_secid;
+}
+#else
+static inline void esdfs_override_secid(struct esdfs_sb_info *sbi,
+					struct cred *creds) {}
+#endif
 /*
  * Based on nfs4_save_creds() and nfs4_reset_creds() in nfsd/nfs4recover.c.
  * Returns NULL if prepare_creds() could not allocate heap, otherwise
@@ -439,6 +471,7 @@ static inline const struct cred *esdfs_override_creds(
 
 	creds->fsuid = make_kuid(&init_user_ns, sbi->lower_perms.uid);
 	creds->fsgid = make_kgid(&init_user_ns, sbi->lower_perms.gid);
+	esdfs_override_secid(sbi, creds);
 
 	/* this installs the new creds into current, which we must destroy */
 	return override_creds(creds);
