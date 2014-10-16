@@ -34,6 +34,13 @@
 		qca,bt-reset-gpio = <&msmgpio 26 0>; /* BT_ENABLE */
 	};
 
+	wifi_bcm4343 {
+		compatible = "bcm,bcm4343";
+		wl_reg_on = <&msmgpio 28 0>;
+		wl_host_wake = <&msmgpio 29 0>;
+		status = "disabled";
+	};
+
 	m4sensor {
 		compatible = "simple-bus";
 
@@ -246,7 +253,7 @@
 		qcom,pin-func = <0>;
 		label = "sdhc3-wake";
 		sdhc3_wake: default {
-			bias-pull-up;
+			bias-pull-down;
 			drive-strength = <2>;
 		};
 	};
@@ -271,8 +278,10 @@
 	pinctrl-1 = <&sdhc3_off &sdhc3_wake>;
 
 	interrupt-map = <0 &intc 0 127 0
-			 1 &intc 0 224 0
-			 2 &msmgpio 29 0x8>;
+			 1 &intc 0 224 0>;
+	interrupt-names = "hc_irq", "pwr_irq";
+
+	qcom,nonremovable;
 
 	status = "ok";
 };
