@@ -1032,7 +1032,6 @@ static struct mdss_mdp_ctl *mdss_mdp_ctl_alloc(struct mdss_data_type *mdata,
 			mutex_init(&ctl->lock);
 			spin_lock_init(&ctl->spin_lock);
 			BLOCKING_INIT_NOTIFIER_HEAD(&ctl->notifier_head);
-			INIT_LIST_HEAD(&ctl->saved_vsync_handlers);
 			pr_debug("alloc ctl_num=%d\n", ctl->num);
 			break;
 		}
@@ -1736,7 +1735,12 @@ int mdss_mdp_ctl_intf_event(struct mdss_mdp_ctl *ctl, int event, void *arg)
 
 int mdss_mdp_ctl_off_pan_on(struct mdss_mdp_ctl *ctl)
 {
-	return ctl->off_pan_on(ctl);
+	if (ctl->off_pan_on)
+		return ctl->off_pan_on(ctl);
+	else
+		pr_debug("ctl off with panel on func not defined\n");
+
+	return 0;
 }
 
 /*

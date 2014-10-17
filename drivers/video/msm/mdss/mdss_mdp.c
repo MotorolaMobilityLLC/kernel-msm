@@ -2574,14 +2574,14 @@ int mdss_panel_get_boot_cfg(void)
 	return rc;
 }
 
-int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable)
+static int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable)
 {
 	int rc = 0;
 
 	if (!mdata->vdd_cx)
 		return rc;
 
-	if (enable && !mdata->vdd_cx_en) {
+	if (enable) {
 		rc = regulator_set_voltage(
 				mdata->vdd_cx,
 				RPM_REGULATOR_CORNER_SVS_SOC,
@@ -2595,8 +2595,7 @@ int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable)
 			pr_err("Failed to enable regulator.\n");
 			return rc;
 		}
-		mdata->vdd_cx_en = true;
-	} else if (!enable && mdata->vdd_cx_en) {
+	} else {
 		pr_debug("Disabling CX power rail\n");
 		rc = regulator_disable(mdata->vdd_cx);
 		if (rc) {
@@ -2609,7 +2608,6 @@ int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable)
 				RPM_REGULATOR_CORNER_SUPER_TURBO);
 		if (rc < 0)
 			goto vreg_set_voltage_fail;
-		mdata->vdd_cx_en = false;
 	}
 
 	return rc;
@@ -2677,6 +2675,7 @@ void mdss_mdp_footswitch_ctrl_ulps(int on, struct device *dev)
 		mdata->ulps = true;
 		pm_runtime_put_sync(dev);
 	}
+
 	mutex_unlock(&mdp_fs_ulps_lock);
 }
 

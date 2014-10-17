@@ -52,12 +52,7 @@
 #include <linux/msm_iommu_domains.h>
 #include <mach/msm_memtypes.h>
 
-#include "mdss_dsi.h"
 #include "mdss_fb.h"
-
-#ifdef CONFIG_LGE_HANDLE_PANIC
-#include <mach/lge_handle_panic.h>
-#endif
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
@@ -404,38 +399,6 @@ static ssize_t mdss_fb_get_panel_info(struct device *dev,
 	return ret;
 }
 
-static ssize_t mdss_fb_set_idle_mode(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	struct mdss_panel_data *pdata;
-	int rc = 0;
-	int idle_mode = 0;
-
-	if (mfd->shutdown_pending) {
-		pr_err("Shutdown pending. Aborting operation\n");
-		return -EPERM;
-	}
-
-	pdata = dev_get_platdata(&mfd->pdev->dev);
-
-	rc = kstrtoint(buf, 10, &idle_mode);
-	if (rc) {
-		pr_err("kstrtoint failed. rc=%d\n", rc);
-		return rc;
-	}
-
-	pr_debug("Idle mode = %d\n", idle_mode);
-
-	if (mfd->index == 0) {
-		if (pdata && pdata->set_idle)
-			pdata->set_idle(pdata, idle_mode);
-	}
-
-	return count;
-}
-
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO, mdss_fb_get_split, NULL);
 static DEVICE_ATTR(show_blank_event, S_IRUGO, mdss_mdp_show_blank_event, NULL);
@@ -443,7 +406,6 @@ static DEVICE_ATTR(idle_time, S_IRUGO | S_IWUSR | S_IWGRP,
 	mdss_fb_get_idle_time, mdss_fb_set_idle_time);
 static DEVICE_ATTR(idle_notify, S_IRUGO, mdss_fb_get_idle_notify, NULL);
 static DEVICE_ATTR(msm_fb_panel_info, S_IRUGO, mdss_fb_get_panel_info, NULL);
-static DEVICE_ATTR(idle_mode, S_IWUSR, NULL, mdss_fb_set_idle_mode);
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
@@ -452,7 +414,6 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_idle_time.attr,
 	&dev_attr_idle_notify.attr,
 	&dev_attr_msm_fb_panel_info.attr,
-	&dev_attr_idle_mode.attr,
 	NULL,
 };
 
@@ -555,9 +516,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	pm_runtime_enable(mfd->fbi->dev);
 
 	/* android supports only one lcd-backlight/lcd for now */
-	if (!lcd_backlight_registered &&
-			mfd->panel_info->bklt_ctrl != BL_EXTERNAL &&
-			mfd->panel_info->bklt_ctrl != UNKNOWN_CTRL) {
+	if (!lcd_backlight_registered) {
 		backlight_led.brightness = mfd->panel_info->brightness_max;
 		backlight_led.max_brightness = mfd->panel_info->brightness_max;
 		if (led_classdev_register(&pdev->dev, &backlight_led))
@@ -674,7 +633,7 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 	pr_debug("mdss_fb suspend index=%d\n", mfd->index);
 
 #if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
-	if (mfd->index == 0)
+	if ((mfd->index == 0) && (mfd->panel_info->type == MIPI_CMD_PANEL))
 		return mfd->mdp.off_pan_on_fnc(mfd);
 #endif
 	mdss_fb_pan_idle(mfd);
@@ -709,7 +668,7 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 		return 0;
 
 #if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
-	if (mfd->index == 0)
+	if ((mfd->index == 0) && (mfd->panel_info->type == MIPI_CMD_PANEL))
 		return 0;
 #endif
 	INIT_COMPLETION(mfd->power_set_comp);
@@ -1141,13 +1100,6 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 
 	pr_debug("alloc 0x%zxB @ (%pa phys) (0x%p virt) (%pa iova) for fb%d\n",
 		 size, &phys, virt, &mfd->iova, mfd->index);
-
-#ifdef CONFIG_LGE_HANDLE_PANIC
-	/* save fb1 address for lge crash handler display buffer */
-	lge_set_fb1_addr((unsigned int)(phys +
-				(mfd->fbi->fix.line_length *
-				 mfd->fbi->var.yres)));
-#endif
 
 	mfd->fbi->screen_base = virt;
 	mfd->fbi->fix.smem_start = phys;
@@ -2003,7 +1955,7 @@ static int mdss_fb_check_var(struct fb_var_screeninfo *var,
 		break;
 
 	case 32:
-		/* Check user specified color format BGRA/ARGB/ABGR/RGBA
+		/* Check user specified color format BGRA/ARGB/RGBA
 		   and verify the position of the RGB components */
 
 		if (!((var->transp.offset == 24) &&
@@ -2014,10 +1966,6 @@ static int mdss_fb_check_var(struct fb_var_screeninfo *var,
 			(var->blue.offset == 24) &&
 			(var->green.offset == 16) &&
 			(var->red.offset == 8)) &&
-		    !((var->transp.offset == 0) &&
-			(var->blue.offset == 8) &&
-			(var->green.offset == 16) &&
-			(var->red.offset == 24)) &&
 		    !((var->transp.offset == 24) &&
 			(var->blue.offset == 16) &&
 			(var->green.offset == 8) &&
