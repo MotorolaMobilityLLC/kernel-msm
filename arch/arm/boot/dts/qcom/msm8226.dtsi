@@ -1070,7 +1070,7 @@
 		linux,contiguous-region = <&adsp_venus_mem>;
 	};
 
-	qcom,pronto@fb21b000 {
+	pronto_pil: qcom,pronto@fb21b000 {
 		compatible = "qcom,pil-tz-generic";
 		reg = <0xfb21b000 0x3000>;
 		interrupts = <0 149 1>;
