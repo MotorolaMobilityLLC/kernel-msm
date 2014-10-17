@@ -220,6 +220,7 @@ struct mdss_mdp_ctl {
 	struct mdss_mdp_mixer *mixer_left;
 	struct mdss_mdp_mixer *mixer_right;
 	struct mutex lock;
+	struct mutex offlock;
 	struct mutex *shared_lock;
 	spinlock_t spin_lock;
 
