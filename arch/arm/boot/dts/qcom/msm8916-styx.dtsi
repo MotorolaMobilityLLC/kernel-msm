@@ -105,12 +105,14 @@
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <62 0x0>;
 		qcom,fan5404x-vadc = <&pm8916_vadc>;
+		qcom,fan5404x-adc_tm = <&pm8916_adc_tm>;
 		regulator-name = "fan54046_otg_vreg";
 
 		fairchild,bms-psy-name = "max170xx_battery";
 		fairchild,ext-temp-volt-mv = <4000>;
 		fairchild,ext-temp-soc = <65>;
 		fairchild,oreg-voltage-mv = <4350>;
+		fairchild,low-voltage-uv = <3200000>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&fan5404x_int_default>;

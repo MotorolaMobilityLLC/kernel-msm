@@ -943,3 +943,18 @@
 		qcom,fast-avg-setup = <0>;
 	};
 };
+
+&pm8916_adc_tm {
+	chan@6 {
+		label = "vbat_sns";
+		reg = <0x6>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0xb>;
+		qcom,fast-avg-setup = <3>;
+		qcom,meas-interval-timer-idx = <0>;
+		qcom,btm-channel-number = <0x68>;
+	};
+};
