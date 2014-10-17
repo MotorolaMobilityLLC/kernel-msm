@@ -95,6 +95,10 @@
 			39 01 00 00 01 00 02 B0 08
 			/* Turn on memory retention */
 			39 01 00 00 01 00 02 F4 03
+			/* Set index for P3 */
+			39 01 00 00 01 00 02 B0 02
+			/* Set AID threshold */
+			39 01 00 00 01 00 02 B1 16
 			/* viewable region */
 			39 01 00 00 00 00 05 30 00 00 09 ff
 			/* normal col */
@@ -251,6 +255,10 @@
 			39 01 00 00 01 00 02 B0 08
 			/* Turn on memory retention */
 			39 01 00 00 01 00 02 F4 03
+			/* Set index for P3 */
+			39 01 00 00 01 00 02 B0 02
+			/* Set AID threshold */
+			39 01 00 00 01 00 02 B1 16
 			/* viewable region */
 			39 01 00 00 00 00 05 30 00 00 09 ff
 			/* normal col */
