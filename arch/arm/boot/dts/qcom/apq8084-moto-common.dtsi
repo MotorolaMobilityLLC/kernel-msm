@@ -47,6 +47,8 @@
 };
 
 &soc {
+	/delete-node/ qcom,mhi;
+
 	ramoops {
 		compatible = "ramoops";
 		status = "ok";
