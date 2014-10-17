@@ -138,6 +138,7 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 		return;
 	}
 
+	mutex_lock(&ctl->offlock);
 	mutex_lock(&ctrl_pdata->mutex);
 
 	/*
@@ -156,6 +157,7 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 			ctrl_pdata->status_mode == ESD_BTA)
 			mutex_unlock(&mdp5_data->ov_lock);
 		mutex_unlock(&ctrl_pdata->mutex);
+		mutex_unlock(&ctl->offlock);
 		pr_err("%s: DSI turning off, avoiding panel status check\n",
 							__func__);
 		return;
@@ -186,6 +188,7 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 		ctrl_pdata->status_mode == ESD_BTA)
 		mutex_unlock(&mdp5_data->ov_lock);
 	mutex_unlock(&ctrl_pdata->mutex);
+	mutex_unlock(&ctl->offlock);
 
 	if ((pstatus_data->mfd->panel_power_state == MDSS_PANEL_POWER_ON)) {
 		if (ret > 0)
