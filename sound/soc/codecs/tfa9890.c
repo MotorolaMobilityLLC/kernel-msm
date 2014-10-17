@@ -560,7 +560,9 @@ static const struct snd_kcontrol_new tfa9890_left_mixer_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
-	SND_SOC_DAPM_INPUT("I2S1L"),
+/* force the codec to be AIF input so DAPM powers it correctly
+	SND_SOC_DAPM_INPUT("I2S1L"),*/
+	SND_SOC_DAPM_AIF_IN("I2S1L", "I2S1L Playback", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_MIXER("NXP Output Mixer Left", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_left_mixer_controls[0],
 			   ARRAY_SIZE(tfa9890_left_mixer_controls)),
@@ -570,6 +572,7 @@ static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
 static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
 	{"NXP Output Mixer Left", "DSP Bypass Left", "I2S1L"},
 	{"NXP Speaker Boost Left", "Null", "NXP Output Mixer Left"},
+	{"I2S1L", "Null", "I2S1L PLayback"},
 };
 
 static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
@@ -1104,7 +1107,6 @@ static int tfa9890_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
 	u16 val;
-
 	/* set master/slave audio interface */
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBS_CFS:
@@ -1150,7 +1152,8 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 
 	/* validate and set params */
 	if (params_format(params) != SNDRV_PCM_FORMAT_S16_LE) {
-		pr_err("tfa9890: invalid pcm bit lenght\n");
+		pr_err("tfa9890: invalid pcm bit lenght %i\n",
+			params_format(params));
 		return -EINVAL;
 	}
 
@@ -1575,7 +1578,7 @@ static const struct snd_soc_dai_ops tfa9890_ops = {
 static struct snd_soc_dai_driver tfa9890_left_dai = {
 	.name = "tfa9890_codec_left",
 	.playback = {
-		     .stream_name = "Playback",
+		     .stream_name = "I2S1L Playback",
 		     .channels_min = 1,
 		     .channels_max = 2,
 		     .rates = TFA9890_RATES,
