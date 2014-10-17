@@ -27,6 +27,7 @@
 #include <linux/poll.h>
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
+#include <linux/wakelock.h>
 
 #include "inv_mpu_iio.h"
 #include "sysfs.h"
@@ -2814,18 +2815,21 @@ static int inv_mpu_probe(struct i2c_client *client,
 	}
 	INIT_KFIFO(st->timestamps);
 	spin_lock_init(&st->time_stamp_lock);
+	wake_lock_init(&st->smd_wakelock, WAKE_LOCK_SUSPEND, SMD_LOCK_NAME);
 	mutex_init(&st->suspend_resume_lock);
 	result = st->set_power_state(st, false);
 	if (result) {
 		dev_err(&client->adapter->dev,
 			"%s could not be turned off.\n", st->hw->name);
-		goto out_unreg_iio;
+		goto out_remove_wakelock;
 	}
 	inv_init_sensor_struct(st);
 	dev_info(&client->dev, "%s is ready to go!\n",
 					indio_dev->name);
 
 	return 0;
+out_remove_wakelock:
+	wake_lock_destroy(&st->smd_wakelock);
 out_unreg_iio:
 	iio_device_unregister(indio_dev);
 out_remove_trigger:
@@ -2880,6 +2884,7 @@ static int inv_mpu_remove(struct i2c_client *client)
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 
 	kfifo_free(&st->timestamps);
+	wake_lock_destroy(&st->smd_wakelock);
 	iio_device_unregister(indio_dev);
 	if (indio_dev->modes & INDIO_BUFFER_TRIGGERED)
 		inv_mpu_remove_trigger(indio_dev);

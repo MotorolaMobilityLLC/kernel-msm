@@ -26,6 +26,7 @@
 #include <linux/kfifo.h>
 #include <linux/poll.h>
 #include <linux/miscdevice.h>
+#include <linux/wakelock.h>
 
 #include "iio.h"
 #include "kfifo_buf.h"
@@ -1311,6 +1312,7 @@ static int inv_process_dmp_interrupt(struct inv_mpu_state *st)
 	if (r)
 		return r;
 	if (d[0] & DMP_INT_SMD) {
+		wake_lock_timeout(&st->smd_wakelock, SMD_WAKELOCK_HOLD_MS);
 		sysfs_notify(&indio_dev->dev.kobj, NULL, "event_smd");
 		st->chip_config.smd_enable = false;
 		st->chip_config.smd_triggered = true;
