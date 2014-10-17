@@ -196,11 +196,11 @@
 		status = "ok";
 	};
 
-
 	qcom,msm-mem-hole {
-		compatible = "qcom,msm-mem-hole";
-		qcom,memblock-remove = <0x07300000 0x8300000
-					0x0fa00000 0x500000>; /* Address and size of the hole */
+                compatible = "qcom,msm-mem-hole";
+                qcom,memblock-remove = <0x08400000 0x4000000
+                                        0x0d200000 0x2400000
+                                        0x0fa00000 0x500000>; /* Address and Size of Hole */
 	};
 
 	usr_reset_warning {
