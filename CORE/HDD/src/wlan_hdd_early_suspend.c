@@ -2173,6 +2173,14 @@ VOS_STATUS hdd_wlan_re_init(void)
       goto err_vosstop;
    }
 
+   vosStatus = wlan_hdd_init_channels_for_cc(pHddCtx, REINIT);
+   if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
+   {
+      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: wlan_hdd_init_channels_for_cc failed",
+             __func__);
+      goto err_vosstop;
+   }
+
 #ifdef WLAN_BTAMP_FEATURE
    vosStatus = WLANBAP_Open(pVosContext);
    if(!VOS_IS_STATUS_SUCCESS(vosStatus))

@@ -1608,13 +1608,14 @@ eHalStatus sme_InitChannels(tHalHandle hHal);
     \brief Used to issue regulatory hint to user
 
     \param hHal - global pMac structure
+           init - param to initiate channel list on basis of init/Reinit
 
     \return eHalStatus  SUCCESS.
 
                         FAILURE or RESOURCES  The API finished and failed.
 
  -------------------------------------------------------------------------------*/
-eHalStatus sme_InitChannelsForCC(tHalHandle hHal);
+eHalStatus sme_InitChannelsForCC(tHalHandle hHal, driver_load_type init);
 
 /* ---------------------------------------------------------------------------
     \fn sme_ResetCountryCodeInformation

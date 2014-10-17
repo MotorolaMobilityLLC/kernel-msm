@@ -2224,7 +2224,7 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
         {
             startChannelNum = rfChannels[RF_CHAN_36].channelNum;
             endChannelNum = rfChannels[RF_CHAN_165].channelNum;
-            operatingBand = RF_BAND_5_GHZ;
+            operatingBand = eSAP_RF_SUBBAND_5_ALL_GHZ;
         }
      }
 

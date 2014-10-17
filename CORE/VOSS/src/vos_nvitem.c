@@ -64,7 +64,7 @@
 #ifdef CONFIG_ENABLE_LINUX_REG
 
 static v_REGDOMAIN_t cur_reg_domain = REGDOMAIN_COUNT;
-static char linux_reg_cc[2] = {0, 0};
+static  char linux_reg_cc[2] = {0, 0};
 static v_REGDOMAIN_t temp_reg_domain = REGDOMAIN_COUNT;
 
 #else
@@ -3896,6 +3896,18 @@ VOS_STATUS vos_init_wiphy_from_nv_bin(void)
     return VOS_STATUS_SUCCESS;
 }
 
+
+/**------------------------------------------------------------------------
+  \brief vos_getCurrentCountryCode -
+  \param CC  - country code
+  \return None
+  \sa
+  -------------------------------------------------------------------------*/
+
+void vos_getCurrentCountryCode( tANI_U8 *cc)
+{
+    vos_mem_copy(cc, linux_reg_cc, 2);
+}
 
 #else
 

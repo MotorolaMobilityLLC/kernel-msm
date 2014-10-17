@@ -1335,7 +1335,7 @@ eHalStatus csrInitChannels(tpAniSirGlobal pMac);
     \brief This function must be called to issue reg hint
     \return eHalStatus
   -------------------------------------------------------------------------------*/
-eHalStatus csrInitChannelsForCC(tpAniSirGlobal pMac);
+eHalStatus csrInitChannelsForCC(tpAniSirGlobal pMac, driver_load_type init );
 
 /* ---------------------------------------------------------------------------
     \fn csrClose
