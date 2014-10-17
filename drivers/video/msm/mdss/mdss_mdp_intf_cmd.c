@@ -1057,7 +1057,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 panel_events:
 	if ((ctl->num == 0) && send_panel_events) {
 		pr_debug("%s: send panel events\n", __func__);
-
+		mutex_lock(&ctl->offlock);
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK,
                                       (void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
@@ -1065,6 +1065,7 @@ panel_events:
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_OFF,
                                       (void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
+		mutex_unlock(&ctl->offlock);
 	}
 
 	ctx->panel_power_state = panel_power_state;
