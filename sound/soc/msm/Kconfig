@@ -326,6 +326,7 @@ config SND_SOC_MSM8994
 	select DOLBY_DS2
 	select SND_HWDEP
         select DTS_EAGLE
+	select SND_SOC_TFA9890
 	help
 	 To add support for SoC audio on MSM8994.
 	 This will enable sound soc drivers which
