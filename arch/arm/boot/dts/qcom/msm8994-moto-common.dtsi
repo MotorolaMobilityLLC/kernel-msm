@@ -324,8 +324,8 @@
 	};
 
 	pmx_stm401_out {
-		qcom,pins = <&gp 57 &gp 78 &gp 89>;
-		qcom,num-grp-pins = <3>;
+		qcom,pins = <&gp 78 &gp 89>;
+		qcom,num-grp-pins = <2>;
 		qcom,pin-func = <0>;
 		label = "stm401_out";
 		stm401_out_default: default {
@@ -680,7 +680,7 @@
 			compatible = "stm,stm401";
 			reg = <0x39>;
 			gpios = <&msm_gpio 127 0>,      /* IRQ          */
-				<&msm_gpio 57 0>,       /* RESET        */
+				<&pm8994_mpps 5 0>,     /* RESET        */
 				<&msm_gpio 78 0>,       /* BSLEN        */
 				<&msm_gpio 65 0>,       /* WakeIRQ      */
 				<&msm_gpio 89 0>,       /* SH Wake      */
@@ -965,6 +965,10 @@
 	};
 
 	mpp@a400 { /* MPP 5 */
+		qcom,mode = <1>;		/* Digital Output */
+		qcom,vin-sel = <2>;		/* S4 1.8V */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
 	mpp@a500 { /* MPP 6 - CCP_RESOUT_N */
@@ -1259,4 +1263,8 @@
 			status = "disabled";
 		};
 	};
+};
+
+&pm8994_lvs2 {
+	regulator-always-on;
 };
