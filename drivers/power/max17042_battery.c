@@ -1286,11 +1286,41 @@ static void max17042_cfg_optnl_prop(struct device_node *np,
 	config_data->revision &= MAX17050_CFG_REV_MASK;
 }
 
+static const char *max17042_get_mmi_battid(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *battsn_buf;
+	int retval;
+
+	battsn_buf = NULL;
+
+	if (np)
+		retval = of_property_read_string(np, "mmi,battid",
+						 &battsn_buf);
+	else
+		return NULL;
+
+	if ((retval == -EINVAL) || !battsn_buf) {
+		pr_err("Battsn unused\n");
+		of_node_put(np);
+		return NULL;
+
+	} else
+		pr_err("Battsn = %s\n", battsn_buf);
+
+	of_node_put(np);
+
+	return battsn_buf;
+}
+
 static struct max17042_config_data *
 max17042_get_config_data(struct device *dev)
 {
 	struct max17042_config_data *config_data;
 	struct device_node *np = dev->of_node;
+	struct device_node *node, *df_node, *sn_node;
+	const char *sn_buf, *df_sn, *dev_sn;
+	int rc;
 
 	if (!np)
 		return NULL;
@@ -1298,6 +1328,49 @@ max17042_get_config_data(struct device *dev)
 	np = of_get_child_by_name(np, CONFIG_NODE);
 	if (!np)
 		return NULL;
+
+	dev_sn = NULL;
+	df_sn = NULL;
+	sn_buf = NULL;
+	df_node = NULL;
+	sn_node = NULL;
+
+	dev_sn = max17042_get_mmi_battid();
+
+	rc = of_property_read_string(np, "df-serialnum",
+				     &df_sn);
+	if (rc)
+		dev_warn(dev, "No Default Serial Number defined");
+	else if (df_sn)
+		dev_warn(dev, "Default Serial Number %s", df_sn);
+
+	for_each_child_of_node(np, node) {
+		rc = of_property_read_string(node, "serialnum",
+					     &sn_buf);
+		if (!rc && sn_buf) {
+			if (dev_sn)
+				if (strnstr(dev_sn, sn_buf, 32))
+					sn_node = node;
+			if (df_sn)
+				if (strnstr(df_sn, sn_buf, 32))
+					df_node = node;
+		}
+	}
+
+	if (sn_node) {
+		np = sn_node;
+		df_node = NULL;
+		dev_warn(dev, "Battery Match Found using %s",
+			 sn_node->name);
+	} else if (df_node) {
+		np = df_node;
+		sn_node = NULL;
+		dev_warn(dev, "Battery Match Found using default %s",
+			 df_node->name);
+	} else {
+		dev_warn(dev, "No Battery Match Found!");
+		return NULL;
+	}
 
 	config_data = devm_kzalloc(dev, sizeof(*config_data), GFP_KERNEL);
 	if (!config_data)
@@ -1309,6 +1382,9 @@ max17042_get_config_data(struct device *dev)
 	}
 
 	max17042_cfg_optnl_prop(np, config_data);
+
+	if (np == df_node)
+		config_data->revision = 1;
 
 	dev_warn(dev, "Config Revision = %d", config_data->revision);
 
