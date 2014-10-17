@@ -11,6 +11,7 @@
 */
 
 #include "msm8916-moto-common.dtsi"
+#include "dsi-panel-mot-inx-500-720p-video.dtsi"
 
 / {
 	model = "Motorola Mobility MSM 8916 Osprey";
@@ -64,8 +65,8 @@
 		regulators {
 			tps65132_pos: pos-boost {
 				regulator-name = "tps65132-pos";
-				regulator-min-microvolt = <5400000>;
-				regulator-max-microvolt = <5600000>;
+				regulator-min-microvolt = <5500000>;
+				regulator-max-microvolt = <5500000>;
 				ti,discharge-enable;
 				ti,enable-time = <800>;
 				ti,current-limit = <200000>;
@@ -74,8 +75,8 @@
 
 			tps65132_neg: neg-boost {
 				regulator-name = "tps65132-neg";
-				regulator-min-microvolt = <5400000>;
-				regulator-max-microvolt = <5600000>;
+				regulator-min-microvolt = <5500000>;
+				regulator-max-microvolt = <5500000>;
 				ti,discharge-enable;
 				ti,enable-time = <800>;
 				ti,current-limit = <40000>;
@@ -180,4 +181,63 @@
 		<&msm_gpio 4 0>,         /* SPI Ready for Receive */
 		<&msm_gpio 38 0>,        /* SPI Data Ack */
 		<&msm_gpio 116 0>;       /* Wake Up Sensor Hub */
+};
+
+&pm8916_l6 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&tps65132_pos {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&tps65132_neg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_inx_500_720p_vid_v0>;
+	vddio_disp-supply = <&pm8916_l6>;
+	vsp_disp-supply = <&tps65132_pos>;
+	vsn_disp-supply = <&tps65132_neg>;
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,panel-supply-entry@0 {
+			qcom,supply-name = "vddio_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <2>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+                qcom,panel-supply-entry@1 {
+			qcom,supply-name = "vsp_disp";
+			qcom,supply-min-voltage = <5500000>;
+			qcom,supply-max-voltage = <5500000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <2>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@2 {
+			qcom,supply-name = "vsn_disp";
+			qcom,supply-min-voltage = <5500000>;
+			qcom,supply-max-voltage = <5500000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <10>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+	};
 };
