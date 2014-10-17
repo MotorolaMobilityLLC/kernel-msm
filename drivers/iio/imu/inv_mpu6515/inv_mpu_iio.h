@@ -19,6 +19,7 @@
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
 #include <linux/mpu.h>
+#include <linux/wakelock.h>
 
 #include "iio.h"
 #include "buffer.h"
@@ -361,6 +362,9 @@
 #define INV_GYRO_ACC_MASK                 0x007E
 #define INV_ACCEL_MASK                    0x70
 #define INV_GYRO_MASK                     0xE
+
+#define SMD_WAKELOCK_HOLD_MS              (HZ / 2)
+#define SMD_LOCK_NAME                     "SMD_Sensor"
 
 struct inv_mpu_state;
 
@@ -761,6 +765,7 @@ struct inv_mpu_state {
 	u64 last_run_time;
 	u8 name[20];
 	u8 secondary_name[20];
+	struct wake_lock smd_wakelock;
 };
 
 /* produces an unique identifier for each device based on the
