@@ -477,6 +477,7 @@ struct msm_otg {
 	bool pm_done;
 	struct qpnp_vadc_chip	*vadc_dev;
 	atomic_t pmic_id_masked;
+	u8 charger_retry_count;
 };
 
 struct ci13xxx_platform_data {
