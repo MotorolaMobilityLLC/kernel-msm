@@ -74,6 +74,7 @@
 #define USB_PHY_VDD_DIG_VOL_MAX	1320000 /* uV */
 
 #define USB_SUSPEND_DELAY_TIME	(500 * HZ/1000) /* 500 msec */
+#define MAX_INVALID_CHRGR_RETRY 3
 
 enum msm_otg_phy_reg_mode {
 	USB_PHY_REG_OFF,
@@ -1900,7 +1901,10 @@ static void msm_otg_chg_check_timer_func(unsigned long data)
 		queue_work(system_nrt_wq, &motg->sm_work);
 		return;
 	}
-	mod_timer(&motg->chg_check_timer, CHG_RECHECK_DELAY);
+	if (motg->charger_retry_count++ < MAX_INVALID_CHRGR_RETRY)
+		mod_timer(&motg->chg_check_timer, CHG_RECHECK_DELAY);
+	else
+		msm_otg_notify_charger(motg, IDEV_CHG_MIN);
 }
 
 static bool msm_chg_aca_detect(struct msm_otg *motg)
@@ -2704,6 +2708,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 					msm_otg_start_peripheral(otg, 1);
 					otg->phy->state =
 						OTG_STATE_B_PERIPHERAL;
+					motg->charger_retry_count = 0;
 					mod_timer(&motg->chg_check_timer,
 							CHG_RECHECK_DELAY);
 					break;
@@ -2728,6 +2733,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 			pr_debug("chg_work cancel");
 			ta_charger_detected = false;
 			del_timer_sync(&motg->chg_check_timer);
+			motg->charger_retry_count = 0;
 			clear_bit(B_FALSE_SDP, &motg->inputs);
 			clear_bit(A_BUS_REQ, &motg->inputs);
 			cancel_delayed_work_sync(&motg->chg_work);
