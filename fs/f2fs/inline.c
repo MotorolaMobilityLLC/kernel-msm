@@ -266,8 +266,8 @@ struct f2fs_dir_entry *find_in_inline_dir(struct inode *dir,
 	struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
 	struct f2fs_inline_dentry *inline_dentry;
 	struct f2fs_dir_entry *de;
+	struct f2fs_dentry_ptr d;
 	struct page *ipage;
-	int max_slots = NR_INLINE_DENTRY;
 
 	ipage = get_node_page(sbi, dir->i_ino);
 	if (IS_ERR(ipage))
@@ -275,10 +275,9 @@ struct f2fs_dir_entry *find_in_inline_dir(struct inode *dir,
 
 	inline_dentry = inline_data_addr(ipage);
 
-	de = find_target_dentry(name, &max_slots, &inline_dentry->dentry_bitmap,
-						inline_dentry->dentry,
-						inline_dentry->filename,
-						flags);
+	make_dentry_ptr(&d, (void *)inline_dentry, 2);
+	de = find_target_dentry(name, NULL, &d, flags);
+
 	unlock_page(ipage);
 	if (de)
 		*res_page = ipage;
@@ -289,7 +288,7 @@ struct f2fs_dir_entry *find_in_inline_dir(struct inode *dir,
 	 * For the most part, it should be a bug when name_len is zero.
 	 * We stop here for figuring out where the bugs has occurred.
 	 */
-	f2fs_bug_on(sbi, max_slots < 0);
+	f2fs_bug_on(sbi, d.max < 0);
 	return de;
 }
 
@@ -523,6 +522,7 @@ int f2fs_read_inline_dir(struct file *file, void *dirent, filldir_t filldir)
 	struct inode *inode = file_inode(file);
 	struct f2fs_inline_dentry *inline_dentry = NULL;
 	struct page *ipage = NULL;
+	struct f2fs_dentry_ptr d;
 
 	if (pos >= NR_INLINE_DENTRY)
 		return 0;
@@ -535,11 +535,9 @@ int f2fs_read_inline_dir(struct file *file, void *dirent, filldir_t filldir)
 
 	inline_dentry = inline_data_addr(ipage);
 
-	if (!f2fs_fill_dentries(file, dirent, filldir,
-				&inline_dentry->dentry_bitmap,
-				inline_dentry->dentry,
-				inline_dentry->filename,
-				NR_INLINE_DENTRY, 0, bit_pos))
+	make_dentry_ptr(&d, (void *)inline_dentry, 2);
+
+	if (!f2fs_fill_dentries(file, dirent, filldir, &d, 0, bit_pos))
 		file->f_pos = NR_INLINE_DENTRY;
 
 	f2fs_put_page(ipage, 1);
