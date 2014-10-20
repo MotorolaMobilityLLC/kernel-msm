@@ -18,6 +18,7 @@
 
 #include <linux/workqueue.h>
 #include <linux/power_supply.h>
+#include <linux/hrtimer.h>
 
 #include <linux/usb/otg.h>
 #include "power.h"
@@ -55,7 +56,9 @@ struct dwc3_otg {
 	int			host_bus_suspend;
 	int			charger_retry_count;
 	int			vbus_retry_count;
+	int			falsesdp_retry_count;
 	atomic_t		auto_susp_enabled;
+	struct timer_list       chg_check_timer;
 };
 
 /**
