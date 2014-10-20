@@ -172,77 +172,79 @@ static struct {
 } f34_query_8;
 
 static struct synaptics_rmi4_subpkt f34_query_0_v1[] = {
-	RMI4_SUBPKT_STATIC(f34_bootloader_id),
-	RMI4_SUBPKT_STATIC(f34_bootloader_mm),
-	RMI4_SUBPKT_STATIC(f34_firmware_id),
+	RMI4_SUBPKT_STATIC(0, f34_bootloader_id),
+	RMI4_SUBPKT_STATIC(2, f34_bootloader_mm),
+	RMI4_SUBPKT_STATIC(4, f34_firmware_id),
 };
 
 static struct synaptics_rmi4_subpkt f34_query_1_v1[] = {
-	RMI4_SUBPKT_STATIC(flash_properties),
+	RMI4_SUBPKT_STATIC(0, flash_properties),
 };
 
 static struct synaptics_rmi4_subpkt f34_query_2_v1[] = {
-	RMI4_SUBPKT_STATIC(f34_blk_size),
+	RMI4_SUBPKT_STATIC(0, f34_blk_size),
 };
 
 static struct synaptics_rmi4_subpkt f34_query_3_v1[] = {
-	RMI4_SUBPKT_STATIC(f34_fw_blk_count),
-	RMI4_SUBPKT_STATIC(f34_ui_cfg_blk_count),
-	RMI4_SUBPKT_STATIC(f34_perm_cfg_blk_count),
-	RMI4_SUBPKT_STATIC(f34_bl_cfg_blk_count),
-	RMI4_SUBPKT_STATIC(f34_disp_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(0, f34_fw_blk_count),
+	RMI4_SUBPKT_STATIC(2, f34_ui_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(4, f34_perm_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(6, f34_bl_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(8, f34_disp_cfg_blk_count),
 };
 
 static struct synaptics_rmi4_packet_reg f34_query_reg_array_v1[] = {
-	RMI4_REG_STATIC(f34_query_0_v1, 0, 8),
-	RMI4_REG_STATIC(f34_query_1_v1, 1, 1),
-	RMI4_REG_STATIC(f34_query_2_v1, 2, 2),
-	RMI4_REG_STATIC(f34_query_3_v1, 3, 10),
+	RMI4_REG_STATIC(0, f34_query_0_v1, 8),
+	RMI4_REG_STATIC(1, f34_query_1_v1, 1),
+	RMI4_REG_STATIC(2, f34_query_2_v1, 2),
+	RMI4_REG_STATIC(3, f34_query_3_v1, 10),
 };
 
 static struct synaptics_rmi4_func_packet_regs f34_query_regs_v1 = {
+	.f_number = SYNAPTICS_RMI4_F34,
 	.base_addr = 0,
 	.nr_regs = ARRAY_SIZE(f34_query_reg_array_v1),
 	.regs = f34_query_reg_array_v1,
 };
 
 static struct synaptics_rmi4_subpkt f34_query_0_v0[] = {
-	RMI4_SUBPKT_STATIC(f34_bootloader_id),
+	RMI4_SUBPKT_STATIC(0, f34_bootloader_id),
 };
 
 static struct synaptics_rmi4_subpkt f34_query_2_v0[] = {
-	RMI4_SUBPKT_STATIC(flash_properties),
+	RMI4_SUBPKT_STATIC(0, flash_properties),
 };
 
 static struct synaptics_rmi4_subpkt f34_query_3_v0[] = {
-	RMI4_SUBPKT_STATIC(f34_blk_size),
+	RMI4_SUBPKT_STATIC(0, f34_blk_size),
 };
 
 static struct synaptics_rmi4_subpkt f34_query_5_v0[] = {
-	RMI4_SUBPKT_STATIC(f34_fw_blk_count),
+	RMI4_SUBPKT_STATIC(0, f34_fw_blk_count),
 };
 
 static struct synaptics_rmi4_subpkt f34_query_7_v0[] = {
-	RMI4_SUBPKT_STATIC(f34_ui_cfg_blk_count),
-	RMI4_SUBPKT_STATIC(f34_perm_cfg_blk_count),
-	RMI4_SUBPKT_STATIC(f34_bl_cfg_blk_count),
-	RMI4_SUBPKT_STATIC(f34_disp_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(0, f34_ui_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(2, f34_perm_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(4, f34_bl_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(6, f34_disp_cfg_blk_count),
 };
 
 static struct synaptics_rmi4_subpkt f34_query_8_v0[] = {
-	RMI4_SUBPKT_STATIC(f34_query_8),
+	RMI4_SUBPKT_STATIC(0, f34_query_8),
 };
 
 static struct synaptics_rmi4_packet_reg f34_query_reg_array_v0[] = {
-	RMI4_REG_STATIC(f34_query_0_v0, 0, 2), /* bootloader id */
-	RMI4_REG_STATIC(f34_query_2_v0, 2, 1), /* flash properties */
-	RMI4_REG_STATIC(f34_query_3_v0, 3, 2), /* block size */
-	RMI4_REG_STATIC(f34_query_5_v0, 5, 2), /* firmware block count */
-	RMI4_REG_STATIC(f34_query_7_v0, 7, 8),
-	RMI4_REG_STATIC(f34_query_8_v0, 8, 1),
+	RMI4_REG_STATIC(0, f34_query_0_v0, 2), /* bootloader id */
+	RMI4_REG_STATIC(2, f34_query_2_v0, 1), /* flash properties */
+	RMI4_REG_STATIC(3, f34_query_3_v0, 2), /* block size */
+	RMI4_REG_STATIC(5, f34_query_5_v0, 2), /* firmware block count */
+	RMI4_REG_STATIC(7, f34_query_7_v0, 8),
+	RMI4_REG_STATIC(8, f34_query_8_v0, 1),
 };
 
 static struct synaptics_rmi4_func_packet_regs f34_query_regs_v0 = {
+	.f_number = SYNAPTICS_RMI4_F34,
 	.base_addr = 0,
 	.nr_regs = ARRAY_SIZE(f34_query_reg_array_v0),
 	.regs = f34_query_reg_array_v0,
@@ -428,10 +430,23 @@ static int fwu_read_f01_device_status(struct f01_device_status *status)
 }
 
 static struct synaptics_rmi4_func_packet_regs
-			*fwu_f34_packet_regs_addr(void)
+			*fwu_scan_f34_reg_info(void)
 {
-	return fwu->bootloader_id[1] == '5' ?
-		&f34_query_regs_v0 : &f34_query_regs_v1;
+	struct synaptics_rmi4_func_packet_regs *regs =
+			fwu->bootloader_id[1] == '5' ?
+			&f34_query_regs_v0 : &f34_query_regs_v1;
+	int r;
+	for (r = 0; r < regs->nr_regs; ++r) {
+		struct synaptics_rmi4_packet_reg *reg = regs->regs + r;
+		kfree(reg->data);
+		reg->data = kzalloc(reg->size, GFP_KERNEL);
+		if (!reg->data) {
+			/* prevent reading if memory alloc failed */
+			reg->offset = -1;
+			reg->size = 0;
+		}
+	}
+	return regs;
 }
 
 static int fwu_f34_read_query_regs(void)
@@ -439,16 +454,14 @@ static int fwu_f34_read_query_regs(void)
 	int retval = -ENODATA;
 	struct synaptics_rmi4_func_packet_regs *f34_regs;
 
-	f34_regs = fwu_f34_packet_regs_addr();
+	f34_regs = fwu_scan_f34_reg_info();
 	f34_regs->base_addr = fwu->f34_fd.query_base_addr;
 	retval = synaptics_rmi4_read_packet_regs(fwu->rmi4_data, f34_regs);
 	if (retval < 0) {
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Failed to query F34 registers: rc=%d\n",
 				__func__, retval);
-		return retval;
 	}
-
 	return retval;
 }
 
