@@ -19,7 +19,6 @@
 };
 
 &pm8994_l14 {
-	regulator-always-on;
 	regulator-boot-on;
 };
 
@@ -27,12 +26,10 @@
 	regulator-min-microvolt = <3100000>;
 	regulator-max-microvolt = <3100000>;
 	qcom,init-voltage = <3100000>;
-	regulator-always-on;
 	regulator-boot-on;
 };
 
 &vbat_disp_vreg {
-	regulator-always-on;
 	regulator-boot-on;
 };
 
@@ -139,6 +136,23 @@
 		};
 	};
 };
+
+&mot_smd_QHD_0_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_0_cmd_v1 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v1 {
+	qcom,cont-splash-enabled;
+};
+
 
 &pm8994_l22 {
 	regulator-min-microvolt = <3300000>;
