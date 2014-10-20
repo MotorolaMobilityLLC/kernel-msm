@@ -4770,9 +4770,10 @@ static void bma2x2_work_func(struct work_struct *work)
 
 	bma2x2_read_accel_xyz(bma2x2->bma2x2_client, bma2x2->sensor_type,
 									&acc);
-	input_report_abs(bma2x2->input, ABS_X, acc.x);
-	input_report_abs(bma2x2->input, ABS_Y, acc.y);
-	input_report_abs(bma2x2->input, ABS_Z, acc.z);
+	input_event(bma2x2->input, EV_MSC, MSC_SERIAL, acc.x);
+	input_event(bma2x2->input, EV_MSC, MSC_PULSELED, acc.y);
+	input_event(bma2x2->input, EV_MSC, MSC_GESTURE, acc.z);
+
 	input_sync(bma2x2->input);
 	mutex_lock(&bma2x2->value_mutex);
 	bma2x2->value = acc;
@@ -6330,9 +6331,9 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 		/* printk(KERN_INFO "New data interrupt happened\n");*/
 		bma2x2_read_accel_xyz(bma2x2->bma2x2_client,
 					bma2x2->sensor_type, &acc);
-		input_report_abs(bma2x2->input, ABS_X, acc.x);
-		input_report_abs(bma2x2->input, ABS_Y, acc.y);
-		input_report_abs(bma2x2->input, ABS_Z, acc.z);
+		input_event(bma2x2->input, EV_MSC, MSC_SERIAL, acc.x);
+		input_event(bma2x2->input, EV_MSC, MSC_PULSELED, acc.y);
+		input_event(bma2x2->input, EV_MSC, MSC_GESTURE, acc.z);
 		input_sync(bma2x2->input);
 		mutex_lock(&bma2x2->value_mutex);
 		bma2x2->value = acc;
@@ -6874,9 +6875,10 @@ static int bma2x2_probe(struct i2c_client *client,
 	dev->name = SENSOR_NAME;
 	dev->id.bustype = BUS_I2C;
 	input_set_capability(dev, EV_ABS, ABS_MISC);
-	input_set_abs_params(dev, ABS_X, ABSMIN, ABSMAX, 0, 0);
-	input_set_abs_params(dev, ABS_Y, ABSMIN, ABSMAX, 0, 0);
-	input_set_abs_params(dev, ABS_Z, ABSMIN, ABSMAX, 0, 0);
+	input_set_capability(dev, EV_MSC, MSC_SERIAL);
+	input_set_capability(dev, EV_MSC, MSC_PULSELED);
+	input_set_capability(dev, EV_MSC, MSC_GESTURE);
+
 	input_set_capability(dev, EV_REL, BMA2X2_FAST_CALIB_DONE);
 	input_set_capability(dev, EV_REL, FIFO_WM_INTERRUPT);
 
