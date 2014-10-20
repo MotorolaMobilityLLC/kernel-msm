@@ -1433,6 +1433,7 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level = bkl_lvl;
 			mfd->bl_level_scaled = temp;
+			mfd->bl_updated = 1;
 		}
 
 		if (ad_bl_notify_needed)
@@ -1538,6 +1539,7 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 {
 	int ret = 0;
 	int cur_power_state;
+	int bl_level_old;
 
 	if (!mfd)
 		return -EINVAL;
@@ -1571,11 +1573,17 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 
 	mfd->op_enable = false;
 	if (mdss_panel_is_power_off(req_power_state)) {
+		if (mfd->bl_updated)
+			bl_level_old = mfd->bl_level;
+		else
+			bl_level_old = mfd->unset_bl_level;
+
 		/* Stop Display thread */
 		if (mfd->disp_thread)
 			mdss_fb_stop_disp_thread(mfd);
 		mutex_lock(&mfd->bl_lock);
 		mdss_fb_set_backlight(mfd, 0);
+		mfd->unset_bl_level = bl_level_old;
 		mfd->bl_updated = 0;
 		mutex_unlock(&mfd->bl_lock);
 	}
@@ -1637,24 +1645,6 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 		if (mfd->idle_time)
 			schedule_delayed_work(&mfd->idle_notify_work,
 				msecs_to_jiffies(mfd->idle_time));
-	}
-
-	/* Reset the backlight only if the panel was off */
-	if (mdss_panel_is_power_off(cur_power_state)) {
-		mutex_lock(&mfd->bl_lock);
-		if (!mfd->bl_updated) {
-			/*
-			 * If in AD calibration mode then frameworks would not
-			 * be allowed to update backlight hence post unblank
-			 * the backlight would remain 0 (0 is set in blank).
-			 * Hence resetting back to calibration mode value
-			 */
-			if (!IS_CALIB_MODE_BL(mfd))
-				mdss_fb_set_backlight(mfd, mfd->unset_bl_level);
-			else
-				mdss_fb_set_backlight(mfd, mfd->calib_mode_bl);
-		}
-		mutex_unlock(&mfd->bl_lock);
 	}
 
 error:
