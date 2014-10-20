@@ -1051,7 +1051,7 @@ static inline int f2fs_test_bit(unsigned int nr, char *addr)
 	return mask & *addr;
 }
 
-static inline int f2fs_set_bit(unsigned int nr, char *addr)
+static inline int f2fs_test_and_set_bit(unsigned int nr, char *addr)
 {
 	int mask;
 	int ret;
@@ -1063,7 +1063,7 @@ static inline int f2fs_set_bit(unsigned int nr, char *addr)
 	return ret;
 }
 
-static inline int f2fs_clear_bit(unsigned int nr, char *addr)
+static inline int f2fs_test_and_clear_bit(unsigned int nr, char *addr)
 {
 	int mask;
 	int ret;
