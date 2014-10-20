@@ -15,6 +15,7 @@
 #include "msm8916-pinctrl.dtsi"
 #include "msm8916-camera-sensor-styx.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "carrier-channel-ids.dtsi"
 
 / {
 	aliases {
