@@ -199,6 +199,31 @@ struct synaptics_rmi4_device_info {
 	struct list_head support_fn_list;
 };
 
+struct synaptics_dsx_func_patch {
+	unsigned char func;
+	unsigned char regstr;
+	unsigned char subpkt;
+	unsigned char size;
+	unsigned char bitmask;
+	unsigned char *data;
+	struct list_head link;
+};
+
+struct synaptics_dsx_patch {
+	const char *name;
+	int	cfg_num;
+	struct list_head cfg_head;
+};
+
+struct synaptics_dsx_patchset {
+	int	patch_num;
+	struct synaptics_dsx_patch *patch_data;
+};
+
+#define ACTIVE_IDX	0
+#define SUSPEND_IDX	1
+#define MAX_NUM_STATES	2
+
 /*
  * struct synaptics_rmi4_data - rmi4 device instance data
  * @i2c_client: pointer to associated i2c client
@@ -224,7 +249,6 @@ struct synaptics_rmi4_device_info {
  * @irq_enabled: flag for indicating interrupt enable status
  * @touch_stopped: flag to stop interrupt thread processing
  * @fingers_on_2d: flag to indicate presence of fingers in 2d area
- * @sensor_sleep: flag to indicate sleep state of sensor
  * @wait: wait queue for touch data polling in interrupt thread
  * @number_resumes: total number of remembered resumes
  * @last_resume: last resume's number (index of the location of resume)
@@ -267,17 +291,12 @@ struct synaptics_rmi4_data {
 	int irq;
 	int sensor_max_x;
 	int sensor_max_y;
-	int normal_mode;
 	bool irq_enabled;
 	bool touch_stopped;
 	bool fingers_on_2d;
-	bool sensor_sleep;
 	bool input_registered;
 	bool in_bootloader;
 	bool purge_enabled;
-	bool reset_on_resume;
-	bool hw_reset;
-	bool one_touch_enabled;
 	bool poweron;
 	wait_queue_head_t wait;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
@@ -295,6 +314,15 @@ struct synaptics_rmi4_data {
 	int number_irq;
 	int last_irq;
 	struct synaptics_rmi4_irq_info *irq_info;
+
+	bool mode_is_wakeable;
+	bool mode_is_persistent;
+
+	struct synaptics_dsx_patchset *default_mode;
+	struct synaptics_dsx_patchset *alternate_mode;
+	struct synaptics_dsx_patchset *current_mode;
+
+	struct work_struct resume_work;
 };
 
 struct f34_properties {
@@ -392,36 +420,41 @@ static inline void batohui(unsigned int *dest, unsigned char *src, size_t size)
 }
 
 struct synaptics_rmi4_subpkt {
-	unsigned char present;
-	unsigned char expected;
+	bool present;
+	bool expected;
+	short offset;
 	unsigned int size;
 	void *data;
 };
 
 #define RMI4_SUBPKT(a)\
 	{.present = 0, .expected = 1, .size = sizeof(a), .data = &a}
-#define RMI4_SUBPKT_STATIC(a)\
-	{.present = 1, .expected = 1, .size = sizeof(a), .data = &a}
+#define RMI4_SUBPKT_STATIC(o, a)\
+	{.present = 1, .expected = 1,\
+			.offset = o, .size = sizeof(a), .data = &a}
 
 struct synaptics_rmi4_packet_reg {
-	int offset;
-	int expected;
+	unsigned short r_number;
+	bool expected;
+	short offset;
 	unsigned int size;
+	unsigned char *data;
 	unsigned char nr_subpkts;
 	struct synaptics_rmi4_subpkt *subpkt;
 };
 
-#define RMI4_NO_REG() {\
-	.offset = -1, .expected = 0, .size = 0,\
+#define RMI4_NO_REG(r) {\
+	.r_number = r, .offset = -1, .expected = 0, .size = 0, .data = NULL,\
 	.nr_subpkts = 0, .subpkt = NULL}
-#define RMI4_REG(r) {\
-	.offset = -1, .expected = 1, .size = 0,\
-	.nr_subpkts = ARRAY_SIZE(r), .subpkt = r}
-#define RMI4_REG_STATIC(r, offs, sz) {\
-	.offset = offs, .expected = 1, .size = sz,\
-	.nr_subpkts = ARRAY_SIZE(r), .subpkt = r}
+#define RMI4_REG(r, s) {\
+	.r_number = r, .offset = -1, .expected = 1, .size = 0, .data = NULL,\
+	.nr_subpkts = ARRAY_SIZE(s), .subpkt = s}
+#define RMI4_REG_STATIC(r, s, sz) {\
+	.r_number = r, .offset = r, .expected = 1, .size = sz, .data = NULL,\
+	.nr_subpkts = ARRAY_SIZE(s), .subpkt = s}
 
 struct synaptics_rmi4_func_packet_regs {
+	unsigned short f_number;
 	unsigned short base_addr;
 	int nr_regs;
 	struct synaptics_rmi4_packet_reg *regs;
@@ -435,7 +468,7 @@ int synaptics_rmi4_scan_packet_reg_info(
 
 int synaptics_rmi4_read_packet_reg(
 	struct synaptics_rmi4_data *rmi4_data,
-	struct synaptics_rmi4_func_packet_regs *regs, unsigned char r);
+	struct synaptics_rmi4_func_packet_regs *regs, int idx);
 
 int synaptics_rmi4_read_packet_regs(
 	struct synaptics_rmi4_data *rmi4_data,
