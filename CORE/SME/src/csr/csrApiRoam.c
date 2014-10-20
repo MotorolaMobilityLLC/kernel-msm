@@ -12149,11 +12149,11 @@ eHalStatus csrRoamGetBKIDCache(tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32
        }
        else if(*pNum >= pSession->NumBkidCache)
        {
-           if(pSession->NumBkidCache > CSR_MAX_PMKID_ALLOWED)
+           if(pSession->NumBkidCache > CSR_MAX_BKID_ALLOWED)
            {
-               smsLog(pMac, LOGE, FL("NumPmkidCache :%d is more than CSR_MAX_PMKID_ALLOWED, resetting to CSR_MAX_PMKID_ALLOWED"),
+               smsLog(pMac, LOGE, FL("NumBkidCache :%d is more than CSR_MAX_BKID_ALLOWED, resetting to CSR_MAX_BKID_ALLOWED"),
                  pSession->NumBkidCache);
-               pSession->NumBkidCache = CSR_MAX_PMKID_ALLOWED;
+               pSession->NumBkidCache = CSR_MAX_BKID_ALLOWED;
            }
            vos_mem_copy(pBkidCache, pSession->BkidCacheInfo,
                         sizeof(tBkidCacheInfo) * pSession->NumBkidCache);
