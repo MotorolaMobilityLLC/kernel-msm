@@ -35,6 +35,7 @@
 #include "qdsp6v2/msm-pcm-routing-v2.h"
 #include "../codecs/wcd9xxx-common.h"
 #include "../codecs/wcd9330.h"
+#include "../codecs/fsa8500-core.h"
 #ifdef CONFIG_SND_SOC_FLORIDA
 #include "../codecs/florida.h"
 #endif
@@ -2141,8 +2142,12 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	/* Cargo-culted from QC */
 	snd_soc_dapm_sync(dapm);
 
-	return 0;
+	/* Start FSA8500 headset detection */
+	ret = fsa8500_hs_detect(codec);
+	if (ret)
+		dev_info(codec->dev, "fsa8500 hs det load error %d", ret);
 
+	return 0;
 }
 
 #ifndef CONFIG_SND_SOC_FLORIDA
