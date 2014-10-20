@@ -152,7 +152,7 @@ void limUpdateExtCapIEtoStruct(tpAniSirGlobal pMac,
     if ( DOT11F_EID_EXTCAP != pBuf[0] ||
          pBuf[1] > DOT11F_IE_EXTCAP_MAX_LEN )
     {
-        limLog( pMac, LOGE,
+        limLog( pMac, LOG1,
                FL("Invalid IEs eid = %d elem_len=%d "),
                                                pBuf[0],pBuf[1]);
         return;
@@ -1350,6 +1350,9 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
     tANI_U32             addnIELen=0;
     tANI_U8              addIE[WNI_CFG_ASSOC_RSP_ADDNIE_DATA_LEN];
     tpSirAssocReq        pAssocReq = NULL; 
+    tANI_U16             addStripoffIELen = 0;
+    tDot11fIEExtCap      extractedExtCap;
+    tANI_BOOLEAN         extractedExtCapFlag = eANI_BOOLEAN_FALSE;
     tANI_U32             nBytes = 0;
 
 #ifdef WLAN_FEATURE_11W
@@ -1544,10 +1547,34 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
                 if (wlan_cfgGetStr(pMac, WNI_CFG_ASSOC_RSP_ADDNIE_DATA,
                             &addIE[0], &addnIELen) == eSIR_SUCCESS)
                 {
+
+                    vos_mem_set(( tANI_U8* )&extractedExtCap,
+                        sizeof( tDot11fIEExtCap ), 0);
+                    addStripoffIELen = addnIELen;
+                    nSirStatus = limStripOffExtCapIEAndUpdateStruct(pMac,
+                                      &addIE[0],
+                                      &addStripoffIELen,
+                                      &extractedExtCap );
+                    if(eSIR_SUCCESS != nSirStatus)
+                    {
+                        limLog(pMac, LOG1,
+                            FL("Unable to Stripoff ExtCap IE from Assoc Rsp"));
+                    }
+                    else
+                    {
+                        addnIELen = addStripoffIELen;
+                        extractedExtCapFlag = eANI_BOOLEAN_TRUE;
+                    }
                     nBytes = nBytes + addnIELen;
                 }
             }
         }
+    }
+
+    /* merge the ExtCap struct*/
+    if (extractedExtCapFlag && extractedExtCap.present)
+    {
+        limMergeExtCapIEStruct(&(frm.ExtCap), &extractedExtCap);
     }
 
     nStatus = dot11fGetPackedAssocResponseSize( pMac, &frm, &nPayload );
