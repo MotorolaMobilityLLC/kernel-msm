@@ -20,6 +20,10 @@
 	qcom,msm-id =   <145 0x51 0x81C0>, <145 0x52 0x81C0>, <145 0x53 0x81C0>, <145 0x54 0x81C0>, <145 0x55 0x81C0>;
 };
 
+&mmi_batterydata {
+	qcom,default-kohm = <20>;
+};
+
 &pm8226_chg {
 	qcom,batt-therm-offset = <(-50)>;
 };

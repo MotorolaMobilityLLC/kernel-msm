@@ -57,6 +57,10 @@
 	};
 };
 
+&mmi_batterydata {
+	qcom,default-kohm = <20>;
+};
+
 &pm8226_chg {
 	qcom,batt-therm-offset = <(-50)>;
 };
