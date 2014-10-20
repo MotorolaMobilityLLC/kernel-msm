@@ -88,7 +88,7 @@
 			/* disp_ctrl */
 			39 01 00 00 01 00 02 53 20
 			/* brightness_ctrl */
-			15 01 00 00 01 00 02 51 7f
+			15 01 00 00 01 00 02 51 00
 			/* acl_enable_disable_settings */
 			39 01 00 00 01 00 02 55 03
 			/* Set index for P9 */
@@ -245,7 +245,7 @@
 			/* disp_ctrl */
 			39 01 00 00 01 00 02 53 20
 			/* brightness_ctrl */
-			15 01 00 00 01 00 02 51 5f
+			15 01 00 00 01 00 02 51 00
 			/* acl_enable_disable_settings */
 			39 01 00 00 01 00 02 55 03
 			/* Unlock level 2 commands */
