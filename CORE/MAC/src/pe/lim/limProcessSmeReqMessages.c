@@ -396,7 +396,7 @@ __limProcessSmeStartReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
          * other than OFFLINE. Return response to host and
          * log error
          */
-        limLog(pMac, LOGE, FL("Invalid SME_START_REQ received in SME state %X"),pMac->lim.gLimSmeState );
+        limLog(pMac, LOGE, FL("Invalid SME_START_REQ received in SME state %d"),pMac->lim.gLimSmeState );
         limPrintSmeState(pMac, LOGE, pMac->lim.gLimSmeState);
         retCode = eSIR_SME_UNEXPECTED_REQ_RESULT_CODE;
     }
@@ -1694,7 +1694,7 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         if((psessionEntry = peFindSessionByBssid(pMac,pSmeJoinReq->bssDescription.bssId,&sessionId)) != NULL)
         {
             limLog(pMac, LOGE, FL("Session(%d) Already exists for BSSID: "
-            MAC_ADDRESS_STR" in limSmeState = %X"),sessionId,
+            MAC_ADDRESS_STR" in limSmeState = %d"),sessionId,
             MAC_ADDR_ARRAY(pSmeJoinReq->bssDescription.bssId),
             psessionEntry->limSmeState);
             
@@ -2040,7 +2040,7 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     {
         /* Received eWNI_SME_JOIN_REQ un expected state */
         limLog(pMac, LOGE, FL("received unexpected SME_JOIN_REQ "
-                             "in state %X"), pMac->lim.gLimSmeState);
+                             "in state %d"), pMac->lim.gLimSmeState);
         limPrintSmeState(pMac, LOGE, pMac->lim.gLimSmeState);
         retCode = eSIR_SME_UNEXPECTED_REQ_RESULT_CODE;
         psessionEntry = NULL;
@@ -2205,7 +2205,7 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         /// Should not have received eWNI_SME_REASSOC_REQ
         // Log the event
         limLog(pMac, LOGE,
-               FL("received unexpected SME_REASSOC_REQ in state %X"),
+               FL("received unexpected SME_REASSOC_REQ in state %d"),
                psessionEntry->limSmeState);
         limPrintSmeState(pMac, LOGE, psessionEntry->limSmeState);
 
@@ -2553,7 +2553,7 @@ __limProcessSmeDisassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                      * Log error and send response to host
                      */
                     limLog(pMac, LOGE,
-                       FL("received unexpected SME_DISASSOC_REQ in state %X"),
+                       FL("received unexpected SME_DISASSOC_REQ in state %d"),
                        psessionEntry->limSmeState);
                     limPrintSmeState(pMac, LOGE, psessionEntry->limSmeState);
 
@@ -2710,7 +2710,7 @@ __limProcessSmeDisassocCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                 (psessionEntry->limSmeState != eLIM_SME_WT_DEAUTH_STATE))
             {
                 limLog(pMac, LOGE,
-                   FL("received unexp SME_DISASSOC_CNF in state %X"),
+                   FL("received unexp SME_DISASSOC_CNF in state %d"),
                   psessionEntry->limSmeState);
                 limPrintSmeState(pMac, LOGE, psessionEntry->limSmeState);
                 return;
@@ -2866,7 +2866,7 @@ __limProcessSmeDeauthReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                      * peer. Log error and send response to host.
                      */
                     limLog(pMac, LOGE,
-                    FL("received unexp SME_DEAUTH_REQ in state %X"),
+                    FL("received unexp SME_DEAUTH_REQ in state %d"),
                     psessionEntry->limSmeState);
                     limPrintSmeState(pMac, LOGE, psessionEntry->limSmeState);
 
@@ -2909,7 +2909,7 @@ __limProcessSmeDeauthReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         default:
             limLog(pMac, LOGE,
-               FL("received unexpected SME_DEAUTH_REQ for role %X"),
+               FL("received unexpected SME_DEAUTH_REQ for role %d"),
                 psessionEntry->limSystemRole);
 
             return;
@@ -3111,7 +3111,7 @@ __limProcessSmeSetContextReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     else
     {
         limLog(pMac, LOGE,
-           FL("received unexpected SME_SETCONTEXT_REQ for role %d, state=%X"),
+           FL("received unexpected SME_SETCONTEXT_REQ for role %d, state=%d"),
            psessionEntry->limSystemRole,
            psessionEntry->limSmeState);
         limPrintSmeState(pMac, LOGE, psessionEntry->limSmeState);
@@ -3124,6 +3124,8 @@ __limProcessSmeSetContextReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     }
 
 end:
+    vos_mem_zero(pSetContextReq,
+                  (sizeof(tSirKeys) * SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS));
     vos_mem_free( pSetContextReq);
     return;
 } /*** end __limProcessSmeSetContextReq() ***/
@@ -3250,7 +3252,7 @@ __limProcessSmeRemoveKeyReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     else
     {
         limLog(pMac, LOGE,
-           FL("received unexpected SME_REMOVEKEY_REQ for role %d, state=%X"),
+           FL("received unexpected SME_REMOVEKEY_REQ for role %d, state=%d"),
            psessionEntry->limSystemRole,
            psessionEntry->limSmeState);
         limPrintSmeState(pMac, LOGE, psessionEntry->limSmeState);
@@ -3373,7 +3375,7 @@ void limProcessSmeGetAssocSTAsInfo(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     if (psessionEntry->limSystemRole != eLIM_AP_ROLE)
     {
         limLog(pMac, LOGE,
-                        FL("Received unexpected message in state %X, in role %X"),
+                        FL("Received unexpected message in state %d, in role %d"),
                         psessionEntry->limSmeState, psessionEntry->limSystemRole);
         goto limAssocStaEnd;
     }
@@ -3477,7 +3479,7 @@ void limProcessSmeGetWPSPBCSessions(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     if (psessionEntry->limSystemRole != eLIM_AP_ROLE)
     {
         limLog(pMac, LOGE,
-                        FL("Received unexpected message in role %X"),
+                        FL("Received unexpected message in role %d"),
                         psessionEntry->limSystemRole);
         goto limGetWPSPBCSessionsEnd;
     }
@@ -3625,7 +3627,7 @@ __limHandleSmeStopBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
          * mode. Log error and return response to host.
          */
         limLog(pMac, LOGE,
-           FL("received unexpected SME_STOP_BSS_REQ in state %X, for role %d"),
+           FL("received unexpected SME_STOP_BSS_REQ in state %d, for role %d"),
            psessionEntry->limSmeState, psessionEntry->limSystemRole);
         limPrintSmeState(pMac, LOGE, psessionEntry->limSmeState);
         /// Send Stop BSS response to host
@@ -3787,7 +3789,7 @@ __limProcessSmeAssocCnfNew(tpAniSirGlobal pMac, tANI_U32 msgType, tANI_U32 *pMsg
     if ( ((psessionEntry->limSystemRole != eLIM_AP_ROLE) && (psessionEntry->limSystemRole != eLIM_BT_AMP_AP_ROLE)) ||
          ((psessionEntry->limSmeState != eLIM_SME_NORMAL_STATE) && (psessionEntry->limSmeState != eLIM_SME_NORMAL_CHANNEL_SCAN_STATE)))
     {
-        limLog(pMac, LOGE, FL("Received unexpected message %X in state %X, in role %X"),
+        limLog(pMac, LOGE, FL("Received unexpected message %X in state %d, in role %d"),
                msgType, psessionEntry->limSmeState, psessionEntry->limSystemRole);
         goto end;
     }

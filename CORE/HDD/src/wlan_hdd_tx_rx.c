@@ -1006,6 +1006,7 @@ void __hdd_tx_timeout(struct net_device *dev)
    hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
    struct netdev_queue *txq;
    int i = 0;
+   v_ULONG_t diff_in_jiffies = 0;
 
    VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
       "%s: Transmission timeout occurred", __func__);
@@ -1053,6 +1054,29 @@ void __hdd_tx_timeout(struct net_device *dev)
     * from HDD
     */
    ++pAdapter->hdd_stats.hddTxRxStats.continuousTxTimeoutCount;
+
+   diff_in_jiffies = jiffies - pAdapter->hdd_stats.hddTxRxStats.jiffiesLastTxTimeOut;
+   if((pAdapter->hdd_stats.hddTxRxStats.continuousTxTimeoutCount > 1)&&
+     ((diff_in_jiffies) > (HDD_TX_TIMEOUT * 2 ))
+     )
+   {
+        /*
+         * In Open security case when there is no traffic is running, it may possible
+         * tx time-out may once happen and later we recovered then we need to
+         * reset the continuousTxTimeoutCount because it is only getting modified
+         * when traffic is running. So if over a period of time if this count reaches
+         * to HDD_TX_STALL_SSR_THRESHOLD  then host is triggering false subsystem restart.
+         * so in genuine Tx Time out case kernel will call the tx time-out back to back at
+         * interval of HDD_TX_TIMEOUT.So now we are checking if previous TX TIME out was
+         * occurred more then twice of HDD_TX_TIMEOUT back then we may recovered here.
+        */
+        pAdapter->hdd_stats.hddTxRxStats.continuousTxTimeoutCount = 0;
+        VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
+                  FL("This is false alarm so resetting the continuousTxTimeoutCount"));
+   }
+
+   //update last jiffies after the check
+   pAdapter->hdd_stats.hddTxRxStats.jiffiesLastTxTimeOut = jiffies;
 
    if (pAdapter->hdd_stats.hddTxRxStats.continuousTxTimeoutCount >
        HDD_TX_STALL_SSR_THRESHOLD)

@@ -1892,6 +1892,32 @@ sme_QosStatusType sme_QosInternalModifyReq(tpAniSirGlobal pMac,
 
      return SME_QOS_STATUS_MODIFY_SETUP_INVALID_PARAMS_RSP;
    }
+
+   //should not be same as previous ioctl parameters
+   if ((pQoSInfo->nominal_msdu_size == flow_info->QoSInfo.nominal_msdu_size) &&
+       (pQoSInfo->maximum_msdu_size == flow_info->QoSInfo.maximum_msdu_size) &&
+       (pQoSInfo->min_data_rate == flow_info->QoSInfo.min_data_rate) &&
+       (pQoSInfo->mean_data_rate == flow_info->QoSInfo.mean_data_rate) &&
+       (pQoSInfo->peak_data_rate == flow_info->QoSInfo.peak_data_rate) &&
+       (pQoSInfo->min_service_interval ==
+                  flow_info->QoSInfo.min_service_interval) &&
+       (pQoSInfo->max_service_interval ==
+                  flow_info->QoSInfo.max_service_interval) &&
+       (pQoSInfo->inactivity_interval ==
+                  flow_info->QoSInfo.inactivity_interval) &&
+       (pQoSInfo->suspension_interval ==
+                  flow_info->QoSInfo.suspension_interval) &&
+       (pQoSInfo->surplus_bw_allowance ==
+                  flow_info->QoSInfo.surplus_bw_allowance))
+   {
+     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+               "%s: %d: the addts parameters are same as last request,"
+               "dropping the current request",
+               __func__, __LINE__);
+
+     return SME_QOS_STATUS_MODIFY_SETUP_FAILURE_RSP;
+   }
+
    // need to vote off powersave for the duration of this request
    pSession->readyForPowerSave = VOS_FALSE;
    // assume we won't have to (re)buffer the command

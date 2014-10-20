@@ -8579,7 +8579,7 @@ WDI_ProcessConfigBSSReq
 
   pWDICtx->wdiReqStatusCB     = pwdiConfigBSSParams->wdiReqStatusCB;
   pWDICtx->pReqStatusUserData = pwdiConfigBSSParams->pUserData;
-
+  wpalMemoryZero(&halConfigBssReqMsg, sizeof(halConfigBssReqMsg));
   /*-------------------------------------------------------------------------
     Send Config BSS Request to HAL
   -------------------------------------------------------------------------*/
@@ -8925,6 +8925,7 @@ WDI_ProcessPostAssocReq
                   pwdiPostAssocParams,
                   sizeof(pWDICtx->wdiCachedPostAssocReq));
 
+  wpalMemoryZero(&halPostAssocReqMsg, sizeof(halPostAssocReqMsg));
   /*-------------------------------------------------------------------------
     Send Post Assoc Request to HAL
   -------------------------------------------------------------------------*/
@@ -9482,7 +9483,7 @@ WDI_ProcessSetStaKeyReq
 
   pWDICtx->wdiReqStatusCB     = pwdiSetSTAKeyParams->wdiReqStatusCB;
   pWDICtx->pReqStatusUserData = pwdiSetSTAKeyParams->pUserData;
-
+  wpalMemoryZero(&halSetStaKeyReqMsg, sizeof(halSetStaKeyReqMsg));
   /*-------------------------------------------------------------------------
     Send Set STA Key Request to HAL
   -------------------------------------------------------------------------*/
@@ -26569,7 +26570,7 @@ WDI_ProcessPrefNetworkFoundInd
 
   // DEBUG
   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
-              "[PNO WDI] PREF_NETWORK_FOUND_IND Type (%x) data (SSID=%.*s, LENGTH=%u,  RSSI=%u)",
+              "[PNO WDI] PREF_NETWORK_FOUND_IND Type (%d) data (SSID=%.*s, LENGTH=%u,  RSSI=%u)",
               wdiInd.wdiIndicationType,
               wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.ssId.ucLength,
               wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.ssId.sSSID,

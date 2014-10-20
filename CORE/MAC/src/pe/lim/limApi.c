@@ -692,7 +692,7 @@ tSirRetStatus limStart(tpAniSirGlobal pMac)
       * other than OFFLINE. Return response to host and
       * log error
       */
-      limLog(pMac, LOGE, FL("Invalid SME state %X"),pMac->lim.gLimSmeState );
+      limLog(pMac, LOGE, FL("Invalid SME state %d"),pMac->lim.gLimSmeState );
       retCode = eSIR_FAILURE;
    }
    

@@ -3567,6 +3567,8 @@ void WDA_ConfigBssReqCallback(WDI_ConfigBSSRspParamsType *wdiConfigBssRsp
       configBssReqParam->txMgmtPower = wdiConfigBssRsp->ucTxMgmtPower;
 #endif
    }
+   vos_mem_zero(pWdaParams->wdaWdiApiMsgParam,
+                 sizeof(WDI_ConfigBSSReqParamsType));
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
    vos_mem_free(pWdaParams) ;
    WDA_SendMsg(pWDA, WDA_ADD_BSS_RSP, (void *)configBssReqParam , 0) ;
@@ -3679,6 +3681,7 @@ void WDA_PostAssocReqCallback(WDI_PostAssocRspParamsType *wdiPostAssocRsp,
       staPostAssocParam->bssIdx = wdiPostAssocRsp->bssParams.ucBSSIdx;
       selfStaPostAssocParam->staIdx = wdiPostAssocRsp->staParams.ucSTAIdx;
    }
+   vos_mem_zero(pWDA->wdaWdiApiMsgParam, sizeof(WDI_PostAssocReqParamsType));
    vos_mem_free(pWDA->wdaWdiApiMsgParam) ;
    pWDA->wdaWdiApiMsgParam = NULL;
    pWDA->wdaMsgParam = NULL;
@@ -4863,6 +4866,8 @@ void WDA_SetBssKeyReqCallback(WDI_Status status, void* pUserData)
    }
    pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
    setBssKeyParams = (tSetBssKeyParams *)pWdaParams->wdaMsgParam;
+   vos_mem_zero(pWdaParams->wdaWdiApiMsgParam,
+                 sizeof(WDI_SetBSSKeyReqParamsType));
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
    vos_mem_free(pWdaParams) ;
    setBssKeyParams->status = status ;
@@ -5098,6 +5103,8 @@ void WDA_SetStaKeyReqCallback(WDI_Status status, void* pUserData)
    }
    pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
    setStaKeyParams = (tSetStaKeyParams *)pWdaParams->wdaMsgParam;
+   vos_mem_zero(pWdaParams->wdaWdiApiMsgParam,
+                 sizeof(WDI_SetSTAKeyReqParamsType));
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
    vos_mem_free(pWdaParams) ;
    setStaKeyParams->status = status ;
@@ -11148,6 +11155,10 @@ void WDA_GTKOffloadReqCallback(WDI_Status wdiStatus, void* pUserData)
 
    if(IS_WDI_STATUS_FAILURE(wdiStatus))
    {
+      vos_mem_zero(pWdaParams->wdaWdiApiMsgParam,
+                    sizeof(WDI_GtkOffloadReqMsg));
+      vos_mem_zero(pWdaParams->wdaMsgParam,
+                    sizeof(tSirGtkOffloadParams));
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
       vos_mem_free(pWdaParams->wdaMsgParam);
       vos_mem_free(pWdaParams);
@@ -11222,6 +11233,8 @@ VOS_STATUS WDA_ProcessGTKOffloadReq(tWDA_CbContext *pWDA,
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
               "Failure in WDA_ProcessGTKOffloadReq(), free all the memory " );
+      vos_mem_zero(wdiGtkOffloadReqMsg, sizeof(WDI_GtkOffloadReqMsg));
+      vos_mem_zero(pGtkOffloadParams, sizeof(tSirGtkOffloadParams));
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
       vos_mem_free(pWdaParams->wdaMsgParam);
       vos_mem_free(pWdaParams);
@@ -11290,6 +11303,8 @@ void WDA_GtkOffloadGetInfoRespCallback( WDI_GtkOffloadGetInfoRspParams *pwdiGtkO
    if (VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MQ_ID_SME, (vos_msg_t*)&vosMsg))
    {
       /* free the mem and return */
+      vos_mem_zero(pGtkOffloadGetInfoRsp,
+                   sizeof(tSirGtkOffloadGetInfoRspParams));
       vos_mem_free((v_VOID_t *) pGtkOffloadGetInfoRsp);
    }
 
@@ -13691,7 +13706,7 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
          tSirWakeReasonInd *pWakeReasonInd = (tSirWakeReasonInd *)vos_mem_malloc(allocSize);
 
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                    "[WAKE_REASON WDI] WAKE_REASON_IND Type (0x%x) data (ulReason=0x%x, ulReasonArg=0x%x, ulStoredDataLen=0x%x)",
+                    "[WAKE_REASON WDI] WAKE_REASON_IND Type (%d) data (ulReason=0x%x, ulReasonArg=0x%x, ulStoredDataLen=0x%x)",
                     wdiLowLevelInd->wdiIndicationType,
                     wdiLowLevelInd->wdiIndicationData.wdiWakeReasonInd.ulReason,
                     wdiLowLevelInd->wdiIndicationData.wdiWakeReasonInd.ulReasonArg,
@@ -14373,6 +14388,14 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
       return ;
    }
    pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
+   if(NULL == pMac)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                          "%s: pMac is NULL",__func__);
+      VOS_ASSERT(0);
+      return ;
+   }
+
    if (wlan_cfgGetInt(pMac,
            WNI_CFG_DEL_ALL_RX_TX_BA_SESSIONS_2_4_G_BTC, &val) !=
                                                       eSIR_SUCCESS)

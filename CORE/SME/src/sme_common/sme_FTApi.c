@@ -535,6 +535,8 @@ void sme_FTReset(tHalHandle hHal)
 
     if (pMac->ft.ftSmeContext.pCsrFTKeyInfo != NULL)
     {
+        vos_mem_zero(pMac->ft.ftSmeContext.pCsrFTKeyInfo,
+                       sizeof(tCsrRoamSetKey));
         vos_mem_free(pMac->ft.ftSmeContext.pCsrFTKeyInfo);
     }
     pMac->ft.ftSmeContext.pCsrFTKeyInfo = NULL;

@@ -1190,7 +1190,6 @@ void ccmCfgSetCallback(tHalHandle halHandle, tANI_S32 result)
 
 void hdd_clearRoamProfileIe( hdd_adapter_t *pAdapter)
 {
-   int i = 0;
    hdd_wext_state_t *pWextState= WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
 
    /* clear WPA/RSN/WSC IE information in the profile */
@@ -1230,13 +1229,9 @@ void hdd_clearRoamProfileIe( hdd_adapter_t *pAdapter)
 
    pWextState->authKeyMgmt = 0;
 
-   for (i=0; i < CSR_MAX_NUM_KEY; i++)
-   {
-      if (pWextState->roamProfile.Keys.KeyMaterial[i])
-      {
-         pWextState->roamProfile.Keys.KeyLength[i] = 0;
-      }
-   }
+   vos_mem_zero(&pWextState->roamProfile.Keys,
+                 sizeof(pWextState->roamProfile.Keys));
+
 #ifdef FEATURE_WLAN_WAPI
    pAdapter->wapi_info.wapiAuthMode = WAPI_AUTH_MODE_OPEN;
    pAdapter->wapi_info.nWapiMode = 0;
