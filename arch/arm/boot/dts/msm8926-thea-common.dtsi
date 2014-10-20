@@ -60,7 +60,7 @@
 };
 
 &mmi_batterydata {
-	qcom,default-kohm = <20>;
+	qcom,default-kohm = <32>;
 
 	/delete-node/ mmi,ed30-temp-batterydata;
 	/delete-node/ mmi,ed30-sony-batterydata;
