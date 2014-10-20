@@ -328,6 +328,7 @@ typedef struct hdd_tx_rx_stats_s
    // tx timeout stats
    __u32    txTimeoutCount;
    __u32    continuousTxTimeoutCount;
+   v_ULONG_t    jiffiesLastTxTimeOut;//Store time when last txtime out occur
 } hdd_tx_rx_stats_t;
 
 typedef struct hdd_chip_reset_stats_s
@@ -1214,7 +1215,10 @@ struct hdd_context_s
    
    /* Lock to avoid race condtion during start/stop bss*/
    struct mutex sap_lock;
-   
+
+   /* Lock to avoid race condtion between ROC timeout and
+      cancel callbacks*/
+   struct mutex roc_lock;
    /** ptt Process ID*/
    v_SINT_t ptt_pid;
 #ifdef WLAN_KD_READY_NOTIFIER

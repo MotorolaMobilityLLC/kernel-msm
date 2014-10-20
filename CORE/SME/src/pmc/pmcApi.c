@@ -1320,7 +1320,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             else
             {
                 pmcLog(pMac, LOGE, "PMC: response message to request to enter "
-                       "standby indicates failure, status %x", pMsg->statusCode);
+                       "standby indicates failure, status %d", pMsg->statusCode);
                 pmcEnterFullPowerState(pMac);
                 pmcDoStandbyCallbacks(pMac, eHAL_STATUS_FAILURE);
             }
@@ -1353,7 +1353,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             if (pMsg->statusCode != eSIR_SME_SUCCESS)
             {
                 pmcLog(pMac, LOGE, FL("Response message to request to exit "
-                   "IMPS indicates failure, status %x"), pMsg->statusCode);
+                   "IMPS indicates failure, status %d"), pMsg->statusCode);
                 if (vos_is_logp_in_progress(VOS_MODULE_ID_SME, NULL))
                 {
                     pmcLog(pMac, LOGE, FL("SSR Is in progress do not send "
@@ -1403,7 +1403,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
         else
         {
                 pmcLog(pMac, LOGE,
-                       FL("Response message to request to enter BMPS indicates failure, status %x"),
+                       FL("Response message to request to enter BMPS indicates failure, status %d"),
                    pMsg->statusCode);
                 pmcEnterFullPowerState(pMac);
                 //Do not call UAPSD callback here since it may be re-entered
@@ -1432,7 +1432,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             if (pMsg->statusCode != eSIR_SME_SUCCESS)
             {
                 pmcLog(pMac, LOGP,
-                       FL("Response message to request to exit BMPS indicates failure, status %x"),
+                       FL("Response message to request to exit BMPS indicates failure, status %d"),
                        pMsg->statusCode);
             }
             pmcEnterFullPowerState(pMac);
@@ -1465,7 +1465,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             BMPS mode*/
             else {
                 pmcLog(pMac, LOGE, "PMC: response message to request to enter "
-                   "UAPSD indicates failure, status %x", pMsg->statusCode);
+                   "UAPSD indicates failure, status %d", pMsg->statusCode);
                 //Need to reset the UAPSD flag so pmcEnterBmpsState won't try to enter UAPSD.
                 pMac->pmc.uapsdSessionRequired = FALSE;
                 pmcEnterBmpsState(pMac);
@@ -1494,7 +1494,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
          /* Enter BMPS State */
          if (pMsg->statusCode != eSIR_SME_SUCCESS) {
             pmcLog(pMac, LOGP, "PMC: response message to request to exit "
-               "UAPSD indicates failure, status %x", pMsg->statusCode);
+               "UAPSD indicates failure, status %d", pMsg->statusCode);
          }
             pmcEnterBmpsState(pMac);
          break;
@@ -1526,7 +1526,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             BMPS mode*/
          else {
             pmcLog(pMac, LOGE, "PMC: response message to request to enter "
-               "WOWL indicates failure, status %x", pMsg->statusCode);
+               "WOWL indicates failure, status %d", pMsg->statusCode);
                 pmcEnterBmpsState(pMac);
                 pmcDoEnterWowlCallbacks(pMac, eHAL_STATUS_FAILURE);
          }
@@ -1551,7 +1551,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
          /* Enter BMPS State */
          if (pMsg->statusCode != eSIR_SME_SUCCESS) {
             pmcLog(pMac, LOGP, "PMC: response message to request to exit "
-               "WOWL indicates failure, status %x", pMsg->statusCode);
+               "WOWL indicates failure, status %d", pMsg->statusCode);
          }
             pmcEnterBmpsState(pMac);
          break;
@@ -1628,7 +1628,7 @@ void pmcMessageProcessor (tHalHandle hHal, tSirSmeRsp *pMsg)
         /* Enter Full Power State. */
         if (pMsg->statusCode != eSIR_SME_SUCCESS)
         {
-            pmcLog(pMac, LOGP, FL("Exit BMPS indication indicates failure, status %x"), pMsg->statusCode);
+            pmcLog(pMac, LOGP, FL("Exit BMPS indication indicates failure, status %d"), pMsg->statusCode);
         }
         else
         {

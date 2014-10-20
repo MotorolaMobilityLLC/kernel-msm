@@ -291,7 +291,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
             pStaDs->mlmStaContext.updateContext = 1;
 
         PELOGE(limLog(pMac, LOGE,
-               FL("received Disassoc frame from peer that is in state %X, addr "
+               FL("received Disassoc frame from peer that is in state %d, addr "
                MAC_ADDRESS_STR),
                pStaDs->mlmStaContext.mlmState, MAC_ADDR_ARRAY(pHdr->sa));)
 

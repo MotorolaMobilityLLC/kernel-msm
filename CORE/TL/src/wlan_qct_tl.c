@@ -2039,7 +2039,7 @@ WLANTL_STAPktPending
 
   if ( 0 == pClientSTA->ucExists )
   {
-    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
     "WLAN TL:Station was not previously registered on WLANTL_STAPktPending"));
     return VOS_STATUS_E_EXISTS;
   }

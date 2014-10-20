@@ -3446,8 +3446,17 @@ int vos_update_nv_table_from_wiphy_band(void *hdd_ctx,
             else if (wiphy->bands[i]->channels[j].flags &
                     (IEEE80211_CHAN_RADAR | IEEE80211_CHAN_PASSIVE_SCAN))
             {
-                pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].enabled =
-                    NV_CHANNEL_DFS;
+#ifdef FEATURE_WLAN_CH144
+                if ((RF_CHAN_144 == k) && (E_NV_V3 != vos_nv_getNvVersion()))
+                {
+                    //Do not enable channel 144 when NV version is not NV3
+                }
+                else
+#endif
+                {
+                    pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].\
+                        channels[k].enabled = NV_CHANNEL_DFS;
+                }
 
                 // Cap the TX power by the power limits specified in NV for the regdomain
                 wiphy->bands[i]->channels[j].max_power =

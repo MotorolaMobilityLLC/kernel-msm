@@ -310,6 +310,7 @@ WCTS_PALReadCallback
                            pWCTSCb->wctsRxMsgCBData);
 
       /* Free the allocated buffer*/
+      wpalMemoryZero(buffer, bytes_read);
       wpalMemoryFree(buffer);
    }
 
@@ -394,6 +395,7 @@ WCTS_PALWriteCallback
       }
 
       /* whether we had success or failure, reclaim all memory */
+      wpalMemoryZero(pBuffer, len);
       wpalMemoryFree(pBuffer);
       wpalMemoryFree(pBufferQueue);
 
@@ -961,6 +963,7 @@ WCTS_SendMessage
       return eWLAN_PAL_STATUS_E_FAILURE;
    } else if (written == len) {
       /* Message sent! No deferred state, free the buffer*/
+      wpalMemoryZero(pMsg, len);
       wpalMemoryFree(pMsg);
    } else {
       /* This much data cannot be written at this time,

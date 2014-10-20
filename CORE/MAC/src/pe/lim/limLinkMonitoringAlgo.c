@@ -566,7 +566,7 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
             * or in states other than link-established state.
             * Log error.
             */
-        PELOG1(limLog(pMac, LOG1, FL("received heartbeat timeout in state %X"),
+        PELOG1(limLog(pMac, LOG1, FL("received heartbeat timeout in state %d"),
                psessionEntry->limMlmState);)
         limPrintMlmState(pMac, LOG1, psessionEntry->limMlmState);
         pMac->lim.gLimHBfailureCntInOtherStates++;
