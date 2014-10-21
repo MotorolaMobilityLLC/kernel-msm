@@ -1067,7 +1067,16 @@
 		gpios = <&msm_gpio 29 0x0>;
 		hs_det_vdd-supply = <&dummy_vreg>; /* Connected to B+ */
 		hs_det_micvdd-supply = <&pm8994_s4>;
-		fsa8500-init-regs = <0x0c 0xa1>, <0x0f 0xf9>;
+		fsa8500-init-regs = <0x0C 0xA1>,
+				    <0x0F 0xF9>,
+				    <0x11 0x84>,
+				    <0x13 0xBF>,
+				    <0x14 0x69>;
+
+		fsa8500-keymap = <0x4000000 0xE2>, /* SND_JACK_BTN_0 - KEY_MEDIA */
+				 <0x0400000 0x246>, /* SND_JACK_BTN_4 - KEY_VOICECOMMAND */
+				 <0x0200000 0x73>, /* SND_JACK_BTN_5 - KEY_VOLUMEUP */
+				 <0x0100000 0x72>; /* SND_JACK_BTN_6 - KEY_VOLUMEDOWN */
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&fsa8500_hs_det_default>;
