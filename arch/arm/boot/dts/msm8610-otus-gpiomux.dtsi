@@ -17,13 +17,13 @@
 			qcom,pin-num = <4>;
 			qcom,pin-keep-state;
 			qcom,active@0 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <0>;  /* input        */
 			};
 			qcom,suspend@1 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <0>;  /* input        */
@@ -72,13 +72,11 @@
 				qcom,func = <1>;  /* spi          */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
-				qcom,dir =  <1>;  /* output high  */
 			};
 			qcom,suspend@1 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <1>;  /* spi          */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
-				qcom,dir =  <0>;  /* input        */
 			};
 		};
 
@@ -90,13 +88,11 @@
 				qcom,func = <1>;  /* spi          */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
-				qcom,dir =  <1>;  /* output high  */
 			};
 			qcom,suspend@1 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <1>;  /* spi          */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
-				qcom,dir =  <0>;  /* input        */
 			};
 		};
 
@@ -108,13 +104,11 @@
 				qcom,func = <1>;  /* spi          */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
-				qcom,dir =  <1>;  /* output high  */
 			};
 			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out  */
+				qcom,func = <1>;  /* spi          */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
-				qcom,dir =  <1>;  /* output high  */
 			};
 		};
 
@@ -126,13 +120,11 @@
 				qcom,func = <1>;  /* spi          */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
-				qcom,dir =  <1>;  /* output high  */
 			};
 			qcom,suspend@1 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <1>;  /* spi          */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
-				qcom,dir =  <0>;  /* input        */
 			};
 		};
 
@@ -141,13 +133,13 @@
 			qcom,pin-num = <12>;
 			qcom,pin-keep-state;
 			qcom,active@0 {
-				qcom,func = <0>;  /* gpio_in_out  */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <1>;  /* output high  */
 			};
 			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out  */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <1>;  /* output high  */
@@ -177,13 +169,13 @@
 			qcom,pin-num = <19>;
 			qcom,pin-keep-state;
 			qcom,active@0 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <0>;  /* input        */
 			};
 			qcom,suspend@1 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <0>;  /* input        */
@@ -195,13 +187,13 @@
 			qcom,pin-num = <71>;
 			qcom,pin-keep-state;
 			qcom,active@0 {
-				qcom,func = <0>;  /* gpio_in_out  */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <1>;  /* output high  */
 			};
 			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out  */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <1>;  /* output high  */
@@ -213,13 +205,13 @@
 			qcom,pin-num = <74>;
 			qcom,pin-keep-state;
 			qcom,active@0 {
-				qcom,func = <0>;  /* gpio_in_out  */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <2>;  /* output low   */
 			};
 			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out  */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <2>;  /* output low   */
@@ -231,13 +223,13 @@
 			qcom,pin-num = <80>;
 			qcom,pin-keep-state;
 			qcom,active@0 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <0>;  /* input        */
 			};
 			qcom,suspend@1 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <0>;  /* input        */
@@ -249,13 +241,13 @@
 			qcom,pin-num = <81>;
 			qcom,pin-keep-state;
 			qcom,active@0 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <0>;  /* input        */
 			};
 			qcom,suspend@1 {
-				qcom,func = <3>;  /* gpio         */
+				qcom,func = <0>;  /* gpio         */
 				qcom,pull = <0>;  /* none         */
 				qcom,drv =  <0>;  /* 2ma          */
 				qcom,dir =  <0>;  /* input        */
