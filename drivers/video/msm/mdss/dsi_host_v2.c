@@ -808,6 +808,13 @@ static int msm_dsi_cmds_rx_1(struct mdss_dsi_ctrl_pdata *ctrl,
 	tp = &ctrl->tx_buf;
 	rp = &ctrl->rx_buf;
 	mdss_dsi_buf_init(rp);
+
+	rc = msm_dsi_set_max_packet_size(ctrl, rlen);
+	if (rc) {
+		pr_err("%s: msm_dsi_set_max_packet_size failed\n", __func__);
+		goto dsi_cmds_rx_1_error;
+	}
+
 	mdss_dsi_buf_init(tp);
 
 	rc = mdss_dsi_cmd_dma_add(tp, cmds);
