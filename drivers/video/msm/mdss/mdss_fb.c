@@ -1157,6 +1157,65 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	mutex_unlock(&mfd->bl_lock);
 }
 
+static int mdss_fb_unblank_sub(struct msm_fb_data_type *mfd)
+{
+	int ret = 0;
+	int cur_power_state;
+
+	if (!mfd)
+		return -EINVAL;
+
+	cur_power_state = mfd->panel_power_state;
+	if (!mdss_panel_is_power_on_interactive(cur_power_state) &&
+		mfd->mdp.on_fnc) {
+		struct mdss_panel_data *pdata;
+		u32 temp;
+
+		ret = mfd->mdp.on_fnc(mfd);
+		if (ret == 0) {
+			mfd->panel_power_state = MDSS_PANEL_POWER_ON;
+			mfd->panel_info->panel_dead = false;
+		} else {
+			goto error;
+		}
+		mutex_lock(&mfd->update.lock);
+		mfd->update.type = NOTIFY_TYPE_UPDATE;
+		mfd->update.is_suspend = 0;
+		mutex_unlock(&mfd->update.lock);
+
+		/* Start the work thread to signal idle time */
+		if (mfd->idle_time)
+			schedule_delayed_work(&mfd->idle_notify_work,
+				msecs_to_jiffies(mfd->idle_time));
+
+		/* Control backlight level for Android recovery mode */
+		pdata = dev_get_platdata(&mfd->pdev->dev);
+		if (lcd_backlight_registered &&
+				pdata && pdata->set_backlight) {
+			temp = mfd->bl_level;
+
+			if (!IS_CALIB_MODE_BL(mfd))
+				mdss_fb_scale_bl(mfd, &temp);
+
+			if (mfd->bl_level)
+				pdata->set_backlight(pdata, temp);
+		}
+	}
+
+	/* Reset the backlight only if the panel was off */
+	if (mdss_panel_is_power_off(cur_power_state)) {
+		mutex_lock(&mfd->bl_lock);
+		if (!mfd->bl_updated) {
+			mfd->bl_updated = 1;
+			mdss_fb_set_backlight(mfd, mfd->unset_bl_level);
+		}
+		mutex_unlock(&mfd->bl_lock);
+	}
+
+error:
+	return ret;
+}
+
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
@@ -1190,55 +1249,30 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
-		if (!mdss_panel_is_power_on_interactive(cur_power_state) &&
-			mfd->mdp.on_fnc) {
-			ret = mfd->mdp.on_fnc(mfd);
-			if (ret == 0) {
-				mfd->panel_power_state = MDSS_PANEL_POWER_ON;
-				mfd->panel_info->panel_dead = false;
-			}
-			mutex_lock(&mfd->update.lock);
-			mfd->update.type = NOTIFY_TYPE_UPDATE;
-			mfd->update.is_suspend = 0;
-			mutex_unlock(&mfd->update.lock);
-
-			/* Start the work thread to signal idle time */
-			if (mfd->idle_time)
-				schedule_delayed_work(&mfd->idle_notify_work,
-					msecs_to_jiffies(mfd->idle_time));
-		}
-
-		/* Reset the backlight only if the panel was off */
-		if (mdss_panel_is_power_off(cur_power_state)) {
-			mutex_lock(&mfd->bl_lock);
-			if (!mfd->bl_updated) {
-				mfd->bl_updated = 1;
-				mdss_fb_set_backlight(mfd, mfd->unset_bl_level);
-			}
-			mutex_unlock(&mfd->bl_lock);
-		}
+		ret = mdss_fb_unblank_sub(mfd);
 		break;
 
 	case FB_BLANK_VSYNC_SUSPEND:
 		req_power_state = MDSS_PANEL_POWER_DOZE;
 		pr_debug("Doze power mode requested\n");
+		/*
+		 * If doze mode is requested when panel is already off,
+		 * then first unblank the panel before entering doze mode
+		 */
+		if (mdss_fb_is_power_off(mfd) && mfd->mdp.on_fnc) {
+			pr_debug("off --> doze. switch to on first\n");
+			ret = mdss_fb_unblank_sub(mfd);
+		}
+
+		/* Enter doze mode only if unblank succeeded */
+		if (ret)
+			break;
 	case FB_BLANK_HSYNC_SUSPEND:
 	case FB_BLANK_NORMAL:
 	case FB_BLANK_POWERDOWN:
 	default:
 		pr_debug("blank powerdown called. cur mode=%d, req mode=%d\n",
 			cur_power_state, req_power_state);
-		/*
-		 * If doze mode is requested when panel is already off,
-		 * then first unblank the panel before entering doze mode
-		 */
-		if ((MDSS_PANEL_POWER_DOZE == req_power_state) &&
-			mdss_fb_is_power_off(mfd) && mfd->mdp.on_fnc) {
-			pr_debug("off --> doze. switch to on first\n");
-			ret = mfd->mdp.on_fnc(mfd);
-			if (ret == 0)
-				mfd->panel_power_state = MDSS_PANEL_POWER_ON;
-		}
 		if (mdss_fb_is_power_on(mfd) && mfd->mdp.off_fnc) {
 			cur_power_state = mfd->panel_power_state;
 
