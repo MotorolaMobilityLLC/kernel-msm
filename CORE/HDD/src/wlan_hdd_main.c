@@ -6806,12 +6806,13 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
 {
    eHalStatus halStatus = eHAL_STATUS_SUCCESS;
    hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+   hdd_scaninfo_t *pScanInfo = NULL;
    union iwreq_data wrqu;
    v_U8_t retry = 0;
    long ret;
 
    ENTER();
-
+   pScanInfo =  &pHddCtx->scan_info;
    switch(pAdapter->device_mode)
    {
       case WLAN_HDD_INFRA_STATION:
@@ -6865,9 +6866,9 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
                  FL("wait on disconnect_comp_var failed %ld"), ret);
              }
          }
-         else
+         else if(pScanInfo != NULL && pHddCtx->scan_info.mScanPending)
          {
-            hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
+            hdd_abort_mac_scan(pHddCtx, pScanInfo->sessionId,
                                eCSR_SCAN_ABORT_DEFAULT);
          }
        if (pAdapter->device_mode != WLAN_HDD_INFRA_STATION)
@@ -7861,32 +7862,33 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
                 wlan_hdd_cfg80211_deregister_frames(pAdapter);
                 hdd_UnregisterWext(pAdapter->dev);
             }
-            // Cancel any outstanding scan requests.  We are about to close all
-            // of our adapters, but an adapter structure is what SME passes back
-            // to our callback function. Hence if there are any outstanding scan
-            // requests then there is a race condition between when the adapter
-            // is closed and when the callback is invoked.We try to resolve that
-            // race condition here by canceling any outstanding scans before we
-            // close the adapters.
-            // Note that the scans may be cancelled in an asynchronous manner,
-            // so ideally there needs to be some kind of synchronization. Rather
-            // than introduce a new synchronization here, we will utilize the
-            // fact that we are about to Request Full Power, and since that is
-            // synchronized, the expectation is that by the time Request Full
-            // Power has completed all scans will be cancelled.
-            if (pHddCtx->scan_info.mScanPending)
-            {
-                hddLog(VOS_TRACE_LEVEL_INFO,
-                       FL("abort scan mode: %d sessionId: %d"),
-                           pAdapter->device_mode,
-                           pAdapter->sessionId);
-                hdd_abort_mac_scan(pHddCtx,
-                                   pAdapter->sessionId,
-                                   eCSR_SCAN_ABORT_DEFAULT);
-            }
+
          }
          vosStatus = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
          pAdapterNode = pNext;
+      }
+      // Cancel any outstanding scan requests.  We are about to close all
+      // of our adapters, but an adapter structure is what SME passes back
+      // to our callback function. Hence if there are any outstanding scan
+      // requests then there is a race condition between when the adapter
+      // is closed and when the callback is invoked.We try to resolve that
+      // race condition here by canceling any outstanding scans before we
+      // close the adapters.
+      // Note that the scans may be cancelled in an asynchronous manner,
+      // so ideally there needs to be some kind of synchronization. Rather
+      // than introduce a new synchronization here, we will utilize the
+      // fact that we are about to Request Full Power, and since that is
+      // synchronized, the expectation is that by the time Request Full
+      // Power has completed all scans will be cancelled.
+      if (pHddCtx->scan_info.mScanPending)
+      {
+          hddLog(VOS_TRACE_LEVEL_INFO,
+                 FL("abort scan mode: %d sessionId: %d"),
+                     pAdapter->device_mode,
+                     pAdapter->sessionId);
+           hdd_abort_mac_scan(pHddCtx,
+                              pHddCtx->scan_info.sessionId,
+                              eCSR_SCAN_ABORT_DEFAULT);
       }
    }
    else
@@ -10412,7 +10414,7 @@ int wlan_hdd_scan_abort(hdd_adapter_t *pAdapter)
     if (pScanInfo->mScanPending)
     {
         INIT_COMPLETION(pScanInfo->abortscan_event_var);
-        hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
+        hdd_abort_mac_scan(pHddCtx, pScanInfo->sessionId,
                                     eCSR_SCAN_ABORT_DEFAULT);
 
         status = wait_for_completion_interruptible_timeout(

@@ -2256,7 +2256,7 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
                      hddLog(LOGE,"Action frame received when Scanning is in"
                                  " progress. Abort Scan.");
                      hdd_abort_mac_scan(pAdapter->pHddCtx,
-                                        pAdapter->sessionId,
+                                        pScanInfo->sessionId,
                                         eCSR_SCAN_ABORT_DEFAULT);
                  }
              }

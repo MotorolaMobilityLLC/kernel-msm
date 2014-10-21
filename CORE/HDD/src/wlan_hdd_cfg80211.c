@@ -9834,6 +9834,7 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     }
 
     pScanInfo->mScanPending = TRUE;
+    pScanInfo->sessionId = pAdapter->sessionId;
     pAdapter->request = request;
     pScanInfo->scanId = scanId;
 
@@ -11192,7 +11193,7 @@ static int __wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
             {
                 hddLog(VOS_TRACE_LEVEL_INFO, "Disconnect is in progress, "
                               "Aborting Scan");
-                hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
+                hdd_abort_mac_scan(pHddCtx, pScanInfo->sessionId,
                                    eCSR_SCAN_ABORT_DEFAULT);
             }
 
