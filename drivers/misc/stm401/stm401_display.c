@@ -45,6 +45,90 @@
 
 #include <linux/stm401.h>
 
+static int stm401_quickpeek_is_pending_locked(struct stm401_data *ps_stm401)
+{
+	return !list_empty(&ps_stm401->quickpeek_command_list);
+}
+
+int stm401_quickpeek_is_pending(struct stm401_data *ps_stm401)
+{
+	int ret;
+
+	mutex_lock(&ps_stm401->qp_list_lock);
+	ret = stm401_quickpeek_is_pending_locked(ps_stm401);
+	mutex_unlock(&ps_stm401->qp_list_lock);
+
+	return ret;
+}
+
+/* Should always be called with qp_list_lock locked */
+static void stm401_quickpeek_set_in_progress_locked(
+	struct stm401_data *ps_stm401, bool in_progress)
+{
+	ps_stm401->qp_in_progress = in_progress;
+}
+
+/* Should always be called with qp_in_progress TRUE */
+static void stm401_quickpeek_set_prepared(struct stm401_data *ps_stm401,
+	bool prepared)
+{
+	BUG_ON(!ps_stm401->qp_in_progress);
+	ps_stm401->qp_prepared = prepared;
+}
+
+int stm401_quickpeek_disable_when_idle(struct stm401_data *ps_stm401)
+{
+	int ret = 0;
+
+	mutex_lock(&ps_stm401->lock);
+	mutex_lock(&ps_stm401->qp_list_lock);
+	if (!ps_stm401->qp_in_progress && !ps_stm401->qp_prepared &&
+		!stm401_quickpeek_is_pending_locked(ps_stm401)) {
+		ps_stm401->ignore_wakeable_interrupts = true;
+		ret = 1;
+	}
+	mutex_unlock(&ps_stm401->qp_list_lock);
+	mutex_unlock(&ps_stm401->lock);
+
+	return ret;
+}
+
+static int stm401_quickpeek_status_ack(struct stm401_data *ps_stm401,
+	struct stm401_quickpeek_message *qp_message, int ack_return)
+{
+	int ret = 0;
+	unsigned char payload = ack_return & 0x03;
+	unsigned int req_bit = atomic_read(&ps_stm401->qp_enabled) & 0x01;
+	unsigned char cmdbuff[4];
+
+	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
+
+	stm401_wake(ps_stm401);
+
+	if (qp_message && qp_message->message == AOD_WAKEUP_REASON_QP_DRAW)
+		payload |= (qp_message->buffer_id &
+			AOD_QP_ACK_BUFFER_ID_MASK) << 2;
+
+	cmdbuff[0] = STM401_PEEKSTATUS_REG;
+	cmdbuff[1] = req_bit;
+	cmdbuff[2] = qp_message ? qp_message->message : 0x00;
+	cmdbuff[3] = payload;
+	if (stm401_i2c_write(ps_stm401, cmdbuff, 4) < 0) {
+		dev_err(&ps_stm401->client->dev,
+			"Write peek status reg failed\n");
+		ret = -EIO;
+	}
+
+	dev_dbg(&ps_stm401->client->dev, "%s: message: %d | req_bit: %d | ack_return: %d | buffer_id: %d | ret: %d\n",
+		__func__,
+		qp_message ? qp_message->message : 0, req_bit, ack_return,
+		qp_message ? qp_message->buffer_id : 0, ret);
+
+	stm401_sleep(ps_stm401);
+
+	return ret;
+}
+
 int stm401_display_handle_touch_locked(struct stm401_data *ps_stm401)
 {
 	char *envp[2];
@@ -68,31 +152,19 @@ int stm401_display_handle_touch_locked(struct stm401_data *ps_stm401)
 int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 	bool releaseWakelock)
 {
+	int ret = 0;
 	u8 aod_qp_reason;
 	u8 aod_qp_panel_state;
 	struct stm401_quickpeek_message *qp_message;
 
 	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
 
-	if (ps_stm401->quickpeek_state == QP_IDLE)
-		ps_stm401->quickpeek_state = QP_PENDING;
-
-	ps_stm401->quickpeek_occurred = true;
-
-	wake_lock(&ps_stm401->quickpeek_wakelock);
-	/* If this is only us, we dont need a full 1 sec */
-	if (releaseWakelock)
-		wake_unlock(&ps_stm401->wakelock);
-
 	stm401_cmdbuff[0] = STM401_STATUS_REG;
 	if (stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2)
 		< 0) {
 		dev_err(&ps_stm401->client->dev,
 			"Get status reg failed\n");
-		stm401_quickpeek_status_ack(ps_stm401, NULL,
-			AOD_QP_ACK_INVALID);
-		wake_unlock(&ps_stm401->wakelock);
-		return -EIO;
+		goto error;
 	}
 
 	aod_qp_panel_state = stm401_readbuff[0] & 0x3;
@@ -102,10 +174,7 @@ int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 	if (!qp_message) {
 		dev_err(&ps_stm401->client->dev,
 			"%s: kzalloc failed!\n", __func__);
-		stm401_quickpeek_status_ack(ps_stm401, NULL,
-			AOD_QP_ACK_INVALID);
-		wake_unlock(&ps_stm401->wakelock);
-		return -EIO;
+		goto error;
 	}
 
 	qp_message->panel_state = aod_qp_panel_state;
@@ -115,18 +184,10 @@ int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 	case AOD_WAKEUP_REASON_QP_PREPARE:
 		dev_dbg(&ps_stm401->client->dev,
 			"Received peek prepare command\n");
-		list_add_tail(&qp_message->list,
-			&ps_stm401->quickpeek_command_list);
-		queue_work(ps_stm401->quickpeek_work_queue,
-			&ps_stm401->quickpeek_work);
 		break;
 	case AOD_WAKEUP_REASON_QP_COMPLETE:
 		dev_dbg(&ps_stm401->client->dev,
 			"Received peek complete command\n");
-		list_add_tail(&qp_message->list,
-			&ps_stm401->quickpeek_command_list);
-		queue_work(ps_stm401->quickpeek_work_queue,
-			&ps_stm401->quickpeek_work);
 		break;
 	case AOD_WAKEUP_REASON_QP_DRAW:
 		stm401_cmdbuff[0] = STM401_PEEKDATA_REG;
@@ -134,11 +195,7 @@ int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 			1, 5) < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading peek draw data from STM failed\n");
-			stm401_quickpeek_status_ack(ps_stm401,
-				qp_message, AOD_QP_ACK_INVALID);
-			kfree(qp_message);
-			wake_unlock(&ps_stm401->wakelock);
-			return -EIO;
+			goto error;
 		}
 		qp_message->buffer_id = stm401_readbuff[0] & 0x3f;
 		qp_message->x1 = stm401_readbuff[1] |
@@ -150,11 +207,6 @@ int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 			"Received peek draw command for buffer: %d (coord: %d, %d)\n",
 			qp_message->buffer_id,
 			qp_message->x1, qp_message->y1);
-
-		list_add_tail(&qp_message->list,
-			&ps_stm401->quickpeek_command_list);
-		queue_work(ps_stm401->quickpeek_work_queue,
-			&ps_stm401->quickpeek_work);
 		break;
 	case AOD_WAKEUP_REASON_QP_ERASE:
 		stm401_cmdbuff[0] = STM401_PEEKDATA_REG;
@@ -162,11 +214,7 @@ int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 			1, 9) < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading peek erase data from STM failed\n");
-			stm401_quickpeek_status_ack(ps_stm401,
-				qp_message, AOD_QP_ACK_INVALID);
-			kfree(qp_message);
-			wake_unlock(&ps_stm401->wakelock);
-			return -EIO;
+			goto error;
 		}
 		qp_message->x1 = stm401_readbuff[1] |
 			stm401_readbuff[2] << 8;
@@ -181,25 +229,67 @@ int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
 			"Received peek erase command: (%d, %d) -> (%d, %d)\n",
 			qp_message->x1, qp_message->y1,
 			qp_message->x2, qp_message->y2);
-
-		list_add_tail(&qp_message->list,
-			&ps_stm401->quickpeek_command_list);
-		queue_work(ps_stm401->quickpeek_work_queue,
-			&ps_stm401->quickpeek_work);
 		break;
+	default:
+		dev_err(&ps_stm401->client->dev,
+			"Unknown quickpeek command [%d]!", aod_qp_reason);
+		goto error;
 	}
 
-	return 0;
+	if (!atomic_read(&ps_stm401->qp_enabled)) {
+		dev_info(&ps_stm401->client->dev,
+			"%s: Received quickpeek interrupt with quickpeek disabled!\n",
+			__func__);
+		goto error;
+	}
+
+	ps_stm401->quickpeek_occurred = true;
+
+	mutex_lock(&ps_stm401->qp_list_lock);
+	list_add_tail(&qp_message->list,
+		&ps_stm401->quickpeek_command_list);
+	queue_work(ps_stm401->quickpeek_work_queue,
+		&ps_stm401->quickpeek_work);
+	wake_lock(&ps_stm401->quickpeek_wakelock);
+	mutex_unlock(&ps_stm401->qp_list_lock);
+
+	stm401_quickpeek_status_ack(ps_stm401, qp_message,
+		AOD_QP_ACK_RCVD);
+
+exit:
+	/* If this is only us, we dont need a full 1 sec */
+	if (releaseWakelock)
+		wake_unlock(&ps_stm401->wakelock);
+
+	return ret;
+
+error:
+	stm401_quickpeek_status_ack(ps_stm401, qp_message, AOD_QP_ACK_INVALID);
+	kfree(qp_message);
+	ret = -EIO;
+	goto exit;
 }
 
 void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401)
 {
 	struct stm401_quickpeek_message *entry, *entry_tmp;
+	struct list_head temp_list;
 	int ret = 0;
 
 	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
 
-	if (ps_stm401->quickpeek_state == QP_PREPARED) {
+	/* Move the current list to a temp list so we can flush the queue */
+	mutex_lock(&ps_stm401->qp_list_lock);
+	list_replace_init(&ps_stm401->quickpeek_command_list, &temp_list);
+	mutex_unlock(&ps_stm401->qp_list_lock);
+
+	flush_work(&ps_stm401->quickpeek_work);
+
+	/* From here, no quickpeek interrupts will be handled, because we have
+	   the main lock. Also, the quickpeek workqueue is idle, so basically
+	   nothing quickpeek is happening. Safe to do lots of things now. */
+
+	if (ps_stm401->qp_prepared) {
 		/* Cleanup fb driver state */
 		ret = fb_quickdraw_cleanup();
 
@@ -209,56 +299,66 @@ void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401)
 				__func__, ret);
 	}
 
-	/* Drain the current list */
-	list_for_each_entry_safe(entry, entry_tmp,
-		&ps_stm401->quickpeek_command_list, list) {
+	list_for_each_entry_safe(entry, entry_tmp, &temp_list, list) {
 		list_del(&entry->list);
-		stm401_quickpeek_status_ack(ps_stm401, entry,
-			AOD_QP_ACK_SUCCESS);
+		stm401_quickpeek_status_ack(ps_stm401, entry, AOD_QP_ACK_DONE);
 		kfree(entry);
 	}
 
-	ps_stm401->quickpeek_state = QP_IDLE;
+	/* This is the ONLY place we should set this explicitly instead of using
+	   the helper */
+	ps_stm401->qp_prepared = false;
 	ps_stm401->ignored_interrupts = 0;
 	ps_stm401->ignore_wakeable_interrupts = false;
 
 	wake_unlock(&ps_stm401->quickpeek_wakelock);
-	complete(&ps_stm401->quickpeek_done);
+	wake_up_all(&ps_stm401->quickpeek_wait_queue);
 }
 
-int stm401_quickpeek_status_ack(struct stm401_data *ps_stm401,
-	struct stm401_quickpeek_message *qp_message, int ack_return)
+/* Should always be called with qp_in_progress TRUE */
+static int stm401_quickpeek_check_state(struct stm401_data *ps_stm401,
+	struct stm401_quickpeek_message *qp_message)
 {
 	int ret = 0;
-	unsigned char payload = ack_return & 0x03;
-	unsigned int req_bit = atomic_read(&ps_stm401->qp_enabled) & 0x01;
 
-	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
-	stm401_wake(ps_stm401);
+	BUG_ON(!ps_stm401->qp_in_progress);
 
-	if (qp_message && qp_message->message == AOD_WAKEUP_REASON_QP_DRAW)
-		payload |= (qp_message->buffer_id &
-			AOD_QP_ACK_BUFFER_ID_MASK) << 2;
-
-	stm401_cmdbuff[0] = STM401_PEEKSTATUS_REG;
-	stm401_cmdbuff[1] = req_bit;
-	stm401_cmdbuff[2] = qp_message ? qp_message->message : 0x00;
-	stm401_cmdbuff[3] = payload;
-	if (stm401_i2c_write(ps_stm401, stm401_cmdbuff, 4) < 0) {
+	switch (qp_message->message) {
+	case AOD_WAKEUP_REASON_QP_PREPARE:
+		if (ps_stm401->qp_prepared)
+			ret = -EINVAL;
+		break;
+	case AOD_WAKEUP_REASON_QP_DRAW:
+		if (!ps_stm401->qp_prepared)
+			ret = -EINVAL;
+		break;
+	case AOD_WAKEUP_REASON_QP_ERASE:
+		if (!ps_stm401->qp_prepared)
+			ret = -EINVAL;
+		break;
+	case AOD_WAKEUP_REASON_QP_COMPLETE:
+		if (!ps_stm401->qp_prepared)
+			ret = -EINVAL;
+		break;
+	default:
 		dev_err(&ps_stm401->client->dev,
-			"Write peek status reg failed\n");
-		ret = -EIO;
+			"%s: Unknown quickpeek message: %d\n",
+			__func__,
+			qp_message->message);
+		ret = -EINVAL;
+		goto exit;
 	}
 
-	dev_dbg(&ps_stm401->client->dev, "%s: message: %d | req_bit: %d | ack_return: %d | buffer_id: %d | ret: %d\n",
-		__func__,
-		qp_message ? qp_message->message : 0, req_bit, ack_return,
-		qp_message ? qp_message->buffer_id : 0, ret);
+	if (ret)
+		dev_err(&ps_stm401->client->dev,
+			"%s: ILLEGAL MESSAGE message:%d qp_prepared:%d\n",
+			__func__, qp_message->message, ps_stm401->qp_prepared);
 
-	stm401_sleep(ps_stm401);
+exit:
 	return ret;
 }
 
+/* Take care to NEVER lock the ps_stm401->lock in this function */
 void stm401_quickpeek_work_func(struct work_struct *work)
 {
 	struct stm401_data *ps_stm401 = container_of(work,
@@ -267,14 +367,17 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 
 	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
 
-	mutex_lock(&ps_stm401->lock);
 	stm401_wake(ps_stm401);
+
+	mutex_lock(&ps_stm401->qp_list_lock);
+
+	stm401_quickpeek_set_in_progress_locked(ps_stm401, true);
 
 	while (atomic_read(&ps_stm401->qp_enabled) &&
 	       !list_empty(&ps_stm401->quickpeek_command_list) &&
 	       !stm401_misc_data->in_reset_and_init) {
 		struct stm401_quickpeek_message *qp_message;
-		int ack_return = AOD_QP_ACK_SUCCESS;
+		int ack_return = AOD_QP_ACK_DONE;
 		int x = -1;
 		int y = -1;
 
@@ -282,41 +385,34 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 			&ps_stm401->quickpeek_command_list,
 			struct stm401_quickpeek_message, list);
 		list_del(&qp_message->list);
+		mutex_unlock(&ps_stm401->qp_list_lock);
+
+		dev_dbg(&ps_stm401->client->dev, "%s: Handling message: %d\n",
+			__func__, qp_message->message);
+
+		if (stm401_quickpeek_check_state(ps_stm401, qp_message)) {
+			ack_return = AOD_QP_ACK_INVALID;
+			goto loop;
+		}
 
 		switch (qp_message->message) {
 		case AOD_WAKEUP_REASON_QP_PREPARE:
-			if (ps_stm401->quickpeek_state != QP_PENDING) {
-				dev_err(&ps_stm401->client->dev,
-					"%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
-					__func__, ps_stm401->quickpeek_state,
-					qp_message->message);
-				ack_return = AOD_QP_ACK_BAD_MSG_ORDER;
-				break;
-			}
 			ret = fb_quickdraw_prepare(qp_message->panel_state);
 			if (ret == QUICKDRAW_ESD_RECOVERED) {
 				dev_err(&ps_stm401->client->dev,
 					"%s: ESD Recovered: %d\n", __func__,
 					ret);
 				ack_return = AOD_QP_ACK_ESD_RECOVERED;
-				ps_stm401->quickpeek_state = QP_PREPARED;
+				stm401_quickpeek_set_prepared(ps_stm401, true);
 			} else if (ret) {
 				dev_err(&ps_stm401->client->dev,
 					"%s: Prepare Error: %d\n", __func__,
 					ret);
 				ack_return = AOD_QP_ACK_INVALID;
 			} else
-				ps_stm401->quickpeek_state = QP_PREPARED;
+				stm401_quickpeek_set_prepared(ps_stm401, true);
 			break;
 		case AOD_WAKEUP_REASON_QP_DRAW:
-			if (!(ps_stm401->quickpeek_state == QP_PREPARED)) {
-				dev_err(&ps_stm401->client->dev,
-					"%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
-					__func__, ps_stm401->quickpeek_state,
-					qp_message->message);
-				ack_return = AOD_QP_ACK_BAD_MSG_ORDER;
-				break;
-			}
 			if (qp_message->buffer_id >
 				AOD_QP_DRAW_MAX_BUFFER_ID) {
 				dev_err(&ps_stm401->client->dev,
@@ -340,14 +436,6 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 			}
 			break;
 		case AOD_WAKEUP_REASON_QP_ERASE:
-			if (!(ps_stm401->quickpeek_state == QP_PREPARED)) {
-				dev_err(&ps_stm401->client->dev,
-					"%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
-					__func__, ps_stm401->quickpeek_state,
-					qp_message->message);
-				ack_return = AOD_QP_ACK_BAD_MSG_ORDER;
-				break;
-			}
 			if (qp_message->x2 <= qp_message->x1 ||
 			    qp_message->y2 <= qp_message->y1) {
 				dev_err(&ps_stm401->client->dev,
@@ -366,15 +454,6 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 			}
 			break;
 		case AOD_WAKEUP_REASON_QP_COMPLETE:
-			if (!(ps_stm401->quickpeek_state == QP_PREPARED)) {
-				dev_err(&ps_stm401->client->dev,
-					"%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
-					__func__, ps_stm401->quickpeek_state,
-					qp_message->message);
-				ack_return = AOD_QP_ACK_BAD_MSG_ORDER;
-				break;
-			}
-			ps_stm401->quickpeek_state = QP_COMPLETED;
 			ret = fb_quickdraw_cleanup();
 			if (ret) {
 				dev_err(&ps_stm401->client->dev,
@@ -382,6 +461,7 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 					__func__, ret);
 				ack_return = AOD_QP_ACK_INVALID;
 			}
+			stm401_quickpeek_set_prepared(ps_stm401, false);
 			break;
 		default:
 			dev_err(&ps_stm401->client->dev,
@@ -391,22 +471,24 @@ void stm401_quickpeek_work_func(struct work_struct *work)
 			break;
 		}
 
+loop:
 		stm401_quickpeek_status_ack(ps_stm401, qp_message, ack_return);
+
+		mutex_lock(&ps_stm401->qp_list_lock);
 		kfree(qp_message);
 	}
 
-	if (ps_stm401->quickpeek_state == QP_COMPLETED) {
-		if (ps_stm401->qw_in_progress) {
-			ps_stm401->ignored_interrupts = 0;
-			ps_stm401->ignore_wakeable_interrupts = true;
-		}
+	if (!stm401_quickpeek_is_pending_locked(ps_stm401) &&
+		!ps_stm401->qp_prepared) {
 		wake_unlock(&ps_stm401->quickpeek_wakelock);
-		complete(&ps_stm401->quickpeek_done);
-		ps_stm401->quickpeek_state = QP_IDLE;
+		wake_up_all(&ps_stm401->quickpeek_wait_queue);
 	}
 
+	stm401_quickpeek_set_in_progress_locked(ps_stm401, false);
+
+	mutex_unlock(&ps_stm401->qp_list_lock);
+
 	stm401_sleep(ps_stm401);
-	mutex_unlock(&ps_stm401->lock);
 }
 
 static int stm401_takeback_locked(struct stm401_data *ps_stm401)
@@ -571,12 +653,6 @@ static int stm401_qw_check(void *data)
 	mutex_lock(&ps_stm401->lock);
 
 	if (ps_stm401->quickpeek_occurred) {
-		if (ps_stm401->quickpeek_state == QP_IDLE) {
-			/* Wow, we've completed an entire quickpeek before
-			   getting here. Unexpected, but we should handle it. */
-			ps_stm401->ignored_interrupts = 0;
-			ps_stm401->ignore_wakeable_interrupts = true;
-		}
 		ret = 1;
 		goto EXIT;
 	}
@@ -595,9 +671,6 @@ static int stm401_qw_check(void *data)
 	}
 
 EXIT:
-	if (ret == 1)
-		ps_stm401->qw_in_progress = true;
-
 	mutex_unlock(&ps_stm401->lock);
 
 	return ret;
@@ -608,17 +681,10 @@ static int stm401_qw_execute(void *data)
 	struct stm401_data *ps_stm401 = (struct stm401_data *)data;
 	int ret = 1;
 
-	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
-
-	if (!wait_for_completion_timeout(&ps_stm401->quickpeek_done,
-							AOD_QP_TIMEOUT)) {
-		dev_err(&ps_stm401->client->dev,
-			"timed out waiting for complete message, reset stm401\n");
-		stm401_reset_and_init();
+	if (!wait_event_timeout(ps_stm401->quickpeek_wait_queue,
+		stm401_quickpeek_disable_when_idle(ps_stm401),
+		msecs_to_jiffies(STM401_LATE_SUSPEND_TIMEOUT)))
 		ret = 0;
-	}
-
-	ps_stm401->qw_in_progress = false;
 
 	return ret;
 }
