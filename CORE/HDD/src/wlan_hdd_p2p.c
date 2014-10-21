@@ -2246,20 +2246,6 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
                  hddLog( LOG1, "%s:"
                          "Rcvd action frame after timer expired ", __func__);
 
-             if( (actionFrmType == WLAN_HDD_PROV_DIS_REQ) ||
-                 (actionFrmType == WLAN_HDD_GO_NEG_REQ) ||
-                 (actionFrmType == WLAN_HDD_INVITATION_REQ) )
-             {
-                 pScanInfo =  &pHddCtx->scan_info;
-                 if((pScanInfo != NULL) && (pHddCtx->scan_info.mScanPending))
-                 {
-                     hddLog(LOGE,"Action frame received when Scanning is in"
-                                 " progress. Abort Scan.");
-                     hdd_abort_mac_scan(pAdapter->pHddCtx,
-                                        pScanInfo->sessionId,
-                                        eCSR_SCAN_ABORT_DEFAULT);
-                 }
-             }
              if (((actionFrmType == WLAN_HDD_PROV_DIS_RESP) &&
                    (cfgState->actionFrmState == HDD_PD_REQ_ACK_PENDING)) ||
                   ((actionFrmType == WLAN_HDD_GO_NEG_RESP) &&
@@ -2283,6 +2269,16 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
             }
 #endif
         }
+
+         pScanInfo =  &pHddCtx->scan_info;
+         if ((pScanInfo != NULL) && (pHddCtx->scan_info.mScanPending))
+         {
+             hddLog(LOGE,"Action frame received when Scanning is in"
+                          " progress. Abort Scan.");
+             hdd_abort_mac_scan(pAdapter->pHddCtx,
+                                pScanInfo->sessionId,
+                                eCSR_SCAN_ABORT_DEFAULT);
+         }
 #ifdef WLAN_FEATURE_TDLS_DEBUG
         if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_TDLS_ACTION_FRAME)
         {
