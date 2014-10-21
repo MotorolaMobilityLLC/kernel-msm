@@ -66,8 +66,14 @@
 #define FSA8500_MIC_DISABLED		0
 #define FSA8500_MIC_ENABLED		1
 
+#ifdef CONFIG_SND_SOC_FSA8500
 extern int fsa8500_hs_detect(struct snd_soc_codec *codec);
-
 extern void fsa8500_hp_event(int event);
 extern void fsa8500_mic_event(int event);
+#else
+inline int fsa8500_hs_detect(struct snd_soc_codec *codec) { return 0; };
+inline void fsa8500_hp_event(int event) {};
+inline void fsa8500_mic_event(int event) {};
+#endif
+
 #endif  /* __FSA8500_CORE_H__ */
