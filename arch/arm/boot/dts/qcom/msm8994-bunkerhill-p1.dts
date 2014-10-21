@@ -36,3 +36,9 @@
 		qcom,num-grp-pins = <3>;
 	};
 };
+
+&i2c_2 {
+	atmel_mxt_ts@4a {
+		touch_vdd-supply = <&pm8994_l14>;
+	};
+};
