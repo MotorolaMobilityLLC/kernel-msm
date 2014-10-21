@@ -171,10 +171,6 @@
 	reg = <0 0x1000>;
 };
 
-&fb_mem {
-	reg = <0 0x200000>;
-};
-
 &cci {
 	status = "disabled";
 };
