@@ -2124,8 +2124,10 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
 {
    hdd_priv_data_t priv_data;
    tANI_U8 *command = NULL;
+   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   hdd_scaninfo_t *pScanInfo = NULL;
    int ret = 0;
-
+   int status;
    /*
     * Note that valid pointers are provided by caller
     */
@@ -2142,7 +2144,13 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
        ret = -EINVAL;
        goto exit;
    }
-
+   status = wlan_hdd_validate_context(pHddCtx);
+   if (0 != status)
+   {
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid", __func__);
+       return status;
+   }
    /* Allocate +1 for '\0' */
    command = kmalloc(priv_data.total_len + 1, GFP_KERNEL);
    if (!command)
@@ -3764,6 +3772,16 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            }
            //Filtertype value should be either 0-Disabled, 1-Source, 2-sink
            pHddCtx->drvr_miracast = filterType;
+           pScanInfo =  &pHddCtx->scan_info;
+           if (filterType && pScanInfo != NULL &&
+               pHddCtx->scan_info.mScanPending)
+           {
+              /*Miracast Session started. Abort Scan */
+              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+               "%s, Aborting Scan For Miracast",__func__);
+              hdd_abort_mac_scan(pHddCtx, pScanInfo->sessionId,
+                                 eCSR_SCAN_ABORT_DEFAULT);
+           }
            hdd_tx_rx_pkt_cnt_stat_timer_handler(pHddCtx);
            sme_SetMiracastMode(pHddCtx->hHal, pHddCtx->drvr_miracast);
         }
