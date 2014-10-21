@@ -3963,6 +3963,9 @@ wlan_hdd_tdls_config_state_change_policy[
     [QCA_WLAN_VENDOR_ATTR_TDLS_STATE_MAC_ADDR] = {.type = NLA_UNSPEC },
     [QCA_WLAN_VENDOR_ATTR_TDLS_NEW_STATE] = {.type = NLA_S32 },
     [QCA_WLAN_VENDOR_ATTR_TDLS_STATE_REASON] = {.type = NLA_S32 },
+    [QCA_WLAN_VENDOR_ATTR_TDLS_STATE_CHANNEL] = {.type = NLA_S32 },
+    [QCA_WLAN_VENDOR_ATTR_TDLS_STATE_GLOBAL_OPERATING_CLASS] =
+                                                {.type = NLA_S32 },
 
 };
 
@@ -3973,6 +3976,9 @@ wlan_hdd_tdls_config_get_status_policy[
     [QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_MAC_ADDR] = {.type = NLA_UNSPEC },
     [QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_STATE] = {.type = NLA_S32 },
     [QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_REASON] = {.type = NLA_S32 },
+    [QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_CHANNEL] = {.type = NLA_S32 },
+    [QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_GLOBAL_OPERATING_CLASS]
+                                                   = {.type = NLA_S32 },
 
 };
 
@@ -4054,6 +4060,8 @@ static int wlan_hdd_cfg80211_exttdls_get_status(struct wiphy *wiphy,
     eHalStatus ret;
     tANI_S32 state;
     tANI_S32 reason;
+    tANI_S32 global_operating_class = 0;
+    tANI_S32 channel = 0;
     struct sk_buff *skb         = NULL;
 
     ret = wlan_hdd_validate_context(pHddCtx);
@@ -4091,7 +4099,7 @@ static int wlan_hdd_cfg80211_exttdls_get_status(struct wiphy *wiphy,
         return -EINVAL;
     }
     skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy,
-                                              2 * sizeof(s32) +
+                                              4 * sizeof(s32) +
                                               NLMSG_HDRLEN);
 
     if (!skb) {
@@ -4099,13 +4107,24 @@ static int wlan_hdd_cfg80211_exttdls_get_status(struct wiphy *wiphy,
                   FL("cfg80211_vendor_cmd_alloc_reply_skb failed"));
         return -EINVAL;
     }
-    hddLog(VOS_TRACE_LEVEL_INFO, FL("Reason (%d) Status (%d) tdls peer" MAC_ADDRESS_STR),
+    hddLog(VOS_TRACE_LEVEL_INFO, FL("Reason (%d) Status (%d) class (%d) channel (%d) peer" MAC_ADDRESS_STR),
                                  reason,
                                  state,
+                                 global_operating_class,
+                                 channel,
                                  MAC_ADDR_ARRAY(peer));
-
-    if (nla_put_s32(skb, QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_STATE, state) ||
-        nla_put_s32(skb, QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_REASON, reason)) {
+    if (nla_put_s32(skb,
+                    QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_STATE,
+                    state) ||
+        nla_put_s32(skb,
+                    QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_REASON,
+                    reason) ||
+        nla_put_s32(skb,
+                    QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_GLOBAL_OPERATING_CLASS,
+                    global_operating_class) ||
+        nla_put_s32(skb,
+                    QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_CHANNEL,
+                    channel)) {
 
         hddLog(VOS_TRACE_LEVEL_ERROR, FL("nla put fail"));
         goto nla_put_failure;
@@ -4126,6 +4145,8 @@ static int wlan_hdd_cfg80211_exttdls_callback(tANI_U8* mac,
     hdd_adapter_t* pAdapter       = (hdd_adapter_t*)ctx;
     hdd_context_t *pHddCtx        = WLAN_HDD_GET_CTX(pAdapter);
     struct sk_buff *skb           = NULL;
+    tANI_S32 global_operating_class = 0;
+    tANI_S32 channel = 0;
 
     if (wlan_hdd_validate_context(pHddCtx)) {
         hddLog(VOS_TRACE_LEVEL_ERROR, FL("HDD context is not valid "));
@@ -4148,16 +4169,30 @@ static int wlan_hdd_cfg80211_exttdls_callback(tANI_U8* mac,
         return -EINVAL;
     }
     hddLog(VOS_TRACE_LEVEL_INFO, FL("Entering "));
-    hddLog(VOS_TRACE_LEVEL_INFO, "Reason (%d) Status (%d)", reason, state);
+    hddLog(VOS_TRACE_LEVEL_INFO, "Reason: (%d) Status: (%d) Class: (%d) Channel: (%d)",
+           reason,
+           state,
+           global_operating_class,
+           channel);
     hddLog(VOS_TRACE_LEVEL_WARN, "tdls peer " MAC_ADDRESS_STR,
                                           MAC_ADDR_ARRAY(mac));
 
-    if (nla_put(skb, QCA_WLAN_VENDOR_ATTR_TDLS_STATE_MAC_ADDR,
-                                              VOS_MAC_ADDR_SIZE, mac) ||
-        nla_put_s32(skb, QCA_WLAN_VENDOR_ATTR_TDLS_NEW_STATE, state) ||
-        nla_put_s32(skb, QCA_WLAN_VENDOR_ATTR_TDLS_STATE_REASON, reason)
-       ) {
-
+    if (nla_put(skb,
+                QCA_WLAN_VENDOR_ATTR_TDLS_STATE_MAC_ADDR,
+                VOS_MAC_ADDR_SIZE, mac) ||
+        nla_put_s32(skb,
+                    QCA_WLAN_VENDOR_ATTR_TDLS_NEW_STATE,
+                    state) ||
+        nla_put_s32(skb,
+                    QCA_WLAN_VENDOR_ATTR_TDLS_STATE_REASON,
+                    reason) ||
+        nla_put_s32(skb,
+                    QCA_WLAN_VENDOR_ATTR_TDLS_STATE_CHANNEL,
+                    channel) ||
+        nla_put_s32(skb,
+                    QCA_WLAN_VENDOR_ATTR_TDLS_STATE_GLOBAL_OPERATING_CLASS,
+                    global_operating_class)
+        ) {
         hddLog(VOS_TRACE_LEVEL_ERROR, FL("nla put fail"));
         goto nla_put_failure;
     }
