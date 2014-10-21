@@ -74,15 +74,14 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	if (ps_stm401->mode == BOOTMODE)
 		goto EXIT_NO_WAKE;
 
-	/* This is to handle the case of having completed a quickwake and
-	   receiving another wakeable interrupt before we reach suspend. By
-	   the nature of quickwake, we are already going into suspend here
-	   so the only way to ensure we can process this interrupt is to
-	   throw an error at the last suspend step (noirq) so that we
-	   resume to handle this interrupt properly */
+	/* This is to handle the case of receiving an interrupt after
+	   suspend_late, but before interrupts were globally disabled. If this
+	   is the case, interrupts might be disabled now, so we cannot handle
+	   this at this time. suspend_noirq will return BUSY if this happens
+	   so that we can handle these interrupts. */
 	if (ps_stm401->ignore_wakeable_interrupts) {
 		dev_info(&ps_stm401->client->dev,
-			"Interrupt received after quickwake complete, defer until next resume\n");
+			"Deferring interrupt work\n");
 		ps_stm401->ignored_interrupts++;
 		goto EXIT_NO_WAKE;
 	}
