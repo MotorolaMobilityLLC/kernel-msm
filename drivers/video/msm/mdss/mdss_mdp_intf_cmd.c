@@ -39,6 +39,7 @@ struct mdss_mdp_cmd_ctx {
 	struct list_head vsync_handlers;
 	int panel_power_state;
 	atomic_t koff_cnt;
+	atomic_t intf_stopped;
 	int clk_enabled;
 	int vsync_enabled;
 	int rdptr_enabled;
@@ -708,6 +709,11 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 
+	if (atomic_read(&ctx->intf_stopped)) {
+		pr_err("ctx=%d stopped already\n", ctx->pp_num);
+		return -EPERM;
+	}
+
 	/* sctl will be null for right only in the case of Partial update */
 	sctl = mdss_mdp_get_split_ctl(ctl);
 
@@ -821,10 +827,20 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 	pinfo = &ctl->panel_data->panel_info;
 
 	spin_lock_irqsave(&ctx->clk_lock, flags);
+	/* intf stopped,  no more kickoff */
+	atomic_set(&ctx->intf_stopped, 1);
 	if (ctx->rdptr_enabled) {
 		INIT_COMPLETION(ctx->stop_comp);
 		need_wait = 1;
+		/*
+		 * clk off at next vsync after pp_done  OR
+		 * next vsync if there has no kickoff pending
+		 */
+		ctx->rdptr_enabled = 1;
 	}
+	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt),
+				atomic_read(&ctx->intf_stopped),
+				ctx->rdptr_enabled, need_wait);
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
 	if (need_wait) {
@@ -1007,6 +1023,8 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 
 	ctx->recovery.fxn = mdss_mdp_cmd_underflow_recovery;
 	ctx->recovery.data = ctx;
+
+	atomic_set(&ctx->intf_stopped, 0);
 
 	pr_debug("%s: ctx=%p num=%d mixer=%d\n", __func__,
 				ctx, ctx->pp_num, mixer->num);
