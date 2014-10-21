@@ -1109,15 +1109,16 @@ static int stm401_probe(struct i2c_client *client,
 	INIT_WORK(&ps_stm401->quickpeek_work, stm401_quickpeek_work_func);
 	wake_lock_init(&ps_stm401->quickpeek_wakelock, WAKE_LOCK_SUSPEND,
 		"stm401_quickpeek");
-	init_completion(&ps_stm401->quickpeek_done);
-	ps_stm401->quickpeek_state = QP_IDLE;
 	INIT_LIST_HEAD(&ps_stm401->quickpeek_command_list);
 	atomic_set(&ps_stm401->qp_enabled, 0);
-	ps_stm401->qw_in_progress = false;
+	ps_stm401->qp_in_progress = false;
+	ps_stm401->qp_prepared = false;
+	init_waitqueue_head(&ps_stm401->quickpeek_wait_queue);
 
 	ps_stm401->ignore_wakeable_interrupts = false;
 	ps_stm401->ignored_interrupts = 0;
 	ps_stm401->quickpeek_occurred = false;
+	mutex_init(&ps_stm401->qp_list_lock);
 
 	stm401_quickwakeup_init(ps_stm401);
 
@@ -1285,22 +1286,14 @@ static int stm401_suspend(struct device *dev)
 static int stm401_suspend_late(struct device *dev)
 {
 	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
-	int ret = 0;
-
 	dev_dbg(dev, "%s\n", __func__);
 
-	mutex_lock(&ps_stm401->lock);
+	if (!wait_event_timeout(ps_stm401->quickpeek_wait_queue,
+		stm401_quickpeek_disable_when_idle(ps_stm401),
+		msecs_to_jiffies(STM401_LATE_SUSPEND_TIMEOUT)))
+		return -EBUSY;
 
-	if (ps_stm401->quickpeek_state == QP_IDLE)
-		ps_stm401->ignore_wakeable_interrupts = true;
-	else {
-		dev_dbg(&ps_stm401->client->dev, "Wait for quickpeek to finish!\n");
-		ret = -EBUSY;
-	}
-
-	mutex_unlock(&ps_stm401->lock);
-
-	return ret;
+	return 0;
 }
 
 static int stm401_suspend_noirq(struct device *dev)
@@ -1323,13 +1316,6 @@ static int stm401_suspend_noirq(struct device *dev)
 	}
 
 	ps_stm401->quickpeek_occurred = false;
-
-	/* Init this here, because there is the unlikely posibility that an
-	   entire quickpeek operation might occur in interrupt work before
-	   qw_check has a chance to run. In that case, the completion will
-	   have already been completed, and we don't want to lose that
-	   status, or qw_execute will block for no reason. */
-	INIT_COMPLETION(ps_stm401->quickpeek_done);
 
 	mutex_unlock(&ps_stm401->lock);
 
