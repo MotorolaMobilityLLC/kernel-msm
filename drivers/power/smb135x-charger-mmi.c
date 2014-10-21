@@ -431,6 +431,7 @@ struct smb135x_chg {
 	bool				poll_fast;
 	bool				hvdcp_powerup;
 	int				prev_batt_health;
+	bool				demo_mode;
 };
 
 static struct smb135x_chg *the_chip;
@@ -1333,7 +1334,7 @@ static int smb135x_temp_charging(struct smb135x_chg *chip, int enable)
 
 static void smb135x_set_chrg_path_temp(struct smb135x_chg *chip)
 {
-	if (chip->batt_cool && !chip->ext_high_temp)
+	if ((chip->batt_cool && !chip->ext_high_temp) || chip->demo_mode)
 		smb135x_float_voltage_set(chip,
 					  chip->ext_temp_volt_mv);
 	else
@@ -2671,6 +2672,9 @@ static void heartbeat_work(struct work_struct *work)
 		container_of(work, struct smb135x_chg,
 				heartbeat_work.work);
 	bool poll_status = chip->poll_fast;
+
+	if (chip->demo_mode)
+		dev_warn(chip->dev, "Battery in Demo Mode charging Limited\n");
 
 	if (smb135x_get_prop_batt_capacity(chip, &batt_soc) ||
 	    smb135x_get_prop_batt_health(chip, &batt_health)) {
@@ -4532,6 +4536,49 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 }
 
 #define CHG_SHOW_MAX_SIZE 50
+static ssize_t force_demo_mode_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid usb suspend mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	the_chip->demo_mode = (mode) ? true : false;
+
+	return r ? r : count;
+}
+
+static ssize_t force_demo_mode_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = (the_chip->demo_mode) ? 1 : 0;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_demo_mode, 0644,
+		force_demo_mode_show,
+		force_demo_mode_store);
+
 #define USB_SUSPEND_BIT BIT(4)
 static ssize_t force_chg_usb_suspend_store(struct device *dev,
 					struct device_attribute *attr,
@@ -5034,7 +5081,7 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->therm_lvl_sel = -EINVAL;
 	chip->dc_therm_lvl_sel = -EINVAL;
 	chip->hvdcp_powerup = false;
-
+	chip->demo_mode = false;
 
 	wakeup_source_init(&chip->smb_wake_source.source, "smb135x_wake");
 	INIT_DELAYED_WORK(&chip->wireless_insertion_work,
@@ -5304,6 +5351,13 @@ static int smb135x_charger_probe(struct i2c_client *client,
 
 	the_chip = chip;
 
+	rc = device_create_file(chip->dev,
+				&dev_attr_force_demo_mode);
+	if (rc) {
+		pr_err("couldn't create force_demo_mode\n");
+		goto unregister_dc_psy;
+	}
+
 	if (chip->factory_mode) {
 		rc = device_create_file(chip->dev,
 					&dev_attr_force_chg_usb_suspend);
@@ -5401,6 +5455,8 @@ static int smb135x_charger_remove(struct i2c_client *client)
 	power_supply_unregister(&chip->batt_psy);
 
 	mutex_destroy(&chip->irq_complete);
+	device_remove_file(chip->dev,
+			   &dev_attr_force_demo_mode);
 	if (chip->factory_mode) {
 		device_remove_file(chip->dev,
 				   &dev_attr_force_chg_usb_suspend);
