@@ -242,7 +242,13 @@
 	qcom,dsi-pref-prim-pan = <&dsi_lgd_lg4237_cmd>;
 	qcom,platform-enable-gpio = <&msmgpio 108 0>;
 	vdd-supply = <&pm8226_l18>;
-	qcom,platform-supply-entry1 {
+
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
 			qcom,supply-name = "vddio";
 			qcom,supply-min-voltage = <1800000>;
 			qcom,supply-max-voltage = <1800000>;
@@ -252,8 +258,10 @@
 			qcom,supply-post-on-sleep = <0>;
 			qcom,supply-pre-off-sleep = <20>;
 			qcom,supply-post-off-sleep = <0>;
-	};
-	qcom,platform-supply-entry2 {
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
 			qcom,supply-name = "vdd";
 			qcom,supply-min-voltage = <3000000>;
 			qcom,supply-max-voltage = <3300000>;
@@ -263,6 +271,7 @@
 			qcom,supply-post-on-sleep = <0>;
 			qcom,supply-pre-off-sleep = <0>;
 			qcom,supply-post-off-sleep = <200>;
+		};
 	};
 };
 
