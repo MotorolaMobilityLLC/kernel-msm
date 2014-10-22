@@ -579,6 +579,20 @@ static ssize_t mdss_fb_get_src_split_info(struct device *dev,
 	return ret;
 }
 
+static void __mdss_fb_set_idle_mode(struct msm_fb_data_type *mfd, int is_idle)
+{
+	struct mdss_panel_data *pdata;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	pr_debug("Idle mode = %d\n", is_idle);
+
+	if (mfd->index == 0) {
+		if (pdata && pdata->set_idle)
+			pdata->set_idle(pdata, is_idle);
+	}
+}
+
 static ssize_t mdss_fb_set_idle_mode(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -601,12 +615,7 @@ static ssize_t mdss_fb_set_idle_mode(struct device *dev,
 		return rc;
 	}
 
-	pr_debug("Idle mode = %d\n", idle_mode);
-
-	if (mfd->index == 0) {
-		if (pdata && pdata->set_idle)
-			pdata->set_idle(pdata, idle_mode);
-	}
+	__mdss_fb_set_idle_mode(mfd, idle_mode);
 
 	return count;
 }
@@ -1351,6 +1360,11 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 		return 0;
 	}
 	pr_debug("mode: %d\n", blank_mode);
+
+	if (blank_mode == FB_BLANK_UNBLANK)
+		__mdss_fb_set_idle_mode(mfd, 0);
+	else if (blank_mode == FB_BLANK_VSYNC_SUSPEND)
+		__mdss_fb_set_idle_mode(mfd, 1);
 
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 
