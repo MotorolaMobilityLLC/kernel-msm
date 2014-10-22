@@ -1828,7 +1828,7 @@ out:
 
 static struct rt6_info *rt6_add_route_info(struct net_device *dev,
 					   const struct in6_addr *prefix, int prefixlen,
-+					   const struct in6_addr *gwaddr, unsigned int pref)
+					   const struct in6_addr *gwaddr, unsigned int pref)
 {
 	struct fib6_config cfg = {
 		.fc_table	= addrconf_rt_table(dev, RT6_TABLE_INFO),
