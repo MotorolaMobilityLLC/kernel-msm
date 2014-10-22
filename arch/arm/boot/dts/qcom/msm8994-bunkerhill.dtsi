@@ -175,3 +175,7 @@
 
 	/delete-node/ synaptics_dsx_i2c@3b;
 };
+
+&bt_vreg {
+	gpio = <&pm8994_gpios 11 0>;
+};
