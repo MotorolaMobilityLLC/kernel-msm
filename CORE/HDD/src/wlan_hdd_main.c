@@ -2124,8 +2124,10 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
 {
    hdd_priv_data_t priv_data;
    tANI_U8 *command = NULL;
+   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   hdd_scaninfo_t *pScanInfo = NULL;
    int ret = 0;
-
+   int status;
    /*
     * Note that valid pointers are provided by caller
     */
@@ -2142,7 +2144,13 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
        ret = -EINVAL;
        goto exit;
    }
-
+   status = wlan_hdd_validate_context(pHddCtx);
+   if (0 != status)
+   {
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid", __func__);
+       return status;
+   }
    /* Allocate +1 for '\0' */
    command = kmalloc(priv_data.total_len + 1, GFP_KERNEL);
    if (!command)
@@ -3764,6 +3772,16 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            }
            //Filtertype value should be either 0-Disabled, 1-Source, 2-sink
            pHddCtx->drvr_miracast = filterType;
+           pScanInfo =  &pHddCtx->scan_info;
+           if (filterType && pScanInfo != NULL &&
+               pHddCtx->scan_info.mScanPending)
+           {
+              /*Miracast Session started. Abort Scan */
+              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+               "%s, Aborting Scan For Miracast",__func__);
+              hdd_abort_mac_scan(pHddCtx, pScanInfo->sessionId,
+                                 eCSR_SCAN_ABORT_DEFAULT);
+           }
            hdd_tx_rx_pkt_cnt_stat_timer_handler(pHddCtx);
            sme_SetMiracastMode(pHddCtx->hHal, pHddCtx->drvr_miracast);
         }
@@ -6806,12 +6824,13 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
 {
    eHalStatus halStatus = eHAL_STATUS_SUCCESS;
    hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+   hdd_scaninfo_t *pScanInfo = NULL;
    union iwreq_data wrqu;
    v_U8_t retry = 0;
    long ret;
 
    ENTER();
-
+   pScanInfo =  &pHddCtx->scan_info;
    switch(pAdapter->device_mode)
    {
       case WLAN_HDD_INFRA_STATION:
@@ -6865,9 +6884,9 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
                  FL("wait on disconnect_comp_var failed %ld"), ret);
              }
          }
-         else
+         else if(pScanInfo != NULL && pHddCtx->scan_info.mScanPending)
          {
-            hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
+            hdd_abort_mac_scan(pHddCtx, pScanInfo->sessionId,
                                eCSR_SCAN_ABORT_DEFAULT);
          }
        if (pAdapter->device_mode != WLAN_HDD_INFRA_STATION)
@@ -7861,32 +7880,33 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
                 wlan_hdd_cfg80211_deregister_frames(pAdapter);
                 hdd_UnregisterWext(pAdapter->dev);
             }
-            // Cancel any outstanding scan requests.  We are about to close all
-            // of our adapters, but an adapter structure is what SME passes back
-            // to our callback function. Hence if there are any outstanding scan
-            // requests then there is a race condition between when the adapter
-            // is closed and when the callback is invoked.We try to resolve that
-            // race condition here by canceling any outstanding scans before we
-            // close the adapters.
-            // Note that the scans may be cancelled in an asynchronous manner,
-            // so ideally there needs to be some kind of synchronization. Rather
-            // than introduce a new synchronization here, we will utilize the
-            // fact that we are about to Request Full Power, and since that is
-            // synchronized, the expectation is that by the time Request Full
-            // Power has completed all scans will be cancelled.
-            if (pHddCtx->scan_info.mScanPending)
-            {
-                hddLog(VOS_TRACE_LEVEL_INFO,
-                       FL("abort scan mode: %d sessionId: %d"),
-                           pAdapter->device_mode,
-                           pAdapter->sessionId);
-                hdd_abort_mac_scan(pHddCtx,
-                                   pAdapter->sessionId,
-                                   eCSR_SCAN_ABORT_DEFAULT);
-            }
+
          }
          vosStatus = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
          pAdapterNode = pNext;
+      }
+      // Cancel any outstanding scan requests.  We are about to close all
+      // of our adapters, but an adapter structure is what SME passes back
+      // to our callback function. Hence if there are any outstanding scan
+      // requests then there is a race condition between when the adapter
+      // is closed and when the callback is invoked.We try to resolve that
+      // race condition here by canceling any outstanding scans before we
+      // close the adapters.
+      // Note that the scans may be cancelled in an asynchronous manner,
+      // so ideally there needs to be some kind of synchronization. Rather
+      // than introduce a new synchronization here, we will utilize the
+      // fact that we are about to Request Full Power, and since that is
+      // synchronized, the expectation is that by the time Request Full
+      // Power has completed all scans will be cancelled.
+      if (pHddCtx->scan_info.mScanPending)
+      {
+          hddLog(VOS_TRACE_LEVEL_INFO,
+                 FL("abort scan mode: %d sessionId: %d"),
+                     pAdapter->device_mode,
+                     pAdapter->sessionId);
+           hdd_abort_mac_scan(pHddCtx,
+                              pHddCtx->scan_info.sessionId,
+                              eCSR_SCAN_ABORT_DEFAULT);
       }
    }
    else
@@ -10412,7 +10432,7 @@ int wlan_hdd_scan_abort(hdd_adapter_t *pAdapter)
     if (pScanInfo->mScanPending)
     {
         INIT_COMPLETION(pScanInfo->abortscan_event_var);
-        hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
+        hdd_abort_mac_scan(pHddCtx, pScanInfo->sessionId,
                                     eCSR_SCAN_ABORT_DEFAULT);
 
         status = wait_for_completion_interruptible_timeout(

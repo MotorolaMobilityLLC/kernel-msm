@@ -1087,6 +1087,13 @@ static v_VOID_t hdd_link_layer_process_peer_stats(hdd_adapter_t *pAdapter,
                 ((uint8 *)pWifiPeerStat->peerInfo +
                 ( i * sizeof(tSirWifiPeerInfo)));
 
+            if (WLAN_HDD_INFRA_STATION == pAdapter->device_mode) {
+                    pWifiPeerInfo->type = WIFI_PEER_AP;
+            }
+            if (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) {
+                    pWifiPeerInfo->type = WIFI_PEER_P2P_GO;
+            }
+
             hddLog(VOS_TRACE_LEVEL_INFO,
                     " %d) LL_STATS Channel Stats "
                     " Peer Type %u "
@@ -9834,6 +9841,7 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     }
 
     pScanInfo->mScanPending = TRUE;
+    pScanInfo->sessionId = pAdapter->sessionId;
     pAdapter->request = request;
     pScanInfo->scanId = scanId;
 
@@ -11192,7 +11200,7 @@ static int __wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
             {
                 hddLog(VOS_TRACE_LEVEL_INFO, "Disconnect is in progress, "
                               "Aborting Scan");
-                hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
+                hdd_abort_mac_scan(pHddCtx, pScanInfo->sessionId,
                                    eCSR_SCAN_ABORT_DEFAULT);
             }
 
