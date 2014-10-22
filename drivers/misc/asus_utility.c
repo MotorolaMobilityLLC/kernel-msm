@@ -19,6 +19,7 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
+#include <linux/workqueue.h>
 
 #include <linux/asus_utility.h>
 
@@ -40,6 +41,12 @@ static struct proc_dir_entry *mode_root;
 
 static int interactive_status = 0;
 static RAW_NOTIFIER_HEAD(mode_chain_head);
+
+static struct workqueue_struct *notify_workQueue;
+static void do_notify_on_worker(struct work_struct *work);
+static void do_notify_off_worker(struct work_struct *work);
+static DECLARE_WORK(notify_on_Work, do_notify_on_worker);
+static DECLARE_WORK(notify_off_Work, do_notify_off_worker);
 
 int modeSendNotify(unsigned long val)
 {
@@ -74,6 +81,18 @@ EXPORT_SYMBOL_GPL(unregister_mode_notifier);
  * =======================================================================
  */
 
+static void do_notify_on_worker(struct work_struct *work){
+	modeSendNotify(1);
+	//printk ("%s", msg);
+	interactive_status = 1;
+}
+
+static void do_notify_off_worker(struct work_struct *work){
+	modeSendNotify(0);
+	//printk ("%s", msg);
+	interactive_status = 0;
+}
+
 static int mode_write_proc_interactive (struct file *filp, const char __user *buff, size_t len, loff_t *pos)
 {
 	char msg[MODE_PROC_MAX_BUFF_SIZE];
@@ -87,15 +106,11 @@ static int mode_write_proc_interactive (struct file *filp, const char __user *bu
 
 	if (!strncmp(msg,"FB_BLANK_ENTER_INTERACTIVE",len-1)){
 		if (interactive_status == 0)
-		modeSendNotify(1);
-		//printk ("%s", msg);
-		interactive_status = 1;
+			queue_work(notify_workQueue, &notify_on_Work);
 	}
 	else if (!strncmp(msg,"FB_BLANK_ENTER_NON_INTERACTIVE",len-1)){
 		if (interactive_status == 1)
-		modeSendNotify(0);
-		//printk ("%s", msg);
-		interactive_status = 0;
+			queue_work(notify_workQueue, &notify_off_Work);
 	}
 	else {
 		//printk ("%s", msg);
@@ -220,6 +235,7 @@ static int __init mode_notifier_init(void)
 	printk( "[MODE] %s() +++\n", __FUNCTION__);
 
 	init_debug_port();
+	notify_workQueue  = create_singlethread_workqueue("NOTIFY_WORKQUEUE");
 	
 	printk( "[MODE] %s() ---\n", __FUNCTION__);
 	
