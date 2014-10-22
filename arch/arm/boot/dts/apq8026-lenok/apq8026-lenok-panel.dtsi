@@ -207,6 +207,7 @@
 		qcom,mdss-brightness-default-level = <208>;
 		qcom,cont-splash-enabled;
 		qcom,ulps-enabled;
+		qcom,partial-update-enabled;
 		qcom,blmap = /bits/ 8 <
 			0 0 0 0 1 1 1 1 1 1                         /* 0-9 */
 			1 7 14 15 16 17 18 19 20 21                 /* 10-19 */
