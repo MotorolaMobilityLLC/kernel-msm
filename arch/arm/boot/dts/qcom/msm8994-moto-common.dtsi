@@ -21,6 +21,15 @@
 		spi6 = &spi_6;
 		spi7 = &spi_7;
 	};
+	bt_qca6174 {
+		compatible = "qca,qca6174";
+		qca,bt-reset-gpio = <&pm8994_gpios 19 0>; /* BT_EN */
+		qca,bt-vdd-pa-supply = <&bt_vreg>;
+		qca,bt-vdd-io-supply = <&pm8994_s4>;
+		qca,bt-vdd-xtal-supply = <&pm8994_l30>;
+		qca,bt-vdd-io-voltage-level = <1800000 1800000>;
+		qca,bt-vdd-xtal-voltage-level = <1800000 1800000>;
+	};
 };
 
 &tlmm_pinmux {
