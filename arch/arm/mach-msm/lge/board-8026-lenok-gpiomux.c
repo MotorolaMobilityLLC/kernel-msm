@@ -134,6 +134,20 @@ static struct gpiomux_setting lcd_en_sus_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+static struct gpiomux_setting lcd_te_act_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting lcd_te_sus_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
 static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	{
 		.gpio = 25,
@@ -149,6 +163,16 @@ static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
 		},
 	},
+};
+
+static struct msm_gpiomux_config msm_lcd_te_configs[] __initdata = {
+	{
+		.gpio = 24,		/* Tear Enable */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_te_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_te_sus_cfg,
+		},
+	}
 };
 
 static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
@@ -624,6 +648,9 @@ void __init msm8226_init_gpiomux(void)
 
 	msm_gpiomux_install_nowrite(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
+
+	msm_gpiomux_install(msm_lcd_te_configs,
+			ARRAY_SIZE(msm_lcd_te_configs));
 
 	msm_gpiomux_sdc3_install();
 
