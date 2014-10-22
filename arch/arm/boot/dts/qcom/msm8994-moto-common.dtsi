@@ -20,6 +20,7 @@
 		i2c5 = &i2c_5;
 		spi6 = &spi_6;
 		spi7 = &spi_7;
+		uart0 = &blsp2_uart2;
 	};
 	bt_qca6174 {
 		compatible = "qca,qca6174";
