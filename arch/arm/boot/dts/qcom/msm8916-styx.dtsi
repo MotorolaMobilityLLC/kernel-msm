@@ -11,6 +11,7 @@
 */
 
 #include "msm8916-moto-common.dtsi"
+#include "msm8916-camera-sensor-styx.dtsi"
 #include "dsi-panel-mot-boe-450-qHD-video.dtsi"
 #include "dsi-panel-mot-inx-450-qHD-video.dtsi"
 
