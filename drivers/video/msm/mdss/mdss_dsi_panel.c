@@ -1609,9 +1609,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-idle-off-command", "qcom,mdss-dsi-idle-off-command-state");
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-idle-fps", &tmp);
-	pinfo->idle_fps = (!rc ? tmp : 60);
-	if (pinfo->idle_fps)
-		pinfo->idle_ms_per_frame = 1000 / pinfo->idle_fps;
+	pinfo->mipi.frame_rate_idle = (!rc ? tmp : 60);
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->status_cmds,
 			"qcom,mdss-dsi-panel-status-command",
