@@ -152,15 +152,6 @@ qpnp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	 * write operation
 	 */
 
-	/* Disable RTC while writing */
-	reg = 0x0;
-	rc = qpnp_write_wrapper(rtc_dd, &reg,
-				rtc_dd->rtc_base + REG_OFFSET_RTC_CTRL, 1);
-	if (rc) {
-		dev_err(dev, "Disable RTC failed\n");
-		goto rtc_rw_fail;
-	}
-
 	/* Clear WDATA[0] */
 	reg = 0x0;
 	rc = qpnp_write_wrapper(rtc_dd, &reg,
@@ -183,15 +174,6 @@ qpnp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 				rtc_dd->rtc_base + REG_OFFSET_RTC_WRITE, 1);
 	if (rc) {
 		dev_err(dev, "Write to RTC reg failed\n");
-		goto rtc_rw_fail;
-	}
-
-	/* Re-enable RTC for write to take effect */
-	reg = BIT_RTC_ENABLE;
-	rc = qpnp_write_wrapper(rtc_dd, &reg,
-				rtc_dd->rtc_base + REG_OFFSET_RTC_CTRL, 1);
-	if (rc) {
-		dev_err(dev, "Enable RTC failed\n");
 		goto rtc_rw_fail;
 	}
 
