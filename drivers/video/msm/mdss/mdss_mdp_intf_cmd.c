@@ -554,8 +554,6 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
 						"edp", "hdmi", "panic");
 			rc = -EPERM;
-			mdss_mdp_ctl_intf_event(ctl,
-					MDSS_EVENT_PANEL_RESET, NULL);
 			mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);
 		} else {
 			rc = 0;

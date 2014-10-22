@@ -1140,9 +1140,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		rc = mdss_dsi_register_recovery_handler(ctrl_pdata,
 			(struct mdss_panel_recovery *)arg);
 		break;
-	case MDSS_EVENT_PANEL_RESET:
-		mdss_dsi_panel_reset_esd(ctrl_pdata);
-		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
