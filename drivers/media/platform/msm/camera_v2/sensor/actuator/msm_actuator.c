@@ -1057,6 +1057,13 @@ static long msm_actuator_subdev_do_ioctl(
 			memcpy(&actuator_data.cfg.setpos, &(u32->cfg.setpos),
 				sizeof(struct msm_actuator_set_position_t));
 			break;
+		 case CFG_DIRECT_I2C_WRITE:
+			actuator_data.cfgtype = u32->cfgtype;
+			actuator_data.is_af_supported = u32->is_af_supported;
+			actuator_data.cfg.i2c_table = u32->cfg.i2c_table;
+			actuator_data.cfg.i2c_table.size = u32->cfg.i2c_table.size;
+			parg = &actuator_data;
+			break;
 		default:
 			actuator_data.cfgtype = u32->cfgtype;
 			parg = &actuator_data;
