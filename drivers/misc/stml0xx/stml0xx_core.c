@@ -416,6 +416,10 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 	pdata->headset_button_1_2_threshold = 0x012C;
 	pdata->headset_button_2_3_threshold = 0x01C2;
 	pdata->headset_button_3_upper_threshold = 0x02EE;
+	pdata->headset_button_1_keycode = 0xE2;
+	pdata->headset_button_2_keycode = 0x0;
+	pdata->headset_button_3_keycode = 0x0;
+	pdata->headset_button_4_keycode = 0x0;
 	of_property_read_u32(np, "headset_detect_enable",
 			     &pdata->headset_detect_enable);
 	of_property_read_u32(np, "headset_insertion_debounce",
@@ -434,6 +438,14 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 			     &pdata->headset_button_2_3_threshold);
 	of_property_read_u32(np, "headset_button_3_upper_threshold",
 			     &pdata->headset_button_3_upper_threshold);
+	of_property_read_u32(np, "headset_button_1_keycode",
+			     &pdata->headset_button_1_keycode);
+	of_property_read_u32(np, "headset_button_2_keycode",
+			     &pdata->headset_button_2_keycode);
+	of_property_read_u32(np, "headset_button_3_keycode",
+			     &pdata->headset_button_3_keycode);
+	of_property_read_u32(np, "headset_button_4_keycode",
+			     &pdata->headset_button_4_keycode);
 
 	return pdata;
 }
@@ -925,7 +937,14 @@ static int stml0xx_probe(struct spi_device *spi)
 	input_set_drvdata(ps_stml0xx->input_dev, ps_stml0xx);
 	input_set_capability(ps_stml0xx->input_dev, EV_KEY, KEY_POWER);
 	input_set_capability(ps_stml0xx->input_dev, EV_KEY, KEY_CAMERA);
-	input_set_capability(ps_stml0xx->input_dev, EV_KEY, KEY_MEDIA);
+	if (pdata->headset_button_1_keycode > 0)
+		input_set_capability(ps_stml0xx->input_dev, EV_KEY, pdata->headset_button_1_keycode);
+	if (pdata->headset_button_2_keycode > 0)
+		input_set_capability(ps_stml0xx->input_dev, EV_KEY, pdata->headset_button_2_keycode);
+	if (pdata->headset_button_3_keycode > 0)
+		input_set_capability(ps_stml0xx->input_dev, EV_KEY, pdata->headset_button_3_keycode);
+	if (pdata->headset_button_4_keycode > 0)
+		input_set_capability(ps_stml0xx->input_dev, EV_KEY, pdata->headset_button_4_keycode);
 	input_set_capability(ps_stml0xx->input_dev, EV_SW, SW_LID);
 	input_set_capability(ps_stml0xx->input_dev, EV_SW, SW_HEADPHONE_INSERT);
 	input_set_capability(ps_stml0xx->input_dev, EV_SW, SW_MICROPHONE_INSERT);
