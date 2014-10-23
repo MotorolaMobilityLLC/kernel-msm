@@ -107,8 +107,13 @@ static inline void debug_spin_unlock(raw_spinlock_t *lock)
 
 static void __spin_lock_debug(raw_spinlock_t *lock)
 {
+#ifdef CONFIG_SPINLOCK_TIMEOUT_EXT
+	static u32 spinlock_timeout = 2*HZ;
+#else
+	static u32 spinlock_timeout = HZ;
+#endif
 	u64 i;
-	u64 loops = (loops_per_jiffy * HZ);
+	u64 loops = (loops_per_jiffy * spinlock_timeout);
 
 	for (i = 0; i < loops; i++) {
 		if (arch_spin_trylock(&lock->raw_lock))
