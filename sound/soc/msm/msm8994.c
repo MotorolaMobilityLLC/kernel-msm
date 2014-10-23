@@ -2149,113 +2149,6 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 
 	return 0;
 }
-
-#ifndef CONFIG_SND_SOC_FLORIDA
-static struct snd_pcm_hw_params florida_acme_params;
-
-/* Use the dai init for the codec to codec dai to initialize
- * hw params in florida and tfa9890 codecs.
-*/
-static struct snd_pcm_hw_params florida_tfa9890_params;
-
-static int florida_tfa9890_init(struct snd_soc_pcm_runtime *rtd)
-{
-	int ret;
-	int dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF;
-	int florida_dai_fmt = dai_fmt | SND_SOC_DAIFMT_CBM_CFM;
-	int tfa9890_dai_fmt = dai_fmt | SND_SOC_DAIFMT_CBS_CFS;
-	struct snd_interval *rate;
-	struct snd_interval *channels;
-
-	channels = hw_param_interval(&florida_tfa9890_params,
-					SNDRV_PCM_HW_PARAM_CHANNELS);
-	rate = hw_param_interval(&florida_tfa9890_params,
-					SNDRV_PCM_HW_PARAM_RATE);
-
-	/* 2 channels, 48k, 16bit LE */
-	channels->min = channels->max = 2;
-	rate->min = rate->max = 48000;
-	param_set_mask(&florida_tfa9890_params, SNDRV_PCM_HW_PARAM_FORMAT,
-	SNDRV_PCM_FORMAT_S16_LE);
-
-	/* The soc core doesn't have support for codec-codec dais
-	 * so for now use a static reference to the florida assigned
-	 * when the first BE dai gets initd
-	 * */
-	rtd->cpu_dai->codec = florida_codec;
-
-	/* florida is master */
-	ret = snd_soc_dai_set_fmt(rtd->cpu_dai, florida_dai_fmt);
-
-	if (ret != 0)
-		dev_err(rtd->cpu_dai->codec->dev,
-			"Failed to set format for florida aif1 %d\n",
-			ret);
-
-	/* tfa9890 is slave */
-	ret = snd_soc_dai_set_fmt(rtd->codec_dai, tfa9890_dai_fmt);
-
-	if (ret != 0)
-		dev_err(rtd->cpu_dai->codec->dev,
-			"Failed to set format for tfa9890 %d\n",
-			ret);
-
-	dev_info(rtd->dev, "Calling HW params with hw params: %p\n",
-		&florida_tfa9890_params);
-	dev_info(rtd->dev, "hw params: min/max rate: %d / %d\n",
-		rate->min, rate->max);
-
-	/* Set the sysclk for the tfa9890 codec */
-	rtd->codec_dai->driver->ops->set_sysclk(rtd->codec_dai,
-						0, 48000 * 32, 0);
-
-	WARN_ON(!rtd->cpu_dai->driver->ops->hw_params);
-	rtd->cpu_dai->driver->ops->hw_params(0, &florida_tfa9890_params,
-				 rtd->cpu_dai);
-
-	return ret;
-}
-
-static int florida_acme_init(struct snd_soc_pcm_runtime *rtd)
-{
-	int ret;
-	int florida_dai_fmt =  SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF
-			      | SND_SOC_DAIFMT_CBM_CFM;
-
-	struct snd_interval *rate;
-	struct snd_interval *channels;
-
-	pr_info("florida-acme codec-dsp dai init\n");
-
-	channels = hw_param_interval(&florida_acme_params,
-					SNDRV_PCM_HW_PARAM_CHANNELS);
-	rate = hw_param_interval(&florida_acme_params,
-					SNDRV_PCM_HW_PARAM_RATE);
-
-	/* 2 channels, 16k, 16bit LE */
-	channels->min = channels->max = 2;
-	rate->min = rate->max = 48000;
-	param_set_mask(&florida_acme_params, SNDRV_PCM_HW_PARAM_FORMAT,
-	SNDRV_PCM_FORMAT_S16_LE);
-
-	/* florida codec is populate on the first back-end dai being initd */
-	rtd->cpu_dai->codec = florida_codec;
-
-	/* florida is master */
-	ret = snd_soc_dai_set_fmt(rtd->cpu_dai, florida_dai_fmt);
-
-	if (ret != 0)
-		dev_err(rtd->cpu_dai->codec->dev,
-			"Failed to set format for florida aif1 %d\n",
-			ret);
-
-	/* start generating clocks - the acme chip should already be up */
-	rtd->cpu_dai->driver->ops->hw_params(0, &florida_acme_params,
-				 rtd->cpu_dai);
-
-	return ret;
-}
-#endif
 #endif
 
 static void *def_codec_mbhc_cal(void)
@@ -2470,6 +2363,16 @@ end:
 static struct snd_soc_ops msm8994_slimbus_2_be_ops = {
 	.hw_params = msm8994_slimbus_2_hw_params,
 };
+
+#ifdef CONFIG_SND_SOC_FLORIDA
+static const struct snd_soc_pcm_stream tfa9890_params = {
+	.formats = SNDRV_PCM_FORMAT_S16_LE,
+	.rate_min = 48000,
+	.rate_max = 48000,
+	.channels_min = 2,
+	.channels_max = 2,
+};
+#endif
 
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm8994_common_dai_links[] = {
@@ -3475,6 +3378,20 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
+#ifdef CONFIG_SND_SOC_FLORIDA
+	/* FLORIDA - TFA9890 codec-codec link */
+	{
+		.name = "florida-tfa9890",
+		.stream_name = "codec-codec link",
+		.cpu_name = "florida-codec",
+		.cpu_dai_name = "florida-aif1",
+		.codec_name = "tfa9890.11-0034",
+		.codec_dai_name = "tfa9890_codec_left",
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.params = &tfa9890_params,
+	},
+#endif
 	{
 		.name = LPASS_BE_PRI_MI2S_TX,
 		.stream_name = "Primary MI2S Capture",
