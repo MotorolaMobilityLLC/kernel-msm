@@ -2968,8 +2968,8 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 			ret = regulator_enable(mdata->fs);
 			if (ret)
 				pr_warn("Footswitch failed to enable\n");
+			mdss_mdp_cx_ctrl(mdata, true);
 			if (!mdata->idle_pc) {
-				mdss_mdp_cx_ctrl(mdata, true);
 				mdss_mdp_batfet_ctrl(mdata, true);
 			}
 		}
@@ -2987,9 +2987,9 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 				pr_debug("idle pc. active overlays=%d\n",
 					active_cnt);
 			} else {
-				mdss_mdp_cx_ctrl(mdata, false);
 				mdss_mdp_batfet_ctrl(mdata, false);
 			}
+			mdss_mdp_cx_ctrl(mdata, false);
 			regulator_disable(mdata->fs);
 		}
 		mdata->fs_ena = false;
