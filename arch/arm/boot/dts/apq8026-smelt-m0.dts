@@ -39,6 +39,33 @@
 		mpu9150 {
 			compatible = "mot,m4mpu9150";
 		};
+		pedometer {
+			compatible = "mot,m4pedometer";
+		};
+		passive {
+			compatible = "mot,m4passive";
+		};
+		gesture {
+			compatible = "mot,m4gesture";
+		};
+		display {
+			compatible = "mot,m4display";
+		};
+		download {
+			compatible = "mot,m4download";
+		};
+		stillmode {
+			compatible = "mot,m4stillmode";
+		};
+		lightsensor {
+			compatible = "mot,m4als";
+		};
+		heartratesensor {
+			compatible = "mot,m4heartrate";
+		};
+		fusion {
+			compatible = "mot,m4fusion";
+		};
 	};
 };
 
