@@ -1250,7 +1250,7 @@
 				label = "mpp";
 				linux,name = "charging";
 				qcom,default-state = "off";
-				qcom,max-current = <40>;
+				qcom,max-current = <15>;
 				qcom,current-setting = <5>;
 				qcom,id = <6>;
 				qcom,source-sel = <1>;
