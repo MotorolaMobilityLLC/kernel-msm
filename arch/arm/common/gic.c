@@ -40,7 +40,7 @@
 #include <linux/slab.h>
 #include <linux/syscore_ops.h>
 #include <linux/power/pm_debug.h>
-
+#include <linux/wakeup_reason.h>
 #include <asm/irq.h>
 #include <asm/exception.h>
 #include <asm/smp_plat.h>
@@ -261,6 +261,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 		pr_warning("%s: %d triggered", __func__,
 					i + gic->irq_offset);
 		wakeup_source_gic_add_irq(i + gic->irq_offset);
+		log_wakeup_reason(i + gic->irq_offset);
 	}
 }
 
