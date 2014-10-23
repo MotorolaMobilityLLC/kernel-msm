@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,6 +31,7 @@
 #define QPNP_LPG_LUT_BASE	"qpnp-lpg-lut-base"
 
 #define QPNP_PWM_MODE_ONLY_SUB_TYPE	0x0B
+#define QPNP_PWM_SUB_TYPE2		0x11
 
 /* LPG Control for LPG_PATTERN_CONFIG */
 #define QPNP_RAMP_DIRECTION_SHIFT	4
@@ -131,7 +132,6 @@ do { \
 #define QPNP_ENABLE_LUT_V0(value) (value |= QPNP_RAMP_START_MASK)
 #define QPNP_DISABLE_LUT_V0(value) (value &= ~QPNP_RAMP_START_MASK)
 #define QPNP_ENABLE_LUT_V1(value, id) (value |= BIT(id))
-#define QPNP_DISABLE_LUT_V1(value, id) (value &= ~BIT(id))
 
 /* LPG Control for RAMP_STEP_DURATION_LSB */
 #define QPNP_RAMP_STEP_DURATION_LSB_MASK	0xFF
@@ -512,8 +512,9 @@ static void qpnp_lpg_calc_period(enum time_level tm_lvl,
 			if (best_m >= 3) {
 				n += 3;
 				best_m -= 3;
-			} else if (best_m >= 1 &&
-				chip->sub_type != QPNP_PWM_MODE_ONLY_SUB_TYPE) {
+			} else if (best_m >= 1 && (
+				chip->sub_type != QPNP_PWM_MODE_ONLY_SUB_TYPE &&
+				chip->sub_type != QPNP_PWM_SUB_TYPE2)) {
 				n += 1;
 				best_m -= 1;
 			}
@@ -681,7 +682,8 @@ static int qpnp_lpg_save_pwm_value(struct qpnp_pwm_chip *chip)
 	if (rc)
 		return rc;
 
-	if (chip->sub_type == QPNP_PWM_MODE_ONLY_SUB_TYPE) {
+	if (chip->sub_type == QPNP_PWM_MODE_ONLY_SUB_TYPE ||
+		chip->sub_type == QPNP_PWM_SUB_TYPE2) {
 		value = QPNP_PWM_SYNC_VALUE & QPNP_PWM_SYNC_MASK;
 		rc = spmi_ext_register_writel(chip->spmi_dev->ctrl,
 			chip->spmi_dev->sid,
@@ -1003,8 +1005,6 @@ static int qpnp_lpg_configure_lut_state(struct qpnp_pwm_chip *chip,
 					lpg_config->lut_config.ramp_index);
 			value2 = QPNP_ENABLE_LPG_MODE;
 		} else {
-			QPNP_DISABLE_LUT_V1(value1,
-					lpg_config->lut_config.ramp_index);
 			value2 = QPNP_DISABLE_LPG_MODE;
 		}
 		mask1 = value1;
@@ -1024,8 +1024,10 @@ static int qpnp_lpg_configure_lut_state(struct qpnp_pwm_chip *chip,
 	if (rc)
 		return rc;
 
-	return qpnp_lpg_save_and_write(value1, mask1, reg1,
+	if (state == QPNP_LUT_ENABLE || chip->revision == QPNP_LPG_REVISION_0)
+		rc = qpnp_lpg_save_and_write(value1, mask1, reg1,
 					addr1, 1, chip);
+	return rc;
 }
 
 static inline int qpnp_enable_pwm_mode(struct qpnp_pwm_chip *chip)
@@ -1227,6 +1229,7 @@ static int qpnp_pwm_config(struct pwm_chip *pwm_chip,
 	int rc;
 	unsigned long flags;
 	struct qpnp_pwm_chip *chip = qpnp_pwm_from_pwm_chip(pwm_chip);
+	int prev_period_us = chip->pwm_config.pwm_period;
 
 	if ((unsigned)period_ns < PM_PWM_PERIOD_MIN * NSEC_PER_USEC) {
 		pr_err("Invalid pwm handle or parameters\n");
@@ -1235,7 +1238,8 @@ static int qpnp_pwm_config(struct pwm_chip *pwm_chip,
 
 	spin_lock_irqsave(&chip->lpg_lock, flags);
 
-	if (pwm->period != period_ns) {
+	if (prev_period_us > INT_MAX / NSEC_PER_USEC ||
+			prev_period_us * NSEC_PER_USEC != period_ns) {
 		qpnp_lpg_calc_period(LVL_NSEC, period_ns, chip);
 		qpnp_lpg_save_period(chip);
 		pwm->period = period_ns;

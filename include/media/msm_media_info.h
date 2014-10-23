@@ -37,8 +37,9 @@ enum color_fmts {
 	 * UV_Stride : Width aligned to 128
 	 * Y_Scanlines: Height aligned to 32
 	 * UV_Scanlines: Height/2 aligned to 16
+	 * Extradata: Arbitrary (software-imposed) padding
 	 * Total size = align((Y_Stride * Y_Scanlines
-	 *          + UV_Stride * UV_Scanlines + 4096), 4096)
+	 *          + UV_Stride * UV_Scanlines + Extradata), 4096)
 	 */
 	COLOR_FMT_NV12,
 
@@ -73,8 +74,9 @@ enum color_fmts {
 	 * UV_Stride : Width aligned to 128
 	 * Y_Scanlines: Height aligned to 32
 	 * UV_Scanlines: Height/2 aligned to 16
+	 * Extradata: Arbitrary (software-imposed) padding
 	 * Total size = align((Y_Stride * Y_Scanlines
-	 *          + UV_Stride * UV_Scanlines + 4096), 4096)
+	 *          + UV_Stride * UV_Scanlines + Extradata), 4096)
 	 */
 	COLOR_FMT_NV21,
 	/* Venus NV12_MVTB:
@@ -131,11 +133,24 @@ enum color_fmts {
 	 * UV_Scanlines: Height/2 aligned to 16
 	 * View_1 begin at: 0 (zero)
 	 * View_2 begin at: Y_Stride * Y_Scanlines + UV_Stride * UV_Scanlines
+	 * Extradata: Arbitrary (software-imposed) padding
 	 * Total size = align((2*(Y_Stride * Y_Scanlines)
-	 *          + 2*(UV_Stride * UV_Scanlines) + 4096), 4096)
+	 *          + 2*(UV_Stride * UV_Scanlines) + Extradata), 4096)
 	 */
 	COLOR_FMT_NV12_MVTB,
 };
+
+static inline unsigned int VENUS_EXTRADATA_SIZE(int width, int height)
+{
+	(void)height;
+	(void)width;
+
+	/*
+	 * In the future, calculate the size based on the w/h but just
+	 * hardcode it for now since 8K satisfies all current usecases.
+	 */
+	return 8 * 1024;
+}
 
 static inline unsigned int VENUS_Y_STRIDE(int color_fmt, int width)
 {
@@ -220,8 +235,8 @@ invalid_input:
 static inline unsigned int VENUS_BUFFER_SIZE(
 	int color_fmt, int width, int height)
 {
-	unsigned int uv_alignment;
-	unsigned int size = 0;
+	const unsigned int extra_size = VENUS_EXTRADATA_SIZE(width, height);
+	unsigned int uv_alignment = 0, size = 0;
 	unsigned int y_plane, uv_plane, y_stride,
 		uv_stride, y_sclines, uv_sclines;
 	if (!width || !height)
@@ -237,15 +252,15 @@ static inline unsigned int VENUS_BUFFER_SIZE(
 		uv_alignment = 4096;
 		y_plane = y_stride * y_sclines;
 		uv_plane = uv_stride * uv_sclines + uv_alignment;
-		size = y_plane + uv_plane;
+		size = y_plane + uv_plane + extra_size;
 		size = MSM_MEDIA_ALIGN(size, 4096);
 		break;
 	case COLOR_FMT_NV12_MVTB:
 		uv_alignment = 4096;
 		y_plane = y_stride * y_sclines;
-		uv_plane = uv_stride * uv_sclines;
+		uv_plane = uv_stride * uv_sclines + uv_alignment;
 		size = y_plane + uv_plane;
-		size = 2 * size + uv_alignment;
+		size = 2 * size + extra_size;
 		size = MSM_MEDIA_ALIGN(size, 4096);
 		break;
 	default:

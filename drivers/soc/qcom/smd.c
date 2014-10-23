@@ -662,9 +662,7 @@ struct smd_shared_word_access {
  * Maps edge type to local and remote processor ID's.
  */
 static struct edge_to_pid edge_to_pids[] = {
-#ifndef CONFIG_MACH_DORY
 	[SMD_APPS_MODEM] = {SMD_APPS, SMD_MODEM, "modem"},
-#endif
 	[SMD_APPS_QDSP] = {SMD_APPS, SMD_Q6, "adsp"},
 	[SMD_MODEM_QDSP] = {SMD_MODEM, SMD_Q6},
 	[SMD_APPS_DSPS] = {SMD_APPS, SMD_DSPS, "dsps"},
@@ -1136,22 +1134,34 @@ void smd_channel_reset(uint32_t restart_pid)
 /* how many bytes are available for reading */
 static int smd_stream_read_avail(struct smd_channel *ch)
 {
-	return (ch->half_ch->get_head(ch->recv) -
-			ch->half_ch->get_tail(ch->recv)) & ch->fifo_mask;
+	unsigned head = ch->half_ch->get_head(ch->recv);
+	unsigned tail = ch->half_ch->get_tail(ch->recv);
+	unsigned fifo_size = ch->fifo_size;
+	unsigned bytes_avail = head - tail;
+
+	if (head < tail)
+		bytes_avail += fifo_size;
+
+	BUG_ON(bytes_avail >= fifo_size);
+	return bytes_avail;
 }
 
 /* how many bytes we are free to write */
 static int smd_stream_write_avail(struct smd_channel *ch)
 {
-	int bytes_avail;
+	unsigned head = ch->half_ch->get_head(ch->send);
+	unsigned tail = ch->half_ch->get_tail(ch->send);
+	unsigned fifo_size = ch->fifo_size;
+	unsigned bytes_avail = tail - head;
 
-	bytes_avail = ch->fifo_mask - ((ch->half_ch->get_head(ch->send) -
-			ch->half_ch->get_tail(ch->send)) & ch->fifo_mask) + 1;
-
+	if (tail <= head)
+		bytes_avail += fifo_size;
 	if (bytes_avail < SMD_FIFO_FULL_RESERVE)
 		bytes_avail = 0;
 	else
 		bytes_avail -= SMD_FIFO_FULL_RESERVE;
+
+	BUG_ON(bytes_avail >= fifo_size);
 	return bytes_avail;
 }
 
@@ -1207,9 +1217,15 @@ static int read_intr_blocked(struct smd_channel *ch)
 /* advance the fifo read pointer after data from ch_read_buffer is consumed */
 static void ch_read_done(struct smd_channel *ch, unsigned count)
 {
+	unsigned tail = ch->half_ch->get_tail(ch->recv);
+	unsigned fifo_size = ch->fifo_size;
+
 	BUG_ON(count > smd_stream_read_avail(ch));
-	ch->half_ch->set_tail(ch->recv,
-		(ch->half_ch->get_tail(ch->recv) + count) & ch->fifo_mask);
+
+	tail += count;
+	if (tail >= fifo_size)
+		tail -= fifo_size;
+	ch->half_ch->set_tail(ch->recv, tail);
 	wmb();
 	ch->half_ch->set_fTAIL(ch->send,  1);
 }
@@ -1275,6 +1291,8 @@ static void update_packet_state(struct smd_channel *ch)
 			if (peripheral) {
 				if (subsystem_restart(peripheral) < 0)
 					BUG();
+			} else {
+				BUG();
 			}
 		}
 	}
@@ -1321,9 +1339,14 @@ static unsigned ch_write_buffer(struct smd_channel *ch, void **ptr)
  */
 static void ch_write_done(struct smd_channel *ch, unsigned count)
 {
+	unsigned head = ch->half_ch->get_head(ch->send);
+	unsigned fifo_size = ch->fifo_size;
+
 	BUG_ON(count > smd_stream_write_avail(ch));
-	ch->half_ch->set_head(ch->send,
-		(ch->half_ch->get_head(ch->send) + count) & ch->fifo_mask);
+	head += count;
+	if (head >= fifo_size)
+		head -= fifo_size;
+	ch->half_ch->set_head(ch->send, head);
 	wmb();
 	ch->half_ch->set_fHEAD(ch->send, 1);
 }
@@ -1796,9 +1819,9 @@ static int smd_alloc(struct smd_channel *ch, int table_id,
 		return -EINVAL;
 	}
 
-	/* buffer must be a power-of-two size */
-	if (buffer_sz & (buffer_sz - 1)) {
-		SMD_INFO("Buffer size: %u not power of two\n", buffer_sz);
+	/* buffer must be a multiple of 32 size */
+	if ((buffer_sz & (SZ_32 - 1)) != 0) {
+		SMD_INFO("Buffer size: %u not multiple of 32\n", buffer_sz);
 		return -EINVAL;
 	}
 	buffer_sz /= 2;
@@ -1836,8 +1859,6 @@ static int smd_alloc_channel(struct smd_alloc_elm *alloc_elm, int table_id,
 		kfree(ch);
 		return -ENODEV;
 	}
-
-	ch->fifo_mask = ch->fifo_size - 1;
 
 	/* probe_worker guarentees ch->type will be a valid type */
 	if (ch->type == SMD_APPS_MODEM)
@@ -3289,13 +3310,13 @@ int __init msm_smd_init(void)
 	if (registered)
 		return 0;
 
-	smd_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smd");
+	smd_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smd", 0);
 	if (!smd_log_ctx) {
 		pr_err("%s: unable to create SMD logging context\n", __func__);
 		msm_smd_debug_mask = 0;
 	}
 
-	smsm_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smsm");
+	smsm_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smsm", 0);
 	if (!smsm_log_ctx) {
 		pr_err("%s: unable to create SMSM logging context\n", __func__);
 		msm_smd_debug_mask = 0;

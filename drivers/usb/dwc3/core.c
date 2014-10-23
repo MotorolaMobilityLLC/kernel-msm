@@ -61,6 +61,8 @@
 
 #include "debug.h"
 
+#define DWC3_DCTL_HIRD_THRES_DEFAULT	12
+
 /* -------------------------------------------------------------------------- */
 
 void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
@@ -101,9 +103,11 @@ void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
 		}
 	}
 
-	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
-	reg |= DWC3_GUSB3PIPECTL_SUSPHY;
-	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
+	if (!dwc->ssphy_clear_auto_suspend_on_disconnect) {
+		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+		reg |= DWC3_GUSB3PIPECTL_SUSPHY;
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
+	}
 	if (!dwc->hsphy_auto_suspend_disable) {
 		reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
 		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
@@ -117,17 +121,28 @@ void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
  * PHY initialization and reset
  * @dwc: pointer to our context structure
  */
-static void dwc3_core_soft_reset_after_phy_init(struct dwc3 *dwc)
+static int dwc3_core_soft_reset_after_phy_init(struct dwc3 *dwc)
 {
 	u32		reg;
+	int		ret;
 
 	/* Reset PHYs */
 	usb_phy_reset(dwc->usb3_phy);
 	usb_phy_reset(dwc->usb2_phy);
 
 	/* Bring up PHYs */
-	usb_phy_init(dwc->usb2_phy);
-	usb_phy_init(dwc->usb3_phy);
+	ret = usb_phy_init(dwc->usb2_phy);
+	if (ret) {
+		pr_err("%s: usb_phy_init(dwc->usb2_phy) returned %d\n",
+				__func__, ret);
+		return ret;
+	}
+	ret = usb_phy_init(dwc->usb3_phy);
+	if (ret) {
+		pr_err("%s: usb_phy_init(dwc->usb3_phy) returned %d\n",
+				__func__, ret);
+		return ret;
+	}
 
 	/* Put Core in Reset */
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
@@ -142,15 +157,18 @@ static void dwc3_core_soft_reset_after_phy_init(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 
 	dwc3_notify_event(dwc, DWC3_CONTROLLER_POST_RESET_EVENT);
+
+	return 0;
 }
 
 /**
  * dwc3_core_soft_reset - Issues core soft reset and PHY reset
  * @dwc: pointer to our context structure
  */
-static void dwc3_core_soft_reset(struct dwc3 *dwc)
+static int dwc3_core_soft_reset(struct dwc3 *dwc)
 {
 	u32		reg;
+	int		ret;
 
 	if (dwc->core_reset_after_phy_init)
 		return dwc3_core_soft_reset_after_phy_init(dwc);
@@ -161,8 +179,18 @@ static void dwc3_core_soft_reset(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 
 	/* Bring up PHYs */
-	usb_phy_init(dwc->usb2_phy);
-	usb_phy_init(dwc->usb3_phy);
+	ret = usb_phy_init(dwc->usb2_phy);
+	if (ret) {
+		pr_err("%s: usb_phy_init(dwc->usb2_phy) returned %d\n",
+				__func__, ret);
+		return ret;
+	}
+	ret = usb_phy_init(dwc->usb3_phy);
+	if (ret) {
+		pr_err("%s: usb_phy_init(dwc->usb3_phy) returned %d\n",
+				__func__, ret);
+		return ret;
+	}
 
 	dwc3_notify_event(dwc, DWC3_CONTROLLER_RESET_EVENT);
 
@@ -196,6 +224,8 @@ static void dwc3_core_soft_reset(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 
 	dwc3_notify_event(dwc, DWC3_CONTROLLER_POST_RESET_EVENT);
+
+	return 0;
 }
 
 /**
@@ -407,7 +437,9 @@ static int dwc3_core_init(struct dwc3 *dwc)
 		cpu_relax();
 	} while (true);
 
-	dwc3_core_soft_reset(dwc);
+	ret = dwc3_core_soft_reset(dwc);
+	if (ret)
+		goto err0;
 
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
 	reg &= ~DWC3_GCTL_SCALEDOWN_MASK;
@@ -592,13 +624,24 @@ static int dwc3_probe(struct platform_device *pdev)
 	}
 
 	dwc->core_reset_after_phy_init =
-		of_property_read_bool(node, "core_reset_after_phy_init");
+		of_property_read_bool(node, "snps,core-reset-after-phy-init");
 
 	dwc->needs_fifo_resize = of_property_read_bool(node, "tx-fifo-resize");
-	host_only_mode = of_property_read_bool(node, "host-only-mode");
+	host_only_mode = of_property_read_bool(node, "snps,host-only-mode");
 	dwc->hsphy_auto_suspend_disable = of_property_read_bool(node,
 						"snps,hsphy-auto-suspend-disable");
+	dwc->ssphy_clear_auto_suspend_on_disconnect =
+						of_property_read_bool(node,
+						"snps,ssphy-clear-auto-suspend-on-disconnect");
+	dwc->usb3_u1u2_disable = of_property_read_bool(node,
+						"snps,usb3-u1u2-disable");
 	dwc->maximum_speed = of_usb_get_maximum_speed(node);
+	ret = of_property_read_u8(node, "snps,hird_thresh", &dwc->hird_thresh);
+	if (res)
+		dwc->hird_thresh = DWC3_DCTL_HIRD_THRES_DEFAULT;
+
+	dwc->enable_bus_suspend = of_property_read_bool(node,
+						"snps,bus-suspend-enable");
 
 	if (node) {
 		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 0);
@@ -628,7 +671,7 @@ static int dwc3_probe(struct platform_device *pdev)
 	}
 
 	if (IS_ERR(dwc->usb3_phy)) {
-		ret = PTR_ERR(dwc->usb2_phy);
+		ret = PTR_ERR(dwc->usb3_phy);
 
 		/*
 		 * if -ENXIO is returned, it means PHY layer wasn't
@@ -672,7 +715,7 @@ static int dwc3_probe(struct platform_device *pdev)
 	}
 
 	dwc->nominal_elastic_buffer = of_property_read_bool(node,
-			"nominal-elastic-buffer");
+			"snps,nominal-elastic-buffer");
 
 	ret = dwc3_core_init(dwc);
 	if (ret) {
@@ -908,13 +951,24 @@ static int dwc3_resume(struct device *dev)
 {
 	struct dwc3	*dwc = dev_get_drvdata(dev);
 	unsigned long	flags;
+	int		ret;
 
 	/* Check if platform glue driver handling PM, if not then handle here */
 	if(!dwc3_notify_event(dwc, DWC3_CORE_PM_RESUME_EVENT))
 		return 0;
 
-	usb_phy_init(dwc->usb3_phy);
-	usb_phy_init(dwc->usb2_phy);
+	ret = usb_phy_init(dwc->usb3_phy);
+	if (ret) {
+		pr_err("%s: usb_phy_init(dwc->usb3_phy) returned %d\n",
+				__func__, ret);
+		return ret;
+	}
+	ret = usb_phy_init(dwc->usb2_phy);
+	if (ret) {
+		pr_err("%s: usb_phy_init(dwc->usb2_phy) returned %d\n",
+				__func__, ret);
+		return ret;
+	}
 	msleep(100);
 
 	spin_lock_irqsave(&dwc->lock, flags);

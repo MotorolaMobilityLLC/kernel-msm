@@ -133,6 +133,8 @@
 		HSUSB_VDDCX-supply = <&pma8084_s2>;
 		HSUSB_1p8-supply = <&pma8084_l6>;
 		HSUSB_3p3-supply = <&pma8084_l24>;
+		hsusb_vdd_dig-supply = <&pma8084_s2_corner>;
+		qcom,vdd-voltage-level = <1 2 3 5 7>;
 	};
 
 	qcom,gdsc@fd8c4024 {
@@ -195,6 +197,10 @@
 	qcom,use-phase-switching;
 };
 
+&mdss_mdp {
+    vdd-cx-supply = <&pma8084_s2_corner>;
+};
+
 &tspp {
 	vdd_cx-supply = <&pma8084_s2_corner>;
 };
@@ -217,4 +223,8 @@
 	qcom,freq@2b00 {
 		status = "ok";
 	};
+};
+
+&dsi_generic_720p_cmd {
+	qcom,mdss-dsi-bl-pmic-bank-select = <3>;
 };

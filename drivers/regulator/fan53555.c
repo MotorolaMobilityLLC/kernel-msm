@@ -48,6 +48,7 @@
 #define DIE_ID		0x0F	/* ID1 */
 #define DIE_REV		0x0F	/* ID2 */
 #define DIE_13_REV	0x0F	/* DIE Revsion ID of 13 option */
+#define DIE_23_REV	0x0C	/* DIE Revision ID of 23 option */
 
 /* Control bit definitions */
 #define CTL_OUTPUT_DISCHG	(1 << 7)
@@ -182,6 +183,30 @@ static struct regulator_ops fan53555_regulator_disable_suspend_ops = {
 	.get_mode = fan53555_get_mode,
 };
 
+/*
+ * The formula for calculating the actual slew rate is:
+ * actual_slew_rate = 10mv_based_slew_rate * scaling_step_size_mv / 10mV
+ */
+#define FAN53555_DVS_DEFAULT_STEP_SIZE_UV	10000
+static u32 fan53555_get_slew_rate_reg_value(struct fan53555_device_info *di,
+							u32 slew_rate)
+{
+	u32 index;
+	int scaled_slew_rate = slew_rate * FAN53555_DVS_DEFAULT_STEP_SIZE_UV /
+						di->vsel_step;
+
+	for (index = 0; index < ARRAY_SIZE(slew_rate_plan); index++)
+		if (scaled_slew_rate >= slew_rate_plan[index])
+			break;
+
+	if (index == ARRAY_SIZE(slew_rate_plan)) {
+		dev_err(di->dev, "invalid slew rate.\n");
+		index = FAN53555_SLEW_RATE_8MV;
+	}
+
+	return index;
+}
+
 /* For 00,01,03,05 options:
  * VOUT = 0.60V + NSELx * 10mV, from 0.60 to 1.23V.
  * For 04 option:
@@ -189,6 +214,9 @@ static struct regulator_ops fan53555_regulator_disable_suspend_ops = {
  * For 13 option:
  * 13 option, its DIE ID is 0x00 and DIE_REV is 0x0F.
  * VOUT = 0.80V + NSELx * 10mV, from 0.80 to 1.43V.
+ * For 23 option:
+ * 23 option, its DIE ID is 0x00 and DIE_REV is 0x0C.
+ * VOUT = 0.60V + NSELx * 12.5mV, from 0.60 to 1.3875V.
  * */
 static int fan53555_device_setup(struct fan53555_device_info *di,
 				struct fan53555_platform_data *pdata)
@@ -216,6 +244,10 @@ static int fan53555_device_setup(struct fan53555_device_info *di,
 			di->vsel_min = 800000;
 			di->vsel_step = 10000;
 			break;
+		} else if (di->chip_rev == DIE_23_REV) {
+			di->vsel_min = 600000;
+			di->vsel_step = 12500;
+			break;
 		}
 	case FAN53555_CHIP_ID_01:
 	case FAN53555_CHIP_ID_03:
@@ -233,10 +265,14 @@ static int fan53555_device_setup(struct fan53555_device_info *di,
 		return -EINVAL;
 	}
 	/* Init slew rate */
-	if (pdata->slew_rate & 0x7)
+	if (di->dev->of_node)
+		pdata->slew_rate = fan53555_get_slew_rate_reg_value(di,
+			pdata->regulator->constraints.ramp_delay);
+	else if (pdata->slew_rate & 0x7)
 		di->slew_rate = pdata->slew_rate;
 	else
 		di->slew_rate = FAN53555_SLEW_RATE_64MV;
+
 	reg = FAN53555_CONTROL;
 	data = di->slew_rate << CTL_SLEW_SHIFT;
 	mask = CTL_SLEW_MASK;
@@ -295,22 +331,6 @@ static int fan53555_parse_backup_reg(struct i2c_client *client, u32 *sleep_sel)
 	return rc;
 }
 
-static u32 fan53555_get_slew_rate_reg_value(struct i2c_client *client,
-					u32 slew_rate)
-{
-	u32 index;
-
-	for (index = 0; index < ARRAY_SIZE(slew_rate_plan); index++)
-		if (slew_rate == slew_rate_plan[index])
-			break;
-
-	if (index == ARRAY_SIZE(slew_rate_plan)) {
-		dev_err(&client->dev, "invalid slew rate.\n");
-		index = FAN53555_SLEW_RATE_8MV;
-	}
-
-	return index;
-}
 
 static struct fan53555_platform_data *
 	fan53555_get_of_platform_data(struct i2c_client *client)
@@ -347,8 +367,6 @@ static struct fan53555_platform_data *
 	init_data->constraints.initial_mode = REGULATOR_MODE_NORMAL;
 
 	pdata->regulator = init_data;
-	pdata->slew_rate = fan53555_get_slew_rate_reg_value(client,
-				init_data->constraints.ramp_delay);
 	pdata->sleep_vsel_id = sleep_sel;
 
 	return pdata;
@@ -553,7 +571,7 @@ int __init fan53555_regulator_init(void)
 	return i2c_add_driver(&fan53555_regulator_driver);
 }
 EXPORT_SYMBOL(fan53555_regulator_init);
-module_init(fan53555_regulator_init);
+arch_initcall(fan53555_regulator_init);
 
 static void __exit fan53555_regulator_exit(void)
 {

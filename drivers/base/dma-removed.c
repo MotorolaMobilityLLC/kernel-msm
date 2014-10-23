@@ -31,6 +31,7 @@ void *removed_alloc(struct device *dev, size_t size, dma_addr_t *handle,
 {
 	bool no_kernel_mapping = dma_get_attr(DMA_ATTR_NO_KERNEL_MAPPING,
 					attrs);
+	bool skip_zeroing = dma_get_attr(DMA_ATTR_SKIP_ZEROING, attrs);
 	unsigned long pfn;
 	unsigned long order = get_order(size);
 	void *addr = NULL;
@@ -43,15 +44,23 @@ void *removed_alloc(struct device *dev, size_t size, dma_addr_t *handle,
 	pfn = dma_alloc_from_contiguous(dev, size >> PAGE_SHIFT, order);
 
 	if (pfn) {
-		addr = ioremap(__pfn_to_phys(pfn), size);
-		memset(addr, 0, size);
-		if (no_kernel_mapping) {
-			iounmap(addr);
-			addr = (void *)NO_KERNEL_MAPPING_DUMMY;
-		}
-		if (addr)
+		if (no_kernel_mapping && skip_zeroing) {
 			*handle = __pfn_to_phys(pfn);
+			return (void *)NO_KERNEL_MAPPING_DUMMY;
+		}
 
+		addr = ioremap(__pfn_to_phys(pfn), size);
+		if (WARN_ON(!addr)) {
+			dma_release_from_contiguous(dev, pfn, order);
+		} else {
+			if (!skip_zeroing)
+				memset(addr, 0, size);
+			if (no_kernel_mapping) {
+				iounmap(addr);
+				addr = (void *)NO_KERNEL_MAPPING_DUMMY;
+			}
+			*handle = __pfn_to_phys(pfn);
+		}
 	}
 
 	return addr;
@@ -135,6 +144,17 @@ void removed_sync_sg_for_device(struct device *dev,
 	return;
 }
 
+void *removed_remap(struct device *dev, void *cpu_addr, dma_addr_t handle,
+			size_t size, struct dma_attrs *attrs)
+{
+	return ioremap(handle, size);
+}
+
+void removed_unremap(struct device *dev, void *remapped_address, size_t size)
+{
+	iounmap(remapped_address);
+}
+
 struct dma_map_ops removed_dma_ops = {
 	.alloc			= removed_alloc,
 	.free			= removed_free,
@@ -147,6 +167,8 @@ struct dma_map_ops removed_dma_ops = {
 	.sync_single_for_device	= removed_sync_single_for_device,
 	.sync_sg_for_cpu	= removed_sync_sg_for_cpu,
 	.sync_sg_for_device	= removed_sync_sg_for_device,
+	.remap			= removed_remap,
+	.unremap		= removed_unremap,
 };
 EXPORT_SYMBOL(removed_dma_ops);
 

@@ -40,7 +40,8 @@
 	android_usb@fc42b0c8 {
 		compatible = "qcom,android-usb";
 		reg = <0xfc42b0c8 0xc8>;
-		qcom,android-usb-swfi-latency = <1>;
+		qcom,pm-qos-latency = <2 1001 30001>;
+		qcom,android-usb-uicc-nluns = /bits/ 8 <1>;
 	};
 
 	qcom,msm-imem@fc42b000 {
@@ -115,10 +116,10 @@
 };
 
 &msm_vidc {
-	qcom,load-freq-tbl = <979200 410000000>,
-		<783360 410000000>,
-		<489600 266670000>,
-		<244800 133330000>;
+	qcom,load-freq-tbl = <979200 410000000 0xffffffff>,
+		<783360 410000000 0xffffffff>,
+		<489600 266670000 0xffffffff>,
+		<244800 133330000 0xffffffff>;
 	qcom,reg-presets = <0x80004 0x1>,
 		<0x80178 0x00001FFF>,
 		<0x8017c 0x1FFF1FFF>,
@@ -219,6 +220,10 @@
 
 &usb3 {
 	qcom,usbin-vadc = <&pm8941_vadc>;
+	dwc3@f9200000 {
+		snps,ssphy-clear-auto-suspend-on-disconnect;
+		snps,usb3-u1u2-disable;
+	};
 };
 
 &gdsc_venus {

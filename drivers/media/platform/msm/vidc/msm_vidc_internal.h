@@ -20,6 +20,7 @@
 #include <linux/types.h>
 #include <linux/completion.h>
 #include <linux/wait.h>
+#include <linux/workqueue.h>
 #include <linux/msm-bus.h>
 #include <linux/msm-bus-board.h>
 #include <soc/qcom/ocmem.h>
@@ -58,6 +59,38 @@
 #define MAX_NAME_LENGTH 64
 
 #define EXTRADATA_IDX(__num_planes) (__num_planes - 1)
+
+#define NUM_MBS_PER_SEC(__height, __width, __fps) \
+	(NUM_MBS_PER_FRAME(__height, __width) * __fps)
+
+#define NUM_MBS_PER_FRAME(__height, __width) \
+	((ALIGN(__height, 16) / 16) * (ALIGN(__width, 16) / 16))
+
+/* Default threshold to reduce the core frequency */
+#define DCVS_NOMINAL_THRESHOLD 8
+/* Default threshold to increase the core frequency */
+#define DCVS_TURBO_THRESHOLD 4
+/* Instance max load above which DCVS kicks in */
+#define DCVS_NOMINAL_LOAD NUM_MBS_PER_SEC(1088, 1920, 60)
+/* Considering one output buffer with core */
+#define DCVS_BUFFER_WITH_DEC 1
+/* Considering one safeguard buffer */
+#define DCVS_BUFFER_SAFEGUARD 1
+/* Considering one output buffer in transition after decode */
+#define DCVS_BUFFER_RELEASED_DEC 1
+/* Considering atleast one FTB between each FBD */
+#define DCVS_MIN_DRAIN_RATE 1
+/* Ensures difference of 4 between min and max threshold always*/
+#define DCVS_MIN_THRESHOLD_DIFF 4
+/* Maintains the number of FTB's between each FBD over a window */
+#define DCVS_FTB_WINDOW 16
+/* Empirical number arrived at to calculate the high threshold*/
+#define DCVS_EMP_THRESHOLD_HIGH 8
+/* Supported DCVS MBs per frame */
+#define DCVS_MIN_SUPPORTED_MBPERFRAME NUM_MBS_PER_FRAME(2160, 3840)
+/* Window size used to calculate the low threshold */
+#define DCVS_FTB_STAT_SAMPLES 4
+
 enum vidc_ports {
 	OUTPUT_PORT,
 	CAPTURE_PORT,
@@ -66,12 +99,13 @@ enum vidc_ports {
 
 enum vidc_core_state {
 	VIDC_CORE_UNINIT = 0,
+	VIDC_CORE_LOADED,
 	VIDC_CORE_INIT,
 	VIDC_CORE_INIT_DONE,
 	VIDC_CORE_INVALID
 };
 
-/*Donot change the enum values unless
+/* Do not change the enum values unless
  * you know what you are doing*/
 enum instance_state {
 	MSM_VIDC_CORE_UNINIT_DONE = 0x0001,
@@ -161,6 +195,24 @@ struct buf_count {
 	int ebd;
 };
 
+struct dcvs_stats {
+	int num_ftb[DCVS_FTB_WINDOW];
+	int ftb_index;
+	int ftb_counter;
+	int prev_ftb_count;
+	bool prev_freq_lowered;
+	bool prev_freq_increased;
+	bool change_initial_freq;
+	int threshold_disp_buf_high;
+	int threshold_disp_buf_low;
+	int load;
+	int load_low;
+	int load_high;
+	int min_threshold;
+	int max_threshold;
+	bool is_clock_scaled;
+};
+
 struct profile_data {
 	int start;
 	int stop;
@@ -190,13 +242,25 @@ struct msm_vidc_core_capability {
 	struct hal_capability_supported scale_y;
 	struct hal_capability_supported hier_p;
 	struct hal_capability_supported ltr_count;
+	struct hal_capability_supported mbs_per_frame;
 	u32 capability_set;
 	enum buffer_mode_type buffer_mode[MAX_PORT_NUM];
 };
 
+struct msm_vidc_idle_stats {
+	bool idle;
+	u32 fb_err_level;
+	u32 prev_fb_err_level;
+	ktime_t start_time;
+	ktime_t avg_idle_time;
+	u32 last_sample_index;
+	u32 sample_count;
+	ktime_t samples[IDLE_TIME_WINDOW_SIZE];
+};
+
 struct msm_vidc_core {
 	struct list_head list;
-	struct mutex sync_lock, lock;
+	struct mutex lock;
 	int id;
 	void *device;
 	struct msm_video_device vdev[MSM_VIDC_MAX_DEVICES];
@@ -209,6 +273,8 @@ struct msm_vidc_core {
 	struct msm_vidc_platform_resources resources;
 	u32 enc_codec_supported;
 	u32 dec_codec_supported;
+	struct msm_vidc_idle_stats idle_stats;
+	struct delayed_work fw_unload_work;
 };
 
 struct msm_vidc_inst {
@@ -230,7 +296,7 @@ struct msm_vidc_inst {
 	void *mem_client;
 	struct v4l2_ctrl_handler ctrl_handler;
 	struct completion completions[SESSION_MSG_END - SESSION_MSG_START + 1];
-	struct list_head ctrl_clusters;
+	struct v4l2_ctrl **cluster;
 	struct v4l2_fh event_handler;
 	struct msm_smem *extradata_handle;
 	wait_queue_head_t kernel_event_queue;
@@ -238,17 +304,19 @@ struct msm_vidc_inst {
 	u32 reconfig_width;
 	u32 reconfig_height;
 	struct dentry *debugfs_root;
-	u32 ftb_count;
 	struct vb2_buffer *vb2_seq_hdr;
 	void *priv;
 	struct msm_vidc_debug debug;
 	struct buf_count count;
+	struct dcvs_stats dcvs;
 	enum msm_vidc_modes flags;
 	struct msm_vidc_core_capability capability;
 	enum buffer_mode_type buffer_mode_set[MAX_PORT_NUM];
 	struct list_head registered_bufs;
 	bool map_output_buffer;
-	atomic_t get_seq_hdr_cnt;
+	atomic_t seq_hdr_reqs;
+	struct v4l2_ctrl **ctrls;
+	bool dcvs_mode;
 };
 
 extern struct msm_vidc_drv *vidc_driver;
@@ -269,8 +337,6 @@ struct msm_vidc_ctrl {
 	u32 menu_skip_mask;
 	u32 flags;
 	const char * const *qmenu;
-	u32 cluster;
-	struct v4l2_ctrl *priv;
 };
 
 void handle_cmd_response(enum command_response cmd, void *data);
@@ -324,4 +390,5 @@ struct msm_smem *msm_smem_user_to_kernel(void *clt, int fd, u32 offset,
 				enum hal_buffer buffer_type);
 int msm_smem_get_domain_partition(void *clt, u32 flags, enum hal_buffer
 		buffer_type, int *domain_num, int *partition_num);
+void msm_vidc_fw_unload_handler(struct work_struct *work);
 #endif

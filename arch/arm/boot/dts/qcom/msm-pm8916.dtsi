@@ -23,7 +23,7 @@
 			reg = <0x100 0x100>;
 		};
 
-		qcom,power-on@800 {
+		pm8916_pon: qcom,power-on@800 {
 			compatible = "qcom,qpnp-power-on";
 			reg = <0x800 0x100>;
 			interrupts = <0x0 0x8 0x0>,
@@ -34,7 +34,11 @@
 
 			qcom,pon_1 {
 				qcom,pon-type = <0>;
+				qcom,support-reset = <1>;
 				qcom,pull-up = <1>;
+				qcom,s1-timer = <10256>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <1>;
 				linux,code = <116>;
 			};
 
@@ -105,7 +109,7 @@
 			};
 		};
 
-		qcom,pm8916_rtc {
+		pm8916_rtc: qcom,pm8916_rtc {
                         spmi-dev-container;
                         compatible = "qcom,qpnp-rtc";
                         #address-cells = <1>;
@@ -132,6 +136,7 @@
 			qcom,adc-bit-resolution = <15>;
 			qcom,adc-vdd-reference = <1800>;
 			qcom,vadc-poll-eoc;
+			qcom,pmic-revid = <&pm8916_revid>;
 
 			chan@8 {
 				label = "die_temp";
@@ -167,7 +172,7 @@
 			};
 		};
 
-		qcom,temp-alarm@2400 {
+		pm8916_tz: qcom,temp-alarm@2400 {
 			compatible = "qcom,qpnp-temp-alarm";
 			reg = <0x2400 0x100>;
 			interrupts = <0x0 0x24 0x0>;
@@ -201,22 +206,19 @@
 
 			qcom,vddmax-mv = <4200>;
 			qcom,vddsafe-mv = <4200>;
-			qcom,vinmin-mv = <4200>;
+			qcom,vinmin-mv = <4308>;
 			qcom,ibatsafe-ma = <1440>;
-			qcom,vbatweak-mv = <3210>;
-			qcom,thermal-mitigation = <1500 700 600 325>;
+			qcom,thermal-mitigation = <1440 720 630 0>;
 			qcom,cool-bat-decidegc = <100>;
 			qcom,warm-bat-decidegc = <450>;
 			qcom,cool-bat-mv = <4100>;
+			qcom,warm-bat-mv = <4100>;
 			qcom,ibatmax-warm-ma = <360>;
 			qcom,ibatmax-cool-ma = <360>;
-			qcom,warm-bat-degc = <45>;
-			qcom,warm-bat-mv = <4100>;
 			qcom,batt-hot-percentage = <25>;
-			qcom,batt-cold-percentage = <85>;
-			qcom,tchg-mins = <152>;
+			qcom,batt-cold-percentage = <80>;
+			qcom,tchg-mins = <232>;
 			qcom,resume-soc = <99>;
-			qcom,charging-disabled;
 			qcom,chg-vadc = <&pm8916_vadc>;
 			qcom,chg-adc_tm = <&pm8916_adc_tm>;
 
@@ -244,9 +246,11 @@
 
 			qcom,usb-chgpth@1300 {
 				reg = <0x1300 0x100>;
-				interrupts =	<0 0x13 0x2>,
+				interrupts =	<0 0x13 0x4>,
+						<0 0x13 0x2>,
 						<0 0x13 0x1>;
-				interrupt-names =	"chg-gone",
+				interrupt-names =	"usb-over-temp",
+							"chg-gone",
 							"usbin-valid";
 			};
 
@@ -271,8 +275,13 @@
 			qcom,low-soc-calculate-soc-ms = <5000>;
 			qcom,calculate-soc-ms = <20000>;
 			qcom,volatge-soc-timeout-ms = <60000>;
-			qcom,low-voltage-threshold = <3420000>;
+			qcom,low-voltage-threshold = <3450000>;
+			qcom,s3-ocv-tolerence-uv = <1200>;
+			qcom,s2-fifo-length = <5>;
+			qcom,low-soc-fifo-length = <2>;
 			qcom,bms-vadc = <&pm8916_vadc>;
+			qcom,bms-adc_tm = <&pm8916_adc_tm>;
+			qcom,pmic-revid = <&pm8916_revid>;
 
 			qcom,force-s3-on-suspend;
 			qcom,force-s2-in-charging;
@@ -302,6 +311,12 @@
 						  "fifo_update_done",
 						  "fsm_state_change";
 			};
+		};
+
+		pm8916_leds: qcom,leds@a100 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa100 0x100>;
+			label = "mpp";
 		};
 	};
 
@@ -517,7 +532,7 @@
 			status = "disabled";
 		};
 
-		pwm@bc00 {
+		pm8916_pwm: pwm@bc00 {
 			compatible = "qcom,qpnp-pwm";
 			reg = <0xbc00 0x100>;
 			reg-names = "qpnp-lpg-channel-base";
@@ -525,14 +540,14 @@
 			qcom,supported-sizes = <6>, <9>;
 		};
 
-		qcom,vibrator@c000 {
+		pm8916_vib: qcom,vibrator@c000 {
 			compatible = "qcom,qpnp-vibrator";
 			reg = <0xc000 0x100>;
 			label = "vibrator";
 			status = "disabled";
 		};
 
-		msm8x16_wcd_codec@f000{
+		pm8916_tombak_dig: msm8x16_wcd_codec@f000{
 			compatible = "qcom,wcd-spmi";
 			reg = <0xf000 0x100>;
 			interrupt-parent = <&spmi_bus>;
@@ -582,7 +597,8 @@
 
 			qcom,cdc-on-demand-supplies = "cdc-vdd-mic-bias";
 		};
-		msm8x16_wcd_codec@f100{
+
+		pm8916_tombak_analog: msm8x16_wcd_codec@f100{
 			compatible = "qcom,wcd-spmi";
 			reg = <0xf100 0x100>;
 			interrupt-parent = <&spmi_bus>;
@@ -598,6 +614,20 @@
 					  "ear_cnp_int",
 					  "hphr_cnp_int",
 					  "hphl_cnp_int";
+		};
+
+		pm8916_bcm: qpnp-buck-current-monitor@1800 {
+			compatible = "qcom,qpnp-buck-current-monitor";
+			reg = <0x1800 0x100>;
+			interrupts = <1 0x18 0>, <1 0x18 1>;
+			interrupt-names = "iwarning", "icritical";
+			qcom,enable-current-monitor;
+			qcom,icrit-init-threshold-pc = <90>;
+			qcom,iwarn-init-threshold-pc = <70>;
+			qcom,icrit-polling-delay-msec = <1000>;
+			qcom,iwarn-polling-delay-msec = <2000>;
+
+			status = "disabled";
 		};
 	};
 };

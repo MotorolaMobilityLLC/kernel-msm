@@ -18,6 +18,7 @@
 #include <linux/io.h>
 #include <linux/err.h>
 #include <linux/clk.h>
+#include <linux/cpu.h>
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
@@ -50,8 +51,17 @@ static struct mux_div_clk a7ssmux = {
 
 static struct clk_lookup clock_tbl_a7[] = {
 	CLK_LOOKUP("cpu0_clk",	a7ssmux.c, "0.qcom,msm-cpufreq"),
+	CLK_LOOKUP("cpu1_clk",	a7ssmux.c, "0.qcom,msm-cpufreq"),
+	CLK_LOOKUP("cpu2_clk",	a7ssmux.c, "0.qcom,msm-cpufreq"),
+	CLK_LOOKUP("cpu3_clk",	a7ssmux.c, "0.qcom,msm-cpufreq"),
 	CLK_LOOKUP("cpu0_clk",	a7ssmux.c, "fe805664.qcom,pm"),
+	CLK_LOOKUP("cpu1_clk",	a7ssmux.c, "fe805664.qcom,pm"),
+	CLK_LOOKUP("cpu2_clk",	a7ssmux.c, "fe805664.qcom,pm"),
+	CLK_LOOKUP("cpu3_clk",	a7ssmux.c, "fe805664.qcom,pm"),
 	CLK_LOOKUP("cpu0_clk",   a7ssmux.c, "8600664.qcom,pm"),
+	CLK_LOOKUP("cpu1_clk",   a7ssmux.c, "8600664.qcom,pm"),
+	CLK_LOOKUP("cpu2_clk",   a7ssmux.c, "8600664.qcom,pm"),
+	CLK_LOOKUP("cpu3_clk",   a7ssmux.c, "8600664.qcom,pm"),
 };
 
 static int of_get_fmax_vdd_class(struct platform_device *pdev, struct clk *c,
@@ -153,6 +163,39 @@ static void get_speed_bin(struct platform_device *pdev, int *bin, int *version)
 	return;
 }
 
+static void get_speed_bin_b(struct platform_device *pdev, int *bin,
+								int *version)
+{
+	struct resource *res;
+	void __iomem *base;
+	u32 pte_efuse;
+
+	*bin = 0;
+	*version = 0;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "efuse");
+	if (!res) {
+		dev_info(&pdev->dev,
+			 "No speed/PVS binning available. Defaulting to 0!\n");
+		return;
+	}
+
+	base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	if (!base) {
+		dev_warn(&pdev->dev,
+			 "Unable to read efuse data. Defaulting to 0!\n");
+		return;
+	}
+
+	pte_efuse = readl_relaxed(base);
+	devm_iounmap(&pdev->dev, base);
+
+	*bin = (pte_efuse >> 2) & 0x7;
+
+	dev_info(&pdev->dev, "Speed bin: %d PVS Version: %d\n", *bin,
+								*version);
+}
+
 static int of_get_clk_src(struct platform_device *pdev, struct clk_src *parents)
 {
 	struct device_node *of = pdev->dev.of_node;
@@ -190,11 +233,15 @@ static int of_get_clk_src(struct platform_device *pdev, struct clk_src *parents)
 static int clock_a7_probe(struct platform_device *pdev)
 {
 	struct resource *res;
-	int speed_bin = 0, version = 0, rc;
+	int speed_bin = 0, version = 0, rc, cpu;
 	unsigned long rate, aux_rate;
 	struct clk *aux_clk, *main_pll;
 	char prop_name[] = "qcom,speedX-bin-vX";
 	const void *prop;
+	bool compat_bin = false;
+
+	compat_bin = of_device_is_compatible(pdev->dev.of_node,
+						"qcom,clock-a53-8916");
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "rcg-base");
 	if (!res) {
@@ -225,7 +272,10 @@ static int clock_a7_probe(struct platform_device *pdev)
 	if (prop)
 		a7ssmux.safe_freq = of_read_ulong(prop, 1);
 
-	get_speed_bin(pdev, &speed_bin, &version);
+	if (compat_bin)
+		get_speed_bin_b(pdev, &speed_bin, &version);
+	else
+		get_speed_bin(pdev, &speed_bin, &version);
 
 	snprintf(prop_name, ARRAY_SIZE(prop_name),
 			"qcom,speed%d-bin-v%d", speed_bin, version);
@@ -267,8 +317,11 @@ static int clock_a7_probe(struct platform_device *pdev)
 	 * that the clocks have already been prepared and enabled by the time
 	 * they take over.
 	 */
-	WARN(clk_prepare_enable(&a7ssmux.c),
-		"Unable to turn on CPU clock");
+	get_online_cpus();
+	for_each_online_cpu(cpu)
+		WARN(clk_prepare_enable(&a7ssmux.c),
+			"Unable to turn on CPU clock");
+	put_online_cpus();
 	return 0;
 }
 

@@ -105,22 +105,22 @@ int interpolate_scalingfactor(struct sf_lut *sf_lut, int row_entry, int pc)
 		pr_debug("pc %d greater than known pc ranges for sfd\n", pc);
 		row1 = 0;
 		row2 = 0;
-	}
-	if (pc < sf_lut->percent[rows - 1]) {
+	} else if (pc < sf_lut->percent[rows - 1]) {
 		pr_debug("pc %d less than known pc ranges for sf\n", pc);
 		row1 = rows - 1;
 		row2 = rows - 1;
-	}
-	for (i = 0; i < rows; i++) {
-		if (pc == sf_lut->percent[i]) {
-			row1 = i;
-			row2 = i;
-			break;
-		}
-		if (pc > sf_lut->percent[i]) {
-			row1 = i - 1;
-			row2 = i;
-			break;
+	} else {
+		for (i = 0; i < rows; i++) {
+			if (pc == sf_lut->percent[i]) {
+				row1 = i;
+				row2 = i;
+				break;
+			}
+			if (pc > sf_lut->percent[i]) {
+				row1 = i - 1;
+				row2 = i;
+				break;
+			}
 		}
 	}
 
@@ -180,22 +180,22 @@ int interpolate_ocv(struct pc_temp_ocv_lut *pc_temp_ocv,
 		pr_debug("pc %d greater than known pc ranges for sfd\n", pc);
 		row1 = 0;
 		row2 = 0;
-	}
-	if (pc < pc_temp_ocv->percent[rows - 1]) {
+	} else if (pc < pc_temp_ocv->percent[rows - 1]) {
 		pr_debug("pc %d less than known pc ranges for sf\n", pc);
 		row1 = rows - 1;
 		row2 = rows - 1;
-	}
-	for (i = 0; i < rows; i++) {
-		if (pc == pc_temp_ocv->percent[i]) {
-			row1 = i;
-			row2 = i;
-			break;
-		}
-		if (pc > pc_temp_ocv->percent[i]) {
-			row1 = i - 1;
-			row2 = i;
-			break;
+	} else {
+		for (i = 0; i < rows; i++) {
+			if (pc == pc_temp_ocv->percent[i]) {
+				row1 = i;
+				row2 = i;
+				break;
+			}
+			if (pc > pc_temp_ocv->percent[i]) {
+				row1 = i - 1;
+				row2 = i;
+				break;
+			}
 		}
 	}
 
@@ -409,4 +409,86 @@ int interpolate_slope(struct pc_temp_ocv_lut *pc_temp_ocv,
 	slope /= (pc_temp_ocv->percent[row1] - pc_temp_ocv->percent[row2]);
 
 	return slope;
+}
+
+
+int interpolate_acc(struct ibat_temp_acc_lut *ibat_acc_lut,
+					int batt_temp, int ibat)
+{
+	int i, accrow1, accrow2, rows, cols;
+	int row1 = 0;
+	int row2 = 0;
+	int acc;
+
+	rows = ibat_acc_lut->rows;
+	cols = ibat_acc_lut->cols;
+
+	if (ibat > ibat_acc_lut->ibat[rows - 1]) {
+		pr_debug("ibatt(%d) > max range(%d)\n", ibat,
+					ibat_acc_lut->ibat[rows - 1]);
+		row1 = rows - 1;
+		row2 = rows - 2;
+	} else if (ibat < ibat_acc_lut->ibat[0]) {
+		pr_debug("ibatt(%d) < max range(%d)\n", ibat,
+					ibat_acc_lut->ibat[0]);
+		row1 = 0;
+		row2 = 0;
+	} else {
+		for (i = 0; i < rows; i++) {
+			if (ibat == ibat_acc_lut->ibat[i]) {
+				row1 = i;
+				row2 = i;
+				break;
+			}
+			if (ibat < ibat_acc_lut->ibat[i]) {
+				row1 = i;
+				row2 = i - 1;
+				break;
+			}
+		}
+	}
+
+	if (batt_temp < ibat_acc_lut->temp[0] * DEGC_SCALE)
+		batt_temp = ibat_acc_lut->temp[0] * DEGC_SCALE;
+	if (batt_temp > ibat_acc_lut->temp[cols - 1] * DEGC_SCALE)
+		batt_temp = ibat_acc_lut->temp[cols - 1] * DEGC_SCALE;
+
+	for (i = 0; i < cols; i++)
+		if (batt_temp <= ibat_acc_lut->temp[i] * DEGC_SCALE)
+			break;
+
+	if (batt_temp == (ibat_acc_lut->temp[i] * DEGC_SCALE)) {
+		acc = linear_interpolate(
+			ibat_acc_lut->acc[row1][i],
+			ibat_acc_lut->ibat[row1],
+			ibat_acc_lut->acc[row2][i],
+			ibat_acc_lut->ibat[row2],
+			ibat);
+		return acc;
+	}
+
+	accrow1 = linear_interpolate(
+		ibat_acc_lut->acc[row1][i - 1],
+		ibat_acc_lut->temp[i - 1] * DEGC_SCALE,
+		ibat_acc_lut->acc[row1][i],
+		ibat_acc_lut->temp[i] * DEGC_SCALE,
+		batt_temp);
+
+	accrow2 = linear_interpolate(
+		ibat_acc_lut->acc[row2][i - 1],
+		ibat_acc_lut->temp[i - 1] * DEGC_SCALE,
+		ibat_acc_lut->acc[row2][i],
+		ibat_acc_lut->temp[i] * DEGC_SCALE,
+		batt_temp);
+
+	acc = linear_interpolate(accrow1,
+			ibat_acc_lut->ibat[row1],
+			accrow2,
+			ibat_acc_lut->ibat[row2],
+			ibat);
+
+	if (acc < 0)
+		acc = 0;
+
+	return acc;
 }

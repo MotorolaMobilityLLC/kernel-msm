@@ -9,7 +9,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#define pr_fmt(fmt) "%s: " fmt, __func__
+#define pr_fmt(fmt) "SMB:%s: " fmt, __func__
 
 #include <linux/i2c.h>
 #include <linux/debugfs.h>
@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
+#include <linux/math64.h>
 #include <linux/slab.h>
 #include <linux/power_supply.h>
 #include <linux/regulator/driver.h>
@@ -26,6 +27,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/bitops.h>
+#include <linux/qpnp/qpnp-adc.h>
 
 #define _SMB1360_MASK(BITS, POS) \
 	((unsigned char)(((1 << (BITS)) - 1) << (POS)))
@@ -42,11 +44,15 @@
 #define RECHG_MV_SHIFT			5
 
 #define CFG_BATT_CHG_ICL_REG		0x05
-#define	AC_INPUT_ICL_PIN		BIT(7)
+#define AC_INPUT_ICL_PIN_BIT		BIT(7)
+#define AC_INPUT_PIN_HIGH_BIT		BIT(6)
+#define RESET_STATE_USB_500		BIT(5)
 #define INPUT_CURR_LIM_MASK		SMB1360_MASK(3, 0)
+#define INPUT_CURR_LIM_300MA		0x0
 
 #define CFG_GLITCH_FLT_REG		0x06
 #define AICL_ENABLED_BIT		BIT(0)
+#define INPUT_UV_GLITCH_FLT_20MS_BIT	BIT(7)
 
 #define CFG_CHG_MISC_REG		0x7
 #define CHG_EN_BY_PIN_BIT		BIT(7)
@@ -58,6 +64,7 @@
 
 #define CFG_STAT_CTRL_REG		0x09
 #define CHG_STAT_IRQ_ONLY_BIT		BIT(4)
+#define CHG_TEMP_CHG_ERR_BLINK_BIT	BIT(3)
 #define CHG_STAT_ACTIVE_HIGH_BIT	BIT(1)
 #define CHG_STAT_DISABLE_BIT		BIT(0)
 
@@ -73,6 +80,9 @@
 #define BATT_ID_ENABLED_BIT		BIT(5)
 #define CHG_BATT_ID_FAIL		BIT(4)
 #define BATT_ID_FAIL_SELECT_PROFILE	BIT(3)
+#define BATT_PROFILE_SELECT_MASK	SMB1360_MASK(3, 0)
+#define BATT_PROFILEA_MASK		0x0
+#define BATT_PROFILEB_MASK		0xF
 
 #define IRQ_CFG_REG			0x0F
 #define IRQ_BAT_HOT_COLD_HARD_BIT	BIT(7)
@@ -102,15 +112,23 @@
 #define BATT_CHG_FLT_VTG_REG		0x15
 #define VFLOAT_MASK			SMB1360_MASK(6, 0)
 
+#define SHDN_CTRL_REG			0x1A
+#define SHDN_CMD_USE_BIT		BIT(1)
+#define SHDN_CMD_POLARITY_BIT		BIT(2)
+
 /* Command Registers */
 #define CMD_I2C_REG			0x40
 #define ALLOW_VOLATILE_BIT		BIT(6)
+#define FG_ACCESS_ENABLED_BIT		BIT(5)
+#define FG_RESET_BIT			BIT(4)
+#define CYCLE_STRETCH_CLEAR_BIT		BIT(3)
 
 #define CMD_IL_REG			0x41
 #define USB_CTRL_MASK			SMB1360_MASK(1 , 0)
-#define USB_100_BIT			0x00
-#define USB_500_BIT			0x01
-#define USB_AC_BIT			0x11
+#define USB_100_BIT			0x01
+#define USB_500_BIT			0x00
+#define USB_AC_BIT			0x02
+#define SHDN_CMD_BIT			BIT(7)
 
 #define CMD_CHG_REG			0x42
 #define CMD_CHG_EN			BIT(1)
@@ -126,6 +144,9 @@
 #define BATT_FAST_CHG_VAL		0x2
 #define BATT_TAPER_CHG_VAL		0x3
 #define CHG_EN_BIT			BIT(0)
+
+#define STATUS_4_REG			0x4C
+#define CYCLE_STRETCH_ACTIVE_BIT	BIT(5)
 
 #define REVISION_CTRL_REG		0x4F
 #define DEVICE_REV_MASK			SMB1360_MASK(3, 0)
@@ -146,26 +167,46 @@
 
 #define IRQ_D_REG			0x53
 #define IRQ_E_REG			0x54
+#define IRQ_E_USBIN_UV_BIT		BIT(0)
+
 #define IRQ_F_REG			0x55
 
 #define IRQ_G_REG			0x56
-#define IRQ_G_USBIN_UV_BIT		BIT(0)
 
 #define IRQ_H_REG			0x57
 #define IRQ_I_REG			0x58
+#define FG_ACCESS_ALLOWED_BIT		BIT(0)
+#define BATT_ID_RESULT_BIT		SMB1360_MASK(6, 4)
+#define BATT_ID_SHIFT			4
 
 /* FG registers - IRQ config register */
-#define SOC_DELTA_REG			0x20
-#define VTG_MIN_REG			0x23
 #define SOC_MAX_REG			0x24
 #define SOC_MIN_REG			0x25
 #define VTG_EMPTY_REG			0x26
+#define SOC_DELTA_REG			0x28
+#define VTG_MIN_REG			0x2B
 
 /* FG SHADOW registers */
+#define SHDW_FG_ESR_ACTUAL		0x20
+#define SHDW_FG_BATT_STATUS		0x60
+#define BATTERY_PROFILE_BIT		BIT(0)
+
 #define SHDW_FG_MSYS_SOC		0x61
 #define SHDW_FG_CAPACITY		0x62
 #define SHDW_FG_VTG_NOW			0x69
+#define SHDW_FG_CURR_NOW		0x6B
 #define SHDW_FG_BATT_TEMP		0x6D
+
+#define CC_TO_SOC_COEFF			0xBA
+#define ACTUAL_CAPACITY_REG		0xBE
+#define FG_SYS_CUTOFF_V_REG		0xD3
+#define FG_ITERM_REG			0xD9
+#define FG_IBATT_STANDBY_REG		0xCF
+
+#define FG_I2C_CFG_MASK			SMB1360_MASK(2, 1)
+#define FG_CFG_I2C_ADDR			0x2
+#define FG_PROFILE_A_ADDR		0x4
+#define FG_PROFILE_B_ADDR		0x6
 
 /* Constants */
 #define CURRENT_100_MA			100
@@ -176,12 +217,24 @@
 
 enum {
 	WRKRND_FG_CONFIG_FAIL = BIT(0),
+	WRKRND_BATT_DET_FAIL = BIT(1),
+	WRKRND_USB100_FAIL = BIT(2),
 };
 
 enum {
 	USER	= BIT(0),
-	THERMAL = BIT(1),
-	CURRENT = BIT(2),
+};
+
+enum fg_i2c_access_type {
+	FG_ACCESS_CFG = 0x1,
+	FG_ACCESS_PROFILE_A = 0x2,
+	FG_ACCESS_PROFILE_B = 0x3
+};
+
+enum {
+	BATTERY_PROFILE_A,
+	BATTERY_PROFILE_B,
+	BATTERY_PROFILE_MAX,
 };
 
 struct smb1360_otg_regulator {
@@ -193,6 +246,9 @@ struct smb1360_chip {
 	struct i2c_client		*client;
 	struct device			*dev;
 	u8				revision;
+	unsigned short			default_i2c_addr;
+	unsigned short			fg_i2c_addr;
+	bool				pulsed_irq;
 
 	/* configuration data - charger */
 	int				fake_battery_soc;
@@ -201,10 +257,12 @@ struct smb1360_chip {
 	bool				recharge_disabled;
 	bool				chg_inhibit_disabled;
 	bool				iterm_disabled;
+	bool				shdn_after_pwroff;
 	int				iterm_ma;
 	int				vfloat_mv;
 	int				safety_time;
 	int				resume_delta_mv;
+	u32				default_batt_profile;
 	unsigned int			thermal_levels;
 	unsigned int			therm_lvl_sel;
 	unsigned int			*thermal_mitigation;
@@ -215,6 +273,11 @@ struct smb1360_chip {
 	int				delta_soc;
 	int				voltage_min_mv;
 	int				voltage_empty_mv;
+	int				batt_capacity_mah;
+	int				cc_soc_coeff;
+	int				v_cutoff_mv;
+	int				fg_iterm_ma;
+	int				fg_ibatt_standby_ma;
 
 	/* status tracking */
 	bool				usb_present;
@@ -226,16 +289,22 @@ struct smb1360_chip {
 	bool				batt_full;
 	bool				resume_completed;
 	bool				irq_waiting;
+	bool				empty_soc;
 	int				workaround_flags;
 	u8				irq_cfg_mask[3];
 	int				usb_psy_ma;
 	int				charging_disabled_status;
+	u32				connected_rid;
+	u32				profile_rid[BATTERY_PROFILE_MAX];
 
 	u32				peek_poke_address;
+	u32				fg_access_type;
+	u32				fg_peek_poke_address;
 	int				skip_writes;
 	int				skip_reads;
 	struct dentry			*debug_root;
 
+	struct qpnp_vadc_chip		*vadc_dev;
 	struct power_supply		*usb_psy;
 	struct power_supply		batt_psy;
 	struct smb1360_otg_regulator	otg_vreg;
@@ -294,6 +363,7 @@ static int __smb1360_read(struct smb1360_chip *chip, int reg,
 	} else {
 		*val = ret;
 	}
+	pr_debug("Reading 0x%02x=0x%02x\n", reg, *val);
 
 	return 0;
 }
@@ -345,6 +415,42 @@ static int smb1360_write(struct smb1360_chip *chip, int reg,
 	return rc;
 }
 
+static int smb1360_fg_read(struct smb1360_chip *chip, int reg,
+				u8 *val)
+{
+	int rc;
+
+	if (chip->skip_reads) {
+		*val = 0;
+		return 0;
+	}
+
+	mutex_lock(&chip->read_write_lock);
+	chip->client->addr = chip->fg_i2c_addr;
+	rc = __smb1360_read(chip, reg, val);
+	chip->client->addr = chip->default_i2c_addr;
+	mutex_unlock(&chip->read_write_lock);
+
+	return rc;
+}
+
+static int smb1360_fg_write(struct smb1360_chip *chip, int reg,
+						u8 val)
+{
+	int rc;
+
+	if (chip->skip_writes)
+		return 0;
+
+	mutex_lock(&chip->read_write_lock);
+	chip->client->addr = chip->fg_i2c_addr;
+	rc = __smb1360_write(chip, reg, val);
+	chip->client->addr = chip->default_i2c_addr;
+	mutex_unlock(&chip->read_write_lock);
+
+	return rc;
+}
+
 static int smb1360_read_bytes(struct smb1360_chip *chip, int reg,
 						u8 *val, u8 bytes)
 {
@@ -360,6 +466,27 @@ static int smb1360_read_bytes(struct smb1360_chip *chip, int reg,
 	if (rc < 0)
 		dev_err(chip->dev,
 			"i2c read fail: can't read %d bytes from %02x: %d\n",
+							bytes, reg, rc);
+	mutex_unlock(&chip->read_write_lock);
+
+	return (rc < 0) ? rc : 0;
+}
+
+static int smb1360_write_bytes(struct smb1360_chip *chip, int reg,
+						u8 *val, u8 bytes)
+{
+	s32 rc;
+
+	if (chip->skip_writes) {
+		*val = 0;
+		return 0;
+	}
+
+	mutex_lock(&chip->read_write_lock);
+	rc = i2c_smbus_write_i2c_block_data(chip->client, reg, bytes, val);
+	if (rc < 0)
+		dev_err(chip->dev,
+			"i2c write fail: can't read %d bytes from %02x: %d\n",
 							bytes, reg, rc);
 	mutex_unlock(&chip->read_write_lock);
 
@@ -393,6 +520,87 @@ out:
 	return rc;
 }
 
+#define EXPONENT_MASK		0xF800
+#define MANTISSA_MASK		0x3FF
+#define SIGN_MASK		0x400
+#define EXPONENT_SHIFT		11
+#define MICRO_UNIT		1000000ULL
+static int64_t float_decode(u16 reg)
+{
+	int64_t final_val, exponent_val, mantissa_val;
+	int exponent, mantissa, n;
+	bool sign;
+
+	exponent = (reg & EXPONENT_MASK) >> EXPONENT_SHIFT;
+	mantissa = (reg & MANTISSA_MASK);
+	sign = !!(reg & SIGN_MASK);
+
+	pr_debug("exponent=%d mantissa=%d sign=%d\n", exponent, mantissa, sign);
+
+	mantissa_val = mantissa * MICRO_UNIT;
+
+	n = exponent - 15;
+	if (n < 0)
+		exponent_val = MICRO_UNIT >> -n;
+	else
+		exponent_val = MICRO_UNIT << n;
+
+	n = n - 10;
+	if (n < 0)
+		mantissa_val >>= -n;
+	else
+		mantissa_val <<= n;
+
+	final_val = exponent_val + mantissa_val;
+
+	if (sign)
+		final_val *= -1;
+
+	return final_val;
+}
+
+static int smb1360_enable_fg_access(struct smb1360_chip *chip)
+{
+	int rc;
+	u8 reg = 0, timeout = 50;
+
+	rc = smb1360_masked_write(chip, CMD_I2C_REG, FG_ACCESS_ENABLED_BIT,
+							FG_ACCESS_ENABLED_BIT);
+	if (rc) {
+		pr_err("Couldn't enable FG access rc=%d\n", rc);
+		return rc;
+	}
+
+	while (timeout) {
+		/* delay for FG access to be granted */
+		msleep(200);
+		rc = smb1360_read(chip, IRQ_I_REG, &reg);
+		if (rc)
+			pr_err("Could't read IRQ_I_REG rc=%d\n", rc);
+		else if (reg & FG_ACCESS_ALLOWED_BIT)
+			break;
+		timeout--;
+	}
+
+	pr_debug("timeout=%d\n", timeout);
+
+	if (!timeout)
+		return -EBUSY;
+
+	return 0;
+}
+
+static int smb1360_disable_fg_access(struct smb1360_chip *chip)
+{
+	int rc;
+
+	rc = smb1360_masked_write(chip, CMD_I2C_REG, FG_ACCESS_ENABLED_BIT, 0);
+	if (rc)
+		pr_err("Couldn't disable FG access rc=%d\n", rc);
+
+	return rc;
+}
+
 static int smb1360_enable_volatile_writes(struct smb1360_chip *chip)
 {
 	int rc;
@@ -404,6 +612,21 @@ static int smb1360_enable_volatile_writes(struct smb1360_chip *chip)
 			"Couldn't set VOLATILE_W_PERM_BIT rc=%d\n", rc);
 
 	return rc;
+}
+
+#define TRIM_1C_REG		0x1C
+#define CHECK_USB100_GOOD_BIT	BIT(6)
+static bool is_usb100_broken(struct smb1360_chip *chip)
+{
+	int rc;
+	u8 reg;
+
+	rc = smb1360_read(chip, TRIM_1C_REG, &reg);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read trim 1C reg rc = %d\n", rc);
+		return rc;
+	}
+	return !!(reg & CHECK_USB100_GOOD_BIT);
 }
 
 static int read_revision(struct smb1360_chip *chip, u8 *revision)
@@ -467,6 +690,9 @@ static int __smb1360_charging_disable(struct smb1360_chip *chip, bool disable)
 	if (rc < 0)
 		pr_err("Couldn't set CHG_ENABLE_BIT disable=%d rc = %d\n",
 							disable, rc);
+	else
+		pr_debug("CHG_EN status=%d\n", !disable);
+
 	return rc;
 }
 
@@ -513,6 +739,8 @@ static enum power_supply_property smb1360_battery_properties[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_RESISTANCE,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
 };
@@ -608,10 +836,16 @@ static int smb1360_get_prop_batt_health(struct smb1360_chip *chip)
 static int smb1360_get_prop_batt_capacity(struct smb1360_chip *chip)
 {
 	u8 reg;
+	u32 temp = 0;
 	int rc, soc = 0;
 
 	if (chip->fake_battery_soc >= 0)
 		return chip->fake_battery_soc;
+
+	if (chip->empty_soc) {
+		pr_debug("empty_soc\n");
+		return 0;
+	}
 
 	rc = smb1360_read(chip, SHDW_FG_MSYS_SOC, &reg);
 	if (rc) {
@@ -619,6 +853,10 @@ static int smb1360_get_prop_batt_capacity(struct smb1360_chip *chip)
 		return rc;
 	}
 	soc = (100 * reg) / MAX_8_BITS;
+
+	temp = (100 * reg) % MAX_8_BITS;
+	if (temp > (MAX_8_BITS / 2))
+		soc += 1;
 
 	pr_debug("msys_soc_reg=0x%02x, fg_soc=%d batt_full = %d\n", reg,
 						soc, chip->batt_full);
@@ -685,6 +923,70 @@ static int smb1360_get_prop_voltage_now(struct smb1360_chip *chip)
 	return temp * 1000;
 }
 
+static int smb1360_get_prop_batt_resistance(struct smb1360_chip *chip)
+{
+	u8 reg[2];
+	u16 temp;
+	int rc;
+	int64_t resistance;
+
+	rc = smb1360_read_bytes(chip, SHDW_FG_ESR_ACTUAL, reg, 2);
+	if (rc) {
+		pr_err("Failed to read FG_ESR_ACTUAL rc=%d\n", rc);
+		return rc;
+	}
+	temp = (reg[1] << 8) | reg[0];
+
+	resistance = float_decode(temp) * 2;
+
+	pr_debug("reg=0x%02x resistance=%lld\n", temp, resistance);
+
+	/* resistance in uohms */
+	return resistance;
+}
+
+static int smb1360_get_prop_current_now(struct smb1360_chip *chip)
+{
+	u8 reg[2];
+	int rc, temp = 0;
+
+	rc = smb1360_read_bytes(chip, SHDW_FG_CURR_NOW, reg, 2);
+	if (rc) {
+		pr_err("Failed to read SHDW_FG_CURR_NOW rc=%d\n", rc);
+		return rc;
+	}
+
+	temp = ((s8)reg[1] << 8) | reg[0];
+	temp = div_s64(temp * 2500, 0x7FFF);
+
+	pr_debug("reg[0]=0x%02x reg[1]=0x%02x current=%d\n",
+				reg[0], reg[1], temp * 1000);
+
+	return temp * 1000;
+}
+
+static int smb1360_set_minimum_usb_current(struct smb1360_chip *chip)
+{
+	int rc = 0;
+
+	pr_debug("set USB current to minimum\n");
+	/* set input current limit to minimum (300mA)*/
+	rc = smb1360_masked_write(chip, CFG_BATT_CHG_ICL_REG,
+					INPUT_CURR_LIM_MASK,
+					INPUT_CURR_LIM_300MA);
+	if (rc)
+		pr_err("Couldn't set ICL mA rc=%d\n", rc);
+
+	if (!(chip->workaround_flags & WRKRND_USB100_FAIL)) {
+		rc = smb1360_masked_write(chip, CMD_IL_REG,
+				USB_CTRL_MASK, USB_100_BIT);
+		if (rc)
+			pr_err("Couldn't configure for USB100 rc=%d\n", rc);
+	}
+
+	return rc;
+}
+
 static int smb1360_set_appropriate_usb_current(struct smb1360_chip *chip)
 {
 	int rc = 0, i, therm_ma, current_ma;
@@ -715,14 +1017,15 @@ static int smb1360_set_appropriate_usb_current(struct smb1360_chip *chip)
 
 	if (current_ma <= 2) {
 		/*
-		 * SMB1360 does not support USB suspend so
-		 * disable charging if current <= 2
+		 * SMB1360 does not support USB suspend -
+		 * so set the current-limit to minimum in suspend.
 		 */
-		pr_debug("current_ma=%d <= 2 disable charging\n", current_ma);
-
-		rc = smb1360_charging_disable(chip, CURRENT, true);
+		pr_debug("current_ma=%d <= 2 set USB current to minimum\n",
+								current_ma);
+		rc = smb1360_set_minimum_usb_current(chip);
 		if (rc < 0)
-			pr_err("Unable to disable charging rc=%d\n", rc);
+			pr_err("Couldn't to set minimum USB current rc = %d\n",
+								rc);
 
 		return rc;
 	}
@@ -742,6 +1045,12 @@ static int smb1360_set_appropriate_usb_current(struct smb1360_chip *chip)
 		pr_err("Couldn't set ICL mA rc=%d\n", rc);
 
 	pr_debug("ICL set to = %d\n", input_current_limit[i]);
+
+	if ((current_ma <= CURRENT_100_MA) &&
+		(chip->workaround_flags & WRKRND_USB100_FAIL)) {
+		pr_debug("usb100 not supported\n");
+		current_ma = CURRENT_500_MA;
+	}
 
 	if (current_ma <= CURRENT_100_MA) {
 		/* USB 100 */
@@ -781,11 +1090,6 @@ static int smb1360_set_appropriate_usb_current(struct smb1360_chip *chip)
 		pr_debug("fast-chg current set to = %d\n", fastchg_current[i]);
 	}
 
-	/* enable charging, as it could have been disabled earlier */
-	rc = smb1360_charging_disable(chip, CURRENT, false);
-	if (rc < 0)
-		pr_err("Unable to enable charging rc=%d\n", rc);
-
 	return rc;
 }
 
@@ -817,30 +1121,18 @@ static int smb1360_system_temp_level_set(struct smb1360_chip *chip,
 	mutex_lock(&chip->current_change_lock);
 	prev_therm_lvl = chip->therm_lvl_sel;
 	chip->therm_lvl_sel = lvl_sel;
+
 	if (chip->therm_lvl_sel == (chip->thermal_levels - 1)) {
-		/* Disable charging if highest value selected */
-		rc = smb1360_charging_disable(chip, THERMAL, true);
-		if (rc < 0) {
-			pr_err("Couldn't disable charging rc %d\n", rc);
-			goto out;
-		}
-		goto out;
+		rc = smb1360_set_minimum_usb_current(chip);
+		if (rc)
+			pr_err("Couldn't set USB current to minimum rc = %d\n",
+							rc);
+	} else {
+		rc = smb1360_set_appropriate_usb_current(chip);
+		if (rc)
+			pr_err("Couldn't set USB current rc = %d\n", rc);
 	}
 
-	smb1360_set_appropriate_usb_current(chip);
-
-	if (prev_therm_lvl == chip->thermal_levels - 1) {
-		/*
-		 * If previously highest value was selected charging must have
-		 * been disabed. Hence enable charging.
-		 */
-		rc = smb1360_charging_disable(chip, THERMAL, false);
-		if (rc < 0) {
-			pr_err("Couldn't enable charging rc %d\n", rc);
-			goto out;
-		}
-	}
-out:
 	mutex_unlock(&chip->current_change_lock);
 	return rc;
 }
@@ -855,9 +1147,11 @@ static int smb1360_battery_set_property(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		smb1360_charging_disable(chip, USER, !val->intval);
+		power_supply_changed(&chip->batt_psy);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		chip->fake_battery_soc = val->intval;
+		pr_info("fake_soc set to %d\n", chip->fake_battery_soc);
 		power_supply_changed(&chip->batt_psy);
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
@@ -919,6 +1213,12 @@ static int smb1360_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = smb1360_get_prop_voltage_now(chip);
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		val->intval = smb1360_get_prop_current_now(chip);
+		break;
+	case POWER_SUPPLY_PROP_RESISTANCE:
+		val->intval = smb1360_get_prop_batt_resistance(chip);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = smb1360_get_prop_batt_temp(chip);
@@ -1014,13 +1314,14 @@ static int battery_missing_handler(struct smb1360_chip *chip, u8 rt_stat)
 
 static int vbat_low_handler(struct smb1360_chip *chip, u8 rt_stat)
 {
-	pr_warn("vbat low\n");
+	pr_debug("vbat low\n");
+
 	return 0;
 }
 
 static int chg_hot_handler(struct smb1360_chip *chip, u8 rt_stat)
 {
-	pr_warn("chg hot\n");
+	pr_warn_ratelimited("chg hot\n");
 	return 0;
 }
 
@@ -1064,23 +1365,30 @@ static int chg_inhibit_handler(struct smb1360_chip *chip, u8 rt_stat)
 	return 0;
 }
 
+static int delta_soc_handler(struct smb1360_chip *chip, u8 rt_stat)
+{
+	pr_debug("SOC changed! - rt_stat = 0x%02x\n", rt_stat);
+
+	return 0;
+}
+
 static int min_soc_handler(struct smb1360_chip *chip, u8 rt_stat)
 {
-	if (rt_stat) {
-		pr_debug("Below minimum SOC, holding wake_source\n");
-		pm_stay_awake(chip->dev);
-	} else {
-		pr_debug("Above minimum SOC, releasing wake_source\n");
-		pm_relax(chip->dev);
-	}
+	pr_debug("SOC dropped below min SOC\n");
 
 	return 0;
 }
 
 static int empty_soc_handler(struct smb1360_chip *chip, u8 rt_stat)
 {
-	if (rt_stat)
-		pr_warn("SOC is 0\n");
+	if (rt_stat) {
+		pr_warn_ratelimited("SOC is 0\n");
+		chip->empty_soc = true;
+		pm_stay_awake(chip->dev);
+	} else {
+		chip->empty_soc = false;
+		pm_relax(chip->dev);
+	}
 
 	return 0;
 }
@@ -1096,6 +1404,14 @@ static int full_soc_handler(struct smb1360_chip *chip, u8 rt_stat)
 static int fg_access_allowed_handler(struct smb1360_chip *chip, u8 rt_stat)
 {
 	pr_debug("stat=%d\n", !!rt_stat);
+
+	return 0;
+}
+
+static int batt_id_complete_handler(struct smb1360_chip *chip, u8 rt_stat)
+{
+	pr_debug("batt_id = %x\n", (rt_stat & BATT_ID_RESULT_BIT)
+						>> BATT_ID_SHIFT);
 
 	return 0;
 }
@@ -1227,6 +1543,7 @@ static struct irq_handler_info handlers[] = {
 		{
 			{
 				.name		= "delta_soc",
+				.smb_irq	= delta_soc_handler,
 			},
 			{
 				.name		= "chg_error",
@@ -1268,10 +1585,8 @@ static struct irq_handler_info handlers[] = {
 				.name		= "fg_data_recovery",
 			},
 			{
-				.name		= "batt_id_result",
-			},
-			{
 				.name		= "batt_id_complete",
+				.smb_irq	= batt_id_complete_handler,
 			},
 		},
 	},
@@ -1279,6 +1594,8 @@ static struct irq_handler_info handlers[] = {
 
 #define IRQ_LATCHED_MASK	0x02
 #define IRQ_STATUS_MASK		0x01
+#define BATT_ID_LATCHED_MASK	0x08
+#define BATT_ID_STATUS_MASK	0x07
 #define BITS_PER_IRQ		2
 static irqreturn_t smb1360_stat_handler(int irq, void *dev_id)
 {
@@ -1286,7 +1603,7 @@ static irqreturn_t smb1360_stat_handler(int irq, void *dev_id)
 	int i, j;
 	u8 triggered;
 	u8 changed;
-	u8 rt_stat, prev_rt_stat;
+	u8 rt_stat, prev_rt_stat, irq_latched_mask, irq_status_mask;
 	int rc;
 	int handler_count = 0;
 
@@ -1310,12 +1627,19 @@ static irqreturn_t smb1360_stat_handler(int irq, void *dev_id)
 		}
 
 		for (j = 0; j < ARRAY_SIZE(handlers[i].irq_info); j++) {
+			if (handlers[i].stat_reg == IRQ_I_REG && j == 2) {
+				irq_latched_mask = BATT_ID_LATCHED_MASK;
+				irq_status_mask = BATT_ID_STATUS_MASK;
+			} else {
+				irq_latched_mask = IRQ_LATCHED_MASK;
+				irq_status_mask = IRQ_STATUS_MASK;
+			}
 			triggered = handlers[i].val
-			       & (IRQ_LATCHED_MASK << (j * BITS_PER_IRQ));
+			       & (irq_latched_mask << (j * BITS_PER_IRQ));
 			rt_stat = handlers[i].val
-				& (IRQ_STATUS_MASK << (j * BITS_PER_IRQ));
+				& (irq_status_mask << (j * BITS_PER_IRQ));
 			prev_rt_stat = handlers[i].prev_val
-				& (IRQ_STATUS_MASK << (j * BITS_PER_IRQ));
+				& (irq_status_mask << (j * BITS_PER_IRQ));
 			changed = prev_rt_stat ^ rt_stat;
 
 			if (triggered || changed)
@@ -1351,6 +1675,8 @@ static int show_irq_count(struct seq_file *m, void *data)
 
 	for (i = 0; i < ARRAY_SIZE(handlers); i++)
 		for (j = 0; j < 4; j++) {
+			if (!handlers[i].irq_info[j].name)
+				continue;
 			seq_printf(m, "%s=%d\t(high=%d low=%d)\n",
 						handlers[i].irq_info[j].name,
 						handlers[i].irq_info[j].high
@@ -1415,6 +1741,80 @@ static int set_reg(void *data, u64 val)
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(poke_poke_debug_ops, get_reg, set_reg, "0x%02llx\n");
+
+static int smb1360_select_fg_i2c_address(struct smb1360_chip *chip)
+{
+	unsigned short addr = chip->default_i2c_addr << 0x1;
+
+	switch (chip->fg_access_type) {
+	case FG_ACCESS_CFG:
+		addr = (addr & ~FG_I2C_CFG_MASK) | FG_CFG_I2C_ADDR;
+		break;
+	case FG_ACCESS_PROFILE_A:
+		addr = (addr & ~FG_I2C_CFG_MASK) | FG_PROFILE_A_ADDR;
+		break;
+	case FG_ACCESS_PROFILE_B:
+		addr = (addr & ~FG_I2C_CFG_MASK) | FG_PROFILE_B_ADDR;
+		break;
+	default:
+		pr_err("Invalid FG access type=%d\n", chip->fg_access_type);
+		return -EINVAL;
+	}
+
+	chip->fg_i2c_addr = addr >> 0x1;
+	pr_debug("FG_access_type=%d fg_i2c_addr=%x\n", chip->fg_access_type,
+							chip->fg_i2c_addr);
+
+	return 0;
+}
+
+static int fg_get_reg(void *data, u64 *val)
+{
+	struct smb1360_chip *chip = data;
+	int rc;
+	u8 temp;
+
+	rc = smb1360_select_fg_i2c_address(chip);
+	if (rc) {
+		pr_err("Unable to set FG access I2C address\n");
+		return -EINVAL;
+	}
+
+	rc = smb1360_fg_read(chip, chip->fg_peek_poke_address, &temp);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"Couldn't read reg %x rc = %d\n",
+			chip->fg_peek_poke_address, rc);
+		return -EAGAIN;
+	}
+	*val = temp;
+	return 0;
+}
+
+static int fg_set_reg(void *data, u64 val)
+{
+	struct smb1360_chip *chip = data;
+	int rc;
+	u8 temp;
+
+	rc = smb1360_select_fg_i2c_address(chip);
+	if (rc) {
+		pr_err("Unable to set FG access I2C address\n");
+		return -EINVAL;
+	}
+
+	temp = (u8) val;
+	rc = smb1360_fg_write(chip, chip->fg_peek_poke_address, temp);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"Couldn't write 0x%02x to 0x%02x rc= %d\n",
+			chip->fg_peek_poke_address, temp, rc);
+		return -EAGAIN;
+	}
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(fg_poke_poke_debug_ops, fg_get_reg,
+				fg_set_reg, "0x%02llx\n");
 
 #define LAST_CNFG_REG	0x17
 static int show_cnfg_regs(struct seq_file *m, void *data)
@@ -1547,6 +1947,222 @@ static const struct file_operations irq_stat_debugfs_ops = {
 	.release	= single_release,
 };
 
+static int data_8(u8 *reg)
+{
+	return reg[0];
+}
+static int data_16(u8 *reg)
+{
+	return (reg[1] << 8) | reg[0];
+}
+static int data_24(u8 *reg)
+{
+	return  (reg[2] << 16) | (reg[1] << 8) | reg[0];
+}
+static int data_28(u8 *reg)
+{
+	return  ((reg[3] & 0xF) << 24) | (reg[2] << 16) |
+					(reg[1] << 8) | reg[0];
+}
+static int data_32(u8 *reg)
+{
+	return  (reg[3]  << 24) | (reg[2] << 16) |
+				(reg[1] << 8) | reg[0];
+}
+
+struct fg_regs {
+	int index;
+	int length;
+	char *param_name;
+	int (*calc_func) (u8 *);
+};
+
+static struct fg_regs fg_scratch_pad[] = {
+	{0, 2, "v_current_predicted", data_16},
+	{2, 2, "v_cutoff_predicted", data_16},
+	{4, 2, "v_full_predicted", data_16},
+	{6, 2, "ocv_estimate", data_16},
+	{8, 2, "rslow_drop", data_16},
+	{10, 2, "voltage_old", data_16},
+	{12, 2, "current_old", data_16},
+	{14, 4, "current_average_full", data_32},
+	{18, 2, "temperature", data_16},
+	{20, 2, "temp_last_track", data_16},
+	{22, 2, "ESR_nominal", data_16},
+	{26, 2, "Rslow", data_16},
+	{28, 2, "counter_imptr", data_16},
+	{30, 2, "counter_pulse", data_16},
+	{32, 1, "IRQ_delta_prev", data_8},
+	{33, 1, "cap_learning_counter", data_8},
+	{34, 4, "Vact_int_error", data_32},
+	{38, 3, "SOC_cutoff", data_24},
+	{41, 3, "SOC_full", data_24},
+	{44, 3, "SOC_auto_rechrge_temp", data_24},
+	{47, 3, "Battery_SOC", data_24},
+	{50, 4, "CC_SOC", data_28},
+	{54, 2, "SOC_filtered", data_16},
+	{56, 2, "SOC_Monotonic", data_16},
+	{58, 2, "CC_SOC_coeff", data_16},
+	{60, 2, "nominal_capacity", data_16},
+	{62, 2, "actual_capacity", data_16},
+	{68, 1, "temperature_counter", data_8},
+	{69, 3, "Vbatt_filtered", data_24},
+	{72, 3, "Ibatt_filtered", data_24},
+	{75, 2, "Current_CC_shadow", data_16},
+	{79, 2, "Ibatt_standby", data_16},
+	{82, 1, "Auto_recharge_SOC_threshold", data_8},
+	{83, 2, "System_cutoff_voltage", data_16},
+	{85, 2, "System_CC_to_CV_voltage", data_16},
+	{87, 2, "System_term_current", data_16},
+	{89, 2, "System_fake_term_current", data_16},
+	{91, 2, "thermistor_c1_coeff", data_16},
+};
+
+static struct fg_regs fg_cfg[] = {
+	{0, 2, "ESR_actual", data_16},
+	{4, 1, "IRQ_SOC_max", data_8},
+	{5, 1, "IRQ_SOC_min", data_8},
+	{6, 1, "IRQ_volt_empty", data_8},
+	{7, 1, "Temp_external", data_8},
+	{8, 1, "IRQ_delta_threshold", data_8},
+	{9, 1, "JIETA_soft_cold", data_8},
+	{10, 1, "JIETA_soft_hot", data_8},
+	{11, 1, "IRQ_volt_min", data_8},
+	{14, 2, "ESR_sys_replace", data_16},
+};
+
+static struct fg_regs fg_shdw[] = {
+	{0, 1, "Latest_battery_info", data_8},
+	{1, 1, "Latest_Msys_SOC", data_8},
+	{2, 2, "Battery_capacity", data_16},
+	{4, 2, "Rslow_drop", data_16},
+	{6, 1, "Latest_SOC", data_8},
+	{7, 1, "Latest_Cutoff_SOC", data_8},
+	{8, 1, "Latest_full_SOC", data_8},
+	{9, 2, "Voltage_shadow", data_16},
+	{11, 2, "Current_shadow", data_16},
+	{13, 2, "Latest_temperature", data_16},
+	{15, 1, "Latest_system_sbits", data_8},
+};
+
+#define FIRST_FG_CFG_REG		0x20
+#define LAST_FG_CFG_REG			0x2F
+#define FIRST_FG_SHDW_REG		0x60
+#define LAST_FG_SHDW_REG		0x6F
+#define FG_SCRATCH_PAD_MAX		93
+#define FG_SCRATCH_PAD_BASE_REG		0x80
+#define SMB1360_I2C_READ_LENGTH		32
+
+static int smb1360_check_cycle_stretch(struct smb1360_chip *chip)
+{
+	int rc = 0;
+	u8 reg;
+
+	rc = smb1360_read(chip, STATUS_4_REG, &reg);
+	if (rc) {
+		pr_err("Unable to read status regiseter\n");
+	} else if (reg & CYCLE_STRETCH_ACTIVE_BIT) {
+		/* clear cycle stretch */
+		rc = smb1360_masked_write(chip, CMD_I2C_REG,
+			CYCLE_STRETCH_CLEAR_BIT, CYCLE_STRETCH_CLEAR_BIT);
+		if (rc)
+			pr_err("Unable to clear cycle stretch\n");
+	}
+
+	return rc;
+}
+
+static int show_fg_regs(struct seq_file *m, void *data)
+{
+	struct smb1360_chip *chip = m->private;
+	int rc, i , j, rem_length;
+	u8 reg[FG_SCRATCH_PAD_MAX];
+
+	rc = smb1360_check_cycle_stretch(chip);
+	if (rc)
+		pr_err("Unable to check cycle-stretch\n");
+
+	rc = smb1360_enable_fg_access(chip);
+	if (rc) {
+		pr_err("Couldn't request FG access rc=%d\n", rc);
+		return rc;
+	}
+
+	for (i = 0; i < (FG_SCRATCH_PAD_MAX / SMB1360_I2C_READ_LENGTH); i++) {
+		j = i * SMB1360_I2C_READ_LENGTH;
+		rc = smb1360_read_bytes(chip, FG_SCRATCH_PAD_BASE_REG + j,
+					&reg[j], SMB1360_I2C_READ_LENGTH);
+		if (rc) {
+			pr_err("Couldn't read scratch registers rc=%d\n", rc);
+			break;
+		}
+	}
+
+	j = i * SMB1360_I2C_READ_LENGTH;
+	rem_length = (FG_SCRATCH_PAD_MAX % SMB1360_I2C_READ_LENGTH) + 1;
+	if (rem_length) {
+		rc = smb1360_read_bytes(chip, FG_SCRATCH_PAD_BASE_REG + j,
+						&reg[j], rem_length);
+		if (rc)
+			pr_err("Couldn't read scratch registers rc=%d\n", rc);
+	}
+
+	rc = smb1360_disable_fg_access(chip);
+	if (rc) {
+		pr_err("Couldn't disable FG access rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = smb1360_check_cycle_stretch(chip);
+	if (rc)
+		pr_err("Unable to check cycle-stretch\n");
+
+
+	seq_puts(m, "FG scratch-pad registers\n");
+	for (i = 0; i < ARRAY_SIZE(fg_scratch_pad); i++)
+		seq_printf(m, "\t%s = %x\n", fg_scratch_pad[i].param_name,
+		fg_scratch_pad[i].calc_func(&reg[fg_scratch_pad[i].index]));
+
+	rem_length = LAST_FG_CFG_REG - FIRST_FG_CFG_REG + 1;
+	rc = smb1360_read_bytes(chip, FIRST_FG_CFG_REG,
+					&reg[0], rem_length);
+	if (rc)
+		pr_err("Couldn't read config registers rc=%d\n", rc);
+
+	seq_puts(m, "FG config registers\n");
+	for (i = 0; i < ARRAY_SIZE(fg_cfg); i++)
+		seq_printf(m, "\t%s = %x\n", fg_cfg[i].param_name,
+				fg_cfg[i].calc_func(&reg[fg_cfg[i].index]));
+
+	rem_length = LAST_FG_SHDW_REG - FIRST_FG_SHDW_REG + 1;
+	rc = smb1360_read_bytes(chip, FIRST_FG_SHDW_REG,
+					&reg[0], rem_length);
+	if (rc)
+		pr_err("Couldn't read shadow registers rc=%d\n", rc);
+
+	seq_puts(m, "FG shadow registers\n");
+	for (i = 0; i < ARRAY_SIZE(fg_shdw); i++)
+		seq_printf(m, "\t%s = %x\n", fg_shdw[i].param_name,
+				fg_shdw[i].calc_func(&reg[fg_shdw[i].index]));
+
+	return rc;
+}
+
+static int fg_regs_open(struct inode *inode, struct file *file)
+{
+	struct smb1360_chip *chip = inode->i_private;
+
+	return single_open(file, show_fg_regs, chip);
+}
+
+static const struct file_operations fg_regs_debugfs_ops = {
+	.owner		= THIS_MODULE,
+	.open		= fg_regs_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int smb1360_otg_regulator_enable(struct regulator_dev *rdev)
 {
 	int rc = 0;
@@ -1633,6 +2249,144 @@ static int smb1360_regulator_init(struct smb1360_chip *chip)
 	return rc;
 }
 
+static int smb1360_check_batt_profile(struct smb1360_chip *chip)
+{
+	int rc, i, timeout = 50;
+	u8 reg = 0, loaded_profile, new_profile = 0, bid_mask;
+
+	if (!chip->connected_rid) {
+		pr_debug("Skip batt-profile loading connected_rid=%d\n",
+						chip->connected_rid);
+		return 0;
+	}
+
+	rc = smb1360_read(chip, SHDW_FG_BATT_STATUS, &reg);
+	if (rc) {
+		pr_err("Couldn't read FG_BATT_STATUS rc=%d\n", rc);
+		goto fail_profile;
+	}
+
+	loaded_profile = !!(reg & BATTERY_PROFILE_BIT) ?
+			BATTERY_PROFILE_B : BATTERY_PROFILE_A;
+
+	pr_debug("fg_batt_status=%x loaded_profile=%d\n", reg, loaded_profile);
+
+	for (i = 0; i < BATTERY_PROFILE_MAX; i++) {
+		pr_debug("profile=%d profile_rid=%d connected_rid=%d\n", i,
+						chip->profile_rid[i],
+						chip->connected_rid);
+		if (abs(chip->profile_rid[i] - chip->connected_rid) <
+				(div_u64(chip->connected_rid, 10)))
+			break;
+	}
+
+	if (i == BATTERY_PROFILE_MAX) {
+		pr_err("None of the battery-profiles match the connected-RID\n");
+		return 0;
+	} else {
+		if (i == loaded_profile) {
+			pr_debug("Loaded Profile-RID == connected-RID\n");
+			return 0;
+		} else {
+			new_profile = (loaded_profile == BATTERY_PROFILE_A) ?
+					BATTERY_PROFILE_B : BATTERY_PROFILE_A;
+			bid_mask = (new_profile == BATTERY_PROFILE_A) ?
+					BATT_PROFILEA_MASK : BATT_PROFILEB_MASK;
+			pr_info("Loaded Profile-RID != connected-RID, switch-profile old_profile=%d new_profile=%d\n",
+						loaded_profile, new_profile);
+		}
+	}
+
+	/* set the BID mask */
+	rc = smb1360_masked_write(chip, CFG_FG_BATT_CTRL_REG,
+				BATT_PROFILE_SELECT_MASK, bid_mask);
+	if (rc) {
+		pr_err("Couldn't reset battery-profile rc=%d\n", rc);
+		goto fail_profile;
+	}
+
+	/* enable FG access */
+	rc = smb1360_masked_write(chip, CMD_I2C_REG, FG_ACCESS_ENABLED_BIT,
+							FG_ACCESS_ENABLED_BIT);
+	if (rc) {
+		pr_err("Couldn't enable FG access rc=%d\n", rc);
+		goto fail_profile;
+	}
+
+	while (timeout) {
+		/* delay for FG access to be granted */
+		msleep(100);
+		rc = smb1360_read(chip, IRQ_I_REG, &reg);
+		if (rc) {
+			pr_err("Could't read IRQ_I_REG rc=%d\n", rc);
+			goto restore_fg;
+		}
+		if (reg & FG_ACCESS_ALLOWED_BIT)
+			break;
+		timeout--;
+	}
+	if (!timeout) {
+		pr_err("FG access timed-out\n");
+		rc = -EAGAIN;
+		goto restore_fg;
+	}
+
+	/* delay after handshaking for profile-switch to continue */
+	msleep(1500);
+
+	/* reset FG */
+	rc = smb1360_masked_write(chip, CMD_I2C_REG, FG_RESET_BIT,
+						FG_RESET_BIT);
+	if (rc) {
+		pr_err("Couldn't reset FG rc=%d\n", rc);
+		goto restore_fg;
+	}
+
+	/* un-reset FG */
+	rc = smb1360_masked_write(chip, CMD_I2C_REG, FG_RESET_BIT, 0);
+	if (rc) {
+		pr_err("Couldn't un-reset FG rc=%d\n", rc);
+		goto restore_fg;
+	}
+
+	/*  disable FG access */
+	rc = smb1360_masked_write(chip, CMD_I2C_REG, FG_ACCESS_ENABLED_BIT, 0);
+	if (rc) {
+		pr_err("Couldn't disable FG access rc=%d\n", rc);
+		goto restore_fg;
+	}
+
+	timeout = 10;
+	while (timeout) {
+		/* delay for profile to change */
+		msleep(500);
+		rc = smb1360_read(chip, SHDW_FG_BATT_STATUS, &reg);
+		if (rc) {
+			pr_err("Could't read FG_BATT_STATUS rc=%d\n", rc);
+			goto restore_fg;
+		}
+
+		reg = !!(reg & BATTERY_PROFILE_BIT);
+		if (reg == new_profile) {
+			pr_info("New profile=%d loaded\n", new_profile);
+			break;
+		}
+		timeout--;
+	}
+
+	if (!timeout) {
+		pr_err("New profile could not be loaded\n");
+		return -EBUSY;
+	}
+
+	return 0;
+
+restore_fg:
+	smb1360_masked_write(chip, CMD_I2C_REG, FG_ACCESS_ENABLED_BIT, 0);
+fail_profile:
+	return rc;
+}
+
 static int determine_initial_status(struct smb1360_chip *chip)
 {
 	int rc;
@@ -1674,12 +2428,12 @@ static int determine_initial_status(struct smb1360_chip *chip)
 	if (reg & IRQ_A_COLD_SOFT_BIT)
 		chip->batt_cool = true;
 
-	rc = smb1360_read(chip, IRQ_G_REG, &reg);
+	rc = smb1360_read(chip, IRQ_E_REG, &reg);
 	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't read irq G rc = %d\n", rc);
+		dev_err(chip->dev, "Couldn't read irq E rc = %d\n", rc);
 		return rc;
 	}
-	chip->usb_present = (reg & IRQ_G_USBIN_UV_BIT) ? false : true;
+	chip->usb_present = (reg & IRQ_E_USBIN_UV_BIT) ? false : true;
 	power_supply_set_present(chip->usb_psy, chip->usb_present);
 
 	return 0;
@@ -1687,8 +2441,8 @@ static int determine_initial_status(struct smb1360_chip *chip)
 
 static int smb1360_fg_config(struct smb1360_chip *chip)
 {
-	int rc, temp;
-	u8 reg = 0;
+	int rc = 0, temp, fcc_mah;
+	u8 reg = 0, reg2[2];
 
 	/*
 	 * The below IRQ thresholds are not accessible in REV_1
@@ -1763,7 +2517,178 @@ static int smb1360_fg_config(struct smb1360_chip *chip)
 		}
 	}
 
-	return 0;
+	/* scratch-pad register config */
+	if (chip->batt_capacity_mah != -EINVAL
+		|| chip->v_cutoff_mv != -EINVAL
+		|| chip->fg_iterm_ma != -EINVAL
+		|| chip->fg_ibatt_standby_ma != -EINVAL) {
+
+		rc = smb1360_enable_fg_access(chip);
+		if (rc) {
+			pr_err("Couldn't enable FG access rc=%d\n", rc);
+			return rc;
+		}
+
+		/* Update battery capacity */
+		if (chip->batt_capacity_mah != -EINVAL) {
+			rc = smb1360_read_bytes(chip, ACTUAL_CAPACITY_REG,
+								reg2, 2);
+			if (rc) {
+				pr_err("Failed to read ACTUAL CAPACITY rc=%d\n",
+									rc);
+				goto disable_fg;
+			}
+			fcc_mah = (reg2[1] << 8) | reg2[0];
+			if (fcc_mah == chip->batt_capacity_mah) {
+				pr_debug("battery capacity correct\n");
+			} else {
+				/* Update the battery capacity */
+				reg2[1] =
+					(chip->batt_capacity_mah & 0xFF00) >> 8;
+				reg2[0] = (chip->batt_capacity_mah & 0xFF);
+				rc = smb1360_write_bytes(chip,
+					ACTUAL_CAPACITY_REG, reg2, 2);
+				if (rc) {
+					pr_err("Couldn't write batt-capacity rc=%d\n",
+									rc);
+					goto disable_fg;
+				}
+				/* Update CC to SOC COEFF */
+				if (chip->cc_soc_coeff != -EINVAL) {
+					reg2[1] =
+					(chip->cc_soc_coeff & 0xFF00) >> 8;
+					reg2[0] = (chip->cc_soc_coeff & 0xFF);
+					rc = smb1360_write_bytes(chip,
+						CC_TO_SOC_COEFF, reg2, 2);
+					if (rc) {
+						pr_err("Couldn't write cc_soc_coeff rc=%d\n",
+									rc);
+						goto disable_fg;
+					}
+				}
+			}
+		}
+
+		/* Update cutoff voltage for SOC = 0 */
+		if (chip->v_cutoff_mv != -EINVAL) {
+			temp = (u16) div_u64(chip->v_cutoff_mv * 0x7FFF, 5000);
+			reg2[1] = (temp & 0xFF00) >> 8;
+			reg2[0] = temp & 0xFF;
+			rc = smb1360_write_bytes(chip, FG_SYS_CUTOFF_V_REG,
+								reg2, 2);
+			if (rc) {
+				pr_err("Couldn't write cutoff_mv rc=%d\n", rc);
+				goto disable_fg;
+			}
+		}
+
+		/*
+		 * Update FG iterm for SOC = 100, this value is always assumed
+		 * to be -ve
+		 */
+		if (chip->fg_iterm_ma != -EINVAL) {
+			int iterm = chip->fg_iterm_ma * -1;
+			temp = (s16) div_s64(iterm * 0x7FFF, 2500);
+			reg2[1] = (temp & 0xFF00) >> 8;
+			reg2[0] = temp & 0xFF;
+			rc = smb1360_write_bytes(chip, FG_ITERM_REG,
+							reg2, 2);
+			if (rc) {
+				pr_err("Couldn't write fg_iterm rc=%d\n", rc);
+				goto disable_fg;
+			}
+		}
+
+		/*
+		 * Update FG iterm standby for SOC = 0, this value is always
+		 * assumed to be +ve
+		 */
+		if (chip->fg_ibatt_standby_ma != -EINVAL) {
+			int iterm = chip->fg_ibatt_standby_ma;
+			temp = (u16) div_u64(iterm * 0x7FFF, 2500);
+			reg2[1] = (temp & 0xFF00) >> 8;
+			reg2[0] = temp & 0xFF;
+			rc = smb1360_write_bytes(chip, FG_IBATT_STANDBY_REG,
+								reg2, 2);
+			if (rc) {
+				pr_err("Couldn't write fg_iterm rc=%d\n", rc);
+				goto disable_fg;
+			}
+		}
+disable_fg:
+		/* disable FG access */
+		smb1360_disable_fg_access(chip);
+	}
+
+	return rc;
+}
+
+static void smb1360_check_feature_support(struct smb1360_chip *chip)
+{
+
+	if (is_usb100_broken(chip)) {
+		pr_debug("USB100 is not supported\n");
+		chip->workaround_flags |= WRKRND_USB100_FAIL;
+	}
+
+	/*
+	 * FG Configuration
+	 *
+	 * The REV_1 of the chip does not allow access to
+	 * FG config registers (20-2FH). Set the workaround flag.
+	 * Also, the battery detection does not work when the DCIN is absent,
+	 * add a workaround flag for it.
+	*/
+	if (chip->revision == SMB1360_REV_1) {
+		pr_debug("FG config and Battery detection is not supported\n");
+		chip->workaround_flags |=
+			WRKRND_FG_CONFIG_FAIL | WRKRND_BATT_DET_FAIL;
+	}
+}
+
+static int smb1360_enable(struct smb1360_chip *chip, bool enable)
+{
+	int rc = 0;
+	u8 val, shdn_status, shdn_cmd_en, shdn_cmd_polar;
+
+	rc = smb1360_read(chip, SHDN_CTRL_REG, &val);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read 0x1A reg rc = %d\n", rc);
+		return rc;
+	}
+	shdn_cmd_en = val & SHDN_CMD_USE_BIT;
+	shdn_cmd_polar = !!(val & SHDN_CMD_POLARITY_BIT);
+	shdn_status = val & SHDN_CMD_BIT;
+
+	val = (shdn_cmd_polar ^ enable) ? SHDN_CMD_BIT : 0;
+
+	if (shdn_cmd_en) {
+		if (shdn_status != val) {
+			rc = smb1360_masked_write(chip, CMD_IL_REG,
+					SHDN_CMD_BIT, val);
+			if (rc < 0) {
+				dev_err(chip->dev, "Couldn't shutdown smb1360 rc = %d\n",
+									rc);
+				return rc;
+			}
+		}
+	} else {
+		dev_dbg(chip->dev, "SMB not configured for CMD based shutdown\n");
+	}
+
+	return rc;
+}
+
+static inline int smb1360_poweroff(struct smb1360_chip *chip)
+{
+	pr_debug("power off smb1360\n");
+	return smb1360_enable(chip, false);
+}
+
+static inline int smb1360_poweron(struct smb1360_chip *chip)
+{
+	pr_debug("power on smb1360\n");
+	return smb1360_enable(chip, true);
 }
 
 static int smb1360_hw_init(struct smb1360_chip *chip)
@@ -1772,12 +2697,26 @@ static int smb1360_hw_init(struct smb1360_chip *chip)
 	int i;
 	u8 reg, mask;
 
+	smb1360_check_feature_support(chip);
+
 	rc = smb1360_enable_volatile_writes(chip);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't configure for volatile rc = %d\n",
 				rc);
 		return rc;
 	}
+
+	if (chip->shdn_after_pwroff) {
+		rc = smb1360_poweron(chip);
+		if (rc < 0) {
+			pr_err("smb1360 power on failed\n");
+			return rc;
+		}
+	}
+
+	rc = smb1360_check_batt_profile(chip);
+	if (rc)
+		pr_err("Unable to modify battery profile\n");
 
 	/*
 	 * set chg en by cmd register, set chg en by writing bit 1,
@@ -1795,18 +2734,22 @@ static int smb1360_hw_init(struct smb1360_chip *chip)
 
 	/* USB/AC pin settings */
 	rc = smb1360_masked_write(chip, CFG_BATT_CHG_ICL_REG,
-					AC_INPUT_ICL_PIN, 0);
+					AC_INPUT_ICL_PIN_BIT
+					| AC_INPUT_PIN_HIGH_BIT
+					| RESET_STATE_USB_500,
+					AC_INPUT_PIN_HIGH_BIT
+					| RESET_STATE_USB_500);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't set CFG_BATT_CHG_ICL_REG rc=%d\n",
 				rc);
 		return rc;
 	}
 
-	/* AICL setting */
-	rc = smb1360_masked_write(chip, CFG_GLITCH_FLT_REG,
-			AICL_ENABLED_BIT, AICL_ENABLED_BIT);
+	/* AICL enable and set input-uv glitch flt to 20ms*/
+	reg = AICL_ENABLED_BIT | INPUT_UV_GLITCH_FLT_20MS_BIT;
+	rc = smb1360_masked_write(chip, CFG_GLITCH_FLT_REG, reg, reg);
 	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't set CFG_BATT_CHG_ICL_REG rc=%d\n",
+		dev_err(chip->dev, "Couldn't set CFG_GLITCH_FLT_REG rc=%d\n",
 				rc);
 		return rc;
 	}
@@ -1851,7 +2794,7 @@ static int smb1360_hw_init(struct smb1360_chip *chip)
 			}
 		}
 	} else  if (chip->iterm_disabled) {
-		rc = smb1360_masked_write(chip, CFG_BATT_CHG_REG,
+		rc = smb1360_masked_write(chip, CFG_CHG_MISC_REG,
 						CHG_CURR_TERM_DIS_BIT,
 						CHG_CURR_TERM_DIS_BIT);
 		if (rc) {
@@ -1938,9 +2881,15 @@ static int smb1360_hw_init(struct smb1360_chip *chip)
 
 	/* interrupt enabling - active low */
 	if (chip->client->irq) {
-		mask = CHG_STAT_IRQ_ONLY_BIT | CHG_STAT_ACTIVE_HIGH_BIT
-						| CHG_STAT_DISABLE_BIT;
-		reg = CHG_STAT_IRQ_ONLY_BIT;
+		mask = CHG_STAT_IRQ_ONLY_BIT
+			| CHG_STAT_ACTIVE_HIGH_BIT
+			| CHG_STAT_DISABLE_BIT
+			| CHG_TEMP_CHG_ERR_BLINK_BIT;
+
+		if (!chip->pulsed_irq)
+			reg = CHG_STAT_IRQ_ONLY_BIT;
+		else
+			reg = CHG_TEMP_CHG_ERR_BLINK_BIT;
 		rc = smb1360_masked_write(chip, CFG_STAT_CTRL_REG, mask, reg);
 		if (rc < 0) {
 			dev_err(chip->dev, "Couldn't set irq config rc = %d\n",
@@ -2000,17 +2949,12 @@ static int smb1360_hw_init(struct smb1360_chip *chip)
 		}
 	}
 
-	/*
-	 * FG Configuration
-	 *
-	 * The REV_1 of the chip does not allow access to
-	 * FG config registers (20-2FH). Set the workaround flag.
-	*/
 
-	if (chip->revision == SMB1360_REV_1)
-		chip->workaround_flags |= WRKRND_FG_CONFIG_FAIL;
-
-	smb1360_fg_config(chip);
+	rc = smb1360_fg_config(chip);
+	if (rc < 0) {
+		pr_err("Couldn't configure FG rc=%d\n", rc);
+		return rc;
+	}
 
 	rc = smb1360_charging_disable(chip, USER, !!chip->charging_disabled);
 	if (rc)
@@ -2018,6 +2962,78 @@ static int smb1360_hw_init(struct smb1360_chip *chip)
 			chip->charging_disabled ? "disable" : "enable", rc);
 
 	return rc;
+}
+
+static int smb_parse_batt_id(struct smb1360_chip *chip)
+{
+	int rc = 0, rpull = 0, vref = 0;
+	int64_t denom, batt_id_uv;
+	struct device_node *node = chip->dev->of_node;
+	struct qpnp_vadc_result result;
+
+	chip->vadc_dev = qpnp_get_vadc(chip->dev, "smb1360");
+	if (IS_ERR(chip->vadc_dev)) {
+		rc = PTR_ERR(chip->vadc_dev);
+		if (rc == -EPROBE_DEFER)
+			pr_err("vadc not found - defer rc=%d\n", rc);
+		else
+			pr_err("vadc property missing, rc=%d\n", rc);
+
+		return rc;
+	}
+
+	rc = of_property_read_u32(node, "qcom,profile-a-rid-kohm",
+						&chip->profile_rid[0]);
+	if (rc < 0) {
+		pr_err("Couldn't read profile-a-rid-kohm rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = of_property_read_u32(node, "qcom,profile-b-rid-kohm",
+						&chip->profile_rid[1]);
+	if (rc < 0) {
+		pr_err("Couldn't read profile-b-rid-kohm rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = of_property_read_u32(node, "qcom,batt-id-vref-uv", &vref);
+	if (rc < 0) {
+		pr_err("Couldn't read batt-id-vref-uv rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = of_property_read_u32(node, "qcom,batt-id-rpullup-kohm", &rpull);
+	if (rc < 0) {
+		pr_err("Couldn't read batt-id-rpullup-kohm rc=%d\n", rc);
+		return rc;
+	}
+
+	/* read battery ID */
+	rc = qpnp_vadc_read(chip->vadc_dev, LR_MUX2_BAT_ID, &result);
+	if (rc) {
+		pr_err("error reading batt id channel = %d, rc = %d\n",
+					LR_MUX2_BAT_ID, rc);
+		return rc;
+	}
+	batt_id_uv = result.physical;
+
+	if (batt_id_uv == 0) {
+		/* vadc not correct or batt id line grounded, report 0 kohms */
+		pr_err("batt_id_uv = 0, batt-id grounded using same profile\n");
+		return 0;
+	}
+
+	denom = div64_s64(vref * 1000000LL, batt_id_uv) - 1000000LL;
+	if (denom == 0) {
+		/* batt id connector might be open, return 0 kohms */
+		return 0;
+	}
+	chip->connected_rid = div64_s64(rpull * 1000000LL + denom/2, denom);
+
+	pr_debug("batt_id_voltage = %lld, connected_rid = %d\n",
+			batt_id_uv, chip->connected_rid);
+
+	return 0;
 }
 
 static int smb_parse_dt(struct smb1360_chip *chip)
@@ -2029,6 +3045,17 @@ static int smb_parse_dt(struct smb1360_chip *chip)
 		dev_err(chip->dev, "device tree info. missing\n");
 		return -EINVAL;
 	}
+
+	if (of_property_read_bool(node, "qcom,batt-profile-select")) {
+		rc = smb_parse_batt_id(chip);
+		if (rc < 0) {
+			if (rc != -EPROBE_DEFER)
+				pr_err("Unable to parse batt-id rc=%d\n", rc);
+			return rc;
+		}
+	}
+
+	chip->pulsed_irq = of_property_read_bool(node, "qcom,stat-pulsed-irq");
 
 	rc = of_property_read_u32(node, "qcom,float-voltage-mv",
 						&chip->vfloat_mv);
@@ -2069,6 +3096,9 @@ static int smb_parse_dt(struct smb1360_chip *chip)
 
 	chip->batt_id_disabled = of_property_read_bool(node,
 						"qcom,batt-id-disabled");
+
+	chip->shdn_after_pwroff = of_property_read_bool(node,
+						"qcom,shdn-after-pwroff");
 
 	if (of_find_property(node, "qcom,thermal-mitigation",
 					&chip->thermal_levels)) {
@@ -2114,6 +3144,31 @@ static int smb_parse_dt(struct smb1360_chip *chip)
 	if (rc < 0)
 		chip->voltage_empty_mv = -EINVAL;
 
+	rc = of_property_read_u32(node, "qcom,fg-batt-capacity-mah",
+					&chip->batt_capacity_mah);
+	if (rc < 0)
+		chip->batt_capacity_mah = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,fg-cc-soc-coeff",
+					&chip->cc_soc_coeff);
+	if (rc < 0)
+		chip->cc_soc_coeff = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,fg-cutoff-voltage-mv",
+						&chip->v_cutoff_mv);
+	if (rc < 0)
+		chip->v_cutoff_mv = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,fg-iterm-ma",
+					&chip->fg_iterm_ma);
+	if (rc < 0)
+		chip->fg_iterm_ma = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,fg-ibatt-standby-ma",
+					&chip->fg_ibatt_standby_ma);
+	if (rc < 0)
+		chip->fg_ibatt_standby_ma = -EINVAL;
+
 	return 0;
 }
 
@@ -2150,6 +3205,10 @@ static int smb1360_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
+	rc = read_revision(chip, &chip->revision);
+	if (rc)
+		dev_err(chip->dev, "Couldn't read revision rc = %d\n", rc);
+
 	rc = smb_parse_dt(chip);
 	if (rc < 0) {
 		dev_err(&client->dev, "Unable to parse DT nodes\n");
@@ -2162,6 +3221,9 @@ static int smb1360_probe(struct i2c_client *client,
 	mutex_init(&chip->irq_complete);
 	mutex_init(&chip->charging_disable_lock);
 	mutex_init(&chip->current_change_lock);
+	chip->default_i2c_addr = client->addr;
+
+	pr_debug("default_i2c_addr=%x\n", chip->default_i2c_addr);
 
 	rc = smb1360_regulator_init(chip);
 	if  (rc) {
@@ -2203,8 +3265,7 @@ static int smb1360_probe(struct i2c_client *client,
 	/* STAT irq configuration */
 	if (client->irq) {
 		rc = devm_request_threaded_irq(&client->dev, client->irq, NULL,
-				smb1360_stat_handler,
-				IRQF_TRIGGER_LOW | IRQF_ONESHOT,
+				smb1360_stat_handler, IRQF_ONESHOT,
 				"smb1360_stat_irq", chip);
 		if (rc < 0) {
 			dev_err(&client->dev,
@@ -2254,6 +3315,14 @@ static int smb1360_probe(struct i2c_client *client,
 				"Couldn't create cmd debug file rc = %d\n",
 				rc);
 
+		ent = debugfs_create_file("fg_regs",
+				S_IFREG | S_IRUGO, chip->debug_root, chip,
+					  &fg_regs_debugfs_ops);
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create fg_scratch_pad debug file rc = %d\n",
+				rc);
+
 		ent = debugfs_create_x32("address", S_IFREG | S_IWUSR | S_IRUGO,
 					  chip->debug_root,
 					  &(chip->peek_poke_address));
@@ -2265,6 +3334,33 @@ static int smb1360_probe(struct i2c_client *client,
 		ent = debugfs_create_file("data", S_IFREG | S_IWUSR | S_IRUGO,
 					  chip->debug_root, chip,
 					  &poke_poke_debug_ops);
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create data debug file rc = %d\n",
+				rc);
+
+		ent = debugfs_create_x32("fg_address",
+					S_IFREG | S_IWUSR | S_IRUGO,
+					chip->debug_root,
+					&(chip->fg_peek_poke_address));
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create address debug file rc = %d\n",
+				rc);
+
+		ent = debugfs_create_file("fg_data",
+					S_IFREG | S_IWUSR | S_IRUGO,
+					chip->debug_root, chip,
+					&fg_poke_poke_debug_ops);
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create data debug file rc = %d\n",
+				rc);
+
+		ent = debugfs_create_x32("fg_access_type",
+					S_IFREG | S_IWUSR | S_IRUGO,
+					chip->debug_root,
+					&(chip->fg_access_type));
 		if (!ent)
 			dev_err(chip->dev,
 				"Couldn't create data debug file rc = %d\n",
@@ -2296,10 +3392,6 @@ static int smb1360_probe(struct i2c_client *client,
 				"Couldn't create count debug file rc = %d\n",
 				rc);
 	}
-
-	rc = read_revision(chip, &chip->revision);
-	if (rc)
-		dev_err(chip->dev, "Couldn't read revision rc = %d\n", rc);
 
 	dev_info(chip->dev, "SMB1360 revision=0x%x probe success! batt=%d usb=%d soc=%d\n",
 			chip->revision,
@@ -2408,6 +3500,19 @@ static int smb1360_resume(struct device *dev)
 	return 0;
 }
 
+static void smb1360_shutdown(struct i2c_client *client)
+{
+	int rc;
+	struct smb1360_chip *chip = i2c_get_clientdata(client);
+
+	if (chip->shdn_after_pwroff) {
+		rc = smb1360_poweroff(chip);
+		if (rc)
+			pr_err("Couldn't shutdown smb1360, rc = %d\n", rc);
+		pr_info("smb1360 power off\n");
+	}
+}
+
 static const struct dev_pm_ops smb1360_pm_ops = {
 	.resume		= smb1360_resume,
 	.suspend_noirq	= smb1360_suspend_noirq,
@@ -2434,6 +3539,7 @@ static struct i2c_driver smb1360_driver = {
 	},
 	.probe		= smb1360_probe,
 	.remove		= smb1360_remove,
+	.shutdown	= smb1360_shutdown,
 	.id_table	= smb1360_id,
 };
 

@@ -14,27 +14,29 @@
 #ifndef _ADRENO_A4XX_H_
 #define _ADRENO_A4XX_H_
 
-int a4xx_perfcounter_enable_vbif(struct kgsl_device *dev,
+int a4xx_perfcounter_enable_vbif(struct adreno_device *adreno_dev,
 			unsigned int counter,
 			unsigned int countable);
 
-void a4xx_perfcounter_disable_vbif(struct kgsl_device *device,
+void a4xx_perfcounter_disable_vbif(struct adreno_device *adreno_dev,
 			unsigned int counter);
 
-uint64_t a4xx_perfcounter_read_vbif(struct kgsl_device *adreno_dev,
+uint64_t a4xx_perfcounter_read_vbif(struct adreno_device *adreno_dev,
 			unsigned int counter);
 
-int a4xx_perfcounter_enable_vbif_pwr(struct kgsl_device *dev,
+int a4xx_perfcounter_enable_vbif_pwr(struct adreno_device *adreno_dev,
 			unsigned int counter);
 
-void a4xx_perfcounter_disable_vbif_pwr(struct kgsl_device *device,
+void a4xx_perfcounter_disable_vbif_pwr(struct adreno_device *adreno_dev,
 			unsigned int counter);
 
-uint64_t a4xx_perfcounter_read_vbif_pwr(struct kgsl_device *dev,
+uint64_t a4xx_perfcounter_read_vbif_pwr(struct adreno_device *adreno_dev,
 			unsigned int counter);
 
-void *a4xx_snapshot(struct adreno_device *adreno_dev, void *snapshot,
-			int *remain, int hang);
+uint64_t a4xx_alwayson_counter_read(struct adreno_device *adreno_dev);
+
+void a4xx_snapshot(struct adreno_device *adreno_dev,
+		struct kgsl_snapshot *snapshot);
 
 void a4xx_rbbm_debug_bus_read(struct kgsl_device *device,
 	unsigned int block_id, unsigned int index, unsigned int *val);

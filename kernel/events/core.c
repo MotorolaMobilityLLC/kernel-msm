@@ -157,7 +157,11 @@ static struct srcu_struct pmus_srcu;
  *   1 - disallow cpu events for unpriv
  *   2 - disallow kernel profiling for unpriv
  */
+#ifdef CONFIG_PERF_EVENTS_USERMODE
+int sysctl_perf_event_paranoid __read_mostly = -1;
+#else
 int sysctl_perf_event_paranoid __read_mostly = 1;
+#endif
 
 /* Minimum for 512 kiB + 1 user control page */
 int sysctl_perf_event_mlock __read_mostly = 512 + (PAGE_SIZE / 1024); /* 'free' kiB per user */
@@ -761,8 +765,18 @@ perf_lock_task_context(struct task_struct *task, int ctxn, unsigned long *flags)
 {
 	struct perf_event_context *ctx;
 
-	rcu_read_lock();
 retry:
+	/*
+	 * One of the few rules of preemptible RCU is that one cannot do
+	 * rcu_read_unlock() while holding a scheduler (or nested) lock when
+	 * part of the read side critical section was preemptible -- see
+	 * rcu_read_unlock_special().
+	 *
+	 * Since ctx->lock nests under rq->lock we must ensure the entire read
+	 * side critical section is non-preemptible.
+	 */
+	preempt_disable();
+	rcu_read_lock();
 	ctx = rcu_dereference(task->perf_event_ctxp[ctxn]);
 	if (ctx) {
 		/*
@@ -778,6 +792,8 @@ retry:
 		raw_spin_lock_irqsave(&ctx->lock, *flags);
 		if (ctx != rcu_dereference(task->perf_event_ctxp[ctxn])) {
 			raw_spin_unlock_irqrestore(&ctx->lock, *flags);
+			rcu_read_unlock();
+			preempt_enable();
 			goto retry;
 		}
 
@@ -787,6 +803,7 @@ retry:
 		}
 	}
 	rcu_read_unlock();
+	preempt_enable();
 	return ctx;
 }
 
@@ -1787,7 +1804,16 @@ static int __perf_event_enable(void *info)
 	struct perf_cpu_context *cpuctx = __get_cpu_context(ctx);
 	int err;
 
-	if (WARN_ON_ONCE(!ctx->is_active))
+	/*
+	 * There's a time window between 'ctx->is_active' check
+	 * in perf_event_enable function and this place having:
+	 *   - IRQs on
+	 *   - ctx->lock unlocked
+	 *
+	 * where the task could be killed and 'ctx' deactivated
+	 * by perf_event_exit_task.
+	 */
+	if (!ctx->is_active)
 		return -EINVAL;
 
 	raw_spin_lock(&ctx->lock);
@@ -7268,7 +7294,7 @@ inherit_task_group(struct perf_event *event, struct task_struct *parent,
 		 * child.
 		 */
 
-		child_ctx = alloc_perf_context(event->pmu, child);
+		child_ctx = alloc_perf_context(parent_ctx->pmu, child);
 		if (!child_ctx)
 			return -ENOMEM;
 
@@ -7439,14 +7465,26 @@ static void perf_pmu_rotate_stop(struct pmu *pmu)
 static void __perf_event_exit_context(void *__info)
 {
 	struct perf_event_context *ctx = __info;
-	struct perf_event *event, *tmp;
+	struct perf_event *event;
 
 	perf_pmu_rotate_stop(ctx->pmu);
 
-	list_for_each_entry_safe(event, tmp, &ctx->pinned_groups, group_entry)
+	rcu_read_lock();
+	list_for_each_entry_rcu(event, &ctx->event_list, event_entry)
 		__perf_remove_from_context(event);
-	list_for_each_entry_safe(event, tmp, &ctx->flexible_groups, group_entry)
-		__perf_remove_from_context(event);
+	rcu_read_unlock();
+}
+
+static void __perf_event_stop_swclock(void *__info)
+{
+	struct perf_event_context *ctx = __info;
+	struct perf_event *event, *tmp;
+
+	list_for_each_entry_safe(event, tmp, &ctx->event_list, event_entry) {
+		if (event->attr.config == PERF_COUNT_SW_CPU_CLOCK &&
+				event->attr.type == PERF_TYPE_SOFTWARE)
+			cpu_clock_event_stop(event, 0);
+	}
 }
 
 static void perf_event_exit_cpu_context(int cpu)
@@ -7457,19 +7495,46 @@ static void perf_event_exit_cpu_context(int cpu)
 
 	idx = srcu_read_lock(&pmus_srcu);
 	list_for_each_entry_rcu(pmu, &pmus, entry) {
+		ctx = &per_cpu_ptr(pmu->pmu_cpu_context, cpu)->ctx;
+		mutex_lock(&ctx->mutex);
 		/*
 		 * If keeping events across hotplugging is supported, do not
 		 * remove the event list, but keep it alive across CPU hotplug.
 		 * The context is exited via an fd close path when userspace
-		 * is done and the target CPU is online.
+		 * is done and the target CPU is online. If software clock
+		 * event is active, then stop hrtimer associated with it.
+		 * Start the timer when the CPU comes back online.
 		 */
-		if (!pmu->events_across_hotplug) {
-			ctx = &per_cpu_ptr(pmu->pmu_cpu_context, cpu)->ctx;
-
-			mutex_lock(&ctx->mutex);
+		if (!pmu->events_across_hotplug)
 			smp_call_function_single(cpu, __perf_event_exit_context,
 						 ctx, 1);
-			mutex_unlock(&ctx->mutex);
+		else
+			smp_call_function_single(cpu, __perf_event_stop_swclock,
+						 ctx, 1);
+		mutex_unlock(&ctx->mutex);
+	}
+	srcu_read_unlock(&pmus_srcu, idx);
+}
+
+static void perf_event_start_swclock(int cpu)
+{
+	struct perf_event_context *ctx;
+	struct pmu *pmu;
+	int idx;
+	struct perf_event *event, *tmp;
+
+	idx = srcu_read_lock(&pmus_srcu);
+	list_for_each_entry_rcu(pmu, &pmus, entry) {
+		if (pmu->events_across_hotplug) {
+			ctx = &per_cpu_ptr(pmu->pmu_cpu_context, cpu)->ctx;
+			list_for_each_entry_safe(event, tmp, &ctx->event_list,
+							event_entry) {
+				if (event->attr.config ==
+						PERF_COUNT_SW_CPU_CLOCK &&
+						event->attr.type ==
+							PERF_TYPE_SOFTWARE)
+					cpu_clock_event_start(event, 0);
+			}
 		}
 	}
 	srcu_read_unlock(&pmus_srcu, idx);
@@ -7479,14 +7544,15 @@ static void perf_event_exit_cpu(int cpu)
 {
 	struct swevent_htable *swhash = &per_cpu(swevent_htable, cpu);
 
+	perf_event_exit_cpu_context(cpu);
+
 	mutex_lock(&swhash->hlist_mutex);
 	swevent_hlist_release(swhash);
 	mutex_unlock(&swhash->hlist_mutex);
-
-	perf_event_exit_cpu_context(cpu);
 }
 #else
 static inline void perf_event_exit_cpu(int cpu) { }
+static inline void perf_event_start_swclock(int cpu) { }
 #endif
 
 static int
@@ -7524,6 +7590,10 @@ perf_cpu_notify(struct notifier_block *self, unsigned long action, void *hcpu)
 	case CPU_UP_CANCELED:
 	case CPU_DOWN_PREPARE:
 		perf_event_exit_cpu(cpu);
+		break;
+
+	case CPU_STARTING:
+		perf_event_start_swclock(cpu);
 		break;
 
 	default:

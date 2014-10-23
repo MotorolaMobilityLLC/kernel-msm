@@ -1034,6 +1034,11 @@ static int q6_hfi_session_set_property(void *sess,
 		dprintk(VIDC_ERR, "Invalid Params\n");
 		return -EINVAL;
 	}
+	if (ptype == HAL_PARAM_VDEC_CONTINUE_DATA_TRANSFER) {
+		dprintk(VIDC_WARN, "Smoothstreaming is not supported\n");
+		return -ENOTSUPP;
+	}
+
 	dev = session->device;
 	dprintk(VIDC_DBG, "in set_prop,with prop id: 0x%x\n", ptype);
 
@@ -1278,6 +1283,7 @@ static int q6_hfi_load_fw(void *dev)
 	if (!device)
 		return -EINVAL;
 
+	trace_msm_v4l2_vidc_fw_load_start("msm_v4l2_vidc adsp_fw load start");
 	if (!device->resources.fw.cookie)
 		device->resources.fw.cookie = subsystem_get("adsp");
 
@@ -1307,6 +1313,7 @@ static int q6_hfi_load_fw(void *dev)
 		goto fail_iommu_attach;
 	}
 
+	trace_msm_v4l2_vidc_fw_load_end("msm_v4l2_vidc adsp_fw load end");
 	return rc;
 
 fail_iommu_attach:
@@ -1316,6 +1323,7 @@ fail_apr_register:
 	subsystem_put(device->resources.fw.cookie);
 	device->resources.fw.cookie = NULL;
 fail_subsystem_get:
+	trace_msm_v4l2_vidc_fw_load_end("msm_v4l2_vidc adsp_fw load end");
 	return rc;
 }
 

@@ -28,10 +28,10 @@
 #include <sound/pcm.h>
 #include <sound/jack.h>
 #include <sound/q6afe-v2.h>
+#include <sound/q6core.h>
 #include <sound/pcm_params.h>
 
 #include "qdsp6v2/msm-pcm-routing-v2.h"
-#include "qdsp6v2/q6core.h"
 #include "../codecs/wcd9xxx-common.h"
 #include "../codecs/wcd9320.h"
 
@@ -1820,7 +1820,7 @@ static struct snd_soc_dai_link apq8074_common_dai_links[] = {
 		.name = "MSM8974 Compr",
 		.stream_name = "COMPR",
 		.cpu_dai_name	= "MultiMedia4",
-		.platform_name  = "msm-compr-dsp",
+		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			 SND_SOC_DPCM_TRIGGER_POST},

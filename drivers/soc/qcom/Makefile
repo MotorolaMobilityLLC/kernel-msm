@@ -3,6 +3,7 @@ CFLAGS_scm.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
 
 obj-y		+= qdsp6v2/
 
+obj-$(CONFIG_MSM_BOOT_STATS) += boot_stats.o
 obj-$(CONFIG_MSM_RUN_QUEUE_STATS) += msm_rq_stats.o
 obj-$(CONFIG_DEBUG_FS) += nohlt.o
 obj-$(CONFIG_ARM64) += idle-v8.o cpu_ops.o
@@ -14,6 +15,7 @@ obj-$(CONFIG_MSM_IPC_ROUTER_HSIC_XPRT) += ipc_router_hsic_xprt.o
 obj-$(CONFIG_MSM_IPC_ROUTER_SMD_XPRT) += ipc_router_smd_xprt.o
 obj-$(CONFIG_MSM_MEMORY_DUMP) += memory_dump.o
 obj-$(CONFIG_MSM_MEMORY_DUMP_V2) += memory_dump_v2.o
+obj-$(CONFIG_MSM_DDR_HEALTH) += ddr-health.o
 obj-$(CONFIG_MSM_MPM_OF) += mpm-of.o
 obj-$(CONFIG_MSM_RPM_SMD) += rpm-smd.o
 ifdef CONFIG_DEBUG_FS
@@ -24,8 +26,10 @@ obj-$(CONFIG_MSM_RPM_STATS_LOG) += rpm_stats.o rpm_master_stat.o
 obj-$(CONFIG_MSM_RPM_LOG) += rpm_log.o
 obj-$(CONFIG_MSM_JTAG) += jtag-fuse.o jtag.o
 obj-$(CONFIG_MSM_JTAG_MM) +=  jtag-fuse.o jtag-mm.o
+obj-$(CONFIG_MSM_JTAGV8) += jtag-fuse.o jtagv8.o jtagv8-mm.o
 obj-$(CONFIG_MSM_QMI_INTERFACE) += qmi_interface.o
 
+obj-$(CONFIG_MSM_CACHE_DUMP) += cache_dump.o
 obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o
 
 obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o smd_private.o smd_init_dt.o smsm_debug.o
@@ -53,3 +57,9 @@ ifdef CONFIG_MSM_SUBSYSTEM_RESTART
        obj-y += ramdump.o
 endif
 obj-$(CONFIG_MSM_SYSMON_COMM) += sysmon.o
+obj-$(CONFIG_CP_ACCESS64) += cpaccess64.o
+obj-$(CONFIG_MSM_CPU_PWR_CTL) += cpu_pwr_ctl.o
+obj-$(CONFIG_MSM8994_V1_PMUIRQ_WA) += cti-pmu-irq.o
+obj-$(CONFIG_MSM_XPU_ERR_FATAL) += scm-xpu.o
+
+obj-$(CONFIG_MSM_SHARED_HEAP_ACCESS) += shared_memory.o

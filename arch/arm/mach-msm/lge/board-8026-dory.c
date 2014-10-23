@@ -40,25 +40,24 @@
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_memtypes.h>
+#include <soc/qcom/socinfo.h>
 #include <mach/board.h>
-#include <soc/qcom/smem.h>
-#include <soc/qcom/smd.h>
 #include <soc/qcom/rpm-smd.h>
+#include <soc/qcom/smd.h>
+#include <soc/qcom/smem.h>
 #include <soc/qcom/spm.h>
 #include <soc/qcom/pm.h>
-#include <soc/qcom/socinfo.h>
 #include "../board-dt.h"
 #include "../clock.h"
 #include "../platsmp.h"
 #include <mach/board_lge.h>
 
+static struct of_dev_auxdata msm_hsic_host_adata[] = {
+	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
+	{}
+};
+
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
-			"msm_sdcc.1", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, \
-			"msm_sdcc.2", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9864000, \
-			"msm_sdcc.3", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, \
 			"msm_sdcc.1", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, \
@@ -66,6 +65,8 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9864900, \
 			"msm_sdcc.3", NULL),
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
+	OF_DEV_AUXDATA("qcom,hsic-smsc-hub", 0, "msm_smsc_hub",
+			msm_hsic_host_adata),
 
 	{}
 };
@@ -116,11 +117,6 @@ static void __init limit_mem_reserve(void)
 	}
 }
 
-static void __init msm8226_early_memory(void)
-{
-	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
-}
-
 static void __init msm8226_reserve(void)
 {
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
@@ -144,7 +140,7 @@ void __init msm8226_add_drivers(void)
 	rpm_smd_regulator_driver_init();
 	qpnp_regulator_init();
 	spm_regulator_init();
-	msm_clock_init(&msm8226_clock_init_data);
+	msm_gcc_8226_init();
 	msm_bus_fabric_init_driver();
 	qup_i2c_init_driver();
 	cpr_regulator_init();
@@ -186,6 +182,5 @@ DT_MACHINE_START(MSM8226_DT, "Qualcomm MSM 8226 DORY (Flattened Device Tree)")
 	.init_machine = msm8226_init,
 	.dt_compat = msm8226_dt_match,
 	.reserve = msm8226_reserve,
-	.init_very_early = msm8226_early_memory,
 	.smp = &arm_smp_ops,
 MACHINE_END

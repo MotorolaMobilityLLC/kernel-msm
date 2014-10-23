@@ -23,6 +23,7 @@
 #include <linux/of.h>
 #include <linux/regulator/consumer.h>
 #include <linux/dma-mapping.h>
+#include <soc/qcom/scm.h>
 
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
@@ -62,6 +63,8 @@
 #define EXTERNAL_BHS_ON			BIT(0)
 #define EXTERNAL_BHS_STATUS		BIT(4)
 #define BHS_TIMEOUT_US			50
+
+#define MSS_RESTART_ID			0xA
 
 static int pbl_mba_boot_timeout_ms = 1000;
 module_param(pbl_mba_boot_timeout_ms, int, S_IRUGO | S_IWUSR);
@@ -137,9 +140,14 @@ static int pil_mss_enable_clks(struct q6v5_data *drv)
 	ret = clk_prepare_enable(drv->rom_clk);
 	if (ret)
 		goto err_rom_clk;
+	ret = clk_prepare_enable(drv->gpll0_mss_clk);
+	if (ret)
+		goto err_gpll0_mss_clk;
 
 	return 0;
 
+err_gpll0_mss_clk:
+	clk_disable_unprepare(drv->rom_clk);
 err_rom_clk:
 	clk_disable_unprepare(drv->axi_clk);
 err_axi_clk:
@@ -150,9 +158,29 @@ err_ahb_clk:
 
 static void pil_mss_disable_clks(struct q6v5_data *drv)
 {
+	clk_disable_unprepare(drv->gpll0_mss_clk);
 	clk_disable_unprepare(drv->rom_clk);
 	clk_disable_unprepare(drv->axi_clk);
 	clk_disable_unprepare(drv->ahb_clk);
+}
+
+static int pil_mss_restart_reg(struct q6v5_data *drv, u32 mss_restart)
+{
+	int ret = 0;
+	int scm_ret;
+
+	if (drv->restart_reg && !drv->restart_reg_sec) {
+		writel_relaxed(mss_restart, drv->restart_reg);
+		mb();
+		udelay(2);
+	} else if (drv->restart_reg_sec) {
+		ret = scm_call(SCM_SVC_PIL, MSS_RESTART_ID, &mss_restart,
+			sizeof(mss_restart), &scm_ret, sizeof(scm_ret));
+		if (ret)
+			pr_err("Secure MSS restart failed\n");
+	}
+
+	return ret;
 }
 
 static int pil_msa_wait_for_mba_ready(struct q6v5_data *drv)
@@ -192,6 +220,7 @@ static int pil_msa_wait_for_mba_ready(struct q6v5_data *drv)
 int pil_mss_shutdown(struct pil_desc *pil)
 {
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
+	int ret = 0;
 
 	if (drv->axi_halt_base) {
 		pil_q6v5_halt_axi_port(pil,
@@ -209,8 +238,7 @@ int pil_mss_shutdown(struct pil_desc *pil)
 	if (drv->axi_halt_nc)
 		pil_q6v5_halt_axi_port(pil, drv->axi_halt_nc);
 
-	if (drv->restart_reg)
-		writel_relaxed(1, drv->restart_reg);
+	ret = pil_mss_restart_reg(drv, 1);
 
 	if (drv->is_booted) {
 		pil_mss_disable_clks(drv);
@@ -218,7 +246,7 @@ int pil_mss_shutdown(struct pil_desc *pil)
 		drv->is_booted = false;
 	}
 
-	return 0;
+	return ret;
 }
 
 int pil_mss_make_proxy_votes(struct pil_desc *pil)
@@ -281,11 +309,9 @@ static int pil_mss_reset(struct pil_desc *pil)
 		goto err_power;
 
 	/* Deassert reset to subsystem and wait for propagation */
-	if (drv->restart_reg) {
-		writel_relaxed(0, drv->restart_reg);
-		mb();
-		udelay(2);
-	}
+	ret = pil_mss_restart_reg(drv, 0);
+	if (ret)
+		goto err_restart;
 
 	ret = pil_mss_enable_clks(drv);
 	if (ret)
@@ -315,7 +341,7 @@ static int pil_mss_reset(struct pil_desc *pil)
 			goto err_q6v5_reset;
 	}
 
-	pr_info("pil: MBA boot done\n");
+	dev_info(pil->dev, "MBA boot done\n");
 	drv->is_booted = true;
 
 	return 0;
@@ -324,14 +350,13 @@ err_q6v5_reset:
 	modem_log_rmb_regs(drv->rmb_base);
 	pil_mss_disable_clks(drv);
 err_clks:
-	if (drv->restart_reg)
-		writel_relaxed(1, drv->restart_reg);
+	pil_mss_restart_reg(drv, 1);
+err_restart:
 	pil_mss_power_down(drv);
 err_power:
 	return ret;
 }
 
-#define MBA_SIZE SZ_1M
 int pil_mss_reset_load_mba(struct pil_desc *pil)
 {
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
@@ -341,7 +366,7 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	char fw_name[10] = "mba.mbn";
 	char *fw_name_p;
 	void *mba_virt;
-	dma_addr_t mba_phys;
+	dma_addr_t mba_phys, mba_phys_end;
 	int ret, count;
 	const u8 *data;
 
@@ -354,10 +379,11 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 		return ret;
 	}
 
+	drv->mba_size = SZ_1M;
 	md->mba_mem_dev.coherent_dma_mask =
 		DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
-	mba_virt = dma_alloc_coherent(&md->mba_mem_dev, MBA_SIZE, &mba_phys,
-					GFP_KERNEL);
+	mba_virt = dma_alloc_coherent(&md->mba_mem_dev, drv->mba_size,
+					&mba_phys, GFP_KERNEL);
 	if (!mba_virt) {
 		dev_err(pil->dev, "MBA metadata buffer allocation failed\n");
 		ret = -ENOMEM;
@@ -366,7 +392,10 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 
 	drv->mba_phys = mba_phys;
 	drv->mba_virt = mba_virt;
+	mba_phys_end = mba_phys + drv->mba_size;
 
+	dev_info(pil->dev, "MBA: loading from %pa to %pa\n", &mba_phys,
+								&mba_phys_end);
 	/* Load the MBA image into memory */
 	count = fw->size;
 	data = fw ? fw->data : NULL;
@@ -384,7 +413,7 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	return 0;
 
 err_mss_reset:
-	dma_free_coherent(&md->mba_mem_dev, MBA_SIZE, drv->mba_virt,
+	dma_free_coherent(&md->mba_mem_dev, drv->mba_size, drv->mba_virt,
 				drv->mba_phys);
 err_dma_alloc:
 	release_firmware(fw);
@@ -497,7 +526,7 @@ static int pil_msa_mba_auth(struct pil_desc *pil)
 
 	if (drv->q6 && drv->q6->mba_virt)
 		/* Reclaim MBA memory. */
-		dma_free_coherent(&drv->mba_mem_dev, MBA_SIZE,
+		dma_free_coherent(&drv->mba_mem_dev, drv->q6->mba_size,
 					drv->q6->mba_virt, drv->q6->mba_phys);
 	if (ret)
 		modem_log_rmb_regs(drv->rmb_base);

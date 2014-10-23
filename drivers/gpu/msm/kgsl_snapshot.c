@@ -24,35 +24,22 @@
 #include "kgsl_snapshot.h"
 #include "adreno_cp_parser.h"
 
-/* Placeholder for the list of memory objects frozen after a hang */
-
-struct kgsl_snapshot_object {
-	unsigned int gpuaddr;
-	phys_addr_t ptbase;
-	unsigned int size;
-	unsigned int offset;
-	int type;
-	struct kgsl_mem_entry *entry;
-	struct list_head node;
-};
-
 /* Placeholder for list of ib objects that contain all objects in that IB */
 
 struct kgsl_snapshot_cp_obj {
 	struct adreno_ib_object_list *ib_obj_list;
-	unsigned int ptbase;
 	struct list_head node;
 };
 
 struct snapshot_obj_itr {
-	void *buf;      /* Buffer pointer to write to */
+	u8 *buf;      /* Buffer pointer to write to */
 	int pos;        /* Current position in the sequence */
 	loff_t offset;  /* file offset to start writing from */
 	size_t remain;  /* Bytes remaining in buffer */
 	size_t write;   /* Bytes written so far */
 };
 
-static void obj_itr_init(struct snapshot_obj_itr *itr, void *buf,
+static void obj_itr_init(struct snapshot_obj_itr *itr, u8 *buf,
 	loff_t offset, size_t remain)
 {
 	itr->buf = buf;
@@ -109,18 +96,16 @@ static int snapshot_context_count(int id, void *ptr, void *data)
  * to pass around double star references to the snapshot data
  */
 
-static void *_ctxtptr;
+static u8 *_ctxtptr;
 
 static int snapshot_context_info(int id, void *ptr, void *data)
 {
-	struct kgsl_snapshot_linux_context *header = _ctxtptr;
+	struct kgsl_snapshot_linux_context *header =
+		(struct kgsl_snapshot_linux_context *)_ctxtptr;
 	struct kgsl_context *context = ptr;
 	struct kgsl_device *device;
 
-	if (context)
-		device = context->device;
-	else
-		device = (struct kgsl_device *)data;
+	device = context->device;
 
 	header->id = id;
 
@@ -139,16 +124,15 @@ static int snapshot_context_info(int id, void *ptr, void *data)
 }
 
 /* Snapshot the Linux specific information */
-static int snapshot_os(struct kgsl_device *device,
-	void *snapshot, int remain, void *priv)
+static size_t snapshot_os(struct kgsl_device *device,
+	u8 *buf, size_t remain, void *priv)
 {
-	struct kgsl_snapshot_linux *header = snapshot;
+	struct kgsl_snapshot_linux *header = (struct kgsl_snapshot_linux *)buf;
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct task_struct *task;
 	pid_t pid;
-	int hang = *((int *) priv);
 	int ctxtcount = 0;
-	int size = sizeof(*header);
+	size_t size = sizeof(*header);
 	phys_addr_t temp_ptbase;
 
 	/* Figure out how many active contexts there are - these will
@@ -157,9 +141,6 @@ static int snapshot_os(struct kgsl_device *device,
 	read_lock(&device->context_lock);
 	idr_for_each(&device->context_idr, snapshot_context_count, &ctxtcount);
 	read_unlock(&device->context_lock);
-
-	/* Increment ctxcount for the global memstore */
-	ctxtcount++;
 
 	size += ctxtcount * sizeof(struct kgsl_snapshot_linux_context);
 
@@ -173,7 +154,7 @@ static int snapshot_os(struct kgsl_device *device,
 
 	header->osid = KGSL_SNAPSHOT_OS_LINUX;
 
-	header->state = hang ? SNAPSHOT_STATE_HUNG : SNAPSHOT_STATE_RUNNING;
+	header->state = SNAPSHOT_STATE_HUNG;
 
 	/* Get the kernel build information */
 	strlcpy(header->release, utsname()->release, sizeof(header->release));
@@ -188,7 +169,10 @@ static int snapshot_os(struct kgsl_device *device,
 	header->power_interval_timeout = pwr->interval_timeout;
 	header->grpclk = kgsl_get_clkrate(pwr->grp_clks[0]);
 
-	/* Save the last active context */
+	/*
+	 * Save the last active context from global index since its more
+	 * reliable than currrent RB index
+	 */
 	kgsl_sharedmem_readl(&device->memstore, &header->current_context,
 		KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL, current_context));
 
@@ -208,9 +192,7 @@ static int snapshot_os(struct kgsl_device *device,
 
 	header->ctxtcount = ctxtcount;
 
-	_ctxtptr = snapshot + sizeof(*header);
-	/* append information for the global context */
-	snapshot_context_info(KGSL_MEMSTORE_GLOBAL, NULL, device);
+	_ctxtptr = buf + sizeof(*header);
 	/* append information for each context */
 
 	read_lock(&device->context_lock);
@@ -220,101 +202,8 @@ static int snapshot_os(struct kgsl_device *device,
 	/* Return the size of the data segment */
 	return size;
 }
-/*
- * kgsl_snapshot_dump_indexed_regs - helper function to dump indexed registers
- * @device - the device to dump registers from
- * @snapshot - pointer to the start of the region of memory for the snapshot
- * @remain - a pointer to the number of bytes remaining in the snapshot
- * @priv - A pointer to the kgsl_snapshot_indexed_registers data
- *
- * Given a indexed register cmd/data pair and a count, dump each indexed
- * register. Used for both a3xx and a4xx snapshot
- */
 
-static int kgsl_snapshot_dump_indexed_regs(struct kgsl_device *device,
-	void *snapshot, int remain, void *priv)
-{
-	struct kgsl_snapshot_indexed_registers *iregs = priv;
-	struct kgsl_snapshot_indexed_regs *header = snapshot;
-	unsigned int *data = snapshot + sizeof(*header);
-	int i;
-
-	if (remain < (iregs->count * 4) + sizeof(*header)) {
-		SNAPSHOT_ERR_NOMEM(device, "INDEXED REGS");
-		return 0;
-	}
-
-	header->index_reg = iregs->index;
-	header->data_reg = iregs->data;
-	header->count = iregs->count;
-	header->start = iregs->start;
-
-	for (i = 0; i < iregs->count; i++) {
-		kgsl_regwrite(device, iregs->index, iregs->start + i);
-		kgsl_regread(device, iregs->data, &data[i]);
-	}
-
-	return (iregs->count * 4) + sizeof(*header);
-}
-
-#define GPU_OBJ_HEADER_SZ \
-	(sizeof(struct kgsl_snapshot_section_header) + \
-	 sizeof(struct kgsl_snapshot_gpu_object))
-
-static int kgsl_snapshot_dump_object(struct kgsl_device *device,
-	struct kgsl_snapshot_object *obj, struct snapshot_obj_itr *itr)
-{
-	struct kgsl_snapshot_section_header sect;
-	struct kgsl_snapshot_gpu_object header;
-	int ret;
-
-	if (kgsl_memdesc_map(&obj->entry->memdesc) == NULL) {
-		KGSL_DRV_ERR(device, "Unable to map GPU buffer %X\n",
-				obj->gpuaddr);
-		return 0;
-	}
-
-	sect.magic = SNAPSHOT_SECTION_MAGIC;
-	sect.id = KGSL_SNAPSHOT_SECTION_GPU_OBJECT;
-
-	/*
-	 * Header size is in dwords, object size is in bytes -
-	 * round up if the object size isn't dword aligned
-	 */
-
-	sect.size = GPU_OBJ_HEADER_SZ + ALIGN(obj->size, 4);
-
-	ret = obj_itr_out(itr, &sect, sizeof(sect));
-	if (ret == 0)
-		goto done;
-
-	header.size = ALIGN(obj->size, 4) >> 2;
-	header.gpuaddr = obj->gpuaddr;
-	header.ptbase = (__u32)obj->ptbase;
-	header.type = obj->type;
-
-	ret = obj_itr_out(itr, &header, sizeof(header));
-	if (ret == 0)
-		goto done;
-
-	ret = obj_itr_out(itr, obj->entry->memdesc.hostptr + obj->offset,
-		obj->size);
-	if (ret == 0)
-		goto done;
-
-	/* Pad the end to a dword boundary if we need to */
-
-	if (obj->size % 4) {
-		unsigned int dummy = 0;
-		ret = obj_itr_out(itr, &dummy, obj->size % 4);
-	}
-done:
-	kgsl_memdesc_unmap(&obj->entry->memdesc);
-	return ret;
-}
-
-static void kgsl_snapshot_put_object(struct kgsl_device *device,
-	struct kgsl_snapshot_object *obj)
+static void kgsl_snapshot_put_object(struct kgsl_snapshot_object *obj)
 {
 	list_del(&obj->node);
 
@@ -324,17 +213,19 @@ static void kgsl_snapshot_put_object(struct kgsl_device *device,
 	kfree(obj);
 }
 
-/* ksgl_snapshot_have_object - Return 1 if the object has been processed
- * @device - the device that is being snapshotted
- * @ptbase - the pagetable base of the object to freeze
- * @gpuaddr - The gpu address of the object to freeze
- * @size - the size of the object (may not always be the size of the region)
+/**
+ * kgsl_snapshot_have_object() - return 1 if the object has been processed
+ * @snapshot: the snapshot data
+ * @process: The process that owns the the object to freeze
+ * @gpuaddr: The gpu address of the object to freeze
+ * @size: the size of the object (may not always be the size of the region)
  *
  * Return 1 if the object is already in the list - this can save us from
  * having to parse the same thing over again. There are 2 lists that are
  * tracking objects so check for the object in both lists
 */
-int kgsl_snapshot_have_object(struct kgsl_device *device, phys_addr_t ptbase,
+int kgsl_snapshot_have_object(struct kgsl_snapshot *snapshot,
+	struct kgsl_process_private *process,
 	unsigned int gpuaddr, unsigned int size)
 {
 	struct kgsl_snapshot_object *obj;
@@ -343,9 +234,15 @@ int kgsl_snapshot_have_object(struct kgsl_device *device, phys_addr_t ptbase,
 	int i;
 
 	/* Check whether the object is tracked already in ib list */
-	list_for_each_entry(obj_cp, &device->snapshot_cp_list, node) {
-		if (obj_cp->ptbase != ptbase)
+	list_for_each_entry(obj_cp, &snapshot->cp_list, node) {
+		if (obj_cp->ib_obj_list == NULL
+			|| obj_cp->ib_obj_list->num_objs == 0)
 			continue;
+
+		ib_obj = &(obj_cp->ib_obj_list->obj_list[0]);
+		if (ib_obj->entry == NULL || ib_obj->entry->priv != process)
+			continue;
+
 		for (i = 0; i < obj_cp->ib_obj_list->num_objs; i++) {
 			ib_obj = &(obj_cp->ib_obj_list->obj_list[i]);
 			if ((gpuaddr >= ib_obj->gpuaddr) &&
@@ -355,8 +252,8 @@ int kgsl_snapshot_have_object(struct kgsl_device *device, phys_addr_t ptbase,
 		}
 	}
 
-	list_for_each_entry(obj, &device->snapshot_obj_list, node) {
-		if (obj->ptbase != ptbase)
+	list_for_each_entry(obj, &snapshot->obj_list, node) {
+		if (obj->entry == NULL || obj->entry->priv != process)
 			continue;
 
 		if ((gpuaddr >= obj->gpuaddr) &&
@@ -368,20 +265,21 @@ int kgsl_snapshot_have_object(struct kgsl_device *device, phys_addr_t ptbase,
 }
 EXPORT_SYMBOL(kgsl_snapshot_have_object);
 
-/* kgsl_snapshot_get_object - Mark a GPU buffer to be frozen
- * @device - the device that is being snapshotted
- * @ptbase - the pagetable base of the object to freeze
- * @gpuaddr - The gpu address of the object to freeze
- * @size - the size of the object (may not always be the size of the region)
- * @type - the type of object being saved (shader, vbo, etc)
+/**
+ * kgsl_snapshot_get_object() - Mark a GPU buffer to be frozen
+ * @snapshot: The snapshot data
+ * @process: The process that owns the object we want to freeze
+ * @gpuaddr: The gpu address of the object to freeze
+ * @size: the size of the object (may not always be the size of the region)
+ * @type: the type of object being saved (shader, vbo, etc)
  *
  * Mark and freeze a GPU buffer object.  This will prevent it from being
  * freed until it can be copied out as part of the snapshot dump.  Returns the
  * size of the object being frozen
  */
-
-int kgsl_snapshot_get_object(struct kgsl_device *device, phys_addr_t ptbase,
-	unsigned int gpuaddr, unsigned int size, unsigned int type)
+int kgsl_snapshot_get_object(struct kgsl_snapshot *snapshot,
+	struct kgsl_process_private *process, unsigned int gpuaddr,
+	unsigned int size, unsigned int type)
 {
 	struct kgsl_mem_entry *entry;
 	struct kgsl_snapshot_object *obj;
@@ -392,18 +290,16 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, phys_addr_t ptbase,
 	if (!gpuaddr)
 		return 0;
 
-	entry = kgsl_get_mem_entry(device, ptbase, gpuaddr, size);
+	entry = kgsl_sharedmem_find_region(process, gpuaddr, size);
 
 	if (entry == NULL) {
-		KGSL_DRV_ERR(device, "Unable to find GPU buffer %8.8X\n",
-				gpuaddr);
+		KGSL_CORE_ERR("Unable to find GPU buffer %8.8X\n", gpuaddr);
 		return -EINVAL;
 	}
 
 	/* We can't freeze external memory, because we don't own it */
 	if (entry->memdesc.flags & KGSL_MEMFLAGS_USERMEM_MASK) {
-		KGSL_DRV_ERR(device,
-			"Only internal GPU buffers can be frozen\n");
+		KGSL_CORE_ERR("Only internal GPU buffers can be frozen\n");
 		goto err_put;
 	}
 	/*
@@ -437,15 +333,15 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, phys_addr_t ptbase,
 	}
 
 	if (size + offset > entry->memdesc.size) {
-		KGSL_DRV_ERR(device, "Invalid size for GPU buffer %8.8X\n",
+		KGSL_CORE_ERR("Invalid size for GPU buffer %8.8X\n",
 				gpuaddr);
 		goto err_put;
 	}
 
 	/* If the buffer is already on the list, skip it */
-	list_for_each_entry(obj, &device->snapshot_obj_list, node) {
+	list_for_each_entry(obj, &snapshot->obj_list, node) {
 		/* combine the range with existing object if they overlap */
-		if (obj->ptbase == ptbase && obj->type == type &&
+		if (obj->entry->priv == process && obj->type == type &&
 			kgsl_addr_range_overlap(obj->gpuaddr, obj->size,
 				gpuaddr, size)) {
 			unsigned int end1 = obj->gpuaddr + obj->size;
@@ -464,19 +360,16 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, phys_addr_t ptbase,
 
 	obj = kzalloc(sizeof(*obj), GFP_KERNEL);
 
-	if (obj == NULL) {
-		KGSL_DRV_ERR(device, "Unable to allocate memory\n");
+	if (obj == NULL)
 		goto err_put;
-	}
 
 	obj->type = type;
 	obj->entry = entry;
 	obj->gpuaddr = gpuaddr;
-	obj->ptbase = ptbase;
 	obj->size = size;
 	obj->offset = offset;
 
-	list_add(&obj->node, &device->snapshot_obj_list);
+	list_add(&obj->node, &snapshot->obj_list);
 
 	/*
 	 * Return the size of the entire mem entry that was frozen - this gets
@@ -498,7 +391,7 @@ err_put:
 }
 EXPORT_SYMBOL(kgsl_snapshot_get_object);
 
-/*
+/**
  * kgsl_snapshot_dump_regs - helper function to dump device registers
  * @device - the device to dump registers from
  * @snapshot - pointer to the start of the region of memory for the snapshot
@@ -509,16 +402,34 @@ EXPORT_SYMBOL(kgsl_snapshot_get_object);
  * registers into a snapshot register section.  The snapshot region stores a
  * part of dwords for each register - the word address of the register, and
  * the value.
+ *
+ * Common usage:
+ *
+ * struct kgsl_snapshot_registers_list list;
+ * struct kgsl_snapshot_registers priv[2];
+ *
+ * priv[0].regs = registers_array;;
+ * priv[o].count = num_registers;
+ * priv[1].regs = registers_array_new;;
+ * priv[1].count = num_registers_new;
+ *
+ * list.registers = priv;
+ * list.count = 2;
+ *
+ * kgsl_snapshot_add_section(device, KGSL_SNAPSHOT_SECTION_REGS, snapshot,
+ *	remain, kgsl_snapshot_dump_regs, &list).
  */
-int kgsl_snapshot_dump_regs(struct kgsl_device *device, void *snapshot,
-	int remain, void *priv)
+size_t kgsl_snapshot_dump_regs(struct kgsl_device *device, u8 *buf,
+	size_t remain, void *priv)
 {
 	struct kgsl_snapshot_registers_list *list = priv;
 
-	struct kgsl_snapshot_regs *header = snapshot;
+	struct kgsl_snapshot_regs *header = (struct kgsl_snapshot_regs *)buf;
 	struct kgsl_snapshot_registers *regs;
-	unsigned int *data = snapshot + sizeof(*header);
+	unsigned int *data = (unsigned int *)(buf + sizeof(*header));
 	int count = 0, i, j, k;
+
+	BUG_ON(!mutex_is_locked(&device->mutex));
 
 	/* Figure out how many registers we are going to dump */
 
@@ -587,6 +498,8 @@ void kgsl_snapshot_dump_skipped_regs(struct kgsl_device *device,
 	unsigned int *data;
 	int i, j, k;
 
+	BUG_ON(!mutex_is_locked(&device->mutex));
+
 	for (i = 0; i < list->count; i++) {
 		regs = &(list->registers[i]);
 		if (!regs->snap_addr)
@@ -606,9 +519,58 @@ void kgsl_snapshot_dump_skipped_regs(struct kgsl_device *device,
 		}
 	}
 }
+EXPORT_SYMBOL(kgsl_snapshot_dump_skipped_regs);
 
-void *kgsl_snapshot_indexed_registers(struct kgsl_device *device,
-		void *snapshot, int *remain,
+struct kgsl_snapshot_indexed_registers {
+	unsigned int index;
+	unsigned int data;
+	unsigned int start;
+	unsigned int count;
+};
+
+static size_t kgsl_snapshot_dump_indexed_regs(struct kgsl_device *device,
+	u8 *buf, size_t remain, void *priv)
+{
+	struct kgsl_snapshot_indexed_registers *iregs = priv;
+	struct kgsl_snapshot_indexed_regs *header =
+		(struct kgsl_snapshot_indexed_regs *)buf;
+	unsigned int *data = (unsigned int *)(buf + sizeof(*header));
+	int i;
+
+	BUG_ON(!mutex_is_locked(&device->mutex));
+
+	if (remain < (iregs->count * 4) + sizeof(*header)) {
+		SNAPSHOT_ERR_NOMEM(device, "INDEXED REGS");
+		return 0;
+	}
+
+	header->index_reg = iregs->index;
+	header->data_reg = iregs->data;
+	header->count = iregs->count;
+	header->start = iregs->start;
+
+	for (i = 0; i < iregs->count; i++) {
+		kgsl_regwrite(device, iregs->index, iregs->start + i);
+		kgsl_regread(device, iregs->data, &data[i]);
+	}
+
+	return (iregs->count * 4) + sizeof(*header);
+}
+
+/**
+ * kgsl_snapshot_indexed_registers - Add a set of indexed registers to the
+ * snapshot
+ * @device: Pointer to the KGSL device being snapshotted
+ * @snapshot: Snapshot instance
+ * @index: Offset for the index register
+ * @data: Offset for the data register
+ * @start: Index to start reading
+ * @count: Number of entries to read
+ *
+ * Dump the values from an indexed register group into the snapshot
+ */
+void kgsl_snapshot_indexed_registers(struct kgsl_device *device,
+		struct kgsl_snapshot *snapshot,
 		unsigned int index, unsigned int data,
 		unsigned int start,
 		unsigned int count)
@@ -619,84 +581,136 @@ void *kgsl_snapshot_indexed_registers(struct kgsl_device *device,
 	iregs.start = start;
 	iregs.count = count;
 
-	return kgsl_snapshot_add_section(device,
-		 KGSL_SNAPSHOT_SECTION_INDEXED_REGS, snapshot,
-		 remain, kgsl_snapshot_dump_indexed_regs, &iregs);
+	kgsl_snapshot_add_section(device, KGSL_SNAPSHOT_SECTION_INDEXED_REGS,
+		snapshot, kgsl_snapshot_dump_indexed_regs, &iregs);
 }
 EXPORT_SYMBOL(kgsl_snapshot_indexed_registers);
 
-/*
- * kgsl_snapshot - construct a device snapshot
- * @device - device to snapshot
- * @hang - set to 1 if the snapshot was triggered following a hnag
+/**
+ * kgsl_snapshot_add_section() - Add a new section to the GPU snapshot
+ * @device: the KGSL device being snapshotted
+ * @id: the section id
+ * @snapshot: pointer to the snapshot instance
+ * @func:  Function pointer to fill the section
+ * @priv: Private pointer to pass to the function
+ *
+ * Set up a KGSL snapshot header by filling the memory with the callback
+ * function and adding the standard section header
+ */
+void kgsl_snapshot_add_section(struct kgsl_device *device, u16 id,
+	struct kgsl_snapshot *snapshot,
+	size_t (*func)(struct kgsl_device *, u8 *, size_t, void *),
+	void *priv)
+{
+	struct kgsl_snapshot_section_header *header =
+		(struct kgsl_snapshot_section_header *)snapshot->ptr;
+	u8 *data = snapshot->ptr + sizeof(*header);
+	size_t ret = 0;
+
+	/*
+	 * Sanity check to make sure there is enough for the header.  The
+	 * callback will check to make sure there is enough for the rest
+	 * of the data.  If there isn't enough room then don't advance the
+	 * pointer.
+	 */
+
+	if (snapshot->remain < sizeof(*header))
+		return;
+
+	/* It is legal to have no function (i.e. - make an empty section) */
+	if (func) {
+		ret = func(device, data, snapshot->remain - sizeof(*header),
+			priv);
+
+		/*
+		 * If there wasn't enough room for the data then don't bother
+		 * setting up the header.
+		 */
+
+		if (ret == 0)
+			return;
+	}
+
+	header->magic = SNAPSHOT_SECTION_MAGIC;
+	header->id = id;
+	header->size = ret + sizeof(*header);
+
+	snapshot->ptr += header->size;
+	snapshot->remain -= header->size;
+	snapshot->size += header->size;
+}
+
+/**
+ * kgsl_snapshot() - construct a device snapshot
+ * @device: device to snapshot
+ * @context: the context that is hung, might be NULL if unknown.
+ *
  * Given a device, construct a binary snapshot dump of the current device state
  * and store it in the device snapshot memory.
  */
-int kgsl_device_snapshot(struct kgsl_device *device, int hang)
+int kgsl_device_snapshot(struct kgsl_device *device,
+		struct kgsl_context *context)
 {
-	struct kgsl_snapshot_header *header = device->snapshot;
-	int remain = device->snapshot_maxsize - sizeof(*header);
-	void *snapshot;
+	struct kgsl_snapshot_header *header = device->snapshot_memory.ptr;
+	struct kgsl_snapshot *snapshot;
 	struct timespec boot;
 	int ret = 0;
 	phys_addr_t pa;
 
-	/*
-	 * Bail if failed to get active count for GPU,
-	 * try again
-	 */
+	if (device->snapshot_memory.ptr == NULL) {
+		KGSL_DRV_ERR(device,
+			"snapshot: no snapshot memory available\n");
+		return -ENOMEM;
+	}
+
+	/* We need to have the GPU on for the entire snapshotting operation */
+
 	if (kgsl_active_count_get(device)) {
-		KGSL_DRV_ERR(device, "Failed to get GPU active count");
+		KGSL_DRV_ERR(device, "snapshot: unable to turn on the GPU\n");
 		return -EINVAL;
 	}
 
-	/* increment the hang count (on hang) for good book keeping */
-	if (hang)
-		device->snapshot_faultcount++;
+	/* increment the hang count for good book keeping */
+	device->snapshot_faultcount++;
 
 	/*
-	 * The first hang is always the one we are interested in. To
-	 * avoid a subsequent hang blowing away the first, the snapshot
-	 * is frozen until it is dumped via sysfs.
-	 *
-	 * Note that triggered snapshots are always taken regardless
-	 * of the state and never frozen.
+	 * The first hang is always the one we are interested in. Don't capture
+	 * a new snapshot instance if the old one hasn't been grabbed yet
 	 */
-
-	if (hang && device->snapshot_frozen == 1) {
-		ret = 0;
+	if (device->snapshot != NULL)
 		goto done;
-	}
 
-	if (device->snapshot == NULL) {
-		KGSL_DRV_ERR(device,
-			"snapshot: No snapshot memory available\n");
+	/* Allocate memory for the snapshot instance */
+	snapshot = kzalloc(sizeof(*snapshot), GFP_KERNEL);
+	if (snapshot == NULL) {
 		ret = -ENOMEM;
 		goto done;
 	}
+	init_completion(&snapshot->dump_gate);
+	INIT_LIST_HEAD(&snapshot->obj_list);
+	INIT_LIST_HEAD(&snapshot->cp_list);
+	INIT_WORK(&snapshot->work, kgsl_snapshot_save_frozen_objs);
 
-	if (remain < sizeof(*header)) {
-		KGSL_DRV_ERR(device,
-			"snapshot: Not enough memory for the header\n");
-		ret = -ENOMEM;
-		goto done;
-	}
+	snapshot->start = device->snapshot_memory.ptr;
+	snapshot->ptr = device->snapshot_memory.ptr;
+	snapshot->remain = device->snapshot_memory.size;
+
+	header = (struct kgsl_snapshot_header *) snapshot->ptr;
 
 	header->magic = SNAPSHOT_MAGIC;
-
 	header->gpuid = kgsl_gpuid(device, &header->chipid);
 
-	/* Get a pointer to the first section (right after the header) */
-	snapshot = ((void *) device->snapshot) + sizeof(*header);
+	snapshot->ptr += sizeof(*header);
+	snapshot->remain -= sizeof(*header);
+	snapshot->size += sizeof(*header);
 
 	/* Build the Linux specific header */
-	snapshot = kgsl_snapshot_add_section(device, KGSL_SNAPSHOT_SECTION_OS,
-		snapshot, &remain, snapshot_os, &hang);
+	kgsl_snapshot_add_section(device, KGSL_SNAPSHOT_SECTION_OS,
+			snapshot, snapshot_os, NULL);
 
 	/* Get the device specific sections */
 	if (device->ftbl->snapshot)
-		snapshot = device->ftbl->snapshot(device, snapshot, &remain,
-			hang);
+		device->ftbl->snapshot(device, snapshot, context);
 
 	/*
 	 * The timestamp is the seconds since boot so it is easier to match to
@@ -704,19 +718,25 @@ int kgsl_device_snapshot(struct kgsl_device *device, int hang)
 	 */
 
 	getboottime(&boot);
-	device->snapshot_timestamp = get_seconds() - boot.tv_sec;
-	device->snapshot_size = (int) (snapshot - device->snapshot);
+	snapshot->timestamp = get_seconds() - boot.tv_sec;
 
-	/* Freeze the snapshot on a hang until it gets read */
-	device->snapshot_frozen = (hang) ? 1 : 0;
+	/* Store the instance in the device until it gets dumped */
+	device->snapshot = snapshot;
 
 	/* log buffer info to aid in ramdump fault tolerance */
-	pa = __pa(device->snapshot);
-	KGSL_DRV_ERR(device, "snapshot created at pa %pa size %d\n",
-			&pa, device->snapshot_size);
-	if (hang)
-		sysfs_notify(&device->snapshot_kobj, NULL, "timestamp");
+	pa = __pa(device->snapshot_memory.ptr);
+	KGSL_DRV_ERR(device, "snapshot created at pa %pa size %zd\n",
+			&pa, snapshot->size);
 
+	sysfs_notify(&device->snapshot_kobj, NULL, "timestamp");
+
+	/*
+	 * Queue a work item that will save the IB data in snapshot into
+	 * static memory to prevent loss of data due to overwriting of
+	 * memory.
+	 *
+	 */
+	queue_work(device->work_queue, &snapshot->work);
 done:
 	kgsl_active_count_put(device);
 	return ret;
@@ -731,23 +751,23 @@ struct kgsl_snapshot_attribute {
 		size_t count);
 };
 
-/*
+/**
  * kgsl_snapshot_process_ib_obj_list() - Go through the list of IB's which need
  * to be dumped for snapshot and move them to the global snapshot list so
  * they will get dumped when the global list is dumped
  * @device: device being snapshotted
  */
-static void kgsl_snapshot_process_ib_obj_list(struct kgsl_device *device)
+static void kgsl_snapshot_process_ib_obj_list(struct kgsl_snapshot *snapshot)
 {
 	struct kgsl_snapshot_cp_obj *obj, *obj_temp;
 	struct adreno_ib_object *ib_obj;
 	int i;
 
-	list_for_each_entry_safe(obj, obj_temp, &device->snapshot_cp_list,
+	list_for_each_entry_safe(obj, obj_temp, &snapshot->cp_list,
 			node) {
 		for (i = 0; i < obj->ib_obj_list->num_objs; i++) {
 			ib_obj = &(obj->ib_obj_list->obj_list[i]);
-			kgsl_snapshot_get_object(device, obj->ptbase,
+			kgsl_snapshot_get_object(snapshot, ib_obj->entry->priv,
 				ib_obj->gpuaddr, ib_obj->size,
 				ib_obj->snapshot_obj_type);
 		}
@@ -769,6 +789,7 @@ static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
 	size_t count)
 {
 	struct kgsl_device *device = kobj_to_device(kobj);
+	struct kgsl_snapshot *snapshot;
 	struct kgsl_snapshot_object *obj, *tmp;
 	struct kgsl_snapshot_section_header head;
 	struct snapshot_obj_itr itr;
@@ -777,32 +798,35 @@ static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
 	if (device == NULL)
 		return 0;
 
+	mutex_lock(&device->mutex);
+	snapshot = device->snapshot;
+	mutex_unlock(&device->mutex);
+
 	/* Return nothing if we haven't taken a snapshot yet */
-	if (device->snapshot_timestamp == 0)
+	if (snapshot == NULL)
 		return 0;
 
-	/* Get the mutex to keep things from changing while we are dumping */
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	/*
+	 * Wait for the dump worker to finish. This is interruptible
+	 * to allow userspace to bail if things go horribly wrong.
+	 */
+	ret = wait_for_completion_interruptible(&snapshot->dump_gate);
+	if (ret)
+		return ret;
 
 	obj_itr_init(&itr, buf, off, count);
 
-	if (0 == device->snapshot_frozen)
-		goto done;
-
-	ret = obj_itr_out(&itr, device->snapshot, device->snapshot_size);
-
+	ret = obj_itr_out(&itr, snapshot->start, snapshot->size);
 	if (ret == 0)
 		goto done;
 
-	kgsl_snapshot_process_ib_obj_list(device);
-
-	if (device->snapshot_cur_ib_objs) {
-		obj_itr_out(&itr, device->snapshot_cur_ib_objs,
-			device->snapshot_cur_ib_objs_size);
+	/* Dump the memory pool if it exists */
+	if (device->snapshot->mempool) {
+		ret = obj_itr_out(&itr, snapshot->mempool,
+				snapshot->mempool_size);
+		if (ret == 0)
+			goto done;
 	}
-
-	list_for_each_entry(obj, &device->snapshot_obj_list, node)
-		kgsl_snapshot_dump_object(device, obj, &itr);
 
 	{
 		head.magic = SNAPSHOT_SECTION_MAGIC;
@@ -820,24 +844,21 @@ static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
 	 */
 
 	if (itr.write == 0) {
-		list_for_each_entry_safe(obj, tmp, &device->snapshot_obj_list,
-			node)
-			kgsl_snapshot_put_object(device, obj);
+		mutex_lock(&device->mutex);
+		device->snapshot = NULL;
+		mutex_unlock(&device->mutex);
 
-		if (device->snapshot_cur_ib_objs) {
-			vfree(device->snapshot_cur_ib_objs);
-			device->snapshot_cur_ib_objs = NULL;
-			device->snapshot_cur_ib_objs_size = 0;
-		}
+		list_for_each_entry_safe(obj, tmp, &snapshot->obj_list, node)
+			kgsl_snapshot_put_object(obj);
 
-		if (device->snapshot_frozen)
-			KGSL_DRV_ERR(device, "Snapshot objects released\n");
+		if (snapshot->mempool)
+			vfree(snapshot->mempool);
 
-		device->snapshot_frozen = 0;
+		kfree(snapshot);
+		KGSL_CORE_ERR("snapshot: objects released\n");
 	}
 
 done:
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 
 	return itr.write;
 }
@@ -861,23 +882,10 @@ static ssize_t faultcount_store(struct kgsl_device *device, const char *buf,
 /* Show the timestamp of the last collected snapshot */
 static ssize_t timestamp_show(struct kgsl_device *device, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%d\n", device->snapshot_timestamp);
-}
+	unsigned long timestamp =
+		device->snapshot ? device->snapshot->timestamp : 0;
 
-/* manually trigger a new snapshot to be collected */
-static ssize_t trigger_store(struct kgsl_device *device, const char *buf,
-	size_t count)
-{
-	if (device && count > 0) {
-		mutex_lock(&device->mutex);
-		if (!kgsl_active_count_get(device)) {
-				kgsl_device_snapshot(device, 0);
-				kgsl_active_count_put(device);
-		}
-		mutex_unlock(&device->mutex);
-	}
-
-	return count;
+	return snprintf(buf, PAGE_SIZE, "%lu\n", timestamp);
 }
 
 static struct bin_attribute snapshot_attr = {
@@ -894,7 +902,6 @@ struct kgsl_snapshot_attribute attr_##_name = { \
 	.store = _store, \
 }
 
-static SNAPSHOT_ATTR(trigger, 0600, NULL, trigger_store);
 static SNAPSHOT_ATTR(timestamp, 0444, timestamp_show, NULL);
 static SNAPSHOT_ATTR(faultcount, 0644, faultcount_show, faultcount_store);
 
@@ -943,35 +950,45 @@ static struct kobj_type ktype_snapshot = {
 	.release = snapshot_sysfs_release,
 };
 
-/* kgsl_device_snapshot_init - Add resources for the device GPU snapshot
- * @device - The device to initalize
+/**
+ * kgsl_device_snapshot_init() - add resources for the device GPU snapshot
+ * @device: The device to initalize
  *
  * Allocate memory for a GPU snapshot for the specified device,
  * and create the sysfs files to manage it
  */
-
 int kgsl_device_snapshot_init(struct kgsl_device *device)
 {
 	int ret;
-	unsigned int size;
 
-	if (kgsl_property_read_u32(device, "qcom,snapshot-size", &size))
-		size = KGSL_SNAPSHOT_MEMSIZE;
+	if (kgsl_property_read_u32(device, "qcom,snapshot-size",
+		(unsigned int *) &(device->snapshot_memory.size)))
+		device->snapshot_memory.size = KGSL_SNAPSHOT_MEMSIZE;
 
-	if (device->snapshot == NULL)
-		device->snapshot = kzalloc(size, GFP_KERNEL);
+	/*
+	 * Choosing a memory size of 0 is essentially the same as disabling
+	 * snapshotting
+	 */
+	if (device->snapshot_memory.size == 0)
+		return 0;
 
-	if (device->snapshot == NULL)
+	/*
+	 * I'm not sure why anybody would choose to do so but make sure
+	 * that we can at least fit the snapshot header in the requested
+	 * region
+	 */
+	if (device->snapshot_memory.size < sizeof(struct kgsl_snapshot_header))
+		device->snapshot_memory.size =
+			sizeof(struct kgsl_snapshot_header);
+
+	device->snapshot_memory.ptr = kzalloc(device->snapshot_memory.size,
+		GFP_KERNEL);
+
+	if (device->snapshot_memory.ptr == NULL)
 		return -ENOMEM;
 
-	device->snapshot_maxsize = size;
-	device->snapshot_timestamp = 0;
+	device->snapshot = NULL;
 	device->snapshot_faultcount = 0;
-
-	INIT_LIST_HEAD(&device->snapshot_obj_list);
-	INIT_LIST_HEAD(&device->snapshot_cp_list);
-	device->snapshot_cur_ib_objs = NULL;
-	device->snapshot_cur_ib_objs_size = 0;
 
 	ret = kobject_init_and_add(&device->snapshot_kobj, &ktype_snapshot,
 		&device->dev->kobj, "snapshot");
@@ -979,10 +996,6 @@ int kgsl_device_snapshot_init(struct kgsl_device *device)
 		goto done;
 
 	ret = sysfs_create_bin_file(&device->snapshot_kobj, &snapshot_attr);
-	if (ret)
-		goto done;
-
-	ret  = sysfs_create_file(&device->snapshot_kobj, &attr_trigger.attr);
 	if (ret)
 		goto done;
 
@@ -997,31 +1010,29 @@ done:
 }
 EXPORT_SYMBOL(kgsl_device_snapshot_init);
 
-/* kgsl_device_snapshot_close - Take down snapshot memory for a device
- * @device - Pointer to the kgsl_device
+/**
+ * kgsl_device_snapshot_close() - take down snapshot memory for a device
+ * @device: Pointer to the kgsl_device
  *
  * Remove the sysfs files and free the memory allocated for the GPU
  * snapshot
  */
-
 void kgsl_device_snapshot_close(struct kgsl_device *device)
 {
 	sysfs_remove_bin_file(&device->snapshot_kobj, &snapshot_attr);
-	sysfs_remove_file(&device->snapshot_kobj, &attr_trigger.attr);
 	sysfs_remove_file(&device->snapshot_kobj, &attr_timestamp.attr);
 
 	kobject_put(&device->snapshot_kobj);
 
-	kfree(device->snapshot);
+	kfree(device->snapshot_memory.ptr);
 
-	device->snapshot = NULL;
-	device->snapshot_maxsize = 0;
-	device->snapshot_timestamp = 0;
+	device->snapshot_memory.ptr = NULL;
+	device->snapshot_memory.size = 0;
 	device->snapshot_faultcount = 0;
 }
 EXPORT_SYMBOL(kgsl_device_snapshot_close);
 
-/*
+/**
  * kgsl_snapshot_add_ib_obj_list() - Add a IB object list to the snapshot
  * object list
  * @device: the device that is being snapshotted
@@ -1032,8 +1043,7 @@ EXPORT_SYMBOL(kgsl_device_snapshot_close);
  * Adds a new IB to the list of IB objects maintained when getting snapshot
  * Returns 0 on success else -ENOMEM on error
  */
-int kgsl_snapshot_add_ib_obj_list(struct kgsl_device *device,
-	phys_addr_t ptbase,
+int kgsl_snapshot_add_ib_obj_list(struct kgsl_snapshot *snapshot,
 	struct adreno_ib_object_list *ib_obj_list)
 {
 	struct kgsl_snapshot_cp_obj *obj;
@@ -1042,98 +1052,91 @@ int kgsl_snapshot_add_ib_obj_list(struct kgsl_device *device,
 	if (!obj)
 		return -ENOMEM;
 	obj->ib_obj_list = ib_obj_list;
-	obj->ptbase = ptbase;
-	list_add(&obj->node, &device->snapshot_cp_list);
+	list_add(&obj->node, &snapshot->cp_list);
 	return 0;
 }
 
-/*
- * snapshot_object() - Dump an IB object into memory
- * @device - Device being snapshotted
- * @snapshot - Snapshot memory
- * @remain - Amount of bytes that the snapshot memory can take
- * @priv - Pointer to the object being snapshotted
- *
- * Returns the amount of bytes written
- */
-static int snapshot_object(struct kgsl_device *device, void *snapshot,
-			int remain, void *priv)
+static size_t _mempool_add_object(u8 *data, struct kgsl_snapshot_object *obj)
 {
-	int ret = 0;
-	struct kgsl_snapshot_object *obj = priv;
-	struct kgsl_snapshot_gpu_object *header = snapshot;
-	void *dest;
-
-	if (remain < sizeof(*header) + obj->size) {
-		KGSL_DRV_ERR(device, "Not enough space in snapshot\n");
-		return ret;
-	}
-	header->size = obj->size >> 2;
-	header->gpuaddr = obj->gpuaddr;
-	header->ptbase = (__u32)obj->ptbase;
-	header->type = obj->type;
-	dest = snapshot + sizeof(*header);
+	struct kgsl_snapshot_section_header *section =
+		(struct kgsl_snapshot_section_header *)data;
+	struct kgsl_snapshot_gpu_object *header =
+		(struct kgsl_snapshot_gpu_object *)(data + sizeof(*section));
+	u8 *dest = data + sizeof(*section) + sizeof(*header);
 
 	if (!kgsl_memdesc_map(&obj->entry->memdesc)) {
-		KGSL_DRV_ERR(device, "Failed to map memdesc\n");
+		KGSL_CORE_ERR("snapshot: failed to map GPU object\n");
 		return 0;
 	}
+
+	section->magic = SNAPSHOT_SECTION_MAGIC;
+	section->id = KGSL_SNAPSHOT_SECTION_GPU_OBJECT;
+	section->size = obj->size + sizeof(*header) + sizeof(*section);
+
+	header->size = obj->size >> 2;
+	header->gpuaddr = obj->gpuaddr;
+	header->ptbase =
+	 (__u32)kgsl_mmu_pagetable_get_ptbase(obj->entry->priv->pagetable);
+	header->type = obj->type;
+
 	memcpy(dest, obj->entry->memdesc.hostptr + obj->offset, obj->size);
-	ret += sizeof(*header) + obj->size;
 	kgsl_memdesc_unmap(&obj->entry->memdesc);
-	return ret;
+
+	return section->size;
 }
 
-/*
- * kgsl_snapshot_save_frozen_objs - Save the objects frozen in snapshot into
+/**
+ * kgsl_snapshot_save_frozen_objs() - Save the objects frozen in snapshot into
  * memory so that the data reported in these objects is correct when snapshot
  * is taken
- * @work - The work item that scheduled this work
+ * @work: The work item that scheduled this work
  */
 void kgsl_snapshot_save_frozen_objs(struct work_struct *work)
 {
-	struct kgsl_device *device = container_of(work, struct kgsl_device,
-		snapshot_obj_ws);
-	struct kgsl_snapshot_object *snapshot_obj, *snapshot_obj_temp;
-	unsigned int remain = 0;
-	void *snapshot_dest;
+	struct kgsl_snapshot *snapshot = container_of(work,
+				struct kgsl_snapshot, work);
+	struct kgsl_snapshot_object *obj, *tmp;
+	size_t size = 0;
+	void *ptr;
 
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	kgsl_snapshot_process_ib_obj_list(snapshot);
 
-	kgsl_snapshot_process_ib_obj_list(device);
-
-	/* If already exists then wait for it to be released */
-	if (device->snapshot_cur_ib_objs)
-		goto done;
-
-	list_for_each_entry_safe(snapshot_obj, snapshot_obj_temp,
-			&device->snapshot_obj_list, node) {
-		snapshot_obj->size = ALIGN(snapshot_obj->size, 4);
-		remain += (snapshot_obj->size +
+	list_for_each_entry(obj, &snapshot->obj_list, node) {
+		obj->size = ALIGN(obj->size, 4);
+		size += (obj->size +
 			sizeof(struct kgsl_snapshot_gpu_object) +
 			sizeof(struct kgsl_snapshot_section_header));
 	}
-	if (!remain)
+
+	if (size == 0)
 		goto done;
 
-	device->snapshot_cur_ib_objs = vmalloc(remain);
-	if (!device->snapshot_cur_ib_objs)
-		goto done;
+	snapshot->mempool = vmalloc(size);
+	if (snapshot->mempool != NULL)
+		KGSL_CORE_ERR("snapshot: mempool address %p, size %zx\n",
+				snapshot->mempool, size);
 
-	KGSL_DRV_ERR(device,
-	"Allocated memory for snapshot objects at address %p, size %x\n",
-	device->snapshot_cur_ib_objs, remain);
-	snapshot_dest = device->snapshot_cur_ib_objs;
-	device->snapshot_cur_ib_objs_size = remain;
+	ptr = snapshot->mempool;
+	snapshot->mempool_size = 0;
 
-	list_for_each_entry_safe(snapshot_obj, snapshot_obj_temp,
-			&device->snapshot_obj_list, node) {
-		snapshot_dest = kgsl_snapshot_add_section(device,
-					KGSL_SNAPSHOT_SECTION_GPU_OBJECT,
-					snapshot_dest, &remain, snapshot_object,
-					snapshot_obj);
-		kgsl_snapshot_put_object(device, snapshot_obj);
+	/* even if vmalloc fails, make sure we clean up the obj_list */
+	list_for_each_entry_safe(obj, tmp, &snapshot->obj_list, node) {
+		if (snapshot->mempool) {
+			size_t ret = _mempool_add_object(ptr, obj);
+			ptr += ret;
+			snapshot->mempool_size += ret;
+		}
+
+		kgsl_snapshot_put_object(obj);
 	}
 done:
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	/*
+	 * Get rid of the process struct here, so that it doesn't sit
+	 * around until someone bothers to read the snapshot file.
+	 */
+	kgsl_process_private_put(snapshot->process);
+	snapshot->process = NULL;
+
+	complete_all(&snapshot->dump_gate);
+	return;
 }

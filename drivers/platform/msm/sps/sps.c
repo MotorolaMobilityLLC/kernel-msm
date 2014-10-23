@@ -1478,7 +1478,7 @@ int sps_flow_on(struct sps_pipe *h)
 {
 	struct sps_pipe *pipe = h;
 	struct sps_bam *bam;
-	int result;
+	int result = 0;
 
 	SPS_DBG2("sps:%s.", __func__);
 
@@ -1491,8 +1491,8 @@ int sps_flow_on(struct sps_pipe *h)
 	if (bam == NULL)
 		return SPS_ERROR;
 
-	/* Enable the pipe data flow */
-	result = sps_rm_state_change(pipe, SPS_STATE_ENABLE);
+	bam_pipe_halt(bam->base, pipe->pipe_index, false);
+
 	sps_bam_unlock(bam);
 
 	return result;
@@ -1507,7 +1507,7 @@ int sps_flow_off(struct sps_pipe *h, enum sps_flow_off mode)
 {
 	struct sps_pipe *pipe = h;
 	struct sps_bam *bam;
-	int result;
+	int result = 0;
 
 	SPS_DBG2("sps:%s.", __func__);
 
@@ -1520,8 +1520,8 @@ int sps_flow_off(struct sps_pipe *h, enum sps_flow_off mode)
 	if (bam == NULL)
 		return SPS_ERROR;
 
-	/* Disable the pipe data flow */
-	result = sps_rm_state_change(pipe, SPS_STATE_DISABLE);
+	bam_pipe_halt(bam->base, pipe->pipe_index, true);
+
 	sps_bam_unlock(bam);
 
 	return result;
@@ -2308,6 +2308,37 @@ int sps_timer_ctrl(struct sps_pipe *h,
 	return result;
 }
 EXPORT_SYMBOL(sps_timer_ctrl);
+
+/*
+ * Reset a BAM pipe
+ */
+int sps_pipe_reset(unsigned long dev, u32 pipe)
+{
+	struct sps_bam *bam;
+
+	SPS_DBG("sps:%s.", __func__);
+
+	if (!dev) {
+		SPS_ERR("sps:%s:BAM handle is NULL.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	if (pipe >= BAM_MAX_PIPES) {
+		SPS_ERR("sps:%s:pipe index is invalid.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam = sps_h2bam(dev);
+	if (bam == NULL) {
+		SPS_ERR("sps:%s:BAM is not found by handle.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	bam_pipe_reset(bam->base, pipe);
+
+	return 0;
+}
+EXPORT_SYMBOL(sps_pipe_reset);
 
 /**
  * Allocate client state context

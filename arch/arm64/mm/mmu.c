@@ -26,6 +26,7 @@
 #include <linux/memblock.h>
 #include <linux/fs.h>
 #include <linux/io.h>
+#include <linux/dma-contiguous.h>
 
 #include <asm/cputype.h>
 #include <asm/sections.h>
@@ -185,8 +186,29 @@ static void __init alloc_init_pte(pmd_t *pmd, unsigned long addr,
 	} while (pte++, addr += PAGE_SIZE, addr != end);
 }
 
+#ifdef CONFIG_STRICT_MEMORY_RWX
+pmdval_t get_pmd_prot_sect_kernel(unsigned long addr)
+{
+	if (addr >= (unsigned long)__init_data_begin)
+		return prot_sect_kernel | PMD_SECT_PXN;
+	if (addr >= (unsigned long)__init_begin)
+		return prot_sect_kernel | PMD_SECT_RDONLY;
+	if (addr >= (unsigned long)__start_rodata)
+		return prot_sect_kernel | PMD_SECT_RDONLY | PMD_SECT_PXN;
+	if (addr >= (unsigned long)_stext)
+		return prot_sect_kernel | PMD_SECT_RDONLY;
+	return prot_sect_kernel | PMD_SECT_PXN;
+}
+#else
+pmdval_t get_pmd_prot_sect_kernel(unsigned long addr)
+{
+	return prot_sect_kernel;
+}
+#endif
+
 static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
-				  unsigned long end, phys_addr_t phys)
+				  unsigned long end, phys_addr_t phys,
+				  bool pages)
 {
 	pmd_t *pmd;
 	unsigned long next;
@@ -203,23 +225,33 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 	do {
 		next = pmd_addr_end(addr, end);
 		/* try section mapping first */
-		if (((addr | next | phys) & ~SECTION_MASK) == 0)
-			set_pmd(pmd, __pmd(phys | prot_sect_kernel));
-		else
+		if (!pages && ((addr | next | phys) & ~SECTION_MASK) == 0) {
+			pmd_t old_pmd =*pmd;
+			set_pmd(pmd,
+				__pmd(phys | get_pmd_prot_sect_kernel(addr)));
+			/*
+			 * Check for previous table entries created during
+			 * boot (__create_page_tables) and flush them.
+			 */
+			if (!pmd_none(old_pmd))
+				flush_tlb_all();
+		} else {
 			alloc_init_pte(pmd, addr, next, __phys_to_pfn(phys));
+		}
 		phys += next - addr;
 	} while (pmd++, addr = next, addr != end);
 }
 
 static void __init alloc_init_pud(pgd_t *pgd, unsigned long addr,
-				  unsigned long end, unsigned long phys)
+				  unsigned long end, unsigned long phys,
+				  bool force_pages)
 {
 	pud_t *pud = pud_offset(pgd, addr);
 	unsigned long next;
 
 	do {
 		next = pud_addr_end(addr, end);
-		alloc_init_pmd(pud, addr, next, phys);
+		alloc_init_pmd(pud, addr, next, phys, force_pages);
 		phys += next - addr;
 	} while (pud++, addr = next, addr != end);
 }
@@ -229,7 +261,7 @@ static void __init alloc_init_pud(pgd_t *pgd, unsigned long addr,
  * mapping specified by 'md'.
  */
 static void __init create_mapping(phys_addr_t phys, unsigned long virt,
-				  phys_addr_t size)
+				  phys_addr_t size, bool force_pages)
 {
 	unsigned long addr, length, end, next;
 	pgd_t *pgd;
@@ -247,10 +279,56 @@ static void __init create_mapping(phys_addr_t phys, unsigned long virt,
 	end = addr + length;
 	do {
 		next = pgd_addr_end(addr, end);
-		alloc_init_pud(pgd, addr, next, phys);
+		alloc_init_pud(pgd, addr, next, phys, force_pages);
 		phys += next - addr;
 	} while (pgd++, addr = next, addr != end);
 }
+
+static inline pmd_t *pmd_off_k(unsigned long virt)
+{
+	return pmd_offset(pud_offset(pgd_offset_k(virt), virt), virt);
+}
+
+void __init remap_as_pages(unsigned long start, unsigned long size)
+{
+	unsigned long addr;
+	unsigned long end = start + size;
+
+	/*
+	 * Clear previous low-memory mapping
+	 */
+	for (addr = __phys_to_virt(start); addr < __phys_to_virt(end);
+	     addr += PMD_SIZE)
+		pmd_clear(pmd_off_k(addr));
+
+	create_mapping(start, __phys_to_virt(start), size, true);
+}
+
+struct dma_contig_early_reserve {
+	phys_addr_t base;
+	unsigned long size;
+};
+
+static struct dma_contig_early_reserve dma_mmu_remap[MAX_CMA_AREAS] __initdata;
+
+static int dma_mmu_remap_num __initdata;
+
+void __init dma_contiguous_early_fixup(phys_addr_t base, unsigned long size)
+{
+	dma_mmu_remap[dma_mmu_remap_num].base = base;
+	dma_mmu_remap[dma_mmu_remap_num].size = size;
+	dma_mmu_remap_num++;
+}
+
+static void __init dma_contiguous_remap(void)
+{
+	int i;
+	for (i = 0; i < dma_mmu_remap_num; i++)
+		remap_as_pages(dma_mmu_remap[i].base,
+			       dma_mmu_remap[i].size);
+}
+
+
 
 #ifdef CONFIG_EARLY_PRINTK
 /*
@@ -334,12 +412,84 @@ static void __init map_mem(void)
 		}
 #endif
 
-		create_mapping(start, __phys_to_virt(start), end - start);
+		create_mapping(start, __phys_to_virt(start), end - start,
+					false);
 	}
 
 	/* Limit no longer required. */
 	memblock_set_current_limit(MEMBLOCK_ALLOC_ANYWHERE);
 }
+#ifdef CONFIG_FORCE_PAGES
+static noinline void split_pmd(pmd_t *pmd, unsigned long addr,
+				unsigned long end, unsigned long pfn)
+{
+	pte_t *pte, *start_pte;
+
+	start_pte = early_alloc(PTRS_PER_PTE * sizeof(pte_t));
+	pte = start_pte;
+
+	do {
+		set_pte(pte, pfn_pte(pfn, PAGE_KERNEL_EXEC));
+		pfn++;
+	} while (pte++, addr += PAGE_SIZE, addr != end);
+
+	set_pmd(pmd, __pmd((__pa(start_pte)) | PMD_TYPE_TABLE));
+}
+
+static noinline void __init remap_pages(void)
+{
+	struct memblock_region *reg;
+
+	for_each_memblock(memory, reg) {
+		phys_addr_t phys_pgd = reg->base;
+		phys_addr_t phys_end = reg->base + reg->size;
+		unsigned long addr_pgd = (unsigned long)__va(phys_pgd);
+		unsigned long end = (unsigned long)__va(phys_end);
+		pmd_t *pmd = NULL;
+		pud_t *pud = NULL;
+		pgd_t *pgd = NULL;
+		unsigned long next_pud, next_pmd, next_pgd;
+		unsigned long addr_pmd, addr_pud;
+		phys_addr_t phys_pud, phys_pmd;
+
+		if (phys_pgd >= phys_end)
+			break;
+
+		pgd = pgd_offset(&init_mm, addr_pgd);
+		do {
+			next_pgd = pgd_addr_end(addr_pgd, end);
+			pud = pud_offset(pgd, addr_pgd);
+			addr_pud = addr_pgd;
+			phys_pud = phys_pgd;
+			do {
+				next_pud = pud_addr_end(addr_pud, next_pgd);
+				pmd = pmd_offset(pud, addr_pud);
+				addr_pmd = addr_pud;
+				phys_pmd = phys_pud;
+				do {
+					next_pmd = pmd_addr_end(addr_pmd,
+								next_pud);
+					if (pmd_none(*pmd) || pmd_bad(*pmd))
+						split_pmd(pmd, addr_pmd,
+					next_pmd, __phys_to_pfn(phys_pmd));
+					pmd++;
+					phys_pmd += next_pmd - addr_pmd;
+				} while (addr_pmd = next_pmd,
+						addr_pmd < next_pud);
+				phys_pud += next_pud - addr_pud;
+			} while (pud++, addr_pud = next_pud,
+						addr_pud < next_pgd);
+			phys_pgd += next_pgd - addr_pgd;
+		} while (pgd++, addr_pgd = next_pgd, addr_pgd < end);
+	}
+}
+
+#else
+static void __init remap_pages(void)
+{
+
+}
+#endif
 
 /*
  * paging_init() sets up the page tables, initialises the zone memory
@@ -351,6 +501,8 @@ void __init paging_init(void)
 
 	init_mem_pgprot();
 	map_mem();
+	dma_contiguous_remap();
+	remap_pages();
 
 	/*
 	 * Finally flush the caches and tlb to ensure that we're in a

@@ -10,6 +10,14 @@
 /*
  * v4l2_buffer:
  *
+ * VPU uses standard V4L2 buffer flags, and defines some custom
+ * flags (used in v4l2_buffer.flags field):
+ *	V4L2_QCOM_BUF_FLAG_EOS: buffer flag indicating end of stream
+ *	V4L2_BUF_FLAG_CDS_ENABLE: buffer flag to enable chroma down-sampling
+ */
+#define V4L2_BUF_FLAG_CDS_ENABLE	0x10000000
+
+/*
  * VPU uses multi-plane v4l2_buffer in the following manner:
  * each plane can be a separate ION buffer, or all planes are from the
  * same ION buffer (under this case all planes have the same fd, but different
@@ -142,6 +150,15 @@ struct v4l2_format_vpu_extension {
  * VPU_EVENT_SESSION_TIMESTAMP: New Session timestamp
  * payload data: vpu_frame_timestamp_info
  *
+ * VPU_EVENT_SESSION_CREATED: New session has been created
+ * payload data: int (number of the attached session)
+ *
+ * VPU_EVENT_SESSION_FREED: Session is detached and free
+ * payload data: int (number of the detached session)
+ *
+ * VPU_EVENT_SESSION_CLIENT_EXITED: Indicates that clients of current
+ *	session have exited.
+ * payload data: int (number of all remaining clients for this session)
  *
  * VPU_EVENT_HW_ERROR: a hardware error occurred in VPU
  * payload data: NULL
@@ -159,6 +176,9 @@ enum VPU_PRIVATE_EVENT {
 	VPU_EVENT_FLUSH_DONE = VPU_EVENT_START + 1,
 	VPU_EVENT_ACTIVE_REGION_CHANGED = VPU_EVENT_START + 2,
 	VPU_EVENT_SESSION_TIMESTAMP = VPU_EVENT_START + 3,
+	VPU_EVENT_SESSION_CREATED = VPU_EVENT_START + 4,
+	VPU_EVENT_SESSION_FREED = VPU_EVENT_START + 5,
+	VPU_EVENT_SESSION_CLIENT_EXITED = VPU_EVENT_START + 6,
 
 	VPU_EVENT_HW_ERROR = VPU_EVENT_START + 11,
 	VPU_EVENT_INVALID_CONFIG = VPU_EVENT_START + 12,
@@ -415,10 +435,16 @@ struct vpu_control_port {
  * V P U   D E V I C E   P R I V A T E   I O C T L   C O D E S
  */
 
+/* VPU Session ioctls (deprecated) */
+#define VPU_ATTACH_TO_SESSION	_IOW('V', (BASE_VIDIOC_PRIVATE + 1), int)
+
 /* VPU Session ioctls */
 #define VPU_QUERY_SESSIONS	_IOR('V', (BASE_VIDIOC_PRIVATE + 0), int)
-#define VPU_ATTACH_TO_SESSION	_IOW('V', (BASE_VIDIOC_PRIVATE + 1), int)
 #define VPU_CREATE_SESSION	_IOR('V', (BASE_VIDIOC_PRIVATE + 2), int)
+#define VPU_JOIN_SESSION	_IOW('V', (BASE_VIDIOC_PRIVATE + 3), int)
+
+/* Enable second VPU output port and use with current client */
+#define VPU_CREATE_OUTPUT2	_IO('V', (BASE_VIDIOC_PRIVATE + 5))
 
 /* Explicit commit of session configuration */
 #define VPU_COMMIT_CONFIGURATION    _IO('V', (BASE_VIDIOC_PRIVATE + 10))

@@ -252,9 +252,13 @@ struct mdss_ad_init32 {
 	uint16_t frame_h;
 	uint8_t logo_v;
 	uint8_t logo_h;
+	uint32_t alpha;
+	uint32_t alpha_base;
 	uint32_t bl_lin_len;
+	uint32_t bl_att_len;
 	compat_caddr_t bl_lin;
 	compat_caddr_t bl_lin_inv;
+	compat_caddr_t bl_att_lut;
 };
 
 struct mdss_ad_cfg32 {
@@ -355,6 +359,7 @@ struct mdp_overlay32 {
 	uint32_t blend_op;
 	uint32_t transp_mask;
 	uint32_t flags;
+	uint32_t pipe_type;
 	uint32_t id;
 	uint8_t priority;
 	uint32_t user_data[6];
@@ -363,6 +368,13 @@ struct mdp_overlay32 {
 	uint8_t vert_deci;
 	struct mdp_overlay_pp_params32 overlay_pp_cfg;
 	struct mdp_scale_data scale;
+};
+
+struct mdp_overlay_list32 {
+	uint32_t num_overlays;
+	compat_caddr_t overlay_list;
+	uint32_t flags;
+	uint32_t processed_overlays;
 };
 
 #endif

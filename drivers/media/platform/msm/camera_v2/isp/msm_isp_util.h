@@ -46,6 +46,8 @@ struct msm_isp_bandwidth_mgr {
 
 uint32_t msm_isp_get_framedrop_period(
 	enum msm_vfe_frame_skip_pattern frame_skip_pattern);
+void msm_isp_reset_burst_count_and_frame_drop(
+	struct vfe_device *vfe_dev, struct msm_vfe_axi_stream *stream_info);
 
 int msm_isp_init_bandwidth_mgr(enum msm_isp_hw_client client);
 int msm_isp_update_bandwidth(enum msm_isp_hw_client client,
@@ -73,7 +75,6 @@ void msm_isp_process_error_info(struct vfe_device *vfe_dev);
 int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh);
 int msm_isp_close_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh);
 long msm_isp_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg);
-int msm_isp_proc_cmd_list(struct vfe_device *vfe_dev, void *arg);
 int msm_isp_get_clk_info(struct vfe_device *vfe_dev,
 	struct platform_device *pdev, struct msm_cam_clk_info *vfe_clk_info);
 

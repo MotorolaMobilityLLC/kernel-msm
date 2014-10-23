@@ -17,7 +17,7 @@
 #include "apq8084-mtp.dtsi"
 
 / {
-	model = "Qualcomm APQ 8084 v1.1, Old Pwr Grid, SMB1357 MDM9x35 MTP";
+	model = "Qualcomm Technologies, Inc. APQ 8084 v1.1, Old Pwr Grid, SMB1357 MDM9x35 MTP";
 	compatible = "qcom,apq8084-mtp", "qcom,apq8084", "qcom,mtp";
 	qcom,board-id = <8 3>;
 };
@@ -58,6 +58,22 @@
 	status = "ok";
 };
 
+&pcie1 {
+	qcom,ep-wakeirq;
+};
+
+&mhi {
+	esoc-names = "mdm";
+	esoc-0 = <&mdm1>;
+	mhi-device-wake-gpio =
+		<&msmgpio 108 0>;
+	qcom,msm-bus,name = "mhi";
+	qcom,msm-bus,num-cases = <2>;
+	qcom,msm-bus,num-paths = <1>;
+	qcom,msm-bus,vectors-KBps =
+			<100 512 0 0>,
+			<100 512 625000000 625000000>;
+};
 &usb3 {
 	vbus_dwc3-supply = <&smb1357_otg_vreg>;
 };
@@ -73,4 +89,22 @@
 &cnss {
 	esoc-names = "modem_wlan";
 	esoc-0 = <&mdm1>;
+};
+
+&soc {
+	sound-9330 {
+		pinctrl-names = "pmx-quad-mi2s-sleep",
+				"pmx-quad-mi2s-active";
+		pinctrl-0 = <&quad_mi2s_sleep>;
+		pinctrl-1 = <&quad_mi2s_active>;
+	};
+
+	qcom,msm-dai-mi2s {
+		qcom,msm-dai-q6-mi2s-quat {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <3>;
+			qcom,msm-mi2s-tx-lines = <1>;
+			qcom,msm-mi2s-rx-lines = <2>;
+		};
+	};
 };

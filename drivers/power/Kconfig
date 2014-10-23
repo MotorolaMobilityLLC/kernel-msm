@@ -412,6 +412,17 @@ config SMB1360_CHARGER_FG
 	  The driver reports the status via the power supply framework.
 	  A status change triggers an IRQ via the device STAT pin.
 
+config SMB358_CHARGER
+	tristate "SMB358 Battery Charger"
+	depends on I2C
+	help
+	  Say Y to include support for SMB358 Battery Charger.
+	  SMB358 is a single path switching mode charger capable of charging
+	  the battery with 2Amps of current.
+	  The driver supports charger enable/disable.
+	  The driver reports the charger status via the power supply framework.
+	  A charger status change triggers an IRQ via the device STAT pin.
+
 config BQ27520_TEST_ENABLE
 	bool "Enable BQ27520 Fuel Gauge Chip Test"
 	depends on BATTERY_BQ27520
@@ -441,6 +452,26 @@ config QPNP_CHARGER
 	  and boost device which supports USB detection and charging. The driver
 	  also offers relevant information to userspace via the power supply
 	  framework.
+
+config QPNP_SMBCHARGER
+	tristate "QPNP SMB Charger driver"
+	depends on SPMI
+	depends on OF_SPMI
+	help
+	  Say Y here to enable the dual path switch mode battery charger which
+	  supports USB detection and battery charging up to 3A.
+	  The driver also offers relevant information to userspace via the
+	  power supply framework.
+
+config QPNP_FG
+	tristate "QPNP fuel gauge driver"
+	depends on SPMI
+	depends on OF_SPMI
+	help
+	  Say Y here to enable the Fuel Gauge driver. This adds support for
+	  battery fuel gauging and state of charge of battery connected to the
+	  fuel gauge. The state of charge is reported through a BMS power
+	  supply property and also sends uevents when the capacity is updated.
 
 config PM8921_BMS
 	tristate "PM8921 Battery Monitoring System driver"
