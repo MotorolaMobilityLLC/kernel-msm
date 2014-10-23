@@ -33,6 +33,13 @@ config GENERIC_IO
 	boolean
 	default n
 
+config SPINLOCK_TIMEOUT_EXT
+	bool "debug spinlock with extended timeout"
+	default n
+	help
+	  This debug option is provided for the cases where spinlock contention
+	  is severe.
+
 config CRC_CCITT
 	tristate "CRC-CCITT functions"
 	help
