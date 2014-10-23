@@ -228,7 +228,8 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 					"Headset button 1 released");
 				Headset_State = SH_HEADSET_INSERTED;
 				input_report_key(ps_stml0xx->input_dev,
-					KEY_MEDIA, 0);
+					stml0xx_misc_data->pdata->headset_button_1_keycode,
+					0);
 				input_sync(ps_stml0xx->input_dev);
 			}
 			break;
@@ -237,6 +238,10 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset button 2 released");
 				Headset_State = SH_HEADSET_INSERTED;
+				input_report_key(ps_stml0xx->input_dev,
+					stml0xx_misc_data->pdata->headset_button_2_keycode,
+					0);
+				input_sync(ps_stml0xx->input_dev);
 			}
 			break;
 		case SH_HEADSET_BUTTON_3:
@@ -244,6 +249,10 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset button 3 released");
 				Headset_State = SH_HEADSET_INSERTED;
+				input_report_key(ps_stml0xx->input_dev,
+					stml0xx_misc_data->pdata->headset_button_3_keycode,
+					0);
+				input_sync(ps_stml0xx->input_dev);
 			}
 			break;
 		case SH_HEADSET_BUTTON_4:
@@ -251,6 +260,10 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset button 4 released");
 				Headset_State = SH_HEADSET_INSERTED;
+				input_report_key(ps_stml0xx->input_dev,
+					stml0xx_misc_data->pdata->headset_button_4_keycode,
+					0);
+				input_sync(ps_stml0xx->input_dev);
 			}
 			break;
 		default:
@@ -302,20 +315,33 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 					"Headset button 1 pressed");
 				Headset_State = SH_HEADSET_BUTTON_1;
 				input_report_key(ps_stml0xx->input_dev,
-					KEY_MEDIA, 1);
+					stml0xx_misc_data->pdata->headset_button_1_keycode,
+					1);
 				input_sync(ps_stml0xx->input_dev);
 			} else if (new_state & SH_HEADSET_BUTTON_2_DOWN) {
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset button 2 pressed");
 				Headset_State = SH_HEADSET_BUTTON_2;
+				input_report_key(ps_stml0xx->input_dev,
+					stml0xx_misc_data->pdata->headset_button_2_keycode,
+					1);
+				input_sync(ps_stml0xx->input_dev);
 			} else if (new_state & SH_HEADSET_BUTTON_3_DOWN) {
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset button 3 pressed");
 				Headset_State = SH_HEADSET_BUTTON_3;
+				input_report_key(ps_stml0xx->input_dev,
+					stml0xx_misc_data->pdata->headset_button_3_keycode,
+					1);
+				input_sync(ps_stml0xx->input_dev);
 			} else if (new_state & SH_HEADSET_BUTTON_4_DOWN) {
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 					"Headset button 4 pressed");
 				Headset_State = SH_HEADSET_BUTTON_4;
+				input_report_key(ps_stml0xx->input_dev,
+					stml0xx_misc_data->pdata->headset_button_4_keycode,
+					1);
+				input_sync(ps_stml0xx->input_dev);
 			}
 		}
 	}
