@@ -139,6 +139,7 @@ static struct cnss_fw_files FW_FILES_DEFAULT = {
 #define CNSS_PINCTRL_STATE_ACTIVE "default"
 
 static DEFINE_SPINLOCK(pci_link_down_lock);
+static unsigned int wlan112;
 
 #define FW_NAME_FIXED_LEN	(6)
 #define MAX_NUM_OF_SEGMENTS	(16)
@@ -449,6 +450,12 @@ static int cnss_wlan_gpio_init(struct cnss_wlan_gpio_info *info)
 	}
 	info->state = info->init;
 
+	ret = gpio_request(wlan112, "wlan-112");
+	if (ret) {
+		pr_err("cnss: can't get gpio %s ret %d\n", "wlan-112", ret);
+		goto err_gpio_dir;
+	}
+	ret = gpio_direction_output(wlan112, 1);
 	return ret;
 
 err_gpio_dir:
@@ -494,7 +501,9 @@ static void cnss_wlan_gpio_set(struct cnss_wlan_gpio_info *info, bool state)
 			 info->name, state ? "high" : "low");
 		return;
 	}
-
+	mdelay(100);
+	gpio_set_value(wlan112, 1);
+	mdelay(100);
 	gpio_set_value(info->num, state);
 	info->state = state;
 
@@ -668,6 +677,8 @@ static int cnss_wlan_get_resources(struct platform_device *pdev)
 			       gpio_info->name, ret);
 		goto err_get_gpio;
 	}
+	wlan112 = of_get_named_gpio((&pdev->dev)->of_node, "wlan-112", 0);
+	pr_err("cnss: wlan112 is %d\n", wlan112);
 
 	ret = cnss_pinctrl_init(gpio_info, pdev);
 	if (ret) {
