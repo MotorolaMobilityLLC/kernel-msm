@@ -556,6 +556,10 @@ struct stml0xx_platform_data {
 	int headset_button_1_2_threshold;
 	int headset_button_2_3_threshold;
 	int headset_button_3_upper_threshold;
+	int headset_button_1_keycode;
+	int headset_button_2_keycode;
+	int headset_button_3_keycode;
+	int headset_button_4_keycode;
 };
 
 struct stml0xx_data {
