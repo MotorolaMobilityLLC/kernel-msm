@@ -16,6 +16,10 @@
 #define S5K5E2_SENSOR_NAME "s5k5e2"
 DEFINE_MSM_MUTEX(s5k5e2_mut);
 
+#define S5K5E2_OTP_PAGE_SIZE 64
+#define S5K5E2_OTP_NUM_PAGES 6
+#define S5K5E2_OTP_TOTAL_SIZE 384 /* no of pages*page size */
+static uint8_t s5k5e2_otp_buf[S5K5E2_OTP_TOTAL_SIZE];
 static struct msm_sensor_ctrl_t s5k5e2_s_ctrl;
 
 static struct msm_sensor_power_setting s5k5e2_power_setting[] = {
@@ -152,10 +156,113 @@ static void __exit s5k5e2_exit_module(void)
 	return;
 }
 
+static int32_t s5k5e2_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	int8_t otp_page_no = 0;
+
+	/* Read otp only once */
+	if (s_ctrl->sensor_otp.otp_read) {
+		pr_debug("%s: OTP block already read", __func__);
+		return rc;
+	}
+
+	/* Assign OTP memory */
+	s5k5e2_s_ctrl.sensor_otp.otp_info = (uint8_t *)s5k5e2_otp_buf;
+	s5k5e2_s_ctrl.sensor_otp.size = sizeof(s5k5e2_otp_buf);
+
+	/* Disable Streaming */
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x0100, 0x0,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0)
+		pr_err("%s: Fail to stream off sensor\n", __func__);
+
+	for (otp_page_no = 0; otp_page_no < S5K5E2_OTP_NUM_PAGES;
+		otp_page_no++) {
+		/* Make initial state */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x0A00, 0x04,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: Unable to set Initial state !\n", __func__);
+			break;
+		}
+
+		/* Set page number */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x0A02, otp_page_no,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: Unable to set otp page no: %d !\n",
+				__func__, otp_page_no);
+			break;
+		}
+
+		/* set read mode */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x0A00, 0x01,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: Unable to set read mode !\n", __func__);
+			break;
+		}
+
+		/* Transfer page data from OTP to buffer */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read_seq(
+			s_ctrl->sensor_i2c_client,
+			0x0A04,
+			s_ctrl->sensor_otp.otp_info +
+			otp_page_no*S5K5E2_OTP_PAGE_SIZE,
+			S5K5E2_OTP_PAGE_SIZE);
+		if (rc < 0) {
+			pr_err("%s: Fail to read OTP page data: otp_page_no: %d\n",
+				__func__, otp_page_no);
+			break;
+		}
+	}
+
+	/* Make initial state */
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x0A00, 0x04,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0)
+		pr_err("%s: Unable to set Initial state !\n", __func__);
+
+	/* Disable NVM controller */
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x0A00, 0x0,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: Unable to disable NVM controller !\n",
+			__func__);
+	}
+
+	/* set otp read flag to read otp only once */
+	s_ctrl->sensor_otp.otp_read = 1;
+
+	return rc;
+}
+
+static int32_t s5k5e2_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	/* This function isn't really needed at this time, even for
+	 * factory, as we will be populating this in user space. */
+	return 0;
+}
+
 static struct msm_sensor_fn_t s5k5e2_func_tbl = {
 	.sensor_config = msm_sensor_config,
 	.sensor_power_up = msm_sensor_power_up,
 	.sensor_power_down = msm_sensor_power_down,
+	.sensor_read_otp_info = s5k5e2_read_otp_info,
+	.sensor_get_module_info = s5k5e2_get_module_info,
 };
 
 static struct msm_sensor_ctrl_t s5k5e2_s_ctrl = {
