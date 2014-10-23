@@ -1287,3 +1287,7 @@
 &pm8994_lvs2 {
 	regulator-always-on;
 };
+
+&cnss {
+	wlan-112 = <&msm_gpio 112 0>;
+};
