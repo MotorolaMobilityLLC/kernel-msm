@@ -39,6 +39,10 @@
 	status = "okay";
 };
 
+&spi_5 {
+	/delete-node/ nmi326@0;
+};
+
 &i2c_6 {
 	status = "okay";
 };
@@ -162,11 +166,6 @@
 		qcom,src-sel = <0>;	/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
-};
-
-&nmi326_dtv {
-	reset-gpio = <&msm_gpio 80 0>;
-	enable-gpio = <&msm_gpio 37 0>;
 };
 
 &stml0xx {
