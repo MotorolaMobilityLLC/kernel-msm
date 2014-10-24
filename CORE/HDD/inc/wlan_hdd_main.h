@@ -799,6 +799,7 @@ typedef struct hdd_scaninfo_s
    vos_event_t scan_finished_event;
 
    hdd_scan_pending_option_e scan_pending_option;
+   tANI_U8 sessionId;
 
 }hdd_scaninfo_t;
 

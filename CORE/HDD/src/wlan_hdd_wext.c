@@ -7834,6 +7834,7 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_scaninfo_t *pScanInfo = NULL;
     eCsrBand band;
     eCsrBand currBand = eCSR_BAND_MAX;
     eCsrBand connectedBand;
@@ -7949,9 +7950,12 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
            vos_update_nv_table_from_wiphy_band((void *)pHddCtx,
                      (void *)pHddCtx->wiphy, (eCsrBand)band);
         }
-
-        hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
-                           eCSR_SCAN_ABORT_DUE_TO_BAND_CHANGE);
+        pScanInfo =  &pHddCtx->scan_info;
+        if ((pScanInfo != NULL) && pHddCtx->scan_info.mScanPending)
+        {
+             hdd_abort_mac_scan(pHddCtx, pScanInfo->sessionId,
+                                eCSR_SCAN_ABORT_DUE_TO_BAND_CHANGE);
+        }
         sme_FilterScanResults(hHal, pAdapter->sessionId);
 
         if (band != eCSR_BAND_ALL &&
