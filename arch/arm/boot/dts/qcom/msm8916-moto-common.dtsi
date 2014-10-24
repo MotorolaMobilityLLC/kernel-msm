@@ -528,26 +528,26 @@
 		};
 	};
 
-	nmi326_enable_reset {
+	dtv_enable_reset {
 		qcom,pins = <&gp 97>, <&gp 98>;
 		qcom,num-grp-pins = <2>;
 		qcom,pin-func = <0>;
-		label = "nmi326-outputs";
+		label = "dtv-outputs";
 
-		nmi326_output_default: nmi326-outputs {
+		dtv_output_default: dtv-outputs {
 			drive-strength = <2>;
 			bias-disable; /* no pull */
 			output-low;
 		};
 	};
 
-	nmi326_irq {
+	dtv_irq {
 		qcom,pins = <&gp 111>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
-		label = "nmi326-irq";
+		label = "dtv-irq";
 
-		nmi326_input_default: nmi326-irq {
+		dtv_input_default: dtv-irq {
 			bias-pull-up; /* pull up */
 		};
 	};
@@ -780,7 +780,7 @@
 			enable-gpio = <&msm_gpio 97 0>;
 			enable-active-high;
 			pinctrl-names = "default";
-			pinctrl-0 = <&nmi326_output_default &nmi326_input_default>;
+			pinctrl-0 = <&dtv_output_default &dtv_input_default>;
 			isdbt_vdd-supply = <&pm8916_l2>;
 		};
 
