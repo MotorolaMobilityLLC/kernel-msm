@@ -55,7 +55,7 @@
 #include "msm_serial_hs_hwreg.h"
 
 // ASUS_BSP Tingy: Enable RX feature of audio debug
-#define ASUS_ENABLE_RX_AUDBG 1
+#define ASUS_ENABLE_RX_AUDBG 0
 
 #if ASUS_ENABLE_RX_AUDBG
 #define DEBUG_TAG "<msmtty>"
@@ -75,6 +75,7 @@ static atomic_t tx_ref = ATOMIC_INIT(0);
 static struct workqueue_struct *enter_input_mode_workQueue;
 static struct workqueue_struct *exit_input_mode_workQueue;
 static struct workqueue_struct *wait_tx_empty_workQueue;
+static int start_work = 0;
 static struct tty_struct *g_tty;
 static struct uart_port *g_port;
 static int is_waiting_tx_empty = 0;
@@ -105,10 +106,15 @@ static void exit_input_mode_func(struct work_struct *data)
 	tty_flip_buffer_push(g_tty->port);
 }
 
+static void start_work_func(struct work_struct *data) {
+	start_work = 1;
+}
+
 static void wait_tx_empty_func(struct work_struct *data);
 static DECLARE_WORK(exit_input_mode_work, exit_input_mode_func);
 static DECLARE_WORK(enter_input_mode_work, enter_input_mode_func);
 static DECLARE_WORK(wait_tx_empty_work, wait_tx_empty_func);
+static DECLARE_DELAYED_WORK(delay_start_work, start_work_func);
 #endif
 
 extern int g_bootdbguart;
@@ -782,7 +788,7 @@ static void handle_tx(struct uart_port *port)
 	}
 
 #if ASUS_ENABLE_RX_AUDBG
-	if (port->line == 0 && g_bootdbguart == 1){
+	if (port->line == 0 && g_bootdbguart == 1 && start_work == 1){
 		atomic_add(1, &tx_ref);
 		gpio_set_value(GPIO_AUDBG_SEL, TX_DIR);
 	}
@@ -826,7 +832,7 @@ static void handle_tx(struct uart_port *port)
 	}
 
 #if ASUS_ENABLE_RX_AUDBG
-	if (port->line == 0 && g_bootdbguart == 1){
+	if (port->line == 0 && g_bootdbguart == 1 && start_work == 1){
 		atomic_add(-1, &tx_ref);
 		if (atomic_read(&tx_ref) == 0)
 		{
@@ -1593,9 +1599,8 @@ static void msm_hsl_console_putchar(struct uart_port *port, int ch)
 	msm_hsl_read(port, regmap[vid][UARTDM_SR]);
 	msm_hsl_write(port, ch, regmap[vid][UARTDM_TF]);
 #if ASUS_ENABLE_RX_AUDBG
-	do{
-		udelay(100);
-	}while(!uart_circ_empty(xmit));
+	if (start_work)
+		do{ udelay(100); }while(!uart_circ_empty(xmit));
 #endif
 }
 
@@ -1627,6 +1632,8 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 	int locked;
 
 #if ASUS_ENABLE_RX_AUDBG
+	int started = start_work;
+
 	if (uart_mode != UMODE_OUTPUT){
 		if (output_mode_request == 1){
 			output_mode_request = 0;
@@ -1656,8 +1663,10 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 	}
 
 #if ASUS_ENABLE_RX_AUDBG
-	atomic_add(1, &tx_ref);
-	gpio_set_value(GPIO_AUDBG_SEL, TX_DIR);
+	if (started) {
+		atomic_add(1, &tx_ref);
+		gpio_set_value(GPIO_AUDBG_SEL, TX_DIR);
+	}
 #endif
 
 	msm_hsl_write(port, 0, regmap[vid][UARTDM_IMR]);
@@ -1665,13 +1674,14 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 	msm_hsl_write(port, msm_hsl_port->imr, regmap[vid][UARTDM_IMR]);
 
 #if ASUS_ENABLE_RX_AUDBG
-	atomic_add(-1, &tx_ref);
-	if (atomic_read(&tx_ref) == 0)
-	{
-		g_port = port;
-		g_vid = vid;
-		if (!is_waiting_tx_empty)
-			queue_work(wait_tx_empty_workQueue, &wait_tx_empty_work);
+	if (started) {
+		atomic_add(-1, &tx_ref);
+		if (atomic_read(&tx_ref) == 0){
+			g_port = port;
+			g_vid = vid;
+			if (!is_waiting_tx_empty)
+				queue_work(wait_tx_empty_workQueue, &wait_tx_empty_work);
+		}
 	}
 #endif
 
@@ -1731,6 +1741,10 @@ static int msm_hsl_console_setup(struct console *co, char *options)
 
 	msm_hsl_write(port, 1, regmap[vid][UARTDM_NCF_TX]);
 	msm_hsl_read(port, regmap[vid][UARTDM_NCF_TX]);
+
+#if ASUS_ENABLE_RX_AUDBG
+	queue_delayed_work(wait_tx_empty_workQueue, &delay_start_work, msecs_to_jiffies(17000));
+#endif
 
 	pr_info("console setup on port #%d\n", port->line);
 
