@@ -630,6 +630,8 @@ int mmc_send_hpi_cmd(struct mmc_card *card, u32 *status)
 		return -EINVAL;
 	}
 
+	panic("!!!!! HPI CMD SHOULD NOT BE ALLOWED !!!!! ");
+
 	opcode = card->ext_csd.hpi_cmd;
 	if (opcode == MMC_STOP_TRANSMISSION)
 		cmd.flags = MMC_RSP_R1B | MMC_CMD_AC;

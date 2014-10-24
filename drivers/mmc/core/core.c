@@ -2632,8 +2632,10 @@ EXPORT_SYMBOL(mmc_can_erase);
 
 int mmc_can_trim(struct mmc_card *card)
 {
+	#if 0
 	if (card->ext_csd.sec_feature_support & EXT_CSD_SEC_GB_CL_EN)
 		return 1;
+	#endif
 	return 0;
 }
 EXPORT_SYMBOL(mmc_can_trim);
@@ -2644,26 +2646,32 @@ int mmc_can_discard(struct mmc_card *card)
 	 * As there's no way to detect the discard support bit at v4.5
 	 * use the s/w feature support filed.
 	 */
+	#if 0
 	if (card->ext_csd.feature_support & MMC_DISCARD_FEATURE)
 		return 1;
+	#endif
 	return 0;
 }
 EXPORT_SYMBOL(mmc_can_discard);
 
 int mmc_can_sanitize(struct mmc_card *card)
 {
+	#if 0
 	if (!mmc_can_trim(card) && !mmc_can_erase(card))
 		return 0;
 	if (card->ext_csd.sec_feature_support & EXT_CSD_SEC_SANITIZE)
 		return 1;
+	#endif
 	return 0;
 }
 EXPORT_SYMBOL(mmc_can_sanitize);
 
 int mmc_can_secure_erase_trim(struct mmc_card *card)
 {
+	#if 0
 	if (card->ext_csd.sec_feature_support & EXT_CSD_SEC_ER_EN)
 		return 1;
+	#endif
 	return 0;
 }
 EXPORT_SYMBOL(mmc_can_secure_erase_trim);
