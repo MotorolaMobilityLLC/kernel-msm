@@ -42,6 +42,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/gpio.h>
+#include <mach/gpiomux.h>
 #include <linux/debugfs.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -52,6 +53,93 @@
 #include <linux/platform_data/qcom-serial_hs_lite.h>
 #include <linux/msm-bus.h>
 #include "msm_serial_hs_hwreg.h"
+
+// ASUS_BSP Tingy: Enable RX feature of audio debug
+#define ASUS_ENABLE_RX_AUDBG 1
+
+#if ASUS_ENABLE_RX_AUDBG
+#define DEBUG_TAG "<msmtty>"
+#define TX_DIR 0
+#define RX_DIR 1
+#define MONITOR_INPUT_KEY 0
+#define RX_RELEASE_ENTER_DELAY (2000) /* ms */
+
+enum UART_MODE{
+	UMODE_INPUT = 0,
+	UMODE_OUTPUT = 1,
+};
+
+static int output_mode_request = 0;
+static int uart_mode = UMODE_OUTPUT;
+static atomic_t tx_ref = ATOMIC_INIT(0);
+static struct workqueue_struct *enter_input_mode_workQueue;
+static struct workqueue_struct *exit_input_mode_workQueue;
+static struct workqueue_struct *wait_tx_empty_workQueue;
+static struct tty_struct *g_tty;
+static struct uart_port *g_port;
+static int is_waiting_tx_empty = 0;
+static unsigned int g_vid;
+extern void vibrator_enable(int value);
+
+static void enter_input_mode_func(struct work_struct *data)
+{
+	if (!g_tty)
+		return;
+
+	vibrator_enable(200);
+}
+
+static void exit_input_mode_func(struct work_struct *data)
+{
+	unsigned char c = 0x0d;
+
+	if (!g_tty)
+		return;
+
+	vibrator_enable(200);
+    /* Wait for user manually ticked the switch */
+	msleep(RX_RELEASE_ENTER_DELAY);
+	vibrator_enable(200);
+    /* Truly insert ENTER (0x0d) to tty */
+	tty_insert_flip_string(g_tty->port, (char *) &c,1);
+	tty_flip_buffer_push(g_tty->port);
+}
+
+static void wait_tx_empty_func(struct work_struct *data);
+static DECLARE_WORK(exit_input_mode_work, exit_input_mode_func);
+static DECLARE_WORK(enter_input_mode_work, enter_input_mode_func);
+static DECLARE_WORK(wait_tx_empty_work, wait_tx_empty_func);
+#endif
+
+extern int g_bootdbguart;
+#define GPIO_AUDBG_TX 8
+#define GPIO_AUDBG_RX 9
+#define GPIO_AUDBG_SEL 32
+
+static struct gpiomux_setting uart_console_cfg_old;
+static struct gpiomux_setting uart_console_cfg_rx_old;
+static struct gpiomux_setting uart_console_cfg_sel_old;
+
+static struct gpiomux_setting uart_console_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting uart_console_cfg_rx = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting uart_console_cfg_sel = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
 
 /*
  * There are 3 different kind of UART Core available on MSM.
@@ -558,6 +646,11 @@ static void handle_rx(struct uart_port *port, unsigned int misr)
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
 
 	vid = msm_hsl_port->ver_id;
+
+#if ASUS_ENABLE_RX_AUDBG
+	g_tty = tty;
+#endif
+
 	/*
 	 * Handle overrun. My understanding of the hardware is that overrun
 	 * is not tied to the RX buffer, so we handle the case out of band.
@@ -608,10 +701,45 @@ static void handle_rx(struct uart_port *port, unsigned int misr)
 		else if (sr & UARTDM_SR_PAR_FRAME_BMSK)
 			flag = TTY_FRAME;
 
+#if ASUS_ENABLE_RX_AUDBG
+		/* We deal only with ttyHSL0 */
+		if (port->line == 0 && g_bootdbguart == 1){
+#if MONITOR_INPUT_KEY
+			printk(DEBUG_TAG "<cnt=%d,c=0x%x> v2\n",count,c);
+#endif
+			/*
+			 * We reserve ENTER (0x0d) and ESC (0x1b) to
+			 * switch mode. They will not send to tty buffer
+			 */
+			if (count == 1 && c == 0x0d){
+				if (uart_mode == UMODE_INPUT){
+					output_mode_request = 1;
+					printk(DEBUG_TAG "M:Enter sent, going UMODE_OUTPUT, sysrq is now %ld\n",
+						port->sysrq);
+					queue_work(exit_input_mode_workQueue, &exit_input_mode_work);
+				}
+			} else if ((count == 1 && c == 0x1b) || (count == 2 && c == 0x1b1b)){
+				if (uart_mode == UMODE_OUTPUT){
+					uart_mode = UMODE_INPUT;
+					printk(DEBUG_TAG "M:ESC sent, going UMODE_INPUT \n");
+					queue_work(enter_input_mode_workQueue, &enter_input_mode_work);
+				}
+			} else if (count > 0){
+				if(uart_mode == UMODE_INPUT){
+					tty_insert_flip_string(tty->port, (char *) &c,
+								(count > 4) ? 4 : count);
+				}
+			}
+		} else {
+			tty_insert_flip_string(tty->port, (char *) &c,
+					(count > 4) ? 4 : count);
+		}
+#else
 		/* TODO: handle sysrq */
 		/* if (!uart_handle_sysrq_char(port, c)) */
 		tty_insert_flip_string(tty->port, (char *) &c,
-				       (count > 4) ? 4 : count);
+					(count > 4) ? 4 : count);
+#endif
 		count -= 4;
 	}
 
@@ -653,6 +781,13 @@ static void handle_tx(struct uart_port *port)
 		return;
 	}
 
+#if ASUS_ENABLE_RX_AUDBG
+	if (port->line == 0 && g_bootdbguart == 1){
+		atomic_add(1, &tx_ref);
+		gpio_set_value(GPIO_AUDBG_SEL, TX_DIR);
+	}
+#endif
+
 	while (tf_pointer < tx_count)  {
 		if (unlikely(!(msm_hsl_read(port, regmap[vid][UARTDM_SR]) &
 			       UARTDM_SR_TXRDY_BMSK)))
@@ -689,6 +824,23 @@ static void handle_tx(struct uart_port *port)
 		tf_pointer += 4;
 		sent_tx = 1;
 	}
+
+#if ASUS_ENABLE_RX_AUDBG
+	if (port->line == 0 && g_bootdbguart == 1){
+		atomic_add(-1, &tx_ref);
+		if (atomic_read(&tx_ref) == 0)
+		{
+			int wait_retry = 100;
+			/* Wait for tx empty and set GPIO back to RX_DIR */
+			while (wait_retry && ! (msm_hsl_read(port, regmap[vid][UARTDM_SR]) & UARTDM_SR_TXEMT_BMSK) )
+			{
+				udelay(100);
+				wait_retry --;
+			}
+			gpio_set_value(GPIO_AUDBG_SEL, RX_DIR);
+		}
+	}
+#endif
 
 	if (uart_circ_empty(xmit))
 		msm_hsl_stop_tx(port);
@@ -1427,6 +1579,9 @@ static inline void wait_for_xmitr(struct uart_port *port)
 static void msm_hsl_console_putchar(struct uart_port *port, int ch)
 {
 	unsigned int vid = UART_TO_MSM(port)->ver_id;
+#if ASUS_ENABLE_RX_AUDBG
+	struct circ_buf *xmit = &port->state->xmit;
+#endif
 
 	wait_for_xmitr(port);
 	msm_hsl_write(port, 1, regmap[vid][UARTDM_NCF_TX]);
@@ -1437,7 +1592,31 @@ static void msm_hsl_console_putchar(struct uart_port *port, int ch)
 	 */
 	msm_hsl_read(port, regmap[vid][UARTDM_SR]);
 	msm_hsl_write(port, ch, regmap[vid][UARTDM_TF]);
+#if ASUS_ENABLE_RX_AUDBG
+	do{
+		udelay(100);
+	}while(!uart_circ_empty(xmit));
+#endif
 }
+
+#if ASUS_ENABLE_RX_AUDBG
+/* Wait for tx empty and set GPIO back to RX_DIR */
+static void wait_tx_empty_func(struct work_struct *data)
+{
+	if (!g_port)
+		return;
+
+	is_waiting_tx_empty = 1;
+	while (!(msm_hsl_read(g_port, regmap[g_vid][UARTDM_SR]) & UARTDM_SR_TXEMT_BMSK))
+	{
+		udelay(50);
+	}
+
+	gpio_set_value(GPIO_AUDBG_SEL, RX_DIR);
+
+	is_waiting_tx_empty = 0;
+}
+#endif
 
 static void msm_hsl_console_write(struct console *co, const char *s,
 				  unsigned int count)
@@ -1446,6 +1625,21 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 	struct msm_hsl_port *msm_hsl_port;
 	unsigned int vid;
 	int locked;
+
+#if ASUS_ENABLE_RX_AUDBG
+	if (uart_mode != UMODE_OUTPUT){
+		if (output_mode_request == 1){
+			output_mode_request = 0;
+			uart_mode = UMODE_OUTPUT;
+			printk(DEBUG_TAG "M:UMODE_OUTPUT\n");
+		}else{
+			return;
+		}
+	}
+
+	if (strstr(s, DEBUG_TAG))
+		return;
+#endif
 
 	BUG_ON(co->index < 0 || co->index >= UART_NR);
 
@@ -1460,9 +1654,27 @@ static void msm_hsl_console_write(struct console *co, const char *s,
 		locked = 1;
 		spin_lock(&port->lock);
 	}
+
+#if ASUS_ENABLE_RX_AUDBG
+	atomic_add(1, &tx_ref);
+	gpio_set_value(GPIO_AUDBG_SEL, TX_DIR);
+#endif
+
 	msm_hsl_write(port, 0, regmap[vid][UARTDM_IMR]);
 	uart_console_write(port, s, count, msm_hsl_console_putchar);
 	msm_hsl_write(port, msm_hsl_port->imr, regmap[vid][UARTDM_IMR]);
+
+#if ASUS_ENABLE_RX_AUDBG
+	atomic_add(-1, &tx_ref);
+	if (atomic_read(&tx_ref) == 0)
+	{
+		g_port = port;
+		g_vid = vid;
+		if (!is_waiting_tx_empty)
+			queue_work(wait_tx_empty_workQueue, &wait_tx_empty_work);
+	}
+#endif
+
 	if (locked == 1)
 		spin_unlock(&port->lock);
 }
@@ -1710,6 +1922,36 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 	else
 		line = pdev->id;
 
+    /* Disable ttyHSL0 console if aboot say so */
+    if(line == 0 && g_bootdbguart == 0){
+        /* Pull down GPIO 8 */
+        ret = gpio_request(GPIO_AUDBG_TX, "console_tx");
+        msm_gpiomux_write(GPIO_AUDBG_TX, GPIOMUX_ACTIVE,
+				&uart_console_cfg, &uart_console_cfg_old);
+        gpio_free(GPIO_AUDBG_TX);
+
+        /* Pull down GPIO 9 */
+        ret = gpio_request(GPIO_AUDBG_RX, "console_rx");
+        msm_gpiomux_write(GPIO_AUDBG_RX, GPIOMUX_ACTIVE,
+				&uart_console_cfg_rx, &uart_console_cfg_rx_old);
+        gpio_free(GPIO_AUDBG_RX);
+
+        /* Pull down GPIO 32 */
+        ret = gpio_request(GPIO_AUDBG_SEL, "console_sel");
+        msm_gpiomux_write(GPIO_AUDBG_SEL, GPIOMUX_ACTIVE,
+				&uart_console_cfg_sel, &uart_console_cfg_sel_old);
+        gpio_free(GPIO_AUDBG_SEL);
+        return ret;
+    }
+
+#if ASUS_ENABLE_RX_AUDBG
+    if(line == 0 && g_bootdbguart == 1){
+		enter_input_mode_workQueue = create_singlethread_workqueue("ENTERINPUT_WQ");
+		exit_input_mode_workQueue = create_singlethread_workqueue("EXITINPUT_WQ");
+		wait_tx_empty_workQueue = create_singlethread_workqueue("WAITTX_WQ");
+    }
+#endif
+
 	/* Use line number from device tree alias if present */
 	if (pdev->dev.of_node) {
 		dev_dbg(&pdev->dev, "device tree enabled\n");
@@ -1727,7 +1969,7 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 	if (unlikely(line < 0 || line >= UART_NR))
 		return -ENXIO;
 
-	pr_info("detected port #%d (ttyHSL%d)\n", pdev->id, line);
+	printk("detected port #%d (ttyHSL%d)\n", pdev->id, line);
 
 	port = get_port_from_line(line);
 	port->dev = &pdev->dev;
@@ -1881,6 +2123,12 @@ static int msm_serial_hsl_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
+
+    /* Skip here if we didn't support console */
+	if (g_bootdbguart == 0){
+        return 0;
+    }
+
 	port = get_port_from_line(get_line(pdev));
 
 	if (port) {
@@ -1900,6 +2148,12 @@ static int msm_serial_hsl_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
+
+    /* Skip here if we didn't support console */
+	if (g_bootdbguart == 0){
+        return 0;
+    }
+
 	port = get_port_from_line(get_line(pdev));
 
 	if (port) {

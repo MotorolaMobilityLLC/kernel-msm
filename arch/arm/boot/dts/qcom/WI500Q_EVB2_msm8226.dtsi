@@ -16,7 +16,19 @@
 	model = "WI500Q EVB2 Qualcomm MSM 8226";
 	compatible = "qcom,msm8226";
 	interrupt-parent = <&intc>;
-
+//adbg++
+	qcom,asusdebug {
+		compatible = "qcom,asusdebug";
+		/* Remove 2MB at 0x1FF00000*/
+		qcom,memblock-remove = <0x11F00000 0x200000>;
+	};
+	
+	qcom,asusdebug {
+		compatible = "qcom,asusdebug";
+		/* Fixed Memory region of 2MB at 0x1FF00000*/
+		qcom,memory-fixed = <0x11F00000 0x200000>;
+	};
+//adbg--
 	aliases {
 		spi0 = &spi_0;
 		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */

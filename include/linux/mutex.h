@@ -59,10 +59,15 @@ struct mutex {
 #ifdef CONFIG_DEBUG_MUTEXES
 	const char 		*name;
 	void			*magic;
+#else
+	const char      *name;	//adbg++
 #endif
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 	struct lockdep_map	dep_map;
 #endif
+//adbg++
+    struct task_struct *mutex_owner_asusdebug;
+//adbg--
 };
 
 /*
