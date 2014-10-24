@@ -139,6 +139,7 @@
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_external";
 		qcom,ulps-enabled;
+		qcom,partial-update-enabled;
 
 		qcom,cont-splash-enabled;
 	};
@@ -217,10 +218,17 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_nt35310_280p_cmd>;
 	vdd-supply = <&pm8226_l18>;
-	qcom,platform-supply-entry1 {
-		qcom,supply-name = "vdd";
-		qcom,supply-min-voltage = <3000000>;
-		qcom,supply-max-voltage = <3300000>;
+
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vdd";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3300000>;
+		};
 	};
 };
 
