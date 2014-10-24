@@ -578,38 +578,6 @@ static ssize_t mdss_fb_get_src_split_info(struct device *dev,
 	return ret;
 }
 
-static ssize_t mdss_fb_set_doze_mode(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int rc = 0;
-	int doze_mode = 0;
-
-	rc = kstrtoint(buf, 10, &doze_mode);
-	if (rc) {
-		pr_err("kstrtoint failed. rc=%d\n", rc);
-		return rc;
-	}
-
-	pr_debug("Always-on mode %s\n", doze_mode ? "enabled" : "disabled");
-	if (mfd->panel_info->type !=  MIPI_CMD_PANEL)
-		pr_err("Always on mode only supported for cmd mode panel\n");
-	else
-		mfd->doze_mode = doze_mode;
-
-	return count;
-}
-
-static ssize_t mdss_fb_get_doze_mode(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-
-	return scnprintf(buf, PAGE_SIZE, "%d\n", mfd->doze_mode);
-}
-
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO | S_IWUSR, mdss_fb_show_split,
 					mdss_fb_store_split);
@@ -622,8 +590,6 @@ static DEVICE_ATTR(msm_fb_src_split_info, S_IRUGO, mdss_fb_get_src_split_info,
 	NULL);
 static DEVICE_ATTR(msm_fb_thermal_level, S_IRUGO | S_IWUSR,
 	mdss_fb_get_thermal_level, mdss_fb_set_thermal_level);
-static DEVICE_ATTR(always_on, S_IRUGO | S_IWUSR | S_IWGRP,
-	mdss_fb_get_doze_mode, mdss_fb_set_doze_mode);
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
@@ -634,7 +600,6 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_panel_info.attr,
 	&dev_attr_msm_fb_src_split_info.attr,
 	&dev_attr_msm_fb_thermal_level.attr,
-	&dev_attr_always_on.attr,
 	NULL,
 };
 
@@ -769,7 +734,6 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	if (mfd->mdp.splash_init_fnc)
 		mfd->mdp.splash_init_fnc(mfd);
 
-	mfd->doze_mode = true;
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
 	return rc;
@@ -866,17 +830,17 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 
 	if (mfd->op_enable) {
 		/*
-		 * Ideally, display should have been blanked by now.
-		 * If not, then blank the display based on whether always-on
-		 * feature is enabled or not
+		 * Ideally, display should have either been blanked by now, or
+		 * should have transitioned to a low power state. If not, then
+		 * as a fall back option, blank the display.
 		 */
-		int unblank_flag = mfd->doze_mode ? FB_BLANK_VSYNC_SUSPEND :
-			FB_BLANK_POWERDOWN;
-		ret = mdss_fb_blank_sub(unblank_flag, mfd->fbi,
-				mfd->suspend.op_enable);
-		if (ret) {
-			pr_warn("can't turn off display!\n");
-			return ret;
+		if (mdss_fb_is_power_on_interactive(mfd)) {
+			ret = mdss_fb_blank_sub(FB_BLANK_POWERDOWN, mfd->fbi,
+					mfd->suspend.op_enable);
+			if (ret) {
+				pr_err("can't turn off display!\n");
+				return ret;
+			}
 		}
 		mfd->op_enable = false;
 		fb_set_suspend(mfd->fbi, FBINFO_STATE_SUSPENDED);
@@ -906,9 +870,16 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 	/* resume state var recover */
 	mfd->op_enable = mfd->suspend.op_enable;
 
+	/*
+	 * If the fb was explicitly blanked during suspend, then unblank it
+	 * during resume.
+	 */
 	if (mdss_panel_is_power_on(mfd->suspend.panel_power_state)) {
-		ret = mdss_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi,
-					mfd->op_enable);
+		int unblank_flag = mdss_panel_is_power_on_interactive(
+			mfd->suspend.panel_power_state) ? FB_BLANK_UNBLANK :
+			FB_BLANK_VSYNC_SUSPEND;
+
+		ret = mdss_fb_blank_sub(unblank_flag, mfd->fbi, mfd->op_enable);
 		if (ret)
 			pr_warn("can't turn on display!\n");
 		else
