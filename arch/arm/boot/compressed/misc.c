@@ -87,6 +87,12 @@ static void putstr(const char *ptr)
 {
 	char c;
 
+	/*
+	   out to uart here depends on uart setting in aboot
+	   kernel crashes while no uart setting in aboot
+	*/
+	return ;
+
 	while ((c = *ptr++) != '\0') {
 		if (c == '\n')
 			putc('\r');
