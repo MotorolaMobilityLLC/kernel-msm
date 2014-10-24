@@ -844,6 +844,7 @@
 
 &pm8994_gpios {
 	gpio@c200 { /* GPIO 3 - VOL_UP */
+		status = "okay";
 		qcom,mode = <0>;
 		qcom,pull = <0>;
 		qcom,vin-sel = <2>;
@@ -852,6 +853,7 @@
 	};
 
 	gpio@c300 { /* GPIO 4 - EN_BST_BYP */
+		status = "okay";
 		qcom,mode = <1>; /* Output */
 		qcom,pull = <5>; /* None */
 		qcom,vin-sel = <2>;
@@ -861,6 +863,7 @@
 	};
 
 	gpio@c400 { /* GPIO 5 - DISP_V1_EN */
+		status = "okay";
 		qcom,mode = <1>; /* Output */
 		qcom,pull = <5>; /* None */
 		qcom,vin-sel = <2>;
@@ -870,6 +873,7 @@
 	};
 
 	gpio@c500 { /* GPIO 6 - DISP_V2_EN */
+		status = "okay";
 		qcom,mode = <1>; /* Output */
 		qcom,pull = <5>; /* None */
 		qcom,vin-sel = <2>;
@@ -879,6 +883,7 @@
 	};
 
 	gpio@c700 { /* GPIO 8 - FACT_KILL_DISABLE */
+		status = "okay";
 		qcom,mode = <1>; /* Output */
 		qcom,pull = <5>; /* None */
 		qcom,vin-sel = <2>;
@@ -888,6 +893,7 @@
 	};
 
 	gpio@c800 { /* GPIO 9 - NFC_ENABLE_N */
+		status = "okay";
 		qcom,mode = <1>; /* Output */
 		qcom,pull = <5>; /* None */
 		qcom,vin-sel = <2>;
@@ -897,6 +903,7 @@
 	};
 
 	gpio@c900 { /* GPIO 10 - NFC_CLK_REQ */
+		status = "okay";
 		/* NFC clk request */
 		qcom,mode = <0>;                /* QPNP_PIN_MODE_DIG_IN */
 		qcom,pull = <5>;                /* QPNP_PIN_PULL_NO */
@@ -906,6 +913,7 @@
 	};
 
 	gpio@cc00 { /* GPIO 13 - NFC_POWER_ON */
+		status = "okay";
 		qcom,mode = <1>; /* Output */
 		qcom,pull = <5>; /* None */
 		qcom,vin-sel = <2>;
@@ -915,6 +923,7 @@
 	};
 
 	gpio@cd00 { /* GPIO 14 */
+		status = "okay";
 		qcom,mode = <1>;
 		qcom,vin-sel = <2>;
 		qcom,src-sel = <1>;     /* sel = 1 is high */
@@ -923,6 +932,7 @@
 	};
 
 	gpio@ce00 { /* GPIO 15 - DIVCLK1_CODEC */
+		status = "okay";
 		qcom,mode = <1>;
 		qcom,output-type = <0>;
 		qcom,pull = <5>;
@@ -933,6 +943,7 @@
 	};
 
 	gpio@d100 { /* GPIO 18 - BT_WLAN_32KHZ_IN */
+		status = "okay";
 		qcom,mode = <1>;		/* Digital output */
 		qcom,output-type = <0>;		/* CMOS logic */
 		qcom,invert = <0>;		/* Output low initially */
@@ -943,6 +954,7 @@
 	};
 
 	gpio@d200 { /* GPIO 19 - BT_EN */
+		status = "okay";
 		qcom,mode = <1>;         /* Digital output*/
 		qcom,pull = <4>;         /* Pulldown 10uA */
 		qcom,vin-sel = <2>;      /* VIN2 */
@@ -952,6 +964,7 @@
 	};
 
 	gpio@d500 { /* GPIO 22 - SDC_DET_N */
+		status = "okay";
 		qcom,mode = <0>;
 		qcom,pull = <0>; /* Up */
 		qcom,vin-sel = <2>;
@@ -971,6 +984,7 @@
 	};
 
 	mpp@a300 { /* MPP 4 - USB_HM_DET_N */
+		status = "okay";
 		qcom,mode = <0>;		/* Digital Input */
 		qcom,vin-sel = <2>;		/* S4 1.8V */
 		qcom,pull = <1>;		/* QPNP_PIN_MPP_PULL_UP_OPEN */
@@ -980,6 +994,7 @@
 	};
 
 	mpp@a400 { /* MPP 5 */
+		status = "okay";
 		qcom,mode = <1>;		/* Digital Output */
 		qcom,vin-sel = <2>;		/* S4 1.8V */
 		qcom,src-sel = <0>;		/* Constant */
@@ -987,6 +1002,7 @@
 	};
 
 	mpp@a500 { /* MPP 6 - CCP_RESOUT_N */
+		status = "okay";
 		qcom,mode = <0>;		/* Digital Input */
 		qcom,vin-sel = <2>;		/* S4 1.8V */
 		qcom,src-sel = <0>;		/* Constant */
@@ -995,6 +1011,7 @@
 	};
 
 	mpp@a600 { /* MPP 7 - NCP6343_EN */
+		status = "okay";
 		qcom,mode = <1>;		/* Digital Output */
 		qcom,vin-sel = <2>;		/* S4 1.8V */
 		qcom,src-sel = <0>;		/* Constant */
@@ -1003,6 +1020,7 @@
 	};
 
 	mpp@a700 { /* MPP 8 - LED_SOL_SINK */
+		status = "okay";
 		qcom,mode = <6>;		/* QPNP_PIN_MODE_SINK */
 		qcom,master-en = <1>;		/* Enable GPIO */
 	};
@@ -1205,6 +1223,7 @@
 
 &pmi8994_gpios {
 	gpio@c200 { /* GPIO 3 - WCHG_TERMINATE */
+		status = "okay";
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
@@ -1214,6 +1233,7 @@
 	};
 
 	gpio@c300 { /* GPIO 4 - WCHG_COMPLETE_N */
+		status = "okay";
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
@@ -1223,6 +1243,7 @@
 	};
 
 	gpio@c400 { /* GPIO 5 - FACT_CBL_DET */
+		status = "okay";
 		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
 		qcom,pull = <5>;        /* QPNP_PIN_PULL_NO */
 		qcom,vin-sel = <2>;     /* QPNP_PIN_VIN2 */
@@ -1231,6 +1252,7 @@
 	};
 
 	gpio@c500 { /* GPIO 6 - REQ_5V_BST */
+		status = "okay";
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
@@ -1240,6 +1262,7 @@
 	};
 
 	gpio@c800 { /* GPIO 9 - WCHG_CHG_GOOD_N */
+		status = "okay";
 		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
 		qcom,pull = <5>;        /* QPNP_PIN_PULL_NO */
 		qcom,vin-sel = <2>;     /* QPNP_PIN_VIN2 */
@@ -1248,6 +1271,7 @@
 	};
 
 	gpio@c900 { /* GPIO 10 - WCHG_PAD_DET_N */
+		status = "okay";
 		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
 		qcom,pull = <5>;         /* QPNP_PIN_PULL_NO */
 		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
