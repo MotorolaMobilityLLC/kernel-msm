@@ -145,6 +145,7 @@ struct bmm_client_data {
 	struct bmm050 device;
 	struct i2c_client *client;
 	struct input_dev *input;
+	struct workqueue_struct *work_queue;
 	struct delayed_work work;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -528,14 +529,17 @@ static void bmm_work_func(struct work_struct *work)
 	BMM_CALL_API(read_mdataXYZ_s32)(&client_data->value);
 	bmm_remap_sensor_data(&client_data->value, client_data);
 
-	input_report_abs(client_data->input, ABS_X, client_data->value.datax);
-	input_report_abs(client_data->input, ABS_Y, client_data->value.datay);
-	input_report_abs(client_data->input, ABS_Z, client_data->value.dataz);
+	input_event(client_data->input, EV_REL, REL_X,
+		client_data->value.datax);
+	input_event(client_data->input, EV_REL, REL_Y,
+		client_data->value.datay);
+	input_event(client_data->input, EV_REL, REL_Z,
+		client_data->value.dataz);
 	mutex_unlock(&client_data->mutex_value);
 
 	input_sync(client_data->input);
 
-	schedule_delayed_work(&client_data->work, delay);
+	queue_delayed_work(client_data->work_queue, &client_data->work, delay);
 }
 
 
@@ -972,7 +976,7 @@ static ssize_t bmm_store_enable(struct device *dev,
 	mutex_lock(&client_data->mutex_enable);
 	if (data != client_data->enable) {
 		if (data) {
-			schedule_delayed_work(
+			queue_delayed_work(client_data->work_queue,
 					&client_data->work,
 					msecs_to_jiffies(atomic_read(
 							&client_data->delay)));
@@ -1195,10 +1199,9 @@ static int bmm_input_init(struct bmm_client_data *client_data)
 	dev->name = SENSOR_NAME;
 	dev->id.bustype = BUS_I2C;
 
-	input_set_capability(dev, EV_ABS, ABS_MISC);
-	input_set_abs_params(dev, ABS_X, MAG_VALUE_MIN, MAG_VALUE_MAX, 0, 0);
-	input_set_abs_params(dev, ABS_Y, MAG_VALUE_MIN, MAG_VALUE_MAX, 0, 0);
-	input_set_abs_params(dev, ABS_Z, MAG_VALUE_MIN, MAG_VALUE_MAX, 0, 0);
+	input_set_capability(dev, EV_REL, REL_X);
+	input_set_capability(dev, EV_REL, REL_Y);
+	input_set_capability(dev, EV_REL, REL_Z);
 	input_set_drvdata(dev, client_data);
 
 	err = input_register_device(dev);
@@ -1381,6 +1384,7 @@ static int bmm_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 
 	/* workqueue init */
+	client_data->work_queue = create_singlethread_workqueue("bmm050");
 	INIT_DELAYED_WORK(&client_data->work, bmm_work_func);
 	atomic_set(&client_data->delay, BMM_DELAY_DEFAULT);
 
@@ -1490,7 +1494,8 @@ static int bmm_post_resume(struct i2c_client *client)
 
 	mutex_lock(&client_data->mutex_enable);
 	if (client_data->enable) {
-		schedule_delayed_work(&client_data->work,
+		queue_delayed_work(client_data->work_queue,
+				&client_data->work,
 				msecs_to_jiffies(
 					atomic_read(&client_data->delay)));
 	}
@@ -1603,6 +1608,7 @@ static int bmm_remove(struct i2c_client *client)
 			cancel_delayed_work_sync(&client_data->work);
 			PDEBUG("cancel work");
 		}
+		destroy_workqueue(client_data->work_queue);
 		mutex_unlock(&client_data->mutex_op_mode);
 
 		err = bmm_set_op_mode(client_data, BMM_VAL_NAME(SUSPEND_MODE));
