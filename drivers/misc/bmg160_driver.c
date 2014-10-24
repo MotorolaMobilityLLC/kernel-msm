@@ -147,6 +147,7 @@ struct bmg_client_data {
 	struct bmg160_t device;
 	struct i2c_client *client;
 	struct input_dev *input;
+	struct workqueue_struct *work_queue;
 	struct delayed_work work;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -504,7 +505,8 @@ static void bmg_work_func(struct work_struct *work)
 	input_report_rel(client_data->input, REL_RZ, gyro_data.dataz);
 	input_sync(client_data->input);
 
-	schedule_delayed_work(&client_data->work, delay);
+	queue_delayed_work(client_data->work_queue, &client_data->work,
+		delay);
 }
 
 static int bmg_set_soft_reset(struct i2c_client *client)
@@ -663,7 +665,7 @@ static ssize_t bmg_store_enable(struct device *dev,
 	mutex_lock(&client_data->mutex_enable);
 	if (data != client_data->enable) {
 		if (data) {
-			schedule_delayed_work(
+			queue_delayed_work(client_data->work_queue,
 					&client_data->work,
 					msecs_to_jiffies(atomic_read(
 							&client_data->delay)));
@@ -1374,6 +1376,7 @@ static int bmg_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	/* workqueue init */
+	client_data->work_queue = create_singlethread_workqueue("bmg160");
 	INIT_DELAYED_WORK(&client_data->work, bmg_work_func);
 	atomic_set(&client_data->delay, BMG_DELAY_DEFAULT);
 
@@ -1454,7 +1457,8 @@ static int bmg_post_resume(struct i2c_client *client)
 	dev_info(&client->dev, "function entrance");
 	mutex_lock(&client_data->mutex_enable);
 	if (client_data->enable) {
-		schedule_delayed_work(&client_data->work,
+		queue_delayed_work(client_data->work_queue,
+				&client_data->work,
 				msecs_to_jiffies(
 					atomic_read(&client_data->delay)));
 	}
@@ -1574,6 +1578,7 @@ static int bmg_remove(struct i2c_client *client)
 			cancel_delayed_work_sync(&client_data->work);
 			dev_info(&client->dev, "cancel work");
 		}
+		destroy_workqueue(client_data->work_queue);
 		mutex_unlock(&client_data->mutex_op_mode);
 
 		err = BMG_CALL_API(set_mode)(
