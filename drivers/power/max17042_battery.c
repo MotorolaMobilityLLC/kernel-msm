@@ -75,6 +75,8 @@ CONFIG_TS_BIT_ENBL | CONFIG_SS_BIT_ENBL)
 #define MAX17042_IC_VERSION	0x0092
 #define MAX17047_IC_VERSION	0x00AC	/* same for max17050 */
 
+#define MAX17042_AGE_DIV	256
+
 #define INIT_DATA_PROPERTY		"maxim,regs-init-data"
 #define CONFIG_NODE			"maxim,configuration"
 #define VERSION_PROPERTY		"version"
@@ -1211,8 +1213,21 @@ static ssize_t max17042_store_alert_threshold(struct device *dev,
 static DEVICE_ATTR(alert_threshold, S_IRUGO | S_IWUSR,
 		max17042_show_alert_threshold, max17042_store_alert_threshold);
 
+
+static ssize_t max17042_show_battery_age(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	struct max17042_chip *chip = dev_get_drvdata(dev);
+	int ret = max17042_read_reg(chip->client, MAX17042_Age);
+
+	return ret < 0 ? ret : sprintf(buf, "%u\n", ret / MAX17042_AGE_DIV);
+}
+static DEVICE_ATTR(battery_age, S_IRUGO, max17042_show_battery_age, NULL);
+
 static struct attribute *max17042_attrs[] = {
 	&dev_attr_alert_threshold.attr,
+	&dev_attr_battery_age.attr,
 	NULL,
 };
 
