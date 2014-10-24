@@ -326,6 +326,7 @@ void handle_failed_inode(struct inode *inode)
 
 	remove_inode_page(inode);
 
+	clear_inode_flag(F2FS_I(inode), FI_INLINE_DATA);
 	clear_inode_flag(F2FS_I(inode), FI_INLINE_DENTRY);
 	alloc_nid_failed(sbi, inode->i_ino);
 	f2fs_unlock_op(sbi);
