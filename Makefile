@@ -671,6 +671,24 @@ ifeq ($(shell $(CONFIG_SHELL) $(srctree)/scripts/gcc-goto.sh $(CC)), y)
 	KBUILD_CFLAGS += -DCC_HAVE_ASM_GOTO
 endif
 
+# +++ ASUS_BSP : miniporting : add ASUS software version support
+ifneq ($(BUILD_NUMBER),)
+        KBUILD_CPPFLAGS += -DASUS_SW_VER=\"$(BUILD_NUMBER)\"
+else
+        KBUILD_CPPFLAGS += -DASUS_SW_VER=\"WI500Q_ENG\"
+endif
+# --- ASUS_BSP : miniporting : jackson : add ASUS software version support
+
+# +++ASUS_BSP: "support mutliple project build"
+KBUILD_CPPFLAGS += -DASUS_WI500Q_PROJECT=1
+#--- ASUS_BSP: "support mutliple project build"
+
+# +++ ASUS_BSP: "factory compile option support"
+ifneq ($(ASUS_FACTORY_BUILD),)
+        KBUILD_CPPFLAGS += -DASUS_FACTORY_BUILD=1
+endif
+# --- ASUS_BSP: "factory compile option support"
+
 # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments
 KBUILD_CPPFLAGS += $(KCPPFLAGS)
 KBUILD_AFLAGS += $(KAFLAGS)

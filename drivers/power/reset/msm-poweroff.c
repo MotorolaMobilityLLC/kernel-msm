@@ -214,9 +214,12 @@ static void msm_restart_prepare(const char *cmd)
 			if (!ret)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
+		#ifndef ASUS_USER_BUILD
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
-		} else {
+		}
+		#endif
+ 		else {
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
