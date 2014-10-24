@@ -868,7 +868,7 @@ IMG_BOOL ServerSyncFenceIsMet(SERVER_SYNC_PRIMITIVE *psSync,
 							   IMG_UINT32 ui32FenceValue)
 {
 	SYNC_UPDATES_PRINT("%s: sync: %p, value(%d) == fence(%d)?", __FUNCTION__, psSync, *psSync->psSync->pui32LinAddr, ui32FenceValue);
-	return (*psSync->psSync->pui32LinAddr == ui32FenceValue);
+	return (*psSync->psSync->pui32LinAddr >= ui32FenceValue);
 }
 
 IMG_VOID
