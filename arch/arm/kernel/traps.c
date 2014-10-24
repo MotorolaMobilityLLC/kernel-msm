@@ -38,6 +38,11 @@
 
 #include <trace/events/exception.h>
 
+//adbg++
+#include <linux/stacktrace.h>
+static int asus_save_stack = 0;
+static struct stack_trace *asus_strace = NULL;
+//adbg--
 static const char *handler[]= {
 	"prefetch abort",
 	"data abort",
@@ -64,7 +69,15 @@ static void dump_mem(const char *, const char *, unsigned long, unsigned long);
 void dump_backtrace_entry(unsigned long where, unsigned long from, unsigned long frame)
 {
 #ifdef CONFIG_KALLSYMS
-	printk("[<%08lx>] (%pS) from [<%08lx>] (%pS)\n", where, (void *)where, from, (void *)from);
+//adbg++
+    char sym1[KSYM_SYMBOL_LEN], sym2[KSYM_SYMBOL_LEN];
+    sprint_symbol(sym1, where);
+    sprint_symbol(sym2, from);
+    if(asus_save_stack && (asus_strace->max_entries > asus_strace->nr_entries))
+        asus_strace->entries[asus_strace->nr_entries++] = where;
+    else
+        printk("[<%08lx>] (%pS) from [<%08lx>] (%pS)\n", where, (void *)where, from, (void *)from);
+//adbg--
 #else
 	printk("Function entered at [<%08lx>] from [<%08lx>]\n", where, from);
 #endif
@@ -210,6 +223,23 @@ static void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 		c_backtrace(fp, mode);
 }
 #endif
+
+//ASUS_BSP ++
+void save_stack_trace_asus(struct task_struct *tsk, struct stack_trace *trace)
+{
+    asus_save_stack = 1;
+    asus_strace = trace;
+    unwind_backtrace(NULL, tsk);
+    asus_save_stack = 0;
+}
+
+void dump_stack(void)
+{
+    dump_backtrace(NULL, NULL);
+}
+
+EXPORT_SYMBOL(dump_stack);
+//ASUS_BSP --
 
 void show_stack(struct task_struct *tsk, unsigned long *sp)
 {

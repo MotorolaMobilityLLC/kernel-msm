@@ -68,6 +68,12 @@ struct thread_info {
 	unsigned long		thumbee_state;	/* ThumbEE Handler Base register */
 #endif
 	struct restart_block	restart_block;
+//adbg++
+    struct mutex* pWaitingMutex;
+    struct completion *pWaitingCompletion;
+    struct rt_mutex* pWaitingRTMutex;
+//adbg--
+
 };
 
 #define INIT_THREAD_INFO(tsk)						\
