@@ -806,7 +806,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	if (mfd->mdp.splash_init_fnc)
 		mfd->mdp.splash_init_fnc(mfd);
 
-	mfd->doze_mode = true;
+	/* set always on mode to be true only for primary panel */
+	if (mfd->index == 0 && (mfd->panel_info->type == MIPI_CMD_PANEL))
+		mfd->doze_mode = true;
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
 	return rc;
@@ -909,11 +911,13 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 		 */
 		int unblank_flag = mfd->doze_mode ? FB_BLANK_VSYNC_SUSPEND :
 			FB_BLANK_POWERDOWN;
-		ret = mdss_fb_blank_sub(unblank_flag, mfd->fbi,
-				mfd->suspend.op_enable);
-		if (ret) {
-			pr_warn("can't turn off display!\n");
-			return ret;
+		if (mdss_fb_is_power_on_interactive(mfd)) {
+			ret = mdss_fb_blank_sub(unblank_flag, mfd->fbi,
+					mfd->suspend.op_enable);
+			if (ret) {
+				pr_warn("can't turn off display!\n");
+				return ret;
+			}
 		}
 		mfd->op_enable = false;
 		fb_set_suspend(mfd->fbi, FBINFO_STATE_SUSPENDED);
