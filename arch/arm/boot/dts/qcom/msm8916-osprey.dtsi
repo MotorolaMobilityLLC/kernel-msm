@@ -22,7 +22,7 @@
 		qcom,pins = <&gp 49>;
 	};
 
-	nmi326_enable_reset {
+	dtv_enable_reset {
 		qcom,pins = <&gp 37>, <&gp 80>;
 	};
 
