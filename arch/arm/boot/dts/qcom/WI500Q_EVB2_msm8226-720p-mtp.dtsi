@@ -168,7 +168,7 @@
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 	cd-gpios = <&msmgpio 38 0x1>;
 
-	status = "ok";
+	status = "disable";
 };
 
 &spmi_bus {
