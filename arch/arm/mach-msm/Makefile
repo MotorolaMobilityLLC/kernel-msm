@@ -35,6 +35,7 @@ obj-$(CONFIG_MSM_PP2S_FEMTO) += pp2s.o
 obj-$(CONFIG_ARCH_MSMFERRUM) += board-ferrum.o
 obj-$(CONFIG_ARCH_MSM8916) += board-8916.o
 obj-$(CONFIG_ARCH_MSM8226) += board-8226.o board-8226-gpiomux.o
+obj-$(CONFIG_ARCH_MSM8226) += asus_gpio_pinmux.o
 obj-$(CONFIG_ARCH_MSM8226) += clock-8226.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MSM8610) += board-8610.o board-8610-gpiomux.o
 obj-$(CONFIG_ARCH_MSM8610) += clock-8610.o
