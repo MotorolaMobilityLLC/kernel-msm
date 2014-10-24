@@ -1440,6 +1440,13 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 		mfd->unset_bl_level = bl_level_old;
 		mfd->unset_bl_level = current_bl;
 		mutex_unlock(&mfd->bl_lock);
+		if (mfd->shutdown_pending &&
+			mfd->panel_info->bl_shutdown_delay)
+			usleep_range(
+			mfd->panel_info->bl_shutdown_delay
+			* 1000,
+			mfd->panel_info->bl_shutdown_delay
+			* 1000);
 	}
 	mfd->panel_power_state = req_power_state;
 
