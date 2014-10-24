@@ -406,6 +406,7 @@ struct mdss_panel_info {
 	bool is_lpm_mode;
 	bool is_split_display;
 	char supplier[8];
+	u32 bl_shutdown_delay;
 
 	bool is_prim_panel;
 

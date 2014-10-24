@@ -1405,6 +1405,14 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 				mdss_fb_set_backlight(mfd, 0);
 				mfd->unset_bl_level = bl_level_old;
 				mfd->bl_updated = 0;
+
+				if (mfd->shutdown_pending &&
+					mfd->panel_info->bl_shutdown_delay)
+					usleep_range(
+					mfd->panel_info->bl_shutdown_delay
+					* 1000,
+					mfd->panel_info->bl_shutdown_delay
+					* 1000);
 			}
 			mfd->panel_power_state = req_power_state;
 			mutex_unlock(&mfd->bl_lock);
