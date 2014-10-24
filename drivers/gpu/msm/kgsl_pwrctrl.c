@@ -930,6 +930,11 @@ void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	int i = 0;
 
+//restrict the max clock rate of gpu to 200Mhz
+#ifndef ASUS_PERFORMANCE_RESTRICTION
+        pwr->max_pwrlevel = 2;
+#endif
+
 	if (test_bit(KGSL_PWRFLAGS_CLK_ON, &pwr->ctrl_flags))
 		return;
 
