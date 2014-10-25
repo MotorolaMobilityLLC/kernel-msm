@@ -21,6 +21,9 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 
+#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
+#include "mdss_asus_debug.h"
+#endif
 #include "mdss.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_hwio.h"
@@ -260,6 +263,10 @@ int mdss_debug_register_base(const char *name, void __iomem *base,
 
 	if (name && strcmp(name, "mdp"))
 		prefix_len = snprintf(dn, sizeof(dn), "%s_", name);
+#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
+	else
+		create_amdu_debugfs(mdd->root);
+#endif
 
 	strlcpy(dn + prefix_len, "off", sizeof(dn) - prefix_len);
 	ent_off = debugfs_create_file(dn, 0644, mdd->root, dbg, &mdss_off_fops);

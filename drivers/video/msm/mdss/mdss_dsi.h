@@ -358,6 +358,19 @@ struct mdss_dsi_ctrl_pdata {
 
 	int horizontal_idle_cnt;
 	struct panel_horizontal_idle *line_idle;
+	/* ASUS extend properties for panel low power mode */
+	struct mutex blcmd_mutex;
+	struct mutex ambientcmd_mutex;
+
+	struct dsi_panel_cmds idle_on_cmds;
+	struct dsi_panel_cmds idle_off_cmds;
+
+	struct delayed_work ambient_enable_work;
+	int ambient_on_queued;
+	int ambient_off_queued;
+#ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
+	int dis_off_with_ulps;
+#endif
 };
 
 struct dsi_status_data {
@@ -404,6 +417,8 @@ int mdss_dsi_enable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 void mdss_dsi_disable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable);
 void mdss_dsi_phy_disable(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base);
 void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_video_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl);
@@ -420,6 +435,7 @@ bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
 void mdss_dsi_ctrl_setup(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_dln0_phy_err(struct mdss_dsi_ctrl_pdata *ctrl);
 
+int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on);
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		bool cmd_cfg_cont_splash);

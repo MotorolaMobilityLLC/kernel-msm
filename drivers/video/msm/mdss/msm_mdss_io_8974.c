@@ -26,7 +26,7 @@
 
 static struct dsi_clk_desc dsi_pclk;
 
-static void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base)
+void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base)
 {
 	/* start phy sw reset */
 	MIPI_OUTP(ctrl_base + 0x12c, 0x0001);
@@ -313,7 +313,7 @@ static void mdss_dsi_20nm_phy_init(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 }
 
-static void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl)
+void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	u32 ctrl_rev;
 
@@ -608,6 +608,12 @@ error:
 
 static void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
+	if (ctrl_pdata == 0)
+	{
+		printk("MDSS:%s:ERR!!! NULL Pointer !!!\n",__func__);
+		dump_stack();
+		return;
+	}
 	if (ctrl_pdata->mmss_misc_ahb_clk)
 		clk_disable_unprepare(ctrl_pdata->mmss_misc_ahb_clk);
 	clk_disable_unprepare(ctrl_pdata->axi_clk);

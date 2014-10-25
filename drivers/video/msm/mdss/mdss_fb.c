@@ -51,6 +51,8 @@
 #include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 
+#include <linux/notifier.h>
+#include <linux/asus_utility.h>
 #include "mdss_fb.h"
 #include "mdss_mdp_splash_logo.h"
 
@@ -67,6 +69,7 @@
 #define MAX_FBI_LIST 32
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
+struct msm_fb_data_type *g_mfd;
 
 static u32 mdss_fb_pseudo_palette[16] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -104,6 +107,7 @@ static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd);
 static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 					int event, void *arg);
 static void mdss_fb_set_mdp_sync_pt_threshold(struct msm_fb_data_type *mfd);
+extern int mdss_mdp_overlay_vsync_ctrl(struct msm_fb_data_type *mfd, int en);
 void mdss_fb_no_update_notify_timer_cb(unsigned long data)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)data;
@@ -667,6 +671,38 @@ static void mdss_fb_shutdown(struct platform_device *pdev)
 	unlock_fb_info(mfd->fbi);
 }
 
+static int interactive_notify(struct notifier_block *this,
+                            unsigned long code, void *data)
+{
+	static bool first_display_on = true;
+	
+	switch (code) {
+		case FB_BLANK_ENTER_NON_INTERACTIVE:
+			if(g_mfd != NULL)
+				mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
+			break;
+
+		case FB_BLANK_ENTER_INTERACTIVE:
+			if(first_display_on && mdss_panel_get_boot_cfg()){
+				first_display_on = false;
+			}else{
+				if(g_mfd != NULL){
+					mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
+					mdss_mdp_overlay_vsync_ctrl(g_mfd,1);
+				}
+			}
+			break;
+
+		default:
+			break;
+	}
+
+	return 0;
+}
+
+static struct notifier_block interactive_mode_notifier = {
+        .notifier_call =    interactive_notify,
+};
 static int mdss_fb_probe(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd = NULL;
@@ -772,6 +808,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mfd->doze_mode = true;
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
+	g_mfd = mfd;
+	if(register_mode_notifier(&interactive_mode_notifier))
+		pr_err("Error: fail to register ambient notifier\n");
 	return rc;
 }
 
@@ -804,6 +843,7 @@ static int mdss_fb_remove(struct platform_device *pdev)
 	if (!mfd)
 		return -ENODEV;
 
+	unregister_mode_notifier(&interactive_mode_notifier);
 	mdss_fb_remove_sysfs(mfd);
 
 	pm_runtime_disable(mfd->fbi->dev);
@@ -1136,7 +1176,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	cur_power_state = mfd->panel_power_state;
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
-		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
+		printk("MDSS:FB:unblank called. cur pwr state=%d\n", cur_power_state);
 		if (!mdss_panel_is_power_on_interactive(cur_power_state) &&
 			mfd->mdp.on_fnc) {
 			ret = mfd->mdp.on_fnc(mfd);
@@ -1173,7 +1213,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_NORMAL:
 	case FB_BLANK_POWERDOWN:
 	default:
-		pr_debug("blank powerdown called. cur mode=%d, req mode=%d\n",
+		printk("MDSS:FB:blank powerdown called. cur mode=%d, req mode=%d\n",
 			cur_power_state, req_power_state);
 		if (mdss_fb_is_power_on(mfd) && mfd->mdp.off_fnc) {
 			cur_power_state = mfd->panel_power_state;

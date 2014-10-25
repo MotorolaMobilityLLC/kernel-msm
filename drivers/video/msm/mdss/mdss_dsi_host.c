@@ -28,6 +28,9 @@
 #include "mdss_panel.h"
 #include "mdss_debug.h"
 
+#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
+#include "mdss_asus_debug.h"
+#endif
 #define VSYNC_PERIOD 17
 
 struct mdss_dsi_ctrl_pdata *ctrl_list[DSI_CTRL_MAX];
@@ -98,6 +101,8 @@ void mdss_dsi_ctrl_init(struct device *ctrl_dev,
 	spin_lock_init(&ctrl->mdp_lock);
 	mutex_init(&ctrl->mutex);
 	mutex_init(&ctrl->cmd_mutex);
+	mutex_init(&ctrl->blcmd_mutex);
+	mutex_init(&ctrl->ambientcmd_mutex);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->tx_buf, SZ_4K);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->rx_buf, SZ_4K);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->status_buf, SZ_4K);
@@ -1165,6 +1170,9 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	len = ALIGN(tp->len, 4);
 	ctrl->dma_size = ALIGN(tp->len, SZ_4K);
 
+#ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
+	notify_amdu_dsi_cmd_dma_tx(tp);
+#endif
 
 	if (is_mdss_iommu_attached()) {
 		int ret = msm_iommu_map_contig_buffer(tp->dmap,
