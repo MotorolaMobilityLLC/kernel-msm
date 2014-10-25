@@ -56,6 +56,7 @@
 #include "u_ctrl_hsuart.c"
 #include "u_data_hsuart.c"
 #include "f_ccid.c"
+#include "f_adb.c"
 #include "f_mtp.c"
 #include "f_accessory.c"
 #include "f_rndis.c"
@@ -89,6 +90,7 @@ static const char longname[] = "Gadget Android";
 
 #define ANDROID_DEVICE_NODE_NAME_LENGTH 11
 
+extern int g_recovery_mode;
 struct android_usb_function {
 	char *name;
 	void *config;
@@ -513,6 +515,121 @@ static void android_disable(struct android_dev *dev)
 
 /*-------------------------------------------------------------------------*/
 /* Supported functions initialization */
+
+struct adb_data {
+	bool opened;
+	bool enabled;
+	struct android_dev *dev;
+};
+
+static int
+adb_function_init(struct android_usb_function *f,
+		struct usb_composite_dev *cdev)
+{
+	f->config = kzalloc(sizeof(struct adb_data), GFP_KERNEL);
+	if (!f->config)
+		return -ENOMEM;
+
+	return adb_setup();
+}
+
+static void adb_function_cleanup(struct android_usb_function *f)
+{
+	adb_cleanup();
+	kfree(f->config);
+}
+
+static int
+adb_function_bind_config(struct android_usb_function *f,
+		struct usb_configuration *c)
+{
+	return adb_bind_config(c);
+}
+
+static void adb_android_function_enable(struct android_usb_function *f)
+{
+	//struct android_dev *dev = f->android_dev;
+	struct adb_data *data = f->config;
+
+	data->enabled = true;
+
+
+	/* Disable the gadget until adbd is ready */
+	/*
+	if (!data->opened)
+		android_disable(dev);
+	*/
+
+}
+
+static void adb_android_function_disable(struct android_usb_function *f)
+{
+	//struct android_dev *dev = f->android_dev;
+	struct adb_data *data = f->config;
+
+	data->enabled = false;
+
+	/* Balance the disable that was called in closed_callback */
+	/*
+	if (!data->opened)
+		//android_enable(dev);
+	*/
+
+}
+
+static struct android_usb_function adb_function = {
+	.name		= "adb",
+	.enable		= adb_android_function_enable,
+	.disable	= adb_android_function_disable,
+	.init		= adb_function_init,
+	.cleanup	= adb_function_cleanup,
+	.bind_config	= adb_function_bind_config,
+};
+
+static void adb_ready_callback(void)
+{
+	struct android_dev *dev = adb_function.android_dev;
+	struct adb_data *data = adb_function.config;
+
+	/* dev is null in case ADB is not in the composition */
+	if (dev)
+		mutex_lock(&dev->mutex);
+
+	/* Save dev in case the adb function will get disabled */
+	data->dev = dev;
+	data->opened = true;
+	if (data->enabled && dev)
+		android_enable(dev);
+
+	if (dev)
+		mutex_unlock(&dev->mutex);
+}
+
+static void adb_closed_callback(void)
+{
+	struct adb_data *data = adb_function.config;
+	struct android_dev *dev = adb_function.android_dev;
+
+	/* In case new composition is without ADB, use saved one */
+	if (!dev)
+		dev = data->dev;
+
+	if (!dev)
+		pr_err("adb_closed_callback: data->dev is NULL");
+
+	if (dev)
+		mutex_lock(&dev->mutex);
+
+	data->opened = false;
+
+	if (data->enabled && dev)
+		android_disable(dev);
+
+	data->dev = NULL;
+
+	if (dev)
+		mutex_unlock(&dev->mutex);
+}
 
 struct functionfs_config {
 	bool opened;
@@ -2766,6 +2883,37 @@ static struct android_usb_function *supported_functions[] = {
 	NULL
 };
 
+static struct android_usb_function *supported_functions_recovery[] = {
+	&ffs_function,
+	&mbim_function,
+	&ecm_qc_function,
+#ifdef CONFIG_SND_PCM
+	&audio_function,
+#endif
+	&rmnet_smd_function,
+	&rmnet_function,
+	&gps_function,
+	&diag_function,
+	&qdss_function,
+	&serial_function,
+	&ccid_function,
+	&acm_function,
+	&mtp_function,
+	&ptp_function,
+	&rndis_function,
+	&rndis_qc_function,
+	&ecm_function,
+	&ncm_function,
+	&mass_storage_function,
+	&accessory_function,
+#ifdef CONFIG_SND_PCM
+	&audio_source_function,
+#endif
+	&uasp_function,
+	&adb_function,
+	NULL
+};
+
 static void android_cleanup_functions(struct android_usb_function **functions)
 {
 	struct android_usb_function *f;
@@ -2864,8 +3012,13 @@ android_bind_enabled_functions(struct android_dev *dev,
 	struct android_configuration *conf =
 		container_of(c, struct android_configuration, usb_config);
 	int ret;
+	struct adb_data *data = adb_function.config;
 
 	list_for_each_entry(f_holder, &conf->enabled_functions, enabled_list) {
+		if(g_recovery_mode == 1){
+			if(!strcmp(f_holder->f->name,"ffs") && data->opened)
+				continue;
+		}
 		ret = f_holder->f->bind_config(f_holder->f, c);
 		if (ret) {
 			pr_err("%s: %s failed\n", __func__, f_holder->f->name);
@@ -3104,7 +3257,13 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 									err);
 				else
 					ffs_enabled = 1;
-				continue;
+
+				if(g_recovery_mode == 1){
+					if(strcmp("adb", name))
+						continue;
+				}else{
+						continue;
+				}
 			}
 
 			if (!strcmp(name, "rndis") &&
@@ -3826,7 +3985,12 @@ static int android_probe(struct platform_device *pdev)
 
 	android_dev->name = pdev->name;
 	android_dev->disable_depth = 1;
-	android_dev->functions = supported_functions;
+
+	if(g_recovery_mode == 1)
+		android_dev->functions = supported_functions_recovery;
+	else
+		android_dev->functions = supported_functions;
+
 	android_dev->configs_num = 0;
 	INIT_LIST_HEAD(&android_dev->configs);
 	INIT_WORK(&android_dev->work, android_work);
