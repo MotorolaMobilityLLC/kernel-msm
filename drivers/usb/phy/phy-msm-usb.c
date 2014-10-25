@@ -4966,9 +4966,7 @@ static int msm_otg_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "mode debugfs file is"
 			"not available\n");
 
-	if (motg->pdata->otg_control == OTG_PMIC_CONTROL &&
-			(!(motg->pdata->mode == USB_OTG) ||
-			 motg->pdata->pmic_id_irq || motg->ext_id_irq))
+	if (motg->pdata->otg_control == OTG_PMIC_CONTROL)
 		motg->caps = ALLOW_PHY_POWER_COLLAPSE | ALLOW_PHY_RETENTION;
 
 	if (motg->pdata->otg_control == OTG_PHY_CONTROL)
