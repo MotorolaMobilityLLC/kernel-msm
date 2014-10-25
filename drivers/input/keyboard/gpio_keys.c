@@ -31,6 +31,8 @@
 #include <linux/spinlock.h>
 #include <linux/pinctrl/consumer.h>
 
+#include <linux/asusdebug.h>
+
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
 	struct input_dev *input;
@@ -50,6 +52,48 @@ struct gpio_keys_drvdata {
 	struct mutex disable_lock;
 	struct gpio_button_data data[0];
 };
+
+static  struct work_struct __wait_for_slowlog_work;
+extern int boot_after_60sec;
+int pwr_gpio;
+
+void wait_for_slowlog_work(struct work_struct *work)
+{
+    static int one_slowlog_instance_running = 0;
+    int i, power_key;
+    const int trigger_count = 30;
+
+    power_key = pwr_gpio;
+
+    if(!one_slowlog_instance_running)
+    {
+        if(gpio_get_value_cansleep(power_key) != 0)
+        {
+            return;
+        }
+        one_slowlog_instance_running = 1;
+
+        for(i = 0; i < trigger_count; i++)
+        {
+            if( gpio_get_value_cansleep(power_key) == 0)
+            {
+                msleep(100);
+            }
+            else
+                break;
+        }
+        if(i == trigger_count)
+        {
+            save_all_thread_info();
+            msleep(1 * 1000);
+            delta_all_thread_info();
+            save_phone_hang_log();
+            save_last_shutdown_log("LastShutdown");
+            printk("Slow log and last shutdown log have been saved.\n");
+        }
+        one_slowlog_instance_running = 0;
+    }
+}
 
 /*
  * SYSFS interface for enabling/disabling keys and switches:
@@ -328,14 +372,15 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 {
 	const struct gpio_keys_button *button = bdata->button;
 	struct input_dev *input = bdata->input;
-	unsigned int type = button->type ?: EV_KEY;
+	unsigned int type = button->type?:EV_KEY;
 	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
 
+	pr_info("%s:key code=%d  state=%s \n",__func__, button->code,state ? "press" : "release");  //ASUS_BSP +++ Shunmin "gpio_keys"
 	if (type == EV_ABS) {
 		if (state)
 			input_event(input, type, button->code, button->value);
 	} else {
-		input_event(input, type, button->code, !!state);
+		//input_event(input, type, button->code, !!state);
 	}
 	input_sync(input);
 }
@@ -345,6 +390,7 @@ static void gpio_keys_gpio_work_func(struct work_struct *work)
 	struct gpio_button_data *bdata =
 		container_of(work, struct gpio_button_data, work);
 
+	schedule_work(&__wait_for_slowlog_work);
 	gpio_keys_gpio_report_event(bdata);
 
 	if (bdata->button->wakeup)
@@ -732,6 +778,8 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	int wakeup = 0;
 	struct pinctrl_state *set_state;
 
+	INIT_WORK(&__wait_for_slowlog_work, wait_for_slowlog_work);
+
 	if (!pdata) {
 		pdata = gpio_keys_get_devtree_pdata(dev);
 		if (IS_ERR(pdata))
@@ -931,7 +979,7 @@ static int gpio_keys_resume(struct device *dev)
 	if (error)
 		return error;
 
-	gpio_keys_report_state(ddata);
+	//gpio_keys_report_state(ddata);
 	return 0;
 }
 #endif
@@ -951,6 +999,11 @@ static struct platform_driver gpio_keys_device_driver = {
 
 static int __init gpio_keys_init(void)
 {
+	if (g_ASUS_hwID >= WI500Q_SR)
+		pwr_gpio = 68;
+	else 
+		pwr_gpio = 1;
+
 	return platform_driver_register(&gpio_keys_device_driver);
 }
 
