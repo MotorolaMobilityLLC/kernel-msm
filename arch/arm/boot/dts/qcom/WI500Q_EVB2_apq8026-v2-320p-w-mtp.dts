@@ -32,13 +32,6 @@
 	qcom,memblock-reserve = <0x07e9c000 0x64000>;
 };
 
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
-};
-
-&dsi_nt35590_qvga_cmd {
-	qcom,cont-splash-enabled;
-};
 
 &soc {
 	i2c@f9927000 {
