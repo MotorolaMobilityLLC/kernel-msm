@@ -260,7 +260,28 @@
 		compatible = "qcom,msm-wfd";
 	};
 
-	serial@f991f000 {
+	// ASUS_BSP BerylHou +++ "config HSUART for BT"
+	uart_0: serial@f991d000{
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf991d000 0x1000>, <0xf9904000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupts = <0 107 0>, <0 238 0>;
+		interrupt-names = "core_irq","bam_irq";
+		qcom,bam-tx-ep-pipe-index = <0>;
+		qcom,bam-rx-ep-pipe-index = <1>;
+		qcom,msm-obs = <1>;
+		status = "ok";
+
+		qcom,msm-bus,name = "blsp1_uart0";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<86 512 0 0>,
+				<86 512 500 800>;
+	};
+	// ASUS_BSP BerylHou --- 
+
+	uart_2:serial@f991f000 { //ASUS_BSP BerylHou +++
 		compatible = "qcom,msm-lsuart-v14";
 		reg = <0xf991f000 0x1000>;
 		interrupts = <0 109 0>;
