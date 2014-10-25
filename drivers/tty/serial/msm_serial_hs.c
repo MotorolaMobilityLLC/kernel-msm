@@ -290,6 +290,7 @@ static void msm_hs_queue_rx_desc(struct msm_hs_port *msm_uport);
 #define UARTDM_TO_MSM(uart_port) \
 	container_of((uart_port), struct msm_hs_port, uport)
 
+extern void bluesleep_setup_uart_port(struct uart_port *uport); //ASUS_BSP BerylHou +++
 
 static int msm_hs_ioctl(struct uart_port *uport, unsigned int cmd,
 						unsigned long arg)
@@ -3305,6 +3306,9 @@ static int msm_hs_probe(struct platform_device *pdev)
 	uport->line = pdev->id;
 	if (pdata != NULL && pdata->userid && pdata->userid <= UARTDM_NR)
 		uport->line = pdata->userid;
+
+	bluesleep_setup_uart_port(uport); //ASUS_BSP BerylHou +++ "set bluesleep uart port"			
+
 	ret = uart_add_one_port(&msm_hs_driver, uport);
 	if (!ret) {
 		msm_hs_clock_unvote(msm_uport);

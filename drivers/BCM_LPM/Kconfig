@@ -1,0 +1,9 @@
+config BCM_BT_LPM
+	tristate "Broadcom Bluetooth Low Power Mode"
+	help
+          TI Bluetooth Bluesleep Driver.
+          This driver provides the dynamic active power saving mechanism for
+          bluetooth radio devices.
+
+          Say Y here to compile support for bluesleep support into the kernel
+          or say M to compile it as module (bluesleep).
