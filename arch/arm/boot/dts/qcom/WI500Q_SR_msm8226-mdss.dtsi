@@ -125,8 +125,8 @@
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
 		gdsc-supply = <&gdsc_mdss>;
-		vdd-supply = <&pm8226_l15>;
-		vddio-supply = <&pm8226_l8>;
+		vdd-supply = <&pm8226_l19>; 
+		vddio-supply = <&pm8226_l6>;
 		vdda-supply = <&pm8226_l4>;
 		qcom,platform-reset-gpio = <&msmgpio 25 0>;
 		qcom,platform-te-gpio = <&msmgpio 24 0>;
@@ -187,8 +187,8 @@
 			qcom,panel-supply-entry@0 {
 				reg = <0>;
 				qcom,supply-name = "vdd";
-				qcom,supply-min-voltage = <2800000>;
-				qcom,supply-max-voltage = <2800000>;
+				qcom,supply-min-voltage = <2850000>;
+				qcom,supply-max-voltage = <2850000>;
 				qcom,supply-enable-load = <100000>;
 				qcom,supply-disable-load = <100>;
 			};
@@ -204,12 +204,14 @@
 		};
 	};
 
+/*
 	qcom,mdss_wb_panel {
 		compatible = "qcom,mdss_wb";
 		qcom,mdss_pan_res = <1280 720>;
 		qcom,mdss_pan_bpp = <24>;
 		qcom,mdss-fb-map = <&mdss_fb1>;
 	};
+*/
 };
 
 #include "WI500Q_SR_msm8226-mdss-panels.dtsi"

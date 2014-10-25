@@ -107,6 +107,13 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 	},
 // ASUS_BSP --- Maggie_Lee "ECG sensor porting"
 	{
+		.gpio = 24,		/* Tear Enable */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_te_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_te_sus_cfg,
+		},
+	},
+	{
 		.gpio = 25,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_rst_act_cfg,
