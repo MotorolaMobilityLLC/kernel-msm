@@ -4935,11 +4935,12 @@ static int msm_otg_probe(struct platform_device *pdev)
 			if (ret < 0) {
 				dev_err(&pdev->dev, "gpio req failed for id\n");
 				motg->pdata->usb_id_gpio = 0;
-				goto remove_phy;
+				set_bit(ID, &motg->inputs);
+			} else {
+				/* usb_id_gpio to irq */
+				id_irq = gpio_to_irq(motg->pdata->usb_id_gpio);
+				motg->ext_id_irq = id_irq;
 			}
-			/* usb_id_gpio to irq */
-			id_irq = gpio_to_irq(motg->pdata->usb_id_gpio);
-			motg->ext_id_irq = id_irq;
 		} else if (motg->pdata->pmic_id_irq) {
 			id_irq = motg->pdata->pmic_id_irq;
 		}
@@ -4951,13 +4952,13 @@ static int msm_otg_probe(struct platform_device *pdev)
 					  IRQF_TRIGGER_FALLING,
 					  "msm_otg", motg);
 			if (ret) {
+				set_bit(ID, &motg->inputs);
+				motg->pdata->pmic_id_irq = 0;
 				dev_err(&pdev->dev, "request irq failed for ID\n");
-				goto remove_phy;
 			}
 		} else {
-			ret = -ENODEV;
+			set_bit(ID, &motg->inputs);
 			dev_err(&pdev->dev, "ID IRQ doesn't exist\n");
-			goto remove_phy;
 		}
 	}
 
@@ -5054,8 +5055,6 @@ remove_cdev:
 	}
 	if (psy)
 		power_supply_unregister(psy);
-remove_phy:
-	usb_remove_phy(&motg->phy);
 free_async_irq:
 	if (motg->async_irq)
 		free_irq(motg->async_irq, motg);
