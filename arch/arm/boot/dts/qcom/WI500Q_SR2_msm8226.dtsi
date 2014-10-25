@@ -537,6 +537,13 @@
 		compatible = "qcom,msm-pcm-routing";
 	};
 
+	//ASUS_BSP BerylHou +++ "Config bt_rfkill"
+	rfkill {
+               compatible = "bcm,bcm-rfkill";
+	       status = "ok";
+	};
+	//ASUS_BSP BerylHou ---
+
 	qcom,msm-pcm-low-latency {
 		compatible = "qcom,msm-pcm-dsp";
 		qcom,msm-pcm-dsp-id = <1>;
