@@ -85,6 +85,7 @@
 #define GSCAN_BATCH_GET_MAX_WAIT            500
 
 #define CHANNEL_BUCKET_EMPTY_INDEX                      0xFFFF
+#define GSCAN_RETRY_THRESHOLD              3
 #endif /* GSCAN_SUPPORT */
 
 enum scan_status {

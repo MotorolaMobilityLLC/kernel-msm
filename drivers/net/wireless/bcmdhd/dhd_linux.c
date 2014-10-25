@@ -7637,8 +7637,8 @@ int dhd_dev_retrieve_batch_scan(struct net_device *dev)
 
 	return (dhd_retreive_batch_scan_results(&dhd->pub));
 }
-
 #endif /* GSCAN_SUPPORT */
+
 #ifdef RTT_SUPPORT
 /* Linux wrapper to call common dhd_pno_set_cfg_gscan */
 int

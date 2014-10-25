@@ -362,8 +362,8 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	int err = 0;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	gscan_results_cache_t *results, *iter;
-	uint32 reply_len, complete = 0, num_results_iter;
-	int32 mem_needed;
+	uint32 reply_len, complete = 0;
+	int32 mem_needed, num_results_iter;
 	wifi_gscan_result_t *ptr;
 	uint16 num_scan_ids, num_results;
 	struct sk_buff *skb;
@@ -412,15 +412,16 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 
 	mem_needed = mem_needed - (SCAN_RESULTS_COMPLETE_FLAG_LEN + VENDOR_REPLY_OVERHEAD);
 
-	while (iter && ((mem_needed - GSCAN_BATCH_RESULT_HDR_LEN)  > 0)) {
+	while (iter) {
+		num_results_iter =
+		    (mem_needed - GSCAN_BATCH_RESULT_HDR_LEN)/sizeof(wifi_gscan_result_t);
+		if (num_results_iter <= 0 ||
+		    ((iter->tot_count - iter->tot_consumed) > num_results_iter))
+			break;
 		scan_hdr = nla_nest_start(skb, GSCAN_ATTRIBUTE_SCAN_RESULTS);
 		nla_put_u32(skb, GSCAN_ATTRIBUTE_SCAN_ID, iter->scan_id);
 		nla_put_u8(skb, GSCAN_ATTRIBUTE_SCAN_FLAGS, iter->flag);
-		num_results_iter =
-		    (mem_needed - GSCAN_BATCH_RESULT_HDR_LEN)/sizeof(wifi_gscan_result_t);
-
-		if ((iter->tot_count - iter->tot_consumed) < num_results_iter)
-			num_results_iter = iter->tot_count - iter->tot_consumed;
+		num_results_iter = iter->tot_count - iter->tot_consumed;
 
 		nla_put_u32(skb, GSCAN_ATTRIBUTE_NUM_OF_RESULTS, num_results_iter);
 		if (num_results_iter) {

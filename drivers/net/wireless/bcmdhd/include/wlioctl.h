@@ -5,13 +5,13 @@
  * Definitions subject to change without notice.
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -19,7 +19,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -2655,17 +2655,19 @@ typedef struct wl_pfn_cfg {
 
 #define CH_BUCKET_REPORT_REGULAR            0
 #define CH_BUCKET_REPORT_FULL_RESULT        2
+#define CH_BUCKET_GSCAN                     4
 
 typedef struct wl_pfn_gscan_channel_bucket {
 	uint16 bucket_end_index;
 	uint8 bucket_freq_multiple;
-	uint8 report_flag;
+	uint8 flag;
 } wl_pfn_gscan_channel_bucket_t;
 
 #define GSCAN_SEND_ALL_RESULTS_MASK    (1 << 0)
 #define GSCAN_CFG_FLAGS_ONLY_MASK      (1 << 7)
-
+#define WL_GSCAN_CFG_VERSION            1
 typedef struct wl_pfn_gscan_cfg {
+	uint16 version;
 	/* BIT0 1 = send probes/beacons to HOST
 	 * BIT1 Reserved
 	 * BIT2 Reserved
@@ -2681,7 +2683,8 @@ typedef struct wl_pfn_gscan_cfg {
 	uint8   swc_nbssid_threshold;
 	/* Max=8 (for now) Size of rssi cache buffer */
 	uint8  swc_rssi_window_size;
-	uint16  count_of_channel_buckets;
+	uint8  count_of_channel_buckets;
+	uint8  retry_threshold;
 	uint16  lost_ap_window;
 	wl_pfn_gscan_channel_bucket_t channel_bucket[1];
 } wl_pfn_gscan_cfg_t;
