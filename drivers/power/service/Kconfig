@@ -1,0 +1,6 @@
+config BATTERY_ASUS_SERVICE
+        bool "asus battery service"
+	default y
+        ---help---
+          Say Y here to enable support for asus battery service
+

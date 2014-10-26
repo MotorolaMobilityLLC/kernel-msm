@@ -31,6 +31,10 @@ static DEFINE_RAW_SPINLOCK(timekeeper_lock);
 static seqcount_t timekeeper_seq;
 static struct timekeeper shadow_timekeeper;
 
+//ASUS_BSP Lenter +++
+static bool IsRtcReady = false;
+//ASUS_BSP Lenter ---
+
 /* flag for if timekeeping is suspended */
 int __read_mostly timekeeping_suspended;
 
@@ -516,9 +520,19 @@ int do_settimeofday(const struct timespec *tv)
 	/* signal hrtimers about time change */
 	clock_was_set();
 
+	//ASUS_BSP Lenter +++
+	IsRtcReady = true;
+	//ASUS_BSP Lenter ---
+    
 	return 0;
 }
 EXPORT_SYMBOL(do_settimeofday);
+
+//ASUS_BSP Lenter +++
+bool reportRtcReady(void){
+	return IsRtcReady;
+}
+//ASUS_BSP Lenter ---
 
 /**
  * timekeeping_inject_offset - Adds or subtracts from the current time.

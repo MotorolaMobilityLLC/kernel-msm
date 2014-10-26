@@ -3878,6 +3878,7 @@ static ssize_t msm_otg_bus_write(struct file *file, const char __user *ubuf,
 	return count;
 }
 
+#ifndef CONFIG_CHARGER_ASUS
 static int
 otg_get_prop_usbin_voltage_now(struct msm_otg *motg)
 {
@@ -4005,7 +4006,7 @@ static enum power_supply_property otg_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
-
+#endif
 const struct file_operations msm_otg_bus_fops = {
 	.open = msm_otg_bus_open,
 	.read = seq_read,
@@ -4209,7 +4210,7 @@ static int msm_otg_setup_devices(struct platform_device *ofdev,
 
 	return retval;
 }
-
+#ifndef CONFIG_CHARGER_ASUS
 static int msm_otg_register_power_supply(struct platform_device *pdev,
 					struct msm_otg *motg)
 {
@@ -4226,6 +4227,7 @@ static int msm_otg_register_power_supply(struct platform_device *pdev,
 	legacy_power_supply = false;
 	return 0;
 }
+#endif
 
 static int msm_otg_ext_chg_open(struct inode *inode, struct file *file)
 {
