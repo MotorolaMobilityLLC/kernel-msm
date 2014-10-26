@@ -1,0 +1,6 @@
+config CHARGER_ASUS_FSM
+        bool "asus charging state machine"
+	default y
+        ---help---
+          Say Y here to enable support for asus charging FSM
+

@@ -38,6 +38,14 @@
 #include <linux/of_gpio.h>
 #include <linux/qpnp/pin.h>
 
+//ASUS_BSP Lenter +++
+#include <linux/asus_bat.h>
+#include <linux/asus_chg.h>
+#include "AXI_Basic_Define.h"
+#include <asm/uaccess.h>
+#include <linux/proc_fs.h>
+//ASUS_BSP Lenter ---
+
 /* Interrupt offsets */
 #define INT_RT_STS(base)			(base + 0x10)
 #define INT_SET_TYPE(base)			(base + 0x11)
@@ -412,6 +420,49 @@ static struct of_device_id qpnp_charger_match_table[] = {
 	{ .compatible = QPNP_CHARGER_DEV_NAME, },
 	{}
 };
+
+//ASUS_BSP lenter +++
+static struct qpnp_chg_chip *g_qpnp_chg_chip = NULL;
+
+#ifdef CONFIG_PM_8226_CHARGER
+extern irqreturn_t PM8226_charger_in_out_handler(int irq, void *dev_id);
+extern void asus_fsm_chargingstop(AXE_Charging_Error_Reason reason);
+extern void asus_fsm_chargingstart(void);
+static bool g_PMIC_CHG_EN = true;// bool to record ASUS set PMIC CHG_EN flag actively
+#endif
+//ASUS_BSP lenter ---
+//ASUS_BSP Eason: notify thermal limit +++
+extern void notifyThermalLimit(int thermalnotify);
+//ASUS_BSP Eason: notify thermal limit ---
+//Eason: Factory5060Mode+++
+#ifdef ASUS_FACTORY_BUILD
+extern bool g_5060modeCharging;
+#endif
+//Eason: Factory5060Mode---
+
+//ASUS_Eason : force setting BAT CHG_EN 0x1049[7] for BT test+++ 
+#ifdef CONFIG_PM_8226_CHARGER
+static bool g_ForceSetCHG_EN_value = true;
+#endif
+//ASUS_Eason : force setting BAT CHG_EN 0x1049[7] for BT test---
+
+//ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter+++
+#ifdef CONFIG_PM_8226_CHARGER	
+static bool g_EocCurBigger_switch = false; 
+static int g_EocCurBigger_value = 200; 
+#endif
+//ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter---
+
+//ASUS_BSP Eason: fix PM8226 eoc_work change status full, but cap is 99% +++
+extern void notify_batteryService_statusFull(void);
+//ASUS_BSP Eason: fix PM8226 eoc_work change status full, but cap is 99% ---
+
+//ASUS_BSP +++
+#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
+extern char g_CHG_mode;
+#endif
+//ASUS_BSP ---
+
 
 enum bpd_type {
 	BPD_TYPE_BAT_ID,
@@ -1032,6 +1083,13 @@ qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 	return rc;
 }
 
+//ASUS_BSP Eason_Chang BAT charger driver set usb path charge current +++ 
+void asus_usbPath_chg_current_set(int mA)
+{
+	qpnp_chg_iusbmax_set(g_qpnp_chg_chip,mA);
+}
+//ASUS_BSP Eason_Chang BAT charger driver set usb path charge current ---
+
 #define QPNP_CHG_VINMIN_MIN_MV		4000
 #define QPNP_CHG_VINMIN_HIGH_MIN_MV	5600
 #define QPNP_CHG_VINMIN_HIGH_MIN_VAL	0x2B
@@ -1210,11 +1268,53 @@ qpnp_chg_usb_suspend_enable(struct qpnp_chg_chip *chip, int enable)
 static int
 qpnp_chg_charge_en(struct qpnp_chg_chip *chip, int enable)
 {
+
+	//ASUS_Eason : force setting BAT CHG_EN 0x1049[7] for BT test+++ 
+#ifdef CONFIG_PM_8226_CHARGER	
+	if(false == g_ForceSetCHG_EN_value)
+	{
+		printk("[BAT][PM8226][BT]Force disable BAT CHG_EN\n");
+		return qpnp_chg_masked_write(chip, chip->chgr_base + CHGR_CHG_CTRL,
+				CHGR_CHG_EN,
+				0, 1);
+	}
+#endif
+	//ASUS_Eason : force setting BAT CHG_EN 0x1049[7] for BT test---
+
 	if (chip->insertion_ocv_uv == 0 && enable) {
 		pr_debug("Battery not present, skipping\n");
 		return 0;
 	}
 	pr_debug("charging %s\n", enable ? "enabled" : "disabled");
+
+//ASUS_BSP +++
+#ifdef CONFIG_PM_8226_CHARGER
+
+	//Eason record CHG_EN +++
+	if( (false==g_PMIC_CHG_EN) && (true == enable) )
+	{
+		printk("[BAT][PM8226]CHG_EN:force disable\n");
+		return 0;
+	}		
+	//Eason record CHG_EN ---
+	
+	if(enable){
+		asus_fsm_chargingstart();
+	}
+	else{
+		if (chip->chg_done){
+			asus_fsm_chargingstop(CHARGING_DONE);
+			//ASUS_BSP Eason: fix PM8226 eoc_work change status full, but cap is 99% +++
+			notify_batteryService_statusFull();
+			//ASUS_BSP Eason: fix PM8226 eoc_work change status full, but cap is 99% ---
+		}
+		else{
+			asus_fsm_chargingstop(POWERBANK_STOP);
+		}
+	}
+#endif	
+//ASUS_BSP ---
+
 	return qpnp_chg_masked_write(chip, chip->chgr_base + CHGR_CHG_CTRL,
 			CHGR_CHG_EN,
 			enable ? CHGR_CHG_EN : 0, 1);
@@ -1334,8 +1434,13 @@ qpnp_arb_stop_work(struct work_struct *work)
 	struct qpnp_chg_chip *chip = container_of(dwork,
 				struct qpnp_chg_chip, arb_stop_work);
 
+	printk("qpnp_arb_stop_work\n");//ASUS_BSP+
+		
 	if (!chip->chg_done)
+	{
 		qpnp_chg_charge_en(chip, !chip->charging_disabled);
+		printk("[BAT][PM8226][CHG_EN]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
+	}
 	qpnp_chg_force_run_on_batt(chip, chip->charging_disabled);
 }
 
@@ -1366,7 +1471,7 @@ qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 	u8 chg_sts = 0;
 	int rc;
 
-	pr_debug("vbatdet-lo triggered\n");
+	printk("vbatdet-lo triggered\n");
 
 	rc = qpnp_chg_read(chip, &chg_sts, INT_RT_STS(chip->chgr_base), 1);
 	if (rc)
@@ -1376,7 +1481,9 @@ qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 	if (!chip->charging_disabled && (chg_sts & FAST_CHG_ON_IRQ)) {
 		schedule_delayed_work(&chip->eoc_work,
 			msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
+		pr_debug("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
 		pm_stay_awake(chip->dev);
+		pr_debug("[BAT][PM8226][pm_stay_awake]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_stay_awake
 	}
 	qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
 
@@ -1400,13 +1507,17 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 	struct qpnp_chg_chip *chip = _chip;
 	u8 usb_sts;
 	int rc;
+	u8 chg_led = 0x0; //ASUS_BSP +
 
 	rc = qpnp_chg_read(chip, &usb_sts,
 			INT_RT_STS(chip->usb_chgpth_base), 1);
 	if (rc)
 		pr_err("failed to read usb_chgpth_sts rc=%d\n", rc);
 
-	pr_debug("chg_gone triggered\n");
+	printk("chg_gone triggered\n");
+	
+	qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
+	
 	if ((qpnp_chg_is_usb_chg_plugged_in(chip)
 			|| qpnp_chg_is_dc_chg_plugged_in(chip))
 			&& (usb_sts & CHG_GONE_IRQ)) {
@@ -1430,7 +1541,7 @@ qpnp_chg_usb_usb_ocp_irq_handler(int irq, void *_chip)
 {
 	struct qpnp_chg_chip *chip = _chip;
 
-	pr_debug("usb-ocp triggered\n");
+	printk("usb-ocp triggered\n");
 
 	schedule_work(&chip->ocp_clear_work);
 
@@ -1705,10 +1816,11 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 	struct qpnp_chg_chip *chip = _chip;
 	int usb_present, host_mode, usbin_health;
 	u8 psy_health_sts;
-
+	u8 chg_led = 0x0; //ASUS_BSP +
+	
 	usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
 	host_mode = qpnp_chg_is_otg_en_set(chip);
-	pr_debug("usbin-valid triggered: %d host_mode: %d\n",
+	printk("usbin-valid triggered: %d host_mode: %d\n",
 		usb_present, host_mode);
 
 	/* In host mode notifications cmoe from USB supply */
@@ -1718,6 +1830,11 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 	if (chip->usb_present ^ usb_present) {
 		chip->usb_present = usb_present;
 		if (!usb_present) {
+//ASUS_BSP +++
+			qpnp_chg_write(chip, &chg_led, 0x104D, 1);
+			qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
+			qpnp_chg_irq_wake_disable(&chip->chg_vbatdet_lo);
+//ASUS_BSP ---
 			/* when a valid charger inserted, and increase the
 			 *  charger voltage to OVP threshold, then
 			 *  usb_in_valid falling edge interrupt triggers.
@@ -1773,12 +1890,17 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 
 			schedule_delayed_work(&chip->eoc_work,
 				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
+			printk("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
 			schedule_work(&chip->soc_check_work);
 		}
 
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 		schedule_work(&chip->batfet_lcl_work);
 	}
+
+#ifdef CONFIG_PM_8226_CHARGER
+	PM8226_charger_in_out_handler(irq, chip);
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -1866,7 +1988,7 @@ qpnp_chg_bat_if_batt_pres_irq_handler(int irq, void *_chip)
 	int batt_present, batt_temp_good, rc;
 
 	batt_present = qpnp_chg_is_batt_present(chip);
-	pr_debug("batt-pres triggered: %d\n", batt_present);
+	printk("batt-pres triggered: %d\n", batt_present);
 
 	if (chip->batt_present ^ batt_present) {
 		if (batt_present) {
@@ -1910,6 +2032,7 @@ qpnp_chg_bat_if_batt_pres_irq_handler(int irq, void *_chip)
 			}
 			chip->insertion_ocv_uv = 0;
 			qpnp_chg_charge_en(chip, 0);
+			printk("[BAT][PM8226][CHG_EN]%s:0\n",__FUNCTION__);//ASUS_BSP Eason: check CHG_EN
 		}
 		chip->batt_present = batt_present;
 		pr_debug("psy changed batt_psy\n");
@@ -1985,8 +2108,11 @@ qpnp_chg_chgr_chg_failed_irq_handler(int irq, void *_chip)
 {
 	struct qpnp_chg_chip *chip = _chip;
 	int rc;
+	u8 chg_led = 0; //ASUS_BSP +
 
-	pr_debug("chg_failed triggered\n");
+	printk("chg_failed triggered\n");
+
+	qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
 
 	rc = qpnp_chg_masked_write(chip,
 		chip->chgr_base + CHGR_CHG_FAILED,
@@ -2012,9 +2138,12 @@ static irqreturn_t
 qpnp_chg_chgr_chg_trklchg_irq_handler(int irq, void *_chip)
 {
 	struct qpnp_chg_chip *chip = _chip;
+	u8 chg_led = 0x1; //ASUS_BSP +
 
-	pr_debug("TRKL IRQ triggered\n");
+	printk("TRKL IRQ triggered\n");
 
+	qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
+	
 	chip->chg_done = false;
 	if (chip->bat_if_base) {
 		pr_debug("psy changed batt_psy\n");
@@ -2066,11 +2195,14 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 {
 	struct qpnp_chg_chip *chip = _chip;
 	bool fastchg_on = false;
+	u8 chg_led = 0; //ASUS_BSP +
 
 	qpnp_chg_irq_wake_disable(&chip->chg_fastchg);
 	fastchg_on = qpnp_chg_is_fastchg_on(chip);
 
-	pr_debug("FAST_CHG IRQ triggered, fastchg_on: %d\n", fastchg_on);
+	printk("FAST_CHG IRQ triggered, fastchg_on: %d\n", fastchg_on);
+
+	qpnp_chg_write(chip, &chg_led, 0x104D, 1); //ASUS_BSP +
 
 	if (chip->fastchg_on ^ fastchg_on) {
 		chip->fastchg_on = fastchg_on;
@@ -2122,6 +2254,7 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 		}
 	}
 
+	qpnp_chg_irq_wake_enable(&chip->chg_vbatdet_lo); //ASUS_BSP +
 	qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
 
 	return IRQ_HANDLED;
@@ -2174,6 +2307,7 @@ qpnp_chg_buck_control(struct qpnp_chg_chip *chip, int enable)
 	}
 
 	rc = qpnp_chg_charge_en(chip, enable);
+	printk("[BAT][PM8226][CHG_EN]%s:%d\n",__FUNCTION__, enable);//ASUS_BSP Eason: check CHG_EN
 	if (rc) {
 		pr_err("Failed to control charging %d\n", rc);
 		return rc;
@@ -2472,6 +2606,7 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 }
 
 #define DEFAULT_CAPACITY	50
+#ifndef CONFIG_PM_8226_CHARGER
 static int
 get_batt_capacity(struct qpnp_chg_chip *chip)
 {
@@ -2488,12 +2623,20 @@ get_batt_capacity(struct qpnp_chg_chip *chip)
 	}
 	return DEFAULT_CAPACITY;
 }
+#endif
 
 static int
 get_prop_batt_status(struct qpnp_chg_chip *chip)
 {
 	int rc;
 	u8 chgr_sts, bat_if_sts;
+
+//ASUS_BSP +++
+	if ((qpnp_chg_is_usb_chg_plugged_in(chip) ||
+		qpnp_chg_is_dc_chg_plugged_in(chip)) && chip->chg_done) {
+		return POWER_SUPPLY_STATUS_FULL;
+	}
+//ASUS_BSP ---
 
 	rc = qpnp_chg_read(chip, &chgr_sts, INT_RT_STS(chip->chgr_base), 1);
 	if (rc) {
@@ -2512,6 +2655,7 @@ get_prop_batt_status(struct qpnp_chg_chip *chip)
 	if (chgr_sts & FAST_CHG_ON_IRQ && bat_if_sts & BAT_FET_ON_IRQ)
 		return POWER_SUPPLY_STATUS_CHARGING;
 
+#ifndef CONFIG_PM_8226_CHARGER
 	/*
 	 * Report full if state of charge is 100 or chg_done is true
 	 * when a charger is connected and boost is disabled
@@ -2522,6 +2666,7 @@ get_prop_batt_status(struct qpnp_chg_chip *chip)
 		&& qpnp_chg_is_boost_en_set(chip) == 0) {
 		return POWER_SUPPLY_STATUS_FULL;
 	}
+#endif
 
 	return POWER_SUPPLY_STATUS_DISCHARGING;
 }
@@ -2574,6 +2719,13 @@ get_prop_charge_full(struct qpnp_chg_chip *chip)
 	return 0;
 }
 
+//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
+#ifdef CONFIG_PM_8226_CHARGER	
+extern int pm8226_getCapacity(void);
+static int asus_soc;
+#endif
+//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue---
+
 static int
 get_prop_capacity(struct qpnp_chg_chip *chip)
 {
@@ -2586,6 +2738,12 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 	if (chip->use_default_batt_values || !get_prop_batt_present(chip))
 		return DEFAULT_CAPACITY;
 
+	//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
+#ifdef CONFIG_PM_8226_CHARGER	
+	asus_soc = pm8226_getCapacity();
+#endif
+	//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue---
+
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, &ret);
@@ -2597,6 +2755,34 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 		charger_in = qpnp_chg_is_usb_chg_plugged_in(chip) ||
 			qpnp_chg_is_dc_chg_plugged_in(chip);
 
+//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue+++
+#ifdef CONFIG_PM_8226_CHARGER
+		pr_debug("[BAT] batS:%d, bmsS:%d, chg_in:%d, cool:%d, warm:%d, resuChg:%d, ChgDis:%d, asus_soc:%d, socRL:%d, BMS_soc:%d\n"
+			,battery_status
+			,bms_status
+			,charger_in
+			,chip->bat_is_cool
+			,chip->bat_is_warm
+			,chip->resuming_charging
+			,chip->charging_disabled
+			,asus_soc
+			,chip->soc_resume_limit
+			,soc);
+
+		if (battery_status != POWER_SUPPLY_STATUS_CHARGING
+				/*mark below line, because bms_status is the same of asus own status, may show charging but not real charging
+				*  battery_status = get_prop_batt_status(chip); is PM8226 real charger FSM status
+				*  if battery_status != POWER_SUPPLY_STATUS_CHARGING, then should resume charging
+				*/
+				//&& bms_status != POWER_SUPPLY_STATUS_CHARGING
+				&& charger_in
+				&& !chip->bat_is_cool
+				&& !chip->bat_is_warm
+				&& !chip->resuming_charging
+				&& !chip->charging_disabled
+				&& chip->soc_resume_limit
+				&& asus_soc <= chip->soc_resume_limit) {//change "BMS soc" to "soc showed to user"(asus_soc) judge recharge
+#else
 		if (battery_status != POWER_SUPPLY_STATUS_CHARGING
 				&& bms_status != POWER_SUPPLY_STATUS_CHARGING
 				&& charger_in
@@ -2606,11 +2792,14 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 				&& !chip->charging_disabled
 				&& chip->soc_resume_limit
 				&& soc <= chip->soc_resume_limit) {
+#endif
+//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue---
 			pr_debug("resuming charging at %d%% soc\n", soc);
 			chip->resuming_charging = true;
 			qpnp_chg_irq_wake_enable(&chip->chg_fastchg);
 			qpnp_chg_set_appropriate_vbatdet(chip);
 			qpnp_chg_charge_en(chip, !chip->charging_disabled);
+			printk("[BAT][PM8226][CHG_EN]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
 		}
 		if (soc == 0) {
 			if (!qpnp_chg_is_usb_chg_plugged_in(chip)
@@ -2626,6 +2815,13 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 	 * from shutting down unecessarily */
 	return DEFAULT_CAPACITY;
 }
+
+//Eason: choose Capacity type SWGauge/BMS +++ 
+int get_BMS_capacity(void)
+{
+	return get_prop_capacity(g_qpnp_chg_chip);
+}
+//Eason: choose Capacity type SWGauge/BMS ---
 
 #define DEFAULT_TEMP		250
 #define MAX_TOLERABLE_BATT_TEMP_DDC	680
@@ -2805,7 +3001,13 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		val->intval = chip->warm_bat_decidegc;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = get_prop_capacity(chip);
+#ifdef CONFIG_BATTERY_ASUS
+		//ASUS_BSP Eason +++ get BMS capacity only in BatteryServiceGauge_OnCapacityReply  get_BMS_capacity(AXC_BatteryService.c)
+		val->intval = asus_bat_report_phone_capacity(100);
+		//ASUS_BSP Eason --- get BMS capacity only in BatteryServiceGauge_OnCapacityReply  get_BMS_capacity(AXC_BatteryService.c)
+#else
+ 		val->intval = get_prop_capacity(chip);
+#endif // CONFIG_BATTERY_ASUS
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_current_now(chip);
@@ -2882,6 +3084,95 @@ qpnp_chg_bat_if_configure_btc(struct qpnp_chg_chip *chip)
 			mask, btc_cfg, 1);
 }
 
+//ASUS_BSP Lenter +++
+static void api_phone_bat_power_supply_changed(void)
+{
+	power_supply_changed(&g_qpnp_chg_chip->batt_psy);
+}
+
+static int api_get_prop_batt_present(void)
+{
+	return get_prop_batt_present(g_qpnp_chg_chip);
+}
+
+static int api_get_prop_batt_capacity(void)
+{
+	return get_prop_capacity(g_qpnp_chg_chip);
+}
+
+static int api_get_prop_batt_status(void)
+{
+	return get_prop_batt_status(g_qpnp_chg_chip);
+}
+
+
+static int api_get_prop_charge_type(void)
+{
+	return get_prop_charge_type(g_qpnp_chg_chip);
+
+}
+
+static int api_get_prop_batt_health(void)
+{
+	return get_prop_batt_health(g_qpnp_chg_chip);
+}
+
+static int api_get_prop_batt_volt(void)
+{
+	return get_prop_battery_voltage_now(g_qpnp_chg_chip);
+}
+
+static int api_get_prop_batt_curr(void)
+{
+	return get_prop_current_now(g_qpnp_chg_chip);
+}
+
+int get_temp_for_ASUSswgauge(void)
+{ 
+	if (g_qpnp_chg_chip == NULL){
+		printk("[BAT][SWgauge]%s():g_qpnp_chg_chip == NULL",__FUNCTION__);
+		return 25;
+	}
+	else
+	{
+		return get_prop_batt_temp(g_qpnp_chg_chip)/10;
+	}
+}
+
+int get_voltage_for_ASUSswgauge(void)
+{ 
+	if (g_qpnp_chg_chip == NULL){
+		printk("[BAT][SWgauge]%s():g_qpnp_chg_chip == NULL",__FUNCTION__);
+		return 3700;
+	}
+	else
+	{
+		return get_prop_battery_voltage_now(g_qpnp_chg_chip)/1000;
+	}
+}
+
+int get_current_for_ASUSswgauge(void)
+{ 
+  	if (g_qpnp_chg_chip == NULL){
+  		printk("[BAT][SWgauge]%s():g_qpnp_chg_chip == NULL",__FUNCTION__);
+		return 500;
+  	}
+  	else
+  	{
+		return get_prop_current_now(g_qpnp_chg_chip)/1000;
+  	}		
+}
+void asus_bat_status_change(void)
+{
+	power_supply_changed(g_qpnp_chg_chip->usb_psy);
+}
+
+
+void asus_chg_set_chg_mode_forBatteryservice(enum asus_chg_src Batteryservice_src)
+{
+}
+//ASUS_BSP Lenter ---
+
 #define QPNP_CHG_IBATSAFE_MIN_MA		100
 #define QPNP_CHG_IBATSAFE_MAX_MA		3250
 #define QPNP_CHG_I_STEP_MA		50
@@ -2913,6 +3204,10 @@ qpnp_chg_ibatterm_set(struct qpnp_chg_chip *chip, int term_current)
 {
 	u8 temp;
 
+//ASUS_BSP +++
+	term_current = QPNP_CHG_ITERM_MIN_MA;
+//ASUS_BSP ---
+
 	if (term_current < QPNP_CHG_ITERM_MIN_MA
 			|| term_current > QPNP_CHG_ITERM_MAX_MA) {
 		pr_err("bad mA=%d asked to set\n", term_current);
@@ -2928,11 +3223,20 @@ qpnp_chg_ibatterm_set(struct qpnp_chg_chip *chip, int term_current)
 
 #define QPNP_CHG_IBATMAX_MIN	50
 #define QPNP_CHG_IBATMAX_MAX	3250
+//ASUS_BSP +++
+int g_ibat_500 = 0;
+//ASUS_BSP ---
 static int
 qpnp_chg_ibatmax_set(struct qpnp_chg_chip *chip, int chg_current)
 {
 	u8 temp;
 
+//ASUS_BSP +++
+	if(g_ibat_500){
+		chg_current = 500;
+	}
+//ASUS_BSP ---
+	
 	if (chg_current < QPNP_CHG_IBATMAX_MIN
 			|| chg_current > QPNP_CHG_IBATMAX_MAX) {
 		pr_err("bad mA=%d asked to set\n", chg_current);
@@ -2942,6 +3246,13 @@ qpnp_chg_ibatmax_set(struct qpnp_chg_chip *chip, int chg_current)
 	return qpnp_chg_masked_write(chip, chip->chgr_base + CHGR_IBAT_MAX,
 			QPNP_CHG_I_MASK, temp, 1);
 }
+
+//ASUS_BSP +++
+void pm8226_chg_ibatmax_set(int chg_current)
+{
+	qpnp_chg_ibatmax_set(g_qpnp_chg_chip, chg_current);
+}
+//ASUS_BSP ---
 
 static int
 qpnp_chg_ibatmax_get(struct qpnp_chg_chip *chip, int *chg_current)
@@ -3013,9 +3324,14 @@ qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 	if (chip->bat_is_warm)
 		chg_current = min(chg_current, chip->warm_bat_chg_ma);
 
+	//ASUS_BSP Eason: notify thermal limit +++
+	//don't do Qualcomm default thermal_mitigation change IBAT_MAX 0x1044
+#if 0
 	if (chip->therm_lvl_sel != 0 && chip->thermal_mitigation)
 		chg_current = min(chg_current,
 			chip->thermal_mitigation[chip->therm_lvl_sel]);
+#endif	
+	//ASUS_BSP Eason: notify thermal limit ---
 
 	pr_debug("setting %d mA\n", chg_current);
 	qpnp_chg_ibatmax_set(chip, chg_current);
@@ -3317,7 +3633,9 @@ qpnp_chg_regulator_boost_enable(struct regulator_dev *rdev)
 	 * update battery status when charger is connected and state is full
 	 */
 	if (usb_present && (chip->chg_done
+#ifndef CONFIG_PM_8226_CHARGER
 			|| (get_batt_capacity(chip) == 100)
+#endif
 			|| (get_prop_batt_status(chip) ==
 			POWER_SUPPLY_STATUS_FULL)))
 		power_supply_changed(&chip->batt_psy);
@@ -3420,7 +3738,11 @@ qpnp_chg_regulator_boost_disable(struct regulator_dev *rdev)
 	 * resumeing charging else update battery status
 	 */
 	if (qpnp_chg_is_usb_chg_plugged_in(chip)) {
-		if (get_batt_capacity(chip) < 100 || !chip->chg_done) {
+		if (
+#ifndef CONFIG_PM_8226_CHARGER
+get_batt_capacity(chip) < 100 || 
+#endif
+!chip->chg_done) {
 			chip->chg_done = false;
 			chip->resuming_charging = true;
 			qpnp_chg_set_appropriate_vbatdet(chip);
@@ -3629,7 +3951,9 @@ qpnp_eoc_work(struct work_struct *work)
 	bool vbat_lower_than_vbatdet;
 
 	pm_stay_awake(chip->dev);
+	pr_debug("[BAT][PM8226][pm_stay_awake]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_stay_awake
 	qpnp_chg_charge_en(chip, !chip->charging_disabled);
+	pr_debug("[BAT][PM8226][CHG_EN][1]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
 
 	rc = qpnp_chg_read(chip, &batt_sts, INT_RT_STS(chip->bat_if_base), 1);
 	if (rc) {
@@ -3663,8 +3987,15 @@ qpnp_eoc_work(struct work_struct *work)
 		ibat_ma = get_prop_current_now(chip) / 1000;
 		vbat_mv = get_prop_battery_voltage_now(chip) / 1000;
 
+//ASUS_BSP Eason_Chang: show term_current +++
+#if 0
 		pr_debug("ibat_ma = %d vbat_mv = %d term_current_ma = %d\n",
 				ibat_ma, vbat_mv, chip->term_current);
+#else
+		pr_debug("[BAT][PM8226]ibat_ma = %d vbat_mv = %d term_current_ma = %d\n",
+				ibat_ma, vbat_mv, chip->term_current);
+#endif
+//ASUS_BSP Eason_Chang: show term_current ---
 
 		vbat_lower_than_vbatdet = !(chg_sts & VBAT_DET_LOW_IRQ);
 		if (vbat_lower_than_vbatdet && vbat_mv <
@@ -3693,28 +4024,41 @@ qpnp_eoc_work(struct work_struct *work)
 		if (!(buck_sts & VDD_LOOP_IRQ)) {
 			pr_debug("Not in CV\n");
 			count = 0;
+//ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter+++
+#ifndef CONFIG_PM_8226_CHARGER				
 		} else if ((ibat_ma * -1) > chip->term_current) {
 			pr_debug("Not at EOC, battery current too high\n");
 			count = 0;
+#else
+		} else if (((ibat_ma * -1) > chip->term_current) && (false == g_EocCurBigger_switch) ){
+			pr_debug("[BAT][PM8226]Not at EOC, bat cur too high, sw:%d\n",g_EocCurBigger_switch);
+			count = 0;
+		} else if (((ibat_ma * -1) > g_EocCurBigger_value) && (true == g_EocCurBigger_switch) ){
+			pr_debug("[BAT][PM8226]Not at EOC, bat cur too high, sw:%d, cur:%d\n",g_EocCurBigger_switch, g_EocCurBigger_value);
+			count = 0;
+#endif		
+//ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter---
 		} else if (ibat_ma > 0) {
 			pr_debug("Charging but system demand increased\n");
 			count = 0;
 		} else {
 			if (count == CONSECUTIVE_COUNT) {
 				if (!chip->bat_is_cool && !chip->bat_is_warm) {
-					pr_info("End of Charging\n");
+					printk("End of Charging\n");
 					chip->chg_done = true;
 				} else {
-					pr_info("stop charging: battery is %s, vddmax = %d reached\n",
+					printk("stop charging: battery is %s, vddmax = %d reached\n",
 						chip->bat_is_cool
 							? "cool" : "warm",
 						qpnp_chg_vddmax_get(chip));
 				}
 				qpnp_chg_charge_en(chip, 0);
+				pr_debug("[BAT][PM8226][CHG_EN][2]%s:0\n",__FUNCTION__);//ASUS_BSP Eason: check CHG_EN
 				/* sleep for a second before enabling */
 				msleep(2000);
 				qpnp_chg_charge_en(chip,
 						!chip->charging_disabled);
+				pr_debug("[BAT][PM8226][CHG_EN][3]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
 				pr_debug("psy changed batt_psy\n");
 				power_supply_changed(&chip->batt_psy);
 				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
@@ -3732,6 +4076,7 @@ qpnp_eoc_work(struct work_struct *work)
 check_again_later:
 	schedule_delayed_work(&chip->eoc_work,
 		msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
+	pr_debug("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
 	return;
 
 stop_eoc:
@@ -3827,6 +4172,7 @@ qpnp_chg_insertion_ocv_work(struct work_struct *work)
 	pr_debug("batfet sts = %02x, charge_en = %02x ocv = %d\n",
 			bat_if_sts, charge_en, chip->insertion_ocv_uv);
 	qpnp_chg_charge_en(chip, !chip->charging_disabled);
+	printk("[BAT][PM8226][CHG_EN]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
 	pr_debug("psy changed batt_psy\n");
 	power_supply_changed(&chip->batt_psy);
 }
@@ -4270,6 +4616,7 @@ qpnp_batt_power_set_property(struct power_supply *psy,
 		if (chip->charging_disabled) {
 			/* disable charging */
 			qpnp_chg_charge_en(chip, !chip->charging_disabled);
+			printk("[BAT][PM8226][CHG_EN][1]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
 			qpnp_chg_force_run_on_batt(chip,
 						chip->charging_disabled);
 		} else {
@@ -4277,9 +4624,14 @@ qpnp_batt_power_set_property(struct power_supply *psy,
 			qpnp_chg_force_run_on_batt(chip,
 					chip->charging_disabled);
 			qpnp_chg_charge_en(chip, !chip->charging_disabled);
+			printk("[BAT][PM8226][CHG_EN][2]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
 		}
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		//ASUS_BSP Eason: notify thermal limit +++
+		notifyThermalLimit( val->intval);
+//		ASUSEvtlog("[BAT]set SYSTEM_TEMP_LEVEL:%d \n",val->intval);
+		//ASUS_BSP Eason: notify thermal limit ---
 		qpnp_batt_system_temp_level_set(chip, val->intval);
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
@@ -5137,6 +5489,339 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	return rc;
 }
 
+//ASUS_BSP lenter +++
+#ifdef CONFIG_PM_8226_CHARGER
+void pm8226_chg_enable_charging(bool enable)
+{
+	int rc;
+
+	//Eason record CHG_EN +++
+	if(g_PMIC_CHG_EN != enable)
+		printk("[BAT][PM8226]CHG_EN:%d\n",enable);
+
+	g_PMIC_CHG_EN = enable;
+	//Eason record CHG_EN ---
+
+	
+	rc = qpnp_chg_charge_en(g_qpnp_chg_chip, enable);
+	if (rc) {
+		pr_err("Failed to control charging %d\n", rc);
+	}
+}
+
+int pm8226_is_ac_usb_in(void)
+{	
+	return qpnp_chg_is_usb_chg_plugged_in(g_qpnp_chg_chip);
+}
+
+int pm8226_is_usb_in(void)
+{	
+	return qpnp_chg_is_usb_chg_plugged_in(g_qpnp_chg_chip);
+}
+
+int pm8226_is_dc_usb_in(void)
+{	
+	return ( qpnp_chg_is_usb_chg_plugged_in(g_qpnp_chg_chip)||qpnp_chg_is_dc_chg_plugged_in(g_qpnp_chg_chip) );
+}
+
+void pm8226_chg_usb_suspend_enable(int enable)
+{
+	qpnp_chg_usb_suspend_enable(g_qpnp_chg_chip, enable);
+}
+
+int pm8226_get_prop_batt_status(void)
+{
+	return get_prop_batt_status(g_qpnp_chg_chip);
+}
+
+int pm8226_get_prop_batt_temp(void)
+{
+	return get_prop_batt_temp(g_qpnp_chg_chip);
+}
+
+int pm8226_get_prop_battery_voltage_now(void)
+{
+	return get_prop_battery_voltage_now(g_qpnp_chg_chip);
+}
+
+bool pm8226_is_full(void)
+{
+	if ((qpnp_chg_is_usb_chg_plugged_in(g_qpnp_chg_chip) ||
+		qpnp_chg_is_dc_chg_plugged_in(g_qpnp_chg_chip)) && g_qpnp_chg_chip->chg_done) {
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+int pm8226_qpnp_chg_read_register(u16 addr)
+{
+	u8 reg_val;
+	qpnp_chg_read(g_qpnp_chg_chip, &reg_val, addr, 1);
+	
+	return reg_val;
+}
+
+#endif
+//ASUS_BSP lenter ---
+
+//ASUS_Eason : force setting BAT CHG_EN 0x1049[7] for BT test+++ 
+#ifdef CONFIG_PM_8226_CHARGER	
+static int ForceSetCHG_EN_proc_show(struct seq_file *seq, void *v)
+{
+	return seq_printf(seq, "ForceSetCHG_EN: %d\n", g_ForceSetCHG_EN_value);
+}
+
+static ssize_t ForceSetCHG_EN_write_proc(struct file *filp, const char __user *buff, size_t len, loff_t *pos)
+{
+	int val;
+
+	char messages[256];
+
+	if (len > 256) {
+		len = 256;
+	}
+
+	if (copy_from_user(messages, buff, len)) {
+		return -EFAULT;
+	}
+	
+	val = (int)simple_strtol(messages, NULL, 10);
+	g_ForceSetCHG_EN_value = val;
+	if(true == g_ForceSetCHG_EN_value)
+	{
+		qpnp_chg_masked_write(g_qpnp_chg_chip, g_qpnp_chg_chip->chgr_base + CHGR_CHG_CTRL,
+			CHGR_CHG_EN,
+			CHGR_CHG_EN, 1);
+	}
+	
+	qpnp_chg_charge_en(g_qpnp_chg_chip, g_ForceSetCHG_EN_value);
+
+	printk("[BAT][SER][ForceSetCHG_EN]mode:%d\n",g_ForceSetCHG_EN_value);
+
+	return len;
+}
+
+static void *ForceSetCHG_EN_proc_start(struct seq_file *seq, loff_t *pos)
+{
+	static unsigned long counter = 0;
+	
+	if(*pos == 0){
+		return &counter;
+	}
+	else{
+		*pos = 0;
+		return NULL;
+	}
+}
+
+static void *ForceSetCHG_EN_proc_next(struct seq_file *seq, void *v, loff_t *pos)
+{
+	return NULL;
+}
+
+static void ForceSetCHG_EN_proc_stop(struct seq_file *seq, void *v)
+{
+	
+}
+
+static const struct seq_operations ForceSetCHG_EN_proc_seq = {
+	.start		= ForceSetCHG_EN_proc_start,
+	.show		= ForceSetCHG_EN_proc_show,
+	.next		= ForceSetCHG_EN_proc_next,
+	.stop		= ForceSetCHG_EN_proc_stop,
+};
+
+static int ForceSetCHG_EN_proc_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &ForceSetCHG_EN_proc_seq);
+}
+
+static const struct file_operations ForceSetCHG_EN_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= ForceSetCHG_EN_proc_open,
+	.read		= seq_read,
+	.write		= ForceSetCHG_EN_write_proc,
+};
+
+static void create_ForceSetCHG_EN_proc_file(void)
+{
+	struct proc_dir_entry *ForceSetCHG_EN_proc_file = proc_create("driver/ForceSetCHG_EN", 0666, NULL, &ForceSetCHG_EN_proc_fops);
+
+	if (!ForceSetCHG_EN_proc_file) {
+		printk("[BAT][SER] ForceSetCHG_EN create failed!\n");
+    }
+
+	return;
+}
+#endif
+//ASUS_Eason : force setting BAT CHG_EN 0x1049[7] for BT test---
+
+//ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter+++
+#ifdef CONFIG_PM_8226_CHARGER	
+static int EocCurBigger_switch_proc_show(struct seq_file *seq, void *v)
+{
+	return seq_printf(seq, "EocCurBigger_Switch: %d\n", g_EocCurBigger_switch);
+}
+static ssize_t EocCurBigger_switch_write_proc(struct file *filp, const char __user *buff, size_t len, loff_t *pos)
+{
+	int val;
+
+	char messages[256];
+
+	if (len > 256) {
+		len = 256;
+	}
+
+	if (copy_from_user(messages, buff, len)) {
+		return -EFAULT;
+	}
+	
+	val = (int)simple_strtol(messages, NULL, 10);
+	g_EocCurBigger_switch = val;
+
+	printk("[BAT][SER][EocCurBigger_switch]mode:%d\n",g_EocCurBigger_switch);
+
+	return len;
+}
+
+
+static void *EocCurBigger_switch_proc_start(struct seq_file *seq, loff_t *pos)
+{
+	static unsigned long counter = 0;
+	
+	if(*pos == 0){
+		return &counter;
+	}
+	else{
+		*pos = 0;
+		return NULL;
+	}
+}
+
+static void *EocCurBigger_switch_proc_next(struct seq_file *seq, void *v, loff_t *pos)
+{
+	return NULL;
+}
+
+static void EocCurBigger_switch_proc_stop(struct seq_file *seq, void *v)
+{
+	
+}
+
+static const struct seq_operations EocCurBigger_switch_proc_seq = {
+	.start		= EocCurBigger_switch_proc_start,
+	.show		= EocCurBigger_switch_proc_show,
+	.next		= EocCurBigger_switch_proc_next,
+	.stop		= EocCurBigger_switch_proc_stop,
+};
+
+static int EocCurBigger_switch_proc_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &EocCurBigger_switch_proc_seq);
+}
+
+static const struct file_operations EocCurBigger_switch_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= EocCurBigger_switch_proc_open,
+	.read		= seq_read,
+	.write		= EocCurBigger_switch_write_proc,
+};
+
+static void create_EocCurBigger_switch_proc_file(void)
+{
+	struct proc_dir_entry *EocCurBigger_switch_proc_file = proc_create("driver/EocCurBigger_switch", 0666, NULL, &EocCurBigger_switch_proc_fops);
+
+	if (!EocCurBigger_switch_proc_file) {
+		printk("[BAT][SER] EocCurBigger_switch create failed!\n");
+    }
+
+	return;
+}
+
+static int EocCurBigger_value_proc_show(struct seq_file *seq, void *v)
+{
+	return seq_printf(seq, "EocCurBigger_value: %d\n", g_EocCurBigger_value);
+}
+
+static ssize_t EocCurBigger_value_write_proc(struct file *filp, const char __user *buff, size_t len, loff_t *pos)
+{
+	int val;
+
+	char messages[256];
+
+	if (len > 256) {
+		len = 256;
+	}
+
+	if (copy_from_user(messages, buff, len)) {
+		return -EFAULT;
+	}
+	
+	val = (int)simple_strtol(messages, NULL, 10);
+	g_EocCurBigger_value = val;
+
+	printk("[BAT][SER][EocCurBigger_value]mode:%d\n",g_EocCurBigger_value);
+
+	return len;
+}
+
+static void *EocCurBigger_value_proc_start(struct seq_file *seq, loff_t *pos)
+{
+	static unsigned long counter = 0;
+	
+	if(*pos == 0){
+		return &counter;
+	}
+	else{
+		*pos = 0;
+		return NULL;
+	}
+}
+
+static void *EocCurBigger_value_proc_next(struct seq_file *seq, void *v, loff_t *pos)
+{
+	return NULL;
+}
+
+static void EocCurBigger_value_proc_stop(struct seq_file *seq, void *v)
+{
+	
+}
+
+static const struct seq_operations EocCurBigger_value_proc_seq = {
+	.start		= EocCurBigger_value_proc_start,
+	.show		= EocCurBigger_value_proc_show,
+	.next		= EocCurBigger_value_proc_next,
+	.stop		= EocCurBigger_value_proc_stop,
+};
+
+static int EocCurBigger_value_proc_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &EocCurBigger_value_proc_seq);
+}
+
+static const struct file_operations EocCurBigger_value_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= EocCurBigger_value_proc_open,
+	.read		= seq_read,
+	.write		= EocCurBigger_value_write_proc,
+};
+
+static void create_EocCurBigger_value_proc_file(void)
+{
+	struct proc_dir_entry *EocCurBigger_value_proc_file = proc_create("driver/EocCurBigger_value", 0666, NULL, &EocCurBigger_value_proc_fops);
+
+	if (!EocCurBigger_value_proc_file) {
+		printk("[BAT][SER] EocCurBigger_value create failed!\n");
+    }
+
+	return;
+}
+#endif
+//ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter---
+
 static int
 qpnp_charger_probe(struct spmi_device *spmi)
 {
@@ -5145,6 +5830,14 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	struct resource *resource;
 	struct spmi_resource *spmi_resource;
 	int rc = 0;
+
+	//ASUS_BSP +++ frank_tao "add asus battery driver"
+#ifdef CONFIG_BATTERY_ASUS
+	struct asus_bat_phone_bat_struct *phone_bat;
+#endif
+	//ASUS_BSP --- frank_tao "add asus battery driver"
+
+	printk("qpnp_charger_probe\n");
 
 	chip = devm_kzalloc(&spmi->dev,
 			sizeof(struct qpnp_chg_chip), GFP_KERNEL);
@@ -5185,6 +5878,8 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	rc = qpnp_charger_read_dt_props(chip);
 	if (rc)
 		return rc;
+
+	g_qpnp_chg_chip = chip;//ASUS_BSP Lenter +
 
 	if (ext_ovp_isns_present)
 		chip->ext_ovp_ic_gpio_enabled = 0;
@@ -5392,6 +6087,28 @@ qpnp_charger_probe(struct spmi_device *spmi)
 		chip->batt_psy.num_supplicants =
 				ARRAY_SIZE(pm_batt_supplied_to);
 
+//ASUS_BSP +++ frank_tao "add asus battery driver"
+#ifdef CONFIG_BATTERY_ASUS
+		phone_bat = kzalloc(sizeof(struct asus_bat_phone_bat_struct), GFP_KERNEL);
+		if (!phone_bat) {
+			pr_err("[BAT] cannot allocate asus_bat_phone_bat_struct\n");
+			return -ENOMEM;
+		//TODO:  goto and free 
+		}
+		
+		phone_bat->phone_bat_power_supply_changed = api_phone_bat_power_supply_changed;
+		phone_bat->get_prop_bat_present_byhw = api_get_prop_batt_present;
+		phone_bat->get_prop_bat_capacity_byhw = api_get_prop_batt_capacity;
+		phone_bat->get_prop_bat_status_byhw = api_get_prop_batt_status;
+		phone_bat->get_prop_charge_type_byhw = api_get_prop_charge_type;
+		phone_bat->get_prop_batt_health_byhw = api_get_prop_batt_health;
+		phone_bat->get_prop_batt_volt_byhw = api_get_prop_batt_volt;
+		phone_bat->get_prop_batt_curr_byhw = api_get_prop_batt_curr;
+		
+		asus_bat_set_phone_bat(phone_bat);
+#endif /* CONFIG_BATTERY_ASUS */
+//ASUS_BSP --- frank_tao "add asus battery driver"
+
 		rc = power_supply_register(chip->dev, &chip->batt_psy);
 		if (rc < 0) {
 			pr_err("batt failed to register rc = %d\n", rc);
@@ -5472,6 +6189,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 
 	chip->usb_trim_default = qpnp_chg_iusb_trim_get(chip);
 	qpnp_chg_charge_en(chip, !chip->charging_disabled);
+	printk("[BAT][PM8226][CHG_EN]%s:%d\n",__FUNCTION__, !chip->charging_disabled);//ASUS_BSP Eason: check CHG_EN
 	qpnp_chg_force_run_on_batt(chip, chip->charging_disabled);
 	qpnp_chg_set_appropriate_vddmax(chip);
 
@@ -5509,6 +6227,32 @@ qpnp_charger_probe(struct spmi_device *spmi)
 			qpnp_chg_is_dc_chg_plugged_in(chip),
 			get_prop_batt_present(chip),
 			get_prop_batt_health(chip));
+
+	//ASUS_Eason : force setting BAT CHG_EN 0x1049[7] for BT test+++
+#ifdef CONFIG_PM_8226_CHARGER
+	create_ForceSetCHG_EN_proc_file();
+#endif
+	//ASUS_Eason : force setting BAT CHG_EN 0x1049[7] for BT test---
+
+	//ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter+++
+#ifdef CONFIG_PM_8226_CHARGER	
+	create_EocCurBigger_switch_proc_file();
+	create_EocCurBigger_value_proc_file();
+#endif
+	//ASUS_Eason : set iterm current bigger, let pm_stay_awake  period in qpnp_eoc_work shorter---
+
+//ASUS_BSP +++
+	{
+		u8 reg_value;
+	
+		reg_value = 0x1;
+		rc = qpnp_chg_write(chip, &reg_value, 0x1055, 1); //set trickle charge phase B to 50mA
+		if (rc) {
+			printk("Unable to write reg 0x1055 rc=%d\n", rc);
+		}
+	}
+//ASUS_BSP ---
+
 	return 0;
 
 unregister_dc_psy:
