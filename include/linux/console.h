@@ -195,4 +195,6 @@ void vcs_remove_sysfs(int index);
 extern bool vgacon_text_force(void);
 #endif
 
+extern int gpio_irq_cnt, gpio_resume_irq[8], gic_irq_cnt, gic_resume_irq[8], qpnpint_irq;
+extern unsigned int pwrcs_time, pm_pwrcs_ret;
 #endif /* _LINUX_CONSOLE_H */

@@ -2352,6 +2352,8 @@ MODULE_PARM_DESC(console_suspend, "suspend console during suspend"
  */
 void suspend_console(void)
 {
+	//ASUSEvtlog("[UTS] System Suspend");
+	suspend_in_progress = 1;
 	if (!console_suspend_enabled)
 		return;
 	printk("Suspending console(s) (use no_console_suspend to debug)\n");
@@ -2362,6 +2364,25 @@ void suspend_console(void)
 
 void resume_console(void)
 {
+	int i;
+	suspend_in_progress = 0;
+	//ASUSEvtlog("[UTS] System Resume");
+
+	if (pm_pwrcs_ret) {
+		ASUSEvtlog("[PM] Suspended for %d.%02d secs ", pwrcs_time/100,pwrcs_time % 100);
+
+		if (qpnpint_irq != -1) {
+			ASUSEvtlog("[PM] qpnpint irq triggered: %d", qpnpint_irq);
+			qpnpint_irq = -1;
+		}
+		if (gpio_irq_cnt>0) {
+			for (i=0;i<gpio_irq_cnt;i++)
+  				ASUSEvtlog("[PM] GPIO triggered: %d", gpio_resume_irq[i]);
+			gpio_irq_cnt=0; //clear log count.
+		}
+		pm_pwrcs_ret=0;
+	}
+
 	if (!console_suspend_enabled)
 		return;
 	down(&console_sem);
