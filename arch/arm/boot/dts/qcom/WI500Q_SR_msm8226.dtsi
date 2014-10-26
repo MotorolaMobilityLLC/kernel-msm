@@ -288,6 +288,23 @@
 		status = "disabled";
 	};
 
+	uart_5: serial@f9922000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf9922000 0x1000>;
+		interrupts = <0 112 0>;
+		status = "ok";
+
+		qcom,msm-bus,name = "blsp1_uart5";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<86 512 0 0>,
+			<86 512 500 800>;
+	};
+	aliases {
+		serial2 = &uart_5;
+	};
+
 	qcom,msm-imem@fe805000 {
 		compatible = "qcom,msm-imem";
 		reg = <0xfe805000 0x1000>; /* Address and size of IMEM */
@@ -951,8 +968,23 @@
 		qcom,pmic-arb-channel = <0>;
 	};
 
-	i2c@f9925000 { /* BLSP-1 QUP-3 */
+	i2c_2: i2c@f9924000 { /* BLSP-1 QUP-2 Sensors */
 		cell-index = <2>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9924000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 96 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 6 0>;
+		qcom,scl-gpio = <&msmgpio 7 0>;
+	};
+
+	i2c@f9925000 { /* BLSP-1 QUP-3 */
+		cell-index = <3>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9925000 0x1000>;
 		#address-cells = <1>;
