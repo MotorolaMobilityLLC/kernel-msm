@@ -844,7 +844,7 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 		if (panel_ambient_mode == AMBIENT_MODE_ON){
 			printk("MDSS:AMB:skip ambient on cmd due to panel_ambient_mode = AMBIENT_MODE_ON\n");
 		}else if (ctrl->idle_on_cmds.cmd_cnt){
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+			mdss_dsi_panel_cmds_send_async(ctrl, &ctrl->idle_on_cmds);
 			mdss_dsi_panel_bl_ctrl(pdata,ambient_bl_level);
 			panel_ambient_mode = AMBIENT_MODE_ON;
 		}else{
