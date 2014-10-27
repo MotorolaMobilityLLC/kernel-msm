@@ -52,6 +52,10 @@
 };
 
 &i2c_1 {
+	bd65b60@64 {
+		rohm,led2-used;
+	};
+
 	tps65132@3e {
 		compatible = "ti,tps65132";
 		reg = <0x3e>;
