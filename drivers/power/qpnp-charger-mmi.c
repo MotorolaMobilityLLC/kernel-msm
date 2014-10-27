@@ -461,7 +461,10 @@ struct qpnp_chg_chip {
 	struct delayed_work		weak_check_work;
 	bool				battery_model_sysfs;
 	char				battery_info[255];
+	bool				demo_mode;
 };
+
+static struct qpnp_chg_chip *the_chip;
 
 static struct of_device_id qpnp_charger_match_table[] = {
 	{ .compatible = QPNP_CHARGER_DEV_NAME, },
@@ -1282,7 +1285,9 @@ qpnp_chg_vbatdet_set(struct qpnp_chg_chip *chip, int vbatdet_mv)
 static void
 qpnp_chg_set_appropriate_vbatdet(struct qpnp_chg_chip *chip)
 {
-	if (chip->bat_is_cool && !chip->resuming_charging)
+	if (chip->demo_mode)
+		qpnp_chg_vbatdet_set(chip, 4000 - chip->resume_delta_mv);
+	else if (chip->bat_is_cool && !chip->resuming_charging)
 		qpnp_chg_vbatdet_set(chip, chip->cool_bat_mv
 			- chip->resume_delta_mv);
 	else if (chip->bat_is_warm && !chip->resuming_charging)
@@ -1540,7 +1545,13 @@ qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip)
 	int rc;
 	u8 ir_comp;
 
-	if (chip->bat_is_cool && !chip->out_of_temp && !chip->ext_hi_temp) {
+	if (chip->demo_mode) {
+		qpnp_chg_vddmax_and_trim_set(chip, 4000,
+					     chip->delta_vddmax_mv);
+		ir_comp = 0x84;
+	} else if (chip->bat_is_cool &&
+		 !chip->out_of_temp &&
+		 !chip->ext_hi_temp) {
 		qpnp_chg_vddmax_and_trim_set(chip, chip->cool_bat_mv,
 				chip->delta_vddmax_mv);
 		ir_comp = 0x84;
@@ -3895,6 +3906,9 @@ qpnp_eoc_work(struct work_struct *work)
 	float_timestamp = bootup_time.tv_sec;
 	pm_stay_awake(chip->dev);
 
+	if (chip->demo_mode)
+		pr_warn("Battery in Demo Mode charging Limited\n");
+
 	if ((chip->step_charge_mv < chip->max_voltage_mv) &&
 	    (chip->step_charge_mv > chip->cutoff_mv) &&
 	    (chip->step_charge_soc == 0)) {
@@ -5561,6 +5575,50 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	return rc;
 }
 
+#define CHG_SHOW_MAX_SIZE 50
+static ssize_t force_demo_mode_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid usb suspend mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	the_chip->demo_mode = (mode) ? true : false;
+
+	return r ? r : count;
+}
+
+static ssize_t force_demo_mode_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = (the_chip->demo_mode) ? 1 : 0;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_demo_mode, 0644,
+		force_demo_mode_show,
+		force_demo_mode_store);
+
 static bool __devinit qpnp_charger_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
@@ -5637,6 +5695,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	chip->maint_chrg = false;
 	chip->float_timer_start = false;
 	chip->bat_hotspot_thrs = 50000;
+	chip->demo_mode = false;
 
 	strlcpy(chip->battery_info, "UNKNOWN", sizeof(chip->battery_info));
 	chip->usb_psy = power_supply_get_by_name("usb");
@@ -5990,6 +6049,15 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	power_supply_set_present(chip->usb_psy,
 			qpnp_chg_is_usb_chg_plugged_in(chip));
 
+	the_chip = chip;
+
+	rc = device_create_file(chip->dev,
+				&dev_attr_force_demo_mode);
+	if (rc) {
+		pr_err("couldn't create force_demo_mode\n");
+		goto unregister_dc_psy;
+	}
+
 	/* Set USB psy online to avoid userspace from shutting down if battery
 	 * capacity is at zero and no chargers online. */
 	if (qpnp_chg_is_usb_chg_plugged_in(chip))
@@ -6019,6 +6087,7 @@ unregister_batt:
 fail_chg_enable:
 	regulator_unregister(chip->otg_vreg.rdev);
 	regulator_unregister(chip->boost_vreg.rdev);
+	the_chip = NULL;
 	return rc;
 }
 
@@ -6055,6 +6124,9 @@ qpnp_charger_remove(struct spmi_device *spmi)
 	cancel_delayed_work_sync(&chip->update_heartbeat_work);
 	regulator_unregister(chip->otg_vreg.rdev);
 	regulator_unregister(chip->boost_vreg.rdev);
+
+	device_remove_file(chip->dev,
+			   &dev_attr_force_demo_mode);
 
 	kfree(chip->pc_temp_ocv_lut);
 	return 0;
