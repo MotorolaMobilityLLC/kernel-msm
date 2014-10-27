@@ -11568,9 +11568,9 @@ tANI_U8 csrRoamGetIbssStartChannelNumber50( tpAniSirGlobal pMac )
         {
             for ( idxValidChannels = 0; idxValidChannels < len ; idxValidChannels++ )
             {
-                if ( CSR_IS_CHANNEL_5GHZ(pMac->roam.validChannelList[ idx ]) )   // the max channel# in 11g is 14
+                if ( CSR_IS_CHANNEL_5GHZ(pMac->roam.validChannelList[ idxValidChannels ]) )   // the max channel# in 11g is 14
                 {
-                    channel = csrStartIbssChannels50[ idx ];
+                    channel = pMac->roam.validChannelList[ idxValidChannels ];
                     break;
                 }
             }
@@ -12149,11 +12149,11 @@ eHalStatus csrRoamGetBKIDCache(tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32
        }
        else if(*pNum >= pSession->NumBkidCache)
        {
-           if(pSession->NumBkidCache > CSR_MAX_PMKID_ALLOWED)
+           if(pSession->NumBkidCache > CSR_MAX_BKID_ALLOWED)
            {
-               smsLog(pMac, LOGE, FL("NumPmkidCache :%d is more than CSR_MAX_PMKID_ALLOWED, resetting to CSR_MAX_PMKID_ALLOWED"),
+               smsLog(pMac, LOGE, FL("NumBkidCache :%d is more than CSR_MAX_BKID_ALLOWED, resetting to CSR_MAX_BKID_ALLOWED"),
                  pSession->NumBkidCache);
-               pSession->NumBkidCache = CSR_MAX_PMKID_ALLOWED;
+               pSession->NumBkidCache = CSR_MAX_BKID_ALLOWED;
            }
            vos_mem_copy(pBkidCache, pSession->BkidCacheInfo,
                         sizeof(tBkidCacheInfo) * pSession->NumBkidCache);
