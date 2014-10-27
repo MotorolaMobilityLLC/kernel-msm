@@ -688,6 +688,7 @@ EXPORT_SYMBOL(enableAutoTune);
 
 static int mode_notify_sys(struct notifier_block *notif, unsigned long code, void *data)
 {
+	pr_info("[PF]%s +\n",__func__);
 	switch (code) {
 	case 0: //FB_BLANK_ENTER_NON_INTERACTIVE
 		chipLowPowerMode(1);
@@ -699,7 +700,7 @@ static int mode_notify_sys(struct notifier_block *notif, unsigned long code, voi
 		/* huh?? */
 		break;
 	}
-
+	pr_info("[PF]%s -\n",__func__);
 	return 0;
 }
 
