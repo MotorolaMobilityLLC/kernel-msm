@@ -1747,7 +1747,7 @@ void notify_st_sensor_lowpowermode(int low)
 #ifdef CONFIG_ASUS_UTILITY
 static int lis3dsh_fb_notifier_callback(struct notifier_block *this, unsigned long code, void *data)
 {
-	pr_info("[PF]%s +\n",__func__);
+	printk(KERN_DEBUG "[PF]%s +\n", __func__);
 	switch (code) {
 		case 0:
 			notify_st_sensor_lowpowermode(1);
@@ -1758,7 +1758,7 @@ static int lis3dsh_fb_notifier_callback(struct notifier_block *this, unsigned lo
 		default:
 			break;
 	}
-	pr_info("[PF]%s -\n",__func__);
+	printk(KERN_DEBUG "[PF]%s -\n", __func__);
 	return 0;
 }
 

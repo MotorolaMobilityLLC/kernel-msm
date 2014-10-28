@@ -88,7 +88,6 @@ static int fb_event_callback(struct notifier_block *self,
 		return NOTIFY_BAD;
 	}
 
-	pr_info("[PF]%s +\n",__func__);
 	pdata->mfd = evdata->info->par;
 	ctrl_pdata = container_of(dev_get_platdata(&pdata->mfd->pdev->dev),
 				struct mdss_dsi_ctrl_pdata, panel_data);
@@ -131,7 +130,6 @@ static int fb_event_callback(struct notifier_block *self,
 			break;
 		}
 	}
-	pr_info("[PF]%s -\n",__func__);
 	return 0;
 }
 
