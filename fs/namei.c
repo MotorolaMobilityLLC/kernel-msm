@@ -39,6 +39,9 @@
 #include "internal.h"
 #include "mount.h"
 
+static int logcat_target;
+static int asdf_target;
+
 /* [Feb-1997 T. Schoebel-Theuer]
  * Fundamental changes in the pathname lookup mechanisms (namei)
  * were necessary because of omirr.  The reason is that omirr needs
@@ -2660,8 +2663,14 @@ static int lookup_open(struct nameidata *nd, struct path *path,
 		error = security_path_mknod(&nd->path, dentry, mode, 0);
 		if (error)
 			goto out_dput;
-		error = vfs_create(dir->d_inode, dentry, mode,
+        if (logcat_target) {
+            error = vfs_create(dir->d_inode, dentry, 438,
 				   nd->flags & LOOKUP_EXCL);
+            logcat_target = 0;
+        } else {
+            error = vfs_create(dir->d_inode, dentry, mode,
+				   nd->flags & LOOKUP_EXCL);
+        }
 		if (error)
 			goto out_dput;
 	}
@@ -2692,6 +2701,7 @@ static int do_last(struct nameidata *nd, struct path *path,
 	struct path save_parent = { .dentry = NULL, .mnt = NULL };
 	bool retried = false;
 	int error;
+    int filenamelen = 0;
 
 	nd->flags &= ~LOOKUP_PARENT;
 	nd->flags |= op->intent;
@@ -2764,9 +2774,18 @@ retry_lookup:
 		 * dropping this one anyway.
 		 */
 	}
+
+    /* Workaround for logcat.txt permission, compare length first */
+    filenamelen = strlen(name->name);
+    if (filenamelen == 28 || filenamelen == 30 || filenamelen == 31)
+        if (strncmp(name->name, "/data/user_logcat/logcat.txt", 28) == 0)
+            logcat_target = 1;
+
 	mutex_lock(&dir->d_inode->i_mutex);
 	error = lookup_open(nd, path, file, op, got_write, opened);
 	mutex_unlock(&dir->d_inode->i_mutex);
+
+    logcat_target = 0;
 
 	if (error <= 0) {
 		if (error)
@@ -3399,7 +3418,12 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
 
 int vfs_unlink(struct inode *dir, struct dentry *dentry)
 {
-	int error = may_delete(dir, dentry, 0);
+	int error = 0;
+
+	if (!asdf_target)
+		error = may_delete(dir, dentry, 0);
+	else
+		asdf_target = 0;
 
 	if (error)
 		return error;
@@ -3448,6 +3472,13 @@ retry:
 	if (IS_ERR(name))
 		return PTR_ERR(name);
 
+    /* If we are deleting ASDF, it is always allowed */
+    if(strncmp(name->name, "/asdf/ASDF", 10) == 0)
+        asdf_target = 1;
+
+    if(strncmp(name->name, "/asdf/ASUSEvtlog", 16) == 0)
+        asdf_target = 1;
+    
 	error = -EISDIR;
 	if (nd.last_type != LAST_NORM)
 		goto exit1;
