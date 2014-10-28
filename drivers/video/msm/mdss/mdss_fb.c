@@ -677,7 +677,7 @@ static int interactive_notify(struct notifier_block *this,
 {
 	static bool first_display_on = true;
 	
-	pr_info("[PF]%s +\n",__func__);
+	printk(KERN_DEBUG "[PF]%s +\n", __func__);
 	switch (code) {
 		case FB_BLANK_ENTER_NON_INTERACTIVE:
 			if(g_mfd != NULL)
@@ -701,7 +701,7 @@ static int interactive_notify(struct notifier_block *this,
 			break;
 	}
 
-	pr_info("[PF]%s -\n",__func__);
+	printk(KERN_DEBUG "[PF]%s -\n", __func__);
 	return 0;
 }
 
@@ -2459,7 +2459,7 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 		mdss_fb_pan_idle(mfd);
 
 	if(ret == 0 && g_display_first_frame == true){
-		pr_info("[PF]display first frame output\n");
+		printk(KERN_DEBUG "[PF]display first frame output\n");
 		g_display_first_frame = false;
 	}
 	return ret;
