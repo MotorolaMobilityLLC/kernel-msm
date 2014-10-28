@@ -48,3 +48,14 @@
 		status = "ok";
 	};
 };
+
+&pm8916_mpps {
+	mpp@a100 { /* MPP 2 */
+		/* CCP_RESOUT_N */
+		status = "ok";
+		qcom,mode = <0>;      /* Digital Input */
+		qcom,vin-sel = <2>;   /* VIN 2 (1.8V) */
+		qcom,src-sel = <0>;   /* GPIO */
+		qcom,master-en = <1>; /* Enable MPP */
+	};
+};
