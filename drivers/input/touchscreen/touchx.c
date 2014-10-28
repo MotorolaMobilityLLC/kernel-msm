@@ -25,6 +25,7 @@ static int wc;
 static int xo;
 static int yo;
 static int iv_len(int x, int y);
+static char highv;
 
 struct profile_attr_t {
 	int touchx_state;  /* 0 = touchx is off, anything else is on */
@@ -316,9 +317,10 @@ static void touch_notify(struct work_struct *work)
 #endif
 	input_sync(touchxp.touch_magic_dev);
 
-	if (iv_len(x - xo, y - yo) <= 12)
+	if (iv_len(x - xo, y - yo) <= 12) {
+		highv = 0;
 		hrtimer_cancel(&touch_residual_timer);
-	else
+	} else
 	  hrtimer_start(&touch_residual_timer,
 			ktime_set(0, 5000000), HRTIMER_MODE_REL);
 
@@ -870,6 +872,7 @@ static void touchx(int *xp, int *yp, unsigned char finger,
 		ftapd(&z, &z);
 		ftapv(&z, &z);
 		point = 0;
+		highv = 0;
 		return;
 	}
 
@@ -897,10 +900,13 @@ static void touchx(int *xp, int *yp, unsigned char finger,
 
 		clen = iv_len(dx, dy);
 		if (clen > limit) {
-			int normp = (limit << 14) / clen;
+			int normp = (limit * 19005) / clen;
 			dx = (dx * normp) >> 14;
 			dy = (dy * normp) >> 14;
-		  }
+		}
+
+		if (clen > 80)
+			highv = 1;
 
 		len = iv_len(dx, dy);
 		if (len > 2)
@@ -937,7 +943,7 @@ static void touchx(int *xp, int *yp, unsigned char finger,
 	*xp = xv;
 	*yp = yv;
 
-	if (recovery_is_enabled)
+	if (recovery_is_enabled || highv)
 		hrtimer_start(&touch_residual_timer,
 				ktime_set(0, recovery_time), HRTIMER_MODE_REL);
 }
