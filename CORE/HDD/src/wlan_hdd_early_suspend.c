@@ -1399,6 +1399,7 @@ void hdd_suspend_wlan(void)
       return;
    }
 
+   pHddCtx->hdd_wlan_suspended = TRUE;
    hdd_set_pwrparams(pHddCtx);
    status =  hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
@@ -1450,7 +1451,6 @@ void hdd_suspend_wlan(void)
        status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
        pAdapterNode = pNext;
    }
-   pHddCtx->hdd_wlan_suspended = TRUE;
 
 #ifdef SUPPORT_EARLY_SUSPEND_STANDBY_DEEPSLEEP
   if(pHddCtx->cfg_ini->nEnableSuspend == WLAN_MAP_SUSPEND_TO_STANDBY)
