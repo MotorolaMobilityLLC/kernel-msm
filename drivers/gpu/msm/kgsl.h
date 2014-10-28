@@ -30,8 +30,9 @@
  */
 #define KGSL_MEMSTORE_SIZE	((int)(PAGE_SIZE * 2))
 #define KGSL_MEMSTORE_GLOBAL	(0)
+#define KGSL_PRIORITY_MAX_RB_LEVELS 4
 #define KGSL_MEMSTORE_MAX	(KGSL_MEMSTORE_SIZE / \
-		sizeof(struct kgsl_devmemstore) - 1)
+	sizeof(struct kgsl_devmemstore) - 1 - KGSL_PRIORITY_MAX_RB_LEVELS)
 
 /* Timestamp window used to detect rollovers (half of integer range) */
 #define KGSL_TIMESTAMP_WINDOW 0x80000000
@@ -43,6 +44,8 @@
 /* The SVM upper bound is the same as the TASK_SIZE in arm32 */
 #define KGSL_SVM_UPPER_BOUND (0xC0000000 - SZ_16M)
 
+#define KGSL_SVM_LOWER_BOUND PAGE_SIZE
+
 /* A macro for memory statistics - add the new size to the stat and if
    the statisic is greater then _max, set _max
 */
@@ -50,24 +53,7 @@
 #define KGSL_STATS_ADD(_size, _stat, _max) \
 	do { _stat += (_size); if (_stat > _max) _max = _stat; } while (0)
 
-
-#define KGSL_MEMFREE_HIST_SIZE	((int)(PAGE_SIZE * 2))
-
 #define KGSL_MAX_NUMIBS 100000
-
-struct kgsl_memfree_hist_elem {
-	unsigned int pid;
-	unsigned int gpuaddr;
-	unsigned int size;
-	unsigned int flags;
-};
-
-struct kgsl_memfree_hist {
-	void *base_hist_rb;
-	unsigned int size;
-	struct kgsl_memfree_hist_elem *wptr;
-};
-
 
 struct kgsl_device;
 struct kgsl_context;
@@ -95,9 +81,6 @@ struct kgsl_driver {
 	/* Mutex for protecting the device list */
 	struct mutex devlock;
 
-	struct mutex memfree_hist_mutex;
-	struct kgsl_memfree_hist memfree_hist;
-
 	struct {
 		unsigned int vmalloc;
 		unsigned int vmalloc_max;
@@ -105,9 +88,10 @@ struct kgsl_driver {
 		unsigned int page_alloc_max;
 		unsigned int coherent;
 		unsigned int coherent_max;
+		unsigned int secure;
+		unsigned int secure_max;
 		unsigned int mapped;
 		unsigned int mapped_max;
-		unsigned int histogram[16];
 	} stats;
 	unsigned int full_cache_threshold;
 };
@@ -119,7 +103,7 @@ struct kgsl_memdesc;
 struct kgsl_cmdbatch;
 
 struct kgsl_memdesc_ops {
-	int (*vmflags)(struct kgsl_memdesc *);
+	unsigned int vmflags;
 	int (*vmfault)(struct kgsl_memdesc *, struct vm_area_struct *,
 		       struct vm_fault *);
 	void (*free)(struct kgsl_memdesc *memdesc);
@@ -135,6 +119,14 @@ struct kgsl_memdesc_ops {
 #define KGSL_MEMDESC_FROZEN BIT(2)
 /* The memdesc is mapped into a pagetable */
 #define KGSL_MEMDESC_MAPPED BIT(3)
+/* Indicates gpuaddr is assigned via gen pool */
+#define KGSL_MEMDESC_GENPOOL_ALLOC BIT(4)
+/* The memdesc is secured for content protection */
+#define KGSL_MEMDESC_SECURE BIT(5)
+/* Indicates gpuaddr is assigned via bimap */
+#define KGSL_MEMDESC_BITMAP_ALLOC BIT(6)
+/* The memdesc is private for use during pagetable switch only */
+#define KGSL_MEMDESC_PRIVATE BIT(7)
 
 /* shared memory allocation */
 struct kgsl_memdesc {
@@ -198,6 +190,58 @@ struct kgsl_mem_entry {
 	struct kgsl_device_private *dev_priv;
 };
 
+typedef void (*kgsl_event_func)(struct kgsl_device *, struct kgsl_context *,
+		void *, int);
+
+/**
+ * struct kgsl_event - KGSL GPU timestamp event
+ * @device: Pointer to the KGSL device that owns the event
+ * @context: Pointer to the context that owns the event
+ * @timestamp: Timestamp for the event to expire
+ * @func: Callback function for for the event when it expires
+ * @priv: Private data passed to the callback function
+ * @node: List node for the kgsl_event_group list
+ * @created: Jiffies when the event was created
+ * @work: Work struct for dispatching the callback
+ * @result: KGSL event result type to pass to the callback
+ */
+struct kgsl_event {
+	struct kgsl_device *device;
+	struct kgsl_context *context;
+	unsigned int timestamp;
+	kgsl_event_func func;
+	void *priv;
+	struct list_head node;
+	unsigned int created;
+	struct work_struct work;
+	int result;
+};
+
+typedef int (*readtimestamp_func)(struct kgsl_device *, void *,
+	enum kgsl_timestamp_type, unsigned int *);
+
+/**
+ * struct event_group - A list of GPU events
+ * @context: Pointer to the active context for the events
+ * @lock: Spinlock for protecting the list
+ * @events: List of active GPU events
+ * @group: Node for the master group list
+ * @processed: Last processed timestamp
+ * @name: String name for the group (for the debugfs file)
+ * @readtimestamp: Function pointer to read a timestamp
+ * @priv: Priv member to pass to the readtimestamp function
+ */
+struct kgsl_event_group {
+	struct kgsl_context *context;
+	spinlock_t lock;
+	struct list_head events;
+	struct list_head group;
+	unsigned int processed;
+	char name[64];
+	readtimestamp_func readtimestamp;
+	void *priv;
+};
+
 long kgsl_ioctl_device_getproperty(struct kgsl_device_private *dev_priv,
 					  unsigned int cmd, void *data);
 long kgsl_ioctl_device_setproperty(struct kgsl_device_private *dev_priv,
@@ -244,14 +288,14 @@ long kgsl_ioctl_cff_user_event(struct kgsl_device_private *dev_priv,
 long kgsl_ioctl_timestamp_event(struct kgsl_device_private *dev_priv,
 					unsigned int cmd, void *data);
 
+int kgsl_cmdbatch_add_memobj(struct kgsl_cmdbatch *cmdbatch,
+			struct kgsl_ibdesc *ibdesc);
+
 int kgsl_cmdbatch_add_sync(struct kgsl_device *device,
 			struct kgsl_cmdbatch *cmdbatch,
 			struct kgsl_cmd_syncpoint *sync);
 
 void kgsl_mem_entry_destroy(struct kref *kref);
-
-struct kgsl_mem_entry *kgsl_get_mem_entry(struct kgsl_device *device,
-		phys_addr_t ptbase, unsigned int gpuaddr, unsigned int size);
 
 struct kgsl_mem_entry *kgsl_sharedmem_find_region(
 	struct kgsl_process_private *private, unsigned int gpuaddr,

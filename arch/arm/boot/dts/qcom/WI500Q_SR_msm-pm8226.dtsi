@@ -59,10 +59,10 @@
 
 			qcom,pon_3 {
 				qcom,pon-type = <3>;
-				qcom,support-reset = <0>;
+				qcom,support-reset = <1>;
 				qcom,pull-up = <1>;
 				qcom,s1-timer = <6720>;
-				qcom,s2-timer = <10>;
+				qcom,s2-timer = <2000>;
 				qcom,s2-type = <7>;
 				qcom,use-bark;
 			};
@@ -85,7 +85,7 @@
 			qcom,vddsafe-mv = <4380>;
 			qcom,vinmin-mv = <4350>;
 			qcom,vbatdet-delta-mv = <100>;
-			qcom,ibatmax-ma = <50>;
+			qcom,ibatmax-ma = <150>;
 			qcom,ibatterm-ma = <30>;
 			qcom,ibatsafe-ma = <1500>;
 			qcom,thermal-mitigation = <1500 700 600 325>;
@@ -94,12 +94,12 @@
 			qcom,chg-vadc = <&pm8226_vadc>;
 			qcom,chg-adc_tm = <&pm8226_adc_tm>;
 			qcom,pmic-revid = <&pm8226_revid>;
-			qcom,ibatmax-warm-ma = <50>;
+			qcom,ibatmax-warm-ma = <150>;
 			qcom,warm-bat-decidegc = <450>;
 			qcom,warm-bat-mv = <4100>;
 			qcom,cool-bat-decidegc = <100>;
 			qcom,cool-bat-mv = <4350>;
-			qcom,ibatmax-cool-ma = <50>;
+			qcom,ibatmax-cool-ma = <100>;
 
 			qcom,chgr@1000 {
 				status = "disabled";
@@ -439,7 +439,7 @@
 			qcom,iadc-vadc = <&pm8226_vadc>;
 			qcom,iadc-poll-eoc;
 			qcom,pmic-revid = <&pm8226_revid>;
-			qcom,use-default-rds-trim = <0>;
+			qcom,use-default-rds-trim = <2>;
 
 			chan@0 {
 				label = "internal_rsense";
@@ -865,9 +865,9 @@
 			compatible = "qcom,qpnp-vibrator";
 			reg = <0xc000 0x100>;
 			label = "vibrator";
-			status = "okay"; //AllenCH_Lin +++ : change to "okay"
-			qcom,vib-timeout-ms = <15000>; //AllenCH_Lin +++
-			qcom,vib-vtg-level-mv = <3000>; //AllenCH_Lin +++
+			status = "okay"; //Hammer +++ : change to "okay"
+			qcom,vib-timeout-ms = <15000>; //Hammer +++
+			qcom,vib-vtg-level-mv = <3000>; //Hammer +++
 		};
 
 		qcom,leds@d300 {

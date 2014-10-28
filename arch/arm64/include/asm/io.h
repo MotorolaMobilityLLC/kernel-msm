@@ -142,6 +142,8 @@ static inline u64 __raw_readq_no_log(const volatile void __iomem *addr)
 #define writel_relaxed(v,c)	((void)__raw_writel((__force u32)cpu_to_le32(v),(c)))
 #define writeq_relaxed(v,c)	((void)__raw_writeq((__force u64)cpu_to_le64(v),(c)))
 
+#define readl_relaxed_no_log(c)	({ u32 __v = le32_to_cpu((__force __le32)__raw_readl_no_log(c)); __v; })
+#define writel_relaxed_no_log(v,c)	((void)__raw_writel_no_log((__force u32)cpu_to_le32(v),(c)))
 /*
  * I/O memory access primitives. Reads are ordered relative to any
  * following Normal memory access. Writes are ordered relative to any prior
@@ -158,10 +160,29 @@ static inline u64 __raw_readq_no_log(const volatile void __iomem *addr)
 #define writeq(v,c)		({ __iowmb(); writeq_relaxed((v),(c)); })
 
 /*
+ * A typesafe __io() helper
+ */
+static inline void __iomem *__typesafe_io(unsigned long addr)
+{
+	return (void __iomem *)addr;
+}
+
+/*
  *  I/O port access primitives.
  */
-#define IO_SPACE_LIMIT		0xffff
 #define PCI_IOBASE		((void __iomem *)(MODULES_VADDR - SZ_2M))
+
+#if defined(CONFIG_PCI)
+#define IO_SPACE_LIMIT  ((resource_size_t)0xffffffff)
+#define __io(a)         __typesafe_io((unsigned long)PCI_IOBASE + \
+				      ((a) & IO_SPACE_LIMIT))
+#else
+#define IO_SPACE_LIMIT		0xffff
+#define __io(a)         __typesafe_io((a) & IO_SPACE_LIMIT)
+#endif
+extern void __iomem *ioport_map(unsigned long port, unsigned int nr);
+extern void ioport_unmap(void __iomem *addr);
+extern int pci_ioremap_io(unsigned int offset, phys_addr_t phys_addr);
 
 static inline u8 inb(unsigned long addr)
 {

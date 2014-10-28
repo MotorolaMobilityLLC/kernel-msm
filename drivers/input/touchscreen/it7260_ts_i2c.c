@@ -159,8 +159,10 @@ static bool devicePresent = false;
 static DEFINE_MUTEX(sleepModeMutex);
 static bool chipAwake = true;
 static bool hadFingerDown = false;
+static bool hadPalmDown = false;
 static bool isDeviceSleeping = false;
 static bool isDeviceSuspend = false;
+static bool isDriverAvailable = true;
 static uint8_t magic_key = MAGIC_KEY_NONE;
 static int ite7260_major = 0;
 static int ite7260_minor = 0;
@@ -432,6 +434,7 @@ static void chipLowPowerMode(bool low)
 			}
 			isDeviceSleeping = false;
 			isDeviceSuspend = false;
+			hadPalmDown = false;
 			wake_unlock(&touch_lock);
 			i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
 		}
@@ -685,6 +688,7 @@ EXPORT_SYMBOL(enableAutoTune);
 
 static int mode_notify_sys(struct notifier_block *notif, unsigned long code, void *data)
 {
+	printk(KERN_DEBUG "[PF]%s +\n", __func__);
 	switch (code) {
 	case 0: //FB_BLANK_ENTER_NON_INTERACTIVE
 		chipLowPowerMode(1);
@@ -696,7 +700,7 @@ static int mode_notify_sys(struct notifier_block *notif, unsigned long code, voi
 		/* huh?? */
 		break;
 	}
-
+	printk(KERN_DEBUG "[PF]%s -\n", __func__);
 	return 0;
 }
 
@@ -771,8 +775,9 @@ static void readTouchDataPoint(void)
 		return;
 	}
 	
-	if ((pointData.palm & PD_PALM_FLAG_BIT) && !isDeviceSuspend) {
+	if ((pointData.palm & PD_PALM_FLAG_BIT) && !isDeviceSuspend && !hadPalmDown) {
 		isDeviceSuspend = true;
+		hadPalmDown = true;
 		sendPalmEvt();
 		queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
 	} 
@@ -794,12 +799,13 @@ static void readTouchDataPoint(void)
 			input_report_key(gl_ts->input_dev, BTN_TOUCH, 1);
 			input_sync(gl_ts->input_dev);
 		}
-	} else if (hadFingerDown && (!(pointData.palm & PD_PALM_FLAG_BIT))) {
+	} else if (!(pointData.palm & PD_PALM_FLAG_BIT)) {
 		hadFingerDown = false;
-
+		hadPalmDown = false;
+		
 		input_report_key(gl_ts->input_dev, BTN_TOUCH, 0);
 		input_sync(gl_ts->input_dev);
-	}
+	} 
 
 }
 
@@ -829,13 +835,17 @@ static void readTouchDataPoint_Ambient(void)
 	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
 		readFingerData(&x, &y, &pressure, pointData.fd);
 
+	if ((pointData.palm & PD_PALM_FLAG_BIT)) {
+		hadFingerDown = false;
+	}
+
 	if (pressure >= FD_PRESSURE_LIGHT) {
 
 		if (!hadFingerDown) 
 			hadFingerDown = true;
 
 		readFingerData(&x, &y, &pressure, pointData.fd);
-	} else if (hadFingerDown) {
+	} else if (hadFingerDown && (!(pointData.palm & PD_PALM_FLAG_BIT))) {
 		hadFingerDown = false;
 		suspend_touch_up = getMsTime();
 		
@@ -855,10 +865,12 @@ static void readTouchDataPoint_Ambient(void)
 	
 	}else if (isDeviceSuspend){
 		msleep(10);
-		wake_lock(&touch_lock);
-		isDeviceSuspend = false;
-		suspend_touch_down = getMsTime();
-		readTouchDataPoint_Ambient();
+		if (isDriverAvailable){
+			wake_lock(&touch_lock);
+			isDeviceSuspend = false;
+			suspend_touch_down = getMsTime();
+			readTouchDataPoint_Ambient();
+		}
 	}
 }
 
@@ -1182,12 +1194,14 @@ static struct notifier_block display_mode_notifier = {
 static int IT7260_ts_resume(struct i2c_client *i2cdev)
 {
 	isDeviceSuspend	= false;
+	isDriverAvailable = true;
     return 0;
 }
 
 static int IT7260_ts_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 {
 	isDeviceSuspend = true;
+	isDriverAvailable = false;
     return 0;
 }
 

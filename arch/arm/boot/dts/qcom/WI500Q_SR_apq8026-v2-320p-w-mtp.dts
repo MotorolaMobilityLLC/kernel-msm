@@ -16,32 +16,30 @@
 #include "WI500Q_SR_apq8026-v2.dtsi"
 #include "msm8226-w-memory.dtsi"
 #include "msm8226-w-qseecom.dtsi"
+#include "msm8226-w-sharedmem.dtsi"
 /*+++ASUS_BSP: rename #include "msm8226-720p-mtp.dtsi"*/
 #include "WI500Q_SR_msm8226-720p-mtp.dtsi"
-#include "msm8x26w-gpu.dts"
+#include "msm8x26w-gpu.dtsi"
 
 / {
-	model = "WI500Q SR - Qualcomm APQ 8026v2W MTP";
+	model = "WI500Q SR Qualcomm APQ 8026v2W MTP";
 	compatible = "qcom,apq8026-mtp", "qcom,apq8026", "qcom,mtp";
 	qcom,board-id = <8 42>; /*chage from 4 to 42*/
 };
-/*+++ ASUS_BSP: mask
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
-};
 
-&dsi_nt35590_qvga_cmd {
-	qcom,cont-splash-enabled;
-};
-*/
 &mdss_fb0 {
 	/* cont_splash memory*/
-	qcom,memblock-reserve = <0x04200000 0x64000>;
+	qcom,memblock-reserve = <0x07e9c000 0x64000>;
 };
 
+
 &soc {
-	qcom,mss@fc880000 {
-		status = "disabled";
+	i2c@f9927000 {
+		synaptics@20 {
+			/delete-property/ synaptics,power-down;
+			/delete-property/ synaptics,disable-gpios;
+			synaptics,is_wake;
+		};
 	};
 };
 

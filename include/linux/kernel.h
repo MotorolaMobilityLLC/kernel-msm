@@ -15,9 +15,7 @@
 #include <asm/byteorder.h>
 #include <uapi/linux/kernel.h>
 
-#include <linux/asusdebug.h>
-
-// +++ ASUS_BSP : add for miniporting
+// +++ ASUS_BSP : add for hardware ID
 enum DEVICE_HWID
 {
 	// WI500Q
@@ -29,12 +27,10 @@ enum DEVICE_HWID
 	WI500Q_PR = 0x5,
 	HWID_UNKNOWN = 0xFF
 };
+// --- ASUS_BSP : add for hardware ID
 
 extern enum DEVICE_HWID g_ASUS_hwID;
 const enum DEVICE_HWID get_hardware_id(void);
-
-extern int g_user_dbg_mode;//wendy4_wang@asus.com
-// --- ASUS_BSP : add for miniporting
 
 #define USHRT_MAX	((u16)(~0U))
 #define SHRT_MAX	((s16)(USHRT_MAX>>1))

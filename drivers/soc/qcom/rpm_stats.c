@@ -69,7 +69,7 @@ struct msm_rpm_stats_data_v2 {
 	u32 subsystem_votes;
 	u32 debug0;
 	u32 debug1;
-	//u32 reserved[4];
+	//u32 reserved[3];
 };
 
 static inline u64 get_time_in_sec(u64 counter)
@@ -338,8 +338,10 @@ static  int msm_rpmstats_probe(struct platform_device *pdev)
 	struct dentry *dent = NULL;
 	struct msm_rpmstats_platform_data *pdata;
 	struct msm_rpmstats_platform_data *pd;
-	struct resource *res = NULL;
+	struct resource *res = NULL, *offset = NULL;
 	struct device_node *node = NULL;
+	uint32_t offset_addr = 0;
+	void __iomem *phys_ptr = NULL;
 	int ret = 0;
 
 	if (!pdev)
@@ -351,11 +353,24 @@ static  int msm_rpmstats_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-
 	if (!res)
 		return -EINVAL;
 
-	g_phys_addr_base = pdata->phys_addr_base  = res->start;
+	offset = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (offset) {
+		/* Remap the rpm-stats pointer */
+		phys_ptr = ioremap_nocache(offset->start, SZ_4);
+		if (!phys_ptr) {
+			pr_err("%s: Failed to ioremap address: %x\n",
+					__func__, offset_addr);
+			return -ENODEV;
+		}
+		offset_addr = readl_relaxed(phys_ptr);
+		iounmap(phys_ptr);
+	}
+
+	g_phys_addr_base = pdata->phys_addr_base  = res->start + offset_addr;
+
 	g_phys_size = pdata->phys_size = resource_size(res);
 	node = pdev->dev.of_node;
 	if (pdev->dev.platform_data) {

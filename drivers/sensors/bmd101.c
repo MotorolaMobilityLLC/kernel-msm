@@ -480,6 +480,7 @@ static int bmd101_fb_notifier_callback(struct notifier_block *this, unsigned lon
 {
 	int err = 0;
 
+	printk(KERN_DEBUG "[PF]%s +\n", __func__);
 	switch (code) {
 		case LOW_POWER_MODE_ENTER:
 			sensor_data->low_power_mode = 1;
@@ -497,6 +498,7 @@ static int bmd101_fb_notifier_callback(struct notifier_block *this, unsigned lon
 	else
 		queue_delayed_work(sensor_data->bmd101_work_queue, &sensor_data->suspend_resume_work, 0);
 
+	printk(KERN_DEBUG "[PF]%s -\n", __func__);
 	return 0;
 }
 

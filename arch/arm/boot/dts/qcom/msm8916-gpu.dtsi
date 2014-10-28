@@ -38,9 +38,11 @@
 			<&clock_gcc clk_gcc_oxili_ahb_clk>,
 			<&clock_gcc clk_gcc_oxili_gmem_clk>,
 			<&clock_gcc clk_gcc_bimc_gfx_clk>,
-			<&clock_gcc clk_gcc_bimc_gpu_clk>;
+			<&clock_gcc clk_gcc_bimc_gpu_clk>,
+			<&clock_gcc clk_gcc_gtcu_ahb_clk>;
 		clock-names = "core_clk", "iface_clk", "mem_clk",
-				"mem_iface_clk", "alt_mem_iface_clk";
+				"mem_iface_clk", "alt_mem_iface_clk",
+				"gtcu_iface_clk";
 
 		/* Bus Scale Settings */
 		qcom,msm-bus,name = "grp3d";
@@ -66,6 +68,9 @@
 		coresight-child-list = <&funnel_in0>;
 		coresight-child-ports = <5>;
 
+		/* CPU latency parameter */
+		qcom,pm-qos-latency = <701>;
+
 		/* Power levels */
 		qcom,gpu-pwrlevels {
 			#address-cells = <1>;
@@ -77,28 +82,24 @@
 				reg = <0>;
 				qcom,gpu-freq = <400000000>;
 				qcom,bus-freq = <3>;
-				qcom,io-fraction = <33>;
 			};
 
 			qcom,gpu-pwrlevel@1 {
 				reg = <1>;
-				qcom,gpu-freq = <266670000>;
+				qcom,gpu-freq = <310000000>;
 				qcom,bus-freq = <2>;
-				qcom,io-fraction = <66>;
 			};
 
 			qcom,gpu-pwrlevel@2 {
 				reg = <2>;
 				qcom,gpu-freq = <200000000>;
 				qcom,bus-freq = <1>;
-				qcom,io-fraction = <100>;
 			};
 
 			qcom,gpu-pwrlevel@3 {
 				reg = <3>;
 				qcom,gpu-freq = <19200000>;
 				qcom,bus-freq = <0>;
-				qcom,io-fraction = <0>;
 			};
 		};
 

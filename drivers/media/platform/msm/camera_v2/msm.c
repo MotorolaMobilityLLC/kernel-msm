@@ -20,7 +20,6 @@
 #include <linux/spinlock.h>
 #include <linux/proc_fs.h>
 #include <linux/atomic.h>
-#include <linux/wait.h>
 #include <linux/videodev2.h>
 #include <linux/msm_ion.h>
 #include <linux/iommu.h>
@@ -402,7 +401,7 @@ int msm_create_command_ack_q(unsigned int session_id, unsigned int stream_id)
 
 	msm_init_queue(&cmd_ack->command_q);
 	INIT_LIST_HEAD(&cmd_ack->list);
-	init_waitqueue_head(&cmd_ack->wait);
+	init_completion(&cmd_ack->wait_complete);
 	cmd_ack->stream_id = stream_id;
 
 	msm_enqueue(&session->command_ack_q, &cmd_ack->list);
@@ -549,14 +548,12 @@ static long msm_private_ioctl(struct file *file, void *fh,
 	bool valid_prio, unsigned int cmd, void *arg)
 {
 	int rc = 0;
-	struct msm_v4l2_event_data *event_data;
+	struct msm_v4l2_event_data *event_data = arg;
+	struct v4l2_event event;
 	struct msm_session *session;
 	unsigned int session_id;
 	unsigned int stream_id;
 	unsigned long spin_flags = 0;
-
-	event_data = (struct msm_v4l2_event_data *)
-		((struct v4l2_event *)arg)->u.data;
 
 	session_id = event_data->session_id;
 	stream_id = event_data->stream_id;
@@ -573,9 +570,12 @@ static long msm_private_ioctl(struct file *file, void *fh,
 			rc = -EFAULT;
 			break;
 		}
-
+		event.type = event_data->v4l2_event_type;
+		event.id = event_data->v4l2_event_id;
+		memcpy(&event.u.data, event_data,
+			sizeof(struct msm_v4l2_event_data));
 		v4l2_event_queue(session->event_q.vdev,
-			(struct v4l2_event *)arg);
+			&event);
 	}
 		break;
 
@@ -601,9 +601,13 @@ static long msm_private_ioctl(struct file *file, void *fh,
 
 		spin_lock_irqsave(&(session->command_ack_q.lock),
 		   spin_flags);
-		ret_cmd->event = *(struct v4l2_event *)arg;
+		event.type = event_data->v4l2_event_type;
+		event.id = event_data->v4l2_event_id;
+		memcpy(&event.u.data, event_data,
+			sizeof(struct msm_v4l2_event_data));
+		memcpy(&ret_cmd->event, &event, sizeof(struct v4l2_event));
 		msm_enqueue(&cmd_ack->command_q, &ret_cmd->list);
-		wake_up(&cmd_ack->wait);
+		complete(&cmd_ack->wait_complete);
 		spin_unlock_irqrestore(&(session->command_ack_q.lock),
 		   spin_flags);
 	}
@@ -718,6 +722,9 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 		return -EIO;
 	}
 
+	/*re-init wait_complete */
+	INIT_COMPLETION(cmd_ack->wait_complete);
+
 	v4l2_event_queue(vdev, event);
 
 	if (timeout < 0) {
@@ -728,25 +735,22 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 	}
 
 	/* should wait on session based condition */
-	do {
-		rc = wait_event_interruptible_timeout(cmd_ack->wait,
-			!list_empty_careful(&cmd_ack->command_q.list),
+	rc = wait_for_completion_timeout(&cmd_ack->wait_complete,
 			msecs_to_jiffies(timeout));
-		if (rc != -ERESTARTSYS)
-			break;
-	} while (1);
+
 
 	if (list_empty_careful(&cmd_ack->command_q.list)) {
 		if (!rc) {
 			pr_err("%s: Timed out\n", __func__);
 			msm_print_event_error(event);
-			rc = -ETIMEDOUT;
-		}
-		if (rc < 0) {
-			pr_err("%s: rc = %d\n", __func__, rc);
+			mutex_unlock(&session->lock);
+			return -ETIMEDOUT;
+		} else {
+			pr_err("%s: Error: No timeout but list empty!",
+					__func__);
 			msm_print_event_error(event);
 			mutex_unlock(&session->lock);
-			return rc;
+			return -EINVAL;
 		}
 	}
 

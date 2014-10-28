@@ -31,6 +31,8 @@
 #include <soc/qcom/scm.h>
 #include <soc/qcom/restart.h>
 
+#include <linux/asusdebug.h>
+
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -38,7 +40,7 @@
 #define SCM_IO_DISABLE_PMIC_ARBITER	1
 #define SCM_WDOG_DEBUG_BOOT_PART	0x9
 #define SCM_DLOAD_MODE			0X10
-#define SCM_EDLOAD_MODE			0X02
+#define SCM_EDLOAD_MODE			0X01
 #define SCM_DLOAD_CMD			0x10
 
 
@@ -217,7 +219,7 @@ static void msm_restart_prepare(const char *cmd)
 
 	if (!in_panic) {
 		printk("%s, not in panic, clean magic number\n", __func__);
-		// Normal reboot. Clean the printk buffer magic    
+		// Normal reboot. Clean the printk buffer magic
 		*last_shutdown_log_addr = 0;
 	} else {
 		printk("%s, in panic \n", __func__);
@@ -246,18 +248,17 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665503, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
-			unsigned long result;
-			printk("[msm_restart_prepare]: cmd: %s\n",cmd);
-			code = kstrtoul(cmd + 4, 16, &result) & 0xff;
-			printk("[msm_restart_prepare]: code: %lu, result: %lu\n",code,result);
-			__raw_writel(0x6f656d00 | result, restart_reason);
-		} 
+			int ret;
+			ret = kstrtoul(cmd + 4, 16, &code);
+			if (!ret)
+				__raw_writel(0x6f656d00 | (code & 0xff),
+					     restart_reason);
 		#ifndef ASUS_USER_BUILD
-		else if (!strncmp(cmd, "edl", 3)) {
+		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
-		} 
+		}
 		#endif
-		else {
+ 		else {
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}

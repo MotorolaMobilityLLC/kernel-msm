@@ -28,6 +28,7 @@
 #include "security.h"
 #include "objsec.h"
 #include "netif.h"
+#include "avc.h"
 
 #define SEL_NETIF_HASH_SIZE	64
 #define SEL_NETIF_HASH_MAX	1024
@@ -254,12 +255,10 @@ static void sel_netif_flush(void)
 
 static int sel_netif_avc_callback(u32 event)
 {
-	printk(KERN_DEBUG "[ASUS]sel_netif_avc_callback DEBUG begin \n");
 	if (event == AVC_CALLBACK_RESET) {
 		sel_netif_flush();
 		synchronize_net();
 	}
-	printk(KERN_DEBUG "[ASUS]sel_netif_avc_callback DEBUG end \n");
 	return 0;
 }
 

@@ -231,9 +231,6 @@ static int ep_config(u8 usb_ep, u8 bam_pipe, bool producer, bool disable_wb,
 	msm_dbm_write_reg_field(dbm_data->base, DBM_DBG_CNFG,
 		DBM_ENABLE_IOC_MASK & 1 << dbm_ep, ioc ? 1 : 0);
 
-	/* No internal memory support yet, we assume internal_mem ==  false */
-	internal_mem = false;
-
 	ep_cfg = (producer ? DBM_PRODUCER : 0) |
 		(disable_wb ? DBM_DISABLE_WB : 0) |
 		(internal_mem ? DBM_INT_RAM_ACC : 0);
@@ -248,6 +245,21 @@ static int ep_config(u8 usb_ep, u8 bam_pipe, bool producer, bool disable_wb,
 		1);
 
 	return dbm_ep;
+}
+
+/**
+ * Return number of configured DBM endpoints.
+ */
+static int get_num_of_eps_configured(void)
+{
+	int i;
+	int count = 0;
+
+	for (i = 0; i < dbm_data->dbm_num_eps; i++)
+		if (dbm_data->ep_num_mapping[i])
+			count++;
+
+	return count;
 }
 
 /**
@@ -279,29 +291,21 @@ static int ep_unconfig(u8 usb_ep)
 	/* Reset the dbm endpoint */
 	ep_soft_reset(dbm_ep, true);
 	/*
-	 * 10 usec delay is required before deasserting DBM endpoint reset
-	 * according to hardware programming guide.
+	 * The necessary delay between asserting and deasserting the dbm ep
+	 * reset is based on the number of active endpoints. If there is more
+	 * than one endpoint, a 1 msec delay is required. Otherwise, a shorter
+	 * delay will suffice.
+	 *
+	 * As this function can be called in atomic context, sleeping variants
+	 * for delay are not possible - albeit a 1ms delay.
 	 */
-	udelay(10);
+	if (get_num_of_eps_configured() > 1)
+		udelay(1000);
+	else
+		udelay(10);
 	ep_soft_reset(dbm_ep, false);
 
 	return 0;
-}
-
-/**
- * Return number of configured DBM endpoints.
- *
- */
-static int get_num_of_eps_configured(void)
-{
-	int i;
-	int count = 0;
-
-	for (i = 0; i < dbm_data->dbm_num_eps; i++)
-		if (dbm_data->ep_num_mapping[i])
-			count++;
-
-	return count;
 }
 
 /**
@@ -371,6 +375,10 @@ static bool reset_ep_after_lpm(void)
 	return dbm_data->dbm_reset_ep_after_lpm;
 }
 
+static bool l1_lpm_interrupt(void)
+{
+	return true;
+}
 
 
 static int msm_dbm_probe(struct platform_device *pdev)
@@ -424,6 +432,7 @@ static int msm_dbm_probe(struct platform_device *pdev)
 	dbm->enable = enable;
 	dbm->ep_soft_reset = usb_ep_soft_reset;
 	dbm->reset_ep_after_lpm = reset_ep_after_lpm;
+	dbm->l1_lpm_interrupt = l1_lpm_interrupt;
 
 	platform_set_drvdata(pdev, dbm);
 

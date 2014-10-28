@@ -132,9 +132,13 @@ static int freq_table_get_index(
 		unsigned int freq)
 {
 	int index;
-	for (index = 0; index < stats->max_state; index++)
-		if (stats->freq_table[index] == freq)
-			return index;
+
+	if (stats->freq_table) {
+		for (index = 0; index < stats->max_state; index++)
+			if (stats->freq_table[index] == freq)
+				return index;
+	}
+
 	return -ENOENT;
 }
 
@@ -160,7 +164,9 @@ static int cpufreq_stats_create_table(unsigned int cpu,
 	struct cpu_persistent_stats *cpu_stats = &per_cpu(pcpu_stats, cpu);
 	unsigned long irq_flags;
 	struct cpufreq_frequency_table *table =
-		cpufreq_frequency_get_table(cpu);
+		cpufreq_frequency_get_table(policy->cpu);
+	void *temp_time_in_state;
+	int next_freq_index;
 
 	if (unlikely(!table))
 		return -EINVAL;
@@ -176,28 +182,36 @@ static int cpufreq_stats_create_table(unsigned int cpu,
 	}
 
 	alloc_size = count * sizeof(int) + count * sizeof(cputime64_t);
-	cpu_stats->max_state = count;
-	cpu_stats->time_in_state = kzalloc(alloc_size, GFP_KERNEL);
+	temp_time_in_state = kzalloc(alloc_size, GFP_KERNEL);
 
-	if (!cpu_stats->time_in_state)
+	if (!temp_time_in_state)
 		return -ENOMEM;
-
-	cpu_stats->freq_table =
-		(unsigned int *)(cpu_stats->time_in_state + count);
-
-	k = 0;
-	for (i = 0; table[i].frequency != CPUFREQ_TABLE_END; i++) {
-		unsigned int freq = table[i].frequency;
-		if (freq == CPUFREQ_ENTRY_INVALID)
-			continue;
-		cpu_stats->freq_table[k++] = freq;
-	}
 
 	spin_lock_irqsave(&cpufreq_stats_lock, irq_flags);
 
-	cpu_stats->last_time = get_jiffies_64();
-	cpu_stats->last_index = freq_table_get_index(
+	if (!cpu_stats->time_in_state) {
+		cpu_stats->time_in_state = temp_time_in_state;
+		cpu_stats->max_state = count;
+		cpu_stats->freq_table =
+			(unsigned int *)(cpu_stats->time_in_state + count);
+
+		k = 0;
+		for (i = 0; table[i].frequency != CPUFREQ_TABLE_END; i++) {
+			unsigned int freq = table[i].frequency;
+			if (freq == CPUFREQ_ENTRY_INVALID)
+				continue;
+			cpu_stats->freq_table[k++] = freq;
+		}
+	} else
+		kfree(temp_time_in_state);
+
+	next_freq_index = freq_table_get_index(
 			cpu_stats, policy->cur);
+
+	if (next_freq_index != -ENOENT) {
+		cpu_stats->last_time = get_jiffies_64();
+		cpu_stats->last_index = next_freq_index;
+	}
 
 	spin_unlock_irqrestore(&cpufreq_stats_lock, irq_flags);
 
@@ -214,6 +228,7 @@ static int cpufreq_stat_notifier_trans(struct notifier_block *nb,
 		freq->cpu);
 	unsigned long irq_flags;
 	unsigned int cpu;
+	int next_freq_index;
 
 	if (val != CPUFREQ_POSTCHANGE)
 		return 0;
@@ -234,14 +249,17 @@ static int cpufreq_stat_notifier_trans(struct notifier_block *nb,
 
 	for_each_cpu(cpu, policy->cpus) {
 		cpu_stats = &per_cpu(pcpu_stats, cpu);
-
-		if (cpu_online(cpu)) {
-			cpufreq_stats_update(cpu);
-			cpu_stats->last_time = get_jiffies_64();
-		}
-
-		cpu_stats->last_index = freq_table_get_index(cpu_stats,
+		next_freq_index = freq_table_get_index(cpu_stats,
 				freq->new);
+
+		if (next_freq_index != -ENOENT) {
+			if (cpu_online(cpu)) {
+				cpufreq_stats_update(cpu);
+				cpu_stats->last_time = get_jiffies_64();
+			}
+
+			cpu_stats->last_index = next_freq_index;
+		}
 	}
 
 	spin_unlock_irqrestore(&cpufreq_stats_lock, irq_flags);
@@ -378,7 +396,7 @@ static struct kobj_attribute reset_attr =
 	__ATTR(reset, 0220, NULL, store_reset);
 
 static struct kobj_attribute enable_attr =
-	__ATTR(enable, S_IRUGO|S_IWUSR|S_IWGRP, show_enabled, store_enable);
+	__ATTR(enable, S_IRUGO|S_IWUSR, show_enabled, store_enable);
 
 static int create_persistent_stats_groups(void)
 {

@@ -944,6 +944,7 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 	int err = -1;
 	u8 rbuf[2], status;
 	struct lis3dsh_acc_data *acc;
+	int usb_in = 1;
 
 	acc = container_of(work, struct lis3dsh_acc_data, irq2_work);
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: IRQ2 triggered\n", __func__);
@@ -960,7 +961,10 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 		rbuf[0] = LIS3DSH_OUTS_2;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02) & !pm8226_is_ac_usb_in()) {		//do not report knock event if device is inserted into pogo
+		#ifdef CONFIG_PM_PM8226_CHARGER
+		usb_in = !pm8226_is_ac_usb_in();
+		#endif
+		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02) & usb_in) {		//do not report knock event if device is inserted into pogo
 			printk("***********************knock-knock event\n");
 		}
 	}
@@ -1743,6 +1747,7 @@ void notify_st_sensor_lowpowermode(int low)
 #ifdef CONFIG_ASUS_UTILITY
 static int lis3dsh_fb_notifier_callback(struct notifier_block *this, unsigned long code, void *data)
 {
+	printk(KERN_DEBUG "[PF]%s +\n", __func__);
 	switch (code) {
 		case 0:
 			notify_st_sensor_lowpowermode(1);
@@ -1753,7 +1758,7 @@ static int lis3dsh_fb_notifier_callback(struct notifier_block *this, unsigned lo
 		default:
 			break;
 	}
-
+	printk(KERN_DEBUG "[PF]%s -\n", __func__);
 	return 0;
 }
 

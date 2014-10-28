@@ -186,11 +186,11 @@ static void hdmi_hdcp_hw_ddc_clean(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 		do {
 			hdcp_ddc_status = DSS_REG_R(io, HDMI_HDCP_DDC_STATUS);
 			ddc_hw_status = DSS_REG_R(io, HDMI_DDC_HW_STATUS);
-			ddc_xfer_done = (hdcp_ddc_status & BIT(10)) ;
-			ddc_xfer_req = (hdcp_ddc_status & BIT(4)) ;
-			ddc_hw_done = (ddc_hw_status & BIT(3)) ;
-			ddc_hw_not_ready = ((ddc_xfer_done != 1) ||
-			(ddc_xfer_req != 0) || (ddc_hw_done != 1));
+			ddc_xfer_done = hdcp_ddc_status & BIT(10);
+			ddc_xfer_req = hdcp_ddc_status & BIT(4);
+			ddc_hw_done = ddc_hw_status & BIT(3);
+			ddc_hw_not_ready = !ddc_xfer_done ||
+				ddc_xfer_req || !ddc_hw_done;
 
 			DEV_DBG("%s: %s: timeout count(%d):ddc hw%sready\n",
 				__func__, HDCP_STATE_NAME, timeout_count,
@@ -603,7 +603,7 @@ static int hdmi_hdcp_authentication_part1(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 error:
 	if (rc) {
 		DEV_ERR("%s: %s: Authentication Part I failed\n", __func__,
-			HDCP_STATE_NAME);
+			hdcp_ctrl ? HDCP_STATE_NAME : "???");
 	} else {
 		/* Enable HDCP Encryption */
 		DSS_REG_W(io, HDMI_HDCP_CTRL, BIT(0) | BIT(8));
@@ -1041,7 +1041,7 @@ static int hdmi_hdcp_authentication_part2(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 error:
 	if (rc)
 		DEV_ERR("%s: %s: Authentication Part II failed\n", __func__,
-			HDCP_STATE_NAME);
+			hdcp_ctrl ? HDCP_STATE_NAME : "???");
 	else
 		DEV_INFO("%s: %s: Authentication Part II successful\n",
 			__func__, HDCP_STATE_NAME);
@@ -1377,7 +1377,7 @@ int hdmi_hdcp_isr(void *input)
 
 	/* Ignore HDCP interrupts if HDCP is disabled */
 	if (HDCP_STATE_INACTIVE == hdcp_ctrl->hdcp_state) {
-		DEV_ERR("%s: HDCP inactive. Just clear int and return.\n",
+		DEV_DBG("%s: HDCP inactive. Just clear int and return.\n",
 			__func__);
 		DSS_REG_W(io, HDMI_HDCP_INT_CTRL, HDCP_INT_CLR);
 		return 0;

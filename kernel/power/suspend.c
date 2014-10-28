@@ -265,7 +265,6 @@ int suspend_devices_and_enter(suspend_state_t state)
 		if (error)
 			goto Close;
 	}
-
 	suspend_console();
 	ftrace_stop();
 	suspend_test_start();
@@ -289,7 +288,6 @@ int suspend_devices_and_enter(suspend_state_t state)
 	suspend_test_finish("resume devices");
 	ftrace_start();
 	resume_console();
-
  Close:
 	if (need_suspend_ops(state) && suspend_ops->end)
 		suspend_ops->end();

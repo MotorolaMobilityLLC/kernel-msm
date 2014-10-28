@@ -130,7 +130,7 @@ config KLM
 
 config MSM_AVTIMER
 	tristate "Avtimer Driver"
-	depends on MSM_QDSP6_APRV2
+	depends on MSM_QDSP6_APRV2 || MSM_QDSP6_APRV3
 	help
 		This driver gets the Q6 out of power collapsed state and
 		exposes ioctl control to read avtimer tick.
@@ -159,6 +159,16 @@ config QCA1530
 	  To compile this driver as a module, choose M here: the module
 	  will be called qca1530.
 
+config PFT
+	bool "Per-File-Tagger driver"
+	default n
+	help
+		This driver is used for tagging enterprise files.
+		It is part of the Per-File-Encryption (PFE) feature.
+		The driver is tagging files when created by
+		registered application.
+		Tagged files are encrypted using the dm-req-crypt driver.
+
 config MSM_SPSS
 	tristate "MSM SPSS driver"
 	default n
@@ -183,4 +193,23 @@ config BUS_TOPOLOGY_ADHOC
 		directionality of connections by explicitly listing device connections
 		thus avoiding illegal routes.
 
+config MSM_UIM_HSL
+	tristate "User Indentification Module (UIM) on UART High Speed"
+	help
+	  If you say yes to this option, support will be included for the
+	  built-in UIM interface on Qualcomm MSM family processors.
+
+config QPNP_HAPTIC
+	tristate "Haptic support for QPNP PMIC"
+	depends on OF_SPMI
+	help
+	  This option enables device driver support for the Haptic
+	  on the Qualcomm Technologies' QPNP PMICs. It uses the android
+	  timed-output framework.
+
+config QMP_CORE
+	tristate "QMP Core"
+	help
+		This option enables Qualcomm Malware Protection Sphinx component
+		to log on-device software API activity.
 endmenu

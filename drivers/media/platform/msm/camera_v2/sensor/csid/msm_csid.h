@@ -20,6 +20,8 @@
 #include <media/msm_cam_sensor.h>
 #include "msm_sd.h"
 
+#define CSID_NUM_CLK_MAX  16
+
 struct csid_reg_parms_t {
 /* MIPI	CSID registers */
 	uint32_t csid_hw_version_addr;
@@ -83,10 +85,10 @@ struct csid_device {
 	struct csid_ctrl_t *ctrl_reg;
 	uint32_t num_clk;
 	uint32_t num_clk_src_info;
-
-	struct clk *csid_clk[11];
+	struct clk *csid_clk[CSID_NUM_CLK_MAX];
+	struct regulator *reg_ptr;
 };
 
 #define VIDIOC_MSM_CSID_RELEASE \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 5, struct v4l2_subdev*)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 12, struct v4l2_subdev*)
 #endif

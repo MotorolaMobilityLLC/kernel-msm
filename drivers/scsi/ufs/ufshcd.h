@@ -68,6 +68,7 @@
 
 #include "ufs.h"
 #include "ufshci.h"
+#include "ufs_quirks.h"
 
 #define UFSHCD "ufshcd"
 #define UFSHCD_DRIVER_VERSION "0.2"
@@ -127,6 +128,25 @@ enum uic_link_state {
 				    UIC_LINK_ACTIVE_STATE)
 #define ufshcd_set_link_hibern8(hba) ((hba)->uic_link_state = \
 				    UIC_LINK_HIBERN8_STATE)
+
+enum {
+	/* errors which require the host controller reset for recovery */
+	UFS_ERR_HIBERN8_EXIT,
+	UFS_ERR_VOPS_SUSPEND,
+	UFS_ERR_EH,
+	UFS_ERR_CLEAR_PEND_XFER_TM,
+	UFS_ERR_INT_FATAL_ERRORS,
+	UFS_ERR_INT_UIC_ERROR,
+
+	/* other errors */
+	UFS_ERR_HIBERN8_ENTER,
+	UFS_ERR_RESUME,
+	UFS_ERR_SUSPEND,
+	UFS_ERR_LINKSTARTUP,
+	UFS_ERR_POWER_MODE_CHANGE,
+	UFS_ERR_TASK_ABORT,
+	UFS_ERR_MAX,
+};
 
 /*
  * UFS Power management levels.
@@ -211,14 +231,17 @@ struct ufs_stats {
 	bool enabled;
 	u64 **tag_stats;
 	int q_depth;
+	int err_stats[UFS_ERR_MAX];
 };
 
 struct debugfs_files {
 	struct dentry *debugfs_root;
 	struct dentry *tag_stats;
+	struct dentry *err_stats;
 	struct dentry *show_hba;
 	struct dentry *host_regs;
 	struct dentry *dump_dev_desc;
+	struct dentry *power_mode;
 #ifdef CONFIG_UFS_FAULT_INJECTION
 	struct fault_attr fail_attr;
 #endif
@@ -267,6 +290,11 @@ struct ufs_pa_layer_attr {
 	u32 pwr_rx;
 	u32 pwr_tx;
 	u32 hs_rate;
+};
+
+struct ufs_pwr_mode_info {
+	bool is_valid;
+	struct ufs_pa_layer_attr info;
 };
 
 /**
@@ -322,6 +350,8 @@ enum clk_gating_state {
  * @is_suspended: clk gating is suspended when set to 1 which can be used
  * during suspend/resume
  * @delay_attr: sysfs attribute to control delay_attr
+ * @enable_attr: sysfs attribute to enable/disable clock gating
+ * @is_enabled: Indicates the current status of clock gating
  * @active_reqs: number of requests that are pending and should be waited for
  * completion before gating clocks.
  */
@@ -332,6 +362,8 @@ struct ufs_clk_gating {
 	unsigned long delay_ms;
 	bool is_suspended;
 	struct device_attribute delay_attr;
+	struct device_attribute enable_attr;
+	bool is_enabled;
 	int active_reqs;
 };
 
@@ -340,6 +372,8 @@ struct ufs_clk_scaling {
 	bool is_busy_started;
 	unsigned long  tot_busy_t;
 	unsigned long window_start_t;
+	struct device_attribute enable_attr;
+	bool is_allowed;
 };
 
 /**
@@ -397,6 +431,8 @@ struct ufs_init_prefetch {
  * @auto_bkops_enabled: to track whether bkops is enabled in device
  * @vreg_info: UFS device voltage regulator information
  * @clk_list_head: UFS host controller clocks list node head
+ * @pwr_info: holds current power mode
+ * @max_pwr_info: keeps the device max valid pwm
  * @ufs_stats: ufshcd statistics to be used via debugfs
  * @debugfs_files: debugfs files associated with the ufs stats
  */
@@ -426,6 +462,8 @@ struct ufs_hba {
 	enum ufs_pm_level rpm_lvl;
 	/* Desired UFS power management level during system PM */
 	enum ufs_pm_level spm_lvl;
+	struct device_attribute rpm_lvl_attr;
+	struct device_attribute spm_lvl_attr;
 	int pm_op_in_progress;
 
 	struct ufshcd_lrb *lrb;
@@ -443,44 +481,14 @@ struct ufs_hba {
 	unsigned int irq;
 	bool is_irq_enabled;
 
-	unsigned int quirks;	/* Deviations from standard UFSHCI spec. */
-
 	/* Interrupt aggregation support is broken */
-	#define UFSHCD_QUIRK_BROKEN_INTR_AGGR		(1<<0)
-
-	/* HIBERN8 support is broken */
-	#define UFSHCD_QUIRK_BROKEN_HIBERN8		(1<<1)
-
-	/*
-	 * UFS controller version register (VER) wrongly advertise the version
-	 * as v1.0 though controller implementation is as per UFSHCI v1.1
-	 * specification.
-	 */
-	#define UFSHCD_QUIRK_BROKEN_VER_REG_1_1		(1<<2)
-
-	/* UFSHC advertises 64-bit not supported even though it supports */
-	#define UFSHCD_QUIRK_BROKEN_CAP_64_BIT_0        (1 << 3)
-
-	/* Command queueing for the UFS device is broken, allowing the
-	 * controller to have a single command at a time for the device */
-	#define UFSHCD_QUIRK_BROKEN_DEVICE_Q_CMND        (1 << 4)
-
-	/*
-	 * Power mode switch is broken, the power mode will be default
-	 * to PWM-G1 or the one set by bootloader.
-	 */
-	#define UFSHCD_QUIRK_BROKEN_PWR_MODE_CHANGE      (1 << 5)
-
-	/* runtime pm or system suspend/resume is broken */
-	#define UFSHCD_QUIRK_BROKEN_SUSPEND              (1 << 6)
+	#define UFSHCD_QUIRK_BROKEN_INTR_AGGR			UFS_BIT(0)
 
 	/*
 	 * delay before each dme command is required as the unipro
 	 * layer has shown instabilities
 	 */
-	#define UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS        (1 << 7)
-
-	#define UFSHCD_QUIRK_BROKEN_2_TX_LANES            (1 << 8)
+	#define UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS		UFS_BIT(1)
 
 	/*
 	 * If UFS host controller is having issue in processing LCC (Line
@@ -489,24 +497,19 @@ struct ufs_hba {
 	 * the LCC transmission on UFS device (by clearing TX_LCC_ENABLE
 	 * attribute of device to 0).
 	 */
-	#define UFSHCD_BROKEN_LCC_PROCESSING_ON_HOST	  (1 << 9)
+	#define UFSHCD_QUIRK_BROKEN_LCC				UFS_BIT(2)
 
 	/*
 	 * The attribute PA_RXHSUNTERMCAP specifies whether or not the
 	 * inbound Link supports unterminated line in HS mode. Setting this
 	 * attribute to 1 fixes moving to HS gear.
 	 */
-	#define UFSHCD_BROKEN_GEAR_CHANGE_INTO_HS        (1 << 10)
+	#define UFSHCD_QUIRK_BROKEN_PA_RXHSUNTERMCAP		UFS_BIT(3)
 
-	/*
-	 * If UFS device is having issue in processing LCC (Line Control
-	 * Command) coming from UFS host controller then enable this quirk.
-	 * When this quirk is enabled, host controller driver should disable
-	 * the LCC transmission on UFS host controller (by clearing
-	 * TX_LCC_ENABLE attribute of host to 0).
-	 */
-	#define UFSHCD_BROKEN_LCC_PROCESSING_ON_DEVICE	  (1 << 11)
+	unsigned int quirks;	/* Deviations from standard UFSHCI spec. */
 
+	/* Device deviations from standard UFS device spec. */
+	unsigned int dev_quirks;
 
 	wait_queue_head_t tm_wq;
 	wait_queue_head_t tm_tag_wq;
@@ -545,6 +548,8 @@ struct ufs_hba {
 	struct list_head clk_list_head;
 
 	struct ufs_pa_layer_attr pwr_info;
+	struct ufs_pwr_mode_info max_pwr_info;
+
 	struct ufs_clk_gating clk_gating;
 	/* Control to enable/disable host capabilities */
 	u32 caps;
@@ -579,12 +584,9 @@ static inline bool ufshcd_is_clkgating_allowed(struct ufs_hba *hba)
 }
 static inline bool ufshcd_can_hibern8_during_gating(struct ufs_hba *hba)
 {
-	if (!(hba->quirks & UFSHCD_QUIRK_BROKEN_HIBERN8))
-		return hba->caps & UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
-	else
-		return false;
+	return hba->caps & UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
 }
-static inline int ufshcd_is_clkscaling_enabled(struct ufs_hba *hba)
+static inline int ufshcd_is_clkscaling_supported(struct ufs_hba *hba)
 {
 	return hba->caps & UFSHCD_CAP_CLK_SCALING;
 }
@@ -655,6 +657,8 @@ extern int ufshcd_dme_set_attr(struct ufs_hba *hba, u32 attr_sel,
 			       u8 attr_set, u32 mib_val, u8 peer);
 extern int ufshcd_dme_get_attr(struct ufs_hba *hba, u32 attr_sel,
 			       u32 *mib_val, u8 peer);
+extern int ufshcd_config_pwr_mode(struct ufs_hba *hba,
+		struct ufs_pa_layer_attr *desired_pwr_mode);
 
 /* UIC command interfaces for DME primitives */
 #define DME_LOCAL	0
@@ -704,6 +708,10 @@ static inline int ufshcd_dme_peer_get(struct ufs_hba *hba,
 
 int ufshcd_read_device_desc(struct ufs_hba *hba, u8 *buf, u32 size);
 
+#define ASCII_STD true
+#define UTF16_STD false
+int ufshcd_read_string_desc(struct ufs_hba *hba, int desc_index, u8 *buf,
+				u32 size, bool ascii);
 /* variant specific ops structures */
 #ifdef CONFIG_SCSI_UFS_MSM
 extern const struct ufs_hba_variant_ops ufs_hba_msm_vops;

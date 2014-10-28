@@ -254,15 +254,15 @@ TRACE_EVENT(ice40_setup,
 
 TRACE_EVENT(ice40_in,
 
-	TP_PROTO(u16 ep, const char *token, u8 len, u8 expected, int ret),
+	TP_PROTO(u16 ep, const char *token, u32 len, u32 expected, int ret),
 
 	TP_ARGS(ep, token, len, expected, ret),
 
 	TP_STRUCT__entry(
 		__field(u16, ep)
 		__string(token, token)
-		__field(u8, len)
-		__field(u8, expected)
+		__field(u32, len)
+		__field(u32, expected)
 		__field(int, ret)
 	),
 
@@ -282,14 +282,14 @@ TRACE_EVENT(ice40_in,
 
 TRACE_EVENT(ice40_out,
 
-	TP_PROTO(u16 ep, const char *token, u8 len, int ret),
+	TP_PROTO(u16 ep, const char *token, u32 len, int ret),
 
 	TP_ARGS(ep, token, len, ret),
 
 	TP_STRUCT__entry(
 		__field(u16, ep)
 		__string(token, token)
-		__field(u8, len)
+		__field(u32, len)
 		__field(int, ret)
 	),
 

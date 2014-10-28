@@ -69,15 +69,14 @@ char *mdss_dsi_buf_init(struct dsi_buf *dp)
 	return dp->data;
 }
 
-int mdss_dsi_buf_alloc(struct dsi_buf *dp, int size)
+int mdss_dsi_buf_alloc(struct device *ctrl_dev, struct dsi_buf *dp, int size)
 {
-
-	dp->start = dma_alloc_writecombine(NULL, size, &dp->dmap, GFP_KERNEL);
+	dp->start = dma_alloc_writecombine(ctrl_dev, size, &dp->dmap,
+					   GFP_KERNEL);
 	if (dp->start == NULL) {
 		pr_err("%s:%u\n", __func__, __LINE__);
 		return -ENOMEM;
 	}
-
 	dp->end = dp->start + size;
 	dp->size = size;
 
@@ -598,7 +597,7 @@ int mdss_dsi_long_read_resp(struct dsi_buf *rp)
 
 static char set_tear_on[2] = {0x35, 0x00};
 static struct dsi_cmd_desc dsi_tear_on_cmd = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(set_tear_on)}, set_tear_on};
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0, sizeof(set_tear_on)}, set_tear_on};
 
 static char set_tear_off[2] = {0x34, 0x00};
 static struct dsi_cmd_desc dsi_tear_off_cmd = {
@@ -672,7 +671,6 @@ int mdss_dsi_cmdlist_put(struct mdss_dsi_ctrl_pdata *ctrl,
 		clist->get %= CMD_REQ_MAX;
 		clist->tot--;
 	}
-	mutex_unlock(&ctrl->cmd_mutex);
 
 	pr_debug("%s: tot=%d put=%d get=%d\n", __func__,
 		clist->tot, clist->put, clist->get);
@@ -683,6 +681,8 @@ int mdss_dsi_cmdlist_put(struct mdss_dsi_ctrl_pdata *ctrl,
 		else
 			ret = ctrl->cmdlist_commit(ctrl, 0);
 	}
+	mutex_unlock(&ctrl->cmd_mutex);
+
 	return ret;
 }
 

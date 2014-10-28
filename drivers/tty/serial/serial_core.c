@@ -2595,12 +2595,10 @@ int uart_add_one_port(struct uart_driver *drv, struct uart_port *uport)
 		goto out;
 	}
 
-	//ASUS_BSP +++ Maggie_Lee "adjust name of ECG uart
-	if(uport->line==1) {
-		drv->tty_driver->flags = TTY_DRIVER_UNNUMBERED_NODE;
-		drv->tty_driver->name = "felica";
-	}
-	//ASUS_BSP --- Maggie_Lee "adjust name of ECG uart
+        if (uport->line==1) {
+                drv->tty_driver->flags = TTY_DRIVER_UNNUMBERED_NODE;
+                drv->tty_driver->name = "felica";
+        }
 
 	state->uart_port = uport;
 	state->pm_state = UART_PM_STATE_UNDEFINED;

@@ -287,6 +287,7 @@ static int eval_bat_life_when_discharging(
 					__func__);
 		}
 
+#if 0
 		ASUSEvtlog( "[BAT][Fil] int:%d, sus:%d, dp:%d, pre:%d, fast:%d, BMS:%d, fine:%d, cnt:%d, aCur:%d, nCur:%d, dot:%d\n",
 			interval,
 			filRealSusT,
@@ -299,7 +300,7 @@ static int eval_bat_life_when_discharging(
 			pastTimeAvgCurr,
 			g_current_now,
 			g_discharge_after_dot);
-
+#endif
 	}
 	else {
 		bat_life = lastCap; // without cablein capacity rise, do not  change capacity
@@ -479,7 +480,7 @@ int AXC_Cap_Filter_A66_FilterCapacity(struct AXI_Cap_Filter *apCapFilter, int no
 	
 	//Eason: if BatLow keep 15 min, shutdown devices+++
 	if (isBatLow && g_batLowLongTimeShut && (nowCap <= BATLOW_LONGTIME_SHUT_CAP) && (lastCap <= BATLOW_LONGTIME_SHUT_CAP)){
-		ASUSEvtlog("[BAT][Fil][BatLow]Long tme => shutdown\n");
+//		ASUSEvtlog("[BAT][Fil][BatLow]Long tme => shutdown\n");
 		return BAT_LIFE_TO_SHUTDOWN;
 	}
 	//Eason: if BatLow keep 15 min, shutdown devices---

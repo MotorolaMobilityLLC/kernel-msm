@@ -36,7 +36,7 @@
 # include "mutex.h"
 # include <asm/mutex.h>
 #endif
-extern struct mutex fake_mutex;  //adbg++ 
+extern struct mutex fake_mutex;  //adbg++
 /*
  * A negative mutex count indicates that waiters are sleeping waiting for the
  * mutex.
@@ -53,10 +53,10 @@ __mutex_init(struct mutex *lock, const char *name, struct lock_class_key *key)
 #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
 	lock->spin_mlock = NULL;
 #endif
-//adbg++  
-    lock->name = name;  
-    //debug_mutex_init(lock, name, key);  
-//adbg-- 
+//adbg++
+    lock->name = name;
+    //debug_mutex_init(lock, name, key);
+//adbg--
 }
 
 EXPORT_SYMBOL(__mutex_init);
@@ -389,7 +389,7 @@ slowpath:
 
 		/* didn't get the lock, go to sleep: */
 		spin_unlock_mutex(&lock->wait_lock, flags);
-        task_thread_info(task)->pWaitingMutex = lock;  //adbg++ 
+        task_thread_info(task)->pWaitingMutex = lock;  //adbg++
 		schedule_preempt_disabled();
         task_thread_info(task)->pWaitingMutex = &fake_mutex;  //adb++
 		spin_lock_mutex(&lock->wait_lock, flags);

@@ -197,7 +197,7 @@ static int msm_iommu_parse_dt(struct platform_device *pdev,
 	if (ret)
 		goto fail;
 
-	for_each_child_of_node(pdev->dev.of_node, child)
+	for_each_available_child_of_node(pdev->dev.of_node, child)
 		drvdata->ncb++;
 
 	drvdata->asid = devm_kzalloc(&pdev->dev, drvdata->ncb * sizeof(int),
@@ -341,6 +341,9 @@ static int msm_iommu_probe(struct platform_device *pdev)
 
 	drvdata->glb_base = drvdata->base;
 
+	if (of_device_is_compatible(pdev->dev.of_node, "qcom,msm-mmu-500"))
+		drvdata->model = MMU_500;
+
 	if (of_get_property(pdev->dev.of_node, "vdd-supply", NULL)) {
 
 		drvdata->gdsc = devm_regulator_get(&pdev->dev, "vdd");
@@ -379,9 +382,6 @@ static int msm_iommu_probe(struct platform_device *pdev)
 			return PTR_ERR(drvdata->aiclk);
 	}
 
-	drvdata->no_atos_support = of_property_read_bool(pdev->dev.of_node,
-						"qcom,no-atos-support");
-
 	if (!of_property_read_u32(pdev->dev.of_node,
 				"qcom,cb-base-offset",
 				&temp))
@@ -408,8 +408,9 @@ static int msm_iommu_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	dev_info(&pdev->dev, "device %s mapped at %p, with %d ctx banks\n",
-		drvdata->name, drvdata->base, drvdata->ncb);
+	dev_info(&pdev->dev,
+		"device %s (model: %d) mapped at %p, with %d ctx banks\n",
+		drvdata->name, drvdata->model, drvdata->base, drvdata->ncb);
 
 	platform_set_drvdata(pdev, drvdata);
 
@@ -490,6 +491,7 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 	int irq = 0, ret = 0;
 	struct msm_iommu_drvdata *drvdata;
 	u32 nsid;
+	u32 n_sid_mask;
 	unsigned long cb_offset;
 
 	drvdata = dev_get_drvdata(pdev->dev.parent);
@@ -565,6 +567,26 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 	ctx_drvdata->nsid = nsid;
 
 	ctx_drvdata->asid = -1;
+
+	if (!of_get_property(pdev->dev.of_node, "qcom,iommu-sid-mask",
+						&n_sid_mask)) {
+		memset(ctx_drvdata->sid_mask, 0, MAX_NUM_SMR);
+		goto out;
+	}
+
+	if (n_sid_mask != nsid) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (of_property_read_u32_array(pdev->dev.of_node, "qcom,iommu-sid-mask",
+				ctx_drvdata->sid_mask,
+				n_sid_mask / sizeof(*ctx_drvdata->sid_mask))) {
+		ret = -EINVAL;
+		goto out;
+	}
+	ctx_drvdata->n_sid_mask = n_sid_mask;
+
 out:
 	return ret;
 }

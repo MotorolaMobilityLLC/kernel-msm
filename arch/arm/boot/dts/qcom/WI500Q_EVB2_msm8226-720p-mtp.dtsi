@@ -15,79 +15,74 @@
 		status = "ok";
 	};
 
-//ASUS_BSP +++ Maggie_Lee "ECG Sensor Porting"
-	serial@f9922000 {
-		status = "ok";
-	};
-	bmd101{
-		compatible = "neurosky, bmd101";
-		status = "ok";
-	};
-//ASUS_BSP --- Maggie_Lee "ECG Sensor Porting"
+        serial@f9922000 {
+                status = "ok";
+        };
+        bmd101{
+                compatible = "neurosky, bmd101";
+                status = "ok";
+        };
 
-//ASUS_BSP +++ Cliff_Yu "Touch Porting"
 	i2c@f9927000 { /* BLSP1 QUP5 Touch */ 
-            IT7260@46 {
-                    compatible = "ITE,IT7260_ts";
-                    reg = <0x46>;
-                    interrupt-parent = <&msmgpio>;
-                    interrupts = <17 0x2>;
-            };
-    };
-//ASUS_BSP --- Cliff_Yu "Touch Porting"
-
-	i2c@f9925000 { /* BLSP1 QUP3 NFC */
-	};
-
-	i2c@f9924000 { /* BLSP1 QUP2 Sensors */
-		//ASUS_BSP +++ Maggie_Lee "Sensor Porting"
-		lis3dsh_acc@1e {
-			compatible = "stm,lis3dsh_acc";
-			reg = <0x1e>;
-		};
-		mpu9250@68 {
-			compatible = "invensense,mpu9250";
-			reg = <0x68>;
+		IT7260@46 {
+			compatible = "ITE,IT7260_ts";
+			reg = <0x46>;
 			interrupt-parent = <&msmgpio>;
-			interrupts = <35 0x2>;
-			vdd_ana-supply = <&pm8226_l19>;
-			vcc_i2c-supply = <&pm8226_lvs1>;
-			mpu9250,irq-gpio = <&msmgpio 35 0x00>;
-			axis_map_x = <1>;
-			negate_x = <1>;
-			axis_map_y = <0>;
-			negate_y = <1>;
-			axis_map_z = <2>;
-			negate_z = <1>;
-			inven,secondary_type = "compass";
-			inven,secondary_name = "ak8963";
-			inven,secondary_reg = <0x0c>;
-			inven,secondary_axis_map_x = <0>;
-			inven,secondary_negate_x = <1>;
-			inven,secondary_axis_map_y = <1>;
-			inven,secondary_negate_y = <1>;
-			inven,secondary_axis_map_z = <2>;
-			inven,secondary_negate_z = <0>;
-			inven,aux_type = "none";
-			inven,vdd_ana = "8226_l19";
-			inven,vcc_i2c = "8226_lvs1";
+			interrupts = <17 0x2>;
 		};
-		//ASUS_BSP --- Maggie_Lee "Sensor Porting"
 	};
 
+        i2c@f9924000 { /* BLSP1 QUP2 Sensors */
+                lis3dsh_acc@1e {
+                        compatible = "stm,lis3dsh_acc";
+                        reg = <0x1e>;
+                };
+                mpu9250@68 {
+                        compatible = "invensense,mpu9250";
+                        reg = <0x68>;
+                        interrupt-parent = <&msmgpio>;
+                        interrupts = <35 0x2>;
+                        vdd_ana-supply = <&pm8226_l19>;
+                        vcc_i2c-supply = <&pm8226_lvs1>;
+                        mpu9250,irq-gpio = <&msmgpio 35 0x00>;
+                        axis_map_x = <1>;
+                        negate_x = <1>;
+                        axis_map_y = <0>;
+                        negate_y = <1>;
+                        axis_map_z = <2>;
+                        negate_z = <1>;
+                        inven,secondary_type = "compass";
+                        inven,secondary_name = "ak8963";
+                        inven,secondary_reg = <0x0c>;
+                        inven,secondary_axis_map_x = <0>;
+                        inven,secondary_negate_x = <1>;
+                        inven,secondary_axis_map_y = <1>;
+                        inven,secondary_negate_y = <1>;
+                        inven,secondary_axis_map_z = <2>;
+                        inven,secondary_negate_z = <0>;
+                        inven,aux_type = "none";
+                        inven,vdd_ana = "8226_l19";
+                        inven,vcc_i2c = "8226_lvs1";
+                };
+        };
+
+	i2c@f9925000 { /* BLSP1 QUP3 */
+		nfc-nci@0e {
+			compatible = "qcom,nfc-nci";
+			reg = <0x0e>;
+			qcom,irq-gpio = <&msmgpio 21 0x00>;
+			qcom,dis-gpio = <&msmgpio 20 0x00>;
+			qcom,clk-src = "BBCLK2";
+			qcom,clk-en-gpio = <&msmgpio 0 0x00>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <21 0>;
+			qcom,clk-gpio = <&pm8226_gpios 3 0>;
+		};
+	};
 	gpio_keys {
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
-//ASUS_BSP +++ Shunmin "gpio_keys"
-		pwr_key {
-			label = "pwr_key";
-			gpios = <&msmgpio 1 0x1>;
-			linux,input-type = <1>;
-			linux,code = <116>;
-			gpio-key,wakeup;
-			debounce-interval = <50>;
-		};
-#if 0
+
 		vol_up {
 			label = "volume_up";
 			gpios = <&msmgpio 106 0x1>;
@@ -96,19 +91,7 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
-#endif
-//ASUS_BSP --- Shunmin "gpio_keys"
 	};
-
-	//ASUS_BSP +++ Maggie_Lee "Backlight Porting"
-	backlight {
-		compatible = "qcom, asus-backlight";
-		input-name = "backlight";
-		value = <10 255>;								//min max
-		phone-bl-param = <113 255 155 113>;				//min max default ambient
-		status = "okay";
-	};
-	//ASUS_BSP --- Maggie_Lee "Backlight Porting"
 
 	spi@f9923000 {
 		ethernet-switch@3 {
@@ -165,7 +148,7 @@
 &usb_otg {
 	#address-cells = <0>;
 	interrupt-parent = <&usb_otg>;
-	interrupts = <0 1>;
+	interrupts = <0 1 2>;
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 134 0
@@ -468,5 +451,4 @@
 };
 
 &dsi_rm69032_320x320_cmd {
-//	qcom,cont-splash-enabled;
 };

@@ -17,18 +17,13 @@
 #include <linux/io.h>
 #include <linux/err.h>
 #include <soc/qcom/camera2.h>
-#include <mach/gpiomux.h>
 #include <linux/msm-bus.h>
 #include "msm_camera_io_util.h"
 
 #define BUFF_SIZE_128 128
 
 #undef CDBG
-#ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
-#else
-#define CDBG(fmt, args...) do { } while (0)
-#endif
 
 void msm_camera_io_w(u32 data, void __iomem *addr)
 {
@@ -261,7 +256,7 @@ int msm_camera_config_vreg(struct device *dev, struct camera_vreg_t *cam_vreg,
 				reg_ptr[j] = NULL;
 				goto vreg_get_fail;
 			}
-			if (curr_vreg->type == REG_LDO) {
+			if (regulator_count_voltages(reg_ptr[j]) > 0) {
 				rc = regulator_set_voltage(
 					reg_ptr[j],
 					curr_vreg->min_voltage,
@@ -296,7 +291,7 @@ int msm_camera_config_vreg(struct device *dev, struct camera_vreg_t *cam_vreg,
 				j = i;
 			curr_vreg = &cam_vreg[j];
 			if (reg_ptr[j]) {
-				if (curr_vreg->type == REG_LDO) {
+				if (regulator_count_voltages(reg_ptr[j]) > 0) {
 					if (curr_vreg->op_mode >= 0) {
 						regulator_set_optimum_mode(
 							reg_ptr[j], 0);
@@ -313,11 +308,11 @@ int msm_camera_config_vreg(struct device *dev, struct camera_vreg_t *cam_vreg,
 	return 0;
 
 vreg_unconfig:
-if (curr_vreg->type == REG_LDO)
+if (regulator_count_voltages(reg_ptr[j]) > 0)
 	regulator_set_optimum_mode(reg_ptr[j], 0);
 
 vreg_set_opt_mode_fail:
-if (curr_vreg->type == REG_LDO)
+if (regulator_count_voltages(reg_ptr[j]) > 0)
 	regulator_set_voltage(reg_ptr[j], 0,
 		curr_vreg->max_voltage);
 
@@ -444,7 +439,7 @@ void msm_camera_bus_scale_cfg(uint32_t bus_perf_client,
 	case S_DEFAULT:
 		break;
 	default:
-		pr_warning("%s: INVALID CASE\n", __func__);
+		pr_debug("%s: INVALID CASE\n", __func__);
 	}
 }
 
@@ -475,15 +470,19 @@ int msm_camera_config_single_vreg(struct device *dev,
 {
 	int rc = 0;
 	if (config) {
+		if (!dev || !cam_vreg || !reg_ptr) {
+			pr_err("%s: get failed NULL parameter\n", __func__);
+			goto vreg_get_fail;
+		}
 		CDBG("%s enable %s\n", __func__, cam_vreg->reg_name);
 		*reg_ptr = regulator_get(dev, cam_vreg->reg_name);
-		if (IS_ERR(*reg_ptr)) {
+		if (IS_ERR_OR_NULL(*reg_ptr)) {
 			pr_err("%s: %s get failed\n", __func__,
 				cam_vreg->reg_name);
 			*reg_ptr = NULL;
 			goto vreg_get_fail;
 		}
-		if (cam_vreg->type == REG_LDO) {
+		if (regulator_count_voltages(*reg_ptr) > 0) {
 			rc = regulator_set_voltage(
 				*reg_ptr, cam_vreg->min_voltage,
 				cam_vreg->max_voltage);
@@ -513,7 +512,7 @@ int msm_camera_config_single_vreg(struct device *dev,
 		if (*reg_ptr) {
 			CDBG("%s disable %s\n", __func__, cam_vreg->reg_name);
 			regulator_disable(*reg_ptr);
-			if (cam_vreg->type == REG_LDO) {
+			if (regulator_count_voltages(*reg_ptr) > 0) {
 				if (cam_vreg->op_mode >= 0)
 					regulator_set_optimum_mode(*reg_ptr, 0);
 				regulator_set_voltage(
@@ -526,11 +525,11 @@ int msm_camera_config_single_vreg(struct device *dev,
 	return 0;
 
 vreg_unconfig:
-if (cam_vreg->type == REG_LDO)
+if (regulator_count_voltages(*reg_ptr) > 0)
 	regulator_set_optimum_mode(*reg_ptr, 0);
 
 vreg_set_opt_mode_fail:
-if (cam_vreg->type == REG_LDO)
+if (regulator_count_voltages(*reg_ptr) > 0)
 	regulator_set_voltage(*reg_ptr, 0, cam_vreg->max_voltage);
 
 vreg_set_voltage_fail:

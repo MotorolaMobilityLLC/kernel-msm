@@ -49,6 +49,7 @@
 #include <asm/uaccess.h>
 //adbg++
 #include <linux/asus_global.h>
+#include <linux/asusdebug.h>
 #include <linux/rtc.h>
 #include <linux/syscalls.h>         /* For sys_open and sys_write */
 
@@ -68,6 +69,10 @@ static size_t asus_print_time(u64 ts, char *buf);
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/printk.h>
+
+#ifdef CONFIG_EARLY_PRINTK_DIRECT
+extern void printascii(char *);
+#endif
 
 /* printk's without a loglevel use this.. */
 #define DEFAULT_MESSAGE_LOGLEVEL CONFIG_DEFAULT_MESSAGE_LOGLEVEL
@@ -1082,7 +1087,7 @@ void __init setup_log_buf(int early)
 		free, (free * 100) / __LOG_BUF_LEN);
 }
 
-static bool __read_mostly ignore_loglevel=1;
+static bool __read_mostly ignore_loglevel;
 
 static int __init ignore_loglevel_setup(char *str)
 {
@@ -1287,7 +1292,8 @@ static int syslog_oops_buf_print(char __user *buf, int size, char *text)
 	int len = 0;
 
 	raw_spin_lock_irq(&logbuf_lock);
-	if (syslog_seq < log_oops_first_seq) {
+	if (log_oops_first_seq != ULLONG_MAX &&
+	    syslog_seq < log_oops_first_seq) {
 		syslog_seq = log_oops_first_seq;
 		syslog_oops_buf_idx = 0;
 	}
@@ -1815,9 +1821,9 @@ static int console_trylock_for_printk(unsigned int cpu)
 		}
 	}
 	logbuf_cpu = UINT_MAX;
+	raw_spin_unlock(&logbuf_lock);
 	if (wake)
 		up(&console_sem);
-	raw_spin_unlock(&logbuf_lock);
 	return retval;
 }
 
@@ -2026,6 +2032,10 @@ asmlinkage int vprintk_emit(int facility, int level,
 			text = (char *)end_of_header;
 		}
 	}
+
+#ifdef CONFIG_EARLY_PRINTK_DIRECT
+	printascii(text);
+#endif
 
 	if (level == -1)
 		level = default_message_loglevel;
@@ -2929,7 +2939,6 @@ static int __init printk_late_init(void)
 		}
 	}
 	hotcpu_notifier(console_cpu_notify, 0);
-
 	return 0;
 }
 late_initcall(printk_late_init);

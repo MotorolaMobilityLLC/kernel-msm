@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -55,10 +55,12 @@ MODULE_PARM_DESC(ss_phy_override_deemphasis, "Override SSPHY demphasis value");
 struct msm_ssphy {
 	struct usb_phy		phy;
 	void __iomem		*base;
+	struct clk		*core_clk;	/* USB3 master clock */
 	struct clk		*com_reset_clk;	/* PHY common block reset */
 	struct clk		*reset_clk;	/* SS PHY reset */
 	struct regulator	*vdd;
 	struct regulator	*vdda18;
+	atomic_t		active_count;	/* num of active instances */
 	bool			suspended;
 	int			vdd_levels[3]; /* none, low, high */
 	int			deemphasis_val;
@@ -215,6 +217,9 @@ static int msm_ssphy_init(struct usb_phy *uphy)
 	struct msm_ssphy *phy = container_of(uphy, struct msm_ssphy, phy);
 	u32 val;
 
+	/* Ensure clock is on before accessing QSCRATCH registers */
+	clk_prepare_enable(phy->core_clk);
+
 	/* read initial value */
 	val = readl_relaxed(phy->base + SS_PHY_CTRL_REG);
 
@@ -240,6 +245,8 @@ static int msm_ssphy_init(struct usb_phy *uphy)
 	val |= LANE0_PWR_PRESENT | REF_SS_PHY_EN;
 	writel_relaxed(val, phy->base + SS_PHY_CTRL_REG);
 	usleep_range(2000, 2200);
+
+	clk_disable_unprepare(phy->core_clk);
 
 	return 0;
 }
@@ -325,15 +332,25 @@ static int msm_ssphy_set_suspend(struct usb_phy *uphy, int suspend)
 {
 	struct msm_ssphy *phy = container_of(uphy, struct msm_ssphy, phy);
 	void __iomem *base = phy->base;
-	int ret = 0;
+	int count;
 
-	if (!!suspend == phy->suspended) {
-		dev_dbg(uphy->dev, "%s\n", suspend ? "already suspended"
-						   : "already resumed");
-		return 0;
-	}
+	/* Ensure clock is on before accessing QSCRATCH registers */
+	clk_prepare_enable(phy->core_clk);
 
 	if (suspend) {
+		count = atomic_dec_return(&phy->active_count);
+		if (count > 0 || phy->suspended) {
+			dev_dbg(uphy->dev, "Skipping suspend, active_count=%d phy->suspended=%d\n",
+					count, phy->suspended);
+			goto done;
+		}
+
+		if (count < 0) {
+			dev_WARN(uphy->dev, "Suspended too many times!  active_count=%d\n",
+					count);
+			atomic_set(&phy->active_count, 0);
+		}
+
 		/* Clear REF_SS_PHY_EN */
 		msm_usb_write_readback(base, SS_PHY_CTRL_REG, REF_SS_PHY_EN, 0);
 		/* Clear REF_USE_PAD */
@@ -350,7 +367,16 @@ static int msm_ssphy_set_suspend(struct usb_phy *uphy, int suspend)
 
 		msm_ssusb_ldo_enable(phy, 0);
 		msm_ssusb_config_vdd(phy, 0);
+		phy->suspended = true;
 	} else {
+		count = atomic_inc_return(&phy->active_count);
+		if (count > 1 || !phy->suspended) {
+			dev_dbg(uphy->dev, "Skipping resume, active_count=%d phy->suspended=%d\n",
+					count, phy->suspended);
+			goto done;
+		}
+
+		phy->suspended = false;
 		msm_ssusb_config_vdd(phy, 1);
 		msm_ssusb_ldo_enable(phy, 1);
 
@@ -391,8 +417,8 @@ static int msm_ssphy_set_suspend(struct usb_phy *uphy, int suspend)
 	}
 
 done:
-	phy->suspended = !!suspend; /* double-NOT coerces to bool value */
-	return ret;
+	clk_disable_unprepare(phy->core_clk);
+	return 0;
 }
 
 static int msm_ssphy_notify_connect(struct usb_phy *uphy,
@@ -448,6 +474,12 @@ static int msm_ssphy_probe(struct platform_device *pdev)
 	if (!phy->base) {
 		dev_err(dev, "ioremap failed\n");
 		return -ENODEV;
+	}
+
+	phy->core_clk = devm_clk_get(dev, "core_clk");
+	if (IS_ERR(phy->core_clk)) {
+		dev_err(dev, "unable to get core_clk\n");
+		return PTR_ERR(phy->core_clk);
 	}
 
 	phy->com_reset_clk = devm_clk_get(dev, "com_reset_clk");

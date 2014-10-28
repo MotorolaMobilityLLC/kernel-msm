@@ -15,13 +15,19 @@
 #include "apq8026-v2.dtsi"
 #include "msm8226-w-memory.dtsi"
 #include "msm8226-w-qseecom.dtsi"
+#include "msm8226-w-sharedmem.dtsi"
 #include "msm8226-720p-mtp.dtsi"
-#include "msm8x26w-gpu.dts"
+#include "msm8x26w-gpu.dtsi"
 
 / {
-	model = "Qualcomm APQ 8026v2W MTP";
+	model = "Qualcomm Technologies, Inc. APQ 8026v2W MTP";
 	compatible = "qcom,apq8026-mtp", "qcom,apq8026", "qcom,mtp";
 	qcom,board-id = <8 4>;
+};
+
+&mdss_fb0 {
+	/* cont_splash memory*/
+	qcom,memblock-reserve = <0x07e9c000 0x64000>;
 };
 
 &mdss_dsi0 {
@@ -32,18 +38,13 @@
 	qcom,cont-splash-enabled;
 };
 
-&mdss_fb0 {
-	/* cont_splash memory*/
-	qcom,memblock-reserve = <0x04200000 0x64000>;
-};
-
 &soc {
-	qcom,mss@fc880000 {
-		/delete-property/ qcom,gpio-err-fatal;
-		/delete-property/ qcom,gpio-err-ready;
-		/delete-property/ qcom,gpio-proxy-unvote;
-		/delete-property/ qcom,gpio-stop-ack;
-		/delete-property/ qcom,gpio-force-stop;
+	i2c@f9927000 {
+		synaptics@20 {
+			/delete-property/ synaptics,power-down;
+			/delete-property/ synaptics,disable-gpios;
+			synaptics,is_wake;
+		};
 	};
 };
 

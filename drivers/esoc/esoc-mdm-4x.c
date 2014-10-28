@@ -98,7 +98,6 @@ struct mdm_ctrl {
 	bool debug_fail;
 	unsigned int dump_timeout_ms;
 	unsigned int ramdump_delay_ms;
-	int sysmon_subsys_id;
 	struct esoc_clink *esoc;
 	bool get_restart_reason;
 	unsigned long irq_mask;
@@ -179,10 +178,12 @@ static void mdm_enable_irqs(struct mdm_ctrl *mdm)
 		return;
 	if (mdm->irq_mask & IRQ_ERRFATAL) {
 		enable_irq(mdm->errfatal_irq);
+		irq_set_irq_wake(mdm->errfatal_irq, 1);
 		mdm->irq_mask &= ~IRQ_ERRFATAL;
 	}
 	if (mdm->irq_mask & IRQ_STATUS) {
 		enable_irq(mdm->status_irq);
+		irq_set_irq_wake(mdm->status_irq, 1);
 		mdm->irq_mask &= ~IRQ_STATUS;
 	}
 	if (mdm->irq_mask & IRQ_PBLRDY) {
@@ -196,10 +197,12 @@ static void mdm_disable_irqs(struct mdm_ctrl *mdm)
 	if (!mdm)
 		return;
 	if (!(mdm->irq_mask & IRQ_ERRFATAL)) {
+		irq_set_irq_wake(mdm->errfatal_irq, 0);
 		disable_irq_nosync(mdm->errfatal_irq);
 		mdm->irq_mask |= IRQ_ERRFATAL;
 	}
 	if (!(mdm->irq_mask & IRQ_STATUS)) {
+		irq_set_irq_wake(mdm->status_irq, 0);
 		disable_irq_nosync(mdm->status_irq);
 		mdm->irq_mask |= IRQ_STATUS;
 	}
@@ -320,20 +323,20 @@ static void mdm_power_down(struct mdm_ctrl *mdm)
 						soft_reset_direction);
 	/*
 	* Currently, there is a debounce timer on the charm PMIC. It is
-	* necessary to hold the PMIC RESET low for ~3.5 seconds
+	* necessary to hold the PMIC RESET low for 400ms
 	* for the reset to fully take place. Sleep here to ensure the
 	* reset has occured before the function exits.
 	*/
-	msleep(4000);
+	msleep(400);
 }
 
 static int mdm_cmd_exe(enum esoc_cmd cmd, struct esoc_clink *esoc)
 {
-	int ret;
 	unsigned long end_time;
 	bool status_down = false;
 	struct mdm_ctrl *mdm = get_esoc_clink_data(esoc);
 	struct device *dev = mdm->dev;
+	bool graceful_shutdown;
 
 	switch (cmd) {
 	case ESOC_PWR_ON:
@@ -347,37 +350,44 @@ static int mdm_cmd_exe(enum esoc_cmd cmd, struct esoc_clink *esoc)
 		mdm->debug = 0;
 		mdm->ready = false;
 		mdm->trig_cnt = 0;
-		ret = sysmon_send_shutdown(mdm->sysmon_subsys_id);
-		if (ret)
-			dev_err(mdm->dev, "Graceful shutdown fail, ret = %d\n",
-									ret);
-		else {
-			dev_dbg(mdm->dev, "Waiting for status gpio go low\n");
-			status_down = false;
-			end_time = jiffies + msecs_to_jiffies(10000);
-			while (time_before(jiffies, end_time)) {
-				if (gpio_get_value(MDM_GPIO(mdm, MDM2AP_STATUS))
+		graceful_shutdown = true;
+
+		dev_dbg(mdm->dev, "Waiting for status gpio go low\n");
+		status_down = false;
+		end_time = jiffies + msecs_to_jiffies(10000);
+		while (time_before(jiffies, end_time)) {
+			if (gpio_get_value(MDM_GPIO(mdm, MDM2AP_STATUS))
 									== 0) {
-					dev_dbg(dev, "Status went low\n");
-					status_down = true;
-					break;
-				}
-				msleep(100);
+				dev_dbg(dev, "Status went low\n");
+				status_down = true;
+				break;
 			}
-			if (status_down)
-				dev_dbg(dev, "shutdown successful\n");
-			else
-				dev_err(mdm->dev, "graceful poff ipc fail\n");
+			msleep(100);
 		}
+		if (status_down)
+			dev_dbg(dev, "shutdown successful\n");
+		else
+			dev_err(mdm->dev, "graceful poff ipc fail\n");
+	case ESOC_FORCE_PWR_OFF:
+		if (!graceful_shutdown) {
+			mdm_disable_irqs(mdm);
+			mdm->debug = 0;
+			mdm->ready = false;
+			mdm->trig_cnt = 0;
+
+			dev_err(mdm->dev, "Graceful shutdown fail, ret = %d\n",
+				esoc->subsys.sysmon_shutdown_ret);
+		}
+
 		/*
 		 * Force a shutdown of the mdm. This is required in order
 		 * to prevent the mdm from immediately powering back on
 		 * after the shutdown
 		 */
-		mdm_power_down(mdm);
-		mdm_update_gpio_configs(mdm, GPIO_UPDATE_BOOTING_CONFIG);
 		gpio_set_value(MDM_GPIO(mdm, AP2MDM_STATUS), 0);
 		esoc_clink_queue_request(ESOC_REQ_SHUTDOWN, esoc);
+		mdm_power_down(mdm);
+		mdm_update_gpio_configs(mdm, GPIO_UPDATE_BOOTING_CONFIG);
 		break;
 	case ESOC_RESET:
 		mdm_toggle_soft_reset(mdm);
@@ -403,12 +413,7 @@ static int mdm_cmd_exe(enum esoc_cmd cmd, struct esoc_clink *esoc)
 		 * then power down the mdm and switch gpios to booting
 		 * config
 		 */
-		if (!wait_for_completion_timeout(&mdm->debug_done,
-				msecs_to_jiffies(mdm->dump_timeout_ms))) {
-			dev_err(mdm->dev, "ramdump collection timedout\n");
-			mdm->debug = 0;
-			return -ETIMEDOUT;
-		}
+		wait_for_completion(&mdm->debug_done);
 		if (mdm->debug_fail) {
 			dev_err(mdm->dev, "unable to collect ramdumps\n");
 			mdm->debug = 0;
@@ -467,7 +472,7 @@ static void mdm_get_restart_reason(struct work_struct *work)
 	struct device *dev = mdm->dev;
 
 	do {
-		ret = sysmon_get_reason(mdm->sysmon_subsys_id, sfr_buf,
+		ret = sysmon_get_reason(&mdm->esoc->subsys, sfr_buf,
 							sizeof(sfr_buf));
 		if (!ret) {
 			dev_err(dev, "mdm restart reason is %s\n", sfr_buf);
@@ -503,7 +508,10 @@ static void mdm_notify(enum esoc_notify notify, struct esoc_clink *esoc)
 		mdm_toggle_soft_reset(mdm);
 		break;
 	case ESOC_IMG_XFER_FAIL:
-		esoc_clink_evt_notify(ESOC_BOOT_FAIL, esoc);
+		esoc_clink_evt_notify(ESOC_INVALID_STATE, esoc);
+		break;
+	case ESOC_BOOT_FAIL:
+		esoc_clink_evt_notify(ESOC_INVALID_STATE, esoc);
 		break;
 	case ESOC_UPGRADE_AVAILABLE:
 		break;
@@ -779,10 +787,6 @@ static int mdm_configure_ipc(struct mdm_ctrl *mdm, struct platform_device *pdev)
 			goto fatal_err;
 		}
 	}
-	ret = of_property_read_u32(node, "qcom,sysmon-subsys-id",
-						&mdm->sysmon_subsys_id);
-	if (ret < 0)
-		dev_dbg(dev, "sysmon_subsys_id not set.\n");
 
 	gpio_direction_output(MDM_GPIO(mdm, AP2MDM_STATUS), 0);
 	gpio_direction_output(MDM_GPIO(mdm, AP2MDM_ERRFATAL), 0);

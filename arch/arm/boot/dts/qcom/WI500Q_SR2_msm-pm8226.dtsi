@@ -59,10 +59,10 @@
 
 			qcom,pon_3 {
 				qcom,pon-type = <3>;
-				qcom,support-reset = <0>;
+				qcom,support-reset = <1>;
 				qcom,pull-up = <1>;
 				qcom,s1-timer = <6720>;
-				qcom,s2-timer = <10>;
+				qcom,s2-timer = <2000>;
 				qcom,s2-type = <7>;
 				qcom,use-bark;
 			};
@@ -439,7 +439,7 @@
 			qcom,iadc-vadc = <&pm8226_vadc>;
 			qcom,iadc-poll-eoc;
 			qcom,pmic-revid = <&pm8226_revid>;
-			qcom,use-default-rds-trim = <0>;
+			qcom,use-default-rds-trim = <2>;
 
 			chan@0 {
 				label = "internal_rsense";
@@ -865,9 +865,9 @@
 			compatible = "qcom,qpnp-vibrator";
 			reg = <0xc000 0x100>;
 			label = "vibrator";
-			status = "okay"; //AllenCH_Lin +++ : change to "okay"
-			qcom,vib-timeout-ms = <15000>; //AllenCH_Lin +++
-			qcom,vib-vtg-level-mv = <3000>; //AllenCH_Lin +++
+			status = "okay"; //Hammer +++ : change to "okay"
+			qcom,vib-timeout-ms = <15000>; //Hammer +++
+			qcom,vib-vtg-level-mv = <3000>; //Hammer +++
 		};
 
 		qcom,leds@d300 {

@@ -1455,12 +1455,8 @@ void emac_hw_start_mac(struct emac_hw *hw)
 		     (INT_RD_CLR_EN | LPW_MODE |
 		      IRQ_MODERATOR_EN | IRQ_MODERATOR2_EN));
 
-	if (CHK_HW_FLAG(PTP_CAP)) {
-		if (hw->link_speed == EMAC_LINK_SPEED_1GB_FULL)
-			emac_ptp_set_linkspeed(hw, emac_mac_speed_1000);
-		else
-			emac_ptp_set_linkspeed(hw, emac_mac_speed_10_100);
-	}
+	if (CHK_HW_FLAG(PTP_CAP))
+		emac_ptp_set_linkspeed(hw, hw->link_speed);
 
 	emac_hw_config_mac_ctrl(hw);
 
@@ -1499,4 +1495,21 @@ void emac_hw_set_mac_addr(struct emac_hw *hw, u8 *addr)
 	sta = (((u32)addr[0]) << 8) | (((u32)addr[1]));
 	emac_reg_w32(hw, EMAC, EMAC_MAC_STA_ADDR1, sta);
 	wmb();
+}
+
+/* Read one entry from the HW tx timestamp FIFO */
+bool emac_hw_read_tx_tstamp(struct emac_hw *hw, struct emac_hwtxtstamp *ts)
+{
+	u32 ts_idx;
+
+	ts_idx = emac_reg_r32(hw, EMAC_CSR, EMAC_EMAC_WRAPPER_TX_TS_INX);
+
+	if (ts_idx & EMAC_WRAPPER_TX_TS_EMPTY)
+		return false;
+
+	ts->ns = emac_reg_r32(hw, EMAC_CSR, EMAC_EMAC_WRAPPER_TX_TS_LO);
+	ts->sec = emac_reg_r32(hw, EMAC_CSR, EMAC_EMAC_WRAPPER_TX_TS_HI);
+	ts->ts_idx = ts_idx & EMAC_WRAPPER_TX_TS_INX_BMSK;
+
+	return true;
 }

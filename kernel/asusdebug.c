@@ -20,6 +20,8 @@
 #include <linux/slab.h>
 #include <linux/reboot.h>
 
+#include <linux/asusdebug.h>
+
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
 #define ASUS_LAST_KMSG	1
 
@@ -202,16 +204,16 @@ static unsigned long nsec_low(unsigned long long nsec)
     return do_div(nsec1, 1000000);
 }
 #define MAX_STACK_TRACE_DEPTH   64
-struct stack_trace {
+struct stack_trace_asus {
     unsigned int nr_entries, max_entries;
     unsigned long *entries;
     int skip;   /* input argument: How many entries to skip */
 };
 
-void save_stack_trace_asus(struct task_struct *tsk, struct stack_trace *trace);
+void save_stack_trace_asus(struct task_struct *tsk, struct stack_trace_asus *trace);
 void show_stack1(struct task_struct *p1, void *p2)
 {
-    struct stack_trace trace;
+    struct stack_trace_asus trace;
     unsigned long *entries;
     int i;
 

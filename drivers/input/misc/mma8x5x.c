@@ -394,8 +394,13 @@ static int mma8x5x_delay2odr(u32 delay_ms)
 
 static int mma8x5x_device_set_odr(struct i2c_client *client, u32 delay_ms)
 {
+	struct mma8x5x_data *pdata = i2c_get_clientdata(client);
 	int result;
 	u8 val;
+
+	/* set ODR is only required for interrupt mode */
+	if (!pdata->use_int)
+		return 0;
 
 	result = mma8x5x_delay2odr(delay_ms);
 	if (result < 0)
@@ -503,9 +508,12 @@ static void mma8x5x_dev_poll(struct work_struct *work)
 {
 	struct mma8x5x_data *pdata = container_of((struct delayed_work *)work,
 				struct mma8x5x_data, dwork);
-	mma8x5x_report_data(pdata);
-	schedule_delayed_work(&pdata->dwork,
-				msecs_to_jiffies(pdata->poll_delay));
+
+	if ((pdata->active & MMA_STATE_MASK) == MMA_ACTIVED) {
+		mma8x5x_report_data(pdata);
+		schedule_delayed_work(&pdata->dwork,
+					msecs_to_jiffies(pdata->poll_delay));
+	}
 }
 
 static irqreturn_t mma8x5x_interrupt(int vec, void *data)
@@ -570,9 +578,9 @@ static int mma8x5x_enable_set(struct sensors_classdev *sensors_cdev,
 				dev_err(&client->dev, "change device state failed!");
 				goto err_failed;
 			}
-
-			schedule_delayed_work(&pdata->dwork,
-				msecs_to_jiffies(pdata->poll_delay));
+			if (!pdata->use_int)
+				schedule_delayed_work(&pdata->dwork,
+					msecs_to_jiffies(pdata->poll_delay));
 
 			pdata->active = MMA_ACTIVED;
 			dev_dbg(&client->dev, "%s:mma enable setting active.\n",
@@ -580,8 +588,6 @@ static int mma8x5x_enable_set(struct sensors_classdev *sensors_cdev,
 		}
 	} else if (enable == 0) {
 		if (pdata->active == MMA_ACTIVED) {
-			cancel_delayed_work_sync(&pdata->dwork);
-
 			val = i2c_smbus_read_byte_data(client,
 					MMA8X5X_CTRL_REG1);
 			if (val < 0) {
@@ -596,7 +602,10 @@ static int mma8x5x_enable_set(struct sensors_classdev *sensors_cdev,
 				dev_err(&client->dev, "change device state failed!");
 				goto err_failed;
 			}
-
+			/*
+			 * Set standby state,
+			 * polling work queue will stop after next call.
+			 */
 			pdata->active = MMA_STANDBY;
 			dev_dbg(&client->dev, "%s:mma enable setting inactive.\n",
 					__func__);

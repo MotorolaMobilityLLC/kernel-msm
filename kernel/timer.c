@@ -151,9 +151,11 @@ static unsigned long round_jiffies_common(unsigned long j, int cpu,
 	/* now that we have rounded, subtract the extra skew again */
 	j -= cpu * 3;
 
-	if (j <= jiffies) /* rounding ate our timeout entirely; */
-		return original;
-	return j;
+	/*
+	 * Make sure j is still in the future. Otherwise return the
+	 * unmodified value.
+	 */
+	return time_is_after_jiffies(j) ? j : original;
 }
 
 /**
@@ -378,14 +380,14 @@ __internal_add_timer(struct tvec_base *base, struct timer_list *timer)
 	/*
 	 * Timers are FIFO:
 	 */
-	 //adbg++
-    {
-        unsigned long flags;
-        spin_lock_irqsave(&add_list_lock,flags);
-        list_add_tail(&timer->entry, vec);
-        spin_unlock_irqrestore(&add_list_lock,flags);
-    }
-    //adbg--
+	//adbg++
+	{
+		unsigned long flags;
+		spin_lock_irqsave(&add_list_lock,flags);
+		list_add_tail(&timer->entry, vec);
+		spin_unlock_irqrestore(&add_list_lock,flags);
+	}
+	//adbg--
 }
 
 static void internal_add_timer(struct tvec_base *base, struct timer_list *timer)
@@ -1658,7 +1660,7 @@ void __init init_timers(void)
 	err = timer_cpu_notify(&timers_nb, (unsigned long)CPU_UP_PREPARE,
 			       (void *)(long)smp_processor_id());
 	init_timer_stats();
-    spin_lock_init(&add_list_lock);  //adbg++ 
+	spin_lock_init(&add_list_lock);  //adbg++
 	BUG_ON(err != NOTIFY_OK);
 	register_cpu_notifier(&timers_nb);
 	open_softirq(TIMER_SOFTIRQ, run_timer_softirq);

@@ -11,6 +11,9 @@
  */
 
 &soc {
+	sound {
+		qcom,cdc-micbias2-headset-only;
+	};
 };
 
 &i2c_1 {
@@ -25,6 +28,29 @@
 		qcom,iterm-ma = <100>;
 		regulator-name = "smb1357_otg_supply";
 	};
+
+	wcd9xxx_codec@d{
+		qcom,cdc-micbias1-ext-cap;
+		qcom,cdc-micbias2-ext-cap;
+		qcom,cdc-micbias3-ext-cap;
+	};
+};
+
+&usb3 {
+	vbus_dwc3-supply = <&smb1357_otg_supply>; /* Host 5V VBUS from SMB1357 regulator */
+};
+
+&spi_2 {
+	ethernet-switch@0 {
+		compatible = "micrel,ks8851";
+		reg = <0>;
+		interrupt-parent = <&msmgpio>;
+		spi-max-frequency = <2400000>;
+		interrupts = <56 0>;
+		vdd-io-supply = <&spi_eth_vreg>;
+		vdd-phy-supply = <&spi_eth_vreg>;
+		rst-gpio = <&msmgpio 57 0>;
+	};
 };
 
 &pmd9635_gpios {
@@ -35,9 +61,11 @@
 	};
 
 	gpio@c200 { /* GPIO 3 */
+		status = "ok";
 	};
 
 	gpio@c300 { /* GPIO 4 */
+		status = "ok";
 	};
 
 	gpio@c400 { /* GPIO 5 */
@@ -49,12 +77,15 @@
 
 &pmd9635_mpps {
 	mpp@a000 { /* MPP 1 */
+		status = "ok";
 	};
 
 	mpp@a100 { /* MPP 2 */
+		status = "ok";
 	};
 
 	mpp@a200 { /* MPP 3 */
+		status = "ok";
 	};
 
 	mpp@a300 { /* MPP 4 */
@@ -64,6 +95,7 @@
 		qcom,master-en = <1>;
 		qcom,src-sel = <0>; /* Function constant */
 		qcom,invert = <1>;
+		status = "ok";
 	};
 
 	mpp@a400 { /* MPP 5 */
@@ -76,6 +108,7 @@
 		qcom,master-en = <1>;
 		qcom,src-sel = <0>; /* Function constant */
 		qcom,invert = <1>;
+		status = "ok";
 	};
 };
 
@@ -93,7 +126,7 @@
 	qcom,vdd-io-current-level = <6 22000>;
 
 	pinctrl-names = "active", "sleep";
-	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-0 = <&sdc2_clk_on_16 &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
 	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
 
 	#address-cells = <0>;

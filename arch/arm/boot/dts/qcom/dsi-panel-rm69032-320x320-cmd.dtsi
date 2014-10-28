@@ -37,13 +37,14 @@
 		qcom,mdss-dsi-v-front-porch = <2>;
 		qcom,mdss-dsi-v-pulse-width = <2>;
 		qcom,mdss-dsi-h-left-border = <0>;
-		qcom,mdss-dsi-h-right-border = <160>; // 
+		qcom,mdss-dsi-h-right-border = <160>;
 		qcom,mdss-dsi-v-top-border = <0>;
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-on-command-V2 = [
+
 
 			39 01 00 00 00 00 06 F0 55 AA 52 08 00
 			39 01 00 00 00 00 06 BD 01 90 14 14 00
@@ -87,6 +88,8 @@
 			05 01 00 00 00 00 02 29 00
 			];
 		qcom,mdss-dsi-on-command-V3 = [
+
+
 
 			39 01 00 00 00 00 06 F0 55 AA 52 08 00
 			39 01 00 00 00 00 06 BD 03 20 14 4B 00
@@ -133,11 +136,8 @@
 					05 01 00 00 32 00 02 28 00
 					05 01 00 00 78 00 02 10 00					
 
-//	All pixel on~~
-//					05 01 00 00 32 00 02 23 00
-
 					];
-//ASUS_BSP +++ Jason Chang [WI500Q][Display]support V2 Panel
+
 		qcom,mdss-dsi-idle-on-command-V2 = [
 					39 01 00 00 00 00 06 F0 55 AA 52 08 02
 					39 01 00 00 32 00 04 ED 48 00 F0
@@ -157,8 +157,7 @@
 					39 01 00 00 32 00 04 ED 48 00 E0
 					39 01 00 00 00 00 06 F0 55 AA 52 08 01					
 					];
-//ASUS_BSP --- Jason Chang [WI500Q][Display]support V2 Panel
-//ASUS_BSP +++ Jason Chang "[Robin][display] support ambient mode"
+
 		qcom,mdss-dsi-idle-on-command = [
 					05 01 00 00 64 00 02 39 00
 					];
@@ -167,21 +166,20 @@
 					];
 
 		qcom,mdss-dsi-idle-command-state = "dsi_lp_mode";
-//ASUS_BSP --- Jason Chang "[Robin][display] support ambient mode"
+
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,mdss-dsi-lane-map = "lane_map_3012";		
 		qcom,mdss-dsi-lane-0-state;
-//		qcom,mdss-dsi-lane-1-state;
 		qcom,mdss-dsi-te-pin-select = <1>;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
 
-		// By AUO's suggestion: MIPI Clock rate = ~290Mbps.
-		qcom,mdss-dsi-panel-timings = [5D 12 0C 00 32 38 0E 16 0F 03 04 00]; // 290Mbps, panel_info->clk_rate=
+		/* By AUO's suggestion: MIPI Clock rate = ~290Mbps. */
+		qcom,mdss-dsi-panel-timings = [5D 12 0C 00 32 38 0E 16 0F 03 04 00];
 
 		
 		qcom,mdss-dsi-t-clk-post = <0x04>;
@@ -192,8 +190,6 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 		qcom,mdss-dsi-reset-sequence = <1 20>, <0 1>, <1 20>;
-//		qcom,mdss-dsi-panel-clockrate = <>;
-//		qcom,partial-update-enabled;
 
 	};
 };

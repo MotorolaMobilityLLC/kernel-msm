@@ -39,9 +39,6 @@
 #include "internal.h"
 #include "mount.h"
 
-static int logcat_target;
-static int asdf_target;
-
 /* [Feb-1997 T. Schoebel-Theuer]
  * Fundamental changes in the pathname lookup mechanisms (namei)
  * were necessary because of omirr.  The reason is that omirr needs
@@ -2266,6 +2263,7 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
  */
 static inline int may_create(struct inode *dir, struct dentry *child)
 {
+	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
 	if (child->d_inode)
 		return -EEXIST;
 	if (IS_DEADDIR(dir))
@@ -2330,6 +2328,11 @@ int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 	if (error)
 		return error;
 	error = dir->i_op->create(dir, dentry, mode, want_excl);
+	if (error)
+		return error;
+	error = security_inode_post_create(dir, dentry, mode);
+	if (error)
+		return error;
 	if (!error)
 		fsnotify_create(dir, dentry);
 	return error;
@@ -2657,15 +2660,8 @@ static int lookup_open(struct nameidata *nd, struct path *path,
 		error = security_path_mknod(&nd->path, dentry, mode, 0);
 		if (error)
 			goto out_dput;
-        if (logcat_target) {
-            printk("namei receive a logcat_target, create it as 666!.........\n");
-            error = vfs_create(dir->d_inode, dentry, 438,
+		error = vfs_create(dir->d_inode, dentry, mode,
 				   nd->flags & LOOKUP_EXCL);
-            logcat_target = 0;
-        } else {
-            error = vfs_create(dir->d_inode, dentry, mode,
-				   nd->flags & LOOKUP_EXCL);
-        }
 		if (error)
 			goto out_dput;
 	}
@@ -2696,7 +2692,6 @@ static int do_last(struct nameidata *nd, struct path *path,
 	struct path save_parent = { .dentry = NULL, .mnt = NULL };
 	bool retried = false;
 	int error;
-    int filenamelen = 0;
 
 	nd->flags &= ~LOOKUP_PARENT;
 	nd->flags |= op->intent;
@@ -2769,18 +2764,9 @@ retry_lookup:
 		 * dropping this one anyway.
 		 */
 	}
-
-    /* Workaround for logcat.txt permission, compare length first */
-    filenamelen = strlen(name->name);
-    if (filenamelen == 28 || filenamelen == 30 || filenamelen == 31)
-        if (strncmp(name->name, "/data/user_logcat/logcat.txt", 28) == 0)
-            logcat_target = 1;
-
 	mutex_lock(&dir->d_inode->i_mutex);
 	error = lookup_open(nd, path, file, op, got_write, opened);
 	mutex_unlock(&dir->d_inode->i_mutex);
-
-    logcat_target = 0;
 
 	if (error <= 0) {
 		if (error)
@@ -3157,9 +3143,16 @@ int vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 		return error;
 
 	error = dir->i_op->mknod(dir, dentry, mode, dev);
-	if (!error)
-		fsnotify_create(dir, dentry);
-	return error;
+	if (error)
+		return error;
+
+	error = security_inode_post_create(dir, dentry, mode);
+	if (error)
+		return error;
+
+	fsnotify_create(dir, dentry);
+
+	return 0;
 }
 
 static int may_mknod(umode_t mode)
@@ -3406,12 +3399,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
 
 int vfs_unlink(struct inode *dir, struct dentry *dentry)
 {
-	int error = 0;
-
-	if (!asdf_target)
-		error = may_delete(dir, dentry, 0);
-	else
-		asdf_target = 0;
+	int error = may_delete(dir, dentry, 0);
 
 	if (error)
 		return error;
@@ -3460,13 +3448,6 @@ retry:
 	if (IS_ERR(name))
 		return PTR_ERR(name);
 
-    /* If we are deleting ASDF, it is always allowed */
-    if(strncmp(name->name, "/asdf/ASDF", 10) == 0)
-        asdf_target = 1;
-
-    if(strncmp(name->name, "/asdf/ASUSEvtlog", 16) == 0)
-        asdf_target = 1;
-    
 	error = -EISDIR;
 	if (nd.last_type != LAST_NORM)
 		goto exit1;
@@ -3686,6 +3667,7 @@ retry:
 out_dput:
 	done_path_create(&new_path, new_dentry);
 	if (retry_estale(error, how)) {
+		path_put(&old_path);
 		how |= LOOKUP_REVAL;
 		goto retry;
 	}

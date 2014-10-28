@@ -47,7 +47,7 @@
 #include <linux/bitops.h>
 #include <linux/termios.h>
 #include <linux/serial_core.h>
-#include <mach/msm_serial_hs.h>
+#include <linux/platform_data/msm_serial_hs.h>
 
 #include <asm/gpio.h>
 #include <asm/mach-types.h>
@@ -144,8 +144,10 @@ static DEFINE_TIMER(tx_timer, bluesleep_tx_timer_expire, 0, 0);
 static struct uart_port *bluesleep_get_uart_port(void)
 {
 	if(DBG) printk("bluesleep_get_uart_port\n");
-	if (bluesleep_uart_port != NULL)
+	if (bluesleep_uart_port != NULL) {
+	    if(DBG) printk("bluesleep_get_uart_port != NULL\n");
 	    return bluesleep_uart_port;
+	}
 	else 
 	    return NULL;
 }
@@ -161,7 +163,7 @@ void bluesleep_setup_uart_port(struct uart_port *uport)
 
 static void hsuart_power(int on)
 {
-	if (on) {
+/*	if (on) {
 		printk("BT hsuart_power on\n");
 		msm_hs_request_clock_on(bsi->uport);
 		msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
@@ -172,6 +174,7 @@ static void hsuart_power(int on)
 		msm_hs_request_clock_off(bsi->uport);
 		uart_powered = false;
 	}
+*/
 }
 
 /**

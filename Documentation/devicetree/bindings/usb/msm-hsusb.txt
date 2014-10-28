@@ -10,7 +10,7 @@ Required properties :
             HSUSB OTG expects "core_irq" which is IRQ line from CORE and
             optional ones are described in next section.
 - qcom,hsusb-otg-phy-type: PHY type can be one of
-            1 - Chipidea 45nm PHY
+            1 - Chipidea 45nm PHY (obsolete)
 	    2 - Synopsis 28nm PHY
 - qcom,hsusb-otg-mode: Operational mode. Can be one of
             1 - Peripheral only mode
@@ -68,9 +68,6 @@ Optional properties :
 	    Used for allowing USB to respond for remote wakup.
 - qcom,hsusb-otg-delay-lpm: If present then USB core will wait one second
 	after disconnect before entering low power mode.
-- qcom,hsusb-otg-delay-lpm-hndshk-on-disconnect: If present then USB core will
-	wait for the handshake with the IPA to complete before entering low
-	power mode.
 - <supply-name>-supply: handle to the regulator device tree node.
          Optional "supply-name" is "vbus_otg" to supply vbus in host mode.
 - qcom,dp-manual-pullup: If present, vbus is not routed to USB controller/phy
@@ -107,11 +104,14 @@ Optional properties :
 	mode with device controller for better throughput. With this mode, USB Core
 	runs using PNOC clock and synchronous to it. Hence it is must to have proper
 	"qcom,msm-bus,vectors" to have high bus frequency. User shouldn't try to
-	enable this feature without proper bus voting.
+	enable this feature without proper bus voting. When this feature is enabled,
+	it is required to do HW reset during cable disconnect for host mode functionality
+	working and hence need to disable qcom,hsusb-otg-disable-reset.
 - qcom,disable-retention-with-vdd-min: If present don't allow phy retention but allow
 	vdd min.
 - qcom,usbin-vadc: Corresponding vadc device's phandle to read usbin voltage using VADC.
 	This will be used to get value of usb power supply's VOLTAGE_NOW property.
+- qcom,usbid-gpio: This corresponds to gpio which is used for USB ID detection.
 
 Example HSUSB OTG controller device node :
 	usb@f9690000 {
@@ -151,6 +151,7 @@ Example HSUSB OTG controller device node :
 		qcom,hsusb-otg-rw-during-lpm-workaround = <1>;
 		qcom,disable-retention-with-vdd-min;
 		qcom,usbin-vadc = <&pm8226_vadc>;
+		qcom,usbid-gpio = <&msm_gpio 110 0>;
 	};
 
 MSM HSUSB EHCI controller
@@ -194,6 +195,7 @@ Optional properties :
   the USB host controller and its RESET_N signal is connected to this
   ext-hub-reset-gpio GPIO. It should be driven LOW to RESET the HUB.
 - qcom,usb2-enable-uicc: If present, usb2 port will be used for uicc card connection.
+- usb-phy: phandle for the PHY device, if described as a separate device tree node
 
 Example MSM HSUSB EHCI controller device node :
 	ehci: qcom,ehci-host@f9a55000 {
@@ -214,28 +216,4 @@ Example MSM HSUSB EHCI controller device node :
 		qcom,usb2-power-budget = <500>;
 		qcom,vdd-voltage-level = <1 2 3 5 7>;
 		qcom,usb2-enable-uicc;
-	};
-
-ANDROID USB:
-
-Required properties:
-- compatible: should be "qcom,android-usb"
-
-Optional properties :
-- reg  : offset and length of memory region that is used by device to
-  update USB PID and serial numbers used by bootloader in DLOAD mode.
-- qcom,android-usb-swfi-latency : value to be used by device to vote
-  for DMA latency in microsecs.
-- qcom,streaming-func : add list of usb function name. If mention usb function
-  is being enable as part of USB composition, streaming mode is enable with
-  usb device controller to get better throughput. NOTE: Inverted CRC and
-  turnaround timeout is observed on enabling streaming. Hence it is required
-  to see these errors and number of erros on enabling this at USB level to make
-  final decision to enable this feature or not.
-Example Android USB device node :
-	android_usb@fc42b0c8 {
-		compatible = "qcom,android-usb";
-		reg = <0xfc42b0c8 0xc8>;
-		qcom,android-usb-swfi-latency = <1>;
-		qcom,streaming-func = "rndis","mtp";
 	};

@@ -271,7 +271,7 @@ static int cal_ocv_percent_when_discharging(
 		 percent, ocv, resistor);
     
     //ASUS_BSP Eason_Chang add event log +++
-    ASUSEvtlog( "[BAT][Gau]ocv per=%d, ocv=%d, r=%d\n", percent, ocv, resistor);
+//    ASUSEvtlog( "[BAT][Gau]ocv per=%d, ocv=%d, r=%d\n", percent, ocv, resistor);
     //ASUS_BSP Eason_Chang add event log ---
 
 	return percent;

@@ -75,6 +75,7 @@
 #include <linux/blkdev.h>
 #include <linux/elevator.h>
 #include <linux/sched_clock.h>
+#include <linux/random.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
@@ -134,7 +135,7 @@ static char *static_command_line;
 static char *execute_command;
 static char *ramdisk_execute_command;
 
-//+++ ASUS_BSP : miniporting
+//+++ ASUS_BSP :  for board information
 enum DEVICE_HWID g_ASUS_hwID=HWID_UNKNOWN;
 char hwid_info[16]={0};
 
@@ -148,7 +149,6 @@ const enum DEVICE_HWID get_hardware_id(void)
 static int set_hardware_id(char *str)
 {
 
-#ifdef ASUS_WI500Q_PROJECT
 	if ( strcmp("WI500Q_EVB", str) == 0 )
 	{
 		g_ASUS_hwID = WI500Q_EVB;
@@ -170,14 +170,11 @@ static int set_hardware_id(char *str)
 		printk("Kernel HW ID = WI500Q_SR2\n");
 	}
 
-#endif
-
 	printk("g_ASUS_hwID = %d\n", g_ASUS_hwID);
 	return 0;
 }
 __setup("HW_ID=", set_hardware_id);
 
-// better_ding@asus.com get cpu id from aboot +++
 int  g_cpuID = 0;
 EXPORT_SYMBOL(g_cpuID);
 
@@ -205,7 +202,17 @@ static int set_cpu_id(char *str)
 }
 
 __setup("CPU_RV=", set_cpu_id);
-// better_ding@asus.com get cpu id from aboot ---
+
+char device_serialno[16]={0};
+static int set_serialno(char *str)
+{
+	sprintf(device_serialno, str);	
+    printk("serialno = %s\n",device_serialno);
+	return 0;
+}
+__setup("serialno=", set_serialno);
+
+//--- ASUS_BSP :  for board information
 
 //+++ASUS_BSP: for recovery mode
 int g_recovery_mode=0;
@@ -218,16 +225,6 @@ static int set_recovery_mode(char *str)
 __setup("recovery", set_recovery_mode);
 //---ASUS_BSP: for recovery mode
 
-//+++ASUS_BSP: for recovery mode
-char device_serialno[16]={0};
-static int set_serialno(char *str)
-{
-	sprintf(device_serialno, str);	
-    printk("serialno = %s\n",device_serialno);
-	return 0;
-}
-__setup("serialno=", set_serialno);
-//---ASUS_BSP: for recovery mode
 
 //ASUS_BSP porting charger mode +++
 #if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
@@ -926,6 +923,7 @@ static void __init do_basic_setup(void)
 	do_ctors();
 	usermodehelper_enable();
 	do_initcalls();
+	random_int_secret_init();
 }
 
 static void __init do_pre_smp_initcalls(void)
