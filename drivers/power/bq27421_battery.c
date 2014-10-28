@@ -328,7 +328,7 @@ static int bq27421_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = (s16)chip->current_now;
-		val->intval *= -1000;
+		val->intval *= 1000;
 		break;
 	default:
 		return -EINVAL;
