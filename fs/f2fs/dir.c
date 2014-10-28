@@ -9,11 +9,16 @@
  * published by the Free Software Foundation.
  */
 #include <linux/fs.h>
+#include <linux/namei.h>
 #include <linux/f2fs_fs.h>
 #include "f2fs.h"
 #include "node.h"
 #include "acl.h"
 #include "xattr.h"
+
+#ifndef LOOKUP_NOCASE
+#define LOOKUP_NOCASE	0
+#endif
 
 static unsigned long dir_blocks(struct inode *inode)
 {
@@ -91,7 +96,8 @@ static bool early_match_name(size_t namelen, f2fs_hash_t namehash,
 
 static struct f2fs_dir_entry *find_in_block(struct page *dentry_page,
 			struct qstr *name, int *max_slots,
-			f2fs_hash_t namehash, struct page **res_page)
+			f2fs_hash_t namehash, struct page **res_page,
+			unsigned int flags)
 {
 	struct f2fs_dir_entry *de;
 	unsigned long bit_pos = 0;
@@ -109,7 +115,15 @@ static struct f2fs_dir_entry *find_in_block(struct page *dentry_page,
 			continue;
 		}
 		de = &dentry_blk->dentry[bit_pos];
-		if (early_match_name(name->len, namehash, de)) {
+
+		if (flags & LOOKUP_NOCASE) {
+			if ((le16_to_cpu(de->name_len) == name->len) &&
+				!strncasecmp(dentry_blk->filename[bit_pos],
+						name->name, name->len)) {
+				*res_page = dentry_page;
+				goto found;
+			}
+		} else if (early_match_name(name->len, namehash, de)) {
 			if (!memcmp(dentry_blk->filename[bit_pos],
 							name->name,
 							name->len)) {
@@ -141,7 +155,8 @@ found:
 
 static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 			unsigned int level, struct qstr *name,
-			f2fs_hash_t namehash, struct page **res_page)
+			f2fs_hash_t namehash, struct page **res_page,
+			unsigned int flags)
 {
 	int s = GET_DENTRY_SLOTS(name->len);
 	unsigned int nbucket, nblock;
@@ -169,7 +184,7 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 		}
 
 		de = find_in_block(dentry_page, name, &max_slots,
-					namehash, res_page);
+					namehash, res_page, flags);
 		if (de)
 			break;
 
@@ -192,8 +207,8 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
  * and the entry itself. Page is returned mapped and unlocked.
  * Entry is guaranteed to be valid.
  */
-struct f2fs_dir_entry *f2fs_find_entry(struct inode *dir,
-			struct qstr *child, struct page **res_page)
+struct f2fs_dir_entry *f2fs_find_entry(struct inode *dir, struct qstr *child,
+		struct page **res_page, unsigned int flags)
 {
 	unsigned long npages = dir_blocks(dir);
 	struct f2fs_dir_entry *de = NULL;
@@ -210,7 +225,8 @@ struct f2fs_dir_entry *f2fs_find_entry(struct inode *dir,
 	max_depth = F2FS_I(dir)->i_current_depth;
 
 	for (level = 0; level < max_depth; level++) {
-		de = find_in_level(dir, level, child, name_hash, res_page);
+		de = find_in_level(dir, level, child, name_hash,
+						res_page, flags);
 		if (de)
 			break;
 	}
@@ -244,7 +260,7 @@ ino_t f2fs_inode_by_name(struct inode *dir, struct qstr *qstr)
 	struct f2fs_dir_entry *de;
 	struct page *page;
 
-	de = f2fs_find_entry(dir, qstr, &page);
+	de = f2fs_find_entry(dir, qstr, &page, 0);
 	if (de) {
 		res = le32_to_cpu(de->ino);
 		kunmap(page);

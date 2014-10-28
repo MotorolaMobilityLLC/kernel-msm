@@ -1226,7 +1226,7 @@ struct dentry *f2fs_get_parent(struct dentry *child);
  * dir.c
  */
 struct f2fs_dir_entry *f2fs_find_entry(struct inode *, struct qstr *,
-							struct page **);
+					struct page **, unsigned int flags);
 struct f2fs_dir_entry *f2fs_parent_dir(struct inode *, struct page **);
 ino_t f2fs_inode_by_name(struct inode *, struct qstr *);
 void f2fs_set_link(struct inode *, struct f2fs_dir_entry *,
