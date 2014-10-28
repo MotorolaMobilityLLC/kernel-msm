@@ -27,3 +27,6 @@
 &pm8226_chg {
 	qcom,batt-therm-offset = <(-50)>;
 };
+&sdhc_2 {
+	qcom,pad-drv-on = <0x2 0x3 0x3>;  /* 6mA, 8mA, 8mA */
+};

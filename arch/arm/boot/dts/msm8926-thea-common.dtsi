@@ -93,3 +93,6 @@
 		mmi,clock_override = <0x01>;
 	};
 };
+&sdhc_2 {
+	qcom,pad-drv-on = <0x7 0x3 0x3>;  /* 16mA, 8mA, 8mA */
+};
