@@ -1636,7 +1636,7 @@ config SOFTLOCKUP_WATCHDOG_TEST
 
 config LOCKUP_IPI_CALL_WDT
        bool "Trigger Watchdog Reset when Softlockup on IPI Call"
-       depends on LOCKUP_DETECTOR && USE_GENERIC_SMP_HELPERS
+       depends on LOCKUP_DETECTOR
        help
          Say Y here to enable the kernel to trigger watchdog reset when it
          detects softlockup happens during current cpu is waiting for ipi replying
