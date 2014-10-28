@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,6 +25,7 @@
 #define DSI_INTR_CMD_MDP_DONE			BIT(8)
 #define DSI_INTR_CMD_DMA_DONE_MASK		BIT(1)
 #define DSI_INTR_CMD_DMA_DONE			BIT(0)
+#define DSI_INTR_ALL_MASK			0x2220202
 
 #define DSI_BTA_TERM				BIT(1)
 
@@ -169,5 +170,9 @@
 #define DSI_DSIPHY_BIST_CTRL3			0x0498
 #define DSI_DSIPHY_BIST_CTRL4			0x049C
 #define DSI_DSIPHY_BIST_CTRL5			0x04A0
+
+#define DSI_EN			BIT(0)
+#define DSI_VIDEO_MODE_EN	BIT(1)
+#define DSI_CMD_MODE_EN		BIT(2)
 
 #endif /* DSI_HOST_V2_H */

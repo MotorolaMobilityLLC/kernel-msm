@@ -12,10 +12,17 @@
 
 /dts-v1/;
 
+<<<<<<< HEAD
 /include/ "msm8916-cdp.dtsi"
+||||||| merged common ancestors
+#include "msm8916-cdp.dtsi"
+=======
+#include "msm8916-cdp.dtsi"
+#include "msm8916-memory.dtsi"
+>>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
-	model = "Qualcomm MSM 8916 CDP";
+	model = "Qualcomm Technologies, Inc. MSM 8916 SMB1360 CDP";
 	compatible = "qcom,msm8916-cdp", "qcom,msm8916", "qcom,cdp";
 	qcom,board-id = <1 1>;
 };
@@ -27,15 +34,15 @@
 			reg = <0x14>;
 			interrupt-parent = <&msm_gpio>;
 			interrupts = <62 8>;
-			pinctrl-names = "active", "sleep";
-			pinctrl-0 = <&smb_int_active>;
-			pinctrl-1 = <&smb_int_sleep>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&smb_int_default>;
 			regulator-name = "smb1360_otg_vreg";
 
 			qcom,float-voltage-mv = <4200>;
 			qcom,iterm-ma = <100>;
 			qcom,charging-disabled;
 			qcom,recharge-thresh-mv = <100>;
+			qcom,thermal-mitigation = <1500 700 600 0>;
 		};
 	};
 };
@@ -45,5 +52,6 @@
 };
 
 &pm8916_bms {
-	status = "disabled";
+	status = "ok";
+	qcom,disable-bms;
 };

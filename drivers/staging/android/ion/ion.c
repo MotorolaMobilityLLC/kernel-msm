@@ -680,6 +680,10 @@ static void ion_handle_kmap_put(struct ion_handle *handle)
 {
 	struct ion_buffer *buffer = handle->buffer;
 
+	if (!handle->kmap_cnt) {
+		WARN(1, "%s: Double unmap detected! bailing...\n", __func__);
+		return;
+	}
 	handle->kmap_cnt--;
 	if (!handle->kmap_cnt)
 		ion_buffer_kmap_put(buffer);
@@ -983,7 +987,7 @@ struct sg_table *ion_create_chunked_sg_table(phys_addr_t buffer_base,
 	for_each_sg(table->sgl, sg, table->nents, i) {
 		dma_addr_t addr = buffer_base + i * chunk_size;
 		sg_dma_address(sg) = addr;
-		sg_dma_len(sg) = chunk_size;
+		sg->length = chunk_size;
 	}
 
 	return table;
@@ -1386,7 +1390,7 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		handle = ion_alloc(client, data.allocation.len,
 						data.allocation.align,
-						data.allocation.heap_mask,
+						data.allocation.heap_id_mask,
 						data.allocation.flags);
 		if (IS_ERR(handle))
 			return PTR_ERR(handle);
@@ -1745,6 +1749,9 @@ void ion_device_add_heap(struct ion_device *dev, struct ion_heap *heap)
 
 	if (heap->flags & ION_HEAP_FLAG_DEFER_FREE)
 		ion_heap_init_deferred_free(heap);
+
+	if ((heap->flags & ION_HEAP_FLAG_DEFER_FREE) || heap->ops->shrink)
+		ion_heap_init_shrinker(heap);
 
 	heap->dev = dev;
 	down_write(&dev->lock);

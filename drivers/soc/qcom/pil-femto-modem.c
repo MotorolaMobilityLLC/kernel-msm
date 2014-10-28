@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -122,12 +122,17 @@ struct femto_modem_data {
 #define POLL_INTERVAL_US		50
 #define TIMEOUT_US			1000000
 
-static void *pil_femto_modem_map_fw_mem(phys_addr_t paddr, size_t size)
+static void *pil_femto_modem_map_fw_mem(phys_addr_t paddr, size_t size, void *d)
 {
 	/* Due to certain memory areas on the platform requiring 32-bit wide
 	 * accesses, we must cache the firmware to avoid bus errors.
 	 */
 	return ioremap_cached(paddr, size);
+}
+
+static void pil_femto_modem_unmap_fw_mem(void *vaddr, size_t size, void *data)
+{
+	iounmap(vaddr);
 }
 
 static int pil_femto_modem_send_rmb_advance(void __iomem *rmb_base, u32 id)
@@ -232,6 +237,8 @@ static int pil_femto_modem_start(struct femto_modem_data *drv)
 					 * Modem 0 must load.
 					 */
 					pil_shutdown(&drv->q6->desc);
+					SET_SYSFS_VALUE(drv, mba_status,
+						MODEM_STATUS_MBA_ERROR);
 					break;
 				} else
 					/* This image didn't load, but it's not
@@ -256,12 +263,17 @@ static int pil_femto_modem_start(struct femto_modem_data *drv)
 		/* Free the allocated name */
 		kfree(pmi_name);
 
-		if (index == (drv->max_num_modems - 1))
+		if (index == (drv->max_num_modems - 1)) {
 			/* Tell the MBA this was the last RMB */
 			ret = pil_femto_modem_send_rmb_advance(
 				image->rmb_base,
 				RMB_ADVANCE_COMPLETE);
-		else {
+
+			/* If the advance fails, the MBA is in an error state */
+			if (ret)
+				SET_SYSFS_VALUE(drv, mba_status,
+					MODEM_STATUS_MBA_ERROR);
+		} else {
 			/* Tell the MBA to move to the next RMB.
 			 * Note that the MBA needs the actual id of the
 			 * modem specified in the device tree,
@@ -277,6 +289,9 @@ static int pil_femto_modem_start(struct femto_modem_data *drv)
 				 */
 				SET_SYSFS_VALUE(modem, status,
 					MODEM_STATUS_ADVANCE_FAILED);
+				SET_SYSFS_VALUE(drv, mba_status,
+					MODEM_STATUS_MBA_ERROR);
+
 				pil_shutdown(&drv->q6->desc);
 				break;
 			}
@@ -607,7 +622,7 @@ static int pil_femto_modem_desc_probe(struct platform_device *pdev)
 	mba_desc->proxy_timeout = 0;
 	mba_desc->flags = skip_entry ? PIL_SKIP_ENTRY_CHECK : 0;
 	mba_desc->map_fw_mem = pil_femto_modem_map_fw_mem;
-	mba_desc->unmap_fw_mem = NULL;
+	mba_desc->unmap_fw_mem = pil_femto_modem_unmap_fw_mem;
 
 	ret = pil_desc_init(mba_desc);
 	if (ret)
@@ -678,7 +693,7 @@ static int pil_femto_modem_driver_probe(
 	q6_desc->owner = THIS_MODULE;
 	q6_desc->proxy_timeout = 0;
 	q6_desc->map_fw_mem = pil_femto_modem_map_fw_mem;
-	q6_desc->unmap_fw_mem = NULL;
+	q6_desc->unmap_fw_mem = pil_femto_modem_unmap_fw_mem;
 
 	/* For this target, PBL interactions are different. */
 	pil_msa_mss_ops.proxy_vote = NULL;

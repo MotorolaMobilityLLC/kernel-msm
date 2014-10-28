@@ -15,6 +15,7 @@
 #define __MSM_CLOCK_GENERIC_H
 
 #include <linux/clk/msm-clk-provider.h>
+#include <linux/of.h>
 
 /**
  * struct fixed_clk - fixed rate clock
@@ -25,11 +26,6 @@ struct fixed_clk {
 };
 
 /* ==================== Mux clock ==================== */
-
-struct clk_src {
-	struct clk *src;
-	int sel;
-};
 
 struct mux_clk;
 
@@ -49,21 +45,26 @@ struct clk_mux_ops {
 	.parents = (struct clk_src[]){__VA_ARGS__}, \
 	.num_parents = ARRAY_SIZE(((struct clk_src[]){__VA_ARGS__}))
 
+#define MUX_REC_SRC_LIST(...) \
+	.rec_parents = (struct clk * []){__VA_ARGS__}, \
+	.num_rec_parents = ARRAY_SIZE(((struct clk * []){__VA_ARGS__}))
+
 struct mux_clk {
 	/* Parents in decreasing order of preference for obtaining rates. */
 	struct clk_src	*parents;
 	int		num_parents;
+	/* Recursively search for the requested parent in rec_parents. */
+	struct clk	**rec_parents;
+	int		num_rec_parents;
 	struct clk	*safe_parent;
 	int		safe_sel;
+	unsigned long	safe_freq;
 	struct clk_mux_ops *ops;
-	/* Recursively search for the requested parent. */
-	bool		rec_set_par;
 
 	/* Fields not used by helper function. */
 	void *const __iomem *base;
 	u32		offset;
 	u32		en_offset;
-	int		en_reg;
 	u32		mask;
 	u32		shift;
 	u32		en_mask;
@@ -76,8 +77,6 @@ static inline struct mux_clk *to_mux_clk(struct clk *c)
 {
 	return container_of(c, struct mux_clk, c);
 }
-
-int parent_to_src_sel(struct clk_src *parents, int num_parents, struct clk *p);
 
 extern struct clk_ops clk_ops_gen_mux;
 
@@ -106,10 +105,18 @@ struct div_data {
 	 * they are 2*N.
 	 */
 	bool is_half_divider;
+	unsigned int cached_div;
 };
 
 struct div_clk {
 	struct div_data data;
+
+	/*
+	 * Some implementations may require the divider to be set to a "safe"
+	 * value that allows reprogramming of upstream clocks without violating
+	 * voltage constraints.
+	 */
+	unsigned long safe_freq;
 
 	/* Optional */
 	struct clk_div_ops *ops;
@@ -134,10 +141,18 @@ extern struct clk_ops clk_ops_slave_div;
 
 struct ext_clk {
 	struct clk c;
+	struct device *dev;
+	char *clk_id;
 };
 
 long parent_round_rate(struct clk *c, unsigned long rate);
 unsigned long parent_get_rate(struct clk *c);
+
+static inline struct ext_clk *to_ext_clk(struct clk *c)
+{
+	return container_of(c, struct ext_clk, c);
+}
+
 extern struct clk_ops clk_ops_ext;
 
 #define DEFINE_FIXED_DIV_CLK(clk_name, _div, _parent) \

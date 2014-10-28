@@ -31,6 +31,8 @@ struct data_port {
 	int                             ipa_producer_ep;
 };
 
+int bam2bam_data_port_select(int portno);
+
 void bam_data_disconnect(struct data_port *gr, u8 port_num);
 
 int bam_data_connect(struct data_port *gr, u8 port_num,
@@ -39,18 +41,22 @@ int bam_data_connect(struct data_port *gr, u8 port_num,
 
 int bam_data_setup(unsigned int no_bam2bam_port);
 
-int bam_data_destroy(unsigned int no_bam2bam_port);
+void bam_work_destroy(void);
 
 void bam_data_suspend(u8 port_num);
 
 void bam_data_resume(u8 port_num);
 
-void u_bam_data_set_max_xfer_size(u32 max_transfer_size);
+void u_bam_data_set_dl_max_xfer_size(u32 dl_max_transfer_size);
 
-void u_bam_data_set_max_pkt_num(u32 max_packets_number);
+void u_bam_data_set_ul_max_pkt_num(u8 ul_max_packets_number);
+
+void u_bam_data_set_ul_max_xfer_size(u32 ul_max_xfer_size);
 
 void u_bam_data_start_rndis_ipa(void);
 
 void u_bam_data_stop_rndis_ipa(void);
+
+void bam_data_start_rx_tx(u8 port_num);
 
 #endif /* __U_BAM_DATA_H */

@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include <msm8x16_wcd_registers.h>
+#include "msm8x16_wcd_registers.h"
 #include "msm8x16-wcd.h"
 
 const u8 msm8x16_wcd_reg_readable[MSM8X16_WCD_CACHE_SIZE] = {
@@ -237,6 +237,13 @@ const u8 msm8x16_wcd_reg_readable[MSM8X16_WCD_CACHE_SIZE] = {
 		[MSM8X16_WCD_A_CDC_TX2_CLK_FS_CTL] = 1,
 		[MSM8X16_WCD_A_CDC_TX1_DMIC_CTL] = 1,
 		[MSM8X16_WCD_A_CDC_TX2_DMIC_CTL] = 1,
+		[MSM8X16_WCD_A_ANALOG_MASTER_BIAS_CTL] = 1,
+		[MSM8X16_WCD_A_DIGITAL_INT_LATCHED_CLR] = 1,
+		[MSM8X16_WCD_A_ANALOG_INT_LATCHED_CLR] = 1,
+		[MSM8X16_WCD_A_ANALOG_NCP_CLIM_ADDR] = 1,
+		[MSM8X16_WCD_A_DIGITAL_SEC_ACCESS] = 1,
+		[MSM8X16_WCD_A_DIGITAL_PERPH_RESET_CTL3] = 1,
+		[MSM8X16_WCD_A_ANALOG_SEC_ACCESS] = 1,
 };
 
 const u8 msm8x16_wcd_reg_readonly[MSM8X16_WCD_CACHE_SIZE] = {
@@ -279,6 +286,8 @@ const u8 msm8x16_wcd_reg_readonly[MSM8X16_WCD_CACHE_SIZE] = {
 		[MSM8X16_WCD_A_CDC_TX2_VOL_CTL_CFG] = 1,
 		[MSM8X16_WCD_A_CDC_IIR1_COEF_B1_CTL] = 1,
 		[MSM8X16_WCD_A_CDC_IIR2_COEF_B1_CTL] = 1,
+		[MSM8X16_WCD_A_CDC_CLK_MCLK_CTL] = 1,
+		[MSM8X16_WCD_A_CDC_CLK_PDM_CTL] = 1,
 };
 const u8 msm8x16_wcd_reset_reg_defaults[MSM8X16_WCD_CACHE_SIZE] = {
 		[MSM8X16_WCD_A_DIGITAL_REVISION1] =

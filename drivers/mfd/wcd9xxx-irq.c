@@ -32,6 +32,10 @@
 
 #define WCD9XXX_SYSTEM_RESUME_TIMEOUT_MS 100
 
+#ifndef NO_IRQ
+#define NO_IRQ	(-1)
+#endif
+
 #ifdef CONFIG_OF
 struct wcd9xxx_irq_drv_data {
 	struct irq_domain *domain;
@@ -498,7 +502,7 @@ int wcd9xxx_request_irq(struct wcd9xxx_core_resource *wcd9xxx_res,
 	 * ARM needs us to explicitly flag the IRQ as valid
 	 * and will set them noprobe when we do so.
 	 */
-#ifdef CONFIG_ARM
+#if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
 	set_irq_flags(virq, IRQF_VALID);
 #else
 	set_irq_noprobe(virq);
@@ -618,6 +622,10 @@ static int phyirq_to_virq(struct wcd9xxx_core_resource *wcd9xxx_res, int offset)
 static int virq_to_phyirq(struct wcd9xxx_core_resource *wcd9xxx_res, int virq)
 {
 	struct irq_data *irq_data = irq_get_irq_data(virq);
+	if (unlikely(!irq_data)) {
+		pr_err("%s: irq_data is NULL", __func__);
+		return -EINVAL;
+	}
 	return irq_data->hwirq;
 }
 
@@ -667,6 +675,10 @@ static int wcd9xxx_irq_probe(struct platform_device *pdev)
 	} else {
 		dev_dbg(&pdev->dev, "%s: virq = %d\n", __func__, irq);
 		domain = irq_find_host(pdev->dev.of_node);
+		if (unlikely(!domain)) {
+			pr_err("%s: domain is NULL", __func__);
+			return -EINVAL;
+		}
 		data = (struct wcd9xxx_irq_drv_data *)domain->host_data;
 		data->irq = irq;
 		wmb();
@@ -682,6 +694,10 @@ static int wcd9xxx_irq_remove(struct platform_device *pdev)
 	struct wcd9xxx_irq_drv_data *data;
 
 	domain = irq_find_host(pdev->dev.of_node);
+	if (unlikely(!domain)) {
+		pr_err("%s: domain is NULL", __func__);
+		return -EINVAL;
+	}
 	data = (struct wcd9xxx_irq_drv_data *)domain->host_data;
 	data->irq = 0;
 	wmb();

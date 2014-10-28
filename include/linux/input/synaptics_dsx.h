@@ -5,7 +5,7 @@
  *
  * Copyright (C) 2012 Alexandra Chin <alexandra.chin@tw.synaptics.com>
  * Copyright (C) 2012 Scott Lin <scott.lin@tw.synaptics.com>
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ struct synaptics_rmi4_capacitance_button_map {
  * @y_flip: y flip flag
  * @i2c_pull_up: pull up i2c bus with regulator
  * @power_down_enable: enable complete regulator shutdown in suspend
+ * @is_wake: keep awake in suspend
  * @irq_gpio: attention interrupt gpio
  * @irq_flags: flags used by the irq
  * @reset_flags: flags used by reset line
@@ -62,6 +63,9 @@ struct synaptics_rmi4_platform_data {
 	bool power_down_enable;
 	bool disable_gpios;
 	bool do_lockdown;
+	bool detect_device;
+	bool modify_reso;
+	bool is_wake;
 	unsigned irq_gpio;
 	u32 irq_flags;
 	u32 reset_flags;
@@ -76,6 +80,7 @@ struct synaptics_rmi4_platform_data {
 	unsigned disp_maxy;
 	unsigned reset_delay;
 	const char *fw_image_name;
+	unsigned int package_id;
 	int (*gpio_config)(unsigned gpio, bool configure);
 	struct synaptics_rmi4_capacitance_button_map *capacitance_button_map;
 };

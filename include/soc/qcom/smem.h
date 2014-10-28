@@ -40,6 +40,17 @@ enum {
 
 #define SMEM_NUM_SMD_STREAM_CHANNELS        64
 
+/**
+ * OVERFLOW_ADD_UNSIGNED() - check for unsigned overflow
+ *
+ * @type: type to check for overflow
+ * @a: left value to use
+ * @b: right value to use
+ * @returns: true if a + b will result in overflow; false otherwise
+ */
+#define OVERFLOW_ADD_UNSIGNED(type, a, b) \
+	(((type)~0 - (a)) < (b) ? true : false)
+
 enum {
 	/* fixed items */
 	SMEM_PROC_COMM = 0,
@@ -152,6 +163,8 @@ enum {
 	SMEM_CPR_CONFIG, /* 473 */
 	SMEM_CLOCK_INFO, /* 474 */
 	SMEM_IPC_FIFO, /* 475 */
+	SMEM_RF_EEPROM_DATA, /* 476 */
+	SMEM_COEX_MDM_WCN, /* 477 */
 	SMEM_NUM_ITEMS,
 };
 

@@ -98,7 +98,7 @@ enum otg_control_type {
  */
 enum msm_usb_phy_type {
 	INVALID_PHY = 0,
-	CI_45NM_INTEGRATED_PHY,
+	CI_45NM_INTEGRATED_PHY, /* not supported */
 	SNPS_28NM_INTEGRATED_PHY,
 };
 
@@ -191,6 +191,19 @@ enum usb_vdd_value {
 };
 
 /**
+ * Maintain state for hvdcp external charger status
+ * DEFAULT	This is used when DCP is detected
+ * ACTIVE	This is used when ioctl is called to block LPM
+ * INACTIVE	This is used when ioctl is called to unblock LPM
+ */
+
+enum usb_ext_chg_status {
+	DEFAULT = 1,
+	ACTIVE,
+	INACTIVE,
+};
+
+/**
  * Supported USB controllers
  */
 enum usb_ctrl {
@@ -250,6 +263,7 @@ enum usb_ctrl {
  *		mode with controller in device mode.
  * @bool disable_retention_with_vdd_min: Indicates whether to enable
 		allowing VDDmin without putting PHY into retention.
+ * @usb_id_gpio: Gpio used for USB ID detection.
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
@@ -269,7 +283,6 @@ struct msm_otg_platform_data {
 	bool enable_lpm_on_dev_suspend;
 	bool core_clk_always_on_workaround;
 	bool delay_lpm_on_disconnect;
-	bool delay_lpm_hndshk_on_disconnect;
 	bool dp_manual_pullup;
 	bool enable_sec_phy;
 	struct msm_bus_scale_pdata *bus_scale_table;
@@ -281,6 +294,7 @@ struct msm_otg_platform_data {
 	bool rw_during_lpm_workaround;
 	bool enable_ahb2ahb_bypass;
 	bool disable_retention_with_vdd_min;
+	int usb_id_gpio;
 };
 
 /* phy related flags */
@@ -345,6 +359,10 @@ struct msm_otg_platform_data {
  * @usb_phy_ctrl_reg: relevant PHY_CTRL_REG register base address.
  * @inputs: OTG state machine inputs(Id, SessValid etc).
  * @sm_work: OTG state machine work.
+ * @pm_suspended: OTG device is system(PM) suspended.
+ * @pm_notify: Notifier to receive system wide PM transition events.
+		It is used to defer wakeup events processing until
+		system is RESUMED.
  * @in_lpm: indicates low power mode (LPM) state.
  * @async_int: IRQ line on which ASYNC interrupt arrived in LPM.
  * @cur_power: The amount of mA available from downstream port.
@@ -368,10 +386,20 @@ struct msm_otg_platform_data {
  * @chg_check_timer: The timer used to implement the workaround to detect
  *               very slow plug in of wall charger.
  * @ui_enabled: USB Intterupt is enabled or disabled.
+<<<<<<< HEAD
  * @pm_done: It is used to increment the pm counter using pm_runtime_get_sync.
 	     This handles the race case when PM resume thread returns before
 	     the charger detection starts. When USB is disconnected and in lpm
 	     pm_done is set to true.
+||||||| merged common ancestors
+ * @pm_done: Indicates whether USB is PM resumed
+=======
+ * @pm_done: It is used to increment the pm counter using pm_runtime_get_sync.
+	     This handles the race case when PM resume thread returns before
+	     the charger detection starts. When USB is disconnected and in lpm
+	     pm_done is set to true.
+ * @ext_id_irq: IRQ for ID interrupt.
+>>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
  */
 struct msm_otg {
 	struct usb_phy phy;
@@ -410,12 +438,13 @@ struct msm_otg {
 	struct work_struct sm_work;
 	bool sm_work_pending;
 	atomic_t pm_suspended;
+	struct notifier_block pm_notify;
 	atomic_t in_lpm;
 	atomic_t set_fpr_with_lpm_exit;
 	int async_int;
 	unsigned cur_power;
 	struct delayed_work chg_work;
-	struct delayed_work pmic_id_status_work;
+	struct delayed_work id_status_work;
 	struct delayed_work suspend_work;
 	enum usb_chg_state chg_state;
 	enum usb_chg_type chg_type;
@@ -487,12 +516,13 @@ struct msm_otg {
 	struct class *ext_chg_class;
 	struct device *ext_chg_device;
 	bool ext_chg_opened;
-	bool ext_chg_active;
+	enum usb_ext_chg_status ext_chg_active;
 	struct completion ext_chg_wait;
 	struct pinctrl *phy_pinctrl;
 	int ui_enabled;
 	bool pm_done;
 	struct qpnp_vadc_chip	*vadc_dev;
+	int ext_id_irq;
 };
 
 struct ci13xxx_platform_data {

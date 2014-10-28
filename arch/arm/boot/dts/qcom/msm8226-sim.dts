@@ -11,12 +11,21 @@
  */
 
 /dts-v1/;
+<<<<<<< HEAD
 /include/ "msm8226.dtsi"
 /include/ "msm8226-memory.dtsi"
 /include/ "msm8226-qseecom.dtsi"
+||||||| merged common ancestors
+#include "msm8226.dtsi"
+=======
+#include "msm8226.dtsi"
+#include "msm8226-memory.dtsi"
+#include "msm8226-qseecom.dtsi"
+#include "msm8226-sharedmem.dtsi"
+>>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
-	model = "Qualcomm MSM 8226 Simulator";
+	model = "Qualcomm Technologies, Inc. MSM 8226 Simulator";
 	compatible = "qcom,msm8226-sim", "qcom,msm8226", "qcom,sim";
 	qcom,msm-id = <145 16 0>,
 		      <158 16 0>,

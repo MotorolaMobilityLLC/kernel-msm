@@ -16,13 +16,24 @@
  * file.
  */
 
+<<<<<<< HEAD
 /include/ "msm8226.dtsi"
 /include/ "msm8226-memory.dtsi"
 /include/ "msm8226-qseecom.dtsi"
 /include/ "msm8226-v2-pm.dtsi"
+||||||| merged common ancestors
+#include "msm8226.dtsi"
+#include "msm8226-v2-pm.dtsi"
+=======
+#include "msm8226.dtsi"
+#include "msm8226-memory.dtsi"
+#include "msm8226-qseecom.dtsi"
+#include "msm8226-sharedmem.dtsi"
+#include "msm8226-v2-pm.dtsi"
+>>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
-	model = "Qualcomm MSM 8926";
+	model = "Qualcomm Technologies, Inc. MSM 8926";
 	compatible = "qcom,msm8926";
 
 	memory {
@@ -49,6 +60,10 @@
 	linux,memory-limit = <0x0>;
 };
 
+&clock_gcc {
+	compatible = "qcom,gcc-8226-v2";
+};
+
 &soc {
 	qcom,mss@fc880000 {
 		reg = <0xfc880000 0x100>,
@@ -73,11 +88,18 @@
 			<         0 0>,
 			< 384000000 2>,
 			< 787200000 4>,
+			< 998400000 5>,
+			<1094400000 6>,
 			<1190400000 7>;
 		qcom,speed2-bin-v1 =
 			<         0 0>,
 			< 384000000 2>,
 			< 787200000 4>,
+			< 998400000 5>,
+			<1094400000 6>,
+			<1190400000 7>,
+			<1305600000 8>,
+			<1344000000 9>,
 			<1401600000 10>;
 		qcom,speed1-bin-v1 =
 			<         0 0>,
@@ -154,6 +176,22 @@
 			<41  119>,
 			<54  111>,
 			<55  113>;
+	};
+
+	qcom,lpass@fe200000 {
+		linux,contiguous-region = <&adsp_venus_mem>;
+	};
+
+	qcom,mss@fc880000 {
+		linux,contiguous-region = <&modem_mem>;
+	};
+
+	qcom,venus@fdce0000 {
+		linux,contiguous-region = <&adsp_venus_mem>;
+	};
+
+	qcom,pronto@fb21b000 {
+		linux,contiguous-region = <&alt_peripheral_mem>;
 	};
 };
 

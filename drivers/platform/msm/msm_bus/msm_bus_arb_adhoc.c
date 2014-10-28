@@ -34,6 +34,8 @@ struct handle_type {
 };
 
 static struct handle_type handle_list;
+struct list_head input_list;
+struct list_head apply_list;
 
 DEFINE_MUTEX(msm_bus_adhoc_lock);
 
@@ -229,6 +231,10 @@ static int prune_path(struct list_head *route_list, int dest, int src)
 			kfree(del_node);
 		}
 	}
+	search_node = list_entry(route_list->next,
+				struct bus_search_type , link);
+	kfree(search_node);
+
 
 exit_prune_path:
 	return lnode_hop;
@@ -321,11 +327,30 @@ static uint64_t arbitrate_bus_req(struct msm_bus_node_device_type *bus_dev,
 	uint64_t max_ib = 0;
 	uint64_t sum_ab = 0;
 	uint64_t bw_max_hz;
+	struct msm_bus_node_device_type *fab_dev = NULL;
 
 	/* Find max ib */
 	for (i = 0; i < bus_dev->num_lnodes; i++) {
 		max_ib = max(max_ib, bus_dev->lnode_list[i].lnode_ib[ctx]);
 		sum_ab += bus_dev->lnode_list[i].lnode_ab[ctx];
+	}
+
+	/*
+	 *  Account for Util factor and vrail comp. The new aggregation
+	 *  formula is:
+	 *  Freq_hz = max((sum(ab) * util_fact)/num_chan, max(ib)/vrail_comp)
+	 *				/ bus-width
+	 *  util_fact and vrail comp are obtained from fabric's dts properties.
+	 *  They default to 100 if absent.
+	 */
+	fab_dev = bus_dev->node_info->bus_device->platform_data;
+
+	/* Don't do this for virtual fabrics */
+	if (fab_dev && fab_dev->fabdev) {
+		sum_ab *= fab_dev->fabdev->util_fact;
+		sum_ab = msm_bus_div64(100, sum_ab);
+		max_ib *= 100;
+		max_ib = msm_bus_div64(fab_dev->fabdev->vrail_comp, max_ib);
 	}
 
 	/* Account for multiple channels if any */
@@ -346,6 +371,70 @@ static uint64_t arbitrate_bus_req(struct msm_bus_node_device_type *bus_dev,
 	return bw_max_hz;
 }
 
+static void del_inp_list(struct list_head *list)
+{
+	struct rule_update_path_info *rule_node;
+	struct rule_update_path_info *rule_node_tmp;
+
+	list_for_each_entry_safe(rule_node, rule_node_tmp, list, link)
+		list_del(&rule_node->link);
+}
+
+static void del_op_list(struct list_head *list)
+{
+	struct rule_apply_rcm_info *rule;
+	struct rule_apply_rcm_info *rule_tmp;
+
+	list_for_each_entry_safe(rule, rule_tmp, list, link)
+		list_del(&rule->link);
+}
+
+static int msm_bus_apply_rules(struct list_head *list, bool after_clk_commit)
+{
+	struct rule_apply_rcm_info *rule;
+	struct device *dev = NULL;
+	struct msm_bus_node_device_type *dev_info = NULL;
+	int ret = 0;
+	bool throttle_en = false;
+
+	list_for_each_entry(rule, list, link) {
+		if (rule && (rule->after_clk_commit != after_clk_commit))
+			continue;
+
+		dev = bus_find_device(&msm_bus_type, NULL,
+				(void *) &rule->id,
+				msm_bus_device_match_adhoc);
+
+		if (!dev) {
+			MSM_BUS_ERR("Can't find dev node for %d", rule->id);
+			continue;
+		}
+		dev_info = dev->platform_data;
+
+		throttle_en = ((rule->throttle == THROTTLE_ON) ? true : false);
+		ret = msm_bus_enable_limiter(dev_info, throttle_en,
+							rule->lim_bw);
+		if (ret)
+			MSM_BUS_ERR("Failed to set limiter for %d", rule->id);
+	}
+
+	return ret;
+}
+
+static uint64_t get_node_ib(struct msm_bus_node_device_type *bus_dev)
+{
+	int i;
+	int ctx;
+	uint64_t max_ib = 0;
+
+	for (ctx = 0; ctx < NUM_CTX; ctx++) {
+		for (i = 0; i < bus_dev->num_lnodes; i++)
+			max_ib = max(max_ib,
+				bus_dev->lnode_list[i].lnode_ib[ctx]);
+	}
+	return max_ib;
+}
+
 static int update_path(int src, int dest, uint64_t req_ib, uint64_t req_bw,
 			uint64_t cur_ib, uint64_t cur_bw, int src_idx, int ctx)
 {
@@ -357,6 +446,8 @@ static int update_path(int src, int dest, uint64_t req_ib, uint64_t req_bw,
 	int ret = 0;
 	int *dirty_nodes = NULL;
 	int num_dirty = 0;
+	struct rule_update_path_info *rule_node;
+	bool rules_registered = msm_rule_are_rules_registered();
 
 	src_dev = bus_find_device(&msm_bus_type, NULL,
 				(void *) &src,
@@ -376,6 +467,9 @@ static int update_path(int src, int dest, uint64_t req_ib, uint64_t req_bw,
 		goto exit_update_path;
 	}
 	curr_idx = src_idx;
+
+	INIT_LIST_HEAD(&input_list);
+	INIT_LIST_HEAD(&apply_list);
 
 	while (next_dev) {
 		dev_info = next_dev->platform_data;
@@ -415,11 +509,30 @@ static int update_path(int src, int dest, uint64_t req_ib, uint64_t req_bw,
 			goto exit_update_path;
 		}
 
+		if (rules_registered) {
+			rule_node = &dev_info->node_info->rule;
+			rule_node->id = dev_info->node_info->id;
+			rule_node->ib =  get_node_ib(dev_info);
+			rule_node->ab = dev_info->node_ab.ab[ACTIVE_CTX];
+			list_add_tail(&rule_node->link, &input_list);
+		}
+
 		next_dev = lnode->next_dev;
 		curr_idx = lnode->next;
 	}
 
+	if (rules_registered) {
+		msm_rules_update_path(&input_list, &apply_list);
+		msm_bus_apply_rules(&apply_list, false);
+	}
+
 	msm_bus_commit_data(dirty_nodes, ctx, num_dirty);
+
+	if (rules_registered) {
+		msm_bus_apply_rules(&apply_list, true);
+		del_inp_list(&input_list);
+		del_op_list(&apply_list);
+	}
 exit_update_path:
 	return ret;
 }
@@ -693,7 +806,7 @@ static int update_request_adhoc(uint32_t cl, unsigned int index)
 	int lnode, src, curr, dest;
 	uint64_t req_clk, req_bw, curr_clk, curr_bw;
 	struct msm_bus_client *client;
-	const char *test_cl = "test-client";
+	const char *test_cl = "Null";
 	bool log_transaction = false;
 
 	mutex_lock(&msm_bus_adhoc_lock);

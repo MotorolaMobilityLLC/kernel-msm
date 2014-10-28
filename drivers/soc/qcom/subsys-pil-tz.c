@@ -24,14 +24,15 @@
 
 #include <linux/msm-bus-board.h>
 #include <linux/msm-bus.h>
+#include <linux/dma-mapping.h>
 
 #include <soc/qcom/subsystem_restart.h>
 #include <soc/qcom/ramdump.h>
+#include <soc/qcom/scm.h>
 
 #include <soc/qcom/smem.h>
 
 #include "peripheral-loader.h"
-#include "scm-pas.h"
 
 #define XO_FREQ			19200000
 #define PROXY_TIMEOUT_MS	10000
@@ -94,6 +95,112 @@ struct pil_tz_data {
 	struct subsys_desc subsys_desc;
 };
 
+enum scm_cmd {
+	PAS_INIT_IMAGE_CMD = 1,
+	PAS_MEM_SETUP_CMD,
+	PAS_AUTH_AND_RESET_CMD = 5,
+	PAS_SHUTDOWN_CMD,
+};
+
+enum pas_id {
+	PAS_MODEM,
+	PAS_Q6,
+	PAS_DSPS,
+	PAS_TZAPPS,
+	PAS_MODEM_SW,
+	PAS_MODEM_FW,
+	PAS_WCNSS,
+	PAS_SECAPP,
+	PAS_GSS,
+	PAS_VIDC,
+	PAS_VPU,
+	PAS_BCSS,
+};
+
+static struct msm_bus_paths scm_pas_bw_tbl[] = {
+	{
+		.vectors = (struct msm_bus_vectors[]){
+			{
+				.src = MSM_BUS_MASTER_SPS,
+				.dst = MSM_BUS_SLAVE_EBI_CH0,
+			},
+		},
+		.num_paths = 1,
+	},
+	{
+		.vectors = (struct msm_bus_vectors[]){
+			{
+				.src = MSM_BUS_MASTER_SPS,
+				.dst = MSM_BUS_SLAVE_EBI_CH0,
+				.ib = 492 * 8 * 1000000UL,
+				.ab = 492 * 8 *  100000UL,
+			},
+		},
+		.num_paths = 1,
+	},
+};
+
+static struct msm_bus_scale_pdata scm_pas_bus_pdata = {
+	.usecase = scm_pas_bw_tbl,
+	.num_usecases = ARRAY_SIZE(scm_pas_bw_tbl),
+	.name = "scm_pas",
+};
+
+static uint32_t scm_perf_client;
+static int scm_pas_bw_count;
+static DEFINE_MUTEX(scm_pas_bw_mutex);
+
+static int scm_pas_enable_bw(void)
+{
+	int ret = 0;
+
+	if (!scm_perf_client)
+		return -EINVAL;
+
+	mutex_lock(&scm_pas_bw_mutex);
+	if (!scm_pas_bw_count) {
+		ret = msm_bus_scale_client_update_request(scm_perf_client, 1);
+		if (ret)
+			goto err_bus;
+		scm_pas_bw_count++;
+	}
+
+	mutex_unlock(&scm_pas_bw_mutex);
+	return ret;
+
+err_bus:
+	pr_err("scm-pas; Bandwidth request failed (%d)\n", ret);
+	msm_bus_scale_client_update_request(scm_perf_client, 0);
+
+	mutex_unlock(&scm_pas_bw_mutex);
+	return ret;
+}
+
+static void scm_pas_disable_bw(void)
+{
+	mutex_lock(&scm_pas_bw_mutex);
+	if (scm_pas_bw_count-- == 1)
+		msm_bus_scale_client_update_request(scm_perf_client, 0);
+	mutex_unlock(&scm_pas_bw_mutex);
+}
+
+static void scm_pas_init(int id)
+{
+	static int is_inited;
+
+	if (is_inited)
+		return;
+
+	scm_pas_bw_tbl[0].vectors[0].src = id;
+	scm_pas_bw_tbl[1].vectors[0].src = id;
+
+	scm_perf_client = msm_bus_scale_register_client(&scm_pas_bus_pdata);
+	if (!scm_perf_client)
+		pr_warn("scm-pas: Unable to register bus client\n");
+
+	is_inited = 1;
+}
+
 static int of_read_clocks(struct device *dev, struct clk ***clks_ref,
 			  const char *propname)
 {
@@ -116,9 +223,21 @@ static int of_read_clocks(struct device *dev, struct clk ***clks_ref,
 
 	for (i = 0; i < clk_count; i++) {
 		const char *clock_name;
+		char clock_freq_name[50];
+		u32 clock_rate = XO_FREQ;
+
 		of_property_read_string_index(dev->of_node,
 					      propname, i,
 					      &clock_name);
+		snprintf(clock_freq_name, ARRAY_SIZE(clock_freq_name),
+						"qcom,%s-freq", clock_name);
+		if (of_find_property(dev->of_node, clock_freq_name, &len))
+			if (of_property_read_u32(dev->of_node, clock_freq_name,
+								&clock_rate)) {
+				dev_err(dev, "Failed to read %s clock's freq\n",
+							clock_freq_name);
+				return -EINVAL;
+			}
 
 		clks[i] = devm_clk_get(dev, clock_name);
 		if (IS_ERR(clks[i])) {
@@ -132,7 +251,7 @@ static int of_read_clocks(struct device *dev, struct clk ***clks_ref,
 		/* Make sure rate-settable clocks' rates are set */
 		if (clk_get_rate(clks[i]) == 0)
 			clk_set_rate(clks[i], clk_round_rate(clks[i],
-								XO_FREQ));
+								clock_rate));
 	}
 
 	*clks_ref = clks;
@@ -179,11 +298,11 @@ static int of_read_regs(struct device *dev, struct reg_info **regs_ref,
 
 		/*
 		 * Read the voltage and current values for the corresponding
-		 * regulator. The device tree property name is "regulator_name"
-		 * + "-uV-uA".
+		 * regulator. The device tree property name is "qcom," +
+		 *  "regulator_name" + "-uV-uA".
 		 */
 		rc = snprintf(reg_uV_uA_name, ARRAY_SIZE(reg_uV_uA_name),
-			 "%s-uV-uA", reg_name);
+			 "qcom,%s-uV-uA", reg_name);
 		if (rc < strlen(reg_name) + 6) {
 			dev_err(dev, "Failed to hold reg_uV_uA_name\n");
 			return -EINVAL;
@@ -236,28 +355,28 @@ static int piltz_resc_init(struct platform_device *pdev, struct pil_tz_data *d)
 	int len, count, rc;
 	struct device *dev = &pdev->dev;
 
-	count = of_read_clocks(dev, &d->clks, "active-clock-names");
+	count = of_read_clocks(dev, &d->clks, "qcom,active-clock-names");
 	if (count < 0) {
 		dev_err(dev, "Failed to setup clocks.\n");
 		return count;
 	}
 	d->clk_count = count;
 
-	count = of_read_clocks(dev, &d->proxy_clks, "proxy-clock-names");
+	count = of_read_clocks(dev, &d->proxy_clks, "qcom,proxy-clock-names");
 	if (count < 0) {
 		dev_err(dev, "Failed to setup proxy clocks.\n");
 		return count;
 	}
 	d->proxy_clk_count = count;
 
-	count = of_read_regs(dev, &d->regs, "active-reg-names");
+	count = of_read_regs(dev, &d->regs, "qcom,active-reg-names");
 	if (count < 0) {
 		dev_err(dev, "Failed to setup regulators.\n");
 		return count;
 	}
 	d->reg_count = count;
 
-	count = of_read_regs(dev, &d->proxy_regs, "proxy-reg-names");
+	count = of_read_regs(dev, &d->proxy_regs, "qcom,proxy-reg-names");
 	if (count < 0) {
 		dev_err(dev, "Failed to setup proxy regulators.\n");
 		return count;
@@ -379,6 +498,9 @@ static int pil_make_proxy_vote(struct pil_desc *pil)
 	struct pil_tz_data *d = desc_to_data(pil);
 	int rc;
 
+	if (d->subsys_desc.no_auth)
+		return 0;
+
 	rc = enable_regulators(pil->dev, d->proxy_regs, d->proxy_reg_count);
 	if (rc)
 		return rc;
@@ -409,6 +531,9 @@ static void pil_remove_proxy_vote(struct pil_desc *pil)
 {
 	struct pil_tz_data *d = desc_to_data(pil);
 
+	if (d->subsys_desc.no_auth)
+		return;
+
 	if (d->bus_client)
 		msm_bus_scale_client_update_request(d->bus_client, 0);
 
@@ -421,23 +546,85 @@ static int pil_init_image_trusted(struct pil_desc *pil,
 		const u8 *metadata, size_t size)
 {
 	struct pil_tz_data *d = desc_to_data(pil);
+	struct pas_init_image_req {
+		u32	proc;
+		u32	image_addr;
+	} request;
+	u32 scm_ret = 0;
+	void *mdata_buf;
+	dma_addr_t mdata_phys;
+	int ret;
+	DEFINE_DMA_ATTRS(attrs);
+	struct device dev = {0};
 
-	return pas_init_image(d->pas_id, metadata, size);
+	if (d->subsys_desc.no_auth)
+		return 0;
+
+	ret = scm_pas_enable_bw();
+	if (ret)
+		return ret;
+	dev.coherent_dma_mask =
+		DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
+	dma_set_attr(DMA_ATTR_STRONGLY_ORDERED, &attrs);
+	mdata_buf = dma_alloc_attrs(&dev, size, &mdata_phys, GFP_KERNEL,
+					&attrs);
+	if (!mdata_buf) {
+		pr_err("scm-pas: Allocation for metadata failed.\n");
+		scm_pas_disable_bw();
+		return -ENOMEM;
+	}
+
+	memcpy(mdata_buf, metadata, size);
+
+	request.proc = d->pas_id;
+	request.image_addr = mdata_phys;
+
+	ret = scm_call(SCM_SVC_PIL, PAS_INIT_IMAGE_CMD, &request,
+			sizeof(request), &scm_ret, sizeof(scm_ret));
+
+	dma_free_attrs(&dev, size, mdata_buf, mdata_phys, &attrs);
+	scm_pas_disable_bw();
+	if (ret)
+		return ret;
+	return scm_ret;
 }
 
 static int pil_mem_setup_trusted(struct pil_desc *pil, phys_addr_t addr,
 			       size_t size)
 {
 	struct pil_tz_data *d = desc_to_data(pil);
+	struct pas_init_image_req {
+		u32	proc;
+		u32	start_addr;
+		u32	len;
+	} request;
+	u32 scm_ret = 0;
+	int ret;
 
-	return pas_mem_setup(d->pas_id, addr, size);
+	if (d->subsys_desc.no_auth)
+		return 0;
+
+	request.proc = d->pas_id;
+	request.start_addr = addr;
+	request.len = size;
+
+	ret = scm_call(SCM_SVC_PIL, PAS_MEM_SETUP_CMD, &request,
+			sizeof(request), &scm_ret, sizeof(scm_ret));
+	if (ret)
+		return ret;
+	return scm_ret;
 }
 
 static int pil_auth_and_reset(struct pil_desc *pil)
 {
 	struct pil_tz_data *d = desc_to_data(pil);
 	int rc;
+	u32 proc, scm_ret = 0;
 
+	if (d->subsys_desc.no_auth)
+		return 0;
+
+	proc = d->pas_id;
 	rc = enable_regulators(pil->dev, d->regs, d->reg_count);
 	if (rc)
 		return rc;
@@ -446,11 +633,17 @@ static int pil_auth_and_reset(struct pil_desc *pil)
 	if (rc)
 		goto err_clks;
 
-	rc = pas_auth_and_reset(d->pas_id);
+	rc = scm_pas_enable_bw();
 	if (rc)
 		goto err_reset;
 
-	return 0;
+	rc = scm_call(SCM_SVC_PIL, PAS_AUTH_AND_RESET_CMD, &proc,
+			sizeof(proc), &scm_ret, sizeof(scm_ret));
+	scm_pas_disable_bw();
+	if (rc)
+		goto err_reset;
+
+	return scm_ret;
 err_reset:
 	disable_unprepare_clocks(d->clks, d->clk_count);
 err_clks:
@@ -462,8 +655,13 @@ err_clks:
 static int pil_shutdown_trusted(struct pil_desc *pil)
 {
 	struct pil_tz_data *d = desc_to_data(pil);
+	u32 proc, scm_ret = 0;
 	int rc;
 
+	if (d->subsys_desc.no_auth)
+		return 0;
+
+	proc = d->pas_id;
 	rc = enable_regulators(pil->dev, d->proxy_regs, d->proxy_reg_count);
 	if (rc)
 		return rc;
@@ -473,15 +671,19 @@ static int pil_shutdown_trusted(struct pil_desc *pil)
 	if (rc)
 		goto err_clks;
 
-	rc = pas_shutdown(d->pas_id);
+	rc = scm_call(SCM_SVC_PIL, PAS_SHUTDOWN_CMD, &proc, sizeof(proc),
+			&scm_ret, sizeof(scm_ret));
 
 	disable_unprepare_clocks(d->proxy_clks, d->proxy_clk_count);
-	disable_unprepare_clocks(d->clks, d->clk_count);
-
 	disable_regulators(d->proxy_regs, d->proxy_reg_count);
+
+	if (rc)
+		return rc;
+
+	disable_unprepare_clocks(d->clks, d->clk_count);
 	disable_regulators(d->regs, d->reg_count);
 
-	return rc;
+	return scm_ret;
 err_clks:
 	disable_regulators(d->proxy_regs, d->proxy_reg_count);
 	return rc;
@@ -631,15 +833,8 @@ static int pil_tz_driver_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, d);
 
-	rc = piltz_resc_init(pdev, d);
-	if (rc)
-		return -ENOENT;
-
-	rc = of_property_read_u32(pdev->dev.of_node, "qcom,pas-id", &d->pas_id);
-	if (rc) {
-		dev_err(&pdev->dev, "Failed to find the pas_id.\n");
-		return rc;
-	}
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,pil-no-auth"))
+		d->subsys_desc.no_auth = true;
 
 	rc = of_property_read_string(pdev->dev.of_node, "qcom,firmware-name",
 				      &d->desc.name);
@@ -669,7 +864,19 @@ static int pil_tz_driver_probe(struct platform_device *pdev)
 	if (!rc)
 		d->desc.proxy_timeout = proxy_timeout;
 
-	scm_pas_init(MSM_BUS_MASTER_CRYPTO_CORE0);
+	if (!d->subsys_desc.no_auth) {
+		rc = piltz_resc_init(pdev, d);
+		if (rc)
+			return -ENOENT;
+
+		rc = of_property_read_u32(pdev->dev.of_node, "qcom,pas-id",
+								&d->pas_id);
+		if (rc) {
+			dev_err(&pdev->dev, "Failed to find the pas_id.\n");
+			return rc;
+		}
+		scm_pas_init(MSM_BUS_MASTER_CRYPTO_CORE0);
+	}
 
 	rc = pil_desc_init(&d->desc);
 	if (rc)

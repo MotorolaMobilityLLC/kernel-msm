@@ -12,10 +12,36 @@
 
 /dts-v1/;
 
+<<<<<<< HEAD
 /include/ "msm8916-qrd-skuh.dtsi"
+||||||| merged common ancestors
+#include "msm8916-qrd-skuh.dtsi"
+=======
+#include "msm8916-qrd-skuh.dtsi"
+#include "msm8916-memory.dtsi"
+>>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
-	model = "Qualcomm MSM 8916 QRD SKUH";
+	model = "Qualcomm Technologies, Inc. MSM 8916 QRD SKUH";
 	compatible = "qcom,msm8916-qrd-skuh", "qcom,msm8916-qrd", "qcom,msm8916", "qcom,qrd";
-	qcom,board-id = <11 0> , <11 4>;
+	qcom,board-id = <0x1000b 0>, <0x1000b 4>,
+			<0x1010b 0>, <0x1010b 4>,
+			<0x2010b 0>, <0x2010b 4>;
+};
+
+&soc {
+
+	sound {
+		qcom,msm-hs-micbias-type = "external";
+		qcom,audio-routing =
+				"RX_BIAS", "MCLK",
+				"SPK_RX_BIAS", "MCLK",
+				"INT_LDO_H", "MCLK",
+				"MIC BIAS External", "Handset Mic",
+				"MIC BIAS External2", "Headset Mic",
+				"MIC BIAS External", "Secondary Mic",
+				"AMIC1", "MIC BIAS External",
+				"AMIC2", "MIC BIAS External2",
+				"AMIC3", "MIC BIAS External";
+	};
 };

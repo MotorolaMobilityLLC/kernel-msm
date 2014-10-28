@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -35,6 +35,8 @@ struct kgsl_sync_fence_waiter {
 	void *priv;
 };
 
+struct kgsl_syncsource;
+
 #if defined(CONFIG_SYNC)
 int kgsl_add_fence_event(struct kgsl_device *device,
 	u32 context_id, u32 timestamp, void __user *data, int len,
@@ -52,7 +54,7 @@ static inline int kgsl_add_fence_event(struct kgsl_device *device,
 	return -EINVAL;
 }
 
-static int kgsl_sync_timeline_create(struct kgsl_context *context)
+static inline int kgsl_sync_timeline_create(struct kgsl_context *context)
 {
 	context->timeline = NULL;
 	return 0;
@@ -75,6 +77,53 @@ kgsl_sync_fence_async_cancel(struct kgsl_sync_fence_waiter *waiter)
 	return 1;
 }
 
+#endif
+
+#ifdef CONFIG_ONESHOT_SYNC
+long kgsl_ioctl_syncsource_create(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_syncsource_destroy(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_syncsource_create_fence(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_syncsource_signal_fence(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+
+void kgsl_syncsource_put(struct kgsl_syncsource *syncsource);
+
+#else
+static inline long
+kgsl_ioctl_syncsource_create(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data)
+{
+	return -ENOIOCTLCMD;
+}
+
+static inline long
+kgsl_ioctl_syncsource_destroy(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data)
+{
+	return -ENOIOCTLCMD;
+}
+
+static inline long
+kgsl_ioctl_syncsource_create_fence(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data)
+{
+	return -ENOIOCTLCMD;
+}
+
+static inline long
+kgsl_ioctl_syncsource_signal_fence(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data)
+{
+	return -ENOIOCTLCMD;
+}
+
+static inline void kgsl_syncsource_put(struct kgsl_syncsource *syncsource)
+{
+
+}
 #endif
 
 #endif /* __KGSL_SYNC_H */

@@ -135,7 +135,7 @@ struct msm_iommu_drvdata {
 	unsigned int bus_client;
 	int needs_rem_spinlock;
 	int powered_on;
-	int no_atos_support;
+	unsigned int model;
 };
 
 /**
@@ -197,6 +197,8 @@ struct msm_iommu_ctx_drvdata {
 	unsigned int secure_context;
 	int asid;
 	int attach_count;
+	u32 sid_mask[MAX_NUM_SMR];
+	unsigned int n_sid_mask;
 };
 
 enum dump_reg {
@@ -227,6 +229,13 @@ enum dump_reg_type {
 	DRT_CTX_REG,
 	DRT_GLOBAL_REG,
 	DRT_GLOBAL_REG_N,
+};
+
+enum model_id {
+	QSMMUv1 = 1,
+	QSMMUv2,
+	MMU_500 = 500,
+	MAX_MODEL,
 };
 
 struct dump_regs_tbl_entry {

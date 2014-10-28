@@ -29,6 +29,8 @@
 #define DEFAULT_OUTSTANDING_HIGH 64
 #define DEFAULT_OUTSTANDING_LOW 32
 #define DEBUGFS_TEMP_BUF_SIZE 4
+#define TX_TIMEOUT (5 * HZ)
+
 
 #define ECM_IPA_DEBUG(fmt, args...) \
 	pr_debug("ctx:%s: "\
@@ -145,6 +147,7 @@ static void ecm_ipa_packet_receive_notify(void *priv,
 		enum ipa_dp_evt_type evt, unsigned long data);
 static void ecm_ipa_tx_complete_notify(void *priv,
 		enum ipa_dp_evt_type evt, unsigned long data);
+static void ecm_ipa_tx_timeout(struct net_device *net);
 static int ecm_ipa_stop(struct net_device *net);
 static void ecm_ipa_enable_data_path(struct ecm_ipa_dev *ecm_ipa_ctx);
 static int ecm_ipa_rules_cfg(struct ecm_ipa_dev *ecm_ipa_ctx,
@@ -154,6 +157,7 @@ static int ecm_ipa_register_properties(void);
 static void ecm_ipa_deregister_properties(void);
 static void ecm_ipa_rm_notify(void *user_data, enum ipa_rm_event event,
 		unsigned long data);
+static struct net_device_stats *ecm_ipa_get_stats(struct net_device *net);
 static int ecm_ipa_create_rm_resource(struct ecm_ipa_dev *ecm_ipa_ctx);
 static void ecm_ipa_destory_rm_resource(struct ecm_ipa_dev *ecm_ipa_ctx);
 static bool rx_filter(struct sk_buff *skb);
@@ -163,6 +167,10 @@ static int resource_request(struct ecm_ipa_dev *ecm_ipa_ctx);
 static void resource_release(struct ecm_ipa_dev *ecm_ipa_ctx);
 static netdev_tx_t ecm_ipa_start_xmit(struct sk_buff *skb,
 					struct net_device *net);
+static int ecm_ipa_debugfs_stall_open(struct inode *inode,
+	struct file *file);
+static ssize_t ecm_ipa_debugfs_stall_write(struct file *file,
+		const char __user *buf, size_t count, loff_t *ppos);
 static int ecm_ipa_debugfs_atomic_open(struct inode *inode, struct file *file);
 static ssize_t ecm_ipa_debugfs_enable_write_dma(struct file *file,
 		const char __user *buf, size_t count, loff_t *ppos);
@@ -190,6 +198,8 @@ static const struct net_device_ops ecm_ipa_netdev_ops = {
 	.ndo_stop		= ecm_ipa_stop,
 	.ndo_start_xmit = ecm_ipa_start_xmit,
 	.ndo_set_mac_address = eth_mac_addr,
+	.ndo_tx_timeout = ecm_ipa_tx_timeout,
+	.ndo_get_stats = ecm_ipa_get_stats,
 };
 
 const struct file_operations ecm_ipa_debugfs_dma_ops = {
@@ -201,6 +211,11 @@ const struct file_operations ecm_ipa_debugfs_dma_ops = {
 const struct file_operations ecm_ipa_debugfs_atomic_ops = {
 	.open = ecm_ipa_debugfs_atomic_open,
 	.read = ecm_ipa_debugfs_atomic_read,
+};
+
+const struct file_operations ecm_ipa_debugfs_stall_ops = {
+	.open = ecm_ipa_debugfs_stall_open,
+	.write = ecm_ipa_debugfs_stall_write,
 };
 
 static void ecm_ipa_msg_free_cb(void *buff, u32 len, u32 type)
@@ -271,6 +286,7 @@ int ecm_ipa_init(struct ecm_ipa_params *params)
 	atomic_set(&ecm_ipa_ctx->outstanding_pkts, 0);
 	snprintf(net->name, sizeof(net->name), "%s%%d", "ecm");
 	net->netdev_ops = &ecm_ipa_netdev_ops;
+	net->watchdog_timeo = TX_TIMEOUT;
 	ECM_IPA_DEBUG("internal data structures were intialized\n");
 
 	if (!params->device_ready_notify)
@@ -313,7 +329,10 @@ int ecm_ipa_init(struct ecm_ipa_params *params)
 	ECM_IPA_DEBUG("ecm_ipa 2 Tx and 2 Rx properties were registered\n");
 
 	netif_carrier_off(net);
-	ECM_IPA_DEBUG("set carrier off\n");
+	ECM_IPA_DEBUG("netif_carrier_off() was called\n");
+
+	netif_stop_queue(ecm_ipa_ctx->net);
+	ECM_IPA_DEBUG("netif_stop_queue() was called");
 
 	result = register_netdev(net);
 	if (result) {
@@ -385,12 +404,6 @@ int ecm_ipa_connect(u32 usb_to_ipa_hdl, u32 ipa_to_usb_hdl,
 	ECM_IPA_DEBUG("usb_to_ipa_hdl = %d, ipa_to_usb_hdl = %d, priv=0x%p\n",
 					usb_to_ipa_hdl, ipa_to_usb_hdl, priv);
 
-	ecm_msg = kzalloc(sizeof(struct ipa_ecm_msg), GFP_KERNEL);
-	if (!ecm_msg) {
-		ECM_IPA_ERROR("can't alloc msg mem\n");
-		return -ENOMEM;
-	}
-
 	next_state = ecm_ipa_next_state(ecm_ipa_ctx->state, ECM_IPA_CONNECT);
 	if (next_state == ECM_IPA_INVALID) {
 		ECM_IPA_ERROR("can't call connect before calling initialize\n");
@@ -409,16 +422,23 @@ int ecm_ipa_connect(u32 usb_to_ipa_hdl, u32 ipa_to_usb_hdl,
 				ipa_to_usb_hdl);
 		return -EINVAL;
 	}
+
 	ecm_ipa_ctx->ipa_to_usb_hdl = ipa_to_usb_hdl;
 	ecm_ipa_ctx->usb_to_ipa_hdl = usb_to_ipa_hdl;
 	retval = ecm_ipa_ep_registers_cfg(usb_to_ipa_hdl, ipa_to_usb_hdl);
 	if (retval) {
 		ECM_IPA_ERROR("fail on ep cfg\n");
-		goto fail_ep;
+		return retval;
 	}
 	ECM_IPA_DEBUG("end-point configured\n");
 
 	netif_carrier_on(ecm_ipa_ctx->net);
+
+	ecm_msg = kzalloc(sizeof(struct ipa_ecm_msg), GFP_KERNEL);
+	if (!ecm_msg) {
+		ECM_IPA_ERROR("can't alloc msg mem\n");
+		return -ENOMEM;
+	}
 
 	memset(&msg_meta, 0, sizeof(struct ipa_msg_meta));
 	msg_meta.msg_type = ECM_CONNECT;
@@ -430,13 +450,13 @@ int ecm_ipa_connect(u32 usb_to_ipa_hdl, u32 ipa_to_usb_hdl,
 	retval = ipa_send_msg(&msg_meta, ecm_msg, ecm_ipa_msg_free_cb);
 	if (retval) {
 		ECM_IPA_ERROR("fail to send ECM_CONNECT message\n");
-		goto fail_msg;
+		kfree(ecm_msg);
+		return retval;
 	}
 
 	if (!netif_carrier_ok(ecm_ipa_ctx->net)) {
 		ECM_IPA_ERROR("netif_carrier_ok error\n");
-		retval = -EBUSY;
-		goto fail_carrier;
+		return -EBUSY;
 	}
 	ECM_IPA_DEBUG("carrier_on notified\n");
 
@@ -450,12 +470,6 @@ int ecm_ipa_connect(u32 usb_to_ipa_hdl, u32 ipa_to_usb_hdl,
 	ECM_IPA_LOG_EXIT();
 
 	return 0;
-
-fail_carrier:
-fail_msg:
-	kfree(ecm_msg);
-fail_ep:
-	return retval;
 }
 EXPORT_SYMBOL(ecm_ipa_connect);
 
@@ -522,8 +536,11 @@ static netdev_tx_t ecm_ipa_start_xmit(struct sk_buff *skb,
 	netdev_tx_t status = NETDEV_TX_BUSY;
 	struct ecm_ipa_dev *ecm_ipa_ctx = netdev_priv(net);
 
-	ECM_IPA_DEBUG("packet Tx, len=%d, skb->protocol=%d\n",
-		skb->len, skb->protocol);
+	net->trans_start = jiffies;
+
+	ECM_IPA_DEBUG("Tx, len=%d, skb->protocol=%d, outstanding=%d\n",
+		skb->len, skb->protocol,
+		atomic_read(&ecm_ipa_ctx->outstanding_pkts));
 
 	if (unlikely(netif_queue_stopped(net))) {
 		ECM_IPA_ERROR("interface queue is stopped\n");
@@ -550,7 +567,7 @@ static netdev_tx_t ecm_ipa_start_xmit(struct sk_buff *skb,
 
 	if (atomic_read(&ecm_ipa_ctx->outstanding_pkts) >=
 					ecm_ipa_ctx->outstanding_high) {
-		ECM_IPA_DEBUG("Outstanding high (%d)- stopping\n",
+		ECM_IPA_DEBUG("outstanding high (%d)- stopping\n",
 				ecm_ipa_ctx->outstanding_high);
 		netif_stop_queue(net);
 		status = NETDEV_TX_BUSY;
@@ -564,8 +581,7 @@ static netdev_tx_t ecm_ipa_start_xmit(struct sk_buff *skb,
 	}
 
 	atomic_inc(&ecm_ipa_ctx->outstanding_pkts);
-	net->stats.tx_packets++;
-	net->stats.tx_bytes += skb->len;
+
 	status = NETDEV_TX_OK;
 	goto out;
 
@@ -682,12 +698,6 @@ int ecm_ipa_disconnect(void *priv)
 	NULL_CHECK(ecm_ipa_ctx);
 	ECM_IPA_DEBUG("priv=0x%p\n", priv);
 
-	ecm_msg = kzalloc(sizeof(struct ipa_ecm_msg), GFP_KERNEL);
-	if (!ecm_msg) {
-		ECM_IPA_ERROR("can't alloc msg mem\n");
-		return -ENOMEM;
-	}
-
 	next_state = ecm_ipa_next_state(ecm_ipa_ctx->state, ECM_IPA_DISCONNECT);
 	if (next_state == ECM_IPA_INVALID) {
 		ECM_IPA_ERROR("can't disconnect before connect\n");
@@ -698,6 +708,12 @@ int ecm_ipa_disconnect(void *priv)
 
 	netif_carrier_off(ecm_ipa_ctx->net);
 	ECM_IPA_DEBUG("carrier_off notifcation was sent\n");
+
+	ecm_msg = kzalloc(sizeof(struct ipa_ecm_msg), GFP_KERNEL);
+	if (!ecm_msg) {
+		ECM_IPA_ERROR("can't alloc msg mem\n");
+		return -ENOMEM;
+	}
 
 	memset(&msg_meta, 0, sizeof(struct ipa_msg_meta));
 	msg_meta.msg_type = ECM_DISCONNECT;
@@ -832,12 +848,16 @@ static int ecm_ipa_rules_cfg(struct ecm_ipa_dev *ecm_ipa_ctx,
 	eth_ipv4->h_proto = htons(ETH_P_IP);
 	ipv4_hdr->hdr_len = ETH_HLEN;
 	ipv4_hdr->is_partial = 0;
+	ipv4_hdr->is_eth2_ofst_valid = true;
+	ipv4_hdr->eth2_ofst = 0;
 	strlcpy(ipv6_hdr->name, ECM_IPA_IPV6_HDR_NAME, IPA_RESOURCE_NAME_MAX);
 	memcpy(eth_ipv6->h_dest, dst_mac, ETH_ALEN);
 	memcpy(eth_ipv6->h_source, src_mac, ETH_ALEN);
 	eth_ipv6->h_proto = htons(ETH_P_IPV6);
 	ipv6_hdr->hdr_len = ETH_HLEN;
 	ipv6_hdr->is_partial = 0;
+	ipv6_hdr->is_eth2_ofst_valid = true;
+	ipv6_hdr->eth2_ofst = 0;
 	hdrs->commit = 1;
 	hdrs->num_hdrs = 2;
 	result = ipa_add_hdr(hdrs);
@@ -892,6 +912,7 @@ static void ecm_ipa_rules_destroy(struct ecm_ipa_dev *ecm_ipa_ctx)
 	result = ipa_del_hdr(del_hdr);
 	if (result || ipv4->status || ipv6->status)
 		ECM_IPA_ERROR("ipa_del_hdr failed\n");
+	kfree(del_hdr);
 }
 
 /* ecm_ipa_register_properties() - set Tx/Rx properties for ipacm
@@ -993,6 +1014,12 @@ static void ecm_ipa_rm_notify(void *user_data, enum ipa_rm_event event,
 	}
 	ECM_IPA_LOG_EXIT();
 }
+
+static struct net_device_stats *ecm_ipa_get_stats(struct net_device *net)
+{
+	return &net->stats;
+}
+
 
 static int ecm_ipa_create_rm_resource(struct ecm_ipa_dev *ecm_ipa_ctx)
 {
@@ -1116,14 +1143,14 @@ static void ecm_ipa_tx_complete_notify(void *priv,
 	struct sk_buff *skb = (struct sk_buff *)data;
 	struct ecm_ipa_dev *ecm_ipa_ctx = priv;
 
-
 	if (!skb) {
 		ECM_IPA_ERROR("Bad SKB received from IPA driver\n");
 		return;
 	}
 
-	ECM_IPA_DEBUG("packet Tx-complete, len=%d, skb->protocol=%d\n",
-		skb->len, skb->protocol);
+	ECM_IPA_DEBUG("Tx-complete, len=%d, skb->prot=%d, outstanding=%d\n",
+			skb->len, skb->protocol,
+			atomic_read(&ecm_ipa_ctx->outstanding_pkts));
 
 	if (!ecm_ipa_ctx) {
 		ECM_IPA_ERROR("ecm_ipa_ctx is NULL pointer\n");
@@ -1140,11 +1167,14 @@ static void ecm_ipa_tx_complete_notify(void *priv,
 		goto out;
 	}
 
+	ecm_ipa_ctx->net->stats.tx_packets++;
+	ecm_ipa_ctx->net->stats.tx_bytes += skb->len;
+
 	atomic_dec(&ecm_ipa_ctx->outstanding_pkts);
 	if (netif_queue_stopped(ecm_ipa_ctx->net) &&
 		atomic_read(&ecm_ipa_ctx->outstanding_pkts) <
 					(ecm_ipa_ctx->outstanding_low)) {
-		ECM_IPA_DEBUG("Outstanding low (%d) - waking up queue\n",
+		ECM_IPA_DEBUG("outstanding low (%d) - waking up queue\n",
 				ecm_ipa_ctx->outstanding_low);
 		netif_wake_queue(ecm_ipa_ctx->net);
 	}
@@ -1152,6 +1182,55 @@ static void ecm_ipa_tx_complete_notify(void *priv,
 out:
 	dev_kfree_skb_any(skb);
 	return;
+}
+
+static void ecm_ipa_tx_timeout(struct net_device *net)
+{
+	struct ecm_ipa_dev *ecm_ipa_ctx = netdev_priv(net);
+
+	ECM_IPA_ERROR("possible IPA stall was detected, %d outstanding",
+		atomic_read(&ecm_ipa_ctx->outstanding_pkts));
+
+	net->stats.tx_errors++;
+}
+
+static int ecm_ipa_debugfs_stall_open(struct inode *inode,
+	struct file *file)
+{
+	ECM_IPA_LOG_ENTRY();
+
+	ECM_IPA_LOG_EXIT();
+
+	return 0;
+}
+
+static ssize_t ecm_ipa_debugfs_stall_write(struct file *file,
+		const char __user *buf, size_t count, loff_t *ppos)
+{
+	u32 cmdq_cfg_mmio_phy = 0xFD4E3038;
+	void *cmdq_cfg_mmio_virt;
+	int result;
+	bool val = 0;
+
+	ECM_IPA_LOG_ENTRY();
+
+	file->private_data = &val;
+	result = ecm_ipa_debugfs_enable_write(file, buf, count, ppos);
+
+	cmdq_cfg_mmio_virt = ioremap(cmdq_cfg_mmio_phy, sizeof(u32));
+	if (!cmdq_cfg_mmio_virt) {
+		ECM_IPA_ERROR("fail on mmio for cmdq_cfg_mmio_phy=0x%x",
+			cmdq_cfg_mmio_phy);
+		return result;
+	}
+
+	iowrite32(val, cmdq_cfg_mmio_virt);
+	ECM_IPA_DEBUG("Value %d was written to cfgq", val);
+
+	ECM_IPA_LOG_EXIT();
+
+	return result;
+
 }
 
 static int ecm_ipa_debugfs_atomic_open(struct inode *inode, struct file *file)
@@ -1250,6 +1329,7 @@ static int ecm_ipa_debugfs_init(struct ecm_ipa_dev *ecm_ipa_ctx)
 {
 	const mode_t flags_read_write = S_IRUGO | S_IWUGO;
 	const mode_t flags_read_only = S_IRUGO;
+	const mode_t flags_write_only = S_IWUGO;
 	struct dentry *file;
 
 	ECM_IPA_LOG_ENTRY();
@@ -1304,6 +1384,14 @@ static int ecm_ipa_debugfs_init(struct ecm_ipa_dev *ecm_ipa_ctx)
 			ecm_ipa_ctx, &ecm_ipa_debugfs_atomic_ops);
 	if (!file) {
 		ECM_IPA_ERROR("could not create outstanding file\n");
+		goto fail_file;
+	}
+
+	file = debugfs_create_file("stall_ipa_rx_proc", flags_write_only,
+			ecm_ipa_ctx->directory,
+			ecm_ipa_ctx, &ecm_ipa_debugfs_stall_ops);
+	if (!file) {
+		ECM_IPA_ERROR("could not create stall_ipa_rx_proc file\n");
 		goto fail_file;
 	}
 

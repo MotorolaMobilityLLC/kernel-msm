@@ -22,6 +22,7 @@ Required properties:
 - clock-rates: clock rate in Hz
 
 Optional properties:
+- qcom,gdscr-vdd-supply : should contain regulator used for cci clocks
 - i2c_freq_100Khz: qcom,i2c_standard_mode - node should contain clock settings for
     100Khz
 - i2c_freq_400Khz: qcom,i2c_fast_mode - node should contain clock settings for
@@ -60,6 +61,7 @@ Required properties:
     - "shinetech,gc0339"
     - "shinetech,hi256"
     - "shinetech,s5k4e1"
+    - "ovti,ov5645"
 - reg : should contain i2c slave address of the device
 - qcom,csiphy-sd-index : should contain csiphy instance that will used to
     receive sensor data
@@ -75,9 +77,6 @@ Required properties:
 - qcom,cam-vreg-name : should contain names of all regulators needed by this
     sensor
     - "cam_vdig", "cam_vana", "cam_vio", "cam_vaf"
-- qcom,cam-vreg-type : should contain regulator type for regulators mentioned in
-    qcom,cam-vreg-name property (in the same order)
-    - 0 for LDO and 1 for LVS
 - qcom,cam-vreg-min-voltage : should contain minimum voltage level for
     regulators mentioned in qcom,cam-vreg-name property (in the same order)
 - qcom,cam-vreg-max-voltage : should contain maximum voltage level for
@@ -105,6 +104,8 @@ Optional properties:
 - qcom,mount-angle : should contain the physical mount angle of the sensor on
     the target
     - 0, 90, 180, 360
+- qcom,mclk-23880000 : should be enabled if the supported mclk is 23.88Mhz and
+    not 24 Mhz.
 - qcom,gpio-no-mux : should contain field to indicate whether gpio mux table is
     available
     - 1 if gpio mux is not available, 0 otherwise
@@ -161,6 +162,8 @@ Optional properties:
 - qcom,vdd-cx-name : should contain names of cx regulator
 - qcom,eeprom-src : if eeprom memory is supported by this sensor, this
    property should contain phandle of respective eeprom nodes
+- qcom,ois-src : if optical image stabilization is supported by this sensor,
+   this property should contain phandle of respective ois node
 
 * Qualcomm MSM ACTUATOR
 
@@ -180,9 +183,6 @@ Optional properties:
 - qcom,cam-vreg-name : should contain names of all regulators needed by this
     actuator
     - "cam_vaf"
-- qcom,cam-vreg-type : should contain regulator type for regulators mentioned in
-    qcom,cam-vreg-name property (in the same order)
-    - 0 for LDO and 1 for LVS
 - qcom,cam-vreg-min-voltage : should contain minimum voltage level in mcrovolts
    for regulators mentioned in qcom,cam-vreg-name property (in the same order)
 - qcom,cam-vreg-max-voltage : should contain maximum voltage level in mcrovolts
@@ -191,6 +191,33 @@ Optional properties:
    required from the regulators mentioned in the qcom,cam-vreg-name property
    (in the same order).
 - cam_vaf-supply : should contain regulator from which AF voltage is supplied
+
+* Qualcomm MSM OIS
+
+Required properties:
+- cell-index : should contain unique identifier to differentiate
+    between multiple ois drivers
+- reg : should contain i2c slave address of the ois and length of
+    data field which is 0x0
+- compatible :
+    - "qcom,ois"
+- qcom,cci-master : should contain i2c master id to be used for this camera
+    sensor
+    - 0 -> MASTER 0
+    - 1 -> MASTER 1
+
+Optional properties:
+- qcom,cam-vreg-name : should contain names of all regulators needed by this
+    ois
+    - "cam_vaf"
+- qcom,cam-vreg-min-voltage : should contain minimum voltage level in mcrovolts
+   for regulators mentioned in qcom,cam-vreg-name property (in the same order)
+- qcom,cam-vreg-max-voltage : should contain maximum voltage level in mcrovolts
+   for regulators mentioned in qcom,cam-vreg-name property (in the same order)
+- qcom,cam-vreg-op-mode : should contain the maximum current in microamps
+   required from the regulators mentioned in the qcom,cam-vreg-name property
+   (in the same order).
+- cam_vaf-supply : should contain regulator from which ois voltage is supplied
 
 Example:
 
@@ -201,7 +228,7 @@ Example:
        reg-names = "cci";
        interrupts = <0 50 0>;
        interrupt-names = "cci";
-	qcom,clock-names = "camss_top_ahb_clk", "vfe_clk_src",
+	clock-names = "camss_top_ahb_clk", "vfe_clk_src",
 			"camss_vfe_vfe_clk", "iface_clk", "cpp_core_clk",
 			"cpp_iface_clk", "cpp_bus_clk", "micro_iface_clk";
 	qcom,clock-rates = <0 266670000 0 0 266670000 0 0 0>;
@@ -232,7 +259,6 @@ Example:
 		qcom,cci-master = <0>;
 		cam_vaf-supply = <&pm8941_l23>;
 		qcom,cam-vreg-name = "cam_vaf";
-		qcom,cam-vreg-type = <0>;
 		qcom,cam-vreg-min-voltage = <3000000>;
 		qcom,cam-vreg-max-voltage = <3000000>;
 		qcom,cam-vreg-op-mode = <100000>;
@@ -256,7 +282,6 @@ Example:
                cam_vio-supply = <&pm8941_lvs3>;
                cam_vaf-supply = <&pm8941_l23>;
                qcom,cam-vreg-name = "cam_vdig", "cam_vana", "cam_vio", "cam_vaf";
-               qcom,cam-vreg-type = <0 0 1 0>;
                qcom,cam-vreg-min-voltage = <1225000 2850000 0 3000000>;
                qcom,cam-vreg-max-voltage = <1225000 2850000 0 3000000>;
                qcom,cam-vreg-op-mode = <105000 80000 0 100000>;
@@ -279,6 +304,7 @@ Example:
                qcom,csi-phy-sel = <0>;
                qcom,sensor-position = <0>;
                qcom,sensor-mode = <1>;
+               qcom,mclk-23880000
        };
    };
 

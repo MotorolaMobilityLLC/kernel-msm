@@ -131,6 +131,8 @@ static struct qpnp_vadc_scale_fn vadc_scale_fn[] = {
 	[SCALE_QRD_SKUAA_BATT_THERM] = {qpnp_adc_scale_qrd_skuaa_batt_therm},
 	[SCALE_SMB_BATT_THERM] = {qpnp_adc_scale_smb_batt_therm},
 	[SCALE_QRD_SKUG_BATT_THERM] = {qpnp_adc_scale_qrd_skug_batt_therm},
+	[SCALE_QRD_SKUH_BATT_THERM] = {qpnp_adc_scale_qrd_skuh_batt_therm},
+	[SCALE_NCP_03WF683_THERM] = {qpnp_adc_scale_therm_ncp03},
 };
 
 static int32_t qpnp_vadc_read_reg(struct qpnp_vadc_chip *vadc, int16_t reg,
@@ -527,11 +529,34 @@ static int32_t qpnp_vadc_version_check(struct qpnp_vadc_chip *dev)
 #define QPNP_VBAT_COEFF_23	3500
 #define QPNP_VBAT_COEFF_24	4360
 #define QPNP_VBAT_COEFF_25	8060
+#define QPNP_VBAT_COEFF_26	7895
+#define QPNP_VBAT_COEFF_27	5658
+#define QPNP_VBAT_COEFF_28	5760
+#define QPNP_VBAT_COEFF_29	7900
+#define QPNP_VBAT_COEFF_30	5660
+#define QPNP_VBAT_COEFF_31	3620
+#define QPNP_VBAT_COEFF_32	1230
+#define QPNP_VBAT_COEFF_33	5760
+#define QPNP_VBAT_COEFF_34	4080
+#define QPNP_VBAT_COEFF_35	7000
+#define QPNP_VBAT_COEFF_36	3040
+#define QPNP_VBAT_COEFF_37	3850
+#define QPNP_VBAT_COEFF_38	5000
+#define QPNP_VBAT_COEFF_39	2610
+#define QPNP_VBAT_COEFF_40	4190
+#define QPNP_VBAT_COEFF_41	5800
+#define QPNP_VBAT_COEFF_42	2620
+#define QPNP_VBAT_COEFF_43	4030
+#define QPNP_VBAT_COEFF_44	3230
+#define QPNP_VBAT_COEFF_45	3450
+#define QPNP_VBAT_COEFF_46	2120
+#define QPNP_VBAT_COEFF_47	3560
+#define QPNP_VBAT_COEFF_48	2190
 
 static int32_t qpnp_ocv_comp(int64_t *result,
 			struct qpnp_vadc_chip *vadc, int64_t die_temp)
 {
-	int64_t temp_var = 0;
+	int64_t temp_var = 0, offset = 0;
 	int64_t old = *result;
 	int version;
 
@@ -601,6 +626,7 @@ static int32_t qpnp_ocv_comp(int64_t *result,
 					QPNP_VBAT_COEFF_25;
 			break;
 		}
+		break;
 	case QPNP_REV_ID_8110_2_0:
 		switch (vadc->id) {
 		case COMP_ID_SMIC:
@@ -622,6 +648,75 @@ static int32_t qpnp_ocv_comp(int64_t *result,
 			break;
 		}
 		break;
+	case QPNP_REV_ID_8916_1_0:
+		switch (vadc->id) {
+		case COMP_ID_SMIC:
+			if (die_temp < 25000)
+				temp_var = QPNP_VBAT_COEFF_26;
+			else
+				temp_var = QPNP_VBAT_COEFF_27;
+			temp_var = (die_temp - 25000) * temp_var;
+			break;
+		default:
+		case COMP_ID_GF:
+			offset = QPNP_OCV_OFFSET_GF;
+			if (die_temp < 25000)
+				temp_var = QPNP_VBAT_COEFF_26;
+			else
+				temp_var = QPNP_VBAT_COEFF_27;
+			temp_var = (die_temp - 25000) * temp_var;
+			break;
+		}
+		break;
+	case QPNP_REV_ID_8916_1_1:
+		switch (vadc->id) {
+		/* FAB_ID is zero */
+		case COMP_ID_GF:
+			if (die_temp < 25000)
+				temp_var = QPNP_VBAT_COEFF_29;
+			else
+				temp_var = QPNP_VBAT_COEFF_30;
+			temp_var = (die_temp - 25000) * temp_var;
+			break;
+		/* FAB_ID is non-zero */
+		default:
+			if (die_temp < 25000)
+				temp_var = QPNP_VBAT_COEFF_31;
+			else
+				temp_var = (-QPNP_VBAT_COEFF_32);
+			temp_var = (die_temp - 25000) * temp_var;
+			break;
+		}
+		break;
+	case QPNP_REV_ID_8916_2_0:
+		switch (vadc->id) {
+		case COMP_ID_SMIC:
+			offset = (-QPNP_VBAT_COEFF_38);
+			if (die_temp < 0)
+				temp_var = die_temp * QPNP_VBAT_COEFF_36;
+			else if (die_temp > 40000)
+				temp_var = ((die_temp - 40000) *
+						(-QPNP_VBAT_COEFF_37));
+			break;
+		case COMP_ID_TSMC:
+			if (die_temp < 10000)
+				temp_var = ((die_temp - 10000) *
+						QPNP_VBAT_COEFF_41);
+			else if (die_temp > 50000)
+				temp_var = ((die_temp - 50000) *
+						(-QPNP_VBAT_COEFF_42));
+			break;
+		default:
+		case COMP_ID_GF:
+			if (die_temp < 20000)
+				temp_var = ((die_temp - 20000) *
+						QPNP_VBAT_COEFF_45);
+			else if (die_temp > 40000)
+				temp_var = ((die_temp - 40000) *
+						(-QPNP_VBAT_COEFF_46));
+			break;
+		}
+		break;
 	default:
 		temp_var = 0;
 		break;
@@ -633,6 +728,9 @@ static int32_t qpnp_ocv_comp(int64_t *result,
 
 	*result = *result * temp_var;
 
+	if (offset)
+		*result -= offset;
+
 	*result = div64_s64(*result, 1000000);
 	pr_debug("%lld compensated into %lld\n", old, *result);
 
@@ -642,7 +740,7 @@ static int32_t qpnp_ocv_comp(int64_t *result,
 static int32_t qpnp_vbat_sns_comp(int64_t *result,
 			struct qpnp_vadc_chip *vadc, int64_t die_temp)
 {
-	int64_t temp_var = 0;
+	int64_t temp_var = 0, offset = 0;
 	int64_t old = *result;
 	int version;
 
@@ -714,6 +812,7 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 			temp_var = 0;
 			break;
 		}
+		break;
 	case QPNP_REV_ID_8110_2_0:
 		switch (vadc->id) {
 		case COMP_ID_SMIC:
@@ -729,6 +828,66 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 			break;
 		}
 		break;
+	case QPNP_REV_ID_8916_1_0:
+		switch (vadc->id) {
+		case COMP_ID_SMIC:
+			temp_var = ((die_temp - 25000) *
+			(QPNP_VBAT_COEFF_28));
+			break;
+		default:
+		case COMP_ID_GF:
+			temp_var = ((die_temp - 25000) *
+			(QPNP_VBAT_COEFF_28));
+			break;
+		}
+		break;
+	case QPNP_REV_ID_8916_1_1:
+		switch (vadc->id) {
+		/* FAB_ID is zero */
+		case COMP_ID_GF:
+			temp_var = ((die_temp - 25000) *
+			(QPNP_VBAT_COEFF_33));
+			break;
+		/* FAB_ID is non-zero */
+		default:
+			offset = QPNP_VBAT_COEFF_35;
+			if (die_temp > 50000) {
+				temp_var = ((die_temp - 25000) *
+				(QPNP_VBAT_COEFF_34));
+			}
+			break;
+		}
+		break;
+	case QPNP_REV_ID_8916_2_0:
+		switch (vadc->id) {
+		case COMP_ID_SMIC:
+			if (die_temp < 0) {
+				temp_var = (die_temp *
+					QPNP_VBAT_COEFF_39);
+			} else if (die_temp > 40000) {
+				temp_var = ((die_temp - 40000) *
+				(-QPNP_VBAT_COEFF_40));
+			}
+			break;
+		case COMP_ID_TSMC:
+			if (die_temp < 10000)
+				temp_var = ((die_temp - 10000) *
+					QPNP_VBAT_COEFF_43);
+			else if (die_temp > 50000)
+				temp_var = ((die_temp - 50000) *
+						(-QPNP_VBAT_COEFF_44));
+			break;
+		default:
+		case COMP_ID_GF:
+			if (die_temp < 20000)
+				temp_var = ((die_temp - 20000) *
+					QPNP_VBAT_COEFF_47);
+			else if (die_temp > 40000)
+				temp_var = ((die_temp - 40000) *
+						(-QPNP_VBAT_COEFF_48));
+			break;
+		}
+		break;
 	default:
 		temp_var = 0;
 		break;
@@ -739,6 +898,9 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 	temp_var = 1000000 + temp_var;
 
 	*result = *result * temp_var;
+
+	if (offset)
+		*result -= offset;
 
 	*result = div64_s64(*result, 1000000);
 	pr_debug("%lld compensated into %lld\n", old, *result);
@@ -1047,11 +1209,6 @@ int32_t qpnp_vadc_conv_seq_request(struct qpnp_vadc_chip *vadc,
 
 	mutex_lock(&vadc->adc->adc_lock);
 
-	if (vadc->vadc_poll_eoc) {
-		pr_debug("requesting vadc eoc stay awake\n");
-		pm_stay_awake(vadc->dev);
-	}
-
 	if (!vadc->vadc_init_calib) {
 		rc = qpnp_vadc_version_check(vadc);
 		if (rc)
@@ -1174,6 +1331,8 @@ int32_t qpnp_vadc_conv_seq_request(struct qpnp_vadc_chip *vadc,
 		qpnp_vadc_amux_scaling_ratio[amux_prescaling].num;
 	vadc->adc->amux_prop->chan_prop->offset_gain_denominator =
 		 qpnp_vadc_amux_scaling_ratio[amux_prescaling].den;
+	vadc->adc->amux_prop->chan_prop->calib_type =
+		vadc->adc->adc_channels[dt_index].calib_type;
 
 	scale_type = vadc->adc->adc_channels[dt_index].adc_scale_fn;
 	if (scale_type >= SCALE_NONE) {
@@ -1185,11 +1344,6 @@ int32_t qpnp_vadc_conv_seq_request(struct qpnp_vadc_chip *vadc,
 		vadc->adc->adc_prop, vadc->adc->amux_prop->chan_prop, result);
 
 fail_unlock:
-	if (vadc->vadc_poll_eoc) {
-		pr_debug("requesting vadc eoc stay awake\n");
-		pm_relax(vadc->dev);
-	}
-
 	mutex_unlock(&vadc->adc->adc_lock);
 
 	return rc;
@@ -1525,8 +1679,6 @@ static int qpnp_vadc_remove(struct spmi_device *spmi)
 	}
 	hwmon_device_unregister(vadc->vadc_hwmon);
 	list_del(&vadc->list);
-	if (vadc->vadc_poll_eoc)
-		pm_relax(vadc->dev);
 	dev_set_drvdata(&spmi->dev, NULL);
 
 	return 0;
@@ -1538,10 +1690,33 @@ static const struct of_device_id qpnp_vadc_match_table[] = {
 	{}
 };
 
+static int qpnp_vadc_suspend_noirq(struct device *dev)
+{
+	struct qpnp_vadc_chip *vadc = dev_get_drvdata(dev);
+	u8 status = 0;
+
+	if (vadc->vadc_poll_eoc) {
+		qpnp_vadc_read_reg(vadc, QPNP_VADC_STATUS1, &status);
+		status &= QPNP_VADC_STATUS1_REQ_STS_EOC_MASK;
+		pr_debug("vadc conversion status=%d\n", status);
+		if (status != QPNP_VADC_STATUS1_EOC) {
+			pr_err(
+				"Aborting suspend, adc conversion requested while suspending\n");
+			return -EBUSY;
+		}
+	}
+	return 0;
+}
+
+static const struct dev_pm_ops qpnp_vadc_pm_ops = {
+	.suspend_noirq	= qpnp_vadc_suspend_noirq,
+};
+
 static struct spmi_driver qpnp_vadc_driver = {
 	.driver		= {
 		.name	= "qcom,qpnp-vadc",
 		.of_match_table = qpnp_vadc_match_table,
+		.pm		= &qpnp_vadc_pm_ops,
 	},
 	.probe		= qpnp_vadc_probe,
 	.remove		= qpnp_vadc_remove,

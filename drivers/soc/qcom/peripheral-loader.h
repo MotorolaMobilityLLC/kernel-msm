@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,6 +11,8 @@
  */
 #ifndef __MSM_PERIPHERAL_LOADER_H
 #define __MSM_PERIPHERAL_LOADER_H
+
+#include <linux/dma-attrs.h>
 
 struct device;
 struct module;
@@ -25,6 +27,7 @@ struct pil_priv;
  * @proxy_timeout: delay in ms until proxy vote is removed
  * @flags: bitfield for image flags
  * @priv: DON'T USE - internal only
+ * @attrs: DMA attributes to be used during dma allocation.
  * @proxy_unvote_irq: IRQ to trigger a proxy unvote. proxy_timeout
  * is ignored if this is set.
  * @map_fw_mem: Custom function used to map physical address space to virtual.
@@ -41,9 +44,11 @@ struct pil_desc {
 	unsigned long flags;
 #define PIL_SKIP_ENTRY_CHECK	BIT(0)
 	struct pil_priv *priv;
+	struct dma_attrs attrs;
 	unsigned int proxy_unvote_irq;
-	void * (*map_fw_mem)(phys_addr_t phys, size_t size);
-	void (*unmap_fw_mem)(void *virt);
+	void * (*map_fw_mem)(phys_addr_t phys, size_t size, void *data);
+	void (*unmap_fw_mem)(void *virt, size_t size, void *data);
+	void *map_data;
 };
 
 /**
@@ -55,6 +60,7 @@ struct pil_desc {
  * @proxy_vote: make proxy votes before auth_and_reset (optional)
  * @auth_and_reset: boot the processor
  * @proxy_unvote: remove any proxy votes (optional)
+ * @deinit_image: restore actions performed in init_image if necessary
  * @shutdown: shutdown the processor
  */
 struct pil_reset_ops {
@@ -66,6 +72,7 @@ struct pil_reset_ops {
 	int (*proxy_vote)(struct pil_desc *pil);
 	int (*auth_and_reset)(struct pil_desc *pil);
 	void (*proxy_unvote)(struct pil_desc *pil);
+	int (*deinit_image)(struct pil_desc *pil);
 	int (*shutdown)(struct pil_desc *pil);
 };
 

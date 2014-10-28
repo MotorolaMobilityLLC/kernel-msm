@@ -22,10 +22,13 @@
 #include <linux/platform_device.h>
 #include <linux/msm-bus.h>
 #include <linux/msm-bus-board.h>
+#include <linux/msm_bus_rules.h>
 #include "msm_bus_core.h"
 #include "msm_bus_adhoc.h"
 
 #define DEFAULT_QOS_FREQ	19200
+#define DEFAULT_UTIL_FACT	100
+#define DEFAULT_VRAIL_COMP	100
 
 static int get_qos_mode(struct platform_device *pdev,
 			struct device_node *node, const char *qos_mode)
@@ -145,6 +148,22 @@ static struct msm_bus_fab_device_type *get_fab_device_info(
 		fab_dev->qos_freq = DEFAULT_QOS_FREQ;
 	}
 
+	ret = of_property_read_u32(dev_node, "qcom,util-fact",
+						&fab_dev->util_fact);
+	if (ret) {
+		dev_info(&pdev->dev, "Util-fact is missing, default to %d\n",
+				DEFAULT_UTIL_FACT);
+		fab_dev->util_fact = DEFAULT_UTIL_FACT;
+	}
+
+	ret = of_property_read_u32(dev_node, "qcom,vrail-comp",
+						&fab_dev->vrail_comp);
+	if (ret) {
+		dev_info(&pdev->dev, "Vrail-comp is missing, default to %d\n",
+				DEFAULT_VRAIL_COMP);
+		fab_dev->vrail_comp = DEFAULT_VRAIL_COMP;
+	}
+
 	return fab_dev;
 
 fab_dev_err:
@@ -152,6 +171,48 @@ fab_dev_err:
 	fab_dev = 0;
 	return NULL;
 }
+
+static void get_qos_params(
+		struct device_node * const dev_node,
+		struct platform_device * const pdev,
+		struct msm_bus_node_info_type *node_info)
+{
+	const char *qos_mode = NULL;
+	unsigned int ret;
+
+	ret = of_property_read_string(dev_node, "qcom,qos-mode", &qos_mode);
+
+	if (ret)
+		node_info->qos_params.mode = -1;
+	else
+		node_info->qos_params.mode = get_qos_mode(pdev, dev_node,
+								qos_mode);
+
+	of_property_read_u32(dev_node, "qcom,prio-lvl",
+					&node_info->qos_params.prio_lvl);
+
+	of_property_read_u32(dev_node, "qcom,prio1",
+						&node_info->qos_params.prio1);
+
+	of_property_read_u32(dev_node, "qcom,prio0",
+						&node_info->qos_params.prio0);
+
+	of_property_read_u32(dev_node, "qcom,prio-rd",
+					&node_info->qos_params.prio_rd);
+
+	of_property_read_u32(dev_node, "qcom,prio-wr",
+						&node_info->qos_params.prio_wr);
+
+	of_property_read_u32(dev_node, "qcom,gp",
+						&node_info->qos_params.gp);
+
+	of_property_read_u32(dev_node, "qcom,thmp",
+						&node_info->qos_params.thmp);
+
+	of_property_read_u32(dev_node, "qcom,ws",
+						&node_info->qos_params.ws);
+}
+
 
 static struct msm_bus_node_info_type *get_node_info_data(
 		struct device_node * const dev_node,
@@ -163,7 +224,6 @@ static struct msm_bus_node_info_type *get_node_info_data(
 	int i;
 	struct device_node *con_node;
 	struct device_node *bus_dev;
-	const char *qos_mode = NULL;
 
 	node_info = devm_kzalloc(&pdev->dev,
 			sizeof(struct msm_bus_node_info_type),
@@ -244,22 +304,7 @@ static struct msm_bus_node_info_type *get_node_info_data(
 		dev_dbg(&pdev->dev, "slv rpm id is missing\n");
 		node_info->slv_rpm_id = -1;
 	}
-
-	ret = of_property_read_string(dev_node, "qcom,qos-mode", &qos_mode);
-
-	if (ret)
-		node_info->mode = -1;
-	else
-		node_info->mode = get_qos_mode(pdev, dev_node, qos_mode);
-
-	ret = of_property_read_u32(dev_node, "qcom,prio-lvl",
-						&node_info->prio_lvl);
-	ret = of_property_read_u32(dev_node, "qcom,prio1", &node_info->prio1);
-	ret = of_property_read_u32(dev_node, "qcom,prio0", &node_info->prio0);
-	ret = of_property_read_u32(dev_node, "qcom,prio-rd",
-						&node_info->prio_rd);
-	ret = of_property_read_u32(dev_node, "qcom,prio-wr",
-						&node_info->prio_wr);
+	get_qos_params(dev_node, pdev, node_info);
 
 	return node_info;
 
@@ -310,6 +355,28 @@ static unsigned int get_bus_node_device_data(
 			dev_err(&pdev->dev,
 				"Failed to get bus clk for bus%d ctx%d",
 				 node_device->node_info->id, ACTIVE_CTX);
+		if (msmbus_coresight_init_adhoc(pdev, dev_node))
+			dev_warn(&pdev->dev,
+				 "Coresight support absent for bus: %d\n",
+				  node_device->node_info->id);
+	} else {
+		node_device->qos_clk.clk = of_clk_get_by_name(dev_node,
+							"bus_qos_clk");
+
+		if (IS_ERR_OR_NULL(node_device->qos_clk.clk))
+			dev_dbg(&pdev->dev,
+				"%s:Failed to get bus qos clk for mas%d",
+				__func__, node_device->node_info->id);
+
+		node_device->clk[DUAL_CTX].clk = of_clk_get_by_name(dev_node,
+							"node_clk");
+
+		if (IS_ERR_OR_NULL(node_device->clk[DUAL_CTX].clk))
+			dev_dbg(&pdev->dev,
+				"%s:Failed to get bus clk for bus%d ctx%d",
+				__func__, node_device->node_info->id,
+								DUAL_CTX);
+
 	}
 	return 0;
 }
@@ -390,4 +457,143 @@ node_reg_err:
 	devm_kfree(&pdev->dev, pdata);
 	pdata = NULL;
 	return NULL;
+}
+
+static int msm_bus_of_get_ids(struct platform_device *pdev,
+			struct device_node *dev_node, int **dev_ids,
+			int *num_ids, char *prop_name)
+{
+	int ret = 0;
+	int size, i;
+	struct device_node *rule_node;
+	int *ids = NULL;
+
+	if (of_get_property(dev_node, prop_name, &size)) {
+		*num_ids = size / sizeof(int);
+		ids = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
+	} else {
+		dev_err(&pdev->dev, "No rule nodes, skipping node");
+		ret = -ENXIO;
+		goto exit_get_ids;
+	}
+
+	*dev_ids = ids;
+	for (i = 0; i < *num_ids; i++) {
+		rule_node = of_parse_phandle(dev_node, prop_name, i);
+		if (IS_ERR_OR_NULL(rule_node)) {
+			dev_err(&pdev->dev, "Can't get rule node id");
+			ret = -ENXIO;
+			goto err_get_ids;
+		}
+
+		if (of_property_read_u32(rule_node, "cell-id",
+				&ids[i])) {
+			dev_err(&pdev->dev, "Can't get rule node id");
+			ret = -ENXIO;
+			goto err_get_ids;
+		}
+		of_node_put(rule_node);
+	}
+exit_get_ids:
+	return ret;
+err_get_ids:
+	devm_kfree(&pdev->dev, ids);
+	of_node_put(rule_node);
+	ids = NULL;
+	return ret;
+}
+
+int msm_bus_of_get_static_rules(struct platform_device *pdev,
+					struct bus_rule_type **static_rules)
+{
+	int ret = 0;
+	struct device_node *of_node, *child_node;
+	int num_rules = 0;
+	int rule_idx = 0;
+	int bw_fld = 0;
+	int i;
+	struct bus_rule_type *static_rule = NULL;
+
+	of_node = pdev->dev.of_node;
+	num_rules = of_get_child_count(of_node);
+	static_rule = devm_kzalloc(&pdev->dev,
+				sizeof(struct bus_rule_type) * num_rules,
+				GFP_KERNEL);
+
+	if (IS_ERR_OR_NULL(static_rule)) {
+		ret = -ENOMEM;
+		goto exit_static_rules;
+	}
+
+	*static_rules = static_rule;
+	for_each_child_of_node(of_node, child_node) {
+		ret = msm_bus_of_get_ids(pdev, child_node,
+			&static_rule[rule_idx].src_id,
+			&static_rule[rule_idx].num_src,
+			"qcom,src-nodes");
+
+		ret = msm_bus_of_get_ids(pdev, child_node,
+			&static_rule[rule_idx].dst_node,
+			&static_rule[rule_idx].num_dst,
+			"qcom,dest-node");
+
+		ret = of_property_read_u32(child_node, "qcom,src-field",
+				&static_rule[rule_idx].src_field);
+		if (ret) {
+			dev_err(&pdev->dev, "src-field missing");
+			ret = -ENXIO;
+			goto err_static_rules;
+		}
+
+		ret = of_property_read_u32(child_node, "qcom,src-op",
+				&static_rule[rule_idx].op);
+		if (ret) {
+			dev_err(&pdev->dev, "src-op missing");
+			ret = -ENXIO;
+			goto err_static_rules;
+		}
+
+		ret = of_property_read_u32(child_node, "qcom,mode",
+				&static_rule[rule_idx].mode);
+		if (ret) {
+			dev_err(&pdev->dev, "mode missing");
+			ret = -ENXIO;
+			goto err_static_rules;
+		}
+
+		ret = of_property_read_u32(child_node, "qcom,thresh", &bw_fld);
+		if (ret) {
+			dev_err(&pdev->dev, "thresh missing");
+			ret = -ENXIO;
+			goto err_static_rules;
+		} else
+			static_rule[rule_idx].thresh = KBTOB(bw_fld);
+
+		ret = of_property_read_u32(child_node, "qcom,dest-bw",
+								&bw_fld);
+		if (ret)
+			static_rule[rule_idx].dst_bw = 0;
+		else
+			static_rule[rule_idx].dst_bw = KBTOB(bw_fld);
+
+		rule_idx++;
+	}
+	ret = rule_idx;
+exit_static_rules:
+	return ret;
+err_static_rules:
+	for (i = 0; i < num_rules; i++) {
+		if (!IS_ERR_OR_NULL(static_rule)) {
+			if (!IS_ERR_OR_NULL(static_rule[i].src_id))
+				devm_kfree(&pdev->dev,
+						static_rule[i].src_id);
+			if (!IS_ERR_OR_NULL(static_rule[i].dst_node))
+				devm_kfree(&pdev->dev,
+						static_rule[i].dst_node);
+			devm_kfree(&pdev->dev, static_rule);
+		}
+	}
+	devm_kfree(&pdev->dev, *static_rules);
+	static_rules = NULL;
+	return ret;
 }

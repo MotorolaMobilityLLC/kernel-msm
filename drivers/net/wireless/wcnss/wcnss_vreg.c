@@ -24,8 +24,6 @@
 #include <linux/list.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
-#include <mach/msm_xo.h>
-#include <mach/msm_iomap.h>
 
 
 static void __iomem *msm_wcnss_base;
@@ -33,6 +31,7 @@ static LIST_HEAD(power_on_lock_list);
 static DEFINE_MUTEX(list_lock);
 static DEFINE_SEMAPHORE(wcnss_power_on_lock);
 static int auto_detect;
+static int is_power_on;
 
 #define RIVA_PMU_OFFSET         0x28
 #define PRONTO_PMU_OFFSET       0x1004
@@ -49,6 +48,8 @@ static int auto_detect;
 #define WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP   BIT(5)
 #define WCNSS_PMU_CFG_IRIS_XO_CFG_STS      BIT(6) /* 1: in progress, 0: done */
 
+#define WCNSS_PMU_CFG_IRIS_RESET           BIT(7)
+#define WCNSS_PMU_CFG_IRIS_RESET_STS       BIT(8) /* 1: in progress, 0: done */
 #define WCNSS_PMU_CFG_IRIS_XO_READ         BIT(9)
 #define WCNSS_PMU_CFG_IRIS_XO_READ_STS     BIT(10)
 
@@ -277,6 +278,19 @@ configure_iris_xo(struct device *dev,
 				*iris_xo_set = WCNSS_XO_48MHZ;
 		}
 
+		writel_relaxed(reg, pmu_conf_reg);
+
+		/* Reset IRIS */
+		reg |= WCNSS_PMU_CFG_IRIS_RESET;
+		writel_relaxed(reg, pmu_conf_reg);
+
+		/* Wait for PMU_CFG.iris_reg_reset_sts */
+		while (readl_relaxed(pmu_conf_reg) &
+				WCNSS_PMU_CFG_IRIS_RESET_STS)
+			cpu_relax();
+
+		/* Reset iris reset bit */
+		reg &= ~WCNSS_PMU_CFG_IRIS_RESET;
 		writel_relaxed(reg, pmu_conf_reg);
 
 		/* Start IRIS XO configuration */
@@ -545,8 +559,8 @@ int wcnss_wlan_power(struct device *dev,
 	int rc = 0;
 	enum wcnss_hw_type hw_type = wcnss_hardware_type();
 
+	down(&wcnss_power_on_lock);
 	if (on) {
-		down(&wcnss_power_on_lock);
 		/* RIVA regulator settings */
 		rc = wcnss_core_vregs_on(dev, hw_type,
 			cfg->is_pronto_vt);
@@ -564,15 +578,18 @@ int wcnss_wlan_power(struct device *dev,
 				WCNSS_WLAN_SWITCH_ON, iris_xo_set);
 		if (rc)
 			goto fail_iris_xo;
-		up(&wcnss_power_on_lock);
 
-	} else {
+		is_power_on = true;
+
+	}  else if (is_power_on) {
+		is_power_on = false;
 		configure_iris_xo(dev, cfg,
 				WCNSS_WLAN_SWITCH_OFF, NULL);
 		wcnss_iris_vregs_off(hw_type, cfg->is_pronto_vt);
 		wcnss_core_vregs_off(hw_type, cfg->is_pronto_vt);
 	}
 
+	up(&wcnss_power_on_lock);
 	return rc;
 
 fail_iris_xo:

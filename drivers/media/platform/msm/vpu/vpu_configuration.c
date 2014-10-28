@@ -18,6 +18,8 @@
 #include <media/v4l2-ctrls.h>
 #include <linux/stddef.h>
 #include <linux/sizes.h>
+#include <linux/time.h>
+#include <asm/div64.h>
 
 #include "vpu_configuration.h"
 #include "vpu_v4l2.h"
@@ -1074,11 +1076,128 @@ static int __get_bits_per_pixel(u32 api_pix_fmt)
 	return bpp;
 }
 
+/*
+ * Power mode / Bus load computation
+ */
 
 #define SESSION_IS_ACTIVE(s, cur)	(((s) == (cur)) ? true : \
 					(s)->streaming_state == ALL_STREAMING)
+#define TO_KILO(val)			((val) / 1000)
 
-/* __get_frequency_mode() - returns the VPU frequency mode (enum vpu_power_mode)
+#define SW_OVERHEAD_MS			1
+#define STRIPE_OVERHEAD_PERCENT		5
+#define MAX_FPS				60
+
+enum {
+	VIP_MIP = 0,
+	VIP_SIP,
+	VIP_TNR,
+	VOP_TNR,
+	VOP_SOP,
+	VIP_SCL,
+	VOP_MOP,
+
+	NUM_STAGES,
+};
+
+/*
+ * __get_vpu_load() - compute the average load value for all sessions (in kbps)
+ *
+ * 1) Pick the highest session's load (say "load_kbps")
+ * 2) Increase it by "software overhead factor"
+ *    with "software overhead factor"
+ *    = (1 / max_fps) / (1 / max_fps / num_sessions - SW_OVERHEAD_MS / 1000)
+ *    = (1000*num_sessions) / (1000 - (num_sessions*SW_OVERHEAD_MS*max_fps))
+ * 3) Increase the result by "stripe overhead"
+ *    with "stripe overhead"
+ *    = 1 + (STRIPE_OVERHEAD_PERCENT / 100)
+ *    = (100 + STRIPE_OVERHEAD_PERCENT) / 100
+ * => load_kbps *= "software overhead factor" * "stripe overhead"
+ */
+static u32 __get_vpu_load(struct vpu_dev_session *cur_session)
+{
+	struct vpu_dev_core *core = cur_session->core;
+	struct vpu_dev_session *session = NULL;
+	u32 num_sessions = 0;
+	u32 denominator = 1;
+	u64 load_kbps = 0;
+	int i;
+
+	for (i = 0; i < VPU_NUM_SESSIONS; i++) {
+		session = core->sessions[i];
+		if (!session || !SESSION_IS_ACTIVE(session, cur_session))
+			continue;
+
+		pr_debug("session %d load: %dkbps\n", i, session->load);
+		load_kbps = max_t(u32, load_kbps, session->load);
+
+		num_sessions++;
+	}
+
+	/* software overhead factor */
+	load_kbps *= MSEC_PER_SEC * num_sessions;
+	denominator *= MSEC_PER_SEC - (num_sessions * SW_OVERHEAD_MS * MAX_FPS);
+
+	/* stripe overhead */
+	load_kbps *= 100 + STRIPE_OVERHEAD_PERCENT;
+	denominator *= 100;
+
+	do_div(load_kbps, denominator);
+
+	pr_debug("Calculated load = %dkbps\n", (u32)load_kbps);
+	return (u32)load_kbps;
+}
+
+/* returns the session load in kilo bits per second */
+static u32 __calculate_session_load(struct vpu_dev_session *session)
+{
+	struct vpu_controller *controller = session->controller;
+	struct vpu_port_info *in = &session->port_info[INPUT_PORT];
+	struct vpu_port_info *out = &session->port_info[OUTPUT_PORT];
+	struct vpu_ctrl_auto_manual *nr_ctrl;
+	u32 fps, in_bpp, out_bpp, nrwb_bpp;
+	bool interlaced, nr, bbroi;
+	u32 stage_load_factor[NUM_STAGES];
+	u32 load_kbps = 0;
+	int i;
+
+	/* get required info before computation */
+	fps = max(in->framerate, out->framerate) >> 16;
+	fps = fps ? fps : 30;
+	nrwb_bpp = __get_bits_per_pixel(V4L2_PIX_FMT_YUYV);
+	in_bpp = __get_bits_per_pixel(in->format.pixelformat);
+	out_bpp = __get_bits_per_pixel(out->format.pixelformat);
+
+	interlaced = in->scan_mode == LINESCANINTERLACED;
+	nr_ctrl = get_control(controller, VPU_CTRL_NOISE_REDUCTION);
+	nr = nr_ctrl ? (nr_ctrl->enable == PROP_TRUE) : false;
+	bbroi = false; /* TODO: how to calculate? */
+
+	/* compute the current session's load at each stage */
+	stage_load_factor[VIP_MIP] = in_bpp;
+	stage_load_factor[VIP_SIP] = !interlaced ? 0 : in_bpp;
+	stage_load_factor[VIP_TNR] = !nr ? 0 : nrwb_bpp;
+	stage_load_factor[VOP_TNR] = !nr ? 0 : nrwb_bpp;
+	stage_load_factor[VOP_SOP] = !bbroi ? 0 : nrwb_bpp;
+	stage_load_factor[VIP_SCL] = !bbroi ? 0 : nrwb_bpp;
+	stage_load_factor[VOP_MOP] = out_bpp;
+
+	/* final bus load for the session (before software overhead factor) */
+	for (i = 0; i <= VIP_SCL; i++)
+		load_kbps += stage_load_factor[i] *
+			TO_KILO(in->format.width * in->format.height * fps);
+	for (i = VOP_MOP; i < NUM_STAGES; i++)
+		load_kbps += stage_load_factor[i] *
+			TO_KILO(out->format.width * out->format.height * fps);
+
+	/* approximately a 25% BW increase if dual output is enabled */
+	if (session->dual_output)
+		load_kbps = (load_kbps * 5) / 4;
+
+	return load_kbps;
+}
+
+/* __get_power_mode() - returns the VPU frequency mode (enum vpu_power_mode)
  *
  * 1) Determine the pixel rate of each session:
  *    (max(in_h, out_h) * max (in_v, out_v) * frame_rate
@@ -1090,7 +1209,7 @@ static int __get_bits_per_pixel(u32 api_pix_fmt)
  *	    threshold/2, then use this frequency mode
  * 4) If no frequency is chosen, choose turbo
  */
-static u32 __get_frequency_mode(struct vpu_dev_session *cur_sess)
+static u32 __get_power_mode(struct vpu_dev_session *cur_sess)
 {
 	struct vpu_dev_core *core = cur_sess->core;
 	struct vpu_dev_session *session = NULL;
@@ -1098,8 +1217,8 @@ static u32 __get_frequency_mode(struct vpu_dev_session *cur_sess)
 	u32 max_w = 0, max_h = 0, fps, pr[VPU_NUM_SESSIONS] = {0, };
 	int i, num_sessions = 0;
 	const u32 pr_threshold[VPU_POWER_MAX] = {
-		[VPU_POWER_SVS]     =  63000000,
-		[VPU_POWER_NOMINAL] = 125000000,
+		[VPU_POWER_SVS]     =  67000000,
+		[VPU_POWER_NOMINAL] = 134000000,
 		[VPU_POWER_TURBO]   = 260000000,
 	};
 
@@ -1117,8 +1236,8 @@ static u32 __get_frequency_mode(struct vpu_dev_session *cur_sess)
 		if ((max_w * max_h) > SZ_2M)
 			goto exit_and_return_mode;
 
-		fps = max(in->framerate, out->framerate);
-		fps = fps ? fps : 60;
+		fps = max(in->framerate, out->framerate) >> 16;
+		fps = fps ? fps : 30;
 
 		pr[i] = max_w * max_h * fps;
 		pr_debug("session %d's pixel rate is %d\n", i, pr[i]);
@@ -1148,72 +1267,6 @@ exit_and_return_mode:
 	return (u32)mode;
 }
 
-/* compute the average load value for all VPU sessions (in bits per second) */
-static u32 __get_vpu_load(struct vpu_dev_core *core)
-{
-	int i;
-	u32 load_bps = 0;
-	struct vpu_dev_session *session = NULL;
-
-	for (i = 0; i < VPU_NUM_SESSIONS; i++) {
-		session = core->sessions[i];
-		if (!session)
-			break;
-		pr_debug("session %d load: %dbps\n", i, session->load);
-		load_bps = max(load_bps, session->load);
-	}
-
-	pr_debug("Calculated load = %d bps\n", load_bps);
-	return 500000; /* TODO replace by load */
-}
-
-/* returns the session load in bits per second */
-int __calculate_session_load(struct vpu_dev_session *session)
-{
-	u32 bits_per_stream;
-	u32 load_bits_per_sec;
-	u32 frame_rate;
-	bool b_interlaced, b_nr, b_bbroi;
-	u32 bpp_in, bpp_vpu, h_in, w_in, bpp_out, h_out, w_out;
-	struct vpu_port_info *in = &session->port_info[INPUT_PORT];
-	struct vpu_port_info *out = &session->port_info[OUTPUT_PORT];
-	struct vpu_controller *controller = session->controller;
-	struct vpu_ctrl_auto_manual *nr_cache =
-		(struct vpu_ctrl_auto_manual *) get_control(controller,
-				VPU_CTRL_NOISE_REDUCTION);
-
-	/*
-	 * get required info before computation
-	 */
-	b_interlaced = (in->scan_mode == LINESCANINTERLACED);
-	b_nr = nr_cache ? (nr_cache->enable == PROP_TRUE) : false;
-	b_bbroi = false; /*TODO: how to calculate? */
-	bpp_in = __get_bits_per_pixel(in->format.pixelformat);
-	if (bpp_in < 0)
-		bpp_in = 0;
-	bpp_vpu = 16; /* 8bpc422 pixel format */
-	h_in = in->format.height;
-	w_in = in->format.width;
-	bpp_out = __get_bits_per_pixel(out->format.pixelformat);
-	if (bpp_out < 0)
-		bpp_out = 0;
-
-	h_out = out->format.height;
-	w_out = out->format.width;
-	frame_rate = max(in->framerate, out->framerate);
-
-	/*
-	 * compute the current session's load
-	 */
-	bits_per_stream =  ((1 + b_interlaced) * (bpp_in)
-			+ (2 * b_nr + 2 * b_bbroi) * (bpp_vpu)) * (h_in * w_in)
-			+ (bpp_out) * (h_out * w_out);
-	load_bits_per_sec = bits_per_stream * frame_rate;
-
-	pr_debug("Calculated load (%d bps)\n", load_bits_per_sec);
-	return load_bits_per_sec;
-}
-
 static int __configure_input_port(struct vpu_dev_session *session)
 {
 	struct vpu_prop_session_input in_param;
@@ -1229,7 +1282,8 @@ static int __configure_input_port(struct vpu_dev_session *session)
 
 	translate_input_format_to_hfi(&session->port_info[INPUT_PORT],
 			&in_param);
-	ret = vpu_hw_session_s_input_params(session->id, &in_param);
+	ret = vpu_hw_session_s_input_params(session->id,
+			translate_port_id(INPUT_PORT), &in_param);
 	if (ret) {
 		pr_err("Failed to set input port config\n");
 		return ret;
@@ -1253,31 +1307,32 @@ static int __configure_input_port(struct vpu_dev_session *session)
 	return 0;
 }
 
-static int __configure_output_port(struct vpu_dev_session *session)
+static int __configure_output_port(struct vpu_dev_session *session, int port)
 {
 	struct vpu_prop_session_output out_param;
 	int ret = 0;
 
-	translate_output_format_to_hfi(&session->port_info[OUTPUT_PORT],
+	translate_output_format_to_hfi(&session->port_info[port],
 			&out_param);
-	ret = vpu_hw_session_s_output_params(session->id, &out_param);
+	ret = vpu_hw_session_s_output_params(session->id,
+			translate_port_id(port), &out_param);
 	if (ret) {
-		pr_err("Failed to set output port config\n");
+		pr_err("Failed to set output port %d config\n", port);
 		return ret;
 	}
 
-	if (session->port_info[OUTPUT_PORT].destination
+	if (session->port_info[port].destination
 					!= VPU_OUTPUT_TYPE_HOST) {
 		struct vpu_data_pkt out_dest_ch;
 		memset(&out_dest_ch, 0, sizeof(out_dest_ch));
 		out_dest_ch.payload[0] = translate_output_destination_ch(
-				session->port_info[OUTPUT_PORT].destination);
+				session->port_info[port].destination);
 		out_dest_ch.size = sizeof(out_dest_ch);
 		ret = vpu_hw_session_s_property(session->id,
 				VPU_PROP_SESSION_SINK_CONFIG,
 				&out_dest_ch, sizeof(out_dest_ch));
 		if (ret) {
-			pr_err("Failed to set port 1 dest ch\n");
+			pr_err("Failed to set port %d dest ch\n", port);
 			return ret;
 		}
 	}
@@ -1294,8 +1349,7 @@ static int __do_commit(struct vpu_dev_session *session,
 		session->load = __calculate_session_load(session);
 
 	ret = vpu_hw_session_commit(session->id, commit_type,
-			__get_vpu_load(session->core),
-			__get_frequency_mode(session));
+			__get_vpu_load(session), __get_power_mode(session));
 	if (ret)
 		pr_err("Commit Failed\n");
 	else
@@ -1315,9 +1369,15 @@ int commit_initial_config(struct vpu_dev_session *session)
 	if (ret)
 		return ret;
 
-	ret = __configure_output_port(session);
+	ret = __configure_output_port(session, OUTPUT_PORT);
 	if (ret)
 		return ret;
+
+	if (session->dual_output) {
+		ret = __configure_output_port(session, OUTPUT_PORT2);
+		if (ret)
+			return ret;
+	}
 
 	ret = __do_commit(session, CH_COMMIT_AT_ONCE, 1);
 	if (ret)
@@ -1342,8 +1402,8 @@ int commit_port_config(struct vpu_dev_session *session,	int port, int new_load)
 		if (ret)
 			return ret;
 
-	} else if (port == OUTPUT_PORT) {
-		ret = __configure_output_port(session);
+	} else if (port == OUTPUT_PORT || port == OUTPUT_PORT2) {
+		ret = __configure_output_port(session, port);
 		if (ret)
 			return ret;
 	} else {

@@ -11,6 +11,11 @@
  */
 
 &soc {
+	msm_bus: qcom,kgsl-busmon{
+		label = "kgsl-busmon";
+		compatible = "qcom,kgsl-busmon";
+	};
+
 	msm_gpu: qcom,kgsl-3d0@fdb00000 {
 		label = "kgsl-3d0";
 		compatible = "qcom,kgsl-3d0", "qcom,kgsl-3d";
@@ -27,7 +32,12 @@
 
 		qcom,idle-timeout = <8>; //<HZ/12>
 		qcom,strtstp-sleepwake;
-		qcom,clk-map = <0x00000006>; //KGSL_CLK_CORE | KGSL_CLK_IFACE
+
+		/*
+		 * Clocks = KGSL_CLK_CORE | KGSL_CLK_IFACE |
+		 * KGSL_CLK_RBBMTIMER
+		 */
+		qcom,clk-map = <0x00000086>;
 
 		/* Bus Scale Settings */
 		qcom,bus-control;
@@ -40,14 +50,14 @@
 				<26 512 0 2400000>,  <89 662 0 3200000>,     // gpu=240 bus=150
 				<26 512 0 3200000>,  <89 662 0 3200000>,     // gpu=240 bus=200
 				<26 512 0 4915200>,  <89 662 0 3200000>,     // gpu=240 bus=307.2
-				<26 512 0 6297600>,  <89 662 0 3200000>,     // gpu=240 bus=393.6
+				<26 512 0 6144000>,  <89 662 0 3200000>,     // gpu=240 bus=384
 
 				<26 512 0 3200000>,  <89 662 0 4800000>,     // gpu=300 bus=200
 				<26 512 0 4915200>,  <89 662 0 4800000>,     // gpu=300 bus=307.2
-				<26 512 0 6297600>,  <89 662 0 4800000>,     // gpu=300 bus=393.6
+				<26 512 0 6144000>,  <89 662 0 4800000>,     // gpu=300 bus=384
 				<26 512 0 8448000>,  <89 662 0 4800000>,     // gpu=300 bus=528
 
-				<26 512 0 6297600>,  <89 662 0 5600000>,     // gpu=389 bus=393.6
+				<26 512 0 6144000>,  <89 662 0 5600000>,     // gpu=389 bus=384
 				<26 512 0 8448000>,  <89 662 0 5600000>,     // gpu=389 bus=528
 				<26 512 0 10598400>, <89 662 0 5600000>,     // gpu=389 bus=662.4
 
@@ -84,42 +94,36 @@
 				reg = <0>;
 				qcom,gpu-freq = <600000000>;
 				qcom,bus-freq = <16>;
-				qcom,io-fraction = <33>;
 			};
 
 			qcom,gpu-pwrlevel@1 {
 				reg = <1>;
 				qcom,gpu-freq = <500000000>;
 				qcom,bus-freq = <13>;
-				qcom,io-fraction = <66>;
 			};
 
 			qcom,gpu-pwrlevel@2 {
 				reg = <2>;
 				qcom,gpu-freq = <389000000>;
 				qcom,bus-freq = <10>;
-				qcom,io-fraction = <66>;
 			};
 
 			qcom,gpu-pwrlevel@3 {
 				reg = <3>;
 				qcom,gpu-freq = <300000000>;
 				qcom,bus-freq = <7>;
-				qcom,io-fraction = <100>;
 			};
 
 			qcom,gpu-pwrlevel@4 {
 				reg = <4>;
 				qcom,gpu-freq = <240000000>;
 				qcom,bus-freq = <3>;
-				qcom,io-fraction = <100>;
 			};
 
 			qcom,gpu-pwrlevel@5 {
 				reg = <5>;
 				qcom,gpu-freq = <27000000>;
 				qcom,bus-freq = <0>;
-				qcom,io-fraction = <0>;
 			};
 		};
 
