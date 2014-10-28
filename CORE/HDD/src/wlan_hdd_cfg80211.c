@@ -13064,6 +13064,14 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
                   FL("already PNO is enabled"));
        return -EBUSY;
     }
+
+    if (VOS_STATUS_SUCCESS != wlan_hdd_cancel_remain_on_channel(pHddCtx))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: abort ROC failed ", __func__);
+        return -EBUSY;
+    }
+
     pHddCtx->isPnoEnable = TRUE;
 
     pPnoRequest = (tpSirPNOScanReq) vos_mem_malloc(sizeof (tSirPNOScanReq));
