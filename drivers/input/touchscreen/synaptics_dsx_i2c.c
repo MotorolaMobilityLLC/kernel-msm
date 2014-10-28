@@ -1087,7 +1087,6 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	int retval;
 	unsigned int reset;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
@@ -1097,13 +1096,7 @@ static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 	if (reset != 1)
 		return -EINVAL;
 
-	retval = synaptics_rmi4_reset_device(rmi4_data, NULL);
-	if (retval < 0) {
-		dev_err(dev,
-				"%s: Failed to issue reset command, error = %d\n",
-				__func__, retval);
-		return retval;
-	}
+	synaptics_dsx_ic_reset(rmi4_data, true);
 
 	return count;
 }
