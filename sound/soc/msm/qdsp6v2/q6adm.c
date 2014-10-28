@@ -149,7 +149,7 @@ int adm_get_topology_for_port_from_copp_id(int port_id, int copp_id)
 		if (atomic_read(&this_adm.copp.id[port_idx][idx]) == copp_id)
 			return atomic_read(&this_adm.copp.topology[port_idx]
 								  [idx]);
-	pr_err("%s: Invalid copp_id %d port_id 0x%x\n",
+	pr_debug("%s: Invalid copp_id %d port_id 0x%x\n",
 		__func__, copp_id, port_id);
 	return 0;
 }
