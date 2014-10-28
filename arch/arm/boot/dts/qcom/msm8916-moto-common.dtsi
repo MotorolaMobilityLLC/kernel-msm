@@ -165,11 +165,9 @@
 	};
 
 	mpp@a100 { /* MPP 2 */
-		/* CCP_RESOUT_N */
-		status = "ok";
-		qcom,mode = <0>;      /* Digital Input */
-		qcom,vin-sel = <2>;   /* VIN 2 (1.8V) */
-		qcom,src-sel = <0>;   /* GPIO */
+		/* HOST_DET */
+		qcom,mode = <4>;      /* Analog Input */
+		qcom,ain-route = <1>; /* QPNP_PIN_AIN_AMUX_CH6 */
 		qcom,master-en = <1>; /* Enable MPP */
 	};
 
@@ -918,6 +916,16 @@
 		reg = <0>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <7>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+	chan@11 {
+		label = "host_det";
+		reg = <0x11>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
 		qcom,calibration-type = "absolute";
 		qcom,scale-function = <0>;
 		qcom,hw-settle-time = <0>;
