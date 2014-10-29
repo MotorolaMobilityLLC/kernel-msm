@@ -1464,13 +1464,8 @@ int kgsl_pwrctrl_wake(struct kgsl_device *device, int priority)
 	kgsl_pwrctrl_request_state(device, KGSL_STATE_ACTIVE);
 	switch (device->state) {
 	case KGSL_STATE_SLUMBER:
-		/* default 501 will allow PC to happen, set it to 490 to
-		 * prevent PC happening during adreno_start; */
-		pm_qos_update_request(&device->pwrctrl.pm_qos_req_dma, 490);
 		status = device->ftbl->start(device, priority);
-		/* revert it back to default 501 */
-		pm_qos_update_request(&device->pwrctrl.pm_qos_req_dma,
-			device->pwrctrl.pm_qos_latency);
+
 		if (status) {
 			kgsl_pwrctrl_request_state(device, KGSL_STATE_NONE);
 			KGSL_DRV_ERR(device, "start failed %d\n", status);
