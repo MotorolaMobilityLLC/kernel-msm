@@ -282,8 +282,7 @@ int arizona_init_gpio(struct snd_soc_codec *codec)
 	struct arizona *arizona = priv->arizona;
 	int i;
 
-/* QCOM have already got a mutex lock so we need to remove it from our driver
-	mutex_lock(&codec->card->dapm_mutex); */
+	mutex_lock(&codec->card->dapm_mutex);
 
 	switch (arizona->type) {
 	case WM8280:
@@ -311,8 +310,7 @@ int arizona_init_gpio(struct snd_soc_codec *codec)
 		}
 	}
 
-/* QCOM have already got a mutex lock so we need to remove it from our driver
-	mutex_unlock(&codec->card->dapm_mutex); */
+	mutex_unlock(&codec->card->dapm_mutex);
 
 	return 0;
 }
