@@ -2303,7 +2303,9 @@ static int florida_codec_probe(struct snd_soc_codec *codec)
 		return ret;
 	}
 
+	mutex_lock(&codec->card->dapm_mutex);
 	snd_soc_dapm_disable_pin(&codec->dapm, "HAPTICS");
+	mutex_unlock(&codec->card->dapm_mutex);
 
 	priv->core.arizona->dapm = &codec->dapm;
 
@@ -2320,7 +2322,9 @@ static int florida_codec_probe(struct snd_soc_codec *codec)
 			"Failed to set DSP IRQ to wake source: %d\n",
 			ret);
 
+	mutex_lock(&codec->card->dapm_mutex);
 	snd_soc_dapm_enable_pin(&codec->dapm, "DRC2 Signal Activity");
+	mutex_unlock(&codec->card->dapm_mutex);
 
 	ret = regmap_update_bits(arizona->regmap, ARIZONA_IRQ2_STATUS_3_MASK,
 				 ARIZONA_IM_DRC2_SIG_DET_EINT2,
