@@ -269,7 +269,6 @@
 		interrupt-names = "core_irq","bam_irq";
 		qcom,bam-tx-ep-pipe-index = <0>;
 		qcom,bam-rx-ep-pipe-index = <1>;
-		qcom,msm-obs = <1>;
 		status = "ok";
 
 		qcom,msm-bus,name = "blsp1_uart0";
