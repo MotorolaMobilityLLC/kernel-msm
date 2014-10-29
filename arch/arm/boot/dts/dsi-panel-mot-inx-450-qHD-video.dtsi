@@ -17,6 +17,7 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	mot_inx_450_qhd_vid_v0: qcom,mdss_dsi_mot_inx_450_qhd_video_v0 {
+		qcom,panel-esd-power-mode-chk = <0x9C>;
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_inx_qhd_450_v0";
 		qcom,mdss-dsi-panel-supplier = "inx";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
