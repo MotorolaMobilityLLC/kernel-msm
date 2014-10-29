@@ -178,6 +178,8 @@ static struct drv260x {
 	unsigned char rated_voltage;
 	unsigned char overdrive_voltage;
 	struct regulator *vibrator_vdd;
+	int use_default_calibration;
+	unsigned char default_calibration[5];
 } *drv260x;
 
 static struct vibrator {
@@ -299,6 +301,8 @@ static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
 {
 	struct drv260x_platform_data *pdata;
 	struct device_node *np = client->dev.of_node;
+	const u32 *regs_arr;
+	int regs_len , i;
 
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 
@@ -319,6 +323,21 @@ static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
 						&pdata->disable_calibration);
 	pdata->vibrator_vdd = devm_regulator_get(&client->dev, "vibrator_vdd");
 	pdata->static_vdd = devm_regulator_get(&client->dev, "static-vdd");
+
+	regs_arr = of_get_property(np, "calibration-data",
+			&regs_len);
+	regs_len /= sizeof(u32);
+
+	if (!regs_arr || (regs_len != 5)) {
+		pr_warn("drv2605: No default calibration data\n");
+		regs_len = 0;
+	} else {
+		pdata->calibration_data = devm_kzalloc(&client->dev,
+					sizeof(unsigned char) * regs_len,
+					GFP_KERNEL);
+		for (i = 0; i < regs_len; i++)
+			pdata->calibration_data[i] = be32_to_cpu(regs_arr[i]);
+	}
 
 	return pdata;
 }
@@ -745,6 +764,12 @@ static int drv260x_probe(struct i2c_client *client,
 	if ((pdata->effects_library >= LIBRARY_A) &&
 		(pdata->effects_library <= LIBRARY_F))
 		g_effect_bank = pdata->effects_library;
+	if (pdata->calibration_data) {
+		drv260x->use_default_calibration = 1;
+		memcpy(&drv260x->default_calibration,
+			pdata->calibration_data,
+			sizeof(drv260x->default_calibration));
+	}
 
 	INIT_WORK(&vibdata.work_probe, probe_work);
 	schedule_work(&vibdata.work_probe);
@@ -852,6 +877,14 @@ static void probe_work(struct work_struct *work)
 
 	/* Read calibration results */
 	drv260x_read_reg_val(reinit_sequence, sizeof(reinit_sequence));
+
+	if (drv260x->use_default_calibration) {
+		reinit_sequence[3] = drv260x->default_calibration[0];
+		reinit_sequence[5] = drv260x->default_calibration[1];
+		reinit_sequence[7] = drv260x->default_calibration[2];
+		reinit_sequence[9] = drv260x->default_calibration[3];
+		reinit_sequence[11] = drv260x->default_calibration[4];
+	}
 
 	/* Read device ID */
 	device_id = (status & DEV_ID_MASK);
