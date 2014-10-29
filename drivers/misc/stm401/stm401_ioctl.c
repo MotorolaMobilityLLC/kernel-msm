@@ -59,6 +59,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned char bytes[3];
 	unsigned short delay;
 	unsigned long current_posix_time;
+	unsigned int handle;
 	struct timespec current_time;
 
 	if (mutex_lock_interruptible(&ps_stm401->lock) != 0)
@@ -787,6 +788,20 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			stm401_wake(ps_stm401);
 			lowpower_mode = stm401_cmdbuff[0];
 		}
+		break;
+	case STM401_IOCTL_SET_FLUSH:
+		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_FLUSH");
+		if (ps_stm401->mode == BOOTMODE)
+			break;
+		if (copy_from_user(&handle, argp, sizeof(unsigned int))) {
+			dev_err(&ps_stm401->client->dev,
+				"Copy flush handle returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		handle = cpu_to_be32(handle);
+		stm401_as_data_buffer_write(ps_stm401, DT_FLUSH,
+				(char *)&handle, 4, 0);
 		break;
 	}
 
