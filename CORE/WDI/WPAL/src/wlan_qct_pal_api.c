@@ -224,6 +224,7 @@ void *wpalDmaMemoryAllocate(wpt_uint32 size, void **ppPhysicalAddr)
                  "%s Unable to allocate DMA buffer", __func__);
      return NULL;
    }
+   wpalMemoryZero(pv, uAllocLen);
 
    
    ((tPalDmaMemInfo *)pv)->length  = uAllocLen;
