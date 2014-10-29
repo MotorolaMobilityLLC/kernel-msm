@@ -912,6 +912,14 @@
 		qcom,master-en = <1>;
 	};
 
+	gpio@ca00 { /* GPIO 11 - WLAN_EXT_REG_EN / AP_VIBE_EN */
+		status = "okay";
+		qcom,mode = <1>;         /* Digital output*/
+		qcom,vin-sel = <2>;      /* VIN2 */
+		qcom,src-sel = <0>;      /* GPIO */
+		qcom,master-en = <1>;    /* Enable GPIO */
+	};
+
 	gpio@cc00 { /* GPIO 13 - NFC_POWER_ON */
 		status = "okay";
 		qcom,mode = <1>; /* Output */
