@@ -309,3 +309,7 @@
 		qcom,fast-avg-setup = <0>;
 	};
 };
+&sdhc_2 {
+	qcom,pad-drv-on = <0x5 0x2 0x2>; /* 12mA, 6mA, 6mA */
+	qcom,bus-speed-mode = "SDR12_1p8v", "SDR25_1p8v", "SDR50_1p8v", "DDR_1p8v", "SDR104_1p8v";
+};
