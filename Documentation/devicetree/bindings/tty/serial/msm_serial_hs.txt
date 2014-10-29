@@ -59,11 +59,14 @@ need to configured.
 Gpio's are optional if it is required to be not configured by UART driver or
 case where there is nothing connected and we want to use internal loopback mode
 for uart.
-- qcom, wakeup_irq : UART RX GPIO IRQ line to be configured as wakeup source.
+- qcom, wakeup_irq : UART RX GPIO IRQ line to be configured as wakeup source in
+the case of In Band Sleep
 - qcom,inject-rx-on-wakeup : inject_rx_on_wakeup enables feature where on
 receiving interrupt with UART RX GPIO IRQ line (i.e. above wakeup_irq property),
 HSUART driver injects provided character with property rx_to_inject.
-- qcom, rx-char-to-inject : The character to be inserted on wakeup.
+This should be configured when wakeup interrupt is configured.
+- qcom, rx-char-to-inject : The character to be inserted on wakeup. This should
+be configured when wakeup interrupt is configured.
 - qcom, no-suspend-delay : This decides system to go to suspend immediately
 or not
 
