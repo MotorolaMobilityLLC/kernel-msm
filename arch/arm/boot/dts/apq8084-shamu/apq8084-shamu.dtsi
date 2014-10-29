@@ -467,8 +467,9 @@
 		default_effect = <17>;          /* Strong Click 100% */
 		rated_voltage = <0x70>;         /* 2.4v */
 		overdrive_voltage = <0x89>;     /* 3.0v */
-		disable_calibration  = <1>;     /* Disable boot-up calibration */
+		disable_calibration  = <2>;     /* Disable boot-up calibration */
 		static-vdd-supply = <&hdmi_vreg>;
+		calibration-data = <0x08 0xA1 0x27 0x93 0xf5>;
 	};
 
 	tfa9890@34 {
