@@ -223,6 +223,8 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p2a.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p2ad.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p2b.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p2bd.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p3.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p3d.dtb
 
 # Osprey
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p0.dtb
