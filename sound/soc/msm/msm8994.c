@@ -2504,6 +2504,18 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.platform_name  = "msm-pcm-afe",
 		.ignore_suspend = 1,
 	},
+#ifdef CONFIG_SND_SOC_FLORIDA
+	{
+		.name = "CPU-DSP Voice Control",
+		.stream_name = "CPU-DSP Voice Control",
+		.cpu_dai_name = "florida-cpu-voicectrl",
+		.codec_name = "florida-codec",
+		.codec_dai_name = "florida-dsp-voicectrl",
+		.platform_name  = "florida-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+#endif
 	{
 		.name = "MSM8994 Compress1",
 		.stream_name = "Compress1",
