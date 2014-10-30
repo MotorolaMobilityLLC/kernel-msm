@@ -16,10 +16,10 @@
  * file.
  */
 
-#include "msm8226.dtsi"
-#include "msm8226-memory.dtsi"
-#include "msm8226-qseecom.dtsi"
-#include "msm8226-v2-pm.dtsi"
+/include/ "msm8226.dtsi"
+/include/ "msm8226-memory.dtsi"
+/include/ "msm8226-qseecom.dtsi"
+/include/ "msm8226-v2-pm.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8926";
