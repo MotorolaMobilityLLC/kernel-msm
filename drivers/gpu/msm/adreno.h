@@ -64,12 +64,6 @@
 	((_dev)->gpucore->features & (_bit))
 
 /* Adreno core features */
-<<<<<<< HEAD
-#define ADRENO_USES_OCMEM BIT(0)
-#define IOMMU_FLUSH_TLB_ON_MAP BIT(1)
-||||||| merged common ancestors
-#define ADRENO_USES_OCMEM BIT(0)
-=======
 /* The core uses OCMEM for GMEM/binning memory */
 #define ADRENO_USES_OCMEM     BIT(0)
 /* The core requires the TLB to be flushed on map */
@@ -84,7 +78,6 @@
 #define ADRENO_SPTP_PC BIT(5)
 /* The core supports Peak Power Detection(PPD)*/
 #define ADRENO_PPD BIT(6)
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 /* Flags to control command packet settings */
 #define KGSL_CMD_FLAGS_NONE             0

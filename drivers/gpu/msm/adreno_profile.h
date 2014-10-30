@@ -63,27 +63,6 @@ struct adreno_profile {
 						sizeof(unsigned int))
 
 #ifdef CONFIG_DEBUG_FS
-<<<<<<< HEAD
-void adreno_profile_init(struct kgsl_device *device);
-void adreno_profile_close(struct kgsl_device *device);
-int adreno_profile_process_results(struct kgsl_device *device);
-void adreno_profile_preib_processing(struct kgsl_device *device,
-		struct adreno_context *drawctxt, unsigned int *cmd_flags,
-		unsigned int **rbptr, unsigned int *cmds_gpu);
-void adreno_profile_postib_processing(struct kgsl_device *device,
-		unsigned int *cmd_flags, unsigned int **rbptr,
-		unsigned int *cmds_gpu);
-||||||| merged common ancestors
-void adreno_profile_init(struct kgsl_device *device);
-void adreno_profile_close(struct kgsl_device *device);
-int adreno_profile_process_results(struct kgsl_device *device);
-void adreno_profile_preib_processing(struct kgsl_device *device,
-		unsigned int context_id, unsigned int *cmd_flags,
-		unsigned int **rbptr, unsigned int *cmds_gpu);
-void adreno_profile_postib_processing(struct kgsl_device *device,
-		unsigned int *cmd_flags, unsigned int **rbptr,
-		unsigned int *cmds_gpu);
-=======
 void adreno_profile_init(struct adreno_device *adreno_dev);
 void adreno_profile_close(struct adreno_device *adreno_dev);
 int adreno_profile_process_results(struct  adreno_device *adreno_dev);
@@ -92,7 +71,6 @@ void adreno_profile_preib_processing(struct adreno_device *adreno_dev,
 		unsigned int **rbptr);
 void adreno_profile_postib_processing(struct  adreno_device *adreno_dev,
 		unsigned int *cmd_flags, unsigned int **rbptr);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 #else
 static inline void adreno_profile_init(struct adreno_device *adreno_dev) { }
 static inline void adreno_profile_close(struct adreno_device *adreno_dev) { }
@@ -102,20 +80,10 @@ static inline int adreno_profile_process_results(
 	return 0;
 }
 
-<<<<<<< HEAD
-static inline void adreno_profile_preib_processing(struct kgsl_device *device,
-		struct adreno_context *drawctxt, unsigned int *cmd_flags,
-		unsigned int **rbptr, unsigned int *cmds_gpu) { }
-||||||| merged common ancestors
-static inline void adreno_profile_preib_processing(struct kgsl_device *device,
-		unsigned int context_id, unsigned int *cmd_flags,
-		unsigned int **rbptr, unsigned int *cmds_gpu) { }
-=======
 static inline void adreno_profile_preib_processing(
 		struct adreno_device *adreno_dev,
 		struct adreno_context *drawctxt, unsigned int *cmd_flags,
 		unsigned int **rbptr) { }
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 static inline void adreno_profile_postib_processing(
 		struct adreno_device *adreno_dev,

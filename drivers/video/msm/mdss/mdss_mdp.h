@@ -216,15 +216,9 @@ struct mdss_mdp_ctl {
 	u8 valid_roi;
 
 	int (*start_fnc) (struct mdss_mdp_ctl *ctl);
-<<<<<<< HEAD
-	int (*stop_fnc) (struct mdss_mdp_ctl *ctl);
+	int (*stop_fnc) (struct mdss_mdp_ctl *ctl, int panel_power_state);
 	int (*off_pan_on) (struct mdss_mdp_ctl *ctl);
 	int (*disable_ulps) (struct mdss_mdp_ctl *ctl);
-||||||| merged common ancestors
-	int (*stop_fnc) (struct mdss_mdp_ctl *ctl);
-=======
-	int (*stop_fnc) (struct mdss_mdp_ctl *ctl, int panel_power_state);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	int (*prepare_fnc) (struct mdss_mdp_ctl *ctl, void *arg);
 	int (*display_fnc) (struct mdss_mdp_ctl *ctl, void *arg);
 	int (*wait_fnc) (struct mdss_mdp_ctl *ctl, void *arg);
@@ -242,12 +236,8 @@ struct mdss_mdp_ctl {
 
 	void *priv_data;
 	u32 wb_type;
-<<<<<<< HEAD
 	struct list_head saved_vsync_handlers;
-||||||| merged common ancestors
-=======
 	bool prg_fet;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 };
 
 struct mdss_mdp_mixer {
@@ -911,35 +901,9 @@ int mdss_mdp_wb_get_format(struct msm_fb_data_type *mfd,
 int mdss_mdp_pipe_program_pixel_extn(struct mdss_mdp_pipe *pipe);
 int mdss_mdp_wb_set_secure(struct msm_fb_data_type *mfd, int enable);
 int mdss_mdp_wb_get_secure(struct msm_fb_data_type *mfd, uint8_t *enable);
-<<<<<<< HEAD
-void mdss_mdp_ctl_restore(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_ctl_off_pan_on(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_ctl_disable_ulps(struct mdss_mdp_ctl *ctl);
-void mdss_mdp_footswitch_ctrl_ulps(int on, struct device *dev);
 int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable);
-
-#define mfd_to_mdp5_data(mfd) (mfd->mdp.private1)
-#define mfd_to_mdata(mfd) (((struct mdss_overlay_private *)\
-				(mfd->mdp.private1))->mdata)
-#define mfd_to_ctl(mfd) (((struct mdss_overlay_private *)\
-				(mfd->mdp.private1))->ctl)
-#define mfd_to_wb(mfd) (((struct mdss_overlay_private *)\
-				(mfd->mdp.private1))->wb)
-
-||||||| merged common ancestors
-void mdss_mdp_ctl_restore(struct mdss_mdp_ctl *ctl);
-void mdss_mdp_footswitch_ctrl_ulps(int on, struct device *dev);
-
-#define mfd_to_mdp5_data(mfd) (mfd->mdp.private1)
-#define mfd_to_mdata(mfd) (((struct mdss_overlay_private *)\
-				(mfd->mdp.private1))->mdata)
-#define mfd_to_ctl(mfd) (((struct mdss_overlay_private *)\
-				(mfd->mdp.private1))->ctl)
-#define mfd_to_wb(mfd) (((struct mdss_overlay_private *)\
-				(mfd->mdp.private1))->wb)
-
-=======
 void mdss_mdp_ctl_restore(void);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 int  mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl);
 #endif /* MDSS_MDP_H */

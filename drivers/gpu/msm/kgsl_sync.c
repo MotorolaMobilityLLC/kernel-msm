@@ -166,20 +166,10 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 
 	priv.fence_fd = get_unused_fd_flags(0);
 	if (priv.fence_fd < 0) {
-<<<<<<< HEAD
-		KGSL_DRV_ERR(device, "invalid fence fd\n");
-		ret = priv.fence_fd;
-		goto fail_fd;
-||||||| merged common ancestors
-		KGSL_DRV_ERR(device, "invalid fence fd\n");
-		ret = -EINVAL;
-		goto fail_fd;
-=======
 		KGSL_DRV_ERR(device, "Unable to get a file descriptor: %d\n",
 			priv.fence_fd);
 		ret = priv.fence_fd;
 		goto unlock;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
 	sync_fence_install(fence, priv.fence_fd);
 

@@ -48,20 +48,10 @@ static const struct adreno_gpu_core adreno_gpulist[] = {
 		.major = 3,
 		.minor = 0,
 		.patchid = ANY_ID,
-<<<<<<< HEAD
-		.features = ADRENO_USES_OCMEM | IOMMU_FLUSH_TLB_ON_MAP,
-		.pm4fw = "a330_pm4.fw",
-		.pfpfw = "a330_pfp.fw",
-||||||| merged common ancestors
-		.features = ADRENO_USES_OCMEM,
-		.pm4fw = "a330_pm4.fw",
-		.pfpfw = "a330_pfp.fw",
-=======
 		.features = ADRENO_USES_OCMEM | IOMMU_FLUSH_TLB_ON_MAP |
 			ADRENO_WARM_START | ADRENO_USE_BOOTSTRAP,
 		.pm4fw_name = "a330_pm4.fw",
 		.pfpfw_name = "a330_pfp.fw",
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		.gpudev = &adreno_a3xx_gpudev,
 		.gmem_size = SZ_1M,
 		.pm4_jt_idx = 0x8AD,
@@ -79,20 +69,10 @@ static const struct adreno_gpu_core adreno_gpulist[] = {
 		.major = 0,
 		.minor = 5,
 		.patchid = 0x10,
-<<<<<<< HEAD
-		.pm4fw = "a330_pm4.fw",
-		.pfpfw = "a330_pfp.fw",
-		.features = ADRENO_USES_OCMEM | IOMMU_FLUSH_TLB_ON_MAP,
-||||||| merged common ancestors
-		.pm4fw = "a330_pm4.fw",
-		.pfpfw = "a330_pfp.fw",
-		.features = ADRENO_USES_OCMEM,
-=======
 		.pm4fw_name = "a330_pm4.fw",
 		.pfpfw_name = "a330_pfp.fw",
 		.features = ADRENO_USES_OCMEM | IOMMU_FLUSH_TLB_ON_MAP |
 			ADRENO_WARM_START,
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		.gpudev = &adreno_a3xx_gpudev,
 		.gmem_size = SZ_128K,
 		.pm4_jt_idx = 0x8AD,
@@ -107,20 +87,10 @@ static const struct adreno_gpu_core adreno_gpulist[] = {
 		.major = 0,
 		.minor = 5,
 		.patchid = 0x12,
-<<<<<<< HEAD
-		.features = ADRENO_USES_OCMEM  | IOMMU_FLUSH_TLB_ON_MAP,
-		.pm4fw = "a330_pm4.fw",
-		.pfpfw = "a330_pfp.fw",
-||||||| merged common ancestors
-		.features = ADRENO_USES_OCMEM,
-		.pm4fw = "a330_pm4.fw",
-		.pfpfw = "a330_pfp.fw",
-=======
 		.features = ADRENO_USES_OCMEM  | IOMMU_FLUSH_TLB_ON_MAP |
 			ADRENO_WARM_START,
 		.pm4fw_name = "a330_pm4.fw",
 		.pfpfw_name = "a330_pfp.fw",
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		.gpudev = &adreno_a3xx_gpudev,
 		.gmem_size = SZ_128K,
 		.pm4_jt_idx = 0x8AD,
@@ -188,15 +158,6 @@ static const struct adreno_gpu_core adreno_gpulist[] = {
 		.major = 2,
 		.minor = 0,
 		.patchid = ANY_ID,
-<<<<<<< HEAD
-		.features = ADRENO_USES_OCMEM  | IOMMU_FLUSH_TLB_ON_MAP,
-		.pm4fw = "a420_pm4.fw",
-		.pfpfw = "a420_pfp.fw",
-||||||| merged common ancestors
-		.features = ADRENO_USES_OCMEM,
-		.pm4fw = "a420_pm4.fw",
-		.pfpfw = "a420_pfp.fw",
-=======
 		.features = ADRENO_USES_OCMEM  | IOMMU_FLUSH_TLB_ON_MAP |
 			ADRENO_WARM_START | ADRENO_USE_BOOTSTRAP,
 		.pm4fw_name = "a420_pm4.fw",
@@ -221,7 +182,6 @@ static const struct adreno_gpu_core adreno_gpulist[] = {
 			ADRENO_USE_BOOTSTRAP | ADRENO_SPTP_PC | ADRENO_PPD,
 		.pm4fw_name = "a420_pm4.fw",
 		.pfpfw_name = "a420_pfp.fw",
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		.gpudev = &adreno_a4xx_gpudev,
 		.gmem_size = (SZ_1M + SZ_512K),
 		.pm4_jt_idx = 0x901,

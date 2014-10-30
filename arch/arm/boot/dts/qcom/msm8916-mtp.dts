@@ -12,14 +12,8 @@
 
 /dts-v1/;
 
-<<<<<<< HEAD
-/include/ "msm8916-mtp.dtsi"
-||||||| merged common ancestors
-#include "msm8916-mtp.dtsi"
-=======
 #include "msm8916-mtp.dtsi"
 #include "msm8916-memory.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8916 MTP";

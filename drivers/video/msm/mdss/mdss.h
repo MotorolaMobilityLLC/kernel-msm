@@ -179,12 +179,6 @@ struct mdss_data_type {
 	struct mdss_fudge_factor ib_factor_overlap;
 	struct mdss_fudge_factor clk_factor;
 
-<<<<<<< HEAD
-	u32 *clock_levels;
-	u32 nclk_lvl;
-
-||||||| merged common ancestors
-=======
 	u32 disable_prefill;
 	u32 *clock_levels;
 	u32 nclk_lvl;
@@ -192,7 +186,6 @@ struct mdss_data_type {
 	u32 enable_bw_release;
 	u32 enable_rotator_bw_release;
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	struct mdss_hw_settings *hw_settings;
 
 	struct mdss_mdp_pipe *vig_pipes;

@@ -22,8 +22,6 @@
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
 
-
-
 #define MMSS_SERDES_BASE_PHY 0x04f01000 /* mmss (De)Serializer CFG */
 
 #define MIPI_OUTP(addr, data) writel_relaxed((data), (addr))
@@ -255,7 +253,6 @@ enum {
 	DSI_CTRL_MAX,
 };
 
-<<<<<<< HEAD
 /* DSI controller #0 is always treated as a master in broadcast mode */
 #define DSI_CTRL_MASTER		DSI_CTRL_0
 #define DSI_CTRL_SLAVE		DSI_CTRL_1
@@ -264,8 +261,6 @@ enum {
 #define DSI_LINK_CLKS	BIT(1)
 #define DSI_ALL_CLKS	((DSI_BUS_CLKS) | (DSI_LINK_CLKS))
 
-||||||| merged common ancestors
-=======
 #define DSI_CTRL_LEFT		DSI_CTRL_0
 #define DSI_CTRL_RIGHT		DSI_CTRL_1
 
@@ -273,13 +268,11 @@ enum {
 #define DSI_LINK_CLKS	BIT(1)
 #define DSI_ALL_CLKS	((DSI_BUS_CLKS) | (DSI_LINK_CLKS))
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 #define DSI_EV_PLL_UNLOCKED		0x0001
 #define DSI_EV_MDP_FIFO_UNDERFLOW	0x0002
 #define DSI_EV_DSI_FIFO_EMPTY		0x0003
 #define DSI_EV_MDP_BUSY_RELEASE		0x80000000
 
-<<<<<<< HEAD
 #define DSI_FLAG_CLOCK_MASTER		0x80000000
 struct dsi_cmd {
 	struct dsi_cmd_desc *cmd_desc;
@@ -289,11 +282,6 @@ struct dsi_cmd {
 	char *cmds_buff;
 	int cmds_len;
 };
-||||||| merged common ancestors
-#define DSI_FLAG_CLOCK_MASTER		0x80000000
-
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 struct mdss_dsi_ctrl_pdata {
 	int ndx;	/* panel_num */
 	int (*on) (struct mdss_panel_data *pdata);
@@ -302,14 +290,10 @@ struct mdss_dsi_ctrl_pdata {
 	int (*set_col_page_addr) (struct mdss_panel_data *pdata);
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
-<<<<<<< HEAD
 	int (*event_handler) (int e);
 	void (*panel_reset) (struct mdss_panel_data *pdata, int enable);
 	int (*registered) (struct mdss_panel_data *data);
-||||||| merged common ancestors
-=======
 	void (*switch_mode) (struct mdss_panel_data *pdata, int mode);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	struct mdss_panel_data panel_data;
 	unsigned char *ctrl_base;
 	struct dss_io_data ctrl_io;
@@ -425,19 +409,8 @@ void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl,
 				int enable);
 void mdss_dsi_controller_cfg(int enable,
 				struct mdss_panel_data *pdata);
-<<<<<<< HEAD
-void mdss_dsi_sw_reset(struct mdss_panel_data *pdata);
-
-||||||| merged common ancestors
-void mdss_dsi_sw_reset(struct mdss_panel_data *pdata);
-
-struct mdss_dsi_ctrl_pdata *mdss_dsi_ctrl_slave(
-				struct mdss_dsi_ctrl_pdata *ctrl);
-
-=======
 void mdss_dsi_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl_pdata, bool restore);
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 irqreturn_t mdss_dsi_isr(int irq, void *ptr);
 void mdss_dsi_irq_handler_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
@@ -462,70 +435,18 @@ void mdss_dsi_wait4video_done(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
-<<<<<<< HEAD
 bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
 void mdss_dsi_cmd_dma_trigger_sel(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 			int enable);
 void mdss_mdp_cmd_clk_enable(void);
 void mdss_mdp_cmd_clk_disable(void);
-||||||| merged common ancestors
-bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl);
-=======
 int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
-bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
 void mdss_dsi_ctrl_setup(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_dln0_phy_err(struct mdss_dsi_ctrl_pdata *ctrl);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		bool cmd_cfg_cont_splash);
-<<<<<<< HEAD
-
-static inline bool mdss_dsi_broadcast_mode_enabled(void)
-{
-	return ctrl_list[DSI_CTRL_MASTER]->shared_pdata.broadcast_enable &&
-		ctrl_list[DSI_CTRL_SLAVE] &&
-		ctrl_list[DSI_CTRL_SLAVE]->shared_pdata.broadcast_enable;
-}
-
-static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_master_ctrl(void)
-{
-	if (mdss_dsi_broadcast_mode_enabled())
-		return ctrl_list[DSI_CTRL_MASTER];
-	else
-		return NULL;
-}
-
-static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_slave_ctrl(void)
-{
-	if (mdss_dsi_broadcast_mode_enabled())
-		return ctrl_list[DSI_CTRL_SLAVE];
-	else
-		return NULL;
-}
-
-static inline bool mdss_dsi_is_master_ctrl(struct mdss_dsi_ctrl_pdata *ctrl)
-{
-	return mdss_dsi_broadcast_mode_enabled() &&
-		(ctrl->ndx == DSI_CTRL_MASTER);
-}
-
-static inline bool mdss_dsi_is_slave_ctrl(struct mdss_dsi_ctrl_pdata *ctrl)
-{
-	return mdss_dsi_broadcast_mode_enabled() &&
-		(ctrl->ndx == DSI_CTRL_SLAVE);
-}
-
-static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl_by_index(int ndx)
-{
-	if (ndx >= DSI_CTRL_MAX)
-		return NULL;
-
-	return ctrl_list[ndx];
-}
-||||||| merged common ancestors
-=======
 int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 				char *dst_format);
 
@@ -619,5 +540,4 @@ static inline bool mdss_dsi_ulps_feature_enabled(
 	return pdata->panel_info.ulps_feature_enabled;
 }
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 #endif /* MDSS_DSI_H */

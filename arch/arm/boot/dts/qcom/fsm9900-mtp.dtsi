@@ -10,17 +10,7 @@
  * GNU General Public License for more details.
  */
 
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/fsm9900-mtp.dts
-/dts-v1/;
-
-/include/ "fsm9900.dtsi"
-||||||| merged common ancestors
-/dts-v1/;
-
 #include "fsm9900.dtsi"
-=======
-#include "fsm9900.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm/boot/dts/qcom/fsm9900-mtp.dtsi
 
 / {
 	aliases {

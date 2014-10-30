@@ -10,9 +10,9 @@
  * GNU General Public License for more details.
  */
 
-/include/ "msm8916.dtsi"
-/include/ "msm8916-pinctrl.dtsi"
-/include/ "msm8916-camera-sensor-cdp.dtsi"
+#include "msm8916.dtsi"
+#include "msm8916-pinctrl.dtsi"
+#include "msm8916-camera-sensor-cdp.dtsi"
 
 / {
 	aliases {
@@ -413,15 +413,9 @@
 	};
 };
 
-<<<<<<< HEAD
-/include/ "dsi-panel-jdi-1080p-video.dtsi"
-||||||| merged common ancestors
-#include "dsi-panel-jdi-1080p-video.dtsi"
-=======
 #include "dsi-panel-jdi-1080p-video.dtsi"
 #include "dsi-panel-nt35590-720p-video.dtsi"
 #include "dsi-panel-nt35590-720p-cmd.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";

@@ -11,25 +11,12 @@
  */
 
 /dts-v1/;
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/msm8226-v2-720p-w-cdp.dts
-/include/ "msm8226-v2.dtsi"
-/include/ "msm8226-w-memory.dtsi"
-/include/ "msm8226-w-qseecom.dtsi"
-/include/ "msm8226-720p-cdp.dtsi"
-/include/ "msm8226-camera-sensor-cdp.dtsi"
-||||||| merged common ancestors
-#include "msm8226-v2.dtsi"
-#include "msm8226-720p-cdp.dtsi"
-#include "msm8226-camera-sensor-cdp.dtsi"
-=======
 #include "msm8226-v2.dtsi"
 #include "msm8226-w-memory.dtsi"
 #include "msm8226-w-qseecom.dtsi"
-#include "msm8226-w-sharedmem.dtsi"
 #include "msm8226-720p-cdp.dtsi"
 #include "msm8226-camera-sensor-cdp.dtsi"
 #include "msm8x26w-gpu.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm/boot/dts/qcom/msm8226-v2-320p-w-cdp.dts
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8226v2W CDP";
@@ -40,22 +27,6 @@
 &smsc_hub {
 	status = "ok";
 };
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/msm8226-v2-720p-w-cdp.dts
-
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
-};
-
-&dsi_nt35590_qvga_cmd {
-	qcom,cont-splash-enabled;
-};
-
-&mdss_fb0 {
-	/* cont_splash memory*/
-	qcom,memblock-reserve = <0x04200000 0x64000>;
-};
-||||||| merged common ancestors
-=======
 
 &mdss_fb0 {
 	/* cont_splash memory*/
@@ -73,4 +44,3 @@
 &pm8x26_rtc {
 	qcom,qpnp-rtc-write = <1>;
 };
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm/boot/dts/qcom/msm8226-v2-320p-w-cdp.dts

@@ -334,7 +334,6 @@ struct kgsl_device {
 	int open_count;
 
 	struct mutex mutex;
-	atomic64_t mutex_owner;
 	uint32_t state;
 	uint32_t requested_state;
 
@@ -899,41 +898,8 @@ static inline int kgsl_sysfs_store(const char *buf, unsigned int *ptr)
 	if (ptr)
 		*ptr = val;
 
-	return 0;
-}
-<<<<<<< HEAD
-
-/**
- * kgsl_mutex_lock() -- try to acquire the mutex if current thread does not
- *                      already own it
- * @mutex: mutex to lock
- * @owner: current mutex owner
- */
-static inline int kgsl_mutex_lock(struct mutex *mutex, atomic64_t *owner)
-{
-
-	if (atomic64_read(owner) != (long)current) {
-		mutex_lock(mutex);
-		atomic64_set(owner, (long)current);
-		/* Barrier to make sure owner is updated */
-		smp_wmb();
 		return 0;
 	}
-	return 1;
-}
-
-/**
- * kgsl_mutex_unlock() -- Clear the owner and unlock the mutex
- * @mutex: mutex to unlock
- * @owner: current mutex owner
- */
-static inline void kgsl_mutex_unlock(struct mutex *mutex, atomic64_t *owner)
-{
-	atomic64_set(owner, 0);
-	mutex_unlock(mutex);
-}
-||||||| merged common ancestors
-=======
 
 /*
  * A helper macro to print out "not enough memory functions" - this
@@ -994,5 +960,4 @@ void kgsl_snapshot_add_section(struct kgsl_device *device, u16 id,
 	size_t (*func)(struct kgsl_device *, u8 *, size_t, void *),
 	void *priv);
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 #endif  /* __KGSL_DEVICE_H */

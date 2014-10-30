@@ -12,14 +12,8 @@
 
 /dts-v1/;
 
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/msm8936-rumi.dts
-/include/ "msm8936.dtsi"
-||||||| merged common ancestors
-#include "msm8936.dtsi"
-=======
 #include "msmferrum.dtsi"
 #include "msmferrum-pinctrl.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm/boot/dts/qcom/msmferrum-rumi.dts
 
 / {
 	model = "Qualcomm Technologies, Inc. MSMFERRUM RUMI";

@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/include/ "skeleton.dtsi"
+#include "skeleton.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8226";
@@ -24,76 +24,6 @@
 		sdhc3 = &sdhc_3; /* SDC3 SDIO slot */
 	};
 
-<<<<<<< HEAD
-||||||| merged common ancestors
-	memory {
-		secure_mem: secure_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0x6D00000>;
-			label = "secure_mem";
-		};
-
-		adsp_mem: adsp_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0x2a00000>;
-			label = "adsp_mem";
-		};
-
-		qsecom_mem: qsecom_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0xd00000>;
-			label = "qsecom_mem";
-		};
-
-		fb_mem: fb_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0x800000>;
-			label = "fb_mem";
-		};
-
-		audio_mem: audio_region@0 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			reg = <0 0x314000>;
-			label = "audio_mem";
-		};
-
-		modem_mem: modem_region@8400000 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
-			reg = <0x08400000 0x4000000>;
-			label = "modem_mem";
-		};
-
-		peripheral_mem: peripheral_region@d200000 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
-			reg = <0x0d200000 0xa00000>;
-			label = "peripheral_mem";
-		};
-
-		adsp_venus_mem: adsp_venus_region@dc00000 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
-			reg = <0x0dc00000 0x1900000>;
-			label = "adsp_venus_mem";
-		};
-
-		external_image_mem: external_image_region@fa00000 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
-			reg = <0xfa00000 0x500000>;
-			label = "external_image_mem";
-
-		};
-
-	};
-
-=======
 	cpus {
 		#size-cells = <0>;
 		#address-cells = <1>;
@@ -123,24 +53,9 @@
 		};
 	};
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	soc: soc { };
 };
 
-<<<<<<< HEAD
-/include/ "msm8226-camera.dtsi"
-/include/ "msm-gdsc.dtsi"
-/include/ "msm8226-iommu.dtsi"
-/include/ "msm8226-smp2p.dtsi"
-/include/ "msm8226-gpu.dtsi"
-/include/ "msm8226-bus.dtsi"
-/include/ "msm8226-mdss.dtsi"
-/include/ "msm8226-coresight.dtsi"
-/include/ "msm8226-iommu-domains.dtsi"
-/include/ "msm8226-pinctrl.dtsi"
-/include/ "msm-rdbg.dtsi"
-||||||| merged common ancestors
-#include "msm8226-ion.dtsi"
 #include "msm8226-camera.dtsi"
 #include "msm-gdsc.dtsi"
 #include "msm8226-iommu.dtsi"
@@ -152,19 +67,6 @@
 #include "msm8226-iommu-domains.dtsi"
 #include "msm8226-pinctrl.dtsi"
 #include "msm-rdbg.dtsi"
-=======
-#include "msm8226-camera.dtsi"
-#include "msm-gdsc.dtsi"
-#include "msm8226-iommu.dtsi"
-#include "msm8226-smp2p.dtsi"
-#include "msm8226-gpu.dtsi"
-#include "msm8226-bus.dtsi"
-#include "msm8226-mdss.dtsi"
-#include "msm8226-coresight.dtsi"
-#include "msm8226-iommu-domains.dtsi"
-#include "msm8226-pinctrl.dtsi"
-#include "msm-rdbg.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 &soc {
 	#address-cells = <1>;
@@ -924,6 +826,27 @@
 		compatible = "qcom,bcl";
 	};
 
+	rmtfs_smem: qcom,rmtfs_sharedmem@0fd80000 {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x0fd80000 0x00180000>;
+		reg-names = "rmtfs";
+		qcom,client-id = <0x00000001>;
+	};
+
+	dsp_smem: qcom,dsp_sharedmem@0fd60000 {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x0fd60000 0x00020000>;
+		reg-names = "rfsa_dsp";
+		qcom,client-id = <0x011013ec>;
+	};
+
+	mdm_smem: qcom,mdm_sharedmem@0fd60000 {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x0fd60000 0x00020000>;
+		reg-names = "rfsa_mdm";
+		qcom,client-id = <0x011013ed>;
+	};
+
 	sdhc_1: sdhci@f9824900 {
 		compatible = "qcom,sdhci-msm";
 		reg = <0xf9824900 0x11c>, <0xf9824000 0x800>;
@@ -1140,37 +1063,6 @@
 		reg = <0 4>;
 		compatible = "qcom,msm-cpufreq";
 		qcom,cpufreq-table =
-<<<<<<< HEAD
-			<  300000 1525 >,
-			<  384000 1525 >,
-			<  600000 1525 >,
-			<  787200 1525 >,
-			<  998400 4066 >,
-			< 1094400 4066 >,
-			< 1190400 4066 >,
-			< 1305600 4066 >,
-			< 1344000 4066 >,
-			< 1401600 4066 >,
-			< 1497600 4066 >,
-			< 1593600 4066 >,
-			< 1689600 4066 >,
-			< 1785600 4066 >;
-||||||| merged common ancestors
-			<  300000 1525 >,
-			<  384000 1525 >,
-			<  600000 1525 >,
-			<  787200 3051 >,
-			<  998400 4066 >,
-			< 1094400 4066 >,
-			< 1190400 4066 >,
-			< 1305600 4066 >,
-			< 1344000 4066 >,
-			< 1401600 4066 >,
-			< 1497600 4066 >,
-			< 1593600 4066 >,
-			< 1689600 4066 >,
-			< 1785600 4066 >;
-=======
 			<  300000 >,
 			<  384000 >,
 			<  600000 >,
@@ -1185,7 +1077,6 @@
 			< 1593600 >,
 			< 1689600 >,
 			< 1785600 >;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	};
 
 	qcom,ocmem@fdd00000 {
@@ -1239,7 +1130,7 @@
 		linux,contiguous-region = <&adsp_venus_mem>;
 	};
 
-	qcom,pronto@fb21b000 {
+	pronto_pil: qcom,pronto@fb21b000 {
 		compatible = "qcom,pil-tz-generic";
 		reg = <0xfb21b000 0x3000>;
 		interrupts = <0 149 1>;
@@ -1562,9 +1453,9 @@
 	status = "ok";
 };
 
-/include/ "msm-pm8226-rpm-regulator.dtsi"
-/include/ "msm-pm8226.dtsi"
-/include/ "msm8226-regulator.dtsi"
+#include "msm-pm8226-rpm-regulator.dtsi"
+#include "msm-pm8226.dtsi"
+#include "msm8226-regulator.dtsi"
 
 &pm8226_vadc {
 	chan@0 {

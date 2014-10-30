@@ -287,24 +287,6 @@ void ping_close(struct sock *sk, long timeout)
 
 	sk_common_release(sk);
 }
-<<<<<<< HEAD
-EXPORT_SYMBOL_GPL(ping_close);
-
-/* Checks the bind address and possibly modifies sk->sk_bound_dev_if. */
-int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
-			 struct sockaddr *uaddr, int addr_len) {
-	struct net *net = sock_net(sk);
-	if (sk->sk_family == AF_INET) {
-		struct sockaddr_in *addr = (struct sockaddr_in *) uaddr;
-		int chk_addr_ret;
-
-		if (addr_len < sizeof(*addr))
-			return -EINVAL;
-
-		pr_debug("ping_check_bind_addr(sk=%p,addr=%pI4,port=%d)\n",
-			 sk, &addr->sin_addr.s_addr, ntohs(addr->sin_port));
-||||||| merged common ancestors
-=======
 EXPORT_SYMBOL_GPL(ping_close);
 
 /* Checks the bind address and possibly modifies sk->sk_bound_dev_if. */
@@ -321,64 +303,6 @@ int ping_check_bind_addr(struct sock *sk, struct inet_sock *isk,
 		pr_debug("ping_check_bind_addr(sk=%p,addr=%pI4,port=%d)\n",
 			 sk, &addr->sin_addr.s_addr, ntohs(addr->sin_port));
 
-		chk_addr_ret = inet_addr_type(net, addr->sin_addr.s_addr);
-
-		if (addr->sin_addr.s_addr == htonl(INADDR_ANY))
-			chk_addr_ret = RTN_LOCAL;
-
-		if ((sysctl_ip_nonlocal_bind == 0 &&
-		    isk->freebind == 0 && isk->transparent == 0 &&
-		     chk_addr_ret != RTN_LOCAL) ||
-		    chk_addr_ret == RTN_MULTICAST ||
-		    chk_addr_ret == RTN_BROADCAST)
-			return -EADDRNOTAVAIL;
-
-#if IS_ENABLED(CONFIG_IPV6)
-	} else if (sk->sk_family == AF_INET6) {
-		struct sockaddr_in6 *addr = (struct sockaddr_in6 *) uaddr;
-		int addr_type, scoped, has_addr;
-		struct net_device *dev = NULL;
-
-		if (addr_len < sizeof(*addr))
-			return -EINVAL;
-
-		pr_debug("ping_check_bind_addr(sk=%p,addr=%pI6c,port=%d)\n",
-			 sk, addr->sin6_addr.s6_addr, ntohs(addr->sin6_port));
-
-		addr_type = ipv6_addr_type(&addr->sin6_addr);
-		scoped = __ipv6_addr_needs_scope_id(addr_type);
-		if ((addr_type != IPV6_ADDR_ANY &&
-		     !(addr_type & IPV6_ADDR_UNICAST)) ||
-		    (scoped && !addr->sin6_scope_id))
-			return -EINVAL;
-
-		rcu_read_lock();
-		if (addr->sin6_scope_id) {
-			dev = dev_get_by_index_rcu(net, addr->sin6_scope_id);
-			if (!dev) {
-				rcu_read_unlock();
-				return -ENODEV;
-			}
-		}
-		has_addr = pingv6_ops.ipv6_chk_addr(net, &addr->sin6_addr, dev,
-						    scoped);
-		rcu_read_unlock();
-
-		if (!(isk->freebind || isk->transparent || has_addr ||
-		      addr_type == IPV6_ADDR_ANY))
-			return -EADDRNOTAVAIL;
-
-		if (scoped)
-			sk->sk_bound_dev_if = addr->sin6_scope_id;
-#endif
-	} else {
-		return -EAFNOSUPPORT;
-	}
-	return 0;
-}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
-
-<<<<<<< HEAD
 		chk_addr_ret = inet_addr_type(net, addr->sin_addr.s_addr);
 
 		if (addr->sin_addr.s_addr == htonl(INADDR_ANY))
@@ -464,38 +388,6 @@ void ping_clear_saddr(struct sock *sk, int dif)
 #endif
 	}
 }
-||||||| merged common ancestors
-=======
-void ping_set_saddr(struct sock *sk, struct sockaddr *saddr)
-{
-	if (saddr->sa_family == AF_INET) {
-		struct inet_sock *isk = inet_sk(sk);
-		struct sockaddr_in *addr = (struct sockaddr_in *) saddr;
-		isk->inet_rcv_saddr = isk->inet_saddr = addr->sin_addr.s_addr;
-#if IS_ENABLED(CONFIG_IPV6)
-	} else if (saddr->sa_family == AF_INET6) {
-		struct sockaddr_in6 *addr = (struct sockaddr_in6 *) saddr;
-		struct ipv6_pinfo *np = inet6_sk(sk);
-		np->rcv_saddr = np->saddr = addr->sin6_addr;
-#endif
-	}
-}
-
-void ping_clear_saddr(struct sock *sk, int dif)
-{
-	sk->sk_bound_dev_if = dif;
-	if (sk->sk_family == AF_INET) {
-		struct inet_sock *isk = inet_sk(sk);
-		isk->inet_rcv_saddr = isk->inet_saddr = 0;
-#if IS_ENABLED(CONFIG_IPV6)
-	} else if (sk->sk_family == AF_INET6) {
-		struct ipv6_pinfo *np = inet6_sk(sk);
-		memset(&np->rcv_saddr, 0, sizeof(np->rcv_saddr));
-		memset(&np->saddr, 0, sizeof(np->saddr));
-#endif
-	}
-}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 /*
  * We need our own bind because there are no privileged id's == local ports.
  * Moreover, we don't allow binding to multi- and broadcast addresses.
@@ -961,20 +853,6 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 			*addr_len = sizeof(*sin6);
 	}
 
-<<<<<<< HEAD
-	if (flags & MSG_ERRQUEUE) {
-		if (family == AF_INET) {
-			return ip_recv_error(sk, msg, len);
-#if IS_ENABLED(CONFIG_IPV6)
-		} else if (family == AF_INET6) {
-			return pingv6_ops.ipv6_recv_error(sk, msg, len);
-#endif
-		}
-	}
-||||||| merged common ancestors
-	if (flags & MSG_ERRQUEUE)
-		return ip_recv_error(sk, msg, len);
-=======
 	if (flags & MSG_ERRQUEUE) {
 		if (family == AF_INET) {
 			return ip_recv_error(sk, msg, len, addr_len);
@@ -985,7 +863,6 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 #endif
 		}
 	}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	skb = skb_recv_datagram(sk, flags, noblock, &err);
 	if (!skb)
@@ -1004,54 +881,6 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 
 	sock_recv_timestamp(msg, sk, skb);
 
-<<<<<<< HEAD
-	/* Copy the address and add cmsg data. */
-	if (family == AF_INET) {
-		sin = (struct sockaddr_in *)msg->msg_name;
-
-		if (sin) {
-			sin->sin_family = AF_INET;
-			sin->sin_port = 0 /* skb->h.uh->source */;
-			sin->sin_addr.s_addr = ip_hdr(skb)->saddr;
-			memset(sin->sin_zero, 0, sizeof(sin->sin_zero));
-			*addr_len = sizeof(*sin);
-		}
-
-		if (isk->cmsg_flags)
-			ip_cmsg_recv(msg, skb);
-
-#if IS_ENABLED(CONFIG_IPV6)
-	} else if (family == AF_INET6) {
-		struct ipv6_pinfo *np = inet6_sk(sk);
-		struct ipv6hdr *ip6 = ipv6_hdr(skb);
-		sin6 = (struct sockaddr_in6 *)msg->msg_name;
-
-		if (sin6) {
-			sin6->sin6_family = AF_INET6;
-			sin6->sin6_port = 0;
-			sin6->sin6_addr = ip6->saddr;
-			sin6->sin6_flowinfo = 0;
-			if (np->sndflow)
-				sin6->sin6_flowinfo = ip6_flowinfo(ip6);
-			sin6->sin6_scope_id =
-				ipv6_iface_scope_id(&sin6->sin6_addr,
-						    IP6CB(skb)->iif);
-			*addr_len = sizeof(*sin6);
-		}
-
-		if (inet6_sk(sk)->rxopt.all)
-			pingv6_ops.ip6_datagram_recv_ctl(sk, msg, skb);
-#endif
-	} else {
-		BUG();
-||||||| merged common ancestors
-	/* Copy the address. */
-	if (sin) {
-		sin->sin_family = AF_INET;
-		sin->sin_port = 0 /* skb->h.uh->source */;
-		sin->sin_addr.s_addr = ip_hdr(skb)->saddr;
-		memset(sin->sin_zero, 0, sizeof(sin->sin_zero));
-=======
 	/* Copy the address and add cmsg data. */
 	if (family == AF_INET) {
 		sin = (struct sockaddr_in *) msg->msg_name;
@@ -1089,7 +918,6 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 #endif
 	} else {
 		BUG();
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
 
 	err = copied;

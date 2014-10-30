@@ -12,21 +12,10 @@
 
 
 /dts-v1/;
-<<<<<<< HEAD
-/include/ "apq8026-v1.dtsi"
-/include/ "msm8226-memory.dtsi"
-/include/ "msm8226-qseecom.dtsi"
-/include/ "msm8226-720p-cdp.dtsi"
-||||||| merged common ancestors
-#include "apq8026-v1.dtsi"
-#include "msm8226-720p-cdp.dtsi"
-=======
 #include "apq8026-v1.dtsi"
 #include "msm8226-memory.dtsi"
 #include "msm8226-qseecom.dtsi"
-#include "msm8226-sharedmem.dtsi"
 #include "msm8226-720p-cdp.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
 	model = "Qualcomm Technologies, Inc. APQ 8026 XPM";

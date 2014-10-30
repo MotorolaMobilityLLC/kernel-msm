@@ -1182,15 +1182,6 @@ int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 
 	pr_debug("starting fb%d overlay\n", mfd->index);
 
-<<<<<<< HEAD
-||||||| merged common ancestors
-	rc = pm_runtime_get_sync(&mfd->pdev->dev);
-	if (IS_ERR_VALUE(rc)) {
-		pr_err("unable to resume with pm_runtime_get_sync rc=%d\n", rc);
-		return rc;
-	}
-
-=======
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 
 	/*
@@ -1206,7 +1197,6 @@ int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 		}
 	}
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	/*
 	 * We need to do hw init before any hw programming.
 	 * Also, hw init involves programming the VBIF registers which
@@ -1901,10 +1891,6 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 		return;
 	}
 
-<<<<<<< HEAD
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
-||||||| merged common ancestors
-=======
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 
 	ret = mdss_iommu_ctrl(1);
@@ -1913,7 +1899,6 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 		goto pan_display_error;
 	}
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	bpp = fbi->var.bits_per_pixel / 8;
 	offset = fbi->var.xoffset * bpp +
 		 fbi->var.yoffset * fbi->fix.line_length;
@@ -1982,40 +1967,13 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 	    (fbi->var.activate & FB_ACTIVATE_FORCE))
 		mfd->mdp.kickoff_fnc(mfd, NULL);
 
-<<<<<<< HEAD
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-||||||| merged common ancestors
-=======
 	mdss_iommu_ctrl(0);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	return;
 
-<<<<<<< HEAD
-attach_err:
-	mutex_unlock(&mdp5_data->ov_lock);
-	mdss_mdp_overlay_unset(mfd, pipe->ndx);
-	if (pipe_ndx)
-		pipe_ndx[0] = INVALID_PIPE_INDEX;
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-	return;
-||||||| merged common ancestors
-attach_err:
-	mutex_unlock(&mdp5_data->ov_lock);
-	mdss_mdp_overlay_unset(mfd, pipe->ndx);
-	if (pipe_ndx)
-		pipe_ndx[0] = INVALID_PIPE_INDEX;
-	return;
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 pan_display_error:
-<<<<<<< HEAD
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-||||||| merged common ancestors
-=======
 	mdss_iommu_ctrl(0);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	mutex_unlock(&mdp5_data->ov_lock);
 }
 
@@ -2212,17 +2170,8 @@ static ssize_t mdss_mdp_vsync_show_event(struct device *dev,
 
 	if (!mdp5_data->ctl ||
 		(!mdp5_data->ctl->panel_data->panel_info.cont_splash_enabled
-<<<<<<< HEAD
-			&& !mdp5_data->ctl->power_on)) {
-		if (mdp5_data->ctl)
-			pr_warn("%s:power_on status: %d\n", __func__, mdp5_data->ctl->power_on);
-||||||| merged common ancestors
-			&& !mdp5_data->ctl->power_on))
-=======
 			&& !mdss_mdp_ctl_is_power_on(mdp5_data->ctl)))
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		return -EAGAIN;
-	}
 
 	vsync_ticks = ktime_to_ns(mdp5_data->vsync_time);
 
@@ -3343,108 +3292,26 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		!(pinfo->alpm_event &&
 		pinfo->alpm_event(CHECK_PREVIOUS_STATUS))) {
 		rc = mdss_mdp_overlay_start(mfd);
-<<<<<<< HEAD
-		if (rc)
-			goto error_pm;
-		if (mfd->panel_info->type != WRITEBACK_PANEL)
-||||||| merged common ancestors
-		if (!IS_ERR_VALUE(rc) &&
-			(mfd->panel_info->type != WRITEBACK_PANEL))
-=======
 		if (rc)
 			goto end;
 		if (mfd->panel_info->type != WRITEBACK_PANEL) {
 			atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
 		}
 	} else {
 		rc = mdss_mdp_ctl_setup(mdp5_data->ctl);
 		if (rc)
-<<<<<<< HEAD
-			goto error_pm;
-||||||| merged common ancestors
-			return rc;
-=======
 			goto end;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
 
 panel_on:
 	if (IS_ERR_VALUE(rc)) {
 		pr_err("Failed to turn on fb%d\n", mfd->index);
 		mdss_mdp_overlay_off(mfd);
-<<<<<<< HEAD
 		goto end;
 	}
 
-error_pm:
-	if (rc)
-		pm_runtime_put_sync(&mfd->pdev->dev);
 end:
-	return rc;
-}
-
-static int mdss_mdp_overlay_disable_ulps(struct msm_fb_data_type *mfd)
-{
-	struct mdss_overlay_private *mdp5_data;
-
-	if (!mfd)
-		return -ENODEV;
-
-	if (mfd->key != MFD_KEY)
-		return -EINVAL;
-
-	mdp5_data = mfd_to_mdp5_data(mfd);
-
-	if (!mdp5_data || !mdp5_data->ctl) {
-		pr_err("ctl not initialized\n");
-		return -ENODEV;
-||||||| merged common ancestors
-=======
-		goto end;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
-	}
-<<<<<<< HEAD
-
-	if (!mdp5_data->ctl->power_on)
-		return 0;
-
-	return mdss_mdp_ctl_disable_ulps(mdp5_data->ctl);
-}
-
-static int mdss_mdp_overlay_off_pan_on(struct msm_fb_data_type *mfd)
-{
-	int rc = 0;
-	struct mdss_overlay_private *mdp5_data;
-
-	if (!mfd)
-		return -ENODEV;
-
-	if (mfd->key != MFD_KEY)
-		return -EINVAL;
-
-	mdp5_data = mfd_to_mdp5_data(mfd);
-
-	if (!mdp5_data || !mdp5_data->ctl) {
-		pr_err("ctl not initialized\n");
-		return -ENODEV;
-	}
-
-	if (!mdp5_data->ctl->power_on)
-		return 0;
-
-	rc = mdss_mdp_ctl_off_pan_on(mdp5_data->ctl);
-	if (!rc) {
-		pm_runtime_set_suspended(&mfd->pdev->dev);
-		rc = mdss_mdp_cx_ctrl(mdp5_data->mdata, 0);
-	}
-
-||||||| merged common ancestors
-=======
-
-end:
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	return rc;
 }
 
@@ -3474,14 +3341,6 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	if (!mdss_mdp_ctl_is_power_on(mdp5_data->ctl))
 		return 0;
 
-<<<<<<< HEAD
-	if (mdp5_data->mdata->ulps) {
-		mdss_mdp_footswitch_ctrl_ulps(1, &mfd->pdev->dev);
-		mdss_mdp_ctl_restore(mdp5_data->ctl);
-	}
-
-||||||| merged common ancestors
-=======
 	/*
 	 * Keep a reference to the runtime pm until the overlay is turned
 	 * off, and then release this last reference at the end. This will
@@ -3497,7 +3356,6 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 
 	mutex_lock(&mdp5_data->ov_lock);
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	mdss_mdp_overlay_free_fb_pipe(mfd);
 
 	mixer = mdss_mdp_mixer_get(mdp5_data->ctl, MDSS_MDP_MIXER_MUX_LEFT);
@@ -3866,8 +3724,6 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 
 	mdp5_interface->on_fnc = mdss_mdp_overlay_on;
 	mdp5_interface->off_fnc = mdss_mdp_overlay_off;
-	mdp5_interface->off_pan_on_fnc = mdss_mdp_overlay_off_pan_on;
-	mdp5_interface->disable_ulps = mdss_mdp_overlay_disable_ulps;
 	mdp5_interface->release_fnc = __mdss_mdp_overlay_release_all;
 	mdp5_interface->do_histogram = NULL;
 	mdp5_interface->cursor_update = mdss_mdp_hw_cursor_update;

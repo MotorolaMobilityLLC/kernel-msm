@@ -43,12 +43,8 @@
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqchip/arm-gic.h>
 #include <linux/syscore_ops.h>
-<<<<<<< HEAD
 #include <linux/wakeup_reason.h>
-||||||| merged common ancestors
-=======
 #include <linux/msm_rtb.h>
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 #include <asm/irq.h>
 #include <asm/exception.h>

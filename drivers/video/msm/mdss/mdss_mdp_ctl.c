@@ -1066,32 +1066,6 @@ exit:
 	mutex_unlock(&mdss_mdp_ctl_lock);
 }
 
-<<<<<<< HEAD
-static int mdss_mdp_select_clk_lvl(struct mdss_mdp_ctl *ctl,
-			u32 clk_rate)
-{
-	int i;
-	struct mdss_data_type *mdata;
-
-	if (!ctl)
-		return -ENODEV;
-
-	mdata = ctl->mdata;
-
-	for (i = 0; i < mdata->nclk_lvl; i++) {
-		if (clk_rate > mdata->clock_levels[i]) {
-			continue;
-		} else {
-			clk_rate = mdata->clock_levels[i];
-			break;
-		}
-	}
-
-	return clk_rate;
-}
-
-||||||| merged common ancestors
-=======
 static int mdss_mdp_select_clk_lvl(struct mdss_data_type *mdata,
 			u32 clk_rate)
 {
@@ -1150,7 +1124,6 @@ static bool is_traffic_shaper_enabled(struct mdss_data_type *mdata)
 	return false;
 }
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 static void mdss_mdp_ctl_perf_update(struct mdss_mdp_ctl *ctl,
 		int params_changed)
 {
@@ -1230,33 +1203,7 @@ static void mdss_mdp_ctl_perf_update(struct mdss_mdp_ctl *ctl,
 	 * bandwidth is available before clock rate is increased.
 	 */
 	if (update_clk) {
-<<<<<<< HEAD
-		u32 clk_rate = 0;
-		int i;
-
-		for (i = 0; i < mdata->nctl; i++) {
-			struct mdss_mdp_ctl *ctl;
-			ctl = mdata->ctl_off + i;
-			if (ctl->power_on)
-				clk_rate = max(ctl->cur_perf.mdp_clk_rate,
-					       clk_rate);
-		}
-
-		clk_rate  = mdss_mdp_select_clk_lvl(ctl, clk_rate);
-||||||| merged common ancestors
-		u32 clk_rate = 0;
-		int i;
-
-		for (i = 0; i < mdata->nctl; i++) {
-			struct mdss_mdp_ctl *ctl;
-			ctl = mdata->ctl_off + i;
-			if (ctl->power_on)
-				clk_rate = max(ctl->cur_perf.mdp_clk_rate,
-					       clk_rate);
-		}
-=======
 		ATRACE_INT("mdp_clk", clk_rate);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		mdss_mdp_set_clk_rate(clk_rate);
 		pr_debug("update clk rate = %d HZ\n", clk_rate);
 	}
@@ -1494,14 +1441,8 @@ struct mdss_mdp_mixer *mdss_mdp_wb_mixer_alloc(int rotator)
 	ctl->mixer_left = mixer;
 
 	ctl->start_fnc = mdss_mdp_writeback_start;
-<<<<<<< HEAD
-	pr_info("%s:power_on set to true\n", __func__);
-	ctl->power_on = true;
-||||||| merged common ancestors
-	ctl->power_on = true;
-=======
+	pr_info("%s:power_state set to MDSS_PANEL_POWER_ON\n", __func__);
 	ctl->power_state = MDSS_PANEL_POWER_ON;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	ctl->wb_type = (rotator ? MDSS_MDP_WB_CTL_TYPE_BLOCK :
 			MDSS_MDP_WB_CTL_TYPE_LINE);
 	mixer->ctl = ctl;
@@ -2041,7 +1982,6 @@ int mdss_mdp_ctl_intf_event(struct mdss_mdp_ctl *ctl, int event, void *arg)
 	return rc;
 }
 
-<<<<<<< HEAD
 int mdss_mdp_ctl_off_pan_on(struct mdss_mdp_ctl *ctl)
 {
 	if (ctl->off_pan_on)
@@ -2058,41 +1998,15 @@ int mdss_mdp_ctl_disable_ulps(struct mdss_mdp_ctl *ctl)
 		return 0;
 }
 
-/*
- * mdss_mdp_ctl_restore() - restore mdp ctl path
- * @ctl: mdp controller.
- *
- * This function is called whenever MDP comes out of a power collapse as
- * a result of a screen update when DSI ULPS mode is enabled. It restores
- * the MDP controller's software state to the hardware registers.
- */
-void mdss_mdp_ctl_restore(struct mdss_mdp_ctl *ctl)
-||||||| merged common ancestors
-/*
- * mdss_mdp_ctl_restore() - restore mdp ctl path
- * @ctl: mdp controller.
- *
- * This function is called whenever MDP comes out of a power collapse as
- * a result of a screen update when DSI ULPS mode is enabled. It restores
- * the MDP controller's software state to the hardware registers.
- */
-void mdss_mdp_ctl_restore(struct mdss_mdp_ctl *ctl)
-=======
 static void mdss_mdp_ctl_restore_sub(struct mdss_mdp_ctl *ctl)
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 {
 	u32 temp;
 
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 	temp = readl_relaxed(ctl->mdata->mdp_base +
 		MDSS_MDP_REG_DISP_INTF_SEL);
 	temp |= (ctl->intf_type << ((ctl->intf_num - MDSS_MDP_INTF0) * 8));
 	writel_relaxed(temp, ctl->mdata->mdp_base +
 		MDSS_MDP_REG_DISP_INTF_SEL);
-<<<<<<< HEAD
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-||||||| merged common ancestors
-=======
 	mdss_mdp_pp_resume(ctl, ctl->mixer_left->num);
 }
 
@@ -2129,7 +2043,6 @@ void mdss_mdp_ctl_restore(void)
 			ctl->restore_fnc(ctl);
 	}
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 }
 
 static int mdss_mdp_ctl_start_sub(struct mdss_mdp_ctl *ctl, bool handoff)
@@ -2225,18 +2138,8 @@ int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff)
 	 * keep power_on false during handoff to avoid unexpected
 	 * operations to overlay.
 	 */
-<<<<<<< HEAD
-	if (!handoff) {
-		pr_info("%s:power_on set to true\n", __func__);
-		ctl->power_on = true;
-	}
-||||||| merged common ancestors
-	if (!handoff)
-		ctl->power_on = true;
-=======
 	if (!handoff)
 		ctl->power_state = MDSS_PANEL_POWER_ON;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 
@@ -2324,22 +2227,9 @@ int mdss_mdp_ctl_stop(struct mdss_mdp_ctl *ctl, int power_state)
 		goto end;
 	}
 
-<<<<<<< HEAD
-		if (ctl->mixer_right) {
-			off = __mdss_mdp_ctl_get_mixer_off(ctl->mixer_right);
-			mdss_mdp_ctl_write(ctl, off, 0);
-		}
-		pr_info("%s:power_on set to false\n", __func__);
-||||||| merged common ancestors
-		if (ctl->mixer_right) {
-			off = __mdss_mdp_ctl_get_mixer_off(ctl->mixer_right);
-			mdss_mdp_ctl_write(ctl, off, 0);
-		}
-=======
 	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_TOP, 0);
 	if (sctl)
 		mdss_mdp_ctl_write(sctl, MDSS_MDP_REG_CTL_TOP, 0);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	if (ctl->mixer_left) {
 		off = __mdss_mdp_ctl_get_mixer_off(ctl->mixer_left);

@@ -121,14 +121,8 @@ void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 		mutex_unlock(&ctrl->cmd_mutex);
 	}
 
-<<<<<<< HEAD
-	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, enable);
-||||||| merged common ancestors
-	mdss_dsi_clk_ctrl(ctrl, enable);
-=======
 	MDSS_XLOG(ctrl->ndx, enable, ctrl->mdp_busy, current->pid);
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, enable);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 }
 
 void mdss_dsi_pll_relock(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -342,23 +336,6 @@ void mdss_dsi_host_init(struct mdss_panel_data *pdata)
 	if (pinfo->data_lane0)
 		dsi_ctrl |= BIT(4);
 
-<<<<<<< HEAD
-	/* from frame buffer, low power mode */
-	/* DSI_COMMAND_MODE_DMA_CTRL */
-	if (mdss_dsi_broadcast_mode_enabled())
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x3C, 0x94000000);
-	else
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x3C, 0x14000000);
-||||||| merged common ancestors
-	/* from frame buffer, low power mode */
-	/* DSI_COMMAND_MODE_DMA_CTRL */
-	if (ctrl_pdata->shared_pdata.broadcast_enable)
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x3C, 0x94000000);
-	else
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x3C, 0x14000000);
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
-
 	data = 0;
 	if (pinfo->te_sel)
 		data |= BIT(31);
@@ -535,7 +512,6 @@ void mdss_dsi_op_mode_config(int mode,
 {
 	u32 dsi_ctrl, intr_ctrl, dma_ctrl;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -545,27 +521,6 @@ void mdss_dsi_op_mode_config(int mode,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-<<<<<<< HEAD
-	/*
-	 * In broadcast mode, the configuration for master controller
-	 * would be done when the slave controller is configured
-	 */
-	if (mdss_dsi_is_master_ctrl(ctrl_pdata)) {
-		pr_debug("%s: Broadcast mode enabled. skipping config for ctrl%d\n",
-			__func__, ctrl_pdata->ndx);
-		return;
-	}
-
-||||||| merged common ancestors
-	if (ctrl_pdata->shared_pdata.broadcast_enable)
-		if (pdata->panel_info.pdest == DISPLAY_1) {
-			pr_debug("%s: Broadcast mode. 1st ctrl\n",
-				 __func__);
-			return;
-		}
-
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	dsi_ctrl = MIPI_INP((ctrl_pdata->ctrl_base) + 0x0004);
 	/*If Video enabled, Keep Video and Cmd mode ON */
 	if (dsi_ctrl & 0x02)
@@ -585,34 +540,9 @@ void mdss_dsi_op_mode_config(int mode,
 			DSI_INTR_CMD_MDP_DONE_MASK | DSI_INTR_BTA_DONE_MASK;
 	}
 
-<<<<<<< HEAD
-	/* Ensure that for slave controller, master is also configured */
-	if (mdss_dsi_is_slave_ctrl(ctrl_pdata)) {
-		mctrl = mdss_dsi_get_master_ctrl();
-		if (mctrl) {
-			pr_debug("%s: configuring ctrl%d\n", __func__,
-				mctrl->ndx);
-			MIPI_OUTP(mctrl->ctrl_base + 0x0110, intr_ctrl);
-			MIPI_OUTP(mctrl->ctrl_base + 0x0004, dsi_ctrl);
-		} else {
-			pr_warn("%s: Unable to get master control\n",
-				__func__);
-		}
-	}
-||||||| merged common ancestors
-	if (ctrl_pdata->shared_pdata.broadcast_enable)
-		if ((pdata->panel_info.pdest == DISPLAY_2)
-		  && (left_ctrl_pdata != NULL)) {
-			MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0110,
-				  intr_ctrl); /* DSI_INTL_CTRL */
-			MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0004,
-					dsi_ctrl);
-		}
-=======
 	dma_ctrl = BIT(28) | BIT(26);	/* embedded mode & LP mode */
 	if (mdss_dsi_sync_wait_enable(ctrl_pdata))
 		dma_ctrl |= BIT(31);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	pr_debug("%s: configuring ctrl%d\n", __func__, ctrl_pdata->ndx);
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0110, intr_ctrl);
@@ -984,24 +914,6 @@ static inline bool __mdss_dsi_cmd_mode_config(
 int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 		struct dsi_cmd_desc *cmds, int cnt)
 {
-<<<<<<< HEAD
-	int ret = 0;
-	bool ctrl_restore = false, mctrl_restore = false;
-	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
-||||||| merged common ancestors
-	u32 dsi_ctrl, data;
-	int video_mode, ret = 0;
-	u32 left_dsi_ctrl = 0;
-	bool left_ctrl_restore = false;
-
-	if (ctrl->shared_pdata.broadcast_enable) {
-		if (ctrl->ndx == DSI_CTRL_0) {
-			pr_debug("%s: Broadcast mode. 1st ctrl\n",
-				 __func__);
-			return 0;
-		}
-	}
-=======
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
 
@@ -1010,33 +922,7 @@ int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	 * For video mode, do not send cmds more than one pixel line,
 	 * since it only transmit it during BLLP.
 	 */
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
-<<<<<<< HEAD
-	/*
-	 * In broadcast mode, the configuration for master controller
-	 * would be done when the slave controller is configured
-	 */
-	if (mdss_dsi_is_master_ctrl(ctrl)) {
-		pr_debug("%s: Broadcast mode enabled. skipping config for ctrl%d\n",
-			__func__, ctrl->ndx);
-		return 0;
-||||||| merged common ancestors
-	if (ctrl->shared_pdata.broadcast_enable) {
-		if ((ctrl->ndx == DSI_CTRL_1)
-		  && (left_ctrl_pdata != NULL)) {
-			left_dsi_ctrl = MIPI_INP(left_ctrl_pdata->ctrl_base
-								+ 0x0004);
-			video_mode =
-				left_dsi_ctrl & 0x02; /* VIDEO_MODE_EN */
-			if (video_mode) {
-				data = left_dsi_ctrl | 0x04; /* CMD_MODE_EN */
-				MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0004,
-						data);
-				left_ctrl_restore = true;
-			}
-		}
-=======
 	if (mdss_dsi_sync_wait_enable(ctrl)) {
 		if (mdss_dsi_sync_wait_trigger(ctrl)) {
 			mctrl = mdss_dsi_get_other_ctrl(ctrl);
@@ -1053,45 +939,13 @@ int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 			return 0;
 
 		}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
 
-<<<<<<< HEAD
-	/*
-	 * Turn on cmd mode in order to transmit the commands.
-	 * For video mode, do not send cmds more than one pixel line,
-	 * since it only transmit it during BLLP.
-	 * Ensure that for slave controller, master is also configured
-	 */
-	if (mdss_dsi_is_slave_ctrl(ctrl)) {
-		mctrl = mdss_dsi_get_master_ctrl();
-		if (!mctrl)
-			pr_warn("%s: Unable to get master control\n",
-				__func__);
-		else
-			mctrl_restore = __mdss_dsi_cmd_mode_config(mctrl, 1);
-	}
-||||||| merged common ancestors
-	/* turn on cmd mode
-	* for video mode, do not send cmds more than
-	* one pixel line, since it only transmit it
-	* during BLLP.
-	*/
-	dsi_ctrl = MIPI_INP((ctrl->ctrl_base) + 0x0004);
-	video_mode = dsi_ctrl & 0x02; /* VIDEO_MODE_EN */
-	if (video_mode) {
-		data = dsi_ctrl | 0x04; /* CMD_MODE_EN */
-		MIPI_OUTP((ctrl->ctrl_base) + 0x0004, data);
-	}
-=======
 	pr_debug("%s: ctrl=%d do_unicast=%d\n", __func__,
 				ctrl->ndx, ctrl->do_unicast);
 
 do_send:
 	ctrl->cmd_cfg_restore = __mdss_dsi_cmd_mode_config(ctrl, 1);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
-
-	ctrl_restore = __mdss_dsi_cmd_mode_config(ctrl, 1);
 
 	ret = mdss_dsi_cmds2buf_tx(ctrl, cmds, cnt);
 	if (IS_ERR_VALUE(ret)) {
@@ -1099,17 +953,6 @@ do_send:
 		cnt = -EINVAL;
 	}
 
-<<<<<<< HEAD
-	if (mctrl_restore)
-		__mdss_dsi_cmd_mode_config(mctrl, 0);
-
-	if (ctrl_restore)
-		__mdss_dsi_cmd_mode_config(ctrl, 0);
-||||||| merged common ancestors
-	if (left_ctrl_restore)
-		MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0004,
-					left_dsi_ctrl); /*restore */
-=======
 	if (!ctrl->do_unicast) {
 		if (mctrl && mctrl->cmd_cfg_restore) {
 			__mdss_dsi_cmd_mode_config(mctrl, 0);
@@ -1121,7 +964,6 @@ do_send:
 			ctrl->cmd_cfg_restore = false;
 		}
 	}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	return cnt;
 }
@@ -1155,51 +997,9 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	int short_response, diff, pkt_size, ret = 0;
 	struct dsi_buf *tp, *rp;
 	char cmd;
-<<<<<<< HEAD
-	bool ctrl_restore = false, mctrl_restore = false;
-	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
-||||||| merged common ancestors
-	u32 dsi_ctrl, data;
-	int video_mode;
-	u32 left_dsi_ctrl = 0;
-	bool left_ctrl_restore = false;
-
-	if (ctrl->shared_pdata.broadcast_enable) {
-		if (ctrl->ndx == DSI_CTRL_0) {
-			pr_debug("%s: Broadcast mode. 1st ctrl\n",
-				 __func__);
-			return 0;
-		}
-	}
-=======
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
-<<<<<<< HEAD
-	/*
-	 * In broadcast mode, the configuration for master controller
-	 * would be done when the slave controller is configured
-	 */
-	if (mdss_dsi_is_master_ctrl(ctrl)) {
-		pr_debug("%s: Broadcast mode enabled. skipping config for ctrl%d\n",
-			__func__, ctrl->ndx);
-		return 0;
-||||||| merged common ancestors
-	if (ctrl->shared_pdata.broadcast_enable) {
-		if ((ctrl->ndx == DSI_CTRL_1)
-		  && (left_ctrl_pdata != NULL)) {
-			left_dsi_ctrl = MIPI_INP(left_ctrl_pdata->ctrl_base
-								+ 0x0004);
-			video_mode = left_dsi_ctrl & 0x02; /* VIDEO_MODE_EN */
-			if (video_mode) {
-				data = left_dsi_ctrl | 0x04; /* CMD_MODE_EN */
-				MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0004,
-						data);
-				left_ctrl_restore = true;
-			}
-		}
-=======
 	/*
 	 * Turn on cmd mode in order to transmit the commands.
 	 * For video mode, do not send cmds more than one pixel line,
@@ -1221,50 +1021,12 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 			return 0;
 
 		}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
 
-<<<<<<< HEAD
-	/*
-	 * Turn on cmd mode in order to transmit the commands.
-	 * For video mode, do not send cmds more than one pixel line,
-	 * since it only transmit it during BLLP.
-	 * Ensure that for slave controller, master is also configured
-	 */
-	if (mdss_dsi_is_slave_ctrl(ctrl)) {
-		mctrl = mdss_dsi_get_master_ctrl();
-		if (!mctrl)
-			pr_warn("%s: Unable to get master control\n",
-				__func__);
-		else
-			mctrl_restore = __mdss_dsi_cmd_mode_config(mctrl, 1);
-	}
-||||||| merged common ancestors
-	/* turn on cmd mode
-	* for video mode, do not send cmds more than
-	* one pixel line, since it only transmit it
-	* during BLLP.
-	*/
-	dsi_ctrl = MIPI_INP((ctrl->ctrl_base) + 0x0004);
-	video_mode = dsi_ctrl & 0x02; /* VIDEO_MODE_EN */
-	if (video_mode) {
-		data = dsi_ctrl | 0x04; /* CMD_MODE_EN */
-		MIPI_OUTP((ctrl->ctrl_base) + 0x0004, data);
-	}
-=======
 do_send:
 	ctrl->cmd_cfg_restore = __mdss_dsi_cmd_mode_config(ctrl, 1);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
-
-<<<<<<< HEAD
-	ctrl_restore = __mdss_dsi_cmd_mode_config(ctrl, 1);
 
 	if (rlen <= 2) {
-||||||| merged common ancestors
-	if (rlen == 0) {
-=======
-	if (rlen <= 2) {
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		short_response = 1;
 		pkt_size = rlen;
 		rx_byte = 4;
@@ -1389,20 +1151,6 @@ do_send:
 		rp->len = 0;
 	}
 end:
-<<<<<<< HEAD
-	if (mctrl_restore)
-		__mdss_dsi_cmd_mode_config(mctrl, 0);
-
-	if (ctrl_restore)
-		__mdss_dsi_cmd_mode_config(ctrl, 0);
-||||||| merged common ancestors
-	if (left_ctrl_restore)
-		MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0004,
-					left_dsi_ctrl); /*restore */
-	if (video_mode)
-		MIPI_OUTP((ctrl->ctrl_base) + 0x0004,
-					dsi_ctrl); /* restore */
-=======
 
 	if (mctrl && mctrl->cmd_cfg_restore) {
 		__mdss_dsi_cmd_mode_config(mctrl, 0);
@@ -1413,7 +1161,6 @@ end:
 		__mdss_dsi_cmd_mode_config(ctrl, 0);
 		ctrl->cmd_cfg_restore = false;
 	}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	return rp->len;
 }
@@ -1426,16 +1173,7 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	int len, ret = 0;
 	int domain = MDSS_IOMMU_DOMAIN_UNSECURE;
 	char *bp;
-<<<<<<< HEAD
-	unsigned long size;
-	dma_addr_t addr;
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
-||||||| merged common ancestors
-	unsigned long size;
-	dma_addr_t addr;
-=======
-	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	bp = tp->data;
 
@@ -1457,23 +1195,6 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	INIT_COMPLETION(ctrl->dma_comp);
 
-<<<<<<< HEAD
-	/* Ensure that for slave controller, master is also configured */
-	if (mdss_dsi_is_slave_ctrl(ctrl)) {
-		mctrl = mdss_dsi_get_master_ctrl();
-		if (mctrl) {
-			MIPI_OUTP(mctrl->ctrl_base + 0x048, addr);
-			MIPI_OUTP(mctrl->ctrl_base + 0x04c, len);
-		} else {
-			pr_warn("%s: Unable to get master control\n",
-				__func__);
-||||||| merged common ancestors
-	if (ctrl->shared_pdata.broadcast_enable)
-		if ((ctrl->ndx == DSI_CTRL_1)
-		  && (left_ctrl_pdata != NULL)) {
-			MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x048, addr);
-			MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x04c, len);
-=======
 	if (mdss_dsi_sync_wait_trigger(ctrl)) {
 		/* broadcast same cmd to other panel */
 		mctrl = mdss_dsi_get_other_ctrl(ctrl);
@@ -1481,7 +1202,6 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 			MIPI_OUTP(mctrl->ctrl_base + 0x048, ctrl->dma_addr);
 			MIPI_OUTP(mctrl->ctrl_base + 0x04c, len);
 			MIPI_OUTP(mctrl->ctrl_base + 0x090, 0x01); /* trigger */
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		}
 	}
 
@@ -1490,23 +1210,7 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	MIPI_OUTP((ctrl->ctrl_base) + 0x04c, len);
 	wmb();
 
-<<<<<<< HEAD
-	/* Trigger on master controller as well */
-	if (mctrl)
-		MIPI_OUTP(mctrl->ctrl_base + 0x090, 0x01);
-
 	MIPI_OUTP((ctrl->ctrl_base) + 0x090, 0x01);
-||||||| merged common ancestors
-	if (ctrl->shared_pdata.broadcast_enable)
-		if ((ctrl->ndx == DSI_CTRL_1)
-		  && (left_ctrl_pdata != NULL)) {
-			MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x090, 0x01);
-		}
-
-	MIPI_OUTP((ctrl->ctrl_base) + 0x090, 0x01);	/* trigger */
-=======
-	MIPI_OUTP((ctrl->ctrl_base) + 0x090, 0x01);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	wmb();
 
 	if (ctrl->do_unicast) {
@@ -1690,26 +1394,6 @@ int mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 		rp = &ctrl->rx_buf;
 		len = mdss_dsi_cmds_rx(ctrl, req->cmds, req->rlen);
 		memcpy(req->rbuf, rp->data, rp->len);
-<<<<<<< HEAD
-		/*
-		 * For dual DSI cases, early return of master ctrl
-		 * is valid. Hence, for those cases the return value
-		 * is zero even though we don't send any commands.
-		 */
-		if (mdss_dsi_is_master_ctrl(ctrl) || (len != 0))
-			ret = 0;
-||||||| merged common ancestors
-		/*
-		 * For dual DSI cases, early return of controller - 0
-		 * is valid. Hence, for those cases the return value
-		 * is zero even though we don't send any commands.
-		 *
-		 */
-		if ((ctrl->shared_pdata.broadcast_enable &&
-			ctrl->ndx == DSI_CTRL_0) || (len != 0))
-			ret = 0;
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	} else {
 		pr_err("%s: No rx buffer provided\n", __func__);
 	}
@@ -1776,16 +1460,8 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	mdss_bus_scale_set_quota(MDSS_HW_DSI0, 0, 0);
 need_lock:
 
-<<<<<<< HEAD
-	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
-	mdss_bus_bandwidth_ctrl(0);
-||||||| merged common ancestors
-	mdss_dsi_clk_ctrl(ctrl, 0);
-	mdss_bus_bandwidth_ctrl(0);
-=======
 	MDSS_XLOG(ctrl->ndx, from_mdp, ctrl->mdp_busy, current->pid,
 							XLOG_FUNC_EXIT);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	if (from_mdp) { /* from mdp kickoff */
 		/*
@@ -2016,7 +1692,6 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 	u32 isr;
 	struct mdss_dsi_ctrl_pdata *ctrl =
 			(struct mdss_dsi_ctrl_pdata *)ptr;
-	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
 
 	if (!ctrl->ctrl_base) {
 		pr_err("%s:%d DSI base adr no Initialized",
@@ -2027,35 +1702,6 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 	isr = MIPI_INP(ctrl->ctrl_base + 0x0110);/* DSI_INTR_CTRL */
 	MIPI_OUTP(ctrl->ctrl_base + 0x0110, isr);
 
-<<<<<<< HEAD
-	if (mdss_dsi_is_slave_ctrl(ctrl)) {
-		mctrl = mdss_dsi_get_master_ctrl();
-		if (mctrl) {
-			u32 isr0;
-			isr0 = MIPI_INP(mctrl->ctrl_base + 0x0110);
-			if (isr0 & DSI_INTR_CMD_DMA_DONE)
-				MIPI_OUTP(mctrl->ctrl_base + 0x0110,
-					DSI_INTR_CMD_DMA_DONE);
-		} else {
-			pr_warn("%s: Unable to get master control\n",
-				__func__);
-		}
-	}
-
-||||||| merged common ancestors
-	if (ctrl->shared_pdata.broadcast_enable)
-		if ((ctrl->panel_data.panel_info.pdest == DISPLAY_2)
-		    && (left_ctrl_pdata != NULL)) {
-			u32 isr0;
-			isr0 = MIPI_INP(left_ctrl_pdata->ctrl_base
-						+ 0x0110);/* DSI_INTR_CTRL */
-			if (isr0 & DSI_INTR_CMD_DMA_DONE)
-				MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0110,
-					DSI_INTR_CMD_DMA_DONE);
-		}
-
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	pr_debug("%s: ndx=%d isr=%x\n", __func__, ctrl->ndx, isr);
 
 	if (isr & DSI_INTR_ERROR) {

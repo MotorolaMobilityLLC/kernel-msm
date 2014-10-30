@@ -597,16 +597,12 @@ static void init_watchdog_work(struct work_struct *work)
 	__raw_writel(1, wdog_dd->base + WDT0_EN);
 	__raw_writel(1, wdog_dd->base + WDT0_RST);
 	wdog_dd->last_pet = sched_clock();
-<<<<<<< HEAD
 #ifdef CONFIG_SEC_DEBUG
 	last_pet = wdog_dd->last_pet;
 	sec_debug_save_last_pet(wdog_dd->last_pet);
 #endif
 
-||||||| merged common ancestors
-=======
 	wdog_dd->enabled = true;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	error = device_create_file(wdog_dd->dev, &dev_attr_disable);
 	if (error)
 		dev_err(wdog_dd->dev, "cannot create sysfs attribute\n");

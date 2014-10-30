@@ -16,10 +16,6 @@
 
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM devfreq
-#undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH .
-#undef TRACE_INCLUDE_FILE
-#define TRACE_INCLUDE_FILE devfreq_trace
 
 #include <linux/tracepoint.h>
 
@@ -40,5 +36,9 @@ TRACE_EVENT(devfreq_msg,
 #endif /* _DEVFREQ_TRACE_H */
 
 /* This part must be outside protection */
+#undef TRACE_INCLUDE_PATH
+#define TRACE_INCLUDE_PATH ../../drivers/devfreq
+#undef TRACE_INCLUDE_FILE
+#define TRACE_INCLUDE_FILE devfreq_trace
 #include <trace/define_trace.h>
 

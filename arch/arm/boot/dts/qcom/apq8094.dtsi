@@ -12,19 +12,11 @@
 
 
 /dts-v1/;
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/apq8026-v2-720p-w-mtp.dts
-/include/ "apq8026-v2.dtsi"
-/include/ "msm8226-w-memory.dtsi"
-/include/ "msm8226-w-qseecom.dtsi"
-/include/ "msm8226-720p-mtp.dtsi"
-||||||| merged common ancestors
-#include "apq8026-v2.dtsi"
-#include "msm8226-720p-mtp.dtsi"
-=======
 
+#include "msm8226-w-memory.dtsi"
+#include "msm8226-w-qseecom.dtsi"
 #include "msm8994.dtsi"
 #include "msm8994-pinctrl.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm/boot/dts/qcom/apq8094.dtsi
 
 / {
 	model = "Qualcomm Technologies, Inc. APQ 8094";

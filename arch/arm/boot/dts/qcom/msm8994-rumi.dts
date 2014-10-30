@@ -15,16 +15,8 @@
 
 /memreserve/ 0x06000000 0x00001000;
 
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/msmplutonium-rumi.dts
-/include/ "msmplutonium.dtsi"
-/include/ "msmplutonium-pinctrl.dtsi"
-||||||| merged common ancestors
-#include "msmplutonium.dtsi"
-#include "msmplutonium-pinctrl.dtsi"
-=======
 #include "msm8994.dtsi"
 #include "msm8994-pinctrl.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm/boot/dts/qcom/msm8994-rumi.dts
 / {
 	model = "Qualcomm Technologies, Inc. Technologies, Inc. MSM 8994 RUMI";
 	compatible = "qcom,msm8994-rumi", "qcom,msm8994", "qcom,rumi";

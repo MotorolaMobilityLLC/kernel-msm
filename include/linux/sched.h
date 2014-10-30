@@ -1153,14 +1153,9 @@ struct task_struct {
 	const struct sched_class *sched_class;
 	struct sched_entity se;
 	struct sched_rt_entity rt;
-<<<<<<< HEAD
-	struct ravg ravg;
-||||||| merged common ancestors
-=======
 #if defined(CONFIG_SCHED_FREQ_INPUT) || defined(CONFIG_SCHED_HMP)
 	struct ravg ravg;
 #endif
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 #ifdef CONFIG_CGROUP_SCHED
 	struct task_group *sched_task_group;
 #endif

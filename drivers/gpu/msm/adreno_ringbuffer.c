@@ -502,19 +502,7 @@ static int _ringbuffer_start_common(struct adreno_ringbuffer *rb)
 		return status;
 
 	/* idle device to validate ME INIT */
-<<<<<<< HEAD
 	status = adreno_spin_idle(device);
-
-	if (status == 0)
-		rb->flags |= KGSL_FLAGS_STARTED;
-||||||| merged common ancestors
-	status = adreno_idle(device);
-
-	if (status == 0)
-		rb->flags |= KGSL_FLAGS_STARTED;
-=======
-	status = adreno_spin_idle(device);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	return status;
 }
@@ -817,16 +805,8 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 
 	/* Add any IB required for profiling if it is enabled */
 	if (profile_ready)
-<<<<<<< HEAD
-		adreno_profile_preib_processing(rb->device, drawctxt,
-				&flags, &ringcmds, &rcmd_gpu);
-||||||| merged common ancestors
-		adreno_profile_preib_processing(rb->device, context_id,
-				&flags, &ringcmds, &rcmd_gpu);
-=======
 		adreno_profile_preib_processing(adreno_dev, drawctxt,
 				&flags, &ringcmds);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	/* start-of-pipeline timestamp */
 	*ringcmds++ = cp_type3_packet(CP_MEM_WRITE, 2);

@@ -14,10 +14,6 @@
 ifneq ($(MACHINE),)
 include $(srctree)/$(MACHINE)/Makefile.boot
 endif
-<<<<<<< HEAD
-include $(srctree)/arch/arm/boot/dts/Makefile
-||||||| merged common ancestors
-=======
 include $(srctree)/arch/arm/boot/dts/Makefile
 
 include $(srctree)/arch/arm/boot/dts/Makefile
@@ -25,7 +21,6 @@ ifneq ($(DTSSUBDIR),)
 DTSSUBDIR_INCS=$(foreach DIR, $(DTSSUBDIR), $(addsuffix /Makefile, $(addprefix $(srctree)/arch/arm/boot/dts/, $(DIR))))
 include $(DTSSUBDIR_INCS)
 endif
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 # Note: the following conditions must always be true:
 #   ZRELADDR == virt_to_phys(PAGE_OFFSET + TEXT_OFFSET)

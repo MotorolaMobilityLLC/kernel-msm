@@ -16,11 +16,6 @@
 
 #include <linux/devfreq.h>
 
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/apqsamarium.dtsi
-/include/ "msmsamarium.dtsi"
-||||||| merged common ancestors
-#include "msmsamarium.dtsi"
-=======
 #ifdef CONFIG_MSM_DEVFREQ_DEVBW
 int devfreq_add_devbw(struct device *dev);
 int devfreq_remove_devbw(struct device *dev);
@@ -34,6 +29,5 @@ static inline int devfreq_remove_devbw(struct device *dev)
 	return 0;
 }
 #endif
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:include/soc/qcom/devfreq_devbw.h
 
 #endif /* _DEVFREQ_DEVBW_H */

@@ -12,20 +12,8 @@
 
 /dts-v1/;
 
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/mdm9630-cdp.dts
-/include/ "mdm9630.dtsi"
-/include/ "mdm9630-cdp.dtsi"
-/include/ "mdm9630-display.dtsi"
-/include/ "qpic-panel-ili-qvga.dtsi"
-||||||| merged common ancestors
 #include "mdm9630.dtsi"
 #include "mdm9630-cdp.dtsi"
-#include "mdm9630-display.dtsi"
-#include "qpic-panel-ili-qvga.dtsi"
-=======
-#include "mdm9630.dtsi"
-#include "mdm9630-cdp.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm/boot/dts/qcom/mdm9630-v1-cdp.dts
 
 / {
 	model = "Qualcomm Technologies, Inc. MDM 9630 CDP";

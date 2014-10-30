@@ -204,14 +204,8 @@ struct msm_fb_data_type {
 	u32 panel_orientation;
 
 	u32 dst_format;
-<<<<<<< HEAD
 	int resume_state;
-	int panel_power_on;
-||||||| merged common ancestors
-	int panel_power_on;
-=======
 	int panel_power_state;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	struct disp_info_type_suspend suspend;
 
 	struct ion_handle *ihdl;
@@ -253,9 +247,6 @@ struct msm_fb_data_type {
 	bool shutdown_pending;
 
 	struct msm_fb_splash_info splash_info;
-
-	wait_queue_head_t ioctl_q;
-	atomic_t ioctl_ref_cnt;
 
 	wait_queue_head_t ioctl_q;
 	atomic_t ioctl_ref_cnt;

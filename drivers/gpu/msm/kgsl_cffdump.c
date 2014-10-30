@@ -634,22 +634,14 @@ int kgsl_cff_dump_enable_set(void *data, u64 val)
 			 * force device to slumber so that we ensure that the
 			 * start opcode in CFF is present
 			 */
-<<<<<<< HEAD
-			kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
-			ret = kgsl_pwrctrl_slumber(device);
-||||||| merged common ancestors
-			mutex_lock(&device->mutex);
-			ret = kgsl_pwrctrl_slumber(device);
-=======
 			mutex_lock(&device->mutex);
 			ret = kgsl_pwrctrl_change_state(device,
 				KGSL_STATE_SUSPEND);
 			ret |= kgsl_pwrctrl_change_state(device,
 				KGSL_STATE_SLUMBER);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 			if (ret)
 				device->cff_dump_enable = 0;
-			kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+			mutex_unlock(&device->mutex);
 		}
 	} else if (device->cff_dump_enable && !val) {
 		device->cff_dump_enable = 0;

@@ -10,63 +10,6 @@
  * GNU General Public License for more details.
  */
 
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/mpq8092-cdp.dts
-/dts-v1/;
-
-/include/ "mpq8092.dtsi"
-/include/ "mpq8092-cdp.dtsi"
-
-/ {
-	model = "Qualcomm MPQ 8092 CDP";
-	compatible = "qcom,mpq8092-cdp", "qcom,mpq8092", "qcom,cdp";
-	qcom,board-id = <1 0>,
-			<1 1>,
-			<21 0>,
-			<21 1>;
-
-	aliases {
-		serial0 = &blsp1_uart4;
-	};
-};
-
-&blsp1_uart4 {
-	status = "ok";
-};
-
-&ehci {
-	status = "ok";
-	qcom,ext-hub-reset-gpio = <&msmgpio 0 0>;
-	vbus-supply = <&hsusb2_otg>;
-};
-||||||| merged common ancestors
-/dts-v1/;
-
-#include "mpq8092.dtsi"
-#include "mpq8092-cdp.dtsi"
-
-/ {
-	model = "Qualcomm MPQ 8092 CDP";
-	compatible = "qcom,mpq8092-cdp", "qcom,mpq8092", "qcom,cdp";
-	qcom,board-id = <1 0>,
-			<1 1>,
-			<21 0>,
-			<21 1>;
-
-	aliases {
-		serial0 = &blsp1_uart4;
-	};
-};
-
-&blsp1_uart4 {
-	status = "ok";
-};
-
-&ehci {
-	status = "ok";
-	qcom,ext-hub-reset-gpio = <&msmgpio 0 0>;
-	vbus-supply = <&hsusb2_otg>;
-};
-=======
 #include <asm/barrier.h>
 
 static inline u32 __dcc_getstatus(void)
@@ -96,4 +39,3 @@ static inline void __dcc_putchar(char c)
 		: "r" (c));
 	isb();
 }
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm64/include/asm/dcc.h

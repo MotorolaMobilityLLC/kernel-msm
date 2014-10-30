@@ -188,11 +188,8 @@ source "drivers/phy/Kconfig"
 
 source "drivers/soc/Kconfig"
 
-<<<<<<< HEAD
 source "drivers/motor/Kconfig"
-||||||| merged common ancestors
-=======
+
 source "drivers/firmware/Kconfig"
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 endmenu

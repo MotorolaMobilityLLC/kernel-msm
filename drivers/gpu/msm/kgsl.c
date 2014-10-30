@@ -613,16 +613,6 @@ kgsl_context_destroy(struct kref *kref)
 
 	write_lock(&device->context_lock);
 	if (context->id != KGSL_CONTEXT_INVALID) {
-<<<<<<< HEAD
-
-		/* Clear the timestamps in the memstore during destroy */
-		kgsl_sharedmem_writel(device, &device->memstore,
-			KGSL_MEMSTORE_OFFSET(context->id, soptimestamp), 0);
-		kgsl_sharedmem_writel(device, &device->memstore,
-			KGSL_MEMSTORE_OFFSET(context->id, eoptimestamp), 0);
-
-||||||| merged common ancestors
-=======
 
 		/* Clear the timestamps in the memstore during destroy */
 		kgsl_sharedmem_writel(device, &device->memstore,
@@ -639,7 +629,6 @@ kgsl_context_destroy(struct kref *kref)
 			device->pwrctrl.constraint.type = KGSL_CONSTRAINT_NONE;
 		}
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		idr_remove(&device->context_idr, context->id);
 		context->id = KGSL_CONTEXT_INVALID;
 	}
@@ -710,126 +699,10 @@ static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 
 	KGSL_PWR_WARN(device, "suspend start\n");
 
-<<<<<<< HEAD
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
-	kgsl_pwrctrl_request_state(device, KGSL_STATE_SUSPEND);
-
-	/* Tell the device to drain the submission queue */
-	device->ftbl->drain(device);
-
-	/* Wait for the active count to hit zero */
-	status = kgsl_active_count_wait(device, 0);
-	if (status)
-		goto end;
-
-	/*
-	 * An interrupt could have snuck in and requested NAP in
-	 * the meantime, make sure we're on the SUSPEND path.
-	 */
-	kgsl_pwrctrl_request_state(device, KGSL_STATE_SUSPEND);
-
-	/* Don't let the timer wake us during suspended sleep. */
-	del_timer_sync(&device->idle_timer);
-	switch (device->state) {
-		case KGSL_STATE_INIT:
-			break;
-		case KGSL_STATE_ACTIVE:
-		case KGSL_STATE_NAP:
-		case KGSL_STATE_SLEEP:
-			/* make sure power is on to stop the device */
-			kgsl_pwrctrl_enable(device);
-			/* Get the completion ready to be waited upon. */
-			INIT_COMPLETION(device->hwaccess_gate);
-			device->ftbl->suspend_context(device);
-			device->ftbl->stop(device);
-			pm_qos_update_request(&device->pwrctrl.pm_qos_req_dma,
-						PM_QOS_DEFAULT_VALUE);
-			kgsl_pwrctrl_set_state(device, KGSL_STATE_SUSPEND);
-			break;
-		case KGSL_STATE_SLUMBER:
-			INIT_COMPLETION(device->hwaccess_gate);
-			kgsl_pwrctrl_set_state(device, KGSL_STATE_SUSPEND);
-			break;
-		default:
-			KGSL_PWR_ERR(device, "suspend fail, device %d\n",
-					device->id);
-			goto end;
-	}
-	kgsl_pwrctrl_request_state(device, KGSL_STATE_NONE);
-	kgsl_pwrscale_sleep(device);
-	status = 0;
-
-end:
-	if (status) {
-		/* On failure, re-resume normal activity */
-		if (device->ftbl->resume)
-			device->ftbl->resume(device);
-	}
-
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
-||||||| merged common ancestors
-	mutex_lock(&device->mutex);
-	kgsl_pwrctrl_request_state(device, KGSL_STATE_SUSPEND);
-
-	/* Tell the device to drain the submission queue */
-	device->ftbl->drain(device);
-
-	/* Wait for the active count to hit zero */
-	status = kgsl_active_count_wait(device, 0);
-	if (status)
-		goto end;
-
-	/*
-	 * An interrupt could have snuck in and requested NAP in
-	 * the meantime, make sure we're on the SUSPEND path.
-	 */
-	kgsl_pwrctrl_request_state(device, KGSL_STATE_SUSPEND);
-
-	/* Don't let the timer wake us during suspended sleep. */
-	del_timer_sync(&device->idle_timer);
-	switch (device->state) {
-		case KGSL_STATE_INIT:
-			break;
-		case KGSL_STATE_ACTIVE:
-		case KGSL_STATE_NAP:
-		case KGSL_STATE_SLEEP:
-			/* make sure power is on to stop the device */
-			kgsl_pwrctrl_enable(device);
-			/* Get the completion ready to be waited upon. */
-			INIT_COMPLETION(device->hwaccess_gate);
-			device->ftbl->suspend_context(device);
-			device->ftbl->stop(device);
-			pm_qos_update_request(&device->pwrctrl.pm_qos_req_dma,
-						PM_QOS_DEFAULT_VALUE);
-			kgsl_pwrctrl_set_state(device, KGSL_STATE_SUSPEND);
-			break;
-		case KGSL_STATE_SLUMBER:
-			INIT_COMPLETION(device->hwaccess_gate);
-			kgsl_pwrctrl_set_state(device, KGSL_STATE_SUSPEND);
-			break;
-		default:
-			KGSL_PWR_ERR(device, "suspend fail, device %d\n",
-					device->id);
-			goto end;
-	}
-	kgsl_pwrctrl_request_state(device, KGSL_STATE_NONE);
-	kgsl_pwrscale_sleep(device);
-	status = 0;
-
-end:
-	if (status) {
-		/* On failure, re-resume normal activity */
-		if (device->ftbl->resume)
-			device->ftbl->resume(device);
-	}
-
-	mutex_unlock(&device->mutex);
-=======
 	mutex_lock(&device->mutex);
 	status = kgsl_pwrctrl_change_state(device, KGSL_STATE_SUSPEND);
 	mutex_unlock(&device->mutex);
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	KGSL_PWR_WARN(device, "suspend end\n");
 	return status;
 }
@@ -840,7 +713,7 @@ static int kgsl_resume_device(struct kgsl_device *device)
 		return -EINVAL;
 
 	KGSL_PWR_WARN(device, "resume start\n");
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 	if (device->state == KGSL_STATE_SUSPEND) {
 		kgsl_pwrctrl_change_state(device, KGSL_STATE_SLUMBER);
 	} else if (device->state != KGSL_STATE_INIT) {
@@ -857,7 +730,7 @@ static int kgsl_resume_device(struct kgsl_device *device)
 			"resume invoked without a suspend\n");
 	}
 
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 	KGSL_PWR_WARN(device, "resume end\n");
 	return 0;
 }
@@ -1097,15 +970,9 @@ static int kgsl_release(struct inode *inodep, struct file *filep)
 
 	filep->private_data = NULL;
 
-<<<<<<< HEAD
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
-||||||| merged common ancestors
-	mutex_lock(&device->mutex);
-=======
 	next = 0;
 	while (1) {
 		syncsource = idr_get_next(&private->syncsource_idr, &next);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 		if (syncsource == NULL)
 			break;
@@ -1161,12 +1028,6 @@ static int kgsl_release(struct inode *inodep, struct file *filep)
 	}
 
 	result = kgsl_close_device(device);
-<<<<<<< HEAD
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
-||||||| merged common ancestors
-	mutex_unlock(&device->mutex);
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	kfree(dev_priv);
 
@@ -1243,25 +1104,9 @@ static int kgsl_open(struct inode *inodep, struct file *filep)
 	dev_priv->device = device;
 	filep->private_data = dev_priv;
 
-<<<<<<< HEAD
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
-
-||||||| merged common ancestors
-	mutex_lock(&device->mutex);
-
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	result = kgsl_open_device(device);
 	if (result)
-<<<<<<< HEAD
-		goto err_freedevpriv;
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
-||||||| merged common ancestors
-		goto err_freedevpriv;
-	mutex_unlock(&device->mutex);
-=======
 		goto err;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	/*
 	 * Get file (per process) private struct. This must be done
@@ -1275,56 +1120,12 @@ static int kgsl_open(struct inode *inodep, struct file *filep)
 		goto err;
 	}
 
-<<<<<<< HEAD
-
-	return result;
-
-err_stop:
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
-	device->open_count--;
-	if (device->open_count == 0) {
-		/* make sure power is on to stop the device */
-		kgsl_pwrctrl_enable(device);
-		device->ftbl->stop(device);
-		kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
-		atomic_dec(&device->active_cnt);
-||||||| merged common ancestors
-
-	return result;
-
-err_stop:
-	mutex_lock(&device->mutex);
-	device->open_count--;
-	if (device->open_count == 0) {
-		/* make sure power is on to stop the device */
-		kgsl_pwrctrl_enable(device);
-		device->ftbl->stop(device);
-		kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
-		atomic_dec(&device->active_cnt);
-=======
 err:
 	if (result) {
 		filep->private_data = NULL;
 		kfree(dev_priv);
 		pm_runtime_put(&device->pdev->dev);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
-<<<<<<< HEAD
-err_freedevpriv:
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
-	filep->private_data = NULL;
-	kfree(dev_priv);
-err_pmruntime:
-	pm_runtime_put(device->parentdev);
-||||||| merged common ancestors
-err_freedevpriv:
-	mutex_unlock(&device->mutex);
-	filep->private_data = NULL;
-	kfree(dev_priv);
-err_pmruntime:
-	pm_runtime_put(device->parentdev);
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	return result;
 }
 
@@ -3857,30 +3658,8 @@ long kgsl_ioctl_helper(struct file *filep, unsigned int cmd,
 		}
 	}
 
-<<<<<<< HEAD
-	if (lock)
-		kgsl_mutex_lock(&dev_priv->device->mutex,
-				&dev_priv->device->mutex_owner);
-
-||||||| merged common ancestors
-	if (lock)
-		mutex_lock(&dev_priv->device->mutex);
-
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	ret = func(dev_priv, cmd, uptr);
 
-<<<<<<< HEAD
-	if (lock)
-		kgsl_mutex_unlock(&dev_priv->device->mutex,
-				&dev_priv->device->mutex_owner);
-
-||||||| merged common ancestors
-	if (lock)
-		mutex_unlock(&dev_priv->device->mutex);
-
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	/*
 	 * Still copy back on failure, but assume function took
 	 * all necessary precautions sanitizing the return values.

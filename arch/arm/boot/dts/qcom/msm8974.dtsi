@@ -10,17 +10,9 @@
  * GNU General Public License for more details.
  */
 
-<<<<<<< HEAD
-/include/ "skeleton.dtsi"
-/include/ <dt-bindings/clock/msm-clocks-8974.h>
-||||||| merged common ancestors
-#include "skeleton.dtsi"
-#include <dt-bindings/clock/msm-clocks-8974.h>
-=======
 #include "skeleton.dtsi"
 #include <dt-bindings/clock/msm-clocks-8974.h>
 #include <dt-bindings/clock/msm-clocks-krait.h>
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8974";
@@ -123,17 +115,17 @@
 	soc: soc { };
 };
 
-/include/ "msm8974-camera.dtsi"
-/include/ "msm8974-coresight.dtsi"
-/include/ "msm-gdsc.dtsi"
-/include/ "msm8974-ion.dtsi"
-/include/ "msm8974-gpu.dtsi"
-/include/ "msm8974-mdss.dtsi"
-/include/ "msm8974-smp2p.dtsi"
-/include/ "msm8974-bus.dtsi"
-/include/ "msm8974-ipcrouter.dtsi"
-/include/ "msm8974-pinctrl.dtsi"
-/include/ "msm-rdbg.dtsi"
+#include "msm8974-camera.dtsi"
+#include "msm8974-coresight.dtsi"
+#include "msm-gdsc.dtsi"
+#include "msm8974-ion.dtsi"
+#include "msm8974-gpu.dtsi"
+#include "msm8974-mdss.dtsi"
+#include "msm8974-smp2p.dtsi"
+#include "msm8974-bus.dtsi"
+#include "msm8974-ipcrouter.dtsi"
+#include "msm8974-pinctrl.dtsi"
+#include "msm-rdbg.dtsi"
 
 &soc {
 	#address-cells = <1>;

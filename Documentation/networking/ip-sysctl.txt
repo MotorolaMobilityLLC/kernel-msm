@@ -22,16 +22,6 @@ ip_no_pmtu_disc - BOOLEAN
 min_pmtu - INTEGER
 	default 552 - minimum discovered Path MTU
 
-<<<<<<< HEAD
-fwmark_reflect - BOOLEAN
-	Controls the fwmark of kernel-generated IPv4 reply packets that are not
-	associated with a socket for example, TCP RSTs or ICMP echo replies).
-	If unset, these packets have a fwmark of zero. If set, they have the
-	fwmark of the packet they are replying to.
-	Default: 0
-
-||||||| merged common ancestors
-=======
 fwmark_reflect - BOOLEAN
 	Controls the fwmark of kernel-generated IPv4 reply packets that are not
 	associated with a socket for example, TCP RSTs or ICMP echo replies).
@@ -41,7 +31,6 @@ fwmark_reflect - BOOLEAN
 	the ones used for Path MTU Discovery.
 	Default: 0
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 route/max_size - INTEGER
 	Maximum number of routes allowed in the kernel.  Increase
 	this when using large numbers of interfaces and/or routes.
@@ -1129,16 +1118,6 @@ proxy_ndp - INTEGER
 		2 NDP packets are sent to userspace, where a userspace proxy
                   can be implemented
 
-<<<<<<< HEAD
-fwmark_reflect - BOOLEAN
-	Controls the fwmark of kernel-generated IPv4 reply packets that are not
-	associated with a socket for example, TCP RSTs or ICMP echo replies).
-	If unset, these packets have a fwmark of zero. If set, they have the
-	fwmark of the packet they are replying to.
-	Default: 0
-
-||||||| merged common ancestors
-=======
 fwmark_reflect - BOOLEAN
 	Controls the fwmark of kernel-generated IPv6 reply packets that are not
 	associated with a socket for example, TCP RSTs or ICMPv6 echo replies).
@@ -1148,7 +1127,6 @@ fwmark_reflect - BOOLEAN
 	the ones used for Path MTU Discovery.
 	Default: 0
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 conf/interface/*:
 	Change special settings per interface.
 

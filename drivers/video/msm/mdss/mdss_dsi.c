@@ -65,30 +65,12 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-<<<<<<< HEAD
-	struct mdss_panel_info *pinfo = NULL;
-	u8 ldo_offset = 0;
-||||||| merged common ancestors
-=======
 	int i = 0;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		ret = -EINVAL;
 		goto end;
-	}
-
-	pinfo = &pdata->panel_info;
-
-	if (pinfo->alpm_event) {
-		if (enable && pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
-			ldo_offset = pinfo->alpm_ldo_offset;
-		else if (!enable && pinfo->alpm_event(CHECK_CURRENT_STATUS))
-			ldo_offset = pinfo->alpm_ldo_offset;
-
-		pr_debug("[ALPM_DEBUG]%s, LDO control, enable : %d\n",
-					__func__, enable);
 	}
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -120,13 +102,6 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		if (DSI_CORE_PM == i)
 			continue;
 		ret = msm_dss_enable_vreg(
-<<<<<<< HEAD
-			ctrl_pdata->power_data.vreg_config + ldo_offset,
-			ctrl_pdata->power_data.num_vreg - ldo_offset, 1);
-||||||| merged common ancestors
-			ctrl_pdata->power_data.vreg_config,
-			ctrl_pdata->power_data.num_vreg, 1);
-=======
 			ctrl_pdata->power_data[i].vreg_config,
 			ctrl_pdata->power_data[i].num_vreg, 0);
 		if (ret)
@@ -162,52 +137,11 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data[i].vreg_config,
 			ctrl_pdata->power_data[i].num_vreg, 1);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		if (ret) {
 			pr_err("%s: failed to enable vregs for %s\n",
 				__func__, __mdss_dsi_pm_name(i));
 			goto error;
 		}
-<<<<<<< HEAD
-	} else {
-		ctrl_pdata->panel_reset(pdata, 0);
-
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data.vreg_config + ldo_offset,
-			ctrl_pdata->power_data.num_vreg - ldo_offset, 0);
-		if (ret) {
-			pr_err("%s: Failed to disable vregs.rc=%d\n",
-				__func__, ret);
-		}
-||||||| merged common ancestors
-
-		if (!pdata->panel_info.mipi.lp11_init) {
-			ret = mdss_dsi_panel_reset(pdata, 1);
-			if (ret) {
-				pr_err("%s: Panel reset failed. rc=%d\n",
-						__func__, ret);
-				if (msm_dss_enable_vreg(
-				ctrl_pdata->power_data.vreg_config,
-				ctrl_pdata->power_data.num_vreg, 0))
-					pr_err("Disable vregs failed\n");
-				goto error;
-			}
-		}
-	} else {
-		ret = mdss_dsi_panel_reset(pdata, 0);
-		if (ret) {
-			pr_err("%s: Panel reset failed. rc=%d\n",
-					__func__, ret);
-			goto error;
-		}
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data.vreg_config,
-			ctrl_pdata->power_data.num_vreg, 0);
-		if (ret) {
-			pr_err("%s: Failed to disable vregs.rc=%d\n",
-				__func__, ret);
-		}
-=======
 	}
 	if (ctrl_pdata->panel_bias_vreg) {
 		pr_debug("%s: Enable panel bias vreg. ndx = %d\n",
@@ -234,9 +168,8 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 		ret = mdss_dsi_panel_reset(pdata, 1);
 		if (ret)
 			pr_err("%s: Panel reset failed. rc=%d\n",
-					__func__, ret);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
-	}
+				__func__, ret);
+		}
 
 error:
 	if (ret) {
@@ -526,13 +459,6 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 
 	mutex_lock(&ctrl_pdata->mutex);
 	panel_info = &ctrl_pdata->panel_data.panel_info;
-<<<<<<< HEAD
-	pr_debug("%s+: ctrl=%p ndx=%d %s\n", __func__,
-				ctrl_pdata, ctrl_pdata->ndx, current->comm);
-||||||| merged common ancestors
-	pr_debug("%s+: ctrl=%p ndx=%d\n", __func__,
-				ctrl_pdata, ctrl_pdata->ndx);
-=======
 
 	pr_debug("%s+: ctrl=%p ndx=%d power_state=%d\n",
 		__func__, ctrl_pdata, ctrl_pdata->ndx, power_state);
@@ -547,7 +473,6 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 		pr_debug("%s: dsi_off with panel always on\n", __func__);
 		goto panel_power_ctrl;
 	}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
@@ -583,254 +508,8 @@ static int mdss_dsi_update_panel_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 				int mode)
 {
 	int ret = 0;
-<<<<<<< HEAD
-	struct mdss_panel_data *pdata = NULL;
-	struct mipi_panel_info *pinfo = NULL;
-	u32 lane_status = 0;
-	u32 active_lanes = 0;
-
-	if (!ctrl_pdata) {
-		pr_err("%s: invalid input\n", __func__);
-		return -EINVAL;
-	}
-
-	pdata = &ctrl_pdata->panel_data;
-	if (!pdata) {
-		pr_err("%s: Invalid panel data\n", __func__);
-		return -EINVAL;
-	}
-	pinfo = &pdata->panel_info.mipi;
-
-	if (!__mdss_dsi_ulps_feature_enabled(pdata)) {
-		pr_debug("%s: ULPS feature not supported. enable=%d\n",
-			__func__, enable);
-		return -ENOTSUPP;
-	}
-
-	if (enable && !ctrl_pdata->ulps) {
-		/* No need to configure ULPS mode when entering suspend state */
-		if (!pdata->panel_info.panel_power_on) {
-			pr_err("%s: panel off. returning\n", __func__);
-			goto error;
-		}
-
-		if (__mdss_dsi_clk_enabled(ctrl_pdata, DSI_LINK_CLKS)) {
-			pr_err("%s: cannot enter ulps mode if dsi clocks are on\n",
-				__func__);
-			ret = -EPERM;
-			goto error;
-		}
-
-		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-		if (ret) {
-			pr_err("%s: Failed to enable clocks. rc=%d\n",
-				__func__, ret);
-			goto error;
-		}
-
-		/*
-		 * ULPS Entry Request.
-		 * Wait for a short duration to ensure that the lanes
-		 * enter ULP state.
-		 */
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x01F);
-		usleep(100);
-
-		/* Check to make sure that all active data lanes are in ULPS */
-		if (pinfo->data_lane3)
-			active_lanes |= BIT(11);
-		if (pinfo->data_lane2)
-			active_lanes |= BIT(10);
-		if (pinfo->data_lane1)
-			active_lanes |= BIT(9);
-		if (pinfo->data_lane0)
-			active_lanes |= BIT(8);
-		active_lanes |= BIT(12); /* clock lane */
-		lane_status = MIPI_INP(ctrl_pdata->ctrl_base + 0xA8);
-		if (lane_status & active_lanes) {
-			pr_err("%s: ULPS entry req failed. Lane status=0x%08x\n",
-				__func__, lane_status);
-			ret = -EINVAL;
-			mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
-			goto error;
-		}
-
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 0);
-
-		/* Enable MMSS DSI Clamps */
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x3FF);
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x83FF);
-
-		wmb();
-
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x108, 0x1);
-		/* disable DSI controller */
-		mdss_dsi_controller_cfg(0, pdata);
-
-		mdss_dsi_phy_disable(ctrl_pdata);
-
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
-
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data.vreg_config + 2, 2, 0);
-		if (ret) {
-			pr_err("%s: Failed to disable vregs.rc=%d\n",
-				__func__, ret);
-		}
-		ctrl_pdata->ulps = true;
-		pr_err("enable ulps mode\n");
-	} else if (!enable && ctrl_pdata->ulps) {
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data.vreg_config + 2, 2, 1);
-		if (ret) {
-			pr_err("%s:Failed to enable vregs.rc=%d\n",
-				__func__, ret);
-			goto error;
-		}
-
-		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
-		if (ret) {
-			pr_err("%s: Failed to enable bus clocks. rc=%d\n",
-				__func__, ret);
-			goto error;
-		}
-
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x108, 0x0);
-		mdss_dsi_phy_init(pdata);
-
-		__mdss_dsi_ctrl_setup(pdata);
-
-		/*
-		 * ULPS Entry Request. This is needed because, after power
-		 * collapse and reset, the DSI controller resets back to
-		 * idle state and not ULPS.
-		 * Wait for a short duration to ensure that the lanes
-		 * enter ULP state.
-		 */
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x01F);
-		usleep(100);
-
-		/* Disable MMSS DSI Clamps */
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x3FF);
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x0);
-
-		ret = mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 1);
-		if (ret) {
-			pr_err("%s: Failed to enable link clocks. rc=%d\n",
-				__func__, ret);
-			mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
-			goto error;
-		}
-
-		/*
-		 * ULPS Exit Request
-		 * Hardware requirement is to wait for at least 1ms
-		 */
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x1F00);
-		usleep(1000);
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x0);
-
-		/*
-		 * Wait for a short duration before enabling
-		 * data transmission
-		 */
-		usleep(100);
-||||||| merged common ancestors
-	struct mdss_panel_data *pdata = NULL;
-	u32 lane_status = 0;
-
-	if (!ctrl_pdata) {
-		pr_err("%s: invalid input\n", __func__);
-		return -EINVAL;
-	}
-
-	pdata = &ctrl_pdata->panel_data;
-
-	if (!__mdss_dsi_ulps_feature_enabled(pdata)) {
-		pr_debug("%s: ULPS feature not supported. enable=%d\n",
-			__func__, enable);
-		return -ENOTSUPP;
-	}
-
-	if (enable && !ctrl_pdata->ulps) {
-		/* No need to configure ULPS mode when entering suspend state */
-		if (!pdata->panel_info.panel_power_on) {
-			pr_err("%s: panel off. returning\n", __func__);
-			goto error;
-		}
-
-		if (__mdss_dsi_clk_enabled(ctrl_pdata)) {
-			pr_err("%s: cannot enter ulps mode if dsi clocks are on\n",
-				__func__);
-			ret = -EPERM;
-			goto error;
-		}
-
-		mdss_dsi_clk_ctrl(ctrl_pdata, 1);
-		/*
-		 * ULPS Entry Request.
-		 * Wait for a short duration to ensure that the lanes
-		 * enter ULP state.
-		 */
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x01F);
-		usleep(100);
-
-		/* Enable MMSS DSI Clamps */
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x3FF);
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x83FF);
-
-		wmb();
-
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x108, 0x1);
-		/* disable DSI controller */
-		mdss_dsi_controller_cfg(0, pdata);
-
-		lane_status = MIPI_INP(ctrl_pdata->ctrl_base + 0xA8),
-		mdss_dsi_clk_ctrl(ctrl_pdata, 0);
-		ctrl_pdata->ulps = true;
-	} else if (ctrl_pdata->ulps) {
-		mdss_dsi_phy_init(pdata);
-
-		__mdss_dsi_ctrl_setup(pdata);
-		mdss_dsi_sw_reset(pdata);
-		mdss_dsi_host_init(pdata);
-		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
-			pdata);
-
-		/* Disable MMSS DSI Clamps */
-		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14, 0x0);
-
-		/*
-		 * ULPS Exit Request
-		 * Hardware requirement is to wait for at least 1ms
-		 */
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x1F00);
-		usleep(1000);
-		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x0);
-
-		/*
-		 * Wait for a short duration before enabling
-		 * data transmission
-		 */
-		usleep(100);
-=======
 	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
-<<<<<<< HEAD
-		lane_status = MIPI_INP(ctrl_pdata->ctrl_base + 0xA8);
-		mdss_dsi_sw_reset(pdata);
-		mdss_dsi_host_init(pdata);
-		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
-			pdata);
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 0);
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
-		ctrl_pdata->ulps = false;
-		pr_err("disable ulps mode\n");
-||||||| merged common ancestors
-		lane_status = MIPI_INP(ctrl_pdata->ctrl_base + 0xA8),
-		ctrl_pdata->ulps = false;
-=======
 	if (mode == DSI_CMD_MODE) {
 		pinfo->mipi.mode = DSI_CMD_MODE;
 		pinfo->type = MIPI_CMD_PANEL;
@@ -841,7 +520,6 @@ static int mdss_dsi_update_panel_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		pinfo->type = MIPI_VIDEO_PANEL;
 		pinfo->mipi.vsync_enable = 0;
 		pinfo->mipi.hw_vsync_mode = 0;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
 
 	ctrl_pdata->panel_mode = pinfo->mipi.mode;
@@ -852,69 +530,6 @@ static int mdss_dsi_update_panel_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	return ret;
 }
 
-<<<<<<< HEAD
-static int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl,
-	int enable)
-{
-	int rc;
-	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
-
-	if (&ctrl->mmss_misc_io == NULL) {
-		pr_err("%s: mmss_misc_io is NULL. ULPS not valid\n", __func__);
-		return -EINVAL;
-	}
-
-	if (mdss_dsi_is_slave_ctrl(ctrl)) {
-		mctrl = mdss_dsi_get_master_ctrl();
-		if (!mctrl) {
-			pr_err("%s: Unable to get master control\n", __func__);
-			return -EINVAL;
-		}
-	}
-
-	if (mctrl) {
-		pr_debug("%s: configuring ulps (%s) for master ctrl%d\n",
-			__func__, (enable ? "on" : "off"), ctrl->ndx);
-		rc = mdss_dsi_ulps_config_sub(mctrl, enable);
-		if (rc)
-			return rc;
-	}
-
-	pr_debug("%s: configuring ulps (%s) for ctrl%d\n",
-		__func__, (enable ? "on" : "off"), ctrl->ndx);
-	return mdss_dsi_ulps_config_sub(ctrl, enable);
-}
-
-||||||| merged common ancestors
-static int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl,
-	int enable)
-{
-	int rc;
-	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
-
-	if (&ctrl->mmss_misc_io == NULL) {
-		pr_err("%s: mmss_misc_io is NULL. ULPS not valid\n", __func__);
-		return -EINVAL;
-	}
-
-	if (ctrl->flags & DSI_FLAG_CLOCK_MASTER)
-		sctrl = mdss_dsi_ctrl_slave(ctrl);
-
-	if (sctrl) {
-		pr_debug("%s: configuring ulps (%s) for slave ctrl\n",
-			__func__, (enable ? "on" : "off"));
-		rc = mdss_dsi_ulps_config_sub(sctrl, enable);
-		if (rc)
-			return rc;
-	}
-
-	pr_debug("%s: configuring ulps (%s) for master ctrl\n",
-		__func__, (enable ? "on" : "off"));
-	return mdss_dsi_ulps_config_sub(ctrl, enable);
-}
-
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 int mdss_dsi_on(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -943,36 +558,16 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		goto end;
 	}
 
-<<<<<<< HEAD
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
-||||||| merged common ancestors
-	ret = mdss_dsi_bus_clk_start(ctrl_pdata);
-=======
 	ret = mdss_dsi_panel_power_ctrl(pdata, MDSS_PANEL_POWER_ON);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	if (ret) {
 		pr_err("%s:Panel power on failed. rc=%d\n", __func__, ret);
 		return ret;
 	}
 
-<<<<<<< HEAD
-	mdss_dsi_phy_sw_reset((ctrl_pdata->ctrl_base));
-	mdss_dsi_phy_init(pdata);
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
-
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-||||||| merged common ancestors
-	mdss_dsi_phy_sw_reset((ctrl_pdata->ctrl_base));
-	mdss_dsi_phy_init(pdata);
-	mdss_dsi_bus_clk_stop(ctrl_pdata);
-
-	mdss_dsi_clk_ctrl(ctrl_pdata, 1);
-=======
 	if (cur_power_state != MDSS_PANEL_POWER_OFF) {
 		pr_debug("%s: dsi_on from panel low power state\n", __func__);
 		goto end;
 	}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	/*
 	 * Enable DSI clocks.
@@ -982,7 +577,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 	mdss_dsi_sw_reset(ctrl_pdata, true);
 
-<<<<<<< HEAD
 	/* LP11 */
 	if (!pinfo->is_suspending) {
 		u32 tmp;
@@ -995,24 +589,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		ctrl_pdata->panel_reset(pdata, 1);
 		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
 	}
-||||||| merged common ancestors
-	/*
-	 * Issue hardware reset line after enabling the DSI clocks and data
-	 * data lanes for LP11 init
-	 */
-	if (mipi->lp11_init)
-		mdss_dsi_panel_reset(pdata, 1);
-=======
-	/*
-	 * Issue hardware reset line after enabling the DSI clocks and data
-	 * data lanes for LP11 init
-	 */
-	if (mipi->lp11_init) {
-		if (mdss_dsi_pinctrl_set_state(ctrl_pdata, true))
-			pr_debug("reset enable: pinctrl not enabled\n");
-		mdss_dsi_panel_reset(pdata, 1);
-	}
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	if (mipi->init_delay)
 		usleep(mipi->init_delay);
@@ -1126,26 +702,9 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 		ctrl_pdata->ctrl_state |= CTRL_STATE_PANEL_INIT;
 	}
 
-<<<<<<< HEAD
-	if (pdata->panel_info.type == MIPI_CMD_PANEL) {
-		if (mipi->vsync_enable && mipi->hw_vsync_mode
-			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)
-			&& pdata->panel_info.panel_power_on) {
-			mdss_dsi_set_tear_on(ctrl_pdata);
-		}
-	}
-||||||| merged common ancestors
-	if (pdata->panel_info.type == MIPI_CMD_PANEL) {
-		if (mipi->vsync_enable && mipi->hw_vsync_mode
-			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
-				mdss_dsi_set_tear_on(ctrl_pdata);
-		}
-	}
-=======
 	if ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
 		mipi->vsync_enable && mipi->hw_vsync_mode)
 		mdss_dsi_set_tear_on(ctrl_pdata);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
@@ -1189,16 +748,6 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 
 	mdss_dsi_op_mode_config(DSI_CMD_MODE, pdata);
 
-<<<<<<< HEAD
-	if (pdata->panel_info.type == MIPI_CMD_PANEL) {
-		if (mipi->vsync_enable && mipi->hw_vsync_mode
-			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)
-			&& pdata->panel_info.panel_power_on) {
-||||||| merged common ancestors
-	if (pdata->panel_info.type == MIPI_CMD_PANEL) {
-		if (mipi->vsync_enable && mipi->hw_vsync_mode
-			&& gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
-=======
 	if (pdata->panel_info.dynamic_switch_pending) {
 		pr_info("%s: switching to %s mode\n", __func__,
 			(pdata->panel_info.mipi.mode ? "video" : "command"));
@@ -1206,7 +755,6 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 			ctrl_pdata->switch_mode(pdata, DSI_VIDEO_MODE);
 		} else if (pdata->panel_info.type == MIPI_VIDEO_PANEL) {
 			ctrl_pdata->switch_mode(pdata, DSI_CMD_MODE);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 			mdss_dsi_set_tear_off(ctrl_pdata);
 		}
 	}
@@ -1256,9 +804,8 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 	WARN((ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT),
 		"Incorrect Ctrl state=0x%x\n", ctrl_pdata->ctrl_state);
 
-<<<<<<< HEAD
-	mdss_dsi_sw_reset(pdata);
-	mdss_dsi_host_init(pdata);
+	mdss_dsi_ctrl_setup(ctrl_pdata);
+	mdss_dsi_sw_reset(ctrl_pdata, true);
 #if defined(CONFIG_FB_MSM_MDSS_BOE_TFT_CMD_WVGA_PANEL)
 	/* LP11 */
 	{
@@ -1281,15 +828,6 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 		wmb();
 	}
 #endif
-	mdss_dsi_op_mode_config(mipi->mode, pdata);
-||||||| merged common ancestors
-	mdss_dsi_sw_reset(pdata);
-	mdss_dsi_host_init(pdata);
-	mdss_dsi_op_mode_config(mipi->mode, pdata);
-=======
-	mdss_dsi_ctrl_setup(ctrl_pdata);
-	mdss_dsi_sw_reset(ctrl_pdata, true);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	pr_debug("%s-:End\n", __func__);
 	return ret;
 }
@@ -1440,61 +978,6 @@ static int mdss_dsi_dfps_config(struct mdss_panel_data *pdata, int new_fps)
 			}
 
 		} else {
-<<<<<<< HEAD
-			rc = mdss_dsi_clk_div_config
-				(&ctrl_pdata->panel_data.panel_info, new_fps);
-			if (rc) {
-				pr_err("%s: unable to initialize the clk dividers\n",
-								__func__);
-				return rc;
-			}
-			ctrl_pdata->pclk_rate =
-				pdata->panel_info.mipi.dsi_pclk_rate;
-			ctrl_pdata->byte_clk_rate =
-				pdata->panel_info.clk_rate / 8;
-
-			if (pdata->panel_info.dfps_update
-					== DFPS_IMMEDIATE_CLK_UPDATE_MODE) {
-				dsi_ctrl = MIPI_INP((ctrl_pdata->ctrl_base) +
-						    0x0004);
-				pdata->panel_info.mipi.frame_rate = new_fps;
-				dsi_ctrl &= ~0x2;
-				MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0004,
-								dsi_ctrl);
-				mdss_dsi_controller_cfg(true, pdata);
-				mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
-				mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-				dsi_ctrl |= 0x2;
-				MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0004,
-								dsi_ctrl);
-||||||| merged common ancestors
-			rc = mdss_dsi_clk_div_config
-				(&ctrl_pdata->panel_data.panel_info, new_fps);
-			if (rc) {
-				pr_err("%s: unable to initialize the clk dividers\n",
-								__func__);
-				return rc;
-			}
-			ctrl_pdata->pclk_rate =
-				pdata->panel_info.mipi.dsi_pclk_rate;
-			ctrl_pdata->byte_clk_rate =
-				pdata->panel_info.clk_rate / 8;
-
-			if (pdata->panel_info.dfps_update
-					== DFPS_IMMEDIATE_CLK_UPDATE_MODE) {
-				dsi_ctrl = MIPI_INP((ctrl_pdata->ctrl_base) +
-						    0x0004);
-				pdata->panel_info.mipi.frame_rate = new_fps;
-				dsi_ctrl &= ~0x2;
-				MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0004,
-								dsi_ctrl);
-				mdss_dsi_controller_cfg(true, pdata);
-				mdss_dsi_clk_ctrl(ctrl_pdata, 0);
-				mdss_dsi_clk_ctrl(ctrl_pdata, 1);
-				dsi_ctrl |= 0x2;
-				MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0004,
-								dsi_ctrl);
-=======
 			rc = __mdss_dsi_dfps_update_clks(pdata, new_fps);
 			if (!rc && sctrl_pdata) {
 				pr_debug("%s Updating slave ctrl DFPS\n",
@@ -1502,7 +985,6 @@ static int mdss_dsi_dfps_config(struct mdss_panel_data *pdata, int new_fps)
 				rc = __mdss_dsi_dfps_update_clks(
 						&sctrl_pdata->panel_data,
 						new_fps);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 			}
 		}
 	} else {
@@ -1665,35 +1147,11 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			rc = mdss_dsi_blank(pdata, MDSS_PANEL_POWER_OFF);
 		}
 		break;
-<<<<<<< HEAD
-	case MDSS_EVENT_FIRST_FRAME_UPDATE:
-		pr_info("MDSS_FIRST_FRAME_UPDATE\n");
-		/*Event is send only if cont_splash feature is enabled */
-		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE) {
-			/* Panel is Enabled in Bootloader */
-			ctrl_pdata->ctrl_state |= CTRL_STATE_PANEL_INIT;
-			rc = mdss_dsi_blank(pdata);
-		}
-		break;
-	case MDSS_EVENT_FB_REGISTERED:
-		if (ctrl_pdata->registered) {
-			pr_debug("%s:event=%d, calling panel registered callback\n",
-				__func__, event);
-			rc = ctrl_pdata->registered(pdata);
-		}
-		break;
-	case MDSS_EVENT_ENABLE_PARTIAL_UPDATE:
-		rc = mdss_dsi_ctl_partial_update(pdata);
-||||||| merged common ancestors
-	case MDSS_EVENT_ENABLE_PARTIAL_UPDATE:
-		rc = mdss_dsi_ctl_partial_update(pdata);
-=======
 	case MDSS_EVENT_ENABLE_PARTIAL_ROI:
 		rc = mdss_dsi_ctl_partial_roi(pdata);
 		break;
 	case MDSS_EVENT_DSI_STREAM_SIZE:
 		rc = mdss_dsi_set_stream_size(pdata);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		break;
 	case MDSS_EVENT_DSI_DYNAMIC_SWITCH:
 		rc = mdss_dsi_update_panel_config(ctrl_pdata,
@@ -2240,14 +1698,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	ctrl_pdata->panel_data.event_handler = mdss_dsi_event_handler;
 
-<<<<<<< HEAD
-	mdss_dsi_ctrl_init(ctrl_pdata);
-||||||| merged common ancestors
-	if (ctrl_pdata->bklt_ctrl == BL_PWM)
-		mdss_dsi_panel_pwm_cfg(ctrl_pdata);
-
-	mdss_dsi_ctrl_init(ctrl_pdata);
-=======
 	if (ctrl_pdata->status_mode == ESD_REG)
 		ctrl_pdata->check_status = mdss_dsi_reg_status_check;
 	else if (ctrl_pdata->status_mode == ESD_BTA)
@@ -2261,7 +1711,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		mdss_dsi_panel_pwm_cfg(ctrl_pdata);
 
 	mdss_dsi_ctrl_init(&ctrl_pdev->dev, ctrl_pdata);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	/*
 	 * register in mdp driver
 	 */
@@ -2281,14 +1730,8 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			return rc;
 		}
 
-<<<<<<< HEAD
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-||||||| merged common ancestors
-		mdss_dsi_clk_ctrl(ctrl_pdata, 1);
-=======
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		ctrl_pdata->ctrl_state |=
 			(CTRL_STATE_PANEL_INIT | CTRL_STATE_MDP_ACTIVE);
 	} else {

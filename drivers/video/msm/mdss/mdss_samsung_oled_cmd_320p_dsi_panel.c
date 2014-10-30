@@ -335,11 +335,6 @@ static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
 		return;
 	}
 
-	if (!pdata->panel_info.panel_power_on) {
-		pr_err("%s: DSI block is off state\n", __func__);
-		return;
-	}
-
 	if (pdata->panel_info.alpm_event(CHECK_PREVIOUS_STATUS)
 		&& pdata->panel_info.alpm_event(CHECK_CURRENT_STATUS)) {
 		pdata->panel_info.alpm_mode = mode;
@@ -380,11 +375,6 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	else if (bl_level == PANEL_BACKLIGHT_DIM) {
 		request_bl_dim = 1;
 		bl_level = 30;
-	}
-
-	if (!pdata->panel_info.panel_power_on) {
-		pr_err("%s: DSI block is off state\n", __func__);
-		return;
 	}
 
 	mdss_dsi_panel_dimming_init(pdata);
@@ -1013,7 +1003,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	rc = of_property_read_u32(np,
 		"qcom,mdss-dsi-border-color", &tmp);
 	pinfo->lcdc.border_clr = (!rc ? tmp : 0);
-	pinfo->bklt_ctrl = UNKNOWN_CTRL;
 	data = of_get_property(np, "qcom,mdss-dsi-bl-pmic-control-type", NULL);
 	if (data) {
 		if (!strncmp(data, "bl_ctrl_wled", 12)) {

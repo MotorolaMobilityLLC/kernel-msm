@@ -725,17 +725,10 @@ int rt6_route_rcv(struct net_device *dev, u8 *opt, int len,
 		prefix = &prefix_buf;
 	}
 
-<<<<<<< HEAD
-	rt = rt6_get_route_info(dev, prefix, rinfo->prefix_len, gwaddr);
-||||||| merged common ancestors
-	rt = rt6_get_route_info(net, prefix, rinfo->prefix_len, gwaddr,
-				dev->ifindex);
-=======
 	if (rinfo->prefix_len == 0)
 		rt = rt6_get_dflt_router(gwaddr, dev);
 	else
 		rt = rt6_get_route_info(dev, prefix, rinfo->prefix_len, gwaddr);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	if (rt && !lifetime) {
 		ip6_del_rt(rt);

@@ -1650,13 +1650,7 @@ unsigned int a3xx_irq_pending(struct adreno_device *adreno_dev)
 
 	adreno_readreg(adreno_dev, ADRENO_REG_RBBM_INT_0_STATUS, &status);
 
-<<<<<<< HEAD
-	return (status & adreno_dev->gpudev->irq->mask) ? 1 : 0;
-||||||| merged common ancestors
-	return (status & A3XX_INT_MASK) ? 1 : 0;
-=======
 	return (status & gpudev->irq->mask) ? 1 : 0;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 }
 
 static unsigned int counter_delta(struct adreno_device *adreno_dev,
@@ -2260,27 +2254,12 @@ static void a3xx_protect_init(struct adreno_device *adreno_dev)
 	adreno_set_protected_registers(adreno_dev, &index, 0x100, 4);
 
 	/* CP registers */
-<<<<<<< HEAD
-	adreno_set_protected_registers(device, &index, 0x1C0, 5);
-	adreno_set_protected_registers(device, &index, 0x1EC, 1);
-	adreno_set_protected_registers(device, &index, 0x1F6, 1);
-	adreno_set_protected_registers(device, &index, 0x1F8, 2);
-	adreno_set_protected_registers(device, &index, 0x45E, 2);
-	adreno_set_protected_registers(device, &index, 0x460, 4);
-||||||| merged common ancestors
-	adreno_set_protected_registers(device, &index, 0x1C0, 5);
-	adreno_set_protected_registers(device, &index, 0x1F6, 1);
-	adreno_set_protected_registers(device, &index, 0x1F8, 2);
-	adreno_set_protected_registers(device, &index, 0x45E, 2);
-	adreno_set_protected_registers(device, &index, 0x460, 4);
-=======
 	adreno_set_protected_registers(adreno_dev, &index, 0x1C0, 5);
 	adreno_set_protected_registers(adreno_dev, &index, 0x1EC, 1);
 	adreno_set_protected_registers(adreno_dev, &index, 0x1F6, 1);
 	adreno_set_protected_registers(adreno_dev, &index, 0x1F8, 2);
 	adreno_set_protected_registers(adreno_dev, &index, 0x45E, 2);
 	adreno_set_protected_registers(adreno_dev, &index, 0x460, 4);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	/* RB registers */
 	adreno_set_protected_registers(adreno_dev, &index, 0xCC0, 0);

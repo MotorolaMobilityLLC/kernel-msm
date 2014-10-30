@@ -1842,13 +1842,8 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	mutex_init(&mfd->mdp_sync_pt_data.sync_mutex);
 	atomic_set(&mfd->mdp_sync_pt_data.commit_cnt, 0);
 	atomic_set(&mfd->commits_pending, 0);
-<<<<<<< HEAD
-	atomic_set(&mfd->ioctl_ref_cnt, 0);
-||||||| merged common ancestors
-=======
 	atomic_set(&mfd->ioctl_ref_cnt, 0);
 	atomic_set(&mfd->kickoff_pending, 0);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	init_timer(&mfd->no_update.timer);
 	mfd->no_update.timer.function = mdss_fb_no_update_notify_timer_cb;
@@ -1861,13 +1856,8 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	init_completion(&mfd->power_set_comp);
 	init_waitqueue_head(&mfd->commit_wait_q);
 	init_waitqueue_head(&mfd->idle_wait_q);
-<<<<<<< HEAD
-	init_waitqueue_head(&mfd->ioctl_q);
-||||||| merged common ancestors
-=======
 	init_waitqueue_head(&mfd->ioctl_q);
 	init_waitqueue_head(&mfd->kickoff_wait_q);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	ret = fb_alloc_cmap(&fbi->cmap, 256, 0);
 	if (ret)
@@ -2641,22 +2631,6 @@ static int mdss_fb_check_var(struct fb_var_screeninfo *var,
 			(var->blue.offset == 0) &&
 			(var->green.offset == 8) &&
 			(var->red.offset == 16)) &&
-<<<<<<< HEAD
-		    !((var->transp.offset == 0) &&
-			(var->blue.offset == 24) &&
-			(var->green.offset == 16) &&
-			(var->red.offset == 8)) &&
-		    !((var->transp.offset == 0) &&
-			(var->blue.offset == 8) &&
-			(var->green.offset == 16) &&
-			(var->red.offset == 24)) &&
-||||||| merged common ancestors
-		    !((var->transp.offset == 0) &&
-			(var->blue.offset == 24) &&
-			(var->green.offset == 16) &&
-			(var->red.offset == 8)) &&
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		    !((var->transp.offset == 24) &&
 			(var->blue.offset == 16) &&
 			(var->green.offset == 8) &&
@@ -3110,13 +3084,8 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 	int ret = -ENOSYS;
 	struct mdp_buf_sync buf_sync;
 	struct msm_sync_pt_data *sync_pt_data = NULL;
-<<<<<<< HEAD
-
-||||||| merged common ancestors
-=======
 	unsigned int dsi_mode = 0;
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	if (!info || !info->par)
 		return -EINVAL;
 
@@ -3130,37 +3099,10 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 	atomic_inc(&mfd->ioctl_ref_cnt);
 
 	mdss_fb_power_setting_idle(mfd);
-<<<<<<< HEAD
-
-	if ((cmd != MSMFB_VSYNC_CTRL) && (cmd != MSMFB_OVERLAY_VSYNC_CTRL) &&
-			(cmd != MSMFB_ASYNC_BLIT) && (cmd != MSMFB_BLIT) &&
-			(cmd != MSMFB_NOTIFY_UPDATE) &&
-			(cmd != MSMFB_OVERLAY_PREPARE)) {
-		ret = mdss_fb_pan_idle(mfd);
-		if (ret) {
-			pr_debug("Shutdown pending. Aborting operation %x\n",
-				cmd);
-			goto exit;
-		}
-	}
-||||||| merged common ancestors
-	if ((cmd != MSMFB_VSYNC_CTRL) && (cmd != MSMFB_OVERLAY_VSYNC_CTRL) &&
-			(cmd != MSMFB_ASYNC_BLIT) && (cmd != MSMFB_BLIT) &&
-			(cmd != MSMFB_NOTIFY_UPDATE) &&
-			(cmd != MSMFB_OVERLAY_PREPARE)) {
-		ret = mdss_fb_pan_idle(mfd);
-		if (ret) {
-			pr_debug("Shutdown pending. Aborting operation %x\n",
-				cmd);
-			return ret;
-		}
-	}
-=======
 
 	ret = __ioctl_wait_idle(mfd, cmd);
 	if (ret)
 		goto exit;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	switch (cmd) {
 	case MSMFB_CURSOR:
@@ -3183,19 +3125,6 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 	case MSMFB_BUFFER_SYNC:
 		ret = copy_from_user(&buf_sync, argp, sizeof(buf_sync));
 		if (ret)
-<<<<<<< HEAD
-			goto exit;
-
-		if ((!mfd->op_enable) || (!mfd->panel_power_on)) {
-			ret = -EPERM;
-			goto exit;
-		}
-
-||||||| merged common ancestors
-			return ret;
-		if ((!mfd->op_enable) || (!mfd->panel_power_on))
-			return -EPERM;
-=======
 			goto exit;
 
 		if ((!mfd->op_enable) || (mdss_fb_is_power_off(mfd))) {
@@ -3203,7 +3132,6 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 			goto exit;
 		}
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		if (mfd->mdp.get_sync_fnc)
 			sync_pt_data = mfd->mdp.get_sync_fnc(mfd, &buf_sync);
 		if (!sync_pt_data)

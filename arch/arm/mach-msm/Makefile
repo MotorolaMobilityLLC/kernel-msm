@@ -34,17 +34,10 @@ obj-$(CONFIG_ARCH_MDM9630) += board-9630.o board-9630-gpiomux.o
 obj-$(CONFIG_MSM_PP2S_FEMTO) += pp2s.o
 obj-$(CONFIG_ARCH_MSMFERRUM) += board-ferrum.o
 obj-$(CONFIG_ARCH_MSM8916) += board-8916.o
-<<<<<<< HEAD
-obj-$(CONFIG_ARCH_MPQ8092) += clock-8092.o clock-vcap-8092.o clock-mdss-8974.o
-obj-$(CONFIG_ARCH_MPQ8092) += clock-krait-8974.o
 ifdef CONFIG_MACH_MSM8226_SPRAT
 obj-$(CONFIG_ARCH_MSM8226) += sprat/
 obj-$(CONFIG_ARCH_MSM8226) += clock-mdss-8974.o
 else
-||||||| merged common ancestors
-obj-$(CONFIG_ARCH_MPQ8092) += clock-8092.o clock-vcap-8092.o clock-mdss-8974.o
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 obj-$(CONFIG_ARCH_MSM8226) += board-8226.o board-8226-gpiomux.o
 obj-$(CONFIG_ARCH_MSM8226) += clock-8226.o clock-mdss-8974.o
 endif

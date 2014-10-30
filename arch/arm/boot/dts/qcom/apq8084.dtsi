@@ -10,19 +10,11 @@
  * GNU General Public License for more details.
  */
 
-<<<<<<< HEAD
-/include/ "skeleton64.dtsi"
-/include/ <dt-bindings/clock/msm-clocks-krait.h>
-||||||| merged common ancestors
-#include "skeleton64.dtsi"
-#include <dt-bindings/clock/msm-clocks-krait.h>
-=======
 /memreserve/ 0x00000000 0x00001000;
 /memreserve/ 0xac1c0000 0x00001000;
 
 #include "skeleton64.dtsi"
 #include <dt-bindings/clock/msm-clocks-krait.h>
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
 	model = "Qualcomm Technologies, Inc. APQ 8084";
@@ -109,37 +101,6 @@
         };
 };
 
-<<<<<<< HEAD
-/include/ "msm-gdsc.dtsi"
-/include/ "apq8084-ion.dtsi"
-/include/ "apq8084-iommu.dtsi"
-/include/ "apq8084-iommu-domains.dtsi"
-/include/ "apq8084-smp2p.dtsi"
-/include/ "apq8084-coresight.dtsi"
-/include/ "apq8084-mdss.dtsi"
-/include/ "apq8084-gpu.dtsi"
-/include/ "apq8084-pm.dtsi"
-/include/ "apq8084-bus.dtsi"
-/include/ "apq8084-iommu-domains.dtsi"
-/include/ "apq8084-pinctrl.dtsi"
-/include/ "apq8084-camera.dtsi"
-/include/ "apq8084-ipcrouter.dtsi"
-||||||| merged common ancestors
-#include "msm-gdsc.dtsi"
-#include "apq8084-ion.dtsi"
-#include "apq8084-iommu.dtsi"
-#include "apq8084-iommu-domains.dtsi"
-#include "apq8084-smp2p.dtsi"
-#include "apq8084-coresight.dtsi"
-#include "apq8084-mdss.dtsi"
-#include "apq8084-gpu.dtsi"
-#include "apq8084-pm.dtsi"
-#include "apq8084-bus.dtsi"
-#include "apq8084-iommu-domains.dtsi"
-#include "apq8084-pinctrl.dtsi"
-#include "apq8084-camera.dtsi"
-#include "apq8084-ipcrouter.dtsi"
-=======
 #include "msm-gdsc.dtsi"
 #include "apq8084-ion.dtsi"
 #include "apq8084-iommu.dtsi"
@@ -155,7 +116,6 @@
 #include "apq8084-camera.dtsi"
 #include "apq8084-ipcrouter.dtsi"
 #include "msm-rdbg.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 &soc {
 	#address-cells = <1>;
@@ -5578,9 +5538,9 @@
 	status = "ok";
 };
 
-/include/ "msm-pma8084-rpm-regulator.dtsi"
-/include/ "msm-pma8084.dtsi"
-/include/ "apq8084-regulator.dtsi"
+#include "msm-pma8084-rpm-regulator.dtsi"
+#include "msm-pma8084.dtsi"
+#include "apq8084-regulator.dtsi"
 
 &pma8084_vadc {
 	chan@73 {

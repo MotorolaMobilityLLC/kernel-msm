@@ -84,15 +84,14 @@ static struct platform_device ramoops_device = {
 
 static void __init sprat_reserve_persist_ram_area(void)
 {
-        struct membank *bank;
-        if (meminfo.nr_banks < 2) {
-                pr_err("%s: Highmem is not present.\n",
-                        __func__);
+	struct memblock_region *reg;
+	if (memblock_phys_mem_size() < 2) {
+		pr_err("%s: Highmem is not present.\n",
+			__func__);
                 return;
         }
-
-        bank = &meminfo.bank[1];
-        ramoops_data.mem_address = bank->start;
+	reg = memblock.memory.regions++;
+        ramoops_data.mem_address = __pfn_to_phys(memblock_region_memory_base_pfn(reg));
 
 	if (memblock_reserve(ramoops_data.mem_address, ramoops_data.mem_size)) {
 		pr_err("Failed to reserve persistent memory from %08lx-%08lx\n",
@@ -167,11 +166,6 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	{}
 };
 
-static void __init msm8226_early_memory(void)
-{
-	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
-}
-
 static void __init msm8226_reserve(void)
 {
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
@@ -193,10 +187,10 @@ void __init msm8226_add_drivers(void)
 	rpm_smd_regulator_driver_init();
 	qpnp_regulator_init();
 	spm_regulator_init();
-	if (of_board_is_rumi())
-		msm_clock_init(&msm8226_rumi_clock_init_data);
-	else
-		msm_clock_init(&msm8226_clock_init_data);
+//	if (of_board_is_rumi())
+//		msm_clock_init(&msm8226_rumi_clock_init_data);
+//	else
+//		msm_clock_init(&msm8226_clock_init_data);
 	msm_bus_fabric_init_driver();
 	qup_i2c_init_driver();
 	ncp6335d_regulator_init();
@@ -245,6 +239,5 @@ DT_MACHINE_START(MSM8226_DT, "Qualcomm MSM 8226 (Flattened Device Tree)")
 	.init_machine		= msm8226_init,
 	.dt_compat		= msm8226_dt_match,
 	.reserve		= msm8226_reserve,
-	.init_very_early	= msm8226_early_memory,
 	.smp			= &arm_smp_ops,
 MACHINE_END

@@ -115,7 +115,6 @@ static const struct soc_enum mi2s_config_enum[] = {
 	SOC_ENUM_SINGLE_EXT(4, mi2s_format),
 };
 
-<<<<<<< HEAD
 /*
  * Force the MI2S capture bit width
  * 0: do not force (inherit bit width from PCM format)
@@ -137,8 +136,6 @@ static const char *const mi2s_bitwidth_text[] = {
 static const struct soc_enum mi2s_bitwidth_enum =
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mi2s_bitwidth_text), mi2s_bitwidth_text);
 
-||||||| merged common ancestors
-=======
 static u16 msm_dai_q6_max_num_slot(int frame_rate)
 {
 	/* Max num of slots is bits per frame divided
@@ -164,7 +161,6 @@ static u16 msm_dai_q6_max_num_slot(int frame_rate)
 	}
 }
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 static int msm_dai_q6_dai_add_route(struct snd_soc_dai *dai)
 {
 	struct snd_soc_dapm_route intercon;
@@ -2486,18 +2482,6 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	} else { /* BITWIDTH_24 */
 		dai_data->port_config.i2s.bit_width = 24;
 		dai_data->bitwidth = 24;
-<<<<<<< HEAD
-||||||| merged common ancestors
-		break;
-	default:
-		return -EINVAL;
-=======
-		break;
-	default:
-		pr_err("%s: format %d\n",
-			__func__, params_format(params));
-		return -EINVAL;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
 
 	dai_data->port_config.i2s.i2s_cfg_minor_version =

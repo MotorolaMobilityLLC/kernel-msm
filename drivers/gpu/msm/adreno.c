@@ -117,7 +117,7 @@ static void adreno_input_work(struct work_struct *work)
 			struct adreno_device, input_work);
 	struct kgsl_device *device = &adreno_dev->dev;
 
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 
 	device->flags |= KGSL_FLAG_WAKE_ON_TOUCH;
 
@@ -135,7 +135,7 @@ static void adreno_input_work(struct work_struct *work)
 	 */
 	mod_timer(&device->idle_timer,
 		jiffies + msecs_to_jiffies(_wake_timeout));
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 }
 
 /*
@@ -797,298 +797,16 @@ adreno_identify_gpu(struct adreno_device *adreno_dev)
 		KGSL_DRV_FATAL(&adreno_dev->dev,
 			"No GPU chip ID was specified\n");
 
-<<<<<<< HEAD
-	return cmds - cmds_orig;
-}
-/**
- * adreno_use_default_setstate() - Use CPU instead of the GPU to manage the mmu?
- * @adreno_dev: the device
- *
- * In many cases it is preferable to poke the iommu directly rather
- * than using the GPU command stream. If we are idle or trying to go to a low
- * power state, using the command stream will be slower and asynchronous, which
- * needlessly complicates the power state transitions. Additionally,
- * the hardware simulators do not support command stream MMU operations so
- * the command stream can never be used if we are capturing CFF data.
- *
- */
-static bool adreno_use_default_setstate(struct adreno_device *adreno_dev)
-{
-	return (adreno_isidle(&adreno_dev->dev) ||
-		KGSL_STATE_ACTIVE != adreno_dev->dev.state ||
-		atomic_read(&adreno_dev->dev.active_cnt) == 0 ||
-		adreno_dev->dev.cff_dump_enable);
-}
-
-static int adreno_iommu_setstate(struct kgsl_device *device,
-					unsigned int context_id,
-					uint32_t flags)
-{
-	phys_addr_t pt_val;
-	unsigned int *link = NULL, *cmds;
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	int num_iommu_units;
-	struct kgsl_context *context;
-	struct adreno_context *adreno_ctx = NULL;
-	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
-	unsigned int result;
-
-	if (adreno_use_default_setstate(adreno_dev)) {
-		kgsl_mmu_device_setstate(&device->mmu, flags);
-		return 0;
-	}
-	num_iommu_units = kgsl_mmu_get_num_iommu_units(&device->mmu);
-
-	context = kgsl_context_get(device, context_id);
-	if (context)
-		adreno_ctx = ADRENO_CONTEXT(context);
-
-	link = kmalloc(PAGE_SIZE, GFP_KERNEL);
-	if (link == NULL) {
-		result = -ENOMEM;
-		goto done;
-	}
-
-	cmds = link;
-
-	result = kgsl_mmu_enable_clk(&device->mmu, KGSL_IOMMU_CONTEXT_USER);
-
-	if (result)
-		goto done;
-||||||| merged common ancestors
-	return cmds - cmds_orig;
-}
-/**
- * adreno_use_default_setstate() - Use CPU instead of the GPU to manage the mmu?
- * @adreno_dev: the device
- *
- * In many cases it is preferable to poke the iommu directly rather
- * than using the GPU command stream. If we are idle or trying to go to a low
- * power state, using the command stream will be slower and asynchronous, which
- * needlessly complicates the power state transitions. Additionally,
- * the hardware simulators do not support command stream MMU operations so
- * the command stream can never be used if we are capturing CFF data.
- *
- */
-static bool adreno_use_default_setstate(struct adreno_device *adreno_dev)
-{
-	return (adreno_isidle(&adreno_dev->dev) ||
-		KGSL_STATE_ACTIVE != adreno_dev->dev.state ||
-		atomic_read(&adreno_dev->dev.active_cnt) == 0 ||
-		adreno_dev->dev.cff_dump_enable);
-}
-
-static int adreno_iommu_setstate(struct kgsl_device *device,
-					unsigned int context_id,
-					uint32_t flags)
-{
-	phys_addr_t pt_val;
-	unsigned int link[230];
-	unsigned int *cmds = &link[0];
-	int sizedwords = 0;
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	int num_iommu_units;
-	struct kgsl_context *context;
-	struct adreno_context *adreno_ctx = NULL;
-	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
-	unsigned int result;
-
-	if (adreno_use_default_setstate(adreno_dev)) {
-		kgsl_mmu_device_setstate(&device->mmu, flags);
-		return 0;
-	}
-	num_iommu_units = kgsl_mmu_get_num_iommu_units(&device->mmu);
-
-	context = kgsl_context_get(device, context_id);
-	if (context)
-		adreno_ctx = ADRENO_CONTEXT(context);
-
-	result = kgsl_mmu_enable_clk(&device->mmu, KGSL_IOMMU_CONTEXT_USER);
-
-	if (result)
-		goto done;
-=======
 	adreno_dev->gpucore = _get_gpu_core(adreno_dev->chipid);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
-<<<<<<< HEAD
-	pt_val = kgsl_mmu_get_pt_base_addr(&device->mmu,
-				device->mmu.hwpagetable);
-
-	cmds += __adreno_add_idle_indirect_cmds(cmds,
-		device->mmu.setstate_memory.gpuaddr +
-		KGSL_IOMMU_SETSTATE_NOP_OFFSET);
-
-	if (kgsl_msm_supports_iommu_v2())
-		cmds += _adreno_iommu_setstate_v2(device, cmds, pt_val,
-						num_iommu_units, flags);
-	else if (msm_soc_version_supports_iommu_v0())
-		cmds += _adreno_iommu_setstate_v0(device, cmds, pt_val,
-						num_iommu_units, flags);
-	else
-		cmds += _adreno_iommu_setstate_v1(device, cmds, pt_val,
-						num_iommu_units, flags);
-
-	/* invalidate all base pointers */
-	*cmds++ = cp_type3_packet(CP_INVALIDATE_STATE, 1);
-	*cmds++ = 0x7fff;
-
-	if ((unsigned int) (cmds - link) > (PAGE_SIZE / sizeof(unsigned int))) {
-		KGSL_DRV_ERR(device, "Temp command buffer overflow\n");
-		BUG();
-	}
-	/*
-	 * This returns the per context timestamp but we need to
-	 * use the global timestamp for iommu clock disablement
-	 */
-	result = adreno_ringbuffer_issuecmds(device, adreno_ctx,
-			KGSL_CMD_FLAGS_PMODE, link,
-			(unsigned int)(cmds - link));
-||||||| merged common ancestors
-	pt_val = kgsl_mmu_get_pt_base_addr(&device->mmu,
-				device->mmu.hwpagetable);
-
-	cmds += __adreno_add_idle_indirect_cmds(cmds,
-		device->mmu.setstate_memory.gpuaddr +
-		KGSL_IOMMU_SETSTATE_NOP_OFFSET);
-
-	if (kgsl_msm_supports_iommu_v2())
-		cmds += _adreno_iommu_setstate_v2(device, cmds, pt_val,
-						num_iommu_units, flags);
-	else if (msm_soc_version_supports_iommu_v0())
-		cmds += _adreno_iommu_setstate_v0(device, cmds, pt_val,
-						num_iommu_units, flags);
-	else
-		cmds += _adreno_iommu_setstate_v1(device, cmds, pt_val,
-						num_iommu_units, flags);
-
-	sizedwords += (cmds - &link[0]);
-	if (sizedwords == 0) {
-		KGSL_DRV_ERR(device, "no commands generated\n");
-		BUG();
-	}
-	/* invalidate all base pointers */
-	*cmds++ = cp_type3_packet(CP_INVALIDATE_STATE, 1);
-	*cmds++ = 0x7fff;
-	sizedwords += 2;
-
-	if (sizedwords > (ARRAY_SIZE(link))) {
-		KGSL_DRV_ERR(device, "Temp command buffer overflow\n");
-		BUG();
-	}
-	/*
-	 * This returns the per context timestamp but we need to
-	 * use the global timestamp for iommu clock disablement
-	 */
-	result = adreno_ringbuffer_issuecmds(device, adreno_ctx,
-			KGSL_CMD_FLAGS_PMODE, &link[0], sizedwords);
-=======
 	if (adreno_dev->gpucore == NULL)
 		KGSL_DRV_FATAL(&adreno_dev->dev, "Unknown GPU chip ID %8.8X\n",
 			adreno_dev->chipid);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	/*
 	 * The gmem size might be dynamic when ocmem is involved so copy it out
 	 * of the gpu device
 	 */
-<<<<<<< HEAD
-	if (result)
-		kgsl_mmu_disable_clk(&device->mmu,
-						KGSL_IOMMU_CONTEXT_USER);
-	else
-		kgsl_mmu_disable_clk_on_ts(&device->mmu, rb->global_ts,
-						KGSL_IOMMU_CONTEXT_USER);
-
-done:
-	kfree(link);
-	kgsl_context_put(context);
-	return result;
-}
-
-static unsigned int
-adreno_getchipid(struct kgsl_device *device)
-{
-	struct kgsl_device_platform_data *pdata =
-		kgsl_device_get_drvdata(device);
-
-	/* All A3XX and newer chipsets will specify the chipid in pdata */
-	return pdata->chipid;
-}
-
-static inline bool _rev_match(unsigned int id, unsigned int entry)
-{
-	return (entry == ANY_ID || entry == id);
-}
-
-static void
-adreno_identify_gpu(struct adreno_device *adreno_dev)
-{
-	unsigned int i, core, major, minor, patchid;
-
-	adreno_dev->chip_id = adreno_getchipid(&adreno_dev->dev);
-
-	core = ADRENO_CHIPID_CORE(adreno_dev->chip_id);
-	major = ADRENO_CHIPID_MAJOR(adreno_dev->chip_id);
-	minor = ADRENO_CHIPID_MINOR(adreno_dev->chip_id);
-	patchid = ADRENO_CHIPID_PATCH(adreno_dev->chip_id);
-
-	for (i = 0; i < ARRAY_SIZE(adreno_gpulist); i++) {
-		if (core == adreno_gpulist[i].core &&
-		    _rev_match(major, adreno_gpulist[i].major) &&
-		    _rev_match(minor, adreno_gpulist[i].minor) &&
-		    _rev_match(patchid, adreno_gpulist[i].patchid))
-			break;
-	}
-||||||| merged common ancestors
-	if (result)
-		kgsl_mmu_disable_clk(&device->mmu,
-						KGSL_IOMMU_CONTEXT_USER);
-	else
-		kgsl_mmu_disable_clk_on_ts(&device->mmu, rb->global_ts,
-						KGSL_IOMMU_CONTEXT_USER);
-
-done:
-	kgsl_context_put(context);
-	return result;
-}
-
-static unsigned int
-adreno_getchipid(struct kgsl_device *device)
-{
-	struct kgsl_device_platform_data *pdata =
-		kgsl_device_get_drvdata(device);
-
-	/* All A3XX and newer chipsets will specify the chipid in pdata */
-	return pdata->chipid;
-}
-
-static inline bool _rev_match(unsigned int id, unsigned int entry)
-{
-	return (entry == ANY_ID || entry == id);
-}
-
-static void
-adreno_identify_gpu(struct adreno_device *adreno_dev)
-{
-	unsigned int i, core, major, minor, patchid;
-
-	adreno_dev->chip_id = adreno_getchipid(&adreno_dev->dev);
-
-	core = ADRENO_CHIPID_CORE(adreno_dev->chip_id);
-	major = ADRENO_CHIPID_MAJOR(adreno_dev->chip_id);
-	minor = ADRENO_CHIPID_MINOR(adreno_dev->chip_id);
-	patchid = ADRENO_CHIPID_PATCH(adreno_dev->chip_id);
-
-	for (i = 0; i < ARRAY_SIZE(adreno_gpulist); i++) {
-		if (core == adreno_gpulist[i].core &&
-		    _rev_match(major, adreno_gpulist[i].major) &&
-		    _rev_match(minor, adreno_gpulist[i].minor) &&
-		    _rev_match(patchid, adreno_gpulist[i].patchid))
-			break;
-	}
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	adreno_dev->gmem_size = adreno_dev->gpucore->gmem_size;
 
@@ -1734,7 +1452,7 @@ static void adreno_start_work(struct work_struct *work)
 	/* Nice ourselves to be higher priority but not too high priority */
 	set_user_nice(current, _wake_nice);
 
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 	/*
 	 *  If adreno start is already called, no need to call it again
 	 *  it can lead to unpredictable behavior if we try to start
@@ -1754,7 +1472,7 @@ static void adreno_start_work(struct work_struct *work)
 		_status = _adreno_start(adreno_dev);
 	else
 		_status = 0;
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 }
 
 /**
@@ -1779,9 +1497,9 @@ static int adreno_start(struct kgsl_device *device, int priority)
 	 * higher priority work queue and wait for it to finish
 	 */
 	queue_work(adreno_wq, &adreno_dev->start_work);
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 	flush_work(&adreno_dev->start_work);
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 
 	return _status;
 }
@@ -2138,7 +1856,7 @@ static ssize_t _ft_hang_intr_status_store(struct device *dev,
 		return 0;
 	adreno_dev = ADRENO_DEVICE(device);
 
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 	ret = kgsl_sysfs_store(buf, &new_setting);
 	if (ret)
 		goto done;
@@ -2182,7 +1900,7 @@ static ssize_t _ft_hang_intr_status_store(struct device *dev,
 		}
 	}
 done:
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 	return ret < 0 ? ret : count;
 }
 
@@ -2705,41 +2423,19 @@ static int adreno_setproperty(struct kgsl_device_private *dev_priv,
 bool adreno_hw_isidle(struct adreno_device *adreno_dev)
 {
 	unsigned int reg_rbbm_status;
-<<<<<<< HEAD
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-
-||||||| merged common ancestors
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-
-	/* Don't consider ourselves idle if there is an IRQ pending */
-	if (adreno_dev->gpudev->irq_pending(adreno_dev))
-		return false;
-
-=======
 	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	adreno_readreg(adreno_dev, ADRENO_REG_RBBM_STATUS,
 		&reg_rbbm_status);
 
 	if (reg_rbbm_status & ~0x80000001)
 		return false;
 
-<<<<<<< HEAD
-	/* Don't consider ourselves idle if there is an IRQ pending */
-	if (adreno_dev->gpudev->irq_pending(adreno_dev))
-		return false;
-
-	return true;
-||||||| merged common ancestors
-	return false;
-=======
 	/* Don't consider ourselves idle if there is an IRQ pending */
 	if (gpudev->irq_pending(adreno_dev))
 		return false;
 
 	return true;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 }
 
 /**
@@ -3169,62 +2865,12 @@ static int adreno_readtimestamp(struct kgsl_device *device,
 	if (!timestamp)
 		return status;
 
-<<<<<<< HEAD
-	switch (type) {
-	case KGSL_TIMESTAMP_QUEUED: {
-		struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-
-		*timestamp = adreno_context_timestamp(context,
-				&adreno_dev->ringbuffer);
-		break;
-	}
-	case KGSL_TIMESTAMP_CONSUMED:
-		kgsl_sharedmem_readl(&device->memstore, timestamp,
-			KGSL_MEMSTORE_OFFSET(id, soptimestamp));
-		break;
-	case KGSL_TIMESTAMP_RETIRED:
-		kgsl_sharedmem_readl(&device->memstore, timestamp,
-			KGSL_MEMSTORE_OFFSET(id, eoptimestamp));
-		break;
-	default:
-		status = -EINVAL;
-		*timestamp = 0;
-		break;
-	}
-
-||||||| merged common ancestors
-	switch (type) {
-	case KGSL_TIMESTAMP_QUEUED: {
-		struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-
-		*timestamp = adreno_context_timestamp(context,
-				&adreno_dev->ringbuffer);
-		break;
-	}
-	case KGSL_TIMESTAMP_CONSUMED:
-		kgsl_sharedmem_readl(&device->memstore, timestamp,
-			KGSL_MEMSTORE_OFFSET(id, soptimestamp));
-		break;
-	case KGSL_TIMESTAMP_RETIRED:
-		kgsl_sharedmem_readl(&device->memstore, timestamp,
-			KGSL_MEMSTORE_OFFSET(id, eoptimestamp));
-		break;
-	default:
-		status = -EINVAL;
-		*timestamp = 0;
-		break;
-	}
-
-	rmb();
-
-=======
 	if (KGSL_TIMESTAMP_QUEUED == type)
 		*timestamp = adreno_context_timestamp(context);
 	else
 		status = __adreno_readtimestamp(device,
 				context->id, type, timestamp);
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	return status;
 }
 

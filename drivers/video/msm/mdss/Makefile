@@ -21,16 +21,10 @@ endif
 dsi-v2-objs = dsi_v2.o dsi_host_v2.o dsi_io_v2.o
 obj-$(CONFIG_FB_MSM_MDSS_MDP3) += dsi-v2.o
 
-<<<<<<< HEAD
-mdss-dsi-objs := mdss_dsi.o mdss_dsi_host.o mdss_dsi_cmd.o
-ifeq ($(CONFIG_FB_MSM_MDSS_BOE_TFT_CMD_WVGA_PANEL),y)
+mdss-dsi-objs := mdss_dsi.o mdss_dsi_host.o mdss_dsi_cmd.o mdss_dsi_status.o
+ifeq ($(CONFIG_FB_MSM_MDSS_BOE_TFT_CMD_WVGA_PANEL),n)
 mdss-dsi-objs +=logo.o mdss_samsung_oled_cmd_320p_dsi_panel.o smart_mtp_s6e63j.o
 else
-||||||| merged common ancestors
-mdss-dsi-objs := mdss_dsi.o mdss_dsi_host.o mdss_dsi_cmd.o
-=======
-mdss-dsi-objs := mdss_dsi.o mdss_dsi_host.o mdss_dsi_cmd.o mdss_dsi_status.o
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 mdss-dsi-objs += mdss_dsi_panel.o
 endif
 mdss-dsi-objs += msm_mdss_io_8974.o

@@ -673,32 +673,6 @@ lookup_pi_state(u32 uval, struct futex_hash_bucket *hb,
 			/*
 			 * Handle the owner died case:
 			 */
-<<<<<<< HEAD
-			if (uval & FUTEX_OWNER_DIED) {
-				/*
-				 * exit_pi_state_list sets owner to NULL and
-				 * wakes the topmost waiter. The task which
-				 * acquires the pi_state->rt_mutex will fixup
-				 * owner.
-				 */
-				if (!pi_state->owner) {
-					/*
-					 * No pi state owner, but the user
-					 * space TID is not 0. Inconsistent
-					 * state. [5]
-					 */
-					if (pid)
-						return -EINVAL;
-					/*
-					 * Take a ref on the state and
-					 * return. [4]
-					 */
-					goto out_state;
-				}
-
-||||||| merged common ancestors
-			if (pid && pi_state->owner) {
-=======
 			if (uval & FUTEX_OWNER_DIED) {
 				/*
 				 * exit_pi_state_list sets owner to NULL and
@@ -733,40 +707,12 @@ lookup_pi_state(u32 uval, struct futex_hash_bucket *hb,
 				if (!pid)
 					goto out_state;
 			} else {
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
-				/*
-<<<<<<< HEAD
-				 * If TID is 0, then either the dying owner
-				 * has not yet executed exit_pi_state_list()
-				 * or some waiter acquired the rtmutex in the
-				 * pi state, but did not yet fixup the TID in
-				 * user space.
-				 *
-				 * Take a ref on the state and return. [6]
-||||||| merged common ancestors
-				 * Bail out if user space manipulated the
-				 * futex value.
-=======
-				 * If the owner died bit is not set,
-				 * then the pi_state must have an
-				 * owner. [7]
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
-				 */
-<<<<<<< HEAD
-				if (!pid)
-					goto out_state;
-			} else {
 				/*
 				 * If the owner died bit is not set,
 				 * then the pi_state must have an
 				 * owner. [7]
 				 */
 				if (!pi_state->owner)
-||||||| merged common ancestors
-				if (pid != task_pid_vnr(pi_state->owner))
-=======
-				if (!pi_state->owner)
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 					return -EINVAL;
 			}
 
@@ -1059,7 +1005,6 @@ static int wake_futex_pi(u32 __user *uaddr, u32 uval, struct futex_q *this)
 	 * kept enabled while there is PI state around. We cleanup the
 	 * owner died bit, because we are the owner.
 	 */
-<<<<<<< HEAD
 	newval = FUTEX_WAITERS | task_pid_vnr(new_owner);
 
 	if (cmpxchg_futex_value_locked(&curval, uaddr, uval, newval))
@@ -1069,31 +1014,6 @@ static int wake_futex_pi(u32 __user *uaddr, u32 uval, struct futex_q *this)
 	if (ret) {
 		raw_spin_unlock(&pi_state->pi_mutex.wait_lock);
 		return ret;
-||||||| merged common ancestors
-	if (!(uval & FUTEX_OWNER_DIED)) {
-		int ret = 0;
-
-		newval = FUTEX_WAITERS | task_pid_vnr(new_owner);
-
-		if (cmpxchg_futex_value_locked(&curval, uaddr, uval, newval))
-			ret = -EFAULT;
-		else if (curval != uval)
-			ret = -EINVAL;
-		if (ret) {
-			raw_spin_unlock(&pi_state->pi_mutex.wait_lock);
-			return ret;
-		}
-=======
-	newval = FUTEX_WAITERS | task_pid_vnr(new_owner);
-
-	if (cmpxchg_futex_value_locked(&curval, uaddr, uval, newval))
-		ret = -EFAULT;
-	else if (curval != uval)
-		ret = -EINVAL;
-	if (ret) {
-		raw_spin_unlock(&pi_state->pi_mutex.wait_lock);
-		return ret;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
 
 	raw_spin_lock_irq(&pi_state->owner->pi_lock);

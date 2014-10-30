@@ -13,13 +13,7 @@
 
 /dts-v1/;
 
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/mpq8092-sim.dts
-/include/ "mpq8092.dtsi"
-||||||| merged common ancestors
-#include "mpq8092.dtsi"
-=======
 /memreserve/ 0x06000000 0x00001000;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm/boot/dts/qcom/msm8994-sim.dts
 
 #include "msm8994.dtsi"
 #include "msm8994-pinctrl.dtsi"

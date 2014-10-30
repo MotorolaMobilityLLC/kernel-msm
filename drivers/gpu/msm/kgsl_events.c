@@ -73,26 +73,13 @@ void kgsl_process_event_group(struct kgsl_device *device,
 
 	context = group->context;
 
-<<<<<<< HEAD
-	spin_lock(&group->lock);
-
-	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED, &timestamp);
-||||||| merged common ancestors
-	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED, &timestamp);
-=======
 	_kgsl_context_get(context);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
-<<<<<<< HEAD
-||||||| merged common ancestors
-	spin_lock(&group->lock);
-=======
 	spin_lock(&group->lock);
 
 	group->readtimestamp(device, group->priv, KGSL_TIMESTAMP_RETIRED,
 		&timestamp);
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	/*
 	 * If no timestamps have been retired since the last time we were here
 	 * then we can avoid going through this loop

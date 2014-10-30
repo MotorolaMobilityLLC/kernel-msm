@@ -10,13 +10,6 @@
  * GNU General Public License for more details.
  */
 
-<<<<<<< HEAD
-/include/ "skeleton64.dtsi"
-/include/ <dt-bindings/clock/msm-clocks-8916.h>
-||||||| merged common ancestors
-#include "skeleton64.dtsi"
-#include <dt-bindings/clock/msm-clocks-8916.h>
-=======
 #include "skeleton64.dtsi"
 #include <dt-bindings/clock/msm-clocks-8936.h>
 #include <dt-bindings/clock/msm-cpu-clocks-8939.h>
@@ -26,7 +19,6 @@
 #include "msm8936-pm.dtsi"
 #include "msm8936-smem.dtsi"
 #include "msm8936-smp2p.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM8936";
@@ -34,16 +26,6 @@
 	qcom,msm-id = <233 0>;
 };
 
-<<<<<<< HEAD
-/include/ "msm8936-smp2p.dtsi"
-/include/ "msm8936-ipcrouter.dtsi"
-
-||||||| merged common ancestors
-#include "msm8936-smp2p.dtsi"
-#include "msm8936-ipcrouter.dtsi"
-
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 &soc {
 	timer {
 		compatible = "arm,armv7-timer";

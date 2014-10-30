@@ -10,19 +10,6 @@
  * GNU General Public License for more details.
  */
 
-<<<<<<< HEAD
-/include/ "dsi-panel-jdi-1080p-video.dtsi"
-/include/ "dsi-panel-jdi-dualmipi0-video.dtsi"
-/include/ "dsi-panel-jdi-dualmipi1-video.dtsi"
-/include/ "dsi-panel-jdi-dualmipi0-cmd.dtsi"
-/include/ "dsi-panel-jdi-dualmipi1-cmd.dtsi"
-||||||| merged common ancestors
-#include "dsi-panel-jdi-1080p-video.dtsi"
-#include "dsi-panel-jdi-dualmipi0-video.dtsi"
-#include "dsi-panel-jdi-dualmipi1-video.dtsi"
-#include "dsi-panel-jdi-dualmipi0-cmd.dtsi"
-#include "dsi-panel-jdi-dualmipi1-cmd.dtsi"
-=======
 #include "dsi-panel-jdi-1080p-video.dtsi"
 #include "dsi-panel-jdi-dualmipi0-video.dtsi"
 #include "dsi-panel-jdi-dualmipi1-video.dtsi"
@@ -30,4 +17,3 @@
 #include "dsi-panel-jdi-dualmipi1-cmd.dtsi"
 #include "dsi-panel-jdi-4k-dualmipi0-video.dtsi"
 #include "dsi-panel-jdi-4k-dualmipi1-video.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1

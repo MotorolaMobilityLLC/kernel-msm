@@ -1575,44 +1575,6 @@ done:
 	return status;
 }
 
-<<<<<<< HEAD
-/*
- * kgsl_iommu_flush_tlb_pt_current - Flush IOMMU TLB if pagetable is
- * currently used by GPU.
- * @pt - Pointer to kgsl pagetable structure
- *
- * Return - void
- */
-static void kgsl_iommu_flush_tlb_pt_current(struct kgsl_pagetable *pt)
-{
-	int lock_taken = 0;
-	struct kgsl_device *device = pt->mmu->device;
-	struct kgsl_iommu *iommu = pt->mmu->priv;
-
-	/*
-	 * Check to see if the current thread already holds the device mutex.
-	 * If it does not, then take the device mutex which is required for
-	 * flushing the tlb
-	 */
-	if (!kgsl_mutex_lock(&device->mutex, &device->mutex_owner))
-		lock_taken = 1;
-
-	/*
-	 * Flush the tlb only if the iommu device is attached and the pagetable
-	 * hasn't been switched yet
-	 */
-	if (kgsl_mmu_is_perprocess(pt->mmu) &&
-		iommu->iommu_units[0].dev[KGSL_IOMMU_CONTEXT_USER].attached &&
-		kgsl_iommu_pt_equal(pt->mmu, pt,
-		kgsl_iommu_get_current_ptbase(pt->mmu)))
-		kgsl_iommu_default_setstate(pt->mmu, KGSL_MMUFLAGS_TLBFLUSH);
-
-	if (lock_taken)
-		kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
-}
-
-||||||| merged common ancestors
-=======
 /*
  * kgsl_iommu_flush_tlb_pt_current - Flush IOMMU TLB if pagetable is
  * currently used by GPU.
@@ -1641,7 +1603,6 @@ static void kgsl_iommu_flush_tlb_pt_current(struct kgsl_pagetable *pt,
 	mutex_unlock(&pt->mmu->device->mutex);
 }
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 static int
 kgsl_iommu_unmap(struct kgsl_pagetable *pt,
 		struct kgsl_memdesc *memdesc)
@@ -1670,33 +1631,6 @@ kgsl_iommu_unmap(struct kgsl_pagetable *pt,
 		return ret;
 	}
 
-<<<<<<< HEAD
-	kgsl_iommu_flush_tlb_pt_current(pt);
-||||||| merged common ancestors
-	/*
-	 * Check to see if the current thread already holds the device mutex.
-	 * If it does not, then take the device mutex which is required for
-	 * flushing the tlb
-	 */
-	if (!mutex_is_locked(&device->mutex) ||
-		device->mutex.owner != current) {
-		mutex_lock(&device->mutex);
-		lock_taken = 1;
-	}
-
-	/*
-	 * Flush the tlb only if the iommu device is attached and the pagetable
-	 * hasn't been switched yet
-	 */
-	if (kgsl_mmu_is_perprocess(pt->mmu) &&
-		iommu->iommu_units[0].dev[KGSL_IOMMU_CONTEXT_USER].attached &&
-		kgsl_iommu_pt_equal(pt->mmu, pt,
-		kgsl_iommu_get_current_ptbase(pt->mmu)))
-		kgsl_iommu_default_setstate(pt->mmu, KGSL_MMUFLAGS_TLBFLUSH);
-
-	if (lock_taken)
-		mutex_unlock(&device->mutex);
-=======
 	/*
 	 * We only need to flush the TLB for non-global memory.
 	 * This is because global mappings are only removed at pagetable destroy
@@ -1704,7 +1638,6 @@ kgsl_iommu_unmap(struct kgsl_pagetable *pt,
 	 */
 	if (!kgsl_memdesc_is_global(memdesc))
 		kgsl_iommu_flush_tlb_pt_current(pt, memdesc);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	return ret;
 }
@@ -1752,26 +1685,6 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 					  size);
 		}
 	}
-<<<<<<< HEAD
-
-	/*
-	 *  IOMMU V1 BFBs pre-fetch data beyond what is being used by the core.
-	 *  This can include both allocated pages and un-allocated pages.
-	 *  If an un-allocated page is cached, and later used (if it has been
-	 *  newly dynamically allocated by SW) the SMMU HW should automatically
-	 *  re-fetch the pages from memory (rather than using the cached
-	 *  un-allocated page). This logic is known as the re-fetch logic.
-	 *  In current chips we suspect this re-fetch logic is broken,
-	 *  it can result in bad translations which can either cause downstream
-	 *  bus errors, or upstream cores being hung (because of garbage data
-	 *  being read) -> causing TLB sync stuck issues. As a result SW must
-	 *  implement the invalidate+map.
-	 */
-	if (adreno_dev->features & IOMMU_FLUSH_TLB_ON_MAP)
-		kgsl_iommu_flush_tlb_pt_current(pt);
-
-||||||| merged common ancestors
-=======
 
 	/*
 	 *  IOMMU V1 BFBs pre-fetch data beyond what is being used by the core.
@@ -1795,7 +1708,6 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 		&& !kgsl_memdesc_is_global(memdesc))
 		kgsl_iommu_flush_tlb_pt_current(pt, memdesc);
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	return ret;
 }
 

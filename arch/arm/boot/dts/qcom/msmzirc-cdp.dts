@@ -11,34 +11,11 @@
  */
 
 /dts-v1/;
-<<<<<<< HEAD:arch/arm/boot/dts/qcom/apq8026-v2-720p-w-cdp.dts
-/include/ "apq8026-v2.dtsi"
-/include/ "msm8226-w-memory.dtsi"
-/include/ "msm8226-w-qseecom.dtsi"
-/include/ "msm8226-720p-cdp.dtsi"
-||||||| merged common ancestors
-#include "apq8026-v2.dtsi"
-#include "msm8226-720p-cdp.dtsi"
-=======
 
 #include "msmzirc-cdp.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1:arch/arm/boot/dts/qcom/msmzirc-cdp.dts
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM ZIRC CDP";
 	compatible = "qcom,msmzirc-cdp", "qcom,msmzirc", "qcom,cdp";
 	qcom,board-id = <1 0>;
-};
-
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
-};
-
-&dsi_nt35590_qvga_cmd {
-	qcom,cont-splash-enabled;
-};
-
-&mdss_fb0 {
-	/* cont_splash memory*/
-	qcom,memblock-reserve = <0x04200000 0x64000>;
 };

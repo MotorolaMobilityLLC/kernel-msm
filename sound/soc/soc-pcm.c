@@ -2223,16 +2223,6 @@ static int dpcm_fe_dai_open(struct snd_pcm_substream *fe_substream)
 	mutex_lock_nested(&fe->card->mutex, SND_SOC_CARD_CLASS_RUNTIME);
 	fe->dpcm[stream].runtime = fe_substream->runtime;
 
-<<<<<<< HEAD
-	if (dpcm_path_get(fe, stream, &list) <= 0) {
-		dev_dbg(fe->dev, "ASoC: %s no valid %s route\n",
-			fe->dai_link->name, stream ? "capture" : "playback");
-||||||| merged common ancestors
-	if (dpcm_path_get(fe, stream, &list) <= 0) {
-		dpcm_path_put(&list);
-		dev_dbg(fe->dev, "ASoC: %s no valid %s route\n",
-			fe->dai_link->name, stream ? "capture" : "playback");
-=======
 	ret = dpcm_path_get(fe, stream, &list);
 	if (ret < 0) {
 		dev_warn(fe->dev, "ASoC: %s no valid %s route err[%d]\n",
@@ -2240,7 +2230,6 @@ static int dpcm_fe_dai_open(struct snd_pcm_substream *fe_substream)
 			ret);
 		mutex_unlock(&fe->card->mutex);
 		return ret;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	}
 
 	/* calculate valid and active FE <-> BE dpcms */

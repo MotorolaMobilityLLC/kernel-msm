@@ -96,9 +96,7 @@ module_param(floated_charger_enable , bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(floated_charger_enable,
 	"Whether to enable floated charger");
 
-#ifdef OTG_WAIT_PMIC
 static DECLARE_COMPLETION(pmic_vbus_init);
-#endif
 static struct msm_otg *the_msm_otg;
 static bool debug_aca_enabled;
 static bool debug_bus_voting_enabled;
@@ -2490,10 +2488,7 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 {
 	struct msm_otg_platform_data *pdata = motg->pdata;
 	u32 otgsc = readl(USB_OTGSC);
-
-#ifdef OTG_WAIT_PMIC
 	int ret;
-#endif
 
 	switch (pdata->mode) {
 	case USB_OTG:
@@ -2530,7 +2525,6 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 				else
 					clear_bit(ID, &motg->inputs);
 			}
-#ifdef OTG_WAIT_PMIC
 			/*
 			 * VBUS initial state is reported after PMIC
 			 * driver initialization. Wait for it.
@@ -2543,7 +2537,6 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 				clear_bit(B_SESS_VLD, &motg->inputs);
 				pmic_vbus_init.done = 1;
 			}
-#endif
 		}
 		break;
 	case USB_HOST:
@@ -2557,7 +2550,6 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			else
 				clear_bit(B_SESS_VLD, &motg->inputs);
 		} else if (pdata->otg_control == OTG_PMIC_CONTROL) {
-#ifdef OTG_WAIT_PMIC
 			/*
 			 * VBUS initial state is reported after PMIC
 			 * driver initialization. Wait for it.
@@ -2570,7 +2562,6 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 				clear_bit(B_SESS_VLD, &motg->inputs);
 				pmic_vbus_init.done = 1;
 			}
-#endif
 		} else if (pdata->otg_control == OTG_USER_CONTROL) {
 			set_bit(ID, &motg->inputs);
 			set_bit(B_SESS_VLD, &motg->inputs);
@@ -2636,7 +2627,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 		msm_otg_reset(otg->phy);
 		msm_otg_init_sm(motg);
 		if (!psy && legacy_power_supply) {
-			psy = power_supply_get_by_name("msm-usb");
+			psy = power_supply_get_by_name("usb");
 
 			if (!psy)
 				pr_err("couldn't get usb power supply\n");
@@ -3405,9 +3396,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 static void msm_otg_set_vbus_state(int online)
 {
 	struct msm_otg *motg = the_msm_otg;
-#ifdef OTG_WAIT_PMIC
 	static bool init;
-#endif
 
 	if (online) {
 		pr_debug("PMIC: BSV set\n");
@@ -3419,7 +3408,6 @@ static void msm_otg_set_vbus_state(int online)
 			return;
 	}
 
-#ifdef OTG_WAIT_PMIC
 	/* do not queue state m/c work if id is grounded */
 	if (!test_bit(ID, &motg->inputs)) {
 		/*
@@ -3442,7 +3430,6 @@ static void msm_otg_set_vbus_state(int online)
 		pr_debug("PMIC: BSV init complete\n");
 		return;
 	}
-#endif
 
 out:
 	if (test_bit(MHL, &motg->inputs) ||
@@ -3459,19 +3446,13 @@ out:
 	}
 }
 
-<<<<<<< HEAD
 void sec_otg_set_vbus_state(int online)
 {
 	msm_otg_set_vbus_state(online);
 }
 EXPORT_SYMBOL(sec_otg_set_vbus_state);
 
-static void msm_pmic_id_status_w(struct work_struct *w)
-||||||| merged common ancestors
-static void msm_pmic_id_status_w(struct work_struct *w)
-=======
 static void msm_id_status_w(struct work_struct *w)
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 {
 	struct msm_otg *motg = container_of(w, struct msm_otg,
 						id_status_work.work);
@@ -4904,8 +4885,8 @@ static int msm_otg_probe(struct platform_device *pdev)
 		pm_runtime_use_autosuspend(&pdev->dev);
 	}
 
-	motg->usb_psy.name = "msm-usb";
-	motg->usb_psy.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	motg->usb_psy.name = "usb";
+	motg->usb_psy.type = POWER_SUPPLY_TYPE_USB;
 	motg->usb_psy.supplied_to = otg_pm_power_supplied_to;
 	motg->usb_psy.num_supplicants = ARRAY_SIZE(otg_pm_power_supplied_to);
 	motg->usb_psy.properties = otg_pm_power_props_usb;

@@ -87,12 +87,7 @@ static DEFINE_SPINLOCK(mdp_lock);
 static DEFINE_MUTEX(mdp_clk_lock);
 static DEFINE_MUTEX(bus_bw_lock);
 static DEFINE_MUTEX(mdp_iommu_lock);
-<<<<<<< HEAD
-static DEFINE_MUTEX(mdp_fs_ulps_lock);
-||||||| merged common ancestors
-=======
 static DEFINE_MUTEX(mdp_fs_idle_pc_lock);
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 static struct mdss_panel_intf pan_types[] = {
 	{"dsi", MDSS_PANEL_INTF_DSI},
@@ -2691,26 +2686,6 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 	if (rc)
 		pr_debug("max bandwidth (per pipe) property not specified\n");
 
-<<<<<<< HEAD
-	mdata->nclk_lvl = mdss_mdp_parse_dt_prop_len(pdev,
-					"qcom,mdss-clk-levels");
-
-	if (mdata->nclk_lvl) {
-		mdata->clock_levels = kzalloc(sizeof(u32) * mdata->nclk_lvl,
-							GFP_KERNEL);
-		if (!mdata->clock_levels) {
-			pr_err("no mem assigned for mdata clock_levels\n");
-			return -ENOMEM;
-		}
-
-		rc = mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-clk-levels",
-			mdata->clock_levels, mdata->nclk_lvl);
-		if (rc)
-			pr_debug("clock levels not found\n");
-	}
-
-||||||| merged common ancestors
-=======
 	mdata->nclk_lvl = mdss_mdp_parse_dt_prop_len(pdev,
 					"qcom,mdss-clk-levels");
 
@@ -2732,7 +2707,6 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 	mdata->traffic_shaper_en = of_property_read_bool(pdev->dev.of_node,
 		 "qcom,mdss-traffic-shaper-enabled");
 
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 	return 0;
 }
 
@@ -2984,12 +2958,7 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 		return;
 
 	if (on) {
-<<<<<<< HEAD
 		pr_err("Enable MDP FS\n");
-||||||| merged common ancestors
-		pr_debug("Enable MDP FS\n");
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		if (!mdata->fs_ena) {
 			pr_debug("Enable MDP FS\n");
 			ret = regulator_enable(mdata->fs);
@@ -3002,14 +2971,6 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 		}
 		mdata->fs_ena = true;
 	} else {
-<<<<<<< HEAD
-		pr_err("Disable MDP FS\n");
-		mdss_iommu_dettach(mdata);
-||||||| merged common ancestors
-		pr_debug("Disable MDP FS\n");
-		mdss_iommu_dettach(mdata);
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		if (mdata->fs_ena) {
 			pr_debug("Disable MDP FS\n");
 			active_cnt = atomic_read(&mdata->active_intf_cnt);
@@ -3039,31 +3000,6 @@ int mdss_mdp_secure_display_ctrl(unsigned int enable)
 	unsigned int resp = -1;
 	int ret = 0;
 
-<<<<<<< HEAD
-	mutex_lock(&mdp_fs_ulps_lock);
-	pr_debug("called on=%d, ulps=%d\n", on, mdata->ulps);
-	if (on && mdata->ulps) {
-		pm_runtime_get_sync(dev);
-		mdss_iommu_attach(mdata);
-		mdss_hw_init(mdata);
-		mdata->ulps = false;
-	} else if (!on && !mdata->ulps) {
-		mdata->ulps = true;
-		pm_runtime_put_sync(dev);
-	}
-	mutex_unlock(&mdp_fs_ulps_lock);
-||||||| merged common ancestors
-	pr_debug("called on=%d\n", on);
-	if (on) {
-		pm_runtime_get_sync(dev);
-		mdss_iommu_attach(mdata);
-		mdss_hw_init(mdata);
-		mdata->ulps = false;
-	} else {
-		mdata->ulps = true;
-		pm_runtime_put_sync(dev);
-	}
-=======
 	request.enable = enable;
 
 	ret = scm_call(SCM_SVC_MP, MEM_PROTECT_SD_CTRL,
@@ -3074,7 +3010,6 @@ int mdss_mdp_secure_display_ctrl(unsigned int enable)
 		return ret;
 
 	return resp;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 }
 
 static inline int mdss_mdp_suspend_sub(struct mdss_data_type *mdata)

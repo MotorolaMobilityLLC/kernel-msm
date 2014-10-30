@@ -10,24 +10,6 @@
  * GNU General Public License for more details.
  */
 
-<<<<<<< HEAD
-/include/ "dsi-panel-hx8394a-720p-video.dtsi"
-/include/ "dsi-panel-nt35590-720p-video.dtsi"
-/include/ "dsi-panel-nt35521-720p-video.dtsi"
-/include/ "dsi-panel-nt35596-1080p-video.dtsi"
-/include/ "dsi-panel-nt35590-720p-cmd.dtsi"
-/include/ "dsi-panel-ssd2080m-720p-video.dtsi"
-/include/ "dsi-panel-jdi-1080p-video.dtsi"
-/include/ "dsi-panel-nt35590-qvga-cmd.dtsi"
-||||||| merged common ancestors
-#include "dsi-panel-hx8394a-720p-video.dtsi"
-#include "dsi-panel-nt35590-720p-video.dtsi"
-#include "dsi-panel-nt35521-720p-video.dtsi"
-#include "dsi-panel-nt35596-1080p-video.dtsi"
-#include "dsi-panel-nt35590-720p-cmd.dtsi"
-#include "dsi-panel-ssd2080m-720p-video.dtsi"
-#include "dsi-panel-jdi-1080p-video.dtsi"
-=======
 #include "dsi-panel-hx8394a-720p-video.dtsi"
 #include "dsi-panel-nt35590-720p-video.dtsi"
 #include "dsi-panel-nt35521-720p-video.dtsi"
@@ -36,4 +18,3 @@
 #include "dsi-panel-ssd2080m-720p-video.dtsi"
 #include "dsi-panel-jdi-1080p-video.dtsi"
 #include "dsi-panel-nt35590-qvga-cmd.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1

@@ -806,13 +806,6 @@ static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
 	if (snapshot == NULL)
 		return 0;
 
-<<<<<<< HEAD
-	/* Get the mutex to keep things from changing while we are dumping */
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
-||||||| merged common ancestors
-	/* Get the mutex to keep things from changing while we are dumping */
-	mutex_lock(&device->mutex);
-=======
 	/*
 	 * Wait for the dump worker to finish. This is interruptible
 	 * to allow userspace to bail if things go horribly wrong.
@@ -820,7 +813,6 @@ static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
 	ret = wait_for_completion_interruptible(&snapshot->dump_gate);
 	if (ret)
 		return ret;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	obj_itr_init(&itr, buf, off, count);
 
@@ -867,12 +859,6 @@ static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
 	}
 
 done:
-<<<<<<< HEAD
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
-||||||| merged common ancestors
-	mutex_unlock(&device->mutex);
-=======
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	return itr.write;
 }
@@ -1107,33 +1093,11 @@ static size_t _mempool_add_object(u8 *data, struct kgsl_snapshot_object *obj)
  */
 void kgsl_snapshot_save_frozen_objs(struct work_struct *work)
 {
-<<<<<<< HEAD
-	struct kgsl_device *device = container_of(work, struct kgsl_device,
-		snapshot_obj_ws);
-	struct kgsl_snapshot_object *snapshot_obj, *snapshot_obj_temp;
-	unsigned int remain = 0;
-	void *snapshot_dest;
-
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
-
-	kgsl_snapshot_process_ib_obj_list(device);
-||||||| merged common ancestors
-	struct kgsl_device *device = container_of(work, struct kgsl_device,
-		snapshot_obj_ws);
-	struct kgsl_snapshot_object *snapshot_obj, *snapshot_obj_temp;
-	unsigned int remain = 0;
-	void *snapshot_dest;
-
-	mutex_lock(&device->mutex);
-
-	kgsl_snapshot_process_ib_obj_list(device);
-=======
 	struct kgsl_snapshot *snapshot = container_of(work,
 				struct kgsl_snapshot, work);
 	struct kgsl_snapshot_object *obj, *tmp;
 	size_t size = 0;
 	void *ptr;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 	kgsl_snapshot_process_ib_obj_list(snapshot);
 
@@ -1166,11 +1130,6 @@ void kgsl_snapshot_save_frozen_objs(struct work_struct *work)
 		kgsl_snapshot_put_object(obj);
 	}
 done:
-<<<<<<< HEAD
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
-||||||| merged common ancestors
-	mutex_unlock(&device->mutex);
-=======
 	/*
 	 * Get rid of the process struct here, so that it doesn't sit
 	 * around until someone bothers to read the snapshot file.
@@ -1180,5 +1139,4 @@ done:
 
 	complete_all(&snapshot->dump_gate);
 	return;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 }

@@ -303,16 +303,6 @@ static struct ctl_table kern_table[] = {
 		.proc_handler	= proc_dointvec,
 	},
 	{
-<<<<<<< HEAD
-||||||| merged common ancestors
-		.procname	= "sched_ravg_window",
-		.data		= &sysctl_sched_ravg_window,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= proc_dointvec,
-	},
-	{
-=======
 		.procname	= "sched_freq_dec_notify_slack_pct",
 		.data		= &sysctl_sched_freq_dec_notify_slack_pct,
 		.maxlen		= sizeof(unsigned int),
@@ -329,7 +319,6 @@ static struct ctl_table kern_table[] = {
 		.proc_handler   = proc_dointvec,
 	},
 	{
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		.procname	= "sched_wakeup_load_threshold",
 		.data		= &sysctl_sched_wakeup_load_threshold,
 		.maxlen		= sizeof(unsigned int),

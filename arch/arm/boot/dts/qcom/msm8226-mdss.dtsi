@@ -33,18 +33,10 @@
 		qcom,mdss-ib-factor = <2 1>;		/* 2 times  */
 		qcom,mdss-clk-factor = <5 4>;		/* 1.25 times */
 
-<<<<<<< HEAD
-		/* Clock levels */
-		qcom,mdss-clk-levels = <92310000 100000000
-				    133330000 177780000 200000000>;
-
-||||||| merged common ancestors
-=======
 		/* Clock levels */
 		qcom,mdss-clk-levels = <92310000 100000000
 				    133330000 177780000 200000000>;
 		qcom,max-mixer-width = <2048>;
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 		qcom,mdss-mdp-reg-offset = <0x00000100>;
 		qcom,max-bandwidth-low-kbps = <1100000>;
 		qcom,max-bandwidth-high-kbps = <1660000>;
@@ -220,4 +212,4 @@
 	};
 };
 
-/include/ "msm8226-mdss-panels.dtsi"
+#include "msm8226-mdss-panels.dtsi"

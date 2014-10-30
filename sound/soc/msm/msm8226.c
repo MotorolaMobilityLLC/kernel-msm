@@ -28,15 +28,7 @@
 #include <sound/q6afe-v2.h>
 #include <sound/q6core.h>
 
-<<<<<<< HEAD
 #include "qdsp6v2/msm-pcm-routing-v2.h"
-#include "qdsp6v2/q6core.h"
-||||||| merged common ancestors
-#include <qdsp6v2/msm-pcm-routing-v2.h>
-#include "qdsp6v2/q6core.h"
-=======
-#include "qdsp6v2/msm-pcm-routing-v2.h"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 #include "../codecs/wcd9xxx-common.h"
 #include "../codecs/wcd9306.h"
 

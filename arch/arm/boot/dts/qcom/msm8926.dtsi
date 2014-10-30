@@ -16,21 +16,10 @@
  * file.
  */
 
-<<<<<<< HEAD
-/include/ "msm8226.dtsi"
-/include/ "msm8226-memory.dtsi"
-/include/ "msm8226-qseecom.dtsi"
-/include/ "msm8226-v2-pm.dtsi"
-||||||| merged common ancestors
-#include "msm8226.dtsi"
-#include "msm8226-v2-pm.dtsi"
-=======
 #include "msm8226.dtsi"
 #include "msm8226-memory.dtsi"
 #include "msm8226-qseecom.dtsi"
-#include "msm8226-sharedmem.dtsi"
 #include "msm8226-v2-pm.dtsi"
->>>>>>> 07723b4952fbbd1b6f76c1219699ba0b30b189e1
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8926";
