@@ -168,6 +168,8 @@ when        who    what, where, why
 #define WLANTL_CTRL_FRAME_TYPE       0x10
 #define WLANTL_DATA_FRAME_TYPE       0x20
 
+#define WLANTL_MGMT_PROBE_REQ_FRAME_TYPE    0x04
+
 /*Value of the data type field in the 802.11 frame */
 #define WLANTL_80211_DATA_TYPE         0x02
 #define WLANTL_80211_DATA_QOS_SUBTYPE  0x08
@@ -862,6 +864,8 @@ typedef struct
 
   /* Current served station ID in round-robin method to traverse all stations.*/
   WLANTL_ACEnumType uCurServedAC;
+
+  WLANTL_SpoofMacAddr   spoofMacAddr;
 
   /* How many weights have not been served in current AC. */
   v_U8_t ucCurLeftWeight;

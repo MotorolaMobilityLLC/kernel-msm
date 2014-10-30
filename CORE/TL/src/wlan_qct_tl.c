@@ -204,6 +204,9 @@ int bdPduInterruptGetThreshold = WLANTL_BD_PDU_INTERRUPT_GET_THRESHOLD;
      ( ( WLANTL_80211_MGMT_ACTION_SUBTYPE == ( (_type_sub) & 0xF )) || \
        ( WLANTL_80211_MGMT_ACTION_NO_ACK_SUBTYPE == ( (_type_sub) & 0xF ))))
 
+#define WLANTL_IS_PROBE_REQ(_type_sub)                                     \
+                     ( WLANTL_MGMT_PROBE_REQ_FRAME_TYPE == ( (_type_sub) & 0x3F ))
+
 #define WLANTL_IS_CTRL_FRAME(_type_sub)                                     \
                      ( WLANTL_CTRL_FRAME_TYPE == ( (_type_sub) & 0x30 ))
 
@@ -2973,7 +2976,78 @@ WLANTL_FlushStaTID
 /*----------------------------------------------------------------------------
     INTERACTION WITH PE
  ---------------------------------------------------------------------------*/
+/*==========================================================================
 
+  FUNCTION    WLANTL_updateSpoofMacAddr
+
+  DESCRIPTION
+    Called by HDD to update macaddr
+
+  DEPENDENCIES
+    TL must be initialized before this API can be called.
+
+  PARAMETERS
+
+    IN
+    pvosGCtx:           pointer to the global vos context; a handle to
+                        TL's control block can be extracted from its context
+    spoofMacAddr:     spoofed mac adderess
+    selfMacAddr:        self Mac Address
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_INVAL:  Input parameters are invalid
+    VOS_STATUS_E_FAULT:  pointer to TL cb is NULL ; access would cause a
+                         page fault
+    VOS_STATUS_SUCCESS:  Everything is good :)
+
+  SIDE EFFECTS
+
+============================================================================*/
+VOS_STATUS
+WLANTL_updateSpoofMacAddr
+(
+  v_PVOID_t               pvosGCtx,
+  v_MACADDR_t*            spoofMacAddr,
+  v_MACADDR_t*            selfMacAddr
+)
+{
+  WLANTL_CbType*  pTLCb = NULL;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+  /*------------------------------------------------------------------------
+    Sanity check
+   ------------------------------------------------------------------------*/
+  if ( NULL == spoofMacAddr || NULL == selfMacAddr)
+  {
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+           "WLAN TL:Invalid parameter sent on WLANTL_updateSpoofMacAddr");
+    return VOS_STATUS_E_INVAL;
+  }
+
+  /*------------------------------------------------------------------------
+    Extract TL control block
+   ------------------------------------------------------------------------*/
+  pTLCb = VOS_GET_TL_CB(pvosGCtx);
+  if ( NULL == pTLCb )
+  {
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+          "WLAN TL:Invalid TL pointer from pvosGCtx on WLANTL_ChangeSTAState");
+    return VOS_STATUS_E_FAULT;
+  }
+
+  vos_mem_copy(pTLCb->spoofMacAddr.selfMac.bytes, selfMacAddr,
+                                                         VOS_MAC_ADDRESS_LEN);
+  vos_mem_copy(pTLCb->spoofMacAddr.spoofMac.bytes, spoofMacAddr,
+                                                         VOS_MAC_ADDRESS_LEN);
+
+  VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,
+                "TL: SelfSTA mac Addr for current Scan "MAC_ADDRESS_STR,
+                        MAC_ADDR_ARRAY(pTLCb->spoofMacAddr.selfMac.bytes));
+
+  return VOS_STATUS_SUCCESS;
+}/* WLANTL_updateSpoofMacAddr */
 /*==========================================================================
 
   FUNCTION    WLANTL_RegisterMgmtFrmClient
@@ -3316,12 +3390,25 @@ WLANTL_TxMgmtFrm
     {
         uQosHdr = VOS_TRUE;
     }
+
+    if (WLANTL_IS_PROBE_REQ(wFrmType))
+    {
+        if (VOS_TRUE == vos_mem_compare((v_VOID_t*) pvAddr2MacAddr,
+            (v_VOID_t*) &pTLCb->spoofMacAddr.spoofMac, VOS_MAC_ADDRESS_LEN))
+        {
+            pvAddr2MacAddr = (v_PVOID_t)pTLCb->spoofMacAddr.selfMac.bytes;
+            VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
+                "TL: using self sta addr to get staidx for spoofed probe req "
+                    MAC_ADDRESS_STR, MAC_ADDR_ARRAY(pvAddr2MacAddr->bytes));
+        }
+    }
+
     /*----------------------------------------------------------------------
       Call WDA to build TX header
      ----------------------------------------------------------------------*/
     vosStatus = WDA_DS_BuildTxPacketInfo( pvosGCtx, vosFrmBuf , &vDestMacAddr, 
                    1 /* always 802.11 frames*/, &usPktLen, uQosHdr /*qos not enabled !!!*/, 
-                   0 /* WDS off */, 0, wFrmType, pvAddr2MacAddr, ucTid, 
+                   0 /* WDS off */, 0, wFrmType, pvAddr2MacAddr, ucTid,
                    ucAckResponse, usTimeStamp, 0, 0 );
 
 

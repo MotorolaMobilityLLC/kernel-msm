@@ -5057,6 +5057,22 @@ void limProcessRxScanEvent(tpAniSirGlobal pMac, void *buf)
     }
 }
 
+void limProcessMlmSpoofMacAddrRsp(tpAniSirGlobal pMac, tSirRetStatus rspStatus)
+{
+
+    if ((rspStatus != eSIR_SUCCESS) ||
+       (TRUE == vos_is_macaddr_zero((v_MACADDR_t *)&pMac->lim.spoofMacAddr)))
+    {
+        limLog(pMac, LOG1, FL(" LIM Disabling Spoofing"));
+        pMac->lim.isSpoofingEnabled = FALSE;
+    } else {
+        limLog(pMac, LOG1, FL(" LIM Enabling Spoofing"));
+        pMac->lim.isSpoofingEnabled = TRUE;
+    }
+
+    return;
+}
+
 void limSwitchChannelResumeLinkRsp(tpAniSirGlobal pMac,
                          eHalStatus status,
                          tANI_U32* mlmAddBssRsp)

@@ -534,6 +534,64 @@ static eHalStatus hdd_IndicateScanResult(hdd_scan_info_t *scanInfo, tCsrScanResu
 
 /**---------------------------------------------------------------------------
 
+  \brief hdd_processSpoofMacAddrRequest() -
+
+   The function is called from scan completion callback and from
+   cfg80211 vendor command
+
+  \param  - pHddCtx - Pointer to the HDD Context.
+
+  \return - 0 for success, non zero for failure
+
+  --------------------------------------------------------------------------*/
+
+VOS_STATUS hdd_processSpoofMacAddrRequest(hdd_context_t *pHddCtx)
+{
+
+    ENTER();
+
+    mutex_lock(&pHddCtx->spoofMacAddr.macSpoofingLock);
+
+    if (pHddCtx->spoofMacAddr.isEnabled) {
+        if (VOS_STATUS_SUCCESS != vos_randomize_n_bytes(
+                (void *)(&pHddCtx->spoofMacAddr.randomMacAddr.bytes[3]),
+                VOS_MAC_ADDR_LAST_3_BYTES)) {
+                hddLog(LOGE, FL("Failed to generate random Mac Addr"));
+                pHddCtx->spoofMacAddr.isEnabled = FALSE;
+                mutex_unlock(&pHddCtx->spoofMacAddr.macSpoofingLock);
+                return VOS_STATUS_E_FAILURE;
+        }
+    }
+
+    hddLog(LOG1, FL("New Mac Addr Generated "MAC_ADDRESS_STR),
+                 MAC_ADDR_ARRAY(pHddCtx->spoofMacAddr.randomMacAddr.bytes));
+
+    if (pHddCtx->scan_info.mScanPending != TRUE)
+    {
+        pHddCtx->spoofMacAddr.isReqDeferred = FALSE;
+        hddLog(LOG1, FL("Processing Spoof request now"));
+        /* Inform SME about spoof mac addr request*/
+        if ( eHAL_STATUS_SUCCESS != sme_SpoofMacAddrReq(pHddCtx->hHal,
+                &pHddCtx->spoofMacAddr.randomMacAddr))
+        {
+            hddLog(LOGE, FL("Sending Spoof request failed - Disable spoofing"));
+            pHddCtx->spoofMacAddr.isEnabled = FALSE;
+        }
+    } else
+    {
+        hddLog(LOG1, FL("Scan in Progress. Spoofing Deferred"));
+        pHddCtx->spoofMacAddr.isReqDeferred = TRUE;
+    }
+
+    mutex_unlock(&pHddCtx->spoofMacAddr.macSpoofingLock);
+
+    EXIT();
+
+    return VOS_STATUS_SUCCESS;
+}
+
+/**---------------------------------------------------------------------------
+
   \brief hdd_ScanRequestCallback() -
 
    The sme module calls this callback function once it finish the scan request

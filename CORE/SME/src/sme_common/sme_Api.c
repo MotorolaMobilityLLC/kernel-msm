@@ -11046,7 +11046,7 @@ tANI_BOOLEAN  sme_Is11dCountrycode(tHalHandle hHal)
     }
 }
 
-tANI_BOOLEAN  sme_SpoofMacAddrReq(tHalHandle hHal, v_MACADDR_t *macaddr)
+tANI_BOOLEAN sme_SpoofMacAddrReq(tHalHandle hHal, v_MACADDR_t *macaddr)
 {
     eHalStatus status   = eHAL_STATUS_SUCCESS;
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);

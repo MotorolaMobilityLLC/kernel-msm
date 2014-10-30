@@ -5215,6 +5215,7 @@ int hdd_mon_open (struct net_device *dev)
 
 int __hdd_stop (struct net_device *dev)
 {
+   int ret = 0;
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    hdd_context_t *pHddCtx;
    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
@@ -5230,12 +5231,14 @@ int __hdd_stop (struct net_device *dev)
    }
    MTRACE(vos_trace(VOS_MODULE_ID_HDD, TRACE_CODE_HDD_OPEN_REQUEST,
                     pAdapter->sessionId, pAdapter->device_mode));
-   pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
-   if (NULL == pHddCtx)
+
+   pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   ret = wlan_hdd_validate_context(pHddCtx);
+   if (ret)
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-         "%s: HDD context is Null", __func__);
-      return -ENODEV;
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: HDD context is not valid!", __func__);
+      return ret;
    }
 
    /* Nothing to be done if the interface is not opened */
@@ -8642,6 +8645,7 @@ int hdd_wlan_startup(struct device *dev )
     */
    mutex_init(&pHddCtx->tdls_lock);
 #endif
+   mutex_init(&pHddCtx->spoofMacAddr.macSpoofingLock);
    /* By default Strict Regulatory For FCC should be false */
 
    pHddCtx->nEnableStrictRegulatoryForFCC = FALSE;
