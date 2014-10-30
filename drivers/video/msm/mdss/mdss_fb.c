@@ -866,18 +866,27 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 	mfd->suspend.panel_power_state = mfd->panel_power_state;
 
 	if (mfd->op_enable) {
+		int blank_flag;
+
 		/*
 		 * Ideally, display should have either been blanked by now, or
 		 * should have transitioned to a low power state. If not, then
 		 * as a fall back option, blank the display.
+		 *
+		 * todo: for now, if display is in lp state, transition to
+		 * doze_suspend to ensure that all display resources are
+		 * turned off.
 		 */
-		if (mdss_fb_is_power_on_interactive(mfd)) {
-			ret = mdss_fb_blank_sub(FB_BLANK_POWERDOWN, mfd->fbi,
-					mfd->suspend.op_enable);
-			if (ret) {
-				pr_err("can't turn off display!\n");
-				return ret;
-			}
+		if (mdss_fb_is_power_on_interactive(mfd))
+			blank_flag = FB_BLANK_POWERDOWN;
+		else if (mdss_fb_is_power_on_lp(mfd))
+			blank_flag = FB_BLANK_NORMAL;
+
+		ret = mdss_fb_blank_sub(blank_flag, mfd->fbi,
+				mfd->suspend.op_enable);
+		if (ret) {
+			pr_err("can't turn off display!\n");
+			return ret;
 		}
 		mfd->op_enable = false;
 		fb_set_suspend(mfd->fbi, FBINFO_STATE_SUSPENDED);
@@ -1121,7 +1130,61 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	mutex_unlock(&mfd->bl_lock);
 }
 
-static int mdss_fb_unblank_sub(struct msm_fb_data_type *mfd)
+static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
+		int req_power_state)
+{
+	int ret = 0;
+	int cur_power_state;
+
+	if (!mfd)
+		return -EINVAL;
+
+	if (!mdss_fb_is_power_on(mfd) || !mfd->mdp.off_fnc)
+		return 0;
+
+	cur_power_state = mfd->panel_power_state;
+
+	pr_debug("Transitioning from %d --> %d\n", cur_power_state,
+			req_power_state);
+
+	if (cur_power_state == req_power_state) {
+		pr_debug("No change in power state\n");
+		return 0;
+	}
+
+	mutex_lock(&mfd->update.lock);
+	mfd->update.type = NOTIFY_TYPE_SUSPEND;
+	mfd->update.is_suspend = 1;
+	mutex_unlock(&mfd->update.lock);
+	complete(&mfd->update.comp);
+	del_timer(&mfd->no_update.timer);
+	mfd->no_update.value = NOTIFY_TYPE_SUSPEND;
+	complete(&mfd->no_update.comp);
+
+	mfd->op_enable = false;
+	mutex_lock(&mfd->bl_lock);
+
+	/* turn off the backlight if turning off the panel */
+	if (mdss_panel_is_power_off(req_power_state)) {
+		mdss_fb_set_backlight(mfd, 0);
+		mfd->bl_updated = 0;
+	}
+
+	mfd->panel_power_state = req_power_state;
+	mutex_unlock(&mfd->bl_lock);
+
+	ret = mfd->mdp.off_fnc(mfd);
+	if (ret)
+		mfd->panel_power_state = cur_power_state;
+	else
+		mdss_fb_release_fences(mfd);
+	mfd->op_enable = true;
+	complete(&mfd->power_off_comp);
+
+	return ret;
+}
+
+static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 {
 	int ret = 0;
 	int cur_power_state;
@@ -1130,18 +1193,24 @@ static int mdss_fb_unblank_sub(struct msm_fb_data_type *mfd)
 		return -EINVAL;
 
 	cur_power_state = mfd->panel_power_state;
-	if (!mdss_panel_is_power_on_interactive(cur_power_state) &&
-		mfd->mdp.on_fnc) {
+	pr_debug("Transitioning from %d --> %d\n", cur_power_state,
+			MDSS_PANEL_POWER_ON);
+
+	if (mdss_panel_is_power_on_interactive(cur_power_state)) {
+		pr_debug("No change in power state\n");
+		return 0;
+	}
+
+	if (mfd->mdp.on_fnc) {
 		struct mdss_panel_data *pdata;
 		u32 temp;
 
 		ret = mfd->mdp.on_fnc(mfd);
-		if (ret == 0) {
-			mfd->panel_power_state = MDSS_PANEL_POWER_ON;
-			mfd->panel_info->panel_dead = false;
-		} else {
+		if (ret)
 			goto error;
-		}
+
+		mfd->panel_power_state = MDSS_PANEL_POWER_ON;
+		mfd->panel_info->panel_dead = false;
 		mutex_lock(&mfd->update.lock);
 		mfd->update.type = NOTIFY_TYPE_UPDATE;
 		mfd->update.is_suspend = 0;
@@ -1200,8 +1269,9 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	 * the request as full unblank as there are no low power mode
 	 * settings for video mode panels.
 	 */
-	if ((FB_BLANK_VSYNC_SUSPEND == blank_mode) &&
-		(mfd->panel_info->type != MIPI_CMD_PANEL)) {
+	if ((mfd->panel_info->type != MIPI_CMD_PANEL) &&
+			((FB_BLANK_NORMAL == blank_mode) ||
+			 (FB_BLANK_VSYNC_SUSPEND == blank_mode))) {
 		pr_debug("Doze mode only valid for cmd mode panels\n");
 
 		if (mdss_panel_is_power_on(cur_power_state))
@@ -1213,9 +1283,18 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
-		ret = mdss_fb_unblank_sub(mfd);
+		ret = mdss_fb_blank_unblank(mfd);
 		break;
+	case FB_BLANK_NORMAL:
+		req_power_state = MDSS_PANEL_POWER_DOZE_SUSPEND;
+		pr_debug("Doze_suspend power mode requested\n");
+		if (mdss_fb_is_power_off(mfd)) {
+			pr_debug("Unsupp transition: off --> doze_suspend\n");
+			return 0;
+		}
 
+		ret = mdss_fb_blank_blank(mfd, req_power_state);
+		break;
 	case FB_BLANK_VSYNC_SUSPEND:
 		req_power_state = MDSS_PANEL_POWER_DOZE;
 		pr_debug("Doze power mode requested\n");
@@ -1225,49 +1304,22 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		 */
 		if (mdss_fb_is_power_off(mfd) && mfd->mdp.on_fnc) {
 			pr_debug("off --> doze. switch to on first\n");
-			ret = mdss_fb_unblank_sub(mfd);
+			ret = mdss_fb_blank_unblank(mfd);
+			if (ret)
+				break;
 		}
 
-		/* Enter doze mode only if unblank succeeded */
-		if (ret)
-			break;
+		ret = mdss_fb_blank_blank(mfd, req_power_state);
+		break;
 	case FB_BLANK_HSYNC_SUSPEND:
-	case FB_BLANK_NORMAL:
 	case FB_BLANK_POWERDOWN:
 	default:
-		pr_debug("blank powerdown called. cur mode=%d, req mode=%d\n",
-			cur_power_state, req_power_state);
-		if (mdss_fb_is_power_on(mfd) && mfd->mdp.off_fnc) {
-			cur_power_state = mfd->panel_power_state;
-
-			mutex_lock(&mfd->update.lock);
-			mfd->update.type = NOTIFY_TYPE_SUSPEND;
-			mfd->update.is_suspend = 1;
-			mutex_unlock(&mfd->update.lock);
-			complete(&mfd->update.comp);
-			del_timer(&mfd->no_update.timer);
-			mfd->no_update.value = NOTIFY_TYPE_SUSPEND;
-			complete(&mfd->no_update.comp);
-
-			mfd->op_enable = false;
-			mutex_lock(&mfd->bl_lock);
-			if (mdss_panel_is_power_off(req_power_state)) {
-				mdss_fb_set_backlight(mfd, 0);
-				mfd->bl_updated = 0;
-			}
-			mfd->panel_power_state = req_power_state;
-			mutex_unlock(&mfd->bl_lock);
-
-			ret = mfd->mdp.off_fnc(mfd);
-			if (ret)
-				mfd->panel_power_state = cur_power_state;
-			else
-				mdss_fb_release_fences(mfd);
-			mfd->op_enable = true;
-			complete(&mfd->power_off_comp);
-		}
+		req_power_state = MDSS_PANEL_POWER_OFF;
+		pr_debug("blank powerdown called\n");
+		ret = mdss_fb_blank_blank(mfd, req_power_state);
 		break;
 	}
+
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
 
@@ -1283,6 +1335,9 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 	if (mfd->op_enable == 0) {
 		if (blank_mode == FB_BLANK_UNBLANK)
 			mfd->suspend.panel_power_state = MDSS_PANEL_POWER_ON;
+		else if (blank_mode == FB_BLANK_NORMAL)
+			mfd->suspend.panel_power_state =
+				MDSS_PANEL_POWER_DOZE_SUSPEND;
 		else if (blank_mode == FB_BLANK_VSYNC_SUSPEND)
 			mfd->suspend.panel_power_state = MDSS_PANEL_POWER_DOZE;
 		else
