@@ -52,6 +52,13 @@ static int ambient_bl_level = AMBIENT_BL_LEVEL_V2;
 static int backup_bl_level = 0;
 
 static int panel_ambient_mode = AMBIENT_MODE_OFF;
+
+void reset_ambient_status(void)
+{
+	panel_ambient_mode = AMBIENT_MODE_OFF;
+	return;
+}
+
 int is_ambient_on() {
 	int static old_panel_ambient_mode = -1;
 	if (panel_ambient_mode != old_panel_ambient_mode){
