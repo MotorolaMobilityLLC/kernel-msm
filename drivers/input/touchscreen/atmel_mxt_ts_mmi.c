@@ -646,15 +646,17 @@ static int mxt_parse_patch(int object, int instance, char *query,
  *      0=1f    - patch set decimal offset and hex value
  *      110-3   - object number and instance
  */
-static void mxt_parse_setup_string(struct mxt_data *data, char *patch_string,
-		struct mxt_patch *patch)
+static void mxt_parse_setup_string(struct mxt_data *data,
+		const char *patch_ptr, struct mxt_patch *patch)
 {
 	struct device *dev = &data->client->dev;
 	long number_v, instance_v;
-	char *config_p, *instance_p, *next, *patch_set = patch_string;
+	char *patch_string;
+	char *config_p, *instance_p, *next, *patch_set;
 	int i, error;
 
-	for (i = 0; patch_set; patch_set = next) {
+	patch_string = kstrdup(patch_ptr, GFP_KERNEL);
+	for (i = 0, patch_set = patch_string; patch_set; patch_set = next) {
 		patch_set = mxt_find_patch(patch_set, ";\n", &next);
 		if (!patch_set)
 			break;
@@ -695,7 +697,7 @@ static void mxt_parse_setup_string(struct mxt_data *data, char *patch_string,
 
 		i++;
 	}
-
+	kfree(patch_string);
 	if (patch->cfg_num)
 		dev_info(dev, "processed %d patch sets for %d objects\n",
 			patch->cfg_num, i);
@@ -4435,7 +4437,7 @@ static void mxt_input_close(struct input_dev *dev)
 int mxt_dt_parse_state(struct mxt_data *data, struct device_node *np_config,
 		struct mxt_patch *state)
 {
-	char *patch_data;
+	const char *patch_data;
 	struct device_node *np_state;
 	int err;
 
