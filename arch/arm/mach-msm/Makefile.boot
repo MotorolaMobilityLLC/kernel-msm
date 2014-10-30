@@ -80,6 +80,7 @@ ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
 endif
 
 # MSM8974 Motorola Devices
+dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-victara-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-victara-p1b.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-victara-p2a.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-victara-p2b.dtb
@@ -211,6 +212,9 @@ ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
 endif
 
 # MSM8610 Motorola Devices
+dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p0.dtb
+dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p0c.dtb
+dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p0c-v2.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1b.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1b-v2.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1c.dtb
