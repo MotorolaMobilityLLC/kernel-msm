@@ -9648,17 +9648,11 @@ static void hdd_driver_exit(void)
        * pMac->scan.countryCode11d will be country through 11d so
        * due to mismatch driver will disable 11d.
        *
-       * 2) When NV country Code is non-zero ;
-       * There are chances that kernel last country and default
-       * country can be same. In this case if Driver doesn't pass 00 to
-       * kernel, at the time of driver loading next timer, driver will not
-       * call any hint to kernel as country is same. This can add 3 sec
-       * delay in driver loading.
        */
 
       if ((eANI_BOOLEAN_TRUE == sme_Is11dCountrycode(pHddCtx->hHal) &&
               pHddCtx->cfg_ini->fSupplicantCountryCodeHasPriority  &&
-              sme_Is11dSupported(pHddCtx->hHal)) || (vos_is_nv_country_non_zero() ))
+              sme_Is11dSupported(pHddCtx->hHal)))
       {
           hddLog(VOS_TRACE_LEVEL_INFO,
                      FL("CountryCode 00 is being set while unloading driver"));
