@@ -866,7 +866,7 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 	mfd->suspend.panel_power_state = mfd->panel_power_state;
 
 	if (mfd->op_enable) {
-		int blank_flag;
+		int blank_flag = FB_BLANK_POWERDOWN;
 
 		/*
 		 * Ideally, display should have either been blanked by now, or
@@ -877,9 +877,15 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 		 * doze_suspend to ensure that all display resources are
 		 * turned off.
 		 */
-		if (mdss_fb_is_power_on_interactive(mfd))
-			blank_flag = FB_BLANK_POWERDOWN;
-		else if (mdss_fb_is_power_on_lp(mfd))
+
+		/*
+		 * Temp workaround:
+		 * As of now, it is possible that display does not transition
+		 * to low power mode prior to pm_suspend. Therefore, if panel
+		 * is left on, enter doze_suspend
+		 */
+		if (mdss_fb_is_power_on(mfd) &&
+			(mfd->panel_info->type == MIPI_CMD_PANEL))
 			blank_flag = FB_BLANK_NORMAL;
 
 		ret = mdss_fb_blank_sub(blank_flag, mfd->fbi,
