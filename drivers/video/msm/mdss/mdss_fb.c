@@ -81,6 +81,8 @@ static u32 mdss_fb_pseudo_palette[16] = {
 static struct msm_mdp_interface *mdp_instance;
 static bool g_display_first_frame;
 
+extern void reset_ambient_status(void);
+
 static int mdss_fb_register(struct msm_fb_data_type *mfd);
 static int mdss_fb_open(struct fb_info *info, int user);
 static int mdss_fb_release(struct fb_info *info, int user);
@@ -2157,6 +2159,8 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 
 	if (!mfd->ref_cnt) {
 		if (mfd->disp_thread) {
+			//Fix issue:mdss crash when android restart in ambient mode
+			reset_ambient_status();
 			kthread_stop(mfd->disp_thread);
 			mfd->disp_thread = NULL;
 		}
