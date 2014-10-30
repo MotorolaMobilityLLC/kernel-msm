@@ -57,6 +57,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	unsigned char buf[MAX_LOCAL_BUF_SIZE];
 	unsigned char len;
 	unsigned long current_posix_time;
+	unsigned int handle;
 	struct timespec current_time;
 
 	if (!stml0xx_misc_data)
@@ -652,6 +653,20 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			stml0xx_wake(ps_stml0xx);
 			lowpower_mode = buf[0];
 		}
+		break;
+	case STML0XX_IOCTL_SET_FLUSH:
+		dev_dbg(&stml0xx_misc_data->spi->dev, "STML0XX_IOCTL_SET_FLUSH");
+		if (ps_stml0xx->mode == BOOTMODE)
+			break;
+		if (copy_from_user(&handle, argp, sizeof(unsigned int))) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Copy flush handle returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		handle = cpu_to_be32(handle);
+		stml0xx_as_data_buffer_write(ps_stml0xx, DT_FLUSH,
+				(char *)&handle, 4, 0);
 		break;
 	}
 
