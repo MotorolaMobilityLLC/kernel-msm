@@ -4045,8 +4045,6 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	sdhci_msm_debugfs_init(msm_host);
 
-	sdhci_msm_set_clock(host, 0);
-
 	/* Successful initialization */
 	goto out;
 
