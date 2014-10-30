@@ -268,6 +268,10 @@
 			headset_button_1_2_threshold = <0x012C>;
 			headset_button_2_3_threshold = <0x01C2>;
 			headset_button_3_upper_threshold = <0x02EE>;
+			headset_button_1_keycode = <0xE2>;  /* KEY_MEDIA        */
+			headset_button_2_keycode = <0x246>; /* KEY_VOICECOMMAND */
+			headset_button_3_keycode = <0x73>;  /* KEY_VOLUMEUP     */
+			headset_button_4_keycode = <0x72>;  /* KEY_VOLUMEDOWN   */
 			sensor1-supply = <&pm8110_l6>;
 			sensor2-supply = <&pm8110_l14>;
 			sensor3-supply = <&pm8110_l19>;
