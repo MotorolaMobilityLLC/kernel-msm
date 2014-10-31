@@ -193,6 +193,7 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 	int batt_soc;
 	int powered = 0;
 	int wired = 0;
+	int taper_reached;
 	struct delayed_work *dwork;
 	struct mmi_wls_chrg_chip *chip;
 
@@ -247,6 +248,13 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		return;
 	}
 
+	if (mmi_wls_chrg_get_psy_info(chip->batt_psy,
+				      POWER_SUPPLY_PROP_TAPER_REACHED,
+				      &taper_reached)) {
+		dev_err(chip->dev, "Error Reading Taper Reached status\n");
+		return;
+	}
+
 	if (batt_soc == 0)
 		chip->force_shutdown = true;
 
@@ -281,7 +289,7 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		} else if (batt_temp <= chip->cold_temp) {
 			gpio_set_value(chip->charge_term_gpio, 1);
 			chip->state = MMI_WLS_CHRG_OUT_OF_TEMP_COLD;
-		} else if (batt_soc >= MMI_WLS_CHRG_CHRG_CMPLT_SOC) {
+		} else if (taper_reached) {
 			gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_CHRG_CMPLT;
 		}
