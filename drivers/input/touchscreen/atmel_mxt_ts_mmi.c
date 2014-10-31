@@ -5059,8 +5059,8 @@ static int folio_notifier_callback(struct notifier_block *self,
 			mxt_sensor_state_config(mxt_dev_data,
 					(state == STATE_SUSPEND) ?
 					SUSPEND_IDX : ACTIVE_IDX);
-			dev_dbg(&mxt_dev_data->client->dev,
-					"folio: state change in %s\n",
+			dev_info(&mxt_dev_data->client->dev,
+					"folio: state changed to %s\n",
 					mxt_state_name(state));
 		}
 	}
