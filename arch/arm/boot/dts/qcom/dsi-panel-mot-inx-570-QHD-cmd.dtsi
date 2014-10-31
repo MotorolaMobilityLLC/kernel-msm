@@ -156,6 +156,9 @@
 		qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-status-value = <0x9c>;
+		/* for Dynamic CABC */
+		qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+		qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
 	};
 
 	mot_inx_570_QHD_1_cmd_v0: qcom,mdss_dsi_mot_inx_570_QHD_dualmipi1_cmd_v0 {
