@@ -47,6 +47,10 @@
 		mmi,allocation-type-smem;
 	};
 
+	msm-efuse {
+		compatible = "qcom,msm-efuse";
+	};
+
 	sound {
 		compatible = "qcom,msm8x16-audio-codec";
 		qcom,model = "msm8x16-snd-card";
