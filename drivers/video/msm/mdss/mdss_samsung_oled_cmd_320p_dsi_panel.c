@@ -68,6 +68,14 @@ static struct panel_rev panel_supp_cdp[] = {
 	{NULL}
 };
 
+void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	ctrl->pwm_bl = pwm_request(ctrl->pwm_lpg_chan, "lcd-bklt");
+	if (ctrl->pwm_bl == NULL || IS_ERR(ctrl->pwm_bl)) {
+		pr_err("%s: Error: lpg_chan=%d pwm request failed",
+				__func__, ctrl->pwm_lpg_chan);
+	}
+}
 static char brightness[28] = {0xD4, };
 static struct dsi_cmd_desc brightness_cmd = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(brightness)},
@@ -755,7 +763,54 @@ error2:
 	return -EINVAL;
 }
 
-static int mdss_panel_dt_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
+static int mdss_samsung_parse_candella_lux_mapping_table(struct device_node *np,
+	struct candella_lux_map *table, char *keystring)
+{
+	const __be32 *data;
+	int  data_offset, len = 0 , i = 0;
+	int  cdmap_start = 0, cdmap_end = 0;
+	data = of_get_property(np, keystring, &len);
+	if (!data) {
+		pr_err("%s:%d, Unable to read table %s ",
+			__func__, __LINE__, keystring);
+		return -EINVAL;
+	}
+	if ((len % 4) != 0) {
+		pr_err("%s:%d, Incorrect table entries for %s",
+			__func__, __LINE__, keystring);
+		return -EINVAL;
+	}
+	table->lux_tab_size = len / (sizeof(int)*4);
+	table->lux_tab = kzalloc((sizeof(int) * table->lux_tab_size),
+						GFP_KERNEL);
+	if (!table->lux_tab)
+		return -ENOMEM;
+	table->cmd_idx = kzalloc((sizeof(int) * table->lux_tab_size),
+						GFP_KERNEL);
+	if (!table->cmd_idx)
+		goto error;
+	data_offset = 0;
+	for (i = 0; i < table->lux_tab_size; i++) {
+		table->cmd_idx[i] = be32_to_cpup(&data[data_offset++]);
+		/* 1rst field => <idx> */
+		cdmap_start = be32_to_cpup(&data[data_offset++]);
+		/* 2nd field => <from> */
+		cdmap_end = be32_to_cpup(&data[data_offset++]);
+		/* 3rd field => <till> */
+		table->lux_tab[i] = be32_to_cpup(&data[data_offset++]);
+		/* 4th field => <candella> */
+		/* Fill the backlight level to lux mapping array */
+		do {
+			table->bkl[cdmap_start++] = i;
+		} while (cdmap_start <= cdmap_end);
+	}
+	return 0;
+error:
+	kfree(table->lux_tab);
+	return -ENOMEM;
+}
+
+int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 				char *dst_format)
 {
 	int rc = 0;
@@ -820,54 +875,6 @@ static int mdss_panel_dt_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 	}
 	return rc;
 }
-
-static int mdss_samsung_parse_candella_lux_mapping_table(struct device_node *np,
-	struct candella_lux_map *table, char *keystring)
-{
-	const __be32 *data;
-	int  data_offset, len = 0 , i = 0;
-	int  cdmap_start = 0, cdmap_end = 0;
-	data = of_get_property(np, keystring, &len);
-	if (!data) {
-		pr_err("%s:%d, Unable to read table %s ",
-			__func__, __LINE__, keystring);
-		return -EINVAL;
-	}
-	if ((len % 4) != 0) {
-		pr_err("%s:%d, Incorrect table entries for %s",
-			__func__, __LINE__, keystring);
-		return -EINVAL;
-	}
-	table->lux_tab_size = len / (sizeof(int)*4);
-	table->lux_tab = kzalloc((sizeof(int) * table->lux_tab_size),
-						GFP_KERNEL);
-	if (!table->lux_tab)
-		return -ENOMEM;
-	table->cmd_idx = kzalloc((sizeof(int) * table->lux_tab_size),
-						GFP_KERNEL);
-	if (!table->cmd_idx)
-		goto error;
-	data_offset = 0;
-	for (i = 0; i < table->lux_tab_size; i++) {
-		table->cmd_idx[i] = be32_to_cpup(&data[data_offset++]);
-		/* 1rst field => <idx> */
-		cdmap_start = be32_to_cpup(&data[data_offset++]);
-		/* 2nd field => <from> */
-		cdmap_end = be32_to_cpup(&data[data_offset++]);
-		/* 3rd field => <till> */
-		table->lux_tab[i] = be32_to_cpup(&data[data_offset++]);
-		/* 4th field => <candella> */
-		/* Fill the backlight level to lux mapping array */
-		do {
-			table->bkl[cdmap_start++] = i;
-		} while (cdmap_start <= cdmap_end);
-	}
-	return 0;
-error:
-	kfree(table->lux_tab);
-	return -ENOMEM;
-}
-
 static void mdss_panel_parse_te_params(struct device_node *np,
 				       struct mdss_panel_info *panel_info)
 {
@@ -954,10 +961,15 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	data = of_get_property(np, "qcom,mdss-dsi-panel-type", NULL);
 	if (data && !strncmp(data, "dsi_cmd_mode", 12))
 		pinfo->mipi.mode = DSI_CMD_MODE;
-	rc = of_property_read_u32(np, "qcom,mdss-dsi-pixel-packing", &tmp);
-	tmp = (!rc ? tmp : 0);
-	rc = mdss_panel_dt_get_dst_fmt(pinfo->bpp,
-		pinfo->mipi.mode, tmp,
+
+	tmp = 0;
+	data = of_get_property(np, "qcom,mdss-dsi-pixel-packing", NULL);
+	if (data && !strcmp(data, "loose"))
+		pinfo->mipi.pixel_packing = 1;
+	else
+		pinfo->mipi.pixel_packing = 0;
+	rc = mdss_panel_get_dst_fmt(pinfo->bpp,
+		pinfo->mipi.mode, pinfo->mipi.pixel_packing,
 		&(pinfo->mipi.dst_format));
 	if (rc) {
 		pr_debug("%s: problem determining dst format. Set Default\n",
