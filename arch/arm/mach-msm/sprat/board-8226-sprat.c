@@ -143,7 +143,10 @@ static struct of_dev_auxdata msm_hsic_host_adata[] = {
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
 	{}
 };
+
+#if defined(CONFIG_BATTERY_ANDROID)
 extern struct android_bat_platform_data android_battery_pdata;
+#endif
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -161,8 +164,10 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
 	OF_DEV_AUXDATA("qcom,hsic-smsc-hub", 0, "msm_smsc_hub",
 			msm_hsic_host_adata),
+#if defined(CONFIG_BATTERY_ANDROID)
 	OF_DEV_AUXDATA("android,battery", 0, \
 			"android-battery", &android_battery_pdata),
+#endif
 	{}
 };
 
