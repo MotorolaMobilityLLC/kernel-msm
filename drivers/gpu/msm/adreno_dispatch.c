@@ -379,6 +379,7 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 	int count = 0;
 	int requeued = 0;
+	unsigned int timestamp;
 
 	/*
 	 * Each context can send a specific number of command batches per cycle
@@ -418,6 +419,8 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 			continue;
 		}
 
+		timestamp = cmdbatch->timestamp;
+
 		ret = sendcmd(adreno_dev, cmdbatch);
 
 		/*
@@ -432,6 +435,8 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 				cmdbatch) ? 0 : 1;
 			break;
 		}
+
+		drawctxt->submitted_timestamp = timestamp;
 
 		count++;
 	}
@@ -715,6 +720,10 @@ int adreno_dispatcher_queue_cmd(struct adreno_device *adreno_dev,
 	}
 
 	cmdbatch->timestamp = *timestamp;
+
+	/* SYNC commands have timestamp 0 and will get optimized out anyway */
+	if (!(cmdbatch->flags & KGSL_CONTEXT_SYNC))
+		drawctxt->queued_timestamp = *timestamp;
 
 	/*
 	 * Set the fault tolerance policy for the command batch - assuming the
