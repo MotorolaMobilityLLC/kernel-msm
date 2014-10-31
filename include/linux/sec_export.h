@@ -1,5 +1,8 @@
+#ifndef _LINUX_SEC_EXPORT_H
+#define _LINUX_SEC_EXPORT_H
 /*
  * Copyright (C) 2009 Motorola, Inc.
+ * Copyright (C) 2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,20 +19,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#define SEC_PROC_ID_SIZE   16
+#ifdef CONFIG_SEC_DRIVER
+void print_hab_fail_codes(void);
+#else
+static inline void print_hab_fail_codes(void) { }
+#endif
 
-#define SEC_IOCTL_WRITE_FUSE	_IOWR(0x99, 120, int)
-#define SEC_IOCTL_READ_FUSE	_IOWR(0x99, 121, int)
-#define SEC_IOCTL_READ_PROC_ID  _IOWR(0x99, 123, int)
-#define SEC_IOCTL_GET_TZ_VERSION _IOWR(0x99, 124, int)
-#define SEC_IOCTL_GET_TZ_CODES _IOWR(0x99, 125, int)
-
-struct SEC_EFUSE_PARM_T {
-	unsigned int which_bank;
-	unsigned int efuse_value;
-};
-
-enum SEC_KM_RESULT_T {
-	SEC_KM_SUCCESS = 98,
-	SEC_KM_FAIL = 99,
-};
+#endif
