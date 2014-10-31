@@ -134,6 +134,7 @@ struct max17042_chip {
 	struct delayed_work iterm_work;
 	struct max17042_wakeup_source max17042_wake_source;
 	int charge_full_des;
+	int taper_reached;
 };
 
 static void max17042_stay_awake(struct max17042_wakeup_source *source)
@@ -196,6 +197,7 @@ static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
 	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
+	POWER_SUPPLY_PROP_TAPER_REACHED,
 };
 
 /* input and output temperature is in deci-centigrade */
@@ -495,6 +497,9 @@ static int max17042_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 		val->intval = chip->hotspot_temp;
+		break;
+	case POWER_SUPPLY_PROP_TAPER_REACHED:
+		val->intval = chip->taper_reached;
 		break;
 	default:
 		return -EINVAL;
@@ -1673,6 +1678,7 @@ static void iterm_work(struct work_struct *work)
 	int curr_avg, curr_inst, iterm_max, iterm_min;
 	int resch_time = 60000;
 	int cfd_max;
+	int taper_hit = 0;
 	struct max17042_chip *chip =
 		container_of(work, struct max17042_chip,
 				iterm_work.work);
@@ -1719,8 +1725,6 @@ static void iterm_work(struct work_struct *work)
 				dev_err(&chip->client->dev,
 					"Can't update Full Cap!\n");
 		}
-
-		goto iterm_fail;
 	}
 
 	ret = max17042_read_reg(chip->client, MAX17042_Current);
@@ -1730,6 +1734,11 @@ static void iterm_work(struct work_struct *work)
 	/* check for discharging */
 	if (ret & 0x8000) {
 		dev_dbg(&chip->client->dev, "ITERM Curr Inst Discharge!\n");
+		goto iterm_fail;
+	}
+
+	if (chip->taper_reached) {
+		taper_hit = 1;
 		goto iterm_fail;
 	}
 
@@ -1785,8 +1794,10 @@ static void iterm_work(struct work_struct *work)
 	dev_dbg(&chip->client->dev, "ITERM FullCap %d uAhr!\n",
 		 (fullcap * 1000) / 2);
 
-	if (repcap >= fullcap)
+	if (repcap >= fullcap) {
+		taper_hit = 1;
 		goto iterm_fail;
+	}
 
 	ret = max17042_read_reg(chip->client, MAX17042_VFSOC);
 	if (ret < 0)
@@ -1842,6 +1853,7 @@ static void iterm_work(struct work_struct *work)
 		 repcap / 2, fullcap / 2);
 
 	repcap_p = repcap;
+	taper_hit = 1;
 
 	ret = max17042_write_reg(chip->client, MAX17042_FullCAP, repcap);
 	if (ret < 0)
@@ -1887,6 +1899,7 @@ static void iterm_work(struct work_struct *work)
 iterm_fail:
 	dev_dbg(&chip->client->dev,
 		"SW ITERM Done!\n");
+	chip->taper_reached = taper_hit;
 	schedule_delayed_work(&chip->iterm_work,
 			      msecs_to_jiffies(resch_time));
 	max17042_relax(&chip->max17042_wake_source);
@@ -1967,6 +1980,7 @@ static int max17042_probe(struct i2c_client *client,
 	}
 
 	chip->temp_state = POWER_SUPPLY_HEALTH_UNKNOWN;
+	chip->taper_reached = 0;
 	mutex_init(&chip->check_temp_lock);
 	max17042_check_temp(chip);
 	INIT_WORK(&chip->check_temp_work, max17042_check_temp_worker);
