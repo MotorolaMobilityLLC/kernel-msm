@@ -63,6 +63,7 @@ struct synaptics_rmi4_platform_data {
 	bool y_flip;
 	bool i2c_pull_up;
 	bool power_down_enable;
+	bool wakeup;
 	bool disable_gpios;
 	bool do_lockdown;
 	bool detect_device;
