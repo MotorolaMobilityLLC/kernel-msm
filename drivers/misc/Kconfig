@@ -707,4 +707,5 @@ source "drivers/misc/mei/Kconfig"
 source "drivers/misc/vmw_vmci/Kconfig"
 source "drivers/misc/qcom/Kconfig"
 source "drivers/misc/stml0xx/Kconfig"
+source "drivers/misc/sec/Kconfig"
 endmenu
