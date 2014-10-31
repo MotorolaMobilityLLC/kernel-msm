@@ -1050,9 +1050,8 @@ static int qseecom_load_app(struct qseecom_dev_handle *data, void __user *argp)
 		}
 		entry->app_id = app_id;
 		entry->ref_cnt = 1;
-		memset((void *)entry->app_name, 0, MAX_APP_NAME_SIZE);
-		memcpy((void *)entry->app_name,
-			(void *)load_img_req.img_name, MAX_APP_NAME_SIZE);
+		memcpy(entry->app_name, load_img_req.img_name,
+					MAX_APP_NAME_SIZE);
 		/* Deallocate the handle */
 		if (!IS_ERR_OR_NULL(ihandle))
 			ion_free(qseecom.ion_clnt, ihandle);
@@ -1066,9 +1065,8 @@ static int qseecom_load_app(struct qseecom_dev_handle *data, void __user *argp)
 		(char *)(load_img_req.img_name));
 	}
 	data->client.app_id = app_id;
-	memset((void *)data->client.app_name, 0, MAX_APP_NAME_SIZE);
-	memcpy((void *)data->client.app_name,
-		(void *)load_img_req.img_name, MAX_APP_NAME_SIZE);
+	memcpy(data->client.app_name, load_img_req.img_name,
+					MAX_APP_NAME_SIZE);
 	load_img_req.app_id = app_id;
 	if (copy_to_user(argp, &load_img_req, sizeof(load_img_req))) {
 		pr_err("copy_to_user failed\n");
@@ -1588,8 +1586,8 @@ static int __qseecom_send_cmd(struct qseecom_dev_handle *data,
 		name_len = min(strlen(data->client.app_name),
 				strlen(ptr_app->app_name));
 		if ((ptr_app->app_id == data->client.app_id) &&
-			 (!memcmp((void *)ptr_app->app_name,
-				(void *)data->client.app_name, name_len))) {
+			 (!memcmp(ptr_app->app_name,
+				data->client.app_name, name_len))) {
 			found_app = true;
 			break;
 		}
@@ -2360,6 +2358,12 @@ int qseecom_start_app(struct qseecom_handle **handle,
 	size_t len;
 	ion_phys_addr_t pa;
 
+	if (!app_name || strlen(app_name) >= MAX_APP_NAME_SIZE) {
+		pr_err("The app_name (%s) with length %zu is not valid\n",
+			app_name, strlen(app_name));
+		return -EINVAL;
+	}
+
 	*handle = kzalloc(sizeof(struct qseecom_handle), GFP_KERNEL);
 	if (!(*handle)) {
 		pr_err("failed to allocate memory for kernel client handle\n");
@@ -2440,6 +2444,7 @@ int qseecom_start_app(struct qseecom_handle **handle,
 		if (ret < 0)
 			goto err;
 		data->client.app_id = ret;
+		memcpy(data->client.app_name, app_name, MAX_APP_NAME_SIZE);
 	}
 	if (!found_app) {
 		entry = kmalloc(sizeof(*entry), GFP_KERNEL);
@@ -2450,6 +2455,7 @@ int qseecom_start_app(struct qseecom_handle **handle,
 		}
 		entry->app_id = ret;
 		entry->ref_cnt = 1;
+		memcpy(entry->app_name, app_name, MAX_APP_NAME_SIZE);
 
 		spin_lock_irqsave(&qseecom.registered_app_list_lock, flags);
 		list_add_tail(&entry->list, &qseecom.registered_app_list_head);
@@ -2513,6 +2519,9 @@ int qseecom_shutdown_app(struct qseecom_handle **handle)
 		return -EINVAL;
 	}
 	data =	(struct qseecom_dev_handle *) ((*handle)->dev);
+	mutex_lock(&app_access_lock);
+	atomic_inc(&data->ioctl_count);
+
 	spin_lock_irqsave(&qseecom.registered_kclient_list_lock, flags);
 	list_for_each_entry(kclient, &qseecom.registered_kclient_list_head,
 				list) {
@@ -2545,12 +2554,16 @@ int qseecom_shutdown_app(struct qseecom_handle **handle)
 		if (data->perf_enabled == true)
 			qsee_disable_clock_vote(data, CLK_DFAB);
 	}
+
+	atomic_dec(&data->ioctl_count);
+	mutex_unlock(&app_access_lock);
 	if (ret == 0) {
 		kzfree(data);
 		kzfree(*handle);
 		kzfree(kclient);
 		*handle = NULL;
 	}
+
 	return ret;
 }
 EXPORT_SYMBOL(qseecom_shutdown_app);
@@ -3224,9 +3237,8 @@ static int qseecom_query_app_loaded(struct qseecom_dev_handle *data,
 				&qseecom.registered_app_list_lock, flags);
 		data->client.app_id = ret;
 		query_req.app_id = ret;
-		memset((void *)data->client.app_name, 0, MAX_APP_NAME_SIZE);
-		memcpy((void *)data->client.app_name,
-				(void *)query_req.app_name, MAX_APP_NAME_SIZE);
+		memcpy(data->client.app_name, query_req.app_name,
+				MAX_APP_NAME_SIZE);
 		if (copy_to_user(argp, &query_req, sizeof(query_req))) {
 			pr_err("copy_to_user failed\n");
 			return -EFAULT;
