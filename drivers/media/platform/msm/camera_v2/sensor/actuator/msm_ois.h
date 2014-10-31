@@ -97,8 +97,8 @@ struct msm_ois_ctrl_t {
 #define EXE_GYABOVE 0x12 /* Y Above */
 #define EXE_GYBELOW 0x22 /* Y Below */
 
-#define ACT_CHECK_LEVEL 0x3ECCCCCD
-#define ACT_THRESHOLD   0x400 /* 28dB 20log(4/(0.4*256)) */
+#define ACT_CHECK_LEVEL 0x3E4CCCCD /* 0.2 */
+#define ACT_THRESHOLD   0x200 /* 28dB 20log(2/(0.2*256)) */
 #define GEA_DIF_HIG  0x0010
 #define GEA_DIF_LOW  0x0001
 #define XACTTEST        10
