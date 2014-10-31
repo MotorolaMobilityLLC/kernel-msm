@@ -5982,6 +5982,7 @@ tSirRetStatus limProcesSmeTdlsChanSwitchReq(tpAniSirGlobal pMac,
 
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
                                    "Invalid Operating class 0 !!!");
+        vos_mem_free(pMsgTdlsChanSwitch);
         goto lim_tdls_chan_switch_error;
     }
     else
@@ -6004,6 +6005,7 @@ tSirRetStatus limProcesSmeTdlsChanSwitchReq(tpAniSirGlobal pMac,
     if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
     {
         limLog(pMac, LOGE, FL("halPostMsgApi failed\n"));
+        vos_mem_free(pMsgTdlsChanSwitch);
         goto lim_tdls_chan_switch_error;
     }
 
