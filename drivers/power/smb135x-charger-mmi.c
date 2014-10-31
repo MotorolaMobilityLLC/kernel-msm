@@ -769,6 +769,7 @@ static enum power_supply_property smb135x_battery_properties[] = {
 	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
+	POWER_SUPPLY_PROP_TAPER_REACHED,
 	/* Notification from Fuel Gauge */
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 };
@@ -1067,6 +1068,31 @@ static int smb135x_get_prop_batt_voltage_now(struct smb135x_chg *chip,
 	}
 	*volt_mv = DEFAULT_BATT_VOLT_MV;
 	return -EINVAL;
+}
+
+static bool smb135x_get_prop_taper_reached(struct smb135x_chg *chip)
+{
+	int rc = 0;
+	union power_supply_propval ret = {0, };
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	if (chip->bms_psy) {
+		rc = chip->bms_psy->get_property(chip->bms_psy,
+					 POWER_SUPPLY_PROP_TAPER_REACHED, &ret);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"couldn't read Taper Reached property, rc=%d\n",
+				rc);
+			return false;
+		}
+
+		if (ret.intval)
+			return true;
+	}
+	return false;
 }
 
 static int smb135x_enable_volatile_writes(struct smb135x_chg *chip)
@@ -2002,6 +2028,7 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
+	case POWER_SUPPLY_PROP_TAPER_REACHED:
 		rc = smb135x_bms_get_property(chip, prop, &stat_val);
 		val->intval = stat_val;
 		if (rc < 0)
@@ -2669,6 +2696,7 @@ static void heartbeat_work(struct work_struct *work)
 	bool dc_present;
 	int batt_health;
 	int batt_soc;
+	bool taper_reached;
 	struct smb135x_chg *chip =
 		container_of(work, struct smb135x_chg,
 				heartbeat_work.work);
@@ -2706,6 +2734,7 @@ static void heartbeat_work(struct work_struct *work)
 
 	usb_present = is_usb_plugged_in(chip);
 	dc_present = is_dc_plugged_in(chip);
+	taper_reached = smb135x_get_prop_taper_reached(chip);
 
 	if (chip->usb_present && !usb_present) {
 		dev_warn(chip->dev, "HB Caught Removal!\n");
@@ -2747,7 +2776,7 @@ static void heartbeat_work(struct work_struct *work)
 		if (!chip->chg_done_batt_full &&
 		    !chip->float_charge_start_time &&
 		    chip->iterm_disabled &&
-		    (batt_soc >= 100)) {
+		    taper_reached) {
 			chip->float_charge_start_time = float_timestamp;
 			dev_warn(chip->dev, "Float Start!\n");
 		} else if (chip->float_charge_start_time &&
