@@ -431,7 +431,12 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
        if( (hdr->frame_control & HDD_FRAME_SUBTYPE_MASK)
                                        == HDD_FRAME_SUBTYPE_DEAUTH )
        {
-          hdd_softap_sta_deauth( pAdapter, hdr->addr1 ); 
+          struct tagCsrDelStaParams delStaParams;
+
+          WLANSAP_PopulateDelStaParams(hdr->addr1, eCsrForcedDeauthSta,
+                                 (SIR_MAC_MGMT_DEAUTH >> 4), &delStaParams);
+
+          hdd_softap_sta_deauth(pAdapter, &delStaParams);
           goto mgmt_handled;
        }
        else if( (hdr->frame_control & HDD_FRAME_SUBTYPE_MASK) 

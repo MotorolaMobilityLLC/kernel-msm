@@ -1260,7 +1260,8 @@ WLANSAP_DisassocSta
 
     IN
     pvosGCtx            : Pointer to vos global context structure
-    pPeerStaMac         : Mac address of the station to deauthenticate
+    pDelStaParams       : Pointer to parameters of the station to
+                          deauthenticate
 
   RETURN VALUE
     The VOS_STATUS code associated with performing the operation
@@ -1273,7 +1274,7 @@ VOS_STATUS
 WLANSAP_DeauthSta
 (
     v_PVOID_t  pvosGCtx,
-    v_U8_t *pPeerStaMac
+    struct tagCsrDelStaParams *pDelStaParams
 )
 {
     eHalStatus halStatus = eHAL_STATUS_FAILURE;
@@ -1291,8 +1292,8 @@ WLANSAP_DeauthSta
         return vosStatus;
     }
 
-    halStatus = sme_RoamDeauthSta(VOS_GET_HAL_CB(pSapCtx->pvosGCtx), pSapCtx->sessionId,
-                            pPeerStaMac);
+    halStatus = sme_RoamDeauthSta(VOS_GET_HAL_CB(pSapCtx->pvosGCtx),
+                                  pSapCtx->sessionId, pDelStaParams);
 
     if (halStatus == eHAL_STATUS_SUCCESS)
     {
@@ -2366,4 +2367,50 @@ VOS_STATUS WLANSAP_DeRegisterMgmtFrame( v_PVOID_t pvosGCtx, tANI_U16 frameType,
                     "Failed to Deregister MGMT frame");
 
     return VOS_STATUS_E_FAULT;
+}
+
+/*==========================================================================
+  FUNCTION    WLANSAP_PopulateDelStaParams
+
+  DESCRIPTION
+  This API is used to populate del station parameters
+  DEPENDENCIES
+  NA.
+
+  PARAMETERS
+  IN
+  mac:           pointer to peer mac address.
+  reason_code:   Reason code for the disassoc/deauth.
+  subtype:       subtype points to either disassoc/deauth frame.
+  pDelStaParams: address where parameters to be populated.
+
+  RETURN VALUE NONE
+
+  SIDE EFFECTS
+============================================================================*/
+void WLANSAP_PopulateDelStaParams(const v_U8_t *mac,
+                                  v_U16_t reason_code,
+                                  v_U8_t subtype,
+                                  struct tagCsrDelStaParams *pDelStaParams)
+{
+        if (NULL == mac)
+            memset(pDelStaParams->peerMacAddr, 0xff, VOS_MAC_ADDR_SIZE);
+        else
+            vos_mem_copy(pDelStaParams->peerMacAddr, mac, VOS_MAC_ADDR_SIZE);
+
+        if (reason_code == 0)
+            pDelStaParams->reason_code = eCsrForcedDeauthSta;
+        else
+            pDelStaParams->reason_code = reason_code;
+
+        if (subtype == (SIR_MAC_MGMT_DEAUTH >> 4) ||
+            subtype == (SIR_MAC_MGMT_DISASSOC >> 4))
+            pDelStaParams->subtype = subtype;
+        else
+            pDelStaParams->subtype = (SIR_MAC_MGMT_DEAUTH >> 4);
+
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("Delete STA with RC:%hu subtype:%hhu MAC::" MAC_ADDRESS_STR),
+                   pDelStaParams->reason_code, pDelStaParams->subtype,
+                   MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
 }
