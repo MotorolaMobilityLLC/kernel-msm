@@ -180,6 +180,8 @@ int f2fs_write_inline_data(struct inode *inode, struct page *page)
 	kunmap_atomic(src_addr);
 
 	set_inode_flag(F2FS_I(inode), FI_APPEND_WRITE);
+	set_inode_flag(F2FS_I(inode), FI_DATA_EXIST);
+
 	sync_inode_page(&dn);
 	f2fs_put_dnode(&dn);
 	return 0;
@@ -227,6 +229,10 @@ process_inline:
 		src_addr = inline_data_addr(npage);
 		dst_addr = inline_data_addr(ipage);
 		memcpy(dst_addr, src_addr, MAX_INLINE_DATA);
+
+		set_inode_flag(F2FS_I(inode), FI_INLINE_DATA);
+		set_inode_flag(F2FS_I(inode), FI_DATA_EXIST);
+
 		update_inode(inode, ipage);
 		f2fs_put_page(ipage, 1);
 		return true;
@@ -236,12 +242,11 @@ process_inline:
 		ipage = get_node_page(sbi, inode->i_ino);
 		f2fs_bug_on(sbi, IS_ERR(ipage));
 		truncate_inline_data(ipage, 0);
-		clear_inode_flag(F2FS_I(inode), FI_INLINE_DATA);
+		f2fs_clear_inline_inode(inode);
 		update_inode(inode, ipage);
 		f2fs_put_page(ipage, 1);
 	} else if (ri && (ri->i_inline & F2FS_INLINE_DATA)) {
 		truncate_blocks(inode, 0, false);
-		set_inode_flag(F2FS_I(inode), FI_INLINE_DATA);
 		goto process_inline;
 	}
 	return false;
