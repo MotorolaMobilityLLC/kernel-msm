@@ -5479,11 +5479,16 @@ __limProcessSmeSpoofMacAddrRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
    pSpoofMacAddrParams = vos_mem_malloc(sizeof( tSpoofMacAddrReqParams));
    if ( NULL == pSpoofMacAddrParams )
    {
-      limLog( pMac, LOGP, FL("Unable to allocate memory for tDelStaSelfParams") );
+      limLog( pMac, LOGE, FL("Unable to allocate memory for tDelStaSelfParams") );
       return;
    }
 
    vos_mem_copy( pSpoofMacAddrParams->macAddr, pSmeReq->macAddr, sizeof(tSirMacAddr) );
+
+   vos_mem_copy(pMac->lim.spoofMacAddr, pSmeReq->macAddr, VOS_MAC_ADDRESS_LEN);
+
+   limLog( pMac, LOG1, FL("Recieved Spoofed Mac Addr request with Addr:"
+                MAC_ADDRESS_STR), MAC_ADDR_ARRAY(pMac->lim.spoofMacAddr) );
 
    msg.type = WDA_SPOOF_MAC_ADDR_REQ;
    msg.reserved = 0;
@@ -5495,7 +5500,7 @@ __limProcessSmeSpoofMacAddrRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
    if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
    {
-      limLog(pMac, LOGP, FL("wdaPostCtrlMsg failed for SIR_HAL_SPOOF_MAC_ADDR_REQ"));
+      limLog(pMac, LOGE, FL("wdaPostCtrlMsg failed for SIR_HAL_SPOOF_MAC_ADDR_REQ"));
       vos_mem_free(pSpoofMacAddrParams);
    }
    return;

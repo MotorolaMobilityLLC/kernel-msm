@@ -4011,7 +4011,7 @@ static int wlan_hdd_cfg80211_set_spoofed_mac_oui(struct wiphy *wiphy,
     if (FALSE == pHddCtx->cfg_ini->enableMacSpoofing) {
         hddLog(VOS_TRACE_LEVEL_ERROR, FL("MAC_SPOOFED_SCAN disabled in ini"));
         return -ENOTSUPP;
-     }
+    }
     if (TRUE != sme_IsFeatureSupportedByFW(MAC_SPOOFED_SCAN)){
         hddLog(VOS_TRACE_LEVEL_ERROR, FL("MAC_SPOOFED_SCAN not supported by FW"));
         return -ENOTSUPP;
@@ -4033,21 +4033,23 @@ static int wlan_hdd_cfg80211_set_spoofed_mac_oui(struct wiphy *wiphy,
                 tb[QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI]),
             VOS_MAC_ADDR_LAST_3_BYTES);
 
-    vos_trace_hex_dump( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,nla_data(
+    pHddCtx->spoofMacAddr.isEnabled = TRUE;
+
+    vos_trace_hex_dump( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, nla_data(
             tb[QCA_WLAN_VENDOR_ATTR_SET_SCANNING_MAC_OUI]),
             VOS_MAC_ADDR_FIRST_3_BYTES);
-
-    if (VOS_STATUS_SUCCESS != vos_randomize_n_bytes(
-        (void *)(&pHddCtx->spoofMacAddr.randomMacAddr.bytes[3]),
-        VOS_MAC_ADDR_LAST_3_BYTES)) {
-        hddLog(LOGE, FL("Failed to generate random Mac Addr"));
+    if ((pHddCtx->spoofMacAddr.randomMacAddr.bytes[0] == 0) &&
+        (pHddCtx->spoofMacAddr.randomMacAddr.bytes[1] == 0) &&
+        (pHddCtx->spoofMacAddr.randomMacAddr.bytes[2] == 0))
+    {
+            hddLog(LOG1, FL("ZERO MAC OUI Recieved. Disabling Spoofing"));
+            vos_mem_zero(pHddCtx->spoofMacAddr.randomMacAddr.bytes,
+                                                        VOS_MAC_ADDRESS_LEN);
+            pHddCtx->spoofMacAddr.isEnabled = FALSE;
     }
-    vos_trace_hex_dump( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-        pHddCtx->spoofMacAddr.randomMacAddr.bytes,
-            VOS_MAC_ADDR_SIZE);
 
-    if (eHAL_STATUS_SUCCESS != sme_SpoofMacAddrReq(pHddCtx->hHal,
-                &pHddCtx->spoofMacAddr.randomMacAddr)) {
+    if (VOS_STATUS_SUCCESS != hdd_processSpoofMacAddrRequest(pHddCtx))
+    {
         hddLog(LOGE, FL("Failed to send Spoof Mac Addr to FW"));
     }
 
@@ -9335,6 +9337,12 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     cfg80211_scan_done(req, aborted);
     complete(&pScanInfo->abortscan_event_var);
 
+    if (pHddCtx->spoofMacAddr.isEnabled || pHddCtx->spoofMacAddr.isReqDeferred) {
+        /* Generate new random mac addr for next scan */
+        hddLog(VOS_TRACE_LEVEL_INFO, "scan completed - generate new spoof mac addr");
+        hdd_processSpoofMacAddrRequest(pHddCtx);
+    }
+
 allow_suspend:
     /* release the wake lock at the end of the scan*/
     hdd_allow_suspend();
@@ -9818,6 +9826,17 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
            scanRequest.requestType, scanRequest.scanType,
            scanRequest.minChnTime, scanRequest.maxChnTime,
            scanRequest.p2pSearch, scanRequest.skipDfsChnlInP2pSearch);
+
+    if (pHddCtx->spoofMacAddr.isEnabled)
+    {
+        hddLog(VOS_TRACE_LEVEL_INFO,
+                        "%s: MAC Spoofing enabled for current scan", __func__);
+        /* Updating SelfSta Mac Addr in TL which will be used to get staidx
+         * to fill TxBds for probe request during current scan
+         */
+        WLANTL_updateSpoofMacAddr(pHddCtx->pvosContext,
+            &pHddCtx->spoofMacAddr.randomMacAddr, &pAdapter->macAddressCurrent);
+    }
 
     status = sme_ScanRequest( WLAN_HDD_GET_HAL_CTX(pAdapter),
                               pAdapter->sessionId, &scanRequest, &scanId,

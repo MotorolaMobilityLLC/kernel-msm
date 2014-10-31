@@ -374,6 +374,8 @@ typedef struct sAniSirLim
 
     //////////////////////////////////////     SCAN/LEARN RELATED START ///////////////////////////////////////////
     tSirMacAddr         gSelfMacAddr;   //added for BT-AMP Support 
+    tSirMacAddr         spoofMacAddr;   //added for Mac Addr Spoofing support
+    tANI_U8             isSpoofingEnabled;
 
     //////////////////////////////////////////     BSS RELATED END ///////////////////////////////////////////
     // Place holder for StartBssReq message

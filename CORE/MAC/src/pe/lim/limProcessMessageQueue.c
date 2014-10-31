@@ -779,6 +779,21 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
 
     } else
 #endif
+
+    if ((fc.type == SIR_MAC_MGMT_FRAME) &&
+        (fc.subType == SIR_MAC_MGMT_PROBE_RSP) &&
+        pMac->lim.isSpoofingEnabled)
+    {
+        limLog( pMac, LOG2, FL("Probe Rsp recieved with DA: "MAC_ADDRESS_STR
+            " and selfMac Addr:"MAC_ADDRESS_STR), MAC_ADDR_ARRAY(pHdr->da),
+                            MAC_ADDR_ARRAY(pMac->lim.gSelfMacAddr));
+        if (VOS_TRUE == vos_mem_compare((v_VOID_t*) pHdr->da,
+               (v_VOID_t*) pMac->lim.spoofMacAddr, VOS_MAC_ADDRESS_LEN))
+        {
+            vos_mem_copy(pHdr->da, pMac->lim.gSelfMacAddr, VOS_MAC_ADDRESS_LEN);
+        }
+    }
+
     /* Added For BT-AMP Support */
     if((psessionEntry = peFindSessionByBssid(pMac,pHdr->bssId,&sessionId))== NULL)
     {
@@ -2301,6 +2316,10 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
        limMsg->bodyptr = NULL;
        break;
     }
+
+    case WDA_SPOOF_MAC_ADDR_RSP:
+       limProcessMlmSpoofMacAddrRsp(pMac, (tSirRetStatus)limMsg->bodyval);
+       break;
 
     default:
         vos_mem_free((v_VOID_t*)limMsg->bodyptr);
