@@ -30,6 +30,9 @@ static int mdss_panel_height = 480;
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
+static void __mdss_dsi_panel_set_idle_mode(struct mdss_dsi_ctrl_pdata *ctrl,
+		int enable);
+
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	ctrl->pwm_bl = pwm_request(ctrl->pwm_lpg_chan, "lcd-bklt");
@@ -161,13 +164,9 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	struct dsi_cmd_desc cmds[2];
 	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
 	unsigned char new_level = level;
+	bool do_idle = false;
 
 	pr_debug("%s: level=%d\n", __func__, level);
-	if (ctrl->idle) {
-		pr_debug("%s: skip backlight control due to idle mode\n",
-				__func__);
-		return;
-	}
 
 	if (pinfo->blmap && pinfo->blmap_size) {
 		if (level >= pinfo->blmap_size)
@@ -206,6 +205,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 				sizeof(struct dsi_cmd_desc));
 			cmdreq.cmds_cnt++;
 			ctrl->bklt_off = true;
+			do_idle = true;
 		}
 	}
 
@@ -217,6 +217,9 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 		mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 	}
+
+	if (do_idle)
+		__mdss_dsi_panel_set_idle_mode(ctrl, 1);
 }
 
 static void idle_on_work(struct work_struct *work)
@@ -259,6 +262,36 @@ static void idle_on_work(struct work_struct *work)
 	wake_unlock(&ctrl->idle_on_wakelock);
 }
 
+static void __mdss_dsi_panel_set_idle_mode(struct mdss_dsi_ctrl_pdata *ctrl,
+		int enable)
+{
+	/* don't need to set idle mode if display is blanked */
+	if (ctrl->blanked) {
+		ctrl->idle = 0;
+		pr_debug("%s: idle: already blanked\n", __func__);
+		return;
+	}
+
+	if (ctrl->idle == enable) {
+		pr_debug("%s: idle: no change(%d)\n", __func__, enable);
+		return;
+	}
+
+	pr_debug("%s: idle %d->%d\n", __func__, ctrl->idle, enable);
+
+	ctrl->idle = enable;
+
+	if (enable) {
+		if (ctrl->idle_on_cmds.cmd_cnt)
+			schedule_work(&ctrl->idle_on_work);
+	} else {
+		if (ctrl->idle_off_cmds.cmd_cnt) {
+			cancel_work_sync(&ctrl->idle_on_work);
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
+		}
+	}
+}
+
 static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 		int enable)
 {
@@ -272,28 +305,10 @@ static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	/* don't need to set idle mode if display is blanked */
-	if (ctrl->blanked) {
-		pr_debug("%s: skipped the idle mode\n", __func__);
-		return;
-	}
+	if (enable && !ctrl->bklt_off)
+		return; // will enable idle later when blkt is off
 
-	pr_debug("%s: enabled %d\n", __func__, enable);
-
-	if (ctrl->idle == enable)
-		return;
-
-	ctrl->idle = enable;
-
-	if (enable) {
-		if (ctrl->idle_on_cmds.cmd_cnt)
-			schedule_work(&ctrl->idle_on_work);
-	} else {
-		if (ctrl->idle_off_cmds.cmd_cnt) {
-			cancel_work_sync(&ctrl->idle_on_work);
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
-		}
-	}
+	__mdss_dsi_panel_set_idle_mode(ctrl, enable);
 }
 
 static int mdss_dsi_panel_get_idle_mode(struct mdss_panel_data *pdata)
