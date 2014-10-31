@@ -41,12 +41,7 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
 
 	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
 
-	/* we don't need to use inline_data strictly */
-	if (f2fs_has_inline_data(inode)) {
-		err = f2fs_convert_inline_inode(inode);
-		if (err)
-			goto out;
-	}
+	f2fs_bug_on(sbi, f2fs_has_inline_data(inode));
 
 	/* block allocation */
 	f2fs_lock_op(sbi);
@@ -395,6 +390,15 @@ static loff_t f2fs_llseek(struct file *file, loff_t offset, int whence)
 
 static int f2fs_file_mmap(struct file *file, struct vm_area_struct *vma)
 {
+	struct inode *inode = file_inode(file);
+
+	/* we don't need to use inline_data strictly */
+	if (f2fs_has_inline_data(inode)) {
+		int err = f2fs_convert_inline_inode(inode);
+		if (err)
+			return err;
+	}
+
 	file_accessed(file);
 	vma->vm_ops = &f2fs_file_vm_ops;
 	return 0;
@@ -899,8 +903,6 @@ static int f2fs_ioc_start_atomic_write(struct file *filp)
 
 	f2fs_balance_fs(sbi);
 
-	f2fs_clear_inline_inode(inode);
-	stat_dec_inline_inode(inode);
 	set_inode_flag(F2FS_I(inode), FI_ATOMIC_FILE);
 
 	return f2fs_convert_inline_inode(inode);
@@ -936,10 +938,9 @@ static int f2fs_ioc_start_volatile_write(struct file *filp)
 	if (!inode_owner_or_capable(inode))
 		return -EACCES;
 
-	f2fs_clear_inline_inode(inode);
-	stat_dec_inline_inode(inode);
 	set_inode_flag(F2FS_I(inode), FI_VOLATILE_FILE);
-	return 0;
+
+	return f2fs_convert_inline_inode(inode);
 }
 
 static int f2fs_ioc_fitrim(struct file *filp, unsigned long arg)
