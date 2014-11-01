@@ -601,8 +601,6 @@ static int max17050_get_property(struct power_supply *psy,
 		/* sign extend to s32 */
 		val->intval = (s32)s16_value;
 		val->intval *= 1562500 / chip->pdata->r_sns;
-		/* negate (charging is negative by convention) */
-		val->intval *= -1;
 		break;
 	default:
 		return -EINVAL;
