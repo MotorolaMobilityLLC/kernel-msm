@@ -2421,7 +2421,11 @@ get_prop_current_now(struct qpnp_chg_chip *chip)
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
 			  POWER_SUPPLY_PROP_CURRENT_NOW, &ret);
-		return ret.intval;
+		/*
+		 * qpnp-charger's sign of ibat convention
+		 * is opposite of power_supply's CURRENT_NOW
+		 */
+		return -1 * ret.intval;
 	} else {
 		pr_debug("No BMS supply registered return 0\n");
 	}
@@ -2693,7 +2697,8 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		val->intval = get_prop_capacity(chip);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		val->intval = get_prop_current_now(chip);
+		/* positive value indicate current entering battery */
+		val->intval = -1 * get_prop_current_now(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		val->intval = get_prop_full_design(chip);
