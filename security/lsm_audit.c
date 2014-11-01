@@ -220,6 +220,8 @@ static void dump_common_audit_data(struct audit_buffer *ab,
 	 */
 	BUILD_BUG_ON(sizeof(a->u) > sizeof(void *)*2);
 
+	if (tsk->cred)
+		audit_log_format(ab, " uid=%d", tsk->cred->uid);
 	audit_log_format(ab, " pid=%d comm=", tsk->pid);
 	audit_log_untrustedstring(ab, tsk->comm);
 
@@ -294,6 +296,8 @@ static void dump_common_audit_data(struct audit_buffer *ab,
 	case LSM_AUDIT_DATA_TASK:
 		tsk = a->u.tsk;
 		if (tsk && tsk->pid) {
+			if (tsk->cred)
+				audit_log_format(ab, " uid=%d", tsk->cred->uid);
 			audit_log_format(ab, " pid=%d comm=", tsk->pid);
 			audit_log_untrustedstring(ab, tsk->comm);
 		}
