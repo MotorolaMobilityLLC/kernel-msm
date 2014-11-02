@@ -63,8 +63,8 @@ void compare_swap_oom_score_adj(int old_val, int new_val)
 
 	spin_lock_irq(&sighand->siglock);
 	if (current->signal->oom_score_adj == old_val) {
-		current->signal->oom_score_adj = new_val;
 		delete_from_adj_tree(current);
+		current->signal->oom_score_adj = new_val;
 		add_2_adj_tree(current);
 	}
 	trace_oom_score_adj_update(current);
@@ -85,9 +85,9 @@ int test_set_oom_score_adj(int new_val)
 	int old_val;
 
 	spin_lock_irq(&sighand->siglock);
+	delete_from_adj_tree(current);
 	old_val = current->signal->oom_score_adj;
 	current->signal->oom_score_adj = new_val;
-	delete_from_adj_tree(current);
 	add_2_adj_tree(current);
 	trace_oom_score_adj_update(current);
 	spin_unlock_irq(&sighand->siglock);
