@@ -1974,6 +1974,7 @@ void dxeRXResourceAvailableTimerExpHandler
 {
    WLANDXE_CtrlBlkType      *dxeCtxt    = NULL;
    wpt_uint32               numRxFreePackets;
+   wpt_uint32               numAllocFailures;
 
    dxeCtxt = (WLANDXE_CtrlBlkType *)usrData;
 
@@ -1983,7 +1984,11 @@ void dxeRXResourceAvailableTimerExpHandler
 
    //This API wil also try to replenish packets
    wpalGetNumRxFreePacket(&numRxFreePackets);
+   wpalGetNumRxPacketAllocFailures(&numAllocFailures);
 
+   HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+            "Free Packets: %u, Alloc Failures: %u",
+            numRxFreePackets, numAllocFailures);
    if (numRxFreePackets > 0)
    {
       /* If no. of free packets is greater than 0, it means
@@ -2209,6 +2214,13 @@ static wpt_status dxeRXFrameSingleBufferAlloc
       currentPalPacketBuffer = dxeCtxt->freeRXPacket;
       dxeCtxt->rxPalPacketUnavailable = eWLAN_PAL_FALSE;
       dxeCtxt->freeRXPacket = NULL;
+
+      if (channelEntry->doneIntDisabled)
+      {
+         wpalWriteRegister(channelEntry->channelRegister.chDXECtrlRegAddr,
+                           channelEntry->extraConfig.chan_mask);
+         channelEntry->doneIntDisabled = 0;
+      }
    }
    else if(!dxeCtxt->rxPalPacketUnavailable)
    {
@@ -3059,10 +3071,12 @@ void dxeRXEventHandler
    {
      chanMask = dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI].extraConfig.chan_mask &
                 (~WLANDXE_CH_CTRL_INE_DONE_MASK);
+     dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI].doneIntDisabled = 1;
    }
    else
    {
      chanMask = dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI].extraConfig.chan_mask;
+     dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI].doneIntDisabled = 0;
    }
    wpalWriteRegister(dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI].channelRegister.chDXECtrlRegAddr,
                      chanMask);
@@ -3078,10 +3092,12 @@ void dxeRXEventHandler
    {
      chanMask = dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].extraConfig.chan_mask &
                 (~WLANDXE_CH_CTRL_INE_DONE_MASK);
+     dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].doneIntDisabled = 1;
    }
    else
    {
      chanMask = dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].extraConfig.chan_mask;
+     dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].doneIntDisabled = 0;
    }
    wpalWriteRegister(dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI].channelRegister.chDXECtrlRegAddr,
                      chanMask);

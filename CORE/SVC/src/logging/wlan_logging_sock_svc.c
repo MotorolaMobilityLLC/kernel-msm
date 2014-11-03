@@ -514,9 +514,9 @@ static int wlan_logging_thread(void *Arg)
 		}
 	}
 
-	complete_and_exit(&gwlan_logging.shutdown_comp, 0);
-
 	pr_info("%s: Terminating\n", __func__);
+
+	complete_and_exit(&gwlan_logging.shutdown_comp, 0);
 
 	return 0;
 }
@@ -643,10 +643,10 @@ int wlan_logging_sock_deactivate_svc(void)
 	clear_default_logtoapp_log_level();
 	gapp_pid = INVALID_PID;
 
-	gwlan_logging.exit = true;
 	INIT_COMPLETION(gwlan_logging.shutdown_comp);
+	gwlan_logging.exit = true;
 	wake_up_interruptible(&gwlan_logging.wait_queue);
-	wait_for_completion_interruptible(&gwlan_logging.shutdown_comp);
+	wait_for_completion(&gwlan_logging.shutdown_comp);
 
 	spin_lock_irqsave(&gwlan_logging.spin_lock, irq_flag);
 	vfree(gplog_msg);
