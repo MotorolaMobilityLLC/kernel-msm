@@ -73,7 +73,8 @@ enum {
 	ESDFS_TREE_ANDROID,		/* .../Android */
 	ESDFS_TREE_ANDROID_DATA,	/* .../Android/data */
 	ESDFS_TREE_ANDROID_OBB,		/* .../Android/obb */
-	ESDFS_TREE_ANDROID_APP,		/* .../Android/data|obb/... */
+	ESDFS_TREE_ANDROID_MEDIA,	/* .../Android/media */
+	ESDFS_TREE_ANDROID_APP,		/* .../Android/data|obb|media/... */
 	ESDFS_TREE_ANDROID_USER,	/* .../Android/user */
 };
 
