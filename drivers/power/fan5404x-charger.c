@@ -531,7 +531,7 @@ static int start_charging(struct fan5404x_chg *chip)
 		return rc;
 
 	/* Set IOCHARGE */
-	rc = fan5404x_set_iocharge(chip, 1550);
+	rc = fan5404x_set_iocharge(chip, 1450);
 	if (rc)
 		return rc;
 
