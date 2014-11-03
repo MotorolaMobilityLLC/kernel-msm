@@ -75,7 +75,7 @@
 		qcom,sensor-name = "mt9v113";
 		cam_vdig-supply = <&pm8916_l10>;
 		qcom,cam-vreg-name = "cam_vdig";
-		qcom,cam-vreg-type = <1>;
+		qcom,cam-vreg-type = <0>;
 		qcom,cam-vreg-min-voltage = <1800000>;
 		qcom,cam-vreg-max-voltage = <1800000>;
 		qcom,cam-vreg-op-mode = <1800000>;
