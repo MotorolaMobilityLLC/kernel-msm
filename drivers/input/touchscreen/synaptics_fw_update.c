@@ -1876,6 +1876,20 @@ exit:
 	return retval;
 }
 
+static ssize_t fwu_sysfs_check_fw_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input = 0;
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	if (input)
+		queue_delayed_work(fwu->fwu_workqueue, &fwu->fwu_work, 0);
+
+	return count;
+}
+
 static ssize_t fwu_sysfs_write_config_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -2114,6 +2128,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(update_fw, S_IWUSR | S_IWGRP,
 			NULL,
 			fwu_sysfs_do_reflash_store),
+	__ATTR(check_fw, S_IWUSR | S_IWGRP,
+			NULL,
+			fwu_sysfs_check_fw_store),
 	__ATTR(writeconfig, S_IWUSR | S_IWGRP,
 			NULL,
 			fwu_sysfs_write_config_store),
@@ -2289,9 +2306,6 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 #ifdef INSIDE_FIRMWARE_UPDATE
 	fwu->fwu_workqueue = create_singlethread_workqueue("fwu_workqueue");
 	INIT_DELAYED_WORK(&fwu->fwu_work, synaptics_rmi4_fwu_work);
-	queue_delayed_work(fwu->fwu_workqueue,
-			&fwu->fwu_work,
-			msecs_to_jiffies(1000));
 #endif
 
 	return 0;
