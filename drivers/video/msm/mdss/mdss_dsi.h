@@ -294,6 +294,7 @@ struct mdss_dsi_ctrl_pdata {
 	int panel_mode;
 	int irq_cnt;
 	int rst_gpio;
+	int bridge_rst_gpio;
 	int disp_en_gpio;
 	int bklt_en_gpio;
 	int mode_gpio;
@@ -319,6 +320,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_hw *dsi_hw;
 	struct mdss_panel_recovery *recovery;
 
+	struct dsi_panel_cmds init_cmds;
 	struct dsi_panel_cmds on_cmds;
 	struct dsi_panel_cmds off_cmds;
 	struct dsi_panel_cmds status_cmds;

@@ -588,6 +588,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		mdss_dsi_panel_reset(pdata, 1);
 	}
 
+
 	if (mipi->init_delay)
 		usleep(mipi->init_delay);
 
@@ -600,10 +601,10 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		wmb();
 	}
 
+end:
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
-end:
 	pr_debug("%s-:\n", __func__);
 	return 0;
 }
@@ -1643,6 +1644,9 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	if (!gpio_is_valid(ctrl_pdata->rst_gpio))
 		pr_err("%s:%d, reset gpio not specified\n",
 						__func__, __LINE__);
+	/* additional reset pin for bridge/panel case */
+	ctrl_pdata->bridge_rst_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
+			 "qcom,platform-bridge-gpio", 0);
 
 	if (pinfo->mode_gpio_state != MODE_GPIO_NOT_VALID) {
 
