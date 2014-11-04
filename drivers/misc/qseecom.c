@@ -1580,6 +1580,7 @@ static int __qseecom_send_cmd(struct qseecom_dev_handle *data,
 	bool found_app = false;
 	int name_len = 0;
 
+	reqd_len_sb_in = req->cmd_req_len + req->resp_len;
 	/* find app_id & img_name from list */
 	spin_lock_irqsave(&qseecom.registered_app_list_lock, flags);
 	list_for_each_entry(ptr_app, &qseecom.registered_app_list_head,
