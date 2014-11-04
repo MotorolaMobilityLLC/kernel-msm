@@ -228,6 +228,7 @@ typedef struct
   v_U32_t                         min_phy_rate;
   v_U16_t                         surplus_bw_allowance;
   v_U16_t                         medium_time;
+  v_U8_t                          expec_psb_byapp;
 } sme_QosWmmTspecInfo;
 
 

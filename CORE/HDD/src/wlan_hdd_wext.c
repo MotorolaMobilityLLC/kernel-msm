@@ -6269,6 +6269,10 @@ static int __iw_add_tspec(struct net_device *dev,
 
    tSpec.ts_info.burst_size_defn = params[HDD_WLAN_WMM_PARAM_BURST_SIZE_DEFN];
 
+   // Save the expected UAPSD settings by application, this will be needed
+   // when re-negotiating UAPSD settings during BT Coex cases.
+   tSpec.expec_psb_byapp = params[HDD_WLAN_WMM_PARAM_APSD];
+
    // validate the ts info ack policy
    switch (params[HDD_WLAN_WMM_PARAM_ACK_POLICY])
    {

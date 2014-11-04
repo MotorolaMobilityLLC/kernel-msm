@@ -5437,6 +5437,9 @@ eHalStatus sme_QosProcessAddTsSuccessRsp(tpAniSirGlobal pMac,
                                                 pRsp->tspec.surplusBw;
    pACInfo->curr_QoSInfo[tspec_pending - 1].medium_time =
                                                pRsp->tspec.mediumTime;
+   // Save the expected UAPSD settings by application
+   pACInfo->curr_QoSInfo[tspec_pending - 1].expec_psb_byapp =
+           pACInfo->requested_QoSInfo[tspec_pending - 1].expec_psb_byapp;
 
    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
              "%s: %d: On session %d AddTspec Medium Time %d",
@@ -6952,6 +6955,17 @@ eHalStatus sme_QosAddTsFailureFnp(tpAniSirGlobal pMac, tListElem *pEntry)
    case SME_QOS_REASON_MODIFY:
       flow_info->reason = SME_QOS_REASON_REQ_SUCCESS;
    case SME_QOS_REASON_REQ_SUCCESS:
+      if(flow_info->hoRenewal == VOS_TRUE)
+      {
+        // This case will occur when re-requesting AddTs during BT Coex
+        hdd_status = SME_QOS_STATUS_MODIFY_SETUP_FAILURE_RSP;
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                  "%s: %d: ac:%d num_flows:%d",__func__, __LINE__,
+                  ac,pACInfo->num_flows[pACInfo->tspec_pending - 1]);
+        pACInfo->num_flows[pACInfo->tspec_pending - 1]--;
+        inform_hdd = VOS_TRUE;
+        break;
+      }
    default:
       inform_hdd = VOS_FALSE;
       break;
@@ -7910,6 +7924,153 @@ sme_QosStatusType sme_QosTriggerUapsdChange( tpAniSirGlobal pMac )
    }
    // return status is ignored by BTC
    return SME_QOS_STATUS_SETUP_SUCCESS_IND;
+}
+
+/*
+  sme_QoSUpdateUapsdBTEvent
+  Invoked by BTC when there is a need to disable/enable UAPSD
+  The driver in turn must come out of UAPSD and re-negotiate Tspec
+  changed UAPSD settings on all active Tspecs.
+*/
+void sme_QoSUpdateUapsdBTEvent(tpAniSirGlobal pMac)
+{
+    sme_QosSessionInfo *pSession = NULL;
+    sme_QosACInfo *pACInfo = NULL;
+    v_U8_t ac, tspec1 = 0, tspec2 = 0;
+    tDot11fBeaconIEs *pIesLocal;
+    v_U8_t acm_mask;
+    v_S7_t sessionId;
+    v_BOOL_t addtsWhenACMNotSet = CSR_IS_ADDTS_WHEN_ACMOFF_SUPPORTED(pMac);
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
+             "%s: %d: Invoked", __func__, __LINE__);
+
+    if (csrIsConcurrentSessionRunning(pMac)) {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
+                  "%s: %d Concurrent Sessions running, do nothing",
+                  __func__,__LINE__);
+        return;
+    }
+
+    sessionId = csrGetInfraSessionId(pMac);
+    if (-1 == sessionId) {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                  "%s: %d Invalid sessionId",__func__,__LINE__);
+        return;
+    }
+
+    pSession = &sme_QosCb.sessionInfo[sessionId];
+    if (NULL == pSession) {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                  "%s: %d pSession not found sessionId:%d",__func__,__LINE__,sessionId);
+        return;
+    }
+
+    if( !pSession->sessionActive )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                  "%s: %d Session %d not active",__func__,__LINE__,sessionId);
+        return;
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
+              "%s: %d: Session %d is active", __func__, __LINE__, sessionId);
+
+    if( HAL_STATUS_SUCCESS(csrGetParsedBssDescriptionIEs(pMac, pSession->assocInfo.pBssDesc, &pIesLocal)) )
+    {
+        // get the ACM mask
+        acm_mask = sme_QosGetACMMask(pMac, pSession->assocInfo.pBssDesc, pIesLocal);
+        vos_mem_free(pIesLocal);
+
+        // iterate through the ACs to determine if we need to re-add any TSPECs
+        for(ac = SME_QOS_EDCA_AC_BE; ac < SME_QOS_EDCA_AC_MAX; ac++)
+        {
+            pACInfo = &pSession->ac_info[ac];
+
+            // Does this AC have QoS active?
+            if( SME_QOS_QOS_ON == pACInfo->curr_state )
+            {
+                // Yes, QoS is active on this AC
+                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
+                          "%s: %d: On session %d AC %d has QoS active",
+                          __func__, __LINE__, sessionId, ac);
+                // Does this AC require ACM?
+                if(( acm_mask & (1 << (SME_QOS_EDCA_AC_VO - ac)) ) || addtsWhenACMNotSet )
+                {
+                    // Yes, so we need to re-add any TSPECS
+                    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
+                              "%s: %d: On session %d AC %d has ACM enabled",
+                               __func__, __LINE__, sessionId, ac);
+                    // Are any TSPECs active?
+                    if( pACInfo->tspec_mask_status )
+                    {
+                        // Yes, at least 1 TSPEC is active.  Are they both active?
+                        if( SME_QOS_TSPEC_MASK_BIT_1_2_SET == pACInfo->tspec_mask_status )
+                        {
+                            //both TSPECS are active
+                            tspec1 = SME_QOS_TSPEC_MASK_BIT_1_SET;
+                            tspec2 = SME_QOS_TSPEC_MASK_BIT_2_SET;
+                        }
+                        else
+                        {
+                            // only one TSPEC is active, get its mask
+                            tspec1 = SME_QOS_TSPEC_MASK_BIT_1_2_SET & pACInfo->tspec_mask_status;
+                        }
+
+                        if (pACInfo->curr_QoSInfo[tspec1 - 1].expec_psb_byapp )
+                        {
+                            pACInfo->requested_QoSInfo[tspec1 - 1] =
+                            pACInfo->curr_QoSInfo[tspec1 - 1];
+
+                            pACInfo->requested_QoSInfo[tspec1 - 1].ts_info.psb = 1;
+
+                            if(!btcIsReadyForUapsd(pMac))
+                                pACInfo->requested_QoSInfo[tspec1 - 1].ts_info.psb = 0;
+
+                            sme_QosReRequestAddTS (pMac, sessionId,
+                                                   &pACInfo->requested_QoSInfo[tspec1 - 1],
+                                                   ac,
+                                                   tspec1);
+                        }
+
+                        if (tspec2)
+                        {
+                            if (pACInfo->curr_QoSInfo[tspec2 - 1].expec_psb_byapp)
+                            {
+                                pACInfo->requested_QoSInfo[tspec2 - 1] =
+                                pACInfo->curr_QoSInfo[tspec2 - 1];
+
+                                pACInfo->requested_QoSInfo[tspec2 - 1].ts_info.psb = 1;
+
+                                if(!btcIsReadyForUapsd(pMac))
+                                    pACInfo->requested_QoSInfo[tspec2 - 1].ts_info.psb = 0;
+
+                                sme_QosReRequestAddTS (pMac, sessionId,
+                                                       &pACInfo->requested_QoSInfo[tspec2 - 1],
+                                                       ac,
+                                                       tspec2);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // QoS is ON, ACM is on, but no TSPECs -- Inconsistent state
+                        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                                  "%s: %d: On session %d AC %d has QoS enabled and ACM is set, but no TSPEC",
+                                  __func__, __LINE__,
+                                  sessionId, ac);
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                  "%s: %d: On Session %d failed to parse IEs",
+                  __func__, __LINE__,
+                  sessionId);
+    }
 }
 
 /*
