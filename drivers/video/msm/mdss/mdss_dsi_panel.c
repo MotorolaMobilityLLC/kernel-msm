@@ -379,7 +379,7 @@ int mdss_panel_check_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	u8 pwr_mode = 0;
 	struct mdss_panel_esd_pdata *esd_data = &ctrl->panel_esd_data;
 
-	if (mdss_dsi_is_panel_on_interactive(&ctrl->panel_data)) {
+	if (!mdss_dsi_is_panel_on_interactive(&ctrl->panel_data)) {
 		ret = 1;
 		goto end;
 	}
