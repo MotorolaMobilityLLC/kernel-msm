@@ -209,7 +209,7 @@ static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 static struct gpiomux_setting lcd_rst_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
+	.pull = GPIOMUX_PULL_NONE,
 	.dir = GPIOMUX_OUT_HIGH,
 };
 
@@ -233,21 +233,56 @@ static struct gpiomux_setting lcd_te_sus_cfg = {
 	.dir = GPIOMUX_IN,
 };
 
+static struct gpiomux_setting led_sel_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting led_sel_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
 static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	{
-		.gpio = 25,		/* LCD Reset */
+		.gpio = 33,		/* VIO Enable */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_rst_act_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_rst_sus_cfg,
 		},
 	},
 	{
-		.gpio = 109,		/* LCD Enable */
+		.gpio = 34,		/* SSD2848 Disp Bridge Reset */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_rst_act_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_rst_sus_cfg,
 		},
-	}
+	},
+	{
+		.gpio = 35,		/* LED driver Enable */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_rst_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_rst_sus_cfg,
+		},
+	},
+	{
+		.gpio = 36,		/* Panel LCD Reset */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_rst_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_rst_sus_cfg,
+		},
+	},
+	{
+		.gpio = 37,		/* LED I2C Select */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &led_sel_act_cfg,
+			[GPIOMUX_SUSPENDED] = &led_sel_sus_cfg,
+		},
+	},
 };
 
 static struct msm_gpiomux_config msm_lcd_te_configs[] __initdata = {
@@ -829,27 +864,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 36, /* CAM1_STANDBY_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-	{
-		.gpio = 37, /* CAM1_RST_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-	{
-		.gpio = 35, /* CAM2_STANDBY_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-	{
 		.gpio = 28, /* CAM2_RST_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
@@ -862,13 +876,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 static struct msm_gpiomux_config msm_sensor_configs_skuf_plus[] __initdata = {
 	{
 		.gpio = 22, /* CAM1_VDD */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-	{
-		.gpio = 34, /* CAM1 VCM_PWDN */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &cam_settings[4],
@@ -1061,8 +1068,10 @@ void __init msm8226_init_gpiomux(void)
 		msm_gpiomux_install(msm_skuf_nfc_configs,
 				ARRAY_SIZE(msm_skuf_nfc_configs));
 
-	msm_gpiomux_install_nowrite(msm_lcd_configs,
-			ARRAY_SIZE(msm_lcd_configs));
+	/* TODO: instead of msm_gpiomux_install_nowrite after boot loader
+	   supports display also, it's for enable splash screen feature
+	 */
+	msm_gpiomux_install(msm_lcd_configs, ARRAY_SIZE(msm_lcd_configs));
 
 	msm_gpiomux_install(msm_lcd_te_configs,
 			ARRAY_SIZE(msm_lcd_te_configs));

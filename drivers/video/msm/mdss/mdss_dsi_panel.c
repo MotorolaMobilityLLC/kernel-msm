@@ -28,6 +28,96 @@
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
+//#define READ_PANEL_ID
+#ifdef READ_PANEL_ID
+static int mdss_dsi_read_panel_id(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	const static char cmd1[] = {0xFF, 0x01}; /* unlock sequence */
+	const static char cmd2[] = {0xF0, 0x54, 0x47};
+	const static char cmd3[] = {0xA0, 0x80};
+	const static char cmd4[] = {0xA0, 0x00}; /* lock sequence */
+	const static char cmd5[] = {0xF0, 0x00, 0x00};
+	const static char cmd6[] = {0xFF, 0x00};
+
+	const static struct dsi_cmd_desc tx_cmd[] = {
+		{{0x23, 1, 0, 0, 0, sizeof(cmd1)}, (char *)cmd1},
+		{{0x39, 1, 0, 0, 0, sizeof(cmd2)}, (char *)cmd2},
+		{{0x15, 1, 0, 0, 0, sizeof(cmd3)}, (char *)cmd3},
+		{{0x15, 1, 0, 0, 0, sizeof(cmd4)}, (char *)cmd4},
+		{{0x39, 1, 0, 0, 0, sizeof(cmd5)}, (char *)cmd5},
+		{{0x23, 1, 0, 0, 0, sizeof(cmd6)}, (char *)cmd6},
+	};
+
+	const static char dcs_cmd = 0xB0;
+	const static struct dsi_cmd_desc dcs_read_cmd = {
+		{0x14, 1, 0, 1, 1, sizeof(dcs_cmd)}, (char *)&dcs_cmd
+	};
+	int r, dcs_read;
+	struct dcs_cmd_req cmdreq;
+
+	/* send unlock sequence */
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = (struct dsi_cmd_desc *)&tx_cmd[0];
+	cmdreq.cmds_cnt = 3;
+	cmdreq.flags = CMD_REQ_COMMIT;
+	r = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if (r) {
+		pr_err("%s: failed(%d) to send unlock cmds\n", __func__, r);
+		return r;
+	}
+
+	/* send read command */
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = (struct dsi_cmd_desc *)&dcs_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	cmdreq.rlen = sizeof(dcs_read);
+	cmdreq.rbuf = (char *)&dcs_read;
+	r = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if (r) {
+		pr_err("%s: failed(%d) to read panel id\n", __func__, r);
+		return r;
+	}
+
+	/* send lock sequence */
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = (struct dsi_cmd_desc *)&tx_cmd[3];
+	cmdreq.cmds_cnt = 3;
+	cmdreq.flags = CMD_REQ_COMMIT;
+	r = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if (r) {
+		pr_err("%s: failed(%d) to send lock cmds\n", __func__, r);
+		return r;
+	}
+
+	return dcs_read;
+}
+#endif
+
+static int mdss_dsi_read_bridge_id(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	const static char dcs_cmd[2] = {0x00, 0x00};
+	const static struct dsi_cmd_desc dcs_read_cmd = {
+		{0x24, 1, 0, 1, 5, sizeof(dcs_cmd)}, (char *)dcs_cmd
+	};
+	int r, dcs_read;
+	struct dcs_cmd_req cmdreq;
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = (struct dsi_cmd_desc *)&dcs_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	cmdreq.rlen = sizeof(dcs_read);
+	cmdreq.rbuf = (char *)&dcs_read;
+	r = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if (r) {
+		pr_err("%s: failed(%d) to read panel id\n", __func__, r);
+		return r;
+	}
+
+	return dcs_read;
+}
+
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	ctrl->pwm_bl = pwm_request(ctrl->pwm_lpg_chan, "lcd-bklt");
@@ -207,6 +297,14 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			rc);
 		goto rst_gpio_err;
 	}
+	if (gpio_is_valid(ctrl_pdata->bridge_rst_gpio)) {
+		rc = gpio_request(ctrl_pdata->bridge_rst_gpio, "disp_rst_b");
+		if (rc) {
+			pr_err("request reset1 gpio failed, rc=%d\n", rc);
+			goto bklt_en_gpio_err;
+		}
+	}
+
 	if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 		rc = gpio_request(ctrl_pdata->bklt_en_gpio,
 						"bklt_enable");
@@ -230,6 +328,8 @@ mode_gpio_err:
 	if (gpio_is_valid(ctrl_pdata->bklt_en_gpio))
 		gpio_free(ctrl_pdata->bklt_en_gpio);
 bklt_en_gpio_err:
+	if (gpio_is_valid(ctrl_pdata->bridge_rst_gpio))
+		gpio_free(ctrl_pdata->bridge_rst_gpio);
 	gpio_free(ctrl_pdata->rst_gpio);
 rst_gpio_err:
 	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
@@ -277,6 +377,9 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
 
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+				if (gpio_is_valid(ctrl_pdata->bridge_rst_gpio))
+					gpio_set_value((ctrl_pdata->bridge_rst_gpio),
+						pdata->panel_info.rst_seq[i]);
 				gpio_set_value((ctrl_pdata->rst_gpio),
 					pdata->panel_info.rst_seq[i]);
 				if (pdata->panel_info.rst_seq[++i])
@@ -299,6 +402,16 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
+		if (ctrl_pdata->init_cmds.cmd_cnt) {
+			int id;
+			mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->init_cmds);
+			id = mdss_dsi_read_bridge_id(ctrl_pdata);
+			pr_info("%s: bridge id = 0x%X\n", __func__, id);
+#ifdef READ_PANEL_ID
+			id = mdss_dsi_read_panel_id(ctrl_pdata);
+			pr_info("%s: panel id = 0x%X\n", __func__, id);
+#endif
+		}
 	} else {
 		if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 			gpio_set_value((ctrl_pdata->bklt_en_gpio), 0);
@@ -310,6 +423,10 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		}
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		gpio_free(ctrl_pdata->rst_gpio);
+		if (gpio_is_valid(ctrl_pdata->bridge_rst_gpio)) {
+			gpio_set_value((ctrl_pdata->bridge_rst_gpio), 0);
+			gpio_free(ctrl_pdata->bridge_rst_gpio);
+		}
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
 	}
@@ -1412,6 +1529,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		else if (!strcmp(data, "reg_read"))
 			ctrl_pdata->status_mode = ESD_REG;
 	}
+
+	/* solomon bridge needs initialize command as soon as reset done */
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->init_cmds,
+		"qcom,mdss-dsi-init-command", "qcom,mdss-dsi-on-command-state");
+	if (ctrl_pdata->init_cmds.cmd_cnt)
+		pinfo->mipi.lp11_init = true;
 
 	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
 	if (rc) {
