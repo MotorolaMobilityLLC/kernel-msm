@@ -34,10 +34,11 @@
 		qcom,mdss-clk-factor = <5 4>;		/* 1.25 times */
 
 		/* Clock levels */
-		qcom,mdss-clk-levels = <92310000>;
-
+		qcom,mdss-clk-levels = <92310000 100000000
+				    133330000 177780000 200000000>;
+		qcom,max-mixer-width = <2048>;
 		qcom,mdss-mdp-reg-offset = <0x00000100>;
-		qcom,max-bandwidth-low-kbps = <1660000>;
+		qcom,max-bandwidth-low-kbps = <1100000>;
 		qcom,max-bandwidth-high-kbps = <1660000>;
 		qcom,max-clk-rate = <200000000>;
 		qcom,mdss-pipe-vig-off = <0x00001200>;
@@ -76,12 +77,21 @@
 		qcom,mdss-wfd-mode = "shared";
 		qcom,mdss-smp-mb-per-pipe = <3>;
 		vdd-cx-supply = <&pm8226_s1_corner>;
+		qcom,mdss-idle-power-collapse-enabled;
 
 		qcom,vbif-settings = <0x004 0x00000001>,
 				     <0x0D8 0x00000707>,
 				     <0x124 0x00000003>;
-		qcom,mdp-settings = <0x02E0 0x000000A5>,
-				    <0x02E4 0x00000055>;
+		qcom,mdp-settings = <0x000002E0 0x000000A5>,
+				    <0x000002E4 0x00000055>,
+				    <0x000003AC 0xC0000CCC>,
+				    <0x000003B4 0xC0000000>,
+				    <0x000003BC 0x00C00C00>,
+				    <0x000004A8 0x0CCCC000>,
+				    <0x000004B0 0xC0000000>,
+				    <0x000004B8 0xC0000000>,
+				    <0x00011148 0x00000058>,
+				    <0x00013148 0x00000058>;
 
 		/* buffer parameters to calculate prefill bandwidth */
 		qcom,mdss-prefill-outstanding-buffer-bytes = <1024>;
@@ -116,6 +126,7 @@
 		reg-names = "dsi_ctrl", "dsi_phy", "mmss_misc_phys";
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
+		gdsc-supply = <&gdsc_mdss>;
 		vdd-supply = <&pm8226_l15>;
 		vddio-supply = <&pm8226_l8>;
 		vdda-supply = <&pm8226_l4>;
@@ -129,38 +140,69 @@
 			00 00 00 00 0a 00 00 01 97
 			00 00 00 00 0f 00 00 01 97
 			00 c0 00 00 00 00 00 01 bb];
-		qcom,platform-supply-entry1 {
+
+		qcom,mmss-ulp-clamp-ctrl-offset = <0x14>;
+		qcom,mmss-phyreset-ctrl-offset = <0x108>;
+
+		qcom,core-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,core-supply-entry@0 {
+				reg = <0>;
+				qcom,supply-name = "gdsc";
+				qcom,supply-min-voltage = <0>;
+				qcom,supply-max-voltage = <0>;
+				qcom,supply-enable-load = <0>;
+				qcom,supply-disable-load = <0>;
+			};
+		};
+
+		qcom,ctrl-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,ctrl-supply-entry@0 {
+				reg = <0>;
+				qcom,supply-name = "vdda";
+				qcom,supply-min-voltage = <1200000>;
+				qcom,supply-max-voltage = <1200000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+				qcom,supply-post-on-sleep = <20>;
+			};
+
+			qcom,ctrl-supply-entry@1 {
+				reg = <1>;
+				qcom,supply-name = "vddio";
+				qcom,supply-min-voltage = <1800000>;
+				qcom,supply-max-voltage = <1800000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
+		};
+
+		qcom,panel-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,panel-supply-entry@0 {
+				reg = <0>;
 			qcom,supply-name = "vdd";
-			qcom,supply-min-voltage = <2800000>;
-			qcom,supply-max-voltage = <2800000>;
+			qcom,supply-min-voltage = <3300000>;
+			qcom,supply-max-voltage = <3300000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
 		};
-		qcom,platform-supply-entry2 {
-			qcom,supply-name = "vddio";
+
+			qcom,panel-supply-entry@1 {
+				reg = <1>;
+			qcom,supply-name = "vddldo8";
 			qcom,supply-min-voltage = <1800000>;
 			qcom,supply-max-voltage = <1800000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
 		};
-		qcom,platform-supply-entry3 {
-			qcom,supply-name = "vdda";
-			qcom,supply-min-voltage = <1200000>;
-			qcom,supply-max-voltage = <1200000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <20>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
 		};
 	};
 
