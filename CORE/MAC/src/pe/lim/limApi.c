@@ -1061,6 +1061,7 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
         return eSIR_FAILURE;
     }
     pMac->lim.deauthMsgCnt = 0;
+    pMac->lim.retryPacketCnt = 0;
 
     /*
      * peOpen is successful by now, so it is right time to initialize
