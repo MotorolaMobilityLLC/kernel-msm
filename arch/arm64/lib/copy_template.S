@@ -265,14 +265,3 @@ D_h	.req x14
 	sub	dst, dst, #16
 	/* fall-through */
 .Lfinalize:
-	/*
-	 * Zeroize remaining destination-buffer
-	 */
-	mov	count, x0
-20:
-	/* Zero remaining buffer space */
-	strb	wzr, [dst], #1
-	subs	count, count, #1
-	b.ne	20b
-	ret
-	.endm
