@@ -1201,6 +1201,7 @@ int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 	if (mdss_mdp_ctl_is_power_on(ctl)) {
 		if (!mdp5_data->mdata->batfet)
 			mdss_mdp_batfet_ctrl(mdp5_data->mdata, true);
+		mdss_mdp_splash_cleanup(mfd, true);
 		return 0;
 	} else if (mfd->panel_info->cont_splash_enabled) {
 		mutex_lock(&mdp5_data->list_lock);
