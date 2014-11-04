@@ -292,13 +292,14 @@
 		qcom,mode = <4>;      /* QPNP_PIN_MODE_AIN */
 		qcom,ain-route = <2>; /* QPNP_PIN_AIN_AMUX_CH7 */
 		qcom,master-en = <1>; /* Enable MPP */
+		status = "ok";
 	};
 };
 
 &pm8110_vadc {
-	chan@13 {
+	chan@12 {
 		label = "msm_therm";
-		reg = <0x13>;
+		reg = <0x12>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
 		qcom,calibration-type = "ratiometric";
