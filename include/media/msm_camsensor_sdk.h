@@ -138,6 +138,7 @@ enum camerab_mode_t {
 enum sensor_stats_type {
 	YRGB,
 	YYYY,
+	PDAF,
 };
 
 enum msm_actuator_data_type {
