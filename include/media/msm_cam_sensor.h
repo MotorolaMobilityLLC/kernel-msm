@@ -246,6 +246,7 @@ struct sensorb_cfg_data {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
 		void                         *setting;
+		struct otp_info_t             sensor_otp;
 	} cfg;
 };
 
@@ -754,6 +755,7 @@ struct sensorb_cfg_data32 {
 	union {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
+		compat_int_t                  otp_info;
 		compat_uptr_t                 setting;
 	} cfg;
 };

@@ -204,6 +204,31 @@ struct msm_sensor_power_setting_array {
 	uint16_t size_down;
 };
 
+struct otp_info_t {
+	uint8_t *otp_info;
+	uint8_t otp_read;
+};
+
+struct msm_sensor_otp_cal_info_t {
+	uint8_t enable;
+	uint16_t page_size;
+	uint16_t num_of_pages;
+	uint16_t page_reg_addr;
+	uint16_t page_reg_base_addr;
+
+	uint16_t ctrl_reg_addr;
+	uint16_t ctrl_reg_initial_mode;
+	uint16_t ctrl_reg_read_mode;
+	uint16_t ctrl_reg_read_mode_disable;
+	uint16_t reset_reg_addr;
+	uint16_t reset_reg_stream_on;
+	uint16_t reset_reg_stream_off;
+
+	uint16_t data_seg_addr;
+	enum msm_camera_i2c_data_type data_size;
+	uint8_t big_endian;
+};
+
 struct msm_sensor_init_params {
 	/* mask of modes supported: 2D, 3D */
 	int                 modes_supported;
@@ -211,6 +236,7 @@ struct msm_sensor_init_params {
 	enum camb_position_t position;
 	/* sensor mount angle */
 	uint32_t            sensor_mount_angle;
+	struct msm_sensor_otp_cal_info_t sensor_otp;
 };
 
 struct msm_sensor_id_info_t {
@@ -234,6 +260,7 @@ struct msm_camera_sensor_slave_info {
 	struct msm_sensor_init_params sensor_init_params;
 	uint8_t is_flash_supported;
 	enum msm_sensor_output_format_t output_format;
+	struct otp_info_t sensor_otp;
 };
 
 struct msm_camera_i2c_reg_array {
