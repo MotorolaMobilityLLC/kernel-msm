@@ -957,6 +957,7 @@ repeat:
 	if (f2fs_has_inline_data(inode)) {
 		if (pos + len <= MAX_INLINE_DATA) {
 			read_inline_data(page, ipage);
+			set_inode_flag(F2FS_I(inode), FI_DATA_EXIST);
 			sync_inode_page(&dn);
 			goto put_next;
 		} else if (page->index == 0) {
