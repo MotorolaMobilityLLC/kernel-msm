@@ -349,30 +349,35 @@ static inline struct drv260x_platform_data
 }
 #endif
 
+static int drv260x_write_reg(unsigned char reg, unsigned char value)
+{
+	int tries;
+	int ret;
+
+	for (tries = 0; tries < I2C_RETRIES; tries++) {
+		ret = i2c_smbus_write_byte_data(drv260x->client, reg, value);
+		if (!ret)
+			break;
+		else if (tries == I2C_RETRIES-1) {
+			dev_err(&drv260x->client->dev,
+					"i2c write to 0x%x failed\n", reg);
+			return -EIO;
+		}
+		msleep_interruptible(I2C_RETRY_DELAY);
+	}
+	return 0;
+}
+
 static void drv260x_write_reg_val(const unsigned char *data, unsigned int size)
 {
 	int i = 0;
-	int tries;
-	int ret;
 
 	if (size % 2 != 0)
 		return;
 
-	while (i < size) {
-		for (tries = 0; tries < I2C_RETRIES; tries++) {
-			ret = i2c_smbus_write_byte_data(drv260x->client,
-							data[i], data[i + 1]);
-			if (!ret)
-				break;
-			else if (tries == I2C_RETRIES-1) {
-				dev_err(&drv260x->client->dev,
-					"i2c write to 0x%x failed\n", data[i]);
-				return;
-			}
-			msleep_interruptible(I2C_RETRY_DELAY);
-		}
-		i += 2;
-	}
+	for (i = 0; i < size; i += 2)
+		if (drv260x_write_reg(data[i], data[i + 1]))
+			break;
 }
 
 static void drv260x_read_reg_val(unsigned char *data, unsigned int size)
@@ -691,6 +696,48 @@ static void drv260x_update_init_sequence(unsigned char *seq, int size,
 	}
 }
 
+static void drv260x_update_cali_result(unsigned char *seq, int size)
+{
+	unsigned char value;
+
+	/* Check if voltages are stored correctly in OTP */
+	if ((drv260x_read_reg(RATED_VOLTAGE_REG) ==
+			drv260x->rated_voltage) &&
+	    (drv260x_read_reg(OVERDRIVE_CLAMP_VOLTAGE_REG) ==
+			drv260x->overdrive_voltage)) {
+		/* Read calibration data from OTP */
+		value = drv260x_read_reg(AUTO_CALI_RESULT_REG);
+		if (value)
+			drv260x_update_init_sequence(seq, size,
+						AUTO_CALI_RESULT_REG,
+						value);
+		value = drv260x_read_reg(AUTO_CALI_BACK_EMF_RESULT_REG);
+		if (value)
+			drv260x_update_init_sequence(seq, size,
+						AUTO_CALI_BACK_EMF_RESULT_REG,
+						value);
+		value = drv260x_read_reg(FEEDBACK_CONTROL_REG);
+		if (value)
+			drv260x_update_init_sequence(seq, size,
+						FEEDBACK_CONTROL_REG,
+						value);
+	} else {
+		/* OTP rated voltages are not correct,
+			use default calibration data if avaliable */
+		if (drv260x->use_default_calibration) {
+			drv260x_update_init_sequence(seq, size,
+					AUTO_CALI_RESULT_REG,
+					drv260x->default_calibration[0]);
+			drv260x_update_init_sequence(seq, size,
+					AUTO_CALI_BACK_EMF_RESULT_REG,
+					drv260x->default_calibration[1]);
+			drv260x_update_init_sequence(seq, size,
+					FEEDBACK_CONTROL_REG,
+					drv260x->default_calibration[2]);
+		}
+	}
+}
+
 static void drv260x_exit(void);
 static void probe_work(struct work_struct *work);
 
@@ -742,6 +789,9 @@ static int drv260x_probe(struct i2c_client *client,
 	drv260x_vreg_control(true);
 	gpio_export(drv260x->en_gpio, 0);
 	gpio_direction_output(drv260x->en_gpio, GPIO_LEVEL_HIGH);
+
+	/* Reset the chip */
+	drv260x_write_reg(MODE_REG, MODE_RESET);
 
 	if (pdata->default_effect)
 		drv260x->default_sequence[0] = pdata->default_effect;
@@ -816,9 +866,13 @@ static void probe_work(struct work_struct *work)
 		status = drv260x_read_reg(AUTOCAL_MEM_INTERFACE_REG);
 		if (status & AUTOCAL_OTP_STATUS) {
 			pr_info("drv260x: Boot-up calibration disabled\n");
+			/* OTP mem programmed,update init sequence with
+			   stored values */
+			drv260x_update_cali_result(ERM_autocal_sequence,
+					sizeof(ERM_autocal_sequence));
 			drv260x_update_init_sequence(ERM_autocal_sequence,
 					sizeof(ERM_autocal_sequence),
-					MODE_REG, MODE_STANDBY);
+					MODE_REG, MODE_READY);
 			drv260x_update_init_sequence(ERM_autocal_sequence,
 					sizeof(ERM_autocal_sequence),
 					GO_REG, 0);
@@ -877,14 +931,6 @@ static void probe_work(struct work_struct *work)
 
 	/* Read calibration results */
 	drv260x_read_reg_val(reinit_sequence, sizeof(reinit_sequence));
-
-	if (drv260x->use_default_calibration) {
-		reinit_sequence[3] = drv260x->default_calibration[0];
-		reinit_sequence[5] = drv260x->default_calibration[1];
-		reinit_sequence[7] = drv260x->default_calibration[2];
-		reinit_sequence[9] = drv260x->default_calibration[3];
-		reinit_sequence[11] = drv260x->default_calibration[4];
-	}
 
 	/* Read device ID */
 	device_id = (status & DEV_ID_MASK);
