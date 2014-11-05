@@ -2713,6 +2713,80 @@ static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 	return count;
 } /* dynamic_fps_sysfs_wta_dfps */
 
+static ssize_t cabc_mode_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	struct mdss_panel_info *pinfo = NULL;
+	const char *name;
+
+	if (!ctl || !ctl->panel_data) {
+		pr_err("ctl or panel_data not available\n");
+		return -ENODEV;
+	}
+	pinfo = &ctl->panel_data->panel_info;
+
+	name = mdss_panel_map_cabc_name(pinfo->cabc_mode);
+	if (!name) {
+		pr_err("failure to map cabc name\n");
+		return -EINVAL;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", name);
+}
+
+static ssize_t cabc_mode_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	int ret = -EINVAL;
+	int i, mode = -1;
+	const char *name;
+
+	if (!ctl) {
+		pr_err("ctl not available\n");
+		goto end;
+	}
+
+	for (i = CABC_UI_MODE; i < CABC_MODE_MAX_NUM; i++) {
+		name = mdss_panel_map_cabc_name(i);
+		if (!name || strncmp(name, buf, strlen(name)))
+			continue;
+		mode = i;
+		break;
+	}
+
+	if (mode == -1) {
+		pr_err("invalid mode value = %s\n", buf);
+		goto end;
+	}
+
+	mutex_lock(&ctl->offlock);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_SET_CABC,
+					(void *)(unsigned long)mode);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+	mutex_unlock(&ctl->offlock);
+end:
+	return ret ? ret : count;
+}
+
+static DEVICE_ATTR(cabc_mode, S_IWUSR | S_IWGRP | S_IRUSR | S_IRGRP,
+	cabc_mode_show, cabc_mode_store);
+
+static struct attribute *cabc_mode_attrs[] = {
+	&dev_attr_cabc_mode.attr,
+	NULL,
+};
+
+static struct attribute_group cabc_mode_attrs_group = {
+	.attrs = cabc_mode_attrs,
+};
 
 static DEVICE_ATTR(dynamic_fps, S_IRUGO | S_IWUSR, dynamic_fps_sysfs_rda_dfps,
 	dynamic_fps_sysfs_wta_dfps);
@@ -5511,6 +5585,12 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			pr_err("Error dfps sysfs creation ret=%d\n", rc);
 			goto init_fail;
 		}
+	}
+
+	if (mfd->panel_info->dynamic_cabc_enabled) {
+		rc = sysfs_create_group(&dev->kobj, &cabc_mode_attrs_group);
+		if (rc)
+			pr_warn("Fail to create CABC sysfs.\n");
 	}
 
 	if (mfd->panel_info->mipi.dms_mode ||
