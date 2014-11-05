@@ -3673,6 +3673,7 @@ static int init_battery_capacity(void)
 	set_fs(mmseg_fs);
 	
 	g_already_read_bat_cap = true;
+	write_battery_capacity(balance_this->A66_capacity);
   	return 0;
 }
 
