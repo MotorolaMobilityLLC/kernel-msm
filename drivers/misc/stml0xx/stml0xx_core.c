@@ -408,6 +408,7 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 			     &pdata->ct406_pulse_count);
 
 	pdata->headset_detect_enable = 0;
+	pdata->headset_hw_version = 0;
 	pdata->headset_insertion_debounce = 0x01F4;
 	pdata->headset_removal_debounce = 0x01F4;
 	pdata->headset_button_down_debounce = 0x0032;
@@ -422,6 +423,8 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 	pdata->headset_button_4_keycode = 0x0;
 	of_property_read_u32(np, "headset_detect_enable",
 			     &pdata->headset_detect_enable);
+	of_property_read_u32(np, "headset_hw_version",
+			     &pdata->headset_hw_version);
 	of_property_read_u32(np, "headset_insertion_debounce",
 			     &pdata->headset_insertion_debounce);
 	of_property_read_u32(np, "headset_removal_debounce",
