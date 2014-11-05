@@ -859,6 +859,7 @@
 		ct406_recalibrate_threshold = <0x0064>;
 		ct406_pulse_count = <0x04>;
 		headset_detect_enable = <1>;
+		headset_hw_version = <2>;
 		headset_insertion_debounce = <0x01F4>;
 		headset_removal_debounce = <0x0080>;
 		headset_button_down_debounce = <0x0032>;
