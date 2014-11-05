@@ -323,6 +323,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*check_read_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	void (*switch_mode) (struct mdss_panel_data *pdata, int mode);
+	int (*set_cabc)(struct mdss_dsi_ctrl_pdata *ctrl, int mode);
 	int (*set_hbm)(struct mdss_dsi_ctrl_pdata *ctrl, int state);
 	int (*set_acl)(struct mdss_dsi_ctrl_pdata *ctrl, int state);
 	struct mdss_panel_data panel_data;
@@ -398,6 +399,9 @@ struct mdss_dsi_ctrl_pdata {
 
 	struct dsi_panel_cmds video2cmd;
 	struct dsi_panel_cmds cmd2video;
+
+	struct dsi_panel_cmds cabc_ui_cmds;
+	struct dsi_panel_cmds cabc_mv_cmds;
 
 	struct dcs_cmd_list cmdlist;
 	struct completion dma_comp;
