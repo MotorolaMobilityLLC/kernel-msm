@@ -8263,7 +8263,7 @@ limSetProtectedBit(tpAniSirGlobal  pMac,
              * firmware crashes. so check for keys are
              * installed or not also before setting the bit
              */
-            if( pStaDs->rmfEnabled && psessionEntry->isKeyInstalled )
+            if (pStaDs->rmfEnabled && pStaDs->isKeyInstalled)
                 pMacHdr->fc.wep = 1;
     }
     else if ( psessionEntry->limRmfEnabled && psessionEntry->isKeyInstalled)

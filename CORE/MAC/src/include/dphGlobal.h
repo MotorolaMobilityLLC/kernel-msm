@@ -623,7 +623,8 @@ typedef struct sDphHashNode
 
     tANI_U8 htLdpcCapable;
     tANI_U8 vhtLdpcCapable;
-
+    /* key installed for this STA or not in the firmware */
+    tANI_U8 isKeyInstalled;
     /* When a station with already an existing dph entry tries to 
 
      * associate again, the old dph entry will be zeroed out except 
