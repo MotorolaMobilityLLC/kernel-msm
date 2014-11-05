@@ -784,6 +784,7 @@ static struct clk_voter branch_ce1_clk_src;
 static struct clk_voter branch_ce2_clk_src;
 
 struct clk_ops clk_ops_vote_lpass;
+struct clk_ops clk_ops_branch_oxili;
 
 static unsigned int soft_vote_gpll0;
 
@@ -4861,7 +4862,7 @@ static struct branch_clk oxili_gfx3d_clk = {
 	.c = {
 		.parent = &oxili_gfx3d_clk_src.c,
 		.dbg_name = "oxili_gfx3d_clk",
-		.ops = &clk_ops_branch,
+		.ops = &clk_ops_branch_oxili,
 		CLK_INIT(oxili_gfx3d_clk.c),
 	},
 };
@@ -4872,7 +4873,7 @@ static struct branch_clk oxilicx_ahb_clk = {
 	.base = &virt_bases[MMSS_BASE],
 	.c = {
 		.dbg_name = "oxilicx_ahb_clk",
-		.ops = &clk_ops_branch,
+		.ops = &clk_ops_branch_oxili,
 		CLK_INIT(oxilicx_ahb_clk.c),
 	},
 };
@@ -6886,6 +6887,31 @@ static struct pll_config mmpll4_config __initdata = {
 	.cfg_ctl_val = 0x341600,
 };
 
+static void __iomem *oxili_branch_clk_list_registers(struct clk *c, int n,
+				struct clk_register_data **regs, u32 *size)
+{
+	struct branch_clk *branch = to_branch_clk(c);
+	static struct clk_register_data data1[] = {
+		{"CBCR", 0x0},
+	};
+	static struct clk_register_data data2[] = {
+		{"OXILI_GDSCR", 0x4024},
+		{"OXILICX_GDSCR", 0x4034},
+	};
+	switch (n) {
+	case 0:
+		*regs = data1;
+		*size = ARRAY_SIZE(data1);
+		return *branch->base + branch->cbcr_reg;
+	case 1:
+		*regs = data2;
+		*size = ARRAY_SIZE(data2);
+		return *branch->base;
+	default:
+		return ERR_PTR(-EINVAL);
+	}
+}
+
 static void __iomem *local_vote_lpass_clk_list_registers(struct clk *c,
 			int n, struct clk_register_data **regs, u32 *size)
 {
@@ -6984,6 +7010,9 @@ static void __init apq8084_clock_pre_init(void)
 
 	clk_ops_vote_lpass = clk_ops_vote;
 	clk_ops_vote_lpass.list_registers = local_vote_lpass_clk_list_registers;
+
+	clk_ops_branch_oxili = clk_ops_branch;
+	clk_ops_branch_oxili.list_registers = oxili_branch_clk_list_registers;
 
 	vdd_dig.regulator[0] = regulator_get(NULL, "vdd_dig");
 	if (IS_ERR(vdd_dig.regulator[0]))
