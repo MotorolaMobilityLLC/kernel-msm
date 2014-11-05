@@ -432,7 +432,7 @@ VosMCThread
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                "%s: pMsgWrapper is NULL", __func__);
-           VOS_ASSERT(0);
+           VOS_BUG(0);
            break;
         }
 
@@ -442,7 +442,7 @@ VosMCThread
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                "%s: WDI Msg or Callback is NULL", __func__);
-           VOS_ASSERT(0);
+           VOS_BUG(0);
            break;
         }
 
@@ -997,7 +997,7 @@ static int VosTXThread ( void * Arg )
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                "%s: pMsgWrapper is NULL", __func__);
-           VOS_ASSERT(0);
+           VOS_BUG(0);
            break;
         }
 
@@ -1007,7 +1007,7 @@ static int VosTXThread ( void * Arg )
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                "%s: WDI Msg or Callback is NULL", __func__);
-           VOS_ASSERT(0);
+           VOS_BUG(0);
            break;
         }
         
@@ -1196,7 +1196,7 @@ static int VosRXThread ( void * Arg )
         {
           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                     "%s: wdiRxMq message is NULL", __func__);
-          VOS_ASSERT(0);
+          VOS_BUG(0);
           // we won't return this wrapper since it is corrupt
         }
         else
@@ -1206,7 +1206,7 @@ static int VosRXThread ( void * Arg )
           {
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                       "%s: WDI Msg or callback is NULL", __func__);
-            VOS_ASSERT(0);
+            VOS_BUG(0);
           }
           else
           {
