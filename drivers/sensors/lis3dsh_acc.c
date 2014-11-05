@@ -1792,6 +1792,7 @@ static int lis3dsh_pwr_ctrl(struct device *dev, int en)
 			pr_err("[lis3dsh] %s: regulator_enable of pm8921_l15 failed(%d)\n", __func__, ret);
 			goto reg_put_LDO15;
     		}
+		msleep(10);			//allow the sensor enough time to do its boot up sequence
 	} else {
 		ret = regulator_disable(pm8921_l15);
 		if (ret) {
@@ -1840,6 +1841,7 @@ static int lis3dsh_acc_probe(struct i2c_client *client, const struct i2c_device_
 	err = lis3dsh_pwr_ctrl(&client->dev, 1);
 	if(err)
 		goto exit_check_functionality_failed;
+
 	/* Support for both I2C and SMBUS adapter interfaces. */
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_warn(&client->dev, "client not i2c capable\n");
