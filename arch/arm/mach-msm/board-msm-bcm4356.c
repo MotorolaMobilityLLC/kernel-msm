@@ -20,27 +20,50 @@
 
 #define BCM_DBG pr_debug
 
+static int gpio_wl_reg_on = 82;
+
+#ifdef CONFIG_DHD_USE_STATIC_BUF
+
 #define WLAN_STATIC_SCAN_BUF0		5
 #define WLAN_STATIC_SCAN_BUF1		6
 #define WLAN_STATIC_DHD_INFO_BUF	7
+#define WLAN_STATIC_DHD_IF_FLOW_LKUP    9
 #define WLAN_SCAN_BUF_SIZE		(64 * 1024)
+#define WLAN_DHD_INFO_BUF_SIZE		(24 * 1024)
+
+#define WLAN_DHD_IF_FLOW_LKUP_SIZE      (20 * 1024)
+
 #define PREALLOC_WLAN_SEC_NUM		4
 #define PREALLOC_WLAN_BUF_NUM		160
 #define PREALLOC_WLAN_SECTION_HEADER	24
 
+#ifdef CONFIG_BCMDHD_PCIE
+#define WLAN_SECTION_SIZE_0	(PREALLOC_WLAN_BUF_NUM * 128)
+#define WLAN_SECTION_SIZE_1	0
+#define WLAN_SECTION_SIZE_2	0
+#define WLAN_SECTION_SIZE_3	(PREALLOC_WLAN_BUF_NUM * 1024)
+#else
 #define WLAN_SECTION_SIZE_0	(PREALLOC_WLAN_BUF_NUM * 128)
 #define WLAN_SECTION_SIZE_1	(PREALLOC_WLAN_BUF_NUM * 128)
 #define WLAN_SECTION_SIZE_2	(PREALLOC_WLAN_BUF_NUM * 512)
 #define WLAN_SECTION_SIZE_3	(PREALLOC_WLAN_BUF_NUM * 1024)
+#endif /* CONFIG_BCMDHD_PCIE */
 
 #define DHD_SKB_HDRSIZE			336
 #define DHD_SKB_1PAGE_BUFSIZE	((PAGE_SIZE*1)-DHD_SKB_HDRSIZE)
 #define DHD_SKB_2PAGE_BUFSIZE	((PAGE_SIZE*2)-DHD_SKB_HDRSIZE)
 #define DHD_SKB_4PAGE_BUFSIZE	((PAGE_SIZE*4)-DHD_SKB_HDRSIZE)
 
-#define WLAN_SKB_BUF_NUM	17
+#define DHD_SKB_1PAGE_BUF_NUM	8
+#define DHD_SKB_2PAGE_BUF_NUM	8
+#define DHD_SKB_4PAGE_BUF_NUM	1
 
-static int gpio_wl_reg_on = 82;
+#define WLAN_SKB_1_2PAGE_BUF_NUM	((DHD_SKB_1PAGE_BUF_NUM) + \
+		(DHD_SKB_2PAGE_BUF_NUM))
+#define WLAN_SKB_BUF_NUM	((WLAN_SKB_1_2PAGE_BUF_NUM) + \
+		(DHD_SKB_4PAGE_BUF_NUM))
+
+
 
 static struct sk_buff *wlan_static_skb[WLAN_SKB_BUF_NUM];
 
@@ -56,9 +79,11 @@ static struct wlan_mem_prealloc wlan_mem_array[PREALLOC_WLAN_SEC_NUM] = {
 	{NULL, (WLAN_SECTION_SIZE_3 + PREALLOC_WLAN_SECTION_HEADER)}
 };
 
-void *wlan_static_scan_buf0;
-void *wlan_static_scan_buf1;
-void *wlan_static_dhd_info_buf;
+void *wlan_static_scan_buf0 = NULL;
+void *wlan_static_scan_buf1 = NULL;
+void *wlan_static_dhd_info_buf = NULL;
+void *wlan_static_if_flow_lkup = NULL;
+
 
 static void *brcm_wlan_mem_prealloc(int section, unsigned long size)
 {
@@ -71,6 +96,23 @@ static void *brcm_wlan_mem_prealloc(int section, unsigned long size)
 	if (section == WLAN_STATIC_SCAN_BUF1)
 		return wlan_static_scan_buf1;
 
+	if (section == WLAN_STATIC_DHD_INFO_BUF) {
+		if (size > WLAN_DHD_INFO_BUF_SIZE) {
+			pr_err("request DHD_INFO size(%lu) is bigger than static size(%d).\n",
+				size, WLAN_DHD_INFO_BUF_SIZE);
+			return NULL;
+		}
+		return wlan_static_dhd_info_buf;
+	}
+	if (section == WLAN_STATIC_DHD_IF_FLOW_LKUP)  {
+		if (size > WLAN_DHD_IF_FLOW_LKUP_SIZE) {
+			pr_err("request DHD_IF_FLOW_LKUP size(%lu) is bigger than static size(%d).\n",
+				size, WLAN_DHD_IF_FLOW_LKUP_SIZE);
+			return NULL;
+		}
+
+		return wlan_static_if_flow_lkup;
+	}
 	if ((section < 0) || (section > PREALLOC_WLAN_SEC_NUM))
 		return NULL;
 
@@ -82,18 +124,15 @@ static void *brcm_wlan_mem_prealloc(int section, unsigned long size)
 
 static int brcm_init_wlan_mem(void)
 {
-	int i;
-	int j;
-	for (i = 0; i < WLAN_SKB_BUF_NUM; i++)
-		wlan_static_skb[i] = NULL;
+	int i, j;
 
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < DHD_SKB_1PAGE_BUF_NUM; i++) {
 		wlan_static_skb[i] = dev_alloc_skb(DHD_SKB_1PAGE_BUFSIZE);
 		if (!wlan_static_skb[i])
 			goto err_skb_alloc;
 	}
 
-	for (; i < 16; i++) {
+	for (i = DHD_SKB_1PAGE_BUF_NUM; i < WLAN_SKB_1_2PAGE_BUF_NUM; i++) {
 		wlan_static_skb[i] = dev_alloc_skb(DHD_SKB_2PAGE_BUFSIZE);
 		if (!wlan_static_skb[i])
 			goto err_skb_alloc;
@@ -104,39 +143,65 @@ static int brcm_init_wlan_mem(void)
 		goto err_skb_alloc;
 
 	for (i = 0; i < PREALLOC_WLAN_SEC_NUM; i++) {
-		wlan_mem_array[i].mem_ptr =
+		if (wlan_mem_array[i].size > 0) {
+			wlan_mem_array[i].mem_ptr =
 				kmalloc(wlan_mem_array[i].size, GFP_KERNEL);
-
-		if (!wlan_mem_array[i].mem_ptr)
-			goto err_mem_alloc;
+			if (!wlan_mem_array[i].mem_ptr)
+				goto err_mem_alloc;
+		}
 	}
 
 	wlan_static_scan_buf0 = kmalloc(WLAN_SCAN_BUF_SIZE, GFP_KERNEL);
-	if (!wlan_static_scan_buf0)
+	if (!wlan_static_scan_buf0) {
+		pr_err("Failed to alloc wlan_static_scan_buf0\n");
 		goto err_mem_alloc;
+	}
 
 	wlan_static_scan_buf1 = kmalloc(WLAN_SCAN_BUF_SIZE, GFP_KERNEL);
-	if (!wlan_static_scan_buf1)
+	if (!wlan_static_scan_buf1) {
+		pr_err("Failed to alloc wlan_static_scan_buf1\n");
 		goto err_mem_alloc;
+	}
 
+	wlan_static_dhd_info_buf = kmalloc(WLAN_DHD_INFO_BUF_SIZE, GFP_KERNEL);
+	if (!wlan_static_dhd_info_buf) {
+		pr_err("Failed to alloc wlan_static_dhd_info_buf\n");
+		goto err_mem_alloc;
+	}
+#ifdef CONFIG_BCMDHD_PCIE
+	wlan_static_if_flow_lkup = kmalloc(WLAN_DHD_IF_FLOW_LKUP_SIZE, GFP_KERNEL);
+	if (!wlan_static_if_flow_lkup) {
+		pr_err("Failed to alloc wlan_static_if_flow_lkup\n");
+		goto err_mem_alloc;
+	}
+#endif /* CONFIG_BCMDHD_PCIE */
 
-	BCM_DBG("%s: WIFI MEM Allocated\n", __func__);
 	return 0;
 
- err_mem_alloc:
+err_mem_alloc:
+	if (wlan_static_dhd_info_buf)
+		kfree(wlan_static_dhd_info_buf);
+
+	if (wlan_static_scan_buf1)
+		kfree(wlan_static_scan_buf1);
+
+	if (wlan_static_scan_buf0)
+		kfree(wlan_static_scan_buf0);
+
 	pr_err("Failed to mem_alloc for WLAN\n");
-	for (j = 0; j < i; j++)
+	for (j = 0 ; j < i ; j++)
 		kfree(wlan_mem_array[j].mem_ptr);
 
 	i = WLAN_SKB_BUF_NUM;
 
- err_skb_alloc:
+err_skb_alloc:
 	pr_err("Failed to skb_alloc for WLAN\n");
-	for (j = 0; j < i; j++)
+	for (j = 0 ; j < i ; j++)
 		dev_kfree_skb(wlan_static_skb[j]);
 
 	return -ENOMEM;
 }
+#endif /* CONFIG_DHD_USE_STATIC_BUF */
 
 
 int __init brcm_wifi_init_gpio(struct device_node *np)
@@ -419,7 +484,9 @@ static struct wifi_platform_data brcm_wlan_control = {
 	.set_reset	= brcm_wlan_reset,
 	.set_carddetect	= brcm_wlan_set_carddetect,
 	.get_mac_addr = brcm_wifi_get_mac_addr,
+#ifdef CONFIG_DHD_USE_STATIC_BUF
 	.mem_prealloc	= brcm_wlan_mem_prealloc,
+#endif
 	.get_country_code = brcm_wlan_get_country_code,
 };
 
@@ -440,7 +507,9 @@ int __init brcm_wlan_init(void)
 
 	BCM_DBG("%s: START\n", __func__);
 
+#ifdef CONFIG_DHD_USE_STATIC_BUF
 	brcm_init_wlan_mem();
+#endif
 	rc = platform_device_register(&brcm_device_wlan);
 
 	np = of_find_compatible_node(NULL, NULL, "bcm,bcm4356");
