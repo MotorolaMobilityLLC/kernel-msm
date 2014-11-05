@@ -370,6 +370,7 @@ struct stm_response {
 #define ALGO_INT_STATUS                 0x27
 #define GENERIC_INT_STATUS              0x28
 
+#define HEADSET_HW_VER                  0x2B
 #define HEADSET_CONTROL                 0x2C
 
 #define MOTION_DATA                     0x2D
@@ -548,6 +549,7 @@ struct stml0xx_platform_data {
 	int ct406_recalibrate_threshold;
 	int ct406_pulse_count;
 	int headset_detect_enable;
+	int headset_hw_version;
 	int headset_insertion_debounce;
 	int headset_removal_debounce;
 	int headset_button_down_debounce;
