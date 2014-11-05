@@ -17,3 +17,9 @@
 / {
 	qcom,board-id = <0x45 0x82b0>;
 };
+
+&spi_0 {
+	stml0xx@0 {
+		headset_hw_version = <1>;
+	};
+};
