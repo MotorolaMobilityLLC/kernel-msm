@@ -101,6 +101,11 @@ typedef struct {
    void            *rx_context;
    int              rx_registered;
    int              tx_registered;
+   u8               rx_isr_enabled;
+   u64              *rx_disable_return;
+   u64              *rx_enable_return;
+   u8               rx_isr_enable_failure;
+   u8               rx_isr_enable_partial_failure;
 } wcnss_env;
 
 static wcnss_env  gEnv;
@@ -334,6 +339,7 @@ wpt_status wpalEnableInterrupt
    switch (intType) 
    {
    case DXE_INTERRUPT_RX_READY:
+      gpEnv->rx_enable_return = VOS_RETURN_ADDRESS;
       if (!gpEnv->rx_registered) 
       {
          gpEnv->rx_registered = 1;
@@ -343,6 +349,7 @@ wpt_status wpalEnableInterrupt
             WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                        "%s: RX IRQ request failure",
                        __func__);
+           gpEnv->rx_isr_enable_failure = 1;
            break;
          }
       
@@ -352,12 +359,15 @@ wpt_status wpalEnableInterrupt
             WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                        "%s: enable_irq_wake failed for RX IRQ",
                        __func__);
+           gpEnv->rx_isr_enable_partial_failure = 1;
             /* not fatal -- keep on going */
          }
+         gpEnv->rx_isr_enabled = 1;
       }
       else
       {
          enable_irq(gpEnv->rx_irq);
+         gpEnv->rx_isr_enabled = 1;
       }
       break;
    case DXE_INTERRUPT_TX_COMPLE:
@@ -421,7 +431,9 @@ wpt_status wpalDisableInterrupt
    switch (intType) 
    {
    case DXE_INTERRUPT_RX_READY:
+      gpEnv->rx_disable_return = VOS_RETURN_ADDRESS;
       disable_irq_nosync(gpEnv->rx_irq);
+      gpEnv->rx_isr_enabled = 0;
       break;
    case DXE_INTERRUPT_TX_COMPLE:
       disable_irq_nosync(gpEnv->tx_irq);
