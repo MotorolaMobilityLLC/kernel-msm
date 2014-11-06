@@ -16027,9 +16027,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
         smsLog( pMac, LOGE,"Roam Scan Offload is already started");
         return eHAL_STATUS_FAILURE;
    }
-   status = csrRoamGetSessionIdFromBSSID(pMac,
-                            (tCsrBssid *)pNeighborRoamInfo->currAPbssid,
-                                        &sessionId);
+
    /*The Dynamic Config Items Update may happen even if the state is in INIT.
     * It is important to ensure that the command is passed down to the FW only
     * if the Infra Station is in a connected state.A connected station could also be
@@ -16046,44 +16044,60 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
       return eHAL_STATUS_FAILURE;
    }
 
-   if ( !HAL_STATUS_SUCCESS( status ) )
+   /* We dont need psession during ROAM_SCAN_OFFLOAD_STOP
+    * Also there are cases where pNeighborRoamInfo->currAPbssid
+    * is set to 0 during disconnect and so we might return without stopping
+    * the roam scan. So no need to find the session if command is
+    * ROAM_SCAN_OFFLOAD_STOP.
+    */
+   if( ROAM_SCAN_OFFLOAD_STOP != command )
    {
-      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to find the sessionId for Roam Offload scan request", __func__);
-      return eHAL_STATUS_FAILURE;
-   }
-   pSession = CSR_GET_SESSION( pMac, sessionId );
-   if (NULL == pSession)
-   {
-       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+      status = csrRoamGetSessionIdFromBSSID(pMac,
+                            (tCsrBssid *)pNeighborRoamInfo->currAPbssid,
+                                        &sessionId);
+
+      if ( !HAL_STATUS_SUCCESS( status ) )
+      {
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            "%s: Not able to find the sessionId for Roam Offload scan request", __func__);
+          return eHAL_STATUS_FAILURE;
+      }
+      pSession = CSR_GET_SESSION( pMac, sessionId );
+      if (NULL == pSession)
+      {
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                  "%s:pSession is null", __func__);
-       return eHAL_STATUS_FAILURE;
-   }
-   pBssDesc = pSession->pConnectBssDesc;
-   if (pBssDesc == NULL)
-   {
-      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: pBssDesc not found for current session", __func__);
-      return eHAL_STATUS_FAILURE;
+          return eHAL_STATUS_FAILURE;
+      }
+      pBssDesc = pSession->pConnectBssDesc;
+      if (pBssDesc == NULL)
+      {
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+              "%s: pBssDesc not found for current session", __func__);
+          return eHAL_STATUS_FAILURE;
+      }
    }
    pRequestBuf = vos_mem_malloc(sizeof(tSirRoamOffloadScanReq));
    if (NULL == pRequestBuf)
    {
-           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate memory for Roam Offload scan request", __func__);
-           return eHAL_STATUS_FAILED_ALLOC;
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            "%s: Not able to allocate memory for Roam Offload scan request", __func__);
+      return eHAL_STATUS_FAILED_ALLOC;
    }
 
-    vos_mem_zero(pRequestBuf, sizeof(tSirRoamOffloadScanReq));
-    /* If command is STOP, then pass down ScanOffloadEnabled as Zero.This will handle the case of
-     * host driver reloads, but Riva still up and running*/
-    pRequestBuf->Command = command;
-    if(command == ROAM_SCAN_OFFLOAD_STOP)
-    {
-       pRequestBuf->RoamScanOffloadEnabled = 0;
-       /*For a STOP Command, there is no need to
-        * go through filling up all the below parameters
-        * since they are not required for the STOP command*/
-       goto send_roam_scan_offload_cmd;
-    }
-    else
+   vos_mem_zero(pRequestBuf, sizeof(tSirRoamOffloadScanReq));
+   /* If command is STOP, then pass down ScanOffloadEnabled as Zero.This will handle the case of
+    * host driver reloads, but Riva still up and running*/
+   pRequestBuf->Command = command;
+   if(command == ROAM_SCAN_OFFLOAD_STOP)
+   {
+      pRequestBuf->RoamScanOffloadEnabled = 0;
+      /*For a STOP Command, there is no need to
+       * go through filling up all the below parameters
+       * since they are not required for the STOP command*/
+      goto send_roam_scan_offload_cmd;
+   }
+   else
        pRequestBuf->RoamScanOffloadEnabled = pMac->roam.configParam.isRoamOffloadScanEnabled;
     vos_mem_copy(pRequestBuf->ConnectedNetwork.currAPbssid,
                  pNeighborRoamInfo->currAPbssid,

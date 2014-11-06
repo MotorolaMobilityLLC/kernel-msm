@@ -1939,6 +1939,11 @@ static __inline tANI_U32 defHddRateToDefCfgRate( tANI_U32 defRateIndex )
 #define CFG_VHT_ENABLE_MU_BFORMEE_CAP_FEATURE_MAX     ( 1 )
 #define CFG_VHT_ENABLE_MU_BFORMEE_CAP_FEATURE_DEFAULT ( 1 )
 
+#define CFG_VHT_AMPDU_LEN_EXP_NAME          "gVhtMaxAmpduLenExp"
+#define CFG_VHT_AMPDU_LEN_EXP_MIN           ( 0 )
+#define CFG_VHT_AMPDU_LEN_EXP_MAX           ( 7 )
+#define CFG_VHT_AMPDU_LEN_EXP_DEFAULT       ( 3 )
+
 #endif
 
 
@@ -2697,6 +2702,7 @@ typedef struct
    v_BOOL_t                    enableTxBF;
    v_U8_t                      txBFCsnValue;
    v_BOOL_t                    enableMuBformee;
+   v_U8_t                      gVhtMaxAmpduLenExp;
 #endif
    v_U8_t                      enableModulatedDTIM;
    v_U32_t                     fEnableMCAddrList;
