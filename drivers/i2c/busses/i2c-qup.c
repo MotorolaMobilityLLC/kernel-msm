@@ -199,6 +199,14 @@ struct qup_i2c_dev {
 	struct qup_i2c_clk_path_vote clk_path_vote;
 };
 
+//ASUS_BSP +++ Maggie_Lee "export I2C state"
+int i2c_qup_power_state(struct i2c_adapter *adap)
+{
+	struct qup_i2c_dev *dev = i2c_get_adapdata(adap);
+	return dev->pwr_state;
+}
+//ASUS_BSP --- Maggie_Lee "export I2C state"
+
 #ifdef CONFIG_PM
 static int i2c_qup_pm_resume_runtime(struct device *device);
 #endif
