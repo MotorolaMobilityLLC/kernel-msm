@@ -1646,7 +1646,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 						__func__, __LINE__);
 	/* additional reset pin for bridge/panel case */
 	ctrl_pdata->bridge_rst_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
-			 "qcom,platform-bridge-gpio", 0);
+			 "qcom,platform-bridge-reset-gpio", 0);
 
 	if (pinfo->mode_gpio_state != MODE_GPIO_NOT_VALID) {
 
