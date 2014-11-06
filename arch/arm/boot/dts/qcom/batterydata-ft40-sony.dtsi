@@ -16,7 +16,7 @@ maxim,ft40-sony-batterydata {
 
 	/* Table from Maxim for FT40 Sony 2403 mAhr Battery */
 	config		= /bits/ 16 <0x0254>;
-	full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
+	full_soc_thresh	= /bits/ 16 <0x6200>;	/* app note constant */
 	design_cap	= /bits/ 16 <4806>;	/* mAh times 2 */
 	ichgt_term	= /bits/ 16 <0x0280>;	/* battery attribute */
 	learn_cfg	= /bits/ 16 <0x2606>;	/* app note constant */
