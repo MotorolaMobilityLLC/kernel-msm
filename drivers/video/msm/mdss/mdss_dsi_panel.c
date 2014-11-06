@@ -184,6 +184,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 			memcpy(&cmds[cmdreq.cmds_cnt], &backlight_on_cmd,
 					sizeof(struct dsi_cmd_desc));
 			cmdreq.cmds_cnt++;
+			do_idle = true;
 		}
 
 		/* set backlight level */
@@ -219,7 +220,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	}
 
 	if (do_idle)
-		__mdss_dsi_panel_set_idle_mode(ctrl, 1);
+		__mdss_dsi_panel_set_idle_mode(ctrl, !new_level);
 }
 
 static void idle_on_work(struct work_struct *work)
@@ -257,7 +258,7 @@ static void idle_on_work(struct work_struct *work)
 			(idle_cmd->cmds+i)->dchdr.wait = delay;
 		}
 
-	} while (++i < idle_cmd->cmd_cnt);
+	} while (++i < idle_cmd->cmd_cnt && !ctrl->blanked);
 
 	wake_unlock(&ctrl->idle_on_wakelock);
 }
@@ -267,7 +268,6 @@ static void __mdss_dsi_panel_set_idle_mode(struct mdss_dsi_ctrl_pdata *ctrl,
 {
 	/* don't need to set idle mode if display is blanked */
 	if (ctrl->blanked) {
-		ctrl->idle = 0;
 		pr_debug("%s: idle: already blanked\n", __func__);
 		return;
 	}
