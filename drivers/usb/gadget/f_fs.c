@@ -1422,9 +1422,13 @@ static int functionfs_bind(struct ffs_data *ffs, struct usb_composite_dev *cdev)
 
 	ENTER();
 
-	if (WARN_ON(ffs->state != FFS_ACTIVE
-		 || test_and_set_bit(FFS_FL_BOUND, &ffs->flags)))
+	if (WARN_ON(ffs->state != FFS_ACTIVE))
 		return -EBADFD;
+
+	if (test_and_set_bit(FFS_FL_BOUND, &ffs->flags)) {
+		pr_warn("%s: already bound\n", __func__);
+		return -EALREADY;
+	}
 
 	if (!ffs->first_id || ffs->old_strings_count < ffs->strings_count) {
 		int first_id = usb_string_ids_n(cdev, ffs->strings_count);
