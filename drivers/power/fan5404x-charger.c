@@ -622,6 +622,9 @@ static irqreturn_t fan5404x_chg_stat_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static int factory_kill_disable;
+module_param(factory_kill_disable, int, 0644);
+
 static void fan5404x_external_power_changed(struct power_supply *psy)
 {
 	struct fan5404x_chg *chip = container_of(psy,
@@ -647,7 +650,8 @@ static void fan5404x_external_power_changed(struct power_supply *psy)
 		&& !chip->factory_present)
 		chip->factory_present = true;
 
-	if (chip->factory_mode && chip->usb_psy && chip->factory_present) {
+	if (chip->factory_mode && chip->usb_psy && chip->factory_present
+						&& !factory_kill_disable) {
 		rc = chip->usb_psy->get_property(chip->usb_psy,
 			POWER_SUPPLY_PROP_ONLINE, &prop);
 		if (!rc && (prop.intval == 0) && !chip->usb_present) {
