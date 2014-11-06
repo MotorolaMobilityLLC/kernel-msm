@@ -2575,6 +2575,27 @@ tANI_BOOLEAN csrIsScanAllowed(tpAniSirGlobal pMac)
 #endif
 }
 #endif
+
+/* ---------------------------------------------------------------------------
+    \fn sco_isScanAllowed
+    \brief check for scan interface connection status
+    \param pMac     - Pointer to the global MAC parameter structure
+    \param pScanReq - scan request structure.
+
+    \return tANI_BOOLEAN TRUE to allow scan otherwise FALSE
+  ---------------------------------------------------------------------------*/
+tANI_BOOLEAN sco_isScanAllowed(tpAniSirGlobal pMac, tCsrScanRequest *pscanReq)
+{
+    tANI_BOOLEAN ret;
+
+    if (pscanReq->p2pSearch)
+        ret = csrIsP2pSessionConnected(pMac);
+    else
+        ret = csrIsStaSessionConnected(pMac);
+
+    return !ret;
+}
+
 /* ---------------------------------------------------------------------------
     \fn sme_ScanRequest
     \brief a wrapper function to Request a 11d or full scan from CSR.
@@ -2597,7 +2618,7 @@ eHalStatus sme_ScanRequest(tHalHandle hHal, tANI_U8 sessionId, tCsrScanRequest *
     do
     {
         if(pMac->scan.fScanEnable &&
-           ((FALSE == pMac->isCoexScoIndSet) || (TRUE == pscanReq->p2pSearch)))
+           (pMac->isCoexScoIndSet ? sco_isScanAllowed(pMac, pscanReq) : TRUE))
         {
             status = sme_AcquireGlobalLock( &pMac->sme );
             if ( HAL_STATUS_SUCCESS( status ) )

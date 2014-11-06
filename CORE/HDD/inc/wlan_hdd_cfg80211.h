@@ -926,6 +926,8 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 #endif
                             struct cfg80211_scan_request *request);
 
+int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand);
+
 int wlan_hdd_cfg80211_init(struct device *dev,
                                struct wiphy *wiphy,
                                hdd_config_t *pCfg

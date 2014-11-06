@@ -4969,12 +4969,7 @@ int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand)
 
             if (IEEE80211_BAND_2GHZ == i && eCSR_BAND_5G == eBand) // 5G only
             {
-                // Enable Social channels for P2P
-                if (WLAN_HDD_IS_SOCIAL_CHANNEL(band->channels[j].center_freq) &&
-                    NV_CHANNEL_ENABLE == channelEnabledState)
-                    band->channels[j].flags &= ~IEEE80211_CHAN_DISABLED;
-                else
-                    band->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+                band->channels[j].flags |= IEEE80211_CHAN_DISABLED;
                 continue;
             }
             else if (IEEE80211_BAND_5GHZ == i && eCSR_BAND_24 == eBand) // 2G only
