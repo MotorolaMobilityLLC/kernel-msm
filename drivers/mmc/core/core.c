@@ -62,6 +62,8 @@ static void mmc_clk_scaling(struct mmc_host *host, bool from_wq);
 #define MMC_FLUSH_REQ_TIMEOUT_MS 90000 /* msec */
 #define MMC_CACHE_DISBALE_TIMEOUT_MS 180000 /* msec */
 
+#define MMC_DETECT_DEBOUNCE_DELAY_MS 500 /* msec */
+
 static struct workqueue_struct *workqueue;
 
 /*
@@ -3157,6 +3159,15 @@ int _mmc_detect_card_removed(struct mmc_host *host)
 	if (ret) {
 		mmc_card_set_removed(host->card);
 		pr_debug("%s: card remove detected\n", mmc_hostname(host));
+	} else if ((host->ops->get_cd && !host->ops->get_cd(host)) ||
+		   (host->hotplug.get_cd && !host->hotplug.get_cd(host))) {
+		/*
+		 * The switch detected card removal before the card was
+		 * completely out.  Delay detection a bit to debounce.
+		 */
+		mmc_detect_change(host, msecs_to_jiffies(
+						MMC_DETECT_DEBOUNCE_DELAY_MS));
+		pr_info("%s: slow card removal detected\n", mmc_hostname(host));
 	}
 
 	return ret;
