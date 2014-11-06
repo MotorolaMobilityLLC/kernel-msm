@@ -3000,21 +3000,6 @@ typedef struct relmcast_brcm_prop_ie relmcast_brcm_prop_ie_t;
 
 #define RELMCAST_BRCM_PROP_IE_TYPE	55
 
-#define BRCM_EVT_WL_BSS_INFO    64
-/**
- * Following is the generic structure for brcm_prop_ie (uses BRCM_PROP_OUI).
- */
-BWL_PRE_PACKED_STRUCT struct brcm_prop_ie_s {
-        uint8 id;               /* IE ID, 221, DOT11_MNG_PROPR_ID */
-        uint8 len;              /* IE length */
-        uint8 oui[3];           /* Proprietary OUI, BRCM_PROP_OUI */
-        uint8 type;             /* type of this IE */
-        uint16 cap;             /* DPT capabilities */
-} BWL_POST_PACKED_STRUCT;
-typedef struct brcm_prop_ie_s brcm_prop_ie_t;
-
-#define BRCM_PROP_IE_LEN        6       /* len of fixed part of brcm_prop ie */
-
 /* ************* HT definitions. ************* */
 #define MCSSET_LEN	16	/* 16-bits per 8-bit set to give 128-bits bitmap of MCS Index */
 #define MAX_MCS_NUM	(128)	/* max mcs number = 128 */
