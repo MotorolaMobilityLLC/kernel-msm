@@ -1339,6 +1339,7 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         //For reassoc, the station is already registered, all we need is to change the state
         //of the STA in TL.
         //If authentication is required (WPA/WPA2/DWEP), change TL to CONNECTED instead of AUTHENTICATED
+        //pRoamInfo->fReassocReq will be set only for the reassoc to same ap
         if( !pRoamInfo->fReassocReq )
         {
             struct cfg80211_bss *bss;
