@@ -1413,7 +1413,9 @@ do_send:
 		if (ctrl_rev >= MDSS_DSI_HW_REV_101) {
 			/* clear the RDBK_DATA registers */
 			MIPI_OUTP(ctrl->ctrl_base + 0x01d4, 0x1);
+			wmb();
 			MIPI_OUTP(ctrl->ctrl_base + 0x01d4, 0x0);
+			wmb();
 		}
 
 		mdss_dsi_wait4video_eng_busy(ctrl);	/* video mode only */
