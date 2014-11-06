@@ -3449,6 +3449,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
        else if (strncmp(command, "FASTREASSOC", 11) == 0)
        {
            tANI_U8 *value = command;
+           tANI_U8 channel = 0;
            tSirMacAddr targetApBssid;
            tANI_U8 trigger = 0;
            eHalStatus status = eHAL_STATUS_SUCCESS;
@@ -3467,7 +3468,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
                goto exit;
            }
 
-           status = hdd_parse_reassoc_command_data(value, targetApBssid, &trigger);
+           status = hdd_parse_reassoc_command_data(value, targetApBssid, &channel);
            if (eHAL_STATUS_SUCCESS != status)
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -3490,6 +3491,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
                             NULL, modProfileFields, &roamId, 1);
                return 0;
            }
+           trigger = eSME_ROAM_TRIGGER_SCAN;
 
            /* Proceed with scan/roam */
            smeIssueFastRoamNeighborAPEvent(WLAN_HDD_GET_HAL_CTX(pAdapter),
