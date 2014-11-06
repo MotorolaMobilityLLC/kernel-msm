@@ -594,6 +594,7 @@ static int lis3dsh_acc_i2c_read(struct lis3dsh_acc_data *acc,
 {
 	int err;
 	int tries = 0;
+	int i2c_power_state;
 
 	struct i2c_msg	msgs[] = {
 		{
@@ -611,9 +612,14 @@ static int lis3dsh_acc_i2c_read(struct lis3dsh_acc_data *acc,
 	};
 
 	do {
-		err = i2c_transfer(acc->client->adapter, msgs, 2);
-		if (err != 2)
+		i2c_power_state = i2c_qup_power_state(acc->client->adapter);
+		if(i2c_power_state >= MSM_I2C_SYS_SUSPENDING)
 			msleep_interruptible(I2C_RETRY_DELAY);
+		else {
+			err = i2c_transfer(acc->client->adapter, msgs, 2);
+			if (err != 2)
+			    msleep_interruptible(I2C_RETRY_DELAY);
+		}
 	} while ((err != 2) && (++tries < I2C_RETRIES));
 
 	if (err != 2) {
@@ -631,6 +637,7 @@ static int lis3dsh_acc_i2c_write(struct lis3dsh_acc_data *acc, u8 * buf,
 {
 	int err;
 	int tries = 0;
+	int i2c_power_state;
 
 	struct i2c_msg msgs[] = {
 		{
@@ -642,9 +649,14 @@ static int lis3dsh_acc_i2c_write(struct lis3dsh_acc_data *acc, u8 * buf,
 	};
 
 	do {
-		err = i2c_transfer(acc->client->adapter, msgs, 1);
-		if (err != 1)
+		i2c_power_state = i2c_qup_power_state(acc->client->adapter);
+		if(i2c_power_state >= MSM_I2C_SYS_SUSPENDING)
 			msleep_interruptible(I2C_RETRY_DELAY);
+		else {
+			err = i2c_transfer(acc->client->adapter, msgs, 1);
+			if (err != 1)
+				msleep_interruptible(I2C_RETRY_DELAY);
+		}
 	} while ((err != 1) && (++tries < I2C_RETRIES));
 
 	if (err != 1) {
