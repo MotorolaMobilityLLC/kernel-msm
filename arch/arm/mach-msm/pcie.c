@@ -888,12 +888,12 @@ static void msm_pcie_config_l1ss(struct msm_pcie_dev_t *dev)
 			0xFF, BIT(6)|BIT(5)|BIT(0));
 
 		/* EP: Set L1ss control 1 register(0x248) - Enable L1ss */
-		/* L12Threshold : 0 */
+		/* L12Threshold : 164 us */
 		msm_pcie_write_mask(dev->conf + PCIE20_L1SUB_CONTROL1_BRCM, 0,
-			BIT(3)|BIT(2) | BIT(1) | BIT(0));
-		/* RC: Set L1SS and L12Threshold : 2.5ms , disable L1.1*/
+			BIT(30)|BIT(23)|BIT(21)|BIT(3)|BIT(2)|BIT(1)|BIT(0));
+		/* RC: Set L1SS and L12Threshold : 164 us , Enable L1ss */
 		msm_pcie_write_mask(dev->dm_core + PCIE20_L1SUB_CONTROL1, 0,
-			BIT(3)|BIT(2) | BIT(1) | BIT(0));
+			BIT(30)|BIT(23)|BIT(21)|BIT(3)|BIT(2)|BIT(1)|BIT(0));
 
 		/* EP: Set ASPM(0xbc) */
 		msm_pcie_write_mask(dev->conf + PCIE20_CAP_LINKCTRLSTATUS_BRCM, 0,
