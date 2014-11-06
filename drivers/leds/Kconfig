@@ -63,6 +63,15 @@ config LEDS_LM3533
 	  hardware-accelerated blinking with maximum on and off periods of 9.8
 	  and 77 seconds respectively.
 
+config LEDS_LM3535
+	tristate "LCD Backlight driver for LM3535"
+	depends on LEDS_CLASS && I2C
+	help
+	  This option enables support for the LCD backlight using
+	  LM3535 ambient light sensor chip. This ALS chip can be
+	  controlled manually or using PWM input or using ambient
+	  light automatically.
+
 config LEDS_LM3642
 	tristate "LED support for LM3642 Chip"
 	depends on LEDS_CLASS && I2C

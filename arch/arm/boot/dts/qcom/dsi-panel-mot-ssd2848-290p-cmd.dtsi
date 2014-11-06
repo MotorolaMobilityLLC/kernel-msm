@@ -116,5 +116,6 @@
 		qcom,mdss-pan-physical-height-dimension = <36>;
 		qcom,mdss-dsi-reset-sequence = <0 25>, <1 1>;
 		qcom,mdss-dsi-tx-eot-append;
+		qcom,mdss-brightness-max-level = <0>; /* disable mdss back light device */
 	};
 };
