@@ -3804,18 +3804,14 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	bool use_chan_cache = FALSE;
 	WL_DBG(("In\n"));
 
-	wl_cfg80211_enable_trace(FALSE, WL_DBG_ERR | WL_DBG_DBG);
-
 	if (unlikely(!sme->ssid)) {
 		WL_ERR(("Invalid ssid\n"));
-		wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 		return -EOPNOTSUPP;
 	}
 
 	if (unlikely(sme->ssid_len > DOT11_MAX_SSID_LEN)) {
 		WL_ERR(("Invalid SSID info: SSID=%s, length=%zd\n",
 			sme->ssid, sme->ssid_len));
-		wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 		return -EINVAL;
 	}
 
@@ -3859,7 +3855,6 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 			if (unlikely(err)) {
 				wl_clr_drv_status(cfg, DISCONNECTING, dev);
 				WL_ERR(("error (%d)\n", err));
-				wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 				return err;
 			}
 			wait_cnt = 500/10;
@@ -3890,7 +3885,6 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 		/* we only allow to connect using virtual interface in case of P2P */
 			if (wl_cfgp2p_find_idx(cfg, dev, &bssidx) != BCME_OK) {
 				WL_ERR(("Find p2p index from dev(%p) failed\n", dev));
-				wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 				return BCME_ERROR;
 			}
 			wl_cfgp2p_set_management_ie(cfg, dev, bssidx,
@@ -3919,13 +3913,11 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 
 		if (wl_cfgp2p_find_idx(cfg, dev, &bssidx) != BCME_OK) {
 			WL_ERR(("Find p2p index from dev(%p) failed\n", dev));
-			wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 			return BCME_ERROR;
 		}
 		err = wl_cfgp2p_set_management_ie(cfg, dev, bssidx,
 			VNDR_IE_ASSOCREQ_FLAG, (u8 *)sme->ie, sme->ie_len);
 		if (unlikely(err)) {
-			wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 			return err;
 		}
 	}
@@ -3975,34 +3967,29 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	err = wl_set_wpa_version(dev, sme);
 	if (unlikely(err)) {
 		WL_ERR(("Invalid wpa_version\n"));
-		wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 		return err;
 	}
 		err = wl_set_auth_type(dev, sme);
 		if (unlikely(err)) {
 			WL_ERR(("Invalid auth type\n"));
-			wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 			return err;
 		}
 
 	err = wl_set_set_cipher(dev, sme);
 	if (unlikely(err)) {
 		WL_ERR(("Invalid ciper\n"));
-		wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 		return err;
 	}
 
 	err = wl_set_key_mgmt(dev, sme);
 	if (unlikely(err)) {
 		WL_ERR(("Invalid key mgmt\n"));
-		wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 		return err;
 	}
 
 	err = wl_set_set_sharedkey(dev, sme);
 	if (unlikely(err)) {
 		WL_ERR(("Invalid shared key\n"));
-		wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 		return err;
 	}
 
@@ -4066,7 +4053,6 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 
 	if (wl_cfgp2p_find_idx(cfg, dev, &bssidx) != BCME_OK) {
 		WL_ERR(("Find p2p index from dev(%p) failed\n", dev));
-		wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 		return BCME_ERROR;
 	}
 	err = wldev_iovar_setbuf_bsscfg(dev, "join", ext_join_params, join_params_size,
@@ -4116,7 +4102,6 @@ set_ssid:
 		wl_clr_drv_status(cfg, CONNECTING, dev);
 	}
 exit:
-	wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 	return err;
 }
 
@@ -4132,7 +4117,6 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 #ifdef CUSTOM_SET_CPUCORE
 	dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
 #endif /* CUSTOM_SET_CPUCORE */
-	wl_cfg80211_enable_trace(FALSE, WL_DBG_ERR | WL_DBG_DBG);
 	WL_ERR(("Reason %d\n", reason_code));
 	RETURN_EIO_IF_NOT_UP(cfg);
 	act = *(bool *) wl_read_prof(cfg, dev, WL_PROF_ACT);
@@ -4157,7 +4141,6 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 		if (unlikely(err)) {
 			wl_clr_drv_status(cfg, DISCONNECTING, dev);
 			WL_ERR(("error (%d)\n", err));
-			wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 			return err;
 		}
 	}
@@ -4170,7 +4153,6 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 	}
 #endif /* CUSTOM_SET_CPUCORE */
 
-	wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 	return err;
 }
 
@@ -8403,17 +8385,7 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	s32 err = 0;
 	u32 event = ntoh32(e->event_type);
 
-	wl_cfg80211_enable_trace(FALSE, WL_DBG_ERR | WL_DBG_DBG);
 	ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
-
-	if (data) {
-		brcm_prop_ie_t *ie = (brcm_prop_ie_t *)data;
-		wl_bss_info_t *bss_info;
-		if (ie->type == BRCM_EVT_WL_BSS_INFO) {
-			bss_info = (wl_bss_info_t*)((u8 *)ie + BRCM_PROP_IE_LEN);
-			WL_DBG(("RSSI:%d, channel:%d\n", bss_info->RSSI, CHSPEC_CHANNEL(bss_info->chanspec)));
-		}
-	}
 
 	if (wl_get_mode_by_netdev(cfg, ndev) == WL_MODE_AP) {
 		err = wl_notify_connect_status_ap(cfg, ndev, e, data);
@@ -8424,7 +8396,6 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 			ntoh32(e->event_type), ntoh32(e->status), ndev));
 		if (event == WLC_E_ASSOC || event == WLC_E_AUTH) {
 			wl_get_auth_assoc_status(cfg, ndev, e);
-			wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 			return 0;
 		}
 		if (wl_is_linkup(cfg, e, ndev)) {
@@ -8462,7 +8433,6 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 					WL_ERR(("BSSID of event is not the connected BSSID"
 						"(ignore it) cur: " MACDBG " event: " MACDBG"\n",
 						MAC2STRDBG(curbssid), MAC2STRDBG((u8*)(&e->addr))));
-					wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 					return 0;
 				}
 				wl_clr_drv_status(cfg, CONNECTED, ndev);
@@ -8516,7 +8486,6 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 		else {
 		WL_ERR(("Invalid ndev status %d\n", wl_get_mode_by_netdev(cfg, ndev)));
 	}
-	wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 	return err;
 }
 
@@ -8532,17 +8501,7 @@ wl_notify_roaming_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	u32 status = be32_to_cpu(e->status);
 	WL_DBG(("Enter \n"));
 
-	wl_cfg80211_enable_trace(FALSE, WL_DBG_ERR | WL_DBG_DBG);
 	ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
-
-	if (data) {
-		brcm_prop_ie_t *ie = (brcm_prop_ie_t *)data;
-		wl_bss_info_t *bss_info;
-		if (ie->type == BRCM_EVT_WL_BSS_INFO) {
-			bss_info = (wl_bss_info_t*)((u8 *)ie + BRCM_PROP_IE_LEN);
-			WL_DBG(("RSSI:%d, channel:%d\n", bss_info->RSSI, CHSPEC_CHANNEL(bss_info->chanspec)));
-		}
-	}
 
 	if ((!cfg->disable_roam_event) && (event == WLC_E_BSSID)) {
 		wl_add_remove_eventmsg(ndev, WLC_E_ROAM, false);
@@ -8550,7 +8509,6 @@ wl_notify_roaming_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	}
 
 	if ((cfg->disable_roam_event) && (event == WLC_E_ROAM))
-		wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 		return err;
 
 	if ((event == WLC_E_ROAM || event == WLC_E_BSSID) && status == WLC_E_STATUS_SUCCESS) {
@@ -8562,7 +8520,6 @@ wl_notify_roaming_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 		wl_update_prof(cfg, ndev, e, &act, WL_PROF_ACT);
 		wl_update_prof(cfg, ndev, NULL, (void *)&e->addr, WL_PROF_BSSID);
 	}
-	wl_cfg80211_enable_trace(TRUE, WL_DBG_ERR);
 	return err;
 }
 
