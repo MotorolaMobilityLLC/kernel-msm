@@ -174,6 +174,9 @@ static int suspend_touch_up = 0;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
 
+#define I2C_RETRY_DELAY			5		/* Waiting for signals [ms] */
+#define I2C_RETRIES				5		/* Number of retries */
+
 #define LOGE(...)	pr_err(DEVICE_NAME ": " __VA_ARGS__)
 #define LOGI(...)	printk(DEVICE_NAME ": " __VA_ARGS__)
 
@@ -183,6 +186,9 @@ static struct workqueue_struct *IT7260_wq;
 /* internal use func - does not make sure chip is ready before read */
 static bool i2cReadNoReadyCheck(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
 {
+	int err;
+	int tries = 0;
+
 	struct i2c_msg msgs[2] = {
 		{
 			.addr = gl_ts->client->addr,
@@ -200,11 +206,25 @@ static bool i2cReadNoReadyCheck(uint8_t bufferIndex, uint8_t *dataBuffer, uint16
 
 	memset(dataBuffer, 0xFF, dataLength);
 
-	return i2c_transfer(gl_ts->client->adapter, msgs, 2);
+	do {
+		err = i2c_transfer(gl_ts->client->adapter, msgs, 2);
+		if (err != 2)
+		    msleep_interruptible(I2C_RETRY_DELAY);
+	} while ((err != 2) && (++tries < I2C_RETRIES));
+
+	if (err != 2) {
+		dev_err(&gl_ts->client->dev, "read transfer error\n");
+		err = -EIO;
+	}
+
+	return err;
 }
 
 static bool i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer, uint16_t dataLength)
 {
+	int err;
+	int tries = 0;
+
 	uint8_t txbuf[257];
 	struct i2c_msg msg = {
 		.addr = gl_ts->client->addr,
@@ -219,7 +239,18 @@ static bool i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer,
 	txbuf[0] = bufferIndex;
 	memcpy(txbuf + 1, dataBuffer, dataLength);
 
-	return i2c_transfer(gl_ts->client->adapter, &msg, 1);
+	do {
+		err = i2c_transfer(gl_ts->client->adapter, &msg, 1);
+		if (err != 1)
+		    msleep_interruptible(I2C_RETRY_DELAY);
+	} while ((err != 1) && (++tries < I2C_RETRIES));
+
+	if (err != 1) {
+		dev_err(&gl_ts->client->dev, "write transfer error\n");
+		err = -EIO;
+	}
+
+	return err;
 }
 
 /*
