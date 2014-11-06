@@ -182,6 +182,11 @@
 		};
 	};
 
+	/* Override USB Phy seq for Otus */
+	usb@f9a55000 {
+		qcom,hsusb-otg-phy-init-seq =
+			<0x44 0x80 0x49 0x81 0x36 0x82 0x3C 0x83 0xffffffff>;
+	};
 
 	i2c_2: i2c@f9924000 { /* BLSP-1 QUP-2 */
 		cell-index = <2>;
