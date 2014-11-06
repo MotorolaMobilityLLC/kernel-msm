@@ -298,6 +298,11 @@
 	qcom,sda-gpio = <&msmgpio 10 0>;
 	status = "ok";
 	/* drivers here */
+	lm3535@0x38 {
+		compatible = "ti,lm3535";
+		reg = <0x38>;
+		lm3535,en_gpio = <&msmgpio 35 0>; // is not supported by driver yet
+	};
 };
 
 &i2c_5 {
