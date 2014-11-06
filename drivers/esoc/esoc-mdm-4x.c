@@ -778,7 +778,6 @@ status_err:
 		}
 		mdm->pblrdy_irq = irq;
 	}
-	mdm_disable_irqs(mdm);
 pblrdy_err:
 	return 0;
 fatal_err:
