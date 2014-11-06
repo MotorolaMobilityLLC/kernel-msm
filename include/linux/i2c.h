@@ -548,14 +548,4 @@ extern void acpi_i2c_register_devices(struct i2c_adapter *adap);
 static inline void acpi_i2c_register_devices(struct i2c_adapter *adap) {}
 #endif
 
-//ASUS_BSP +++ Maggie_Lee "export I2C state"
-int i2c_qup_power_state(struct i2c_adapter *adap);
-
-enum msm_i2c_state {
-	MSM_I2C_PM_ACTIVE,
-	MSM_I2C_PM_SUSPENDED,
-	MSM_I2C_SYS_SUSPENDING,
-	MSM_I2C_SYS_SUSPENDED,
-}
-//ASUS_BSP --- Maggie_Lee "export I2C state"
 #endif /* _LINUX_I2C_H */
