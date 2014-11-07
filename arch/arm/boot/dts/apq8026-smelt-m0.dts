@@ -340,6 +340,12 @@
 	qcom,init-voltage = <2850000>;
 };
 
+&pm8226_l19 {
+	regulator-min-microvolt = <2850000>;
+	regulator-max-microvolt = <2850000>;
+	qcom,init-voltage = <2850000>;
+	regulator-always-on;
+};
 
 &spi_4 {
 	status = "ok";
