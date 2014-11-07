@@ -940,6 +940,7 @@ static int stml0xx_probe(struct spi_device *spi)
 	input_set_drvdata(ps_stml0xx->input_dev, ps_stml0xx);
 	input_set_capability(ps_stml0xx->input_dev, EV_KEY, KEY_POWER);
 	input_set_capability(ps_stml0xx->input_dev, EV_KEY, KEY_CAMERA);
+	input_set_capability(ps_stml0xx->input_dev, EV_SW, SW_LID);
 	if (pdata->headset_button_1_keycode > 0)
 		input_set_capability(ps_stml0xx->input_dev, EV_KEY, pdata->headset_button_1_keycode);
 	if (pdata->headset_button_2_keycode > 0)
