@@ -1166,6 +1166,7 @@ static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
 	input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
 	input_report_abs(acc->input_dev, ABS_Z, xyz[2]);
 	input_sync(acc->input_dev);
+	sensor_debug(DEBUG_INFO, "[lis3dsh] %s : X(%d) Y(%d) Z(%d)\n", __func__, xyz[0], xyz[1], xyz[2]);
 }
 
 static int lis3dsh_acc_enable(struct sensors_classdev *sensors_cdev, unsigned int enable)
