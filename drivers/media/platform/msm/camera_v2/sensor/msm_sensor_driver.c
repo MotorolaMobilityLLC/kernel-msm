@@ -688,6 +688,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 		slave_info->sensor_id_info = slave_info32->sensor_id_info;
 
 		slave_info->slave_addr = slave_info32->slave_addr;
+		slave_info->slave_addr2 = slave_info32->slave_addr2;
 		slave_info->power_setting_array.size =
 			slave_info32->power_setting_array.size;
 		slave_info->power_setting_array.size_down =
@@ -857,6 +858,10 @@ int32_t msm_sensor_driver_probe(void *setting,
 	s_ctrl->sensordata->eeprom_name = slave_info->eeprom_name;
 	s_ctrl->sensordata->actuator_name = slave_info->actuator_name;
 	s_ctrl->sensordata->ois_name = slave_info->ois_name;
+
+	/*Save sensor info*/
+	s_ctrl->sensordata->cam_slave_info = slave_info;
+
 	/*
 	 * Update eeporm subdevice Id by input eeprom name
 	 */
@@ -939,11 +944,8 @@ int32_t msm_sensor_driver_probe(void *setting,
 		sensor_mount_angle / 90) << 8);
 	s_ctrl->msm_sd.sd.entity.flags = mount_pos | MEDIA_ENT_FL_DEFAULT;
 
-	/*Save sensor info*/
-	s_ctrl->sensordata->cam_slave_info = slave_info;
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
-
 	return rc;
 
 camera_power_down:
