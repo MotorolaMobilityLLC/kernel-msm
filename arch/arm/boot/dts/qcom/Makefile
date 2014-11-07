@@ -228,6 +228,7 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p3d.dtb
 
 # Osprey
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p0.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p1a.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
