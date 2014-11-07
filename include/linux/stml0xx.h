@@ -528,6 +528,9 @@ struct stm_response {
 #define STM32_TO_HOST(x) ((short) be32_to_cpu( \
 		*((u32 *) (stml0xx_readbuff+(x)))))
 
+#define STML0XX_HALL_SOUTH 1
+#define STML0XX_HALL_NORTH 2
+
 struct stml0xx_platform_data {
 	int (*init) (void);
 	void (*exit) (void);
