@@ -137,7 +137,6 @@ static int mhi_buf_tbl_add(struct diag_mhi_info *mhi_info, int type,
 				   __func__, ch, ch->type, buf, len);
 		return -ENOMEM;
 	}
-	kmemleak_not_leak(item);
 
 	spin_lock_irqsave(&ch->lock, flags);
 	item->buf = buf;
@@ -550,6 +549,9 @@ static void mhi_notifier(struct mhi_cb_info *cb_info)
 				       __func__, diag_mhi[index].num_read);
 				break;
 			}
+			diagmem_setsize(diag_mhi[index].mempool,
+					DIAG_MDM_BUF_SIZE,
+					diag_mhi[index].num_read);
 			diagmem_init(driver, diag_mhi[index].mempool);
 		}
 		queue_work(diag_mhi[index].mhi_wq,

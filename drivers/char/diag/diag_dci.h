@@ -29,6 +29,9 @@
 #define DCI_LOG_CON_MIN_LEN		14
 #define DCI_EVENT_CON_MIN_LEN		16
 
+#define DIAG_DATA_TYPE		1
+#define DIAG_CNTL_TYPE		2
+
 #define DCI_BUF_PRIMARY		1
 #define DCI_BUF_SECONDARY	2
 #define DCI_BUF_CMD		3
@@ -57,27 +60,16 @@
  */
 #define MAX_DCI_PACKET_SZ		8710
 
-extern unsigned int dci_max_reg;
-extern unsigned int dci_max_clients;
+#define DCI_LOCAL_PROC	0
+#define DCI_MDM_PROC	1
 
-#define DCI_LOCAL_PROC		0
-#define DCI_REMOTE_BASE		1
-#define DCI_MDM_PROC		DCI_REMOTE_BASE
-#define DCI_REMOTE_LAST		(DCI_REMOTE_BASE + 1)
-
-#ifndef CONFIG_DIAGFWD_BRIDGE_CODE
-#define NUM_DCI_PROC		1
-#else
-#define NUM_DCI_PROC		DCI_REMOTE_LAST
-#endif
+#define DCI_BRIDGE_MDM_IDX	1
+#define DCI_HSIC_CH_IDX		0
 
 #define DCI_REMOTE_DATA	0
 
-#define VALID_DCI_TOKEN(x)	((x >= 0 && x < NUM_DCI_PROC) ? 1 : 0)
-#define BRIDGE_TO_TOKEN(x)	(x - DIAGFWD_MDM_DCI + DCI_REMOTE_BASE)
-#define TOKEN_TO_BRIDGE(x)	(dci_ops_tbl[x].ctx)
-
-#define DCI_MAGIC		(0xAABB1122)
+extern unsigned int dci_max_reg;
+extern unsigned int dci_max_clients;
 
 struct dci_pkt_req_entry_t {
 	int client_id;
@@ -190,8 +182,6 @@ struct diag_dci_header_t {
 } __packed;
 
 struct dci_ops_tbl_t {
-	int ctx;
-	int mempool;
 	unsigned char log_mask_composite[DCI_LOG_MASK_SIZE];
 	unsigned char event_mask_composite[DCI_EVENT_MASK_SIZE];
 	int (*send_log_mask)(int token);
@@ -199,15 +189,7 @@ struct dci_ops_tbl_t {
 	uint16_t peripheral_status;
 } __packed;
 
-struct dci_channel_status_t {
-	int id;
-	int open;
-	int retry_count;
-	struct timer_list wait_time;
-	struct work_struct handshake_work;
-} __packed;
-
-extern struct dci_ops_tbl_t dci_ops_tbl[NUM_DCI_PROC];
+extern struct dci_ops_tbl_t *dci_ops_tbl;
 
 enum {
 	DIAG_DCI_NO_ERROR = 1001,	/* No error */
@@ -250,7 +232,7 @@ void extract_dci_pkt_rsp(unsigned char *buf, int len, int data_source,
 void extract_dci_ctrl_pkt(unsigned char *buf, int len, int token);
 struct diag_dci_client_tbl *diag_dci_get_client_entry(int client_id);
 struct diag_dci_client_tbl *dci_lookup_client_entry_pid(int pid);
-int diag_process_remote_dci_read_data(int index, void *buf, int recd_bytes);
+int diag_process_hsic_dci_read_data(int index, void *buf, int recd_bytes);
 int diag_dci_get_support_list(struct diag_dci_peripherals_t *support_list);
 /* DCI Log streaming functions */
 void update_dci_cumulative_log_mask(int offset, unsigned int byte_index,
@@ -276,15 +258,16 @@ uint8_t diag_dci_get_cumulative_real_time(int token);
 int diag_dci_set_real_time(struct diag_dci_client_tbl *entry,
 			   uint8_t real_time);
 int diag_dci_copy_health_stats(struct diag_dci_health_stats_proc *stats_proc);
+/* Functions related to DCI wakeup sources */
+void diag_dci_try_activate_wakeup_source(void);
+void diag_dci_try_deactivate_wakeup_source(void);
 int diag_dci_write_proc(int peripheral, int pkt_type, char *buf, int len);
 
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 int diag_send_dci_log_mask_remote(int token);
 int diag_send_dci_event_mask_remote(int token);
-unsigned char *dci_get_buffer_from_bridge(int token);
-int diag_dci_write_bridge(int token, unsigned char *buf, int len);
-int diag_dci_write_done_bridge(int index, unsigned char *buf, int len);
-int diag_dci_send_handshake_pkt(int index);
+unsigned char *dci_get_buffer_from_bridge(int index);
+int diag_dci_write_bridge(int index, unsigned char *buf, int len);
 #endif
 
 #endif

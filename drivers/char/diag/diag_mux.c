@@ -51,7 +51,6 @@ int diag_mux_init()
 			 GFP_KERNEL);
 	if (!logger)
 		return -ENOMEM;
-	kmemleak_not_leak(logger);
 
 	usb_logger.mode = DIAG_USB_MODE;
 	usb_logger.log_ops = &usb_log_ops;
