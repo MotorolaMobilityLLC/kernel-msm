@@ -122,6 +122,7 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #include "wlan_hdd_tdls.h"
 #endif
 #include "wlan_hdd_debugfs.h"
+#include "sapInternal.h"
 
 #ifdef MODULE
 #define WLAN_MODULE_NAME  module_name(THIS_MODULE)
@@ -8610,7 +8611,6 @@ int hdd_wlan_startup(struct device *dev )
       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: cfg80211 init failed", __func__);
       return -EIO;
    }
-
    pHddCtx = wiphy_priv(wiphy);
 
    //Initialize the adapter context to zeros.
@@ -9889,7 +9889,14 @@ int hdd_del_all_sta(hdd_adapter_t *pAdapter)
 {
     v_U16_t i;
     VOS_STATUS vos_status;
-
+    v_CONTEXT_t pVosContext = ( WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
+    ptSapContext pSapCtx = NULL;
+    pSapCtx = VOS_GET_SAP_CB(pVosContext);
+    if(pSapCtx == NULL){
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("psapCtx is NULL"));
+        return 1;
+    }
     ENTER();
 
     hddLog(VOS_TRACE_LEVEL_INFO,
@@ -9900,18 +9907,18 @@ int hdd_del_all_sta(hdd_adapter_t *pAdapter)
     {
         for(i = 0; i < WLAN_MAX_STA_COUNT; i++)
         {
-            if ((pAdapter->aStaInfo[i].isUsed) &&
-                (!pAdapter->aStaInfo[i].isDeauthInProgress))
+            if ((pSapCtx->aStaInfo[i].isUsed) &&
+                (!pSapCtx->aStaInfo[i].isDeauthInProgress))
             {
                 struct tagCsrDelStaParams delStaParams;
 
                 WLANSAP_PopulateDelStaParams(
-                            pAdapter->aStaInfo[i].macAddrSTA.bytes,
+                            pSapCtx->aStaInfo[i].macAddrSTA.bytes,
                             eCsrForcedDeauthSta, SIR_MAC_MGMT_DEAUTH >> 4,
                             &delStaParams);
                 vos_status = hdd_softap_sta_deauth(pAdapter, &delStaParams);
                 if (VOS_IS_STATUS_SUCCESS(vos_status))
-                    pAdapter->aStaInfo[i].isDeauthInProgress = TRUE;
+                    pSapCtx->aStaInfo[i].isDeauthInProgress = TRUE;
             }
         }
     }

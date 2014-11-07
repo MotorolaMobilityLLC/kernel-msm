@@ -69,7 +69,7 @@
 #include <wlan_hdd_softap_tx_rx.h>
 #include <vos_sched.h>
 #include "sme_Api.h"
-
+#include "sapInternal.h"
 // change logging behavior based upon debug flag
 #ifdef HDD_WMM_DEBUG
 #define WMM_TRACE_LEVEL_FATAL      VOS_TRACE_LEVEL_FATAL
@@ -1904,7 +1904,15 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
    v_U8_t STAId;
    v_U8_t *pSTAId = (v_U8_t *)(((v_U8_t *)(skb->data)) - 1);
-
+   v_CONTEXT_t pVosContext = ( WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
+   ptSapContext pSapCtx = NULL;
+   pSapCtx = VOS_GET_SAP_CB(pVosContext);
+   if(pSapCtx == NULL){
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 FL("psapCtx is NULL"));
+       *pSTAId = HDD_WLAN_INVALID_STA_ID;
+       goto done;
+   }
    /*Get the Station ID*/
    if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &STAId))
    {
@@ -1914,8 +1922,8 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
       goto done;
    }
 
-   spin_lock_bh( &pAdapter->staInfo_lock );
-   if (FALSE == vos_is_macaddr_equal(&pAdapter->aStaInfo[STAId].macAddrSTA, pDestMacAddress))
+   spin_lock_bh( &pSapCtx->staInfo_lock );
+   if (FALSE == vos_is_macaddr_equal(&pSapCtx->aStaInfo[STAId].macAddrSTA, pDestMacAddress))
    {
       VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
                    "%s: Station MAC address does not matching", __func__);
@@ -1923,12 +1931,12 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
       *pSTAId = HDD_WLAN_INVALID_STA_ID;
       goto release_lock;
    }
-   if (pAdapter->aStaInfo[STAId].isUsed && pAdapter->aStaInfo[STAId].isQosEnabled && (HDD_WMM_USER_MODE_NO_QOS != pHddCtx->cfg_ini->WmmMode))
+   if (pSapCtx->aStaInfo[STAId].isUsed && pSapCtx->aStaInfo[STAId].isQosEnabled && (HDD_WMM_USER_MODE_NO_QOS != pHddCtx->cfg_ini->WmmMode))
    {
       /* Get the user priority from IP header & corresponding AC */
       hdd_wmm_classify_pkt (pAdapter, skb, &ac, &up);
       //If 3/4th of Tx queue is used then place the DHCP packet in VOICE AC queue
-      if (pAdapter->aStaInfo[STAId].vosLowResource && is_dhcp_packet(skb))
+      if (pSapCtx->aStaInfo[STAId].vosLowResource && is_dhcp_packet(skb))
       {
          VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_WARN,
                     "%s: Making priority of DHCP packet as VOICE", __func__);
@@ -1939,7 +1947,7 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
    *pSTAId = STAId;
 
 release_lock:
-    spin_unlock_bh( &pAdapter->staInfo_lock );
+    spin_unlock_bh( &pSapCtx->staInfo_lock );
 done:
    skb->priority = up;
    if(skb->priority < SME_QOS_WMM_UP_MAX)
