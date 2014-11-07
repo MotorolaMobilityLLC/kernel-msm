@@ -138,6 +138,8 @@ static inline bool aca_enabled(void)
 
 static int vdd_val[VDD_VAL_MAX];
 
+extern bool getSoftconnect(void);
+
 static int msm_hsusb_ldo_init(struct msm_otg *motg, int init)
 {
 	int rc = 0;
@@ -2405,6 +2407,7 @@ static void asus_usb_detect_work(struct work_struct *w)
 static void asus_chg_detect_work(struct work_struct *w)
 {
 	struct msm_otg *motg = the_msm_otg;
+	struct usb_otg *otg = motg->phy.otg;
 	if(g_usb_boot == MSM_OTG_USB_BOOT_DOWN){
 		if(msm_otg_bsv){
 			g_charger_mode = ASUS_CHG_SRC_UNKNOWN;
@@ -2416,10 +2419,12 @@ static void asus_chg_detect_work(struct work_struct *w)
 			queue_work(system_nrt_wq, &motg->sm_work);
 		}
 	}else{
-		printk("[USB] asus_chg_detect_work: g_usb_boot is %d , add more 2 sec\n",g_usb_boot);
+		printk("[USB] asus_chg_detect_work: g_usb_boot is %d , add more 2 sec softconnect=%d\n",g_usb_boot ,getSoftconnect());
 		if(g_usb_boot == MSM_OTG_USB_BOOT_IRQ){
 			g_usb_boot = MSM_OTG_USB_BOOT_DOWN;
 		}
+		if ( !getSoftconnect() )
+			usb_gadget_connect(otg->gadget);
 		schedule_delayed_work(&asus_chg_work, (2000 * HZ/1000));
 	}
 }
@@ -2846,6 +2851,10 @@ static void msm_otg_sm_work(struct work_struct *w)
 			g_charger_mode = ASUS_CHG_SRC_NONE;
 			asus_chg_set_chg_mode(ASUS_CHG_SRC_NONE);
 			printk("[USB] set_chg_mode: None\n");
+			if ( !getSoftconnect() ) {
+				g_usb_boot = MSM_OTG_USB_BOOT_INIT;
+				usb_gadget_disconnect(otg->gadget);
+			}
 #endif
 //ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 			motg->chg_state = USB_CHG_STATE_UNDEFINED;

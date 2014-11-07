@@ -90,6 +90,7 @@ static const char longname[] = "Gadget Android";
 #define ANDROID_DEVICE_NODE_NAME_LENGTH 11
 
 extern int g_recovery_mode;
+struct android_dev *_android_dev;
 struct android_usb_function {
 	char *name;
 	void *config;
@@ -281,6 +282,16 @@ enum android_device_state {
 	USB_SUSPENDED,
 	USB_RESUMED
 };
+
+bool getSoftconnect(void)
+{
+	struct android_dev *dev = _android_dev;
+
+	if ( dev != NULL )
+		return dev->enabled;
+	else
+		return 0;
+}
 
 static void android_pm_qos_update_latency(struct android_dev *dev, int vote)
 {
@@ -3754,6 +3765,8 @@ static int android_probe(struct platform_device *pdev)
 		pm_qos_add_request(&android_dev->pm_qos_req_dma,
 			PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
 	strlcpy(android_dev->pm_qos, "high", sizeof(android_dev->pm_qos));
+
+	_android_dev = android_dev;
 
 	return ret;
 err_probe:
