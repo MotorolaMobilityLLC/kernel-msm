@@ -3195,6 +3195,14 @@ REG_VARIABLE( CFG_EXTSCAN_ENABLE, WLAN_PARAM_Integer,
                   CFG_SAP_SCAN_BAND_PREFERENCE_DEFAULT,
                   CFG_SAP_SCAN_BAND_PREFERENCE_MIN,
                   CFG_SAP_SCAN_BAND_PREFERENCE_MAX ),
+
+   REG_VARIABLE( CFG_ENABLE_DYNAMIC_RA_START_RATE_NAME, WLAN_PARAM_Integer,
+                  hdd_config_t, enableDynamicRAStartRate,
+                  VAR_FLAGS_OPTIONAL |
+                  VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                  CFG_ENABLE_DYNAMIC_RA_START_RATE_DEFAULT,
+                  CFG_ENABLE_DYNAMIC_RA_START_RATE_MIN,
+                  CFG_ENABLE_DYNAMIC_RA_START_RATE_MAX),
 };
 
 /*
@@ -5083,6 +5091,15 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
    {
       fStatus = FALSE;
       hddLog(LOGE, "Could not pass on WNI_CFG_BURST_MODE_BE_TXOP_VALUE ");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_ENABLE_DYNAMIC_RA_START_RATE,
+               pConfig->enableDynamicRAStartRate,
+               NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+       fStatus = FALSE;
+       hddLog(LOGE, "Could not pass on"
+               "WNI_CFG_ENABLE_DYNAMIC_RA_START_RATE to CCM");
    }
    return fStatus;
 }
