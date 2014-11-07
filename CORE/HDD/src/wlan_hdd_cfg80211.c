@@ -866,43 +866,39 @@ static v_BOOL_t put_wifi_iface_stats(hdd_adapter_t *pAdapter,
 
             pWifiIfaceStat->mgmtRx = pWifiIfaceStat->beaconRx +
                 pWifiIfaceStatTL->mgmtRx;
-            pWifiIfaceStat->mgmtActionRx = pWifiIfaceStatTL->mgmtActionRx;
-            pWifiIfaceStat->mgmtActionTx = pWifiIfaceStatTL->mgmtActionTx;
             pWifiIfaceStat->rssiData = pWifiIfaceStatTL->rssiData;
 
-            vos_mem_copy(
-                  (void *) &pWifiIfaceStat->AccessclassStats[WIFI_AC_VO],
-                  (void *) &pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VO],
-                  sizeof(WLANTL_AccessCategoryStatsType));
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_VO].rxMcast
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VO].rxMcast;
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_VI].rxMcast
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VI].rxMcast;
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_BE].rxMcast
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BE].rxMcast;
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_BK].rxMcast
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BK].rxMcast;
 
-            vos_mem_copy(
-                  (void *) &pWifiIfaceStat->AccessclassStats[WIFI_AC_VI],
-                  (void *) &pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VI],
-                  sizeof(WLANTL_AccessCategoryStatsType));
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_VO].rxMpdu
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VO].rxMpdu;
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_VI].rxMpdu
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VI].rxMpdu;
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_BE].rxMpdu
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BE].rxMpdu;
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_BK].rxMpdu
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BK].rxMpdu;
 
-            vos_mem_copy(
-                  (void *) &pWifiIfaceStat->AccessclassStats[WIFI_AC_BE],
-                  (void *) &pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BE],
-                  sizeof(WLANTL_AccessCategoryStatsType));
-
-            vos_mem_copy(
-                  (void *) &pWifiIfaceStat->AccessclassStats[WIFI_AC_BK],
-                  (void *) &pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BK],
-                  sizeof(WLANTL_AccessCategoryStatsType));
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_VO].rxAmpdu
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VO].rxAmpdu;
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_VI].rxAmpdu
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_VI].rxAmpdu;
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_BE].rxAmpdu
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BE].rxAmpdu;
+            pWifiIfaceStat->AccessclassStats[WIFI_AC_BK].rxAmpdu
+                = pWifiIfaceStatTL->accessCategoryStats[WLANTL_AC_BK].rxAmpdu;
         }
         else
         {
             hddLog(VOS_TRACE_LEVEL_ERROR, FL("Error in getting stats from TL"));
         }
-
-        pWifiIfaceStat->AccessclassStats[WIFI_AC_VO].txMpdu =
-            pAdapter->hdd_stats.hddTxRxStats.txFetchedAC[WLANTL_AC_VO];
-        pWifiIfaceStat->AccessclassStats[WIFI_AC_VI].txMpdu =
-            pAdapter->hdd_stats.hddTxRxStats.txFetchedAC[WLANTL_AC_VI];
-        pWifiIfaceStat->AccessclassStats[WIFI_AC_BE].txMpdu =
-            pAdapter->hdd_stats.hddTxRxStats.txFetchedAC[WLANTL_AC_BE];
-        pWifiIfaceStat->AccessclassStats[WIFI_AC_BK].txMpdu =
-            pAdapter->hdd_stats.hddTxRxStats.txFetchedAC[WLANTL_AC_BK];
 
         pWifiIfaceStat->AccessclassStats[WIFI_AC_VO].txMcast =
             pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_VO];
@@ -1631,6 +1627,7 @@ static int wlan_hdd_cfg80211_ll_stats_set(struct wiphy *wiphy,
     struct net_device *dev = wdev->netdev;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+    hdd_station_ctx_t *pHddStaCtx;
 
     status = wlan_hdd_validate_context(pHddCtx);
     if (0 != status)
@@ -1709,6 +1706,22 @@ static int wlan_hdd_cfg80211_ll_stats_set(struct wiphy *wiphy,
         return -EINVAL;
 
     }
+
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    if (VOS_STATUS_SUCCESS !=
+        WLANTL_ClearInterfaceStats((WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
+        pHddStaCtx->conn_info.staId[0], WIFI_STATS_IFACE))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s:"
+                "WLANTL_ClearInterfaceStats Failed", __func__);
+        return -EINVAL;
+    }
+
+    pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_VO] = 0;
+    pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_VI] = 0;
+    pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_BE] = 0;
+    pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_BK] = 0;
+
     if (eHAL_STATUS_SUCCESS != sme_LLStatsSetReq( pHddCtx->hHal,
                                             &linkLayerStatsSetReq))
     {
@@ -1936,6 +1949,25 @@ static int wlan_hdd_cfg80211_ll_stats_clear(struct wiphy *wiphy,
                                                      &linkLayerStatsClearReq))
     {
         struct sk_buff *temp_skbuff;
+        hdd_station_ctx_t *pHddStaCtx;
+
+        pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+        if (VOS_STATUS_SUCCESS !=
+           WLANTL_ClearInterfaceStats((WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
+           pHddStaCtx->conn_info.staId[0], statsClearReqMask))
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR, "%s:"
+                    "WLANTL_ClearInterfaceStats Failed", __func__);
+            return -EINVAL;
+        }
+        if ((statsClearReqMask & WIFI_STATS_IFACE_AC) ||
+                (statsClearReqMask & WIFI_STATS_IFACE)) {
+            pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_VO] = 0;
+            pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_VI] = 0;
+            pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_BE] = 0;
+            pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_BK] = 0;
+        }
+
         temp_skbuff = cfg80211_vendor_cmd_alloc_reply_skb(wiphy,
                                 2 * sizeof(u32) +
                             NLMSG_HDRLEN);
