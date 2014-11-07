@@ -13176,6 +13176,7 @@ static eHalStatus wlan_hdd_is_pno_allowed(hdd_adapter_t *pAdapter)
           || (WLAN_HDD_P2P_CLIENT == pTempAdapter->device_mode)
           || (WLAN_HDD_P2P_GO == pTempAdapter->device_mode)
           || (WLAN_HDD_SOFTAP == pTempAdapter->device_mode)
+          || (WLAN_HDD_TM_LEVEL_4 == pHddCtx->tmInfo.currentTmLevel)
           )
         {
             return eHAL_STATUS_FAILURE;
