@@ -75,6 +75,7 @@ static u32 mdss_fb_pseudo_palette[16] = {
 };
 
 static struct msm_mdp_interface *mdp_instance;
+static bool g_display_first_frame;
 
 static int mdss_fb_register(struct msm_fb_data_type *mfd);
 static int mdss_fb_open(struct fb_info *info, int user);
@@ -457,18 +458,23 @@ static int interactive_notify(struct notifier_block *this,
 {
 	static bool first_display_on = true;
 	
+	printk(KERN_DEBUG "[PF]%s +\n", __func__);
 	switch (code) {
 		case FB_BLANK_ENTER_NON_INTERACTIVE:
-			if(g_mfd != NULL)
+			if(g_mfd != NULL){
+				g_display_first_frame = false;
 				mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
+			}
 			break;
 
 		case FB_BLANK_ENTER_INTERACTIVE:
 			if(first_display_on && mdss_panel_get_boot_cfg()){
 				first_display_on = false;
 			}else{
-				if(g_mfd != NULL)
+				if(g_mfd != NULL){
+					g_display_first_frame = true;
 					mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
+				}
 			}
 			break;
 
@@ -476,6 +482,7 @@ static int interactive_notify(struct notifier_block *this,
 			break;
 	}
 
+	printk(KERN_DEBUG "[PF]%s -\n", __func__);
 	return 0;
 }
 
@@ -1828,6 +1835,11 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 	mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
 	if (wait_for_finish)
 		mdss_fb_pan_idle(mfd);
+
+	if(ret == 0 && g_display_first_frame == true){
+		printk(KERN_DEBUG "[PF]display first frame output\n");
+		g_display_first_frame = false;
+	}
 	return ret;
 }
 
