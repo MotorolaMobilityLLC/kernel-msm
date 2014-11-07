@@ -604,6 +604,7 @@ static int stop_charging(struct fan5404x_chg *chip)
 	}
 
 	chip->charging = false;
+	chip->chg_done_batt_full = false;
 
 	return 0;
 }
@@ -702,6 +703,7 @@ static enum power_supply_property fan5404x_batt_properties[] = {
 	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
+	POWER_SUPPLY_PROP_TAPER_REACHED,
 	/* Notification from Fuel Gauge */
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 	POWER_SUPPLY_PROP_HEALTH,
@@ -733,7 +735,7 @@ static int fan5404x_get_prop_batt_status(struct fan5404x_chg *chip)
 		return POWER_SUPPLY_STATUS_UNKNOWN;
 	}
 
-	if (stat_reg == STAT_CHARGE_DONE)
+	if (chip->usb_present && chip->chg_done_batt_full)
 		return POWER_SUPPLY_STATUS_FULL;
 
 	rc = fan5404x_read(chip, REG_CONTROL1, &ctrl1);
@@ -879,6 +881,31 @@ static int fan5404x_get_prop_batt_voltage_now(struct fan5404x_chg *chip,
 	}
 
 	return -EINVAL;
+}
+
+static bool fan5404x_get_prop_taper_reached(struct fan5404x_chg *chip)
+{
+	int rc = 0;
+	union power_supply_propval ret = {0, };
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	if (chip->bms_psy) {
+		rc = chip->bms_psy->get_property(chip->bms_psy,
+					 POWER_SUPPLY_PROP_TAPER_REACHED, &ret);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"couldn't read Taper Reached property, rc=%d\n",
+				rc);
+			return false;
+		}
+
+		if (ret.intval)
+			return true;
+	}
+	return false;
 }
 
 static void fan5404x_notify_vbat(enum qpnp_tm_state state, void *ctx)
@@ -1185,6 +1212,7 @@ static int fan5404x_batt_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
+	case POWER_SUPPLY_PROP_TAPER_REACHED:
 		val->intval = fan5404x_bms_get_property(chip, prop);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
@@ -1206,6 +1234,7 @@ static void heartbeat_work(struct work_struct *work)
 	bool poll_status = chip->poll_fast;
 	int batt_soc = fan5404x_get_prop_batt_capacity(chip);
 	int batt_health = fan5404x_get_prop_batt_health(chip);
+	bool taper_reached = fan5404x_get_prop_taper_reached(chip);
 
 	dev_dbg(chip->dev, "HB Pound!\n");
 
@@ -1222,6 +1251,14 @@ static void heartbeat_work(struct work_struct *work)
 	    (batt_health == POWER_SUPPLY_HEALTH_OVERHEAT) ||
 	    (batt_health == POWER_SUPPLY_HEALTH_COLD))
 		fan5404x_check_temp_range(chip);
+
+	if (taper_reached && !chip->chg_done_batt_full) {
+		dev_dbg(chip->dev, "Charge Complete!\n");
+		chip->chg_done_batt_full = true;
+	} else if (chip->chg_done_batt_full && batt_soc < 100) {
+		dev_dbg(chip->dev, "SOC dropped,  Charge Resume!\n");
+		chip->chg_done_batt_full = false;
+	}
 
 	fan5404x_set_chrg_path_temp(chip);
 
@@ -1339,8 +1376,7 @@ static int determine_initial_status(struct fan5404x_chg *chip)
 	if (reg & MONITOR1_NOBAT)
 		chip->batt_present = false;
 
-	if (fan5404x_stat_read(chip) == STAT_CHARGE_DONE)
-		chip->chg_done_batt_full = true;
+	chip->chg_done_batt_full = false;
 
 	if (chip->factory_mode) {
 		if (qpnp_vadc_read(chip->vadc_dev, USBIN, &result))
