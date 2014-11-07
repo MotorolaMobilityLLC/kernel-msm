@@ -201,14 +201,15 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		state = buf[COVER_STATE];
-		if (state > 0)
+		if (buf[COVER_STATE] == STML0XX_HALL_NORTH)
 			state = 1;
+		else
+			state = 0;
 
 		input_report_switch(ps_stml0xx->input_dev, SW_LID, state);
 		input_sync(ps_stml0xx->input_dev);
 
-		dev_dbg(&stml0xx_misc_data->spi->dev,
+		dev_err(&stml0xx_misc_data->spi->dev,
 			"Cover status: %d", state);
 	}
 	if (irq_status & M_HEADSET) {
