@@ -3194,6 +3194,8 @@ static irqreturn_t dwc3_interrupt(int irq, void *_dwc)
 
 	spin_lock(&dwc->lock);
 
+	dwc->irq_cnt++;
+
 	if (dwc->err_evt_seen) {
 		/* controller reset is still pending */
 		spin_unlock(&dwc->lock);
