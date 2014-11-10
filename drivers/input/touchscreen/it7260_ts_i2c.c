@@ -153,6 +153,11 @@ struct ite7260_perfile_data {
 	uint16_t buffer[MAX_BUFFER_SIZE];
 };
 
+enum {
+	TOUCH_UP = 1,
+	TOUCH_DOWN
+};
+
 static int8_t fwUploadResult = SYSFS_RESULT_NOT_DONE;
 static int8_t calibrationWasSuccessful = SYSFS_RESULT_NOT_DONE;
 static bool devicePresent = false;
@@ -163,6 +168,7 @@ static bool hadPalmDown = false;
 static bool isDeviceSleeping = false;
 static bool isDeviceSuspend = false;
 static bool isDriverAvailable = true;
+static bool touchMissed;
 static uint8_t magic_key = MAGIC_KEY_NONE;
 static int ite7260_major = 0;
 static int ite7260_minor = 0;
@@ -175,6 +181,7 @@ static int suspend_touch_down = 0;
 static int suspend_touch_up = 0;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
+static int lastTouch = TOUCH_UP;
 
 #define I2C_RETRY_DELAY			5		/* Waiting for signals [ms] */
 #define I2C_RETRIES				5		/* Number of retries */
@@ -880,7 +887,17 @@ static void readTouchDataPoint_Ambient(void)
 		hadFingerDown = false;
 		suspend_touch_up = getMsTime();
 		
-		if (suspend_touch_up - suspend_touch_down < 1000){
+		if (lastTouch == TOUCH_UP)
+			touchMissed = true;
+		else
+			lastTouch = TOUCH_UP;
+
+		if (touchMissed || suspend_touch_up - suspend_touch_down < 1000) {
+			if (touchMissed) {
+				LOGI("%s: touch down missed, send BTN_TOUCH\n",
+					 __func__);
+				touchMissed = false;
+			}
 			input_report_key(gl_ts->input_dev, BTN_TOUCH, 1);
 			input_sync(gl_ts->input_dev);
 			input_report_key(gl_ts->input_dev, BTN_TOUCH, 0);
@@ -900,6 +917,10 @@ static void readTouchDataPoint_Ambient(void)
 			wake_lock(&touch_lock);
 			isDeviceSuspend = false;
 			suspend_touch_down = getMsTime();
+			if (lastTouch == TOUCH_UP)
+				lastTouch = TOUCH_DOWN;
+			else
+				touchMissed = true;
 			readTouchDataPoint_Ambient();
 		}
 	}
@@ -1021,6 +1042,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	set_bit(KEY_POWER,input_dev->keybit);
 	input_set_abs_params(input_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
 	input_set_abs_params(input_dev, ABS_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
+	touchMissed = false;
 
 	IT7260_wq = create_workqueue("IT7260_wq");
 	if (!IT7260_wq)
