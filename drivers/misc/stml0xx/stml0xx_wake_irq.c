@@ -121,28 +121,29 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	}
 	irq3_status = buf[0];
 
-	/* First, check for error messages */
+	/* First, check for log messages */
 	if (irq_status & M_LOG_MSG) {
-		err = stml0xx_spi_send_read_reg(ERROR_STATUS, buf, ESR_SIZE);
+		err = stml0xx_spi_send_read_reg(LOG_MSG_STATUS, buf,
+			LOG_MSG_SIZE);
 		if (err >= 0) {
-			memcpy(stat_string, buf, ESR_SIZE);
-			stat_string[ESR_SIZE] = 0;
+			memcpy(stat_string, buf, LOG_MSG_SIZE);
+			stat_string[LOG_MSG_SIZE] = 0;
 			dev_err(&stml0xx_misc_data->spi->dev,
-				"STML0XX Error: %s", stat_string);
+				"sensorhub : %s", stat_string);
 		} else
 			dev_err(&stml0xx_misc_data->spi->dev,
-				"Failed to read error message %d", err);
+				"Failed to read log message %d", err);
 	}
 
 	/* Second, check for a reset request */
 	if (irq_status & M_HUB_RESET) {
 		unsigned char status;
 
-		if (strnstr(stat_string, "modality", ESR_SIZE))
+		if (strnstr(stat_string, "modality", LOG_MSG_SIZE))
 			status = 0x01;
-		else if (strnstr(stat_string, "Algo", ESR_SIZE))
+		else if (strnstr(stat_string, "Algo", LOG_MSG_SIZE))
 			status = 0x02;
-		else if (strnstr(stat_string, "Watchdog", ESR_SIZE))
+		else if (strnstr(stat_string, "Watchdog", LOG_MSG_SIZE))
 			status = 0x03;
 		else
 			status = 0x04;
