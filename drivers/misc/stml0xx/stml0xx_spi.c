@@ -523,44 +523,54 @@ static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
 					 unsigned char *reg_data,
 					 int reg_size)
 {
+	int data_offset = 0, data_size;
+	int remaining_data_size = reg_size;
 	unsigned short recv_crc, calc_crc;
 	int ret = 0;
 
-	/* TODO: No support for offset for now */
 	if (!reg_data || reg_size <= 0 ||
-	    reg_size > SPI_MAX_PAYLOAD_LEN) {
+	    reg_size > STML0XX_MAX_REG_LEN) {
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Invalid buffer or buffer size");
 		ret = -EFAULT;
 		goto EXIT;
 	}
 
-	/* Clear buffer */
-	memset(stml0xx_cmdbuff, 0, SPI_MSG_SIZE);
+	while (remaining_data_size > 0) {
+		/* Clear buffer */
+		memset(stml0xx_cmdbuff, 0, SPI_MSG_SIZE);
 
-	/* Populate header */
-	stml0xx_cmdbuff[0] = SPI_BARKER_1;
-	stml0xx_cmdbuff[1] = SPI_BARKER_2;
-	stml0xx_cmdbuff[2] = SPI_MSG_TYPE_READ_REG;
-	stml0xx_cmdbuff[3] = reg_type;
-	stml0xx_cmdbuff[4] = 0;	/* offset */
-	stml0xx_cmdbuff[5] = reg_size;
+		/* Populate header */
+		stml0xx_cmdbuff[0] = SPI_BARKER_1;
+		stml0xx_cmdbuff[1] = SPI_BARKER_2;
+		stml0xx_cmdbuff[2] = SPI_MSG_TYPE_READ_REG;
+		stml0xx_cmdbuff[3] = reg_type;
 
-	/* Swap all bytes */
-	stml0xx_spi_swap_bytes(stml0xx_cmdbuff, SPI_MSG_SIZE - SPI_CRC_LEN);
+		/* Payload data offset */
+		stml0xx_cmdbuff[4] = data_offset;
+		data_size = (remaining_data_size < SPI_MAX_PAYLOAD_LEN) ?
+		    remaining_data_size : SPI_MAX_PAYLOAD_LEN;
+		stml0xx_cmdbuff[5] = data_size;
 
-	/* Append 2-byte CRC (unswapped) */
-	stml0xx_spi_append_crc(stml0xx_cmdbuff, SPI_MSG_SIZE - SPI_CRC_LEN);
+		/* Swap all bytes */
+		stml0xx_spi_swap_bytes(stml0xx_cmdbuff,
+			SPI_MSG_SIZE - SPI_CRC_LEN);
 
-	/* Write read request to SPI */
-	ret =
-	    stml0xx_spi_write_no_reset_no_retries(stml0xx_cmdbuff,
-						  SPI_MSG_SIZE);
+		/* Append 2-byte CRC (unswapped) */
+		stml0xx_spi_append_crc(stml0xx_cmdbuff,
+			SPI_MSG_SIZE - SPI_CRC_LEN);
 
-	if (ret >= 0) {
-		ret =
-		    stml0xx_spi_read_no_reset_no_retries(stml0xx_readbuff,
+		/* Write read request to SPI */
+		ret = stml0xx_spi_write_no_reset_no_retries(stml0xx_cmdbuff,
+							  SPI_MSG_SIZE);
+		if (ret < 0)
+			goto EXIT;
+
+		ret = stml0xx_spi_read_no_reset_no_retries(stml0xx_readbuff,
 							 SPI_MSG_SIZE);
+
+		if (ret < 0)
+			goto EXIT;
 
 		/* Validate CRC */
 		recv_crc = (stml0xx_readbuff[30] << 8) | stml0xx_readbuff[31];
@@ -580,7 +590,9 @@ static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
 				       SPI_MSG_SIZE - SPI_CRC_LEN);
 
 		/* Extract payload */
-		memcpy(reg_data, stml0xx_readbuff, reg_size);
+		memcpy(reg_data + data_offset, stml0xx_readbuff, data_size);
+		remaining_data_size -= data_size;
+		data_offset += data_size;
 	}
 EXIT:
 	return ret;
@@ -601,9 +613,8 @@ int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
 	int reset_retries;
 	int ret = -EIO;
 
-	/* TODO: No support for offset for now */
 	if (!reg_data || reg_size <= 0 ||
-	    reg_size > SPI_MAX_PAYLOAD_LEN) {
+	    reg_size > STML0XX_MAX_REG_LEN) {
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"Invalid buffer or buffer size");
 		ret = -EFAULT;
