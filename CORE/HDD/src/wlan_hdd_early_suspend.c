@@ -930,7 +930,7 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
 
         for (i = 0; i < slot_index; i++)
         {
-            hddLog(VOS_TRACE_LEVEL_ERROR, FL("Disable Slot= %d"), i);
+            hddLog(VOS_TRACE_LEVEL_INFO, FL("Disable Slot= %d"), i);
             offLoadRequest.nsOffloadInfo.slotIdx = i;
             if (eHAL_STATUS_SUCCESS !=
                  sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
@@ -1061,7 +1061,7 @@ VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, int fenable)
    tSirHostOffloadReq  offLoadRequest;
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
-   hddLog(VOS_TRACE_LEVEL_ERROR, FL(" fenable = %d \n"), fenable);
+   hddLog(VOS_TRACE_LEVEL_INFO, FL(" fenable = %d \n"), fenable);
 
    if(fenable)
    {

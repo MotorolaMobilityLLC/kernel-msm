@@ -6086,7 +6086,7 @@ WLANTL_RxFrames
         if ( NULL != pClientSTA)
         {
             tpSirMacMgmtHdr pMacHeader = WDA_GET_RX_MAC_HEADER( pvBDHeader );
-            if( !WDA_IS_RX_BCAST(pvBDHeader) && ( pMacHeader->da[0] & 0x1))
+            if (!IS_BROADCAST_ADD(pMacHeader->da) && IS_MULTICAST_ADD(pMacHeader->da))
             {
                 pClientSTA->interfaceStats.accessCategoryStats[ac].rxMcast++;
             }

@@ -12740,9 +12740,6 @@ static int __wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device 
     hdd_context_t *pHddCtx;
     int status = 0;
 
-    hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: deleting PMKSA for " MAC_ADDRESS_STR,
-           __func__, MAC_ADDR_ARRAY(pmksa->bssid));
-
     /* Validate pAdapter */
     if (NULL == pAdapter)
     {
@@ -12759,6 +12756,9 @@ static int __wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device 
        hddLog(LOGE, FL("pmksa->bssid is NULL"));
        return -EINVAL;
     }
+
+    hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: deleting PMKSA for " MAC_ADDRESS_STR,
+           __func__, MAC_ADDR_ARRAY(pmksa->bssid));
 
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     status = wlan_hdd_validate_context(pHddCtx);

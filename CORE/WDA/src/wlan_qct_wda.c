@@ -9806,7 +9806,8 @@ VOS_STATUS WDA_ProcessHostOffloadReq(tWDA_CbContext *pWDA,
    if(IS_WDI_STATUS_FAILURE(wstatus))
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-              "Failure in host offload REQ WDI API, free all the memory " );
+              "Failure in host offload REQ WDI API, free all the memory %d",
+               wstatus);
       status = CONVERT_WDI2VOS_STATUS(wstatus);
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
       vos_mem_free(pWdaParams->wdaMsgParam);

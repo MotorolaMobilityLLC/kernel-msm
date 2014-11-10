@@ -3291,9 +3291,10 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
         {
             INIT_COMPLETION(pHddCtx->linux_reg_req);
             regulatory_hint(wiphy, country_code);
+            /* Wait for 300ms*/
             wait_result = wait_for_completion_interruptible_timeout(
                                                             &pHddCtx->linux_reg_req,
-                                                            LINUX_REG_WAIT_TIME);
+                                                            msecs_to_jiffies(LINUX_REG_WAIT_TIME));
 
             /* if the country information does not exist with the kernel,
                then the driver callback would not be called */
@@ -3717,7 +3718,11 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     else if (request->initiator == NL80211_REGDOM_SET_BY_USER ||
              request->initiator ==  NL80211_REGDOM_SET_BY_CORE)
     {
-
+        /* Copy the country of kernel, so that we will not send the reg hint
+         * if kernel country and driver country are same during load.
+         */
+        linux_reg_cc[0] = request->alpha2[0];
+        linux_reg_cc[1] = request->alpha2[1];
         /* first lookup the country in the local database */
 
         if (!(pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0] == '0' &&
@@ -3768,8 +3773,6 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
         }
 
         cur_reg_domain = temp_reg_domain;
-        linux_reg_cc[0] = country_code[0];
-        linux_reg_cc[1] = country_code[1];
 
         /* now pass the new country information to sme */
         if (request->alpha2[0] == '0' && request->alpha2[1] == '0')
