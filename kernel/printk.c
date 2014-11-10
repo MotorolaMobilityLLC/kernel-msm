@@ -1082,7 +1082,7 @@ void __init setup_log_buf(int early)
 		free, (free * 100) / __LOG_BUF_LEN);
 }
 
-static bool __read_mostly ignore_loglevel=1;
+static bool __read_mostly ignore_loglevel=0;
 
 static int __init ignore_loglevel_setup(char *str)
 {

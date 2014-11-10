@@ -1637,6 +1637,9 @@ long do_fork(unsigned long clone_flags,
 
 		wake_up_new_task(p);
 
+#ifndef ASUS_USER_BUILD
+		printk(KERN_DEBUG "[ASUS] %s: pid %d has been created and running.\n", p->comm, p->pid);
+#endif
 		/* forking complete and child started to run, tell ptracer */
 		if (unlikely(trace))
 			ptrace_event(trace, nr);
