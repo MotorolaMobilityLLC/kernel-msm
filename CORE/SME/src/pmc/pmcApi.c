@@ -1941,6 +1941,8 @@ eHalStatus pmcStartUapsd (
 eHalStatus pmcStopUapsd (tHalHandle hHal)
 {
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+   tANI_S8 sessionId;
+   tCsrRoamSession *pSession = NULL;
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT    
    WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
@@ -1950,11 +1952,18 @@ eHalStatus pmcStopUapsd (tHalHandle hHal)
 
    WLAN_VOS_DIAG_EVENT_REPORT(&psRequest, EVENT_WLAN_POWERSAVE_GENERIC);
 #endif
-
    pmcLog(pMac, LOG2, "PMC: entering pmcStopUapsd");
+   sessionId = csrGetInfraSessionId(pMac);
+   if (-1 != sessionId)
+   {
+       pSession = CSR_GET_SESSION( pMac, sessionId );
+   }
 
-   /* Clear any buffered command for entering UAPSD */
-   pMac->pmc.uapsdSessionRequired = FALSE;
+
+   if (pSession && pSession->pCurRoamProfile && pSession->pCurRoamProfile->uapsd_mask)
+       pMac->pmc.uapsdSessionRequired = TRUE;
+   else
+       pMac->pmc.uapsdSessionRequired = FALSE;
 
    /* Nothing to be done if we are already out of UAPSD. This can happen if
       some other module (HDD, BT-AMP) requested Full Power.*/

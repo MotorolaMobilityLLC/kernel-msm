@@ -5830,11 +5830,6 @@ WLANTL_RxFrames
         if ( NULL != pClientSTA)
         {
             pClientSTA->interfaceStats.mgmtRx++;
-            if (WLANTL_IS_MGMT_ACTION_FRAME(ucFrmType))
-            {
-                pClientSTA->interfaceStats.mgmtActionRx++;
-
-            }
         }
 #endif
       }

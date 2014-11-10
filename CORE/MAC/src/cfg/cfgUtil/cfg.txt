@@ -2848,10 +2848,10 @@ LIM
 WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED  I    4    19
 V    RW    NP    
 LIM
-0    3    0
+0    4    0
 V    RW    NP    
 LIM
-0    3    0
+0    4    0
 
 *
 * Number of Sounding Dimensions indicates Number
