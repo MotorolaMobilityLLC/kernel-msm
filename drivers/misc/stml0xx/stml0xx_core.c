@@ -75,8 +75,8 @@ unsigned char stml0xx_g_mag_cal[STML0XX_MAG_CAL_SIZE];
 unsigned short stml0xx_g_control_reg_restore;
 bool stml0xx_g_booted;
 
-/* Store error message */
-unsigned char stat_string[ESR_SIZE + 1];
+/* Store log message */
+unsigned char stat_string[LOG_MSG_SIZE + 1];
 
 struct stml0xx_algo_requst_t stml0xx_g_algo_requst[STML0XX_NUM_ALGOS];
 
