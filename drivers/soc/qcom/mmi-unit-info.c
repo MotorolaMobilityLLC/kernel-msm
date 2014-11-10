@@ -23,6 +23,10 @@
 #include <linux/of_platform.h>
 #include <linux/slab.h>
 
+#ifndef CONFIG_ARM64
+#include <asm/mach/arch.h>
+#endif
+
 static u32 prod_id;
 
 #define SERIALNO_MAX_LEN 64
