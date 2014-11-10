@@ -88,6 +88,8 @@ void bi_add_bl_build_sig(char *bld_sig);
 extern unsigned int system_rev;
 extern unsigned int system_serial_low;
 extern unsigned int system_serial_high;
+#else
+#include <asm/system_info.h>
 #endif
 
 #else /* defined(CONFIG_BOOTINFO) */
