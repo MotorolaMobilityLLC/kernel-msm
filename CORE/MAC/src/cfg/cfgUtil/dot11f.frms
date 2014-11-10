@@ -101,6 +101,8 @@ const EID_RRM_MEAS_PILOT_TX_INFO     =  66;
 const EID_WAPI                       =  68;
 const EID_RRM_ENABLED_CAPS           =  70;
 const EID_MULTIPLE_BSSID             =  71;
+const EID_20_40_BSS_COEXISTENCE      =  72;
+const EID_20_40_BSS_INTOLERANT_REPORT=  73;
 const EID_OBSS_SCAN_PARAMETERS       =  74;
 const EID_FT_RIC_DESCRIPTOR          =  75;
 const EID_LINK_IDENTIFIER            = 101;
@@ -2116,6 +2118,25 @@ IE OBSSScanParameters (EID_OBSS_SCAN_PARAMETERS)
     obssScanActivityThreshold, 2;
 }
 
+IE HT2040BSSCoexistence (EID_20_40_BSS_COEXISTENCE)
+{
+     // 20/40 BSS Coexistence Information
+    {
+        infoRequest:             1;
+        fortyMHzIntolerant:      1;
+        twentyMHzBssWidthReq:    1;
+        obssScanExemptionReq:    1;
+        obssScanExemptionGrant:  1;
+        unused:                  3;
+    }
+}
+
+IE HT2040BSSIntolerantReport (EID_20_40_BSS_INTOLERANT_REPORT)
+{
+     operatingClass, 1;
+     channelList[0..50];
+}
+
 const EID_RRM_NBR_RPT_TSF              =    1;
 const EID_RRM_NBR_CD_COUNTRY           =    2;
 const EID_RRM_NBR_MSMT_PILOT_TX_INFO   =   66;
@@ -3343,7 +3364,7 @@ FRAME Beacon                              // C.f. Sec. 7.2.3.1
     OPTIE  ExtCap;
     OPTIE  OperatingMode;
     OPTIE  WiderBWChanSwitchAnn;
-	OPTIE  OBSSScanParameters;
+    OPTIE  OBSSScanParameters;
 } // End frame Beacon.
 
 // Ok, here's  the story on  Beacon1 & Beacon2.   We presumably beacon  a lot
@@ -3423,6 +3444,7 @@ FRAME Beacon2
     OPTIE  ExtCap;
     OPTIE  OperatingMode;
     OPTIE  WiderBWChanSwitchAnn;
+    OPTIE  OBSSScanParameters;
 }
 
 // This frame is just Beacon with its Fixed Fields stripped out.  It's handy
@@ -3479,7 +3501,7 @@ FRAME BeaconIEs
     OPTIE  ExtCap;
     OPTIE  OperatingMode;
     OPTIE  WiderBWChanSwitchAnn;
-	OPTIE  OBSSScanParameters;
+    OPTIE  OBSSScanParameters;
 
 } // End frame BeaconIEs.
 
@@ -3684,7 +3706,7 @@ FRAME ProbeResponse                       // 7.2.3.9
     OPTIE  VHTOperation;
     OPTIE  VHTExtBssLoad;
     OPTIE  ExtCap;
-	OPTIE  OBSSScanParameters;
+    OPTIE  OBSSScanParameters;
 } // End frame ProbeResponse.
 
 FRAME Authentication                      // 7.2.3.10
@@ -4225,6 +4247,14 @@ FRAME VHTGidManagementActionFrame
     FF     Action;
     FF     VhtMembershipStatusArray;
     FF     VhtUserPositionArray;
+}
+
+FRAME HT2040BSSCoexistenceManagementActionFrame
+{
+    FF     Category;
+    FF     Action;
+    MANDIE HT2040BSSCoexistence;
+    MANDIE HT2040BSSIntolerantReport;
 }
 
 // Local Variables:
