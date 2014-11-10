@@ -3012,6 +3012,32 @@ v_SIZE_t vos_pkt_get_num_of_rx_raw_pkts(void)
 #endif
 }
 
+/**
+  @brief vos_pkt_get_num_of_rx_raw_pkts() - Get the number of times
+         skb allocation failed while replenishing packets
+
+
+  @param
+       NONE
+  @return
+       v_SIZE_t the number of times packet allocation failed
+
+*/
+v_SIZE_t vos_pkt_get_num_of_rx_pkt_alloc_failures(void)
+{
+   v_SIZE_t failCount;
+
+   mutex_lock(&gpVosPacketContext->rxReplenishListLock);
+   mutex_lock(&gpVosPacketContext->rxRawFreeListLock);
+
+   failCount = gpVosPacketContext->rxReplenishFailCount;
+
+   mutex_unlock(&gpVosPacketContext->rxReplenishListLock);
+   mutex_unlock(&gpVosPacketContext->rxRawFreeListLock);
+
+   return failCount;
+}
+
 v_U8_t vos_pkt_get_proto_type
 (
    void  *pskb,
