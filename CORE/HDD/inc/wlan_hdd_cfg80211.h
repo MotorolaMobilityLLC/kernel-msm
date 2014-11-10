@@ -116,7 +116,10 @@ typedef struct {
 enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,
     QCA_NL80211_VENDOR_SUBCMD_TEST = 1,
-    /* subcmds 2..9 not yet allocated */
+
+    /* subcmds 2..8 not yet allocated */
+    QCA_NL80211_VENDOR_SUBCMD_ROAMING = 9,
+
     QCA_NL80211_VENDOR_SUBCMD_AVOID_FREQUENCY = 10,
     QCA_NL80211_VENDOR_SUBCMD_DFS_CAPABILITY =  11,
     QCA_NL80211_VENDOR_SUBCMD_NAN =  12,
@@ -159,6 +162,8 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_MAC_OUI = 39,
     /* Set nodfs_flag */
     QCA_NL80211_VENDOR_SUBCMD_NO_DFS_FLAG = 40,
+    /* Get Concurrency Matrix */
+    QCA_NL80211_VENDOR_SUBCMD_GET_CONCURRENCY_MATRIX = 42
 };
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -192,16 +197,22 @@ enum qca_nl80211_vendor_subcmds_index {
 enum qca_wlan_vendor_attr
 {
     QCA_WLAN_VENDOR_ATTR_INVALID = 0,
-    /* used by QCOM_NL80211_VENDOR_SUBCMD_DFS_CAPABILITY */
+    /* used by QCA_NL80211_VENDOR_SUBCMD_DFS_CAPABILITY */
     QCA_WLAN_VENDOR_ATTR_DFS     = 1,
-    /* used by QCOM_NL80211_VENDOR_SUBCMD_NAN */
+    /* used by QCA_NL80211_VENDOR_SUBCMD_NAN */
     QCA_WLAN_VENDOR_ATTR_NAN     = 2,
-
+    /* used by QCA_NL80211_VENDOR_SUBCMD_STATS_EXT */
+    QCA_WLAN_VENDOR_ATTR_STATS_EXT     = 3,
+    /* used by QCA_NL80211_VENDOR_SUBCMD_STATS_EXT */
+    QCA_WLAN_VENDOR_ATTR_IFINDEX     = 4,
+    /* used by QCA_NL80211_VENDOR_SUBCMD_ROAMING, u32 with values defined
+     * by enum qca_roaming_policy. */
+    QCA_WLAN_VENDOR_ATTR_ROAMING_POLICY = 5,
+    QCA_WLAN_VENDOR_ATTR_MAC_ADDR = 6,
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_AFTER_LAST,
-    QCA_WLAN_VENDOR_ATTR_MAX       = QCA_WLAN_VENDOR_ATTR_AFTER_LAST - 1,
+    QCA_WLAN_VENDOR_ATTR_MAX = QCA_WLAN_VENDOR_ATTR_AFTER_LAST - 1,
 };
-
 
 /*EXT TDLS*/
 enum qca_wlan_vendor_attr_tdls_enable
@@ -805,6 +816,25 @@ enum qca_wlan_vendor_attr_get_supported_features {
     QCA_WLAN_VENDOR_ATTR_FEATURE_SET_AFTER_LAST,
     QCA_WLAN_VENDOR_ATTR_FEATURE_SET_MAX =
         QCA_WLAN_VENDOR_ATTR_FEATURE_SET_AFTER_LAST - 1,
+};
+
+/* NL attributes for data used by
+ * QCA_NL80211_VENDOR_SUBCMD_GET_CONCURRENCY_MATRIX sub command.
+ */
+enum qca_wlan_vendor_attr_get_concurrency_matrix {
+    QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_INVALID = 0,
+    /* Unsigned 32-bit value */
+    QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_CONFIG_PARAM_SET_SIZE_MAX = 1,
+    /* Unsigned 32-bit value */
+    QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_RESULTS_SET_SIZE = 2,
+    /* An array of SET_SIZE x Unsigned 32bit values representing
+     * concurrency combinations.
+     */
+    QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_RESULTS_SET = 3,
+    /* keep last */
+    QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_AFTER_LAST,
+    QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_MAX =
+        QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_AFTER_LAST - 1,
 };
 
 /* Feature defines */
