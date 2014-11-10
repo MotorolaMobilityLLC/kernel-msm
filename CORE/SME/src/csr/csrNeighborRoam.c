@@ -3011,7 +3011,7 @@ void csrForcedInitialRoamTo5GHTimerCallback(void *context)
     if (eCSR_NEIGHBOR_ROAM_STATE_CONNECTED != pNeighborRoamInfo->neighborRoamState)
     {
         smsLog(pMac, LOGE, FL("Received in not CONNECTED state. Ignore it"));
-        status = eHAL_STATUS_FAILURE;
+        return;
     }
 
     //it may possible user reconnected / DUT roamed to other band ap btw
@@ -3020,7 +3020,7 @@ void csrForcedInitialRoamTo5GHTimerCallback(void *context)
     {
         smsLog(pMac, LOGE,
                FL("DUT is already connected to 5GH ap, so no need to trigger forced roam."));
-        status = eHAL_STATUS_FAILURE;
+        return;
     }
 
     //keep track this scan & roam is due to Forced initial roam to 5GHz
@@ -3033,7 +3033,7 @@ void csrForcedInitialRoamTo5GHTimerCallback(void *context)
     if (eHAL_STATUS_SUCCESS != status)
     {
         smsLog(pMac, LOGE, FL("csrRoamOffloadScan stop scan cmd got failed status = %d"), status);
-        status = eHAL_STATUS_FAILURE;
+        return;
     }
 
     // MUKUL TODO: whatever we are doing should we need to move

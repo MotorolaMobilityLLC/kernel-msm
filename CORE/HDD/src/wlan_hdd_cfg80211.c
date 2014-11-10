@@ -9466,13 +9466,6 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
         goto allow_suspend;
     }
 
-    /*
-     * setting up 0, just in case.
-     */
-    req->n_ssids = 0;
-    req->n_channels = 0;
-    req->ie = 0;
-
     pAdapter->request = NULL;
     /* Scan is no longer pending */
     pScanInfo->mScanPending = VOS_FALSE;

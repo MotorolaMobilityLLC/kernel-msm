@@ -3449,11 +3449,16 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
        else if (strncmp(command, "FASTREASSOC", 11) == 0)
        {
            tANI_U8 *value = command;
+           tANI_U8 channel = 0;
            tSirMacAddr targetApBssid;
            tANI_U8 trigger = 0;
            eHalStatus status = eHAL_STATUS_SUCCESS;
+           tHalHandle hHal;
+           v_U32_t roamId = 0;
+           tCsrRoamModifyProfileFields modProfileFields;
            hdd_station_ctx_t *pHddStaCtx = NULL;
            pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+           hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
 
            /* if not associated, no need to proceed with reassoc */
            if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
@@ -3463,7 +3468,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
                goto exit;
            }
 
-           status = hdd_parse_reassoc_command_data(value, targetApBssid, &trigger);
+           status = hdd_parse_reassoc_command_data(value, targetApBssid, &channel);
            if (eHAL_STATUS_SUCCESS != status)
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -3473,16 +3478,20 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            }
 
            /* if the target bssid is same as currently associated AP,
-              then no need to proceed with reassoc */
+              issue reassoc to same AP */
            if (VOS_TRUE == vos_mem_compare(targetApBssid,
                                            pHddStaCtx->conn_info.bssId, sizeof(tSirMacAddr)))
            {
                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                          "%s:11r Reassoc BSSID is same as currently associated AP bssid",
                          __func__);
-               ret = -EINVAL;
-               goto exit;
+               sme_GetModifyProfileFields(hHal, pAdapter->sessionId,
+                                       &modProfileFields);
+               sme_RoamReassoc(hHal, pAdapter->sessionId,
+                            NULL, modProfileFields, &roamId, 1);
+               return 0;
            }
+           trigger = eSME_ROAM_TRIGGER_SCAN;
 
            /* Proceed with scan/roam */
            smeIssueFastRoamNeighborAPEvent(WLAN_HDD_GET_HAL_CTX(pAdapter),
