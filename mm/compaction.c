@@ -14,7 +14,10 @@
 #include <linux/backing-dev.h>
 #include <linux/sysctl.h>
 #include <linux/sysfs.h>
-#include <linux/earlysuspend.h>
+#include <linux/fb.h>
+#include <linux/kthread.h>
+#include <linux/freezer.h>
+#include <linux/module.h>
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -1068,34 +1071,77 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 	return rc;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static struct work_struct compactnodes_w;
-static int compact_nodes(void);
-static void compactnodes_work(struct work_struct *w)
-{
-	/* No point in being gun shy here since compact_zone()
-	 * will check suitability of compaction run per zone.
-	 * This takes about 150ms for 2GB memory configuration,
-	 * but the benefit is a better memory situation on wakeup.
-	 * The user isn't doing anything useful anyway, and the
-	 * screen is off so there's no perceived user impact.
-         */
-	compact_nodes();
+static struct compact_thread {
+	wait_queue_head_t waitqueue;
+	struct task_struct *task;
+	struct timer_list timer;
+	atomic_t should_run;
+} compact_thread;
 
+static uint compact_interval_sec = 1800;
+module_param_named(interval, compact_interval_sec, uint,
+			S_IRUGO | S_IWUSR | S_IWGRP);
+
+static void compact_nodes(void);
+
+static int compact_thread_should_run(void)
+{
+	return atomic_read(&compact_thread.should_run);
 }
 
-
-static void compact_nodes_suspend(struct early_suspend *s)
+static void compact_thread_wakeup(void)
 {
-	schedule_work(&compactnodes_w);
+	atomic_set(&compact_thread.should_run, 1);
+	wake_up(&compact_thread.waitqueue);
 }
 
-static struct early_suspend early_suspend_compaction_desc = {
-	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
-	.suspend = compact_nodes_suspend,
-	.resume = NULL,
+static void compact_thread_timer_func(unsigned long data)
+{
+	compact_thread_wakeup();
+	mod_timer(&compact_thread.timer,
+			jiffies + (HZ * compact_interval_sec));
+}
+
+static int compact_thread_func(void *data)
+{
+	set_freezable();
+	for ( ; ; ) {
+		wait_event_freezable(compact_thread.waitqueue,
+				compact_thread_should_run());
+		if (compact_thread_should_run()) {
+			compact_nodes();
+			atomic_set(&compact_thread.should_run, 0);
+		}
+	}
+	return 0;
+}
+
+static int compact_notifier(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = (struct fb_event *)data;
+
+	if ((event == FB_EVENT_BLANK) && evdata && evdata->data) {
+		int blank = *(int *)evdata->data;
+
+		if (blank == FB_BLANK_POWERDOWN) {
+			del_timer_sync(&compact_thread.timer);
+			compact_thread_wakeup();
+			return NOTIFY_OK;
+		} else if (blank == FB_BLANK_UNBLANK) {
+			if (!timer_pending(&compact_thread.timer))
+				mod_timer(&compact_thread.timer, jiffies +
+						(HZ * compact_interval_sec));
+			return NOTIFY_OK;
+		}
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block compact_notifier_block = {
+	.notifier_call = compact_notifier,
+	.priority = -1,
 };
-#endif
 
 /* Compact all zones within a node */
 static int __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
@@ -1217,13 +1263,20 @@ void compaction_unregister_node(struct node *node)
 }
 #endif /* CONFIG_SYSFS && CONFIG_NUMA */
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
 static int  __init mem_compaction_init(void)
 {
-	INIT_WORK(&compactnodes_w, compactnodes_work);
-	register_early_suspend(&early_suspend_compaction_desc);
+	struct sched_param param = { .sched_priority = 0 };
+
+	init_timer_deferrable(&compact_thread.timer);
+	compact_thread.timer.function = compact_thread_timer_func;
+	init_waitqueue_head(&compact_thread.waitqueue);
+	compact_thread.task = kthread_run(compact_thread_func, NULL,
+				"%s", "kcompact");
+	if (!IS_ERR(compact_thread.task))
+		sched_setscheduler(compact_thread.task, SCHED_IDLE, &param);
+
+	fb_register_client(&compact_notifier_block);
 	return 0;
 }
 late_initcall(mem_compaction_init);
-#endif /* CONFIG_HAS_EARLYSUSPEND */
 #endif /* CONFIG_COMPACTION */
