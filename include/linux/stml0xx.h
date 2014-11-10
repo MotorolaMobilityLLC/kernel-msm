@@ -336,7 +336,7 @@ struct stm_response {
 /* STML0XX memory map */
 #define ID                              0x00
 #define REV_ID                          0x01
-#define ERROR_STATUS                    0x02
+#define LOG_MSG_STATUS                  0x02
 #define LOWPOWER_REG                    0x03
 #define INIT_COMPLETE_REG               0x04
 
@@ -460,7 +460,7 @@ struct stm_response {
 
 #define STML0XX_MAX_REG_LEN         255
 
-#define ESR_SIZE			24
+#define LOG_MSG_SIZE			24
 
 #define STML0XX_RESET_DELAY		50
 
