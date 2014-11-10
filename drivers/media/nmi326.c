@@ -336,6 +336,9 @@ static const struct file_operations isdbt_fops = {
 	.read		= isdbt_read,
 	.write		= isdbt_write,
 	.unlocked_ioctl	= isdbt_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl	= isdbt_ioctl,
+#endif
 	.poll		= isdbt_poll,
 };
 
