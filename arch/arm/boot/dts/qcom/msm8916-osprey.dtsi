@@ -36,10 +36,6 @@
 	};
 };
 
-&spi_4 {
-	status = "okay";
-};
-
 &spi_5 {
 	/delete-node/ nmi326@0;
 };
