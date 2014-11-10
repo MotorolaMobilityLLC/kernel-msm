@@ -2399,10 +2399,16 @@ static const char *chg_to_string(enum usb_chg_type chg_type)
 #ifdef CONFIG_CHARGER_ASUS
 static void asus_usb_detect_work(struct work_struct *w)
 {
+	struct msm_otg *motg = the_msm_otg;
+	struct usb_otg *otg = motg->phy.otg;
 	cancel_delayed_work_sync(&asus_chg_work);
 	g_charger_mode = ASUS_CHG_SRC_USB;
 	asus_chg_set_chg_mode(ASUS_CHG_SRC_USB);
 	printk("[USB] set_chg_mode: USB\n");
+	if (!getSoftconnect()) {
+		g_usb_boot = MSM_OTG_USB_BOOT_INIT;
+		usb_gadget_disconnect(otg->gadget);
+	}
 }
 static void asus_chg_detect_work(struct work_struct *w)
 {
