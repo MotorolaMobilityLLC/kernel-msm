@@ -16,6 +16,10 @@
 #include <linux/sysfs.h>
 #include <linux/balloon_compaction.h>
 #include <linux/page-isolation.h>
+#include <linux/fb.h>
+#include <linux/kthread.h>
+#include <linux/freezer.h>
+#include <linux/module.h>
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -1135,6 +1139,77 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 	return rc;
 }
 
+static struct compact_thread {
+	wait_queue_head_t waitqueue;
+	struct task_struct *task;
+	struct timer_list timer;
+	atomic_t should_run;
+} compact_thread;
+
+static uint compact_interval_sec = 1800;
+module_param_named(interval, compact_interval_sec, uint,
+			S_IRUGO | S_IWUSR | S_IWGRP);
+
+static void compact_nodes(void);
+
+static int compact_thread_should_run(void)
+{
+	return atomic_read(&compact_thread.should_run);
+}
+
+static void compact_thread_wakeup(void)
+{
+	atomic_set(&compact_thread.should_run, 1);
+	wake_up(&compact_thread.waitqueue);
+}
+
+static void compact_thread_timer_func(unsigned long data)
+{
+	compact_thread_wakeup();
+	mod_timer(&compact_thread.timer,
+			jiffies + (HZ * compact_interval_sec));
+}
+
+static int compact_thread_func(void *data)
+{
+	set_freezable();
+	for (;;) {
+		wait_event_freezable(compact_thread.waitqueue,
+				compact_thread_should_run());
+		if (compact_thread_should_run()) {
+			compact_nodes();
+			atomic_set(&compact_thread.should_run, 0);
+		}
+	}
+	return 0;
+}
+
+static int compact_notifier(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = (struct fb_event *)data;
+
+	if ((event == FB_EVENT_BLANK) && evdata && evdata->data) {
+		int blank = *(int *)evdata->data;
+
+		if (blank == FB_BLANK_POWERDOWN) {
+			del_timer_sync(&compact_thread.timer);
+			compact_thread_wakeup();
+			return NOTIFY_OK;
+		} else if (blank == FB_BLANK_UNBLANK) {
+			if (!timer_pending(&compact_thread.timer))
+				mod_timer(&compact_thread.timer, jiffies +
+						(HZ * compact_interval_sec));
+			return NOTIFY_OK;
+		}
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block compact_notifier_block = {
+	.notifier_call = compact_notifier,
+	.priority = -1,
+};
 
 /* Compact all zones within a node */
 static void __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
@@ -1254,4 +1329,20 @@ void compaction_unregister_node(struct node *node)
 }
 #endif /* CONFIG_SYSFS && CONFIG_NUMA */
 
+static int  __init mem_compaction_init(void)
+{
+	struct sched_param param = { .sched_priority = 0 };
+
+	init_timer_deferrable(&compact_thread.timer);
+	compact_thread.timer.function = compact_thread_timer_func;
+	init_waitqueue_head(&compact_thread.waitqueue);
+	compact_thread.task = kthread_run(compact_thread_func, NULL,
+				"%s", "kcompact");
+	if (!IS_ERR(compact_thread.task))
+		sched_setscheduler(compact_thread.task, SCHED_IDLE, &param);
+
+	fb_register_client(&compact_notifier_block);
+	return 0;
+}
+late_initcall(mem_compaction_init);
 #endif /* CONFIG_COMPACTION */
