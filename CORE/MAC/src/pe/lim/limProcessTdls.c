@@ -98,6 +98,7 @@ If there is other IOT issue because of this bandage, define NO_PAD...
 #define TDLS_DEBUG_LOG_LEVEL VOS_TRACE_LEVEL_INFO
 #endif
 
+
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 /* forword declarations */
 static tSirRetStatus limTdlsDisAddSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
@@ -1114,6 +1115,12 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
         PopulateDot11fTdlsOffchannelParams( pMac, psessionEntry,
                                             &tdlsDisRsp.SuppChannels,
                                             &tdlsDisRsp.SuppOperatingClasses);
+
+    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled )
+    {
+        tdlsDisRsp.HT2040BSSCoexistence.present = 1;
+        tdlsDisRsp.HT2040BSSCoexistence.infoRequest = 1;
+    }
     /* 
      * now we pack it.  First, how much space are we going to need?
      */
@@ -1402,6 +1409,13 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
         PopulateDot11fTdlsOffchannelParams( pMac, psessionEntry,
                                             &tdlsSetupReq.SuppChannels,
                                             &tdlsSetupReq.SuppOperatingClasses);
+
+    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled )
+    {
+        tdlsSetupReq.HT2040BSSCoexistence.present = 1;
+        tdlsSetupReq.HT2040BSSCoexistence.infoRequest = 1;
+    }
+
     /*
      * now we pack it.  First, how much space are we going to need?
      */
@@ -1824,6 +1838,11 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
 
     tdlsSetupRsp.Status.status = setupStatus ;
 
+    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled )
+    {
+        tdlsSetupRsp.HT2040BSSCoexistence.present = 1;
+        tdlsSetupRsp.HT2040BSSCoexistence.infoRequest = 1;
+    }
     /* 
      * now we pack it.  First, how much space are we going to need?
      */
@@ -2008,6 +2027,12 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
     else if (CHECK_BIT(peerCapability, TDLS_PEER_HT_CAP)) /* Check peer is HT capable */
     {
        PopulateDot11fHTInfo( pMac, &tdlsSetupCnf.HTInfo, psessionEntry );
+    }
+
+    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled )
+    {
+        tdlsSetupCnf.HT2040BSSCoexistence.present = 1;
+        tdlsSetupCnf.HT2040BSSCoexistence.infoRequest = 1;
     }
 
     /* 
