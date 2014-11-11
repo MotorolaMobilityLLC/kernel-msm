@@ -3145,6 +3145,19 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 	return -EIO;
 }
 
+/*
+ * Check the physical card detect switch.  Returns 1 if present, 0 if not
+ * present, or -ENODEV if the platform doesn't support a physical detect switch.
+ */
+static int mmc_card_detect_status(struct mmc_host *host)
+{
+	if (host->ops->get_cd)
+		return host->ops->get_cd(host) ? 1 : 0;
+	if (host->hotplug.get_cd)
+		return host->hotplug.get_cd(host) ? 1 : 0;
+	return -ENODEV;
+}
+
 int _mmc_detect_card_removed(struct mmc_host *host)
 {
 	int ret;
@@ -3159,8 +3172,7 @@ int _mmc_detect_card_removed(struct mmc_host *host)
 	if (ret) {
 		mmc_card_set_removed(host->card);
 		pr_debug("%s: card remove detected\n", mmc_hostname(host));
-	} else if ((host->ops->get_cd && !host->ops->get_cd(host)) ||
-		   (host->hotplug.get_cd && !host->hotplug.get_cd(host))) {
+	} else if (mmc_card_detect_status(host) == 0) {
 		/*
 		 * The switch detected card removal before the card was
 		 * completely out.  Delay detection a bit to debounce.
@@ -3271,8 +3283,7 @@ void mmc_rescan(struct work_struct *work)
 	 */
 	mmc_bus_put(host);
 
-	if ((host->ops->get_cd && host->ops->get_cd(host) == 0) ||
-	    (host->hotplug.get_cd && host->hotplug.get_cd(host) == 0))
+	if (mmc_card_detect_status(host) == 0)
 		goto out;
 
 	mmc_rpm_hold(host, &host->class_dev);
@@ -3681,7 +3692,7 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		/* Guard against races with the detect wakeup source. */
 		if (!(host->caps & MMC_CAP_NEEDS_POLL) &&
 		    work_busy(&host->detect.work)) {
-			pr_err("%s: card detection in progress\n",
+			pr_debug("%s: card detection in progress\n",
 				mmc_hostname(host));
 			spin_lock_irqsave(&host->lock, flags);
 			host->rescan_disable = 0;
@@ -3714,7 +3725,20 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		}
 		host->rescan_disable = 0;
 		spin_unlock_irqrestore(&host->lock, flags);
-		mmc_detect_change(host, 0);
+		/*
+		 * If the card is removable and was previously detected and/or
+		 * is currently detected, then rescan the bus.  This handles
+		 * the case where the card was swapped while we were suspended
+		 * while allowing us to skip the rescan for nonremovable cards
+		 * and empty slots.
+		 */
+		if (!(host->caps & MMC_CAP_NONREMOVABLE) && !host->card_bad &&
+		    (mmc_card_detect_status(host) != 0 ||
+					(host->bus_ops && !host->bus_dead))) {
+			pr_debug("%s: card may have been swapped while suspended\n",
+				mmc_hostname(host));
+			mmc_detect_change(host, 0);
+		}
 		break;
 
 	default:
