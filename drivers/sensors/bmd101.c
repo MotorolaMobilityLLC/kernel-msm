@@ -147,20 +147,6 @@ static void bmd101_hw_enable(int enable) {
     		}
 		msleep(100);
 
-              rc = gpio_request(BMD101_RST_GPIO, "BMD101_RST");
-              if (rc) {
-	            pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_RST_GPIO);
-	            goto gpio_rst_fail;
-	       }
-              rc = gpio_request(BMD101_CS_GPIO, "BMD101_CS");
-              if (rc) {
-	            pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_CS_GPIO);
-	            goto gpio_cs_fail;
-              }
-
-              msm_gpiomux_write(BMD101_CS_GPIO, GPIOMUX_ACTIVE, &gpio_act_cfg, &gpio_sus_cfg);
-              msm_gpiomux_write(BMD101_RST_GPIO, GPIOMUX_ACTIVE, &gpio_act_cfg, &gpio_sus_cfg);
-
 		gpio_direction_output(BMD101_CS_GPIO, 0);
 		usleep(300);
 		gpio_direction_output(BMD101_CS_GPIO, 1);
@@ -176,17 +162,15 @@ static void bmd101_hw_enable(int enable) {
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled hig, sensor hw(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->hw_enabled);
 	}
 	else if (!enable && sensor_data->hw_enabled) {
-              msm_gpiomux_write(BMD101_CS_GPIO, GPIOMUX_ACTIVE, &gpio_sus_cfg, &gpio_act_cfg);
-              msm_gpiomux_write(BMD101_RST_GPIO, GPIOMUX_ACTIVE, &gpio_sus_cfg, &gpio_act_cfg);
-
+		gpio_direction_output(BMD101_RST_GPIO, 0);
+		msleep(100);
+		gpio_direction_output(BMD101_CS_GPIO, 0);
+		msleep(100);
 		rc = regulator_disable(pm8921_l28);
     		if (rc) {
 			pr_err("%s: regulator_enable of 8921_l28 failed(%d)\n", __func__, rc);
 			goto reg_put_LDO28;
     		}
-
-		gpio_free(BMD101_RST_GPIO);
-		gpio_free(BMD101_CS_GPIO);
 
 		sensor_data->hw_enabled = 0;
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: gpio %d and %d pulled low, sensor hw(%d)\n", __func__, BMD101_CS_GPIO, BMD101_RST_GPIO, sensor_data->hw_enabled);
@@ -198,10 +182,6 @@ static void bmd101_hw_enable(int enable) {
 
 	return;
 
-	gpio_rst_fail:
-	gpio_free(BMD101_RST_GPIO);
-	gpio_cs_fail:
-	gpio_free(BMD101_CS_GPIO);
 	reg_put_LDO28:
 	regulator_put(pm8921_l28);
 
@@ -549,8 +529,8 @@ static int bmd101_probe(struct platform_device *pdev)
 	sensor_data = kzalloc(sizeof(struct bmd101_data),GFP_KERNEL);
 	if(!sensor_data)
 	{
-		printk(KERN_ERR "%s: failed to allocate bmd101_data\n", __func__);
-		return -ENOMEM;
+		pr_err("[BMD101] %s: failed to allocate bmd101_data\n", __func__);
+		goto allocate_data_fail;
 	}
 	sensor_data->esd = 0;
 	sensor_data->bpm = 0;
@@ -568,7 +548,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	
 	ret = sensors_classdev_register(&pdev->dev, &sensor_data->cdev);
 	if (ret) {
-		pr_err("[BMD101] class device create failed: %d\n", ret);
+		pr_err("[BMD101] %s: class device create failed: %d\n", __func__, ret);
 		goto classdev_register_fail;
 	}
 
@@ -578,7 +558,7 @@ static int bmd101_probe(struct platform_device *pdev)
 
 	ret = bmd101_input_init();
 	if (ret < 0) {
-		pr_err("[BMD101] init input device failed: %d\n", ret);
+		pr_err("[BMD101] %s: init input device failed: %d\n", __func__, ret);
 		goto input_init_fail;
 	}
 	
@@ -588,21 +568,39 @@ static int bmd101_probe(struct platform_device *pdev)
 
 	pm8921_l28 = regulator_get(&pdev->dev, bmd101_regulator);
 	if (IS_ERR(pm8921_l28)) {
-        	pr_err("%s: regulator get of 8921_l28 failed (%ld)\n", __func__, PTR_ERR(pm8921_l28));
+        	pr_err("[bmd101] %s: regulator get of 8921_l28 failed (%ld)\n", __func__, PTR_ERR(pm8921_l28));
 		ret = PTR_ERR(pm8921_l28);
 		goto regulator_get_fail;
 	}
 	
     	ret = regulator_set_voltage(pm8921_l28, 2850000, 2850000);
     	if (ret) {
-		pr_err("%s: regulator_set_voltage of 8921_l28 failed(%d)\n", __func__, ret);
+		pr_err("[bmd101] %s: regulator_set_voltage of 8921_l28 failed(%d)\n", __func__, ret);
 		goto reg_put_LDO28;
     	}
+
+    	ret = gpio_request(BMD101_RST_GPIO, "BMD101_RST");
+    	if (ret) {
+		pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_RST_GPIO);
+		goto gpio_rst_fail;
+    	}
+    	ret = gpio_request(BMD101_CS_GPIO, "BMD101_CS");
+    	if (ret) {
+		pr_err("[bmd101] %s: Failed to request gpio %d\n", __func__, BMD101_CS_GPIO);
+		goto gpio_cs_fail;
+    	}
+
+    	msm_gpiomux_write(BMD101_CS_GPIO, GPIOMUX_ACTIVE, &gpio_act_cfg, &gpio_sus_cfg);
+    	msm_gpiomux_write(BMD101_RST_GPIO, GPIOMUX_ACTIVE, &gpio_act_cfg, &gpio_sus_cfg);
 
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: ---\n", __func__);
 
 	return 0;
 
+	gpio_cs_fail:
+	gpio_free(BMD101_CS_GPIO);
+	gpio_rst_fail:
+	gpio_free(BMD101_RST_GPIO);
 	reg_put_LDO28:
 	regulator_put(pm8921_l28);
 	regulator_get_fail:
@@ -610,6 +608,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	input_init_fail:
 	classdev_register_fail:
 	kfree(sensor_data);
+	allocate_data_fail:
 
 	return ret;
 
@@ -621,6 +620,8 @@ static int bmd101_remove(struct platform_device *pdev)
 	#ifdef CONFIG_ASUS_UTILITY
 	unregister_mode_notifier(&display_mode_notifier);
 	#endif
+	gpio_free(BMD101_RST_GPIO);
+	gpio_free(BMD101_CS_GPIO);
 
 	return 0;
 }
