@@ -408,6 +408,8 @@ struct mdss_panel_info {
 	bool is_split_display;
 	char supplier[8];
 	u32 bl_shutdown_delay;
+	u32 bl_on_defer_delay;
+	struct hrtimer bl_on_defer_hrtimer;
 
 	bool is_prim_panel;
 
