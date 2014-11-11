@@ -84,6 +84,10 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
 
+#ifndef ASUS_USER_BUILD
+int print_fork = 0;
+#endif
+
 /*
  * Protected counters by write_lock_irq(&tasklist_lock)
  */
@@ -1638,7 +1642,8 @@ long do_fork(unsigned long clone_flags,
 		wake_up_new_task(p);
 
 #ifndef ASUS_USER_BUILD
-		printk(KERN_DEBUG "[ASUS] %s: pid %d has been created and running.\n", p->comm, p->pid);
+		if(print_fork)
+			printk(KERN_DEBUG "[ASUS] %s: pid %d has been created and running.\n", p->comm, p->pid);
 #endif
 		/* forking complete and child started to run, tell ptracer */
 		if (unlikely(trace))
