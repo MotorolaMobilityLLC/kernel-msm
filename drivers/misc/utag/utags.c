@@ -1003,7 +1003,9 @@ static int __init config_init(void)
 		return -EIO;
 	}
 
+#ifdef MODULE
 	build_utags_directory();
+#endif
 
 	return 0;
 }
