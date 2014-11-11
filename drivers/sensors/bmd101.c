@@ -58,6 +58,7 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 
 #define BMD101_filter_array          10
 #define BMD101_setup_time		5
+#define BMD101_timeout_delay_default            300
 #define SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT		-1
 #define SENSOR_HEART_RATE_CONFIDENCE_UNRELIABLE		0
 #define SENSOR_HEART_RATE_CONFIDENCE_LOW			1
@@ -334,7 +335,7 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		if (!sensor_data->hw_enabled)
 			bmd101_hw_enable(1);
 
-		sensor_data->timeout_delay = 300;
+		sensor_data->timeout_delay = BMD101_timeout_delay_default;
 		sensor_data->cdev.enabled = 1;
 	}
 	else if (!enable && sensor_data->cdev.enabled) {
@@ -346,7 +347,7 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		sensor_data->cdev.enabled = 0;
 		sensor_data->status = 0;
 		sensor_data->count = 0;
-		sensor_data->timeout_delay = 300;
+		sensor_data->timeout_delay = BMD101_timeout_delay_default;
 
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bmd101_enable(%d)\n", __func__, sensor_data->cdev.enabled);
 	}
@@ -397,6 +398,7 @@ static DEVICE_ATTR(status, S_IWUSR | S_IRUGO, sensors_status_show, sensors_statu
 //ASUS_BSP --- Maggie_Lee "Add ATD interface"
 
 //ASUS_BSP +++ Maggie_Lee "Add ESD interface"
+#ifndef ASUS_USER_BUILD
 static ssize_t bmd101_show_esd(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	sensor_debug(DEBUG_VERBOSE, "[bmd101] ESD = %d\n",sensor_data->esd);
@@ -416,6 +418,7 @@ static ssize_t bmd101_store_esd(struct device *dev, struct device_attribute *att
 	return size;
 }
 static DEVICE_ATTR(esd, S_IWUSR | S_IRUGO, bmd101_show_esd, bmd101_store_esd);
+#endif
 //ASUS_BSP --- Maggie_Lee "Add ESD interface"
 
 static int bmd101_show_bpm (struct device *dev, struct device_attribute *attr, char *buf)
@@ -439,6 +442,7 @@ static ssize_t bmd101_store_bpm(struct device *dev, struct device_attribute *att
 }
 static DEVICE_ATTR(bpm, S_IWUSR | S_IRUGO, bmd101_show_bpm, bmd101_store_bpm);
 
+#ifndef ASUS_USER_BUILD
 static int bmd101_show_hw_enable (struct device *dev, struct device_attribute *attr, char *buf)
 {
 	sensor_debug(DEBUG_VERBOSE, "[bmd101] sensor hw_enabled = %d\n",sensor_data->hw_enabled);
@@ -459,6 +463,7 @@ static ssize_t bmd101_store_hw_enable(struct device *dev, struct device_attribut
 	return size;
 }
 static DEVICE_ATTR(hw_enable, S_IWUSR | S_IRUGO, bmd101_show_hw_enable, bmd101_store_hw_enable);
+#endif
 
 static struct attribute *bmd101_attributes[] = {
 	&dev_attr_status.attr,			//atd interface
@@ -551,7 +556,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	sensor_data->bpm = 0;
 	sensor_data->accuracy = 0;
 	sensor_data->hw_enabled = 0;
-	sensor_data->timeout_delay = 300;
+	sensor_data->timeout_delay = BMD101_timeout_delay_default;
 	sensor_data->cdev = bmd101_cdev;
 	sensor_data->cdev.enabled = 0;
 	sensor_data->cdev.sensors_enable = bmd101_enable_set;
