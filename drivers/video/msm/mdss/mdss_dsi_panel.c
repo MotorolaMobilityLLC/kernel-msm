@@ -23,6 +23,8 @@
 #include <linux/err.h>
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
+#include <linux/jiffies.h>
+#include <linux/ktime.h>
 
 
 #include "mdss_dsi.h"
@@ -48,6 +50,42 @@ static char rc_range_max_qp[] = {4, 4, 5, 6, 7, 7, 7, 8, 9, 10, 11, 12,
 	13, 13, 15};
 static char rc_range_bpg_offset[] = {2, 0, 0, -2, -4, -6, -8, -8, -8, -10, -10,
 	-12, -12, -12, -12};
+
+static DECLARE_COMPLETION(bl_on_delay_completion);
+static enum hrtimer_restart mdss_dsi_panel_bl_on_defer_timer_expire(
+	struct hrtimer *timer)
+{
+	complete_all(&bl_on_delay_completion);
+	return HRTIMER_NORESTART;
+}
+
+static void mdss_dsi_panel_bl_on_defer_start(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	ktime_t delay_time;
+	struct mdss_panel_info *pinfo;
+
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo->bl_on_defer_delay) {
+		delay_time = ktime_set(0, pinfo->bl_on_defer_delay * 1000000);
+		hrtimer_cancel(&pinfo->bl_on_defer_hrtimer);
+		INIT_COMPLETION(bl_on_delay_completion);
+		hrtimer_start(&pinfo->bl_on_defer_hrtimer,
+			delay_time,
+			HRTIMER_MODE_REL);
+	}
+}
+
+static void mdss_dsi_panel_bl_on_defer_wait(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	struct mdss_panel_info *pinfo;
+
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo->bl_on_defer_delay &&
+		!pinfo->cont_splash_enabled) {
+		wait_for_completion_timeout(&bl_on_delay_completion,
+			msecs_to_jiffies(pinfo->bl_on_defer_delay) + 1);
+	}
+}
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -779,6 +817,8 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 
 	if ((bl_level < pdata->panel_info.bl_min) && (bl_level != 0))
 		bl_level = pdata->panel_info.bl_min;
+
+	mdss_dsi_panel_bl_on_defer_wait(ctrl_pdata);
 
 	switch (ctrl_pdata->bklt_ctrl) {
 	case BL_WLED:
@@ -2290,6 +2330,15 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->bl_max = (!rc ? tmp : 255);
 	ctrl_pdata->bklt_max = pinfo->bl_max;
 
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-on-defer-delay", &tmp);
+	pinfo->bl_on_defer_delay = (!rc ? tmp : 0);
+	if (pinfo->bl_on_defer_delay) {
+		hrtimer_init(&pinfo->bl_on_defer_hrtimer,
+			CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+		pinfo->bl_on_defer_hrtimer.function =
+			&mdss_dsi_panel_bl_on_defer_timer_expire;
+	}
+
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-interleave-mode", &tmp);
 	pinfo->mipi.interleave_mode = (!rc ? tmp : 0);
 
@@ -2694,6 +2743,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->panel_data.set_param = mdss_dsi_panel_set_param;
+	ctrl_pdata->bl_on_defer = mdss_dsi_panel_bl_on_defer_start;
 
 	return 0;
 }
