@@ -15,7 +15,6 @@
 #include "apq8084-shamu-camera-sensor.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "dsi-panel-mot-smd-596-QHD-cmd.dtsi"
-#include "dsi-panel-mot-smd-598-1080p-cmd.dtsi"
 
 / {
 	model = "Motorola APQ 8084 Shamu";
@@ -406,10 +405,6 @@
 			qcom,supply-post-off-sleep = <0>;
 		};
 	};
-};
-
-&mot_smd_598_1080p_cmd_v0 {
-	qcom,cont-splash-enabled;
 };
 
 &mot_smd_596_QHD_0_cmd_v0 {
