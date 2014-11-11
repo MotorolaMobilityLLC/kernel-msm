@@ -180,17 +180,14 @@
 };
 
 &pm8916_l6 {
-	regulator-always-on;
 	regulator-boot-on;
 };
 
 &tps65132_pos {
-	regulator-always-on;
 	regulator-boot-on;
 };
 
 &tps65132_neg {
-	regulator-always-on;
 	regulator-boot-on;
 };
 
@@ -236,4 +233,8 @@
 			qcom,supply-post-off-sleep = <0>;
 		};
 	};
+};
+
+&mot_inx_500_720p_vid_v0 {
+	qcom,cont-splash-enabled;
 };
