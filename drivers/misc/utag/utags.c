@@ -30,6 +30,7 @@
 #include <linux/uaccess.h>
 #include <linux/unistd.h>
 #include <linux/slab.h>
+#include <linux/vmalloc.h>
 
 #define MAX_UTAG_SIZE 1024
 #define MAX_UTAG_NAME 32
@@ -425,7 +426,7 @@ static void *freeze_tags(size_t block_size, const struct utag *tags,
 		goto out;
 	}
 
-	ptr = buf = kmalloc(frozen_size, GFP_KERNEL);
+	ptr = buf = vmalloc(frozen_size);
 	if (!buf) {
 		err = UTAG_ERR_OUT_OF_MEMORY;
 		goto out;
@@ -508,7 +509,7 @@ static struct utag *load_utags(const char *partition_name)
 
 	block_size = i_size_read(inode->i_bdev->bd_inode);
 
-	data = kmalloc(block_size, GFP_KERNEL);
+	data = vmalloc(block_size);
 	if (!data) {
 		pr_err("%s ERR file (%s) out of memory size %zu\n", __func__,
 		       partition_name, block_size);
@@ -525,7 +526,7 @@ static struct utag *load_utags(const char *partition_name)
 	head = thaw_tags(block_size, data, NULL);
 
  free_data:
-	kfree(data);
+	vfree(data);
 
  close_block:
 	filp_close(filp, NULL);
@@ -606,7 +607,7 @@ flash_partition(const char *partition_name, const struct utag *tags)
 		       utags_blkdev, written);
 		status = UTAG_ERR_PARTITION_WRITE_ERR;
 	}
-	kfree(datap);
+	vfree(datap);
 
  close_block:
 	filp_close(filep, NULL);
