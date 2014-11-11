@@ -18,6 +18,7 @@
 #include <linux/stringify.h>
 #include <linux/types.h>
 #include <linux/debugfs.h>
+#include <linux/hrtimer.h>
 
 /* panel id type */
 struct panel_id {
@@ -606,6 +607,8 @@ struct mdss_panel_info {
 	bool dynamic_switch_pending;
 	bool is_lpm_mode;
 	bool is_split_display;
+	u32 bl_on_defer_delay;
+	struct hrtimer bl_on_defer_hrtimer;
 
 	bool is_prim_panel;
 	bool is_pluggable;
