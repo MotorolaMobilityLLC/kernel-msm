@@ -164,7 +164,8 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	struct dsi_cmd_desc cmds[2];
 	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
 	unsigned char new_level = level;
-	bool do_idle = false;
+	bool idle_on = false;
+	bool idle_off = false;
 
 	pr_debug("%s: level=%d\n", __func__, level);
 
@@ -184,7 +185,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 			memcpy(&cmds[cmdreq.cmds_cnt], &backlight_on_cmd,
 					sizeof(struct dsi_cmd_desc));
 			cmdreq.cmds_cnt++;
-			do_idle = true;
+			idle_off = true;
 		}
 
 		/* set backlight level */
@@ -206,9 +207,12 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 				sizeof(struct dsi_cmd_desc));
 			cmdreq.cmds_cnt++;
 			ctrl->bklt_off = true;
-			do_idle = true;
+			idle_on = true;
 		}
 	}
+
+	if (idle_off)
+		__mdss_dsi_panel_set_idle_mode(ctrl, 0);
 
 	if (cmdreq.cmds_cnt) {
 		cmdreq.cmds = cmds;
@@ -219,8 +223,8 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 		mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 	}
 
-	if (do_idle)
-		__mdss_dsi_panel_set_idle_mode(ctrl, !new_level);
+	if (idle_on)
+		__mdss_dsi_panel_set_idle_mode(ctrl, 1);
 }
 
 static void idle_on_work(struct work_struct *work)
