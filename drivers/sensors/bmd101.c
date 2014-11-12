@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <asm/gpio.h>
 #include <asm/mach-types.h>
+#include <linux/proc_fs.h>
 #include <linux/mutex.h>
 #include <linux/tty.h>
 #include <linux/sysfs.h>
@@ -92,6 +93,7 @@ struct bmd101_data {
 	int accuracy;
 	int timeout_delay;
 	int low_power_mode;
+       unsigned int wellness_on;
 	struct mutex lock;
 	struct delayed_work timeout_work;
 	struct delayed_work suspend_resume_work;
@@ -452,8 +454,34 @@ static struct attribute *bmd101_attributes[] = {
 	&dev_attr_esd.attr,				//esd interface
 	&dev_attr_hw_enable.attr,		//sensor hw enable/disable interface
 	#endif
-
 	NULL
+};
+
+static ssize_t bmd101_show_wellness(struct file *file, char __user *buf, size_t length, loff_t *offset)
+{
+	sensor_data->wellness_on++;
+       return 0;
+}
+
+static ssize_t bmd101_store_wellness(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
+{
+	char command[10];
+	unsigned long val;
+
+	if (count > 10)
+		count = 10;
+	if (copy_from_user(command, buf, count))
+		return -EFAULT;;
+	if ((strict_strtoul(command, 10, &val) < 0) ||(val > 1))
+		return -EINVAL;
+	sensor_data->wellness_on = val;
+
+	return count;
+}
+
+static const struct file_operations proc_bmd101_operations = {
+	.read = bmd101_show_wellness,
+	.write = bmd101_store_wellness,
 };
 
 static const struct attribute_group bmd101_attr_group = {
@@ -536,6 +564,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	sensor_data->bpm = 0;
 	sensor_data->accuracy = 0;
 	sensor_data->hw_enabled = 0;
+	sensor_data->wellness_on = 0;
 	sensor_data->timeout_delay = BMD101_timeout_delay_default;
 	sensor_data->cdev = bmd101_cdev;
 	sensor_data->cdev.enabled = 0;
@@ -555,6 +584,8 @@ static int bmd101_probe(struct platform_device *pdev)
 	ret = sysfs_create_group(&pdev->dev.kobj, &bmd101_attr_group);
 	if (ret)
 		goto classdev_register_fail;
+
+	proc_create("wellness", S_IALLUGO, NULL, &proc_bmd101_operations);
 
 	ret = bmd101_input_init();
 	if (ret < 0) {
