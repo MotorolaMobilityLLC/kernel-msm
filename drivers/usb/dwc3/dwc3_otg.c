@@ -591,6 +591,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 					dwc3_otg_start_peripheral(&dotg->otg,
 									1);
 					phy->state = OTG_STATE_B_PERIPHERAL;
+					dotg->falsesdp_retry_count = 0;
 					mod_timer(&dotg->chg_check_timer,
 						CHG_RECHECK_DELAY);
 					work = 1;
@@ -669,6 +670,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				!test_bit(ID, &dotg->inputs)) {
 			dev_dbg(phy->dev, "!id || !bsv\n");
 			del_timer_sync(&dotg->chg_check_timer);
+			dotg->falsesdp_retry_count = 0;
 			clear_bit(B_FALSE_SDP, &dotg->inputs);
 			dwc3_otg_start_peripheral(&dotg->otg, 0);
 			phy->state = OTG_STATE_B_IDLE;
@@ -769,7 +771,13 @@ static void dwc3_otg_chg_check_timer_func(unsigned long data)
 		queue_delayed_work(system_nrt_wq, &dotg->sm_work, 0);
 		return;
 	}
-	mod_timer(&dotg->chg_check_timer, CHG_RECHECK_DELAY);
+	if (dotg->falsesdp_retry_count <  max_chgr_retry_count)
+		dotg->falsesdp_retry_count++;
+
+	if (dotg->falsesdp_retry_count == max_chgr_retry_count)
+		dwc3_otg_set_power(phy, DWC3_IDEV_CHG_MIN);
+	else
+		mod_timer(&dotg->chg_check_timer, CHG_RECHECK_DELAY);
 }
 
 /**
