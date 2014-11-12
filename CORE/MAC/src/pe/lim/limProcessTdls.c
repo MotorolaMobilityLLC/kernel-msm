@@ -1116,7 +1116,8 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
                                             &tdlsDisRsp.SuppChannels,
                                             &tdlsDisRsp.SuppOperatingClasses);
 
-    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled )
+    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled &&
+         ( pMac->roam.configParam.bandCapability != eCSR_BAND_24) )
     {
         tdlsDisRsp.HT2040BSSCoexistence.present = 1;
         tdlsDisRsp.HT2040BSSCoexistence.infoRequest = 1;
@@ -1410,7 +1411,8 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
                                             &tdlsSetupReq.SuppChannels,
                                             &tdlsSetupReq.SuppOperatingClasses);
 
-    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled )
+    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled &&
+         ( pMac->roam.configParam.bandCapability != eCSR_BAND_24))
     {
         tdlsSetupReq.HT2040BSSCoexistence.present = 1;
         tdlsSetupReq.HT2040BSSCoexistence.infoRequest = 1;
@@ -1838,7 +1840,8 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
 
     tdlsSetupRsp.Status.status = setupStatus ;
 
-    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled )
+    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled &&
+         ( pMac->roam.configParam.bandCapability != eCSR_BAND_24))
     {
         tdlsSetupRsp.HT2040BSSCoexistence.present = 1;
         tdlsSetupRsp.HT2040BSSCoexistence.infoRequest = 1;
@@ -2029,7 +2032,8 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
        PopulateDot11fHTInfo( pMac, &tdlsSetupCnf.HTInfo, psessionEntry );
     }
 
-    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled )
+    if ( 1 == pMac->lim.gLimTDLSOffChannelEnabled &&
+         ( pMac->roam.configParam.bandCapability != eCSR_BAND_24))
     {
         tdlsSetupCnf.HT2040BSSCoexistence.present = 1;
         tdlsSetupCnf.HT2040BSSCoexistence.infoRequest = 1;
