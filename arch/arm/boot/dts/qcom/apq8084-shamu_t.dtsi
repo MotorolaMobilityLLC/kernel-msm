@@ -306,6 +306,7 @@
 };
 
 &mdss_dsi0 {
+	mmi,mipi-d0-sel = <&msmgpio 14 0>;
 	qcom,dsi-pref-prim-pan = <&mot_smd_596_QHD_0_cmd_v0>;
 	qcom,platform-reset-gpio = <&msmgpio 86 0>;
 	qcom,platform-te-gpio = <&msmgpio 12 0>;
@@ -407,12 +408,20 @@
 
 &mot_smd_596_QHD_0_cmd_v0 {
 	qcom,cont-splash-enabled;
+	mmi,partial-mode-enabled;
+	mmi,quickdraw-enabled;
+	qcom,partial-update-enabled;
 	qcom,dcs-cmd-by-left;
+	qcom,partial-update-roi-merge;
 };
 
 &mot_smd_596_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
+	mmi,partial-mode-enabled;
+	mmi,quickdraw-enabled;
+	qcom,partial-update-enabled;
 	qcom,dcs-cmd-by-left;
+	qcom,partial-update-roi-merge;
 };
 
 &i2c_1 {
