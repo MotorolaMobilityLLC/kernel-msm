@@ -64,6 +64,7 @@ struct dwc3_otg {
 	struct completion	dwc3_xcvr_vbus_init;
 	int			charger_retry_count;
 	int			vbus_retry_count;
+	int                     falsesdp_retry_count;
 	struct timer_list	chg_check_timer;
 };
 
