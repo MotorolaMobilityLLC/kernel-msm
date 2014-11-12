@@ -144,6 +144,7 @@ struct IT7260_ts_data {
 	struct i2c_client *client;
 	struct input_dev *input_dev;
 	struct delayed_work afterpalm_work;
+	struct delayed_work touchidle_on_work;
 };
 
 struct ite7260_perfile_data {
@@ -450,21 +451,16 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 static void chipLowPowerMode(bool low)
 {
 	int allow_irq_wake = !(isDeviceSleeping);
-	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
 	uint8_t dummy;
 
 	if (devicePresent) {
 		LOGI("low power %s\n", low ? "enter" : "exit");
 
 		if (low) {
-			if (allow_irq_wake){
-				smp_wmb();
-				enable_irq_wake(gl_ts->client->irq);
-			}
 			isDeviceSleeping = true;
 			isDeviceSuspend = true;
 			wake_unlock(&touch_lock);
-			i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
+			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
 			if (!allow_irq_wake){
 				smp_wmb();
@@ -779,6 +775,18 @@ static void waitNotifyEvt(struct work_struct *work) {
 	}
 }
 
+static void touchIdleOnEvt(struct work_struct *work) {
+	int allow_irq_wake = !(isDeviceSleeping);
+	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
+
+	if (allow_irq_wake){
+		smp_wmb();
+		enable_irq_wake(gl_ts->client->irq);
+	}
+	i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
+}
+
+
 static void sendPalmEvt(void)
 {
 	magic_key = MAGIC_KEY_PALM;
@@ -1049,6 +1057,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_check_functionality_failed;
 	
 	INIT_DELAYED_WORK(&gl_ts->afterpalm_work, waitNotifyEvt);
+	INIT_DELAYED_WORK(&gl_ts->touchidle_on_work, touchIdleOnEvt);
 
 	if (input_register_device(input_dev)) {
 		LOGE("failed to register input device\n");
@@ -1253,8 +1262,13 @@ static int IT7260_ts_resume(struct i2c_client *i2cdev)
 
 static int IT7260_ts_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 {
+	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
 	isDeviceSuspend = true;
 	isDriverAvailable = false;
+	
+	cancel_delayed_work(&gl_ts->touchidle_on_work);
+	enable_irq_wake(gl_ts->client->irq);
+	i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
     return 0;
 }
 
