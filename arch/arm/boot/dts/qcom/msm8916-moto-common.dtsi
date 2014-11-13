@@ -174,6 +174,7 @@
 		qcom,mode = <4>;      /* Analog Input */
 		qcom,ain-route = <1>; /* QPNP_PIN_AIN_AMUX_CH6 */
 		qcom,master-en = <1>; /* Enable MPP */
+		qcom,src-sel = <0>;   /* QPNP_PIN_SEL_FUNC_CONSTANT */
 	};
 
 	mpp@a200 { /* MPP 3 */
@@ -237,9 +238,11 @@
 
 &usb_otg {
 	qcom,hsusb-otg-mode = <3>;
+	qcom,usbin-vadc = <&pm8916_vadc>;
 	qcom,usbid-gpio = <&msm_gpio 91 0>;
-	pinctrl-names = "default";
+	pinctrl-names = "default", "usbid-off";
 	pinctrl-0 = <&usbid_default>;
+	pinctrl-1 = <&usbid_off>;
 	vbus_otg-supply = <&fan54046>;
 	qcom,hsusb-otg-factory-phy-init-seq =
 		<0x00 0x80 0x29 0x81 0x36 0x82 0x3C 0x83 0xffffffff>;
@@ -378,6 +381,10 @@
 
         usb-id-pin {
                 qcom,pins = <&gp 91>;
+		usbid_off: usbid_off{
+			drive-strength = <8>;
+			bias-disable;
+		};
         };
 
 	spi0_mot_active {
