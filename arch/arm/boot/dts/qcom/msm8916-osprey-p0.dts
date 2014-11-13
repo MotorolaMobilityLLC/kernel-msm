@@ -23,3 +23,7 @@
 		status = "ok";
 	};
 };
+
+&usb_otg {
+	/delete-node/ qcom,usbin-vadc;
+};
