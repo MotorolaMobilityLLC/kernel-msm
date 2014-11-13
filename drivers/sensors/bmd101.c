@@ -325,7 +325,8 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 			printk("[bmd101] timeout cancelled.\n");
 			cancel_delayed_work(&sensor_data->timeout_work);
 		}
-			
+
+		sensor_data->wellness_on = 0;
 		sensor_data->cdev.enabled = 0;
 		sensor_data->status = 0;
 		sensor_data->count = 0;
@@ -457,36 +458,24 @@ static struct attribute *bmd101_attributes[] = {
 	NULL
 };
 
-static ssize_t bmd101_show_wellness(struct file *file, char __user *buf, size_t length, loff_t *offset)
+static int bmd101_proc_show(struct seq_file *m, void *v)
 {
-	char command[10];
-	int len = 0;
 	sensor_data->wellness_on++;
-	len = snprintf(command, sizeof(command), "%d\n", sensor_data->wellness_on);
+	seq_printf(m, "%d\n", sensor_data->wellness_on);
 	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: wellness(%d)\n", __func__, sensor_data->wellness_on);
-       return copy_to_user(buf, &command, sizeof(command)) ? -EFAULT : 0;
+
+	return 0;
 }
 
-static ssize_t bmd101_store_wellness(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
+static int bmd101_proc_open(struct inode *inode, struct file *file)
 {
-	char command[10];
-	unsigned long val;
-
-	if (count > 10)
-		count = 10;
-	if (copy_from_user(command, buf, count))
-		return -EFAULT;;
-	if ((strict_strtoul(command, 10, &val) < 0) ||(val > 1))
-		return -EINVAL;
-	sensor_data->wellness_on = val;
-	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: wellness(%d)\n", __func__, sensor_data->wellness_on);
-
-	return count;
+	return single_open(file, bmd101_proc_show, NULL);
 }
 
 static const struct file_operations proc_bmd101_operations = {
-	.read = bmd101_show_wellness,
-	.write = bmd101_store_wellness,
+	.open		= bmd101_proc_open,
+	.read		= seq_read,
+	.release	= single_release,
 };
 
 static const struct attribute_group bmd101_attr_group = {
@@ -590,7 +579,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	if (ret)
 		goto classdev_register_fail;
 
-	proc_create("wellness", S_IALLUGO, NULL, &proc_bmd101_operations);
+	proc_create("wellness", 0, NULL, &proc_bmd101_operations);
 
 	ret = bmd101_input_init();
 	if (ret < 0) {
