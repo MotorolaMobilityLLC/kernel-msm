@@ -22335,9 +22335,10 @@ WDI_ResponseTimerCB
     {
       if(wpalIsSsrPanicOnFailure())
           wpalDevicePanic();
+    } else {
+       /* if this timer fires, it means Riva did not receive the FIQ */
+       wpalTimerStart(&pWDICtx->ssrTimer, WDI_SSR_TIMEOUT);
     }
-    /* if this timer fires, it means Riva did not receive the FIQ */
-    wpalTimerStart(&pWDICtx->ssrTimer, WDI_SSR_TIMEOUT);
 #else
     WDI_DetectedDeviceError(pWDICtx, WDI_ERR_BASIC_OP_FAILURE);
     wpalWlanReload();
