@@ -1220,23 +1220,15 @@ if (limPopulateMatchingRateSet(pMac,
                  * Received Re/Association Request from
                  * STA when UPASD is not supported.
                  */
-                limLog( pMac, LOGE, FL( "AP do not support UPASD "
-                                      "REASSOC Failed" ));
-                /* During wlan fuzz tests for softAP when mal-formed assoc req is
-                 * sent to AP due to delSTA is not done in firmnware UMAC is
-                 * stuck in some bad state.if we set this flag delsta will happen
-                 * and UMAC will recover*/
-                if (updateContext)
-                {
-                    pStaDs->mlmStaContext.updateContext = 1;
-                }
-                limRejectAssociation(pMac, pHdr->sa,
-                                     subType, true, authType, peerIdx, true,
-                                     (tSirResultCodes) eSIR_MAC_WME_REFUSED_STATUS, psessionEntry);
+               limLog( pMac, LOGE, FL( "AP do not support UAPSD so reply "
+                                       "to STA accordingly" ));
+               /* update UAPSD and send it to LIM to add STA */
+               pStaDs->qos.capability.qosInfo.acbe_uapsd = 0;
+               pStaDs->qos.capability.qosInfo.acbk_uapsd = 0;
+               pStaDs->qos.capability.qosInfo.acvo_uapsd = 0;
+               pStaDs->qos.capability.qosInfo.acvi_uapsd = 0;
+               pStaDs->qos.capability.qosInfo.maxSpLen =   0;
 
-
-                pAssocReq = psessionEntry->parsedAssocReq[pStaDs->assocId];
-                goto error;
             }
             else
             {
