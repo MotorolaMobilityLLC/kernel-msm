@@ -279,6 +279,8 @@ typedef enum
   /* Detected a fatal error issue SSR */
   WLANTL_TX_FATAL_ERROR = 7,
 
+  WLANTL_TX_FW_DEBUG = 8,
+
   WLANTL_TX_MAX
 }WLANTL_TxSignalsType;
 

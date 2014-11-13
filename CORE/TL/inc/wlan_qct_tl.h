@@ -591,6 +591,13 @@ typedef tSap_SoftapStats WLANTL_TRANSFER_STA_TYPE;
 #define WLANTL_HS_NUM_CLIENT         2
 #define WLANTL_SINGLE_CLNT_THRESHOLD 4
 
+typedef enum
+{
+  WLANTL_DEBUG_TX_SNAPSHOT = 1<<0,
+
+  WLANTL_DEBUG_FW_CLEANUP = 1<<1,
+}WLANTL_DebugFlags;
+
 /*----------------------------------------------------------------------------
  *   TL callback types
  *--------------------------------------------------------------------------*/
@@ -3156,7 +3163,7 @@ WLANTL_TxThreadDebugHandler
 v_VOID_t
 WLANTL_TLDebugMessage
 (
-  v_BOOL_t displaySnapshot
+  v_U32_t debugFlags
 );
 
 /*==========================================================================

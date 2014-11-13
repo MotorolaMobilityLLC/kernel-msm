@@ -1956,7 +1956,7 @@ static __iw_display_data_path_snapshot(struct net_device *dev,
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     hddLog(LOGE, "%s: called for SAP",__func__);
     hdd_wmm_tx_snapshot(pHostapdAdapter);
-    WLANTL_TLDebugMessage(VOS_TRUE);
+    WLANTL_TLDebugMessage(WLANTL_DEBUG_TX_SNAPSHOT);
     return 0;
 }
 

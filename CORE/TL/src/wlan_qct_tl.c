@@ -7112,17 +7112,30 @@ WLANTL_FatalErrorHandler
 v_VOID_t
 WLANTL_TLDebugMessage
 (
- v_BOOL_t   displaySnapshot
+ v_U32_t debugFlags
 )
 {
    vos_msg_t vosMsg;
    VOS_STATUS status;
 
-   if(displaySnapshot)
+   if(debugFlags & WLANTL_DEBUG_TX_SNAPSHOT)
    {
         vosMsg.reserved = 0;
         vosMsg.bodyptr  = NULL;
         vosMsg.type     = WLANTL_TX_SNAPSHOT;
+
+        status = vos_tx_mq_serialize( VOS_MODULE_ID_TL, &vosMsg);
+        if(status != VOS_STATUS_SUCCESS)
+        {
+            TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR, "TX Msg Posting Failed with status: %d",status));
+            return;
+        }
+   }
+   if (debugFlags & WLANTL_DEBUG_FW_CLEANUP)
+   {
+        vosMsg.reserved = 0;
+        vosMsg.bodyptr  = NULL;
+        vosMsg.type     = WLANTL_TX_FW_DEBUG;
 
         status = vos_tx_mq_serialize( VOS_MODULE_ID_TL, &vosMsg);
         if(status != VOS_STATUS_SUCCESS)
@@ -9253,6 +9266,10 @@ WLANTL_TxProcessMsg
 
   case WLANTL_TX_FATAL_ERROR:
     WLANTL_FatalErrorHandler(pvosGCtx);
+    break;
+
+  case WLANTL_TX_FW_DEBUG:
+    vos_fwDumpReq(274, 0, 0, 0, 0);
     break;
 
   default:
