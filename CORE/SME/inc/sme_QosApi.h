@@ -367,6 +367,21 @@ v_BOOL_t sme_QosIsTSInfoAckPolicyValid(tpAniSirGlobal pMac,
     sme_QosWmmTspecInfo * pQoSInfo,
     v_U8_t sessionId);
 
+/*--------------------------------------------------------------------------
+  \brief sme_QosTspecActive() - The SME QoS API exposed to HDD to
+  check no of active Tspecs
+
+  \param pMac - The handle returned by macOpen.
+  \param ac - Determines type of Access Category
+  \param sessionId - sessionId returned by sme_OpenSession.
+
+  \return VOS_TRUE -When there is no error with pSession
+
+  \sa
+  --------------------------------------------------------------------------*/
+v_BOOL_t sme_QosTspecActive(tpAniSirGlobal pMac,
+    WLANTL_ACEnumType ac, v_U8_t sessionId, v_U8_t *pActiveTspec);
+
 
 /*--------------------------------------------------------------------------
   \brief sme_QosUpdateHandOff() - Function which can be called to update

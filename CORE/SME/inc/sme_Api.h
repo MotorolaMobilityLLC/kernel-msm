@@ -83,6 +83,10 @@
 
 //Macro to disable split scan
 #define SME_DISABLE_SPLIT_SCAN   255
+
+//Macro to indicate invalid no of tspecs
+#define INVALID_TSPEC 100
+
 /*-------------------------------------------------------------------------- 
   Type declarations
   ------------------------------------------------------------------------*/
