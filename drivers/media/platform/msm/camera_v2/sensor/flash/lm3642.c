@@ -81,12 +81,41 @@ static struct platform_driver msm_flash_lm3642_platform_driver = {
 	},
 };
 
+static bool lm3642_active;
+
+static int lm3642_msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
+{
+	int32_t rc = 0;
+
+	rc = msm_flash_led_init(fctrl);
+	if (rc < 0)
+		lm3642_active = false;
+	else
+		lm3642_active = true;
+
+	return rc;
+}
+
+static int lm3642_msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
+{
+	int32_t rc = 0;
+
+	if (lm3642_active) {
+		rc = msm_flash_led_release(fctrl);
+		lm3642_active = false;
+	} else {
+		pr_err("%s Redundant call, hence ignoring\n", __func__);
+	}
+
+	return rc;
+}
+
 static int lm3642_notify_sys(struct notifier_block *this, unsigned long code,
 				void *unused)
 {
 	if (code == SYS_DOWN || code == SYS_HALT || code ==  SYS_POWER_OFF) {
 		msm_flash_led_off(&fctrl);
-		msm_flash_led_release(&fctrl);
+		lm3642_msm_flash_led_release(&fctrl);
 	}
 	return 0;
 }
@@ -216,8 +245,8 @@ static struct msm_led_flash_reg_t lm3642_regs = {
 static struct msm_flash_fn_t lm3642_func_tbl = {
 	.flash_get_subdev_id = msm_led_i2c_trigger_get_subdev_id,
 	.flash_led_config = msm_led_i2c_trigger_config,
-	.flash_led_init = msm_flash_led_init,
-	.flash_led_release = msm_flash_led_release,
+	.flash_led_init = lm3642_msm_flash_led_init,
+	.flash_led_release = lm3642_msm_flash_led_release,
 	.flash_led_off = msm_flash_led_off,
 	.flash_led_low = msm_flash_led_low,
 	.flash_led_high = msm_flash_led_high,
