@@ -324,6 +324,21 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		dev_dbg(&ps_stm401->client->dev, "Sending SIM Value=%d\n",
 					STM16_TO_HOST(SIM_DATA));
 	}
+	if (irq_status & M_CHOPCHOP) {
+		stm401_cmdbuff[0] = CHOPCHOP;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev,
+				"Reading chopchop data from stm failed\n");
+			goto EXIT;
+		}
+
+		stm401_as_data_buffer_write(ps_stm401, DT_CHOPCHOP,
+						stm401_readbuff, 2, 0);
+
+		dev_dbg(&ps_stm401->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
+				STM16_TO_HOST(CHOPCHOP_DATA));
+	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
 		/* Client recieving action will be upper 2 most significant */
