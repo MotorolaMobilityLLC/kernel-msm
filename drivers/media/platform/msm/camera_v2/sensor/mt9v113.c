@@ -163,6 +163,7 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x001A, 0x0008, MSM_CAMERA_I2C_SET_WORD_MASK,},
 	{0x3400, 0x0200, MSM_CAMERA_I2C_SET_WORD_MASK,},
 	{0x321C, 0x0080, MSM_CAMERA_I2C_UNSET_WORD_MASK,},
+	{0x3412, 0x0703,}, /* MIPI CONTROL */
 	/* REDUCE_CURRENT */
 	{0x098C, 0x02F0,}, /* MCU_ADDRESS */
 	{0x0990, 0x0000,}, /* MCU_DATA_0  */
@@ -437,7 +438,7 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0xA349,}, /* MCU_ADDRESS [AWB_JUMP_DIVISOR]        */
 	{0x0990, 0x0002,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA34A,}, /* MCU_ADDRESS [AWB_GAIN_MIN]            */
-	{0x0990, 0x0090,}, /* MCU_DATA_0                            */
+	{0x0990, 0x0076,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA34B,}, /* MCU_ADDRESS [AWB_GAIN_MAX]            */
 	{0x0990, 0x00FF,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA34C,}, /* MCU_ADDRESS [AWB_GAINMIN_B]           */
@@ -465,7 +466,7 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0xA363,}, /* MCU_ADDRESS [AWB_TG_MIN0]             */
 	{0x0990, 0x00D2,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA364,}, /* MCU_ADDRESS [AWB_TG_MAX0]             */
-	{0x0990, 0x00F6,}, /* MCU_DATA_0                            */
+	{0x0990, 0x00F4,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA302,}, /* MCU_ADDRESS [AWB_WINDOW_POS]          */
 	{0x0990, 0x0000,}, /* MCU_DATA_0                            */
 	{0x098C, 0xA303,}, /* MCU_ADDRESS [AWB_WINDOW_SIZE]         */
@@ -484,13 +485,13 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0xA203,}, /* MCU_ADDRESS [AE_WINDOW_SIZE]*/
 	{0x0990, 0x0099,}, /* MCU_DATA_0*/
 	{0x098C, 0xA207,}, /* MCU_ADDRESS [AE_GATE]*/
-	{0x0990, 0x0006,}, /* MCU_DATA_0*/
+	{0x0990, 0x0004,}, /* MCU_DATA_0*/
 	{0x098C, 0xA208,}, /* MCU_ADDRESS [AE_SKIP_FRAMES] */
 	{0x0990, 0x0001,}, /* MCU_DATA_0 */
 	{0x098C, 0xA20E,}, /* MCU_ADDRESS [AE_MAX_VIRTGAIN] */
 	{0x0990, 0x0082,}, /* MCU_DATA_0 */
 	{0x098C, 0x2212,}, /* MCU_ADDRESS [AE_MAX_DGAIN_AE1] */
-	{0x0990, 0x0140,}, /* MCU_DATA_0 */
+	{0x0990, 0x0118,}, /* MCU_DATA_0 */
 	{0x098C, 0xA215,}, /* MCU_ADDRESS [AE_INDEX_TH23] */
 	{0x0990, 0x0005,}, /* MCU_DATA_0 */
 	{0x098C, 0xA216,}, /* MCU_ADDRESS [AE_MAXGAIN23] */
@@ -505,7 +506,7 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0x275F,}, /* MCU_ADDRESS [MODESETTINGS_BRIGHT_COLOR_KILL]*/
 	{0x0990, 0x0594,}, /* MCU_DATA_0 */
 	{0x098C, 0x2761,}, /* MCU_ADDRESS [MODESETTINGS_DARK_COLOR_KILL]*/
-	{0x0990, 0x00AA,}, /* MCU_DATA_0 */
+	{0x0990, 0x00A2,}, /* MCU_DATA_0 */
 	{0x098C, 0xAB1F,}, /* MCU_ADDRESS [HG_LLMODE]*/
 	{0x0990, 0x00C7,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB31,}, /* MCU_ADDRESS [HG_NR_STOP_G]*/
@@ -515,17 +516,17 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0xAB21,}, /* MCU_ADDRESS [HG_LL_INTERPTHRESH1]*/
 	{0x0990, 0x0016,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB22,}, /* MCU_ADDRESS [HG_LL_APCORR1]*/
-	{0x0990, 0x0002,}, /* MCU_DATA_0*/
+	{0x0990, 0x0004,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB23,}, /* MCU_ADDRESS [HG_LL_APTHRESH1]*/
 	{0x0990, 0x0005,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB24,}, /* MCU_ADDRESS [HG_LL_SAT2]*/
-	{0x0990, 0x0005,}, /* MCU_DATA_0*/
+	{0x0990, 0x0025,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB25,}, /* MCU_ADDRESS [HG_LL_INTERPTHRESH2]*/
 	{0x0990, 0x0028,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB26,}, /* MCU_ADDRESS [HG_LL_APCORR2]*/
 	{0x0990, 0x0002,}, /* MCU_DATA_0*/
 	{0x098C, 0x2B28,}, /* MCU_ADDRESS [HG_LL_BRIGHTNESSSTART]*/
-	{0x0990, 0x0898,}, /* MCU_DATA_0*/
+	{0x0990, 0x1770,}, /* MCU_DATA_0*/
 	{0x098C, 0x2B2A,}, /* MCU_ADDRESS [HG_LL_BRIGHTNESSSTOP]*/
 	{0x0990, 0x16A8,}, /* MCU_DATA_0*/
 	{0x098C, 0xAB34,}, /* MCU_ADDRESS [HG_NR_GAINSTART]*/
@@ -620,6 +621,15 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x098C, 0xA75E,}, /* MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]*/
 	{0x0990, 0x0002,}, /* MCU_DATA_0*/
 	{0x3400, 0x7a26,},
+	/* Additional Tuning parameters for Motorola request */
+	{0x098C, 0xAB04,}, /* MCU_ADDRESS [HG_MAX_DLEVEL] */
+	{0x0990, 0x0060,}, /* MCU_DATA_0                       */
+	{0x098C, 0xAB06,}, /* MCU_ADDRESS [HG_PERCENT] */
+	{0x0990, 0x0005,}, /* MCU_DATA_0                       */
+	{0x098C, 0xAB35,}, /* MCU_ADDRESS [HG_NR_GAINSTOP] */
+	{0x0990, 0x00F0,}, /* MCU_DATA_0                       */
+	{0x098C, 0xA207,}, /* MCU_ADDRESS [AE_GATE]*/
+	{0x0990, 0x0012,}, /* MCU_DATA_0*/
 };
 
 static struct v4l2_subdev_info MT9V113_subdev_info[] = {
