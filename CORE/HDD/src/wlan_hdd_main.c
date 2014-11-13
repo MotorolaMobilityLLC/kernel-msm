@@ -3491,6 +3491,16 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
                             NULL, modProfileFields, &roamId, 1);
                return 0;
            }
+
+           /* Check channel number is a valid channel number */
+           if(VOS_STATUS_SUCCESS !=
+                         wlan_hdd_validate_operation_channel(pAdapter, channel))
+           {
+               hddLog(VOS_TRACE_LEVEL_ERROR,
+                      "%s: Invalid Channel  [%d]", __func__, channel);
+               return -EINVAL;
+           }
+
            trigger = eSME_ROAM_TRIGGER_SCAN;
 
            /* Proceed with scan/roam */
@@ -4960,7 +4970,7 @@ VOS_STATUS hdd_parse_reassoc_command_data(tANI_U8 *pValue,
 
     v = kstrtos32(tempBuf, 10, &tempInt);
     if ((v < 0) ||
-        (tempInt <= 0) ||
+        (tempInt < 0) ||
         (tempInt > WNI_CFG_CURRENT_CHANNEL_STAMAX))
     {
         return -EINVAL;
