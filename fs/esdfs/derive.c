@@ -544,6 +544,8 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 	/* See if the lower file is there already. */
 	err = vfs_path_lookup(lower_dir_path.dentry, lower_dir_path.mnt,
 			      nomedia.name, 0, &lower_path);
+	if (!err)
+		path_put(&lower_path);
 	/* If it's there or there was an error, we're done */
 	if (!err || err != -ENOENT)
 		goto out;
