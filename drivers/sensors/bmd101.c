@@ -459,8 +459,12 @@ static struct attribute *bmd101_attributes[] = {
 
 static ssize_t bmd101_show_wellness(struct file *file, char __user *buf, size_t length, loff_t *offset)
 {
+	char command[10];
+	int len = 0;
 	sensor_data->wellness_on++;
-       return 0;
+	len = snprintf(command, sizeof(command), "%d\n", sensor_data->wellness_on);
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: wellness(%d)\n", __func__, sensor_data->wellness_on);
+       return copy_to_user(buf, &command, sizeof(command)) ? -EFAULT : 0;
 }
 
 static ssize_t bmd101_store_wellness(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
@@ -475,6 +479,7 @@ static ssize_t bmd101_store_wellness(struct file *file, const char __user *buf, 
 	if ((strict_strtoul(command, 10, &val) < 0) ||(val > 1))
 		return -EINVAL;
 	sensor_data->wellness_on = val;
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: wellness(%d)\n", __func__, sensor_data->wellness_on);
 
 	return count;
 }
