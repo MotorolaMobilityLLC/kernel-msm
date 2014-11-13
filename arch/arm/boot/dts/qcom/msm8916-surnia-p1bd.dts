@@ -50,3 +50,7 @@
 		qcom,master-en = <1>; /* Enable MPP */
 	};
 };
+
+&usb_otg {
+	/delete-node/ qcom,usbin-vadc;
+};
