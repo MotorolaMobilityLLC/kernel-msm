@@ -145,6 +145,7 @@ struct IT7260_ts_data {
 	struct input_dev *input_dev;
 	struct delayed_work afterpalm_work;
 	struct delayed_work touchidle_on_work;
+	struct work_struct touchidle_off_work;
 };
 
 struct ite7260_perfile_data {
@@ -184,8 +185,8 @@ static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
 static int lastTouch = TOUCH_UP;
 
-#define I2C_RETRY_DELAY			5		/* Waiting for signals [ms] */
-#define I2C_RETRIES				5		/* Number of retries */
+#define I2C_RETRY_DELAY			15		/* Waiting for signals [ms] */
+#define I2C_RETRIES				2		/* Number of retries */
 
 #define LOGE(...)	pr_err(DEVICE_NAME ": " __VA_ARGS__)
 #define LOGI(...)	printk(DEVICE_NAME ": " __VA_ARGS__)
@@ -451,17 +452,21 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 static void chipLowPowerMode(bool low)
 {
 	int allow_irq_wake = !(isDeviceSleeping);
-	uint8_t dummy;
 
 	if (devicePresent) {
 		LOGI("low power %s\n", low ? "enter" : "exit");
 
 		if (low) {
+			if (allow_irq_wake){
+				smp_wmb();
+				enable_irq_wake(gl_ts->client->irq);
+			}
 			isDeviceSleeping = true;
 			isDeviceSuspend = true;
 			wake_unlock(&touch_lock);
 			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
+			cancel_delayed_work(&gl_ts->touchidle_on_work);
 			if (!allow_irq_wake){
 				smp_wmb();
 				disable_irq_wake(gl_ts->client->irq);
@@ -469,8 +474,8 @@ static void chipLowPowerMode(bool low)
 			isDeviceSleeping = false;
 			isDeviceSuspend = false;
 			hadPalmDown = false;
-			wake_unlock(&touch_lock);
-			i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
+			wake_unlock(&touch_lock);		
+			queue_work(IT7260_wq, &gl_ts->touchidle_off_work);
 		}
 	}
 }
@@ -776,16 +781,16 @@ static void waitNotifyEvt(struct work_struct *work) {
 }
 
 static void touchIdleOnEvt(struct work_struct *work) {
-	int allow_irq_wake = !(isDeviceSleeping);
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
 
-	if (allow_irq_wake){
-		smp_wmb();
-		enable_irq_wake(gl_ts->client->irq);
-	}
 	i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
 }
 
+static void touchIdleOffEvt(struct work_struct *work) {
+	uint8_t dummy;
+		
+	i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
+}
 
 static void sendPalmEvt(void)
 {
@@ -910,9 +915,8 @@ static void readTouchDataPoint_Ambient(void)
 			input_sync(gl_ts->input_dev);
 			input_report_key(gl_ts->input_dev, BTN_TOUCH, 0);
 			input_sync(gl_ts->input_dev);	
-		}else {
-			isDeviceSuspend = true;
 		}
+		isDeviceSuspend = true;
 		wake_unlock(&touch_lock);
 	} else if (pressure == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
 		isDeviceSuspend = true;
@@ -1058,6 +1062,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	
 	INIT_DELAYED_WORK(&gl_ts->afterpalm_work, waitNotifyEvt);
 	INIT_DELAYED_WORK(&gl_ts->touchidle_on_work, touchIdleOnEvt);
+	INIT_WORK(&gl_ts->touchidle_off_work, touchIdleOffEvt);
 
 	if (input_register_device(input_dev)) {
 		LOGE("failed to register input device\n");
@@ -1255,7 +1260,6 @@ static struct notifier_block display_mode_notifier = {
 
 static int IT7260_ts_resume(struct i2c_client *i2cdev)
 {
-	isDeviceSuspend	= false;
 	isDriverAvailable = true;
     return 0;
 }
@@ -1264,6 +1268,7 @@ static int IT7260_ts_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 {
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
 	isDeviceSuspend = true;
+	isDeviceSleeping = true;
 	isDriverAvailable = false;
 	
 	cancel_delayed_work(&gl_ts->touchidle_on_work);
