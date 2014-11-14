@@ -334,6 +334,7 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
     tUpdateBeaconParams beaconParams;
     tANI_U8 sendProbeReq = FALSE;
     tpDphHashNode pStaDs = NULL;
+    tANI_U32   channelBondingMode;
 #ifdef WLAN_FEATURE_11AC
     tpSirMacMgmtHdr    pMh = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
     tANI_U16  aid;
@@ -375,6 +376,16 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
                           psessionEntry->currentOperChannel, pBeacon->channelNumber);)
            goto fail;
         }
+
+        if( RF_CHAN_14 >= psessionEntry->currentOperChannel )
+        {
+           channelBondingMode = pMac->roam.configParam.channelBondingMode24GHz;
+        }
+        else
+        {
+           channelBondingMode = pMac->roam.configParam.channelBondingMode5GHz;
+        }
+
         limDetectChangeInApCapabilities(pMac, pBeacon, psessionEntry);
         if(limGetStaHashBssidx(pMac, DPH_STA_HASH_INDEX_PEER, &bssIdx, psessionEntry) != eSIR_SUCCESS)
             goto fail;
@@ -476,7 +487,11 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         // check for HT capability
         pStaDs = dphLookupHashEntry(pMac, pMh->sa, &aid,
                                     &psessionEntry->dph.dphHashTable);
-        if (pStaDs != NULL)
+        /* Update the channel bonding mode only if channel bonding
+         * mode is enabled in INI.
+         */
+        if ( (pStaDs != NULL) &&
+              (WNI_CFG_CHANNEL_BONDING_MODE_DISABLE != channelBondingMode) )
         {
            /* Following check is related to HT40 on 2.4GHz mode*/
            if ((pStaDs->htSecondaryChannelOffset !=
@@ -504,7 +519,8 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
            }
         }
         else
-           PELOGE(schLog(pMac, LOGE, FL("Self Entry missing in Hash Table"));)
+           schLog(pMac, LOG1,
+                  FL("Self Entry missing in Hash Table or channel bonding mode is disabled"));
     }
     /* TODO : Below condition checks can be merged with the if */
 #ifdef WLAN_FEATURE_11AC
@@ -515,7 +531,12 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
        // check for VHT capability
        pStaDs = dphLookupHashEntry(pMac, pMh->sa, &aid,
              &psessionEntry->dph.dphHashTable);
-       if (NULL != pStaDs)
+
+       /* Update the channel bonding mode only if channel bonding
+        * mode is enabled in INI.
+        */
+       if ( (NULL != pStaDs)  &&
+            (WNI_CFG_CHANNEL_BONDING_MODE_DISABLE != channelBondingMode) )
        {
           if (psessionEntry->vhtCapability && pBeacon->OperatingMode.present )
           {
