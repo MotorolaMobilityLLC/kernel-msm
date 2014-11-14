@@ -61,10 +61,14 @@
 #define REG_CONTROL1           0x01
 #define CONTROL1_IBUSLIM       GENMASK(7, 6)
 #define CONTROL1_IBUSLIM_SHIFT 6
-#define IBUSLIM_100MA          0x00
-#define IBUSLIM_500MA          0x01
-#define IBUSLIM_800MA          0x02
-#define IBUSLIM_NO_LIMIT       0x03
+#define IBUSLIM_FAN54046_100MA     0x00
+#define IBUSLIM_FAN54046_500MA     0x01
+#define IBUSLIM_FAN54046_800MA     0x02
+#define IBUSLIM_FAN54046_NO_LIMIT  0x03
+#define IBUSLIM_FAN54053_500MA     0x00
+#define IBUSLIM_FAN54053_800MA     0x01
+#define IBUSLIM_FAN54053_1100MA    0x02
+#define IBUSLIM_FAN54053_NO_LIMIT  0x03
 #define CONTROL1_VLOWV         GENMASK(5, 4)
 #define CONTROL1_VLOWV_SHIFT   4
 #define VLOWV_3_4V             0
@@ -163,6 +167,10 @@
 /* REG RESTART Register */
 #define REG_RESTART           0xFA
 
+/* FAN540XX IC PART NO */
+#define FAN54046    0X06
+#define FAN54053    0X02
+
 static char *version_str[] = {
 	[0] = "fan54040",
 	[1] = "fan54041",
@@ -249,6 +257,7 @@ struct fan5404x_chg {
 	bool poll_fast;
 	bool shutdown_voltage_tripped;
 	atomic_t otg_enabled;
+	int ic_info_pn;
 };
 
 static struct fan5404x_chg *the_chip;
@@ -457,11 +466,18 @@ static int fan5404x_set_oreg(struct fan5404x_chg *chip, int value)
 	return 0;
 }
 
-static int ibuslim_vals[] = {
-	[IBUSLIM_100MA] = 100,
-	[IBUSLIM_500MA] = 500,
-	[IBUSLIM_800MA] = 800,
-	[IBUSLIM_100MA] = INT_MAX
+static int ibuslim_fan54046_vals[] = {
+	[IBUSLIM_FAN54046_100MA] = 100,
+	[IBUSLIM_FAN54046_500MA] = 500,
+	[IBUSLIM_FAN54046_800MA] = 800,
+	[IBUSLIM_FAN54046_NO_LIMIT] = INT_MAX
+};
+
+static int ibuslim_fan54053_vals[] = {
+	[IBUSLIM_FAN54053_500MA]   = 500,
+	[IBUSLIM_FAN54053_800MA]   = 800,
+	[IBUSLIM_FAN54053_1100MA]  = 1100,
+	[IBUSLIM_FAN54053_NO_LIMIT] = INT_MAX
 };
 
 static int fan5404x_set_ibuslim(struct fan5404x_chg *chip,
@@ -470,9 +486,15 @@ static int fan5404x_set_ibuslim(struct fan5404x_chg *chip,
 	int i;
 	int rc;
 
-	for (i = ARRAY_SIZE(ibuslim_vals) - 1; i >= 0; i--)
-		if (limit >= ibuslim_vals[i])
-			break;
+	if (chip->ic_info_pn == FAN54046) {
+		for (i = ARRAY_SIZE(ibuslim_fan54046_vals) - 1; i >= 0; i--)
+			if (limit >= ibuslim_fan54046_vals[i])
+				break;
+	} else {
+		for (i = ARRAY_SIZE(ibuslim_fan54053_vals) - 1; i >= 0; i--)
+			if (limit >= ibuslim_fan54053_vals[i])
+				break;
+	}
 
 	if (i < 0)
 		return -EINVAL;
@@ -1679,9 +1701,15 @@ static ssize_t force_chg_iusb_store(struct device *dev,
 		return -ENODEV;
 	}
 
-	for (i = ARRAY_SIZE(ibuslim_vals) - 1; i >= 0; i--)
-		if (usb_curr >= ibuslim_vals[i])
-			break;
+	if (the_chip->ic_info_pn == FAN54046) {
+		for (i = ARRAY_SIZE(ibuslim_fan54046_vals) - 1; i >= 0; i--)
+			if (usb_curr >= ibuslim_fan54046_vals[i])
+				break;
+	} else {
+		for (i = ARRAY_SIZE(ibuslim_fan54053_vals) - 1; i >= 0; i--)
+			if (usb_curr >= ibuslim_fan54053_vals[i])
+				break;
+	}
 
 	if (i < 0)
 		return -EINVAL;
@@ -1724,7 +1752,10 @@ static ssize_t force_chg_iusb_show(struct device *dev,
 	value = value >> CONTROL1_IBUSLIM_SHIFT;
 	value &= CONTROL1_IBUSLIM_SHIFT_MASK;
 
-	state = ibuslim_vals[value];
+	if (the_chip->ic_info_pn == FAN54046)
+		state = ibuslim_fan54046_vals[value];
+	else
+		state = ibuslim_fan54053_vals[value];
 end:
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
@@ -2047,6 +2078,8 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Could not read from FAN5404x: %d\n", rc);
 		return -ENODEV;
 	}
+
+	chip->ic_info_pn = (reg & IC_INFO_PN) >> IC_INFO_PN_SHIFT;
 
 	i2c_set_clientdata(client, chip);
 
