@@ -1842,10 +1842,10 @@ void wlan_hdd_tdls_disconnection_callback(hdd_adapter_t *pAdapter)
     tdlsCtx_t *pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
-    if ((NULL == pHddCtx) || (NULL == pHddTdlsCtx))
+    if (NULL == pHddCtx)
     {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               FL(" pHddCtx or  pHddTdlsCtx points to NULL"));
+               FL(" pHddCtx points to NULL"));
        return;
     }
 

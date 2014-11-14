@@ -1839,7 +1839,7 @@ int hdd_handle_batch_scan_ioctl
 
          if (eHDD_BATCH_SCAN_STATE_STARTED !=  pAdapter->batchScanState)
          {
-              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                 "Batch scan is not yet enabled batch scan state %d",
                 pAdapter->batchScanState);
               ret = -EINVAL;
@@ -1884,7 +1884,7 @@ int hdd_handle_batch_scan_ioctl
 
           if (eHDD_BATCH_SCAN_STATE_STARTED !=  pAdapter->batchScanState)
           {
-              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                 "Batch scan is not yet enabled could not return results"
                 "Batch Scan state %d",
                 pAdapter->batchScanState);
@@ -3703,7 +3703,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            dhcpPhase = command + 11;
            if ('1' == *dhcpPhase)
            {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                          FL("send DHCP START indication"));
 
                pHddCtx->btCoexModeSet = TRUE;
@@ -3720,7 +3720,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            }
            else if ('2' == *dhcpPhase)
            {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                          FL("send DHCP STOP indication"));
 
                pHddCtx->btCoexModeSet = FALSE;

@@ -15004,7 +15004,7 @@ void WDA_ConvertSirAuthToWDIAuth(WDI_AuthType *AuthType, v_U8_t csrAuthType)
            *AuthType = eWDA_AUTH_TYPE_AUTOSWITCH;
 #endif
       default:
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                  "%s: Unknown Auth Type", __func__);
            break;
    }
