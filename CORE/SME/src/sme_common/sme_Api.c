@@ -1746,6 +1746,42 @@ eHalStatus sme_UnprotectedMgmtFrmInd( tHalHandle hHal,
 }
 #endif
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+/* ---------------------------------------------------------------------------
+    \fn sme_HT2040CoexInfoInd
+    \brief a Send 20/40 Coex info to SAP layer
+
+    \param tpSirHT2040CoexInfoInd - 20/40 Coex info param
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+
+eHalStatus sme_HT2040CoexInfoInd( tHalHandle hHal,
+                  tpSirHT2040CoexInfoInd pSmeHT2040CoexInfoInd)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus  status = eHAL_STATUS_SUCCESS;
+    tANI_U32 SessionId = pSmeHT2040CoexInfoInd->sessionId;
+    tCsrRoamInfo roamInfo = {0};
+
+    roamInfo.pSmeHT2040CoexInfoInd = pSmeHT2040CoexInfoInd;
+
+    smsLog(pMac, LOGW, FL("HT40MHzIntolerant: %d HT20MHzBssWidthReq: %d"),
+                   roamInfo.pSmeHT2040CoexInfoInd->HT40MHzIntolerant,
+                   roamInfo.pSmeHT2040CoexInfoInd->HT20MHzBssWidthReq);
+
+    smsLog(pMac, LOGW, FL("Total Intolerant Channel: %d"),
+                   roamInfo.pSmeHT2040CoexInfoInd->channel_num);
+
+    /* forward the 20/40 BSS Coex information to HDD */
+    smsLog(pMac, LOGW, FL("Sending eCSR_ROAM_2040_COEX_INFO_IND"
+                          " to  WLANSAP_RoamCallback "));
+
+    csrRoamCallCallback(pMac, SessionId, &roamInfo,
+                        0, eCSR_ROAM_2040_COEX_INFO_IND, 0);
+    return status;
+}
+#endif
+
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
 /*------------------------------------------------------------------
  *
@@ -2085,6 +2121,19 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                     smsLog( pMac, LOGE, "Empty rsp message for meas (eWNI_SME_MGMT_FRM_IND), nothing to process");
                 }
                 break;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+           case eWNI_SME_2040_COEX_IND:
+                if(pMsg->bodyptr)
+                {
+                    sme_HT2040CoexInfoInd(pMac, pMsg->bodyptr);
+                    vos_mem_free(pMsg->bodyptr);
+                }
+                else
+                {
+                    smsLog( pMac, LOGE, "Empty rsp message for meas (eWNI_SME_2040_COEX_IND), nothing to process");
+                }
+                break;
+#endif
            case eWNI_SME_ACTION_FRAME_SEND_CNF:
                 if(pMsg->bodyptr)
                 {
@@ -4851,7 +4900,6 @@ eHalStatus sme_GetRoamRssi(tHalHandle hHal,
    return (status);
 }
 #endif
-
 
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
 /* ---------------------------------------------------------------------------

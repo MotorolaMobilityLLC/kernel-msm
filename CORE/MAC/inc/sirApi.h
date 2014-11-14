@@ -3431,6 +3431,17 @@ typedef struct sSirSetHT2040Mode
     tSirMacAddr    bssId;
     tANI_U8        sessionId;      // Session ID
 } tSirSetHT2040Mode, *tpSirSetHT2040Mode;
+
+typedef struct sSirHT2040CoexInfoInd
+{
+    tANI_U16       messageType; //  eWNI_SME_2040_COEX_IND
+    tANI_U16       length;
+    tANI_U8        sessionId;
+    tANI_U8        HT40MHzIntolerant;
+    tANI_U8        HT20MHzBssWidthReq;
+    tANI_U8        channel_num;
+    tANI_U8        HT2040BssIntoChanReport [1]; //variable
+}tSirHT2040CoexInfoInd, *tpSirHT2040CoexInfoInd;
 #endif
 
 typedef struct sSirOBSSHT40Param

@@ -252,6 +252,12 @@
 #define SIR_MAC_ACTION_VENDOR_SPECIFIC_CATEGORY     0x7F
 #define SIR_MAC_ACTION_P2P_SUBTYPE_PRESENCE_RSP     2
 
+// Public Action for 20/40 BSS Coexistence
+#ifdef WLAN_FEATURE_AP_HT40_24G
+#define SIR_MAC_ACTION_2040_BSS_COEXISTENCE     0
+#endif
+
+
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
 #define SIR_MAC_SA_QUERY_REQ             0
