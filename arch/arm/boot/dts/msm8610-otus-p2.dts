@@ -17,3 +17,9 @@
 / {
 	qcom,msm-id = <147 0x45 0x8200>;
 };
+
+&spi_3 {
+	stml0xx@0 {
+		headset_hw_version = <1>;
+	};
+};
