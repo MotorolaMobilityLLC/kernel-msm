@@ -835,6 +835,7 @@ static v_BOOL_t put_wifi_iface_stats(hdd_adapter_t *pAdapter,
     struct nlattr *wmmInfo;
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     WLANTL_InterfaceStatsType *pWifiIfaceStatTL = NULL;
+    tSirWifiWmmAcStat accessclassStats;
 
     if (FALSE == put_wifi_interface_info(
                                 &pWifiIfaceStat->info,
@@ -853,6 +854,15 @@ static v_BOOL_t put_wifi_iface_stats(hdd_adapter_t *pAdapter,
         return FALSE;
     }
 
+    accessclassStats = pWifiIfaceStat->AccessclassStats[WIFI_AC_BK];
+    pWifiIfaceStat->AccessclassStats[WIFI_AC_BK] =
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_BE];
+    pWifiIfaceStat->AccessclassStats[WIFI_AC_BE] = accessclassStats;
+
+    accessclassStats.ac = pWifiIfaceStat->AccessclassStats[WIFI_AC_BK].ac;
+    pWifiIfaceStat->AccessclassStats[WIFI_AC_BK].ac =
+        pWifiIfaceStat->AccessclassStats[WIFI_AC_BE].ac;
+    pWifiIfaceStat->AccessclassStats[WIFI_AC_BE].ac = accessclassStats.ac;
 
     if ( pWifiIfaceStat->info.state == WIFI_ASSOCIATED)
     {
