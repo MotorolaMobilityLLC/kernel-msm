@@ -307,6 +307,7 @@ VOS_STATUS wlan_hdd_cancel_existing_remain_on_channel(hdd_adapter_t *pAdapter)
 
             INIT_COMPLETION(pAdapter->cancel_rem_on_chan_var);
             pRemainChanCtx->hdd_remain_on_chan_cancel_in_progress = TRUE;
+            mutex_unlock(&pHddCtx->roc_lock);
 
              /* Issue abort remain on chan request to sme.
               * The remain on channel callback will make sure the remain_on_chan
@@ -326,7 +327,6 @@ VOS_STATUS wlan_hdd_cancel_existing_remain_on_channel(hdd_adapter_t *pAdapter)
                           (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
               }
 
-              mutex_unlock(&pHddCtx->roc_lock);
               status = wait_for_completion_interruptible_timeout(
                                        &pAdapter->cancel_rem_on_chan_var,
                                        msecs_to_jiffies(WAIT_CANCEL_REM_CHAN));
