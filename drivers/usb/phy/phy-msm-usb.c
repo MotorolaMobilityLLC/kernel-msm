@@ -4106,6 +4106,11 @@ static void msm_id_status_w(struct work_struct *w)
 		return;
 	}
 
+	if (test_bit(B_SESS_VLD, &motg->inputs)) {
+		dev_err(motg->phy.dev, "Ignore ID - BSV Set\n");
+		return;
+	}
+
 	if (motg->pdata->pmic_id_irq)
 		id_state = msm_otg_read_pmic_id_state(motg);
 	else if (motg->ext_id_irq) {
@@ -4147,7 +4152,7 @@ static void msm_id_status_w(struct work_struct *w)
 
 }
 
-#define MSM_ID_STATUS_DELAY	5 /* 5msec */
+#define MSM_ID_STATUS_DELAY	150 /* 150msec */
 static irqreturn_t msm_id_irq(int irq, void *data)
 {
 	struct msm_otg *motg = data;
@@ -4159,7 +4164,7 @@ static irqreturn_t msm_id_irq(int irq, void *data)
 	}
 
 	if (!aca_id_turned_on)
-		/*schedule delayed work for 5msec for ID line state to settle*/
+		/*schedule delayed work for 150ms for ID line state to settle*/
 		queue_delayed_work(motg->otg_wq, &motg->id_status_work,
 				msecs_to_jiffies(MSM_ID_STATUS_DELAY));
 
