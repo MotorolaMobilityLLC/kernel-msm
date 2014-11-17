@@ -121,7 +121,7 @@ struct PointData {
 } __attribute__((packed));
 
 #define PD_FLAGS_DATA_TYPE_BITS		0xF0
-# define PD_FLAGS_DATA_TYPE_TOUCH	0x00 /* other types (like chip-detected gestures) exist but we do not care */
+#define PD_FLAGS_DATA_TYPE_TOUCH	0x00 /* other types (like chip-detected gestures) exist but we do not care */
 #define PD_FLAGS_NOT_PEN		0x08 /* set if pen touched, clear if finger(s) */
 #define PD_FLAGS_HAVE_FINGERS		0x07 /* a bit for each finger data that is valid (from lsb to msb) */
 #define PD_PALM_FLAG_BIT		0x01
@@ -146,6 +146,7 @@ struct IT7260_ts_data {
 	struct delayed_work afterpalm_work;
 	struct delayed_work touchidle_on_work;
 	struct work_struct touchidle_off_work;
+	struct delayed_work exit_idle_work;
 };
 
 struct ite7260_perfile_data {
@@ -792,6 +793,16 @@ static void touchIdleOffEvt(struct work_struct *work) {
 	i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
 }
 
+static void exitIdleEvt(struct work_struct *work) {
+	printk("IT7260: Special IRQ trigger touch event\n");
+	isDeviceSuspend = true;
+	wake_unlock(&touch_lock);
+	input_report_key(gl_ts->input_dev, BTN_TOUCH, 1);
+	input_sync(gl_ts->input_dev);
+	input_report_key(gl_ts->input_dev, BTN_TOUCH, 0);
+	input_sync(gl_ts->input_dev);	
+}
+
 static void sendPalmEvt(void)
 {
 	magic_key = MAGIC_KEY_PALM;
@@ -831,7 +842,7 @@ static void readTouchDataPoint(void)
 		hadPalmDown = true;
 		sendPalmEvt();
 		queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
-	} 
+	}
 
 	/* this check may look stupid, but it is here for when MT arrives to this driver. for now just check finger 0 */
 	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
@@ -867,39 +878,57 @@ static void readTouchDataPoint_Ambient(void)
 	uint8_t pressure = FD_PRESSURE_NONE;
 	uint16_t x, y;
 	
-	
 	if (!isDeviceSuspend){
 	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
 	if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
 		LOGE("readTouchDataPoint() called when no data available (0x%02X)\n", devStatus);
+		isDeviceSuspend = true;
+		wake_unlock(&touch_lock);
 		return;
 	}
 	if (!i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData))) {
 		LOGE("readTouchDataPoint() failed to read point data buffer\n");
+		isDeviceSuspend = true;
+		wake_unlock(&touch_lock);
 		return;
-	}
+	}	
 	if ((pointData.flags & PD_FLAGS_DATA_TYPE_BITS) != PD_FLAGS_DATA_TYPE_TOUCH) {
-		LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
-		return;
+		if (pointData.flags == 16){
+			LOGE("readTouchDataPoint() send touch event by type 0x%02X\n", pointData.flags);
+		} 
+		else{
+			LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
+			isDeviceSuspend = true;
+			wake_unlock(&touch_lock);
+			return;
+		}
 	}
 	
 	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
 		readFingerData(&x, &y, &pressure, pointData.fd);
 
 	if ((pointData.palm & PD_PALM_FLAG_BIT)) {
+		if (hadFingerDown){
+			cancel_delayed_work(&gl_ts->exit_idle_work);
+		}
 		hadFingerDown = false;
 	}
 
 	if (pressure >= FD_PRESSURE_LIGHT) {
 
-		if (!hadFingerDown) 
+		if (hadFingerDown){
+			cancel_delayed_work(&gl_ts->exit_idle_work);
+		}
+		else { 
 			hadFingerDown = true;
-
+		}
+		
 		readFingerData(&x, &y, &pressure, pointData.fd);
 	} else if (hadFingerDown && (!(pointData.palm & PD_PALM_FLAG_BIT))) {
 		hadFingerDown = false;
 		suspend_touch_up = getMsTime();
 		
+		cancel_delayed_work(&gl_ts->exit_idle_work);
 		if (lastTouch == TOUCH_UP)
 			touchMissed = true;
 		else
@@ -918,10 +947,13 @@ static void readTouchDataPoint_Ambient(void)
 		}
 		isDeviceSuspend = true;
 		wake_unlock(&touch_lock);
+	} else if (pointData.flags == 16){
+		hadFingerDown = true;
+		queue_delayed_work(IT7260_wq, &gl_ts->exit_idle_work, 5);
 	} else if (pressure == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
 		isDeviceSuspend = true;
 		wake_unlock(&touch_lock);
-	}
+	} 
 	
 	}else if (isDeviceSuspend){
 		msleep(10);
@@ -1063,6 +1095,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	INIT_DELAYED_WORK(&gl_ts->afterpalm_work, waitNotifyEvt);
 	INIT_DELAYED_WORK(&gl_ts->touchidle_on_work, touchIdleOnEvt);
 	INIT_WORK(&gl_ts->touchidle_off_work, touchIdleOffEvt);
+	INIT_DELAYED_WORK(&gl_ts->exit_idle_work, exitIdleEvt);
 
 	if (input_register_device(input_dev)) {
 		LOGE("failed to register input device\n");
