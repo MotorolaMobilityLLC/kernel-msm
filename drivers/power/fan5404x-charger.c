@@ -618,6 +618,12 @@ static int start_charging(struct fan5404x_chg *chip)
 	int rc;
 	int current_limit = 0;
 
+	if (!chip->chg_enabled) {
+		dev_dbg(chip->dev, "%s: charging enable = %d\n",
+				 __func__, chip->chg_enabled);
+		return 0;
+	}
+
 	dev_dbg(chip->dev, "starting to charge...\n");
 
 	if (chip->factory_mode) {
@@ -750,6 +756,8 @@ static irqreturn_t fan5404x_chg_stat_handler(int irq, void *dev_id)
 		fan5404x_chg_enable_boost(chip);
 	else if (chip->charging && stat == STAT_PWM_ENABLED) {
 		start_charging(chip);
+		power_supply_changed(&chip->batt_psy);
+	} else {
 		power_supply_changed(&chip->batt_psy);
 	}
 
@@ -1107,6 +1115,17 @@ static int fan5404x_temp_charging(struct fan5404x_chg *chip, int enable)
 	return 0;
 }
 
+static void fan5404x_charge_enable(struct fan5404x_chg *chip, bool enable)
+{
+	if (!enable) {
+		if (chip->charging)
+			stop_charging(chip);
+	} else {
+		if (chip->usb_present && !(chip->charging))
+			start_charging(chip);
+	}
+}
+
 static void fan5404x_set_chrg_path_temp(struct fan5404x_chg *chip)
 {
 	if (chip->batt_cool && !chip->ext_high_temp)
@@ -1217,7 +1236,8 @@ static int fan5404x_batt_set_property(struct power_supply *psy,
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-		/* TODO */
+		chip->chg_enabled = !!val->intval;
+		fan5404x_charge_enable(chip, chip->chg_enabled);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		chip->fake_battery_soc = val->intval;
@@ -2161,6 +2181,7 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	chip->factory_present = false;
 	chip->poll_fast = false;
 	chip->shutdown_voltage_tripped = false;
+	chip->chg_enabled = true;
 
 	mutex_init(&chip->read_write_lock);
 
