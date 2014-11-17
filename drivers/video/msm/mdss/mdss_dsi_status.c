@@ -84,13 +84,6 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 		return;
 	}
 
-#ifdef CONFIG_FB_MSM_MDSS_MDP3
-	mdp3_session = pdsi_status->mfd->mdp.private1;
-	mutex_lock(&mdp3_session->offlock);
-	ret = ctrl_pdata->check_status(ctrl_pdata);
-	mutex_unlock(&mdp3_session->offlock);
-#else
-
 	if (!pdata->panel_info.cont_splash_esd_rdy) {
 		pr_warn("%s: Splash not complete, reschedule check status\n",
 			__func__);
@@ -99,15 +92,21 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 		return;
 	}
 
+	if (!pdsi_status->mfd->panel_power_on) {
+		pr_err("%s: panel off\n", __func__);
+		return;
+	}
+
+#ifdef CONFIG_FB_MSM_MDSS_MDP3
+	mdp3_session = pdsi_status->mfd->mdp.private1;
+	mutex_lock(&mdp3_session->offlock);
+	ret = ctrl_pdata->check_status(ctrl_pdata);
+	mutex_unlock(&mdp3_session->offlock);
+#else
 	mdp5_data = mfd_to_mdp5_data(pdsi_status->mfd);
 	ctl = mfd_to_ctl(pdsi_status->mfd);
 	if (!ctl) {
 		pr_warn("%s: mdss_mdp_ctl data not available\n", __func__);
-		return;
-	}
-
-	if (!pdsi_status->mfd->panel_power_on) {
-		pr_err("%s: panel off\n", __func__);
 		return;
 	}
 
