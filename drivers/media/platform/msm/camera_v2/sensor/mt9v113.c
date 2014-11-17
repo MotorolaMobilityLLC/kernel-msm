@@ -25,6 +25,7 @@
 #define MT9V113_COLOR_PIPE_CONTROL_REGISTER 0x3210
 #define MT9V113_KERNEL_CONFIG_REGISTER 0x33F4
 #define MT9V113_EXPOSURE_TARGET_REGISTER 0xA24F
+#define MT9V113_AWB_EDGE_THERSOLD_REGISTER 0x2361
 #define MT9V113_MCU_VARIABLE_ADDRESS 0x098C
 #define MT9V113_MCU_VARIABLE_DATA0 0x0990
 
@@ -956,6 +957,19 @@ static int32_t mt9v113_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
+static bool mt9v113_sensor_factory(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
 int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	void __user *argp)
 {
@@ -1007,6 +1021,33 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensor_i2c_client, mt9v113_refresh_settings,
 			ARRAY_SIZE(mt9v113_refresh_settings),
 			MSM_CAMERA_I2C_WORD_DATA);
+		if (mt9v113_sensor_factory()) {
+			pr_err("%s:Reset AWB edge TH factory test only\n",
+				__func__);
+			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+				s_ctrl->sensor_i2c_client,
+				MT9V113_MCU_VARIABLE_ADDRESS,
+				MT9V113_AWB_EDGE_THERSOLD_REGISTER,
+				MSM_CAMERA_I2C_WORD_DATA);
+
+			if (rc < 0) {
+				pr_err("%s: Write AWB thersold register failed\n",
+					__func__);
+				break;
+			}
+
+			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+				s_ctrl->sensor_i2c_client,
+				MT9V113_MCU_VARIABLE_DATA0,
+				0x0000,
+				MSM_CAMERA_I2C_WORD_DATA);
+
+			if (rc < 0) {
+				pr_err("%s: Write AWB thersold Value failed\n",
+					__func__);
+				break;
+			}
+		}
 		break;
 	case CFG_SET_RESOLUTION:
 		break;
@@ -1285,6 +1326,33 @@ int32_t MT9V113_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensor_i2c_client, mt9v113_refresh_settings,
 			ARRAY_SIZE(mt9v113_refresh_settings),
 			MSM_CAMERA_I2C_WORD_DATA);
+		if (mt9v113_sensor_factory()) {
+			pr_err("%s:Reset AWB edge TH factory test only\n",
+				__func__);
+			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+				s_ctrl->sensor_i2c_client,
+				MT9V113_MCU_VARIABLE_ADDRESS,
+				MT9V113_AWB_EDGE_THERSOLD_REGISTER,
+				MSM_CAMERA_I2C_WORD_DATA);
+
+			if (rc < 0) {
+				pr_err("%s: Write AWB thersold register failed\n",
+					__func__);
+				break;
+			}
+
+			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+				s_ctrl->sensor_i2c_client,
+				MT9V113_MCU_VARIABLE_DATA0,
+				0x0000,
+				MSM_CAMERA_I2C_WORD_DATA);
+
+			if (rc < 0) {
+				pr_err("%s: Write AWB thersold Value failed\n",
+					__func__);
+				break;
+			}
+		}
 		break;
 	case CFG_SET_RESOLUTION:
 		break;
