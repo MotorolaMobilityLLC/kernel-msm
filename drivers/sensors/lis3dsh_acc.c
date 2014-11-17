@@ -36,11 +36,6 @@
 
 #include	<linux/input/lis3dsh.h>
 
-#ifdef CONFIG_ASUS_UTILITY
-#include <linux/notifier.h>
-#include <linux/asus_utility.h>
-#endif
-
 #ifdef CONFIG_PM_8226_CHARGER
 extern int pm8226_is_ac_usb_in(void);
 #endif
@@ -353,7 +348,6 @@ struct lis3dsh_acc_data {
 	/* hw_working=-1 means not tested yet */
 	int hw_working;
 	atomic_t enabled;
-	int on_before_suspend;
 	int use_smbus;
 
 	u16 sensitivity;
@@ -375,7 +369,6 @@ struct lis3dsh_acc_data {
 static struct lis3dsh_acc_data *sensor_data;
 
 static int chip_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
-static atomic_t is_suspend;
 
 static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc, int *xyz);
 static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc, int *xyz);
@@ -1721,48 +1714,19 @@ static struct i2c_test_case_info gLIS3DSHTestCaseInfo[] =
 };
 #endif
 
-void notify_st_sensor_lowpowermode(int low)
+static int lis3dsh_suspend(struct i2c_client *client, pm_message_t mesg)
 {
- 	int allow_irq_wake = !(atomic_read(&is_suspend));
-
-	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: +++: (%s)\n", __func__, low?"enter":"exit");
-	if(low && allow_irq_wake) {
-		atomic_set(&is_suspend,1);
-		enable_irq_wake(sensor_data->irq1);
-		enable_irq_wake(sensor_data->irq2);
-		lis3dsh_acc_state_progrs_enable_control(sensor_data, LIS3DSH_SM1_EN_SM2_DIS);
-	}
-	else if (!low && !allow_irq_wake) {
-		atomic_set(&is_suspend,0);
-		disable_irq_wake(sensor_data->irq1);
-		disable_irq_wake(sensor_data->irq2);
-		lis3dsh_acc_state_progrs_enable_control(sensor_data, LIS3DSH_SM1_EN_SM2_DIS);
-	}
-	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: --- : (%s)\n", __func__, low?"enter":"exit");
-}
-
-#ifdef CONFIG_ASUS_UTILITY
-static int lis3dsh_fb_notifier_callback(struct notifier_block *this, unsigned long code, void *data)
-{
-	printk(KERN_DEBUG "[PF]%s +\n", __func__);
-	switch (code) {
-		case 0:
-			notify_st_sensor_lowpowermode(1);
-			break;
-		case 1:
-			notify_st_sensor_lowpowermode(0);
-			break;
-		default:
-			break;
-	}
-	printk(KERN_DEBUG "[PF]%s -\n", __func__);
+	enable_irq_wake(sensor_data->irq1);
+	enable_irq_wake(sensor_data->irq2);
 	return 0;
 }
 
-static struct notifier_block display_mode_notifier = {
-        .notifier_call =    lis3dsh_fb_notifier_callback,
-};
-#endif
+static int lis3dsh_resume(struct i2c_client *client)
+{
+	disable_irq_wake(sensor_data->irq1);
+	disable_irq_wake(sensor_data->irq2);
+	return 0;
+}
 
 static int lis3dsh_pwr_ctrl(struct device *dev, int en)
 {
@@ -1904,10 +1868,6 @@ static int lis3dsh_acc_probe(struct i2c_client *client, const struct i2c_device_
 		}
 	}
 
-	#ifdef CONFIG_ASUS_UTILITY
-	register_mode_notifier(&display_mode_notifier);
-	#endif
-
 	if(acc->pdata->gpio_int1 >= 0){
 		acc->irq1 = gpio_to_irq(acc->pdata->gpio_int1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: has set irq1 to irq: %d "
@@ -2003,7 +1963,6 @@ static int lis3dsh_acc_probe(struct i2c_client *client, const struct i2c_device_
 		disable_irq_nosync(acc->irq2);
 	}
 
-	atomic_set(&is_suspend,0);
 	mutex_unlock(&acc->lock);
 	chip_status=1;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
@@ -2042,9 +2001,6 @@ err_mutexunlock:
 exit_check_functionality_failed:
 	pr_err("[lis3dsh] %s: Driver Init failed\n", __func__);
 classdev_register_fail:
-#ifdef CONFIG_ASUS_UTILITY
-	unregister_mode_notifier(&display_mode_notifier);
-#endif
 	kfree(acc);
 	return err;
 }
@@ -2070,10 +2026,6 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 
 	lis3dsh_acc_device_power_off(acc);
 	lis3dsh_acc_input_cleanup(acc);
-
-	#ifdef CONFIG_ASUS_UTILITY
-	unregister_mode_notifier(&display_mode_notifier);
-	#endif
 
 	if (acc->pdata->exit)
 		acc->pdata->exit();
@@ -2103,6 +2055,8 @@ static struct i2c_driver lis3dsh_acc_driver = {
 			.of_match_table = lis3dsh_match_table,
 		  },
 	.probe = lis3dsh_acc_probe,
+	.suspend = lis3dsh_suspend,
+	.resume = lis3dsh_resume,
 	.remove = lis3dsh_acc_remove,
 	.id_table = lis3dsh_acc_id,
 };
