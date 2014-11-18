@@ -7084,8 +7084,6 @@ VOS_STATUS hdd_stop_all_adapters( hdd_context_t *pHddCtx )
    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
    {
       pAdapter = pAdapterNode->pAdapter;
-      netif_tx_disable(pAdapter->dev);
-      netif_carrier_off(pAdapter->dev);
 
       hdd_stop_adapter( pHddCtx, pAdapter, VOS_TRUE );
 
@@ -7897,6 +7895,19 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
          pAdapter = pAdapterNode->pAdapter;
          if (NULL != pAdapter)
          {
+            /* Disable TX on the interface, after this hard_start_xmit() will
+             * not be called on that interface
+             */
+            netif_tx_disable(pAdapter->dev);
+
+            /* Mark the interface status as "down" for outside world */
+            netif_carrier_off(pAdapter->dev);
+
+            /* DeInit the adapter. This ensures that all data packets
+             * are freed.
+             */
+            hdd_deinit_adapter(pHddCtx, pAdapter);
+
             if (WLAN_HDD_INFRA_STATION ==  pAdapter->device_mode ||
                 WLAN_HDD_P2P_CLIENT == pAdapter->device_mode)
             {
