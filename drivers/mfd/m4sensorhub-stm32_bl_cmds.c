@@ -29,6 +29,8 @@
 each attempt to check status is delayed by 100 ms, thus 60 attempts give it a
 window of about 6 seconds. */
 #define MAX_ATTEMPTS 60
+#define CHIP_DETAILS_LEN 20
+#define CHIP_ID_RSP_LEN 3
 /* -------------- Local Data Structures ------------- */
 
 /* -------------- Local Functions ----------------- */
@@ -293,7 +295,6 @@ int m4sensorhub_bl_wm(struct m4sensorhub_data *m4sensorhub,
 		goto done;
 	}
 
-
 	checksum = 0;
 	num_bytes = 0;
 	/* (malloc_size -2 - 1) is the number of data bytes -1 to be sent */
@@ -421,3 +422,195 @@ err:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(m4sensorhub_bl_erase_sectors);
+
+int m4sensorhub_bl_get_chipdetails(struct m4sensorhub_data *m4sensorhub)
+{
+	int num_bytes = 0;
+	int ret = 0;
+	int i;
+	u8 buf[CHIP_DETAILS_LEN] = {0};
+	buf[num_bytes++] = OPC_GET;
+	buf[num_bytes++] = ~(OPC_GET);
+	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+	if (!m4sensorhub_bl_ack(m4sensorhub)) {
+		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+
+	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, 0, CHIP_DETAILS_LEN) < 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+
+	if (!m4sensorhub_bl_ack(m4sensorhub)) {
+		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+	pr_info("%s: Response from L4 for opcode OPC_GET is: \n", __func__);
+	for (i = 0; i < CHIP_DETAILS_LEN; i++) {
+		pr_info("buf[%d] = 0x%x\n", i, buf[i]);
+	}
+err:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(m4sensorhub_bl_get_chipdetails);
+
+int m4sensorhub_bl_get_bootloader_version(struct m4sensorhub_data *m4sensorhub)
+{
+	u8 buf[2] = {0};
+	int num_bytes = 0;
+	int ret, i;
+	buf[num_bytes++] = OPC_GV;
+	buf[num_bytes++] = ~(OPC_GV);
+	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+	if (!m4sensorhub_bl_ack(m4sensorhub)) {
+		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+	num_bytes = 1;
+	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, 0, num_bytes) < 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+
+	if (!m4sensorhub_bl_ack(m4sensorhub)) {
+		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+	pr_info("%s: Response from L4 for opcode OPC_GV is: \n", __func__);
+	for (i = 0; i < num_bytes; i++) {
+		pr_info("data[%d] = 0x%x\n", i, buf[i]);
+	}
+err:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(m4sensorhub_bl_get_bootloader_version);
+
+int m4sensorhub_bl_get_chip_id(struct m4sensorhub_data *m4sensorhub)
+{
+	u8 buf[CHIP_ID_RSP_LEN] = {0};
+	int num_bytes = 0;
+	int ret, i;
+	buf[num_bytes++] = OPC_GID;
+	buf[num_bytes++] = ~(OPC_GID);
+	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+	if (!m4sensorhub_bl_ack(m4sensorhub)) {
+		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, 0, CHIP_ID_RSP_LEN) < 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+
+	if (!m4sensorhub_bl_ack(m4sensorhub)) {
+		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+	pr_info("%s: Response from L4 for opcode OPC_GID is: \n", __func__);
+	for (i = 0; i < CHIP_ID_RSP_LEN; i++) {
+		pr_info("data[%d] = 0x%x\n", i, buf[i]);
+	}
+err:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(m4sensorhub_bl_get_chip_id);
+
+int m4sensorhub_bl_erase_bank(struct m4sensorhub_data *m4sensorhub,
+    int bank_id)
+{
+	int ret = 0;
+	u8 buf[3];
+	int num_bytes = 0;
+	u8 special_erase_low_byte;
+
+	switch(bank_id) {
+		case BANK1:
+			special_erase_low_byte = SPECIAL_ERASE_LOW_BYTE_CMD_BANK1;
+		break;
+		case BANK2:
+			special_erase_low_byte = SPECIAL_ERASE_LOW_BYTE_CMD_BANK2;
+		break;
+		case BANK_ALL:
+			special_erase_low_byte = SPECIAL_ERASE_LOW_BYTE_CMD_BANK_ALL;
+		break;
+		default:
+			ret = -EINVAL;
+			goto err;
+	}
+
+	buf[num_bytes++] = OPC_NO_STRETCH_ER;
+	buf[num_bytes++] = ~(OPC_NO_STRETCH_ER);
+
+	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes, 0) < 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+
+	if (!m4sensorhub_bl_ack(m4sensorhub)) {
+		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+
+	num_bytes = 0;
+	buf[num_bytes++] = SPECIAL_ERASE_HIGH_BYTE;
+	buf[num_bytes++] = special_erase_low_byte;
+	buf[num_bytes++] = SPECIAL_ERASE_HIGH_BYTE ^ special_erase_low_byte;
+
+	if (m4sensorhub_i2c_write_read(m4sensorhub, buf, num_bytes,
+				       0) < 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : I2C transfer error\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+
+	if (!m4sensorhub_bl_ack(m4sensorhub)) {
+		KDEBUG(M4SH_ERROR, "%s : %d : NACK received, command invalid\n",
+		       __func__, __LINE__);
+		ret = -1;
+		goto err;
+	}
+
+err:
+	return ret;
+
+}
+EXPORT_SYMBOL_GPL(m4sensorhub_bl_erase_bank);

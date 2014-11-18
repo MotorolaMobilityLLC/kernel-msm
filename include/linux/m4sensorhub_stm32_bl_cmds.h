@@ -38,6 +38,17 @@
 /* opcode_no_stretch_readout_unprotect */
 #define OPC_NO_STRETCH_RU   ((uint8_t) (0x93))
 
+#define SPECIAL_ERASE_HIGH_BYTE 0xFF
+#define SPECIAL_ERASE_LOW_BYTE_CMD_BANK1	0xFE
+#define SPECIAL_ERASE_LOW_BYTE_CMD_BANK2	0xFD
+#define SPECIAL_ERASE_LOW_BYTE_CMD_BANK_ALL	0xFF
+
+enum {
+	BANK1,
+	BANK2,
+	BANK_ALL
+};
+
 
 int m4sensorhub_bl_ack(struct m4sensorhub_data *m4sensorhub);
 int m4sensorhub_bl_rm(struct m4sensorhub_data *m4sensorhub,
@@ -48,6 +59,10 @@ int m4sensorhub_bl_wm(struct m4sensorhub_data *m4sensorhub,
 	int start_address, u8 *data, int len);
 int m4sensorhub_bl_erase_sectors(struct m4sensorhub_data *m4sensorhub,
 	int *sector_array, int numsectors);
-
+int m4sensorhub_bl_erase_bank(struct m4sensorhub_data *m4sensorhub,
+	int bank_id);
+int m4sensorhub_bl_get_chipdetails(struct m4sensorhub_data *m4sensorhub);
+int m4sensorhub_bl_get_bootloader_version(struct m4sensorhub_data *m4sensorhub);
+int m4sensorhub_bl_get_chip_id(struct m4sensorhub_data *m4sensorhub);
 #endif /* __KERNEL__ */
 #endif /* M4SENSORHUB_STM32_BL_CMDS_H */
