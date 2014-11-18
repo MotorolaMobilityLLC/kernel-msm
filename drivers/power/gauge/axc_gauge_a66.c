@@ -158,8 +158,8 @@ int64_t read_battery_id(void)
 	return g_BatteryID_value;
 }
 //Hank read BatteryID---
-extern int g_ibat_500;
-extern void pm8226_chg_ibatmax_set(int chg_current);
+
+#if 0
 static int init_resistor_cali(AXC_Gauge_A66 *this)
 {
 	struct file *fd;
@@ -170,17 +170,7 @@ static int init_resistor_cali(AXC_Gauge_A66 *this)
 
 	mmseg_fs = get_fs();
 	set_fs(KERNEL_DS);
-
-	fd_ibat = filp_open( "/data/ibat_500", O_RDONLY,0);
-	if (IS_ERR(fd_ibat)){
-		printk("can not open /data/ibat_500\n");
-	}
-	else{
-		printk("set ibat_max to 500mA\n");
-		g_ibat_500 = 1;
-		pm8226_chg_ibatmax_set(500);
-	}
-
+	
 	fd = filp_open( BATTERY_RESISTOR_CALIBRATION_FILE_PATH, O_RDONLY,0);
 	if (IS_ERR(fd))
 	{
@@ -206,6 +196,7 @@ static int init_resistor_cali(AXC_Gauge_A66 *this)
 	set_fs(mmseg_fs);
   	return 0;
 }
+#endif
 
 //ASUS_BSP  +++ Eason_Chang "add BAT info time"
 static void ReportTime(void)
@@ -482,6 +473,7 @@ static void cal_bat_capacity_work(struct work_struct *work)
 
 	AXC_Gauge_A66 *this = container_of(work, AXC_Gauge_A66, calBatCapacityWorker.work);
 
+#if 0
 	// Read resistor when first time to cal battery capacity 
 	if (!this->firstCalBatCapacity) {
 		if (init_resistor_cali(this) < 0) {
@@ -491,6 +483,9 @@ static void cal_bat_capacity_work(struct work_struct *work)
 			
 		this->firstCalBatCapacity = true;
 	}
+#else
+	this->resistorCali = DEFAULT_DEVICE_RESISTOR_VALUE_ROBIN;
+#endif
 
 	wake_lock(&this->calBatCapWlock);
 
@@ -695,6 +690,7 @@ static void cal_bat_resistor_work(struct work_struct *work)
 	return;
 }
 
+#if 0
 /* read_bat_resistor_work - the work to read battery resistor from file */
 static void read_bat_resistor_work(struct work_struct *work)
 {
@@ -704,6 +700,7 @@ static void read_bat_resistor_work(struct work_struct *work)
 
 	return;		
 }
+#endif
 
 /* AXC_Gauge_A66_AskCapacity -
  */
@@ -1046,7 +1043,7 @@ void AXC_Gauge_A66_Constructor(AXI_Gauge *apGauge, int anType, AXI_Gauge_Callbac
 	INIT_DELAYED_WORK(&this->calBatCapacityWorker, cal_bat_capacity_work) ;
 	INIT_DELAYED_WORK(&this->calBat100PerOCVWorker, cal_bat_100_per_ocv_work) ;
 	INIT_DELAYED_WORK(&this->calBatResistorWorker, cal_bat_resistor_work) ;
-	INIT_DELAYED_WORK(&this->readBatResistorWorker, read_bat_resistor_work) ;
+//	INIT_DELAYED_WORK(&this->readBatResistorWorker, read_bat_resistor_work) ;
 
 	this->calBatCapacityQueue = create_singlethread_workqueue("CalBatCapacityWorker");
 	if (!this->calBatCapacityQueue)

@@ -62,7 +62,7 @@ typedef struct AXC_SWGauge {
 
 //ASUS_BSP +++ Josh_Liao "sw gauge v2"
 	int ocvPercent;
-	bool firstCalBatCapacity;
+	//bool firstCalBatCapacity;
 	bool hasCable;
 	bool isBatFull;
 	int Per100OCV;
