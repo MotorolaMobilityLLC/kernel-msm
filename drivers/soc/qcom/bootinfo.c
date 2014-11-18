@@ -30,6 +30,7 @@
 #include <linux/seq_file.h>
 #include <linux/apanic_mmc.h>
 #include <linux/pstore.h>
+#include <linux/pstore_ram.h>
 
 #ifdef CONFIG_ARM64
 /* these are defined in kernel/setup.c for "arm" targets */
@@ -298,12 +299,10 @@ static void bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
 		apanic_mmc_annotate("\n");
 	}
 
+	EMIT_BOOTINFO_APANIC(buf, "MBM_VERSION", "0x%08x", mbm_version);
+	apanic_mmc_annotate(linux_banner);
 	EMIT_BOOTINFO_APANIC(buf, "SERIAL", "0x%llx", serial);
 	EMIT_BOOTINFO_APANIC(buf, "HW_REV", "0x%04x", hwrev);
-	EMIT_BOOTINFO_APANIC(buf, "POWERUPREASON", "0x%08x", powerup_reason);
-	EMIT_BOOTINFO_APANIC(buf, "MBM_VERSION", "0x%08x", mbm_version);
-	apanic_mmc_annotate("Boot info:\n");
-	EMIT_BOOTINFO_APANIC(buf, "Last boot reason", "%s", bootreason);
 }
 
 static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
@@ -319,13 +318,14 @@ static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
 		pstore_annotate("\n");
 	}
 
+	EMIT_BOOTINFO_LASTKMSG(buf, "MBM_VERSION", "0x%08x", mbm_version);
 	pstore_annotate(linux_banner);
 	EMIT_BOOTINFO_LASTKMSG(buf, "SERIAL", "0x%llx", serial);
 	EMIT_BOOTINFO_LASTKMSG(buf, "HW_REV", "0x%04x", hwrev);
-	EMIT_BOOTINFO_LASTKMSG(buf, "POWERUPREASON", "0x%08x", powerup_reason);
-	EMIT_BOOTINFO_LASTKMSG(buf, "MBM_VERSION", "0x%08x", mbm_version);
-	pstore_annotate("Boot info:\n");
-	EMIT_BOOTINFO_LASTKMSG(buf, "Last boot reason", "%s", bootreason);
+	persistent_ram_annotation_append("POWERUPREASON: 0x%08x\n",
+						bi_powerup_reason());
+	persistent_ram_annotation_append("\nBoot info:\n");
+	persistent_ram_annotation_append("Last boot reason: %s\n", bootreason);
 }
 
 /* get_bootinfo fills in the /proc/bootinfo information.
