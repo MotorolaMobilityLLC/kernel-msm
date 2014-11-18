@@ -29,7 +29,6 @@
 extern char m4sensorhub_debug;
 
 #define M4SENSORHUB_DRIVER_NAME     "m4sensorhub"
-#define M4SENSORHUB_I2C_ADDR        0x18
 
 #define KDEBUG(i, format, s...)                         \
 	do {                                            \
@@ -55,10 +54,7 @@ enum m4sensorhub_mode {
 };
 
 enum m4sensorhub_bootmode {
-	BOOTMODE00,
-	BOOTMODE01,
-	BOOTMODE10,
-	BOOTMODE11,
+	BOOTMODE0_HIGH
 };
 
 /* This enum is used to register M4 panic callback
@@ -88,8 +84,6 @@ struct m4sensorhub_hwconfig {
 	int irq_gpio;
 	int reset_gpio;
 	int boot0_gpio;
-	int boot1_gpio;
-	int mpu_9150_en_gpio;
 };
 
 struct m4sensorhub_irq_dbg {
@@ -175,10 +169,7 @@ int m4sensorhub_i2c_write_read(struct m4sensorhub_data *m4sensorhub,
  *   be called directly.
  */
 int m4sensorhub_test_m4_reboot(struct m4sensorhub_data *m4, bool reboot_first);
-int m4sensorhub_load_firmware(struct m4sensorhub_data *m4sensorhub,
-	unsigned short force_upgrade,
-	const struct firmware *firmware);
-int m4sensorhub_401_load_firmware(struct m4sensorhub_data *m4sensorhub,
+int m4sensorhub_l4_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	unsigned short force_upgrade,
 	const struct firmware *fm);
 void m4sensorhub_hw_reset(struct m4sensorhub_data *m4sensorhub);

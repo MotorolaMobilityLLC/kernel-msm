@@ -300,17 +300,15 @@
 
 &i2c_2 {
 	status = "ok";
-		m4sensorhub@39 {
+		m4sensorhub@43 {
 		compatible = "mot,m4sensorhub";
 		status = "ok";
 
-		reg = <0x39>;
+		reg = <0x43>;
 		mot,irq-gpio    = <&msmgpio 5 0x00>;
 		mot,reset-gpio  = <&msmgpio 62 0x00>;
 		mot,boot0-gpio  = <&msmgpio 109 0x00>;
-		mot,boot1-gpio  = <&msmgpio 67 0x00>;
-		mot,enable-gpio = <&msmgpio 38 0x00>;
-		mot,fw-filename = "m4sensorhub-p2_5_minnow.bin";
+		mot,fw-filename = "m4sensorhub-p0_dali.bin";
 	};
 };
 

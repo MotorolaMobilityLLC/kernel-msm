@@ -35,7 +35,6 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 
-
 #define M4SENSORHUB_NUM_GPIOS       6
 
 /* --------------- Global Declarations -------------- */
@@ -99,21 +98,9 @@ int m4sensorhub_set_bootmode(struct m4sensorhub_data *m4sensorhub,
 	}
 
 	switch (bootmode) {
-	case BOOTMODE00:
-		gpio_set_value(m4sensorhub->hwconfig.boot0_gpio, 0);
-		gpio_set_value(m4sensorhub->hwconfig.boot1_gpio, 0);
-		break;
-	case BOOTMODE01:
+	case BOOTMODE0_HIGH:
 		gpio_set_value(m4sensorhub->hwconfig.boot0_gpio, 1);
-		gpio_set_value(m4sensorhub->hwconfig.boot1_gpio, 0);
 		break;
-	case BOOTMODE10:
-		gpio_set_value(m4sensorhub->hwconfig.boot0_gpio, 0);
-		gpio_set_value(m4sensorhub->hwconfig.boot1_gpio, 1);
-		break;
-	case BOOTMODE11:
-		gpio_set_value(m4sensorhub->hwconfig.boot0_gpio, 1);
-		gpio_set_value(m4sensorhub->hwconfig.boot1_gpio, 1);
 	default:
 		break;
 	}
@@ -136,29 +123,16 @@ void m4sensorhub_hw_reset(struct m4sensorhub_data *m4sensorhub)
 		goto m4sensorhub_hw_reset_fail;
 	}
 
-	if (m4sensorhub->i2c_client->addr == 0x39) {
-		err = m4sensorhub_set_bootmode(m4sensorhub, BOOTMODE01);
-		if (err < 0) {
-			pr_err("%s: Failed to enter bootmode 01\n", __func__);
-			goto m4sensorhub_hw_reset_fail;
-		}
-		usleep_range(5000, 10000);
-		gpio_set_value(m4sensorhub->hwconfig.reset_gpio, 0);
-		usleep_range(10000, 12000);
-		gpio_set_value(m4sensorhub->hwconfig.reset_gpio, 1);
-		msleep(400);
-	} else {
-		err = m4sensorhub_set_bootmode(m4sensorhub, BOOTMODE00);
-		if (err < 0) {
-			pr_err("%s: Failed to enter bootmode 00\n", __func__);
-			goto m4sensorhub_hw_reset_fail;
-		}
-		gpio_set_value(m4sensorhub->hwconfig.reset_gpio, 1);
-		usleep_range(5000, 10000);
-		gpio_set_value(m4sensorhub->hwconfig.reset_gpio, 0);
-		usleep_range(5000, 10000);
-		gpio_set_value(m4sensorhub->hwconfig.reset_gpio, 1);
+	err = m4sensorhub_set_bootmode(m4sensorhub, BOOTMODE0_HIGH);
+	if (err < 0) {
+		pr_err("%s: Failed to enter bootmode 01\n", __func__);
+		goto m4sensorhub_hw_reset_fail;
 	}
+	usleep_range(5000, 10000);
+	gpio_set_value(m4sensorhub->hwconfig.reset_gpio, 0);
+	usleep_range(10000, 12000);
+	gpio_set_value(m4sensorhub->hwconfig.reset_gpio, 1);
+	msleep(400);
 
 m4sensorhub_hw_reset_fail:
 	if (err < 0)
@@ -227,33 +201,7 @@ static int m4sensorhub_hw_init(struct m4sensorhub_data *m4sensorhub,
 	gpio_direction_output(gpio, 0);
 	m4sensorhub->hwconfig.boot0_gpio = gpio;
 
-	gpio = of_get_named_gpio_flags(node, "mot,boot1-gpio", 0, NULL);
-	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-boot1");
-	if (err) {
-		pr_err("Failed acquiring M4 Sensor Hub Boot1 GPIO-%d (%d)\n",
-			gpio, err);
-		goto error_boot1;
-	}
-	gpio_direction_output(gpio, 0);
-	m4sensorhub->hwconfig.boot1_gpio = gpio;
-
-	gpio = of_get_named_gpio_flags(node, "mot,enable-gpio", 0, NULL);
-	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-enable");
-	if (err) {
-		pr_err("Failed acquiring M4 Sensor Hub Enable GPIO-%d (%d)\n",
-			gpio, err);
-		goto error_enable;
-	}
-	gpio_direction_output(gpio, 0);
-	m4sensorhub->hwconfig.mpu_9150_en_gpio = gpio;
-
 	return 0;
-error_enable:
-	gpio_free(m4sensorhub->hwconfig.boot1_gpio);
-	m4sensorhub->hwconfig.boot1_gpio = -1;
-error_boot1:
-	gpio_free(m4sensorhub->hwconfig.boot0_gpio);
-	m4sensorhub->hwconfig.boot0_gpio = -1;
 error_boot0:
 	gpio_free(m4sensorhub->hwconfig.reset_gpio);
 	m4sensorhub->hwconfig.reset_gpio = -1;
@@ -287,16 +235,6 @@ static void m4sensorhub_hw_free(struct m4sensorhub_data *m4sensorhub)
 	if (m4sensorhub->hwconfig.boot0_gpio >= 0) {
 		gpio_free(m4sensorhub->hwconfig.boot0_gpio);
 		m4sensorhub->hwconfig.boot0_gpio = -1;
-	}
-
-	if (m4sensorhub->hwconfig.boot1_gpio >= 0) {
-		gpio_free(m4sensorhub->hwconfig.boot1_gpio);
-		m4sensorhub->hwconfig.boot1_gpio = -1;
-	}
-
-	if (m4sensorhub->hwconfig.mpu_9150_en_gpio >= 0) {
-		gpio_free(m4sensorhub->hwconfig.mpu_9150_en_gpio);
-		m4sensorhub->hwconfig.mpu_9150_en_gpio = -1;
 	}
 
 	m4sensorhub->filename = NULL;
@@ -448,11 +386,7 @@ static void m4sensorhub_initialize(const struct firmware *firmware,
 	/* Initiate M4 firmware download */
 	KDEBUG(M4SH_CRITICAL, "%s: Starting M4 download %s = %d\n",
 		__func__, "with force_upgrade", force_upgrade);
-	if (m4sensorhub_misc_data.i2c_client->addr == 0x39)
-		err = m4sensorhub_401_load_firmware(&m4sensorhub_misc_data,
-			force_upgrade, firmware);
-	else
-		err = m4sensorhub_load_firmware(&m4sensorhub_misc_data,
+	err = m4sensorhub_l4_load_firmware(&m4sensorhub_misc_data,
 			force_upgrade, firmware);
 
 	if (err < 0) {
