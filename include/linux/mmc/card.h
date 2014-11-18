@@ -98,6 +98,8 @@ struct mmc_ext_csd {
 	bool			hpi_en;			/* HPI enablebit */
 	bool			hpi;			/* HPI support bit */
 	unsigned int		hpi_cmd;		/* cmd used as HPI */
+	bool			ffu_capable;		/* FFU support */
+	bool			ffu_mode_op;		/* FFU mode operation */
 	bool			bkops;		/* background support bit */
 	u8			bkops_en;	/* background enable bits */
 	unsigned int            data_sector_size;       /* 512 bytes or 4KB */
