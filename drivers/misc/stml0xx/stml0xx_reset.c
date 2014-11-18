@@ -203,6 +203,17 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 		}
 	}
 
+#ifdef CONFIG_SENSORHUB_DEBUG_LOGGING
+	buf[0] = SH_LOG_DEBUG;
+	err = stml0xx_spi_send_write_reg_reset(SH_LOG_LEVEL_REG, buf,
+		1, RESET_NOT_ALLOWED);
+	if (err < 0) {
+		dev_err(&ps_stml0xx->spi->dev,
+			"Unable to write sh log level");
+		ret_err = err;
+	}
+#endif
+
 	err = stml0xx_led_set_reset(&ps_stml0xx->led_cdev,
 			RESET_NOT_ALLOWED);
 	if (err < 0)
