@@ -23,65 +23,59 @@
 #include <linux/m4sensorhub_stm32_bl_cmds.h>
 
 /* --------------- Local Declarations -------------- */
-/* We flash code in sector 6 and sector 7 */
-#define USER_FLASH_FIRST_PAGE_ADDRESS	0x08040000
+/* We flash code in sector 0 to 255 */
+/* From the Flash Programming Manual:
+ All sectors are 2K
+*/
+#define USER_FLASH_FIRST_PAGE_ADDRESS	0x08000000
 #define VERSION_OFFSET  0x200
 #define VERSION_ADDRESS (USER_FLASH_FIRST_PAGE_ADDRESS + VERSION_OFFSET)
 
-/* Sector 7 ends at 0x0807FFFF, and we put 4 byte barker */
-/* at the end of Sector 7, giving BARKER_ADDRESS as (0x0807FFFF - 0x4 + 0x1) */
-#define BARKER_ADDRESS	0x0807FFFC
-#define BARKER_NUMBER	0xACEC0DE
-/* The MAX_FILE_SIZE is the size of sectors 6 and 7  where the firmware code
- * will reside (minus the barker size).
+#define FLASH_SIZE (1024*1024) /* 1 MB */
+#define FLASH_SIZE_FOR_SW (FLASH_SIZE / 2)
+#define BARKER_SIZE 8
+/* Sector 255 ends at 0x0807FFFF, and we put BARKER_SIZE number of bytes as barker */
 
- * From the Flash Programming Manual:
-  Sector  Start Address End Address Size
-  ------  ------------- ----------------
-  0       0x0800 0000   0x0800 3FFF 16 Kbytes
-  1       0x0800 4000   0x0800 7FFF 16 Kbytes
-  2       0x0800 8000   0x8000 BFFF 16 Kbytes
-  3       0x0800 C000   0x0800 FFFF 16 Kbytes
-  4       0x0801 0000   0x0801 FFFF 64 Kbytes
-  5       0x0802 0000   0x0803 FFFF 128 Kbytes
-  6       0x0804 0000   0x0805 FFFF 128 Kbytes
-  7       0x0806 0000   0x0807 FFFF 128 Kbytes
+#define BARKER_ADDRESS (USER_FLASH_FIRST_PAGE_ADDRESS + FLASH_SIZE_FOR_SW - BARKER_SIZE)
 
- */
-/* Max file size is 128Kb + 128 Kb - 4 bytes for barker */
-#define MAX_FILE_SIZE	(128*1024+128*1024-4) /* bytes */
-/* Transfer is done in 256 bytes, or if data is less than 256 bytes, then
-data is 16 bit aligned and sent out */
+/* The MAX_FILE_SIZE is the size of sectors 0 to 255 where the firmware code
+ * will reside (minus the barker size). */
+
+#define MAX_FILE_SIZE (FLASH_SIZE_FOR_SW - BARKER_SIZE)
+/* Transfer is done in 256 bytes */
+/* L4 allows programming ONLY double words (2 * 32-bit data) */
 #define MAX_TRANSFER_SIZE	256 /* bytes */
-/* We are flashing/erasing 2 sectors */
-#define NUM_FLASH_TO_ERASE 2
-#define SECTOR_TO_ERASE_1 6
-#define SECTOR_TO_ERASE_2 7
-int page_to_erase[2] = {SECTOR_TO_ERASE_1, SECTOR_TO_ERASE_2};
+
+u8 barker_buffer[BARKER_SIZE] = {0xDE, 0xC0, 0xCE, 0x0A, 0x00, 0x00, 0x00, 0x00};
 /* -------------- Local Functions ------------- */
 
 static int m4sensorhub_bl_jump_to_user(struct m4sensorhub_data *m4sensorhub)
 {
 	int ret = -1;
-	u32 barker_read_from_device = 0;
+	u8 barker_read_from_device[BARKER_SIZE];
+	int loop;
 
 	if (m4sensorhub_bl_rm(m4sensorhub, BARKER_ADDRESS,
-			      (u8 *)&barker_read_from_device, 4) != 0) {
+			      barker_read_from_device, BARKER_SIZE) != 0) {
 		KDEBUG(M4SH_ERROR, "%s : %d : error reading from device\n",
 		       __func__, __LINE__);
 		KDEBUG(M4SH_ERROR, "*** Not executing M4 code ***\n");
 		return -EIO;
 	}
 
-	if (barker_read_from_device == BARKER_NUMBER) {
+	if (memcmp(barker_read_from_device, barker_buffer, BARKER_SIZE) == 0) {
 		m4sensorhub_bl_go(m4sensorhub, USER_FLASH_FIRST_PAGE_ADDRESS);
 		KDEBUG(M4SH_NOTICE, "Waiting for M4 setup\n");
 		msleep(100);
 		KDEBUG(M4SH_NOTICE, "Executing M4 code\n");
 		ret = 0;
 	} else {
-		KDEBUG(M4SH_ERROR, "Wrong Barker Number read 0x%8x\n",
-		       barker_read_from_device);
+		KDEBUG(M4SH_ERROR, "Wrong Barker Number read \n");
+		for (loop = 0; loop < BARKER_SIZE; loop++) {
+			KDEBUG(M4SH_ERROR, "read is  0x%02x ", barker_read_from_device[loop]);
+			KDEBUG(M4SH_ERROR, "expected is  0x%02x ", barker_buffer[loop]);
+		}
+		KDEBUG(M4SH_ERROR, "\n");
 		KDEBUG(M4SH_ERROR, "*** Not executing M4 code ***\n");
 	}
 
@@ -90,23 +84,21 @@ static int m4sensorhub_bl_jump_to_user(struct m4sensorhub_data *m4sensorhub)
 
 static int m4sensorhub_bl_erase_fw(struct m4sensorhub_data *m4sensorhub)
 {
-	return m4sensorhub_bl_erase_sectors(m4sensorhub,
-				page_to_erase, NUM_FLASH_TO_ERASE);
+	return m4sensorhub_bl_erase_bank(m4sensorhub, BANK1);
 }
-
 /* -------------- Global Functions ----------------- */
 
-/* m4sensorhub_401_load_firmware()
-   This function uses I2C bootloader version 1.1 on M4
-   Check firmware and load if different from what's already on the M4.
-   Then jump to user code on M4.
+/* m4sensorhub_l4_load_firmware()
+   This function uses I2C bootloader version 1.1 on L4
+   Check firmware and load if different from what's already on the L4.
+   Then jump to user code on L4.
 
    Returns 0 on success or negative error code on failure
 
      m4sensorhub - pointer to the main m4sensorhub data struct
 */
 
-int m4sensorhub_401_load_firmware(struct m4sensorhub_data *m4sensorhub,
+int m4sensorhub_l4_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	unsigned short force_upgrade, const struct firmware *fm)
 {
 	const struct firmware *firmware = fm;
@@ -114,8 +106,10 @@ int m4sensorhub_401_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	int bytes_left, bytes_to_write;
 	int address_to_write;
 	u8 *buf_to_read, *buf = NULL;
+	u8 *write_buf;
 	u16 fw_version_file, fw_version_device;
-	u32 barker_read_from_device;
+	u8 barker_read_from_device[BARKER_SIZE];
+	int loop;
 
 	if (m4sensorhub == NULL) {
 		KDEBUG(M4SH_ERROR, "%s: M4 data is NULL\n", __func__);
@@ -125,6 +119,7 @@ int m4sensorhub_401_load_firmware(struct m4sensorhub_data *m4sensorhub,
 
 	m4sensorhub_hw_reset(m4sensorhub);
 
+	/* Always write MAX_TRANSFER_SIZE, even for the last chunk*/
 	buf = kzalloc(MAX_TRANSFER_SIZE, GFP_KERNEL);
 	if (!buf) {
 		KDEBUG(M4SH_ERROR, "%s: Failed to allocate buf\n", __func__);
@@ -159,25 +154,31 @@ int m4sensorhub_401_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	if (!force_upgrade) {
 		/* Verify Barker number from device */
 		if (m4sensorhub_bl_rm(m4sensorhub, BARKER_ADDRESS,
-				(u8 *)&barker_read_from_device,
-				sizeof(barker_read_from_device)) != 0) {
+				barker_read_from_device,
+				BARKER_SIZE) != 0) {
 			KDEBUG(M4SH_ERROR, "%s : %d : error reading Barker\n",
 				__func__, __LINE__);
 			ret = -EINVAL;
 			goto done;
 		}
 
-		if (barker_read_from_device != BARKER_NUMBER) {
-			KDEBUG(M4SH_NOTICE,
-				"Barker Number read 0x%8x does not match 0x%8x\n",
-				barker_read_from_device, BARKER_NUMBER);
+		if (memcmp(barker_read_from_device, barker_buffer, BARKER_SIZE) != 0) {
+
+			KDEBUG(M4SH_NOTICE, "Barker Number does not match \n");
+			for (loop = 0; loop < BARKER_SIZE; loop++) {
+				KDEBUG(M4SH_ERROR, "read is 0x%02x ", barker_read_from_device[loop]);
+				KDEBUG(M4SH_ERROR, "expected is  0x%02x ", barker_buffer[loop]);
+			}
+			KDEBUG(M4SH_ERROR, "\n");
+
+
 			KDEBUG(M4SH_NOTICE,
 				"forcing firmware update from file\n");
 			/*
 			 * This is likely a blank flash factory case, so
 			 * skip doing any driver pre-flash callbacks.
 			 */
-			goto m4sensorhub_401_load_firmware_erase_flash;
+			goto m4sensorhub_l4_load_firmware_erase_flash;
 		} else {
 			/* Read firmware version from device */
 			if (m4sensorhub_bl_rm(m4sensorhub, VERSION_ADDRESS,
@@ -217,7 +218,7 @@ int m4sensorhub_401_load_firmware(struct m4sensorhub_data *m4sensorhub,
 		 * no numbers or error checking is done), we will skip
 		 * trying to call any driver pre-flash callbacks.
 		 */
-		goto m4sensorhub_401_load_firmware_erase_flash;
+		goto m4sensorhub_l4_load_firmware_erase_flash;
 	}
 
 	/* Boot M4, execute any pre-flash callbacks, then reset for BL mode */
@@ -235,7 +236,7 @@ int m4sensorhub_401_load_firmware(struct m4sensorhub_data *m4sensorhub,
 			 * state, and go ahead with a reflash.
 			 */
 			m4sensorhub_hw_reset(m4sensorhub);
-			goto m4sensorhub_401_load_firmware_erase_flash;
+			goto m4sensorhub_l4_load_firmware_erase_flash;
 		}
 
 		m4sensorhub_call_preflash_callbacks();
@@ -245,7 +246,7 @@ int m4sensorhub_401_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	}
 
 	/* The flash memory to update has to be erased before updating */
-m4sensorhub_401_load_firmware_erase_flash:
+m4sensorhub_l4_load_firmware_erase_flash:
 	ret = m4sensorhub_bl_erase_fw(m4sensorhub);
 	if (ret < 0) {
 		pr_err("%s: erase failed\n", __func__);
@@ -258,16 +259,20 @@ m4sensorhub_401_load_firmware_erase_flash:
 	buf_to_read = (u8 *)firmware->data;
 
 	KDEBUG(M4SH_DEBUG, "%s: %d bytes to be written\n", __func__,
-		firmware->size);
+		(int)firmware->size);
 
 	while (bytes_left) {
-		if (bytes_left > MAX_TRANSFER_SIZE)
+		if (bytes_left > MAX_TRANSFER_SIZE) {
 			bytes_to_write = MAX_TRANSFER_SIZE;
-		else
+			write_buf = buf_to_read;
+		} else {
 			bytes_to_write = bytes_left;
+			memcpy(buf, buf_to_read, bytes_to_write);
+			write_buf = buf;
+		}
 
 		if (m4sensorhub_bl_wm(m4sensorhub, address_to_write,
-				buf_to_read, bytes_to_write) != 0) {
+				write_buf, MAX_TRANSFER_SIZE) != 0) {
 			KDEBUG(M4SH_ERROR, "%s : %d : error writing %d\n",
 				__func__, __LINE__, address_to_write);
 			ret = -EINVAL;
@@ -281,12 +286,8 @@ m4sensorhub_401_load_firmware_erase_flash:
 	}
 
 	/* Write barker number when firmware successfully written */
-	buf[0] = BARKER_NUMBER & 0xFF;
-	buf[1] = (BARKER_NUMBER >> 8) & 0xFF;
-	buf[2] = (BARKER_NUMBER >> 16) & 0xFF;
-	buf[3] = (BARKER_NUMBER >> 24) & 0xFF;
 	if (m4sensorhub_bl_wm(m4sensorhub, BARKER_ADDRESS,
-		buf, 4) != 0) {
+		barker_buffer, BARKER_SIZE) != 0) {
 		KDEBUG(M4SH_ERROR, "%s : %d : error writing\n",
 			__func__, __LINE__);
 		ret = -EINVAL;
@@ -294,27 +295,25 @@ m4sensorhub_401_load_firmware_erase_flash:
 	}
 
 	KDEBUG(M4SH_NOTICE, "%s: %d bytes written successfully\n",
-		__func__, firmware->size);
+		__func__, (int)firmware->size);
 
 	ret = 0;
 
 done:
 	release_firmware(firmware);
+	kfree(buf);
 
 	/* irrespective of whether we upgraded FW or not,
 	the firmware version will be the same as one in the file*/
 	m4sensorhub->fw_version = fw_version_file;
-
 	/* If ret is invalid, then we don't try to jump to user code */
 	if (ret >= 0 && m4sensorhub_bl_jump_to_user(m4sensorhub) < 0)
 		/* If jump to user code fails, return failure */
 		ret = -EINVAL;
 
-	kfree(buf);
-
 	return ret;
 }
-EXPORT_SYMBOL_GPL(m4sensorhub_401_load_firmware);
+EXPORT_SYMBOL_GPL(m4sensorhub_l4_load_firmware);
 
 /* TODO: Restructure reflash code so that this function can go in the core */
 int m4sensorhub_test_m4_reboot(struct m4sensorhub_data *m4, bool reboot_first)
