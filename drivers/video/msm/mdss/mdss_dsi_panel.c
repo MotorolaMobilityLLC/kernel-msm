@@ -270,15 +270,19 @@ static void idle_on_work(struct work_struct *work)
 static void __mdss_dsi_panel_set_idle_mode(struct mdss_dsi_ctrl_pdata *ctrl,
 		int enable)
 {
-	/* don't need to set idle mode if display is blanked */
+	if (!ctrl->idle_requested && enable) {
+		pr_debug("%s: idle: no control from userspace\n", __func__);
+		return;
+	}
+
 	if (ctrl->blanked) {
 		pr_debug("%s: idle: already blanked\n", __func__);
-		return;
+		goto done;
 	}
 
 	if (ctrl->idle == enable) {
 		pr_debug("%s: idle: no change(%d)\n", __func__, enable);
-		return;
+		goto done;
 	}
 
 	pr_debug("%s: idle %d->%d\n", __func__, ctrl->idle, enable);
@@ -294,6 +298,9 @@ static void __mdss_dsi_panel_set_idle_mode(struct mdss_dsi_ctrl_pdata *ctrl,
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
 		}
 	}
+
+done:
+	ctrl->idle_requested = 0;
 }
 
 static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
@@ -308,6 +315,8 @@ static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
+
+	ctrl->idle_requested = 1;
 
 	if (enable && !ctrl->bklt_off)
 		return; // will enable idle later when blkt is off
