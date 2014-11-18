@@ -319,6 +319,13 @@ enum lowpower_mode {
 	LOWPOWER_ENABLED
 };
 
+enum sh_log_level {
+	SH_LOG_DISABLE,
+	SH_LOG_ERROR,
+	SH_LOG_VERBOSE,
+	SH_LOG_DEBUG
+};
+
 struct stm_response {
 	/* 0x0080 */
 	unsigned short header;
@@ -411,6 +418,8 @@ struct stm_response {
 #define CAMERA                          0x4C
 #define NFC                             0x4D
 #define SIM                             0x4E
+
+#define SH_LOG_LEVEL_REG                0x55
 
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60

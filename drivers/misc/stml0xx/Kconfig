@@ -1,3 +1,10 @@
+config SENSORHUB_DEBUG_LOGGING
+	bool "sensorhub debug logging"
+	default n
+	help
+	  Say yes here if you wish to enable debug
+	  logging from the sensorhub.
+
 config SENSORS_STML0XX
 	tristate "STML0XX Sensor Processor"
 	default n
