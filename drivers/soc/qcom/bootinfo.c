@@ -157,6 +157,37 @@ EXPORT_SYMBOL(bi_mbm_version);
 	    EMIT_BOOTINFO("MBM_VERSION", "0x%08x", mbm_version)
 
 /*
+ * boot_seq contains the boot sequence number.
+ * boot_seq default to 0 if it is not set.
+ *
+ * Exported symbols:
+ * bi_boot_seq()                -- returns the boot seq
+ */
+#ifdef CONFIG_OF
+static void of_bootseq(u32 *seq)
+{
+	struct device_node *n = of_find_node_by_path("/chosen");
+
+	of_property_read_u32(n, "mmi,boot_seq", seq);
+	of_node_put(n);
+}
+#else
+static inline void of_boot_seq(u32 *seq) { }
+#endif
+
+u32 bi_boot_seq(void)
+{
+	u32 seq = 0x0;
+
+	of_bootseq(&seq);
+	return seq;
+}
+EXPORT_SYMBOL(bi_boot_seq);
+
+#define EMIT_BOOT_SEQ() \
+	    EMIT_BOOTINFO("BOOT_SEQ", "0x%08x", boot_seq)
+
+/*
  * BL build signature a succession of lines of text each denoting
  * build/versioning information for each bootloader component,
  * as passed along from bootloader via ATAG_BL_BUILD_SIG(s)
@@ -303,6 +334,7 @@ static void bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
 	apanic_mmc_annotate(linux_banner);
 	EMIT_BOOTINFO_APANIC(buf, "SERIAL", "0x%llx", serial);
 	EMIT_BOOTINFO_APANIC(buf, "HW_REV", "0x%04x", hwrev);
+	EMIT_BOOTINFO_APANIC(buf, "BOOT_SEQ", "0x%08x", boot_seq);
 }
 
 static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
@@ -322,6 +354,7 @@ static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
 	pstore_annotate(linux_banner);
 	EMIT_BOOTINFO_LASTKMSG(buf, "SERIAL", "0x%llx", serial);
 	EMIT_BOOTINFO_LASTKMSG(buf, "HW_REV", "0x%04x", hwrev);
+	EMIT_BOOTINFO_LASTKMSG(buf, "BOOT_SEQ", "0x%08x", boot_seq);
 	persistent_ram_annotation_append("POWERUPREASON: 0x%08x\n",
 						bi_powerup_reason());
 	persistent_ram_annotation_append("\nBoot info:\n");
@@ -342,6 +375,7 @@ static int get_bootinfo(struct seq_file *m, void *v)
 	EMIT_POWERUPREASON();
 	EMIT_MBM_VERSION();
 	EMIT_BL_BUILD_SIG();
+	EMIT_BOOT_SEQ();
 	EMIT_BOOTINFO("Last boot reason", "%s", bootreason);
 
 	return len;
