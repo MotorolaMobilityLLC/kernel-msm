@@ -36,9 +36,6 @@
     };
 //ASUS_BSP --- Cliff_Yu "Touch Porting"
 
-	i2c@f9925000 { /* BLSP1 QUP3 NFC */
-	};
-
 	i2c@f9924000 { /* BLSP1 QUP2 Sensors */
 		//ASUS_BSP +++ Maggie_Lee "Sensor Porting"
 		lis3dsh_acc@1e {
