@@ -171,6 +171,7 @@ void *dst_alloc(struct dst_ops *ops, struct net_device *dev,
 	dst_init_metrics(dst, dst_default_metrics, true);
 	dst->expires = 0UL;
 	dst->path = dst;
+	dst->from = NULL;
 	RCU_INIT_POINTER(dst->_neighbour, NULL);
 #ifdef CONFIG_XFRM
 	dst->xfrm = NULL;
