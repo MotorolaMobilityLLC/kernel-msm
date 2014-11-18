@@ -435,11 +435,13 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 	static const uint8_t cmdReadCfgVer[] = {CMD_READ_VERSIONS, VER_CONFIG};
 	bool ret = true;
 
+	disable_irq(gl_ts->client->irq);
 	/* this structure is so that we definitely do all the calls, but still return a status in case anyone cares */
 	ret = i2cWrite(BUF_COMMAND, cmdReadFwVer, sizeof(cmdReadFwVer)) && ret;
 	ret = i2cRead(BUF_RESPONSE, verFw, VERSION_LENGTH) && ret;
 	ret = i2cWrite(BUF_COMMAND, cmdReadCfgVer, sizeof(cmdReadCfgVer)) && ret;
 	ret = i2cRead(BUF_RESPONSE, verCfg, VERSION_LENGTH) && ret;
+	enable_irq(gl_ts->client->irq);
 
 	if (logIt)
 		LOGI("current versions: fw@{%X,%X,%X,%X}, cfg@{%X,%X,%X,%X}\n",
@@ -1019,7 +1021,7 @@ static bool chipIdentifyIT7260(void)
 	else if (chipID[8] == '6' && chipID[9] == '6')
 		LOGI("rev BX4 found\n");
 	else	/* unknown, but let's hope it is still a version we can talk to */
-		LOGI("unknown revision (0x%02X 0x%02X) found\n", chipID[8], chipID[9]);
+		LOGI("rev (0x%02X 0x%02X) found\n", chipID[8], chipID[9]);
 
 	return true;
 }
