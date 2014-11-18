@@ -26,8 +26,6 @@
 #define __ASMARM_BOOTINFO_H
 
 
-#if !defined(__KERNEL__) || defined(CONFIG_BOOTINFO)
-
 /*
  * These #defines are used for the bits in powerup_reason.
  */
@@ -42,6 +40,8 @@
 #define PU_REASON_MODEM_RESET		0x80000000 /* Bit 31 */
 #define PU_REASON_INVALID		0xFFFFFFFF
 
+
+#if !defined(__KERNEL__) || defined(CONFIG_BOOTINFO)
 
 /*
  * These #defines are used for the battery status at boot.
@@ -95,7 +95,7 @@ extern unsigned int system_serial_high;
 #endif
 
 #else /* defined(CONFIG_BOOTINFO) */
-static inline u32 bi_powerup_reason(void) { return 0xFFFFFFFF; }
+static inline u32 bi_powerup_reason(void) { return PU_REASON_INVALID; }
 static inline const char *bi_bootreason(void) { return "NOTSUPPORTED"; }
 static inline u32 bi_mbm_version(void) { return 0xFFFFFFFF; }
 #endif /* !defined(CONFIG_BOOTINFO) */
