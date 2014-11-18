@@ -537,6 +537,81 @@ static int fan5404x_set_iocharge(struct fan5404x_chg *chip,
 	return 0;
 }
 
+#define OREG_FACTORY      0x23
+#define IBUSLIM_UNLIMITED 0x03
+static int configure_for_factory_cable_insertion(struct fan5404x_chg *chip)
+{
+	int rc;
+
+	/*
+	 * Tickle the timer, enable charging and disable T32. This works
+	 * around the internal 2.5s reset.
+	 */
+
+	rc = fan5404x_masked_write_fac(chip, REG_CONTROL0,
+				   CONTROL0_TMR_RST, CONTROL0_TMR_RST);
+	if (rc) {
+		dev_err(chip->dev, "Factory Mode Failure: Tickle the Timer\n");
+		return rc;
+	}
+
+	rc = fan5404x_masked_write_fac(chip, REG_CONTROL1,
+				       CONTROL1_CE_N, 0);
+	if (rc) {
+		dev_err(chip->dev, "Factory Mode Failure: Enable Charging\n");
+		return rc;
+	}
+
+	rc = fan5404x_masked_write(chip, REG_WD_CONTROL,
+				  WD_CONTROL_WD_DIS, WD_CONTROL_WD_DIS);
+	if (rc) {
+		dev_err(chip->dev, "Factory Mode Failure: Disable 32s timer\n");
+		return rc;
+	}
+
+	/*
+	 * Disable Charging, Set IBUS to Unlimited, VOREG to 4.2V and
+	 * disable T32. This is needed to configure factory mode.
+	 */
+
+	rc = fan5404x_masked_write_fac(chip, REG_CONTROL1,
+				       CONTROL1_CE_N, CONTROL1_CE_N);
+	if (rc) {
+		dev_err(chip->dev, "Factory Mode Failure: Disable charging\n");
+		return rc;
+	}
+
+	rc = fan5404x_masked_write_fac(chip, REG_CONTROL1,
+				       CONTROL1_HZ_MODE, 0);
+	if (rc) {
+		dev_err(chip->dev, "Factory Mode Failure: Disable HZ mode\n");
+		return rc;
+	}
+
+	rc = fan5404x_masked_write_fac(chip, REG_CONTROL1,
+			       CONTROL1_IBUSLIM,
+			       IBUSLIM_UNLIMITED << CONTROL1_IBUSLIM_SHIFT);
+	if (rc) {
+		dev_err(chip->dev, "Factory Mode Failure: Set I/P current\n");
+		return rc;
+	}
+
+	rc = fan5404x_masked_write_fac(chip, REG_OREG, OREG_OREG,
+				       OREG_FACTORY << OREG_OREG_SHIFT);
+	if (rc) {
+		dev_err(chip->dev, "Factory Mode Failure: Set Voreg to 4.2\n");
+		return rc;
+	}
+
+	rc = fan5404x_masked_write(chip, REG_WD_CONTROL,
+				   WD_CONTROL_WD_DIS, WD_CONTROL_WD_DIS);
+	if (rc) {
+		dev_err(chip->dev, "Factory Mode Failure: Disable 32s timer\n");
+		return rc;
+	}
+
+	return 0;
+}
 static int start_charging(struct fan5404x_chg *chip)
 {
 	union power_supply_propval prop = {0,};
@@ -544,6 +619,16 @@ static int start_charging(struct fan5404x_chg *chip)
 	int current_limit = 0;
 
 	dev_dbg(chip->dev, "starting to charge...\n");
+
+	if (chip->factory_mode) {
+		rc = chip->usb_psy->get_property(chip->usb_psy,
+				 POWER_SUPPLY_PROP_TYPE, &prop);
+		dev_dbg(chip->dev, "External Power Changed: usb=%d\n",
+			prop.intval);
+		if ((prop.intval == POWER_SUPPLY_TYPE_USB) ||
+		    (prop.intval == POWER_SUPPLY_TYPE_USB_CDP))
+			configure_for_factory_cable_insertion(chip);
+	}
 
 	/* Set TMR_RST */
 	rc = fan5404x_masked_write(chip, REG_CONTROL0,
@@ -610,6 +695,9 @@ static int start_charging(struct fan5404x_chg *chip)
 		chip->charging = true;
 	}
 
+	cancel_delayed_work(&chip->heartbeat_work);
+	schedule_delayed_work(&chip->heartbeat_work, msecs_to_jiffies(0));
+
 	return 0;
 }
 
@@ -627,6 +715,9 @@ static int stop_charging(struct fan5404x_chg *chip)
 
 	chip->charging = false;
 	chip->chg_done_batt_full = false;
+
+	cancel_delayed_work(&chip->heartbeat_work);
+	schedule_delayed_work(&chip->heartbeat_work, msecs_to_jiffies(0));
 
 	return 0;
 }
