@@ -36,12 +36,9 @@ struct dst_entry {
 	struct net_device       *dev;
 	struct  dst_ops	        *ops;
 	unsigned long		_metrics;
-	union {
-		unsigned long           expires;
-		/* point to where the dst_entry copied from */
-		struct dst_entry        *from;
-	};
+	unsigned long           expires;
 	struct dst_entry	*path;
+	struct dst_entry        *from;
 	struct neighbour __rcu	*_neighbour;
 #ifdef CONFIG_XFRM
 	struct xfrm_state	*xfrm;
@@ -68,8 +65,6 @@ struct dst_entry {
 	unsigned short		trailer_len;	/* space to reserve at tail */
 #ifdef CONFIG_IP_ROUTE_CLASSID
 	__u32			tclassid;
-#else
-	__u32			__pad2;
 #endif
 
 	/*
