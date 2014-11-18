@@ -697,6 +697,12 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		card->ext_csd.enhanced_rpmb_supported =
 			(card->ext_csd.rel_param &
 			 EXT_CSD_WR_REL_PARAM_EN_RPMB_REL_WR);
+
+		card->ext_csd.ffu_capable =
+			((ext_csd[EXT_CSD_SUPPORTED_MODE] & 0x1) == 0x1) &&
+			((ext_csd[EXT_CSD_FW_CONFIG] & 0x1) == 0x0);
+		card->ext_csd.ffu_mode_op = ext_csd[EXT_CSD_FFU_FEATURES];
+
 	} else {
 		card->ext_csd.cmdq_support = 0;
 		card->ext_csd.cmdq_depth = 0;
