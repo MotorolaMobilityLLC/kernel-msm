@@ -595,7 +595,7 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		card->ext_csd.data_sector_size = 512;
 	}
 
-	/* eMMC v4.5 or later */
+	/* eMMC v5 or later */
 	if (card->ext_csd.rev >= 7) {
 		card->ext_csd.firmware_version[0] =
 			ext_csd[EXT_CSD_FIRMWARE_VERSION + 0] << 0 |
@@ -625,6 +625,10 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		memcpy(card->ext_csd.vendor_health_report,
 		       &ext_csd[EXT_CSD_VENDOR_PROPRIETARY_HEALTH_REPORT],
 		       sizeof(card->ext_csd.vendor_health_report));
+		card->ext_csd.ffu_capable =
+			((ext_csd[EXT_CSD_SUPPORTED_MODE] & 0x1) == 0x1) &&
+			((ext_csd[EXT_CSD_FW_CONFIG] & 0x1) == 0x0);
+		card->ext_csd.ffu_mode_op = ext_csd[EXT_CSD_FFU_FEATURES];
 	}
 out:
 	return err;
