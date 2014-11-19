@@ -5950,38 +5950,31 @@ void hdd_wmm_tx_snapshot(hdd_adapter_t *pAdapter)
     }
 
 }
-int __iw_set_var_ints_getnone(struct net_device *dev,
-                              struct iw_request_info *info,
-                              union iwreq_data *wrqu, char *extra)
+static int __iw_set_var_ints_getnone(struct net_device *dev,
+                                     struct iw_request_info *info,
+                                     union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
     int sub_cmd;
-    int apps_args[MAX_VAR_ARGS] = {0};
-    int num_args;
+    int *apps_args = (int *) extra;
     hdd_station_ctx_t *pStaCtx = NULL ;
     hdd_context_t *pHddCtx = NULL;
     hdd_ap_ctx_t  *pAPCtx = NULL;
     int cmd = 0;
     int staId = 0;
     int ret = 0;
-    struct iw_point s_priv_data;
 
-    /* helper function to get iwreq_data with compat handling. */
-    if (hdd_priv_get_data(&s_priv_data, wrqu))
+    if (extra == NULL)
     {
-       return -EINVAL;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: NULL extra buffer pointer", __func__);
+        return -EINVAL;
     }
 
-    if (NULL == s_priv_data.pointer)
-    {
-       return -EINVAL;
-    }
+    sub_cmd = wrqu->data.flags;
 
-    sub_cmd = s_priv_data.flags;
-    num_args = s_priv_data.length;
-
-    hddLog(LOG1, "%s: Received length %d", __func__, s_priv_data.length);
+    hddLog(LOG1, "%s: Received length %d", __func__, wrqu->data.length);
 
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     ret = wlan_hdd_validate_context(pHddCtx);
@@ -5990,19 +5983,6 @@ int __iw_set_var_ints_getnone(struct net_device *dev,
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                     "%s: HDD context is Null", __func__);
         return ret;
-    }
-
-    if (num_args > MAX_VAR_ARGS)
-    {
-       num_args = MAX_VAR_ARGS;
-    }
-
-    /* ODD number is used for set, copy data using copy_from_user */
-    if (copy_from_user(apps_args, s_priv_data.pointer, (sizeof(int)) * num_args))
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: failed to copy data to user buffer", __func__);
-        return -EFAULT;
     }
 
     if(( sub_cmd == WE_MCC_CONFIG_CREDENTIAL ) ||
@@ -6136,6 +6116,50 @@ int __iw_set_var_ints_getnone(struct net_device *dev,
     }
 
     return 0;
+}
+
+static int iw_hdd_set_var_ints_getnone(struct net_device *dev,
+                                       struct iw_request_info *info,
+                                       union iwreq_data *wrqu, char *extra)
+{
+    int ret;
+    union iwreq_data u_priv_wrqu;
+    int apps_args[MAX_VAR_ARGS] = {0};
+    int num_args;
+
+    /* helper function to get iwreq_data with compat handling. */
+    if (hdd_priv_get_data(&u_priv_wrqu.data, wrqu))
+    {
+       return -EINVAL;
+    }
+
+    if (NULL == u_priv_wrqu.data.pointer)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: NULL data pointer", __func__);
+       return -EINVAL;
+    }
+
+    num_args = u_priv_wrqu.data.length;
+    if (num_args > MAX_VAR_ARGS)
+    {
+       num_args = MAX_VAR_ARGS;
+    }
+
+    if (copy_from_user(apps_args, u_priv_wrqu.data.pointer,
+                       (sizeof(int)) * num_args))
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: failed to copy data from user buffer", __func__);
+       return -EFAULT;
+    }
+
+    vos_ssr_protect(__func__);
+    ret = __iw_set_var_ints_getnone(dev, info, &u_priv_wrqu,
+                                    (char *)&apps_args);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
 }
 
 int iw_set_var_ints_getnone(struct net_device *dev,
@@ -8487,7 +8511,7 @@ static const iw_handler we_private[] = {
    [WLAN_PRIV_SET_THREE_INT_GET_NONE - SIOCIWFIRSTPRIV]  = iw_set_three_ints_getnone,
    [WLAN_PRIV_GET_CHAR_SET_NONE      - SIOCIWFIRSTPRIV]  = iw_get_char_setnone,
    [WLAN_PRIV_SET_NONE_GET_NONE     - SIOCIWFIRSTPRIV]   = iw_setnone_getnone, //action priv ioctl
-   [WLAN_PRIV_SET_VAR_INT_GET_NONE  - SIOCIWFIRSTPRIV]   = iw_set_var_ints_getnone,
+   [WLAN_PRIV_SET_VAR_INT_GET_NONE  - SIOCIWFIRSTPRIV]   = iw_hdd_set_var_ints_getnone,
    [WLAN_PRIV_ADD_TSPEC             - SIOCIWFIRSTPRIV]   = iw_add_tspec,
    [WLAN_PRIV_DEL_TSPEC             - SIOCIWFIRSTPRIV]   = iw_del_tspec,
    [WLAN_PRIV_GET_TSPEC             - SIOCIWFIRSTPRIV]   = iw_get_tspec,
