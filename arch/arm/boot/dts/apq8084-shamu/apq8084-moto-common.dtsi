@@ -1184,6 +1184,7 @@
 
 &soc {
 	/delete-node/ qcom,pcie@fc528000;
+	/delete-node/ qcom,mhi;
 };
 
 /* This is VREG_5P0, controlled via MPP3 */
