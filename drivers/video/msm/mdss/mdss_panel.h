@@ -348,6 +348,7 @@ struct mdss_panel_info {
 	bool dynamic_cabc_enabled;
 	enum cabc_mode cabc_mode;
 	char supplier[8];
+	u32 bl_shutdown_delay;
 
 	uint32_t panel_dead;
 
