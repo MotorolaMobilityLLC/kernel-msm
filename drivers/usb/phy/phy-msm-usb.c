@@ -4500,9 +4500,9 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 	pdata->disable_retention_with_vdd_min = of_property_read_bool(node,
 				"qcom,disable-retention-with-vdd-min");
 
-	//res_gpio = of_get_named_gpio(node, "qcom,hsusb-otg-vddmin-gpio", 0);
-	//if (res_gpio < 0)
-	res_gpio = 0;
+	res_gpio = of_get_named_gpio(node, "qcom,hsusb-otg-vddmin-gpio", 0);
+	if (res_gpio < 0)
+		res_gpio = 0;
 	pdata->vddmin_gpio = res_gpio;
 
 	pdata->rw_during_lpm_workaround = of_property_read_bool(node,
