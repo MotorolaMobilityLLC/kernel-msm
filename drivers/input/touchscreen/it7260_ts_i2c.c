@@ -145,7 +145,6 @@ struct IT7260_ts_data {
 	struct input_dev *input_dev;
 	struct delayed_work afterpalm_work;
 	struct delayed_work touchidle_on_work;
-	struct work_struct touchidle_off_work;
 	struct delayed_work exit_idle_work;
 };
 
@@ -478,7 +477,6 @@ static void chipLowPowerMode(bool low)
 			isDeviceSuspend = false;
 			hadPalmDown = false;
 			wake_unlock(&touch_lock);		
-			queue_work(IT7260_wq, &gl_ts->touchidle_off_work);
 		}
 	}
 }
@@ -789,12 +787,6 @@ static void touchIdleOnEvt(struct work_struct *work) {
 	i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
 }
 
-static void touchIdleOffEvt(struct work_struct *work) {
-	uint8_t dummy;
-		
-	i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
-}
-
 static void exitIdleEvt(struct work_struct *work) {
 	printk("IT7260: Special IRQ trigger touch event\n");
 	isDeviceSuspend = true;
@@ -1096,7 +1088,6 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	
 	INIT_DELAYED_WORK(&gl_ts->afterpalm_work, waitNotifyEvt);
 	INIT_DELAYED_WORK(&gl_ts->touchidle_on_work, touchIdleOnEvt);
-	INIT_WORK(&gl_ts->touchidle_off_work, touchIdleOffEvt);
 	INIT_DELAYED_WORK(&gl_ts->exit_idle_work, exitIdleEvt);
 
 	if (input_register_device(input_dev)) {
