@@ -469,6 +469,7 @@ int of_platform_populate(struct device_node *root,
 		if (rc)
 			break;
 	}
+	of_node_set_flag(root, OF_POPULATED_BUS);
 
 	of_node_put(root);
 	return rc;
