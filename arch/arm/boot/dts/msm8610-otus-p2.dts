@@ -21,5 +21,9 @@
 &spi_3 {
 	stml0xx@0 {
 		headset_hw_version = <1>;
+		headset_button_0_1_threshold = <0x0096>;
+		headset_button_1_2_threshold = <0x012C>;
+		headset_button_2_3_threshold = <0x01C2>;
+		headset_button_3_upper_threshold = <0x02EE>;
 	};
 };
