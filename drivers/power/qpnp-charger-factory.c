@@ -1493,7 +1493,8 @@ static int get_prop_online(struct qpnp_chg_chip *chip)
 {
 	return qpnp_chg_is_batfet_closed(chip);
 }
-
+static int factory_kill_disable;
+module_param(factory_kill_disable, int, 0644);
 static void
 qpnp_batt_external_power_changed(struct power_supply *psy)
 {
@@ -1527,7 +1528,8 @@ qpnp_batt_external_power_changed(struct power_supply *psy)
 			}
 		}
 		chip->prev_usb_max_ma = ret.intval;
-	} else if (chip->no_factory_kill_ic && chip->factory_cable_present) {
+	} else if (chip->no_factory_kill_ic && chip->factory_cable_present
+							&& !factory_kill_disable) {
 		pr_err("External Power Changed: USB cable was removed\n");
 		kernel_power_off();
 		return;
