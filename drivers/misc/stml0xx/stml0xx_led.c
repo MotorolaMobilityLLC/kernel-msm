@@ -49,16 +49,19 @@ int stml0xx_led_set_reset(struct led_classdev *led_cdev, uint8_t allow_reset)
 	buf[10] = (led_cdev->blink_delay_off >> 8) & 0xFF;
 	buf[11] = led_cdev->blink_delay_off & 0xFF;
 
+	mutex_lock(&ps_stml0xx->lock);
 	stml0xx_wake(ps_stml0xx);
 
 	err = stml0xx_spi_send_write_reg_reset(LED_NOTIF_CONTROL, buf, 12,
 		allow_reset);
 	if (err < 0)
-		return err;
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"writing to led_notif_control failed");
 
 	stml0xx_sleep(ps_stml0xx);
+	mutex_unlock(&ps_stml0xx->lock);
 
-	return 0;
+	return err;
 }
 
 static ssize_t notification_show_control(struct device *dev,
