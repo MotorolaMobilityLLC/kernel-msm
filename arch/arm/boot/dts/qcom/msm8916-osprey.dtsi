@@ -11,6 +11,7 @@
 */
 
 #include "msm8916-moto-common.dtsi"
+#include "msm8916-camera-sensor-osprey.dtsi"
 #include "dsi-panel-mot-inx-500-720p-video.dtsi"
 
 / {
