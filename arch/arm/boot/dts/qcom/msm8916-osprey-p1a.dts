@@ -23,3 +23,8 @@
 		status = "ok";
 	};
 };
+
+&stml0xx {
+		headset_detect_enable = <0>;
+		headset_hw_version = <0>;
+};
