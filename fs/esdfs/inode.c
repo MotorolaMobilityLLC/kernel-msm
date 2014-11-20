@@ -176,7 +176,11 @@ static int esdfs_rmdir(struct inode *dir, struct dentry *dentry)
 	if (!creds)
 		return -ENOMEM;
 
-	esdfs_get_lower_path(dentry, &lower_path);
+	/* Never remove a pseudo link target.  Only the source. */
+	if (ESDFS_DENTRY_HAS_STUB(dentry))
+		esdfs_get_lower_stub_path(dentry, &lower_path);
+	else
+		esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
 	lower_dir_dentry = lock_parent(lower_dentry);
 
@@ -223,8 +227,15 @@ static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	if (!creds)
 		return -ENOMEM;
 
-	esdfs_get_lower_path(old_dentry, &lower_old_path);
-	esdfs_get_lower_path(new_dentry, &lower_new_path);
+	/* Never rename to or from a pseudo hard link target. */
+	if (ESDFS_DENTRY_HAS_STUB(old_dentry))
+		esdfs_get_lower_stub_path(old_dentry, &lower_old_path);
+	else
+		esdfs_get_lower_path(old_dentry, &lower_old_path);
+	if (ESDFS_DENTRY_HAS_STUB(new_dentry))
+		esdfs_get_lower_stub_path(new_dentry, &lower_new_path);
+	else
+		esdfs_get_lower_path(new_dentry, &lower_new_path);
 	lower_old_dentry = lower_old_path.dentry;
 	lower_new_dentry = lower_new_path.dentry;
 	esdfs_get_lower_parent(old_dentry, lower_old_dentry,
@@ -265,6 +276,11 @@ static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 					lower_old_dir_dentry->d_inode);
 	}
 
+	/* Drop any old links */
+	if (ESDFS_DENTRY_HAS_STUB(old_dentry))
+		d_drop(old_dentry);
+	if (ESDFS_DENTRY_HAS_STUB(new_dentry))
+		d_drop(new_dentry);
 out_err:
 	mnt_drop_write(lower_new_path.mnt);
 out_drop_old_write:
