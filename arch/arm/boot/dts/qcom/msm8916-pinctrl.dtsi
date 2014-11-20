@@ -205,7 +205,7 @@
 			label = "sdc1-clk";
 			sdc1_clk_on: clk_on {
 				bias-disable; /* NO pull */
-				drive-strength = <16>; /* 16 MA */
+				drive-strength = <8>; /* 8 MA */
 			};
 			sdc1_clk_off: clk_off {
 				bias-disable; /* NO pull */
@@ -219,7 +219,7 @@
 			label = "sdc1-cmd";
 			sdc1_cmd_on: cmd_on {
 				bias-pull-up; /* pull up */
-				drive-strength = <10>; /* 10 MA */
+				drive-strength = <8>; /* 8 MA */
 			};
 			sdc1_cmd_off: cmd_off {
 				bias-pull-up; /* pull up */
@@ -233,7 +233,7 @@
 			label = "sdc1-data";
 			sdc1_data_on: data_on {
 				bias-pull-up; /* pull up */
-				drive-strength = <10>; /* 10 MA */
+				drive-strength = <8>; /* 8 MA */
 			};
 			sdc1_data_off: data_off {
 				bias-pull-up; /* pull up */
@@ -247,7 +247,7 @@
 			label = "sdc2-clk";
 			sdc2_clk_on: clk_on {
 				bias-disable; /* NO pull */
-				drive-strength = <16>; /* 16 MA */
+				drive-strength = <12>; /* 12 MA */
 			};
 			sdc2_clk_off: clk_off {
 				bias-disable; /* NO pull */
@@ -261,7 +261,7 @@
 			label = "sdc2-cmd";
 			sdc2_cmd_on: cmd_on {
 				bias-pull-up; /* pull up */
-				drive-strength = <10>; /* 10 MA */
+				drive-strength = <6>; /* 6 MA */
 			};
 			sdc2_cmd_off: cmd_off {
 				bias-pull-up; /* pull up */
@@ -275,7 +275,7 @@
 			label = "sdc2-data";
 			sdc2_data_on: data_on {
 				bias-pull-up; /* pull up */
-				drive-strength = <10>; /* 10 MA */
+				drive-strength = <6>; /* 6 MA */
 			};
 			sdc2_data_off: data_off {
 				bias-pull-up; /* pull up */
