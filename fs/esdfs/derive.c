@@ -421,6 +421,30 @@ void esdfs_set_derived_perms(struct inode *inode)
 		inode->i_mode &= ~S_IXUGO;
 }
 
+/*
+ * Before rerouting a lookup to follow a pseudo hard link, make sure that
+ * a stub exists at the source.  Without it, readdir won't see an entry there
+ * resulting in a strange user experience.
+ */
+static int lookup_link_source(struct dentry *dentry, struct dentry *parent)
+{
+	struct path lower_parent_path, lower_path;
+	int err;
+
+	esdfs_get_lower_path(parent, &lower_parent_path);
+
+	/* Check if the stub user profile obb is there. */
+	err = vfs_path_lookup(lower_parent_path.dentry, lower_parent_path.mnt,
+			      dentry->d_name.name, LOOKUP_NOCASE, &lower_path);
+	/* Remember it to handle renames and removal. */
+	if (!err)
+		esdfs_set_lower_stub_path(dentry, &lower_path);
+
+	esdfs_put_lower_path(parent, &lower_parent_path);
+
+	return err;
+}
+
 int esdfs_derived_lookup(struct dentry *dentry, struct dentry **parent)
 {
 	struct esdfs_sb_info *sbi = ESDFS_SB((*parent)->d_sb);
@@ -448,12 +472,27 @@ int esdfs_derived_lookup(struct dentry *dentry, struct dentry **parent)
 	 * to point to the real obb directory.
 	 */
 	if (parent_i->tree == ESDFS_TREE_ANDROID &&
-	    !strncasecmp(dentry->d_name.name, "obb", dentry->d_name.len)) {
+	    ESDFS_DENTRY_NEEDS_LINK(dentry) &&
+	    lookup_link_source(dentry, *parent) == 0) {
 		BUG_ON(!sbi->obb_parent);
-		if (test_opt(sbi, DERIVE_LEGACY) ||
-		    (test_opt(sbi, DERIVE_UNIFIED) && parent_i->userid > 0))
+		if (ESDFS_INODE_CAN_LINK((*parent)->d_inode))
 			*parent = dget(sbi->obb_parent);
 	}
+	return 0;
+}
+
+int esdfs_derived_revalidate(struct dentry *dentry, struct dentry *parent)
+{
+	/*
+	 * If obb is not linked yet, it means the dentry is pointing to the
+	 * stub.  Invalidate the dentry to force another lookup.
+	 */
+	if (ESDFS_I(parent->d_inode)->tree == ESDFS_TREE_ANDROID &&
+	    ESDFS_INODE_CAN_LINK(dentry->d_inode) &&
+	    ESDFS_DENTRY_NEEDS_LINK(dentry) &&
+	    !ESDFS_DENTRY_IS_LINKED(dentry))
+		return -ESTALE;
+
 	return 0;
 }
 
@@ -524,15 +563,27 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
  */
 int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 {
-	struct esdfs_inode_info *inode_i = ESDFS_I(dir_dentry->d_inode);
+	struct esdfs_inode_info *inode_i;
 	struct qstr nomedia;
 	struct dentry *lower_dentry;
 	struct path lower_dir_path, lower_path;
 	umode_t mode;
 	int err = 0;
 
-	if (inode_i->tree != ESDFS_TREE_ANDROID_DATA &&
-	    inode_i->tree != ESDFS_TREE_ANDROID_OBB)
+	if (!dir_dentry->d_inode)
+		return 0;
+
+	inode_i = ESDFS_I(dir_dentry->d_inode);
+
+	/*
+	 * Only create .nomedia in Android/data and Android/obb, but never in
+	 * pseudo link stubs.
+	 */
+	if ((inode_i->tree != ESDFS_TREE_ANDROID_DATA &&
+	     inode_i->tree != ESDFS_TREE_ANDROID_OBB) ||
+	    (ESDFS_INODE_CAN_LINK(dir_dentry->d_inode) &&
+	     ESDFS_DENTRY_NEEDS_LINK(dir_dentry) &&
+	     !ESDFS_DENTRY_IS_LINKED(dir_dentry)))
 		return 0;
 
 	nomedia.name = ".nomedia";
