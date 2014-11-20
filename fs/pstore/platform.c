@@ -563,6 +563,7 @@ void pstore_get_records(int quiet)
 	int			failed = 0, rc;
 	bool			compressed;
 	int			unzipped_len = -1;
+	int                     made_annotate_file = 0;
 
 	if (!psi)
 		return;
@@ -601,7 +602,25 @@ void pstore_get_records(int quiet)
 		if (rc && (rc != -EEXIST || !quiet))
 			failed++;
 		pr_info("Found record type %d, psi name %s\n", type, psi->name);
+
+		if (type == PSTORE_TYPE_ANNOTATE)
+			made_annotate_file = 1;
 	}
+
+	/*
+	 * If there isn't annotation file created (e.g in cold reboot
+	 * or power up), create it now, since we need app to make annotation
+	 * during bootup.
+	 */
+	if (!made_annotate_file) {
+		rc = pstore_mkfile(PSTORE_TYPE_ANNOTATE, psi->name, 0, 0, NULL,
+					0, 0, time, psi);
+		if (rc)
+			pr_err("annotate-%s  can't be created\n", psi->name);
+		else
+			pr_info("Created annotate-%s\n", psi->name);
+	}
+
 	if (psi->close)
 		psi->close(psi);
 out:
