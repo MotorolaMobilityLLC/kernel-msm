@@ -46,8 +46,6 @@ struct ion_iommu_priv_data {
 	unsigned long size;
 };
 
-#define MAX_VMAP_RETRIES 10
-
 static const unsigned int orders[] = {8, 4, 0};
 static const int num_orders = ARRAY_SIZE(orders);
 
@@ -84,6 +82,8 @@ static struct page_info *alloc_largest_available(unsigned long size,
 		} else {
 			gfp |= GFP_KERNEL;
 		}
+
+		gfp |= __GFP_ZERO;
 		page = alloc_pages(gfp, orders[i]);
 		if (!page)
 			continue;
@@ -110,8 +110,7 @@ static int ion_iommu_heap_allocate(struct ion_heap *heap,
 		struct scatterlist *sg;
 		struct sg_table *table;
 		int j;
-		void *ptr = NULL;
-		unsigned int npages_to_vmap, total_pages, num_large_pages = 0;
+		unsigned int num_large_pages = 0;
 		long size_remaining = PAGE_ALIGN(size);
 		unsigned int max_order = orders[0];
 
@@ -166,40 +165,6 @@ static int ion_iommu_heap_allocate(struct ion_heap *heap,
 			kfree(info);
 		}
 
-		/*
-		 * As an optimization, we omit __GFP_ZERO from
-		 * alloc_page above and manually zero out all of the
-		 * pages in one fell swoop here. To safeguard against
-		 * insufficient vmalloc space, we only vmap
-		 * `npages_to_vmap' at a time, starting with a
-		 * conservative estimate of 1/8 of the total number of
-		 * vmalloc pages available. Note that the `pages'
-		 * array is composed of all 4K pages, irrespective of
-		 * the size of the pages on the sg list.
-		 */
-		npages_to_vmap = ((VMALLOC_END - VMALLOC_START)/8)
-			>> PAGE_SHIFT;
-		total_pages = data->nrpages;
-		for (i = 0; i < total_pages; i += npages_to_vmap) {
-			npages_to_vmap = min(npages_to_vmap, total_pages - i);
-			for (j = 0; j < MAX_VMAP_RETRIES && npages_to_vmap;
-			     ++j) {
-				ptr = vmap(&data->pages[i], npages_to_vmap,
-					VM_IOREMAP, pgprot_kernel);
-				if (ptr)
-					break;
-				else
-					npages_to_vmap >>= 1;
-			}
-			if (!ptr) {
-				pr_err("Couldn't vmap the pages for zeroing\n");
-				ret = -ENOMEM;
-				goto err3;
-			}
-			memset(ptr, 0, npages_to_vmap * PAGE_SIZE);
-			vunmap(ptr);
-		}
-
 		if (!ION_IS_CACHED(flags))
 			dma_sync_sg_for_device(NULL, table->sgl, table->nents,
 						DMA_BIDIRECTIONAL);
@@ -211,8 +176,6 @@ static int ion_iommu_heap_allocate(struct ion_heap *heap,
 		return -ENOMEM;
 	}
 
-
-err3:
 	sg_free_table(buffer->sg_table);
 err2:
 	kfree(buffer->sg_table);
