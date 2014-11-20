@@ -1188,6 +1188,11 @@ limFillAssocIndParams(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd,
     }
     // Fill in WmmInfo
     pSirSmeAssocInd->wmmEnabledSta = pAssocInd->WmmStaInfoPresent;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    pSirSmeAssocInd->HT40MHzIntoEnabledSta = pAssocInd->HT40MHzIntoPresent;
+    limLog(pMac, LOGW, FL("HT40MHzIntoPresent: %d \n"),
+                 pSirSmeAssocInd->HT40MHzIntoEnabledSta);
+#endif
 } /*** end limAssocIndSerDes() ***/
 
 

@@ -1186,6 +1186,9 @@ typedef struct sSirSmeAssocInd
     tSirMacPowerCapInfo     powerCap;
     tSirSupChnl             supportedChannels;
     tAniBool             wmmEnabledSta; /* if present - STA is WMM enabled */
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    tAniBool             HT40MHzIntoEnabledSta; /* if present - STA Enable 40 MHz Intolerant */
+#endif
     tAniBool             reassocReq;
     // Required for indicating the frames to upper layer
     tANI_U32             beaconLength;

@@ -1535,6 +1535,15 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
             /* Note: we are not rejecting association here because IOT will fail */
 
         }
+#ifdef WLAN_FEATURE_AP_HT40_24G
+        if(pAssocReq->HTCaps.present)
+        {
+            limLog(pMac, LOGW, FL("HT40MHzInto: %d"),
+                         pAssocReq->HTCaps.stbcControlFrame);
+            pMlmAssocInd->HT40MHzIntoPresent =
+                         pAssocReq->HTCaps.stbcControlFrame;
+        }
+#endif
 
         // Required for indicating the frames to upper layer
         pMlmAssocInd->assocReqLength = pAssocReq->assocReqFrameLength;
@@ -1659,6 +1668,16 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
             /* Note: we are not rejecting Re-association here because IOT will fail */
 
         }
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+        if(pAssocReq->HTCaps.present)
+        {
+            limLog(pMac, LOGW, FL("RASSOC HT40MHzInto: %d"),
+                                   pAssocReq->HTCaps.stbcControlFrame);
+            pMlmReassocInd->HT40MHzIntoPresent =
+                            pAssocReq->HTCaps.stbcControlFrame;
+        }
+#endif
 
         // Required for indicating the frames to upper layer
         pMlmReassocInd->assocReqLength = pAssocReq->assocReqFrameLength;
