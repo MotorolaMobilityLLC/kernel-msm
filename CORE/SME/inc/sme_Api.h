@@ -1606,6 +1606,7 @@ eHalStatus sme_SetCountryCode(tHalHandle hHal, tANI_U8 *pCountry, tANI_BOOLEAN *
 eHalStatus sme_InitChannels(tHalHandle hHal);
 
 
+#ifdef CONFIG_ENABLE_LINUX_REG
 /* ---------------------------------------------------------------------------
     \fn sme_InitChannelsForCC
 
@@ -1620,6 +1621,7 @@ eHalStatus sme_InitChannels(tHalHandle hHal);
 
  -------------------------------------------------------------------------------*/
 eHalStatus sme_InitChannelsForCC(tHalHandle hHal, driver_load_type init);
+#endif
 
 /* ---------------------------------------------------------------------------
     \fn sme_ResetCountryCodeInformation

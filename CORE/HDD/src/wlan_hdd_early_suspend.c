@@ -2098,6 +2098,7 @@ VOS_STATUS hdd_wlan_re_init(void)
       goto err_vosstop;
    }
 
+#ifdef CONFIG_ENABLE_LINUX_REG
    vosStatus = wlan_hdd_init_channels_for_cc(pHddCtx, REINIT);
    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
    {
@@ -2105,6 +2106,7 @@ VOS_STATUS hdd_wlan_re_init(void)
              __func__);
       goto err_vosstop;
    }
+#endif
 
 #ifdef WLAN_BTAMP_FEATURE
    vosStatus = WLANBAP_Open(pVosContext);

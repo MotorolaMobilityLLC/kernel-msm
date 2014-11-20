@@ -778,6 +778,7 @@ v_BOOL_t vos_is_nv_country_non_zero
    void
 );
 
+#ifdef CONFIG_ENABLE_LINUX_REG
 /**------------------------------------------------------------------------
   \brief vos_getCurrentCountryCode -
   \param   countrycode
@@ -789,6 +790,8 @@ void vos_getCurrentCountryCode
 (
    tANI_U8 *cc
 );
+#endif
+
 int vos_update_nv_table_from_wiphy_band(void *hdd_ctx,
                                          void *wiphy,v_U8_t nBandCapability);
 
