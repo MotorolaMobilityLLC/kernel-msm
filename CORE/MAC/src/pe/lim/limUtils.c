@@ -8181,6 +8181,19 @@ void limInitOBSSScanParams(tpAniSirGlobal pMac,
     }
     psessionEntry->obssHT40ScanParam.OBSSScanPassiveTotalPerChannel =
                                                              cfgValue;
+
+    if (wlan_cfgGetInt(pMac,
+         WNI_CFG_OBSS_HT40_WIDTH_CHANNEL_TRANSITION_DELAY_FACTOR, &cfgValue)
+         != eSIR_SUCCESS)
+    {
+       limLog(pMac, LOGE, FL("Fail to retrieve"
+              "WNI_CFG_OBSS_HT40_WIDTH_CHANNEL_TRANSITION_DELAY_FACTOR value"));
+       return ;
+    }
+    psessionEntry->obssHT40ScanParam.BSSWidthChannelTransitionDelayFactor =
+                                                                   cfgValue;
+
+
     if (wlan_cfgGetInt(pMac, WNI_CFG_OBSS_HT40_SCAN_ACTIVITY_THRESHOLD ,
                        &cfgValue) != eSIR_SUCCESS)
     {

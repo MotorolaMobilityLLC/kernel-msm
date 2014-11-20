@@ -961,6 +961,39 @@ PopulateDot11fVHTExtBssLoad(tpAniSirGlobal      pMac,
     return eSIR_SUCCESS;
 }
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+tSirRetStatus
+PopulateDot11fOBSSScanParameters(tpAniSirGlobal pMac,
+                                 tDot11fIEOBSSScanParameters *pDot11f,
+                                 tpPESession psessionEntry)
+{
+    pDot11f->present = 1;
+
+    pDot11f->obssScanPassiveDwell =
+          psessionEntry->obssHT40ScanParam.OBSSScanPassiveDwellTime;
+
+    pDot11f->obssScanActiveDwell =
+          psessionEntry->obssHT40ScanParam.OBSSScanActiveDwellTime;
+
+    pDot11f->bssChannelWidthTriggerScanInterval =
+          psessionEntry->obssHT40ScanParam.BSSChannelWidthTriggerScanInterval;
+
+    pDot11f->obssScanPassiveTotalPerChannel =
+          psessionEntry->obssHT40ScanParam.OBSSScanPassiveTotalPerChannel;
+
+    pDot11f->obssScanActiveTotalPerChannel =
+          psessionEntry->obssHT40ScanParam.OBSSScanActiveTotalPerChannel;
+
+    pDot11f->bssWidthChannelTransitionDelayFactor =
+          psessionEntry->obssHT40ScanParam.BSSWidthChannelTransitionDelayFactor;
+
+    pDot11f->obssScanActivityThreshold =
+          psessionEntry->obssHT40ScanParam.OBSSScanActivityThreshold;
+
+    return eSIR_SUCCESS;
+}
+#endif
+
 tSirRetStatus
 PopulateDot11fExtCap(tpAniSirGlobal      pMac,
                            tDot11fIEExtCap  *pDot11f,
@@ -983,7 +1016,12 @@ PopulateDot11fExtCap(tpAniSirGlobal      pMac,
                          eSIR_SUCCESS)
             PELOGE(limLog(pMac, LOGE, FL("could not retrieve "
                                          "24G Chan bond Length \n"));)
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+       if (TRUE == val || pMac->roam.configParam.apHT40_24GEnabled)
+#else
        if (TRUE == val)
+#endif
        {
            pDot11f->bssCoexistMgmtSupport = 1;
            pDot11f->present = 1;

@@ -2968,6 +2968,7 @@ tANI_U32 sme_GetChannelBondingMode5G(tHalHandle hHal)
     return smeConfig.csrConfig.channelBondingMode5GHz;
 }
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
 /* ---------------------------------------------------------------------------
     \fn sme_GetChannelBondingMode24G
     \brief get the channel bonding mode for 2.4G band
@@ -2981,9 +2982,35 @@ tANI_U32 sme_GetChannelBondingMode24G(tHalHandle hHal)
 
     sme_GetConfigParam(pMac, &smeConfig);
 
-    return smeConfig.csrConfig.channelBondingMode24GHz;
+    return smeConfig.csrConfig.channelBondingAPMode24GHz;
 }
 
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateChannelBondingMode24G
+    \brief update the channel bonding mode for 2.4G band
+    \param hHal - HAL handle
+    \param cbMode - channel bonding mode
+    \return
+  ---------------------------------------------------------------------------*/
+void sme_UpdateChannelBondingMode24G(tHalHandle hHal, tANI_U8 cbMode)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    tSmeConfigParams  smeConfig;
+
+    vos_mem_zero(&smeConfig, sizeof (tSmeConfigParams));
+    sme_GetConfigParam(pMac, &smeConfig);
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("Previous Channel Bonding : = %d"),
+                   smeConfig.csrConfig.channelBondingAPMode24GHz);
+
+    smeConfig.csrConfig.channelBondingAPMode24GHz = cbMode;
+    sme_UpdateConfig(hHal, &smeConfig);
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("New Channel Bonding : = %d"),
+                   sme_GetChannelBondingMode24G(hHal));
+    return;
+}
+#endif
 
 /* ---------------------------------------------------------------------------
     \fn sme_RoamConnect
@@ -10251,6 +10278,36 @@ void sme_UpdateEnableSSR(tHalHandle hHal, tANI_BOOLEAN enableSSR)
 }
 
 /*
+ * SME API to stringify bonding mode. (hostapd convention)
+ */
+
+static const char* sme_CBMode2String( tANI_U32 mode)
+{
+   switch (mode)
+   {
+      case eCSR_INI_SINGLE_CHANNEL_CENTERED:
+         return "HT20";
+      case eCSR_INI_DOUBLE_CHANNEL_HIGH_PRIMARY:
+         return "HT40-"; /* lower secondary channel */
+      case eCSR_INI_DOUBLE_CHANNEL_LOW_PRIMARY:
+         return "HT40+"; /* upper secondary channel */
+#ifdef WLAN_FEATURE_11AC
+      case eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW:
+         return "VHT80+40+"; /* upper secondary channels */
+      case eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW:
+         return "VHT80+40-"; /* 1 lower and 2 upper secondary channels */
+      case eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH:
+         return "VHT80-40+"; /* 2 lower and 1 upper secondary channels */
+      case eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH:
+         return "VHT80-40-"; /* lower secondary channels */
+#endif
+      default:
+         VOS_ASSERT(0);
+         return "Unknown";
+   }
+}
+
+/*
  * SME API to determine the channel bonding mode
  */
 VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 channel)
@@ -10275,8 +10332,15 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
       return VOS_STATUS_SUCCESS;
    }
 
+   sme_GetConfigParam(pMac, &smeConfig);
+
    /* If channel bonding mode is not required */
+#ifdef WLAN_FEATURE_AP_HT40_24G
+   if ( !pMac->roam.configParam.channelBondingMode5GHz
+      && !smeConfig.csrConfig.apHT40_24GEnabled ) {
+#else
    if ( !pMac->roam.configParam.channelBondingMode5GHz ) {
+#endif
       return VOS_STATUS_SUCCESS;
    }
 
@@ -10291,30 +10355,46 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
             channel == 116 || channel == 149 )
       {
          smeConfig.csrConfig.channelBondingMode5GHz =
-            PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW - 1;
+            eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW;
       }
       else if ( channel == 40 || channel == 56 || channel == 104 ||
             channel == 120 || channel == 153 )
       {
          smeConfig.csrConfig.channelBondingMode5GHz =
-            PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW - 1;
+            eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW;
       }
       else if ( channel == 44 || channel == 60 || channel == 108 ||
             channel == 124 || channel == 157 )
       {
          smeConfig.csrConfig.channelBondingMode5GHz =
-            PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH -1;
+            eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH;
       }
       else if ( channel == 48 || channel == 64 || channel == 112 ||
             channel == 128 || channel == 144 || channel == 161 )
       {
          smeConfig.csrConfig.channelBondingMode5GHz =
-            PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH - 1;
+            eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH;
       }
       else if ( channel == 165 )
       {
-         smeConfig.csrConfig.channelBondingMode5GHz = 0;
+         smeConfig.csrConfig.channelBondingMode5GHz =
+            eCSR_INI_SINGLE_CHANNEL_CENTERED;
       }
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+      if (smeConfig.csrConfig.apHT40_24GEnabled)
+      {
+          if (channel >= 1 && channel <= 7)
+             smeConfig.csrConfig.channelBondingAPMode24GHz =
+                eCSR_INI_DOUBLE_CHANNEL_LOW_PRIMARY;
+          else if (channel >= 8 && channel <= 13)
+             smeConfig.csrConfig.channelBondingAPMode24GHz =
+                eCSR_INI_DOUBLE_CHANNEL_HIGH_PRIMARY;
+          else if (channel ==14)
+             smeConfig.csrConfig.channelBondingAPMode24GHz =
+                eCSR_INI_SINGLE_CHANNEL_CENTERED;
+      }
+#endif
    }
 #endif
 
@@ -10326,19 +10406,37 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
             channel == 120 || channel == 128 || channel == 136 ||
             channel == 144 || channel == 153 || channel == 161 )
       {
-         smeConfig.csrConfig.channelBondingMode5GHz = 1;
+         smeConfig.csrConfig.channelBondingMode5GHz =
+                eCSR_INI_DOUBLE_CHANNEL_HIGH_PRIMARY;
       }
       else if ( channel== 36 || channel == 44 || channel == 52 ||
             channel == 60 || channel == 100 || channel == 108 ||
             channel == 116 || channel == 124 || channel == 132 ||
             channel == 140 || channel == 149 || channel == 157 )
       {
-         smeConfig.csrConfig.channelBondingMode5GHz = 2;
+         smeConfig.csrConfig.channelBondingMode5GHz =
+                eCSR_INI_DOUBLE_CHANNEL_LOW_PRIMARY;
       }
       else if ( channel == 165 )
       {
-         smeConfig.csrConfig.channelBondingMode5GHz = 0;
+         smeConfig.csrConfig.channelBondingMode5GHz =
+                eCSR_INI_SINGLE_CHANNEL_CENTERED;
       }
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+      if (smeConfig.csrConfig.apHT40_24GEnabled)
+      {
+          if (channel >= 1 && channel <= 7)
+             smeConfig.csrConfig.channelBondingAPMode24GHz =
+                eCSR_INI_DOUBLE_CHANNEL_LOW_PRIMARY;
+          else if (channel >= 8 && channel <= 13)
+             smeConfig.csrConfig.channelBondingAPMode24GHz =
+                eCSR_INI_DOUBLE_CHANNEL_HIGH_PRIMARY;
+          else if (channel ==14)
+             smeConfig.csrConfig.channelBondingAPMode24GHz =
+                eCSR_INI_SINGLE_CHANNEL_CENTERED;
+      }
+#endif
    }
 
    /*
@@ -10352,10 +10450,27 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
          eCSR_DOT11_MODE_abg == eCsrPhyMode)
    {
       smeConfig.csrConfig.channelBondingMode5GHz = 0;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+   } else if ( eCSR_DOT11_MODE_11g_ONLY == eCsrPhyMode)
+      smeConfig.csrConfig.channelBondingAPMode24GHz =
+         eCSR_INI_SINGLE_CHANNEL_CENTERED;
+#else
    }
+#endif
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+         FL("%s cbmode selected=%d bonding mode:%s"),
+         (channel <= 14) ? "2G" : "5G",
+         (channel <= 14) ? smeConfig.csrConfig.channelBondingAPMode24GHz :
+                        smeConfig.csrConfig.channelBondingMode5GHz,
+         (channel <= 14) ?
+         sme_CBMode2String(smeConfig.csrConfig.channelBondingAPMode24GHz) :
+         sme_CBMode2String(smeConfig.csrConfig.channelBondingMode5GHz));
+#else
    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN,
-         "cbmode selected=%d", smeConfig.csrConfig.channelBondingMode5GHz);
+       "cbmode selected=%d", smeConfig.csrConfig.channelBondingMode5GHz);
+#endif
 
    sme_UpdateConfig (pMac, &smeConfig);
    return VOS_STATUS_SUCCESS;

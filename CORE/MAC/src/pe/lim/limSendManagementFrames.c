@@ -735,6 +735,20 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
         PopulateDot11fHTCaps( pMac, psessionEntry, &pFrm->HTCaps );
         PopulateDot11fHTInfo( pMac, &pFrm->HTInfo, psessionEntry );
     }
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    /* Populate Overlapping BSS Scan Parameters IEs,
+     * when operating in HT40 in 2.4GHz.
+     */
+    if (pMac->roam.configParam.apHT40_24GEnabled)
+    {
+        PopulateDot11fOBSSScanParameters( pMac, &pFrm->OBSSScanParameters,
+                                                             psessionEntry);
+    }
+#endif
+
+    PopulateDot11fExtCap( pMac, &pFrm->ExtCap, psessionEntry);
+
 #ifdef WLAN_FEATURE_11AC
     if(psessionEntry->vhtCapability)
     {
@@ -743,7 +757,6 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
         PopulateDot11fVHTOperation( pMac, &pFrm->VHTOperation );
         // we do not support multi users yet
         //PopulateDot11fVHTExtBssLoad( pMac, &frm.VHTExtBssLoad );
-        PopulateDot11fExtCap( pMac, &pFrm->ExtCap, psessionEntry);
     }
 #endif
 
@@ -1470,6 +1483,18 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
             PopulateDot11fHTInfo( pMac, &frm.HTInfo, psessionEntry );
         }
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+        /* Populate Overlapping BSS Scan Parameters IEs,
+         * when operating in HT40 in 2.4GHz.
+         */
+        if (pMac->roam.configParam.apHT40_24GEnabled)
+        {
+            PopulateDot11fOBSSScanParameters( pMac, &frm.OBSSScanParameters,
+                                                               psessionEntry);
+        }
+#endif
+
+        PopulateDot11fExtCap( pMac, &frm.ExtCap, psessionEntry);
 #ifdef WLAN_FEATURE_11AC
         if( pSta->mlmStaContext.vhtCapability && 
             psessionEntry->vhtCapability )
@@ -1477,7 +1502,6 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
             limLog( pMac, LOG1, FL("Populate VHT IEs in Assoc Response"));
             PopulateDot11fVHTCaps( pMac, &frm.VHTCaps, eSIR_TRUE );
             PopulateDot11fVHTOperation( pMac, &frm.VHTOperation);
-            PopulateDot11fExtCap( pMac, &frm.ExtCap, psessionEntry);
         }
 #endif
 
