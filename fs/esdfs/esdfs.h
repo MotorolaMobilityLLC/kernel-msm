@@ -116,6 +116,8 @@ extern void esdfs_destroy_package_list(void);
 extern void esdfs_derive_perms(struct dentry *dentry);
 extern void esdfs_set_derived_perms(struct inode *inode);
 extern int esdfs_derived_lookup(struct dentry *dentry, struct dentry **parent);
+extern int esdfs_derived_revalidate(struct dentry *dentry,
+				    struct dentry *parent);
 extern int esdfs_check_derived_permission(struct inode *inode, int mask);
 extern int esdfs_derive_mkdir_contents(struct dentry *dentry);
 
@@ -144,8 +146,9 @@ struct esdfs_inode_info {
 
 /* esdfs dentry data in memory */
 struct esdfs_dentry_info {
-	spinlock_t lock;	/* protects lower_path */
+	spinlock_t lock;	/* protects lower_path and lower_stub_path */
 	struct path lower_path;
+	struct path lower_stub_path;
 	struct dentry *real_parent;
 };
 
@@ -162,7 +165,16 @@ struct esdfs_sb_info {
 extern struct esdfs_perms esdfs_perms_table[ESDFS_PERMS_TABLE_SIZE];
 extern unsigned esdfs_package_list_version;
 
-#define ESDFS_INODE_IS_STALE(i) (i->version != esdfs_package_list_version)
+#define ESDFS_INODE_IS_STALE(i) ((i)->version != esdfs_package_list_version)
+#define ESDFS_INODE_CAN_LINK(i) (test_opt(ESDFS_SB((i)->i_sb), \
+					  DERIVE_LEGACY) || \
+				 (test_opt(ESDFS_SB((i)->i_sb), \
+					   DERIVE_UNIFIED) && \
+				  ESDFS_I(i)->userid > 0))
+#define ESDFS_DENTRY_NEEDS_LINK(d) (!strncasecmp((d)->d_name.name, "obb", \
+						 (d)->d_name.len))
+#define ESDFS_DENTRY_IS_LINKED(d) (ESDFS_D(d)->real_parent)
+#define ESDFS_DENTRY_HAS_STUB(d) (ESDFS_D(d)->lower_stub_path.dentry)
 
 /*
  * inode to private data
@@ -236,6 +248,15 @@ static inline void esdfs_get_lower_path(const struct dentry *dent,
 	spin_unlock(&ESDFS_D(dent)->lock);
 	return;
 }
+static inline void esdfs_get_lower_stub_path(const struct dentry *dent,
+					     struct path *lower_stub_path)
+{
+	spin_lock(&ESDFS_D(dent)->lock);
+	pathcpy(lower_stub_path, &ESDFS_D(dent)->lower_stub_path);
+	path_get(lower_stub_path);
+	spin_unlock(&ESDFS_D(dent)->lock);
+	return;
+}
 static inline void esdfs_put_lower_path(const struct dentry *dent,
 					 struct path *lower_path)
 {
@@ -250,23 +271,33 @@ static inline void esdfs_set_lower_path(const struct dentry *dent,
 	spin_unlock(&ESDFS_D(dent)->lock);
 	return;
 }
-static inline void esdfs_reset_lower_path(const struct dentry *dent)
+static inline void esdfs_set_lower_stub_path(const struct dentry *dent,
+					     struct path *lower_stub_path)
 {
 	spin_lock(&ESDFS_D(dent)->lock);
-	ESDFS_D(dent)->lower_path.dentry = NULL;
-	ESDFS_D(dent)->lower_path.mnt = NULL;
+	pathcpy(&ESDFS_D(dent)->lower_stub_path, lower_stub_path);
 	spin_unlock(&ESDFS_D(dent)->lock);
 	return;
 }
-static inline void esdfs_put_reset_lower_path(const struct dentry *dent)
+static inline void esdfs_put_reset_lower_paths(const struct dentry *dent)
 {
 	struct path lower_path;
+	struct path lower_stub_path = { NULL, NULL };
+
 	spin_lock(&ESDFS_D(dent)->lock);
 	pathcpy(&lower_path, &ESDFS_D(dent)->lower_path);
 	ESDFS_D(dent)->lower_path.dentry = NULL;
 	ESDFS_D(dent)->lower_path.mnt = NULL;
+	if (ESDFS_DENTRY_HAS_STUB(dent)) {
+		pathcpy(&lower_stub_path, &ESDFS_D(dent)->lower_stub_path);
+		ESDFS_D(dent)->lower_stub_path.dentry = NULL;
+		ESDFS_D(dent)->lower_stub_path.mnt = NULL;
+	}
 	spin_unlock(&ESDFS_D(dent)->lock);
+
 	path_put(&lower_path);
+	if (lower_stub_path.dentry)
+		path_put(&lower_stub_path);
 	return;
 }
 static inline void esdfs_get_lower_parent(const struct dentry *dent,
@@ -275,7 +306,7 @@ static inline void esdfs_get_lower_parent(const struct dentry *dent,
 {
 	*lower_parent = NULL;
 	spin_lock(&ESDFS_D(dent)->lock);
-	if (ESDFS_D(dent)->real_parent) {
+	if (ESDFS_DENTRY_IS_LINKED(dent)) {
 		*lower_parent = ESDFS_D(dent)->real_parent;
 		dget(*lower_parent);
 	}
@@ -295,7 +326,7 @@ static inline void esdfs_set_lower_parent(const struct dentry *dent,
 {
 	struct dentry *old_parent = NULL;
 	spin_lock(&ESDFS_D(dent)->lock);
-	if (ESDFS_D(dent)->real_parent)
+	if (ESDFS_DENTRY_IS_LINKED(dent))
 		old_parent = ESDFS_D(dent)->real_parent;
 	ESDFS_D(dent)->real_parent = parent;
 	dget(parent);	/* pin the lower parent */
@@ -308,7 +339,7 @@ static inline void esdfs_release_lower_parent(const struct dentry *dent)
 {
 	struct dentry *real_parent = NULL;
 	spin_lock(&ESDFS_D(dent)->lock);
-	if (ESDFS_D(dent)->real_parent) {
+	if (ESDFS_DENTRY_IS_LINKED(dent)) {
 		real_parent = ESDFS_D(dent)->real_parent;
 		ESDFS_D(dent)->real_parent = NULL;
 	}
