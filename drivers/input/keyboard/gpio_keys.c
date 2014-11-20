@@ -494,14 +494,14 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 		}
 
 		if (button->debounce_interval) {
-			error = gpio_set_debounce(button->gpio,
+		// ASUS_BSP Ryder +++ "kernel cleanup : gpiolib doesn't provide debounce since use timer"
+		/*	error = gpio_set_debounce(button->gpio,
 					button->debounce_interval * 1000);
-			/* use timer if gpiolib doesn't provide debounce */
-			if (error < 0)
+		
+			if (error < 0)	*/
 				bdata->timer_debounce =
 						button->debounce_interval;
 		}
-
 		irq = gpio_to_irq(button->gpio);
 		if (irq < 0) {
 			error = irq;
