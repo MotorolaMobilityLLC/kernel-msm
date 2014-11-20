@@ -3125,6 +3125,16 @@ REG_VARIABLE( CFG_EXTSCAN_ENABLE, WLAN_PARAM_Integer,
                 CFG_MAX_CONCURRENT_CONNECTIONS_DEFAULT,
                 CFG_MAX_CONCURRENT_CONNECTIONS_MIN,
                 CFG_MAX_CONCURRENT_CONNECTIONS_MAX ),
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+   REG_VARIABLE(CFG_ENABLE_HT_2040_COEX, WLAN_PARAM_Integer,
+                hdd_config_t, apHT40_24GEnabled,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_ENABLE_HT_2040_COEX_DEFAULT,
+                CFG_ENABLE_HT_2040_COEX_MIN,
+                CFG_ENABLE_HT_2040_COEX_MAX ),
+#endif
+
    REG_VARIABLE( CFG_ENABLE_DYNAMIC_WMMPS_NAME, WLAN_PARAM_Integer,
                 hdd_config_t, enableDynamicWMMPS,
                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -3612,6 +3622,9 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAsdRTTRssiHystThreshold]Value = [%u]",pHddCtx->cfg_ini->gAsdRTTRssiHystThreshold);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gRoamtoDFSChannel] Value = [%u] ",pHddCtx->cfg_ini->allowDFSChannelRoam);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gMaxConcurrentActiveSessions] Value = [%u] ", pHddCtx->cfg_ini->gMaxConcurrentActiveSessions);
+#ifdef WLAN_FEATURE_AP_HT40_24G
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gApHT4024G] Value = [%u]", pHddCtx->cfg_ini->apHT40_24GEnabled);
+#endif
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAcsScanBandPreference] Value = [%u] ",pHddCtx->cfg_ini->acsScanBandPreference);
   VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,"Name = [gACSBandSwitchThreshold] value = [%u]\n",pHddCtx->cfg_ini->acsBandSwitchThreshold);
 }

@@ -3123,6 +3123,28 @@ v_U16_t vos_chan_to_freq(v_U8_t chanNum)
 
    return (0);
 }
+
+/**------------------------------------------------------------------------
+  \brief vos_freq_to_chan -
+  \param   - input frequency to know channel number
+  \return Channel frequency
+  \sa
+  -------------------------------------------------------------------------*/
+v_U8_t vos_freq_to_chan(v_U32_t freq)
+{
+   int i;
+
+   for (i = 0; i < NUM_RF_CHANNELS; i++)
+   {
+      if (rfChannels[i].targetFreq == freq)
+      {
+         return rfChannels[i].channelNum;
+      }
+   }
+
+   return (0);
+}
+
 /* function to tell about if Default country is Non-Zero */
 v_BOOL_t vos_is_nv_country_non_zero()
 {
