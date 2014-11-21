@@ -62,7 +62,7 @@ irqreturn_t stml0xx_wake_isr(int irq, void *dev)
 	if (stml0xx_irq_disable)
 		return IRQ_HANDLED;
 
-	wake_lock_timeout(&ps_stml0xx->wakelock, HZ);
+	wake_lock_timeout(&ps_stml0xx->wake_sensor_wakelock, HZ);
 
 	queue_work(ps_stml0xx->irq_work_queue, &ps_stml0xx->irq_wake_work);
 	return IRQ_HANDLED;
