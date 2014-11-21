@@ -192,6 +192,84 @@ void sapSetOperatingChannel(ptSapContext psapContext, v_U8_t operChannel)
 
 #ifdef WLAN_FEATURE_AP_HT40_24G
 /*==========================================================================
+  FUNCTION    sap_ht2040_timer_cb()
+
+  DESCRIPTION
+    SAP HT40 timer CallBack, Once this function execute it will move SAP
+    from HT20 to HT40
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    usrDataForCallback   : The second context pass in for the caller (sapContext)
+
+  RETURN VALUE
+  SIDE EFFECTS
+============================================================================*/
+void sap_ht2040_timer_cb(v_PVOID_t usrDataForCallback)
+{
+    v_U8_t cbMode;
+    tHalHandle hHal;
+    eHalStatus halStatus = eHAL_STATUS_SUCCESS;
+    ptSapContext sapContext = (ptSapContext)usrDataForCallback;
+    eSapPhyMode sapPhyMode;
+
+    hHal = (tHalHandle)vos_get_context( VOS_MODULE_ID_SME,
+                                             sapContext->pvosGCtx);
+    if (NULL == hHal)
+    {
+        /* we have a serious problem */
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
+                   FL("Invalid hHal"));
+       return;
+    }
+
+    cbMode = sme_GetChannelBondingMode24G(hHal);
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("Current Channel bonding : %d"), cbMode);
+
+    if(cbMode)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
+                  FL("Already in HT40 Channel bonding : %d"), cbMode);
+       return;
+    }
+
+    sapPhyMode =
+        sapConvertSapPhyModeToCsrPhyMode(sapContext->csrRoamProfile.phyMode);
+
+    sme_SelectCBMode(hHal, sapPhyMode, sapContext->channel);
+
+    cbMode = sme_GetChannelBondingMode24G(hHal);
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("Selected Channel bonding : %d"), cbMode);
+
+    if(cbMode)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("Move SAP from HT20 to HT40"));
+
+        if (cbMode == eCSR_INI_DOUBLE_CHANNEL_HIGH_PRIMARY)
+            cbMode = PHY_DOUBLE_CHANNEL_HIGH_PRIMARY;
+        else if (cbMode == eCSR_INI_DOUBLE_CHANNEL_LOW_PRIMARY)
+            cbMode = PHY_DOUBLE_CHANNEL_LOW_PRIMARY;
+
+        halStatus = sme_SetHT2040Mode(hHal, sapContext->sessionId, cbMode);
+
+        if (halStatus == eHAL_STATUS_FAILURE )
+        {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                              FL("Failed to change HT20/40 mode"));
+        }
+    }
+}
+
+/*==========================================================================
   FUNCTION    sapCheckHT2040CoexAction()
 
   DESCRIPTION
@@ -221,6 +299,8 @@ void sapCheckHT2040CoexAction(ptSapContext psapCtx,
     tHalHandle hHal;
     v_U8_t cbMode;
     eHalStatus halStatus;
+    VOS_STATUS  vosStatus = VOS_STATUS_SUCCESS;
+    unsigned int delay;
 
     /* tHalHandle */
     hHal = VOS_GET_HAL_CB(psapCtx->pvosGCtx);
@@ -322,9 +402,38 @@ void sapCheckHT2040CoexAction(ptSapContext psapCtx,
             sme_UpdateChannelBondingMode24G(hHal,
                                 PHY_SINGLE_CHANNEL_CENTERED);
         }
-        else
-            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
-                   FL("SAP is Already in HT20"));
+
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                FL("SAP is Already in HT20"));
+
+        if (!psapCtx->numHT40IntoSta)
+        {
+            /* Stop Previous Running HT20/40 Timer & Start timer
+               with (OBSS TransitionDelayFactor * obss interval)
+               delay after time out move AP from HT20 -> HT40
+               mode
+             */
+            if (VOS_TIMER_STATE_RUNNING == psapCtx->sap_HT2040_timer.state)
+            {
+                vosStatus = vos_timer_stop(&psapCtx->sap_HT2040_timer);
+                if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+                    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                               FL("Failed to Stop HT20/40 timer"));
+            }
+
+            delay = psapCtx->ObssScanInterval * psapCtx->ObssTransitionDelayFactor;
+
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                       FL("Start HT20/40 itransition"
+                       " timer (%d sec)"), delay);
+
+            vosStatus = vos_timer_start( &psapCtx->sap_HT2040_timer,
+                                                (delay * 1000));
+
+            if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                            FL("Failed to Start HT20/40 timer"));
+        }
     }
     return;
 }
