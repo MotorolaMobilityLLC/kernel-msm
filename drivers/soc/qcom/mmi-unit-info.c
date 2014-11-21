@@ -197,6 +197,6 @@ err:
 	return ret;
 }
 
-module_init(mmi_unit_info_init);
+fs_initcall(mmi_unit_info_init);
 MODULE_DESCRIPTION("Motorola Mobility LLC. Unit Info");
 MODULE_LICENSE("GPL v2");
