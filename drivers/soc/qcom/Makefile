@@ -18,6 +18,7 @@ obj-$(CONFIG_MSM_MEMORY_DUMP_V2) += memory_dump_v2.o
 obj-$(CONFIG_MSM_DDR_HEALTH) += ddr-health.o
 obj-$(CONFIG_MSM_DCC) += dcc.o
 obj-$(CONFIG_MSM_WATCHDOG_V2) += watchdog_v2.o
+obj-$(CONFIG_MSM_WATCHDOG_CTX_PRINT) += watchdog_cpu_ctx.o
 obj-$(CONFIG_MSM_CORE_HANG_DETECT) += core_hang_detect.o
 obj-$(CONFIG_MSM_GLADIATOR_HANG_DETECT) += gladiator_hang_detect.o
 obj-$(CONFIG_MSM_COMMON_LOG) += common_log.o
