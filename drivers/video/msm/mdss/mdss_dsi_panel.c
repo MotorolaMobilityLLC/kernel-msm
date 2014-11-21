@@ -278,7 +278,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
 
@@ -1368,8 +1368,13 @@ static int mdss_panel_parse_dt(struct device_node *np,
 								__func__);
 		}
 	}
-	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
-	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
+	if (of_property_read_bool(np, "qcom,mdss-backlight-disabled")) {
+		pinfo->brightness_max = 0;
+	} else {
+		rc = of_property_read_u32(np,
+				"qcom,mdss-brightness-max-level", &tmp);
+		pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
+	}
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-min-level", &tmp);
 	pinfo->bl_min = (!rc ? tmp : 0);
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-max-level", &tmp);
