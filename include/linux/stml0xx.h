@@ -587,6 +587,7 @@ struct stml0xx_data {
 	struct work_struct initialize_work;
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
+	struct wake_lock wake_sensor_wakelock;
 	struct wake_lock reset_wakelock;
 	struct input_dev *input_dev;
 
