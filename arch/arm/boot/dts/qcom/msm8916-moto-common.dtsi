@@ -23,21 +23,7 @@
 		spi5 = &spi_5; /* SPI5 controller device */
 		i2c1 = &i2c_1;
 	};
-
-	memory {
-		fb_mem: fb_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0 0 0x400000>;
-			label = "fb_mem";
-			linux,memory-limit = <0xffffffff>;
-		};
-	};
 };
-
-&mdss_fb0 {
-	linux,contiguous-region = <&fb_mem>;
-};
-
 
 &soc {
 	ramoops {
