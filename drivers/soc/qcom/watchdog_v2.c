@@ -30,6 +30,7 @@
 #include <soc/qcom/memory_dump.h>
 #include <soc/qcom/watchdog.h>
 #include <linux/kmemleak.h>
+#include "watchdog_cpu_ctx.h"
 
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
@@ -45,7 +46,6 @@
 #define MASK_SIZE		32
 #define SCM_SET_REGSAVE_CMD	0x2
 #define SCM_SVC_SEC_WDOG_DIS	0x7
-#define MAX_CPU_CTX_SIZE	2048
 
 static struct workqueue_struct *wdog_wq;
 static struct msm_watchdog_data *wdog_data;
@@ -76,6 +76,8 @@ struct msm_watchdog_data {
 	struct msm_watchdog_data __percpu **wdog_cpu_dd;
 	struct notifier_block panic_blk;
 	bool enabled;
+	phys_addr_t cpu_ctx_addr;
+	size_t cpu_ctx_size_percpu;
 };
 
 /*
@@ -544,6 +546,9 @@ static void configure_bark_dump(struct msm_watchdog_data *wdog_dd)
 			 */
 		}
 	} else {
+		phys_addr_t cpu_buf_phys;
+		size_t buf_size_percpu;
+
 		cpu_data = kzalloc(sizeof(struct msm_dump_data) *
 				   num_present_cpus(), GFP_KERNEL);
 		if (!cpu_data) {
@@ -551,17 +556,24 @@ static void configure_bark_dump(struct msm_watchdog_data *wdog_dd)
 			goto out0;
 		}
 		kmemleak_not_leak(cpu_data);
-		cpu_buf = kzalloc(MAX_CPU_CTX_SIZE * num_present_cpus(),
-				  GFP_KERNEL);
-		if (!cpu_buf) {
-			pr_err("cpu reg context space allocation failed\n");
-			goto out1;
+		if (wdog_dd->cpu_ctx_addr && wdog_dd->cpu_ctx_size_percpu) {
+			cpu_buf_phys = wdog_dd->cpu_ctx_addr;
+			buf_size_percpu = wdog_dd->cpu_ctx_size_percpu;
+		} else {
+			cpu_buf = kzalloc(MAX_CPU_CTX_SIZE * num_present_cpus(),
+					  GFP_KERNEL);
+			if (!cpu_buf) {
+				pr_err("cpu reg context space allocation failed\n");
+				goto out1;
+			}
+			kmemleak_not_leak(cpu_buf);
+			cpu_buf_phys = virt_to_phys(cpu_buf);
+			buf_size_percpu = MAX_CPU_CTX_SIZE;
 		}
-		kmemleak_not_leak(cpu_buf);
 		for_each_cpu(cpu, cpu_present_mask) {
-			cpu_data[cpu].addr = virt_to_phys(cpu_buf +
-							cpu * MAX_CPU_CTX_SIZE);
-			cpu_data[cpu].len = MAX_CPU_CTX_SIZE;
+			cpu_data[cpu].addr = cpu_buf_phys +
+						cpu * buf_size_percpu;
+			cpu_data[cpu].len = buf_size_percpu;
 			dump_entry.id = MSM_DUMP_DATA_CPU_CTX + cpu;
 			dump_entry.addr = virt_to_phys(&cpu_data[cpu]);
 			ret = msm_dump_data_register(MSM_DUMP_TABLE_APPS,
@@ -759,6 +771,8 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 	wdog_data = wdog_dd;
 	wdog_dd->dev = &pdev->dev;
 	platform_set_drvdata(pdev, wdog_dd);
+	msm_wdog_get_cpu_ctx(pdev, &wdog_dd->cpu_ctx_addr,
+				&wdog_dd->cpu_ctx_size_percpu);
 	cpumask_clear(&wdog_dd->alive_mask);
 	INIT_WORK(&wdog_dd->init_dogwork_struct, init_watchdog_work);
 	INIT_DELAYED_WORK(&wdog_dd->dogwork_struct, pet_watchdog_work);
