@@ -1478,6 +1478,7 @@ void sapAddHT40IntolerantSta(ptSapContext sapContext,
     tHalHandle hHal;
     v_U8_t cbMode;
     tANI_U8  staId;
+    eHalStatus halStatus;
 
     /* tHalHandle */
     hHal = VOS_GET_HAL_CB(sapContext->pvosGCtx);
@@ -1499,8 +1500,9 @@ void sapAddHT40IntolerantSta(ptSapContext sapContext,
 
     // Get Channel Bonding Mode
     cbMode = sme_GetChannelBondingMode24G(hHal);
+
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
-               FL("Current Channel Bonding Mode: %d"
+               FL("Current Channel Bonding Mode: %d "
                   "HT40IntolerantSet: %d"),
                cbMode, sapContext->aStaInfo[staId].isHT40IntolerantSet);
 
@@ -1524,10 +1526,25 @@ void sapAddHT40IntolerantSta(ptSapContext sapContext,
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
                    FL("Move SAP from HT40 to HT20"));
+
+        halStatus = sme_SetHT2040Mode(hHal, sapContext->sessionId,
+                                            PHY_SINGLE_CHANNEL_CENTERED);
+
+        if (halStatus == eHAL_STATUS_FAILURE)
+        {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                        FL("Failed to change HT20/40 mode"));
+            return;
+        }
+
+        /* Disable Channel Bonding for 2.4GHz */
+        sme_UpdateChannelBondingMode24G(hHal,
+                                PHY_SINGLE_CHANNEL_CENTERED);
+
     }
     else
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
-                   "%s: SAP is Already in HT20", __func__);
+                   FL("SAP is Already in HT20"));
 }
 
 /*==========================================================================

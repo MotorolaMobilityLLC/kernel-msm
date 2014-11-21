@@ -4590,7 +4590,118 @@ __limProcessSmeChangeBI(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     return;
 } /*** end __limProcessSmeChangeBI(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf) ***/
 
+/** -------------------------------------------------------------
+\fn
+\brief handles indication message from HDD to update HT mode
+\param   tpAniSirGlobal pMac
+\param   tANI_U32 pMsgBuf
+\return None
+-------------------------------------------------------------*/
+#ifdef WLAN_FEATURE_AP_HT40_24G
+static void __limProcessSmeSetHT2040Mode(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tpSirSetHT2040Mode     pSetHT2040Mode;
+    tpPESession            psessionEntry;
+    tANI_U8                sessionId = 0;
+    tUpdateVHTOpMode       *pHtOpMode = NULL;
+    vos_msg_t              msg;
 
+    PELOG1(limLog(pMac, LOGRW,
+           FL("received Set HT 20/40 mode message")););
+
+    if(pMsgBuf == NULL)
+    {
+        limLog(pMac, LOGE,FL("Buffer is Pointing to NULL"));
+        return;
+    }
+
+    pSetHT2040Mode = (tpSirSetHT2040Mode)pMsgBuf;
+
+    if((psessionEntry = peFindSessionByBssid(pMac, pSetHT2040Mode->bssId,
+                                                   &sessionId)) == NULL)
+    {
+        limLog(pMac, LOGE, FL("Session does not exist for given BSSID "));
+        limPrintMacAddr(pMac, pSetHT2040Mode->bssId, LOGE);
+        return;
+    }
+
+    limLog(pMac, LOGW, FL("Update session entry for cbMod=%d"),
+                           pSetHT2040Mode->cbMode);
+
+    /*Update sessionEntry HT related fields*/
+    switch(pSetHT2040Mode->cbMode)
+    {
+    case PHY_SINGLE_CHANNEL_CENTERED:
+        psessionEntry->htSecondaryChannelOffset = PHY_SINGLE_CHANNEL_CENTERED;
+        psessionEntry->htRecommendedTxWidthSet = 0;
+        break;
+    case PHY_DOUBLE_CHANNEL_LOW_PRIMARY:
+        psessionEntry->htSecondaryChannelOffset =
+                                         PHY_DOUBLE_CHANNEL_LOW_PRIMARY;
+        psessionEntry->htRecommendedTxWidthSet = 1;
+        break;
+    case PHY_DOUBLE_CHANNEL_HIGH_PRIMARY:
+        psessionEntry->htSecondaryChannelOffset =
+                                         PHY_DOUBLE_CHANNEL_HIGH_PRIMARY;
+        psessionEntry->htRecommendedTxWidthSet = 1;
+        break;
+    default:
+        limLog(pMac, LOGE,FL("Invalid cbMode"));
+        return;
+    }
+
+    limLog(pMac, LOGW, FL("Channel Bonding mode : %d"
+                          " htSecondaryChannelOffset: %d"
+                          " htRecommendedTxWidthSet :%d"),
+                          pSetHT2040Mode->cbMode,
+                          psessionEntry->htSecondaryChannelOffset,
+                          psessionEntry->htRecommendedTxWidthSet);
+
+    limLog(pMac, LOGW, FL("Update Beacon IEs"));
+
+    /* Update beacon */
+    schSetFixedBeaconFields(pMac, psessionEntry);
+    limSendBeaconInd(pMac, psessionEntry);
+
+    /* Update OP Mode */
+    pHtOpMode = vos_mem_malloc(sizeof(tUpdateVHTOpMode));
+    if ( NULL == pHtOpMode )
+    {
+        limLog(pMac, LOGE,
+           FL("Not able to allocate memory for setting OP mode"));
+        return;
+    }
+
+    pHtOpMode->opMode = (psessionEntry->htSecondaryChannelOffset ==
+                      PHY_SINGLE_CHANNEL_CENTERED)?
+                      eHT_CHANNEL_WIDTH_20MHZ:eHT_CHANNEL_WIDTH_40MHZ;
+
+    /* Pass Self STA ID to FW. Based on Self STA ID FW will update the
+     * operating mode for all connected STA.
+     */
+
+    pHtOpMode->staId = psessionEntry->staId;
+
+    msg.type     = WDA_UPDATE_OP_MODE;
+    msg.reserved = 0;
+    msg.bodyptr  = pHtOpMode;
+
+    if (!VOS_IS_STATUS_SUCCESS(
+             vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
+    {
+        limLog(pMac, LOGE,
+               FL("Not able to post WDA_UPDATE_OP_MODE message to WDA"));
+        vos_mem_free(pHtOpMode);
+        return;
+    }
+
+    limLog(pMac, LOGW,
+           FL("Notifed FW about OP mode: %d for staId=%d"),
+           pHtOpMode->opMode, pHtOpMode->staId);
+
+    return;
+}
+#endif
 
 /** -------------------------------------------------------------
 \fn limProcessSmeDelBaPeerInd
@@ -5776,6 +5887,12 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
              //Update the beaconInterval
              __limProcessSmeChangeBI(pMac, pMsgBuf );
              break;
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+        case eWNI_SME_SET_HT_2040_MODE:
+             __limProcessSmeSetHT2040Mode(pMac, pMsgBuf);
+             break;
+#endif
             
 #if defined WLAN_FEATURE_VOWIFI 
         case eWNI_SME_NEIGHBOR_REPORT_REQ_IND:

@@ -2235,6 +2235,14 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                    "OBSS Scan Stop not started ");
         }
         break;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    case eWNI_SME_SET_HT_2040_MODE:
+        limProcessSmeReqMessages(pMac, limMsg);
+        vos_mem_free((v_VOID_t*)limMsg->bodyptr);
+        limMsg->bodyptr = NULL;
+        break;
+#endif
+
 #ifdef FEATURE_WLAN_TDLS
         case WDA_SET_TDLS_LINK_ESTABLISH_REQ_RSP:
         {
