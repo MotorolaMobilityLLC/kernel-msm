@@ -2160,6 +2160,7 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	struct fan5404x_chg *chip;
 	struct power_supply *usb_psy;
 	uint8_t reg;
+	union power_supply_propval ret = {0, };
 
 	usb_psy = power_supply_get_by_name("usb");
 	if (!usb_psy) {
@@ -2357,6 +2358,13 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	rc = fan5404x_setup_vbat_monitoring(chip);
 	if (rc < 0)
 		pr_err("failed to set up voltage notifications: %d\n", rc);
+
+	rc = chip->bms_psy->get_property(chip->bms_psy,
+			POWER_SUPPLY_PROP_HEALTH, &ret);
+	if (rc)
+		dev_err(chip->dev, "Couldn't get batt health\n");
+	else
+		fan5404x_set_prop_batt_health(chip, ret.intval);
 
 	schedule_delayed_work(&chip->heartbeat_work,
 				msecs_to_jiffies(60000));
