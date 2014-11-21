@@ -295,15 +295,12 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 	struct inode *lower_inode;
 	struct path lower_path;
 	struct iattr lower_ia;
-	const struct cred *creds =
-		esdfs_override_creds(ESDFS_SB(dentry->d_inode->i_sb), NULL);
-	if (!creds)
-		return -ENOMEM;
+	const struct cred *creds;
 
 	/* We don't allow chmod or chown, so skip those */
 	ia->ia_valid &= ~(ATTR_UID | ATTR_GID | ATTR_MODE);
 	if (!ia->ia_valid)
-		goto out_err;
+		return 0;
 
 	inode = dentry->d_inode;
 
@@ -314,7 +311,11 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 	 */
 	err = inode_change_ok(inode, ia);
 	if (err)
-		goto out_err;
+		return err;
+
+	creds = esdfs_override_creds(ESDFS_SB(dentry->d_inode->i_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
@@ -369,7 +370,6 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 
 out:
 	esdfs_put_lower_path(dentry, &lower_path);
-out_err:
 	esdfs_revert_creds(creds, NULL);
 	return err;
 }
