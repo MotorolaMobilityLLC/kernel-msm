@@ -805,6 +805,8 @@ static int stml0xx_probe(struct spi_device *spi)
 
 	mutex_lock(&ps_stml0xx->lock);
 	wake_lock_init(&ps_stml0xx->wakelock, WAKE_LOCK_SUSPEND, "stml0xx");
+	wake_lock_init(&ps_stml0xx->wake_sensor_wakelock, WAKE_LOCK_SUSPEND,
+		       "stml0xx_wake_sensor");
 	wake_lock_init(&ps_stml0xx->reset_wakelock, WAKE_LOCK_SUSPEND,
 		       "stml0xx_reset");
 
@@ -1015,6 +1017,8 @@ err1:
 	mutex_destroy(&ps_stml0xx->lock);
 	wake_unlock(&ps_stml0xx->wakelock);
 	wake_lock_destroy(&ps_stml0xx->wakelock);
+	wake_unlock(&ps_stml0xx->wake_sensor_wakelock);
+	wake_lock_destroy(&ps_stml0xx->wake_sensor_wakelock);
 	wake_unlock(&ps_stml0xx->reset_wakelock);
 	wake_lock_destroy(&ps_stml0xx->reset_wakelock);
 	stml0xx_gpio_free(pdata);
@@ -1065,6 +1069,8 @@ static int stml0xx_remove(struct spi_device *spi)
 	mutex_destroy(&ps_stml0xx->lock);
 	wake_unlock(&ps_stml0xx->wakelock);
 	wake_lock_destroy(&ps_stml0xx->wakelock);
+	wake_unlock(&ps_stml0xx->wake_sensor_wakelock);
+	wake_lock_destroy(&ps_stml0xx->wake_sensor_wakelock);
 	wake_unlock(&ps_stml0xx->reset_wakelock);
 	wake_lock_destroy(&ps_stml0xx->reset_wakelock);
 	disable_irq_wake(ps_stml0xx->irq);
