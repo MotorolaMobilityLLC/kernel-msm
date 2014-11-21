@@ -631,12 +631,11 @@ static struct synaptics_dsx_platform_data *
 		rmi4_data->one_touch_enabled = true;
 	}
 
-	if (!of_property_read_bool(np, "synaptics,normal-mode")) {
+	if (of_property_read_u32(np, "synaptics,normal-mode",
+					&rmi4_data->normal_mode)) {
 		pr_notice("using normal mode settings from tdat\n");
 		rmi4_data->normal_mode = -1;
 	} else {
-		of_property_read_u32(np, "synaptics,normal-mode",
-					&rmi4_data->normal_mode);
 		pr_notice("%s mode\n", rmi4_data->normal_mode ?
 				"using normal" : "enforce no sleep");
 	}
