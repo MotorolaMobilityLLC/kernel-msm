@@ -310,6 +310,18 @@ config MSM_WATCHDOG_V2
 	  deadlocks. It does not run during the bootup process, so it will
 	  not catch any early lockups.
 
+config MSM_WATCHDOG_CTX_PRINT
+	bool "Print context dump saved by secure mode watchdog handler"
+	default n
+	depends on MSM_WATCHDOG_V2
+	depends on MSM_MEMORY_DUMP_V2
+	depends on PSTORE_RAM_ANNOTATION_APPEND
+	help
+	  After enabling this option, kernel will reserve bigger buffer
+	  for secure mode watchdog handler to save info. And kernel will
+	  try to print the info if it looks valid.
+	  If unsure, say N
+
 config MSM_FORCE_WDOG_BITE_ON_PANIC
 	bool "MSM force watchdog bite"
 	depends on MSM_WATCHDOG_V2
