@@ -800,7 +800,8 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 	pr_debug("%s+: ctrl=%p ndx=%d\n", __func__,
 				ctrl_pdata, ctrl_pdata->ndx);
 
-	WARN((ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT),
+	WARN((mipi->mode == DSI_VIDEO_MODE) &&
+	     (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT),
 		"Incorrect Ctrl state=0x%x\n", ctrl_pdata->ctrl_state);
 
 	mdss_dsi_ctrl_setup(ctrl_pdata);
@@ -1699,6 +1700,16 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	ctrl_pdata->ctrl_state = CTRL_STATE_UNKNOWN;
 
 	if (pinfo->cont_splash_enabled) {
+		/* It needs request_gpios to match mdss_dsi_panel_reset
+		 * status. With cont_splash_enabled, mdss_dsi_panel_reset
+		 * should be state 1, that means gpios has been requested
+		 */
+		rc = mdss_dsi_request_gpios(ctrl_pdata);
+		if (rc) {
+			pr_err("%s: Panel request gpios failed\n", __func__);
+			return rc;
+		}
+
 		rc = mdss_dsi_panel_power_ctrl(&(ctrl_pdata->panel_data),
 			MDSS_PANEL_POWER_ON);
 		if (rc) {

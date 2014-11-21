@@ -1071,7 +1071,7 @@ void __init msm8226_init_gpiomux(void)
 	/* TODO: instead of msm_gpiomux_install_nowrite after boot loader
 	   supports display also, it's for enable splash screen feature
 	 */
-	msm_gpiomux_install(msm_lcd_configs, ARRAY_SIZE(msm_lcd_configs));
+	msm_gpiomux_install_nowrite(msm_lcd_configs, ARRAY_SIZE(msm_lcd_configs));
 
 	msm_gpiomux_install(msm_lcd_te_configs,
 			ARRAY_SIZE(msm_lcd_te_configs));
