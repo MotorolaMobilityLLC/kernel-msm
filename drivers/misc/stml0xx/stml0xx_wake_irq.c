@@ -226,7 +226,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		switch (Headset_State) {
 		case SH_HEADSET_BUTTON_1:
 			if (!(new_state & SH_HEADSET_BUTTON_1_DOWN)) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset button 1 released");
 				Headset_State = SH_HEADSET_INSERTED;
 				input_report_key(ps_stml0xx->input_dev,
@@ -237,7 +237,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			break;
 		case SH_HEADSET_BUTTON_2:
 			if (!(new_state & SH_HEADSET_BUTTON_2_DOWN)) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset button 2 released");
 				Headset_State = SH_HEADSET_INSERTED;
 				input_report_key(ps_stml0xx->input_dev,
@@ -248,7 +248,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			break;
 		case SH_HEADSET_BUTTON_3:
 			if (!(new_state & SH_HEADSET_BUTTON_3_DOWN)) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset button 3 released");
 				Headset_State = SH_HEADSET_INSERTED;
 				input_report_key(ps_stml0xx->input_dev,
@@ -259,7 +259,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			break;
 		case SH_HEADSET_BUTTON_4:
 			if (!(new_state & SH_HEADSET_BUTTON_4_DOWN)) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset button 4 released");
 				Headset_State = SH_HEADSET_INSERTED;
 				input_report_key(ps_stml0xx->input_dev,
@@ -273,7 +273,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		}
 		if (Headset_State == SH_HEADPHONE_INSERTED) {
 			if (!(new_state & SH_HEADPHONE_DETECTED)) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headphone removed");
 				Headset_State = SH_HEADSET_REMOVED;
 				input_report_switch(ps_stml0xx->input_dev,
@@ -282,7 +282,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			}
 		} else if (Headset_State ==  SH_HEADSET_INSERTED) {
 			if (!(new_state & SH_HEADSET_DETECTED)) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset removed");
 				Headset_State = SH_HEADSET_REMOVED;
 				input_report_switch(ps_stml0xx->input_dev,
@@ -294,14 +294,14 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		}
 		if (Headset_State == SH_HEADSET_REMOVED) {
 			if (new_state & SH_HEADPHONE_DETECTED) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headphone inserted");
 				Headset_State = SH_HEADPHONE_INSERTED;
 				input_report_switch(ps_stml0xx->input_dev,
 						SW_HEADPHONE_INSERT, 1);
 				input_sync(ps_stml0xx->input_dev);
 			} else if (new_state & SH_HEADSET_DETECTED) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset inserted");
 				Headset_State = SH_HEADSET_INSERTED;
 				input_report_switch(ps_stml0xx->input_dev,
@@ -313,7 +313,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		}
 		if (Headset_State == SH_HEADSET_INSERTED) {
 			if (new_state & SH_HEADSET_BUTTON_1_DOWN) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset button 1 pressed");
 				Headset_State = SH_HEADSET_BUTTON_1;
 				input_report_key(ps_stml0xx->input_dev,
@@ -321,7 +321,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 					1);
 				input_sync(ps_stml0xx->input_dev);
 			} else if (new_state & SH_HEADSET_BUTTON_2_DOWN) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset button 2 pressed");
 				Headset_State = SH_HEADSET_BUTTON_2;
 				input_report_key(ps_stml0xx->input_dev,
@@ -329,7 +329,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 					1);
 				input_sync(ps_stml0xx->input_dev);
 			} else if (new_state & SH_HEADSET_BUTTON_3_DOWN) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset button 3 pressed");
 				Headset_State = SH_HEADSET_BUTTON_3;
 				input_report_key(ps_stml0xx->input_dev,
@@ -337,7 +337,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 					1);
 				input_sync(ps_stml0xx->input_dev);
 			} else if (new_state & SH_HEADSET_BUTTON_4_DOWN) {
-				dev_dbg(&stml0xx_misc_data->spi->dev,
+				dev_info(&stml0xx_misc_data->spi->dev,
 					"Headset button 4 pressed");
 				Headset_State = SH_HEADSET_BUTTON_4;
 				input_report_key(ps_stml0xx->input_dev,
