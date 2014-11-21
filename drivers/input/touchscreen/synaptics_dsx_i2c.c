@@ -34,6 +34,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+#include "touchx.h"
+#endif
 #include <linux/pinctrl/consumer.h>
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
@@ -258,6 +261,10 @@ static unsigned char tsb_buff_clean_flag = 1;
 
 #define LAST_SUBPACKET_ROW_IND_MASK 0x80
 #define NR_SUBPKT_PRESENCE_BITS 7
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+struct touchxs touchxp;
+EXPORT_SYMBOL(touchxp);
+#endif
 
 int synaptics_rmi4_scan_packet_reg_info(
 	struct synaptics_rmi4_data *rmi4_data,
@@ -1647,6 +1654,9 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wx;
 	int wy;
 	int z;
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	unsigned char number_of_fingers_actually_touching = 0;
+#endif
 
 	/*
 	 * The number of finger status registers is determined by the
@@ -1671,6 +1681,20 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		return 0;
 	} else
 		synaptics_dsx_resumeinfo_purgeoff(rmi4_data);
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (touchxp.touchx)
+		mutex_lock(&touchxp.virtual_touch_mutex);
+
+	for (finger = 0; finger < fingers_supported; finger++) {
+		reg_index = finger / 4;
+		finger_shift = (finger % 4) * 2;
+		finger_status = (finger_status_reg[reg_index] >> finger_shift)
+				& MASK_2BIT;
+		if (finger_status)
+			number_of_fingers_actually_touching++;
+	}
+#endif
 
 	for (finger = 0; finger < fingers_supported; finger++) {
 		reg_index = finger / 4;
@@ -1712,6 +1736,13 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			if (rmi4_data->board->y_flip)
 				y = rmi4_data->sensor_max_y - y;
 
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+			touchxp.touch_magic_dev = rmi4_data->input_dev;
+			if (touchxp.touchx)
+				touchxp.touchx(&x, &y, finger,
+					number_of_fingers_actually_touching);
+#endif
+
 			dev_dbg(&rmi4_data->i2c_client->dev,
 					"%s: Finger %d:\n"
 					"status = 0x%02x\n"
@@ -1746,12 +1777,22 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (!touch_count)
+		touchxp.finger_down = 0;
+#endif
+
 #ifndef TYPE_B_PROTOCOL
 	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
 #endif
 
 	input_sync(rmi4_data->input_dev);
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (touchxp.touchx)
+		mutex_unlock(&touchxp.virtual_touch_mutex);
+#endif
 
 	return touch_count;
 }
