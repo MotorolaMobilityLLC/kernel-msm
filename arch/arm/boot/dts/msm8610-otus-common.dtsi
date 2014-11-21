@@ -319,3 +319,7 @@
 	qcom,pad-drv-on = <0x5 0x2 0x2>; /* 12mA, 6mA, 6mA */
 	qcom,bus-speed-mode = "SDR12_1p8v", "SDR25_1p8v", "SDR50_1p8v", "DDR_1p8v", "SDR104_1p8v";
 };
+&pm8110_chg_fac {
+		qcom,factory_detect_gpio = <&msmgpio 75 0x1>; /* GPIOF_DIR_IN | GPIOF_INIT_HIGH */
+		gpio-names = "factory_cable_detect";
+};
