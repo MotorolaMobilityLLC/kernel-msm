@@ -387,13 +387,34 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
     tANI_U32                nStatus;
     tpDphHashNode           pSta;
     tANI_U16                aid;
-    tANI_U8  operMode;
+    tANI_U8                 operMode;
+    tANI_U32                channelBondingMode;
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
     frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
-    PELOG3(limLog(pMac, LOG3, FL("Received Operating Mode action frame"));)
+    limLog(pMac, LOG1, FL("Received Operating Mode action frame"));
+
+    if( RF_CHAN_14 >= psessionEntry->currentOperChannel )
+    {
+        channelBondingMode = pMac->roam.configParam.channelBondingMode24GHz;
+    }
+    else
+    {
+        channelBondingMode = pMac->roam.configParam.channelBondingMode5GHz;
+    }
+
+    /* Do not update the channel bonding mode if channel bonding
+     * mode is disabled in INI.
+     */
+    if(WNI_CFG_CHANNEL_BONDING_MODE_DISABLE == channelBondingMode)
+    {
+        limLog(pMac, LOGW,
+            FL("channel bonding disabled"));
+        return;
+    }
+
     pOperatingModeframe = vos_mem_malloc(sizeof(*pOperatingModeframe));
     if (NULL == pOperatingModeframe)
     {

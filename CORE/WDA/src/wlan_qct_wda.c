@@ -16494,7 +16494,9 @@ VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA,
       vos_mem_free(wdiTemp);
       return VOS_STATUS_E_NOMEM;
    }
-
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                 "------> %s Opmode = %d and staid = %d" ,
+                     __func__, pData->opMode, pData->staId);
    wdiTemp->opMode = pData->opMode;
    wdiTemp->staId  = pData->staId;
    
