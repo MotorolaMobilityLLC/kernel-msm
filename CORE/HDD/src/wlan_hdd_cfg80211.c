@@ -9613,12 +9613,20 @@ v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx, v_BOOL_t isRoC )
             else if ((WLAN_HDD_SOFTAP == pAdapter->device_mode) ||
                     (WLAN_HDD_P2P_GO == pAdapter->device_mode))
             {
+                v_CONTEXT_t pVosContext = ( WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
+                ptSapContext pSapCtx = NULL;
+                pSapCtx = VOS_GET_SAP_CB(pVosContext);
+                if(pSapCtx == NULL){
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                            FL("psapCtx is NULL"));
+                    return VOS_FALSE;
+                }
                 for (staId = 0; staId < WLAN_MAX_STA_COUNT; staId++)
                 {
-                    if ((pAdapter->aStaInfo[staId].isUsed) &&
-                            (WLANTL_STA_CONNECTED == pAdapter->aStaInfo[staId].tlSTAState))
+                    if ((pSapCtx->aStaInfo[staId].isUsed) &&
+                            (WLANTL_STA_CONNECTED == pSapCtx->aStaInfo[staId].tlSTAState))
                     {
-                        staMac = (v_U8_t *) &(pAdapter->aStaInfo[staId].macAddrSTA.bytes[0]);
+                        staMac = (v_U8_t *) &(pSapCtx->aStaInfo[staId].macAddrSTA.bytes[0]);
 
                         hddLog(VOS_TRACE_LEVEL_ERROR,
                                "%s: client " MAC_ADDRESS_STR " of SoftAP/P2P-GO is in the "
@@ -12680,7 +12688,8 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
     VOS_STATUS vos_status;
     int status;
     v_U8_t staId;
-
+    v_CONTEXT_t pVosContext = NULL;
+    ptSapContext pSapCtx = NULL;
     ENTER();
 
     if ( NULL == pAdapter )
@@ -12707,16 +12716,23 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
        || (WLAN_HDD_P2P_GO == pAdapter->device_mode)
        )
     {
+        pVosContext = ( WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
+        pSapCtx = VOS_GET_SAP_CB(pVosContext);
+        if(pSapCtx == NULL){
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 FL("psapCtx is NULL"));
+            return -ENOENT;
+        }
         if (vos_is_macaddr_broadcast((v_MACADDR_t *)pDelStaParams->peerMacAddr))
         {
             v_U16_t i;
             for(i = 0; i < WLAN_MAX_STA_COUNT; i++)
             {
-                if ((pAdapter->aStaInfo[i].isUsed) &&
-                    (!pAdapter->aStaInfo[i].isDeauthInProgress))
+                if ((pSapCtx->aStaInfo[i].isUsed) &&
+                    (!pSapCtx->aStaInfo[i].isDeauthInProgress))
                 {
                     vos_mem_copy(pDelStaParams->peerMacAddr,
-                                 pAdapter->aStaInfo[i].macAddrSTA.bytes,
+                                 pSapCtx->aStaInfo[i].macAddrSTA.bytes,
                                  ETHER_ADDR_LEN);
 
                     hddLog(VOS_TRACE_LEVEL_INFO,
@@ -12726,7 +12742,7 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                             MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
                     vos_status = hdd_softap_sta_deauth(pAdapter, pDelStaParams);
                     if (VOS_IS_STATUS_SUCCESS(vos_status))
-                        pAdapter->aStaInfo[i].isDeauthInProgress = TRUE;
+                        pSapCtx->aStaInfo[i].isDeauthInProgress = TRUE;
                 }
             }
         }
@@ -12744,7 +12760,7 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                 return -ENOENT;
             }
 
-            if( pAdapter->aStaInfo[staId].isDeauthInProgress == TRUE)
+            if( pSapCtx->aStaInfo[staId].isDeauthInProgress == TRUE)
             {
                 hddLog(VOS_TRACE_LEVEL_INFO,
                        "%s: Skip this DEL STA as deauth is in progress::"
@@ -12753,7 +12769,7 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                 return -ENOENT;
             }
 
-            pAdapter->aStaInfo[staId].isDeauthInProgress = TRUE;
+            pSapCtx->aStaInfo[staId].isDeauthInProgress = TRUE;
 
             hddLog(VOS_TRACE_LEVEL_INFO,
                                 "%s: Delete STA with MAC::"
@@ -12764,7 +12780,7 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
             vos_status = hdd_softap_sta_deauth(pAdapter, pDelStaParams);
             if (!VOS_IS_STATUS_SUCCESS(vos_status))
             {
-                pAdapter->aStaInfo[staId].isDeauthInProgress = FALSE;
+                pSapCtx->aStaInfo[staId].isDeauthInProgress = FALSE;
                 hddLog(VOS_TRACE_LEVEL_INFO,
                                 "%s: STA removal failed for ::"
                                 MAC_ADDRESS_STR,
