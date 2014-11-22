@@ -8256,10 +8256,17 @@ limSetProtectedBit(tpAniSirGlobal  pMac,
         pStaDs = dphLookupHashEntry( pMac, peer, &aid,
                                      &psessionEntry->dph.dphHashTable );
         if( pStaDs != NULL )
-            if( pStaDs->rmfEnabled )
+            /* rmfenabled will be set at the time of addbss.
+             * but sometimes EAP auth fails and keys are not
+             * installed then if we send any management frame
+             * like deauth/disassoc with this bit set then
+             * firmware crashes. so check for keys are
+             * installed or not also before setting the bit
+             */
+            if( pStaDs->rmfEnabled && psessionEntry->isKeyInstalled )
                 pMacHdr->fc.wep = 1;
     }
-    else if ( psessionEntry->limRmfEnabled )
+    else if ( psessionEntry->limRmfEnabled && psessionEntry->isKeyInstalled)
         pMacHdr->fc.wep = 1;
 } /*** end limSetProtectedBit() ***/
 #endif

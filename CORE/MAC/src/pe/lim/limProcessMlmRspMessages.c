@@ -1686,9 +1686,15 @@ limProcessMlmSetKeysCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         PELOGE(limLog(pMac, LOGE,FL("session does not exist for given sessionId "));)
         return;
     }
+    psessionEntry->isKeyInstalled = 0;
     limLog( pMac, LOG1,
         FL("Received MLM_SETKEYS_CNF with resultCode = %d"),
         pMlmSetKeysCnf->resultCode );
+    /* if the status is success keys are installed in the
+     * Firmware so we can set the protection bit
+     */
+    if (eSIR_SME_SUCCESS == pMlmSetKeysCnf->resultCode)
+        psessionEntry->isKeyInstalled = 1;
     limSendSmeSetContextRsp(pMac,
                             pMlmSetKeysCnf->peerMacAddr,
                             1,
