@@ -814,6 +814,7 @@ int iw_set_scan(struct net_device *dev, struct iw_request_info *info,
    }
 
    pHddCtx->scan_info.mScanPending = TRUE;
+   pHddCtx->scan_info.sessionId = pAdapter->sessionId;
 
    pHddCtx->scan_info.scanId = scanId;
 
@@ -1208,6 +1209,7 @@ int iw_set_cscan(struct net_device *dev, struct iw_request_info *info,
         }
 
         pHddCtx->scan_info.scanId = scanId;
+        pHddCtx->scan_info.sessionId = pAdapter->sessionId;
 
     } //end of data->pointer
     else {
