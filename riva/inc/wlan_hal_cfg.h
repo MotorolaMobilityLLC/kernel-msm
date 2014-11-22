@@ -265,13 +265,14 @@
 #define QWLAN_HAL_CFG_MAX_UAPSD_INACTIVITY_INTERVALS         207
 #define QWLAN_HAL_CFG_ENABLE_DYNAMIC_WMMPS                   208
 #define QWLAN_HAL_CFG_BURST_MODE_BE_TXOP_VALUE               209
+#define QWLAN_HAL_CFG_ENABLE_DYNAMIC_RA_START_RATE           210
 
 
-#define QWLAN_HAL_CFG_MAX_PARAMS                             210
+#define QWLAN_HAL_CFG_MAX_PARAMS                             211
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                     210
+#define QWLAN_HAL_CFG_INTEGER_PARAM                     211
 
 /*-------------------------------------------------------------------------
   Configuration Parameter min, max, defaults
@@ -1034,6 +1035,11 @@
 #define QWLAN_HAL_CFG_BURST_MODE_BE_TXOP_VALUE_MIN 0
 #define QWLAN_HAL_CFG_BURST_MODE_BE_TXOP_VALUE_MAX 12288
 #define QWLAN_HAL_CFG_BURST_MODE_BE_TXOP_VALUE_DEF 0
+
+/* QWLAN_HAL_CFG_ENABLE_DYNAMIC_RA_START_RATE */
+#define QWLAN_HAL_CFG_ENABLE_DYNAMIC_RA_START_RATE_DEF 0
+#define QWLAN_HAL_CFG_ENABLE_DYNAMIC_RA_START_RATE_MIN 0
+#define QWLAN_HAL_CFG_ENABLE_DYNAMIC_RA_START_RATE_MAX 300
 
 
 #endif //__WLAN_HAL_CFG_H__
