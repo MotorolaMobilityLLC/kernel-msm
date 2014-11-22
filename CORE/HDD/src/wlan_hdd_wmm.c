@@ -2316,16 +2316,32 @@ VOS_STATUS hdd_wmm_connect( hdd_adapter_t* pAdapter,
           * done with the AddTspec.Here we avoid 11r and ccx based association.
             This change is done only when reassoc to different AP.
           */
+         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      FL( "fReassocReq = %d"
+#if defined (FEATURE_WLAN_ESE)
+                          "isESEAssoc = %d"
+#endif
+#if defined (WLAN_FEATURE_VOWIFI_11R)
+                          "is11rAssoc = %d"
+#endif
+                        ),
+                        pRoamInfo->fReassocReq
+#if defined (FEATURE_WLAN_ESE)
+                        ,pRoamInfo->isESEAssoc
+#endif
+#if defined (WLAN_FEATURE_VOWIFI_11R)
+                        ,pRoamInfo->is11rAssoc
+#endif
+                  );
+
          if ( !pRoamInfo->fReassocReq
 #if defined (WLAN_FEATURE_VOWIFI_11R)
             &&
-            pRoamInfo->u.pConnectedProfile->AuthType != eCSR_AUTH_TYPE_FT_RSN &&
-            pRoamInfo->u.pConnectedProfile->AuthType != eCSR_AUTH_TYPE_FT_RSN_PSK
+            !pRoamInfo->is11rAssoc
 #endif
 #if defined (FEATURE_WLAN_ESE)
             &&
-            pRoamInfo->u.pConnectedProfile->AuthType != eCSR_AUTH_TYPE_CCKM_WPA &&
-            pRoamInfo->u.pConnectedProfile->AuthType != eCSR_AUTH_TYPE_CCKM_RSN
+            !pRoamInfo->isESEAssoc
 #endif
             )
          {

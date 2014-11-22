@@ -1220,6 +1220,11 @@ typedef struct tagCsrRoamInfo
     tSirEseBcnReportRsp *pEseBcnReportRsp;
 #endif /* FEATURE_WLAN_ESE_UPLOAD */
 #endif
+
+#ifdef WLAN_FEATURE_VOWIFI_11R
+    tANI_BOOLEAN is11rAssoc;
+#endif
+
     void* pRemainCtx;
     tANI_U32 rxChan;
 
