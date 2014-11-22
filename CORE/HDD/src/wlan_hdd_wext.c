@@ -5829,7 +5829,7 @@ static int __iw_setnone_getnone(struct net_device *dev,
         {
             hddLog(LOGE, "%s: called %d",__func__, sub_cmd);
             hdd_wmm_tx_snapshot(pAdapter);
-            WLANTL_TLDebugMessage(VOS_TRUE);
+            WLANTL_TLDebugMessage(WLANTL_DEBUG_TX_SNAPSHOT);
             break;
         }
 
