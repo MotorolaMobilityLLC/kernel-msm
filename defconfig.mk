@@ -2,7 +2,7 @@ DEFCONFIGSRC			:= kernel/arch/$(KERNEL_ARCH)/configs
 LJAPDEFCONFIGSRC		:= ${DEFCONFIGSRC}/ext_config
 PRODUCT_SPECIFIC_DEFCONFIGS	:= $(DEFCONFIGSRC)/$(KERNEL_DEFCONFIG)
 TARGET_DEFCONFIG		:= $(KERNEL_OUT)/mapphone_defconfig
-KERNEL_DEBUG_DEFCONFIG          := $(LJAPDEFCONFIGSRC)/debug-$(subst _defconfig,,$(KERNEL_DEFCONFIG)).config
+KERNEL_DEBUG_DEFCONFIG          := $(LJAPDEFCONFIGSRC)/debug-$(subst -perf,,$(subst _defconfig,,$(KERNEL_DEFCONFIG))).config
 
 # add debug config file for non-user build
 ifneq ($(TARGET_BUILD_VARIANT), user)
