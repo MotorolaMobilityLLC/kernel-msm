@@ -6191,9 +6191,106 @@ WLANTL_CollectInterfaceStats
           "WLAN TL:Client Memory was not allocated on %s", __func__));
       return VOS_STATUS_E_FAILURE;
   }
+  TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+              "WLAN TL: collect WIFI_STATS_IFACE results"));
+
   vos_mem_copy(vosDataBuff, &pTLCb->atlSTAClients[ucSTAId]->interfaceStats,
           sizeof(WLANTL_InterfaceStatsType));
   return VOS_STATUS_SUCCESS;
+}
+
+/*==========================================================================
+
+  FUNCTION    WLANTL_ClearInterfaceStats
+
+  DESCRIPTION
+    Utility function used by TL to clear the statitics
+
+  DEPENDENCIES
+
+
+  PARAMETERS
+
+    IN
+
+    ucSTAId:    station for which the statistics need to collected
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_INVAL:   Input parameters are invalid
+    VOS_STATUS_SUCCESS:   Everything is good :)
+
+  SIDE EFFECTS
+
+============================================================================*/
+VOS_STATUS
+WLANTL_ClearInterfaceStats
+(
+  v_PVOID_t       pvosGCtx,
+  v_U8_t          ucSTAId,
+  v_U8_t          statsClearReqMask
+)
+{
+    WLANTL_CbType*  pTLCb = NULL;
+    WLANTL_STAClientType* pClientSTA = NULL;
+    /*------------------------------------------------------------------------
+      Sanity check
+      ------------------------------------------------------------------------*/
+    if ( WLANTL_STA_ID_INVALID( ucSTAId ) )
+    {
+        TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+               "WLAN TL:Invalid station id requested on WLANTL_CollectStats"));
+        return VOS_STATUS_E_FAULT;
+    }
+    /*------------------------------------------------------------------------
+      Extract TL control block
+      ------------------------------------------------------------------------*/
+    pTLCb = VOS_GET_TL_CB(pvosGCtx);
+    if ( NULL == pTLCb )
+    {
+        TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+            "WLAN TL:Invalid TL pointer from pvosGCtx on WLANTL_CollectStats"));
+        return VOS_STATUS_E_FAULT;
+    }
+
+    pClientSTA = pTLCb->atlSTAClients[ucSTAId];
+    if ( NULL == pClientSTA )
+    {
+        TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+                    "WLAN TL:Client Memory was not allocated on %s", __func__));
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    if ((statsClearReqMask & WIFI_STATS_IFACE_AC) ||
+            (statsClearReqMask & WIFI_STATS_IFACE)) {
+        TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+                    "WLAN TL:cleared WIFI_STATS_IFACE_AC results"));
+        pClientSTA->interfaceStats.accessCategoryStats[0].rxMcast = 0;
+        pClientSTA->interfaceStats.accessCategoryStats[1].rxMcast = 0;
+        pClientSTA->interfaceStats.accessCategoryStats[2].rxMcast = 0;
+        pClientSTA->interfaceStats.accessCategoryStats[3].rxMcast = 0;
+
+        pClientSTA->interfaceStats.accessCategoryStats[0].rxMpdu = 0;
+        pClientSTA->interfaceStats.accessCategoryStats[1].rxMpdu = 0;
+        pClientSTA->interfaceStats.accessCategoryStats[2].rxMpdu = 0;
+        pClientSTA->interfaceStats.accessCategoryStats[3].rxMpdu = 0;
+
+        pClientSTA->interfaceStats.accessCategoryStats[0].rxAmpdu = 0;
+        pClientSTA->interfaceStats.accessCategoryStats[1].rxAmpdu = 0;
+        pClientSTA->interfaceStats.accessCategoryStats[2].rxAmpdu = 0;
+        pClientSTA->interfaceStats.accessCategoryStats[3].rxAmpdu = 0;
+    }
+
+    if (statsClearReqMask & WIFI_STATS_IFACE) {
+        TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+                    "WLAN TL:cleared WIFI_STATS_IFACE results"));
+        pClientSTA->interfaceStats.mgmtRx = 0;
+        pClientSTA->interfaceStats.rssiData = 0;
+        return VOS_STATUS_SUCCESS;
+    }
+
+    return VOS_STATUS_SUCCESS;
 }
 
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */

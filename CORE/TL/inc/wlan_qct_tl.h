@@ -1223,6 +1223,39 @@ WLANTL_CollectInterfaceStats
   v_U8_t          ucSTAId,
   WLANTL_InterfaceStatsType  *vosDataBuff
 );
+
+/*==========================================================================
+
+  FUNCTION    WLANTL_ClearInterfaceStats
+
+  DESCRIPTION
+    Utility function used by TL to clear the statitics
+
+  DEPENDENCIES
+
+
+  PARAMETERS
+
+    IN
+
+    ucSTAId:    station for which the statistics need to collected
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_INVAL:   Input parameters are invalid
+    VOS_STATUS_SUCCESS:   Everything is good :)
+
+  SIDE EFFECTS
+
+============================================================================*/
+VOS_STATUS
+WLANTL_ClearInterfaceStats
+(
+  v_PVOID_t       pvosGCtx,
+  v_U8_t          ucSTAId,
+  v_U8_t          statsClearReqMask
+);
 #endif
 
 /*===========================================================================
