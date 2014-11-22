@@ -1638,12 +1638,12 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
                                           pHddCtx->cfg_ini->gEnableDebugLog);
       if (VOS_PKT_PROTO_TYPE_EAPOL & proto_type)
       {
-         VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
+         VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
                    "STA TX EAPOL");
       }
       else if (VOS_PKT_PROTO_TYPE_DHCP & proto_type)
       {
-         VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
+         VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
                    "STA TX DHCP");
       }
    }
@@ -1988,12 +1988,12 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
                                              pHddCtx->cfg_ini->gEnableDebugLog);
          if (VOS_PKT_PROTO_TYPE_EAPOL & proto_type)
          {
-            VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
+            VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
                       "STA RX EAPOL");
          }
          else if (VOS_PKT_PROTO_TYPE_DHCP & proto_type)
          {
-            VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
+            VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
                       "STA RX DHCP");
          }
       }
