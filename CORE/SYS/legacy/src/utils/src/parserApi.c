@@ -1632,6 +1632,7 @@ void PopulateDot11fWMMInfoStation(tpAniSirGlobal pMac, tDot11fIEWMMInfoStation *
 {
     tANI_U32  val = 0;
 
+    limLog(pMac, LOG1, FL("populate WMM IE in Setup Request Frame"));
     pInfo->version = SIR_MAC_OUI_VERSION_1;
     pInfo->acvo_uapsd = LIM_UAPSD_GET(ACVO, pMac->lim.gUapsdPerAcBitmask);
     pInfo->acvi_uapsd = LIM_UAPSD_GET(ACVI, pMac->lim.gUapsdPerAcBitmask);
@@ -1640,7 +1641,6 @@ void PopulateDot11fWMMInfoStation(tpAniSirGlobal pMac, tDot11fIEWMMInfoStation *
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_MAX_SP_LENGTH, &val) != eSIR_SUCCESS) 
         PELOGE(limLog(pMac, LOGE, FL("could not retrieve Max SP Length \n"));)
-
     pInfo->max_sp_length = (tANI_U8)val;
     pInfo->present = 1;
 }
