@@ -22118,6 +22118,10 @@ WDI_SendMsg
   {
      /*Inform upper stack layers that a transport fatal error occurred*/
      WDI_DetectedDeviceError(pWDICtx, WDI_ERR_TRANSPORT_FAILURE);
+     if (eWLAN_PAL_STATUS_E_FAILURE == ret)
+     {
+         wdiStatus = WDI_STATUS_DEV_INTERNAL_FAILURE;
+     }
   }
 
   return wdiStatus;
