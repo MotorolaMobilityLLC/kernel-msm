@@ -9842,7 +9842,8 @@ void hdd_set_conparam ( v_UINT_t newParam )
 
   --------------------------------------------------------------------------*/
 
-VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddress)
+VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter,
+                                 struct tagCsrDelStaParams *pDelStaParams)
 {
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
     VOS_STATUS vosStatus = VOS_STATUS_E_FAULT;
@@ -9853,10 +9854,10 @@ VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddres
            (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
 
     //Ignore request to deauth bcmc station
-    if( pDestMacAddress[0] & 0x1 )
+    if (pDelStaParams->peerMacAddr[0] & 0x1)
        return vosStatus;
 
-    vosStatus = WLANSAP_DeauthSta(pVosContext,pDestMacAddress);
+    vosStatus = WLANSAP_DeauthSta(pVosContext, pDelStaParams);
 
     EXIT();
     return vosStatus;
@@ -9892,12 +9893,13 @@ int hdd_del_all_sta(hdd_adapter_t *pAdapter)
             if ((pAdapter->aStaInfo[i].isUsed) &&
                 (!pAdapter->aStaInfo[i].isDeauthInProgress))
             {
-                u8 *macAddr = pAdapter->aStaInfo[i].macAddrSTA.bytes;
-                hddLog(VOS_TRACE_LEVEL_ERROR,
-                       "%s: Delete STA with staid = %d and MAC::"
-                        MAC_ADDRESS_STR,
-                        __func__, i, MAC_ADDR_ARRAY(macAddr));
-                vos_status = hdd_softap_sta_deauth(pAdapter, macAddr);
+                struct tagCsrDelStaParams delStaParams;
+
+                WLANSAP_PopulateDelStaParams(
+                            pAdapter->aStaInfo[i].macAddrSTA.bytes,
+                            eCsrForcedDeauthSta, SIR_MAC_MGMT_DEAUTH >> 4,
+                            &delStaParams);
+                vos_status = hdd_softap_sta_deauth(pAdapter, &delStaParams);
                 if (VOS_IS_STATUS_SUCCESS(vos_status))
                     pAdapter->aStaInfo[i].isDeauthInProgress = TRUE;
             }

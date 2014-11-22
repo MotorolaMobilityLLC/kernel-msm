@@ -12629,14 +12629,9 @@ static int wlan_hdd_set_txq_params(struct wiphy *wiphy,
 }
 #endif //LINUX_VERSION_CODE
 
-#ifdef CFG80211_DEL_STA_V2
 static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
-                                         struct net_device *dev,
-                                         struct station_del_parameters *param)
-#else
-static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
-                                         struct net_device *dev, u8 *mac)
-#endif
+                                       struct net_device *dev,
+                                       struct tagCsrDelStaParams *pDelStaParams)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx;
@@ -12670,7 +12665,7 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
        || (WLAN_HDD_P2P_GO == pAdapter->device_mode)
        )
     {
-        if( NULL == mac )
+        if (vos_is_macaddr_broadcast((v_MACADDR_t *)pDelStaParams->peerMacAddr))
         {
             v_U16_t i;
             for(i = 0; i < WLAN_MAX_STA_COUNT; i++)
@@ -12678,12 +12673,16 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                 if ((pAdapter->aStaInfo[i].isUsed) &&
                     (!pAdapter->aStaInfo[i].isDeauthInProgress))
                 {
-                    u8 *macAddr = pAdapter->aStaInfo[i].macAddrSTA.bytes;
+                    vos_mem_copy(pDelStaParams->peerMacAddr,
+                                 pAdapter->aStaInfo[i].macAddrSTA.bytes,
+                                 ETHER_ADDR_LEN);
+
                     hddLog(VOS_TRACE_LEVEL_INFO,
                            "%s: Delete STA with MAC::"
                             MAC_ADDRESS_STR,
-                            __func__, MAC_ADDR_ARRAY(macAddr));
-                    vos_status = hdd_softap_sta_deauth(pAdapter, macAddr);
+                            __func__,
+                            MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
+                    vos_status = hdd_softap_sta_deauth(pAdapter, pDelStaParams);
                     if (VOS_IS_STATUS_SUCCESS(vos_status))
                         pAdapter->aStaInfo[i].isDeauthInProgress = TRUE;
                 }
@@ -12692,13 +12691,14 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
         else
         {
 
-            vos_status = hdd_softap_GetStaId(pAdapter,(v_MACADDR_t *)mac, &staId);
+            vos_status = hdd_softap_GetStaId(pAdapter,
+                            (v_MACADDR_t *)pDelStaParams->peerMacAddr, &staId);
             if (!VOS_IS_STATUS_SUCCESS(vos_status))
             {
                 hddLog(VOS_TRACE_LEVEL_INFO,
                        "%s: Skip this DEL STA as this is not used::"
                        MAC_ADDRESS_STR,
-                       __func__, MAC_ADDR_ARRAY(mac));
+                       __func__, MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
                 return -ENOENT;
             }
 
@@ -12707,7 +12707,7 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                 hddLog(VOS_TRACE_LEVEL_INFO,
                        "%s: Skip this DEL STA as deauth is in progress::"
                        MAC_ADDRESS_STR,
-                       __func__, MAC_ADDR_ARRAY(mac));
+                       __func__, MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
                 return -ENOENT;
             }
 
@@ -12717,9 +12717,9 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                 "%s: Delete STA with MAC::"
                                 MAC_ADDRESS_STR,
                                 __func__,
-                                MAC_ADDR_ARRAY(mac));
+                                MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
 
-            vos_status = hdd_softap_sta_deauth(pAdapter, mac);
+            vos_status = hdd_softap_sta_deauth(pAdapter, pDelStaParams);
             if (!VOS_IS_STATUS_SUCCESS(vos_status))
             {
                 pAdapter->aStaInfo[staId].isDeauthInProgress = FALSE;
@@ -12727,7 +12727,7 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                 "%s: STA removal failed for ::"
                                 MAC_ADDRESS_STR,
                                 __func__,
-                                MAC_ADDR_ARRAY(mac));
+                                MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
                 return -ENOENT;
             }
 
@@ -12749,13 +12749,25 @@ static int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
 #endif
 {
     int ret;
+    struct tagCsrDelStaParams delStaParams;
 
     vos_ssr_protect(__func__);
+
 #ifdef CFG80211_DEL_STA_V2
-    ret = __wlan_hdd_cfg80211_del_station(wiphy, dev, param);
+    if (NULL == param) {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid argumet passed", __func__);
+        return -EINVAL;
+    }
+
+    WLANSAP_PopulateDelStaParams(param->mac, param->reason_code,
+                                 param->subtype, &delStaParams);
+
 #else
-    ret = __wlan_hdd_cfg80211_del_station(wiphy, dev, mac);
+    WLANSAP_PopulateDelStaParams(mac, eCsrForcedDeauthSta,
+                                 (SIR_MAC_MGMT_DEAUTH >> 4), &delStaParams);
 #endif
+    ret = __wlan_hdd_cfg80211_del_station(wiphy, dev, &delStaParams);
+
     vos_ssr_unprotect(__func__);
 
     return ret;
