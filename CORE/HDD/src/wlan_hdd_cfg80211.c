@@ -9426,6 +9426,7 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     int ret = 0;
     bool aborted = false;
     long waitRet = 0;
+    tANI_U8 i;
 
     ENTER();
 
@@ -9509,6 +9510,27 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     pAdapter->request = NULL;
     /* Scan is no longer pending */
     pScanInfo->mScanPending = VOS_FALSE;
+
+    /* last_scan_timestamp is used to decide if new scan
+     * is needed or not on station interface. If last station
+     *  scan time and new station scan time is less then
+     * last_scan_timestamp ; driver will return cached scan.
+     */
+    if (req->no_cck == FALSE && status == eCSR_SCAN_SUCCESS) // no_cck will be set during p2p find
+    {
+        pScanInfo->last_scan_timestamp = vos_timer_get_system_time();
+
+        if ( req->n_channels )
+        {
+            for (i = 0; i < req->n_channels ; i++ )
+            {
+                pHddCtx->scan_info.last_scan_channelList[i] = req->channels[i]->hw_value;
+            }
+            /* store no of channel scanned */
+            pHddCtx->scan_info.last_scan_numChannels= req->n_channels;
+        }
+
+    }
 
     /*
      * cfg80211_scan_done informing NL80211 about completion
@@ -9648,6 +9670,7 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     int status;
     hdd_scaninfo_t *pScanInfo = NULL;
     v_U8_t* pP2pIe = NULL;
+    int ret = 0;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
     struct net_device *dev = NULL;
@@ -9778,6 +9801,7 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     hddLog(VOS_TRACE_LEVEL_INFO, "scan request for ssid = %d",
            (int)request->n_ssids);
 
+
     /* Even though supplicant doesn't provide any SSIDs, n_ssids is set to 1.
      * Becasue of this, driver is assuming that this is not wildcard scan and so
      * is not aging out the scan results.
@@ -9879,6 +9903,39 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 
     /* set requestType to full scan */
     scanRequest.requestType = eCSR_SCAN_REQUEST_FULL_SCAN;
+
+    /* if there is back to back scan happening in driver with in
+     * nDeferScanTimeInterval interval driver should defer new scan request
+     * and should provide last cached scan results instead of new channel list.
+     * This rule is not applicable if scan is p2p scan.
+     * This condition will work only in case when last request no of channels
+     * and channels are exactly same as new request.
+     */
+    if (pScanInfo->last_scan_timestamp !=0 &&
+           (FALSE == request->no_cck) && // no_cck is set during p2p find.
+          ((vos_timer_get_system_time() - pScanInfo->last_scan_timestamp ) < pHddCtx->cfg_ini->nDeferScanTimeInterval))
+    {
+        if (pScanInfo->last_scan_numChannels == scanRequest.ChannelInfo.numOfChannels &&
+               vos_mem_compare(pScanInfo->last_scan_channelList,
+                     channelList, pScanInfo->last_scan_numChannels))
+       {
+           hddLog(VOS_TRACE_LEVEL_WARN,
+                " New and old station scan time differ is less then %u",
+            pHddCtx->cfg_ini->nDeferScanTimeInterval);
+
+           ret = wlan_hdd_cfg80211_update_bss((WLAN_HDD_GET_CTX(pAdapter))->wiphy,
+                                        pAdapter);
+
+           hddLog(VOS_TRACE_LEVEL_WARN,
+                "Return old cached scan as all channels"
+                "and no of channles are same");
+           if (0 > ret)
+                hddLog(VOS_TRACE_LEVEL_INFO, "%s: NO SCAN result", __func__);
+
+           cfg80211_scan_done(request, eCSR_SCAN_SUCCESS);
+           return eHAL_STATUS_SUCCESS ;
+       }
+    }
 
     /* Flush the scan results(only p2p beacons) for STA scan and P2P
      * search (Flush on both full  scan and social scan but not on single
