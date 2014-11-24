@@ -35,6 +35,31 @@
 	stml0xx_wakeup {
 		qcom,pins = <&gp 116>;
 	};
+
+	ak09912_reset {
+		qcom,pins = <&gp 90>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "ak09912-reset";
+
+		ak09912_reset_default: ak09912-reset {
+			bias-disable;
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	ak09912_irq {
+		qcom,pins = <&gp 50>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "ak09912-irq";
+
+		ak09912_irq_default: ak09912-irq {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
 };
 
 &spi_5 {
@@ -43,6 +68,16 @@
 
 &i2c_6 {
 	status = "okay";
+
+	ak09912: ak09912@0C {
+		compatible = "ak,ak09912";
+		reg = <0x0C>;
+		gpios = <&msm_gpio 90 0>, /* RESET */
+		        <&msm_gpio 50 0>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&ak09912_reset_default &ak09912_irq_default>;
+		ak,layout = <0>;
+	};
 };
 
 &i2c_4 {
