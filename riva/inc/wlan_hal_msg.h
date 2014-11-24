@@ -516,6 +516,9 @@ typedef enum
    WLAN_HAL_MAC_SPOOFED_SCAN_REQ            = 292,
    WLAN_HAL_MAC_SPOOFED_SCAN_RSP            = 293,
 
+   WLAN_HAL_FW_STATS_REQ                    = 296,
+   WLAN_HAL_FW_STATS_RSP                    = 297,
+
    WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -3069,6 +3072,43 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader  header;
    tHalStatsRspParams statsRspParams;
 } tHalStatsRspMsg, *tpHalStatsRspMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_FW_STATS_REQ
+ *---------------------------------------------------------------------------*/
+ typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U32 type;
+}tHalfwStatsReqParams, *tpHalfwStatsReqParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader        header;
+   tHalfwStatsReqParams   fwstatsReqParams;
+} tHalfwStatsReqMsg, *tpHalfwStatsReqMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_FW_STATS_RSP
+ *---------------------------------------------------------------------------*/
+ typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U32 type;
+   tANI_U32 length;
+   tANI_U8  data[1];
+
+}tHalfwStatsRspParams, *tpHalfwStatsRspParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader        header;
+   tHalfwStatsRspParams   fwstatsRspParams;
+} tHalfwStatsRspMsg, *tpHalfwStatsRspMsg;
+
+typedef enum
+{
+   FW_UBSP_STATS = 1,
+} fwstatstype;
+
 
 /*---------------------------------------------------------------------------
  * WLAN_HAL_SET_LINK_ST_REQ
@@ -6550,6 +6590,8 @@ typedef enum {
     DYNAMIC_WMM_PS         = 43,
     MAC_SPOOFED_SCAN       = 44,
     BMU_ERROR_GENERIC_RECOVERY = 45,
+    DISA                   = 46,
+    FW_STATS               = 47,
     MAX_FEATURE_SUPPORTED  = 128,
 } placeHolderInCapBitmap;
 
