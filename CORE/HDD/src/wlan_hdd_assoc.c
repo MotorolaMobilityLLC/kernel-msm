@@ -804,6 +804,8 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     // notify apps that we can't pass traffic anymore
     netif_tx_disable(dev);
     netif_carrier_off(dev);
+    //TxTimeoutCount need to reset in case of disconnect handler
+    pAdapter->hdd_stats.hddTxRxStats.continuousTxTimeoutCount = 0;
 
     INIT_COMPLETION(pAdapter->disconnect_comp_var);
     /* HDD has initiated disconnect, do not send disconnect indication
