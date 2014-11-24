@@ -521,6 +521,7 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
         /* Start peridic timer which will trigger probe req based on min/max
            channel timer */
         periodicScanTimer = &pMac->lim.limTimers.gLimPeriodicProbeReqTimer;
+        limDeactivateAndChangeTimer(pMac, eLIM_PERIODIC_PROBE_REQ_TIMER);
         if (tx_timer_activate(periodicScanTimer) != TX_SUCCESS)
         {
              limLog(pMac, LOGP, FL("could not start periodic probe req "
