@@ -105,95 +105,38 @@
  * -------------------------------------------------------------------------*/
 
 /*==========================================================================
-  FUNCTION    WLANSAP_ScanCallback()
+  FUNCTION    sapSetOperatingChannel()
 
-  DESCRIPTION 
-    Callback for Scan (scan results) Events  
+  DESCRIPTION
+    Set SAP Operating Channel
 
-  DEPENDENCIES 
-    NA. 
+  DEPENDENCIES
+    NA.
 
-  PARAMETERS 
+  PARAMETERS
 
     IN
-    tHalHandle  : tHalHandle passed in with the scan request
     *pContext   : The second context pass in for the caller (sapContext)
-    scanID      : scanID got after the scan
-    status      : Status of scan -success, failure or abort
-   
-  RETURN VALUE
-    The eHalStatus code associated with performing the operation  
+    operChannel : SAP Operating Channel
 
-    eHAL_STATUS_SUCCESS: Success
-  
-  SIDE EFFECTS 
+  RETURN VALUE
+
+  SIDE EFFECTS
 ============================================================================*/
-eHalStatus
-WLANSAP_ScanCallback
-(
-  tHalHandle halHandle, 
-  void *pContext,           /* Opaque SAP handle */
-  v_U32_t scanID, 
-  eCsrScanStatus scanStatus
-)
+
+void sapSetOperatingChannel(ptSapContext psapContext, v_U8_t operChannel)
 {
-    tScanResultHandle pResult = NULL;
-    eHalStatus scanGetResultStatus = eHAL_STATUS_FAILURE;
-    ptSapContext psapContext = (ptSapContext)pContext;
-    void *pTempHddCtx;
-    tWLAN_SAPEvent sapEvent; /* State machine event */
-    v_U8_t operChannel = 0;
     v_U8_t i = 0;
-    VOS_STATUS sapstatus;
     v_U32_t event;
 
-    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
-
-    pTempHddCtx = vos_get_context( VOS_MODULE_ID_HDD,
-                                     psapContext->pvosGCtx);
-    if (NULL == pTempHddCtx)
-    {
-        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
-                   "HDD context is NULL");
-        return eHAL_STATUS_FAILURE;
-    }
-
-    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, before switch on scanStatus = %d", __func__, scanStatus);
-
-    switch (scanStatus) 
-    {
-        case eCSR_SCAN_SUCCESS:
-            // sapScanCompleteCallback with eCSR_SCAN_SUCCESS
-            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, CSR scanStatus = %s (%d)", __func__, "eCSR_SCAN_SUCCESS", scanStatus);
-
-            // Get scan results, Run channel selection algorithm, select channel and keep in pSapContext->Channel
-            scanGetResultStatus = sme_ScanGetResult(halHandle, 0, NULL, &pResult);
-
-            event = eSAP_MAC_SCAN_COMPLETE;
-
-            if ((scanGetResultStatus != eHAL_STATUS_SUCCESS)&& (scanGetResultStatus != eHAL_STATUS_E_NULL_VALUE))
-            {
-                // No scan results
-                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, Get scan result failed! ret = %d",
-                                __func__, scanGetResultStatus);
-                break;
-            }
-
-            operChannel = sapSelectChannel(halHandle, psapContext, pResult);
-
-            sme_ScanResultPurge(halHandle, pResult);
-            break;
-
-        default:
-            event = eSAP_CHANNEL_SELECTION_FAILED;
-            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, CSR scanStatus = %s (%d)", __func__, "eCSR_SCAN_ABORT/FAILURE", scanStatus);
-    }
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                FL("SAP Channel : %d"), psapContext->channel);
 
     if (operChannel == SAP_CHANNEL_NOT_SELECTED)
 #ifdef SOFTAP_CHANNEL_RANGE
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
-                "%s: No suitable channel selected", __func__);
+                FL("No suitable channel selected"));
 
         if ( eCSR_BAND_ALL ==  psapContext->scanBandPreference ||
                 psapContext->allBandScanned == eSAP_TRUE)
@@ -204,7 +147,7 @@ WLANSAP_ScanCallback
                  for ( i = 0 ; i < psapContext->numofChannel ; i++)
                  {
                     if (NV_CHANNEL_ENABLE ==
-                        vos_nv_getChannelEnabledState(psapContext->channelList[i]))
+                     vos_nv_getChannelEnabledState(psapContext->channelList[i]))
                     {
                         psapContext->channel = psapContext->channelList[i];
                         break;
@@ -213,8 +156,8 @@ WLANSAP_ScanCallback
             }
             else
             {
-                /* if the channel list is empty then there is no valid channel in
-                   the selected sub-band so select default channel in the
+                /* if the channel list is empty then there is no valid channel
+                   in the selected sub-band so select default channel in the
                    BAND(2.4GHz) as 2.4 channels are available in all the
                    countries*/
                    psapContext->channel = SAP_DEFAULT_CHANNEL;
@@ -223,8 +166,7 @@ WLANSAP_ScanCallback
         else
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
-                    "%s: Has scan band preference",
-                    __func__);
+                    FL("Has scan band preference"));
             if (eCSR_BAND_24 == psapContext->currentPreferredBand)
                 psapContext->currentPreferredBand = eCSR_BAND_5G;
             else
@@ -244,9 +186,624 @@ WLANSAP_ScanCallback
       psapContext->channel = operChannel;
     }
 
-    sme_SelectCBMode(halHandle,
-          sapConvertSapPhyModeToCsrPhyMode(psapContext->csrRoamProfile.phyMode),
-          psapContext->channel);
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("SAP Channel : %d"), psapContext->channel);
+}
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+/*==========================================================================
+  FUNCTION    sapCheckFor20MhzObss()
+
+  DESCRIPTION
+    Check 20 MHz Overlapping BSS
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    channelNumber : Peer BSS Operating Channel
+    tpSirProbeRespBeacon: Pointer to Beacon Struct
+    ptSapContext: Pointer to SAP Context
+
+  RETURN VALUE
+    v_U8_t          : Success - Found OBSS BSS, Fail - zero
+
+  SIDE EFFECTS
+============================================================================*/
+
+eHalStatus sapCheckFor20MhzObss(v_U8_t channelNumber,
+                            tpSirProbeRespBeacon  pBeaconStruct,
+                            ptSapContext psapCtx)
+{
+
+    v_U16_t secondaryChannelOffset;
+    eHalStatus halStatus = eHAL_STATUS_SUCCESS;
+
+    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+             FL("channelNumber: %d BSS: %s"), channelNumber,
+             pBeaconStruct->ssId.ssId);
+
+    if (channelNumber < psapCtx->affected_start
+      || channelNumber > psapCtx->affected_end)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                FL("channelNumber: %d out of Affetced Channel Range: [%d,%d]"),
+                channelNumber, psapCtx->affected_start,
+                psapCtx->affected_end);
+        return halStatus;
+    }
+
+    if (!pBeaconStruct->HTCaps.present)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("Found overlapping legacy BSS: %s on Channel : %d"),
+                   pBeaconStruct->ssId.ssId, channelNumber);
+        halStatus = eHAL_STATUS_FAILURE;
+        return halStatus;
+    }
+
+    if (pBeaconStruct->HTInfo.present)
+    {
+        secondaryChannelOffset = pBeaconStruct->HTInfo.secondaryChannelOffset;
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("BSS: %s secondaryChannelOffset: %d on Channel : %d"),
+                   pBeaconStruct->ssId.ssId, secondaryChannelOffset,
+                   channelNumber);
+        if (PHY_SINGLE_CHANNEL_CENTERED == secondaryChannelOffset)
+        {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("Found overlapping 20 MHz HT BSS: %s on Channel : %d"),
+                   pBeaconStruct->ssId.ssId, channelNumber);
+            halStatus = eHAL_STATUS_FAILURE;
+            return halStatus;
+        }
+     }
+     return halStatus;
+}
+
+/*==========================================================================
+  FUNCTION    sapGetPrimarySecondaryChannelOfBss()
+
+  DESCRIPTION
+    Get Primary & Seconary Channel of Overlapping BSS
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    tpSirProbeRespBeacon: Pointer to Beacon Struct
+    pri_chan : Primary Operating Channel
+    sec_chan : Seconary Operating Channel
+
+  RETURN VALUE
+
+  SIDE EFFECTS
+============================================================================*/
+
+void sapGetPrimarySecondaryChannelOfBss(tpSirProbeRespBeacon pBeaconStruct,
+                                        v_U32_t *pri_chan, v_U32_t *sec_chan)
+{
+    v_U16_t secondaryChannelOffset;
+    *pri_chan = 0;
+    *sec_chan = 0;
+
+    if (pBeaconStruct->HTInfo.present)
+    {
+        *pri_chan = pBeaconStruct->HTInfo.primaryChannel;
+        secondaryChannelOffset = pBeaconStruct->HTInfo.secondaryChannelOffset;
+        if (PHY_DOUBLE_CHANNEL_LOW_PRIMARY == secondaryChannelOffset)
+            *sec_chan = *pri_chan + 4;
+        else if (PHY_DOUBLE_CHANNEL_HIGH_PRIMARY == secondaryChannelOffset)
+            *sec_chan = *pri_chan - 4;
+    }
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("BSS Primary & Secondary Channel : %d %d "),
+               *pri_chan, *sec_chan);
+}
+
+/*==========================================================================
+  FUNCTION    sapCheckHT40PairIsAllowed()
+
+  DESCRIPTION
+    Check HT40 Channel Pair is Allowed
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    ptSapContext: Pointer to SAP Context
+
+  RETURN VALUE
+    v_U8_t          : Success - HT40 Allowed in Selected Channale Pair
+                      Fail - HT40 Not Allowed
+
+  SIDE EFFECTS
+============================================================================*/
+
+eHalStatus sapCheckHT40PairIsAllowed(ptSapContext psapCtx)
+{
+    v_U8_t count;
+    v_U8_t fValidChannel = 0;
+    eHalStatus halStatus = eHAL_STATUS_SUCCESS;
+
+    /* Verify that HT40 secondary channel is an allowed 20 MHz
+     * channel */
+    for (count = RF_CHAN_1; count <= RF_CHAN_14; count++)
+    {
+        if ((regChannels[count].enabled)
+         && (rfChannels[count].channelNum == psapCtx->sap_sec_chan))
+        {
+            fValidChannel = TRUE;
+            break;
+        }
+    }
+
+    if (!fValidChannel)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("HT40 In Secondary Channel : %d not allowed"),
+                   psapCtx->sap_sec_chan);
+
+        halStatus = eHAL_STATUS_FAILURE;
+        return halStatus;
+    }
+
+    return halStatus;
+}
+
+/*==========================================================================
+  FUNCTION    sapGet24GOBSSAffectedChannel()
+
+  DESCRIPTION
+    Get OBSS Affected Channel Range
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    tHalHandle  : tHalHandle passed in with Affected Channel
+    ptSapContext: Pointer to SAP Context
+
+  RETURN VALUE
+    v_U8_t          : Success - Able to get AffectedChannel
+                      Fail - Fail to get AffectedChannel
+
+  SIDE EFFECTS
+============================================================================*/
+
+eHalStatus sapGet24GOBSSAffectedChannel(tHalHandle halHandle,
+                                          ptSapContext psapCtx)
+{
+
+    v_U8_t cbMode;
+    v_U32_t pri_freq, sec_freq;
+    v_U32_t affected_start_freq, affected_end_freq;
+    eSapPhyMode sapPhyMode;
+    eHalStatus halStatus;
+
+    pri_freq = vos_chan_to_freq(psapCtx->channel);
+
+    sapPhyMode =
+     sapConvertSapPhyModeToCsrPhyMode(psapCtx->csrRoamProfile.phyMode);
+
+    sme_SelectCBMode(halHandle, sapPhyMode, psapCtx->channel);
+
+    cbMode = sme_GetChannelBondingMode24G(halHandle);
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("Selected Channel bonding : %d"), cbMode);
+
+    if (cbMode == eCSR_INI_DOUBLE_CHANNEL_HIGH_PRIMARY)
+        sec_freq = pri_freq - 20;
+    else if (cbMode == eCSR_INI_DOUBLE_CHANNEL_LOW_PRIMARY)
+        sec_freq = pri_freq + 20;
+    else
+        sec_freq = eCSR_INI_SINGLE_CHANNEL_CENTERED;
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("Primary Freq : %d MHz Secondary Freq : %d MHz"),
+               pri_freq, sec_freq);
+
+    if (sec_freq)
+    {
+        /* As per 802.11 Std, Section 10.15.3.2 */
+        affected_start_freq = (pri_freq + sec_freq) / 2 - 25;
+        affected_end_freq = (pri_freq + sec_freq) / 2 + 25;
+
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                FL("Affected Start Freq: %d MHz Affected End Freq : %d MHz"),
+                affected_start_freq, affected_end_freq);
+
+        psapCtx->affected_start = vos_freq_to_chan(affected_start_freq);
+
+        /* As there is no channel availabe for 2397 & 2402 Frequency
+         * Hence taking valid channel 1 (Freq 2412) here
+         */
+        if (affected_start_freq < 2412)
+            psapCtx->affected_start = 1;
+
+        psapCtx->affected_end = vos_freq_to_chan(affected_end_freq);
+
+        /* As there is no channel availabe for 2477 & 2482 Frequency
+         * Hence taking lower channel 13 (Freq 2472) here.
+         */
+        if ((2477 == (affected_end_freq)) || (2482 == affected_end_freq))
+        {
+            psapCtx->affected_end = 13;
+        }
+        else if (2487 == affected_end_freq)
+        {
+           /* As there is no channel availabe for 2487 Frequency
+            * Hence taking lower channel 14 (Freq 2484) here.
+            */
+            psapCtx->affected_end = 14;
+        }
+
+        psapCtx->sap_sec_chan = vos_freq_to_chan(sec_freq);
+
+        halStatus = eHAL_STATUS_SUCCESS;
+        return halStatus;
+    }
+    else
+    {
+        psapCtx->affected_start = 0;
+        psapCtx->affected_end = 0;
+        psapCtx->sap_sec_chan = 0;
+        halStatus = eHAL_STATUS_FAILURE;
+        return halStatus;
+    }
+}
+
+/*==========================================================================
+  FUNCTION    sapCheck40Mhz24G
+
+  DESCRIPTION
+  Check HT40 is possible in 2.4GHz mode
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    halHandle       : Pointer to HAL handle
+    ptSapContext    : Pointer to SAP Context
+    pResult         : Pointer to tScanResultHandle
+
+  RETURN VALUE
+    v_U8_t          : Success - HT40 Possible, Fail - zero
+
+  SIDE EFFECTS
+============================================================================*/
+
+eHalStatus sapCheck40Mhz24G(tHalHandle halHandle, ptSapContext psapCtx,
+                                         tScanResultHandle pResult)
+{
+    v_U32_t pri_chan, sec_chan;
+    v_U32_t ieLen = 0;
+    v_U8_t channelNumber = 0;
+    tSirProbeRespBeacon *pBeaconStruct;
+    tCsrScanResultInfo *pScanResult;
+    tpAniSirGlobal  pMac = (tpAniSirGlobal) halHandle;
+    eHalStatus halStatus = eHAL_STATUS_FAILURE;
+
+    if ( (0 == psapCtx->affected_start) && (0 == psapCtx->affected_end)
+       && (0 == psapCtx->sap_sec_chan))
+    {
+        if (eHAL_STATUS_SUCCESS !=
+                 sapGet24GOBSSAffectedChannel(halHandle, psapCtx))
+        {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                FL("Failed to get OBSS Affected Channel Range for Channel: %d"),
+                                psapCtx->channel);
+            return halStatus;
+        }
+    }
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("40 MHz affected channel range: [%d,%d] MHz"),
+               psapCtx->affected_start, psapCtx->affected_end);
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("SAP Primary & Secondary Channel : [%d,%d] MHz"),
+               psapCtx->channel, psapCtx->sap_sec_chan);
+
+    pBeaconStruct = vos_mem_malloc(sizeof(tSirProbeRespBeacon));
+    if ( NULL == pBeaconStruct )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   FL("Unable to allocate memory \n"));
+        return halStatus;
+    }
+
+    /* Check neighboring BSSes from scan result to see whether 40 MHz is
+     * allowed per IEEE Std 802.11-2012, 10.15.3.2 */
+    pScanResult = sme_ScanResultGetFirst(halHandle, pResult);
+
+    while (pScanResult)
+    {
+
+        /* if the Beacon has channel ID, use it other wise we will
+         * rely on the channelIdSelf
+         */
+        if(pScanResult->BssDescriptor.channelId == 0)
+            channelNumber = pScanResult->BssDescriptor.channelIdSelf;
+        else
+            channelNumber = pScanResult->BssDescriptor.channelId;
+
+        if (channelNumber > SIR_11B_CHANNEL_END)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("channelNumber: %d BSS: %s"),
+                   channelNumber,  pBeaconStruct->ssId.ssId);
+            goto NextResult;
+        }
+
+        if ((pScanResult->BssDescriptor.ieFields != NULL))
+        {
+            ieLen = (pScanResult->BssDescriptor.length + sizeof(tANI_U16));
+            ieLen += (sizeof(tANI_U32) - sizeof(tSirBssDescription));
+            vos_mem_set((tANI_U8 *) pBeaconStruct,
+                               sizeof(tSirProbeRespBeacon), 0);
+
+            if ((eSIR_SUCCESS == sirParseBeaconIE(pMac, pBeaconStruct,
+                     (tANI_U8 *)( pScanResult->BssDescriptor.ieFields), ieLen)))
+            {
+                /* SAP Operating channel is not same with other BSS Operating
+                 * channel then check for Peer BSS is HT20 or Legacy AP
+                 */
+                if (psapCtx->channel != channelNumber)
+                {
+                    if (eHAL_STATUS_SUCCESS !=
+                          sapCheckFor20MhzObss(channelNumber, pBeaconStruct,
+                                                                    psapCtx))
+                    {
+                        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                              FL("Overlapping 20 MHz BSS is found"));
+                        vos_mem_free(pBeaconStruct);
+                        return halStatus;
+                    }
+                }
+
+                sapGetPrimarySecondaryChannelOfBss(pBeaconStruct,
+                                                &pri_chan, &sec_chan);
+
+                /* Check peer BSS Operating channel is not within OBSS affected
+                 * channel range
+                 */
+                if ((pri_chan < psapCtx->affected_start
+                    || pri_chan > psapCtx->affected_end)
+                   && (sec_chan < psapCtx->affected_start
+                    || sec_chan > psapCtx->affected_end))
+                {
+                      goto NextResult; /* not within affected channel range */
+                }
+
+                VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                 FL("Neighboring BSS: %s Primary & Secondary Channel [%d %d]"),
+                 pBeaconStruct->ssId.ssId, pri_chan, sec_chan);
+
+                if (sec_chan)
+                {
+                    /* Peer BSS is HT40 capable then check peer BSS
+                     * primary & secondary channel with SAP
+                     * Primary & Secondary channel.
+                     */
+                    if ((psapCtx->channel !=  pri_chan)
+                       || (psapCtx->sap_sec_chan != sec_chan))
+                    {
+                        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                                  FL("40 MHz Pri/Sec channel : [%d %d]"
+                                  " missmatch with  BSS: %s"
+                                  " Pri/Sec channel : [%d %d]"),
+                                  psapCtx->channel, psapCtx->sap_sec_chan,
+                                  pBeaconStruct->ssId.ssId, pri_chan, sec_chan);
+                         vos_mem_free(pBeaconStruct);
+                         return halStatus;
+                    }
+                }
+                else
+                {
+                    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                            FL("Channel: %d Overlapping BSS is found"),
+                            pri_chan);
+                    vos_mem_free(pBeaconStruct);
+                    return halStatus;
+                }
+
+                if (pBeaconStruct->HTCaps.present)
+                {
+                    /* Check Peer BSS HT capablity has 40MHz Intolerant bit */
+                    if (pBeaconStruct->HTCaps.stbcControlFrame)
+                    {
+                        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                                      FL("Found BSS: %s with 40 MHz"
+                                      "Intolerant is set on Channel : %d"),
+                                      pBeaconStruct->ssId.ssId,
+                                      channelNumber);
+                        vos_mem_free(pBeaconStruct);
+                        return halStatus;
+                    }
+                }
+            }
+            else
+            {
+                VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                          FL("Failed to Parse the Beacon IEs"));
+            }
+        }
+        else
+        {
+            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                       FL("BSS IEs Failed is NULL in Scan"));
+        }
+
+NextResult:
+        pScanResult = sme_ScanResultGetNext(halHandle, pResult);
+    }
+    vos_mem_free(pBeaconStruct);
+
+    if (psapCtx->sap_sec_chan)
+    {
+        if (eHAL_STATUS_SUCCESS == sapCheckHT40PairIsAllowed(psapCtx))
+        {
+            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                       FL("Start SAP/P2P GO in HT 40MHz "
+                       "Primary & Secondary Channel: [%d %d]"),
+                       psapCtx->channel, psapCtx->sap_sec_chan);
+            halStatus = eHAL_STATUS_SUCCESS;
+            return halStatus;
+        }
+    }
+
+    return halStatus;
+}
+#endif
+
+/*==========================================================================
+  FUNCTION    WLANSAP_ScanCallback()
+
+  DESCRIPTION
+    Callback for Scan (scan results) Events
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    tHalHandle  : tHalHandle passed in with the scan request
+    *pContext   : The second context pass in for the caller (sapContext)
+    scanID      : scanID got after the scan
+    status      : Status of scan -success, failure or abort
+
+  RETURN VALUE
+    The eHalStatus code associated with performing the operation
+
+    eHAL_STATUS_SUCCESS: Success
+
+  SIDE EFFECTS
+============================================================================*/
+eHalStatus
+WLANSAP_ScanCallback
+(
+  tHalHandle halHandle,
+  void *pContext,           /* Opaque SAP handle */
+  v_U32_t scanID,
+  eCsrScanStatus scanStatus
+)
+{
+    tScanResultHandle pResult = NULL;
+    eHalStatus scanGetResultStatus = eHAL_STATUS_FAILURE;
+    ptSapContext psapContext = (ptSapContext)pContext;
+    void *pTempHddCtx;
+    tWLAN_SAPEvent sapEvent; /* State machine event */
+    v_U8_t operChannel = 0;
+    VOS_STATUS sapstatus;
+    v_U32_t event;
+    eSapPhyMode sapPhyMode;
+
+    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+    pTempHddCtx = vos_get_context( VOS_MODULE_ID_HDD,
+                                     psapContext->pvosGCtx);
+    if (NULL == pTempHddCtx)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
+                   "HDD context is NULL");
+        return eHAL_STATUS_FAILURE;
+    }
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+         "In %s, before switch on scanStatus = %d", __func__, scanStatus);
+
+    switch (scanStatus)
+    {
+        case eCSR_SCAN_SUCCESS:
+            // sapScanCompleteCallback with eCSR_SCAN_SUCCESS
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+               "In %s, CSR scanStatus = %s (%d)", __func__,
+               "eCSR_SCAN_SUCCESS", scanStatus);
+
+            /* Get scan results, Run channel selection algorithm,
+             * select channel and keep in pSapContext->Channel
+             */
+            scanGetResultStatus = sme_ScanGetResult(halHandle, 0, NULL,
+                                                               &pResult);
+
+            event = eSAP_MAC_SCAN_COMPLETE;
+
+            if ((scanGetResultStatus != eHAL_STATUS_SUCCESS)
+               && (scanGetResultStatus != eHAL_STATUS_E_NULL_VALUE))
+            {
+                // No scan results
+                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                     "In %s, Get scan result failed! ret = %d",
+                                __func__, scanGetResultStatus);
+                sapSetOperatingChannel(psapContext, operChannel);
+                break;
+            }
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+            if (psapContext->channel == AUTO_CHANNEL_SELECT)
+#endif
+            {
+                operChannel = sapSelectChannel(halHandle, psapContext, pResult);
+                sapSetOperatingChannel(psapContext, operChannel);
+            }
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+            if ((psapContext->channel <= SIR_11B_CHANNEL_END)
+               && (psapContext->channel > 0))
+            {
+                if (eHAL_STATUS_SUCCESS !=
+                         sapCheck40Mhz24G(halHandle, psapContext, pResult))
+                {
+                    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                               FL("Starting SAP into HT20"));
+                    /* Disable Channel Bonding for 2.4GHz */
+                    sme_UpdateChannelBondingMode24G(halHandle,
+                                          PHY_SINGLE_CHANNEL_CENTERED);
+                }
+             }
+#endif
+            sme_ScanResultPurge(halHandle, pResult);
+            break;
+
+        default:
+            event = eSAP_CHANNEL_SELECTION_FAILED;
+            if (psapContext->channel == AUTO_CHANNEL_SELECT)
+                sapSetOperatingChannel(psapContext, operChannel);
+#ifdef WLAN_FEATURE_AP_HT40_24G
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                            FL("Starting SAP into HT20"));
+            /* Disable Channel Bonding for 2.4GHz */
+            sme_UpdateChannelBondingMode24G(halHandle,
+                                   PHY_SINGLE_CHANNEL_CENTERED);
+#endif
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                 FL("CSR scanStatus = %s (%d)"),
+                 "eCSR_SCAN_ABORT/FAILURE", scanStatus);
+    }
+
+
+    sapPhyMode =
+     sapConvertSapPhyModeToCsrPhyMode(psapContext->csrRoamProfile.phyMode);
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    if (psapContext->channel > SIR_11B_CHANNEL_END)
+#endif
+        sme_SelectCBMode(halHandle, sapPhyMode, psapContext->channel);
+
 #ifdef SOFTAP_CHANNEL_RANGE
     if(psapContext->channelList != NULL)
     {
@@ -257,7 +814,8 @@ WLANSAP_ScanCallback
     }
 #endif    
 
-    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Channel selected = %d", __func__, psapContext->channel);
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+           "In %s, Channel selected = %d", __func__, psapContext->channel);
 
     /* Fill in the event structure */
     sapEvent.event = event;

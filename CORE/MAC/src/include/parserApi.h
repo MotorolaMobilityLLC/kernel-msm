@@ -576,6 +576,13 @@ PopulateDot11fHTInfo(tpAniSirGlobal   pMac,
                      tDot11fIEHTInfo *pDot11f,
                      tpPESession      psessionEntry);
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+tSirRetStatus
+PopulateDot11fOBSSScanParameters(tpAniSirGlobal   pMac,
+                     tDot11fIEOBSSScanParameters *pDot11f,
+                     tpPESession      psessionEntry);
+#endif
+
 void PopulateDot11fIBSSParams(tpAniSirGlobal  pMac,
        tDot11fIEIBSSParams *pDot11f, tpPESession psessionEntry);
 

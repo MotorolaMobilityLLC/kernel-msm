@@ -2125,9 +2125,11 @@ eChannelWidthInfo sapGetChannelWidthInfo(tHalHandle halHandle, ptSapContext pSap
     v_U32_t cbMode;
     eChannelWidthInfo chWidth = CHWIDTH_HT20;
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
     if (eSAP_RF_SUBBAND_2_4_GHZ == operatingBand)
         cbMode = sme_GetChannelBondingMode24G(halHandle);
     else
+#endif
         cbMode = sme_GetChannelBondingMode5G(halHandle);
 
     if (phyMode == eSAP_DOT11_MODE_11n ||

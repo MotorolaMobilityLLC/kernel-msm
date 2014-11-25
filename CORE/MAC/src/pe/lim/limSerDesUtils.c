@@ -739,6 +739,11 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
         len  -= pStartBssReq->extendedRateSet.numRates;
     }
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    /* extract apHT40_24GEnabled */
+    pStartBssReq->apHT40_24GEnabled = *pBuf++;
+    len--;
+#endif
     if (len)
     {
         limLog(pMac, LOGW, FL("Extra bytes left in SME_START_BSS_REQ, len=%d"), len);

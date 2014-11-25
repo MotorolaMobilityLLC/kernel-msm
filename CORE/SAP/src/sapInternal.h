@@ -260,6 +260,11 @@ typedef struct sSapContext {
     tSapAcsChannelInfo acsBestChannelInfo;
     spinlock_t staInfo_lock; //To protect access to station Info
     hdd_station_info_t aStaInfo[WLAN_MAX_STA_COUNT];
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    v_U8_t            affected_start;
+    v_U8_t            affected_end;
+    v_U8_t            sap_sec_chan;
+#endif
 } *ptSapContext;
 
 
@@ -283,6 +288,32 @@ typedef struct sWLAN_SAPEvent {
 /*----------------------------------------------------------------------------
  * Function Declarations and Documentation
  * -------------------------------------------------------------------------*/
+#ifdef WLAN_FEATURE_AP_HT40_24G
+/*==========================================================================
+
+  FUNCTION    sapGet24GOBSSAffectedChannel()
+
+  DESCRIPTION
+    Get OBSS Affected Channel no for SAP
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    tHalHandle:  the tHalHandle passed in with the scan request
+    ptSapContext: Pointer to SAP context
+
+  RETURN VALUE
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+eHalStatus sapGet24GOBSSAffectedChannel(tHalHandle halHandle,
+                                                ptSapContext psapCtx);
+#endif
 
 /*==========================================================================
 

@@ -336,6 +336,17 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         PopulateDot11fHTCaps( pMac,psessionEntry, &pBcn2->HTCaps );
         PopulateDot11fHTInfo( pMac, &pBcn2->HTInfo, psessionEntry );
     }
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    if (pMac->roam.configParam.apHT40_24GEnabled)
+    {
+        PopulateDot11fOBSSScanParameters( pMac, &pBcn2->OBSSScanParameters,
+                                                               psessionEntry);
+    }
+#endif
+
+    PopulateDot11fExtCap( pMac, &pBcn2->ExtCap, psessionEntry);
+
 #ifdef WLAN_FEATURE_11AC
     if(psessionEntry->vhtCapability)
     {        
@@ -344,7 +355,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         PopulateDot11fVHTOperation( pMac, &pBcn2->VHTOperation);
         // we do not support multi users yet
         //PopulateDot11fVHTExtBssLoad( pMac, &bcn2.VHTExtBssLoad);
-        PopulateDot11fExtCap( pMac, &pBcn2->ExtCap, psessionEntry);
         if(psessionEntry->gLimOperatingMode.present)
             PopulateDot11fOperatingMode( pMac, &pBcn2->OperatingMode, psessionEntry );
     }
@@ -612,6 +622,31 @@ void limUpdateProbeRspTemplateIeBitmapBeacon2(tpAniSirGlobal pMac,
         vos_mem_copy((void *)&prb_rsp->HTInfo, (void *)&beacon2->HTInfo,
                      sizeof(beacon2->HTInfo));
     }
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    // Overlapping BSS Scan Parameters IE
+    if (pMac->roam.configParam.apHT40_24GEnabled)
+    {
+        if (beacon2->OBSSScanParameters.present)
+        {
+            SetProbeRspIeBitmap(DefProbeRspIeBitmap,
+                          SIR_MAC_OBSS_SCAN_PARAMETERS_EID);
+            vos_mem_copy((void *)&prb_rsp->OBSSScanParameters,
+                              (void *)&beacon2->OBSSScanParameters,
+                              sizeof(beacon2->OBSSScanParameters));
+        }
+
+        if (beacon2->ExtCap.present)
+        {
+            SetProbeRspIeBitmap(DefProbeRspIeBitmap,
+                        SIR_MAC_EXTENDED_CAPABILITIES_EID);
+            vos_mem_copy((void *)&prb_rsp->ExtCap,
+                              (void *)&beacon2->ExtCap,
+                              sizeof(beacon2->ExtCap));
+
+        }
+    }
+#endif
 
 #ifdef WLAN_FEATURE_11AC
     if(beacon2->VHTCaps.present)
