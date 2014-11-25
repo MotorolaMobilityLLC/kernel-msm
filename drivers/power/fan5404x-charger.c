@@ -2250,6 +2250,19 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 		goto unregister_batt_psy;
 	}
 
+	if (!chip->bms_psy && chip->bms_psy_name) {
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+		if (!chip->bms_psy) {
+			dev_dbg(&client->dev,
+				"%s not found; defer probe\n",
+				chip->bms_psy_name);
+			rc = -EPROBE_DEFER;
+			goto unregister_batt_psy;
+		}
+	}
+
 	fan5404x_hw_init(chip);
 
 	determine_initial_status(chip);
@@ -2359,12 +2372,14 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	if (rc < 0)
 		pr_err("failed to set up voltage notifications: %d\n", rc);
 
-	rc = chip->bms_psy->get_property(chip->bms_psy,
-			POWER_SUPPLY_PROP_HEALTH, &ret);
-	if (rc)
-		dev_err(chip->dev, "Couldn't get batt health\n");
-	else
-		fan5404x_set_prop_batt_health(chip, ret.intval);
+	if (chip->bms_psy) {
+		rc = chip->bms_psy->get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_HEALTH, &ret);
+		if (rc)
+			dev_err(chip->dev, "Couldn't get batt health\n");
+		else
+			fan5404x_set_prop_batt_health(chip, ret.intval);
+	}
 
 	schedule_delayed_work(&chip->heartbeat_work,
 				msecs_to_jiffies(60000));
