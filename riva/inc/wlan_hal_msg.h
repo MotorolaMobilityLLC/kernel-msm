@@ -6592,6 +6592,7 @@ typedef enum {
     BMU_ERROR_GENERIC_RECOVERY = 45,
     DISA                   = 46,
     FW_STATS               = 47,
+    WPS_PRBRSP_TMPL        = 48,
     MAX_FEATURE_SUPPORTED  = 128,
 } placeHolderInCapBitmap;
 
