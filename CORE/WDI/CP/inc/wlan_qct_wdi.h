@@ -127,7 +127,7 @@ of NV fragment is nt possbile.The next multiple of 1Kb is 3K */
 #define TOTALFRAGMENTS(x) (((x % FRAGMENT_SIZE) == 0) ? (x / FRAGMENT_SIZE):((x / FRAGMENT_SIZE) + 1))
 
 /* Beacon Filter Length*/
-#define WDI_BEACON_FILTER_LEN 70
+#define WDI_BEACON_FILTER_LEN 90
 
 /* Coex Indication data size - should match WLAN_COEX_IND_DATA_SIZE */
 #define WDI_COEX_IND_DATA_SIZE (4)

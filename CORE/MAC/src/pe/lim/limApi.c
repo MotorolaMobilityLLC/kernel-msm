@@ -1730,6 +1730,55 @@ limHandleIBSScoalescing(
     return retCode;
 } /*** end limHandleIBSScoalescing() ***/
 
+tAniBool limEncTypeMatched(tpAniSirGlobal pMac, tpSchBeaconStruct  pBeacon,
+                                      tpPESession    pSession)
+{
+    if (!pBeacon || !pSession)
+        return eSIR_FALSE;
+
+    limLog(pMac, LOG1,
+            FL("Beacon/Probe:: Privacy :%d WPA Present:%d RSN Present: %d"),
+                  pBeacon->capabilityInfo.privacy, pBeacon->wpaPresent,
+                                                         pBeacon->rsnPresent);
+    limLog(pMac, LOG1,
+            FL("pSession:: Privacy :%d EncyptionType: %d"),
+                  SIR_MAC_GET_PRIVACY(pSession->limCurrentBssCaps),
+                                               pSession->encryptType);
+
+    /* This is handled by sending probe req due to IOT issues so return TRUE
+     */
+    if ( (pBeacon->capabilityInfo.privacy) !=
+              SIR_MAC_GET_PRIVACY(pSession->limCurrentBssCaps))
+    {
+        limLog(pMac, LOG1, FL("Return for Privacy bit miss match, As "
+             "for this driver need to send the probe request to handle"
+             " IOT issues "));
+        return eSIR_TRUE;
+    }
+
+    /*Open*/
+    if( (pBeacon->capabilityInfo.privacy == 0) &&
+           (pSession->encryptType == eSIR_ED_NONE))
+        return eSIR_TRUE;
+
+    /* WEP */
+    if ( (pBeacon->capabilityInfo.privacy == 1) && (pBeacon->wpaPresent == 0) &&
+            (pBeacon->rsnPresent == 0) &&
+            ( (pSession->encryptType == eSIR_ED_WEP40) ||
+                     (pSession->encryptType == eSIR_ED_WEP104)))
+        return eSIR_TRUE;
+
+    /* WPA OR RSN*/
+    if ( (pBeacon->capabilityInfo.privacy == 1) &&
+           ( (pBeacon->wpaPresent == 1) ||
+             ( pBeacon->rsnPresent == 1)) &&
+            ( (pSession->encryptType == eSIR_ED_TKIP) ||
+                (pSession->encryptType == eSIR_ED_CCMP) ||
+                (pSession->encryptType == eSIR_ED_AES_128_CMAC)))
+        return eSIR_TRUE;
+
+    return eSIR_FALSE;
+}
 
 
 /**
@@ -1764,8 +1813,12 @@ limDetectChangeInApCapabilities(tpAniSirGlobal pMac,
     tSirSmeApNewCaps   apNewCaps;
     tANI_U8            newChannel;
     tSirRetStatus status = eSIR_SUCCESS;
+    tAniBool           securityCapsMatched = eSIR_TRUE;
+
     apNewCaps.capabilityInfo = limGetU16((tANI_U8 *) &pBeacon->capabilityInfo);
     newChannel = (tANI_U8) pBeacon->channelNumber;
+
+    securityCapsMatched = limEncTypeMatched(pMac, pBeacon, psessionEntry);
 
     if ( ( false == psessionEntry->limSentCapsChangeNtf ) &&
         ( ( ( !limIsNullSsid(&pBeacon->ssId) ) &&
@@ -1778,10 +1831,14 @@ limDetectChangeInApCapabilities(tpAniSirGlobal pMac,
             SIR_MAC_GET_SHORT_PREAMBLE(psessionEntry->limCurrentBssCaps) ) ||
           ( SIR_MAC_GET_QOS(apNewCaps.capabilityInfo) !=
             SIR_MAC_GET_QOS(psessionEntry->limCurrentBssCaps) ) ||
-          ( newChannel !=  psessionEntry->currentOperChannel )
+          ( newChannel !=  psessionEntry->currentOperChannel )  ||
+          (eSIR_FALSE == securityCapsMatched)
           ) ) )
     {
-        if( false == psessionEntry->fWaitForProbeRsp )
+        /* No need to send probe request if security
+         * capability doesnt match, Disconnect directly.*/
+        if( (false == psessionEntry->fWaitForProbeRsp) &&
+                              (eSIR_TRUE == securityCapsMatched))
         {
             /* If Beacon capabilities is not matching with the current capability,
              * then send unicast probe request to AP and take decision after
