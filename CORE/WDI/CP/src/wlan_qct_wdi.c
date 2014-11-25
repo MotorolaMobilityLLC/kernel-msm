@@ -190,6 +190,10 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
    ,DYNAMIC_WMM_PS                 //43
 
    ,MAC_SPOOFED_SCAN               //44
+   ,FEATURE_NOT_SUPPORTED          //45
+   ,FEATURE_NOT_SUPPORTED          //46
+   ,FEATURE_NOT_SUPPORTED          //47
+   ,WPS_PRBRSP_TMPL                //48
 
 };
 
@@ -1393,6 +1397,9 @@ void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
 
                      case MAC_SPOOFED_SCAN: snprintf(pCapStr, sizeof("MAC_SPOOFED_SCAN"), "%s", "MAC_SPOOFED_SCAN");
                           pCapStr += strlen("MAC_SPOOFED_SCAN");
+                          break;
+                     case WPS_PRBRSP_TMPL: snprintf(pCapStr, sizeof("WPS_PRBRSP_TMPL"), "%s", "WPS_PRBRSP_TMPL");
+                          pCapStr += strlen("WPS_PRBRSP_TMPL");
                           break;
 
                  }

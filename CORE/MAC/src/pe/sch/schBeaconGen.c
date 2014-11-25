@@ -274,7 +274,9 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     ptr    = pMac->sch.schObject.gSchBeaconFrameBegin + offset;
 
     if((psessionEntry->limSystemRole == eLIM_AP_ROLE) 
-        && (psessionEntry->proxyProbeRspEn))
+        && ((psessionEntry->proxyProbeRspEn)
+        || (IS_FEATURE_SUPPORTED_BY_FW(WPS_PRBRSP_TMPL)))
+      )
     {
         /* Initialize the default IE bitmap to zero */
         vos_mem_set(( tANI_U8* )&(psessionEntry->DefProbeRspIeBitmap), (sizeof( tANI_U32 ) * 8), 0);
@@ -408,7 +410,9 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     }
 
     if((psessionEntry->limSystemRole == eLIM_AP_ROLE) 
-        && (psessionEntry->proxyProbeRspEn))
+        && ((psessionEntry->proxyProbeRspEn)
+        || (IS_FEATURE_SUPPORTED_BY_FW(WPS_PRBRSP_TMPL)))
+      )
     {
         /* Can be efficiently updated whenever new IE added  in Probe response in future */
         limUpdateProbeRspTemplateIeBitmapBeacon2(pMac,pBcn2,&psessionEntry->DefProbeRspIeBitmap[0],
