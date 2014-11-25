@@ -51,6 +51,7 @@
 /* Data ready funtion enable bit: set during probe if using irq mode */
 #define DRDYE			(1 << 5)
 /* DATA CONTROL REGISTER BITS */
+#define ODR6_25F		11
 #define ODR12_5F		0
 #define ODR25F			1
 #define ODR50F			2
@@ -111,7 +112,8 @@ static const struct {
 	{ 11,  20,  ODR100F },
 	{ 21,  40,  ODR50F  },
 	{ 41,  80,  ODR25F  },
-	{ 80,   0,  ODR12_5F},
+	{ 80,  150, ODR12_5F},
+	{ 151, 309, ODR6_25F},
 };
 
 struct kxtj9_data {
