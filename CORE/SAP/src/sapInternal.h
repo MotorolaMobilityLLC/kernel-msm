@@ -181,6 +181,11 @@ typedef struct {
 
    /** The station entry for which Deauth is in progress  */
    v_BOOL_t isDeauthInProgress;
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+   /** Track HT40 Intolerant station */
+   v_BOOL_t isHT40IntolerantSet;
+#endif
 } hdd_station_info_t;
 
 typedef struct sSapContext {
@@ -264,6 +269,7 @@ typedef struct sSapContext {
     v_U8_t            affected_start;
     v_U8_t            affected_end;
     v_U8_t            sap_sec_chan;
+    v_U8_t            numHT40IntoSta;
 #endif
 } *ptSapContext;
 
@@ -607,6 +613,53 @@ sapconvertToCsrProfile(tsap_Config_t *pconfig_params, eCsrRoamBssType bssType, t
 
 ============================================================================*/
 void sapFreeRoamProfile(tCsrRoamProfile *profile);
+
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+/*==========================================================================
+  FUNCTION    sapAddHT40IntolerantSta
+
+  DESCRIPTION
+    Add HT40 Intolerant STA & Move SAP from HT40 to HT20
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    sapContext   : Sap Context value
+    pCsrRoamInfo : Pointer to CSR info
+
+  RETURN VALUE
+
+  SIDE EFFECTS
+============================================================================*/
+
+void sapAddHT40IntolerantSta(ptSapContext sapContext, tCsrRoamInfo *pCsrRoamInfo);
+
+/*==========================================================================
+  FUNCTION    sapRemoveHT40IntolerantSta
+
+  DESCRIPTION
+    Remove HT40 Intolerant STA & Move SAP from HT40 to HT20
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    sapContext   : Sap Context value
+    pCsrRoamInfo : Pointer to CSR info
+
+  RETURN VALUE
+
+  SIDE EFFECTS
+============================================================================*/
+
+void sapRemoveHT40IntolerantSta(ptSapContext sapContext, tCsrRoamInfo *pCsrRoamInfo);
+#endif
 
 /*==========================================================================
 

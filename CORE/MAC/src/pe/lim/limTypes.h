@@ -257,6 +257,9 @@ typedef struct sLimMlmAssocInd
 
 
     tAniBool               WmmStaInfoPresent;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    tAniBool               HT40MHzIntoPresent;
+#endif
 
     // Required for indicating the frames to upper layer
     tANI_U32             beaconLength;
@@ -296,6 +299,9 @@ typedef struct sLimMlmReassocInd
     tSirSupChnl             supportedChannels;
 
     tAniBool               WmmStaInfoPresent;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    tAniBool               HT40MHzIntoPresent;
+#endif
 
     // Required for indicating the frames to upper layer
     tANI_U32             beaconLength;

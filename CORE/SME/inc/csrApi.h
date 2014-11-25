@@ -1230,6 +1230,9 @@ typedef struct tagCsrRoamInfo
     } u;
 
     tANI_BOOLEAN wmmEnabledSta;   //set to true if WMM enabled STA
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    tANI_BOOLEAN HT40MHzIntoEnabledSta; //set to true if 40 MHz Intolerant enabled STA
+#endif
     tANI_U32 dtimPeriod;
 
 #ifdef FEATURE_WLAN_ESE
@@ -1286,6 +1289,9 @@ typedef struct sSirSmeAssocIndToUpperLayerCnf
     tSirRSNie            rsnIE;           // RSN IE received from peer
     tSirAddie            addIE;           // Additional IE received from peer, which can be WSC and/or P2P IE
     tANI_U8              reassocReq;      //set to true if reassoc
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    tANI_U8              HT40MHzIntoEnabledSta; //set to true if 40 MHz Intolerant enabled STA
+#endif
 } tSirSmeAssocIndToUpperLayerCnf, *tpSirSmeAssocIndToUpperLayerCnf;
 
 typedef struct tagCsrSummaryStatsInfo

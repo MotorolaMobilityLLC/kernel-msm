@@ -1441,6 +1441,13 @@ limAssocIndSerDes(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd, tANI_U8 *pBuf
     limCopyU32(pBuf, pAssocInd->WmmStaInfoPresent);
     pBuf += sizeof(tANI_U32);
     mLen += sizeof(tANI_U32);
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    limCopyU32(pBuf, pAssocInd->HT40MHzIntoPresent);
+    pBuf += sizeof(tANI_U32);
+    mLen += sizeof(tANI_U32);
+#endif
+
      // Fill in length of SME_ASSOC_IND message
     limCopyU16(pLen, mLen);
 

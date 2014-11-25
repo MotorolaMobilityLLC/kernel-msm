@@ -1450,6 +1450,142 @@ void sapPrintACL(v_MACADDR_t *macList, v_U8_t size)
     return;
 }
 
+/*==========================================================================
+  FUNCTION    sapAddHT40IntolerantSta
+
+  DESCRIPTION
+    Add HT40 Intolerant STA & Move SAP from HT40 to HT20
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    sapContext   : Sap Context value
+    pCsrRoamInfo : Pointer to CSR info
+
+  RETURN VALUE
+
+  SIDE EFFECTS
+============================================================================*/
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+void sapAddHT40IntolerantSta(ptSapContext sapContext,
+                                     tCsrRoamInfo *pCsrRoamInfo)
+{
+
+    tHalHandle hHal;
+    v_U8_t cbMode;
+    tANI_U8  staId;
+
+    /* tHalHandle */
+    hHal = VOS_GET_HAL_CB(sapContext->pvosGCtx);
+
+    if (NULL == hHal)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   FL("In invalid hHal"));
+        return;
+    }
+
+    staId = pCsrRoamInfo->staId;
+
+    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+              FL("Add HT40 MHz Intolerant STA :"
+              MAC_ADDRESS_STR " STA ID: %d"),
+              MAC_ADDR_ARRAY(pCsrRoamInfo->peerMac),
+              staId);
+
+    // Get Channel Bonding Mode
+    cbMode = sme_GetChannelBondingMode24G(hHal);
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("Current Channel Bonding Mode: %d"
+                  "HT40IntolerantSet: %d"),
+               cbMode, sapContext->aStaInfo[staId].isHT40IntolerantSet);
+
+    if(sapContext->aStaInfo[staId].isHT40IntolerantSet)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("HT40Intolerant is Already Set: %d"),
+               sapContext->aStaInfo[staId].isHT40IntolerantSet);
+        return;
+    }
+
+    sapContext->aStaInfo[staId].isHT40IntolerantSet = 1;
+    sapContext->numHT40IntoSta++;
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+              FL("Total No of HT40 Intolerant STA: %d"
+               " STA ID: %d HT40IntolerantSet: %d"),
+                sapContext->numHT40IntoSta,
+                staId, sapContext->aStaInfo[staId].isHT40IntolerantSet);
+    if(cbMode)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("Move SAP from HT40 to HT20"));
+    }
+    else
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   "%s: SAP is Already in HT20", __func__);
+}
+
+/*==========================================================================
+  FUNCTION    sapRemoveHT40IntolerantSta
+
+  DESCRIPTION
+    Remove HT40 Intolerant STA & Move SAP from HT40 to HT20
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    sapContext   : Sap Context value
+    pCsrRoamInfo : Pointer to CSR info
+
+  RETURN VALUE
+
+  SIDE EFFECTS
+============================================================================*/
+
+void sapRemoveHT40IntolerantSta(ptSapContext sapContext,
+                                          tCsrRoamInfo *pCsrRoamInfo)
+{
+    tANI_U8  staId;
+
+    staId = pCsrRoamInfo->staId;
+
+    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+              FL("Remove HT40 MHz Intolerant STA :"
+              MAC_ADDRESS_STR "STA ID: %d"
+              "HT40IntolerantSet:%d"),
+              MAC_ADDR_ARRAY(pCsrRoamInfo->peerMac),
+              staId, sapContext->aStaInfo[staId].isHT40IntolerantSet);
+
+    if(!sapContext->aStaInfo[staId].isHT40IntolerantSet)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("HT40Intolerant is not Set: %d"),
+               sapContext->aStaInfo[staId].isHT40IntolerantSet);
+        return;
+    }
+
+    sapContext->aStaInfo[pCsrRoamInfo->staId].isHT40IntolerantSet = 0;
+    if (sapContext->numHT40IntoSta > 0)
+        sapContext->numHT40IntoSta--;
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("Total No of HT40 Intolerant STA: %d"
+               " STA ID: %d HT40IntolerantSet: %d"),
+                sapContext->numHT40IntoSta,
+                staId, sapContext->aStaInfo[staId].isHT40IntolerantSet);
+
+    return;
+}
+#endif
+
 VOS_STATUS
 sapIsPeerMacAllowed(ptSapContext sapContext, v_U8_t *peerMac)
 {

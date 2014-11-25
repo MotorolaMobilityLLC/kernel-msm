@@ -1077,11 +1077,23 @@ WLANSAP_RoamCallback
             {
                 halStatus = eHAL_STATUS_FAILURE;
             }
+#ifdef WLAN_FEATURE_AP_HT40_24G
+            else
+            {
+                if (pCsrRoamInfo->HT40MHzIntoEnabledSta)
+                {
+                    sapAddHT40IntolerantSta(sapContext, pCsrRoamInfo);
+                }
+            }
+#endif
             break;
 
         case eCSR_ROAM_RESULT_DISASSOC_IND:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, CSR roamResult = %s (%d)\n",
                         __func__, "eCSR_ROAM_RESULT_DISASSOC_IND", roamResult);
+#ifdef WLAN_FEATURE_AP_HT40_24G
+            sapRemoveHT40IntolerantSta(sapContext, pCsrRoamInfo);
+#endif
             /* Fill in the event structure */
             vosStatus = sapSignalHDDevent( sapContext, pCsrRoamInfo, eSAP_STA_DISASSOC_EVENT, (v_PVOID_t)eSAP_STATUS_SUCCESS);
             if(!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -1093,6 +1105,9 @@ WLANSAP_RoamCallback
         case eCSR_ROAM_RESULT_DEAUTH_IND:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, CSR roamResult = %s (%d)\n",
                        __func__, "eCSR_ROAM_RESULT_DEAUTH_IND", roamResult);
+#ifdef WLAN_FEATURE_AP_HT40_24G
+            sapRemoveHT40IntolerantSta(sapContext, pCsrRoamInfo);
+#endif
             /* Fill in the event structure */
             //TODO: we will use the same event inorder to inform HDD to disassociate the station
             vosStatus = sapSignalHDDevent( sapContext, pCsrRoamInfo, eSAP_STA_DISASSOC_EVENT, (v_PVOID_t)eSAP_STATUS_SUCCESS);
@@ -1193,6 +1208,9 @@ WLANSAP_RoamCallback
         case eCSR_ROAM_RESULT_FORCED:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, CSR roamResult = %s (%d)\n",
                        __func__, "eCSR_ROAM_RESULT_FORCED", roamResult);
+#ifdef WLAN_FEATURE_AP_HT40_24G
+            sapRemoveHT40IntolerantSta(sapContext, pCsrRoamInfo);
+#endif
             //This event can be used to inform hdd about user triggered disassoc event
             /* Fill in the event structure */
             sapSignalHDDevent( sapContext, pCsrRoamInfo, eSAP_STA_DISASSOC_EVENT, (v_PVOID_t)eSAP_STATUS_SUCCESS);
