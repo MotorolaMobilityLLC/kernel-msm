@@ -6596,12 +6596,6 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     }
 #endif
 
-    if ( AUTO_CHANNEL_SELECT != pConfig->channel )
-    {
-        sme_SelectCBMode(hHal,
-            sapConvertSapPhyModeToCsrPhyMode(pConfig->SapHw_mode),
-            pConfig->channel);
-    }
     // ht_capab is not what the name conveys,this is used for protection bitmap
     pConfig->ht_capab =
                  (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->apProtection;
@@ -6658,8 +6652,18 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     psmeConfig = (tSmeConfigParams*) vos_mem_malloc(sizeof(tSmeConfigParams));
     if ( NULL != psmeConfig)
     {
+        vos_mem_zero(psmeConfig, sizeof (tSmeConfigParams));
         sme_GetConfigParam(hHal, psmeConfig);
         pConfig->scanBandPreference = psmeConfig->csrConfig.scanBandPreference;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+        if (((pHostapdAdapter->device_mode == WLAN_HDD_SOFTAP)
+          || (pHostapdAdapter->device_mode == WLAN_HDD_P2P_GO))
+          && pHddCtx->cfg_ini->apHT40_24GEnabled)
+        {
+            psmeConfig->csrConfig.apHT40_24GEnabled = 1;
+            sme_UpdateConfig (hHal, psmeConfig);
+        }
+#endif
         vos_mem_free(psmeConfig);
     }
     pConfig->acsBandSwitchThreshold = iniConfig->acsBandSwitchThreshold;
@@ -10124,10 +10128,15 @@ void hdd_select_cbmode( hdd_adapter_t *pAdapter,v_U8_t operationChannel)
           hddDot11Mode = iniDot11Mode;
           break;
     }
-     /* This call decides required channel bonding mode */
-    sme_SelectCBMode((WLAN_HDD_GET_CTX(pAdapter)->hHal),
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    if (operationChannel > SIR_11B_CHANNEL_END)
+#endif
+    {
+        /* This call decides required channel bonding mode */
+        sme_SelectCBMode((WLAN_HDD_GET_CTX(pAdapter)->hHal),
                      hdd_cfg_xlate_to_csr_phy_mode(hddDot11Mode),
                      operationChannel);
+    }
 }
 
 /*

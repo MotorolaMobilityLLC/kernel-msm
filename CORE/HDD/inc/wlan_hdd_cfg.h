@@ -2286,6 +2286,13 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_MAX_CONCURRENT_CONNECTIONS_MIN        ( 1 )
 #define CFG_MAX_CONCURRENT_CONNECTIONS_MAX        ( 4 )
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+#define CFG_ENABLE_HT_2040_COEX                    "gApHT4024G"
+#define CFG_ENABLE_HT_2040_COEX_MIN                ( 0 )
+#define CFG_ENABLE_HT_2040_COEX_MAX                ( 1 )
+#define CFG_ENABLE_HT_2040_COEX_DEFAULT            ( 0 )
+#endif
+
 //Enable Dynamic WMM PS support
 #define CFG_ENABLE_DYNAMIC_WMMPS_NAME        "gEnableDynamicWMMPS"
 #define CFG_ENABLE_DYNAMIC_WMM_PS_MIN        (0)
@@ -2861,6 +2868,9 @@ typedef struct
    v_U8_t                      acsScanBandPreference;
    v_U16_t                     acsBandSwitchThreshold;
    v_U32_t                     enableDynamicRAStartRate;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+   v_BOOL_t                    apHT40_24GEnabled;
+#endif
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

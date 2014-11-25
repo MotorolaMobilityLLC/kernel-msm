@@ -759,6 +759,14 @@ eNvVersionType vos_nv_getNvVersion
 v_U16_t vos_chan_to_freq(v_U8_t chanNum);
 
 /**------------------------------------------------------------------------
+  \brief vos_freq_to_chan -
+  \param   - input channel frequency to know channel number
+  \return Channel frequency
+  \sa
+  -------------------------------------------------------------------------*/
+v_U8_t vos_freq_to_chan(v_U32_t freq);
+
+/**------------------------------------------------------------------------
   \brief vos_is_nv_country_non_zero -
   \param   NONE
   \return Success if default Country is Non-Zero
