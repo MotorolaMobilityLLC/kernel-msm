@@ -67,6 +67,7 @@
 #include "sapInternal.h"
 #ifdef WLAN_FEATURE_AP_HT40_24G
 #include "csrInsideApi.h"
+#include "cfgApi.h"
 #endif
 // Pick up the SME API definitions
 #include "sme_Api.h"
@@ -145,6 +146,80 @@ static inline void sapEventInit(ptWLAN_SAPEvent sapEvent)
    sapEvent->u1 = 0;
    sapEvent->u2 = 0;
 }
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+/*==========================================================================
+  FUNCTION    sapSetObssParm
+
+  DESCRIPTION
+    Function for Setting OBSS Scan interval & OBSS TRANS_DELAY_FACTOR
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    sapContext  : Sap Context value
+
+  RETURN VALUE
+    The VOS_STATUS code associated with performing the operation
+
+    VOS_STATUS_SUCCESS: Success
+
+  SIDE EFFECTS
+============================================================================*/
+void sapSetObssParm(ptSapContext sapContext)
+{
+    tHalHandle hHal;
+    tpAniSirGlobal pMac;
+    tANI_U32 cfgValue;
+
+    /* tHalHandle */
+    hHal = VOS_GET_HAL_CB(sapContext->pvosGCtx);
+
+    if (NULL == hHal)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   FL("Invalid hHal"));
+        return;
+    }
+
+    pMac = PMAC_STRUCT( hHal );
+
+    if (wlan_cfgGetInt(pMac, WNI_CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL,
+                       &cfgValue) != eSIR_SUCCESS)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                FL("Fail to retrieve"
+                "WNI_CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL value"));
+       return;
+    }
+
+    sapContext->ObssScanInterval = cfgValue;
+
+    if (wlan_cfgGetInt(pMac,
+          WNI_CFG_OBSS_HT40_WIDTH_CHANNEL_TRANSITION_DELAY_FACTOR,
+                       &cfgValue) != eSIR_SUCCESS)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+              FL("Fail to retrieve"
+              "WNI_CFG_OBSS_HT40_WIDTH_CHANNEL_TRANSITION_DELAY_FACTOR value"));
+       return;
+    }
+
+    sapContext->ObssTransitionDelayFactor = cfgValue;
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("ObssScanInterval: %d"
+                 " ObssTransitionDelayFactor: %d"),
+               sapContext->ObssScanInterval,
+               sapContext->ObssTransitionDelayFactor);
+
+    return;
+}
+#endif
+
 
 /*==========================================================================
   FUNCTION    sapGotoChannelSel
@@ -928,6 +1003,9 @@ sapFsm
                 /* Set SAP device role */
                 sapContext->sapsMachine = eSAP_CH_SELECT;
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+                sapSetObssParm(sapContext);
+#endif
                 /* Perform sme_ScanRequest */
                 vosStatus = sapGotoChannelSel(sapContext, sapEvent);
 
@@ -980,6 +1058,20 @@ sapFsm
                  /* Transition from eSAP_STARTING to eSAP_STARTED (both without substates) */
                  VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
                             __func__, "eSAP_STARTING", "eSAP_STARTED");
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+                /* Initialize the HT2040 timer */
+                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                           "In %s, Init HT20/40 timer", __func__);
+
+                vosStatus = vos_timer_init( &sapContext->sap_HT2040_timer,
+                                 VOS_TIMER_TYPE_SW, sap_ht2040_timer_cb,
+                                 (v_PVOID_t)sapContext );
+
+                if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+                    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                               "In %s, Failed to Init HT20/40 timer", __func__);
+#endif
              }
              else if (msg == eSAP_MAC_START_FAILS)
              {
@@ -1056,26 +1148,39 @@ sapFsm
                            __func__, "eSAP_STARTED", "eSAP_DISCONNECTING");
                 sapContext->sapsMachine = eSAP_DISCONNECTING;
                 vosStatus = sapGotoDisconnecting(sapContext);
-#ifdef WLAN_FEATURE_AP_HT40_24G
-                /* Reset the OBSS Affected Channel Range */
-                if ( (0 != sapContext->affected_start)
-                  && (0 != sapContext->affected_end)
-                  && (0 != sapContext->sap_sec_chan) )
-                {
-                    sapContext->affected_start = 0;
-                    sapContext->affected_end = 0;
-                    sapContext->sap_sec_chan = 0;
-                    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
-                         FL("Reset the OBSS Affected Channel Range [%d %d]"),
-                         sapContext->affected_start, sapContext->affected_end);
-                }
-#endif
             }
             else
             {
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, in state %s, invalid event msg %d",
                            __func__, "eSAP_STARTED", msg);
             }
+#ifdef WLAN_FEATURE_AP_HT40_24G
+            /* Reset the OBSS Affected Channel Range */
+            if ( (0 != sapContext->affected_start)
+               && (0 != sapContext->affected_end)
+               && (0 != sapContext->sap_sec_chan) )
+            {
+                sapContext->affected_start = 0;
+                sapContext->affected_end = 0;
+                sapContext->sap_sec_chan = 0;
+                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                     FL("Reset the OBSS Affected Channel Range [%d %d]"),
+                     sapContext->affected_start, sapContext->affected_end);
+            }
+
+            if (VOS_TIMER_STATE_RUNNING == sapContext->sap_HT2040_timer.state)
+            {
+                vosStatus = vos_timer_stop(&sapContext->sap_HT2040_timer);
+                if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+                    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                              FL("Failed to Stop HT20/40 timer"));
+            }
+
+            vosStatus = vos_timer_destroy(&sapContext->sap_HT2040_timer);
+            if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                          FL("Failed to Destroy HT20/40 timer"));
+#endif
             break;
 
         case eSAP_DISCONNECTING:
@@ -1479,6 +1584,7 @@ void sapAddHT40IntolerantSta(ptSapContext sapContext,
     v_U8_t cbMode;
     tANI_U8  staId;
     eHalStatus halStatus;
+    VOS_STATUS  vosStatus = VOS_STATUS_SUCCESS;
 
     /* tHalHandle */
     hHal = VOS_GET_HAL_CB(sapContext->pvosGCtx);
@@ -1522,6 +1628,16 @@ void sapAddHT40IntolerantSta(ptSapContext sapContext,
                " STA ID: %d HT40IntolerantSet: %d"),
                 sapContext->numHT40IntoSta,
                 staId, sapContext->aStaInfo[staId].isHT40IntolerantSet);
+
+    /* Stop HT20/40 Timer */
+    if (VOS_TIMER_STATE_RUNNING == sapContext->sap_HT2040_timer.state)
+    {
+        vosStatus = vos_timer_stop(&sapContext->sap_HT2040_timer);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                      FL("Failed to Stop HT20/40 timer"));
+    }
+
     if(cbMode)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
@@ -1571,6 +1687,8 @@ void sapRemoveHT40IntolerantSta(ptSapContext sapContext,
                                           tCsrRoamInfo *pCsrRoamInfo)
 {
     tANI_U8  staId;
+    VOS_STATUS  vosStatus = VOS_STATUS_SUCCESS;
+    unsigned int delay;
 
     staId = pCsrRoamInfo->staId;
 
@@ -1590,6 +1708,7 @@ void sapRemoveHT40IntolerantSta(ptSapContext sapContext,
     }
 
     sapContext->aStaInfo[pCsrRoamInfo->staId].isHT40IntolerantSet = 0;
+
     if (sapContext->numHT40IntoSta > 0)
         sapContext->numHT40IntoSta--;
 
@@ -1599,6 +1718,35 @@ void sapRemoveHT40IntolerantSta(ptSapContext sapContext,
                 sapContext->numHT40IntoSta,
                 staId, sapContext->aStaInfo[staId].isHT40IntolerantSet);
 
+    if (!sapContext->numHT40IntoSta)
+    {
+        /* Stop Previous Running HT20/40 Timer & Start timer
+           with (OBSS TransitionDelayFactor * obss interval)
+           delay after time out move AP from HT20 -> HT40
+           mode
+         */
+        if (VOS_TIMER_STATE_RUNNING == sapContext->sap_HT2040_timer.state)
+        {
+            vosStatus = vos_timer_stop(&sapContext->sap_HT2040_timer);
+            if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                          FL("Failed to Stop HT20/40 timer"));
+        }
+
+        delay =
+         (sapContext->ObssScanInterval * sapContext->ObssTransitionDelayFactor);
+
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   FL("Start HT20/40 itransition"
+                   " timer (%d sec)"), delay);
+
+        vosStatus = vos_timer_start( &sapContext->sap_HT2040_timer,
+                                              (delay * 1000));
+
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                       FL("Failed to Start HT20/40 timer"));
+    }
     return;
 }
 #endif

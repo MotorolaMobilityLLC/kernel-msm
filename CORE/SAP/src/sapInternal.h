@@ -270,6 +270,9 @@ typedef struct sSapContext {
     v_U8_t            affected_end;
     v_U8_t            sap_sec_chan;
     v_U8_t            numHT40IntoSta;
+    vos_timer_t       sap_HT2040_timer;
+    v_U8_t            ObssScanInterval;
+    v_U8_t            ObssTransitionDelayFactor;
 #endif
 } *ptSapContext;
 
@@ -886,6 +889,17 @@ RETURN VALUE If SUCCESS or FAILURE
 SIDE EFFECTS
 ============================================================================*/
 eCsrPhyMode sapConvertSapPhyModeToCsrPhyMode( eSapPhyMode sapPhyMode );
+
+#ifdef WLAN_FEATURE_AP_HT40_24G
+/*==========================================================================
+FUNCTION  sap_ht2040_timer_cb
+
+DESCRIPTION Function to implement ht2040 timer callback implementation
+
+SIDE EFFECTS
+============================================================================*/
+void sap_ht2040_timer_cb(v_PVOID_t usrDataForCallback);
+#endif
 
 #ifdef __cplusplus
 }

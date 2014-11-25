@@ -661,6 +661,7 @@ CDEFINES += -DDEBUG_ROAM_DELAY
 endif
 
 CDEFINES += -DFEATURE_WLAN_CH_AVOID
+CDEFINES += -DWLAN_FEATURE_AP_HT40_24G
 
 # Some kernel include files are being moved.  Check to see if
 # the old version of the files are present
