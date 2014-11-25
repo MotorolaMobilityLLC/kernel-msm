@@ -3010,6 +3010,37 @@ void sme_UpdateChannelBondingMode24G(tHalHandle hHal, tANI_U8 cbMode)
                    sme_GetChannelBondingMode24G(hHal));
     return;
 }
+
+/* ---------------------------------------------------------------------------
+
+    \fn sme_SetHT2040Mode
+
+    \brief To update HT Operation beacon IE & Channel Bonding.
+
+    \param
+
+    \return eHalStatus  SUCCESS
+                        FAILURE or RESOURCES
+                        The API finished and failed.
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_SetHT2040Mode(tHalHandle hHal, tANI_U8 sessionId, tANI_U8 cbMode)
+{
+   eHalStatus status = eHAL_STATUS_FAILURE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+       FL("Channel Bonding =%d"),
+       cbMode);
+
+   status = sme_AcquireGlobalLock(&pMac->sme);
+   if (HAL_STATUS_SUCCESS(status))
+   {
+      status = csrSetHT2040Mode(pMac, sessionId, cbMode);
+      sme_ReleaseGlobalLock(&pMac->sme );
+   }
+   return (status);
+}
 #endif
 
 /* ---------------------------------------------------------------------------

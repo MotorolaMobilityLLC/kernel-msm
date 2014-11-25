@@ -3422,6 +3422,17 @@ typedef struct sSirChangeBIParams
     tANI_U8        sessionId;      // Session ID
 } tSirChangeBIParams, *tpSirChangeBIParams;
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+typedef struct sSirSetHT2040Mode
+{
+    tANI_U16       messageType;
+    tANI_U16       length;
+    tANI_U8        cbMode;
+    tSirMacAddr    bssId;
+    tANI_U8        sessionId;      // Session ID
+} tSirSetHT2040Mode, *tpSirSetHT2040Mode;
+#endif
+
 typedef struct sSirOBSSHT40Param
 {
    tANI_U16 OBSSScanPassiveDwellTime;
