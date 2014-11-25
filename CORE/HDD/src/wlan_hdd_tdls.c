@@ -1939,7 +1939,7 @@ void wlan_hdd_tdls_check_bmps(hdd_adapter_t *pAdapter)
 
     if ((NULL == pHddCtx) || (NULL == pHddTdlsCtx))
     {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                FL(" pHddCtx or  pHddTdlsCtx points to NULL"));
        return;
     }
