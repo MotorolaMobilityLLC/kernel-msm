@@ -658,7 +658,7 @@ tSirRetStatus limSendHT40OBSSScanInd(tpAniSirGlobal pMac,
     ht40OBSSScanInd->OBSSScanActivityThreshold =
            psessionEntry->obssHT40ScanParam.OBSSScanActivityThreshold;
     /* TODO update it from the associated BSS*/
-    ht40OBSSScanInd->currentOperatingClass = 1;
+    ht40OBSSScanInd->currentOperatingClass = 81;
 
     validChannelNum = WNI_CFG_VALID_CHANNEL_LIST_LEN;
     if (wlan_cfgGetStr(pMac, WNI_CFG_VALID_CHANNEL_LIST,

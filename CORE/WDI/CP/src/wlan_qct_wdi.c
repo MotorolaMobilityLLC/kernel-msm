@@ -30633,6 +30633,8 @@ WDI_ProcessHT40OBSSScanInd
          pwdiHT40OBSSScanInd->selfStaIdx;
   pHT40ObssScanInd->bssIdx =
          pwdiHT40OBSSScanInd->bssIdx;
+  pHT40ObssScanInd->currentOperatingClass =
+         pwdiHT40OBSSScanInd->currentOperatingClass;
   pHT40ObssScanInd->fortyMHZIntolerent =
          pwdiHT40OBSSScanInd->fortyMHZIntolerent;
   pHT40ObssScanInd->channelCount =
