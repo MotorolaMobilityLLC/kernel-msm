@@ -296,6 +296,11 @@ config SUSPEND_TIME_TIMEKEEPING
 	  Get the suspend time in suspend from timekeeping for the archs
 	  that dont support persistent clock.
 
+config PM_SYNC_BEFORE_SUSPEND
+	bool "Sync file systems before suspend"
+	depends on PM
+	default y
+
 config SUSPEND_DEBUG
 	bool "Enable snapshot of regulator and tlmm when suspend"
 	depends on SUSPEND
