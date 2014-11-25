@@ -288,3 +288,8 @@ config SUSPEND_TIME
 	  Prints the time spent in suspend in the kernel log, and
 	  keeps statistics on the time spent in suspend in
 	  /sys/kernel/debug/suspend_time
+
+config PM_SYNC_BEFORE_SUSPEND
+	bool "Sync file systems before suspend"
+	depends on PM
+	default y
