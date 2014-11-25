@@ -295,6 +295,11 @@ config SUSPEND_TIME_TIMEKEEPING
 	  Get the suspend time in suspend from timekeeping for the archs
 	  that don't support persistent clock.
 
+config PM_SYNC_BEFORE_SUSPEND
+	bool "Sync file systems before suspend"
+	depends on PM
+	default y
+
 config QUICK_WAKEUP
 	bool "Quick wakeup"
 	depends on SUSPEND
