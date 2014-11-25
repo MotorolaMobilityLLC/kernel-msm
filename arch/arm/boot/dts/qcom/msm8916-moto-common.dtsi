@@ -25,6 +25,14 @@
 	};
 
 	memory {
+		tzlog_bck_mem: tzlog_bck_region@aeff2000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0xaeff2000 0x0 0x2000>;
+			label = "tzlog_bck_mem";
+		};
+
 		wdog_cpuctx_mem: wdog_cpuctx_region@aeff4000 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
@@ -307,6 +315,7 @@
 
 &qcom_tzlog {
 	status = "okay";
+	linux,contiguous-region = <&tzlog_bck_mem>;
 };
 
 &qcom_rng {
