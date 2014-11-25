@@ -36,7 +36,6 @@ struct diag_buf_tbl_t {
 struct diag_md_info {
 	int id;
 	int ctx;
-	int mempool;
 	int num_tbl_entries;
 	spinlock_t lock;
 	struct diag_buf_tbl_t *tbl;
