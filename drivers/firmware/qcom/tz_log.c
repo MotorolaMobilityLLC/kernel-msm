@@ -22,6 +22,16 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/uaccess.h>
+#ifdef CONFIG_MSM_TZ_LOG_WDOG_DUMP
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/ctype.h>
+#include <linux/dma-contiguous.h>
+#include <linux/dma-mapping.h>
+#include <linux/pstore_ram.h>
+#include <soc/qcom/memory_dump.h>
+#include <soc/qcom/bootinfo.h>
+#endif /* CONFIG_MSM_TZ_LOG_WDOG_DUMP */
 #include <soc/qcom/scm.h>
 #include <soc/qcom/qseecomi.h>
 
@@ -707,6 +717,190 @@ static void tzdbgfs_exit(struct platform_device *pdev)
 }
 }
 
+#ifdef CONFIG_MSM_TZ_LOG_WDOG_DUMP
+
+#define MSMWDTD(fmt, args...) persistent_ram_annotation_append(fmt, ##args)
+
+#define MSMWDT_ERR(fmt, args...) do { \
+	pr_err("TzLog: "fmt, ##args); \
+	MSMWDTD("TzLog: "fmt, ##args); \
+} while (0)
+
+#define MSMWDTD_IFWDOG(fmt, args...) do { \
+	if (bi_powerup_reason() == PU_REASON_WDOG_AP_RESET) \
+		MSMWDTD(fmt, ##args); \
+} while (0)
+
+static void tzlog_bck_show_boot_info(struct tzdbg_t *diag_buf)
+{
+	int cpu;
+	struct tzdbg_boot_info_t *ptr;
+	struct tzdbg_boot_info2_t *ptr2;
+	int v2 = 0;
+
+	if ((tzdbg.diag_buf->reset_info_off - tzdbg.diag_buf->boot_info_off) ==
+			(sizeof(*ptr2) * tzdbg.diag_buf->cpu_count))
+		v2 = 1;
+	ptr = (struct tzdbg_boot_info_t *)((u8 *)diag_buf +
+			diag_buf->boot_info_off);
+	ptr2 = (struct tzdbg_boot_info2_t *)ptr;
+	MSMWDTD("\n--- TZ Power Collapse Counters\n");
+	MSMWDTD("     | WarmEntry : WarmExit :  PCEntry :");
+	MSMWDTD("   PCExit : JumpAddr |\n");
+	for (cpu = 0; cpu < tzdbg.diag_buf->cpu_count; cpu++) {
+		int power_collapsed;
+		if (v2)
+			power_collapsed = ptr2->wb_entry_cnt +
+				ptr2->pc_exit_cnt - ptr2->pc_entry_cnt;
+		else
+			power_collapsed = ptr->wb_entry_cnt +
+				ptr->pc_exit_cnt - ptr->pc_entry_cnt;
+		if (cpu)
+			power_collapsed--;
+		MSMWDTD("CPU%d |  %8x : %8x : %8x : %8x : %8lx | %sPC\n",
+			cpu, (v2 ? ptr2->wb_entry_cnt : ptr->wb_entry_cnt),
+			(v2 ? ptr2->wb_exit_cnt : ptr->wb_exit_cnt),
+			(v2 ? ptr2->pc_entry_cnt : ptr->pc_entry_cnt),
+			(v2 ? ptr2->pc_exit_cnt : ptr->pc_exit_cnt),
+			(unsigned long)(v2 ? ptr2->warm_jmp_addr :
+					ptr->warm_jmp_addr),
+			power_collapsed ? "IN-" : "NOT-");
+		ptr++;
+		ptr2++;
+	}
+}
+
+static void tzlog_bck_show_log(struct tzdbg_t *diag_buf)
+{
+	struct tzdbg_log_t *log_ptr;
+	const char *log_buf, *p, *start;
+
+	if (TZBSP_DIAG_MAJOR_VERSION_LEGACY >=
+				(tzdbg.diag_buf->version >> 16))
+		return;
+
+	log_buf = (const char *)diag_buf + diag_buf->ring_off;
+	log_ptr = (struct tzdbg_log_t *)(log_buf -
+				offsetof(struct tzdbg_log_t, log_buf));
+
+	if (log_ptr->log_pos.offset >= diag_buf->ring_len)
+		return;
+	MSMWDTD("--- TZ Log start ---\n");
+	if (log_ptr->log_pos.wrap) {
+		for (start = log_buf + log_ptr->log_pos.offset, p = start;
+				p < (log_buf + diag_buf->ring_len); p++) {
+			if (isprint(*p))
+				MSMWDTD("%c", *p);
+			else if ((p > start) && isprint(*(p-1)))
+				MSMWDTD("\n");
+		}
+	}
+	for (start = log_buf, p = start;
+			p < (log_buf + log_ptr->log_pos.offset); p++) {
+		if (isprint(*p))
+			MSMWDTD("%c", *p);
+		else if ((p > start) && isprint(*(p-1)))
+			MSMWDTD("\n");
+	}
+	MSMWDTD("\n--- TZ Log end ---\n");
+}
+
+static void tzlog_bck_show(struct tzdbg_t *diag_buf)
+{
+	memcpy_fromio((void *)tzdbg.diag_buf, tzdbg.virt_iobase,
+						DEBUG_MAX_RW_BUF);
+	if (memcmp(diag_buf, tzdbg.diag_buf, tzdbg.diag_buf->vmid_info_off)) {
+		MSMWDTD_IFWDOG("TzLog: No valid backup.\n");
+		goto reset;
+	}
+	tzlog_bck_show_boot_info(diag_buf);
+	tzlog_bck_show_log(diag_buf);
+reset:
+	memset(diag_buf, 0, tzdbg.diag_size);
+}
+
+static void tzlog_bck_check(struct platform_device *pdev)
+{
+	struct device_node *pnode;
+	struct tzdbg_t *diag_bck_vaddr;
+	phys_addr_t diag_bck_paddr;
+	size_t diag_bck_size;
+
+	pnode = of_parse_phandle(pdev->dev.of_node,
+			"linux,contiguous-region", 0);
+	if (!pnode) {
+		MSMWDT_ERR("Unable to find contiguous-region\n");
+		goto no_reservation;
+	}
+	if (!of_get_address(pnode, 0, NULL, NULL)) {
+		of_node_put(pnode);
+		MSMWDT_ERR("Addr not found for contiguous-region\n");
+		goto no_reservation;
+	}
+	of_node_put(pnode);
+
+	diag_bck_paddr = cma_get_base(&pdev->dev);
+	diag_bck_size = cma_get_size(&pdev->dev);
+
+	if (diag_bck_size < tzdbg.diag_size) {
+		MSMWDT_ERR("Mem reserve too small %zx/%zx\n",
+				diag_bck_size, tzdbg.diag_size);
+		goto no_reservation;
+	}
+
+	diag_bck_size = tzdbg.diag_size;
+	diag_bck_vaddr = dma_remap(&pdev->dev, NULL, diag_bck_paddr,
+					diag_bck_size, NULL);
+	if (diag_bck_vaddr) {
+		tzlog_bck_show(diag_bck_vaddr);
+		dma_unremap(&pdev->dev, diag_bck_vaddr, diag_bck_size);
+	} else {
+		MSMWDT_ERR("Cannot remap buffer %pa size %zx\n",
+					&diag_bck_paddr, diag_bck_size);
+	}
+
+	if (MSM_DUMP_MAJOR(msm_dump_table_version()) == 1) {
+		struct msm_client_dump dump_entry;
+
+		dump_entry.id = MSM_TZ_LOG;
+		dump_entry.start_addr = diag_bck_paddr;
+		dump_entry.end_addr = diag_bck_paddr + diag_bck_size;
+		if (msm_dump_tbl_register(&dump_entry))
+			MSMWDT_ERR("Cannot register buffer: %pa\n",
+					&diag_bck_paddr);
+	} else {
+		struct msm_dump_entry dump_entry;
+		struct msm_dump_data *tz_dump_data;
+		int ret;
+
+		tz_dump_data = kzalloc(sizeof(struct msm_dump_data),
+						GFP_KERNEL);
+		if (!tz_dump_data) {
+			MSMWDT_ERR("Cannot alloc dump data structure.\n");
+			return;
+		}
+		tz_dump_data->addr = diag_bck_paddr;
+		tz_dump_data->len = diag_bck_size;
+		dump_entry.id = MSM_DUMP_DATA_TZ_LOG;
+		dump_entry.addr = virt_to_phys(tz_dump_data);
+		ret = msm_dump_data_register(MSM_DUMP_TABLE_APPS, &dump_entry);
+		if (ret) {
+			MSMWDT_ERR("Registering dump data failed.\n");
+			kfree(tz_dump_data);
+		}
+	}
+no_reservation:
+	return;
+}
+
+#else
+
+static inline void tzlog_bck_check(struct platform_device *pdev)
+{
+}
+
+#endif /* CONFIG_MSM_TZ_LOG_WDOG_DUMP */
+
 /*
  * Driver functions
  */
@@ -787,6 +981,7 @@ static int tz_log_probe(struct platform_device *pdev)
 		goto err;
 
 	tzdbg_register_qsee_log_buf();
+	tzlog_bck_check(pdev);
 	return 0;
 err:
 	kfree(tzdbg.diag_buf);
