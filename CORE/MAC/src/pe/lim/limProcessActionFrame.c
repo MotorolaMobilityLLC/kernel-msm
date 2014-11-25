@@ -1858,6 +1858,141 @@ __limProcessNeighborReport( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo ,tpPESes
 
 #endif
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+static void
+__limProcess2040bssCoexistenceActionFrame(tpAniSirGlobal pMac,
+                  tANI_U16 sessionId, tANI_U8 *pRxPacketInfo,
+                  tpPESession psessionEntry)
+{
+    tpSirMacMgmtHdr     pHdr;
+    tANI_U8             *pBody , i;
+    tANI_U32            frameLen, nStatus;
+    tDot11fHT2040BSSCoexistenceManagementActionFrame *pFrm;
+    tpSirHT2040CoexInfoInd pSirSmeHT2040CoexInfoInd = NULL;
+    tANI_U16              length;
+    tSirMsgQ              mmhMsg;
+    tANI_U8               num_channelList;
+
+    pHdr = WDA_GET_RX_MAC_HEADER( pRxPacketInfo );
+    pBody = WDA_GET_RX_MPDU_DATA( pRxPacketInfo );
+    frameLen = WDA_GET_RX_PAYLOAD_LEN( pRxPacketInfo );
+
+    pFrm =
+     vos_mem_malloc(sizeof(tDot11fHT2040BSSCoexistenceManagementActionFrame));
+
+    if (NULL == pFrm)
+    {
+        limLog(pMac, LOGE, FL("Unable to allocate memory"));
+        return;
+    }
+
+    if(psessionEntry == NULL)
+    {
+         vos_mem_free(pFrm);
+         return;
+    }
+
+    /**Unpack the received frame */
+    nStatus = dot11fUnpackHT2040BSSCoexistenceManagementActionFrame( pMac,
+                                                     pBody, frameLen, pFrm );
+
+    if( DOT11F_FAILED( nStatus ))
+    {
+         limLog( pMac, LOGE, FL( "Failed to unpack and parse a 20/40"
+                                 "Coex Action Frame (0x%08x, %d bytes):"),
+                                  nStatus, frameLen );
+         PELOG2(sirDumpBuf( pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frameLen );)
+         vos_mem_free(pFrm);
+         return;
+    }
+    else if ( DOT11F_WARNED( nStatus ))
+    {
+         limLog(pMac, LOGW, FL( "There were warnings while unpacking a"
+                                " 20/40 Coex Action Frame (0x%08x, %d bytes):"),
+                                nStatus, frameLen );
+         PELOG2(sirDumpBuf( pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frameLen );)
+    }
+
+    num_channelList = pFrm->HT2040BSSIntolerantReport.num_channelList;
+
+    if (num_channelList > 0)
+    {
+        length = (sizeof(tSirHT2040CoexInfoInd) - sizeof(tANI_U8) +
+                   (num_channelList * sizeof(tANI_U8)));
+    }
+    else
+        length = sizeof(tSirHT2040CoexInfoInd);
+
+    limLog(pMac, LOGW,FL("tSirHT2040CoexInfoInd: Length: %d"),length);
+
+    pSirSmeHT2040CoexInfoInd = vos_mem_malloc(length);
+
+    if (NULL == pSirSmeHT2040CoexInfoInd)
+    {
+        limLog(pMac, LOGP,
+               FL("AllocateMemory failed for eWNI_SME_2040_COEX_IND"));
+         vos_mem_free(pFrm);
+        return;
+    }
+
+    vos_mem_set((void*)pSirSmeHT2040CoexInfoInd, length, 0);
+
+    pSirSmeHT2040CoexInfoInd->messageType = eWNI_SME_2040_COEX_IND;
+    pSirSmeHT2040CoexInfoInd->sessionId = sessionId;
+    pSirSmeHT2040CoexInfoInd->length = length;
+
+    if (pFrm->HT2040BSSCoexistence.present)
+    {
+
+        limLog(pMac, LOGW, FL("infoRequest: %d fortyMHzIntolerant: %d"
+                           " twentyMHzBssWidthReq: %d obssScanExemptionReq: %d"
+                           " obssScanExemptionGrant: %d "),
+                           pFrm->HT2040BSSCoexistence.infoRequest,
+                           pFrm->HT2040BSSCoexistence.fortyMHzIntolerant,
+                           pFrm->HT2040BSSCoexistence.twentyMHzBssWidthReq,
+                           pFrm->HT2040BSSCoexistence.obssScanExemptionReq,
+                           pFrm->HT2040BSSCoexistence.obssScanExemptionGrant);
+
+       pSirSmeHT2040CoexInfoInd->HT40MHzIntolerant =
+                             pFrm->HT2040BSSCoexistence.fortyMHzIntolerant;
+       pSirSmeHT2040CoexInfoInd->HT20MHzBssWidthReq =
+                             pFrm->HT2040BSSCoexistence.twentyMHzBssWidthReq;
+    }
+
+    if (pFrm->HT2040BSSIntolerantReport.present)
+    {
+       limLog(pMac, LOGW, FL("operatingClass: %d  num_channelList: %d "),
+                         pFrm->HT2040BSSIntolerantReport.operatingClass,
+                         num_channelList);
+
+       if (num_channelList > 0)
+       {
+           vos_mem_zero(pSirSmeHT2040CoexInfoInd->HT2040BssIntoChanReport,
+                         num_channelList);
+           vos_mem_copy(pSirSmeHT2040CoexInfoInd->HT2040BssIntoChanReport,
+                               pFrm->HT2040BSSIntolerantReport.channelList,
+                               num_channelList);
+
+           pSirSmeHT2040CoexInfoInd->channel_num = num_channelList;
+       }
+
+       for(i=0; i < num_channelList; i++)
+       {
+           limLog(pMac, LOGW, FL("Channel : %d "),
+                        pSirSmeHT2040CoexInfoInd->HT2040BssIntoChanReport[i]);
+       }
+    }
+
+    mmhMsg.type = eWNI_SME_2040_COEX_IND;
+    mmhMsg.bodyptr = pSirSmeHT2040CoexInfoInd;
+    mmhMsg.bodyval = 0;
+    limLog(pMac, LOGW, FL("Posting eWNI_SME_2040_COEX_IND Message to SME \n"));
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+
+    vos_mem_free(pFrm);
+}
+#endif
+
 #ifdef WLAN_FEATURE_11W
 /**
  * limProcessSAQueryRequestActionFrame
@@ -2331,6 +2466,21 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
               }
            }
             break;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+        case SIR_MAC_ACTION_2040_BSS_COEXISTENCE:
+            {
+               if (pMac->roam.configParam.apHT40_24GEnabled)
+               {
+                   limLog( pMac, LOGW, FL("Public Action 20/40 BSS"
+                                  "Coexistence Management frame"));
+
+                   __limProcess2040bssCoexistenceActionFrame(pMac,
+                       psessionEntry->smeSessionId, (tANI_U8 *) pRxPacketInfo,
+                       psessionEntry);
+               }
+               break;
+            }
+#endif
 #ifdef FEATURE_WLAN_TDLS
            case SIR_MAC_TDLS_DIS_RSP:
            {

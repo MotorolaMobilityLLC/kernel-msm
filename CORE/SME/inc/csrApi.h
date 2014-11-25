@@ -500,6 +500,10 @@ typedef enum
     eCSR_ROAM_UNPROT_MGMT_FRAME_IND,
 #endif
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    eCSR_ROAM_2040_COEX_INFO_IND,
+#endif
+
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
     eCSR_ROAM_TSM_IE_IND,
     eCSR_ROAM_CCKM_PREAUTH_NOTIFY,
@@ -1264,6 +1268,9 @@ typedef struct tagCsrRoamInfo
 
     tANI_S8 rxRssi;
     tANI_U32 maxRateFlags;
+#ifdef WLAN_FEATURE_AP_HT40_24G
+    tpSirHT2040CoexInfoInd pSmeHT2040CoexInfoInd;
+#endif
 }tCsrRoamInfo;
 
 typedef struct tagCsrFreqScanInfo

@@ -385,6 +385,7 @@ enum eWniMsgTypes
     eWNI_SME_HT40_STOP_OBSS_SCAN_IND, /* STOP OBSS SCAN indication */
 #ifdef WLAN_FEATURE_AP_HT40_24G
     eWNI_SME_SET_HT_2040_MODE, /* HT 20/40 indication in SAP case for 2.4GHz*/
+    eWNI_SME_2040_COEX_IND, /* HT20/40 Coex indication in SAP case for 2.4GHz*/
 #endif
     eWNI_SME_MAC_SPOOF_ADDR_IND,
     eWNI_SME_MSG_TYPES_END

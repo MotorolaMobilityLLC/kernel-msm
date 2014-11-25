@@ -192,6 +192,144 @@ void sapSetOperatingChannel(ptSapContext psapContext, v_U8_t operChannel)
 
 #ifdef WLAN_FEATURE_AP_HT40_24G
 /*==========================================================================
+  FUNCTION    sapCheckHT2040CoexAction()
+
+  DESCRIPTION
+    Check 20/40 Coex Info
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    ptSapContext   : The second context pass in for the caller (sapContext)
+    tpSirHT2040CoexInfoInd : 20/40 Coex info
+
+  RETURN VALUE
+    The eHalStatus code associated with performing the operation
+
+    eHAL_STATUS_SUCCESS: Success
+
+  SIDE EFFECTS
+============================================================================*/
+void sapCheckHT2040CoexAction(ptSapContext psapCtx,
+                       tpSirHT2040CoexInfoInd pSmeHT2040CoexInfoInd)
+{
+    v_U8_t i;
+    v_U8_t isHT40Allowed = 1;
+    tHalHandle hHal;
+    v_U8_t cbMode;
+    eHalStatus halStatus;
+
+    /* tHalHandle */
+    hHal = VOS_GET_HAL_CB(psapCtx->pvosGCtx);
+
+    if (NULL == hHal)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                  FL("In invalid hHal"));
+        return;
+    }
+
+    // Get Channel Bonding Mode
+    cbMode = sme_GetChannelBondingMode24G(hHal);
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("Current Channel Bonding Mode: %d"),
+               cbMode);
+
+    if (pSmeHT2040CoexInfoInd->HT20MHzBssWidthReq)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("20 MHz BSS width request bit is "
+                   "set in 20/40 coexistence info"));
+        isHT40Allowed = 0;
+    }
+
+    if (pSmeHT2040CoexInfoInd->HT40MHzIntolerant)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("40 MHz intolerant bit is set in "
+                    "20/40 coexistence info"));
+        isHT40Allowed = 0;
+    }
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                FL("Total Reported 20/40 BSS Intolerant Channels :%d"),
+                pSmeHT2040CoexInfoInd->channel_num);
+
+    if ((0 == psapCtx->affected_start) && (0 == psapCtx->affected_end))
+    {
+        if (!sapGet24GOBSSAffectedChannel(hHal, psapCtx))
+        {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                  FL("Failed to get OBSS Affected Channel "
+                     "Range for Channel: %d"), psapCtx->channel);
+            return;
+        }
+        /* Update to Original Channel Bonding for 2.4GHz */
+        sme_UpdateChannelBondingMode24G(hHal, cbMode);
+    }
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+               FL("OBSS Affected Channel Range : [%d %d]"),
+               psapCtx->affected_start, psapCtx->affected_end);
+
+    if (pSmeHT2040CoexInfoInd->channel_num)
+    {
+        for(i = 0; i < pSmeHT2040CoexInfoInd->channel_num; i++)
+        {
+            if ((pSmeHT2040CoexInfoInd->HT2040BssIntoChanReport[i] >
+                                                  psapCtx->affected_start)
+              && (pSmeHT2040CoexInfoInd->HT2040BssIntoChanReport[i] <
+                                                  psapCtx->affected_end))
+            {
+                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                           FL("BSS Intolerant Channel: %d within OBSS"
+                             " Affected Channel Range : [%d %d]"),
+                           pSmeHT2040CoexInfoInd->HT2040BssIntoChanReport[i],
+                           psapCtx->affected_start, psapCtx->affected_end);
+                isHT40Allowed = 0;
+                break;
+            }
+
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                       FL("Reported 20/40 BSS Intolerant Channel:%d "
+                        " is Out of OBSS Affected Channel Range : [%d %d]"),
+                       pSmeHT2040CoexInfoInd->HT2040BssIntoChanReport[i],
+                       psapCtx->affected_start, psapCtx->affected_end);
+        }
+    }
+
+    if (!isHT40Allowed)
+    {
+        if(cbMode)
+        {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("Move SAP from HT40 to HT20"));
+
+            halStatus = sme_SetHT2040Mode(hHal, psapCtx->sessionId,
+                                            PHY_SINGLE_CHANNEL_CENTERED);
+            if (halStatus == eHAL_STATUS_FAILURE)
+            {
+                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                        FL("Failed to change HT20/40 mode"));
+                return;
+            }
+
+            /* Disable Channel Bonding for 2.4GHz */
+            sme_UpdateChannelBondingMode24G(hHal,
+                                PHY_SINGLE_CHANNEL_CENTERED);
+        }
+        else
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                   FL("SAP is Already in HT20"));
+    }
+    return;
+}
+
+/*==========================================================================
   FUNCTION    sapCheckFor20MhzObss()
 
   DESCRIPTION
@@ -1002,11 +1140,21 @@ WLANSAP_RoamCallback
                             (v_PVOID_t) eSAP_STATUS_SUCCESS );
         break;
 
+#ifdef WLAN_FEATURE_AP_HT40_24G
+        case eCSR_ROAM_2040_COEX_INFO_IND:
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                           "In %s, CSR roamStatus = %s (%d)\n",
+                           __func__, "eCSR_ROAM_2040_COEX_INFO_IND",
+                           roamStatus);
+
+           sapCheckHT2040CoexAction(sapContext, pCsrRoamInfo->pSmeHT2040CoexInfoInd);
+           break;
+#endif
+
         default:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, CSR roamStatus not handled roamStatus = %s (%d)\n",
                        __func__, get_eRoamCmdStatus_str(roamStatus), roamStatus);
             break;
-
     }
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, before switch on roamResult = %d\n",
