@@ -107,7 +107,7 @@ module_param_named(
 	print_parsed_dt, print_parsed_dt, bool, S_IRUGO | S_IWUSR | S_IWGRP
 );
 
-static bool sleep_disabled;
+static bool sleep_disabled = true;
 module_param_named(sleep_disabled,
 	sleep_disabled, bool, S_IRUGO | S_IWUSR | S_IWGRP);
 
