@@ -25,13 +25,11 @@
 #include "diag_memorydevice.h"
 #include "diagfwd_bridge.h"
 #include "diag_mux.h"
-#include "diagmem.h"
 
 struct diag_md_info diag_md[NUM_DIAG_MD_DEV] = {
 	{
 		.id = DIAG_MD_LOCAL,
 		.ctx = 0,
-		.mempool = POOL_TYPE_MUX_APPS,
 		.num_tbl_entries = 0,
 		.tbl = NULL,
 		.ops = NULL,
@@ -40,7 +38,6 @@ struct diag_md_info diag_md[NUM_DIAG_MD_DEV] = {
 	{
 		.id = DIAG_MD_MDM,
 		.ctx = 0,
-		.mempool = POOL_TYPE_MDM_MUX,
 		.num_tbl_entries = 0,
 		.tbl = NULL,
 		.ops = NULL,
@@ -48,7 +45,6 @@ struct diag_md_info diag_md[NUM_DIAG_MD_DEV] = {
 	{
 		.id = DIAG_MD_MDM2,
 		.ctx = 0,
-		.mempool = POOL_TYPE_MDM2_MUX,
 		.num_tbl_entries = 0,
 		.tbl = NULL,
 		.ops = NULL,
@@ -56,7 +52,6 @@ struct diag_md_info diag_md[NUM_DIAG_MD_DEV] = {
 	{
 		.id = DIAG_MD_SMUX,
 		.ctx = 0,
-		.mempool = POOL_TYPE_QSC_MUX,
 		.num_tbl_entries = 0,
 		.tbl = NULL,
 		.ops = NULL,
@@ -261,7 +256,7 @@ int diag_md_init()
 
 	for (i = 0; i < NUM_DIAG_MD_DEV; i++) {
 		ch = &diag_md[i];
-		ch->num_tbl_entries = diag_mempools[ch->mempool].poolsize;
+		ch->num_tbl_entries = driver->poolsize;
 		ch->tbl = kzalloc(ch->num_tbl_entries *
 				  sizeof(struct diag_buf_tbl_t),
 				  GFP_KERNEL);
