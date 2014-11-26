@@ -642,7 +642,7 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
         * decrease count for Active sessions. We should not increase active
         * active session in case of roaming.
         */
-       if(pHddStaCtx->ft_carrier_on == FALSE)
+       if((pHddStaCtx->ft_carrier_on == FALSE) && !pCsrRoamInfo->fReassocReq)
        {
            wlan_hdd_incr_active_session(pHddCtx, pAdapter->device_mode);
        }
