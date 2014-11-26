@@ -338,6 +338,14 @@ static inline void local_flush_tlb_all(void)
 	}
 }
 
+static inline void local_flush_tlb_all_non_is(void)
+{
+	dsb();
+	asm("mcr p15, 0, %0, c8, c7, 0" : : "r" (0));
+	dsb();
+	isb();
+}
+
 static inline void local_flush_tlb_mm(struct mm_struct *mm)
 {
 	const int zero = 0;
@@ -507,6 +515,7 @@ static inline void clean_pmd_entry(void *pmd)
 
 #ifndef CONFIG_SMP
 #define flush_tlb_all		local_flush_tlb_all
+#define flush_tlb_all_non_is	local_flush_tlb_all_non_is
 #define flush_tlb_mm		local_flush_tlb_mm
 #define flush_tlb_page		local_flush_tlb_page
 #define flush_tlb_kernel_page	local_flush_tlb_kernel_page
