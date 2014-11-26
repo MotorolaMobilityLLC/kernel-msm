@@ -891,6 +891,7 @@ int mdss_mdp_pipe_fetch_halt(struct mdss_mdp_pipe *pipe)
 			mdata->vbif_base + MMSS_VBIF_XIN_HALT_CTRL0);
 
 		if (sw_reset_avail) {
+			reg_val = readl_relaxed(mdata->mdp_base + sw_reset_off);
 			writel_relaxed(reg_val & ~BIT(pipe->sw_reset.bit_off),
 				mdata->mdp_base + sw_reset_off);
 			wmb();
