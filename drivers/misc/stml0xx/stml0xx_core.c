@@ -969,7 +969,7 @@ static int stml0xx_probe(struct spi_device *spi)
 	ps_stml0xx->led_cdev.brightness_get = stml0xx_brightness_get;
 	ps_stml0xx->led_cdev.blink_set = stml0xx_blink_set;
 	ps_stml0xx->led_cdev.blink_delay_on = 1000;
-	ps_stml0xx->led_cdev.blink_delay_off = 1000;
+	ps_stml0xx->led_cdev.blink_delay_off = 0;
 	ps_stml0xx->led_cdev.max_brightness = STML0XX_LED_MAX_BRIGHTNESS;
 	err = led_classdev_register(&spi->dev, &ps_stml0xx->led_cdev);
 	if (err < 0) {
