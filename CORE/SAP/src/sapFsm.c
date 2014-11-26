@@ -1061,7 +1061,7 @@ sapFsm
 
 #ifdef WLAN_FEATURE_AP_HT40_24G
                 /* Initialize the HT2040 timer */
-                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
                            "In %s, Init HT20/40 timer", __func__);
 
                 vosStatus = vos_timer_init( &sapContext->sap_HT2040_timer,

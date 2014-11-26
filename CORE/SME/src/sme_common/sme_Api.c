@@ -10413,6 +10413,7 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
       return VOS_STATUS_SUCCESS;
    }
 
+   vos_mem_zero(&smeConfig, sizeof (tSmeConfigParams));
    sme_GetConfigParam(pMac, &smeConfig);
 
    /* If channel bonding mode is not required */
@@ -10425,8 +10426,6 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
       return VOS_STATUS_SUCCESS;
    }
 
-   vos_mem_zero(&smeConfig, sizeof (tSmeConfigParams));
-   sme_GetConfigParam(pMac, &smeConfig);
 
 #ifdef WLAN_FEATURE_11AC
    if ( eCSR_DOT11_MODE_11ac == eCsrPhyMode ||
