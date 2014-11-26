@@ -1181,6 +1181,7 @@ typedef struct tagCsrConfigParam
     tANI_BOOLEAN apHT40_24GEnabled;
     tANI_U32 channelBondingAPMode24GHz; // Use for SAP/P2P GO 2.4GHz channel Bonding
 #endif
+    tANI_U32 nOBSSScanWidthTriggerInterval;
 }tCsrConfigParam;
 
 //Tush

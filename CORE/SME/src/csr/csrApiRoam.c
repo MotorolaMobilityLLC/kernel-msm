@@ -1689,6 +1689,13 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
             cfgSetInt(pMac, WNI_CFG_PASSIVE_MINIMUM_CHANNEL_TIME,
                       pParam->nPassiveMinChnTime);
         }
+        if (pParam->nOBSSScanWidthTriggerInterval)
+        {
+            pMac->roam.configParam.nOBSSScanWidthTriggerInterval =
+                                   pParam->nOBSSScanWidthTriggerInterval;
+            cfgSetInt(pMac, WNI_CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL,
+                      pParam->nOBSSScanWidthTriggerInterval);
+        }
         if (pParam->nActiveMaxChnTimeBtc)
         {
             pMac->roam.configParam.nActiveMaxChnTimeBtc = pParam->nActiveMaxChnTimeBtc;
