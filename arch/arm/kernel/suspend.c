@@ -74,6 +74,8 @@ int cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
 		cpu_switch_mm(mm->pgd, mm);
 		local_flush_bp_all();
 		local_flush_tlb_all();
+	} else {
+		local_flush_tlb_all_non_is();
 	}
 
 	return ret;
