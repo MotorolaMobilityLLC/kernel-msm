@@ -2504,18 +2504,6 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.platform_name  = "msm-pcm-afe",
 		.ignore_suspend = 1,
 	},
-#ifdef CONFIG_SND_SOC_FLORIDA
-	{
-		.name = "CPU-DSP Voice Control",
-		.stream_name = "CPU-DSP Voice Control",
-		.cpu_dai_name = "florida-cpu-voicectrl",
-		.codec_name = "florida-codec",
-		.codec_dai_name = "florida-dsp-voicectrl",
-		.platform_name  = "florida-codec",
-		.ignore_suspend = 1,
-		.dynamic = 0,
-	},
-#endif
 	{
 		.name = "MSM8994 Compress1",
 		.stream_name = "Compress1",
@@ -3067,6 +3055,28 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA3,
 	},
+#ifdef CONFIG_SND_SOC_FLORIDA
+	{
+		.name = "CPU-DSP Voice Control",
+		.stream_name = "CPU-DSP Voice Control",
+		.cpu_dai_name = "florida-cpu-voicectrl",
+		.codec_name = "florida-codec",
+		.codec_dai_name = "florida-dsp-voicectrl",
+		.platform_name  = "florida-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP Trace",
+		.stream_name = "CPU-DSP Trace",
+		.cpu_dai_name = "florida-cpu-trace",
+		.codec_name = "florida-codec",
+		.codec_dai_name = "florida-dsp-trace",
+		.platform_name  = "florida-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+#endif
 	/* End of FE DAI LINK */
 	/* Backend FM DAI Links */
 	{
