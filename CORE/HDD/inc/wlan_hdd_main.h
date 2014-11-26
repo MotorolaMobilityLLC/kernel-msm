@@ -1457,7 +1457,9 @@ boolean hdd_is_5g_supported(hdd_context_t * pHddCtx);
 
 int wlan_hdd_scan_abort(hdd_adapter_t *pAdapter);
 
+#ifdef CONFIG_ENABLE_LINUX_REG
 VOS_STATUS wlan_hdd_init_channels_for_cc(hdd_context_t *pHddCtx,  driver_load_type init  );
+#endif
 
 VOS_STATUS wlan_hdd_cancel_remain_on_channel(hdd_context_t *pHddCtx);
 

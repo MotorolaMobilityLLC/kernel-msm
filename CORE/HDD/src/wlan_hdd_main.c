@@ -10453,6 +10453,7 @@ static VOS_STATUS wlan_hdd_init_channels(hdd_context_t *pHddCtx)
    }
 }
 
+#ifdef CONFIG_ENABLE_LINUX_REG
 VOS_STATUS wlan_hdd_init_channels_for_cc(hdd_context_t *pHddCtx, driver_load_type init )
 {
    eHalStatus status;
@@ -10469,6 +10470,7 @@ VOS_STATUS wlan_hdd_init_channels_for_cc(hdd_context_t *pHddCtx, driver_load_typ
       return VOS_STATUS_E_FAULT;
    }
 }
+#endif
 /*
  * API to find if there is any STA or P2P-Client is connected
  */

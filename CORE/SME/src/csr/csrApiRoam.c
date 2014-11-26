@@ -405,6 +405,7 @@ eHalStatus csrInitChannels(tpAniSirGlobal pMac)
     return status;
 }
 
+#ifdef CONFIG_ENABLE_LINUX_REG
 eHalStatus csrInitChannelsForCC(tpAniSirGlobal pMac, driver_load_type init)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
@@ -456,6 +457,7 @@ eHalStatus csrInitChannelsForCC(tpAniSirGlobal pMac, driver_load_type init)
 
     return status;
 }
+#endif
 
 eHalStatus csrSetRegInfo(tHalHandle hHal,  tANI_U8 *apCntryCode)
 {
