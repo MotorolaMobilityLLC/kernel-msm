@@ -9120,6 +9120,7 @@ WDI_ProcessSetBssKeyReq
   WDI_Status                   wdiStatus           = WDI_STATUS_SUCCESS;
   tSetBssKeyReqMsg             halSetBssKeyReqMsg  = {{0}};
   wpt_uint8                    keyIndex            = 0;
+  wpt_uint8                    i;
 
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -9213,17 +9214,40 @@ WDI_ProcessSetBssKeyReq
                      pwdiSetBSSKeyParams->wdiBSSKeyInfo.aKeys[keyIndex].unicast;
     halSetBssKeyReqMsg.setBssKeyParams.key[keyIndex].keyDirection =
                 pwdiSetBSSKeyParams->wdiBSSKeyInfo.aKeys[keyIndex].keyDirection;
-    wpalMemoryCopy(halSetBssKeyReqMsg.setBssKeyParams.key[keyIndex].keyRsc,
+
+    if(WDI_getHostWlanFeatCaps(DISA) && WDI_getFwWlanFeatCaps(DISA))
+    {
+      for (i = 0; i < WDI_MAX_KEY_RSC_LEN; i++)
+      {
+        halSetBssKeyReqMsg.setBssKeyParams.key[keyIndex].keyRsc[i] =
+            ~(pwdiSetBSSKeyParams->wdiBSSKeyInfo.aKeys[keyIndex].keyRsc[i]);
+      }
+
+      for (i = 0; i < WDI_MAX_KEY_LENGTH; i++)
+      {
+        halSetBssKeyReqMsg.setBssKeyParams.key[keyIndex].key[i] =
+             ~(pwdiSetBSSKeyParams->wdiBSSKeyInfo.aKeys[keyIndex].key[i]);
+      }
+
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+             "%s: Negated Keys", __func__);
+    }
+    else
+    {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+             "%s: No change in Keys", __func__);
+      wpalMemoryCopy(halSetBssKeyReqMsg.setBssKeyParams.key[keyIndex].keyRsc,
                      pwdiSetBSSKeyParams->wdiBSSKeyInfo.aKeys[keyIndex].keyRsc,
                      WDI_MAX_KEY_RSC_LEN);
+      wpalMemoryCopy(halSetBssKeyReqMsg.setBssKeyParams.key[keyIndex].key,
+                     pwdiSetBSSKeyParams->wdiBSSKeyInfo.aKeys[keyIndex].key,
+                     WDI_MAX_KEY_LENGTH);
+    }
     halSetBssKeyReqMsg.setBssKeyParams.key[keyIndex].paeRole =
                      pwdiSetBSSKeyParams->wdiBSSKeyInfo.aKeys[keyIndex].paeRole;
     halSetBssKeyReqMsg.setBssKeyParams.key[keyIndex].keyLength =
                    pwdiSetBSSKeyParams->wdiBSSKeyInfo.aKeys[keyIndex].keyLength;
-    wpalMemoryCopy(halSetBssKeyReqMsg.setBssKeyParams.key[keyIndex].key,
-                         pwdiSetBSSKeyParams->wdiBSSKeyInfo.aKeys[keyIndex].key,
-                        WDI_MAX_KEY_LENGTH);
-   }
+  }
 
   wpalMemoryCopy( pSendBuffer+usDataOffset,
                     &halSetBssKeyReqMsg.setBssKeyParams,
@@ -9394,6 +9418,7 @@ WDI_ProcessSetStaKeyReq
   wpt_uint8                    ucCurrentBSSSesIdx;
   tSetStaKeyReqMsg             halSetStaKeyReqMsg  = {{0}};
   wpt_uint8                    keyIndex            = 0;
+  wpt_uint8                    i;
 
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -9497,17 +9522,40 @@ WDI_ProcessSetStaKeyReq
                      pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].unicast;
     halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyDirection =
                 pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].keyDirection;
-    wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyRsc,
+
+    if(WDI_getHostWlanFeatCaps(DISA) && WDI_getFwWlanFeatCaps(DISA))
+    {
+      for (i = 0; i < WDI_MAX_KEY_RSC_LEN; i++)
+      {
+        halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyRsc[i] =
+             ~(pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].keyRsc[i]);
+      }
+
+      for (i = 0; i< WDI_MAX_KEY_LENGTH; i++)
+      {
+        halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].key[i] =
+             ~(pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].key[i]);
+      }
+
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+             "%s: Negated Keys", __func__);
+    }
+    else
+    {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+             "%s: No change in Keys", __func__);
+      wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyRsc,
                      pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].keyRsc,
                      WDI_MAX_KEY_RSC_LEN);
+      wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].key,
+                     pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].key,
+                     WDI_MAX_KEY_LENGTH);
+    }
     halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].paeRole =
                      pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].paeRole;
     halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyLength =
                    pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].keyLength;
-    wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].key,
-                         pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].key,
-                        WDI_MAX_KEY_LENGTH);
-   }
+  }
 
   wpalMemoryCopy( pSendBuffer+usDataOffset,
                     &halSetStaKeyReqMsg.setStaKeyParams,
@@ -9692,6 +9740,7 @@ WDI_ProcessSetStaBcastKeyReq
   wpt_uint8                    ucCurrentBSSSesIdx;
   tSetStaKeyReqMsg             halSetStaKeyReqMsg  = {{0}};
   wpt_uint8                    keyIndex            = 0;
+  wpt_uint8                    i;
 
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -9795,18 +9844,40 @@ WDI_ProcessSetStaBcastKeyReq
                      pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].unicast;
     halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyDirection =
                 pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].keyDirection;
-    wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyRsc,
+
+    if(WDI_getHostWlanFeatCaps(DISA) && WDI_getFwWlanFeatCaps(DISA))
+    {
+      for (i = 0; i < WDI_MAX_KEY_RSC_LEN; i++)
+      {
+        halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyRsc[i] =
+             ~(pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].keyRsc[i]);
+      }
+
+      for (i = 0; i< WDI_MAX_KEY_LENGTH; i++)
+      {
+        halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].key[i] =
+             ~(pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].key[i]);
+      }
+
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+             "%s: Negated Keys", __func__);
+    }
+    else
+    {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+             "%s: No change in Keys", __func__);
+      wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyRsc,
                      pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].keyRsc,
                      WDI_MAX_KEY_RSC_LEN);
+      wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].key,
+                     pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].key,
+                     WDI_MAX_KEY_LENGTH);
+    }
     halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].paeRole =
                      pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].paeRole;
     halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].keyLength =
                    pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].keyLength;
-    wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key[keyIndex].key,
-                         pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].key,
-                        WDI_MAX_KEY_LENGTH);
-   }
-
+  }
   wpalMemoryCopy( pSendBuffer+usDataOffset,
                     &halSetStaKeyReqMsg.setStaKeyParams,
                     sizeof(halSetStaKeyReqMsg.setStaKeyParams));

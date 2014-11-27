@@ -4369,6 +4369,8 @@ void WDA_UpdateBSSParams(tWDA_CbContext *pWDA,
                          tAddBssParams *wdaBssParams)
 {
    v_U8_t keyIndex = 0;
+   v_U8_t i = 0;
+
    /* copy bssReq Params to WDI structure */
    vos_mem_copy(wdiBssParams->macBSSID,
                            wdaBssParams->bssId, sizeof(tSirMacAddr)) ;
@@ -4445,16 +4447,43 @@ void WDA_UpdateBSSParams(tWDA_CbContext *pWDA,
                   wdaBssParams->extSetStaKeyParam.key[keyIndex].unicast;
                wdiBssParams->wdiExtSetKeyParam.wdiKey[keyIndex].keyDirection =
                   wdaBssParams->extSetStaKeyParam.key[keyIndex].keyDirection;
-               vos_mem_copy(wdiBssParams->wdiExtSetKeyParam.wdiKey[keyIndex].keyRsc, 
-                            wdaBssParams->extSetStaKeyParam.key[keyIndex].keyRsc, WLAN_MAX_KEY_RSC_LEN);
+
+               if(WDA_getHostWlanFeatCaps(DISA) && WDA_getFwWlanFeatCaps(DISA))
+               {
+                  for (i = 0; i < WLAN_MAX_KEY_RSC_LEN; i ++)
+                  {
+                    wdiBssParams->wdiExtSetKeyParam.wdiKey[keyIndex].keyRsc[i] =
+                     ~(wdaBssParams->extSetStaKeyParam.key[keyIndex].keyRsc[i]);
+                  }
+
+                  for (i = 0; i < SIR_MAC_MAX_KEY_LENGTH; i++)
+                  {
+                      wdiBssParams->wdiExtSetKeyParam.wdiKey[keyIndex].key[i] =
+                        ~(wdaBssParams->extSetStaKeyParam.key[keyIndex].key[i]);
+                  }
+                  VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                          FL("%s: Negated Keys"), __func__);
+               }
+               else
+               {
+                   VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                           FL("%s: No change in Keys "), __func__);
+                   vos_mem_copy(
+                       wdiBssParams->wdiExtSetKeyParam.wdiKey[keyIndex].keyRsc,
+                       wdaBssParams->extSetStaKeyParam.key[keyIndex].keyRsc,
+                       WLAN_MAX_KEY_RSC_LEN);
+                   vos_mem_copy(
+                       wdiBssParams->wdiExtSetKeyParam.wdiKey[keyIndex].key,
+                       wdaBssParams->extSetStaKeyParam.key[keyIndex].key,
+                       SIR_MAC_MAX_KEY_LENGTH);
+               }
+
                wdiBssParams->wdiExtSetKeyParam.wdiKey[keyIndex].paeRole =
                   wdaBssParams->extSetStaKeyParam.key[keyIndex].paeRole;
                wdiBssParams->wdiExtSetKeyParam.wdiKey[keyIndex].keyLength =
                   wdaBssParams->extSetStaKeyParam.key[keyIndex].keyLength;
-               vos_mem_copy(wdiBssParams->wdiExtSetKeyParam.wdiKey[keyIndex].key, 
-                            wdaBssParams->extSetStaKeyParam.key[keyIndex].key, SIR_MAC_MAX_KEY_LENGTH);
             }
-            wdiBssParams->wdiExtSetKeyParam.ucNumKeys = 
+            wdiBssParams->wdiExtSetKeyParam.ucNumKeys =
                SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS;
          }
       }
