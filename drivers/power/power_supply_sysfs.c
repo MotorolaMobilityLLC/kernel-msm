@@ -45,14 +45,7 @@ static ssize_t power_supply_show_property(struct device *dev,
 					  char *buf) {
 	static char *type_text[] = {
 		"Unknown", "Battery", "UPS", "Mains", "USB",
-		"USB_DCP", "USB_CDP", "USB_ACA", "Wireless", "BMS",
-		"USB_Parallel"
-//ASUS_BSP Lenter +++
-#ifdef CONFIG_BATTERY_ASUS
-		, "PadBattery", "DockBattery", "PadAC", "DockAC"
-#endif
-//ASUS_BSP Lenter ---
-
+		"USB_DCP", "USB_CDP", "USB_ACA", "Wireless", "BMS"
 	};
 	static char *status_text[] = {
 		"Unknown", "Charging", "Discharging", "Not charging", "Full"
