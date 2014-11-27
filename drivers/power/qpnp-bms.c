@@ -4311,16 +4311,6 @@ void static create_bat_current_proc(void)
 	return;
 }
 
-//Eason: A91 TLT add pad cap+++
-#ifdef CONFIG_EEPROM_NUVOTON
-#include <linux/microp_api.h>
-#include <linux/microp.h> 
-extern int uP_nuvoton_read_reg(int cmd, void *data);
-extern int BatteryServiceReportPADCAP(void);
-#define PAD_BAT  0
-#endif
-//Eason: A91 TLT add pad cap---
-
 #ifdef CONFIG_PM_8226_CHARGER
 //Eason: A91 get SWgauge percent now+++
 extern int get_temp_for_ASUSswgauge(void);
@@ -4337,23 +4327,6 @@ static int PM8226Dump_proc_show(struct seq_file *seq, void *v)
 	//struct raw_soc_params raw;
 	//struct soc_params params;
 	
-	//Eason: A91 TLT add pad cap+++
-	int Pad_Cap = -1;
-	int P_gauge = -1;
-	int16_t P_voltage = -1;
-	int16_t P_current = -1;
-
-#ifdef CONFIG_EEPROM_NUVOTON
-	if(1==AX_MicroP_IsP01Connected())
-	{
-		Pad_Cap = BatteryServiceReportPADCAP();
-		P_gauge = AX_MicroP_readBattCapacity(PAD_BAT);
-		uP_nuvoton_read_reg(MICROP_GAUGE_VOLTAGE,&P_voltage);
-		uP_nuvoton_read_reg(MICROP_GAUGE_AVG_CURRENT,&P_current);
-	}
-#endif		
-	//Eason: A91 TLT add pad cap---
-	
 	batt_temp = pm8226_get_prop_batt_temp();
 	//Eason don't calculate BMS actively, only read+++
 	//read_soc_params_raw(g_qpnp_bms_chip, &raw, batt_temp);
@@ -4367,11 +4340,7 @@ static int PM8226Dump_proc_show(struct seq_file *seq, void *v)
 						"AI(mA): %d\n"
 						"TEMP(degC): %d\n"
 						"BMS: %d\n"
-						"SWgauge: %d\n"
-						"Pad_Cap: %d\n"
-						"P_gauge: %d\n"
-						"P_voltage: %d\n"
-						"P_current: %d\n"
+						"SWgauge: %d\n\n"
 						, g_bms_fcc - g_bms_uuc
 						, g_bms_ocv_charge - g_bms_cc - g_bms_uuc
 						, asus_bat_report_phone_capacity(100)
@@ -4380,10 +4349,6 @@ static int PM8226Dump_proc_show(struct seq_file *seq, void *v)
 						, batt_temp
 						, get_prop_bms_capacity(g_qpnp_bms_chip)
 						, cal_SWgauge_capacity()
-						, Pad_Cap
-						, P_gauge
-						, P_voltage
-						, P_current
 						);
 }
 

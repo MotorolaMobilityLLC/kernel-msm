@@ -7,11 +7,6 @@
 #include <linux/power_supply.h>
 #include <linux/mutex.h>
 
-#ifdef CONFIG_EEPROM_NUVOTON
-#include <linux/microp_notify.h>
-#include <linux/microp_api.h>
-#endif /*CONFIG_EEPROM_NUVOTON */
-
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/proc_fs.h>
@@ -52,12 +47,6 @@ struct notifier_block bat_fb_notif;
 //ASUS_BSP Eason_Chang add event log +++
 #include <linux/asusdebug.h>
 //ASUS_BSP Eason_Chang add event log ---
-//ASUS_BSP Eason_Chang in Pad setChg +++
-#ifdef CONFIG_CHARGER_ASUS
-static bool IsInPadSetChg= false;
-#endif
-//ASUS_BSP Eason_Chang in Pad setChg ---
-/******************************************************************************/
 
 #define ASUS_BAT_DEF_UPDATE_RATE  180	// the update rate is 3 minutes in default                 
 
@@ -65,9 +54,6 @@ static bool IsInPadSetChg= false;
 #define ASUS_BAT_PROC_FILE_PERMISSION  0777
 
 #define ASUS_BAT_PROC_MAX_BUFF_SIZE  256
-
-
-#define PAD_BAT  0
 
 /* battery command */
 #define BAT_CMD_INTERVAL					2
@@ -80,7 +66,6 @@ static bool IsInPadSetChg= false;
 #define BAT_CMD_WRITE						'w'
 #define BAT_CMD_HELP						'h'
 #define BAT_CMD_PHONE_ID					'0'
-#define BAT_CMD_PAD_ID  					'1'
 #ifdef CONFIG_BATTERY_ASUS_SERVICE
 #define BAT_CMD_FIX_INTERVAL			'i'
 #define BAT_CMD_FIX_LAST_UPDATE_INTERVAL			'l'
@@ -117,7 +102,6 @@ static bool IsInPadSetChg= false;
 #define BAT_CMD_BALANCE_STARTRATIO 's'
 #define BAT_CMD_BALANCE_STOPRATIO 't'
 #define BAT_CMD_BALANCE_A66CAP 'a'
-#define BAT_CMD_BALANCE_PADCAP 'p'
 //ASUS_BSP --- Eason_Chang BalanceMode
 
 #define BAT_CMD_ALL_INFO					'a'
@@ -139,7 +123,6 @@ static bool IsInPadSetChg= false;
 /******************************************************************************/
 enum asus_bat_type {
 	ASUS_BAT_PHONE = 0,
-	ASUS_BAT_PAD,
 	ASUS_BAT_UNKNOWN
 };
 
@@ -203,7 +186,6 @@ struct asus_bat_all_info {
 //	struct mutex microp_rw_lock;
 	struct delayed_work bat_update_work;
 	struct asus_bat_basic phone_b;
-	struct asus_bat_basic pad_b;
 	bool enable_test;
 	int bat_update_work_interval;
 };
@@ -213,17 +195,6 @@ struct asus_bat_phone_bat_struct *phone_bat_info = NULL;
 
 static bool g_done_first_periodic_update = false;
 
-/******************************************************************************/
-#ifdef CONFIG_EEPROM_NUVOTON
-static int asus_bat_pad_get_property(struct power_supply *psy,
-	enum power_supply_property psp, union power_supply_propval *val);
-
-static int asus_bat_pad_ac_get_property(struct power_supply *psy,
-	enum power_supply_property psp, union power_supply_propval *val);
-
-static int asus_bat_microp_event_handler(struct notifier_block *this,
-	unsigned long event, void *ptr);
-#endif /* CONFIG_EEPROM_NUVOTON */
 
 static void asus_bat_update_all_bat(void);
 
@@ -237,7 +208,6 @@ static int BatteryService_BalanceMode_IsBalTest = 0; //default 0.Change to 1 if 
 static int BatteryService_BalanceMode_StopRatio = 1;
 static int BatteryService_BalanceMode_StartRatio = 9; // divid 2  is the real StartRatiio
 static int BatteryService_BalanceMode_A66_CAP = 66;  //just a special default value
-//static int BatteryService_BalanceMode_Pad_CAP = 33;
 //ASUS_BSP --- Eason_Chang BalanceMode
 
 //ASUS_BSP  +++ Eason_Chang "sw gauge support"
@@ -432,45 +402,6 @@ static void asus_bat_set_phone_bat_present(bool present)
 	return;
 }
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static void asus_bat_set_pad_bat_present(bool present)
-{
-	asus_bat->pad_b.present = present;
-
-	return;
-}
-
-static bool asus_bat_is_pad_bat_present(void)
-{
-	if (NULL == asus_bat)
-		return false;
-
-	return asus_bat->pad_b.present;
-}
-
-static int asus_bat_get_pad_bat_capacity(void)
-{	
-	return asus_bat->pad_b.capacity;
-}
-
-static void asus_bat_set_pad_bat_capacity(int bat_cap)
-{	
-	asus_bat->pad_b.capacity = bat_cap;
-	return;
-}
-
-static int asus_bat_get_pad_bat_capacity_byhw(void)
-{
-	int bat_cap = AX_MicroP_readBattCapacity(PAD_BAT);
-
-	if (bat_cap < 0) {
-		printk(DBGMSK_BAT_ERR "[BAT]error!! in %s(), read bat capacity error\n", __FUNCTION__);
-	}
-	
-	return bat_cap;
-}
-#endif //CONFIG_EEPROM_NUVOTON
-
 static bool asus_bat_is_phone_bat_present(void)
 {
 	if (NULL == asus_bat)
@@ -479,33 +410,6 @@ static bool asus_bat_is_phone_bat_present(void)
 	return asus_bat->phone_b.present;
 
 }
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static enum asus_bat_charger_cable asus_bat_get_pad_charger_byhw(void)
-{
-	enum asus_bat_charger_cable charger = ASUS_BAT_CHARGER_NONE;
-
-	int pad_charger = AX_MicroP_get_USBDetectStatus(Batt_P01);
-	switch(pad_charger) {
-	case P01_CABLE_NO:
-		charger = ASUS_BAT_CHARGER_NONE;
-		break;
-	case P01_CABLE_CHARGER:
-		charger = ASUS_BAT_CHARGER_AC;
-		break;
-	case P01_CABLE_USB:
-		charger = ASUS_BAT_CHARGER_USB;
-		break;
-	default:
-		charger = ASUS_BAT_CHARGER_UNKNOWN;
-		printk(DBGMSK_BAT_ERR "[BAT] error !! in %s()\n", __FUNCTION__);
-
-	}
-
-	pr_debug("[BAT]%s(), pad charger by hw: %s \r\n", __FUNCTION__, charger_txt[charger]);
-	return charger;
-}
-#endif //CONFIG_EEPROM_NUVOTON
 
 static enum asus_bat_charger_cable asus_bat_get_phone_charger(void)
 {
@@ -518,44 +422,6 @@ static void asus_bat_set_phone_charger(enum asus_bat_charger_cable charger )
 	asus_bat->phone_b.charger = charger;
 	return;
 }
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static void asus_bat_set_pad_charger(enum asus_bat_charger_cable charger )
-{
-	asus_bat->pad_b.charger = charger;
-	return;
-}
-#endif //CONFIG_EEPROM_NUVOTON
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static enum asus_bat_charging_status asus_bat_get_pad_charging_byhw(void)
-{
-	enum asus_bat_charging_status charging = ASUS_BAT_CHARGING_UNKNOWN;
-
-	switch (AX_MicroP_get_ChargingStatus(Batt_P01)) {
-	case P01_CHARGING_ERR:
-		charging = ASUS_BAT_CHARGING_ERR;
-		break;
-	case P01_CHARGING_NO:
-		charging = ASUS_BAT_CHARGING_NONE;
-		break;
-	case P01_CHARGING_ONGOING:
-		charging = ASUS_BAT_CHARGING_ONGOING;
-		break;	
-	case P01_CHARGING_FULL:
-		charging = ASUS_BAT_CHARGING_FULL;
-		break;
-	default:
-		printk(DBGMSK_BAT_ERR "[BAT] error !! in %s()\n", __FUNCTION__);	
-
-	}
-
-	pr_debug( "[BAT]%s(), charging:%s\n", __FUNCTION__, charging_txt[charging]);
-
-	return charging;
-}
-#endif // CONFIG_EEPROM_NUVOTON
-
 
 static enum asus_bat_charging_status asus_bat_get_phone_charging(void)
 {
@@ -570,15 +436,6 @@ static void asus_bat_set_phone_charging(enum asus_bat_charging_status charging )
 	return;
 }
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static void asus_bat_set_pad_charging(enum asus_bat_charging_status charging )
-{
-	asus_bat->pad_b.charging = charging;
-	pr_debug( "[BAT]%s(), charging:%s\n", __FUNCTION__, charging_txt[charging]);
-	return;
-}
-#endif // CONFIG_EEPROM_NUVOTON
-
 typedef void (*bat_cmd_func)(const char *msg, int index);
 
 static void bat_cmd_read_phone_charging_status(const char *msg, int index)
@@ -592,20 +449,6 @@ static void bat_cmd_read_phone_charging_status(const char *msg, int index)
 	return ;
 }
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static void bat_cmd_read_pad_charging_status(const char *msg, int index)
-{
-	// by hw for test
-	int charging;
-	charging = asus_bat_get_pad_charging_byhw();
-	printk(DBGMSK_BAT_INFO "[BAT] %s(), msg[%d]=%c, charging:%s \r\n",
-		__FUNCTION__, index, msg[index], charging_txt[charging]);
-
-	return ;
-}
-#endif // CONFIG_EEPROM_NUVOTON
-
-
 static void bat_cmd_read_phone_charger_cable(const char *msg, int index)
 {
 	int charger = asus_bat_get_phone_charger();
@@ -615,19 +458,6 @@ static void bat_cmd_read_phone_charger_cable(const char *msg, int index)
 	return;
 }
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static void bat_cmd_read_pad_charger_cable(const char *msg, int index)
-{
-	// by hw for test
-	int charger;
-	charger = asus_bat_get_pad_charger_byhw();
-	printk(DBGMSK_BAT_INFO "[BAT] %s(), msg[%d]=%c, charger:%s \r\n",
-		__FUNCTION__, index, msg[index], charger_txt[charger]);
-
-	return;
-}
-#endif // CONFIG_EEPROM_NUVOTON
-
 static void bat_cmd_read_phone_bat_life(const char *msg, int index)
 {
 	int bat_life;
@@ -636,18 +466,6 @@ static void bat_cmd_read_phone_bat_life(const char *msg, int index)
 	printk(DBGMSK_BAT_INFO "[BAT] %s(), bat_life:%d \r\n", __FUNCTION__, bat_life);
 	return ;
 }
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static void bat_cmd_read_pad_bat_life(const char *msg, int index)
-{
-	int bat_life;
-	printk(DBGMSK_BAT_INFO "[BAT] %s(), msg[%d]=%c \r\n", __FUNCTION__, index, msg[index]);
-	bat_life = asus_bat_get_pad_bat_capacity();
-	printk(DBGMSK_BAT_INFO "[BAT] %s(), bat_life:%d \r\n", __FUNCTION__, bat_life);
-
-	return ;
-}
-#endif // CONFIG_EEPROM_NUVOTON
 
 static void bat_cmd_read_phone_bat_present(const char *msg, int index)
 {
@@ -659,20 +477,6 @@ static void bat_cmd_read_phone_bat_present(const char *msg, int index)
 	}
 	return ;
 }
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static void bat_cmd_read_pad_bat_present(const char *msg, int index)
-{
-	printk(DBGMSK_BAT_INFO "[BAT] %s(), msg[%d]=%c \r\n", __FUNCTION__, index, msg[index]);
-	if (asus_bat_is_pad_bat_present()) {
-		printk(DBGMSK_BAT_INFO "[BAT] %s(), pad bat present \r\n", __FUNCTION__);
-	} else {
-		printk(DBGMSK_BAT_INFO "[BAT] %s(), pad bat not present \r\n", __FUNCTION__);
-	}
-
-	return ;
-}
-#endif // CONFIG_EEPROM_NUVOTON
 
 static void bat_cmd_write_phone_charging_status(const char *msg, int index)
 {
@@ -705,22 +509,6 @@ static void bat_cmd_set_phone_charging_mode(const char *msg, int index)
 	return ;
 }
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static void bat_cmd_write_pad_charging_status(const char *msg, int index)
-{
-	int val;
-	index += BAT_CMD_INTERVAL;
-	val = (int)simple_strtol(&msg[index], NULL, 10);
-
-	printk(DBGMSK_BAT_INFO "[BAT] %s(), msg[%d]=%c, val:%d \r\n", __FUNCTION__, index, msg[index], val);
-
-
-	asus_bat_set_pad_charging(val);
-		
-	return ;
-}
-#endif // CONFIG_EEPROM_NUVOTON
-
 static void bat_cmd_write_phone_charger_cable(const char *msg, int index)
 {
 	int val;
@@ -733,23 +521,6 @@ static void bat_cmd_write_phone_charger_cable(const char *msg, int index)
 
 	return ;
 }
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static void bat_cmd_write_pad_charger_cable(const char *msg, int index)
-{
-	int val;
-	index += BAT_CMD_INTERVAL;
-	val = (int)simple_strtol(&msg[index], NULL, 10);
-
-	printk(DBGMSK_BAT_INFO "[BAT] %s(), msg[%d]=%c, val:%d \r\n", __FUNCTION__, index, msg[index], val);
-
-	asus_bat_set_pad_charger(val);
-
-
-	return ;
-}
-
-#endif // CONFIG_EEPROM_NUVOTON
 
 static void bat_cmd_write_phone_bat_life(const char *msg, int index)
 {
@@ -780,49 +551,17 @@ static void bat_cmd_write_phone_bat_present(const char *msg, int index)
 	return ;
 }
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static void bat_cmd_write_pad_bat_life(const char *msg, int index)
-{
-	int val;
-	index += BAT_CMD_INTERVAL;
-	val = (int)simple_strtol(&msg[index], NULL, 10);
-
-	printk(DBGMSK_BAT_INFO "[BAT] %s(), msg[%d]=%c, val:%d \r\n", __FUNCTION__, index, msg[index], val);
-
-	asus_bat_set_pad_bat_capacity(val);
-
-	return ;
-}
-
-static void bat_cmd_write_pad_bat_present(const char *msg, int index)
-{
-	int val;
-	index += BAT_CMD_INTERVAL;
-	val = (int)simple_strtol(&msg[index], NULL, 10);
-
-	printk(DBGMSK_BAT_INFO "[BAT] %s(), msg[%d]=%c, val:%d \r\n", __FUNCTION__, index, msg[index], val);
-
-	asus_bat_set_pad_bat_present(val);
-
-	return ;
-}
-#endif // CONFIG_EEPROM_NUVOTON
-
 static void bat_cmd_read_all_info(const char *msg, int index )
 {
 	printk(DBGMSK_BAT_INFO "[BAT] %s(), msg[%d]=%c \r\n", __FUNCTION__, index, msg[index]);
 
 	printk(DBGMSK_BAT_INFO "[BAT] phone bat present: %s \r\n", asus_bat->phone_b.present?BAT_TRUE_TXT:BAT_FALSE_TXT);
-	printk(DBGMSK_BAT_INFO "[BAT] pad bat present: %s \r\n", asus_bat->pad_b.present?BAT_TRUE_TXT:BAT_FALSE_TXT);
 
 	printk(DBGMSK_BAT_INFO "[BAT] phone bat life: %d \r\n", asus_bat->phone_b.capacity);
-	printk(DBGMSK_BAT_INFO "[BAT] pad bat life: %d \r\n", asus_bat->pad_b.capacity);
 
 	printk(DBGMSK_BAT_INFO "[BAT] phone charging status: %s \r\n", charging_txt[asus_bat->phone_b.charging]);
-	printk(DBGMSK_BAT_INFO "[BAT] pad charging status: %s \r\n", charging_txt[asus_bat->pad_b.charging]);
 
 	printk(DBGMSK_BAT_INFO "[BAT] phone charger cable: %s \r\n", charger_txt[asus_bat->phone_b.charger]);
-	printk(DBGMSK_BAT_INFO "[BAT] pad charger cable: %s \r\n", charger_txt[asus_bat->pad_b.charger]);
 
 	printk(DBGMSK_BAT_INFO "[BAT] enable test:%s \r\n", asus_bat->enable_test?BAT_TRUE_TXT:BAT_FALSE_TXT);
 	printk(DBGMSK_BAT_INFO "[BAT] update bat interval:%d \r\n", asus_bat->bat_update_work_interval);
@@ -982,15 +721,6 @@ struct asus_bat_proc_cmd phone_bat_read_cmd_tbl[] = {
 	{BAT_CMD_BAT_PRESENT, bat_cmd_read_phone_bat_present, NULL, 0},
 };
 
-#ifdef CONFIG_EEPROM_NUVOTON
-struct asus_bat_proc_cmd pad_bat_read_cmd_tbl[] = {
-	{BAT_CMD_CHARGING_STATUS, bat_cmd_read_pad_charging_status, NULL, 0},
-	{BAT_CMD_CHARGER_CABLE, bat_cmd_read_pad_charger_cable, NULL, 0},
-	{BAT_CMD_BAT_LIFE, bat_cmd_read_pad_bat_life, NULL, 0},
-	{BAT_CMD_BAT_PRESENT, bat_cmd_read_pad_bat_present, NULL, 0},
-};
-#endif //CONFIG_EEPROM_NUVOTON
-
 struct asus_bat_proc_cmd phone_bat_write_cmd_tbl[] = {
 	{BAT_CMD_CHARGING_STATUS, bat_cmd_write_phone_charging_status, NULL, 0},
 	{BAT_CMD_CHARGER_CABLE, bat_cmd_write_phone_charger_cable, NULL, 0},
@@ -998,20 +728,8 @@ struct asus_bat_proc_cmd phone_bat_write_cmd_tbl[] = {
 	{BAT_CMD_BAT_PRESENT, bat_cmd_write_phone_bat_present, NULL, 0},
 };
 
-#ifdef CONFIG_EEPROM_NUVOTON
-struct asus_bat_proc_cmd pad_bat_write_cmd_tbl[] = {
-	{BAT_CMD_CHARGING_STATUS, bat_cmd_write_pad_charging_status, NULL, 0},
-	{BAT_CMD_CHARGER_CABLE, bat_cmd_write_pad_charger_cable, NULL, 0},
-	{BAT_CMD_BAT_LIFE, bat_cmd_write_pad_bat_life, NULL, 0},
-	{BAT_CMD_BAT_PRESENT, bat_cmd_write_pad_bat_present, NULL, 0},
-};
-#endif //CONFIG_EEPROM_NUVOTON
-
 struct asus_bat_proc_cmd bat_read_cmd_tbl[] = {
 	{BAT_CMD_PHONE_ID, NULL, phone_bat_read_cmd_tbl, ARRAY_SIZE(phone_bat_read_cmd_tbl)},
-#ifdef CONFIG_EEPROM_NUVOTON
-	{BAT_CMD_PAD_ID, NULL, pad_bat_read_cmd_tbl, ARRAY_SIZE(pad_bat_read_cmd_tbl)},
-#endif //CONFIG_EEPROM_NUVOTON
 	{BAT_CMD_ALL_INFO, bat_cmd_read_all_info, NULL, 0},
 };
 
@@ -1423,37 +1141,6 @@ static void bat_balance_startratio(const char *msg, int index)
 	return;
 } 
 
-/*
-static void bat_balance_A66Cap(const char *msg, int index)  
-{
-	int val;
-
-	index += BAT_CMD_INTERVAL;
-	val = (int)simple_strtol(&msg[index], NULL, 10);
-
-	printk("[BAT][Bal] %s(), msg[%d]=%c, val:%d \r\n", __FUNCTION__, index, msg[index], val);
-
-	BatteryService_BalanceMode_A66_CAP = val;
-	
-	return;
-}
-
-static void bat_balance_PadCap(const char *msg, int index)  
-{
-	int val;
-
-	index += BAT_CMD_INTERVAL;
-	val = (int)simple_strtol(&msg[index], NULL, 10);
-
-	printk("[BAT][Bal] %s(), msg[%d]=%c, val:%d \r\n", __FUNCTION__, index, msg[index], val);
-
-	BatteryService_BalanceMode_Pad_CAP = val;
-	
-	return;
-}
-*/
-
-
 int IsBalanceTest(void){
     return BatteryService_BalanceMode_IsBalTest;
 }    
@@ -1501,21 +1188,14 @@ struct asus_bat_proc_cmd bat_swg_test_cmd_tbl[] = {
 
 //ASUS_BSP +++ Eason_Chang BalanceMode
 struct asus_bat_proc_cmd bat_balance_test_cmd_tbl[] = {	
-    //{BAT_CMD_BALANCE_ISBALANCE, bat_balance_isbalance, NULL, 0},
     {BAT_CMD_BALANCE_ISTEST, bat_balance_isbalTest, NULL, 0},    
     {BAT_CMD_BALANCE_STARTRATIO, bat_balance_startratio, NULL, 0},
     {BAT_CMD_BALANCE_STOPRATIO, bat_balance_stopratio, NULL, 0},
-    //{BAT_CMD_BALANCE_A66CAP, bat_balance_A66Cap, NULL, 0},
-    //{BAT_CMD_BALANCE_PADCAP, bat_balance_PadCap, NULL, 0},  
-
 };    
 //ASUS_BSP --- Eason_Chang BalanceMode
 
 struct asus_bat_proc_cmd bat_write_cmd_tbl[] = {
 	{BAT_CMD_PHONE_ID, NULL, phone_bat_write_cmd_tbl, ARRAY_SIZE(phone_bat_write_cmd_tbl)},
-#ifdef CONFIG_EEPROM_NUVOTON
-	{BAT_CMD_PAD_ID, NULL, pad_bat_write_cmd_tbl, ARRAY_SIZE(pad_bat_write_cmd_tbl)},
-#endif //CONFIG_EEPROM_NUVOTON
 #ifdef CONFIG_BATTERY_ASUS_SERVICE
 	{BAT_CMD_FIX_INTERVAL, bat_cmd_fix_interval, NULL, 0},
 	{BAT_CMD_FIX_LAST_UPDATE_INTERVAL, bat_cmd_fix_last_update_interval, NULL, 0},
@@ -1552,58 +1232,6 @@ struct asus_bat_proc_cmd bat_cmd_tbl[] = {
 	{ BAT_CMD_SET, NULL, bat_set_cmd_tbl, ARRAY_SIZE(bat_set_cmd_tbl)},	// set cmd	
 	{ BAT_CMD_UPDATE, bat_cmd_update, NULL, 0},
 };
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static enum power_supply_property pad_bat_properties[] = {
-	POWER_SUPPLY_PROP_PRESENT,
-	POWER_SUPPLY_PROP_STATUS,
-	POWER_SUPPLY_PROP_CAPACITY,
-};
-
-static enum power_supply_property pad_ac_properties[] = {
-	POWER_SUPPLY_PROP_PRESENT,
-	POWER_SUPPLY_PROP_ONLINE,
-};
-
-static char *pm_power_supplied_to[] = {
-	"battery",
-};
-#endif
-
-/******************************************************************************/
-#ifdef CONFIG_EEPROM_NUVOTON
-static struct power_supply pad_bat_psy = {
-	.name		= "pad_bat",
-	.type		= POWER_SUPPLY_TYPE_PAD_BAT,
-	.supplied_to = pm_power_supplied_to,
-       .num_supplicants = ARRAY_SIZE(pm_power_supplied_to),
-	.properties	= pad_bat_properties,
-	.num_properties	= ARRAY_SIZE(pad_bat_properties),
-	.get_property	= asus_bat_pad_get_property,
-};
-static struct power_supply pad_ac_psy = {
-	.name		= "pad_ac",
-	.type		= POWER_SUPPLY_TYPE_PAD_AC,
-	.supplied_to = pm_power_supplied_to,
-       .num_supplicants = ARRAY_SIZE(pm_power_supplied_to),
-	.properties	= pad_ac_properties,
-	.num_properties	= ARRAY_SIZE(pad_ac_properties),
-	.get_property	= asus_bat_pad_ac_get_property,
-};
-
-static struct notifier_block asus_bat_microp_notifier = {
-        .notifier_call = asus_bat_microp_event_handler,
-};
-#endif // CONFIG_EEPROM_NUVOTON
-/***********************************************************************/
-
-#ifdef CONFIG_EEPROM_NUVOTON
-void Pad_AC_PowerSupplyChange(void)
-{
-    power_supply_changed(&pad_ac_psy);
-    printk("[BAT]Pad AC PowerSupplyChange\n");
-}
-#endif 
 
 // Asus BSP Eason_Chang +++ function for AXI_BatteryServiceFacade
 extern void asus_bat_status_change(void);
@@ -1713,9 +1341,6 @@ void asus_onCableInOut(enum asus_chg_src src)
 		case ASUS_CHG_SRC_USB:
 			loService->onCableInOut(loService,LOW_CURRENT_CHARGER_TYPE);
 			break;
-        case ASUS_CHG_SRC_PAD_BAT:
-            loService->onCableInOut(loService,NORMAL_CURRENT_CHARGER_TYPE);//NORMAL_CURRENT_CHARGER_TYPE
-            break;
         default:
             printk("[BAT]%s():error src\n",__FUNCTION__);
             break;
@@ -1761,7 +1386,6 @@ static void AsusBatChangeChargingCurrent(struct AXI_BatteryServiceFacadeCallback
             asus_chg_set_chg_mode_forBatteryservice(ASUS_CHG_SRC_USB);
             break;
         case NORMAL_CURRENT_CHARGER_TYPE:
-			asus_chg_set_chg_mode_forBatteryservice(ASUS_CHG_SRC_PAD_BAT);
             break;
         case HIGH_CURRENT_CHARGER_TYPE:
             asus_chg_set_chg_mode_forBatteryservice(ASUS_CHG_SRC_DC);
@@ -1932,400 +1556,44 @@ int asus_bat_report_phone_present(int phone_bat_present)
 }
 EXPORT_SYMBOL_GPL(asus_bat_report_phone_present);
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static int asus_bat_report_pad_capacity(void)
-{
-	int pad_bat_capacity;
-
-	BUG_ON(NULL == asus_bat);
-	
-	if (!asus_bat->enable_test) {
-		pad_bat_capacity = asus_bat_get_pad_bat_capacity_byhw();
-		asus_bat_set_pad_bat_capacity(pad_bat_capacity);
-	}
-
-	pad_bat_capacity = asus_bat_get_pad_bat_capacity();
-
-   
-
-    pad_bat_capacity = ReportBatteryServiceP02Cap();//P02 gauge
-    printk(DBGMSK_BAT_INFO "[BAT]Pad_Cap:%d \r\n", pad_bat_capacity);
-	return pad_bat_capacity;//P02 gauge
-}
-//ASUS_BSP +++ Eason_Chang BalanceMode
-int BatteryServiceReportPADCAP(void)
-{   
-    return asus_bat_report_pad_capacity();
-}
-//ASUS_BSP --- Eason_Chang BalanceMode
-
-//ASUS_BSP +++ Eason_Chang BalanceMode
-int BatteryServiceGetPADCAP(void)
-{   
-    //return asus_bat_report_pad_capacity();
-    return asus_bat_get_pad_bat_capacity();
-}
-//ASUS_BSP --- Eason_Chang BalanceMode
-#endif //CONFIG_EEPROM_NUVOTON
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static int asus_bat_report_pad_status(void)
-{
-	int pad_charging_sts;
-
-	//Eason: A68 new balance mode +++ test pad capacity need enable_test but will cause pad status error mark this
-	/*	
-	if (asus_bat->enable_test) { // from variable
-		switch (asus_bat_get_pad_charger()) {
-		case ASUS_BAT_CHARGER_NONE:
-			pad_charging_sts = POWER_SUPPLY_STATUS_DISCHARGING;
-			break;	
-		case ASUS_BAT_CHARGER_USB:
-		case ASUS_BAT_CHARGER_AC:	
-			if (ASUS_BAT_CHARGING_ONGOING == asus_bat_get_pad_charging()) {
-				pad_charging_sts = POWER_SUPPLY_STATUS_CHARGING;
-			} else {
-				pad_charging_sts = POWER_SUPPLY_STATUS_NOT_CHARGING;
-			}
-			break;
-		default:
-			printk(DBGMSK_BAT_ERR "[BAT] error !! in %s() \r\n", __FUNCTION__);
-		}
-
-	} else { 
-	*/
-	//Eason: A68 new balance mode ---
-
-	// from hw
-		//Eason: Pad plug usb show icon & cap can increase+++
-		//if (ASUS_BAT_CHARGER_AC != asus_bat_get_pad_charger_byhw()) {
-		if ( (ASUS_BAT_CHARGER_AC != asus_bat_get_pad_charger_byhw())&&(ASUS_BAT_CHARGER_USB != asus_bat_get_pad_charger_byhw()) ){	
-		//Eason: Pad plug usb show icon & cap can increase---	
-			pad_charging_sts = POWER_SUPPLY_STATUS_DISCHARGING;
-
-		} else {
-			switch(asus_bat_get_pad_charging_byhw()){
-			case ASUS_BAT_CHARGING_ONGOING:
-				if(asus_bat_report_pad_capacity() == 100)
-					pad_charging_sts = POWER_SUPPLY_STATUS_FULL;     
-				else
-					pad_charging_sts = POWER_SUPPLY_STATUS_CHARGING;
-				break;
-			case ASUS_BAT_CHARGING_FULL:
-				pad_charging_sts = POWER_SUPPLY_STATUS_FULL;
-				break;
-			case ASUS_BAT_CHARGING_NONE:                    
-				pad_charging_sts = POWER_SUPPLY_STATUS_NOT_CHARGING;
-				break;                            
-			default:
-				pad_charging_sts = POWER_SUPPLY_STATUS_UNKNOWN;
-			}
-		}
-	//}//Eason: A68 new balance mode 
-
-	pr_info( "[BAT] %s(), ps charing:%d \r\n", __FUNCTION__, pad_charging_sts);
-
-	return pad_charging_sts;
-}
-
-void BatteryService_P02update(void)
-{
-    asus_bat_update_all_bat();
-}
-#endif //CONFIG_EEPROM_NUVOTON
-
 // Just for pad
 static void asus_bat_update_all_bat(void)
 {
 	pr_debug( "[BAT] %s()n", __FUNCTION__);
 
-#ifdef CONFIG_EEPROM_NUVOTON
-	if (AX_MicroP_IsP01Connected()) {
-		power_supply_changed(&pad_bat_psy);
-		pr_info("[BAT] pad present, pad bat update\n");
-	}
-#endif
-
 	return;
 }
-#ifdef CONFIG_EEPROM_NUVOTON
-extern void AcUsbPowerSupplyChange_pm8941(void);//Eason fix Padmode in charger mode remove AC don't shutdown
-static void asus_bat_update_pad_ac_online(void)
-{
-
-    power_supply_changed(&pad_ac_psy);
-    AcUsbPowerSupplyChange_pm8941();
-    printk("[BAT] pad ac online update\n");
-
-	return;
-}
-
-void asus_bat_update_PadAcOnline(void)
-{
-    asus_bat_update_pad_ac_online();
-}
-#endif
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static int asus_bat_pad_get_property(
-	struct power_supply *psy,
-	enum power_supply_property psp,
-	union power_supply_propval *val)
-{
-	bool pad_present = false; //ASUS_BSP Eason_Chang 1120 porting
-	pr_debug( "[BAT] %s(), name: %s , property: %d \r\n", __FUNCTION__, psy->name, (int)psp);
-
-	if (0 == AX_MicroP_IsP01Connected())
-		pad_present = false;
-	else
-		pad_present = true;
-
-	switch (psp) {
-	case POWER_SUPPLY_PROP_PRESENT:
-		if (pad_present) {
-			pr_debug( "[BAT] %s(), pad present \r\n", __FUNCTION__);
-			val->intval = 1;
-		} else {
-			pr_debug( "[BAT] %s(), pad not present \r\n", __FUNCTION__);
-			val->intval = 0;
-		}
-		break;
-	case POWER_SUPPLY_PROP_CAPACITY:
-		if (pad_present) {
-			val->intval = asus_bat_report_pad_capacity();
-		} else {
-			pr_debug ("[BAT] pad not present, cannot get cap\n");
-			val->intval = -1;
-		}
-		break;
-	case POWER_SUPPLY_PROP_STATUS:
-		if (pad_present) {
-			val->intval = asus_bat_report_pad_status();
-		} else {
-			pr_debug ("[BAT] pad not present, status unknown\n");
-			val->intval = POWER_SUPPLY_STATUS_UNKNOWN;
-		}
-		break;
-	default:
-		printk(DBGMSK_BAT_ERR "[BAT] %s(), unknown psp:%d \n", __FUNCTION__, (int)psp);
-		return -EINVAL;
-	}
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_EEPROM_NUVOTON
-//Eason: in Pad AC powered, judge AC powered true+++
-int InP03JudgeACpowered(void)
-{
-	if( 1 == AX_MicroP_IsP01Connected())
-	{
-		if(ASUS_BAT_CHARGER_AC == asus_bat_get_pad_charger_byhw())
-			return 1;
-		else
-			return 0;
-	}else
-			return 0;
-}
-//Eason: in Pad AC powered, judge AC powered true---
-
-static int asus_bat_pad_ac_get_property(
-	struct power_supply *psy,
-	enum power_supply_property psp,
-	union power_supply_propval *val)
-{
-	bool pad_present = false;//ASUS_BSP Eason_Chang 1120 porting
-
-	pr_debug( "[BAT] %s(), name: %s , property: %d \r\n", __FUNCTION__, psy->name, (int)psp);
-
-#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++
-	if (0 == AX_MicroP_IsP01Connected())
-		pad_present = false;
-	else
-		pad_present = true;
-#endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---    
-
-
-	switch (psp) {
-	case POWER_SUPPLY_PROP_PRESENT:
-	case POWER_SUPPLY_PROP_ONLINE:
-		if (pad_present) {
-			//Eason: Pad plug usb show icon & cap can increase+++
-			//if (ASUS_BAT_CHARGER_AC == asus_bat_get_pad_charger_byhw()) { 
-			if(  (ASUS_BAT_CHARGER_AC == asus_bat_get_pad_charger_byhw())||(ASUS_BAT_CHARGER_USB == asus_bat_get_pad_charger_byhw()) ){ 
-			//Eason: Pad plug usb show icon & cap can increase---	
-				val->intval = 1;
-			} else {
-				val->intval = 0;
-			}
-		} else {
-			val->intval = 0;
-		}
-
-        if(true == g_AcUsbOnline_Change0)
-        {
-                val->intval = 0;
-                printk("[BAT][Chg][Pad]: set online 0 to shutdown device\n");   
-        }
-
-		//Eason: Factory5060Mode+++
-		#ifdef ASUS_FACTORY_BUILD
-		if( false == g_5060modeCharging)
-		{
-                val->intval = 0;
-                printk("[BAT][Factory][5060][pad_ac]: set online 0 to show Notcharging icon\n");   
-		}
-		#endif	
-		//Eason: Factory5060Mode---
-		
-		pr_debug("[BAT] pad ac online(%d)\n", val->intval);
-		break;
-	default:
-		pr_err("[BAT] %s(), unknown psp:%d \n", __FUNCTION__, (int)psp);
-		return -EINVAL;
-	}
-	return 0;
-}
-#endif //CONFIG_EEPROM_NUVOTON
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static int asus_bat_microp_event_handler(
-	struct notifier_block *this,
-	unsigned long event,
-	void *ptr)
-{
-	mutex_lock(&asus_bat->microp_evt_lock);
-	switch (event) {
-	case P01_ADD:
-		printk(DBGMSK_BAT_INFO "[BAT] %s() +++, P01_ADD \r\n", __FUNCTION__);
-		asus_bat_set_pad_bat_present(true);
-		//ASUS_BSP  +++ Eason_Chang "add P01 charge"
-		//asus_chg_set_chg_mode(ASUS_CHG_SRC_PAD_BAT);//do in AXC_BatteryServiec.c Balance mode
-		//ASUS_BSP  --- Eason_Chang "add P01 charge"
-		break;	
-	case P01_REMOVE: // means P01 removed
-		printk(DBGMSK_BAT_INFO "[BAT] %s() +++, P01_REMOVE \r\n", __FUNCTION__);
-		asus_bat_set_pad_bat_present(false);
-		//ASUS_BSP  +++ Eason_Chang "add P01 charge"
-		//asus_chg_set_chg_mode(ASUS_CHG_SRC_PAD_NONE);//Hank: remove unnecessary setcharger 
-		//ASUS_BSP  --- Eason_Chang "add P01 charge"
-		break;
-	case P01_BATTERY_POWER_BAD: // P01 battery low
-		printk(DBGMSK_BAT_INFO "[BAT] %s() +++, P01_BATTERY_POWER_BAD \r\n", __FUNCTION__);
-		break;
-/* 	case P01_BATTERY_TO_CHARGING:
-		printk(DBGMSK_BAT_INFO "[BAT] %s() +++, P01_BATTERY_TO_CHARGING \r\n", __FUNCTION__);
-		break;
-	case P01_BATTERY_TO_NON_CHARGING:
-		printk(DBGMSK_BAT_INFO "[BAT] %s() +++, P01_BATTERY_TO_NON_CHARGING \r\n", __FUNCTION__);
-		break;
-*/	
-	case P01_AC_USB_IN:
-		printk(DBGMSK_BAT_INFO "[BAT] %s() +++, P01_AC_USB_IN \r\n", __FUNCTION__);
-		//msleep(1500);
-		break;
-	case P01_AC_USB_OUT:
-		printk(DBGMSK_BAT_INFO "[BAT] %s() +++, P01_AC_USB_OUT \r\n", __FUNCTION__);
-		break;
-	default:
-		mutex_unlock(&asus_bat->microp_evt_lock);
-		//printk(DBGMSK_BAT_INFO "[BAT] %s(), not listened evt: %lu \n", __FUNCTION__, event);
-		return NOTIFY_DONE;
-	}
-
-	mutex_unlock(&asus_bat->microp_evt_lock);
-
-	asus_bat_update_all_bat();
-
-	return NOTIFY_DONE;
-}
-#endif //CONFIG_EEPROM_NUVOTON
 
 extern void pm8921_chg_set_chg_mode(enum asus_chg_src chg_src);
 #ifdef CONFIG_CHARGER_ASUS
 extern void asus_chg_set_chg_mode(enum asus_chg_src chg_src)
 {
-    printk("%s,src=%d\n",__FUNCTION__,chg_src );//ASUS_BSP Eason_Chang 1120 porting
+    AXI_Charger *lpCharger;
 
-//ASUS_BSP Eason_Chang 1120 porting +++
-#if 0//ASUS_BSP Eason_Chang 1120 porting
-        if(g_A60K_hwID >=A66_HW_ID_ER2){
+	printk("%s,src=%d\n",__FUNCTION__,chg_src );
 
-            AXI_Charger *lpCharger;
+	lpCharger = getAsusCharger();
 
-            lpCharger = getAsusCharger();
-
-            switch (chg_src) {
-                case ASUS_CHG_SRC_USB:
-                    lpCharger->SetCharger(lpCharger,LOW_CURRENT_CHARGER_TYPE);
-                    break;
-                case ASUS_CHG_SRC_DC:
-                    lpCharger->SetCharger(lpCharger,HIGH_CURRENT_CHARGER_TYPE);
-                    break;
-                case ASUS_CHG_SRC_PAD_BAT:
-                    lpCharger->SetCharger(lpCharger,NORMAL_CURRENT_CHARGER_TYPE);
-                    break;
-                case ASUS_CHG_SRC_NONE:
-                    lpCharger->SetCharger(lpCharger,NO_CHARGER_TYPE);
-                    break;
-                case ASUS_CHG_SRC_UNKNOWN:
-                    lpCharger->SetCharger(lpCharger,ILLEGAL_CHARGER_TYPE);
-                    break;
-                default:
-                    break;
-            }
-        }else{
-            pm8921_chg_set_chg_mode(chg_src);
-
-        }
-#endif//ASUS_BSP Eason_Chang 1120 porting
-        {
-            AXI_Charger *lpCharger;
-
-            lpCharger = getAsusCharger();
-
-		if(ASUS_CHG_SRC_PAD_BAT==chg_src)
-		{
-			IsInPadSetChg = true;
-		}else if(ASUS_CHG_SRC_PAD_NONE==chg_src)
-		{
-			IsInPadSetChg = false;
-		}
-
-		if(false==IsInPadSetChg)
-		{
-	            switch (chg_src) {
-	                case ASUS_CHG_SRC_USB:
-			      //printk("[BAT]SetCharger  LOW_CURRENT_CHARGER_TYPE\n");
-	                    lpCharger->SetCharger(lpCharger,LOW_CURRENT_CHARGER_TYPE);
-	                    break;
-	                case ASUS_CHG_SRC_DC:
-			      //printk("[BAT]SetCharger  HIGH_CURRENT_CHARGER_TYPE\n");
-	                    lpCharger->SetCharger(lpCharger,HIGH_CURRENT_CHARGER_TYPE);
-	                    break;
-	                case ASUS_CHG_SRC_NONE:
-			   case ASUS_CHG_SRC_PAD_NONE:
-			      //printk("[BAT]SetCharger  NO_CHARGER_TYPE\n");	
-	                    lpCharger->SetCharger(lpCharger,NO_CHARGER_TYPE);
-	                    break;
-	                case ASUS_CHG_SRC_UNKNOWN:
-			      //printk("[BAT]SetCharger  ILLEGAL_CHARGER_TYPE\n");
-	                    lpCharger->SetCharger(lpCharger,ILLEGAL_CHARGER_TYPE);
-	                    break;
-	                default:
-	                    break;
-	            }
-		}else if(true==IsInPadSetChg){
-	            switch (chg_src) {
-	                case ASUS_CHG_SRC_PAD_BAT:
-	                    lpCharger->SetCharger(lpCharger,NORMAL_CURRENT_CHARGER_TYPE);
-	                    break;
-	                default:
-	                    break;
-	            }
-		}
-        }
-//ASUS_BSP Eason_Chang 1120 porting ---        
+	switch (chg_src) {
+		case ASUS_CHG_SRC_USB:
+			//printk("[BAT]SetCharger  LOW_CURRENT_CHARGER_TYPE\n");
+			lpCharger->SetCharger(lpCharger,LOW_CURRENT_CHARGER_TYPE);
+			break;
+		case ASUS_CHG_SRC_DC:
+			//printk("[BAT]SetCharger  HIGH_CURRENT_CHARGER_TYPE\n");
+			lpCharger->SetCharger(lpCharger,HIGH_CURRENT_CHARGER_TYPE);
+			break;
+		case ASUS_CHG_SRC_NONE:
+			//printk("[BAT]SetCharger  NO_CHARGER_TYPE\n");
+			lpCharger->SetCharger(lpCharger,NO_CHARGER_TYPE);
+			break;
+		case ASUS_CHG_SRC_UNKNOWN:
+			//printk("[BAT]SetCharger  ILLEGAL_CHARGER_TYPE\n");
+			lpCharger->SetCharger(lpCharger,ILLEGAL_CHARGER_TYPE);
+			break;
+		default:
+			break;
+	}
 }
 #endif
 void asus_bat_set_phone_bat(struct asus_bat_phone_bat_struct *pbs)
@@ -2786,25 +2054,6 @@ static int asus_bat_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-#ifdef CONFIG_EEPROM_NUVOTON
-	err = power_supply_register(&pdev->dev, &pad_ac_psy);
-	if (err < 0) {
-		printk(KERN_ERR "power_supply_register pad_ac_psy failed, err = %d\n", err);
-		goto unregister_pad_bat;
-	}
-	
-	err = power_supply_register(&pdev->dev, &pad_bat_psy);
-	if (err < 0) {
-		printk(KERN_ERR "power_supply_register pad_bat_psy failed, err = %d\n", err);
-		goto unregister_pad_bat;
-	}
-
-	register_microp_notifier(&asus_bat_microp_notifier);
-	notify_register_microp_notifier(&asus_bat_microp_notifier, "asus_bat"); //ASUS_BSP Lenter+
-
-	asus_bat_set_pad_bat_present(false);
-#endif
-
 	mutex_init(&asus_bat->hs_evt_lock);
 	mutex_init(&asus_bat->microp_evt_lock);
 
@@ -2868,15 +2117,6 @@ static int asus_bat_probe(struct platform_device *pdev)
 free_asus_bat_wq:
 	cancel_delayed_work(&asus_bat->bat_update_work);
 	destroy_workqueue(asus_bat_wq);
-
-#ifdef CONFIG_EEPROM_NUVOTON
-unregister_pad_ac:
-	power_supply_unregister(&pad_ac_psy);
-
-unregister_pad_bat:
-	power_supply_unregister(&pad_bat_psy);
-#endif
-
 	kfree(asus_bat);
 	return err;
 }
@@ -2885,10 +2125,6 @@ static int asus_bat_remove(struct platform_device *pdev)
 {
 	cancel_delayed_work(&asus_bat->bat_update_work);
 	destroy_workqueue(asus_bat_wq);
-#ifdef CONFIG_EEPROM_NUVOTON
-	power_supply_unregister(&pad_ac_psy);
-	power_supply_unregister(&pad_bat_psy);
-#endif
 	kfree(asus_bat);
 	asus_bat = NULL;
 	return 0;

@@ -13,20 +13,12 @@ AXC_Charging_FSM *lpFSM;
 #include "../capfilter/axc_cap_filter_factory.h"
 #include "../capfilter/axi_cap_filter.h"
 #include "../capfilter/axc_cap_filter_a66.h"
-#include "../capfilter/axc_cap_filter_p02.h"
 #include <linux/time.h>
 //ASUS BSP Eason_Chang --- batteryservice to gauge
 //ASUS_BSP +++ Eason_Chang BalanceMode
 
 #include <linux/asus_chg.h>
 #include <linux/notifier.h>
-
-#ifdef CONFIG_EEPROM_NUVOTON 
-#include <linux/microp_api.h> 
-#include <linux/microp_pin_def.h>
-#include <linux/microp_notify.h>
-#include <linux/microp.h> 
-#endif //CONFIG_EEPROM_NUVOTON/
 
 //ASUS_BSP +++ Peter_lu "suspend for Battery0% in  fastboot mode issue"
 #ifdef CONFIG_FASTBOOT
@@ -58,25 +50,6 @@ DEFINE_TIMER(HighPower_timer, HighPower_timer_expired, 0, 0);
 #include <linux/sched.h>
 #include "../charger/axi_charger.h" 
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static int IsBalanceMode = 1;//default 1.  0:PowerbankMode, 1:balanceMode, 2:ForcePowerBankMode
-extern int IsBalanceTest(void);
-extern int GetBalanceModeStartRatio(void);
-extern int GetBalanceModeStopRatio(void);
-extern int GetBalanceModeA66CAP(void);
-extern int BatteryServiceGetPADCAP(void);
-extern int BatteryServiceReportPADCAP(void);
-static int IsBalanceCharge = 1;
-static int IsPowerBankCharge = 1;
-static int LastTimeIsBalMode = 1;
-//Eason: A68 new balance mode +++
-#ifndef ASUS_FACTORY_BUILD
-static bool IsSystemdraw = false;
-static bool IsBalanceSuspendStartcharge = false;
-static bool IsKeepChgFrom15pTo19p = false;//Eason:balance mode keep charge from Cap 15 to 19
-#endif
-//Eason: A68 new balance mode ---
-#endif //CONFIG_EEPROM_NUVOTON
 static struct AXC_BatteryService *balance_this=NULL;
 
 //ASUS_BSP --- Eason_Chang BalanceMode
@@ -111,11 +84,6 @@ extern AXI_Charger * getAsusCharger(void);
 static struct AXI_Charger *gpCharger = NULL;
 //ASUS_BSP --- Eason_Chang charger
 
-#ifdef CONFIG_EEPROM_NUVOTON
-extern void BatteryService_P02update(void);
-extern void asus_bat_update_PadAcOnline(void);
-#endif
-
 extern bool reportRtcReady(void);
 
 #define SUSPEND_DISCHG_CURRENT 10
@@ -126,7 +94,6 @@ extern bool reportRtcReady(void);
 #ifdef CONFIG_IDTP9023_CHARGER  
 #define WIRELESS_CHG_CURRENT        700
 #endif
-#define PAD_CHG_CURRENT       900
 
 #define AC_CHG_CURRENT        900
 #define AC_SUSPEND_CHG_CURRENT 1000
@@ -187,29 +154,14 @@ static uint32_t alarm_enabled;
 static uint32_t batLowAlarm_enabled;
 static uint32_t cableInAlarm_enabled;
 #define RTCSetInterval 610
-//Eason: dynamic set Pad alarm +++
-//#define RTCSetIntervalwhenCapLess20  610
-
-#ifndef ASUS_FACTORY_BUILD
-#define RTCSetIntervalwhenBalSuspendStopChg 3610
-#define RTCSetIntervalwhenAlarmIntervalLess3min 190
-#ifdef CONFIG_EEPROM_NUVOTON    
-static int RTCSetIntervalwhenBalanceMode = RTCSetInterval;
-#endif
-static bool InSuspendNeedDoPadAlarmHandler=false;//in suspend set true, in late resume set false,
-												//Pad alarm handler need to do only when display off												
-#endif //ASUS_FACTORY_BUILD
-//Eason: dynamic set Pad alarm ---
 #define RTCSetIntervalwhenBATlow  310
 #define RTCSetIntervalwhenCABLEIn  1810
 #define CapChangeRTCInterval 20
 //Eason set alarm ---
+
 // when A66 Cap = 0% shutdown device no matter if has cable+++ 
 extern bool g_AcUsbOnline_Change0;
 extern void AcUsbPowerSupplyChange(void);
-#ifdef CONFIG_EEPROM_NUVOTON
-extern void Pad_AC_PowerSupplyChange(void);
-#endif
 // when A66 Cap = 0% shutdown device no matter if has cable---
 //Eason boot up in BatLow situation, take off cable can shutdown+++
 extern bool g_BootUp_IsBatLow;
@@ -219,7 +171,6 @@ extern bool g_audio_limit;
 static bool IsPhoneOn = false;
 //Eason : prevent thermal too hot, limit charging current in phone call---
 //Eason : when thermal too hot, limit charging current +++ 
-extern bool g_padMic_On; 
 extern int g_thermal_limit;
 static bool IsThermalHot = false;
 //Eason : when thermal too hot, limit charging current ---
@@ -261,9 +212,7 @@ bool g_batLowLongTimeShut = false;
 static bool IsLastTimeMah10mA = false;
 static bool IfUpdateSavedTime = false;	
 //Eason : if last time is 10mA ---
-//Eason: Pad draw rule +++
 #include "../charger/axc_Smb346Charger.h"
-//Eason: Pad draw rule ---
 //Eason: MPdecisionCurrent +++
 static int MPdecisionCurrent=0;
 extern int get_current_for_ASUSswgauge(void);
@@ -817,133 +766,8 @@ static void judgeCpuThrottleByCap(void)
 }
 //Eason: LowCapCpuThrottle ---
 
-#ifdef CONFIG_EEPROM_NUVOTON
-//Eason:  Pad draw rule compare thermal +++
-static bool DecideIfPadDockHaveExtChgAC(void);
-PadDrawLimitCurrent_Type JudgePadRuleDrawLimitCurrent(bool isSuspendCharge)
-{
-#ifdef CONFIG_EEPROM_NUVOTON
-	if( 1==AX_MicroP_IsP01Connected() )
-	{
-		if((balance_this->A66_capacity <= 8) ||(2==IsBalanceMode) || isSuspendCharge)//ForcePowerBankMode draw 900
-		{
-				return PadDraw900;	
-		}else if( (true == DecideIfPadDockHaveExtChgAC())&&(1==IsBalanceMode) )//only do this rule in balanceMode
-		{
-				if(balance_this->A66_capacity <= 15)
-				{
-						return PadDraw700;
-				}else{
-						if( (balance_this->A66_capacity-balance_this->Pad_capacity)>=20 )
-									return PadDraw300;
-						else if( (balance_this->A66_capacity-balance_this->Pad_capacity)>=10 )
-									return PadDraw500;
-						else
-									return PadDraw700;
-				}
-
-		}else{
-				return PadDraw700;
-		}
-	}else{
-		return PadDraw700;
-	}
-#else
-	return PadDraw700;
-#endif
-}
-//Eason:  Pad draw rule compare thermal ---
-
-//ASUS_BSP Eason when audio on, draw 500mA from Pad ++++
-extern void setChgDrawPadCurrent(bool audioOn);
-void SetPadCurrentDependOnAudio(bool audioOn)
-{
-/*
-   if( 1==AX_MicroP_IsP01Connected() )
-   {
-   	setChgDrawPadCurrent(audioOn);
-   }
-*/   
-}
-//ASUS_BSP Eason when audio on, draw 500mA from Pad ---
-
-//ASUS BSP Eason add A68 charge mode +++
-static int decidePowerBankChgModeStopPercent(void)
-{
-	int StopPercent = 90;
-
-	StopPercent = balance_this->A66_capacity + 2*balance_this->Pad_capacity;
-
-	if(StopPercent >= 90)
-	{
-		StopPercent = 90;
-	}
-
-        printk("[BAT][smb346]PowerBank Stop Percent: %d \n",StopPercent);	
-	return StopPercent;
-}
-
-static int decideBalanceChgModeStopPercent(void)
-{
-	int StopPercent = 90;
-
-	StopPercent =  (balance_this->A66_capacity + 2*balance_this->Pad_capacity)/2;
-
-	if(StopPercent >= 90)
-	{
-		StopPercent = 90;
-	}else if(StopPercent <= 15){
-		StopPercent = min( (balance_this->A66_capacity + 2*balance_this->Pad_capacity), 15 );
-      }
-
-        printk("[BAT][smb346]Balance Stop Percent: %d \n",StopPercent);	
-	return StopPercent;
-}
-
-
-static void do_PadBalanceMode_inChgMode(void)
-{
-	int NeedStopPercent = 90;
-
-	if(1 == IsBalanceMode)// Balance Mode
-	{
-		NeedStopPercent = decideBalanceChgModeStopPercent();
-		setFloatVoltage(NeedStopPercent);
-	}else{//PowerBank Mode
-		NeedStopPercent = decidePowerBankChgModeStopPercent();
-		setFloatVoltage(NeedStopPercent);
-	}
-}
-
-void decideIfDo_PadBalanceModeInChgMode(void)
-{
-	int PadChgCable = 1;
-
-	if(1==AX_MicroP_IsP01Connected())
-	{	
-		PadChgCable = AX_MicroP_get_USBDetectStatus(Batt_P01);
-	
-		if(1 == PadChgCable)
-		{
-			printk("[BAT][smb346]with extChg dont do PadChgMode\n");
-		}else{
-			printk("[BAT][smb346]without extChg need do PadChgMode\n");
-			do_PadBalanceMode_inChgMode();			
-		}
-	}
-}
-#endif //CONFIG_EEPROM_NUVOTON
-//ASUS BSP Eason add A68 charge mode ---
-
 //ASUS BSP Eason_Chang +++ batteryservice to fsm
 static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService *_this, int refcapacity);
-
-#ifdef CONFIG_EEPROM_NUVOTON
-int ReportBatteryServiceP02Cap(void)
-{
-    return balance_this->Pad_capacity;
-}
-#endif
 
 static void BatteryService_enable_ChargingFsm(AXC_BatteryService *_this)
 {
@@ -962,13 +786,6 @@ static void BatteryService_enable_Gauge(AXC_BatteryService *_this)
 
         AXC_GaugeFactory_GetGaugeV2(E_SW_GAUGE_V2_TYPE , &_this->gauge, &_this->gaugeCallback);
     }
-
-#ifdef CONFIG_EEPROM_NUVOTON
-    if(NULL == _this->P02gauge){
-
-        AXC_GaugeFactory_GetGaugeV2(E_HW_GAUGE_PAD_TYPE , &_this->P02gauge, &_this->P02gaugeCallback);
-    }
-#endif
 }
 //ASUS BSP Eason_Chang --- batteryservice to gauge
 
@@ -977,12 +794,6 @@ static void BatteryService_enable_Filter(AXC_BatteryService *_this)
 	if(NULL == _this->gpCapFilterA66){
 		AXC_Cap_Filter_Get(E_CAP_FILTER_PHONE_A66, &_this->gpCapFilterA66, 369); //FCC
 	}
-
-#ifdef CONFIG_EEPROM_NUVOTON
-	if(NULL == _this->gpCapFilterP02){
-		AXC_Cap_Filter_Get(E_CAP_FILTER_PAD_P02, &_this->gpCapFilterP02, 4300);
-	}
-#endif
 }
 
 //ASUS_BSP  +++ Eason_Chang charger
@@ -1003,36 +814,7 @@ static void onChargingStart(struct AXI_Charger *apCharger, bool startCharging)
 
 }
 //ASUS_BSP  --- Eason_Chang charger
-
-#ifndef ASUS_FACTORY_BUILD
-#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++
-static int get_5VPWR_EN(void)
-{
-    return AX_MicroP_getGPIOOutputPinLevel(OUT_uP_5V_PWR_EN);
-}
-#endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---
-#endif//#ifndef ASUS_FACTORY_BUILD
 //Eason: A68 new balance mode ---
-
-
-//ASUS_BSP +++ Eason_Chang BalanceMode
-#ifdef CONFIG_EEPROM_NUVOTON
-static void set_microp_vbus(int level)
-{
-    int rt;
- 	   rt = AX_MicroP_setGPIOOutputPin(OUT_uP_VBUS_EN, level);
-    if (rt<0){
-           printk("[BAT][Bal]microp set error\n");
-    }else if(rt == 0){
-           printk("[BAT][Bal]microp set success\n");
-    } 
-}
-
-static int get_microp_vbus(void)
-{
-    return AX_MicroP_getGPIOOutputPinLevel(OUT_uP_VBUS_EN);
-}
-#endif //#ifdef CONFIG_EEPROM_NUVOTON
 
 #ifdef ASUS_FACTORY_BUILD
 //Eason: take off 5060rule let A80 can always charge+++
@@ -1056,328 +838,16 @@ static void Do_Factory5060Mode(void)
 		gpCharger->EnableCharging(gpCharger,false);
 		DisChg = true;
 		balance_this->fsm->onChargingStop(balance_this->fsm,POWERBANK_STOP);
-
-#ifdef CONFIG_EEPROM_NUVOTON
-		printk("[BAT][Factory]mode:%d,StopChg,Vbus:%d\n",IsBalanceMode,get_microp_vbus());
-#endif
 	}else if(balance_this->A66_capacity <= 60){   
 		g_5060modeCharging = true;
 		gpCharger->EnableCharging(gpCharger,true);
 		DisChg = false;
 		balance_this->fsm->onChargingStart(balance_this->fsm);
-#ifdef CONFIG_EEPROM_NUVOTON
-		printk("[BAT][Factory]mode:%d,StartChg,Vbus:%d\n"
-												,IsBalanceMode,get_microp_vbus());
-	}else{
-		printk("[BAT][Factory]mode:%d,sameChg,Vbus:%d\n"
-												,IsBalanceMode,get_microp_vbus());
-#endif	
 	}
 	printk("[BAT][Factory]:DoFactory5060Mode---\n");
    
 }
 #endif//#ifdef ASUS_FACTORY_BUILD
-
-#ifdef CONFIG_EEPROM_NUVOTON
-void Init_Microp_Vbus__Chg(void)
-{
-#ifndef ASUS_FACTORY_BUILD
-	set_microp_vbus(1);
-	gpCharger->EnableCharging(gpCharger,true);
-	DisChg = false;
-	IsBalanceCharge = 1;
-	IsPowerBankCharge = 1;
-	balance_this->fsm->onChargingStart(balance_this->fsm);
-	printk("[BAT][Bal]InitVbus:%d,InitChg:%d\n",get_microp_vbus(),gpCharger->IsCharging(gpCharger));
-#else 
-	if( true == charger_limit_enable )
-		Do_Factory5060Mode();
-#endif//#ifndef ASUS_FACTORY_BUILD
-}    
-
-void  openMicropVbusBeforeShutDown(void){  
-	set_microp_vbus(1);
-}    
- 
-#ifndef ASUS_FACTORY_BUILD
-static void Do_PowerBankMode(void)
-{
-	printk("[BAT][Bal]:DoPowerBank+++\n");
-   //set_microp_vbus(1);
-   
-	if(balance_this->A66_capacity >= 90){
-		//set_microp_vbus(0);
-		gpCharger->EnableCharging(gpCharger,false);
-		DisChg = true;
-		balance_this->fsm->onChargingStop(balance_this->fsm,POWERBANK_STOP);
-
-		IsPowerBankCharge = 0;
-		printk("[BAT][Bal]mode:%d,StopChg,Vbus:%d\n"
-                                        ,IsBalanceMode,get_microp_vbus());
-	}else if(balance_this->A66_capacity <= 70){   
-		//set_microp_vbus(1);
-		gpCharger->EnableCharging(gpCharger,true);
-		DisChg = false;
-		balance_this->fsm->onChargingStart(balance_this->fsm);
-
-		IsPowerBankCharge = 1;
-		printk("[BAT][Bal]mode:%d,StartChg,Vbus:%d\n"
-                                        ,IsBalanceMode,get_microp_vbus());
-	}else{
-         printk("[BAT][Bal]mode:%d,sameChg,Vbus:%d\n"
-                                        ,IsBalanceMode,get_microp_vbus());
-	}  
-   printk("[BAT][Bal]:DoPowerBank---\n");
-}
-#endif//#ifndef ASUS_FACTORY_BUILD
-
-//Eason: A68 new balance mode +++	
-static bool DecideIfPadDockHaveExtChgAC(void);
-//Eason: A68 new balance mode ---
-
-//Eason: dynamic set Pad alarm +++
-#ifndef ASUS_FACTORY_BUILD
-static void judgeIfneedDoBalanceModeWhenSuspend(void)
-{
-
-	if( true==IsKeepChgFrom15pTo19p )
-	{
-		 IsBalanceSuspendStartcharge = true;	
-	}else if( (balance_this->A66_capacity>=85)||(balance_this->A66_capacity*10-balance_this->Pad_capacity*12 >=0) )
-	{
-		 IsBalanceSuspendStartcharge = false;
-
-	}else if((balance_this->A66_capacity<=70)&&(balance_this->A66_capacity*10-balance_this->Pad_capacity*9 <=0) ){
-
- 		 IsBalanceSuspendStartcharge = true;		 
-	}
-}
-#endif
-void SetRTCAlarm(void);
-//Eason: dynamic set Pad alarm ---
-
-static void BatteryServiceDoBalance(struct AXC_BatteryService *_this)
-{
-#ifndef ASUS_FACTORY_BUILD
-   int StartRatio;
-   int StopRatio;
-
-   printk("[BAT][Bal]:DoBalance +++\n");
-   //gpCharger->EnableCharging(gpCharger,true);
-   StartRatio = GetBalanceModeStartRatio();
-   StopRatio = GetBalanceModeStopRatio();
-
-   printk("[BAT][Bal]%d,%d,%d,%d,%d\n",
-                      IsBalanceMode,StartRatio,StopRatio,
-                      _this->A66_capacity,_this->Pad_capacity);
-
-   if(1 == IsBalanceMode){
-
-         LastTimeIsBalMode = 1;
-
-	//Eason: A68 new balance mode +++	
-
-
-		//Eason:balance mode keep charge from Cap 15 to 19+++
-		if( (_this->A66_capacity>=20)||(false==IsKeepChgFrom15pTo19p) )//16~19 first dobalance will default set_microp_vbus(0) by false==IsKeepChgFrom15pTo19p
-		{
-			//when forceresume default turn off vbus +++
-			if ((false==IsSystemdraw)&&(false == DecideIfPadDockHaveExtChgAC()))//can't take off this, cause if plug extChg and interval calculate Cap can't turn off vbus  
-			{
-					set_microp_vbus(0);//do this cause in suspend will turn on vbus to charge
-					printk("[BAT][Bal]turn off vbus default\n");
-			}			
-			//when forceresume default turn off vbus ---	
-			//judge if draw current to system but does not charge battery +++
-			if((_this->A66_capacity>=90)||(_this->A66_capacity-_this->Pad_capacity*StopRatio>=0))
-			{
-					set_microp_vbus(0);
-					//gpCharger->EnableCharging(gpCharger,false); //Hank: remove disable charging when cable off
-					DisChg = true;
-					_this->fsm->onChargingStop(_this->fsm,BALANCE_STOP);   
-	             
-					IsBalanceCharge = 0;
-					IsSystemdraw = false;
-					printk("[BAT][Bal]mode:%d,N_Vbus N_Chg,Vbus:%d,SysD:%d\n"
-									,IsBalanceMode,get_microp_vbus(),IsSystemdraw);
-					ASUSEvtlog("[BAT][Bal]draw system[stop]\n");
-	          
-			}else if((_this->A66_capacity*10 - _this->Pad_capacity*StartRatio <= 0)
-					&&(_this->A66_capacity <= 70 ))
-			{
-					set_microp_vbus(1);
-					gpCharger->EnableCharging(gpCharger,false);
-					DisChg = true;
-					_this->fsm->onChargingStop(_this->fsm,BALANCE_STOP);
-             
-					IsBalanceCharge = 0;
-					IsSystemdraw = true;
-					printk("[BAT][Bal]mode:%d,Y_Vbus N_Chg,Vbus:%d,SysD:%d\n"
-									,IsBalanceMode,get_microp_vbus(),IsSystemdraw);
-					ASUSEvtlog("[BAT][Bal]draw system[Start]\n");
-			}
-			//judge if draw current to system, but does not charge battery ---
-		}
-		//Eason:balance mode keep charge from Cap 15 to 19---
-		
-		//judge if charge to battery +++
-		if(_this->A66_capacity>=20)
-		{
-				gpCharger->EnableCharging(gpCharger,false);
-				DisChg = true;
-				_this->fsm->onChargingStop(_this->fsm,BALANCE_STOP);
-
-				IsBalanceCharge = 0;
-				IsKeepChgFrom15pTo19p = false;//Eason:balance mode keep charge from Cap 15 to 19
-				
-				printk("[BAT][Bal]mode:%d,F_Vbus N_Chg,Vbus:%d\n"
-								,IsBalanceMode,get_microp_vbus());
-				ASUSEvtlog("[BAT][Bal]active charge[stop]\n");
-				
-		}else if(_this->A66_capacity<=15)
-		{
-				set_microp_vbus(1);
-				gpCharger->EnableCharging(gpCharger,true);
-				DisChg = false;
-				_this->fsm->onChargingStart(_this->fsm);
-
-				IsBalanceCharge = 1;
-				IsKeepChgFrom15pTo19p = true;//Eason:balance mode keep charge from Cap 15 to 19
-				
-				printk("[BAT][Bal]mode:%d,Y_Vbus Y_Chg,Vbus:%d\n"
-								,IsBalanceMode,get_microp_vbus());
-				ASUSEvtlog("[BAT][Bal]active charge[Start]\n");
-		}
-		//judge if charge to battery ---
-		//Eason: dynamic set Pad alarm +++
-		judgeIfneedDoBalanceModeWhenSuspend();
-		//Eason: dynamic set Pad alarm ---
-	//Eason: A68 new balance mode ---
-
-         
-   //}else if(0==IsBalanceMode && 1==LastTimeIsBalMode && 0==IsBalanceCharge){
-   }else if(0==IsBalanceMode){
-         
-         LastTimeIsBalMode = 0;
-
-         Do_PowerBankMode();
-         
-         
-   }
-   //Eason: do ForcePowerBankMode+++
-   else if(2==IsBalanceMode){
-   	
-         LastTimeIsBalMode = 0;
-
-         Do_PowerBankMode();
-   }	
-   //Eason: do ForcePowerBankMode---
-	
-   pr_debug("[BAT][Bal]LastBal:%d,IsBalChg:%d,IsBankChg:%d\n"
-                            ,LastTimeIsBalMode,IsBalanceCharge,IsPowerBankCharge);
-   
-   printk("[BAT][Bal]:DoBalance ---\n");
-#endif//#ifndef ASUS_FACTORY_BUILD
-}
-
-static bool DecideIfPadDockHaveExtChgAC(void)
-{
-    bool IsPadDockExtChgAC = false;
-    int PadChgCable = 0;
-    bool DockChgCable = false;
-    int IsDockIn = 0;
-    
-    PadChgCable = AX_MicroP_get_USBDetectStatus(Batt_P01);
-    
-	if(1==PadChgCable){
-		IsPadDockExtChgAC = true; 
-	}
-
-	pr_debug("[BAT][Ser]:DockI:%d,PadAC:%d,DockAC:%d,ExtChg:%d\n",IsDockIn,PadChgCable,DockChgCable,IsPadDockExtChgAC);
- 
-	return IsPadDockExtChgAC;
-}  
-
-//Eason: do ForcePowerBankMode+++
-void DoForcePowerBankMode(void)
-{
-	unsigned short off=0xAA;
-
-	uP_nuvoton_write_reg(MICROP_SOFTWARE_OFF,  &off);
-	printk("[BAT][Bal]:ForcePowerBankMode\n");
-}
-//Eason: do ForcePowerBankMode---
-#if 0
-static ssize_t balanceChg_read_proc(char *page, char **start, off_t off, int count, 
-            	int *eof, void *data)
-{
-	return sprintf(page, "%d\n", IsBalanceMode);
-}
-static ssize_t balanceChg_write_proc(struct file *filp, const char __user *buff, 
-	            unsigned long len, void *data)
-{
-	int val;
-
-	char messages[256];
-
-	if (len > 256) {
-		len = 256;
-	}
-
-	if (copy_from_user(messages, buff, len)) {
-		return -EFAULT;
-	}
-	
-	val = (int)simple_strtol(messages, NULL, 10);
-
-
-	IsBalanceMode = val;
-
-//when takeoff extChg default turn off vbus +++
-#ifndef ASUS_FACTORY_BUILD
-	  IsSystemdraw=false;
-	  IsBalanceSuspendStartcharge = false;
-	  IsKeepChgFrom15pTo19p = false;//Eason:balance mode keep charge from Cap 15 to 19s
-#endif
-//when takeoff extChg default turn off vbus ---
-  
-    if(1==AX_MicroP_IsP01Connected()){
-
-		if( false == DecideIfPadDockHaveExtChgAC()){ 
-				Init_Microp_Vbus__Chg();
-				BatteryServiceDoBalance(balance_this);
-		}else{
-				Init_Microp_Vbus__Chg();
-		}
-		//Eason: do ForcePowerBankMode+++
-		if(2==IsBalanceMode){
-				DoForcePowerBankMode();
-		}
-		//Eason: do ForcePowerBankMode---
-    }
-    
-    printk("[BAT][Bal]mode:%d\n",val);
-	
-	return len;
-}
-#endif
-static const struct file_operations balanceChg_proc_fops = {
-	.owner		= THIS_MODULE,
-//	.read		= balanceChg_read_proc,
-//	.write		= balanceChg_write_proc,
-};
-
-void static create_balanceChg_proc_file(void)
-{
-	struct proc_dir_entry *balanceChg_proc_file = proc_create("driver/balanceChg", 0644, NULL, &balanceChg_proc_fops);
-
-	if (!balanceChg_proc_file) {
-		printk("[BAT][Bal]proc file create failed!\n");
-    }
-
-	return;
-}
-#endif //CONFIG_EEPROM_NUVOTON
 
 //Eason: MPdecisionCurrent +++
 static int MPdecisionCurrent_proc_show(struct seq_file *seq, void *v)
@@ -1604,266 +1074,6 @@ static void ReportTime(void)
 #endif
 //ASUS_BSP  --- Eason_Chang "add BAT info time"
 
-#ifdef CONFIG_EEPROM_NUVOTON
-void Init_BalanceMode_Flag(void)
-{
-
-         Init_Microp_Vbus__Chg();
-		 
-//Eason: A68 new balance mode +++			 
-#ifndef ASUS_FACTORY_BUILD
-	 IsBalanceSuspendStartcharge = false;//when plugIn Pad default false, or in doInBalanceModeWhenSuspend will keep last plugIn time status 
-	 IsSystemdraw = false;//when plugIn Pad default false,
-	 IsKeepChgFrom15pTo19p = false;//Eason:balance mode keep charge from Cap 15 to 19
-#endif
-//Eason: A68 new balance mode ---
-
-         LastTimeIsBalMode = 1;
-         IsBalanceCharge = 1;
-         IsPowerBankCharge =1;
-         balance_this->P02_savedTime = updateNowTime(balance_this);
-}
-//ASUS_BSP --- Eason_Chang BalanceMode
-#endif
-
-//ASUS_BSP +++ Eason_Chang BalanceMode
-#ifdef CONFIG_EEPROM_NUVOTON
-static int batSer_microp_event_handler(
-	struct notifier_block *this,
-	unsigned long event,
-	void *ptr)
-{
-    unsigned long flags;
-	pr_debug( "[BAT][Bal] %s() +++, evt:%lu \n", __FUNCTION__, event);
-
-	switch (event) {
-	case P01_ADD:
-		printk( "[BAT][Bal]P01_ADD \r\n");
-        asus_chg_set_chg_mode(ASUS_CHG_SRC_PAD_BAT);
-        balance_this->P02_IsFirstAskCap = true;
-        Init_BalanceMode_Flag();
-        
-        cancel_delayed_work_sync(&balance_this->BatteryServiceUpdateWorker);
-	//Hank: cancel BatteryServiceUpdateWorker need calculate capacity+++
-        balance_this->NeedCalCap = true;
-        //Hank: cancel BatteryServiceUpdateWorker need calculate capacity---
-        queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
-                               &balance_this->BatteryServiceUpdateWorker,\
-                               0 * HZ);
-
-	//Eason: dynamic set Pad alarm +++
-#ifdef ASUS_FACTORY_BUILD	
-        schedule_delayed_work(&balance_this->SetRTCWorker, 1*HZ);
-#endif
-	//Eason: dynamic set Pad alarm ---
-	 
-        //Init_BalanceMode_Flag();
-        //BatteryServiceDoBalance(balance_this);
-		break;	
-	case P01_REMOVE: // means P01 removed
-        g_padMic_On = false;//Eason:thermal limit charging current,cause setChgDrawPadCurrent only do inPad
-		printk( "[BAT][Bal]P01_REMOVE \r\n");
-        
-        spin_lock_irqsave(&bat_alarm_slock, flags);
-        alarm_try_to_cancel(&bat_alarm);
-        spin_unlock_irqrestore(&bat_alarm_slock, flags);
-
-        asus_chg_set_chg_mode(ASUS_CHG_SRC_PAD_NONE);
-        asus_bat_update_PadAcOnline();//Eason: In charger mode need update current status
-		break;
-    case P01_AC_USB_IN:
-        //msleep(800);//Eason ,need time delay to get PAD AC/USB
-        asus_bat_update_PadAcOnline();    
-        printk( "[BAT][Bal]P01_AC_USB_IN\r\n");
-
-        if(true==DecideIfPadDockHaveExtChgAC()){
-                Init_Microp_Vbus__Chg();
-        }
-		break;
-    case P01_AC_USB_OUT:
-        asus_bat_update_PadAcOnline();    
-        printk( "[BAT][Bal]P01_AC_USB_OUT \r\n");
-        schedule_delayed_work(&balance_this->CableOffWorker,1*HZ);//keep 100% 5 min
-  //when takeoff extChg default turn off vbus +++
-#ifndef ASUS_FACTORY_BUILD
-	  IsSystemdraw=false;
-	 IsBalanceSuspendStartcharge = false;
-	 IsKeepChgFrom15pTo19p = false;//Eason:balance mode keep charge from Cap 15 to 19
-#endif
-  //when takeoff extChg default turn off vbus ---
-        BatteryServiceDoBalance(balance_this);
-		break;
-	//Eason after Pad update firmware, update status +++
-	case PAD_UPDATE_FINISH:
-		printk( "[BAT][Bal]PAD_UPDATE_FINISH+++\n");
-		schedule_delayed_work(&balance_this->UpdatePadWorker, 0*HZ);
-
-		Init_Microp_Vbus__Chg();
-
-		if(delayed_work_pending(&balance_this->BatteryServiceUpdateWorker))
-		{
-			cancel_delayed_work_sync(&balance_this->BatteryServiceUpdateWorker); 
-		}
-		//Hank: cancel BatteryServiceUpdateWorker need calculate capacity+++
-		balance_this->NeedCalCap = true;
-		//Hank: cancel BatteryServiceUpdateWorker need calculate capacity---  
-		pr_debug("[BAT][SER][Pad]%s(PAD_UPDATE_FINISH) queue BatteryServiceUpdateWorker with calculate capacity\n",__func__);     
-		queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
-                               &balance_this->BatteryServiceUpdateWorker,\
-                               0 * HZ);
-	break;
-	//Eason after Pad update firmware, update status ---
-
-	//Hank : change pad icon immediately when pad firmware notify +++
-	case P05_BAT_STATUS_CHANGE:
-		printk( "[BAT][Bal]P05_BAT_STATUS_CHANGE+++\n");
-			schedule_delayed_work(&balance_this->UpdatePadWorker, 0*HZ);
-	break;
-	//Hank : change pad icon immediately when pad firmware notify ---	
-
-	default:
-		pr_debug("[BAT][Bal] %s(), not listened evt: %lu \n", __FUNCTION__, event);
-		return NOTIFY_DONE;
-	}
-
-
-	pr_debug("[BAT][Bal] %s() ---\n", __FUNCTION__);
-	return NOTIFY_DONE;
-}
-#endif //CONFIG_EEPROM_NUVOTON
-//ASUS_BSP --- Eason_Chang BalanceMode
-
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static struct notifier_block batSer_microp_notifier = {
-        .notifier_call = batSer_microp_event_handler,
-};
-
-static void CheckBatEcAc(struct work_struct *dat)
-{
-        if(true == DecideIfPadDockHaveExtChgAC()){
-                Init_Microp_Vbus__Chg();
-        }
-}
-#endif //CONFIG_EEPROM_NUVOTON
-
-//Eason: dynamic set Pad alarm +++
-#ifndef ASUS_FACTORY_BUILD
-#ifdef CONFIG_EEPROM_NUVOTON
-static int CalBalanceInterval(void)
-{
-	int BalanceInterval;
-	int StopInterval_Ratio_1p3;
-	int StopInterval_90p;
-	int StopInterval_20p;
-
-	//f2=f1+(900*100/2100)*x1/3600 
-	//P2=p1-25*(x1/3600)    , (900*5V)/(19*0.95)~=25
-	//f2/p2<=1.3
-	StopInterval_Ratio_1p3 = (balance_this->Pad_capacity*13104 - balance_this->A66_capacity*10080)/211;
-
-	//f2=f1+(900*100/2100)*x1/3600 
-	//f2<=90
-	StopInterval_90p =  (7560 - (balance_this->A66_capacity*84));
-
-	BalanceInterval=min(StopInterval_Ratio_1p3,StopInterval_90p);
-
-	
-	if(balance_this->A66_capacity<20)
-	{
-			//f2=f1+(900*100/2100)*x1/3600
-			StopInterval_20p = (1680 - (balance_this->A66_capacity*84));
-			
-			BalanceInterval = max(StopInterval_20p,RTCSetIntervalwhenAlarmIntervalLess3min);
-			printk("[BAT][Bal]:Phone less 20p:%d\n",BalanceInterval);
-	}else if(BalanceInterval<=180)
-	{
-			BalanceInterval = RTCSetIntervalwhenAlarmIntervalLess3min;
-			printk("[BAT][Bal]:interval less 180sec:%d\n",BalanceInterval);
-	}else if(BalanceInterval>=3600)
-	{
-			BalanceInterval = RTCSetIntervalwhenBalSuspendStopChg;
-			printk("[BAT][Bal]:interval >1hr :%d\n",BalanceInterval);
-	}else{
-			printk("[BAT][Bal]:interval :%d\n",BalanceInterval);
-	}
-
-	return BalanceInterval;
-	
-}
-
-static int CalPowerBankInterval(void)
-{
-	int PowerBankInterval;
-	int StopPowerBankInterval_90p;
-
-	StopPowerBankInterval_90p =  (7560 - (balance_this->A66_capacity*84));
-
-	PowerBankInterval = StopPowerBankInterval_90p;
-
-	if(0==IsPowerBankCharge)//PowerBank Mode Stop condition
-	{
-			PowerBankInterval = RTCSetIntervalwhenBalSuspendStopChg;
-			printk("[BAT][Bal][PwrB]:stop chg interval 1hr:%d\n",PowerBankInterval);
-	}
-	else if(StopPowerBankInterval_90p <= 180)
-	{	
-			PowerBankInterval = RTCSetIntervalwhenAlarmIntervalLess3min;	
-			printk("[BAT][Bal][PwrB]:interval less 180sec:%d\n",PowerBankInterval);
-	}else if(PowerBankInterval>=3600)
-	{
-			PowerBankInterval = RTCSetIntervalwhenBalSuspendStopChg;
-			printk("[BAT][Bal][PwrB]:interval >1hr :%d\n",PowerBankInterval);
-	}else{
-			printk("[BAT][Bal][PwrB]:interval :%d\n",PowerBankInterval);
-	}
-
-	return  PowerBankInterval;
-}
-
-   
-static void decideBalanceModeInterval(void)
-{
-	if(1==IsBalanceMode)
-	{
-		RTCSetIntervalwhenBalanceMode= CalBalanceInterval();
-	}else if((0==IsBalanceMode)||(2==IsBalanceMode)){//Eason: do ForcePowerBankMode
-		RTCSetIntervalwhenBalanceMode= CalPowerBankInterval();
-	}
-}
-
-static void DoWhenPadAlarmResume(void)
-{	
-    printk("[BAT][Ser]:PadAlarmResume()+++\n");
-
-        balance_this->IsResumeUpdate = true;
-        balance_this->IsResumeMahUpdate = true;
-        balance_this->P02_IsResumeUpdate = true;
-
-        if(delayed_work_pending(&balance_this->BatteryServiceUpdateWorker))
-        {
-            cancel_delayed_work_sync(&balance_this->BatteryServiceUpdateWorker);
-        }
-	//Hank: cancel BatteryServiceUpdateWorker need calculate capacity+++
-	balance_this->NeedCalCap = true;
-	 //Hank: cancel BatteryServiceUpdateWorker need calculate capacity--- 
-        pr_debug("[BAT][SER][Pad]%s queue BatteryServiceUpdateWorker with calculate capacity\n",__func__);  
-        queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
-                               &balance_this->BatteryServiceUpdateWorker,\
-                               0 * HZ);
-
-        if( false == reportRtcReady()){
-            queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue,
-                                   &balance_this->BatRtcReadyWorker,
-                                   RTC_READY_DELAY_TIME * HZ);
-        }
-
-        printk("[BAT][Ser]:PadAlarmResume()---\n");
-}
-#endif //CONFIG_EEPROM_NUVOTON
-#endif //ASUS_FACTORY_BUILD
-//Eason: dynamic set Pad alarm ---
-
 //Eason set alarm +++
 void SetRTCAlarm(void)
 {
@@ -1881,24 +1091,7 @@ void SetRTCAlarm(void)
 
 //Eason: dynamic set Pad alarm +++
 #ifdef ASUS_FACTORY_BUILD
-		new_alarm_time.tv_sec = mtNow.tv_sec+RTCSetInterval;
-#else
-	 #ifdef CONFIG_EEPROM_NUVOTON    
-		if((1==AX_MicroP_IsP01Connected())&&( true == DecideIfPadDockHaveExtChgAC()))
-		{
-			new_alarm_time.tv_sec = mtNow.tv_sec+RTCSetInterval;
-		}else if(( 0==IsBalanceMode)||( 2==IsBalanceMode))//PowerBankMode//Eason: do ForcePowerBankMode
-		{			
-			decideBalanceModeInterval();
-			new_alarm_time.tv_sec = mtNow.tv_sec+RTCSetIntervalwhenBalanceMode;
-		}else if( (true==IsBalanceSuspendStartcharge) && ( 1==IsBalanceMode))//BalanceMode need do suspend charge
-		{
-			decideBalanceModeInterval();
-			new_alarm_time.tv_sec = mtNow.tv_sec+RTCSetIntervalwhenBalanceMode;
-		}else{//BalanceMode dont need do suspend charge
-			new_alarm_time.tv_sec = mtNow.tv_sec+RTCSetIntervalwhenBalSuspendStopChg;
-		}
-	#endif	
+	new_alarm_time.tv_sec = mtNow.tv_sec+RTCSetInterval;
 #endif
 //Eason: dynamic set Pad alarm ---
     
@@ -1925,13 +1118,6 @@ static enum alarmtimer_restart alarm_handler(struct alarm *alarm, ktime_t now)
 //Eason: dynamic set Pad alarm +++
 #ifdef ASUS_FACTORY_BUILD
     SetRTCAlarm();
-#else
-	if(true==InSuspendNeedDoPadAlarmHandler)//Pad alarm handler need to do only when display off
-	{
-		queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
-		                               &balance_this->PadAlarmResumeWorker,\
-		                               0 * HZ);
-	}
 #endif
 //Eason: dynamic set Pad alarm ---
 	return ALARMTIMER_NORESTART;
@@ -1994,7 +1180,7 @@ static void SetCableInRTCAlarm(void)
     new_cableInAlarm_time.tv_sec = 0;
     new_cableInAlarm_time.tv_nsec = 0;
 
-    //printk("[BAT][alarm][cableIn]:%ld.%ld\n",mtNow.tv_sec,mtNow.tv_nsec);
+    printk("[BAT][alarm][cableIn]:%ld.%ld\n",mtNow.tv_sec,mtNow.tv_nsec);
 
 
     new_cableInAlarm_time.tv_sec = mtNow.tv_sec+RTCSetIntervalwhenCABLEIn;
@@ -2036,16 +1222,8 @@ static void CheckBatRtcReady(struct work_struct *dat)
        {
             _this->savedTime=updateNowTime(_this);
 		//Eason: when change MaxMah clear interval+++
-		_this->ForceSavedTime = updateNowTime(_this);
+			_this->ForceSavedTime = updateNowTime(_this);
 		//Eason: when change MaxMah clear interval---
-            //ASUS_BSP Eason_Chang 1120 porting +++
-	     #ifdef CONFIG_EEPROM_NUVOTON              
-            if(1==AX_MicroP_IsP01Connected())
-            {
-                    _this->P02_savedTime = updateNowTime(_this);
-            }
-	     #endif
-	     //ASUS_BSP Eason_Chang 1120 porting ---               
             printk("[BAT][Ser]sys time ready\n");
        }else{
             queue_delayed_work(_this->BatteryServiceCapUpdateQueue,
@@ -2187,17 +1365,7 @@ static void BatteryServiceCapSample(struct work_struct *dat)
 		pr_debug("[BAT][SER]%s(): Need Calculate Capacity +++\n",__func__);
 		_this->IsCalculateCapOngoing = true;
 
-		//ASUS_BSP Eason_Chang 1120 porting +++
-#ifdef CONFIG_EEPROM_NUVOTON  
-		if(1==AX_MicroP_IsP01Connected()){
-			_this->P02gauge->askCapacity(_this->P02gauge);
-		}
-		else{
-			_this->gauge->askCapacity(_this->gauge);
-		}
-#else //#else CONFIG_EEPROM_NUVOTON  
 		_this->gauge->askCapacity(_this->gauge);
-#endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---
 			
 		_this->NeedCalCap = false;
 		pr_debug("[BAT][SER]%s(): Need Calculate Capacity ---\n",__func__);
@@ -2210,50 +1378,6 @@ static void BatteryServiceCapSample(struct work_struct *dat)
 	//Hank: because do temperature monitor every time move unlock ---	
 	pr_debug("[BAT][SER]:%s()--- \n",__func__);
 }
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static time_t P02_BatteryService_getIntervalSinceLastUpdate(AXC_BatteryService  *_this)
-{
-    struct timespec mtNow;
-    
-    time_t P02_intervalSinceLastUpdate;
-    
-    mtNow = current_kernel_time();
-
-    if(_this->test.ifFixedFilterLastUpdateInterval(&_this->test)){
-        
-        P02_intervalSinceLastUpdate = _this->test.filterLastUpdateInterval;
-        
-    }else if( true == _this->P02_IsFirstAskCap){
-    
-        P02_intervalSinceLastUpdate = 0;
-          
-    }else{
-
-        if(mtNow.tv_sec >= _this->P02_savedTime){
-
-            pr_debug("[BAT][Ser][P02]%s:%ld,%ld\n",__FUNCTION__,mtNow.tv_sec,_this->P02_savedTime);
-            
-            P02_intervalSinceLastUpdate = mtNow.tv_sec - _this->P02_savedTime;
-
-            //cause system time didn't work at first time update capacity (8secs) 
-            //filter intervalSinceLastUpdate more than one month
-            if(P02_intervalSinceLastUpdate > 2592000){
-                printk("[BAT][Ser]wrongInt %ld \n",P02_intervalSinceLastUpdate);
-                P02_intervalSinceLastUpdate = 180;
-            }    
-         
-        }else{
-        
-            printk("[BAT][Ser]%s:OVERFLOW....%ld,%ld\n",__FUNCTION__,mtNow.tv_sec,_this->P02_savedTime);              
-            //todo: to do the correct calculation here....
-            P02_intervalSinceLastUpdate = mtNow.tv_sec;
-        }
-    }
-
-    return P02_intervalSinceLastUpdate ; 
-}
-#endif
 
 static time_t BatteryService_getIntervalSinceLastUpdate(AXC_BatteryService  *_this)
 {
@@ -2475,7 +1599,6 @@ static void ResumeCalCap(struct work_struct *dat)
 		//Eason set these flag when true==needDoResume+++
 		balance_this->IsResumeUpdate = true;
 		balance_this->IsResumeMahUpdate = true;
-		balance_this->P02_IsResumeUpdate = true;
 		//Eason set these flag when true==needDoResume---	
 	
 		if(delayed_work_pending(&balance_this->BatteryServiceUpdateWorker))
@@ -2539,41 +1662,17 @@ static void CableOffKeep5Min(struct work_struct *dat)
 	balance_this->NeedCalCap = false;
 	//Hank:	need keep capacity 5Min ---
 	
-       pr_debug("[Bat][SER]%s(): queue BatteryServiceUpdateWorker without calculate capacity\n",__func__);
-       queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
-                               &balance_this->BatteryServiceUpdateWorker,\
-                               0 * HZ);
-        
-        balance_this->savedTime = updateNowTime(balance_this); 
-	#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++        
-        if(1==AX_MicroP_IsP01Connected())
-        {
-                balance_this->P02_savedTime = updateNowTime(balance_this);
-        } 
-	#endif //CONFIG_EEPROM_NUVOTON //ASUS_BSP Eason_Chang 1120 porting ---        
-
-	printk("[BAT][SER]:CableOffKeep5():savedtime:%ld,%ld\n"
+	pr_debug("[Bat][SER]%s(): queue BatteryServiceUpdateWorker without calculate capacity\n",__func__);
+	queue_delayed_work(balance_this->BatteryServiceCapUpdateQueue, \
+		&balance_this->BatteryServiceUpdateWorker,\
+		0 * HZ);
+		balance_this->savedTime = updateNowTime(balance_this);
+	
+	printk("[BAT][SER]:CableOffKeep5():savedtime:%ld\n"
             , balance_this->savedTime
-            , balance_this->P02_savedTime
             );
     }    
 }
-
-#ifdef CONFIG_EEPROM_NUVOTON
-//Eason: dynamic set Pad alarm +++		
-#ifdef ASUS_FACTORY_BUILD	
-static void PlugIntoP02SetRTC(struct work_struct *dat)
-{
-        SetRTCAlarm();
-}
-#else
-static void PadRTCAlarmResume(struct work_struct *dat)
-{
-        DoWhenPadAlarmResume();
-}
-#endif
-//Eason: dynamic set Pad alarm ---
-#endif //CONFIG_EEPROM_NUVOTON
 
 static void BatLowTriggeredSetRTC(struct work_struct *dat)
 {
@@ -2586,16 +1685,6 @@ static void CableInTriggeredSetRTC(struct work_struct *dat)
 }
 //Eason cable in set alarm ---
 
-#ifdef CONFIG_EEPROM_NUVOTON
-//Eason after Pad update firmware, update status +++
-static void UpdatePadInfo(struct work_struct *dat)
-{
-	//balance_this->callback->onServiceStatusUpdated(balance_this->callback);
-	asus_bat_update_PadAcOnline();
-}
-//Eason after Pad update firmware, update status ---
-#endif
-
 //Hank in rom mode show "?" : bootUp check Rom mode queue+++
 #ifdef CONFIG_TI_GAUGE
 static void CheckIsGaugeRom(struct work_struct *dat)
@@ -2605,20 +1694,6 @@ static void CheckIsGaugeRom(struct work_struct *dat)
 #endif
 //Hank in rom mode show "?" : bootUp check Rom mode queue---
 
-//Eason: use queue doBalanceMode in less 5min forceResume+++ 
-#ifdef CONFIG_EEPROM_NUVOTON
-static void forceResumeLess5minDobalanceWork(struct work_struct *dat)
-{
-		if(false == DecideIfPadDockHaveExtChgAC())
-		{
-	    		printk("[BAT][Ser]:less 5 min forceResume()+++\n");
-	    		BatteryServiceDoBalance(balance_this);
-			printk("[BAT][Ser]:less 5 min forceResume()---\n");	
-		}	
-}
-#endif
-//Eason: use queue doBalanceMode in less 5min forceResume---
-
 static void BatteryService_InitWoker(AXC_BatteryService *_this)
 {
 	_this->BatteryServiceCapUpdateQueue \
@@ -2627,39 +1702,15 @@ static void BatteryService_InitWoker(AXC_BatteryService *_this)
 
 	INIT_DELAYED_WORK(&_this->BatRtcReadyWorker, CheckBatRtcReady);
 
-#ifdef CONFIG_EEPROM_NUVOTON
-	INIT_DELAYED_WORK(&_this->BatEcAcWorker, CheckBatEcAc);
-#endif
-
 	INIT_DELAYED_WORK(&_this->BatEocWorker, CheckEoc);
 
 	INIT_DELAYED_WORK(&_this->ResumeWorker, ResumeCalCap);
 
 	INIT_DELAYED_WORK(&_this->CableOffWorker, CableOffKeep5Min);
 
-#ifdef CONFIG_EEPROM_NUVOTON
-//Eason: dynamic set Pad alarm +++		
-#ifdef ASUS_FACTORY_BUILD	
-	INIT_DELAYED_WORK(&_this->SetRTCWorker, PlugIntoP02SetRTC);
-#else  
-	INIT_DELAYED_WORK(&_this->PadAlarmResumeWorker, PadRTCAlarmResume);
-#endif
-//Eason: dynamic set Pad alarm ---
-#endif
-
 	INIT_DELAYED_WORK(&_this->SetBatLowRTCWorker, BatLowTriggeredSetRTC);
 
 	INIT_DELAYED_WORK(&_this->SetCableInRTCWorker, CableInTriggeredSetRTC); 
-
-#ifdef CONFIG_EEPROM_NUVOTON
-	//Eason after Pad update firmware, update status +++
-	INIT_DELAYED_WORK(&_this->UpdatePadWorker,UpdatePadInfo);
-	//Eason after Pad update firmware, update status ---
-
-	//Eason: use queue doBalanceMode in less 5min forceResume+++ 
-	INIT_DELAYED_WORK(&_this->Less5MinDoBalanceWorker,forceResumeLess5minDobalanceWork);
-	//Eason: use queue doBalanceMode in less 5min forceResume---
-#endif
 
 	//Hank in rom mode show "?" : bootUp check Rom mode queue+++
 #ifdef CONFIG_TI_GAUGE
@@ -2686,19 +1737,9 @@ static AXE_BAT_CHARGING_STATUS  AXC_BatteryService_getChargingStatus(struct AXI_
          break;
     case CHARGING_STOP_STATE:
 #ifndef ASUS_FACTORY_BUILD       
-    #ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++        
-             //ASUS_BSP +++ Eason_Chang BalanceMode
-             if(1==AX_MicroP_IsP01Connected()){       
-                    status = BAT_NOT_CHARGING_STATUS;  
-             }else{              
-             //ASUS_BSP --- Eason_Chang BalanceMode
-             status = BAT_CHARGING_STATUS;
-             }
-    #else//CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting
-                status = BAT_CHARGING_STATUS;
-    #endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---
+		status = BAT_CHARGING_STATUS;
 #else
-                status = BAT_NOT_CHARGING_STATUS;
+		status = BAT_NOT_CHARGING_STATUS;
 #endif//#ifndef ASUS_FACTORY_BUILD
          break;
     case CHARGING_FULL_STATE:
@@ -2720,12 +1761,6 @@ static int  AXC_BatteryService_getCapacity(struct AXI_BatteryServiceFacade * bat
     AXC_BatteryService  *_this=
         container_of(bat, AXC_BatteryService, miParent);
 
-#ifdef CONFIG_EEPROM_NUVOTON
-	if(1==IsBalanceTest())
-	   return _this->A66_capacity;
-	//Eason show BMS cap to user+++
-	else
-#endif
 	{
 #if USE_SW_GAUGE //report capacity by SW gauge
 		if( (true==_this->BatteryService_IsFULL)&&(_this->A66_capacity>=99) ) {
@@ -2924,124 +1959,19 @@ static void AXC_BatteryService_onBatteryRemoved(struct AXI_BatteryServiceFacade 
 
 }
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static void Record_P02BeforeSuspend(void)
-{
-	if( (1==AX_MicroP_get_USBDetectStatus(Batt_P01))||(2==AX_MicroP_get_USBDetectStatus(Batt_P01)) )//Eason: Pad plug usb show icon & cap can increase
-    {
-		balance_this->P02_IsCable = true;
-	}else{
-		balance_this->P02_IsCable = false;
-	}
-}
-static int P02_ChooseMaxMahBeforeSuspend(void)
-{
-    if(true == DecideIfPadDockHaveExtChgAC())
-    {
-          return AC_CHG_CURRENT;
-    }else{
-	  return PAD_CHG_CURRENT;
-    }
-}
-
-static int P02_ChooseMaxMah(void)
-{
-   if(true == DecideIfPadDockHaveExtChgAC()){
-          return AC_CHG_CURRENT;
-   }else{
-	  return PAD_CHG_CURRENT;
-   }
-}
-
-//Eason: A68 new balance mode +++
-#ifndef ASUS_FACTORY_BUILD
-void doInBalanceModeWhenSuspend(void)
-{
-	//when resume default turn off vbus +++
-	IsSystemdraw = false;
-	//when resume default turn off vbus ---
-
-	if( false==IsBalanceSuspendStartcharge )
-	{
-		set_microp_vbus(0);
-		printk("[BAT][Bal]stop 5VPWR:%d,Vbus:%d\n"
-                                        ,get_5VPWR_EN(),get_microp_vbus());
-		//gpCharger->EnableCharging(gpCharger,false); //Hank: remove disable charging when cable off
-		DisChg = true;
-		balance_this->fsm->onChargingStop(balance_this->fsm,BALANCE_STOP);               
-		IsBalanceCharge = 0;
-	
-	}else if(true==IsBalanceSuspendStartcharge){//remember this flag to do suspendCharge before suspendStopChg condition match
-
-		set_microp_vbus(1);
-		printk("[BAT][Bal]start 5VPWR:%d,Vbus:%d\n"
-                                        ,get_5VPWR_EN(),get_microp_vbus());	
-		gpCharger->EnableCharging(gpCharger,true);
-		DisChg = false;
-		balance_this->fsm->onChargingStart(balance_this->fsm);                 
-		IsBalanceCharge = 1;
-	}
-}
-#endif//ASUS_FACTORY_BUILD
-//Eason: A68 new balance mode ---
-#endif //CONFIG_EEPROM_NUVOTON
-
-#ifdef CONFIG_EEPROM_NUVOTON
-extern void setChgLimitThermalRuleDrawCurrent(bool isSuspendCharge);
-#endif
 static void AXC_BatteryService_suspend(struct AXI_BatteryServiceFacade *bat)
 {
 	AXC_BatteryService  *_this = container_of(bat, AXC_BatteryService, miParent);
 
 	_this->HasCableBeforeSuspend = _this->BatteryService_IsCable;
-
-#ifdef CONFIG_EEPROM_NUVOTON
-	//Eason: dynamic set Pad alarm +++
-	#ifndef ASUS_FACTORY_BUILD		
-	InSuspendNeedDoPadAlarmHandler=true;
-	#endif
-	//Eason: dynamic set Pad alarm ---	
-
-	Record_P02BeforeSuspend();
-	_this->P02_HasCableBeforeSuspend = _this->P02_IsCable;
-	_this->P02_MaxMahBeforeSuspend = P02_ChooseMaxMahBeforeSuspend();
-
-	//Eason: A68 new balance mode +++
-	#ifndef ASUS_FACTORY_BUILD
-	if ((1==AX_MicroP_IsP01Connected())&&(1 == IsBalanceMode)&&(false == DecideIfPadDockHaveExtChgAC()))
-	{
-		printk("[BAT][Bal]Phone:%d,Pad:%d\n",_this->A66_capacity,_this->Pad_capacity);
-		doInBalanceModeWhenSuspend();
-	}
-	if (1==AX_MicroP_IsP01Connected() && (1==getIfonline()) )
-		setChgLimitThermalRuleDrawCurrent(true);
-	#endif
-#endif	//CONFIG_EEPROM_NUVOTON
-	//Eason: A68 new balance mode ---
 }
 
-#ifndef ASUS_FACTORY_BUILD	
-#ifdef CONFIG_EEPROM_NUVOTON
-extern void setChgLimitInPadWhenChgReset(void);
-#endif
-#endif
 //Eason resume always calculate capacity no matter if in   Pad or CableIn or BatLow+++
 extern void setSmb346CC_Curr900mA_Iterm50(void);
 static void AXC_BatteryService_resume(struct AXI_BatteryServiceFacade *bat,int delayStartInSeconds)
 {
 	AXC_BatteryService  *_this=
 		container_of(bat, AXC_BatteryService, miParent);
-
-#ifdef CONFIG_EEPROM_NUVOTON
-	if(1==AX_MicroP_IsP01Connected())
-	{
-		#ifndef ASUS_FACTORY_BUILD		
-		ASUSEvtlog("[BAT][Bal]resume:%d\n",IsBalanceSuspendStartcharge);
-		if( 1==getIfonline() )
-			setChgLimitInPadWhenChgReset();
-		#endif//ASUS_FACTORY_BUILD
-	}
-#endif		
 
 	schedule_delayed_work(&_this->ResumeWorker,0*HZ);
 //	wake_lock_timeout(&_this->resume_wake_lock,2* HZ);
@@ -3062,19 +1992,6 @@ static void AXC_BatteryService_forceResume(struct AXI_BatteryServiceFacade *bat,
 	time_t nowForceResumeTime;
 	time_t nowForceResumeInterval;
 	bool needDoForceResume=false;
-
-
-//when forceresume default turn off vbus +++
-#ifdef CONFIG_EEPROM_NUVOTON
-#ifndef ASUS_FACTORY_BUILD		
-	IsSystemdraw= false;
-	IsBalanceSuspendStartcharge = false;
-	//Eason: dynamic set Pad alarm +++
-	InSuspendNeedDoPadAlarmHandler=false;
-	//Eason: dynamic set Pad alarm ---	
-#endif	
-#endif	
-//when forceresume default turn off vbus ---
 
 	nowForceResumeTime = updateNowTime(_this);
 	nowForceResumeInterval = nowForceResumeTime - _this->savedTime;
@@ -3113,7 +2030,6 @@ static void AXC_BatteryService_forceResume(struct AXI_BatteryServiceFacade *bat,
 
         _this->IsResumeUpdate = true;
         _this->IsResumeMahUpdate = true;
-        _this->P02_IsResumeUpdate = true;
 
         if(delayed_work_pending(&_this->BatteryServiceUpdateWorker))
         {
@@ -3135,16 +2051,6 @@ static void AXC_BatteryService_forceResume(struct AXI_BatteryServiceFacade *bat,
 
     }
 //Eason: A68 new balance mode +++	
-#ifndef ASUS_FACTORY_BUILD	
-	//Eason: use queue doBalanceMode in less 5min forceResume+++
-#ifdef CONFIG_EEPROM_NUVOTON
-    else if((1==AX_MicroP_IsP01Connected())&&(1 == IsBalanceMode))			
-    {
-		queue_delayed_work(_this->BatteryServiceCapUpdateQueue,&_this->Less5MinDoBalanceWorker, 0*HZ);
-	//Eason: use queue doBalanceMode in less 5min forceResume---
-    }
-#endif	
-#endif
 	else
 	{//Hank: Temperature monitor only+++
 		balance_this->NeedCalCap = false;
@@ -3171,9 +2077,6 @@ static void  AXC_BatteryService_constructor(struct AXC_BatteryService *_this,AXI
 		BatteryService_enable_Gauge(_this);// batteryservice to fsm
 		BatteryService_enable_Filter(_this);
 		BatteryService_InitWoker(_this);
-#ifdef CONFIG_EEPROM_NUVOTON
-		create_balanceChg_proc_file();
-#endif
 		//Eason: MPdecisionCurrent +++
 		create_MPdecisionCurrent_proc_file();
 		//Eason: MPdecisionCurrent ---
@@ -3193,10 +2096,6 @@ static void  AXC_BatteryService_constructor(struct AXC_BatteryService *_this,AXI
 #endif
 		//Hank read BatteryID---
 		balance_this = _this;
-#ifdef CONFIG_EEPROM_NUVOTON
-		register_microp_notifier(&batSer_microp_notifier);
-		notify_register_microp_notifier(&batSer_microp_notifier, "axc_batteryservice"); //ASUS_BSP Lenter+
-#endif //CONFIG_EEPROM_NUVOTON
 		//ASUS_BSP --- Eason_Chang BalanceMode
 		create_HighPower_proc_file();//[ChiaYuan]Add for Broadcast busy state
 		mutex_init(&_this->main_lock);
@@ -3245,7 +2144,6 @@ static void BatteryServiceFsm_OnStateChanged(struct AXI_Charging_FSM_Callback *c
         container_of(callback, AXC_BatteryService, fsmCallback);
      
     GetStateFromFsm = _this->fsm->getState(_this->fsm);
-    
 
     switch(_this->fsmState){
         case DISCHARGING_STATE:
@@ -3254,33 +2152,11 @@ static void BatteryServiceFsm_OnStateChanged(struct AXI_Charging_FSM_Callback *c
              }
             break;
         case CHARGING_STATE:
-#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++            
-             //ASUS_BSP +++ Eason_Chang BalanceMode
-             if(1==AX_MicroP_IsP01Connected()){                   
-                  if(    GetStateFromFsm == DISCHARGING_STATE
-                       ||GetStateFromFsm == CHARGING_FULL_STATE
-                       ||GetStateFromFsm == CHARGING_STOP_STATE){
-                       NeedUpdate = 1;  
-                  }     
-
-             }else
-             //ASUS_BSP --- Eason_Chang BalanceMode    
-#endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---             
              if(GetStateFromFsm == DISCHARGING_STATE || GetStateFromFsm == CHARGING_FULL_STATE ){
                 NeedUpdate = 1;
              }
             break;
         case CHARGING_STOP_STATE:
-#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++              
-            //ASUS_BSP +++ Eason_Chang BalanceMode
-            if(1==AX_MicroP_IsP01Connected()){
-                 if(     GetStateFromFsm == DISCHARGING_STATE
-                       ||GetStateFromFsm == CHARGING_STATE){
-                       NeedUpdate = 1;
-                }
-            }else 
-            //ASUS_BSP --- Eason_Chang BalanceMode  
-#endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---             
             if(GetStateFromFsm == DISCHARGING_STATE ){
                 NeedUpdate = 1;
             }   
@@ -3381,9 +2257,6 @@ static void DoAfterDecideNotFull(struct AXC_BatteryService *_this)
 static void DecideIsFull(struct AXC_BatteryService *_this,int nowGaugeCap,bool hasCableInPastTime)
 {
 	bool chgStatus;
-#ifdef CONFIG_EEPROM_NUVOTON
-	bool IsPadDock_ExtChg = false;
-#endif
 	int nCurrent = _this->callback->getIBAT(_this->callback);
 
 	chgStatus = gpCharger->IsCharging(gpCharger);
@@ -3416,61 +2289,24 @@ static void DecideIsFull(struct AXC_BatteryService *_this,int nowGaugeCap,bool h
 		}
 	}
 
-#ifdef CONFIG_EEPROM_NUVOTON
-	//Eason for resume by EXTchg off can be full+++
-	if(100 == balance_this->A66_capacity){
-		IsPadDock_ExtChg = true;
+	if(CHARGING_FULL_STATE==balance_this->fsmState || CHARGING_FULL_KEEP_STATE==balance_this->fsmState
+		|| CHARGING_FULL_KEEP_STOP_STATE==balance_this->fsmState)
+	{
+		DoAfterDecideFull(_this);
 	}
-	else{
-		IsPadDock_ExtChg = DecideIfPadDockHaveExtChgAC();
-	}
-	//Eason for resume by EXTchg off can be full---
-#endif
-
-#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++
-	if(1==AX_MicroP_IsP01Connected()){
-		if(CHARGING_FULL_STATE==balance_this->fsmState||CHARGING_FULL_KEEP_STATE==balance_this->fsmState
-			|| CHARGING_FULL_KEEP_STOP_STATE==balance_this->fsmState)
-		{
-			DoAfterDecideFull(_this);  
-		}
 #ifdef CONFIG_PM_8226_CHARGER
-		else if( true==pm8226_is_full() ){
-			printk("[BAT][Ser]pm8226_is_full\n");
-			//Eason : Wireless PMA spec Rx turn off Tx +++
-			#ifdef CONFIG_IDTP9023_CHARGER
-			g_WcEocTime = updateNowTime(_this);
-			#endif
-			//Eason : Wireless PMA spec Rx turn off Tx ---
-			DoAfterDecideFull(_this);
-		}
-#endif
-		else{
-			DoAfterDecideNotFull(_this);
-		}
-	}
-	else
-#endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---    
-	{    
-		if(CHARGING_FULL_STATE==balance_this->fsmState || CHARGING_FULL_KEEP_STATE==balance_this->fsmState
-			|| CHARGING_FULL_KEEP_STOP_STATE==balance_this->fsmState)
-		{
-			DoAfterDecideFull(_this);
-		}
-#ifdef CONFIG_PM_8226_CHARGER
-		else if( true==pm8226_is_full() ){
-			printk("[BAT][Ser]pm8226_is_full\n");
-			//Eason : Wireless PMA spec Rx turn off Tx +++
+	else if( true==pm8226_is_full() ){
+		printk("[BAT][Ser]pm8226_is_full\n");
+		//Eason : Wireless PMA spec Rx turn off Tx +++
 #ifdef CONFIG_IDTP9023_CHARGER
-			g_WcEocTime = updateNowTime(_this);
+		g_WcEocTime = updateNowTime(_this);
 #endif
-			//Eason : Wireless PMA spec Rx turn off Tx ---
-			DoAfterDecideFull(_this);
-		}
+		//Eason : Wireless PMA spec Rx turn off Tx ---
+		DoAfterDecideFull(_this);
+	}
 #endif
-		else{
-			DoAfterDecideNotFull(_this);
-		}
+	else{
+		DoAfterDecideNotFull(_this);
 	}
 } 
 
@@ -3693,13 +2529,6 @@ extern int get_FCC_from_TIgauge(void);
 static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService *_this, int refcapacity)
 {
 	int A66_capacity;
-    
-	//int EC_capacity;
-
-#ifdef CONFIG_EEPROM_NUVOTON
-	int IsBalTest = 0;//ASUS_BSP Eason_Chang BalanceMode
-#endif
-
 	int lastCapacity;
 	int maxMah;
 	int pmicTemp;
@@ -3769,39 +2598,10 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 	//Eason: BAT Cap can drop when cable in +++ 
 	if( true == hasCable )//A66 has cable  
 	{
-#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++    
-		if(1==AX_MicroP_IsP01Connected()){//cable of A66 is Pad
-			if( true == _this->BatteryService_IsCharging){//A66 is charging 
-				EnableBATLifeRise = Get_CapRiseWhenCableIn(refcapacity, lastCapacity);
-				if( false == EnableBATLifeRise){
-					maxMahDrop = true;
-				}
-			}
-			else if(true == _this->BatteryService_IsFULL){//A66 is not charging but full
-				//Eason for resume by EXTchg off can be full, after full can drop
-				EnableBATLifeRise = Get_CapRiseWhenCableIn(refcapacity, lastCapacity);
-				if( false == EnableBATLifeRise){
-					maxMahDrop = true;
-				}
-			}
-			else if(true == DecideIfPadDockHaveExtChgAC()){//A66 have ext chg 
-				EnableBATLifeRise = Get_CapRiseWhenCableIn(refcapacity, lastCapacity);
-				if( false == EnableBATLifeRise){
-					maxMahDrop = true;
-				}
-			}
-			else{//A66 is neither charging  nor full
-				EnableBATLifeRise = false;
-			}
+		EnableBATLifeRise = Get_CapRiseWhenCableIn(refcapacity, lastCapacity);
+		if( false == EnableBATLifeRise){
+			maxMahDrop = true;
 		}
-		else//cable of A66 is not Pad
-#endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---            
-		{
-			EnableBATLifeRise = Get_CapRiseWhenCableIn(refcapacity, lastCapacity);
-			if( false == EnableBATLifeRise){
-				maxMahDrop = true;
-			}
-		}      
 	}
 	else{//A66 doesn't has cable 
 		EnableBATLifeRise = hasCable;
@@ -3920,54 +2720,18 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 	//	last_BMS_Cap = gBMS_Cap;
 	//Eason: remember last BMS Cap to filter---
 
-#ifdef CONFIG_EEPROM_NUVOTON
-//ASUS_BSP +++ Eason_Chang BalanceMode : set A66_cap for cmd test 
-	IsBalTest = IsBalanceTest();
-	if( 1 == IsBalTest){
-		A66_capacity = GetBalanceModeA66CAP();
-		printk("[BAT][Bal][test]A66 cap: %d\n",A66_capacity );
-	}
-//ASUS_BSP --- Eason_Chang BalanceMode : set A66_cap for cmd test 
-#endif
-
 	if(A66_capacity < 0 || A66_capacity >100){
 		printk("[BAT][Ser]Filter return value fail!!!\n");
 	}
 	else{
 		//Eason show BMS cap to user+++
-#ifdef CONFIG_EEPROM_NUVOTON
-		if( 1 == IsBalTest ){
-			_this->A66_capacity = A66_capacity;
-		}
-		else
-#endif
-		{
 #if USE_SW_GAUGE
-			_this->A66_capacity = A66_capacity;
+		_this->A66_capacity = A66_capacity;
 #else
-			_this->A66_capacity = gBMS_Cap;
+		_this->A66_capacity = gBMS_Cap;
 #endif
-			g_SWgauge_lastCapacity = A66_capacity;
-		}
+		g_SWgauge_lastCapacity = A66_capacity;
 		//Eason show BMS cap to user---
-
-	
-#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++
-		if(1==AX_MicroP_IsP01Connected()){
-			if( false == DecideIfPadDockHaveExtChgAC()){ 
-				BatteryServiceDoBalance(_this);
-			}
-			else{
-				Init_Microp_Vbus__Chg();
-			}
-
-			//Eason: dynamic set Pad alarm +++
-#ifndef ASUS_FACTORY_BUILD	  	
-			SetRTCAlarm();
-#endif
-			//Eason: dynamic set Pad alarm ----
-		}
-#endif //CONFIG_EEPROM_NUVOTON   //ASUS_BSP Eason_Chang 1120 porting ---
 
 		// when A66 Cap = 0% shutdown device no matter if has cable+++ 
 		if( 0==_this->A66_capacity )//Eason show BMS cap to user
@@ -3988,9 +2752,6 @@ static void AXC_BatteryService_reportPropertyCapacity(struct AXC_BatteryService 
 			//ASUS_BSP --- Peter_lu "suspend for Battery0% in  fastboot mode issue"
 
 			AcUsbPowerSupplyChange();
-#ifdef CONFIG_EEPROM_NUVOTON
-			Pad_AC_PowerSupplyChange();
-#endif
 
 			//ASUS_BSP +++ Peter_lu "suspend for Battery0% in  fastboot mode issue"
 #ifdef CONFIG_FASTBOOT
@@ -4161,175 +2922,8 @@ int BatteryServiceGauge_AskResumeCharging(struct AXI_Gauge_Callback *gaugeCb)
     return 0;
 }
 
-#ifdef CONFIG_EEPROM_NUVOTON
-static int Report_P02Cable(void)
-{
-#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++
-	if( (1==AX_MicroP_get_USBDetectStatus(Batt_P01))|| (2==AX_MicroP_get_USBDetectStatus(Batt_P01)) ){//Eason: Pad plug usb show icon & cap can increase
-		balance_this->P02_IsCable = true;
-	}else{
-		balance_this->P02_IsCable = false;
-	}
-#endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---    
-
-    return balance_this->P02_IsCable;
-}
-static void Report_P02ChgStatus(int P02Chg) 
-{
-    balance_this->P02_IsCharging = false;
-    balance_this->P02_IsFULL = false; 
-
-    if(1==P02Chg){
-            balance_this->P02_IsCharging = true;
-    }else if(2==P02Chg){
-            balance_this->P02_IsFULL = true; 
-    }       
-}
-static void P02_reportPropertyCapacity(struct AXC_BatteryService *_this, int P02_refcapacity)
-{
-
-    int Pad_capacity;
-    int IsBalTest;//ASUS_BSP Eason_Chang BalanceMode
-
-    int lastCapacity;
-
-    int P02_maxMah;
-
-    bool P02_hasCable;
-    int  P02_chgStatus=0;//ASUS_BSP Eason_Chang 1120 porting
-
-    time_t P02_intervalSinceLastUpdate;
-
-    mutex_lock(&_this->filter_lock);
-
-    P02_intervalSinceLastUpdate  = P02_BatteryService_getIntervalSinceLastUpdate(_this);
-    
-
-    //We need do ask capcaity to filter at first time, in case there is FULL orBATLow 
-    if(true == _this->P02_IsFirstAskCap){
-
-        lastCapacity = P02_refcapacity;
-
-        _this->P02_IsFirstAskCap = false;
-        
-    }else{
-
-        lastCapacity = _this->Pad_capacity;
-
-    }
-
-    if (true == _this->P02_IsResumeUpdate){
-        P02_hasCable = _this->P02_HasCableBeforeSuspend;
-        //P02_chgStatus = _this->P02_ChgStatusBeforeSuspend;
-        P02_maxMah = _this->P02_MaxMahBeforeSuspend;
-        _this->P02_IsResumeUpdate = false;
- 
-    }else{
-        P02_hasCable = Report_P02Cable();
-        //P02_chgStatus = AX_MicroP_get_ChargingStatus(Batt_P01);
-        P02_maxMah = P02_ChooseMaxMah();
-    }
-
-#ifdef CONFIG_EEPROM_NUVOTON  //ASUS_BSP Eason_Chang 1120 porting +++
-    P02_chgStatus = AX_MicroP_get_ChargingStatus(Batt_P01);
-#endif //CONFIG_EEPROM_NUVOTON//ASUS_BSP Eason_Chang 1120 porting ---
-    Report_P02ChgStatus(P02_chgStatus);
-
-    Pad_capacity = _this->gpCapFilterP02->filterCapacity
-                                     (_this->gpCapFilterP02,
-                                      P02_refcapacity, lastCapacity,
-                                      P02_hasCable,
-                                      _this->P02_IsCharging,
-                                      _this->P02_IsFULL,
-                                      _this->P02_IsBatLow,
-                                      P02_maxMah,
-                                      P02_intervalSinceLastUpdate);
-
-    pr_debug("[BAT][Ser][P02]report Capacity:%d,%d,%d,%d,%d,%d,%d,%ld==>%d\n",
-                                    P02_refcapacity,
-                                    lastCapacity,
-                                      P02_hasCable,
-                                      _this->P02_IsCharging,
-                                      _this->P02_IsFULL,
-                                      _this->P02_IsBatLow,
-                                      P02_maxMah,
-                                      P02_intervalSinceLastUpdate,
-                                      Pad_capacity);
-    //ASUS_BSP Eason_Chang add event log +++
-
-	ASUSEvtlog("[BAT][Ser][P02]report Capacity:%d,%d,%d,%d,%d,%d,%d,%ld==>%d\n",
-                                    P02_refcapacity,
-                                    lastCapacity,
-                                      P02_hasCable,
-                                      _this->P02_IsCharging,
-                                      _this->P02_IsFULL,
-                                      _this->P02_IsBatLow,
-                                      P02_maxMah,
-                                      P02_intervalSinceLastUpdate,
-                                      Pad_capacity);
-
-    //ASUS_BSP Eason_Chang add event log ---
-
-//ASUS_BSP +++ Eason_Chang  : set Pad_cap for cmd test
-    IsBalTest = IsBalanceTest();
-    if( 1 == IsBalTest){
-            Pad_capacity = BatteryServiceGetPADCAP();
-    }
-//ASUS_BSP --- Eason_Chang  : set Pad_cap for cmd test 
-
-
-    if(Pad_capacity < 0 || Pad_capacity >100){
-
-        printk("[BAT][Ser]Filter return value fail!!!\n");
-    }else if(_this->Pad_capacity == Pad_capacity){    
-       pr_debug("[BAT][Ser]Pad have same cap:%d\n",Pad_capacity);
-    }else if(_this->Pad_capacity != Pad_capacity){
-       _this->Pad_capacity = Pad_capacity;
-       
-       BatteryService_P02update();
-    }   
-    
-    //wake_unlock(&_this->cap_wake_lock);
-
-    mutex_unlock(&_this->filter_lock);
-
-}
-static int P02Gauge_OnCapacityReply(struct AXI_Gauge *gauge, struct AXI_Gauge_Callback *gaugeCb, int batCap, int result)
-{   
-	AXC_BatteryService  *_this=
-		container_of(gaugeCb, AXC_BatteryService, P02gaugeCallback);
-
-	mutex_lock(&_this->main_lock);
-
-	P02_reportPropertyCapacity(_this,batCap);
-
-	_this->P02_savedTime=updateNowTime(_this);
-	pr_debug("[BAT][Ser]:P02Gauge_OnCapacityReply\n");
-	//ReportTime();
-
-	mutex_unlock(&_this->main_lock);
-
-	_this->gauge->askCapacity(_this->gauge);
-
-	pr_debug("[BAT][Ser]:P02Gauge_askCapacity\n");
-	//ReportTime();
-	return 0;
-}
-int P02Gauge_AskSuspendCharging(struct AXI_Gauge_Callback *gaugeCb)
-{ 
-    return 0;
-}
-int P02Gauge_AskResumeCharging(struct AXI_Gauge_Callback *gaugeCb)
-{
-    return 0;
-}
-#endif //CONFIG_EEPROM_NUVOTON
 //ASUS BSP Eason_Chang --- batteryservice to gauge
 
-//static int BatteryService_CalculateBATCAP(AXC_BatteryService *_this)
-//{             
-//    return _this->gauge->GetBatteryLife(_this->gauge);
-//}
 static bool BatteryService_ifFixedPollingInterval(struct AXC_BatteryServiceTest *test)
 {
     return (-1 != test->pollingInterval);
@@ -4396,10 +2990,8 @@ static AXC_BatteryService g_AXC_BatteryService={
     .IsFirstForceResume = true,
     .callback = NULL,
     .A66_capacity = 50,//saved capacity //Hank: default capacity 50 prevent default full
-    .Pad_capacity = 100,
     .ForceSavedTime = 0,//for A68 will always update no matter if change MaxMAh
     .savedTime = 0,//for A68 may dont update if change 10==MaxMAh
-    .P02_savedTime = 0,
     .BatteryService_IsCable = false,
     .BatteryService_IsCharging = false,
     .BatteryService_IsFULL = false,
@@ -4411,32 +3003,14 @@ static AXC_BatteryService g_AXC_BatteryService={
     .IsResumeUpdate = false,
     .IsResumeMahUpdate = false,
     .IsCalculateCapOngoing = false,
-    .P02_IsCable = false,
-    .P02_IsCharging = false,
-    .P02_IsFULL = false,
-    .P02_IsBatLow = false,
-    .P02_IsFirstAskCap = true,
-    .P02_HasCableBeforeSuspend = false,
-    .P02_IsResumeUpdate = false,
-    //.P02_ChgStatusBeforeSuspend = 0,
-    .P02_MaxMahBeforeSuspend = 0,
     .gaugeCallback ={
         .onCapacityReply = BatteryServiceGauge_OnCapacityReply,
         .askSuspendCharging = BatteryServiceGauge_AskSuspendCharging,   
         .askResumeCharging = BatteryServiceGauge_AskResumeCharging,
         },// batteryservice to gauge
-#ifdef CONFIG_EEPROM_NUVOTON
-    .P02gaugeCallback ={
-        .onCapacityReply = P02Gauge_OnCapacityReply,
-        .askSuspendCharging = P02Gauge_AskSuspendCharging,   
-        .askResumeCharging = P02Gauge_AskResumeCharging,
-        },// batteryservice to gauge 
-#endif
     .chargerType =  NOTDEFINE_TYPE ,  // batteryservice to gauge
     .gauge = NULL,  // batteryservice to gauge
-    .P02gauge = NULL,
     .gpCapFilterA66 = NULL,
-    .gpCapFilterP02 = NULL,
     .defaultPollingInterval = DEFAULT_ASUSBAT_POLLING_INTERVAL , // batteryservice to gauge
     .fsmCallback ={
         .onChangeChargingCurrent = BatteryServiceFsm_OnChangeChargingCurrent,
@@ -4477,17 +3051,6 @@ AXC_BatteryServiceTest *getBatteryServiceTest(void)
     return &g_AXC_BatteryService.test;
 }
 
-#ifdef CONFIG_EEPROM_NUVOTON
-int getPowerBankCharge(void)
-{
-    return IsPowerBankCharge;
-}
-
-int getBalanceCharge(void)
-{
-    return IsBalanceCharge;
-}
-#endif
 #endif //#ifdef CONFIG_BATTERY_ASUS_SERVICE
 
 

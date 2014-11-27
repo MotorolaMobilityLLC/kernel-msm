@@ -28,7 +28,6 @@ extern bool g_AcUsbOnline_Change0;
 //thermal limit level 3: hot but no low battery
 int g_thermal_limit=0;
 bool g_audio_limit = false;
-bool g_padMic_On = false;
 //Eason : when thermal too hot, limit charging current ---
 
 extern int pm8226_getCapacity(void);
@@ -54,12 +53,6 @@ extern void pm8226_chg_enable_charging(bool enable);
 extern int pm8226_is_ac_usb_in(void);
 extern void pm8226_chg_usb_suspend_enable(int enable);
 extern int pm8226_get_prop_batt_status(void);
-
-//Eason: in Pad AC powered, judge AC powered true+++
-#ifdef CONFIG_EEPROM_NUVOTON
-extern int InP03JudgeACpowered(void);
-#endif
-//Eason: in Pad AC powered, judge AC powered true---
 
 static void (*notify_charger_in_out_func_ptr)(int) = NULL;
 AXC_PM8226Charger *gpCharger = NULL;
@@ -176,10 +169,7 @@ static int pm_power_get_property(struct power_supply *psy,
 			}
 			else if((psy->type == POWER_SUPPLY_TYPE_MAINS) && (type == NORMAL_CURRENT_CHARGER_TYPE))
 			{
-#ifdef CONFIG_EEPROM_NUVOTON
-				if(1==InP03JudgeACpowered())
-					val->intval = 1;
-#endif
+
 			}
 			//Eason: in Pad AC powered, judge AC powered true---	
 
@@ -272,14 +262,6 @@ static void limitPM8226chg500(void)
 	gpCharger->usb_current_max = 500*1000;
 	asus_usbPath_chg_current_set(500);
 }
-
-#ifdef CONFIG_EEPROM_NUVOTON
-static void limitPM8226chg300(void)
-{
-	gpCharger->usb_current_max = 300*1000;
-	asus_usbPath_chg_current_set(300);
-}
-#endif
 #endif
 
 static void limitPM8226chg200(void)
@@ -294,109 +276,6 @@ static void defaultPM8226chgSetting(void)
 	asus_usbPath_chg_current_set(200);
 }
 
-#ifndef ASUS_FACTORY_BUILD
-#ifdef CONFIG_EEPROM_NUVOTON
-//Eason:  Pad draw rule compare thermal +++
-static PadDrawLimitCurrent_Type JudgePadThermalDrawLimitCurrent_pm8226(void)
-{
-	if( (3==g_thermal_limit)||(true==g_audio_limit) )
-	{
-		return PadDraw500;
-   	}else if(true==g_padMic_On){
-
-		return PadDraw500;
-	}else if( 2==g_thermal_limit )
-	{
-		return PadDraw700;
-	}else if(1 == g_thermal_limit)
-	{
-		return PadDraw900;
-	}else
-		return PadDraw900;
-}
-//Eason: set Chg Limit In Pad When Charger Reset +++ 
-static PadDrawLimitCurrent_Type g_InPadChgNoResetDraw_limit_pm8226 = PadDraw700;
-void setChgLimitInPadWhenChgReset_pm8226(void)
-{	
-	switch(g_InPadChgNoResetDraw_limit_pm8226)
-	{
-		case PadDraw300:
-				limitPM8226chg300();
-				printk("[BAT][CHG][PAD][Reset]:draw 300\n");
-				break;
-		case PadDraw500:
-				limitPM8226chg500();
-				printk("[BAT][CHG][PAD][Reset]:draw 500\n");
-				break;
-		case PadDraw700:
-				limitPM8226chg700();
-				printk("[BAT][CHG][PAD][Reset]:draw 700\n");
-				break;
-		case PadDraw900:
-				limitPM8226chg900();
-				printk("[BAT][CHG][PAD][Reset]:draw 900\n");
-				break;
-		default:
-				limitPM8226chg500();
-				printk("[BAT][CHG][PAD][Reset]:draw 500\n");
-				break;
-	}
-}
-//Eason: set Chg Limit In Pad When Charger Reset --- 
-
-void setChgLimitThermalRuleDrawCurrent_pm8226(bool isSuspendCharge)
-{
-	PadDrawLimitCurrent_Type PadThermalDraw_limit;
-	PadDrawLimitCurrent_Type PadRuleDraw_limit;
-	PadDrawLimitCurrent_Type MinThermalRule_limit;
-
-	PadThermalDraw_limit=JudgePadThermalDrawLimitCurrent_pm8226();
-	PadRuleDraw_limit=JudgePadRuleDrawLimitCurrent(isSuspendCharge);
-	MinThermalRule_limit = min(PadThermalDraw_limit,PadRuleDraw_limit);
-	printk("[BAT][CHG][PAD]:Thermal:%d,Rule:%d,Min:%d\n",PadThermalDraw_limit,PadRuleDraw_limit,MinThermalRule_limit);
-
-
-	//ForcePowerBankMode draw 700, but  still compare thermal result unless PhoneCap<=8
-	if( (PadDraw700==PadRuleDraw_limit)&&(pm8226_getCapacity()<= 8))
-	{
-		limitPM8226chg700();
-		g_InPadChgNoResetDraw_limit_pm8226 = PadDraw700;
-		printk("[BAT][CHG][PAD]:draw 700\n");
-	}else{
-		switch(MinThermalRule_limit)
-		{
-			case PadDraw300:
-				limitPM8226chg300();
-				g_InPadChgNoResetDraw_limit_pm8226 = PadDraw300;
-				printk("[BAT][CHG][PAD][Cur]:draw 300\n");
-				break;
-			case PadDraw500:
-				limitPM8226chg500();
-				g_InPadChgNoResetDraw_limit_pm8226 = PadDraw500;
-				printk("[BAT][CHG][PAD][Cur]:draw 500\n");
-				break;
-			case PadDraw700:
-				limitPM8226chg700();
-				g_InPadChgNoResetDraw_limit_pm8226 = PadDraw700;
-				printk("[BAT][CHG][PAD][Cur]:draw 700\n");
-				break;
-			case PadDraw900:
-				limitPM8226chg900();
-				if(!isSuspendCharge)//Hank: if suspend set 900mA do not remeber the current
-					g_InPadChgNoResetDraw_limit_pm8226 = PadDraw900;
-				printk("[BAT][CHG][PAD][Cur]:draw 900\n");
-				break;
-			default:
-				limitPM8226chg500();
-				g_InPadChgNoResetDraw_limit_pm8226 = PadDraw500;
-				printk("[BAT][CHG][PAD]:draw 500\n");
-				break;
-		}
-	}
-}
-#endif //CONFIG_EEPROM_NUVOTON
-#endif
-
 //Eason : when thermal too hot, limit charging current +++ 
 void setChgDrawCurrent_pm8226(void)
 {
@@ -408,9 +287,7 @@ void setChgDrawCurrent_pm8226(void)
 			printk("[BAT][CHG][Illegal]: limit chgCur,  darw 200\n");
 		}
 		else if(NORMAL_CURRENT_CHARGER_TYPE==gpCharger->type){
-#ifdef CONFIG_EEPROM_NUVOTON
-			setChgLimitThermalRuleDrawCurrent_pm8226(false);
-#endif
+
 		}
 		else if(NOTDEFINE_TYPE==gpCharger->type || NO_CHARGER_TYPE==gpCharger->type){
 			defaultPM8226chgSetting();
@@ -419,10 +296,6 @@ void setChgDrawCurrent_pm8226(void)
 		else if( (3==g_thermal_limit)||(true==g_audio_limit) ){
 			limitPM8226chg500();
 			printk("[BAT][CHG]:limit charging current 500mA\n");
-		}
-		else if(true==g_padMic_On){
-			limitPM8226chg500();
-			printk("[BAT][CHG]:InPad onCall limit curent 500mA\n");
 		}
 		else if( 2==g_thermal_limit ){
 			limitPM8226chg700();
@@ -452,17 +325,11 @@ void setChgDrawACTypeCurrent_withCheckAICL_pm8226(void)
 {
 #ifndef ASUS_FACTORY_BUILD   
 	if(NORMAL_CURRENT_CHARGER_TYPE==gpCharger->type){
-#ifdef CONFIG_EEPROM_NUVOTON
-		setChgLimitThermalRuleDrawCurrent_pm8226(false);
-#endif
+
 	}
 	else if( (3==g_thermal_limit)||(true==g_audio_limit) ){
 		limitPM8226chg500();
 		printk("[BAT][CHG]:limit charging current 500mA\n");
-	}
-	else if(true==g_padMic_On){
-		limitPM8226chg500();
-		printk("[BAT][CHG]:InPad onCall limit cur500mA\n");
 	}
 	else if( 2 == g_thermal_limit){
 		limitPM8226chg700();
