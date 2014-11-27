@@ -16,6 +16,7 @@
 
 #include <linux/platform_device.h>
 #include <linux/types.h>
+#include <linux/hrtimer.h>
 
 /* panel id type */
 struct panel_id {
@@ -349,6 +350,8 @@ struct mdss_panel_info {
 	enum cabc_mode cabc_mode;
 	char supplier[8];
 	u32 bl_shutdown_delay;
+	u32 bl_on_defer_delay;
+	struct hrtimer bl_on_defer_hrtimer;
 
 	uint32_t panel_dead;
 

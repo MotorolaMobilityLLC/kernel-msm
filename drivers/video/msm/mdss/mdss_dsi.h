@@ -272,6 +272,7 @@ struct mdss_dsi_ctrl_pdata {
 			struct dss_module_power *mp, struct device_node *node);
 	int (*set_hbm)(struct mdss_dsi_ctrl_pdata *ctrl, int state);
 	int (*set_cabc)(struct mdss_dsi_ctrl_pdata *ctrl, int mode);
+	void (*bl_on_defer)(struct mdss_dsi_ctrl_pdata *ctrl);
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
 	struct mdss_panel_esd_pdata panel_esd_data;

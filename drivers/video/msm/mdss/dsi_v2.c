@@ -146,11 +146,16 @@ static int dsi_event_handler(struct mdss_panel_data *pdata,
 				int event, void *arg)
 {
 	int rc = 0;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
 
 	if (!pdata) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -ENODEV;
 	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
 
 	switch (event) {
 	case MDSS_EVENT_UNBLANK:
@@ -160,6 +165,8 @@ static int dsi_event_handler(struct mdss_panel_data *pdata,
 		rc = dsi_off(pdata);
 		break;
 	case MDSS_EVENT_PANEL_ON:
+		if (ctrl_pdata->bl_on_defer)
+			ctrl_pdata->bl_on_defer(ctrl_pdata);
 		rc = dsi_panel_handler(pdata, 1);
 		break;
 	case MDSS_EVENT_PANEL_OFF:
