@@ -5704,8 +5704,15 @@ tSirRetStatus limProcesSmeTdlsLinkEstablishReq(tpAniSirGlobal pMac,
     pMsgTdlsLinkEstablishReq->isBufsta = pTdlsLinkEstablishReq->isBufSta;
     pMsgTdlsLinkEstablishReq->isOffChannelSupported =
                                 pTdlsLinkEstablishReq->isOffChannelSupported;
-    pMsgTdlsLinkEstablishReq->isOffChannelSupported = 1;
-
+    if (psessionEntry->tdlsChanSwitProhibited)
+    {
+        pMsgTdlsLinkEstablishReq->isOffChannelSupported = 3;
+        limLog(pMac, LOG1, FL("Channel Switch Prohibited by AP"));
+    }
+    else
+    {
+        pMsgTdlsLinkEstablishReq->isOffChannelSupported = 1;
+    }
     if ((pTdlsLinkEstablishReq->supportedChannelsLen > 0) &&
         (pTdlsLinkEstablishReq->supportedChannelsLen <= SIR_MAC_MAX_SUPP_CHANNELS))
     {
