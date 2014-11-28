@@ -464,7 +464,8 @@ static struct pll_clk a53ss_cci_pll = {
 };
 
 static struct pll_freq_tbl apcs_c0_pll_freq[] = {
-	F_APCS_PLL(998400000,  52, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL( 998400000,  52, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1113600000,  58, 0x0, 0x1, 0x0, 0x0, 0x0),
 };
 
 static struct pll_clk a53ss_c0_pll = {
@@ -796,7 +797,7 @@ static struct rcg_clk vfe0_clk_src = {
 	.c = {
 		.dbg_name = "vfe0_clk_src",
 		.ops = &clk_ops_rcg,
-		VDD_DIG_FMAX_MAP3(LOW, 160000000, NOMINAL, 320000000, HIGH,
+		VDD_DIG_FMAX_MAP3(LOW, 200000000, NOMINAL, 400000000, HIGH,
 			600000000),
 		CLK_INIT(vfe0_clk_src.c),
 	},
