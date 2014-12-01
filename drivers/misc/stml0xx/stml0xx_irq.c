@@ -45,17 +45,28 @@
 
 irqreturn_t stml0xx_isr(int irq, void *dev)
 {
+	static struct timespec ts;
+	static struct stml0xx_work_struct *stm_ws;
 	struct stml0xx_data *ps_stml0xx = dev;
+	getrawmonotonic(&ts);
 
 	if (stml0xx_irq_disable)
 		return IRQ_HANDLED;
 
 	wake_lock(&ps_stml0xx->wakelock);
 
-	queue_work(ps_stml0xx->irq_work_queue, &ps_stml0xx->irq_work);
-	if (ps_stml0xx->irq_wake == -1)
-		queue_work(ps_stml0xx->irq_work_queue,
-			   &ps_stml0xx->irq_wake_work);
+	stm_ws = kmalloc(
+		sizeof(struct stml0xx_work_struct),
+		GFP_ATOMIC);
+	if (!stm_ws) {
+		dev_err(dev, "stml0xx_isr: unable to allocate work struct");
+		return IRQ_HANDLED;
+	}
+
+	INIT_WORK((struct work_struct *)stm_ws, stml0xx_irq_work_func);
+	stm_ws->ts_ns = ts_to_ns(ts);
+
+	queue_work(ps_stml0xx->irq_work_queue, (struct work_struct *)stm_ws);
 	return IRQ_HANDLED;
 }
 
@@ -63,6 +74,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 {
 	int err;
 	u32 irq_status;
+	struct stml0xx_work_struct *stm_ws = (struct stml0xx_work_struct *)work;
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
 	unsigned char buf[SPI_MSG_SIZE];
 
@@ -96,7 +108,13 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_ACCEL, buf, 6, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_ACCEL,
+			buf,
+			6,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending acc(x,y,z)values:x=%d,y=%d,z=%d",
@@ -112,7 +130,12 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_ACCEL2, buf, 6, 0);
+		stml0xx_as_data_buffer_write(ps_stml0xx,
+			DT_ACCEL2,
+			buf,
+			6,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending acc2(x,y,z)values:x=%d,y=%d,z=%d",
@@ -133,7 +156,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 		}
 
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_LIN_ACCEL,
-					     buf, 6, 0);
+					     buf, 6, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d",
@@ -151,7 +174,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 		}
 		status = buf[COMPASS_STATUS];
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_MAG,
-					     buf, 6, status);
+					     buf, 6, status, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending mag(x,y,z)values:x=%d,y=%d,z=%d",
@@ -159,7 +182,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			STM16_TO_HOST(MAG_Z));
 
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_ORIENT,
-					     buf + 6, 6, status);
+					     buf + 6, 6, status, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending orient(x,y,z)values:x=%d,y=%d,z=%d",
@@ -173,7 +196,13 @@ void stml0xx_irq_work_func(struct work_struct *work)
 				"Reading Gyroscope failed");
 			goto EXIT;
 		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_GYRO, buf, 6, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_GYRO,
+			buf,
+			6,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending gyro(x,y,z)values:x=%d,y=%d,z=%d",
@@ -189,7 +218,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_UNCALIB_GYRO,
-					     buf, 12, 0);
+					     buf, 12, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d",
@@ -208,7 +237,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 		}
 
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_UNCALIB_MAG,
-					     buf, 12, 0);
+					     buf, 12, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d",
@@ -224,7 +253,13 @@ void stml0xx_irq_work_func(struct work_struct *work)
 				"Reading ALS from stml0xx failed");
 			goto EXIT;
 		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_ALS, buf, 2, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_ALS,
+			buf,
+			2,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending ALS %d", STM16_TO_HOST(ALS_VALUE));
@@ -237,7 +272,13 @@ void stml0xx_irq_work_func(struct work_struct *work)
 				"Reading Temperature failed");
 			goto EXIT;
 		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_TEMP, buf, 2, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_TEMP,
+			buf,
+			2,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending temp(x)value:%d", STM16_TO_HOST(TEMP_VALUE));
@@ -254,7 +295,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_PRESSURE,
-					     buf, 4, 0);
+					     buf, 4, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending pressure %d", STM32_TO_HOST(PRESSURE_VALUE));
@@ -272,7 +313,13 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_GRAVITY, buf, 6, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_GRAVITY,
+			buf,
+			6,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending gravity(x,y,z)values:x=%d,y=%d,z=%d",
@@ -288,7 +335,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_DISP_ROTATE,
-					     buf, 1, 0);
+					     buf, 1, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending disp_rotate(x)value: %d", buf[DISP_VALUE]);
@@ -301,12 +348,13 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_DISP_BRIGHT,
-					     buf, 1, 0);
+					     buf, 1, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Display Brightness %d", buf[DISP_VALUE]);
 	}
 EXIT:
+	kfree((void *)stm_ws);
 	stml0xx_sleep(ps_stml0xx);
 	/* For now HAE needs events even if the activity is still */
 	mutex_unlock(&ps_stml0xx->lock);
