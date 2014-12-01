@@ -57,14 +57,27 @@ enum headset_state_t Headset_State = SH_HEADSET_REMOVED;
 
 irqreturn_t stml0xx_wake_isr(int irq, void *dev)
 {
+	static struct timespec ts;
+	static struct stml0xx_work_struct *stm_ws;
 	struct stml0xx_data *ps_stml0xx = dev;
+	getrawmonotonic(&ts);
 
 	if (stml0xx_irq_disable)
 		return IRQ_HANDLED;
 
 	wake_lock_timeout(&ps_stml0xx->wake_sensor_wakelock, HZ);
+	stm_ws = kmalloc(
+		sizeof(struct stml0xx_work_struct),
+		GFP_ATOMIC);
+	if (!stm_ws) {
+		dev_err(dev, "stml0xx_wake_isr: unable to allocate work struct");
+		return IRQ_HANDLED;
+	}
 
-	queue_work(ps_stml0xx->irq_work_queue, &ps_stml0xx->irq_wake_work);
+	INIT_WORK((struct work_struct *)stm_ws, stml0xx_irq_wake_work_func);
+	stm_ws->ts_ns = ts_to_ns(ts);
+
+	queue_work(ps_stml0xx->irq_work_queue, (struct work_struct *)stm_ws);
 	return IRQ_HANDLED;
 }
 
@@ -74,6 +87,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	unsigned short irq_status;
 	u32 irq2_status;
 	uint8_t irq3_status;
+	struct stml0xx_work_struct *stm_ws = (struct stml0xx_work_struct *)work;
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
 	unsigned char buf[SPI_MSG_SIZE];
 
@@ -149,7 +163,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			status = 0x04;
 
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_RESET, &status, 1,
-					     0);
+					     0, stm_ws->ts_ns);
 
 		stml0xx_reset(stml0xx_misc_data->pdata, stml0xx_cmdbuff);
 		dev_err(&stml0xx_misc_data->spi->dev,
@@ -171,7 +185,13 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				"Reading Dock state failed");
 			goto EXIT;
 		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_DOCK, buf, 1, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_DOCK,
+			buf,
+			1,
+			0,
+			stm_ws->ts_ns);
 		state = buf[DOCK_STATE];
 		if (ps_stml0xx->dsdev.dev != NULL)
 			switch_set_state(&ps_stml0xx->dsdev, state);
@@ -187,7 +207,13 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				"Reading prox from stml0xx failed");
 			goto EXIT;
 		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_PROX, buf, 1, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_PROX,
+			buf,
+			1,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Proximity distance %d", buf[PROX_DISTANCE]);
@@ -366,7 +392,13 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				"Reading flat data from stml0xx failed");
 			goto EXIT;
 		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_FLAT_UP, buf, 1, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_FLAT_UP,
+			buf,
+			1,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Flat up %d", buf[FLAT_UP]);
@@ -379,7 +411,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_FLAT_DOWN,
-					     buf, 1, 0);
+					     buf, 1, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Flat down %d", buf[FLAT_DOWN]);
@@ -391,7 +423,13 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				"Reading stowed from stml0xx failed");
 			goto EXIT;
 		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_STOWED, buf, 1, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_STOWED,
+			buf,
+			1,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Stowed status %d", buf[STOWED_STATUS]);
@@ -404,7 +442,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_CAMERA_ACT,
-					     buf, 2, 0);
+					     buf, 2, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Camera: %d", STM16_TO_HOST(CAMERA_VALUE));
@@ -421,7 +459,13 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				"Reading nfc data from stm failed");
 			goto EXIT;
 		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_NFC, buf, 1, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_NFC,
+			buf,
+			1,
+			0,
+			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending NFC value: %d", buf[NFC_VALUE]);
@@ -434,7 +478,13 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				"Reading sig_motion data from stm failed");
 			goto EXIT;
 		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_SIM, buf, 2, 0);
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_SIM,
+			buf,
+			2,
+			0,
+			stm_ws->ts_ns);
 
 		/* This is one shot sensor */
 		stml0xx_g_wake_sensor_state &= (~M_SIM);
@@ -561,4 +611,5 @@ EXIT:
 	stml0xx_sleep(ps_stml0xx);
 EXIT_NO_WAKE:
 	mutex_unlock(&ps_stml0xx->lock);
+	kfree(stm_ws);
 }
