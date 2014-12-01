@@ -28,6 +28,8 @@
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
@@ -639,14 +641,14 @@ static int create_device_attributes(
 	int i;
 	int err = 0;
 
-	for (i = 0 ; NULL != attrs[i].attr.name ; ++i) {
+	for (i = 0; NULL != attrs[i].attr.name; ++i) {
 		err = device_create_file(dev, &attrs[i]);
 		if (err)
 			break;
 	}
 
 	if (err) {
-		for (--i; i >= 0 ; --i)
+		for (--i; i >= 0; --i)
 			device_remove_file(dev, &attrs[i]);
 	}
 
@@ -659,7 +661,7 @@ static void remove_device_attributes(
 {
 	int i;
 
-	for (i = 0 ; NULL != attrs[i].attr.name ; ++i)
+	for (i = 0; NULL != attrs[i].attr.name; ++i)
 		device_remove_file(dev, &attrs[i]);
 }
 
@@ -730,7 +732,7 @@ static ssize_t akm_compass_sysfs_enable_store(
 	if (0 == count)
 		return 0;
 
-	if (strict_strtol(buf, AKM_BASE_NUM, &en))
+	if (kstrtol(buf, AKM_BASE_NUM, &en))
 		return -EINVAL;
 
 	en = en ? 1 : 0;
@@ -784,7 +786,7 @@ static ssize_t akm_compass_sysfs_delay_store(
 	if (0 == count)
 		return 0;
 
-	if (strict_strtoll(buf, AKM_BASE_NUM, &val))
+	if (kstrtoll(buf, AKM_BASE_NUM, &val))
 		return -EINVAL;
 
 	mutex_lock(&akm->val_mutex);
@@ -824,7 +826,7 @@ static ssize_t akm_sysfs_mode_store(
 	if (0 == count)
 		return 0;
 
-	if (strict_strtol(buf, AKM_BASE_NUM, &mode))
+	if (kstrtol(buf, AKM_BASE_NUM, &mode))
 		return -EINVAL;
 
 	if (AKECS_SetMode(akm, (uint8_t)mode) < 0)
@@ -1136,7 +1138,7 @@ static int akm09912_i2c_check_device(
 
 	/* Check read data */
 	if ((akm->sense_info[0] != AK09912_WIA1_VALUE) ||
-			(akm->sense_info[1] != AK09912_WIA2_VALUE)){
+			(akm->sense_info[1] != AK09912_WIA2_VALUE)) {
 		dev_err(&client->dev,
 			"%s: The device is not AKM Compass.", __func__);
 		return -ENXIO;
@@ -1144,6 +1146,40 @@ static int akm09912_i2c_check_device(
 
 	return err;
 }
+
+#ifdef CONFIG_OF
+static struct akm09912_platform_data *
+akm09912_of_init(struct i2c_client *client)
+{
+	struct akm09912_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	u32 val;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	pdata->gpio_RSTN = of_get_gpio(np, 0);
+	pdata->gpio_DRDY = of_get_gpio(np, 1);
+
+	if (!gpio_is_valid(pdata->gpio_RSTN) ||
+			!gpio_is_valid(pdata->gpio_DRDY))
+		return NULL;
+
+	if (!of_property_read_u32(np, "ak,layout", &val))
+		pdata->layout = (u8)val;
+
+	return pdata;
+}
+#else
+static inline struct akm8963_platform_data *
+akm8963_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
 
 int akm_compass_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -1183,17 +1219,23 @@ int akm_compass_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	s_akm->delay = -1;
 
 	/***** Set platform information *****/
-	pdata = client->dev.platform_data;
+	if (client->dev.of_node)
+		pdata = akm09912_of_init(client);
+	else
+		pdata = client->dev.platform_data;
+
 	if (pdata) {
 		/* Platform data is available. copy its value to local. */
 		s_akm->layout = pdata->layout;
 		s_akm->gpio_rstn = pdata->gpio_RSTN;
+		s_akm->irq = pdata->gpio_DRDY;
 	} else {
 		/* Platform data is not available.
 		   Layout and information should be set by each application. */
 		dev_dbg(&client->dev, "%s: No platform data.", __func__);
 		s_akm->layout = 0;
-		s_akm->gpio_rstn = 0;
+		s_akm->gpio_rstn = -1;
+		s_akm->irq = -1;
 	}
 
 	/***** I2C initialization *****/
@@ -1284,6 +1326,14 @@ static int akm_compass_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id ak09912_match_tbl[] = {
+	{ .compatible = "ak,ak09912" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, ak09912_match_tbl);
+#endif
+
 static const struct i2c_device_id akm_compass_id[] = {
 	{AKM_I2C_NAME, 0 },
 	{ }
@@ -1301,6 +1351,7 @@ static struct i2c_driver akm_compass_driver = {
 	.driver = {
 		.name	= AKM_I2C_NAME,
 		.pm		= &akm_compass_pm_ops,
+		.of_match_table = of_match_ptr(ak09912_match_tbl),
 	},
 };
 
