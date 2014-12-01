@@ -665,8 +665,10 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		handle = cpu_to_be32(handle);
+		getrawmonotonic(&current_time);
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_FLUSH,
-				(char *)&handle, 4, 0);
+				(char *)&handle, 4, 0,
+				ts_to_ns(current_time));
 		break;
 	}
 
