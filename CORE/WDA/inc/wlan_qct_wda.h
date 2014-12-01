@@ -489,10 +489,10 @@ typedef struct
    tSirLinkState        linkState;
    /* set, when BT AMP session is going on */
    v_BOOL_t             wdaAmpSessionOn;
-   v_U32_t              VosPacketToFree;
    v_BOOL_t             needShutdown;
    v_BOOL_t             wdiFailed;
    v_BOOL_t             wdaTimersCreated;
+   uintptr_t            VosPacketToFree;
 
    /* Event to wait for WDA stop on FTM mode */
    vos_event_t          ftmStopDoneEvent;
