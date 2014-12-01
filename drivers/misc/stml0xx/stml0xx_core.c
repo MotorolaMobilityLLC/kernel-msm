@@ -816,8 +816,6 @@ static int stml0xx_probe(struct spi_device *spi)
 	/* clear the interrupt mask */
 	ps_stml0xx->intp_mask = 0x00;
 
-	INIT_WORK(&ps_stml0xx->irq_work, stml0xx_irq_work_func);
-	INIT_WORK(&ps_stml0xx->irq_wake_work, stml0xx_irq_wake_work_func);
 	INIT_WORK(&ps_stml0xx->clear_interrupt_status_work,
 		  clear_interrupt_status_work_func);
 	INIT_WORK(&ps_stml0xx->initialize_work, stml0xx_initialize_work_func);
@@ -1089,15 +1087,29 @@ static int stml0xx_remove(struct spi_device *spi)
 
 static int stml0xx_resume(struct device *dev)
 {
+	static struct timespec ts;
+	static struct stml0xx_work_struct *stm_ws;
 	struct stml0xx_data *ps_stml0xx = spi_get_drvdata(to_spi_device(dev));
+
+	getrawmonotonic(&ts);
 	dev_dbg(&stml0xx_misc_data->spi->dev, "%s", __func__);
 
 	mutex_lock(&ps_stml0xx->lock);
 	ps_stml0xx->is_suspended = false;
 
 	if (ps_stml0xx->pending_wake_work) {
+		stm_ws = kmalloc(
+			sizeof(struct stml0xx_work_struct),
+			GFP_ATOMIC);
+		if (!stm_ws) {
+			dev_err(dev, "stml0xx_resume: unable to allocate work struct");
+			return 0;
+		}
+		INIT_WORK((struct work_struct *)stm_ws,
+			stml0xx_irq_wake_work_func);
+		stm_ws->ts_ns = ts_to_ns(ts);
 		queue_work(ps_stml0xx->irq_work_queue,
-			   &ps_stml0xx->irq_wake_work);
+			(struct work_struct *)stm_ws);
 		ps_stml0xx->pending_wake_work = false;
 	}
 
