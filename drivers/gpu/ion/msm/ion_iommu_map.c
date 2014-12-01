@@ -434,8 +434,14 @@ int ion_map_iommu(struct ion_client *client, struct ion_handle *handle,
 	mutex_lock(&msm_iommu_map_mutex);
 	iommu_meta = ion_iommu_meta_lookup(table);
 
-	if (!iommu_meta)
+	if (!iommu_meta) {
 		iommu_meta = ion_iommu_meta_create(client, handle, table, size);
+		if (IS_ERR(iommu_meta)) {
+			mutex_unlock(&msm_iommu_map_mutex);
+			ret = PTR_ERR(iommu_meta);
+			goto out;
+		}
+	}
 	else
 		kref_get(&iommu_meta->ref);
 	BUG_ON(iommu_meta->size != size);
@@ -478,9 +484,8 @@ int ion_map_iommu(struct ion_client *client, struct ion_handle *handle,
 
 out_unlock:
 	mutex_unlock(&iommu_meta->lock);
-out:
-
 	ion_iommu_meta_put(iommu_meta);
+out:
 	return ret;
 }
 EXPORT_SYMBOL(ion_map_iommu);
