@@ -993,6 +993,8 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensordata->sensor_info->is_mount_angle_valid;
 		cdata->cfg.sensor_info.sensor_mount_angle =
 			s_ctrl->sensordata->sensor_info->sensor_mount_angle;
+		cdata->cfg.sensor_info.position =
+			s_ctrl->sensordata->sensor_info->position;
 		pr_info("%s:%d sensor name %s\n", __func__, __LINE__,
 			cdata->cfg.sensor_info.sensor_name);
 		pr_info("%s:%d session id %d\n", __func__, __LINE__,
@@ -1298,6 +1300,8 @@ int32_t MT9V113_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensordata->sensor_info->is_mount_angle_valid;
 		cdata->cfg.sensor_info.sensor_mount_angle =
 			s_ctrl->sensordata->sensor_info->sensor_mount_angle;
+		cdata->cfg.sensor_info.position =
+			s_ctrl->sensordata->sensor_info->position;
 		pr_info("%s:%d sensor name %s\n", __func__, __LINE__,
 			cdata->cfg.sensor_info.sensor_name);
 		pr_info("%s:%d session id %d\n", __func__, __LINE__,
