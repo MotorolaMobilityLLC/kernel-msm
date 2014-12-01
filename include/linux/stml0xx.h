@@ -581,8 +581,6 @@ struct stml0xx_data {
 	struct stml0xx_platform_data *pdata;
 	/* to avoid two spi communications at the same time */
 	struct mutex lock;
-	struct work_struct irq_work;
-	struct work_struct irq_wake_work;
 	struct work_struct clear_interrupt_status_work;
 	struct work_struct initialize_work;
 	struct workqueue_struct *irq_work_queue;
@@ -641,6 +639,16 @@ struct stml0xx_data {
 	struct led_classdev led_cdev;
 };
 
+#ifndef ts_to_ns
+# define ts_to_ns(ts) ((ts).tv_sec*1000000000LL + (ts).tv_nsec)
+#endif
+struct stml0xx_work_struct {
+	/* Base struct */
+	struct work_struct ws;
+	/* Timestamp in nanoseconds */
+	uint64_t ts_ns;
+};
+
 /* per algo config, request, and event registers */
 struct stml0xx_algo_info_t {
 	unsigned short config_bit;
@@ -673,7 +681,8 @@ void stml0xx_initialize_work_func(struct work_struct *work);
 
 int stml0xx_as_data_buffer_write(struct stml0xx_data *ps_stml0xx,
 				 unsigned char type, unsigned char *data,
-				 int size, unsigned char status);
+				 int size, unsigned char status,
+				 uint64_t timestamp_ns);
 int stml0xx_as_data_buffer_read(struct stml0xx_data *ps_stml0xx,
 				struct stml0xx_android_sensor_data *buff);
 int stml0xx_ms_data_buffer_write(struct stml0xx_data *ps_stml0xx,
