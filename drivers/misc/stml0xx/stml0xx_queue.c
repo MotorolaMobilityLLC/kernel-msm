@@ -45,11 +45,11 @@
 
 int stml0xx_as_data_buffer_write(struct stml0xx_data *ps_stml0xx,
 				 unsigned char type, unsigned char *data,
-				 int size, unsigned char status)
+				 int size, unsigned char status,
+				 uint64_t timestamp_ns)
 {
 	int new_head;
 	struct stml0xx_android_sensor_data *buffer;
-	struct timespec ts;
 	static bool error_reported;
 
 	new_head = (ps_stml0xx->stml0xx_as_data_buffer_head + 1)
@@ -75,9 +75,7 @@ int stml0xx_as_data_buffer_write(struct stml0xx_data *ps_stml0xx,
 		memcpy(buffer->data, data, size);
 	}
 	buffer->size = size;
-
-	ktime_get_ts(&ts);
-	buffer->timestamp = ts.tv_sec * 1000000000LL + ts.tv_nsec;
+	buffer->timestamp = timestamp_ns;
 
 	ps_stml0xx->stml0xx_as_data_buffer_head = new_head;
 	wake_up(&ps_stml0xx->stml0xx_as_data_wq);
