@@ -2520,6 +2520,9 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		if (!!val->intval == atomic_read(&mdwc->in_lpm))
 			return 0;
 
+		if (mdwc->ext_chg_active)
+			return 0;
+
 		if (val->intval) {
 			pr_debug("force dwc3 to lpm\n");
 			pm_runtime_put_noidle(mdwc->dev);
