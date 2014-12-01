@@ -722,6 +722,10 @@ static int stop_charging(struct fan5404x_chg *chip)
 	chip->charging = false;
 	chip->chg_done_batt_full = false;
 
+	rc = fan5404x_set_ibuslim(chip, 500);
+	if (rc)
+		dev_err(chip->dev, "Failed to set Minimum input current value\n");
+
 	cancel_delayed_work(&chip->heartbeat_work);
 	schedule_delayed_work(&chip->heartbeat_work, msecs_to_jiffies(0));
 
