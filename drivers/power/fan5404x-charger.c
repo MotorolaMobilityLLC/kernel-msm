@@ -1332,6 +1332,20 @@ static int fan5404x_batt_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = fan5404x_get_prop_batt_health(chip);
+
+		if (val->intval ==  POWER_SUPPLY_HEALTH_WARM) {
+			if (chip->ext_high_temp)
+				val->intval = POWER_SUPPLY_HEALTH_OVERHEAT;
+			else
+				val->intval = POWER_SUPPLY_HEALTH_GOOD;
+		}
+
+		if (val->intval ==  POWER_SUPPLY_HEALTH_COOL) {
+			if (chip->ext_high_temp)
+				val->intval = POWER_SUPPLY_HEALTH_COLD;
+			else
+				val->intval = POWER_SUPPLY_HEALTH_GOOD;
+		}
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
