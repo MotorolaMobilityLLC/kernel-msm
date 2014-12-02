@@ -34,16 +34,13 @@
 			&cam_sensor_front_default>;
 		pinctrl-1 = <&cam_sensor_mclk1_sleep &cam_sensor_front_sleep>;
 		gpios = <&msm_gpio 27 0>,
-			<&msm_gpio 33 0>,
-			<&msm_gpio 81 0>,
+			<&msm_gpio 79 0>,
 			<&msm_gpio 28 0>;
-		qcom,gpio-vana = <1>;
-		qcom,gpio-vdig = <2>;
-		qcom,gpio-reset = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <0 0 0 0>;
+		qcom,gpio-vdig = <1>;
+		qcom,gpio-reset = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
-					"CAM_VANA",
 					"CAM_VDIG",
 					"CAM_RESET";
 		qcom,csi-lane-assign = <0x4320>;
