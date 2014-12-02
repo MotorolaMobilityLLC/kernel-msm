@@ -3589,7 +3589,9 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 
 	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
 		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK) {
+		if (*blank == FB_BLANK_UNBLANK ||
+			(*blank == FB_BLANK_VSYNC_SUSPEND &&
+			rmi4_data->touch_stopped)) {
 			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
 		} else if (*blank == FB_BLANK_POWERDOWN) {
 			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
