@@ -41,8 +41,6 @@
 
 #define MAJOR_NUM 0x68
 #define IOCTL_SET_PED_SENSITIVITY _IOR(MAJOR_NUM, 0, int *)
-#define IOCTL_SET_PED_TIME_THRESH _IOR(MAJOR_NUM, 1, int *)
-#define IOCTL_SET_PED_STEP_THRESH _IOR(MAJOR_NUM, 2, int *)
 
 struct iio_dev *g_indio_dev;
 struct inv_mpu_state *g_st;
@@ -2544,91 +2542,8 @@ static long inv_mpu_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
             }
             g_st->ped.peak_thresh = value;
         }
+	
 	break;
-    case IOCTL_SET_PED_TIME_THRESH:
-        data = (void __user *) arg;
-        ret = copy_from_user(&value, data, sizeof(int));
-        if (data == NULL) {
-            pr_err("[INV][ioctl] %s: null data!!! \n", __func__);
-            ret = -EFAULT;
-            break;
-        }
-        printk("[INV][ioctl] %s: setting pedometer step thresh (%d)\n", __func__, value);
-        ped_enabled = g_st->chip_config.enable;
-        if (ped_enabled) {
-            mutex_lock(&g_indio_dev->mlock);
-            ret = set_inv_enable(g_indio_dev, 0);
-            if (ret)
-                goto access_failed;
-            if (!data) {
-                 ret = g_st->set_power_state(g_st, false);
-                 if (ret)
-                    goto access_failed;
-             }
-            ret = inv_write_2bytes(g_st, KEY_D_PEDSTD_SB_TIME, value);
-            if (ret) {
-                ret |= g_st->set_power_state(g_st, false);
-                goto access_failed;
-            }
-            g_st->ped.time_thresh = value;
-            ret = g_st->set_power_state(g_st, true);
-            if (ret)
-                goto access_failed;
-            ret = set_inv_enable(g_indio_dev, 1);
-            if (ret)
-                goto access_failed;
-            mutex_unlock(&g_indio_dev->mlock);
-        }else {
-            ret = inv_write_2bytes(g_st, KEY_D_PEDSTD_SB_TIME, value);
-            if (ret) {
-                ret |= g_st->set_power_state(g_st, false);
-                goto access_failed;
-            }
-            g_st->ped.time_thresh = value;
-        }
-        break;
-    case IOCTL_SET_PED_STEP_THRESH:
-        data = (void __user *) arg;
-        ret = copy_from_user(&value, data, sizeof(int));
-        if (data == NULL) {
-            pr_err("[INV][ioctl] %s: null data!!! \n", __func__);
-            ret = -EFAULT;
-            break;
-        }
-        printk("[INV][ioctl] %s: setting pedometer step thresh (%d)\n", __func__, value);
-        ped_enabled = g_st->chip_config.enable;
-        if (ped_enabled) {
-            mutex_lock(&g_indio_dev->mlock);
-            ret = set_inv_enable(g_indio_dev, 0);
-            if (ret)
-                goto access_failed;
-            if (!data) {
-                 ret = g_st->set_power_state(g_st, false);
-                 if (ret)
-                    goto access_failed;
-             }
-            ret = inv_write_2bytes(g_st, KEY_D_PEDSTD_SB, value);
-            if (ret) {
-                ret |= g_st->set_power_state(g_st, false);
-                goto access_failed;
-            }
-            g_st->ped.step_thresh = value;
-            ret = g_st->set_power_state(g_st, true);
-            if (ret)
-                goto access_failed;
-            ret = set_inv_enable(g_indio_dev, 1);
-            if (ret)
-                goto access_failed;
-            mutex_unlock(&g_indio_dev->mlock);
-        }else {
-            ret = inv_write_2bytes(g_st, KEY_D_PEDSTD_SB, value);
-            if (ret) {
-                ret |= g_st->set_power_state(g_st, false);
-                goto access_failed;
-            }
-            g_st->ped.step_thresh = value;
-        }
-        break;
     default:
 	printk("[INV][ioctl] %s, unknown cmd(0x%x)\n", __func__, cmd);
 	break;
