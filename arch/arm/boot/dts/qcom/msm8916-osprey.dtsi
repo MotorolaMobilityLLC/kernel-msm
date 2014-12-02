@@ -60,6 +60,14 @@
 			drive-strength = <2>;
 		};
 	};
+
+	cam_sensor_front {
+		qcom,pins = <&gp 28>, <&gp 79>;
+	};
+
+	cam_sensor_front_sleep {
+		qcom,pins = <&gp 28>, <&gp 79>;
+	};
 };
 
 &spi_5 {
