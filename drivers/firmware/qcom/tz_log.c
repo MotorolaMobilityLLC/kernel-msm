@@ -373,7 +373,8 @@ static int _disp_tz_interrupt_stats(void)
 			(tzdbg.diag_buf->int_info_off - sizeof(uint32_t)));
 	ptr = ((unsigned char *)tzdbg.diag_buf +
 					tzdbg.diag_buf->int_info_off);
-	int_info_size = ((tzdbg.diag_buf->ring_off -
+	if (*num_int)
+		int_info_size = ((tzdbg.diag_buf->ring_off -
 				tzdbg.diag_buf->int_info_off)/(*num_int));
 
 	for (i = 0; i < (*num_int); i++) {
