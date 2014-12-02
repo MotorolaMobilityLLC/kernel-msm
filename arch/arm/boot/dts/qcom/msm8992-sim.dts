@@ -17,7 +17,6 @@
 
 #include "msm8992.dtsi"
 #include "msm8992-pinctrl.dtsi"
-#include "msm8992-coresight.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8992SIM";
