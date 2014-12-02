@@ -106,6 +106,8 @@
 #define WLAN_WAIT_TIME_POWER       800
 #define WLAN_WAIT_TIME_COUNTRY     1000
 #define WLAN_WAIT_TIME_CHANNEL_UPDATE   600
+#define FW_STATE_WAIT_TIME 500
+#define FW_STATE_RSP_LEN 100
 /* Amount of time to wait for sme close session callback.
    This value should be larger than the timeout used by WDI to wait for
    a response from WCNSS */
@@ -277,6 +279,7 @@ extern spinlock_t hdd_context_lock;
 #define POWER_CONTEXT_MAGIC 0x504F5752   //POWR
 #define SNR_CONTEXT_MAGIC   0x534E5200   //SNR
 #define BCN_MISS_RATE_CONTEXT_MAGIC 0x513F5753
+#define FW_STATS_CONTEXT_MAGIC  0x5022474E //FW STATS
 
 /*
  * Driver miracast parameters 0-Disabled
@@ -829,6 +832,33 @@ typedef enum
 
 #endif
 
+typedef enum
+{
+   FW_UBSP_STATS = 1,
+   FW_STATS_MAX,
+}hddFwStatsType;
+
+typedef struct
+{
+   struct completion completion;
+   tANI_U32 magic;
+   hdd_adapter_t *pAdapter;
+}fwStatsContext_t;
+
+typedef struct
+{
+   tANI_U32 ubsp_enter_cnt;
+   tANI_U32 ubsp_jump_ddr_cnt;
+}hddUbspFwStats;
+
+typedef struct
+{
+   hddFwStatsType type;
+   /*data*/
+   union{
+     hddUbspFwStats ubspStats;
+   }hddFwStatsData;
+}fwStatsResult_t;
 
 #define WLAN_HDD_ADAPTER_MAGIC 0x574c414e //ASCII "WLAN"
 
@@ -1034,6 +1064,7 @@ struct hdd_adapter_s
    sme_QosWmmUpType hddWmmDscpToUpMap[WLAN_HDD_MAX_DSCP+1];
    /* Lock for active sessions while processing deauth/Disassoc */
    spinlock_t lock_for_active_session;
+   fwStatsResult_t  fwStatsRsp;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
