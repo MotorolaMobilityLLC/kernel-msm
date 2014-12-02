@@ -1298,9 +1298,8 @@ int inv_enable_pedometer(struct inv_mpu_state *st, bool en)
 	u8 d[1];
 
 	if (en) {
-		inv_set_step_buffer_time(st, st->ped.time_thresh);
+		inv_set_step_buffer_time(st, 75);
 		inv_set_step_threshold(st, st->ped.step_thresh);
-		inv_set_step_peak_threshold(st, st->ped.peak_thresh);
 		d[0] = 0xf1;
 	}
 	else
@@ -1323,16 +1322,6 @@ int inv_set_step_threshold(struct inv_mpu_state *st, u16 value)
                 int result;
 
                 result = inv_write_2bytes(st, KEY_D_PEDSTD_SB, value);
-                return result;
-}
-
-int inv_set_step_peak_threshold(struct inv_mpu_state *st, u8 value)
-{
-		int result;
-		u32 peak_threshold;
-
-	        peak_threshold=(u32)value*MPU_DEFAULT_PED_PEAK_PARAM;		//(2^29*threshold(G)/100)
-                result = write_be32_key_to_mem(st, peak_threshold, KEY_D_PEDSTD_PEAKTHRSH);
                 return result;
 }
 
