@@ -15,7 +15,7 @@
 #include "msm8916-styx.dtsi"
 
 / {
-	qcom,board-id = <0x46 0x8300>;
+	qcom,board-id = <0x46 0x830d>;
 };
 
 &spi_0 {
