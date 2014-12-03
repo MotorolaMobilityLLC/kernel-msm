@@ -1,0 +1,216 @@
+/* Copyright (c) 2014, Motorla Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8994-v1-moto-common.dtsi"
+#include "dsi-panel-mot-smd-QHD-cmd.dtsi"
+
+/ {
+	model = "trenton";
+	compatible = "qcom,msm8994-trenton", "qcom,msm8994-moto", "qcom,msm8994";
+};
+
+&pm8994_l14 {
+	regulator-boot-on;
+};
+
+&pm8994_l18 {
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+	regulator-boot-on;
+};
+
+&vbat_disp_vreg {
+	regulator-boot-on;
+};
+
+&mdss_fb0 {
+	qcom,mdss-fb-split = <720 720>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_0_cmd_v1>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&msm_gpio 94 0>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&pm8994_l14>;
+	vci_disp-supply = <&pm8994_l18>;
+
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vbat_disp";
+			qcom,supply-min-voltage = <5000000>;
+			qcom,supply-max-voltage = <5000000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vdd_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@2 {
+			reg = <2>;
+			qcom,supply-name = "vci_disp";
+			qcom,supply-min-voltage = <3100000>;
+			qcom,supply-max-voltage = <3100000>;
+			qcom,supply-enable-load = <330000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <20>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+	};
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_1_cmd_v1>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&pm8994_l14>;
+	vci_disp-supply = <&pm8994_l18>;
+
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vbat_disp";
+			qcom,supply-min-voltage = <5000000>;
+			qcom,supply-max-voltage = <5000000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vdd_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@2 {
+			reg = <2>;
+			qcom,supply-name = "vci_disp";
+			qcom,supply-min-voltage = <3100000>;
+			qcom,supply-max-voltage = <3100000>;
+			qcom,supply-enable-load = <330000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <20>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+	};
+};
+
+&mot_smd_QHD_0_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_0_cmd_v1 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v1 {
+	qcom,cont-splash-enabled;
+};
+
+
+&pm8994_l22 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
+	qcom,init-current = <100>;
+	qcom,system-load = <100000>;
+	qcom,init-ldo-mode = <1>;
+	qcom,always-send-current;
+};
+
+&i2c_2 {
+	atmel_mxt_ts@4a {
+		compatible = "atmel,atmel_mxt_ts";
+		reg = <0x4a>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <40 0>;
+		gpios = <&msm_gpio 40 0>, /* IRQ */
+			<&msm_gpio 39 0>; /* RESET */
+		touch_vdd-supply = <&pm8994_s4>;
+		touch_avdd-supply = <&pm8994_l22>;
+		atmel,suspend-method-lpm;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_default &touch_int_default>;
+		pinctrl-1 = <&touch_reset_default &touch_int_default>;
+		atmel,cfg {
+			atmel,family-id = <0xa4>;
+			atmel,variant-id = <0x7>;
+			atmel,version = <0x5>;
+			atmel,build = <0x11>;
+			atmel,revision-id = <0x32>;
+		};
+	};
+
+	/delete-node/ synaptics_dsx_i2c@3b;
+
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupts = <&msm_gpio 40 0>;
+		gpios = <&msm_gpio 40 0>, /* IRQ */
+			<&msm_gpio 39 0>; /* RESET */
+		touch_vdd-supply = <&pm8994_l22>;
+		synaptics,gpio-config;
+		pinctrl-names = "default";
+		pinctrl-0 = <&touch_reset_default &touch_int_default>;
+		touchstate_modes {
+			touchmode-default = <&default_active &default_suspended>;
+		};
+		default_active: touchstate_default_active {
+			patch-data = "";
+		};
+		default_suspended: touchstate_aod_suspended {
+			patch-data = "F12@20=0505,23=3,23:1=1;F1@0=1&3,9=31";
+		};
+	};
+};
+
+&bt_vreg {
+	gpio = <&pm8994_gpios 11 0>;
+};
