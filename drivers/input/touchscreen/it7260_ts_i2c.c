@@ -931,18 +931,16 @@ static void readTouchDataPoint_Ambient(void)
 		readFingerData(&x, &y, &pressure, pointData.fd);
 
 	if ((pointData.palm & PD_PALM_FLAG_BIT)) {
-		/*
 		if (hadFingerDown){
 			cancel_delayed_work(&gl_ts->exit_idle_work);
 		}
-		*/
 		hadFingerDown = false;
 	}
 
 	if (pressure >= FD_PRESSURE_LIGHT) {
 
 		if (hadFingerDown){
-			//cancel_delayed_work(&gl_ts->exit_idle_work);
+			cancel_delayed_work(&gl_ts->exit_idle_work);
 		}
 		else { 
 			hadFingerDown = true;
@@ -953,7 +951,7 @@ static void readTouchDataPoint_Ambient(void)
 		hadFingerDown = false;
 		suspend_touch_up = getMsTime();
 		
-		//cancel_delayed_work(&gl_ts->exit_idle_work);
+		cancel_delayed_work(&gl_ts->exit_idle_work);
 		if (lastTouch == TOUCH_UP)
 			touchMissed = true;
 		else
@@ -974,7 +972,7 @@ static void readTouchDataPoint_Ambient(void)
 		wake_unlock(&touch_lock);
 	} else if (pointData.flags == 16){
 		hadFingerDown = true;
-		//queue_delayed_work(IT7260_wq, &gl_ts->exit_idle_work, 5);
+		queue_delayed_work(IT7260_wq, &gl_ts->exit_idle_work, 5);
 	} else if (pressure == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
 		isDeviceSuspend = true;
 		wake_unlock(&touch_lock);
