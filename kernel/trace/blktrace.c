@@ -237,7 +237,7 @@ static void __blk_add_trace(struct blk_trace *bt, sector_t sector, int bytes,
 	temp_file = 0;
 	do {
 		if (sector_trans == gblk_req_table[gblk_index].sector) {
-			pid = gblk_req_table[gblk_index].pid;
+			pid = gblk_req_table[gblk_index].tgid;
 			temp_file = gblk_req_table[gblk_index].temp_file;
 			tsk_orig = find_task_by_vpid(pid);
 			pid = pid + temp_file;

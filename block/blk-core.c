@@ -1845,6 +1845,7 @@ void update_most_table(int rw, struct bio *bio, int count)
 	}
 
 final:
+	gblk_req_table[gblk_current].tgid = task_tgid_nr(current);
 	gblk_req_table[gblk_current].pid = task_pid_nr(current);
 	gblk_req_table[gblk_current].temp_file = tfile;
 	gblk_req_table[gblk_current].sector = bio->bi_sector;
