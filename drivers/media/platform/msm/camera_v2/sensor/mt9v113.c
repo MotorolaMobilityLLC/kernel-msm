@@ -624,9 +624,9 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x3400, 0x7a26,},
 	/* Additional Tuning parameters for Motorola request */
 	{0x098C, 0xAB04,}, /* MCU_ADDRESS [HG_MAX_DLEVEL] */
-	{0x0990, 0x0060,}, /* MCU_DATA_0                       */
+	{0x0990, 0x0050,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB06,}, /* MCU_ADDRESS [HG_PERCENT] */
-	{0x0990, 0x0005,}, /* MCU_DATA_0                       */
+	{0x0990, 0x0003,}, /* MCU_DATA_0                       */
 	{0x098C, 0xAB35,}, /* MCU_ADDRESS [HG_NR_GAINSTOP] */
 	{0x0990, 0x00F0,}, /* MCU_DATA_0                       */
 	{0x098C, 0xA207,}, /* MCU_ADDRESS [AE_GATE]*/
