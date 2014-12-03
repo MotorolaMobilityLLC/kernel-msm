@@ -122,6 +122,9 @@ static void do_sync_work(struct work_struct *work)
 	 * Sync twice to reduce the possibility we skipped some inodes / pages
 	 * because they were temporarily locked
 	 */
+#ifdef CONFIG_POWER_OFF_BATTERY_LOG
+	blocking_notifier_call_chain(&fs_notifier_list, 0, "Emergency Sync");
+#endif
 	iterate_supers(sync_inodes_one_sb, &nowait);
 	iterate_supers(sync_fs_one_sb, &nowait);
 	iterate_bdevs(fdatawrite_one_bdev, NULL);
