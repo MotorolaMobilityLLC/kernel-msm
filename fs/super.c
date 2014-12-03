@@ -770,6 +770,9 @@ static void do_emergency_remount(struct work_struct *work)
 {
 	struct super_block *sb, *p = NULL;
 
+#ifdef CONFIG_POWER_OFF_BATTERY_LOG
+	blocking_notifier_call_chain(&fs_notifier_list, 0, "reboot");
+#endif
 	spin_lock(&sb_lock);
 	list_for_each_entry(sb, &super_blocks, s_list) {
 		if (hlist_unhashed(&sb->s_instances))
@@ -808,6 +811,19 @@ void emergency_remount(void)
 	}
 }
 
+#ifdef CONFIG_POWER_OFF_BATTERY_LOG
+int register_fs_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&fs_notifier_list, nb);
+}
+EXPORT_SYMBOL(register_fs_notifier);
+
+int unregister_fs_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&fs_notifier_list, nb);
+}
+EXPORT_SYMBOL(unregister_fs_notifier);
+#endif
 /*
  * Unnamed block devices are dummy devices used by virtual
  * filesystems which don't use real block-devices.  -- jrs
