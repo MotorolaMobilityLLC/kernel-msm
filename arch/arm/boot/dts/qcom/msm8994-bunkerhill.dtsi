@@ -10,7 +10,6 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8994-moto-common.dtsi"
 #include "dsi-panel-mot-smd-QHD-cmd.dtsi"
 
 / {
