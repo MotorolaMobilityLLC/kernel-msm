@@ -323,6 +323,10 @@
 	};
 };
 
+&pmi8994_charger {
+	qcom,charging-disabled;
+};
+
 &pmi8994_haptics {
 	status = "okay";
 };
