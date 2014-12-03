@@ -10,10 +10,6 @@
  * GNU General Public License for more details.
  */
 
-/* RAM OOPS */
-/memreserve/ 0xaf000000 0x80000;
-
-#include "msm8994-v1.dtsi"
 #include "msm8994-pinctrl.dtsi"
 #include "msm8994-mot-camera-sensor.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"

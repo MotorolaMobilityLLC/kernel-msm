@@ -10,29 +10,11 @@
  * GNU General Public License for more details.
  */
 
+/* RAM OOPS */
+/memreserve/ 0xaf000000 0x80000;
 
-/dts-v1/;
+#include "msm8994-v1.dtsi"
+#include "msm8994-moto-common.dtsi"
 
-#include "msm8994-v1-bunkerhill.dtsi"
+/* Only deltas on Motorola hardware between v1 and v2 chips should go here */
 
-/ {
-	qcom,board-id = <0x41 0x8200>;
-};
-
-&cci {
-	qcom,camera@0 {
-		gpios = <&msm_gpio 13 0>,
-			<&msm_gpio 30 0>,
-			<&msm_gpio 95 0>,
-			<&msm_gpio 126 0>;
-		qcom,gpio-reset = <1>;
-		qcom,gpio-vana = <2>;
-		qcom,gpio-standby = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
-		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
-					  "CAM_RESET0",
-					  "CAM_VANA",
-					  "CAM_PWRDN";
-	};
-};
