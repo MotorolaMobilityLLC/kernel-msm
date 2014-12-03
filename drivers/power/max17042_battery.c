@@ -1263,7 +1263,7 @@ static int max17042_get_cell_char_tbl(struct device *dev,
 
 	property = of_get_property(np, CELL_CHAR_TBL_PROPERTY, &lenp);
 	if (!property)
-		return -ENODEV ;
+		return -ENODEV;
 
 	if (lenp != sizeof(*property) * MAX17042_CHARACTERIZATION_DATA_SIZE) {
 		dev_err(dev, "%s must have %d cells\n", CELL_CHAR_TBL_PROPERTY,
@@ -1926,7 +1926,9 @@ static int max17042_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	chip->charge_full_des = (chip->pdata->config_data->design_cap / 2) * 1000;
+	chip->factory_mode = false;
+	chip->charge_full_des =
+		(chip->pdata->config_data->design_cap / 2) * 1000;
 
 	i2c_set_clientdata(client, chip);
 
