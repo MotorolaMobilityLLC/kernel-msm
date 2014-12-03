@@ -562,6 +562,9 @@ static void do_thaw_one(struct super_block *sb, void *unused)
 
 static void do_thaw_all(struct work_struct *work)
 {
+#ifdef CONFIG_POWER_OFF_BATTERY_LOG
+	blocking_notifier_call_chain(&fs_notifier_list, 0, "Emergency Thaw");
+#endif
 	iterate_supers(do_thaw_one, NULL);
 	kfree(work);
 	printk(KERN_WARNING "Emergency Thaw complete\n");
