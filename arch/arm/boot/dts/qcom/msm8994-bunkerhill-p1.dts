@@ -13,7 +13,7 @@
 
 /dts-v1/;
 
-#include "msm8994-bunkerhill.dtsi"
+#include "msm8994-v1-bunkerhill.dtsi"
 
 / {
 	qcom,board-id = <0x41 0x8100>;
