@@ -1225,11 +1225,6 @@ static int max17042_probe(struct i2c_client *client,
 		max17042_write_reg(client, MAX17042_LearnCFG, 0x0007);
 	}
 
-	ret = power_supply_register(&client->dev, &chip->battery);
-	if (ret) {
-		dev_err(&client->dev, "failed: power supply register\n");
-		return ret;
-	}
 
 	ret = gpio_request_array(chip->pdata->gpio_list,
 				 chip->pdata->num_gpio_list);
@@ -1262,6 +1257,12 @@ static int max17042_probe(struct i2c_client *client,
 		schedule_work(&chip->work);
 	} else {
 		chip->init_complete = 1;
+	}
+
+	ret = power_supply_register(&client->dev, &chip->battery);
+	if (ret) {
+		dev_err(&client->dev, "failed: power supply register\n");
+		return ret;
 	}
 
 #ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
