@@ -3008,7 +3008,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 		return rc;
 
 	chip->factory_detect_gpio = of_get_named_gpio(chip->spmi->dev.of_node,
-						"qcom,usbid-gpio", 0);
+						"qcom,factory_detect_gpio", 0);
 	if (chip->factory_detect_gpio < 0)
 		pr_debug("factory_detect_gpio is not available\n");
 
