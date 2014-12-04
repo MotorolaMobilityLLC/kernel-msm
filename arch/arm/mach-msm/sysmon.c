@@ -266,8 +266,7 @@ int sysmon_get_reason(enum subsys_id dest_ss, char *buf, size_t len)
 		goto out;
 	}
 	strlcpy(buf, ss->rx_buf + prefix_len, len);
-	strlcpy(sysm_ssr_reason, buf, min(strlen(buf),
-					sizeof(sysm_ssr_reason)));
+	strlcpy(sysm_ssr_reason, buf, sizeof(sysm_ssr_reason));
 
 out:
 	mutex_unlock(&ss->lock);
