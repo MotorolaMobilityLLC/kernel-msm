@@ -5363,7 +5363,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 
    smeConfig->fEnableDebugLog = pHddCtx->cfg_ini->gEnableDebugLog;
    smeConfig->csrConfig.sendDeauthBeforeCon = pConfig->sendDeauthBeforeCon;
-
+   smeConfig->csrConfig.nOBSSScanWidthTriggerInterval =
+                        pConfig->nOBSSScanWidthTriggerInterval;
    smeConfig->fDeferIMPSTime = pHddCtx->cfg_ini->deferImpsTime;
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, smeConfig);
