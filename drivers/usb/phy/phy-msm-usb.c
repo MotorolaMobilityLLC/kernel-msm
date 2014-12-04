@@ -2123,6 +2123,7 @@ out:
 	return NOTIFY_OK;
 }
 
+#define MSM_ID_CHECK_DELAY 1000
 static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 {
 	int ret;
@@ -4349,10 +4350,6 @@ static void msm_id_status_w(struct work_struct *w)
 		return;
 	}
 
-	if (test_bit(B_SESS_VLD, &motg->inputs)) {
-		dev_err(motg->phy.dev, "Ignore ID - BSV Set\n");
-		return;
-	}
 
 	if (motg->pdata->pmic_id_irq)
 		motg->id_state = msm_otg_read_pmic_id_state(motg);
@@ -4390,6 +4387,8 @@ static void msm_id_status_w(struct work_struct *w)
 			set_bit(A_BUS_REQ, &motg->inputs);
 			work = 1;
 		}
+		queue_delayed_work(system_nrt_wq, &motg->id_status_work,
+				msecs_to_jiffies(MSM_ID_CHECK_DELAY));
 	}
 
 	if (work && (motg->phy.state != OTG_STATE_UNDEFINED)) {
@@ -4418,10 +4417,12 @@ static irqreturn_t msm_id_irq(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
-	if (!aca_id_turned_on)
+	if (!aca_id_turned_on) {
+		cancel_delayed_work(&motg->id_status_work);
 		/*schedule delayed work for 150ms for ID line state to settle*/
 		queue_delayed_work(motg->otg_wq, &motg->id_status_work,
 				msecs_to_jiffies(MSM_ID_STATUS_DELAY));
+	}
 
 	return IRQ_HANDLED;
 }
