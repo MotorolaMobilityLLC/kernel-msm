@@ -279,6 +279,7 @@ endif # CONFIG_MMI_DEVICE_DTBS
 # Motorola DTB definitions
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-bunkerhill-p1.dtb
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-bunkerhill-p2.dtb
+dtb-$(CONFIG_ARCH_MSM8994) += msm8994-bunkerhill-p201.dtb
 
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-trenton-p1.dtb
 
