@@ -433,13 +433,13 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 			     &pdata->headset_button_down_debounce);
 	of_property_read_u32(np, "headset_button_up_debounce",
 			     &pdata->headset_button_up_debounce);
-	of_property_read_u32(np, "headset_button_0_1_threshold",
+	of_property_read_u32(np, "headset_button_0-1_threshold",
 			     &pdata->headset_button_0_1_threshold);
-	of_property_read_u32(np, "headset_button_1_2_threshold",
+	of_property_read_u32(np, "headset_button_1-2_threshold",
 			     &pdata->headset_button_1_2_threshold);
-	of_property_read_u32(np, "headset_button_2_3_threshold",
+	of_property_read_u32(np, "headset_button_2-3_threshold",
 			     &pdata->headset_button_2_3_threshold);
-	of_property_read_u32(np, "headset_button_3_upper_threshold",
+	of_property_read_u32(np, "headset_button_3-upper_threshold",
 			     &pdata->headset_button_3_upper_threshold);
 	of_property_read_u32(np, "headset_button_1_keycode",
 			     &pdata->headset_button_1_keycode);
