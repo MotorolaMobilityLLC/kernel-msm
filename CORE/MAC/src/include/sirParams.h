@@ -122,6 +122,7 @@ typedef enum {
    DYNAMIC_WMM_PS        = 43,
 
    MAC_SPOOFED_SCAN      = 44,
+   BMU_ERROR_GENERIC_RECOVERY = 45,
    WPS_PRBRSP_TMPL       = 48,
    BCN_IE_FLT_DELTA      = 49,
    //MAX_FEATURE_SUPPORTED = 128
