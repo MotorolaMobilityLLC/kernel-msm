@@ -1540,7 +1540,6 @@ drop:
 	if (driver->data_ready[index] & DCI_DATA_TYPE) {
 		/* Copy the type of data being passed */
 		data_type = driver->data_ready[index] & DCI_DATA_TYPE;
-		driver->data_ready[index] ^= DCI_DATA_TYPE;
 		list_for_each_safe(start, temp, &driver->dci_client_list) {
 			entry = list_entry(start, struct diag_dci_client_tbl,
 									track);
@@ -1554,6 +1553,7 @@ drop:
 					entry->client_info.token, sizeof(int));
 			copy_dci_data = 1;
 			exit_stat = diag_copy_dci(buf, count, entry, &ret);
+			driver->data_ready[index] ^= DCI_DATA_TYPE;
 			if (exit_stat == 1)
 				goto exit;
 		}
