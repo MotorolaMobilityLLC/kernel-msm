@@ -1085,18 +1085,48 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 limLog(pMac, LOGP,
                        FL("Unable to deactivate periodic timer"));
             }
-
-            val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->minChannelTime)/2;
-            if (pMac->btc.btcScanCompromise)
+            if(pMac->lim.gpLimMlmScanReq)
             {
-               if (pMac->lim.gpLimMlmScanReq->minChannelTimeBtc)
-               {
-                   val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->minChannelTimeBtc)/2;
-               }
-               else
-               {
-                   limLog(pMac, LOGE, FL("BTC Active Scan Min Time is Not Set"));
-               }
+                val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->minChannelTime)/2;
+                if (pMac->btc.btcScanCompromise)
+                {
+                    if (pMac->lim.gpLimMlmScanReq->minChannelTimeBtc)
+                    {
+                        val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->minChannelTimeBtc)/2;
+                        limLog(pMac, LOG1, FL("Using BTC Min Active Scan time"));
+                    }
+                    else
+                    {
+                        limLog(pMac, LOGE, FL("BTC Active Scan Min Time is Not Set"));
+                    }
+                }
+            }
+            /*If val is 0 it means min Channel timer is 0 so take the value from maxChannelTimer*/
+            if (!val)
+            {
+
+                if(pMac->lim.gpLimMlmScanReq)
+                {
+                    val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->maxChannelTime)/2;
+                    if (pMac->btc.btcScanCompromise)
+                    {
+                        if (pMac->lim.gpLimMlmScanReq->maxChannelTimeBtc)
+                        {
+                            val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->maxChannelTimeBtc)/2;
+                            limLog(pMac, LOG1, FL("Using BTC Max Active Scan time"));
+                        }
+                        else
+                        {
+                            limLog(pMac, LOGE, FL("BTC Active Scan Max Time is Not Set"));
+                        }
+                    }
+                }
+                else
+                {
+                    limLog(pMac, LOGE, FL(" gpLimMlmScanReq is NULL "));
+                    //No need to change max timer. This is not a scan
+                    break;
+                }
             }
             if (tx_timer_change(&pMac->lim.limTimers.gLimPeriodicProbeReqTimer,
                                 val, 0) != TX_SUCCESS)
