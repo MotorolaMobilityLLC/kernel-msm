@@ -29,6 +29,14 @@ struct batch_config {
 
 int get_msdelay(int64_t dDelayRate)
 {
+	/*
+	 * From Android 5.0, There is MaxDelay Concept.
+	 * If App request lower frequency then MaxDelay,
+	 * Sensor have to work with MaxDelay.
+	 */
+
+	if (dDelayRate > 200000000)
+		dDelayRate = 200000000;
 	return div_s64(dDelayRate, 1000000);
 }
 
@@ -252,6 +260,7 @@ static ssize_t set_sensors_enable(struct device *dev,
 			!= (uNewEnable & (1 << uChangedSensor))) {
 
 			if (!(uNewEnable & (1 << uChangedSensor))) {
+				data->reportedData[uChangedSensor] = false;
 				ssp_remove_sensor(data, uChangedSensor,
 					uNewEnable); /* disable */
 			} else { /* Change to ADD_SENSOR_STATE from KitKat */

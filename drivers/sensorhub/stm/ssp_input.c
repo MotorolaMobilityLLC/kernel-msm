@@ -190,6 +190,10 @@ void report_geomagnetic_raw_data(struct ssp_data *data,
 
 void report_mag_data(struct ssp_data *data, struct sensor_value *magdata)
 {
+	int time_hi, time_lo;
+	time_lo = (int)(magdata->timestamp & 0x00000000FFFFFFFF);
+	time_hi = (int)((magdata->timestamp & 0xFFFFFFFF00000000) >> 32);
+
 	data->buf[GEOMAGNETIC_SENSOR].cal_x = magdata->cal_x;
 	data->buf[GEOMAGNETIC_SENSOR].cal_y = magdata->cal_y;
 	data->buf[GEOMAGNETIC_SENSOR].cal_z = magdata->cal_z;
@@ -204,11 +208,17 @@ void report_mag_data(struct ssp_data *data, struct sensor_value *magdata)
 	input_report_rel(data->mag_input_dev, REL_HWHEEL,
 		data->buf[GEOMAGNETIC_SENSOR].accuracy + 1);
 
+	input_report_rel(data->mag_input_dev, REL_X, time_hi);
+	input_report_rel(data->mag_input_dev, REL_Y, time_lo);
 	input_sync(data->mag_input_dev);
 }
 
 void report_mag_uncaldata(struct ssp_data *data, struct sensor_value *magdata)
 {
+	int time_hi, time_lo;
+	time_lo = (int)(magdata->timestamp & 0x00000000FFFFFFFF);
+	time_hi = (int)((magdata->timestamp & 0xFFFFFFFF00000000) >> 32);
+
 	data->buf[GEOMAGNETIC_UNCALIB_SENSOR].uncal_x = magdata->uncal_x;
 	data->buf[GEOMAGNETIC_UNCALIB_SENSOR].uncal_y = magdata->uncal_y;
 	data->buf[GEOMAGNETIC_UNCALIB_SENSOR].uncal_z = magdata->uncal_z;
@@ -228,6 +238,9 @@ void report_mag_uncaldata(struct ssp_data *data, struct sensor_value *magdata)
 		data->buf[GEOMAGNETIC_UNCALIB_SENSOR].offset_y);
 	input_report_rel(data->uncal_mag_input_dev, REL_WHEEL,
 		data->buf[GEOMAGNETIC_UNCALIB_SENSOR].offset_z);
+
+	input_report_rel(data->uncal_mag_input_dev, REL_X, time_hi);
+	input_report_rel(data->uncal_mag_input_dev, REL_Y, time_lo);
 	input_sync(data->uncal_mag_input_dev);
 }
 
@@ -679,6 +692,8 @@ int initialize_input_dev(struct ssp_data *data)
 	input_set_capability(data->mag_input_dev, EV_REL, REL_RX);
 	input_set_capability(data->mag_input_dev, EV_REL, REL_RY);
 	input_set_capability(data->mag_input_dev, EV_REL, REL_RZ);
+	input_set_capability(data->mag_input_dev, EV_REL, REL_X); /* time_hi */
+	input_set_capability(data->mag_input_dev, EV_REL, REL_Y); /* time_lo */
 	input_set_capability(data->mag_input_dev, EV_REL, REL_HWHEEL);
 
 	iRet = input_register_device(data->mag_input_dev);
@@ -699,6 +714,8 @@ int initialize_input_dev(struct ssp_data *data)
 	input_set_capability(data->uncal_mag_input_dev, EV_REL, REL_HWHEEL);
 	input_set_capability(data->uncal_mag_input_dev, EV_REL, REL_DIAL);
 	input_set_capability(data->uncal_mag_input_dev, EV_REL, REL_WHEEL);
+	input_set_capability(data->uncal_mag_input_dev, EV_REL, REL_X); /* time_hi */
+	input_set_capability(data->uncal_mag_input_dev, EV_REL, REL_Y); /* time_lo */
 	iRet = input_register_device(data->uncal_mag_input_dev);
 	if (iRet < 0) {
 		input_free_device(data->uncal_mag_input_dev);
