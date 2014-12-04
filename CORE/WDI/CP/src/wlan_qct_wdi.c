@@ -25193,10 +25193,6 @@ WDI_ExtractRequestCBFromEvent
     break;
 #endif
 
-  case WDI_SPOOF_MAC_ADDR_REQ:
-    *ppfnReqCB   =  ((WDI_GtkOffloadGetInfoReqMsg*)pEvent->pEventData)->wdiReqStatusCB;
-    *ppUserData  =  ((WDI_GtkOffloadGetInfoReqMsg*)pEvent->pEventData)->pUserData;
-    break;
   default:
     *ppfnReqCB   =  NULL;
     *ppUserData  =  NULL;
