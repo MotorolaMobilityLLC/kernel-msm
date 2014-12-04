@@ -655,8 +655,12 @@ static void pll_20nm_phy_config(struct dsi_pll_vco_clk *vco)
 
 	MDSS_PLL_REG_W(dsi_pll_res->pll_base,
 				MMSS_DSI_PHY_PLL_SYS_CLK_CTRL, 0x40);
-	MDSS_PLL_REG_W(dsi_pll_res->pll_base,
+	if (dsi_pll_res->target_id == MDSS_PLL_TARGET_8994)
+		MDSS_PLL_REG_W(dsi_pll_res->pll_base,
 				MMSS_DSI_PHY_PLL_PLL_VCOTAIL_EN, 0x00);
+	else
+		MDSS_PLL_REG_W(dsi_pll_res->pll_base,
+				MMSS_DSI_PHY_PLL_PLL_VCOTAIL_EN, 0x03);
 	MDSS_PLL_REG_W(dsi_pll_res->pll_base, MMSS_DSI_PHY_PLL_CMN_MODE, 0x00);
 	MDSS_PLL_REG_W(dsi_pll_res->pll_base, MMSS_DSI_PHY_PLL_IE_TRIM, 0x0F);
 	MDSS_PLL_REG_W(dsi_pll_res->pll_base, MMSS_DSI_PHY_PLL_IP_TRIM, 0x0F);
