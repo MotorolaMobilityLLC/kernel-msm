@@ -1298,7 +1298,7 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
            know that the device is getting activated properly.
            */
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
-        if (pHddStaCtx->ft_carrier_on == FALSE)
+        if (pHddStaCtx->ft_carrier_on == FALSE && !hddDisconInProgress )
         {
 #endif
             // Enable Linkup Event Servicing which allows the net device notifier to set the linkup event variable
@@ -1560,7 +1560,8 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                       sizeof(pAdapter->hdd_stats.hddPmfStats) );
 #endif
         // Start the Queue
-        netif_tx_wake_all_queues(dev);
+        if ( !hddDisconInProgress )
+            netif_tx_wake_all_queues(dev);
 #ifdef DEBUG_ROAM_DELAY
         vos_record_roam_event(e_HDD_ENABLE_TX_QUEUE, NULL, 0);
 #endif
