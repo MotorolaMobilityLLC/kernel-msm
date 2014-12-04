@@ -346,6 +346,7 @@ struct stm_response {
 #define LOG_MSG_STATUS                  0x02
 #define LOWPOWER_REG                    0x03
 #define INIT_COMPLETE_REG               0x04
+#define ACCEL_ORIENTATION		0x06
 
 #define STML0XX_PEEKDATA_REG             0x09
 #define STML0XX_PEEKSTATUS_REG           0x0A
@@ -574,6 +575,8 @@ struct stml0xx_platform_data {
 	int headset_button_2_keycode;
 	int headset_button_3_keycode;
 	int headset_button_4_keycode;
+	int accel_orientation_1;
+	int accel_orientation_2;
 };
 
 struct stml0xx_data {
