@@ -25,6 +25,14 @@
 	qcom,board-id = <8 4>;
 };
 
+&soc {
+	i2c@f9927000 { /* BLSP1 QUP5 */
+		synaptics@20 {
+			synaptics,display-coords = <0 0 319 239>;
+		};
+	};
+};
+
 &mdss_fb0 {
 	/* cont_splash memory*/
 	qcom,memblock-reserve = <0x07e9c000 0x64000>;

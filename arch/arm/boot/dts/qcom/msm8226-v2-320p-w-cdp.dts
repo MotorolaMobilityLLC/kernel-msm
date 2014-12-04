@@ -34,6 +34,14 @@
 	qcom,memblock-reserve = <0x07e9c000 0x64000>;
 };
 
+&soc {
+	i2c@f9927000 { /* BLSP1 QUP5 */
+		synaptics@20 {
+			synaptics,display-coords = <0 0 319 239>;
+		};
+	};
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
 };
