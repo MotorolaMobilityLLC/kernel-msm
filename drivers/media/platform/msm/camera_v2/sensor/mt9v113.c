@@ -26,6 +26,9 @@
 #define MT9V113_KERNEL_CONFIG_REGISTER 0x33F4
 #define MT9V113_EXPOSURE_TARGET_REGISTER 0xA24F
 #define MT9V113_AWB_EDGE_THERSOLD_REGISTER 0x2361
+#define MT9V113_AE_GATE_REGISTER 0xA207
+#define MT9V113_AE_PREVIEW_MODE_REGISTER 0xA11D
+#define MT9V113_AE_CAPTURE_MODE_REGISTER 0xA129
 #define MT9V113_MCU_VARIABLE_ADDRESS 0x098C
 #define MT9V113_MCU_VARIABLE_DATA0 0x0990
 
@@ -852,6 +855,56 @@ static int32_t mt9v113_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 		int8_t target_exposure)
 {
 	int32_t rc;
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_ADDRESS,
+			MT9V113_AE_PREVIEW_MODE_REGISTER,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Write MT9V113_AE_PREVIEW_MODE_REGISTER failed\n",
+				__func__);
+		return rc;
+	}
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_DATA0,
+			0x0002,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Write AE PREVIEW MODE Value failed\n",
+				__func__);
+		return rc;
+	}
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_ADDRESS,
+			MT9V113_AE_CAPTURE_MODE_REGISTER,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Write MT9V113_AE_CAPTURE_MODE_REGISTER failed\n",
+				__func__);
+		return rc;
+	}
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_DATA0,
+			0x0002,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Write AE CAPTURE MODE Value failed\n",
+				__func__);
+		return rc;
+	}
+	/* Refresh */
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
+		s_ctrl->sensor_i2c_client, mt9v113_refresh_settings,
+		ARRAY_SIZE(mt9v113_refresh_settings),
+		MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Write Refresh failed\n",
+				__func__);
+		return rc;
+	}
 	/* AE_BASETARGET */
 	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 			s_ctrl->sensor_i2c_client,
@@ -876,7 +929,50 @@ static int32_t mt9v113_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 				__func__);
 		return rc;
 	}
+	/* Cahnge AE GATE value */
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_ADDRESS,
+			MT9V113_AE_GATE_REGISTER,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Write AE_GATE register failed\n",
+				__func__);
+		return rc;
+	}
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_DATA0,
+			0x0004,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Write AE GATE Value failed\n",
+				__func__);
+		return rc;
+	}
+	/* Wait for 200 ms to take effect*/
+	usleep(200000);
 
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_ADDRESS,
+			MT9V113_AE_GATE_REGISTER,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Write AE_GATE register failed\n",
+				__func__);
+		return rc;
+	}
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_DATA0,
+			0x0012,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Write AE GATE Value failed\n",
+				__func__);
+		return rc;
+	}
 	return rc;
 }
 
