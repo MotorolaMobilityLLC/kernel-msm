@@ -119,7 +119,7 @@ static void create_dci_event_mask_tbl(unsigned char *tbl_buf)
 		memset(tbl_buf, 0, DCI_EVENT_MASK_SIZE);
 }
 
-static void dci_drain_data(unsigned long data)
+void dci_drain_data(unsigned long data)
 {
 	queue_work(driver->diag_dci_wq, &dci_data_drain_work);
 }
@@ -128,7 +128,7 @@ static void dci_check_drain_timer(void)
 {
 	if (!dci_timer_in_progress) {
 		dci_timer_in_progress = 1;
-		 mod_timer(&dci_drain_timer, jiffies + msecs_to_jiffies(500));
+		mod_timer(&dci_drain_timer, jiffies + msecs_to_jiffies(500));
 	}
 }
 
@@ -636,8 +636,6 @@ static struct dci_pkt_req_entry_t *diag_register_dci_transaction(int uid,
 	entry->client_id = client_id;
 	entry->uid = uid;
 	entry->tag = driver->dci_tag;
-	pr_debug("diag: Registering DCI cmd req, client_id: %d, uid: %d, tag:%d\n",
-				entry->client_id, entry->uid, entry->tag);
 	list_add_tail(&entry->track, &driver->dci_req_list);
 	mutex_unlock(&driver->dci_mutex);
 
