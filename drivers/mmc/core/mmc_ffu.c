@@ -260,17 +260,31 @@ static int mmc_ffu_restart(struct mmc_card *card)
 	struct mmc_host *host = card->host;
 	int err = 0;
 
+	/*
+	 * Power cycle and hope for the best.  On platforms that don't have a
+	 * controllable regulator and/or hardware reset line, all we can do is
+	 * hope that CMD0 is enough to apply the firmware.
+	 */
 	err = mmc_power_save_host(host);
 	if (err) {
-		pr_warn("%s: going to sleep failed (%d)!!!\n",
-			__func__ , err);
+		pr_warn("%s: FFU: %s: failed to power down (%d)\n",
+			mmc_hostname(card->host), __func__ , err);
 		goto exit;
 	}
 
+	/*
+	 * Some eMMCs apply the new firmware right away, which looks like a card
+	 * change if any of the CID fields change.  There doesn't seem to be a
+	 * good way to handle this for a non-removable card, so this hack
+	 * signals the expected CID change to mmc_init_card().
+	 */
+	memset(card->raw_cid, 0, sizeof(card->raw_cid));
+
 	err = mmc_power_restore_host(host);
-
+	if (err)
+		pr_warn("%s: FFU: %s: failed to power up (%d)\n",
+			mmc_hostname(card->host), __func__ , err);
 exit:
-
 	return err;
 }
 
@@ -285,9 +299,9 @@ static int mmc_ffu_switch_mode(struct mmc_card *card , int mode)
 		offset = EXT_CSD_MODE_CONFIG;
 		break;
 	case MMC_FFU_INSTALL_SET:
-			offset = EXT_CSD_MODE_OPERATION_CODES;
-			mode = 0x1;
-			break;
+		offset = EXT_CSD_MODE_OPERATION_CODES;
+		mode = 0x1;
+		break;
 	default:
 		err = -EINVAL;
 		break;
@@ -308,47 +322,29 @@ static int mmc_ffu_install(struct mmc_card *card, u8 *ext_csd)
 	u32 timeout;
 
 	/* check mode operation */
-	if (!card->ext_csd.ffu_mode_op) {
-		/* host switch back to work in normal MMC Read/Write commands */
-		err = mmc_ffu_switch_mode(card, MMC_FFU_MODE_NORMAL);
-		if (err) {
-			pr_err("FFU: %s: switch to normal mode error %d:\n",
-				mmc_hostname(card->host), err);
-			return err;
-		}
+	timeout = ext_csd[EXT_CSD_OPERATION_CODE_TIMEOUT];
+	if (timeout == 0 || timeout > 0x17) {
+		timeout = 0x17;
+		pr_warn("%s: FFU: operation code timeout is out "
+			"of range. Using maximum timeout.\n",
+			mmc_hostname(card->host));
+	}
 
-		/* restart the eMMC */
-		err = mmc_ffu_restart(card);
-		if (err) {
-			pr_err("FFU: %s: install error %d:\n",
-				mmc_hostname(card->host), err);
-			return err;
-		}
-	} else {
-		timeout = ext_csd[EXT_CSD_OPERATION_CODE_TIMEOUT];
-		if (timeout == 0 || timeout > 0x17) {
-			timeout = 0x17;
-			pr_warn("FFU: %s: operation code timeout is out "
-				"of range. Using maximum timeout.\n",
-				mmc_hostname(card->host));
-		}
+	/* timeout is at millisecond resolution */
+	timeout = DIV_ROUND_UP((100 * (1 << timeout)), 1000);
 
-		/* timeout is at millisecond resolution */
-		timeout = DIV_ROUND_UP((100 * (1 << timeout)), 1000);
-
-		/* set ext_csd to install mode */
-		err = mmc_ffu_switch_mode(card, MMC_FFU_INSTALL_SET);
-		if (err) {
-			pr_err("FFU: %s: error %d setting install mode\n",
-				mmc_hostname(card->host), err);
-			return err;
-		}
+	/* set ext_csd to install mode */
+	err = mmc_ffu_switch_mode(card, MMC_FFU_INSTALL_SET);
+	if (err) {
+		pr_err("%s: FFU: error %d setting install mode\n",
+			mmc_hostname(card->host), err);
+		return err;
 	}
 
 	/* read ext_csd */
 	err = mmc_send_ext_csd(card, ext_csd);
 	if (err) {
-		pr_err("FFU: %s: error %d sending ext_csd\n",
+		pr_err("%s: FFU: error %d sending ext_csd\n",
 			mmc_hostname(card->host), err);
 		return err;
 	}
@@ -356,7 +352,7 @@ static int mmc_ffu_install(struct mmc_card *card, u8 *ext_csd)
 	/* return status */
 	err = ext_csd[EXT_CSD_FFU_STATUS];
 	if (err) {
-		pr_err("FFU: %s: error %d FFU install:\n",
+		pr_err("%s: FFU: error %d FFU install:\n",
 			mmc_hostname(card->host), err);
 		return  -EINVAL;
 	}
@@ -375,29 +371,29 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 
 	/* Check if FFU is supported */
 	if (!card->ext_csd.ffu_capable) {
-		pr_err("FFU: %s: error FFU is not supported %d rev %d\n",
+		pr_err("%s: FFU: error FFU is not supported %d rev %d\n",
 			mmc_hostname(card->host), card->ext_csd.ffu_capable,
 			card->ext_csd.rev);
 		return -EOPNOTSUPP;
 	}
 
 	if (strlen(name) > 512) {
-		pr_err("FFU: %s: %.20s is not a valid argument\n",
+		pr_err("%s: FFU: %.20s is not a valid argument\n",
 			mmc_hostname(card->host), name);
 		return -EINVAL;
 	}
 
 	/* setup FW data buffer */
+	pr_info("%s: starting FFU using: %s\n", mmc_hostname(card->host), name);
 	err = request_firmware(&fw, name, &card->dev);
 	if (err) {
-		pr_err("FFU: %s: Firmware request failed %d\n",
-			mmc_hostname(card->host), err);
+		pr_err("%s: FFU: firmware request for %s failed %d\n",
+			mmc_hostname(card->host), name, err);
 		return err;
 	}
 	if ((fw->size % block_size)) {
-		pr_warn("FFU: %s: Warning %zd firmware data size "
-			"is not aligned!!!\n", mmc_hostname(card->host),
-			fw->size);
+		pr_warn("%s: FFU: warning %zd firmware data size "
+			"is not aligned\n", mmc_hostname(card->host), fw->size);
 	}
 
 	mmc_claim_host(card->host);
@@ -405,7 +401,7 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 	/* trigger flushing*/
 	err = mmc_flush_cache(card);
 	if (err) {
-		pr_err("FFU: %s: error %d flushing data\n",
+		pr_err("%s: FFU: error %d flushing cache\n",
 			mmc_hostname(card->host), err);
 		goto exit;
 	}
@@ -413,8 +409,8 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 	/* Read the EXT_CSD */
 	err = mmc_send_ext_csd(card, ext_csd);
 	if (err) {
-		pr_err("FFU: %s: error %d sending ext_csd\n",
-				mmc_hostname(card->host), err);
+		pr_err("%s: FFU: error %d reading EXT_CSD\n",
+			mmc_hostname(card->host), err);
 		goto exit;
 	}
 
@@ -427,14 +423,14 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 	/* set device to FFU mode */
 	err = mmc_ffu_switch_mode(card, MMC_FFU_MODE_SET);
 	if (err) {
-		pr_err("FFU: %s: error %d FFU is not supported\n",
+		pr_err("%s: FFU: error %d FFU is not supported\n",
 			mmc_hostname(card->host), err);
 		goto exit;
 	}
 
 	err = mmc_ffu_write(card, fw->data, arg, fw->size);
 	if (err) {
-		pr_err("FFU: %s: write error %d\n",
+		pr_err("%s: FFU: write error %d\n",
 			mmc_hostname(card->host), err);
 		goto exit;
 	}
@@ -443,7 +439,7 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 		/* Read the EXT_CSD */
 		err = mmc_send_ext_csd(card, ext_csd);
 		if (err) {
-			pr_err("FFU: %s: error %d sending ext_csd\n",
+			pr_err("%s: FFU: error %d sending ext_csd\n",
 				mmc_hostname(card->host), err);
 			goto exit;
 		}
@@ -460,28 +456,41 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 			block_size << (ext_csd[EXT_CSD_DATA_SECTOR_SIZE] * 3);
 		if (fw_prog_bytes != fw->size) {
 			err = -EINVAL;
-			pr_err("FFU: %s: error %d number of programmed fw sector "
+			pr_err("%s: FFU: error %d number of programmed fw sector "
 				"incorrect %d %zd\n", __func__, err,
 				fw_prog_bytes, fw->size);
 			goto exit;
 		}
+
+		err = mmc_ffu_install(card, ext_csd);
+		if (err) {
+			pr_err("%s: FFU: error firmware install %d\n",
+				mmc_hostname(card->host), err);
+			mmc_ffu_switch_mode(card, MMC_FFU_MODE_NORMAL);
+			goto exit;
+		}
+	} else {
+		/* host switch back to work in normal MMC Read/Write commands */
+		err = mmc_ffu_switch_mode(card, MMC_FFU_MODE_NORMAL);
+		if (err)
+			pr_err("%s: FFU: switch to normal mode error %d (ignoring)\n",
+				mmc_hostname(card->host), err);
 	}
 
-	err = mmc_ffu_install(card, ext_csd);
-	if (err) {
-		pr_err("FFU: %s: error firmware install %d\n",
-			mmc_hostname(card->host), err);
-		goto exit;
+	if (!card->ext_csd.ffu_mode_op) {
+		/* restart the eMMC */
+		err = mmc_ffu_restart(card);
+		if (err) {
+			pr_err("%s: FFU: failed to restart device %d\n",
+				mmc_hostname(card->host), err);
+			goto exit;
+		}
 	}
 
 exit:
-	if (err != 0) {
-	   /* host switch back to work in normal MMC
-	    * Read/Write commands */
-		mmc_ffu_switch_mode(card, MMC_FFU_MODE_NORMAL);
-	}
-	release_firmware(fw);
 	mmc_release_host(card->host);
+
+	release_firmware(fw);
 	return err;
 }
 EXPORT_SYMBOL(mmc_ffu_invoke);
