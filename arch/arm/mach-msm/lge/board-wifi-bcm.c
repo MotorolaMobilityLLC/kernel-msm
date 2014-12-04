@@ -27,6 +27,7 @@
 #include <linux/skbuff.h>
 #include <linux/wlan_plat.h>
 #include <linux/fs.h>
+#include <linux/regulator/consumer.h>
 #include <asm/io.h>
 
 #define WLAN_STATIC_SCAN_BUF0           5
@@ -52,6 +53,7 @@
 
 static int gpio_power = WLAN_POWER;
 static int gpio_hostwake = WLAN_HOSTWAKE;
+static int power_enabled = 0;
 
 static struct sk_buff *wlan_static_skb[WLAN_SKB_BUF_NUM];
 
@@ -178,30 +180,66 @@ unsigned int wcf_status(struct device *dev)
 
 int bcm_wifi_set_power(int enable)
 {
+	static struct regulator *reg_batfet = NULL;
 	int ret = 0;
+
+	if (!reg_batfet) {
+		reg_batfet = regulator_get(NULL, "batfet");
+		if (IS_ERR(reg_batfet)) {
+			pr_warn("%s: failed to get regualtor(batfet)\n",
+					__func__);
+			reg_batfet = NULL;
+		}
+		if (power_enabled) {
+			ret = regulator_enable(reg_batfet);
+			if (ret)
+				pr_warn("%s: failed to enable regulator(batfet)\n",
+						__func__);
+		}
+	}
+
+	enable = !!enable;
+	if (!(power_enabled ^ enable))
+		return 0;
 
 	if (enable) {
 		ret = gpio_direction_output(gpio_power, 1);
 		if (ret) {
-			pr_err("%s: WL_REG_ON  failed to pull up (%d)\n",
+			pr_err("%s: WL_REG_ON: failed to pull up (%d)\n",
 					__func__, ret);
 			return ret;
+		}
+		power_enabled = 1;
+
+		if (reg_batfet) {
+			ret = regulator_enable(reg_batfet);
+			if (ret)
+				pr_warn("%s: failed to enable regulator(batfet)\n",
+						__func__);
 		}
 
 		/* WLAN chip to reset */
 		mdelay(150);
-		pr_info("%s: wifi power successed to pull up\n", __func__);
+		pr_info("%s: WIFI ON\n", __func__);
 	} else {
 		ret = gpio_direction_output(gpio_power, 0);
 		if (ret) {
-			pr_err("%s:  WL_REG_ON  failed to pull down (%d)\n",
+			pr_err("%s:  WL_REG_ON: failed to pull down (%d)\n",
 					__func__, ret);
 			return ret;
+		}
+		power_enabled = 0;
+
+		if (reg_batfet) {
+			ret = regulator_disable(reg_batfet);
+			if (ret)
+				pr_warn("%s: failed to disable regulator(batfet)\n",
+						__func__);
 		}
 
 		/* WLAN chip down */
 		mdelay(100);
-		pr_info("%s: wifi power successed to pull down\n", __func__);
+		pr_info("%s: WiFi OFF\n", __func__);
 	}
 
 	return ret;
@@ -232,6 +270,7 @@ static int __init bcm_wifi_init_gpio_mem(struct platform_device *pdev)
 				__func__, gpio_power);
 		return rc;
 	}
+	power_enabled = 1;
 
 	/* HOST_WAKEUP */
 	rc = gpio_tlmm_config(gpio_config_hostwake, GPIO_CFG_ENABLE);
