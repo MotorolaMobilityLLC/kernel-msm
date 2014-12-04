@@ -122,6 +122,7 @@ typedef enum {
    DYNAMIC_WMM_PS        = 43,
 
    MAC_SPOOFED_SCAN      = 44,
+   WPS_PRBRSP_TMPL       = 48,
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 
