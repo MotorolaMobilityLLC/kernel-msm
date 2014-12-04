@@ -6593,6 +6593,7 @@ typedef enum {
     DISA                   = 46,
     FW_STATS               = 47,
     WPS_PRBRSP_TMPL        = 48,
+    BCN_IE_FLT_DELTA       = 49,
     MAX_FEATURE_SUPPORTED  = 128,
 } placeHolderInCapBitmap;
 
