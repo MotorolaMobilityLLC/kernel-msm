@@ -163,6 +163,10 @@
 };
 
 &soc {
+	sound {
+		/delete-property/ qcom,ext-spk-amp-gpio;
+	};
+
 	dummy_vreg: dummy_vreg {
 		compatible = "regulator-fixed";
 		status = "ok";
