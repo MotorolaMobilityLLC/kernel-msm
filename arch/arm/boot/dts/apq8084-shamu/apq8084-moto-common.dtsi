@@ -597,6 +597,7 @@
 		/* Wireless Charge Complete N */
 		qcom,mode = <1>;		/* Digital output */
 		qcom,output-type = <0>;		/* CMOS */
+		qcom,pull = <5>;		/* No pull */
 		qcom,vin-sel = <2>;		/* VIN 2 */
 		qcom,src-sel = <0>;		/* Constant */
 		qcom,out-strength = <1>;	/* Low */
