@@ -171,6 +171,8 @@
 #define FAN54046    0X06
 #define FAN54053    0X02
 
+#define BOOST_CHECK_DELAY 1000 /* 1 second */
+
 static char *version_str[] = {
 	[0] = "fan54040",
 	[1] = "fan54041",
@@ -239,6 +241,7 @@ struct fan5404x_chg {
 	uint8_t	prev_hz_opa;
 
 	struct delayed_work heartbeat_work;
+	struct delayed_work boost_check_work;
 	struct notifier_block notifier;
 	struct qpnp_vadc_chip	*vadc_dev;
 	struct dentry	    *debug_root;
@@ -732,7 +735,6 @@ static int stop_charging(struct fan5404x_chg *chip)
 	return 0;
 }
 
-static int fan5404x_chg_enable_boost(struct fan5404x_chg *chip);
 static irqreturn_t fan5404x_chg_stat_handler(int irq, void *dev_id)
 {
 	struct fan5404x_chg *chip = dev_id;
@@ -756,14 +758,12 @@ static irqreturn_t fan5404x_chg_stat_handler(int irq, void *dev_id)
 
 	pr_debug("CONTROL0.STAT: %X CONTROL0.FAULT: %X CONTROL0.BOOST: %X\n",
 							stat, fault, boost);
-	if (atomic_read(&chip->otg_enabled) && (fault || !boost))
-		fan5404x_chg_enable_boost(chip);
-	else if (chip->charging && stat == STAT_PWM_ENABLED) {
+	if (chip->charging && stat == STAT_PWM_ENABLED)
 		start_charging(chip);
+
+	/* Notify userspace only for any charging related events */
+	if (!atomic_read(&chip->otg_enabled))
 		power_supply_changed(&chip->batt_psy);
-	} else {
-		power_supply_changed(&chip->batt_psy);
-	}
 
 	return IRQ_HANDLED;
 }
@@ -2024,18 +2024,19 @@ static int fan5404x_chg_otg_regulator_is_enable(struct regulator_dev *rdev)
 	return fan5404x_boost_read(chip);
 }
 
-static int fan5404x_chg_enable_boost(struct fan5404x_chg *chip)
+static int fan5404x_chg_enable_boost(struct fan5404x_chg *chip, bool reg_enable)
 {
 	int rc = 0;
 	uint8_t reg = 0;
-	static int init;
-	/* save current HZ and OPA */
-	rc = fan5404x_read(chip, REG_CONTROL1, &reg);
-	if (rc == 0)
-		chip->prev_hz_opa = reg &
-				(CONTROL1_HZ_MODE | CONTROL1_OPA_MODE);
-	else
-		chip->prev_hz_opa = 0;
+	/* save current HZ and OPA if regulator is being enabled*/
+	if (reg_enable) {
+		rc = fan5404x_read(chip, REG_CONTROL1, &reg);
+		if (rc == 0)
+			chip->prev_hz_opa = reg &
+					(CONTROL1_HZ_MODE | CONTROL1_OPA_MODE);
+		else
+			chip->prev_hz_opa = 0;
+	}
 
 	/* reset T32 timer */
 	rc = fan5404x_masked_write(chip, REG_CONTROL0,
@@ -2047,14 +2048,6 @@ static int fan5404x_chg_enable_boost(struct fan5404x_chg *chip)
 
 	rc = fan5404x_masked_write(chip, REG_CONTROL1,
 		CONTROL1_HZ_MODE | CONTROL1_OPA_MODE, CONTROL1_OPA_MODE);
-	/* Write twice initially to workaround a HW quirk */
-	if (!init) {
-		msleep(200);
-		rc = fan5404x_masked_write(chip, REG_CONTROL1,
-			CONTROL1_HZ_MODE | CONTROL1_OPA_MODE,
-			CONTROL1_OPA_MODE);
-		init = 1;
-	}
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't enable regulator, rc=%d\n",
 			rc);
@@ -2071,17 +2064,42 @@ static int fan5404x_chg_enable_boost(struct fan5404x_chg *chip)
 
 }
 
+static void boost_check_work(struct work_struct *work)
+{
+	struct fan5404x_chg *chip =
+			container_of(work, struct fan5404x_chg,
+					boost_check_work.work);
+
+	if (!atomic_read(&chip->otg_enabled))
+		return;
+
+	dev_dbg(chip->dev, "boost check - %d\n", fan5404x_boost_read(chip));
+
+	if (!fan5404x_boost_read(chip))
+		fan5404x_chg_enable_boost(chip, 0);
+
+	schedule_delayed_work(&chip->boost_check_work,
+		msecs_to_jiffies(BOOST_CHECK_DELAY));
+}
+
 static int fan5404x_chg_otg_regulator_enable(struct regulator_dev *rdev)
 {
 	struct fan5404x_chg *chip = rdev_get_drvdata(rdev);
+	int rc = 0;
 
 	dev_dbg(chip->dev, "fan5404x_chg_otg_regulator_enable\n");
 	if (fan5404x_chg_otg_regulator_is_enable(chip->otg_vreg.rdev) == 1)
 		return 0;
 
-	atomic_set(&chip->otg_enabled, 1);
+	rc = fan5404x_chg_enable_boost(chip, 1);
 
-	return fan5404x_chg_enable_boost(chip);
+	if (!rc) {
+		atomic_set(&chip->otg_enabled, 1);
+		schedule_delayed_work(&chip->boost_check_work,
+			msecs_to_jiffies(BOOST_CHECK_DELAY));
+	}
+
+	return rc;
 }
 
 static int fan5404x_chg_otg_regulator_disable(struct regulator_dev *rdev)
@@ -2090,6 +2108,8 @@ static int fan5404x_chg_otg_regulator_disable(struct regulator_dev *rdev)
 	struct fan5404x_chg *chip = rdev_get_drvdata(rdev);
 
 	dev_dbg(chip->dev, "fan5404x_chg_otg_regulator_disable\n");
+
+	cancel_delayed_work(&chip->boost_check_work);
 
 	rc = fan5404x_masked_write(chip, REG_CONTROL0, CONTROL0_TMR_RST, 0);
 	if (rc < 0) {
@@ -2218,6 +2238,7 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 
 	INIT_DELAYED_WORK(&chip->heartbeat_work,
 					heartbeat_work);
+	INIT_DELAYED_WORK(&chip->boost_check_work, boost_check_work);
 
 	chip->batt_psy.name = "battery";
 	chip->batt_psy.type = POWER_SUPPLY_TYPE_BATTERY;
