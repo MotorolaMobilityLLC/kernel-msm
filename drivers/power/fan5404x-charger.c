@@ -225,7 +225,9 @@ struct fan5404x_chg {
 	struct power_supply *bms_psy;
 	const char *bms_psy_name;
 
-	int fake_battery_soc;
+	bool test_mode;
+	int test_mode_soc;
+	int test_mode_temp;
 
 	bool factory_mode;
 	bool factory_present;
@@ -942,8 +944,8 @@ static int fan5404x_get_prop_batt_capacity(struct fan5404x_chg *chip)
 	int cap = DEFAULT_BATT_CAPACITY;
 	int rc;
 
-	if (chip->fake_battery_soc >= 0)
-		return chip->fake_battery_soc;
+	if (chip->test_mode)
+		return chip->test_mode_soc;
 
 	if (!chip->bms_psy && chip->bms_psy_name)
 		chip->bms_psy =
@@ -1244,27 +1246,29 @@ static int fan5404x_batt_set_property(struct power_supply *psy,
 		fan5404x_charge_enable(chip, chip->chg_enabled);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		chip->fake_battery_soc = val->intval;
-		power_supply_changed(&chip->batt_psy);
+		if (chip->test_mode)
+			chip->test_mode_soc = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 		fan_stay_awake(&chip->fan_wake_source);
-		cancel_delayed_work(&chip->heartbeat_work);
-		schedule_delayed_work(&chip->heartbeat_work,
-			msecs_to_jiffies(0));
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		fan_stay_awake(&chip->fan_wake_source);
 		fan5404x_set_prop_batt_health(chip, val->intval);
 		fan5404x_check_temp_range(chip);
 		fan5404x_set_chrg_path_temp(chip);
-		cancel_delayed_work(&chip->heartbeat_work);
-		schedule_delayed_work(&chip->heartbeat_work,
-			msecs_to_jiffies(0));
+		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		if (chip->test_mode)
+			chip->test_mode_temp = val->intval;
 		break;
 	default:
 		return -EINVAL;
 	}
+
+	cancel_delayed_work(&chip->heartbeat_work);
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(0));
 
 	return 0;
 }
@@ -1279,6 +1283,7 @@ static int fan5404x_batt_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CAPACITY:
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 	case POWER_SUPPLY_PROP_HEALTH:
+	case POWER_SUPPLY_PROP_TEMP:
 		rc = 1;
 		break;
 	default:
@@ -1350,6 +1355,12 @@ static int fan5404x_batt_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		if (chip->test_mode) {
+			val->intval = chip->test_mode_temp;
+			return 0;
+		}
+		/* Fall through if test mode temp is not set */
 	/* Block from Fuel Gauge */
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
@@ -1359,7 +1370,6 @@ static int fan5404x_batt_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
-	case POWER_SUPPLY_PROP_TEMP:
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
@@ -2016,6 +2026,26 @@ static bool fan5404x_charger_mmi_factory(void)
 	return factory;
 }
 
+static bool fan5404x_charger_test_mode(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *mode;
+	int rc;
+	bool test = false;
+
+	if (!np)
+		return test;
+
+	rc = of_property_read_string(np, "mmi,battery", &mode);
+	if ((rc >= 0) && mode) {
+		if (strcmp(mode, "test") == 0)
+			test = true;
+	}
+	of_node_put(np);
+
+	return test;
+}
+
 static int fan5404x_chg_otg_regulator_is_enable(struct regulator_dev *rdev)
 {
 	struct fan5404x_chg *chip = rdev_get_drvdata(rdev);
@@ -2191,6 +2221,8 @@ static struct of_device_id fan5404x_match_table[] = {
 	{ },
 };
 
+#define DEFAULT_TEST_MODE_SOC  52
+#define DEFAULT_TEST_MODE_TEMP  225
 static int fan5404x_charger_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -2215,8 +2247,10 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	chip->client = client;
 	chip->dev = &client->dev;
 	chip->usb_psy = usb_psy;
-	chip->fake_battery_soc = -EINVAL;
+	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
+	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
 	chip->factory_mode = false;
+	chip->test_mode = false;
 	chip->factory_present = false;
 	chip->poll_fast = false;
 	chip->shutdown_voltage_tripped = false;
@@ -2266,6 +2300,10 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	chip->factory_mode = fan5404x_charger_mmi_factory();
 	if (chip->factory_mode)
 		dev_info(&client->dev, "Factory Mode: writes disabled\n");
+
+	chip->test_mode = fan5404x_charger_test_mode();
+	if (chip->test_mode)
+		dev_info(&client->dev, "Test Mode Enabled\n");
 
 	rc = fan5404x_of_init(chip);
 	if (rc) {
