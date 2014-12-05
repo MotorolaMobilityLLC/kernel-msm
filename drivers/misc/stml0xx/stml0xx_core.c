@@ -394,8 +394,8 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Not using stml0xx_fw_version override");
 
-	pdata->ct406_detect_threshold = 0x006E;
-	pdata->ct406_undetect_threshold = 0x0050;
+	pdata->ct406_detect_threshold = 0x00C8;
+	pdata->ct406_undetect_threshold = 0x00A5;
 	pdata->ct406_recalibrate_threshold = 0x0064;
 	pdata->ct406_pulse_count = 0x04;
 	of_property_read_u32(np, "ct406_detect_threshold",
