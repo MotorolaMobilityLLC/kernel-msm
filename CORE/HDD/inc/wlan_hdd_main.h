@@ -1463,6 +1463,7 @@ void hdd_reset_pwrparams(hdd_context_t *pHddCtx);
 int wlan_hdd_validate_context(hdd_context_t *pHddCtx);
 v_BOOL_t hdd_is_valid_mac_address(const tANI_U8* pMacAddr);
 VOS_STATUS hdd_issta_p2p_clientconnected(hdd_context_t *pHddCtx);
+VOS_STATUS hdd_is_any_session_connected(hdd_context_t *pHddCtx);
 void hdd_ipv4_notifier_work_queue(struct work_struct *work);
 v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx, v_BOOL_t isRoC );
 #ifdef WLAN_FEATURE_PACKET_FILTERING

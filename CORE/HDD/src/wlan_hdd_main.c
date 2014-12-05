@@ -10635,6 +10635,15 @@ VOS_STATUS hdd_issta_p2p_clientconnected(hdd_context_t *pHddCtx)
     return sme_isSta_p2p_clientConnected(pHddCtx->hHal);
 }
 
+/*
+ * API to find if there is any session connected
+ */
+VOS_STATUS hdd_is_any_session_connected(hdd_context_t *pHddCtx)
+{
+    return sme_is_any_session_connected(pHddCtx->hHal);
+}
+
+
 int wlan_hdd_scan_abort(hdd_adapter_t *pAdapter)
 {
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
