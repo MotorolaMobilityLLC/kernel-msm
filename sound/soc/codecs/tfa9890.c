@@ -1518,6 +1518,8 @@ static ssize_t tfa9890_force_calibaration(struct device *dev,
 
 	tfa9890_calibaration(tfa9890);
 
+	tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
+
 	return count;
 }
 
