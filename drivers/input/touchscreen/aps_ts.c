@@ -519,7 +519,7 @@ static irqreturn_t aps_ts_interrupt(int irq, void *data)
 	u8 buf[MAX_FINGER_NUM * FINGER_EVENT_SZ] = {0};
 	int result;
 	u8 packet_size = 0;
-	int last;
+	int last = 0;
 
 	if (info->perf_irq_data) {
 		last = ++info->perf_irq_last;
