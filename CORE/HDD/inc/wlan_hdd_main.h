@@ -1113,10 +1113,7 @@ typedef struct
 
 typedef struct
 {
-   v_MACADDR_t  randomMacAddr;
-   v_U8_t       isReqDeferred;
-   v_U8_t       isEnabled;
-   struct mutex macSpoofingLock;
+   v_MACADDR_t randomMacAddr;
 }macAddrSpoof_t;
 
 /** Adapter stucture definition */
@@ -1397,7 +1394,6 @@ v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx);
 v_BOOL_t hdd_is_suspend_notify_allowed(hdd_context_t* pHddCtx);
 void hdd_abort_mac_scan(hdd_context_t* pHddCtx, tANI_U8 sessionId,
                         eCsrAbortReason reason);
-VOS_STATUS hdd_processSpoofMacAddrRequest(hdd_context_t *pHddCtx);
 void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 
