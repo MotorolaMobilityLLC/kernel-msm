@@ -3756,9 +3756,13 @@ static const char *qpnp_bms_mmi_battid(void)
 	struct device_node *np = of_find_node_by_path("/chosen");
 	const char *battid_buf;
 	int retval;
+
+	if (!np)
+		return NULL;
+
 	pr_err("BMS Reading Battid at powerup!\n");
-	if (np)
-		retval = of_property_read_string(np, "mmi,battid",
+
+	retval = of_property_read_string(np, "mmi,battid",
 						 &battid_buf);
 
 	if ((retval == -EINVAL) || !battid_buf) {
