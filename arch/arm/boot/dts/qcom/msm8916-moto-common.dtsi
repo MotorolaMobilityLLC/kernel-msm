@@ -921,8 +921,8 @@
 		lux_table = <5 50 100 1500 3000 8000>;
 		brightness_table = <9 14 18 46 67 93 140>;
 		bslen_pin_active_value = <1>;
-		ct406_detect_threshold = <0x0104>;
-		ct406_undetect_threshold = <0x00D2>;
+		ct406_detect_threshold = <0x00C8>;
+		ct406_undetect_threshold = <0x00A5>;
 		ct406_recalibrate_threshold = <0x0064>;
 		ct406_pulse_count = <0x04>;
 		headset_detect_enable = <1>;
