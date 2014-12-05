@@ -659,6 +659,7 @@ static void csrNeighborRoamResetPreauthControlInfo(tpAniSirGlobal pMac)
 #endif
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     pNeighborRoamInfo->uOsRequestedHandoff = 0;
+    pNeighborRoamInfo->isForcedInitialRoamTo5GH = 0;
     vos_mem_zero(&pNeighborRoamInfo->handoffReqInfo, sizeof(tCsrHandoffRequest));
 #endif
 
@@ -768,6 +769,7 @@ void csrNeighborRoamResetConnectedStateControlInfo(tpAniSirGlobal pMac)
 #endif
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     pNeighborRoamInfo->uOsRequestedHandoff = 0;
+    pNeighborRoamInfo->isForcedInitialRoamTo5GH = 0;
     vos_mem_zero(&pNeighborRoamInfo->handoffReqInfo, sizeof(tCsrHandoffRequest));
 #endif
 }
@@ -1214,6 +1216,11 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, tSirRetStatus l
           {
              pNeighborRoamInfo->uOsRequestedHandoff = 0;
              csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_PREAUTH_FAILED_FOR_ALL);
+          }
+          else if(pNeighborRoamInfo->isForcedInitialRoamTo5GH)
+          {
+             pNeighborRoamInfo->isForcedInitialRoamTo5GH = 0;
+             csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
           }
           else
           {
@@ -2381,9 +2388,6 @@ static eHalStatus csrNeighborRoamForceRoamTo5GhScanCb(tHalHandle halHandle,
 
     NEIGHBOR_ROAM_DEBUG(pMac, LOGW, "%s: process scan results", __func__);
     hstatus = csrNeighborRoamProcessScanComplete(pMac);
-
-    //Clear off the isForcedInitialRoamTo5GH
-    pNeighborRoamInfo->isForcedInitialRoamTo5GH = 0;
 
     if (eHAL_STATUS_SUCCESS != hstatus)
     {
@@ -4584,6 +4588,7 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
                  if(csrRoamIsStaMode(pMac, sessionId))
                  {
                      pNeighborRoamInfo->uOsRequestedHandoff = 0;
+                     pNeighborRoamInfo->isForcedInitialRoamTo5GH = 0;
                      csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_CONNECT);
                  }
               } else {
