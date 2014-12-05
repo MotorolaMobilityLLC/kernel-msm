@@ -20,8 +20,7 @@
 / {
 	model = "Motorola APQ 8026 Smelt";
 	compatible = "qcom,apq8026", "qcom,msm8226", "qcom,mtp", "moto,smelt";
-	/* TODO: fix these values */
-	qcom,msm-id = <199 0x41 0x8100>;
+	qcom,msm-id = <199 0x41 0x0000>; /* P0 Wingboard */
 
 	aliases {
 		/delete-property/ spi0;
