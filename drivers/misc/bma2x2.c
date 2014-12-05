@@ -1516,8 +1516,10 @@ static int bma2x2_smbus_read_byte(struct i2c_client *client,
 {
 	s32 dummy;
 	dummy = i2c_smbus_read_byte_data(client, reg_addr);
-	if (dummy < 0)
+	if (dummy < 0) {
+		*data = 0;
 		return -1;
+	}
 	*data = dummy & 0x000000ff;
 
 	return 0;
