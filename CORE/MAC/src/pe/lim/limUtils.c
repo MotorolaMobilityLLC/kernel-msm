@@ -7267,14 +7267,21 @@ void limHandleHeartBeatFailureTimeout(tpAniSirGlobal pMac)
             psessionEntry = &pMac->lim.gpSession[i];
             if(psessionEntry->LimHBFailureStatus == eANI_BOOLEAN_TRUE)
             {
-                limLog(pMac, LOGE, FL("Probe_hb_failure: SME %d, MLME %d, HB-Count %d"),psessionEntry->limSmeState,
-                        psessionEntry->limMlmState, psessionEntry->LimRxedBeaconCntDuringHB);
+                limLog(pMac, LOGE,
+                        FL("Probe_hb_failure: SME %d, MLME %d, HB-Count %d BCN count %d"),
+                        psessionEntry->limSmeState, psessionEntry->limMlmState,
+                        psessionEntry->LimRxedBeaconCntDuringHB,
+                        psessionEntry->currentBssBeaconCnt);
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
                 limDiagEventReport(pMac, WLAN_PE_DIAG_HB_FAILURE_TIMEOUT, psessionEntry, 0, 0);
 #endif
                 if (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE)
                 {
-                    if ((!LIM_IS_CONNECTION_ACTIVE(psessionEntry)) &&
+                    /* Disconnect even if we have not received a single beacon
+                     * after connection.
+                     */
+                    if (((!LIM_IS_CONNECTION_ACTIVE(psessionEntry)) ||
+                         (0 == psessionEntry->currentBssBeaconCnt)) &&
                         (psessionEntry->limSmeState != eLIM_SME_WT_DISASSOC_STATE)&&
                         (psessionEntry->limSmeState != eLIM_SME_WT_DEAUTH_STATE))
                     {
