@@ -1216,7 +1216,10 @@ static inline void clear_tick_sched(struct tick_sched *ts)
 	ktime_t idle_sleeptime = ts->idle_sleeptime;
 	ktime_t iowait_sleeptime = ts->iowait_sleeptime;
 
-	memset(ts, 0, sizeof(*ts));
+	ts->nohz_mode = NOHZ_MODE_INACTIVE;
+	ts->inidle = 0;
+	ts->tick_stopped = 0;
+	ts->idle_active = 0;
 	ts->idle_sleeptime = idle_sleeptime;
 	ts->iowait_sleeptime = iowait_sleeptime;
 }
