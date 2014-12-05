@@ -148,6 +148,32 @@
 	};
 };
 
+&mot_inx_450_qhd_vid_v1 {
+	qcom,cont-splash-enabled;
+	qcom,platform-supply-entry1 {
+		qcom,supply-name = "lcd_vci";
+		qcom,supply-min-voltage = <2850000>;
+		qcom,supply-max-voltage = <2850000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <0>;
+	};
+	qcom,platform-supply-entry2 {
+		qcom,supply-name = "vddio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <0>;
+	};
+};
+
 &mot_inx_450_qhd_vid_v0 {
 	qcom,cont-splash-enabled;
 	qcom,platform-supply-entry1 {
