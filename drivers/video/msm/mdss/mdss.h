@@ -98,6 +98,11 @@ struct mdss_prefill_data {
 	u32 fbc_lines;
 };
 
+struct mdss_mdp_ppb {
+	u32 ctl_off;
+	u32 cfg_off;
+};
+
 enum mdss_hw_index {
 	MDSS_HW_MDP,
 	MDSS_HW_DSI0 = 1,
@@ -206,6 +211,8 @@ struct mdss_data_type {
 	u32 max_target_zorder;
 	u8  ncursor_pipes;
 	u32 max_cursor_size;
+	u32 nppb;
+	struct mdss_mdp_ppb *ppb;
 
 	DECLARE_BITMAP(mmb_alloc_map, MAX_DRV_SUP_MMB_BLKS);
 
