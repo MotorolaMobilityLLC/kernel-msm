@@ -221,6 +221,8 @@
 		<&msm_gpio 4 0>,         /* SPI Ready for Receive */
 		<&msm_gpio 38 0>,        /* SPI Data Ack */
 		<&msm_gpio 116 0>;       /* Wake Up Sensor Hub */
+	accel_orientation_1 = <5>;	 /* Accel 1  Orientation value */
+	accel_orientation_2 = <5>;	 /* Accel 2  Orientation value */
 };
 
 &pm8916_l6 {
