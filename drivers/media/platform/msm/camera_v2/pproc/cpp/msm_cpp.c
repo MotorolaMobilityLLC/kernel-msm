@@ -729,7 +729,6 @@ static int cpp_init_hardware(struct cpp_device *cpp_dev)
 			cpp_dev->fs_cpp = NULL;
 			goto fs_failed;
 		}
-
 		rc = regulator_enable(cpp_dev->fs_cpp);
 		if (rc != 0) {
 			pr_err("Regulator cpp vdd enable failed\n");
@@ -748,6 +747,7 @@ static int cpp_init_hardware(struct cpp_device *cpp_dev)
 	cpp_dev->cpp_clk[msm_micro_iface_idx] =
 		clk_get(&cpp_dev->pdev->dev,
 		cpp_clk_info[msm_micro_iface_idx].clk_name);
+
 	if (IS_ERR(cpp_dev->cpp_clk[msm_micro_iface_idx])) {
 		pr_err("%s get failed\n",
 		cpp_clk_info[msm_micro_iface_idx].clk_name);
@@ -783,7 +783,6 @@ static int cpp_init_hardware(struct cpp_device *cpp_dev)
 	usleep_range(1000, 1200);
 
 	clk_put(cpp_dev->cpp_clk[msm_micro_iface_idx]);
-
 	rc = msm_cam_clk_enable(&cpp_dev->pdev->dev, cpp_clk_info,
 			cpp_dev->cpp_clk, cpp_dev->num_clk, 1);
 	if (rc < 0) {
@@ -1166,7 +1165,6 @@ static int msm_cpp_buffer_ops(struct cpp_device *cpp_dev,
 	uint32_t buff_mgr_ops, struct msm_buf_mngr_info *buff_mgr_info)
 {
 	int rc = -EINVAL;
-
 	rc = v4l2_subdev_call(cpp_dev->buf_mgr_subdev, core, ioctl,
 		buff_mgr_ops, buff_mgr_info);
 	if (rc < 0)
@@ -1349,6 +1347,7 @@ static int msm_cpp_send_frame_to_hardware(struct cpp_device *cpp_dev,
 
 	if (cpp_dev->processing_q.len < MAX_CPP_PROCESSING_FRAME) {
 		process_frame = frame_qcmd->command;
+
 		msm_enqueue(&cpp_dev->processing_q,
 					&frame_qcmd->list_frame);
 
@@ -2875,7 +2874,7 @@ static int cpp_probe(struct platform_device *pdev)
 	if (rc < 0)
 		goto cpp_probe_init_error;
 
-	if (cpp_dev->hw_info.cpp_hw_version == CPP_HW_VERSION_5_0_0)
+	if (cpp_dev->hw_info.cpp_hw_version == CPP_HW_VERSION_5_0_0 || cpp_dev->hw_info.cpp_hw_version == CPP_HW_VERSION_5_1_0)
 		cpp_dev->iommu_ctx = msm_iommu_get_ctx("cpp_0");
 	else
 		cpp_dev->iommu_ctx = msm_iommu_get_ctx("cpp");
