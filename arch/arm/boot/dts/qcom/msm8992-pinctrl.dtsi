@@ -48,7 +48,7 @@
 			qcom,pins = <&gp 45>, <&gp 46>, <&gp 47>, <&gp 48>;
 			qcom,num-grp-pins = <4>;
 			qcom,pin-func = <2>;
-		        label = "blsp2_uart2_active";
+			label = "blsp2_uart2_active";
 			hsuart_active: default {
 				drive-strength = <16>;
 				bias-disable;
@@ -59,7 +59,7 @@
 			qcom,pins = <&gp 45>, <&gp 46>, <&gp 47>, <&gp 48>;
 			qcom,num-grp-pins = <4>;
 			qcom,pin-func = <0>;
-		        label = "blsp2_uart2_sleep";
+			label = "blsp2_uart2_sleep";
 			hsuart_sleep: sleep {
 				drive-strength = <2>;
 				bias-disable;
@@ -235,6 +235,57 @@
 			sdc2_data_off: data_off {
 				bias-pull-up; /* pull up */
 				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+
+		pmx_i2c_6 {
+			qcom,pins = <&gp 28>, <&gp 27>; /* SDA, SCL */
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <3>;
+			label = "pmx_i2c_6";
+
+			i2c_6_active: i2c_6_active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+
+			i2c_6_sleep: i2c_6_sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+		pmx_rd_nfc_int{
+			qcom,pins = <&gp 29>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "pmx_nfc_int";
+
+			nfc_int_active: active {
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+
+			nfc_int_suspend: suspend {
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+
+		pmx_nfc_reset{
+			qcom,pins = <&gp 30>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "pmx_nfc_disable";
+
+			nfc_disable_active: active {
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+
+			nfc_disable_suspend: suspend {
+				drive-strength = <6>;
+				bias-disable;
 			};
 		};
 
