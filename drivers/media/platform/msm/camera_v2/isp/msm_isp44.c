@@ -36,6 +36,7 @@
 #define STATS_IDX_BHIST     8
 
 #define VFE44_8084V1_VERSION   0x4000000A
+#define VFE44_8992_VERSION     0x4002000A
 
 #define VFE44_BURST_LEN 3
 #define VFE44_FETCH_BURST_LEN 3
@@ -106,6 +107,15 @@ static void msm_vfe44_init_qos_parms(struct vfe_device *vfe_dev)
 		msm_camera_io_w(0xFEA9FEA9, vfebase + VFE44_BUS_BDG_QOS_CFG_5);
 		msm_camera_io_w(0xFEA9FEA9, vfebase + VFE44_BUS_BDG_QOS_CFG_6);
 		msm_camera_io_w(0x0001FEA9, vfebase + VFE44_BUS_BDG_QOS_CFG_7);
+	} else if (vfe_dev->vfe_hw_version == VFE44_8992_VERSION) {
+		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE44_BUS_BDG_QOS_CFG_0);
+		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE44_BUS_BDG_QOS_CFG_1);
+		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE44_BUS_BDG_QOS_CFG_2);
+		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE44_BUS_BDG_QOS_CFG_3);
+		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE44_BUS_BDG_QOS_CFG_4);
+		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE44_BUS_BDG_QOS_CFG_5);
+		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE44_BUS_BDG_QOS_CFG_6);
+		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE44_BUS_BDG_QOS_CFG_7);
 	} else {
 		BUG();
 		pr_err("%s: QOS is NOT configured for HW Version %x\n",
@@ -138,6 +148,7 @@ static void msm_vfe44_init_vbif_parms(struct vfe_device *vfe_dev)
 {
 	switch (vfe_dev->vfe_hw_version) {
 	case VFE44_8084V1_VERSION:
+	case VFE44_8992_VERSION:
 		msm_vfe44_init_vbif_parms_8084_v1(vfe_dev);
 		break;
 	default:
