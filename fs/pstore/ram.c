@@ -557,14 +557,6 @@ static int ramoops_probe(struct platform_device *pdev)
 	if (err)
 		goto fail_init_aprz;
 
-	if (!cxt->przs && !cxt->cprz && !cxt->fprz && !cxt->aprz) {
-		pr_err("memory size too small, minimum is %zu\n",
-			cxt->console_size + cxt->record_size +
-			cxt->ftrace_size + cxt->annotate_size);
-		err = -EINVAL;
-		goto fail_cnt;
-	}
-
 	cxt->pstore.data = cxt;
 	/*
 	 * Console can handle any buffer size, so prefer LOG_LINE_MAX. If we
@@ -609,7 +601,6 @@ fail_buf:
 fail_clear:
 	cxt->pstore.bufsize = 0;
 	cxt->max_dump_cnt = 0;
-fail_cnt:
 	kfree(cxt->aprz);
 fail_init_aprz:
 	kfree(cxt->fprz);
