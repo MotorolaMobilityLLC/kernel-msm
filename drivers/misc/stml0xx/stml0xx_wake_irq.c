@@ -165,7 +165,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_RESET, &status, 1,
 					     0, stm_ws->ts_ns);
 
-		stml0xx_reset(stml0xx_misc_data->pdata, stml0xx_cmdbuff);
+		stml0xx_reset(stml0xx_misc_data->pdata);
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"STML0XX requested a reset");
 		goto EXIT;
@@ -445,7 +445,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 					     buf, 2, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending Camera: %d", STM16_TO_HOST(CAMERA_VALUE));
+			"Sending Camera: %d", STM16_TO_HOST(CAMERA_VALUE, buf));
 
 		input_report_key(ps_stml0xx->input_dev, KEY_CAMERA, 1);
 		input_report_key(ps_stml0xx->input_dev, KEY_CAMERA, 0);
@@ -490,7 +490,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		stml0xx_g_wake_sensor_state &= (~M_SIM);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending SIM Value=%d", STM16_TO_HOST(SIM_DATA));
+			"Sending SIM Value=%d", STM16_TO_HOST(SIM_DATA, buf));
 	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;

@@ -29,7 +29,7 @@
 #endif
 
 /* Log macros */
-#define ENABLE_VERBOSE_LOGGING 1
+#define ENABLE_VERBOSE_LOGGING 0
 
 /* SPI */
 #define SPI_DMA_ENABLED         true
@@ -533,10 +533,10 @@ struct stm_response {
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
-#define STM16_TO_HOST(x) ((short) be16_to_cpu( \
-		*((u16 *) (stml0xx_readbuff+(x)))))
-#define STM32_TO_HOST(x) ((short) be32_to_cpu( \
-		*((u32 *) (stml0xx_readbuff+(x)))))
+#define STM16_TO_HOST(x, buf) ((short) be16_to_cpu( \
+		*((u16 *) (buf+(x)))))
+#define STM32_TO_HOST(x, buf) ((short) be32_to_cpu( \
+		*((u32 *) (buf+(x)))))
 
 #define STML0XX_HALL_SOUTH 1
 #define STML0XX_HALL_NORTH 2
@@ -580,9 +580,7 @@ struct stml0xx_platform_data {
 };
 
 struct stml0xx_data {
-	struct spi_device *spi;
 	struct stml0xx_platform_data *pdata;
-	/* to avoid two spi communications at the same time */
 	struct mutex lock;
 	struct work_struct clear_interrupt_status_work;
 	struct work_struct initialize_work;
@@ -598,7 +596,9 @@ struct stml0xx_data {
 
 	int hw_initialized;
 
-	/* SPI DMA */
+	/* SPI */
+	struct spi_device *spi;
+	struct mutex spi_lock;
 	bool spi_dma_enabled;
 	unsigned char *spi_tx_buf;
 	unsigned char *spi_rx_buf;
@@ -678,7 +678,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work);
 
 long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 
-void stml0xx_reset(struct stml0xx_platform_data *pdata, unsigned char *cmdbuff);
+void stml0xx_reset(struct stml0xx_platform_data *pdata);
 void stml0xx_initialize_work_func(struct work_struct *work);
 
 
@@ -762,8 +762,9 @@ extern unsigned char stml0xx_g_mag_cal[STML0XX_MAG_CAL_SIZE];
 extern unsigned short stml0xx_g_control_reg_restore;
 extern bool stml0xx_g_booted;
 
-extern unsigned char *stml0xx_cmdbuff;
-extern unsigned char *stml0xx_readbuff;
+/* global buffers used exclusively in bootloader mode */
+extern unsigned char *stml0xx_boot_cmdbuff;
+extern unsigned char *stml0xx_boot_readbuff;
 
 extern unsigned short stml0xx_spi_retry_delay;
 
