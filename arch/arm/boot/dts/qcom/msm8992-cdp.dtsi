@@ -11,6 +11,7 @@
  */
 
 #include "msm8992-pinctrl.dtsi"
+#include "msm8992-camera-sensor-cdp.dtsi"
 
 #include "dsi-panel-sharp-dualmipi0-wqxga-video.dtsi"
 #include "dsi-panel-sharp-dualmipi1-wqxga-video.dtsi"
