@@ -638,6 +638,10 @@
 };
 
 &soc {
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
+
 	ramoops {
 		compatible = "ramoops";
 		status = "ok";
