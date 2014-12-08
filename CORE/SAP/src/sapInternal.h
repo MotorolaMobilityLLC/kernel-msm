@@ -81,7 +81,7 @@ when           who        what, where, why
 #include "sapApi.h"
 #include "sapFsm_ext.h"
 #include "sapChSelect.h"
-#include "wlan_hdd_dp_utils.h"
+
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
  * -------------------------------------------------------------------------*/
@@ -145,43 +145,6 @@ typedef struct sSapAcsChannelInfo {
     v_U32_t             channelNum;
     v_U32_t             weight;
 }tSapAcsChannelInfo;
-
-typedef struct {
-    /** The station entry is used or not  */
-    v_BOOL_t isUsed;
-
-    /** Station ID reported back from HAL (through SAP). Broadcast
-     *  uses station ID zero by default in both libra and volans. */
-    v_U8_t ucSTAId;
-
-    /** MAC address of the station */
-    v_MACADDR_t macAddrSTA;
-
-    /** Current Station state so HDD knows how to deal with packet
-     *  queue. Most recent states used to change TL STA state. */
-    WLANTL_STAStateType tlSTAState;
-
-   /** Transmit queues for each AC (VO,VI,BE etc). */
-   //hdd_list_t wmm_tx_queue[NUM_TX_QUEUES];
-   hdd_list_t wmm_tx_queue[4];
-
-   /** Might need to differentiate queue depth in contention case */
-   //v_U16_t aTxQueueDepth[NUM_TX_QUEUES];
-   v_U16_t aTxQueueDepth[4];
-
-   /**Track whether OS TX queue has been disabled.*/
-   //v_BOOL_t txSuspended[NUM_TX_QUEUES];
-   v_BOOL_t txSuspended[4];
-
-   /**Track whether 3/4th of resources are used */
-   v_BOOL_t vosLowResource;
-
-   /** Track QoS status of station */
-   v_BOOL_t isQosEnabled;
-
-   /** The station entry for which Deauth is in progress  */
-   v_BOOL_t isDeauthInProgress;
-} hdd_station_info_t;
 
 typedef struct sSapContext {
 
@@ -258,8 +221,6 @@ typedef struct sSapContext {
     eCsrBand           scanBandPreference;
     v_U16_t            acsBandSwitchThreshold;
     tSapAcsChannelInfo acsBestChannelInfo;
-    spinlock_t staInfo_lock; //To protect access to station Info
-    hdd_station_info_t aStaInfo[WLAN_MAX_STA_COUNT];
 } *ptSapContext;
 
 
