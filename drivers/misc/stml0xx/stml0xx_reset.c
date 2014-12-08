@@ -43,7 +43,7 @@
 
 #include <linux/stml0xx.h>
 
-void stml0xx_reset(struct stml0xx_platform_data *pdata, unsigned char *cmdbuff)
+void stml0xx_reset(struct stml0xx_platform_data *pdata)
 {
 	dev_err(&stml0xx_misc_data->spi->dev, "stml0xx_reset");
 	stml0xx_g_booted = 0;
@@ -60,17 +60,12 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 		struct stml0xx_data, initialize_work);
 
 	struct stml0xx_platform_data *pdata;
-	unsigned char *rst_cmdbuff;
 	unsigned char buf[SPI_MSG_SIZE];
 	unsigned int i;
 	int err;
 	int ret_err = 0;
 
 	pdata = ps_stml0xx->pdata;
-	rst_cmdbuff = ps_stml0xx->spi_tx_buf;
-
-	if (rst_cmdbuff == NULL)
-		return;
 
 	wake_lock(&ps_stml0xx->reset_wakelock);
 
@@ -88,7 +83,7 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 				2, RESET_NOT_ALLOWED);
 		if (err < 0) {
 			dev_err(&ps_stml0xx->spi->dev,
-				"Unable to wrie accel orientation value");
+				"Unable to write accel orientation value");
 			ret_err = err;
 		}
 	}
@@ -201,7 +196,7 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 			1, RESET_NOT_ALLOWED);
 		if (err < 0) {
 			dev_err(&ps_stml0xx->spi->dev,
-				"Unable to wrie headset hw version");
+				"Unable to write headset hw version");
 			ret_err = err;
 		}
 	}
@@ -211,7 +206,7 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 			1, RESET_NOT_ALLOWED);
 		if (err < 0) {
 			dev_err(&ps_stml0xx->spi->dev,
-				"Unable to wrie headset detect enable");
+				"Unable to write headset detect enable");
 			ret_err = err;
 		}
 	}

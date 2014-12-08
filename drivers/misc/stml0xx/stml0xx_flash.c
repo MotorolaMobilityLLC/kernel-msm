@@ -81,8 +81,8 @@ static unsigned char stml0xx_bootloader_ver;
 static int stml0xx_boot_spi_send_ack(void)
 {
 	int rc = 0;
-	stml0xx_cmdbuff[0] = ACK_BYTE;
-	rc = stml0xx_spi_write_no_reset(stml0xx_cmdbuff, 1);
+	stml0xx_boot_cmdbuff[0] = ACK_BYTE;
+	rc = stml0xx_spi_write_no_reset(stml0xx_boot_cmdbuff, 1);
 	if (rc < 0)
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"Failed to send SPI ACK [%d]", rc);
@@ -96,13 +96,13 @@ static int stml0xx_boot_spi_wait_for_ack(int num_polls, int poll_int_ms,
 	/* Poll for ACK */
 	int rc = 0;
 	while (num_polls--) {
-		rc = stml0xx_spi_read_no_reset(stml0xx_readbuff, 1);
+		rc = stml0xx_spi_read_no_reset(stml0xx_boot_readbuff, 1);
 		if (rc < 0) {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Failed to read from SPI [%d]", rc);
 			return rc;
 		}
-		if (stml0xx_readbuff[0] == ACK_BYTE) {
+		if (stml0xx_boot_readbuff[0] == ACK_BYTE) {
 			/* Received ACK */
 			if (send_ack) {
 				dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -125,19 +125,19 @@ static int stml0xx_boot_cmd_write(enum stm_command command, bool send_ack)
 {
 	int rc = 0, index = 0;
 	/* Send command code with SOF and XOR checksum */
-	stml0xx_cmdbuff[index++] = SOF_BYTE;
+	stml0xx_boot_cmdbuff[index++] = SOF_BYTE;
 	if (command == SPI_SYNC) {
 		/* No command, SOF only */
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending SPI sync byte [0x%02x]", SOF_BYTE);
 	} else {
-		stml0xx_cmdbuff[index++] = command;
-		stml0xx_cmdbuff[index++] = ~command;
+		stml0xx_boot_cmdbuff[index++] = command;
+		stml0xx_boot_cmdbuff[index++] = ~command;
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX Sending command [0x%02x]", command);
 	}
 
-	rc = stml0xx_spi_write_no_reset(stml0xx_cmdbuff, index);
+	rc = stml0xx_spi_write_no_reset(stml0xx_boot_cmdbuff, index);
 	if (rc < 0) {
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"Failed to send boot command [%d]", rc);
@@ -172,16 +172,16 @@ static int stml0xx_get_boot_ver(void)
 			goto RETRY_GET_VERSION;
 
 		/* Read bootloader version */
-		if ((stml0xx_spi_read_no_reset(stml0xx_readbuff, 3)) < 0)
+		if ((stml0xx_spi_read_no_reset(stml0xx_boot_readbuff, 3)) < 0)
 			goto RETRY_GET_VERSION;
 
 		/* Byte 1: ACK
 		   Byte 2: Bootloader version
 				( 0 < ver <= 255), eg. 0x10 = ver 1.0
 		   Byte 3: ACK */
-		if ((stml0xx_readbuff[0] == ACK_BYTE) &&
-		    (stml0xx_readbuff[2] == ACK_BYTE)) {
-			stml0xx_bootloader_ver = stml0xx_readbuff[1];
+		if ((stml0xx_boot_readbuff[0] == ACK_BYTE) &&
+		    (stml0xx_boot_readbuff[2] == ACK_BYTE)) {
+			stml0xx_bootloader_ver = stml0xx_boot_readbuff[1];
 			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"Bootloader version 0x%02x",
 				stml0xx_bootloader_ver);
@@ -191,9 +191,9 @@ static int stml0xx_get_boot_ver(void)
 		} else {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Error reading GET_VERSION data 0x%02x 0x%02x 0x%02x",
-				stml0xx_readbuff[0],
-				stml0xx_readbuff[1],
-				stml0xx_readbuff[2]);
+				stml0xx_boot_readbuff[0],
+				stml0xx_boot_readbuff[1],
+				stml0xx_boot_readbuff[2]);
 			goto RETRY_GET_VERSION;
 		}
 RETRY_GET_VERSION:
@@ -224,9 +224,9 @@ int stml0xx_boot_flash_erase(void)
 
 		/* Send number of pages + checksum
 		   (mass erase option unsupported on STM32L0XX) */
-		stml0xx_cmdbuff[0] = ((NUM_PAGES - 1) >> 8) & 0xFF;
-		stml0xx_cmdbuff[1] = (NUM_PAGES - 1) & 0xFF;
-		if (stml0xx_boot_checksum_write(stml0xx_cmdbuff, 2) < 0)
+		stml0xx_boot_cmdbuff[0] = ((NUM_PAGES - 1) >> 8) & 0xFF;
+		stml0xx_boot_cmdbuff[1] = (NUM_PAGES - 1) & 0xFF;
+		if (stml0xx_boot_checksum_write(stml0xx_boot_cmdbuff, 2) < 0)
 			goto RETRY_ERASE;
 
 		/* Wait for ACK */
@@ -236,13 +236,13 @@ int stml0xx_boot_flash_erase(void)
 
 		/* Populate 2-byte page numbers (MSB then LSB) */
 		for (i = 0; i < NUM_PAGES; i++) {
-			stml0xx_cmdbuff[i * 2] = (i >> 8) & 0xFF;
-			stml0xx_cmdbuff[(i * 2) + 1] = i & 0xFF;
+			stml0xx_boot_cmdbuff[i * 2] = (i >> 8) & 0xFF;
+			stml0xx_boot_cmdbuff[(i * 2) + 1] = i & 0xFF;
 		}
 
 		/* Add checksum byte */
 		if (stml0xx_boot_checksum_write
-		    (stml0xx_cmdbuff, (NUM_PAGES * 2))
+		    (stml0xx_boot_cmdbuff, (NUM_PAGES * 2))
 		    < 0)
 			goto RETRY_ERASE;
 
@@ -331,13 +331,14 @@ int switch_stml0xx_mode(enum stm_mode mode)
 			   Byte 3: PID (MSB)
 			   Byte 4: PID (LSB)
 			   Byte 5: ACK */
-			if (stml0xx_spi_read_no_reset(stml0xx_readbuff, 5)
+			if (stml0xx_spi_read_no_reset(stml0xx_boot_readbuff, 5)
 				< 0)
 				goto RETRY_GET_ID;
 			/* Part ID read successfully */
 			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"Part ID 0x%02x 0x%02x",
-				stml0xx_readbuff[2], stml0xx_readbuff[3]);
+				stml0xx_boot_readbuff[2],
+				stml0xx_boot_readbuff[3]);
 			/* Send ACK */
 			return stml0xx_boot_spi_send_ack();
 
@@ -353,7 +354,7 @@ RETRY_GET_ID:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Switching to normal mode");
 
-		stml0xx_reset(pdata, stml0xx_cmdbuff);
+		stml0xx_reset(pdata);
 	}
 	return rc;
 }
@@ -409,15 +410,15 @@ BEGIN_WRITE:
 				goto RETRY_WRITE;
 
 			/* Send start address */
-			stml0xx_cmdbuff[0] =
+			stml0xx_boot_cmdbuff[0] =
 			    (stml0xx_misc_data->current_addr >> 24) & 0xFF;
-			stml0xx_cmdbuff[1] =
+			stml0xx_boot_cmdbuff[1] =
 			    (stml0xx_misc_data->current_addr >> 16) & 0xFF;
-			stml0xx_cmdbuff[2] =
+			stml0xx_boot_cmdbuff[2] =
 			    (stml0xx_misc_data->current_addr >> 8) & 0xFF;
-			stml0xx_cmdbuff[3] =
+			stml0xx_boot_cmdbuff[3] =
 			    stml0xx_misc_data->current_addr & 0xFF;
-			if (stml0xx_boot_checksum_write(stml0xx_cmdbuff, 4)
+			if (stml0xx_boot_checksum_write(stml0xx_boot_cmdbuff, 4)
 				< 0)
 				goto RETRY_WRITE;
 
@@ -428,10 +429,11 @@ BEGIN_WRITE:
 				goto RETRY_WRITE;
 
 			/* Number of bytes to write (0-based) */
-			stml0xx_cmdbuff[0] = count - 1;
+			stml0xx_boot_cmdbuff[0] = count - 1;
 
 			/* Copy payload */
-			if (copy_from_user(&stml0xx_cmdbuff[1], buff, count)) {
+			if (copy_from_user(&stml0xx_boot_cmdbuff[1],
+				buff, count)) {
 				dev_err(&stml0xx_misc_data->spi->dev,
 					"Copy from user returned error");
 				err = -EINVAL;
@@ -441,17 +443,17 @@ BEGIN_WRITE:
 			   Add 0xFF fillers if needed. */
 			fillers = (4 - (count % 4)) % 4;
 			if (fillers) {
-				stml0xx_cmdbuff[0] += fillers;
-				memset(&stml0xx_cmdbuff[count + 1], 0xFF,
+				stml0xx_boot_cmdbuff[0] += fillers;
+				memset(&stml0xx_boot_cmdbuff[count + 1], 0xFF,
 				       fillers);
 			}
 			/* Number of bytes + payload + checksum */
-			err = stml0xx_boot_checksum_write(stml0xx_cmdbuff,
+			err = stml0xx_boot_checksum_write(stml0xx_boot_cmdbuff,
 							count + 1 + fillers);
 			if (err < 0) {
 				dev_err(&stml0xx_misc_data->spi->dev,
 				"Error sending MEMORY_WRITE data 0x%02x [%d]",
-					stml0xx_readbuff[0], err);
+					stml0xx_boot_readbuff[0], err);
 				goto RETRY_WRITE;
 			}
 			/* Wait for ACK */
@@ -482,15 +484,15 @@ RETRY_WRITE:
 				goto RETRY_READ;
 
 			/* Send read start address */
-			stml0xx_cmdbuff[0]
+			stml0xx_boot_cmdbuff[0]
 			    = (stml0xx_misc_data->current_addr >> 24) & 0xFF;
-			stml0xx_cmdbuff[1]
+			stml0xx_boot_cmdbuff[1]
 			    = (stml0xx_misc_data->current_addr >> 16) & 0xFF;
-			stml0xx_cmdbuff[2]
+			stml0xx_boot_cmdbuff[2]
 			    = (stml0xx_misc_data->current_addr >> 8) & 0xFF;
-			stml0xx_cmdbuff[3]
+			stml0xx_boot_cmdbuff[3]
 			    = stml0xx_misc_data->current_addr & 0xFF;
-			if (stml0xx_boot_checksum_write(stml0xx_cmdbuff, 4)
+			if (stml0xx_boot_checksum_write(stml0xx_boot_cmdbuff, 4)
 				< 0)
 				goto RETRY_READ;
 
@@ -501,10 +503,11 @@ RETRY_WRITE:
 				goto RETRY_READ;
 
 			/* Number of bytes to read (0-based) */
-			stml0xx_cmdbuff[0] = count - 1;
+			stml0xx_boot_cmdbuff[0] = count - 1;
 			/* XOR checksum */
-			stml0xx_cmdbuff[1] = ~(count - 1);
-			if (stml0xx_spi_write_no_reset(stml0xx_cmdbuff, 2) < 0)
+			stml0xx_boot_cmdbuff[1] = ~(count - 1);
+			if (stml0xx_spi_write_no_reset(
+				stml0xx_boot_cmdbuff, 2) < 0)
 				goto RETRY_READ;
 
 			/* Wait for ACK */
@@ -516,18 +519,18 @@ RETRY_WRITE:
 			/* Read memory (read 1 extra byte for
 			   extra ACK in the beginning) */
 			if (stml0xx_spi_read_no_reset
-			    (stml0xx_readbuff, count + 1) < 0)
+			    (stml0xx_boot_readbuff, count + 1) < 0)
 				goto RETRY_READ;
 
 			/* Compare data */
 			for (index = 0; index < count; index++) {
-				if (stml0xx_readbuff[index + 1]
+				if (stml0xx_boot_readbuff[index + 1]
 					!= buff[index]) {
 					dev_dbg(&stml0xx_misc_data->spi->dev,
 						"Error verifying write 0x%08x 0x%02x 0x%02x 0x%02x",
 						stml0xx_misc_data->current_addr,
 						index,
-						stml0xx_readbuff[index + 1],
+						stml0xx_boot_readbuff[index+1],
 						buff[index]);
 					bad_byte_cnt++;
 				}
@@ -560,7 +563,7 @@ RETRY_READ:
 		/* For normal mode */
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Normal mode write started");
-		if (copy_from_user(stml0xx_cmdbuff, buff, count)) {
+		if (copy_from_user(stml0xx_boot_cmdbuff, buff, count)) {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Copy from user returned error");
 			err = -EINVAL;
@@ -569,7 +572,7 @@ RETRY_READ:
 		if (err == 0) {
 			stml0xx_wake(stml0xx_misc_data);
 			err =
-			    stml0xx_spi_write_no_reset(stml0xx_cmdbuff,
+			    stml0xx_spi_write_no_reset(stml0xx_boot_cmdbuff,
 						       (int)count);
 			stml0xx_sleep(stml0xx_misc_data);
 			err = count;
