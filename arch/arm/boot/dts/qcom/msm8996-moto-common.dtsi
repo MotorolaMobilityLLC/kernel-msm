@@ -424,6 +424,10 @@
 		mmi,disable-seq = <0 1 0>, <1 1 0>, <2 0 0>, <3 0 0>, <4 1 0>, <5 0 50>;
 		mmi,wake-seq = <7 0 50>, <7 1 0>;
 	};
+
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
 };
 
 &pm8994_gpios {
