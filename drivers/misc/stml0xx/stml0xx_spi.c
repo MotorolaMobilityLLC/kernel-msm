@@ -81,6 +81,8 @@ int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len)
 	if ((!tx_buf && !rx_buf) || len == 0)
 		return -EFAULT;
 
+	mutex_lock(&stml0xx_misc_data->spi_lock);
+
 	if (!rx_buf)
 		rx_buf = stml0xx_misc_data->spi_rx_buf;
 
@@ -154,6 +156,7 @@ int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len)
 		goto EXIT;
 	}
 EXIT:
+	mutex_unlock(&stml0xx_misc_data->spi_lock);
 	return rc;
 }
 
@@ -287,8 +290,7 @@ int stml0xx_spi_write_read(unsigned char *tx_buf, int tx_len,
 		}
 
 		if (ret < 0) {
-			stml0xx_reset(stml0xx_misc_data->pdata,
-				stml0xx_cmdbuff);
+			stml0xx_reset(stml0xx_misc_data->pdata);
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"stml0xx_spi_write_read SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
@@ -342,8 +344,7 @@ int stml0xx_spi_read(unsigned char *buf, int len)
 			ret = stml0xx_spi_read_no_retries(buf, len);
 
 		if (ret < 0) {
-			stml0xx_reset(stml0xx_misc_data->pdata,
-				stml0xx_cmdbuff);
+			stml0xx_reset(stml0xx_misc_data->pdata);
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"stml0xx_spi_read SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
@@ -392,8 +393,7 @@ int stml0xx_spi_write(unsigned char *buf, int len)
 			ret = stml0xx_spi_write_no_retries(buf, len);
 
 		if (ret < 0) {
-			stml0xx_reset(stml0xx_misc_data->pdata,
-				stml0xx_cmdbuff);
+			stml0xx_reset(stml0xx_misc_data->pdata);
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"stml0xx_spi_write SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
@@ -416,6 +416,7 @@ static int stml0xx_spi_send_write_reg_no_retries(unsigned char reg_type,
 	int data_offset = 0, data_size;
 	int remaining_data_size = reg_size;
 	int ret = 0;
+	unsigned char cmd_buff[SPI_MSG_SIZE];
 
 	if (!reg_data || reg_size <= 0 ||
 	    reg_size > STML0XX_MAX_REG_LEN) {
@@ -427,37 +428,37 @@ static int stml0xx_spi_send_write_reg_no_retries(unsigned char reg_type,
 
 	while (remaining_data_size > 0) {
 		/* Clear buffer */
-		memset(stml0xx_cmdbuff, 0, SPI_MSG_SIZE);
+		memset(cmd_buff, 0, SPI_MSG_SIZE);
 
 		/* Populate header */
-		stml0xx_cmdbuff[0] = SPI_BARKER_1;
-		stml0xx_cmdbuff[1] = SPI_BARKER_2;
-		stml0xx_cmdbuff[2] = SPI_MSG_TYPE_WRITE_REG;
-		stml0xx_cmdbuff[3] = reg_type;
+		cmd_buff[0] = SPI_BARKER_1;
+		cmd_buff[1] = SPI_BARKER_2;
+		cmd_buff[2] = SPI_MSG_TYPE_WRITE_REG;
+		cmd_buff[3] = reg_type;
 
 		/* Payload data offset */
-		stml0xx_cmdbuff[4] = data_offset;
+		cmd_buff[4] = data_offset;
 		data_size = (remaining_data_size < SPI_MAX_PAYLOAD_LEN) ?
 		    remaining_data_size : SPI_MAX_PAYLOAD_LEN;
-		stml0xx_cmdbuff[5] = data_size;
+		cmd_buff[5] = data_size;
 
 		/* Copy data and update data parameters */
-		memcpy(&stml0xx_cmdbuff[SPI_WRITE_REG_HDR_SIZE],
+		memcpy(&cmd_buff[SPI_WRITE_REG_HDR_SIZE],
 		       reg_data + data_offset, data_size);
 		remaining_data_size -= data_size;
 		data_offset += data_size;
 
 		/* Swap all bytes */
-		stml0xx_spi_swap_bytes(stml0xx_cmdbuff,
+		stml0xx_spi_swap_bytes(cmd_buff,
 				       SPI_MSG_SIZE - SPI_CRC_LEN);
 
 		/* Append 2-byte CRC (unswapped) */
-		stml0xx_spi_append_crc(stml0xx_cmdbuff,
+		stml0xx_spi_append_crc(cmd_buff,
 				       SPI_MSG_SIZE - SPI_CRC_LEN);
 
 		/* Write write request to SPI */
 		ret =
-		    stml0xx_spi_write_no_reset_no_retries(stml0xx_cmdbuff,
+		    stml0xx_spi_write_no_reset_no_retries(cmd_buff,
 							  SPI_MSG_SIZE);
 		if (ret < 0)
 			goto EXIT;
@@ -504,8 +505,7 @@ int stml0xx_spi_send_write_reg_reset(unsigned char reg_type,
 				"stml0xx_spi_send_write_reg_reset SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
 			if (reset_allowed)
-				stml0xx_reset(stml0xx_misc_data->pdata,
-					stml0xx_cmdbuff);
+				stml0xx_reset(stml0xx_misc_data->pdata);
 			else
 				break;
 		}
@@ -527,6 +527,8 @@ static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
 	int remaining_data_size = reg_size;
 	unsigned short recv_crc, calc_crc;
 	int ret = 0;
+	unsigned char cmd_buff[SPI_MSG_SIZE];
+	unsigned char read_buff[SPI_MSG_SIZE];
 
 	if (!reg_data || reg_size <= 0 ||
 	    reg_size > STML0XX_MAX_REG_LEN) {
@@ -538,43 +540,43 @@ static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
 
 	while (remaining_data_size > 0) {
 		/* Clear buffer */
-		memset(stml0xx_cmdbuff, 0, SPI_MSG_SIZE);
+		memset(cmd_buff, 0, SPI_MSG_SIZE);
 
 		/* Populate header */
-		stml0xx_cmdbuff[0] = SPI_BARKER_1;
-		stml0xx_cmdbuff[1] = SPI_BARKER_2;
-		stml0xx_cmdbuff[2] = SPI_MSG_TYPE_READ_REG;
-		stml0xx_cmdbuff[3] = reg_type;
+		cmd_buff[0] = SPI_BARKER_1;
+		cmd_buff[1] = SPI_BARKER_2;
+		cmd_buff[2] = SPI_MSG_TYPE_READ_REG;
+		cmd_buff[3] = reg_type;
 
 		/* Payload data offset */
-		stml0xx_cmdbuff[4] = data_offset;
+		cmd_buff[4] = data_offset;
 		data_size = (remaining_data_size < SPI_MAX_PAYLOAD_LEN) ?
 		    remaining_data_size : SPI_MAX_PAYLOAD_LEN;
-		stml0xx_cmdbuff[5] = data_size;
+		cmd_buff[5] = data_size;
 
 		/* Swap all bytes */
-		stml0xx_spi_swap_bytes(stml0xx_cmdbuff,
+		stml0xx_spi_swap_bytes(cmd_buff,
 			SPI_MSG_SIZE - SPI_CRC_LEN);
 
 		/* Append 2-byte CRC (unswapped) */
-		stml0xx_spi_append_crc(stml0xx_cmdbuff,
+		stml0xx_spi_append_crc(cmd_buff,
 			SPI_MSG_SIZE - SPI_CRC_LEN);
 
 		/* Write read request to SPI */
-		ret = stml0xx_spi_write_no_reset_no_retries(stml0xx_cmdbuff,
+		ret = stml0xx_spi_write_no_reset_no_retries(cmd_buff,
 							  SPI_MSG_SIZE);
 		if (ret < 0)
 			goto EXIT;
 
-		ret = stml0xx_spi_read_no_reset_no_retries(stml0xx_readbuff,
+		ret = stml0xx_spi_read_no_reset_no_retries(read_buff,
 							 SPI_MSG_SIZE);
 
 		if (ret < 0)
 			goto EXIT;
 
 		/* Validate CRC */
-		recv_crc = (stml0xx_readbuff[30] << 8) | stml0xx_readbuff[31];
-		calc_crc = stml0xx_spi_calculate_crc(stml0xx_readbuff,
+		recv_crc = (read_buff[30] << 8) | read_buff[31];
+		calc_crc = stml0xx_spi_calculate_crc(read_buff,
 						     SPI_MSG_SIZE -
 						     SPI_CRC_LEN);
 		if (recv_crc != calc_crc) {
@@ -586,11 +588,11 @@ static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
 		}
 
 		/* Swap bytes before extracting data */
-		stml0xx_spi_swap_bytes(stml0xx_readbuff,
+		stml0xx_spi_swap_bytes(read_buff,
 				       SPI_MSG_SIZE - SPI_CRC_LEN);
 
 		/* Extract payload */
-		memcpy(reg_data + data_offset, stml0xx_readbuff, data_size);
+		memcpy(reg_data + data_offset, read_buff, data_size);
 		remaining_data_size -= data_size;
 		data_offset += data_size;
 	}
@@ -635,8 +637,7 @@ int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
 				"stml0xx_spi_send_read_reg_reset SPI transfer error [%d], retries left [%d]",
 				ret, reset_retries);
 			if (reset_allowed)
-				stml0xx_reset(stml0xx_misc_data->pdata,
-					stml0xx_cmdbuff);
+				stml0xx_reset(stml0xx_misc_data->pdata);
 			else
 				break;
 		}

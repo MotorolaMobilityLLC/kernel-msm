@@ -80,8 +80,8 @@ unsigned char stat_string[LOG_MSG_SIZE + 1];
 
 struct stml0xx_algo_requst_t stml0xx_g_algo_requst[STML0XX_NUM_ALGOS];
 
-unsigned char *stml0xx_cmdbuff;
-unsigned char *stml0xx_readbuff;
+unsigned char *stml0xx_boot_cmdbuff;
+unsigned char *stml0xx_boot_readbuff;
 
 /* per algo config, request, and event registers */
 const struct stml0xx_algo_info_t stml0xx_algo_info[STML0XX_NUM_ALGOS] = {
@@ -754,8 +754,9 @@ static int stml0xx_probe(struct spi_device *spi)
 			goto err_nomem;
 	}
 
-	stml0xx_cmdbuff = ps_stml0xx->spi_tx_buf;
-	stml0xx_readbuff = ps_stml0xx->spi_rx_buf;
+	/* global buffers used exclusively in bootloader mode */
+	stml0xx_boot_cmdbuff = ps_stml0xx->spi_tx_buf;
+	stml0xx_boot_readbuff = ps_stml0xx->spi_rx_buf;
 
 	/* initialize regulators */
 	ps_stml0xx->regulator_1 = regulator_get(&spi->dev, "sensor1");
@@ -809,6 +810,7 @@ static int stml0xx_probe(struct spi_device *spi)
 
 	mutex_init(&ps_stml0xx->lock);
 	mutex_init(&ps_stml0xx->sh_wakeup_lock);
+	mutex_init(&ps_stml0xx->spi_lock);
 
 	mutex_lock(&ps_stml0xx->lock);
 	wake_lock_init(&ps_stml0xx->wakelock, WAKE_LOCK_SUSPEND, "stml0xx");
