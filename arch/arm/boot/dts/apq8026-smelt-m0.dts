@@ -11,6 +11,9 @@
  */
 
 /dts-v1/;
+
+/memreserve/ 0x1eae0000 0x20000;
+
 #include "qcom/msm8226-v1.dtsi"
 #include "qcom/msm8226-memory.dtsi"
 #include "qcom/msm8226-qseecom.dtsi"
@@ -26,6 +29,16 @@
 		/delete-property/ spi0;
 		uart1 = &uart1;
 		uart6 = &uart6;
+	};
+
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		android,ramoops-buffer-start = <0x1eae0000>;
+		android,ramoops-buffer-size  = <0x20000>;
+		android,ramoops-console-size = <0x1FC00>;
+		android,ramoops-annotate-size = <0x400>;
 	};
 
 	bt_qca6174 {
