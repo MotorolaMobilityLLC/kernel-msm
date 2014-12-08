@@ -2232,3 +2232,27 @@ VOS_STATUS  vos_randomize_n_bytes(void *start_addr, tANI_U32 n)
 
     return eHAL_STATUS_SUCCESS;
 }
+
+/**---------------------------------------------------------------------------
+
+  \brief vos_is_wlan_in_badState() - get isFatalError flag from WD Ctx
+
+  \param  - VOS_MODULE_ID   - module id
+          - moduleContext   - module context
+
+  \return -  isFatalError value if WDCtx is valid otherwise true
+
+  --------------------------------------------------------------------------*/
+v_BOOL_t vos_is_wlan_in_badState(VOS_MODULE_ID moduleId,
+                                 v_VOID_t *moduleContext)
+{
+    struct _VosWatchdogContext *pVosWDCtx = get_vos_watchdog_ctxt();
+
+    if (pVosWDCtx == NULL){
+        VOS_TRACE(moduleId, VOS_TRACE_LEVEL_ERROR,
+                "%s: global wd context is null", __func__);
+
+        return TRUE;
+    }
+    return pVosWDCtx->isFatalError;
+}
