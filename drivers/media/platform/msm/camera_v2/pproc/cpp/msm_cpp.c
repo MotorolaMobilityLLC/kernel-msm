@@ -1595,27 +1595,33 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 				(uint32_t) out_phyaddr1;
 		}
 	} else {
-		tnr_scratch_buffer0 = msm_cpp_fetch_buffer_info(cpp_dev,
-			&new_frame->tnr_scratch_buffer_info[0],
-			((new_frame->identity >> 16) & 0xFFFF),
-			(new_frame->identity & 0xFFFF),
-			&new_frame->tnr_scratch_buffer_info[0].fd);
-		if (!tnr_scratch_buffer0) {
-			pr_err("error getting scratch buffer physical address\n");
-			rc = -EINVAL;
-			goto phyaddr_err;
+		if(cpp_dev->hw_info.cpp_hw_version != CPP_HW_VERSION_5_1_0) {
+			tnr_scratch_buffer0 = msm_cpp_fetch_buffer_info(cpp_dev,
+				&new_frame->tnr_scratch_buffer_info[0],
+				((new_frame->identity >> 16) & 0xFFFF),
+				(new_frame->identity & 0xFFFF),
+				&new_frame->tnr_scratch_buffer_info[0].fd);
+			if (!tnr_scratch_buffer0) {
+				pr_err("error getting scratch buffer physical address\n");
+				rc = -EINVAL;
+				goto phyaddr_err;
+			}
+
+			tnr_scratch_buffer1 = msm_cpp_fetch_buffer_info(cpp_dev,
+				&new_frame->tnr_scratch_buffer_info[1],
+				((new_frame->identity >> 16) & 0xFFFF),
+				(new_frame->identity & 0xFFFF),
+				&new_frame->tnr_scratch_buffer_info[1].fd);
+			if (!tnr_scratch_buffer1) {
+				pr_err("error getting scratch buffer physical address\n");
+				rc = -EINVAL;
+				goto phyaddr_err;
+			}
+		} else {
+			 tnr_scratch_buffer0 = 0;
+			 tnr_scratch_buffer1 = 0;
 		}
 
-		tnr_scratch_buffer1 = msm_cpp_fetch_buffer_info(cpp_dev,
-			&new_frame->tnr_scratch_buffer_info[1],
-			((new_frame->identity >> 16) & 0xFFFF),
-			(new_frame->identity & 0xFFFF),
-			&new_frame->tnr_scratch_buffer_info[1].fd);
-		if (!tnr_scratch_buffer1) {
-			pr_err("error getting scratch buffer physical address\n");
-			rc = -EINVAL;
-			goto phyaddr_err;
-		}
 		num_stripes = ((cpp_frame_msg[9] >> 20) & 0x3FF) +
 			((cpp_frame_msg[9] >> 10) & 0x3FF) +
 			(cpp_frame_msg[9] & 0x3FF);
