@@ -115,8 +115,9 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending acc(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ACCEL_RD_X), STM16_TO_HOST(ACCEL_RD_Y),
-			STM16_TO_HOST(ACCEL_RD_Z));
+			STM16_TO_HOST(ACCEL_RD_X, buf),
+			STM16_TO_HOST(ACCEL_RD_Y, buf),
+			STM16_TO_HOST(ACCEL_RD_Z, buf));
 	}
 	if (irq_status & M_ACCEL2) {
 		/* read 2nd accelerometer values from STML0XX */
@@ -136,8 +137,9 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending acc2(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ACCEL_RD_X), STM16_TO_HOST(ACCEL_RD_Y),
-			STM16_TO_HOST(ACCEL_RD_Z));
+			STM16_TO_HOST(ACCEL_RD_X, buf),
+			STM16_TO_HOST(ACCEL_RD_Y, buf),
+			STM16_TO_HOST(ACCEL_RD_Z, buf));
 	}
 	if (irq_status & M_LIN_ACCEL) {
 		dev_err(&stml0xx_misc_data->spi->dev,
@@ -157,8 +159,9 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ACCEL_RD_X), STM16_TO_HOST(ACCEL_RD_Y),
-			STM16_TO_HOST(ACCEL_RD_Z));
+			STM16_TO_HOST(ACCEL_RD_X, buf),
+			STM16_TO_HOST(ACCEL_RD_Y, buf),
+			STM16_TO_HOST(ACCEL_RD_Z, buf));
 	}
 	if (irq_status & M_ECOMPASS) {
 		unsigned char status;
@@ -175,16 +178,17 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending mag(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(MAG_X), STM16_TO_HOST(MAG_Y),
-			STM16_TO_HOST(MAG_Z));
+			STM16_TO_HOST(MAG_X, buf), STM16_TO_HOST(MAG_Y, buf),
+			STM16_TO_HOST(MAG_Z, buf));
 
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_ORIENT,
 					     buf + 6, 6, status, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending orient(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ORIENT_X), STM16_TO_HOST(ORIENT_Y),
-			STM16_TO_HOST(ORIENT_Z));
+			STM16_TO_HOST(ORIENT_X, buf),
+			STM16_TO_HOST(ORIENT_Y, buf),
+			STM16_TO_HOST(ORIENT_Z, buf));
 	}
 	if (irq_status & M_GYRO) {
 		err = stml0xx_spi_send_read_reg(GYRO_X, buf, 6);
@@ -203,8 +207,9 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending gyro(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(GYRO_RD_X), STM16_TO_HOST(GYRO_RD_Y),
-			STM16_TO_HOST(GYRO_RD_Z));
+			STM16_TO_HOST(GYRO_RD_X, buf),
+			STM16_TO_HOST(GYRO_RD_Y, buf),
+			STM16_TO_HOST(GYRO_RD_Z, buf));
 	}
 	/*MODIFIED UNCALIBRATED GYRO */
 	if (irq_status & M_UNCALIB_GYRO) {
@@ -219,11 +224,12 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d",
-			STM16_TO_HOST(GYRO_RD_X), STM16_TO_HOST(GYRO_RD_Y),
-			STM16_TO_HOST(GYRO_RD_Z),
-			STM16_TO_HOST(GYRO_UNCALIB_X),
-			STM16_TO_HOST(GYRO_UNCALIB_Y),
-			STM16_TO_HOST(GYRO_UNCALIB_Z));
+			STM16_TO_HOST(GYRO_RD_X, buf),
+			STM16_TO_HOST(GYRO_RD_Y, buf),
+			STM16_TO_HOST(GYRO_RD_Z, buf),
+			STM16_TO_HOST(GYRO_UNCALIB_X, buf),
+			STM16_TO_HOST(GYRO_UNCALIB_Y, buf),
+			STM16_TO_HOST(GYRO_UNCALIB_Z, buf));
 	}
 	if (irq_status & M_UNCALIB_MAG) {
 		err = stml0xx_spi_send_read_reg(UNCALIB_MAG_X, buf, 12);
@@ -238,10 +244,11 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d",
-			STM16_TO_HOST(MAG_X), STM16_TO_HOST(MAG_Y),
-			STM16_TO_HOST(MAG_Z), STM16_TO_HOST(MAG_UNCALIB_X),
-			STM16_TO_HOST(MAG_UNCALIB_Y),
-			STM16_TO_HOST(MAG_UNCALIB_Z));
+			STM16_TO_HOST(MAG_X, buf), STM16_TO_HOST(MAG_Y, buf),
+			STM16_TO_HOST(MAG_Z, buf),
+			STM16_TO_HOST(MAG_UNCALIB_X, buf),
+			STM16_TO_HOST(MAG_UNCALIB_Y, buf),
+			STM16_TO_HOST(MAG_UNCALIB_Z, buf));
 	}
 	if (irq_status & M_ALS) {
 		err = stml0xx_spi_send_read_reg(ALS_LUX, buf, 2);
@@ -259,7 +266,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending ALS %d", STM16_TO_HOST(ALS_VALUE));
+			"Sending ALS %d", STM16_TO_HOST(ALS_VALUE, buf));
 	}
 	if (irq_status & M_TEMPERATURE) {
 		/* Read temperature value */
@@ -278,7 +285,8 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending temp(x)value:%d", STM16_TO_HOST(TEMP_VALUE));
+			"Sending temp(x)value:%d",
+			STM16_TO_HOST(TEMP_VALUE, buf));
 	}
 	if (irq_status & M_PRESSURE) {
 		dev_err(&stml0xx_misc_data->spi->dev,
@@ -295,7 +303,8 @@ void stml0xx_irq_work_func(struct work_struct *work)
 					     buf, 4, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending pressure %d", STM32_TO_HOST(PRESSURE_VALUE));
+			"Sending pressure %d",
+			STM32_TO_HOST(PRESSURE_VALUE, buf));
 	}
 	if (irq_status & M_GRAVITY) {
 		dev_err(&stml0xx_misc_data->spi->dev,
@@ -320,8 +329,8 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending gravity(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(GRAV_X), STM16_TO_HOST(GRAV_Y),
-			STM16_TO_HOST(GRAV_Z));
+			STM16_TO_HOST(GRAV_X, buf), STM16_TO_HOST(GRAV_Y, buf),
+			STM16_TO_HOST(GRAV_Z, buf));
 	}
 	if (irq_status & M_DISP_ROTATE) {
 		/* Read Display Rotate value */
