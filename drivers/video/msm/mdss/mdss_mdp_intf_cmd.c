@@ -19,6 +19,8 @@
 #include "mdss_debug.h"
 #include "mdss_mdp_trace.h"
 
+#include "mdss_timeout.h"
+
 #define VSYNC_EXPIRE_TICK 6
 
 #define MAX_SESSIONS 2
@@ -1023,6 +1025,20 @@ end:
 	return 0;
 }
 
+void mdss_mdp_cmd_dump_ctx(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_cmd_ctx *ctx = ctl->priv_data;
+
+	MDSS_TIMEOUT_LOG("is panel_on: %d\n",
+		__mdss_mdp_cmd_is_panel_power_on_interactive(ctx));
+
+	MDSS_TIMEOUT_LOG("pp_num=%u\n", ctx->pp_num);
+	MDSS_TIMEOUT_LOG("koff_cnt=%d\n", atomic_read(&ctx->koff_cnt));
+	MDSS_TIMEOUT_LOG("clk_enabled=%d\n", ctx->clk_enabled);
+	MDSS_TIMEOUT_LOG("vsync_enabled=%d\n", ctx->vsync_enabled);
+	MDSS_TIMEOUT_LOG("rdptr_enabled=%d\n", ctx->rdptr_enabled);
+}
+
 static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 			int session)
 {
@@ -1133,6 +1149,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
 	ctl->restore_fnc = mdss_mdp_cmd_restore;
+	ctl->ctx_dump_fnc = mdss_mdp_cmd_dump_ctx;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;
