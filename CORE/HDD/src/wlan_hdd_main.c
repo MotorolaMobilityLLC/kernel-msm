@@ -1962,6 +1962,68 @@ static void getBcnMissRateCB(VOS_STATUS status, int bcnMissRate, void *data)
     return;
 }
 
+void hdd_FWStatisCB( VOS_STATUS status, void *fwStats, void *data )
+{
+    fwStatsContext_t *fwStatsCtx;
+    fwStatsResult_t  *fwStatsResult;
+    hdd_adapter_t *pAdapter;
+
+    hddLog(VOS_TRACE_LEVEL_INFO, FL(" with status = %d"),status);
+
+    if (NULL == data)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("argument data is NULL"));
+        return;
+    }
+    /* there is a race condition that exists between this callback
+       function and the caller since the caller could time out either
+       before or while this code is executing.  we use a spinlock to
+       serialize these actions */
+    spin_lock(&hdd_context_lock);
+    fwStatsCtx = (fwStatsContext_t *) data;
+    if (fwStatsCtx->magic != FW_STATS_CONTEXT_MAGIC)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               FL("invalid context magic: %08x"), fwStatsCtx->magic);
+        spin_unlock(&hdd_context_lock);
+        return;
+    }
+    pAdapter = fwStatsCtx->pAdapter;
+    if ((NULL == pAdapter) || (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+              FL("pAdapter returned is NULL or invalid"));
+        spin_unlock(&hdd_context_lock);
+        return;
+    }
+    pAdapter->fwStatsRsp.type = 0;
+    if ((VOS_STATUS_SUCCESS == status) && (NULL != fwStats))
+    {
+        fwStatsResult = (fwStatsResult_t *)fwStats;
+        switch( fwStatsResult->type )
+        {
+            case FW_UBSP_STATS:
+            {
+                 memcpy(&pAdapter->fwStatsRsp,fwStatsResult,sizeof(fwStatsResult_t));
+
+                 hddLog(VOS_TRACE_LEVEL_INFO,
+                  FL("ubsp_enter_cnt = %d ubsp_jump_ddr_cnt = %d"),
+                  pAdapter->fwStatsRsp.hddFwStatsData.ubspStats.ubsp_enter_cnt,
+                  pAdapter->fwStatsRsp.hddFwStatsData.ubspStats.ubsp_jump_ddr_cnt);
+            }
+            break;
+            default:
+            {
+                   hddLog(VOS_TRACE_LEVEL_ERROR,
+                    FL(" No handling for stats type %d"),fwStatsResult->type);
+            }
+         }
+    }
+    complete(&(fwStatsCtx->completion));
+    spin_unlock(&hdd_context_lock);
+    return;
+}
+
 static int hdd_get_dwell_time(hdd_config_t *pCfg, tANI_U8 *command, char *extra, tANI_U8 n, tANI_U8 *len)
 {
     int ret = 0;
@@ -4161,12 +4223,114 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            }
        }
 #endif
+       else if (strncmp(command, "GETFWSTATS", 10) == 0)
+       {
+           eHalStatus status;
+           char *buf = NULL;
+           char len;
+           long waitRet;
+           fwStatsContext_t fwStatsCtx;
+           fwStatsResult_t *fwStatsRsp = &(pAdapter->fwStatsRsp);
+           tANI_U8 *ptr = command;
+           int stats = *(ptr + 11) - '0';
+
+           hddLog(VOS_TRACE_LEVEL_INFO, FL("stats = %d "),stats);
+           if (!IS_FEATURE_FW_STATS_ENABLE)
+           {
+               hddLog(VOS_TRACE_LEVEL_INFO,
+                     FL("Get Firmware stats feature not supported"));
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           if (FW_STATS_MAX <= stats || 0 >= stats)
+           {
+               hddLog(VOS_TRACE_LEVEL_INFO,
+                        FL(" stats %d not supported"),stats);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           init_completion(&(fwStatsCtx.completion));
+           fwStatsCtx.magic = FW_STATS_CONTEXT_MAGIC;
+           fwStatsCtx.pAdapter = pAdapter;
+           fwStatsRsp->type = 0;
+           status = sme_GetFwStats( (tHalHandle)pHddCtx->hHal, stats,
+                                   (&fwStatsCtx), hdd_FWStatisCB);
+           if (eHAL_STATUS_SUCCESS != status)
+           {
+               hddLog(VOS_TRACE_LEVEL_ERROR,
+                       FL(" fail to post WDA cmd status = %d"), status);
+               ret = -EINVAL;
+               goto exit;
+           }
+           waitRet = wait_for_completion_timeout
+                             (&(fwStatsCtx.completion), FW_STATE_WAIT_TIME);
+           if (waitRet <= 0)
+           {
+               hddLog(VOS_TRACE_LEVEL_ERROR,
+                        FL("failed to wait on GwtFwstats"));
+               //Make magic number to zero so that callback is not executed.
+               spin_lock(&hdd_context_lock);
+               fwStatsCtx.magic = 0x0;
+               spin_unlock(&hdd_context_lock);
+               ret = -EINVAL;
+               goto exit;
+           }
+           if (fwStatsRsp->type)
+           {
+               buf = kmalloc(FW_STATE_RSP_LEN, GFP_KERNEL);
+               if (!buf)
+               {
+                 hddLog(VOS_TRACE_LEVEL_ERROR,
+                       FL(" failed to allocate memory"));
+                 ret = -ENOMEM;
+                 goto exit;
+               }
+               switch( fwStatsRsp->type )
+               {
+                   case FW_UBSP_STATS:
+                   {
+                        len = snprintf(buf, FW_STATE_RSP_LEN,
+                              "GETFWSTATS: ubsp_enter_cnt %d ubsp_jump_ddr_cnt %d",
+                              fwStatsRsp->hddFwStatsData.ubspStats.ubsp_enter_cnt,
+                              fwStatsRsp->hddFwStatsData.ubspStats.ubsp_jump_ddr_cnt);
+                   }
+                   break;
+                   default:
+                   {
+                        hddLog(VOS_TRACE_LEVEL_ERROR, FL( "No handling for stats type %d"),fwStatsRsp->type);
+                        ret = -EFAULT;
+                        kfree(buf);
+                        goto exit;
+                   }
+               }
+               if (copy_to_user(priv_data.buf, buf, len + 1))
+               {
+                   hddLog(VOS_TRACE_LEVEL_ERROR,
+                      FL(" failed to copy data to user buffer"));
+                   ret = -EFAULT;
+                   kfree(buf);
+                   goto exit;
+               }
+               ret = len;
+               kfree(buf);
+           }
+           else
+           {
+               hddLog(VOS_TRACE_LEVEL_ERROR,
+                   FL("failed to fetch the stats"));
+               ret = -EFAULT;
+               goto exit;
+           }
+
+       }
        else {
            MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                             TRACE_CODE_HDD_UNSUPPORTED_IOCTL,
                             pAdapter->sessionId, 0));
-           hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
-                   __func__, command);
+           hddLog( VOS_TRACE_LEVEL_WARN, FL("Unsupported GUI command %s"),
+                   command);
        }
    }
 exit:
