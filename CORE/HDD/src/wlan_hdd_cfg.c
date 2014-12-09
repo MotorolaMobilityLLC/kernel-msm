@@ -3229,7 +3229,7 @@ REG_VARIABLE( CFG_EXTSCAN_ENABLE, WLAN_PARAM_Integer,
  * Function returns NULL if no new line character was found before end of
  * string was reached
  */
-static char* get_next_line(char* str)
+static char* get_next_line(char* str, char *str_end)
 {
   char c;
 
@@ -3240,6 +3240,10 @@ static char* get_next_line(char* str)
   c = *str;
   while(c != '\n'  && c != '\0' && c != 0xd)  {
     str = str + 1;
+    if (str > str_end)
+    {
+        return str;
+    }
     c = *str;
   }
 
@@ -3372,7 +3376,7 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
        * So validating if the return pointer is not greater than the end
        * buffer address and modifying the buffer value.
        */
-      line = get_next_line(buffer);
+      line = get_next_line(buffer, (pTemp + (fw->size-1)));
       if(line > (pTemp + fw->size)) {
          hddLog(VOS_TRACE_LEVEL_FATAL, "%s: INI file seems to be corrupted",
                   __func__);
