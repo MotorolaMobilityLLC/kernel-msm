@@ -1668,9 +1668,17 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    {
       /* 1. Check if ACM is set for this AC 
        * 2. If set, check if this AC had already admitted 
-       * 3. If not already admitted, downgrade the UP to next best UP */
+       * 3. If not already admitted, downgrade the UP to next best UP
+       * 4. Allow only when medium time is non zero when Addts accepted else downgrade traffic.
+            we opted downgrading over Delts when medium time is zero because while doing downgradig
+            driver is not clearing the wmm context so consider in subsequent roaming if AP (new or
+            same AP) accept the Addts with valid medium time no application support is required
+            where if we have opted delts Applications have to again do Addts or STA will never
+            go for Addts.*/
+
       if(!pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessRequired ||
-         pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid)
+         (pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid &&
+          pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecInfo.medium_time))
       {
         pPktMetaInfo->ucUP = pktNode->userPriority;
         pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
