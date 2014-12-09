@@ -4970,6 +4970,46 @@ eHalStatus sme_GetStatistics(tHalHandle hHal, eCsrStatsRequesterType requesterId
 
 }
 
+eHalStatus sme_GetFwStats(tHalHandle hHal, tANI_U32 stats, void *data,
+                                                        void *callback)
+{
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+   vos_msg_t msg;
+   tSirFWStatsGetReq *pGetFWStatsReq;
+
+   smsLog(pMac, LOG1, FL(" ENTER stats = %d "),stats);
+
+   if ( eHAL_STATUS_SUCCESS ==  sme_AcquireGlobalLock( &pMac->sme ))
+   {
+       pGetFWStatsReq = (tSirFWStatsGetReq *)vos_mem_malloc(sizeof(tSirFWStatsGetReq));
+       if ( NULL == pGetFWStatsReq)
+       {
+          smsLog(pMac, LOGE, FL("Not able to allocate memory for "
+               "WDA_FW_STATS_GET_REQ"));
+          sme_ReleaseGlobalLock( &pMac->sme );
+          return eHAL_STATUS_FAILURE;
+       }
+       pGetFWStatsReq->stats = stats;
+       pGetFWStatsReq->callback = (tSirFWStatsCallback)callback;
+       pGetFWStatsReq->data = data;
+
+       msg.type = WDA_FW_STATS_GET_REQ;
+       msg.reserved = 0;
+       msg.bodyptr = pGetFWStatsReq;
+       if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MQ_ID_WDA, &msg))
+       {
+            smsLog(pMac, LOGE,
+              FL("Not able to post WDA_FW_STATS_GET_REQ message to HAL"));
+            vos_mem_free(pGetFWStatsReq);
+            sme_ReleaseGlobalLock( &pMac->sme );
+            return eHAL_STATUS_FAILURE;
+       }
+       sme_ReleaseGlobalLock( &pMac->sme );
+       return eHAL_STATUS_SUCCESS;
+   }
+   return eHAL_STATUS_FAILURE;
+}
+
 /* ---------------------------------------------------------------------------
     \fn smeGetTLSTAState
     \helper function to get the TL STA State whenever the function is called.
