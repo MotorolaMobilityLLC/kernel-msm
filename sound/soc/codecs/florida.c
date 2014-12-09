@@ -1983,10 +1983,11 @@ static int adsp2_ez2ctrl_set_trigger(struct florida_priv *florida)
 
 static bool adsp2_ez2ctrl_trigger(struct florida_priv *florida, int dev)
 {
+	int dsp_num = florida->compr_info[dev].dsp_num;
 	if (!florida->compr_info[dev].trig
-		&& (florida->core.adsp[dev].fw_id == 0x4000d
-		|| florida->core.adsp[dev].fw_id == 0x40036)
-		&& florida->core.adsp[dev].running) {
+		&& (florida->core.adsp[dsp_num].fw_id == 0x4000d
+		|| florida->core.adsp[dsp_num].fw_id == 0x40036)
+		&& florida->core.adsp[dsp_num].running) {
 
 		florida->compr_info[dev].trig = true;
 		return true;
@@ -2001,6 +2002,8 @@ static irqreturn_t adsp2_irq(int irq, void *data)
 
 	for (i = 0; i < FLORIDA_NUM_COMPR_DEVICES; i++) {
 		mutex_lock(&florida->compr_info[i].lock);
+		if (adsp2_ez2ctrl_trigger(florida, i))
+			adsp2_ez2ctrl_set_trigger(florida);
 
 		if (florida->compr_info[i].stream) {
 			ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp);
@@ -2009,9 +2012,6 @@ static irqreturn_t adsp2_irq(int irq, void *data)
 					"Failed to capture DSP core %d data: %d\n",
 					i, ret);
 			} else {
-				if (adsp2_ez2ctrl_trigger(florida, i))
-					adsp2_ez2ctrl_set_trigger(florida);
-
 				florida->compr_info[i].total_copied += ret;
 				avail = wm_adsp_stream_avail(florida->compr_info[i].adsp);
 				if (avail > FLORIDA_DEFAULT_FRAGMENT_SIZE)
