@@ -51,6 +51,7 @@ struct florida_compr {
 	bool forced;
 	int device_index;
 	int dsp_num;
+	bool freed;
 };
 
 struct florida_priv {
@@ -1984,7 +1985,7 @@ static int adsp2_ez2ctrl_set_trigger(struct florida_priv *florida)
 static bool adsp2_ez2ctrl_trigger(struct florida_priv *florida, int dev)
 {
 	int dsp_num = florida->compr_info[dev].dsp_num;
-	if (!florida->compr_info[dev].trig
+	if (!florida->compr_info[dev].freed && !florida->compr_info[dev].trig
 		&& (florida->core.adsp[dsp_num].fw_id == 0x4000d
 		|| florida->core.adsp[dsp_num].fw_id == 0x40036)
 		&& florida->core.adsp[dsp_num].running) {
@@ -2072,6 +2073,7 @@ static int florida_open(struct snd_compr_stream *stream)
 
 	florida->compr_info[i].adsp = &florida->core.adsp[dsp_num];
 	florida->compr_info[i].stream = stream;
+	florida->compr_info[i].freed = false;
 out:
 	mutex_unlock(&florida->compr_info[i].lock);
 
@@ -2095,6 +2097,8 @@ static int florida_free(struct snd_compr_stream *stream)
 		florida->compr_info[compr_dev_index].trig = false;
 
 	wm_adsp_stream_free(florida->compr_info[compr_dev_index].adsp);
+
+	florida->compr_info[compr_dev_index].freed = true;
 
 	mutex_unlock(&florida->compr_info[compr_dev_index].lock);
 	return 0;
