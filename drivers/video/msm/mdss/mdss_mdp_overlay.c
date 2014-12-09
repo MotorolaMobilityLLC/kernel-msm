@@ -35,6 +35,7 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
+#include "mdss_timeout.h"
 
 #define VSYNC_PERIOD 16
 #define BORDERFILL_NDX	0x0BF000BF
@@ -3811,6 +3812,33 @@ int mdss_panel_register_done(struct mdss_panel_data *pdata)
 	return 0;
 }
 
+void mdss_mdp5_dump_ctl(void *data)
+{
+	struct mdss_mdp_ctl *ctl = (struct mdss_mdp_ctl *)data;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
+	u32 isr, mask;
+	isr = MDSS_REG_READ(mdata, MDSS_MDP_REG_INTR_STATUS);
+	mask = MDSS_REG_READ(mdata, MDSS_MDP_REG_INTR_EN);
+	MDSS_TIMEOUT_LOG("-------- MDP5 INTERRUPT DATA ---------\n");
+	MDSS_TIMEOUT_LOG("MDSS_MDP_REG_INTR_STATUS: 0x%08X\n", isr);
+	MDSS_TIMEOUT_LOG("MDSS_MDP_REG_INTR_EN: 0x%08X\n", mask);
+	MDSS_TIMEOUT_LOG("global irqs disabled: %d\n", irqs_disabled());
+	MDSS_TIMEOUT_LOG("------ MDP5 INTERRUPT DATA DONE ------\n");
+
+	MDSS_TIMEOUT_LOG("-------- MDP5 CTL DATA ---------\n");
+	MDSS_TIMEOUT_LOG("play_cnt=%u\n", ctl->play_cnt);
+	MDSS_TIMEOUT_LOG("vsync_cnt=%u\n", ctl->vsync_cnt);
+	MDSS_TIMEOUT_LOG("underrun_cnt=%u\n", ctl->underrun_cnt);
+	MDSS_TIMEOUT_LOG("------ MDP5 CTL DATA DONE ------\n");
+
+	if (ctl->ctx_dump_fnc) {
+		MDSS_TIMEOUT_LOG("-------- MDP5 CTX DATA ---------\n");
+		ctl->ctx_dump_fnc(ctl);
+		MDSS_TIMEOUT_LOG("------ MDP5 CTX DATA DONE ------\n");
+	}
+}
+
 static int __mdss_mdp_ctl_handoff(struct mdss_mdp_ctl *ctl,
 	struct mdss_data_type *mdata)
 {
@@ -4222,6 +4250,8 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			rc = 0;
 		}
 	}
+
+	mdss_timeout_init(mdss_mdp5_dump_ctl, mdp5_data->ctl);
 
 	if (mdss_mdp_pp_overlay_init(mfd))
 		pr_warn("Failed to initialize pp overlay data.\n");
