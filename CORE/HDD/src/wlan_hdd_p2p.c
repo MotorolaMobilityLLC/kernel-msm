@@ -555,11 +555,20 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
     {
         tANI_U8 sessionId = pAdapter->sessionId;
         //call sme API to start remain on channel.
-        sme_RemainOnChannel(
+        if (eHAL_STATUS_SUCCESS != sme_RemainOnChannel(
              WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId,
              chan->hw_value, duration,
              wlan_hdd_remain_on_channel_callback, pAdapter,
-             (tANI_U8)(request_type == REMAIN_ON_CHANNEL_REQUEST)? TRUE:FALSE);
+             (tANI_U8)(request_type == REMAIN_ON_CHANNEL_REQUEST)? TRUE:FALSE))
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    FL(" RemainOnChannel returned fail"));
+            cfgState->remain_on_chan_ctx = NULL;
+            vos_timer_destroy(&pRemainChanCtx->hdd_remain_on_chan_timer);
+            vos_mem_free (pRemainChanCtx);
+            hdd_allow_suspend();
+            return -EINVAL;
+        }
 
         if( REMAIN_ON_CHANNEL_REQUEST == request_type)
         {
@@ -588,8 +597,9 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                     "%s: WLANSAP_RemainOnChannel returned fail", __func__);
            cfgState->remain_on_chan_ctx = NULL;
+           vos_timer_destroy(&pRemainChanCtx->hdd_remain_on_chan_timer);
            vos_mem_free (pRemainChanCtx);
-            hdd_allow_suspend();
+           hdd_allow_suspend();
            return -EINVAL;
         }
 
