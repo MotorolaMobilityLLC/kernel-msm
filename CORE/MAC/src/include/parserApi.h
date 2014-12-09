@@ -268,6 +268,7 @@ typedef struct sSirAssocRsp
     tDot11fIEVHTCaps          VHTCaps;
     tDot11fIEVHTOperation     VHTOperation;
 #endif
+    tDot11fIEExtCap           ExtCap;
     tDot11fIEOBSSScanParameters OBSSScanParameters;
     tSirQosMapSet QosMapSet;
 } tSirAssocRsp, *tpSirAssocRsp;
