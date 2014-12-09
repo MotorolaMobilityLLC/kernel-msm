@@ -821,6 +821,8 @@ static void exitIdleEvt(struct work_struct *work) {
 
 static void sendPalmEvt(void)
 {
+	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, KEY_SLEEP, 1);
 	input_sync(gl_ts->touch_dev);
 	if (gl_ts->palm_en) {
