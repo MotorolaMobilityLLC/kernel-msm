@@ -811,6 +811,21 @@ typedef struct
 
 } WDI_RateUpdateIndParams;
 
+typedef struct
+{
+   wpt_uint32 ubsp_enter_cnt;
+   wpt_uint32 ubsp_jump_ddr_cnt;
+}ubspFwStats;
+
+typedef struct
+{
+   wpt_uint32 type;
+   /*data*/
+   union{
+      ubspFwStats ubspStats;
+   }wdiFwStatsData;
+}  WDI_FWStatsResults;
+
 #ifdef FEATURE_WLAN_CH_AVOID
 #define WDI_CH_AVOID_MAX_RANGE   4
 
@@ -7796,6 +7811,8 @@ typedef void  (*WDI_LLStatsClearRspCb)(void *pEventData,
 
 typedef void  (*WDI_SetSpoofMacAddrRspCb)(
                         WDI_SpoofMacAddrRspParamType* wdiRsp, void *pUserData);
+typedef void  (*WDI_FWStatsGetRspCb)(WDI_Status status,void *fwStatsResp,
+                                         void *pUserData);
 /*========================================================================
  *     Function Declarations and Documentation
  ==========================================================================*/
@@ -11076,6 +11093,13 @@ WDI_Status WDI_LLStatsClearReq
    void*                    pUserData
 );
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
+WDI_Status WDI_FWStatsGetReq
+(
+   void* pwdiFWStatsGetReqParams,
+   WDI_FWStatsGetRspCb          wdiFWStatsGetRspCb,
+   wpt_uint32                   pUserData
+);
 
 #ifdef FEATURE_WLAN_BATCH_SCAN
 /**

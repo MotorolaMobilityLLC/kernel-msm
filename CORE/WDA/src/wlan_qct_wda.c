@@ -252,6 +252,10 @@ VOS_STATUS WDA_ProcessLLStatsGetReq(tWDA_CbContext *pWDA,
 VOS_STATUS WDA_ProcessLLStatsClearReq(tWDA_CbContext *pWDA,
                                       tSirLLStatsClearReq *wdaRequest);
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
+v_VOID_t WDA_ProcessFWStatsGetReq(tWDA_CbContext *pWDA,
+                                      tSirFWStatsGetReq *wdaRequest);
+
 /*
  * FUNCTION: WDA_open
  * Allocate the WDA context 
@@ -12958,6 +12962,12 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          WDA_ProcessBtAmpEventReq(pWDA, (tSmeBtAmpEvent *)pMsg->bodyptr);
          break;
       }
+      case WDA_FW_STATS_GET_REQ:
+      {
+         WDA_ProcessFWStatsGetReq(pWDA,
+                              (tSirFWStatsGetReq *)pMsg->bodyptr);
+         break;
+      }
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
       case WDA_LINK_LAYER_STATS_SET_REQ:
       {
@@ -17926,3 +17936,70 @@ VOS_STATUS WDA_ProcessLLStatsClearReq(tWDA_CbContext *pWDA,
 }
 
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
+
+void WDA_FWStatsGetRspCallback(WDI_Status status,void *fwStatsResp,void *pUserData)
+{
+    tSirFWStatsInfo *fwStatsinfo = (tSirFWStatsInfo *)pUserData;
+
+    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                       "<------ %s " ,__func__);
+    if (NULL == fwStatsinfo)
+    {
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+       VOS_ASSERT(0);
+       return;
+    }
+
+    if(fwStatsinfo->callback)
+         fwStatsinfo->callback(status, fwStatsResp, fwStatsinfo->data);
+
+    vos_mem_free(pUserData);
+    return;
+}
+
+
+v_VOID_t WDA_ProcessFWStatsGetReq(tWDA_CbContext *pWDA,
+                                      tSirFWStatsGetReq *pData)
+{
+
+    WDI_Status wdiStatus;
+    tSirFWStatsInfo *fwStatsinfo;
+
+    VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+             "------> %s" , __func__);
+
+    fwStatsinfo =
+         (tSirFWStatsInfo *)vos_mem_malloc(sizeof(tSirFWStatsInfo));
+    if (NULL == fwStatsinfo)
+    {
+       VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: VOS MEM Alloc Failure", __func__);
+       VOS_ASSERT(0);
+       vos_mem_free(pData);
+       return;
+    }
+
+    fwStatsinfo->callback = (tSirFWStatsCallback)(pData->callback);
+    fwStatsinfo->data     = pData->data;
+
+    wdiStatus = WDI_FWStatsGetReq(fwStatsinfo,
+                                   WDA_FWStatsGetRspCallback,
+                                                  pData->stats);
+    if (WDI_STATUS_PENDING == wdiStatus)
+    {
+        VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+              "Pending received for %s:%d ", __func__, __LINE__);
+    }
+    else if (WDI_STATUS_SUCCESS != wdiStatus)
+    {
+        if (fwStatsinfo->callback)
+        {
+            fwStatsinfo->callback(WDI_STATUS_E_FAILURE, NULL ,fwStatsinfo->data);
+        }
+        vos_mem_free(fwStatsinfo);
+    }
+    vos_mem_free(pData);
+}
+

@@ -465,6 +465,8 @@ typedef enum
 
   WDI_SPOOF_MAC_ADDR_REQ                         = 101,
 
+  WDI_GET_FW_STATS_REQ                           = 102,
+
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -790,6 +792,7 @@ typedef enum
   WDI_EXTSCAN_RESET_SIGNF_RSSI_CHANGE_RSP        = 100,
 #endif
   WDI_SPOOF_MAC_ADDR_RSP                         = 101,
+  WDI_GET_FW_STATS_RSP                           = 102,
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
@@ -5824,6 +5827,20 @@ WDI_ProcessBatchScanResultInd
 );
 
 #endif /* FEATURE_WLAN_BATCH_SCAN */
+
+WDI_Status
+WDI_ProcessGetFwStatsReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+WDI_Status
+WDI_ProcessGetFwStatsRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
 
 #ifdef FEATURE_WLAN_CH_AVOID
 /**
