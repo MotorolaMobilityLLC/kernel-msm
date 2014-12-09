@@ -1328,6 +1328,10 @@ long diagchar_ioctl(struct file *filp,
 	case DIAG_IOCTL_GET_REAL_TIME:
 		result = diag_ioctl_get_real_time(ioarg);
 		break;
+#ifdef CONFIG_DIAG_EXTENSION
+	default:
+		DIAGADDON_ioctl(&result, filp, iocmd, ioarg);
+#endif
 	}
 	return result;
 }
@@ -2078,6 +2082,9 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 						HDLC_OUT_BUF_SIZE) ?
 			((uintptr_t)enc.dest - (uintptr_t)buf_hdlc) :
 						HDLC_OUT_BUF_SIZE;
+#ifdef CONFIG_DIAG_EXTENSION
+	DIAGADDON_force_returntype(&pkt_type, pkt_type);
+#endif
 	if (pkt_type == DATA_TYPE_RESPONSE) {
 		err = diag_device_write(buf_hdlc, APPS_DATA, NULL);
 		if (err) {

@@ -2147,6 +2147,30 @@ void diag_usb_legacy_notifier(void *priv, unsigned event,
 }
 #endif /* DIAG OVER USB */
 
+#ifdef CONFIG_DIAG_EXTENSION
+int diag_addon_register(struct diag_addon *addon)
+{
+	if (addon == NULL)
+		return -EPERM;
+
+	addon->diag_process_apps_pkt = diag_process_apps_pkt;
+	addon->channel_diag_write = usb_diag_write;
+	list_add_tail(&addon->list, &driver->addon_list);
+	return 0;
+}
+EXPORT_SYMBOL(diag_addon_register);
+
+int diag_addon_unregister(struct diag_addon *addon)
+{
+	if (addon == NULL)
+		return -EPERM;
+
+	list_del(&addon->list);
+	return 0;
+}
+EXPORT_SYMBOL(diag_addon_unregister);
+#endif
+
 void diag_smd_notify(void *ctxt, unsigned event)
 {
 	struct diag_smd_info *smd_info = (struct diag_smd_info *)ctxt;
@@ -2600,6 +2624,9 @@ int diagfwd_init(void)
 	diag_debug_buf_idx = 0;
 	driver->read_len_legacy = 0;
 	driver->use_device_tree = has_device_tree();
+#ifdef CONFIG_DIAG_EXTENSION
+	INIT_LIST_HEAD(&driver->addon_list);
+#endif
 	for (i = 0; i < DIAG_NUM_PROC; i++)
 		driver->real_time_mode[i] = 1;
 	/*
