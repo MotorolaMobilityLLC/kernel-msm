@@ -3076,6 +3076,14 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.ignore_suspend = 1,
 		.dynamic = 0,
 	},
+	{ /* DSP2 Event Logging */
+		.name = "CPU-DSP2 Text",
+		.stream_name = "CPU-DSP2 Text",
+		.cpu_dai_name = "florida-dsp2-cpu-txt",
+		.platform_name = "florida-codec",
+		.codec_dai_name = "florida-dsp2-txt",
+		.codec_name = "florida-codec",
+	},
 #endif
 	/* End of FE DAI LINK */
 	/* Backend FM DAI Links */
