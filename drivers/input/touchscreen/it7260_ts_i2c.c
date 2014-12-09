@@ -183,6 +183,7 @@ static int suspend_touch_up = 0;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
 static int lastTouch = TOUCH_UP;
+static unsigned long last_time_exit_low = 0;
 
 #define I2C_RETRY_DELAY			15		/* Waiting for signals [ms] */
 #define I2C_RETRIES				2		/* Number of retries */
@@ -476,7 +477,8 @@ static void chipLowPowerMode(bool low)
 			isDeviceSleeping = false;
 			isDeviceSuspend = false;
 			hadPalmDown = false;
-			wake_unlock(&touch_lock);		
+			wake_unlock(&touch_lock);	
+			last_time_exit_low = jiffies;	
 		}
 	}
 }
@@ -816,7 +818,8 @@ static void exitIdleEvt(struct work_struct *work) {
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
-	input_sync(gl_ts->touch_dev);	
+	input_sync(gl_ts->touch_dev);
+	last_time_exit_low = jiffies;	
 }
 
 static void sendPalmEvt(void)
@@ -863,10 +866,12 @@ static void readTouchDataPoint(void)
 	}
 	
 	if ((pointData.palm & PD_PALM_FLAG_BIT) && !isDeviceSuspend && !hadPalmDown) {
-		isDeviceSuspend = true;
-		hadPalmDown = true;
-		sendPalmEvt();
-		queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
+		if (jiffies - last_time_exit_low > HZ/5){
+			isDeviceSuspend = true;
+			hadPalmDown = true;
+			sendPalmEvt();
+			queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
+		}
 	}
 
 	/* this check may look stupid, but it is here for when MT arrives to this driver. for now just check finger 0 */
@@ -969,6 +974,7 @@ static void readTouchDataPoint_Ambient(void)
 			input_sync(gl_ts->touch_dev);
 			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
 			input_sync(gl_ts->touch_dev);	
+			last_time_exit_low = jiffies;
 		}
 		isDeviceSuspend = true;
 		wake_unlock(&touch_lock);
