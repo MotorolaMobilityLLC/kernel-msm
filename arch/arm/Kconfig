@@ -285,6 +285,13 @@ config ARCH_RANDOM
 
 	 If unsure, say N
 
+config BOOTINFO
+	bool "Boot Information Feature"
+	default n
+	help
+	  This feature provides access to certain boot information
+	  from both kernel context (via function call) and user
+	  context (via /proc/bootinfo).
 
 source "init/Kconfig"
 
