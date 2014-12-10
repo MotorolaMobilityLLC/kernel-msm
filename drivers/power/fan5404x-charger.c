@@ -263,6 +263,7 @@ struct fan5404x_chg {
 	bool shutdown_voltage_tripped;
 	atomic_t otg_enabled;
 	int ic_info_pn;
+	bool factory_configured;
 };
 
 static struct fan5404x_chg *the_chip;
@@ -546,12 +547,15 @@ static int fan5404x_set_iocharge(struct fan5404x_chg *chip,
 #define IBUSLIM_UNLIMITED 0x03
 static int configure_for_factory_cable_insertion(struct fan5404x_chg *chip)
 {
-	int rc;
+	int rc = 0;
 
 	/*
 	 * Tickle the timer, enable charging and disable T32. This works
 	 * around the internal 2.5s reset.
 	 */
+
+	if (chip->factory_configured)
+		return rc;
 
 	rc = fan5404x_masked_write_fac(chip, REG_CONTROL0,
 				   CONTROL0_TMR_RST, CONTROL0_TMR_RST);
@@ -567,7 +571,7 @@ static int configure_for_factory_cable_insertion(struct fan5404x_chg *chip)
 		return rc;
 	}
 
-	rc = fan5404x_masked_write(chip, REG_WD_CONTROL,
+	rc = fan5404x_masked_write_fac(chip, REG_WD_CONTROL,
 				  WD_CONTROL_WD_DIS, WD_CONTROL_WD_DIS);
 	if (rc) {
 		dev_err(chip->dev, "Factory Mode Failure: Disable 32s timer\n");
@@ -608,15 +612,18 @@ static int configure_for_factory_cable_insertion(struct fan5404x_chg *chip)
 		return rc;
 	}
 
-	rc = fan5404x_masked_write(chip, REG_WD_CONTROL,
+	rc = fan5404x_masked_write_fac(chip, REG_WD_CONTROL,
 				   WD_CONTROL_WD_DIS, WD_CONTROL_WD_DIS);
 	if (rc) {
 		dev_err(chip->dev, "Factory Mode Failure: Disable 32s timer\n");
 		return rc;
 	}
 
-	return 0;
+	chip->factory_configured = true;
+
+	return rc;
 }
+
 static int start_charging(struct fan5404x_chg *chip)
 {
 	union power_supply_propval prop = {0,};
@@ -2255,6 +2262,7 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	chip->poll_fast = false;
 	chip->shutdown_voltage_tripped = false;
 	chip->chg_enabled = true;
+	chip->factory_configured = false;
 
 	mutex_init(&chip->read_write_lock);
 
