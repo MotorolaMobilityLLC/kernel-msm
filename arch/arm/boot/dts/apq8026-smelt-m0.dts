@@ -87,6 +87,14 @@
 			compatible = "mot,m4fusion";
 		};
 	};
+
+	dock_switch {
+		compatible = "switch-gpio";
+		switch_name = "dock";
+		switch_gpio = <&msmgpio 54 0>;
+		switch_state_on = "0";
+		switch_state_off = "1";
+	};
 };
 
 &soc {
