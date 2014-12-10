@@ -14498,8 +14498,10 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
             }
             else if(!WDA_GET_BA_TXFLAG(pWDA, curSta, tid)
                    && (WLANTL_STA_AUTHENTICATED == tlSTAState)
-                   && (txPktCount >= WDA_LAST_POLLED_THRESHOLD(pWDA, 
-                                                               curSta, tid)))
+                   && (((eSYSTEM_STA_IN_IBSS_ROLE ==
+                            pWDA->wdaGlobalSystemRole) && txPktCount )
+                   || (txPktCount >= WDA_LAST_POLLED_THRESHOLD(pWDA,
+                                                         curSta, tid))))
             {
                /* get prepare for sending message to HAL */
                //baCandidate[baCandidateCount].staIdx = curSta ;
