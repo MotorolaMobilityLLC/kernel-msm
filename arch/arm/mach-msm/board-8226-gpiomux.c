@@ -538,22 +538,27 @@ static struct msm_gpiomux_config msm_smelt_bcm4343s_configs[] __initdata = {
 	},
 };
 
-/* columb counter configuration */
-static struct gpiomux_setting gpio_cc_alert_config = {
+static struct gpiomux_setting gpio_input_pu_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_UP,
 };
 
-static struct msm_gpiomux_config msm_smelt_cc_alert_configs[] __initdata = {
+static struct msm_gpiomux_config msm_smelt_batt_and_chrg_configs[] __initdata = {
 	{
 		.gpio      = 31,	/* CC_ALERT_N */
 		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_cc_alert_config,
-			[GPIOMUX_SUSPENDED] = &gpio_cc_alert_config,
+			[GPIOMUX_ACTIVE] = &gpio_input_pu_config,
+			[GPIOMUX_SUSPENDED] = &gpio_input_pu_config,
 		},
 	},
-
+	{
+		.gpio      = 54,	/* WCHG_PAD_DET_N */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_input_pu_config,
+			[GPIOMUX_SUSPENDED] = &gpio_input_pu_config,
+		},
+	},
 };
 
 static struct msm_gpiomux_config msm_blsp_spi_cs_config[] __initdata = {
@@ -1130,7 +1135,7 @@ void __init msm8226_init_gpiomux(void)
 			ARRAY_SIZE(msm_smelt_blsp_configs));
 		msm_gpiomux_install(msm_smelt_bcm4343s_configs,
 			ARRAY_SIZE(msm_smelt_bcm4343s_configs));
-		msm_gpiomux_install(msm_smelt_cc_alert_configs,
-			ARRAY_SIZE(msm_smelt_cc_alert_configs));
+		msm_gpiomux_install(msm_smelt_batt_and_chrg_configs,
+			ARRAY_SIZE(msm_smelt_batt_and_chrg_configs));
 	}
 }
