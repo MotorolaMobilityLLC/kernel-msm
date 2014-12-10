@@ -4606,7 +4606,9 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 		int ret = 0;
 		var_int = (int)simple_strtol(value, NULL, 0);
 
+#if defined(CONFIG_PM_LOCK)
 		g_pm_control = FALSE;
+#endif
 
 		ret =  dhd_wl_ioctl_cmd(dhd, WLC_SET_PM,
 			&var_int, sizeof(var_int), TRUE, 0);

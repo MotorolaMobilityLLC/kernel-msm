@@ -212,8 +212,10 @@ done:
 	return ret;
 }
 
-#if defined(CUSTOMER_HW10) && defined(CONFIG_PM_LOCK)
+#if defined(CUSTOMER_HW4) || defined(CUSTOMER_HW10)
+#if defined(CONFIG_PM_LOCK)
 extern bool g_pm_control;
+#endif
 #endif
 
 static int
