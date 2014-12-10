@@ -184,6 +184,7 @@ struct msp430_platform_data {
 #define M_CAMERA_ACT	0x0800
 #define M_NFC			0x1000
 #define M_SIM			0x2000
+#define M_CHOPCHOP		0x4000
 #define M_LOG_MSG		0x8000
 
 /* algo config mask */
@@ -260,7 +261,8 @@ enum MSP430_data_types {
 	DT_RESET,
 	DT_GENERIC_INT,
 	DT_STEP_COUNTER,
-	DT_STEP_DETECTOR
+	DT_STEP_DETECTOR,
+	DT_CHOPCHOP
 };
 
 enum {

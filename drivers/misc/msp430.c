@@ -140,6 +140,7 @@
 #define CAMERA				0x4C
 #define NFC					0x4D
 #define SIM					0x4E
+#define CHOPCHOP			0x4F
 
 #define ALGO_CFG_ACCUM_MODALITY  0x5D
 #define ALGO_REQ_ACCUM_MODALITY  0x60
@@ -1787,6 +1788,23 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		dev_dbg(&ps_msp430->client->dev,
 				"Sending SIM(x,y,z)values:x=%d,y=%d,z=%d\n",
 				x, 0, 0);
+
+	}
+	if (irq_status & M_CHOPCHOP) {
+		msp_cmdbuff[0] = CHOPCHOP;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Reading chopchop data from msp failed\n");
+			goto EXIT;
+		}
+
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
+		msp430_as_data_buffer_write(ps_msp430, DT_CHOPCHOP,
+			x, 0, 0, 0, 0, 0, 0);
+
+		dev_dbg(&ps_msp430->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
+				x);
 
 	}
 	if (irq_status & M_QUICKPEEK) {
