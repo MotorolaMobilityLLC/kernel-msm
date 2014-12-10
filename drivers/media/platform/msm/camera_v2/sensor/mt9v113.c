@@ -1662,10 +1662,10 @@ static int32_t mt9v113_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	pr_info("%s called\n", __func__);
-	msm_sensor_power_up(s_ctrl);
-	rc = msm_sensor_match_id(s_ctrl);
+	rc = msm_sensor_power_up(s_ctrl);
 	if (rc < 0)
-		pr_err("%s:%d match id failed rc %d\n", __func__, __LINE__, rc);
+		pr_err("%s:%d sensor power up/match id failed rc %d\n",
+			__func__, __LINE__, rc);
 
 	return rc;
 }
