@@ -2814,6 +2814,12 @@ out:
 		for (i = 0; i < npages; i++)
 			put_page(pages[i]);
 
+		for (i = 0; i < sglen; i++) {
+			memdesc->sg[i].offset = KGSL_SG_FREE_POISON;
+			memdesc->sg[i].length = current->pid;
+			memdesc->sg[i].dma_address =
+				(dma_addr_t)__builtin_return_address(0);
+		}
 		kgsl_free(memdesc->sg);
 		memdesc->sg = NULL;
 	}

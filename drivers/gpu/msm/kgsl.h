@@ -55,6 +55,8 @@
 
 #define KGSL_MAX_NUMIBS 100000
 
+#define KGSL_SG_FREE_POISON	0x7c7c7c7c
+
 struct kgsl_device;
 struct kgsl_context;
 
