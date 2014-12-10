@@ -198,11 +198,13 @@ int hdd_hostapd_stop (struct net_device *dev)
 {
    ENTER();
 
-   //Stop all tx queues
-   netif_tx_disable(dev);
-   
-   //Turn OFF carrier state
-   netif_carrier_off(dev);
+   if(NULL != dev) {
+       //Stop all tx queues
+       netif_tx_disable(dev);
+
+       //Turn OFF carrier state
+       netif_carrier_off(dev);
+   }
 
    EXIT();
    return 0;
@@ -1499,7 +1501,9 @@ void hdd_hostapd_ch_avoid_cb
    /* Get SAP context first
     * SAP and P2PGO would not concurrent */
    pHostapdAdapter = hdd_get_adapter(hddCtxt, WLAN_HDD_SOFTAP);
-   if ((pHostapdAdapter) && (unsafeChannelCount))
+   if ((pHostapdAdapter) &&
+       (test_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags)) &&
+       (unsafeChannelCount))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                 "%s : Current operation channel %d",
