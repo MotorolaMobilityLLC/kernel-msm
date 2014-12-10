@@ -19,6 +19,8 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/switch.h>
@@ -70,25 +72,47 @@ static ssize_t switch_gpio_print_state(struct switch_dev *sdev, char *buf)
 	return -1;
 }
 
+static void gpio_switch_of_init(struct platform_device *pdev)
+{
+#ifdef CONFIG_OF
+	struct gpio_switch_data *switch_data = platform_get_drvdata(pdev);
+	struct device_node *np = pdev->dev.of_node;
+
+	of_property_read_string(np, "switch_name", &switch_data->sdev.name);
+	of_property_read_string(np, "switch_name_on", &switch_data->name_on);
+	of_property_read_string(np, "switch_name_off", &switch_data->name_off);
+	of_property_read_string(np, "switch_state_on", &switch_data->state_on);
+	of_property_read_string(np, "switch_state_off", &switch_data->state_off);
+
+	switch_data->gpio = of_get_named_gpio(np, "switch_gpio", 0);
+#endif
+}
+
 static int gpio_switch_probe(struct platform_device *pdev)
 {
 	struct gpio_switch_platform_data *pdata = pdev->dev.platform_data;
 	struct gpio_switch_data *switch_data;
 	int ret = 0;
 
-	if (!pdata)
+	if (!pdev->dev.of_node && !pdata)
 		return -EBUSY;
 
 	switch_data = kzalloc(sizeof(struct gpio_switch_data), GFP_KERNEL);
 	if (!switch_data)
 		return -ENOMEM;
 
-	switch_data->sdev.name = pdata->name;
-	switch_data->gpio = pdata->gpio;
-	switch_data->name_on = pdata->name_on;
-	switch_data->name_off = pdata->name_off;
-	switch_data->state_on = pdata->state_on;
-	switch_data->state_off = pdata->state_off;
+	platform_set_drvdata(pdev, switch_data);
+
+	if (pdev->dev.of_node)
+		gpio_switch_of_init(pdev);
+	else {
+		switch_data->sdev.name = pdata->name;
+		switch_data->gpio = pdata->gpio;
+		switch_data->name_on = pdata->name_on;
+		switch_data->name_off = pdata->name_off;
+		switch_data->state_on = pdata->state_on;
+		switch_data->state_off = pdata->state_off;
+	}
 	switch_data->sdev.print_state = switch_gpio_print_state;
 
 	ret = switch_dev_register(&switch_data->sdev);
@@ -146,11 +170,20 @@ static int gpio_switch_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static const struct of_device_id gpio_switch_of_match[] = {
+	{ .compatible = "switch-gpio", },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, gpio_switch_of_match);
+#endif
+
 static struct platform_driver gpio_switch_driver = {
 	.probe		= gpio_switch_probe,
 	.remove		= gpio_switch_remove,
 	.driver		= {
 		.name	= "switch-gpio",
+		.of_match_table = of_match_ptr(gpio_switch_of_match),
 		.owner	= THIS_MODULE,
 	},
 };
