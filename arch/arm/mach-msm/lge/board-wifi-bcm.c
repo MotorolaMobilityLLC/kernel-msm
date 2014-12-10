@@ -51,6 +51,8 @@
 #define WLAN_POWER          46
 #define WLAN_HOSTWAKE       37
 
+#define WLAN_SCAN_BUF_SIZE  65536
+
 static int gpio_power = WLAN_POWER;
 static int gpio_hostwake = WLAN_HOSTWAKE;
 static int power_enabled = 0;
@@ -92,19 +94,20 @@ static void *bcm_wifi_mem_prealloc(int section, unsigned long size)
 
 static int bcm_init_wlan_mem(void)
 {
-	int i;
+	int i, num;
 
-	for (i = 0; i < WLAN_SKB_BUF_NUM; i++) {
+	for (i = 0; i < WLAN_SKB_BUF_NUM; i++)
 		wlan_static_skb[i] = NULL;
-	}
 
-	for (i = 0; i < 8; i++) {
+	num = (WLAN_SKB_BUF_NUM - 1) >> 1;
+	for (i = 0; i < num; i++) {
 		wlan_static_skb[i] = dev_alloc_skb(DHD_SKB_1PAGE_BUFSIZE);
 		if (!wlan_static_skb[i])
 			goto err_skb_alloc;
 	}
 
-	for (; i < 16; i++) {
+	num = WLAN_SKB_BUF_NUM -1;
+	for (; i < num; i++) {
 		wlan_static_skb[i] = dev_alloc_skb(DHD_SKB_2PAGE_BUFSIZE);
 		if (!wlan_static_skb[i])
 			goto err_skb_alloc;
@@ -114,22 +117,22 @@ static int bcm_init_wlan_mem(void)
 	if (!wlan_static_skb[i])
 		goto err_skb_alloc;
 
-	for (i = 0 ; i < PREALLOC_WLAN_SEC_NUM ; i++) {
+	for (i = 0 ; i < PREALLOC_WLAN_SEC_NUM; i++) {
 		wlan_mem_array[i].mem_ptr =
 			kmalloc(wlan_mem_array[i].size, GFP_KERNEL);
 		if (!wlan_mem_array[i].mem_ptr)
 			goto err_mem_alloc;
 	}
 
-	wlan_static_scan_buf0 = kmalloc(65536, GFP_KERNEL);
+	wlan_static_scan_buf0 = kmalloc(WLAN_SCAN_BUF_SIZE, GFP_KERNEL);
 	if (!wlan_static_scan_buf0)
 		goto err_mem_alloc;
 
-	wlan_static_scan_buf1 = kmalloc(65536, GFP_KERNEL);
+	wlan_static_scan_buf1 = kmalloc(WLAN_SCAN_BUF_SIZE, GFP_KERNEL);
 	if (!wlan_static_scan_buf1)
 		goto err_static_scan_buf;
 
-	pr_info("wifi: %s: WIFI MEM Allocated\n", __func__);
+	pr_info("%s: WIFI: MEM is pre-allocated\n", __func__);
 	return 0;
 
 err_static_scan_buf:
@@ -139,7 +142,7 @@ err_static_scan_buf:
 
 err_mem_alloc:
 	pr_err("%s: failed to allocate mem_alloc\n", __func__);
-	for (; i >= 0 ; i--) {
+	for (i -= 1; i >= 0; i--) {
 		kfree(wlan_mem_array[i].mem_ptr);
 		wlan_mem_array[i].mem_ptr = NULL;
 	}
@@ -147,7 +150,7 @@ err_mem_alloc:
 	i = WLAN_SKB_BUF_NUM;
 err_skb_alloc:
 	pr_err("%s: failed to allocate skb_alloc\n", __func__);
-	for (; i >= 0 ; i--) {
+	for (i -= 1; i >= 0 ; i--) {
 		dev_kfree_skb(wlan_static_skb[i]);
 		wlan_static_skb[i] = NULL;
 	}
@@ -326,7 +329,7 @@ static int bcm_wifi_carddetect(int val)
 #define ETHER_ADDR_LEN    6
 #define FILE_WIFI_MACADDR "/persist/wifi/.macaddr"
 
-static inline int xdigit (char c)
+static inline int xdigit(char c)
 {
 	unsigned d;
 
@@ -347,7 +350,7 @@ struct ether_addr {
 } __attribute__((__packed__));
 
 struct ether_addr *
-ether_aton_r (const char *asc, struct ether_addr * addr)
+ether_aton_r(const char *asc, struct ether_addr * addr)
 {
 	int i, val0, val1;
 
@@ -377,7 +380,7 @@ ether_aton_r (const char *asc, struct ether_addr * addr)
 	return addr;
 }
 
-struct ether_addr * ether_aton (const char *asc)
+struct ether_addr * ether_aton(const char *asc)
 {
 	static struct ether_addr addr;
 	return ether_aton_r(asc, &addr);
@@ -409,7 +412,7 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 	if (ret) {
 		set_fs(oldfs);
 		pr_err("%s: Failed to get information from file %s (%d)\n",
-				__FUNCTION__, FILE_WIFI_MACADDR, ret);
+				__func__, FILE_WIFI_MACADDR, ret);
 		goto random_mac;
 	}
 	set_fs(oldfs);
@@ -417,7 +420,7 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 	fp = filp_open(FILE_WIFI_MACADDR, O_RDONLY, 0);
 	if (IS_ERR(fp)) {
 		pr_err("%s: Failed to read error %s\n",
-				__FUNCTION__, FILE_WIFI_MACADDR);
+				__func__, FILE_WIFI_MACADDR);
 		goto random_mac;
 	}
 
@@ -433,7 +436,7 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 
 		if (convmac == NULL) {
 			pr_err("%s: Invalid Mac Address Format %s\n",
-					__FUNCTION__, macread );
+					__func__, macread );
 			goto random_mac;
 		}
 
@@ -442,7 +445,7 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 		macbin = (unsigned char*)macread;
 #endif
 		pr_info("%s: READ MAC ADDRESS %02X:%02X:%02X:%02X:%02X:%02X\n",
-				__FUNCTION__,
+				__func__,
 				macbin[0], macbin[1], macbin[2],
 				macbin[3], macbin[4], macbin[5]);
 
@@ -464,7 +467,7 @@ random_mac:
 
 	pr_debug("%s: %p\n", __func__, buf);
 
-	if (memcmp( mymac, nullmac, ETHER_ADDR_LEN) != 0) {
+	if (memcmp(mymac, nullmac, ETHER_ADDR_LEN) != 0) {
 		/* Mac displayed from UI is never updated..
 		   So, mac obtained on initial time is used */
 		memcpy(buf, mymac, ETHER_ADDR_LEN);
@@ -483,7 +486,7 @@ random_mac:
 	memcpy(mymac, buf, 6);
 
 	pr_info("[%s] Exiting. MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
-			__FUNCTION__,
+			__func__,
 			buf[0], buf[1], buf[2], buf[3], buf[4], buf[5] );
 
 	return 0;
@@ -655,7 +658,7 @@ static void *bcm_wifi_get_country_code(char *ccode)
 
 	size = ARRAY_SIZE(wifi_translate_custom_table);
 
-	if ((size == 0) || (ccode == NULL))
+	if (!size || !ccode)
 		return NULL;
 
 	for (i = 0; i < size; i++) {
