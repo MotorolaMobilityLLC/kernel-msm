@@ -181,6 +181,24 @@ unsigned int wcf_status(struct device *dev)
 	return g_wifi_detect;
 }
 
+static void bcm_set_regulator(struct regulator *reg, int enable)
+{
+	if (!reg) {
+		pr_debug("%s: regulator is null\n", __func__);
+		return;
+	}
+
+	if (enable) {
+		if (regulator_enable(reg))
+			 pr_warn("%s: failed to enable regulator\n",
+					 __func__);
+	} else {
+		if(regulator_disable(reg))
+			pr_warn("%s: failed to disable regulator\n",
+					__func__);
+	}
+}
+
 int bcm_wifi_set_power(int enable)
 {
 	static struct regulator *reg_batfet = NULL;
@@ -193,12 +211,8 @@ int bcm_wifi_set_power(int enable)
 					__func__);
 			reg_batfet = NULL;
 		}
-		if (power_enabled) {
-			ret = regulator_enable(reg_batfet);
-			if (ret)
-				pr_warn("%s: failed to enable regulator(batfet)\n",
-						__func__);
-		}
+		if (power_enabled)
+			bcm_set_regulator(reg_batfet, 1);
 	}
 
 	enable = !!enable;
@@ -213,13 +227,7 @@ int bcm_wifi_set_power(int enable)
 			return ret;
 		}
 		power_enabled = 1;
-
-		if (reg_batfet) {
-			ret = regulator_enable(reg_batfet);
-			if (ret)
-				pr_warn("%s: failed to enable regulator(batfet)\n",
-						__func__);
-		}
+		bcm_set_regulator(reg_batfet, 1);
 
 		/* WLAN chip to reset */
 		mdelay(150);
@@ -232,13 +240,7 @@ int bcm_wifi_set_power(int enable)
 			return ret;
 		}
 		power_enabled = 0;
-
-		if (reg_batfet) {
-			ret = regulator_disable(reg_batfet);
-			if (ret)
-				pr_warn("%s: failed to disable regulator(batfet)\n",
-						__func__);
-		}
+		bcm_set_regulator(reg_batfet, 0);
 
 		/* WLAN chip down */
 		mdelay(100);
