@@ -442,6 +442,7 @@ static int mxt_init_t7_power_cfg(struct mxt_data *data);
 static void mxt_regulator_disable(struct mxt_data *data);
 static void mxt_regulator_enable(struct mxt_data *data);
 static void mxt_reset_slots(struct mxt_data *data);
+static u32 mxt_update_config_id(struct mxt_data *data);
 
 struct debug_section {
 	unsigned long j;
@@ -2072,6 +2073,8 @@ static int mxt_check_reg_init(struct mxt_data *data)
 	if (!data->cfg_name)
 		return 0;
 
+	pr_info("Applying settings from CFG: %s\n", data->cfg_name);
+
 	ret = request_firmware(&cfg, data->cfg_name, dev);
 	if (ret < 0) {
 		dev_err(dev, "Failure to request config file %s\n",
@@ -2287,15 +2290,15 @@ static int mxt_check_reg_init(struct mxt_data *data)
 	if (ret)
 		goto release_mem;
 
-	ret = mxt_soft_reset(data);
-	if (ret)
-		goto release_mem;
-
+	mxt_soft_reset(data);
 	dev_info(dev, "Config written\n");
 
 	/* T7 config may have changed */
 	mxt_init_t7_power_cfg(data);
 
+	/* T38 may have changed */
+	if (data->T38_address)
+		data->config_id = mxt_update_config_id(data);
 release_mem:
 	kfree(config_mem);
 release:
@@ -3772,11 +3775,11 @@ static ssize_t mxt_update_cfg_store(struct device *dev,
 	if (ret)
 		return ret;
 
+	mxt_lock(&data->crit_section_lock);
+
 	data->enable_reporting = false;
 	mxt_free_input_device(data);
-
-	if (data->suspended)
-		mxt_resume(&data->client->dev);
+	mxt_debug_msg_remove(data);
 
 	ret = mxt_configure_objects(data);
 	if (ret)
@@ -3784,6 +3787,9 @@ static ssize_t mxt_update_cfg_store(struct device *dev,
 
 	ret = count;
 out:
+	data->enable_reporting = true;
+	kfree(data->cfg_name);
+	mxt_unlock(&data->crit_section_lock);
 	return ret;
 }
 
