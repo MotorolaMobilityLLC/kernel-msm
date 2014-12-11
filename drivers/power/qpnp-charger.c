@@ -2743,6 +2743,11 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 #endif
 	//ASUS_BSP Eason:fix PM8226 charger FSM soc based(<=99%) don't charge issue---
 
+//ASUS_BSP +++
+	if (!chip->bms_psy)
+		chip->bms_psy = power_supply_get_by_name("bms");
+//ASUS_BSP ---
+
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, &ret);
