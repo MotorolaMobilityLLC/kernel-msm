@@ -10326,6 +10326,7 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 	s32 err = BCME_OK;
 	u32 mode;
 	u32 chan = 0;
+	u32 frameburst;
 	struct net_info *iter, *next;
 	struct net_device *primary_dev = bcmcfg_to_prmry_ndev(cfg);
 	WL_DBG(("Enter state %d set %d _net_info->pm_restore %d iface %s\n",
@@ -10399,13 +10400,23 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 #if defined(DISABLE_TDLS_IN_P2P)
 			if (cfg->vsdb_mode || p2p_is_on(cfg))
 #else
-				if (cfg->vsdb_mode)
+			if (cfg->vsdb_mode)
 #endif /* defined(DISABLE_TDLS_IN_P2P) */
-				{
+			{
 
-					err = wldev_iovar_setint(primary_dev, "tdls_enable", 0);
-				}
+				err = wldev_iovar_setint(primary_dev, "tdls_enable", 0);
+			}
 #endif /* defined(WLTDLS) */
+			if (cfg->vsdb_mode) {
+				/* disable frameburst on multichannel */
+				frameburst = 0;
+				if (wldev_ioctl(primary_dev, WLC_SET_FAKEFRAG, &frameburst,
+					sizeof(frameburst), true) != 0) {
+					WL_DBG(("frameburst set 0 error\n"));
+				} else {
+					WL_DBG(("Frameburst Disabled\n"));
+				}
+			}
 		}
 	} else { /* clear */
 		if (state == WL_STATUS_CONNECTED) {
@@ -10431,11 +10442,20 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 				}
 			}
 			wl_cfg80211_concurrent_roam(cfg, 0);
-#if defined(WLTDLS)
+
 			if (!cfg->vsdb_mode) {
+#if defined(WLTDLS)
 				err = wldev_iovar_setint(primary_dev, "tdls_enable", 1);
-			}
 #endif /* defined(WLTDLS) */
+				/* enable frameburst on single channel */
+				frameburst = 1;
+				if (wldev_ioctl(primary_dev, WLC_SET_FAKEFRAG, &frameburst,
+					sizeof(frameburst), true) != 0) {
+					WL_DBG(("frameburst set 1 error\n"));
+				} else {
+					WL_DBG(("Frameburst Enabled\n"));
+				}
+			}
 		} else if (state == WL_STATUS_DISCONNECTING) {
 			wake_up_interruptible(&cfg->event_sync_wq);
 		}
