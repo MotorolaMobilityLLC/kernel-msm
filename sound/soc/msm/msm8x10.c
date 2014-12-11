@@ -236,11 +236,12 @@ static int msm_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 {
 	pr_debug("%s()\n", __func__);
 
-	if (SND_SOC_DAPM_EVENT_ON(event))
-		msm8x10_enable_ext_spk_power_amp(1);
-	else
-		msm8x10_enable_ext_spk_power_amp(0);
-
+	if (ext_spk_amp_gpio >= 0) {
+		if (SND_SOC_DAPM_EVENT_ON(event))
+			msm8x10_enable_ext_spk_power_amp(1);
+		else
+			msm8x10_enable_ext_spk_power_amp(0);
+	}
 	return 0;
 
 }
@@ -248,26 +249,24 @@ static int msm_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 static void msm8x10_enable_ext_spk_power_amp(u32 on)
 {
 	if (on) {
-		if (!IS_ERR_OR_NULL(boost_reg)) {
+		if (!IS_ERR(boost_reg)) {
 			if (regulator_enable(boost_reg))
 				pr_err("%s: enable failed ext_spk_boost_reg\n",
 					__func__);
 			else
 				msleep_interruptible(20);
 		}
-		if (gpio_is_valid(ext_spk_amp_gpio))
-			gpio_direction_output(ext_spk_amp_gpio, on);
+		gpio_direction_output(ext_spk_amp_gpio, on);
 		/*time takes enable the external power amplifier*/
 		usleep_range(EXT_CLASS_D_EN_DELAY,
 			     EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
 	} else {
-		if (gpio_is_valid(ext_spk_amp_gpio))
-			gpio_direction_output(ext_spk_amp_gpio, on);
+		gpio_direction_output(ext_spk_amp_gpio, on);
 		/*time takes disable the external power amplifier*/
 		usleep_range(EXT_CLASS_D_DIS_DELAY + 2000,
 			     EXT_CLASS_D_DIS_DELAY + EXT_CLASS_D_DELAY_DELTA
 			     + 2000);
-		if (!IS_ERR_OR_NULL(boost_reg)) {
+		if (!IS_ERR(boost_reg)) {
 			if (regulator_disable(boost_reg))
 				pr_err("%s: disable failed ext_spk_boost_reg\n",
 					__func__);
@@ -1220,7 +1219,7 @@ static __devinit int msm8x10_asoc_machine_probe(struct platform_device *pdev)
 
 	if (of_parse_phandle(pdev->dev.of_node, "boost-supply", 0)) {
 		boost_reg = devm_regulator_get(&pdev->dev, "boost");
-		ret = PTR_ERR(boost_reg);
+		ret = IS_ERR(boost_reg);
 		if (ret) {
 			dev_err(&pdev->dev, "boost's regulator get error %d\n",
 				ret);
