@@ -6860,21 +6860,25 @@ wl_cfg80211_change_station(
 	struct station_parameters *params)
 {
 	int err;
-	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
-	struct net_device *primary_ndev = bcmcfg_to_prmry_ndev(cfg);
+
+	WL_DBG(("SCB_AUTHORIZE mac_addr:"MACDBG" sta_flags_mask:0x%x "
+				"sta_flags_set:0x%x iface:%s \n", MAC2STRDBG(mac),
+				params->sta_flags_mask, params->sta_flags_set, dev->name));
 
 	/* Processing only authorize/de-authorize flag for now */
-	if (!(params->sta_flags_mask & BIT(NL80211_STA_FLAG_AUTHORIZED)))
+	if (!(params->sta_flags_mask & BIT(NL80211_STA_FLAG_AUTHORIZED))) {
+		WL_ERR(("WLC_SCB_AUTHORIZE sta_flags_mask not set \n"));
 		return -ENOTSUPP;
+	}
 
 	if (!(params->sta_flags_set & BIT(NL80211_STA_FLAG_AUTHORIZED))) {
-		err = wldev_ioctl(primary_ndev, WLC_SCB_DEAUTHORIZE, mac, ETH_ALEN, true);
+		err = wldev_ioctl(dev, WLC_SCB_DEAUTHORIZE, mac, ETH_ALEN, true);
 		if (err)
 			WL_ERR(("WLC_SCB_DEAUTHORIZE error (%d)\n", err));
 		return err;
 	}
 
-	err = wldev_ioctl(primary_ndev, WLC_SCB_AUTHORIZE, mac, ETH_ALEN, true);
+	err = wldev_ioctl(dev, WLC_SCB_AUTHORIZE, mac, ETH_ALEN, true);
 	if (err)
 		WL_ERR(("WLC_SCB_AUTHORIZE error (%d)\n", err));
 	return err;
