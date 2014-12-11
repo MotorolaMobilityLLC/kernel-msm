@@ -151,7 +151,8 @@ int pas_init_image(enum pas_id id, const u8 *metadata, size_t size)
 	mdata_buf = dma_alloc_attrs(NULL, size, &mdata_phys, GFP_KERNEL,
 					&attrs);
 	if (!mdata_buf) {
-		pr_err("Allocation for metadata failed.\n");
+		pr_err("Allocation for metadata of size %d bytes failed.\n",
+									size);
 		return -ENOMEM;
 	}
 
