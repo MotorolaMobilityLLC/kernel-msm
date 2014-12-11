@@ -38,6 +38,7 @@
 #include <linux/switch.h>
 #include <linux/time.h>
 #include <linux/uaccess.h>
+#include <linux/wakelock.h>
 #include <linux/workqueue.h>
 
 #include <linux/stml0xx.h>
@@ -51,6 +52,8 @@ irqreturn_t stml0xx_isr(int irq, void *dev)
 
 	if (stml0xx_irq_disable)
 		return IRQ_HANDLED;
+
+	wake_lock(&ps_stml0xx->wakelock);
 
 	stm_ws = kmalloc(
 		sizeof(struct stml0xx_work_struct),
@@ -355,4 +358,5 @@ EXIT:
 	stml0xx_sleep(ps_stml0xx);
 	/* For now HAE needs events even if the activity is still */
 	mutex_unlock(&ps_stml0xx->lock);
+	wake_unlock(&ps_stml0xx->wakelock);
 }
