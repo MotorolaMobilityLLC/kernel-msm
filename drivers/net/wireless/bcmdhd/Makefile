@@ -168,6 +168,11 @@ endif
 
   DHDCFLAGS += -DDONGLE_ENABLE_ISOLATION
 endif
+
+# Print 802.1X packets
+  DHDCFLAGS += -DDHD_8021X_DUMP
+# Print DHCP packets
+  DHDCFLAGS += -DDHD_DHCP_DUMP
 endif
 
 ifneq ($(CONFIG_BCM4339),)
