@@ -7512,7 +7512,8 @@ WLANTL_STATxAuth
    WLANTL_STAClientType *pStaClient = NULL;
    v_U8_t                ucWDSEnabled = 0;
    v_U32_t               ucTxFlag   = 0;
-   v_U8_t                ucACMask, i; 
+   v_U8_t                ucACMask, i;
+   v_U8_t                prevStaId;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
   /*------------------------------------------------------------------------
@@ -7604,6 +7605,9 @@ WLANTL_STATxAuth
     pStaClient->ucNoMoreData = 1;
   }
 
+  if (WLAN_STA_IBSS == pStaClient->wSTADesc.wSTAType)
+     prevStaId = ucSTAId;
+
   vosStatus = pStaClient->pfnSTAFetchPkt( pvosGCtx, 
                                &ucSTAId,
                                ucAC,
@@ -7629,6 +7633,32 @@ WLANTL_STATxAuth
     return vosStatus;
   }
 
+  /* In IBSS only one queue is used for all staID and the fetched packet's
+   * staID might be different from the staID for  which data was pending.
+   * So update the pStaClient and do sanity checks for the new pStaClient.
+   */
+  if ((WLAN_STA_IBSS == pStaClient->wSTADesc.wSTAType) && (prevStaId != ucSTAId))
+  {
+     pStaClient = pTLCb->atlSTAClients[ucSTAId];
+     if (NULL == pStaClient)
+     {
+        VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                 "WLAN TL:Station is null ");
+        vos_pkt_return_packet(vosDataBuff);
+        *pvosDataBuff = NULL;
+        return VOS_STATUS_E_FAILURE;
+     }
+     if ((0 == pStaClient->ucExists) ||
+                  (WLANTL_STA_AUTHENTICATED != pStaClient->tlState))
+     {
+        VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+               "WLAN TL:Station not registered or connected state = %d",
+                                                     pStaClient->tlState);
+        vos_pkt_return_packet(vosDataBuff);
+        *pvosDataBuff = NULL;
+        return VOS_STATUS_E_EXISTS;
+     }
+  }
   WLANTL_StatHandleTXFrame(pvosGCtx, ucSTAId, vosDataBuff, NULL, &tlMetaInfo);
 
   /*There are still packets in HDD - set back the pending packets and 
@@ -9781,21 +9811,8 @@ if ((0 == w8023Header.usLenType) && (pClientSTA->wSTADesc.ucIsEseSta))
         pw80211Header->wFrmCtrl.toDS          = 0;
         pw80211Header->wFrmCtrl.fromDS        = 0;
 
-        /*
-         * If the frame is a multicast frame, then, the Address1
-         * should be the destination address filled in the packet. Which is
-         * the multicast address. Otherwise, set it to BSSID
-         */
-        if (0 == tlMetaInfo->ucBcast && 1 == tlMetaInfo->ucMcast)
-        {
-           vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA1,
+        vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA1,
                              (v_MACADDR_t*)&w8023Header.vDA);
-        }
-        else
-        {
-           vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA1,
-                 &pClientSTA->wSTADesc.vSTAMACAddress);
-        }
         vos_mem_copy( pw80211Header->vA3,
               &pClientSTA->wSTADesc.vBSSIDforIBSS ,
               VOS_MAC_ADDR_SIZE);
