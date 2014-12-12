@@ -1764,8 +1764,12 @@ tAniBool limEncTypeMatched(tpAniSirGlobal pMac, tpSchBeaconStruct  pBeacon,
     /* WEP */
     if ( (pBeacon->capabilityInfo.privacy == 1) && (pBeacon->wpaPresent == 0) &&
             (pBeacon->rsnPresent == 0) &&
-            ( (pSession->encryptType == eSIR_ED_WEP40) ||
-                     (pSession->encryptType == eSIR_ED_WEP104)))
+            ( ( pSession->encryptType == eSIR_ED_WEP40 ) ||
+              ( pSession->encryptType == eSIR_ED_WEP104 )
+#ifdef FEATURE_WLAN_WAPI
+              || ( pSession->encryptType == eSIR_ED_WPI )
+#endif
+             ))
         return eSIR_TRUE;
 
     /* WPA OR RSN*/
