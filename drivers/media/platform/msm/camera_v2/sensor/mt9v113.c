@@ -29,8 +29,14 @@
 #define MT9V113_AE_GATE_REGISTER 0xA207
 #define MT9V113_AE_PREVIEW_MODE_REGISTER 0xA11D
 #define MT9V113_AE_CAPTURE_MODE_REGISTER 0xA129
+#define MT9V113_COMMAND_REGISTER 0xA103
+#define MT9V113_REFRESH_COMMAND 0x0005
+#define MT9V113_REFRESH_MODE_COMMAND 0x0006
 #define MT9V113_MCU_VARIABLE_ADDRESS 0x098C
 #define MT9V113_MCU_VARIABLE_DATA0 0x0990
+
+#define MAX_ITERATION 10
+#define POLL_DELAY_US 10000
 
 #define MT9V113_SET_BIT_3 (1 << 3)
 #define MT9V113_SET_BIT_4 (1 << 4)
@@ -119,20 +125,6 @@ static struct msm_sensor_power_setting MT9V113_power_setting[] = {
 		.config_val = 0,
 		.delay = 0,
 	}
-};
-
-static struct msm_camera_i2c_reg_conf mt9v113_refresh_settings[] = {
-	/* REFRESH */
-	{0x098C, 0xA103,}, /* MCU_ADDRESS */
-	{0x0990, 0x0006,}, /* MCU_DATA_0 */
-	{0x098C, 0xA103,},
-	{0x0990, 0xFFFF, MSM_CAMERA_I2C_UNSET_WORD_MASK,
-		MSM_CAMERA_I2C_CMD_POLL},
-	{0x098C, 0xA103,}, /* MCU_ADDRESS */
-	{0x0990, 0x0005,}, /* MCU_DATA_0 */
-	{0x098C, 0xA103,},
-	{0x0990, 0xFFFF, MSM_CAMERA_I2C_UNSET_WORD_MASK,
-		MSM_CAMERA_I2C_CMD_POLL},
 };
 
 static struct msm_camera_i2c_reg_conf mt9v113_start_settings[] = {
@@ -850,6 +842,56 @@ static int32_t mt9v113_set_lens_shading(struct msm_sensor_ctrl_t *s_ctrl,
 
 	return rc;
 }
+static int32_t mt9v113_set_refresh(struct msm_sensor_ctrl_t *s_ctrl,
+		int16_t command)
+{
+	int32_t rc, i;
+	uint16_t data;
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_ADDRESS,
+			MT9V113_COMMAND_REGISTER,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0)
+		return rc;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_DATA0,
+			command,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0)
+		return rc;
+
+	for (i = 0; i <= MAX_ITERATION; i++) {
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_ADDRESS,
+			MT9V113_COMMAND_REGISTER,
+			MSM_CAMERA_I2C_WORD_DATA);
+		if (rc < 0)
+			return rc;
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client,
+			MT9V113_MCU_VARIABLE_DATA0,
+			&data,
+			MSM_CAMERA_I2C_WORD_DATA);
+		if (rc < 0)
+			return rc;
+		if (data)
+			pr_info("%s read data %d\n",
+				__func__, data);
+		else
+			break;
+
+		usleep(POLL_DELAY_US);
+	}
+	if (i > MAX_ITERATION)
+		pr_err("%s Refresh timeout %x\n",
+			__func__, command);
+
+	return rc;
+}
 
 static int32_t mt9v113_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 		int8_t target_exposure)
@@ -895,16 +937,21 @@ static int32_t mt9v113_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 				__func__);
 		return rc;
 	}
-	/* Refresh */
-	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
-		s_ctrl->sensor_i2c_client, mt9v113_refresh_settings,
-		ARRAY_SIZE(mt9v113_refresh_settings),
-		MSM_CAMERA_I2C_WORD_DATA);
+
+	/* Refresh settings */
+	rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_MODE_COMMAND);
 	if (rc < 0) {
-		pr_err("%s: Write Refresh failed\n",
+		pr_err("%s: Refresh Mode Command failed\n",
 				__func__);
 		return rc;
 	}
+	rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_COMMAND);
+	if (rc < 0) {
+		pr_err("%s: Refresh Command failed\n",
+				__func__);
+		return rc;
+	}
+
 	/* AE_BASETARGET */
 	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 			s_ctrl->sensor_i2c_client,
@@ -1045,11 +1092,19 @@ static int32_t mt9v113_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 				__func__, rc);
 		return rc;
 	}
-
-	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
-		s_ctrl->sensor_i2c_client, mt9v113_refresh_settings,
-		ARRAY_SIZE(mt9v113_refresh_settings),
-		MSM_CAMERA_I2C_WORD_DATA);
+	/* Refresh settings */
+	rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_MODE_COMMAND);
+	if (rc < 0) {
+		pr_err("%s: Refresh Mode command failed\n",
+				__func__);
+		return rc;
+	}
+	rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_COMMAND);
+	if (rc < 0) {
+		pr_err("%s: Refresh command failed\n",
+				__func__);
+		return rc;
+	}
 	return rc;
 }
 
@@ -1114,11 +1169,20 @@ int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			ARRAY_SIZE(mt9v113_init_tbl),
 			MSM_CAMERA_I2C_WORD_DATA);
 
-		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
-			i2c_write_conf_tbl(
-			s_ctrl->sensor_i2c_client, mt9v113_refresh_settings,
-			ARRAY_SIZE(mt9v113_refresh_settings),
-			MSM_CAMERA_I2C_WORD_DATA);
+		/* Refresh settings */
+		rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_MODE_COMMAND);
+		if (rc < 0) {
+			pr_err("%s: Refresh Mode command failed\n",
+					__func__);
+			break;
+		}
+		rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_COMMAND);
+		if (rc < 0) {
+			pr_err("%s: Refresh command failed\n",
+					__func__);
+			break;
+		}
+
 		if (mt9v113_sensor_factory()) {
 			pr_err("%s:Reset AWB edge TH factory test only\n",
 				__func__);
@@ -1421,11 +1485,20 @@ int32_t MT9V113_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 			ARRAY_SIZE(mt9v113_init_tbl),
 			MSM_CAMERA_I2C_WORD_DATA);
 
-		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
-			i2c_write_conf_tbl(
-			s_ctrl->sensor_i2c_client, mt9v113_refresh_settings,
-			ARRAY_SIZE(mt9v113_refresh_settings),
-			MSM_CAMERA_I2C_WORD_DATA);
+		/* Refresh settings */
+		rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_MODE_COMMAND);
+		if (rc < 0) {
+			pr_err("%s: Refresh Mode command failed\n",
+					__func__);
+			break;
+		}
+		rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_COMMAND);
+		if (rc < 0) {
+			pr_err("%s: Refresh command failed\n",
+					__func__);
+			break;
+		}
+
 		if (mt9v113_sensor_factory()) {
 			pr_err("%s:Reset AWB edge TH factory test only\n",
 				__func__);
