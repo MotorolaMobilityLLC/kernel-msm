@@ -1250,6 +1250,10 @@ int32_t msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 
 	CDBG("%s: read id: %x expected id %x:\n", __func__, chipid,
 		s_ctrl->sensordata->slave_info->sensor_id);
+#ifdef CONFIG_IMX179
+	s_ctrl->sensordata->slave_info->sensor_id &= 0xfff;
+	chipid &= 0xfff;
+#endif
 	if (chipid != s_ctrl->sensordata->slave_info->sensor_id) {
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
 		return -ENODEV;
