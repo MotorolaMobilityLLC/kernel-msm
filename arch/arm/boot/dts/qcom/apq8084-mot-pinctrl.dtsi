@@ -208,6 +208,17 @@
 			};
 		};
 
+		wlan_host_wake {
+			qcom,pins = <&gp 69>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "wlan_host_wake";
+			wlan_host_wake_default: default {
+				bias-disable;
+				input-debounce = <0>;
+			};
+		};
+
 		stm401_out {
 			qcom,pins = <&gp 0 &gp 137 &gp 136>;
 			qcom,num-grp-pins = <3>;
