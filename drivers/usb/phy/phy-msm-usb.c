@@ -2048,7 +2048,6 @@ static void msm_otg_start_peripheral(struct usb_otg *otg, int on)
 	if (!otg->gadget)
 		return;
 
-	disable_irq(motg->irq);
 	if (on) {
 		dev_dbg(otg->phy->dev, "gadget on\n");
 
@@ -2103,7 +2102,6 @@ static void msm_otg_start_peripheral(struct usb_otg *otg, int on)
 			}
 		}
 	}
-	enable_irq(motg->irq);
 }
 
 static int msm_otg_set_peripheral(struct usb_otg *otg,
