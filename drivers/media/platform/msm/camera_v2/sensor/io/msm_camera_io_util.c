@@ -109,6 +109,45 @@ void msm_camera_io_memcpy(void __iomem *dest_addr,
 	msm_camera_io_dump(dest_addr, len);
 }
 
+void msm_camera_io_memcpy_mb(void __iomem *dest_addr,
+	void __iomem *src_addr, u32 len)
+{
+	int i;
+	u32 *d = (u32 *) dest_addr;
+	u32 *s = (u32 *) src_addr;
+
+	for (i = 0; i < (len / 4); i++)
+		msm_camera_io_w_mb(*s++, d++);
+}
+
+int msm_cam_clk_sel_src(struct device *dev, struct msm_cam_clk_info *clk_info,
+		struct msm_cam_clk_info *clk_src_info, int num_clk)
+{
+	int i;
+	int rc = 0;
+	struct clk *mux_clk = NULL;
+	struct clk *src_clk = NULL;
+
+	for (i = 0; i < num_clk; i++) {
+		if (clk_src_info[i].clk_name) {
+			mux_clk = clk_get(dev, clk_info[i].clk_name);
+			if (IS_ERR(mux_clk)) {
+				pr_err("%s get failed\n",
+					 clk_info[i].clk_name);
+				continue;
+			}
+			src_clk = clk_get(dev, clk_src_info[i].clk_name);
+			if (IS_ERR(src_clk)) {
+				pr_err("%s get failed\n",
+					clk_src_info[i].clk_name);
+				continue;
+			}
+			clk_set_parent(mux_clk, src_clk);
+		}
+	}
+	return rc;
+}
+
 int msm_cam_clk_enable(struct device *dev, struct msm_cam_clk_info *clk_info,
 		struct clk **clk_ptr, int num_clk, int enable)
 {
