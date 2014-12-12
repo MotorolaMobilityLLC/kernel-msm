@@ -93,7 +93,7 @@ struct msm_actuator_ctrl_t {
 	uint16_t *step_position_table;
 	struct region_params_t region_params[MAX_ACTUATOR_REGION];
 	uint16_t reg_tbl_size;
-	struct msm_actuator_reg_params_t reg_tbl[MAX_ACTUATOR_REG_TBL_SIZE];
+	struct msm_actuator_reg_params_t reg_tbl[MAX_ACTUATOR_REG_TBL_SIZE2];
 	uint16_t region_size;
 	void *user_data;
 	uint32_t total_steps;
@@ -107,6 +107,11 @@ struct msm_actuator_ctrl_t {
 	struct msm_actuator_vreg vreg_cfg;
 	struct park_lens_data_t park_lens;
 	uint32_t max_code_size;
+	uint8_t recovery_en;
+	uint16_t recovery_addr;
+	uint16_t slave_addr;
+	uint16_t power_off_setting_size;
+	struct reg_settings_t power_off_settings[MAX_ACTUATOR_REG_TBL_SIZE2];
 };
 
 #endif
