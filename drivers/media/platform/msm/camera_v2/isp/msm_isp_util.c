@@ -504,7 +504,8 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 	/* Validate input parameters */
 	switch (reg_cfg_cmd->cmd_type) {
 	case VFE_WRITE:
-	case VFE_READ: {
+	case VFE_READ:
+	case VFE_WRITE_MB: {
 		if ((reg_cfg_cmd->u.rw_info.reg_offset >
 			(UINT_MAX - reg_cfg_cmd->u.rw_info.len)) ||
 			((reg_cfg_cmd->u.rw_info.reg_offset +
@@ -530,6 +531,58 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 		}
 		break;
 	}
+
+	case VFE_WRITE_DMI_16BIT:
+	case VFE_WRITE_DMI_32BIT:
+	case VFE_WRITE_DMI_64BIT:
+	case VFE_READ_DMI_16BIT:
+	case VFE_READ_DMI_32BIT:
+	case VFE_READ_DMI_64BIT: {
+		if (reg_cfg_cmd->cmd_type == VFE_WRITE_DMI_64BIT) {
+			if ((reg_cfg_cmd->u.dmi_info.hi_tbl_offset <=
+				reg_cfg_cmd->u.dmi_info.lo_tbl_offset) ||
+				(reg_cfg_cmd->u.dmi_info.hi_tbl_offset -
+				reg_cfg_cmd->u.dmi_info.lo_tbl_offset !=
+				(sizeof(uint32_t)))) {
+				pr_err("%s:%d hi %d lo %d\n",
+					__func__, __LINE__,
+					reg_cfg_cmd->u.dmi_info.hi_tbl_offset,
+					reg_cfg_cmd->u.dmi_info.hi_tbl_offset);
+				return -EINVAL;
+			}
+			if (reg_cfg_cmd->u.dmi_info.len <= sizeof(uint32_t)) {
+				pr_err("%s:%d len %d\n",
+					__func__, __LINE__,
+					reg_cfg_cmd->u.dmi_info.len);
+				return -EINVAL;
+			}
+			if (((UINT_MAX -
+				reg_cfg_cmd->u.dmi_info.hi_tbl_offset) <
+				(reg_cfg_cmd->u.dmi_info.len -
+				sizeof(uint32_t))) ||
+				((reg_cfg_cmd->u.dmi_info.hi_tbl_offset +
+				reg_cfg_cmd->u.dmi_info.len -
+				sizeof(uint32_t)) > cmd_len)) {
+				pr_err("%s:%d hi_tbl_offset %d len %d cmd %d\n",
+					__func__, __LINE__,
+					reg_cfg_cmd->u.dmi_info.hi_tbl_offset,
+					reg_cfg_cmd->u.dmi_info.len, cmd_len);
+				return -EINVAL;
+			}
+		}
+		if ((reg_cfg_cmd->u.dmi_info.lo_tbl_offset >
+			(UINT_MAX - reg_cfg_cmd->u.dmi_info.len)) ||
+			((reg_cfg_cmd->u.dmi_info.lo_tbl_offset +
+			reg_cfg_cmd->u.dmi_info.len) > cmd_len)) {
+			pr_err("%s:%d lo_tbl_offset %d len %d cmd_len %d\n",
+				__func__, __LINE__,
+				reg_cfg_cmd->u.dmi_info.lo_tbl_offset,
+				reg_cfg_cmd->u.dmi_info.len, cmd_len);
+			return -EINVAL;
+		}
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -543,39 +596,27 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 		break;
 	}
 	case VFE_WRITE_MB: {
-		uint32_t *data_ptr = cfg_data +
-			reg_cfg_cmd->u.rw_info.cmd_data_offset/4;
-
-		if ((UINT_MAX - sizeof(*data_ptr) <
-					reg_cfg_cmd->u.rw_info.reg_offset) ||
-			(resource_size(vfe_dev->vfe_mem) <
-			reg_cfg_cmd->u.rw_info.reg_offset +
-			sizeof(*data_ptr))) {
-			pr_err("%s: VFE_WRITE_MB: Invalid length\n", __func__);
-			return -EINVAL;
-		}
-		msm_camera_io_w_mb(*data_ptr, vfe_dev->vfe_base +
-			reg_cfg_cmd->u.rw_info.reg_offset);
+		msm_camera_io_memcpy_mb(vfe_dev->vfe_base +
+			reg_cfg_cmd->u.rw_info.reg_offset,
+			cfg_data + reg_cfg_cmd->u.rw_info.cmd_data_offset/4,
+			reg_cfg_cmd->u.rw_info.len);
 		break;
 	}
 	case VFE_CFG_MASK: {
 		uint32_t temp;
-		if (resource_size(vfe_dev->vfe_mem) <
-				reg_cfg_cmd->u.mask_info.reg_offset)
-			return -EINVAL;
-		temp = msm_camera_io_r(vfe_dev->vfe_base +
-			reg_cfg_cmd->u.mask_info.reg_offset);
-
-		temp &= ~reg_cfg_cmd->u.mask_info.mask;
-		temp |= reg_cfg_cmd->u.mask_info.val;
 		if ((UINT_MAX - sizeof(temp) <
-					reg_cfg_cmd->u.mask_info.reg_offset) ||
+			reg_cfg_cmd->u.mask_info.reg_offset) ||
 			(resource_size(vfe_dev->vfe_mem) <
 			reg_cfg_cmd->u.mask_info.reg_offset +
 			sizeof(temp))) {
 			pr_err("%s: VFE_CFG_MASK: Invalid length\n", __func__);
 			return -EINVAL;
 		}
+		temp = msm_camera_io_r(vfe_dev->vfe_base +
+			reg_cfg_cmd->u.mask_info.reg_offset);
+
+		temp &= ~reg_cfg_cmd->u.mask_info.mask;
+		temp |= reg_cfg_cmd->u.mask_info.val;
 		msm_camera_io_w(temp, vfe_dev->vfe_base +
 			reg_cfg_cmd->u.mask_info.reg_offset);
 		break;
@@ -587,21 +628,8 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 		uint32_t *hi_tbl_ptr = NULL, *lo_tbl_ptr = NULL;
 		uint32_t hi_val, lo_val, lo_val1;
 		if (reg_cfg_cmd->cmd_type == VFE_WRITE_DMI_64BIT) {
-			if ((UINT_MAX - reg_cfg_cmd->u.dmi_info.hi_tbl_offset <
-						reg_cfg_cmd->u.dmi_info.len) ||
-				(reg_cfg_cmd->u.dmi_info.hi_tbl_offset +
-				reg_cfg_cmd->u.dmi_info.len > cmd_len)) {
-				pr_err("Invalid Hi Table out of bounds\n");
-				return -EINVAL;
-			}
 			hi_tbl_ptr = cfg_data +
 				reg_cfg_cmd->u.dmi_info.hi_tbl_offset/4;
-		}
-
-		if (reg_cfg_cmd->u.dmi_info.lo_tbl_offset +
-			reg_cfg_cmd->u.dmi_info.len > cmd_len) {
-			pr_err("Invalid Lo Table out of bounds\n");
-			return -EINVAL;
 		}
 		lo_tbl_ptr = cfg_data +
 			reg_cfg_cmd->u.dmi_info.lo_tbl_offset/4;
@@ -635,22 +663,16 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 		uint32_t *hi_tbl_ptr = NULL, *lo_tbl_ptr = NULL;
 		uint32_t hi_val, lo_val, lo_val1;
 		if (reg_cfg_cmd->cmd_type == VFE_READ_DMI_64BIT) {
-			if (reg_cfg_cmd->u.dmi_info.hi_tbl_offset +
-				reg_cfg_cmd->u.dmi_info.len > cmd_len) {
-				pr_err("Invalid Hi Table out of bounds\n");
-				return -EINVAL;
-			}
 			hi_tbl_ptr = cfg_data +
 				reg_cfg_cmd->u.dmi_info.hi_tbl_offset/4;
 		}
 
-		if (reg_cfg_cmd->u.dmi_info.lo_tbl_offset +
-			reg_cfg_cmd->u.dmi_info.len > cmd_len) {
-			pr_err("Invalid Lo Table out of bounds\n");
-			return -EINVAL;
-		}
 		lo_tbl_ptr = cfg_data +
 			reg_cfg_cmd->u.dmi_info.lo_tbl_offset/4;
+
+		if (reg_cfg_cmd->cmd_type == VFE_READ_DMI_64BIT)
+			reg_cfg_cmd->u.dmi_info.len =
+				reg_cfg_cmd->u.dmi_info.len / 2;
 
 		for (i = 0; i < reg_cfg_cmd->u.dmi_info.len/4; i++) {
 			if (reg_cfg_cmd->cmd_type == VFE_READ_DMI_64BIT) {
@@ -682,7 +704,7 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 			if ((data_ptr < cfg_data) ||
 				(UINT_MAX / sizeof(*data_ptr) <
 				 (data_ptr - cfg_data)) ||
-				(sizeof(*data_ptr) * (data_ptr - cfg_data) >
+				(sizeof(*data_ptr) * (data_ptr - cfg_data) >=
 				 cmd_len))
 				return -EINVAL;
 			*data_ptr++ = msm_camera_io_r(vfe_dev->vfe_base +
