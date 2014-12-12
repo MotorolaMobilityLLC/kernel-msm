@@ -1886,7 +1886,8 @@ static int mdss_mdp_overlay_get_fb_pipe(struct msm_fb_data_type *mfd,
 			}
 		}
 
-		if ((mixer_mux == MDSS_MDP_MIXER_MUX_RIGHT) !=
+		if (fbi->var.xres > mixer->width &&
+			(mixer_mux == MDSS_MDP_MIXER_MUX_RIGHT) !=
 			(mdp5_data->fb_rot_180 != 0)) {
 			req.src_rect.x = mixer->width;
 			req.src_rect.w = fbi->var.xres - mixer->width;
