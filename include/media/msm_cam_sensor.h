@@ -493,6 +493,11 @@ struct msm_actuator_move_params_t {
 	struct damping_params_t *ringing_params;
 };
 
+struct msm_mot_actuator_tuning_params_t {
+	int16_t infinity_dac;
+	int16_t macro_dac;
+};
+
 struct msm_actuator_tuning_params_t {
 	int16_t initial_code;
 	uint16_t pwd_step;
@@ -514,6 +519,7 @@ struct msm_actuator_params_t {
 	uint16_t data_size;
 	uint16_t init_setting_size;
 	uint16_t deinit_setting_size;
+	uint16_t power_off_setting_size;
 	uint32_t i2c_addr;
 	enum i2c_freq_mode_t i2c_freq_mode;
 	enum msm_actuator_addr_type i2c_addr_type;
@@ -521,12 +527,14 @@ struct msm_actuator_params_t {
 	struct msm_actuator_reg_params_t *reg_tbl_params;
 	struct reg_settings_t *init_settings;
 	struct reg_settings_t *deinit_settings;
+	struct reg_settings_t *power_off_settings;
 	struct park_lens_data_t park_lens;
 };
 
 struct msm_actuator_set_info_t {
 	struct msm_actuator_params_t actuator_params;
 	struct msm_actuator_tuning_params_t af_tuning_params;
+	struct msm_mot_actuator_tuning_params_t mot_af_tuning_params;
 };
 
 struct msm_actuator_get_info_t {
@@ -678,6 +686,11 @@ struct msm_camera_i2c_reg_setting32 {
 	enum msm_camera_qup_i2c_write_batch_t qup_i2c_batch;
 };
 
+struct msm_mot_actuator_tuning_params_t32 {
+	int16_t infinity_dac;
+	int16_t macro_dac;
+};
+
 struct msm_actuator_tuning_params_t32 {
 	int16_t initial_code;
 	uint16_t pwd_step;
@@ -692,6 +705,7 @@ struct msm_actuator_params_t32 {
 	uint16_t data_size;
 	uint16_t init_setting_size;
 	uint16_t deinit_setting_size;
+	uint16_t power_off_setting_size;
 	uint32_t i2c_addr;
 	enum i2c_freq_mode_t i2c_freq_mode;
 	enum msm_actuator_addr_type i2c_addr_type;
@@ -699,12 +713,14 @@ struct msm_actuator_params_t32 {
 	compat_uptr_t reg_tbl_params;
 	compat_uptr_t init_settings;
 	compat_uptr_t deinit_settings;
+	compat_uptr_t power_off_settings;
 	struct park_lens_data_t park_lens;
 };
 
 struct msm_actuator_set_info_t32 {
 	struct msm_actuator_params_t32 actuator_params;
 	struct msm_actuator_tuning_params_t32 af_tuning_params;
+	struct msm_mot_actuator_tuning_params_t32 mot_af_tuning_params;
 };
 
 struct sensor_init_cfg_data32 {
