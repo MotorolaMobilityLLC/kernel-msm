@@ -22,6 +22,8 @@ DEFINE_MSM_MUTEX(msm_actuator_mutex);
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
+#include "msm_mot_actuator.c"
+
 #define PARK_LENS_LONG_STEP 7
 #define PARK_LENS_MID_STEP 5
 #define PARK_LENS_SMALL_STEP 3
@@ -35,6 +37,7 @@ static struct msm_actuator msm_vcm_actuator_table;
 static struct msm_actuator msm_piezo_actuator_table;
 static struct msm_actuator msm_hvcm_actuator_table;
 static struct msm_actuator msm_bivcm_actuator_table;
+static struct msm_actuator msm_mot_hvcm_actuator_table;
 
 static struct i2c_driver msm_actuator_i2c_driver;
 static struct msm_actuator *actuators[] = {
@@ -42,6 +45,7 @@ static struct msm_actuator *actuators[] = {
 	&msm_piezo_actuator_table,
 	&msm_hvcm_actuator_table,
 	&msm_bivcm_actuator_table,
+	&msm_mot_hvcm_actuator_table,
 };
 
 static int32_t msm_actuator_piezo_set_default_focus(
