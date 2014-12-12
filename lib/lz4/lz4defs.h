@@ -21,6 +21,7 @@
 /*
  * Architecture-specific macros
  */
+#define ARM_EFFICIENT_UNALIGNED_ACCESS
 #define BYTE	u8
 typedef struct _U16_S { u16 v; } U16_S;
 typedef struct _U32_S { u32 v; } U32_S;
