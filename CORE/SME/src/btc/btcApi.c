@@ -470,9 +470,22 @@ void btcEnableUapsdTimerExpiryHandler(tHalHandle hHal)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
-    pMac->btc.btcUapsdOk = VOS_TRUE;
-    smsLog(pMac, LOG1, FL("Uapsd Timer Expired, Enable Uapsd"));
-    sme_QoSUpdateUapsdBTEvent(pMac);
+    if (IS_DYNAMIC_WMM_PS_ENABLED)
+    {
+        if (pMac->btc.btcUapsdOk == VOS_FALSE)
+        {
+            pMac->btc.btcUapsdOk = VOS_TRUE;
+            smsLog(pMac, LOG1, FL("Uapsd Timer Expired, Enable Uapsd"));
+            sme_QoSUpdateUapsdBTEvent(pMac);
+        }
+    }
+
+    if (pMac->sme.pBtCoexTDLSNotification)
+    {
+        smsLog(pMac, LOG1, FL("btCoex notification, Enable TDLS"));
+        pMac->sme.pBtCoexTDLSNotification(pMac->pAdapter,
+                                          SIR_COEX_IND_TYPE_TDLS_ENABLE);
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -2014,31 +2027,30 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
      else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_DISABLE_UAPSD)
      {
          smsLog(pMac, LOG1, FL("DISABLE UAPSD BT Event received"));
+         if (VOS_TIMER_STATE_RUNNING ==
+             vos_timer_getCurrentState(&pMac->btc.enableUapsdTimer)) {
+             smsLog(pMac, LOG1, FL("Stop Uapsd Timer"));
+             vos_timer_stop(&pMac->btc.enableUapsdTimer);
+         }
 
          if (IS_DYNAMIC_WMM_PS_ENABLED) {
              if (pMac->btc.btcUapsdOk == VOS_TRUE) {
                  pMac->btc.btcUapsdOk = VOS_FALSE;
                  sme_QoSUpdateUapsdBTEvent(pMac);
              }
-             else {
-                 if (VOS_TIMER_STATE_RUNNING ==
-                     vos_timer_getCurrentState(&pMac->btc.enableUapsdTimer)) {
-                     smsLog(pMac, LOG1, FL("Stop Uapsd Timer"));
-                     vos_timer_stop(&pMac->btc.enableUapsdTimer);
-                 }
-             }
+         }
+
+         if (pMac->sme.pBtCoexTDLSNotification)
+         {
+             smsLog(pMac, LOG1, FL("btCoex notification, Disable TDLS"));
+             pMac->sme.pBtCoexTDLSNotification(pMac->pAdapter,
+                                               SIR_COEX_IND_TYPE_TDLS_DISABLE);
          }
      }
      else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_ENABLE_UAPSD)
      {
          smsLog(pMac, LOG1, FL("ENABLE UAPSD BT Event received"));
-
-         if (IS_DYNAMIC_WMM_PS_ENABLED) {
-             if (pMac->btc.btcUapsdOk == VOS_FALSE) {
-                smsLog(pMac, LOG1, FL("Start Uapsd Timer"));
-                vos_timer_start(&pMac->btc.enableUapsdTimer, BTC_MAX_ENABLE_UAPSD_TIMER);
-             }
-         }
+         vos_timer_start(&pMac->btc.enableUapsdTimer, BTC_MAX_ENABLE_UAPSD_TIMER);
      }
      else // unknown indication type
      {

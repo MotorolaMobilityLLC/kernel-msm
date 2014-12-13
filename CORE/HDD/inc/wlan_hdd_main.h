@@ -1317,6 +1317,7 @@ struct hdd_context_s
     tdls_scan_context_t tdls_scan_ctxt;
     /* Lock to avoid race condition during TDLS operations*/
     struct mutex tdls_lock;
+    v_BOOL_t is_tdls_btc_enabled;
 #endif
 
     hdd_traffic_monitor_t traffic_monitor;
