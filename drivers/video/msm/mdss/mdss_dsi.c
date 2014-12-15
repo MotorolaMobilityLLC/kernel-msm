@@ -252,22 +252,22 @@ static void mdss_dsi_put_dt_vreg_data(struct device *dev,
 	module_power->num_vreg = 0;
 }
 
-static int mdss_dsi_get_dt_vreg_data(struct device *dev,
-	struct dss_module_power *mp, enum dsi_pm_type module)
+int mdss_dsi_get_dt_vreg_data(struct device *dev,
+			struct device_node *of_node,
+			struct dss_module_power *mp,
+			enum dsi_pm_type module)
 {
 	int i = 0, rc = 0;
 	u32 tmp = 0;
-	struct device_node *of_node = NULL, *supply_node = NULL;
+	struct device_node *supply_node = NULL;
 	const char *pm_supply_name = NULL;
 	struct device_node *supply_root_node = NULL;
 
-	if (!dev || !mp) {
+	if (!dev || !mp || !of_node) {
 		pr_err("%s: invalid input\n", __func__);
 		rc = -EINVAL;
 		return rc;
 	}
-
-	of_node = dev->of_node;
 
 	mp->num_vreg = 0;
 	pm_supply_name = __mdss_dsi_pm_supply_node_name(module);
@@ -1503,9 +1503,10 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_warn("%s: failed to get pin resources\n", __func__);
 
 	/* Parse the regulator information */
-	for (i = 0; i < DSI_MAX_PM; i++) {
+	for (i = 0; i < DSI_PANEL_PM; i++) {
 		rc = mdss_dsi_get_dt_vreg_data(&pdev->dev,
-			&ctrl_pdata->power_data[i], i);
+					pdev->dev.of_node,
+					&ctrl_pdata->power_data[i], i);
 		if (rc) {
 			DEV_ERR("%s: '%s' get_dt_vreg_data failed.rc=%d\n",
 				__func__, __mdss_dsi_pm_name(i), rc);
@@ -1545,7 +1546,8 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 
 	cmd_cfg_cont_splash = mdss_panel_get_boot_cfg() ? true : false;
 
-	rc = mdss_dsi_panel_init(dsi_pan_node, ctrl_pdata, cmd_cfg_cont_splash);
+	rc = mdss_dsi_panel_init(&pdev->dev, dsi_pan_node,
+				ctrl_pdata, cmd_cfg_cont_splash);
 	if (rc) {
 		pr_err("%s: dsi panel init failed\n", __func__);
 		goto error_pan_node;
@@ -1575,9 +1577,8 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 
 error_pan_node:
 	of_node_put(dsi_pan_node);
-	i--;
 error_vreg:
-	for (; i >= 0; i--)
+	for (i = DSI_MAX_PM - 1; i >= 0; i--)
 		mdss_dsi_put_dt_vreg_data(&pdev->dev,
 			&ctrl_pdata->power_data[i]);
 error_no_mem:
