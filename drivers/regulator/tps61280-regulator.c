@@ -4,6 +4,7 @@
  * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
  *
  * Author: Venkat Reddy Talla <vreddytalla@nvidia.com>
+ * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +31,8 @@
 #include <linux/interrupt.h>
 #include <linux/mutex.h>
 #include <linux/regulator/driver.h>
+#include <linux/regulator/machine.h>
+#include <linux/regulator/of_regulator.h>
 #include <linux/mfd/core.h>
 #include <linux/thermal.h>
 
@@ -54,6 +57,12 @@
 #define TPS61280_ILIM_MASK	0x0F
 #define TPS61280_VOUT_MASK	0x1F
 
+#define TPS61280_CONFIG_ENABLE_MASK		0x60
+#define TPS61280_CONFIG_BYPASS_HW_CONTRL	0x00
+#define TPS61280_CONFIG_BYPASS_AUTO_TRANS	0x20
+#define TPS61280_CONFIG_BYPASS_PASS_TROUGH	0x40
+#define TPS61280_CONFIG_BYPASS_SHUTDOWN		0x60
+
 #define TPS61280_PGOOD_MASK	BIT(0)
 #define TPS61280_FAULT_MASK	BIT(1)
 #define TPS61280_ILIMBST_MASK	BIT(2)
@@ -77,6 +86,8 @@ struct tps61280_platform_data {
 	int		voutfloor_voltage;
 	int		voutroof_voltage;
 	int		ilim_current_limit;
+	bool		bypass_pin_ctrl;
+	int		bypass_gpio;
 };
 
 struct tps61280_chip {
@@ -84,13 +95,15 @@ struct tps61280_chip {
 	struct i2c_client	*client;
 	struct regulator_desc	rdesc;
 	struct regulator_dev	*rdev;
-	struct tps61280_platform_data	*pdata;
+	struct tps61280_platform_data	pdata;
 	struct device_node		*tps_np;
-	struct regmap		*regmap;
+	struct regmap		*rmap;
 	struct thermal_zone_device	*tz_device;
 	struct mutex		mutex;
+	struct regulator_init_data	*rinit_data;
 	int		gpio_en;
 	int		gpio_vsel;
+	int	bypass_state;
 };
 
 static const struct regmap_config tps61280_regmap_config = {
@@ -140,7 +153,7 @@ static int tps61280_set_voltage(struct regulator_dev *rdev,
 		return -EINVAL;
 
 	if (gpio_val) {
-		ret = regmap_update_bits(tps->regmap, TPS61280_VOUTROOFSET,
+		ret = regmap_update_bits(tps->rmap, TPS61280_VOUTROOFSET,
 					TPS61280_VOUT_MASK, val);
 		if (ret < 0) {
 			dev_err(tps->dev, "VOUTFLR REG update failed %d\n",
@@ -148,7 +161,7 @@ static int tps61280_set_voltage(struct regulator_dev *rdev,
 			return ret;
 		}
 	} else {
-		ret = regmap_update_bits(tps->regmap, TPS61280_VOUTFLOORSET,
+		ret = regmap_update_bits(tps->rmap, TPS61280_VOUTFLOORSET,
 					TPS61280_VOUT_MASK, val);
 		if (ret < 0) {
 			dev_err(tps->dev, "VOUTROOF REG update failed %d\n",
@@ -173,14 +186,14 @@ static int tps61280_get_voltage(struct regulator_dev *rdev)
 		return -EINVAL;
 
 	if (gpio_val) {
-		ret = regmap_read(tps->regmap, TPS61280_VOUTROOFSET, &val);
+		ret = regmap_read(tps->rmap, TPS61280_VOUTROOFSET, &val);
 		if (ret < 0) {
 			dev_err(tps->dev, "VOUTROOF REG read failed %d\n",
 					ret);
 			return ret;
 		}
 	} else {
-		ret = regmap_read(tps->regmap, TPS61280_VOUTFLOORSET, &val);
+		ret = regmap_read(tps->rmap, TPS61280_VOUTFLOORSET, &val);
 		if (ret < 0) {
 			dev_err(tps->dev, "VOUTFLR REG read failed %d\n",
 					ret);
@@ -220,7 +233,7 @@ static int tps61280_set_mode(struct regulator_dev *rdev, unsigned int mode)
 		return -EINVAL;
 	}
 
-	ret = regmap_update_bits(tps->regmap, TPS61280_CONFIG,
+	ret = regmap_update_bits(tps->rmap, TPS61280_CONFIG,
 				TPS61280_CONFIG_MODE_MASK, val);
 	if (ret < 0) {
 		dev_err(tps->dev, "CONFIG REG update failed %d\n", ret);
@@ -235,7 +248,7 @@ static unsigned int tps61280_get_mode(struct regulator_dev *rdev)
 	unsigned int data;
 	int ret;
 
-	ret = regmap_read(tps->regmap, TPS61280_CONFIG, &data);
+	ret = regmap_read(tps->rmap, TPS61280_CONFIG, &data);
 	if (ret < 0) {
 		dev_err(tps->dev, "CONFIG REG read failed %d\n", ret);
 		return ret;
@@ -260,7 +273,7 @@ static int tps61280_set_current_limit(struct regulator_dev *rdev, int min_ua,
 	if (val < 0)
 		return -EINVAL;
 
-	ret = regmap_update_bits(tps->regmap, TPS61280_ILIMSET,
+	ret = regmap_update_bits(tps->rmap, TPS61280_ILIMSET,
 			TPS61280_ILIM_MASK, (val | TPS61280_ILIM_BASE));
 	if (ret < 0) {
 		dev_err(tps->dev, "ILIM REG update failed %d\n", ret);
@@ -276,7 +289,7 @@ static int tps61280_get_current_limit(struct regulator_dev *rdev)
 	u32 val;
 	int ret;
 
-	ret = regmap_read(tps->regmap, TPS61280_ILIMSET, &val);
+	ret = regmap_read(tps->rmap, TPS61280_ILIMSET, &val);
 	if (ret < 0) {
 		dev_err(tps->dev, "ILIM REG read failed %d\n", ret);
 		return ret;
@@ -287,6 +300,45 @@ static int tps61280_get_current_limit(struct regulator_dev *rdev)
 	return val;
 }
 
+static int tps61280_set_bypass(struct regulator_dev *rdev, bool enable)
+{
+	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
+	u32 val;
+	int ret;
+
+	if (tps->pdata.bypass_pin_ctrl) {
+		if (!gpio_is_valid(tps->pdata.bypass_gpio))
+			return 0;
+		if (enable)
+			gpio_set_value_cansleep(tps->pdata.bypass_gpio, 1);
+		else
+			gpio_set_value_cansleep(tps->pdata.bypass_gpio, 0);
+
+		tps->bypass_state = enable;
+		return 0;
+	}
+
+	val = TPS61280_CONFIG_BYPASS_PASS_TROUGH;
+	if (enable)
+		val = TPS61280_CONFIG_BYPASS_AUTO_TRANS;
+	ret = regmap_update_bits(tps->rmap, TPS61280_CONFIG,
+				TPS61280_CONFIG_ENABLE_MASK, val);
+	if (ret < 0) {
+		dev_err(tps->dev, "CONFIG update failed %d\n", ret);
+		return ret;
+	}
+	tps->bypass_state = enable;
+	return 0;
+}
+
+static int tps61280_get_bypass(struct regulator_dev *rdev, bool *enable)
+{
+	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
+
+	*enable = tps->bypass_state;
+	return 0;
+}
+
 static struct regulator_ops tps61280_ops = {
 	.set_voltage		= tps61280_set_voltage,
 	.get_voltage		= tps61280_get_voltage,
@@ -294,6 +346,8 @@ static struct regulator_ops tps61280_ops = {
 	.get_mode		= tps61280_get_mode,
 	.set_current_limit	= tps61280_set_current_limit,
 	.get_current_limit	= tps61280_get_current_limit,
+	.set_bypass		= tps61280_set_bypass,
+	.get_bypass		= tps61280_get_bypass,
 };
 
 static int tps61280_thermal_read_temp(void *data, long *temp)
@@ -302,7 +356,7 @@ static int tps61280_thermal_read_temp(void *data, long *temp)
 	u32 val;
 	int ret;
 
-	ret = regmap_read(tps->regmap, TPS61280_STATUS, &val);
+	ret = regmap_read(tps->rmap, TPS61280_STATUS, &val);
 	if (ret < 0) {
 		dev_err(tps->dev, "STATUS REG read failed %d\n", ret);
 		return -EINVAL;
@@ -322,7 +376,7 @@ static irqreturn_t tps61280_irq(int irq, void *dev)
 	int val;
 	int ret;
 
-	ret = regmap_read(tps->regmap, TPS61280_STATUS, &val);
+	ret = regmap_read(tps->rmap, TPS61280_STATUS, &val);
 	if (ret < 0) {
 		dev_err(&client->dev, "%s() STATUS REG read failed %d\n",
 			__func__, ret);
@@ -368,6 +422,62 @@ static irqreturn_t tps61280_irq(int irq, void *dev)
 	return IRQ_HANDLED;
 }
 
+static int tps61280_bypass_init(struct tps61280_chip *tps61280)
+{
+	struct device *dev = tps61280->dev;
+	unsigned int val;
+	int ret;
+
+	if (!tps61280->rinit_data)
+		return 0;
+
+	tps61280->rinit_data->constraints.valid_ops_mask |=
+				REGULATOR_CHANGE_BYPASS;
+
+	if (tps61280->pdata.bypass_pin_ctrl) {
+		int gpio_flag;
+
+		ret = regmap_update_bits(tps61280->rmap, TPS61280_CONFIG,
+				TPS61280_CONFIG_ENABLE_MASK,
+				TPS61280_CONFIG_BYPASS_HW_CONTRL);
+		if (ret < 0) {
+			dev_err(dev, "CONFIG update failed %d\n", ret);
+			return ret;
+		}
+
+		if (!gpio_is_valid(tps61280->pdata.bypass_gpio))
+			return 0;
+
+		if (tps61280->rinit_data->constraints.bypass_on)
+			gpio_flag = GPIOF_OUT_INIT_HIGH;
+		else
+			gpio_flag = GPIOF_OUT_INIT_LOW;
+
+		ret = devm_gpio_request_one(tps61280->dev,
+				tps61280->pdata.bypass_gpio,
+				gpio_flag, "tps61280-bypass-pin-gpio");
+		if (ret < 0) {
+			dev_err(dev, "Bypass GPIO request failed: %d\n", ret);
+			return ret;
+		}
+		tps61280->bypass_state =
+			tps61280->rinit_data->constraints.bypass_on;
+		return 0;
+	}
+
+	val = TPS61280_CONFIG_BYPASS_PASS_TROUGH;
+	if (tps61280->rinit_data->constraints.bypass_on)
+		val = TPS61280_CONFIG_BYPASS_AUTO_TRANS;
+	ret = regmap_update_bits(tps61280->rmap, TPS61280_CONFIG,
+				TPS61280_CONFIG_ENABLE_MASK, val);
+	if (ret < 0) {
+		dev_err(dev, "CONFIG update failed %d\n", ret);
+		return ret;
+	}
+	tps61280->bypass_state = tps61280->rinit_data->constraints.bypass_on;
+	return 0;
+}
+
 static int tps61280_initialize(struct tps61280_chip *tps61280)
 {
 	int device_mode;
@@ -377,23 +487,13 @@ static int tps61280_initialize(struct tps61280_chip *tps61280)
 	int val;
 	int ret;
 
-	if (tps61280->pdata) {
-		device_mode = tps61280->pdata->device_mode ?: 01;
-		voutfloor_voltage =
-			tps61280->pdata->voutfloor_voltage ?: 3150;
-		voutroof_voltage =
-			tps61280->pdata->voutroof_voltage ?: 3350;
-		ilim_current_limit =
-			tps61280->pdata->ilim_current_limit ?: 3000;
-	} else {
-		device_mode = 01;
-		voutfloor_voltage = 3150;
-		voutroof_voltage = 3350;
-		ilim_current_limit = 3000;
-	}
+	device_mode = tps61280->pdata.device_mode ?: 01;
+	voutfloor_voltage = tps61280->pdata.voutfloor_voltage ?: 3150;
+	voutroof_voltage = tps61280->pdata.voutroof_voltage ?: 3350;
+	ilim_current_limit = tps61280->pdata.ilim_current_limit ?: 3000;
 
 	/* Configure device mode of operation */
-	ret = regmap_update_bits(tps61280->regmap, TPS61280_CONFIG,
+	ret = regmap_update_bits(tps61280->rmap, TPS61280_CONFIG,
 				TPS61280_CONFIG_MODE_MASK, device_mode);
 	if (ret < 0) {
 		dev_err(tps61280->dev, "CONFIG REG update failed %d\n", ret);
@@ -404,7 +504,7 @@ static int tps61280_initialize(struct tps61280_chip *tps61280)
 	val = tps61280_val_to_reg(voutfloor_voltage, TPS61280_VOUT_OFFSET,
 				TPS61280_VOUT_STEP, 5, 0);
 
-	ret = regmap_update_bits(tps61280->regmap, TPS61280_VOUTFLOORSET,
+	ret = regmap_update_bits(tps61280->rmap, TPS61280_VOUTFLOORSET,
 				TPS61280_VOUT_MASK, val);
 	if (ret < 0) {
 		dev_err(tps61280->dev, "VOUTFLR REG update failed %d\n", ret);
@@ -415,7 +515,7 @@ static int tps61280_initialize(struct tps61280_chip *tps61280)
 	val = tps61280_val_to_reg(voutroof_voltage, TPS61280_VOUT_OFFSET,
 				TPS61280_VOUT_STEP, 5, 0);
 
-	ret = regmap_update_bits(tps61280->regmap, TPS61280_VOUTROOFSET,
+	ret = regmap_update_bits(tps61280->rmap, TPS61280_VOUTROOFSET,
 				TPS61280_VOUT_MASK, val);
 	if (ret < 0) {
 		dev_err(tps61280->dev, "VOUTROOF REG update failed %d\n", ret);
@@ -426,7 +526,7 @@ static int tps61280_initialize(struct tps61280_chip *tps61280)
 	val = tps61280_val_to_reg(ilim_current_limit, TPS61280_ILIM_OFFSET,
 				TPS61280_ILIM_STEP, 3, 0);
 
-	ret = regmap_update_bits(tps61280->regmap, TPS61280_ILIMSET,
+	ret = regmap_update_bits(tps61280->rmap, TPS61280_ILIMSET,
 			TPS61280_ILIM_MASK, (val | TPS61280_ILIM_BASE));
 	if (ret < 0) {
 		dev_err(tps61280->dev, "ILIM REG update failed %d\n", ret);
@@ -435,7 +535,7 @@ static int tps61280_initialize(struct tps61280_chip *tps61280)
 	return 0;
 }
 
-static void tps61280_parse_dt_data(struct i2c_client *client,
+static int tps61280_parse_dt_data(struct i2c_client *client,
 				struct tps61280_platform_data *pdata)
 {
 	struct device_node *np = client->dev.of_node;
@@ -461,6 +561,16 @@ static void tps61280_parse_dt_data(struct i2c_client *client,
 	pdata->gpio_en = of_get_named_gpio(np, "ti,gpio-en", 0);
 
 	pdata->gpio_vsel = of_get_named_gpio(np, "ti,gpio-vsel", 0);
+
+	pdata->bypass_pin_ctrl = of_property_read_bool(np,
+					"ti,enable-bypass-pin-control");
+	if (pdata->bypass_pin_ctrl) {
+		pdata->bypass_gpio = of_get_named_gpio(np,
+					"ti,bypass-pin-gpio", 0);
+		if (pdata->bypass_gpio < 0)
+			return pdata->bypass_gpio;
+	}
+	return 0;
 }
 
 static int tps61280_probe(struct i2c_client *client,
@@ -470,38 +580,50 @@ static int tps61280_probe(struct i2c_client *client,
 	struct regulator_config rconfig = { };
 	int ret;
 
+	if (!client->dev.of_node) {
+		dev_err(&client->dev, "Only Supporting DT\n");
+		return -ENODEV;
+	}
+
 	tps61280 = devm_kzalloc(&client->dev, sizeof(*tps61280), GFP_KERNEL);
 	if (!tps61280)
 		return -ENOMEM;
 
-	tps61280->client = client;
-	if (client->dev.of_node) {
-		tps61280->pdata = devm_kzalloc(&client->dev,
-					sizeof(*tps61280->pdata), GFP_KERNEL);
-		if (!tps61280->pdata)
-			return -ENOMEM;
-		tps61280_parse_dt_data(client, tps61280->pdata);
-	} else {
-		tps61280->pdata = client->dev.platform_data;
+	ret = tps61280_parse_dt_data(client, &tps61280->pdata);
+	if (ret < 0) {
+		dev_err(&client->dev, "Platform data pasring failed: %d\n",
+			ret);
+		return ret;
 	}
 
-	if (!tps61280->pdata)
-		return -ENODATA;
-
-	tps61280->regmap = devm_regmap_init_i2c(client,
-					&tps61280_regmap_config);
-	if (IS_ERR(tps61280->regmap)) {
-		ret = PTR_ERR(tps61280->regmap);
+	tps61280->rmap = devm_regmap_init_i2c(client, &tps61280_regmap_config);
+	if (IS_ERR(tps61280->rmap)) {
+		ret = PTR_ERR(tps61280->rmap);
 		dev_err(&client->dev, "regmap init failed with err%d\n", ret);
 		return ret;
 	}
 
-	tps61280->gpio_en = tps61280->pdata->gpio_en;
-	tps61280->gpio_vsel = tps61280->pdata->gpio_vsel;
-	tps61280->tps_np = client->dev.of_node;
+	tps61280->client = client;
 	tps61280->dev = &client->dev;
 	i2c_set_clientdata(client, tps61280);
 	mutex_init(&tps61280->mutex);
+
+	tps61280->rinit_data = of_get_regulator_init_data(tps61280->dev,
+					tps61280->dev->of_node);
+	if (!tps61280->rinit_data) {
+		dev_err(&client->dev, "No Regulator init data\n");
+		return -EINVAL;
+	}
+
+	ret = tps61280_bypass_init(tps61280);
+	if (ret < 0) {
+		dev_err(&client->dev, "Bypass init failed: %d\n", ret);
+		return ret;
+	}
+
+	tps61280->gpio_en = tps61280->pdata.gpio_en;
+	tps61280->gpio_vsel = tps61280->pdata.gpio_vsel;
+	tps61280->tps_np = client->dev.of_node;
 
 	tps61280->rdesc.name  = "tps61280-dcdc";
 	tps61280->rdesc.ops   = &tps61280_ops;
@@ -513,7 +635,7 @@ static int tps61280_probe(struct i2c_client *client,
 	rconfig.dev = tps61280->dev;
 	rconfig.of_node =  tps61280->tps_np;
 	rconfig.driver_data = tps61280;
-	rconfig.regmap = tps61280->regmap;
+	rconfig.regmap = tps61280->rmap;
 	if (gpio_is_valid(tps61280->gpio_en)) {
 		rconfig.ena_gpio = tps61280->gpio_en;
 		rconfig.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
@@ -622,9 +744,8 @@ static void __exit tps61280_exit(void)
 }
 module_exit(tps61280_exit);
 
-module_i2c_driver(tps61280_driver);
-
 MODULE_DESCRIPTION("tps61280 driver");
 MODULE_AUTHOR("Venkat Reddy Talla <vreddytalla@nvidia.com>");
+MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
 MODULE_ALIAS("i2c:tps61280");
 MODULE_LICENSE("GPL v2");
