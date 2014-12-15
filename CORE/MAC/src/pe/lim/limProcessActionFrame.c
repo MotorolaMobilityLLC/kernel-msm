@@ -758,15 +758,15 @@ __limProcessDelTsReq(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession pse
             PELOGW(limLog(pMac, LOGW, FL("Ignoring delts request: wme not enabled/capable"));)
             return;
         }
-        PELOG2(limLog(pMac, LOG2, FL("WME Delts received"));)
+        limLog(pMac, LOG1, FL("WME Delts received"));
     }
     else if ((psessionEntry->limQosEnabled) && pSta->lleEnabled)
         {
-        PELOG2(limLog(pMac, LOG2, FL("11e QoS Delts received"));)
+        limLog(pMac, LOG1, FL("11e QoS Delts received"));
         }
     else if ((psessionEntry->limWsmEnabled) && pSta->wsmEnabled)
         {
-        PELOG2(limLog(pMac, LOG2, FL("WSM Delts received"));)
+        limLog(pMac, LOG1, FL("WSM Delts received"));
         }
     else
     {
