@@ -569,7 +569,7 @@
 		label = "spi5-cs0-suspend";
 		spi5_cs0_sleep: cs0_sleep {
 			drive-strength = <2>;
-			bias-disable = <0>;
+			bias-pull-up;
 		};
 	};
 
@@ -842,7 +842,7 @@
 			status = "disabled";
 			compatible = "nmi,nmi326";
 			reg = <0>;
-			spi-max-frequency = <9600000>;
+			spi-max-frequency = <12000000>;
 			irq-gpio = <&msm_gpio 111 0>;
 			reset-gpio = <&msm_gpio 98 0>;
 			enable-gpio = <&msm_gpio 97 0>;
