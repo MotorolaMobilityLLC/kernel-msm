@@ -83,6 +83,8 @@
 		qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-status-value = <0x9c>;
+
+		#include "dsi-panel-mot-boe-450-qHD-video-supplies.dtsi"
 	};
 
 	mot_boe_450_qhd_vid_v2: qcom,mdss_dsi_mot_boe_450_qhd_video_v2 {
@@ -178,6 +180,8 @@
 		qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-status-value = <0x9c>;
+
+		#include "dsi-panel-mot-boe-450-qHD-video-supplies.dtsi"
 	};
 
 	mot_boe_450_qhd_vid_v1: qcom,mdss_dsi_mot_boe_450_qhd_video_v1 {
@@ -272,6 +276,8 @@
 		qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-status-value = <0x9c>;
+
+		#include "dsi-panel-mot-boe-450-qHD-video-supplies.dtsi"
 	};
 
 	mot_boe_450_qhd_vid_v0: qcom,mdss_dsi_mot_boe_450_qhd_video_v0 {
@@ -397,5 +403,7 @@
 		qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-status-value = <0x9c>;
+
+		#include "dsi-panel-mot-boe-450-qHD-video-supplies.dtsi"
 	};
 };
