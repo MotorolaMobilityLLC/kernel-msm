@@ -16,6 +16,7 @@
  * 02111-1307, USA
  */
 
+#include <linux/android_alarm.h>
 #include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/err.h>
@@ -30,12 +31,14 @@
 #include <linux/input-polldev.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/ktime.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/poll.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/switch.h>
+#include <linux/sysfs.h>
 #include <linux/time.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
@@ -103,6 +106,80 @@ const struct stm401_algo_info_t stm401_algo_info[STM401_NUM_ALGOS] = {
 };
 
 struct stm401_data *stm401_misc_data;
+
+/* STM401 sysfs functions/attributes */
+
+/* Attribute: timestamp_time_ns (RO) */
+static ssize_t timestamp_time_ns_show(
+	struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	*((uint64_t *)buf) = stm401_timestamp_ns();
+	return sizeof(uint64_t);
+}
+
+static struct device_attribute stm401_attributes[] = {
+	__ATTR_RO(timestamp_time_ns),
+	__ATTR_NULL
+};
+
+static int create_device_attributes(
+	struct device *dev,
+	struct device_attribute *attrs)
+{
+	int i;
+	int err = 0;
+
+	for (i = 0; attrs[i].attr.name != NULL; ++i) {
+		err = device_create_file(dev, &attrs[i]);
+		if (err)
+			break;
+	}
+
+	if (err) {
+		for (--i; i >= 0; --i)
+			device_remove_file(dev, &attrs[i]);
+	}
+
+	return err;
+}
+
+static void remove_device_attributes(
+	struct device *dev,
+	struct device_attribute *attrs)
+{
+	int i;
+
+	for (i = 0; attrs[i].attr.name != NULL; ++i)
+		device_remove_file(dev, &attrs[i]);
+}
+
+static int create_sysfs_interfaces(struct stm401_data *ps_stm401)
+{
+	int err = 0;
+
+	if (!ps_stm401)
+		return -EINVAL;
+
+	err = create_device_attributes(
+		ps_stm401->stm401_class_dev,
+		stm401_attributes);
+
+	if (err < 0)
+		remove_device_attributes(
+			ps_stm401->stm401_class_dev,
+			stm401_attributes);
+	return err;
+}
+
+/* END: STM401 sysfs functions/attributes */
+
+int64_t stm401_timestamp_ns(void)
+{
+	ktime_t now = alarm_get_elapsed_realtime();
+	return ktime_to_ns(now);
+}
 
 void stm401_wake(struct stm401_data *ps_stm401)
 {
@@ -1007,9 +1084,16 @@ static int stm401_probe(struct i2c_client *client,
 		dev_err(&client->dev,
 			"cdev_add as failed: %d\n", err);
 
-	device_create(ps_stm401->stm401_class, NULL,
+	ps_stm401->stm401_class_dev = device_create(
+		ps_stm401->stm401_class, NULL,
 		MKDEV(MAJOR(ps_stm401->stm401_dev_num), 0),
 		ps_stm401, "stm401_as");
+
+	err = create_sysfs_interfaces(ps_stm401);
+	if (err)
+		dev_err(&client->dev,
+			"create_sysfs_interfaces failed: %d",
+			err);
 
 	cdev_init(&ps_stm401->ms_cdev, &stm401_ms_fops);
 	ps_stm401->ms_cdev.owner = THIS_MODULE;

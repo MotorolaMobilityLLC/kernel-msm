@@ -40,8 +40,6 @@
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
-#include <linux/android_alarm.h>
-#include <linux/ktime.h>
 
 #include <linux/stm401.h>
 
@@ -77,10 +75,7 @@ int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
 	}
 	buffer->size = size;
 
-	/* The timestamp needs to be on the same timebase as    */
-	/* SystemClock.elapsedRealtimeNanos(), which is calling */
-	/* alarm_get_elapsed_realtime().                        */
-	buffer->timestamp = ktime_to_ns(alarm_get_elapsed_realtime());
+	buffer->timestamp = stm401_timestamp_ns();
 
 	ps_stm401->stm401_as_data_buffer_head = new_head;
 	wake_up(&ps_stm401->stm401_as_data_wq);
