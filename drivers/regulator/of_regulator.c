@@ -73,6 +73,9 @@ static void of_get_regulation_constraints(struct device_node *np,
 
 	constraints->pull_down = of_property_read_bool(np, "regulator-pull-down");
 
+	if (of_find_property(np, "regulator-bypass-on", NULL))
+		constraints->bypass_on = true;
+
 	if (of_property_read_bool(np, "regulator-allow-bypass"))
 		constraints->valid_ops_mask |= REGULATOR_CHANGE_BYPASS;
 
