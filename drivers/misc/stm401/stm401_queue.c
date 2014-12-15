@@ -50,7 +50,6 @@ int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
 {
 	int new_head;
 	struct stm401_android_sensor_data *buffer;
-	struct timespec ts;
 	static bool error_reported;
 
 	new_head = (ps_stm401->stm401_as_data_buffer_head + 1)
@@ -76,8 +75,7 @@ int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
 	}
 	buffer->size = size;
 
-	get_monotonic_boottime(&ts);
-	buffer->timestamp = ts.tv_sec*1000000000LL + ts.tv_nsec;
+	buffer->timestamp = stm401_timestamp_ns();
 
 	ps_stm401->stm401_as_data_buffer_head = new_head;
 	wake_up(&ps_stm401->stm401_as_data_wq);
