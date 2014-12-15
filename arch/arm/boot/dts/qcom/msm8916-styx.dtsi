@@ -26,32 +26,6 @@
 	qcom,dsi-pref-prim-pan = <&mot_boe_450_qhd_vid_v3>;
 	vci_disp-supply = <&pm8916_l17>;
 	vddio_disp-supply = <&pm8916_l6>;
-	qcom,panel-supply-entries {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		qcom,panel-supply-entry@0 {
-			qcom,supply-name = "vci_disp";
-			qcom,supply-min-voltage = <2850000>;
-			qcom,supply-max-voltage = <2850000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,panel-supply-entry@1 {
-			qcom,supply-name = "vddio_disp";
-			qcom,supply-min-voltage = <1800000>;
-			qcom,supply-max-voltage = <1800000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-	};
 };
 
 &mot_boe_450_qhd_vid_v0 {
