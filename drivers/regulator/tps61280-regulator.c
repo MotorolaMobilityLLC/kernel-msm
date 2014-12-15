@@ -54,6 +54,11 @@
 #define TPS61280_NORMAL_OPTEMP	40
 
 #define TPS61280_CONFIG_MODE_MASK	0x03
+#define TPS61280_CONFIG_MODE_VSEL	0x03
+#define TPS61280_CONFIG_MODE_FORCE_PWM	0x02
+#define TPS61280_CONFIG_MODE_AUTO_PWM	0x01
+#define TPS61280_CONFIG_MODE_DEVICE	0x00
+
 #define TPS61280_ILIM_MASK	0x0F
 #define TPS61280_VOUT_MASK	0x1F
 
@@ -88,6 +93,8 @@ struct tps61280_platform_data {
 	int		ilim_current_limit;
 	bool		bypass_pin_ctrl;
 	int		bypass_gpio;
+	bool		vsel_controlled_mode;
+	int		vsel_gpio;
 };
 
 struct tps61280_chip {
@@ -104,6 +111,7 @@ struct tps61280_chip {
 	int		gpio_en;
 	int		gpio_vsel;
 	int	bypass_state;
+	int	current_mode;
 };
 
 static const struct regmap_config tps61280_regmap_config = {
@@ -209,51 +217,57 @@ static int tps61280_get_voltage(struct regulator_dev *rdev)
 static int tps61280_set_mode(struct regulator_dev *rdev, unsigned int mode)
 {
 	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
-	int val;
+	unsigned int val;
 	int ret = 0;
+	int curr_mode;
 
 	switch (mode) {
-	case HARDWARE_CONTROL:
-		val = HARDWARE_CONTROL;
+	case REGULATOR_MODE_FAST:
+	case REGULATOR_MODE_NORMAL:
 		break;
-
-	case PFM_AUTO_TRANSTION_INTO_PWM:
-		val = PFM_AUTO_TRANSTION_INTO_PWM;
-		break;
-
-	case FORCED_PWM_OPERATION:
-		val = FORCED_PWM_OPERATION;
-		break;
-
-	case PFM_AUTO_TRANSITION_VSEL:
-		val = PFM_AUTO_TRANSITION_VSEL;
-		break;
-
 	default:
+		dev_err(tps->dev, "Mode is not supported\n");
 		return -EINVAL;
 	}
+
+	if (tps->current_mode == mode)
+		return 0;
+
+	curr_mode = mode;
+	if (curr_mode != REGULATOR_MODE_FAST)
+		curr_mode = REGULATOR_MODE_NORMAL;
+
+	if (tps->pdata.vsel_controlled_mode) {
+		if (!gpio_is_valid(tps->pdata.vsel_gpio))
+			return 0;
+
+		if (curr_mode == REGULATOR_MODE_FAST)
+			gpio_set_value_cansleep(tps->pdata.vsel_gpio, 1);
+		else
+			gpio_set_value_cansleep(tps->pdata.vsel_gpio, 0);
+		tps->current_mode = curr_mode;
+		return 0;
+	}
+
+	val = TPS61280_CONFIG_MODE_AUTO_PWM;
+	if (curr_mode != REGULATOR_MODE_FAST)
+		val = TPS61280_CONFIG_MODE_FORCE_PWM;
 
 	ret = regmap_update_bits(tps->rmap, TPS61280_CONFIG,
 				TPS61280_CONFIG_MODE_MASK, val);
 	if (ret < 0) {
-		dev_err(tps->dev, "CONFIG REG update failed %d\n", ret);
+		dev_err(tps->dev, "CONFIG update failed %d\n", ret);
 		return ret;
 	}
-	return ret;
+	tps->current_mode = curr_mode;
+	return 0;
 }
 
 static unsigned int tps61280_get_mode(struct regulator_dev *rdev)
 {
 	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
-	unsigned int data;
-	int ret;
 
-	ret = regmap_read(tps->rmap, TPS61280_CONFIG, &data);
-	if (ret < 0) {
-		dev_err(tps->dev, "CONFIG REG read failed %d\n", ret);
-		return ret;
-	}
-	return data & TPS61280_CONFIG_MODE_MASK;
+	return tps->current_mode;
 }
 
 static int tps61280_set_current_limit(struct regulator_dev *rdev, int min_ua,
@@ -478,6 +492,69 @@ static int tps61280_bypass_init(struct tps61280_chip *tps61280)
 	return 0;
 }
 
+static int tps61280_mode_init(struct tps61280_chip *tps61280)
+{
+	struct device *dev = tps61280->dev;
+	unsigned int val;
+	int ret;
+	int curr_mode;
+
+	if (!tps61280->rinit_data)
+		return 0;
+
+	tps61280->rinit_data->constraints.valid_ops_mask |=
+				REGULATOR_CHANGE_MODE;
+
+	curr_mode = tps61280->rinit_data->constraints.initial_mode;
+	if (curr_mode != REGULATOR_MODE_FAST)
+		curr_mode = REGULATOR_MODE_NORMAL;
+
+	if (tps61280->pdata.vsel_controlled_mode) {
+		int gpio_flag;
+
+		ret = regmap_update_bits(tps61280->rmap, TPS61280_CONFIG,
+				TPS61280_CONFIG_MODE_MASK,
+				TPS61280_CONFIG_MODE_VSEL);
+		if (ret < 0) {
+			dev_err(dev, "CONFIG update failed %d\n", ret);
+			return ret;
+		}
+
+		if (!gpio_is_valid(tps61280->pdata.vsel_gpio))
+			return 0;
+
+		if (curr_mode == REGULATOR_MODE_FAST)
+			gpio_flag = GPIOF_OUT_INIT_HIGH;
+		else
+			gpio_flag = GPIOF_OUT_INIT_LOW;
+
+		ret = devm_gpio_request_one(tps61280->dev,
+				tps61280->pdata.vsel_gpio,
+				gpio_flag, "tps61280-mode-vsel-gpio");
+		if (ret < 0) {
+			dev_err(dev, "VSEL-MODE GPIO request failed: %d\n",
+				ret);
+			return ret;
+		}
+
+		tps61280->current_mode = curr_mode;
+		return 0;
+	}
+
+	val = TPS61280_CONFIG_MODE_AUTO_PWM;
+	if (curr_mode != REGULATOR_MODE_FAST)
+		val = TPS61280_CONFIG_MODE_FORCE_PWM;
+
+	ret = regmap_update_bits(tps61280->rmap, TPS61280_CONFIG,
+				TPS61280_CONFIG_MODE_MASK, val);
+	if (ret < 0) {
+		dev_err(dev, "CONFIG update failed %d\n", ret);
+		return ret;
+	}
+	tps61280->current_mode = curr_mode;
+	return 0;
+}
+
 static int tps61280_initialize(struct tps61280_chip *tps61280)
 {
 	int device_mode;
@@ -562,13 +639,29 @@ static int tps61280_parse_dt_data(struct i2c_client *client,
 
 	pdata->gpio_vsel = of_get_named_gpio(np, "ti,gpio-vsel", 0);
 
+	pdata->vsel_controlled_mode = of_property_read_bool(np,
+					"ti,enable-vsel-controlled-mode");
+	if (pdata->vsel_controlled_mode) {
+		pdata->vsel_gpio = of_get_named_gpio(np,
+					"ti,vsel-pin-gpio", 0);
+		if ((pdata->vsel_gpio < 0) && (pdata->vsel_gpio != -EINVAL)) {
+			dev_err(&client->dev, "VSEL GPIO not available: %d\n",
+					pdata->vsel_gpio);
+			return pdata->vsel_gpio;
+		}
+	}
+
 	pdata->bypass_pin_ctrl = of_property_read_bool(np,
 					"ti,enable-bypass-pin-control");
 	if (pdata->bypass_pin_ctrl) {
 		pdata->bypass_gpio = of_get_named_gpio(np,
 					"ti,bypass-pin-gpio", 0);
-		if (pdata->bypass_gpio < 0)
+		if ((pdata->bypass_gpio < 0) &&
+				(pdata->bypass_gpio != -EINVAL)) {
+			dev_err(&client->dev, "BYPASS GPIO not available: %d\n",
+					pdata->bypass_gpio);
 			return pdata->bypass_gpio;
+		}
 	}
 	return 0;
 }
@@ -618,6 +711,12 @@ static int tps61280_probe(struct i2c_client *client,
 	ret = tps61280_bypass_init(tps61280);
 	if (ret < 0) {
 		dev_err(&client->dev, "Bypass init failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = tps61280_mode_init(tps61280);
+	if (ret < 0) {
+		dev_err(&client->dev, "Mode init failed: %d\n", ret);
 		return ret;
 	}
 
