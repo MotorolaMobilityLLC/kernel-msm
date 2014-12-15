@@ -256,11 +256,6 @@ enum {
 /* DSI controller #0 is always treated as a master in broadcast mode */
 #define DSI_CTRL_MASTER		DSI_CTRL_0
 #define DSI_CTRL_SLAVE		DSI_CTRL_1
-
-#define DSI_BUS_CLKS	BIT(0)
-#define DSI_LINK_CLKS	BIT(1)
-#define DSI_ALL_CLKS	((DSI_BUS_CLKS) | (DSI_LINK_CLKS))
-
 #define DSI_CTRL_LEFT		DSI_CTRL_0
 #define DSI_CTRL_RIGHT		DSI_CTRL_1
 
@@ -273,7 +268,6 @@ enum {
 #define DSI_EV_DSI_FIFO_EMPTY		0x0003
 #define DSI_EV_MDP_BUSY_RELEASE		0x80000000
 
-#define DSI_FLAG_CLOCK_MASTER		0x80000000
 struct dsi_cmd {
 	struct dsi_cmd_desc *cmd_desc;
 	char *read_size;
