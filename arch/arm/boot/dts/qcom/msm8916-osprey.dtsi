@@ -242,43 +242,6 @@
 	vddio_disp-supply = <&pm8916_l6>;
 	vsp_disp-supply = <&tps65132_pos>;
 	vsn_disp-supply = <&tps65132_neg>;
-	qcom,panel-supply-entries {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		qcom,panel-supply-entry@0 {
-			qcom,supply-name = "vddio_disp";
-			qcom,supply-min-voltage = <1800000>;
-			qcom,supply-max-voltage = <1800000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <2>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-                qcom,panel-supply-entry@1 {
-			qcom,supply-name = "vsp_disp";
-			qcom,supply-min-voltage = <5500000>;
-			qcom,supply-max-voltage = <5500000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <2>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,panel-supply-entry@2 {
-			qcom,supply-name = "vsn_disp";
-			qcom,supply-min-voltage = <5500000>;
-			qcom,supply-max-voltage = <5500000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <10>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-	};
 };
 
 &mot_inx_500_720p_vid_v0 {
