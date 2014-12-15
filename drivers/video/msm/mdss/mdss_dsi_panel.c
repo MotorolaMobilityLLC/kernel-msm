@@ -1998,7 +1998,8 @@ int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
 	return rc;
 }
 
-int mdss_dsi_panel_init(struct device_node *node,
+int mdss_dsi_panel_init(struct device *dev,
+	struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool cmd_cfg_cont_splash)
 {
@@ -2009,6 +2010,16 @@ int mdss_dsi_panel_init(struct device_node *node,
 	if (!node || !ctrl_pdata) {
 		pr_err("%s: Invalid arguments\n", __func__);
 		return -ENODEV;
+	}
+
+	rc = mdss_dsi_get_dt_vreg_data(dev,
+				node,
+				&ctrl_pdata->power_data[DSI_PANEL_PM],
+				DSI_PANEL_PM);
+	if (rc) {
+		DEV_ERR("%s: '%s' get_dt_vreg_data failed.rc=%d\n",
+			__func__, __mdss_dsi_pm_name(DSI_PANEL_PM), rc);
+		return rc;
 	}
 
 	pinfo = &ctrl_pdata->panel_data.panel_info;
