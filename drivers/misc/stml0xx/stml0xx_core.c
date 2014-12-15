@@ -1134,6 +1134,8 @@ static int stml0xx_resume(struct device *dev)
 
 static int stml0xx_suspend(struct device *dev)
 {
+	int mutex_locked = 0;
+	int mutex_timeout = 50;
 	struct stml0xx_data *ps_stml0xx = spi_get_drvdata(to_spi_device(dev));
 	dev_dbg(&stml0xx_misc_data->spi->dev, "%s", __func__);
 
@@ -1141,8 +1143,14 @@ static int stml0xx_suspend(struct device *dev)
 	ps_stml0xx->is_suspended = true;
 
 	/* wait for irq handlers to finish */
-	mutex_lock(&ps_stml0xx->lock);
-	mutex_unlock(&ps_stml0xx->lock);
+	do {
+		mutex_locked = mutex_trylock(&ps_stml0xx->lock);
+		if (!mutex_locked)
+			usleep_range(500, 1000);
+	} while (!mutex_locked && mutex_timeout-- >= 0);
+
+	if (mutex_locked)
+		mutex_unlock(&ps_stml0xx->lock);
 
 	return 0;
 }
