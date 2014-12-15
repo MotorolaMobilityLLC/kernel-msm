@@ -508,7 +508,8 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 		char cmd1, void (*fxn)(int), char *rbuf, int len);
 void mdss_dsi_get_hw_revision(struct mdss_dsi_ctrl_pdata *ctrl);
 
-int mdss_dsi_panel_init(struct device_node *node,
+int mdss_dsi_panel_init(struct device *dev,
+		struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		bool cmd_cfg_cont_splash);
 int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
@@ -538,6 +539,10 @@ static inline const char *__mdss_dsi_pm_supply_node_name(
 	default:		return "???";
 	}
 }
+int mdss_dsi_get_dt_vreg_data(struct device *dev,
+			struct device_node *of_node,
+			struct dss_module_power *mp,
+			enum dsi_pm_type module);
 
 int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
