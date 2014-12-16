@@ -1105,6 +1105,7 @@ static int stml0xx_resume(struct device *dev)
 
 	mutex_lock(&ps_stml0xx->lock);
 	ps_stml0xx->is_suspended = false;
+	enable_irq(ps_stml0xx->irq);
 
 	if (ps_stml0xx->pending_wake_work) {
 		stm_ws = kmalloc(
@@ -1136,9 +1137,11 @@ static int stml0xx_suspend(struct device *dev)
 	struct stml0xx_data *ps_stml0xx = spi_get_drvdata(to_spi_device(dev));
 	dev_dbg(&stml0xx_misc_data->spi->dev, "%s", __func__);
 
-	mutex_lock(&ps_stml0xx->lock);
+	disable_irq(ps_stml0xx->irq);
 	ps_stml0xx->is_suspended = true;
 
+	/* wait for irq handlers to finish */
+	mutex_lock(&ps_stml0xx->lock);
 	mutex_unlock(&ps_stml0xx->lock);
 
 	return 0;
