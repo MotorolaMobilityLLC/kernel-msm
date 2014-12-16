@@ -91,10 +91,13 @@ struct tps61280_platform_data {
 	int		voutfloor_voltage;
 	int		voutroof_voltage;
 	int		ilim_current_limit;
+
 	bool		bypass_pin_ctrl;
 	int		bypass_gpio;
 	bool		vsel_controlled_mode;
 	int		vsel_gpio;
+	bool		enable_pin_ctrl;
+	int		enable_gpio;
 };
 
 struct tps61280_chip {
@@ -112,6 +115,7 @@ struct tps61280_chip {
 	int		gpio_vsel;
 	int	bypass_state;
 	int	current_mode;
+	int	enable_state;
 };
 
 static const struct regmap_config tps61280_regmap_config = {
@@ -314,6 +318,58 @@ static int tps61280_get_current_limit(struct regulator_dev *rdev)
 	return val;
 }
 
+static int tps61280_regulator_enable(struct regulator_dev *rdev)
+{
+	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
+	u32 val;
+	int ret;
+
+	if (tps->pdata.enable_pin_ctrl) {
+		gpio_set_value_cansleep(tps->pdata.enable_gpio, 1);
+		return 0;
+	}
+
+	val = TPS61280_CONFIG_BYPASS_PASS_TROUGH;
+	if (tps->bypass_state)
+		val = TPS61280_CONFIG_BYPASS_AUTO_TRANS;
+	ret = regmap_update_bits(tps->rmap, TPS61280_CONFIG,
+				TPS61280_CONFIG_ENABLE_MASK, val);
+	if (ret < 0) {
+		dev_err(tps->dev, "CONFIG update failed %d\n", ret);
+		return ret;
+	}
+	tps->enable_state = true;
+	return 0;
+}
+
+static int tps61280_regulator_disable(struct regulator_dev *rdev)
+{
+	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
+	int ret;
+
+	if (tps->pdata.enable_pin_ctrl) {
+		gpio_set_value_cansleep(tps->pdata.enable_gpio, 0);
+		return 0;
+	}
+
+	ret = regmap_update_bits(tps->rmap, TPS61280_CONFIG,
+			TPS61280_CONFIG_ENABLE_MASK,
+			TPS61280_CONFIG_BYPASS_SHUTDOWN);
+	if (ret < 0) {
+		dev_err(tps->dev, "CONFIG update failed %d\n", ret);
+		return ret;
+	}
+	tps->enable_state = false;
+	return 0;
+}
+
+static int tps61280_regulator_is_enabled(struct regulator_dev *rdev)
+{
+	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
+
+	return tps->enable_state;
+}
+
 static int tps61280_set_bypass(struct regulator_dev *rdev, bool enable)
 {
 	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
@@ -328,6 +384,11 @@ static int tps61280_set_bypass(struct regulator_dev *rdev, bool enable)
 		else
 			gpio_set_value_cansleep(tps->pdata.bypass_gpio, 0);
 
+		tps->bypass_state = enable;
+		return 0;
+	}
+
+	if (!tps->enable_state) {
 		tps->bypass_state = enable;
 		return 0;
 	}
@@ -362,6 +423,9 @@ static struct regulator_ops tps61280_ops = {
 	.get_current_limit	= tps61280_get_current_limit,
 	.set_bypass		= tps61280_set_bypass,
 	.get_bypass		= tps61280_get_bypass,
+	.enable			= tps61280_regulator_enable,
+	.disable		= tps61280_regulator_disable,
+	.is_enabled		= tps61280_regulator_is_enabled,
 };
 
 static int tps61280_thermal_read_temp(void *data, long *temp)
@@ -479,6 +543,12 @@ static int tps61280_bypass_init(struct tps61280_chip *tps61280)
 		return 0;
 	}
 
+	if (!tps61280->enable_state) {
+		tps61280->bypass_state =
+			tps61280->rinit_data->constraints.bypass_on;
+		return 0;
+	}
+
 	val = TPS61280_CONFIG_BYPASS_PASS_TROUGH;
 	if (tps61280->rinit_data->constraints.bypass_on)
 		val = TPS61280_CONFIG_BYPASS_AUTO_TRANS;
@@ -504,6 +574,9 @@ static int tps61280_mode_init(struct tps61280_chip *tps61280)
 
 	tps61280->rinit_data->constraints.valid_ops_mask |=
 				REGULATOR_CHANGE_MODE;
+	tps61280->rinit_data->constraints.valid_modes_mask |=
+					REGULATOR_MODE_FAST |
+					REGULATOR_MODE_NORMAL;
 
 	curr_mode = tps61280->rinit_data->constraints.initial_mode;
 	if (curr_mode != REGULATOR_MODE_FAST)
@@ -552,6 +625,56 @@ static int tps61280_mode_init(struct tps61280_chip *tps61280)
 		return ret;
 	}
 	tps61280->current_mode = curr_mode;
+	return 0;
+}
+
+static int tps61280_regulator_enable_init(struct tps61280_chip *tps61280)
+{
+	struct device *dev = tps61280->dev;
+	int ret;
+	int enable_state = 0;
+
+	if (!tps61280->rinit_data)
+		return 0;
+
+	tps61280->rinit_data->constraints.valid_ops_mask |=
+				REGULATOR_CHANGE_STATUS;
+
+	if (tps61280->rinit_data->constraints.always_on ||
+		tps61280->rinit_data->constraints.boot_on)
+			enable_state = 1;
+
+	if (tps61280->pdata.enable_pin_ctrl) {
+		int gpio_flag = GPIOF_OUT_INIT_LOW;
+		int enable_state = 0;
+
+		if (!gpio_is_valid(tps61280->pdata.enable_pin_ctrl))
+			return 0;
+
+		if (enable_state)
+			gpio_flag = GPIOF_OUT_INIT_HIGH;
+
+		ret = devm_gpio_request_one(tps61280->dev,
+				tps61280->pdata.enable_pin_ctrl,
+				gpio_flag, "tps61280-en-pin-gpio");
+		if (ret < 0) {
+			dev_err(dev, "Enable GPIO request failed: %d\n", ret);
+			return ret;
+		}
+		tps61280->enable_state = enable_state;
+		return 0;
+	}
+
+	if (!enable_state) {
+		ret = regmap_update_bits(tps61280->rmap, TPS61280_CONFIG,
+				TPS61280_CONFIG_ENABLE_MASK,
+				TPS61280_CONFIG_BYPASS_SHUTDOWN);
+		if (ret < 0) {
+			dev_err(dev, "CONFIG update failed %d\n", ret);
+			return ret;
+		}
+	}
+	tps61280->enable_state = enable_state;
 	return 0;
 }
 
@@ -651,6 +774,19 @@ static int tps61280_parse_dt_data(struct i2c_client *client,
 		}
 	}
 
+	pdata->enable_pin_ctrl = of_property_read_bool(np,
+					"ti,enable-en-pin-control");
+	if (pdata->enable_pin_ctrl) {
+		pdata->enable_gpio = of_get_named_gpio(np,
+					"ti,en-pin-gpio", 0);
+		if ((pdata->enable_gpio < 0) &&
+				(pdata->enable_gpio != -EINVAL)) {
+			dev_err(&client->dev, "EN GPIO not available: ^%d\n",
+					pdata->enable_gpio);
+			return pdata->enable_gpio;
+		}
+	}
+
 	pdata->bypass_pin_ctrl = of_property_read_bool(np,
 					"ti,enable-bypass-pin-control");
 	if (pdata->bypass_pin_ctrl) {
@@ -706,6 +842,12 @@ static int tps61280_probe(struct i2c_client *client,
 	if (!tps61280->rinit_data) {
 		dev_err(&client->dev, "No Regulator init data\n");
 		return -EINVAL;
+	}
+
+	ret = tps61280_regulator_enable_init(tps61280);
+	if (ret < 0) {
+		dev_err(&client->dev, "Enable init failed: %d\n", ret);
+		return ret;
 	}
 
 	ret = tps61280_bypass_init(tps61280);
