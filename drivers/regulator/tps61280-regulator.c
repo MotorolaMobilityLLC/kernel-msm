@@ -79,6 +79,10 @@
 #define TPS61280_MAX_VOUT_REG	2
 #define TPS61280_VOUT_MASK	0x1F
 
+#define TPS61280_VOUT_VMIN	2850000
+#define TPS61280_VOUT_VMAX	4400000
+#define TPS61280_VOUT_VSTEP	 500000
+
 struct tps61280_platform_data {
 	bool		bypass_pin_ctrl;
 	int		bypass_gpio;
@@ -719,6 +723,8 @@ static int tps61280_regulator_enable_init(struct tps61280_chip *tps61280)
 static int tps61280_dvs_init(struct tps61280_chip *tps61280)
 {
 	struct device *dev = tps61280->dev;
+	unsigned int init_uv;
+	unsigned int vsel;
 	int ret;
 
 	if (!tps61280->rinit_data)
@@ -757,6 +763,26 @@ static int tps61280_dvs_init(struct tps61280_chip *tps61280)
 			tps61280->lru_index[i] = i;
 		tps61280->lru_index[0] = tps61280->curr_vout_reg;
 		tps61280->lru_index[tps61280->curr_vout_reg] = 0;
+	}
+
+	init_uv = tps61280->rinit_data->constraints.init_uV;
+	if ((init_uv >= TPS61280_VOUT_VMIN) &&
+			(init_uv <= TPS61280_VOUT_VMAX)) {
+		vsel = DIV_ROUND_UP((init_uv - TPS61280_VOUT_VMIN),
+				TPS61280_VOUT_VSTEP);
+		ret = regmap_update_bits(tps61280->rmap, TPS61280_VOUTFLOORSET,
+				TPS61280_VOUT_MASK, vsel);
+		if (ret < 0) {
+			dev_err(dev, "VOUTFLOORSET update failed: %d\n", ret);
+			return ret;
+		}
+
+		ret = regmap_update_bits(tps61280->rmap, TPS61280_VOUTROOFSET,
+				TPS61280_VOUT_MASK, vsel);
+		if (ret < 0) {
+			dev_err(dev, "VOUTROOFSET update failed: %d\n", ret);
+			return ret;
+		}
 	}
 	return 0;
 }
@@ -864,6 +890,12 @@ static int tps61280_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
+	ret = tps61280_dvs_init(tps61280);
+	if (ret < 0) {
+		dev_err(&client->dev, "DVS init failed: %d\n", ret);
+		return ret;
+	}
+
 	ret = tps61280_regulator_enable_init(tps61280);
 	if (ret < 0) {
 		dev_err(&client->dev, "Enable init failed: %d\n", ret);
@@ -882,19 +914,13 @@ static int tps61280_probe(struct i2c_client *client,
 		return ret;
 	}
 
-	ret = tps61280_dvs_init(tps61280);
-	if (ret < 0) {
-		dev_err(&client->dev, "DVS init failed: %d\n", ret);
-		return ret;
-	}
-
 	tps61280->rdesc.name  = "tps61280-dcdc";
 	tps61280->rdesc.ops   = &tps61280_ops;
 	tps61280->rdesc.type  = REGULATOR_VOLTAGE;
 	tps61280->rdesc.owner = THIS_MODULE;
 	tps61280->rdesc.linear_min_sel = 0;
-	tps61280->rdesc.min_uV = 2850000;
-	tps61280->rdesc.uV_step = 50000;
+	tps61280->rdesc.min_uV = TPS61280_VOUT_VMIN;
+	tps61280->rdesc.uV_step = TPS61280_VOUT_VSTEP;
 	tps61280->rdesc.n_voltages = 0x20;
 
 	rconfig.dev = tps61280->dev;
