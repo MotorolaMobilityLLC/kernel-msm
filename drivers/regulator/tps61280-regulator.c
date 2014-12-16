@@ -33,7 +33,6 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
-#include <linux/mfd/core.h>
 #include <linux/thermal.h>
 
 #define TPS61280_CONFIG		0x01
@@ -77,13 +76,8 @@
 #define TPS61280_HOTDIE_MASK	BIT(6)
 #define TPS61280_THERMALSD_MASK	BIT(7)
 
-enum tps61280_device_modes {
-	HARDWARE_CONTROL,
-	PFM_AUTO_TRANSTION_INTO_PWM,
-	FORCED_PWM_OPERATION,
-	PFM_AUTO_TRANSITION_VSEL,
-};
-
+#define TPS61280_MAX_VOUT_REG	2
+#define TPS61280_VOUT_MASK	0x1F
 struct tps61280_platform_data {
 	int		gpio_en;
 	int		gpio_vsel;
@@ -95,7 +89,9 @@ struct tps61280_platform_data {
 	bool		bypass_pin_ctrl;
 	int		bypass_gpio;
 	bool		vsel_controlled_mode;
+	bool		vsel_controlled_dvs;
 	int		vsel_gpio;
+	int		vsel_pin_default_state;
 	bool		enable_pin_ctrl;
 	int		enable_gpio;
 };
@@ -108,6 +104,12 @@ struct tps61280_chip {
 	struct tps61280_platform_data	pdata;
 	struct device_node		*tps_np;
 	struct regmap		*rmap;
+
+	int lru_index[TPS61280_MAX_VOUT_REG];
+	int curr_vout_val[TPS61280_MAX_VOUT_REG];
+	int curr_vout_reg;
+	int curr_vsel_gpio_val;
+
 	struct thermal_zone_device	*tz_device;
 	struct mutex		mutex;
 	struct regulator_init_data	*rinit_data;
@@ -124,98 +126,100 @@ static const struct regmap_config tps61280_regmap_config = {
 	.max_register = 5,
 };
 
-static int tps61280_val_to_reg(int val, int offset, int div, int nbits,
-					bool roundup)
+/*
+ * find_voltage_set_register: Find new voltage configuration register (VOUT).
+ * The finding of the new VOUT register will be based on the LRU mechanism.
+ * Each VOUT register will have different voltage configured . This
+ * Function will look if any of the VOUT register have requested voltage set
+ * or not.
+ *     - If it is already there then it will make that register as most
+ *       recently used and return as found so that caller need not to set
+ *       the VOUT register but need to set the proper gpios to select this
+ *       VOUT register.
+ *     - If requested voltage is not found then it will use the least
+ *       recently mechanism to get new VOUT register for new configuration
+ *       and will return not_found so that caller need to set new VOUT
+ *       register and then gpios (both).
+ */
+static bool find_voltage_set_register(struct tps61280_chip *tps,
+		int req_vsel, int *vout_reg, int *gpio_val)
 {
-	int max_val = offset + (BIT(nbits) - 1) * div;
+	int i;
+	bool found = false;
+	int new_vout_reg = tps->lru_index[TPS61280_MAX_VOUT_REG - 1];
+	int found_index = TPS61280_MAX_VOUT_REG - 1;
 
-	if (val <= offset)
-		return 0;
-
-	if (val >= max_val)
-		return BIT(nbits) - 1;
-
-	if (roundup)
-		return DIV_ROUND_UP(val - offset, div);
-	else
-		return (val - offset) / div;
-}
-
-static int tps61280_set_voltage(struct regulator_dev *rdev,
-			int min_uv, int max_uv, unsigned *selector)
-{
-	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
-	int val;
-	int ret = 0;
-	int gpio_val;
-
-	if (!max_uv)
-		return -EINVAL;
-
-	dev_info(tps->dev, "Setting output voltage %d\n", max_uv/1000);
-
-	val = tps61280_val_to_reg(max_uv/1000, TPS61280_VOUT_OFFSET,
-					TPS61280_VOUT_STEP, 5, 0);
-	if (val < 0)
-		return -EINVAL;
-
-	if (gpio_is_valid(tps->gpio_vsel))
-		gpio_val = gpio_get_value_cansleep(tps->gpio_vsel);
-	else
-		return -EINVAL;
-
-	if (gpio_val) {
-		ret = regmap_update_bits(tps->rmap, TPS61280_VOUTROOFSET,
-					TPS61280_VOUT_MASK, val);
-		if (ret < 0) {
-			dev_err(tps->dev, "VOUTFLR REG update failed %d\n",
-					ret);
-			return ret;
-		}
-	} else {
-		ret = regmap_update_bits(tps->rmap, TPS61280_VOUTFLOORSET,
-					TPS61280_VOUT_MASK, val);
-		if (ret < 0) {
-			dev_err(tps->dev, "VOUTROOF REG update failed %d\n",
-					ret);
-			return ret;
+	for (i = 0; i < TPS61280_MAX_VOUT_REG; ++i) {
+		if (tps->curr_vout_val[tps->lru_index[i]] == req_vsel) {
+			new_vout_reg = tps->lru_index[i];
+			found_index = i;
+			found = true;
+			goto update_lru_index;
 		}
 	}
 
-	return ret;
+update_lru_index:
+	for (i = found_index; i > 0; i--)
+		tps->lru_index[i] = tps->lru_index[i - 1];
+
+	tps->lru_index[0] = new_vout_reg;
+	*gpio_val = new_vout_reg;
+	*vout_reg = TPS61280_VOUTFLOORSET + new_vout_reg;
+	return found;
 }
 
-static int tps61280_get_voltage(struct regulator_dev *rdev)
+static int tps61280_dcdc_get_voltage_sel(struct regulator_dev *rdev)
 {
 	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
-	u32 val;
+	unsigned int data;
 	int ret;
-	int gpio_val;
 
-	if (gpio_is_valid(tps->gpio_vsel))
-		gpio_val = gpio_get_value_cansleep(tps->gpio_vsel);
-	else
-		return -EINVAL;
+	ret = regmap_read(tps->rmap, tps->curr_vout_reg, &data);
+	if (ret < 0) {
+		dev_err(tps->dev, "register %d read failed: %d\n",
+			tps->curr_vout_reg, ret);
+		return ret;
+	}
+	return data & TPS61280_VOUT_MASK;
+}
 
-	if (gpio_val) {
-		ret = regmap_read(tps->rmap, TPS61280_VOUTROOFSET, &val);
+static int tps61280_dcdc_set_voltage_sel(struct regulator_dev *rdev,
+	     unsigned vsel)
+{
+	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
+	int ret;
+	bool found = false;
+	int vout_reg = tps->curr_vout_reg;
+	int gpio_val = tps->curr_vsel_gpio_val;
+
+	/*
+	 * If gpios are available to select the VOUT register then least
+	 * recently used register for new configuration.
+	 */
+	if (tps->pdata.vsel_controlled_dvs &&
+			gpio_is_valid(tps->pdata.vsel_gpio))
+		found = find_voltage_set_register(tps, vsel,
+					&vout_reg, &gpio_val);
+
+	if (!found) {
+		ret = regmap_update_bits(tps->rmap, vout_reg,
+					TPS61280_VOUT_MASK, vsel);
 		if (ret < 0) {
-			dev_err(tps->dev, "VOUTROOF REG read failed %d\n",
-					ret);
+			dev_err(tps->dev, "register %d update failed: %d\n",
+				 vout_reg, ret);
 			return ret;
 		}
-	} else {
-		ret = regmap_read(tps->rmap, TPS61280_VOUTFLOORSET, &val);
-		if (ret < 0) {
-			dev_err(tps->dev, "VOUTFLR REG read failed %d\n",
-					ret);
-			return ret;
-		}
+		tps->curr_vout_reg = vout_reg;
+		tps->curr_vout_val[gpio_val] = vsel;
 	}
 
-	val &= TPS61280_VOUT_MASK;
-	val = val * TPS61280_VOUT_STEP + TPS61280_VOUT_OFFSET;
-	return val;
+	/* Select proper VOUT register vio gpios */
+	if (tps->pdata.vsel_controlled_dvs &&
+			gpio_is_valid(tps->pdata.vsel_gpio)) {
+		gpio_set_value_cansleep(tps->pdata.vsel_gpio, gpio_val & 0x1);
+		tps->curr_vsel_gpio_val = gpio_val;
+	}
+	return 0;
 }
 
 static int tps61280_set_mode(struct regulator_dev *rdev, unsigned int mode)
@@ -272,6 +276,23 @@ static unsigned int tps61280_get_mode(struct regulator_dev *rdev)
 	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
 
 	return tps->current_mode;
+}
+
+static int tps61280_val_to_reg(int val, int offset, int div, int nbits,
+					bool roundup)
+{
+	int max_val = offset + (BIT(nbits) - 1) * div;
+
+	if (val <= offset)
+		return 0;
+
+	if (val >= max_val)
+		return BIT(nbits) - 1;
+
+	if (roundup)
+		return DIV_ROUND_UP(val - offset, div);
+	else
+		return (val - offset) / div;
 }
 
 static int tps61280_set_current_limit(struct regulator_dev *rdev, int min_ua,
@@ -415,8 +436,9 @@ static int tps61280_get_bypass(struct regulator_dev *rdev, bool *enable)
 }
 
 static struct regulator_ops tps61280_ops = {
-	.set_voltage		= tps61280_set_voltage,
-	.get_voltage		= tps61280_get_voltage,
+	.set_voltage_sel	= tps61280_dcdc_set_voltage_sel,
+	.get_voltage_sel	= tps61280_dcdc_get_voltage_sel,
+	.list_voltage		= regulator_list_voltage_linear,
 	.set_mode		= tps61280_set_mode,
 	.get_mode		= tps61280_get_mode,
 	.set_current_limit	= tps61280_set_current_limit,
@@ -678,6 +700,48 @@ static int tps61280_regulator_enable_init(struct tps61280_chip *tps61280)
 	return 0;
 }
 
+static int tps61280_dvs_init(struct tps61280_chip *tps61280)
+{
+	struct device *dev = tps61280->dev;
+	int ret;
+
+	if (!tps61280->rinit_data)
+		return 0;
+
+	tps61280->rinit_data->constraints.valid_ops_mask |=
+				REGULATOR_CHANGE_VOLTAGE;
+
+	tps61280->curr_vsel_gpio_val = tps61280->pdata.vsel_pin_default_state;
+	tps61280->curr_vout_reg = TPS61280_VOUTFLOORSET +
+				tps61280->pdata.vsel_pin_default_state;
+	tps61280->lru_index[0] = tps61280->curr_vout_reg;
+
+	if (tps61280->pdata.vsel_controlled_dvs &&
+		gpio_is_valid(tps61280->pdata.vsel_gpio)) {
+		int gpio_flags;
+		int i;
+
+		gpio_flags = (tps61280->pdata.vsel_pin_default_state) ?
+				GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW;
+		ret = devm_gpio_request_one(dev, tps61280->pdata.vsel_gpio,
+				gpio_flags, "tps61280-vsel-dvs");
+		if (ret) {
+			dev_err(dev, "VSEL GPIO request failed: %d\n", ret);
+			return ret;
+		}
+
+		/*
+		 * Initialize the lru index with vout_reg id
+		 * The index 0 will be most recently used and
+		 * set with the max->curr_vout_reg */
+		for (i = 0; i < TPS61280_MAX_VOUT_REG; ++i)
+			tps61280->lru_index[i] = i;
+		tps61280->lru_index[0] = tps61280->curr_vout_reg;
+		tps61280->lru_index[tps61280->curr_vout_reg] = 0;
+	}
+	return 0;
+}
+
 static int tps61280_initialize(struct tps61280_chip *tps61280)
 {
 	int device_mode;
@@ -764,7 +828,9 @@ static int tps61280_parse_dt_data(struct i2c_client *client,
 
 	pdata->vsel_controlled_mode = of_property_read_bool(np,
 					"ti,enable-vsel-controlled-mode");
-	if (pdata->vsel_controlled_mode) {
+	pdata->vsel_controlled_dvs = of_property_read_bool(np,
+					"ti,enable-vsel-controlled-dvs");
+	if (pdata->vsel_controlled_mode || pdata->vsel_controlled_dvs) {
 		pdata->vsel_gpio = of_get_named_gpio(np,
 					"ti,vsel-pin-gpio", 0);
 		if ((pdata->vsel_gpio < 0) && (pdata->vsel_gpio != -EINVAL)) {
@@ -772,6 +838,15 @@ static int tps61280_parse_dt_data(struct i2c_client *client,
 					pdata->vsel_gpio);
 			return pdata->vsel_gpio;
 		}
+	}
+	if (pdata->vsel_controlled_dvs) {
+		ret = of_property_read_u32(np, "ti,vsel-pin-default-state",
+				&pval);
+		if (ret < 0) {
+			dev_err(&client->dev, "VSEL default state not found\n");
+			return ret;
+		}
+		pdata->vsel_pin_default_state = pval;
 	}
 
 	pdata->enable_pin_ctrl = of_property_read_bool(np,
@@ -862,6 +937,33 @@ static int tps61280_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	ret = tps61280_dvs_init(tps61280);
+	if (ret < 0) {
+		dev_err(&client->dev, "DVS init failed: %d\n", ret);
+		return ret;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	tps61280->gpio_en = tps61280->pdata.gpio_en;
 	tps61280->gpio_vsel = tps61280->pdata.gpio_vsel;
 	tps61280->tps_np = client->dev.of_node;
@@ -870,8 +972,10 @@ static int tps61280_probe(struct i2c_client *client,
 	tps61280->rdesc.ops   = &tps61280_ops;
 	tps61280->rdesc.type  = REGULATOR_VOLTAGE;
 	tps61280->rdesc.owner = THIS_MODULE;
+	tps61280->rdesc.linear_min_sel = 0;
 	tps61280->rdesc.min_uV = 2850000;
 	tps61280->rdesc.uV_step = 50000;
+	tps61280->rdesc.n_voltages = 0x20;
 
 	rconfig.dev = tps61280->dev;
 	rconfig.of_node =  tps61280->tps_np;
