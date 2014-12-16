@@ -90,6 +90,7 @@ struct tps61280_platform_data {
 	int		bypass_gpio;
 	bool		vsel_controlled_mode;
 	bool		vsel_controlled_dvs;
+	bool		vsel_controlled_sleep;
 	int		vsel_gpio;
 	int		vsel_pin_default_state;
 	bool		enable_pin_ctrl;
@@ -109,6 +110,8 @@ struct tps61280_chip {
 	int curr_vout_val[TPS61280_MAX_VOUT_REG];
 	int curr_vout_reg;
 	int curr_vsel_gpio_val;
+
+	int sleep_vout_reg;
 
 	struct thermal_zone_device	*tz_device;
 	struct mutex		mutex;
@@ -218,6 +221,28 @@ static int tps61280_dcdc_set_voltage_sel(struct regulator_dev *rdev,
 			gpio_is_valid(tps->pdata.vsel_gpio)) {
 		gpio_set_value_cansleep(tps->pdata.vsel_gpio, gpio_val & 0x1);
 		tps->curr_vsel_gpio_val = gpio_val;
+	}
+	return 0;
+}
+
+static int tps61280_dcdc_set_sleep_voltage_sel(struct regulator_dev *rdev,
+		unsigned sel)
+{
+	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
+	int ret;
+
+	if (!tps->pdata.vsel_controlled_sleep ||
+		gpio_is_valid(tps->pdata.vsel_gpio)) {
+		dev_err(tps->dev, "Regulator has invalid configuration\n");
+		return -EINVAL;
+	}
+
+	ret = regmap_update_bits(tps->rmap, tps->sleep_vout_reg,
+			TPS61280_VOUT_MASK, sel);
+	if (ret < 0) {
+		dev_err(tps->dev, "register %d update failed: %d\n",
+			 tps->sleep_vout_reg, ret);
+		return ret;
 	}
 	return 0;
 }
@@ -448,6 +473,7 @@ static struct regulator_ops tps61280_ops = {
 	.enable			= tps61280_regulator_enable,
 	.disable		= tps61280_regulator_disable,
 	.is_enabled		= tps61280_regulator_is_enabled,
+	.set_sleep_voltage_sel	= tps61280_dcdc_set_sleep_voltage_sel,
 };
 
 static int tps61280_thermal_read_temp(void *data, long *temp)
@@ -715,6 +741,9 @@ static int tps61280_dvs_init(struct tps61280_chip *tps61280)
 	tps61280->curr_vout_reg = TPS61280_VOUTFLOORSET +
 				tps61280->pdata.vsel_pin_default_state;
 	tps61280->lru_index[0] = tps61280->curr_vout_reg;
+	tps61280->sleep_vout_reg = TPS61280_VOUTFLOORSET;
+	if (!tps61280->pdata.vsel_pin_default_state)
+		tps61280->sleep_vout_reg += 1;
 
 	if (tps61280->pdata.vsel_controlled_dvs &&
 		gpio_is_valid(tps61280->pdata.vsel_gpio)) {
@@ -830,6 +859,9 @@ static int tps61280_parse_dt_data(struct i2c_client *client,
 					"ti,enable-vsel-controlled-mode");
 	pdata->vsel_controlled_dvs = of_property_read_bool(np,
 					"ti,enable-vsel-controlled-dvs");
+	pdata->vsel_controlled_sleep = of_property_read_bool(np,
+					"ti,enable-vsel-controlled-sleep");
+	pdata->vsel_gpio = -EINVAL;
 	if (pdata->vsel_controlled_mode || pdata->vsel_controlled_dvs) {
 		pdata->vsel_gpio = of_get_named_gpio(np,
 					"ti,vsel-pin-gpio", 0);
@@ -839,7 +871,7 @@ static int tps61280_parse_dt_data(struct i2c_client *client,
 			return pdata->vsel_gpio;
 		}
 	}
-	if (pdata->vsel_controlled_dvs) {
+	if (pdata->vsel_controlled_dvs || pdata->vsel_controlled_sleep) {
 		ret = of_property_read_u32(np, "ti,vsel-pin-default-state",
 				&pval);
 		if (ret < 0) {
