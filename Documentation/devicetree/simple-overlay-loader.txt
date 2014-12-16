@@ -1,0 +1,38 @@
+Simple Device Tree Overlay Loader
+---------------------------------
+
+This document briefly explains how to use the Simple Overlay Loader, provided
+in drivers/misc/ovloader.c.
+
+
+Compiling
+---------
+Compilation of the loader is controlled by the CONFIG_SIMPLE_OVERLAY_LOADER
+option.
+
+Overlay blobs can be compiled by invoking DTC with the '-@' flag, which will
+enable the necessary extensions to the device tree format. The tree being
+overlaid needs to have been compiled with the '-@' flag as well, to include
+symbol information necessary to load overlays. Please refer to
+Documentation/devicetree/overlay-notes.txt for information on creating overlay
+source files.
+
+
+Loading an Overlay
+------------------
+When the loader is present on a running system, it exposes the following sysfs
+node as a means initiating the loading process:
+/sys/devices/platform/ovloader.0/load
+
+To load an overlay, userspace needs to write the filename of an overlay blob to
+this node. The loader expects to find the overlay blobs in the standard system
+firmware directory.
+
+
+Example:
+--------
+The following command will cause /lib/firmware/msm8994-mtp-storage-overlay.dtb
+to be loaded and applied to the live device tree:
+
+# echo msm8994-mtp-storage-overlay.dtb > /sys/devices/platform/ovloader.0/load
+

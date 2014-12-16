@@ -620,6 +620,17 @@ config QCOM_LIQUID_DOCK
 	  the docking station of various models of Qualcomm Technology's
 	  LiQUID Mobile Development Platforms.
 
+config SIMPLE_OVERLAY_LOADER
+	tristate "Simple device tree overlay loader"
+	depends on OF_OVERLAY
+	help
+	  Simple device tree overlay loader. This allows you to load arbitrary
+	  device tree overlays (located in the standard firmware directory) by
+	  writing the name of the overlay to be loaded to the sysfs node
+	  /sys/devices/platform/ovloader.0/load.
+
+	  If you are not sure what this means, say 'N' here.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
