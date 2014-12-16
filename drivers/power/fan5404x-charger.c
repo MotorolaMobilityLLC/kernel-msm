@@ -264,6 +264,8 @@ struct fan5404x_chg {
 	atomic_t otg_enabled;
 	int ic_info_pn;
 	bool factory_configured;
+	int max_rate_cap;
+	struct delayed_work iusb_work;
 };
 
 static struct fan5404x_chg *the_chip;
@@ -493,11 +495,15 @@ static int fan5404x_set_ibuslim(struct fan5404x_chg *chip,
 	int rc;
 
 	if (chip->ic_info_pn == FAN54046) {
-		for (i = ARRAY_SIZE(ibuslim_fan54046_vals) - 1; i >= 0; i--)
+		for (i = ARRAY_SIZE(ibuslim_fan54046_vals) - 1 -
+			     chip->max_rate_cap;
+		     i >= 0; i--)
 			if (limit >= ibuslim_fan54046_vals[i])
 				break;
 	} else {
-		for (i = ARRAY_SIZE(ibuslim_fan54053_vals) - 1; i >= 0; i--)
+		for (i = ARRAY_SIZE(ibuslim_fan54053_vals) - 1 -
+			     chip->max_rate_cap;
+		     i >= 0; i--)
 			if (limit >= ibuslim_fan54053_vals[i])
 				break;
 	}
@@ -510,6 +516,12 @@ static int fan5404x_set_ibuslim(struct fan5404x_chg *chip,
 	if (rc) {
 		dev_err(chip->dev, "Failed to set IBUSLIM: %d\n", rc);
 		return rc;
+	} else if (chip->ic_info_pn == FAN54046) {
+		dev_warn(chip->dev, "Set IBUSLIM: %d mA\n",
+			 ibuslim_fan54046_vals[i]);
+	} else {
+		dev_warn(chip->dev, "Set IBUSLIM: %d mA\n",
+			 ibuslim_fan54053_vals[i]);
 	}
 
 	return 0;
@@ -622,6 +634,16 @@ static int configure_for_factory_cable_insertion(struct fan5404x_chg *chip)
 	chip->factory_configured = true;
 
 	return rc;
+}
+
+static void iusb_work(struct work_struct *work)
+{
+	struct fan5404x_chg *chip =
+		container_of(work, struct fan5404x_chg,
+					iusb_work.work);
+
+	if (chip)
+		chip->max_rate_cap = 0;
 }
 
 static int start_charging(struct fan5404x_chg *chip)
@@ -737,6 +759,23 @@ static int stop_charging(struct fan5404x_chg *chip)
 	rc = fan5404x_set_ibuslim(chip, 500);
 	if (rc)
 		dev_err(chip->dev, "Failed to set Minimum input current value\n");
+
+	chip->max_rate_cap++;
+	if (chip->ic_info_pn == FAN54046) {
+		if ((ARRAY_SIZE(ibuslim_fan54046_vals) - chip->max_rate_cap)
+		    < 1)
+			chip->max_rate_cap =
+				ARRAY_SIZE(ibuslim_fan54046_vals) - 1;
+
+	} else {
+		if ((ARRAY_SIZE(ibuslim_fan54053_vals) - chip->max_rate_cap)
+		    < 1)
+			chip->max_rate_cap =
+				ARRAY_SIZE(ibuslim_fan54046_vals) - 1;
+	}
+	cancel_delayed_work(&chip->iusb_work);
+	schedule_delayed_work(&chip->iusb_work,
+			      msecs_to_jiffies(1000));
 
 	cancel_delayed_work(&chip->heartbeat_work);
 	schedule_delayed_work(&chip->heartbeat_work, msecs_to_jiffies(0));
@@ -1131,8 +1170,10 @@ static int fan5404x_temp_charging(struct fan5404x_chg *chip, int enable)
 static void fan5404x_charge_enable(struct fan5404x_chg *chip, bool enable)
 {
 	if (!enable) {
-		if (chip->charging)
+		if (chip->charging) {
 			stop_charging(chip);
+			chip->max_rate_cap = 0;
+		}
 	} else {
 		if (chip->usb_present && !(chip->charging))
 			start_charging(chip);
@@ -1566,8 +1607,10 @@ static int determine_initial_status(struct fan5404x_chg *chip)
 
 	if (chip->usb_present)
 		start_charging(chip);
-	else
+	else {
 		stop_charging(chip);
+		chip->max_rate_cap = 0;
+	}
 
 	return 0;
 }
@@ -2281,6 +2324,8 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK(&chip->heartbeat_work,
 					heartbeat_work);
 	INIT_DELAYED_WORK(&chip->boost_check_work, boost_check_work);
+	INIT_DELAYED_WORK(&chip->iusb_work,
+					iusb_work);
 
 	chip->batt_psy.name = "battery";
 	chip->batt_psy.type = POWER_SUPPLY_TYPE_BATTERY;
