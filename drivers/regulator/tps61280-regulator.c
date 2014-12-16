@@ -78,14 +78,8 @@
 
 #define TPS61280_MAX_VOUT_REG	2
 #define TPS61280_VOUT_MASK	0x1F
-struct tps61280_platform_data {
-	int		gpio_en;
-	int		gpio_vsel;
-	int		device_mode;
-	int		voutfloor_voltage;
-	int		voutroof_voltage;
-	int		ilim_current_limit;
 
+struct tps61280_platform_data {
 	bool		bypass_pin_ctrl;
 	int		bypass_gpio;
 	bool		vsel_controlled_mode;
@@ -98,29 +92,25 @@ struct tps61280_platform_data {
 };
 
 struct tps61280_chip {
-	struct device	*dev;
-	struct i2c_client	*client;
-	struct regulator_desc	rdesc;
-	struct regulator_dev	*rdev;
+	struct device			*dev;
+	struct i2c_client		*client;
+	struct regulator_dev		*rdev;
+	struct regmap			*rmap;
+	struct regulator_desc		rdesc;
 	struct tps61280_platform_data	pdata;
-	struct device_node		*tps_np;
-	struct regmap		*rmap;
 
 	int lru_index[TPS61280_MAX_VOUT_REG];
 	int curr_vout_val[TPS61280_MAX_VOUT_REG];
 	int curr_vout_reg;
 	int curr_vsel_gpio_val;
-
 	int sleep_vout_reg;
 
 	struct thermal_zone_device	*tz_device;
-	struct mutex		mutex;
+	struct mutex			mutex;
 	struct regulator_init_data	*rinit_data;
-	int		gpio_en;
-	int		gpio_vsel;
-	int	bypass_state;
-	int	current_mode;
-	int	enable_state;
+	int				bypass_state;
+	int				current_mode;
+	int				enable_state;
 };
 
 static const struct regmap_config tps61280_regmap_config = {
@@ -771,89 +761,12 @@ static int tps61280_dvs_init(struct tps61280_chip *tps61280)
 	return 0;
 }
 
-static int tps61280_initialize(struct tps61280_chip *tps61280)
-{
-	int device_mode;
-	int voutfloor_voltage;
-	int voutroof_voltage;
-	int ilim_current_limit;
-	int val;
-	int ret;
-
-	device_mode = tps61280->pdata.device_mode ?: 01;
-	voutfloor_voltage = tps61280->pdata.voutfloor_voltage ?: 3150;
-	voutroof_voltage = tps61280->pdata.voutroof_voltage ?: 3350;
-	ilim_current_limit = tps61280->pdata.ilim_current_limit ?: 3000;
-
-	/* Configure device mode of operation */
-	ret = regmap_update_bits(tps61280->rmap, TPS61280_CONFIG,
-				TPS61280_CONFIG_MODE_MASK, device_mode);
-	if (ret < 0) {
-		dev_err(tps61280->dev, "CONFIG REG update failed %d\n", ret);
-		return ret;
-	}
-
-	/* Configure vout floor output voltage */
-	val = tps61280_val_to_reg(voutfloor_voltage, TPS61280_VOUT_OFFSET,
-				TPS61280_VOUT_STEP, 5, 0);
-
-	ret = regmap_update_bits(tps61280->rmap, TPS61280_VOUTFLOORSET,
-				TPS61280_VOUT_MASK, val);
-	if (ret < 0) {
-		dev_err(tps61280->dev, "VOUTFLR REG update failed %d\n", ret);
-		return ret;
-	}
-
-	/* Configure vout roof output voltage */
-	val = tps61280_val_to_reg(voutroof_voltage, TPS61280_VOUT_OFFSET,
-				TPS61280_VOUT_STEP, 5, 0);
-
-	ret = regmap_update_bits(tps61280->rmap, TPS61280_VOUTROOFSET,
-				TPS61280_VOUT_MASK, val);
-	if (ret < 0) {
-		dev_err(tps61280->dev, "VOUTROOF REG update failed %d\n", ret);
-		return ret;
-	}
-
-	/* Configure inductor valley current limit */
-	val = tps61280_val_to_reg(ilim_current_limit, TPS61280_ILIM_OFFSET,
-				TPS61280_ILIM_STEP, 3, 0);
-
-	ret = regmap_update_bits(tps61280->rmap, TPS61280_ILIMSET,
-			TPS61280_ILIM_MASK, (val | TPS61280_ILIM_BASE));
-	if (ret < 0) {
-		dev_err(tps61280->dev, "ILIM REG update failed %d\n", ret);
-		return ret;
-	}
-	return 0;
-}
-
 static int tps61280_parse_dt_data(struct i2c_client *client,
 				struct tps61280_platform_data *pdata)
 {
 	struct device_node *np = client->dev.of_node;
 	u32 pval;
 	int ret;
-
-	ret = of_property_read_u32(np, "ti,config-device-mode", &pval);
-	if (!ret)
-		pdata->device_mode = pval;
-
-	ret = of_property_read_u32(np, "ti,voutfloor-voltage", &pval);
-	if (!ret)
-		pdata->voutfloor_voltage = pval;
-
-	ret = of_property_read_u32(np, "ti,voutroof-voltage", &pval);
-	if (!ret)
-		pdata->voutroof_voltage = pval;
-
-	ret = of_property_read_u32(np, "ti,ilim-current-limit", &pval);
-	if (!ret)
-		pdata->ilim_current_limit = pval;
-
-	pdata->gpio_en = of_get_named_gpio(np, "ti,gpio-en", 0);
-
-	pdata->gpio_vsel = of_get_named_gpio(np, "ti,gpio-vsel", 0);
 
 	pdata->vsel_controlled_mode = of_property_read_bool(np,
 					"ti,enable-vsel-controlled-mode");
@@ -975,31 +888,6 @@ static int tps61280_probe(struct i2c_client *client,
 		return ret;
 	}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	tps61280->gpio_en = tps61280->pdata.gpio_en;
-	tps61280->gpio_vsel = tps61280->pdata.gpio_vsel;
-	tps61280->tps_np = client->dev.of_node;
-
 	tps61280->rdesc.name  = "tps61280-dcdc";
 	tps61280->rdesc.ops   = &tps61280_ops;
 	tps61280->rdesc.type  = REGULATOR_VOLTAGE;
@@ -1010,41 +898,27 @@ static int tps61280_probe(struct i2c_client *client,
 	tps61280->rdesc.n_voltages = 0x20;
 
 	rconfig.dev = tps61280->dev;
-	rconfig.of_node =  tps61280->tps_np;
+	rconfig.of_node =  tps61280->dev->of_node;
 	rconfig.driver_data = tps61280;
 	rconfig.regmap = tps61280->rmap;
-	if (gpio_is_valid(tps61280->gpio_en)) {
-		rconfig.ena_gpio = tps61280->gpio_en;
-		rconfig.ena_gpio_flags = GPIOF_OUT_INIT_HIGH;
-	}
+	rconfig.init_data = tps61280->rinit_data;
 
 	tps61280->rdev = devm_regulator_register(tps61280->dev,
 				&tps61280->rdesc, &rconfig);
 	if (IS_ERR(tps61280->rdev)) {
 		ret = PTR_ERR(tps61280->rdev);
 		dev_err(&client->dev, "regulator register failed %d\n", ret);
+		return ret;
 	}
 
-	if (gpio_is_valid(tps61280->gpio_vsel)) {
-		ret = devm_gpio_request(tps61280->dev,
-				tps61280->gpio_vsel, "tps61280_vsel");
-		if (ret < 0) {
-			dev_err(tps61280->dev, "gpio request failed  %d\n",
-				ret);
-			return ret;
-		}
-	}
-
-	if (client->irq) {
+	if (client->irq > 0) {
 		ret = devm_request_threaded_irq(&client->dev, client->irq,
 			NULL, tps61280_irq,
 			IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 			dev_name(&client->dev), tps61280);
 		if (ret < 0) {
-			dev_err(&client->dev,
-				"%s: request IRQ %d fail, err = %d\n",
-				__func__, client->irq, ret);
-			client->irq = 0;
+			dev_err(&client->dev, "Request irq %d failed: %d\n",
+				client->irq, ret);
 			return ret;
 		}
 	}
@@ -1059,12 +933,7 @@ static int tps61280_probe(struct i2c_client *client,
 		return ret;
 	}
 
-	ret = tps61280_initialize(tps61280);
-	if (ret < 0)
-		dev_err(&client->dev, "chip init failed - %d\n", ret);
-
 	dev_info(&client->dev, "DC-Boost probe successful\n");
-
 	return 0;
 }
 
