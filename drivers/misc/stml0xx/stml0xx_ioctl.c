@@ -59,14 +59,52 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	unsigned long current_posix_time;
 	unsigned int handle;
 	struct timespec current_time;
+	bool cmd_handled;
 
 	if (!stml0xx_misc_data)
 		stml0xx_misc_data = file->private_data;
 
+	/* Commands to respond immediately without waiting for the mutex lock */
+	cmd_handled = true;
+	switch (cmd) {
+	case STML0XX_IOCTL_GET_BOOTED:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_GET_BOOTED");
+		buf[0] = stml0xx_g_booted;
+		if (copy_to_user(argp, buf, 1))
+			err = -EFAULT;
+		else
+			err = 0;
+		break;
+	case STML0XX_IOCTL_GET_VERNAME:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_GET_VERNAME");
+		if (copy_to_user(argp, &(ps_stml0xx->pdata->fw_version),
+				 FW_VERSION_SIZE))
+			err = -EFAULT;
+		else
+			err = 0;
+		break;
+	case STML0XX_IOCTL_GET_VERSION:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_GET_VERSION");
+		if (!stml0xx_g_booted)
+			err = -EBUSY;
+		else
+			cmd_handled = false;
+		break;
+	default:
+		/* Continue to the next switch statement */
+		cmd_handled = false;
+		break;
+	}
+
+	if (cmd_handled)
+		goto EXIT;
+
+	/* Wait for mutex lock */
 	wake_lock(&ps_stml0xx->wakelock);
-
 	mutex_lock(&ps_stml0xx->lock);
-
 	stml0xx_wake(ps_stml0xx);
 
 	/* Commands accepted in any mode */
@@ -112,24 +150,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_DEBUG");
 		err = 0;
-		break;
-	case STML0XX_IOCTL_GET_VERNAME:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_GET_VERNAME");
-		if (copy_to_user(argp, &(ps_stml0xx->pdata->fw_version),
-				 FW_VERSION_SIZE))
-			err = -EFAULT;
-		else
-			err = 0;
-		break;
-	case STML0XX_IOCTL_GET_BOOTED:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_GET_BOOTED");
-		buf[0] = stml0xx_g_booted;
-		if (copy_to_user(argp, buf, 1))
-			err = -EFAULT;
-		else
-			err = 0;
 		break;
 	case STML0XX_IOCTL_GET_VERSION:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -670,10 +690,15 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				(char *)&handle, 4, 0,
 				ts_to_ns(current_time));
 		break;
+	default:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Invalid IOCTL [%d]", cmd);
+		break;
 	}
 
 	stml0xx_sleep(ps_stml0xx);
 	mutex_unlock(&ps_stml0xx->lock);
 	wake_unlock(&ps_stml0xx->wakelock);
+EXIT:
 	return err;
 }
