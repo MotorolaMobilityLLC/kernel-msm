@@ -2079,6 +2079,11 @@ WLANTL_STAPktPending
 
       vos_atomic_set_U8( &pClientSTA->ucPktPending, 1);
 
+      MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_STA_PKT_PENDING, ucSTAId,
+                       (pTLCb->ucTxSuspended << 31) |
+                       ((pTLCb->uResCount >=  WDA_TLI_MIN_RES_DATA) << 30) |
+                       pClientSTA->tlState));
+
       /*------------------------------------------------------------------------
         Check if there are enough resources for transmission and tx is not
         suspended.
@@ -2086,8 +2091,6 @@ WLANTL_STAPktPending
        if (( pTLCb->uResCount >=  WDA_TLI_MIN_RES_DATA ) &&
           ( 0 == pTLCb->ucTxSuspended ))
       {
-        MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_STA_PKT_PENDING,
-                      ucSTAId, pClientSTA->tlState ));
 
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
               "Issuing Xmit start request to BAL"));
@@ -6820,13 +6823,12 @@ WLANTL_TxThreadDebugHandler
    WLANTL_CbType* pTLCb = NULL;
    WLANTL_STAClientType* pClientSTA = NULL;
    int i = 0;
-   tWDA_CbContext *pWDA = NULL;
+   v_U8_t uFlowMask; // TX FlowMask from WDA
 
    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_FATAL,
         "WLAN TL: %s Enter ", __func__));
 
    pTLCb = VOS_GET_TL_CB(pVosContext);
-   pWDA = (tWDA_CbContext *)vos_get_global_context(VOS_MODULE_ID_WDA, pVosContext);
 
    if ( NULL == pVosContext || NULL == pTLCb )
    {
@@ -6835,11 +6837,12 @@ WLANTL_TxThreadDebugHandler
         return;
    }
 
-   if (NULL != pWDA)
+   if (VOS_STATUS_SUCCESS == WDA_DS_GetTxFlowMask(pVosContext, &uFlowMask))
    {
         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-              "WDA uTxFlowMask: %d", pWDA->uTxFlowMask));
+              "WDA uTxFlowMask: 0x%x", uFlowMask));
    }
+
    TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
           "************************TL DUMP INFORMATION**************"));
 
