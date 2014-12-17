@@ -3489,4 +3489,13 @@ tANI_U32 sme_GetChannelBondingMode24G(tHalHandle hHal);
 
 void sme_disable_dfs_channel(tHalHandle hHal, bool disable_dfs);
 
+/* HDD Callback function */
+typedef void(*pEncryptMsgRSPCb)(void *pUserData, void *infoParam);
+
+eHalStatus sme_Encryptmsgsend (tHalHandle hHal,
+                               u8 *pCmd,
+                               int length,
+                               pEncryptMsgRSPCb encCB);
+
+
 #endif //#if !defined( __SME_API_H )

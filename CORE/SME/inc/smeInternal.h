@@ -123,6 +123,14 @@ typedef enum eSmeState
 #define SME_IS_START(pMac)  (SME_STATE_STOP != (pMac)->sme.state)
 #define SME_IS_READY(pMac)  (SME_STATE_READY == (pMac)->sme.state)
 
+/* HDD Callback function */
+typedef void(*pEncryptMsgRSPCb)(void *pUserData, void *infoParam);
+
+typedef struct tagSmeEncMsgHddCbkInfo
+{
+   void *pUserData;
+   pEncryptMsgRSPCb pEncMsgCbk;
+}tSmeEncMsgHddCbkInfo;
 
 typedef struct tagSmeStruct
 {
@@ -159,6 +167,7 @@ typedef struct tagSmeStruct
    int  extScanStartReqId;
    void *pEXTScanCallbackContext;
 #endif /* WLAN_FEATURE_EXTSCAN */
+   tSmeEncMsgHddCbkInfo pEncMsgInfoParams;
 
 } tSmeStruct, *tpSmeStruct;
 
