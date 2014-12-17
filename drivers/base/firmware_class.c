@@ -368,6 +368,7 @@ static bool fw_get_filesystem_firmware(struct device *device,
 			continue;
 		success = fw_read_file_contents(file, buf);
 		fput(file);
+		filp_close(file, NULL);
 		if (success)
 			break;
 	}
