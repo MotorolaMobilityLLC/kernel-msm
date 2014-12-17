@@ -559,6 +559,11 @@ config BATTERY_BQ27421
 	help
 	  Say Y here to enable support for batteries with BQ27421 (I2C) chips.
 
+config CHARGER_DOCK
+	bool "Charger dock detector driver"
+	help
+	  Say Y to enable charger dock detector.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY

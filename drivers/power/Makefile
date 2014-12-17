@@ -72,3 +72,4 @@ obj-$(CONFIG_BATTERY_BCL)	+= battery_current_limit.o
 obj-$(CONFIG_POWER_RESET)	+= reset/
 obj-y				+= qcom/
 obj-$(CONFIG_BATTERY_TEMP_MONITOR)	+= battery-tm.o
+obj-$(CONFIG_CHARGER_DOCK)	+= charger-dock.o

@@ -3884,6 +3884,9 @@ static int otg_power_property_is_writeable_usb(struct power_supply *psy,
 
 static char *otg_pm_power_supplied_to[] = {
 	"battery",
+#ifdef CONFIG_CHARGER_DOCK
+	"dock",
+#endif
 };
 
 static enum power_supply_property otg_pm_power_props_usb[] = {
