@@ -28,12 +28,13 @@
 #ifdef WLAN_OPEN_SOURCE
 #include <wlan_hdd_includes.h>
 #include <wlan_hdd_wowl.h>
+#include <vos_sched.h>
 
 #define MAX_USER_COMMAND_SIZE_WOWL_ENABLE 8
 #define MAX_USER_COMMAND_SIZE_WOWL_PATTERN 512
 #define MAX_USER_COMMAND_SIZE_FRAME 4096
 
-static ssize_t wcnss_wowenable_write(struct file *file,
+static ssize_t __wcnss_wowenable_write(struct file *file,
                const char __user *buf, size_t count, loff_t *ppos)
 {
     hdd_adapter_t *pAdapter = (hdd_adapter_t *)file->private_data;
@@ -126,7 +127,19 @@ static ssize_t wcnss_wowenable_write(struct file *file,
     return count;
 }
 
-static ssize_t wcnss_wowpattern_write(struct file *file,
+static ssize_t wcnss_wowenable_write(struct file *file,
+               const char __user *buf, size_t count, loff_t *ppos)
+{
+    ssize_t ret;
+
+    vos_ssr_protect(__func__);
+    ret = __wcnss_wowenable_write(file, buf, count, ppos);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
+
+static ssize_t __wcnss_wowpattern_write(struct file *file,
                const char __user *buf, size_t count, loff_t *ppos)
 {
     hdd_adapter_t *pAdapter = (hdd_adapter_t *)file->private_data;
@@ -213,7 +226,19 @@ static ssize_t wcnss_wowpattern_write(struct file *file,
     return count;
 }
 
-static ssize_t wcnss_patterngen_write(struct file *file,
+static ssize_t wcnss_wowpattern_write(struct file *file,
+               const char __user *buf, size_t count, loff_t *ppos)
+{
+    ssize_t ret;
+
+    vos_ssr_protect(__func__);
+    ret = __wcnss_wowpattern_write(file, buf, count, ppos);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
+
+static ssize_t __wcnss_patterngen_write(struct file *file,
                const char __user *buf, size_t count, loff_t *ppos)
 {
     hdd_adapter_t *pAdapter = (hdd_adapter_t *)file->private_data;
@@ -418,7 +443,20 @@ failure:
     return -EINVAL;
 }
 
-static int wcnss_debugfs_open(struct inode *inode, struct file *file)
+static ssize_t wcnss_patterngen_write(struct file *file,
+               const char __user *buf, size_t count, loff_t *ppos)
+{
+    ssize_t ret;
+
+    vos_ssr_protect(__func__);
+    ret = __wcnss_patterngen_write(file, buf, count, ppos);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+
+}
+
+static int __wcnss_debugfs_open(struct inode *inode, struct file *file)
 {
     if (inode->i_private)
     {
@@ -426,6 +464,17 @@ static int wcnss_debugfs_open(struct inode *inode, struct file *file)
     }
 
     return 0;
+}
+
+static int wcnss_debugfs_open(struct inode *inode, struct file *file)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __wcnss_debugfs_open(inode, file);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
 }
 
 static const struct file_operations fops_wowenable = {

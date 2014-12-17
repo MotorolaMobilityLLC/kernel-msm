@@ -5374,7 +5374,7 @@ int hdd_open(struct net_device *dev)
    return ret;
 }
 
-int hdd_mon_open (struct net_device *dev)
+int __hdd_mon_open (struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
 
@@ -5388,6 +5388,18 @@ int hdd_mon_open (struct net_device *dev)
 
    return 0;
 }
+
+int hdd_mon_open (struct net_device *dev)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __hdd_mon_open(dev);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
+
 /**---------------------------------------------------------------------------
 
   \brief __hdd_stop() - HDD stop function
@@ -7858,7 +7870,7 @@ v_U8_t hdd_get_operating_channel( hdd_context_t *pHddCtx, device_mode_t mode )
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 /**---------------------------------------------------------------------------
 
-  \brief hdd_set_multicast_list() - 
+  \brief __hdd_set_multicast_list() -
 
   This used to set the multicast address list.
 
@@ -7867,7 +7879,7 @@ v_U8_t hdd_get_operating_channel( hdd_context_t *pHddCtx, device_mode_t mode )
   \return - success/fail 
 
   --------------------------------------------------------------------------*/
-static void hdd_set_multicast_list(struct net_device *dev)
+static void __hdd_set_multicast_list(struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    int mc_count;
@@ -7914,6 +7926,13 @@ static void hdd_set_multicast_list(struct net_device *dev)
       }
    }
    return;
+}
+
+static void hdd_set_multicast_list(struct net_device *dev)
+{
+   vos_ssr_protect(__func__);
+   __hdd_set_multicast_list(dev);
+   vos_ssr_unprotect(__func__);
 }
 #endif
 

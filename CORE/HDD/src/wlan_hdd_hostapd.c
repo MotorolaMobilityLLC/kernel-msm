@@ -160,7 +160,7 @@ safeChannelType safeChannels[NUM_20MHZ_RF_CHANNELS] =
  *-------------------------------------------------------------------------*/
 /**---------------------------------------------------------------------------
 
-  \brief hdd_hostapd_open() - HDD Open function for hostapd interface
+  \brief __hdd_hostapd_open() - HDD Open function for hostapd interface
 
   This is called in response to ifconfig up
   
@@ -169,7 +169,7 @@ safeChannelType safeChannels[NUM_20MHZ_RF_CHANNELS] =
   \return - 0 for success non-zero for failure
               
   --------------------------------------------------------------------------*/
-int hdd_hostapd_open (struct net_device *dev)
+int __hdd_hostapd_open (struct net_device *dev)
 {
    hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
 
@@ -193,9 +193,21 @@ int hdd_hostapd_open (struct net_device *dev)
    EXIT();
    return 0;
 }
+
+int hdd_hostapd_open (struct net_device *dev)
+{
+   int ret;
+
+   vos_ssr_protect(__func__);
+   ret = __hdd_hostapd_open(dev);
+   vos_ssr_unprotect(__func__);
+
+   return ret;
+}
+
 /**---------------------------------------------------------------------------
   
-  \brief hdd_hostapd_stop() - HDD stop function for hostapd interface
+  \brief __hdd_hostapd_stop() - HDD stop function for hostapd interface
   
   This is called in response to ifconfig down
   
@@ -204,7 +216,7 @@ int hdd_hostapd_open (struct net_device *dev)
   \return - 0 for success non-zero for failure
               
   --------------------------------------------------------------------------*/
-int hdd_hostapd_stop (struct net_device *dev)
+int __hdd_hostapd_stop (struct net_device *dev)
 {
    ENTER();
 
@@ -219,9 +231,21 @@ int hdd_hostapd_stop (struct net_device *dev)
    EXIT();
    return 0;
 }
+
+int hdd_hostapd_stop (struct net_device *dev)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __hdd_hostapd_stop(dev);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
+
 /**---------------------------------------------------------------------------
 
-  \brief hdd_hostapd_uninit() - HDD uninit function
+  \brief __hdd_hostapd_uninit() - HDD uninit function
 
   This is called during the netdev unregister to uninitialize all data
 associated with the device
@@ -231,7 +255,7 @@ associated with the device
   \return - void
 
   --------------------------------------------------------------------------*/
-static void hdd_hostapd_uninit (struct net_device *dev)
+static void __hdd_hostapd_uninit (struct net_device *dev)
 {
    hdd_adapter_t *pHostapdAdapter = netdev_priv(dev);
 
@@ -248,7 +272,14 @@ static void hdd_hostapd_uninit (struct net_device *dev)
    EXIT();
 }
 
+static void hdd_hostapd_uninit (struct net_device *dev)
+{
+   vos_ssr_protect(__func__);
+   __hdd_hostapd_uninit(dev);
+   vos_ssr_unprotect(__func__);
 
+   return;
+}
 /**============================================================================
   @brief hdd_hostapd_hard_start_xmit() - Function registered with the Linux OS for 
   transmitting packets. There are 2 versions of this function. One that uses
@@ -264,9 +295,20 @@ int hdd_hostapd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
     return 0;    
 }
-int hdd_hostapd_change_mtu(struct net_device *dev, int new_mtu)
+
+int __hdd_hostapd_change_mtu(struct net_device *dev, int new_mtu)
 {
     return 0;
+}
+
+int hdd_hostapd_change_mtu(struct net_device *dev, int new_mtu)
+{
+    int ret;
+    vos_ssr_protect(__func__);
+    ret = __hdd_hostapd_change_mtu(dev, new_mtu);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
 }
 
 static int hdd_hostapd_driver_command(hdd_adapter_t *pAdapter,
@@ -454,7 +496,7 @@ static int hdd_hostapd_driver_ioctl(hdd_adapter_t *pAdapter, struct ifreq *ifr)
    return ret;
 }
 
-static int hdd_hostapd_ioctl(struct net_device *dev,
+static int __hdd_hostapd_ioctl(struct net_device *dev,
                              struct ifreq *ifr, int cmd)
 {
    hdd_adapter_t *pAdapter;
@@ -505,9 +547,21 @@ static int hdd_hostapd_ioctl(struct net_device *dev,
    return ret;
 }
 
+static int hdd_hostapd_ioctl(struct net_device *dev,
+                             struct ifreq *ifr, int cmd)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __hdd_hostapd_ioctl(dev, ifr, cmd);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
+
 /**---------------------------------------------------------------------------
   
-  \brief hdd_hostapd_set_mac_address() - 
+  \brief __hdd_hostapd_set_mac_address() -
    This function sets the user specified mac address using 
    the command ifconfig wlanX hw ether <mac adress>.
    
@@ -517,7 +571,7 @@ static int hdd_hostapd_ioctl(struct net_device *dev,
   
   --------------------------------------------------------------------------*/
 
-static int hdd_hostapd_set_mac_address(struct net_device *dev, void *addr)
+static int __hdd_hostapd_set_mac_address(struct net_device *dev, void *addr)
 {
    struct sockaddr *psta_mac_addr = addr;
    ENTER();
@@ -525,6 +579,18 @@ static int hdd_hostapd_set_mac_address(struct net_device *dev, void *addr)
    EXIT();
    return 0;
 }
+
+static int hdd_hostapd_set_mac_address(struct net_device *dev, void *addr)
+{
+   int ret;
+
+   vos_ssr_protect(__func__);
+   ret = __hdd_hostapd_set_mac_address(dev, addr);
+   vos_ssr_unprotect(__func__);
+
+   return ret;
+}
+
 void hdd_hostapd_inactivity_timer_cb(v_PVOID_t usrDataForCallback)
 {
     struct net_device *dev = (struct net_device *)usrDataForCallback;
@@ -2808,10 +2874,10 @@ static int iw_set_ap_encodeext(struct net_device *dev,
     return ret;
 }
 
-static int iw_set_ap_mlme(struct net_device *dev,
-                       struct iw_request_info *info,
-                       union iwreq_data *wrqu,
-                       char *extra)
+static int __iw_set_ap_mlme(struct net_device *dev,
+                            struct iw_request_info *info,
+                            union iwreq_data *wrqu,
+                            char *extra)
 {
 #if 0
     hdd_adapter_t *pAdapter = (netdev_priv(dev));
@@ -2854,6 +2920,20 @@ static int iw_set_ap_mlme(struct net_device *dev,
 #endif    
     return 0;
 //    return status;
+}
+
+static int iw_set_ap_mlme(struct net_device *dev,
+                            struct iw_request_info *info,
+                            union iwreq_data *wrqu,
+                            char *extra)
+{
+   int ret;
+
+   vos_ssr_protect(__func__);
+   ret = __iw_set_ap_mlme(dev, info, wrqu, extra);
+   vos_ssr_unprotect(__func__);
+
+   return ret;
 }
 
 static int __iw_get_ap_rts_threshold(struct net_device *dev,
@@ -3465,10 +3545,10 @@ VOS_STATUS hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int bu
     return VOS_STATUS_SUCCESS;
 }
 
-static int iw_softap_get_sta_info(struct net_device *dev,
-        struct iw_request_info *info,
-        union iwreq_data *wrqu, 
-        char *extra)
+static int __iw_softap_get_sta_info(struct net_device *dev,
+                                    struct iw_request_info *info,
+                                    union iwreq_data *wrqu,
+                                    char *extra)
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     VOS_STATUS status;
@@ -3481,6 +3561,20 @@ static int iw_softap_get_sta_info(struct net_device *dev,
     wrqu->data.length = strlen(extra);
     EXIT();
     return 0;
+}
+
+static int iw_softap_get_sta_info(struct net_device *dev,
+                                  struct iw_request_info *info,
+                                  union iwreq_data *wrqu,
+                                  char *extra)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __iw_softap_get_sta_info(dev, info, wrqu, extra);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
 }
 
 static int __iw_set_ap_genie(struct net_device *dev,
@@ -3921,7 +4015,7 @@ static const iw_handler hostapd_private[] = {
    [QCSAP_IOCTL_ASSOC_STA_MACADDR - SIOCIWFIRSTPRIV] = iw_softap_getassoc_stamacaddr,
    [QCSAP_IOCTL_DISASSOC_STA - SIOCIWFIRSTPRIV] = iw_softap_disassoc_sta,
    [QCSAP_IOCTL_AP_STATS - SIOCIWFIRSTPRIV] = iw_softap_ap_stats,
-   [QCSAP_IOCTL_PRIV_SET_THREE_INT_GET_NONE - SIOCIWFIRSTPRIV]  = iw_set_three_ints_getnone,   
+   [QCSAP_IOCTL_PRIV_SET_THREE_INT_GET_NONE - SIOCIWFIRSTPRIV]  = iw_set_three_ints_getnone,
    [QCSAP_IOCTL_PRIV_SET_VAR_INT_GET_NONE - SIOCIWFIRSTPRIV]     = iw_set_var_ints_getnone,
    [QCSAP_IOCTL_SET_CHANNEL_RANGE - SIOCIWFIRSTPRIV] = iw_softap_set_channel_range,
    [QCSAP_IOCTL_MODIFY_ACL - SIOCIWFIRSTPRIV]   = iw_softap_modify_acl,
