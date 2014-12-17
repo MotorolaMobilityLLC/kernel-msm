@@ -153,7 +153,7 @@ static int sec_smc(u32 cmd, u32 param1, u32 param2)
 		desc.args[2] = param2;
 		ret = scm_call2(id, &desc);
 
-		if (!ret)
+		if (ret || desc.ret[0])
 			pr_err("sec: SCM fail %d %lld\n", ret, desc.ret[0]);
 
 		return ret;
