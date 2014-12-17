@@ -309,11 +309,6 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 		pr_err("%s\n", to_be_sent);
 	}
 
-	// wlan logging svc resources are not yet initialized
-	if (!gwlan_logging.pcur_node) {
-	    return -EIO;
-	}
-
 	/* Format the Log time [Secondselapsedinaday.microseconds] */
 	do_gettimeofday(&tv);
 	tlen = snprintf(tbuf, sizeof(tbuf), "[%s][%5lu.%06lu] ", current->comm,
@@ -324,6 +319,12 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 	total_log_len = length + tlen + 1 + 1;
 
 	spin_lock_irqsave(&gwlan_logging.spin_lock, flags);
+
+	// wlan logging svc resources are not yet initialized
+	if (!gwlan_logging.pcur_node) {
+	    spin_unlock_irqrestore(&gwlan_logging.spin_lock, flags);
+	    return -EIO;
+	}
 
 	pfilled_length = &gwlan_logging.pcur_node->filled_length;
 
