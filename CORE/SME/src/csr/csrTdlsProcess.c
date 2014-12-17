@@ -119,6 +119,8 @@ eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMg
             tTdlsSendMgmtCmdInfo *tdlsSendMgmtCmdInfo = 
                             &tdlsSendMgmtCmd->u.tdlsCmd.u.tdlsSendMgmtCmdInfo ;
 
+            vos_mem_zero(&tdlsSendMgmtCmd->u.tdlsCmd, sizeof(tTdlsCmd));
+
             tdlsSendMgmtCmd->sessionId = sessionId;
 
             tdlsSendMgmtCmdInfo->frameType = tdlsSendMgmt->frameType ;   
@@ -187,6 +189,8 @@ eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr 
             tTdlsAddStaCmdInfo *tdlsAddStaCmdInfo =
                          &tdlsAddStaCmd->u.tdlsCmd.u.tdlsAddStaCmdInfo ;
 
+            vos_mem_zero(&tdlsAddStaCmd->u.tdlsCmd, sizeof(tTdlsCmd));
+
             tdlsAddStaCmdInfo->tdlsAddOper = TDLS_OPER_UPDATE;
 
             tdlsAddStaCmd->sessionId = sessionId;
@@ -253,6 +257,8 @@ VOS_STATUS csrTdlsSendLinkEstablishParams(tHalHandle hHal,
             tTdlsLinkEstablishCmdInfo *tdlsLinkEstablishCmdInfo =
             &tdlsLinkEstablishCmd->u.tdlsCmd.u.tdlsLinkEstablishCmdInfo ;
 
+            vos_mem_zero(&tdlsLinkEstablishCmd->u.tdlsCmd, sizeof(tTdlsCmd));
+
             tdlsLinkEstablishCmd->sessionId = sessionId;
 
             vos_mem_copy( tdlsLinkEstablishCmdInfo->peerMac,
@@ -309,6 +315,8 @@ eHalStatus csrTdlsAddPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr pee
             tTdlsAddStaCmdInfo *tdlsAddStaCmdInfo = 
                 &tdlsAddStaCmd->u.tdlsCmd.u.tdlsAddStaCmdInfo ;
 
+            vos_mem_zero(&tdlsAddStaCmd->u.tdlsCmd, sizeof(tTdlsCmd));
+
             tdlsAddStaCmd->sessionId = sessionId;
             tdlsAddStaCmdInfo->tdlsAddOper = TDLS_OPER_ADD;
 
@@ -345,6 +353,8 @@ eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr pee
         {
             tTdlsDelStaCmdInfo *tdlsDelStaCmdInfo = 
                             &tdlsDelStaCmd->u.tdlsCmd.u.tdlsDelStaCmdInfo ;
+
+            vos_mem_zero(&tdlsDelStaCmd->u.tdlsCmd, sizeof(tTdlsCmd));
 
             tdlsDelStaCmd->sessionId = sessionId;
 
@@ -388,6 +398,8 @@ VOS_STATUS csrTdlsSendChanSwitchReq(tHalHandle hHal,
             tTdlsChanSwitchCmdInfo *tdlsChanSwitchCmdInfo =
             &tdlsChanSwitchCmd->u.tdlsCmd.u.tdlsChanSwitchCmdInfo;
 
+            vos_mem_zero(&tdlsChanSwitchCmd->u.tdlsCmd, sizeof(tTdlsCmd));
+
             tdlsChanSwitchCmd->sessionId = sessionId;
 
             vos_mem_copy(tdlsChanSwitchCmdInfo->peerMac,
@@ -427,6 +439,8 @@ eHalStatus csrTdlsDiscoveryReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsDisRe
             tTdlsDisReqCmdinfo *disReqCmdInfo = 
                             &tdlsDisReqCmd->u.tdlsCmd.u.tdlsDisReqCmdInfo ;
 
+            vos_mem_zero(&tdlsDisReqCmd->u.tdlsCmd, sizeof(tTdlsCmd));
+
             tdlsDisReqCmd->sessionId = sessionId;
 
             disReqCmdInfo->tdlsDisType = tdlsDisReq->disType ;   
@@ -461,6 +475,8 @@ eHalStatus csrTdlsSetupReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSetupRequ
            tTdlsLinkSetupReqCmdinfo *setupCmdInfo = 
                         &tdlsSetupReqCmd->u.tdlsCmd.u.tdlsLinkSetupReqCmdInfo ;
 
+            vos_mem_zero(&tdlsSetupReqCmd->u.tdlsCmd, sizeof(tTdlsCmd));
+
             tdlsSetupReqCmd->sessionId = sessionId;
 
             vos_mem_copy(setupCmdInfo->peerMac,
@@ -493,6 +509,8 @@ eHalStatus csrTdlsTeardownReq(tHalHandle hHal, tANI_U8 sessionId,
         {
             tTdlsLinkTeardownCmdinfo *teardownCmdInfo = 
                    &tdlsTeardownReqCmd->u.tdlsCmd.u.tdlsLinkTeardownCmdInfo ;
+
+            vos_mem_zero(&tdlsTeardownReqCmd->u.tdlsCmd, sizeof(tTdlsCmd));
 
             tdlsTeardownReqCmd->sessionId = sessionId;
 
@@ -636,6 +654,8 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
         VOS_ASSERT(0) ;
         return status ;
     }
+    vos_mem_set(tdlsAddStaReq, sizeof(tSirTdlsAddStaReq), 0);
+
     tdlsAddStaReq->sessionId = cmd->sessionId;
     tdlsAddStaReq->tdlsAddOper = tdlsAddStaCmdInfo->tdlsAddOper;
     //Using dialog as transactionId. This can be used to match response with request
