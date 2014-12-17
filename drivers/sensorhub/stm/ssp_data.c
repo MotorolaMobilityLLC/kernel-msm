@@ -33,10 +33,14 @@ static void generate_data(struct ssp_data *data, struct sensor_value *sensorsdat
 						int iSensorData, u64 timestamp)
 {
 	u64 move_timestamp = data->lastTimestamp[iSensorData];
-	while ((move_timestamp * 10 + data->adDelayBuf[iSensorData] * 15) < (timestamp * 10)) {
-		move_timestamp += data->adDelayBuf[iSensorData];
-		sensorsdata->timestamp = move_timestamp;
-		data->report_sensor_data[iSensorData](data, sensorsdata);
+	if ((iSensorData != PROXIMITY_SENSOR) && (iSensorData != GESTURE_SENSOR)
+		&& (iSensorData != STEP_DETECTOR) && (iSensorData != SIG_MOTION_SENSOR)
+		&& (iSensorData != STEP_COUNTER) && (iSensorData != TILT_TO_WAKE)) {
+		while ((move_timestamp * 10 + data->adDelayBuf[iSensorData] * 15) < (timestamp * 10)) {
+			move_timestamp += data->adDelayBuf[iSensorData];
+			sensorsdata->timestamp = move_timestamp;
+			data->report_sensor_data[iSensorData](data, sensorsdata);
+		}
 	}
 }
 
