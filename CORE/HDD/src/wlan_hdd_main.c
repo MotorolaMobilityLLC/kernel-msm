@@ -7358,6 +7358,11 @@ VOS_STATUS hdd_reset_all_adapters( hdd_context_t *pHddCtx )
           clear_bit(WMM_INIT_DONE, &pAdapter->event_flags);
       }
 
+      if (test_bit(SOFTAP_BSS_STARTED, &pAdapter->event_flags))
+      {
+          clear_bit(SOFTAP_BSS_STARTED, &pAdapter->event_flags);
+      }
+
 #ifdef FEATURE_WLAN_BATCH_SCAN
       if (eHDD_BATCH_SCAN_STATE_STARTED == pAdapter->batchScanState)
       {
