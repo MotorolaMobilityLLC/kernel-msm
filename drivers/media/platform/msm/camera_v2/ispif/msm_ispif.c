@@ -52,8 +52,8 @@ static void msm_ispif_io_dump_reg(struct ispif_device *ispif)
 static inline int msm_ispif_is_intf_valid(uint32_t csid_version,
 	uint8_t intf_type)
 {
-	return (csid_version <= CSID_VERSION_V2 && intf_type != VFE0) ?
-		false : true;
+        return ((csid_version <= CSID_VERSION_V2 && intf_type != VFE0) ||
+                (intf_type >= VFE_MAX)) ? false : true;
 }
 
 static struct msm_cam_clk_info ispif_8960_clk_info[] = {
