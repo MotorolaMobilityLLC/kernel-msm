@@ -48,6 +48,38 @@ static tANI_BOOLEAN p2pIsGOportEnabled(tpAniSirGlobal pMac);
 eHalStatus p2pProcessNoAReq(tpAniSirGlobal pMac, tSmeCmd *pNoACmd);
 /*------------------------------------------------------------------
  *
+ * Release RoC Request command.
+ *
+ *------------------------------------------------------------------*/
+
+void csrReleaseRocReqCommand(tpAniSirGlobal pMac)
+{
+    tListElem *pEntry = NULL;
+    tSmeCmd *pCommand = NULL;
+
+    pEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK);
+    if ( pEntry )
+    {
+        pCommand = GET_BASE_ADDR(pEntry, tSmeCmd, Link);
+        if ( eSmeCommandRemainOnChannel == pCommand->command )
+        {
+            remainOnChanCallback callback = pCommand->u.remainChlCmd.callback;
+            /* process the msg */
+            if ( callback )
+                 callback(pMac, pCommand->u.remainChlCmd.callbackCtx, 0);
+             smsLog(pMac, LOGE, FL("Remove RoC Request from Sme Active Cmd List "));
+            if ( csrLLRemoveEntry( &pMac->sme.smeCmdActiveList, pEntry, LL_ACCESS_LOCK ) )
+            {
+                //Now put this command back on the avilable command list
+                smeReleaseCommand(pMac, pCommand);
+            }
+        }
+    }
+}
+
+
+/*------------------------------------------------------------------
+ *
  * handle SME remain on channel request.
  *
  *------------------------------------------------------------------*/
@@ -62,7 +94,8 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
     if(!pSession)
     {
        smsLog(pMac, LOGE, FL("  session %d not found "), p2pRemainonChn->sessionId);
-       return eHAL_STATUS_FAILURE;
+       status = eHAL_STATUS_FAILURE;
+       goto error;
     }
 
 #ifdef WLAN_FEATURE_P2P_INTERNAL
@@ -76,14 +109,16 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
     {
        smsLog(pMac, LOGE, FL("  session %d (P2P session %d) is invalid or listen is disabled "),
             p2pRemainonChn->sessionId, P2PsessionId);
-       return eHAL_STATUS_FAILURE;
+       status = eHAL_STATUS_FAILURE;
+       goto error;
     }
 #else
     if(!pSession->sessionActive) 
     {
        smsLog(pMac, LOGE, FL("  session %d is invalid or listen is disabled "),
             p2pRemainonChn->sessionId);
-       return eHAL_STATUS_FAILURE;
+       status = eHAL_STATUS_FAILURE;
+       goto error;
     }
 #endif
 #ifdef WLAN_FEATURE_P2P_INTERNAL
@@ -100,11 +135,16 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
        /*In coming len for Msg is more then 16bit value*/
        smsLog(pMac, LOGE, FL("  Message length is very large, %d"),
             len);
-       return eHAL_STATUS_FAILURE;
+       status = eHAL_STATUS_FAILURE;
+       goto error;
     }
     pMsg = vos_mem_malloc(len);
     if ( NULL == pMsg )
+    {
+        smsLog(pMac, LOGE, FL("Msg memory alloc failed"));
         status = eHAL_STATUS_FAILURE;
+        goto error;
+    }
     else
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s call", __func__);
@@ -131,7 +171,11 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
 #endif
         status = palSendMBMessage(pMac->hHdd, pMsg);
     }
-    
+ error:
+    if (eHAL_STATUS_FAILURE == status)
+    {
+        csrReleaseRocReqCommand(pMac);
+    }
     return status;
 }
 
@@ -772,7 +816,7 @@ eHalStatus p2pRemainOnChannel(tHalHandle hHal, tANI_U8 sessionId,
 #ifdef WLAN_FEATURE_P2P_INTERNAL
         smePushCommand(pMac, pRemainChlCmd, (eP2PRemainOnChnReasonSendFrame == reason));
 #else
-        csrQueueSmeCommand(pMac, pRemainChlCmd, eANI_BOOLEAN_FALSE);
+        status = csrQueueSmeCommand(pMac, pRemainChlCmd, eANI_BOOLEAN_FALSE);
 #endif
     } while(0);
   
