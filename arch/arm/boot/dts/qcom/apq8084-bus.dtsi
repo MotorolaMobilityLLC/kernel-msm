@@ -466,20 +466,6 @@
 			qcom,hw-sel = "NoC";
 		};
 
-		mas-ufs {
-			cell-id = <95>;
-			label = "mas-ufs";
-			qcom,masterp = <16>;
-			qcom,tier = <2>;
-			qcom,qport = <6>;
-			qcom,mode = "Fixed";
-			qcom,mas-hw-id = <68>;
-			qcom,prio1 = <1>;
-			qcom,prio0 = <1>;
-			qcom,hw-sel = "NoC";
-			qcom,iface-clk-node = "msm_bus_ufs";
-		};
-
 		mas-usb3 {
 			cell-id = <61>;
 			label = "mas-usb3";
