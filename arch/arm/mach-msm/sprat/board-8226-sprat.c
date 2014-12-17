@@ -84,14 +84,14 @@ static struct platform_device ramoops_device = {
 
 static void __init sprat_reserve_persist_ram_area(void)
 {
-	struct memblock_region *reg;
-	if (memblock_phys_mem_size() < 2) {
+
+	if (memblock.memory.cnt < 2) {
 		pr_err("%s: Highmem is not present.\n",
 			__func__);
                 return;
         }
-	reg = memblock.memory.regions++;
-        ramoops_data.mem_address = __pfn_to_phys(memblock_region_memory_base_pfn(reg));
+
+	ramoops_data.mem_address = memblock.memory.regions[1].base;
 
 	if (memblock_reserve(ramoops_data.mem_address, ramoops_data.mem_size)) {
 		pr_err("Failed to reserve persistent memory from %08lx-%08lx\n",
