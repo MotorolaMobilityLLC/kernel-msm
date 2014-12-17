@@ -8105,6 +8105,20 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
       // Unloading, restart logic is no more required.
       wlan_hdd_restart_deinit(pHddCtx);
 
+#ifdef FEATURE_WLAN_TDLS
+      /* At the time of driver unloading; if tdls connection is present;
+       * hdd_rx_packet_cbk calls wlan_hdd_tdls_find_peer.
+       * wlan_hdd_tdls_find_peer always checks for valid context;
+       * as load/unload in progress there can be a race condition.
+       * hdd_rx_packet_cbk calls wlan_hdd_tdls_find_peer only
+       * when tdls state is enabled.
+       * As soon as driver set load/unload flag; tdls flag also needs
+       * to be disabled so that hdd_rx_packet_cbk won't call
+       * wlan_hdd_tdls_find_peer.
+       */
+      wlan_hdd_tdls_set_mode(pHddCtx, eTDLS_SUPPORT_DISABLED, FALSE);
+#endif
+
       vosStatus = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
       while (NULL != pAdapterNode && VOS_STATUS_E_EMPTY != vosStatus)
       {
