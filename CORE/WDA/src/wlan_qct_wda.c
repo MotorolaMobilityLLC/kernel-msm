@@ -12216,6 +12216,7 @@ VOS_STATUS WDA_TxComplete( v_PVOID_t pVosContext, vos_pkt_t *pData,
                            "%s:pWDA is NULL", 
                            __func__); 
       VOS_ASSERT(0);
+      vos_pkt_return_packet(pData);
       return VOS_STATUS_E_FAILURE;
    }
 
@@ -12444,15 +12445,15 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR, 
                  "%s: Status %d when waiting for TX Frame Event",
                  __func__, status);
+
+      /*Tag Frame as timed out for later deletion*/
+      vos_pkt_set_user_data_ptr( (vos_pkt_t *)pFrmBuf, VOS_PKT_USER_DATA_ID_WDA,
+                       (v_PVOID_t)WDA_TL_TX_MGMT_TIMED_OUT);
       pWDA->pTxCbFunc = NULL;   /*To stop the limTxComplete being called again  , 
                                 after the packet gets completed(packet freed once)*/
 
       /* TX MGMT fail with COMP timeout, try to detect DXE stall */
       WDA_TransportChannelDebug(pMac, 1, 0);
-
-      /*Tag Frame as timed out for later deletion*/
-      vos_pkt_set_user_data_ptr( (vos_pkt_t *)pFrmBuf, VOS_PKT_USER_DATA_ID_WDA, 
-                       (v_PVOID_t)WDA_TL_TX_MGMT_TIMED_OUT);
 
       /* check whether the packet was freed already,so need not free again when 
       * TL calls the WDA_Txcomplete routine
