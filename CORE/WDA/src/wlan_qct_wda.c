@@ -256,6 +256,9 @@ VOS_STATUS WDA_ProcessLLStatsClearReq(tWDA_CbContext *pWDA,
 v_VOID_t WDA_ProcessFWStatsGetReq(tWDA_CbContext *pWDA,
                                       tSirFWStatsGetReq *wdaRequest);
 
+VOS_STATUS WDA_ProcessEncryptMsgReq(tWDA_CbContext *pWDA,
+                                      u8 *wdaRequest);
+
 /*
  * FUNCTION: WDA_open
  * Allocate the WDA context 
@@ -13339,6 +13342,11 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
           WDA_ProcessSetSpoofMacAddrReq(pWDA, (tpSpoofMacAddrReqParams)pMsg->bodyptr);
           break;
       }
+      case WDA_ENCRYPT_MSG_REQ:
+      {
+         WDA_ProcessEncryptMsgReq(pWDA, (u8 *)pMsg->bodyptr);
+         break;
+      }
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
@@ -17933,7 +17941,6 @@ VOS_STATUS WDA_ProcessLLStatsClearReq(tWDA_CbContext *pWDA,
 
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
-
 void WDA_FWStatsGetRspCallback(WDI_Status status,void *fwStatsResp,void *pUserData)
 {
     tSirFWStatsInfo *fwStatsinfo = (tSirFWStatsInfo *)pUserData;
@@ -17999,3 +18006,139 @@ v_VOID_t WDA_ProcessFWStatsGetReq(tWDA_CbContext *pWDA,
     vos_mem_free(pData);
 }
 
+/*==========================================================================
+  FUNCTION  WDA_EncryptMsgRspCallback
+
+  DESCRIPTION
+    API to send Encrypt message response to HDD
+
+  PARAMETERS
+    pEventData: Response from FW
+    pUserData: Data sent to firmware as part of request
+===========================================================================*/
+void WDA_EncryptMsgRspCallback(WDI_Status status, void *pEventData,
+        void* pUserData)
+{
+    tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+    tWDA_CbContext *pWDA = NULL;
+    tpAniSirGlobal pMac;
+    vos_msg_t vosMsg;
+    tpSirEncryptedDataRspParams pEncRspParams;
+    tpSetEncryptedDataRspParams pEncryptedDataRsp;
+
+    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+            FL("%s:"), __func__);
+    if (NULL == pWdaParams)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                FL("%s: pWdaParams received NULL"), __func__);
+        VOS_ASSERT(0);
+        return;
+    }
+
+    pWDA = (tWDA_CbContext *) pWdaParams->pWdaContext;
+
+    if (NULL == pWDA)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                FL("%s: pWDA received NULL"), __func__);
+        VOS_ASSERT(0);
+        goto error;
+    }
+
+    pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
+    if (NULL == pMac)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                FL("%s:pMac is NULL"), __func__);
+        VOS_ASSERT(0);
+        goto error;
+    }
+
+    pEncryptedDataRsp = (tpSetEncryptedDataRspParams) pEventData;
+
+    pEncRspParams = vos_mem_malloc(sizeof(tSirEncryptedDataRspParams));
+    if (NULL == pEncRspParams)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                FL("%s: VOS MEM Alloc Failure"), __func__);
+        VOS_ASSERT(0);
+        goto error;
+    }
+
+    /* Message Header */
+    pEncRspParams->mesgType = eWNI_SME_ENCRYPT_MSG_RSP;
+    pEncRspParams->mesgLen = sizeof(tSirEncryptedDataRspParams);
+    pEncRspParams->encryptedDataRsp.encryptedPayload.length =
+        pEncryptedDataRsp->encryptedPayload.length;
+    vos_mem_copy(pEncRspParams->encryptedDataRsp.encryptedPayload.data,
+            pEncryptedDataRsp->encryptedPayload.data,
+            pEncryptedDataRsp->encryptedPayload.length);
+
+    /* VOS message wrapper */
+    vosMsg.type = eWNI_SME_ENCRYPT_MSG_RSP;
+    vosMsg.bodyptr = (void *)pEncRspParams;
+    vosMsg.bodyval = 0;
+
+    if (VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MQ_ID_SME, (vos_msg_t*)&vosMsg))
+    {
+        /* free the mem */
+        vos_mem_free((v_VOID_t *) pEncRspParams);
+    }
+
+error:
+
+    if (pWdaParams->wdaWdiApiMsgParam != NULL)
+    {
+        vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+    }
+    if (pWdaParams->wdaMsgParam != NULL)
+    {
+        vos_mem_free(pWdaParams->wdaMsgParam);
+    }
+    vos_mem_free(pWdaParams) ;
+
+    return;
+}
+/*==========================================================================
+  FUNCTION   WDA_ProcessEncryptMsgReq
+
+  DESCRIPTION
+    API to send Encrypt message Request to WDI
+
+  PARAMETERS
+    pWDA: Pointer to WDA context
+    wdaRequest: Pointer to Encrypt_msg req parameters
+===========================================================================*/
+VOS_STATUS WDA_ProcessEncryptMsgReq(tWDA_CbContext *pWDA,
+        u8 *wdaRequest)
+{
+    WDI_Status status = WDI_STATUS_SUCCESS;
+    tWDA_ReqParams *pWdaParams;
+
+    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+            FL("%s: "), __func__);
+    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams));
+    if (NULL == pWdaParams)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+            FL("%s: VOS MEM Alloc Failure"), __func__);
+        VOS_ASSERT(0);
+        return VOS_STATUS_E_NOMEM;
+    }
+    pWdaParams->pWdaContext = pWDA;
+    pWdaParams->wdaMsgParam = wdaRequest;
+    pWdaParams->wdaWdiApiMsgParam = NULL;
+
+    status = WDI_EncryptMsgReq((void *)wdaRequest,
+            (WDI_EncryptMsgRspCb)WDA_EncryptMsgRspCallback,
+            (void *)pWdaParams);
+    if (IS_WDI_STATUS_FAILURE(status))
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+            FL("Failure to request.  Free all the memory " ));
+        vos_mem_free(pWdaParams->wdaMsgParam);
+        vos_mem_free(pWdaParams);
+    }
+    return CONVERT_WDI2VOS_STATUS(status);
+}
