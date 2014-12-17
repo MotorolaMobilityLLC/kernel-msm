@@ -474,7 +474,9 @@ int wlan_hdd_validate_context(hdd_context_t *pHddCtx)
     if (pHddCtx->isLogpInProgress)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: LOGP in Progress. Ignore!!!", __func__);
+                  "%s: LOGP %s. Ignore!!", __func__,
+                    vos_is_wlan_in_badState(VOS_MODULE_ID_HDD, NULL)
+                    ?"failed":"in Progress");
         return -EAGAIN;
     }
 
@@ -9840,51 +9842,52 @@ static void hdd_driver_exit(void)
    {
        INIT_COMPLETION(pHddCtx->ssr_comp_var);
 
-       if (pHddCtx->isLogpInProgress)
+       if ((pHddCtx->isLogpInProgress) &&
+           (FALSE == vos_is_wlan_in_badState(VOS_MODULE_ID_HDD, NULL)))
        {
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-              "%s:SSR in Progress; block rmmod !!!", __func__);
-         rc = wait_for_completion_timeout(&pHddCtx->ssr_comp_var,
-                                          msecs_to_jiffies(30000));
-         if(!rc)
-         {
-              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-              "%s:SSR timedout, fatal error", __func__);
-              VOS_BUG(0);
-         }
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                     "%s:SSR in Progress; block rmmod !!!", __func__);
+           rc = wait_for_completion_timeout(&pHddCtx->ssr_comp_var,
+                                             msecs_to_jiffies(30000));
+           if(!rc)
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                         "%s:SSR timedout, fatal error", __func__);
+               VOS_BUG(0);
+           }
        }
 
-      rtnl_lock();
-      pHddCtx->isLoadUnloadInProgress = WLAN_HDD_UNLOAD_IN_PROGRESS;
-      vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);
-      rtnl_unlock();
+       rtnl_lock();
+       pHddCtx->isLoadUnloadInProgress = WLAN_HDD_UNLOAD_IN_PROGRESS;
+       vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+       rtnl_unlock();
 
-      /* Driver Need to send country code 00 in below condition
-       * 1) If gCountryCodePriority is set to 1; and last country
-       * code set is through 11d. This needs to be done in case
-       * when NV country code is 00.
-       * This Needs to be done as when kernel store last country
-       * code and if stored  country code is not through 11d,
-       * in sme_HandleChangeCountryCodeByUser we will disable 11d
-       * in next load/unload as soon as we get any country through
-       * 11d. In sme_HandleChangeCountryCodeByUser
-       * pMsg->countryCode will be last countryCode and
-       * pMac->scan.countryCode11d will be country through 11d so
-       * due to mismatch driver will disable 11d.
-       *
-       */
+       /* Driver Need to send country code 00 in below condition
+        * 1) If gCountryCodePriority is set to 1; and last country
+        * code set is through 11d. This needs to be done in case
+        * when NV country code is 00.
+        * This Needs to be done as when kernel store last country
+        * code and if stored  country code is not through 11d,
+        * in sme_HandleChangeCountryCodeByUser we will disable 11d
+        * in next load/unload as soon as we get any country through
+        * 11d. In sme_HandleChangeCountryCodeByUser
+        * pMsg->countryCode will be last countryCode and
+        * pMac->scan.countryCode11d will be country through 11d so
+        * due to mismatch driver will disable 11d.
+        *
+        */
 
-      if ((eANI_BOOLEAN_TRUE == sme_Is11dCountrycode(pHddCtx->hHal) &&
+        if ((eANI_BOOLEAN_TRUE == sme_Is11dCountrycode(pHddCtx->hHal) &&
               pHddCtx->cfg_ini->fSupplicantCountryCodeHasPriority  &&
               sme_Is11dSupported(pHddCtx->hHal)))
-      {
-          hddLog(VOS_TRACE_LEVEL_INFO,
+        {
+            hddLog(VOS_TRACE_LEVEL_INFO,
                      FL("CountryCode 00 is being set while unloading driver"));
-          vos_nv_getRegDomainFromCountryCode(&regId , "00", COUNTRY_USER);
-      }
+            vos_nv_getRegDomainFromCountryCode(&regId , "00", COUNTRY_USER);
+        }
 
-      //Do all the cleanup before deregistering the driver
-      hdd_wlan_exit(pHddCtx);
+        //Do all the cleanup before deregistering the driver
+        hdd_wlan_exit(pHddCtx);
    }
 
    vos_preClose( &pVosContext );
