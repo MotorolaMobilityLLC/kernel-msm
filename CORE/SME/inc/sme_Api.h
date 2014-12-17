@@ -3303,6 +3303,17 @@ eHalStatus sme_HandoffRequest(tHalHandle hHal, tCsrHandoffRequest *pHandoffInfo)
   --------------------------------------------------------------------------*/
 VOS_STATUS sme_isSta_p2p_clientConnected(tHalHandle hHal);
 
+/*--------------------------------------------------------------------------
+  \brief hdd_is_any_session_connected() - a wrapper function to check if there
+                                           is any connected session .
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen
+  \return VOS_STATUS - SME passed the request to CSR successfully.
+          Other status means SME is failed to send the request.
+  \sa
+  --------------------------------------------------------------------------*/
+VOS_STATUS sme_is_any_session_connected(tHalHandle hHal);
+
 #ifdef FEATURE_WLAN_LPHB
 /* ---------------------------------------------------------------------------
     \fn sme_LPHBConfigReq

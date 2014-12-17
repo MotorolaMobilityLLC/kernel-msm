@@ -9910,31 +9910,36 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
      * This rule is not applicable if scan is p2p scan.
      * This condition will work only in case when last request no of channels
      * and channels are exactly same as new request.
+     * This should be done only in connected state
      */
-    if (pScanInfo->last_scan_timestamp !=0 &&
-           (FALSE == request->no_cck) && // no_cck is set during p2p find.
-          ((vos_timer_get_system_time() - pScanInfo->last_scan_timestamp ) < pHddCtx->cfg_ini->nDeferScanTimeInterval))
-    {
-        if (pScanInfo->last_scan_numChannels == scanRequest.ChannelInfo.numOfChannels &&
-               vos_mem_compare(pScanInfo->last_scan_channelList,
-                     channelList, pScanInfo->last_scan_numChannels))
-       {
-           hddLog(VOS_TRACE_LEVEL_WARN,
-                " New and old station scan time differ is less then %u",
-            pHddCtx->cfg_ini->nDeferScanTimeInterval);
 
-           ret = wlan_hdd_cfg80211_update_bss((WLAN_HDD_GET_CTX(pAdapter))->wiphy,
+    if ((VOS_STATUS_SUCCESS == hdd_is_any_session_connected(pHddCtx)))
+    {
+        if ( pScanInfo->last_scan_timestamp !=0 &&
+             ((vos_timer_get_system_time() - pScanInfo->last_scan_timestamp ) < pHddCtx->cfg_ini->nDeferScanTimeInterval))
+        {
+            if ( request->no_cck == FALSE && scanRequest.ChannelInfo.numOfChannels != 1 &&
+               (pScanInfo->last_scan_numChannels == scanRequest.ChannelInfo.numOfChannels) &&
+                vos_mem_compare(pScanInfo->last_scan_channelList,
+                           channelList, pScanInfo->last_scan_numChannels))
+            {
+                hddLog(VOS_TRACE_LEVEL_WARN,
+                     " New and old station scan time differ is less then %u",
+                pHddCtx->cfg_ini->nDeferScanTimeInterval);
+
+                ret = wlan_hdd_cfg80211_update_bss((WLAN_HDD_GET_CTX(pAdapter))->wiphy,
                                         pAdapter);
 
-           hddLog(VOS_TRACE_LEVEL_WARN,
-                "Return old cached scan as all channels"
-                "and no of channles are same");
-           if (0 > ret)
-                hddLog(VOS_TRACE_LEVEL_INFO, "%s: NO SCAN result", __func__);
+                hddLog(VOS_TRACE_LEVEL_WARN,
+                    "Return old cached scan as all channels"
+                    "and no of channles are same");
+                if (0 > ret)
+                    hddLog(VOS_TRACE_LEVEL_INFO, "%s: NO SCAN result", __func__);
 
-           cfg80211_scan_done(request, eCSR_SCAN_SUCCESS);
-           return eHAL_STATUS_SUCCESS ;
-       }
+                cfg80211_scan_done(request, eCSR_SCAN_SUCCESS);
+                return eHAL_STATUS_SUCCESS ;
+            }
+        }
     }
 
     /* Flush the scan results(only p2p beacons) for STA scan and P2P

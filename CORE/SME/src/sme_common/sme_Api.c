@@ -10463,6 +10463,20 @@ VOS_STATUS sme_isSta_p2p_clientConnected(tHalHandle hHal)
     return VOS_STATUS_E_FAILURE;
 }
 
+/*
+ * SME API to check if any sessoion connected.
+ */
+VOS_STATUS sme_is_any_session_connected(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    if(csrIsAnySessionConnected(pMac))
+    {
+
+        return VOS_STATUS_SUCCESS;
+    }
+    return VOS_STATUS_E_FAILURE;
+}
+
 
 #ifdef FEATURE_WLAN_LPHB
 /* ---------------------------------------------------------------------------
