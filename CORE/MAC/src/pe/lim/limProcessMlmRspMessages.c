@@ -3102,15 +3102,17 @@ limProcessStaMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession ps
         limProcessStaMlmAddBssRspPreAssoc(pMac, limMsgQ, psessionEntry);
         goto end;
     }
-    if( eLIM_MLM_WT_ADD_BSS_RSP_REASSOC_STATE == psessionEntry->limMlmState )
+
+    if(( eLIM_MLM_WT_ADD_BSS_RSP_REASSOC_STATE == psessionEntry->limMlmState ) ||
+       ( eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE == psessionEntry->limMlmState ))
     {
         mesgType = LIM_MLM_REASSOC_CNF;
         subType = LIM_REASSOC;
-     //If Reassoc is happening for the same BSS, then use the existing StaId and indicate to HAL
-     //to update the existing STA entry.
-     //If Reassoc is happening for the new BSS, then old BSS and STA entry would have been already deleted
-     //before PE tries to add BSS for the new BSS, so set the updateSta to false and pass INVALID STA Index.
-    if (sirCompareMacAddr( psessionEntry->bssId, psessionEntry->limReAssocbssId))
+        //If Reassoc is happening for the same BSS, then use the existing StaId and indicate to HAL
+        //to update the existing STA entry.
+        //If Reassoc is happening for the new BSS, then old BSS and STA entry would have been already deleted
+        //before PE tries to add BSS for the new BSS, so set the updateSta to false and pass INVALID STA Index.
+        if (sirCompareMacAddr( psessionEntry->bssId, psessionEntry->limReAssocbssId))
         {
             staIdx = psessionEntry->staId;
             updateSta  = true;
@@ -3183,14 +3185,22 @@ limProcessStaMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession ps
     }
     else
     {
-        limLog( pMac, LOGP, FL( "SessionId:%d ADD_BSS failed!" ),
-                psessionEntry->peSessionId);
+        limLog( pMac, LOGP, FL( "SessionId:%d ADD_BSS failed! mlmState = %d" ),
+                psessionEntry->peSessionId,  psessionEntry->limMlmState);
         // Return Assoc confirm to SME with failure
-        mlmAssocCnf.resultCode = (tSirResultCodes) eSIR_SME_REFUSED;
+        if(eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE == psessionEntry->limMlmState)
+            mlmAssocCnf.resultCode = (tSirResultCodes) eSIR_SME_FT_REASSOC_FAILURE;
+        else
+            mlmAssocCnf.resultCode = (tSirResultCodes) eSIR_SME_REFUSED;
     }
 
     if(mlmAssocCnf.resultCode != eSIR_SME_SUCCESS)
     {
+        psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
+        //Set the RXP mode to IDLE, so it starts filtering the frames.
+        if(limSetLinkState(pMac, eSIR_LINK_IDLE_STATE,psessionEntry->bssId,
+            psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
+            PELOGE(limLog(pMac, LOGE,  FL("Failed to set the LinkState\n"));)
         /* Update PE session Id*/
         mlmAssocCnf.sessionId = psessionEntry->peSessionId;
         limPostSmeMessage( pMac, mesgType, (tANI_U32 *) &mlmAssocCnf );
