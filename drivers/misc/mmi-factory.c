@@ -183,8 +183,8 @@ static struct mmi_factory_info *mmi_parse_of(struct platform_device *pdev)
 	return info;
 }
 
-static enum mmi_factory_device_list hff_dev  __devinitdata = HONEYFUFU;
-static enum mmi_factory_device_list kp_dev  __devinitdata = KUNGPOW;
+static enum mmi_factory_device_list hff_dev = HONEYFUFU;
+static enum mmi_factory_device_list kp_dev = KUNGPOW;
 
 static const struct of_device_id mmi_factory_of_tbl[] = {
 	{ .compatible = "mmi,factory-support-msm8960", .data = &hff_dev},
