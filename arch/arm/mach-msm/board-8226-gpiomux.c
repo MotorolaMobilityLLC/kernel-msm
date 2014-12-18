@@ -561,6 +561,44 @@ static struct msm_gpiomux_config msm_smelt_batt_and_chrg_configs[] __initdata = 
 	},
 };
 
+#if defined(CONFIG_MMI_FACTORY)
+static struct gpiomux_setting gpio_factory_output_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_factory_irq_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct msm_gpiomux_config msm_smelt_factory_configs[] __initdata = {
+	{
+		.gpio      = 111,	/* BATT_DISCON_WARN_N */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_factory_irq_config,
+			[GPIOMUX_SUSPENDED] = &gpio_factory_irq_config,
+		},
+	},
+	{
+		.gpio      = 112,	/* FACTORY_CBL_DET_N */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_factory_irq_config,
+			[GPIOMUX_SUSPENDED] = &gpio_factory_irq_config,
+		},
+	},
+	{
+		.gpio      = 116,	/* FACT_KILL_DISABLE */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_factory_output_config,
+			[GPIOMUX_SUSPENDED] = &gpio_factory_output_config,
+		},
+	},
+};
+#endif
+
 static struct msm_gpiomux_config msm_blsp_spi_cs_config[] __initdata = {
 	{
 		.gpio      = 2,		/* BLSP1 QUP1 SPI_CS1 */
@@ -1137,5 +1175,9 @@ void __init msm8226_init_gpiomux(void)
 			ARRAY_SIZE(msm_smelt_bcm4343s_configs));
 		msm_gpiomux_install(msm_smelt_batt_and_chrg_configs,
 			ARRAY_SIZE(msm_smelt_batt_and_chrg_configs));
+#if defined(CONFIG_MMI_FACTORY)
+		msm_gpiomux_install(msm_smelt_factory_configs,
+			ARRAY_SIZE(msm_smelt_factory_configs));
+#endif
 	}
 }
