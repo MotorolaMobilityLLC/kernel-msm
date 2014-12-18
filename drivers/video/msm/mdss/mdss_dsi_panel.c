@@ -163,12 +163,6 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	unsigned char new_level = level;
 
 	pr_debug("%s: level=%d\n", __func__, level);
-	if (ctrl->idle) {
-		pr_debug("%s: skip backlight control due to idle mode\n",
-				__func__);
-		return;
-	}
-
 	if (pinfo->blmap && pinfo->blmap_size) {
 		if (level >= pinfo->blmap_size)
 			level = pinfo->blmap_size - 1;
