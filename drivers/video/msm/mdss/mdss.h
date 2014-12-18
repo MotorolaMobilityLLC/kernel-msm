@@ -231,6 +231,7 @@ struct mdss_data_type {
 	u32 max_cursor_size;
 	u32 nppb;
 	struct mdss_mdp_ppb *ppb;
+	u32 ppsplit_te_offset;
 
 	struct mdss_mdp_mixer *mixer_intf;
 	struct mdss_mdp_mixer *mixer_wb;

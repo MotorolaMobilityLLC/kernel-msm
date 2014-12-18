@@ -427,6 +427,9 @@ Fudge Factors:			Fudge factors are used to boost demand for
 				qcom,mdss-pipe-dma-off
 - qcom,mdss-has-dst-split:	Boolean property to indicate if destination
 				split feature is available or not in the target.
+- qcom,mdss-ppsplit-te-off:	Offset address for the extra TE block which needs to be program
+				when pingpong split feature is enabled. Mandatory when
+				qcom,mdss-has-dst-split is enabled
 - qcom,max-pipe-width:		This value specifies the maximum MDP SSPP width
 				the device supports. If not specified, a default value
 				of 2048 will be applied.
@@ -536,6 +539,7 @@ Example:
 					  0x00002600>;
 		qcom,mdss-pipe-dma-off = <0x00002A00 0x00002E00>;
 		qcom,mdss-pipe-cursor-off = <0x00035000 0x00037000>;
+		qcom,mdss-ppsplit-te-off = <0x00002000>;
 		qcom,mdss-pipe-vig-fetch-id = <1 4 7>;
 		qcom,mdss-pipe-rgb-fetch-id = <16 17 18>;
 		qcom,mdss-pipe-dma-fetch-id = <10 13>;

@@ -2680,6 +2680,17 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 	mdata->has_pingpong_split = of_property_read_bool(pdev->dev.of_node,
 		 "qcom,mdss-has-dst-split");
 
+	if (mdata->has_pingpong_split) {
+		rc = of_property_read_u32(pdev->dev.of_node,
+				"qcom,mdss-ppsplit-te-off",
+				&mdata->ppsplit_te_offset);
+		if (rc) {
+			pr_err("Error in device tree : pp split shared TE\n");
+			return rc;
+		}
+		pr_err("ppsplit-te-offset = %d\n", mdata->ppsplit_te_offset);
+	}
+
 	/*
 	 * 2x factor on AB because bus driver will divide by 2
 	 * due to 2x ports to BIMC
