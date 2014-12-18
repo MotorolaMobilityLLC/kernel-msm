@@ -88,7 +88,7 @@ enum mdp_split_mode {
 
 struct disp_info_type_suspend {
 	int op_enable;
-	int panel_power_on;
+	int panel_power_state;
 };
 
 struct disp_info_notify {
@@ -200,7 +200,7 @@ struct msm_fb_data_type {
 	u32 panel_orientation;
 
 	u32 dst_format;
-	int panel_power_on;
+	int panel_power_state;
 	struct disp_info_type_suspend suspend;
 
 	struct ion_handle *ihdl;
@@ -260,6 +260,7 @@ struct msm_fb_data_type {
 
 	u32 wait_for_kickoff;
 	u32 thermal_level;
+	int doze_mode;
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
@@ -296,6 +297,28 @@ static inline bool is_split_dst(struct msm_fb_data_type *mfd)
 {
 	return (mfd && (mfd->split_mode == MDP_SPLIT_MODE_DST));
 }
+
+static inline bool mdss_fb_is_power_off(struct msm_fb_data_type *mfd)
+{
+	return mdss_panel_is_power_off(mfd->panel_power_state);
+}
+
+static inline bool mdss_fb_is_power_on_interactive(
+	struct msm_fb_data_type *mfd)
+{
+	return mdss_panel_is_power_on_interactive(mfd->panel_power_state);
+}
+
+static inline bool mdss_fb_is_power_on(struct msm_fb_data_type *mfd)
+{
+	return mdss_panel_is_power_on(mfd->panel_power_state);
+}
+
+static inline bool mdss_fb_is_power_on_lp(struct msm_fb_data_type *mfd)
+{
+	return mdss_panel_is_power_on_lp(mfd->panel_power_state);
+}
+
 int mdss_fb_get_phys_info(dma_addr_t *start, unsigned long *len, int fb_num);
 void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl);
 void mdss_fb_update_backlight(struct msm_fb_data_type *mfd);
