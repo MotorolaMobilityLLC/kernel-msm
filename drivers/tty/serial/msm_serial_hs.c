@@ -516,22 +516,13 @@ static void msm_hs_bus_voting(struct msm_hs_port *msm_uport, unsigned int vote)
 static inline unsigned int msm_hs_read(struct uart_port *uport,
 				       unsigned int index)
 {
-	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	unsigned int offset;
-
-	offset = *(msm_uport->reg_ptr + index);
-
-	return readl_relaxed(uport->membase + offset);
+	return readl_relaxed(uport->membase + index);
 }
 
 static inline void msm_hs_write(struct uart_port *uport, unsigned int index,
 				 unsigned int value)
 {
-	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-	unsigned int offset;
-
-	offset = *(msm_uport->reg_ptr + index);
-	writel_relaxed(value, uport->membase + offset);
+	writel_relaxed(value, uport->membase + index);
 }
 
 static void hex_dump_ipc(char *prefix, char *string, int size)
