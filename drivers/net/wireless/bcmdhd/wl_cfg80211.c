@@ -3879,6 +3879,7 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 		if 	(timeout <= 0 || wl_get_drv_status(cfg, DISCONNECTING, dev)) {
 			WL_ERR(("timeout in waiting disconnect event\n"));
 		}
+		wl_clr_drv_status(cfg, DISCONNECTING, dev);
 	}
 
 	/* Clean BSSID */
